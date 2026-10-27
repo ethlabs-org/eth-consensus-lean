@@ -1,6 +1,6 @@
 module
 public import Mathlib.Tactic
-public import AvailableChainContractProofs.CanonicalStatement
+public import AvailableChainContractProofs.Canonical
 
 @[expose] public section
 
@@ -23,7 +23,7 @@ def family (proposal vote bad : Bool) : Family := fun _ => {
   gossip := fun _ _ => []
   process := fun s _ => s, recordOwn := fun s _ => s
   durable := id, restore := fun s _ => s
-  confirmed := fun _ => if bad then .node .genesis 0 7 7 else .genesis
+  confirmed := fun _ => if bad then .node .genesis 1 7 7 else .genesis
   stable := fun _ => .genesis, finalized := fun _ => .genesis
   conflicts := fun _ _ => vote }
 
@@ -60,7 +60,7 @@ theorem recurrence (h : Time) (es : List (Event (Fin 1) (protoOf (family false f
   · simp [Protocol.proposalTime, Protocol.slotLen, protoOf, family, pubOf, env, Int.toNat_of_nonneg ht1]
   · exact ready h es C _ _
 
-theorem silent (canonical : CanonicalRun) : ∀ C, ¬ Claims (family false false false) C := by
+theorem silent_cond (canonical : CanonicalRun) : ∀ C, ¬ Claims (family false false false) C := by
   intro C claims
   let H : Time := 1 + (C.D_c : Time)
   obtain ⟨es, valid, sync, _⟩ := canonical (family false false false) (Fin 1) env Finset.univ H (by dsimp [H]; positivity) seat (fun _ => 0) (fun _ _ => 0)
@@ -76,7 +76,7 @@ theorem silent (canonical : CanonicalRun) : ∀ C, ¬ Claims (family false false
   simp [Run.tick, Run.candidates, hs, family, protoOf, env, releaseAll] at hm
   split at hm <;> cases hm
 
-theorem proposeButGenesis (canonical : CanonicalRun) : ∀ C, ¬ Claims (family true false false) C := by
+theorem proposeButGenesis_cond (canonical : CanonicalRun) : ∀ C, ¬ Claims (family true false false) C := by
   intro C claims
   let H : Time := 1 + (C.D_c : Time)
   obtain ⟨es, valid, sync, _⟩ := canonical (family true false false) (Fin 1) env Finset.univ H
@@ -96,7 +96,7 @@ theorem proposeButGenesis (canonical : CanonicalRun) : ∀ C, ¬ Claims (family 
   · split at hm <;> cases hm <;> rename_i h <;> cases h
   · cases hm
 
-theorem conflictsTrue (canonical : CanonicalRun) : ∀ C, ¬ Claims (family false true false) C := by
+theorem conflictsTrue_cond (canonical : CanonicalRun) : ∀ C, ¬ Claims (family false true false) C := by
   intro C claims
   obtain ⟨es, valid, _, _⟩ := canonical (family false true false) (Fin 1) env Finset.univ 0
     (by decide) seat (fun _ => 0) (fun _ _ => 0)
@@ -111,8 +111,10 @@ theorem conflictsTrue (canonical : CanonicalRun) : ∀ C, ¬ Claims (family fals
     simp [Run.tick, Run.candidates, family, protoOf, env, Protocol.slotAt?,
       Protocol.slotLen, pubOf, releaseAll, Obj.carried, o, r, run, mkRun, seat]
     exact List.mem_cons_self
-  have obs : o ∈ r.Observed := ⟨0, by simp [r, run, mkRun], o, 0, by simp [r, run, mkRun],
-    Or.inl rel, Obj.Contains.refl _⟩
+  have obs : o ∈ r.Observed := by
+    obtain ⟨j, hj, hr⟩ := rel
+    exact ⟨0, by simp [r, run, mkRun], j, o, (List.getElem?_eq_some_iff.mp hj).1,
+      Or.inl ⟨0, hj, hr⟩, Obj.Contains.refl _⟩
   have slash : r.Slashable r.Observed 0 := ⟨o, obs, o, obs, by simp [o, Run.holder, Obj.auth], by simp [o, Run.holder, Obj.auth], rfl⟩
   exact claims.honestNeverSlashed (Fin 1) env r valid 0 (by simp [r, run, mkRun]) slash
 
@@ -124,15 +126,124 @@ theorem fabricated_never_proposes (h : Time)
   simp [Run.tick, Run.candidates, family, protoOf, env] at hm
   split at hm <;> cases hm
 
-theorem fabricated (canonical : CanonicalRun) : ∀ C, ¬ Claims (family false false true) C := by
+theorem fabricated_cond (canonical : CanonicalRun) : ∀ C, ¬ Claims (family false false true) C := by
   intro C claims
-  obtain ⟨es, valid, _, _⟩ := canonical (family false false true) (Fin 1) env Finset.univ 0
+  obtain ⟨es, valid, _, _⟩ := canonical (family false false true) (Fin 1) env Finset.univ 2
     (by decide) seat (fun _ => 0) (fun _ _ => 0)
-  let r := run 0 es
-  have hv := (claims.outputValid (Fin 1) env r valid).1 0 (by simp [r, run, mkRun]) 0
-    (.node .genesis 0 7 7) (by simp [Run.readOut, protoOf, family, CBlock.Preceq, CBlock.chain])
-    (by decide)
-  simp [CBlock.parent, CBlock.slot] at hv
+  let r := run 2 es
+  have norelease : ∀ i t cs, r.events[i]? = some (Event.tick 0 t) →
+      (Obj.mk (.proposer 1) (.prop (.node .genesis 1 7 7)) cs : (protoOf (family false false true) env).Object) ∉ r.releasesAt i := by
+    intro i t cs hi hm
+    rw [Run.releasesAt, hi] at hm
+    simp [Run.tick, Run.candidates, family, protoOf, env] at hm
+    split at hm <;> cases hm
+  have noview : ∀ i cs, (Obj.mk (.proposer 1) (.prop (.node .genesis 1 7 7)) cs :
+      (protoOf (family false false true) env).Object) ∉ r.ViewIdx 0 i := by
+    intro i cs hv
+    obtain ⟨k, o, hk, he, hc⟩ := hv
+    rcases he with ⟨t, ht, hr⟩ | ⟨t, ht⟩
+    · rw [Run.releasesAt, ht] at hr
+      simp [Run.tick, Run.candidates, family, protoOf, env] at hr
+      split at hr <;> cases hr
+    · obtain ⟨j, t', hj, ht', hr⟩ := valid.unforgeable k 0 o t ht _ hc 0
+        (by simp [r, run, mkRun]) (by simp [Run.holder, r, run, mkRun, Obj.auth])
+      exact norelease j t' cs ht' hr
+  have ht : Event.tick (0 : Fin 1) 1 ∈ r.events :=
+    valid.tick_total 0 (by simp [r, run, mkRun]) 1 ⟨1, by simp [env]⟩
+      (by simp [r, run, mkRun]) rfl
+  obtain ⟨i, hi⟩ := List.mem_iff_getElem?.mp ht
+  have hlen : i + 1 ≤ r.events.length := by
+    have := (List.getElem?_eq_some_iff.mp hi).1
+    omega
+  have htime : (protoOf (family false false true) env).proposalTime 1 ≤ r.cutTime (i + 1) := by
+    unfold Run.cutTime
+    simp only [Nat.add_comm, Nat.zero_add] at *
+    rw [hi]
+    simp [Event.time, Protocol.proposalTime, Protocol.slotLen, protoOf, family, pubOf, env]
+  have hv := (claims.outputValid (Fin 1) env r valid).1 0 (by simp [r, run, mkRun])
+    (i + 1) (.node .genesis 1 7 7) hlen
+    (by simp [Run.readIdx, protoOf, family, CBlock.Preceq, CBlock.chain]) (by decide)
+  obtain ⟨_, _, cs, hcs⟩ := hv
+  exact noview _ cs hcs
+
+theorem silent : ∀ C, ¬ Claims (family false false false) C := silent_cond canonical_run
+theorem proposeButGenesis : ∀ C, ¬ Claims (family true false false) C :=
+  proposeButGenesis_cond canonical_run
+theorem conflictsTrue : ∀ C, ¬ Claims (family false true false) C := conflictsTrue_cond canonical_run
+theorem fabricated : ∀ C, ¬ Claims (family false false true) C := fabricated_cond canonical_run
+
+def env4 : Env (Fin 4) := ⟨1, by decide, 0, by decide, fun _ _ => true⟩
+
+def controls : Constants := {
+  slotTicks := 1, catchUp := 0, η := 1, D_c := 0, D_s := 0, D_f := 0
+  armingLag := 0, fastArmingLag := 0, budget := 1
+  θ := 1 / 2, θrec := 1 / 2, recoveryFull := true
+  growth := ⟨0, 0⟩, stableGrowth := ⟨0, 0⟩, recovery := ⟨0, 0⟩
+  finStart := ⟨0, 0⟩, finDelay := ⟨0, 0⟩ }
+
+theorem controls_valid : controls.Valid := by
+  constructor <;> norm_num [controls]
+
+def seat4 {F : Family} : (protoOf F env4).Label → Fin (Fintype.card (Fin 4)) ≃ Fin 4 :=
+  fun _ => Equiv.refl _
+
+def run4 {F : Family} (es : List (Event (Fin 4) (protoOf F env4).Object)) : Run F env4 :=
+  mkRun Finset.univ 0 seat4 (fun _ => 0) (fun _ _ => 0) es
+
+theorem positive_controls (F : Family) : ∃ es,
+    let r := run4 (F := F) es
+    r.Sleepy controls 0 ∧ r.StableSleepy controls 0 ∧ r.Fast controls 0 ∧
+    r.LiveSleepy controls 0 1 ∧ r.Outage controls 0 0 0 ∧
+    r.Recovery controls 1 ∧ r.Finality controls 1 := by
+  obtain ⟨es, valid, sync, healthy⟩ := canonical_run F (Fin 4) env4 Finset.univ 0
+    (by decide) seat4 (fun _ => 0) (fun _ _ => 0)
+  let r := run4 (F := F) es
+  have ready : ∀ t, r.readyAt controls t = Finset.univ := by
+    intro t
+    ext v
+    simp [Run.readyAt, Run.Ready, AwakeOnClosed, r, run4, mkRun, env4]
+  have faulty : r.faulty = ∅ := by simp [Run.faulty, r, run4, mkRun]
+  have awake : ∀ t, r.awakeIn (t - (controls.η : Time) * env4.Δ) t = Finset.univ := by
+    intro t
+    ext v
+    simp only [Run.awakeIn, r, run4, mkRun, Finset.mem_filter, Finset.mem_univ, true_and]
+    exact ⟨fun _ => trivial, fun _ => ⟨t, by simp [controls, env4], le_rfl, rfl⟩⟩
+  have majority : ∀ t, r.ReadyMajority controls t := by
+    intro t
+    simp [Run.ReadyMajority, ready, faulty]
+  have eta : ∀ t, r.EtaSleepy controls t := by
+    intro t
+    unfold Run.EtaSleepy
+    rw [awake t, faulty, ready t]
+    norm_num [controls]
+  have full : r.FullParticipation 0 := by simp [Run.FullParticipation, env4]
+  have recur : r.Recurrence controls 0 1 := by
+    intro t ht hh
+    have hp : 0 < (protoOf F env4).slotLen := Protocol.slotLen_pos _
+    change t + 1 * (protoOf F env4).slotLen ≤ 0 at hh
+    exfalso; linarith
+  have sleepy : r.Sleepy controls 0 := ⟨valid, sync, rfl, rfl, fun t _ _ => majority t⟩
+  have recovery : r.Recovery controls 1 := by
+    refine ⟨valid, sync, ?_, ?_, ?_, recur, ?_⟩
+    · intro t _ _
+      rw [ready t, faulty]
+      norm_num [controls]
+    · intro _; exact full
+    · simp [Wakes, env4]
+    · simp [controls, Affine.eval, env4, r, run4, mkRun]
+  refine ⟨es, sleepy, ⟨sleepy, fun t _ _ => eta t⟩, ⟨sleepy, full, ?_⟩,
+    ⟨sleepy, recur⟩, ?_, recovery, ⟨recovery, ?_, ?_⟩⟩
+  · change r.BelowQuarter
+    simp [Run.BelowQuarter, faulty]
+  · refine ⟨valid, healthy 0, by simp [r, run4, mkRun], by simp [controls, env4],
+      by simp [controls, env4], ?_, ?_⟩
+    · intro t ht ht'; exact majority t
+    · intro t ht ht'; exact eta t
+  · change r.BelowOneThird
+    simp [Run.BelowOneThird, faulty]
+  · intro t _ _
+    change 2 * Fintype.card (Fin 4) < 3 * (r.readyAt controls t).card
+    simp [ready]
 
 end AvailableChain.Contract.Tests
 end
