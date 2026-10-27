@@ -105,12 +105,12 @@ def LiveFrom (C : Constants) (g : Output F E) (t₀ : Time) (c : Nat) : Prop :=
 
 /-- Persistence of `g` on `[b₀, b₁)`: every block in an honest read at `T` is,
 at every time `t` of `[b₀, b₁)`, in the read of every honest node awake
-throughout `[b₀ − catchUp·Δ − 1, t]` (so ready before the outage started and
+throughout `[max 0 (b₀ − catchUp·Δ − 1), t]` (so ready before the outage started and
 not restarted since). -/
 def PersistsThrough (C : Constants) (g : Output F E) (T b₀ b₁ : Time) : Prop :=
   ∀ v ∈ rho.honest, ∀ B, CBlock.Preceq B (rho.readOut g v T) →
     ∀ t, b₀ ≤ t → t < b₁ → ∀ w ∈ rho.honest,
-      AwakeOnClosed E w (b₀ - (C.catchUp : Time) * E.Δ - 1) t →
+      AwakeOnClosed E w (max 0 (b₀ - (C.catchUp : Time) * E.Δ - 1)) t →
       CBlock.Preceq B (rho.readOut g w t)
 
 end Run

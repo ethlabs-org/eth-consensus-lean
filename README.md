@@ -17,10 +17,10 @@ Read in this order:
 | File | What it fixes |
 |---|---|
 | `AvailableChainContract/Objects.lean` | Blocks with computed roots (injective, no hash premise); signatures (`Auth`); messages: a proposal of a block, or protocol data; wire objects that carry objects structurally |
-| `AvailableChainContract/Protocol.lean` | What an instance supplies: a state machine, three output getters, the slashing rule `conflicts`. It knows only `n` and `Δ`. |
+| `AvailableChainContract/Protocol.lean` | What an instance supplies: its types (`State`, `Label`, `Duty`, `Body`, `Durable`), `slotTicks`, a state machine (`clock`, `propose`, `act`, `gossip`, `process` with no time argument, `recordOwn`, `durable`/`restore`), three output getters, and the slashing rule `conflicts`. It knows only `n` and `Δ`. |
 | `AvailableChainContract/Run.lean` | Run data (honest set, events, seats, proposers, inputs). The engine builds and signs proposals with the proposer's own input; it releases an object only if everything it carries was seen. Reads at times and at event cuts; views. |
 | `AvailableChainContract/Constants.lean` | Every time bound is a coefficient of `Δ` |
-| `AvailableChainContract/Conditions.lean` | Premises: schedule, sleep (restarts only at wakes), unforgeability, delivery (flooding of released objects), participation of ready nodes, recurrence |
+| `AvailableChainContract/Conditions.lean` | Premises: schedule, sleep (a restart at every wake and only at wakes), unforgeability, delivery (flooding of released objects), participation of ready nodes, recurrence |
 | `AvailableChainContract/Properties.lean` | Safety (at event cuts), provenance (`OutputValid`), inclusion of the honest proposer's own block, growth, persistence |
 | `AvailableChainContract/Evidence.lean` | Generic evidence and slashing; accountable safety; honest never slashed |
 | `AvailableChainContract/Regimes.lean` | The regimes. Each mentions only the environment, run data and engine facts. |
@@ -31,8 +31,13 @@ Read in this order:
 
 Not to be read (kernel-checked): the proofs of `canonical_run`
 (`AvailableChainContractProofs/Canonical*`) and of
-`finalizedSafe_of_claims`, and the tests
-(`AvailableChainContractTests`).
+`finalizedSafe_of_claims`, and the tests (`AvailableChainContractTests`):
+- `Leaks.lean` refutes the degenerate families;
+- `Controls.lean` shows that every regime holds, with active guards, in one
+  canonical run: `n = 4`, all honest and always awake, GST = 0, horizon 20.
+
+`Run.View` (views by time) is defined but no claim uses it: claims use
+`Run.ViewIdx`.
 
 ## Why no protocol-supplied word weakens a claim
 
@@ -74,9 +79,15 @@ Not to be read (kernel-checked): the proofs of `canonical_run`
    They narrow the guarantee.
 4. **`conflicts`.** Is it the slashing rule that the chain enforces?
 5. **Implementation refinement.** Does the deployed client match the
-   engine's contract: signature encoding, structural carriage, the seen
-   filter, a persisted seen log, computed roots, the parent/aux encoding of
-   blocks?
+   engine's contract?
+   - Signature encoding, and the holder mapping of seats and slot keys to
+     validators.
+   - Structural carriage and the seen filter, with the seen log persisted.
+   - What `durable` keeps is persisted across restarts. Every wake is a
+     restart; claims across restarts hold only if this state survives.
+   - Computed roots, and the parent/aux encoding of blocks.
+   - `Body` parsing: what can be sent as protocol data. It bounds what the
+     adversary can send.
 
 Generic, read once:
 
