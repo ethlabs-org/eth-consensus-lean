@@ -106,10 +106,11 @@ noncomputable def awakeIn (a b : Time) : Finset V := by
   exact rho.honest.filter (fun v => ∃ u, a ≤ u ∧ u ≤ b ∧ E.awake v u = true)
 
 /-- `v` is ready at `t`: honest and awake throughout
-`[t − catchUp·Δ − 1, t]`. It therefore did not wake, so did not restart, in
-`[t − catchUp·Δ, t]`. Participation premises count ready nodes. -/
+`[max 0 (t − catchUp·Δ − 1), t]`. It therefore did not wake, so did not
+restart, in `[t − catchUp·Δ, t]` (a node awake at time 0 starts from `init`, so
+the window stops at 0). Participation premises count ready nodes. -/
 def Ready (C : Constants) (v : V) (t : Time) : Prop :=
-  v ∈ rho.honest ∧ AwakeOnClosed E v (t - (C.catchUp : Time) * E.Δ - 1) t
+  v ∈ rho.honest ∧ AwakeOnClosed E v (max 0 (t - (C.catchUp : Time) * E.Δ - 1)) t
 
 /-- The ready honest validators at `t`. -/
 noncomputable def readyAt (C : Constants) (t : Time) : Finset V := by

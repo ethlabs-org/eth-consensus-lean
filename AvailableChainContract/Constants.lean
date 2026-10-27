@@ -23,6 +23,9 @@ structure Affine where
 def Affine.eval (f : Affine) (k : Nat) : Nat := f.a + f.b * k
 
 structure Constants where
+  /-- The slot length in units of `Δ`; `Claims` pins the family's `slotTicks`
+  to it. -/
+  slotTicks : Nat
   /-- A reader or proposer must have been awake for this long (no restart). -/
   catchUp : Nat
   /-- η, the history window of the η-sleepy premise. -/

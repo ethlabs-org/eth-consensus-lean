@@ -30,6 +30,8 @@ def AllRuns (F : Family)
 /-- The contract. -/
 structure Claims (F : Family) (C : Constants) : Prop where
   constants : C.Valid
+  /-- The slot length is the reported one, for all public parameters. -/
+  slotTicks : ∀ pub, (F pub).slotTicks = C.slotTicks
   /-- Provenance and slot order of every output. -/
   outputValid : AllRuns F fun _ rho => rho.ExecutionValid →
     rho.OutputValid (protoOf F _).confirmed ∧ rho.OutputValid (protoOf F _).stable ∧

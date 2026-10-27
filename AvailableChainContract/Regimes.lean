@@ -72,9 +72,9 @@ structure Recovery (k : Nat) : Prop where
   participation : ∀ t, E.t_GST ≤ t → t ≤ rho.horizon →
     C.θrec * ((rho.readyAt C t).card + rho.faulty.card : ℚ) < ((rho.readyAt C t).card : ℚ)
   full : C.recoveryFull = true → rho.FullParticipation E.t_GST
-  /-- No honest validator wakes after GST (plan Q13: the default until decided;
+  /-- No honest validator wakes at or after GST (plan Q13: the default until decided;
   the alternative is recovery for ready readers with wakes allowed). -/
-  noWakeAfterGST : ∀ v ∈ rho.honest, ∀ t, E.t_GST < t → t ≤ rho.horizon → ¬ Wakes E v t
+  noWakeAfterGST : ∀ v ∈ rho.honest, ∀ t, E.t_GST ≤ t → t ≤ rho.horizon → ¬ Wakes E v t
   recurrence : rho.Recurrence C E.t_GST k
   horizon : E.t_GST + ((C.recovery.eval k : Nat) : Time) * E.Δ ≤ rho.horizon
 
@@ -85,10 +85,11 @@ structure Finality (k : Nat) : Prop extends Recovery rho C k where
   finParticipation : ∀ t, E.t_GST ≤ t → t ≤ rho.horizon →
     2 * Fintype.card V < 3 * (rho.readyAt C t).card
 
-/-- What holds after recovery, from `t₀`. -/
+/-- What holds after recovery, from `t₀`: safety for ready readers (a node
+asleep since before GST may keep a pre-GST fork) and inclusion. -/
 structure RecoveredAt (t₀ : Time) : Prop where
-  confirmedSafe : rho.SafeFrom (protoOf F E).confirmed t₀
-  stableSafe : rho.SafeFrom (protoOf F E).stable t₀
+  confirmedSafe : rho.ReadySafeFrom C (protoOf F E).confirmed t₀
+  stableSafe : rho.ReadySafeFrom C (protoOf F E).stable t₀
   confirmedIncluded : rho.IncludedFrom C (protoOf F E).confirmed t₀ C.D_c
   stableIncluded : rho.IncludedFrom C (protoOf F E).stable t₀ C.D_s
 

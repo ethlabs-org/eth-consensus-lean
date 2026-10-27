@@ -5,8 +5,10 @@ public import AvailableChainContract.Conditions
 
 /-! # Properties of outputs
 
-An output is one of the protocol's getters, `P.State → CBlock`, read at a node
-and a time (`Run.readOut`). Safety speaks about every honest read. Inclusion,
+An output is one of the protocol's getters, `P.State → CBlock`. Safety,
+order and provenance read it at every event cut (`Run.readIdx`), since a client
+can expose the state between any two events; liveness reads it at the end of a
+time (`Run.readOut`). Safety speaks about every honest read. Inclusion,
 growth and persistence speak about ready readers: honest nodes awake through
 the catch-up window. Inclusion is of the honest proposer's own block, built
 and signed by the engine. Provenance bounds every output from above: it holds
@@ -25,37 +27,58 @@ namespace Run
 
 variable (rho : Run F E)
 
-/-- Two outputs do not conflict across honest reads from `t₀` to the horizon. -/
+/-- Event cut `i` is at or after time `t₀`: it includes at least one event at
+a time `≥ t₀` (and at most all events). -/
+def InCuts (t₀ : Time) (i : Nat) : Prop := rho.cutAt t₀ < i ∧ i ≤ rho.events.length
+
+/-- Two outputs do not conflict across honest reads at event cuts from `t₀`
+on. -/
 def ConsistentFrom (g₁ g₂ : Output F E) (t₀ : Time) : Prop :=
-  ∀ u ∈ rho.honest, ∀ v ∈ rho.honest, ∀ t t' : Time,
-    t₀ ≤ t → t ≤ rho.horizon → t₀ ≤ t' → t' ≤ rho.horizon →
-    CBlock.Compatible (rho.readOut g₁ u t) (rho.readOut g₂ v t')
+  ∀ u ∈ rho.honest, ∀ v ∈ rho.honest, ∀ i j, rho.InCuts t₀ i → rho.InCuts t₀ j →
+    CBlock.Compatible (rho.readIdx g₁ u i) (rho.readIdx g₂ v j)
 
 /-- No two honest reads of `g` conflict from `t₀` on. -/
 def AgreeFrom (g : Output F E) (t₀ : Time) : Prop := rho.ConsistentFrom g g t₀
 
-/-- Each honest node's reads of `g` only extend from `t₀` on. -/
+/-- Each honest node's reads of `g` only extend, event by event, from `t₀`
+on. -/
 def MonotoneFrom (g : Output F E) (t₀ : Time) : Prop :=
-  ∀ v ∈ rho.honest, ∀ t t' : Time, t₀ ≤ t → t ≤ t' → t' ≤ rho.horizon →
-    CBlock.Preceq (rho.readOut g v t) (rho.readOut g v t')
+  ∀ v ∈ rho.honest, ∀ i j, rho.InCuts t₀ i → i ≤ j → rho.InCuts t₀ j →
+    CBlock.Preceq (rho.readIdx g v i) (rho.readIdx g v j)
 
 /-- Safety of `g` from `t₀`. -/
 structure SafeFrom (g : Output F E) (t₀ : Time) : Prop where
   agree : rho.AgreeFrom g t₀
   monotone : rho.MonotoneFrom g t₀
 
-/-- Provenance and slot order: every non-genesis block `B` in an honest read
-of `g` at `t` (the tip or any ancestor) has a slot above its parent's slot and
-not after `t`, and the reader has seen a proposal of `B` under the proposer key
-of `B`'s slot. -/
-def OutputValid (g : Output F E) : Prop :=
-  ∀ v ∈ rho.honest, ∀ t B, CBlock.Preceq B (rho.readOut g v t) → B ≠ .genesis →
-    B.parent.slot < B.slot ∧ (protoOf F E).proposalTime B.slot ≤ t ∧
-    ∃ cs, (Obj.mk (.proposer B.slot) (.prop B) cs : (protoOf F E).Object) ∈ rho.View v t
+/-- Safety of `g` from `t₀` for ready readers: reads of nodes that are ready at
+the time of the cut agree, and a node's reads at two cuts where it is ready
+only extend. (Used after recovery: a node asleep since before GST may keep an
+old fork.) -/
+structure ReadySafeFrom (C : Constants) (g : Output F E) (t₀ : Time) : Prop where
+  agree : ∀ u v i j, rho.InCuts t₀ i → rho.InCuts t₀ j →
+    rho.Ready C u (rho.cutTime i) → rho.Ready C v (rho.cutTime j) →
+    CBlock.Compatible (rho.readIdx g u i) (rho.readIdx g v j)
+  monotone : ∀ v i j, rho.InCuts t₀ i → i ≤ j → rho.InCuts t₀ j →
+    rho.Ready C v (rho.cutTime i) → rho.Ready C v (rho.cutTime j) →
+    CBlock.Preceq (rho.readIdx g v i) (rho.readIdx g v j)
 
-/-- Output `g₁` is below output `g₂` in every honest read. -/
+/-- Provenance and slot order, at every event cut: every non-genesis block `B`
+in an honest read of `g` (the tip or any ancestor) has a slot above its
+parent's slot and a proposal time not after the cut, and the reader has seen,
+before the cut, a proposal of `B` under the proposer key of `B`'s slot. Slot 0
+is genesis's slot, so no other block of slot 0 can be output. -/
+def OutputValid (g : Output F E) : Prop :=
+  ∀ v ∈ rho.honest, ∀ i B, i ≤ rho.events.length →
+    CBlock.Preceq B (rho.readIdx g v i) → B ≠ .genesis →
+    B.parent.slot < B.slot ∧ (protoOf F E).proposalTime B.slot ≤ rho.cutTime i ∧
+    ∃ cs, (Obj.mk (.proposer B.slot) (.prop B) cs : (protoOf F E).Object) ∈ rho.ViewIdx v i
+
+/-- Output `g₁` is below output `g₂` in every honest read, at every event
+cut. -/
 def Below (g₁ g₂ : Output F E) : Prop :=
-  ∀ v ∈ rho.honest, ∀ t, CBlock.Preceq (rho.readOut g₁ v t) (rho.readOut g₂ v t)
+  ∀ v ∈ rho.honest, ∀ i, i ≤ rho.events.length →
+    CBlock.Preceq (rho.readIdx g₁ v i) (rho.readIdx g₂ v i)
 
 /-- `B` is in the read of `g` of every ready reader at `t`. -/
 def InBy (C : Constants) (g : Output F E) (B : CBlock) (t : Time) : Prop :=

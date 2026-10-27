@@ -178,9 +178,30 @@ by `t`, with everything those objects carry. -/
 def View (v : V) (t : Time) : Set (protoOf F E).Object :=
   {o | ∃ o₀ t₀, t₀ ≤ t ∧ (rho.releases v o₀ t₀ ∨ rho.receives v o₀ t₀) ∧ Obj.Contains o₀ o}
 
+/-- What node `v` has seen before event `i` (the event cut `i`): every object
+it released or received at an event with index `< i`, with everything those
+objects carry. -/
+def ViewIdx (v : V) (i : Nat) : Set (protoOf F E).Object :=
+  {o | ∃ k o₀, k < i ∧
+    ((∃ t, rho.events[k]? = some (Event.tick v t) ∧ o₀ ∈ rho.releasesAt k) ∨
+      ∃ t, rho.events[k]? = some (Event.deliver v o₀ t)) ∧ Obj.Contains o₀ o}
+
 /-- Everything the honest nodes saw in the run. -/
 def Observed : Set (protoOf F E).Object :=
-  {o | ∃ v ∈ rho.honest, o ∈ rho.View v rho.horizon}
+  {o | ∃ v ∈ rho.honest, o ∈ rho.ViewIdx v rho.events.length}
+
+/-- The number of events before time `t`. On a time-sorted run the events
+before time `t` are exactly the first `cutAt t` events. -/
+def cutAt (t : Time) : Nat := (rho.events.filter (fun e => decide (e.time < t))).length
+
+/-- The time of event cut `i`: the time of the last event before it (`0` for
+the empty cut). -/
+def cutTime (i : Nat) : Time :=
+  match i with
+  | 0 => 0
+  | k + 1 => match rho.events[k]? with
+    | some e => e.time
+    | none => 0
 
 /-- The validator that holds an authentication. -/
 def holder : Auth (protoOf F E).Label (Fintype.card V) → Option V
@@ -191,6 +212,12 @@ def holder : Auth (protoOf F E).Label (Fintype.card V) → Option V
 /-- An output of node `v` at time `t`. -/
 def readOut (g : (protoOf F E).State → CBlock) (v : V) (t : Time) : CBlock :=
   g (rho.readAt t v).st
+
+/-- An output of node `v` at event cut `i`: after the first `i` events. A
+client can expose the state between any two events, so safety is stated at
+event cuts. -/
+def readIdx (g : (protoOf F E).State → CBlock) (v : V) (i : Nat) : CBlock :=
+  g (rho.stateBefore i v).st
 
 /-- `B` is the honest proposal of slot `s`: the proposer of `s` is honest and
 released, at the proposal time, a proposal of `B` under the slot's key. -/

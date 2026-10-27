@@ -8,7 +8,7 @@ public import AvailableChainContract.Properties
 Evidence is generic: a validator is slashable on a set of objects if two of
 them (possibly the same one) are held by it and the protocol's rule
 `conflicts` convicts them. The evidence sets are what honest nodes saw
-(`Run.View`), with everything carried inside. The threshold is fixed: a third
+(`Run.ViewIdx`), with everything carried inside. The threshold is fixed: a third
 of the validators. -/
 
 namespace AvailableChain.Contract
@@ -32,13 +32,12 @@ noncomputable def slashedBy (A : Set (protoOf F E).Object) : Finset V := by
   exact Finset.univ.filter (rho.Slashable A)
 
 /-- Accountable safety of `g` from `t₀`: two honest reads, at any nodes and
-times, are compatible, or what the two readers saw slashes a third of the
-validators. -/
+event cuts, are compatible, or what the two readers saw before their cuts
+slashes a third of the validators. -/
 def AccountablySafeFrom (g : Output F E) (t₀ : Time) : Prop :=
-  ∀ u ∈ rho.honest, ∀ v ∈ rho.honest, ∀ t t' : Time,
-    t₀ ≤ t → t ≤ rho.horizon → t₀ ≤ t' → t' ≤ rho.horizon →
-    CBlock.Compatible (rho.readOut g u t) (rho.readOut g v t') ∨
-      Fintype.card V ≤ 3 * (rho.slashedBy (rho.View u t ∪ rho.View v t')).card
+  ∀ u ∈ rho.honest, ∀ v ∈ rho.honest, ∀ i j, rho.InCuts t₀ i → rho.InCuts t₀ j →
+    CBlock.Compatible (rho.readIdx g u i) (rho.readIdx g v j) ∨
+      Fintype.card V ≤ 3 * (rho.slashedBy (rho.ViewIdx u i ∪ rho.ViewIdx v j)).card
 
 /-- No honest validator is slashable on what the honest nodes saw. -/
 def HonestNeverSlashed : Prop :=
