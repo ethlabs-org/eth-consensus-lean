@@ -20,11 +20,14 @@ At a tick the engine signs, for an awake node, in this order:
    choice of `parent` and `aux`, signed with the proposer key of the slot;
 2. the node's seat of every due duty;
 3. unsigned gossip.
-It releases a candidate only if every object it carries is already in the
-closure of `seen`, so honest code never passes on an object it has not seen
-(in particular, no honest signature it did not receive or make). A released
-object enters `seen` before the next candidate, and the protocol records it
-with `recordOwn`. -/
+All candidates are built from the state after the clock update. The engine then
+goes through them in this order and releases a candidate only if every object
+it carries is already in the closure of `seen`, so honest code never passes on
+an object it has not seen (in particular, no honest signature that it did not
+receive or make). A released object enters `seen` before the next candidate is
+checked, so a candidate can carry an object released earlier in the same tick
+(for example gossip carrying the node's own vote, but not a proposal carrying a
+vote of the same tick), and the protocol records it with `recordOwn`. -/
 
 namespace AvailableChain.Contract
 
