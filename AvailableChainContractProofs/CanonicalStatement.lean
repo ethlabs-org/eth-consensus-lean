@@ -11,7 +11,7 @@ proposer map and input, there is an event list that makes the run valid,
 partially synchronous, and synchronous on every prefix. So the execution part
 of every regime is satisfiable for every protocol: no protocol can make a
 regime vacuous. (Whether the environment part holds is a property of the
-environment alone.) The proof is `canonical_run` (Canonical.lean). -/
+environment alone.) Proved as `canonical_run` in `Canonical.lean`. -/
 
 namespace AvailableChain.Contract
 
