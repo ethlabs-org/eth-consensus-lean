@@ -64,26 +64,26 @@ structure FastOutage (T b₀ b₁ : Time) : Prop extends
     (Fintype.card V + 1) / 2 ≤ (rho.readyAt C t).card
 
 /-- Arbitrary delivery before GST; after GST, synchrony, ready participation
-above `θrec`, recurrence with gap `k`, and a horizon past the recovery
-bound. -/
+above `θrec`, no honest wake, recurrence with gap `k`, and a horizon past the
+recovery bound. -/
 structure Recovery (k : Nat) : Prop where
   valid : rho.ExecutionValid
   sync : rho.PartialSynchrony
   participation : ∀ t, E.t_GST ≤ t → t ≤ rho.horizon →
     C.θrec * ((rho.readyAt C t).card + rho.faulty.card : ℚ) < ((rho.readyAt C t).card : ℚ)
   full : C.recoveryFull = true → rho.FullParticipation E.t_GST
+  /-- No honest validator wakes after GST (plan Q13: the default until decided;
+  the alternative is recovery for ready readers with wakes allowed). -/
+  noWakeAfterGST : ∀ v ∈ rho.honest, ∀ t, E.t_GST < t → t ≤ rho.horizon → ¬ Wakes E v t
   recurrence : rho.Recurrence C E.t_GST k
   horizon : E.t_GST + ((C.recovery.eval k : Nat) : Time) * E.Δ ≤ rho.horizon
 
-/-- Finality: fewer than a third faulty; after GST, synchrony, more than two
-thirds of the validators ready, and recurrence with gap `k`. -/
-structure Finality (k : Nat) : Prop where
-  valid : rho.ExecutionValid
-  sync : rho.PartialSynchrony
+/-- Finality: the recovery regime, fewer than a third faulty, and after GST
+more than two thirds of the validators ready. -/
+structure Finality (k : Nat) : Prop extends Recovery rho C k where
   belowOneThird : rho.BelowOneThird
-  participation : ∀ t, E.t_GST ≤ t → t ≤ rho.horizon →
+  finParticipation : ∀ t, E.t_GST ≤ t → t ≤ rho.horizon →
     2 * Fintype.card V < 3 * (rho.readyAt C t).card
-  recurrence : rho.Recurrence C E.t_GST k
 
 /-- What holds after recovery, from `t₀`. -/
 structure RecoveredAt (t₀ : Time) : Prop where

@@ -39,7 +39,7 @@ structure Protocol (pub : Public) : Type 1 where
   slotTicks : Nat
   slotTicks_pos : 0 < slotTicks
   init : State
-  /-- The local clock update, at every tick, awake or asleep. -/
+  /-- The local clock update, at every tick (an asleep node has no ticks). -/
   clock : State → Time → State
   /-- The proposal choice for slot `s`: a parent, protocol data `aux`, and
   carried objects. The engine builds the block `node parent s input aux` with
