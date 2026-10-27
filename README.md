@@ -27,6 +27,7 @@ Read in this order:
 | `AvailableChainContract/Claims.lean` | `Claims F C`: every field, for every validator set, environment and run |
 | `AvailableChainContractProofs/CanonicalStatement.lean` | `CanonicalRun`: the execution part of every regime is satisfiable for every protocol |
 | statements in `AvailableChainContractProofs/Accountable.lean` | `finalizedSafe_of_claims` |
+| `engine/AvailableChainModel/Generic/Env.lean` (22 lines), and `Time := Int` and `Slot := Nat` in `engine/AvailableChainModel/Objects/{Time,Identifiers}.lean`; `epair` in `Objects/Codec.lean` (definition only; its injectivity is proved) | the environment (`Δ`, GST, awake profile) and basic types, imported by the contract |
 
 Not to be read (kernel-checked): the proofs of `canonical_run`
 (`AvailableChainContractProofs/Canonical*`) and of
@@ -35,10 +36,13 @@ Not to be read (kernel-checked): the proofs of `canonical_run`
 
 ## Why no protocol-supplied word weakens a claim
 
-- No premise of any claim mentions anything the protocol supplies. The
-  protocol has no receipt hooks, no `author`, no `carries`, no block decoder,
-  no schedule, no deadlines, no evidence or certificate predicates, and no
-  hash premise. `canonical_run` shows that, for every protocol, the execution
+- No premise of any claim contains a predicate that the protocol supplies.
+  The protocol has no receipt hooks, no `author`, no `carries`, no block
+  decoder, no schedule, no deadlines, no evidence or certificate predicates,
+  and no hash premise. Execution premises do depend on what the protocol
+  does (what it releases, its object types, its slot timing). They depend on
+  it only through the generic engine and the generic conditions, and
+  `Claims.slotTicks` pins the slot timing. `canonical_run` shows that, for every protocol, the execution
   part of every regime holds in some run. So no protocol can make a regime
   vacuous.
 - The outputs are pinned on both sides:
@@ -60,8 +64,9 @@ Not to be read (kernel-checked): the proofs of `canonical_run`
 ## Residual bindings (read per instance)
 
 1. **Outputs.** Are `confirmed`, `stable` and `finalized` what users read?
-   Q9 is open: outside `Finality` runs, `finalized` need not be below the
-   available chain.
+   Only `stable ⪯ confirmed` is promised, pointwise. No claim says that
+   `finalized` lies below `stable` or `confirmed`, in any regime, `Finality`
+   included (plan Q9, open).
 2. **Input.** Does the run input mean what users care about (for example
    transactions)?
 3. **Numbers.** `C` in full, including the premise-side constants (`catchUp`,
@@ -79,7 +84,13 @@ Generic, read once:
    after GST, including to nodes that wake later; restarts only at wakes;
    unforgeable signatures; injective hashing.
 
-## Scope limits
+## Scope limits and modelling conventions
+
+- Reads: safety, accountability and provenance hold at every event cut;
+  inclusion, growth and persistence read at the end of a time.
+- Ticks: all of a tick's candidates come from the state after `clock`, before
+  any `recordOwn`. A proposal cannot carry a vote of the same tick.
+- Slot 0 is reserved for genesis: no other block of slot 0 can be output.
 
 - Every committee label has all `n` seats under a run-chosen bijection.
   Protocols with small sampled committees are not expressible.
