@@ -17,8 +17,6 @@ to every deadline strictly after its start, including both contract deadlines.
 -/
 
 namespace Consensus.Model
-open AvailableChain (Time)
-open AvailableChain.Generic
 
 /-- Every choice of protocol, environment and run data admits a valid run
 with partial synchrony and healthy delivery on every prefix. -/

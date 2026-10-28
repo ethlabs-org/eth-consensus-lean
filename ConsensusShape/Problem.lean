@@ -3,16 +3,14 @@ public import ConsensusShape.Claims
 @[expose] public section
 
 namespace Consensus.Shape
-open AvailableChain (Time)
 open Run
 
-variable {V : Type} [Fintype V] [DecidableEq V] {F : Family}
+variable {V : Type} [Fintype V] [DecidableEq V] [Nonempty V] {F : Family}
 
 /-- Fixed shape premises, on the very same runs as the L0 system. -/
 def profile (C : Constants) : System.Profile (Model.sysOf (compiled F) V) where
-  valid r := ShapeValid r.2
-  sleepy r := Sleepy r.2 C 0
-  live k r := LiveSleepy r.2 C 0 k
+  sleepy r := Sleepy r.2 C
+  live k r := LiveSleepy r.2 C k
   outage T b₀ b₁ r := Outage r.2 C T b₀ b₁
   outageFast T b₀ b₁ r := FastOutage r.2 C T b₀ b₁
   recovery k r := Recovery r.2 C k

@@ -3,8 +3,6 @@ public import ConsensusModel.System
 
 @[expose] public section
 namespace Consensus.Model
-open AvailableChain (Time)
-open AvailableChain.Generic (Env)
 
 /-- The run with fixed environment data and the supplied schedule. -/
 def mkRun {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}

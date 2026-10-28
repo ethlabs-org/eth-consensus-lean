@@ -8,8 +8,6 @@ has three phases: wake restarts, public ticks, then eager deliveries. Each
 phase uses the fixed order from the honest finset and the released pool. -/
 
 namespace Consensus.Model
-open AvailableChain (Time)
-open AvailableChain.Generic
 
 variable {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
 

@@ -8,8 +8,6 @@ unforgeability of every nested authentication. The seen filter makes this
 independent of all protocol state transitions, including restart and restore. -/
 
 namespace Consensus.Model
-open AvailableChain (Time)
-open AvailableChain.Generic
 
 /-- The seen filter preserves any predicate on all structural descendants,
 provided the roots of the objects actually released satisfy it. -/

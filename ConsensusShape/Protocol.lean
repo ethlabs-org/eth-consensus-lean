@@ -3,12 +3,15 @@ public import ConsensusShape.Objects
 @[expose] public section
 
 namespace Consensus.Shape
-open AvailableChain (Slot Time)
+open AvailableChain (Slot)
 open Consensus.Model (Public)
 
+/-- Full committees have `n` seats. Proposal labels have one seat when `n > 0`
+and none when `n = 0`, so compilation also meets `seats_le` for empty populations.
+Claims about proposers range over nonempty validator sets. -/
 def shapeSeats {L : Type} (n : Nat) : L ⊕ Slot → Nat
   | .inl _ => n
-  | .inr _ => 1
+  | .inr _ => min 1 n
 
 /-- A protocol for public parameters `pub`. -/
 structure ShapeProtocol (pub : Public) : Type 1 where
@@ -81,29 +84,56 @@ def slotLen (P : ShapeProtocol pub) : Time := (P.slotTicks : Time) * pub.Δ
 /-- The proposal time of slot `s`. -/
 def proposalTime (P : ShapeProtocol pub) (s : Slot) : Time := (s : Time) * P.slotLen
 
-/-- The slot proposed at time `t`, if any. -/
+/-- The positive slot proposed at time `t`, if any; slot 0 is genesis. -/
 def slotAt? (P : ShapeProtocol pub) (t : Time) : Option Slot :=
-  if 0 ≤ t ∧ t % P.slotLen = 0 then some (t / P.slotLen).toNat else none
+  if 0 < t ∧ t % P.slotLen = 0 then some (t / P.slotLen).toNat else none
 
 theorem slotLen_pos (P : ShapeProtocol pub) : 0 < P.slotLen :=
   Int.mul_pos (by exact_mod_cast P.slotTicks_pos) pub.Δ_pos
 
 theorem slotAt?_eq_some (P : ShapeProtocol pub) {t : Time} {s : Slot} :
-    P.slotAt? t = some s ↔ P.proposalTime s = t := by
+    P.slotAt? t = some s ↔ 0 < s ∧ P.proposalTime s = t := by
   have hl := P.slotLen_pos
   unfold slotAt? proposalTime
-  by_cases hc : 0 ≤ t ∧ t % P.slotLen = 0
+  by_cases hc : 0 < t ∧ t % P.slotLen = 0
   · simp only [hc, and_self, ↓reduceIte, Option.some.injEq]
     obtain ⟨h0, hm⟩ := hc
-    have hdiv : 0 ≤ t / P.slotLen := Int.ediv_nonneg h0 hl.le
+    have hdiv : 0 ≤ t / P.slotLen := Int.ediv_nonneg h0.le hl.le
     have ht : t / P.slotLen * P.slotLen = t := Int.ediv_mul_cancel (Int.dvd_of_emod_eq_zero hm)
     constructor
-    · rintro rfl; rw [Int.toNat_of_nonneg hdiv, ht]
-    · rintro rfl; rw [Int.mul_ediv_cancel _ hl.ne']; simp
-  · simp only [hc, ↓reduceIte]
-    simp only [reduceCtorEq, false_iff]
-    rintro rfl
-    exact hc ⟨Int.mul_nonneg (Int.natCast_nonneg s) hl.le, Int.mul_emod_left _ _⟩
+    · rintro rfl
+      refine ⟨?_, ?_⟩
+      · apply Int.ofNat_lt.mp
+        change (0 : Int) < ((t / P.slotLen).toNat : Int)
+        rw [Int.toNat_of_nonneg hdiv]
+        by_contra hn
+        have hz : t / P.slotLen = 0 := le_antisymm (le_of_not_gt hn) hdiv
+        have ht0 : t = 0 := by simpa [hz] using ht.symm
+        exact (ne_of_gt h0) ht0
+      · rw [Int.toNat_of_nonneg hdiv, ht]
+    · rintro ⟨hs, rfl⟩
+      rw [Int.mul_ediv_cancel _ hl.ne']; simp
+  · simp only [hc, ↓reduceIte, reduceCtorEq, false_iff, not_and]
+    intro hs he
+    subst t
+    exact hc ⟨Int.mul_pos (by exact_mod_cast hs) hl, Int.mul_emod_left _ _⟩
+
+/-- Positive proposal slots due at this time; genesis has no duty. -/
+def proposalSlotAt? (P : ShapeProtocol pub) (t : Time) : Option {s : Slot // 0 < s} :=
+  (P.slotAt? t).bind fun s => if h : 0 < s then some ⟨s, h⟩ else none
+
+@[simp] theorem proposalSlotAt?_eq_some (P : ShapeProtocol pub) (t : Time)
+    (s : {s : Slot // 0 < s}) :
+    P.proposalSlotAt? t = some s ↔ P.proposalTime s.val = t := by
+  simp only [proposalSlotAt?, Option.bind_eq_some_iff]
+  constructor
+  · rintro ⟨a, ha, hb⟩
+    split at hb
+    · cases Option.some.inj hb
+      exact (P.slotAt?_eq_some.mp ha).2
+    · cases hb
+  · intro ht
+    exact ⟨s.val, P.slotAt?_eq_some.mpr ⟨s.property, ht⟩, by simp [s.property]⟩
 
 end ShapeProtocol
 

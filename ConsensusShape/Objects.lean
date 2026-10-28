@@ -8,7 +8,7 @@ public import AvailableChainModel.Objects.Time
 
 /-! Headers and chains for the shape layer. Wire objects are those of ConsensusModel. -/
 namespace Consensus.Shape
-open AvailableChain (Slot Time)
+open AvailableChain (Slot)
 
 /-- A block header. It names its parent by digest. `input` is the application
 input of the proposal; `aux` is protocol data (for example an encoding of the

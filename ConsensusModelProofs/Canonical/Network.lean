@@ -8,8 +8,6 @@ public import ConsensusModelProofs.Canonical.Unforgeable
 the release that supplied each delivery; event uniqueness identifies every
 release in the prefix through the delivery start time. -/
 namespace Consensus.Model
-open AvailableChain (Time)
-open AvailableChain.Generic
 
 variable {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
 namespace Run

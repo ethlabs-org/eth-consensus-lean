@@ -3,7 +3,6 @@ public import ConsensusModel.System
 
 @[expose] public section
 namespace Consensus.Model
-open AvailableChain.Generic (Env)
 variable {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
 namespace Obj
 variable {L : Type} {seats : L → Nat} {Item Body : Type}
@@ -173,7 +172,8 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
       apply rho.digests_eq_of_observed hash' ha
       refine ⟨v, hv.honest_only _ (List.mem_of_getElem? he), i, o,
         (List.getElem?_eq_some_iff.mp he).1, Or.inl ⟨t, he, ?_⟩, .refl _⟩
-      simpa only [releasesAt, he, tick, ‹E.awake v t = true›, ↓reduceIte, r, candidates, ownSeats] using ho
+      simpa only [releasesAt, he, tick, ‹E.awake v t = true›, ↓reduceIte, r,
+        candidates, ownSeats] using ho
     · rfl
   have states : ∀ i, r.stateBefore i = rho.stateBefore i := by
     intro i
@@ -250,6 +250,28 @@ theorem releases_eq (hv : rho.ExecutionValid) : r.releases = rho.releases := by
   obtain ⟨_, hr⟩ := h.trace hv
   funext v o t
   simp only [Run.releases, h.events, hr]
+
+/-- Rehashing a valid source preserves execution validity as well as its reads. -/
+theorem executionValid (hv : rho.ExecutionValid) : r.ExecutionValid := by
+  obtain ⟨_, hr⟩ := h.trace hv
+  have hs : r.ScheduleWellFormed := by
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · simpa only [h.horizon] using hv.horizon_nonneg
+    · simpa only [h.events] using hv.sorted
+    · simpa only [h.events] using hv.nodup
+    · simpa only [h.events, h.horizon] using hv.in_horizon
+    · simpa only [h.events, h.honest] using hv.honest_only
+    · simpa only [h.events] using hv.tick_public
+    · simpa only [h.events, h.honest, h.horizon] using hv.tick_total
+  have hw : r.SleepWellFormed := by
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · simpa only [h.events] using hv.tick_awake
+    · simpa only [h.events] using hv.deliver_awake
+    · simpa only [h.events] using hv.restart_at_wake
+    · simpa only [h.events, h.honest, h.horizon] using hv.wake_restart
+  refine ⟨hs, hw, ?_⟩
+  simpa only [Unforgeable, holderOf, h.events, h.honest, h.holder, hr] using hv.unforgeable
+
 end SameTrace
 
 theorem rehash_sameTrace (rho : Run F E) (hash' : (protoOf F E).Item → Nat)
@@ -264,24 +286,27 @@ theorem injective_twin (rho : Run F E) (hn : ¬ rho.HashCollision) :
 
 end Run
 
-/-- Trace-invariant properties lift from injective hashes to collision-escaped claims. -/
+/-- Trace-invariant properties lift from injective hashes to collision-escaped claims.
+Only transport from a valid source satisfying `A` is required: assumptions move
+forward to its rehashed twin, and the conclusion moves back to the source. -/
 theorem holds_of_injective (F : Family) (V : Type) [Fintype V] [DecidableEq V]
     (A P : (sysOf F V).Run → Prop)
-    (valid : ∀ r, A r → (sysOf F V).Valid r)
-    (ha : ∀ E (r s : Run F E), r.SameTrace s → (A ⟨E, s⟩ ↔ A ⟨E, r⟩))
-    (hp : ∀ E (r s : Run F E), r.SameTrace s → (P ⟨E, s⟩ ↔ P ⟨E, r⟩))
-    (hi : ∀ r, A r → r.2.InjectiveHash → P r) : (sysOf F V).Holds A P := by
-  rintro ⟨E, r⟩ ar
+    (ha : ∀ E (r s : Run F E), r.ExecutionValid → A ⟨E, r⟩ →
+      r.SameTrace s → A ⟨E, s⟩)
+    (hp : ∀ E (r s : Run F E), r.ExecutionValid → A ⟨E, r⟩ →
+      r.SameTrace s → (P ⟨E, s⟩ → P ⟨E, r⟩))
+    (hi : ∀ r, (sysOf F V).Valid r → A r → r.2.InjectiveHash → P r) : (sysOf F V).Holds A P := by
+  rintro ⟨E, r⟩ hv ar
   by_cases hc : r.HashCollision
   · exact Or.inr hc
   · obtain ⟨s, hs, hinj⟩ := r.injective_twin hc
-    exact Or.inl ((hp E r s hs).mp (hi ⟨E, s⟩ ((ha E r s hs).mpr ar) hinj))
+    exact Or.inl (hp E r s hv ar hs (hi ⟨E, s⟩ (hs.executionValid hv) (ha E r s hv ar hs) hinj))
 
-/-- The converse direction of injective-hash lifting. -/
+/-- The converse direction of injective-hash lifting, on valid runs. -/
 theorem injective_of_holds (F : Family) (V : Type) [Fintype V] [DecidableEq V]
     (A P : (sysOf F V).Run → Prop) (h : (sysOf F V).Holds A P) :
-    ∀ r, A r → r.2.InjectiveHash → P r := by
-  intro r ha hi
-  exact (h r ha).resolve_right (Run.not_hashCollision_of_injective hi)
+    ∀ r, (sysOf F V).Valid r → A r → r.2.InjectiveHash → P r := by
+  intro r hv ha hi
+  exact (h r hv ha).resolve_right (Run.not_hashCollision_of_injective hi)
 end Consensus.Model
 end

@@ -5,7 +5,7 @@ public import ConsensusModel.System
 @[expose] public section
 
 namespace Consensus.Shape
-open AvailableChain (Slot Time)
+open AvailableChain (Slot)
 
 def encodeTxs (xs : List Nat) : Nat := Encodable.encode xs
 
@@ -60,10 +60,12 @@ theorem ledgerOf_prefix {c d : Chain} (h : c <+: d) : ledgerOf c <+: ledgerOf d 
     x ∈ ledgerOf c ↔ ∃ h ∈ c, x ∈ decodeTxs h.input := by
   simp [ledgerOf, keepFirst, mem_keepFresh, List.mem_flatMap, Function.comp_def]
 
+/-- Compile positive-slot proposal duties followed by committee duties.
+The engine appends gossip after these duties, using the same post-clock state. -/
 def compile {pub : Model.Public} (P : ShapeProtocol pub) : Model.Protocol pub where
   State := P.State × List Tx
   Label := P.Label ⊕ Slot
-  Duty := P.Duty ⊕ Slot
+  Duty := P.Duty ⊕ {s : Slot // 0 < s}
   Item := Header
   Body := P.Body
   Durable := P.Durable
@@ -72,14 +74,19 @@ def compile {pub : Model.Public} (P : ShapeProtocol pub) : Model.Protocol pub wh
   decBody := inferInstance
   encItem := inferInstance
   seats := shapeSeats pub.n
-  label := Sum.elim (Sum.inl ∘ P.label) Sum.inr
-  actTime := Sum.elim P.actTime P.proposalTime
-  duties t := (P.slotAt? t).toList.map Sum.inr ++ (P.duties t).map Sum.inl
+  seats_le := by
+    intro ℓ
+    cases ℓ
+    · exact le_refl _
+    · exact Nat.min_le_right _ _
+  label := Sum.elim (Sum.inl ∘ P.label) (fun s => Sum.inr s.val)
+  actTime := Sum.elim P.actTime (fun s => P.proposalTime s.val)
+  duties t := (P.proposalSlotAt? t).toList.map Sum.inr ++ (P.duties t).map Sum.inl
   duties_spec := by
     intro d t
     cases d with
     | inl d => simp [P.duties_spec]
-    | inr s => simp [P.slotAt?_eq_some]
+    | inr s => simp [P.proposalSlotAt?_eq_some]
   duties_nodup := by
     intro t
     simp only [List.nodup_append]
@@ -91,8 +98,8 @@ def compile {pub : Model.Public} (P : ShapeProtocol pub) : Model.Protocol pub wh
   clock st t xs := (P.clock st.1 t, xs)
   act st d := match d with
     | .inl d => (P.act st.1 d).map fun (b, cs) => (.data b, cs)
-    | .inr s => (P.propose st.1 s).map fun (par, aux, cs) =>
-        (.item ⟨par, s, encodeTxs st.2, aux⟩, cs)
+    | .inr s => (P.propose st.1 s.val).map fun (par, aux, cs) =>
+        (.item ⟨par, s.val, encodeTxs st.2, aux⟩, cs)
   gossip st t := P.gossip st.1 t
   process st o hs := (P.process st.1 o hs, st.2)
   recordOwn st o hs := (P.recordOwn st.1 o hs, st.2)

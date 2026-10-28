@@ -9,8 +9,6 @@ uses only restart-at-wake and integer time: an awake interval cannot contain
 a wake strictly after its start. -/
 
 namespace Consensus.Model
-open AvailableChain (Time)
-open AvailableChain.Generic
 
 variable {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
 
@@ -46,7 +44,7 @@ theorem partialSynchrony_of_eager (rho : Run F E)
     (hw : rho.SleepWellFormed) (he : rho.EagerDelivery) : rho.PartialSynchrony := by
   apply rho.delivers_of_eager hw he
   intro a
-  exact lt_add_of_le_of_pos (le_max_left a E.t_GST) E.Δ_pos
+  exact lt_add_of_le_of_pos (le_max_left a E.gst) E.Δ_pos
 
 theorem healthyPrefixDelivery_of_eager (rho : Run F E)
     (hw : rho.SleepWellFormed) (he : rho.EagerDelivery) (cut : Time) :

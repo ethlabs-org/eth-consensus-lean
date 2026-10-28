@@ -7,8 +7,6 @@ public import ConsensusModelProofs.Canonical.Delivery
 pool of released objects used by the canonical scheduler. -/
 
 namespace Consensus.Model
-open AvailableChain (Time)
-open AvailableChain.Generic
 
 namespace Obj
 variable {L : Type} {seats : L → Nat} {Item Body : Type}
