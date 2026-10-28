@@ -77,15 +77,17 @@ def Served (w : V) (o : (protoOf F E).Object) (d : Time) : Prop :=
   ∃ t', t' < d ∧ (rho.releases w o t' ∨ rho.receives w o t') ∧
     ∀ u, Event.restart w u ∈ rho.events → ¬ (t' < u ∧ u < d)
 
+/-- Node `w` holds transaction `x` at deadline `d`: `x` is in its cumulative
+inbox at some time `τ ∈ [0, d)` (the inbox survives restarts). -/
+def TxHeld (w : V) (x : Tx) (d : Time) : Prop :=
+  ∃ τ, 0 ≤ τ ∧ τ < d ∧ x ∈ rho.inbox w τ
+
 /-- Delivery with deadline function `dl` up to `cut`: what an honest node
 releases at `t` is held, by `dl a`, by every honest node awake on `[a, dl a)`,
 for every `a ≥ t`. Only released objects are flooded; relay of received
 objects is protocol gossip. Transactions submitted to awake honest sources
 are held strictly before the same deadlines; their cumulative inbox survives
 restarts, so transaction service needs no restart exclusion. -/
-def TxHeld (w : V) (x : Tx) (d : Time) : Prop :=
-  ∃ τ, 0 ≤ τ ∧ τ < d ∧ x ∈ rho.inbox w τ
-
 structure Delivers (dl : Time → Time) (cut : Time) : Prop where
   objects : ∀ v ∈ rho.honest, ∀ o t, rho.releases v o t → ∀ w ∈ rho.honest, ∀ a, t ≤ a →
     dl a ≤ cut → dl a ≤ rho.horizon → AwakeOn E w a (dl a) → rho.Served w o (dl a)

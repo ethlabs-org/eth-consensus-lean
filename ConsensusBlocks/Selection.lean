@@ -23,6 +23,19 @@ structure Pattern where
 /-- One honest proposer: the pattern `[0]`. -/
 def Pattern.single : Pattern := ⟨[0], by simp⟩
 
+/-- The largest offset of a pattern. -/
+def Pattern.span (P : Pattern) : Nat := P.offsets.foldr max 0
+
+theorem Pattern.le_span {P : Pattern} {j : Nat} (h : j ∈ P.offsets) : j ≤ P.span := by
+  unfold Pattern.span
+  generalize P.offsets = l at h ⊢
+  induction l with
+  | nil => cases h
+  | cons a l ih =>
+    rcases List.mem_cons.mp h with rfl | h
+    · exact le_max_left _ _
+    · exact le_trans (ih h) (le_max_right _ _)
+
 /-- A progress requirement: a pattern recurring within every window of `gap`
 slots; `gap` is positive by type (D-2). -/
 structure ProgressReq where
@@ -77,6 +90,22 @@ theorem PatternRecurrence.exists_honest (h : PatternRecurrence p key sel lead G 
   obtain ⟨j, hj⟩ := List.exists_mem_of_ne_nil _ π.pattern.nonempty
   obtain ⟨⟨k, hk⟩, hks⟩ := hall j hj
   exact ⟨s + j, k, hk, (hks k hk).1⟩
+
+/-- With the window and the pattern's span inside the horizon, recurrence yields
+a start slot whose whole pattern is honest, ready and inside the horizon. -/
+theorem PatternRecurrence.exists_inside (h : PatternRecurrence p key sel lead G π c start)
+    (ht : max start 0 + (((π.gap : Nat) + π.pattern.span : Nat) : Time) * G.slotLen p.env.Δ ≤
+      p.horizon) :
+    ∃ s, ∀ j ∈ π.pattern.offsets, G.slotTime p.env.Δ (s + j) ≤ p.horizon ∧
+      HonestReadyIn p key sel (lead (s + j)) c (G.slotTime p.env.Δ (s + j)) := by
+  have hl := G.slotLen_pos p.env.Δ_pos
+  have hsp : (0 : Time) ≤ (π.pattern.span : Time) * G.slotLen p.env.Δ := by positivity
+  push_cast at ht
+  obtain ⟨s, -, hs, hall⟩ := h (max start 0) (le_max_left _ _) (le_max_right _ _) (by nlinarith)
+  refine ⟨s, fun j hj => ⟨?_, hall j hj⟩⟩
+  have hj' : (j : Time) ≤ π.pattern.span := by exact_mod_cast Pattern.le_span hj
+  rw [G.slotTime_add]
+  nlinarith
 
 end Consensus.Blocks
 end

@@ -78,8 +78,9 @@ theorem contradictory_wf_not_realizable :
     · cases h
     · cases h
     · obtain rfl := Option.some.inj h
-      exact ⟨trivial, (fun _ h => nomatch h), fun _ => trivial, (fun _ h => nomatch h),
-        (fun _ h => nomatch h), (fun _ h => nomatch h)⟩
+      exact ⟨⟨trivial, fun _ => trivial⟩, (fun _ h => nomatch h), fun _ => trivial,
+        (fun _ h => nomatch h), (fun _ h => nomatch h), (fun _ h => nomatch h), fun _ => trivial,
+        (fun _ h => nomatch h)⟩
   · obtain ⟨σ, n, E, rho, hw⟩ := hR.safety .final _ rfl
     have h := hw.premise
     change (0 : Time) + 1 ≤ 0 at h

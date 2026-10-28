@@ -10,8 +10,8 @@ run can meet. Two concrete canonical runs of a family with the Goldilocks
 skeleton that does nothing, at the concrete index `k = 1`, satisfy the
 capability premises of `goldilocksContract ctrlParams` (standard parameter
 shape, arbitrary well-formed numbers), each as a full realizability `Witness`
-(a faulty validator, valid, no collision, no conviction, active progress
-windows).
+(a faulty and an honest validator, valid, no collision, no conviction, active
+progress windows).
 
 * `positive_controls` (everyone awake): every safety, liveness and recovery
   premise, with
@@ -20,9 +20,9 @@ windows).
   - ready readers and in-horizon deadlines: every liveness and recovery
     premise is `LiveActive` (L0 `TxLiveActive` with the real deadline).
 * `resilience_control` (a real outage): the resilience premise is met as a
-  `ResilienceActive` witness (`T = 1 < b₀ = 3 < b₁ = 4 ≤ horizon`, a
-  continuously eligible reader) in a run where honest validator 4 is asleep at
-  time `3 ∈ [b₀, b₁)`. A separate run is needed: with GST 0 and
+  `ResilienceActive` witness (`T = 1 < b₀ = 3 < b₁ = 4 ≤ horizon`, honest
+  validator 4 asleep at time `3 ∈ [b₀, b₁)`, a continuously eligible
+  reader). A separate run is needed: with GST 0 and
   `recoveryFull`, the recovery premise needs every honest validator awake on
   the whole horizon.
 
@@ -41,8 +41,9 @@ open Consensus.Model (Public Key Obj pubOf protoOf sysOf)
 with `n + 1` validators (one faulty, every other ready). -/
 def Fits (n : Nat) : EnvAtom → Prop
   | .faultsBelow β => 1 < β * ((n : ℚ) + 1)
+  | .faultsAtMost m => 1 ≤ m
   | .readyAbove θ => θ * ((n : ℚ) + 1) < n
-  | .readyOfAll φ _ => φ * ((n : ℚ) + 1) < n
+  | .readyOfAll φ => φ * ((n : ℚ) + 1) < n
   | .etaSleepy θ _ => θ * ((n : ℚ) + 1) < n
   | .full => True
   | .noWake => True
@@ -63,13 +64,15 @@ theorem holds_of_fits {n : Nat} {H g : Time} {submit : Fin (n + 1) → Time → 
     unfold EnvPoint.ReadyAbove
     rw [EnvPoint.extremal_faulty, EnvPoint.extremal_readyAt, card]
     simpa [Fits] using h
-  | readyOfAll φ inc =>
-    have h' : φ * (Fintype.card (Fin (n + 1)) : ℚ) <
-        ((EnvPoint.extremal n H g submit).readyAt c t).card := by
-      rw [EnvPoint.extremal_readyAt, card]; simpa [Fits] using h
-    cases inc
-    · exact h'
-    · exact h'.le
+  | faultsAtMost m =>
+    change (EnvPoint.extremal n H g submit).FaultsAtMost m
+    unfold EnvPoint.FaultsAtMost
+    rw [EnvPoint.extremal_faulty]
+    simpa [Fits] using h
+  | readyOfAll φ =>
+    change φ * (Fintype.card (Fin (n + 1)) : ℚ) <
+        ((EnvPoint.extremal n H g submit).readyAt c t).card
+    rw [EnvPoint.extremal_readyAt, card]; simpa [Fits] using h
   | etaSleepy θ η =>
     change (EnvPoint.extremal n H g submit).EtaSleepy θ ((η : Time) * _) c t
     unfold EnvPoint.EtaSleepy
@@ -86,31 +89,6 @@ theorem holds_of_fits {n : Nat} {H g : Time} {submit : Fin (n + 1) → Time → 
     intro v _ hw
     have := hw.2
     simp [EnvPoint.extremal] at this
-
-/-- Every atom of the premise satisfies `Fit`. -/
-def AllFit {Prog : Type} (Fit : EnvAtom → Prop) : Premise Prog → Prop
-  | .atTime _ a => Fit a
-  | .throughout _ _ a => Fit a
-  | .conj P Q => AllFit Fit P ∧ AllFit Fit Q
-  | _ => True
-
-/-- The environment part of a premise is met at a point where every atom
-satisfying `Fit` holds at every time, if every atom of the premise satisfies
-`Fit` and its timing constraints hold. -/
-theorem evalEnv_of_allFit {Prog : Type} {V : Type} [Fintype V] [DecidableEq V]
-    {p : EnvPoint V} {Fit : EnvAtom → Prop} (hfit : ∀ a, Fit a → ∀ c t, a.holds p c t)
-    {σ : Nat → Time} {c : Time} (P : Premise Prog)
-    (hf : AllFit Fit P) (ht : P.TimesHold p σ) : P.evalEnv p c σ := by
-  unfold Premise.evalEnv
-  induction P with
-  | truth => trivial
-  | le a b => exact ht
-  | atTime t a => exact hfit a hf c _
-  | throughout lo hi a => exact fun t _ _ => hfit a hf c t
-  | sync => trivial
-  | syncUntil b => trivial
-  | progress π s => trivial
-  | conj P Q ihP ihQ => exact ⟨ihP hf.1 ht.1, ihQ hf.2 ht.2⟩
 
 /-! ## The control family, contract and point -/
 
@@ -198,13 +176,14 @@ theorem positive_controls :
   have hpt : rho.point = pt := rfl
   -- Every premise whose atoms fit, whose timing constraints hold and whose
   -- progress windows fit in the horizon has a witness on `rho`.
-  have wit : ∀ (P : Premise ProgressReq) (σ : Nat → Time), P.WellFormed → AllFit (Fits 4) P →
+  have wit : ∀ (P : Premise ProgressReq) (σ : Nat → Time), P.WellFormed → P.AtomsAll (Fits 4) →
       P.TimesHold pt σ →
       ProgressActive (ctrlFamily (pubOf pt.env)).skel.grid pt σ P →
       Witness ctrlFamily ctrlK P σ rho := by
     intro P σ _ hf ht hact
     have henv : P.evalEnv pt (((ctrlK.catchUp : Nat) : Time) * pt.env.Δ) σ :=
-      evalEnv_of_allFit (p := pt) (fun a h c t => holds_of_fits (n := 4) (H := 20) (g := 0)
+      Premise.evalEnv_of_atomsAll (p := pt) (fun a h c t => holds_of_fits (n := 4) (H := 20)
+        (g := 0)
         (submit := submit42 10) a h c t) P hf ht
     have hprog : P.UsesProgress → ∀ π s,
         PatternRecurrence (R := ShapeRole (ctrlFamily (pubOf pt.env)).skel.Kind) pt
@@ -214,9 +193,12 @@ theorem positive_controls :
       intro _ π s
       apply patternRecurrence_of_all pt.env.Δ_pos
       intro s j _
-      exact extremalSel_proposers ctrlFamily (m := 1) le_rfl (by norm_num) rfl _ _ _
-    refine ⟨?_, hv, ?_, ?_, ?_, hact⟩
+      refine extremalSel_proposers ctrlFamily pt (m := 1) le_rfl (by norm_num) rfl
+        (fun v hv1 _ => ⟨Finset.mem_erase.mpr ⟨?_, Finset.mem_univ _⟩, fun _ => rfl⟩) _ _ _
+      intro h; rw [h] at hv1; simp at hv1
+    refine ⟨?_, ?_, hv, ?_, ?_, ?_, hact⟩
     · rw [hpt, EnvPoint.extremal_faulty]; exact Finset.singleton_nonempty _
+    · rw [hpt]; exact ⟨1, by decide⟩
     · apply Model.Run.not_hashCollision_of_injective
       intro a b hab
       exact Encodable.encode_injective (Nat.add_right_cancel hab)
@@ -231,30 +213,33 @@ theorem positive_controls :
     apply wit
     · exact ((goldilocksContract_wellFormed ctrlParams ctrlParams_wellFormed).caps .available _
         rfl).live k1
-    · norm_num [AllFit, Fits, GoldilocksParams.livePremise, Premise.sleepy, Premise.always,
+    · norm_num [Premise.AtomsAll, Fits, GoldilocksParams.livePremise, Premise.sleepy,
+        Premise.always,
         ctrlParams, GoldilocksParams.standard]
     · simp [GoldilocksParams.livePremise, Premise.TimesHold, Premise.sleepy, Premise.always,
         TimeExpr.eval, EnvPoint.extremal]
     · refine ⟨Premise.progressAll_of_not_usesProgress
         (by simp [Premise.sleepy, Premise.UsesProgress, Premise.always]), ?_⟩
-      simp [Premise.ProgressAll, TimeExpr.eval, GoldilocksParams.headReq, ctrlFamily, ctrlShape,
+      simp [Premise.ProgressAll, TimeExpr.eval, GoldilocksParams.headReq, Pattern.single,
+        Pattern.span, ctrlFamily, ctrlShape,
         goldilocksSkeleton, goldilocksGrid, TimeGrid.slotLen, EnvPoint.extremal]
   have hrec : Witness ctrlFamily ctrlK (ctrlParams.recoveryPremise 1) σ0 rho := by
     apply wit
     · exact GoldilocksParams.recoveryPremise_wellFormed ctrlParams_wellFormed 1
-    · norm_num [AllFit, Fits, GoldilocksParams.recoveryPremise, optConj, Premise.fromGST,
+    · norm_num [Premise.AtomsAll, Fits, GoldilocksParams.recoveryPremise, optConj, Premise.fromGST,
         ctrlParams, GoldilocksParams.standard]
     · simp [GoldilocksParams.recoveryPremise, optConj, Premise.TimesHold, Premise.fromGST,
         ctrlParams, GoldilocksParams.standard]
     · simp [ProgressActive, GoldilocksParams.recoveryPremise, optConj, Premise.ProgressAll,
         Premise.fromGST, ctrlParams, GoldilocksParams.standard, TimeExpr.eval,
-        GoldilocksParams.headReq, ctrlFamily, ctrlShape, goldilocksSkeleton, goldilocksGrid,
+        GoldilocksParams.headReq, Pattern.single, Pattern.span, ctrlFamily, ctrlShape,
+        goldilocksSkeleton, goldilocksGrid,
         TimeGrid.slotLen, EnvPoint.extremal]
   have hsafe : Witness ctrlFamily ctrlK (Premise.sleepy ctrlParams.sleepyAbove) σ0 rho := by
     apply wit
     · exact ((goldilocksContract_wellFormed ctrlParams ctrlParams_wellFormed).caps .available _
         rfl).safety
-    · norm_num [AllFit, Fits, Premise.sleepy, Premise.always, ctrlParams,
+    · norm_num [Premise.AtomsAll, Fits, Premise.sleepy, Premise.always, ctrlParams,
         GoldilocksParams.standard]
     · simp [Premise.TimesHold, Premise.sleepy, Premise.always, TimeExpr.eval, EnvPoint.extremal]
     · exact Premise.progressAll_of_not_usesProgress
@@ -282,17 +267,20 @@ theorem positive_controls :
         · exact ((goldilocksContract_wellFormed ctrlParams ctrlParams_wellFormed).caps .final _
             rfl).live k1
         · refine ⟨?_, ?_, trivial⟩
-          · norm_num [AllFit, Fits, GoldilocksParams.recoveryPremise, optConj, Premise.fromGST,
+          · norm_num [Premise.AtomsAll, Fits, GoldilocksParams.recoveryPremise, optConj,
+              Premise.fromGST,
               ctrlParams, GoldilocksParams.standard, k1]
-          · norm_num [AllFit, Fits, Premise.fromGST, ctrlParams, GoldilocksParams.standard]
+          · norm_num [Premise.AtomsAll, Fits, Premise.fromGST, ctrlParams,
+              GoldilocksParams.standard]
         · exact ⟨by simp [k1, GoldilocksParams.recoveryPremise, optConj, Premise.TimesHold,
             Premise.fromGST, ctrlParams, GoldilocksParams.standard], trivial, trivial⟩
         · refine ⟨?_, trivial, ?_⟩
           · simp [k1, GoldilocksParams.recoveryPremise, optConj,
               Premise.ProgressAll, Premise.fromGST, ctrlParams, GoldilocksParams.standard,
-              TimeExpr.eval, GoldilocksParams.headReq, ctrlFamily, ctrlShape,
-              goldilocksSkeleton, goldilocksGrid, TimeGrid.slotLen, EnvPoint.extremal]
-          · simp [k1, Premise.ProgressAll, TimeExpr.eval, GoldilocksParams.finReq, ctrlFamily,
+              TimeExpr.eval, GoldilocksParams.headReq, Pattern.single, Pattern.span, ctrlFamily,
+              ctrlShape, goldilocksSkeleton, goldilocksGrid, TimeGrid.slotLen, EnvPoint.extremal]
+          · simp [k1, Premise.ProgressAll, TimeExpr.eval, GoldilocksParams.finReq, Pattern.single,
+              Pattern.span, ctrlFamily,
               ctrlShape, ctrlParams, GoldilocksParams.standard,
               goldilocksSkeleton, goldilocksGrid, TimeGrid.slotLen, EnvPoint.extremal]
       · norm_num [k1, TimeExpr.eval, ctrlParams, GoldilocksParams.standard, Affine.eval,
@@ -346,8 +334,9 @@ theorem readyAt_le_four (c t : Time) : (ptS.readyAt c t).card ≤ 4 := by
 ready validators out of five, one faulty). -/
 def FitsS : EnvAtom → Prop
   | .faultsBelow β => 1 < β * 5
+  | .faultsAtMost m => 1 ≤ m
   | .readyAbove θ => 0 ≤ θ ∧ θ * 5 < 3
-  | .readyOfAll φ _ => φ * 5 < 3
+  | .readyOfAll φ => φ * 5 < 3
   | .etaSleepy θ _ => 0 ≤ θ ∧ θ * 5 < 3
   | .full => False
   | .noWake => False
@@ -365,12 +354,12 @@ theorem holds_of_fitsS (a : EnvAtom) (h : FitsS a) (c t : Time) : a.holds ptS c 
     obtain ⟨h0, h1⟩ := h
     simp only [Finset.card_singleton, Nat.cast_one]
     nlinarith
-  | readyOfAll φ inc =>
-    have h' : φ * (Fintype.card (Fin 5) : ℚ) < (ptS.readyAt c t).card := by
-      simp only [Fintype.card_fin, Nat.cast_ofNat]; exact lt_of_lt_of_le h h3
-    cases inc
-    · exact h'
-    · exact h'.le
+  | faultsAtMost m =>
+    change ptS.faulty.card ≤ m
+    rw [ptS_faulty]; simpa [FitsS] using h
+  | readyOfAll φ =>
+    change φ * (Fintype.card (Fin 5) : ℚ) < (ptS.readyAt c t).card
+    simp only [Fintype.card_fin, Nat.cast_ofNat]; exact lt_of_lt_of_le h h3
   | etaSleepy θ η =>
     obtain ⟨h0, h1⟩ := h
     change θ * ((ptS.awakeIn _ t ∪ ptS.faulty).card : ℚ) < (ptS.readyAt c t).card
@@ -405,15 +394,16 @@ theorem resilience_control :
       Premise.before, Premise.after, Premise.coverMajority]
   have henv : ctrlParams.resiliencePremise.evalEnv ptS
       (((ctrlK.catchUp : Nat) : Time) * ptS.env.Δ) σR := by
-    apply evalEnv_of_allFit (p := ptS) holds_of_fitsS
-    · norm_num [AllFit, FitsS, GoldilocksParams.resiliencePremise, Premise.outageWindow,
+    apply Premise.evalEnv_of_atomsAll (p := ptS) holds_of_fitsS
+    · norm_num [Premise.AtomsAll, FitsS, GoldilocksParams.resiliencePremise, Premise.outageWindow,
         Premise.before, Premise.after, Premise.coverMajority, ctrlParams,
         GoldilocksParams.standard]
     · norm_num [GoldilocksParams.resiliencePremise, Premise.TimesHold, Premise.outageWindow,
         Premise.before, Premise.after, Premise.coverMajority, TimeExpr.eval, σR, ctrlParams,
         GoldilocksParams.standard]
-  refine ⟨⟨?_, hv, ?_, ?_, ?_, Premise.progressAll_of_not_usesProgress hnp⟩, ?_⟩
+  refine ⟨⟨?_, ?_, hv, ?_, ?_, ?_, Premise.progressAll_of_not_usesProgress hnp⟩, ?_⟩
   · rw [hpt, ptS_faulty]; exact Finset.singleton_nonempty _
+  · exact ⟨1, show (1 : Fin 5) ∈ Finset.univ.erase 0 by decide⟩
   · apply Model.Run.not_hashCollision_of_injective
     intro a b hab
     exact Encodable.encode_injective (Nat.add_right_cancel hab)
@@ -421,7 +411,8 @@ theorem resilience_control :
   · exact Consensus.Premise.eval_of_evalAt hps (fun b => hhp b)
       (Premise.evalAt_of_evalEnv henv fun hu => absurd hu hnp)
   · refine ⟨by norm_num [σR], by norm_num [σR], by norm_num [σR], show (4 : Time) ≤ 20 by norm_num,
-      1, show (1 : Fin 5) ∈ Finset.univ.erase 0 by decide, fun _ _ _ => rfl⟩
+      ⟨4, show (4 : Fin 5) ∈ Finset.univ.erase 0 by decide, 3, by norm_num [σR], by norm_num [σR],
+        rfl⟩, 1, show (1 : Fin 5) ∈ Finset.univ.erase 0 by decide, fun _ _ _ => rfl⟩
 
 end Consensus.Shape.Tests.Controls
 

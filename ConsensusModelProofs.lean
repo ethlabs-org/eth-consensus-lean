@@ -1,5 +1,6 @@
 module
 public import ConsensusModelProofs.Laws
+public import ConsensusModelProofs.Objects
 public import ConsensusModelProofs.CanonicalStatement
 public import ConsensusModelProofs.Lift
 public import ConsensusModelProofs.Canonical

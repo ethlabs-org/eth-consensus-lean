@@ -43,7 +43,7 @@ structure Skeleton (n : Nat) : Type 1 where
   kinds_nodup : kinds.Nodup
   kinds_complete : ∀ k, k ∈ kinds
   /-- The `Δ`-offset of the kind's duty from the slot start (not required to
-  be below `slotTicks`: a kind may act in a later slot's interval). -/
+  be below `slotDeltas`: a kind may act in a later slot's interval). -/
   phase : Kind → Nat
   /-- Who may sign for a kind (at every slot). -/
   kindSel : Kind → SelSpec n

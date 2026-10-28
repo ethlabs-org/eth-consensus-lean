@@ -22,10 +22,6 @@ open Consensus.Model (Public Key SelSpec Obj Msg pubOf protoOf sysOf modelProfil
 variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
   {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
-/-- The start time of slot `s` in the run's environment. -/
-def slotTime (_rho : Model.Run (compiled F) E) (s : Slot) : Time :=
-  (F (pubOf E)).skel.grid.slotTime E.Δ s
-
 /-- The chain trace of a run: the run's point and event cuts, and each node's
 output chains at each cut. -/
 def chainTrace (rho : Model.Run (compiled F) E) : Trace V (Header Info) O.Id :=
@@ -38,23 +34,6 @@ def HonestProposal (rho : Model.Run (compiled F) E) (τ : Time) (k : Fin (Fintyp
     (h : Header Info) : Prop :=
   rho.key k ∈ rho.honest ∧ ∃ r : ShapeRole (F (pubOf E)).skel.Kind, ∃ cs, ProposalRole h r ∧
     rho.releases (rho.key k) (Obj.mk (.signed k r) (.item h) cs) τ
-
-/-- A slot proposal is released at its slot time. -/
-theorem slotProposal_time (rho : Model.Run (compiled F) E) {u : V} {k : Fin (Fintype.card V)}
-    {s : Slot} {h : Header Info} {cs} {τ : Time}
-    (hr : rho.releases u (Obj.mk (.signed k (ShapeRole.proposer s)) (.item h) cs) τ) :
-    τ = slotTime rho s := by
-  obtain ⟨st, hc⟩ := rho.releases_candidate hr
-  obtain ⟨d, hd, hrole, -⟩ := rho.candidates_duty _ u τ hc rfl
-  have ht := ((protoOf (compiled F) E).duties_spec d τ).mp hd
-  cases d with
-  | propose s' _ =>
-    change ShapeRole.proposer s' = ShapeRole.proposer s at hrole
-    cases hrole
-    exact ht.symm
-  | act s' k' => cases hrole
-  | pollPropose _ => cases hrole
-  | poll _ => cases hrole
 
 /-- Header `h` is in the `g`-read, at the end of time `t`, of every node ready
 at `t` with catch-up `c`. -/
@@ -104,7 +83,7 @@ satisfies a premise containing `progress` only on runs where no recurrence
 window fits inside the horizon (`HonestReadyIn` needs a nonempty selection;
 `PatternRecurrence` is vacuous without a window), so its liveness claims
 under such premises say nothing on longer runs; such shapes state liveness
-without the `progress` atom (Stage 6 requires `ProgressActive`). -/
+without the `progress` atom (`Contract.Realizable` requires `ProgressActive`). -/
 def shapeExec (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
     ExecProfile (sysOf O (compiled F) V) ProgressReq :=
   modelProfile O (compiled F) V fun π c start r =>

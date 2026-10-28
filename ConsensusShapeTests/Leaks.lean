@@ -19,9 +19,9 @@ and 0 for `fabricated`):
 * `fabricated`: an output header nobody signed: output validity fails;
 * `conflictsTrue_silent`: a protocol that outputs its own proposals, but whose
   `conflicts` is always true, so engine slashing protection releases no
-  signed object (stage 3); its outputs stay empty and liveness fails.
+  signed object; its outputs stay empty and liveness fails.
 
-Positive control (`recorder_live`): the same protocol with `conflicts` false
+Positive control (`recorder_live`, `recorder_live_testK`): the same protocol with `conflicts` false
 records its released proposals into its output and meets the liveness
 obligation that refutes the others, on every valid run in which the validator
 is honest, for every latency `D ≥ 1` and every GST (also negative:

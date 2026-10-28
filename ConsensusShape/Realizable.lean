@@ -16,10 +16,15 @@ Two kinds of non-vacuity, both generic over the shape family.
   progress parts.
 * `Contract.Realizable` (D-24): the per-value certificate that every premise of
   every provided capability, for every index, is jointly realizable with a
-  faulty validator, no hash collision, no conviction, and *active* service
-  (`Witness`, `LiveActive`, `ResilienceActive`). `premise_realizable` produces
-  witnesses at the extremal point from projections of the skeleton (proposer
-  selection size and grid) only; the values (`Values/*`) apply it.
+  faulty and an honest validator, no hash collision, no conviction, and
+  *active* service (`Witness`, `LiveActive`, `ResilienceActive`: a resilience
+  witness has an honest validator asleep during the outage).
+  `premise_realizable` produces witnesses at the extremal point, and
+  `resilience_realizable` at the sleeper point, from projections of the
+  skeleton (proposer selection size and grid) only; the values (`Values/*`)
+  apply them. Realizability is existential: it shows that the premises can
+  hold with active service, not that they cover the intended operating regime
+  (that is read off the premise terms, README).
 
 The extremal selection (`extremalSel`) gives every `.sized m` role (`m` below
 the population) the keys `1, …, m`, all honest under the extremal PKI
@@ -138,51 +143,53 @@ theorem extremalSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : 
     ∀ r, ((protoOf (compiled F) E).selSpec r).Admits (extremalSel F E r) :=
   fun _ => extremalKeys_admits _
 
-/-- At the extremal point, a proposer selection `.sized m` with `1 ≤ m ≤ n`
-selects honest, ready keys only, and at least one. -/
-theorem extremalSel_proposers (F : ShapeFamily O Info) {n m : Nat} {H g : Time}
-    {submit : Fin (n + 1) → Time → List Tx} (hm1 : 1 ≤ m) (hm : m ≤ n)
-    (hF : (F (pubOf (EnvPoint.extremal n H g submit).env)).skel.proposerSel = .sized m) :
-    ∀ s c t, HonestReadyIn (EnvPoint.extremal n H g submit) (extremalKey n)
-      (extremalSel F (EnvPoint.extremal n H g submit).env)
-      (ShapeRole.proposer s : ShapeRole (F (pubOf (EnvPoint.extremal n H g submit).env)).skel.Kind)
-      c t := by
+/-- Under the extremal selection, a proposer selection `.sized m` with
+`1 ≤ m ≤ n` selects the keys `1, …, m`; at a point where validators
+`1, …, m` are honest and always awake, these are honest and ready, and at least
+one is selected. -/
+theorem extremalSel_proposers (F : ShapeFamily O Info) {n m : Nat}
+    (p : EnvPoint (Fin (n + 1))) (hm1 : 1 ≤ m) (hm : m ≤ n)
+    (hF : (F (pubOf p.env)).skel.proposerSel = .sized m)
+    (hp : ∀ v : Fin (n + 1), 1 ≤ v.val → v.val ≤ m → v ∈ p.honest ∧ ∀ t, p.env.awake v t = true) :
+    ∀ s c t, HonestReadyIn p (extremalKey n) (extremalSel F p.env)
+      (ShapeRole.proposer s : ShapeRole (F (pubOf p.env)).skel.Kind) c t := by
   intro s c t
   have hN : m < Fintype.card (Fin (n + 1)) := by rw [Fintype.card_fin]; omega
-  have hsel : extremalSel F (EnvPoint.extremal n H g submit).env (ShapeRole.proposer s) =
+  have hsel : extremalSel F p.env (ShapeRole.proposer s) =
       Finset.univ.filter fun k => 1 ≤ k.val ∧ k.val ≤ m := by
-    change extremalKeys (F (pubOf (EnvPoint.extremal n H g submit).env)).skel.proposerSel = _
+    change extremalKeys (F (pubOf p.env)).skel.proposerSel = _
     rw [hF]
     simp only [extremalKeys, hN, ↓reduceIte]
   unfold HonestReadyIn
   rw [hsel]
   refine ⟨⟨⟨1, by omega⟩, by simp [hm1]⟩, ?_⟩
   intro k hk
-  have hk1 : 1 ≤ k.val := (Finset.mem_filter.mp hk).2.1
-  have hh : extremalKey n k ∈ (EnvPoint.extremal n H g submit).honest := by
-    simp only [EnvPoint.extremal, Finset.mem_erase, Finset.mem_univ, and_true]
-    intro h0
-    have : (extremalKey n k).val = k.val := rfl
-    rw [h0] at this
-    simp at this; omega
-  exact ⟨hh, hh, fun _ _ _ => rfl⟩
+  have hk' := (Finset.mem_filter.mp hk).2
+  have hv : (extremalKey n k).val = k.val := rfl
+  obtain ⟨hh, ha⟩ := hp (extremalKey n k) (by rw [hv]; exact hk'.1) (by rw [hv]; exact hk'.2)
+  exact ⟨hh, hh, fun u _ _ => ha u⟩
 
 /-! ## Witnesses -/
 
-/-- Progress activity: every `progress π s` occurrence of `P` has a full
-recurrence window inside the horizon, so it tests a selection (D-22). -/
+/-- Progress activity: for every `progress π s` occurrence of `P`, a full
+recurrence window followed by the pattern's span fits inside the horizon, so
+the premise selects an honest, ready pattern at in-horizon slots
+(`PatternRecurrence.exists_inside`; D-22). -/
 def ProgressActive {V : Type} (G : TimeGrid) (p : EnvPoint V) (σ : Nat → Time)
     (P : Premise ProgressReq) : Prop :=
-  P.ProgressAll p σ fun π s => max s 0 + ((π.gap : Nat) : Time) * G.slotLen p.env.Δ ≤ p.horizon
+  P.ProgressAll p σ fun π s =>
+    max s 0 + (((π.gap : Nat) + π.pattern.span : Nat) : Time) * G.slotLen p.env.Δ ≤ p.horizon
 
 /-- A realizability witness for premise `P` at parameters `σ`: a valid run
-with a faulty validator, no collision and no conviction, satisfying `P`, whose
-progress atoms are active. -/
+with a faulty and an honest validator, no collision and no conviction,
+satisfying `P`, whose progress atoms are active. -/
 structure Witness (F : ShapeFamily O Info) (K : Contract O ProgressReq) (P : Premise ProgressReq)
     (σ : Nat → Time) {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (rho : Model.Run (compiled F) E) : Prop where
   /-- Some validator is faulty. -/
   faulty : rho.point.faulty.Nonempty
+  /-- Some validator is honest. -/
+  honest : rho.point.honest.Nonempty
   /-- A valid execution. -/
   valid : rho.ExecutionValid
   /-- No hash collision (the excuse does not hold). -/
@@ -204,11 +211,13 @@ def LiveActive (F : ShapeFamily O Info) (K : Contract O ProgressReq) (start : Ti
   ((sysOf O (compiled F) V).trace ⟨E, rho⟩).TxLiveActive (((K.catchUp : Nat) : Time) * E.Δ)
     (start.eval rho.point σ) (((D : Nat) : Time) * E.Δ)
 
-/-- Resilience activity: a nonempty outage inside the horizon and a
-continuously eligible reader over it. -/
+/-- Resilience activity: a nonempty outage inside the horizon, an honest
+validator asleep at some time of the outage `[b₀, b₁)`, and an honest reader
+continuously eligible over it. -/
 def ResilienceActive (F : ShapeFamily O Info) (K : Contract O ProgressReq) (σ : Nat → Time)
     {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (rho : Model.Run (compiled F) E) : Prop :=
   0 ≤ σ 0 ∧ σ 0 < σ 1 ∧ σ 1 < σ 2 ∧ σ 2 ≤ rho.horizon ∧
+    (∃ v ∈ rho.honest, ∃ t, σ 1 ≤ t ∧ t < σ 2 ∧ E.awake v t = false) ∧
     ∃ w ∈ rho.honest,
       rho.point.AwakeOnClosed w (max 0 (σ 1 - ((K.catchUp : Nat) : Time) * E.Δ - 1)) (σ 2)
 
@@ -226,7 +235,8 @@ structure _root_.Consensus.Contract.Realizable (F : ShapeFamily O Info)
     ∃ σ n, ∃ (E : Env (Fin (n + 1))) (rho : Model.Run (compiled F) E),
       Witness F K (s.live.premise i) σ rho ∧
         LiveActive F K (s.live.start i) (s.live.latency i) σ rho
-  /-- Every resilience premise has a witness with an active outage. -/
+  /-- Every resilience premise has a witness with an active outage (someone
+  sleeps during it). -/
   resilience : ∀ c s P, K.spec c = some s → s.resilience = some P →
     ∃ σ n, ∃ (E : Env (Fin (n + 1))) (rho : Model.Run (compiled F) E),
       Witness F K P σ rho ∧ ResilienceActive F K σ rho
@@ -236,7 +246,40 @@ structure _root_.Consensus.Contract.Realizable (F : ShapeFamily O Info)
     ∃ σ n, ∃ (E : Env (Fin (n + 1))) (rho : Model.Run (compiled F) E),
       Witness F K (R.premise i) σ rho ∧ LiveActive F K (R.start i) (R.latency i) σ rho
 
-/-! ## Generic realizability at the extremal point -/
+/-! ## Generic realizability at the extremal and sleeper points -/
+
+/-- A witness at a given point with population `n + 1`, from the premise's
+environment part there, the extremal selection (if `P` uses `progress`: a
+proposer selection `.sized m` with validators `1, …, m` honest and always
+awake) and active progress windows. -/
+theorem witness_at (F : ShapeFamily O Info) (K : Contract O ProgressReq) (P : Premise ProgressReq)
+    {n : Nat} (p : EnvPoint (Fin (n + 1))) (hp : p.WellFormed) (hf : p.faulty.Nonempty)
+    (hh : p.honest.Nonempty) (σ : Nat → Time)
+    (henv : P.evalEnv p (((K.catchUp : Nat) : Time) * p.env.Δ) σ)
+    (hsel : P.UsesProgress → ∃ m, 1 ≤ m ∧ m ≤ n ∧
+      (F (pubOf p.env)).skel.proposerSel = .sized m ∧
+      ∀ v : Fin (n + 1), 1 ≤ v.val → v.val ≤ m → v ∈ p.honest ∧ ∀ t, p.env.awake v t = true)
+    (hact : ProgressActive (F (pubOf p.env)).skel.grid p σ P) :
+    ∃ rho : Model.Run (compiled F) p.env, rho.point = p ∧ Witness F K P σ rho := by
+  have hprog : P.UsesProgress → ∀ π s,
+      PatternRecurrence (R := ShapeRole (F (pubOf p.env)).skel.Kind) p (extremalKey n)
+        (extremalSel F p.env) ShapeRole.proposer (F (pubOf p.env)).skel.grid π
+        (((K.catchUp : Nat) : Time) * p.env.Δ) s := by
+    intro hu π s
+    obtain ⟨m, hm1, hmn, hF, hv⟩ := hsel hu
+    apply patternRecurrence_of_all p.env.Δ_pos
+    intro s j _
+    exact extremalSel_proposers F p hm1 hmn hF hv _ _ _
+  obtain ⟨rho, hpt, -, -, hv, hnc, hconv, hprem⟩ :=
+    coverage F K P p hp (extremalKey n) (extremalSel F p.env)
+      (extremalSel_admits F p.env) σ (Premise.evalAt_of_evalEnv henv hprog)
+  refine ⟨rho, hpt, ⟨?_, ?_, hv, hnc, hconv, hprem, ?_⟩⟩
+  · rw [hpt]; exact hf
+  · rw [hpt]; exact hh
+  · rw [hpt]; exact hact
+
+theorem fin_one_ne_zero {n : Nat} (hn : 1 ≤ n) : (⟨1, by omega⟩ : Fin (n + 1)) ≠ 0 := by
+  intro h; have := congrArg Fin.val h; simp at this
 
 /-- Joint realizability of one premise at the extremal point, from
 projections of the skeleton only: if `P` uses `progress`, one proposer
@@ -256,27 +299,21 @@ theorem premise_realizable (F : ShapeFamily O Info) (K : Contract O ProgressReq)
   classical
   obtain ⟨N₀, hN₀⟩ := P.extremal_realizable hP
   let m : Nat := if hu : P.UsesProgress then Classical.choose (hsel hu) else 0
-  refine ⟨max N₀ m, fun n hn submit => ?_⟩
-  let p := EnvPoint.extremal n H g submit
-  have henv := hN₀ n (le_of_max_le_left hn) H g submit σ
-    (((K.catchUp : Nat) : Time) * p.env.Δ) (ht n submit)
-  have hprog : P.UsesProgress → ∀ π s,
-      PatternRecurrence (R := ShapeRole (F (pubOf p.env)).skel.Kind) p (extremalKey n)
-        (extremalSel F p.env) ShapeRole.proposer (F (pubOf p.env)).skel.grid π
-        (((K.catchUp : Nat) : Time) * p.env.Δ) s := by
-    intro hu π s
+  refine ⟨max (max N₀ m) 1, fun n hn submit => ?_⟩
+  have hn0 : N₀ ≤ n := le_trans (le_max_left _ _) (le_of_max_le_left hn)
+  have hnm : m ≤ n := le_trans (le_max_right _ _) (le_of_max_le_left hn)
+  have hn1 : 1 ≤ n := le_of_max_le_right hn
+  refine witness_at F K P (EnvPoint.extremal n H g submit) hH ?_ ?_ σ
+    (hN₀ n hn0 H g submit σ _ (ht n submit)) ?_ (hact n submit)
+  · rw [EnvPoint.extremal_faulty]; exact Finset.singleton_nonempty _
+  · exact ⟨⟨1, by omega⟩, Finset.mem_erase.mpr ⟨fin_one_ne_zero hn1, Finset.mem_univ _⟩⟩
+  · intro hu
     have hm : m = Classical.choose (hsel hu) := by simp [m, hu]
     obtain ⟨hm1, hmF⟩ := Classical.choose_spec (hsel hu)
     rw [← hm] at hm1 hmF
-    apply patternRecurrence_of_all p.env.Δ_pos
-    intro s j _
-    exact extremalSel_proposers F hm1 (le_of_max_le_right hn) (hmF _) _ _ _
-  obtain ⟨rho, hpt, -, -, hv, hnc, hconv, hprem⟩ :=
-    coverage F K P p (show 0 ≤ H from hH) (extremalKey n) (extremalSel F p.env)
-      (extremalSel_admits F p.env) σ (Premise.evalAt_of_evalEnv henv hprog)
-  refine ⟨rho, hpt, ⟨?_, hv, hnc, hconv, hprem, ?_⟩⟩
-  · rw [hpt, EnvPoint.extremal_faulty]; exact Finset.singleton_nonempty _
-  · rw [hpt]; exact hact n submit
+    refine ⟨m, hm1, hnm, hmF _, fun v hv1 _ => ⟨Finset.mem_erase.mpr ⟨?_, Finset.mem_univ _⟩,
+      fun _ => rfl⟩⟩
+    intro h; rw [h] at hv1; simp at hv1
 
 /-- The extremal submission: transaction `42` to validator `1` at `τ₀`. -/
 def submit42 {n : Nat} (τ₀ : Time) : Fin (n + 1) → Time → List Tx :=
@@ -309,20 +346,6 @@ theorem extremal_liveActive (F : ShapeFamily O Info) (K : Contract O ProgressReq
   · intro h; have := congrArg Fin.val h; simp at this
   · intro τ; simp [EnvPoint.extremal, submit42]
   · simp [EnvPoint.extremal]
-
-/-- Activity of a resilience witness at the extremal point. -/
-theorem extremal_resilienceActive (F : ShapeFamily O Info) (K : Contract O ProgressReq)
-    (σ : Nat → Time) {n : Nat} {H g : Time} {submit : Fin (n + 1) → Time → List Tx} (hn : 1 ≤ n)
-    (h : 0 ≤ σ 0 ∧ σ 0 < σ 1 ∧ σ 1 < σ 2 ∧ σ 2 ≤ H)
-    (rho : Model.Run (compiled F) (EnvPoint.extremal n H g submit).env)
-    (hp : rho.point = EnvPoint.extremal n H g submit) :
-    ResilienceActive F K σ rho := by
-  have hH : rho.horizon = H := congrArg EnvPoint.horizon hp
-  have hh : rho.honest = Finset.univ.erase 0 := congrArg EnvPoint.honest hp
-  refine ⟨h.1, h.2.1, h.2.2.1, hH ▸ h.2.2.2, ⟨1, by omega⟩, ?_, fun _ _ _ => rfl⟩
-  rw [hh]
-  refine Finset.mem_erase.mpr ⟨?_, Finset.mem_univ _⟩
-  intro h0; have := congrArg Fin.val h0; simp at this
 
 /-- Realizability of a live (or recovery) premise with active liveness:
 `premise_realizable` at the extremal submission `submit42 τ₀`, with a
@@ -362,22 +385,56 @@ theorem witness_realizable (F : ShapeFamily O Info) (K : Contract O ProgressReq)
   exact ⟨σ, N, _, rho, hw⟩
 
 /-- Realizability of a resilience premise with an active outage
-(`0 ≤ σ 0 < σ 1 < σ 2 ≤ H`). -/
+(`0 ≤ σ 0 < σ 1 < σ 2 ≤ H`) at the sleeper point: honest validator `n` is
+asleep at the outage start `σ 1`, validator `1` reads throughout. The premise's
+atoms must be counting atoms (no `full` or `noWake`, which the sleeper
+violates); timing constraints and progress windows are checked at the sleeper
+point. -/
 theorem resilience_realizable (F : ShapeFamily O Info) (K : Contract O ProgressReq)
-    (P : Premise ProgressReq) (hP : P.WellFormed)
+    (P : Premise ProgressReq) (hP : P.WellFormed) (hc : P.AtomsAll EnvAtom.Counting)
     (hsel : P.UsesProgress → ∃ m, 1 ≤ m ∧ ∀ pub, (F pub).skel.proposerSel = .sized m)
     (σ : Nat → Time) (H g : Time)
-    (ht : ∀ n submit, P.TimesHold (EnvPoint.extremal n H g submit) σ)
-    (hact : ∀ n submit, ProgressActive (F (pubOf (EnvPoint.extremal n H g submit).env)).skel.grid
-      (EnvPoint.extremal n H g submit) σ P)
+    (ht : ∀ n submit, P.TimesHold (EnvPoint.sleeper n H g (σ 1) submit) σ)
+    (hact : ∀ n submit, ProgressActive
+      (F (pubOf (EnvPoint.sleeper n H g (σ 1) submit).env)).skel.grid
+      (EnvPoint.sleeper n H g (σ 1) submit) σ P)
     (hσ : 0 ≤ σ 0 ∧ σ 0 < σ 1 ∧ σ 1 < σ 2 ∧ σ 2 ≤ H) :
     ∃ σ' n, ∃ (E : Env (Fin (n + 1))) (rho : Model.Run (compiled F) E),
       Witness F K P σ' rho ∧ ResilienceActive F K σ' rho := by
+  classical
   have hH : 0 ≤ H := by linarith [hσ.1, hσ.2.1, hσ.2.2.1, hσ.2.2.2]
-  obtain ⟨N, hN⟩ := premise_realizable F K P hP hsel σ H g hH ht hact
-  obtain ⟨rho, hp, hw⟩ := hN (max N 1) (le_max_left _ _) fun _ _ => []
-  exact ⟨σ, max N 1, _, rho, hw,
-    extremal_resilienceActive F K σ (le_max_right _ _) hσ rho hp⟩
+  obtain ⟨N₀, hN₀⟩ := P.sleeper_realizable hP hc
+  let m : Nat := if hu : P.UsesProgress then Classical.choose (hsel hu) else 0
+  let n : Nat := max (max N₀ (m + 1)) 2
+  have hn0 : N₀ ≤ n := le_trans (le_max_left _ _) (le_max_left _ _)
+  have hnm : m + 1 ≤ n := le_trans (le_max_right _ _) (le_max_left _ _)
+  have hn2 : 2 ≤ n := le_max_right _ _
+  let submit : Fin (n + 1) → Time → List Tx := fun _ _ => []
+  have hl0 : Fin.last n ≠ 0 := by
+    intro h; have := congrArg Fin.val h; simp at this; omega
+  have h1l : (⟨1, by omega⟩ : Fin (n + 1)) ≠ Fin.last n := by
+    intro h; have := congrArg Fin.val h; simp at this; omega
+  obtain ⟨rho, hpt, hw⟩ := witness_at F K P (EnvPoint.sleeper n H g (σ 1) submit) hH
+    (by rw [EnvPoint.sleeper_faulty]; exact Finset.singleton_nonempty _)
+    ⟨⟨1, by omega⟩, EnvPoint.sleeper_honest n H g (σ 1) submit (fin_one_ne_zero (by omega))⟩ σ
+    (hN₀ n hn0 H g (σ 1) submit σ _ (ht n submit)) (fun hu => by
+      have hm : m = Classical.choose (hsel hu) := by simp [m, hu]
+      obtain ⟨hm1, hmF⟩ := Classical.choose_spec (hsel hu)
+      rw [← hm] at hm1 hmF
+      refine ⟨m, hm1, by omega, hmF _, fun v hv1 hvm => ⟨?_, ?_⟩⟩
+      · refine EnvPoint.sleeper_honest n H g (σ 1) submit ?_
+        intro h; rw [h] at hv1; simp at hv1
+      · refine EnvPoint.sleeper_awake n H g (σ 1) submit ?_
+        intro h; rw [h] at hvm; simp at hvm; omega) (hact n submit)
+  have hh : rho.honest = Finset.univ.erase 0 := congrArg EnvPoint.honest hpt
+  have hHr : rho.horizon = H := congrArg EnvPoint.horizon hpt
+  refine ⟨σ, n, _, rho, hw, hσ.1, hσ.2.1, hσ.2.2.1, hHr ▸ hσ.2.2.2,
+    ⟨Fin.last n, ?_, σ 1, le_rfl, hσ.2.2.1, EnvPoint.sleeper_asleep n H g (σ 1) submit⟩,
+    ⟨1, by omega⟩, ?_, ?_⟩
+  · rw [hh]; exact Finset.mem_erase.mpr ⟨hl0, Finset.mem_univ _⟩
+  · rw [hh]; exact Finset.mem_erase.mpr ⟨fin_one_ne_zero (by omega), Finset.mem_univ _⟩
+  · rw [hpt]
+    exact fun u _ _ => EnvPoint.sleeper_awake n H g (σ 1) submit h1l u
 
 /-- The relay is exercised: in a partially synchronous run where every
 validator is always awake, an active liveness witness has an honest reader

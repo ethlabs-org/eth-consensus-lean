@@ -13,16 +13,69 @@ namespace Consensus.Shape.Tests.Premise
 
 /-- The honest-majority sleepy term is well-formed. -/
 theorem honestMajority_wellFormed : (Premise.honestMajority : Premise Unit).WellFormed := by
-  refine ⟨trivial, trivial, ?_⟩
-  change (0 : ℚ) ≤ 1 / 2 ∧ (1 / 2 : ℚ) < 1
-  norm_num
+  norm_num [Premise.honestMajority, Premise.sleepy, Premise.always, Premise.WellFormed,
+    TimeExpr.HorizonFree, TimeExpr.Fixed, EnvAtom.WellFormed]
 
-/-- An inclusive fraction 1 is not well-formed (it would force no faults,
-`EnvPoint.readyOfAllAtLeast_one_faulty_empty`). -/
+/-- A fraction 1 of all validators ready is not well-formed (it would force no
+faults). -/
 theorem not_wellFormed_readyOfAll_one :
-    ¬ (Premise.atTime .zero (.readyOfAll 1 true) : Premise Unit).WellFormed := by
+    ¬ (Premise.atTime .zero (.readyOfAll 1) : Premise Unit).WellFormed := by
   rintro ⟨_, h⟩
-  exact lt_irrefl _ h
+  exact lt_irrefl _ h.2
+
+/-- An absolute fault bound of zero is not well-formed. -/
+theorem not_wellFormed_faultsAtMost_zero :
+    ¬ (Premise.atTime .zero (.faultsAtMost 0) : Premise Unit).WellFormed := by
+  rintro ⟨_, h⟩
+  simp [EnvAtom.WellFormed] at h
+
+/-! ### No horizon or parameter caps -/
+
+/-- A run-length cap (the time bomb: claims only for runs ending by `1000·Δ`)
+is not well-formed. -/
+theorem horizonCap_rejected :
+    ¬ (Premise.conj (Premise.sleepy (1 / 2)) (.le .horizon (.addΔ .zero 1000)) :
+      Premise Unit).WellFormed := by
+  rintro ⟨-, h, -⟩
+  exact h
+
+/-- A parameter cap (resilience only for the read at time 0) is not
+well-formed. -/
+theorem protectedAtCap_rejected :
+    ¬ (Premise.le .protectedAt .zero : Premise Unit).WellFormed := by
+  rintro ⟨-, h⟩
+  exact h trivial
+
+/-- A parameter bounded by a fixed time through the GST is not well-formed
+either. -/
+theorem gstCap_rejected :
+    ¬ (Premise.le .protectedAt (.addΔ .gst 1000) : Premise Unit).WellFormed := by
+  rintro ⟨-, h⟩
+  exact h trivial
+
+/-- An atom required only at the horizon is not well-formed. -/
+theorem atHorizon_rejected :
+    ¬ (Premise.atTime .horizon .full : Premise Unit).WellFormed := by
+  rintro ⟨h, -⟩
+  exact h
+
+/-- A liveness start at the horizon (vacuous liveness) is not well-formed. -/
+theorem horizonStart_rejected :
+    ¬ ({ safety := { premise := .truth }
+         live := ⟨fun _ => .sync, fun _ => .horizon, fun _ => 0⟩ } :
+        CapSpec Unit Unit).WellFormed := by
+  intro h
+  exact h.liveStart ()
+
+/-- The outage window is well-formed, and its timing constraints survive
+moving the parameters and the horizon later (`Premise.TimesHold.shift`). -/
+theorem outageWindow_shift (p : EnvPoint (Fin 4)) (σ : Nat → Time) (d e : Time) (hd : 0 ≤ d)
+    (he : 0 ≤ e) (h : (Premise.outageWindow 1 2 : Premise Unit).TimesHold p σ) :
+    (Premise.outageWindow 1 2 : Premise Unit).TimesHold
+      { p with horizon := p.horizon + d + e } (fun i => σ i + d) :=
+  Premise.TimesHold.shift (by
+    norm_num [Premise.outageWindow, Premise.WellFormed, TimeExpr.HorizonFree, TimeExpr.Fixed])
+    hd he h
 
 /-- The extremal point with four validators (one faulty) satisfies the
 environment part of the honest-majority term when GST is at most 0. -/

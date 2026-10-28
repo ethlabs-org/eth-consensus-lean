@@ -93,7 +93,8 @@ def CapSpec.Complete {Prog Idx : Type} (c : Capability) (s : CapSpec Prog Idx) :
 def FracWF (e : Option ℚ) : Prop := ∀ α, e = some α → 0 < α ∧ α ≤ 1
 
 /-- Structural well-formedness of a capability spec: every premise is
-well-formed, every escape and accountable fraction is in `(0, 1]`. -/
+well-formed (which also excludes horizon and parameter caps), every start is
+horizon-free, every escape and accountable fraction is in `(0, 1]`. -/
 structure CapSpec.WellFormed {Prog Idx : Type} (s : CapSpec Prog Idx) : Prop where
   safety : s.safety.premise.WellFormed
   safetyEscape : FracWF s.safety.escape
@@ -101,10 +102,15 @@ structure CapSpec.WellFormed {Prog Idx : Type} (s : CapSpec Prog Idx) : Prop whe
   accountable : FracWF s.accountable
   resilience : ∀ P, s.resilience = some P → P.WellFormed
   recovery : ∀ R, s.recovery = some R → (∀ i, (R.premise i).WellFormed) ∧ FracWF R.escape
+  /-- Liveness starts do not depend on the horizon (a start at the horizon
+  would make liveness vacuous). -/
+  liveStart : ∀ i, (s.live.start i).HorizonFree
+  /-- Recovery points do not depend on the horizon. -/
+  recoveryStart : ∀ R, s.recovery = some R → ∀ i, (R.start i).HorizonFree
 
-/-- Structural well-formedness of a contract (fraction ranges only). This is not
-a non-vacuity certificate: a well-formed contract may still have
-unsatisfiable premises. -/
+/-- Structural well-formedness of a contract (fraction ranges, no horizon or
+parameter caps, horizon-free starts). This is not a non-vacuity certificate: a
+well-formed contract may still have unsatisfiable premises. -/
 structure Contract.WellFormed {O : OutputSchema} {Prog : Type} (K : Contract O Prog) : Prop where
   caps : ∀ c s, K.spec c = some s → s.WellFormed
 
@@ -119,9 +125,11 @@ def OutputSchema.BFTCore (O : OutputSchema) : Prop := (O.output .final).isSome
 def OutputSchema.DACore (O : OutputSchema) : Prop :=
   (O.output .available).isSome ∧ O.output .final = none
 
-/-- Schema package: both an available and a final output. -/
-def OutputSchema.EbbFlow (O : OutputSchema) : Prop :=
-  (O.output .available).isSome ∧ (O.output .final).isSome
+/-- The schema serves a ledger: it is a `BFTCore` (a final output, possibly
+with others) or a `DACore` (an available output without a final one). A schema
+that provides neither (no output at all, or only a resilient one) is not a
+consensus service; acceptance (`Shape.Accepted`) requires this. -/
+def OutputSchema.Serves (O : OutputSchema) : Prop := O.BFTCore ∨ O.DACore
 
 variable {V : Type} [Fintype V] [DecidableEq V]
 

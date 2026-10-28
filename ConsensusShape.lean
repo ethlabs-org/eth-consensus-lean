@@ -6,6 +6,7 @@ public import ConsensusShape.Claims
 public import ConsensusShape.Payload
 public import ConsensusShape.Refinement
 public import ConsensusShape.Realizable
+public import ConsensusShape.Accepted
 public import ConsensusShape.Values.Common
 public import ConsensusShape.Values.Goldilocks
 public import ConsensusShape.Values.Streamlet
@@ -15,5 +16,6 @@ public import ConsensusShape.Values.Tendermint
 blocks (`Shape`), their compilation to the model (`Compile`), the shape
 vocabulary over compiled runs (`Run`), the shape claims (`Claims`), the payload
 facts (`Payload`), the refinement to the problem claims (`Refinement`),
-coverage and joint realizability (`Realizable`), and the Goldilocks,
+coverage and joint realizability (`Realizable`), the acceptance endpoint
+(`Accepted`), and the Goldilocks,
 Streamlet and Tendermint values (`Values`). -/

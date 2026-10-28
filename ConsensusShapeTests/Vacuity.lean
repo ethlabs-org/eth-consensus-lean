@@ -19,11 +19,15 @@ rejected by its structural fields, for every family:
 * `noSync_live_rejected`, `noSync_recovery_rejected`: a liveness or recovery
   premise without `sync` (D-20).
 
+`noService_not_accepted`: a schema with no output at all, or only a resilient
+one, is not `Accepted`, whatever its claims (`OutputSchema.Serves`); a
+provided but silent or empty output is excluded by `delivers`.
+
 `goldilocks_structural` is the control: every well-formed Goldilocks contract
 passes these structural fields.
 
-`credential_forgery_excluded` is the layer-1 form of the stage-2a credential
-test: a delivered proposal signed by a key not selected as the slot's
+`credential_forgery_excluded` is the layer-1 form of the model-level credential
+test (`forged_role_invalid`): a delivered proposal signed by a key not selected as the slot's
 proposer violates `ExecutionValid`, for every family; `forgedProposal` is a
 concrete such run of the trivial shape (admissible selection, key 2 proposes,
 key 1 forges). (A zero progress gap needs no test: `ProgressReq.gap : ℕ+`.) -/
@@ -133,6 +137,17 @@ theorem forgedProposal_invalid : forgedProposal.SelValid ∧ ¬ forgedProposal.E
   refine ⟨sel3_admits, credential_forgery_excluded forgedProposal (i := 0) rfl (.refl _) rfl ?_⟩
   change (⟨1, by simp⟩ : Fin (Fintype.card (Fin 3))) ∉ ({⟨2, by simp⟩} : Finset _)
   simp
+
+/-- A schema that provides neither a final nor an available output. -/
+def noService (resilient : Bool) : OutputSchema :=
+  ⟨Unit, fun c => if resilient ∧ c = .resilient then some () else none⟩
+
+/-- An instance without a ledger service is never accepted (`Accepted.serves`),
+even though its `ShapeClaims` and `Contract.Realizable` may hold vacuously. -/
+theorem noService_not_accepted (b : Bool) (F : ShapeFamily (noService b) Info)
+    (K : Contract (noService b) ProgressReq) : ¬ Accepted F K := by
+  intro h
+  rcases h.serves with h | ⟨h, -⟩ <;> simp [noService, OutputSchema.BFTCore] at h
 
 end Consensus.Shape.Tests.Vacuity
 

@@ -14,7 +14,10 @@ to a time (fixed by the execution model), and a progress requirement (fixed by
 the protocol shape from reviewed building blocks). There is no disjunction or
 negation: every well-formed environment atom holds at large enough extremal
 points, so the environment part of a well-formed premise holds there whenever
-its timing constraints hold (`Premise.extremal_realizable`). -/
+its timing constraints hold (`Premise.extremal_realizable`). Well-formedness
+also keeps the horizon and the claim parameters unbounded: timing constraints
+never bound them from above by a fixed time (`Premise.TimesHold.shift`), so a
+premise cannot restrict its claims to short runs or early times. -/
 
 namespace Consensus
 
@@ -49,6 +52,61 @@ abbrev outageStart : TimeExpr := .param 1
 premises only. -/
 abbrev outageEnd : TimeExpr := .param 2
 
+/-- The horizon does not occur. -/
+def HorizonFree : TimeExpr → Prop
+  | horizon => False
+  | add e _ => e.HorizonFree
+  | addΔ e _ => e.HorizonFree
+  | _ => True
+
+/-- A fixed time: built on `0` or the GST (no parameter, no horizon). -/
+def Fixed : TimeExpr → Prop
+  | zero => True
+  | gst => True
+  | add e _ => e.Fixed
+  | addΔ e _ => e.Fixed
+  | _ => False
+
+section Shift
+
+variable {V : Type} (p : EnvPoint V) (σ : Nat → Time) {d e : Time}
+
+/-- A fixed time does not move when the parameters move by `d` and the horizon
+by `d + e`. -/
+theorem eval_shift_fixed {a : TimeExpr} (h : a.Fixed) :
+    a.eval { p with horizon := p.horizon + d + e } (fun i => σ i + d) = a.eval p σ := by
+  induction a with
+  | zero => rfl
+  | gst => rfl
+  | horizon => exact h.elim
+  | param i => exact h.elim
+  | add a k ih => simp only [eval]; rw [ih h]
+  | addΔ a k ih => simp only [eval]; rw [ih h]
+
+/-- A horizon-free time moves by at most `d`. -/
+theorem eval_shift_le (hd : 0 ≤ d) {a : TimeExpr} (h : a.HorizonFree) :
+    a.eval { p with horizon := p.horizon + d + e } (fun i => σ i + d) ≤ a.eval p σ + d := by
+  induction a with
+  | zero => simp [eval, hd]
+  | gst => simp [eval, hd]
+  | horizon => exact h.elim
+  | param i => exact le_rfl
+  | add a k ih => have := ih h; simp only [eval]; linarith
+  | addΔ a k ih => have := ih h; simp only [eval]; linarith
+
+/-- A time that is not fixed moves by at least `d`. -/
+theorem eval_shift_ge (he : 0 ≤ e) {a : TimeExpr} (h : ¬ a.Fixed) :
+    a.eval p σ + d ≤ a.eval { p with horizon := p.horizon + d + e } (fun i => σ i + d) := by
+  induction a with
+  | zero => exact absurd trivial h
+  | gst => exact absurd trivial h
+  | horizon => simp only [eval]; linarith
+  | param i => exact le_rfl
+  | add a k ih => have := ih h; simp only [eval]; linarith
+  | addΔ a k ih => have := ih h; simp only [eval]; linarith
+
+end Shift
+
 end TimeExpr
 
 /-- Environment atoms, evaluated at one time with catch-up `c`. -/
@@ -57,8 +115,10 @@ inductive EnvAtom where
   | faultsBelow (β : ℚ)
   /-- `θ·(|ready| + |faulty|) < |ready|`. -/
   | readyAbove (θ : ℚ)
-  /-- `φ·n < |ready|`, or `φ·n ≤ |ready|` if `inclusive`. -/
-  | readyOfAll (φ : ℚ) (inclusive : Bool)
+  /-- `|faulty| ≤ m` (independent of time; an absolute fault bound). -/
+  | faultsAtMost (m : Nat)
+  /-- `φ·n < |ready|`. -/
+  | readyOfAll (φ : ℚ)
   /-- `θ·|awake in [t − η·Δ, t] ∪ faulty| < |ready|` (`η` a Δ-coefficient). -/
   | etaSleepy (θ : ℚ) (η : Nat)
   /-- Every honest validator is awake. -/
@@ -74,21 +134,29 @@ variable {V : Type} [Fintype V] [DecidableEq V]
 def holds (p : EnvPoint V) (c t : Time) : EnvAtom → Prop
   | faultsBelow β => p.FaultsBelow β
   | readyAbove θ => p.ReadyAbove θ c t
-  | readyOfAll φ false => p.ReadyOfAll φ c t
-  | readyOfAll φ true => p.ReadyOfAllAtLeast φ c t
+  | faultsAtMost m => p.FaultsAtMost m
+  | readyOfAll φ => p.ReadyOfAll φ c t
   | etaSleepy θ η => p.EtaSleepy θ ((η : Time) * p.env.Δ) c t
   | full => p.FullAt t
   | noWake => p.NoWakeAt t
 
-/-- Parameter domains: `0 < β ≤ 1`; `0 ≤ θ, φ < 1` (inclusive thresholds too,
-so that faults remain possible). -/
+/-- Parameter domains: `0 < β ≤ 1`; `1 ≤ m` (so that faults remain possible);
+`0 ≤ θ, φ < 1`. -/
 def WellFormed : EnvAtom → Prop
   | faultsBelow β => 0 < β ∧ β ≤ 1
+  | faultsAtMost m => 1 ≤ m
   | readyAbove θ => 0 ≤ θ ∧ θ < 1
-  | readyOfAll φ _ => 0 ≤ φ ∧ φ < 1
+  | readyOfAll φ => 0 ≤ φ ∧ φ < 1
   | etaSleepy θ _ => 0 ≤ θ ∧ θ < 1
   | full => True
   | noWake => True
+
+/-- A counting atom: a fault bound or a participation threshold. `full` and
+`noWake` are not: one sleeping honest validator violates them. -/
+def Counting : EnvAtom → Prop
+  | full => False
+  | noWake => False
+  | _ => True
 
 end EnvAtom
 
@@ -172,18 +240,6 @@ theorem eval_of_evalAt {S : System V} {X : ExecProfile S Prog} {c : Nat} {σ : N
   | conj P Q hP hQ => exact ⟨hP h.1, hQ h.2⟩
   | _ => exact h
 
-/-- The environment part of an evaluated premise holds. -/
-theorem eval_env {S : System V} {X : ExecProfile S Prog} {c : Nat} {σ : Nat → Time}
-    {r : S.Run} {P : Premise Prog} (h : P.eval S X c σ r) :
-    P.evalEnv (S.trace r).point ((c : Time) * (S.trace r).point.env.Δ) σ := by
-  unfold evalEnv
-  induction P with
-  | sync => trivial
-  | syncUntil b => trivial
-  | progress π s => trivial
-  | conj P Q hP hQ => exact ⟨hP h.1, hQ h.2⟩
-  | _ => exact h
-
 /-- Every `progress π s` occurrence satisfies `q π (s.eval p σ)` (for activity
 witnesses). -/
 def ProgressAll (p : EnvPoint V) (σ : Nat → Time) (q : Prog → Time → Prop) :
@@ -220,12 +276,68 @@ theorem HasSync.sync_of_eval {S : System V} {X : ExecProfile S Prog} {c : Nat}
   | conj P Q hP hQ => exact h.elim (fun h => hP h he.1) (fun h => hQ h he.2)
   | _ => exact h.elim
 
-/-- Every environment atom is well-formed. -/
+/-- Well-formedness: every environment atom is well-formed, and the horizon
+and the parameters are never bounded from above by a fixed time. The horizon
+does not occur on the left of a `le`, in the time of an `atTime`, or in the
+lower end of a `throughout`; a `le` whose right side is fixed (built on `0` or
+the GST) has a fixed left side. So `le horizon e` (a run-length cap) and
+`le protectedAt zero` (a parameter cap) are rejected, and timing constraints
+that hold keep holding when the horizon and the parameters move later
+(`TimesHold.shift`). -/
 def WellFormed : Premise Prog → Prop
-  | atTime _ a => a.WellFormed
-  | throughout _ _ a => a.WellFormed
+  | le a b => a.HorizonFree ∧ (b.Fixed → a.Fixed)
+  | atTime t a => t.HorizonFree ∧ a.WellFormed
+  | throughout lo _ a => lo.HorizonFree ∧ a.WellFormed
   | conj P Q => P.WellFormed ∧ Q.WellFormed
   | _ => True
+
+/-- Every environment atom satisfies `q`. -/
+def AtomsAll (q : EnvAtom → Prop) : Premise Prog → Prop
+  | atTime _ a => q a
+  | throughout _ _ a => q a
+  | conj P Q => P.AtomsAll q ∧ Q.AtomsAll q
+  | _ => True
+
+omit [Fintype V] [DecidableEq V] in
+/-- No horizon or parameter cap: if the timing constraints of a well-formed
+premise hold, they hold with every parameter moved later by `d ≥ 0` and the
+horizon moved later by `d + e` (`e ≥ 0`). In particular they hold on every
+longer run (`d = 0`). -/
+theorem TimesHold.shift {p : EnvPoint V} {σ : Nat → Time} {d e : Time} {P : Premise Prog}
+    (hP : P.WellFormed) (hd : 0 ≤ d) (he : 0 ≤ e) (h : P.TimesHold p σ) :
+    P.TimesHold { p with horizon := p.horizon + d + e } (fun i => σ i + d) := by
+  induction P with
+  | le a b =>
+    change a.eval p σ ≤ b.eval p σ at h
+    change a.eval _ _ ≤ b.eval _ _
+    by_cases ha : a.Fixed
+    · rw [TimeExpr.eval_shift_fixed p σ ha]
+      by_cases hb : b.Fixed
+      · rw [TimeExpr.eval_shift_fixed p σ hb]; exact h
+      · have := TimeExpr.eval_shift_ge p σ he (d := d) hb; linarith
+    · have hb : ¬ b.Fixed := fun hb => ha (hP.2 hb)
+      have h1 := TimeExpr.eval_shift_le p σ hd (e := e) hP.1
+      have h2 := TimeExpr.eval_shift_ge p σ he (d := d) hb
+      linarith
+  | conj P Q hP' hQ' => exact ⟨hP' hP.1 h.1, hQ' hP.2 h.2⟩
+  | _ => trivial
+
+/-- The environment part holds at a point where every atom satisfying `q` holds
+at every time, if every atom of the premise satisfies `q` and the timing
+constraints hold. -/
+theorem evalEnv_of_atomsAll {p : EnvPoint V} {q : EnvAtom → Prop}
+    (hq : ∀ a, q a → ∀ c t, a.holds p c t) {σ : Nat → Time} {c : Time} (P : Premise Prog)
+    (hf : P.AtomsAll q) (ht : P.TimesHold p σ) : P.evalEnv p c σ := by
+  unfold Premise.evalEnv
+  induction P with
+  | truth => trivial
+  | le a b => exact ht
+  | atTime t a => exact hq a hf c _
+  | throughout lo hi a => exact fun t _ _ => hq a hf c t
+  | sync => trivial
+  | syncUntil b => trivial
+  | progress π s => trivial
+  | conj P Q ihP ihQ => exact ⟨ihP hf.1 ht.1, ihQ hf.2 ht.2⟩
 
 /-! ## Named standard terms -/
 
@@ -260,14 +372,15 @@ def outageWindow (lag budget : Nat) : Premise Prog :=
         (conj (le .outageEnd (.addΔ .outageStart budget))
           (le .outageEnd .horizon))))
 
-/-- More than half of all validators are ready at the outage start (with
-`EnvPoint.two_mul_card_faulty_union_lt` this gives the FG-SA outage bound once
-every ready validator is covered). -/
-def coverMajority : Premise Prog := atTime .outageStart (.readyOfAll (1 / 2) false)
+/-- More than half of all validators are ready at the outage start. With
+`EnvPoint.two_mul_card_faulty_union_lt`, if every ready validator is in an
+honest set `C`, the faulty validators together with any honest set avoiding
+`C` are fewer than half of all validators. -/
+def coverMajority : Premise Prog := atTime .outageStart (.readyOfAll (1 / 2))
 
 end Premise
 
-/-! ## The extremal point -/
+/-! ## The extremal point and the sleeper point -/
 
 /-- The extremal point: `n + 1` validators, validator 0 faulty, every node
 awake always, `Δ = 1`, GST `g`, horizon `H`, submissions `submit`. -/
@@ -275,7 +388,16 @@ def EnvPoint.extremal (n : Nat) (H g : Time) (submit : Fin (n + 1) → Time → 
     EnvPoint (Fin (n + 1)) :=
   ⟨⟨1, by decide, g, fun _ _ => true⟩, Finset.univ.erase 0, H, submit⟩
 
+/-- The sleeper point: the extremal point, except that the honest validator `n`
+(the last one) is asleep at time `t₀`. -/
+def EnvPoint.sleeper (n : Nat) (H g t₀ : Time) (submit : Fin (n + 1) → Time → List Tx) :
+    EnvPoint (Fin (n + 1)) :=
+  ⟨⟨1, by decide, g, fun v t => !(decide (v = Fin.last n) && decide (t = t₀))⟩,
+    Finset.univ.erase 0, H, submit⟩
+
 namespace EnvPoint
+
+section Extremal
 
 variable (n : Nat) (H g : Time) (submit : Fin (n + 1) → Time → List Tx)
 
@@ -295,6 +417,8 @@ theorem extremal_awakeIn (a b : Time) (h : a ≤ b) :
   unfold EnvPoint.awakeIn
   rw [Finset.mem_filter]
   exact and_iff_left_of_imp fun _ => ⟨b, h, le_rfl, rfl⟩
+
+end Extremal
 
 /-- Every well-formed atom holds at the extremal point with population `n + 1`
 when the population is large enough for the atom's fraction. -/
@@ -321,6 +445,12 @@ theorem extremal_atom (a : EnvAtom) (ha : a.WellFormed) :
     have := (div_lt_iff₀ ha.1).mp hn'
     simp only [Finset.card_singleton, Nat.cast_one, Fintype.card_fin, Nat.cast_add]
     nlinarith [ha.1]
+  | faultsAtMost m =>
+    refine ⟨0, fun n _ H g submit c t => ?_⟩
+    change (EnvPoint.extremal n H g submit).FaultsAtMost m
+    unfold FaultsAtMost
+    rw [extremal_faulty]
+    simpa [EnvAtom.WellFormed] using ha
   | readyAbove θ =>
     obtain ⟨N, hN⟩ := frac θ ha.1 ha.2
     refine ⟨N, fun n hn H g submit c t => ?_⟩
@@ -329,15 +459,13 @@ theorem extremal_atom (a : EnvAtom) (ha : a.WellFormed) :
     rw [extremal_faulty, extremal_readyAt, card]
     simp only [Finset.card_singleton, Nat.cast_one]
     exact hN n hn
-  | readyOfAll φ inc =>
+  | readyOfAll φ =>
     obtain ⟨N, hN⟩ := frac φ ha.1 ha.2
     refine ⟨N, fun n hn H g submit c t => ?_⟩
-    have h : φ * (Fintype.card (Fin (n + 1)) : ℚ) <
-        ((EnvPoint.extremal n H g submit).readyAt c t).card := by
-      rw [extremal_readyAt, card]; simpa using hN n hn
-    cases inc
-    · exact h
-    · exact h.le
+    change φ * (Fintype.card (Fin (n + 1)) : ℚ) <
+      ((EnvPoint.extremal n H g submit).readyAt c t).card
+    rw [extremal_readyAt, card]
+    simpa using hN n hn
   | etaSleepy θ η =>
     obtain ⟨N, hN⟩ := frac θ ha.1 ha.2
     refine ⟨N, fun n hn H g submit c t => ?_⟩
@@ -358,7 +486,153 @@ theorem extremal_atom (a : EnvAtom) (ha : a.WellFormed) :
     have := hw.2
     simp [EnvPoint.extremal] at this
 
+section Sleeper
+
+variable (n : Nat) (H g t₀ : Time) (submit : Fin (n + 1) → Time → List Tx)
+
+/-- At the sleeper point exactly validator 0 is faulty. -/
+theorem sleeper_faulty : (EnvPoint.sleeper n H g t₀ submit).faulty = {0} := by
+  ext v; simp [EnvPoint.faulty, EnvPoint.sleeper]
+
+/-- Every validator other than the last one is always awake. -/
+theorem sleeper_awake {v : Fin (n + 1)} (hv : v ≠ Fin.last n) (t : Time) :
+    (EnvPoint.sleeper n H g t₀ submit).env.awake v t = true := by
+  simp [EnvPoint.sleeper, hv]
+
+/-- The last validator is asleep at `t₀`. -/
+theorem sleeper_asleep : (EnvPoint.sleeper n H g t₀ submit).env.awake (Fin.last n) t₀ = false := by
+  simp [EnvPoint.sleeper]
+
+theorem sleeper_honest {v : Fin (n + 1)} (hv : v ≠ 0) :
+    v ∈ (EnvPoint.sleeper n H g t₀ submit).honest :=
+  Finset.mem_erase.mpr ⟨hv, Finset.mem_univ _⟩
+
+/-- At least `n - 1` validators are ready at every time. -/
+theorem sleeper_card_readyAt (hn : 1 ≤ n) (c t : Time) :
+    (n : ℚ) ≤ ((EnvPoint.sleeper n H g t₀ submit).readyAt c t).card + 1 := by
+  classical
+  have hl0 : Fin.last n ≠ 0 := by
+    intro h; have := congrArg Fin.val h; simp at this; omega
+  have hsub : (Finset.univ.erase (0 : Fin (n + 1))).erase (Fin.last n) ⊆
+      (EnvPoint.sleeper n H g t₀ submit).readyAt c t := by
+    intro v hv
+    obtain ⟨hvl, hv0⟩ := Finset.mem_erase.mp hv
+    have hh := sleeper_honest n H g t₀ submit (Finset.mem_erase.mp hv0).1
+    unfold readyAt
+    exact Finset.mem_filter.mpr ⟨hh, hh, fun u _ _ => sleeper_awake n H g t₀ submit hvl u⟩
+  have hc : ((Finset.univ.erase (0 : Fin (n + 1))).erase (Fin.last n)).card = n - 1 := by
+    rw [Finset.card_erase_of_mem (Finset.mem_erase.mpr ⟨hl0, Finset.mem_univ _⟩),
+      Finset.card_erase_of_mem (Finset.mem_univ _), Finset.card_univ, Fintype.card_fin]
+    omega
+  have := Finset.card_le_card hsub
+  rw [hc] at this
+  have h' : n ≤ ((EnvPoint.sleeper n H g t₀ submit).readyAt c t).card + 1 := by omega
+  exact_mod_cast h'
+
+end Sleeper
+
+/-- For `θ < 1`, eventually `θ·(n + 1) < n − 1`. -/
+theorem eventually_frac (θ : ℚ) (h1 : θ < 1) :
+    ∃ N : Nat, ∀ n : Nat, N ≤ n → θ * ((n : ℚ) + 1) < (n : ℚ) - 1 := by
+  obtain ⟨N, hN⟩ := exists_nat_gt (2 / (1 - θ))
+  refine ⟨N, fun n hn => ?_⟩
+  have hd : 0 < 1 - θ := sub_pos.mpr h1
+  have hn' : 2 / (1 - θ) < (n : ℚ) := lt_of_lt_of_le hN (by exact_mod_cast hn)
+  have := (div_lt_iff₀ hd).mp hn'
+  nlinarith
+
+/-- Every well-formed counting atom holds at the sleeper point with population
+`n + 1` when the population is large enough for the atom's fraction. -/
+theorem sleeper_atom (a : EnvAtom) (ha : a.WellFormed) (hc : a.Counting) :
+    ∃ N : Nat, ∀ n, N ≤ n → ∀ H g t₀ submit (c t : Time),
+      a.holds (EnvPoint.sleeper n H g t₀ submit) c t := by
+  cases a with
+  | faultsBelow β =>
+    obtain ⟨N, hN⟩ := exists_nat_gt (1 / β)
+    refine ⟨N, fun n hn H g t₀ submit c t => ?_⟩
+    change (EnvPoint.sleeper n H g t₀ submit).FaultsBelow β
+    unfold FaultsBelow
+    rw [sleeper_faulty]
+    have hn' : 1 / β < (n : ℚ) := lt_of_lt_of_le hN (by exact_mod_cast hn)
+    have := (div_lt_iff₀ ha.1).mp hn'
+    simp only [Finset.card_singleton, Nat.cast_one, Fintype.card_fin, Nat.cast_add]
+    nlinarith [ha.1]
+  | faultsAtMost m =>
+    refine ⟨0, fun n _ H g t₀ submit c t => ?_⟩
+    change (EnvPoint.sleeper n H g t₀ submit).FaultsAtMost m
+    unfold FaultsAtMost
+    rw [sleeper_faulty]
+    simpa [EnvAtom.WellFormed] using ha
+  | readyAbove θ =>
+    obtain ⟨N, hN⟩ := eventually_frac θ ha.2
+    refine ⟨max N 1, fun n hn H g t₀ submit c t => ?_⟩
+    change (EnvPoint.sleeper n H g t₀ submit).ReadyAbove θ c t
+    unfold ReadyAbove
+    rw [sleeper_faulty]
+    have hr := sleeper_card_readyAt n H g t₀ submit (le_of_max_le_right hn) c t
+    have h := hN n (le_of_max_le_left hn)
+    simp only [Finset.card_singleton, Nat.cast_one]
+    nlinarith [ha.1, mul_nonneg (sub_nonneg.2 ha.2.le) (by linarith : (0 : ℚ) ≤
+      ((EnvPoint.sleeper n H g t₀ submit).readyAt c t).card + 1 - n)]
+  | readyOfAll φ =>
+    obtain ⟨N, hN⟩ := eventually_frac φ ha.2
+    refine ⟨max N 1, fun n hn H g t₀ submit c t => ?_⟩
+    change φ * (Fintype.card (Fin (n + 1)) : ℚ) <
+      ((EnvPoint.sleeper n H g t₀ submit).readyAt c t).card
+    have hr := sleeper_card_readyAt n H g t₀ submit (le_of_max_le_right hn) c t
+    have h := hN n (le_of_max_le_left hn)
+    simp only [Fintype.card_fin, Nat.cast_add, Nat.cast_one]
+    linarith
+  | etaSleepy θ η =>
+    obtain ⟨N, hN⟩ := eventually_frac θ ha.2
+    refine ⟨max N 1, fun n hn H g t₀ submit c t => ?_⟩
+    change (EnvPoint.sleeper n H g t₀ submit).EtaSleepy θ ((η : Time) * _) c t
+    unfold EtaSleepy
+    have hr := sleeper_card_readyAt n H g t₀ submit (le_of_max_le_right hn) c t
+    have h := hN n (le_of_max_le_left hn)
+    have hu : (((EnvPoint.sleeper n H g t₀ submit).awakeIn (t - (η : Time) * 1) t ∪
+        (EnvPoint.sleeper n H g t₀ submit).faulty).card : ℚ) ≤ (n : ℚ) + 1 := by
+      have := Finset.card_le_univ ((EnvPoint.sleeper n H g t₀ submit).awakeIn
+        (t - (η : Time) * 1) t ∪ (EnvPoint.sleeper n H g t₀ submit).faulty)
+      rw [Fintype.card_fin] at this
+      exact_mod_cast this
+    have hθ := mul_le_mul_of_nonneg_left hu ha.1
+    change θ * (((EnvPoint.sleeper n H g t₀ submit).awakeIn (t - (η : Time) * 1) t ∪
+        (EnvPoint.sleeper n H g t₀ submit).faulty).card : ℚ) < _
+    linarith
+  | full => exact hc.elim
+  | noWake => exact hc.elim
+
 end EnvPoint
+
+/-- The environment part of a well-formed premise whose atoms all satisfy `q`
+holds on a family of points `pt n x` (population index `n`) from some `n` on,
+whenever its timing constraints hold, if every well-formed atom satisfying `q`
+holds there from some `n` on. -/
+theorem Premise.eventually_evalEnv {Prog : Type} {A W : Nat → Type} [∀ n, Fintype (W n)]
+    [∀ n, DecidableEq (W n)] (pt : ∀ n, A n → EnvPoint (W n)) (q : EnvAtom → Prop)
+    (hq : ∀ a, a.WellFormed → q a → ∃ N : Nat, ∀ n, N ≤ n → ∀ x c t, a.holds (pt n x) c t)
+    (P : Premise Prog) (hP : P.WellFormed) (hPq : P.AtomsAll q) :
+    ∃ N, ∀ n, N ≤ n → ∀ x (σ : Nat → Time) (c : Time),
+      P.TimesHold (pt n x) σ → P.evalEnv (pt n x) c σ := by
+  unfold Premise.evalEnv
+  induction P with
+  | truth => exact ⟨0, fun _ _ _ _ _ _ => trivial⟩
+  | le a b => exact ⟨0, fun _ _ _ _ _ h => h⟩
+  | atTime t a =>
+    obtain ⟨N, hN⟩ := hq a hP.2 hPq
+    exact ⟨N, fun n hn x σ c _ => hN n hn x c _⟩
+  | throughout lo hi a =>
+    obtain ⟨N, hN⟩ := hq a hP.2 hPq
+    exact ⟨N, fun n hn x σ c _ t _ _ => hN n hn x c t⟩
+  | sync => exact ⟨0, fun _ _ _ _ _ _ => trivial⟩
+  | syncUntil b => exact ⟨0, fun _ _ _ _ _ _ => trivial⟩
+  | progress π s => exact ⟨0, fun _ _ _ _ _ _ => trivial⟩
+  | conj P Q ihP ihQ =>
+    obtain ⟨N₁, h₁⟩ := ihP hP.1 hPq.1
+    obtain ⟨N₂, h₂⟩ := ihQ hP.2 hPq.2
+    exact ⟨max N₁ N₂, fun n hn x σ c ht =>
+      ⟨h₁ n (le_of_max_le_left hn) x σ c ht.1, h₂ n (le_of_max_le_right hn) x σ c ht.2⟩⟩
 
 /-- Extremal realizability of the environment part: for every well-formed
 premise there is a population size from which the extremal point satisfies the
@@ -368,25 +642,34 @@ theorem Premise.extremal_realizable {Prog : Type} (P : Premise Prog) (hP : P.Wel
     ∃ N, ∀ n, N ≤ n → ∀ H g submit (σ : Nat → Time) (c : Time),
       P.TimesHold (EnvPoint.extremal n H g submit) σ →
       P.evalEnv (EnvPoint.extremal n H g submit) c σ := by
-  unfold Premise.evalEnv
-  induction P with
-  | truth => exact ⟨0, fun _ _ _ _ _ _ _ _ => trivial⟩
-  | le a b => exact ⟨0, fun _ _ _ _ _ _ _ h => h⟩
-  | atTime t a =>
-    obtain ⟨N, hN⟩ := EnvPoint.extremal_atom a hP
-    exact ⟨N, fun n hn H g submit σ c _ => hN n hn H g submit c _⟩
-  | throughout lo hi a =>
-    obtain ⟨N, hN⟩ := EnvPoint.extremal_atom a hP
-    exact ⟨N, fun n hn H g submit σ c _ t _ _ => hN n hn H g submit c t⟩
-  | sync => exact ⟨0, fun _ _ _ _ _ _ _ _ => trivial⟩
-  | syncUntil b => exact ⟨0, fun _ _ _ _ _ _ _ _ => trivial⟩
-  | progress π s => exact ⟨0, fun _ _ _ _ _ _ _ _ => trivial⟩
-  | conj P Q ihP ihQ =>
-    obtain ⟨N₁, h₁⟩ := ihP hP.1
-    obtain ⟨N₂, h₂⟩ := ihQ hP.2
-    exact ⟨max N₁ N₂, fun n hn H g submit σ c ht =>
-      ⟨h₁ n (le_of_max_le_left hn) H g submit σ c ht.1,
-        h₂ n (le_of_max_le_right hn) H g submit σ c ht.2⟩⟩
+  have hall : P.AtomsAll (fun _ => True) := by
+    induction P with
+    | conj P Q ihP ihQ => exact ⟨ihP hP.1, ihQ hP.2⟩
+    | _ => trivial
+  obtain ⟨N, hN⟩ := Premise.eventually_evalEnv
+    (A := fun n => Time × Time × (Fin (n + 1) → Time → List Tx))
+    (fun n x => EnvPoint.extremal n x.1 x.2.1 x.2.2) (fun _ => True)
+    (fun a ha _ => by
+      obtain ⟨N, hN⟩ := EnvPoint.extremal_atom a ha
+      exact ⟨N, fun n hn x c t => hN n hn _ _ _ c t⟩) P hP hall
+  exact ⟨N, fun n hn H g submit σ c ht => hN n hn (H, g, submit) σ c ht⟩
+
+/-- Sleeper realizability of the environment part: for every well-formed
+premise whose atoms are all counting atoms, there is a population size from
+which the sleeper point (one honest validator asleep at `t₀`) satisfies the
+premise's environment part as soon as its timing constraints hold. -/
+theorem Premise.sleeper_realizable {Prog : Type} (P : Premise Prog) (hP : P.WellFormed)
+    (hc : P.AtomsAll EnvAtom.Counting) :
+    ∃ N, ∀ n, N ≤ n → ∀ H g t₀ submit (σ : Nat → Time) (c : Time),
+      P.TimesHold (EnvPoint.sleeper n H g t₀ submit) σ →
+      P.evalEnv (EnvPoint.sleeper n H g t₀ submit) c σ := by
+  obtain ⟨N, hN⟩ := Premise.eventually_evalEnv
+    (A := fun n => Time × Time × Time × (Fin (n + 1) → Time → List Tx))
+    (fun n x => EnvPoint.sleeper n x.1 x.2.1 x.2.2.1 x.2.2.2) EnvAtom.Counting
+    (fun a ha hca => by
+      obtain ⟨N, hN⟩ := EnvPoint.sleeper_atom a ha hca
+      exact ⟨N, fun n hn x c t => hN n hn _ _ _ _ c t⟩) P hP hc
+  exact ⟨N, fun n hn H g t₀ submit σ c ht => hN n hn (H, g, t₀, submit) σ c ht⟩
 
 end Consensus
 

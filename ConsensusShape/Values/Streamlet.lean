@@ -7,8 +7,9 @@ public import ConsensusShape.Values.Common
 
 Final-only (`bftCore`) on a grid of `2·Δ` slots, one proposer per slot,
 polling disabled, one committee kind (votes) at phase 1 signed by every key.
-Contract (index: the recurrence gap `k : ℕ+`): safety under fewer than a third
-faulty, no escape, no accountability; liveness from GST under partial
+Contract (index: the recurrence gap `k : ℕ+`): safety with no premise, escaped
+by global slashability of a third, and local accountability for a third
+(conflicting notarizations convict their signers); liveness from GST under partial
 synchrony, fewer than a third faulty, full participation from GST, and five
 consecutive honest ready proposers (`streamletPattern`) in every window of
 `k` slots from GST, with latency `latency k` (`Δ`-coefficient). -/
@@ -51,8 +52,9 @@ def streamletContract (catchUp : Nat) (latency : Affine) : Contract bftCore Prog
   catchUp := catchUp
   spec
     | .final => some
-        { safety := { premise := faultsBelowThird }
-          live := ⟨streamletLivePremise, fun _ => .gst, fun k => latency.eval k⟩ }
+        { safety := { premise := .truth, escape := some (1 / 3) }
+          live := ⟨streamletLivePremise, fun _ => .gst, fun k => latency.eval k⟩
+          accountable := some (1 / 3) }
     | _ => none
 
 theorem streamletContract_wellFormed (catchUp : Nat) (latency : Affine) :
@@ -63,11 +65,11 @@ theorem streamletContract_wellFormed (catchUp : Nat) (latency : Affine) :
   · cases h
   · cases h
   · obtain rfl := Option.some.inj h
-    refine ⟨?_, (fun _ h => nomatch h), fun k => ?_, (fun _ h => nomatch h),
-      (fun _ h => nomatch h), (fun _ h => nomatch h)⟩
-    · norm_num [faultsBelowThird, Premise.WellFormed, EnvAtom.WellFormed]
-    · norm_num [streamletLivePremise, faultsBelowThird, fromGST, Premise.WellFormed,
-        EnvAtom.WellFormed]
+    have ha : FracWF (some (1 / 3 : ℚ)) := fun α h => by cases h; norm_num
+    refine ⟨trivial, ha, fun k => ?_, ha, (fun _ h => nomatch h), (fun _ h => nomatch h),
+      fun _ => trivial, (fun _ h => nomatch h)⟩
+    norm_num [streamletLivePremise, faultsBelowThird, fromGST, Premise.WellFormed,
+      EnvAtom.WellFormed, TimeExpr.HorizonFree]
 
 /-- Non-vacuity of the Streamlet contract for every family with the
 skeleton's proposer selection size and grid. -/
@@ -87,9 +89,7 @@ theorem streamlet_realizable {Info : Type} [DecidableEq Info] [Encodable Info]
     · cases h
     · obtain rfl := Option.some.inj h
       exact witness_realizable F _ _ (hwf.caps _ _ h).safety (hs1 _) (fun _ => 0) 0 0 le_rfl
-        (fun _ _ => trivial)
-        (fun _ _ => Premise.progressAll_of_not_usesProgress (by simp [faultsBelowThird,
-          Premise.UsesProgress]))
+        (fun _ _ => trivial) (fun _ _ => trivial)
   · intro c s h k
     change ℕ+ at k
     cases c
@@ -98,10 +98,10 @@ theorem streamlet_realizable {Info : Type} [DecidableEq Info] [Encodable Info]
     · have hw := (hwf.caps _ _ h).live k
       obtain rfl := Option.some.inj h
       refine live_realizable F _ _ hw (hs1 _) _ _ (fun _ => 0)
-        (1 + 2 * ((k : Nat) : Time) + ((latency.eval k : Nat) : Time)) 0 0
+        (1 + 2 * (((k : Nat) + 4 : Nat) : Time) + ((latency.eval k : Nat) : Time)) 0 0
         (fun _ _ => ⟨trivial, trivial, trivial, trivial⟩)
         (fun n submit => ⟨trivial, trivial, trivial, ?_⟩) (fun _ => ?_) le_rfl ?_
-      · change max (EnvPoint.extremal n _ 0 submit).env.gst 0 + ((k : Nat) : Time) *
+      · change max (EnvPoint.extremal n _ 0 submit).env.gst 0 + (((k : Nat) + 4 : Nat) : Time) *
           (F (pubOf (EnvPoint.extremal n _ 0 submit).env)).skel.grid.slotLen
             (EnvPoint.extremal n _ 0 submit).env.Δ ≤ (EnvPoint.extremal n _ 0 submit).horizon
         rw [hG]
@@ -110,7 +110,7 @@ theorem streamlet_realizable {Info : Type} [DecidableEq Info] [Encodable Info]
         rw [max_self]
         linarith [hnn (latency.eval k)]
       · simp [TimeExpr.eval, EnvPoint.extremal]
-      · simp
+      · have := hnn ((k : Nat) + 4); push_cast at this ⊢; simp only [max_self]; linarith
   · intro c s P h hP
     cases c
     · cases h

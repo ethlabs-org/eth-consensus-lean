@@ -35,7 +35,7 @@ theorem ledgerTrace (rho : Model.Run (compiled F) E) :
     (sysOf O (compiled F) V).trace ⟨E, rho⟩ = (chainTrace rho).map ledgerOf :=
   rfl
 
-/-- Transaction bridge (D-14; port of `liveFrom_txLive`, at the release time
+/-- Transaction bridge (D-14; at the release time
 `τ`): apply `ProposalLive` at `t' − D·Δ`; the honest proposal is released at
 `τ > max t GST + Δ`, within the horizon, by a key awake on `[τ − Δ, τ)`
 (catch-up at least one `Δ`), so partial synchrony puts the transaction in its

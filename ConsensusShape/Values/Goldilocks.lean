@@ -152,6 +152,10 @@ def GoldilocksParams.standard (catchUp eta armingLag outageBudget restoreLag : N
   finStart := finStart
   finDelay := finDelay
 
+/-- `A ∧ X` if `b`, else `X`. -/
+def optConj {Prog : Type} (b : Bool) (A X : Premise Prog) : Premise Prog :=
+  if b then .conj A X else X
+
 namespace GoldilocksParams
 
 variable (P : GoldilocksParams)
@@ -196,7 +200,7 @@ def recoverySpec : RecoverySpec ProgressReq ℕ+ where
 /-- Finality liveness at gap `k`. -/
 def finalPremise (k : ℕ+) : Premise ProgressReq :=
   .conj (P.recoveryPremise k) <|
-  .conj (fromGST (.readyOfAll P.finalityReadyOfAll false)) <|
+  .conj (fromGST (.readyOfAll P.finalityReadyOfAll)) <|
   .progress (P.finReq k) .gst
 
 end GoldilocksParams
@@ -230,7 +234,8 @@ theorem recoveryPremise_wellFormed (hP : P.WellFormed) (k : ℕ+) :
     (P.recoveryPremise k).WellFormed := by
   unfold recoveryPremise optConj
   cases P.recoveryFull <;> cases P.noWakeAfterGST <;>
-    simp [Premise.WellFormed, fromGST, EnvAtom.WellFormed, hP.recoveryAbove]
+    simp [Premise.WellFormed, fromGST, EnvAtom.WellFormed, TimeExpr.HorizonFree,
+      hP.recoveryAbove]
 
 end GoldilocksParams
 
@@ -239,24 +244,32 @@ theorem goldilocksContract_wellFormed (P : GoldilocksParams) (hP : P.WellFormed)
     (goldilocksContract P).WellFormed := by
   have hl : ∀ k, (P.livePremise k).WellFormed := fun k => by
     simp [livePremise, Premise.WellFormed, sleepy, Premise.always, EnvAtom.WellFormed,
-      hP.sleepyAbove]
+      TimeExpr.HorizonFree, TimeExpr.Fixed, hP.sleepyAbove]
   have hs : (sleepy P.sleepyAbove : Premise ProgressReq).WellFormed := by
-    simp [Premise.WellFormed, sleepy, Premise.always, EnvAtom.WellFormed, hP.sleepyAbove]
+    simp [Premise.WellFormed, sleepy, Premise.always, EnvAtom.WellFormed, TimeExpr.HorizonFree,
+      TimeExpr.Fixed, hP.sleepyAbove]
   have ha : FracWF (some P.accFrac) := fun α h => by cases h; exact hP.accFrac
   have hr : ∀ R, some P.recoverySpec = some R → (∀ i, (R.premise i).WellFormed) ∧ FracWF R.escape :=
     fun R h => by cases h; exact ⟨recoveryPremise_wellFormed hP, ha⟩
+  have hst : ∀ R, some P.recoverySpec = some R → ∀ i, (R.start i).HorizonFree :=
+    fun R h i => by cases h; trivial
   constructor
   intro c s h
   cases c <;> obtain rfl := Option.some.inj h
-  · exact ⟨hs, (fun _ h => nomatch h), hl, (fun _ h => nomatch h), (fun _ h => nomatch h), hr⟩
-  · refine ⟨hs, (fun _ h => nomatch h), hl, (fun _ h => nomatch h), ?_, hr⟩
+  · exact ⟨hs, (fun _ h => nomatch h), hl, (fun _ h => nomatch h), (fun _ h => nomatch h), hr,
+      fun _ => trivial, hst⟩
+  · refine ⟨hs, (fun _ h => nomatch h), hl, (fun _ h => nomatch h), ?_, hr, fun _ => trivial,
+      hst⟩
     intro R h
     cases h
     norm_num [resiliencePremise, Premise.WellFormed, outageWindow, before, after, coverMajority,
-      EnvAtom.WellFormed, hP.sleepyAbove, hP.stableEtaAbove, hP.afterAbove]
-  · refine ⟨trivial, ha, fun k => ?_, ha, (fun _ h => nomatch h), (fun _ h => nomatch h)⟩
+      EnvAtom.WellFormed, TimeExpr.HorizonFree, TimeExpr.Fixed, hP.sleepyAbove, hP.stableEtaAbove,
+      hP.afterAbove]
+  · refine ⟨trivial, ha, fun k => ?_, ha, (fun _ h => nomatch h), (fun _ h => nomatch h),
+      fun _ => trivial, (fun _ h => nomatch h)⟩
     exact ⟨recoveryPremise_wellFormed hP k, by
-      simp [Premise.WellFormed, fromGST, EnvAtom.WellFormed, hP.finalityReadyOfAll], trivial⟩
+      simp [Premise.WellFormed, fromGST, EnvAtom.WellFormed, TimeExpr.HorizonFree,
+        hP.finalityReadyOfAll], trivial⟩
 
 section Realizable
 
@@ -264,19 +277,23 @@ variable {Info : Type} [DecidableEq Info] [Encodable Info]
 
 open GoldilocksParams
 
-/-- Every progress window of gap `k` from a start `≤ 0` fits a horizon
-`H ≥ 4k` on the Goldilocks grid at the extremal point. -/
+/-- Every progress window of `w` slots (gap plus span) from a start `≤ 0`
+fits a horizon `H ≥ 4w` on the Goldilocks grid at the extremal point. -/
 theorem goldilocks_window (F : ShapeFamily goldilocksSchema Info)
     (hG : ∀ pub, (F pub).skel.grid = goldilocksGrid) {n : Nat} {H : Time}
-    {submit : Fin (n + 1) → Time → List Tx} {k : ℕ+} (hk : 4 * ((k : Nat) : Time) ≤ H)
+    {submit : Fin (n + 1) → Time → List Tx} {w : Nat} (hk : 4 * (w : Time) ≤ H)
     {s : Time} (hs : s ≤ 0) :
-    max s 0 + ((k : Nat) : Time) *
+    max s 0 + (w : Time) *
       (F (pubOf (EnvPoint.extremal n H 0 submit).env)).skel.grid.slotLen
         (EnvPoint.extremal n H 0 submit).env.Δ ≤ H := by
   rw [hG, max_eq_right hs]
   simp only [TimeGrid.slotLen, goldilocksGrid, EnvPoint.extremal]
   push_cast
   linarith
+
+/-- The head requirement's window: its gap (its pattern has span 0). -/
+theorem headReq_window (k : ℕ+) :
+    (((headReq k).gap : Nat) + (headReq k).pattern.span : Nat) = (k : Nat) := rfl
 
 /-- Non-vacuity of the Goldilocks contract for every family with the
 skeleton's proposer selection size and grid. -/
@@ -297,7 +314,8 @@ theorem goldilocks_realizable (P : GoldilocksParams) (hP : P.WellFormed)
     unfold ProgressActive recoveryPremise optConj
     cases P.recoveryFull <;> cases P.noWakeAfterGST <;>
       simp only [Premise.ProgressAll, fromGST, Bool.false_eq_true, ↓reduceIte, true_and] <;>
-      exact goldilocks_window F hG hk (by simp [TimeExpr.eval, EnvPoint.extremal])
+      exact goldilocks_window F hG (by rw [headReq_window]; exact hk)
+        (by simp [TimeExpr.eval, EnvPoint.extremal])
   have hrecT (k : ℕ+) (H : Time) (n : Nat) submit :
       (P.recoveryPremise k).TimesHold (EnvPoint.extremal n H 0 submit) (fun _ => 0) := by
     unfold recoveryPremise optConj
@@ -308,7 +326,7 @@ theorem goldilocks_realizable (P : GoldilocksParams) (hP : P.WellFormed)
         (EnvPoint.extremal n H 0 submit) (fun _ => 0) (P.livePremise k) :=
     ⟨Premise.progressAll_of_not_usesProgress
         (by simp [sleepy, Premise.UsesProgress, Premise.always]),
-      goldilocks_window F hG (k := k) hk (by simp [TimeExpr.eval])⟩
+      goldilocks_window F hG (by rw [headReq_window]; exact hk) (by simp [TimeExpr.eval])⟩
   constructor
   · -- Safety premises.
     intro c s h
@@ -340,30 +358,41 @@ theorem goldilocks_realizable (P : GoldilocksParams) (hP : P.WellFormed)
       · exact hliveW k _ (by linarith [hk0 k]) n submit
       · simp [TimeExpr.eval]
       · simp
-    · have hH : 4 * ((k : Nat) : Time) ≤ 1 + ((P.finStart.eval k : Nat) : Time) +
-          4 * ((k : Nat) : Time) + ((P.finDelay.eval k : Nat) : Time) := by
+    · have hsp : (0 : Time) ≤ 4 * ((P.finPattern.span : Nat) : Time) := by positivity
+      have hW : 4 * ((((P.finReq k).gap : Nat) + (P.finReq k).pattern.span : Nat) : Time) ≤
+          1 + ((P.finStart.eval k : Nat) : Time) +
+          4 * (((k : Nat) + P.finPattern.span : Nat) : Time) +
+          ((P.finDelay.eval k : Nat) : Time) := by
+        change 4 * (((k : Nat) + P.finPattern.span : Nat) : Time) ≤ _
+        linarith [hnn (P.finStart.eval k), hnn (P.finDelay.eval k)]
+      have hH : 4 * ((k : Nat) : Time) ≤ 1 + ((P.finStart.eval k : Nat) : Time) +
+          4 * (((k : Nat) + P.finPattern.span : Nat) : Time) +
+          ((P.finDelay.eval k : Nat) : Time) := by
+        push_cast
         linarith [hnn (P.finStart.eval k), hnn (P.finDelay.eval k)]
       refine live_realizable F _ _ hw (hs1 _) _ _ (fun _ => 0) _ 0
         ((P.finStart.eval k : Nat) : Time)
         (fun n submit => ⟨hrecT k _ n submit, trivial, trivial⟩)
         (fun n submit => ⟨hrecW k _ hH n submit, trivial,
-          goldilocks_window F hG hH (by simp [TimeExpr.eval, EnvPoint.extremal])⟩)
+          goldilocks_window F hG hW (by simp [TimeExpr.eval, EnvPoint.extremal])⟩)
         (fun n => ?_) (hnn _) ?_
       · simp [TimeExpr.eval, EnvPoint.extremal]
-      · rw [max_eq_left (hnn _)]; linarith [hk0 k]
-  · -- The resilience premise.
+      · rw [max_eq_left (hnn _)]; push_cast; linarith [hk0 k, hnn P.finPattern.span]
+  · -- The resilience premise, at the sleeper point.
     intro c s Q h hQ
     have hw := (hwf.caps c s h).resilience Q hQ
     cases c <;> obtain rfl := Option.some.inj h <;> cases hQ
     let L : Time := P.armingLag
     let σ : Nat → Time := fun i => if i = 0 then 1 else L + 1 + i
     have hb := hP.outageBudget_pos
-    refine resilience_realizable F _ _ hw (hs1 _) σ (L + 3 + P.restoreLag) 0
+    refine resilience_realizable F _ _ hw ?_ (hs1 _) σ (L + 3 + P.restoreLag) 0
       (fun n submit => ?_)
       (fun n submit => Premise.progressAll_of_not_usesProgress ?_) ?_
+    · simp [resiliencePremise, Premise.AtomsAll, EnvAtom.Counting, outageWindow, before, after,
+        coverMajority]
     · have : (1 : Time) ≤ P.outageBudget := by exact_mod_cast hb
       simp only [resiliencePremise, Premise.TimesHold, outageWindow, TimeExpr.eval,
-        EnvPoint.extremal, σ, L]
+        EnvPoint.sleeper, σ, L]
       push_cast
       refine ⟨⟨?_, ?_, ?_, ?_, ?_⟩, trivial, trivial, trivial, trivial, trivial, ?_, trivial⟩ <;>
         norm_num <;> linarith [hnn P.restoreLag, hnn P.armingLag]

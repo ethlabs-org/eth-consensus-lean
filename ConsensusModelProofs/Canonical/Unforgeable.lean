@@ -92,12 +92,6 @@ theorem safeBefore_mono {i j : Nat} (hij : i ≤ j) {o : (protoOf F E).Object}
     (h : rho.SafeBefore i o) : rho.SafeBefore j o :=
   fun d hd => rho.signedBefore_mono hij (h d hd)
 
-theorem stateBefore_succ {i : Nat} {e : Event V (protoOf F E).Object}
-    (hi : rho.events[i]? = some e) :
-    rho.stateBefore (i + 1) = rho.step (rho.stateBefore i) e := by
-  simp only [stateBefore, List.take_add_one, hi, Option.toList_some, List.foldl_append,
-    List.foldl_cons, List.foldl_nil]
-
 theorem tick_safe {i : Nat} {v : V} {t : Time}
     (hi : rho.events[i]? = some (.tick v t))
     (hs : ∀ o ∈ (rho.stateBefore i v).seen, rho.SafeBefore i o) :

@@ -6,7 +6,7 @@ public import Mathlib.Tactic
 
 /-! # Time grid (building block)
 
-Slots of `slotTicks · Δ` time units; slot `s` starts at `s · slotLen`. Duties of
+Slots of `slotDeltas · Δ` time units; slot `s` starts at `s · slotLen`. Duties of
 a shape sit at `slotTime s + j · Δ` (phase `j`). Time is integer, so slots exist
 only from time 0 on (slot 0 starts at 0). -/
 
@@ -15,18 +15,18 @@ namespace Consensus.Blocks
 /-- A slot index. -/
 abbrev Slot := Nat
 
-/-- Slots of `slotTicks · Δ`; duties sit at `slotTime s + j · Δ` (phase `j`). -/
+/-- Slots of `slotDeltas · Δ`; duties sit at `slotTime s + j · Δ` (phase `j`). -/
 structure TimeGrid where
   /-- The slot length in multiples of `Δ`; positive. -/
-  slotTicks : Nat
-  slotTicks_pos : 0 < slotTicks
+  slotDeltas : Nat
+  slotDeltas_pos : 0 < slotDeltas
 
 namespace TimeGrid
 
 variable (G : TimeGrid)
 
-/-- The slot length in time units: `slotTicks · Δ`. -/
-def slotLen (Δ : Time) : Time := (G.slotTicks : Time) * Δ
+/-- The slot length in time units: `slotDeltas · Δ`. -/
+def slotLen (Δ : Time) : Time := (G.slotDeltas : Time) * Δ
 
 /-- The start time of slot `s`: `s · slotLen`. -/
 def slotTime (Δ : Time) (s : Slot) : Time := (s : Time) * G.slotLen Δ
@@ -37,7 +37,7 @@ def slotAt? (Δ off t : Time) : Option Slot :=
   else none
 
 theorem slotLen_pos {Δ : Time} (hΔ : 0 < Δ) : 0 < G.slotLen Δ :=
-  Int.mul_pos (by exact_mod_cast G.slotTicks_pos) hΔ
+  Int.mul_pos (by exact_mod_cast G.slotDeltas_pos) hΔ
 
 theorem slotTime_nonneg {Δ : Time} (hΔ : 0 < Δ) (s : Slot) : 0 ≤ G.slotTime Δ s :=
   Int.mul_nonneg (by positivity) (G.slotLen_pos hΔ).le

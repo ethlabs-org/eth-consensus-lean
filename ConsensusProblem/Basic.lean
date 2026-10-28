@@ -35,9 +35,12 @@ abbrev Ledger := List Tx
 /-- Two lists are on one branch. -/
 def Compatible {α : Type} (a b : List α) : Prop := a <+: b ∨ b <+: a
 
-/-- The three services a protocol may provide: an available ledger (live under
-dynamic participation), a resilient ledger (persists through bounded
-outages), and a final ledger (safe under asynchrony, accountable). -/
+/-- The three services a protocol may provide. The names state the intent: an
+available ledger (live under dynamic participation), a resilient ledger
+(persists through bounded outages), and a final ledger (safe under asynchrony,
+accountable). What is claimed for a capability is exactly its specification in
+the protocol's contract (`CapSpec`); only `final`'s monotonicity and the
+nesting order are unconditional. -/
 inductive Capability where
   | available
   | resilient
@@ -134,16 +137,13 @@ def ReadyAbove (θ : ℚ) (c t : Time) : Prop :=
 /-- Fewer than fraction `β` of all validators are faulty. -/
 def FaultsBelow (β : ℚ) : Prop := (p.faulty.card : ℚ) < β * Fintype.card V
 
+/-- At most `m` validators are faulty (an absolute fault bound, for latencies
+that depend on the number of faults). -/
+def FaultsAtMost (m : Nat) : Prop := p.faulty.card ≤ m
+
 /-- More than fraction `φ` of all validators are ready. -/
 def ReadyOfAll (φ : ℚ) (c t : Time) : Prop :=
   φ * Fintype.card V < ((p.readyAt c t).card : ℚ)
-
-/-- At least fraction `φ` of all validators are ready. -/
-def ReadyOfAllAtLeast (φ : ℚ) (c t : Time) : Prop :=
-  φ * Fintype.card V ≤ ((p.readyAt c t).card : ℚ)
-
-/-- More ready honest validators than faulty ones. -/
-def ReadyMajority (c t : Time) : Prop := p.faulty.card < (p.readyAt c t).card
 
 /-- `|ready_t| > θ · |H_[t−η,t] ∪ faulty|`. -/
 def EtaSleepy (θ : ℚ) (η c t : Time) : Prop :=
