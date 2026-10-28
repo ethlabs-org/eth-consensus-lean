@@ -24,7 +24,18 @@ public import Mathlib.Tactic
 * `faithful_relayedRun`: on the model test run, the system's log is the
   engine's (`sysOf_log_faithful`): inbox and sends. `faithful_receipt`: a run
   with a real delivery; its receipt is in the system's log, tagged with the
-  run's environment, and a foreign tag is not. -/
+  run's environment, and a foreign tag is not.
+* `silent_run_valid` (stage 2; review Opus N2): for every protocol and run
+  data, the canonical run with GST past the horizon is a valid run with no
+  receipts at all, and it violates `PSync g'` at every `g'` for which some
+  honest send has a deadline `max t g' + Δ` in the horizon at which an awake
+  honest node has not sent the message itself (`silent_not_psync`, an L0
+  fact about logs with no receipts). So `Adequate.covers` includes runs that
+  no network premise admits.
+* `truncate_relayedRun` (stage 2): a concrete valid run (both validators tick
+  at `0, 1, 2`; `42` relayed at `1`) truncated at `1` is valid, keeps exactly
+  the four ticks at times `≤ 1`, is the L0 prefix of the full trace at `1`,
+  and still holds the relayed transaction in its log. -/
 
 namespace Consensus.Shape.Tests.Network
 open Consensus
@@ -178,6 +189,113 @@ theorem faithful_receipt (o : (protoOf Model.family Model.env).Object) :
   intro E' o' v t hE hr
   obtain ⟨o'', he⟩ := hf.2.2.1 v _ t (Or.inr hr)
   exact hE (congrArg Sigma.fst he)
+
+/-- A log with no receipts is not partially synchronous with GST `g'` once an
+honest send at `t` has a deadline `d = max t g' + Δ` in the horizon at which an
+awake honest node has not sent the message itself by `d`. -/
+theorem silent_not_psync {V M : Type} (p : EnvPoint V) (L : CommLog V M)
+    (hq : ∀ w m t, ¬ L.recv w m t) {g' t : Time} {v w : V} {m : M} (hv : v ∈ p.honest)
+    (hs : L.sent v m t) (hw : w ∈ p.honest) (hd : max t g' + p.env.Δ ≤ p.horizon)
+    (ha : p.env.awake w (max t g' + p.env.Δ) = true)
+    (hns : ∀ t', t' ≤ max t g' + p.env.Δ → ¬ L.sent w m t') : ¬ L.PSync p g' := by
+  intro h
+  obtain ⟨t', ht', hs', -⟩ := h.msgs v hv m t hs w hw hd hd ha
+  rcases hs' with hs' | hr
+  · exact hns t' ht' hs'
+  · exact hq _ _ _ hr
+
+open Consensus.Model in
+/-- Silent runs are valid: for every protocol and run data, there is a valid
+run with no receipts (the canonical run with GST `horizon + 1`), and it
+violates `PSync g'` whenever an honest send at `t` must reach, by the reachable
+deadline `max t g' + Δ`, an awake honest node that did not send it itself. -/
+theorem silent_run_valid (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
+    [DecidableEq V] (E : Env V) (honest : Finset V) (horizon : Time) (hh : 0 ≤ horizon)
+    (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
+    (hsel : ∀ r, ((protoOf F E).selSpec r).Admits (sel r))
+    (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) :
+    ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
+      let rho := mkRun (F := F) (E := E) honest horizon key sel submit relay hash events
+      rho.ExecutionValid ∧ (∀ w o t, ¬ rho.receives w o t) ∧
+        ∀ g' v w o t, v ∈ honest → rho.releases v o t → w ∈ honest →
+          max t g' + E.Δ ≤ horizon → E.awake w (max t g' + E.Δ) = true →
+          (∀ t', t' ≤ max t g' + E.Δ → ¬ rho.releases w o t') →
+          ¬ CommLog.PSync rho.point rho.log g' := by
+  obtain ⟨relay, events, hv, he⟩ :=
+    canonical_run_from O F V E honest horizon hh key sel hsel submit hash (horizon + 1)
+  refine ⟨relay, events, hv, ?_, ?_⟩
+  · intro w o t hr
+    have hq := he.quiet w o t hr
+    obtain ⟨i, hi⟩ := hr
+    have := (hv.in_horizon _ (List.mem_of_getElem? hi)).2
+    change t ≤ horizon at this
+    change horizon + 1 ≤ t at hq
+    dsimp only [Time] at *
+    omega
+  · intro g' v w o t hvh hs hw hd ha hns
+    refine silent_not_psync _ _ ?_ hvh hs hw hd ha hns
+    intro w' o' t' hr
+    have hq := he.quiet w' o' t' hr
+    obtain ⟨i, hi⟩ := hr
+    have := (hv.in_horizon _ (List.mem_of_getElem? hi)).2
+    change t' ≤ horizon at this
+    change horizon + 1 ≤ t' at hq
+    dsimp only [Time] at *
+    omega
+
+open Consensus.Model in
+/-- Both validators tick at `0, 1, 2`; `42` is relayed to both at `1`. -/
+def tickedRun : Run Model.family Model.env :=
+  mkRun Finset.univ 2 Model.pki Model.sel (fun _ _ => []) (fun _ t => if t = 1 then [42] else [])
+    (fun _ => 0)
+    [.tick 0 0, .tick 1 0, .tick 0 1, .tick 1 1, .tick 0 2, .tick 1 2]
+
+open Consensus.Model in
+theorem tickedRun_valid : tickedRun.ExecutionValid := by
+  have hnd : ∀ (i : Nat) (w : Fin 2) (o : (protoOf Model.family Model.env).Object) (t : Time),
+      tickedRun.events[i]? ≠ some (Event.deliver w o t) := by
+    intro i w o t h
+    have := List.mem_of_getElem? h
+    simp [tickedRun, mkRun] at this
+  refine ⟨⟨by decide, ?_, ?_, ?_, ?_, ?_⟩, ⟨?_, ?_, ?_, ?_⟩, ?_, Model.sel_valid _ rfl, ?_⟩
+  · simp [tickedRun, mkRun, Event.keyLe, Event.time, Event.phase]
+  · simp [tickedRun, mkRun]
+  · intro e he
+    simp only [tickedRun, mkRun, List.mem_cons, List.not_mem_nil, or_false] at he
+    rcases he with rfl | rfl | rfl | rfl | rfl | rfl <;> decide
+  · intro e _
+    exact Finset.mem_univ _
+  · intro v _ t ht0 ht2 _
+    change t ≤ 2 at ht2
+    fin_cases v <;> interval_cases t <;> simp [tickedRun, mkRun]
+  · intro v t _
+    rfl
+  · intro v o t _
+    rfl
+  · intro v t he
+    simp [tickedRun, mkRun] at he
+  · intro v _ t _ _ hw
+    exact absurd hw.2 (by simp [Model.env])
+  · intro i w o t h
+    exact absurd h (hnd i w o t)
+  · intro i w o t h
+    exact absurd h (hnd i w o t)
+
+open Consensus.Model in
+/-- Truncating the valid run at `1` keeps the four ticks at times `≤ 1` and
+drops those at `2`; the truncation is valid, its trace is the L0 prefix of the
+full trace at `1`, and its log still has the transaction relayed at `1`. -/
+theorem truncate_relayedRun :
+    (tickedRun.truncate 1).events = [.tick 0 0, .tick 1 0, .tick 0 1, .tick 1 1] ∧
+    (tickedRun.truncate 1).ExecutionValid ∧
+    ((sysOf Model.schema Model.family (Fin 2)).trace ⟨Model.env, tickedRun.truncate 1⟩).PrefixOf
+      ((sysOf Model.schema Model.family (Fin 2)).trace ⟨Model.env, tickedRun⟩) 1 ∧
+    42 ∈ ((sysOf Model.schema Model.family (Fin 2)).log
+      ⟨Model.env, tickedRun.truncate 1⟩).inbox 0 1 := by
+  refine ⟨?_, Run.truncate_valid tickedRun_valid (by decide) (by decide),
+    (Run.truncate_prefix tickedRun_valid 1).1, ?_⟩
+  · simp [Run.truncate, tickedRun, mkRun, Event.time]
+  · simp [sysOf, Run.truncate, tickedRun, mkRun, Run.inbox]
 
 end Consensus.Shape.Tests.Network
 

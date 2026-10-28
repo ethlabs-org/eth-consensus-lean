@@ -5,7 +5,11 @@ public import ConsensusModelProofs.Canonical.Events
 
 /-! The canonical scheduler and its schedule/sleep proofs. Each integer time
 has three phases: wake restarts, ticks, then eager deliveries. Each
-phase uses the fixed order from the honest finset and the released pool. -/
+phase uses the fixed order from the honest finset and the released pool.
+The scheduler is parameterised by a GST `g`: the delivery layer is empty at
+times `< g` (no message is received before `g`), and from `g` on every
+released object is delivered to every awake honest node. `g ≤ 0` is the
+eager schedule; `g` past the horizon gives a silent network. -/
 
 namespace Consensus.Model
 
@@ -24,22 +28,22 @@ noncomputable def tickEvents (t : Time) : List (Event V (protoOf F E).Object) :=
   exact ((rho.honest.filter (fun v => E.awake v t = true)).toList).map
     (fun v => .tick v t)
 
-noncomputable def deliveryEvents (es : List (Event V (protoOf F E).Object)) (t : Time) :
-    List (Event V (protoOf F E).Object) := by
+noncomputable def deliveryEvents (g : Time) (es : List (Event V (protoOf F E).Object))
+    (t : Time) : List (Event V (protoOf F E).Object) := by
   classical
-  exact ((rho.honest.filter (fun v => E.awake v t = true)).toList).flatMap
-    (fun v => (rho.pool es).map (fun o => .deliver v o t))
+  exact if g ≤ t then ((rho.honest.filter (fun v => E.awake v t = true)).toList).flatMap
+    (fun v => (rho.pool es).map (fun o => .deliver v o t)) else []
 
 noncomputable def front (es : List (Event V (protoOf F E).Object)) (t : Time) :=
   es ++ rho.wakeEvents t ++ rho.tickEvents t
 
-noncomputable def layer (es : List (Event V (protoOf F E).Object)) (t : Time) :=
-  rho.wakeEvents t ++ rho.tickEvents t ++ rho.deliveryEvents (rho.front es t) t
+noncomputable def layer (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time) :=
+  rho.wakeEvents t ++ rho.tickEvents t ++ rho.deliveryEvents g (rho.front es t) t
 
 /-- The first `n` integer times, starting at zero. -/
-noncomputable def stages : Nat → List (Event V (protoOf F E).Object)
+noncomputable def stages (g : Time) : Nat → List (Event V (protoOf F E).Object)
   | 0 => []
-  | n + 1 => stages n ++ rho.layer (stages n) (n : Time)
+  | n + 1 => stages g n ++ rho.layer g (stages g n) (n : Time)
 
 omit [DecidableEq V] in
 @[simp] theorem mem_wakeEvents (t : Time) (e : Event V (protoOf F E).Object) :
@@ -57,31 +61,33 @@ omit [DecidableEq V] in
   simp only [tickEvents, List.mem_map, Finset.mem_toList, Finset.mem_filter]
   aesop
 
-@[simp] theorem mem_deliveryEvents (es : List (Event V (protoOf F E).Object))
+@[simp] theorem mem_deliveryEvents (g : Time) (es : List (Event V (protoOf F E).Object))
     (t : Time) (e : Event V (protoOf F E).Object) :
-    e ∈ rho.deliveryEvents es t ↔
-      ∃ v ∈ rho.honest, E.awake v t = true ∧
+    e ∈ rho.deliveryEvents g es t ↔
+      g ≤ t ∧ ∃ v ∈ rho.honest, E.awake v t = true ∧
         ∃ o ∈ rho.pool es, e = .deliver v o t := by
   classical
-  simp only [deliveryEvents, List.mem_flatMap, List.mem_map, Finset.mem_toList,
-    Finset.mem_filter]
-  aesop
+  unfold deliveryEvents
+  split_ifs with hg
+  · simp only [List.mem_flatMap, List.mem_map, Finset.mem_toList, Finset.mem_filter]
+    aesop
+  · simp [hg]
 
-theorem layer_time (es : List (Event V (protoOf F E).Object)) (t : Time)
-    {e : Event V (protoOf F E).Object} (he : e ∈ rho.layer es t) : e.time = t := by
+theorem layer_time (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time)
+    {e : Event V (protoOf F E).Object} (he : e ∈ rho.layer g es t) : e.time = t := by
   simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
     mem_deliveryEvents] at he
-  rcases he with (⟨v, _, _, _, rfl⟩ | ⟨v, _, _, rfl⟩) | ⟨v, _, _, o, _, rfl⟩ <;> rfl
+  rcases he with (⟨v, _, _, _, rfl⟩ | ⟨v, _, _, rfl⟩) | ⟨_, v, _, _, o, _, rfl⟩ <;> rfl
 
-theorem layer_honest (es : List (Event V (protoOf F E).Object)) (t : Time)
-    {e : Event V (protoOf F E).Object} (he : e ∈ rho.layer es t) : e.node ∈ rho.honest := by
+theorem layer_honest (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time)
+    {e : Event V (protoOf F E).Object} (he : e ∈ rho.layer g es t) : e.node ∈ rho.honest := by
   simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
     mem_deliveryEvents] at he
-  rcases he with (⟨v, hv, _, _, rfl⟩ | ⟨v, hv, _, rfl⟩) | ⟨v, hv, _, o, _, rfl⟩ <;>
+  rcases he with (⟨v, hv, _, _, rfl⟩ | ⟨v, hv, _, rfl⟩) | ⟨_, v, hv, _, o, _, rfl⟩ <;>
     exact hv
 
-theorem layer_sorted (es : List (Event V (protoOf F E).Object)) (t : Time) :
-    (rho.layer es t).Pairwise Event.keyLe := by
+theorem layer_sorted (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time) :
+    (rho.layer g es t).Pairwise Event.keyLe := by
   classical
   have hw : ∀ e ∈ rho.wakeEvents t, e.time = t ∧ e.phase = 0 := by
     intro e he
@@ -91,9 +97,9 @@ theorem layer_sorted (es : List (Event V (protoOf F E).Object)) (t : Time) :
     intro e he
     obtain ⟨v, _, _, rfl⟩ := (rho.mem_tickEvents t e).mp he
     exact ⟨rfl, rfl⟩
-  have hd : ∀ e ∈ rho.deliveryEvents (rho.front es t) t, e.time = t ∧ e.phase = 2 := by
+  have hd : ∀ e ∈ rho.deliveryEvents g (rho.front es t) t, e.time = t ∧ e.phase = 2 := by
     intro e he
-    obtain ⟨v, _, _, o, _, rfl⟩ := (rho.mem_deliveryEvents _ t e).mp he
+    obtain ⟨_, v, _, _, o, _, rfl⟩ := (rho.mem_deliveryEvents g _ t e).mp he
     exact ⟨rfl, rfl⟩
   have block {l : List (Event V (protoOf F E).Object)} {k : Nat}
       (h : ∀ e ∈ l, e.time = t ∧ e.phase = k) : l.Pairwise Event.keyLe := by
@@ -110,8 +116,8 @@ theorem layer_sorted (es : List (Event V (protoOf F E).Object)) (t : Time) :
     · exact Or.inr ⟨(hw e he).1.trans hf'.1.symm, by rw [(hw e he).2, hf'.2]; decide⟩
     · exact Or.inr ⟨(ht e he).1.trans hf'.1.symm, by rw [(ht e he).2, hf'.2]; decide⟩
 
-theorem layer_nodup (es : List (Event V (protoOf F E).Object)) (t : Time) :
-    (rho.layer es t).Nodup := by
+theorem layer_nodup (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time) :
+    (rho.layer g es t).Nodup := by
   classical
   have hw : (rho.wakeEvents t).Nodup := by
     apply List.Nodup.map _ (Finset.nodup_toList _)
@@ -121,8 +127,11 @@ theorem layer_nodup (es : List (Event V (protoOf F E).Object)) (t : Time) :
     apply List.Nodup.map _ (Finset.nodup_toList _)
     intro a b h
     exact Event.tick.inj h |>.1
-  have hd : (rho.deliveryEvents (rho.front es t) t).Nodup := by
+  have hd : (rho.deliveryEvents g (rho.front es t) t).Nodup := by
     unfold deliveryEvents
+    split_ifs
+    swap
+    · exact List.nodup_nil
     rw [List.nodup_flatMap]
     constructor
     · intro v hv
@@ -143,11 +152,11 @@ theorem layer_nodup (es : List (Event V (protoOf F E).Object)) (t : Time) :
     simp at hf
   · intro e he f hf hef
     subst f
-    obtain ⟨v, _, _, o, _, rfl⟩ := (rho.mem_deliveryEvents _ t e).mp hf
+    obtain ⟨_, v, _, _, o, _, rfl⟩ := (rho.mem_deliveryEvents g _ t e).mp hf
     simp at he
 
-theorem stages_time (n : Nat) {e : Event V (protoOf F E).Object}
-    (he : e ∈ rho.stages n) : 0 ≤ e.time ∧ e.time < (n : Time) := by
+theorem stages_time (g : Time) (n : Nat) {e : Event V (protoOf F E).Object}
+    (he : e ∈ rho.stages g n) : 0 ≤ e.time ∧ e.time < (n : Time) := by
   induction n with
   | zero => simp [stages] at he
   | succ n ih =>
@@ -156,32 +165,32 @@ theorem stages_time (n : Nat) {e : Event V (protoOf F E).Object}
       constructor
       · exact this.1
       · exact lt_trans this.2 (by exact_mod_cast Nat.lt_succ_self n)
-    · rw [rho.layer_time _ _ he]
+    · rw [rho.layer_time g _ _ he]
       exact ⟨Int.natCast_nonneg n, by exact_mod_cast Nat.lt_succ_self n⟩
 
-theorem stages_sorted (n : Nat) : (rho.stages n).Pairwise Event.keyLe := by
+theorem stages_sorted (g : Time) (n : Nat) : (rho.stages g n).Pairwise Event.keyLe := by
   induction n with
   | zero => simp [stages]
   | succ n ih =>
     rw [stages, List.pairwise_append]
-    refine ⟨ih, rho.layer_sorted _ _, ?_⟩
+    refine ⟨ih, rho.layer_sorted g _ _, ?_⟩
     intro e he f hf
-    exact Or.inl (by rw [rho.layer_time _ _ hf]; exact (rho.stages_time n he).2)
+    exact Or.inl (by rw [rho.layer_time g _ _ hf]; exact (rho.stages_time g n he).2)
 
-theorem stages_nodup (n : Nat) : (rho.stages n).Nodup := by
+theorem stages_nodup (g : Time) (n : Nat) : (rho.stages g n).Nodup := by
   induction n with
   | zero => simp [stages]
   | succ n ih =>
     rw [stages, List.nodup_append]
-    refine ⟨ih, rho.layer_nodup _ _, ?_⟩
+    refine ⟨ih, rho.layer_nodup g _ _, ?_⟩
     intro e he f hf hef
     subst f
-    have := (rho.stages_time n he).2
-    rw [rho.layer_time _ _ hf] at this
+    have := (rho.stages_time g n he).2
+    rw [rho.layer_time g _ _ hf] at this
     exact lt_irrefl _ this
 
-theorem mem_stages (n : Nat) (e : Event V (protoOf F E).Object) :
-    e ∈ rho.stages n ↔ ∃ k < n, e ∈ rho.layer (rho.stages k) (k : Time) := by
+theorem mem_stages (g : Time) (n : Nat) (e : Event V (protoOf F E).Object) :
+    e ∈ rho.stages g n ↔ ∃ k < n, e ∈ rho.layer g (rho.stages g k) (k : Time) := by
   induction n with
   | zero => simp [stages]
   | succ n ih =>
@@ -197,13 +206,13 @@ theorem mem_stages (n : Nat) (e : Event V (protoOf F E).Object) :
         subst k
         exact Or.inr he
 
-/-- The run through the inclusive horizon. -/
-noncomputable def canonicalEvents := rho.stages (rho.horizon.toNat + 1)
+/-- The run through the inclusive horizon, with GST `g`. -/
+noncomputable def canonicalEvents (g : Time) := rho.stages g (rho.horizon.toNat + 1)
 
-theorem canonical_in_horizon (h0 : 0 ≤ rho.horizon)
-    {e : Event V (protoOf F E).Object} (he : e ∈ rho.canonicalEvents) :
+theorem canonical_in_horizon (g : Time) (h0 : 0 ≤ rho.horizon)
+    {e : Event V (protoOf F E).Object} (he : e ∈ (rho.canonicalEvents g)) :
     0 ≤ e.time ∧ e.time ≤ rho.horizon := by
-  have h := rho.stages_time _ he
+  have h := rho.stages_time g _ he
   have hn : (rho.horizon.toNat : Int) = rho.horizon := Int.toNat_of_nonneg h0
   change 0 ≤ (e.time : Int) ∧ (e.time : Int) ≤ rho.horizon
   change 0 ≤ (e.time : Int) ∧ (e.time : Int) < ((rho.horizon.toNat + 1 : Nat) : Int) at h
@@ -211,38 +220,38 @@ theorem canonical_in_horizon (h0 : 0 ≤ rho.horizon)
   dsimp [Time] at *
   omega
 
-theorem canonical_layer (t : Time) (h0 : 0 ≤ t) (hh : t ≤ rho.horizon)
+theorem canonical_layer (g : Time) (t : Time) (h0 : 0 ≤ t) (hh : t ≤ rho.horizon)
     {e : Event V (protoOf F E).Object}
-    (he : e ∈ rho.layer (rho.stages t.toNat) t) : e ∈ rho.canonicalEvents := by
-  apply (rho.mem_stages _ e).mpr
+    (he : e ∈ rho.layer g (rho.stages g t.toNat) t) : e ∈ (rho.canonicalEvents g) := by
+  apply (rho.mem_stages g _ e).mpr
   refine ⟨t.toNat, ?_, ?_⟩
   · have := Int.toNat_le_toNat hh
     omega
   · simpa only [Int.toNat_of_nonneg h0] using he
 
-theorem canonical_schedule (h0 : 0 ≤ rho.horizon) :
-    (rho.withEvents rho.canonicalEvents).ScheduleWellFormed := by
-  refine ⟨h0, rho.stages_sorted _, rho.stages_nodup _, ?_, ?_, ?_⟩
-  · exact fun e he => rho.canonical_in_horizon h0 he
+theorem canonical_schedule (g : Time) (h0 : 0 ≤ rho.horizon) :
+    (rho.withEvents (rho.canonicalEvents g)).ScheduleWellFormed := by
+  refine ⟨h0, rho.stages_sorted g _, rho.stages_nodup g _, ?_, ?_, ?_⟩
+  · exact fun e he => rho.canonical_in_horizon g h0 he
   · intro e he
-    obtain ⟨k, _, hk⟩ := (rho.mem_stages _ e).mp he
-    exact rho.layer_honest _ _ hk
+    obtain ⟨k, _, hk⟩ := (rho.mem_stages g _ e).mp he
+    exact rho.layer_honest g _ _ hk
   · intro v hv t ht0 hh ha
-    apply rho.canonical_layer t ht0 hh
+    apply rho.canonical_layer g t ht0 hh
     simp only [layer, List.mem_append]
     exact Or.inl (Or.inr ((rho.mem_tickEvents t _).mpr ⟨v, hv, ha, rfl⟩))
 
-theorem canonical_sleep : (rho.withEvents rho.canonicalEvents).SleepWellFormed := by
-  have event_layer {e : Event V (protoOf F E).Object} (he : e ∈ rho.canonicalEvents) :
-      ∃ k, e ∈ rho.layer (rho.stages k) (k : Time) := by
-    obtain ⟨k, _, hk⟩ := (rho.mem_stages _ e).mp he
+theorem canonical_sleep (g : Time) : (rho.withEvents (rho.canonicalEvents g)).SleepWellFormed := by
+  have event_layer {e : Event V (protoOf F E).Object} (he : e ∈ (rho.canonicalEvents g)) :
+      ∃ k, e ∈ rho.layer g (rho.stages g k) (k : Time) := by
+    obtain ⟨k, _, hk⟩ := (rho.mem_stages g _ e).mp he
     exact ⟨k, hk⟩
   constructor
   · intro v t he
     obtain ⟨k, hk⟩ := event_layer he
     simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
       mem_deliveryEvents] at hk
-    rcases hk with (⟨w, _, _, _, h⟩ | ⟨w, _, ha, h⟩) | ⟨w, _, _, o, _, h⟩
+    rcases hk with (⟨w, _, _, _, h⟩ | ⟨w, _, ha, h⟩) | ⟨_, w, _, _, o, _, h⟩
     · cases h
     · cases h; exact ha
     · cases h
@@ -250,7 +259,7 @@ theorem canonical_sleep : (rho.withEvents rho.canonicalEvents).SleepWellFormed :
     obtain ⟨k, hk⟩ := event_layer he
     simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
       mem_deliveryEvents] at hk
-    rcases hk with (⟨w, _, _, _, h⟩ | ⟨w, _, _, h⟩) | ⟨w, _, ha, p, _, h⟩
+    rcases hk with (⟨w, _, _, _, h⟩ | ⟨w, _, _, h⟩) | ⟨_, w, _, ha, p, _, h⟩
     · cases h
     · cases h
     · cases h; exact ha
@@ -258,12 +267,12 @@ theorem canonical_sleep : (rho.withEvents rho.canonicalEvents).SleepWellFormed :
     obtain ⟨k, hk⟩ := event_layer he
     simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
       mem_deliveryEvents] at hk
-    rcases hk with (⟨w, _, hp, ha, h⟩ | ⟨w, _, _, h⟩) | ⟨w, _, _, o, _, h⟩
+    rcases hk with (⟨w, _, hp, ha, h⟩ | ⟨w, _, _, h⟩) | ⟨_, w, _, _, o, _, h⟩
     · cases h; exact ⟨hp, ha⟩
     · cases h
     · cases h
   · intro v hv t hp hh hw
-    apply rho.canonical_layer t hp.le hh
+    apply rho.canonical_layer g t hp.le hh
     simp only [layer, List.mem_append]
     exact Or.inl (Or.inl ((rho.mem_wakeEvents t _).mpr ⟨v, hv, hp, hw, rfl⟩))
 

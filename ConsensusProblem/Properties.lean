@@ -70,6 +70,15 @@ def CompatibleThrough (c : Time) (src dst : Id) (T b₀ b₁ : Time) : Prop :=
     ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
     Compatible (tr.readAt src v T) (tr.readAt dst w t)
 
+/-- `tr'` is the prefix of `tr` up to time `b`: the same environment point
+with horizon `b`, the cuts of `tr` through the end of time `b`, and the same
+cut times and reads on them. -/
+structure PrefixOf (tr' tr : Trace V α Id) (b : Time) : Prop where
+  point : tr'.point = { tr.point with horizon := b }
+  cuts : tr'.cuts = tr.endCut b
+  cutTime : ∀ i, i ≤ tr'.cuts → tr'.cutTime i = tr.cutTime i
+  read : ∀ g v i, i ≤ tr'.cuts → tr'.read g v i = tr.read g v i
+
 end Trace
 
 /-- Transaction liveness of `g` from `start` with delay `D` (a duration): a

@@ -95,7 +95,11 @@ def main : IO UInt32 := do
       `Consensus.CommLog.PSync.syncUntil_zero, `Consensus.CommLog.EagerFrom.syncUntil,
       `Consensus.Model.Run.log_sendsFromZero,
       `Consensus.Shape.Tests.Model.held_at_deadline,
-      `Consensus.Shape.Tests.Model.not_held_before_relay] do
+      `Consensus.Shape.Tests.Model.not_held_before_relay,
+      `Consensus.Model.canonical_run_from, `Consensus.Model.Run.truncate_valid,
+      `Consensus.Model.Run.truncate_prefix,
+      `Consensus.Shape.Tests.Network.silent_run_valid,
+      `Consensus.Shape.Tests.Network.truncate_relayedRun] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2

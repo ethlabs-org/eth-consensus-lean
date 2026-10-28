@@ -10,3 +10,4 @@ public import ConsensusModelProofs.Mempool
 public import ConsensusModelProofs.Protection
 public import ConsensusModelProofs.Causal
 public import ConsensusModelProofs.Faithful
+public import ConsensusModelProofs.Truncate

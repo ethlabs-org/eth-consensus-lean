@@ -97,7 +97,9 @@ pairs it with `Contract.Realizable`. See "Well-formedness is not non-vacuity".
      `ProtectedThrough` (resilience during *and after* the window),
      `CompatibleThrough` (defined, not advertised), `Trace.TxLive`,
      `Trace.TxLiveActive`, `Trace.AccountablySafe` (local to the two
-     conflicting reads' views), `NonFraming`, `GloballySlashable`.
+     conflicting reads' views), `NonFraming`, `GloballySlashable`,
+     `Trace.PrefixOf` (`tr'` is the prefix of `tr` up to `b`: point with
+     horizon `b`, cuts through `endCut b`, the same cut times and reads).
    - `Premise`: the closed premise language (`TimeExpr`, `EnvAtom` with the
      counting atoms `faultsBelow`, `faultsAtMost`, `readyAbove`, `readyOfAll`,
      `etaSleepy` and the participation atoms `full`, `noWake`; `Premise` with
@@ -145,6 +147,17 @@ pairs it with `Contract.Realizable`. See "Well-formedness is not non-vacuity".
      selection, submission function and hash admits a valid, partially
      synchronous run, healthy at every cut (`canonical_run_causal` adds
      causality);
+   - `canonical_run_from` (statement `CanonicalRunFrom`): the same for every
+     GST `g`, with a log eager from `g` (`CommLog.EagerFrom`: nothing received
+     before `g`, every honest send received at every awake time from
+     `max t g` on). `g ≤ 0` is synchronous; `g` past the horizon is a silent
+     run (no receipts; test `silent_run_valid`);
+   - `Run.truncate`, `Run.truncate_valid`, `Run.truncate_prefix`
+     (`Truncate`): keeping the events at times `≤ b` and horizon `b` turns a
+     valid run into a valid run (for `0 ≤ b ≤ horizon`) whose L0 trace is
+     `Trace.PrefixOf` the full trace at `b`, with the same views on its cuts,
+     a log that `AgreesUpTo b` the full log, and a hash collision only if the
+     full run has one (valid runs are closed under prefixes);
    - `Run.honestNeverSlashed` and `sysOf_nonFraming` (slashing protection
      makes non-framing a theorem for every protocol), `releaseAll_eq_carried`
      (the guard is a no-op when own-signed objects never conflict);
@@ -522,6 +535,13 @@ shape. The migration must discharge:
 - `Model`: relayed ingress and cumulative mempool, a forged role violates
   `Credentials` (`forged_role_invalid`), `unit_ticks`, slashing protection
   (`conflictsTrue_releases_unsigned_only`).
+- `Network`: the L0 delivery rule at the endpoint (`endpoint_waker`,
+  `receipt_at_deadline`, `held_restart`, `negative_send_covered`,
+  `agreesUpTo_empty_messages`), faithfulness (`faithful_relayedRun`,
+  `faithful_receipt`), silent runs (`silent_run_valid`: valid, no receipts,
+  not `PSync g'` once a reachable deadline needs a receipt) and truncation
+  (`truncate_relayedRun`: a concrete valid run cut at `1` is valid and an L0
+  prefix).
 - `Blocks`: grids, recurrence from any start, `recurrence_has_teeth`,
   `ledgerOf`.
 - `Shape`: compiled roles and duties, `poll_disabled_forged`,

@@ -12,6 +12,11 @@ objects released so far to all awake honest nodes. Objects are deduplicated
 within each recipient's delivery batch. Delivering again at later times makes
 the network service independent of sleep history.
 
+With a GST `g` (`canonical_run_from`), the delivery layer is empty at times
+before `g`: the log is eager from `g` (`CommLog.EagerFrom`), so `g ≤ 0` is a
+synchronous run and `g` past the horizon a silent one. Transactions are
+relayed eagerly in every case.
+
 The construction uses no laws about the protocol. `unforgeable_of_causal`
 and `credentials_of_causal` use only the engine's signing and seen filter;
 `delivers_of_eager` applies to every deadline at or after its start,
@@ -30,6 +35,39 @@ noncomputable def eagerRelay {V : Type} [Fintype V] [DecidableEq V]
       mempool (fun v τ => if E.awake v τ then submit v τ else []) u a
   else []
 
+/-- The eager relay serves every awake honest recipient at every time from
+the submission on, whatever the event list. -/
+theorem eagerRelay_txs {O : OutputSchema} {F : Family O} {V : Type} [Fintype V] [DecidableEq V]
+    {E : Env V} (rho : Run F E) (hrel : rho.relay = eagerRelay E rho.honest rho.submit) :
+    rho.EagerTxDelivery := by
+  intro u hu x τ hτ haw hx w hw a hτa hwa
+  dsimp only [Time] at *
+  change x ∈ rho.submit w a ++ rho.relay w a
+  apply List.mem_append_right
+  rw [hrel]
+  simp only [eagerRelay, hw, hwa, and_self, ↓reduceIte]
+  apply List.mem_flatMap.mpr
+  refine ⟨u, Finset.mem_toList.mpr hu, ?_⟩
+  rw [mempool, ite_eq_right (not_lt.mpr (le_trans hτ hτa))]
+  apply List.mem_flatMap.mpr
+  refine ⟨τ, ?_, ?_⟩
+  · rw [List.bind_eq_flatMap]
+    apply List.mem_flatMap.mpr
+    refine ⟨τ.toNat, List.mem_range.mpr ?_, ?_⟩
+    · have := Int.toNat_le_toNat hτa; omega
+    · change τ ∈ [(τ.toNat : Int)]
+      simp [Int.toNat_of_nonneg hτ]
+  · simpa [haw] using hx
+
+/-- The canonical schedule with GST `g` is a valid execution. -/
+theorem Run.canonical_valid {O : OutputSchema} {F : Family O} {V : Type} [Fintype V]
+    [DecidableEq V] {E : Env V} (base : Run F E) (hh : 0 ≤ base.horizon) (hsel : base.SelValid)
+    (g : Time) : (base.withEvents (base.canonicalEvents g)).ExecutionValid :=
+  ⟨base.canonical_schedule g hh, base.canonical_sleep g,
+    (base.withEvents (base.canonicalEvents g)).unforgeable_of_causal (base.canonical_causal g),
+    hsel,
+    (base.withEvents (base.canonicalEvents g)).credentials_of_causal (base.canonical_causal g)⟩
+
 /-- `canonical_run` with one more fact about the schedule: its network is
 causal (every delivery is an earlier release), so it carries no object that
 no honest node released. -/
@@ -45,41 +83,33 @@ theorem canonical_run_causal (O : OutputSchema) (F : Family O) (V : Type) [Finty
   classical
   let relay := eagerRelay E honest submit
   let base := mkRun (F := F) (E := E) honest horizon key sel submit relay hash []
-  refine ⟨relay, base.canonicalEvents, ?_⟩
-  change (base.withEvents base.canonicalEvents).ExecutionValid ∧
-    (base.withEvents base.canonicalEvents).PartialSynchrony ∧
-    (∀ cut, (base.withEvents base.canonicalEvents).HealthyPrefixDelivery cut) ∧
-    (base.withEvents base.canonicalEvents).Causal
-  have hs := base.canonical_schedule hh
-  have hw := base.canonical_sleep
+  refine ⟨relay, base.canonicalEvents 0, ?_⟩
+  change (base.withEvents (base.canonicalEvents 0)).ExecutionValid ∧
+    (base.withEvents (base.canonicalEvents 0)).PartialSynchrony ∧
+    (∀ cut, (base.withEvents (base.canonicalEvents 0)).HealthyPrefixDelivery cut) ∧
+    (base.withEvents (base.canonicalEvents 0)).Causal
   have he := base.canonical_eager hh
-  have ht : (base.withEvents base.canonicalEvents).EagerTxDelivery := by
-    intro u hu x τ hτ haw hx w hw a hτa hwa
-    change u ∈ honest at hu
-    change w ∈ honest at hw
-    change x ∈ submit u τ at hx
-    dsimp only [Time] at *
-    change x ∈ submit w a ++ relay w a
-    apply List.mem_append_right
-    simp only [relay, eagerRelay, hw, hwa, and_self, ↓reduceIte]
-    apply List.mem_flatMap.mpr
-    refine ⟨u, Finset.mem_toList.mpr hu, ?_⟩
-    rw [mempool, ite_eq_right (not_lt.mpr (le_trans hτ hτa))]
-    apply List.mem_flatMap.mpr
-    refine ⟨τ, ?_, ?_⟩
-    · rw [List.bind_eq_flatMap]
-      apply List.mem_flatMap.mpr
-      refine ⟨τ.toNat, List.mem_range.mpr ?_, ?_⟩
-      · have := Int.toNat_le_toNat hτa; omega
-      · change τ ∈ [(τ.toNat : Int)]
-        simp [Int.toNat_of_nonneg hτ]
-    · simpa [haw] using hx
-  refine ⟨⟨hs, hw, ?_, hsel, ?_⟩, ?_, ?_⟩
-  · exact (base.withEvents base.canonicalEvents).unforgeable_of_causal base.canonical_causal
-  · exact (base.withEvents base.canonicalEvents).credentials_of_causal base.canonical_causal
-  · exact (base.withEvents base.canonicalEvents).partialSynchrony_of_eager he ht
-  · exact ⟨(base.withEvents base.canonicalEvents).healthyPrefixDelivery_of_eager he ht,
-      base.canonical_causal⟩
+  have ht := eagerRelay_txs (base.withEvents (base.canonicalEvents 0)) rfl
+  refine ⟨base.canonical_valid hh hsel 0, ?_, ?_⟩
+  · exact (base.withEvents (base.canonicalEvents 0)).partialSynchrony_of_eager he ht
+  · exact ⟨(base.withEvents (base.canonicalEvents 0)).healthyPrefixDelivery_of_eager he ht,
+      base.canonical_causal 0⟩
+
+/-- A canonical run from every GST: the canonical schedule with its delivery
+layer empty before `g` is a valid execution whose log is eager from `g`. -/
+theorem canonical_run_from : CanonicalRunFrom := by
+  intro O F V _ _ E honest horizon hh key sel hsel submit hash g
+  classical
+  let relay := eagerRelay E honest submit
+  let base := mkRun (F := F) (E := E) honest horizon key sel submit relay hash []
+  refine ⟨relay, base.canonicalEvents g, ?_⟩
+  change (base.withEvents (base.canonicalEvents g)).ExecutionValid ∧
+    CommLog.EagerFrom (base.withEvents (base.canonicalEvents g)).point
+      (base.withEvents (base.canonicalEvents g)).log g
+  refine ⟨base.canonical_valid hh hsel g, ⟨?_, ?_, ?_⟩⟩
+  · exact base.canonical_eagerFrom g hh
+  · exact base.canonical_quiet g
+  · exact eagerRelay_txs (base.withEvents (base.canonicalEvents g)) rfl
 
 /-- Every choice of protocol, environment, PKI, admissible selection and run
 data admits a valid run
