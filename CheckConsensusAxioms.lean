@@ -34,7 +34,11 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Model.conflictsTrue_releases_unsigned_only,
       `Consensus.Blocks.ledgerOf_prefix, `Consensus.Blocks.patternRecurrence_of_all,
       `Consensus.Blocks.PatternRecurrence.exists_honest,
-      `Consensus.Shape.Tests.Blocks.recurrence_has_teeth] do
+      `Consensus.Shape.Tests.Blocks.recurrence_has_teeth,
+      `Consensus.Shape.refinement, `Consensus.Shape.proposalLive_txLive,
+      `Consensus.Shape.ledgerTrace, `Consensus.Shape.honestProposal_payload,
+      `Consensus.Shape.Tests.Leaks.silent, `Consensus.Shape.Tests.Leaks.fabricated,
+      `Consensus.Shape.Tests.Shapes.poll_proposal_local_height] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2
