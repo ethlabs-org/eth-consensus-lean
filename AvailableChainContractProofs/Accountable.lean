@@ -47,23 +47,32 @@ theorem slashedBy_subset_faulty (hns : rho.HonestNeverSlashed)
   refine Finset.mem_sdiff.mpr ⟨Finset.mem_univ x, fun hh => ?_⟩
   exact hns x hh (rho.Slashable_mono hA hs)
 
-end Run
-
-/-- Finalized agreement under a third faulty, from the claims. -/
-theorem finalizedSafe_of_claims {F : Family} {C : Constants} (hC : Claims F C)
-    (V : Type) [Fintype V] [DecidableEq V] [Nonempty V] (E : Env V) (rho : Run F E)
-    (hv : rho.ExecutionValid) (hb : rho.BelowOneThird) :
-    rho.AgreeFrom (protoOf F E).finalized 0 := by
+/-- Accountable safety, `honestNeverSlashed` and fewer than a third faulty give
+agreement. -/
+theorem agree_of_accountable {g : Output F E} (_hv : rho.ExecutionValid)
+    (hb : rho.BelowOneThird) (hns : rho.HonestNeverSlashed)
+    (hacc : rho.AccountablySafeFrom g 0) : rho.AgreeFrom g 0 := by
   intro u hu v hv' i j hi hj
-  rcases hC.finalizedAccountable V E rho hv u hu v hv' i j hi hj with hcomp | hcard
+  rcases hacc u hu v hv' i j hi hj with hcomp | hcard
   · exact hcomp
   · exfalso
     have hsub : rho.ViewIdx u i ∪ rho.ViewIdx v j ⊆ rho.Observed :=
       Set.union_subset (rho.ViewIdx_subset_Observed hu hi.2) (rho.ViewIdx_subset_Observed hv' hj.2)
-    have hle := Finset.card_le_card
-      (rho.slashedBy_subset_faulty (hC.honestNeverSlashed V E rho hv) hsub)
+    have hle := Finset.card_le_card (rho.slashedBy_subset_faulty hns hsub)
     unfold Run.BelowOneThird at hb
     omega
+
+end Run
+
+/-- Finalized agreement under a third faulty, from the claims: the honest
+finalized reads agree, or a hash collision was observed. -/
+theorem finalizedSafe_of_claims {F : Family} {C : Constants} (hC : Claims F C)
+    (V : Type) [Fintype V] [DecidableEq V] [Nonempty V] (E : Env V) (rho : Run F E)
+    (hv : rho.ExecutionValid) (hb : rho.BelowOneThird) :
+    rho.AgreeFrom (protoOf F E).finalized 0 ∨ rho.HashCollision := by
+  rcases hC.finalizedAccountable V E rho hv with hacc | hcol
+  · exact Or.inl (rho.agree_of_accountable hv hb (hC.honestNeverSlashed V E rho hv) hacc)
+  · exact Or.inr hcol
 
 end AvailableChain.Contract
 

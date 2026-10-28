@@ -1,6 +1,5 @@
 module
 public import Mathlib.Data.List.Basic
-public import AvailableChainModel.Objects.Codec
 public import AvailableChainModel.Objects.Identifiers
 public import AvailableChainModel.Objects.Time
 
@@ -11,96 +10,69 @@ public import AvailableChainModel.Objects.Time
 Blocks, authentications and wire objects of the generic contract. Nothing here
 is supplied by a protocol.
 
-* `CBlock`: a chain block with an application `input` and protocol data `aux`.
-  It has no root field: the root is computed from the content, so two blocks
-  with the same root are equal (`CBlock.root_injective`). No claim needs a
-  hash premise.
+* `Header`: a block header naming its parent by digest; a `Chain` (an output)
+  is a list of headers. The hash is arbitrary run data (`Run.hash`) that honest
+  code never sees; claims hold "or a hash collision was observed"
+  (`Run.HashCollision`).
 * `Auth`: who signed an object. Committee seats and slot proposers; the run
   maps them to validators. Honest code never chooses an `Auth`: the engine
   attaches it.
-* `Msg`: a proposal of a `CBlock` (built only by the engine) or protocol data.
+* `Msg`: a proposal of a header (honest ones are built by the engine) or protocol data.
 * `Obj`: an authentication, a message, and the objects it carries. The
   carried objects are structural: the body type is fixed before `Obj`, so a
   body cannot hide a signed object. -/
 
 namespace AvailableChain.Contract
 
-/-- A contract block. `input` is the application input of the proposal; `aux`
-is protocol data (for example an encoding of the protocol's own block fields). -/
-inductive CBlock where
-  | genesis
-  | node (parent : CBlock) (slot : Slot) (input : Nat) (aux : Nat)
+/-- A block header. It names its parent by digest. `input` is the application
+input of the proposal; `aux` is protocol data (for example an encoding of the
+protocol's own block fields). The digest of a header is `hash h`, for the run's
+hash function (`Run.hash`), which is arbitrary: it may have collisions.
+Genesis is not a header; its digest is `0`. -/
+structure Header where
+  parent : Nat
+  slot : Slot
+  input : Nat
+  aux : Nat
   deriving DecidableEq, Repr
 
-namespace CBlock
+/-- A chain: headers oldest first, genesis implicit before the first. An output
+is a chain. Chains are compared structurally, never through digests. -/
+abbrev Chain := List Header
 
-def slot : CBlock → Slot
-  | genesis => 0
-  | node _ s _ _ => s
+namespace Chain
 
-def input : CBlock → Nat
-  | genesis => 0
-  | node _ _ x _ => x
+/-- `c ⪯ d`: `c` is a prefix of `d`. -/
+def Preceq (c d : Chain) : Prop := c <+: d
 
-def parent : CBlock → CBlock
-  | genesis => genesis
-  | node p _ _ _ => p
+/-- `c ≺ d`: a strict prefix. -/
+def Prec (c d : Chain) : Prop := c <+: d ∧ c ≠ d
 
-/-- The computed root: `0` for genesis, and an injective code of the parent
-root and the content above it. -/
-def root : CBlock → Nat
-  | genesis => 0
-  | node p s x a => epair (root p) (epair s (epair x a)) + 1
+/-- Two chains are on one branch. -/
+def Compatible (c d : Chain) : Prop := c <+: d ∨ d <+: c
 
-theorem root_injective : Function.Injective root := by
-  intro B
-  induction B with
-  | genesis =>
-      intro C h
-      cases C with
-      | genesis => rfl
-      | node p s x a => simp [root] at h
-  | node p s x a ih =>
-      intro C h
-      cases C with
-      | genesis => simp [root] at h
-      | node q u y b =>
-          simp only [root, Nat.add_right_cancel_iff] at h
-          obtain ⟨hp, h2⟩ := epair_inj h
-          obtain ⟨hs, h3⟩ := epair_inj h2
-          obtain ⟨hx, ha⟩ := epair_inj h3
-          rw [ih hp, hs, hx, ha]
+/-- Each header names the previous one (genesis, digest `0`, for the first). -/
+def LinkedFrom (hash : Header → Nat) : Nat → Chain → Prop
+  | _, [] => True
+  | prev, h :: t => h.parent = prev ∧ LinkedFrom hash (hash h) t
 
-/-- The block and its ancestors, nearest first, ending with genesis. -/
-def chain : CBlock → List CBlock
-  | genesis => [genesis]
-  | node p s x a => node p s x a :: chain p
+/-- The chain is linked by digests under `hash`. -/
+def Linked (hash : Header → Nat) (c : Chain) : Prop := LinkedFrom hash 0 c
 
-/-- `B ⪯ C`: `B` is `C` or an ancestor of `C`. -/
-def Preceq (B C : CBlock) : Prop := B ∈ C.chain
+/-- Slots strictly increase along the chain, starting above 0 (genesis's
+slot). -/
+def SlotsFrom : Slot → Chain → Prop
+  | _, [] => True
+  | prev, h :: t => prev < h.slot ∧ SlotsFrom h.slot t
 
-/-- `B ≺ C`: a strict ancestor. -/
-def Prec (B C : CBlock) : Prop := Preceq B C ∧ B ≠ C
+/-- The prefix of `c` up to and including `h`. -/
+def upTo (h : Header) (c : Chain) : Chain := c.take (c.idxOf h + 1)
 
-/-- Two blocks are on one chain. -/
-def Compatible (B C : CBlock) : Prop := Preceq B C ∨ Preceq C B
+theorem preceq_refl (c : Chain) : Preceq c c := List.prefix_refl c
 
-instance (B C : CBlock) : Decidable (Preceq B C) :=
-  inferInstanceAs (Decidable (B ∈ C.chain))
+theorem nil_preceq (c : Chain) : Preceq [] c := List.nil_prefix
 
-theorem genesis_mem_chain : ∀ B : CBlock, genesis ∈ B.chain
-  | genesis => List.mem_singleton_self _
-  | node p _ _ _ => List.mem_cons_of_mem _ (genesis_mem_chain p)
-
-theorem genesis_preceq (B : CBlock) : Preceq genesis B := genesis_mem_chain B
-
-theorem self_mem_chain : ∀ B : CBlock, B ∈ B.chain
-  | genesis => List.mem_singleton_self _
-  | node _ _ _ _ => List.mem_cons_self
-
-theorem preceq_refl (B : CBlock) : Preceq B B := self_mem_chain B
-
-end CBlock
+end Chain
 
 /-- The authentication of an object. `vote ℓ i`: seat `i` of the committee of
 label `ℓ` (every label has `n` seats; the run assigns them to validators by a
@@ -111,11 +83,11 @@ inductive Auth (L : Type) (n : Nat) where
   | none
   deriving DecidableEq, Repr
 
-/-- What an object says: a proposal of a contract block, or protocol data.
+/-- What an object says: a proposal of a header, or protocol data.
 Only the engine builds proposals (`Contract.Run`), so a protocol cannot call
 arbitrary data a proposal. -/
 inductive Msg (Body : Type) where
-  | prop (B : CBlock)
+  | prop (h : Header)
   | data (b : Body)
   deriving DecidableEq, Repr
 

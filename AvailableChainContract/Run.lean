@@ -9,15 +9,16 @@ public import AvailableChainContract.Protocol
 /-! # Runs and the engine
 
 A run fixes everything that the protocol does not choose: the honest set, the
-horizon, the scheduler's events, the committee seats, the slot proposers and
-the inputs. The engine runs the protocol on these events. It keeps, for each
+horizon, the scheduler's events, the committee seats, the slot proposers, the
+inputs and the hash function. The engine runs the protocol on these events. It keeps, for each
 node, the protocol state and the `seen` log of every object the node released
 or received.
 
 At a tick the engine signs, for an awake node, in this order:
 1. the proposal of every slot whose proposal time is now and whose proposer is
-   the node: the block `node parent s (own input) aux`, from the protocol's
-   choice of `parent` and `aux`, signed with the proposer key of the slot;
+   the node: the header `⟨parent, s, own input, aux⟩`, from the protocol's
+   choice of the parent digest and `aux`, signed with the proposer key of the
+   slot;
 2. the node's seat of every due duty;
 3. unsigned gossip.
 All candidates are built from the state after the clock update. The engine then
@@ -27,7 +28,11 @@ an object it has not seen (in particular, no honest signature that it did not
 receive or make). A released object enters `seen` before the next candidate is
 checked, so a candidate can carry an object released earlier in the same tick
 (for example gossip carrying the node's own vote, but not a proposal carrying a
-vote of the same tick), and the protocol records it with `recordOwn`. -/
+vote of the same tick), and the protocol records it with `recordOwn`.
+
+Only the engine evaluates the hash. With every object that the protocol
+processes or records, the engine passes the digests of the headers proposed,
+under their own slot's key, inside it (`digests`). -/
 
 namespace AvailableChain.Contract
 
@@ -82,6 +87,9 @@ structure Run (F : Family) (E : Env V) where
   proposer : Slot → V
   /-- The application input of every validator at every time. -/
   input : V → Time → Nat
+  /-- The hash function: arbitrary, possibly with collisions. Only the engine
+  evaluates it; honest code sees only the digests the engine passes. -/
+  hash : Header → Nat
 
 variable {F : Family} {E : Env V}
 
@@ -98,17 +106,28 @@ def initWorld (F : Family) (E : Env V) : V → Node (protoOf F E) :=
 def closure {pub : Public} {P : Protocol pub} (l : List P.Object) : List P.Object :=
   l.flatMap Obj.parts
 
+/-- The header proposed by an object under its own slot's key, if any. -/
+def Obj.signedProp {L : Type} {n : Nat} {Body : Type} : Obj L n Body → Option Header
+  | .mk (.proposer s) (.prop h) _ => if h.slot = s then some h else none
+  | _ => none
+
+/-- The digests that the engine passes with object `o`: every header proposed,
+under its own slot's key, in the closure of `o`. -/
+def digests {pub : Public} {P : Protocol pub} (hash : Header → Nat) (o : P.Object) :
+    List (Header × Nat) :=
+  (o.parts.filterMap Obj.signedProp).map (fun h => (h, hash h))
+
 /-- Release candidates in order: a candidate is released if everything it
 carries is in the closure of `seen`; released objects join `seen` at once. -/
-def releaseAll {pub : Public} {P : Protocol pub} :
+def releaseAll {pub : Public} {P : Protocol pub} (hash : Header → Nat) :
     Node P → List P.Object → Node P × List P.Object
   | nd, [] => (nd, [])
   | nd, c :: cs =>
     if c.carried.all (fun x => decide (x ∈ closure nd.seen)) then
-      let nd' : Node P := ⟨P.recordOwn nd.st c, nd.seen ++ [c]⟩
-      let r := releaseAll nd' cs
+      let nd' : Node P := ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩
+      let r := releaseAll hash nd' cs
       (r.1, c :: r.2)
-    else releaseAll nd cs
+    else releaseAll hash nd cs
 
 namespace Run
 
@@ -123,7 +142,7 @@ def candidates (st : (protoOf F E).State) (v : V) (t : Time) :
     | some s =>
       if rho.proposer s = v then
         match P.propose st s with
-        | some (par, aux, cs) => [.mk (.proposer s) (.prop (.node par s (rho.input v t) aux)) cs]
+        | some (par, aux, cs) => [.mk (.proposer s) (.prop ⟨par, s, rho.input v t, aux⟩) cs]
         | none => []
       else []
     | none => []
@@ -139,13 +158,13 @@ def candidates (st : (protoOf F E).State) (v : V) (t : Time) :
 def tick (nd : Node (protoOf F E)) (v : V) (t : Time) :
     Node (protoOf F E) × List (protoOf F E).Object :=
   let nd₁ : Node (protoOf F E) := ⟨(protoOf F E).clock nd.st t, nd.seen⟩
-  if E.awake v t then releaseAll nd₁ (rho.candidates nd₁.st v t) else (nd₁, [])
+  if E.awake v t then releaseAll rho.hash nd₁ (rho.candidates nd₁.st v t) else (nd₁, [])
 
 /-- One event. -/
 def step (w : V → Node (protoOf F E)) : Event V (protoOf F E).Object → V → Node (protoOf F E)
   | .tick v t => Function.update w v (rho.tick (w v) v t).1
   | .deliver v o _ =>
-      Function.update w v ⟨(protoOf F E).process (w v).st o, (w v).seen ++ [o]⟩
+      Function.update w v ⟨(protoOf F E).process (w v).st o (digests rho.hash o), (w v).seen ++ [o]⟩
   | .restart v t =>
       Function.update w v
         ⟨(protoOf F E).restore ((protoOf F E).durable (w v).st) t, (w v).seen⟩
@@ -210,20 +229,20 @@ def holder : Auth (protoOf F E).Label (Fintype.card V) → Option V
   | .none => none
 
 /-- An output of node `v` at time `t`. -/
-def readOut (g : (protoOf F E).State → CBlock) (v : V) (t : Time) : CBlock :=
+def readOut (g : (protoOf F E).State → Chain) (v : V) (t : Time) : Chain :=
   g (rho.readAt t v).st
 
 /-- An output of node `v` at event cut `i`: after the first `i` events. A
 client can expose the state between any two events, so safety is stated at
 event cuts. -/
-def readIdx (g : (protoOf F E).State → CBlock) (v : V) (i : Nat) : CBlock :=
+def readIdx (g : (protoOf F E).State → Chain) (v : V) (i : Nat) : Chain :=
   g (rho.stateBefore i v).st
 
-/-- `B` is the honest proposal of slot `s`: the proposer of `s` is honest and
-released, at the proposal time, a proposal of `B` under the slot's key. -/
-def HonestProposal (s : Slot) (B : CBlock) : Prop :=
+/-- `h` is the honest proposal of slot `s`: the proposer of `s` is honest and
+released, at the proposal time, a proposal of `h` under the slot's key. -/
+def HonestProposal (s : Slot) (h : Header) : Prop :=
   rho.proposer s ∈ rho.honest ∧
-    ∃ cs, rho.releases (rho.proposer s) (.mk (.proposer s) (.prop B) cs)
+    ∃ cs, rho.releases (rho.proposer s) (.mk (.proposer s) (.prop h) cs)
       ((protoOf F E).proposalTime s)
 
 end Run

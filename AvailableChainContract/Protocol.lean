@@ -11,7 +11,9 @@ slashing rule. Nothing it supplies appears in a premise of a claim. The engine
 
 The protocol knows only the public parameters `n` (the number of validators)
 and `Δ`. It does not know the GST, the honest set, the awake profile, its own
-seats, or any input but its own, which the engine puts into its proposal. -/
+seats, any input but its own (which the engine puts into its proposal), or the
+hash function: it learns only the digests of headers it receives, from the
+engine, so it cannot search for collisions. -/
 
 namespace AvailableChain.Contract
 
@@ -41,10 +43,11 @@ structure Protocol (pub : Public) : Type 1 where
   init : State
   /-- The local clock update, at every tick (an asleep node has no ticks). -/
   clock : State → Time → State
-  /-- The proposal choice for slot `s`: a parent, protocol data `aux`, and
-  carried objects. The engine builds the block `node parent s input aux` with
-  the proposer's own input and signs it with the proposer key of `s`. -/
-  propose : State → Slot → Option (CBlock × Nat × List (Obj Label pub.n Body))
+  /-- The proposal choice for slot `s`: the parent's digest, protocol data
+  `aux`, and carried objects. The engine builds the header
+  `⟨parent, s, input, aux⟩` with the proposer's own input and signs it with the
+  proposer key of `s`. -/
+  propose : State → Slot → Option (Nat × Nat × List (Obj Label pub.n Body))
   label : Duty → Label
   actTime : Duty → Time
   duties : Time → List Duty
@@ -55,16 +58,19 @@ structure Protocol (pub : Public) : Type 1 where
   /-- Unsigned objects. Relay of received objects is done here, by carrying
   them. -/
   gossip : State → Time → List (Body × List (Obj Label pub.n Body))
-  /-- Processing a delivered object. Total: any object, at any time. -/
-  process : State → Obj Label pub.n Body → State
-  /-- The node's record of an object that it has just signed. -/
-  recordOwn : State → Obj Label pub.n Body → State
+  /-- Processing a delivered object. Total: any object, at any time. The
+  engine also passes the digest of every header proposed, under its own slot's
+  key, inside the object: honest code never evaluates the hash itself. -/
+  process : State → Obj Label pub.n Body → List (Header × Nat) → State
+  /-- The node's record of an object that it has just signed, with the
+  digests of the headers it proposes (as for `process`). -/
+  recordOwn : State → Obj Label pub.n Body → List (Header × Nat) → State
   durable : State → Durable
   restore : Durable → Time → State
   /-- The three outputs. -/
-  confirmed : State → CBlock
-  stable : State → CBlock
-  finalized : State → CBlock
+  confirmed : State → Chain
+  stable : State → Chain
+  finalized : State → Chain
   /-- The slashing rule: two objects that, signed by one validator, convict
   it. -/
   conflicts : Obj Label pub.n Body → Obj Label pub.n Body → Bool

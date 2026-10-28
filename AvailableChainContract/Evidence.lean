@@ -36,8 +36,31 @@ event cuts, are compatible, or what the two readers saw before their cuts
 slashes a third of the validators. -/
 def AccountablySafeFrom (g : Output F E) (t₀ : Time) : Prop :=
   ∀ u ∈ rho.honest, ∀ v ∈ rho.honest, ∀ i j, rho.InCuts t₀ i → rho.InCuts t₀ j →
-    CBlock.Compatible (rho.readIdx g u i) (rho.readIdx g v j) ∨
+    Chain.Compatible (rho.readIdx g u i) (rho.readIdx g v j) ∨
       Fintype.card V ≤ 3 * (rho.slashedBy (rho.ViewIdx u i ∪ rho.ViewIdx v j)).card
+
+/-- The digest of an item: genesis (`none`) has digest `0`, a header its hash. -/
+def itemDigest : Option Header → Nat
+  | none => 0
+  | some h => rho.hash h
+
+/-- An item is observed: genesis always; a header if the honest nodes saw a
+proposal of it under its own slot's key. -/
+def ObservedItem : Option Header → Prop
+  | none => True
+  | some h => ∃ cs, (Obj.mk (.proposer h.slot) (.prop h) cs : (protoOf F E).Object) ∈ rho.Observed
+
+/-- A hash collision was observed: two distinct observed items (genesis or
+headers) with the same digest. Honest code never evaluates the hash (the engine
+does), so it cannot steer a run toward a collision; every collision counts,
+whoever proposed the headers. -/
+def HashCollision : Prop :=
+  ∃ a b : Option Header, a ≠ b ∧ rho.itemDigest a = rho.itemDigest b ∧
+    rho.ObservedItem a ∧ rho.ObservedItem b
+
+/-- The hash is injective and never `0` (genesis's digest): no collision can
+occur. -/
+def InjectiveHash : Prop := Function.Injective rho.hash ∧ ∀ h, rho.hash h ≠ 0
 
 /-- No honest validator is slashable on what the honest nodes saw. -/
 def HonestNeverSlashed : Prop :=
