@@ -1,6 +1,7 @@
 module
 public import ConsensusShapeTests.Shape
 public import ConsensusShapeTests.Good
+public import ConsensusShapeTests.Controls
 public import Mathlib.Tactic
 @[expose] public section
 
@@ -14,10 +15,8 @@ public import Mathlib.Tactic
   run with a faulty validator its pattern recurrence fails as soon as one
   whole window fits in `[start, stop]` and the horizon: such a progress
   requirement has no witness with a faulty validator.
-* `allProposers_unfit`: acceptance rejects it up front (`ProgressFits` needs
-  `.sized 1` for a recurrence).
-* `noProgressFit`: a recurrence on a poll skeleton (no slot proposers) does
-  not fit; `notReadyAtMost_fits` (round robin) fits every skeleton.
+  (`allProposers_unfit`, `noProgressFit`: acceptance rejects such
+  requirements up front; see `Vacuity.lean`.)
 * Rotating sleeper (review 3b B1): four honest validators, a different one
   asleep at each tick, catch-up `3`: more than ⅔ awake at every tick
   (but not healthy: no fixed set stays awake), and nobody is ready from
@@ -28,7 +27,14 @@ public import Mathlib.Tactic
   claims use owes nothing there, so no family is refuted by it.
 * `tendermint_largeIdx_prog` (review 3b r2 B1): with a fixed population
   `Fin 5`, the Tendermint requirement at every index `m ≥ 5` holds on every
-  run, so a large index never makes the contract unrealizable. -/
+  run, so a large index never makes the contract unrealizable.
+* Late witnesses (M4, M7, M27; stage 6): `healed_witness_late` — every good
+  system has, at `Δ = 7` and GST `1000`, a clean healthy witness whose log has
+  no receipt before `1000`, with progress, liveness and safety active after a
+  heal point at or after `1000`; `outage_witness_late` — an active outage armed
+  at or after `1000·Δ`. `healed_witness_late_control`,
+  `outage_witness_late_control`: the same for the positive-control family
+  (`Controls.lean`), so neither is vacuous. -/
 
 namespace Consensus.Shape.Tests.Realizable
 open Consensus Blocks Shape
@@ -103,38 +109,6 @@ theorem allProposers_no_witness {O : OutputSchema} {Info : Type} [DecidableEq In
   rw [Equiv.apply_symm_apply] at this
   exact hfh this
 
-/-- Acceptance rejects the all-proposers family up front: a recurrence
-requirement does not fit `.sized (max 1 n)` once `n ≥ 2`. -/
-theorem allProposers_unfit {O : OutputSchema} {Info : Type} [DecidableEq Info]
-    [Encodable Info] {F : ShapeFamily O Info}
-    (hF : ∀ pub, (F pub).skel.proposerSel = .sized (max 1 pub.n))
-    (K : Contract O ProgressReq) (cap : Capability) (i : K.Idx) (ρ : Recurrence)
-    (hK : K.progress cap i = .recur ρ) : ¬ K.ProgressFits F := by
-  intro h
-  have := h cap i ⟨2, 1, by decide⟩
-  rw [hK] at this
-  change (F ⟨2, 1, by decide⟩).skel.proposerSel = .sized 1 at this
-  rw [hF] at this
-  cases this
-
-/-- A recurrence does not fit a poll skeleton (no slot proposers). -/
-theorem noProgressFit (n : Nat) (ρ : Recurrence) : ¬ (ProgressReq.recur ρ).Fits (pollSkel n) := by
-  intro h
-  cases h
-
-/-- No contract with a recurrence requirement fits the poll shape. -/
-theorem noProgressFit_contract (K : Contract schema ProgressReq) (cap : Capability) (i : K.Idx)
-    (ρ : Recurrence) (hK : K.progress cap i = .recur ρ) :
-    ¬ K.ProgressFits (fun pub => pollShape pub) := by
-  intro h
-  have := h cap i ⟨1, 1, by decide⟩
-  rw [hK] at this
-  exact noProgressFit 1 ρ this
-
-/-- A bound on the validators not ready fits every skeleton (round robin). -/
-theorem notReadyAtMost_fits {n : Nat} (sk : Skeleton n) (m : ℕ+) :
-    (ProgressReq.notReadyAtMost m).Fits sk := trivial
-
 section Rotating
 
 open Consensus.Shape.Tests.Good (rotPoint healthy_rotating_sleeper)
@@ -198,6 +172,75 @@ example (F : ShapeFamily bftCore Unit) (cap : Capability)
   tendermint_largeIdx_prog F 1 _ _ cap 5 le_rfl r start stop
 
 end LargeIndex
+
+section Late
+
+variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
+  {X : Progress S Prog} {K : Contract S.schema Prog}
+
+/-- A late GST at a large `Δ`: every realizable system (so every good system
+with at least five validators, `Good.realizable`) has, at `Δ = 7` and GST
+`1000`, a clean healthy witness with no receipt before `1000`, whose heal
+point is at or after `1000`, with progress from `readyFrom`, and liveness and
+safety active after the heal point. -/
+theorem healed_witness_late (h : Realizable S X K) (cap : Capability)
+    (i : K.Idx) :
+    ∃ r, S.Witness r ∧ (S.pt r).env.Δ = 7 ∧ (∀ w m t, (S.log r).recv w m t → 1000 ≤ t) ∧
+      S.Healthy K 1000 r ∧ 1000 ≤ S.heal K cap i 1000 r ∧
+      S.prog X K cap i (S.ready K 1000 r) (S.pt r).horizon r ∧
+      (S.trace r).TxLiveActive (S.cDur K r) (S.heal K cap i 1000 r) (S.lat K cap i r) ∧
+      SafeActive (S.cDur K r) (S.heal K cap i 1000 r) (S.pt r) := by
+  obtain ⟨r, hw, hΔ, he, hH, hp, ht, hs⟩ :=
+    h.healthy cap i 7 1000 (by norm_num) (by norm_num)
+  refine ⟨r, hw, hΔ, he.quiet, hH, ?_, hp, ht, hs⟩
+  unfold System.heal Params.healPoint
+  rw [hΔ]
+  have : (0 : Time) ≤ (K.params.heal cap i : Time) * 7 := by positivity
+  have h1 : (1000 : Time) ≤ max 1000 0 := le_max_left _ _
+  linarith
+
+/-- An arbitrarily late outage: every realizable system has, at `Δ = 7`, a
+clean witness of an active outage armed at or after `1000·Δ`. -/
+theorem outage_witness_late (h : Realizable S X K) :
+    ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.Δ = 7 ∧ S.Outage K T b₀ b₁ r ∧
+      OutageActive (S.cDur K r) T b₀ b₁ (S.pt r) ∧ 7000 ≤ T := by
+  obtain ⟨r, T, b₀, b₁, hw, hΔ, ho, ha, hT⟩ := h.outage 7 1000 (by norm_num)
+  exact ⟨r, T, b₀, b₁, hw, hΔ, ho, ha, by norm_num at hT; exact hT⟩
+
+/-- Every good system with at least five validators has both late witnesses. -/
+example (h : Good S X K) (h5 : 5 ≤ Fintype.card V) (cap : Capability) (i : K.Idx) :
+    (∃ r, S.Witness r ∧ (S.pt r).env.Δ = 7 ∧ 1000 ≤ S.heal K cap i 1000 r ∧
+      SafeActive (S.cDur K r) (S.heal K cap i 1000 r) (S.pt r)) ∧
+    ∃ r T b₀ b₁, S.Witness r ∧ S.Outage K T b₀ b₁ r ∧ 7000 ≤ T := by
+  obtain ⟨r, hw, hΔ, -, -, hh, -, -, hs⟩ := healed_witness_late (h.realizable h5) cap i
+  obtain ⟨r', T, b₀, b₁, hw', -, ho, -, hT⟩ := outage_witness_late (h.realizable h5)
+  exact ⟨⟨r, hw, hΔ, hh, hs⟩, r', T, b₀, b₁, hw', ho, hT⟩
+
+open Consensus.Shape.Tests.Controls (ctrlFamily ctrlK ctrl_realizable)
+
+/-- `healed_witness_late` at the positive-control family. -/
+theorem healed_witness_late_control (cap : Capability) :
+    ∃ r, (sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).Witness r ∧
+      ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).pt r).env.Δ = 7 ∧
+      (∀ w m t, ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).log r).recv w m t →
+        1000 ≤ t) ∧
+      (sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).Healthy ctrlK 1000 r ∧
+      SafeActive ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).cDur ctrlK r)
+        ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).heal ctrlK cap (1 : ℕ+) 1000 r)
+        ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).pt r) := by
+  obtain ⟨r, hw, hΔ, hq, hH, -, -, -, hs⟩ := healed_witness_late ctrl_realizable cap (1 : ℕ+)
+  exact ⟨r, hw, hΔ, hq, hH, hs⟩
+
+/-- `outage_witness_late` at the positive-control family. -/
+theorem outage_witness_late_control :
+    ∃ r T b₀ b₁, (sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).Witness r ∧
+      ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).pt r).env.Δ = 7 ∧
+      (sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).Outage ctrlK T b₀ b₁ r ∧
+      OutageActive ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).cDur ctrlK r) T b₀ b₁
+        ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).pt r) ∧ 7000 ≤ T :=
+  outage_witness_late ctrl_realizable
+
+end Late
 
 end Consensus.Shape.Tests.Realizable
 

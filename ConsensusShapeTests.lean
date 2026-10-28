@@ -10,3 +10,5 @@ public import ConsensusShapeTests.Good
 public import ConsensusShapeTests.Vacuity
 public import ConsensusShapeTests.Controls
 public import ConsensusShapeTests.Goldilocks
+public import ConsensusShapeTests.Regimes
+public import ConsensusShapeTests.Gaps
