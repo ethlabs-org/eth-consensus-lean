@@ -81,10 +81,10 @@ variable {V : Type} (S : System V)
 /-- The laws that make the reads and the evidence meaningful. The model layer
 proves them for its system. -/
 structure Laws : Prop where
-  /-- Cut times are nondecreasing and within `[0, horizon]`. -/
-  cutTime_mono : ∀ r i j, i ≤ j → j ≤ S.cuts r → S.cutTime r i ≤ S.cutTime r j
-  cutTime_nonneg : ∀ r i, 0 ≤ S.cutTime r i
-  cutTime_le_horizon : ∀ r i, i ≤ S.cuts r → S.cutTime r i ≤ (S.env r).horizon
+  /-- In valid runs, cut times are nondecreasing and within `[0, horizon]`. -/
+  cutTime_mono : ∀ r, S.Valid r → ∀ i j, i ≤ j → j ≤ S.cuts r → S.cutTime r i ≤ S.cutTime r j
+  cutTime_nonneg : ∀ r, S.Valid r → ∀ i, 0 ≤ S.cutTime r i
+  cutTime_le_horizon : ∀ r, S.Valid r → ∀ i, i ≤ S.cuts r → S.cutTime r i ≤ (S.env r).horizon
   /-- More evidence convicts at least as much. -/
   convicts_mono : ∀ r (A B : Set S.Obs) v, A ⊆ B → S.convicts r A v → S.convicts r B v
   /-- Views only grow. -/
