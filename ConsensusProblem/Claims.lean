@@ -84,10 +84,10 @@ structure Contract (O : OutputSchema) (Prog : Type) where
   catchUp : Nat
   spec : Capability → Option (CapSpec Prog Idx)
 
-/-- Mandatory parts: a resilient capability has a resilience premise and a
+/-- Mandatory parts: a stable capability has a resilience premise and a
 recovery spec. -/
 def CapSpec.Complete {Prog Idx : Type} (c : Capability) (s : CapSpec Prog Idx) : Prop :=
-  c = .resilient → s.resilience.isSome ∧ s.recovery.isSome
+  c = .stable → s.resilience.isSome ∧ s.recovery.isSome
 
 /-- An optional fraction is absent or in `(0, 1]`. -/
 def FracWF (e : Option ℚ) : Prop := ∀ α, e = some α → 0 < α ∧ α ≤ 1
@@ -127,7 +127,7 @@ def OutputSchema.DACore (O : OutputSchema) : Prop :=
 
 /-- The schema serves a ledger: it is a `BFTCore` (a final output, possibly
 with others) or a `DACore` (an available output without a final one). A schema
-that provides neither (no output at all, or only a resilient one) is not a
+that provides neither (no output at all, or only a stable one) is not a
 consensus service; acceptance (`Shape.Accepted`) requires this. -/
 def OutputSchema.Serves (O : OutputSchema) : Prop := O.BFTCore ∨ O.DACore
 
@@ -149,7 +149,7 @@ structure CapClaims {Prog : Type} (S : System V) (X : ExecProfile S Prog)
     S.Holds (fun _ => True) (fun r => S.AccountablySafe r α g 0)
   /-- Resilience: parameters `σ 0 = T` (protectedAt), `σ 1 = b₀`
   (outageStart); the premise may also use `σ 2 = b₁` (outageEnd). -/
-  resilient : ∀ P, s.resilience = some P → ∀ σ,
+  persists : ∀ P, s.resilience = some P → ∀ σ,
     S.Holds (fun r => P.eval S X K.catchUp σ r)
       (fun r => (S.trace r).ProtectedThrough (S.dur r K.catchUp) g
         (resilienceTarget S.schema g) (σ 0) (σ 1))

@@ -14,12 +14,12 @@ rejected by its structural fields, for every family:
 * `escape_zero_rejected`, `recoveryEscape_zero_rejected`,
   `accountable_zero_rejected`: an escape or accountable fraction `0` (being
   "slashable for `0`" holds in every run, so the claim would be empty);
-* `resilient_without_recovery_rejected`: a resilient capability without a
+* `stable_without_recovery_rejected`: a stable capability without a
   recovery spec (`¬ CapSpec.Complete`);
 * `noSync_live_rejected`, `noSync_recovery_rejected`: a liveness or recovery
   premise without `sync` (D-20).
 
-`noService_not_accepted`: a schema with no output at all, or only a resilient
+`noService_not_accepted`: a schema with no output at all, or only a stable
 one, is not `Accepted`, whatever its claims (`OutputSchema.Serves`); a
 provided but silent or empty output is excluded by `delivers`.
 
@@ -63,10 +63,10 @@ theorem accountable_zero_rejected (F : ShapeFamily O Info) (K : Contract O Progr
     (h : s.accountable = some 0) : ¬ ShapeClaims F K := fun hc =>
   lt_irrefl _ ((hc.wf.caps c s hs).accountable 0 h).1
 
-/-- A resilient capability without a recovery spec is rejected. -/
-theorem resilient_without_recovery_rejected (F : ShapeFamily O Info)
+/-- A stable capability without a recovery spec is rejected. -/
+theorem stable_without_recovery_rejected (F : ShapeFamily O Info)
     (K : Contract O ProgressReq) {s : CapSpec ProgressReq K.Idx}
-    (hs : K.spec .resilient = some s) (hr : s.recovery = none) : ¬ ShapeClaims F K := fun hc => by
+    (hs : K.spec .stable = some s) (hr : s.recovery = none) : ¬ ShapeClaims F K := fun hc => by
   have := (hc.complete _ s hs rfl).2
   simp [hr] at this
 
@@ -139,8 +139,8 @@ theorem forgedProposal_invalid : forgedProposal.SelValid ∧ ¬ forgedProposal.E
   simp
 
 /-- A schema that provides neither a final nor an available output. -/
-def noService (resilient : Bool) : OutputSchema :=
-  ⟨Unit, fun c => if resilient ∧ c = .resilient then some () else none⟩
+def noService (stable : Bool) : OutputSchema :=
+  ⟨Unit, fun c => if stable ∧ c = .stable then some () else none⟩
 
 /-- An instance without a ledger service is never accepted (`Accepted.serves`),
 even though its `ShapeClaims` and `Contract.Realizable` may hold vacuously. -/

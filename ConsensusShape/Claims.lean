@@ -53,7 +53,7 @@ structure ShapeCapClaims (F : ShapeFamily O Info) (K : Contract O ProgressReq) (
   accountable : ∀ α, s.accountable = some α → AllRuns F fun _ rho => rho.ExecutionValid →
     (chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable α g 0 ∨ rho.HashCollision
   /-- Resilience: parameters `σ 0 = T`, `σ 1 = b₀`. -/
-  resilient : ∀ P, s.resilience = some P → AllRuns F fun E rho => ∀ σ, rho.ExecutionValid →
+  persists : ∀ P, s.resilience = some P → AllRuns F fun E rho => ∀ σ, rho.ExecutionValid →
     ShapePremise K P σ rho →
     (chainTrace rho).ProtectedThrough (((K.catchUp : Nat) : Time) * E.Δ) g (resilienceTarget O g)
       (σ 0) (σ 1) ∨ rho.HashCollision

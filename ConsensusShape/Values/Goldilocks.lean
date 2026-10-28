@@ -6,14 +6,14 @@ public import ConsensusShape.Values.Common
 /-! # Goldilocks as a value (D-16, D-17)
 
 The Goldilocks skeleton and contract: three outputs (`confirmed`, `stable`,
-`finalized`) serving the available, resilient and final capabilities; slot
+`finalized`) serving the available, stable and final capabilities; slot
 proposals by one selected key per slot on a grid of `4·Δ` slots; polling
 disabled. The committee kinds `head`/`fin`, their phases and the finality
 pattern are placeholders until the FG-SA migration fixes them.
 
 The contract's named numbers are `GoldilocksParams`. Premises:
-* available and resilient safety: the sleepy model `sleepy θ`;
-* available and resilient liveness at gap `k`: `sleepy θ` and one honest
+* available and stable safety: the sleepy model `sleepy θ`;
+* available and stable liveness at gap `k`: `sleepy θ` and one honest
   ready proposer in every window of `k` slots from time 0;
 * resilience (parameters `protectedAt`, `outageStart`, `outageEnd`): the
   pre-window arming (outage window, synchrony up to the outage start, `θ` and
@@ -48,12 +48,12 @@ inductive GOut where
   | finalized
   deriving DecidableEq, Repr
 
-/-- The Goldilocks schema: `confirmed` is available, `stable` resilient,
+/-- The Goldilocks schema: `confirmed` is available, `stable` is stable,
 `finalized` final. -/
 def goldilocksSchema : OutputSchema :=
   ⟨GOut, fun
     | .available => some .confirmed
-    | .resilient => some .stable
+    | .stable => some .stable
     | .final => some .finalized⟩
 
 /-- Placeholder committee kinds (the FG-SA migration fixes them). -/
@@ -166,7 +166,7 @@ def headReq (k : ℕ+) : ProgressReq := ⟨Pattern.single, k⟩
 /-- The finality pattern in every window of `k` slots. -/
 def finReq (k : ℕ+) : ProgressReq := ⟨P.finPattern, k⟩
 
-/-- Liveness of the available and resilient outputs at gap `k`. -/
+/-- Liveness of the available and stable outputs at gap `k`. -/
 def livePremise (k : ℕ+) : Premise ProgressReq :=
   .conj (sleepy P.sleepyAbove) (.progress (headReq k) .zero)
 
@@ -190,7 +190,7 @@ def recoveryPremise (k : ℕ+) : Premise ProgressReq :=
   optConj P.noWakeAfterGST (fromGST .noWake) <|
   .progress (headReq k) .gst
 
-/-- The recovery spec (shared by the available and resilient outputs). -/
+/-- The recovery spec (shared by the available and stable outputs). -/
 def recoverySpec : RecoverySpec ProgressReq ℕ+ where
   premise := P.recoveryPremise
   start k := .addΔ .gst (P.recovery.eval k)
@@ -215,7 +215,7 @@ def goldilocksContract (P : GoldilocksParams) : Contract goldilocksSchema Progre
         { safety := { premise := sleepy P.sleepyAbove }
           live := ⟨P.livePremise, fun _ => .zero, fun k => P.growth.eval k⟩
           recovery := some P.recoverySpec }
-    | .resilient => some
+    | .stable => some
         { safety := { premise := sleepy P.sleepyAbove }
           live := ⟨P.livePremise, fun _ => .zero, fun k => P.stableGrowth.eval k⟩
           resilience := some P.resiliencePremise

@@ -96,7 +96,7 @@ def confinedK : Contract schema ProgressReq where
   idx_nonempty := ⟨()⟩
   catchUp := 1
   spec
-    | .resilient => some
+    | .stable => some
         { safety := { premise := .truth }
           live := ⟨fun _ => .sync, fun _ => .zero, fun _ => 0⟩
           resilience := some (.throughout (.add .zero 100) .horizon .full) }
@@ -108,7 +108,7 @@ theorem confinedOutage_not_realizable :
       ∀ (Info : Type) [DecidableEq Info] [Encodable Info] (F : ShapeFamily schema Info),
         ¬ confinedK.Realizable F := by
   refine ⟨⟨trivial, trivial⟩, fun Info _ _ F hR => ?_⟩
-  obtain ⟨σ, n, E, rho, hw, ha, hk⟩ := hR.resilience .resilient _ _ rfl rfl 100
+  obtain ⟨σ, n, E, rho, hw, ha, hk⟩ := hR.resilience .stable _ _ rfl rfl 100
   obtain ⟨-, h01, -, h2H, ⟨v, hv, t, ht1, ht2, hsl⟩, -⟩ := ha
   have hΔ : (1 : Time) ≤ E.Δ := E.Δ_pos
   have h100 : (100 : Time) ≤ t := by

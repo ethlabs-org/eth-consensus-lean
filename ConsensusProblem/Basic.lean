@@ -36,22 +36,22 @@ abbrev Ledger := List Tx
 def Compatible {α : Type} (a b : List α) : Prop := a <+: b ∨ b <+: a
 
 /-- The three services a protocol may provide. The names state the intent: an
-available ledger (live under dynamic participation), a resilient ledger
+available ledger (live under dynamic participation), a stable ledger
 (persists through bounded outages), and a final ledger (safe under asynchrony,
 accountable). What is claimed for a capability is exactly its specification in
 the protocol's contract (`CapSpec`); only `final`'s monotonicity and the
 nesting order are unconditional. -/
 inductive Capability where
   | available
-  | resilient
+  | stable
   | final
   deriving DecidableEq, Repr
 
-/-- Nesting order: `final ⪯ resilient ⪯ available` (a lower rank is a prefix of
+/-- Nesting order: `final ⪯ stable ⪯ available` (a lower rank is a prefix of
 a higher rank). -/
 def Capability.rank : Capability → Nat
   | .final => 0
-  | .resilient => 1
+  | .stable => 1
   | .available => 2
 
 /-- The physical outputs of a protocol and which capability each serves. Two

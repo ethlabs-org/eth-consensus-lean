@@ -12,7 +12,7 @@ acceptance establishes" for what that review must check.
 
 | Layer | Library | What it fixes |
 |---|---|---|
-| **L0, the problem** | `ConsensusProblem` | transactions and ledgers; three capabilities (`available`, `resilient`, `final`) served by the outputs of an `OutputSchema`; the environment (Δ, GST, awake profile, honest set, horizon, submissions); safety, nesting, transaction liveness, resilience, ready-reader safety, accountability, non-framing; the closed premise language; `Contract` and the headline `ProblemClaims` |
+| **L0, the problem** | `ConsensusProblem` | transactions and ledgers; three capabilities (`available`, `stable`, `final`) served by the outputs of an `OutputSchema`; the environment (Δ, GST, awake profile, honest set, horizon, submissions); safety, nesting, transaction liveness, resilience, ready-reader safety, accountability, non-framing; the closed premise language; `Contract` and the headline `ProblemClaims` |
 | **L½, the model** | `ConsensusModel`, `ConsensusModelProofs` | a shape-free execution model: identity (PKI), closed selection, credentials, the engine (unit ticks, delivery, sleep and restarts, slashing protection), evidence and hashes; `sysOf`, which makes every protocol family an L0 system; the proofs (`canonical_run`, `honestNeverSlashed`, `sysOf_nonFraming`, lifting) |
 | **Blocks** | `ConsensusBlocks` | protocol-free building blocks, each with at least two users: `TimeGrid`, selection premises (`HonestReadyIn`, `PatternRecurrence`), chains (`Header`, linkage, provenance), payload (`encodeTxs`, `ledgerOf`) |
 | **L1, the chain shape** | `ConsensusShape` | one generic `ChainShape` (skeleton + state machine), one `compile` onto L½, block-level claims `ShapeClaims`, `refinement`, coverage, the non-vacuity certificate `Contract.Realizable`, and the acceptance endpoint `Accepted` |
@@ -416,7 +416,7 @@ shape. The migration must discharge:
   escape `Option ℚ`; liveness never; local accountability is unconditional.
 - **D-5** `ProtectedThrough`: during and after the window, `b₁` only in the
   premise; readers continuously awake from `max 0 (b₀ − c − 1)`.
-- **D-6** A resilient capability has both a resilience premise and a recovery
+- **D-6** A stable capability has both a resilience premise and a recovery
   spec (`CapSpec.Complete`); `final` always has monotonicity; nesting for every
   provided ordered pair.
 - **D-7** Provided ⇔ specified is a claim field.
@@ -499,7 +499,7 @@ shape. The migration must discharge:
   is covered by `goldilocks_realizable`.
 - `Vacuity`: `zero_catchUp_not_shapeClaims`, `escape_zero_rejected` (also
   `recoveryEscape_zero_rejected`, `accountable_zero_rejected`),
-  `resilient_without_recovery_rejected`, `noSync_live_rejected` (also
+  `stable_without_recovery_rejected`, `noSync_live_rejected` (also
   `noSync_recovery_rejected`), with the
   control `goldilocks_structural`; `noService_not_accepted` (no final or
   available output); `credential_forgery_excluded` (a delivered

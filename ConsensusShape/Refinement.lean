@@ -138,7 +138,7 @@ theorem refinement (F : ShapeFamily O Info) (K : Contract O ProgressReq) (V : Ty
     · rintro α ha ⟨E, rho⟩ hv -
       exact (hcc.accountable α ha V E rho hv).imp (accountablySafe_ledger rho) id
     · rintro P hP σ ⟨E, rho⟩ hv hA
-      exact (hcc.resilient P hP V E rho σ hv hA).imp (fun h => h.map ledgerOf_prefix) id
+      exact (hcc.persists P hP V E rho σ hv hA).imp (fun h => h.map ledgerOf_prefix) id
     · rintro R hR i σ ⟨E, rho⟩ hv hA
       exact (hcc.recoverySafe R hR V E rho i σ hv hA).imp (fun h => h.map ledgerOf_prefix) id
     · rintro R hR i σ ⟨E, rho⟩ hv hA

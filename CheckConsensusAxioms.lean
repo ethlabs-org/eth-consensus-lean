@@ -58,7 +58,7 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Vacuity.escape_zero_rejected,
       `Consensus.Shape.Tests.Vacuity.recoveryEscape_zero_rejected,
       `Consensus.Shape.Tests.Vacuity.accountable_zero_rejected,
-      `Consensus.Shape.Tests.Vacuity.resilient_without_recovery_rejected,
+      `Consensus.Shape.Tests.Vacuity.stable_without_recovery_rejected,
       `Consensus.Shape.Tests.Vacuity.noSync_live_rejected,
       `Consensus.Shape.Tests.Vacuity.noSync_recovery_rejected,
       `Consensus.Shape.Tests.Vacuity.goldilocks_structural,
