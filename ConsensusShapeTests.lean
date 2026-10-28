@@ -9,3 +9,4 @@ public import ConsensusShapeTests.Realizable
 public import ConsensusShapeTests.Good
 public import ConsensusShapeTests.Vacuity
 public import ConsensusShapeTests.Controls
+public import ConsensusShapeTests.Goldilocks

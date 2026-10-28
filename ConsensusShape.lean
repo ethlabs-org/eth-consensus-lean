@@ -9,6 +9,7 @@ public import ConsensusShape.Realizable
 public import ConsensusShape.Accepted
 public import ConsensusShape.Values.Common
 public import ConsensusShape.Values.Goldilocks
+public import ConsensusShape.Values.GoldilocksSheet
 public import ConsensusShape.Values.Streamlet
 public import ConsensusShape.Values.Tendermint
 
@@ -18,4 +19,5 @@ vocabulary and progress reader over compiled runs (`Run`), the shape claims
 (`Claims`), the payload facts (`Payload`), the refinement to the L0 behaviour
 (`Refinement`), coverage, the extremal selection and generic realizability
 (`Realizable`), the acceptance endpoint (`Accepted`, with `Accepted.good`),
-and the Goldilocks, Streamlet and Tendermint values (`Values`). -/
+and the Goldilocks (with its properties sheet, `GoldilocksSheet`), Streamlet
+and Tendermint values (`Values`). -/

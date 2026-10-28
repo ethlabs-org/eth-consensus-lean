@@ -69,18 +69,26 @@ look-back `η = 2`; heal and latency `1` for every capability and index. -/
 def ctrlParams : Params ℕ+ :=
   { Params.standard 1 1 1 (fun _ _ => 1) (fun _ _ => 1) with η := 2 }
 
-/-- The control contract: the interim Goldilocks contract at `ctrlParams`,
-finality pattern `range 2`. -/
-abbrev ctrlK : Contract goldilocksSchema ProgressReq :=
-  goldilocksContract ctrlParams (Pattern.range 2)
+/-- The control contract over the Goldilocks schema: `ctrlParams`, index the
+gap `k`, one honest ready proposer per window of `k` slots (available,
+stable), the pattern `range 2` per window of `k` slots (final). Not the
+pinned Goldilocks contract (`goldilocksContract`). -/
+abbrev ctrlK : Contract goldilocksSchema ProgressReq where
+  Idx := ℕ+
+  idx_nonempty := ⟨1⟩
+  params := ctrlParams
+  progress
+    | .final, k => .recur ⟨Pattern.range 2, k⟩
+    | _, k => .recur ⟨Pattern.single, k⟩
 
 theorem ctrlK_admissible : ctrlK.params.Admissible := by
   have h := Params.standard_admissible (Idx := ℕ+) (catchUp := 1) (lag := 1) (budget := 1)
     (heal := fun _ _ => 1) (latency := fun _ _ => 1) le_rfl le_rfl
   exact ⟨h.1, h.2, h.3, h.4, h.5, h.6⟩
 
-theorem ctrlK_progressFits : ctrlK.ProgressFits ctrlFamily :=
-  goldilocksContract_progressFits _ _ _ fun _ => rfl
+theorem ctrlK_progressFits : ctrlK.ProgressFits ctrlFamily := by
+  intro cap k pub
+  cases cap <;> rfl
 
 /-- The control system: five validators. -/
 abbrev S : System (Fin 5) := sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)
