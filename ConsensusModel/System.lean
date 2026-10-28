@@ -36,6 +36,15 @@ def sysOf (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq 
   convicts r A x := r.2.Slashable {o' | ⟨r.1, o'⟩ ∈ A} x
   Excuse r := r.2.HashCollision
 
+/-- The external data of a compiled run: its PKI and its selection, fixed
+before execution; admissible = the protocol's selection spec. Progress
+requirements of a shape read only these and the environment point. -/
+def sysExternal (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq V] :
+    External (sysOf O F V) where
+  Ext E := (Fin (Fintype.card V) ≃ V) × ((protoOf F E).Role → Finset (Fin (Fintype.card V)))
+  ext r := (r.2.key, r.2.sel)
+  Admits E e := ∀ ρ, ((protoOf F E).selSpec ρ).Admits (e.2 ρ)
+
 /-- The execution profile of the model: the execution model fixes partial
 synchrony and synchrony up to a time; the shape supplies `progress`. -/
 def modelProfile (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq V]

@@ -198,6 +198,32 @@ theorem EagerFrom.syncUntil {g : Time} (hns : L.SendsFromZero p) (h : L.EagerFro
     (hg : g ≤ 0) (b : Time) : L.SyncUntil p b :=
   (h.psync hg).syncUntil_zero hns b
 
+/-- Delivery transfers to a log `L'` that agrees with `L` up to `b`, on the
+point with horizon `b ≤ horizon`, for deadlines at or after the start
+(`a ≤ dl a`): everything the clauses read lies at times `≤ b`. -/
+theorem Delivers.prefix {L' : CommLog V M} {dl : Time → Time} {cut b : Time}
+    (h : L.Delivers p dl cut) (hag : L'.AgreesUpTo L b) (hb : b ≤ p.horizon)
+    (hdl : ∀ a, a ≤ dl a) : L'.Delivers { p with horizon := b } dl cut := by
+  have hheld : ∀ w m d, d ≤ b → L.Held p w m d → L'.Held { p with horizon := b } w m d := by
+    rintro w m d hd ⟨t', ht', hs, hn⟩
+    have hb' : t' ≤ b := le_trans ht' hd
+    refine ⟨t', ht', ?_, hn⟩
+    rcases hs with hs | hs
+    · exact Or.inl (((hag.1 w m t' hb').1).mpr hs)
+    · exact Or.inr (((hag.1 w m t' hb').2).mpr hs)
+  constructor
+  · intro v hv m t hs w hw hdc hdh haw
+    have ht : t ≤ b := le_trans (hdl t) hdh
+    exact hheld w m _ hdh (h.msgs v hv m t (((hag.1 v m t ht).1).mp hs) w hw hdc
+      (le_trans hdh hb) haw)
+  · intro v hv m t hs w hw a hta hdc hdh haw
+    have ht : t ≤ b := le_trans (le_trans hta.le (hdl a)) hdh
+    exact hheld w m _ hdh (h.rewake v hv m t (((hag.1 v m t ht).1).mp hs) w hw a hta hdc
+      (le_trans hdh hb) haw)
+  · intro u hu x τ hτ hua hx w hw a hτa hdc hdh haw
+    obtain ⟨τ', h0, hτ', hin⟩ := h.txs u hu x τ hτ hua hx w hw a hτa hdc (le_trans hdh hb) haw
+    exact ⟨τ', h0, hτ', by rw [hag.2 w τ' (le_trans hτ' hdh)]; exact hin⟩
+
 end CommLog
 
 end Consensus

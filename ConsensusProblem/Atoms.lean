@@ -35,6 +35,12 @@ theorem ReadyOfAll.mono {φ φ' : ℚ} {c t : Time} (h : p.ReadyOfAll φ' c t)
     (hle : φ ≤ φ') : p.ReadyOfAll φ c t :=
   lt_of_le_of_lt (mul_le_mul_of_nonneg_right hle (by positivity)) h
 
+omit [DecidableEq V] in
+/-- A smaller fraction of all validators honest and awake is weaker. -/
+theorem AwakeOfAll.mono {φ φ' : ℚ} {t : Time} (h : p.AwakeOfAll φ' t) (hle : φ ≤ φ') :
+    p.AwakeOfAll φ t :=
+  lt_of_le_of_lt (mul_le_mul_of_nonneg_right hle (by positivity)) h
+
 /-- A smaller fraction and a shorter look-back are weaker. -/
 theorem EtaSleepy.mono {θ θ' : ℚ} {η η' c t : Time} (h : p.EtaSleepy θ' η' c t)
     (h0 : 0 ≤ θ) (hθ : θ ≤ θ') (hη : η ≤ η') : p.EtaSleepy θ η c t := by

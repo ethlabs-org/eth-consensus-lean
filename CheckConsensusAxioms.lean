@@ -99,7 +99,22 @@ def main : IO UInt32 := do
       `Consensus.Model.canonical_run_from, `Consensus.Model.Run.truncate_valid,
       `Consensus.Model.Run.truncate_prefix,
       `Consensus.Shape.Tests.Network.silent_run_valid,
-      `Consensus.Shape.Tests.Network.truncate_relayedRun] do
+      `Consensus.Shape.Tests.Network.truncate_relayedRun,
+      `Consensus.Good.final_agree, `Consensus.Good.final_safe_healthy,
+      `Consensus.Good.persists_final_compatible, `Consensus.Good.sleepySafe_prefix,
+      `Consensus.Good.healedSafe_prefix, `Consensus.Good.outage_prefix,
+      `Consensus.Model.sysOf_adequate, `Consensus.Model.sysOf_eagerFrom,
+      `Consensus.Params.standard_admissible, `Consensus.EnvPoint.HealthyOn.faultsBelow,
+      `Consensus.CommLog.EagerFrom.psync, `Consensus.CommLog.Delivers.prefix,
+      `Consensus.Trace.PrefixOf.readySafeUpTo, `Consensus.Trace.PrefixOf.protectedUpTo,
+      `Consensus.Trace.PrefixOf.endCut_eq,
+      `Consensus.Regime.Sleepy.of_le, `Consensus.Regime.Healthy.of_le,
+      `Consensus.Regime.Outage.of_le,
+      `Consensus.Shape.Tests.Good.false_progress_not_good,
+      `Consensus.Shape.Tests.Good.empty_valid_not_good,
+      `Consensus.Shape.Tests.Good.excuse_true_not_good,
+      `Consensus.Shape.Tests.Good.prefix_sync_then_async,
+      `Consensus.Shape.Tests.Good.healthy_rotating_sleeper] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2
