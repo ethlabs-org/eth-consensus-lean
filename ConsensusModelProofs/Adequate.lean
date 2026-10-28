@@ -11,6 +11,8 @@ public import Mathlib.Tactic
 model's (`sysExternal`: the PKI and the selection), the system `sysOf O F V`
 meets the L0 acceptance interface `System.Adequate`:
 
+* admissible external data in every environment: the PKI
+  `Fintype.equivFin` and, per role, a selection from `SelSpec.admits_exists`;
 * coverage, from `canonical_run_from`: every well-formed point, PKI,
   admissible selection and GST `g` has a valid run whose log is eager from `g`;
   with an injective hash (items are `Encodable`, so one exists) it has no hash
@@ -43,7 +45,10 @@ theorem sysOf_adequate {Prog : Type} (Y : Progress (sysOf O F V) Prog)
   obtain ⟨rfl, hext, hadm⟩ := hY
   cases eq_of_heq hext
   cases eq_of_heq hadm
-  constructor
+  refine ⟨fun E => ?_, ?_, ?_⟩
+  · exact ⟨((Fintype.equivFin V).symm, fun ρ => Classical.choose
+      ((protoOf F E).selSpec ρ).admits_exists), fun ρ => Classical.choose_spec
+      ((protoOf F E).selSpec ρ).admits_exists⟩
   · rintro p hp ⟨key, sel⟩ hsel g
     obtain ⟨relay, events, hvalid, heager⟩ :=
       canonical_run_from O F V p.env p.honest p.horizon hp key sel hsel p.submit

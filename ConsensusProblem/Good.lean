@@ -161,18 +161,24 @@ structure Behaviour (S : System V) (X : Progress S Prog) (K : Contract' S.schema
   final : ∀ g, S.schema.output .final = some g → FinalClaims S X K g
   da : ∀ cap g, (cap = .available ∨ cap = .stable) → S.schema.output cap = some g →
     DAClaims S X K cap g
-  /-- Outage resilience of the stable output, into the resilience target. -/
+  /-- Outage resilience of the stable output, into the resilience target:
+  what a node ready at `T` reads as stable is kept by eligible readers. -/
   persists : ∀ g, S.schema.output .stable = some g → ∀ T b₀ b₁,
-    S.Holds (S.Outage K T b₀ b₁) (fun r => (S.trace r).ProtectedThrough (S.cDur K r) g
+    S.Holds (S.Outage K T b₀ b₁) (fun r => (S.trace r).ProtectedThrough' (S.cDur K r) g
       (resilienceTarget S.schema g) T b₀ b₁)
 
 /-- **Adequacy**: the L0 acceptance interface, which rules out a vacuous
 system. -/
 structure System.Adequate (S : System V) (X : Progress S Prog) : Prop where
+  /-- Every environment has admissible external data (otherwise coverage would
+  be vacuous). -/
+  admits : ∀ E : Env V, ∃ e : X.Ext E, X.Admits E e
   /-- Coverage: every well-formed point, admissible external data and GST `g`
   has a valid excuse-free run with that point, whose log is eager from `g`
   (`g ≤ 0`: synchronous; `g > horizon`: silent), and on which every progress
-  requirement that holds at the point and data holds. -/
+  requirement that holds at the point and data holds. The run's own external
+  data `X.ext r` need not be `e` (L0 transports the progress, not the data);
+  `Model.sysOf_adequate` keeps the given PKI and selection. -/
   covers : ∀ p : EnvPoint V, p.WellFormed → ∀ e : X.Ext p.env, X.Admits p.env e → ∀ g : Time,
     ∃ r, S.Valid r ∧ ¬ S.Excuse r ∧ S.pt r = p ∧ (S.log r).EagerFrom (S.pt r) g ∧
       ∀ π c s t, X.holds π c s t p e → X.holds π c s t (S.pt r) (X.ext r)
@@ -192,11 +198,11 @@ def SafeActive (c t₀ : Time) (p : EnvPoint V) : Prop :=
     p.Ready c u t ∧ p.Ready c w t ∧ p.Ready c u t'
 
 /-- The outage is active: armed at `T ≥ 0` before the window, which lasts at
-least `Δ` and ends within the horizon; an honest node sleeps in the window; an
-honest node is caught up before the window and awake through its end (an
-eligible reader). -/
+least `Δ` and ends within the horizon; a node is ready at `T` (a protected
+source); an honest node sleeps in the window; an honest node is caught up
+before the window and awake through its end (an eligible reader). -/
 def OutageActive (c T b₀ b₁ : Time) (p : EnvPoint V) : Prop :=
-  0 ≤ T ∧ T < b₀ ∧ b₀ + p.env.Δ ≤ b₁ ∧ b₁ ≤ p.horizon ∧
+  0 ≤ T ∧ T < b₀ ∧ b₀ + p.env.Δ ≤ b₁ ∧ b₁ ≤ p.horizon ∧ (∃ u, p.Ready c u T) ∧
     (∃ v ∈ p.honest, ∃ t, b₀ ≤ t ∧ t < b₁ ∧ p.env.awake v t = false) ∧
     ∃ w ∈ p.honest, p.AwakeOnClosed w (max 0 (b₀ - c - 1)) b₁
 
@@ -243,18 +249,19 @@ theorem final_safe_healthy (h : Good S X K) {g : S.schema.Id}
     (hH.2.faultsBelow hh).mono _ h.behaviour.admissible.α_range.1
   exact (h.final_agree hg r hv hb).imp (fun ha => ⟨ha, h.behaviour.finalMonotone g hg r hv⟩) id
 
-/-- Through an outage, what was stable at `T` is compatible with the final
-read of every eligible reader (both are prefixes of its available read). -/
+/-- Through an outage, what a node ready at `T` read as stable is compatible
+with the final read of every eligible reader (both are prefixes of its
+available read). -/
 theorem persists_final_compatible (h : Good S X K) {g gf : S.schema.Id}
     (hs : S.schema.output .stable = some g) (hf : S.schema.output .final = some gf)
     (r : S.Run) (hv : S.Valid r) {T b₀ b₁ : Time} (hO : S.Outage K T b₀ b₁ r)
-    {v w : V} (hvh : v ∈ (S.pt r).honest) (hwh : w ∈ (S.pt r).honest) {t : Time}
+    {v w : V} (hvr : (S.pt r).Ready (S.cDur K r) v T) (hwh : w ∈ (S.pt r).honest) {t : Time}
     (ht : b₀ ≤ t) (hth : t ≤ (S.pt r).horizon)
     (hr : (S.trace r).ResilienceReader (S.cDur K r) b₀ b₁ w t) :
     Compatible ((S.trace r).readAt g v T) ((S.trace r).readAt gf w t) ∨ S.Excuse r := by
   rcases h.behaviour.persists g hs T b₀ b₁ r hv hO with hp | he
   · left
-    have h1 := hp v hvh t ht hth w hwh hr
+    have h1 := hp v hvr t ht hth w hwh hr
     have hcut : (S.trace r).endCut t ≤ (S.trace r).cuts := Nat.findGreatest_le _
     have h2 : (S.trace r).readAt gf w t <+:
         (S.trace r).readAt (resilienceTarget S.schema g) w t := by
@@ -328,8 +335,8 @@ theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
 
 /-- Outage resilience of the past: a run in the outage regime up to `b`
 (synchronous for deadlines up to `b₀`, partially synchronous with GST `b₁` up
-to `b`, sleepy on `[0, b]`, covered at `b₀`) keeps what was stable at `T` at
-reading times in `[b₀, b]`, whatever happens after `b`. -/
+to `b`, sleepy on `[0, b]`, covered at `b₀`) keeps what nodes ready at `T` read
+as stable, at reading times in `[b₀, b]`, whatever happens after `b`. -/
 theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
     (hg : S.schema.output .stable = some g) (r : S.Run) (hv : S.Valid r)
     {T b₀ b₁ b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ (S.pt r).horizon)

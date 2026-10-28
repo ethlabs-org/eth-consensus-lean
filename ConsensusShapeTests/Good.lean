@@ -7,9 +7,10 @@ public import Mathlib.Tactic
 
 * Vacuous systems are not good (review Astra B3):
   `false_progress_not_good` (a progress reader that never holds violates
-  `Realizable` for `|V| ≥ 5`), `empty_valid_not_good` (no valid run violates
-  `Adequate.covers` as soon as one well-formed point has admissible external
-  data), `excuse_true_not_good` (an excuse on every run, likewise).
+  `Realizable` for `|V| ≥ 5`), `no_admissible_not_good` (no admissible
+  external data, e.g. `Admits := False`, violates `Adequate.admits`),
+  `empty_valid_not_good` (no valid run violates `Adequate.covers`),
+  `excuse_true_not_good` (an excuse on every run, likewise).
 * `prefix_sync_then_async` (review Opus B1): a log synchronous for deadlines up
   to `b = 1` whose later honest send is never received. It meets the premises
   of `Good.sleepySafe_prefix` at `b = 1` (`SyncUntil 1`, sleepy on `[0, 1]`)
@@ -36,30 +37,39 @@ theorem false_progress_not_good (hX : ∀ π c s e p x, ¬ X.holds π c s e p x)
   obtain ⟨r, -, -, -, hp, -⟩ := (h.realizable h5).sleepy .available i 1 one_pos
   exact hX _ _ _ _ _ _ hp
 
+/-- A well-formed point: `Δ = 1`, GST `0`, everybody awake, nobody honest,
+horizon `0`, no submissions. -/
+def trivPoint (V : Type) : EnvPoint V :=
+  ⟨⟨1, by decide, 0, fun _ _ => true⟩, ∅, 0, fun _ _ => []⟩
+
 omit [Fintype V] [DecidableEq V] in
-/-- No valid run: not adequate, as soon as some well-formed point has
-admissible external data. -/
-theorem empty_valid_not_adequate (hS : ∀ r, ¬ S.Valid r)
-    (hX : ∃ (p : EnvPoint V) (e : X.Ext p.env), p.WellFormed ∧ X.Admits p.env e) :
-    ¬ S.Adequate X := by
-  rintro ⟨hc, -⟩
-  obtain ⟨p, e, hp, he⟩ := hX
-  obtain ⟨r, hv, -⟩ := hc p hp e he 0
+/-- No admissible external data (e.g. `Admits := False`): not adequate. -/
+theorem no_admissible_not_adequate (hX : ∀ E e, ¬ X.Admits E e) : ¬ S.Adequate X := by
+  intro h
+  obtain ⟨e, he⟩ := h.admits (trivPoint V).env
+  exact hX _ e he
+
+/-- No admissible external data: not good. -/
+theorem no_admissible_not_good (hX : ∀ E e, ¬ X.Admits E e) : ¬ Good S X K :=
+  fun h => no_admissible_not_adequate hX h.adequate
+
+omit [Fintype V] [DecidableEq V] in
+/-- No valid run: not adequate. -/
+theorem empty_valid_not_adequate (hS : ∀ r, ¬ S.Valid r) : ¬ S.Adequate X := by
+  intro h
+  obtain ⟨e, he⟩ := h.admits (trivPoint V).env
+  obtain ⟨r, hv, -⟩ := h.covers (trivPoint V) le_rfl e he 0
   exact hS r hv
 
 /-- No valid run: not good. -/
-theorem empty_valid_not_good (hS : ∀ r, ¬ S.Valid r)
-    (hX : ∃ (p : EnvPoint V) (e : X.Ext p.env), p.WellFormed ∧ X.Admits p.env e) :
-    ¬ Good S X K :=
-  fun h => empty_valid_not_adequate hS hX h.adequate
+theorem empty_valid_not_good (hS : ∀ r, ¬ S.Valid r) : ¬ Good S X K :=
+  fun h => empty_valid_not_adequate hS h.adequate
 
 /-- An excuse on every run: not good. -/
-theorem excuse_true_not_good (hS : ∀ r, S.Excuse r)
-    (hX : ∃ (p : EnvPoint V) (e : X.Ext p.env), p.WellFormed ∧ X.Admits p.env e) :
-    ¬ Good S X K := by
-  rintro ⟨-, ⟨hc, -⟩, -⟩
-  obtain ⟨p, e, hp, he⟩ := hX
-  obtain ⟨r, -, hne, -⟩ := hc p hp e he 0
+theorem excuse_true_not_good (hS : ∀ r, S.Excuse r) : ¬ Good S X K := by
+  intro h
+  obtain ⟨e, he⟩ := h.adequate.admits (trivPoint V).env
+  obtain ⟨r, -, hne, -⟩ := h.adequate.covers (trivPoint V) le_rfl e he 0
   exact hne (hS r)
 
 end Vacuous

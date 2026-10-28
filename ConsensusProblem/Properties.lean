@@ -63,6 +63,17 @@ def ProtectedThrough (c : Time) (src dst : Id) (T b₀ b₁ : Time) : Prop :=
     ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
     tr.readAt src v T <+: tr.readAt dst w t
 
+/-- Resilience for ready sources, during and after the window `[b₀, b₁)`:
+the read of `src` at `T` of every node **ready** at `T` is a prefix of the
+`dst` read, at every `t ∈ [b₀, horizon]`, of every honest `ResilienceReader`.
+A node that is awake but not caught up at `T` may expose a stale ledger, which
+nobody must keep (sleepy safety, too, restricts only ready readers).
+(Temporary name; replaces `ProtectedThrough` when the old claims go.) -/
+def ProtectedThrough' (c : Time) (src dst : Id) (T b₀ b₁ : Time) : Prop :=
+  ∀ v, tr.point.Ready c v T → ∀ t, b₀ ≤ t → t ≤ tr.point.horizon →
+    ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
+    tr.readAt src v T <+: tr.readAt dst w t
+
 /-- The weaker non-contradiction form of `ProtectedThrough` (same
 quantifiers; defined, not advertised). -/
 def CompatibleThrough (c : Time) (src dst : Id) (T b₀ b₁ : Time) : Prop :=
@@ -89,9 +100,9 @@ def ReadySafeUpTo (c : Time) (g : Id) (t₀ b : Time) : Prop :=
       tr.point.Ready c v (tr.cutTime i) → tr.point.Ready c v (tr.cutTime j) →
       tr.read g v i <+: tr.read g v j)
 
-/-- `ProtectedThrough` at reading times `t ∈ [b₀, b]`. -/
+/-- `ProtectedThrough'` (ready sources) at reading times `t ∈ [b₀, b]`. -/
 def ProtectedUpTo (c : Time) (src dst : Id) (T b₀ b₁ b : Time) : Prop :=
-  ∀ v ∈ tr.point.honest, ∀ t, b₀ ≤ t → t ≤ b →
+  ∀ v, tr.point.Ready c v T → ∀ t, b₀ ≤ t → t ≤ b →
     ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
     tr.readAt src v T <+: tr.readAt dst w t
 
@@ -160,7 +171,7 @@ theorem readySafeUpTo (h : tr'.PrefixOf tr b) {c : Time} {g : Id} {t₀ : Time}
 /-- Resilience of the prefix is resilience of the full trace at reading times
 in `[b₀, b]` (for a protected time `T ≤ b₀`). -/
 theorem protectedUpTo (h : tr'.PrefixOf tr b) {c : Time} {src dst : Id} {T b₀ b₁ : Time}
-    (hT : T ≤ b₀) (hp : tr'.ProtectedThrough c src dst T b₀ b₁) :
+    (hT : T ≤ b₀) (hp : tr'.ProtectedThrough' c src dst T b₀ b₁) :
     tr.ProtectedUpTo c src dst T b₀ b₁ b := by
   intro v hv t ht htb w hw hr
   have hpt := h.point
