@@ -26,7 +26,8 @@ def main : IO UInt32 := do
       `Consensus.Model.Run.txHeld_mem_mempool, `Consensus.Model.SelSpec.admits_exists,
       `Consensus.Model.sysOf_laws, `Consensus.Model.Run.selected_of_observed,
       `Consensus.Model.Run.candidates_signer, `Consensus.Model.Run.credentials_of_causal,
-      `Consensus.Shape.Tests.Model.forged_role_invalid] do
+      `Consensus.Shape.Tests.Model.forged_role_invalid,
+      `Consensus.Shape.Tests.Model.unit_ticks] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2

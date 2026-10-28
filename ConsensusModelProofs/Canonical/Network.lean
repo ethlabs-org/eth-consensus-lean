@@ -37,13 +37,13 @@ theorem front_prefix {k n : Nat} (hk : k < n) :
   simp only [List.append_assoc]
 
 theorem tick_mem_stages {n : Nat} {v : V} {t : Time}
-    (hv : v ∈ rho.honest) (ht : PublicTime E t) (ha : E.awake v t = true)
+    (hv : v ∈ rho.honest) (ha : E.awake v t = true)
     (h0 : 0 ≤ t) (hn : t.toNat < n) : Event.tick v t ∈ rho.stages n := by
   apply (rho.mem_stages n _).mpr
   refine ⟨t.toNat, hn, ?_⟩
   rw [Int.toNat_of_nonneg h0]
   simp only [layer, List.mem_append]
-  exact Or.inl (Or.inr ((rho.mem_tickEvents t _).mpr ⟨v, hv, ht, ha, rfl⟩))
+  exact Or.inl (Or.inr ((rho.mem_tickEvents t _).mpr ⟨v, hv, ha, rfl⟩))
 
 theorem canonical_causal : (rho.withEvents rho.canonicalEvents).Causal := by
   intro i w o t hi
@@ -54,7 +54,7 @@ theorem canonical_causal : (rho.withEvents rho.canonicalEvents).Causal := by
   have hp : o ∈ rho.pool (rho.front (rho.stages k) (k : Time)) := by
     simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
       mem_deliveryEvents] at he
-    rcases he with (⟨v, _, _, _, h⟩ | ⟨v, _, _, _, h⟩) | ⟨v, _, _, p, hp, h⟩
+    rcases he with (⟨v, _, _, _, h⟩ | ⟨v, _, _, h⟩) | ⟨v, _, _, p, hp, h⟩
     · cases h
     · cases h
     · cases h; exact hp
@@ -96,7 +96,6 @@ theorem canonical_eager (h0 : 0 ≤ rho.horizon) :
   obtain ⟨i, hi, _⟩ := hr
   have htm := List.mem_of_getElem? hi
   have ht0 := (hs.in_horizon _ htm).1
-  have hp := hs.tick_public v t htm
   have hwa := rho.canonical_sleep.tick_awake v t htm
   have ha0 : 0 ≤ a := le_trans ht0 hta
   have han : a.toNat < rho.horizon.toNat + 1 := by
@@ -108,12 +107,12 @@ theorem canonical_eager (h0 : 0 ≤ rho.horizon) :
     · subst t
       apply List.mem_append_right
       exact (rho.mem_tickEvents _ _).mpr
-        ⟨v, hv, by simpa only [Int.toNat_of_nonneg ha0] using hp,
-          by simpa only [Int.toNat_of_nonneg ha0] using hwa, by rw [Int.toNat_of_nonneg ha0]⟩
+        ⟨v, hv, by simpa only [Int.toNat_of_nonneg ha0] using hwa,
+          by rw [Int.toNat_of_nonneg ha0]⟩
     · have hlt : t < a := lt_of_le_of_ne hta heq
       apply List.mem_append_left
       apply List.mem_append_left
-      apply rho.tick_mem_stages hv hp hwa ht0
+      apply rho.tick_mem_stages hv hwa ht0
       exact (Int.toNat_lt_toNat (lt_of_le_of_lt ht0 hlt)).mpr hlt
   have hr' : (rho.withEvents (rho.front (rho.stages a.toNat) (a.toNat : Time))).releases v o t := by
     apply rho.releases_restrict _ tail

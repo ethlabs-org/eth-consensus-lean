@@ -28,10 +28,6 @@ the digests of the items in the object's closure. -/
 
 namespace Consensus.Model
 
-/-- A public time is a nonnegative multiple of `Δ` (the tick grid of this
-iteration's engine). -/
-def PublicTime {V : Type} (E : Env V) (t : Time) : Prop := ∃ k : Nat, t = (k : Time) * E.Δ
-
 /-- A scheduler event at a node: a tick, the delivery of an object, or a
 restart (which the conditions allow only at a wake). -/
 inductive Event (V O : Type) where

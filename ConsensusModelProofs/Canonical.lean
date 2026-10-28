@@ -7,7 +7,7 @@ public import ConsensusModelProofs.Credentials
 /-! # A canonical execution for every protocol
 
 At every integer time through the horizon, schedule honest wake restarts,
-then awake honest public ticks, then deliveries of the finite pool of all
+then awake honest ticks, then deliveries of the finite pool of all
 objects released so far to all awake honest nodes. Objects are deduplicated
 within each recipient's delivery batch. Delivering again at later times makes
 the network service independent of sleep history.

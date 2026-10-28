@@ -249,13 +249,12 @@ theorem releases_eq (hv : rho.ExecutionValid) : r.releases = rho.releases := by
 theorem executionValid (hv : rho.ExecutionValid) : r.ExecutionValid := by
   obtain ⟨_, hr⟩ := h.trace hv
   have hs : r.ScheduleWellFormed := by
-    refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
     · simpa only [h.horizon] using hv.horizon_nonneg
     · simpa only [h.events] using hv.sorted
     · simpa only [h.events] using hv.nodup
     · simpa only [h.events, h.horizon] using hv.in_horizon
     · simpa only [h.events, h.honest] using hv.honest_only
-    · simpa only [h.events] using hv.tick_public
     · simpa only [h.events, h.honest, h.horizon] using hv.tick_total
   have hw : r.SleepWellFormed := by
     refine ⟨?_, ?_, ?_, ?_⟩

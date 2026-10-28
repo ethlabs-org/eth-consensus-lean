@@ -4,7 +4,7 @@ public import ConsensusModelProofs.Canonical.Events
 @[expose] public section
 
 /-! The canonical scheduler and its schedule/sleep proofs. Each integer time
-has three phases: wake restarts, public ticks, then eager deliveries. Each
+has three phases: wake restarts, ticks, then eager deliveries. Each
 phase uses the fixed order from the honest finset and the released pool. -/
 
 namespace Consensus.Model
@@ -21,7 +21,7 @@ noncomputable def wakeEvents (t : Time) : List (Event V (protoOf F E).Object) :=
 
 noncomputable def tickEvents (t : Time) : List (Event V (protoOf F E).Object) := by
   classical
-  exact ((rho.honest.filter (fun v => PublicTime E t ∧ E.awake v t = true)).toList).map
+  exact ((rho.honest.filter (fun v => E.awake v t = true)).toList).map
     (fun v => .tick v t)
 
 noncomputable def deliveryEvents (es : List (Event V (protoOf F E).Object)) (t : Time) :
@@ -52,7 +52,7 @@ omit [DecidableEq V] in
 omit [DecidableEq V] in
 @[simp] theorem mem_tickEvents (t : Time) (e : Event V (protoOf F E).Object) :
     e ∈ rho.tickEvents t ↔
-      ∃ v ∈ rho.honest, PublicTime E t ∧ E.awake v t = true ∧ e = .tick v t := by
+      ∃ v ∈ rho.honest, E.awake v t = true ∧ e = .tick v t := by
   classical
   simp only [tickEvents, List.mem_map, Finset.mem_toList, Finset.mem_filter]
   aesop
@@ -71,13 +71,13 @@ theorem layer_time (es : List (Event V (protoOf F E).Object)) (t : Time)
     {e : Event V (protoOf F E).Object} (he : e ∈ rho.layer es t) : e.time = t := by
   simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
     mem_deliveryEvents] at he
-  rcases he with (⟨v, _, _, _, rfl⟩ | ⟨v, _, _, _, rfl⟩) | ⟨v, _, _, o, _, rfl⟩ <;> rfl
+  rcases he with (⟨v, _, _, _, rfl⟩ | ⟨v, _, _, rfl⟩) | ⟨v, _, _, o, _, rfl⟩ <;> rfl
 
 theorem layer_honest (es : List (Event V (protoOf F E).Object)) (t : Time)
     {e : Event V (protoOf F E).Object} (he : e ∈ rho.layer es t) : e.node ∈ rho.honest := by
   simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
     mem_deliveryEvents] at he
-  rcases he with (⟨v, hv, _, _, rfl⟩ | ⟨v, hv, _, _, rfl⟩) | ⟨v, hv, _, o, _, rfl⟩ <;>
+  rcases he with (⟨v, hv, _, _, rfl⟩ | ⟨v, hv, _, rfl⟩) | ⟨v, hv, _, o, _, rfl⟩ <;>
     exact hv
 
 theorem layer_sorted (es : List (Event V (protoOf F E).Object)) (t : Time) :
@@ -89,7 +89,7 @@ theorem layer_sorted (es : List (Event V (protoOf F E).Object)) (t : Time) :
     exact ⟨rfl, rfl⟩
   have ht : ∀ e ∈ rho.tickEvents t, e.time = t ∧ e.phase = 1 := by
     intro e he
-    obtain ⟨v, _, _, _, rfl⟩ := (rho.mem_tickEvents t e).mp he
+    obtain ⟨v, _, _, rfl⟩ := (rho.mem_tickEvents t e).mp he
     exact ⟨rfl, rfl⟩
   have hd : ∀ e ∈ rho.deliveryEvents (rho.front es t) t, e.time = t ∧ e.phase = 2 := by
     intro e he
@@ -222,26 +222,15 @@ theorem canonical_layer (t : Time) (h0 : 0 ≤ t) (hh : t ≤ rho.horizon)
 
 theorem canonical_schedule (h0 : 0 ≤ rho.horizon) :
     (rho.withEvents rho.canonicalEvents).ScheduleWellFormed := by
-  refine ⟨h0, rho.stages_sorted _, rho.stages_nodup _, ?_, ?_, ?_, ?_⟩
+  refine ⟨h0, rho.stages_sorted _, rho.stages_nodup _, ?_, ?_, ?_⟩
   · exact fun e he => rho.canonical_in_horizon h0 he
   · intro e he
     obtain ⟨k, _, hk⟩ := (rho.mem_stages _ e).mp he
     exact rho.layer_honest _ _ hk
-  · intro v t he
-    obtain ⟨k, _, hk⟩ := (rho.mem_stages _ _).mp he
-    simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
-      mem_deliveryEvents] at hk
-    rcases hk with (⟨w, _, _, _, h⟩ | ⟨w, _, hp, _, h⟩) | ⟨w, _, _, o, _, h⟩
-    · cases h
-    · cases h; exact hp
-    · cases h
-  · intro v hv t ht hh ha
-    have ht0 : 0 ≤ t := by
-      obtain ⟨k, rfl⟩ := ht
-      exact mul_nonneg (Int.natCast_nonneg k) E.Δ_pos.le
+  · intro v hv t ht0 hh ha
     apply rho.canonical_layer t ht0 hh
     simp only [layer, List.mem_append]
-    exact Or.inl (Or.inr ((rho.mem_tickEvents t _).mpr ⟨v, hv, ht, ha, rfl⟩))
+    exact Or.inl (Or.inr ((rho.mem_tickEvents t _).mpr ⟨v, hv, ha, rfl⟩))
 
 theorem canonical_sleep : (rho.withEvents rho.canonicalEvents).SleepWellFormed := by
   have event_layer {e : Event V (protoOf F E).Object} (he : e ∈ rho.canonicalEvents) :
@@ -253,7 +242,7 @@ theorem canonical_sleep : (rho.withEvents rho.canonicalEvents).SleepWellFormed :
     obtain ⟨k, hk⟩ := event_layer he
     simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
       mem_deliveryEvents] at hk
-    rcases hk with (⟨w, _, _, _, h⟩ | ⟨w, _, _, ha, h⟩) | ⟨w, _, _, o, _, h⟩
+    rcases hk with (⟨w, _, _, _, h⟩ | ⟨w, _, ha, h⟩) | ⟨w, _, _, o, _, h⟩
     · cases h
     · cases h; exact ha
     · cases h
@@ -261,7 +250,7 @@ theorem canonical_sleep : (rho.withEvents rho.canonicalEvents).SleepWellFormed :
     obtain ⟨k, hk⟩ := event_layer he
     simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
       mem_deliveryEvents] at hk
-    rcases hk with (⟨w, _, _, _, h⟩ | ⟨w, _, _, _, h⟩) | ⟨w, _, ha, p, _, h⟩
+    rcases hk with (⟨w, _, _, _, h⟩ | ⟨w, _, _, h⟩) | ⟨w, _, ha, p, _, h⟩
     · cases h
     · cases h
     · cases h; exact ha
@@ -269,7 +258,7 @@ theorem canonical_sleep : (rho.withEvents rho.canonicalEvents).SleepWellFormed :
     obtain ⟨k, hk⟩ := event_layer he
     simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
       mem_deliveryEvents] at hk
-    rcases hk with (⟨w, _, hp, ha, h⟩ | ⟨w, _, _, _, h⟩) | ⟨w, _, _, o, _, h⟩
+    rcases hk with (⟨w, _, hp, ha, h⟩ | ⟨w, _, _, h⟩) | ⟨w, _, _, o, _, h⟩
     · cases h; exact ⟨hp, ha⟩
     · cases h
     · cases h

@@ -7,8 +7,9 @@ public import Mathlib.Tactic
 
 A tiny protocol with two roles: `false` (every key, one duty per integer time)
 and `true` (one key). Tests: relayed ingress and the cumulative mempool,
-validity rules out a negative horizon, and credentials bind the role (a key
-selected for one role cannot sign in another). -/
+validity rules out a negative horizon, credentials bind the role (a key
+selected for one role cannot sign in another), and ticks happen at every
+integer time. -/
 
 namespace Consensus.Shape.Tests.Model
 open Consensus Model
@@ -113,6 +114,13 @@ theorem forged_role_invalid : forgedRun.SelValid ∧ ¬ forgedRun.Credentials :=
 /-- Hence a forged role makes the run invalid. -/
 theorem forged_role_not_valid : ¬ forgedRun.ExecutionValid :=
   fun hv => forged_role_invalid.2 hv.credentials
+
+/-- Unit ticks: with `Δ = 3`, every valid run of horizon at least `1` ticks
+an awake honest node at time `1`, which is not a multiple of `Δ` (so a
+`Δ`-grid schedule would not be valid). -/
+theorem unit_ticks (rho : Run family env) (hv : rho.ExecutionValid) (h0 : (0 : Fin 2) ∈ rho.honest)
+    (hh : 1 ≤ rho.horizon) : Event.tick (0 : Fin 2) 1 ∈ rho.events ∧ ¬ (3 : Time) ∣ 1 :=
+  ⟨hv.tick_total 0 h0 1 (by decide) hh rfl, by decide⟩
 
 end Consensus.Shape.Tests.Model
 end

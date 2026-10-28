@@ -22,15 +22,14 @@ namespace Run
 variable (rho : Run F E)
 
 /-- Events are in time order, finite, honest only, and every awake honest node
-ticks at every public time of the horizon. -/
+ticks at every integer time of `[0, horizon]` (unit ticks). -/
 structure ScheduleWellFormed : Prop where
   horizon_nonneg : 0 ≤ rho.horizon
   sorted : rho.events.Pairwise Event.keyLe
   nodup : rho.events.Nodup
   in_horizon : ∀ e ∈ rho.events, 0 ≤ e.time ∧ e.time ≤ rho.horizon
   honest_only : ∀ e ∈ rho.events, e.node ∈ rho.honest
-  tick_public : ∀ v t, Event.tick v t ∈ rho.events → PublicTime E t
-  tick_total : ∀ v ∈ rho.honest, ∀ t, PublicTime E t → t ≤ rho.horizon →
+  tick_total : ∀ v ∈ rho.honest, ∀ t, 0 ≤ t → t ≤ rho.horizon →
     E.awake v t = true → Event.tick v t ∈ rho.events
 
 /-- Sleep: an asleep node has no events; a node restarts exactly when it
