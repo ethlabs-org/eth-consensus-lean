@@ -29,7 +29,7 @@ variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
 /-- An accepted instance: shape claims, admissible numbers, a served ledger,
 and progress requirements that fit the skeleton and tolerate arbitrary numbers
 of validators not ready. -/
-structure Accepted (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Prop where
+structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop where
   /-- The chain-level claims (proved by the protocol). -/
   claims : ShapeClaims F K
   /-- The numbers are admissible. -/
@@ -39,25 +39,25 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Prop 
   /-- The progress requirements fit the skeleton. -/
   progressFits : K.ProgressFits F
   /-- Every provided output tolerates arbitrary numbers of validators not ready. -/
-  progressTolerant : K.ProgressTolerant
+  progressTolerant : Contract.ProgressTolerant O K
 
 /-- An accepted instance has the L0 behaviour for every finite validator
 type. -/
-theorem Accepted.behaviour {F : ShapeFamily O Info} {K : Contract O ProgressReq}
+theorem Accepted.behaviour {F : ShapeFamily O Info} {K : Contract ProgressReq}
     (h : Accepted F K) (V : Type) [Fintype V] [DecidableEq V] :
     Behaviour (sysOf O (compiled F) V) (shapeProgress F V) K :=
   refinement F K V h.claims h.admissible h.serves
 
 /-- The compiled system of every family is adequate for the shape's progress
 reader (an L1 theorem; it does not depend on the claims). -/
-theorem Accepted.adequate {F : ShapeFamily O Info} {K : Contract O ProgressReq}
+theorem Accepted.adequate {F : ShapeFamily O Info} {K : Contract ProgressReq}
     (_h : Accepted F K) (V : Type) [Fintype V] [DecidableEq V] :
     (sysOf O (compiled F) V).Adequate (shapeProgress F V) :=
   Model.sysOf_adequate _ rfl
 
 /-- An accepted instance is a good protocol (L0 `Good`) for every finite
 validator type. -/
-theorem Accepted.good {F : ShapeFamily O Info} {K : Contract O ProgressReq}
+theorem Accepted.good {F : ShapeFamily O Info} {K : Contract ProgressReq}
     (h : Accepted F K) (V : Type) [Fintype V] [DecidableEq V] :
     Good (sysOf O (compiled F) V) (shapeProgress F V) K :=
   ⟨h.behaviour V, h.adequate V,
@@ -67,7 +67,7 @@ theorem Accepted.good {F : ShapeFamily O Info} {K : Contract O ProgressReq}
 to an honest node is in the `g`-read of another honest node, which was never
 submitted it. -/
 theorem _root_.Consensus.Trace.TxLive.served {V Id : Type} {tr : Trace V Tx Id} {c : Time}
-    {g : Id} {start D : Time} (hl : tr.TxLive c g start D) (ha : tr.TxLiveActive c start D) :
+    {g : Id} {start D : Time} (hl : tr.TxLive c g start D) (ha : tr.point.TxLiveActive c start D) :
     ∃ x u w t t', u ∈ tr.point.honest ∧ w ∈ tr.point.honest ∧ w ≠ u ∧
       x ∈ tr.point.submit u t ∧ (∀ τ, x ∉ tr.point.submit w τ) ∧ t' ≤ tr.point.horizon ∧
       x ∈ tr.readAt g w t' := by
@@ -82,7 +82,7 @@ from `gst`, with the progress of `cap` at the index, has a transaction
 submitted to one honest node in the `g`-read of another honest node that was
 never submitted it (it arrived by relay and was ordered by the protocol).
 Renamed from rev-0 `Delivers` (no clash with L0 `CommLog.Delivers`). -/
-def ActiveService (F : ShapeFamily O Info) (K : Contract O ProgressReq) (cap : Capability)
+def ActiveService (F : ShapeFamily O Info) (K : Contract ProgressReq) (cap : Capability)
     (g : O.Id) : Prop :=
   ∀ (V : Type) [Fintype V] [DecidableEq V], 5 ≤ Fintype.card V →
     ∀ (i : K.Idx) (Δ gst : Time), 0 < Δ → 0 ≤ gst →
@@ -101,7 +101,7 @@ def ActiveService (F : ShapeFamily O Info) (K : Contract O ProgressReq) (cap : C
 available output: the healthy witness of `regimes_realizable` meets the
 premise of the output's live claim (`FinalClaims.live` or
 `DAClaims.healedLive`) with an active antecedent, and has no excuse. -/
-theorem Accepted.activeService {F : ShapeFamily O Info} {K : Contract O ProgressReq}
+theorem Accepted.activeService {F : ShapeFamily O Info} {K : Contract ProgressReq}
     (h : Accepted F K) : ∃ cap g, (cap = .final ∨ cap = .available) ∧ O.output cap = some g ∧
       ActiveService F K cap g := by
   -- The live claim of `cap` at `g`, at every population, index and GST.
@@ -116,14 +116,14 @@ theorem Accepted.activeService {F : ShapeFamily O Info} {K : Contract O Progress
             ((sysOf O (compiled F) V).lat K cap i r))) →
       ActiveService F K cap g := by
     intro cap g _ hl V _ _ hn i Δ gst hΔ hg
-    obtain ⟨r, hw, hd, -, hH, hp, ha, -⟩ :=
+    obtain ⟨r, hw, hd, ⟨-, hH, hp, ha⟩, -⟩ :=
       (regimes_realizable F K h.admissible h.progressFits h.progressTolerant V hn).1.healthy cap i
         Δ gst hΔ hg
     refine ⟨r, hw, hd, hH, hp, ?_⟩
     rcases hl V i gst r hw.1 ⟨hH, hp⟩ with hlive | he
     · exact hlive.served ha
     · exact absurd he hw.2.1
-  rcases h.serves with hb | ⟨ha, -⟩
+  rcases h.serves with hb | ha
   · obtain ⟨g, hg⟩ := Option.isSome_iff_exists.mp hb
     exact ⟨.final, g, Or.inl rfl, hg, key .final g hg fun V _ _ i gst =>
       ((h.behaviour V).final g hg).live i gst⟩

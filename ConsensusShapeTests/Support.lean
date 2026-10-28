@@ -185,7 +185,7 @@ theorem active_relay {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableE
     {E : Env V} (rho : Model.Run (compiled F) E) {gst c start D : Time}
     (hs : CommLog.PSync rho.point rho.log gst) (hgs : gst ≤ start) (hD : 0 ≤ D)
     (hawake : ∀ v t, E.awake v t = true)
-    (ha : ((sysOf O (compiled F) V).trace ⟨E, rho⟩).TxLiveActive c start D) :
+    (ha : rho.point.TxLiveActive c start D) :
     ∃ x, ∃ w ∈ rho.honest, (∀ τ, x ∉ rho.submit w τ) ∧ ∃ τ, 0 ≤ τ ∧ x ∈ rho.relay w τ := by
   obtain ⟨x, t, t', u, w, ht0, hu, hua, hx, hw, -, hnw, hdl, hth, -⟩ := ha
   change u ∈ rho.honest at hu

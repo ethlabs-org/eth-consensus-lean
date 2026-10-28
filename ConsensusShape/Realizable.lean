@@ -6,7 +6,7 @@ public import Mathlib.Tactic
 
 /-! # Coverage, the extremal selection and generic realizability (L2)
 
-* `coverage` (fixed selection): any well-formed environment point, with any
+* `coverage` (fixed selection): any environment point with `0 ≤ horizon`, with any
   PKI, any admissible selection and any GST `g`, is exactly the point, PKI and
   selection of a valid, collision-free, conviction-free compiled run whose log
   is eager from `g`. Progress requirements read only the point, the PKI and
@@ -38,7 +38,7 @@ point `p`, the PKI `key`, an admissible selection `sel`, and a GST `g`. Some
 valid, collision-free, conviction-free compiled run has exactly that point,
 PKI and selection, and its log is eager from `g`. -/
 theorem coverage (F : ShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V]
-    (p : EnvPoint V) (hp : p.WellFormed) (key : Fin (Fintype.card V) ≃ V)
+    (p : EnvPoint V) (hp : 0 ≤ p.horizon) (key : Fin (Fintype.card V) ≃ V)
     (sel : (protoOf (compiled F) p.env).Role → Finset (Fin (Fintype.card V)))
     (hsel : ∀ r, ((protoOf (compiled F) p.env).selSpec r).Admits (sel r)) (g : Time) :
     ∃ rho : Model.Run (compiled F) p.env, rho.point = p ∧ rho.key = key ∧ rho.sel = sel ∧
@@ -111,7 +111,7 @@ def _root_.Consensus.Blocks.ProgressReq.Fits {n : Nat} (sk : Skeleton n) : Progr
 
 /-- Every progress requirement of the contract fits the family's skeleton at
 every public parameter. -/
-def _root_.Consensus.Contract.ProgressFits (K : Contract O ProgressReq)
+def _root_.Consensus.Contract.ProgressFits (K : Contract ProgressReq)
     (F : ShapeFamily O Info) : Prop :=
   ∀ cap i pub, (K.progress cap i).Fits (F pub).skel
 
@@ -123,7 +123,8 @@ def _root_.Consensus.Blocks.ProgressReq.Tolerates (N : Nat) : ProgressReq → Pr
 
 /-- Every provided output has an index tolerating any requested number of
 validators not ready. -/
-def _root_.Consensus.Contract.ProgressTolerant (K : Contract O ProgressReq) : Prop :=
+def _root_.Consensus.Contract.ProgressTolerant (O : OutputSchema) (K : Contract ProgressReq) :
+    Prop :=
   ∀ cap, (O.output cap).isSome → ∀ N : Nat, ∃ i, (K.progress cap i).Tolerates N
 
 /-! ## Generic realizability
@@ -159,7 +160,7 @@ Thresholds are proved at the standard bounds (`θ ≤ ½`, `φ ≤ ⅔`,
 
 section Realize
 
-variable (F : ShapeFamily O Info) (K : Contract O ProgressReq)
+variable (F : ShapeFamily O Info) (K : Contract ProgressReq)
 variable {V : Type} [Fintype V] [DecidableEq V]
 
 /-- The length of one window of the progress requirement of `cap` at `i` on
@@ -193,7 +194,7 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
   sleepyActive : ∀ cap i (Δ : Time), 0 < Δ → ∃ (E : Env V) (rho : Model.Run (compiled F) E),
     (sysOf O (compiled F) V).Witness ⟨E, rho⟩ ∧ E.Δ = Δ ∧ ShapeSleepy K rho ∧
       ShapeProg K rho cap i 0 rho.horizon ∧ ProgressActive F K cap i 0 rho ∧
-      ((sysOf O (compiled F) V).trace ⟨E, rho⟩).TxLiveActive (shapeC K rho) 0
+      rho.point.TxLiveActive (shapeC K rho) 0
         ((sysOf O (compiled F) V).lat K cap i ⟨E, rho⟩)
   healthyActive : ∀ cap i (Δ g : Time), 0 < Δ → 0 ≤ g →
     ∃ (E : Env V) (rho : Model.Run (compiled F) E),
@@ -202,7 +203,7 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
         ((sysOf O (compiled F) V).log ⟨E, rho⟩) g ∧ ShapeHealthy K rho g ∧
       ShapeProg K rho cap i (shapeReady K rho g) rho.horizon ∧
       ProgressActive F K cap i (shapeReady K rho g) rho ∧
-      ((sysOf O (compiled F) V).trace ⟨E, rho⟩).TxLiveActive (shapeC K rho)
+      rho.point.TxLiveActive (shapeC K rho)
         (shapeHeal K rho cap i g) ((sysOf O (compiled F) V).lat K cap i ⟨E, rho⟩) ∧
       SafeActive (shapeC K rho) (shapeHeal K rho cap i g) rho.point
   /-- Sleepy liveness and progress are active below an awake supermajority. -/
@@ -210,7 +211,7 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
     ∀ Δ : Time, 0 < Δ → ∃ (i : K.Idx) (E : Env V) (rho : Model.Run (compiled F) E),
       (sysOf O (compiled F) V).Witness ⟨E, rho⟩ ∧ E.Δ = Δ ∧ ShapeSleepy K rho ∧
       ShapeProg K rho cap i 0 rho.horizon ∧ ProgressActive F K cap i 0 rho ∧
-      ((sysOf O (compiled F) V).trace ⟨E, rho⟩).TxLiveActive (shapeC K rho) 0
+      rho.point.TxLiveActive (shapeC K rho) 0
         ((sysOf O (compiled F) V).lat K cap i ⟨E, rho⟩) ∧
       rho.point.AwakeAtMost (2 * Fintype.card V / 3)
   /-- Healthy liveness and progress are active at a minimal awake supermajority. -/
@@ -221,7 +222,7 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
         ((sysOf O (compiled F) V).log ⟨E, rho⟩) g ∧ ShapeHealthy K rho g ∧
       ShapeProg K rho cap i (shapeReady K rho g) rho.horizon ∧
       ProgressActive F K cap i (shapeReady K rho g) rho ∧
-      ((sysOf O (compiled F) V).trace ⟨E, rho⟩).TxLiveActive (shapeC K rho)
+      rho.point.TxLiveActive (shapeC K rho)
         (shapeHeal K rho cap i g) ((sysOf O (compiled F) V).lat K cap i ⟨E, rho⟩) ∧
       rho.point.AwakeAtMost (2 * Fintype.card V / 3 + 1)
   outage : ∀ (Δ : Time) (k : Nat), 0 < Δ → ∃ r T b₀ b₁,
@@ -235,16 +236,16 @@ theorem RealizableActive.toRealizable {V : Type} [Fintype V] [DecidableEq V]
     (h : RealizableActive F K V) : Realizable (sysOf O (compiled F) V) (shapeProgress F V) K where
   sleepy cap i Δ hΔ := by
     obtain ⟨E, rho, hw, hd, hs, hp, -, ht⟩ := h.sleepyActive cap i Δ hΔ
-    exact ⟨⟨E, rho⟩, hw, hd, hs, hp, ht⟩
+    exact ⟨⟨E, rho⟩, hw, hd, ⟨hs, hp, ht⟩⟩
   healthy cap i Δ g hΔ hg := by
     obtain ⟨E, rho, hw, hd, he, hs, hp, -, ht, hsa⟩ := h.healthyActive cap i Δ g hΔ hg
-    exact ⟨⟨E, rho⟩, hw, hd, he, hs, hp, ht, hsa⟩
+    exact ⟨⟨E, rho⟩, hw, hd, ⟨he, hs, hp, ht⟩, hsa⟩
   sleepyStress cap hc ho Δ hΔ := by
     obtain ⟨i, E, rho, hw, hd, hs, hp, -, hl, hb⟩ := h.sleepyStress cap hc ho Δ hΔ
-    exact ⟨i, ⟨E, rho⟩, hw, hd, hs, hp, hl, hb⟩
+    exact ⟨i, ⟨E, rho⟩, hw, hd, ⟨hs, hp, hl⟩, hb⟩
   healthyStress cap ho Δ g hΔ hg := by
     obtain ⟨i, E, rho, hw, hd, he, hs, hp, -, hl, hb⟩ := h.healthyStress cap ho Δ g hΔ hg
-    exact ⟨i, ⟨E, rho⟩, hw, hd, he, hs, hp, hl, hb⟩
+    exact ⟨i, ⟨E, rho⟩, hw, hd, ⟨he, hs, hp, hl⟩, hb⟩
   outage := h.outage
 
 /-! ### The witness points -/
@@ -462,10 +463,10 @@ theorem allAwake_holds (hf : K.ProgressFits F) (cap : Capability) (i : K.Idx)
 
 /-- Everyone awake: liveness is active from `start`, with transaction `42`
 submitted to `key 1` at `0` and read by `key 2` at the horizon. -/
-theorem allAwake_txLiveActive {α Id : Type} (tr : Trace V α Id)
-    (hp : tr.point = realPoint key hn Δ hΔ allAwake H) (c start D : Time)
-    (hH : max 0 start + Δ + D ≤ H) : tr.TxLiveActive c start D := by
-  unfold Trace.TxLiveActive
+theorem allAwake_txLiveActive (p : EnvPoint V)
+    (hp : p = realPoint key hn Δ hΔ allAwake H) (c start D : Time)
+    (hH : max 0 start + Δ + D ≤ H) : p.TxLiveActive c start D := by
+  unfold EnvPoint.TxLiveActive
   rw [hp]
   refine ⟨42, 0, H, kv key hn 1 (by decide), kv key hn 2 (by decide), le_rfl,
     realPoint_honest key hn hΔ allAwake H (by decide) (by decide), rfl, ?_,
@@ -517,10 +518,10 @@ theorem profile_holds (awake : V → Time → Bool)
 transaction `42` at `0`, and key `2` reads at the horizon. -/
 theorem profile_txLiveActive (awake : V → Time → Bool)
     (ha1 : ∀ t, awake (kv key hn 1 (by decide)) t = true)
-    (ha2 : ∀ t, awake (kv key hn 2 (by decide)) t = true) {α Id : Type} (tr : Trace V α Id)
-    (hp : tr.point = realPoint key hn Δ hΔ awake H) (c start D : Time)
-    (hH : max 0 start + Δ + D ≤ H) : tr.TxLiveActive c start D := by
-  unfold Trace.TxLiveActive
+    (ha2 : ∀ t, awake (kv key hn 2 (by decide)) t = true) (p : EnvPoint V)
+    (hp : p = realPoint key hn Δ hΔ awake H) (c start D : Time)
+    (hH : max 0 start + Δ + D ≤ H) : p.TxLiveActive c start D := by
+  unfold EnvPoint.TxLiveActive
   rw [hp]
   refine ⟨42, 0, H, kv key hn 1 (by decide), kv key hn 2 (by decide), le_rfl,
     realPoint_honest key hn hΔ awake H (by decide) (by decide), ha1 0, ?_,
@@ -569,7 +570,7 @@ theorem sleepy_witness (ha : K.params.Admissible) (hf : K.ProgressFits F) (cap :
       rho.point = realPoint key hn Δ hΔ allAwake H ∧ rho.key = key ∧
       (sysOf O (compiled F) V).Witness ⟨_, rho⟩ ∧ ShapeSleepy K rho ∧
       ShapeProg K rho cap i 0 rho.horizon ∧ ProgressActive F K cap i 0 rho ∧
-      ((sysOf O (compiled F) V).trace ⟨_, rho⟩).TxLiveActive (shapeC K rho) 0
+      rho.point.TxLiveActive (shapeC K rho) 0
         ((sysOf O (compiled F) V).lat K cap i ⟨_, rho⟩) := by
   have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V)
   have hlat : 0 ≤ K.params.latDur Δ cap i := mul_nonneg (by positivity) hΔ.le
@@ -612,7 +613,7 @@ theorem healthy_witness (ha : K.params.Admissible) (hf : K.ProgressFits F) (cap 
         ((sysOf O (compiled F) V).log ⟨_, rho⟩) g ∧ ShapeHealthy K rho g ∧
       ShapeProg K rho cap i (shapeReady K rho g) rho.horizon ∧
       ProgressActive F K cap i (shapeReady K rho g) rho ∧
-      ((sysOf O (compiled F) V).trace ⟨_, rho⟩).TxLiveActive (shapeC K rho)
+      rho.point.TxLiveActive (shapeC K rho)
         (shapeHeal K rho cap i g) ((sysOf O (compiled F) V).lat K cap i ⟨_, rho⟩) ∧
       SafeActive (shapeC K rho) (shapeHeal K rho cap i g) rho.point := by
   have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V)
@@ -654,7 +655,7 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hf : K.ProgressFits F) 
       rho.point = realPoint key hn Δ hΔ (awakeUpTo key 3) H ∧ rho.key = key ∧
       (sysOf O (compiled F) V).Witness ⟨_, rho⟩ ∧ ShapeSleepy K rho ∧
       ShapeProg K rho cap i 0 rho.horizon ∧ ProgressActive F K cap i 0 rho ∧
-      ((sysOf O (compiled F) V).trace ⟨_, rho⟩).TxLiveActive (shapeC K rho) 0
+      rho.point.TxLiveActive (shapeC K rho) 0
         ((sysOf O (compiled F) V).lat K cap i ⟨_, rho⟩) ∧
       rho.point.AwakeAtMost (2 * Fintype.card V / 3) := by
   have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, (awakeUpTo key 3)⟩ : Env V)
@@ -710,7 +711,7 @@ theorem healthyStress_witness (ha : K.params.Admissible) (hf : K.ProgressFits F)
         ((sysOf O (compiled F) V).log ⟨_, rho⟩) g ∧ ShapeHealthy K rho g ∧
       ShapeProg K rho cap i (shapeReady K rho g) rho.horizon ∧
       ProgressActive F K cap i (shapeReady K rho g) rho ∧
-      ((sysOf O (compiled F) V).trace ⟨_, rho⟩).TxLiveActive (shapeC K rho)
+      rho.point.TxLiveActive (shapeC K rho)
         (shapeHeal K rho cap i g) ((sysOf O (compiled F) V).lat K cap i ⟨_, rho⟩) ∧
       SafeActive (shapeC K rho) (shapeHeal K rho cap i g) rho.point ∧ rho.point.AwakeAtMost (2 *
         Fintype.card V / 3 + 1) := by
@@ -809,8 +810,8 @@ end Witnesses
 /-- **Generic realizability** (active form): for every family whose progress
 fits its skeleton and every admissible, progress-tolerant contract, with
 at least five validators. -/
-theorem realizable_active (F : ShapeFamily O Info) (K : Contract O ProgressReq)
-    (ha : K.params.Admissible) (hf : K.ProgressFits F) (ht : K.ProgressTolerant)
+theorem realizable_active (F : ShapeFamily O Info) (K : Contract ProgressReq)
+    (ha : K.params.Admissible) (hf : K.ProgressFits F) (ht : Contract.ProgressTolerant O K)
     (V : Type) [Fintype V] [DecidableEq V]
     (hn : 5 ≤ Fintype.card V) : RealizableActive F K V := by
   let key : Fin (Fintype.card V) ≃ V := (Fintype.equivFin V).symm
@@ -867,8 +868,8 @@ theorem realizable_active (F : ShapeFamily O Info) (K : Contract O ProgressReq)
 fits its skeleton and every admissible, progress-tolerant contract, with
 at least five validators; in addition every progress window of the sleepy and healthy
 witnesses is active (`RealizableActive`). -/
-theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract O ProgressReq)
-    (ha : K.params.Admissible) (hf : K.ProgressFits F) (ht : K.ProgressTolerant)
+theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
+    (ha : K.params.Admissible) (hf : K.ProgressFits F) (ht : Contract.ProgressTolerant O K)
     (V : Type) [Fintype V] [DecidableEq V]
     (hn : 5 ≤ Fintype.card V) :
     Realizable (sysOf O (compiled F) V) (shapeProgress F V) K ∧ RealizableActive F K V :=

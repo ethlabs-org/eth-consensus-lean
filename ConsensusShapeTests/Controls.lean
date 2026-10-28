@@ -76,7 +76,7 @@ def ctrlParams : Params ℕ+ :=
 gap `k`, one honest ready proposer per window of `k` slots (available,
 stable), the pattern `range 2` per window of `k` slots (final). Not the
 pinned Goldilocks contract (`goldilocksContract`). -/
-abbrev ctrlK : Contract goldilocksSchema ProgressReq where
+abbrev ctrlK : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
   params := ctrlParams
@@ -94,7 +94,7 @@ theorem ctrlK_progressFits : ctrlK.ProgressFits ctrlFamily := by
   cases cap <;> rfl
 
 /-- The control recurrences tolerate any number of validators not ready. -/
-theorem ctrlK_progressTolerant : ctrlK.ProgressTolerant := by
+theorem ctrlK_progressTolerant : Contract.ProgressTolerant goldilocksSchema ctrlK := by
   intro cap ho N
   refine ⟨1, ?_⟩
   cases cap <;> trivial
@@ -134,13 +134,13 @@ before `5`), for every capability at index `1`. -/
 theorem positive_controls (cap : Capability) :
     (∃ r : S.Run, S.pt r = ptA ∧ S.Witness r ∧ S.Sleepy ctrlK r ∧
       S.prog X ctrlK cap k1 0 (S.pt r).horizon r ∧ ProgressActive ctrlFamily ctrlK cap k1 0 r.2 ∧
-      (S.trace r).TxLiveActive (S.cDur ctrlK r) 0 (S.lat ctrlK cap k1 r) ∧
+      (S.pt r).TxLiveActive (S.cDur ctrlK r) 0 (S.lat ctrlK cap k1 r) ∧
       ∃ x, ∃ w ∈ r.2.honest, (∀ τ, x ∉ r.2.submit w τ) ∧ ∃ τ, 0 ≤ τ ∧ x ∈ r.2.relay w τ) ∧
     (∃ r : S.Run, S.pt r = ptA ∧ S.Witness r ∧
       (∀ w m t, (S.log r).recv w m t → 5 ≤ t) ∧ (S.log r).EagerFrom (S.pt r) 5 ∧
       S.Healthy ctrlK 5 r ∧ S.prog X ctrlK cap k1 (S.ready ctrlK 5 r) (S.pt r).horizon r ∧
       ProgressActive ctrlFamily ctrlK cap k1 (S.ready ctrlK 5 r) r.2 ∧
-      (S.trace r).TxLiveActive (S.cDur ctrlK r) (S.heal ctrlK cap k1 5 r) (S.lat ctrlK cap k1 r) ∧
+      (S.pt r).TxLiveActive (S.cDur ctrlK r) (S.heal ctrlK cap k1 5 r) (S.lat ctrlK cap k1 r) ∧
       SafeActive (S.cDur ctrlK r) (S.heal ctrlK cap k1 5 r) (S.pt r)) := by
   have hL := progLen_le cap
   have hL0 := progLen_nonneg' cap

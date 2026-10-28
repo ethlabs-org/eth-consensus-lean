@@ -138,7 +138,7 @@ theorem psync_of_sys {rho : Model.Run (compiled F) E} {gst : Time}
   (Model.sysOf_delivers_iff rho _ _).mp h
 
 /-- The heal point is at or after the GST. -/
-theorem gst_le_heal (K : Contract O ProgressReq) (rho : Model.Run (compiled F) E)
+theorem gst_le_heal (K : Contract ProgressReq) (rho : Model.Run (compiled F) E)
     (cap : Capability) (i : K.Idx) (gst : Time) : gst ≤ shapeHeal K rho cap i gst := by
   change gst ≤ max gst 0 + ((K.params.heal cap i : Nat) : Time) * E.Δ
   have : (0 : Time) ≤ ((K.params.heal cap i : Nat) : Time) * E.Δ :=
@@ -149,7 +149,7 @@ theorem gst_le_heal (K : Contract O ProgressReq) (rho : Model.Run (compiled F) E
 /-- The headline: shape claims, admissible numbers and a served ledger give
 the L0 behaviour of the compiled system, with progress read by
 `shapeProgress`. -/
-theorem refinement (F : ShapeFamily O Info) (K : Contract O ProgressReq) (V : Type)
+theorem refinement (F : ShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
     [Fintype V] [DecidableEq V] (hc : ShapeClaims F K) (ha : K.params.Admissible)
     (hs : O.Serves) : Behaviour (sysOf O (compiled F) V) (shapeProgress F V) K := by
   refine ⟨Model.sysOf_laws _ _ _, ha, hs, Model.sysOf_nonFraming _ _ _, ?_, ?_, ?_, ?_, ?_⟩

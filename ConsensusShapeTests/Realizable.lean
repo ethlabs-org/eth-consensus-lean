@@ -194,7 +194,7 @@ end LargeIndex
 section Late
 
 variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
-  {X : Progress S Prog} {K : Contract S.schema Prog}
+  {X : Progress S Prog} {K : Contract Prog}
 
 /-- A late GST at a large `Δ`: every realizable system (so every good system
 with at least five validators, `Good.realizable`) has, at `Δ = 7` and GST
@@ -206,9 +206,9 @@ theorem healed_witness_late (h : Realizable S X K) (cap : Capability)
     ∃ r, S.Witness r ∧ (S.pt r).env.Δ = 7 ∧ (∀ w m t, (S.log r).recv w m t → 1000 ≤ t) ∧
       S.Healthy K 1000 r ∧ 1000 ≤ S.heal K cap i 1000 r ∧
       S.prog X K cap i (S.ready K 1000 r) (S.pt r).horizon r ∧
-      (S.trace r).TxLiveActive (S.cDur K r) (S.heal K cap i 1000 r) (S.lat K cap i r) ∧
+      (S.pt r).TxLiveActive (S.cDur K r) (S.heal K cap i 1000 r) (S.lat K cap i r) ∧
       SafeActive (S.cDur K r) (S.heal K cap i 1000 r) (S.pt r) := by
-  obtain ⟨r, hw, hΔ, he, hH, hp, ht, hs⟩ :=
+  obtain ⟨r, hw, hΔ, ⟨he, hH, hp, ht⟩, hs⟩ :=
     h.healthy cap i 7 1000 (by norm_num) (by norm_num)
   refine ⟨r, hw, hΔ, he.quiet, hH, ?_, hp, ht, hs⟩
   unfold System.heal Params.healPoint

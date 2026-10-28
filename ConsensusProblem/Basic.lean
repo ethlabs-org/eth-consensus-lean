@@ -112,9 +112,6 @@ noncomputable def readyAt (c t : Time) : Finset V := by
   classical
   exact p.honest.filter (fun v => p.Ready c v t)
 
-/-- Domain of the environment coverage theorems; not a claim premise. -/
-def WellFormed : Prop := 0 ≤ p.horizon
-
 /-- The ready honest validators exceed fraction `θ` of the ready and faulty
 ones: `θ · (|ready| + |faulty|) < |ready|`. -/
 def ReadyAbove (θ : ℚ) (c t : Time) : Prop :=

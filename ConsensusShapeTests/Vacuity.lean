@@ -38,12 +38,12 @@ open Consensus.Shape.Tests.Shapes (pollSkel pollShape)
 /-- Near-full participation cannot meet sleepy stress below a supermajority. -/
 theorem notReadyAtMost_one_not_realizable {O : OutputSchema} {Info : Type}
     [DecidableEq Info] [Encodable Info] (F : ShapeFamily O Info)
-    (K : Contract O ProgressReq) (V : Type) [Fintype V] [DecidableEq V]
+    (K : Contract ProgressReq) (V : Type) [Fintype V] [DecidableEq V]
     (hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome)
     (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) :
     ¬ Realizable (sysOf O (compiled F) V) (shapeProgress F V) K := by
   intro h
-  obtain ⟨i, r, -, hd, -, hprog, hlive, hawake⟩ :=
+  obtain ⟨i, r, -, hd, ⟨-, hprog, hlive⟩, hawake⟩ :=
     h.sleepyStress .available (Or.inl rfl) ho 1 one_pos
   let S := sysOf O (compiled F) V
   have hc : 0 ≤ S.cDur K r := mul_nonneg (by positivity) (S.pt r).env.Δ_pos.le
@@ -64,9 +64,9 @@ theorem notReadyAtMost_one_not_realizable {O : OutputSchema} {Info : Type}
   omega
 
 /-- A fixed bound of one cannot tolerate arbitrary numbers not ready. -/
-theorem notReadyAtMost_one_not_tolerant {O : OutputSchema} (K : Contract O ProgressReq)
+theorem notReadyAtMost_one_not_tolerant {O : OutputSchema} (K : Contract ProgressReq)
     (ho : (O.output .available).isSome)
-    (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) : ¬ K.ProgressTolerant := by
+    (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) : ¬ Contract.ProgressTolerant O K := by
   intro h
   obtain ⟨i, hi⟩ := h .available ho 2
   rw [hp i] at hi
@@ -131,7 +131,7 @@ requirement does not fit `.sized (max 1 n)` once `n ≥ 2`. -/
 theorem allProposers_unfit {O : OutputSchema} {Info : Type} [DecidableEq Info]
     [Encodable Info] {F : ShapeFamily O Info}
     (hF : ∀ pub, (F pub).skel.proposerSel = .sized (max 1 pub.n))
-    (K : Contract O ProgressReq) (cap : Capability) (i : K.Idx) (ρ : Recurrence)
+    (K : Contract ProgressReq) (cap : Capability) (i : K.Idx) (ρ : Recurrence)
     (hK : K.progress cap i = .recur ρ) : ¬ K.ProgressFits F := by
   intro h
   have := h cap i ⟨2, 1, by decide⟩
@@ -142,9 +142,9 @@ theorem allProposers_unfit {O : OutputSchema} {Info : Type} [DecidableEq Info]
 
 /-- No contract with a recurrence requirement fits the poll shape: a recurrence
 fits only `.sized 1` proposers, and the poll skeleton has none. -/
-theorem noProgressFit_contract (K : Contract schema ProgressReq) (cap : Capability) (i : K.Idx)
+theorem noProgressFit_contract (K : Contract ProgressReq) (cap : Capability) (i : K.Idx)
     (ρ : Recurrence) (hK : K.progress cap i = .recur ρ) :
-    ¬ K.ProgressFits (fun pub => pollShape pub) := by
+    ¬ K.ProgressFits (show ShapeFamily schema Unit from fun pub => pollShape pub) := by
   intro h
   have := h cap i ⟨1, 1, by decide⟩
   rw [hK] at this
@@ -196,9 +196,9 @@ def noService (stable : Bool) : OutputSchema :=
 /-- An instance without a ledger service is never accepted (`Accepted.serves`),
 whatever its claims. -/
 theorem noService_not_accepted (b : Bool) (F : ShapeFamily (noService b) Info)
-    (K : Contract (noService b) ProgressReq) : ¬ Accepted F K := by
+    (K : Contract ProgressReq) : ¬ Accepted F K := by
   intro h
-  rcases h.serves with h | ⟨h, -⟩ <;> simp [noService, OutputSchema.BFTCore] at h
+  rcases h.serves with h | h <;> simp [noService] at h
 
 end Consensus.Shape.Tests.Vacuity
 

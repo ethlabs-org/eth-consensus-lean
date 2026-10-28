@@ -10,7 +10,7 @@ public import Mathlib.Tactic
 `ShapeClaims` must not be satisfiable by protocols that do nothing, propose
 without outputting, fabricate outputs, or are silenced by their own slashing
 rule. The test contract `testK` serves only the available capability
-(`DACore` schema), with standard thresholds, catch-up 1, heal `1`, and per
+(`DACore` schema, below), with standard thresholds, catch-up 1, heal `1`, and per
 index `k : ℕ+` one honest proposer in every window of `k` slots and latency
 `k + 2`. Each refutation runs the canonical valid (synchronous) run of one
 always-awake honest validator (`Δ = 1`, injective hash; horizon 3, and 0 for
@@ -71,7 +71,12 @@ abbrev schema : OutputSchema := ⟨Unit, fun c => match c with
   | .available => some ()
   | _ => none⟩
 
-theorem schema_daCore : schema.DACore := ⟨rfl, rfl⟩
+/-- The former L0 `OutputSchema.DACore` (an available output and no final
+output), kept here so that `schema_daCore` keeps its statement. -/
+def DACore (O : OutputSchema) : Prop :=
+  (O.output .available).isSome ∧ O.output .final = none
+
+theorem schema_daCore : DACore schema := ⟨rfl, rfl⟩
 
 /-- The test contract: available capability only, standard thresholds,
 catch-up 1, heal 1, outage numbers unused; per index `k` one honest proposer
@@ -79,14 +84,14 @@ in every window of `k` slots (slots of one `Δ`, the test skeleton's grid) and
 latency `k + 2`: within `k·Δ` after `t` an honest ready proposer releases;
 its proposal reaches every node awake at the deadline by `Δ` later; the last
 `Δ` is slack. -/
-def testK : Contract schema ProgressReq where
+def testK : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
   params := Params.standard 1 0 1 (fun _ _ => 1) (fun _ k => (k : Nat) + 2)
   progress _ k := .recur ⟨Pattern.single, k⟩
 
 /-- The test recurrence tolerates any number of validators not ready. -/
-theorem testK_progressTolerant : testK.ProgressTolerant :=
+theorem testK_progressTolerant : Contract.ProgressTolerant schema testK :=
   fun _ _ _ => ⟨(1 : ℕ+), trivial⟩
 
 /-- The test skeleton: slots of one `Δ`, one proposer per slot, polling

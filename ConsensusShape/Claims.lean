@@ -44,7 +44,7 @@ def AllRuns (F : ShapeFamily O Info)
   ∀ (V : Type) [Fintype V] [DecidableEq V] (E : Env V) (rho : Model.Run (compiled F) E), Q E rho
 
 /-- The chain-level claims of a shape family for contract `K`. -/
-structure ShapeClaims (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Prop where
+structure ShapeClaims (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop where
   /-- Every provided output is valid in every valid run. -/
   outputValid : AllRuns F fun _ rho => rho.ExecutionValid →
     ∀ c g, O.output c = some g → OutputValid rho g

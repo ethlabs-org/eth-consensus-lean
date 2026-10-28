@@ -126,15 +126,9 @@ variable {V : Type} [Fintype V] [DecidableEq V] (p : EnvPoint V)
 /-- Sleepy participation on `[a, b]`. -/
 def SleepyOn (θ : ℚ) (c a b : Time) : Prop := ∀ t, a ≤ t → t ≤ b → p.ReadyAbove θ c t
 
-/-- Sleepy participation throughout the run. -/
-def Sleepy (θ : ℚ) (c : Time) : Prop := p.SleepyOn θ c 0 p.horizon
-
 /-- η-sleepy participation (look-back `η`, a duration) on `[a, b]`. -/
 def EtaSleepyOn (θ : ℚ) (η c a b : Time) : Prop :=
   ∀ t, a ≤ t → t ≤ b → p.EtaReadyAbove θ η c t
-
-/-- η-sleepy participation throughout the run. -/
-def EtaSleepy (θ : ℚ) (η c : Time) : Prop := p.EtaSleepyOn θ η c 0 p.horizon
 
 /-- Healthy on `[max g 0, b]`: one fixed set `H` of honest validators, more
 than `φ·n`, each awake throughout `[max g 0, b]` (the same validators at every
@@ -142,9 +136,6 @@ time: no churn). Readiness is not required: it restricts readers and progress
 only. -/
 def HealthyOn (φ : ℚ) (g b : Time) : Prop :=
   ∃ H ⊆ p.honest, φ * Fintype.card V < (H.card : ℚ) ∧ ∀ v ∈ H, p.AwakeOnClosed v (max g 0) b
-
-/-- Healthy from `g` to the horizon. -/
-def HealthyFrom (φ : ℚ) (g : Time) : Prop := p.HealthyOn φ g p.horizon
 
 variable {p}
 
@@ -178,19 +169,19 @@ variable {V M Idx : Type} [Fintype V] [DecidableEq V]
   (P : Params Idx) (p : EnvPoint V) (L : CommLog V M)
 
 /-- The sleepy regime: synchrony and sleepy participation throughout. -/
-def Sleepy : Prop := L.PSync p 0 ∧ p.Sleepy P.θ (P.cDur p.env.Δ)
+def Sleepy : Prop := L.PSync p 0 ∧ p.SleepyOn P.θ (P.cDur p.env.Δ) 0 p.horizon
 
 /-- The healthy regime from GST `g`: partial synchrony with GST `g`, and one
 fixed set of more than `φ·n` honest validators, each awake throughout
 `[max g 0, horizon]` (no churn). -/
-def Healthy (g : Time) : Prop := L.PSync p g ∧ p.HealthyFrom P.φ g
+def Healthy (g : Time) : Prop := L.PSync p g ∧ p.HealthyOn P.φ g p.horizon
 
 /-- The outage regime: outage times, synchronous before `b₀` and partially
 synchronous with GST `b₁`, η-sleepy throughout (look-back `η·Δ`), more than
 `cover·n` ready at `b₀`. -/
 def Outage (T b₀ b₁ : Time) : Prop :=
   OutageTimes P p.env.Δ T b₀ b₁ ∧ L.OutageNet p b₀ b₁ ∧
-    p.EtaSleepy P.θ (P.ηDur p.env.Δ) (P.cDur p.env.Δ) ∧
+    p.EtaSleepyOn P.θ (P.ηDur p.env.Δ) (P.cDur p.env.Δ) 0 p.horizon ∧
     p.ReadyOfAll P.cover (P.cDur p.env.Δ) b₀
 
 end Regime

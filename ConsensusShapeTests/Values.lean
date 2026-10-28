@@ -53,15 +53,14 @@ structure Affine where
 /-- The value of an affine bound at `k`. -/
 def Affine.eval (f : Affine) (k : Nat) : Nat := f.a + f.b * k
 
-/-- The final-only schema (`OutputSchema.BFTCore` with no other output): one
-output, serving the final capability. -/
+/-- The final-only schema: one output, serving the final capability. -/
 def bftCore : OutputSchema := ⟨Unit, fun | .final => some () | _ => none⟩
 
 /-- The final-only contract with progress `progress`, the readers' catch-up,
 the heal point after the catch-up and the latency (affine in the index) as
 parameters. -/
 def bftContract (progress : Capability → ℕ+ → ProgressReq) (catchUp : Nat)
-    (heal latency : Affine) : Contract bftCore ProgressReq where
+    (heal latency : Affine) : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
   params := Params.standard catchUp 0 1 (fun _ k => catchUp + 1 + heal.eval k)
@@ -97,7 +96,7 @@ of `k` slots. -/
 def streamletProg : Capability → ℕ+ → ProgressReq := fun _ k => .recur ⟨Pattern.range 5, k⟩
 
 /-- The Streamlet contract. -/
-abbrev streamletContract : Nat → Affine → Affine → Contract bftCore ProgressReq :=
+abbrev streamletContract : Nat → Affine → Affine → Contract ProgressReq :=
   bftContract streamletProg
 
 /-- The Streamlet progress fits every family with one proposer per slot. -/
@@ -109,7 +108,7 @@ theorem streamletContract_progressFits {Info : Type} [DecidableEq Info] [Encodab
 
 /-- Every provided output tolerates any number of validators not ready. -/
 theorem streamletContract_progressTolerant (catchUp : Nat) (heal latency : Affine) :
-    (streamletContract catchUp heal latency).ProgressTolerant :=
+    Contract.ProgressTolerant bftCore (streamletContract catchUp heal latency) :=
   fun _ _ _ => ⟨(1 : ℕ+), trivial⟩
 
 /-! ## Tendermint -/
@@ -131,7 +130,7 @@ def tendermintSkeleton (n : Nat) : Skeleton n where
 def tendermintProg : Capability → ℕ+ → ProgressReq := fun _ m => .notReadyAtMost m
 
 /-- The Tendermint contract. -/
-abbrev tendermintContract : Nat → Affine → Affine → Contract bftCore ProgressReq :=
+abbrev tendermintContract : Nat → Affine → Affine → Contract ProgressReq :=
   bftContract tendermintProg
 
 /-- The Tendermint progress fits every family (no slot proposers needed). -/
@@ -142,7 +141,7 @@ theorem tendermintContract_progressFits {Info : Type} [DecidableEq Info] [Encoda
 
 /-- Every provided output tolerates any number of validators not ready. -/
 theorem tendermintContract_progressTolerant (catchUp : Nat) (heal latency : Affine) :
-    (tendermintContract catchUp heal latency).ProgressTolerant := by
+    Contract.ProgressTolerant bftCore (tendermintContract catchUp heal latency) := by
   intro cap ho N
   exact ⟨⟨N + 1, by omega⟩, Nat.le_succ N⟩
 

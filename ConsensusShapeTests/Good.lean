@@ -75,7 +75,7 @@ namespace Consensus.Shape.Tests.Good
 section Vacuous
 
 variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
-  {X : Progress S Prog} {K : Contract S.schema Prog}
+  {X : Progress S Prog} {K : Contract Prog}
 
 omit [Fintype V] [DecidableEq V] in
 /-- A reader cannot gate progress on every submission being transaction `42`. -/
@@ -216,7 +216,7 @@ theorem rotPoint_awake_card (t : Int) : (rotPoint.awakeAt t).card = 3 := by
 validator sleeps at some time in `[0, 10]`, so no fixed set stays awake (no
 churn allowed). With catch-up `3` nobody is ready from time `3` on. -/
 theorem healthy_rotating_sleeper :
-    (∀ t, rotPoint.AwakeOfAll (2 / 3) t) ∧ ¬ rotPoint.HealthyFrom (2 / 3) 0 ∧
+    (∀ t, rotPoint.AwakeOfAll (2 / 3) t) ∧ ¬ rotPoint.HealthyOn (2 / 3) 0 rotPoint.horizon ∧
       ∀ t, 3 ≤ t → rotPoint.readyAt 3 t = ∅ := by
   refine ⟨fun t => ?_, ?_, fun t ht => ?_⟩
   · unfold EnvPoint.AwakeOfAll
@@ -436,7 +436,7 @@ end EtaHistory
 section Alias
 
 variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
-  {X : Progress S Prog} {K : Contract S.schema Prog}
+  {X : Progress S Prog} {K : Contract Prog}
 
 /-- Stable aliased to final (override 3): if a good system's stable and final
 outputs are the same identifier, the final output is live in the sleepy

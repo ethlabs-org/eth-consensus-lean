@@ -113,7 +113,7 @@ compiled system; each is the L0 definition itself (`abbrev`). -/
 
 section Regimes
 
-variable (K : Contract O ProgressReq) (rho : Model.Run (compiled F) E)
+variable (K : Contract ProgressReq) (rho : Model.Run (compiled F) E)
 
 /-- The catch-up duration `catchUp·Δ`. -/
 abbrev shapeC : Time := (sysOf O (compiled F) V).cDur K ⟨E, rho⟩

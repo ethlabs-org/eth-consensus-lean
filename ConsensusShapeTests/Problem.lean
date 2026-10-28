@@ -38,16 +38,16 @@ theorem omitted_laws : omitted.Laws :=
 
 theorem incompatible_not_agree : ¬ incompatible.Agree () 0 := by
   intro h
-  have hc := h true (Finset.mem_univ _) false (Finset.mem_univ _) 1 1
+  have hc := h true false 1 1
     (by unfold Trace.InCuts incompatible; decide)
-    (by unfold Trace.InCuts incompatible; decide)
+    (by unfold Trace.InCuts incompatible; decide) (Finset.mem_univ _) (Finset.mem_univ _)
   change Compatible [1] [2] at hc
   simp [Compatible] at hc
 
 theorem rollback_not_monotone : ¬ rollback.Monotone () 0 := by
   intro h
-  have hp := h true (Finset.mem_univ _) 1 2 (by unfold Trace.InCuts rollback; decide) (by decide)
-    (by unfold Trace.InCuts rollback; decide)
+  have hp := h true 1 2 (by unfold Trace.InCuts rollback; decide) (by decide)
+    (by unfold Trace.InCuts rollback; decide) (Finset.mem_univ _) (Finset.mem_univ _)
   change [1] <+: [] at hp
   simp at hp
 
@@ -75,8 +75,9 @@ def initRollback : Trace Bool Nat Unit :=
 cut-0 fix: before it, cut 0 was not in `InCuts 0`). -/
 theorem init_rollback_not_monotone : ¬ initRollback.Monotone () 0 := by
   intro h
-  have hp := h true (Finset.mem_univ _) 0 1 (by unfold Trace.InCuts initRollback; decide)
-    (by decide) (by unfold Trace.InCuts initRollback; decide)
+  have hp := h true 0 1 (by unfold Trace.InCuts initRollback; decide)
+    (by decide) (by unfold Trace.InCuts initRollback; decide) (Finset.mem_univ _)
+    (Finset.mem_univ _)
   change [1] <+: [] at hp
   simp at hp
 

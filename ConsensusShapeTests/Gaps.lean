@@ -116,7 +116,7 @@ open Consensus Blocks Shape
 section Generic
 
 variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
-  {X : Progress S Prog} {K : Contract S.schema Prog}
+  {X : Progress S Prog} {K : Contract Prog}
 
 /- M1: the healed regime requires the fixed healthy set awake to the horizon
 ("stay in recovery"); a run that leaves it is outside the regime. -/

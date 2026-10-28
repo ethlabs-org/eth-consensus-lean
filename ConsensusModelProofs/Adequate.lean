@@ -13,7 +13,7 @@ meets the L0 acceptance interface `System.Adequate`:
 
 * admissible external data in every environment: the PKI
   `Fintype.equivFin` and, per role, a selection from `SelSpec.admits_exists`;
-* coverage, from `canonical_run_from`: every well-formed point, PKI,
+* coverage, from `canonical_run_from`: every point with `0 ≤ horizon`, PKI,
   admissible selection and GST `g` has a valid run whose log is eager from `g`;
   with an injective hash (items are `Encodable`, so one exists) it has no hash
   collision, hence no excuse; its point and external data are the given ones,

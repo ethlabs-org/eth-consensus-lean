@@ -21,30 +21,25 @@ variable {V α β Id : Type} {tr : Trace V α Id} {f : List α → List β}
 
 include hf
 
-theorem Agree.map {g t} (h : tr.Agree g t) : (tr.map f).Agree g t := by
-  intro u hu v hv i j hi hj
-  exact (h u hu v hv i j hi hj).map hf
+theorem AgreeAmong.map {R g t} (h : tr.AgreeAmong R g t) : (tr.map f).AgreeAmong R g t :=
+  fun u v i j hi hj hu hv => (h u v i j hi hj hu hv).map hf
 
-theorem Monotone.map {g t} (h : tr.Monotone g t) : (tr.map f).Monotone g t := by
-  intro v hv i j hi hij hj
-  exact hf (h v hv i j hi hij hj)
+theorem MonotoneAmong.map {R g t} (h : tr.MonotoneAmong R g t) :
+    (tr.map f).MonotoneAmong R g t :=
+  fun v i j hi hij hj hv hw => hf (h v i j hi hij hj hv hw)
 
 theorem Safe.map {g t} (h : tr.Safe g t) : (tr.map f).Safe g t :=
-  ⟨h.1.map hf, h.2.map hf⟩
+  ⟨AgreeAmong.map hf h.1, MonotoneAmong.map hf h.2⟩
 
-theorem ReadySafe.map {c g t} (h : tr.ReadySafe c g t) : (tr.map f).ReadySafe c g t := by
-  constructor
-  · intro u v i j hi hj hu hv
-    exact (h.1 u v i j hi hj hu hv).map hf
-  · intro v i j hi hij hj hv hw
-    exact hf (h.2 v i j hi hij hj hv hw)
+theorem ReadySafe.map {c g t} (h : tr.ReadySafe c g t) : (tr.map f).ReadySafe c g t :=
+  ⟨AgreeAmong.map hf h.1, MonotoneAmong.map hf h.2⟩
 
 theorem Nested.map {g₁ g₂} (h : tr.Nested g₁ g₂) : (tr.map f).Nested g₁ g₂ := by
   intro v hv i hi
   exact hf (h v hv i hi)
 
-theorem ProtectedThrough.map {c src dst T b₀ b₁} (h : tr.ProtectedThrough c src dst T b₀ b₁) :
-    (tr.map f).ProtectedThrough c src dst T b₀ b₁ := by
+theorem ProtectedUpTo.map {c src dst T b₀ b₁ b} (h : tr.ProtectedUpTo c src dst T b₀ b₁ b) :
+    (tr.map f).ProtectedUpTo c src dst T b₀ b₁ b := by
   intro v hv t ht ht' w hw ha
   exact hf (h v hv t ht ht' w hw ha)
 end Trace

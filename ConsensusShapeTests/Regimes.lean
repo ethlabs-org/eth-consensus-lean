@@ -179,8 +179,8 @@ variable {V M Idx : Type} [Fintype V] [DecidableEq V]
 sleepy throughout. -/
 theorem outage_eta_zero (hη : P.η = 0) {T b₀ b₁ : Time} :
     Outage P p L T b₀ b₁ ↔ OutageTimes P p.env.Δ T b₀ b₁ ∧ L.OutageNet p b₀ b₁ ∧
-      p.Sleepy P.θ (P.cDur p.env.Δ) ∧ p.ReadyOfAll P.cover (P.cDur p.env.Δ) b₀ := by
-  unfold Outage EnvPoint.EtaSleepy EnvPoint.Sleepy
+      p.SleepyOn P.θ (P.cDur p.env.Δ) 0 p.horizon ∧ p.ReadyOfAll P.cover (P.cDur p.env.Δ) b₀ := by
+  unfold Outage
   rw [show P.ηDur p.env.Δ = 0 by simp [Params.ηDur, hη], EnvPoint.etaSleepyOn_zero]
 
 /-- Weaker thresholds (same catch-up) keep the sleepy regime. -/
@@ -350,10 +350,10 @@ every catch-up; with the silent log, every contract with `θ ≤ ½` has the
 sleepy regime; the point is not healthy from `0` at ⅔. -/
 theorem sleepy_with_sleeper :
     (4 : Fin 5) ∈ ptS.honest ∧ ptS.env.awake 4 2 = false ∧
-    (∀ c, ptS.Sleepy (1 / 2) c) ∧
+    (∀ c, ptS.SleepyOn (1 / 2) c 0 ptS.horizon) ∧
     (∀ {Idx : Type} (P : Params Idx), P.θ ≤ 1 / 2 →
       Regime.Sleepy P ptS (silentLog (Fin 5) Unit)) ∧
-    ¬ ptS.HealthyFrom (2 / 3) 0 := by
+    ¬ ptS.HealthyOn (2 / 3) 0 ptS.horizon := by
   refine ⟨by decide, by decide, fun c t _ _ => ptS_readyAbove c t, fun P hθ => ?_, ?_⟩
   · exact ⟨silentLog_delivers _ (fun _ _ => rfl) _ _,
       fun t _ _ => (ptS_readyAbove _ t).mono _ hθ⟩
@@ -383,11 +383,11 @@ def ptG : EnvPoint (Fin 3) :=
 silent log for every `φ ≤ ⅔`), nobody ready at `5` with catch-up `2`,
 everyone ready at `readyFrom 2 5 = 8`. -/
 theorem healthy_wake_at_gst :
-    ptG.HealthyFrom (2 / 3) 5 ∧
+    ptG.HealthyOn (2 / 3) 5 ptG.horizon ∧
     (∀ {Idx : Type} (P : Params Idx), P.φ ≤ 2 / 3 →
       Regime.Healthy P ptG (silentLog (Fin 3) Unit) 5) ∧
     ptG.readyAt 2 5 = ∅ ∧ readyFrom 2 5 = 8 ∧ ∀ v, ptG.Ready 2 v (readyFrom 2 5) := by
-  have hH : ptG.HealthyFrom (2 / 3) 5 := by
+  have hH : ptG.HealthyOn (2 / 3) 5 ptG.horizon := by
     refine ⟨Finset.univ, subset_rfl, by norm_num, fun v _ u hu _ => ?_⟩
     simp only [ptG, decide_eq_true_eq]
     exact le_trans (le_max_left _ _) hu
@@ -415,7 +415,8 @@ def ptT : EnvPoint (Fin 3) :=
   ⟨⟨1, by decide, fun v _ => decide (v ≠ 2)⟩, Finset.univ, 10, fun _ _ => []⟩
 
 /-- Exactly ⅔ awake is not healthy at `φ = ⅔`; it is at `φ = ½`. -/
-theorem healthy_needs_two_thirds : ¬ ptT.HealthyFrom (2 / 3) 0 ∧ ptT.HealthyFrom (1 / 2) 0 := by
+theorem healthy_needs_two_thirds :
+    ¬ ptT.HealthyOn (2 / 3) 0 ptT.horizon ∧ ptT.HealthyOn (1 / 2) 0 ptT.horizon := by
   refine ⟨?_, ⟨{0, 1}, Finset.subset_univ _, by norm_num, ?_⟩⟩
   · rintro ⟨H, -, hc, ha⟩
     have hsub : H ⊆ {0, 1} := by

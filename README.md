@@ -6,7 +6,7 @@ A protocol is **good** when its system `S` (with its progress reader `X`)
 meets a contract `K` that supplies **only numbers**:
 
 ```lean
-structure Good (S : System V) (X : Progress S Prog) (K : Contract S.schema Prog) : Prop where
+structure Good (S : System V) (X : Progress S Prog) (K : Contract Prog) : Prop where
   behaviour  : Behaviour S X K                    -- the fixed property table, under fixed regimes
   adequate   : S.Adequate X                       -- the system is not vacuous
   realizable : 5 ≤ Fintype.card V → Realizable S X K  -- every regime is met, with active claims
@@ -25,7 +25,7 @@ that a claim or regime evaluates.
   numbers' admissibility (`admissible`) and the schema condition (`serves`).
 - **`Adequate`** rules out a system that is vacuous by construction:
   - `admits`: every environment has admissible external data;
-  - `covers`: every well-formed environment point, every admissible external
+  - `covers`: every environment point with `0 ≤ horizon`, every admissible external
     datum and every GST `g` have a valid, excuse-free run with that point.
     Its log is eager from `g`: synchronous for `g ≤ 0`, asynchronous before
     `g`, silent for `g` past the horizon. The run carries every progress
@@ -37,7 +37,8 @@ that a claim or regime evaluates.
   witness. A witness is valid, has no excuse, and has a faulty and an honest
   validator. The witnesses exist at every `Δ`, at every GST `g ≥ 0` (healthy: with a
   log that is silent before the GST), and for outages armed arbitrarily late.
-  Each witness has active claims:
+  Each witness has active claims (the sleepy and healthy witnesses bundle
+  regime, progress and `TxLiveActive` as `SleepyLive` and `HealthyLive`):
   - `TxLiveActive`: a transaction to serve, read by a different honest node
     that was never submitted it;
   - `SafeActive`: two ready readers, one of them at two cuts;
@@ -96,7 +97,9 @@ Derived in L0 (`Good.*`), and in the Goldilocks sheet:
 
 `TxLive c g start D` covers every submission: a transaction submitted to an
 awake honest node by `t` is in the `g`-read of every ready reader at every
-`t' ∈ [max t start + Δ + D, horizon]`. `ReadySafe` covers ready readers
+`t' ∈ [max t start + Δ + D, horizon]`. Safety has one body,
+`AgreeAmong R`/`MonotoneAmong R` for a reader predicate `R` checked at each
+cut: `Agree`/`Monotone` (and `Safe`) take honest readers; `ReadySafe` takes ready readers
 only: honest, and awake throughout `[max 0 (t − c − 1), t]`. A node that
 has been asleep for long may still hold an old fork. `ProtectedThrough`
 works as follows. Take a node **ready** at `T` and its `stable` read at `T`.
@@ -181,7 +184,7 @@ submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 |---|---|
 | `Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + \|faulty\|) < \|ready_t\|` |
 | `Healthy g` | `L.PSync p g ∧ ∃ H ⊆ honest, φ·n < \|H\| ∧ ∀ v ∈ H, v awake throughout [max g 0, horizon]` (one fixed set, no churn, so certificates can be formed; awake, not ready) |
-| `Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepy θ (η·Δ) c ∧ cover·n < \|ready_{b₀}\|` |
+| `Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·Δ) c 0 horizon ∧ cover·n < \|ready_{b₀}\|` |
 | `OutageTimes` | `0 ≤ T ∧ T + lag·Δ ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·Δ` |
 | η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·Δ), t] ∪ faulty\| < \|ready_t\|` |
 
@@ -263,7 +266,7 @@ In L2 the slot is `ProgressReq` (`ConsensusBlocks/Selection.lean`):
 `ProgressReq.Fits` requires a recurrence to sit on a skeleton with one
 proposer per slot (`.sized 1`). Otherwise an all-proposer selection would
 include a faulty key (`allProposers_unfit`, `allProposers_no_witness`).
-`Contract.ProgressTolerant` asks every provided output to have, for every
+`Contract.ProgressTolerant O K` asks every provided output of schema `O` to have, for every
 `N`, an index whose requirement tolerates `N` validators not ready (a
 recurrence always; `.notReadyAtMost m` when `N ≤ m`): this is what the
 stress witnesses need (`notReadyAtMost_one_not_tolerant`).
@@ -273,7 +276,7 @@ stress witnesses need (`notReadyAtMost_one_not_tolerant`).
 1. A **schema** `OutputSchema`: which outputs serve the `available`,
    `stable` and `final` capabilities (aliasing allowed; see Scope). It must
    satisfy `Serves`: a final output, or an available one.
-2. A **contract** `Contract O Prog`: a nonempty index type `Idx`, `params :
+2. A **contract** `Contract Prog`: a nonempty index type `Idx`, `params :
    Params Idx` and `progress : Capability → Idx → Prog`.
 3. For a shape protocol, a **shape family** `F`: a skeleton (grid, proposer,
    poll and committee selections, phases) and a state machine.
@@ -343,12 +346,12 @@ and non-framing (`sysOf_nonFraming`, from slashing protection in the engine).
 L2's acceptance endpoint (`ConsensusShape/Accepted.lean`):
 
 ```lean
-structure Accepted (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Prop where
+structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop where
   claims : ShapeClaims F K          -- proved by the protocol
   admissible : K.params.Admissible
   serves : O.Serves
   progressFits : K.ProgressFits F
-  progressTolerant : K.ProgressTolerant
+  progressTolerant : Contract.ProgressTolerant O K
 theorem Accepted.good (h : Accepted F K) (V) [Fintype V] [DecidableEq V] :
     Good (sysOf O (compiled F) V) (shapeProgress F V) K
 theorem Accepted.activeService (h : Accepted F K) :

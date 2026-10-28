@@ -170,7 +170,7 @@ end FGSAParams
 
 /-- The Goldilocks contract at the pinned FG-SA numbers (index: the gap `k`
 slots, for final the finality index `gf`). -/
-def goldilocksContract (pp : FGSAParams) : Contract goldilocksSchema ProgressReq where
+def goldilocksContract (pp : FGSAParams) : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
   params := pp.params
@@ -195,7 +195,7 @@ theorem goldilocks_progressFits {Info : Type} [DecidableEq Info] [Encodable Info
 
 /-- Goldilocks recurrence requirements tolerate any number not ready. -/
 theorem goldilocks_progressTolerant (pp : FGSAParams) :
-    (goldilocksContract pp).ProgressTolerant := by
+    Contract.ProgressTolerant goldilocksSchema (goldilocksContract pp) := by
   intro cap ho N
   refine ⟨(1 : ℕ+), ?_⟩
   cases cap <;> trivial
