@@ -44,7 +44,14 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Leaks.recorder_live_testK_negGST,
       `Consensus.Shape.Tests.Shapes.poll_proposal_local_height,
       `Consensus.Shape.Tests.Shapes.poll_duty_every_tick,
-      `Consensus.Shape.Tests.Shapes.poll_disabled_forged] do
+      `Consensus.Shape.Tests.Shapes.poll_disabled_forged,
+      `Consensus.Model.canonical_run_causal, `Consensus.Model.Run.not_slashable_of_causal,
+      `Consensus.Shape.coverage, `Consensus.Shape.premise_realizable,
+      `Consensus.Shape.goldilocks_realizable, `Consensus.Shape.streamlet_realizable,
+      `Consensus.Shape.tendermint_realizable, `Consensus.Shape.goldilocksContract_wellFormed,
+      `Consensus.Shape.active_relay,
+      `Consensus.Shape.Tests.Realizable.coverage_keeps_selection,
+      `Consensus.Shape.Tests.Realizable.contradictory_wf_not_realizable] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2

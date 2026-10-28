@@ -55,9 +55,11 @@ and will be removed.
    - `compile`, which turns our shape into an L½ protocol;
    - the regimes (participation, delivery, recurrence);
    - `Constants`;
-   - `profile A` (the fixed slot interpretation), `bounds C`,
-     `exec_conservative`, `profile_realizable`, and `Regression`;
-   - `ShapeClaims`.
+   - `ShapeClaims` and `refinement`;
+   - `Realizable`: `coverage`, `Witness`, `Contract.Realizable`,
+     `premise_realizable`;
+   - the values `Values/{Goldilocks,Streamlet,Tendermint}` and their
+     `*_realizable` certificates.
 
 ## Why the meaning is fixed below the protocol
 
@@ -179,15 +181,28 @@ submission function and hash.
 - At L0, ledgers may contain fabricated transactions: the refutation of a
   fabricated-output family uses L1's block provenance (`outputValid`), which
   has no L0 counterpart.
-- `profile_realizable` quantifies over every well-formed A, every family
-  and service constants, and positive recurrence gaps. It chooses a large
-  finite population with a **nonempty faulty set**. Each claim has a valid
-  collision-free run preserving the witness environment, with ready readers,
-  a ready proposal after recovery/finality startup, reachable service deadlines,
-  an active recurrence window, and a transaction actually relayed to a node
-  with no local submission. Both outage branches have nonempty intervals.
-  The environment points satisfy `EnvPoint.WellFormed` (nonnegative horizon).
-  This proves premise realizability, not existence of a correct protocol.
+- Well-formedness is not non-vacuity (D-24). An advertised instance is
+  `ShapeClaims` plus `Contract.Realizable` plus `coverage`. `coverage`: any
+  well-formed point, with any PKI and admissible selection, satisfying a
+  premise's environment and progress parts is the point, PKI and selection of
+  a valid, collision-free, conviction-free run satisfying the whole premise.
+  `Contract.Realizable`: every premise of every provided capability, for every
+  index, has a witness run with a faulty validator, no collision, no
+  conviction, every progress window inside the horizon, and active service
+  (`LiveActive`: a transaction submitted to one honest node and a different,
+  never-submitted honest reader ready at a reachable deadline; `active_relay`:
+  that reader really receives it by relay; `ResilienceActive`: a nonempty
+  outage inside the horizon with a continuously awake reader).
+  `goldilocks_realizable`, `streamlet_realizable` and `tendermint_realizable`
+  hold for every family with the value's proposer selection size and grid
+  (Tendermint: every family). This proves premise realizability, not
+  existence of a correct protocol.
+- FG-SA migration obligations for the Goldilocks value: (i) a validator ready
+  at the outage start is covered by FG-SA's join schedule (then `OutageE1`
+  follows from `coverMajority` by `EnvPoint.two_mul_card_faulty_union_lt`);
+  (ii) persistence after the window for continuously awake readers under the
+  post-window terms (`restoreLag`, `afterAbove`). The committee kinds, phases
+  and finality pattern of the Goldilocks skeleton are placeholders.
 - The collision escape is run-wide.
 - Accountability compares two reads in one run, not across runs.
 - Unit weights.
@@ -197,7 +212,7 @@ submission function and hash.
 After module changes, run:
 
 ```sh
-LAKE_RESTORE_ARTIFACTS=true lake build ConsensusProblem ConsensusModel ConsensusModelProofs ConsensusShape ConsensusShapeTests
+LAKE_RESTORE_ARTIFACTS=true lake build ConsensusProblem ConsensusModel ConsensusModelProofs ConsensusBlocks ConsensusShape ConsensusShapeTests
 lake env lean --run contract/CheckConsensusAxioms.lean
 ```
 

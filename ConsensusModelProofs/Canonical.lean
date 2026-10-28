@@ -30,18 +30,26 @@ noncomputable def eagerRelay {V : Type} [Fintype V] [DecidableEq V]
       mempool (fun v τ => if E.awake v τ then submit v τ else []) u a
   else []
 
-/-- Every choice of protocol, environment, PKI, admissible selection and run
-data admits a valid run
-with partial synchrony and healthy delivery on every prefix. -/
-theorem canonical_run : CanonicalRun := by
-  intro O F V _ _ E honest horizon hh key sel hsel submit hash
+/-- `canonical_run` with one more fact about the schedule: its network is
+causal (every delivery is an earlier release), so it carries no object that
+no honest node released. -/
+theorem canonical_run_causal (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
+    [DecidableEq V] (E : Env V) (honest : Finset V) (horizon : Time) (hh : 0 ≤ horizon)
+    (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
+    (hsel : ∀ r, ((protoOf F E).selSpec r).Admits (sel r))
+    (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) :
+    ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
+      let rho := mkRun (F := F) (E := E) honest horizon key sel submit relay hash events
+      rho.ExecutionValid ∧ rho.PartialSynchrony ∧ (∀ cut, rho.HealthyPrefixDelivery cut) ∧
+        rho.Causal := by
   classical
   let relay := eagerRelay E honest submit
   let base := mkRun (F := F) (E := E) honest horizon key sel submit relay hash []
   refine ⟨relay, base.canonicalEvents, ?_⟩
   change (base.withEvents base.canonicalEvents).ExecutionValid ∧
     (base.withEvents base.canonicalEvents).PartialSynchrony ∧
-    ∀ cut, (base.withEvents base.canonicalEvents).HealthyPrefixDelivery cut
+    (∀ cut, (base.withEvents base.canonicalEvents).HealthyPrefixDelivery cut) ∧
+    (base.withEvents base.canonicalEvents).Causal
   have hs := base.canonical_schedule hh
   have hw := base.canonical_sleep
   have he := base.canonical_eager hh
@@ -70,7 +78,17 @@ theorem canonical_run : CanonicalRun := by
   · exact (base.withEvents base.canonicalEvents).unforgeable_of_causal base.canonical_causal
   · exact (base.withEvents base.canonicalEvents).credentials_of_causal base.canonical_causal
   · exact (base.withEvents base.canonicalEvents).partialSynchrony_of_eager hw he ht
-  · exact (base.withEvents base.canonicalEvents).healthyPrefixDelivery_of_eager hw he ht
+  · exact ⟨(base.withEvents base.canonicalEvents).healthyPrefixDelivery_of_eager hw he ht,
+      base.canonical_causal⟩
+
+/-- Every choice of protocol, environment, PKI, admissible selection and run
+data admits a valid run
+with partial synchrony and healthy delivery on every prefix. -/
+theorem canonical_run : CanonicalRun := by
+  intro O F V _ _ E honest horizon hh key sel hsel submit hash
+  obtain ⟨relay, events, hv, hs, hp, -⟩ :=
+    canonical_run_causal O F V E honest horizon hh key sel hsel submit hash
+  exact ⟨relay, events, hv, hs, hp⟩
 
 end Consensus.Model
 end

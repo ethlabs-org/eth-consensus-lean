@@ -5,3 +5,4 @@ public import ConsensusShapeTests.Model
 public import ConsensusShapeTests.Blocks
 public import ConsensusShapeTests.Shape
 public import ConsensusShapeTests.Leaks
+public import ConsensusShapeTests.Realizable
