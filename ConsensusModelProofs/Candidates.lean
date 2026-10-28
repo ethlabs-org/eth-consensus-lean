@@ -66,6 +66,36 @@ theorem candidates_signerOf (st : (protoOf F E).State) (v : V) (t : Time)
   · exact Or.inl (by simp [signerOf, h])
   · exact Or.inr (by simp [signerOf, ownKey, h])
 
+omit [DecidableEq V] in
+/-- A signed candidate comes from a due duty of its role, whose message and
+carried objects it is. -/
+theorem candidates_duty (st : (protoOf F E).State) (v : V) (t : Time)
+    {a : Model.Auth (Fintype.card V) (protoOf F E).Role} {m cs}
+    (ho : Obj.mk a m cs ∈ rho.candidates st v t) {k r} (ha : a = .signed k r) :
+    ∃ d ∈ (protoOf F E).duties t, (protoOf F E).role d = r ∧
+      (protoOf F E).act st d = some (m, cs) := by
+  subst ha
+  unfold candidates at ho
+  rcases List.mem_append.mp ho with hs | hg
+  · obtain ⟨d, hd, hm⟩ := List.mem_flatMap.mp hs
+    cases hact : (protoOf F E).act st d with
+    | none => simp [hact] at hm
+    | some mc =>
+      obtain ⟨m', cs'⟩ := mc
+      rw [hact] at hm
+      dsimp only at hm
+      split at hm
+      · rcases List.mem_singleton.mp hm with he
+        injection he with h₁ h₂ h₃
+        injection h₁ with _ hr
+        cases h₂
+        cases h₃
+        exact ⟨d, hd, hr.symm, hact⟩
+      · cases hm
+  · obtain ⟨mc, _, he⟩ := List.mem_map.mp hg
+    injection he with h₁
+    cases h₁
+
 end Run
 end Consensus.Model
 end

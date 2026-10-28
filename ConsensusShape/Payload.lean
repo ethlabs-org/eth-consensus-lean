@@ -25,7 +25,7 @@ theorem candidate_payload (rho : Model.Run (compiled F) E)
     (st : (compile (F (pubOf E))).State) (v : V) (t : Time) {k r} {h : Header Info} {cs}
     (ho : Obj.mk (.signed k r) (.item h) cs ∈ rho.candidates st v t) :
     h.input = encodeTxs st.2 := by
-  obtain ⟨d, -, -, hact⟩ := candidates_duty rho st v t ho rfl
+  obtain ⟨d, -, -, hact⟩ := rho.candidates_duty st v t ho rfl
   change (compile (F (pubOf E))).act st d = some (.item h, cs) at hact
   cases d with
   | propose s _ =>
@@ -71,7 +71,7 @@ theorem honestProposal_payload {rho : Model.Run (compiled F) E} {τ : Time}
     {k : Fin (Fintype.card V)} {h : Header Info} (hp : HonestProposal rho τ k h) :
     h.input = encodeTxs (Model.mempool rho.inbox (rho.key k) τ) := by
   obtain ⟨-, r, cs, -, hr⟩ := hp
-  obtain ⟨st, hc⟩ := releases_candidate rho hr
+  obtain ⟨st, hc⟩ := rho.releases_candidate hr
   exact candidate_payload rho _ _ _ hc
 
 end Consensus.Shape

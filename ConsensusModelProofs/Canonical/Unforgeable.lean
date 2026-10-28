@@ -187,6 +187,19 @@ theorem unforgeable_of_causal (hc : rho.Causal) : rho.Unforgeable := by
   obtain ⟨k, t'', hk, hkt, hko⟩ := hs
   exact ⟨k, t'', by omega, hkt, hko⟩
 
+/-- A released object is a candidate of the releasing tick, built from the
+post-clock state, whose mempool is the node's mempool at the tick. -/
+theorem releases_candidate {u : V} {o : (protoOf F E).Object} {τ : Time}
+    (h : rho.releases u o τ) :
+    ∃ st : (protoOf F E).State,
+      o ∈ rho.candidates ((protoOf F E).clock st τ (mempool rho.inbox u τ)) u τ := by
+  obtain ⟨i, hi, ho⟩ := h
+  simp only [releasesAt, hi] at ho
+  unfold Run.tick at ho
+  split at ho
+  · exact ⟨_, releaseAll_subset _ _ _ _ o ho⟩
+  · simp at ho
+
 end Run
 end Consensus.Model
 end

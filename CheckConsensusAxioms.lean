@@ -38,7 +38,12 @@ def main : IO UInt32 := do
       `Consensus.Shape.refinement, `Consensus.Shape.proposalLive_txLive,
       `Consensus.Shape.ledgerTrace, `Consensus.Shape.honestProposal_payload,
       `Consensus.Shape.Tests.Leaks.silent, `Consensus.Shape.Tests.Leaks.fabricated,
-      `Consensus.Shape.Tests.Shapes.poll_proposal_local_height] do
+      `Consensus.Shape.Tests.Leaks.proposeButGenesis,
+      `Consensus.Shape.Tests.Leaks.conflictsTrue_silent,
+      `Consensus.Shape.Tests.Leaks.recorder_live_testK,
+      `Consensus.Shape.Tests.Shapes.poll_proposal_local_height,
+      `Consensus.Shape.Tests.Shapes.poll_duty_every_tick,
+      `Consensus.Shape.Tests.Shapes.poll_disabled_forged] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2

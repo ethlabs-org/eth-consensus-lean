@@ -42,7 +42,8 @@ structure Skeleton (n : Nat) : Type 1 where
   kinds : List Kind
   kinds_nodup : kinds.Nodup
   kinds_complete : ∀ k, k ∈ kinds
-  /-- The `Δ`-offset of the kind's duty within the slot. -/
+  /-- The `Δ`-offset of the kind's duty from the slot start (not required to
+  be below `slotTicks`: a kind may act in a later slot's interval). -/
   phase : Kind → Nat
   /-- Who may sign for a kind (at every slot). -/
   kindSel : Kind → SelSpec n
@@ -123,7 +124,11 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   restore : Key pub → Durable → Time → State
   /-- The output chains, one per output identifier. -/
   out : Out → State → Chain Info
-  /-- The slashing rule: two objects that, signed by one validator, convict it. -/
+  /-- The slashing rule: two objects that, signed by one validator, convict it.
+  The `.poll` role carries no tick or round, so a poll shape must tell its
+  proposals apart by their contents (e.g. height and round in `pos`/`info`):
+  a rule keyed only on the role would make an honest re-proposal in a later
+  round conflict, and the engine's slashing protection would suppress it. -/
   conflicts : ShapeObj pub.n skel.Kind Info Body → ShapeObj pub.n skel.Kind Info Body → Bool
 
 attribute [instance] ChainShape.decBody

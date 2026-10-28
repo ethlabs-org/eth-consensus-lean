@@ -19,58 +19,6 @@ namespace Consensus.Shape
 open Blocks
 open Consensus.Model (Public Key SelSpec Obj Msg pubOf protoOf sysOf modelProfile)
 
-/-! ## Engine facts used by the shape layer (any model family) -/
-
-section Engine
-
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {G : Model.Family O}
-  {E : Env V}
-
-omit [DecidableEq V] in
-/-- A signed candidate comes from a due duty of its role, whose message and
-carried objects it is. -/
-theorem candidates_duty (rho : Model.Run G E) (st : (protoOf G E).State) (v : V) (t : Time)
-    {a : Model.Auth (Fintype.card V) (protoOf G E).Role} {m cs}
-    (ho : Obj.mk a m cs ∈ rho.candidates st v t) {k r} (ha : a = .signed k r) :
-    ∃ d ∈ (protoOf G E).duties t, (protoOf G E).role d = r ∧
-      (protoOf G E).act st d = some (m, cs) := by
-  subst ha
-  unfold Model.Run.candidates at ho
-  rcases List.mem_append.mp ho with hs | hg
-  · obtain ⟨d, hd, hm⟩ := List.mem_flatMap.mp hs
-    cases hact : (protoOf G E).act st d with
-    | none => simp [hact] at hm
-    | some mc =>
-      obtain ⟨m', cs'⟩ := mc
-      rw [hact] at hm
-      dsimp only at hm
-      split at hm
-      · rcases List.mem_singleton.mp hm with he
-        injection he with h₁ h₂ h₃
-        injection h₁ with _ hr
-        cases h₂
-        cases h₃
-        exact ⟨d, hd, hr.symm, hact⟩
-      · cases hm
-  · obtain ⟨mc, _, he⟩ := List.mem_map.mp hg
-    injection he with h₁
-    cases h₁
-
-/-- A released object is a candidate of the releasing tick, built from the
-post-clock state, whose mempool is the node's mempool at the tick. -/
-theorem releases_candidate (rho : Model.Run G E) {u : V} {o : (protoOf G E).Object} {τ : Time}
-    (h : rho.releases u o τ) :
-    ∃ st : (protoOf G E).State,
-      o ∈ rho.candidates ((protoOf G E).clock st τ (Model.mempool rho.inbox u τ)) u τ := by
-  obtain ⟨i, hi, ho⟩ := h
-  simp only [Model.Run.releasesAt, hi] at ho
-  unfold Model.Run.tick at ho
-  split at ho
-  · exact ⟨_, Model.releaseAll_subset _ _ _ _ o ho⟩
-  · simp at ho
-
-end Engine
-
 variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
   {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
@@ -96,8 +44,8 @@ theorem slotProposal_time (rho : Model.Run (compiled F) E) {u : V} {k : Fin (Fin
     {s : Slot} {h : Header Info} {cs} {τ : Time}
     (hr : rho.releases u (Obj.mk (.signed k (ShapeRole.proposer s)) (.item h) cs) τ) :
     τ = slotTime rho s := by
-  obtain ⟨st, hc⟩ := releases_candidate rho hr
-  obtain ⟨d, hd, hrole, -⟩ := candidates_duty rho _ u τ hc rfl
+  obtain ⟨st, hc⟩ := rho.releases_candidate hr
+  obtain ⟨d, hd, hrole, -⟩ := rho.candidates_duty _ u τ hc rfl
   have ht := ((protoOf (compiled F) E).duties_spec d τ).mp hd
   cases d with
   | propose s' _ =>
@@ -116,7 +64,8 @@ def InBy (rho : Model.Run (compiled F) E) (c : Time) (g : O.Id) (h : Header Info
 
 /-- D-14: for every `t ≥ start` (with `t + D·Δ` in the horizon), a header
 released after `t`, at `τ`, by a key ready at `τ` in a proposal role, is in every
-ready read by `t + D·Δ`. -/
+ready read by `t + D·Δ`. `τ` is not bounded above: the obligation is the
+inclusion by `t + D·Δ`, not the release time. -/
 def ProposalLive (rho : Model.Run (compiled F) E) (c : Time) (g : O.Id) (start : Time) (D : Nat) :
     Prop :=
   ∀ t, start ≤ t → t + (D : Time) * E.Δ ≤ rho.horizon →
@@ -149,7 +98,11 @@ theorem OutputValid.authorized {rho : Model.Run (compiled F) E} {g : O.Id}
   exact rho.selected_of_observed hv hobs (.refl _) rfl
 
 /-- The shape's interpretation of `progress`: pattern recurrence over the
-proposer roles of the grid, at the run's point, PKI and selection. -/
+proposer roles of the grid, at the run's point, PKI and selection. A shape
+without slot proposers (`proposerSel := .fixed ∅`, e.g. a pure poll shape)
+never satisfies a premise containing `progress` (`HonestReadyIn` needs a
+nonempty selection), so its liveness claims under such premises are vacuous;
+such shapes state liveness without the `progress` atom. -/
 def shapeExec (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
     ExecProfile (sysOf O (compiled F) V) ProgressReq :=
   modelProfile O (compiled F) V fun π c start r =>
