@@ -10,7 +10,11 @@ public import Mathlib.Tactic
   a valid, collision-free run with exactly that selection.
 * `contradictory_wf_not_realizable` (D-24): a structurally well-formed
   contract whose safety premise is `1 ≤ 0` is not realizable for any family:
-  well-formedness is not non-vacuity. -/
+  well-formedness is not non-vacuity.
+* `confinedOutage_not_realizable`: a well-formed resilience premise that
+  confines outages to a bounded period through a participation atom over a
+  fixed time (`full` from time 100 on) is not realizable: resilience
+  witnesses are needed at arbitrarily late protected reads. -/
 
 namespace Consensus.Shape.Tests.Realizable
 open Consensus Blocks Shape
@@ -85,6 +89,37 @@ theorem contradictory_wf_not_realizable :
     have h := hw.premise
     change (0 : Time) + 1 ≤ 0 at h
     norm_num at h
+
+/-- A resilience premise that confines outages to before time 100. -/
+def confinedK : Contract schema ProgressReq where
+  Idx := Unit
+  idx_nonempty := ⟨()⟩
+  catchUp := 1
+  spec
+    | .resilient => some
+        { safety := { premise := .truth }
+          live := ⟨fun _ => .sync, fun _ => .zero, fun _ => 0⟩
+          resilience := some (.throughout (.add .zero 100) .horizon .full) }
+    | _ => none
+
+/-- The confining premise is well-formed, and no family realizes it. -/
+theorem confinedOutage_not_realizable :
+    (Premise.throughout (.add .zero 100) .horizon .full : Premise ProgressReq).WellFormed ∧
+      ∀ (Info : Type) [DecidableEq Info] [Encodable Info] (F : ShapeFamily schema Info),
+        ¬ confinedK.Realizable F := by
+  refine ⟨⟨trivial, trivial⟩, fun Info _ _ F hR => ?_⟩
+  obtain ⟨σ, n, E, rho, hw, ha, hk⟩ := hR.resilience .resilient _ _ rfl rfl 100
+  obtain ⟨-, h01, -, h2H, ⟨v, hv, t, ht1, ht2, hsl⟩, -⟩ := ha
+  have hΔ : (1 : Time) ≤ E.Δ := E.Δ_pos
+  have h100 : (100 : Time) ≤ t := by
+    have := le_max_left 0 E.gst
+    push_cast at hk
+    nlinarith
+  have hfull := hw.premise t (by change (0 : Time) + 100 ≤ t; linarith)
+    (by change t ≤ rho.horizon; linarith) v hv
+  change E.awake v t = true at hfull
+  rw [hfull] at hsl
+  exact Bool.noConfusion hsl
 
 end Consensus.Shape.Tests.Realizable
 

@@ -39,8 +39,9 @@ theorem Accepted.serves_and_delivers (h : Accepted F K) :
 ```
 
 `delivers` (from `ShapeClaims` and `Realizable` alone): every provided output
-puts a relayed transaction into the read of a ready honest reader that was
-never submitted it, in some valid, collision-free run. An instance with no
+puts a transaction into the read of a ready honest reader that was never
+submitted it (so it arrived from another node), in some valid, collision-free
+run. An instance with no
 service (`noService_not_accepted`), a silent service or empty outputs is
 therefore not accepted, for every protocol. The underlying theorem is
 
@@ -83,7 +84,7 @@ pairs it with `Contract.Realizable`. See "Well-formedness is not non-vacuity".
      `etaSleepy` and the participation atoms `full`, `noWake`; `Premise` with
      `truth`, `le`, `atTime`, `throughout`, `sync`, `syncUntil`, `progress`,
      `conj`), `ExecProfile`, `eval`, `Premise.WellFormed` (atom domains, and
-     **no horizon or parameter caps**: the horizon never occurs on the left of
+     **no timing caps** on the horizon or the parameters: the horizon never occurs on the left of
      a `le`, in an `atTime` time or a `throughout` lower end, and a parameter
      is never bounded by a fixed time; `TimeExpr.HorizonFree`,
      `TimeExpr.Fixed`, `Premise.TimesHold.shift`), the named terms in
@@ -215,9 +216,12 @@ is in `(0, 1]`, no premise caps the horizon or a parameter (`le horizon e`,
 `horizonCap_rejected`, `protectedAtCap_rejected`, `gstCap_rejected`,
 `atHorizon_rejected`), and no liveness or recovery start mentions the horizon
 (`horizonStart_rejected`). So timing constraints that hold keep holding on
-every longer run and for later parameters (`Premise.TimesHold.shift`): a
-contract cannot restrict its claims to runs shorter than a fixed time (the
-"time bomb") or to early protected reads. A well-formed contract can still
+every longer run and for later parameters (`Premise.TimesHold.shift`): no
+timing constraint restricts the claims to runs shorter than a fixed time (the
+"time bomb") or to early protected reads. Participation atoms over fixed times
+could still confine where an outage can happen; `Contract.Realizable` closes
+that for resilience by asking for active outages at arbitrarily late
+protected reads (below). A well-formed contract can still
 have an unsatisfiable premise (`contradictory_wf_not_realizable`), and then its
 claims say nothing.
 
@@ -237,7 +241,9 @@ An accepted instance (`Accepted`) is therefore:
    everyone is always awake, that reader receives it by relay) and
    `ResilienceActive` (`0 ≤ T < b₀ < b₁ ≤ horizon`, an honest validator asleep
    at some time of `[b₀, b₁)`, and an honest reader awake throughout
-   `[max 0 (b₀ − catch-up − 1), b₁]`);
+   `[max 0 (b₀ − catch-up − 1), b₁]`), for every `k` with a protected read
+   `T ≥ max 0 GST + k·Δ`, so the premise does not confine real outages to a
+   bounded period;
 3. `O.Serves`: a final output, or an available one.
 
 `coverage` (generic) adds: any well-formed point, with any PKI and admissible
@@ -264,10 +270,12 @@ The protocol chooses whole premise programs, not only numbers, so a reviewer
 must read, for each provided capability:
 
 - **the full premise terms**: which environment, synchrony and progress
-  conditions each claim assumes. Well-formedness excludes horizon and
-  parameter caps, but a premise may still be stronger than intended (for
-  example `full` participation where a fraction was meant, safety under
-  `sync`, or a resilience premise that confines the outage);
+  conditions each claim assumes. Well-formedness excludes timing caps on the
+  horizon and the parameters, and realizability excludes outages confined
+  relative to fixed times, but a premise may still be stronger than intended
+  (for example `full` participation where a fraction was meant, safety under
+  `sync`, or a resilience premise that confines the outage relative to the
+  horizon or to another parameter);
 - **the starts, latencies and catch-up**: from when transactions are live,
   how fast, and which readers count (a huge `catchUp` restricts readers to
   nodes that almost never slept);
@@ -285,10 +293,12 @@ must read, for each provided capability:
 `Contract.Realizable` is existential activity, not regime adequacy. It shows
 that each premise can hold together with a faulty validator and active
 service; it does not show that the premises cover the intended operating
-regime, it tests one faulty validator in a large population (never the
-advertised fault bound), it does not certify safety and liveness premises
-jointly in one run, and a resilience witness does not show that the protected
-read is nonempty (liveness does, separately). `coverage` cannot repair this:
+regime; the supplied witness producers (`premise_realizable`,
+`resilience_realizable`) use one faulty validator in a large population, so
+the values' certificates never test the advertised fault bound; it does not
+certify safety and liveness premises jointly in one run; and a resilience
+witness does not show that the protected read is nonempty (liveness does,
+separately). `coverage` cannot repair this:
 it assumes the premise's environment and progress parts. A reviewed "service
 profile" (intended regimes that provably imply the advertised premises) would
 close this gap and is future work.
@@ -441,11 +451,11 @@ shape. The migration must discharge:
 - **D-26** (final review) `Accepted` = `ShapeClaims` + `Contract.Realizable` +
   `OutputSchema.Serves` is the review endpoint; `delivers` excludes silent and
   empty outputs for every protocol.
-- **D-27** (final review) No horizon or parameter caps in well-formed premises
-  and starts (`TimesHold.shift`).
+- **D-27** (final review) No timing caps on the horizon or the parameters in
+  well-formed premises, and horizon-free starts (`TimesHold.shift`).
 - **D-28** (final review) `ResilienceActive` requires an honest sleeper during
-  the outage; `Witness` requires an honest validator; `ProgressActive` counts
-  the pattern's span.
+  the outage, at arbitrarily late protected reads; `Witness` requires an
+  honest validator; `ProgressActive` counts the pattern's span.
 - **D-29** (final review) `faultsAtMost m` (an absolute fault bound) lets
   latencies depend on the fault count (Tendermint); the inclusive
   `readyOfAll` flag is removed.
@@ -474,7 +484,9 @@ shape. The migration must discharge:
   themselves by their slashing rule (`conflictsTrue_silent`) fail
   `ShapeClaims`; the positive control `recorder_live_testK` (also with negative
   GST) meets the obligation that refutes them.
-- `Realizable`: `coverage_keeps_selection`, `contradictory_wf_not_realizable`.
+- `Realizable`: `coverage_keeps_selection`, `contradictory_wf_not_realizable`,
+  `confinedOutage_not_realizable` (a well-formed resilience premise that
+  confines outages to before time 100 is not realizable).
 - `Controls`: two canonical runs of a Goldilocks-skeleton family at index 1,
   for `goldilocksContract` with `GoldilocksParams.standard` and arbitrary
   well-formed numbers (premise tests, not feasible performance bounds).

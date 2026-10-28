@@ -75,7 +75,8 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Premise.atHorizon_rejected,
       `Consensus.Shape.Tests.Premise.horizonStart_rejected,
       `Consensus.Shape.Tests.Premise.outageWindow_shift,
-      `Consensus.Shape.Tests.Vacuity.noService_not_accepted] do
+      `Consensus.Shape.Tests.Vacuity.noService_not_accepted,
+      `Consensus.Shape.Tests.Realizable.confinedOutage_not_realizable] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2

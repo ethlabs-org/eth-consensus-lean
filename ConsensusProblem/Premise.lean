@@ -15,9 +15,11 @@ the protocol shape from reviewed building blocks). There is no disjunction or
 negation: every well-formed environment atom holds at large enough extremal
 points, so the environment part of a well-formed premise holds there whenever
 its timing constraints hold (`Premise.extremal_realizable`). Well-formedness
-also keeps the horizon and the claim parameters unbounded: timing constraints
-never bound them from above by a fixed time (`Premise.TimesHold.shift`), so a
-premise cannot restrict its claims to short runs or early times. -/
+also keeps the horizon and the claim parameters unbounded by timing
+constraints: no `le` bounds them from above by a fixed time
+(`Premise.TimesHold.shift`), so no timing constraint restricts the claims to
+short runs or early times. (Participation atoms over fixed times can still
+confine where sleeps happen; realizability handles that for resilience.) -/
 
 namespace Consensus
 
@@ -299,10 +301,10 @@ def AtomsAll (q : EnvAtom → Prop) : Premise Prog → Prop
   | _ => True
 
 omit [Fintype V] [DecidableEq V] in
-/-- No horizon or parameter cap: if the timing constraints of a well-formed
-premise hold, they hold with every parameter moved later by `d ≥ 0` and the
-horizon moved later by `d + e` (`e ≥ 0`). In particular they hold on every
-longer run (`d = 0`). -/
+/-- No timing cap on the horizon or the parameters: if the timing constraints
+of a well-formed premise hold, they hold with every parameter moved later by
+`d ≥ 0` and the horizon moved later by `d + e` (`e ≥ 0`). In particular they
+hold on every longer run (`d = 0`). -/
 theorem TimesHold.shift {p : EnvPoint V} {σ : Nat → Time} {d e : Time} {P : Premise Prog}
     (hP : P.WellFormed) (hd : 0 ≤ d) (he : 0 ≤ e) (h : P.TimesHold p σ) :
     P.TimesHold { p with horizon := p.horizon + d + e } (fun i => σ i + d) := by

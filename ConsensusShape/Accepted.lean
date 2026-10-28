@@ -11,8 +11,8 @@ contract (`Contract.Realizable`), and that its schema serves a ledger
 (`OutputSchema.Serves`: a final output, or an available one).
 `Accepted.problemClaims` gives the layer-0 claims; `delivers` shows that every
 provided output of a family with claims and a realizable contract delivers a
-transaction, by relay, to a ready honest reader in some valid, collision-free
-run, so an instance with no service, a silent service or empty outputs is not
+transaction to a ready honest reader that was never submitted it, in some
+valid, collision-free run, so an instance with no service, a silent service or empty outputs is not
 accepted (`Accepted.serves_and_delivers`).
 
 `Accepted` means "meets this contract". Whether the contract is the intended

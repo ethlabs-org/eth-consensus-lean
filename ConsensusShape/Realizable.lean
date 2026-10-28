@@ -236,10 +236,14 @@ structure _root_.Consensus.Contract.Realizable (F : ShapeFamily O Info)
       Witness F K (s.live.premise i) σ rho ∧
         LiveActive F K (s.live.start i) (s.live.latency i) σ rho
   /-- Every resilience premise has a witness with an active outage (someone
-  sleeps during it). -/
-  resilience : ∀ c s P, K.spec c = some s → s.resilience = some P →
+  sleeps during it), at arbitrarily late protected reads: for every `k`, one
+  with `T ≥ max 0 GST + k·Δ`. So no premise term (a timing constraint or a
+  participation atom over fixed times) confines real outages to a bounded
+  period. -/
+  resilience : ∀ c s P, K.spec c = some s → s.resilience = some P → ∀ k : Nat,
     ∃ σ n, ∃ (E : Env (Fin (n + 1))) (rho : Model.Run (compiled F) E),
-      Witness F K P σ rho ∧ ResilienceActive F K σ rho
+      Witness F K P σ rho ∧ ResilienceActive F K σ rho ∧
+        max 0 E.gst + (k : Time) * E.Δ ≤ σ 0
   /-- Every recovery premise, at every index, has a witness with active
   liveness from the recovery point. -/
   recovery : ∀ c s R, K.spec c = some s → s.recovery = some R → ∀ i : K.Idx,
@@ -385,11 +389,12 @@ theorem witness_realizable (F : ShapeFamily O Info) (K : Contract O ProgressReq)
   exact ⟨σ, N, _, rho, hw⟩
 
 /-- Realizability of a resilience premise with an active outage
-(`0 ≤ σ 0 < σ 1 < σ 2 ≤ H`) at the sleeper point: honest validator `n` is
-asleep at the outage start `σ 1`, validator `1` reads throughout. The premise's
-atoms must be counting atoms (no `full` or `noWake`, which the sleeper
-violates); timing constraints and progress windows are checked at the sleeper
-point. -/
+(`0 ≤ σ 0 < σ 1 < σ 2 ≤ H`) at the sleeper point (`Δ = 1`, GST `g`): honest
+validator `n` is asleep at the outage start `σ 1`, validator `1` reads
+throughout; the protected read is at least `max 0 g + k` when `σ 0` is. The
+premise's atoms must be counting atoms (no `full` or `noWake`, which the
+sleeper violates); timing constraints and progress windows are checked at the
+sleeper point. -/
 theorem resilience_realizable (F : ShapeFamily O Info) (K : Contract O ProgressReq)
     (P : Premise ProgressReq) (hP : P.WellFormed) (hc : P.AtomsAll EnvAtom.Counting)
     (hsel : P.UsesProgress → ∃ m, 1 ≤ m ∧ ∀ pub, (F pub).skel.proposerSel = .sized m)
@@ -398,9 +403,10 @@ theorem resilience_realizable (F : ShapeFamily O Info) (K : Contract O ProgressR
     (hact : ∀ n submit, ProgressActive
       (F (pubOf (EnvPoint.sleeper n H g (σ 1) submit).env)).skel.grid
       (EnvPoint.sleeper n H g (σ 1) submit) σ P)
-    (hσ : 0 ≤ σ 0 ∧ σ 0 < σ 1 ∧ σ 1 < σ 2 ∧ σ 2 ≤ H) :
+    (hσ : 0 ≤ σ 0 ∧ σ 0 < σ 1 ∧ σ 1 < σ 2 ∧ σ 2 ≤ H) (k : Nat) (hk : max 0 g + k ≤ σ 0) :
     ∃ σ' n, ∃ (E : Env (Fin (n + 1))) (rho : Model.Run (compiled F) E),
-      Witness F K P σ' rho ∧ ResilienceActive F K σ' rho := by
+      Witness F K P σ' rho ∧ ResilienceActive F K σ' rho ∧
+        max 0 E.gst + (k : Time) * E.Δ ≤ σ' 0 := by
   classical
   have hH : 0 ≤ H := by linarith [hσ.1, hσ.2.1, hσ.2.2.1, hσ.2.2.2]
   obtain ⟨N₀, hN₀⟩ := P.sleeper_realizable hP hc
@@ -428,13 +434,15 @@ theorem resilience_realizable (F : ShapeFamily O Info) (K : Contract O ProgressR
         intro h; rw [h] at hvm; simp at hvm; omega) (hact n submit)
   have hh : rho.honest = Finset.univ.erase 0 := congrArg EnvPoint.honest hpt
   have hHr : rho.horizon = H := congrArg EnvPoint.horizon hpt
-  refine ⟨σ, n, _, rho, hw, hσ.1, hσ.2.1, hσ.2.2.1, hHr ▸ hσ.2.2.2,
+  refine ⟨σ, n, _, rho, hw, ⟨hσ.1, hσ.2.1, hσ.2.2.1, hHr ▸ hσ.2.2.2,
     ⟨Fin.last n, ?_, σ 1, le_rfl, hσ.2.2.1, EnvPoint.sleeper_asleep n H g (σ 1) submit⟩,
-    ⟨1, by omega⟩, ?_, ?_⟩
+    ⟨1, by omega⟩, ?_, ?_⟩, ?_⟩
   · rw [hh]; exact Finset.mem_erase.mpr ⟨hl0, Finset.mem_univ _⟩
   · rw [hh]; exact Finset.mem_erase.mpr ⟨fin_one_ne_zero (by omega), Finset.mem_univ _⟩
   · rw [hpt]
     exact fun u _ _ => EnvPoint.sleeper_awake n H g (σ 1) submit h1l u
+  · change max 0 g + (k : Time) * 1 ≤ σ 0
+    simpa using hk
 
 /-- The relay is exercised: in a partially synchronous run where every
 validator is always awake, an active liveness witness has an honest reader

@@ -378,16 +378,17 @@ theorem goldilocks_realizable (P : GoldilocksParams) (hP : P.WellFormed)
         (fun n => ?_) (hnn _) ?_
       · simp [TimeExpr.eval, EnvPoint.extremal]
       · rw [max_eq_left (hnn _)]; push_cast; linarith [hk0 k, hnn P.finPattern.span]
-  · -- The resilience premise, at the sleeper point.
-    intro c s Q h hQ
+  · -- The resilience premise, at the sleeper point, from protected read `1 + j`.
+    intro c s Q h hQ j
     have hw := (hwf.caps c s h).resilience Q hQ
     cases c <;> obtain rfl := Option.some.inj h <;> cases hQ
     let L : Time := P.armingLag
-    let σ : Nat → Time := fun i => if i = 0 then 1 else L + 1 + i
+    let σ : Nat → Time := fun i => if i = 0 then 1 + j else L + 1 + i + j
     have hb := hP.outageBudget_pos
-    refine resilience_realizable F _ _ hw ?_ (hs1 _) σ (L + 3 + P.restoreLag) 0
+    have hj : (0 : Time) ≤ j := hnn j
+    refine resilience_realizable F _ _ hw ?_ (hs1 _) σ (L + 3 + P.restoreLag + j) 0
       (fun n submit => ?_)
-      (fun n submit => Premise.progressAll_of_not_usesProgress ?_) ?_
+      (fun n submit => Premise.progressAll_of_not_usesProgress ?_) ?_ j ?_
     · simp [resiliencePremise, Premise.AtomsAll, EnvAtom.Counting, outageWindow, before, after,
         coverMajority]
     · have : (1 : Time) ≤ P.outageBudget := by exact_mod_cast hb
@@ -399,7 +400,9 @@ theorem goldilocks_realizable (P : GoldilocksParams) (hP : P.WellFormed)
     · simp [resiliencePremise, Premise.UsesProgress, outageWindow, before, after, coverMajority]
     · simp only [σ, L]
       norm_num
-      linarith [hnn P.restoreLag]
+      exact ⟨by linarith, by linarith [hnn P.restoreLag]⟩
+    · simp only [σ]
+      norm_num
   · -- Recovery premises at every gap `k`.
     intro c s R h hR k
     change ℕ+ at k
