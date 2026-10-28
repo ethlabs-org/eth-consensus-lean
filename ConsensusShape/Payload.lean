@@ -3,7 +3,7 @@ public import ConsensusShape.Run
 
 @[expose] public section
 
-/-! # Shape-level payload facts (layer 1)
+/-! # Shape-level payload facts (L2)
 
 Signed objects come only from duties, and the only item-producing duties are
 the slot and poll proposals, whose `input` `compile` writes from the

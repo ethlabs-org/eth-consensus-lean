@@ -1,5 +1,5 @@
 module
 public import ConsensusModel.System
 
-/-! Layer ½, the execution model: read Objects, Protocol, Run, Conditions,
+/-! Layer 1 (L1), the execution model: read Objects, Protocol, Run, Conditions,
 Evidence, System. -/

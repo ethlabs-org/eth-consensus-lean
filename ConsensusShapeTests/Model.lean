@@ -3,7 +3,7 @@ public import ConsensusModelProofs
 public import Mathlib.Tactic
 @[expose] public section
 
-/-! # Layer-½ tests
+/-! # Model (L1) tests
 
 A tiny protocol with two roles: `false` (every key, one duty per integer time)
 and `true` (one key). Tests: relayed ingress and the cumulative mempool,

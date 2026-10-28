@@ -3,7 +3,7 @@ public import Mathlib.Data.List.Basic
 
 @[expose] public section
 
-/-! # Model objects (layer ½)
+/-! # Model objects (L1)
 
 Authentications, messages and wire objects of the execution model. Nothing here
 is supplied by a protocol beyond its types.

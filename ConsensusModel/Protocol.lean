@@ -6,7 +6,7 @@ public import ConsensusModel.Objects
 
 @[expose] public section
 
-/-! # The protocol interface (layer ½)
+/-! # The protocol interface (L1)
 
 What a protocol supplies to the execution model: its types, who may act in
 each role (closed selection syntax), a state machine, its output ledgers (one

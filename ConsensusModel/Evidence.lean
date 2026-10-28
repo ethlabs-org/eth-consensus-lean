@@ -3,7 +3,7 @@ public import ConsensusModel.Conditions
 
 @[expose] public section
 
-/-! # Evidence and hashes (layer ½)
+/-! # Evidence and hashes (L1)
 
 Evidence is generic: a validator is slashable on a set of objects if two of
 them (possibly the same one) are signed by its key (through the run's PKI) and

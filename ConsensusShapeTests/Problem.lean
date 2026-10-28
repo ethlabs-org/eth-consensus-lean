@@ -3,7 +3,7 @@ public import ConsensusProblem
 public import Mathlib.Tactic
 @[expose] public section
 
-/-! # Layer-0 tests: properties have teeth
+/-! # L0 tests: properties have teeth
 
 Small traces that violate each property, the `InCuts` fix at cut 0, the
 transaction-relay vocabulary, nesting across three outputs, catch-up, and

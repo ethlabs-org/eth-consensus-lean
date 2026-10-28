@@ -9,7 +9,7 @@ public import ConsensusProblem.Network
 Conditions on runs. None of them mentions anything the protocol supplies:
 they speak about the environment, the run data, and what the engine did
 (ticks, releases, receipts, restarts). Participation (readiness, majorities,
-fault bounds) is environment vocabulary, defined once in layer 0
+fault bounds) is environment vocabulary, defined once in L0
 (`Consensus.EnvPoint`) and applied to `Run.point`. -/
 
 namespace Consensus.Model

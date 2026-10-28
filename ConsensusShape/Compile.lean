@@ -3,9 +3,9 @@ public import ConsensusShape.Shape
 
 @[expose] public section
 
-/-! # Compilation of a chain shape to a model protocol (layer 1)
+/-! # Compilation of a chain shape to a model protocol (L2)
 
-`compile S` is the layer-½ protocol of shape `S`. Its state is the shape's
+`compile S` is the model (L1) protocol of shape `S`. Its state is the shape's
 state with the node's cumulative mempool; its roles are `ShapeRole`, its duties
 `ShapeDuty`, its items headers. Selections come from the skeleton: the
 proposer selection for every slot, the kind's selection for a committee duty,

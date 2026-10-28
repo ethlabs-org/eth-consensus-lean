@@ -4,7 +4,7 @@ public import ConsensusModel.Protocol
 
 @[expose] public section
 
-/-! # Runs and the engine (layer ½)
+/-! # Runs and the engine (L1)
 
 A run fixes everything the protocol does not choose: the honest set, the
 horizon, the scheduler's events, the PKI (which validator owns each key), the

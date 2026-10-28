@@ -3,7 +3,7 @@ public import ConsensusModelProofs.Canonical.Unforgeable
 
 @[expose] public section
 
-/-! # Slashing protection (layer ½)
+/-! # Slashing protection (L1)
 
 The engine refuses an own-signed candidate that conflicts, under the
 protocol's `conflicts`, with itself or with an own-signed object in the

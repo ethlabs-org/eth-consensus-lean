@@ -3,7 +3,7 @@ public import ConsensusProblem.Basic
 
 @[expose] public section
 
-/-! # The consensus problem: properties (layer 0)
+/-! # The consensus problem: properties (L0)
 
 Properties of a trace, generic in the element type (transaction ledgers here;
 block chains in a protocol shape). Safety and nesting read at every event cut (a

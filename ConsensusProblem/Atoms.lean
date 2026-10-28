@@ -4,7 +4,7 @@ public import Mathlib.Tactic
 
 @[expose] public section
 
-/-! # Environment atoms: monotonicity and counting (layer 0)
+/-! # Environment atoms: monotonicity and counting (L0)
 
 Facts about the participation and fault-bound vocabulary of `Basic`: each
 threshold is monotone in its parameter, and a counting step from "more than

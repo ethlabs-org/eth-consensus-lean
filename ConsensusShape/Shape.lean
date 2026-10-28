@@ -4,7 +4,7 @@ public import ConsensusModel
 
 @[expose] public section
 
-/-! # Chain shapes (layer 1)
+/-! # Chain shapes (L2)
 
 A chain shape is a protocol written over the building blocks: a public
 skeleton (time grid, proposer selection, poll selection, committee kinds with
