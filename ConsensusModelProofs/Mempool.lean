@@ -7,8 +7,11 @@ public import ConsensusModel.System
 
 A transaction held by a node at a deadline (L0 `CommLog.TxHeld` of the run's
 log: in its inbox at some time in `[0, d]`) is in its mempool at every tick
-strictly after the deadline: the mempool is cumulative and survives restarts.
-(Receipt at the deadline is processed at the next tick.) -/
+strictly after the deadline: the mempool is cumulative (all arrivals at
+times up to the tick) and survives restarts. `inbox v τ` is what arrives at
+`τ`; arrivals are handled at the delivery, but ticks come before deliveries
+within a time, so an arrival at the deadline is first used by a tick at a
+later time. -/
 
 namespace Consensus.Model
 

@@ -18,6 +18,7 @@ once here:
   `(t', d]`), since restarts are exactly the wakes after time `0`.
 * `sysOf_delivers_iff`: L0 delivery for the system's log is L0 delivery for the
   run's log.
+* `Run.log_sendsFromZero`: a valid run sends nothing before time `0`.
 
 Boundary: this shows that the log cannot invent sends or receipts and that L0
 holding is engine holding. It does not make an arbitrary L0 system honest, and
@@ -82,17 +83,17 @@ theorem sysOf_delivers_iff (rho : Run F E) (dl : Time → Time) (cut : Time) :
   constructor
   · intro h
     refine ⟨?_, ?_, h.txs⟩
-    · intro v hv o t ht0 hs w hw hc hh ha
-      exact (sysOf_held_iff rho w o _).mp (h.msgs v hv ⟨E, o⟩ t ht0 ⟨o, rfl, hs⟩ w hw hc hh ha)
-    · intro v hv o t ht0 hs w hw a hta hc hh ha
+    · intro v hv o t hs w hw hc hh ha
+      exact (sysOf_held_iff rho w o _).mp (h.msgs v hv ⟨E, o⟩ t ⟨o, rfl, hs⟩ w hw hc hh ha)
+    · intro v hv o t hs w hw a hta hc hh ha
       exact (sysOf_held_iff rho w o _).mp
-        (h.rewake v hv ⟨E, o⟩ t ht0 ⟨o, rfl, hs⟩ w hw a hta hc hh ha)
+        (h.rewake v hv ⟨E, o⟩ t ⟨o, rfl, hs⟩ w hw a hta hc hh ha)
   · intro h
     refine ⟨?_, ?_, h.txs⟩
-    · rintro v hv m t ht0 ⟨o, rfl, hs⟩ w hw hc hh ha
-      exact (sysOf_held_iff rho w o _).mpr (h.msgs v hv o t ht0 hs w hw hc hh ha)
-    · rintro v hv m t ht0 ⟨o, rfl, hs⟩ w hw a hta hc hh ha
-      exact (sysOf_held_iff rho w o _).mpr (h.rewake v hv o t ht0 hs w hw a hta hc hh ha)
+    · rintro v hv m t ⟨o, rfl, hs⟩ w hw hc hh ha
+      exact (sysOf_held_iff rho w o _).mpr (h.msgs v hv o t hs w hw hc hh ha)
+    · rintro v hv m t ⟨o, rfl, hs⟩ w hw a hta hc hh ha
+      exact (sysOf_held_iff rho w o _).mpr (h.rewake v hv o t hs w hw a hta hc hh ha)
 
 namespace Run
 
@@ -114,6 +115,13 @@ theorem held_iff_served (rho : Run F E) (hv : rho.ExecutionValid) {w : V}
       · exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
       · exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
     exact hn u (hv.wake_restart w hw u (lt_of_le_of_lt ht0 h₁) (le_trans h₂ hd) hwk) ⟨h₁, h₂⟩
+
+/-- On a valid run no send happens before time `0` (event times are in
+`[0, horizon]`), so the L0 convenience `CommLog.PSync.syncUntil_zero` applies. -/
+theorem log_sendsFromZero (rho : Run F E) (hv : rho.ExecutionValid) :
+    CommLog.SendsFromZero rho.point rho.log := by
+  rintro v - o t ⟨i, hi, -⟩
+  exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
 
 end Run
 

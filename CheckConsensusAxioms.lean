@@ -89,6 +89,11 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Network.held_restart,
       `Consensus.Shape.Tests.Network.psync_mono_instance,
       `Consensus.Shape.Tests.Network.faithful_relayedRun,
+      `Consensus.Shape.Tests.Network.faithful_receipt,
+      `Consensus.Shape.Tests.Network.negative_send_covered,
+      `Consensus.Shape.Tests.Network.agreesUpTo_empty_messages,
+      `Consensus.CommLog.PSync.syncUntil_zero, `Consensus.CommLog.EagerFrom.syncUntil,
+      `Consensus.Model.Run.log_sendsFromZero,
       `Consensus.Shape.Tests.Model.held_at_deadline,
       `Consensus.Shape.Tests.Model.not_held_before_relay] do
     unless env.contains name do

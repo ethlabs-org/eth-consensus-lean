@@ -29,33 +29,32 @@ def EagerTxDelivery (rho : Run F E) : Prop :=
     ∀ w ∈ rho.honest, ∀ a, τ ≤ a → E.awake w a = true → x ∈ rho.inbox w a
 
 /-- Eager delivery meets L0 delivery (`CommLog.Delivers`) for every deadline
-function at or above the identity from time `0`, at every cut. This is
-independent of GST, the cut, and the shape of the deadline. -/
+function at or above the identity, at every cut. This is independent of GST,
+the cut, and the shape of the deadline. -/
 theorem delivers_of_eager (rho : Run F E) (he : rho.EagerDelivery) (ht : rho.EagerTxDelivery)
-    (dl : Time → Time) (cut : Time) (hd : ∀ a, 0 ≤ a → a ≤ dl a) :
+    (dl : Time → Time) (cut : Time) (hd : ∀ a, a ≤ dl a) :
     CommLog.Delivers rho.point rho.log dl cut := by
   constructor
-  · intro v hv o t ht0 hs w hw _ hdh haw
-    exact CommLog.held_of_recv (he v hv o t hs w hw (dl t) (hd t ht0) hdh haw)
-  · intro v hv o t ht0 hs w hw a hta _ hdh haw
-    exact CommLog.held_of_recv
-      (he v hv o t hs w hw (dl a) (le_trans hta.le (hd a (le_trans ht0 hta.le))) hdh haw)
+  · intro v hv o t hs w hw _ hdh haw
+    exact CommLog.held_of_recv (he v hv o t hs w hw (dl t) (hd t) hdh haw)
+  · intro v hv o t hs w hw a hta _ hdh haw
+    exact CommLog.held_of_recv (he v hv o t hs w hw (dl a) (le_trans hta.le (hd a)) hdh haw)
   · intro u hu x τ hτ haw hx w hw a hτa _ _ ha
-    have hle : τ ≤ dl a := le_trans hτa (hd a (le_trans hτ hτa))
+    have hle : τ ≤ dl a := le_trans hτa (hd a)
     exact ⟨dl a, le_trans hτ hle, le_rfl, ht u hu x τ hτ haw hx w hw (dl a) hle ha⟩
 
 theorem partialSynchrony_of_eager (rho : Run F E)
     (he : rho.EagerDelivery) (ht : rho.EagerTxDelivery) :
     rho.PartialSynchrony := by
   apply rho.delivers_of_eager he ht
-  intro a _
+  intro a
   exact le_trans (le_max_left a E.gst) (le_add_of_nonneg_right E.Δ_pos.le)
 
 theorem healthyPrefixDelivery_of_eager (rho : Run F E)
     (he : rho.EagerDelivery) (ht : rho.EagerTxDelivery) (cut : Time) :
     rho.HealthyPrefixDelivery cut := by
   apply rho.delivers_of_eager he ht
-  intro a _
+  intro a
   exact le_add_of_nonneg_right E.Δ_pos.le
 
 end Run

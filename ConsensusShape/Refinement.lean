@@ -42,7 +42,7 @@ synchrony (L0 delivery, endpoint rule) at the start `a := τ − Δ − 1 ≥ ma
 puts the transaction in that key's inbox by the deadline `τ − 1` (receipt at
 the deadline counts), so in its mempool at the tick `τ`, which is the
 proposal's payload. The strict `τ > …` of `ProposalLive` absorbs the one time
-unit between receipt at the deadline and processing at the next tick. -/
+unit between arrival at the deadline and use by the tick at `τ`. -/
 theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O.Id}
     {start : Time} {D : Nat} (hv : rho.ExecutionValid) (hs : rho.PartialSynchrony)
     (hl : ProposalLive rho (((c₀ : Nat) : Time) * E.Δ) g start D) :

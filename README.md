@@ -87,8 +87,12 @@ pairs it with `Contract.Realizable`. See "Well-formedness is not non-vacuity".
      `Delivers.txs`/`TxHeld`. Instances `PSync g`, `SyncUntil b`,
      `OutageNet b₀ b₁`; `EagerFrom g` (the canonical log shape) meets them
      (`EagerFrom.delivers`, `.psync`, `.syncUntil`); `PSync.mono` (a later GST
-     is weaker), `Delivers.reindex`, `AgreesUpTo`. Sends and submissions at
-     negative times are not covered (none occur in a valid model run).
+     is weaker), `Delivers.reindex`, `AgreesUpTo` (sends and receipts, and
+     inboxes quantified separately). Message sends are covered at every time,
+     negative ones included; submissions from time `0`. `SendsFromZero` (no
+     honest send before `0`; every valid model run has it,
+     `Model.Run.log_sendsFromZero`) makes `PSync 0` synchrony
+     (`PSync.syncUntil_zero`, `EagerFrom.syncUntil`).
    - `Properties`: `Agree`, `Monotone`, `Safe`, `ReadySafe`, `Nested`,
      `ProtectedThrough` (resilience during *and after* the window),
      `CompatibleThrough` (defined, not advertised), `Trace.TxLive`,
@@ -355,9 +359,19 @@ buys nothing against this adversary.
   `t` is held, by `max t GST + Δ` (receipt at the deadline counts), by every
   honest node awake *at* that deadline; and (re-service, `rewake`) by every
   honest node awake at `max a GST + Δ`, for every `a > t`. `SyncUntil` uses
-  `a + Δ`. A message received at the deadline is processed at the next tick
-  (order within one time, below); that slack is the protocol's
-  (`proposalLive_txLive` absorbs it with the strict `τ > …` of
+  `a + Δ`. Holding is memory: a receipt counts until the holder's next wake,
+  and is not held after it. Delivery is about honest sends only: an honest
+  node forwards an adversarial object only by embedding it in its own
+  release, and a weaker service such as "the object or a conflicting pair"
+  (knowledge of equivocation) is not expressible here; bounding or handling
+  equivocations is the concrete protocol's job.
+- **Receipt, processing, use:** a delivered object is processed by its
+  handler at the delivery itself; within one time deliveries come after the
+  ticks (order below), so what arrives at the deadline is first *used* by
+  the node's next tick. A transaction arriving at `t` is in the inbox at `t`
+  (`inbox v t`: arrivals at `t`); the mempool is cumulative (everything that
+  arrived at `0, …, t`) and is read by ticks. Slack between arrival and use is
+  the protocol's (`proposalLive_txLive` absorbs it with the strict `τ > …` of
   `ProposalLive`).
 - **Restarts** happen exactly at wakes; a receipt before a sleep does not serve
   after the wake.
