@@ -8,8 +8,10 @@ public import Mathlib.Tactic
 A tiny protocol with two roles: `false` (every key, one duty per integer time)
 and `true` (one key). Tests: relayed ingress and the cumulative mempool,
 validity rules out a negative horizon, credentials bind the role (a key
-selected for one role cannot sign in another), and ticks happen at every
-integer time. -/
+selected for one role cannot sign in another), ticks happen at every
+integer time, and slashing protection: with `conflicts` always true the engine
+releases no signed object, so non-framing holds by construction, and
+protection ignores candidates signed by other keys. -/
 
 namespace Consensus.Shape.Tests.Model
 open Consensus Model
@@ -121,6 +123,51 @@ an awake honest node at time `1`, which is not a multiple of `Δ` (so a
 theorem unit_ticks (rho : Run family env) (hv : rho.ExecutionValid) (h0 : (0 : Fin 2) ∈ rho.honest)
     (hh : 1 ≤ rho.horizon) : Event.tick (0 : Fin 2) 1 ∈ rho.events ∧ ¬ (3 : Time) ∣ 1 :=
   ⟨hv.tick_total 0 h0 1 (by decide) hh rfl, by decide⟩
+
+/-- The test protocol with `conflicts` always true: every signed object would
+convict its signer. -/
+def protoC (pub : Public) : Protocol pub Unit := { proto pub with conflicts := fun _ _ => true }
+
+/-- The test family with `conflicts` always true. -/
+def familyC : Family schema := protoC
+
+/-- With `conflicts` always true, slashing protection refuses every own-signed
+candidate: every release of every run (valid or not) is unsigned. -/
+theorem conflictsTrue_releases_unsigned_only {V : Type} [Fintype V] [DecidableEq V]
+    (E : Env V) (rho : Run familyC E) (i : Nat) {o : (protoOf familyC E).Object}
+    (ho : o ∈ rho.releasesAt i) : o.signer? = none := by
+  have ho' := ho
+  cases he : rho.events[i]? with
+  | none => simp [Run.releasesAt, he] at ho
+  | some e =>
+    cases e with
+    | tick v t =>
+      simp only [Run.releasesAt, he] at ho
+      unfold Run.tick at ho
+      split at ho
+      · rcases rho.candidates_signer _ v t (releaseAll_subset _ _ _ _ o ho) with h | h
+        · exact h
+        · have hf : (protoOf familyC E).conflicts o o = false :=
+            rho.tick_noConflict he ho' ho' h h
+          cases hf
+      · simp at ho
+    | deliver v p t => simp [Run.releasesAt, he] at ho
+    | restart v t => simp [Run.releasesAt, he] at ho
+
+/-- Hence non-framing, which a protocol convicting everything would violate
+without protection, holds for it (an instance of `sysOf_nonFraming`). -/
+theorem conflictsTrue_nonFraming :
+    (sysOf schema familyC (Fin 2)).HoldsAlways (sysOf schema familyC (Fin 2)).NonFraming :=
+  sysOf_nonFraming _ _ _
+
+/-- Protection fires on own candidates only: a candidate signed by key `1`
+passes `protects` for key `0`, even next to a key-`0` object it would conflict
+with; the same candidate signed by key `0` is refused. -/
+theorem protects_other_key :
+    protects (familyC (pubOf env)) 0 [.mk (.signed 0 false) (.data ()) []]
+        (.mk (.signed 1 false) (.data ()) []) = true ∧
+      protects (familyC (pubOf env)) 0 [] (.mk (.signed 0 false) (.data ()) []) = false := by
+  decide
 
 end Consensus.Shape.Tests.Model
 end

@@ -13,11 +13,11 @@ namespace Consensus.Model
 /-- The seen filter preserves any predicate on all structural descendants,
 provided the roots of the objects actually released satisfy it. -/
 theorem releaseAll_preserves {pub : Public} {Out : Type} {P : Protocol pub Out}
-    (hash : P.Item → Nat) (Q : P.Object → Prop) (nd : Node P) (cs : List P.Object)
+    (hash : P.Item → Nat) (k : Key pub) (Q : P.Object → Prop) (nd : Node P) (cs : List P.Object)
     (hs : ∀ o ∈ nd.seen, ∀ d, Obj.Contains o d → Q d)
-    (hr : ∀ o ∈ (releaseAll hash nd cs).2, Q o) :
-    (∀ o ∈ (releaseAll hash nd cs).1.seen, ∀ d, Obj.Contains o d → Q d) ∧
-    (∀ o ∈ (releaseAll hash nd cs).2, ∀ d, Obj.Contains o d → Q d) := by
+    (hr : ∀ o ∈ (releaseAll P hash k nd cs).2, Q o) :
+    (∀ o ∈ (releaseAll P hash k nd cs).1.seen, ∀ d, Obj.Contains o d → Q d) ∧
+    (∀ o ∈ (releaseAll P hash k nd cs).2, ∀ d, Obj.Contains o d → Q d) := by
   induction cs generalizing nd with
   | nil => exact ⟨hs, by simp [releaseAll]⟩
   | cons c cs ih =>
@@ -30,7 +30,7 @@ theorem releaseAll_preserves {pub : Public} {Out : Type} {P : Protocol pub Out}
         cases hd with
         | refl => exact hr c List.mem_cons_self
         | step hm hc =>
-          have hm' := List.all_eq_true.mp hf _ hm
+          have hm' := List.all_eq_true.mp (Bool.and_eq_true_iff.mp hf).1 _ hm
           have hmem : _ ∈ closure nd.seen := of_decide_eq_true hm'
           obtain ⟨o, ho, hoc⟩ := (mem_closure_iff _ _).mp hmem
           exact hs o ho d (hoc.trans hc)
@@ -51,8 +51,9 @@ theorem releaseAll_preserves {pub : Public} {Out : Type} {P : Protocol pub Out}
       simp only [hf]
       exact ih nd hs hr
 
-theorem releaseAll_subset {pub : Public} {Out : Type} {P : Protocol pub Out} (hash : P.Item → Nat)
-    (nd : Node P) (cs : List P.Object) : ∀ o ∈ (releaseAll hash nd cs).2, o ∈ cs := by
+theorem releaseAll_subset {pub : Public} {Out : Type} {P : Protocol pub Out}
+    (hash : P.Item → Nat) (k : Key pub) (nd : Node P) (cs : List P.Object) :
+    ∀ o ∈ (releaseAll P hash k nd cs).2, o ∈ cs := by
   induction cs generalizing nd with
   | nil => simp [releaseAll]
   | cons c cs ih =>
@@ -109,7 +110,7 @@ theorem tick_safe {i : Nat} {v : V} {t : Time}
         ((protoOf F E).clock (rho.stateBefore i v).st t (mempool rho.inbox v t)) v t := by
       unfold tick at ho
       split at ho
-      · exact releaseAll_subset _ _ _ o ho
+      · exact releaseAll_subset _ _ _ _ o ho
       · simp at ho
     rcases rho.candidates_signerOf _ v t hc with hn | hv
     · rw [hn] at hsigner; cases hsigner
@@ -121,7 +122,7 @@ theorem tick_safe {i : Nat} {v : V} {t : Time}
   unfold tick at hr ⊢
   split at hr
   · simp only [‹E.awake v t = true›, ↓reduceIte]
-    exact releaseAll_preserves rho.hash (rho.SignedBefore (i + 1)) _ _
+    exact releaseAll_preserves rho.hash _ (rho.SignedBefore (i + 1)) _ _
       (fun o ho d hd => rho.signedBefore_mono (Nat.le_succ i) (hs o ho d hd)) hr
   · simp only [‹¬ E.awake v t = true›, Bool.not_eq_true] at *
     exact ⟨fun o ho => rho.safeBefore_mono (Nat.le_succ i) (hs o ho), by simp⟩

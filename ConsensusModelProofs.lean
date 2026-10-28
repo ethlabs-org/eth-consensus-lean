@@ -6,3 +6,4 @@ public import ConsensusModelProofs.Canonical
 public import ConsensusModelProofs.Candidates
 public import ConsensusModelProofs.Credentials
 public import ConsensusModelProofs.Mempool
+public import ConsensusModelProofs.Protection

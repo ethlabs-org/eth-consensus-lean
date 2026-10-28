@@ -82,6 +82,13 @@ and will be removed.
     delivered object is signed by a key selected for its role, faulty signers
     included; `Run.selected_of_observed` extends this to everything honest
     nodes observed.
+  - Slashing protection is the engine's, generic over `conflicts`
+    (`protects`): an own-signed candidate that conflicts with itself, or in
+    either order with an own-signed object in the closure of `seen`, is not
+    released. `seen` survives restarts (as an EIP-3076 slashing-protection
+    database does; that the deployed client keeps it is model adequacy).
+    Hence `Run.honestNeverSlashed` and L0 non-framing (`sysOf_nonFraming`)
+    are theorems for every protocol, not obligations.
   - Accountability counts validators, with no committee premise.
 - **Transaction ingress is relayed by the network.** A transaction submitted
   to an awake honest node is relayed to every honest node awake throughout a
@@ -116,7 +123,8 @@ and will be removed.
 ## Residual bindings (per instance)
 
 1. The output ledgers (and L1's chain getters) are what users read.
-2. `conflicts` is the slashing rule the chain enforces.
+2. `conflicts` is the slashing rule the chain enforces, and the deployed
+   client implements `protects` and keeps its log across restarts.
 3. Check **A first**, then the service bounds in `Constants`. Use
    `Assumptions.standard catchUp eta armingLag fastArmingLag outageBudget
    stableEtaAbove recoveryReadyAbove recoveryFull`, or publish named numbers

@@ -32,9 +32,9 @@ theorem tick_authorized (nd : Node (protoOf F E)) (v : V) (t : Time)
       (∀ o ∈ (rho.tick nd v t).2, rho.Authorized o) := by
   unfold tick
   split
-  · exact releaseAll_preserves rho.hash
+  · exact releaseAll_preserves rho.hash _
       (fun d => ∀ k r, d.auth = .signed k r → k ∈ rho.sel r) _ _ hs
-      (fun o ho k r ha => rho.candidates_selected _ v t (releaseAll_subset _ _ _ o ho) ha)
+      (fun o ho k r ha => rho.candidates_selected _ v t (releaseAll_subset _ _ _ _ o ho) ha)
   · exact ⟨hs, by simp⟩
 
 /-- If every object delivered before event cut `i` is authorized, so is

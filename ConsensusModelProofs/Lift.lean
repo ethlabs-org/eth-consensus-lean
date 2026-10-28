@@ -127,9 +127,9 @@ theorem stateBefore_succ (rho : Run F E) {i : Nat} {e : Event V (protoOf F E).Ob
 end Run
 
 theorem releaseAll_eq_of_digests {pub : Public} {Out : Type} {P : Protocol pub Out}
-    (hash hash' : P.Item → Nat) (nd : Node P) (cs : List P.Object)
-    (ha : ∀ o ∈ (releaseAll hash nd cs).2, digests hash' o = digests hash o) :
-    releaseAll hash' nd cs = releaseAll hash nd cs := by
+    (hash hash' : P.Item → Nat) (k : Key pub) (nd : Node P) (cs : List P.Object)
+    (ha : ∀ o ∈ (releaseAll P hash k nd cs).2, digests hash' o = digests hash o) :
+    releaseAll P hash' k nd cs = releaseAll P hash k nd cs := by
   induction cs generalizing nd with
   | nil => rfl
   | cons c cs ih =>
@@ -156,7 +156,7 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
       r.tick (rho.stateBefore i v) v t = rho.tick (rho.stateBefore i v) v t := by
     intro i v t he
     unfold tick
-    change (if E.awake v t then releaseAll hash' _ _ else _) = _
+    change (if E.awake v t then releaseAll _ hash' _ _ _ else _) = _
     split
     · apply releaseAll_eq_of_digests
       intro o ho
@@ -164,7 +164,8 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
       refine ⟨v, hv.honest_only _ (List.mem_of_getElem? he), i, o,
         (List.getElem?_eq_some_iff.mp he).1, Or.inl ⟨t, he, ?_⟩, .refl _⟩
       simpa only [releasesAt, he, tick, ‹E.awake v t = true›, ↓reduceIte, r,
-        show r.inbox = rho.inbox from rfl, show r.candidates = rho.candidates from rfl] using ho
+        show r.inbox = rho.inbox from rfl, show r.candidates = rho.candidates from rfl,
+        show r.ownKey = rho.ownKey from rfl] using ho
     · rfl
   have states : ∀ i, r.stateBefore i = rho.stateBefore i := by
     intro i

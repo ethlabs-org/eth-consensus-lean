@@ -19,10 +19,16 @@ At a tick of awake node `v` at `t`, the engine
    `v`'s own key is selected for the duty's role, the duty's message signed
    with that key in that role; then unsigned gossip;
 3. releases a candidate only if every object it carries is already in the
-   closure of `seen` (so honest code passes on no object it has not seen), adds
-   it to `seen`, and records it with `recordOwn`.
+   closure of `seen` (so honest code passes on no object it has not seen) and
+   slashing protection allows it (`protects`: a candidate signed by the own
+   key must not conflict, under the protocol's `conflicts`, with itself or
+   with an own-signed object in the closure of `seen`), adds it to `seen`, and
+   records it with `recordOwn`.
 At a delivery it runs `process`; at a restart, `restore` (with the own key) of
-`durable`, keeping `seen`. A node starts in `init` of its own key. Only the
+`durable`, keeping `seen`. The `seen` log survives restarts, so slashing
+protection persists across them, as a validator's slashing-protection
+database does (EIP-3076); that the deployed engine keeps it is part of model
+adequacy. A node starts in `init` of its own key. Only the
 engine evaluates the hash: with every object processed or recorded it passes
 the digests of the items in the object's closure. -/
 
@@ -113,17 +119,30 @@ def releasable {pub : Public} {Out : Type} {P : Protocol pub Out} (seen : List P
     (c : P.Object) : Bool :=
   c.carried.all (fun x => decide (x ∈ closure seen))
 
-/-- Release candidates in order: a candidate is released if it is
-`releasable`; released objects join `seen` at once. -/
-def releaseAll {pub : Public} {Out : Type} {P : Protocol pub Out} (hash : P.Item → Nat) :
-    Node P → List P.Object → Node P × List P.Object
+/-- Slashing protection, generic over the protocol's `conflicts`: a candidate
+signed by the own key `k` is refused if it conflicts with itself or, in either
+order, with an object signed by `k` in the closure of `seen`. Other candidates
+pass (engine candidates are own-signed or unsigned). -/
+def protects {pub : Public} {Out : Type} (P : Protocol pub Out) (k : Key pub)
+    (seen : List P.Object) (c : P.Object) : Bool :=
+  if c.signer? = some k then
+    !(P.conflicts c c) &&
+      (closure seen).all fun o => o.signer? != some k || !(P.conflicts c o || P.conflicts o c)
+  else true
+
+/-- Release candidates in order, for the node with own key `k`: a candidate is
+released if it is `releasable` and `protects` allows it; released objects join
+`seen` at once, so later candidates of the same tick are checked against
+them. -/
+def releaseAll {pub : Public} {Out : Type} (P : Protocol pub Out) (hash : P.Item → Nat)
+    (k : Key pub) : Node P → List P.Object → Node P × List P.Object
   | nd, [] => (nd, [])
   | nd, c :: cs =>
-    if releasable nd.seen c then
+    if releasable nd.seen c && protects P k nd.seen c then
       let nd' : Node P := ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩
-      let r := releaseAll hash nd' cs
+      let r := releaseAll P hash k nd' cs
       (r.1, c :: r.2)
-    else releaseAll hash nd cs
+    else releaseAll P hash k nd cs
 
 /-- The transactions submitted to node `v` at times `0, …, t`. -/
 def mempool (submit : V → Time → List Tx) (v : V) (t : Time) : List Tx :=
@@ -164,7 +183,9 @@ release. -/
 def tick (nd : Node (protoOf F E)) (v : V) (t : Time) :
     Node (protoOf F E) × List (protoOf F E).Object :=
   let nd₁ : Node (protoOf F E) := ⟨(protoOf F E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩
-  if E.awake v t then releaseAll rho.hash nd₁ (rho.candidates nd₁.st v t) else (nd₁, [])
+  if E.awake v t then
+    releaseAll (protoOf F E) rho.hash (rho.ownKey v) nd₁ (rho.candidates nd₁.st v t)
+  else (nd₁, [])
 
 /-- One event. -/
 def step (w : V → Node (protoOf F E)) : Event V (protoOf F E).Object → V → Node (protoOf F E)
