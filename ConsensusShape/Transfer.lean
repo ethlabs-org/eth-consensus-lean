@@ -1,0 +1,44 @@
+module
+public import ConsensusProblem.Properties
+@[expose] public section
+namespace Consensus
+
+theorem Compatible.map {α β : Type} {f : List α → List β}
+    (hf : ∀ {a b}, a <+: b → f a <+: f b) {a b : List α}
+    (h : Compatible a b) : Compatible (f a) (f b) := h.imp hf hf
+
+namespace Trace
+variable {V α β : Type} {tr : Trace V α} {f : List α → List β}
+    (hf : ∀ {a b}, a <+: b → f a <+: f b)
+
+include hf
+
+theorem Agree.map {g t} (h : tr.Agree g t) : (tr.map f).Agree g t := by
+  intro u hu v hv i j hi hj
+  exact (h u hu v hv i j hi hj).map hf
+
+theorem Monotone.map {g t} (h : tr.Monotone g t) : (tr.map f).Monotone g t := by
+  intro v hv i j hi hij hj
+  exact hf (h v hv i j hi hij hj)
+
+theorem Safe.map {g t} (h : tr.Safe g t) : (tr.map f).Safe g t :=
+  ⟨h.1.map hf, h.2.map hf⟩
+
+theorem ReadySafe.map {c g t} (h : tr.ReadySafe c g t) : (tr.map f).ReadySafe c g t := by
+  constructor
+  · intro u v i j hi hj hu hv
+    exact (h.1 u v i j hi hj hu hv).map hf
+  · intro v i j hi hij hj hv hw
+    exact hf (h.2 v i j hi hij hj hv hw)
+
+theorem Nested.map {g₁ g₂} (h : tr.Nested g₁ g₂) : (tr.map f).Nested g₁ g₂ := by
+  intro v hv i hi
+  exact hf (h v hv i hi)
+
+theorem PersistsThrough.map {c g T b₀ b₁} (h : tr.PersistsThrough c g T b₀ b₁) :
+    (tr.map f).PersistsThrough c g T b₀ b₁ := by
+  intro v hv t ht ht' w hw ha
+  exact hf (h v hv t ht ht' w hw ha)
+end Trace
+end Consensus
+end
