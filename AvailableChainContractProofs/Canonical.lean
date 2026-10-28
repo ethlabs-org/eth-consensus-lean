@@ -22,8 +22,8 @@ open AvailableChain.Generic
 /-- Every choice of protocol, environment and run data admits a valid run
 with partial synchrony and healthy delivery on every prefix. -/
 theorem canonical_run : CanonicalRun := by
-  intro F V _ _ _ E honest horizon hh seat proposer input
-  let base := mkRun (F := F) (E := E) honest horizon seat proposer input []
+  intro F V _ _ _ E honest horizon hh seat proposer input hash
+  let base := mkRun (F := F) (E := E) honest horizon seat proposer input hash []
   refine ⟨base.canonicalEvents, ?_⟩
   change (base.withEvents base.canonicalEvents).ExecutionValid ∧
     (base.withEvents base.canonicalEvents).PartialSynchrony ∧
