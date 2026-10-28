@@ -82,7 +82,7 @@ theorem shortHistory_not_awake_delta : ¬ AwakeOn shortHistory.env true (6 - 3) 
   cases this
 
 /-- Ready proposers now always have at least one Δ of catch-up. -/
-theorem zero_catchUp_invalid (C : Constants) (hz : C.catchUp = 0) : ¬ C.Valid := by
+theorem zero_catchUp_invalid (A : Assumptions) (hz : A.catchUp = 0) : ¬ A.WellFormed := by
   intro h
   have := h.catchUp_pos
   omega

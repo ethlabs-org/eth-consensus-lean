@@ -76,13 +76,25 @@ theorem hash_escape_needed {V : Type} [Fintype V] [DecidableEq V]
   obtain ⟨x, hx⟩ := observed
   exact Or.inr ⟨x, hx, by rw [hz]⟩
 
-theorem empty_outputs (proposal : Bool) : ∀ C, ¬ ShapeClaims (family proposal false false) C := by
-  intro C claims
+theorem empty_outputs (proposal : Bool) : ∀ A, A.WellFormed → ∀ C, ¬ ShapeClaims (family proposal false false) A C := by
+  intro A hA C claims
   let H : Time := 1 + (C.D_c : Time)
   obtain ⟨relay, es, valid, sync, _⟩ := Model.canonical_run (compiled (family proposal false false))
     (Fin 1) env Finset.univ H (by dsimp [H]; positivity) seat (fun _ _ => []) goodHash
   let r := run relay H es
-  have sleepy : Sleepy r C := ⟨valid, sync, rfl, fun t _ _ => majority relay H es _ t⟩
+  have sleepy : Sleepy r A := ⟨valid, sync, rfl, by
+    intro t _ _
+    have hr : (r.point.readyAt ((A.catchUp : Time) * env.Δ) t).card = 1 := by
+      have := majority relay H es ((A.catchUp : Time) * env.Δ) t
+      have hu := Finset.card_le_univ (r.point.readyAt ((A.catchUp : Time) * env.Δ) t)
+      unfold EnvPoint.ReadyMajority at this
+      change r.point.faulty.card < (r.point.readyAt ((A.catchUp : Time) * env.Δ) t).card at this
+      simp only [Fintype.card_fin] at hu
+      omega
+    have hf : r.point.faulty = ∅ := by simp [EnvPoint.faulty, r, run, Model.mkRun, Model.Run.point]
+    unfold EnvPoint.ReadyAbove
+    rw [hr, hf]
+    simpa using hA.sleepy_upper⟩
   have inc := (claims.confirmedIncluded (Fin 1) env r sleepy).resolve_right (run_no_collision relay H es)
   obtain ⟨h, _, inside⟩ := inc 1 (by norm_num [ShapeProtocol.proposalTime, ShapeProtocol.slotLen, protoOf, family, Model.pubOf, env]) (ready relay H es _ _ _)
     (by simp [H, ShapeProtocol.proposalTime, ShapeProtocol.slotLen, protoOf, family,
@@ -91,11 +103,11 @@ theorem empty_outputs (proposal : Bool) : ∀ C, ¬ ShapeClaims (family proposal
   change h ∈ [] at hin
   cases hin
 
-theorem silent : ∀ C, ¬ ShapeClaims (family false false false) C := empty_outputs false
-theorem proposeButGenesis : ∀ C, ¬ ShapeClaims (family true false false) C := empty_outputs true
+theorem silent : ∀ A, A.WellFormed → ∀ C, ¬ ShapeClaims (family false false false) A C := empty_outputs false
+theorem proposeButGenesis : ∀ A, A.WellFormed → ∀ C, ¬ ShapeClaims (family true false false) A C := empty_outputs true
 
-theorem fabricated : ∀ C, ¬ ShapeClaims (family false false true) C := by
-  intro C claims
+theorem fabricated : ∀ A C, ¬ ShapeClaims (family false false true) A C := by
+  intro A C claims
   obtain ⟨relay, es, valid, _, _⟩ := Model.canonical_run (compiled (family false false true))
     (Fin 1) env Finset.univ 2 (by decide) seat (fun _ _ => []) goodHash
   let r := run relay 2 es
@@ -107,8 +119,8 @@ theorem fabricated : ∀ C, ¬ ShapeClaims (family false false true) C := by
   obtain ⟨k, _, hk, _⟩ := hcs
   omega
 
-theorem conflictsTrue : ∀ C, ¬ ShapeClaims (family false true false) C := by
-  intro C claims
+theorem conflictsTrue : ∀ A C, ¬ ShapeClaims (family false true false) A C := by
+  intro A C claims
   obtain ⟨relay, es, valid, _, _⟩ := Model.canonical_run (compiled (family false true false))
     (Fin 1) env Finset.univ 0 (by decide) seat (fun _ _ => []) goodHash
   let r := run relay 0 es

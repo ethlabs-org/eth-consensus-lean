@@ -101,11 +101,33 @@ noncomputable def awakeIn (a b : Time) : Finset V := by
   classical
   exact p.honest.filter (fun v => ∃ u, a ≤ u ∧ u ≤ b ∧ p.env.awake v u = true)
 
+/-- Domain of the environment coverage theorems; not a claim premise. -/
+def WellFormed : Prop := 0 ≤ p.horizon
+
+def ReadyAbove (θ : ℚ) (c t : Time) : Prop :=
+  θ * ((p.readyAt c t).card + p.faulty.card : ℚ) < (p.readyAt c t).card
+
+def FaultsBelow (β : ℚ) : Prop := (p.faulty.card : ℚ) < β * Fintype.card V
+
+def ReadyOfAll (φ : ℚ) (c t : Time) : Prop :=
+  φ * Fintype.card V < ((p.readyAt c t).card : ℚ)
+
+def ReadyOfAllAtLeast (φ : ℚ) (c t : Time) : Prop :=
+  φ * Fintype.card V ≤ ((p.readyAt c t).card : ℚ)
+
+def NoWakeFrom (s : Time) : Prop :=
+  ∀ v ∈ p.honest, ∀ t, s ≤ t → t ≤ p.horizon → ¬ Wakes p.env v t
+
+def Throughout (a b : Time) (Q : Time → Prop) : Prop := ∀ t, a ≤ t → t ≤ b → Q t
+
+abbrev HonestMajority := p.ReadyAbove (1 / 2)
+abbrev TwoThirdsReady := p.ReadyOfAll (2 / 3)
+
 /-- More ready honest validators than faulty ones. -/
 def ReadyMajority (c t : Time) : Prop := p.faulty.card < (p.readyAt c t).card
 
 /-- `|ready_t| > θ · |H_[t−η,t] ∪ faulty|`. -/
-def EtaSleepy (c : Time) (θ : ℚ) (η t : Time) : Prop :=
+def EtaSleepy (θ : ℚ) (η c t : Time) : Prop :=
   θ * ((p.awakeIn (t - η) t ∪ p.faulty).card : ℚ) < ((p.readyAt c t).card : ℚ)
 
 /-- Every honest validator is awake from `start` to the horizon. -/
@@ -113,10 +135,10 @@ def FullParticipation (start : Time) : Prop :=
   ∀ v ∈ p.honest, ∀ t, start ≤ t → t ≤ p.horizon → p.env.awake v t = true
 
 /-- Fewer than a quarter of the validators are faulty. -/
-def BelowQuarter : Prop := 4 * p.faulty.card < Fintype.card V
+abbrev BelowQuarter : Prop := p.FaultsBelow (1 / 4)
 
 /-- Fewer than a third of the validators are faulty. -/
-def BelowOneThird : Prop := 3 * p.faulty.card < Fintype.card V
+abbrev BelowOneThird : Prop := p.FaultsBelow (1 / 3)
 
 end EnvPoint
 

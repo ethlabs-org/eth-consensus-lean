@@ -68,13 +68,13 @@ noncomputable def convicted {V O : Type} [Fintype V]
   classical
   exact Finset.univ.filter (convicts A)
 
-/-- Two honest reads are compatible, or their joint evidence convicts a third. -/
-def Trace.AccountablySafe {V α O : Type} [Fintype V] (tr : Trace V α)
-    (view : V → Nat → Set O) (convicts : Set O → V → Prop) (g : Out) (t₀ : Time) : Prop :=
+/-- Two honest reads are compatible, or their joint evidence convicts fraction α. -/
+def Trace.AccountablySafe {V β O : Type} [Fintype V] (tr : Trace V β)
+    (view : V → Nat → Set O) (convicts : Set O → V → Prop) (α : ℚ) (g : Out) (t₀ : Time) : Prop :=
   ∀ u ∈ tr.point.honest, ∀ v ∈ tr.point.honest, ∀ i j,
     tr.InCuts t₀ i → tr.InCuts t₀ j →
     Compatible (tr.read g u i) (tr.read g v j) ∨
-      Fintype.card V ≤ 3 * (Consensus.convicted convicts (view u i ∪ view v j)).card
+      (Fintype.card V : ℚ) * α ≤ (Consensus.convicted convicts (view u i ∪ view v j)).card
 
 namespace System
 
@@ -85,8 +85,8 @@ noncomputable def convicted (A : Set S.Obs) : Finset V :=
   Consensus.convicted (S.convicts r) A
 
 /-- Accountable safety, using the generic trace-and-evidence property. -/
-abbrev AccountablySafe (g : Out) (t₀ : Time) : Prop :=
-  (S.trace r).AccountablySafe (S.view r) (S.convicts r) g t₀
+abbrev AccountablySafe (α : ℚ) (g : Out) (t₀ : Time) : Prop :=
+  (S.trace r).AccountablySafe (S.view r) (S.convicts r) α g t₀
 
 /-- No honest validator is convicted by what the honest nodes saw. -/
 def NonFraming : Prop :=

@@ -22,15 +22,15 @@ theorem ledgerTrace (rho : Model.Run (compiled F) E) :
 /-- Apply growth at the requested read time minus its latency. The resulting
 honest proposal is after the network deadline. Partial synchrony and a full
 Δ of proposer awake history put the transaction in its encoded mempool. -/
-theorem liveFrom_txLive (rho : Model.Run (compiled F) E) {C : Constants}
+theorem liveFrom_txLive (rho : Model.Run (compiled F) E) {A : Assumptions}
     {g : Out} {start : Time} {d : Nat}
     (hvalid : rho.ExecutionValid) (hsync : rho.PartialSynchrony)
-    (hcatch : 0 < C.catchUp)
-    (hl : LiveFrom rho C (match g with
+    (hcatch : 0 < A.catchUp)
+    (hl : LiveFrom rho A (match g with
       | .confirmed => (protoOf F E).confirmed
       | .stable => (protoOf F E).stable
       | .finalized => (protoOf F E).finalized) start d) :
-    ((chainTrace rho).map ledgerOf).TxLive ((C.catchUp : Time) * E.Δ) g start
+    ((chainTrace rho).map ledgerOf).TxLive ((A.catchUp : Time) * E.Δ) g start
       ((d : Time) * E.Δ) := by
   intro x t t' ht hs hdt hh v hv
   change max t E.gst + E.Δ + (d : Time) * E.Δ ≤ t' at hdt
@@ -64,9 +64,9 @@ theorem liveFrom_txLive (rho : Model.Run (compiled F) E) {C : Constants}
       intro z hz hzp
       apply hready.2 z ?_ hzp.le
       apply max_le (by dsimp only [Time] at *; omega)
-      have hc : (1 : Int) ≤ C.catchUp := by exact_mod_cast hcatch
+      have hc : (1 : Int) ≤ A.catchUp := by exact_mod_cast hcatch
       have hd := E.Δ_pos
-      have hm : E.Δ ≤ (C.catchUp : Int) * E.Δ := by nlinarith
+      have hm : E.Δ ≤ (A.catchUp : Int) * E.Δ := by nlinarith
       dsimp [p] at *
       dsimp only [Time] at *; omega
     have held := hsync.txs u hu x τ hτ haw hx (proposerOf rho s) hready.1
@@ -80,7 +80,7 @@ theorem liveFrom_txLive (rho : Model.Run (compiled F) E) {C : Constants}
   cases g <;> exact hin'
 
 /-- Every shape claim refines its corresponding consensus-problem claim. -/
-theorem refinement (C : Constants) : RefinementStatement F C V := by
+theorem refinement (C : Constants) (A : Assumptions) : RefinementStatement F C A V := by
   intro hc
   constructor
   · exact Model.sysOf_laws _ _
@@ -134,39 +134,49 @@ theorem refinement (C : Constants) : RefinementStatement F C V := by
             · exact Or.inl ⟨o', ho, rfl⟩
             · exact Or.inr ⟨o', ho, rfl⟩
     · exact Or.inr he
-  · rintro ⟨E, rho⟩ _ ha
+  · rintro ⟨E, rho⟩ hv ha
     try dsimp only []
     simp only [ledgerTrace]
+    have ha := (sleepy_iff rho A C).mpr ⟨hv, ha⟩
     exact (hc.confirmedSafe V E rho ha).imp (fun h => h.map ledgerOf_prefix) id
-  · rintro ⟨E, rho⟩ _ ha
+  · rintro ⟨E, rho⟩ hv ha
     try dsimp only []
     simp only [ledgerTrace]
+    have ha := (sleepy_iff rho A C).mpr ⟨hv, ha⟩
     exact (hc.stableSafe V E rho ha).imp (fun h => h.map ledgerOf_prefix) id
-  · rintro k ⟨E, rho⟩ _ ha
+  · rintro k ⟨E, rho⟩ hv ha
     try dsimp only []
     simp only [ledgerTrace]
+    have ha := (live_iff rho A C k).mpr ⟨hv, ha⟩
     exact (hc.confirmedLive V E rho k ha).imp
-      (liveFrom_txLive rho ha.valid ha.sync hc.constants.catchUp_pos) id
-  · rintro k ⟨E, rho⟩ _ ha
+      (liveFrom_txLive rho ha.valid ha.sync hc.catchUp_pos) id
+  · rintro k ⟨E, rho⟩ hv ha
     try dsimp only []
     simp only [ledgerTrace]
+    have ha := (live_iff rho A C k).mpr ⟨hv, ha⟩
     exact (hc.stableLive V E rho k ha).imp
-      (liveFrom_txLive rho ha.valid ha.sync hc.constants.catchUp_pos) id
-  · rintro T b₀ b₁ ⟨E, rho⟩ _ ha
+      (liveFrom_txLive rho ha.valid ha.sync hc.catchUp_pos) id
+  · rintro T b₀ b₁ ⟨E, rho⟩ hv ha
     try dsimp only []
     simp only [ledgerTrace]
-    rcases ha with ha | ha
-    · exact (hc.stableResilient V E rho T b₀ b₁ ha).imp (fun h => h.map ledgerOf_prefix) id
-    · exact (hc.stableResilientFast V E rho T b₀ b₁ ha).imp (fun h => h.map ledgerOf_prefix) id
-  · rintro k ⟨E, rho⟩ _ ha
+    have ha := (outage_iff rho A C T b₀ b₁).mpr ⟨hv, ha⟩
+    exact (hc.stableResilient V E rho T b₀ b₁ ha).imp (fun h => h.map ledgerOf_prefix) id
+  · rintro T b₀ b₁ ⟨E, rho⟩ hv ha
     try dsimp only []
     simp only [ledgerTrace]
+    have ha := (fastOutage_iff rho A C T b₀ b₁).mpr ⟨hv, ha⟩
+    exact (hc.stableResilientFast V E rho T b₀ b₁ ha).imp (fun h => h.map ledgerOf_prefix) id
+  · rintro k ⟨E, rho⟩ hv ha
+    try dsimp only []
+    simp only [ledgerTrace]
+    have ha := (recovery_iff rho A C k).mpr ⟨hv, ha⟩
     exact (hc.recovered V E rho k ha).imp
       (fun h => ⟨h.confirmedSafe.map ledgerOf_prefix, h.stableSafe.map ledgerOf_prefix⟩) id
-  · rintro k ⟨E, rho⟩ _ ha
+  · rintro k ⟨E, rho⟩ hv ha
     try dsimp only []
     simp only [ledgerTrace]
+    have ha := (finality_iff rho A C k).mpr ⟨hv, ha⟩
     exact (hc.finalizedLive V E rho k ha).imp
-      (liveFrom_txLive rho ha.valid ha.sync hc.constants.catchUp_pos) id
+      (liveFrom_txLive rho ha.valid ha.sync hc.catchUp_pos) id
 end Consensus.Shape
 end

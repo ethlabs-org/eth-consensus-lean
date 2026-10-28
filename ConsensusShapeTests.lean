@@ -3,3 +3,6 @@ public import ConsensusShapeTests.Leaks
 public import ConsensusShapeTests.Controls
 public import ConsensusShapeTests.Problem
 public import ConsensusShapeTests.Iteration3
+public import ConsensusShapeTests.Iteration4
+public import ConsensusShapeTests.Iteration4Obstruction
+public import ConsensusShapeTests.Iteration4ConservativityObstruction

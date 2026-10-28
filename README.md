@@ -3,15 +3,15 @@
 What it means for a protocol to be a correct consensus protocol, in three
 layers, each reviewed once:
 
-| Layer | Library | What it fixes | Lines |
-|---|---|---|---|
-| **L0, the problem** | `ConsensusProblem` | transactions, ledgers, three outputs; the environment (Δ, GST, awake profile, honest set, transaction submissions); safety, nesting, transaction liveness, persistence, accountability, non-framing; the claim form | ~400 |
-| **L½, the model** | `ConsensusModel` | a shape-free execution model: protocol interface, engine, delivery, sleep and restarts, unforgeability, evidence, hashes; `sysOf F`, which makes any protocol family an L0 system | ~600 |
-| **L1, our shape** | `ConsensusShape` | slots, one proposer per slot, full committees, block headers and chains, regimes, constants, `compile` onto L½; block-level claims `ShapeClaims`; the profile and bounds of the L0 claims | ~750 (definitions; ~1,000 with the refinement proof) |
+| Layer | Library | What it fixes |
+|---|---|---|
+| **L0, the problem** | `ConsensusProblem` | transactions, ledgers, three outputs; the environment (Δ, GST, awake profile, honest set, transaction submissions); safety, nesting, transaction liveness, persistence, accountability, non-framing; the claim form |
+| **L½, the model** | `ConsensusModel` | a shape-free execution model: protocol interface, engine, delivery, sleep and restarts, unforgeability, evidence, hashes; `sysOf F`, which makes any protocol family an L0 system |
+| **L1, our shape** | `ConsensusShape` | slots, one proposer per slot, full committees, block headers and chains, regimes, constants, `compile` onto L½; block-level claims `ShapeClaims`; the profile and bounds of the L0 claims |
 
 The headline is the refinement theorem `refinement`: for every family `F` of
 the shape and every finite nonempty validator type `V`,
-`ShapeClaims F C → ProblemClaims (sysOf (compile ∘ F) V) (profile C) (bounds C)`.
+`ShapeClaims F A C → ProblemClaims (sysOf (compile ∘ F) V) A (bounds C) (profile A)`.
 A protocol that proves `ShapeClaims` therefore solves the L0 problem under L1's
 reviewed assumptions.
 
@@ -22,12 +22,16 @@ and will be removed.
 
 ## Reading order
 
-1. **L0** (`ConsensusProblem/{Basic,Properties,Claims}`). Check that agreement,
+1. **L0** (`ConsensusProblem/{Basic,Assumptions,Properties,Claims,Monotonicity}`). Check that agreement,
    monotonicity, nesting, transaction liveness, persistence, accountability
-   and non-framing say what they should. Every claim is `Holds S A P`: on
-   valid runs satisfying `A`, `P` holds or the excuse holds. Unconditional
-   claims are `HoldsAlways`. L0 cannot judge the assumptions or the excuse;
-   the layers below fix them.
+   and non-framing say what they should. Claims use `EnvAssumption A key ∧ Exec X key` on valid runs.
+   `ClaimKey` carries recurrence gaps or outage times; L0 fixes the mapping
+   to the closed `sync`, `healthyUntil`, and `recurrent` slots. Ordinary and
+   fast outages have separate claims, so their branches cannot mix.
+   Unconditional claims use `HoldsAlways`. Recovery and finalized
+   accountability additionally allow `Slashed A.accFrac`, counting validators
+   convicted by the whole honest evidence set. The layers below fix the
+   interpretation of delivery, recurrence, evidence, and the collision excuse.
 2. **L½** (`ConsensusModel/{Objects,Protocol,Run,Conditions,Evidence,System}`).
    It fixes the meaning of L0's abstract fields:
    - **validity** is `ExecutionValid`;
@@ -46,8 +50,8 @@ and will be removed.
    - `compile`, which turns our shape into an L½ protocol;
    - the regimes (participation, delivery, recurrence);
    - `Constants`;
-   - `profile` and `bounds` (the assumptions and numbers that L0's claims are
-     promised under), and `profile_realizable`;
+   - `profile A` (the fixed slot interpretation), `bounds C`,
+     `exec_conservative`, `profile_realizable`, and `Regression`;
    - `ShapeClaims`.
 
 ## Why the meaning is fixed below the protocol
@@ -58,7 +62,11 @@ and will be removed.
   execution conditions evaluate what the protocol does, but the protocol
   supplies no hook, author, decoder, schedule or hash, and evidence collection
   and conviction are fixed around its one slashing rule, `conflicts`.
-  `canonical_run` makes the execution part satisfiable for every protocol.
+  `canonical_run` makes delivery satisfiable for every protocol.
+  `exec_conservative` preserves every well-formed environment point admitted
+  by the L0 environment premise, while choosing ready proposers. Its domain
+  requires positive recurrence gaps and, for recovery/finality coverage,
+  nonnegative GST. These guards do not enter `ProblemClaims` or the regimes.
 - **Signing and keys.**
   - The engine signs. Seats are held by validators through the run's holder
     map, which is an **embedding per label**: no validator holds two seats of
@@ -98,12 +106,27 @@ and will be removed.
 
 1. The output ledgers (and L1's chain getters) are what users read.
 2. `conflicts` is the slashing rule the chain enforces.
-3. The constants in L1, including the premise-side ones (catch-up, η, arming
-   lags, outage budget, θ, θrec), are acceptable. Check `catchUp` first: a huge
-   catch-up makes the claims about nodes that (almost) never slept. `Valid`
-   requires `catchUp ≥ 1`, positive slot length and outage budget, bounds θ
-   and θrec, and requires `budget ≤ η` and the fast arming lag no larger than
-   the ordinary one.
+3. Check **A first**, then the service bounds in `Constants`. Use
+   `Assumptions.standard catchUp eta armingLag fastArmingLag outageBudget
+   stableEtaAbove recoveryReadyAbove recoveryFull`, or publish named numbers
+   for every field. Standard fixes sleepy participation to ½, fast faults
+   to <¼, inclusive fast-outage participation to ½, finality participation
+   to >⅔, accountability to ⅓, and no wakes after GST. Timing, η-sleepiness,
+   recovery participation and full-recovery policy remain explicit instance
+   choices. A huge `catchUp` restricts readers to nodes that almost never slept.
+
+   `Assumptions.WellFormed` checks domains, not correctness: positive catch-up
+   and outage budget, nonnegative ready thresholds, positive fault/accountable
+   fractions, and every fraction strictly below 1 (inclusive thresholds too).
+   `Constants.Valid` only requires positive slot length; the previous
+   `budget ≤ eta`, lag ordering, and ½-to-¾ threshold restrictions are gone.
+   The positive catch-up obligation remains in `ShapeClaims`, supporting the
+   relay refinement, without requiring all of `WellFormed` for correctness.
+
+   `Assumptions.Weaker A A'` compares admitted environments componentwise
+   with equal catch-up. A claim under the weaker premises `A` restricts to
+   `A'`; the accountable fraction has the opposite order because it is a
+   conclusion. `ProblemClaims.mono` proves this for a fixed slot interpretation.
 4. Implementation refinement:
    - the deployed client matches the engine: signature encoding, the seat
      holder mapping (at most one seat per label per validator), structural
@@ -128,19 +151,23 @@ submission function and hash.
 
 - No validity, fees or throughput for transactions. Ledgers may contain
   unsubmitted transactions, and repeats are removed in L1.
-- Recovery exports safety for ready readers only. Recovered liveness is an L1
-  block-level field, not in L0. Recovery, and Finality which extends it,
-  assume fewer than one third faulty validators and no honest wake at or
-  after GST (plan Q13). Finality inherits this fault bound from Recovery.
+- Recovery exports ready-reader safety, or a collision, or `A.accFrac` of
+  validators convicted. It has no fault-cap premise. Its full-participation
+  and no-wake policies are explicit booleans in A. Finality adds participation
+  and no fault cap; standard >⅔ readiness implies <⅓ faults. Recovered
+  liveness remains an L1 block-level obligation.
 - At L0, ledgers may contain fabricated transactions: the refutation of a
   fabricated-output family uses L1's block provenance (`outputValid`), which
   has no L0 counterpart.
-- Satisfiability of the shape profiles is a theorem, `profile_realizable`: for
-  every family, valid constants, nonempty finite `V` and gap `k ≥ 1`, one run
-  (with an injective hash) satisfies every regime with active deadlines and a
-  nonempty protected outage. It shows the premises can hold, not that a
-  protocol satisfying `ShapeClaims` exists. The new Recovery fault bound and
-  positive catch-up requirement need no additional realizability condition.
+- `profile_realizable` quantifies over every well-formed A, every family
+  and service constants, and positive recurrence gaps. It chooses a large
+  finite population with a **nonempty faulty set**. Each claim has a valid
+  collision-free run preserving the witness environment, with ready readers,
+  a ready proposal after recovery/finality startup, reachable service deadlines,
+  an active recurrence window, and a transaction actually relayed to a node
+  with no local submission. Both outage branches have nonempty intervals.
+  The environment points satisfy `EnvPoint.WellFormed` (nonnegative horizon).
+  This proves premise realizability, not existence of a correct protocol.
 - The collision escape is run-wide.
 - Accountability compares two reads in one run, not across runs.
 - Unit weights.
@@ -160,3 +187,8 @@ all their compiled declarations for dependencies outside `propext`,
 single submission source, sleeping sources, both nesting pairs, injected
 relay content, strict deadlines, cumulative ingress across restarts, and the
 Δ > 1 catch-up gap.
+
+Iteration 4 tests cover the rational thresholds, named standard regimes,
+weaker-premise transport, accountable escapes, and the two retained obstruction
+regressions: an inclusive threshold of 1 excludes nonempty faults, and a
+negative horizon cannot be covered by a valid execution.
