@@ -611,5 +611,56 @@ theorem claims_of_claimsInj {F : Family} {C : Constants}
     · intro r hs; simp only [hs.liveFrom_eq]
     · intro r; exact claims.finalizedLive V E r k
 
+/-- An escaped claim gives the injective-hash claim: an injective, nonzero
+hash has no collision. -/
+theorem ifInjective_of_orCollision {F : Family} {V : Type} [Fintype V] [DecidableEq V]
+    {E : Env V} {rho : Run F E} {X : Prop} (h : orCollision F rho X) :
+    ifInjective F rho X :=
+  fun hi => h.resolve_right (Run.not_hashCollision_of_injective hi)
+
+/-- The converse of `claims_of_claimsInj`. -/
+theorem claimsInj_of_claims {F : Family} {C : Constants} (hC : Claims F C) :
+    ClaimsInj F C where
+  constants := hC.constants
+  slotTicks := hC.slotTicks
+  outputValid := hC.outputValid
+  outputOrder := hC.outputOrder
+  confirmedSafe := fun V _ _ _ E rho t₀ h =>
+    ifInjective_of_orCollision (hC.confirmedSafe V E rho t₀ h)
+  stableSafe := fun V _ _ _ E rho t₀ h =>
+    ifInjective_of_orCollision (hC.stableSafe V E rho t₀ h)
+  confirmedIncluded := fun V _ _ _ E rho t₀ h =>
+    ifInjective_of_orCollision (hC.confirmedIncluded V E rho t₀ h)
+  stableIncluded := fun V _ _ _ E rho t₀ h =>
+    ifInjective_of_orCollision (hC.stableIncluded V E rho t₀ h)
+  stableIncludedFast := fun V _ _ _ E rho t₀ h =>
+    ifInjective_of_orCollision (hC.stableIncludedFast V E rho t₀ h)
+  confirmedLive := fun V _ _ _ E rho t₀ k h =>
+    ifInjective_of_orCollision (hC.confirmedLive V E rho t₀ k h)
+  stableLive := fun V _ _ _ E rho t₀ k h =>
+    ifInjective_of_orCollision (hC.stableLive V E rho t₀ k h)
+  stableResilient := fun V _ _ _ E rho T b₀ b₁ h =>
+    ifInjective_of_orCollision (hC.stableResilient V E rho T b₀ b₁ h)
+  stableResilientFast := fun V _ _ _ E rho T b₀ b₁ h =>
+    ifInjective_of_orCollision (hC.stableResilientFast V E rho T b₀ b₁ h)
+  recovered := fun V _ _ _ E rho k h =>
+    ifInjective_of_orCollision (hC.recovered V E rho k h)
+  finalizedMonotone := hC.finalizedMonotone
+  finalizedAccountable := fun V _ _ _ E rho h =>
+    ifInjective_of_orCollision (hC.finalizedAccountable V E rho h)
+  honestNeverSlashed := hC.honestNeverSlashed
+  finalizedIncluded := fun V _ _ _ E rho k h =>
+    ifInjective_of_orCollision (hC.finalizedIncluded V E rho k h)
+  finalizedLive := fun V _ _ _ E rho k h =>
+    ifInjective_of_orCollision (hC.finalizedLive V E rho k h)
+
+/-- The two forms of the contract are equivalent: stating the escaped claims
+"or a hash collision was observed" for every hash says exactly as much as
+stating them outright for injective hashes. The escape adds nothing beyond
+genuine collisions among observed headers. -/
+theorem claims_iff_claimsInj {F : Family} {C : Constants} :
+    Claims F C ↔ ClaimsInj F C :=
+  ⟨claimsInj_of_claims, claims_of_claimsInj⟩
+
 end AvailableChain.Contract
 end

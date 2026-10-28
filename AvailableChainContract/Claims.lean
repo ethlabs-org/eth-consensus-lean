@@ -14,13 +14,14 @@ what is proved.
 
 Hashes. The hash is arbitrary run data, so it may have collisions. Most
 claims hold "or a hash collision was observed" (`Run.HashCollision`), as
-accountability holds "or a third is slashable". Honest code never evaluates the
-hash (the engine passes digests), so it cannot produce a collision on purpose.
+accountability holds "or a third is slashable". Honest code learns the hash only
+through the digests the engine passes, of observed signed headers.
 `ClaimsWith` takes the form of the escaped fields as a parameter:
 * `Claims`: "X ∨ HashCollision", for every hash;
-* `ClaimsInj`: "InjectiveHash → X". `claims_of_claimsInj`
-  (AvailableChainContractProofs/Lift.lean) proves `ClaimsInj F C → Claims F C`,
-  so an instance may prove its claims for injective hashes only.
+* `ClaimsInj`: "InjectiveHash → X".
+`claims_iff_claimsInj` (AvailableChainContractProofs/Lift.lean) proves the two
+equivalent: the escape adds nothing beyond the injective case, and an instance
+may prove its claims for injective hashes only.
 Provenance (`outputValid`), output order, finalized monotonicity and
 `honestNeverSlashed` are unconditional in both forms.
 

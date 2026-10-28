@@ -12,8 +12,10 @@ slashing rule. Nothing it supplies appears in a premise of a claim. The engine
 The protocol knows only the public parameters `n` (the number of validators)
 and `Δ`. It does not know the GST, the honest set, the awake profile, its own
 seats, any input but its own (which the engine puts into its proposal), or the
-hash function: it learns only the digests of headers it receives, from the
-engine, so it cannot search for collisions. -/
+hash function: it learns the hash only through the digests the engine passes
+with objects it receives or signs (of headers proposed under their own slot's
+key). Changing the hash outside those headers does not change the run
+(`rehash_trace`). -/
 
 namespace AvailableChain.Contract
 

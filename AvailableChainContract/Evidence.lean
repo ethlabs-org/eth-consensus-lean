@@ -50,10 +50,14 @@ def ObservedItem : Option Header → Prop
   | none => True
   | some h => ∃ cs, (Obj.mk (.proposer h.slot) (.prop h) cs : (protoOf F E).Object) ∈ rho.Observed
 
-/-- A hash collision was observed: two distinct observed items (genesis or
-headers) with the same digest. Honest code never evaluates the hash (the engine
-does), so it cannot steer a run toward a collision; every collision counts,
-whoever proposed the headers. -/
+/-- A hash collision was observed: two distinct observed items (genesis, or
+headers proposed under their own slot's key) with the same digest. Every such
+collision counts, whoever proposed the headers: it is a real collision of the
+run's hash on headers that were really observed. (Honest code learns the hash
+only through the digests the engine passes, of observed signed headers; it can
+still choose what it proposes, so collision resistance of the deployed hash is
+an assumption, not a theorem. `claims_iff_claimsInj` shows that the escape
+adds nothing beyond the injective case.) -/
 def HashCollision : Prop :=
   ∃ a b : Option Header, a ≠ b ∧ rho.itemDigest a = rho.itemDigest b ∧
     rho.ObservedItem a ∧ rho.ObservedItem b
