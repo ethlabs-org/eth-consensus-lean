@@ -1,7 +1,7 @@
 module
 public import ConsensusShape.Claims
 public import ConsensusShape.Payload
-public import ConsensusProblem.Transfer
+public import ConsensusProblem.Facts.Transfer
 
 @[expose] public section
 

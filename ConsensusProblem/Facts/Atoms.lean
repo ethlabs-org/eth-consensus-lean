@@ -4,7 +4,7 @@ public import Mathlib.Tactic
 
 @[expose] public section
 
-/-! # Environment atoms (L0)
+/-! # Environment atoms (L0 facts)
 
 Facts about the participation and fault-bound vocabulary of `Basic` that
 library proofs use: plain sleepy as a count over `ready ∪ faulty`, and a

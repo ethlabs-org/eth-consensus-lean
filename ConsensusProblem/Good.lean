@@ -1,5 +1,6 @@
 module
 public import ConsensusProblem.Regimes
+public import ConsensusProblem.Properties
 public import Mathlib.Tactic
 
 @[expose] public section
@@ -51,35 +52,6 @@ def Holds (S : System V) (A P : S.Run → Prop) : Prop :=
 /-- On valid runs, `P` holds. -/
 def HoldsAlways (S : System V) (P : S.Run → Prop) : Prop :=
   ∀ r, S.Valid r → P r
-
-variable [Fintype V] [DecidableEq V]
-
-/-- Accountable safety, non-framing and faults below the accountable fraction give
-agreement of `g`. -/
-theorem agree_of_accountable (S : System V) (hL : S.Laws) (r : S.Run) {g : S.schema.Id}
-    {t₀ : Time} {α : ℚ} (hacc : S.AccountablySafe r α g t₀) (hnf : S.NonFraming r)
-    (hb : (S.trace r).point.FaultsBelow α) : (S.trace r).Agree g t₀ := by
-  classical
-  intro u v i j hi hj hu hv
-  rcases hacc u hu v hv i j hi hj with hc | hcard
-  · exact hc
-  · exfalso
-    have hsub : Consensus.convicted (S.convicts r) (S.view r u i ∪ S.view r v j) ⊆
-        (S.trace r).point.faulty := by
-      intro x hx
-      have hx' : S.convicts r (S.view r u i ∪ S.view r v j) x := by
-        unfold Consensus.convicted at hx; simpa using hx
-      refine Finset.mem_sdiff.mpr ⟨Finset.mem_univ x, fun hxh => hnf x hxh ?_⟩
-      refine hL.convicts_mono r _ _ x ?_ hx'
-      rintro o (ho | ho)
-      · exact ⟨u, hu, hL.view_mono r u i _ hi.1 ho⟩
-      · exact ⟨v, hv, hL.view_mono r v j _ hj.1 ho⟩
-    change (Fintype.card V : ℚ) * α ≤
-      (Consensus.convicted (S.convicts r) (S.view r u i ∪ S.view r v j)).card at hcard
-    have hc : ((Consensus.convicted (S.convicts r) (S.view r u i ∪ S.view r v j)).card : ℚ) ≤
-        (S.trace r).point.faulty.card := by exact_mod_cast Finset.card_le_card hsub
-    unfold EnvPoint.FaultsBelow at hb
-    linarith
 
 end System
 
@@ -327,143 +299,6 @@ structure Good (S : System V) (X : Progress S Prog) (K : Contract Prog) : Prop w
   behaviour : Behaviour S X K
   adequate : S.Adequate X
   realizable : 5 ≤ Fintype.card V → Realizable S X K
-
-namespace Good
-
-variable {S : System V} {X : Progress S Prog} {K : Contract Prog}
-
-/-- Final agreement in every environment with faults below `α`. -/
-theorem final_agree (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g)
-    (r : S.Run) (hv : S.Valid r) (hb : (S.pt r).FaultsBelow K.params.α) :
-    (S.trace r).Agree g 0 ∨ S.Excuse r :=
-  ((h.behaviour.final g hg).accountable r hv trivial).imp
-    (fun ha => S.agree_of_accountable h.behaviour.laws r ha (h.behaviour.nonFraming r hv) hb) id
-
-/-- Final safety in the healthy regime: a set of more than `φ·n` honest
-validators bounds the faults below `1 − φ ≤ α`. -/
-theorem final_safe_healthy (h : Good S X K) {g : S.schema.Id}
-    (hg : S.schema.output .final = some g) (r : S.Run) (hv : S.Valid r) {gst : Time}
-    (hH : S.Healthy K gst r) : (S.trace r).Safe g 0 ∨ S.Excuse r := by
-  have hb : (S.pt r).FaultsBelow K.params.α :=
-    hH.2.faultsBelow.mono _ h.behaviour.admissible.α_range.1
-  exact (h.final_agree hg r hv hb).imp (fun ha => ⟨ha, h.behaviour.finalMonotone g hg r hv⟩) id
-
-/-- Through an outage, what a node ready at `T` read as stable is compatible
-with the final read of every eligible reader (both are prefixes of its
-available read). -/
-theorem persists_final_compatible (h : Good S X K) {g gf : S.schema.Id}
-    (hs : S.schema.output .stable = some g) (hf : S.schema.output .final = some gf)
-    (r : S.Run) (hv : S.Valid r) {T b₀ b₁ : Time} (hO : S.Outage K T b₀ b₁ r)
-    {v w : V} (hvr : (S.pt r).Ready (S.cDur K r) v T) (hwh : w ∈ (S.pt r).honest) {t : Time}
-    (ht : b₀ ≤ t) (hth : t ≤ (S.pt r).horizon)
-    (hr : (S.trace r).ResilienceReader (S.cDur K r) b₀ b₁ w t) :
-    Compatible ((S.trace r).readAt g v T) ((S.trace r).readAt gf w t) ∨ S.Excuse r := by
-  rcases h.behaviour.persists g hs T b₀ b₁ r hv hO with hp | he
-  · left
-    have h1 := hp v hvr t ht hth w hwh hr
-    have hcut : (S.trace r).endCut t ≤ (S.trace r).cuts := Nat.findGreatest_le _
-    have h2 : (S.trace r).readAt gf w t <+:
-        (S.trace r).readAt (resilienceTarget S.schema g) w t := by
-      unfold resilienceTarget
-      cases ha : S.schema.output .available with
-      | some ga =>
-        exact h.behaviour.nested .final .available gf ga (by decide) hf ha r hv w hwh _ hcut
-      | none =>
-        exact h.behaviour.nested .final .stable gf g (by decide) hf hs r hv w hwh _ hcut
-    exact List.prefix_or_prefix_of_prefix h1 h2
-  · exact Or.inr he
-
-omit [Fintype V] [DecidableEq V] in
-/-- Run quantities that depend only on `Δ` agree on a prefix. -/
-private theorem cDur_prefix {r r' : S.Run} {b : Time} (hP : (S.trace r').PrefixOf (S.trace r) b) :
-    S.cDur K r' = S.cDur K r := by
-  unfold System.cDur; rw [hP.env]
-
-/-- Sleepy safety of the past: a run synchronous and sleepy up to `b` is safe
-for ready readers at cuts up to `b`, whatever happens after `b`. -/
-theorem sleepySafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
-    (hcap : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g)
-    (r : S.Run) (hv : S.Valid r) {b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ (S.pt r).horizon)
-    (hs : (S.log r).SyncUntil (S.pt r) b)
-    (hθ : (S.pt r).SleepyOn K.params.θ (S.cDur K r) 0 b) :
-    (S.trace r).ReadySafeUpTo (S.cDur K r) g 0 b ∨ S.Excuse r := by
-  obtain ⟨r', hv', hP, -, hL, hE, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
-  have hc := cDur_prefix (K := K) hP
-  have hreg : S.Sleepy K r' := by
-    unfold System.Sleepy Regime.Sleepy
-    rw [show S.pt r' = { S.pt r with horizon := b } from hP.point]
-    refine ⟨?_, hθ⟩
-    have hd : (S.log r).Delivers (S.pt r) (fun a => max a 0 + (S.pt r).env.Δ) b :=
-      hs.reindex (f := fun a => max a 0) (fun a => le_max_left a 0) (fun _ => rfl) le_rfl
-    exact hd.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.Δ_pos.le)
-  rcases (h.behaviour.da cap g hcap hg).sleepySafe r' hv' hreg with hr | he
-  · rw [hc] at hr; exact Or.inl (hP.readySafeUpTo hr)
-  · exact Or.inr (hE he)
-
-/-- Healed safety of the past: a run partially synchronous with GST `gst` and
-healthy up to `b`, with progress on `[readyFrom, heal]` and `heal ≤ b`, is
-safe for ready readers at cuts in `[heal, b]`, whatever happens after `b`. -/
-theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
-    (hcap : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g)
-    (r : S.Run) (hv : S.Valid r) (i : K.Idx) (gst : Time) {b : Time} (hb0 : 0 ≤ b)
-    (hbh : b ≤ (S.pt r).horizon)
-    (hs : (S.log r).Delivers (S.pt r) (fun a => max a gst + (S.pt r).env.Δ) b)
-    (hH : (S.pt r).HealthyOn K.params.φ gst b)
-    (hp : S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
-    (hhb : S.heal K cap i gst r ≤ b) :
-    (S.trace r).ReadySafeUpTo (S.cDur K r) g (S.heal K cap i gst r) b ∨ S.Excuse r := by
-  obtain ⟨r', hv', hP, -, hL, hE, hX⟩ := h.adequate.prefixClosed r hv b hb0 hbh
-  have hc := cDur_prefix (K := K) hP
-  have hheal : S.heal K cap i gst r' = S.heal K cap i gst r := by
-    unfold System.heal; rw [hP.env]
-  have hready : S.ready K gst r' = S.ready K gst r := by
-    unfold System.ready; rw [hc]
-  have hreg : S.Healthy K gst r' := by
-    unfold System.Healthy Regime.Healthy
-    rw [show S.pt r' = { S.pt r with horizon := b } from hP.point]
-    refine ⟨?_, hH⟩
-    exact hs.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.Δ_pos.le)
-  have hpr : S.prog X K cap i (S.ready K gst r') (S.heal K cap i gst r') r' := by
-    rw [hready, hheal]
-    unfold System.prog at hp ⊢
-    rw [hc]
-    exact hX _ _ _ _ hhb hp
-  rcases (h.behaviour.da cap g hcap hg).healedSafe i gst r' hv' ⟨hreg, hpr⟩ with hr | he
-  · rw [hc, hheal] at hr; exact Or.inl (hP.readySafeUpTo hr)
-  · exact Or.inr (hE he)
-
-/-- Outage resilience of the past: a run in the outage regime up to `b`
-(synchronous for deadlines up to `b₀`, partially synchronous with GST `b₁` up
-to `b`, η-sleepy on `[0, b]`, covered at `b₀`) keeps what nodes ready at `T` read
-as stable, at reading times in `[b₀, b]`, whatever happens after `b`. -/
-theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
-    (hg : S.schema.output .stable = some g) (r : S.Run) (hv : S.Valid r)
-    {T b₀ b₁ b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ (S.pt r).horizon)
-    (hT : OutageTimes K.params (S.pt r).env.Δ T b₀ b₁)
-    (hs : (S.log r).SyncUntil (S.pt r) b₀)
-    (hps : (S.log r).Delivers (S.pt r) (fun a => max a b₁ + (S.pt r).env.Δ) b)
-    (hθ : (S.pt r).EtaSleepyOn K.params.θ (K.params.ηDur (S.pt r).env.Δ) (S.cDur K r) 0 b)
-    (hcov : (S.pt r).ReadyOfAll K.params.cover (S.cDur K r) b₀) :
-    (S.trace r).ProtectedUpTo (S.cDur K r) g (resilienceTarget S.schema g) T b₀ b₁ b ∨
-      S.Excuse r := by
-  obtain ⟨r', hv', hP, -, hL, hE, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
-  have hc := cDur_prefix (K := K) hP
-  have hΔ := (S.pt r).env.Δ_pos
-  have hreg : S.Outage K T b₀ b₁ r' := by
-    unfold System.Outage Regime.Outage
-    rw [show S.pt r' = { S.pt r with horizon := b } from hP.point]
-    refine ⟨hT, ⟨?_, ?_⟩, hθ, hcov⟩
-    · exact hs.prefix hL hbh (fun a => le_add_of_nonneg_right hΔ.le)
-    · exact hps.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) hΔ.le)
-  have hTb : T ≤ b₀ := by
-    obtain ⟨-, hl, -, -⟩ := hT
-    have : (0 : Time) ≤ (K.params.lag : Time) * (S.pt r).env.Δ := by positivity
-    linarith
-  rcases h.behaviour.persists g hg T b₀ b₁ r' hv' hreg with hr | he
-  · rw [hc] at hr; exact Or.inl (hP.protectedUpTo hTb hr)
-  · exact Or.inr (hE he)
-
-end Good
 
 end Consensus
 

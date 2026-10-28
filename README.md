@@ -84,7 +84,7 @@ Notation: `c = catchUp·Δ`; `heal(cap,i,g) = max g 0 + heal cap i·Δ`;
 | available, stable | healed liveness | `Healthy g ∧ prog[ready g, horizon]` | `TxLive c g heal lat` |
 | stable | outage resilience | `Outage T b₀ b₁` | `ProtectedThrough c stable target T b₀ b₁` |
 
-Derived in L0 (`Good.*`), and in the Goldilocks sheet:
+Derived in L0 (`Good.*`, `ConsensusProblem/Facts/Good.lean`), and in the Goldilocks sheet:
 
 | Theorem | Statement |
 |---|---|
@@ -376,12 +376,13 @@ the iteration-6 plan and reviews are in the run folder `iter6/`.
 
 Entry points and key theorems only; the source files list the rest.
 
-1. **L0** (`ConsensusProblem/`): `Basic` (`Env`, `EnvPoint`, `Trace`,
-   `CommLog`, `System`), `Network` (`Delivers`, `PSync`, `SyncUntil`,
+1. **L0** (`ConsensusProblem/`), definitions only: `Basic` (`Env`, `EnvPoint`,
+   `Trace`, `CommLog`, `System`), `Network` (`Delivers`, `PSync`, `SyncUntil`,
    `OutageNet`, `EagerFrom`), `Properties` (the claims, with the prefix
-   forms), `Atoms`, `Regimes` (`Params`, `Regime.*`), `Good` (`Behaviour`,
-   `System.Adequate`, `Realizable`, `Good`, the derived `Good.*`), and
-   `Transfer`.
+   forms), `Regimes` (`Params`, `Regime.*`), `Good` (`Behaviour`,
+   `System.Adequate`, `Realizable`, `Good`). Lemmas (not needed to read `Good`)
+   are in `ConsensusProblem/Facts/`: the derived `Good.*` (with `Good.served`),
+   delivery, prefix, regime and transfer lemmas.
 2. **L1** (`ConsensusModel/`: `Objects`, `Protocol`, `Run`, `Conditions`,
    `Evidence`, `System` with `sysOf`/`sysExternal`), then the proofs in
    `ConsensusModelProofs/`: `sysOf_log_faithful`, `Run.held_iff_served`,

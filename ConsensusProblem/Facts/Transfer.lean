@@ -2,7 +2,7 @@ module
 public import ConsensusProblem.Properties
 @[expose] public section
 
-/-! # Transfer of trace properties along prefix-monotone maps (L0)
+/-! # Transfer of trace properties along prefix-monotone maps (L0 facts)
 
 Mapping every read of a trace by a function that preserves prefixes (for
 example, from block chains to transaction ledgers) preserves every

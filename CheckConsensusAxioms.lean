@@ -143,7 +143,7 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Controls.ctrlK_progressTolerant,
       `Consensus.Shape.Tests.Leaks.testK_progressTolerant, `Consensus.Shape.realizable_active,
       `Consensus.Shape.RealizableActive.toRealizable, `Consensus.Shape.Accepted.good,
-      `Consensus.Shape.Accepted.activeService, `Consensus.Trace.TxLive.served,
+      `Consensus.Shape.Accepted.activeService, `Consensus.Trace.TxLive.served, `Consensus.Good.served,
       `Consensus.Shape.sleepy_witness, `Consensus.Shape.healthy_witness,
       `Consensus.Shape.outage_witness, `Consensus.Shape.Tests.Controls.positive_controls,
       `Consensus.Shape.Tests.Controls.outage_control,
