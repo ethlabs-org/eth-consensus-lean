@@ -5,22 +5,49 @@ public import Mathlib.Tactic
 
 /-! # Tests of the Goldilocks value and sheet
 
-* `reference_numbers`: the pinned formulas give the FG-SA paper's reference
-  numbers (`reference_bounds`), and the heal and latency tables read them.
-* `pp223_admissible`: the pinned numbers at `R = 2`, `lockK = 2`, `eta = 3`
-  are admissible; `pp223_numbers`: catch-up `18`, lag `4`, budget `3`,
-  look-back `η = 3`.
-* `range_head_instance`: at `R = 2`, `gf = 1` the finality recurrence (`8`
-  consecutive proposers per `2` slots) gives one honest head per `2` slots,
-  losing `7` slots of span.
-* `target_unfolds`: `GoldilocksTarget` is bindings, acceptance and extras
-  (`rfl`).
+* `pp223_numbers`: the pinned formulas give the FG-SA paper's reference
+  numbers (`reference_bounds`), and the heal and latency tables read them; at
+  `R = 2`, `lockK = 2`, `eta = 3`: catch-up `18`, lag `4`, budget `3`,
+  look-back `η = 3`, standard thresholds, and the finality recurrence at
+  `gf = 1` has `8` consecutive proposers (span `7`) per `2` slots.
+* `EnvPoint.two_mul_card_faulty_union_lt`: the outage cover ½ at `b₀` gives
+  FG-SA's `OutageE1` (migration obligation 4 of the sheet).
 * `stable_is_confirmed`: the schema aliases stable to confirmed (`rfl`).
 * `collapse_prefix_only`, `outageWindow_prefix_only`: a run whose
   participation collapses inside the outage is η-sleepy on the prefix
   `[0, b₀]` but not through `b₁ − 1`; A2 asks only for the prefix.
 * `weakPremise_inhabited` (P-NV-CONTINUATION): the weak-continuation premise
   holds on the generic healthy witness, so the weak extras are not vacuous. -/
+
+namespace Consensus
+
+namespace EnvPoint
+
+variable {V : Type} [Fintype V] [DecidableEq V] {p : EnvPoint V}
+
+/-- If every validator ready at `t` is in an honest set `C`, and `W` avoids
+`C`, then more than half of all validators ready gives `2·|faulty ∪ W| < n`
+(the outage cover at `b₀` with `cover = ½` gives FG-SA's `OutageE1`: faulty
+validators and uncovered wakers are fewer than half). -/
+theorem two_mul_card_faulty_union_lt {c t : Time} {C W : Finset V}
+    (hR : p.readyAt c t ⊆ C) (hC : C ⊆ p.honest) (hW : Disjoint W C)
+    (h : p.ReadyOfAll (1 / 2) c t) : 2 * (p.faulty ∪ W).card < Fintype.card V := by
+  have hdis : Disjoint (p.faulty ∪ W) C := by
+    refine Finset.disjoint_union_left.mpr ⟨?_, hW⟩
+    refine Finset.disjoint_left.mpr fun v hv hvC => ?_
+    exact (Finset.mem_sdiff.mp hv).2 (hC hvC)
+  have hsum : (p.faulty ∪ W).card + C.card ≤ Fintype.card V := by
+    rw [← Finset.card_union_of_disjoint hdis]
+    exact Finset.card_le_univ _
+  have hRC : (p.readyAt c t).card ≤ C.card := Finset.card_le_card hR
+  have h' : (Fintype.card V : ℚ) < 2 * (p.readyAt c t).card := by
+    unfold ReadyOfAll at h; linarith
+  have h'' : Fintype.card V < 2 * (p.readyAt c t).card := by exact_mod_cast h'
+  omega
+
+end EnvPoint
+
+end Consensus
 
 namespace Consensus.Shape.Tests.Goldilocks
 
@@ -29,54 +56,25 @@ open Consensus Blocks Shape
 /-- `R = 2`, `lockK = 2`, `eta = 3`. -/
 def pp223 : FGSAParams := ⟨2, 2, 3, le_rfl, le_rfl, by decide⟩
 
-/-- The reference numbers, and the heal and latency tables at them. -/
-theorem reference_numbers :
+/-- The reference numbers and the heal and latency tables at them; the pinned
+outage and catch-up numbers at `⟨2, 2, 3⟩` and standard thresholds; the
+finality recurrence at `R = 2`, `gf = 1`: `8` consecutive proposers (span `7`)
+per window of `2` slots. -/
+theorem pp223_numbers :
     (⟨2, 2, 1, le_rfl, le_rfl, le_rfl⟩ : FGSAParams).bhf 2 = 295 ∧
       (⟨3, 2, 1, by decide, le_rfl, le_rfl⟩ : FGSAParams).bhf 2 = 343 ∧
       pp223.heal .available 2 = 29 + 295 ∧ pp223.heal .stable 2 = 29 + 295 ∧
       pp223.latency .available 2 = 14 ∧
       pp223.heal .final 1 = 29 + pp223.bhf 2 + pp223.wW 1 ∧
-      pp223.latency .final 1 = 4 * 2 + 6 + pp223.wW 1 :=
-  ⟨reference_bounds.1, reference_bounds.2.1, by decide, by decide, by decide, rfl, rfl⟩
-
-/-- The pinned numbers are admissible at `⟨2, 2, 3⟩`. -/
-theorem pp223_admissible : (goldilocksContract pp223).params.Admissible :=
-  goldilocks_admissible pp223
-
-/-- The pinned outage and catch-up numbers at `⟨2, 2, 3⟩`; standard
-thresholds. -/
-theorem pp223_numbers :
+      pp223.latency .final 1 = 4 * 2 + 6 + pp223.wW 1 ∧
     (goldilocksContract pp223).params.catchUp = 18 ∧ (goldilocksContract pp223).params.lag = 4 ∧
       (goldilocksContract pp223).params.budget = 3 ∧ (goldilocksContract pp223).params.η = 3 ∧
       (goldilocksContract pp223).params.θ = 1 / 2 ∧ (goldilocksContract pp223).params.φ = 2 / 3 ∧
       (goldilocksContract pp223).params.cover = 1 / 2 ∧
-      (goldilocksContract pp223).params.α = 1 / 3 :=
-  ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-
-/-- The finality recurrence at `R = 2`, `gf = 1`: `8` consecutive proposers
-(span `7`) per window of `2` slots. -/
-theorem finRec_shape :
-    (pp223.finRec 1).pattern.span = 7 ∧ ((pp223.finRec 1).gap : Nat) = 2 := by
-  refine ⟨?_, rfl⟩
-  exact (Pattern.span_range _).trans rfl
-
-/-- Head extraction at `R = 2`, `gf = 1`: one honest head per `2` slots, the
-window's stop moved back by `7` slots. -/
-theorem range_head_instance {V R : Type} [Fintype V] {p : EnvPoint V}
-    {key : Fin (Fintype.card V) ≃ V} {sel : R → Finset (Fin (Fintype.card V))}
-    {lead : Slot → R} {G : TimeGrid} {c start stop : Time}
-    (h : PatternRecurrence p key sel lead G (pp223.finRec 1) c start stop) :
-    PatternRecurrence p key sel lead G ⟨Pattern.single, 2⟩ c start
-      (min stop p.horizon - 7 * G.slotLen p.env.Δ) :=
-  range_head pp223 1 h
-
-/-- The target is the bindings, acceptance at the pinned numbers, and the
-extras. -/
-theorem target_unfolds {Info : Type} [DecidableEq Info] [Encodable Info]
-    (F : ShapeFamily goldilocksSchema Info) (pp : FGSAParams) :
-    GoldilocksTarget F pp =
-      (GoldilocksBindings F ∧ Accepted F (goldilocksContract pp) ∧ GoldilocksExtra F pp) :=
-  rfl
+      (goldilocksContract pp223).params.α = 1 / 3 ∧
+    (pp223.finRec 1).pattern.span = 7 ∧ ((pp223.finRec 1).gap : Nat) = 2 :=
+  ⟨reference_bounds.1, reference_bounds.2.1, by decide, by decide, by decide, rfl, rfl,
+    rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, (Pattern.span_range _).trans rfl, rfl⟩
 
 /-- The schema aliases stable (and available) to confirmed. -/
 theorem stable_is_confirmed :
@@ -194,7 +192,7 @@ theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Encodable Info]
   let key : Fin (Fintype.card (Fin 5)) ≃ Fin 5 := (Fintype.equivFin (Fin 5)).symm
   have hn : 5 ≤ Fintype.card (Fin 5) := by simp
   have ha := goldilocks_admissible pp
-  have hf := hb.progressFits pp
+  have hf := goldilocks_progressFits pp F (fun pub => by rw [hb pub]; rfl)
   have hL := progLen_nonneg F K .available k (⟨Δ, hΔ, allAwake⟩ : Env (Fin 5))
   have hlat : 0 ≤ K.params.latDur Δ .available k := mul_nonneg (by positivity) hΔ.le
   have hheal : 0 ≤ K.params.healPoint Δ .available k g :=

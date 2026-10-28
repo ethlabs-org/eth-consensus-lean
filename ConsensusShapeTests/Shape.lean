@@ -1,5 +1,7 @@
 module
 public import ConsensusShape
+public import ConsensusShapeTests.Common
+public import ConsensusShapeTests.Support
 public import Mathlib.Tactic
 @[expose] public section
 
@@ -19,9 +21,6 @@ public import Mathlib.Tactic
 namespace Consensus.Shape.Tests.Shapes
 open Consensus Blocks Shape
 open Consensus.Model (Public Key Obj pubOf protoOf sysOf)
-
-/-- One output identifier, serving every capability. -/
-abbrev schema : OutputSchema := ⟨Unit, fun _ => some ()⟩
 
 /-- The trivial skeleton: slots of one `Δ`, one proposer per slot, polling
 disabled, one committee kind (phase 0, every key). -/
@@ -76,14 +75,14 @@ example (pub : Public) :
 /-- The proposal of slot 2 is due at its slot time `2·Δ`. -/
 theorem trivial_propose_due (pub : Public) :
     ShapeDuty.propose 2 (by decide) ∈ (compile (trivialShape pub)).duties (2 * pub.Δ) :=
-  ((compile (trivialShape pub)).duties_spec _ _).mpr (by
+  ((trivialShape pub).skel.duties_spec pub.Δ_pos _ _).mpr (by
     change (trivialSkel pub.n).grid.slotTime pub.Δ 2 = 2 * pub.Δ
     simp [TimeGrid.slotTime, TimeGrid.slotLen, trivialSkel])
 
 /-- The committee duty of slot 3 is due at `3·Δ` (phase 0). -/
 theorem trivial_act_due (pub : Public) :
     ShapeDuty.act 3 () ∈ (compile (trivialShape pub)).duties (3 * pub.Δ) :=
-  ((compile (trivialShape pub)).duties_spec _ _).mpr (by
+  ((trivialShape pub).skel.duties_spec pub.Δ_pos _ _).mpr (by
     change (trivialSkel pub.n).grid.slotTime pub.Δ 3 + ((0 : Nat) : Time) * pub.Δ = 3 * pub.Δ
     simp [TimeGrid.slotTime, TimeGrid.slotLen, trivialSkel])
 
@@ -165,7 +164,7 @@ proposal duty of tick 3 is due at 3: poll duties exist at every unit tick. -/
 theorem poll_duty_every_tick :
     (pollSkel pub2.n).grid.slotAt? pub2.Δ 0 3 = none ∧
       ShapeDuty.pollPropose 3 ∈ (compile (pollShape pub2)).duties 3 :=
-  ⟨by decide, ((compile (pollShape pub2)).duties_spec _ _).mpr rfl⟩
+  ⟨by decide, ((pollShape pub2).skel.duties_spec pub2.Δ_pos _ _).mpr rfl⟩
 
 end Consensus.Shape.Tests.Shapes
 

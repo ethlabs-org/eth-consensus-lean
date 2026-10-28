@@ -43,7 +43,7 @@ theorem coverage (F : ShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V]
     (hsel : ∀ r, ((protoOf (compiled F) p.env).selSpec r).Admits (sel r)) (g : Time) :
     ∃ rho : Model.Run (compiled F) p.env, rho.point = p ∧ rho.key = key ∧ rho.sel = sel ∧
       rho.ExecutionValid ∧ ¬ rho.HashCollision ∧
-      (sysOf O (compiled F) V).convicted ⟨p.env, rho⟩
+      Consensus.convicted ((sysOf O (compiled F) V).convicts ⟨p.env, rho⟩)
         ((sysOf O (compiled F) V).honestEvidence ⟨p.env, rho⟩) = ∅ ∧
       CommLog.EagerFrom rho.point rho.log g := by
   let hash : (protoOf (compiled F) p.env).Item → Nat := fun x => Encodable.encode x + 1
@@ -89,10 +89,6 @@ theorem extremalKeys_admits {N : Nat} (s : SelSpec N) : s.Admits (extremalKeys s
       rw [← Finset.card_map, this, Nat.card_Icc]; omega
     · rw [Finset.card_univ, Fintype.card_fin, min_eq_right (by omega)]
 
-/-- The extremal PKI on `Fin (n + 1)`: key `k` is validator `k`. -/
-def extremalKey (n : Nat) : Fin (Fintype.card (Fin (n + 1))) ≃ Fin (n + 1) :=
-  finCongr (Fintype.card_fin _)
-
 /-- The extremal selection: `extremalKeys` of every role's specification. -/
 def extremalSel (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) :
     (protoOf (compiled F) E).Role → Finset (Fin (Fintype.card V)) :=
@@ -101,31 +97,6 @@ def extremalSel (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) :
 theorem extremalSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) :
     ∀ r, ((protoOf (compiled F) E).selSpec r).Admits (extremalSel F E r) :=
   fun _ => extremalKeys_admits _
-
-/-- The relay is exercised: in a run partially synchronous with a GST at or
-before `start` where every validator is always awake, an active liveness
-witness (`TxLiveActive`) has an honest reader that receives the submitted
-transaction by relay, never by its own submission. -/
-theorem active_relay {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
-    {E : Env V} (rho : Model.Run (compiled F) E) {gst c start D : Time}
-    (hs : CommLog.PSync rho.point rho.log gst) (hgs : gst ≤ start) (hD : 0 ≤ D)
-    (hawake : ∀ v t, E.awake v t = true)
-    (ha : ((sysOf O (compiled F) V).trace ⟨E, rho⟩).TxLiveActive c start D) :
-    ∃ x, ∃ w ∈ rho.honest, (∀ τ, x ∉ rho.submit w τ) ∧ ∃ τ, 0 ≤ τ ∧ x ∈ rho.relay w τ := by
-  obtain ⟨x, t, t', u, w, ht0, hu, hua, hx, hw, -, hnw, hdl, hth, -⟩ := ha
-  change u ∈ rho.honest at hu
-  change w ∈ rho.honest at hw
-  change x ∈ rho.submit u t at hx
-  change ∀ τ, x ∉ rho.submit w τ at hnw
-  change max t start + E.Δ + D ≤ t' at hdl
-  change t' ≤ rho.horizon at hth
-  have hm : max t gst ≤ max t start := max_le_max le_rfl hgs
-  have hd : max t gst + E.Δ ≤ rho.horizon := by linarith
-  obtain ⟨τ, hτ, -, hxτ⟩ := hs.txs u hu x t ht0 hua hx w hw t le_rfl hd hd (hawake w _)
-  refine ⟨x, w, hw, hnw, τ, hτ, ?_⟩
-  rcases List.mem_append.mp hxτ with h | h
-  · exact absurd h (hnw τ)
-  · exact h
 
 /-! ## Progress fit -/
 

@@ -10,7 +10,7 @@ For a run of a compiled shape family: the chain trace (what each node's
 output chains are at each event cut, with the run's environment point and cut
 times), honest proposals (a header released by an honest key in a proposal
 role, at its release time), inclusion by a time, the liveness obligation
-`ProposalLive` (D-14) and its reader-conditional form `ProposalLiveReady`,
+`ProposalLiveReady` (D-14, reader-conditional),
 output validity (linkage, increasing positions,
 provenance), and the shape's progress reader `shapeProgress` (L0
 `Progress`): pattern recurrence over the proposer roles of the grid, or a
@@ -44,43 +44,20 @@ def InBy (rho : Model.Run (compiled F) E) (c : Time) (g : O.Id) (h : Header Info
     Prop :=
   ∀ v, rho.point.Ready c v t → h ∈ (chainTrace rho).readAt g v t
 
-/-- D-14: for every `t ≥ start` (with `t + D·Δ` in the horizon), a header
-released after `t`, at `τ`, by a key ready at `τ` in a proposal role, is in every
-ready read by `t + D·Δ`. `τ` is not bounded above: the obligation is the
-inclusion by `t + D·Δ`, not the release time. -/
-def ProposalLive (rho : Model.Run (compiled F) E) (c : Time) (g : O.Id) (start : Time) (D : Nat) :
-    Prop :=
-  ∀ t, start ≤ t → t + (D : Time) * E.Δ ≤ rho.horizon →
-    ∃ τ k h, t < τ ∧ rho.point.Ready c (rho.key k) τ ∧
-      HonestProposal rho τ k h ∧ InBy rho c g h (t + (D : Time) * E.Δ)
-
-/-- D-14, reader-conditional (the form the shape claims use): as
-`ProposalLive`, but the honest proposal is owed only when some node is ready
-at the inclusion deadline `t + D·Δ`. This mirrors L0 `TxLive`, which has no
-obligation without a ready reader: under churn that lets nobody be ready
-(e.g. a different validator asleep at each tick), no ready proposer can be
-demanded. -/
+/-- D-14, reader-conditional: for every `t ≥ start` (with `t + D·Δ` in the
+horizon) at which some node is ready at the inclusion deadline `t + D·Δ`, a
+header released after `t`, at `τ`, by a key ready at `τ` in a proposal role, is
+in every ready read by `t + D·Δ`. `τ` is not bounded above: the obligation is
+the inclusion by `t + D·Δ`, not the release time. Reader-conditional as L0
+`TxLive`, which has no obligation without a ready reader: under churn that
+lets nobody be ready (e.g. a different validator asleep at each tick), no
+ready proposer can be demanded. -/
 def ProposalLiveReady (rho : Model.Run (compiled F) E) (c : Time) (g : O.Id) (start : Time)
     (D : Nat) : Prop :=
   ∀ t, start ≤ t → t + (D : Time) * E.Δ ≤ rho.horizon →
     (∃ v, rho.point.Ready c v (t + (D : Time) * E.Δ)) →
     ∃ τ k h, t < τ ∧ rho.point.Ready c (rho.key k) τ ∧
       HonestProposal rho τ k h ∧ InBy rho c g h (t + (D : Time) * E.Δ)
-
-/-- The unconditional form is sufficient. -/
-theorem ProposalLive.ready {rho : Model.Run (compiled F) E} {c : Time} {g : O.Id}
-    {start : Time} {D : Nat} (h : ProposalLive rho c g start D) :
-    ProposalLiveReady rho c g start D :=
-  fun t hs hh _ => h t hs hh
-
-/-- Without a ready node from `start + D·Δ` on, the reader-conditional
-obligation is vacuous. -/
-theorem ProposalLiveReady.of_noReady {rho : Model.Run (compiled F) E} {c : Time} {g : O.Id}
-    {start : Time} {D : Nat}
-    (h : ∀ t, start + (D : Time) * E.Δ ≤ t → ∀ v, ¬ rho.point.Ready c v t) :
-    ProposalLiveReady rho c g start D := by
-  rintro t hs - ⟨v, hv⟩
-  exact absurd hv (h _ (by linarith) v)
 
 /-- Output validity of `g`: every honest read at every cut is linked from the
 root under the run's hash, has increasing positions, and every header in it
@@ -92,20 +69,6 @@ def OutputValid (rho : Model.Run (compiled F) E) (g : O.Id) : Prop :=
     Chain.Linked rho.hash ((chainTrace rho).read g v i) ∧
     Chain.PosIncreasing ((chainTrace rho).read g v i) ∧
     Chain.Provenant (rho.ViewIdx v i) ProposalRole ((chainTrace rho).read g v i)
-
-/-- In a valid run, every header in a valid honest output was seen by the
-reader as an item signed in a proposal role by a key selected for that role. -/
-theorem OutputValid.authorized {rho : Model.Run (compiled F) E} {g : O.Id}
-    (hv : rho.ExecutionValid) (ho : OutputValid rho g) {v : V} (hvh : v ∈ rho.honest) {i : Nat}
-    (hi : i ≤ rho.events.length) {h : Header Info} (hh : h ∈ (chainTrace rho).read g v i) :
-    ∃ (k : Fin (Fintype.card V)) (r : ShapeRole (F (pubOf E)).skel.Kind), ∃ cs,
-      ProposalRole h r ∧ k ∈ rho.sel r ∧ Obj.mk (.signed k r) (.item h) cs ∈ rho.ViewIdx v i := by
-  obtain ⟨k, r, cs, hr, hs⟩ := (ho v hvh i hi).2.2 h hh
-  refine ⟨k, r, cs, hr, ?_, hs⟩
-  have hobs : Obj.mk (.signed k r) (.item h) cs ∈ rho.Observed := by
-    obtain ⟨j, o₀, hj, hev, hc⟩ := hs
-    exact ⟨v, hvh, j, o₀, lt_of_lt_of_le hj hi, hev, hc⟩
-  exact rho.selected_of_observed hv hobs (.refl _) rfl
 
 /-- The requirement `π` with catch-up `c` on `[start, stop]` at point `p`, PKI
 `key` and selection `sel` of family `F`: pattern recurrence over the proposer

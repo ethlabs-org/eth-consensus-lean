@@ -57,25 +57,27 @@ variable [Fintype V] [DecidableEq V]
 /-- Accountable safety, non-framing and faults below the accountable fraction give
 agreement of `g`. -/
 theorem agree_of_accountable (S : System V) (hL : S.Laws) (r : S.Run) {g : S.schema.Id}
-    {t₀ : Time} {α : ℚ} (hacc : S.AccountablySafe r α g t₀) (hnf : S.NonFraming r)
+    {t₀ : Time} {α : ℚ} (hacc : (S.trace r).AccountablySafe (S.view r) (S.convicts r) α g t₀)
+    (hnf : S.NonFraming r)
     (hb : (S.trace r).point.FaultsBelow α) : (S.trace r).Agree g t₀ := by
   classical
   intro u hu v hv i j hi hj
   rcases hacc u hu v hv i j hi hj with hc | hcard
   · exact hc
   · exfalso
-    have hsub : S.convicted r (S.view r u i ∪ S.view r v j) ⊆ (S.trace r).point.faulty := by
+    have hsub : Consensus.convicted (S.convicts r) (S.view r u i ∪ S.view r v j) ⊆
+        (S.trace r).point.faulty := by
       intro x hx
       have hx' : S.convicts r (S.view r u i ∪ S.view r v j) x := by
-        unfold convicted Consensus.convicted at hx; simpa using hx
+        unfold Consensus.convicted at hx; simpa using hx
       refine Finset.mem_sdiff.mpr ⟨Finset.mem_univ x, fun hxh => hnf x hxh ?_⟩
       refine hL.convicts_mono r _ _ x ?_ hx'
       rintro o (ho | ho)
       · exact ⟨u, hu, hL.view_mono r u i _ hi.1 ho⟩
       · exact ⟨v, hv, hL.view_mono r v j _ hj.1 ho⟩
     change (Fintype.card V : ℚ) * α ≤
-      (S.convicted r (S.view r u i ∪ S.view r v j)).card at hcard
-    have hc : ((S.convicted r (S.view r u i ∪ S.view r v j)).card : ℚ) ≤
+      (Consensus.convicted (S.convicts r) (S.view r u i ∪ S.view r v j)).card at hcard
+    have hc : ((Consensus.convicted (S.convicts r) (S.view r u i ∪ S.view r v j)).card : ℚ) ≤
         (S.trace r).point.faulty.card := by exact_mod_cast Finset.card_le_card hsub
     unfold EnvPoint.FaultsBelow at hb
     linarith
@@ -187,7 +189,8 @@ in every environment (no premise), and transaction liveness from the heal
 point when healthy from a GST with progress from `readyFrom` to the horizon. -/
 structure FinalClaims (S : System V) (X : Progress S Prog) (K : Contract S.schema Prog)
     (g : S.schema.Id) : Prop where
-  accountable : S.Holds (fun _ => True) (fun r => S.AccountablySafe r K.params.α g 0)
+  accountable : S.Holds (fun _ => True) (fun r =>
+    (S.trace r).AccountablySafe (S.view r) (S.convicts r) K.params.α g 0)
   live : ∀ i gst, S.Holds
     (fun r => S.Healthy K gst r ∧ S.prog X K .final i (S.ready K gst r) (S.pt r).horizon r)
     (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K .final i gst r) (S.lat K .final i r))

@@ -1,5 +1,5 @@
 module
-public import ConsensusShape.Values.Common
+public import ConsensusShape.Accepted
 
 @[expose] public section
 
@@ -57,9 +57,6 @@ def goldilocksSchema : OutputSchema :=
     | .available => some .confirmed
     | .stable => some .confirmed
     | .final => some .finalized⟩
-
-/-- The Goldilocks schema serves a ledger (it has a final output). -/
-theorem goldilocksSchema_serves : goldilocksSchema.Serves := Or.inl rfl
 
 /-- Placeholder committee kinds (the FG-SA migration fixes them). -/
 inductive GKind where
@@ -185,9 +182,8 @@ theorem goldilocks_admissible (pp : FGSAParams) : (goldilocksContract pp).params
   have hb : 1 ≤ pp.budget := by
     have := pp.hEta; have := pp.hLock
     unfold FGSAParams.budget; omega
-  have h := Params.standard_admissible (Idx := ℕ+) (catchUp := FGSAParams.catchUp)
-    (lag := pp.lag) (heal := pp.heal) (latency := pp.latency) (by decide) hb
-  exact ⟨h.1, h.2, h.3, h.4, h.5, h.6⟩
+  exact { Params.standard_admissible (Idx := ℕ+) (catchUp := FGSAParams.catchUp)
+    (lag := pp.lag) (heal := pp.heal) (latency := pp.latency) (by decide) hb with }
 
 /-- The Goldilocks progress fits every family with one proposer per slot. -/
 theorem goldilocks_progressFits {Info : Type} [DecidableEq Info] [Encodable Info]

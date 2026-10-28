@@ -137,16 +137,6 @@ theorem canonical_eagerFrom (g : Time) (h0 : 0 ≤ rho.horizon) :
     exact ⟨hga, w, hw, haa, o, by simpa only [Int.toNat_of_nonneg ha0] using hpool, rfl⟩
   exact List.mem_iff_getElem?.mp hdel
 
-/-- The eager schedule (`g = 0`). -/
-theorem canonical_eager (h0 : 0 ≤ rho.horizon) :
-    (rho.withEvents (rho.canonicalEvents 0)).EagerDelivery := by
-  intro v hv o t hr w hw a hta hah haa
-  have hs := rho.canonical_schedule 0 h0
-  obtain ⟨i, hi, _⟩ := hr
-  have ht0 := (hs.in_horizon _ (List.mem_of_getElem? hi)).1
-  exact rho.canonical_eagerFrom 0 h0 v hv o t ⟨i, hi, by assumption⟩ w hw a
-    (max_le hta (le_trans ht0 hta)) hah haa
-
 /-- No delivery before GST `g`. -/
 theorem canonical_quiet (g : Time) :
     ∀ w o t, (rho.withEvents (rho.canonicalEvents g)).receives w o t → g ≤ t := by

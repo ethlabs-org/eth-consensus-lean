@@ -117,6 +117,12 @@ def PatternRecurrence (p : EnvPoint V) (key : Fin (Fintype.card V) ≃ V)
       ∀ j ∈ ρ.pattern.offsets,
         HonestReadyIn p key sel (lead (s + j)) c (G.slotTime p.env.Δ (s + j))
 
+/-- At most `m` validators are not ready (faulty, or honest and not ready) at
+`t`. -/
+def _root_.Consensus.EnvPoint.NotReadyAtMost [DecidableEq V] (p : EnvPoint V) (m : Nat)
+    (c t : Time) : Prop :=
+  Fintype.card V ≤ (p.readyAt c t).card + m
+
 /-- At most `m` validators are not ready at every time of `[max start 0, stop]`
 within the horizon. No bound on `m` against the validator count: `m ≥ card V`
 holds trivially (`NotReadyOn.of_card_le`), which is what lets a contract index
@@ -166,33 +172,6 @@ theorem NotReadyOn.readyAt_nonempty [DecidableEq V] {m : Nat} (hm : m < Fintype.
   have h2 : Fintype.card V ≤ (p.readyAt c t).card + m := h t ht hst hh
   exact Finset.card_pos.mp (by omega)
 
-/-- Bounded dependence: recurrence on `[start, stop]` reads only `Δ` and the
-honest-ready status of the keys at times up to `min stop horizon` (readiness
-at `t` is the awake history up to `t`). A point `p'` with the same `Δ`, no
-larger effective window, and every honest-ready key of `p` also honest-ready
-in `p'` at those times inherits the recurrence; in particular a point that
-agrees with `p` up to `min stop horizon` (suffix replacement). -/
-theorem PatternRecurrence.reads_upTo {p' : EnvPoint V} (hΔ : p'.env.Δ = p.env.Δ)
-    (hh : min stop p'.horizon ≤ p.horizon)
-    (hr : ∀ v t, t ≤ min stop p'.horizon → v ∈ p.honest → p.Ready c v t →
-      v ∈ p'.honest ∧ p'.Ready c v t)
-    (h : PatternRecurrence p key sel lead G ρ c start stop) :
-    PatternRecurrence p' key sel lead G ρ c start stop := by
-  intro t ht h0 hst hhz
-  rw [hΔ] at hst hhz ⊢
-  have hm : t + (ρ.len : Time) * G.slotLen p.env.Δ ≤ min stop p'.horizon := le_min hst hhz
-  obtain ⟨s, hs1, hs2, hall⟩ := h t ht h0 hst (le_trans hm hh)
-  refine ⟨s, hs1, hs2, fun j hj => ?_⟩
-  obtain ⟨hne, hk⟩ := hall j hj
-  refine ⟨hne, fun k hk' => hr _ _ ?_ (hk k hk').1 (hk k hk').2⟩
-  have hl := G.slotLen_pos p.env.Δ_pos
-  have hj' : (j : Time) ≤ ρ.pattern.span := by exact_mod_cast Pattern.le_span hj
-  have hlen : (ρ.len : Time) = ((ρ.gap : Nat) : Time) + (ρ.pattern.span : Time) := by
-    simp [Recurrence.len]
-  rw [hlen] at hm
-  rw [G.slotTime_add]
-  nlinarith
-
 /-- Head extraction: a pattern with offset `0` gives one honest ready proposer
 per window, losing the pattern's span at the end of the window `[start, stop]`
 (the single pattern reads only the window itself). -/
@@ -223,17 +202,6 @@ theorem patternRecurrence_of_all (hΔ : 0 < p.env.Δ)
   intro t _ ht _ _
   obtain ⟨s, hs₁, hs₂⟩ := G.exists_slot_in_window hΔ ht (k := (ρ.gap : Nat)) ρ.gap.pos
   exact ⟨s, hs₁, hs₂, fun j hj => h s j hj⟩
-
-/-- Recurrence is non-vacuous: if one whole window fits in `[max start 0, stop]`
-and the horizon, the requirement yields an honest selected key. -/
-theorem PatternRecurrence.exists_honest (h : PatternRecurrence p key sel lead G ρ c start stop)
-    (hs : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ stop)
-    (ht : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ p.horizon) :
-    ∃ s k, k ∈ sel (lead s) ∧ key k ∈ p.honest := by
-  obtain ⟨s, -, -, hall⟩ := h (max start 0) (le_max_left _ _) (le_max_right _ _) hs ht
-  obtain ⟨j, hj⟩ := List.exists_mem_of_ne_nil _ ρ.pattern.nonempty
-  obtain ⟨⟨k, hk⟩, hks⟩ := hall j hj
-  exact ⟨s + j, k, hk, (hks k hk).1⟩
 
 /-- With one whole window inside `[max start 0, stop]` and the horizon,
 recurrence yields a start slot whose whole pattern is honest, ready and inside

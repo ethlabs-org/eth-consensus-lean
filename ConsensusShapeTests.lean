@@ -12,3 +12,7 @@ public import ConsensusShapeTests.Controls
 public import ConsensusShapeTests.Goldilocks
 public import ConsensusShapeTests.Regimes
 public import ConsensusShapeTests.Gaps
+public import ConsensusShapeTests.Lift
+public import ConsensusShapeTests.Support
+public import ConsensusShapeTests.Values
+public import ConsensusShapeTests.Reformulations

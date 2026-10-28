@@ -47,13 +47,6 @@ def role : ShapeDuty sk.Kind → ShapeRole sk.Kind
   | .pollPropose _ => .poll
   | .poll _ => .poll
 
-/-- The act time of each duty. -/
-def actTime (Δ : Time) : ShapeDuty sk.Kind → Time
-  | .propose s _ => sk.grid.slotTime Δ s
-  | .act s k => sk.grid.slotTime Δ s + (sk.phase k : Time) * Δ
-  | .pollPropose t => (t : Time)
-  | .poll t => (t : Time)
-
 /-- The positive proposal slot at `t`, if any. -/
 def proposeAt (Δ t : Time) : List (ShapeDuty sk.Kind) :=
   match sk.grid.slotAt? Δ 0 t with
@@ -71,148 +64,6 @@ def pollAt (t : Time) : List (ShapeDuty sk.Kind) :=
 /-- The duties due at `t`, in signing order. -/
 def duties (Δ t : Time) : List (ShapeDuty sk.Kind) :=
   sk.proposeAt Δ t ++ sk.actAt Δ t ++ sk.pollAt t
-
-theorem duties_spec {Δ : Time} (hΔ : 0 < Δ) (d : ShapeDuty sk.Kind) (t : Time) :
-    d ∈ sk.duties Δ t ↔ sk.actTime Δ d = t := by
-  unfold duties
-  simp only [List.mem_append]
-  cases d with
-  | propose s hs =>
-    have hA : ShapeDuty.propose s hs ∉ sk.actAt Δ t := by
-      simp [actAt]
-    have hP : ShapeDuty.propose s hs ∉ sk.pollAt t := by
-      unfold pollAt; split <;> simp
-    simp only [hA, hP, or_false, actTime]
-    rw [← add_zero (sk.grid.slotTime Δ s), ← sk.grid.slotAt?_eq_some hΔ]
-    unfold proposeAt
-    constructor
-    · intro h
-      split at h
-      · rename_i s' hs'
-        split at h
-        · simp only [List.mem_singleton, ShapeDuty.propose.injEq] at h
-          rw [hs', h]
-        · simp at h
-      · simp at h
-    · intro h
-      rw [h]
-      simp [hs]
-  | act s k =>
-    have hA : ShapeDuty.act s k ∉ sk.proposeAt Δ t := by
-      unfold proposeAt; split
-      · split <;> simp
-      · simp
-    have hP : ShapeDuty.act s k ∉ sk.pollAt t := by
-      unfold pollAt; split <;> simp
-    simp only [hA, hP, false_or, or_false, actTime]
-    rw [← sk.grid.slotAt?_eq_some hΔ]
-    simp only [actAt, List.mem_filterMap, Option.map_eq_some_iff, ShapeDuty.act.injEq]
-    constructor
-    · rintro ⟨k', -, s', hs', rfl, rfl⟩
-      exact hs'
-    · intro h
-      exact ⟨k, sk.kinds_complete k, s, h, rfl, rfl⟩
-  | pollPropose u =>
-    have hA : ShapeDuty.pollPropose u ∉ sk.proposeAt Δ t := by
-      unfold proposeAt; split
-      · split <;> simp
-      · simp
-    have hB : ShapeDuty.pollPropose u ∉ sk.actAt Δ t := by
-      simp [actAt]
-    simp only [hA, hB, false_or, actTime, pollAt]
-    split
-    · rename_i ht
-      simp only [List.mem_cons, ShapeDuty.pollPropose.injEq, List.not_mem_nil, or_false]
-      constructor
-      · rintro (rfl | h)
-        · exact Int.toNat_of_nonneg ht
-        · cases h
-      · intro h
-        left
-        rw [← h]
-        simp
-    · rename_i ht
-      simp only [List.not_mem_nil, false_iff]
-      intro h
-      exact ht (h ▸ Int.natCast_nonneg u)
-  | poll u =>
-    have hA : ShapeDuty.poll u ∉ sk.proposeAt Δ t := by
-      unfold proposeAt; split
-      · split <;> simp
-      · simp
-    have hB : ShapeDuty.poll u ∉ sk.actAt Δ t := by
-      simp [actAt]
-    simp only [hA, hB, false_or, actTime, pollAt]
-    split
-    · rename_i ht
-      simp only [List.mem_cons, ShapeDuty.poll.injEq, List.not_mem_nil, or_false]
-      constructor
-      · rintro (h | rfl)
-        · cases h
-        · exact Int.toNat_of_nonneg ht
-      · intro h
-        right
-        rw [← h]
-        simp
-    · rename_i ht
-      simp only [List.not_mem_nil, false_iff]
-      intro h
-      exact ht (h ▸ Int.natCast_nonneg u)
-
-theorem duties_nodup (Δ t : Time) : (sk.duties Δ t).Nodup := by
-  have hP : (sk.proposeAt Δ t).Nodup := by
-    unfold proposeAt; split
-    · split <;> simp
-    · simp
-  have hA : (sk.actAt Δ t).Nodup := by
-    refine sk.kinds_nodup.filterMap ?_
-    intro a a' b hb hb'
-    obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp hb
-    obtain ⟨_, _, h⟩ := Option.map_eq_some_iff.mp hb'
-    cases h
-    rfl
-  have hQ : (sk.pollAt t).Nodup := by
-    unfold pollAt; split
-    · simp
-    · simp
-  have mP : ∀ a ∈ sk.proposeAt Δ t, ∃ s h, a = .propose s h := by
-    intro a ha
-    unfold proposeAt at ha
-    split at ha
-    · split at ha
-      · exact ⟨_, _, List.mem_singleton.mp ha⟩
-      · simp at ha
-    · simp at ha
-  have mA : ∀ a ∈ sk.actAt Δ t, ∃ s k, a = .act s k := by
-    intro a ha
-    simp only [actAt, List.mem_filterMap, Option.map_eq_some_iff] at ha
-    obtain ⟨k, _, s, _, rfl⟩ := ha
-    exact ⟨s, k, rfl⟩
-  have mQ : ∀ a ∈ sk.pollAt t, (∃ u, a = .pollPropose u) ∨ ∃ u, a = .poll u := by
-    intro a ha
-    unfold pollAt at ha
-    split at ha
-    · simp only [List.mem_cons, List.not_mem_nil, or_false] at ha
-      rcases ha with rfl | rfl
-      · exact Or.inl ⟨_, rfl⟩
-      · exact Or.inr ⟨_, rfl⟩
-    · simp at ha
-  unfold duties
-  rw [List.nodup_append, List.nodup_append]
-  refine ⟨⟨hP, hA, ?_⟩, hQ, ?_⟩
-  · intro a ha b hb hab
-    subst hab
-    obtain ⟨_, _, rfl⟩ := mP _ ha
-    obtain ⟨_, _, h⟩ := mA _ hb
-    cases h
-  · intro a ha b hb hab
-    subst hab
-    rcases mQ _ hb with ⟨_, rfl⟩ | ⟨_, rfl⟩ <;>
-      rcases List.mem_append.mp ha with ha | ha
-    · obtain ⟨_, _, h⟩ := mP _ ha; cases h
-    · obtain ⟨_, _, h⟩ := mA _ ha; cases h
-    · obtain ⟨_, _, h⟩ := mP _ ha; cases h
-    · obtain ⟨_, _, h⟩ := mA _ ha; cases h
 
 end Skeleton
 
@@ -232,10 +83,7 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
   encItem := inferInstance
   selSpec := S.skel.selSpec
   role := S.skel.role
-  actTime := S.skel.actTime pub.Δ
   duties := S.skel.duties pub.Δ
-  duties_spec := S.skel.duties_spec pub.Δ_pos
-  duties_nodup := S.skel.duties_nodup pub.Δ
   init k := (S.init k, [])
   clock st t xs := (S.clock st.1 t, xs)
   act st d := match d with

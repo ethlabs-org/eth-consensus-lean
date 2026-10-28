@@ -31,13 +31,193 @@ it rejects.
 * `healthy_needs_two_thirds`: three honest validators, one always asleep:
   exactly ⅔ awake is not healthy at `φ = ⅔` (the regime needs *more* than
   ⅔), but is at `φ = ½`.
-* `healthy_faultsBelow` (M21): healthy at ⅔ bounds the faults below ⅓, on every
-  point; so a point with one faulty validator among three is never healthy at
-  ⅔, however awake.
+* `faulty_third_not_healthy` (M21): healthy at ⅔ bounds the faults below ⅓
+  (`HealthyOn.faultsBelow`), on every point; so a point with one faulty
+  validator among three is never healthy at ⅔, however awake.
 * `outage_times_teeth`: with lag `2`, budget `3`, `Δ = 1`, `OutageTimes`
   accepts `T = 0, [2, 5)`, and rejects an arming at a negative time, an arming
   less than `lag·Δ` before the window, a window longer than `budget·Δ`, and an
   inverted window. -/
+
+/-! ## Explanatory L0 facts (moved from the library; no library proof uses them)
+
+Monotonicity of the participation atoms and regimes in their thresholds, the
+`η = 0` reduction of the η-sleepy participation, and its awake-count form. -/
+
+namespace Consensus
+
+namespace EnvPoint
+
+variable {V : Type} [Fintype V] [DecidableEq V] (p : EnvPoint V)
+
+/-- A smaller ready fraction is weaker. -/
+theorem ReadyAbove.mono {θ θ' : ℚ} {c t : Time} (h : p.ReadyAbove θ' c t)
+    (hle : θ ≤ θ') : p.ReadyAbove θ c t :=
+  lt_of_le_of_lt (mul_le_mul_of_nonneg_right hle (by positivity)) h
+
+/-- With look-back `0`, η-sleepy is plain sleepy (by definition). -/
+theorem etaReadyAbove_zero (θ : ℚ) (c t : Time) :
+    p.EtaReadyAbove θ 0 c t ↔ p.ReadyAbove θ c t := by
+  rw [EtaReadyAbove, ite_eq_left_of_eq_true _ _ (eq_true le_rfl)]
+
+/-- The η-sleepy count set grows with the look-back window. -/
+theorem etaSet_mono {η η' c t : Time} (hη : η ≤ η') :
+    p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty ⊆
+      p.readyAt c t ∪ p.awakeIn (max 0 (t - η')) t ∪ p.faulty := by
+  classical
+  refine Finset.union_subset_union (Finset.union_subset_union (Finset.Subset.refl _) ?_)
+    (Finset.Subset.refl _)
+  intro v hv
+  simp only [awakeIn, Finset.mem_filter] at hv ⊢
+  obtain ⟨hv, u, h1, h2, ha⟩ := hv
+  exact ⟨hv, u, le_trans (max_le_max le_rfl (by linarith)) h1, h2, ha⟩
+
+/-- η-sleepy (`θ ≥ 0`) implies plain sleepy. -/
+theorem EtaReadyAbove.readyAbove {θ : ℚ} {η c t : Time} (h : p.EtaReadyAbove θ η c t)
+    (h0 : 0 ≤ θ) : p.ReadyAbove θ c t := by
+  classical
+  unfold EtaReadyAbove at h
+  split_ifs at h with hη
+  · exact h
+  rw [readyAbove_iff_union]
+  have hsub : p.readyAt c t ∪ p.faulty ⊆ p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty :=
+    Finset.union_subset_union Finset.subset_union_left (Finset.Subset.refl _)
+  have hc : ((p.readyAt c t ∪ p.faulty).card : ℚ) ≤
+      (p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card := by
+    exact_mod_cast Finset.card_le_card hsub
+  exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left hc h0) h
+
+/-- A smaller fraction (`θ ≥ 0`) and a shorter look-back are weaker. -/
+theorem EtaReadyAbove.mono {θ θ' : ℚ} {η η' c t : Time} (h : p.EtaReadyAbove θ' η' c t)
+    (h0 : 0 ≤ θ) (hθ : θ ≤ θ') (hη : η ≤ η') : p.EtaReadyAbove θ η c t := by
+  classical
+  by_cases hη0 : η ≤ 0
+  · rw [EtaReadyAbove, ite_eq_left_of_eq_true _ _ (eq_true hη0)]
+    exact (h.readyAbove p (h0.trans hθ)).mono p hθ
+  have hη0' : ¬ η' ≤ 0 := fun h' => hη0 (hη.trans h')
+  rw [EtaReadyAbove, ite_eq_right_of_eq_false _ _ (eq_false hη0)]
+  rw [EtaReadyAbove, ite_eq_right_of_eq_false _ _ (eq_false hη0')] at h
+  have hc : ((p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card : ℚ) ≤
+      (p.readyAt c t ∪ p.awakeIn (max 0 (t - η')) t ∪ p.faulty).card := by
+    exact_mod_cast Finset.card_le_card (p.etaSet_mono hη)
+  exact lt_of_le_of_lt
+    ((mul_le_mul_of_nonneg_left hc h0).trans
+      (mul_le_mul_of_nonneg_right hθ (by positivity))) h
+
+omit [Fintype V] [DecidableEq V] in
+/-- A ready validator (catch-up `c ≥ 0`) at `t ≥ 0` is awake at `t`. -/
+theorem readyAt_subset_awakeAt {c t : Time} (hc : 0 ≤ c) (ht : 0 ≤ t) :
+    p.readyAt c t ⊆ p.awakeAt t := by
+  classical
+  intro v hv
+  simp only [readyAt, awakeAt, Finset.mem_filter] at hv ⊢
+  exact ⟨hv.1, hv.2.2 t (max_le ht (by linarith)) le_rfl⟩
+
+/-- With positive look-back, η-sleepy (`θ ≥ 0`, catch-up `c ≥ 0`, `t ≥ 0`) implies the
+awake-count form: the honest validators awake at `t` exceed fraction `θ` of
+those awake at some time in `[max 0 (t − η), t]` together with the faulty
+ones. -/
+theorem EtaReadyAbove.awakeForm {θ : ℚ} {η c t : Time} (h : p.EtaReadyAbove θ η c t)
+    (h0 : 0 ≤ θ) (hη : 0 < η) (hc0 : 0 ≤ c) (ht : 0 ≤ t) :
+    θ * ((p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card : ℚ) < (p.awakeAt t).card := by
+  classical
+  rw [EtaReadyAbove, ite_eq_right_of_eq_false _ _ (eq_false (not_le.mpr hη))] at h
+  have hsub : p.awakeIn (max 0 (t - η)) t ∪ p.faulty ⊆
+      p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty :=
+    Finset.union_subset_union Finset.subset_union_right (Finset.Subset.refl _)
+  have hc : ((p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card : ℚ) ≤
+      (p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card := by
+    exact_mod_cast Finset.card_le_card hsub
+  have hr : ((p.readyAt c t).card : ℚ) ≤ (p.awakeAt t).card := by
+    exact_mod_cast Finset.card_le_card (p.readyAt_subset_awakeAt hc0 ht)
+  exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left hc h0) (lt_of_lt_of_le h hr)
+
+omit [DecidableEq V] in
+/-- A smaller fraction of all validators is weaker. -/
+theorem ReadyOfAll.mono {φ φ' : ℚ} {c t : Time} (h : p.ReadyOfAll φ' c t)
+    (hle : φ ≤ φ') : p.ReadyOfAll φ c t :=
+  lt_of_le_of_lt (mul_le_mul_of_nonneg_right hle (by positivity)) h
+
+variable {p}
+
+/-- A smaller fraction is weaker. -/
+theorem SleepyOn.mono {θ θ' : ℚ} {c a b : Time} (h : p.SleepyOn θ' c a b) (hle : θ ≤ θ') :
+    p.SleepyOn θ c a b :=
+  fun t ha hb => (h t ha hb).mono p hle
+
+/-- With look-back `0`, η-sleepy is plain sleepy. -/
+theorem etaSleepyOn_zero (θ : ℚ) (c a b : Time) :
+    p.EtaSleepyOn θ 0 c a b ↔ p.SleepyOn θ c a b :=
+  forall_congr' fun t => imp_congr_right fun _ => imp_congr_right fun _ =>
+    p.etaReadyAbove_zero θ c t
+
+/-- η-sleepy (`θ ≥ 0`) implies plain sleepy. -/
+theorem EtaSleepyOn.sleepyOn {θ : ℚ} {η c a b : Time} (h : p.EtaSleepyOn θ η c a b)
+    (h0 : 0 ≤ θ) : p.SleepyOn θ c a b :=
+  fun t ha hb => (h t ha hb).readyAbove p h0
+
+/-- A smaller fraction (`θ ≥ 0`) and a shorter look-back are weaker. -/
+theorem EtaSleepyOn.mono {θ θ' : ℚ} {η η' c a b : Time} (h : p.EtaSleepyOn θ' η' c a b)
+    (h0 : 0 ≤ θ) (hθ : θ ≤ θ') (hη : η ≤ η') : p.EtaSleepyOn θ η c a b :=
+  fun t ha hb => (h t ha hb).mono p h0 hθ hη
+
+omit [DecidableEq V] in
+/-- A smaller fraction is weaker. -/
+theorem HealthyOn.mono {φ φ' : ℚ} {g b : Time} (h : p.HealthyOn φ' g b) (hle : φ ≤ φ') :
+    p.HealthyOn φ g b := by
+  obtain ⟨H, hH, hc, ha⟩ := h
+  exact ⟨H, hH, lt_of_le_of_lt (mul_le_mul_of_nonneg_right hle (by positivity)) hc, ha⟩
+
+end EnvPoint
+
+namespace Regime
+
+variable {V M Idx : Type} [Fintype V] [DecidableEq V]
+  {P : Params Idx} {p : EnvPoint V} {L : CommLog V M}
+
+/-- With look-back `η = 0`, the outage regime's participation is plain
+sleepy throughout. -/
+theorem outage_eta_zero (hη : P.η = 0) {T b₀ b₁ : Time} :
+    Outage P p L T b₀ b₁ ↔ OutageTimes P p.env.Δ T b₀ b₁ ∧ L.OutageNet p b₀ b₁ ∧
+      p.Sleepy P.θ (P.cDur p.env.Δ) ∧ p.ReadyOfAll P.cover (P.cDur p.env.Δ) b₀ := by
+  unfold Outage EnvPoint.EtaSleepy EnvPoint.Sleepy
+  rw [show P.ηDur p.env.Δ = 0 by simp [Params.ηDur, hη], EnvPoint.etaSleepyOn_zero]
+
+/-- Weaker thresholds (same catch-up) keep the sleepy regime. -/
+theorem Sleepy.of_le {P' : Params Idx} (hc : P'.catchUp = P.catchUp) (hθ : P'.θ ≤ P.θ)
+    (h : Sleepy P p L) : Sleepy P' p L := by
+  refine ⟨h.1, ?_⟩
+  unfold Params.cDur; rw [hc]
+  exact EnvPoint.SleepyOn.mono h.2 hθ
+
+omit [DecidableEq V] in
+/-- Weaker thresholds keep the healthy regime. -/
+theorem Healthy.of_le {P' : Params Idx} {g : Time} (hφ : P'.φ ≤ P.φ) (h : Healthy P p L g) :
+    Healthy P' p L g :=
+  ⟨h.1, EnvPoint.HealthyOn.mono h.2 hφ⟩
+
+/-- Weaker thresholds (`θ' ≥ 0`), a shorter look-back, a shorter lag and a
+larger budget (same catch-up) keep the outage regime. -/
+theorem Outage.of_le {P' : Params Idx} {T b₀ b₁ : Time} (hc : P'.catchUp = P.catchUp)
+    (h0 : 0 ≤ P'.θ) (hθ : P'.θ ≤ P.θ) (hη : P'.η ≤ P.η) (hcov : P'.cover ≤ P.cover)
+    (hl : P'.lag ≤ P.lag) (hb : P.budget ≤ P'.budget) (h : Outage P p L T b₀ b₁) :
+    Outage P' p L T b₀ b₁ := by
+  obtain ⟨⟨hT, hlag, h01, hbud⟩, hn, hs, hr⟩ := h
+  have hΔ : (0 : Time) ≤ p.env.Δ := p.env.Δ_pos.le
+  have hl' : ((P'.lag : Nat) : Time) ≤ (P.lag : Time) := by exact_mod_cast hl
+  have hb' : ((P.budget : Nat) : Time) ≤ (P'.budget : Time) := by exact_mod_cast hb
+  refine ⟨⟨hT, ?_, h01, ?_⟩, hn, ?_, ?_⟩
+  · nlinarith
+  · nlinarith
+  · unfold Params.cDur; rw [hc]
+    have hη' : ((P'.η : Nat) : Time) ≤ (P.η : Time) := by exact_mod_cast hη
+    exact EnvPoint.EtaSleepyOn.mono hs h0 hθ (by unfold Params.ηDur; nlinarith)
+  · unfold Params.cDur; rw [hc]
+    exact hr.mono p hcov
+
+end Regime
+
+end Consensus
 
 namespace Consensus.Shape.Tests.Regimes
 open Consensus
@@ -256,13 +436,6 @@ end TwoThirds
 
 section Faults
 
-/-- Healthy at ⅔ bounds the faults below ⅓, on every point and window. -/
-theorem healthy_faultsBelow {V : Type} [Fintype V] [DecidableEq V] (p : EnvPoint V) (g b : Time)
-    (h : p.HealthyOn (2 / 3) g b) : p.FaultsBelow (1 / 3) := by
-  have := h.faultsBelow
-  norm_num at this
-  exact this
-
 /-- One faulty validator among three, everyone awake. -/
 def ptF : EnvPoint (Fin 3) :=
   ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ.erase 0, 10, fun _ _ => []⟩
@@ -270,7 +443,7 @@ def ptF : EnvPoint (Fin 3) :=
 /-- So one faulty validator among three is never healthy at ⅔, on any window. -/
 theorem faulty_third_not_healthy (g b : Time) : ¬ ptF.HealthyOn (2 / 3) g b := by
   intro h
-  have := healthy_faultsBelow ptF g b h
+  have := h.faultsBelow
   unfold EnvPoint.FaultsBelow at this
   have hf : ptF.faulty = {0} := by ext v; simp [EnvPoint.faulty, ptF]
   rw [hf] at this

@@ -61,11 +61,6 @@ theorem protects_iff {k : Key pub} {seen : List P.Object} {c : P.Object} :
         · exact Or.inl hos⟩
   next hs => simp [hs]
 
-/-- A candidate not signed by `k` passes `protects k`. -/
-theorem protects_of_signer_ne (k : Key pub) (seen : List P.Object) {c : P.Object}
-    (h : c.signer? ≠ some k) : protects P k seen c = true :=
-  protects_iff.mpr fun hs => absurd hs h
-
 /-- `releaseAll` appends exactly what it releases to `seen`. -/
 theorem releaseAll_seen (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
     (cs : List P.Object) :

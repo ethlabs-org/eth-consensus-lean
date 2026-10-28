@@ -1,5 +1,7 @@
 module
 public import ConsensusShape
+public import ConsensusShapeTests.Common
+public import ConsensusShapeTests.Support
 public import Mathlib.Tactic
 @[expose] public section
 
@@ -32,6 +34,33 @@ unsatisfiable obligation. The control checks the liveness obligation in
 isolation, not jointly with output validity (its headers do not link).
 
 * The test contract tolerates arbitrary numbers of validators not ready. -/
+
+namespace Consensus.Shape
+
+open Blocks
+open Consensus.Model (pubOf protoOf)
+
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
+  {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+
+/-- D-14, unconditional (moved from the library; the shape claims use the
+reader-conditional `ProposalLiveReady`): for every `t ≥ start` (with `t + D·Δ`
+in the horizon), a header released after `t`, at `τ`, by a key ready at `τ` in
+a proposal role, is in every ready read by `t + D·Δ`. `τ` is not bounded
+above: the obligation is the inclusion by `t + D·Δ`, not the release time. -/
+def ProposalLive (rho : Model.Run (compiled F) E) (c : Time) (g : O.Id) (start : Time) (D : Nat) :
+    Prop :=
+  ∀ t, start ≤ t → t + (D : Time) * E.Δ ≤ rho.horizon →
+    ∃ τ k h, t < τ ∧ rho.point.Ready c (rho.key k) τ ∧
+      HonestProposal rho τ k h ∧ InBy rho c g h (t + (D : Time) * E.Δ)
+
+/-- The unconditional form is sufficient. -/
+theorem ProposalLive.ready {rho : Model.Run (compiled F) E} {c : Time} {g : O.Id}
+    {start : Time} {D : Nat} (h : ProposalLive rho c g start D) :
+    ProposalLiveReady rho c g start D :=
+  fun t hs hh _ => h t hs hh
+
+end Consensus.Shape
 
 namespace Consensus.Shape.Tests.Leaks
 open Consensus Blocks Shape
@@ -97,9 +126,6 @@ def family (proposal vote bad : Bool) : ShapeFamily schema Unit := fun pub => {
 /-- One validator, always awake, `Δ = 1`. -/
 def env : Env (Fin 1) := ⟨1, by decide, fun _ _ => true⟩
 
-/-- The identity PKI. -/
-def pki : Fin (Fintype.card (Fin 1)) ≃ Fin 1 := finCongr (Fintype.card_fin 1)
-
 /-- The selection: the only key everywhere, except the (disabled) poll role. -/
 def testSel : ShapeRole Unit → Finset (Fin (Fintype.card (Fin 1)))
   | .poll => ∅
@@ -127,10 +153,11 @@ theorem refuted_of_empty (F : ShapeFamily schema Unit)
       ∀ v i, (chainTrace rho).read () v i = []) :
     ¬ ShapeClaims F testK := by
   intro hc
-  obtain ⟨relay, es, valid, sync, -⟩ := Model.canonical_run schema (compiled F) (Fin 1) env
-    Finset.univ 3 (by decide) pki sel hsel (fun _ _ => []) goodHash
+  obtain ⟨relay, es, valid, eager⟩ := Model.canonical_run_from schema (compiled F) (Fin 1) env
+    Finset.univ 3 (by decide) (pkiFin 1) sel hsel (fun _ _ => []) goodHash 0
   let r : Model.Run (compiled F) env :=
-    Model.mkRun Finset.univ 3 pki sel (fun _ _ => []) relay goodHash es
+    Model.mkRun Finset.univ 3 (pkiFin 1) sel (fun _ _ => []) relay goodHash es
+  have sync : CommLog.PSync r.point r.log 0 := eager.psync le_rfl
   have hready : ∀ c t v, r.point.Ready c v t := env_ready r.point rfl rfl
   have hfaulty : r.point.faulty = ∅ := by
     simp [EnvPoint.faulty, r, Model.mkRun, Model.Run.point]
@@ -184,11 +211,11 @@ theorem proposeButGenesis : ¬ ShapeClaims (family true false false) testK :=
 /-- A protocol that outputs a header nobody signed violates output validity. -/
 theorem fabricated : ¬ ShapeClaims (family false false true) testK := by
   intro hc
-  obtain ⟨relay, es, valid, -, -⟩ := Model.canonical_run schema
-    (compiled (family false false true)) (Fin 1) env Finset.univ 0 le_rfl pki testSel
-    (testSel_admits _ _ _) (fun _ _ => []) goodHash
+  obtain ⟨relay, es, valid, -⟩ := Model.canonical_run_from schema
+    (compiled (family false false true)) (Fin 1) env Finset.univ 0 le_rfl (pkiFin 1) testSel
+    (testSel_admits _ _ _) (fun _ _ => []) goodHash 0
   let r : Model.Run (compiled (family false false true)) env :=
-    Model.mkRun Finset.univ 0 pki testSel (fun _ _ => []) relay goodHash es
+    Model.mkRun Finset.univ 0 (pkiFin 1) testSel (fun _ _ => []) relay goodHash es
   have hv := hc.outputValid (Fin 1) env r valid .available () rfl 0
     (by simp [r, Model.mkRun]) 0 (Nat.zero_le _)
   obtain ⟨_, _, _, _, ⟨j, _, hj, _⟩⟩ := hv.2.2 fab (List.mem_singleton_self _)
@@ -467,7 +494,7 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
     unfold Model.Run.candidates
     apply List.mem_append_left
     refine List.mem_flatMap.mpr ⟨.propose s hspos, ?_, ?_⟩
-    · refine ((protoOf (compiled (familyC false)) env).duties_spec _ (t + 1)).mpr ?_
+    · refine (((familyC false) (pubOf env)).skel.duties_spec (pubOf env).Δ_pos _ (t + 1)).mpr ?_
       change (s : Time) * ((1 : Nat) * 1) = t + 1
       rw [hsτ]; ring
     · have hact : (protoOf (compiled (familyC false)) env).act nd₁.st (.propose s hspos) =

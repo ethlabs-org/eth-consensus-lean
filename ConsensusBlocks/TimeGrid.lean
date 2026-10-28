@@ -39,9 +39,6 @@ def slotAt? (Δ off t : Time) : Option Slot :=
 theorem slotLen_pos {Δ : Time} (hΔ : 0 < Δ) : 0 < G.slotLen Δ :=
   Int.mul_pos (by exact_mod_cast G.slotDeltas_pos) hΔ
 
-theorem slotTime_nonneg {Δ : Time} (hΔ : 0 < Δ) (s : Slot) : 0 ≤ G.slotTime Δ s :=
-  Int.mul_nonneg (by positivity) (G.slotLen_pos hΔ).le
-
 theorem slotAt?_eq_some {Δ : Time} (hΔ : 0 < Δ) {off t : Time} {s : Slot} :
     G.slotAt? Δ off t = some s ↔ G.slotTime Δ s + off = t := by
   have hl := G.slotLen_pos hΔ
@@ -62,11 +59,6 @@ theorem slotAt?_eq_some {Δ : Time} (hΔ : 0 < Δ) {off t : Time} {s : Slot} :
     refine ⟨fun h => (nomatch h), fun he => ?_⟩
     have : t - off = (s : Time) * G.slotLen Δ := by linarith
     exact absurd ⟨this ▸ Int.mul_nonneg (by positivity) hl.le, this ▸ Int.mul_emod_left _ _⟩ hc
-
-theorem slotTime_strictMono {Δ : Time} (hΔ : 0 < Δ) : StrictMono (G.slotTime Δ) := by
-  intro a b hab
-  unfold slotTime
-  exact Int.mul_lt_mul_of_pos_right (by exact_mod_cast hab) (G.slotLen_pos hΔ)
 
 theorem slotTime_add {Δ : Time} (s j : Slot) :
     G.slotTime Δ (s + j) = G.slotTime Δ s + (j : Time) * G.slotLen Δ := by

@@ -28,7 +28,7 @@ object no longer exists).
 * **M2 corruption growth**: scope: static adversary (`EnvPoint.honest` is fixed per
   run); sheet §3 (A6).
 * **M3 FE/F4 pattern**: `Pattern.range`; Goldilocks final progress `range (3R+κ)`
-  (`finRec_shape`, `finRec_span`); `range_head` (with the span loss); FE/F4 equivalence
+  (`pp223_numbers`, `finRec_span`); `range_head` (with the span loss); FE/F4 equivalence
   is migration gate F-2.
 * **M4 psync not mandated**: by construction: `DAClaims.healedSafe`/`healedLive`,
   `FinalClaims.live` are fields of `Behaviour`, fixed in `Good` (`example` M4); test
@@ -55,7 +55,7 @@ object no longer exists).
   (`stable_is_confirmed`, sheet `confirmed_persists`); finalized via
   `Good.persists_final_compatible` (sheet `outage_final_compatible`).
 * **M15 pinned params**: `goldilocksContract`, `goldilocks_admissible`,
-  `reference_bounds`; tests `pp223_admissible`, `reference_numbers`.
+  `reference_bounds`; test `pp223_numbers`.
 * **M16 concrete instance**: migration (out of this iteration): `GoldilocksTarget` is
   the reviewed target, unproved.
 * **M17 eventual liveness**: scope: liveness is bounded-latency (`TxLive` with a
@@ -65,7 +65,7 @@ object no longer exists).
 * **M19 weights / committees**: scope: equal-weight validators (`Fintype V`, counts).
 * **M20 cross-node nesting**: sheet `crossNest`, `liveDC`.
 * **M21 recovery fault bound**: by construction: `HealthyOn.faultsBelow` and `1 − φ ≤ α`
-  (`Good.final_safe_healthy`); test `healthy_faultsBelow`, `faulty_third_not_healthy`
+  (`Good.final_safe_healthy`); test `faulty_third_not_healthy`
   (`example` M21).
 * **M22 instance vs FG-SA**: migration obligations (1)–(12) in the sheet.
 * **M23 cover / budget**: sheet `budget_implies_V`; cover ½ vs FG-SA `OutageE`:
@@ -156,7 +156,8 @@ example (h : Good S X K) (cap : Capability) (g : S.schema.Id)
   (h.behaviour.da cap g hc hg).sleepySafe
 
 example (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g) :
-    S.Holds (fun _ => True) (fun r => S.AccountablySafe r K.params.α g 0) :=
+    S.Holds (fun _ => True) (fun r =>
+      (S.trace r).AccountablySafe (S.view r) (S.convicts r) K.params.α g 0) :=
   (h.behaviour.final g hg).accountable
 
 /- M28: heal points are anchored at `max g 0` (catch-up inside `heal`);
@@ -194,8 +195,7 @@ end Generic
 -- M3
 example := @Pattern.range
 example := @range_head
-example := @Tests.Goldilocks.finRec_shape
-example := @Tests.Goldilocks.range_head_instance
+example := @Tests.Goldilocks.pp223_numbers
 -- M7, M27, M4
 example := @regimes_realizable
 example := @Tests.Realizable.healed_witness_late
@@ -221,10 +221,9 @@ example := @Tests.Goldilocks.stable_is_confirmed
 example := @goldilocksContract
 example := @goldilocks_admissible
 example := @reference_bounds
-example := @Tests.Goldilocks.pp223_admissible
-example := @Tests.Goldilocks.reference_numbers
+example := @Tests.Goldilocks.pp223_numbers
 -- M21
-example := @Tests.Regimes.healthy_faultsBelow
+example := @EnvPoint.HealthyOn.faultsBelow
 example := @Tests.Regimes.faulty_third_not_healthy
 -- M23
 example := @budget_implies_V

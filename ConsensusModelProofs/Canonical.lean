@@ -18,9 +18,7 @@ synchronous run and `g` past the horizon a silent one. Transactions are
 relayed eagerly in every case.
 
 The construction uses no laws about the protocol. `unforgeable_of_causal`
-and `credentials_of_causal` use only the engine's signing and seen filter;
-`delivers_of_eager` applies to every deadline at or after its start,
-including both contract deadlines (receipt at the deadline is L0 holding).
+and `credentials_of_causal` use only the engine's signing and seen filter.
 -/
 
 namespace Consensus.Model
@@ -90,48 +88,23 @@ theorem canonical_run_from_causal (O : OutputSchema) (F : Family O) (V : Type) [
   exact ⟨base.canonical_valid hh hsel g, ⟨base.canonical_eagerFrom g hh, base.canonical_quiet g,
     eagerRelay_txs (base.withEvents (base.canonicalEvents g)) rfl⟩, base.canonical_causal g⟩
 
-/-- The synchronous case (`g = 0`) of `canonical_run_from_causal`. -/
-theorem canonical_run_causal (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
+/-- Every PKI, admissible selection, submission function, hash and GST `g`
+admits a valid run whose log is eager from `g` (L0 `CommLog.EagerFrom`): no
+message is received before `g`, and from `g` on every honest send is received
+by every awake honest node. `g ≤ 0` is a synchronous run; `g` past the horizon
+is a silent run (no receipts at all); in between, the network is asynchronous
+before `g`. -/
+theorem canonical_run_from (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
     [DecidableEq V] (E : Env V) (honest : Finset V) (horizon : Time) (hh : 0 ≤ horizon)
     (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
     (hsel : ∀ r, ((protoOf F E).selSpec r).Admits (sel r))
-    (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) :
+    (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) (g : Time) :
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
       let rho := mkRun (F := F) (E := E) honest horizon key sel submit relay hash events
-      rho.ExecutionValid ∧ CommLog.PSync rho.point rho.log 0 ∧
-        (∀ cut, CommLog.SyncUntil rho.point rho.log cut) ∧ rho.Causal := by
-  obtain ⟨relay, events, hv, he, hc⟩ :=
-    canonical_run_from_causal O F V E honest horizon hh key sel hsel submit hash 0
-  have hns : CommLog.SendsFromZero (mkRun (F := F) (E := E) honest horizon key sel submit relay
-      hash events).point (mkRun (F := F) (E := E) honest horizon key sel submit relay
-      hash events).log := by
-    rintro v - o t ⟨i, hi, -⟩
-    exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
-  exact ⟨relay, events, hv, he.psync le_rfl, fun cut => he.syncUntil hns le_rfl cut, hc⟩
-
-/-- A canonical run from every GST: the canonical schedule with its delivery
-layer empty before `g` is a valid execution whose log is eager from `g`. -/
-theorem canonical_run_from : CanonicalRunFrom := by
-  intro O F V _ _ E honest horizon hh key sel hsel submit hash g
-  classical
-  let relay := eagerRelay E honest submit
-  let base := mkRun (F := F) (E := E) honest horizon key sel submit relay hash []
-  refine ⟨relay, base.canonicalEvents g, ?_⟩
-  change (base.withEvents (base.canonicalEvents g)).ExecutionValid ∧
-    CommLog.EagerFrom (base.withEvents (base.canonicalEvents g)).point
-      (base.withEvents (base.canonicalEvents g)).log g
-  refine ⟨base.canonical_valid hh hsel g, ⟨?_, ?_, ?_⟩⟩
-  · exact base.canonical_eagerFrom g hh
-  · exact base.canonical_quiet g
-  · exact eagerRelay_txs (base.withEvents (base.canonicalEvents g)) rfl
-
-/-- Every choice of protocol, environment, PKI, admissible selection and run
-data admits a valid synchronous run. -/
-theorem canonical_run : CanonicalRun := by
-  intro O F V _ _ E honest horizon hh key sel hsel submit hash
-  obtain ⟨relay, events, hv, hs, hp, -⟩ :=
-    canonical_run_causal O F V E honest horizon hh key sel hsel submit hash
-  exact ⟨relay, events, hv, hs, hp⟩
+      rho.ExecutionValid ∧ CommLog.EagerFrom rho.point rho.log g := by
+  obtain ⟨relay, events, hv, he, -⟩ :=
+    canonical_run_from_causal O F V E honest horizon hh key sel hsel submit hash g
+  exact ⟨relay, events, hv, he⟩
 
 end Consensus.Model
 end

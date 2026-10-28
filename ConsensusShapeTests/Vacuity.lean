@@ -1,5 +1,7 @@
 module
 public import ConsensusShapeTests.Realizable
+public import ConsensusShapeTests.Common
+public import ConsensusShapeTests.Regimes
 public import Mathlib.Tactic
 @[expose] public section
 
@@ -14,7 +16,7 @@ public import Mathlib.Tactic
   `standard_admissible` is the control (the standard numbers are admissible).
 * **Progress fit** (M29): `allProposers_unfit` (a recurrence does
   not fit a family that selects every key as proposer; the matching run-level
-  fact is `Realizable.allProposers_no_witness`); `noProgressFit`,
+  fact is `Realizable.allProposers_no_witness`);
   `noProgressFit_contract` (a recurrence on a poll skeleton, which has no slot
   proposers); `notReadyAtMost_fits` (round robin fits every skeleton).
 * `credential_forgery_excluded`: the L2 form of the model-level credential
@@ -31,7 +33,7 @@ never holds) are rejected by L0 `Good` itself: `Good.lean` tests. -/
 namespace Consensus.Shape.Tests.Vacuity
 open Consensus Blocks Shape
 open Consensus.Model (Public Key Obj pubOf protoOf sysOf)
-open Consensus.Shape.Tests.Shapes (schema pollSkel pollShape)
+open Consensus.Shape.Tests.Shapes (pollSkel pollShape)
 
 /-- Near-full participation cannot meet sleepy stress below a supermajority. -/
 theorem notReadyAtMost_one_not_realizable {O : OutputSchema} {Info : Type}
@@ -92,10 +94,14 @@ theorem reject_phi : ¬ ({ std with φ := 9 / 10 } : Params Unit).Admissible :=
 theorem reject_cover : ¬ ({ std with cover := 3 / 5 } : Params Unit).Admissible :=
   fun h => by have := h.cover_range.2; norm_num at this
 
+/-- `α = 1/4` is rejected at every admissible-range `φ` (`1 − φ ≥ 1/3`). -/
+theorem reject_alpha_any {Idx : Type} (P : Params Idx) (hα : P.α = 1 / 4) : ¬ P.Admissible :=
+  fun h => by have := h.α_range.1; have := h.φ_range.2; rw [hα] at *; linarith
+
 /-- An accountable fraction below `1 − φ` is rejected (`α = 1/4`, `φ = 2/3`):
 the healthy regime would not bound the faults below `α`. -/
 theorem reject_alpha : ¬ ({ std with α := 1 / 4 } : Params Unit).Admissible :=
-  fun h => by have := h.α_range.1; simp [std, Params.standard] at this; norm_num at this
+  reject_alpha_any _ rfl
 
 /-- An empty outage budget is rejected (no outage would be admitted). -/
 theorem reject_budget : ¬ ({ std with budget := 0 } : Params Unit).Admissible :=
@@ -116,10 +122,6 @@ theorem admissibility_rejections :
   ⟨standard_admissible, reject_theta, reject_phi, reject_cover, reject_alpha, reject_budget,
     reject_catchUp⟩
 
-/-- `α = 1/4` is rejected at every admissible-range `φ` (`1 − φ ≥ 1/3`). -/
-theorem reject_alpha_any {Idx : Type} (P : Params Idx) (hα : P.α = 1 / 4) : ¬ P.Admissible :=
-  fun h => by have := h.α_range.1; have := h.φ_range.2; rw [hα] at *; linarith
-
 end Admissibility
 
 section ProgressFit
@@ -138,19 +140,15 @@ theorem allProposers_unfit {O : OutputSchema} {Info : Type} [DecidableEq Info]
   rw [hF] at this
   cases this
 
-/-- A recurrence does not fit a poll skeleton (no slot proposers). -/
-theorem noProgressFit (n : Nat) (ρ : Recurrence) : ¬ (ProgressReq.recur ρ).Fits (pollSkel n) := by
-  intro h
-  cases h
-
-/-- No contract with a recurrence requirement fits the poll shape. -/
+/-- No contract with a recurrence requirement fits the poll shape: a recurrence
+fits only `.sized 1` proposers, and the poll skeleton has none. -/
 theorem noProgressFit_contract (K : Contract schema ProgressReq) (cap : Capability) (i : K.Idx)
     (ρ : Recurrence) (hK : K.progress cap i = .recur ρ) :
     ¬ K.ProgressFits (fun pub => pollShape pub) := by
   intro h
   have := h cap i ⟨1, 1, by decide⟩
   rw [hK] at this
-  exact noProgressFit 1 ρ this
+  cases this
 
 /-- A bound on the validators not ready fits every skeleton (round robin). -/
 theorem notReadyAtMost_fits {n : Nat} (sk : Skeleton n) (m : ℕ+) :
@@ -174,13 +172,13 @@ theorem credential_forgery_excluded {F : ShapeFamily O Info} {V : Type} [Fintype
   hk (hv.credentials i w o t he o' hc k _ ha)
 
 open Consensus.Shape.Tests.Shapes (trivialFamily)
-open Consensus.Shape.Tests.Realizable (point3 key3 sel3 sel3_admits)
+open Consensus.Shape.Tests.Realizable (point3 sel3 sel3_admits)
 
 /-- A run of the trivial shape at the 3-node point with the admissible
 selection `sel3` (key 2 proposes every slot) that delivers to validator 1 a
 header of slot 0 signed by key 1 as proposer. -/
 def forgedProposal : Model.Run (compiled trivialFamily) point3.env :=
-  Model.mkRun point3.honest point3.horizon key3 sel3 (fun _ _ => []) (fun _ _ => [])
+  Model.mkRun point3.honest point3.horizon (pkiFin 3) sel3 (fun _ _ => []) (fun _ _ => [])
     (fun _ => 1)
     [.deliver 1 (.mk (.signed ⟨1, by simp⟩ (ShapeRole.proposer 0))
       (.item ⟨.root, 0, 0, ()⟩) []) 0]

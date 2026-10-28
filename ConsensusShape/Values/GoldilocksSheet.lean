@@ -70,7 +70,7 @@ E1/E2 evidence binding exists (obligation (7)).
   `final_heal_covers_window` (the final latency and heal point cover one
   window plus the pattern span, for every `R` and `gf`),
   `finalRecur_delay_vs_window` (the intended FL2 delay `W_W` does not),
-  `EnvPoint.two_mul_card_faulty_union_lt`.
+  `EnvPoint.two_mul_card_faulty_union_lt` (tests: `ConsensusShapeTests/Goldilocks`).
 
 ## §2 From the extras (`GoldilocksExtra` fields; statements only)
 
@@ -177,6 +177,9 @@ Francesco.
    takes FG-SA environments asleep before `0` or proves the clamped premise
    implies FG-SA's. With `η > 0` the contract's denominator (ready ∪ awake in
    the look-back ∪ faulty) is stronger than plain sleepy participation.
+   The cover ½ at `b₀` gives FG-SA's `OutageE1` (faulty validators and
+   uncovered wakers are fewer than half): `EnvPoint.two_mul_card_faulty_union_lt`
+   (tests: `ConsensusShapeTests/Goldilocks`).
 5. Readers caught up after the window (FG-SA proves repair-ready readers only).
 6. Ready-vs-awake counting (M25).
 7. E1/E2 evidence binding (`conflicts` = FG-SA's slashing rule).
@@ -202,32 +205,6 @@ Francesco.
     on the FG-SA run model. -/
 
 namespace Consensus
-
-namespace EnvPoint
-
-variable {V : Type} [Fintype V] [DecidableEq V] {p : EnvPoint V}
-
-/-- If every validator ready at `t` is in an honest set `C`, and `W` avoids
-`C`, then more than half of all validators ready gives `2·|faulty ∪ W| < n`
-(the outage cover at `b₀` with `cover = ½` gives FG-SA's `OutageE1`: faulty
-validators and uncovered wakers are fewer than half). -/
-theorem two_mul_card_faulty_union_lt {c t : Time} {C W : Finset V}
-    (hR : p.readyAt c t ⊆ C) (hC : C ⊆ p.honest) (hW : Disjoint W C)
-    (h : p.ReadyOfAll (1 / 2) c t) : 2 * (p.faulty ∪ W).card < Fintype.card V := by
-  have hdis : Disjoint (p.faulty ∪ W) C := by
-    refine Finset.disjoint_union_left.mpr ⟨?_, hW⟩
-    refine Finset.disjoint_left.mpr fun v hv hvC => ?_
-    exact (Finset.mem_sdiff.mp hv).2 (hC hvC)
-  have hsum : (p.faulty ∪ W).card + C.card ≤ Fintype.card V := by
-    rw [← Finset.card_union_of_disjoint hdis]
-    exact Finset.card_le_univ _
-  have hRC : (p.readyAt c t).card ≤ C.card := Finset.card_le_card hR
-  have h' : (Fintype.card V : ℚ) < 2 * (p.readyAt c t).card := by
-    unfold ReadyOfAll at h; linarith
-  have h'' : Fintype.card V < 2 * (p.readyAt c t).card := by exact_mod_cast h'
-  omega
-
-end EnvPoint
 
 namespace Shape
 
@@ -277,7 +254,7 @@ theorem range_head (pp : FGSAParams) (gf : ℕ+) {V R : Type} [Fintype V] {p : E
   rwa [hspan] at this
 
 /-- `B_H^F` is at least `12·P = 48·R` (`Δ`-coefficient), at every gap. -/
-theorem bhf_ge (pp : FGSAParams) (k : Nat) : 48 * pp.R ≤ pp.bhf k := by
+private theorem bhf_ge (pp : FGSAParams) (k : Nat) : 48 * pp.R ≤ pp.bhf k := by
   have h1 : 48 * pp.R ≤ pp.bhf1 k := by
     unfold FGSAParams.bhf1 FGSAParams.P; omega
   have h2 : 48 * pp.R ≤ pp.bhf2 k := by
@@ -345,8 +322,8 @@ abbrev gSys (F : ShapeFamily goldilocksSchema Info) (V : Type) [Fintype V] [Deci
 
 /-- The reviewed bindings: the Goldilocks skeleton (grid of `4·Δ` slots, one
 proposer per slot). The E1/E2 `conflicts` binding is obligation (7). -/
-structure GoldilocksBindings (F : ShapeFamily goldilocksSchema Info) : Prop where
-  skel : ∀ pub, (F pub).skel = goldilocksSkeleton pub.n
+def GoldilocksBindings (F : ShapeFamily goldilocksSchema Info) : Prop :=
+  ∀ pub, (F pub).skel = goldilocksSkeleton pub.n
 
 section Vocabulary
 
@@ -598,7 +575,8 @@ theorem nonFraming (r : (gSys F V).Run) (hv : (gSys F V).Valid r) : (gSys F V).N
 `conflicts` predicate: two honest finalized reads are compatible, or their
 joint views convict at least a third of all validators. -/
 theorem finalized_accountable (r : (gSys F V).Run) (hv : (gSys F V).Valid r) :
-    (gSys F V).AccountablySafe r (1 / 3) gFinalized 0 ∨ (gSys F V).Excuse r :=
+    ((gSys F V).trace r).AccountablySafe ((gSys F V).view r) ((gSys F V).convicts r)
+      (1 / 3) gFinalized 0 ∨ (gSys F V).Excuse r :=
   ((goldilocks_good h V).behaviour.final gFinalized rfl).accountable r hv trivial
 
 /-- **F1, F2 / P-ANY-FIN-SAFE.** With fewer than a third faulty, the finalized
@@ -731,24 +709,6 @@ theorem finalized_txLive (gf : ℕ+) (gst : Time) (r : (gSys F V).Run)
   ((goldilocks_good h V).behaviour.final gFinalized rfl).live gf gst r hv ⟨hH, hp⟩
 
 end GoldilocksTarget
-
-/-! ## §2: the extras, as stated by the target (projections) -/
-
-/-- The extras of a target. -/
-theorem GoldilocksTarget.extra {F : ShapeFamily goldilocksSchema Info} {pp : FGSAParams}
-    (h : GoldilocksTarget F pp) : GoldilocksExtra F pp :=
-  h.2.2
-
-/-- The bindings of a target. -/
-theorem GoldilocksTarget.bindings {F : ShapeFamily goldilocksSchema Info} {pp : FGSAParams}
-    (h : GoldilocksTarget F pp) : GoldilocksBindings F :=
-  h.1
-
-/-- A target's family has one proposer per slot, so the progress fits (the
-bindings imply the `ProgressFits` part of acceptance). -/
-theorem GoldilocksBindings.progressFits {F : ShapeFamily goldilocksSchema Info}
-    (hb : GoldilocksBindings F) (pp : FGSAParams) : (goldilocksContract pp).ProgressFits F :=
-  goldilocks_progressFits pp F fun pub => by rw [hb.skel pub]; rfl
 
 end Shape
 

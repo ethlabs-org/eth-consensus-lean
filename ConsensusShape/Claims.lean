@@ -25,8 +25,7 @@ L0 `HoldsAlways`):
 `ProposalLiveReady` replaces transaction liveness (the payload bridge,
 `proposalLive_txLive`). It owes a proposal only when a node is ready at the
 inclusion deadline, exactly as L0 `TxLive` owes inclusion only to ready
-readers; the unconditional `ProposalLive` is a sufficient helper
-(`ProposalLive.ready`). Prefix forms are not restated: they follow from the
+readers. Prefix forms are not restated: they follow from the
 L0 prefix closure (`Good.*_prefix`). Non-framing is an L1 theorem, so there is
 no field for it. `refinement` turns these into `Behaviour`. -/
 

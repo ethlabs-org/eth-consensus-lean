@@ -1,5 +1,6 @@
 module
 public import ConsensusShapeTests.Model
+public import ConsensusShapeTests.Common
 public import Mathlib.Tactic
 @[expose] public section
 
@@ -14,7 +15,6 @@ public import Mathlib.Tactic
 * `receipt_at_deadline`: receipt exactly at `t + Δ` meets `PSync 0`
   ("received by that time").
 * `held_restart`: a receipt before a wake is held until the wake, not after.
-* `psync_mono_instance`: a later GST is weaker (`PSync.mono`).
 * `negative_send_covered`: sends at negative times are
   covered. Two always-awake honest validators, `Δ = 2`, GST `0`; validator 0
   sends at `-1` and nobody receives: not `PSync 0` (validator 1 must hold the
@@ -36,6 +36,30 @@ public import Mathlib.Tactic
   at `0, 1, 2`; `42` relayed at `1`) truncated at `1` is valid, keeps exactly
   the four ticks at times `≤ 1`, is the L0 prefix of the full trace at `1`,
   and still holds the relayed transaction in its log. -/
+
+/-! ## Explanatory network facts (moved from the library) -/
+
+namespace Consensus.CommLog
+
+variable {V M : Type} {p : EnvPoint V} {L : CommLog V M}
+
+/-- A smaller cut is weaker. -/
+theorem Delivers.mono_cut {dl : Time → Time} {cut cut' : Time} (h : L.Delivers p dl cut)
+    (hc : cut' ≤ cut) : L.Delivers p dl cut' :=
+  h.reindex (f := id) (fun _ => le_rfl) (fun _ => rfl) hc
+
+/-- A later GST is weaker. -/
+theorem PSync.mono {g g' : Time} (hg : g ≤ g') (h : L.PSync p g) : L.PSync p g' := by
+  apply h.reindex (f := fun a => max a g') (fun a => le_max_left a g') ?_ le_rfl
+  intro a
+  show max a g' + p.env.Δ = max (max a g') g + p.env.Δ
+  rw [max_assoc, max_eq_left hg]
+
+/-- Synchrony up to a cut is weaker at a smaller cut. -/
+theorem SyncUntil.mono {b b' : Time} (hb : b' ≤ b) (h : L.SyncUntil p b) : L.SyncUntil p b' :=
+  Delivers.mono_cut h hb
+
+end Consensus.CommLog
 
 namespace Consensus.Shape.Tests.Network
 open Consensus
@@ -99,10 +123,6 @@ theorem receipt_at_deadline : (logW recvAt2).PSync ptW 0 := by
   · intro u _ x τ _ _ hx
     exact absurd hx (List.not_mem_nil)
 
-/-- A later GST is weaker. -/
-theorem psync_mono_instance : (logW recvAt2).PSync ptW 3 :=
-  receipt_at_deadline.mono (by decide)
-
 /-- Validator 0 awake at `0`, asleep at `1`, awake again (a wake) at `2`. -/
 def envR : Env (Fin 2) := ⟨1, by decide, fun _ t => decide (t ≠ 1)⟩
 
@@ -157,12 +177,12 @@ open Consensus.Model in
 /-- On the model test run the system's log is the engine's communication: the
 inbox (with the relayed transaction `42` at time `2`) and the sends. -/
 theorem faithful_relayedRun :
-    ((sysOf Model.schema Model.family (Fin 2)).log ⟨Model.env, Model.relayedRun⟩).inbox =
+    ((sysOf schema Model.family (Fin 2)).log ⟨Model.env, Model.relayedRun⟩).inbox =
       Model.relayedRun.inbox ∧
-    42 ∈ ((sysOf Model.schema Model.family (Fin 2)).log ⟨Model.env, Model.relayedRun⟩).inbox 0 2 ∧
-    ∀ v o t, ((sysOf Model.schema Model.family (Fin 2)).log ⟨Model.env, Model.relayedRun⟩).sent
+    42 ∈ ((sysOf schema Model.family (Fin 2)).log ⟨Model.env, Model.relayedRun⟩).inbox 0 2 ∧
+    ∀ v o t, ((sysOf schema Model.family (Fin 2)).log ⟨Model.env, Model.relayedRun⟩).sent
       v ⟨Model.env, o⟩ t ↔ Model.relayedRun.releases v o t := by
-  have hf := sysOf_log_faithful (O := Model.schema) (F := Model.family) (V := Fin 2)
+  have hf := sysOf_log_faithful (O := schema) (F := Model.family) (V := Fin 2)
     ⟨Model.env, Model.relayedRun⟩
   refine ⟨hf.2.2.2, ?_, hf.1⟩
   rw [hf.2.2.2]
@@ -171,19 +191,19 @@ theorem faithful_relayedRun :
 open Consensus.Model in
 /-- A model run with one real delivery: validator 1 receives `o` at `1`. -/
 def deliveredRun (o : (protoOf Model.family Model.env).Object) : Run Model.family Model.env :=
-  mkRun Finset.univ 5 Model.pki Model.sel (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
+  mkRun Finset.univ 5 (pkiFin 2) Model.sel (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
     [.deliver 1 o 1]
 
 open Consensus.Model in
 /-- The delivery is a receipt in the system's log, tagged with the run's
 environment, and no message tagged with another environment is in the log. -/
 theorem faithful_receipt (o : (protoOf Model.family Model.env).Object) :
-    ((sysOf Model.schema Model.family (Fin 2)).log ⟨Model.env, deliveredRun o⟩).recv
+    ((sysOf schema Model.family (Fin 2)).log ⟨Model.env, deliveredRun o⟩).recv
       1 ⟨Model.env, o⟩ 1 ∧
     ∀ (E' : Env (Fin 2)) (o' : (protoOf Model.family E').Object) v t, E' ≠ Model.env →
-      ¬ ((sysOf Model.schema Model.family (Fin 2)).log ⟨Model.env, deliveredRun o⟩).recv
+      ¬ ((sysOf schema Model.family (Fin 2)).log ⟨Model.env, deliveredRun o⟩).recv
         v ⟨E', o'⟩ t := by
-  have hf := sysOf_log_faithful (O := Model.schema) (F := Model.family) (V := Fin 2)
+  have hf := sysOf_log_faithful (O := schema) (F := Model.family) (V := Fin 2)
     ⟨Model.env, deliveredRun o⟩
   refine ⟨(hf.2.1 1 o 1).mpr ⟨0, rfl⟩, ?_⟩
   intro E' o' v t hE hr
@@ -246,7 +266,7 @@ theorem silent_run_valid (O : OutputSchema) (F : Family O) (V : Type) [Fintype V
 open Consensus.Model in
 /-- Both validators tick at `0, 1, 2`; `42` is relayed to both at `1`. -/
 def tickedRun : Run Model.family Model.env :=
-  mkRun Finset.univ 2 Model.pki Model.sel (fun _ _ => []) (fun _ t => if t = 1 then [42] else [])
+  mkRun Finset.univ 2 (pkiFin 2) Model.sel (fun _ _ => []) (fun _ t => if t = 1 then [42] else [])
     (fun _ => 0)
     [.tick 0 0, .tick 1 0, .tick 0 1, .tick 1 1, .tick 0 2, .tick 1 2]
 
@@ -288,9 +308,9 @@ full trace at `1`, and its log still has the transaction relayed at `1`. -/
 theorem truncate_relayedRun :
     (tickedRun.truncate 1).events = [.tick 0 0, .tick 1 0, .tick 0 1, .tick 1 1] ∧
     (tickedRun.truncate 1).ExecutionValid ∧
-    ((sysOf Model.schema Model.family (Fin 2)).trace ⟨Model.env, tickedRun.truncate 1⟩).PrefixOf
-      ((sysOf Model.schema Model.family (Fin 2)).trace ⟨Model.env, tickedRun⟩) 1 ∧
-    42 ∈ ((sysOf Model.schema Model.family (Fin 2)).log
+    ((sysOf schema Model.family (Fin 2)).trace ⟨Model.env, tickedRun.truncate 1⟩).PrefixOf
+      ((sysOf schema Model.family (Fin 2)).trace ⟨Model.env, tickedRun⟩) 1 ∧
+    42 ∈ ((sysOf schema Model.family (Fin 2)).log
       ⟨Model.env, tickedRun.truncate 1⟩).inbox 0 1 := by
   refine ⟨?_, Run.truncate_valid tickedRun_valid (by decide) (by decide),
     (Run.truncate_prefix tickedRun_valid 1).1, ?_⟩

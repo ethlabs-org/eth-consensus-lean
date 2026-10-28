@@ -76,10 +76,6 @@ structure Env (V : Type) where
 def Wakes {V : Type} (E : Env V) (v : V) (t : Time) : Prop :=
   E.awake v t = true ∧ E.awake v (t - 1) = false
 
-/-- Awake throughout the half-open interval `[a, b)`. -/
-def AwakeOn {V : Type} (E : Env V) (v : V) (a b : Time) : Prop :=
-  ∀ u, a ≤ u → u < b → E.awake v u = true
-
 /-- The environment point of a run: the environment, the honest nodes, the
 horizon, and the adversarially timed transactions submitted to each node.
 A transaction submitted to an awake honest node is relayed by the network. -/
@@ -139,7 +135,7 @@ noncomputable def awakeIn (a b : Time) : Finset V := by
   exact p.honest.filter (fun v => ∃ u, a ≤ u ∧ u ≤ b ∧ p.env.awake v u = true)
 
 /-- η-sleepy participation at `t` (look-back `η`, a duration). With `η ≤ 0`
-it is plain `ReadyAbove` (`EnvPoint.etaReadyAbove_zero`). With `η > 0` the
+it is plain `ReadyAbove` (`EnvPoint.etaReadyAbove_zero`, tests). With `η > 0` the
 ready honest validators exceed fraction `θ` of the honest validators awake at
 some time in the look-back window `[max 0 (t − η), t]` together with the
 faulty ones:
@@ -150,7 +146,7 @@ the threshold, even if never ready (a validator awake only briefly still
 counts), so for `0 ≤ θ`, `0 < η`, a nonnegative catch-up `0 ≤ c` and
 `0 ≤ t` this implies the awake-count form
 `θ · |awake_[max 0 (t−η), t] ∪ faulty| < |awake_t|`
-(`EnvPoint.EtaReadyAbove.awakeForm`). Startup: the window is clamped at `0`,
+(`EnvPoint.EtaReadyAbove.awakeForm`, tests). Startup: the window is clamped at `0`,
 so no participation history before time `0` is assumed (readiness at negative
 times holds vacuously and is not used). `ready_t` is in the union only so the
 definition is monotone at every `t`; for `t ≥ 0` it is contained in
@@ -159,15 +155,6 @@ def EtaReadyAbove (θ : ℚ) (η c t : Time) : Prop :=
   if η ≤ 0 then p.ReadyAbove θ c t
   else θ * ((p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card : ℚ) <
     (p.readyAt c t).card
-
-/-- More than fraction `φ` of all validators are honest and awake at `t`. -/
-def AwakeOfAll (φ : ℚ) (t : Time) : Prop :=
-  φ * Fintype.card V < ((p.awakeAt t).card : ℚ)
-
-/-- At most `m` validators are not ready (faulty, or honest and not ready) at
-`t`. -/
-def NotReadyAtMost (m : Nat) (c t : Time) : Prop :=
-  Fintype.card V ≤ (p.readyAt c t).card + m
 
 /-- Fewer than fraction `β` of all validators are faulty. -/
 def FaultsBelow (β : ℚ) : Prop := (p.faulty.card : ℚ) < β * Fintype.card V

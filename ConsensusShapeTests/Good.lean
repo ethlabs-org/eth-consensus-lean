@@ -1,5 +1,6 @@
 module
 public import ConsensusProblem
+public import ConsensusShapeTests.Regimes
 public import Mathlib.Tactic
 @[expose] public section
 
@@ -34,6 +35,40 @@ public import Mathlib.Tactic
   `0`; honest validators asleep throughout do not count at startup.
 * `stable_alias_final_sleepy_live` (override 3): a schema that aliases stable
   to final must make the final output live in the sleepy regime. -/
+
+namespace Consensus.EnvPoint
+
+variable {V : Type} [Fintype V] [DecidableEq V] (p : EnvPoint V)
+
+/-- More than fraction `φ` of all validators are honest and awake at `t`
+(moved from L0: only this documentation test uses it). -/
+def AwakeOfAll (φ : ℚ) (t : Time) : Prop :=
+  φ * Fintype.card V < ((p.awakeAt t).card : ℚ)
+
+omit [DecidableEq V] in
+/-- A smaller fraction of all validators honest and awake is weaker. -/
+theorem AwakeOfAll.mono {φ φ' : ℚ} {t : Time} (h : p.AwakeOfAll φ' t) (hle : φ ≤ φ') :
+    p.AwakeOfAll φ t :=
+  lt_of_le_of_lt (mul_le_mul_of_nonneg_right hle (by positivity)) h
+
+variable {p}
+
+omit [DecidableEq V] in
+/-- Healthy on `[max g 0, b]` gives more than `φ·n` honest and awake at every
+time in it. -/
+theorem HealthyOn.awakeOfAll {φ : ℚ} {g b t : Time} (h : p.HealthyOn φ g b)
+    (ht : max g 0 ≤ t) (htb : t ≤ b) : p.AwakeOfAll φ t := by
+  classical
+  obtain ⟨H, hH, hc, ha⟩ := h
+  have hsub : H ⊆ p.awakeAt t := by
+    intro v hv
+    unfold awakeAt
+    exact Finset.mem_filter.mpr ⟨hH hv, ha v hv t ht htb⟩
+  have : (H.card : ℚ) ≤ (p.awakeAt t).card := by exact_mod_cast Finset.card_le_card hsub
+  unfold AwakeOfAll
+  linarith
+
+end Consensus.EnvPoint
 
 namespace Consensus.Shape.Tests.Good
 

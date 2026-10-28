@@ -75,10 +75,5 @@ theorem ledgerOf_prefix {c d : Chain Info} (h : c <+: d) : ledgerOf c <+: ledger
     x ∈ ledgerOf c ↔ ∃ h ∈ c, x ∈ decodeTxs h.input := by
   simp [ledgerOf, keepFirst, mem_keepFresh, List.mem_flatMap, Function.comp_def]
 
-/-- Compatible chains have compatible ledgers. -/
-theorem compatible_ledgerOf {c d : Chain Info} (h : Compatible c d) :
-    Compatible (ledgerOf c) (ledgerOf d) :=
-  h.imp ledgerOf_prefix ledgerOf_prefix
-
 end Consensus.Blocks
 end

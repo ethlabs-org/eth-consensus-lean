@@ -104,12 +104,13 @@ end Run
 of the system run convicts nobody. -/
 theorem convicted_honestEvidence_eq_empty (rho : Run F E)
     (h : ∀ x, ¬ rho.Slashable rho.Observed x) :
-    (sysOf O F V).convicted ⟨E, rho⟩ ((sysOf O F V).honestEvidence ⟨E, rho⟩) = ∅ := by
+    Consensus.convicted ((sysOf O F V).convicts ⟨E, rho⟩)
+      ((sysOf O F V).honestEvidence ⟨E, rho⟩) = ∅ := by
   classical
   apply Finset.eq_empty_of_forall_notMem
   intro x hx
   have hconv : (sysOf O F V).convicts ⟨E, rho⟩ ((sysOf O F V).honestEvidence ⟨E, rho⟩) x := by
-    unfold System.convicted Consensus.convicted at hx
+    unfold Consensus.convicted at hx
     simpa using hx
   apply h x
   obtain ⟨o, ho, o', ho', h1, h2, h3⟩ := hconv

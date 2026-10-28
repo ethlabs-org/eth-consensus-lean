@@ -12,7 +12,7 @@ digest (no digest is reserved); its position is a slot or a height; its
 information (for example a round). A chain lists headers oldest first, the root
 implicit before the first. Chains are compared structurally, never through
 digests: linkage, increasing positions and provenance are predicates on a
-chain, each closed under prefixes. -/
+chain. -/
 
 namespace Consensus.Blocks
 
@@ -88,39 +88,6 @@ def PosIncreasing (c : Chain Info) : Prop := PosFrom 0 c
 def Provenant {n : Nat} {Role Body : Type} (seen : Set (Model.Obj n Role (Header Info) Body))
     (ok : Header Info → Role → Prop) (c : Chain Info) : Prop :=
   ∀ h ∈ c, ∃ k r cs, ok h r ∧ Model.Obj.mk (.signed k r) (.item h) cs ∈ seen
-
-theorem linkedFrom_prefix {hash : Header Info → Nat} :
-    ∀ {prev : ParentRef} {c d : Chain Info}, c <+: d → LinkedFrom hash prev d →
-      LinkedFrom hash prev c
-  | _, [], _, _, _ => trivial
-  | _, _ :: _, [], hp, _ => absurd (List.eq_nil_of_prefix_nil hp) (by simp)
-  | _, x :: c, y :: d, hp, hd => by
-    obtain ⟨rfl, hp'⟩ := List.cons_prefix_cons.mp hp
-    exact ⟨hd.1, linkedFrom_prefix hp' hd.2⟩
-
-/-- Linkage is prefix-closed. -/
-theorem linked_prefix {hash : Header Info → Nat} {c d : Chain Info} (h : c <+: d)
-    (hd : Linked hash d) : Linked hash c :=
-  linkedFrom_prefix h hd
-
-theorem posFrom_prefix :
-    ∀ {start : Nat} {c d : Chain Info}, c <+: d → PosFrom start d → PosFrom start c
-  | _, [], _, _, _ => trivial
-  | _, _ :: _, [], hp, _ => absurd (List.eq_nil_of_prefix_nil hp) (by simp)
-  | _, x :: c, y :: d, hp, hd => by
-    obtain ⟨rfl, hp'⟩ := List.cons_prefix_cons.mp hp
-    exact ⟨hd.1, posFrom_prefix hp' hd.2⟩
-
-/-- Increasing positions are prefix-closed. -/
-theorem posIncreasing_prefix {c d : Chain Info} (h : c <+: d) (hd : PosIncreasing d) :
-    PosIncreasing c :=
-  posFrom_prefix h hd
-
-/-- Provenance is prefix-closed. -/
-theorem provenant_prefix {n : Nat} {Role Body : Type}
-    {seen : Set (Model.Obj n Role (Header Info) Body)} {ok : Header Info → Role → Prop}
-    {c d : Chain Info} (h : c <+: d) (hd : Provenant seen ok d) : Provenant seen ok c :=
-  fun x hx => hd x (h.subset hx)
 
 end Chain
 

@@ -133,22 +133,6 @@ theorem Delivers.reindex {dl dl' f : Time → Time} {cut cut' : Time} (h : L.Del
     rw [hd] at hdc hdh haw ⊢
     exact h.txs u hu x τ hτ hua hx w hw (f a) (le_trans hτa (hf a)) (le_trans hdc hc) hdh haw
 
-/-- A smaller cut is weaker. -/
-theorem Delivers.mono_cut {dl : Time → Time} {cut cut' : Time} (h : L.Delivers p dl cut)
-    (hc : cut' ≤ cut) : L.Delivers p dl cut' :=
-  h.reindex (f := id) (fun _ => le_rfl) (fun _ => rfl) hc
-
-/-- A later GST is weaker. -/
-theorem PSync.mono {g g' : Time} (hg : g ≤ g') (h : L.PSync p g) : L.PSync p g' := by
-  apply h.reindex (f := fun a => max a g') (fun a => le_max_left a g') ?_ le_rfl
-  intro a
-  show max a g' + p.env.Δ = max (max a g') g + p.env.Δ
-  rw [max_assoc, max_eq_left hg]
-
-/-- Synchrony up to a cut is weaker at a smaller cut. -/
-theorem SyncUntil.mono {b b' : Time} (hb : b' ≤ b) (h : L.SyncUntil p b) : L.SyncUntil p b' :=
-  Delivers.mono_cut h hb
-
 /-- With no honest send before `0`, `PSync 0` is synchrony up to the horizon
 (and so up to every cut). Without `SendsFromZero` this fails: a send at
 `t < 0` has `PSync 0` deadline `Δ`, later than `t + Δ`. -/

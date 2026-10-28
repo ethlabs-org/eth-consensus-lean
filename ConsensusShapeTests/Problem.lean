@@ -140,6 +140,11 @@ theorem shortHistory_ready : shortHistory.Ready 0 true 6 := by
   apply decide_eq_true
   simpa using ht
 
+/-- Awake throughout the half-open interval `[a, b)` (moved from L0: only this
+test uses it). -/
+def AwakeOn {V : Type} (E : Env V) (v : V) (a b : Time) : Prop :=
+  ∀ u, a ≤ u → u < b → E.awake v u = true
+
 theorem shortHistory_not_awake_delta : ¬ AwakeOn shortHistory.env true (6 - 3) 6 := by
   intro h
   have := h 3 (by decide) (by decide)
@@ -168,19 +173,22 @@ fails: the conflicting reads at cut 0 carry no evidence of their own. So
 accountability is local: global slashability would not satisfy it. -/
 theorem local_accountability_teeth :
     (Fintype.card (Fin 3) : ℚ) * (1 / 3) ≤
-        (localGlobal.convicted () (localGlobal.honestEvidence ())).card ∧
-      localGlobal.NonFraming () ∧ ¬ localGlobal.AccountablySafe () (1 / 3) () 0 := by
+        (Consensus.convicted (localGlobal.convicts ()) (localGlobal.honestEvidence ())).card ∧
+      localGlobal.NonFraming () ∧ 
+      ¬ (localGlobal.trace ()).AccountablySafe (localGlobal.view ()) (localGlobal.convicts ())
+        (1 / 3) () 0 := by
   classical
-  have hfull : localGlobal.convicted () (localGlobal.honestEvidence ()) = {2} := by
+  have hfull :
+      Consensus.convicted (localGlobal.convicts ()) (localGlobal.honestEvidence ()) = {2} := by
     ext x
-    simp only [System.convicted, Consensus.convicted, Finset.mem_filter, Finset.mem_univ,
+    simp only [Consensus.convicted, Finset.mem_filter, Finset.mem_univ,
       true_and, Finset.mem_singleton]
     refine ⟨fun h => h.2, fun h => ⟨⟨0, by decide, ?_⟩, h⟩⟩
     exact Set.mem_univ (α := Unit) ()
-  have hempty : localGlobal.convicted ()
+  have hempty : Consensus.convicted (localGlobal.convicts ())
       (localGlobal.view () 0 0 ∪ localGlobal.view () 1 0) = ∅ := by
     ext x
-    simp only [System.convicted, Consensus.convicted, Finset.mem_filter, Finset.mem_univ,
+    simp only [Consensus.convicted, Finset.mem_filter, Finset.mem_univ,
       true_and, Finset.notMem_empty, iff_false]
     rintro ⟨h | h, _⟩ <;> exact absurd h (Set.notMem_empty _)
   refine ⟨?_, ?_, ?_⟩
@@ -196,7 +204,8 @@ theorem local_accountability_teeth :
     · change Compatible [1] [2] at hc
       simp [Compatible] at hc
     · change (Fintype.card (Fin 3) : ℚ) * (1 / 3) ≤
-        (localGlobal.convicted () (localGlobal.view () 0 0 ∪ localGlobal.view () 1 0)).card at hc
+        (Consensus.convicted (localGlobal.convicts ())
+          (localGlobal.view () 0 0 ∪ localGlobal.view () 1 0)).card at hc
       rw [hempty] at hc
       norm_num at hc
 

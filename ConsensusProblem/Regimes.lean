@@ -30,10 +30,10 @@ The regimes are fixed here, over an environment point and a communication log:
   and progress only);
 * **outage `[b₀, b₁)` armed at `T`**: synchronous before `b₀`, partially
   synchronous with GST `b₁`, η-sleepy throughout (look-back `η·Δ`; `η = 0` is
-  plain sleepy, `EnvPoint.etaSleepyOn_zero`, `Regime.outage_eta_zero`; for
+  plain sleepy, `EnvPoint.etaSleepyOn_zero`, `Regime.outage_eta_zero` (tests); for
   `η > 0` the ready validators exceed fraction `θ` of those awake at some time
   in the window `[max 0 (t − η·Δ), t]` plus the faulty ones, which implies
-  the awake-count form, `EnvPoint.EtaReadyAbove.awakeForm`), more
+  the awake-count form, `EnvPoint.EtaReadyAbove.awakeForm`, tests), more
   than fraction `cover` ready at `b₀`; `T` is at least `lag·Δ` before `b₀`,
   and the window is at most `budget·Δ` long.
 
@@ -148,49 +148,6 @@ def HealthyFrom (φ : ℚ) (g : Time) : Prop := p.HealthyOn φ g p.horizon
 
 variable {p}
 
-/-- A smaller fraction is weaker. -/
-theorem SleepyOn.mono {θ θ' : ℚ} {c a b : Time} (h : p.SleepyOn θ' c a b) (hle : θ ≤ θ') :
-    p.SleepyOn θ c a b :=
-  fun t ha hb => (h t ha hb).mono p hle
-
-/-- With look-back `0`, η-sleepy is plain sleepy. -/
-theorem etaSleepyOn_zero (θ : ℚ) (c a b : Time) :
-    p.EtaSleepyOn θ 0 c a b ↔ p.SleepyOn θ c a b :=
-  forall_congr' fun t => imp_congr_right fun _ => imp_congr_right fun _ =>
-    p.etaReadyAbove_zero θ c t
-
-/-- η-sleepy (`θ ≥ 0`) implies plain sleepy. -/
-theorem EtaSleepyOn.sleepyOn {θ : ℚ} {η c a b : Time} (h : p.EtaSleepyOn θ η c a b)
-    (h0 : 0 ≤ θ) : p.SleepyOn θ c a b :=
-  fun t ha hb => (h t ha hb).readyAbove p h0
-
-/-- A smaller fraction (`θ ≥ 0`) and a shorter look-back are weaker. -/
-theorem EtaSleepyOn.mono {θ θ' : ℚ} {η η' c a b : Time} (h : p.EtaSleepyOn θ' η' c a b)
-    (h0 : 0 ≤ θ) (hθ : θ ≤ θ') (hη : η ≤ η') : p.EtaSleepyOn θ η c a b :=
-  fun t ha hb => (h t ha hb).mono p h0 hθ hη
-
-omit [DecidableEq V] in
-/-- A smaller fraction is weaker. -/
-theorem HealthyOn.mono {φ φ' : ℚ} {g b : Time} (h : p.HealthyOn φ' g b) (hle : φ ≤ φ') :
-    p.HealthyOn φ g b := by
-  obtain ⟨H, hH, hc, ha⟩ := h
-  exact ⟨H, hH, lt_of_le_of_lt (mul_le_mul_of_nonneg_right hle (by positivity)) hc, ha⟩
-
-omit [DecidableEq V] in
-/-- Healthy on `[max g 0, b]` gives more than `φ·n` honest and awake at every
-time in it. -/
-theorem HealthyOn.awakeOfAll {φ : ℚ} {g b t : Time} (h : p.HealthyOn φ g b)
-    (ht : max g 0 ≤ t) (htb : t ≤ b) : p.AwakeOfAll φ t := by
-  classical
-  obtain ⟨H, hH, hc, ha⟩ := h
-  have hsub : H ⊆ p.awakeAt t := by
-    intro v hv
-    unfold awakeAt
-    exact Finset.mem_filter.mpr ⟨hH hv, ha v hv t ht htb⟩
-  have : (H.card : ℚ) ≤ (p.awakeAt t).card := by exact_mod_cast Finset.card_le_card hsub
-  unfold AwakeOfAll
-  linarith
-
 /-- Healthy bounds the faults: a set of more than `φ·n` honest validators
 leaves fewer than `(1 − φ)·n` faulty. -/
 theorem HealthyOn.faultsBelow {φ : ℚ} {g b : Time} (h : p.HealthyOn φ g b) :
@@ -235,48 +192,6 @@ def Outage (T b₀ b₁ : Time) : Prop :=
   OutageTimes P p.env.Δ T b₀ b₁ ∧ L.OutageNet p b₀ b₁ ∧
     p.EtaSleepy P.θ (P.ηDur p.env.Δ) (P.cDur p.env.Δ) ∧
     p.ReadyOfAll P.cover (P.cDur p.env.Δ) b₀
-
-variable {P p L}
-
-/-- With look-back `η = 0`, the outage regime's participation is plain
-sleepy throughout. -/
-theorem outage_eta_zero (hη : P.η = 0) {T b₀ b₁ : Time} :
-    Outage P p L T b₀ b₁ ↔ OutageTimes P p.env.Δ T b₀ b₁ ∧ L.OutageNet p b₀ b₁ ∧
-      p.Sleepy P.θ (P.cDur p.env.Δ) ∧ p.ReadyOfAll P.cover (P.cDur p.env.Δ) b₀ := by
-  unfold Outage EnvPoint.EtaSleepy EnvPoint.Sleepy
-  rw [show P.ηDur p.env.Δ = 0 by simp [Params.ηDur, hη], EnvPoint.etaSleepyOn_zero]
-
-/-- Weaker thresholds (same catch-up) keep the sleepy regime. -/
-theorem Sleepy.of_le {P' : Params Idx} (hc : P'.catchUp = P.catchUp) (hθ : P'.θ ≤ P.θ)
-    (h : Sleepy P p L) : Sleepy P' p L := by
-  refine ⟨h.1, ?_⟩
-  unfold Params.cDur; rw [hc]
-  exact EnvPoint.SleepyOn.mono h.2 hθ
-
-omit [DecidableEq V] in
-/-- Weaker thresholds keep the healthy regime. -/
-theorem Healthy.of_le {P' : Params Idx} {g : Time} (hφ : P'.φ ≤ P.φ) (h : Healthy P p L g) :
-    Healthy P' p L g :=
-  ⟨h.1, EnvPoint.HealthyOn.mono h.2 hφ⟩
-
-/-- Weaker thresholds (`θ' ≥ 0`), a shorter look-back, a shorter lag and a
-larger budget (same catch-up) keep the outage regime. -/
-theorem Outage.of_le {P' : Params Idx} {T b₀ b₁ : Time} (hc : P'.catchUp = P.catchUp)
-    (h0 : 0 ≤ P'.θ) (hθ : P'.θ ≤ P.θ) (hη : P'.η ≤ P.η) (hcov : P'.cover ≤ P.cover)
-    (hl : P'.lag ≤ P.lag) (hb : P.budget ≤ P'.budget) (h : Outage P p L T b₀ b₁) :
-    Outage P' p L T b₀ b₁ := by
-  obtain ⟨⟨hT, hlag, h01, hbud⟩, hn, hs, hr⟩ := h
-  have hΔ : (0 : Time) ≤ p.env.Δ := p.env.Δ_pos.le
-  have hl' : ((P'.lag : Nat) : Time) ≤ (P.lag : Time) := by exact_mod_cast hl
-  have hb' : ((P.budget : Nat) : Time) ≤ (P'.budget : Time) := by exact_mod_cast hb
-  refine ⟨⟨hT, ?_, h01, ?_⟩, hn, ?_, ?_⟩
-  · nlinarith
-  · nlinarith
-  · unfold Params.cDur; rw [hc]
-    have hη' : ((P'.η : Nat) : Time) ≤ (P.η : Time) := by exact_mod_cast hη
-    exact EnvPoint.EtaSleepyOn.mono hs h0 hθ (by unfold Params.ηDur; nlinarith)
-  · unfold Params.cDur; rw [hc]
-    exact hr.mono p hcov
 
 end Regime
 

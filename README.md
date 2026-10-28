@@ -138,7 +138,7 @@ Instances: `PSync g` (deadline `max a g + Δ`), `SyncUntil b` (deadline
 PSync b₁`. Every delivery obligation (all three clauses, in every instance)
 applies only when its deadline is within both the cut and the horizon: a
 `SyncUntil b` with `b` past the horizon still promises nothing after the
-horizon. `PSync.mono`: a later GST is weaker.
+horizon. `PSync.mono` (tests): a later GST is weaker.
 
 `EagerFrom g` is the shape of the canonical log: every honest send at `t` is
 received at every awake time in `[max t g, horizon]`, and no message is
@@ -185,14 +185,14 @@ submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 | `OutageTimes` | `0 ≤ T ∧ T + lag·Δ ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·Δ` |
 | η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·Δ), t] ∪ faulty\| < \|ready_t\|` |
 
-With `η = 0`, η-sleepy is plain sleepy (`etaSleepyOn_zero`,
+With `η = 0`, η-sleepy is plain sleepy (tests: `etaSleepyOn_zero`,
 `Regime.outage_eta_zero`). For `η > 0`, every validator awake at some time
 in the look-back window counts against the threshold, even one that was
 never ready. For `0 ≤ θ`, `0 < η`, `0 ≤ c` and `0 ≤ t`, η-sleepy implies the
-awake-count form (`EtaReadyAbove.awakeForm`). The look-back is clamped at `0`: no
+awake-count form (tests: `EtaReadyAbove.awakeForm`). The look-back is clamped at `0`: no
 participation history before time `0` is assumed. The GST is a parameter of
 the regimes, not of the environment. Weaker thresholds keep each regime
-(`Regime.*.of_le`).
+(tests: `Regime.*.of_le`).
 
 ### Numbers: `Params`, `standard`, `Admissible`
 
@@ -335,10 +335,10 @@ and non-framing (`sysOf_nonFraming`, from slashing protection in the engine).
 | Layer | Library | What it fixes |
 |---|---|---|
 | **L0, the problem** | `ConsensusProblem` | transactions, ledgers, capabilities and `OutputSchema`; environment points; traces and `CommLog` (opaque messages); the network rule; the properties; `Params` and the fixed regimes; `Good = Behaviour ∧ Adequate ∧ Realizable` |
-| **L1, the model** | `ConsensusModel`, `ConsensusModelProofs` | a shape-free execution model: PKI, closed selection, credentials, the engine (unit ticks, delivery, sleep and restarts, slashing protection), evidence and hashes; `sysOf` (every protocol family as an L0 system, with its real log) and `sysExternal`; the proofs (`sysOf_log_faithful`, `held_iff_served`, `canonical_run_from`, `Run.truncate_*`, `sysOf_adequate`, `honestNeverSlashed`, `sysOf_nonFraming`, lifting) |
+| **L1, the model** | `ConsensusModel`, `ConsensusModelProofs` | a shape-free execution model: PKI, closed selection, credentials, the engine (unit ticks, delivery, sleep and restarts, slashing protection), evidence and hashes; `sysOf` (every protocol family as an L0 system, with its real log) and `sysExternal`; the proofs (`sysOf_log_faithful`, `held_iff_served`, `canonical_run_from`, `Run.truncate_*`, `sysOf_adequate`, `honestNeverSlashed`, `sysOf_nonFraming`; injective-hash lifting is checked in `ConsensusShapeTests/Lift`) |
 | Blocks | `ConsensusBlocks` | protocol-free building blocks with at least two users: `TimeGrid`, `Selection` (`Pattern`, `Recurrence`, `ProgressReq`, `HonestReadyIn`, `PatternRecurrence`, `NotReadyOn`), `Chains`, `Payload` (`encodeTxs`, `ledgerOf`) |
 | **L2, the shape** | `ConsensusShape` | one generic `ChainShape`, `compile` onto L1, `shapeProgress`, chain-level `ShapeClaims`, `refinement` to `Behaviour`, `coverage`, generic `regimes_realizable`, the endpoint `Accepted` with `Accepted.good` |
-| Values | `ConsensusShape/Values` | Goldilocks (pinned numbers and the properties sheet), Streamlet, Tendermint |
+| Values | `ConsensusShape/Values` | Goldilocks (pinned numbers and the properties sheet); Streamlet and Tendermint are test values (`ConsensusShapeTests/Values`) |
 
 L2's acceptance endpoint (`ConsensusShape/Accepted.lean`):
 
@@ -390,8 +390,8 @@ Entry points and key theorems only; the source files list the rest.
    (`shapeProgress`), `Claims`, `Refinement` (`refinement`), `Realizable`
    (`ProgressReq.Fits`, `regimes_realizable`), `Accepted`
    (`Accepted.good`).
-5. **Values** (`ConsensusShape/Values/`): `Common`, `Goldilocks`,
-   `GoldilocksSheet`, `Streamlet`, `Tendermint`.
+5. **Values** (`ConsensusShape/Values/`): `Goldilocks`, `GoldilocksSheet`.
+   Streamlet and Tendermint: `ConsensusShapeTests/Values`.
 
 ## Why the meaning is fixed below the protocol
 
@@ -602,7 +602,7 @@ Francesco. Neither the sheet nor the definition is weakened.
 | M17 eventual liveness | scope: outside the bounded-latency interface (every claim has a latency bound `lat`; eventual-only liveness cannot be expressed) |
 | M19, M26 weights, single Δ | scope |
 | M20 cross-node nesting | sheet `crossNest`, `liveDC` |
-| M21 recovery fault bound | `HealthyOn.faultsBelow`, `1 − φ ≤ α`; `healthy_faultsBelow`, `faulty_third_not_healthy` |
+| M21 recovery fault bound | `HealthyOn.faultsBelow`, `1 − φ ≤ α`; `faulty_third_not_healthy` |
 | M22, M23 instance vs FG-SA, cover/budget | obligations (1)–(12); `budget_implies_V`; obligation (4) |
 | M24 reader scope | ready readers for available/stable, every honest reader for final |
 | M25 ready vs awake | healthy = fixed awake set; readers/progress ready; `healthy_rotating_sleeper`; obligation (6) |
@@ -627,8 +627,9 @@ Francesco. Neither the sheet nor the definition is weakened.
   (`silent_run_valid`) and truncation (`truncate_relayedRun`).
 - `Regimes`: what each regime admits and rejects (`psync_lost_message`,
   `outage_async_log`, `sleepy_with_sleeper`, `healthy_wake_at_gst`,
-  `healthy_needs_two_thirds`, `healthy_faultsBelow`,
-  `faulty_third_not_healthy`, `outage_times_teeth`).
+  `healthy_needs_two_thirds`, `faulty_third_not_healthy`,
+  `outage_times_teeth`); the explanatory L0 lemmas (threshold monotonicity,
+  `η = 0`, the awake-count form).
 - `Good`: vacuous systems are not good; `censoring_progress_rejected`;
   `prefix_sync_then_async`;
   `healthy_rotating_sleeper`; η-sleepy history, brief wakes and startup;
@@ -646,8 +647,11 @@ Francesco. Neither the sheet nor the definition is weakened.
 - `Vacuity`: admissibility rejections, progress fit,
   `notReadyAtMost_one_not_realizable`, `notReadyAtMost_one_not_tolerant`,
   `credential_forgery_excluded`, `noService_not_accepted`.
-- `Goldilocks`: `reference_numbers`, `pp223_admissible`, `target_unfolds`,
-  `stable_is_confirmed`, `outageWindow_prefix_only`, `weakPremise_inhabited`.
+- `Goldilocks`: `pp223_numbers`, `stable_is_confirmed`,
+  `outageWindow_prefix_only`, `weakPremise_inhabited`.
+- `Values`, `Lift`, `Support`, `Common`: the Streamlet and Tendermint values,
+  injective-hash lifting, test-only lemmas and fixtures.
+- `Reformulations`: each reformulated definition against its old form.
 - `Gaps`: one disposition per gap row, with `example`s for the
   by-construction rows.
 

@@ -1,16 +1,20 @@
 module
-public import ConsensusModelProofs.Objects
+public import ConsensusModelProofs
+public import Mathlib.Tactic
 
 @[expose] public section
+
+/-! # Injective-hash lifting (meta-result, moved from the library)
+
+A valid run with no hash collision has a rehashed twin with an injective hash
+and the same trace, log and validity (`Run.injective_twin`). So a
+trace-invariant property holds on all runs up to the collision excuse iff it
+holds on all valid runs with an injective hash (`holds_of_injective`,
+`injective_of_holds`). No library proof uses it; it is checked here. -/
 namespace Consensus.Model
 variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
 
 namespace Run
-
-theorem not_hashCollision_of_injective {rho : Run F E} (hi : rho.InjectiveHash) :
-    ¬ rho.HashCollision := by
-  rintro ⟨x, y, hne, _, _, he⟩
-  exact hne (hi he)
 
 /-- A finite pool of all released or delivered roots. -/
 def roots (rho : Run F E) : List (protoOf F E).Object :=

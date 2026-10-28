@@ -1,5 +1,6 @@
 module
 public import ConsensusModelProofs
+public import ConsensusShapeTests.Common
 public import Mathlib.Tactic
 @[expose] public section
 
@@ -15,9 +16,6 @@ protection ignores candidates signed by other keys. -/
 
 namespace Consensus.Shape.Tests.Model
 open Consensus Model
-
-/-- One output identifier, serving every capability. -/
-abbrev schema : OutputSchema := ⟨Unit, fun _ => some ()⟩
 
 /-- The test protocol: role `false` selects every key and has one duty per
 integer time, signing empty data; role `true` selects one key and has no
@@ -35,10 +33,7 @@ def proto (pub : Public) : Protocol pub Unit where
   encItem := inferInstance
   selSpec := fun r => if r then .sized 1 else .all
   role := fun _ => false
-  actTime := id
   duties := fun t => [t]
-  duties_spec := by intro d t; simp
-  duties_nodup := fun t => List.nodup_singleton t
   init := fun _ => ()
   clock := fun _ _ _ => ()
   act := fun _ _ => some (.data (), [])
@@ -56,9 +51,6 @@ def family : Family schema := proto
 /-- Two validators, always awake, `Δ = 3`, `GST = 4`. -/
 def env : Env (Fin 2) := ⟨3, by decide, fun _ _ => true⟩
 
-/-- The identity PKI. -/
-def pki : Fin (Fintype.card (Fin 2)) ≃ Fin 2 := finCongr (Fintype.card_fin 2)
-
 /-- An admissible selection: every key in role `false`, key `0` in role `true`. -/
 def sel : Bool → Finset (Fin (Fintype.card (Fin 2))) :=
   fun r => if r then {0} else Finset.univ
@@ -74,7 +66,7 @@ theorem sel_valid (rho : Run family env) (h : rho.sel = sel) : rho.SelValid := b
 /-- Ingress can inject an unsubmitted transaction. The cumulative inbox
 survives restarts and is available to the next clock. -/
 def relayedRun : Run family env :=
-  mkRun Finset.univ 5 pki sel (fun _ _ => []) (fun _ t => if t = 2 then [42] else [])
+  mkRun Finset.univ 5 (pkiFin 2) sel (fun _ _ => []) (fun _ t => if t = 2 then [42] else [])
     (fun _ => 0) [.restart 0 3]
 
 theorem injected_held : CommLog.TxHeld relayedRun.log 0 42 3 :=
@@ -112,7 +104,7 @@ theorem negativeHorizon_not_valid {O : OutputSchema} (F : Family O) {V : Type} [
 `true`; a run that delivers an object signed by key `1` in role `true` has an
 admissible selection but violates `Credentials`. -/
 def forgedRun : Run family env :=
-  mkRun Finset.univ 5 pki sel (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
+  mkRun Finset.univ 5 (pkiFin 2) sel (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
     [.deliver 0 (.mk (.signed 1 true) (.data ()) []) 0]
 
 theorem forged_role_invalid : forgedRun.SelValid ∧ ¬ forgedRun.Credentials := by

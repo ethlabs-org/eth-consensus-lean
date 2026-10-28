@@ -26,6 +26,12 @@ namespace Consensus.Model
 
 variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
 
+/-- An injective hash has no collision. -/
+theorem Run.not_hashCollision_of_injective {rho : Run F E} (hi : rho.InjectiveHash) :
+    ¬ rho.HashCollision := by
+  rintro ⟨x, y, hne, _, _, he⟩
+  exact hne (hi he)
+
 /-- An eager run log is an eager system log. -/
 theorem sysOf_eagerFrom (rho : Run F E) {g : Time}
     (h : CommLog.EagerFrom rho.point rho.log g) :

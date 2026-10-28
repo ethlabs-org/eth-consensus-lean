@@ -1,5 +1,6 @@
 module
 public import ConsensusShape
+public import ConsensusShapeTests.Support
 public import Mathlib.Tactic
 @[expose] public section
 

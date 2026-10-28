@@ -206,14 +206,6 @@ namespace System
 
 variable {V : Type} [Fintype V] [DecidableEq V] (S : System V) (r : S.Run)
 
-/-- Validators convicted by a set of evidence. -/
-noncomputable def convicted (A : Set S.Obs) : Finset V :=
-  Consensus.convicted (S.convicts r) A
-
-/-- Accountable safety, using the generic trace-and-evidence property. -/
-abbrev AccountablySafe (α : ℚ) (g : S.schema.Id) (t₀ : Time) : Prop :=
-  (S.trace r).AccountablySafe (S.view r) (S.convicts r) α g t₀
-
 /-- No honest validator is convicted by what the honest nodes saw. -/
 def NonFraming : Prop :=
   ∀ v ∈ (S.trace r).point.honest, ¬ S.convicts r (S.honestEvidence r) v

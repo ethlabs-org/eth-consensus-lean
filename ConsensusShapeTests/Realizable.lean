@@ -1,7 +1,9 @@
 module
 public import ConsensusShapeTests.Shape
+public import ConsensusShapeTests.Common
 public import ConsensusShapeTests.Good
 public import ConsensusShapeTests.Controls
+public import ConsensusShapeTests.Values
 public import Mathlib.Tactic
 @[expose] public section
 
@@ -15,7 +17,7 @@ public import Mathlib.Tactic
   run with a faulty validator its pattern recurrence fails as soon as one
   whole window fits in `[start, stop]` and the horizon: such a progress
   requirement has no witness with a faulty validator.
-  (`allProposers_unfit`, `noProgressFit`: acceptance rejects such
+  (`allProposers_unfit`, `noProgressFit_contract`: acceptance rejects such
   requirements up front; see `Vacuity.lean`.)
 * Rotating sleeper: four honest validators, a different one
   asleep at each tick, catch-up `3`: more than ⅔ awake at every tick
@@ -36,18 +38,34 @@ public import Mathlib.Tactic
   `outage_witness_late_control`: the same for the positive-control family
   (`Controls.lean`), so neither is vacuous. -/
 
+namespace Consensus.Shape
+
+open Blocks
+open Consensus.Model (pubOf protoOf)
+
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
+  {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+
+/-- Without a ready node from `start + D·Δ` on, the reader-conditional
+obligation is vacuous. -/
+theorem ProposalLiveReady.of_noReady {rho : Model.Run (compiled F) E} {c : Time} {g : O.Id}
+    {start : Time} {D : Nat}
+    (h : ∀ t, start + (D : Time) * E.Δ ≤ t → ∀ v, ¬ rho.point.Ready c v t) :
+    ProposalLiveReady rho c g start D := by
+  rintro t hs - ⟨v, hv⟩
+  exact absurd hv (h _ (by linarith) v)
+
+end Consensus.Shape
+
 namespace Consensus.Shape.Tests.Realizable
 open Consensus Blocks Shape
 open Consensus.Model (Public Key pubOf protoOf sysOf)
-open Consensus.Shape.Tests.Shapes (schema trivialFamily pollSkel pollShape)
+open Consensus.Shape.Tests.Shapes (trivialFamily pollSkel pollShape)
 
 /-- Three validators, validator 0 faulty, everyone awake, `Δ = 1`, horizon
 10, no submissions. -/
 def point3 : EnvPoint (Fin 3) :=
   ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ.erase 0, 10, fun _ _ => []⟩
-
-/-- The identity PKI. -/
-def key3 : Fin (Fintype.card (Fin 3)) ≃ Fin 3 := finCongr (Fintype.card_fin 3)
 
 /-- Key 2 proposes at every slot; every key signs the committee kind; nobody
 polls. -/
@@ -70,10 +88,10 @@ theorem sel3_admits :
 /-- Coverage keeps a non-extremal selection, for every GST. -/
 theorem coverage_keeps_selection (g : Time) :
     ∃ rho : Model.Run (compiled trivialFamily) point3.env, rho.point = point3 ∧
-      rho.key = key3 ∧ rho.sel = sel3 ∧ rho.sel (ShapeRole.proposer 7) = {⟨2, by simp⟩} ∧
+      rho.key = (pkiFin 3) ∧ rho.sel = sel3 ∧ rho.sel (ShapeRole.proposer 7) = {⟨2, by simp⟩} ∧
       rho.ExecutionValid ∧ ¬ rho.HashCollision ∧ CommLog.EagerFrom rho.point rho.log g := by
   obtain ⟨rho, hp, hk, hs, hv, hn, -, he⟩ :=
-    coverage trivialFamily point3 (show (0 : Time) ≤ 10 by norm_num) key3 sel3 sel3_admits g
+    coverage trivialFamily point3 (show (0 : Time) ≤ 10 by norm_num) (pkiFin 3) sel3 sel3_admits g
   exact ⟨rho, hp, hk, hs, by rw [hs]; rfl, hv, hn, he⟩
 
 /-- Review B2 regression: with `proposerSel := .sized (max 1 n)` every key is
