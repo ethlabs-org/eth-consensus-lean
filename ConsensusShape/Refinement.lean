@@ -5,7 +5,7 @@ public import ConsensusProblem.Transfer
 
 @[expose] public section
 
-/-! # Refinement: shape claims give problem claims (layer 1)
+/-! # Refinement: shape claims give problem claims (L2)
 
 `refinement F K V`: if shape family `F` meets `ShapeClaims F K`, then its
 compiled system, with `progress` interpreted by `shapeExec`, meets the layer-0
@@ -35,14 +35,17 @@ theorem ledgerTrace (rho : Model.Run (compiled F) E) :
     (sysOf O (compiled F) V).trace ⟨E, rho⟩ = (chainTrace rho).map ledgerOf :=
   rfl
 
-/-- Transaction bridge (D-14; at the release time
-`τ`): apply `ProposalLive` at `t' − D·Δ`; the honest proposal is released at
-`τ > max t GST + Δ`, within the horizon, by a key awake on `[τ − Δ, τ)`
-(catch-up at least one `Δ`), so partial synchrony puts the transaction in its
-mempool, which is the proposal's payload. -/
+/-- Transaction bridge (D-14; at the release time `τ`): apply `ProposalLive`
+at `t' − D·Δ`; the honest proposal is released at `τ > max t GST + Δ`
+(strictly), within the horizon, by a key ready, so awake, at `τ − 1`. Partial
+synchrony (L0 delivery, endpoint rule) at the start `a := τ − Δ − 1 ≥ max t GST`
+puts the transaction in that key's inbox by the deadline `τ − 1` (receipt at
+the deadline counts), so in its mempool at the tick `τ`, which is the
+proposal's payload. The strict `τ > …` of `ProposalLive` absorbs the one time
+unit between receipt at the deadline and processing at the next tick. -/
 theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O.Id}
     {start : Time} {D : Nat} (hv : rho.ExecutionValid) (hs : rho.PartialSynchrony)
-    (hc : 0 < c₀) (hl : ProposalLive rho (((c₀ : Nat) : Time) * E.Δ) g start D) :
+    (hl : ProposalLive rho (((c₀ : Nat) : Time) * E.Δ) g start D) :
     ((chainTrace rho).map ledgerOf).TxLive (((c₀ : Nat) : Time) * E.Δ) g start
       (((D : Nat) : Time) * E.Δ) := by
   intro x t t' ht hsub hdt hh v hv'
@@ -58,24 +61,27 @@ theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O
   rw [he] at hin
   have hmem : x ∈ decodeTxs h.input := by
     rw [honestProposal_payload hprop, decode_encodeTxs]
-    apply rho.txHeld_mem_mempool
     obtain ⟨u, hu, τ₀, hτ₀, hτ₀t, haw, hx⟩ := hsub
-    have hτa : τ₀ ≤ τ - E.Δ := by dsimp only [Time] at *; omega
-    have hga : E.gst ≤ τ - E.Δ := by dsimp only [Time] at *; omega
-    have hdl : max (τ - E.Δ) E.gst + E.Δ = τ := by
+    have hτa : τ₀ ≤ τ - E.Δ - 1 := by dsimp only [Time] at *; omega
+    have hga : E.gst ≤ τ - E.Δ - 1 := by dsimp only [Time] at *; omega
+    have hdl : max (τ - E.Δ - 1) E.gst + E.Δ = τ - 1 := by
       rw [max_eq_left hga]; dsimp only [Time] at *; omega
     have hτh : τ ≤ rho.horizon := by
       obtain ⟨-, -, -, -, i, hi, -⟩ := hprop
       exact (hv.in_horizon _ (List.mem_of_getElem? hi)).2
-    have hawake : AwakeOn E (rho.key k) (τ - E.Δ) τ := by
-      intro z hz hzτ
-      apply hready.2 z ?_ hzτ.le
-      have hc1 : (1 : Int) ≤ (c₀ : Int) := by exact_mod_cast hc
-      have hm : E.Δ ≤ (c₀ : Int) * E.Δ := by nlinarith
-      apply max_le <;> dsimp only [Time] at * <;> omega
-    have held := hs.txs u hu x τ₀ hτ₀ haw hx (rho.key k) hready.1 (τ - E.Δ) hτa
-      (by rw [hdl]; exact hτh) (by rw [hdl]; exact hτh) (by rw [hdl]; exact hawake)
-    rwa [hdl] at held
+    have hawake : E.awake (rho.key k) (τ - 1) = true := by
+      refine hready.2 (τ - 1) ?_ ?_
+      · have hm : 0 ≤ ((c₀ : Nat) : Int) * E.Δ := mul_nonneg (by positivity) hΔ.le
+        apply max_le <;> dsimp only [Time] at * <;> omega
+      · dsimp only [Time]; omega
+    have hτ1 : τ - 1 ≤ rho.point.horizon := by
+      change τ - 1 ≤ rho.horizon; dsimp only [Time] at *; omega
+    have held : CommLog.TxHeld rho.log (rho.key k) x (max (τ - E.Δ - 1) E.gst + E.Δ) :=
+      hs.txs u hu x τ₀ hτ₀ haw hx (rho.key k) hready.1 (τ - E.Δ - 1) hτa
+        (by change _ + E.Δ ≤ _; rw [hdl]; exact hτ1) (by change _ + E.Δ ≤ _; rw [hdl]; exact hτ1)
+        (by change E.awake _ (_ + E.Δ) = true; rw [hdl]; exact hawake)
+    rw [hdl] at held
+    exact rho.txHeld_mem_mempool held (by dsimp only [Time]; omega)
   change x ∈ ledgerOf ((chainTrace rho).readAt g v t')
   exact (mem_ledgerOf _ _).mpr ⟨h, hin v hv', hmem⟩
 
@@ -134,7 +140,7 @@ theorem refinement (F : ShapeFamily O Info) (K : Contract O ProgressReq) (V : Ty
       exact (hcc.safe V E rho σ hv hA).imp (fun h => h.map ledgerOf_prefix) id
     · rintro i σ ⟨E, rho⟩ hv hA
       have hsync : rho.PartialSynchrony := ((hc.liveSync c s hs i).1).sync_of_eval hA
-      exact (hcc.live V E rho i σ hv hA).imp (proposalLive_txLive hv hsync hc.catchUp_pos) id
+      exact (hcc.live V E rho i σ hv hA).imp (proposalLive_txLive hv hsync) id
     · rintro α ha ⟨E, rho⟩ hv -
       exact (hcc.accountable α ha V E rho hv).imp (accountablySafe_ledger rho) id
     · rintro P hP σ ⟨E, rho⟩ hv hA
@@ -144,7 +150,7 @@ theorem refinement (F : ShapeFamily O Info) (K : Contract O ProgressReq) (V : Ty
     · rintro R hR i σ ⟨E, rho⟩ hv hA
       have hsync : rho.PartialSynchrony := ((hc.liveSync c s hs i).2 R hR).sync_of_eval hA
       exact (hcc.recoveryLive R hR V E rho i σ hv hA).imp
-        (proposalLive_txLive hv hsync hc.catchUp_pos) id
+        (proposalLive_txLive hv hsync) id
 
 end Consensus.Shape
 

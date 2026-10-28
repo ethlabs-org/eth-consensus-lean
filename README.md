@@ -68,12 +68,27 @@ pairs it with `Contract.Realizable`. See "Well-formedness is not non-vacuity".
 1. **L0** (`ConsensusProblem/`):
    - `Basic`: `Time`, `Tx`, `Ledger`, `Capability` (the names state the
      intent; what is claimed is the contract's spec), `OutputSchema`, `Env`
-     (`AwakeOn`: half-open `[a, b)`, used by delivery), `EnvPoint` (readiness
+     (`AwakeOn`: half-open `[a, b)`; delivery reads awakeness only at the
+     deadline), `EnvPoint` (readiness
      `Ready c v t`: honest and awake on the closed `[max 0 (t − c − 1), t]`,
      `AwakeOnClosed`; at a negative `t` the interval is empty, so every honest
      node is ready, which only weakens premises; `readyAt`, `ReadyAbove`,
-     `ReadyOfAll`, `EtaSleepy`, `FaultsBelow`, `FaultsAtMost`), `Trace`,
-     `System`, `InCuts` (cut 0 included for `t₀ ≤ 0`).
+     `ReadyOfAll`, `EtaSleepy`, `FaultsBelow`, `FaultsAtMost`, `awakeAt`,
+     `AwakeOfAll`, `NotReadyAtMost`), `Trace`, `CommLog` (a run's
+     communication with opaque messages: sent, received, transaction inbox),
+     `System` (with `log : Run → CommLog V Obs`), `InCuts` (cut 0 included
+     for `t₀ ≤ 0`).
+   - `Network`: the delivery rule, verbatim: *every message an honest node
+     sends at `t` is received by every honest node that is awake at
+     `max(t, GST) + Δ`, by that time* (`CommLog.Delivers.msgs` for a deadline
+     function `dl`; "received by that time" is `Held`: receipt at the
+     deadline counts, a wake loses earlier receipts). Re-service to later
+     wakers is the separate clause `Delivers.rewake`; transactions
+     `Delivers.txs`/`TxHeld`. Instances `PSync g`, `SyncUntil b`,
+     `OutageNet b₀ b₁`; `EagerFrom g` (the canonical log shape) meets them
+     (`EagerFrom.delivers`, `.psync`, `.syncUntil`); `PSync.mono` (a later GST
+     is weaker), `Delivers.reindex`, `AgreesUpTo`. Sends and submissions at
+     negative times are not covered (none occur in a valid model run).
    - `Properties`: `Agree`, `Monotone`, `Safe`, `ReadySafe`, `Nested`,
      `ProtectedThrough` (resilience during *and after* the window),
      `CompatibleThrough` (defined, not advertised), `Trace.TxLive`,
@@ -110,10 +125,18 @@ pairs it with `Contract.Realizable`. See "Well-formedness is not non-vacuity".
    `Protocol`, `Family`), `Run` (the run data and the engine: `tick`,
    `candidates`, `protects`, `releaseAll`, `mempool`), `Conditions`
    (`ExecutionValid` = schedule and sleep well-formed, `Unforgeable`,
-   `SelValid`, `Credentials`; `Served`, `TxHeld`, `Delivers`, and on them
-   `PartialSynchrony`, `HealthyPrefixDelivery`),
-   `Evidence` (`Slashable`, `HashCollision`), `System` (`sysOf`,
+   `SelValid`, `Credentials`; `Run.log` (releases, deliveries, inboxes as an
+   L0 `CommLog`), `Served` (engine holding, inclusive), and, temporarily,
+   `PartialSynchrony := CommLog.PSync rho.point rho.log E.gst`,
+   `HealthyPrefixDelivery := CommLog.SyncUntil …`),
+   `Evidence` (`Slashable`, `HashCollision`), `System` (`sysOf`, whose `log`
+   is the engine's communication tagged with the environment;
    `modelProfile`). Then the statements of `ConsensusModelProofs`:
+   - `sysOf_log_faithful`, `sysOf_delivers_iff`, `Run.held_iff_served`
+     (`Faithful`): the system's log is exactly the engine's releases,
+     deliveries and inboxes, and on valid runs L0 holding is engine holding
+     (restarts are exactly the wakes). Boundary: the log cannot invent sends
+     or receipts; nothing says that handlers retain or use delivered data;
    - `canonical_run` (statement `CanonicalRun`): every PKI, admissible
      selection, submission function and hash admits a valid, partially
      synchronous run, healthy at every cut (`canonical_run_causal` adds
@@ -321,15 +344,21 @@ buys nothing against this adversary.
   `Auth.signed`).
 - **Slashing protection:** the deployed client implements `protects` and
   persists its seen log across restarts (as an EIP-3076 database does).
-- **Durable relay:** a transaction submitted to an awake honest node is held,
-  strictly before `max a GST + Δ`, by every honest node awake on the interval,
-  including after the source sleeps; the cumulative inbox survives restarts.
+- **Durable relay:** a transaction submitted to an awake honest node at `τ`
+  is held, by `max a GST + Δ`, by every honest node awake at that deadline,
+  for every `a ≥ τ`, including after the source sleeps; the cumulative inbox
+  survives restarts.
 - **Δ known:** honest code knows `Δ` (a positive integer) and `n`.
 - **Unit ticks:** every awake honest node ticks at every integer time
   (`ScheduleWellFormed`); the unit divides Δ.
-- **Strict delivery deadlines:** what an honest node releases at `t` is held by
-  every honest node awake on `[a, max a GST + Δ)`, strictly before the
-  deadline, for every `a ≥ t` (`PartialSynchrony`); `syncUntil` uses `a + Δ`.
+- **Endpoint delivery (L0 `CommLog.PSync`):** what an honest node releases at
+  `t` is held, by `max t GST + Δ` (receipt at the deadline counts), by every
+  honest node awake *at* that deadline; and (re-service, `rewake`) by every
+  honest node awake at `max a GST + Δ`, for every `a > t`. `SyncUntil` uses
+  `a + Δ`. A message received at the deadline is processed at the next tick
+  (order within one time, below); that slack is the protocol's
+  (`proposalLive_txLive` absorbs it with the strict `τ > …` of
+  `ProposalLive`).
 - **Restarts** happen exactly at wakes; a receipt before a sleep does not serve
   after the wake.
 - **Order within one time:** restarts, then ticks, then deliveries

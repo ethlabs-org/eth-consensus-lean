@@ -1,9 +1,10 @@
 module
 public import ConsensusModel.Run
+public import ConsensusProblem.Network
 
 @[expose] public section
 
-/-! # Conditions (layer ½)
+/-! # Conditions (L1)
 
 Premises about runs. None of them mentions anything the protocol supplies:
 they speak about the environment, the run data, and what the engine did
@@ -70,38 +71,26 @@ structure ExecutionValid : Prop extends
   selValid : SelValid rho
   credentials : Credentials rho
 
-/-- Node `w` holds `o` at deadline `d`: it released or received `o` at some
-`t' < d` and has not restarted in `(t', d)`. A receipt before a sleep does not
-serve after the wake. -/
+/-- The run's communication log (L0 `CommLog`): engine releases, deliveries
+and inboxes. Network conditions are the L0 ones (`CommLog.PSync`,
+`CommLog.SyncUntil`, …) on `rho.point` and `rho.log`. -/
+def log : CommLog V (protoOf F E).Object := ⟨rho.releases, rho.receives, rho.inbox⟩
+
+/-- Node `w` holds `o` at deadline `d` (engine form): it released or received
+`o` at some `t' ≤ d` and has not restarted in `(t', d]`. A receipt before a
+sleep does not serve after the wake. On valid runs this is L0 `CommLog.Held`
+of `rho.log` (`Run.held_iff_served`). -/
 def Served (w : V) (o : (protoOf F E).Object) (d : Time) : Prop :=
-  ∃ t', t' < d ∧ (rho.releases w o t' ∨ rho.receives w o t') ∧
-    ∀ u, Event.restart w u ∈ rho.events → ¬ (t' < u ∧ u < d)
+  ∃ t', t' ≤ d ∧ (rho.releases w o t' ∨ rho.receives w o t') ∧
+    ∀ u, Event.restart w u ∈ rho.events → ¬ (t' < u ∧ u ≤ d)
 
-/-- Node `w` holds transaction `x` at deadline `d`: `x` is in its cumulative
-inbox at some time `τ ∈ [0, d)` (the inbox survives restarts). -/
-def TxHeld (w : V) (x : Tx) (d : Time) : Prop :=
-  ∃ τ, 0 ≤ τ ∧ τ < d ∧ x ∈ rho.inbox w τ
+/-- Partial synchrony with the environment's GST (L0 `CommLog.PSync`).
+Temporary: the GST leaves `Env` in a later stage, and this name goes with it. -/
+def PartialSynchrony : Prop := CommLog.PSync rho.point rho.log E.gst
 
-/-- Delivery with deadline function `dl` up to `cut`: what an honest node
-releases at `t` is held, by `dl a`, by every honest node awake on `[a, dl a)`,
-for every `a ≥ t`. Only released objects are flooded; relay of received
-objects is protocol gossip. Transactions submitted to awake honest sources
-are held strictly before the same deadlines; their cumulative inbox survives
-restarts, so transaction service needs no restart exclusion. -/
-structure Delivers (dl : Time → Time) (cut : Time) : Prop where
-  objects : ∀ v ∈ rho.honest, ∀ o t, rho.releases v o t → ∀ w ∈ rho.honest, ∀ a, t ≤ a →
-    dl a ≤ cut → dl a ≤ rho.horizon → AwakeOn E w a (dl a) → rho.Served w o (dl a)
-  txs : ∀ u ∈ rho.honest, ∀ x τ, 0 ≤ τ → E.awake u τ = true → x ∈ rho.submit u τ →
-    ∀ w ∈ rho.honest, ∀ a, τ ≤ a → dl a ≤ cut → dl a ≤ rho.horizon →
-      AwakeOn E w a (dl a) → rho.TxHeld w x (dl a)
-
-/-- Partial synchrony: delivery within `Δ` after `max a GST`. -/
-def PartialSynchrony : Prop :=
-  rho.Delivers (fun a => max a E.gst + E.Δ) rho.horizon
-
-/-- Synchrony up to `cut`: delivery within `Δ`, for deadlines up to `cut`. -/
-def HealthyPrefixDelivery (cut : Time) : Prop :=
-  rho.Delivers (fun a => a + E.Δ) cut
+/-- Synchrony up to `cut` (L0 `CommLog.SyncUntil`). Temporary, as
+`PartialSynchrony`. -/
+def HealthyPrefixDelivery (cut : Time) : Prop := CommLog.SyncUntil rho.point rho.log cut
 
 end Run
 

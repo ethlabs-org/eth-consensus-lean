@@ -203,6 +203,19 @@ theorem releases_eq (hv : rho.ExecutionValid) : r.releases = rho.releases := by
   funext v o t
   simp only [Run.releases, h.events, hr]
 
+theorem receives_eq : r.receives = rho.receives := by
+  funext v o t
+  simp only [Run.receives, h.events]
+
+theorem inbox_eq : r.inbox = rho.inbox := by
+  funext v t
+  simp only [Run.inbox, h.submit, h.relay]
+
+/-- The communication log is preserved (derived from the events, submissions
+and relay; no field of its own). -/
+theorem log_eq (hv : rho.ExecutionValid) : r.log = rho.log := by
+  simp only [Run.log, h.releases_eq hv, h.receives_eq, h.inbox_eq]
+
 /-- Rehashing a valid source preserves execution validity as well as its reads. -/
 theorem executionValid (hv : rho.ExecutionValid) : r.ExecutionValid := by
   obtain ⟨_, hr⟩ := h.trace hv

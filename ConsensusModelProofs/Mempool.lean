@@ -5,8 +5,10 @@ public import ConsensusModel.System
 
 /-! # Mempool facts
 
-A transaction held by a node before a deadline is in its mempool at the
-deadline: the mempool is cumulative and survives restarts. -/
+A transaction held by a node at a deadline (L0 `CommLog.TxHeld` of the run's
+log: in its inbox at some time in `[0, d]`) is in its mempool at every tick
+strictly after the deadline: the mempool is cumulative and survives restarts.
+(Receipt at the deadline is processed at the next tick.) -/
 
 namespace Consensus.Model
 
@@ -14,11 +16,11 @@ variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O
 
 namespace Run
 
-omit [DecidableEq V] in
-/-- A transaction held by `v` before `p` is in `v`'s mempool at `p`. -/
-theorem txHeld_mem_mempool (rho : Run F E) {x : Tx} {v : V} {p : Time}
-    (hs : rho.TxHeld v x p) : x ∈ mempool rho.inbox v p := by
-  obtain ⟨τ, hτ, hτp, hx⟩ := hs
+/-- A transaction held by `v` at `d` is in `v`'s mempool at every `p > d`. -/
+theorem txHeld_mem_mempool (rho : Run F E) {x : Tx} {v : V} {d p : Time}
+    (hs : CommLog.TxHeld rho.log v x d) (hdp : d < p) : x ∈ mempool rho.inbox v p := by
+  obtain ⟨τ, hτ, hτd, hx⟩ := hs
+  have hτp : τ < p := lt_of_le_of_lt hτd hdp
   dsimp only [Time] at *
   rw [mempool, ite_eq_right (not_lt.mpr (le_trans hτ hτp.le))]
   apply List.mem_flatMap.mpr

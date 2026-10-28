@@ -77,7 +77,20 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Premise.horizonStart_rejected,
       `Consensus.Shape.Tests.Premise.outageWindow_shift,
       `Consensus.Shape.Tests.Vacuity.noService_not_accepted,
-      `Consensus.Shape.Tests.Realizable.confinedOutage_not_realizable] do
+      `Consensus.Shape.Tests.Realizable.confinedOutage_not_realizable,
+      `Consensus.Model.sysOf_log_faithful, `Consensus.Model.Run.held_iff_served,
+      `Consensus.Model.sysOf_delivers_iff, `Consensus.CommLog.PSync.mono,
+      `Consensus.CommLog.Delivers.reindex, `Consensus.CommLog.EagerFrom.delivers,
+      `Consensus.Model.Run.delivers_of_eager, `Consensus.Model.Run.SameTrace.log_eq,
+      `Consensus.Shape.Tests.Realizable.allProposers_no_witness,
+      `Consensus.Shape.Tests.Network.endpoint_waker,
+      `Consensus.Shape.Tests.Network.endpoint_waker_silent,
+      `Consensus.Shape.Tests.Network.receipt_at_deadline,
+      `Consensus.Shape.Tests.Network.held_restart,
+      `Consensus.Shape.Tests.Network.psync_mono_instance,
+      `Consensus.Shape.Tests.Network.faithful_relayedRun,
+      `Consensus.Shape.Tests.Model.held_at_deadline,
+      `Consensus.Shape.Tests.Model.not_held_before_relay] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2

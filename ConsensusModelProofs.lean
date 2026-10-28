@@ -9,3 +9,4 @@ public import ConsensusModelProofs.Credentials
 public import ConsensusModelProofs.Mempool
 public import ConsensusModelProofs.Protection
 public import ConsensusModelProofs.Causal
+public import ConsensusModelProofs.Faithful

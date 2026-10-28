@@ -14,7 +14,12 @@ public import Mathlib.Tactic
 * `confinedOutage_not_realizable`: a well-formed resilience premise that
   confines outages to a bounded period through a participation atom over a
   fixed time (`full` from time 100 on) is not realizable: resilience
-  witnesses are needed at arbitrarily late protected reads. -/
+  witnesses are needed at arbitrarily late protected reads.
+* `allProposers_no_witness` (review B2): a family whose proposer selection is
+  `.sized (max 1 n)` selects every key at every slot of a valid run, so on a
+  run with a faulty validator its pattern recurrence fails as soon as one
+  window fits in the horizon: such a progress requirement has no witness with
+  a faulty validator. -/
 
 namespace Consensus.Shape.Tests.Realizable
 open Consensus Blocks Shape
@@ -120,6 +125,39 @@ theorem confinedOutage_not_realizable :
   change E.awake v t = true at hfull
   rw [hfull] at hsl
   exact Bool.noConfusion hsl
+
+/-- Review B2 regression: with `proposerSel := .sized (max 1 n)` every key is
+selected at every slot of a valid run, so a faulty validator is always among
+the proposers and `PatternRecurrence` (every selected key honest and ready)
+fails whenever one window fits in the horizon. -/
+theorem allProposers_no_witness {O : OutputSchema} {Info : Type} [DecidableEq Info]
+    [Encodable Info] {F : ShapeFamily O Info}
+    (hF : ∀ pub, (F pub).skel.proposerSel = .sized (max 1 pub.n))
+    {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (rho : Model.Run (compiled F) E)
+    (hsel : rho.SelValid) (hf : rho.point.faulty.Nonempty) (π : ProgressReq) (c start : Time)
+    (hw : max start 0 + ((π.gap : Nat) : Time) * (F (pubOf E)).skel.grid.slotLen E.Δ ≤
+      rho.horizon) :
+    ¬ PatternRecurrence (R := ShapeRole (F (pubOf E)).skel.Kind) rho.point rho.key rho.sel
+      ShapeRole.proposer (F (pubOf E)).skel.grid π c start := by
+  intro h
+  obtain ⟨f, hf⟩ := hf
+  have hfh : f ∉ rho.honest := (Finset.mem_sdiff.mp hf).2
+  obtain ⟨s, -, -, hall⟩ := h (max start 0) (le_max_left _ _) (le_max_right _ _) hw
+  obtain ⟨j, hj⟩ := List.exists_mem_of_ne_nil _ π.pattern.nonempty
+  have hadm := hsel (ShapeRole.proposer (s + j))
+  change ((F (pubOf E)).skel.proposerSel).Admits (rho.sel (ShapeRole.proposer (s + j))) at hadm
+  rw [hF] at hadm
+  change (rho.sel (ShapeRole.proposer (s + j))).card = min (max 1 (Fintype.card V))
+    (Fintype.card V) at hadm
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨f⟩
+  rw [max_eq_right hn, min_self] at hadm
+  have huniv : rho.sel (ShapeRole.proposer (s + j)) = Finset.univ :=
+    Finset.eq_univ_of_card _ (by rw [hadm, Fintype.card_fin])
+  have hk : rho.key.symm f ∈ rho.sel (ShapeRole.proposer (s + j)) := by
+    rw [huniv]; exact Finset.mem_univ _
+  have := ((hall j hj).2 _ hk).1
+  rw [Equiv.apply_symm_apply] at this
+  exact hfh this
 
 end Consensus.Shape.Tests.Realizable
 

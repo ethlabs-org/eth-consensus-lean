@@ -77,16 +77,24 @@ def relayedRun : Run family env :=
   mkRun Finset.univ 5 pki sel (fun _ _ => []) (fun _ t => if t = 2 then [42] else [])
     (fun _ => 0) [.restart 0 3]
 
-theorem injected_held : relayedRun.TxHeld 0 42 3 :=
-  ⟨2, by decide, by decide, by simp [relayedRun, mkRun, Run.inbox]⟩
+theorem injected_held : CommLog.TxHeld relayedRun.log 0 42 3 :=
+  ⟨2, by decide, by decide, by simp [relayedRun, mkRun, Run.log, Run.inbox]⟩
 
-theorem held_strict_deadline : ¬ relayedRun.TxHeld 0 42 2 := by
+/-- Holding is inclusive: the transaction relayed at `2` is held at the
+deadline `2` itself (L0 `TxHeld`, "received by that time"), … -/
+theorem held_at_deadline : CommLog.TxHeld relayedRun.log 0 42 2 :=
+  ⟨2, by decide, le_rfl, by simp [relayedRun, mkRun, Run.log, Run.inbox]⟩
+
+/-- … but not before it arrives. -/
+theorem not_held_before_relay : ¬ CommLog.TxHeld relayedRun.log 0 42 1 := by
   rintro ⟨τ, hτ, hτd, hx⟩
-  have hne : τ ≠ 2 := ne_of_lt hτd
-  simp [relayedRun, mkRun, Run.inbox, hne] at hx
+  have hne : τ ≠ 2 := by intro h; subst h; exact absurd hτd (by decide)
+  simp [relayedRun, mkRun, Run.log, Run.inbox, hne] at hx
 
+/-- … and it is processed at a later tick (the mempool at `5`, after the
+restart at `3`). -/
 theorem relayed_mempool_after_restart : 42 ∈ mempool relayedRun.inbox 0 5 :=
-  relayedRun.txHeld_mem_mempool ⟨2, by decide, by decide, by simp [relayedRun, mkRun, Run.inbox]⟩
+  relayedRun.txHeld_mem_mempool held_at_deadline (by decide)
 
 theorem injected_not_submitted : ¬ relayedRun.point.SubmittedToSome 42 5 := by
   rintro ⟨v, _, τ, _, _, _, hx⟩

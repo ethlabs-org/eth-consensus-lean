@@ -14,8 +14,8 @@ the network service independent of sleep history.
 
 The construction uses no laws about the protocol. `unforgeable_of_causal`
 and `credentials_of_causal` use only the engine's signing and seen filter;
-`delivers_of_eager` applies to every deadline strictly after its start,
-including both contract deadlines.
+`delivers_of_eager` applies to every deadline at or after its start,
+including both contract deadlines (receipt at the deadline is L0 holding).
 -/
 
 namespace Consensus.Model
@@ -77,8 +77,8 @@ theorem canonical_run_causal (O : OutputSchema) (F : Family O) (V : Type) [Finty
   refine ⟨⟨hs, hw, ?_, hsel, ?_⟩, ?_, ?_⟩
   · exact (base.withEvents base.canonicalEvents).unforgeable_of_causal base.canonical_causal
   · exact (base.withEvents base.canonicalEvents).credentials_of_causal base.canonical_causal
-  · exact (base.withEvents base.canonicalEvents).partialSynchrony_of_eager hw he ht
-  · exact ⟨(base.withEvents base.canonicalEvents).healthyPrefixDelivery_of_eager hw he ht,
+  · exact (base.withEvents base.canonicalEvents).partialSynchrony_of_eager he ht
+  · exact ⟨(base.withEvents base.canonicalEvents).healthyPrefixDelivery_of_eager he ht,
       base.canonical_causal⟩
 
 /-- Every choice of protocol, environment, PKI, admissible selection and run

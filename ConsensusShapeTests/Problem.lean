@@ -128,7 +128,7 @@ theorem finalized_stable_not_nested : ¬ badNesting.Nested .f .s := by
 /-! ## Catch-up -/
 
 /-- With Δ = 3, zero catch-up would permit a reader whose awake history is
-too short for the delivery interval. -/
+shorter than one `Δ`. -/
 def shortHistory : EnvPoint Bool :=
   ⟨⟨3, by decide, 0, fun _ t => decide (5 ≤ t)⟩, Finset.univ, 6,
     fun _ _ => []⟩
@@ -157,6 +157,7 @@ def localGlobal : System (Fin 3) where
     fun _ => 0, fun _ v _ => if v = 0 then [1] else [2]⟩
   Valid _ := True
   Obs := Unit
+  log _ := ⟨fun _ _ _ => False, fun _ _ _ => False, fun _ _ => []⟩
   view _ _ i := if i = 0 then ∅ else Set.univ
   convicts _ A x := () ∈ A ∧ x = 2
   Excuse _ := False

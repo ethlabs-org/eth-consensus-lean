@@ -7,15 +7,16 @@ public import Mathlib.Order.Interval.Finset.Nat
 
 @[expose] public section
 
-/-! # The consensus problem: objects, environment, systems (layer 0)
+/-! # The consensus problem: objects, environment, systems (L0)
 
 What the consensus problem is, independently of any protocol or execution
 model: what users read (ledgers of transactions, one per output of the
 protocol's output schema, each serving some of three capabilities), what
 the world is (an environment: `Δ`, GST, an awake profile; and per run the
 honest nodes, a horizon and transaction submissions), and what an
-abstract system of runs exposes. No network, messages, signatures or schedule:
-the model layer instantiates `System`.
+abstract system of runs exposes, including its communication log with opaque
+messages (`CommLog`; the network conditions on it are in `Network.lean`). No
+signatures or schedule: the model layer (L1) instantiates `System`.
 
 Transactions are natural numbers: an infinite type, so that "output every
 transaction" is not a way to satisfy liveness. Ledgers may contain transactions
@@ -134,6 +135,20 @@ ones: `θ · (|ready| + |faulty|) < |ready|`. -/
 def ReadyAbove (θ : ℚ) (c t : Time) : Prop :=
   θ * ((p.readyAt c t).card + p.faulty.card : ℚ) < (p.readyAt c t).card
 
+/-- The honest validators awake at `t`. -/
+noncomputable def awakeAt (t : Time) : Finset V := by
+  classical
+  exact p.honest.filter (fun v => p.env.awake v t = true)
+
+/-- More than fraction `φ` of all validators are honest and awake at `t`. -/
+def AwakeOfAll (φ : ℚ) (t : Time) : Prop :=
+  φ * Fintype.card V < ((p.awakeAt t).card : ℚ)
+
+/-- At most `m` validators are not ready (faulty, or honest and not ready) at
+`t`. -/
+def NotReadyAtMost (m : Nat) (c t : Time) : Prop :=
+  Fintype.card V ≤ (p.readyAt c t).card + m
+
 /-- Fewer than fraction `β` of all validators are faulty. -/
 def FaultsBelow (β : ℚ) : Prop := (p.faulty.card : ℚ) < β * Fintype.card V
 
@@ -189,8 +204,17 @@ def map {β : Type} (f : List α → List β) : Trace V β Id :=
 
 end Trace
 
+/-- A run's communication, with opaque messages `M`: what each node sent and
+received at each time, and the transactions handed to it at each time (own
+submissions and network relay; the inbox is cumulative across restarts). The
+network conditions on it are in `Network.lean`. -/
+structure CommLog (V M : Type) where
+  sent : V → M → Time → Prop
+  recv : V → M → Time → Prop
+  inbox : V → Time → List Tx
+
 /-- A system: an output schema and a space of runs; for each run its trace
-of ledgers (one per output identifier), its evidence
+of ledgers (one per output identifier), its communication log, its evidence
 (what each node has seen by each cut, and how evidence convicts validators),
 whether it is a valid execution, and the excuse under which escaped claims may
 fail. The model layer instantiates every field. -/
@@ -200,6 +224,8 @@ structure System (V : Type) where
   trace : Run → Trace V Tx schema.Id
   Valid : Run → Prop
   Obs : Type
+  /-- The run's communication; messages are the opaque observations `Obs`. -/
+  log : Run → CommLog V Obs
   view : Run → V → Nat → Set Obs
   convicts : Run → Set Obs → V → Prop
   Excuse : Run → Prop

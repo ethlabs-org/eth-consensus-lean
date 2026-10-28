@@ -462,8 +462,7 @@ theorem active_relay {F : ShapeFamily O Info} {K : Contract O ProgressReq} {star
   change t' ≤ rho.horizon at hth
   have hDΔ : 0 ≤ ((D : Nat) : Time) * E.Δ := mul_nonneg (by positivity) E.Δ_pos.le
   have hd : max t E.gst + E.Δ ≤ rho.horizon := by linarith
-  obtain ⟨τ, hτ, -, hxτ⟩ := hs.txs u hu x t ht0 hua hx w hw t le_rfl hd hd
-    (fun z _ _ => hawake w z)
+  obtain ⟨τ, hτ, -, hxτ⟩ := hs.txs u hu x t ht0 hua hx w hw t le_rfl hd hd (hawake w _)
   refine ⟨x, w, hw, hnw, τ, hτ, ?_⟩
   rcases List.mem_append.mp hxτ with h | h
   · exact absurd h (hnw τ)
