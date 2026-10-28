@@ -27,7 +27,7 @@ theorem observed_mem_roots {rho : Run F E} {o : (protoOf F E).Object}
     (ho : o ∈ rho.Observed) : o ∈ closure rho.roots := by
   obtain ⟨v, hv, k, r, hk, he, hc⟩ := ho
   apply List.mem_flatMap.mpr
-  refine ⟨r, ?_, (Obj.mem_parts_iff _ _).mpr hc⟩
+  refine ⟨r, ?_, hc⟩
   apply List.mem_flatMap.mpr
   refine ⟨k, List.mem_range.mpr hk, ?_⟩
   rcases he with ⟨t, ht, hr⟩ | ⟨t, ht⟩
@@ -57,7 +57,8 @@ theorem extend_hash (rho : Run F E) (hn : ¬ rho.HashCollision) :
     intro a ha b hb he
     by_contra hab
     exact hn ⟨a, b, hab, ha, hb, he⟩
-  let f := fun x => if rho.ObservedItem x then rho.hash x else M + 1 + Encodable.encode x
+  obtain ⟨enc, henc⟩ := Countable.exists_injective_nat (protoOf F E).Item
+  let f := fun x => if rho.ObservedItem x then rho.hash x else M + 1 + enc x
   refine ⟨f, ?_, ?_⟩
   · intro a b he
     by_cases ha : rho.ObservedItem a <;> by_cases hb : rho.ObservedItem b
@@ -68,7 +69,7 @@ theorem extend_hash (rho : Run F E) (hn : ¬ rho.HashCollision) :
     · have := bound b hb
       simp only [f, ite_eq_right ha, ite_eq_left hb] at he
       omega
-    · apply Encodable.encode_injective
+    · apply henc
       simpa [f, ha, hb] using he
   · intro x hx; simp [f, hx]
 
@@ -82,7 +83,7 @@ theorem digests_eq_of_observed (rho : Run F E) (hash' : (protoOf F E).Item → N
   obtain ⟨d, hd, he⟩ := List.mem_filterMap.mp hx
   have obs : d ∈ rho.Observed := by
     obtain ⟨v, hv, k, r, hk, hr, hc⟩ := ho
-    exact ⟨v, hv, k, r, hk, hr, hc.trans ((Obj.mem_parts_iff _ _).mp hd)⟩
+    exact ⟨v, hv, k, r, hk, hr, hc.trans hd⟩
   exact Prod.ext rfl (ha x ⟨d, obs, he⟩)
 
 end Run
@@ -223,21 +224,17 @@ theorem log_eq (hv : rho.ExecutionValid) : r.log = rho.log := by
 /-- Rehashing a valid source preserves execution validity as well as its reads. -/
 theorem executionValid (hv : rho.ExecutionValid) : r.ExecutionValid := by
   obtain ⟨_, hr⟩ := h.trace hv
-  have hs : r.ScheduleWellFormed := by
-    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
-    · simpa only [h.horizon] using hv.horizon_nonneg
-    · simpa only [h.events] using hv.sorted
-    · simpa only [h.events] using hv.nodup
-    · simpa only [h.events, h.horizon] using hv.in_horizon
-    · simpa only [h.events, h.honest] using hv.honest_only
-    · simpa only [h.events, h.honest, h.horizon] using hv.tick_total
-  have hw : r.SleepWellFormed := by
-    refine ⟨?_, ?_, ?_, ?_⟩
-    · simpa only [h.events] using hv.tick_awake
-    · simpa only [h.events] using hv.deliver_awake
-    · simpa only [h.events] using hv.restart_at_wake
-    · simpa only [h.events, h.honest, h.horizon] using hv.wake_restart
-  refine ⟨hs, hw, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · simpa only [h.horizon] using hv.horizon_nonneg
+  · simpa only [h.events] using hv.sorted
+  · simpa only [h.events] using hv.nodup
+  · simpa only [h.events, h.horizon] using hv.in_horizon
+  · simpa only [h.events, h.honest] using hv.honest_only
+  · simpa only [h.events, h.honest, h.horizon] using hv.tick_total
+  · simpa only [h.events] using hv.tick_awake
+  · simpa only [h.events] using hv.deliver_awake
+  · simpa only [h.events] using hv.restart_at_wake
+  · simpa only [h.events, h.honest, h.horizon] using hv.wake_restart
   · simpa only [Unforgeable, signerOf, h.events, h.honest, h.key, hr] using hv.unforgeable
   · simpa only [SelValid, h.sel] using hv.selValid
   · simpa only [Credentials, h.events, h.sel] using hv.credentials

@@ -61,10 +61,10 @@ omit [DecidableEq V] in
 /-- Through the PKI, every signed candidate of `v` is signed by `v`. -/
 theorem candidates_signerOf (st : (protoOf F E).State) (v : V) (t : Time)
     {o : (protoOf F E).Object} (ho : o ∈ rho.candidates st v t) :
-    rho.signerOf o.auth = none ∨ rho.signerOf o.auth = some v := by
+    rho.signerOf o = none ∨ rho.signerOf o = some v := by
   rcases rho.candidates_auth st v t ho with h | ⟨r, h, _⟩
-  · exact Or.inl (by simp [signerOf, h])
-  · exact Or.inr (by simp [signerOf, ownKey, h])
+  · exact Or.inl (by simp [signerOf, Obj.signer?, h])
+  · exact Or.inr (by simp [signerOf, Obj.signer?, ownKey, h])
 
 omit [DecidableEq V] in
 /-- A signed candidate comes from a due duty of its role, whose message and

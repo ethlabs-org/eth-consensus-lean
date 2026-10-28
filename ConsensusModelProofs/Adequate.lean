@@ -15,7 +15,7 @@ meets the L0 acceptance interface `System.Adequate`:
   `Fintype.equivFin` and, per role, a selection from `SelSpec.admits_exists`;
 * coverage, from `canonical_run_from`: every point with `0 ≤ horizon`, PKI,
   admissible selection and GST `g` has a valid run whose log is eager from `g`;
-  with an injective hash (items are `Encodable`, so one exists) it has no hash
+  with an injective hash (items are countable, so one exists) it has no hash
   collision, hence no excuse; its point and external data are the given ones,
   so progress carries over unchanged;
 * prefix closure, from `Run.truncate`: the truncation at `b` is valid, is the
@@ -25,6 +25,9 @@ meets the L0 acceptance interface `System.Adequate`:
 namespace Consensus.Model
 
 variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+
+/-- The hash is injective: no collision can occur. -/
+def Run.InjectiveHash (rho : Run F E) : Prop := Function.Injective rho.hash
 
 /-- An injective hash has no collision. -/
 theorem Run.not_hashCollision_of_injective {rho : Run F E} (hi : rho.InjectiveHash) :
@@ -56,13 +59,13 @@ theorem sysOf_adequate {Prog : Type} (Y : Progress (sysOf O F V) Prog)
       ((protoOf F E).selSpec ρ).admits_exists), fun ρ => Classical.choose_spec
       ((protoOf F E).selSpec ρ).admits_exists⟩
   · rintro p hp ⟨key, sel⟩ hsel g
+    obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf F p.env).Item
     obtain ⟨relay, events, hvalid, heager⟩ :=
-      canonical_run_from O F V p.env p.honest p.horizon hp key sel hsel p.submit
-        Encodable.encode g
-    refine ⟨⟨p.env, mkRun p.honest p.horizon key sel p.submit relay Encodable.encode events⟩,
+      canonical_run_from O F V p.env p.honest p.horizon hp key sel hsel p.submit hash g
+    refine ⟨⟨p.env, mkRun p.honest p.horizon key sel p.submit relay hash events⟩,
       hvalid, ?_, rfl, sysOf_eagerFrom _ heager, fun _ _ _ _ h => h⟩
     rintro ⟨x, y, hxy, -, -, hh⟩
-    exact hxy (Encodable.encode_injective hh)
+    exact hxy (hinj hh)
   · rintro ⟨E, rho⟩ hv b hb0 hbh
     obtain ⟨hP, hview, hlog, hexc⟩ := rho.truncate_prefix (O := O) hv b
     exact ⟨⟨E, rho.truncate b⟩, rho.truncate_valid hv hb0 hbh, hP, hview, hlog, hexc,

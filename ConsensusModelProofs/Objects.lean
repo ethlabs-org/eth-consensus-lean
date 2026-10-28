@@ -3,9 +3,9 @@ public import ConsensusModel.System
 
 @[expose] public section
 
-/-! Structural facts about objects (`parts` is the list of descendants, so
-membership is `Contains`) and the one-step unfolding of `stateBefore`; shared
-by the canonical-run construction and the lifting lemmas. -/
+/-! Structural facts about objects (`Contains` is membership in `parts`) and
+the one-step unfolding of `stateBefore`; shared by the canonical-run
+construction and the lifting lemmas. -/
 
 namespace Consensus.Model
 
@@ -26,24 +26,30 @@ theorem carried_size_lt (o : Obj n Role Item Body) : sizeOf o.carried < sizeOf o
   cases o
   simp [carried]
 
-theorem contains_of_mem_parts (o d : Obj n Role Item Body) (h : d ∈ o.parts) : Contains o d := by
-  rw [parts_eq, List.mem_cons] at h
-  rcases h with rfl | h
-  · exact .refl _
-  · obtain ⟨c, hc, hd⟩ := List.mem_flatMap.mp h
-    exact .step hc (contains_of_mem_parts c d hd)
-termination_by sizeOf o
-decreasing_by exact lt_trans (List.sizeOf_lt_of_mem hc) (carried_size_lt _)
+theorem Contains.refl (o : Obj n Role Item Body) : Contains o o := by
+  rw [Contains, parts_eq]
+  exact List.mem_cons_self
 
-theorem mem_parts_of_contains {o d : Obj n Role Item Body} (h : Contains o d) : d ∈ o.parts := by
-  induction h with
-  | refl o => rw [parts_eq]; exact List.mem_cons_self
-  | step hc _ ih =>
-    rw [parts_eq]
-    exact List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨_, hc, ih⟩)
+theorem Contains.step {o c d : Obj n Role Item Body} (hc : c ∈ o.carried) (h : Contains c d) :
+    Contains o d := by
+  rw [Contains, parts_eq]
+  exact List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨c, hc, h⟩)
 
-theorem mem_parts_iff (o d : Obj n Role Item Body) : d ∈ o.parts ↔ Contains o d :=
-  ⟨contains_of_mem_parts o d, mem_parts_of_contains⟩
+/-- `o` contains `d` iff `d` is `o` or is contained in an object `o` carries. -/
+theorem Contains.cases {o d : Obj n Role Item Body} (h : Contains o d) :
+    d = o ∨ ∃ c ∈ o.carried, Contains c d := by
+  rw [Contains, parts_eq, List.mem_cons] at h
+  rcases h with h | h
+  · exact Or.inl h
+  · exact Or.inr (List.mem_flatMap.mp h)
+
+theorem Contains.trans {a b c : Obj n Role Item Body} (h₁ : Contains a b)
+    (h₂ : Contains b c) : Contains a c := by
+  rcases h₁.cases with rfl | ⟨x, hx, hxb⟩
+  · exact h₂
+  · exact .step hx (hxb.trans h₂)
+termination_by sizeOf a
+decreasing_by exact lt_trans (List.sizeOf_lt_of_mem hx) (carried_size_lt _)
 
 end Obj
 

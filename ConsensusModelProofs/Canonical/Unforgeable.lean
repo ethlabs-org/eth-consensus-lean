@@ -27,10 +27,9 @@ theorem releaseAll_preserves {pub : Public} {Out : Type} {P : Protocol pub Out}
       simp only [hf, ↓reduceIte]
       have hc : ∀ d, Obj.Contains c d → Q d := by
         intro d hd
-        cases hd with
-        | refl => exact hr c List.mem_cons_self
-        | step hm hc =>
-          have hm' := List.all_eq_true.mp (Bool.and_eq_true_iff.mp hf).1 _ hm
+        rcases hd.cases with rfl | ⟨_, hm, hc⟩
+        · exact hr d List.mem_cons_self
+        · have hm' := List.all_eq_true.mp (Bool.and_eq_true_iff.mp hf).1 _ hm
           have hmem : _ ∈ closure nd.seen := of_decide_eq_true hm'
           obtain ⟨o, ho, hoc⟩ := (mem_closure_iff _ _).mp hmem
           exact hs o ho d (hoc.trans hc)
@@ -76,7 +75,7 @@ def Causal : Prop :=
     ∃ j v t', j < i ∧ rho.events[j]? = some (.tick v t') ∧ o ∈ rho.releasesAt j
 
 def SignedBefore (i : Nat) (o : (protoOf F E).Object) : Prop :=
-  ∀ u ∈ rho.honest, rho.signerOf o.auth = some u →
+  ∀ u ∈ rho.honest, rho.signerOf o = some u →
     ∃ j t, j < i ∧ rho.events[j]? = some (.tick u t) ∧ o ∈ rho.releasesAt j
 
 def SafeBefore (i : Nat) (o : (protoOf F E).Object) : Prop :=

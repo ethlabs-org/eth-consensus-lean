@@ -23,7 +23,7 @@ variable (rho : Run F E)
 
 /-- Every signed object inside `o` has an honest signer. -/
 def HonestSigned (o : (protoOf F E).Object) : Prop :=
-  ∀ d, Obj.Contains o d → ∀ u, rho.signerOf d.auth = some u → u ∈ rho.honest
+  ∀ d, Obj.Contains o d → ∀ u, rho.signerOf d = some u → u ∈ rho.honest
 
 omit [DecidableEq V] in
 /-- A tick of an honest node keeps `seen` honestly signed and releases only
@@ -35,7 +35,7 @@ theorem tick_honestSigned (nd : Node (protoOf F E)) {v : V} (hv : v ∈ rho.hone
   unfold tick
   split
   · refine releaseAll_preserves rho.hash _
-      (fun d => ∀ u, rho.signerOf d.auth = some u → u ∈ rho.honest) _ _ hs ?_
+      (fun d => ∀ u, rho.signerOf d = some u → u ∈ rho.honest) _ _ hs ?_
     intro o ho u hu
     rcases rho.candidates_signerOf _ v t (releaseAll_subset _ _ _ _ o ho) with h | h <;>
       rw [h] at hu
@@ -114,13 +114,8 @@ theorem convicted_honestEvidence_eq_empty (rho : Run F E)
     simpa using hx
   apply h x
   obtain ⟨o, ho, o', ho', h1, h2, h3⟩ := hconv
-  have hobs : ∀ q : (protoOf F E).Object,
-      (⟨E, q⟩ : (sysOf O F V).Obs) ∈ (sysOf O F V).honestEvidence ⟨E, rho⟩ →
-        q ∈ rho.Observed := by
-    rintro q ⟨w, hw, q', hq', heq⟩
-    have hqq : q = q' := eq_of_heq (Sigma.mk.inj heq).2
-    exact ⟨w, hw, hqq ▸ hq'⟩
-  exact ⟨o, hobs o ho, o', hobs o' ho', h1, h2, h3⟩
+  exact ⟨o, (mem_honestEvidence_iff rho o).mp ho, o', (mem_honestEvidence_iff rho o').mp ho',
+    h1, h2, h3⟩
 
 end Consensus.Model
 

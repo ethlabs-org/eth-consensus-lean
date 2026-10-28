@@ -14,7 +14,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O
 /-- A closure consists exactly of the descendants of its roots. -/
 theorem mem_closure_iff {pub : Public} {Out : Type} {P : Protocol pub Out} (l : List P.Object)
     (o : P.Object) : o ∈ closure l ↔ ∃ r ∈ l, Obj.Contains r o := by
-  simp only [closure, List.mem_flatMap, Obj.mem_parts_iff]
+  simp only [closure, List.mem_flatMap, Obj.Contains]
 
 namespace Run
 variable (rho : Run F E)

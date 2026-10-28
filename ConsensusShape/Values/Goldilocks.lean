@@ -79,7 +79,7 @@ def goldilocksSkeleton (n : Nat) : Skeleton n where
   kinds_nodup := by decide
   kinds_complete := fun k => by cases k <;> simp
   phase := fun | .head => 1 | .fin => 2
-  kindSel := fun _ => .all
+  kindSel := fun _ => .fixed Finset.univ
 
 /-- Round-model FG-SA parameters (`Δ_F = Δ`, `κ = 2`, slow arming): the round
 length `R` (slots), the lock lifetime parameter `lockK` (slots; `L = (4·lockK −

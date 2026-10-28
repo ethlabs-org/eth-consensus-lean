@@ -6,8 +6,7 @@ namespace Consensus.Model
 
 variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
 
-omit [DecidableEq V] in
-private theorem event_time_nonneg (rho : Run F E) (h : rho.ScheduleWellFormed) (i : Nat) :
+private theorem event_time_nonneg (rho : Run F E) (h : rho.ExecutionValid) (i : Nat) :
     0 ≤ rho.cutTime i := by
   cases i with
   | zero => simp [Run.cutTime]
@@ -18,8 +17,7 @@ private theorem event_time_nonneg (rho : Run F E) (h : rho.ScheduleWellFormed) (
       exact (h.in_horizon e (List.mem_of_getElem? he)).1
     · exact le_refl 0
 
-omit [DecidableEq V] in
-private theorem event_time_le (rho : Run F E) (h : rho.ScheduleWellFormed)
+private theorem event_time_le (rho : Run F E) (h : rho.ExecutionValid)
     (i : Nat) (hi : i ≤ rho.events.length) : rho.cutTime i ≤ rho.horizon := by
   cases i with
   | zero => simpa [Run.cutTime] using h.horizon_nonneg
@@ -37,7 +35,7 @@ theorem sysOf_laws (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [Dec
       change rho.cutTime i ≤ rho.cutTime j
       change j ≤ rho.events.length at hj
       cases i with
-      | zero => simpa [Run.cutTime] using event_time_nonneg rho hv.toScheduleWellFormed j
+      | zero => simpa [Run.cutTime] using event_time_nonneg rho hv j
       | succ i =>
         cases j with
         | zero => omega
@@ -52,7 +50,7 @@ theorem sysOf_laws (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [Dec
             · exact le_of_lt hp
             · exact le_of_eq hp
     · intro i hi
-      exact event_time_le rho hv.toScheduleWellFormed i hi
+      exact event_time_le rho hv i hi
   · rintro ⟨E, rho⟩ A B v hab ⟨o, ho, o', ho', h₁, h₂, hc⟩
     exact ⟨o, hab ho, o', hab ho', h₁, h₂, hc⟩
   · rintro ⟨E, rho⟩ v i j hij o ⟨o', ⟨k, x, hk, hx, hc⟩, rfl⟩

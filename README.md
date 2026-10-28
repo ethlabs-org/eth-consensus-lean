@@ -314,7 +314,7 @@ for every protocol:
 - **The log is the real communication.** `sysOf`'s `log` is the engine's
   releases, deliveries and inboxes (`sysOf_log_faithful`,
   `sysOf_delivers_iff`). On execution-valid runs, for honest recipients
-  and deadlines within the horizon, L0 `Held` agrees with engine `Served`;
+  and deadlines within the horizon, L0 `Held` agrees with engine `Run.Served`;
   honest wakes in `(0, horizon]` correspond to restarts
   (`Run.held_iff_served`). Faulty nodes have no wake/restart correspondence. **Boundary:** this
   shows that the log cannot invent sends or receipts, and that L0 delivery
@@ -384,7 +384,7 @@ Entry points and key theorems only; the source files list the rest.
    are in `ConsensusProblem/Facts/`: the derived `Good.*` (with `Good.served`),
    delivery, prefix, regime and transfer lemmas.
 2. **L1** (`ConsensusModel/`: `Objects`, `Protocol`, `Run`, `Conditions`,
-   `Evidence`, `System` with `sysOf`/`sysExternal`), then the proofs in
+   `System` with evidence, `sysOf` and `sysExternal`), then the proofs in
    `ConsensusModelProofs/`: `sysOf_log_faithful`, `Run.held_iff_served`,
    `canonical_run_from`, `Run.truncate_valid`, `sysOf_adequate`,
    `Run.honestNeverSlashed`, `sysOf_nonFraming`, `sysOf_laws`.
@@ -475,9 +475,9 @@ are the intended ones.
 - No public schedules: one proposer `SelSpec` for every slot, chosen
   adversarially. Round-robin and RANDAO duties are worst-case `.sized 1`,
   with a recurrence requirement.
-- No committee premise: only `.all`/`.fixed` committees can support claims.
+- No committee premise: only `.fixed` committees can support claims.
   Gasper's partitioned selection is deferred.
-- Phases are multiples of `Δ`. For `pollSel := .all`, poll provenance
+- Phases are multiples of `Δ`. For `pollSel := .fixed univ`, poll provenance
   accepts any validator's header.
 - Tendermint's `notReadyAtMost m` is a pointwise bound. It does not by
   itself put a ready honest leader within `m + 1` rounds (an adversarial

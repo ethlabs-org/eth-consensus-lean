@@ -97,6 +97,13 @@ theorem sysOf_delivers_iff (rho : Run F E) (dl : Time → Time) (cut : Time) :
 
 namespace Run
 
+/-- Node `w` holds `o` at deadline `d` (engine form): it released or received
+`o` at some `t' ≤ d` and has not restarted in `(t', d]`. A receipt before a
+sleep does not serve after the wake. -/
+def Served (rho : Run F E) (w : V) (o : (protoOf F E).Object) (d : Time) : Prop :=
+  ∃ t', t' ≤ d ∧ (rho.releases w o t' ∨ rho.receives w o t') ∧
+    ∀ u, Event.restart w u ∈ rho.events → ¬ (t' < u ∧ u ≤ d)
+
 /-- On a valid run, L0 holding is the engine's holding: restarts of an honest
 node are exactly its wakes in `(0, horizon]`. -/
 theorem held_iff_served (rho : Run F E) (hv : rho.ExecutionValid) {w : V}

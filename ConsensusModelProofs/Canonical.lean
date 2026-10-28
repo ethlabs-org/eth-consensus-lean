@@ -61,10 +61,10 @@ theorem eagerRelay_txs {O : OutputSchema} {F : Family O} {V : Type} [Fintype V] 
 theorem Run.canonical_valid {O : OutputSchema} {F : Family O} {V : Type} [Fintype V]
     [DecidableEq V] {E : Env V} (base : Run F E) (hh : 0 ≤ base.horizon) (hsel : base.SelValid)
     (g : Time) : (base.withEvents (base.canonicalEvents g)).ExecutionValid :=
-  ⟨base.canonical_schedule g hh, base.canonical_sleep g,
-    (base.withEvents (base.canonicalEvents g)).unforgeable_of_causal (base.canonical_causal g),
-    hsel,
-    (base.withEvents (base.canonicalEvents g)).credentials_of_causal (base.canonical_causal g)⟩
+  base.canonical_valid_of g hh
+    ((base.withEvents (base.canonicalEvents g)).unforgeable_of_causal (base.canonical_causal g))
+    hsel
+    ((base.withEvents (base.canonicalEvents g)).credentials_of_causal (base.canonical_causal g))
 
 /-- `canonical_run_from` with one more fact about the schedule: its network
 is causal (every delivery is an earlier release), so it carries no object
@@ -72,7 +72,7 @@ that no honest node released. -/
 theorem canonical_run_from_causal (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
     [DecidableEq V] (E : Env V) (honest : Finset V) (horizon : Time) (hh : 0 ≤ horizon)
     (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
-    (hsel : ∀ r, ((protoOf F E).selSpec r).Admits (sel r))
+    (hsel : (protoOf F E).SelAdmits sel)
     (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) (g : Time) :
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
       let rho := mkRun (F := F) (E := E) honest horizon key sel submit relay hash events
@@ -97,7 +97,7 @@ before `g`. -/
 theorem canonical_run_from (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
     [DecidableEq V] (E : Env V) (honest : Finset V) (horizon : Time) (hh : 0 ≤ horizon)
     (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
-    (hsel : ∀ r, ((protoOf F E).selSpec r).Admits (sel r))
+    (hsel : (protoOf F E).SelAdmits sel)
     (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) (g : Time) :
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
       let rho := mkRun (F := F) (E := E) honest horizon key sel submit relay hash events

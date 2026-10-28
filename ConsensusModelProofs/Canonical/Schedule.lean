@@ -229,9 +229,30 @@ theorem canonical_layer (g : Time) (t : Time) (h0 : 0 ≤ t) (hh : t ≤ rho.hor
     omega
   · simpa only [Int.toNat_of_nonneg h0] using he
 
-theorem canonical_schedule (g : Time) (h0 : 0 ≤ rho.horizon) :
-    (rho.withEvents (rho.canonicalEvents g)).ScheduleWellFormed := by
-  refine ⟨h0, rho.stages_sorted g _, rho.stages_nodup g _, ?_, ?_, ?_⟩
+theorem canonical_tick_awake (g : Time) :
+    ∀ v t, Event.tick v t ∈ rho.canonicalEvents g → E.awake v t = true := by
+  intro v t he
+  obtain ⟨k, _, hk⟩ := (rho.mem_stages g _ _).mp he
+  simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
+    mem_deliveryEvents] at hk
+  rcases hk with (⟨w, _, _, _, h⟩ | ⟨w, _, ha, h⟩) | ⟨_, w, _, _, o, _, h⟩
+  · cases h
+  · cases h; exact ha
+  · cases h
+
+/-- The canonical schedule meets every schedule and sleep condition; with the
+three bindings it is a valid execution. -/
+theorem canonical_valid_of (g : Time) (h0 : 0 ≤ rho.horizon)
+    (hu : (rho.withEvents (rho.canonicalEvents g)).Unforgeable)
+    (hsel : (rho.withEvents (rho.canonicalEvents g)).SelValid)
+    (hc : (rho.withEvents (rho.canonicalEvents g)).Credentials) :
+    (rho.withEvents (rho.canonicalEvents g)).ExecutionValid := by
+  have event_layer {e : Event V (protoOf F E).Object} (he : e ∈ (rho.canonicalEvents g)) :
+      ∃ k, e ∈ rho.layer g (rho.stages g k) (k : Time) := by
+    obtain ⟨k, _, hk⟩ := (rho.mem_stages g _ e).mp he
+    exact ⟨k, hk⟩
+  refine ⟨h0, rho.stages_sorted g _, rho.stages_nodup g _, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hu, hsel,
+    hc⟩
   · exact fun e he => rho.canonical_in_horizon g h0 he
   · intro e he
     obtain ⟨k, _, hk⟩ := (rho.mem_stages g _ e).mp he
@@ -240,21 +261,7 @@ theorem canonical_schedule (g : Time) (h0 : 0 ≤ rho.horizon) :
     apply rho.canonical_layer g t ht0 hh
     simp only [layer, List.mem_append]
     exact Or.inl (Or.inr ((rho.mem_tickEvents t _).mpr ⟨v, hv, ha, rfl⟩))
-
-theorem canonical_sleep (g : Time) : (rho.withEvents (rho.canonicalEvents g)).SleepWellFormed := by
-  have event_layer {e : Event V (protoOf F E).Object} (he : e ∈ (rho.canonicalEvents g)) :
-      ∃ k, e ∈ rho.layer g (rho.stages g k) (k : Time) := by
-    obtain ⟨k, _, hk⟩ := (rho.mem_stages g _ e).mp he
-    exact ⟨k, hk⟩
-  constructor
-  · intro v t he
-    obtain ⟨k, hk⟩ := event_layer he
-    simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
-      mem_deliveryEvents] at hk
-    rcases hk with (⟨w, _, _, _, h⟩ | ⟨w, _, ha, h⟩) | ⟨_, w, _, _, o, _, h⟩
-    · cases h
-    · cases h; exact ha
-    · cases h
+  · exact rho.canonical_tick_awake g
   · intro v o t he
     obtain ⟨k, hk⟩ := event_layer he
     simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,

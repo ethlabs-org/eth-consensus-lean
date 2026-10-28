@@ -164,8 +164,8 @@ theorem truncate_valid (hv : rho.ExecutionValid) {b : Time} (hb : 0 ≤ b)
   obtain ⟨ys, hsplit, hys⟩ := rho.truncate_split hv.sorted b
   have hsub : ∀ e, e ∈ (rho.truncate b).events → e ∈ rho.events := fun e he =>
     (mem_truncate_events.mp he).1
-  refine ⟨⟨hb, hv.sorted.sublist List.filter_sublist, hv.nodup.filter _, ?_, ?_, ?_⟩,
-    ⟨?_, ?_, ?_, ?_⟩, ?_, hv.selValid, ?_⟩
+  refine ⟨hb, hv.sorted.sublist List.filter_sublist, hv.nodup.filter _, ?_, ?_, ?_,
+    ?_, ?_, ?_, ?_, ?_, hv.selValid, ?_⟩
   · intro e he
     exact ⟨(hv.in_horizon e (hsub e he)).1, (mem_truncate_events.mp he).2⟩
   · intro e he
@@ -240,8 +240,8 @@ theorem truncate_prefix (hv : rho.ExecutionValid) (b : Time) :
     simp only [sysOf, truncate_viewIdx hsplit v hi']
   · intro v m t ht
     constructor
-    · simp only [sysOf, truncate_releases_iff hsplit hys ht]
-    · simp only [sysOf, truncate_receives_iff hsplit hys ht]
+    · simp only [sysOf, tagLog, log, truncate_releases_iff hsplit hys ht]
+    · simp only [sysOf, tagLog, log, truncate_receives_iff hsplit hys ht]
   · rintro ⟨x, y, hxy, ⟨ox, ⟨vx, hvx, hox⟩, hx⟩, ⟨oy, ⟨vy, hvy, hoy⟩, hy⟩, hh⟩
     have hmono : ∀ w o, o ∈ (rho.truncate b).ViewIdx w (rho.truncate b).events.length →
         o ∈ rho.ViewIdx w rho.events.length := by

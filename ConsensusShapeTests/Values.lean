@@ -24,7 +24,7 @@ five consecutive honest ready proposers (`Pattern.range 5`) in every window of
 
 **Tendermint (decision T).** A poll shape: no slot proposals
 (`proposerSel := .fixed ∅`) and no committee kinds; every key may sign in the
-poll role (`pollSel := .all`). Proposals come from the poll proposal duty
+poll role (`pollSel := .fixed univ`). Proposals come from the poll proposal duty
 (height in `pos`, round in `info`) and votes from the poll message duty, both
 at every unit tick; the round-robin leader of a round is computed locally from
 the own key and the public `Fin n`. Unit ticks, no responsiveness claim.
@@ -89,7 +89,7 @@ def streamletSkeleton (n : Nat) : Skeleton n where
   kinds_nodup := List.nodup_singleton _
   kinds_complete := fun _ => List.mem_singleton_self _
   phase := fun _ => 1
-  kindSel := fun _ => .all
+  kindSel := fun _ => .fixed Finset.univ
 
 /-- Streamlet progress: five consecutive honest proposers within every window
 of `k` slots. -/
@@ -117,7 +117,7 @@ theorem streamletContract_progressTolerant (catchUp : Nat) (heal latency : Affin
 def tendermintSkeleton (n : Nat) : Skeleton n where
   grid := ⟨1, by decide⟩
   proposerSel := .fixed ∅
-  pollSel := .all
+  pollSel := .fixed Finset.univ
   Kind := Empty
   decKind := inferInstance
   kinds := []

@@ -1,5 +1,5 @@
 module
-public import Mathlib.Logic.Encodable.Basic
+public import Mathlib.Data.Countable.Defs
 public import Mathlib.Data.Fintype.Card
 public import ConsensusProblem.Basic
 public import ConsensusModel.Objects
@@ -36,11 +36,10 @@ structure Public where
 validators. -/
 abbrev Key (pub : Public) := Fin pub.n
 
-/-- Closed selection syntax: everybody, a fixed public set of keys, or some
-set of `m` keys (all keys if `m ≥ n`) chosen by the run. The run picks one
-admissible set per role. -/
+/-- Closed selection syntax: a fixed public set of keys (everybody is
+`.fixed univ`), or some set of `m` keys (all keys if `m ≥ n`) chosen by the
+run. The run picks one admissible set per role. -/
 inductive SelSpec (n : Nat) where
-  | all
   | fixed (S : Finset (Fin n))
   | sized (m : Nat)
 
@@ -50,14 +49,12 @@ variable {n : Nat}
 
 /-- `S` is an admissible selection for the specification. -/
 def Admits : SelSpec n → Finset (Fin n) → Prop
-  | .all, S => S = Finset.univ
   | .fixed T, S => S = T
   | .sized m, S => S.card = min m n
 
 /-- Every specification admits some selection. -/
 theorem admits_exists (s : SelSpec n) : ∃ S, s.Admits S := by
   cases s with
-  | all => exact ⟨Finset.univ, rfl⟩
   | fixed T => exact ⟨T, rfl⟩
   | sized m =>
     obtain ⟨S, -, hS⟩ := Finset.exists_subset_card_eq
@@ -83,7 +80,8 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   decRole : DecidableEq Role
   decItem : DecidableEq Item
   decBody : DecidableEq Body
-  encItem : Encodable Item
+  /-- Items are countable, so an injective hash exists. -/
+  cntItem : Countable Item
   /-- Who may act in each role: public, closed syntax; the run picks an
   admissible set of keys. -/
   selSpec : Role → SelSpec pub.n
@@ -117,7 +115,12 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   it. -/
   conflicts : Obj pub.n Role Item Body → Obj pub.n Role Item Body → Bool
 
-attribute [instance] Protocol.decRole Protocol.decItem Protocol.decBody Protocol.encItem
+attribute [instance] Protocol.decRole Protocol.decItem Protocol.decBody Protocol.cntItem
+
+/-- `sel` is an admissible selection of `P`: admissible for every role. -/
+def Protocol.SelAdmits {pub : Public} {Out : Type} (P : Protocol pub Out)
+    (sel : P.Role → Finset (Fin pub.n)) : Prop :=
+  ∀ r, (P.selSpec r).Admits (sel r)
 
 /-- Wire objects of a protocol. -/
 abbrev Protocol.Object {pub : Public} {Out : Type} (P : Protocol pub Out) : Type :=

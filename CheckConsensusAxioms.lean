@@ -183,6 +183,13 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Reformulations.wellFormed_iff,
       `Consensus.Shape.Tests.Reformulations.adequate_iff,
       `Consensus.Shape.Tests.Reformulations.realizable_iff,
+      `Consensus.Shape.Tests.Reformulations.selAdmits_iff,
+      `Consensus.Shape.Tests.Reformulations.fixed_univ_admits,
+      `Consensus.Shape.Tests.Reformulations.oldContains_iff,
+      `Consensus.Shape.Tests.Reformulations.signerOf_eq,
+      `Consensus.Shape.Tests.Reformulations.executionValid_iff,
+      `Consensus.Shape.Tests.Reformulations.sysOf_log_eq,
+      `Consensus.Model.mem_honestEvidence_iff, `Consensus.Model.Obj.Contains.trans,
       `Consensus.Shape.Tests.Problem.shortHistory_not_awake_delta,
       `Consensus.Shape.Tests.Leaks.schema_daCore] do
     unless env.contains name do

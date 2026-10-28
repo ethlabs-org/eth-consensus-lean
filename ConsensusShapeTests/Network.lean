@@ -277,7 +277,7 @@ theorem tickedRun_valid : tickedRun.ExecutionValid := by
     intro i w o t h
     have := List.mem_of_getElem? h
     simp [tickedRun, mkRun] at this
-  refine ⟨⟨by decide, ?_, ?_, ?_, ?_, ?_⟩, ⟨?_, ?_, ?_, ?_⟩, ?_, Model.sel_valid _ rfl, ?_⟩
+  refine ⟨by decide, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, Model.sel_valid _ rfl, ?_⟩
   · simp [tickedRun, mkRun, Event.keyLe, Event.time, Event.phase]
   · simp [tickedRun, mkRun]
   · intro e he
@@ -315,7 +315,7 @@ theorem truncate_relayedRun :
   refine ⟨?_, Run.truncate_valid tickedRun_valid (by decide) (by decide),
     (Run.truncate_prefix tickedRun_valid 1).1, ?_⟩
   · simp [Run.truncate, tickedRun, mkRun, Event.time]
-  · simp [sysOf, Run.truncate, tickedRun, mkRun, Run.inbox]
+  · simp [sysOf, tagLog, Run.log, Run.truncate, tickedRun, mkRun, Run.inbox]
 
 end Consensus.Shape.Tests.Network
 

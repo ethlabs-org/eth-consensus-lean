@@ -30,8 +30,8 @@ def proto (pub : Public) : Protocol pub Unit where
   decRole := inferInstance
   decItem := inferInstance
   decBody := inferInstance
-  encItem := inferInstance
-  selSpec := fun r => if r then .sized 1 else .all
+  cntItem := inferInstance
+  selSpec := fun r => if r then .sized 1 else .fixed Finset.univ
   role := fun _ => false
   duties := fun t => [t]
   init := fun _ => ()

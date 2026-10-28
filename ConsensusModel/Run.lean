@@ -155,10 +155,8 @@ variable (rho : Run F E)
 /-- The own key of validator `v`. -/
 def ownKey (v : V) : Fin (Fintype.card V) := rho.key.symm v
 
-/-- The validator that signed an authentication, through the PKI. -/
-def signerOf : Auth (Fintype.card V) (protoOf F E).Role → Option V
-  | .signed k _ => some (rho.key k)
-  | .none => none
+/-- The validator that signed an object, through the PKI. -/
+def signerOf (o : (protoOf F E).Object) : Option V := o.signer?.map rho.key
 
 /-- The initial world: every node starts in `init` of its own key, having
 seen nothing. -/

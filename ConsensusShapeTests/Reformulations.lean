@@ -20,7 +20,10 @@ inlined), with a lemma `new ↔ old` (or `new = old`) checked by Lean.
   `EnvPoint.HealthyFrom` and `EnvPoint.WellFormed` inlined; `TxLiveActive`
   on the environment point, and `Realizable` through `SleepyLive` and
   `HealthyLive`. (`Contract` lost its unused schema parameter; it carried no
-  data, so no lemma.) -/
+  data, so no lemma.)
+* B4 (L1): `Protocol.SelAdmits`; `SelSpec.all` replaced by `.fixed univ`;
+  `Obj.Contains` is membership in `parts`; `ExecutionValid` flat;
+  `Run.signerOf` on objects; the `sysOf` log is the tagged run log. -/
 
 namespace Consensus.Shape.Tests.Reformulations
 
@@ -265,6 +268,90 @@ theorem realizable_iff (S : System V) (X : Progress S Prog) (K : Contract Prog) 
       exact ⟨i, r, hw, hd, ⟨he, hH, hp, ht⟩, ha⟩
 
 end Good
+
+/-! ## B4 -/
+
+section Model
+
+open Consensus.Model
+
+/-- `SelAdmits` is the per-role admissibility it names. -/
+theorem selAdmits_iff {pub : Public} {Out : Type} (P : Protocol pub Out)
+    (sel : P.Role → Finset (Fin pub.n)) :
+    P.SelAdmits sel ↔ ∀ r, (P.selSpec r).Admits (sel r) := Iff.rfl
+
+/-- The deleted `SelSpec.all` admitted exactly `univ`; so does `.fixed univ`. -/
+theorem fixed_univ_admits {n : Nat} (S : Finset (Fin n)) :
+    (SelSpec.fixed Finset.univ).Admits S ↔ S = Finset.univ := Iff.rfl
+
+variable {n : Nat} {Role Item Body : Type}
+
+/-- The old inductive `Obj.Contains`. -/
+inductive OldContains : Obj n Role Item Body → Obj n Role Item Body → Prop
+  | refl (o : Obj n Role Item Body) : OldContains o o
+  | step {o c d : Obj n Role Item Body} : c ∈ o.carried → OldContains c d → OldContains o d
+
+theorem oldContains_iff (o d : Obj n Role Item Body) : OldContains o d ↔ Obj.Contains o d := by
+  constructor
+  · intro h
+    induction h with
+    | refl o => exact .refl o
+    | step hc _ ih => exact .step hc ih
+  · intro h
+    rcases h.cases with rfl | ⟨c, hc, hcd⟩
+    · exact .refl _
+    · exact .step hc ((oldContains_iff c d).mpr hcd)
+termination_by sizeOf o
+decreasing_by exact lt_trans (List.sizeOf_lt_of_mem hc) (Obj.carried_size_lt _)
+
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+
+/-- The old `Run.signerOf`, on authentications. -/
+def OldSignerOf (rho : Run F E) : Auth (Fintype.card V) (protoOf F E).Role → Option V
+  | .signed k _ => some (rho.key k)
+  | .none => none
+
+theorem signerOf_eq (rho : Run F E) (o : (protoOf F E).Object) :
+    rho.signerOf o = OldSignerOf rho o.auth := by
+  obtain ⟨a, m, cs⟩ := o
+  cases a <;> rfl
+
+/-- The old `ScheduleWellFormed`. -/
+structure OldScheduleWellFormed (rho : Run F E) : Prop where
+  horizon_nonneg : 0 ≤ rho.horizon
+  sorted : rho.events.Pairwise Event.keyLe
+  nodup : rho.events.Nodup
+  in_horizon : ∀ e ∈ rho.events, 0 ≤ e.time ∧ e.time ≤ rho.horizon
+  honest_only : ∀ e ∈ rho.events, e.node ∈ rho.honest
+  tick_total : ∀ v ∈ rho.honest, ∀ t, 0 ≤ t → t ≤ rho.horizon →
+    E.awake v t = true → Event.tick v t ∈ rho.events
+
+/-- The old `SleepWellFormed`. -/
+structure OldSleepWellFormed (rho : Run F E) : Prop where
+  tick_awake : ∀ v t, Event.tick v t ∈ rho.events → E.awake v t = true
+  deliver_awake : ∀ v o t, Event.deliver v o t ∈ rho.events → E.awake v t = true
+  restart_at_wake : ∀ v t, Event.restart v t ∈ rho.events → 0 < t ∧ Wakes E v t
+  wake_restart : ∀ v ∈ rho.honest, ∀ t, 0 < t → t ≤ rho.horizon →
+    Wakes E v t → Event.restart v t ∈ rho.events
+
+/-- The old nested `ExecutionValid`. -/
+structure OldExecutionValid (rho : Run F E) : Prop extends
+  OldScheduleWellFormed rho, OldSleepWellFormed rho where
+  unforgeable : rho.Unforgeable
+  selValid : rho.SelValid
+  credentials : rho.Credentials
+
+theorem executionValid_iff (rho : Run F E) : rho.ExecutionValid ↔ OldExecutionValid rho :=
+  ⟨fun h => ⟨⟨h.1, h.2, h.3, h.4, h.5, h.6⟩, ⟨h.7, h.8, h.9, h.10⟩, h.11, h.12, h.13⟩,
+    fun h => ⟨h.1.1, h.1.2, h.1.3, h.1.4, h.1.5, h.1.6, h.2.1, h.2.2, h.2.3, h.2.4, h.3, h.4,
+      h.5⟩⟩
+
+/-- The old `sysOf` log, written out. -/
+theorem sysOf_log_eq (r : (sysOf O F V).Run) :
+    (sysOf O F V).log r = ⟨fun v m t => ∃ o, m = ⟨r.1, o⟩ ∧ r.2.releases v o t,
+      fun v m t => ∃ o, m = ⟨r.1, o⟩ ∧ r.2.receives v o t, r.2.inbox⟩ := rfl
+
+end Model
 
 end Consensus.Shape.Tests.Reformulations
 

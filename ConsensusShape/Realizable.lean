@@ -40,38 +40,34 @@ PKI and selection, and its log is eager from `g`. -/
 theorem coverage (F : ShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V]
     (p : EnvPoint V) (hp : 0 ≤ p.horizon) (key : Fin (Fintype.card V) ≃ V)
     (sel : (protoOf (compiled F) p.env).Role → Finset (Fin (Fintype.card V)))
-    (hsel : ∀ r, ((protoOf (compiled F) p.env).selSpec r).Admits (sel r)) (g : Time) :
+    (hsel : (protoOf (compiled F) p.env).SelAdmits sel) (g : Time) :
     ∃ rho : Model.Run (compiled F) p.env, rho.point = p ∧ rho.key = key ∧ rho.sel = sel ∧
       rho.ExecutionValid ∧ ¬ rho.HashCollision ∧
       Consensus.convicted ((sysOf O (compiled F) V).convicts ⟨p.env, rho⟩)
         ((sysOf O (compiled F) V).honestEvidence ⟨p.env, rho⟩) = ∅ ∧
       CommLog.EagerFrom rho.point rho.log g := by
-  let hash : (protoOf (compiled F) p.env).Item → Nat := fun x => Encodable.encode x + 1
+  obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf (compiled F) p.env).Item
   obtain ⟨relay, events, hv, he, hc⟩ :=
     Model.canonical_run_from_causal O (compiled F) V p.env p.honest p.horizon hp key sel hsel
       p.submit hash g
   let rho := Model.mkRun (F := compiled F) (E := p.env) p.honest p.horizon key sel p.submit
     relay hash events
   refine ⟨rho, rfl, rfl, rfl, hv, ?_, ?_, he⟩
-  · apply Model.Run.not_hashCollision_of_injective
-    intro a b hab
-    exact Encodable.encode_injective (Nat.add_right_cancel hab)
+  · exact Model.Run.not_hashCollision_of_injective hinj
   · exact Model.convicted_honestEvidence_eq_empty rho (rho.not_slashable_of_causal hv hc)
 
 /-! ## The extremal selection -/
 
 /-- An admissible key set for each selection specification on `Fin N`:
-everybody, the fixed set, or the keys `1, …, m` for `.sized m` with `m < N`
+the fixed set, or the keys `1, …, m` for `.sized m` with `m < N`
 (everybody otherwise). Key `0` is selected only when a specification forces
 it. -/
 def extremalKeys {N : Nat} : SelSpec N → Finset (Fin N)
-  | .all => Finset.univ
   | .fixed T => T
   | .sized m => if m < N then Finset.univ.filter fun k => 1 ≤ k.val ∧ k.val ≤ m else Finset.univ
 
 theorem extremalKeys_admits {N : Nat} (s : SelSpec N) : s.Admits (extremalKeys s) := by
   cases s with
-  | all => rfl
   | fixed T => rfl
   | sized m =>
     change (if m < N then Finset.univ.filter (fun k : Fin N => 1 ≤ k.val ∧ k.val ≤ m)
@@ -95,7 +91,7 @@ def extremalSel (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) :
   fun r => extremalKeys ((protoOf (compiled F) E).selSpec r)
 
 theorem extremalSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) :
-    ∀ r, ((protoOf (compiled F) E).selSpec r).Admits (extremalSel F E r) :=
+    (protoOf (compiled F) E).SelAdmits (extremalSel F E) :=
   fun _ => extremalKeys_admits _
 
 /-! ## Progress fit -/
@@ -544,22 +540,19 @@ theorem profile_safeActive (awake : V → Time → Bool)
     kv_ne key hn (by decide), lt_add_one t₀, by linarith, hH,
     ⟨h1, fun t _ _ => ha1 t⟩, ⟨h2, fun t _ _ => ha2 t⟩, ⟨h1, fun t _ _ => ha1 t⟩⟩
 
-/-- The canonical run at a witness point, from GST `g`: valid, no collision,
-and eager from `g`; its point, PKI and selection are the given ones
-definitionally (`mkRun`). -/
+/-- The canonical run at a witness point, from GST `g`, with some injective
+hash: valid, no collision, and eager from `g`; its point, PKI and selection are
+the given ones definitionally (`mkRun`). -/
 theorem real_run (F : ShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.horizon) (g : Time) :
-    ∃ relay events,
+    ∃ hash relay events,
       let rho := Model.mkRun (F := compiled F) (E := p.env) p.honest p.horizon key
-        (extremalSel F p.env) p.submit relay (fun x => Encodable.encode x + 1) events
+        (extremalSel F p.env) p.submit relay hash events
       rho.ExecutionValid ∧ ¬ rho.HashCollision ∧ CommLog.EagerFrom rho.point rho.log g := by
+  obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf (compiled F) p.env).Item
   obtain ⟨relay, events, hv, he, -⟩ :=
     Model.canonical_run_from_causal O (compiled F) V p.env p.honest p.horizon hp key
-      (extremalSel F p.env) (extremalSel_admits F p.env) p.submit
-      (fun x => Encodable.encode x + 1) g
-  refine ⟨relay, events, hv, ?_, he⟩
-  apply Model.Run.not_hashCollision_of_injective
-  intro a b hab
-  exact Encodable.encode_injective (Nat.add_right_cancel hab)
+      (extremalSel F p.env) (extremalSel_admits F p.env) p.submit hash g
+  exact ⟨hash, relay, events, hv, Model.Run.not_hashCollision_of_injective hinj, he⟩
 
 /-- The sleepy witness: everyone awake, the synchronous canonical run, horizon
 `H` long enough for one liveness deadline and one progress window. -/
@@ -575,11 +568,12 @@ theorem sleepy_witness (ha : K.params.Admissible) (hf : K.ProgressFits F) (cap :
   have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V)
   have hlat : 0 ≤ K.params.latDur Δ cap i := mul_nonneg (by positivity) hΔ.le
   have hH0 : 0 ≤ H := by linarith
-  obtain ⟨relay, events, hv, hnc, he⟩ := real_run key F (realPoint key hn Δ hΔ allAwake H) hH0 0
+  obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
+    real_run key F (realPoint key hn Δ hΔ allAwake H) hH0 0
   refine ⟨Model.mkRun (F := compiled F) (E := (realPoint key hn Δ hΔ allAwake H).env)
     (realPoint key hn Δ hΔ allAwake H).honest H key
     (extremalSel F (realPoint key hn Δ hΔ allAwake H).env)
-    (realPoint key hn Δ hΔ allAwake H).submit relay (fun x => Encodable.encode x + 1) events,
+    (realPoint key hn Δ hΔ allAwake H).submit relay hash events,
     rfl, rfl, ⟨hv, hnc, ?_, ?_⟩, ⟨(Model.sysOf_eagerFrom _ he).psync le_rfl, ?_⟩,
     allAwake_holds key hn hΔ H hf cap i _ _ _, ?_, ?_⟩
   · change (realPoint key hn Δ hΔ allAwake H).faulty.Nonempty
@@ -623,12 +617,13 @@ theorem healthy_witness (ha : K.params.Admissible) (hf : K.ProgressFits F) (cap 
   have hrdy : 0 ≤ readyFrom (K.params.cDur Δ) g := by
     unfold readyFrom; have := le_max_right g 0; linarith
   have hH0 : 0 ≤ H := by linarith
-  obtain ⟨relay, events, hv, hnc, he⟩ := real_run key F (realPoint key hn Δ hΔ allAwake H) hH0 g
+  obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
+    real_run key F (realPoint key hn Δ hΔ allAwake H) hH0 g
   have hse := Model.sysOf_eagerFrom (O := O) _ he
   refine ⟨Model.mkRun (F := compiled F) (E := (realPoint key hn Δ hΔ allAwake H).env)
     (realPoint key hn Δ hΔ allAwake H).honest H key
     (extremalSel F (realPoint key hn Δ hΔ allAwake H).env)
-    (realPoint key hn Δ hΔ allAwake H).submit relay (fun x => Encodable.encode x + 1) events,
+    (realPoint key hn Δ hΔ allAwake H).submit relay hash events,
     rfl, rfl, ⟨hv, hnc, ?_, ?_⟩, hse, ⟨hse.psync le_rfl, ?_⟩,
     allAwake_holds key hn hΔ H hf cap i _ _ _, ?_, ?_,
     allAwake_safeActive key hn hΔ H _ _ h2⟩
@@ -661,12 +656,12 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hf : K.ProgressFits F) 
   have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, (awakeUpTo key 3)⟩ : Env V)
   have hlat : 0 ≤ K.params.latDur Δ cap i := mul_nonneg (by positivity) hΔ.le
   have hH0 : 0 ≤ H := by linarith
-  obtain ⟨relay, events, hv, hnc, he⟩ := real_run key F (realPoint key hn Δ hΔ (awakeUpTo key 3)
-    H) hH0 0
+  obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
+    real_run key F (realPoint key hn Δ hΔ (awakeUpTo key 3) H) hH0 0
   refine ⟨Model.mkRun (F := compiled F) (E := (realPoint key hn Δ hΔ (awakeUpTo key 3) H).env)
     (realPoint key hn Δ hΔ (awakeUpTo key 3) H).honest H key
     (extremalSel F (realPoint key hn Δ hΔ (awakeUpTo key 3) H).env)
-    (realPoint key hn Δ hΔ (awakeUpTo key 3) H).submit relay (fun x => Encodable.encode x + 1)
+    (realPoint key hn Δ hΔ (awakeUpTo key 3) H).submit relay hash
       events,
     rfl, rfl, ⟨hv, hnc, ?_, ?_⟩, ⟨(Model.sysOf_eagerFrom _ he).psync le_rfl, ?_⟩,
     profile_holds key hn hΔ H _ (by intro t; simp [awakeUpTo, kv]) hf cap i ht _ _ _, ?_, ?_, ?_⟩
@@ -723,15 +718,15 @@ theorem healthyStress_witness (ha : K.params.Admissible) (hf : K.ProgressFits F)
   have hrdy : 0 ≤ readyFrom (K.params.cDur Δ) g := by
     unfold readyFrom; have := le_max_right g 0; linarith
   have hH0 : 0 ≤ H := by linarith
-  obtain ⟨relay, events, hv, hnc, he⟩ := real_run key F (realPoint key hn Δ hΔ (awakeUpTo key (2 *
-    Fintype.card V / 3 + 1)) H) hH0 g
+  obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
+    real_run key F (realPoint key hn Δ hΔ (awakeUpTo key (2 * Fintype.card V / 3 + 1)) H)
+      hH0 g
   have hse := Model.sysOf_eagerFrom (O := O) _ he
   refine ⟨Model.mkRun (F := compiled F) (E := (realPoint key hn Δ hΔ (awakeUpTo key (2 *
     Fintype.card V / 3 + 1)) H).env)
     (realPoint key hn Δ hΔ (awakeUpTo key (2 * Fintype.card V / 3 + 1)) H).honest H key
     (extremalSel F (realPoint key hn Δ hΔ (awakeUpTo key (2 * Fintype.card V / 3 + 1)) H).env)
-    (realPoint key hn Δ hΔ (awakeUpTo key (2 * Fintype.card V / 3 + 1)) H).submit relay (fun x =>
-      Encodable.encode x + 1) events,
+    (realPoint key hn Δ hΔ (awakeUpTo key (2 * Fintype.card V / 3 + 1)) H).submit relay hash events,
     rfl, rfl, ⟨hv, hnc, ?_, ?_⟩, hse, ⟨hse.psync le_rfl, ?_⟩,
     profile_holds key hn hΔ H _ (by intro t; simp [awakeUpTo, kv]) hf cap i ht _ _ _, ?_, ?_,
     profile_safeActive key hn hΔ H _ (by intro t; simp [awakeUpTo, kv])
@@ -776,14 +771,14 @@ theorem outage_witness (ha : K.params.Admissible) {T b₀ b₁ : Time}
   have hT0 : 0 ≤ T := hT.1
   have hH0 : 0 ≤ H := by linarith
   have h12 : kv key hn 1 (by decide) ≠ kv key hn 2 (by decide) := kv_ne key hn (by decide)
-  obtain ⟨relay, events, hv, hnc, he⟩ :=
+  obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run key F (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H) hH0 0
   let rho := Model.mkRun (F := compiled F)
     (E := (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).env)
     (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).honest H key
     (extremalSel F (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).env)
     (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).submit relay
-    (fun x => Encodable.encode x + 1) events
+    hash events
   have hse := Model.sysOf_eagerFrom (O := O) rho he
   have hawake1 : ∀ t, sleepAt (kv key hn 2 (by decide)) b₀ (kv key hn 1 (by decide)) t = true := by
     intro t; simp [sleepAt, h12]

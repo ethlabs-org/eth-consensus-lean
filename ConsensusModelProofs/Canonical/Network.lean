@@ -99,11 +99,10 @@ theorem canonical_eagerFrom (g : Time) (h0 : 0 ≤ rho.horizon) :
   have hga : g ≤ a := le_trans (le_max_right t g) hmax
   change a ≤ rho.horizon at hah
   have hr0 := hr
-  have hs := rho.canonical_schedule g h0
   obtain ⟨i, hi, _⟩ := hr
   have htm := List.mem_of_getElem? hi
-  have ht0 := (hs.in_horizon _ htm).1
-  have hwa := (rho.canonical_sleep g).tick_awake v t htm
+  have ht0 := (rho.canonical_in_horizon g h0 htm).1
+  have hwa := rho.canonical_tick_awake g v t htm
   have ha0 : 0 ≤ a := le_trans ht0 hta
   have han : a.toNat < rho.horizon.toNat + 1 := by
     have := Int.toNat_le_toNat hah

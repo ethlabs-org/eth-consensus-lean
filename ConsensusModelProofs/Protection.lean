@@ -192,15 +192,9 @@ omit [DecidableEq V] in
 /-- Through the PKI, an object signed by validator `x` is signed by `x`'s own
 key. -/
 theorem signer_of_signerOf {o : (protoOf F E).Object} {x : V}
-    (h : rho.signerOf o.auth = some x) : o.signer? = some (rho.ownKey x) := by
-  unfold signerOf at h
-  unfold Obj.signer?
-  split at h
-  next k r ha =>
-    rw [ha]
-    have hk : rho.key k = x := Option.some.inj h
-    simp [ownKey, ← hk]
-  next => cases h
+    (h : rho.signerOf o = some x) : o.signer? = some (rho.ownKey x) := by
+  obtain ⟨k, hk, rfl⟩ := Option.map_eq_some_iff.mp h
+  simp [ownKey, hk]
 
 omit [DecidableEq V] in
 /-- A tick appends exactly what it releases to `seen`. -/
@@ -330,7 +324,7 @@ tick event `j < i`. -/
 theorem signed_seen_released (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {o : (protoOf F E).Object} {u : V}
     (ho : o ∈ closure (rho.stateBefore i v).seen) (hu : u ∈ rho.honest)
-    (hs : rho.signerOf o.auth = some u) :
+    (hs : rho.signerOf o = some u) :
     ∃ j < i, ∃ t, rho.events[j]? = some (.tick u t) ∧ o ∈ rho.releasesAt j := by
   obtain ⟨r, hr, hc⟩ := (mem_closure_iff _ _).mp ho
   obtain ⟨j, t, hj, he, hjo⟩ := rho.seen_safe hv i v r hr o hc u hu hs
@@ -340,7 +334,7 @@ theorem signed_seen_released (hv : rho.ExecutionValid) {i : Nat} {v : V}
 released by that validator at a tick. -/
 theorem released_of_observed (hv : rho.ExecutionValid) {o : (protoOf F E).Object}
     (ho : o ∈ rho.Observed) {u : V} (hu : u ∈ rho.honest)
-    (hs : rho.signerOf o.auth = some u) :
+    (hs : rho.signerOf o = some u) :
     ∃ j t, rho.events[j]? = some (.tick u t) ∧ o ∈ rho.releasesAt j := by
   obtain ⟨v, -, hov⟩ := ho
   obtain ⟨j, -, t, he, hjo⟩ := rho.signed_seen_released hv (rho.viewIdx_closure hov) hu hs
@@ -375,7 +369,8 @@ theorem tick_noConflict_seen {i : Nat} {v : V} {t : Time}
 protocol: both conflicting objects were released by the validator itself, and
 the later one (by event, or by position within one tick) was checked against
 the earlier one. -/
-theorem honestNeverSlashed (hv : rho.ExecutionValid) : rho.HonestNeverSlashed := by
+theorem honestNeverSlashed (hv : rho.ExecutionValid) :
+    ∀ v ∈ rho.honest, ¬ rho.Slashable rho.Observed v := by
   rintro x hx ⟨o, ho, o', ho', hs, hs', hc⟩
   obtain ⟨j, t, hj, hjo⟩ := rho.released_of_observed hv ho hx hs
   obtain ⟨j', t', hj', hjo'⟩ := rho.released_of_observed hv ho' hx hs'
@@ -398,19 +393,26 @@ theorem honestNeverSlashed (hv : rho.ExecutionValid) : rho.HonestNeverSlashed :=
 
 end Run
 
+/-- The honest evidence of a system run is what the honest nodes of the run
+saw. -/
+theorem mem_honestEvidence_iff (rho : Run F E) (p : (protoOf F E).Object) :
+    (⟨E, p⟩ : (sysOf O F V).Obs) ∈ (sysOf O F V).honestEvidence ⟨E, rho⟩ ↔
+      p ∈ rho.Observed := by
+  constructor
+  · rintro ⟨w, hw, q, hq, heq⟩
+    obtain rfl : p = q := eq_of_heq (Sigma.mk.inj heq).2
+    exact ⟨w, hw, hq⟩
+  · rintro ⟨w, hw, hp⟩
+    exact ⟨w, hw, p, hp, rfl⟩
+
 /-- L0 non-framing holds for every model system. -/
 theorem sysOf_nonFraming (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
     [DecidableEq V] : (sysOf O F V).HoldsAlways (sysOf O F V).NonFraming := by
   rintro ⟨E, rho⟩ hv v hvh hconv
   apply rho.honestNeverSlashed hv v hvh
   obtain ⟨o, ho, o', ho', h1, h2, h3⟩ := hconv
-  have hobs : ∀ p : (protoOf F E).Object,
-      (⟨E, p⟩ : (sysOf O F V).Obs) ∈ (sysOf O F V).honestEvidence ⟨E, rho⟩ →
-        p ∈ rho.Observed := by
-    rintro p ⟨w, hw, q, hq, heq⟩
-    have hpq : p = q := eq_of_heq (Sigma.mk.inj heq).2
-    exact ⟨w, hw, hpq ▸ hq⟩
-  exact ⟨o, hobs o ho, o', hobs o' ho', h1, h2, h3⟩
+  exact ⟨o, (mem_honestEvidence_iff rho o).mp ho, o', (mem_honestEvidence_iff rho o').mp ho',
+    h1, h2, h3⟩
 
 end Consensus.Model
 

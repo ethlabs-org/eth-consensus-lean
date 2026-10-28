@@ -106,7 +106,7 @@ def testSkel (n : Nat) : Skeleton n where
   kinds_nodup := List.nodup_singleton _
   kinds_complete := fun _ => List.mem_singleton_self _
   phase := fun _ => 0
-  kindSel := fun _ => .all
+  kindSel := fun _ => .fixed Finset.univ
 
 /-- The fabricated header. -/
 def fab : Header Unit := ⟨.root, 1, 7, ()⟩

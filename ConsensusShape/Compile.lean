@@ -80,7 +80,7 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
   decRole := inferInstance
   decItem := inferInstance
   decBody := inferInstance
-  encItem := inferInstance
+  cntItem := inferInstance
   selSpec := S.skel.selSpec
   role := S.skel.role
   duties := S.skel.duties pub.Δ

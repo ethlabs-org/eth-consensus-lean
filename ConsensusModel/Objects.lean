@@ -60,24 +60,16 @@ def item? : Obj n Role Item Body → Option Item
   | mk _ (.item x) _ => some x
   | _ => Option.none
 
-/-- `Contains o o'`: `o'` is `o` or occurs, at any depth, in what `o` carries. -/
-inductive Contains : Obj n Role Item Body → Obj n Role Item Body → Prop
-  | refl (o : Obj n Role Item Body) : Contains o o
-  | step {o c d : Obj n Role Item Body} : c ∈ o.carried → Contains c d → Contains o d
-
-theorem Contains.trans {a b c : Obj n Role Item Body} (h₁ : Contains a b)
-    (h₂ : Contains b c) : Contains a c := by
-  induction h₁ with
-  | refl => exact h₂
-  | step hm _ ih => exact .step hm (ih h₂)
-
-/-- The objects that `o` contains, `o` first. -/
+/-- `o`, then the parts of every object it carries, in order. -/
 def parts : Obj n Role Item Body → List (Obj n Role Item Body)
   | mk a m cs => mk a m cs :: partsList cs
 where
   partsList : List (Obj n Role Item Body) → List (Obj n Role Item Body)
     | [] => []
     | c :: cs => parts c ++ partsList cs
+
+/-- `Contains o d`: `d` is `o` or occurs, at any depth, in what `o` carries. -/
+def Contains (o d : Obj n Role Item Body) : Prop := d ∈ o.parts
 
 section DecEq
 variable [DecidableEq Role] [DecidableEq Item] [DecidableEq Body]

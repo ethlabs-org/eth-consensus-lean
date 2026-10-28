@@ -34,7 +34,7 @@ def trivialSkel (n : Nat) : Skeleton n where
   kinds_nodup := List.nodup_singleton _
   kinds_complete := fun _ => List.mem_singleton_self _
   phase := fun _ => 0
-  kindSel := fun _ => .all
+  kindSel := fun _ => .fixed Finset.univ
 
 /-- The trivial slot shape: nothing is proposed, signed or output. -/
 def trivialShape (pub : Public) : ChainShape pub Unit Unit where
@@ -67,7 +67,8 @@ example (pub : Public) : (compile (trivialShape pub)).role (.propose 3 (by decid
     ShapeRole.proposer 3 := rfl
 example (pub : Public) :
     (compile (trivialShape pub)).selSpec (ShapeRole.proposer 3) = .sized 1 := rfl
-example (pub : Public) : (compile (trivialShape pub)).selSpec (ShapeRole.duty 3 ()) = .all := rfl
+example (pub : Public) : (compile (trivialShape pub)).selSpec (ShapeRole.duty 3 ()) =
+    .fixed Finset.univ := rfl
 example (pub : Public) :
     (compile (trivialShape pub)).selSpec ((compile (trivialShape pub)).role (.pollPropose 3)) =
       .fixed ∅ := rfl
@@ -114,7 +115,7 @@ key may poll, no committee kinds. -/
 def pollSkel (n : Nat) : Skeleton n where
   grid := ⟨4, by decide⟩
   proposerSel := .fixed ∅
-  pollSel := .all
+  pollSel := .fixed Finset.univ
   Kind := Empty
   decKind := inferInstance
   kinds := []
