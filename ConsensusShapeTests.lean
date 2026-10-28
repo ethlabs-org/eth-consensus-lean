@@ -2,3 +2,4 @@ module
 public import ConsensusShapeTests.Problem
 public import ConsensusShapeTests.Premise
 public import ConsensusShapeTests.Model
+public import ConsensusShapeTests.Blocks

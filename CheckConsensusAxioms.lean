@@ -2,7 +2,7 @@ import Lean
 open Lean
 
 /-- Audit every declaration owned by every Consensus module, including tests
-and generated declarations. Run after the five-library Lake build:
+and generated declarations. Run after the six-library Lake build:
 `lake env lean --run contract/CheckConsensusAxioms.lean`. -/
 def main : IO UInt32 := do
   initSearchPath (← findSysroot)
@@ -31,7 +31,10 @@ def main : IO UInt32 := do
       `Consensus.Model.Run.honestNeverSlashed, `Consensus.Model.sysOf_nonFraming,
       `Consensus.Model.releaseAll_eq_carried, `Consensus.Model.Run.signed_seen_released,
       `Consensus.Model.releaseAll_noConflict,
-      `Consensus.Shape.Tests.Model.conflictsTrue_releases_unsigned_only] do
+      `Consensus.Shape.Tests.Model.conflictsTrue_releases_unsigned_only,
+      `Consensus.Blocks.ledgerOf_prefix, `Consensus.Blocks.patternRecurrence_of_all,
+      `Consensus.Blocks.PatternRecurrence.exists_honest,
+      `Consensus.Shape.Tests.Blocks.recurrence_has_teeth] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2
