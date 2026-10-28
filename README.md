@@ -47,7 +47,7 @@ and will be removed.
    - the regimes (participation, delivery, recurrence);
    - `Constants`;
    - `profile` and `bounds` (the assumptions and numbers that L0's claims are
-     promised under);
+     promised under), and `profile_realizable`;
    - `ShapeClaims`.
 
 ## Why the meaning is fixed below the protocol
@@ -117,9 +117,11 @@ restarts only at wakes; unforgeable signatures.
 - At L0, ledgers may contain fabricated transactions: the refutation of a
   fabricated-output family uses L1's block provenance (`outputValid`), which
   has no L0 counterpart.
-- Satisfiability of the shape profiles with active deadlines is shown by tests
-  (`ConsensusShapeTests/Controls`, one literal constant record), not by a
-  general theorem.
+- Satisfiability of the shape profiles is a theorem, `profile_realizable`: for
+  every family, valid constants, nonempty finite `V` and gap `k ≥ 1`, one run
+  (with an injective hash) satisfies every regime with active deadlines and a
+  nonempty protected outage. It shows the premises can hold, not that a
+  protocol satisfying `ShapeClaims` exists.
 - The collision escape is run-wide.
 - Accountability compares two reads in one run, not across runs.
 - Unit weights.
