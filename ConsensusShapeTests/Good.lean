@@ -27,7 +27,7 @@ namespace Consensus.Shape.Tests.Good
 section Vacuous
 
 variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
-  {X : Progress S Prog} {K : Contract' S.schema Prog}
+  {X : Progress S Prog} {K : Contract S.schema Prog}
 
 /-- A progress reader that never holds: not good (for `|V| ≥ 5`). -/
 theorem false_progress_not_good (hX : ∀ π c s e p x, ¬ X.holds π c s e p x)
@@ -40,7 +40,7 @@ theorem false_progress_not_good (hX : ∀ π c s e p x, ¬ X.holds π c s e p x)
 /-- A well-formed point: `Δ = 1`, GST `0`, everybody awake, nobody honest,
 horizon `0`, no submissions. -/
 def trivPoint (V : Type) : EnvPoint V :=
-  ⟨⟨1, by decide, 0, fun _ _ => true⟩, ∅, 0, fun _ _ => []⟩
+  ⟨⟨1, by decide, fun _ _ => true⟩, ∅, 0, fun _ _ => []⟩
 
 omit [Fintype V] [DecidableEq V] in
 /-- No admissible external data (e.g. `Admits := False`): not adequate. -/
@@ -79,7 +79,7 @@ section Prefix
 /-- Two honest, always-awake validators, `Δ = 1`, horizon `3`, no
 submissions. -/
 def prefixPoint : EnvPoint (Fin 2) :=
-  ⟨⟨1, by decide, 0, fun _ _ => true⟩, Finset.univ, 3, fun _ _ => []⟩
+  ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ, 3, fun _ _ => []⟩
 
 /-- Validator `0` sends at `2`; nobody ever receives anything. -/
 def prefixLog : CommLog (Fin 2) Unit :=
@@ -131,7 +131,7 @@ section Rotating
 /-- Four honest validators; at time `t`, validator `t mod 4` sleeps. `Δ = 1`,
 horizon `10`. -/
 def rotPoint : EnvPoint (Fin 4) :=
-  ⟨⟨1, by decide, 0, fun v t => decide (t % 4 ≠ ((v : Nat) : Int))⟩, Finset.univ, 10,
+  ⟨⟨1, by decide, fun v t => decide (t % 4 ≠ ((v : Nat) : Int))⟩, Finset.univ, 10,
     fun _ _ => []⟩
 
 theorem rotPoint_awake_card (t : Int) : (rotPoint.awakeAt t).card = 3 := by

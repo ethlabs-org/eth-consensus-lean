@@ -45,13 +45,6 @@ def sysExternal (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [Decida
   ext r := (r.2.key, r.2.sel)
   Admits E e := ∀ ρ, ((protoOf F E).selSpec ρ).Admits (e.2 ρ)
 
-/-- The execution profile of the model: the execution model fixes partial
-synchrony and synchrony up to a time; the shape supplies `progress`. -/
-def modelProfile (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq V]
-    {Prog : Type} (progress : Prog → Time → Time → (sysOf O F V).Run → Prop) :
-    ExecProfile (sysOf O F V) Prog :=
-  ⟨fun r => r.2.PartialSynchrony, fun b r => r.2.HealthyPrefixDelivery b, progress⟩
-
 end Consensus.Model
 
 end

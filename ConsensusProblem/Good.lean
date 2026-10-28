@@ -1,6 +1,5 @@
 module
 public import ConsensusProblem.Regimes
-public import ConsensusProblem.Claims
 public import Mathlib.Tactic
 
 @[expose] public section
@@ -34,11 +33,74 @@ What L0 cannot check, and L1 proves once for the model: the log is the
 engine's real communication (`Model.sysOf_log_faithful`), and the external data
 are fixed before execution (`Model.sysExternal`: the PKI and the selection).
 
-This file coexists with the older `Claims.lean` (`ProblemClaims`) until the
-L2 port; `Contract'`, `Trace.TxLive'` and `Trace.TxLiveActive'` carry
-temporary names. -/
+Claims hold on valid runs, unless the run's excuse holds (an observed hash
+collision in the model): `System.Holds`. There are no other escapes. -/
 
 namespace Consensus
+
+namespace System
+
+variable {V : Type}
+
+/-- On valid runs satisfying `A`, `P` holds or the excuse holds. -/
+def Holds (S : System V) (A P : S.Run → Prop) : Prop :=
+  ∀ r, S.Valid r → A r → P r ∨ S.Excuse r
+
+/-- On valid runs, `P` holds. -/
+def HoldsAlways (S : System V) (P : S.Run → Prop) : Prop :=
+  ∀ r, S.Valid r → P r
+
+/-- A weaker premise: a claim under `A` holds under any `B` implying `A`. -/
+theorem Holds.mono_premise {S : System V} {A B P : S.Run → Prop} (h : S.Holds A P)
+    (hAB : ∀ r, B r → A r) : S.Holds B P :=
+  fun r hv hb => h r hv (hAB r hb)
+
+variable [Fintype V] [DecidableEq V]
+
+/-- Accountable safety, non-framing and faults below the accountable fraction give
+agreement of `g`. -/
+theorem agree_of_accountable (S : System V) (hL : S.Laws) (r : S.Run) {g : S.schema.Id}
+    {t₀ : Time} {α : ℚ} (hacc : S.AccountablySafe r α g t₀) (hnf : S.NonFraming r)
+    (hb : (S.trace r).point.FaultsBelow α) : (S.trace r).Agree g t₀ := by
+  classical
+  intro u hu v hv i j hi hj
+  rcases hacc u hu v hv i j hi hj with hc | hcard
+  · exact hc
+  · exfalso
+    have hsub : S.convicted r (S.view r u i ∪ S.view r v j) ⊆ (S.trace r).point.faulty := by
+      intro x hx
+      have hx' : S.convicts r (S.view r u i ∪ S.view r v j) x := by
+        unfold convicted Consensus.convicted at hx; simpa using hx
+      refine Finset.mem_sdiff.mpr ⟨Finset.mem_univ x, fun hxh => hnf x hxh ?_⟩
+      refine hL.convicts_mono r _ _ x ?_ hx'
+      rintro o (ho | ho)
+      · exact ⟨u, hu, hL.view_mono r u i _ hi.1 ho⟩
+      · exact ⟨v, hv, hL.view_mono r v j _ hj.1 ho⟩
+    change (Fintype.card V : ℚ) * α ≤
+      (S.convicted r (S.view r u i ∪ S.view r v j)).card at hcard
+    have hc : ((S.convicted r (S.view r u i ∪ S.view r v j)).card : ℚ) ≤
+        (S.trace r).point.faulty.card := by exact_mod_cast Finset.card_le_card hsub
+    unfold EnvPoint.FaultsBelow at hb
+    linarith
+
+end System
+
+/-- The output resilience is measured against: the available output if
+provided, else the same output. -/
+def resilienceTarget (O : OutputSchema) (g : O.Id) : O.Id := (O.output .available).getD g
+
+/-- Schema package: a final output is provided. -/
+def OutputSchema.BFTCore (O : OutputSchema) : Prop := (O.output .final).isSome
+
+/-- Schema package: an available output and no final output. -/
+def OutputSchema.DACore (O : OutputSchema) : Prop :=
+  (O.output .available).isSome ∧ O.output .final = none
+
+/-- The schema serves a ledger: it is a `BFTCore` (a final output, possibly
+with others) or a `DACore` (an available output without a final one). A schema
+that provides neither (no output at all, or only a stable one) is not a
+consensus service; `Behaviour` requires this. -/
+def OutputSchema.Serves (O : OutputSchema) : Prop := O.BFTCore ∨ O.DACore
 
 /-- External run data and its admissibility: what a run fixes before execution
 besides its environment point (in the model: the PKI and the selection). -/
@@ -62,8 +124,8 @@ structure Progress {V : Type} (S : System V) (Prog : Type) extends External S wh
     b ≤ p.horizon → holds π c s e p x → holds π c s e { p with horizon := b } x
 
 /-- What a protocol advertises: numbers (`Params`) over a nonempty index type,
-and a progress requirement per capability and index. (Temporary name.) -/
-structure Contract' (O : OutputSchema) (Prog : Type) where
+and a progress requirement per capability and index. -/
+structure Contract (O : OutputSchema) (Prog : Type) where
   Idx : Type
   idx_nonempty : Nonempty Idx
   params : Params Idx
@@ -77,38 +139,38 @@ variable {V : Type} (S : System V) {Prog : Type}
 abbrev pt (r : S.Run) : EnvPoint V := (S.trace r).point
 
 /-- The catch-up duration of run `r`. -/
-def cDur (K : Contract' S.schema Prog) (r : S.Run) : Time := K.params.cDur (S.pt r).env.Δ
+def cDur (K : Contract S.schema Prog) (r : S.Run) : Time := K.params.cDur (S.pt r).env.Δ
 
 /-- The heal point of `cap` at `i` after GST `g` in run `r`. -/
-def heal (K : Contract' S.schema Prog) (cap : Capability) (i : K.Idx) (g : Time)
+def heal (K : Contract S.schema Prog) (cap : Capability) (i : K.Idx) (g : Time)
     (r : S.Run) : Time :=
   K.params.healPoint (S.pt r).env.Δ cap i g
 
 /-- The start of progress windows after GST `g` in run `r`. -/
-def ready (K : Contract' S.schema Prog) (g : Time) (r : S.Run) : Time :=
+def ready (K : Contract S.schema Prog) (g : Time) (r : S.Run) : Time :=
   readyFrom (S.cDur K r) g
 
 /-- The latency of `cap` at `i` in run `r`. -/
-def lat (K : Contract' S.schema Prog) (cap : Capability) (i : K.Idx) (r : S.Run) : Time :=
+def lat (K : Contract S.schema Prog) (cap : Capability) (i : K.Idx) (r : S.Run) : Time :=
   K.params.latDur (S.pt r).env.Δ cap i
 
 /-- The progress requirement of `cap` at `i` holds on `[start, stop]` in run `r`. -/
-def prog (X : Progress S Prog) (K : Contract' S.schema Prog) (cap : Capability) (i : K.Idx)
+def prog (X : Progress S Prog) (K : Contract S.schema Prog) (cap : Capability) (i : K.Idx)
     (start stop : Time) (r : S.Run) : Prop :=
   X.holds (K.progress cap i) (S.cDur K r) start stop (S.pt r) (X.ext r)
 
 variable [Fintype V] [DecidableEq V]
 
 /-- Run `r` is in the sleepy regime. -/
-def Sleepy (K : Contract' S.schema Prog) (r : S.Run) : Prop :=
+def Sleepy (K : Contract S.schema Prog) (r : S.Run) : Prop :=
   Regime.Sleepy K.params (S.pt r) (S.log r)
 
 /-- Run `r` is in the healthy regime from GST `g`. -/
-def Healthy (K : Contract' S.schema Prog) (g : Time) (r : S.Run) : Prop :=
+def Healthy (K : Contract S.schema Prog) (g : Time) (r : S.Run) : Prop :=
   Regime.Healthy K.params (S.pt r) (S.log r) g
 
 /-- Run `r` is in the outage regime `(T, [b₀, b₁))`. -/
-def Outage (K : Contract' S.schema Prog) (T b₀ b₁ : Time) (r : S.Run) : Prop :=
+def Outage (K : Contract S.schema Prog) (T b₀ b₁ : Time) (r : S.Run) : Prop :=
   Regime.Outage K.params (S.pt r) (S.log r) T b₀ b₁
 
 /-- A clean witness: valid, no excuse, a faulty and an honest validator. -/
@@ -122,30 +184,30 @@ variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type}
 /-- The claims of the final output `g`: local accountability for fraction `α`
 in every environment (no premise), and transaction liveness from the heal
 point when healthy from a GST with progress from `readyFrom` to the horizon. -/
-structure FinalClaims (S : System V) (X : Progress S Prog) (K : Contract' S.schema Prog)
+structure FinalClaims (S : System V) (X : Progress S Prog) (K : Contract S.schema Prog)
     (g : S.schema.Id) : Prop where
   accountable : S.Holds (fun _ => True) (fun r => S.AccountablySafe r K.params.α g 0)
   live : ∀ i gst, S.Holds
     (fun r => S.Healthy K gst r ∧ S.prog X K .final i (S.ready K gst r) (S.pt r).horizon r)
-    (fun r => (S.trace r).TxLive' (S.cDur K r) g (S.heal K .final i gst r) (S.lat K .final i r))
+    (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K .final i gst r) (S.lat K .final i r))
 
 /-- The claims of an available or stable output `g` (capability `cap`):
 ready-reader safety and liveness when sleepy (from `0`), and when healthy from a
 GST (from the heal point; safety needs progress only on `[readyFrom, heal]`). -/
-structure DAClaims (S : System V) (X : Progress S Prog) (K : Contract' S.schema Prog)
+structure DAClaims (S : System V) (X : Progress S Prog) (K : Contract S.schema Prog)
     (cap : Capability) (g : S.schema.Id) : Prop where
   sleepySafe : S.Holds (S.Sleepy K) (fun r => (S.trace r).ReadySafe (S.cDur K r) g 0)
   sleepyLive : ∀ i, S.Holds (fun r => S.Sleepy K r ∧ S.prog X K cap i 0 (S.pt r).horizon r)
-    (fun r => (S.trace r).TxLive' (S.cDur K r) g 0 (S.lat K cap i r))
+    (fun r => (S.trace r).TxLive (S.cDur K r) g 0 (S.lat K cap i r))
   healedSafe : ∀ i gst, S.Holds
     (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
     (fun r => (S.trace r).ReadySafe (S.cDur K r) g (S.heal K cap i gst r))
   healedLive : ∀ i gst, S.Holds
     (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r)
-    (fun r => (S.trace r).TxLive' (S.cDur K r) g (S.heal K cap i gst r) (S.lat K cap i r))
+    (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K cap i gst r) (S.lat K cap i r))
 
 /-- **Behaviour**: the fixed property table. -/
-structure Behaviour (S : System V) (X : Progress S Prog) (K : Contract' S.schema Prog) :
+structure Behaviour (S : System V) (X : Progress S Prog) (K : Contract S.schema Prog) :
     Prop where
   laws : S.Laws
   admissible : K.params.Admissible
@@ -164,7 +226,7 @@ structure Behaviour (S : System V) (X : Progress S Prog) (K : Contract' S.schema
   /-- Outage resilience of the stable output, into the resilience target:
   what a node ready at `T` reads as stable is kept by eligible readers. -/
   persists : ∀ g, S.schema.output .stable = some g → ∀ T b₀ b₁,
-    S.Holds (S.Outage K T b₀ b₁) (fun r => (S.trace r).ProtectedThrough' (S.cDur K r) g
+    S.Holds (S.Outage K T b₀ b₁) (fun r => (S.trace r).ProtectedThrough (S.cDur K r) g
       (resilienceTarget S.schema g) T b₀ b₁)
 
 /-- **Adequacy**: the L0 acceptance interface, which rules out a vacuous
@@ -209,28 +271,28 @@ def OutageActive (c T b₀ b₁ : Time) (p : EnvPoint V) : Prop :=
 /-- **Realizability**: every regime is met by a clean witness with active
 claims, at every `Δ`, every GST (with a log silent before it), and arbitrarily
 late outages. -/
-structure Realizable (S : System V) (X : Progress S Prog) (K : Contract' S.schema Prog) :
+structure Realizable (S : System V) (X : Progress S Prog) (K : Contract S.schema Prog) :
     Prop where
   sleepy : ∀ cap i (Δ : Time), 0 < Δ → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ S.Sleepy K r ∧
     S.prog X K cap i 0 (S.pt r).horizon r ∧
-    (S.trace r).TxLiveActive' (S.cDur K r) 0 (S.lat K cap i r)
+    (S.trace r).TxLiveActive (S.cDur K r) 0 (S.lat K cap i r)
   healthy : ∀ cap i (Δ g : Time), 0 < Δ → 0 ≤ g → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
     (S.log r).EagerFrom (S.pt r) g ∧ S.Healthy K g r ∧
     S.prog X K cap i (S.ready K g r) (S.pt r).horizon r ∧
-    (S.trace r).TxLiveActive' (S.cDur K r) (S.heal K cap i g r) (S.lat K cap i r) ∧
+    (S.trace r).TxLiveActive (S.cDur K r) (S.heal K cap i g r) (S.lat K cap i r) ∧
     SafeActive (S.cDur K r) (S.heal K cap i g r) (S.pt r)
   outage : ∀ (Δ : Time) (k : Nat), 0 < Δ → ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
     S.Outage K T b₀ b₁ r ∧ OutageActive (S.cDur K r) T b₀ b₁ (S.pt r) ∧ (k : Time) * Δ ≤ T
 
 /-- **A good protocol.** -/
-structure Good (S : System V) (X : Progress S Prog) (K : Contract' S.schema Prog) : Prop where
+structure Good (S : System V) (X : Progress S Prog) (K : Contract S.schema Prog) : Prop where
   behaviour : Behaviour S X K
   adequate : S.Adequate X
   realizable : 5 ≤ Fintype.card V → Realizable S X K
 
 namespace Good
 
-variable {S : System V} {X : Progress S Prog} {K : Contract' S.schema Prog}
+variable {S : System V} {X : Progress S Prog} {K : Contract S.schema Prog}
 
 /-- Final agreement in every environment with faults below `α`. -/
 theorem final_agree (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g)

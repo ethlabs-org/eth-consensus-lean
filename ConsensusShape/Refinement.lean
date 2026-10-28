@@ -5,22 +5,25 @@ public import ConsensusProblem.Transfer
 
 @[expose] public section
 
-/-! # Refinement: shape claims give problem claims (L2)
+/-! # Refinement: shape claims give the L0 behaviour (L2)
 
-`refinement F K V`: if shape family `F` meets `ShapeClaims F K`, then its
-compiled system, with `progress` interpreted by `shapeExec`, meets the layer-0
-headline `ProblemClaims` for contract `K`. The bridges are visible:
+`refinement F K V`: if shape family `F` meets `ShapeClaims F K`, the numbers
+are admissible and the schema serves a ledger, then its compiled system, with
+the progress reader `shapeProgress`, has the L0 `Behaviour` for contract `K`.
+The bridges are visible:
 
 * `ledgerTrace`: the compiled ledger trace is the chain trace mapped by
   `ledgerOf` (definitionally); with `ledgerOf_prefix` every prefix-based
   property (safety, nesting, monotonicity, resilience, ready safety)
   transfers.
-* `premiseBridge`: shape premises are layer-0 premises (definitionally).
-* `proposalLive_txLive`: proposal liveness and partial synchrony give
-  transaction liveness (the payload bridge, at the release time `τ`).
+* Regimes: the shape claims use the L0 regimes at the compiled run
+  (definitionally).
+* `proposalLive_txLive`: proposal liveness and partial synchrony with a GST at
+  or before the start give transaction liveness (the payload bridge, at the
+  release time `τ`).
 * Accountability: the conviction sets of the chain trace and of the ledger
   system coincide.
-* Laws and non-framing are layer-½ theorems (`sysOf_laws`, `sysOf_nonFraming`). -/
+* Laws and non-framing are L1 theorems (`sysOf_laws`, `sysOf_nonFraming`). -/
 
 namespace Consensus.Shape
 
@@ -36,25 +39,28 @@ theorem ledgerTrace (rho : Model.Run (compiled F) E) :
   rfl
 
 /-- Transaction bridge (D-14; at the release time `τ`): apply `ProposalLive`
-at `t' − D·Δ`; the honest proposal is released at `τ > max t GST + Δ`
+at `t' − D·Δ`; the honest proposal is released at `τ > max t start + Δ`
 (strictly), within the horizon, by a key ready, so awake, at `τ − 1`. Partial
-synchrony (L0 delivery, endpoint rule) at the start `a := τ − Δ − 1 ≥ max t GST`
-puts the transaction in that key's inbox by the deadline `τ − 1` (receipt at
-the deadline counts), so in its mempool at the tick `τ`, which is the
-proposal's payload. The strict `τ > …` of `ProposalLive` absorbs the one time
-unit between arrival at the deadline and use by the tick at `τ`. -/
+synchrony with GST `gst ≤ start` (L0 delivery, endpoint rule) at the start
+`a := τ − Δ − 1 ≥ max t start ≥ gst` puts the transaction in that key's inbox
+by the deadline `τ − 1` (receipt at the deadline counts), so in its mempool at
+the tick `τ`, which is the proposal's payload. The strict `τ > …` of
+`ProposalLive` absorbs the one time unit between arrival at the deadline and
+use by the tick at `τ`. Every submission is served, including those before
+`start` (deadline `max t start + Δ + D·Δ`). -/
 theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O.Id}
-    {start : Time} {D : Nat} (hv : rho.ExecutionValid) (hs : rho.PartialSynchrony)
+    {start gst : Time} {D : Nat} (hv : rho.ExecutionValid)
+    (hs : CommLog.PSync rho.point rho.log gst) (hgs : gst ≤ start)
     (hl : ProposalLive rho (((c₀ : Nat) : Time) * E.Δ) g start D) :
     ((chainTrace rho).map ledgerOf).TxLive (((c₀ : Nat) : Time) * E.Δ) g start
       (((D : Nat) : Time) * E.Δ) := by
-  intro x t t' ht hsub hdt hh v hv'
-  change max t E.gst + E.Δ + (D : Time) * E.Δ ≤ t' at hdt
+  intro x t t' hsub hdt hh v hv'
+  change max t start + E.Δ + (D : Time) * E.Δ ≤ t' at hdt
   change rho.point.SubmittedToSome x t at hsub
   change t' ≤ rho.horizon at hh
   have hΔ := E.Δ_pos
-  have hmt := le_max_left t E.gst
-  have hmg := le_max_right t E.gst
+  have hmt := le_max_left t start
+  have hms := le_max_right t start
   obtain ⟨τ, k, h, hτ, hready, hprop, hin⟩ := hl (t' - (D : Time) * E.Δ)
     (by dsimp only [Time] at *; omega) (by dsimp only [Time] at *; omega)
   have he : t' - (D : Time) * E.Δ + (D : Time) * E.Δ = t' := sub_add_cancel _ _
@@ -63,8 +69,8 @@ theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O
     rw [honestProposal_payload hprop, decode_encodeTxs]
     obtain ⟨u, hu, τ₀, hτ₀, hτ₀t, haw, hx⟩ := hsub
     have hτa : τ₀ ≤ τ - E.Δ - 1 := by dsimp only [Time] at *; omega
-    have hga : E.gst ≤ τ - E.Δ - 1 := by dsimp only [Time] at *; omega
-    have hdl : max (τ - E.Δ - 1) E.gst + E.Δ = τ - 1 := by
+    have hga : gst ≤ τ - E.Δ - 1 := by dsimp only [Time] at *; omega
+    have hdl : max (τ - E.Δ - 1) gst + E.Δ = τ - 1 := by
       rw [max_eq_left hga]; dsimp only [Time] at *; omega
     have hτh : τ ≤ rho.horizon := by
       obtain ⟨-, -, -, -, i, hi, -⟩ := hprop
@@ -76,7 +82,7 @@ theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O
       · dsimp only [Time]; omega
     have hτ1 : τ - 1 ≤ rho.point.horizon := by
       change τ - 1 ≤ rho.horizon; dsimp only [Time] at *; omega
-    have held : CommLog.TxHeld rho.log (rho.key k) x (max (τ - E.Δ - 1) E.gst + E.Δ) :=
+    have held : CommLog.TxHeld rho.log (rho.key k) x (max (τ - E.Δ - 1) gst + E.Δ) :=
       hs.txs u hu x τ₀ hτ₀ haw hx (rho.key k) hready.1 (τ - E.Δ - 1) hτa
         (by change _ + E.Δ ≤ _; rw [hdl]; exact hτ1) (by change _ + E.Δ ≤ _; rw [hdl]; exact hτ1)
         (by change E.awake _ (_ + E.Δ) = true; rw [hdl]; exact hawake)
@@ -121,36 +127,56 @@ theorem accountablySafe_ledger (rho : Model.Run (compiled F) E) {α : ℚ} {g : 
     rw [hconv]
     exact hh
 
-/-- The headline: shape claims give the problem claims of the compiled
-system, with `progress` interpreted by `shapeExec`. -/
+/-- Partial synchrony of the compiled system's log is partial synchrony of
+the run's log. -/
+theorem psync_of_sys {rho : Model.Run (compiled F) E} {gst : Time}
+    (h : CommLog.PSync ((sysOf O (compiled F) V).trace ⟨E, rho⟩).point
+      ((sysOf O (compiled F) V).log ⟨E, rho⟩) gst) :
+    CommLog.PSync rho.point rho.log gst :=
+  (Model.sysOf_delivers_iff rho _ _).mp h
+
+/-- The heal point is at or after the GST. -/
+theorem gst_le_heal (K : Contract O ProgressReq) (rho : Model.Run (compiled F) E)
+    (cap : Capability) (i : K.Idx) (gst : Time) : gst ≤ shapeHeal K rho cap i gst := by
+  change gst ≤ max gst 0 + ((K.params.heal cap i : Nat) : Time) * E.Δ
+  have : (0 : Time) ≤ ((K.params.heal cap i : Nat) : Time) * E.Δ :=
+    mul_nonneg (by positivity) E.Δ_pos.le
+  have := le_max_left gst 0
+  linarith
+
+/-- The headline: shape claims, admissible numbers and a served ledger give
+the L0 behaviour of the compiled system, with progress read by
+`shapeProgress`. -/
 theorem refinement (F : ShapeFamily O Info) (K : Contract O ProgressReq) (V : Type)
-    [Fintype V] [DecidableEq V] :
-    ShapeClaims F K → ProblemClaims (sysOf O (compiled F) V) (shapeExec F V) K := by
-  intro hc
-  refine ⟨hc.wf, Model.sysOf_laws _ _ _, hc.provided, hc.complete,
-    Model.sysOf_nonFraming _ _ _, ?_, ?_, ?_⟩
+    [Fintype V] [DecidableEq V] (hc : ShapeClaims F K) (ha : K.params.Admissible)
+    (hs : O.Serves) : Behaviour (sysOf O (compiled F) V) (shapeProgress F V) K := by
+  refine ⟨Model.sysOf_laws _ _ _, ha, hs, Model.sysOf_nonFraming _ _ _, ?_, ?_, ?_, ?_, ?_⟩
   · rintro c₁ c₂ g₁ g₂ hlt h₁ h₂ ⟨E, rho⟩ hv
     exact (hc.nested c₁ c₂ g₁ g₂ hlt h₁ h₂ V E rho hv).map ledgerOf_prefix
   · rintro g hg ⟨E, rho⟩ hv
     exact (hc.finalMonotone g hg V E rho hv).map ledgerOf_prefix
-  · intro c g s hg hs
-    have hcc := hc.caps c g s hg hs
-    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
-    · rintro σ ⟨E, rho⟩ hv hA
-      exact (hcc.safe V E rho σ hv hA).imp (fun h => h.map ledgerOf_prefix) id
-    · rintro i σ ⟨E, rho⟩ hv hA
-      have hsync : rho.PartialSynchrony := ((hc.liveSync c s hs i).1).sync_of_eval hA
-      exact (hcc.live V E rho i σ hv hA).imp (proposalLive_txLive hv hsync) id
-    · rintro α ha ⟨E, rho⟩ hv -
-      exact (hcc.accountable α ha V E rho hv).imp (accountablySafe_ledger rho) id
-    · rintro P hP σ ⟨E, rho⟩ hv hA
-      exact (hcc.persists P hP V E rho σ hv hA).imp (fun h => h.map ledgerOf_prefix) id
-    · rintro R hR i σ ⟨E, rho⟩ hv hA
-      exact (hcc.recoverySafe R hR V E rho i σ hv hA).imp (fun h => h.map ledgerOf_prefix) id
-    · rintro R hR i σ ⟨E, rho⟩ hv hA
-      have hsync : rho.PartialSynchrony := ((hc.liveSync c s hs i).2 R hR).sync_of_eval hA
-      exact (hcc.recoveryLive R hR V E rho i σ hv hA).imp
-        (proposalLive_txLive hv hsync) id
+  · intro g hg
+    refine ⟨?_, ?_⟩
+    · rintro ⟨E, rho⟩ hv -
+      exact (hc.finalAccountable g hg V E rho hv).imp (accountablySafe_ledger rho) id
+    · rintro i gst ⟨E, rho⟩ hv ⟨hH, hp⟩
+      exact (hc.finalLive g hg i gst V E rho hv hH hp).imp
+        (proposalLive_txLive hv (psync_of_sys hH.1) (gst_le_heal K rho .final i gst)) id
+  · intro cap g hcap hg
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · rintro ⟨E, rho⟩ hv hS
+      exact (hc.sleepySafe cap g hcap hg V E rho hv hS).imp (fun h => h.map ledgerOf_prefix) id
+    · rintro i ⟨E, rho⟩ hv ⟨hS, hp⟩
+      exact (hc.sleepyLive cap g hcap hg i V E rho hv hS hp).imp
+        (proposalLive_txLive hv (psync_of_sys hS.1) le_rfl) id
+    · rintro i gst ⟨E, rho⟩ hv ⟨hH, hp⟩
+      exact (hc.healedSafe cap g hcap hg i gst V E rho hv hH hp).imp
+        (fun h => h.map ledgerOf_prefix) id
+    · rintro i gst ⟨E, rho⟩ hv ⟨hH, hp⟩
+      exact (hc.healedLive cap g hcap hg i gst V E rho hv hH hp).imp
+        (proposalLive_txLive hv (psync_of_sys hH.1) (gst_le_heal K rho cap i gst)) id
+  · rintro g hg T b₀ b₁ ⟨E, rho⟩ hv hO
+    exact (hc.persists g hg T b₀ b₁ V E rho hv hO).imp (fun h => h.map ledgerOf_prefix) id
 
 end Consensus.Shape
 

@@ -8,11 +8,12 @@ public import Mathlib.Tactic
 `ShapeClaims` must not be satisfiable by protocols that do nothing, propose
 without outputting, fabricate outputs, or are silenced by their own slashing
 rule. The test contract `testK` serves only the available capability
-(`DACore` schema), with catch-up 1, sleepy safety, and liveness index
-`k : ℕ+` under `sleepy (1/2) ∧ progress ⟨Pattern.single, k⟩ 0`, from time 0,
-latency `k + 2`. Each refutation runs the canonical valid run of one
-always-awake honest validator (`Δ = 1`, GST 0, injective hash; horizon 3,
-and 0 for `fabricated`):
+(`DACore` schema), with standard thresholds, catch-up 1, heal `1`, and per
+index `k : ℕ+` one honest proposer in every window of `k` slots and latency
+`k + 2`. Each refutation runs the canonical valid (synchronous) run of one
+always-awake honest validator (`Δ = 1`, injective hash; horizon 3, and 0 for
+`fabricated`), which is in the sleepy regime with progress, so sleepy
+liveness applies:
 
 * `silent`: no proposals, empty outputs: liveness fails;
 * `proposeButGenesis`: proposals, but outputs stay empty: liveness fails;
@@ -21,12 +22,13 @@ and 0 for `fabricated`):
   `conflicts` is always true, so engine slashing protection releases no
   signed object; its outputs stay empty and liveness fails.
 
-Positive control (`recorder_live`, `recorder_live_testK`): the same protocol with `conflicts` false
-records its released proposals into its output and meets the liveness
-obligation that refutes the others, on every valid run in which the validator
-is honest, for every latency `D ≥ 1` and every GST (also negative:
-`recorder_live_testK_negGST`). So the refutations detect the leaks, not
-an unsatisfiable obligation. The control checks the liveness obligation in
+Positive control (`recorder_live`, `recorder_live_testK`): the same protocol
+with `conflicts` false records its released proposals into its output and
+meets the liveness obligation that refutes the others, on every valid run in
+which the validator is honest, for every latency `D ≥ 1` and every start
+`≥ 0` (also the healed obligation from every GST, negative ones included:
+`recorder_live_testK_healed`). So the refutations detect the leaks, not an
+unsatisfiable obligation. The control checks the liveness obligation in
 isolation, not jointly with output validity (its headers do not link). -/
 
 namespace Consensus.Shape.Tests.Leaks
@@ -40,29 +42,17 @@ abbrev schema : OutputSchema := ⟨Unit, fun c => match c with
 
 theorem schema_daCore : schema.DACore := ⟨rfl, rfl⟩
 
-/-- The available capability of the test contract. It assumes slots of one
-`Δ` (the test skeleton's grid), since the progress gap counts slots and the
-latency counts `Δ`. Latency `k + 2`: within `k·Δ` after `t` an honest ready
-proposer releases (progress); its proposal reaches every node awake on
-`[a, a + Δ)` by `a + Δ` (synchrony: `sleepy` has GST `≤ 0`); a reader ready
-at `t + (k + 1)·Δ` with catch-up `Δ` was awake on such an interval, so
-`k + 1` would do and the last `Δ` is slack. Liveness starts at time 0, not at
-GST: `sleepy` allows a negative GST, and a start before 0 would demand
-proposals that no run can have released by then. -/
-def testCap : CapSpec ProgressReq ℕ+ where
-  safety := { premise := Premise.sleepy (1 / 2) }
-  live := { premise := fun k => .conj (Premise.sleepy (1 / 2)) (.progress ⟨Pattern.single, k⟩ .zero)
-            start := fun _ => .zero
-            latency := fun k => (k : Nat) + 2 }
-
-/-- The test contract: catch-up 1, available capability only. -/
+/-- The test contract: available capability only, standard thresholds,
+catch-up 1, heal 1, outage numbers unused; per index `k` one honest proposer
+in every window of `k` slots (slots of one `Δ`, the test skeleton's grid) and
+latency `k + 2`: within `k·Δ` after `t` an honest ready proposer releases;
+its proposal reaches every node awake at the deadline by `Δ` later; the last
+`Δ` is slack. -/
 def testK : Contract schema ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
-  catchUp := 1
-  spec := fun c => match c with
-    | .available => some testCap
-    | _ => none
+  params := Params.standard 1 0 1 (fun _ _ => 1) (fun _ k => (k : Nat) + 2)
+  progress _ k := .recur ⟨Pattern.single, k⟩
 
 /-- The test skeleton: slots of one `Δ`, one proposer per slot, polling
 disabled, one committee kind (every key). -/
@@ -98,11 +88,8 @@ def family (proposal vote bad : Bool) : ShapeFamily schema Unit := fun pub => {
   out := fun _ _ => if bad then [fab] else []
   conflicts := fun _ _ => vote }
 
-/-- One validator, always awake, `Δ = 1`, GST `g`. -/
-def envG (g : Int) : Env (Fin 1) := ⟨1, by decide, g, fun _ _ => true⟩
-
-/-- The refutation environment: GST 0. -/
-abbrev env : Env (Fin 1) := envG 0
+/-- One validator, always awake, `Δ = 1`. -/
+def env : Env (Fin 1) := ⟨1, by decide, fun _ _ => true⟩
 
 /-- The identity PKI. -/
 def pki : Fin (Fintype.card (Fin 1)) ≃ Fin 1 := finCongr (Fintype.card_fin 1)
@@ -146,22 +133,23 @@ theorem refuted_of_empty (F : ShapeFamily schema Unit)
     ext v
     simp only [EnvPoint.readyAt, Finset.mem_filter, Finset.mem_univ, iff_true]
     exact ⟨Finset.mem_univ v, hready c t v⟩
-  have hprem : ShapePremise testK (testCap.live.premise 1) (fun _ => 0) r := by
-    refine ⟨⟨le_refl _, sync, ?_⟩, ?_⟩
-    · intro t _ _
-      change r.point.ReadyAbove (1 / 2) _ t
-      unfold EnvPoint.ReadyAbove
-      rw [hreadyAt, hfaulty]
-      norm_num
-    · change PatternRecurrence r.point r.key r.sel ShapeRole.proposer _ _ _ _
-      apply patternRecurrence_of_all env.Δ_pos
-      intro s j _
-      exact ⟨hprop (s + j), fun k _ => ⟨Finset.mem_univ _, hready _ _ _⟩⟩
-  have hcap := hc.caps .available () testCap rfl rfl
-  rcases hcap.live (Fin 1) env r (show testK.Idx from (1 : ℕ+)) (fun _ => 0) valid hprem with
-    hl | hcol
+  have hsleepy : ShapeSleepy testK r := by
+    refine ⟨(Model.sysOf_delivers_iff r _ _).mpr sync, ?_⟩
+    intro t _ _
+    change r.point.ReadyAbove (1 / 2) _ t
+    unfold EnvPoint.ReadyAbove
+    rw [hreadyAt, hfaulty]
+    norm_num
+  have hprog : ShapeProg testK r .available (1 : ℕ+) 0 r.horizon := by
+    change PatternRecurrence r.point r.key r.sel ShapeRole.proposer _ _ _ _ _
+    apply patternRecurrence_of_all env.Δ_pos
+    intro s j _
+    exact ⟨hprop (s + j), fun k _ => ⟨Finset.mem_univ _, hready _ _ _⟩⟩
+  rcases hc.sleepyLive .available () (Or.inl rfl) rfl (1 : ℕ+) (Fin 1) env r valid hsleepy
+      hprog with hl | hcol
   · obtain ⟨τ, k, h, -, -, -, hin⟩ := hl 0 le_rfl
-      (show (0 : Int) + ((testCap.live.latency 1 : Nat) : Int) * env.Δ ≤ 3 by decide)
+      (show (0 : Int) + ((testK.params.latency .available (1 : ℕ+) : Nat) : Int) * env.Δ ≤ 3 by
+        decide)
     have hmem := hin 0 (hready _ _ _)
     change h ∈ (chainTrace r).read () 0 _ at hmem
     rw [hout r valid] at hmem
@@ -433,12 +421,12 @@ honest, the proposal of the slot right after `t` is released by the honest,
 ready validator and recorded in its output at once, so `ProposalLive` holds
 for every catch-up, every start `≥ 0` and every latency `D ≥ 1` (in
 particular `testK`'s, `k + 2`). -/
-theorem recorder_live {g : Int} (rho : Model.Run (compiled (familyC false)) (envG g))
+theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
     (hv : rho.ExecutionValid) (hh : rho.honest = Finset.univ) (c start : Time)
     (hs : 0 ≤ start) (D : Nat) (hD : 1 ≤ D) :
     ProposalLive rho c () start D := by
   intro t hst ht
-  have hΔ : (envG g).Δ = 1 := rfl
+  have hΔ : env.Δ = 1 := rfl
   rw [hΔ, mul_one] at ht ⊢
   have hDt : (1 : Int) ≤ (D : Int) := by exact_mod_cast hD
   have ht0 : (0 : Int) ≤ t := le_trans hs hst
@@ -460,9 +448,9 @@ theorem recorder_live {g : Int} (rho : Model.Run (compiled (familyC false)) (env
   have hi' : rho.events[i]? = some (.tick v (t + 1)) := by rw [List.getElem?_eq_getElem hi, hie]
   let nd := rho.stateBefore i v
   let xs := Model.mempool rho.inbox v (t + 1)
-  let nd₁ : Model.Node (protoOf (compiled (familyC false)) (envG g)) :=
-    ⟨(protoOf (compiled (familyC false)) (envG g)).clock nd.st (t + 1) xs, nd.seen⟩
-  let h : (protoOf (compiled (familyC false)) (envG g)).Item := ⟨.root, s, encodeTxs xs, ()⟩
+  let nd₁ : Model.Node (protoOf (compiled (familyC false)) env) :=
+    ⟨(protoOf (compiled (familyC false)) env).clock nd.st (t + 1) xs, nd.seen⟩
+  let h : (protoOf (compiled (familyC false)) env).Item := ⟨.root, s, encodeTxs xs, ()⟩
   have hsel : rho.ownKey v ∈ rho.sel (ShapeRole.proposer s) := by
     have hc : (rho.sel (ShapeRole.proposer s)).card = 1 := hv.selValid (ShapeRole.proposer s)
     obtain ⟨a, ha⟩ := Finset.card_eq_one.mp hc
@@ -473,12 +461,12 @@ theorem recorder_live {g : Int} (rho : Model.Run (compiled (familyC false)) (env
     unfold Model.Run.candidates
     apply List.mem_append_left
     refine List.mem_flatMap.mpr ⟨.propose s hspos, ?_, ?_⟩
-    · refine ((protoOf (compiled (familyC false)) (envG g)).duties_spec _ (t + 1)).mpr ?_
+    · refine ((protoOf (compiled (familyC false)) env).duties_spec _ (t + 1)).mpr ?_
       change (s : Time) * ((1 : Nat) * 1) = t + 1
       rw [hsτ]; ring
-    · have hact : (protoOf (compiled (familyC false)) (envG g)).act nd₁.st (.propose s hspos) =
+    · have hact : (protoOf (compiled (familyC false)) env).act nd₁.st (.propose s hspos) =
           some (.item h, []) := rfl
-      have hrole : (protoOf (compiled (familyC false)) (envG g)).role (.propose s hspos) =
+      have hrole : (protoOf (compiled (familyC false)) env).role (.propose s hspos) =
           ShapeRole.proposer s := rfl
       simp only [hact, hrole, hsel, ite_true]
       exact List.mem_singleton_self _
@@ -488,7 +476,7 @@ theorem recorder_live {g : Int} (rho : Model.Run (compiled (familyC false)) (env
     simp only [Model.Run.releasesAt, hi', rho.stateBefore_succ hi', Model.Run.step,
       Function.update_self]
     unfold Model.Run.tick
-    simp only [show (envG g).awake v (t + 1) = true from rfl, ite_true]
+    simp only [show env.awake v (t + 1) = true from rfl, ite_true]
     exact hrel
   have hk0 : rho.key 0 ∈ rho.honest := by rw [hh]; exact Finset.mem_univ _
   refine ⟨t + 1, 0, h, lt_add_one t, ⟨hk0, fun u _ _ => rfl⟩,
@@ -506,22 +494,25 @@ theorem recorder_live {g : Int} (rho : Model.Run (compiled (familyC false)) (env
     exact familyC_mono false rho _ hrel'.2 _ hcut
 
 /-- The control meets exactly the obligation that `refuted_of_empty` uses:
-`testK`'s liveness conclusion at every index, from its start, with its
-latency and catch-up, for every GST. -/
-theorem recorder_live_testK {g : Int} (rho : Model.Run (compiled (familyC false)) (envG g))
-    (hv : rho.ExecutionValid) (hh : rho.honest = Finset.univ) (k : ℕ+) (σ : Nat → Time) :
-    ProposalLive rho (((testK.catchUp : Nat) : Time) * (envG g).Δ) ()
-      ((testCap.live.start k).eval rho.point σ) (testCap.live.latency k) :=
-  recorder_live rho hv hh _ _ le_rfl _ (by simp [testCap])
+`testK`'s sleepy liveness conclusion at every index, from time 0, with its
+latency and catch-up. -/
+theorem recorder_live_testK (rho : Model.Run (compiled (familyC false)) env)
+    (hv : rho.ExecutionValid) (hh : rho.honest = Finset.univ) (k : ℕ+) :
+    ProposalLive rho (shapeC testK rho) () 0 (testK.params.latency .available k) :=
+  recorder_live rho hv hh _ _ le_rfl _ (by simp [testK, Params.standard])
 
-/-- Regression (review-5-r2): with GST negative (allowed by `sleepy`), the
-liveness obligation of `testK` stays satisfiable, because it starts at time 0,
-not at GST. -/
-theorem recorder_live_testK_negGST (rho : Model.Run (compiled (familyC false)) (envG (-3)))
-    (hv : rho.ExecutionValid) (hh : rho.honest = Finset.univ) (k : ℕ+) (σ : Nat → Time) :
-    ProposalLive rho (((testK.catchUp : Nat) : Time) * (envG (-3)).Δ) ()
-      ((testCap.live.start k).eval rho.point σ) (testCap.live.latency k) :=
-  recorder_live_testK rho hv hh k σ
+/-- The control also meets `testK`'s healed liveness obligation, from the heal
+point after every GST (negative ones included: the heal point is relative to
+`max g 0`). -/
+theorem recorder_live_testK_healed (rho : Model.Run (compiled (familyC false)) env)
+    (hv : rho.ExecutionValid) (hh : rho.honest = Finset.univ) (k : ℕ+) (gst : Time) :
+    ProposalLive rho (shapeC testK rho) () (shapeHeal testK rho .available k gst)
+      (testK.params.latency .available k) := by
+  refine recorder_live rho hv hh _ _ ?_ _ (by simp [testK, Params.standard])
+  change (0 : Time) ≤ max gst 0 + ((1 : Nat) : Time) * 1
+  have := le_max_right gst 0
+  push_cast
+  linarith
 
 end Consensus.Shape.Tests.Leaks
 

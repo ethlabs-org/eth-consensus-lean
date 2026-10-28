@@ -55,31 +55,15 @@ def ResilienceReader (c b₀ b₁ : Time) (w : V) (t : Time) : Prop :=
   tr.point.AwakeOnClosed w (max 0 (b₀ - c - 1)) t ∨
     (b₁ ≤ t - c - 1 ∧ tr.point.AwakeOnClosed w (t - c - 1) t)
 
-/-- Resilience, during and after the window `[b₀, b₁)`: every honest read of
-`src` at `T` is a prefix of the `dst` read, at every `t ∈ [b₀, horizon]`, of
-every honest `ResilienceReader`. -/
-def ProtectedThrough (c : Time) (src dst : Id) (T b₀ b₁ : Time) : Prop :=
-  ∀ v ∈ tr.point.honest, ∀ t, b₀ ≤ t → t ≤ tr.point.horizon →
-    ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
-    tr.readAt src v T <+: tr.readAt dst w t
-
 /-- Resilience for ready sources, during and after the window `[b₀, b₁)`:
 the read of `src` at `T` of every node **ready** at `T` is a prefix of the
 `dst` read, at every `t ∈ [b₀, horizon]`, of every honest `ResilienceReader`.
 A node that is awake but not caught up at `T` may expose a stale ledger, which
-nobody must keep (sleepy safety, too, restricts only ready readers).
-(Temporary name; replaces `ProtectedThrough` when the old claims go.) -/
-def ProtectedThrough' (c : Time) (src dst : Id) (T b₀ b₁ : Time) : Prop :=
+nobody must keep (sleepy safety, too, restricts only ready readers). -/
+def ProtectedThrough (c : Time) (src dst : Id) (T b₀ b₁ : Time) : Prop :=
   ∀ v, tr.point.Ready c v T → ∀ t, b₀ ≤ t → t ≤ tr.point.horizon →
     ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
     tr.readAt src v T <+: tr.readAt dst w t
-
-/-- The weaker non-contradiction form of `ProtectedThrough` (same
-quantifiers; defined, not advertised). -/
-def CompatibleThrough (c : Time) (src dst : Id) (T b₀ b₁ : Time) : Prop :=
-  ∀ v ∈ tr.point.honest, ∀ t, b₀ ≤ t → t ≤ tr.point.horizon →
-    ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
-    Compatible (tr.readAt src v T) (tr.readAt dst w t)
 
 /-- `tr'` is the prefix of `tr` up to time `b`: the same environment point
 with horizon `b`, the cuts of `tr` through the end of time `b`, and the same
@@ -100,7 +84,7 @@ def ReadySafeUpTo (c : Time) (g : Id) (t₀ b : Time) : Prop :=
       tr.point.Ready c v (tr.cutTime i) → tr.point.Ready c v (tr.cutTime j) →
       tr.read g v i <+: tr.read g v j)
 
-/-- `ProtectedThrough'` (ready sources) at reading times `t ∈ [b₀, b]`. -/
+/-- `ProtectedThrough` at reading times `t ∈ [b₀, b]`. -/
 def ProtectedUpTo (c : Time) (src dst : Id) (T b₀ b₁ b : Time) : Prop :=
   ∀ v, tr.point.Ready c v T → ∀ t, b₀ ≤ t → t ≤ b →
     ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
@@ -171,7 +155,7 @@ theorem readySafeUpTo (h : tr'.PrefixOf tr b) {c : Time} {g : Id} {t₀ : Time}
 /-- Resilience of the prefix is resilience of the full trace at reading times
 in `[b₀, b]` (for a protected time `T ≤ b₀`). -/
 theorem protectedUpTo (h : tr'.PrefixOf tr b) {c : Time} {src dst : Id} {T b₀ b₁ : Time}
-    (hT : T ≤ b₀) (hp : tr'.ProtectedThrough' c src dst T b₀ b₁) :
+    (hT : T ≤ b₀) (hp : tr'.ProtectedThrough c src dst T b₀ b₁) :
     tr.ProtectedUpTo c src dst T b₀ b₁ b := by
   intro v hv t ht htb w hw hr
   have hpt := h.point
@@ -184,38 +168,20 @@ end PrefixOf
 
 end Trace
 
-/-- Transaction liveness of `g` from `start` with delay `D` (a duration): a
-transaction submitted to some awake honest node by `t ≥ start` is in the ledger of
-every ready reader at every time `t' ∈ [max t GST + Δ + D, horizon]`. -/
-def Trace.TxLive {V Id : Type} (tr : Trace V Tx Id) (c : Time) (g : Id) (start D : Time) : Prop :=
-  ∀ x t t', start ≤ t → tr.point.SubmittedToSome x t →
-    max t tr.point.env.gst + tr.point.env.Δ + D ≤ t' → t' ≤ tr.point.horizon →
-    ∀ v, tr.point.Ready c v t' → x ∈ tr.readAt g v t'
-
-/-- Non-vacuity of `TxLive` (used by realizability witnesses): a transaction
-submitted at `t ≥ start` to an awake honest `u`, and a *different* honest `w`
-that never receives it by submission, is ready at a reachable deadline
-`t' ≥ max t GST + Δ + D`, `t' ≤ horizon`. -/
-def Trace.TxLiveActive {V α Id : Type} (tr : Trace V α Id) (c : Time) (start D : Time) : Prop :=
-  ∃ (x : Tx) (t t' : Time) (u w : V), start ≤ t ∧ 0 ≤ t ∧ u ∈ tr.point.honest ∧
-    tr.point.env.awake u t = true ∧ x ∈ tr.point.submit u t ∧ w ∈ tr.point.honest ∧ w ≠ u ∧
-    (∀ τ, x ∉ tr.point.submit w τ) ∧
-    max t tr.point.env.gst + tr.point.env.Δ + D ≤ t' ∧ t' ≤ tr.point.horizon ∧
-    tr.point.Ready c w t'
-
 /-- Transaction liveness of `g` from `start` with delay `D` (a duration),
 serving every submission: a transaction submitted to some awake honest node by
 `t` is in the ledger of every ready reader at every time
 `t' ∈ [max t start + Δ + D, horizon]`. No GST: every regime's `start` is at or
-after its GST. (Temporary name; replaces `TxLive` when the old claims go.) -/
-def Trace.TxLive' {V Id : Type} (tr : Trace V Tx Id) (c : Time) (g : Id) (start D : Time) : Prop :=
+after its GST. -/
+def Trace.TxLive {V Id : Type} (tr : Trace V Tx Id) (c : Time) (g : Id) (start D : Time) : Prop :=
   ∀ x t t', tr.point.SubmittedToSome x t → max t start + tr.point.env.Δ + D ≤ t' →
     t' ≤ tr.point.horizon → ∀ v, tr.point.Ready c v t' → x ∈ tr.readAt g v t'
 
-/-- Non-vacuity of `TxLive'`: a transaction submitted at `t ≥ 0` to an awake
-honest `u`, and a *different* honest `w` that never receives it by submission,
-ready at a reachable deadline `t' ≥ max t start + Δ + D`, `t' ≤ horizon`. -/
-def Trace.TxLiveActive' {V α Id : Type} (tr : Trace V α Id) (c : Time) (start D : Time) : Prop :=
+/-- Non-vacuity of `TxLive` (used by realizability witnesses): a transaction
+submitted at `t ≥ 0` to an awake honest `u`, and a *different* honest `w`
+that never receives it by submission, ready at a reachable deadline
+`t' ≥ max t start + Δ + D`, `t' ≤ horizon`. -/
+def Trace.TxLiveActive {V α Id : Type} (tr : Trace V α Id) (c : Time) (start D : Time) : Prop :=
   ∃ (x : Tx) (t t' : Time) (u w : V), 0 ≤ t ∧ u ∈ tr.point.honest ∧
     tr.point.env.awake u t = true ∧ x ∈ tr.point.submit u t ∧ w ∈ tr.point.honest ∧ w ≠ u ∧
     (∀ τ, x ∉ tr.point.submit w τ) ∧
@@ -251,12 +217,6 @@ abbrev AccountablySafe (α : ℚ) (g : S.schema.Id) (t₀ : Time) : Prop :=
 /-- No honest validator is convicted by what the honest nodes saw. -/
 def NonFraming : Prop :=
   ∀ v ∈ (S.trace r).point.honest, ¬ S.convicts r (S.honestEvidence r) v
-
-/-- The whole honest evidence convicts at least fraction `α` of the validators
-(weaker than local accountability: the evidence exists somewhere, its
-enforcement is a binding). -/
-def GloballySlashable (α : ℚ) (run : S.Run) : Prop :=
-  (Fintype.card V : ℚ) * α ≤ (S.convicted run (S.honestEvidence run)).card
 
 end System
 

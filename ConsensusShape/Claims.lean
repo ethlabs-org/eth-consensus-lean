@@ -3,18 +3,27 @@ public import ConsensusShape.Run
 
 @[expose] public section
 
-/-! # Shape claims (layer 1)
+/-! # Shape claims (L2)
 
-What a shape family proves about its compiled runs, for a contract `K` over
-progress requirements: structural obligations (well-formedness, positive
-catch-up, provided ⇔ specified, mandatory parts, `sync` in every liveness and
-recovery premise), output validity, nesting and final monotonicity of the
-chains, and per capability the chain-level forms of the layer-0 claims:
-safety, `ProposalLive` (instead of transaction liveness), local
-accountability, resilience and recovery. `refinement` turns these into
-`ProblemClaims`. `ShapeClaims` is not a non-vacuity certificate (D-24): it is
-paired with `Contract.Realizable`. There is no `honestNeverSlashed` field:
-non-framing is a layer-½ theorem. -/
+What a shape family proves about its compiled runs, for a contract `K`
+(numbers and progress requirements): the chain-level mirror of the L0
+behaviour table (`Behaviour`), each claim on every valid run of every
+validator set and environment, in the L0 regime (`ShapeSleepy`,
+`ShapeHealthy`, `ShapeOutage`, `ShapeProg` are the L0 definitions at the
+compiled run), and each "or an observed hash collision":
+
+* always: output validity, nesting, final monotonicity;
+* final: local accountability for fraction `α`, and `ProposalLive` from the
+  heal point when healthy from a GST with progress from `readyFrom`;
+* available and stable: ready-reader safety and `ProposalLive` when sleepy,
+  and from the heal point when healthy from a GST (safety needs progress only
+  on `[readyFrom, heal]`);
+* stable: outage resilience into the resilience target.
+
+`ProposalLive` replaces transaction liveness (the payload bridge,
+`proposalLive_txLive`). Prefix forms are not restated: they follow from the
+L0 prefix closure (`Good.*_prefix`). Non-framing is an L1 theorem, so there is
+no field for it. `refinement` turns these into `Behaviour`. -/
 
 namespace Consensus.Shape
 
@@ -30,58 +39,8 @@ def AllRuns (F : ShapeFamily O Info)
     Prop :=
   ∀ (V : Type) [Fintype V] [DecidableEq V] (E : Env V) (rho : Model.Run (compiled F) E), Q E rho
 
-/-- "X, or an observed hash collision, or (if the escape is `some α`) the run
-is globally slashable for `α`" on a compiled run. -/
-def Escaped {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (esc : Option ℚ) (X : Prop) (rho : Model.Run (compiled F) E) : Prop :=
-  X ∨ rho.HashCollision ∨ ∃ α, esc = some α ∧ (sysOf O (compiled F) V).GloballySlashable α ⟨E, rho⟩
-
-/-- The chain-level claims for one capability served by output `g` with
-spec `s`. -/
-structure ShapeCapClaims (F : ShapeFamily O Info) (K : Contract O ProgressReq) (g : O.Id)
-    (s : CapSpec ProgressReq K.Idx) : Prop where
-  /-- Safety of the chain from time 0 (or escape). -/
-  safe : AllRuns F fun _ rho => ∀ σ, rho.ExecutionValid → ShapePremise K s.safety.premise σ rho →
-    Escaped s.safety.escape ((chainTrace rho).Safe g 0) rho
-  /-- Proposal liveness (D-14). -/
-  live : AllRuns F fun E rho => ∀ i σ, rho.ExecutionValid →
-    ShapePremise K (s.live.premise i) σ rho →
-    ProposalLive rho (((K.catchUp : Nat) : Time) * E.Δ) g ((s.live.start i).eval rho.point σ)
-      (s.live.latency i) ∨ rho.HashCollision
-  /-- Local accountability: conflicting honest reads convict `α` from their own
-  views. -/
-  accountable : ∀ α, s.accountable = some α → AllRuns F fun _ rho => rho.ExecutionValid →
-    (chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable α g 0 ∨ rho.HashCollision
-  /-- Resilience: parameters `σ 0 = T`, `σ 1 = b₀`, `σ 2 = b₁`. -/
-  persists : ∀ P, s.resilience = some P → AllRuns F fun E rho => ∀ σ, rho.ExecutionValid →
-    ShapePremise K P σ rho →
-    (chainTrace rho).ProtectedThrough (((K.catchUp : Nat) : Time) * E.Δ) g (resilienceTarget O g)
-      (σ 0) (σ 1) (σ 2) ∨ rho.HashCollision
-  /-- Recovery, safety half (or escape). -/
-  recoverySafe : ∀ R, s.recovery = some R → AllRuns F fun E rho => ∀ i σ, rho.ExecutionValid →
-    ShapePremise K (R.premise i) σ rho →
-    Escaped R.escape ((chainTrace rho).ReadySafe (((K.catchUp : Nat) : Time) * E.Δ) g
-      ((R.start i).eval rho.point σ)) rho
-  /-- Recovery, liveness half. -/
-  recoveryLive : ∀ R, s.recovery = some R → AllRuns F fun E rho => ∀ i σ, rho.ExecutionValid →
-    ShapePremise K (R.premise i) σ rho →
-    ProposalLive rho (((K.catchUp : Nat) : Time) * E.Δ) g ((R.start i).eval rho.point σ)
-      (R.latency i) ∨ rho.HashCollision
-
-/-- The shape's headline: structural obligations plus per-capability claims.
-Not a non-vacuity certificate (D-24): pair it with `Contract.Realizable`. -/
+/-- The chain-level claims of a shape family for contract `K`. -/
 structure ShapeClaims (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Prop where
-  /-- The contract is structurally well-formed (D-8). -/
-  wf : K.WellFormed
-  /-- Readers catch up for at least one `Δ` (used by the transaction bridge). -/
-  catchUp_pos : 0 < K.catchUp
-  /-- A capability is provided exactly when it is specified (D-7). -/
-  provided : ∀ c, (O.output c).isSome = (K.spec c).isSome
-  /-- Every spec has its mandatory parts (D-6). -/
-  complete : ∀ c s, K.spec c = some s → s.Complete c
-  /-- D-20: liveness and recovery premises contain `sync`. -/
-  liveSync : ∀ c s, K.spec c = some s → ∀ i, (s.live.premise i).HasSync ∧
-    ∀ R, s.recovery = some R → (R.premise i).HasSync
   /-- Every provided output is valid in every valid run. -/
   outputValid : AllRuns F fun _ rho => rho.ExecutionValid →
     ∀ c g, O.output c = some g → OutputValid rho g
@@ -91,8 +50,46 @@ structure ShapeClaims (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Pr
   /-- The final chain never rolls back. -/
   finalMonotone : ∀ g, O.output .final = some g →
     AllRuns F fun _ rho => rho.ExecutionValid → (chainTrace rho).Monotone g 0
-  /-- The claims of every provided capability. -/
-  caps : ∀ c g s, O.output c = some g → K.spec c = some s → ShapeCapClaims F K g s
+  /-- Local accountability of the final chain for fraction `α`, in every
+  environment: conflicting honest reads convict `α` from their own views. -/
+  finalAccountable : ∀ g, O.output .final = some g → AllRuns F fun _ rho => rho.ExecutionValid →
+    (chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable K.params.α g 0 ∨
+      rho.HashCollision
+  /-- Final liveness: healthy from `gst` with progress from `readyFrom` to the
+  horizon, proposals are included from the heal point. -/
+  finalLive : ∀ g, O.output .final = some g → ∀ (i : K.Idx) (gst : Time),
+    AllRuns F fun _ rho => rho.ExecutionValid → ShapeHealthy K rho gst →
+      ShapeProg K rho .final i (shapeReady K rho gst) rho.horizon →
+      ProposalLive rho (shapeC K rho) g (shapeHeal K rho .final i gst)
+        (K.params.latency .final i) ∨ rho.HashCollision
+  /-- Sleepy safety of an available or stable chain, for ready readers. -/
+  sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
+    AllRuns F fun _ rho => rho.ExecutionValid → ShapeSleepy K rho →
+      (chainTrace rho).ReadySafe (shapeC K rho) g 0 ∨ rho.HashCollision
+  /-- Sleepy liveness, with progress on the whole run. -/
+  sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
+    ∀ i : K.Idx, AllRuns F fun _ rho => rho.ExecutionValid → ShapeSleepy K rho →
+      ShapeProg K rho cap i 0 rho.horizon →
+      ProposalLive rho (shapeC K rho) g 0 (K.params.latency cap i) ∨ rho.HashCollision
+  /-- Healed safety: healthy from `gst` with progress on `[readyFrom, heal]`,
+  ready readers are safe from the heal point. -/
+  healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
+    ∀ (i : K.Idx) (gst : Time), AllRuns F fun _ rho => rho.ExecutionValid →
+      ShapeHealthy K rho gst →
+      ShapeProg K rho cap i (shapeReady K rho gst) (shapeHeal K rho cap i gst) →
+      (chainTrace rho).ReadySafe (shapeC K rho) g (shapeHeal K rho cap i gst) ∨ rho.HashCollision
+  /-- Healed liveness: healthy from `gst` with progress from `readyFrom` to the
+  horizon, proposals are included from the heal point. -/
+  healedLive : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
+    ∀ (i : K.Idx) (gst : Time), AllRuns F fun _ rho => rho.ExecutionValid →
+      ShapeHealthy K rho gst → ShapeProg K rho cap i (shapeReady K rho gst) rho.horizon →
+      ProposalLive rho (shapeC K rho) g (shapeHeal K rho cap i gst) (K.params.latency cap i) ∨
+        rho.HashCollision
+  /-- Outage resilience of the stable chain, into the resilience target. -/
+  persists : ∀ g, O.output .stable = some g → ∀ T b₀ b₁,
+    AllRuns F fun _ rho => rho.ExecutionValid → ShapeOutage K rho T b₀ b₁ →
+      (chainTrace rho).ProtectedThrough (shapeC K rho) g (resilienceTarget O g) T b₀ b₁ ∨
+        rho.HashCollision
 
 end Consensus.Shape
 

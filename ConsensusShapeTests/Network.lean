@@ -41,7 +41,7 @@ namespace Consensus.Shape.Tests.Network
 open Consensus
 
 /-- `Δ = 2`; validator 0 always awake, validator 1 asleep before time `2`. -/
-def envW : Env (Fin 2) := ⟨2, by decide, 0, fun v t => decide (v = 0 ∨ 2 ≤ t)⟩
+def envW : Env (Fin 2) := ⟨2, by decide, fun v t => decide (v = 0 ∨ 2 ≤ t)⟩
 
 /-- Both honest, horizon `5`, no submissions. -/
 def ptW : EnvPoint (Fin 2) := ⟨envW, Finset.univ, 5, fun _ _ => []⟩
@@ -104,7 +104,7 @@ theorem psync_mono_instance : (logW recvAt2).PSync ptW 3 :=
   receipt_at_deadline.mono (by decide)
 
 /-- Validator 0 awake at `0`, asleep at `1`, awake again (a wake) at `2`. -/
-def envR : Env (Fin 2) := ⟨1, by decide, 0, fun _ t => decide (t ≠ 1)⟩
+def envR : Env (Fin 2) := ⟨1, by decide, fun _ t => decide (t ≠ 1)⟩
 
 /-- Validator 0 received one message at `0`. -/
 def logR : CommLog (Fin 2) Unit := ⟨fun _ _ _ => False, fun v _ t => v = 0 ∧ t = 0, fun _ _ => []⟩
@@ -125,7 +125,7 @@ theorem held_restart : logR.Held ptR 0 () 1 ∧ ¬ logR.Held ptR 0 () 2 := by
     · exact hn 2 (by decide) le_rfl ⟨by simp [ptR, envR], by simp [ptR, envR]⟩
 
 /-- Both validators always awake, `Δ = 2`, GST `0`. -/
-def envN : Env (Fin 2) := ⟨2, by decide, 0, fun _ _ => true⟩
+def envN : Env (Fin 2) := ⟨2, by decide, fun _ _ => true⟩
 
 def ptN : EnvPoint (Fin 2) := ⟨envN, Finset.univ, 5, fun _ _ => []⟩
 

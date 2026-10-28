@@ -54,7 +54,7 @@ def proto (pub : Public) : Protocol pub Unit where
 def family : Family schema := proto
 
 /-- Two validators, always awake, `Δ = 3`, `GST = 4`. -/
-def env : Env (Fin 2) := ⟨3, by decide, 4, fun _ _ => true⟩
+def env : Env (Fin 2) := ⟨3, by decide, fun _ _ => true⟩
 
 /-- The identity PKI. -/
 def pki : Fin (Fintype.card (Fin 2)) ≃ Fin 2 := finCongr (Fintype.card_fin 2)

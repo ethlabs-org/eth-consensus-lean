@@ -12,10 +12,10 @@ public import ConsensusShape.Values.Goldilocks
 public import ConsensusShape.Values.Streamlet
 public import ConsensusShape.Values.Tendermint
 
-/-! Layer 1, the protocol shape: generic chain shapes over the building
+/-! Layer 2 (L2), the protocol shape: generic chain shapes over the building
 blocks (`Shape`), their compilation to the model (`Compile`), the shape
-vocabulary over compiled runs (`Run`), the shape claims (`Claims`), the payload
-facts (`Payload`), the refinement to the problem claims (`Refinement`),
-coverage and joint realizability (`Realizable`), the acceptance endpoint
-(`Accepted`), and the Goldilocks,
-Streamlet and Tendermint values (`Values`). -/
+vocabulary and progress reader over compiled runs (`Run`), the shape claims
+(`Claims`), the payload facts (`Payload`), the refinement to the L0 behaviour
+(`Refinement`), coverage and the extremal selection (`Realizable`), the
+acceptance endpoint (`Accepted`), and the Goldilocks, Streamlet and
+Tendermint values (`Values`). -/

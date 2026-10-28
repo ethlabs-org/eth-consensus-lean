@@ -3,18 +3,29 @@ public import ConsensusBlocks.TimeGrid
 
 @[expose] public section
 
-/-! # Selection premises (building block)
+/-! # Progress requirements (building block)
 
-Progress requirements over a time grid: a slot pattern (nonempty offsets) that
-must recur, honest and ready, within every window of `gap` slots. The premise
-is typed over the environment point, the PKI and the selection only: it cannot
-see events, states or the hash. Admissibility is by typing (D-2): a pattern is
-nonempty and a gap is positive. -/
+Leader-based progress over a time grid, in two forms (`ProgressReq`):
+
+* `recur ρ`: a slot pattern (nonempty offsets) recurs, honest and ready,
+  within every window of `gap` slots (slot proposers);
+* `notReadyAtMost m`: at most `m` validators are not ready (round-robin
+  leaders: with at most `m` not ready, a ready honest leader comes within
+  `m + 1` rounds; that is a protocol proof, not part of the requirement).
+
+Both are typed over the environment point, the PKI and the selection only:
+they cannot see events, states or the hash. Admissibility is by typing: a
+pattern is nonempty, a gap and a bound are positive.
+
+A requirement holds on a window `[start, stop]`: recurrence windows start at or
+after `max start 0`, and the **whole pattern** of each window (the window plus
+the pattern's span) must end by `stop` and by the horizon. Nothing after
+`stop` is read. -/
 
 namespace Consensus.Blocks
 
-/-- A slot pattern: nonempty offsets from a start slot (D-2). `[0]` = one
-honest proposer; `[0,1,2,3,4]` = Streamlet. -/
+/-- A slot pattern: nonempty offsets from a start slot. `[0]` = one honest
+proposer; `[0,1,2,3,4]` = Streamlet. -/
 structure Pattern where
   /-- Slot offsets from the start slot. -/
   offsets : List Nat
@@ -22,6 +33,9 @@ structure Pattern where
 
 /-- One honest proposer: the pattern `[0]`. -/
 def Pattern.single : Pattern := ⟨[0], by simp⟩
+
+/-- `n` consecutive honest proposers: the pattern `[0, …, n − 1]`. -/
+def Pattern.range (n : ℕ+) : Pattern := ⟨List.range n, by simp⟩
 
 /-- The largest offset of a pattern. -/
 def Pattern.span (P : Pattern) : Nat := P.offsets.foldr max 0
@@ -36,74 +50,138 @@ theorem Pattern.le_span {P : Pattern} {j : Nat} (h : j ∈ P.offsets) : j ≤ P.
     · exact le_max_left _ _
     · exact le_trans (ih h) (le_max_right _ _)
 
-/-- A progress requirement: a pattern recurring within every window of `gap`
-slots; `gap` is positive by type (D-2). -/
-structure ProgressReq where
+/-- The single pattern has span `0`. -/
+theorem Pattern.span_single : Pattern.single.span = 0 := rfl
+
+/-- A recurrence: a pattern recurring within every window of `gap` slots;
+`gap` is positive by type. -/
+structure Recurrence where
   /-- The pattern that must recur. -/
   pattern : Pattern
   /-- The window length in slots. -/
   gap : ℕ+
 
+/-- The slots a recurrence window reads: the window plus the pattern's span. -/
+def Recurrence.len (ρ : Recurrence) : Nat := (ρ.gap : Nat) + ρ.pattern.span
+
+/-- A progress requirement: pattern recurrence (slot proposers), or a bound on
+the validators that are not ready (round-robin leaders). -/
+inductive ProgressReq where
+  | recur (ρ : Recurrence)
+  | notReadyAtMost (m : ℕ+)
+
 variable {V : Type} [Fintype V] {R : Type}
 
 /-- Role `r` is nonempty and every key selected for it is honest and ready at
-`t` (D-12). -/
+`t`. -/
 def HonestReadyIn (p : EnvPoint V) (key : Fin (Fintype.card V) ≃ V)
     (sel : R → Finset (Fin (Fintype.card V))) (r : R) (c t : Time) : Prop :=
   (sel r).Nonempty ∧ ∀ k ∈ sel r, key k ∈ p.honest ∧ p.Ready c (key k) t
 
-/-- Pattern recurrence: from `max start 0` (D-22), every window of `gap` slots
-inside the horizon contains a start slot `s` (strictly after `t`, at most
-`t + gap · slotLen`) at which the whole pattern is honest and ready: for each
-offset `j`, the role `lead (s + j)` at the time of slot `s + j`. Typed over the
-environment point, PKI and selection only: it cannot see events, states or
-the hash. -/
+/-- Pattern recurrence on `[start, stop]`: every window `(t, t + gap·slotLen]`
+with `t ≥ max start 0` whose whole pattern ends by `stop` and by the horizon
+(`t + (gap + span)·slotLen ≤ min stop horizon`) contains a start slot `s` at
+which the whole pattern is honest and ready: for each offset `j`, the role
+`lead (s + j)` at the time of slot `s + j`. -/
 def PatternRecurrence (p : EnvPoint V) (key : Fin (Fintype.card V) ≃ V)
     (sel : R → Finset (Fin (Fintype.card V))) (lead : Slot → R) (G : TimeGrid)
-    (π : ProgressReq) (c start : Time) : Prop :=
-  ∀ t, start ≤ t → 0 ≤ t → t + ((π.gap : Nat) : Time) * G.slotLen p.env.Δ ≤ p.horizon →
+    (ρ : Recurrence) (c start stop : Time) : Prop :=
+  ∀ t, start ≤ t → 0 ≤ t → t + (ρ.len : Time) * G.slotLen p.env.Δ ≤ stop →
+    t + (ρ.len : Time) * G.slotLen p.env.Δ ≤ p.horizon →
     ∃ s, t < G.slotTime p.env.Δ s ∧
-      G.slotTime p.env.Δ s ≤ t + ((π.gap : Nat) : Time) * G.slotLen p.env.Δ ∧
-      ∀ j ∈ π.pattern.offsets,
+      G.slotTime p.env.Δ s ≤ t + ((ρ.gap : Nat) : Time) * G.slotLen p.env.Δ ∧
+      ∀ j ∈ ρ.pattern.offsets,
         HonestReadyIn p key sel (lead (s + j)) c (G.slotTime p.env.Δ (s + j))
+
+/-- At most `m` validators are not ready at every time of `[max start 0, stop]`
+within the horizon. -/
+def NotReadyOn [DecidableEq V] (p : EnvPoint V) (m : Nat) (c start stop : Time) : Prop :=
+  ∀ t, max start 0 ≤ t → t ≤ stop → t ≤ p.horizon → p.NotReadyAtMost m c t
 
 variable {p : EnvPoint V} {key : Fin (Fintype.card V) ≃ V}
   {sel : R → Finset (Fin (Fintype.card V))} {lead : Slot → R} {G : TimeGrid}
-  {π : ProgressReq} {c start : Time}
+  {ρ : Recurrence} {c start stop : Time}
 
-/-- If every slot has an honest ready pattern, recurrence holds from any start
-(no domain hypothesis: windows start at `t ≥ 0`, gaps are positive). -/
+/-- A later start and an earlier stop are weaker. -/
+theorem PatternRecurrence.mono {start' stop' : Time}
+    (h : PatternRecurrence p key sel lead G ρ c start stop) (hs : start ≤ start')
+    (he : stop' ≤ stop) : PatternRecurrence p key sel lead G ρ c start' stop' :=
+  fun t ht h0 hst hh => h t (le_trans hs ht) h0 (le_trans hst he) hh
+
+/-- A smaller horizon is weaker. -/
+theorem PatternRecurrence.shrink {b : Time} (hb : b ≤ p.horizon)
+    (h : PatternRecurrence p key sel lead G ρ c start stop) :
+    PatternRecurrence { p with horizon := b } key sel lead G ρ c start stop :=
+  fun t ht h0 hst hh => h t ht h0 hst (le_trans hh hb)
+
+/-- A later start and an earlier stop are weaker. -/
+theorem NotReadyOn.mono [DecidableEq V] {m : Nat} {start' stop' : Time}
+    (h : NotReadyOn p m c start stop) (hs : start ≤ start') (he : stop' ≤ stop) :
+    NotReadyOn p m c start' stop' :=
+  fun t ht hst hh => h t (le_trans (max_le_max hs le_rfl) ht) (le_trans hst he) hh
+
+/-- A smaller horizon is weaker. -/
+theorem NotReadyOn.shrink [DecidableEq V] {m : Nat} {b : Time} (hb : b ≤ p.horizon)
+    (h : NotReadyOn p m c start stop) : NotReadyOn { p with horizon := b } m c start stop :=
+  fun t ht hst hh => h t ht hst (le_trans hh hb)
+
+/-- Head extraction: a pattern with offset `0` gives one honest ready proposer
+per window, losing the pattern's span at the end of the window `[start, stop]`
+(the single pattern reads only the window itself). -/
+theorem PatternRecurrence.single_of_zero (h0 : 0 ∈ ρ.pattern.offsets)
+    (h : PatternRecurrence p key sel lead G ρ c start stop) :
+    PatternRecurrence p key sel lead G ⟨Pattern.single, ρ.gap⟩ c start
+      (min stop p.horizon - (ρ.pattern.span : Time) * G.slotLen p.env.Δ) := by
+  intro t ht ht0 hst _
+  have hlen : ((⟨Pattern.single, ρ.gap⟩ : Recurrence).len : Time) = ((ρ.gap : Nat) : Time) := by
+    simp [Recurrence.len, Pattern.span_single]
+  have hlen' : (ρ.len : Time) = ((ρ.gap : Nat) : Time) + (ρ.pattern.span : Time) := by
+    simp [Recurrence.len]
+  rw [hlen] at hst
+  have hm1 := min_le_left stop p.horizon
+  have hm2 := min_le_right stop p.horizon
+  obtain ⟨s, hs1, hs2, hall⟩ := h t ht ht0 (by rw [hlen']; linarith) (by rw [hlen']; linarith)
+  refine ⟨s, hs1, hs2, fun j hj => ?_⟩
+  have hj0 : j = 0 := List.mem_singleton.mp hj
+  subst hj0
+  exact hall 0 h0
+
+/-- If every slot has an honest ready pattern, recurrence holds on every
+window (no domain hypothesis: windows start at `t ≥ 0`, gaps are positive). -/
 theorem patternRecurrence_of_all (hΔ : 0 < p.env.Δ)
-    (h : ∀ s j, j ∈ π.pattern.offsets →
+    (h : ∀ s j, j ∈ ρ.pattern.offsets →
       HonestReadyIn p key sel (lead (s + j)) c (G.slotTime p.env.Δ (s + j))) :
-    PatternRecurrence p key sel lead G π c start := by
-  intro t _ ht _
-  obtain ⟨s, hs₁, hs₂⟩ := G.exists_slot_in_window hΔ ht (k := (π.gap : Nat)) π.gap.pos
+    PatternRecurrence p key sel lead G ρ c start stop := by
+  intro t _ ht _ _
+  obtain ⟨s, hs₁, hs₂⟩ := G.exists_slot_in_window hΔ ht (k := (ρ.gap : Nat)) ρ.gap.pos
   exact ⟨s, hs₁, hs₂, fun j hj => h s j hj⟩
 
-/-- Recurrence is non-vacuous: if one window fits in the horizon, the premise
-yields an honest selected key (used by tests and witnesses). -/
-theorem PatternRecurrence.exists_honest (h : PatternRecurrence p key sel lead G π c start)
-    (ht : max start 0 + ((π.gap : Nat) : Time) * G.slotLen p.env.Δ ≤ p.horizon) :
+/-- Recurrence is non-vacuous: if one whole window fits in `[max start 0, stop]`
+and the horizon, the requirement yields an honest selected key. -/
+theorem PatternRecurrence.exists_honest (h : PatternRecurrence p key sel lead G ρ c start stop)
+    (hs : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ stop)
+    (ht : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ p.horizon) :
     ∃ s k, k ∈ sel (lead s) ∧ key k ∈ p.honest := by
-  obtain ⟨s, -, -, hall⟩ := h (max start 0) (le_max_left _ _) (le_max_right _ _) ht
-  obtain ⟨j, hj⟩ := List.exists_mem_of_ne_nil _ π.pattern.nonempty
+  obtain ⟨s, -, -, hall⟩ := h (max start 0) (le_max_left _ _) (le_max_right _ _) hs ht
+  obtain ⟨j, hj⟩ := List.exists_mem_of_ne_nil _ ρ.pattern.nonempty
   obtain ⟨⟨k, hk⟩, hks⟩ := hall j hj
   exact ⟨s + j, k, hk, (hks k hk).1⟩
 
-/-- With the window and the pattern's span inside the horizon, recurrence yields
-a start slot whose whole pattern is honest, ready and inside the horizon. -/
-theorem PatternRecurrence.exists_inside (h : PatternRecurrence p key sel lead G π c start)
-    (ht : max start 0 + (((π.gap : Nat) + π.pattern.span : Nat) : Time) * G.slotLen p.env.Δ ≤
-      p.horizon) :
-    ∃ s, ∀ j ∈ π.pattern.offsets, G.slotTime p.env.Δ (s + j) ≤ p.horizon ∧
+/-- With one whole window inside `[max start 0, stop]` and the horizon,
+recurrence yields a start slot whose whole pattern is honest, ready and inside
+the horizon. -/
+theorem PatternRecurrence.exists_inside (h : PatternRecurrence p key sel lead G ρ c start stop)
+    (hs : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ stop)
+    (ht : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ p.horizon) :
+    ∃ s, ∀ j ∈ ρ.pattern.offsets, G.slotTime p.env.Δ (s + j) ≤ p.horizon ∧
       HonestReadyIn p key sel (lead (s + j)) c (G.slotTime p.env.Δ (s + j)) := by
   have hl := G.slotLen_pos p.env.Δ_pos
-  have hsp : (0 : Time) ≤ (π.pattern.span : Time) * G.slotLen p.env.Δ := by positivity
-  push_cast at ht
-  obtain ⟨s, -, hs, hall⟩ := h (max start 0) (le_max_left _ _) (le_max_right _ _) (by nlinarith)
+  obtain ⟨s, -, hs', hall⟩ := h (max start 0) (le_max_left _ _) (le_max_right _ _) hs ht
   refine ⟨s, fun j hj => ⟨?_, hall j hj⟩⟩
-  have hj' : (j : Time) ≤ π.pattern.span := by exact_mod_cast Pattern.le_span hj
+  have hj' : (j : Time) ≤ ρ.pattern.span := by exact_mod_cast Pattern.le_span hj
+  have hlen : (ρ.len : Time) = ((ρ.gap : Nat) : Time) + (ρ.pattern.span : Time) := by
+    simp [Recurrence.len]
+  rw [hlen] at ht
   rw [G.slotTime_add]
   nlinarith
 

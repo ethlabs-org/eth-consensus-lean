@@ -39,9 +39,8 @@ def Compatible {α : Type} (a b : List α) : Prop := a <+: b ∨ b <+: a
 /-- The three services a protocol may provide. The names state the intent: an
 available ledger (live under dynamic participation), a stable ledger
 (persists through bounded outages), and a final ledger (safe under asynchrony,
-accountable). What is claimed for a capability is exactly its specification in
-the protocol's contract (`CapSpec`); only `final`'s monotonicity and the
-nesting order are unconditional. -/
+accountable). What is claimed for each capability is fixed in `Good.lean`
+(`Behaviour`); a protocol supplies only numbers. -/
 inductive Capability where
   | available
   | stable
@@ -63,13 +62,14 @@ structure OutputSchema where
   /-- The output serving each capability, if provided. -/
   output : Capability → Option Id
 
-/-- The physical environment: the message delay bound `Δ`, the GST, and when
-each node is awake. Time is in integer units; `Δ` is a positive integer number
-of units; nodes act at every integer time (unit ticks). -/
+/-- The physical environment: the message delay bound `Δ` and when each node
+is awake. Time is in integer units; `Δ` is a positive integer number of units;
+nodes act at every integer time (unit ticks). The GST is not part of the
+environment: it is a parameter of the network regimes (`Network.lean`,
+`Regimes.lean`). -/
 structure Env (V : Type) where
   Δ : Time
   Δ_pos : 0 < Δ
-  gst : Time
   awake : V → Time → Bool
 
 /-- Awake now, asleep one time unit earlier. -/
@@ -97,12 +97,6 @@ variable {V : Type} (p : EnvPoint V)
 def AwakeOnClosed (v : V) (a b : Time) : Prop :=
   ∀ u, a ≤ u → u ≤ b → p.env.awake v u = true
 
-/-- Every honest validator is awake at `t`. -/
-def FullAt (t : Time) : Prop := ∀ v ∈ p.honest, p.env.awake v t = true
-
-/-- No honest validator wakes at `t`. -/
-def NoWakeAt (t : Time) : Prop := ∀ v ∈ p.honest, ¬ Wakes p.env v t
-
 /-- `v` is ready at `t` with catch-up `c` (a duration): honest, and awake
 throughout `[max 0 (t − c − 1), t]`. -/
 def Ready (c : Time) (v : V) (t : Time) : Prop :=
@@ -121,11 +115,6 @@ def faulty : Finset V := Finset.univ \ p.honest
 noncomputable def readyAt (c t : Time) : Finset V := by
   classical
   exact p.honest.filter (fun v => p.Ready c v t)
-
-/-- Honest validators awake at some time in `[a, b]`. -/
-noncomputable def awakeIn (a b : Time) : Finset V := by
-  classical
-  exact p.honest.filter (fun v => ∃ u, a ≤ u ∧ u ≤ b ∧ p.env.awake v u = true)
 
 /-- Domain of the environment coverage theorems; not a claim premise. -/
 def WellFormed : Prop := 0 ≤ p.horizon
@@ -159,10 +148,6 @@ def FaultsAtMost (m : Nat) : Prop := p.faulty.card ≤ m
 /-- More than fraction `φ` of all validators are ready. -/
 def ReadyOfAll (φ : ℚ) (c t : Time) : Prop :=
   φ * Fintype.card V < ((p.readyAt c t).card : ℚ)
-
-/-- `|ready_t| > θ · |H_[t−η,t] ∪ faulty|`. -/
-def EtaSleepy (θ : ℚ) (η c t : Time) : Prop :=
-  θ * ((p.awakeIn (t - η) t ∪ p.faulty).card : ℚ) < ((p.readyAt c t).card : ℚ)
 
 end EnvPoint
 
@@ -216,8 +201,9 @@ structure CommLog (V M : Type) where
 /-- A system: an output schema and a space of runs; for each run its trace
 of ledgers (one per output identifier), its communication log, its evidence
 (what each node has seen by each cut, and how evidence convicts validators),
-whether it is a valid execution, and the excuse under which escaped claims may
-fail. The model layer instantiates every field. -/
+whether it is a valid execution, and the excuse under which claims may fail
+(in the model: an observed hash collision). The model layer instantiates
+every field. -/
 structure System (V : Type) where
   schema : OutputSchema
   Run : Type

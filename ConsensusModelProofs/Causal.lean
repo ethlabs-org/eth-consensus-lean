@@ -11,7 +11,7 @@ release, as in the canonical run), every signed object anything honest saw
 has an honest signer: honest nodes sign only with their own key, and carry
 only what they saw. With `honestNeverSlashed`, the honest evidence convicts
 nobody, faulty validators included. Realizability witnesses use this to show
-that no escape or accountability conclusion is met by slashing. -/
+that no accountability conclusion is met by slashing. -/
 
 namespace Consensus.Model
 

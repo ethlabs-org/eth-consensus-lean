@@ -1,5 +1,6 @@
 module
-public import ConsensusProblem.Premise
+public import ConsensusProblem.Properties
+public import Mathlib.Tactic
 
 @[expose] public section
 
@@ -41,25 +42,9 @@ theorem AwakeOfAll.mono {φ φ' : ℚ} {t : Time} (h : p.AwakeOfAll φ' t) (hle 
     p.AwakeOfAll φ t :=
   lt_of_le_of_lt (mul_le_mul_of_nonneg_right hle (by positivity)) h
 
-/-- A smaller fraction and a shorter look-back are weaker. -/
-theorem EtaSleepy.mono {θ θ' : ℚ} {η η' c t : Time} (h : p.EtaSleepy θ' η' c t)
-    (h0 : 0 ≤ θ) (hθ : θ ≤ θ') (hη : η ≤ η') : p.EtaSleepy θ η c t := by
-  classical
-  have hsub : p.awakeIn (t - η) t ∪ p.faulty ⊆ p.awakeIn (t - η') t ∪ p.faulty := by
-    apply Finset.union_subset_union _ (Finset.Subset.refl _)
-    intro v hv
-    obtain ⟨hv, u, ha, hb, hw⟩ := Finset.mem_filter.mp hv
-    apply Finset.mem_filter.mpr
-    exact ⟨hv, u, by dsimp only [Time] at *; omega, hb, hw⟩
-  have hc : ((p.awakeIn (t - η) t ∪ p.faulty).card : ℚ) ≤
-      (p.awakeIn (t - η') t ∪ p.faulty).card := by exact_mod_cast Finset.card_le_card hsub
-  exact lt_of_le_of_lt
-    ((mul_le_mul_of_nonneg_left hc h0).trans
-      (mul_le_mul_of_nonneg_right hθ (by positivity))) h
-
 /-- If every validator ready at `t` is in an honest set `C`, and `W` avoids
 `C`, then more than half of all validators ready gives `2·|faulty ∪ W| < n`
-(used with the premise term `coverMajority`). -/
+(the outage regime's cover at `b₀` with `cover = ½`). -/
 theorem two_mul_card_faulty_union_lt {c t : Time} {C W : Finset V}
     (hR : p.readyAt c t ⊆ C) (hC : C ⊆ p.honest) (hW : Disjoint W C)
     (h : p.ReadyOfAll (1 / 2) c t) : 2 * (p.faulty ∪ W).card < Fintype.card V := by

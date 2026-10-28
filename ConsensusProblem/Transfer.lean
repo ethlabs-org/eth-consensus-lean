@@ -47,11 +47,6 @@ theorem ProtectedThrough.map {c src dst T b₀ b₁} (h : tr.ProtectedThrough c 
     (tr.map f).ProtectedThrough c src dst T b₀ b₁ := by
   intro v hv t ht ht' w hw ha
   exact hf (h v hv t ht ht' w hw ha)
-
-theorem CompatibleThrough.map {c src dst T b₀ b₁} (h : tr.CompatibleThrough c src dst T b₀ b₁) :
-    (tr.map f).CompatibleThrough c src dst T b₀ b₁ := by
-  intro v hv t ht ht' w hw ha
-  exact (h v hv t ht ht' w hw ha).map hf
 end Trace
 end Consensus
 end

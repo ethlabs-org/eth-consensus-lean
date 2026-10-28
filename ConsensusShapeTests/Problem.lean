@@ -7,12 +7,12 @@ public import Mathlib.Tactic
 
 Small traces that violate each property, the `InCuts` fix at cut 0, the
 transaction-relay vocabulary, nesting across three outputs, catch-up, and
-local accountability versus the global slashing escape. -/
+local accountability: evidence that exists somewhere in the run is not enough. -/
 
 namespace Consensus.Shape.Tests.Problem
 
 def point : EnvPoint Bool :=
-  ⟨⟨1, by decide, 0, fun _ _ => true⟩, Finset.univ, 2,
+  ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ, 2,
     fun _ t => if t = 0 then [42] else []⟩
 
 def incompatible : Trace Bool Nat Unit :=
@@ -57,7 +57,7 @@ theorem omitted_not_txLive : ¬ omitted.TxLive 0 () 0 1 := by
     exact ⟨true, Finset.mem_univ _, 0, le_rfl, le_rfl, rfl, by simp [point]⟩
   have hr : point.Ready 0 true 2 := by
     exact ⟨Finset.mem_univ _, fun _ _ _ => rfl⟩
-  have hx := h 42 0 2 (le_refl _) hs (by decide) (by decide) true hr
+  have hx := h 42 0 2 hs (by decide) (by decide) true hr
   change 42 ∈ [] at hx
   cases hx
 
@@ -85,7 +85,7 @@ theorem init_rollback_not_monotone : ¬ initRollback.Monotone () 0 := by
 /-- A single awake honest source suffices; the other honest nodes need not
 receive any local submission. -/
 def oneSource : EnvPoint Bool :=
-  ⟨⟨3, by decide, 4, fun _ _ => true⟩, Finset.univ, 20,
+  ⟨⟨3, by decide, fun _ _ => true⟩, Finset.univ, 20,
     fun v t => if v = true ∧ t = 0 then [42] else []⟩
 
 theorem oneSource_submitted : oneSource.SubmittedToSome 42 0 :=
@@ -95,7 +95,7 @@ theorem other_node_no_submission (t : Time) : oneSource.submit false t = [] := b
   simp [oneSource]
 
 def sleepingSource : EnvPoint Bool :=
-  { oneSource with env := ⟨3, by decide, 4, fun _ _ => false⟩ }
+  { oneSource with env := ⟨3, by decide, fun _ _ => false⟩ }
 
 theorem sleeping_source_not_submitted : ¬ sleepingSource.SubmittedToSome 42 0 := by
   rintro ⟨v, _, τ, _, _, haw, _⟩
@@ -130,7 +130,7 @@ theorem finalized_stable_not_nested : ¬ badNesting.Nested .f .s := by
 /-- With Δ = 3, zero catch-up would permit a reader whose awake history is
 shorter than one `Δ`. -/
 def shortHistory : EnvPoint Bool :=
-  ⟨⟨3, by decide, 0, fun _ t => decide (5 ≤ t)⟩, Finset.univ, 6,
+  ⟨⟨3, by decide, fun _ t => decide (5 ≤ t)⟩, Finset.univ, 6,
     fun _ _ => []⟩
 
 theorem shortHistory_ready : shortHistory.Ready 0 true 6 := by
@@ -145,7 +145,7 @@ theorem shortHistory_not_awake_delta : ¬ AwakeOn shortHistory.env true (6 - 3) 
   have := h 3 (by decide) (by decide)
   cases this
 
-/-! ## Local accountability is not implied by the global escape -/
+/-! ## Local accountability has teeth -/
 
 /-- One output; a single-run system on three validators (validator 2 faulty)
 whose honest readers conflict at cut 0, where nothing is seen yet; by the end
@@ -153,7 +153,7 @@ of the run the honest evidence convicts validator 2. -/
 def localGlobal : System (Fin 3) where
   schema := ⟨Unit, fun _ => some ()⟩
   Run := Unit
-  trace _ := ⟨⟨⟨1, by decide, 0, fun _ _ => true⟩, {0, 1}, 0, fun _ _ => []⟩, 1,
+  trace _ := ⟨⟨⟨1, by decide, fun _ _ => true⟩, {0, 1}, 0, fun _ _ => []⟩, 1,
     fun _ => 0, fun _ v _ => if v = 0 then [1] else [2]⟩
   Valid _ := True
   Obs := Unit
@@ -162,12 +162,14 @@ def localGlobal : System (Fin 3) where
   convicts _ A x := () ∈ A ∧ x = 2
   Excuse _ := False
 
-/-- The run is globally slashable for one third, honest validators are not
-framed, yet local accountability for one third fails: the conflicting reads at
-cut 0 carry no evidence. -/
-theorem local_vs_global :
-    localGlobal.GloballySlashable (1 / 3) () ∧ localGlobal.NonFraming () ∧
-      ¬ localGlobal.AccountablySafe () (1 / 3) () 0 := by
+/-- The whole honest evidence of the run convicts one third (validator 2),
+honest validators are not framed, yet local accountability for one third
+fails: the conflicting reads at cut 0 carry no evidence of their own. So
+accountability is local: global slashability would not satisfy it. -/
+theorem local_accountability_teeth :
+    (Fintype.card (Fin 3) : ℚ) * (1 / 3) ≤
+        (localGlobal.convicted () (localGlobal.honestEvidence ())).card ∧
+      localGlobal.NonFraming () ∧ ¬ localGlobal.AccountablySafe () (1 / 3) () 0 := by
   classical
   have hfull : localGlobal.convicted () (localGlobal.honestEvidence ()) = {2} := by
     ext x
@@ -182,8 +184,7 @@ theorem local_vs_global :
       true_and, Finset.notMem_empty, iff_false]
     rintro ⟨h | h, _⟩ <;> exact absurd h (Set.notMem_empty _)
   refine ⟨?_, ?_, ?_⟩
-  · unfold System.GloballySlashable
-    rw [hfull]
+  · rw [hfull]
     simp
   · intro v hv hc
     have hv2 : v = 2 := hc.2

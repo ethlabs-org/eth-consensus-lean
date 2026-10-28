@@ -4,20 +4,22 @@ public import ConsensusModelProofs
 
 @[expose] public section
 
-/-! # Shape vocabulary over compiled runs (layer 1)
+/-! # Shape vocabulary over compiled runs (L2)
 
 For a run of a compiled shape family: the chain trace (what each node's
 output chains are at each event cut, with the run's environment point and cut
 times), honest proposals (a header released by an honest key in a proposal
 role, at its release time), inclusion by a time, the liveness obligation
 `ProposalLive` (D-14), output validity (linkage, increasing positions,
-provenance), and the shape's interpretation of the `progress` premise atom
-(pattern recurrence over the proposer roles of the grid). -/
+provenance), and the shape's progress reader `shapeProgress` (L0
+`Progress`): pattern recurrence over the proposer roles of the grid, or a
+bound on the validators that are not ready, read from the environment point
+and the run's external data (PKI and selection, `Model.sysExternal`) only. -/
 
 namespace Consensus.Shape
 
 open Blocks
-open Consensus.Model (Public Key SelSpec Obj Msg pubOf protoOf sysOf modelProfile)
+open Consensus.Model (Public Key SelSpec Obj Msg pubOf protoOf sysOf sysExternal)
 
 variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
   {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
@@ -76,31 +78,72 @@ theorem OutputValid.authorized {rho : Model.Run (compiled F) E} {g : O.Id}
     exact ⟨v, hvh, j, o₀, lt_of_lt_of_le hj hi, hev, hc⟩
   exact rho.selected_of_observed hv hobs (.refl _) rfl
 
-/-- The shape's interpretation of `progress`: pattern recurrence over the
-proposer roles of the grid, at the run's point, PKI and selection. A shape
-without slot proposers (`proposerSel := .fixed ∅`, e.g. a pure poll shape)
-satisfies a premise containing `progress` only on runs where no recurrence
-window fits inside the horizon (`HonestReadyIn` needs a nonempty selection;
-`PatternRecurrence` is vacuous without a window), so its liveness claims
-under such premises say nothing on longer runs; such shapes state liveness
-without the `progress` atom (`Contract.Realizable` requires `ProgressActive`). -/
-def shapeExec (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
-    ExecProfile (sysOf O (compiled F) V) ProgressReq :=
-  modelProfile O (compiled F) V fun π c start r =>
-    PatternRecurrence (R := ShapeRole (F (pubOf r.1)).skel.Kind) r.2.point r.2.key r.2.sel
-      ShapeRole.proposer (F (pubOf r.1)).skel.grid π c start
+/-- The requirement `π` with catch-up `c` on `[start, stop]` at point `p`, PKI
+`key` and selection `sel` of family `F`: pattern recurrence over the proposer
+roles of the grid, or at most `m` validators not ready. A shape without slot
+proposers (`proposerSel := .fixed ∅`, e.g. a poll shape) never meets a
+recurrence with a window inside `[start, stop]` (`HonestReadyIn` needs a
+nonempty selection); acceptance therefore requires `.recur` only of shapes
+with one proposer per slot (`Contract.ProgressFits`). -/
+def shapeHolds (F : ShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V] :
+    ProgressReq → Time → Time → Time → (p : EnvPoint V) →
+      (sysExternal O (compiled F) V).Ext p.env → Prop
+  | .recur ρ, c, s, e, p, x =>
+    PatternRecurrence (R := ShapeRole (F (pubOf p.env)).skel.Kind) p x.1 x.2
+      ShapeRole.proposer (F (pubOf p.env)).skel.grid ρ c s e
+  | .notReadyAtMost m, c, s, e, p, _ => NotReadyOn p m c s e
 
-/-- Shape premises are layer-0 premises evaluated on the compiled run. -/
-abbrev ShapePremise (K : Contract O ProgressReq) (P : Premise ProgressReq) (σ : Nat → Time)
-    (rho : Model.Run (compiled F) E) : Prop :=
-  P.eval (sysOf O (compiled F) V) (shapeExec F V) K.catchUp σ ⟨E, rho⟩
+/-- The shape's progress reader: the model's external data (PKI and
+selection) with `shapeHolds`. -/
+def shapeProgress (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
+    Progress (sysOf O (compiled F) V) ProgressReq where
+  toExternal := sysExternal O (compiled F) V
+  holds := shapeHolds F
+  mono := by
+    intro π c s s' e e' p x hs he h
+    cases π with
+    | recur ρ => exact PatternRecurrence.mono h hs he
+    | notReadyAtMost m => exact NotReadyOn.mono h hs he
+  shrink := by
+    intro π c s e p x b hb h
+    cases π with
+    | recur ρ => exact PatternRecurrence.shrink hb h
+    | notReadyAtMost m => exact NotReadyOn.shrink hb h
 
-/-- The premise bridge: a shape premise is, by definition, the layer-0
-evaluation on the compiled system. -/
-theorem premiseBridge (K : Contract O ProgressReq) (P : Premise ProgressReq) (σ : Nat → Time)
-    (rho : Model.Run (compiled F) E) :
-    ShapePremise K P σ rho ↔ P.eval (sysOf O (compiled F) V) (shapeExec F V) K.catchUp σ ⟨E, rho⟩ :=
-  Iff.rfl
+/-! ## The L0 regimes and quantities at a compiled run
+
+Shape-level names for the L0 definitions at the system run `⟨E, rho⟩` of the
+compiled system; each is the L0 definition itself (`abbrev`). -/
+
+section Regimes
+
+variable (K : Contract O ProgressReq) (rho : Model.Run (compiled F) E)
+
+/-- The catch-up duration `catchUp·Δ`. -/
+abbrev shapeC : Time := (sysOf O (compiled F) V).cDur K ⟨E, rho⟩
+
+/-- The sleepy regime (L0 `Regime.Sleepy`). -/
+abbrev ShapeSleepy : Prop := (sysOf O (compiled F) V).Sleepy K ⟨E, rho⟩
+
+/-- The healthy regime from GST `gst` (L0 `Regime.Healthy`). -/
+abbrev ShapeHealthy (gst : Time) : Prop := (sysOf O (compiled F) V).Healthy K gst ⟨E, rho⟩
+
+/-- The outage regime (L0 `Regime.Outage`). -/
+abbrev ShapeOutage (T b₀ b₁ : Time) : Prop :=
+  (sysOf O (compiled F) V).Outage K T b₀ b₁ ⟨E, rho⟩
+
+/-- The heal point of `cap` at `i` after GST `gst`. -/
+abbrev shapeHeal (cap : Capability) (i : K.Idx) (gst : Time) : Time :=
+  (sysOf O (compiled F) V).heal K cap i gst ⟨E, rho⟩
+
+/-- The start of progress windows after GST `gst`. -/
+abbrev shapeReady (gst : Time) : Time := (sysOf O (compiled F) V).ready K gst ⟨E, rho⟩
+
+/-- The progress requirement of `cap` at `i` holds on `[start, stop]`. -/
+abbrev ShapeProg (cap : Capability) (i : K.Idx) (start stop : Time) : Prop :=
+  (sysOf O (compiled F) V).prog (shapeProgress F V) K cap i start stop ⟨E, rho⟩
+
+end Regimes
 
 end Consensus.Shape
 

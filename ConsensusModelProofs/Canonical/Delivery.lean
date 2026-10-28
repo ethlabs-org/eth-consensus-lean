@@ -43,20 +43,6 @@ theorem delivers_of_eager (rho : Run F E) (he : rho.EagerDelivery) (ht : rho.Eag
     have hle : τ ≤ dl a := le_trans hτa (hd a)
     exact ⟨dl a, le_trans hτ hle, le_rfl, ht u hu x τ hτ haw hx w hw (dl a) hle ha⟩
 
-theorem partialSynchrony_of_eager (rho : Run F E)
-    (he : rho.EagerDelivery) (ht : rho.EagerTxDelivery) :
-    rho.PartialSynchrony := by
-  apply rho.delivers_of_eager he ht
-  intro a
-  exact le_trans (le_max_left a E.gst) (le_add_of_nonneg_right E.Δ_pos.le)
-
-theorem healthyPrefixDelivery_of_eager (rho : Run F E)
-    (he : rho.EagerDelivery) (ht : rho.EagerTxDelivery) (cut : Time) :
-    rho.HealthyPrefixDelivery cut := by
-  apply rho.delivers_of_eager he ht
-  intro a
-  exact le_add_of_nonneg_right E.Δ_pos.le
-
 end Run
 end Consensus.Model
 end

@@ -1,5 +1,5 @@
 module
-public import ConsensusShape.Realizable
+public import ConsensusShape.Accepted
 
 @[expose] public section
 

@@ -3,21 +3,19 @@ public import ConsensusShape.Realizable
 
 @[expose] public section
 
-/-! # Acceptance (layer 1): the review endpoint
+/-! # Acceptance (L2): the review endpoint
 
 `Accepted F K` is what an instance must establish: its shape claims
-(`ShapeClaims`, proved by the protocol), the non-vacuity certificate of its
-contract (`Contract.Realizable`), and that its schema serves a ledger
-(`OutputSchema.Serves`: a final output, or an available one).
-`Accepted.problemClaims` gives the layer-0 claims; `delivers` shows that every
-provided output of a family with claims and a realizable contract delivers a
-transaction to a ready honest reader that was never submitted it, in some
-valid, collision-free run, so an instance with no service, a silent service or empty outputs is not
-accepted (`Accepted.serves_and_delivers`).
+(`ShapeClaims`, proved by the protocol), admissible numbers
+(`Params.Admissible`: thresholds no stronger than standard), a served ledger
+(`OutputSchema.Serves`: a final output, or an available one), and progress
+requirements that fit the skeleton (`Contract.ProgressFits`: a recurrence needs
+one proposer per slot).
 
-`Accepted` means "meets this contract". Whether the contract is the intended
-service (its premise terms, starts, latencies, escapes, capability choices and
-skeleton) is read off the contract itself; see the README. -/
+`Accepted.behaviour` gives the L0 `Behaviour` of the compiled system and
+`Accepted.adequate` its L0 adequacy (proved once for the model). The
+realizability part of `Good` is the generic `regimes_realizable` (stage 4,
+`Accepted.good`). -/
 
 namespace Consensus.Shape
 
@@ -26,60 +24,46 @@ open Consensus.Model (pubOf sysOf)
 
 variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
 
-/-- An accepted instance: shape claims, a realizable contract, and a served
-ledger. -/
+/-- A progress requirement fits a skeleton: a recurrence needs one proposer
+per slot (`.sized 1`, independent of the population: with every key selected,
+a faulty validator is always among the proposers and recurrence has no witness,
+`allProposers_no_witness`); a bound on the validators not ready fits every
+skeleton. -/
+def _root_.Consensus.Blocks.ProgressReq.Fits {n : Nat} (sk : Skeleton n) : ProgressReq → Prop
+  | .recur _ => sk.proposerSel = .sized 1
+  | .notReadyAtMost _ => True
+
+/-- Every progress requirement of the contract fits the family's skeleton at
+every public parameter. -/
+def _root_.Consensus.Contract.ProgressFits (K : Contract O ProgressReq)
+    (F : ShapeFamily O Info) : Prop :=
+  ∀ cap i pub, (K.progress cap i).Fits (F pub).skel
+
+/-- An accepted instance: shape claims, admissible numbers, a served ledger,
+and progress requirements that fit the skeleton. -/
 structure Accepted (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Prop where
   /-- The chain-level claims (proved by the protocol). -/
   claims : ShapeClaims F K
-  /-- Every premise is realizable with active service. -/
-  realizable : K.Realizable F
+  /-- The numbers are admissible. -/
+  admissible : K.params.Admissible
   /-- A final or an available output is provided. -/
   serves : O.Serves
+  /-- The progress requirements fit the skeleton. -/
+  progressFits : K.ProgressFits F
 
-/-- An accepted instance meets the layer-0 claims of its contract for every
-finite validator type. -/
-theorem Accepted.problemClaims {F : ShapeFamily O Info} {K : Contract O ProgressReq}
+/-- An accepted instance has the L0 behaviour for every finite validator
+type. -/
+theorem Accepted.behaviour {F : ShapeFamily O Info} {K : Contract O ProgressReq}
     (h : Accepted F K) (V : Type) [Fintype V] [DecidableEq V] :
-    ProblemClaims (sysOf O (compiled F) V) (shapeExec F V) K :=
-  refinement F K V h.claims
+    Behaviour (sysOf O (compiled F) V) (shapeProgress F V) K :=
+  refinement F K V h.claims h.admissible h.serves
 
-/-- Output `g` delivers: in some valid, collision-free compiled run, a
-transaction never submitted to an honest validator `w` is in `w`'s read of `g`
-at a time at which `w` is ready. -/
-def Delivers (F : ShapeFamily O Info) (K : Contract O ProgressReq) (g : O.Id) : Prop :=
-  ∃ (n : Nat) (E : Env (Fin (n + 1))) (rho : Model.Run (compiled F) E),
-    rho.ExecutionValid ∧ ¬ rho.HashCollision ∧
-    ∃ (x : Tx) (w : Fin (n + 1)) (t : Time), w ∈ rho.honest ∧ (∀ τ, x ∉ rho.submit w τ) ∧
-      rho.point.Ready (((K.catchUp : Nat) : Time) * E.Δ) w t ∧
-      x ∈ ((sysOf O (compiled F) (Fin (n + 1))).trace ⟨E, rho⟩).readAt g w t
-
-/-- Every provided output of a family with shape claims and a realizable
-contract delivers: the liveness witness of its capability, through
-`refinement`, puts the witness's transaction in the ready reader's read. -/
-theorem delivers {F : ShapeFamily O Info} {K : Contract O ProgressReq} (hc : ShapeClaims F K)
-    (hr : K.Realizable F) {c : Capability} {g : O.Id} (hg : O.output c = some g) :
-    Delivers F K g := by
-  have h1 : (K.spec c).isSome := by rw [← hc.provided c, hg]; rfl
-  obtain ⟨s, hs⟩ := Option.isSome_iff_exists.mp h1
-  obtain ⟨i⟩ := K.idx_nonempty
-  obtain ⟨σ, n, E, rho, hw, ha⟩ := hr.live c s hs i
-  have pc := refinement F K (Fin (n + 1)) hc
-  rcases (pc.caps c g s hg hs).live i σ ⟨E, rho⟩ hw.valid hw.premise with hl | hx
-  · obtain ⟨x, t, t', u, w, hst, ht0, hu, hua, hx, hwh, -, hnw, hdl, hth, hrd⟩ := ha
-    exact ⟨n, E, rho, hw.valid, hw.noCollision, x, w, t', hwh, hnw, hrd,
-      hl x t t' hst ⟨u, hu, t, ht0, le_rfl, hua, hx⟩ hdl hth w hrd⟩
-  · exact absurd hx hw.noCollision
-
-/-- An accepted instance provides a final or an available output, and that
-output delivers. -/
-theorem Accepted.serves_and_delivers {F : ShapeFamily O Info} {K : Contract O ProgressReq}
-    (h : Accepted F K) :
-    ∃ c g, (c = .final ∨ c = .available) ∧ O.output c = some g ∧ Delivers F K g := by
-  rcases h.serves with hb | ⟨ha, -⟩
-  · obtain ⟨g, hg⟩ := Option.isSome_iff_exists.mp hb
-    exact ⟨.final, g, Or.inl rfl, hg, delivers h.claims h.realizable hg⟩
-  · obtain ⟨g, hg⟩ := Option.isSome_iff_exists.mp ha
-    exact ⟨.available, g, Or.inr rfl, hg, delivers h.claims h.realizable hg⟩
+/-- The compiled system of every family is adequate for the shape's progress
+reader (an L1 theorem; it does not depend on the claims). -/
+theorem Accepted.adequate {F : ShapeFamily O Info} {K : Contract O ProgressReq}
+    (_h : Accepted F K) (V : Type) [Fintype V] [DecidableEq V] :
+    (sysOf O (compiled F) V).Adequate (shapeProgress F V) :=
+  Model.sysOf_adequate _ rfl
 
 end Consensus.Shape
 

@@ -6,7 +6,7 @@ public import ConsensusProblem.Network
 
 /-! # Conditions (L1)
 
-Premises about runs. None of them mentions anything the protocol supplies:
+Conditions on runs. None of them mentions anything the protocol supplies:
 they speak about the environment, the run data, and what the engine did
 (ticks, releases, receipts, restarts). Participation (readiness, majorities,
 fault bounds) is environment vocabulary, defined once in layer 0
@@ -83,14 +83,6 @@ of `rho.log` (`Run.held_iff_served`). -/
 def Served (w : V) (o : (protoOf F E).Object) (d : Time) : Prop :=
   ∃ t', t' ≤ d ∧ (rho.releases w o t' ∨ rho.receives w o t') ∧
     ∀ u, Event.restart w u ∈ rho.events → ¬ (t' < u ∧ u ≤ d)
-
-/-- Partial synchrony with the environment's GST (L0 `CommLog.PSync`).
-Temporary: the GST leaves `Env` in a later stage, and this name goes with it. -/
-def PartialSynchrony : Prop := CommLog.PSync rho.point rho.log E.gst
-
-/-- Synchrony up to `cut` (L0 `CommLog.SyncUntil`). Temporary, as
-`PartialSynchrony`. -/
-def HealthyPrefixDelivery (cut : Time) : Prop := CommLog.SyncUntil rho.point rho.log cut
 
 end Run
 
