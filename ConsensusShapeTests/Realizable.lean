@@ -1,5 +1,6 @@
 module
 public import ConsensusShapeTests.Shape
+public import ConsensusShapeTests.Good
 public import Mathlib.Tactic
 @[expose] public section
 
@@ -16,7 +17,13 @@ public import Mathlib.Tactic
 * `allProposers_unfit`: acceptance rejects it up front (`ProgressFits` needs
   `.sized 1` for a recurrence).
 * `noProgressFit`: a recurrence on a poll skeleton (no slot proposers) does
-  not fit; `notReadyAtMost_fits` (round robin) fits every skeleton. -/
+  not fit; `notReadyAtMost_fits` (round robin) fits every skeleton.
+* Rotating sleeper (review 3b B1): four honest validators, a different one
+  asleep at each tick, catch-up `3`: healthy at ⅔ from `0`, yet nobody is
+  ready from `3` on. `rotating_notReadyOn_false`: the not-ready bound fails
+  for every `m` (`m ≥ 4` by the count guard, `m < 4` since nobody is ready);
+  `rotating_proposalLive_vacuous`: the reader-conditional liveness the shape
+  claims use owes nothing there, so no family is refuted by it. -/
 
 namespace Consensus.Shape.Tests.Realizable
 open Consensus Blocks Shape
@@ -122,6 +129,45 @@ theorem noProgressFit_contract (K : Contract schema ProgressReq) (cap : Capabili
 /-- A bound on the validators not ready fits every skeleton (round robin). -/
 theorem notReadyAtMost_fits {n : Nat} (sk : Skeleton n) (m : ℕ+) :
     (ProgressReq.notReadyAtMost m).Fits sk := trivial
+
+section Rotating
+
+open Consensus.Shape.Tests.Good (rotPoint healthy_rotating_sleeper)
+
+/-- The not-ready bound fails on the rotating sleeper for every `m`, on any
+window `[start, stop]` with `max start 0 ≤ 3 ≤ stop`. -/
+theorem rotating_notReadyOn_false (m : Nat) {start stop : Time} (hs : max start 0 ≤ 3)
+    (he : 3 ≤ stop) : ¬ NotReadyOn rotPoint m 3 start stop := by
+  intro h
+  have hne := h.readyAt_nonempty hs he (by decide)
+  rw [healthy_rotating_sleeper.2 3 le_rfl] at hne
+  exact Finset.not_nonempty_empty hne
+
+/-- The pointwise count alone is trivial for `m ≥ 4`: the count guard is what
+rejects it. -/
+theorem rotating_notReadyAtMost_trivial (t : Time) : rotPoint.NotReadyAtMost 4 3 t := by
+  unfold EnvPoint.NotReadyAtMost
+  simp
+
+/-- Reader-conditional proposal liveness is vacuous on the rotating sleeper
+from `3` on, for every family and run with that point: the shape claims
+demand no ready proposer where nobody is ready. -/
+theorem rotating_proposalLive_vacuous {O : OutputSchema} {Info : Type} [DecidableEq Info]
+    [Encodable Info] (F : ShapeFamily O Info) {E : Env (Fin 4)} (rho : Model.Run (compiled F) E)
+    (hp : rho.point = rotPoint) (g : O.Id) {start : Time} (hs : 3 ≤ start) (D : Nat) :
+    ProposalLiveReady rho 3 g start D := by
+  apply ProposalLiveReady.of_noReady
+  intro t ht v hv
+  have hD : (0 : Time) ≤ (D : Time) * E.Δ := mul_nonneg (by positivity) E.Δ_pos.le
+  have hmem : v ∈ rotPoint.readyAt 3 t := by
+    rw [← hp]
+    classical
+    unfold EnvPoint.readyAt
+    exact Finset.mem_filter.mpr ⟨hv.1, hv⟩
+  rw [healthy_rotating_sleeper.2 t (by linarith)] at hmem
+  exact Finset.notMem_empty _ hmem
+
+end Rotating
 
 end Consensus.Shape.Tests.Realizable
 

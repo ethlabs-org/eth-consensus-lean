@@ -18,7 +18,7 @@ The bridges are visible:
   transfers.
 * Regimes: the shape claims use the L0 regimes at the compiled run
   (definitionally).
-* `proposalLive_txLive`: proposal liveness and partial synchrony with a GST at
+* `proposalLive_txLive`: reader-conditional proposal liveness and partial synchrony with a GST at
   or before the start give transaction liveness (the payload bridge, at the
   release time `τ`).
 * Accountability: the conviction sets of the chain trace and of the ledger
@@ -38,20 +38,21 @@ theorem ledgerTrace (rho : Model.Run (compiled F) E) :
     (sysOf O (compiled F) V).trace ⟨E, rho⟩ = (chainTrace rho).map ledgerOf :=
   rfl
 
-/-- Transaction bridge (D-14; at the release time `τ`): apply `ProposalLive`
-at `t' − D·Δ`; the honest proposal is released at `τ > max t start + Δ`
-(strictly), within the horizon, by a key ready, so awake, at `τ − 1`. Partial
+/-- Transaction bridge (D-14; at the release time `τ`): apply
+`ProposalLiveReady` at `t' − D·Δ`, with the reader `v` ready at the deadline
+`t'` as the witness that a ready reader exists; the honest proposal is released at
+`τ > max t start + Δ` (strictly), within the horizon, by a key ready, so awake, at `τ − 1`. Partial
 synchrony with GST `gst ≤ start` (L0 delivery, endpoint rule) at the start
 `a := τ − Δ − 1 ≥ max t start ≥ gst` puts the transaction in that key's inbox
 by the deadline `τ − 1` (receipt at the deadline counts), so in its mempool at
 the tick `τ`, which is the proposal's payload. The strict `τ > …` of
-`ProposalLive` absorbs the one time unit between arrival at the deadline and
+`ProposalLiveReady` absorbs the one time unit between arrival at the deadline and
 use by the tick at `τ`. Every submission is served, including those before
 `start` (deadline `max t start + Δ + D·Δ`). -/
 theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O.Id}
     {start gst : Time} {D : Nat} (hv : rho.ExecutionValid)
     (hs : CommLog.PSync rho.point rho.log gst) (hgs : gst ≤ start)
-    (hl : ProposalLive rho (((c₀ : Nat) : Time) * E.Δ) g start D) :
+    (hl : ProposalLiveReady rho (((c₀ : Nat) : Time) * E.Δ) g start D) :
     ((chainTrace rho).map ledgerOf).TxLive (((c₀ : Nat) : Time) * E.Δ) g start
       (((D : Nat) : Time) * E.Δ) := by
   intro x t t' hsub hdt hh v hv'
@@ -63,6 +64,7 @@ theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O
   have hms := le_max_right t start
   obtain ⟨τ, k, h, hτ, hready, hprop, hin⟩ := hl (t' - (D : Time) * E.Δ)
     (by dsimp only [Time] at *; omega) (by dsimp only [Time] at *; omega)
+    ⟨v, by rw [sub_add_cancel]; exact hv'⟩
   have he : t' - (D : Time) * E.Δ + (D : Time) * E.Δ = t' := sub_add_cancel _ _
   rw [he] at hin
   have hmem : x ∈ decodeTxs h.input := by

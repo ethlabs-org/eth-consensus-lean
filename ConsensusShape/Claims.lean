@@ -10,18 +10,23 @@ What a shape family proves about its compiled runs, for a contract `K`
 behaviour table (`Behaviour`), each claim on every valid run of every
 validator set and environment, in the L0 regime (`ShapeSleepy`,
 `ShapeHealthy`, `ShapeOutage`, `ShapeProg` are the L0 definitions at the
-compiled run), and each "or an observed hash collision":
+compiled run), and each risk-bearing claim "or an observed hash collision"
+(output validity, nesting and final monotonicity are unconditional, as in
+L0 `HoldsAlways`):
 
 * always: output validity, nesting, final monotonicity;
-* final: local accountability for fraction `α`, and `ProposalLive` from the
-  heal point when healthy from a GST with progress from `readyFrom`;
-* available and stable: ready-reader safety and `ProposalLive` when sleepy,
-  and from the heal point when healthy from a GST (safety needs progress only
-  on `[readyFrom, heal]`);
+* final: local accountability for fraction `α`, and `ProposalLiveReady` from
+  the heal point when healthy from a GST with progress from `readyFrom`;
+* available and stable: ready-reader safety and `ProposalLiveReady` when
+  sleepy, and from the heal point when healthy from a GST (safety needs
+  progress only on `[readyFrom, heal]`);
 * stable: outage resilience into the resilience target.
 
-`ProposalLive` replaces transaction liveness (the payload bridge,
-`proposalLive_txLive`). Prefix forms are not restated: they follow from the
+`ProposalLiveReady` replaces transaction liveness (the payload bridge,
+`proposalLive_txLive`). It owes a proposal only when a node is ready at the
+inclusion deadline, exactly as L0 `TxLive` owes inclusion only to ready
+readers; the unconditional `ProposalLive` is a sufficient helper
+(`ProposalLive.ready`). Prefix forms are not restated: they follow from the
 L0 prefix closure (`Good.*_prefix`). Non-framing is an L1 theorem, so there is
 no field for it. `refinement` turns these into `Behaviour`. -/
 
@@ -60,7 +65,7 @@ structure ShapeClaims (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Pr
   finalLive : ∀ g, O.output .final = some g → ∀ (i : K.Idx) (gst : Time),
     AllRuns F fun _ rho => rho.ExecutionValid → ShapeHealthy K rho gst →
       ShapeProg K rho .final i (shapeReady K rho gst) rho.horizon →
-      ProposalLive rho (shapeC K rho) g (shapeHeal K rho .final i gst)
+      ProposalLiveReady rho (shapeC K rho) g (shapeHeal K rho .final i gst)
         (K.params.latency .final i) ∨ rho.HashCollision
   /-- Sleepy safety of an available or stable chain, for ready readers. -/
   sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
@@ -70,7 +75,7 @@ structure ShapeClaims (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Pr
   sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
     ∀ i : K.Idx, AllRuns F fun _ rho => rho.ExecutionValid → ShapeSleepy K rho →
       ShapeProg K rho cap i 0 rho.horizon →
-      ProposalLive rho (shapeC K rho) g 0 (K.params.latency cap i) ∨ rho.HashCollision
+      ProposalLiveReady rho (shapeC K rho) g 0 (K.params.latency cap i) ∨ rho.HashCollision
   /-- Healed safety: healthy from `gst` with progress on `[readyFrom, heal]`,
   ready readers are safe from the heal point. -/
   healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
@@ -83,7 +88,7 @@ structure ShapeClaims (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Pr
   healedLive : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
     ∀ (i : K.Idx) (gst : Time), AllRuns F fun _ rho => rho.ExecutionValid →
       ShapeHealthy K rho gst → ShapeProg K rho cap i (shapeReady K rho gst) rho.horizon →
-      ProposalLive rho (shapeC K rho) g (shapeHeal K rho cap i gst) (K.params.latency cap i) ∨
+      ProposalLiveReady rho (shapeC K rho) g (shapeHeal K rho cap i gst) (K.params.latency cap i) ∨
         rho.HashCollision
   /-- Outage resilience of the stable chain, into the resilience target. -/
   persists : ∀ g, O.output .stable = some g → ∀ T b₀ b₁,

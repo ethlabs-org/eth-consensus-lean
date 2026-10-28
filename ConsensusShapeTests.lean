@@ -7,3 +7,4 @@ public import ConsensusShapeTests.Shape
 public import ConsensusShapeTests.Leaks
 public import ConsensusShapeTests.Realizable
 public import ConsensusShapeTests.Good
+public import ConsensusShapeTests.Vacuity

@@ -90,7 +90,18 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Blocks.span_guard, `Consensus.Shape.streamletContract_admissible,
       `Consensus.Shape.tendermintContract_admissible,
       `Consensus.Shape.goldilocksContract_progressFits,
-      `Consensus.Shape.streamletContract_progressFits] do
+      `Consensus.Shape.streamletContract_progressFits,
+      `Consensus.Shape.tendermintContract_progressFits,
+      `Consensus.Shape.Tests.Realizable.notReadyAtMost_fits,
+      `Consensus.Shape.ProposalLive.ready, `Consensus.Shape.ProposalLiveReady.of_noReady,
+      `Consensus.Shape.proposalLive_txLive, `Consensus.Blocks.NotReadyOn.readyAt_nonempty,
+      `Consensus.Blocks.PatternRecurrence.reads_upTo,
+      `Consensus.Shape.Tests.Realizable.rotating_notReadyOn_false,
+      `Consensus.Shape.Tests.Realizable.rotating_notReadyAtMost_trivial,
+      `Consensus.Shape.Tests.Realizable.rotating_proposalLive_vacuous,
+      `Consensus.Shape.Tests.Vacuity.credential_forgery_excluded,
+      `Consensus.Shape.Tests.Vacuity.forgedProposal_invalid,
+      `Consensus.Shape.Tests.Vacuity.noService_not_accepted] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2

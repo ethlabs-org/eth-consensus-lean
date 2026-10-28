@@ -9,9 +9,16 @@ Leader-based progress over a time grid, in two forms (`ProgressReq`):
 
 * `recur ρ`: a slot pattern (nonempty offsets) recurs, honest and ready,
   within every window of `gap` slots (slot proposers);
-* `notReadyAtMost m`: at most `m` validators are not ready (round-robin
-  leaders: with at most `m` not ready, a ready honest leader comes within
-  `m + 1` rounds; that is a protocol proof, not part of the requirement).
+* `notReadyAtMost m`: at most `m` validators are not ready at each time, and
+  `m` is below the validator count (so some validator is ready at each time).
+  This is a pointwise bound: the set of non-ready validators may change from
+  time to time, so it does **not** by itself give a ready honest round-robin
+  leader within `m + 1` rounds (a schedule that sleeps exactly the current
+  leader through its round, with enough validators that the few still
+  catching up stay within `m`, meets it while no round has a ready leader).
+  A concrete round-robin proof needs a temporal
+  leader-opportunity argument or a revised requirement; that is protocol
+  work, not part of this definition.
 
 Both are typed over the environment point, the PKI and the selection only:
 they cannot see events, states or the hash. Admissibility is by typing: a
@@ -94,9 +101,12 @@ def PatternRecurrence (p : EnvPoint V) (key : Fin (Fintype.card V) ≃ V)
         HonestReadyIn p key sel (lead (s + j)) c (G.slotTime p.env.Δ (s + j))
 
 /-- At most `m` validators are not ready at every time of `[max start 0, stop]`
-within the horizon. -/
+within the horizon, and `m` is below the validator count: some validator is
+ready at each such time (`NotReadyOn.readyAt_nonempty`); with `m ≥ card V`
+the bound would hold trivially. -/
 def NotReadyOn [DecidableEq V] (p : EnvPoint V) (m : Nat) (c start stop : Time) : Prop :=
-  ∀ t, max start 0 ≤ t → t ≤ stop → t ≤ p.horizon → p.NotReadyAtMost m c t
+  m < Fintype.card V ∧
+    ∀ t, max start 0 ≤ t → t ≤ stop → t ≤ p.horizon → p.NotReadyAtMost m c t
 
 variable {p : EnvPoint V} {key : Fin (Fintype.card V) ≃ V}
   {sel : R → Finset (Fin (Fintype.card V))} {lead : Slot → R} {G : TimeGrid}
@@ -118,12 +128,48 @@ theorem PatternRecurrence.shrink {b : Time} (hb : b ≤ p.horizon)
 theorem NotReadyOn.mono [DecidableEq V] {m : Nat} {start' stop' : Time}
     (h : NotReadyOn p m c start stop) (hs : start ≤ start') (he : stop' ≤ stop) :
     NotReadyOn p m c start' stop' :=
-  fun t ht hst hh => h t (le_trans (max_le_max hs le_rfl) ht) (le_trans hst he) hh
+  ⟨h.1, fun t ht hst hh => h.2 t (le_trans (max_le_max hs le_rfl) ht) (le_trans hst he) hh⟩
 
 /-- A smaller horizon is weaker. -/
 theorem NotReadyOn.shrink [DecidableEq V] {m : Nat} {b : Time} (hb : b ≤ p.horizon)
     (h : NotReadyOn p m c start stop) : NotReadyOn { p with horizon := b } m c start stop :=
-  fun t ht hst hh => h t ht hst (le_trans hh hb)
+  ⟨h.1, fun t ht hst hh => h.2 t ht hst (le_trans hh hb)⟩
+
+/-- The bound is never vacuous: some validator is ready at every time of the
+window. -/
+theorem NotReadyOn.readyAt_nonempty [DecidableEq V] {m : Nat}
+    (h : NotReadyOn p m c start stop) {t : Time} (ht : max start 0 ≤ t) (hst : t ≤ stop)
+    (hh : t ≤ p.horizon) : (p.readyAt c t).Nonempty := by
+  have h1 := h.1
+  have h2 : Fintype.card V ≤ (p.readyAt c t).card + m := h.2 t ht hst hh
+  exact Finset.card_pos.mp (by omega)
+
+/-- Bounded dependence: recurrence on `[start, stop]` reads only `Δ` and the
+honest-ready status of the keys at times up to `min stop horizon` (readiness
+at `t` is the awake history up to `t`). A point `p'` with the same `Δ`, no
+larger effective window, and every honest-ready key of `p` also honest-ready
+in `p'` at those times inherits the recurrence; in particular a point that
+agrees with `p` up to `min stop horizon` (suffix replacement). -/
+theorem PatternRecurrence.reads_upTo {p' : EnvPoint V} (hΔ : p'.env.Δ = p.env.Δ)
+    (hh : min stop p'.horizon ≤ p.horizon)
+    (hr : ∀ v t, t ≤ min stop p'.horizon → v ∈ p.honest → p.Ready c v t →
+      v ∈ p'.honest ∧ p'.Ready c v t)
+    (h : PatternRecurrence p key sel lead G ρ c start stop) :
+    PatternRecurrence p' key sel lead G ρ c start stop := by
+  intro t ht h0 hst hhz
+  rw [hΔ] at hst hhz ⊢
+  have hm : t + (ρ.len : Time) * G.slotLen p.env.Δ ≤ min stop p'.horizon := le_min hst hhz
+  obtain ⟨s, hs1, hs2, hall⟩ := h t ht h0 hst (le_trans hm hh)
+  refine ⟨s, hs1, hs2, fun j hj => ?_⟩
+  obtain ⟨hne, hk⟩ := hall j hj
+  refine ⟨hne, fun k hk' => hr _ _ ?_ (hk k hk').1 (hk k hk').2⟩
+  have hl := G.slotLen_pos p.env.Δ_pos
+  have hj' : (j : Time) ≤ ρ.pattern.span := by exact_mod_cast Pattern.le_span hj
+  have hlen : (ρ.len : Time) = ((ρ.gap : Nat) : Time) + (ρ.pattern.span : Time) := by
+    simp [Recurrence.len]
+  rw [hlen] at hm
+  rw [G.slotTime_add]
+  nlinarith
 
 /-- Head extraction: a pattern with offset `0` gives one honest ready proposer
 per window, losing the pattern's span at the end of the window `[start, stop]`

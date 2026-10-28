@@ -17,12 +17,15 @@ standard thresholds (the final output is accountable for a third in every
 environment), the readers' catch-up `catchUp`; final liveness in the healthy
 regime from a GST, from the heal point `max g 0 + (catchUp + 1 + heal m)·Δ`,
 with at most `m` validators not ready from `readyFrom` on
-(`ProgressReq.notReadyAtMost m`), and latency `latency m` (`Δ`-coefficients,
-affine in `m`). With at most `m` not ready, round robin meets a ready honest
-leader within `m + 1` rounds (the not-ready leaders may be consecutive), which
-is a protocol proof, not part of the requirement; the latency therefore grows
-with `m`. A locked value is re-proposed by carrying its original signed
-header: the engine writes the payload of every new header. -/
+(`ProgressReq.notReadyAtMost m`, which also requires `m` below the validator
+count), and latency `latency m` (`Δ`-coefficients, affine in `m`). The bound
+is pointwise: the non-ready validators may change over time, so it does not by
+itself put a ready honest leader within `m + 1` rounds (an adversarial
+schedule can sleep exactly the current leader through each round). A concrete
+Tendermint liveness proof needs a temporal leader-opportunity argument or a
+revised progress requirement; this contract is a placeholder for that work.
+A locked value is re-proposed by carrying its original signed header: the
+engine writes the payload of every new header. -/
 
 namespace Consensus.Shape
 

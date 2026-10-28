@@ -149,7 +149,7 @@ theorem refuted_of_empty (F : ShapeFamily schema Unit)
       hprog with hl | hcol
   · obtain ⟨τ, k, h, -, -, -, hin⟩ := hl 0 le_rfl
       (show (0 : Int) + ((testK.params.latency .available (1 : ℕ+) : Nat) : Int) * env.Δ ≤ 3 by
-        decide)
+        decide) ⟨0, hready _ _ _⟩
     have hmem := hin 0 (hready _ _ _)
     change h ∈ (chainTrace r).read () 0 _ at hmem
     rw [hout r valid] at hmem
