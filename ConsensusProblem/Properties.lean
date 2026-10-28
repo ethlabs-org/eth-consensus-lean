@@ -5,61 +5,65 @@ public import ConsensusProblem.Basic
 
 /-! # The consensus problem: properties (layer 0)
 
-Safety, nesting, accountability and non-framing read at every event cut (a
-client can expose any intermediate state). Liveness and persistence read at the
-end of a time, for ready readers (honest nodes awake through a catch-up window).
-Every property is about one run of an abstract system. -/
+Properties of a trace, generic in the element type (transaction ledgers here;
+block chains in a protocol shape). Safety and nesting read at every event cut (a
+client can expose any intermediate state); liveness and persistence read at the
+end of a time, for ready readers. Accountability and non-framing are properties
+of a system run (they need its evidence). -/
 
 namespace Consensus
 
-open AvailableChain (Time)
+namespace Trace
 
-namespace System
-
-variable {V : Type} [Fintype V] [DecidableEq V] (S : System V) (r : S.Run)
+variable {V α : Type} (tr : Trace V α)
 
 /-- No two honest reads of `g` at cuts from `t₀` on conflict. -/
 def Agree (g : Out) (t₀ : Time) : Prop :=
-  ∀ u ∈ (S.env r).honest, ∀ v ∈ (S.env r).honest, ∀ i j, S.InCuts r t₀ i → S.InCuts r t₀ j →
-    Compatible (S.read r g u i) (S.read r g v j)
+  ∀ u ∈ tr.point.honest, ∀ v ∈ tr.point.honest, ∀ i j, tr.InCuts t₀ i → tr.InCuts t₀ j →
+    Compatible (tr.read g u i) (tr.read g v j)
 
 /-- Each honest node's reads of `g` only extend, cut by cut, from `t₀` on. -/
 def Monotone (g : Out) (t₀ : Time) : Prop :=
-  ∀ v ∈ (S.env r).honest, ∀ i j, S.InCuts r t₀ i → i ≤ j → S.InCuts r t₀ j →
-    S.read r g v i <+: S.read r g v j
+  ∀ v ∈ tr.point.honest, ∀ i j, tr.InCuts t₀ i → i ≤ j → tr.InCuts t₀ j →
+    tr.read g v i <+: tr.read g v j
 
 /-- Safety of `g` from `t₀`. -/
-def Safe (g : Out) (t₀ : Time) : Prop := S.Agree r g t₀ ∧ S.Monotone r g t₀
+def Safe (g : Out) (t₀ : Time) : Prop := tr.Agree g t₀ ∧ tr.Monotone g t₀
 
-/-- Safety from `t₀` for ready readers only: reads of nodes ready at the time
-of their cut agree, and a node's reads at two cuts where it is ready only
-extend. (A node asleep since long ago may hold an old fork.) -/
+/-- Safety from `t₀` for ready readers only (a node asleep since long ago may
+hold an old fork). -/
 def ReadySafe (c : Time) (g : Out) (t₀ : Time) : Prop :=
-  (∀ u v i j, S.InCuts r t₀ i → S.InCuts r t₀ j →
-      S.Ready r c u (S.cutTime r i) → S.Ready r c v (S.cutTime r j) →
-      Compatible (S.read r g u i) (S.read r g v j)) ∧
-  (∀ v i j, S.InCuts r t₀ i → i ≤ j → S.InCuts r t₀ j →
-      S.Ready r c v (S.cutTime r i) → S.Ready r c v (S.cutTime r j) →
-      S.read r g v i <+: S.read r g v j)
+  (∀ u v i j, tr.InCuts t₀ i → tr.InCuts t₀ j →
+      tr.point.Ready c u (tr.cutTime i) → tr.point.Ready c v (tr.cutTime j) →
+      Compatible (tr.read g u i) (tr.read g v j)) ∧
+  (∀ v i j, tr.InCuts t₀ i → i ≤ j → tr.InCuts t₀ j →
+      tr.point.Ready c v (tr.cutTime i) → tr.point.Ready c v (tr.cutTime j) →
+      tr.read g v i <+: tr.read g v j)
 
 /-- Output `g₁` is a prefix of output `g₂` in every honest read. -/
 def Nested (g₁ g₂ : Out) : Prop :=
-  ∀ v ∈ (S.env r).honest, ∀ i, i ≤ S.cuts r → S.read r g₁ v i <+: S.read r g₂ v i
-
-/-- Transaction liveness of `g` from `start` with delay `D` (a duration): a
-transaction submitted to every honest node by `t ≥ start` is in the read of
-every ready reader at every time `t' ∈ [t + D, horizon]`. -/
-def TxLive (c : Time) (g : Out) (start D : Time) : Prop :=
-  ∀ x t t', start ≤ t → S.SubmittedToAll r x t → t + D ≤ t' → t' ≤ (S.env r).horizon →
-    ∀ v, S.Ready r c v t' → x ∈ S.readAt r g v t'
+  ∀ v ∈ tr.point.honest, ∀ i, i ≤ tr.cuts → tr.read g₁ v i <+: tr.read g₂ v i
 
 /-- Persistence of `g` on `[b₀, b₁)`: every honest read at `T` is, at every time
 of `[b₀, b₁)`, a prefix of the read of every honest node awake throughout
 `[max 0 (b₀ − c − 1), t]` (ready before `b₀`, not restarted since). -/
 def PersistsThrough (c : Time) (g : Out) (T b₀ b₁ : Time) : Prop :=
-  ∀ v ∈ (S.env r).honest, ∀ t, b₀ ≤ t → t < b₁ → ∀ w ∈ (S.env r).honest,
-    (∀ u, max 0 (b₀ - c - 1) ≤ u → u ≤ t → (S.env r).awake w u = true) →
-    S.readAt r g v T <+: S.readAt r g w t
+  ∀ v ∈ tr.point.honest, ∀ t, b₀ ≤ t → t < b₁ → ∀ w ∈ tr.point.honest,
+    tr.point.AwakeOnClosed w (max 0 (b₀ - c - 1)) t →
+    tr.readAt g v T <+: tr.readAt g w t
+
+end Trace
+
+/-- Transaction liveness of `g` from `start` with delay `D` (a duration): a
+transaction submitted to every honest node by `t ≥ start` is in the ledger of
+every ready reader at every time `t' ∈ [t + D, horizon]`. -/
+def Trace.TxLive {V : Type} (tr : Trace V Tx) (c : Time) (g : Out) (start D : Time) : Prop :=
+  ∀ x t t', start ≤ t → tr.point.SubmittedToAll x t → t + D ≤ t' → t' ≤ tr.point.horizon →
+    ∀ v, tr.point.Ready c v t' → x ∈ tr.readAt g v t'
+
+namespace System
+
+variable {V : Type} [Fintype V] [DecidableEq V] (S : System V) (r : S.Run)
 
 /-- The validators that the evidence set `A` convicts. -/
 noncomputable def convicted (A : Set S.Obs) : Finset V := by
@@ -70,17 +74,14 @@ noncomputable def convicted (A : Set S.Obs) : Finset V := by
 cuts, are compatible, or what the two readers saw convicts a third of the
 validators. -/
 def AccountablySafe (g : Out) (t₀ : Time) : Prop :=
-  ∀ u ∈ (S.env r).honest, ∀ v ∈ (S.env r).honest, ∀ i j, S.InCuts r t₀ i → S.InCuts r t₀ j →
-    Compatible (S.read r g u i) (S.read r g v j) ∨
+  ∀ u ∈ (S.trace r).point.honest, ∀ v ∈ (S.trace r).point.honest, ∀ i j,
+    (S.trace r).InCuts t₀ i → (S.trace r).InCuts t₀ j →
+    Compatible ((S.trace r).read g u i) ((S.trace r).read g v j) ∨
       Fintype.card V ≤ 3 * (S.convicted r (S.view r u i ∪ S.view r v j)).card
 
 /-- No honest validator is convicted by what the honest nodes saw. -/
 def NonFraming : Prop :=
-  ∀ v ∈ (S.env r).honest, ¬ S.convicts r (S.honestEvidence r) v
-
-/-- Fewer than a third of the validators are not honest. -/
-def BelowOneThird : Prop :=
-  3 * (Finset.univ \ (S.env r).honest).card < Fintype.card V
+  ∀ v ∈ (S.trace r).point.honest, ¬ S.convicts r (S.honestEvidence r) v
 
 end System
 

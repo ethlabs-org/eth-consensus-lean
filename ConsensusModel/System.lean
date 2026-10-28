@@ -15,19 +15,14 @@ that the problem layer leaves abstract. -/
 
 namespace Consensus.Model
 
-open AvailableChain (Time)
-open AvailableChain.Generic (Env)
 
 variable {V : Type} [Fintype V] [DecidableEq V]
 
 /-- The system of family `F`. -/
 def sysOf (F : Family) (V : Type) [Fintype V] [DecidableEq V] : Consensus.System V where
   Run := Σ E : Env V, Run F E
-  env r := ⟨r.2.honest, r.2.horizon, r.1.Δ, r.1.t_GST, r.1.awake, r.2.submit⟩
+  trace r := ⟨r.2.point, r.2.events.length, r.2.cutTime, r.2.readIdx⟩
   Valid r := r.2.ExecutionValid
-  cuts r := r.2.events.length
-  cutTime r := r.2.cutTime
-  read r g v i := r.2.readIdx g v i
   Obs := Σ E : Env V, (protoOf F E).Object
   view r v i := {o | ∃ o' ∈ r.2.ViewIdx v i, o = ⟨r.1, o'⟩}
   convicts r A x := r.2.Slashable {o' | ⟨r.1, o'⟩ ∈ A} x

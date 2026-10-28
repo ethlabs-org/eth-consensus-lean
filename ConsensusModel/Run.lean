@@ -1,6 +1,5 @@
 module
 public import Mathlib.Data.Fintype.Card
-public import AvailableChainModel.Generic.Env
 public import ConsensusModel.Protocol
 
 @[expose] public section
@@ -27,8 +26,6 @@ recorded it passes the digests of the items in the object's closure. -/
 
 namespace Consensus.Model
 
-open AvailableChain (Time)
-open AvailableChain.Generic (Env)
 
 /-- A scheduler event at a node: a tick, the delivery of an object, or a
 restart (which the conditions allow only at a wake). -/
@@ -81,6 +78,9 @@ structure Run (F : Family) (E : Env V) where
   hash : (protoOf F E).Item → Nat
 
 variable {F : Family} {E : Env V}
+
+/-- The environment point of a run. -/
+def Run.point (rho : Run F E) : EnvPoint V := ⟨E, rho.honest, rho.horizon, rho.submit⟩
 
 /-- An engine node: the protocol state and the `seen` log. -/
 structure Node {pub : Public} (P : Protocol pub) where

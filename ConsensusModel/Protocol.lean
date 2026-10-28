@@ -19,8 +19,6 @@ transactions (at its ticks) and the digests of the items it receives or signs. -
 
 namespace Consensus.Model
 
-open AvailableChain (Time)
-
 /-- The public parameters that honest code may depend on. -/
 structure Public where
   n : Nat
@@ -45,6 +43,9 @@ structure Protocol (pub : Public) : Type 1 where
   decBody : DecidableEq Body
   encItem : Encodable Item
   seats : Label → Nat
+  /-- A label has at most `n` seats, so that seats can be held by distinct
+  validators. -/
+  seats_le : ∀ ℓ, seats ℓ ≤ pub.n
   label : Duty → Label
   actTime : Duty → Time
   /-- The duties due at a time, each once, in the order the engine signs them. -/

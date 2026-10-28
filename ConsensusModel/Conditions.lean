@@ -1,6 +1,4 @@
 module
-public import Mathlib.Data.Rat.Defs
-public import Mathlib.Algebra.Order.Field.Rat
 public import ConsensusModel.Run
 
 @[expose] public section
@@ -9,14 +7,13 @@ public import ConsensusModel.Run
 
 Premises about runs. None of them mentions anything the protocol supplies:
 they speak about the environment, the run data, and what the engine did
-(ticks, releases, receipts, restarts). Participation thresholds and windows are
-parameters (durations and rationals); the shape layer fixes them. -/
+(ticks, releases, receipts, restarts). Participation (readiness, majorities,
+fault bounds) is environment vocabulary, defined once in layer 0
+(`Consensus.EnvPoint`) and applied to `Run.point`. -/
 
 namespace Consensus.Model
 
-open AvailableChain (Time)
 
-open AvailableChain.Generic
 
 variable {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
 
@@ -92,51 +89,11 @@ def Delivers (dl : Time → Time) (cut : Time) : Prop :=
 
 /-- Partial synchrony: delivery within `Δ` after `max a GST`. -/
 def PartialSynchrony : Prop :=
-  rho.Delivers (fun a => max a E.t_GST + E.Δ) rho.horizon
+  rho.Delivers (fun a => max a E.gst + E.Δ) rho.horizon
 
 /-- Synchrony up to `cut`: delivery within `Δ`, for deadlines up to `cut`. -/
 def HealthyPrefixDelivery (cut : Time) : Prop :=
   rho.Delivers (fun a => a + E.Δ) cut
-
-/-- Faulty validators: the complement of the honest set. -/
-def faulty : Finset V := Finset.univ \ rho.honest
-
-/-- Honest validators awake at `t`. -/
-def awakeAt (t : Time) : Finset V := rho.honest.filter (fun v => E.awake v t = true)
-
-/-- Honest validators awake at some time in `[a, b]`. -/
-noncomputable def awakeIn (a b : Time) : Finset V := by
-  classical
-  exact rho.honest.filter (fun v => ∃ u, a ≤ u ∧ u ≤ b ∧ E.awake v u = true)
-
-/-- `v` is ready at `t` with catch-up `c` (a duration): honest and awake
-throughout `[max 0 (t − c − 1), t]`, so not restarted in `[t − c, t]`. The
-same definition as `Consensus.System.Ready`. -/
-def Ready (c : Time) (v : V) (t : Time) : Prop :=
-  v ∈ rho.honest ∧ AwakeOnClosed E v (max 0 (t - c - 1)) t
-
-/-- The ready honest validators at `t`. -/
-noncomputable def readyAt (c : Time) (t : Time) : Finset V := by
-  classical
-  exact rho.honest.filter (fun v => rho.Ready c v t)
-
-/-- More ready honest validators than faulty ones. -/
-def ReadyMajority (c : Time) (t : Time) : Prop :=
-  rho.faulty.card < (rho.readyAt c t).card
-
-/-- `|ready_t| > θ · |H_[t−η,t] ∪ A|`, with `η` a duration. -/
-def EtaSleepy (c : Time) (θ : ℚ) (η : Time) (t : Time) : Prop :=
-  θ * ((rho.awakeIn (t - η) t ∪ rho.faulty).card : ℚ) < ((rho.readyAt c t).card : ℚ)
-
-/-- Every honest validator is awake from `start` to the horizon. -/
-def FullParticipation (start : Time) : Prop :=
-  ∀ v ∈ rho.honest, ∀ t, start ≤ t → t ≤ rho.horizon → E.awake v t = true
-
-/-- Fewer than a quarter of the validators are faulty. -/
-def BelowQuarter : Prop := 4 * rho.faulty.card < Fintype.card V
-
-/-- Fewer than a third of the validators are faulty. -/
-def BelowOneThird : Prop := 3 * rho.faulty.card < Fintype.card V
 
 end Run
 

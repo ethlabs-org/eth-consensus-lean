@@ -20,8 +20,6 @@ theorem. -/
 
 namespace Consensus.Model
 
-open AvailableChain (Time)
-open AvailableChain.Generic (Env)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
 

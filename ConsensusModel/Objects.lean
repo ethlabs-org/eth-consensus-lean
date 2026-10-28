@@ -1,6 +1,5 @@
 module
 public import Mathlib.Data.List.Basic
-public import AvailableChainModel.Objects.Time
 
 @[expose] public section
 
