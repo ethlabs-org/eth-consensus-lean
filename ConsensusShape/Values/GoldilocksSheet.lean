@@ -29,8 +29,12 @@ fixed set of more than ⅔ of all validators, honest and continuously awake from
 `max g 0` (no churn). FG-SA's current recovery proof assumes every honest
 validator awake: obligation (1) below.
 
-Every §1 theorem (namespace `GoldilocksTarget`) takes `h : GoldilocksTarget F pp`
-and a finite validator type `V`;
+**Where the dispositions are.** §1, proved from `Accepted`: the theorems in
+namespace `GoldilocksTarget` (below). §2, stated only: the fields of
+`GoldilocksExtraAt`. Each of those declarations' docstrings starts with its
+intended ids; §3 and the weaker-than-intended rows are listed here.
+
+Every §1 theorem takes `h : GoldilocksTarget F pp` and a finite validator type `V`;
 the system is `Sys F V` (the compiled family), the excuse is an observed hash
 collision (`HC`), the catch-up is `gc r = 18·Δ`, the heal points are
 `gHeal k = max g 0 + (29 + B_H^F(k))·Δ` (available, stable) and
@@ -39,60 +43,6 @@ quantity at the pinned numbers (`gc_eq`, `gHeal_eq`, `gHealFin_eq`). Stable is a
 confirmed by the schema, so every stable row is a confirmed row. Non-framing
 and accountability are **for this family's `conflicts` predicate** until the
 E1/E2 evidence binding exists (obligation (7)).
-
-## §1 From `Accepted` (corollaries of `Good`, proved here)
-
-* N1 / P-ANY-NEST: `nested` (finalized ⪯ confirmed = stable, every honest
-  read, every cut).
-* N2 / P-ANY-FIN-MONO: `finalized_monotone`.
-* N3 / P-ANY-FIN-NONFRAMING: `nonFraming`, for this family's `conflicts`.
-* N5 / P-ANY-FIN-ACCOUNTABLE, -LOCAL-EVIDENCE: `finalized_accountable` (joint
-  views convict ≥ n/3 under this family's `conflicts`, ∨ HC).
-* F1, F2 / P-ANY-FIN-SAFE: `finalized_safe_below_third` (any network).
-* A1 / P-SYNC-AV-SAFE, -MONO, -DYNAMIC: `confirmed_safe_sleepy`.
-* A1′ / P-SYNC-PREFIX: `confirmed_safe_sleepy_prefix`.
-* A4 / P-GST-AV-SAFE, -MONO: `confirmed_safe_healed`,
-  `confirmed_safe_healed_prefix`.
-* A3 / P-OUT-CONTINUE (stable retention), P-OUT-FIN-COMPAT:
-  `confirmed_persists` (stable = confirmed: M14 closed),
-  `outage_final_compatible` (for `ResilienceReader`-eligible readers).
-* Tx-level consequence of L3 (P-SYNC-AV-GROW): `confirmed_txLive_sleepy`
-  (latency `(4k+6)·Δ`; not strict block growth). Intended L8 (transaction
-  liveness) is "not claimed" in intended-opus; the contract claims it
-  (P-TX-SCOPE below).
-* Tx-level consequence of L5: `confirmed_txLive_healed`.
-* Tx-level consequence of FL1, FL2: `finalized_txLive` (every submitted
-  transaction finalized by `max t heal + Δ + latency`; not FL1's
-  first-finality deadline, not FL2's overtaking).
-* P-NV-LATE-GST: `GoldilocksTarget.goldilocks_good` (realizable at every `Δ`,
-  every GST and arbitrarily late outages).
-* Numbers: `reference_bounds`, `goldilocks_admissible`, `budget_implies_V`,
-  `range_head` (with the span loss), `final_latency_covers_window`,
-  `final_heal_covers_window` (the final latency and heal point cover one
-  window plus the pattern span, for every `R` and `gf`),
-  `finalRecur_delay_vs_window` (the intended FL2 delay `W_W` does not),
-  `EnvPoint.two_mul_card_faulty_union_lt` (tests: `ConsensusShapeTests/Goldilocks`).
-
-## §2 From the extras (`GoldilocksExtra` fields; statements only)
-
-* L1 / P-SYNC-AV-INCLUDE: `includeSleepy`.
-* L4 / P-GST-AV-INCLUDE: `includeHealed`.
-* L3 / P-SYNC-AV-GROW (block level): `growSleepy`.
-* L5 / P-GST-AV-GROW (block level): `growHealed`.
-* FL1 / P-GST-FIN-FIRST: `finalFirst` (intended form: strictly above every
-  ready confirmed read at the healing cut `finalCut`, by `finalCut + W_W`;
-  FG-SA proof: obligation (11)).
-* FL2 / P-GST-FIN-RECUR: `finalRecur` (intended form: from `finalCut`, by
-  `t + W_W`; obligation (11)).
-* FL5 / P-GST-FIN-GROW: `liveDC`.
-* A4 part / P-GST-CROSS-NEST: `crossNest`.
-* A2 / P-OUT-AV-SLOW: `outageWindow` (η-sleepy prefix to `b₀` only; no
-  network or participation assumption inside the window).
-* P-WEAK-AV-SAFE: `weakSafe` (no suffix recurrence) and its nesting conjunct
-  `F_x ⪯ S_y`, `weakCrossNest`.
-* P-WEAK-AV-INCLUDE: `weakInclude` (every qualifying honest proposal,
-  persistent).
-* P-WEAK-AV-GROW: `weakGrow` (suffix recurrence `k'`).
 
 ## §3 Not yet stated (with reason)
 
@@ -212,7 +162,14 @@ namespace Shape
 open Blocks
 open Consensus.Model (pubOf sysOf)
 
-/-! ## Numbers -/
+/-! ## Numbers
+
+Proved: `reference_bounds`, `goldilocks_admissible` (in `Goldilocks.lean`),
+`budget_implies_V`, `range_head` (with the span loss),
+`final_latency_covers_window`, `final_heal_covers_window` (the final latency and
+heal point cover one window plus the pattern span, for every `R` and `gf`),
+`finalRecur_delay_vs_window` (the intended FL2 delay `W_W` does not), and
+`EnvPoint.two_mul_card_faulty_union_lt` (tests: `ConsensusShapeTests/Goldilocks`). -/
 
 /-- The outage budget implies FG-SA's condition (V):
 `b₁ − b₀ + ((b₀ − 6Δ) mod 4Δ) ≤ L·Δ`. -/
@@ -481,7 +438,7 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
       t + ((pp.wW gf : Nat) : Time) * ((Sys F V).pt r).env.Δ ≤ ((Sys F V).pt r).horizon →
       ∃ h, NewAbove r.2 (gc r) gConfirmed gFinalized (fun x => r.2.point.Ready (gc r) x t) t
         (t + ((pp.wW gf : Nat) : Time) * ((Sys F V).pt r).env.Δ) h
-  /-- **FL5** (LiveDC). Healthy from `gst` with the finality recurrence of
+  /-- **FL5 / P-GST-FIN-GROW** (LiveDC). Healthy from `gst` with the finality recurrence of
   `gf` from `readyFrom`: for every `t` from the first-finality point, an
   honest proposal released after `t` strictly extends every ready confirmed
   read at `t` and is in every ready finalized read by
@@ -673,7 +630,9 @@ theorem outage_final_compatible (T b₀ b₁ : Time) (r : (Sys F V).Run) (hv : (
   (goldilocks_good h V).persists_final_compatible (g := gConfirmed) (gf := gFinalized) rfl rfl r hv
     hO hvr hwh ht hth hr
 
-/-- **Tx-level consequence of L3** (and of the intended-but-unclaimed L8).
+/-- **Tx-level consequence of L3** (P-SYNC-AV-GROW; and of the
+intended-but-unclaimed L8; intended-opus calls L8 "not claimed", this target
+claims it: P-TX-SCOPE).
 Sleepy with one honest ready proposer
 per window of `k` slots: every submitted transaction is in every ready
 confirmed read from `t + Δ + (4k + 6)·Δ` (not strict block growth: that is the

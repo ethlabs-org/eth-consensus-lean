@@ -12,14 +12,8 @@ Leader-based progress over a time grid, in two forms (`ProgressReq`):
 * `notReadyAtMost m`: at most `m` validators are not ready at each time (for
   `m ≥ card V` this holds trivially; the liveness it feeds is
   reader-conditional, so it then owes nothing where nobody is ready).
-  This is a pointwise bound: the set of non-ready validators may change from
-  time to time, so it does **not** by itself give a ready honest round-robin
-  leader within `m + 1` rounds (a schedule that sleeps exactly the current
-  leader through its round, with enough validators that the few still
-  catching up stay within `m`, meets it while no round has a ready leader).
-  A concrete round-robin proof needs a temporal
-  leader-opportunity argument or a revised requirement; that is protocol
-  work, not part of this definition.
+  It is a pointwise bound (see the README's Scope for the round-robin
+  caveat).
 
 Both are typed over the environment point, the PKI and the selection only:
 they cannot see events, states or the hash. Admissibility is by typing: a

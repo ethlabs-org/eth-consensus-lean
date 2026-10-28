@@ -49,11 +49,11 @@ that a claim or regime evaluates.
   asleep, so a progress requirement cannot quietly demand near-full
   participation. For every provided output, at *some* index:
   - `sleepyStress` (available, stable): a sleepy witness where at most
-    `⌊2n/3⌋` honest validators are ever awake (never an awake
-    supermajority), with `prog[0, horizon]` and `TxLiveActive`;
+    `⌊2n/3⌋` honest validators are awake at any one time (`AwakeAtMost`:
+    never an awake supermajority), with `prog[0, horizon]` and `TxLiveActive`;
   - `healthyStress` (every provided output): a healthy witness from every
-    GST where at most `⌊2n/3⌋ + 1` honest validators are ever awake (a
-    minimal awake supermajority).
+    GST where at most `⌊2n/3⌋ + 1` honest validators are awake at any one
+    time (a minimal awake supermajority).
 
   A contract whose available progress is "at most one validator not ready"
   at every index is therefore not realizable
@@ -210,9 +210,12 @@ structure Params.Admissible (P) : Prop :=
   1 ≤ catchUp,  0 ≤ θ ≤ ½,  0 ≤ φ ≤ ⅔,  0 ≤ cover ≤ ½,  1 − φ ≤ α ≤ 1,  1 ≤ budget
 ```
 
-A contract cannot buy its claims with stronger **thresholds**, because each
-of `θ`, `φ`, `cover` and `α` must be at most its standard value. The healthy
-regime bounds faults below `1 − φ ≤ α` (`HealthyOn.faultsBelow`).
+A contract cannot buy its claims with easier **thresholds**: `θ`, `φ` and
+`cover` must be at most their standard values (a smaller value is a stronger
+regime premise, hence a stronger claim), and accountability requires
+`1 − φ ≤ α ≤ 1` (a larger `α` convicts more, hence is stronger; at the standard
+`φ = ⅔`, `α ≥ ⅓`). The healthy regime bounds faults below `1 − φ ≤ α`
+(`HealthyOn.faultsBelow`).
 `standard_admissible` shows that the standard numbers are admissible. The
 other numbers are not bounded and carry part of the verdict: a larger
 `catchUp` means fewer ready readers, a larger `lag` a later protected source,
@@ -333,15 +336,40 @@ L1 also proves `Adequate` once (`sysOf_adequate`, from `canonical_run_from`
 for every GST, including silent runs, and from `Run.truncate` for prefixes),
 and non-framing (`sysOf_nonFraming`, from slashing protection in the engine).
 
-## Layers
+## Trusted surface: what to read
 
-| Layer | Library | What it fixes |
-|---|---|---|
-| **L0, the problem** | `ConsensusProblem` | transactions, ledgers, capabilities and `OutputSchema`; environment points; traces and `CommLog` (opaque messages); the network rule; the properties; `Params` and the fixed regimes; `Good = Behaviour ∧ Adequate ∧ Realizable` |
-| **L1, the model** | `ConsensusModel`, `ConsensusModelProofs` | a shape-free execution model: PKI, closed selection, credentials, the engine (unit ticks, delivery, sleep and restarts, slashing protection), evidence and hashes; `sysOf` (every protocol family as an L0 system, with its real log) and `sysExternal`; the proofs (`sysOf_log_faithful`, `held_iff_served`, `canonical_run_from`, `Run.truncate_*`, `sysOf_adequate`, `honestNeverSlashed`, `sysOf_nonFraming`; injective-hash lifting is checked in `ConsensusShapeTests/Lift`) |
-| Blocks | `ConsensusBlocks` | protocol-free building blocks with at least two users: `TimeGrid`, `Progress` (`Pattern`, `Recurrence`, `ProgressReq`, `HonestReadyIn`, `PatternRecurrence`, `NotReadyOn`), `Chains`, `Payload` (`encodeTxs`, `ledgerOf`) |
-| **L2, the shape** | `ConsensusShape` | one generic `ChainShape`, `compile` onto L1, `shapeProgress`, chain-level `ShapeClaims`, `refinement` to `Behaviour`, `coverage`, generic `regimes_realizable`, the endpoint `Accepted` with `Accepted.good` |
-| Values | `ConsensusShape/Values` | Goldilocks (pinned numbers and the properties sheet); Streamlet and Tendermint are test values (`ConsensusShapeTests/Values`) |
+To know that `Accepted F K` (or `Good`) means a good protocol, read these
+definitions and statements. Everything else is proof support, checked by Lean.
+
+1. **L0, the problem** (`ConsensusProblem/`, library `ConsensusProblem`):
+   `Basic` (`Env`, `EnvPoint`, `Trace`, `CommLog`, `System`), `Network`
+   (`Delivers`, `PSync`, `SyncUntil`, `OutageNet`, `EagerFrom`), `Properties`
+   (the claims, with the prefix forms), `Regimes` (`Params`, `Regime.*`),
+   `Good` (`Behaviour`, `System.Adequate`, `Realizable`, `Good`). Read all of
+   it. `ConsensusProblem/Facts/` holds lemmas only (the derived `Good.*`,
+   with `Good.served`).
+2. **L1, the model** (`ConsensusModel/`): `Objects`, `Protocol`, `Run`,
+   `Conditions`, `System` (evidence, `sysOf`, `sysExternal`): the definitions
+   `sysOf` exposes. Key statements (`ConsensusModelProofs/`):
+   `sysOf_adequate`, `sysOf_log_faithful`, `Run.held_iff_served`,
+   `sysOf_nonFraming`, `sysOf_laws`.
+3. **Blocks** (`ConsensusBlocks/`): `TimeGrid`, `Progress` (`Pattern`,
+   `Recurrence`, `ProgressReq`, `PatternRecurrence`, `NotReadyOn`), `Chains`,
+   `Payload` (`encodeTxs`, `ledgerOf`).
+4. **L2, the shape** (`ConsensusShape/`): `Shape` (`ChainShape`), `Compile`,
+   `Payload`, `Run` (`Sys`, `shapeProgress`), `Claims` (`ShapeClaims`),
+   `ProgressFit` (`ProgressFits`, `ProgressTolerant`), the witness-activity
+   definitions at the top of `Realizable` (`RealizableActive`), `Accepted`.
+   Key statements: `refinement`, `regimes_realizable`, `Accepted.good`,
+   `Accepted.activeService`.
+
+Proof support (not needed to trust the endpoint): `ConsensusProblem/Facts`,
+the rest of `ConsensusModelProofs` (canonical runs `canonical_run_from`,
+truncation `Run.truncate_*`, slashing protection `honestNeverSlashed`),
+`Refinement` and the rest of `Realizable` (coverage, witnesses). Values:
+`ConsensusShape/Values/` (Goldilocks); Streamlet and Tendermint are test values
+(`ConsensusShapeTests/Values`). Injective-hash lifting is checked in
+`ConsensusShapeTests/Lift`.
 
 L2's acceptance endpoint (`ConsensusShape/Accepted.lean`):
 
@@ -372,32 +400,6 @@ therefore not accepted, for every protocol.
 Design and history: `repos/goldilocks/notes/generic-interface/layers-plan.md`
 in the workbench (latest: "Iteration 6: the definition of a good protocol");
 the iteration-6 plan and reviews are in the run folder `iter6/`.
-
-## Reading order
-
-Entry points and key theorems only; the source files list the rest.
-
-1. **L0** (`ConsensusProblem/`), definitions only: `Basic` (`Env`, `EnvPoint`,
-   `Trace`, `CommLog`, `System`), `Network` (`Delivers`, `PSync`, `SyncUntil`,
-   `OutageNet`, `EagerFrom`), `Properties` (the claims, with the prefix
-   forms), `Regimes` (`Params`, `Regime.*`), `Good` (`Behaviour`,
-   `System.Adequate`, `Realizable`, `Good`). Lemmas (not needed to read `Good`)
-   are in `ConsensusProblem/Facts/`: the derived `Good.*` (with `Good.served`),
-   delivery, prefix, regime and transfer lemmas.
-2. **L1** (`ConsensusModel/`: `Objects`, `Protocol`, `Run`, `Conditions`,
-   `System` with evidence, `sysOf` and `sysExternal`), then the proofs in
-   `ConsensusModelProofs/`: `sysOf_log_faithful`, `Run.held_iff_served`,
-   `canonical_run_from`, `Run.truncate_valid`, `sysOf_adequate`,
-   `Run.honestNeverSlashed`, `sysOf_nonFraming`, `sysOf_laws`.
-3. **Blocks** (`ConsensusBlocks/`): `TimeGrid`, `Progress`, `Chains`,
-   `Payload`.
-4. **L2** (`ConsensusShape/`): `Shape`, `Compile`, `Run`
-   (`Sys`, `shapeProgress`), `Claims`, `Refinement` (`refinement`),
-   `ProgressFit` (`ProgressFits`, `ProgressTolerant`), `Realizable`
-   (`RealizableActive`, `regimes_realizable`), `Accepted`
-   (`Accepted.good`).
-5. **Values** (`ConsensusShape/Values/`): `Goldilocks`, `GoldilocksSheet`.
-   Streamlet and Tendermint: `ConsensusShapeTests/Values`.
 
 ## Why the meaning is fixed below the protocol
 
@@ -481,10 +483,12 @@ are the intended ones.
   Gasper's partitioned selection is deferred.
 - Phases are multiples of `Δ`. For `pollSel := .fixed univ`, poll provenance
   accepts any validator's header.
-- Tendermint's `notReadyAtMost m` is a pointwise bound. It does not by
-  itself put a ready honest leader within `m + 1` rounds (an adversarial
-  schedule can sleep exactly the current leader). The contract is a
-  placeholder.
+- `notReadyAtMost m` (Tendermint's contract, a placeholder) is a pointwise
+  bound: the non-ready set may change over time, so it does not by itself put
+  a ready honest round-robin leader within `m + 1` rounds (a schedule can sleep
+  exactly the current leader through its round while staying within `m`). A
+  round-robin proof needs a temporal leader-opportunity argument or a revised
+  requirement: protocol work, not part of the definition.
 - The collision escape is run-wide. Accountability compares two reads in one
   run.
 - The network-level "knowledge of equivocation" service is not modelled (see
@@ -495,171 +499,45 @@ are the intended ones.
 
 ## Goldilocks
 
-`Values/Goldilocks.lean` pins the numbers. `Values/GoldilocksSheet.lean`
-states the intended properties. Neither contains protocol proofs. The
-committee kinds and phases are placeholders until the FG-SA migration.
-
-**Numbers** (round-model FG-SA, `Δ_F = Δ`, `κ = 2`, slow arming;
-`FGSAParams = ⟨R, lockK, eta⟩` with `R ≥ 2`, `lockK ≥ 2`, `eta ≥ 1`):
+`ConsensusShape/Values/Goldilocks.lean` pins the numbers (round-model FG-SA,
+`Δ_F = Δ`, `κ = 2`, slow arming; `FGSAParams = ⟨R, lockK, eta⟩`):
 
 | Number | Value |
 |---|---|
-| thresholds | standard: `θ = ½`, `φ = ⅔`, `cover = ½`, `α = ⅓` |
-| catch-up | `18` (two slots + the `6Δ` join + one gate) |
-| arming lag | `4·lockK − 4` (`L − 3Δ`) |
-| outage budget | `min eta (4·lockK − 5)` (implies FG-SA's (V), `budget_implies_V`) |
-| look-back `η` | `eta` (η-sleepy outage regime) |
-| heal (available, stable), gap `k` | `29 + B_H^F(k)` from `max g 0` (`29 = 18 + 1 + 10`) |
-| heal (final), index `gf` | `29 + B_H^F(gf·R) + W_W(gf)` |
+| thresholds | standard (`θ = ½`, `φ = ⅔`, `cover = ½`, `α = ⅓`) |
+| catch-up; arming lag; budget; `η` | `18`; `4·lockK − 4`; `min eta (4·lockK − 5)`; `eta` |
+| heal (available, stable), gap `k`; final, index `gf` | `29 + B_H^F(k)`; `29 + B_H^F(gf·R) + W_W(gf)` |
 | latency | `4k + 6`; final `4·gf·R + 6 + W_W(gf)` |
 | progress | `.recur ⟨single, k⟩`; final `.recur ⟨range(3R+κ), gf·R⟩` |
 
-The schema has two outputs: `confirmed` serves both available **and**
-stable (in the round model stable = confirmed), and `finalized` serves
-final. `reference_bounds` checks the formulas against the FG-SA paper's
-reference numbers. `goldilocks_admissible` and `goldilocks_progressFits`
-hold.
+`GoldilocksTarget F pp := GoldilocksBindings F ∧ Accepted F (goldilocksContract
+pp) ∧ GoldilocksExtra F pp` is a reviewed target, not a proof that FG-SA meets
+it; it is never changed to fit FG-SA. The sheet
+(`ConsensusShape/Values/GoldilocksSheet.lean`) holds every intended-property
+disposition: proved (`GoldilocksTarget.*`), stated (`GoldilocksExtraAt`
+fields), not yet stated (§3), weaker than intended, and the twelve migration
+obligations with the regime risk (obligations (1), (4), (9)).
 
-**Target.** `GoldilocksTarget F pp := GoldilocksBindings F ∧ Accepted F
-(goldilocksContract pp) ∧ GoldilocksExtra F pp`. This is a reviewed target,
-not a proof that FG-SA meets it. A failed feasibility gate leaves it
-unproved, and it is never changed to fit FG-SA.
+## Gap dispositions
 
-**The sheet** (by intended-property id):
-
-- **§1, from `Accepted`, proved:**
-  - `nested`, `finalized_monotone`, `nonFraming`, `finalized_accountable`
-    (for this family's `conflicts`), `finalized_safe_below_third`;
-  - `confirmed_safe_sleepy` and its `_prefix` form,
-    `confirmed_safe_healed` and its `_prefix` form;
-  - `confirmed_persists` (M14 closed), `outage_final_compatible`;
-  - `confirmed_txLive_sleepy`, `confirmed_txLive_healed`,
-    `finalized_txLive`;
-  - `goldilocks_good` (realizable at every `Δ`, GST and late outage).
-- **§2, the `GoldilocksExtra` fields, stated:**
-  - inclusion of every honest proposal (`includeSleepy`, `includeHealed`);
-  - block-level growth (`growSleepy`, `growHealed`);
-  - first and recurring finality in the intended forms (`finalFirst`,
-    `finalRecur`: above the ready confirmed reads at the healing cut
-    `finalCut`, within `W_W`);
-  - `liveDC`, `crossNest`;
-  - A2 `outageWindow` (η-sleepy prefix only);
-  - weak continuation (`weakSafe`, `weakCrossNest`, `weakInclude`,
-    `weakGrow`; inhabited: `weakPremise_inhabited`).
-- **§3, not yet stated, with reasons:** A6 (a two-run statement), fast
-  arming, cut/seed uniformity, FL3/FL4, paper-only rows, HEAD, the fast path,
-  leak accounting and the E1/E2 evidence binding. For the newer spec,
-  `available` must bind to the confirmed record `latestConfirmed`: its
-  read-time tip `ac_confirmed` can step back, which `ReadySafe` forbids.
-  P-TX-SCOPE: the target goes beyond proposal inclusion, to transaction
-  liveness, through the generic payload bridge.
-- **Weaker than intended (accepted):** A3 (η-sleepy during the window, the η
-  cap on the budget, eligible readers only), P-OUT-FIN-COMPAT before `b₀`,
-  ready rather than joined readers and proposers.
-
-**Migration obligations.** Each is a gate that the FG-SA migration must pass
-against the unchanged target:
-
-1. The healthy regime (⅔ continuously awake, no churn) vs FG-SA Recovery₂
-   (all honest awake).
-2. The GST shift to `max g 0` plus catch-up.
-3. `Ready` at `18·Δ` ⇒ joined; ready at `b₀` ⇒ covered.
-4. The outage under η-sleepy (`η = eta`), cover ½ and `PSync b₁` vs FG-SA
-   `OutageE` (startup clamping, the ready ∪ awake denominator).
-5. Readers caught up after the window.
-6. Ready-vs-awake counting.
-7. The E1/E2 evidence binding.
-8. Hash, relay across sleep, and endpoint receipt (one time unit).
-9. Finality liveness under ⅔-continuous participation.
-10. Weak-continuation uniformity.
-11. FL1/FL2 in the intended forms from FG-SA's `FirstFinalityRecFEClaim_W` /
-    `FinalityLivenessGSTClaim_W` under `finRec gf`; `W_W` is shorter than one
-    guarded recurrence window (`finalRecur_delay_vs_window`).
-12. `CleanPrefixTruncation` vs `Adequate.prefixClosed`.
-
-**Regime risk.** Francesco decided (2026-10-28): the outage regime is
-η-sleepy with an instance look-back (`η = 0` is plain sleepy), and the
-healthy regime is ⅔ continuously awake. The remaining risk is in
-obligations (1), (4) and (9). FG-SA's recovery and finality proofs assume
-every honest validator awake, and its outage bound is not yet bridged to
-the clamped η-sleepy form. If a gate fails, Goldilocks is not good under
-this definition. The target stays unproved and the question goes back to
-Francesco. Neither the sheet nor the definition is weakened.
-
-## Gap dispositions (M1–M39; `ConsensusShapeTests/Gaps.lean`)
-
-| Gap | Disposition |
-|---|---|
-| M1 weak continuation | healed regime stays healthy ("stay in recovery"); sheet `weakSafe`/`weakInclude`/`weakGrow`; uniformity: obligation (10) |
-| M2, M18 corruption | scope: static adversary |
-| M3 FE/F4 pattern | `Pattern.range`, `finRec_span`, `range_head`; equivalence: gate F-2 |
-| M4 psync mandated | by construction (`DAClaims.healed*`, `FinalClaims.live`); `healed_witness_late` |
-| M5 final safety under asynchrony | `FinalClaims.accountable` has premise `True`; `Good.final_agree` |
-| M6 syncUntil unchecked | removed (no premise language) |
-| M7, M27 late GST, Δ | `Realizable` ∀ Δ, g ≥ 0; `healed_witness_late` (Δ = 7, GST 1000) |
-| M8 trivial outage | `OutageActive`; `outage_async_log`, `outage_witness_late`, `outage_control` |
-| M9 dynamic participation | sleepy regime; `sleepy_with_sleeper`; stress witnesses (`Realizable.sleepyStress`, `notReadyAtMost_one_not_realizable`) |
-| M10 thresholds | `Params.Admissible`; `admissibility_rejections`, `outage_times_teeth`, `healthy_needs_two_thirds` |
-| M11 wake at GST | healthy counts awake; progress from `readyFrom`; `healthy_wake_at_gst` |
-| M12 inclusion | sheet `includeSleepy`, `includeHealed` |
-| M13 window-only P1 | sheet `outageWindow`; `outageWindow_prefix_only` |
-| M14 outage stable/finalized | closed: stable = confirmed (`stable_is_confirmed`, `confirmed_persists`); `persists_final_compatible` |
-| M15, M16 pinned params, instance | `goldilocksContract`, `reference_bounds`; target unproved (migration) |
-| M17 eventual liveness | scope: outside the bounded-latency interface (every claim has a latency bound `lat`; eventual-only liveness cannot be expressed) |
-| M19, M26 weights, single Δ | scope |
-| M20 cross-node nesting | sheet `crossNest`, `liveDC` |
-| M21 recovery fault bound | `HealthyOn.faultsBelow`, `1 − φ ≤ α`; `faulty_third_not_healthy` |
-| M22, M23 instance vs FG-SA, cover/budget | obligations (1)–(12); `budget_implies_V`; obligation (4) |
-| M24 reader scope | ready readers for available/stable, every honest reader for final |
-| M25 ready vs awake | healthy = fixed awake set; readers/progress ready; `healthy_rotating_sleeper`; obligation (6) |
-| M28 recovery starts | `healPoint = max g 0 + heal·Δ`, progress from `readyFrom` |
-| M29 faulty proposer witnesses | `ProgressFits`; `allProposers_unfit`, `allProposers_no_witness`, `recurrence_has_teeth` |
-| M30 safety vs liveness regime | same `Healthy`; for `heal ≤ horizon`, safety window `[ready, heal]` ⊆ liveness window `[ready, horizon]` |
-| M31–M33 validity, capacity, chain quality | scope |
-| M34 conditional accountability | final-output accountability is unconditional; accountability for conflicting available reads is out of scope |
-| M35 one GST / one outage | partially closed: prefix forms (`prefix_sync_then_async`); after an outage = GST `b₁`; rest scope |
-| M36, M39 leak/HP latency, HEAD | scope; sheet §3 |
-| M37 model adequacy | `Adequate` + `sysOf_adequate`, `sysOf_log_faithful`, `held_iff_served`; `silent_run_valid` |
-| M38 global escape | removed: local accountability only; `local_accountability_teeth` |
-| vacuous system | `Good = Behaviour ∧ Adequate ∧ Realizable`; `false_progress_not_good`, `empty_valid_not_good`, `excuse_true_not_good`, `no_admissible_not_good`; progress cannot read submissions (`censoring_progress_rejected`) or demand near-full participation (`notReadyAtMost_one_not_realizable`) |
+One line per gap (M1–M39 and the vacuous system), with `example`s for the
+by-construction rows: `ConsensusShapeTests/Gaps.lean`.
 
 ## Tests (`ConsensusShapeTests/`)
 
-- `Problem`: every L0 property has teeth; global slashability does not give
-  local accountability (`local_accountability_teeth`).
-- `Network`: the endpoint rule (`endpoint_waker`, `receipt_at_deadline`,
-  `held_restart`, `negative_send_covered`), faithfulness
-  (`faithful_relayedRun`, `faithful_receipt`), silent runs
-  (`silent_run_valid`) and truncation (`truncate_relayedRun`).
-- `Regimes`: what each regime admits and rejects (`psync_lost_message`,
-  `outage_async_log`, `sleepy_with_sleeper`, `healthy_wake_at_gst`,
-  `healthy_needs_two_thirds`, `faulty_third_not_healthy`,
-  `outage_times_teeth`); the explanatory L0 lemmas (threshold monotonicity,
-  `η = 0`, the awake-count form).
-- `Good`: vacuous systems are not good; `censoring_progress_rejected`;
-  `prefix_sync_then_async`;
-  `healthy_rotating_sleeper`; η-sleepy history, brief wakes and startup;
-  `stable_alias_final_sleepy_live`.
-- `Model`, `Blocks`, `Shape`: model mechanics, recurrence, compiled roles and
-  poll mode.
-- `Leaks`: do-nothing, propose-but-genesis, fabricating and self-silencing
-  protocols fail `ShapeClaims`; `recorder_live_testK` is the positive
-  control.
-- `Realizable`: `coverage_keeps_selection`, `allProposers_no_witness`, the
-  rotating sleeper, `tendermint_largeIdx_prog`, `healed_witness_late`,
-  `outage_witness_late` (with controls).
-- `Controls`: `positive_controls`, `outage_control`, `ctrl_realizable` at
-  explicit numbers.
-- `Vacuity`: admissibility rejections, progress fit,
-  `notReadyAtMost_one_not_realizable`, `notReadyAtMost_one_not_tolerant`,
-  `credential_forgery_excluded`, `noService_not_accepted`.
-- `Goldilocks`: `pp223_numbers`, `stable_is_confirmed`,
-  `outageWindow_prefix_only`, `weakPremise_inhabited`.
-- `Values`, `Lift`, `Support`, `Common`: the Streamlet and Tendermint values,
-  injective-hash lifting, test-only lemmas and fixtures.
+- `Problem`: every L0 property has teeth; local accountability (`local_accountability_teeth`).
+- `Network`: the endpoint rule, faithfulness, silent runs and truncation.
+- `Regimes`: what each regime admits and rejects; the explanatory L0 regime lemmas.
+- `Good`: vacuous systems are not good; censoring progress, rotating sleepers, η-sleepy history.
+- `Model`, `Blocks`, `Shape`: model mechanics, recurrence, compiled roles and poll mode.
+- `Leaks`: do-nothing, fabricating and self-silencing protocols fail `ShapeClaims`; `recorder_live_testK` passes.
+- `Realizable`: coverage, `allProposers_no_witness`, late-GST and late-outage witnesses.
+- `Controls`: positive controls at explicit numbers.
+- `Vacuity`: admissibility rejections, progress fit and tolerance, forgery, `noService_not_accepted`.
+- `Goldilocks`: `pp223_numbers`, `stable_is_confirmed`, `outageWindow_prefix_only`, `weakPremise_inhabited`.
+- `Values`, `Lift`, `Support`, `Common`: Streamlet and Tendermint, injective-hash lifting, fixtures.
 - `Reformulations`: each reformulated definition against its old form.
-- `Gaps`: one disposition per gap row, with `example`s for the
-  by-construction rows.
+- `Gaps`: the gap dispositions. `Index`: every cited name, checked to exist.
 
 ## Verification
 
@@ -669,7 +547,7 @@ LAKE_RESTORE_ARTIFACTS=true lake build ConsensusProblem ConsensusModel Consensus
 lake env lean --run contract/CheckConsensusAxioms.lean
 ```
 
-The audit imports every `Consensus*` module under `contract/` (tests
-included) and checks that the required theorems exist. It then checks every
-compiled declaration for axioms outside `propext`, `Classical.choice` and
-`Quot.sound`, and prints `standard axioms only: true`.
+The build checks that every cited name exists (`ConsensusShapeTests/Index`).
+The audit imports every `Consensus*` module under `contract/` (tests included)
+and checks every compiled declaration for axioms outside `propext`,
+`Classical.choice` and `Quot.sound`; it prints `standard axioms only: true`.
