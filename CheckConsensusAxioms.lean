@@ -41,6 +41,7 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Leaks.proposeButGenesis,
       `Consensus.Shape.Tests.Leaks.conflictsTrue_silent,
       `Consensus.Shape.Tests.Leaks.recorder_live_testK,
+      `Consensus.Shape.Tests.Leaks.recorder_live_testK_negGST,
       `Consensus.Shape.Tests.Shapes.poll_proposal_local_height,
       `Consensus.Shape.Tests.Shapes.poll_duty_every_tick,
       `Consensus.Shape.Tests.Shapes.poll_disabled_forged] do

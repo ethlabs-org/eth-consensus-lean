@@ -100,9 +100,11 @@ theorem OutputValid.authorized {rho : Model.Run (compiled F) E} {g : O.Id}
 /-- The shape's interpretation of `progress`: pattern recurrence over the
 proposer roles of the grid, at the run's point, PKI and selection. A shape
 without slot proposers (`proposerSel := .fixed ∅`, e.g. a pure poll shape)
-never satisfies a premise containing `progress` (`HonestReadyIn` needs a
-nonempty selection), so its liveness claims under such premises are vacuous;
-such shapes state liveness without the `progress` atom. -/
+satisfies a premise containing `progress` only on runs where no recurrence
+window fits inside the horizon (`HonestReadyIn` needs a nonempty selection;
+`PatternRecurrence` is vacuous without a window), so its liveness claims
+under such premises say nothing on longer runs; such shapes state liveness
+without the `progress` atom (Stage 6 requires `ProgressActive`). -/
 def shapeExec (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
     ExecProfile (sysOf O (compiled F) V) ProgressReq :=
   modelProfile O (compiled F) V fun π c start r =>
