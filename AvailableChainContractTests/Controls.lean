@@ -22,7 +22,12 @@ def seat4 {F : Family} : (protoOf F env4).Label → Fin (Fintype.card (Fin 4)) �
 
 def run4 (es : List (Event (Fin 4) (protoOf (family false false false) env4).Object)) :
     Run (family false false false) env4 :=
-  mkRun Finset.univ 20 seat4 (fun _ => 0) (fun _ _ => 0) es
+  mkRun Finset.univ 20 seat4 (fun _ => 0) (fun _ _ => 0) goodHash es
+
+theorem run4_no_hashCollision (es : List (Event (Fin 4)
+    (protoOf (family false false false) env4).Object)) :
+    ¬ (run4 es).HashCollision :=
+  Run.not_hashCollision_of_injective ⟨goodHash_injective, goodHash_nonzero⟩
 
 theorem positive_controls : ∃ es,
     let r := run4 es
@@ -40,7 +45,7 @@ theorem positive_controls : ∃ es,
     (∃ t, (2 : Time) < 4 ∧ 4 ≤ t ∧ t < 6 ∧ t ≤ r.horizon ∧
       ∃ w ∈ r.honest, AwakeOnClosed env4 w (4 - (controls.catchUp : Time) * env4.Δ - 1) t) := by
   obtain ⟨es, valid, sync, healthy⟩ := canonical_run (family false false false) (Fin 4) env4 Finset.univ 20
-    (by decide) seat4 (fun _ => 0) (fun _ _ => 0)
+    (by decide) seat4 (fun _ => 0) (fun _ _ => 0) goodHash
   let r := run4 es
   have ready : ∀ t, r.readyAt controls t = Finset.univ := by
     intro t

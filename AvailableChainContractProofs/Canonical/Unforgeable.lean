@@ -13,11 +13,11 @@ open AvailableChain.Generic
 /-- The seen filter preserves any predicate on all structural descendants,
 provided the roots of the objects actually released satisfy it. -/
 theorem releaseAll_preserves {pub : Public} {P : Protocol pub}
-    (Q : P.Object → Prop) (nd : Node P) (cs : List P.Object)
+    (hash : Header → Nat) (Q : P.Object → Prop) (nd : Node P) (cs : List P.Object)
     (hs : ∀ o ∈ nd.seen, ∀ d, Obj.Contains o d → Q d)
-    (hr : ∀ o ∈ (releaseAll nd cs).2, Q o) :
-    (∀ o ∈ (releaseAll nd cs).1.seen, ∀ d, Obj.Contains o d → Q d) ∧
-    (∀ o ∈ (releaseAll nd cs).2, ∀ d, Obj.Contains o d → Q d) := by
+    (hr : ∀ o ∈ (releaseAll hash nd cs).2, Q o) :
+    (∀ o ∈ (releaseAll hash nd cs).1.seen, ∀ d, Obj.Contains o d → Q d) ∧
+    (∀ o ∈ (releaseAll hash nd cs).2, ∀ d, Obj.Contains o d → Q d) := by
   induction cs generalizing nd with
   | nil => exact ⟨hs, by simp [releaseAll]⟩
   | cons c cs ih =>
@@ -40,7 +40,7 @@ theorem releaseAll_preserves {pub : Public} {P : Protocol pub}
         · exact hs o ho
         · rcases List.mem_singleton.mp ho with rfl
           exact hc
-      have hrec := ih ⟨P.recordOwn nd.st c, nd.seen ++ [c]⟩ hs'
+      have hrec := ih ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩ hs'
         (fun o ho => hr o (List.mem_cons_of_mem c ho))
       refine ⟨hrec.1, ?_⟩
       intro o ho
@@ -51,8 +51,8 @@ theorem releaseAll_preserves {pub : Public} {P : Protocol pub}
       simp only [hf]
       exact ih nd hs hr
 
-theorem releaseAll_subset {pub : Public} {P : Protocol pub} (nd : Node P)
-    (cs : List P.Object) : ∀ o ∈ (releaseAll nd cs).2, o ∈ cs := by
+theorem releaseAll_subset {pub : Public} {P : Protocol pub} (hash : Header → Nat) (nd : Node P)
+    (cs : List P.Object) : ∀ o ∈ (releaseAll hash nd cs).2, o ∈ cs := by
   induction cs generalizing nd with
   | nil => simp [releaseAll]
   | cons c cs ih =>
@@ -137,7 +137,7 @@ theorem tick_safe {i : Nat} {v : V} {t : Time}
     have hc : o ∈ rho.candidates ((protoOf F E).clock (rho.stateBefore i v).st t) v t := by
       unfold tick at ho
       split at ho
-      · exact releaseAll_subset _ _ o ho
+      · exact releaseAll_subset _ _ _ o ho
       · simp at ho
     rcases rho.candidates_holder _ v t hc with hn | hv
     · rw [hn] at hholder; cases hholder
@@ -149,7 +149,7 @@ theorem tick_safe {i : Nat} {v : V} {t : Time}
   unfold tick at hr ⊢
   split at hr
   · simp only [‹E.awake v t = true›, ↓reduceIte]
-    exact releaseAll_preserves (rho.SignedBefore (i + 1)) _ _
+    exact releaseAll_preserves rho.hash (rho.SignedBefore (i + 1)) _ _
       (fun o ho d hd => rho.signedBefore_mono (Nat.le_succ i) (hs o ho d hd)) hr
   · simp only [‹¬ E.awake v t = true›, Bool.not_eq_true] at *
     exact ⟨fun o ho => rho.safeBefore_mono (Nat.le_succ i) (hs o ho), by simp⟩
