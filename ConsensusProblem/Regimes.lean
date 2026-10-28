@@ -28,13 +28,19 @@ The regimes are fixed here, over an environment point and a communication log:
   and progress only);
 * **outage `[b₀, b₁)` armed at `T`**: synchronous before `b₀`, partially
   synchronous with GST `b₁`, η-sleepy throughout (look-back `η·Δ`; `η = 0` is
-  plain sleepy, `EnvPoint.etaSleepyOn_zero`, `Regime.outage_eta_zero`), more
+  plain sleepy, `EnvPoint.etaSleepyOn_zero`, `Regime.outage_eta_zero`; for
+  `η > 0` the ready validators exceed fraction `θ` of those awake at some time
+  in the window `[max 0 (t − η·Δ), t]` plus the faulty ones, which implies
+  the awake-count form, `EnvPoint.EtaReadyAbove.awakeForm`), more
   than fraction `cover` ready at `b₀`; `T` is at least `lag·Δ` before `b₀`,
   and the window is at most `budget·Δ` long.
 
 The GST is a parameter of the regimes, not of the environment. A run after an
-outage is a partially synchronous run with GST `b₁`: the healthy regime with
-`g = b₁` applies to it by definition. -/
+outage is partially synchronous with GST `b₁` (`OutageNet` gives `PSync b₁`);
+the after-GST claims (healthy regime, `g = b₁`) apply to it when their
+participation and progress premises also hold (a fixed set of more than
+`φ·n` honest validators awake throughout from `b₁`): this does not follow from
+the outage participation. -/
 
 namespace Consensus
 
@@ -153,10 +159,10 @@ theorem etaSleepyOn_zero (θ : ℚ) (c a b : Time) :
   forall_congr' fun t => imp_congr_right fun _ => imp_congr_right fun _ =>
     p.etaReadyAbove_zero θ c t
 
-/-- η-sleepy (`η ≥ 0`, `θ ≥ 0`) implies plain sleepy. -/
+/-- η-sleepy (`θ ≥ 0`) implies plain sleepy. -/
 theorem EtaSleepyOn.sleepyOn {θ : ℚ} {η c a b : Time} (h : p.EtaSleepyOn θ η c a b)
-    (h0 : 0 ≤ θ) (hη : 0 ≤ η) : p.SleepyOn θ c a b :=
-  fun t ha hb => (h t ha hb).readyAbove p h0 hη
+    (h0 : 0 ≤ θ) : p.SleepyOn θ c a b :=
+  fun t ha hb => (h t ha hb).readyAbove p h0
 
 /-- A smaller fraction (`θ ≥ 0`) and a shorter look-back are weaker. -/
 theorem EtaSleepyOn.mono {θ θ' : ℚ} {η η' c a b : Time} (h : p.EtaSleepyOn θ' η' c a b)
@@ -217,8 +223,9 @@ variable {V M Idx : Type} [Fintype V] [DecidableEq V]
 /-- The sleepy regime: synchrony and sleepy participation throughout. -/
 def Sleepy : Prop := L.PSync p 0 ∧ p.Sleepy P.θ (P.cDur p.env.Δ)
 
-/-- The healthy regime from GST `g`: partial synchrony with GST `g`, and more
-than `φ·n` honest and awake from `max g 0` on. -/
+/-- The healthy regime from GST `g`: partial synchrony with GST `g`, and one
+fixed set of more than `φ·n` honest validators, each awake throughout
+`[max g 0, horizon]` (no churn). -/
 def Healthy (g : Time) : Prop := L.PSync p g ∧ p.HealthyFrom P.φ g
 
 /-- The outage regime: outage times, synchronous before `b₀` and partially

@@ -159,7 +159,7 @@ select key `1`, honest and always awake); transaction `42` submitted to
 * sleepy and healthy: everyone awake (for healthy, the fixed set is all the
   honest validators, awake throughout); the healthy witness is the canonical
   run from the GST `g`, whose log has no message receipt before `g` (protocol
-  messages sent before `g` are delivered at `g + Δ` at the earliest;
+  messages sent before `g` are received at `g` by the recipients awake then;
   transaction relay is part of the log too). The witness exercises delayed
   delivery only as far as the family sends messages before `g`;
 * outage: honest `key 2` asleep exactly at `b₀`, so at most two validators
@@ -346,12 +346,15 @@ participation `θ ≤ ½` holds for every look-back (the look-back set has at
 most `n` members). -/
 theorem etaReadyAbove_of_card {p : EnvPoint V} {θ : ℚ} (hθ : 0 ≤ θ ∧ θ ≤ 1 / 2) (η c t : Time)
     (hr : Fintype.card V ≤ (p.readyAt c t).card + 2) : p.EtaReadyAbove θ η c t := by
-  unfold EnvPoint.EtaReadyAbove
-  have hs : ((p.readyIn c (t - η) t ∪ p.faulty).card : ℚ) ≤ (Fintype.card V : ℚ) := by
-    exact_mod_cast Finset.card_le_univ _
   have hr' : ((Fintype.card V : Nat) : ℚ) ≤ ((p.readyAt c t).card : ℚ) + 2 := by exact_mod_cast hr
   have hn' : (5 : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast hn
-  nlinarith [hθ.1, hθ.2]
+  have key : ∀ A : Finset V, θ * (A.card : ℚ) < (p.readyAt c t).card := fun A => by
+    have hs : (A.card : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast Finset.card_le_univ _
+    nlinarith [hθ.1, hθ.2]
+  unfold EnvPoint.EtaReadyAbove
+  split_ifs
+  · exact (p.readyAbove_iff_union θ c t).mpr (key _)
+  · exact key _
 
 include hn in
 omit [DecidableEq V] in

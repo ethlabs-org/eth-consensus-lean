@@ -124,23 +124,36 @@ ones: `θ · (|ready| + |faulty|) < |ready|`. -/
 def ReadyAbove (θ : ℚ) (c t : Time) : Prop :=
   θ * ((p.readyAt c t).card + p.faulty.card : ℚ) < (p.readyAt c t).card
 
-/-- The honest validators ready at some time in `[a, b]`. -/
-noncomputable def readyIn (c a b : Time) : Finset V := by
-  classical
-  exact p.honest.filter (fun v => ∃ u, a ≤ u ∧ u ≤ b ∧ p.Ready c v u)
-
-/-- η-sleepy participation at `t` (look-back `η`, a duration): the ready
-honest validators exceed fraction `θ` of those ready at some time in
-`[t − η, t]` together with the faulty ones,
-`θ · |ready_[t−η, t] ∪ faulty| < |ready_t|`. With `η = 0` this is
-`ReadyAbove` (`EnvPoint.etaReadyAbove_zero`). -/
-def EtaReadyAbove (θ : ℚ) (η c t : Time) : Prop :=
-  θ * ((p.readyIn c (t - η) t ∪ p.faulty).card : ℚ) < (p.readyAt c t).card
-
 /-- The honest validators awake at `t`. -/
 noncomputable def awakeAt (t : Time) : Finset V := by
   classical
   exact p.honest.filter (fun v => p.env.awake v t = true)
+
+/-- The honest validators awake at some time in `[a, b]`. -/
+noncomputable def awakeIn (a b : Time) : Finset V := by
+  classical
+  exact p.honest.filter (fun v => ∃ u, a ≤ u ∧ u ≤ b ∧ p.env.awake v u = true)
+
+/-- η-sleepy participation at `t` (look-back `η`, a duration). With `η ≤ 0`
+it is plain `ReadyAbove` (`EnvPoint.etaReadyAbove_zero`). With `η > 0` the
+ready honest validators exceed fraction `θ` of the honest validators awake at
+some time in the look-back window `[max 0 (t − η), t]` together with the
+faulty ones:
+`θ · |ready_t ∪ awake_[max 0 (t−η), t] ∪ faulty| < |ready_t|`.
+
+Numerator ready, denominator awake: anyone awake in the window counts against
+the threshold, even if never ready (a validator awake only briefly still
+counts), so for `0 ≤ θ` and `0 ≤ t` this implies the awake-count form
+`θ · |awake_[t−η, t] ∪ faulty| < |awake_t|`
+(`EnvPoint.EtaReadyAbove.awakeForm`). Startup: the window is clamped at `0`,
+so no participation history before time `0` is assumed (readiness at negative
+times holds vacuously and is not used). `ready_t` is in the union only so the
+definition is monotone at every `t`; for `t ≥ 0` it is contained in
+`awake_[t−η, t]`. -/
+def EtaReadyAbove (θ : ℚ) (η c t : Time) : Prop :=
+  if η ≤ 0 then p.ReadyAbove θ c t
+  else θ * ((p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card : ℚ) <
+    (p.readyAt c t).card
 
 /-- More than fraction `φ` of all validators are honest and awake at `t`. -/
 def AwakeOfAll (φ : ℚ) (t : Time) : Prop :=
