@@ -15,7 +15,10 @@ public import Mathlib.Tactic
   losing `7` slots of span.
 * `target_unfolds`: `GoldilocksTarget` is bindings, acceptance and extras
   (`rfl`).
-* `stable_is_confirmed`: the schema aliases stable to confirmed (`rfl`). -/
+* `stable_is_confirmed`: the schema aliases stable to confirmed (`rfl`).
+* `collapse_prefix_only`, `outageWindow_prefix_only` (review stage 5 B1): a
+  run whose participation collapses inside the outage is η-sleepy on the
+  prefix `[0, b₀]` but not through `b₁ − 1`; A2 asks only for the prefix. -/
 
 namespace Consensus.Shape.Tests.Goldilocks
 
@@ -79,6 +82,101 @@ theorem stable_is_confirmed :
       goldilocksSchema.output .available = some GOut.confirmed ∧
       goldilocksSchema.output .final = some GOut.finalized :=
   ⟨rfl, rfl, rfl⟩
+
+/-! ### A2 participation only on the prefix (review stage 5 B1) -/
+
+/-- Five validators, `0` faulty, `1` honest and always awake, `2`–`4` honest
+and awake up to time `5`, asleep after it: participation collapses at `6`,
+inside an outage `[b₀, b₁) = [5, 10)`. `Δ = 1`, horizon `10`. -/
+def collapsePoint : EnvPoint (Fin 5) :=
+  ⟨⟨1, by decide, fun v t => decide ((v : Nat) ≤ 1 ∨ t ≤ 5)⟩, Finset.univ.erase 0, 10,
+    fun _ _ => []⟩
+
+theorem collapsePoint_faulty : collapsePoint.faulty = {0} := by
+  unfold EnvPoint.faulty collapsePoint; ext v; simp
+
+theorem collapsePoint_readyAt {t : Time} (h5 : t ≤ 5) :
+    collapsePoint.readyAt 0 t = Finset.univ.erase 0 := by
+  classical
+  ext v
+  simp only [EnvPoint.readyAt, EnvPoint.Ready, EnvPoint.AwakeOnClosed, collapsePoint,
+    Finset.mem_filter, Finset.mem_erase, Finset.mem_univ, and_true, decide_eq_true_eq]
+  constructor
+  · exact fun h => h.1
+  · intro hv
+    exact ⟨hv, hv, fun u _ hu => Or.inr (le_trans hu h5)⟩
+
+theorem collapsePoint_readyAt_six : collapsePoint.readyAt 0 6 ⊆ {1} := by
+  classical
+  intro v hv
+  simp only [EnvPoint.readyAt, EnvPoint.Ready, EnvPoint.AwakeOnClosed, collapsePoint,
+    Finset.mem_filter, Finset.mem_erase, Finset.mem_univ, and_true, decide_eq_true_eq] at hv
+  obtain ⟨hv0, -, hA⟩ := hv
+  have h6 := hA 6 (by norm_num) le_rfl
+  have hle : (v : Nat) ≤ 1 := by
+    rcases h6 with h | h
+    · exact h
+    · norm_num at h
+  simp only [Finset.mem_singleton]
+  fin_cases v <;> simp_all
+
+/-- The collapsing run is ½-η-sleepy (look-back `3`) on the prefix `[0, 5]`
+but not on `[0, 9]`: at `6` one validator is ready while all four honest ones
+were awake in `[3, 6]`. A2's premise (`outageWindow_prefix_only`) asks only
+for the prefix, so it applies here; the stage-5 premise on `[0, b₁ − 1]` did
+not. -/
+theorem collapse_prefix_only :
+    collapsePoint.EtaSleepyOn (1 / 2) 3 0 0 5 ∧ ¬ collapsePoint.EtaSleepyOn (1 / 2) 3 0 0 9 := by
+  classical
+  refine ⟨fun t _ ht5 => ?_, fun h => ?_⟩
+  · rw [EnvPoint.EtaReadyAbove,
+      ite_eq_right_of_eq_false _ _ (eq_false (show ¬ (3 : Time) ≤ 0 by norm_num)),
+      collapsePoint_readyAt ht5]
+    have hc : ((Finset.univ.erase (0 : Fin 5) ∪ collapsePoint.awakeIn (max 0 (t - 3)) t ∪
+        collapsePoint.faulty).card : ℚ) ≤ 5 := by
+      have := Finset.card_le_univ (Finset.univ.erase (0 : Fin 5) ∪
+        collapsePoint.awakeIn (max 0 (t - 3)) t ∪ collapsePoint.faulty)
+      rw [Fintype.card_fin] at this
+      exact_mod_cast this
+    have h4 : ((Finset.univ.erase (0 : Fin 5)).card : ℚ) = 4 := by
+      rw [Finset.card_erase_of_mem (Finset.mem_univ _)]; rfl
+    rw [h4]; linarith
+  · have h6 := h 6 (by norm_num) (by norm_num)
+    rw [EnvPoint.EtaReadyAbove,
+      ite_eq_right_of_eq_false _ _ (eq_false (show ¬ (3 : Time) ≤ 0 by norm_num))] at h6
+    have hin : collapsePoint.readyAt 0 6 ∪ collapsePoint.awakeIn (max 0 (6 - 3)) 6 ∪
+        collapsePoint.faulty = Finset.univ := by
+      apply Finset.eq_univ_of_forall
+      intro v
+      by_cases h0 : v = 0
+      · exact Finset.mem_union_right _ (by rw [collapsePoint_faulty, h0]; simp)
+      · refine Finset.mem_union_left _ (Finset.mem_union_right _ ?_)
+        simp only [EnvPoint.awakeIn, collapsePoint, Finset.mem_filter, Finset.mem_erase,
+          Finset.mem_univ, and_true, decide_eq_true_eq]
+        exact ⟨h0, 3, by norm_num, by norm_num, Or.inr (by norm_num)⟩
+    have hcard : ((collapsePoint.readyAt 0 6).card : ℚ) ≤ 1 := by
+      have := (Finset.card_le_card collapsePoint_readyAt_six).trans
+        (Finset.card_singleton (1 : Fin 5)).le
+      exact_mod_cast this
+    rw [hin, Finset.card_univ, Fintype.card_fin] at h6
+    norm_num at h6
+    linarith
+
+/-- A2 takes η-sleepy participation on the prefix `[0, b₀]` only (and nothing
+after `b₀`): this statement fails to type-check if the premise is extended
+into the outage window again. -/
+theorem outageWindow_prefix_only {Info : Type} [DecidableEq Info] [Encodable Info]
+    {F : ShapeFamily goldilocksSchema Info} {pp : FGSAParams} (h : GoldilocksExtra F pp)
+    {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (rho : Model.Run (compiled F) E)
+    (T b₀ b₁ : Time) (hv : rho.ExecutionValid)
+    (hT : OutageTimes (goldilocksContract pp).params E.Δ T b₀ b₁)
+    (hs : CommLog.SyncUntil rho.point rho.log b₀)
+    (hη : rho.point.EtaSleepyOn (1 / 2) ((pp.eta : Time) * E.Δ)
+      (shapeC (goldilocksContract pp) rho) 0 b₀)
+    (hc : rho.point.ReadyOfAll (1 / 2) (shapeC (goldilocksContract pp) rho) b₀) :
+    (chainTrace rho).ProtectedUpTo (shapeC (goldilocksContract pp) rho) gConfirmed gConfirmed
+      T b₀ b₁ (min (b₁ - 1) rho.horizon) ∨ rho.HashCollision :=
+  h.outageWindow T b₀ b₁ V E rho hv hT hs hη hc
 
 end Consensus.Shape.Tests.Goldilocks
 

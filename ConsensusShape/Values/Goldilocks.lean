@@ -32,9 +32,9 @@ this contract, and the Goldilocks extras, give.
   stable); for final at index `gf`, `3R + κ` consecutive honest ready
   proposers (`Pattern.range`) in every window of `gf·R` slots. The whole
   pattern of a window must fit before the window's stop (the guard of
-  `PatternRecurrence`): the latency and heal numbers are reviewed against
-  this (they already contain the `3R + κ − 1` slots of span, recorded as a
-  reviewed number, not a derived one).
+  `PatternRecurrence`): the final latency and heal numbers cover one window
+  plus the `3R + κ − 1` slots of span for every `R` and `gf`
+  (`final_latency_covers_window`, `final_heal_covers_window` in the sheet).
 
 `reference_bounds` checks the formulas against the reference numbers of the
 FG-SA paper (fgsa-protocol.tex 3018–3026). -/
@@ -198,8 +198,10 @@ theorem goldilocks_progressFits {Info : Type} [DecidableEq Info] [Encodable Info
   cases cap <;> exact hsel pub
 
 /-- Reference numbers (fgsa-protocol.tex 3018–3026): `B_H^F` at `k = 2` is
-`295Δ` (`R = 2`) and `343Δ` (`R = 3`), first finality at `gf = 3` adds `W_W`:
-`344Δ` and `412Δ` (`lockK = 2`, `κ = 2`). -/
+`295Δ` (`R = 2`) and `343Δ` (`R = 3`); the paper's `344Δ` and `412Δ` add
+`W_W(3)` to `B_H^F` at the **independent** healing gap `k = 2` (`lockK = 2`,
+`κ = 2`). They are FG-SA reference values, not the pinned contract's
+`heal .final 3`, which couples the gaps (`B_H^F(3·R)`). -/
 theorem reference_bounds :
     (⟨2, 2, 1, le_rfl, le_rfl, le_rfl⟩ : FGSAParams).bhf 2 = 295 ∧
     (⟨3, 2, 1, by decide, le_rfl, le_rfl⟩ : FGSAParams).bhf 2 = 343 ∧

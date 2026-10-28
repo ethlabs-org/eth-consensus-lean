@@ -58,7 +58,10 @@ E1/E2 evidence binding exists (obligation (7)).
 * P-NV-LATE-GST: `GoldilocksTarget.goldilocks_good` (realizable at every `Δ`,
   every GST and arbitrarily late outages).
 * Numbers: `reference_bounds`, `goldilocks_admissible`, `budget_implies_V`,
-  `range_head` (with the span loss), `EnvPoint.two_mul_card_faulty_union_lt`.
+  `range_head` (with the span loss), `final_latency_covers_window`,
+  `final_heal_covers_window`, `finalRecur_delay_covers_window` (the final
+  numbers cover one window plus the pattern span, for every `R` and `gf`),
+  `EnvPoint.two_mul_card_faulty_union_lt`.
 
 ## §2 From the extras (`GoldilocksExtra` fields; statements only)
 
@@ -70,7 +73,8 @@ E1/E2 evidence binding exists (obligation (7)).
 * FL2 / P-GST-FIN-RECUR: `finalRecur`.
 * FL5: `liveDC`.
 * A4 part / P-GST-CROSS-NEST: `crossNest`.
-* A2 / P-OUT-AV-SLOW: `outageWindow` (no post-window network).
+* A2 / P-OUT-AV-SLOW: `outageWindow` (η-sleepy prefix to `b₀` only; no
+  network or participation assumption inside the window).
 * P-WEAK-AV-SAFE: `weakSafe` (no suffix recurrence).
 * P-WEAK-AV-INCLUDE: `weakInclude` (every qualifying honest proposal,
   persistent).
@@ -113,7 +117,13 @@ Francesco.
    awake ⇒ covered (F-3).
 4. Outage continuation under η-sleepy participation (`η = eta`) throughout
    and cover ½ at `b₀`, partially synchronous with GST `b₁` after the window,
-   vs FG-SA `OutageE` and its after-window premise (F-4).
+   vs FG-SA `OutageE` and its after-window premise (F-4); for A2
+   (`outageWindow`), η-sleepy on `[0, b₀]` only, vs FG-SA's prefix premise.
+   Startup alignment: the contract's look-back is clamped at `0` (no
+   participation history before time `0`), FG-SA's is not; the bridge either
+   takes FG-SA environments asleep before `0` or proves the clamped premise
+   implies FG-SA's. With `η > 0` the contract's denominator (ready ∪ awake in
+   the look-back ∪ faulty) is stronger than plain sleepy participation.
 5. Readers caught up after the window (FG-SA proves repair-ready readers only).
 6. Ready-vs-awake counting (M25).
 7. E1/E2 evidence binding (`conflicts` = FG-SA's slashing rule).
@@ -125,7 +135,14 @@ Francesco.
    all-awake premise.
 10. Weak continuation: uniform cut/seed preservation.
 11. FL1/FL2 block-level forms (`finalFirst`, `finalRecur`) vs FG-SA's
-    `FinalityLivenessGSTClaim_W`.
+    `FinalityLivenessGSTClaim_W`. Not claimed equivalent: FL1 here asks for a
+    new finalized entry above the honest finalized reads at `max g 0`, while
+    intended P-GST-FIN-FIRST (and FG-SA) is strictly above the available
+    outputs at the healing cut; FL2 here starts at the final heal point with
+    delay `(W_W + 4·gf·R)·Δ` (the `4·gf·R` is one finality-recurrence window
+    for a fresh proposal), while intended FL2 starts at `t_ready + B_H^F` with
+    deadline `t + W_W`. The migration decides whether the stronger forms
+    become the target (Francesco).
 12. Prefix forms: FG-SA's `CleanPrefixTruncation` matches `Adequate.prefixClosed`
     on the FG-SA run model. -/
 
@@ -220,6 +237,59 @@ theorem range_head (pp : FGSAParams) (gf : ℕ+) {V R : Type} [Fintype V] {p : E
     List.mem_range.mpr (by simp [FGSAParams.κ])
   have := PatternRecurrence.single_of_zero h0 h
   rwa [hspan] at this
+
+/-- The finality pattern's span, `3R + 1` slots. -/
+theorem finRec_span (pp : FGSAParams) (gf : ℕ+) : (pp.finRec gf).pattern.span = 3 * pp.R + 1 := by
+  refine (Pattern.span_range
+    (⟨3 * pp.R + FGSAParams.κ, by unfold FGSAParams.κ; omega⟩ : ℕ+)).trans ?_
+  change 3 * pp.R + FGSAParams.κ - 1 = _
+  unfold FGSAParams.κ; omega
+
+/-- `B_H^F` is at least `12·P = 48·R` (`Δ`-coefficient), at every gap. -/
+theorem bhf_ge (pp : FGSAParams) (k : Nat) : 48 * pp.R ≤ pp.bhf k := by
+  have h1 : 48 * pp.R ≤ pp.bhf1 k := by
+    unfold FGSAParams.bhf1 FGSAParams.P; omega
+  have h2 : 48 * pp.R ≤ pp.bhf2 k := by
+    unfold FGSAParams.bhf2 FGSAParams.P; omega
+  unfold FGSAParams.bhf; split_ifs <;> omega
+
+/-- The guarded finality window (`Δ`-coefficient): one window of `gf·R` slots
+plus the pattern's span, `4·gf·R + 4·(3R + 1)`. -/
+def finWindow (pp : FGSAParams) (gf : ℕ+) : Nat :=
+  4 * (gf * pp.R) + 4 * (pp.finRec gf).pattern.span
+
+/-- The final latency covers the guarded finality window, for every `R` and
+`gf` (it exceeds it by `4R(gf − 1) + 11`). -/
+theorem final_latency_covers_window (pp : FGSAParams) (gf : ℕ+) :
+    finWindow pp gf + 4 * pp.R * (gf - 1) + 11 = pp.latency .final gf := by
+  have hg := gf.pos
+  unfold finWindow
+  rw [finRec_span]
+  simp only [FGSAParams.latency, FGSAParams.wW, FGSAParams.P, FGSAParams.κ]
+  obtain ⟨m, hm⟩ : ∃ m, (gf : Nat) = m + 1 := ⟨gf - 1, by omega⟩
+  rw [hm, Nat.add_sub_cancel]; ring
+
+/-- The final heal point covers readiness (`catchUp + 1`) plus the guarded
+finality window, for every `R` and `gf`. -/
+theorem final_heal_covers_window (pp : FGSAParams) (gf : ℕ+) :
+    FGSAParams.catchUp + 1 + finWindow pp gf ≤ pp.heal .final gf := by
+  have hb := bhf_ge pp (gf * pp.R)
+  unfold finWindow
+  rw [finRec_span]
+  simp only [FGSAParams.heal, FGSAParams.wW, FGSAParams.P, FGSAParams.κ, FGSAParams.catchUp]
+  have : (gf : Nat) * pp.R ≤ (gf + 2) * (4 * pp.R) := by nlinarith
+  nlinarith
+
+/-- `finalRecur`'s delay `W_W(gf) + 4·gf·R` covers the guarded finality window
+(it exceeds it by `4R(gf − 1) + 5`). -/
+theorem finalRecur_delay_covers_window (pp : FGSAParams) (gf : ℕ+) :
+    finWindow pp gf + 4 * pp.R * (gf - 1) + 5 = pp.wW gf + 4 * (gf * pp.R) := by
+  have hg := gf.pos
+  unfold finWindow
+  rw [finRec_span]
+  simp only [FGSAParams.wW, FGSAParams.P, FGSAParams.κ]
+  obtain ⟨m, hm⟩ : ∃ m, (gf : Nat) = m + 1 := ⟨gf - 1, by omega⟩
+  rw [hm, Nat.add_sub_cancel]; ring
 
 /-! ## Bindings, chain-level vocabulary, extras, target -/
 
@@ -397,15 +467,16 @@ structure GoldilocksExtra (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPara
         (chainTrace rho).readAt gFinalized x t <+: (chainTrace rho).readAt gConfirmed y t) ∨
       rho.HashCollision
   /-- **A2 / P-OUT-AV-SLOW.** Outage times, synchronous for deadlines up to
-  `b₀`, η-sleepy on `[0, b₁ − 1]`, more than half ready at `b₀`, and **no**
-  network assumption after `b₀`: what a node ready at `T` reads as confirmed
-  is kept by every eligible reader at every time of `[b₀, b₁)` within the
-  horizon. -/
+  `b₀`, η-sleepy on the prefix `[0, b₀]` only, more than half ready at `b₀`,
+  and **no** assumption after `b₀` (neither network nor participation:
+  participation may collapse inside the outage): what a node ready at `T`
+  reads as confirmed is kept by every eligible reader (ready at `b₀` and awake
+  since) at every time of `[b₀, b₁)` within the horizon. -/
   outageWindow : ∀ T b₀ b₁ : Time, AllRuns F fun E rho => rho.ExecutionValid →
     OutageTimes (goldilocksContract pp).params E.Δ T b₀ b₁ →
     CommLog.SyncUntil rho.point rho.log b₀ →
     rho.point.EtaSleepyOn (goldilocksContract pp).params.θ
-      ((goldilocksContract pp).params.ηDur E.Δ) (shapeC (goldilocksContract pp) rho) 0 (b₁ - 1) →
+      ((goldilocksContract pp).params.ηDur E.Δ) (shapeC (goldilocksContract pp) rho) 0 b₀ →
     rho.point.ReadyOfAll (goldilocksContract pp).params.cover
       (shapeC (goldilocksContract pp) rho) b₀ →
     (chainTrace rho).ProtectedUpTo (shapeC (goldilocksContract pp) rho) gConfirmed gConfirmed
