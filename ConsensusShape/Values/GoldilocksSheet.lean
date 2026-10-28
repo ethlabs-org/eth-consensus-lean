@@ -330,8 +330,8 @@ variable (pp : FGSAParams) {F : ShapeFamily goldilocksSchema Info} {V : Type} [F
 /-- The catch-up `c = 18·Δ` of run `r`. -/
 abbrev gc (r : (Sys F V).Run) : Time := ((18 : Nat) : Time) * ((Sys F V).pt r).env.Δ
 
-/-- The start of progress windows after GST `gst`: `readyFrom c gst`. -/
-abbrev gReady (gst : Time) (r : (Sys F V).Run) : Time := readyFrom (gc r) gst
+/-- The start of progress windows after GST `gst`: `max gst 0 + c + 1`. -/
+abbrev gReady (gst : Time) (r : (Sys F V).Run) : Time := max gst 0 + gc r + 1
 
 /-- The available and stable heal point at gap `k` slots after GST `gst`:
 `max gst 0 + (29 + B_H^F(k))·Δ`. -/
@@ -370,7 +370,7 @@ end Pinned
 /-- The weak-continuation premise at gap `k` after GST `gst`: partially
 synchronous with GST `gst` (the whole run), healthy (a fixed set of more than
 `φ·n` honest validators continuously awake) up to the heal point, one honest
-ready proposer per window of `k` slots on `[readyFrom, heal]`, and sleepy
+ready proposer per window of `k` slots on `[ready, heal]`, and sleepy
 participation from the heal point to the horizon. No recurrence after the
 heal point. -/
 def WeakPremise {F : ShapeFamily goldilocksSchema Info} {V : Type} [Fintype V] [DecidableEq V]
@@ -394,7 +394,7 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
   includeSleepy : (Sys F V).Holds ((Sys F V).Sleepy (goldilocksContract pp)) fun r =>
     IncludesFrom r.2 (gc r) gConfirmed 0 6
   /-- **L4 / P-GST-AV-INCLUDE.** Healthy from `gst` with one honest ready
-  proposer per window of `k` slots on `[readyFrom, heal]`: the same for
+  proposer per window of `k` slots on `[ready, heal]`: the same for
   proposals released at `τ ≥ heal`. -/
   includeHealed : ∀ (k : ℕ+) (gst : Time), (Sys F V).Holds
     (fun r => (Sys F V).Healthy (goldilocksContract pp) gst r ∧
@@ -408,14 +408,14 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
       gProg pp .available k 0 ((Sys F V).pt r).horizon r)
     fun r => CrossGrowth r.2 (gc r) gConfirmed gConfirmed 0 (4 * k + 6)
   /-- **L5 / P-GST-AV-GROW** (block level). Healthy from `gst` with the
-  recurrence of `k` from `readyFrom`: joint strict growth from the heal
+  recurrence of `k` from `ready`: joint strict growth from the heal
   point. -/
   growHealed : ∀ (k : ℕ+) (gst : Time), (Sys F V).Holds
     (fun r => (Sys F V).Healthy (goldilocksContract pp) gst r ∧
       gProg pp .available k (gReady gst r) ((Sys F V).pt r).horizon r)
     fun r => CrossGrowth r.2 (gc r) gConfirmed gConfirmed (gHeal pp k gst r) (4 * k + 6)
   /-- **FL1 / P-GST-FIN-FIRST.** Healthy from `gst` with the finality
-  recurrence of `gf` on `[readyFrom, heal]`: a new finalized entry, strictly
+  recurrence of `gf` on `[ready, heal]`: a new finalized entry, strictly
   above every ready confirmed read at the healing cut
   `finalCut = max gst 0 + (29 + B_H^F(gf·R))·Δ`, is in every ready finalized
   read at the first-finality point `finalCut + W_W(gf)·Δ` (the final heal
@@ -428,7 +428,7 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
       (fun x => r.2.point.Ready (gc r) x (finalCut pp gf gst r)) (finalCut pp gf gst r)
       (gHealFin pp gf gst r) h
   /-- **FL2 / P-GST-FIN-RECUR.** Healthy from `gst` with the finality
-  recurrence of `gf` from `readyFrom`: for every `t` from the healing cut
+  recurrence of `gf` from `ready`: for every `t` from the healing cut
   `finalCut`, a new finalized entry strictly above every ready confirmed read
   at `t` is in every ready finalized read at `t + W_W(gf)·Δ`. -/
   finalRecur : ∀ (gf : ℕ+) (gst : Time), (Sys F V).Holds
@@ -439,7 +439,7 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
       ∃ h, NewAbove r.2 (gc r) gConfirmed gFinalized (fun x => r.2.point.Ready (gc r) x t) t
         (t + ((pp.wW gf : Nat) : Time) * ((Sys F V).pt r).env.Δ) h
   /-- **FL5 / P-GST-FIN-GROW** (LiveDC). Healthy from `gst` with the finality recurrence of
-  `gf` from `readyFrom`: for every `t` from the first-finality point, an
+  `gf` from `ready`: for every `t` from the first-finality point, an
   honest proposal released after `t` strictly extends every ready confirmed
   read at `t` and is in every ready finalized read by
   `t + (2·W_W(gf) + 4·gf·R)·Δ`. -/
@@ -449,7 +449,7 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
     fun r => CrossGrowth r.2 (gc r) gConfirmed gFinalized (gHealFin pp gf gst r)
       (2 * pp.wW gf + 4 * (gf * pp.R))
   /-- **A4 part / P-GST-CROSS-NEST.** Healthy from `gst` with the recurrence of
-  `k` on `[readyFrom, heal]`: from the heal point, every ready finalized read
+  `k` on `[ready, heal]`: from the heal point, every ready finalized read
   is a prefix of every ready confirmed read at the same time. -/
   crossNest : ∀ (k : ℕ+) (gst : Time), (Sys F V).Holds
     (fun r => (Sys F V).Healthy (goldilocksContract pp) gst r ∧
@@ -465,7 +465,7 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
     (fun r => OutageTimes (goldilocksContract pp).params ((Sys F V).pt r).env.Δ T b₀ b₁ ∧
       CommLog.SyncUntil r.2.point r.2.log b₀ ∧
       ((Sys F V).pt r).EtaSleepyOn (goldilocksContract pp).params.θ
-        ((goldilocksContract pp).params.ηDur ((Sys F V).pt r).env.Δ) (gc r) 0 b₀ ∧
+        (((goldilocksContract pp).params.η : Time) * ((Sys F V).pt r).env.Δ) (gc r) 0 b₀ ∧
       ((Sys F V).pt r).ReadyOfAll (goldilocksContract pp).params.cover (gc r) b₀)
     fun r => (chainTrace r.2).ProtectedUpTo (gc r) gConfirmed gConfirmed T b₀ b₁
       (min (b₁ - 1) ((Sys F V).pt r).horizon)
@@ -542,7 +542,7 @@ theorem nonFraming (r : (Sys F V).Run) (hv : (Sys F V).Valid r) : (Sys F V).NonF
 joint views convict at least a third of all validators. -/
 theorem finalized_accountable (r : (Sys F V).Run) (hv : (Sys F V).Valid r) :
     (Sys F V).AccountablySafe r (1 / 3) gFinalized 0 ∨ (Sys F V).Excuse r :=
-  ((goldilocks_good h V).behaviour.final gFinalized rfl).accountable r hv trivial
+  (goldilocks_good h V).behaviour.finalAccountable gFinalized rfl r hv trivial
 
 /-- **F1, F2 / P-ANY-FIN-SAFE.** With fewer than a third faulty, the finalized
 output is safe, under any network and participation. -/
@@ -558,7 +558,7 @@ theorem confirmed_safe_sleepy (r : (Sys F V).Run) (hv : (Sys F V).Valid r)
     (hs : (Sys F V).Sleepy (goldilocksContract pp) r) :
     ((Sys F V).trace r).ReadySafe (gc r) gConfirmed 0 ∨
       (Sys F V).Excuse r :=
-  ((goldilocks_good h V).behaviour.da .available gConfirmed (Or.inl rfl) rfl).sleepySafe r hv hs
+  (goldilocks_good h V).behaviour.sleepySafe .available gConfirmed (Or.inl rfl) rfl r hv hs
 
 /-- **A1′ / P-SYNC-PREFIX.** Synchronous for deadlines up to `b` and ½-sleepy on
 `[0, b]`: the past up to `b` is safe for ready confirmed readers, whatever
@@ -572,7 +572,7 @@ theorem confirmed_safe_sleepy_prefix (r : (Sys F V).Run) (hv : (Sys F V).Valid r
   (goldilocks_good h V).sleepySafe_prefix (cap := .available) (Or.inl rfl) rfl r hv hb0 hbh hs hθ
 
 /-- **A4 / P-GST-AV-SAFE, -MONO.** Healthy from `gst` with one honest ready
-proposer per window of `k` slots on `[readyFrom, heal]`: ready-reader safety of
+proposer per window of `k` slots on `[ready, heal]`: ready-reader safety of
 the confirmed output from the heal point
 `max gst 0 + (29 + B_H^F(k))·Δ`. -/
 theorem confirmed_safe_healed (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
@@ -583,12 +583,12 @@ theorem confirmed_safe_healed (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
     ((Sys F V).trace r).ReadySafe (gc r) gConfirmed
       (gHeal pp k gst r) ∨
       (Sys F V).Excuse r :=
-  ((goldilocks_good h V).behaviour.da .available gConfirmed (Or.inl rfl) rfl).healedSafe k gst r hv
+  (goldilocks_good h V).behaviour.healedSafe .available gConfirmed (Or.inl rfl) rfl k gst r hv
     ⟨hH, hp⟩
 
 /-- **A4, prefix form.** The healed safety of the past: partially synchronous
 with GST `gst` and healthy up to `b ≥ heal`, with the recurrence on
-`[readyFrom, heal]`: ready confirmed readers are safe at cuts in `[heal, b]`,
+`[ready, heal]`: ready confirmed readers are safe at cuts in `[heal, b]`,
 whatever happens after `b`. -/
 theorem confirmed_safe_healed_prefix (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
     (hv : (Sys F V).Valid r) {b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ ((Sys F V).pt r).horizon)
@@ -643,11 +643,11 @@ theorem confirmed_txLive_sleepy (k : ℕ+) (r : (Sys F V).Run) (hv : (Sys F V).V
       ((Sys F V).pt r).horizon r) :
     ((Sys F V).trace r).TxLive (gc r) gConfirmed 0
       (((4 * k + 6 : Nat) : Time) * ((Sys F V).pt r).env.Δ) ∨ (Sys F V).Excuse r :=
-  ((goldilocks_good h V).behaviour.da .available gConfirmed (Or.inl rfl) rfl).sleepyLive k r hv
+  (goldilocks_good h V).behaviour.sleepyLive .available gConfirmed (Or.inl rfl) rfl k r hv
     ⟨hs, hp⟩
 
 /-- **Tx-level consequence of L5.** Healthy from `gst` with the recurrence of
-`k` from `readyFrom`: every submitted transaction is in every ready confirmed
+`k` from `ready`: every submitted transaction is in every ready confirmed
 read from `max t heal + Δ + (4k + 6)·Δ`. -/
 theorem confirmed_txLive_healed (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
     (hv : (Sys F V).Valid r) (hH : (Sys F V).Healthy (goldilocksContract pp) gst r)
@@ -656,11 +656,10 @@ theorem confirmed_txLive_healed (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
     ((Sys F V).trace r).TxLive (gc r) gConfirmed
       (gHeal pp k gst r)
       (((4 * k + 6 : Nat) : Time) * ((Sys F V).pt r).env.Δ) ∨ (Sys F V).Excuse r :=
-  ((goldilocks_good h V).behaviour.da .available gConfirmed (Or.inl rfl) rfl).healedLive k gst r hv
-    ⟨hH, hp⟩
+  (goldilocks_good h V).behaviour.healthyLive .available gConfirmed rfl k gst r hv ⟨hH, hp⟩
 
 /-- **Tx-level consequence of FL1, FL2.** Healthy from `gst` with the finality
-recurrence of `gf` from `readyFrom`: every submitted transaction is in every
+recurrence of `gf` from `ready`: every submitted transaction is in every
 ready finalized read from `max t heal + Δ + latency`, with heal
 `max gst 0 + (29 + B_H^F(gf·R) + W_W(gf))·Δ` and latency
 `(4·gf·R + 6 + W_W(gf))·Δ` (not FL1's first-finality deadline, not FL2's
@@ -673,7 +672,7 @@ theorem finalized_txLive (gf : ℕ+) (gst : Time) (r : (Sys F V).Run)
       (gHealFin pp gf gst r)
       (((4 * (gf * pp.R) + 6 + pp.wW gf : Nat) : Time) * ((Sys F V).pt r).env.Δ) ∨
       (Sys F V).Excuse r :=
-  ((goldilocks_good h V).behaviour.final gFinalized rfl).live gf gst r hv ⟨hH, hp⟩
+  (goldilocks_good h V).behaviour.healthyLive .final gFinalized rfl gf gst r hv ⟨hH, hp⟩
 
 end GoldilocksTarget
 

@@ -30,15 +30,9 @@ def MonotoneAmong (R : V → Time → Prop) (g : Id) (t₀ : Time) : Prop :=
   ∀ v i j, tr.InCuts t₀ i → i ≤ j → tr.InCuts t₀ j → R v (tr.cutTime i) → R v (tr.cutTime j) →
     tr.read g v i <+: tr.read g v j
 
-/-- No two honest reads of `g` at cuts from `t₀` on conflict. -/
-abbrev Agree (g : Id) (t₀ : Time) : Prop := tr.AgreeAmong (fun v _ => v ∈ tr.point.honest) g t₀
-
 /-- Each honest node's reads of `g` only extend, cut by cut, from `t₀` on. -/
 abbrev Monotone (g : Id) (t₀ : Time) : Prop :=
   tr.MonotoneAmong (fun v _ => v ∈ tr.point.honest) g t₀
-
-/-- Safety of `g` from `t₀`. -/
-def Safe (g : Id) (t₀ : Time) : Prop := tr.Agree g t₀ ∧ tr.Monotone g t₀
 
 /-- Safety from `t₀` for ready readers only (a node asleep since long ago may
 hold an old fork). -/
@@ -67,16 +61,6 @@ structure PrefixOf (tr' tr : Trace V α Id) (b : Time) : Prop where
   cuts : tr'.cuts = tr.endCut b
   cutTime : ∀ i, i ≤ tr'.cuts → tr'.cutTime i = tr.cutTime i
   read : ∀ g v i, i ≤ tr'.cuts → tr'.read g v i = tr.read g v i
-
-/-- `ReadySafe` restricted to cuts at times `≤ b`: the past up to `b` is safe
-for ready readers. -/
-def ReadySafeUpTo (c : Time) (g : Id) (t₀ b : Time) : Prop :=
-  (∀ u v i j, tr.InCuts t₀ i → tr.InCuts t₀ j → tr.cutTime i ≤ b → tr.cutTime j ≤ b →
-      tr.point.Ready c u (tr.cutTime i) → tr.point.Ready c v (tr.cutTime j) →
-      Compatible (tr.read g u i) (tr.read g v j)) ∧
-  (∀ v i j, tr.InCuts t₀ i → i ≤ j → tr.InCuts t₀ j → tr.cutTime j ≤ b →
-      tr.point.Ready c v (tr.cutTime i) → tr.point.Ready c v (tr.cutTime j) →
-      tr.read g v i <+: tr.read g v j)
 
 /-- Resilience for ready sources at reading times `t ∈ [b₀, b]`: the read of
 `src` at `T` of every node **ready** at `T` is a prefix of the `dst` read at

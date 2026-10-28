@@ -132,29 +132,17 @@ noncomputable def awakeIn (a b : Time) : Finset V := by
   exact p.honest.filter (fun v => ∃ u, a ≤ u ∧ u ≤ b ∧ p.env.awake v u = true)
 
 /-- η-sleepy participation at `t` (look-back `η`, a duration). With `η ≤ 0`
-it is plain `ReadyAbove` (`EnvPoint.etaReadyAbove_zero`, tests). With `η > 0` the
-ready honest validators exceed fraction `θ` of the honest validators awake at
-some time in the look-back window `[max 0 (t − η), t]` together with the
-faulty ones:
-`θ · |ready_t ∪ awake_[max 0 (t−η), t] ∪ faulty| < |ready_t|`.
-
-Numerator ready, denominator awake: anyone awake in the window counts against
-the threshold, even if never ready (a validator awake only briefly still
-counts), so for `0 ≤ θ`, `0 < η`, a nonnegative catch-up `0 ≤ c` and
-`0 ≤ t` this implies the awake-count form
-`θ · |awake_[max 0 (t−η), t] ∪ faulty| < |awake_t|`
-(`EnvPoint.EtaReadyAbove.awakeForm`, tests). Startup: the window is clamped at `0`,
-so no participation history before time `0` is assumed (readiness at negative
-times holds vacuously and is not used). `ready_t` is in the union only so the
-definition is monotone at every `t`; for `t ≥ 0` it is contained in
-`awake_[t−η, t]`. -/
+it is plain `ReadyAbove`. With `η > 0` the ready honest validators exceed
+fraction `θ` of those awake at some time in `[max 0 (t − η), t]` together with
+the faulty ones: `θ · |ready_t ∪ awake_[max 0 (t−η), t] ∪ faulty| < |ready_t|`.
+Anyone awake in the window counts against the threshold, even if never ready
+(this implies the awake-count form, `EnvPoint.EtaReadyAbove.awakeForm`,
+tests). The window is clamped at `0`; `ready_t` is in the union only for
+monotonicity. -/
 def EtaReadyAbove (θ : ℚ) (η c t : Time) : Prop :=
   if η ≤ 0 then p.ReadyAbove θ c t
   else θ * ((p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card : ℚ) <
     (p.readyAt c t).card
-
-/-- Fewer than fraction `β` of all validators are faulty. -/
-def FaultsBelow (β : ℚ) : Prop := (p.faulty.card : ℚ) < β * Fintype.card V
 
 /-- More than fraction `φ` of all validators are ready. -/
 def ReadyOfAll (φ : ℚ) (c t : Time) : Prop :=
@@ -193,10 +181,6 @@ def readAt (g : Id) (v : V) (t : Time) : List α := tr.read g v (tr.endCut t)
 /-- Cut `i` exists and is at time `≥ t₀` (cut 0 is at time 0, so it counts
 for every `t₀ ≤ 0`). -/
 def InCuts (t₀ : Time) (i : Nat) : Prop := i ≤ tr.cuts ∧ t₀ ≤ tr.cutTime i
-
-/-- The same trace with every read mapped by `f`. -/
-def map {β : Type} (f : List α → List β) : Trace V β Id :=
-  ⟨tr.point, tr.cuts, tr.cutTime, fun g v i => f (tr.read g v i)⟩
 
 end Trace
 

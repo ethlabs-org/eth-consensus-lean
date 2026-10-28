@@ -25,7 +25,8 @@ def roots (rho : Run F E) : List (protoOf F E).Object :=
 
 theorem observed_mem_roots {rho : Run F E} {o : (protoOf F E).Object}
     (ho : o ∈ rho.Observed) : o ∈ closure rho.roots := by
-  obtain ⟨v, hv, k, r, hk, he, hc⟩ := ho
+  obtain ⟨v, hv, hov⟩ := ho
+  obtain ⟨k, r, hk, he, hc⟩ := rho.mem_viewIdx_iff.mp hov
   apply List.mem_flatMap.mpr
   refine ⟨r, ?_, hc⟩
   apply List.mem_flatMap.mpr
@@ -82,8 +83,9 @@ theorem digests_eq_of_observed (rho : Run F E) (hash' : (protoOf F E).Item → N
   intro x hx
   obtain ⟨d, hd, he⟩ := List.mem_filterMap.mp hx
   have obs : d ∈ rho.Observed := by
-    obtain ⟨v, hv, k, r, hk, hr, hc⟩ := ho
-    exact ⟨v, hv, k, r, hk, hr, hc.trans hd⟩
+    obtain ⟨v, hv, hov⟩ := ho
+    obtain ⟨k, r, hk, hr, hc⟩ := rho.mem_viewIdx_iff.mp hov
+    exact ⟨v, hv, rho.mem_viewIdx_iff.mpr ⟨k, r, hk, hr, hc.trans hd⟩⟩
   exact Prod.ext rfl (ha x ⟨d, obs, he⟩)
 
 end Run
@@ -123,8 +125,8 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
     · apply releaseAll_eq_of_digests
       intro o ho
       apply rho.digests_eq_of_observed hash' ha
-      refine ⟨v, hv.honest_only _ (List.mem_of_getElem? he), i, o,
-        (List.getElem?_eq_some_iff.mp he).1, Or.inl ⟨t, he, ?_⟩, .refl _⟩
+      refine ⟨v, hv.honest_only _ (List.mem_of_getElem? he), rho.mem_viewIdx_iff.mpr ⟨i, o,
+        (List.getElem?_eq_some_iff.mp he).1, Or.inl ⟨t, he, ?_⟩, .refl _⟩⟩
       simpa only [releasesAt, he, tick, ‹E.awake v t = true›, ↓reduceIte, r,
         show r.inbox = rho.inbox from rfl, show r.candidates = rho.candidates from rfl,
         show r.ownKey = rho.ownKey from rfl] using ho
@@ -143,8 +145,8 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
         | restart v t => rfl
         | deliver v o t =>
           have ho : o ∈ rho.Observed :=
-            ⟨v, hv.honest_only _ (List.mem_of_getElem? he), i, o,
-              (List.getElem?_eq_some_iff.mp he).1, Or.inr ⟨t, he⟩, .refl _⟩
+            ⟨v, hv.honest_only _ (List.mem_of_getElem? he), rho.mem_viewIdx_iff.mpr ⟨i, o,
+              (List.getElem?_eq_some_iff.mp he).1, Or.inr ⟨t, he⟩, .refl _⟩⟩
           simp only [step]
           simp only [show r.hash = hash' from rfl, rho.digests_eq_of_observed hash' ha ho]
   refine ⟨states, ?_⟩
@@ -191,9 +193,9 @@ theorem trace (hv : rho.ExecutionValid) :
   exact rho.rehash_trace hv r.hash h.hash
 
 theorem viewIdx_eq (hv : rho.ExecutionValid) : r.ViewIdx = rho.ViewIdx := by
-  obtain ⟨_, hr⟩ := h.trace hv
+  obtain ⟨hs, -⟩ := h.trace hv
   funext v i
-  simp only [Run.ViewIdx, h.events, hr]
+  simp only [Run.ViewIdx, hs]
 
 theorem observed_eq (hv : rho.ExecutionValid) : r.Observed = rho.Observed := by
   simp only [Run.Observed, h.honest, h.events, h.viewIdx_eq hv]

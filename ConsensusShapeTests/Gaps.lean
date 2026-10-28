@@ -19,14 +19,14 @@ exist in `Index.lean`.
 * M1 weak continuation: construction, healed regime healthy to the horizon (`example`); sheet `weakSafe`, `weakInclude`, `weakGrow`; uniformity: obligation (10).
 * M2 corruption growth: scope, static adversary (`EnvPoint.honest` fixed per run); sheet §3 (A6).
 * M3 FE/F4 pattern: `Pattern.range`; final progress `range (3R+κ)` (`pp223_numbers`, `finRec_span`); `range_head` (span loss); equivalence: gate F-2.
-* M4 psync mandated: construction, `DAClaims.healedSafe`/`healedLive`, `FinalClaims.live` are `Behaviour` fields (`example`); test `healed_witness_late`.
-* M5 final safety under asynchrony: construction, `FinalClaims.accountable` has premise `True`; `Good.final_agree` (`example`).
+* M4 psync mandated: construction, `Behaviour.healedSafe` and `Behaviour.healthyLive` (every provided output) are `Behaviour` fields (`example`); test `healed_witness_late`.
+* M5 final safety under asynchrony: construction, `Behaviour.finalAccountable` has premise `True`; `Good.final_agree` (`example`).
 * M6 syncUntil unchecked: removed, no premise language; `SyncUntil` is used only inside the fixed outage regime and the prefix forms.
 * M7 late GST: `Realizable.healthy` ∀ Δ, g (`regimes_realizable`); test `healed_witness_late` (Δ = 7, GST 1000).
 * M8 trivial outage: `OutageActive` in `Realizable.outage`; tests `outage_async_log`, `outage_witness_late` (≥ 1000·Δ), `outage_control`.
 * M9 dynamic participation: construction, sleepy is `ReadyAbove θ`, `θ ≤ ½`; test `sleepy_with_sleeper`; stress witnesses (`Realizable.sleepyStress`, `notReadyAtMost_one_not_realizable`).
 * M10 thresholds: `Params.Admissible`; tests `admissibility_rejections`, `standard_admissible`, `outage_times_teeth`, `healthy_needs_two_thirds`.
-* M11 wake at GST: `HealthyOn` counts a fixed awake set; progress from `readyFrom`; test `healthy_wake_at_gst`.
+* M11 wake at GST: `HealthyOn` counts a fixed awake set; progress from `ready`; test `healthy_wake_at_gst`.
 * M12 inclusion of every proposal: sheet `includeSleepy`, `includeHealed`.
 * M13 window-only P1: sheet `outageWindow`; test `outageWindow_prefix_only`.
 * M14 outage stable/finalized: closed; stable = confirmed (`stable_is_confirmed`, sheet `confirmed_persists`); `Good.persists_final_compatible` (sheet `outage_final_compatible`).
@@ -43,7 +43,7 @@ exist in `Index.lean`.
 * M25 ready vs awake: healthy = fixed awake set (no churn), readers and progress ready; test `healthy_rotating_sleeper`; obligation (6).
 * M26 single Δ: scope (`Δ_F = Δ`).
 * M27 Δ = 1 witnesses: `Realizable` quantifies every `Δ`; test `healed_witness_late` (Δ = 7).
-* M28 recovery starts: construction, `heal = max g 0 + heal·Δ`, `readyFrom c g = max g 0 + c + 1` (`example`).
+* M28 recovery starts: construction, `heal = max g 0 + heal·Δ`, `ready = max g 0 + c + 1` (`example`).
 * M29 faulty proposer witnesses: `ProgressFits` (recurrence only on `.sized 1`); tests `allProposers_unfit`, `allProposers_no_witness`, `recurrence_has_teeth`.
 * M30 safety vs liveness regime: construction, one `Healthy` regime; safety window `[ready, heal]` ⊆ liveness window (`Progress.mono`; `example`).
 * M31 validity: scope; `TxLive` serves every submission.
@@ -72,13 +72,12 @@ example (r : S.Run) (g : Time) (h : S.Healthy K g r) :
     (S.pt r).HealthyOn K.params.φ g (S.pt r).horizon := h.2
 
 /- M4: partially synchronous safety and liveness are mandated: they are
-fields of the fixed behaviour table. -/
+fields of the fixed behaviour table (liveness for every provided output). -/
 example (h : Good S X K) (cap : Capability) (g : S.schema.Id)
-    (hc : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g) (i : K.Idx)
-    (gst : Time) :
+    (hg : S.schema.output cap = some g) (i : K.Idx) (gst : Time) :
     S.Holds (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r)
       (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K cap i gst r) (S.lat K cap i r)) :=
-  (h.behaviour.da cap g hc hg).healedLive i gst
+  h.behaviour.healthyLive cap g hg i gst
 
 /- M5: final agreement below `α` faults, under any network (no regime). -/
 example (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g) (r : S.Run)
@@ -101,14 +100,14 @@ accountability for every honest reader, unconditionally. -/
 example (h : Good S X K) (cap : Capability) (g : S.schema.Id)
     (hc : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g) :
     S.Holds (S.Sleepy K) (fun r => (S.trace r).ReadySafe (S.cDur K r) g 0) :=
-  (h.behaviour.da cap g hc hg).sleepySafe
+  h.behaviour.sleepySafe cap g hc hg
 
 example (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g) :
     S.Holds (fun _ => True) (fun r => S.AccountablySafe r K.params.α g 0) :=
-  (h.behaviour.final g hg).accountable
+  h.behaviour.finalAccountable g hg
 
 /- M28: heal points are anchored at `max g 0` (catch-up inside `heal`);
-progress windows start at `readyFrom c g = max g 0 + c + 1`. -/
+progress windows start at `ready = max g 0 + c + 1`. -/
 example (r : S.Run) (cap : Capability) (i : K.Idx) (g : Time) :
     S.heal K cap i g r = max g 0 + (K.params.heal cap i : Time) * (S.pt r).env.Δ := rfl
 

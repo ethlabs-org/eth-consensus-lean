@@ -11,32 +11,18 @@ public import Mathlib.Tactic
 contract `K` (numbers only). Three parts:
 
 * `Behaviour`: a fixed table of properties, each under a fixed regime
-  (`Regimes.lean`) over the environment point and the communication log:
-  - always: non-framing, nesting `final ⪯ stable ⪯ available`, the final
-    output never rolls back;
-  - final: local accountability for fraction `α` in every environment, and
-    transaction liveness when healthy from a GST (with progress);
-  - available and stable: ready-reader safety and transaction liveness when
-    sleepy, and from the heal point when healthy from a GST ("stay in
-    recovery"; safety needs progress only up to the heal point);
-  - stable: outage resilience (what was stable at `T` stays in the available
-    ledger of eligible readers during and after the window).
-* `Adequate`: the acceptance interface that rules out a vacuous system: every
-  environment point (horizon `≥ 0`) with admissible external data has, for every
-  GST, a valid excuse-free run with that point whose log is eager from the GST
-  (synchronous, asynchronous before the GST, or silent), carrying the progress
-  that holds for the point and data; valid runs are closed under prefixes.
-* `Realizable` (for at least five validators): every regime of the table, at
-  every `Δ`, every GST and arbitrarily late outages, is met by a clean witness
-  (valid, no excuse, a faulty and an honest validator) with active claims;
-  stress witnesses (`sleepyStress`, `healthyStress`) exercise each provided
-  output's liveness, at some index, with many honest validators asleep.
+  (`Regimes.lean`); the table is on `Behaviour`.
+* `Adequate`: the acceptance interface that rules out a vacuous system
+  (coverage of every environment point and GST by a valid, excuse-free run;
+  prefix closure).
+* `Realizable` (for at least five validators): every regime, at every `Δ`,
+  every GST and arbitrarily late outages, is met by a clean witness with
+  active claims, plus stress witnesses with many honest validators asleep.
 
 What L0 cannot check, and L1 proves once for the model: the log is the
 engine's real communication (`Model.sysOf_log_faithful`), and the external data
 are fixed before execution (`Model.sysExternal`: the PKI and the selection).
-
-Claims hold on valid runs, unless the run's excuse holds (an observed hash
+Claims hold on valid runs unless the run's excuse holds (an observed hash
 collision in the model): `System.Holds`. There are no other escapes. -/
 
 namespace Consensus
@@ -90,36 +76,9 @@ structure Progress {V : Type} (S : System V) (Prog : Type) extends External S wh
   submit_irrel : ∀ {π : Prog} {c s e : Time} {p : EnvPoint V} {x : Ext p.env}
     (σ : V → Time → List Tx), holds π c s e p x → holds π c s e { p with submit := σ } x
 
-/-- What a protocol advertises: numbers (`Params`) over a nonempty index type,
-and a progress requirement per capability and index. -/
-structure Contract (Prog : Type) where
-  Idx : Type
-  idx_nonempty : Nonempty Idx
-  params : Params Idx
-  progress : Capability → Idx → Prog
-
 namespace System
 
 variable {V : Type} (S : System V) {Prog : Type}
-
-/-- The environment point of a run. -/
-abbrev pt (r : S.Run) : EnvPoint V := (S.trace r).point
-
-/-- The catch-up duration of run `r`. -/
-def cDur (K : Contract Prog) (r : S.Run) : Time := K.params.cDur (S.pt r).env.Δ
-
-/-- The heal point of `cap` at `i` after GST `g` in run `r`. -/
-def heal (K : Contract Prog) (cap : Capability) (i : K.Idx) (g : Time)
-    (r : S.Run) : Time :=
-  K.params.healPoint (S.pt r).env.Δ cap i g
-
-/-- The start of progress windows after GST `g` in run `r`. -/
-def ready (K : Contract Prog) (g : Time) (r : S.Run) : Time :=
-  readyFrom (S.cDur K r) g
-
-/-- The latency of `cap` at `i` in run `r`. -/
-def lat (K : Contract Prog) (cap : Capability) (i : K.Idx) (r : S.Run) : Time :=
-  K.params.latDur (S.pt r).env.Δ cap i
 
 /-- The progress requirement of `cap` at `i` holds on `[start, stop]` in run `r`. -/
 def prog (X : Progress S Prog) (K : Contract Prog) (cap : Capability) (i : K.Idx)
@@ -127,18 +86,6 @@ def prog (X : Progress S Prog) (K : Contract Prog) (cap : Capability) (i : K.Idx
   X.holds (K.progress cap i) (S.cDur K r) start stop (S.pt r) (X.ext r)
 
 variable [Fintype V] [DecidableEq V]
-
-/-- Run `r` is in the sleepy regime. -/
-def Sleepy (K : Contract Prog) (r : S.Run) : Prop :=
-  Regime.Sleepy K.params (S.pt r) (S.log r)
-
-/-- Run `r` is in the healthy regime from GST `g`. -/
-def Healthy (K : Contract Prog) (g : Time) (r : S.Run) : Prop :=
-  Regime.Healthy K.params (S.pt r) (S.log r) g
-
-/-- Run `r` is in the outage regime `(T, [b₀, b₁))`. -/
-def Outage (K : Contract Prog) (T b₀ b₁ : Time) (r : S.Run) : Prop :=
-  Regime.Outage K.params (S.pt r) (S.log r) T b₀ b₁
 
 /-- A clean witness: valid, no excuse, a faulty and an honest validator. -/
 def Witness (r : S.Run) : Prop :=
@@ -148,32 +95,17 @@ end System
 
 variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type}
 
-/-- The claims of the final output `g`: local accountability for fraction `α`
-in every environment (no premise), and transaction liveness from the heal
-point when healthy from a GST with progress from `readyFrom` to the horizon. -/
-structure FinalClaims (S : System V) (X : Progress S Prog) (K : Contract Prog)
-    (g : S.schema.Id) : Prop where
-  accountable : S.Holds (fun _ => True) (fun r => S.AccountablySafe r K.params.α g 0)
-  live : ∀ i gst, S.Holds
-    (fun r => S.Healthy K gst r ∧ S.prog X K .final i (S.ready K gst r) (S.pt r).horizon r)
-    (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K .final i gst r) (S.lat K .final i r))
+/-- **Behaviour**: the fixed property table. Each claim names the output it
+reads; regimes and run quantities are the `System` accessors of `Regimes.lean`.
+Besides laws, admissible numbers, a served ledger and `nonFraming`:
 
-/-- The claims of an available or stable output `g` (capability `cap`):
-ready-reader safety and liveness when sleepy (from `0`), and when healthy from a
-GST (from the heal point; safety needs progress only on `[readyFrom, heal]`). -/
-structure DAClaims (S : System V) (X : Progress S Prog) (K : Contract Prog)
-    (cap : Capability) (g : S.schema.Id) : Prop where
-  sleepySafe : S.Holds (S.Sleepy K) (fun r => (S.trace r).ReadySafe (S.cDur K r) g 0)
-  sleepyLive : ∀ i, S.Holds (fun r => S.Sleepy K r ∧ S.prog X K cap i 0 (S.pt r).horizon r)
-    (fun r => (S.trace r).TxLive (S.cDur K r) g 0 (S.lat K cap i r))
-  healedSafe : ∀ i gst, S.Holds
-    (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
-    (fun r => (S.trace r).ReadySafe (S.cDur K r) g (S.heal K cap i gst r))
-  healedLive : ∀ i gst, S.Holds
-    (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r)
-    (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K cap i gst r) (S.lat K cap i r))
-
-/-- **Behaviour**: the fixed property table. -/
+| outputs | always | any network | healthy from GST | sleepy | outage |
+|---|---|---|---|---|---|
+| all | `nested` | | `healthyLive` | | |
+| final | `finalMonotone` | `finalAccountable` | | | |
+| available, stable | | | `healedSafe` | `sleepySafe`, `sleepyLive` | |
+| stable | | | | | `persists` |
+-/
 structure Behaviour (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     Prop where
   laws : S.Laws
@@ -187,9 +119,30 @@ structure Behaviour (S : System V) (X : Progress S Prog) (K : Contract Prog) :
   /-- The final output never rolls back, unconditionally. -/
   finalMonotone : ∀ g, S.schema.output .final = some g →
     S.HoldsAlways (fun r => (S.trace r).Monotone g 0)
-  final : ∀ g, S.schema.output .final = some g → FinalClaims S X K g
-  da : ∀ cap g, (cap = .available ∨ cap = .stable) → S.schema.output cap = some g →
-    DAClaims S X K cap g
+  /-- Local accountability of the final output for fraction `α`, in every
+  environment. -/
+  finalAccountable : ∀ g, S.schema.output .final = some g →
+    S.Holds (fun _ => True) (fun r => S.AccountablySafe r K.params.α g 0)
+  /-- Every provided output, at every index: healthy from a GST with progress
+  from `ready` to the horizon, transaction liveness from the heal point. -/
+  healthyLive : ∀ cap g, S.schema.output cap = some g → ∀ i gst, S.Holds
+    (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r)
+    (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K cap i gst r) (S.lat K cap i r))
+  /-- Available and stable: ready-reader safety when sleepy. -/
+  sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) → S.schema.output cap = some g →
+    S.Holds (S.Sleepy K) (fun r => (S.trace r).ReadySafe (S.cDur K r) g 0)
+  /-- Available and stable: transaction liveness when sleepy, with progress on
+  the whole run. -/
+  sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) → S.schema.output cap = some g →
+    ∀ i, S.Holds (fun r => S.Sleepy K r ∧ S.prog X K cap i 0 (S.pt r).horizon r)
+      (fun r => (S.trace r).TxLive (S.cDur K r) g 0 (S.lat K cap i r))
+  /-- Available and stable: ready-reader safety from the heal point when
+  healthy from a GST ("stay in recovery"; progress needed only on
+  `[ready, heal]`). -/
+  healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) → S.schema.output cap = some g →
+    ∀ i gst, S.Holds
+      (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
+      (fun r => (S.trace r).ReadySafe (S.cDur K r) g (S.heal K cap i gst r))
   /-- Outage resilience of the stable output, into the resilience target:
   what a node ready at `T` reads as stable is kept by eligible readers. -/
   persists : ∀ g, S.schema.output .stable = some g → ∀ T b₀ b₁,
@@ -202,12 +155,11 @@ structure System.Adequate (S : System V) (X : Progress S Prog) : Prop where
   /-- Every environment has admissible external data (otherwise coverage would
   be vacuous). -/
   admits : ∀ E : Env V, ∃ e : X.Ext E, X.Admits E e
-  /-- Coverage: every point with a nonnegative horizon, admissible external data and GST `g`
-  has a valid excuse-free run with that point, whose log is eager from `g`
-  (`g ≤ 0`: synchronous; `g > horizon`: silent), and on which every progress
-  requirement that holds at the point and data holds. The run's own external
-  data `X.ext r` need not be `e` (L0 transports the progress, not the data);
-  `Model.sysOf_adequate` keeps the given PKI and selection. -/
+  /-- Coverage: every point with a nonnegative horizon, admissible external
+  data and GST `g` has a valid excuse-free run with that point, whose log is
+  eager from `g` (`g ≤ 0`: synchronous; `g > horizon`: silent), carrying every
+  progress requirement that holds at the point and data (the progress is
+  transported, not the data; `Model.sysOf_adequate` keeps both). -/
   covers : ∀ p : EnvPoint V, 0 ≤ p.horizon → ∀ e : X.Ext p.env, X.Admits p.env e → ∀ g : Time,
     ∃ r, S.Valid r ∧ ¬ S.Excuse r ∧ S.pt r = p ∧ (S.log r).EagerFrom (S.pt r) g ∧
       ∀ π c s t, X.holds π c s t p e → X.holds π c s t (S.pt r) (X.ext r)
@@ -257,7 +209,7 @@ def SleepyLive (X : Progress S Prog) (K : Contract Prog) (cap : Capability) (i :
     (S.pt r).TxLiveActive (S.cDur K r) 0 (S.lat K cap i r)
 
 /-- Healed liveness of `cap` at `i` after GST `g` is exercised on run `r`: a
-log eager from `g`, the healthy regime from `g`, progress from `readyFrom` to
+log eager from `g`, the healthy regime from `g`, progress from `ready` to
 the horizon, and an active liveness claim from the heal point. -/
 def HealthyLive (X : Progress S Prog) (K : Contract Prog) (cap : Capability) (i : K.Idx)
     (g : Time) (r : S.Run) : Prop :=

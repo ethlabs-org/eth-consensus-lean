@@ -228,7 +228,8 @@ theorem fabricated : ¬ ShapeClaims (family false false true) testK := by
     Model.mkRun Finset.univ 0 (pkiFin 1) testSel (fun _ _ => []) relay goodHash es
   have hv := (hc (Fin 1)).outputValid ⟨env, r⟩ valid .available () rfl 0
     (by simp [r, Model.mkRun]) 0 (Nat.zero_le _)
-  obtain ⟨_, _, _, _, ⟨j, _, hj, _⟩⟩ := hv.2.2 fab (List.mem_singleton_self _)
+  obtain ⟨_, _, _, _, hmem⟩ := hv.2.2 fab (List.mem_singleton_self _)
+  obtain ⟨j, _, hj, _⟩ := r.mem_viewIdx_iff.mp hmem
   exact Nat.not_lt_zero _ hj
 
 /-! ## Silenced by its own slashing rule -/

@@ -1,4 +1,5 @@
 module
+public import ConsensusProblem.Derived
 public import ConsensusProblem.Regimes
 public import Mathlib.Tactic
 

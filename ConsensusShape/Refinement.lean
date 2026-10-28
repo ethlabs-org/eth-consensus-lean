@@ -152,30 +152,24 @@ theorem refinement (F : ShapeFamily O Info) (K : Contract ProgressReq) (V : Type
     [Fintype V] [DecidableEq V] (hc : ShapeClaims F K) (ha : K.params.Admissible)
     (hs : O.Serves) : Behaviour (sysOf O (compiled F) V) (shapeProgress F V) K := by
   have hc := hc V
-  refine ⟨Model.sysOf_laws _ _ _, ha, hs, Model.sysOf_nonFraming _ _ _, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨Model.sysOf_laws _ _ _, ha, hs, Model.sysOf_nonFraming _ _ _, ?_, ?_, ?_, ?_, ?_, ?_,
+    ?_, ?_⟩
   · intro c₁ c₂ g₁ g₂ hlt h₁ h₂ r hv
     exact (hc.nested c₁ c₂ g₁ g₂ hlt h₁ h₂ r hv).map ledgerOf_prefix
   · intro g hg r hv
     exact (hc.finalMonotone g hg r hv).map ledgerOf_prefix
-  · intro g hg
-    refine ⟨?_, ?_⟩
-    · rintro ⟨E, rho⟩ hv -
-      exact (hc.finalAccountable g hg ⟨E, rho⟩ hv trivial).imp (accountablySafe_ledger rho) id
-    · rintro i gst ⟨E, rho⟩ hv hA
-      exact (hc.finalLive g hg i gst ⟨E, rho⟩ hv hA).imp
-        (proposalLive_txLive hv (psync_of_sys hA.1.1) (gst_le_heal K rho .final i gst)) id
-  · intro cap g hcap hg
-    refine ⟨?_, ?_, ?_, ?_⟩
-    · intro r hv hS
-      exact (hc.sleepySafe cap g hcap hg r hv hS).imp (fun h => h.map ledgerOf_prefix) id
-    · rintro i ⟨E, rho⟩ hv hA
-      exact (hc.sleepyLive cap g hcap hg i ⟨E, rho⟩ hv hA).imp
-        (proposalLive_txLive hv (psync_of_sys hA.1.1) le_rfl) id
-    · intro i gst r hv hA
-      exact (hc.healedSafe cap g hcap hg i gst r hv hA).imp (fun h => h.map ledgerOf_prefix) id
-    · rintro i gst ⟨E, rho⟩ hv hA
-      exact (hc.healedLive cap g hcap hg i gst ⟨E, rho⟩ hv hA).imp
-        (proposalLive_txLive hv (psync_of_sys hA.1.1) (gst_le_heal K rho cap i gst)) id
+  · rintro g hg ⟨E, rho⟩ hv -
+    exact (hc.finalAccountable g hg ⟨E, rho⟩ hv trivial).imp (accountablySafe_ledger rho) id
+  · rintro cap g hg i gst ⟨E, rho⟩ hv hA
+    exact (hc.healthyLive cap g hg i gst ⟨E, rho⟩ hv hA).imp
+      (proposalLive_txLive hv (psync_of_sys hA.1.1) (gst_le_heal K rho cap i gst)) id
+  · intro cap g hcap hg r hv hS
+    exact (hc.sleepySafe cap g hcap hg r hv hS).imp (fun h => h.map ledgerOf_prefix) id
+  · rintro cap g hcap hg i ⟨E, rho⟩ hv hA
+    exact (hc.sleepyLive cap g hcap hg i ⟨E, rho⟩ hv hA).imp
+      (proposalLive_txLive hv (psync_of_sys hA.1.1) le_rfl) id
+  · intro cap g hcap hg i gst r hv hA
+    exact (hc.healedSafe cap g hcap hg i gst r hv hA).imp (fun h => h.map ledgerOf_prefix) id
   · intro g hg T b₀ b₁ r hv hO
     exact (hc.persists g hg T b₀ b₁ r hv hO).imp (fun h => h.map ledgerOf_prefix) id
 

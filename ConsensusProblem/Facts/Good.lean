@@ -1,4 +1,5 @@
 module
+public import ConsensusProblem.Derived
 public import ConsensusProblem.Good
 public import ConsensusProblem.Facts.Atoms
 public import ConsensusProblem.Facts.Network
@@ -71,7 +72,7 @@ variable {S : System V} {X : Progress S Prog} {K : Contract Prog}
 theorem final_agree (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g)
     (r : S.Run) (hv : S.Valid r) (hb : (S.pt r).FaultsBelow K.params.α) :
     (S.trace r).Agree g 0 ∨ S.Excuse r :=
-  ((h.behaviour.final g hg).accountable r hv trivial).imp
+  (h.behaviour.finalAccountable g hg r hv trivial).imp
     (fun ha => S.agree_of_accountable h.behaviour.laws r ha (h.behaviour.nonFraming r hv) hb) id
 
 /-- Final safety in the healthy regime: a set of more than `φ·n` honest
@@ -125,18 +126,18 @@ theorem sleepySafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
   obtain ⟨r', hv', hP, -, hL, hE, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
   have hc := cDur_prefix (K := K) hP
   have hreg : S.Sleepy K r' := by
-    unfold System.Sleepy Regime.Sleepy
-    rw [show S.pt r' = { S.pt r with horizon := b } from hP.point]
+    unfold System.Sleepy
+    rw [hc, show S.pt r' = { S.pt r with horizon := b } from hP.point]
     refine ⟨?_, hθ⟩
     have hd : (S.log r).Delivers (S.pt r) (fun a => max a 0 + (S.pt r).env.Δ) b :=
       hs.reindex (f := fun a => max a 0) (fun a => le_max_left a 0) (fun _ => rfl) le_rfl
     exact hd.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.Δ_pos.le)
-  rcases (h.behaviour.da cap g hcap hg).sleepySafe r' hv' hreg with hr | he
+  rcases h.behaviour.sleepySafe cap g hcap hg r' hv' hreg with hr | he
   · rw [hc] at hr; exact Or.inl (hP.readySafeUpTo hr)
   · exact Or.inr (hE he)
 
 /-- Healed safety of the past: a run partially synchronous with GST `gst` and
-healthy up to `b`, with progress on `[readyFrom, heal]` and `heal ≤ b`, is
+healthy up to `b`, with progress on `[ready, heal]` and `heal ≤ b`, is
 safe for ready readers at cuts in `[heal, b]`, whatever happens after `b`. -/
 theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
     (hcap : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g)
@@ -154,7 +155,7 @@ theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
   have hready : S.ready K gst r' = S.ready K gst r := by
     unfold System.ready; rw [hc]
   have hreg : S.Healthy K gst r' := by
-    unfold System.Healthy Regime.Healthy
+    unfold System.Healthy
     rw [show S.pt r' = { S.pt r with horizon := b } from hP.point]
     refine ⟨?_, hH⟩
     exact hs.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.Δ_pos.le)
@@ -163,7 +164,7 @@ theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
     unfold System.prog at hp ⊢
     rw [hc]
     exact hX _ _ _ _ hhb hp
-  rcases (h.behaviour.da cap g hcap hg).healedSafe i gst r' hv' ⟨hreg, hpr⟩ with hr | he
+  rcases h.behaviour.healedSafe cap g hcap hg i gst r' hv' ⟨hreg, hpr⟩ with hr | he
   · rw [hc, hheal] at hr; exact Or.inl (hP.readySafeUpTo hr)
   · exact Or.inr (hE he)
 
@@ -177,7 +178,7 @@ theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
     (hT : OutageTimes K.params (S.pt r).env.Δ T b₀ b₁)
     (hs : (S.log r).SyncUntil (S.pt r) b₀)
     (hps : (S.log r).Delivers (S.pt r) (fun a => max a b₁ + (S.pt r).env.Δ) b)
-    (hθ : (S.pt r).EtaSleepyOn K.params.θ (K.params.ηDur (S.pt r).env.Δ) (S.cDur K r) 0 b)
+    (hθ : (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.Δ) (S.cDur K r) 0 b)
     (hcov : (S.pt r).ReadyOfAll K.params.cover (S.cDur K r) b₀) :
     (S.trace r).ProtectedUpTo (S.cDur K r) g (resilienceTarget S.schema g) T b₀ b₁ b ∨
       S.Excuse r := by
@@ -185,8 +186,8 @@ theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
   have hc := cDur_prefix (K := K) hP
   have hΔ := (S.pt r).env.Δ_pos
   have hreg : S.Outage K T b₀ b₁ r' := by
-    unfold System.Outage Regime.Outage
-    rw [show S.pt r' = { S.pt r with horizon := b } from hP.point]
+    unfold System.Outage
+    rw [hc, show S.pt r' = { S.pt r with horizon := b } from hP.point]
     refine ⟨hT, ⟨?_, ?_⟩, hθ, hcov⟩
     · exact hs.prefix hL hbh (fun a => le_add_of_nonneg_right hΔ.le)
     · exact hps.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) hΔ.le)
@@ -203,10 +204,9 @@ theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
 some clean witness in the healthy regime from `gst`, with the progress of `cap`
 at the index, has a transaction submitted to one honest node in the `g`-read of
 another honest node that was never submitted it. From the healthy witness of
-`Realizable` and the output's live claim (`FinalClaims.live` or
-`DAClaims.healedLive`); the witness has no excuse. -/
+`Realizable` and `Behaviour.healthyLive`; the witness has no excuse. -/
 theorem served (h : Good S X K) (hn : 5 ≤ Fintype.card V) {cap : Capability}
-    {g : S.schema.Id} (hcap : cap = .final ∨ cap = .available)
+    {g : S.schema.Id} (_hcap : cap = .final ∨ cap = .available)
     (hg : S.schema.output cap = some g) (i : K.Idx) (Δ gst : Time) (hΔ : 0 < Δ)
     (hgst : 0 ≤ gst) :
     ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ S.Healthy K gst r ∧
@@ -216,12 +216,7 @@ theorem served (h : Good S X K) (hn : 5 ≤ Fintype.card V) {cap : Capability}
         t' ≤ (S.pt r).horizon ∧ x ∈ (S.trace r).readAt g w t' := by
   obtain ⟨r, hw, hd, ⟨-, hH, hp, ha⟩, -⟩ := (h.realizable hn).healthy cap i Δ gst hΔ hgst
   refine ⟨r, hw, hd, hH, hp, ?_⟩
-  have hlive : (S.trace r).TxLive (S.cDur K r) g (S.heal K cap i gst r) (S.lat K cap i r) ∨
-      S.Excuse r := by
-    rcases hcap with rfl | rfl
-    · exact (h.behaviour.final g hg).live i gst r hw.1 ⟨hH, hp⟩
-    · exact (h.behaviour.da .available g (Or.inl rfl) hg).healedLive i gst r hw.1 ⟨hH, hp⟩
-  rcases hlive with hl | he
+  rcases h.behaviour.healthyLive cap g hg i gst r hw.1 ⟨hH, hp⟩ with hl | he
   · exact hl.served ha
   · exact absurd he hw.2.1
 

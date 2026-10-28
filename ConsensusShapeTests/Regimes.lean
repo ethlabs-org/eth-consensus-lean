@@ -26,7 +26,7 @@ it rejects.
 * `healthy_wake_at_gst` (M11): three honest validators asleep before `5` and
   awake from `5`. Healthy from GST `5` at ⅔ (the healthy regime counts awake,
   not ready: a wake at GST is allowed), although nobody is ready at `5` with
-  catch-up `2`; everyone is ready at `readyFrom 2 5 = 8`, where progress
+  catch-up `2`; everyone is ready at `max 5 0 + 2 + 1 = 8`, where progress
   windows start.
 * `healthy_needs_two_thirds`: three honest validators, one always asleep:
   exactly ⅔ awake is not healthy at `φ = ⅔` (the regime needs *more* than
@@ -170,52 +170,60 @@ theorem HealthyOn.mono {φ φ' : ℚ} {g b : Time} (h : p.HealthyOn φ' g b) (hl
 
 end EnvPoint
 
-namespace Regime
+namespace System
 
-variable {V M Idx : Type} [Fintype V] [DecidableEq V]
-  {P : Params Idx} {p : EnvPoint V} {L : CommLog V M}
+variable {V : Type} [Fintype V] [DecidableEq V] {S : System V} {Prog Prog' : Type}
+  {K : Contract Prog} {K' : Contract Prog'} {r : S.Run}
 
 /-- With look-back `η = 0`, the outage regime's participation is plain
 sleepy throughout. -/
-theorem outage_eta_zero (hη : P.η = 0) {T b₀ b₁ : Time} :
-    Outage P p L T b₀ b₁ ↔ OutageTimes P p.env.Δ T b₀ b₁ ∧ L.OutageNet p b₀ b₁ ∧
-      p.SleepyOn P.θ (P.cDur p.env.Δ) 0 p.horizon ∧ p.ReadyOfAll P.cover (P.cDur p.env.Δ) b₀ := by
+theorem outage_eta_zero (hη : K.params.η = 0) {T b₀ b₁ : Time} :
+    S.Outage K T b₀ b₁ r ↔ OutageTimes K.params (S.pt r).env.Δ T b₀ b₁ ∧
+      (S.log r).OutageNet (S.pt r) b₀ b₁ ∧
+      (S.pt r).SleepyOn K.params.θ (S.cDur K r) 0 (S.pt r).horizon ∧
+      (S.pt r).ReadyOfAll K.params.cover (S.cDur K r) b₀ := by
   unfold Outage
-  rw [show P.ηDur p.env.Δ = 0 by simp [Params.ηDur, hη], EnvPoint.etaSleepyOn_zero]
+  rw [show ((K.params.η : Time) * (S.pt r).env.Δ) = 0 by simp [hη], EnvPoint.etaSleepyOn_zero]
+
+omit [Fintype V] [DecidableEq V] in
+theorem cDur_of_catchUp (hc : K'.params.catchUp = K.params.catchUp) :
+    S.cDur K' r = S.cDur K r := by
+  unfold cDur; rw [hc]
 
 /-- Weaker thresholds (same catch-up) keep the sleepy regime. -/
-theorem Sleepy.of_le {P' : Params Idx} (hc : P'.catchUp = P.catchUp) (hθ : P'.θ ≤ P.θ)
-    (h : Sleepy P p L) : Sleepy P' p L := by
+theorem Sleepy.of_le (hc : K'.params.catchUp = K.params.catchUp) (hθ : K'.params.θ ≤ K.params.θ)
+    (h : S.Sleepy K r) : S.Sleepy K' r := by
   refine ⟨h.1, ?_⟩
-  unfold Params.cDur; rw [hc]
+  rw [cDur_of_catchUp hc]
   exact EnvPoint.SleepyOn.mono h.2 hθ
 
 omit [DecidableEq V] in
 /-- Weaker thresholds keep the healthy regime. -/
-theorem Healthy.of_le {P' : Params Idx} {g : Time} (hφ : P'.φ ≤ P.φ) (h : Healthy P p L g) :
-    Healthy P' p L g :=
+theorem Healthy.of_le {g : Time} (hφ : K'.params.φ ≤ K.params.φ) (h : S.Healthy K g r) :
+    S.Healthy K' g r :=
   ⟨h.1, EnvPoint.HealthyOn.mono h.2 hφ⟩
 
 /-- Weaker thresholds (`θ' ≥ 0`), a shorter look-back, a shorter lag and a
 larger budget (same catch-up) keep the outage regime. -/
-theorem Outage.of_le {P' : Params Idx} {T b₀ b₁ : Time} (hc : P'.catchUp = P.catchUp)
-    (h0 : 0 ≤ P'.θ) (hθ : P'.θ ≤ P.θ) (hη : P'.η ≤ P.η) (hcov : P'.cover ≤ P.cover)
-    (hl : P'.lag ≤ P.lag) (hb : P.budget ≤ P'.budget) (h : Outage P p L T b₀ b₁) :
-    Outage P' p L T b₀ b₁ := by
+theorem Outage.of_le {T b₀ b₁ : Time} (hc : K'.params.catchUp = K.params.catchUp)
+    (h0 : 0 ≤ K'.params.θ) (hθ : K'.params.θ ≤ K.params.θ) (hη : K'.params.η ≤ K.params.η)
+    (hcov : K'.params.cover ≤ K.params.cover) (hl : K'.params.lag ≤ K.params.lag)
+    (hb : K.params.budget ≤ K'.params.budget) (h : S.Outage K T b₀ b₁ r) :
+    S.Outage K' T b₀ b₁ r := by
   obtain ⟨⟨hT, hlag, h01, hbud⟩, hn, hs, hr⟩ := h
-  have hΔ : (0 : Time) ≤ p.env.Δ := p.env.Δ_pos.le
-  have hl' : ((P'.lag : Nat) : Time) ≤ (P.lag : Time) := by exact_mod_cast hl
-  have hb' : ((P.budget : Nat) : Time) ≤ (P'.budget : Time) := by exact_mod_cast hb
+  have hΔ : (0 : Time) ≤ (S.pt r).env.Δ := (S.pt r).env.Δ_pos.le
+  have hl' : ((K'.params.lag : Nat) : Time) ≤ (K.params.lag : Time) := by exact_mod_cast hl
+  have hb' : ((K.params.budget : Nat) : Time) ≤ (K'.params.budget : Time) := by exact_mod_cast hb
   refine ⟨⟨hT, ?_, h01, ?_⟩, hn, ?_, ?_⟩
   · nlinarith
   · nlinarith
-  · unfold Params.cDur; rw [hc]
-    have hη' : ((P'.η : Nat) : Time) ≤ (P.η : Time) := by exact_mod_cast hη
-    exact EnvPoint.EtaSleepyOn.mono hs h0 hθ (by unfold Params.ηDur; nlinarith)
-  · unfold Params.cDur; rw [hc]
-    exact hr.mono p hcov
+  · rw [cDur_of_catchUp hc]
+    have hη' : ((K'.params.η : Nat) : Time) ≤ (K.params.η : Time) := by exact_mod_cast hη
+    exact EnvPoint.EtaSleepyOn.mono hs h0 hθ (by nlinarith)
+  · rw [cDur_of_catchUp hc]
+    exact hr.mono _ hcov
 
-end Regime
+end System
 
 end Consensus
 
@@ -352,7 +360,8 @@ theorem sleepy_with_sleeper :
     (4 : Fin 5) ∈ ptS.honest ∧ ptS.env.awake 4 2 = false ∧
     (∀ c, ptS.SleepyOn (1 / 2) c 0 ptS.horizon) ∧
     (∀ {Idx : Type} (P : Params Idx), P.θ ≤ 1 / 2 →
-      Regime.Sleepy P ptS (silentLog (Fin 5) Unit)) ∧
+      (silentLog (Fin 5) Unit).PSync ptS 0 ∧
+        ptS.SleepyOn P.θ ((P.catchUp : Time) * ptS.env.Δ) 0 ptS.horizon) ∧
     ¬ ptS.HealthyOn (2 / 3) 0 ptS.horizon := by
   refine ⟨by decide, by decide, fun c t _ _ => ptS_readyAbove c t, fun P hθ => ?_, ?_⟩
   · exact ⟨silentLog_delivers _ (fun _ _ => rfl) _ _,
@@ -381,12 +390,12 @@ def ptG : EnvPoint (Fin 3) :=
 
 /-- A wake at GST: healthy from `5` at ⅔ (and the healthy regime holds with the
 silent log for every `φ ≤ ⅔`), nobody ready at `5` with catch-up `2`,
-everyone ready at `readyFrom 2 5 = 8`. -/
+everyone ready at `max 5 0 + 2 + 1 = 8`. -/
 theorem healthy_wake_at_gst :
     ptG.HealthyOn (2 / 3) 5 ptG.horizon ∧
     (∀ {Idx : Type} (P : Params Idx), P.φ ≤ 2 / 3 →
-      Regime.Healthy P ptG (silentLog (Fin 3) Unit) 5) ∧
-    ptG.readyAt 2 5 = ∅ ∧ readyFrom 2 5 = 8 ∧ ∀ v, ptG.Ready 2 v (readyFrom 2 5) := by
+      (silentLog (Fin 3) Unit).PSync ptG 5 ∧ ptG.HealthyOn P.φ 5 ptG.horizon) ∧
+    ptG.readyAt 2 5 = ∅ ∧ (max 5 0 + 2 + 1 : Time) = 8 ∧ ∀ v, ptG.Ready 2 v (max 5 0 + 2 + 1) := by
   have hH : ptG.HealthyOn (2 / 3) 5 ptG.horizon := by
     refine ⟨Finset.univ, subset_rfl, by norm_num, fun v _ u hu _ => ?_⟩
     simp only [ptG, decide_eq_true_eq]
@@ -399,9 +408,8 @@ theorem healthy_wake_at_gst :
     rintro v - ⟨-, hA⟩
     have := hA 2 (by decide) (by decide)
     simp [ptG] at this
-  · change max 0 (readyFrom 2 5 - 2 - 1) ≤ u at hu
+  · change max 0 (max 5 0 + 2 + 1 - 2 - 1) ≤ u at hu
     simp only [ptG, decide_eq_true_eq]
-    simp only [readyFrom] at hu
     have := le_max_right (0 : Time) (max 5 0 + 2 + 1 - 2 - 1)
     simp only [max_eq_left (show (0 : Time) ≤ 5 by decide)] at hu this
     dsimp only [Time] at *; omega

@@ -1,5 +1,5 @@
 module
-public import ConsensusModel.System
+public import ConsensusModelProofs.View
 
 @[expose] public section
 namespace Consensus.Model
@@ -53,7 +53,7 @@ theorem sysOf_laws (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [Dec
       exact event_time_le rho hv i hi
   · rintro ⟨E, rho⟩ A B v hab ⟨o, ho, o', ho', h₁, h₂, hc⟩
     exact ⟨o, hab ho, o', hab ho', h₁, h₂, hc⟩
-  · rintro ⟨E, rho⟩ v i j hij o ⟨o', ⟨k, x, hk, hx, hc⟩, rfl⟩
-    exact ⟨o', ⟨k, x, lt_of_lt_of_le hk hij, hx, hc⟩, rfl⟩
+  · rintro ⟨E, rho⟩ v i j hij o ⟨o', ho', rfl⟩
+    exact ⟨o', rho.viewIdx_mono hij v ho', rfl⟩
 end Consensus.Model
 end

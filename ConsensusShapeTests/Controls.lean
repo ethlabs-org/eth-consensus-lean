@@ -23,7 +23,7 @@ five validators (`key 0` faulty), `Δ = 1`, horizon `20`:
     transaction reaches `key 2` by network relay, never by submission;
   - healthy at GST `5`: everyone awake (the fixed healthy set is all the
     honest validators), a log with **no receipt before `5`**, progress from
-    `readyFrom` with a window inside the horizon, liveness and safety active
+    `ready` with a window inside the horizon, liveness and safety active
     after the heal point. The do-nothing family sends no protocol messages,
     so this control does not distinguish delayed from eager delivery of
     protocol messages; it shows the regime is met with nothing received
@@ -144,7 +144,7 @@ theorem positive_controls (cap : Capability) :
       SafeActive (S.cDur ctrlK r) (S.heal ctrlK cap k1 5 r) (S.pt r)) := by
   have hL := progLen_le cap
   have hL0 := progLen_nonneg' cap
-  have hlat : ctrlK.params.latDur 1 cap k1 = 1 := by cases cap <;> rfl
+  have hlat : (ctrlK.params.latency cap k1 : Time) * 1 = 1 := by cases cap <;> rfl
   constructor
   · obtain ⟨rho, hpt, -, hw, hs, hp, hpa, ht⟩ :=
       sleepy_witness (F := ctrlFamily) key5 card5 one_pos 20 ctrlK_admissible ctrlK_progressFits
@@ -154,8 +154,9 @@ theorem positive_controls (cap : Capability) :
       (Model.sysOf_delivers_iff (O := goldilocksSchema) rho _ _).mp hs.1
     exact active_relay rho hps le_rfl (mul_nonneg (Nat.cast_nonneg _) (Env.Δ_pos _).le)
       (fun _ _ => rfl) ht
-  · have hheal : ctrlK.params.healPoint 1 cap k1 5 = 6 := by cases cap <;> rfl
-    have hrdy : readyFrom (ctrlK.params.cDur 1) 5 = 7 := by decide
+  · have hheal : max (5 : Time) 0 + (ctrlK.params.heal cap k1 : Time) * 1 = 6 := by
+      cases cap <;> rfl
+    have hrdy : max (5 : Time) 0 + (ctrlK.params.catchUp : Time) * 1 + 1 = 7 := by decide
     obtain ⟨rho, hpt, -, hw, he, hH, hp, hpa, ht, hsa⟩ :=
       healthy_witness (F := ctrlFamily) key5 card5 one_pos 20 ctrlK_admissible
         ctrlK_progressFits cap k1 5 (by rw [hheal, hlat]; norm_num) (by rw [hheal]; norm_num)

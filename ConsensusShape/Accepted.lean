@@ -17,9 +17,8 @@ one proposer per slot), and tolerate arbitrary numbers of validators not ready.
 finite validator type: `Accepted.behaviour` (the refinement of the shape
 claims), the model's adequacy (`sysOf_adequate`, an L1 theorem, independent
 of the claims) and the generic `regimes_realizable` (from admissibility,
-progress fit and tolerance).
-`Accepted.activeService`: a final or available output actively serves
-transactions (`ActiveService`). -/
+progress fit and tolerance). Its corollary `Accepted.activeService` (a final
+or available output actively serves transactions) is in `Service.lean`. -/
 
 namespace Consensus.Shape
 
@@ -58,39 +57,6 @@ theorem Accepted.good {F : ShapeFamily O Info} {K : Contract ProgressReq}
   ⟨h.behaviour V, Model.sysOf_adequate _ rfl,
     fun hn =>
       (regimes_realizable F K h.admissible h.progressFits h.progressTolerant V hn).toRealizable⟩
-
-/-- Output `g`, serving capability `cap`, actively serves transactions: for
-every population of at least five, every index, `Δ` and GST `gst ≥ 0`, some
-clean witness run (valid, no excuse, a faulty validator) in the healthy regime
-from `gst`, with the progress of `cap` at the index, has a transaction
-submitted to one honest node in the `g`-read of another honest node that was
-never submitted it (it arrived by relay and was ordered by the protocol). -/
-def ActiveService (F : ShapeFamily O Info) (K : Contract ProgressReq) (cap : Capability)
-    (g : O.Id) : Prop :=
-  ∀ (V : Type) [Fintype V] [DecidableEq V], 5 ≤ Fintype.card V →
-    ∀ (i : K.Idx) (Δ gst : Time), 0 < Δ → 0 ≤ gst →
-    ∃ r, (Sys F V).Witness r ∧ ((Sys F V).pt r).env.Δ = Δ ∧ (Sys F V).Healthy K gst r ∧
-      (Sys F V).prog (shapeProgress F V) K cap i ((Sys F V).ready K gst r)
-        ((Sys F V).pt r).horizon r ∧
-      ∃ x u w t t', u ∈ ((Sys F V).pt r).honest ∧ w ∈ ((Sys F V).pt r).honest ∧ w ≠ u ∧
-        x ∈ ((Sys F V).pt r).submit u t ∧ (∀ τ, x ∉ ((Sys F V).pt r).submit w τ) ∧
-        t' ≤ ((Sys F V).pt r).horizon ∧ x ∈ ((Sys F V).trace r).readAt g w t'
-
-/-- An accepted instance actively serves transactions in a final or an
-available output: the output is chosen once (final if provided, else
-available), then L0 `Good.served` applies at every population. -/
-theorem Accepted.activeService {F : ShapeFamily O Info} {K : Contract ProgressReq}
-    (h : Accepted F K) : ∃ cap g, (cap = .final ∨ cap = .available) ∧ O.output cap = some g ∧
-      ActiveService F K cap g := by
-  obtain ⟨cap, g, hcap, hg⟩ : ∃ cap g, (cap = .final ∨ cap = .available) ∧
-      O.output cap = some g := by
-    rcases h.serves with hb | ha
-    · exact ⟨.final, (Option.isSome_iff_exists.mp hb).choose, Or.inl rfl,
-        (Option.isSome_iff_exists.mp hb).choose_spec⟩
-    · exact ⟨.available, (Option.isSome_iff_exists.mp ha).choose, Or.inr rfl,
-        (Option.isSome_iff_exists.mp ha).choose_spec⟩
-  exact ⟨cap, g, hcap, hg, fun V _ _ hn i Δ gst hΔ hgst =>
-    (h.good V).served hn hcap hg i Δ gst hΔ hgst⟩
 
 end Consensus.Shape
 

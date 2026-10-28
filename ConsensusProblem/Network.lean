@@ -12,31 +12,14 @@ The delivery rule is Francesco's sentence:
 > every message an honest node sends at `t` is received by every honest node
 > that is awake at `max(t, GST) + Δ`, by that time.
 
-`Delivers.msgs` is that sentence for a deadline function `dl` ("received by
-that time" is `Held`: receipt at the deadline itself counts, and a restart
-loses earlier receipts). Re-service to nodes that wake later (the sleepy model)
-is a separate, named clause, `Delivers.rewake`: a node awake at a later
-deadline `dl a` (`a > t`) has the message then, even if it slept in between.
-Transactions submitted to an awake honest node are delivered likewise
-(`Delivers.txs`; inboxes survive restarts).
-
-Partial synchrony with GST `g` (`PSync g`), synchrony up to a cut
-(`SyncUntil b`) and the outage network (`OutageNet b₀ b₁`) are instances.
-`EagerFrom g` is the shape of the log that the model's canonical runs have:
-every honest send is received at every later awake time from `g` on, and
-nothing earlier; it meets every deadline function above the identity and `g`.
-
-Receipt is network service, not protocol use: in the model a delivered
-object is processed by its handler at the delivery itself, but within a time
-unit restarts and ticks come before deliveries, so what arrives at the
-deadline is first *used* by the node's next tick. That slack belongs to the
-protocol, not to the network.
-
-Message sends are covered at every time, including negative ones (L0 does not
-assume a time origin for sends). Transaction submissions are covered from
-time `0` (submissions are an environment input that starts at `0`). With no
-honest send before `0` (`SendsFromZero`, true of every valid model run),
-`PSync 0` is synchrony (`PSync.syncUntil_zero`, in `Facts`). -/
+`Delivers` states it for a deadline function (`msgs`), with re-service to
+nodes that wake later (`rewake`) and transaction delivery (`txs`). Partial
+synchrony (`PSync g`), synchrony up to a cut (`SyncUntil b`) and the outage
+network (`OutageNet b₀ b₁`) are instances; `EagerFrom g` is the shape of the
+model's canonical logs. Receipt is network service, not protocol use: what
+arrives at a deadline is first used by the node's next tick, and that slack
+belongs to the protocol. Sends are covered at every time, submissions from
+`0`. -/
 
 namespace Consensus
 
@@ -101,10 +84,6 @@ vacuous when the message type is empty. -/
 def AgreesUpTo (L' : CommLog V M) (b : Time) : Prop :=
   (∀ v m t, t ≤ b → (L.sent v m t ↔ L'.sent v m t) ∧ (L.recv v m t ↔ L'.recv v m t)) ∧
     ∀ v t, t ≤ b → L.inbox v t = L'.inbox v t
-
-/-- No honest send before time `0`. Every valid model run's log has this
-(`Model.Run.log_sendsFromZero`). -/
-def SendsFromZero : Prop := ∀ v ∈ p.honest, ∀ m t, L.sent v m t → 0 ≤ t
 
 end CommLog
 

@@ -155,7 +155,9 @@ def twoHeaders : Chain Unit :=
 
 /-- Its ledger keeps the first occurrence of `2`. -/
 theorem ledgerOf_twoHeaders : ledgerOf twoHeaders = [1, 2, 3] := by
-  simp [twoHeaders, ledgerOf, keepFirst, keepFresh]
+  simp only [twoHeaders, ledgerOf, List.flatMap_cons, List.flatMap_nil, Function.comp_apply,
+    decode_encodeTxs]
+  decide
 
 end Consensus.Shape.Tests.Blocks
 end

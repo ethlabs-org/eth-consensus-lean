@@ -199,7 +199,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
 /-- A late GST at a large `Δ`: every realizable system (so every good system
 with at least five validators, `Good.realizable`) has, at `Δ = 7` and GST
 `1000`, a clean healthy witness with no receipt before `1000`, whose heal
-point is at or after `1000`, with progress from `readyFrom`, and liveness and
+point is at or after `1000`, with progress from `ready`, and liveness and
 safety active after the heal point. -/
 theorem healed_witness_late (h : Realizable S X K) (cap : Capability)
     (i : K.Idx) :
@@ -211,7 +211,7 @@ theorem healed_witness_late (h : Realizable S X K) (cap : Capability)
   obtain ⟨r, hw, hΔ, ⟨he, hH, hp, ht⟩, hs⟩ :=
     h.healthy cap i 7 1000 (by norm_num) (by norm_num)
   refine ⟨r, hw, hΔ, he.quiet, hH, ?_, hp, ht, hs⟩
-  unfold System.heal Params.healPoint
+  unfold System.heal
   rw [hΔ]
   have : (0 : Time) ≤ (K.params.heal cap i : Time) * 7 := by positivity
   have h1 : (1000 : Time) ≤ max 1000 0 := le_max_left _ _

@@ -8,6 +8,7 @@ public import ConsensusShape.Refinement
 public import ConsensusShape.ProgressFit
 public import ConsensusShape.Realizable
 public import ConsensusShape.Accepted
+public import ConsensusShape.Service
 public import ConsensusShape.Values.Goldilocks
 public import ConsensusShape.Values.GoldilocksSheet
 
@@ -18,6 +19,7 @@ vocabulary and progress reader over compiled runs (`Run`), the shape claims
 (`Refinement`), the progress fit and tolerance asked by acceptance
 (`ProgressFit`), coverage, the extremal selection and generic realizability
 (`Realizable`), the acceptance endpoint (`Accepted`, with `Accepted.good`),
+its corollary `Accepted.activeService` (`Service`),
 and the Goldilocks value (with its properties sheet, `GoldilocksSheet`;
 `Values`). Streamlet and Tendermint are test values
 (`ConsensusShapeTests/Values.lean`). -/

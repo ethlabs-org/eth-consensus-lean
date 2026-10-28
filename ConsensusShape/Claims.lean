@@ -14,11 +14,12 @@ observed hash collision" (output validity, nesting and final monotonicity are
 unconditional, `HoldsAlways`):
 
 * always: output validity, nesting, final monotonicity;
-* final: local accountability for fraction `α`, and `ProposalLiveReady` from
-  the heal point when healthy from a GST with progress from `readyFrom`;
+* final: local accountability for fraction `α`;
+* every provided output: `ProposalLiveReady` from the heal point when healthy
+  from a GST, with progress from `ready`;
 * available and stable: ready-reader safety and `ProposalLiveReady` when
-  sleepy, and from the heal point when healthy from a GST (safety needs
-  progress only on `[readyFrom, heal]`);
+  sleepy, and ready-reader safety from the heal point when healthy from a GST
+  (progress only on `[ready, heal]`);
 * stable: outage resilience into the resilience target.
 
 `ProposalLiveReady` replaces transaction liveness (the payload bridge,
@@ -55,13 +56,13 @@ structure ShapeClaimsAt (F : ShapeFamily O Info) (K : Contract ProgressReq) (V :
   environment: conflicting honest reads convict `α` from their own views. -/
   finalAccountable : ∀ g, O.output .final = some g → (Sys F V).Holds (fun _ => True)
     fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0
-  /-- Final liveness: healthy from `gst` with progress from `readyFrom` to the
-  horizon, proposals are included from the heal point. -/
-  finalLive : ∀ g, O.output .final = some g → ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
-    (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K .final i
+  /-- Every provided chain, at every index: healthy from `gst` with progress
+  from `ready` to the horizon, proposals are included from the heal point. -/
+  healthyLive : ∀ cap g, O.output cap = some g → ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
+    (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap i
       ((Sys F V).ready K gst r) ((Sys F V).pt r).horizon r)
-    fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g ((Sys F V).heal K .final i gst r)
-      (K.params.latency .final i)
+    fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)
+      (K.params.latency cap i)
   /-- Sleepy safety of an available or stable chain, for ready readers. -/
   sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
     (Sys F V).Holds ((Sys F V).Sleepy K) fun r =>
@@ -72,21 +73,13 @@ structure ShapeClaimsAt (F : ShapeFamily O Info) (K : Contract ProgressReq) (V :
       (fun r => (Sys F V).Sleepy K r ∧ (Sys F V).prog (shapeProgress F V) K cap i 0
         ((Sys F V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap i)
-  /-- Healed safety: healthy from `gst` with progress on `[readyFrom, heal]`,
+  /-- Healed safety: healthy from `gst` with progress on `[ready, heal]`,
   ready readers are safe from the heal point. -/
   healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
     ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
       (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap i
         ((Sys F V).ready K gst r) ((Sys F V).heal K cap i gst r) r)
       fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)
-  /-- Healed liveness: healthy from `gst` with progress from `readyFrom` to the
-  horizon, proposals are included from the heal point. -/
-  healedLive : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-    ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
-      (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap i
-        ((Sys F V).ready K gst r) ((Sys F V).pt r).horizon r)
-      fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)
-        (K.params.latency cap i)
   /-- Outage resilience of the stable chain, into the resilience target. -/
   persists : ∀ g, O.output .stable = some g → ∀ T b₀ b₁,
     (Sys F V).Holds ((Sys F V).Outage K T b₀ b₁) fun r =>

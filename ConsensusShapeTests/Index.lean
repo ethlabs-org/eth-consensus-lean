@@ -67,17 +67,33 @@ example := @Consensus.Good.persists_final_compatible
 example := @Consensus.Good.served
 example := @Consensus.Good.sleepySafe_prefix
 example := @Consensus.Params.standard_admissible
-example := @Consensus.Regime.Healthy.of_le
-example := @Consensus.Regime.Outage.of_le
-example := @Consensus.Regime.Sleepy.of_le
-example := @Consensus.Regime.outage_eta_zero
+example := @Consensus.System.Healthy.of_le
+example := @Consensus.System.Outage.of_le
+example := @Consensus.System.Sleepy.of_le
+example := @Consensus.System.outage_eta_zero
+example := @Consensus.System.cDur_of_catchUp
 example := @Consensus.System.agree_of_accountable
 example := @Consensus.Trace.PrefixOf.endCut_eq
 example := @Consensus.Trace.PrefixOf.protectedUpTo
 example := @Consensus.Trace.PrefixOf.readySafeUpTo
 example := @Consensus.Trace.TxLive.served
 
+example := @Consensus.System.Sleepy
+example := @Consensus.System.Healthy
+example := @Consensus.System.Outage
+example := @Consensus.System.cDur
+example := @Consensus.System.heal
+example := @Consensus.System.ready
+example := @Consensus.System.lat
+example := @Consensus.Behaviour.healthyLive
+example := @Consensus.Behaviour.finalAccountable
+example := @Consensus.Trace.ReadySafeUpTo
+example := @Consensus.CommLog.SendsFromZero
+
 /-! ## L1 (model and proofs) -/
+example := @Consensus.Model.Run.mem_viewIdx_iff
+example := @Consensus.Model.Run.seen_source
+example := @Consensus.Model.Run.viewIdx_mono
 
 example := @Consensus.Model.Obj.Contains.trans
 example := @Consensus.Model.Run.SameTrace.log_eq
@@ -332,6 +348,13 @@ example := @Consensus.Shape.Tests.Realizable.rotating_proposalLive_vacuous
 example := @Consensus.Shape.Tests.Realizable.tendermint_largeIdx_prog
 
 /-! ## Tests: Reformulations -/
+example := @Consensus.Shape.Tests.Reformulations.behaviour_iff
+example := @Consensus.Shape.Tests.Reformulations.shapeClaimsAt_iff
+example := @Consensus.Shape.Tests.Reformulations.shapeClaims_iff
+example := @Consensus.Shape.Tests.Reformulations.ledgerOf_eq
+example := @Consensus.Shape.Tests.Reformulations.viewIdx_eq
+example := @Consensus.Shape.Tests.Reformulations.sleepy_iff
+example := @Consensus.Shape.Tests.Reformulations.outage_iff
 
 example := @Consensus.Shape.Tests.Reformulations.adequate_iff
 example := @Consensus.Shape.Tests.Reformulations.agree_iff

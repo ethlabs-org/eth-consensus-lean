@@ -192,23 +192,24 @@ theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Countable Info]
   have ha := goldilocks_admissible pp
   have hf := goldilocks_progressFits pp F (fun pub => by rw [hb pub]; rfl)
   have hL := progLen_nonneg F K .available k (⟨Δ, hΔ, allAwake⟩ : Env (Fin 5))
-  have hlat : 0 ≤ K.params.latDur Δ .available k := mul_nonneg (by positivity) hΔ.le
-  have hheal : 0 ≤ K.params.healPoint Δ .available k g :=
+  have hlat : 0 ≤ (K.params.latency .available k : Time) * Δ := mul_nonneg (by positivity) hΔ.le
+  have hheal : 0 ≤ (max g 0 + (K.params.heal .available k : Time) * Δ) :=
     add_nonneg (le_max_right _ _) (mul_nonneg (by positivity) hΔ.le)
-  have hrdy : 0 ≤ readyFrom (K.params.cDur Δ) g := by
-    unfold readyFrom Params.cDur
+  have hrdy : 0 ≤ (max g 0 + (K.params.catchUp : Time) * Δ + 1) := by
     have := le_max_right g 0
     have : (0 : Time) ≤ (K.params.catchUp : Time) * Δ := mul_nonneg (by positivity) hΔ.le
     linarith
   obtain ⟨rho, hpt, -, hw, -, hH, hp, -, -, -⟩ := healthy_witness (F := F) (K := K) key hn hΔ
-    (K.params.healPoint Δ .available k g + readyFrom (K.params.cDur Δ) g +
-      K.params.latDur Δ .available k + progLen F K .available k ⟨Δ, hΔ, allAwake⟩ + Δ + 2)
+    ((max g 0 + (K.params.heal .available k : Time) * Δ) +
+      (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency .available k : Time) * Δ +
+      progLen F K .available k ⟨Δ, hΔ, allAwake⟩ + Δ + 2)
     ha hf .available k g (by linarith) (by linarith) (by linarith)
   have hhh : gHeal pp k g ⟨_, rho⟩ ≤ rho.horizon := by
     have hh : rho.horizon = rho.point.horizon := rfl
     rw [hh, hpt]
-    change K.params.healPoint Δ .available k g ≤ K.params.healPoint Δ .available k g +
-      readyFrom (K.params.cDur Δ) g + K.params.latDur Δ .available k +
+    change (max g 0 + (K.params.heal .available k : Time) * Δ) ≤
+      (max g 0 + (K.params.heal .available k : Time) * Δ) +
+      (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency .available k : Time) * Δ +
       progLen F K .available k ⟨Δ, hΔ, allAwake⟩ + Δ + 2
     linarith
   refine ⟨⟨_, rho⟩, hw.1, (Model.sysOf_delivers_iff rho _ _).mp hH.1, ?_,

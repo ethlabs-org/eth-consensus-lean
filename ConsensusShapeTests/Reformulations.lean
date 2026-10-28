@@ -1,5 +1,6 @@
 module
 public import ConsensusShapeTests.Values
+public import ConsensusModelProofs.View
 public import Mathlib.Tactic
 @[expose] public section
 
@@ -25,7 +26,13 @@ inlined), with a lemma `new ↔ old` (or `new = old`) checked by Lean.
   `Obj.Contains` is membership in `parts`; `ExecutionValid` flat;
   `Run.signerOf` on objects; the `sysOf` log is the tagged run log.
 * B5 (L2): `ShapeClaims` through `sysOf` (`System.Holds`, the L0 regimes),
-  without `AllRuns` and the seven regime abbreviations. -/
+  without `AllRuns` and the seven regime abbreviations.
+* B7: the `System` regime accessors against the deleted `Params.cDur/ηDur/
+  healPoint/latDur`, `readyFrom` and `Regime.*`; the flat `Behaviour` against
+  `FinalClaims`/`DAClaims` (`behaviour_iff`); `ShapeClaimsAt` against its B6
+  form (`shapeClaimsAt_iff`, chained into `shapeClaims_iff`); `ledgerOf`
+  through `List.eraseDups` (`ledgerOf_eq`); `ViewIdx` as the closure of
+  `seen` (`viewIdx_eq`). -/
 
 namespace Consensus.Shape.Tests.Reformulations
 
@@ -166,6 +173,67 @@ theorem txLiveActive_iff (c start D : Time) :
 
 end Safety
 
+/-! ## B7.1: one regime and duration layer
+
+The deleted `Params.cDur/ηDur/healPoint/latDur`, `readyFrom` and
+`Regime.Sleepy/Healthy/Outage`, verbatim; the `System` accessors are their
+compositions at `K.params`, `S.pt r` and `S.log r`. -/
+
+section OldRegimes
+
+variable {Idx : Type} (P : Params Idx)
+
+def OldCDur (Δ : Time) : Time := (P.catchUp : Time) * Δ
+
+def OldEtaDur (Δ : Time) : Time := (P.η : Time) * Δ
+
+def OldHealPoint (Δ : Time) (cap : Capability) (i : Idx) (g : Time) : Time :=
+  max g 0 + (P.heal cap i : Time) * Δ
+
+def OldLatDur (Δ : Time) (cap : Capability) (i : Idx) : Time := (P.latency cap i : Time) * Δ
+
+def OldReadyFrom (c g : Time) : Time := max g 0 + c + 1
+
+variable {V M : Type} [Fintype V] [DecidableEq V] (p : EnvPoint V) (L : CommLog V M)
+
+def OldRegimeSleepy : Prop := L.PSync p 0 ∧ p.SleepyOn P.θ (OldCDur P p.env.Δ) 0 p.horizon
+
+def OldRegimeHealthy (g : Time) : Prop := L.PSync p g ∧ p.HealthyOn P.φ g p.horizon
+
+def OldRegimeOutage (T b₀ b₁ : Time) : Prop :=
+  OutageTimes P p.env.Δ T b₀ b₁ ∧ L.OutageNet p b₀ b₁ ∧
+    p.EtaSleepyOn P.θ (OldEtaDur P p.env.Δ) (OldCDur P p.env.Δ) 0 p.horizon ∧
+    p.ReadyOfAll P.cover (OldCDur P p.env.Δ) b₀
+
+end OldRegimes
+
+section Accessors
+
+variable {V : Type} (S : System V) {Prog : Type} (K : Contract Prog) (r : S.Run)
+
+theorem cDur_eq : S.cDur K r = OldCDur K.params (S.pt r).env.Δ := rfl
+
+theorem heal_eq (cap : Capability) (i : K.Idx) (g : Time) :
+    S.heal K cap i g r = OldHealPoint K.params (S.pt r).env.Δ cap i g := rfl
+
+theorem ready_eq (g : Time) : S.ready K g r = OldReadyFrom (S.cDur K r) g := rfl
+
+theorem lat_eq (cap : Capability) (i : K.Idx) :
+    S.lat K cap i r = OldLatDur K.params (S.pt r).env.Δ cap i := rfl
+
+variable [Fintype V] [DecidableEq V]
+
+theorem sleepy_iff : S.Sleepy K r ↔ OldRegimeSleepy K.params (S.pt r) (S.log r) := Iff.rfl
+
+omit [DecidableEq V] in
+theorem healthy_iff (g : Time) :
+    S.Healthy K g r ↔ OldRegimeHealthy K.params (S.pt r) (S.log r) g := Iff.rfl
+
+theorem outage_iff (T b₀ b₁ : Time) :
+    S.Outage K T b₀ b₁ r ↔ OldRegimeOutage K.params (S.pt r) (S.log r) T b₀ b₁ := Iff.rfl
+
+end Accessors
+
 section Wrappers
 
 variable {V M Idx : Type} [Fintype V] [DecidableEq V]
@@ -181,16 +249,16 @@ def OldHealthyFrom (φ : ℚ) (g : Time) : Prop := p.HealthyOn φ g p.horizon
 def OldWellFormed : Prop := 0 ≤ p.horizon
 
 theorem regime_sleepy_iff :
-    Regime.Sleepy P p L ↔ L.PSync p 0 ∧ OldSleepy p P.θ (P.cDur p.env.Δ) := Iff.rfl
+    OldRegimeSleepy P p L ↔ L.PSync p 0 ∧ OldSleepy p P.θ (OldCDur P p.env.Δ) := Iff.rfl
 
 omit [DecidableEq V] in
 theorem regime_healthy_iff (g : Time) :
-    Regime.Healthy P p L g ↔ L.PSync p g ∧ OldHealthyFrom p P.φ g := Iff.rfl
+    OldRegimeHealthy P p L g ↔ L.PSync p g ∧ OldHealthyFrom p P.φ g := Iff.rfl
 
 theorem regime_outage_iff (T b₀ b₁ : Time) :
-    Regime.Outage P p L T b₀ b₁ ↔ OutageTimes P p.env.Δ T b₀ b₁ ∧ L.OutageNet p b₀ b₁ ∧
-      OldEtaSleepy p P.θ (P.ηDur p.env.Δ) (P.cDur p.env.Δ) ∧
-      p.ReadyOfAll P.cover (P.cDur p.env.Δ) b₀ := Iff.rfl
+    OldRegimeOutage P p L T b₀ b₁ ↔ OutageTimes P p.env.Δ T b₀ b₁ ∧ L.OutageNet p b₀ b₁ ∧
+      OldEtaSleepy p P.θ (OldEtaDur P p.env.Δ) (OldCDur P p.env.Δ) ∧
+      p.ReadyOfAll P.cover (OldCDur P p.env.Δ) b₀ := Iff.rfl
 
 omit [Fintype V] [DecidableEq V] in
 theorem wellFormed_iff : OldWellFormed p ↔ 0 ≤ p.horizon := Iff.rfl
@@ -270,6 +338,84 @@ theorem realizable_iff (S : System V) (X : Progress S Prog) (K : Contract Prog) 
       exact ⟨i, r, hw, hd, ⟨he, hH, hp, ht⟩, ha⟩
 
 end Good
+
+/-! ## B7.3: one healthy-liveness row, flat `Behaviour` -/
+
+section Behaviour
+
+variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type}
+
+/-- The claims of the final output `g`: local accountability for fraction `α`
+in every environment (no premise), and transaction liveness from the heal
+point when healthy from a GST with progress from `readyFrom` to the horizon. -/
+structure OldFinalClaims (S : System V) (X : Progress S Prog) (K : Contract Prog)
+    (g : S.schema.Id) : Prop where
+  accountable : S.Holds (fun _ => True) (fun r => S.AccountablySafe r K.params.α g 0)
+  live : ∀ i gst, S.Holds
+    (fun r => S.Healthy K gst r ∧ S.prog X K .final i (S.ready K gst r) (S.pt r).horizon r)
+    (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K .final i gst r) (S.lat K .final i r))
+
+/-- The claims of an available or stable output `g` (capability `cap`):
+ready-reader safety and liveness when sleepy (from `0`), and when healthy from a
+GST (from the heal point; safety needs progress only on `[readyFrom, heal]`). -/
+structure OldDAClaims (S : System V) (X : Progress S Prog) (K : Contract Prog)
+    (cap : Capability) (g : S.schema.Id) : Prop where
+  sleepySafe : S.Holds (S.Sleepy K) (fun r => (S.trace r).ReadySafe (S.cDur K r) g 0)
+  sleepyLive : ∀ i, S.Holds (fun r => S.Sleepy K r ∧ S.prog X K cap i 0 (S.pt r).horizon r)
+    (fun r => (S.trace r).TxLive (S.cDur K r) g 0 (S.lat K cap i r))
+  healedSafe : ∀ i gst, S.Holds
+    (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
+    (fun r => (S.trace r).ReadySafe (S.cDur K r) g (S.heal K cap i gst r))
+  healedLive : ∀ i gst, S.Holds
+    (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r)
+    (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K cap i gst r) (S.lat K cap i r))
+
+/-- **Behaviour**: the fixed property table. -/
+structure OldBehaviour (S : System V) (X : Progress S Prog) (K : Contract Prog) :
+    Prop where
+  laws : S.Laws
+  admissible : K.params.Admissible
+  serves : S.schema.Serves
+  /-- Honest validators are never convicted by honest evidence. -/
+  nonFraming : S.HoldsAlways S.NonFraming
+  /-- Lower-rank outputs are prefixes of higher-rank ones, unconditionally. -/
+  nested : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → S.schema.output c₁ = some g₁ →
+    S.schema.output c₂ = some g₂ → S.HoldsAlways (fun r => (S.trace r).Nested g₁ g₂)
+  /-- The final output never rolls back, unconditionally. -/
+  finalMonotone : ∀ g, S.schema.output .final = some g →
+    S.HoldsAlways (fun r => (S.trace r).Monotone g 0)
+  final : ∀ g, S.schema.output .final = some g → OldFinalClaims S X K g
+  da : ∀ cap g, (cap = .available ∨ cap = .stable) → S.schema.output cap = some g →
+    OldDAClaims S X K cap g
+  /-- Outage resilience of the stable output, into the resilience target:
+  what a node ready at `T` reads as stable is kept by eligible readers. -/
+  persists : ∀ g, S.schema.output .stable = some g → ∀ T b₀ b₁,
+    S.Holds (S.Outage K T b₀ b₁) (fun r => (S.trace r).ProtectedThrough (S.cDur K r) g
+      (resilienceTarget S.schema g) T b₀ b₁)
+
+/-- The flat `Behaviour` (one `healthyLive` row over every capability) is the
+B6 table with `FinalClaims`/`DAClaims`: `healthyLive` at `.final` is
+`FinalClaims.live`, at `.available`/`.stable` it is `DAClaims.healedLive`. -/
+theorem behaviour_iff (S : System V) (X : Progress S Prog) (K : Contract Prog) :
+    Behaviour S X K ↔ OldBehaviour S X K := by
+  constructor
+  · intro h
+    exact ⟨h.laws, h.admissible, h.serves, h.nonFraming, h.nested, h.finalMonotone,
+      fun g hg => ⟨h.finalAccountable g hg, h.healthyLive .final g hg⟩,
+      fun cap g hc hg => ⟨h.sleepySafe cap g hc hg, h.sleepyLive cap g hc hg,
+        h.healedSafe cap g hc hg, h.healthyLive cap g hg⟩, h.persists⟩
+  · intro h
+    refine ⟨h.laws, h.admissible, h.serves, h.nonFraming, h.nested, h.finalMonotone,
+      fun g hg => (h.final g hg).accountable, ?_, fun cap g hc hg => (h.da cap g hc hg).sleepySafe,
+      fun cap g hc hg => (h.da cap g hc hg).sleepyLive,
+      fun cap g hc hg => (h.da cap g hc hg).healedSafe, h.persists⟩
+    intro cap g hg
+    cases cap with
+    | final => exact (h.final g hg).live
+    | available => exact (h.da .available g (Or.inl rfl) hg).healedLive
+    | stable => exact (h.da .stable g (Or.inr rfl) hg).healedLive
+
+end Behaviour
 
 /-! ## B4 -/
 
@@ -370,13 +516,13 @@ variable {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : En
 /-- The catch-up duration `catchUp·Δ`. -/
 abbrev OldShapeC (K : Contract ProgressReq) (rho : Model.Run (compiled F) E) : Time := (sysOf O (compiled F) V).cDur K ⟨E, rho⟩
 
-/-- The sleepy regime (L0 `Regime.Sleepy`). -/
+/-- The sleepy regime (L0 `System.Sleepy`). -/
 abbrev OldShapeSleepy (K : Contract ProgressReq) (rho : Model.Run (compiled F) E) : Prop := (sysOf O (compiled F) V).Sleepy K ⟨E, rho⟩
 
-/-- The healthy regime from GST `gst` (L0 `Regime.Healthy`). -/
+/-- The healthy regime from GST `gst` (L0 `System.Healthy`). -/
 abbrev OldShapeHealthy (K : Contract ProgressReq) (rho : Model.Run (compiled F) E) (gst : Time) : Prop := (sysOf O (compiled F) V).Healthy K gst ⟨E, rho⟩
 
-/-- The outage regime (L0 `Regime.Outage`). -/
+/-- The outage regime (L0 `System.Outage`). -/
 abbrev OldShapeOutage (K : Contract ProgressReq) (rho : Model.Run (compiled F) E) (T b₀ b₁ : Time) : Prop :=
   (sysOf O (compiled F) V).Outage K T b₀ b₁ ⟨E, rho⟩
 
@@ -452,11 +598,82 @@ structure ShapeClaimsOld (F : ShapeFamily O Info) (K : Contract ProgressReq) : P
       (chainTrace rho).ProtectedThrough (OldShapeC K rho) g (resilienceTarget O g) T b₀ b₁ ∨
         rho.HashCollision
 
-/-- `ShapeClaims` through `sysOf` is the old `AllRuns` form: `Holds` is
+/-- The B6 `ShapeClaimsAt` (separate final and healed liveness rows),
+verbatim. -/
+structure ShapeClaimsAtB6 (F : ShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
+    [Fintype V] [DecidableEq V] : Prop where
+  /-- Every provided output is valid. -/
+  outputValid : (Sys F V).HoldsAlways fun r => ∀ c g, O.output c = some g → OutputValid r.2 g
+  /-- Lower-rank chains are prefixes of higher-rank ones. -/
+  nested : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → O.output c₁ = some g₁ → O.output c₂ = some g₂ →
+    (Sys F V).HoldsAlways fun r => (chainTrace r.2).Nested g₁ g₂
+  /-- The final chain never rolls back. -/
+  finalMonotone : ∀ g, O.output .final = some g →
+    (Sys F V).HoldsAlways fun r => (chainTrace r.2).Monotone g 0
+  /-- Local accountability of the final chain for fraction `α`, in every
+  environment: conflicting honest reads convict `α` from their own views. -/
+  finalAccountable : ∀ g, O.output .final = some g → (Sys F V).Holds (fun _ => True)
+    fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0
+  /-- Final liveness: healthy from `gst` with progress from `readyFrom` to the
+  horizon, proposals are included from the heal point. -/
+  finalLive : ∀ g, O.output .final = some g → ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
+    (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K .final i
+      ((Sys F V).ready K gst r) ((Sys F V).pt r).horizon r)
+    fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g ((Sys F V).heal K .final i gst r)
+      (K.params.latency .final i)
+  /-- Sleepy safety of an available or stable chain, for ready readers. -/
+  sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
+    (Sys F V).Holds ((Sys F V).Sleepy K) fun r =>
+      (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g 0
+  /-- Sleepy liveness, with progress on the whole run. -/
+  sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
+    ∀ i : K.Idx, (Sys F V).Holds
+      (fun r => (Sys F V).Sleepy K r ∧ (Sys F V).prog (shapeProgress F V) K cap i 0
+        ((Sys F V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap i)
+  /-- Healed safety: healthy from `gst` with progress on `[readyFrom, heal]`,
+  ready readers are safe from the heal point. -/
+  healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
+    ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
+      (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap i
+        ((Sys F V).ready K gst r) ((Sys F V).heal K cap i gst r) r)
+      fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)
+  /-- Healed liveness: healthy from `gst` with progress from `readyFrom` to the
+  horizon, proposals are included from the heal point. -/
+  healedLive : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
+    ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
+      (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap i
+        ((Sys F V).ready K gst r) ((Sys F V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)
+        (K.params.latency cap i)
+  /-- Outage resilience of the stable chain, into the resilience target. -/
+  persists : ∀ g, O.output .stable = some g → ∀ T b₀ b₁,
+    (Sys F V).Holds ((Sys F V).Outage K T b₀ b₁) fun r =>
+      (chainTrace r.2).ProtectedThrough ((Sys F V).cDur K r) g (resilienceTarget O g) T b₀ b₁
+
+/-- One `healthyLive` row over every capability is the B6 pair `finalLive`
+(capability `.final`) and `healedLive` (`.available`, `.stable`). -/
+theorem shapeClaimsAt_iff (F : ShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
+    [Fintype V] [DecidableEq V] : ShapeClaimsAt F K V ↔ ShapeClaimsAtB6 F K V := by
+  constructor
+  · intro h
+    exact ⟨h.outputValid, h.nested, h.finalMonotone, h.finalAccountable,
+      fun g hg => h.healthyLive .final g hg, h.sleepySafe, h.sleepyLive, h.healedSafe,
+      fun cap g _ hg => h.healthyLive cap g hg, h.persists⟩
+  · intro h
+    refine ⟨h.outputValid, h.nested, h.finalMonotone, h.finalAccountable, ?_, h.sleepySafe,
+      h.sleepyLive, h.healedSafe, h.persists⟩
+    intro cap g hg
+    cases cap with
+    | final => exact h.finalLive g hg
+    | available => exact h.healedLive .available g (Or.inl rfl) hg
+    | stable => exact h.healedLive .stable g (Or.inr rfl) hg
+
+/-- The B6 claims through `sysOf` are the old `AllRuns` form: `Holds` is
 "every valid run satisfying the regime, or a collision", the regime premises
 are curried there, and a system run is a pair `⟨E, rho⟩`. -/
-theorem shapeClaims_iff (F : ShapeFamily O Info) (K : Contract ProgressReq) :
-    ShapeClaims F K ↔ ShapeClaimsOld F K := by
+theorem shapeClaimsB6_iff (F : ShapeFamily O Info) (K : Contract ProgressReq) :
+    (∀ (V : Type) [Fintype V] [DecidableEq V], ShapeClaimsAtB6 F K V) ↔ ShapeClaimsOld F K := by
   constructor
   · intro h
     exact ⟨fun V _ _ E rho hv => (h V).outputValid ⟨E, rho⟩ hv,
@@ -484,6 +701,13 @@ theorem shapeClaims_iff (F : ShapeFamily O Info) (K : Contract ProgressReq) :
       fun cap g hc hg i gst r hv hA => h.healedSafe cap g hc hg i gst V r.1 r.2 hv hA.1 hA.2,
       fun cap g hc hg i gst r hv hA => h.healedLive cap g hc hg i gst V r.1 r.2 hv hA.1 hA.2,
       fun g hg T b₀ b₁ r hv hO => h.persists g hg T b₀ b₁ V r.1 r.2 hv hO⟩
+
+/-- `ShapeClaims` is the base `AllRuns` form, through the B6 claims. -/
+theorem shapeClaims_iff (F : ShapeFamily O Info) (K : Contract ProgressReq) :
+    ShapeClaims F K ↔ ShapeClaimsOld F K := by
+  refine Iff.trans ?_ (shapeClaimsB6_iff F K)
+  exact ⟨fun h V _ _ => (shapeClaimsAt_iff F K V).mp (h V),
+    fun h V _ _ => (shapeClaimsAt_iff F K V).mpr (h V)⟩
 
 end Claims
 
@@ -649,7 +873,7 @@ structure OldGoldilocksExtra (F : ShapeFamily goldilocksSchema Info) (pp : FGSAP
     OutageTimes (goldilocksContract pp).params E.Δ T b₀ b₁ →
     CommLog.SyncUntil rho.point rho.log b₀ →
     rho.point.EtaSleepyOn (goldilocksContract pp).params.θ
-      ((goldilocksContract pp).params.ηDur E.Δ) (OldShapeC (goldilocksContract pp) rho) 0 b₀ →
+      (OldEtaDur (goldilocksContract pp).params E.Δ) (OldShapeC (goldilocksContract pp) rho) 0 b₀ →
     rho.point.ReadyOfAll (goldilocksContract pp).params.cover
       (OldShapeC (goldilocksContract pp) rho) b₀ →
     (chainTrace rho).ProtectedUpTo (OldShapeC (goldilocksContract pp) rho) gConfirmed gConfirmed
@@ -864,6 +1088,64 @@ theorem patternRecurrence_iff (p : EnvPoint V) (key : Fin (Fintype.card V) ≃ V
   exact forall_congr' fun t => ⟨fun h h1 h2 => h ⟨h1, h2⟩, fun h hm => h hm.1 hm.2⟩
 
 end Recurrence
+
+/-! ## B7.4: `ledgerOf` through core `List.eraseDups` -/
+
+section Ledger
+
+/-- The deleted `keepFresh`: keep the first occurrence of each element not in
+`seen`, in order. -/
+def OldKeepFresh (seen : List Tx) : List Tx → List Tx
+  | [] => []
+  | x :: xs => if x ∈ seen then OldKeepFresh seen xs else x :: OldKeepFresh (x :: seen) xs
+
+/-- The deleted `keepFirst`. -/
+def OldKeepFirst (xs : List Tx) : List Tx := OldKeepFresh [] xs
+
+theorem oldKeepFresh_eq (seen xs : List Tx) :
+    OldKeepFresh seen xs = (xs.removeAll seen).eraseDups := by
+  induction xs generalizing seen with
+  | nil => simp [OldKeepFresh, List.removeAll]
+  | cons x xs ih =>
+    by_cases hx : x ∈ seen
+    · simp [OldKeepFresh, hx, ih, List.removeAll]
+    · simp only [OldKeepFresh, hx, ite_false, ih]
+      simp only [List.removeAll, List.filter_cons, List.elem_eq_mem, hx, decide_false,
+        Bool.not_false, ite_true, List.eraseDups_cons, List.filter_filter]
+      congr 2
+      apply List.filter_congr
+      intro b _
+      by_cases hb : b = x <;> simp [hb]
+
+theorem oldKeepFirst_eq (xs : List Tx) : OldKeepFirst xs = xs.eraseDups := by
+  rw [OldKeepFirst, oldKeepFresh_eq]; simp [List.removeAll]
+
+/-- `ledgerOf` is the old body (`keepFirst` of the decoded inputs). -/
+theorem ledgerOf_eq {Info : Type} (c : Chain Info) :
+    ledgerOf c = OldKeepFirst (c.flatMap (decodeTxs ∘ Header.input)) :=
+  (oldKeepFirst_eq _).symm
+
+end Ledger
+
+/-! ## B7.5: `ViewIdx` is the closure of the engine's `seen` log -/
+
+section View
+
+open Consensus.Model
+
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+
+/-- The B6 `Run.ViewIdx`: every object released or received by `v` at an
+event with index `< i`, with everything it carries. -/
+def OldViewIdx (rho : Run F E) (v : V) (i : Nat) : Set (protoOf F E).Object :=
+  {o | ∃ k o₀, k < i ∧
+    ((∃ t, rho.events[k]? = some (Event.tick v t) ∧ o₀ ∈ rho.releasesAt k) ∨
+      ∃ t, rho.events[k]? = some (Event.deliver v o₀ t)) ∧ Obj.Contains o₀ o}
+
+theorem viewIdx_eq (rho : Run F E) (v : V) (i : Nat) : rho.ViewIdx v i = OldViewIdx rho v i :=
+  Set.ext fun _ => rho.mem_viewIdx_iff
+
+end View
 
 end Consensus.Shape.Tests.Reformulations
 

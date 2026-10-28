@@ -1,5 +1,6 @@
 module
 public import ConsensusModelProofs.Canonical.Unforgeable
+public import ConsensusModelProofs.View
 
 @[expose] public section
 
@@ -60,20 +61,6 @@ theorem protects_iff {k : Key pub} {seen : List P.Object} {c : P.Object} :
         · exact Or.inr (h2 o ho hos)
         · exact Or.inl hos⟩
   next hs => simp [hs]
-
-/-- `releaseAll` appends exactly what it releases to `seen`. -/
-theorem releaseAll_seen (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
-    (cs : List P.Object) :
-    (releaseAll P hash k nd cs).1.seen = nd.seen ++ (releaseAll P hash k nd cs).2 := by
-  induction cs generalizing nd with
-  | nil => simp [releaseAll]
-  | cons c cs ih =>
-    unfold releaseAll
-    split
-    · dsimp only
-      rw [ih]
-      simp
-    · exact ih nd
 
 /-- A released `k`-signed object never conflicts, in either order, with a
 `k`-signed object in the closure of `nd.seen`. -/
@@ -196,83 +183,10 @@ theorem signer_of_signerOf {o : (protoOf F E).Object} {x : V}
   obtain ⟨k, hk, rfl⟩ := Option.map_eq_some_iff.mp h
   simp [ownKey, hk]
 
-omit [DecidableEq V] in
-/-- A tick appends exactly what it releases to `seen`. -/
-theorem tick_seen (nd : Node (protoOf F E)) (v : V) (t : Time) :
-    (rho.tick nd v t).1.seen = nd.seen ++ (rho.tick nd v t).2 := by
-  unfold tick
-  split
-  · exact releaseAll_seen _ _ _ _
-  · simp
-
-/-- What a tick releases is in the node's `seen` right after it. -/
-theorem releasesAt_seen {i : Nat} {v : V} {t : Time} (he : rho.events[i]? = some (.tick v t))
-    {o : (protoOf F E).Object} (ho : o ∈ rho.releasesAt i) :
-    o ∈ (rho.stateBefore (i + 1) v).seen := by
-  rw [rho.stateBefore_succ he]
-  simp only [releasesAt, he] at ho
-  simp only [step, Function.update_self]
-  rw [tick_seen]
-  exact List.mem_append_right _ ho
-
-/-- `seen` is append-only: it grows by one event. -/
-theorem seen_succ (i : Nat) (v : V) {o : (protoOf F E).Object}
-    (ho : o ∈ (rho.stateBefore i v).seen) : o ∈ (rho.stateBefore (i + 1) v).seen := by
-  cases he : rho.events[i]? with
-  | none =>
-    have hworld : rho.stateBefore (i + 1) = rho.stateBefore i := by
-      simp [stateBefore, List.take_add_one, he]
-    rw [hworld]
-    exact ho
-  | some e =>
-    rw [rho.stateBefore_succ he]
-    by_cases hw : e.node = v
-    · cases e with
-      | tick w t =>
-        simp only [Event.node] at hw
-        subst hw
-        simp only [step, Function.update_self]
-        rw [tick_seen]
-        exact List.mem_append_left _ ho
-      | deliver w p t =>
-        simp only [Event.node] at hw
-        subst hw
-        simp only [step, Function.update_self]
-        exact List.mem_append_left _ ho
-      | restart w t =>
-        simp only [Event.node] at hw
-        subst hw
-        simpa only [step, Function.update_self] using ho
-    · cases e with
-      | tick w t =>
-        simp only [Event.node] at hw
-        simpa only [step, Function.update_of_ne (Ne.symm hw)] using ho
-      | deliver w p t =>
-        simp only [Event.node] at hw
-        simpa only [step, Function.update_of_ne (Ne.symm hw)] using ho
-      | restart w t =>
-        simp only [Event.node] at hw
-        simpa only [step, Function.update_of_ne (Ne.symm hw)] using ho
-
-/-- `seen` is append-only. -/
-theorem seen_mono {i j : Nat} (hij : i ≤ j) (v : V) {o : (protoOf F E).Object}
-    (ho : o ∈ (rho.stateBefore i v).seen) : o ∈ (rho.stateBefore j v).seen := by
-  induction j, hij using Nat.le_induction with
-  | base => exact ho
-  | succ j _ ih => exact rho.seen_succ j v ih
-
 /-- What node `v` has seen before cut `i` is in the closure of its `seen`
-log. -/
+log (the definition of `ViewIdx`). -/
 theorem viewIdx_closure {v : V} {i : Nat} {o : (protoOf F E).Object}
-    (ho : o ∈ rho.ViewIdx v i) : o ∈ closure (rho.stateBefore i v).seen := by
-  obtain ⟨k, o₀, hk, hev, hc⟩ := ho
-  have h₀ : o₀ ∈ (rho.stateBefore (k + 1) v).seen := by
-    rcases hev with ⟨t, he, hr⟩ | ⟨t, he⟩
-    · exact rho.releasesAt_seen he hr
-    · rw [rho.stateBefore_succ he]
-      simp only [step, Function.update_self]
-      exact List.mem_append_right _ (List.mem_singleton_self _)
-  exact (mem_closure_iff _ _).mpr ⟨o₀, rho.seen_mono hk v h₀, hc⟩
+    (ho : o ∈ rho.ViewIdx v i) : o ∈ closure (rho.stateBefore i v).seen := ho
 
 /-- In a valid run, everything in any node's `seen` before cut `i` is safe
 before `i`: every object it contains that is signed by an honest validator

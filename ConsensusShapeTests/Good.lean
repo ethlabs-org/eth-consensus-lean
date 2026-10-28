@@ -17,7 +17,7 @@ public import Mathlib.Tactic
   to `b = 1` whose later honest send is never received. It meets the premises
   of `Good.sleepySafe_prefix` at `b = 1` (`SyncUntil 1`, sleepy on `[0, 1]`)
   but is not partially synchronous with GST `0`, so the full-run sleepy
-  regime (and `DAClaims.sleepySafe`) does not apply.
+  regime (and `Behaviour.sleepySafe`) does not apply.
 * `healthy_rotating_sleeper`: four
   honest validators, one of them asleep at each time in turn. More than ⅔ are
   honest and awake at every time, but no validator is awake throughout, so the
@@ -163,7 +163,10 @@ theorem prefix_sync_then_async :
     prefixLog.SyncUntil prefixPoint 1 ∧
       (∀ θ c, θ ≤ 1 / 2 → prefixPoint.SleepyOn θ c 0 1) ∧
       ¬ prefixLog.PSync prefixPoint 0 ∧
-      ∀ {Idx : Type} (P : Params Idx), ¬ Regime.Sleepy P prefixPoint prefixLog := by
+      ∀ {Idx : Type} (P : Params Idx),
+        ¬ (prefixLog.PSync prefixPoint 0 ∧
+          prefixPoint.SleepyOn P.θ ((P.catchUp : Time) * prefixPoint.env.Δ) 0
+            prefixPoint.horizon) := by
   have hnp : ¬ prefixLog.PSync prefixPoint 0 := by
     intro h
     obtain ⟨t', ht', hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 2 ⟨rfl, rfl⟩ 1 (Finset.mem_univ _)
@@ -447,7 +450,7 @@ theorem stable_alias_final_sleepy_live (h : Good S X K) {g : S.schema.Id}
     (i : K.Idx) :
     S.Holds (fun r => S.Sleepy K r ∧ S.prog X K .stable i 0 (S.pt r).horizon r)
       (fun r => (S.trace r).TxLive (S.cDur K r) g 0 (S.lat K .stable i r)) :=
-  (h.behaviour.da .stable g (Or.inr rfl) hs).sleepyLive i
+  h.behaviour.sleepyLive .stable g (Or.inr rfl) hs i
 
 end Alias
 

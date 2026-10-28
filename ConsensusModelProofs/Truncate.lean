@@ -1,5 +1,5 @@
 module
-public import ConsensusModel.System
+public import ConsensusModelProofs.View
 public import Mathlib.Tactic
 
 @[expose] public section
@@ -87,17 +87,8 @@ theorem truncate_releasesAt {i : Nat} (hi : i < (rho.truncate b).events.length) 
 
 theorem truncate_viewIdx (v : V) {i : Nat} (hi : i ≤ (rho.truncate b).events.length) :
     (rho.truncate b).ViewIdx v i = rho.ViewIdx v i := by
-  ext o
-  simp only [ViewIdx, Set.mem_ofPred_eq]
-  constructor
-  · rintro ⟨k, o₀, hk, h, hc⟩
-    have hkl : k < (rho.truncate b).events.length := lt_of_lt_of_le hk hi
-    rw [truncate_getElem? hsplit hkl, truncate_releasesAt hsplit hkl] at h
-    exact ⟨k, o₀, hk, h, hc⟩
-  · rintro ⟨k, o₀, hk, h, hc⟩
-    have hkl : k < (rho.truncate b).events.length := lt_of_lt_of_le hk hi
-    rw [← truncate_getElem? hsplit hkl, ← truncate_releasesAt hsplit hkl] at h
-    exact ⟨k, o₀, hk, h, hc⟩
+  unfold ViewIdx
+  rw [truncate_stateBefore hsplit hi]
 
 omit [DecidableEq V] in
 /-- An event of the full run at a time `≤ b` lies in the kept prefix. -/
@@ -247,8 +238,7 @@ theorem truncate_prefix (hv : rho.ExecutionValid) (b : Time) :
         o ∈ rho.ViewIdx w rho.events.length := by
       intro w o ho
       rw [truncate_viewIdx hsplit w le_rfl] at ho
-      obtain ⟨k, o₀, hk, h, hc⟩ := ho
-      exact ⟨k, o₀, by omega, h, hc⟩
+      exact rho.viewIdx_mono (by omega) w ho
     exact ⟨x, y, hxy, ⟨ox, ⟨vx, hvx, hmono vx ox hox⟩, hx⟩,
       ⟨oy, ⟨vy, hvy, hmono vy oy hoy⟩, hy⟩, hh⟩
 

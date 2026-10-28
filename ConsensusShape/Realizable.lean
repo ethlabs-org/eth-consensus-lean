@@ -515,7 +515,8 @@ theorem real_run (F : ShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.horizon
 `H` long enough for one liveness deadline and one progress window. -/
 theorem sleepy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap : Capability)
     (i : K.Idx)
-    (hH : Δ + K.params.latDur Δ cap i + progLen F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V) ≤ H) :
+    (hH : Δ + (K.params.latency cap i : Time) * Δ +
+      progLen F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V) ≤ H) :
     ∃ rho : Model.Run (compiled F) (realPoint key hn Δ hΔ allAwake H).env,
       rho.point = realPoint key hn Δ hΔ allAwake H ∧ rho.key = key ∧
       (Sys F V).Witness ⟨_, rho⟩ ∧ (Sys F V).Sleepy K ⟨_, rho⟩ ∧
@@ -524,7 +525,7 @@ theorem sleepy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap :
       rho.point.TxLiveActive ((Sys F V).cDur K ⟨_, rho⟩) 0
         ((Sys F V).lat K cap i ⟨_, rho⟩) := by
   have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V)
-  have hlat : 0 ≤ K.params.latDur Δ cap i := mul_nonneg (by positivity) hΔ.le
+  have hlat : 0 ≤ (K.params.latency cap i : Time) * Δ := mul_nonneg (by positivity) hΔ.le
   have hH0 : 0 ≤ H := by linarith
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run key F (realPoint key hn Δ hΔ allAwake H) hH0 0
@@ -545,19 +546,20 @@ theorem sleepy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap :
   · change max 0 0 + progLen F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V) ≤ H
     simp only [max_self, zero_add]; linarith
   · refine allAwake_txLiveActive key hn hΔ H _ rfl _ _ _ ?_
-    change max 0 0 + Δ + K.params.latDur Δ cap i ≤ H
+    change max 0 0 + Δ + (K.params.latency cap i : Time) * Δ ≤ H
     simp only [max_self, zero_add]; linarith
 
 /-- The healthy witness at GST `g`: everyone awake (the fixed healthy set is
 all the honest validators), the canonical run from `g` (no receipt before
 `g`), horizon `H` long enough for one liveness deadline
 after the heal point, two cuts after it, and one progress window from
-`readyFrom`. -/
+`ready`. -/
 theorem healthy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap : Capability)
     (i : K.Idx) (g : Time)
-    (h1 : K.params.healPoint Δ cap i g + Δ + K.params.latDur Δ cap i ≤ H)
-    (h2 : K.params.healPoint Δ cap i g + 2 ≤ H)
-    (h3 : readyFrom (K.params.cDur Δ) g + progLen F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V) ≤ H) :
+    (h1 : max g 0 + (K.params.heal cap i : Time) * Δ + Δ + (K.params.latency cap i : Time) * Δ ≤ H)
+    (h2 : max g 0 + (K.params.heal cap i : Time) * Δ + 2 ≤ H)
+    (h3 : max g 0 + (K.params.catchUp : Time) * Δ + 1 +
+      progLen F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V) ≤ H) :
     ∃ rho : Model.Run (compiled F) (realPoint key hn Δ hΔ allAwake H).env,
       rho.point = realPoint key hn Δ hΔ allAwake H ∧ rho.key = key ∧
       (Sys F V).Witness ⟨_, rho⟩ ∧
@@ -570,11 +572,11 @@ theorem healthy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap 
         ((Sys F V).heal K cap i g ⟨_, rho⟩) ((Sys F V).lat K cap i ⟨_, rho⟩) ∧
       SafeActive ((Sys F V).cDur K ⟨_, rho⟩) ((Sys F V).heal K cap i g ⟨_, rho⟩) rho.point := by
   have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V)
-  have hc : 0 ≤ K.params.cDur Δ := mul_nonneg (by positivity) hΔ.le
-  have hheal : 0 ≤ K.params.healPoint Δ cap i g :=
+  have hc : 0 ≤ ((K.params.catchUp : Time) * Δ) := mul_nonneg (by positivity) hΔ.le
+  have hheal : 0 ≤ (max g 0 + (K.params.heal cap i : Time) * Δ) :=
     add_nonneg (le_max_right _ _) (mul_nonneg (by positivity) hΔ.le)
-  have hrdy : 0 ≤ readyFrom (K.params.cDur Δ) g := by
-    unfold readyFrom; have := le_max_right g 0; linarith
+  have hrdy : 0 ≤ (max g 0 + (K.params.catchUp : Time) * Δ + 1) := by
+    have := le_max_right g 0; linarith
   have hH0 : 0 ≤ H := by linarith
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run key F (realPoint key hn Δ hΔ allAwake H) hH0 g
@@ -592,19 +594,20 @@ theorem healthy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap 
   · exact ⟨_, subset_rfl,
       lt_card_of_card hn ha.φ_range (realPoint_card_honest key hn hΔ allAwake H),
       fun _ _ _ _ _ => rfl⟩
-  · change max (readyFrom (K.params.cDur Δ) g) 0 +
+  · change max ((max g 0 + (K.params.catchUp : Time) * Δ + 1)) 0 +
       progLen F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V) ≤ H
     rw [max_eq_left hrdy]; exact h3
   · refine allAwake_txLiveActive key hn hΔ H _ rfl _ _ _ ?_
-    change max 0 (K.params.healPoint Δ cap i g) + Δ + K.params.latDur Δ cap i ≤ H
+    change max 0 (max g 0 + (K.params.heal cap i : Time) * Δ) + Δ +
+      (K.params.latency cap i : Time) * Δ ≤ H
     rw [max_eq_right hheal]; exact h1
 
 /-- Sleepy stress: only honest keys `1`, `2`, `3` stay awake, with active
 liveness and progress on the synchronous canonical run. -/
 theorem sleepyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap : Capability)
     (i : K.Idx) (ht : ProgressReq.Tolerates (Fintype.card V) (K.progress cap i))
-    (hH : Δ + K.params.latDur Δ cap i + progLen F K cap i (⟨Δ, hΔ, (awakeUpTo key 3)⟩ : Env V) ≤
-      H) :
+    (hH : Δ + (K.params.latency cap i : Time) * Δ +
+      progLen F K cap i (⟨Δ, hΔ, (awakeUpTo key 3)⟩ : Env V) ≤ H) :
     ∃ rho : Model.Run (compiled F) (realPoint key hn Δ hΔ (awakeUpTo key 3) H).env,
       rho.point = realPoint key hn Δ hΔ (awakeUpTo key 3) H ∧ rho.key = key ∧
       (Sys F V).Witness ⟨_, rho⟩ ∧ (Sys F V).Sleepy K ⟨_, rho⟩ ∧
@@ -614,7 +617,7 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F) 
         ((Sys F V).lat K cap i ⟨_, rho⟩) ∧
       rho.point.AwakeAtMost (2 * Fintype.card V / 3) := by
   have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, (awakeUpTo key 3)⟩ : Env V)
-  have hlat : 0 ≤ K.params.latDur Δ cap i := mul_nonneg (by positivity) hΔ.le
+  have hlat : 0 ≤ (K.params.latency cap i : Time) * Δ := mul_nonneg (by positivity) hΔ.le
   have hH0 : 0 ≤ H := by linarith
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run key F (realPoint key hn Δ hΔ (awakeUpTo key 3) H) hH0 0
@@ -629,12 +632,13 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F) 
     rw [realPoint_faulty]; exact Finset.singleton_nonempty _
   · exact ⟨_, realPoint_honest key hn hΔ (awakeUpTo key 3) H (j := 1) (by decide) (by decide)⟩
   · intro t _ _
-    change (realPoint key hn Δ hΔ (awakeUpTo key 3) H).ReadyAbove K.params.θ (K.params.cDur Δ) t
+    change (realPoint key hn Δ hΔ (awakeUpTo key 3) H).ReadyAbove K.params.θ
+      ((K.params.catchUp : Time) * Δ) t
     unfold EnvPoint.ReadyAbove
     rw [realPoint_faulty, Finset.card_singleton]
-    have hr := awakeUpTo_ready key hn hΔ H 3 (by omega) (K.params.cDur Δ) t
+    have hr := awakeUpTo_ready key hn hΔ H 3 (by omega) (((K.params.catchUp : Time) * Δ)) t
     have hr' : (3 : ℚ) ≤ ((realPoint key hn Δ hΔ (awakeUpTo key 3) H).readyAt
-        (K.params.cDur Δ) t).card := by exact_mod_cast hr
+        (((K.params.catchUp : Time) * Δ)) t).card := by exact_mod_cast hr
     have := ha.θ_range.2
     push_cast
     nlinarith
@@ -642,7 +646,7 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F) 
     simp only [max_self, zero_add]; linarith
   · refine profile_txLiveActive key hn hΔ H _ (by intro t; simp [awakeUpTo, kv])
       (by intro t; simp [awakeUpTo, kv]) _ rfl _ _ _ ?_
-    change max 0 0 + Δ + K.params.latDur Δ cap i ≤ H
+    change max 0 0 + Δ + (K.params.latency cap i : Time) * Δ ≤ H
     simp only [max_self, zero_add]; linarith
   · intro t _ _
     change ((realPoint key hn Δ hΔ (awakeUpTo key 3) H).awakeAt t).card ≤ _
@@ -653,10 +657,10 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F) 
 liveness, safety and progress on the canonical run from GST `g`. -/
 theorem healthyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap : Capability)
     (i : K.Idx) (ht : ProgressReq.Tolerates (Fintype.card V) (K.progress cap i)) (g : Time)
-    (h1 : K.params.healPoint Δ cap i g + Δ + K.params.latDur Δ cap i ≤ H)
-    (h2 : K.params.healPoint Δ cap i g + 2 ≤ H)
-    (h3 : readyFrom (K.params.cDur Δ) g + progLen F K cap i (⟨Δ, hΔ, (awakeUpTo key (2 *
-      Fintype.card V / 3 + 1))⟩ : Env V) ≤ H) :
+    (h1 : max g 0 + (K.params.heal cap i : Time) * Δ + Δ + (K.params.latency cap i : Time) * Δ ≤ H)
+    (h2 : max g 0 + (K.params.heal cap i : Time) * Δ + 2 ≤ H)
+    (h3 : max g 0 + (K.params.catchUp : Time) * Δ + 1 +
+      progLen F K cap i (⟨Δ, hΔ, (awakeUpTo key (2 * Fintype.card V / 3 + 1))⟩ : Env V) ≤ H) :
     ∃ rho : Model.Run (compiled F) (realPoint key hn Δ hΔ (awakeUpTo key (2 * Fintype.card V / 3 +
       1)) H).env,
       rho.point = realPoint key hn Δ hΔ (awakeUpTo key (2 * Fintype.card V / 3 + 1)) H ∧ rho.key =
@@ -674,11 +678,11 @@ theorem healthyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F)
         Fintype.card V / 3 + 1) := by
   have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, (awakeUpTo key (2 * Fintype.card V / 3 + 1))⟩ : Env
     V)
-  have hc : 0 ≤ K.params.cDur Δ := mul_nonneg (by positivity) hΔ.le
-  have hheal : 0 ≤ K.params.healPoint Δ cap i g :=
+  have hc : 0 ≤ ((K.params.catchUp : Time) * Δ) := mul_nonneg (by positivity) hΔ.le
+  have hheal : 0 ≤ (max g 0 + (K.params.heal cap i : Time) * Δ) :=
     add_nonneg (le_max_right _ _) (mul_nonneg (by positivity) hΔ.le)
-  have hrdy : 0 ≤ readyFrom (K.params.cDur Δ) g := by
-    unfold readyFrom; have := le_max_right g 0; linarith
+  have hrdy : 0 ≤ (max g 0 + (K.params.catchUp : Time) * Δ + 1) := by
+    have := le_max_right g 0; linarith
   have hH0 : 0 ≤ H := by linarith
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run key F (realPoint key hn Δ hΔ (awakeUpTo key (2 * Fintype.card V / 3 + 1)) H)
@@ -710,12 +714,13 @@ theorem healthyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F)
       nlinarith
     · intro v hv t _ _
       exact (Finset.mem_filter.mp hv).2
-  · change max (readyFrom (K.params.cDur Δ) g) 0 +
+  · change max ((max g 0 + (K.params.catchUp : Time) * Δ + 1)) 0 +
       progLen F K cap i (⟨Δ, hΔ, (awakeUpTo key (2 * Fintype.card V / 3 + 1))⟩ : Env V) ≤ H
     rw [max_eq_left hrdy]; exact h3
   · refine profile_txLiveActive key hn hΔ H _ (by intro t; simp [awakeUpTo, kv])
       (by intro t; simp [awakeUpTo, kv]; omega) _ rfl _ _ _ ?_
-    change max 0 (K.params.healPoint Δ cap i g) + Δ + K.params.latDur Δ cap i ≤ H
+    change max 0 (max g 0 + (K.params.heal cap i : Time) * Δ) + Δ +
+      (K.params.latency cap i : Time) * Δ ≤ H
     rw [max_eq_right hheal]; exact h1
   · intro t _ _
     exact (awakeUpTo_card key hn hΔ H _ (by omega) t).le
@@ -778,16 +783,16 @@ theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
   · obtain ⟨rho, -, -, hw, hs, hp, hpa, ht⟩ := sleepy_witness key hn hΔ _ ha hf cap i le_rfl
     exact ⟨⟨_, rho⟩, hw, rfl, ⟨hs, hp, ht⟩, hpa⟩
   · have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V)
-    have hlat : 0 ≤ K.params.latDur Δ cap i := mul_nonneg (by positivity) hΔ.le
-    have hheal : 0 ≤ K.params.healPoint Δ cap i g :=
+    have hlat : 0 ≤ (K.params.latency cap i : Time) * Δ := mul_nonneg (by positivity) hΔ.le
+    have hheal : 0 ≤ (max g 0 + (K.params.heal cap i : Time) * Δ) :=
       add_nonneg (le_max_right _ _) (mul_nonneg (by positivity) hΔ.le)
-    have hrdy : 0 ≤ readyFrom (K.params.cDur Δ) g := by
-      unfold readyFrom Params.cDur
+    have hrdy : 0 ≤ (max g 0 + (K.params.catchUp : Time) * Δ + 1) := by
       have := le_max_right g 0
       have : (0 : Time) ≤ (K.params.catchUp : Time) * Δ := mul_nonneg (by positivity) hΔ.le
       linarith
     obtain ⟨rho, -, -, hw, he, hs, hp, hpa, ht, hsa⟩ := healthy_witness key hn hΔ
-      (K.params.healPoint Δ cap i g + readyFrom (K.params.cDur Δ) g + K.params.latDur Δ cap i +
+      ((max g 0 + (K.params.heal cap i : Time) * Δ) +
+        (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency cap i : Time) * Δ +
         progLen F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V) + Δ + 2) ha hf cap i g
       (by linarith) (by linarith) (by linarith)
     exact ⟨⟨_, rho⟩, hw, rfl, ⟨he, hs, hp, ht⟩, hsa, hpa⟩
@@ -798,16 +803,16 @@ theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
   · obtain ⟨i, hi⟩ := ht cap ho (Fintype.card V)
     have hL := progLen_nonneg F K cap i
       (⟨Δ, hΔ, awakeUpTo key (2 * Fintype.card V / 3 + 1)⟩ : Env V)
-    have hlat : 0 ≤ K.params.latDur Δ cap i := mul_nonneg (by positivity) hΔ.le
-    have hheal : 0 ≤ K.params.healPoint Δ cap i g :=
+    have hlat : 0 ≤ (K.params.latency cap i : Time) * Δ := mul_nonneg (by positivity) hΔ.le
+    have hheal : 0 ≤ (max g 0 + (K.params.heal cap i : Time) * Δ) :=
       add_nonneg (le_max_right _ _) (mul_nonneg (by positivity) hΔ.le)
-    have hrdy : 0 ≤ readyFrom (K.params.cDur Δ) g := by
-      unfold readyFrom Params.cDur
+    have hrdy : 0 ≤ (max g 0 + (K.params.catchUp : Time) * Δ + 1) := by
       have := le_max_right g 0
       have : (0 : Time) ≤ (K.params.catchUp : Time) * Δ := mul_nonneg (by positivity) hΔ.le
       linarith
     obtain ⟨rho, -, -, hw, he, hs, hp, hpa, hl, -, hb⟩ := healthyStress_witness key hn hΔ
-      (K.params.healPoint Δ cap i g + readyFrom (K.params.cDur Δ) g + K.params.latDur Δ cap i +
+      ((max g 0 + (K.params.heal cap i : Time) * Δ) +
+        (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency cap i : Time) * Δ +
         progLen F K cap i (⟨Δ, hΔ, awakeUpTo key (2 * Fintype.card V / 3 + 1)⟩ : Env V) + Δ + 2)
       ha hf cap i hi g (by linarith) (by linarith) (by linarith)
     exact ⟨i, ⟨_, rho⟩, hw, rfl, ⟨he, hs, hp, hl⟩, hb, hpa⟩

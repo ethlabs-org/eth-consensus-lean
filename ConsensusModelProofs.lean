@@ -1,6 +1,7 @@
 module
 public import ConsensusModelProofs.Laws
 public import ConsensusModelProofs.Objects
+public import ConsensusModelProofs.View
 public import ConsensusModelProofs.CanonicalStatement
 public import ConsensusModelProofs.Canonical
 public import ConsensusModelProofs.Candidates

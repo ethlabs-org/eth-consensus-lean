@@ -212,12 +212,11 @@ def releases (v : V) (o : (protoOf F E).Object) (t : Time) : Prop :=
 def receives (v : V) (o : (protoOf F E).Object) (t : Time) : Prop :=
   ∃ i : Nat, rho.events[i]? = some (Event.deliver v o t)
 
-/-- What node `v` has seen before event cut `i`: every object it released or
-received at an event with index `< i`, with everything those objects carry. -/
+/-- What node `v` has seen before event cut `i`: the closure of its `seen`
+log, i.e. every object it released or received before the cut, with everything
+those objects carry (`Run.mem_viewIdx_iff`). -/
 def ViewIdx (v : V) (i : Nat) : Set (protoOf F E).Object :=
-  {o | ∃ k o₀, k < i ∧
-    ((∃ t, rho.events[k]? = some (Event.tick v t) ∧ o₀ ∈ rho.releasesAt k) ∨
-      ∃ t, rho.events[k]? = some (Event.deliver v o₀ t)) ∧ Obj.Contains o₀ o}
+  {o | o ∈ closure (rho.stateBefore i v).seen}
 
 /-- Everything the honest nodes saw in the run. -/
 def Observed : Set (protoOf F E).Object :=

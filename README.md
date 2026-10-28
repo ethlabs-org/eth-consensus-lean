@@ -64,10 +64,11 @@ For shape protocols, `Accepted.good` (L2) proves all three parts. The good
 protocols we accept are
 `Good (sysOf O (compiled F) V) (shapeProgress F V) K`, for every finite `V`.
 
-### The property table (`Behaviour`, `FinalClaims`, `DAClaims`)
+### The property table (`Behaviour`)
 
-Notation: `c = catchUp·Δ`; `heal(cap,i,g) = max g 0 + heal cap i·Δ`;
-`ready(g) = readyFrom c g = max g 0 + c + 1`; `lat = latency cap i·Δ`;
+Notation (the `System` accessors of `Regimes.lean`): `c = cDur = catchUp·Δ`;
+`heal(cap,i,g) = max g 0 + heal cap i·Δ`; `ready(g) = max g 0 + c + 1`;
+`lat = latency cap i·Δ`;
 `prog[a,b]` = the progress requirement of `cap` at index `i` on `[a, b]`;
 `HC` = the excuse.
 
@@ -77,14 +78,17 @@ Notation: `c = catchUp·Δ`; `heal(cap,i,g) = max g 0 + heal cap i·Δ`;
 | all | nesting | always | `final ⪯ stable ⪯ available` in every honest read, at every cut |
 | final | no rollback | always | `Monotone final 0` |
 | final | accountable safety | every environment and network (premise `True`) | two conflicting honest reads convict `≥ α·n` from their own two views (local) |
-| final | liveness | `Healthy g ∧ prog[ready g, horizon]` | `TxLive c final (heal(final,i,g)) lat` |
+| all | healthy liveness (`healthyLive`) | `Healthy g ∧ prog[ready g, horizon]` (progress of that capability) | `TxLive c g heal(cap,i,g) lat` |
 | available, stable | sleepy safety | `Sleepy` | `ReadySafe c g 0` |
 | available, stable | sleepy liveness | `Sleepy ∧ prog[0, horizon]` | `TxLive c g 0 lat` |
 | available, stable | healed safety ("stay in recovery") | `Healthy g ∧ prog[ready g, heal]` | `ReadySafe c g heal` |
-| available, stable | healed liveness | `Healthy g ∧ prog[ready g, horizon]` | `TxLive c g heal lat` |
 | stable | outage resilience | `Outage T b₀ b₁` | `ProtectedThrough c stable target T b₀ b₁` |
 
-Derived in L0 (`Good.*`, `ConsensusProblem/Facts/Good.lean`), and in the Goldilocks sheet:
+One field per row (`finalAccountable`, `healthyLive`, `sleepySafe`, `sleepyLive`,
+`healedSafe`, `persists`; `Reformulations.behaviour_iff` checks it against the
+earlier per-capability records). Derived in L0 (`Good.*`,
+`ConsensusProblem/Facts/Good.lean`; `Agree`, `Safe`, `FaultsBelow`,
+`ReadySafeUpTo` are in `ConsensusProblem/Derived.lean`), and in the Goldilocks sheet:
 
 | Theorem | Statement |
 |---|---|
@@ -130,7 +134,7 @@ The delivery rule, verbatim (`CommLog.Delivers.msgs`):
   awake honest node is held (`TxHeld`, in the inbox at some `τ' ∈ [0, d]`)
   by every honest node awake at `dl a`, for every `a ≥ τ`.
 - Sends are covered at every time, negative ones included. Submissions are
-  covered from `0`. With `SendsFromZero` (true of every valid model run),
+  covered from `0`. With `SendsFromZero` (in `Derived`; true of every valid model run),
   `PSync 0` is synchrony (`PSync.syncUntil_zero`).
 - Receipt is a network service, not protocol use. In the model, what arrives
   at the deadline is first used by the node's next tick. That slack belongs
@@ -182,20 +186,20 @@ submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 
 | Regime | Definition |
 |---|---|
-| `Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + \|faulty\|) < \|ready_t\|` |
-| `Healthy g` | `L.PSync p g ∧ ∃ H ⊆ honest, φ·n < \|H\| ∧ ∀ v ∈ H, v awake throughout [max g 0, horizon]` (one fixed set, no churn, so certificates can be formed; awake, not ready) |
-| `Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·Δ) c 0 horizon ∧ cover·n < \|ready_{b₀}\|` |
+| `System.Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + \|faulty\|) < \|ready_t\|` |
+| `System.Healthy g` | `L.PSync p g ∧ ∃ H ⊆ honest, φ·n < \|H\| ∧ ∀ v ∈ H, v awake throughout [max g 0, horizon]` (one fixed set, no churn, so certificates can be formed; awake, not ready) |
+| `System.Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·Δ) c 0 horizon ∧ cover·n < \|ready_{b₀}\|` |
 | `OutageTimes` | `0 ≤ T ∧ T + lag·Δ ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·Δ` |
 | η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·Δ), t] ∪ faulty\| < \|ready_t\|` |
 
 With `η = 0`, η-sleepy is plain sleepy (tests: `etaSleepyOn_zero`,
-`Regime.outage_eta_zero`). For `η > 0`, every validator awake at some time
+`System.outage_eta_zero`). For `η > 0`, every validator awake at some time
 in the look-back window counts against the threshold, even one that was
 never ready. For `0 ≤ θ`, `0 < η`, `0 ≤ c` and `0 ≤ t`, η-sleepy implies the
 awake-count form (tests: `EtaReadyAbove.awakeForm`). The look-back is clamped at `0`: no
 participation history before time `0` is assumed. The GST is a parameter of
 the regimes, not of the environment. Weaker thresholds keep each regime
-(tests: `Regime.*.of_le`).
+(tests: `System.*.of_le`).
 
 ### Numbers: `Params`, `standard`, `Admissible`
 
@@ -344,26 +348,33 @@ definitions and statements. Everything else is proof support, checked by Lean.
 1. **L0, the problem** (`ConsensusProblem/`, library `ConsensusProblem`):
    `Basic` (`Env`, `EnvPoint`, `Trace`, `CommLog`, `System`), `Network`
    (`Delivers`, `PSync`, `SyncUntil`, `OutageNet`, `EagerFrom`), `Properties`
-   (the claims, with the prefix forms), `Regimes` (`Params`, `Regime.*`),
+   (the claims), `Regimes` (`Params`, `Contract`, the regimes
+   `System.Sleepy/Healthy/Outage` and `System.cDur/heal/ready/lat`),
    `Good` (`Behaviour`, `System.Adequate`, `Realizable`, `Good`). Read all of
-   it. `ConsensusProblem/Facts/` holds lemmas only (the derived `Good.*`,
-   with `Good.served`).
+   it. Not in the trusted surface: `ConsensusProblem/Derived` (definitions
+   `Good` does not read: `Agree`, `Safe`, `ReadySafeUpTo`, `FaultsBelow`,
+   `SendsFromZero`, `Trace.map`) and `ConsensusProblem/Facts/` (lemmas only:
+   the derived `Good.*`, with `Good.served`).
 2. **L1, the model** (`ConsensusModel/`): `Objects`, `Protocol`, `Run`,
    `Conditions`, `System` (evidence, `sysOf`, `sysExternal`): the definitions
-   `sysOf` exposes. Key statements (`ConsensusModelProofs/`):
+   `sysOf` exposes (a node's view `Run.ViewIdx` is the closure of its engine
+   `seen` log; `Run.mem_viewIdx_iff` gives the event-index form). Key statements (`ConsensusModelProofs/`):
    `sysOf_adequate`, `sysOf_log_faithful`, `Run.held_iff_served`,
    `sysOf_nonFraming`, `sysOf_laws`.
 3. **Blocks** (`ConsensusBlocks/`): `TimeGrid`, `Progress` (`Pattern`,
    `Recurrence`, `ProgressReq`, `PatternRecurrence`, `NotReadyOn`), `Chains`,
-   `Payload` (`encodeTxs`, `ledgerOf`).
+   `Payload` (`encodeTxs`, `ledgerOf` = `List.eraseDups` of the decoded
+   inputs): definitions only; their lemmas are in `ConsensusBlocks/Facts`.
 4. **L2, the shape** (`ConsensusShape/`): `Shape` (`ChainShape`), `Compile`,
-   `Payload`, `Run` (`Sys`, `shapeProgress`), `Claims` (`ShapeClaims`),
+   `Run` (`Sys`, `shapeProgress`), `Claims` (`ShapeClaims`),
    `ProgressFit` (`ProgressFits`, `ProgressTolerant`), the witness-activity
    definitions at the top of `Realizable` (`RealizableActive`), `Accepted`.
-   Key statements: `refinement`, `regimes_realizable`, `Accepted.good`,
-   `Accepted.activeService`.
+   Key statements: `refinement`, `regimes_realizable`, `Accepted.good`.
 
-Proof support (not needed to trust the endpoint): `ConsensusProblem/Facts`,
+Proof support (not needed to trust the endpoint): `ConsensusProblem/Derived`
+and `Facts`, `ConsensusBlocks/Facts`, `ConsensusShape/Payload` (payload
+lemmas), `ConsensusShape/Service` (the checked corollary
+`Accepted.activeService`, from `Accepted.good` via `Good.served`),
 the rest of `ConsensusModelProofs` (canonical runs `canonical_run_from`,
 truncation `Run.truncate_*`, slashing protection `honestNeverSlashed`),
 `Refinement` and the rest of `Realizable` (coverage, witnesses). Values:
@@ -382,8 +393,6 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop wh
   progressTolerant : ProgressTolerant O K
 theorem Accepted.good (h : Accepted F K) (V) [Fintype V] [DecidableEq V] :
     Good (sysOf O (compiled F) V) (shapeProgress F V) K
-theorem Accepted.activeService (h : Accepted F K) :
-    ∃ cap g, (cap = .final ∨ cap = .available) ∧ O.output cap = some g ∧ ActiveService F K cap g
 ```
 
 `Accepted.good` combines three theorems. `refinement` gives `Behaviour`;
@@ -392,10 +401,11 @@ and `proposalLive_txLive` (proposal liveness and partial synchrony give
 transaction liveness). `sysOf_adequate` gives `Adequate`.
 `regimes_realizable` gives `RealizableActive`, hence `Realizable`
 (`RealizableActive.toRealizable`; its stress witnesses keep keys
-`1..3`, respectively `1..⌊2n/3⌋+1`, awake and the rest asleep). `ActiveService`: a final or
+`1..3`, respectively `1..⌊2n/3⌋+1`, awake and the rest asleep). Corollary
+(`ConsensusShape/Service.lean`, `Accepted.activeService`): a final or
 available output puts a relayed transaction into another honest node's
-read on a clean healthy witness. A silent service or empty outputs are
-therefore not accepted, for every protocol.
+read on a clean healthy witness (`ActiveService`). A silent service or empty
+outputs are therefore not accepted, for every protocol.
 
 Design and history: `repos/goldilocks/notes/generic-interface/layers-plan.md`
 in the workbench (latest: "Iteration 6: the definition of a good protocol");
@@ -458,7 +468,7 @@ are the intended ones.
 ## Scope
 
 - **`stable := finalized` (Gasper-style) is not good** (iteration-6 decision).
-  Stable must be sleepy-live (`DAClaims.sleepyLive`). A schema that aliases
+  Stable must be sleepy-live (`Behaviour.sleepyLive`). A schema that aliases
   stable to final is good only if its final output is live under sleepy
   participation (`stable_alias_final_sleepy_live`). Aliasing stable to
   available is allowed (Goldilocks).
