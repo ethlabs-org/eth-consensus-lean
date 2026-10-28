@@ -103,7 +103,14 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Realizable.rotating_proposalLive_vacuous,
       `Consensus.Shape.Tests.Vacuity.credential_forgery_excluded,
       `Consensus.Shape.Tests.Vacuity.forgedProposal_invalid,
-      `Consensus.Shape.Tests.Vacuity.noService_not_accepted] do
+      `Consensus.Shape.Tests.Vacuity.noService_not_accepted, `Consensus.Shape.regimes_realizable,
+      `Consensus.Shape.realizable_active, `Consensus.Shape.RealizableActive.toRealizable,
+      `Consensus.Shape.Accepted.good, `Consensus.Shape.Accepted.activeService,
+      `Consensus.Trace.TxLive.served, `Consensus.Shape.sleepy_witness,
+      `Consensus.Shape.healthy_witness, `Consensus.Shape.outage_witness,
+      `Consensus.Shape.Tests.Controls.positive_controls,
+      `Consensus.Shape.Tests.Controls.outage_control,
+      `Consensus.Shape.Tests.Controls.ctrl_realizable] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2

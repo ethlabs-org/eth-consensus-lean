@@ -16,6 +16,6 @@ public import ConsensusShape.Values.Tendermint
 blocks (`Shape`), their compilation to the model (`Compile`), the shape
 vocabulary and progress reader over compiled runs (`Run`), the shape claims
 (`Claims`), the payload facts (`Payload`), the refinement to the L0 behaviour
-(`Refinement`), coverage and the extremal selection (`Realizable`), the
-acceptance endpoint (`Accepted`), and the Goldilocks, Streamlet and
-Tendermint values (`Values`). -/
+(`Refinement`), coverage, the extremal selection and generic realizability
+(`Realizable`), the acceptance endpoint (`Accepted`, with `Accepted.good`),
+and the Goldilocks, Streamlet and Tendermint values (`Values`). -/
