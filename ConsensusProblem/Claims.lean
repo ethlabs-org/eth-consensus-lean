@@ -13,8 +13,10 @@ and which properties are promised. Bounds are coefficients of the run's `Δ`.
 
 What this layer cannot check: that the profile is realistic and nonvacuous,
 that the excuse is meaningful, that `convicts` means misbehaviour. The model
-layer fixes the excuse and evidence; the shape layer fixes the profile and
-proves it realizable, with active deadlines. -/
+layer fixes the excuse and evidence (and proves every execution premise
+satisfiable, `canonical_run`); the shape layer fixes the profile. Satisfiability
+of the shape profiles is shown by positive controls (tests), not yet by a
+general theorem. -/
 
 namespace Consensus
 

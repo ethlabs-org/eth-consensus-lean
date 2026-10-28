@@ -7,9 +7,10 @@ layers, each reviewed once:
 |---|---|---|---|
 | **L0, the problem** | `ConsensusProblem` | transactions, ledgers, three outputs; the environment (Δ, GST, awake profile, honest set, private submissions); safety, nesting, transaction liveness, persistence, accountability, non-framing; the claim form | ~400 |
 | **L½, the model** | `ConsensusModel` | a shape-free execution model: protocol interface, engine, delivery, sleep and restarts, unforgeability, evidence, hashes; `sysOf F`, which makes any protocol family an L0 system | ~600 |
-| **L1, our shape** | `ConsensusShape` | slots, one proposer per slot, full committees, block headers and chains, regimes, constants, `compile` onto L½; block-level claims `ShapeClaims`; the profile and bounds of the L0 claims | ~750 |
+| **L1, our shape** | `ConsensusShape` | slots, one proposer per slot, full committees, block headers and chains, regimes, constants, `compile` onto L½; block-level claims `ShapeClaims`; the profile and bounds of the L0 claims | ~750 (definitions; ~1,000 with the refinement proof) |
 
-The headline is the refinement theorem: for every family `F` of the shape,
+The headline is the refinement theorem `refinement`: for every family `F` of
+the shape and every finite nonempty validator type `V`,
 `ShapeClaims F C → ProblemClaims (sysOf (compile ∘ F) V) (profile C) (bounds C)`.
 A protocol that proves `ShapeClaims` therefore solves the L0 problem under L1's
 reviewed assumptions.
@@ -51,26 +52,31 @@ and will be removed.
 
 ## Why the meaning is fixed below the protocol
 
-- **No protocol word in any premise.** Every premise is environment
+- **No protocol-supplied premise predicate.** Every premise is environment
   vocabulary (L0), an execution condition (L½: valid execution, delivery), or
-  a reviewed shape premise (L1: recurrence). The protocol supplies no hook,
-  author, decoder, schedule, evidence predicate or hash. `canonical_run`
-  makes the execution part satisfiable for every protocol.
+  a reviewed shape premise (L1: recurrence over the shape's slot timing). The
+  execution conditions evaluate what the protocol does, but the protocol
+  supplies no hook, author, decoder, schedule or hash, and evidence collection
+  and conviction are fixed around its one slashing rule, `conflicts`.
+  `canonical_run` makes the execution part satisfiable for every protocol.
 - **Signing and keys.**
   - The engine signs. Seats are held by validators through the run's holder
     map, which is an **embedding per label**: no validator holds two seats of
     one label, so a quorum of seats is a quorum of distinct validators.
   - Accountability counts validators, with no committee premise.
 - **Transactions are private per node.** The engine gives each node only its
-  own submissions. L1 puts a proposer's mempool into its proposal, so a ledger
-  can only contain a submitted transaction through communication.
+  own submissions; other nodes' submissions are not available to honest code
+  except through messages. L1 puts a proposer's mempool into its proposal.
+  (A node may include its own submissions, and an adversarial proposal may
+  contain any transaction.)
 - **Hashes are arbitrary run data.**
   - Escaped claims read "X, or a hash collision was observed". The collision
     scope is every item in the honest closure, under any signature, plus
     digest 0, which is reserved.
   - Honest code learns the hash only through the digests the engine passes.
-  - The lifting theorems show that the escaped form is equivalent to proving X
-    for injective, nonzero hashes.
+  - The lifting theorems show that, for claims invariant under rehashing
+    outside the observed items (which every exported claim is), the escaped
+    form is equivalent to proving X for injective, nonzero hashes.
   - Collision resistance of the deployed hash (including "nothing hashes to
     0") is an assumption.
 - **Outputs are pinned on both sides.**
@@ -82,7 +88,9 @@ and will be removed.
 1. The output ledgers (and L1's chain getters) are what users read.
 2. `conflicts` is the slashing rule the chain enforces.
 3. The constants in L1, including the premise-side ones (catch-up, η, arming
-   lags, outage budget, θ, θrec), are acceptable.
+   lags, outage budget, θ, θrec), are acceptable. Check `catchUp` first: a huge
+   catch-up makes the claims about nodes that (almost) never slept. `Valid`
+   bounds only θ, θrec and `budget ≤ η`.
 4. Implementation refinement:
    - the deployed client matches the engine: signature encoding, the seat
      holder mapping (at most one seat per label per validator), structural
@@ -91,9 +99,10 @@ and will be removed.
    - the hash is collision-resistant and never 0 on real items;
    - honest code uses digests only as received.
 
-Generic, read once: **model adequacy**. Clocks; delivery within Δ after GST,
-including to nodes that wake later; restarts only at wakes; unforgeable
-signatures.
+Generic, read once: **model adequacy**. Clocks; delivery strictly before the
+deadline `max a GST + Δ` (with integer time, a release at `t` with `Δ = 1` must
+be delivered at `t`, after the ticks), including to nodes that wake later;
+restarts only at wakes; unforgeable signatures.
 
 ## Scope limits
 
@@ -103,8 +112,14 @@ signatures.
   unsubmitted transactions, and repeats are removed in L1.
 - `finalized ⪯ stable` is not promised (plan Q9). Only `stable ⪯ confirmed`.
 - Recovery exports safety for ready readers only. Recovered liveness is an L1
-  block-level field, not in L0. Recovery assumes no honest wake at or after
-  GST (plan Q13).
+  block-level field, not in L0. Recovery, and Finality which extends it,
+  assume no honest wake at or after GST (plan Q13).
+- At L0, ledgers may contain fabricated transactions: the refutation of a
+  fabricated-output family uses L1's block provenance (`outputValid`), which
+  has no L0 counterpart.
+- Satisfiability of the shape profiles with active deadlines is shown by tests
+  (`ConsensusShapeTests/Controls`, one literal constant record), not by a
+  general theorem.
 - The collision escape is run-wide.
 - Accountability compares two reads in one run, not across runs.
 - Unit weights.

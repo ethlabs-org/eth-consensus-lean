@@ -26,8 +26,8 @@ def bounds (C : Constants) : System.Bounds where
   finLive k := C.finDelay.eval k
 
 /-- The refinement: the shape's claims give the consensus problem's claims for
-the compiled family, under the shape's profile and bounds. (Stated; proof
-pending.) -/
+the compiled family, under the shape's profile and bounds. Proved as `refinement`
+(Refinement.lean). -/
 def RefinementStatement (F : Family) (C : Constants) (V : Type)
     [Fintype V] [DecidableEq V] [Nonempty V] : Prop :=
   ShapeClaims F C → System.ProblemClaims (Model.sysOf (fun pub => compile (F pub)) V)
