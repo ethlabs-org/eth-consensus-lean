@@ -1,5 +1,6 @@
 module
 public import ConsensusModelProofs.Canonical.Network
+public import ConsensusModelProofs.Credentials
 
 @[expose] public section
 
@@ -12,8 +13,9 @@ within each recipient's delivery batch. Delivering again at later times makes
 the network service independent of sleep history.
 
 The construction uses no laws about the protocol. `unforgeable_of_causal`
-uses only the engine's signing and seen filter; `delivers_of_eager` applies
-to every deadline strictly after its start, including both contract deadlines.
+and `credentials_of_causal` use only the engine's signing and seen filter;
+`delivers_of_eager` applies to every deadline strictly after its start,
+including both contract deadlines.
 -/
 
 namespace Consensus.Model
@@ -28,13 +30,14 @@ noncomputable def eagerRelay {V : Type} [Fintype V] [DecidableEq V]
       mempool (fun v τ => if E.awake v τ then submit v τ else []) u a
   else []
 
-/-- Every choice of protocol, environment and run data admits a valid run
+/-- Every choice of protocol, environment, PKI, admissible selection and run
+data admits a valid run
 with partial synchrony and healthy delivery on every prefix. -/
 theorem canonical_run : CanonicalRun := by
-  intro O F V _ _ E honest horizon hh holder submit hash
+  intro O F V _ _ E honest horizon hh key sel hsel submit hash
   classical
   let relay := eagerRelay E honest submit
-  let base := mkRun (F := F) (E := E) honest horizon holder submit relay hash []
+  let base := mkRun (F := F) (E := E) honest horizon key sel submit relay hash []
   refine ⟨relay, base.canonicalEvents, ?_⟩
   change (base.withEvents base.canonicalEvents).ExecutionValid ∧
     (base.withEvents base.canonicalEvents).PartialSynchrony ∧
@@ -63,8 +66,9 @@ theorem canonical_run : CanonicalRun := by
       · change τ ∈ [(τ.toNat : Int)]
         simp [Int.toNat_of_nonneg hτ]
     · simpa [haw] using hx
-  refine ⟨⟨hs, hw, ?_⟩, ?_, ?_⟩
+  refine ⟨⟨hs, hw, ?_, hsel, ?_⟩, ?_, ?_⟩
   · exact (base.withEvents base.canonicalEvents).unforgeable_of_causal base.canonical_causal
+  · exact (base.withEvents base.canonicalEvents).credentials_of_causal base.canonical_causal
   · exact (base.withEvents base.canonicalEvents).partialSynchrony_of_eager hw he ht
   · exact (base.withEvents base.canonicalEvents).healthyPrefixDelivery_of_eager hw he ht
 

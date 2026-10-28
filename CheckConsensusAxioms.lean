@@ -22,7 +22,11 @@ def main : IO UInt32 := do
       `Consensus.EnvPoint.two_mul_card_faulty_union_lt,
       `Consensus.ProblemClaims.agree_of_accountable,
       `Consensus.Shape.Tests.Premise.provided_mismatch,
-      `Consensus.Shape.Tests.Premise.protected_after_window] do
+      `Consensus.Shape.Tests.Premise.protected_after_window,
+      `Consensus.Model.Run.txHeld_mem_mempool, `Consensus.Model.SelSpec.admits_exists,
+      `Consensus.Model.sysOf_laws, `Consensus.Model.Run.selected_of_observed,
+      `Consensus.Model.Run.candidates_signer, `Consensus.Model.Run.credentials_of_causal,
+      `Consensus.Shape.Tests.Model.forged_role_invalid] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2

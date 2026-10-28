@@ -7,22 +7,24 @@ public import ConsensusModel.Protocol
 /-! # Runs and the engine (layer ½)
 
 A run fixes everything the protocol does not choose: the honest set, the
-horizon, the scheduler's events, the holder of every seat, the transactions
-submitted to every node, and the hash function. The engine runs the protocol on
+horizon, the scheduler's events, the PKI (which validator owns each key), the
+selection (which keys act in each role), the transactions submitted to every
+node, and the hash function. The engine runs the protocol on
 the events. Per node it keeps the protocol state and the `seen` log of every
 object the node released or received.
 
 At a tick of awake node `v` at `t`, the engine
 1. runs `clock` with `v`'s own and relayed transactions up to `t` (its mempool);
-2. builds the candidates from that state: for every due duty, in order, and
-   every seat of its label that `v` holds, the duty's message signed with that
-   seat; then unsigned gossip;
+2. builds the candidates from that state: for every due duty, in order, if
+   `v`'s own key is selected for the duty's role, the duty's message signed
+   with that key in that role; then unsigned gossip;
 3. releases a candidate only if every object it carries is already in the
    closure of `seen` (so honest code passes on no object it has not seen), adds
    it to `seen`, and records it with `recordOwn`.
-At a delivery it runs `process`; at a restart, `restore ∘ durable`, keeping
-`seen`. Only the engine evaluates the hash: with every object processed or
-recorded it passes the digests of the items in the object's closure. -/
+At a delivery it runs `process`; at a restart, `restore` (with the own key) of
+`durable`, keeping `seen`. A node starts in `init` of its own key. Only the
+engine evaluates the hash: with every object processed or recorded it passes
+the digests of the items in the object's closure. -/
 
 namespace Consensus.Model
 
@@ -58,7 +60,7 @@ def keyLe (e f : Event V O) : Prop :=
 end Event
 
 /-- The public parameters of an environment. -/
-def pubOf {V : Type} [Fintype V] (E : Env V) : Public := ⟨Fintype.card V, E.Δ, E.Δ_pos⟩
+abbrev pubOf {V : Type} [Fintype V] (E : Env V) : Public := ⟨Fintype.card V, E.Δ, E.Δ_pos⟩
 
 variable {V : Type} [Fintype V] [DecidableEq V]
 
@@ -71,10 +73,12 @@ structure Run {O : OutputSchema} (F : Family O) (E : Env V) where
   honest : Finset V
   horizon : Time
   events : List (Event V (protoOf F E).Object)
-  /-- The validator holding every seat. Within one label, distinct seats are
-  held by distinct validators (an embedding), so a quorum of seats is a quorum
-  of distinct validators; a full committee is a bijection automatically. -/
-  holder : (ℓ : (protoOf F E).Label) → Fin ((protoOf F E).seats ℓ) ↪ V
+  /-- The PKI: key `k` belongs to validator `key k`. A bijection, so distinct
+  keys are distinct validators. -/
+  key : Fin (Fintype.card V) ≃ V
+  /-- The selection: the keys acting in each role. Admissibility for the
+  protocol's `selSpec` is an execution condition (`ExecutionValid.selValid`). -/
+  sel : (protoOf F E).Role → Finset (Fin (Fintype.card V))
   /-- The transactions submitted to every node at every time. -/
   submit : V → Time → List Tx
   /-- Transactions relayed by the network, chosen by the scheduler. -/
@@ -97,10 +101,6 @@ structure Node {pub : Public} {Out : Type} (P : Protocol pub Out) where
   st : P.State
   seen : List P.Object
 
-/-- The initial world. -/
-def initWorld {O : OutputSchema} (F : Family O) (E : Env V) : V → Node (protoOf F E) :=
-  fun _ => ⟨(protoOf F E).init, []⟩
-
 /-- The closure of a list of objects: the objects and everything they carry. -/
 def closure {pub : Public} {Out : Type} {P : Protocol pub Out} (l : List P.Object) :
     List P.Object :=
@@ -111,13 +111,19 @@ def digests {pub : Public} {Out : Type} {P : Protocol pub Out} (hash : P.Item �
     (o : P.Object) : List (P.Item × Nat) :=
   (o.parts.filterMap Obj.item?).map (fun x => (x, hash x))
 
-/-- Release candidates in order: a candidate is released if everything it
-carries is in the closure of `seen`; released objects join `seen` at once. -/
+/-- Release guard: everything the candidate carries is already in the closure
+of `seen`. -/
+def releasable {pub : Public} {Out : Type} {P : Protocol pub Out} (seen : List P.Object)
+    (c : P.Object) : Bool :=
+  c.carried.all (fun x => decide (x ∈ closure seen))
+
+/-- Release candidates in order: a candidate is released if it is
+`releasable`; released objects join `seen` at once. -/
 def releaseAll {pub : Public} {Out : Type} {P : Protocol pub Out} (hash : P.Item → Nat) :
     Node P → List P.Object → Node P × List P.Object
   | nd, [] => (nd, [])
   | nd, c :: cs =>
-    if c.carried.all (fun x => decide (x ∈ closure nd.seen)) then
+    if releasable nd.seen c then
       let nd' : Node P := ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩
       let r := releaseAll hash nd' cs
       (r.1, c :: r.2)
@@ -131,19 +137,31 @@ namespace Run
 
 variable (rho : Run F E)
 
-/-- The seats of label `ℓ` that `v` holds. -/
-def ownSeats (ℓ : (protoOf F E).Label) (v : V) : List (Fin ((protoOf F E).seats ℓ)) :=
-  (List.finRange _).filter (fun i => decide (rho.holder ℓ i = v))
+/-- The own key of validator `v`. -/
+def ownKey (v : V) : Fin (Fintype.card V) := rho.key.symm v
 
-/-- The candidates of node `v` at time `t` in state `st`. -/
+/-- The validator that signed an authentication, through the PKI. -/
+def signerOf : Auth (Fintype.card V) (protoOf F E).Role → Option V
+  | .signed k _ => some (rho.key k)
+  | .none => none
+
+/-- The initial world: every node starts in `init` of its own key, having
+seen nothing. -/
+def initWorld (v : V) : Node (protoOf F E) := ⟨(protoOf F E).init (rho.ownKey v), []⟩
+
+/-- The candidates of node `v` at time `t` in state `st`: the messages of the
+due duties whose role selects `v`'s key, signed with that key in that role,
+then unsigned gossip. -/
 def candidates (st : (protoOf F E).State) (v : V) (t : Time) :
     List (protoOf F E).Object :=
   let P := protoOf F E
   ((P.duties t).flatMap (fun d =>
     match P.act st d with
-    | some (m, cs) => (rho.ownSeats (P.label d) v).map (fun i => .mk (.signed (P.label d) i) m cs)
+    | some (m, cs) =>
+      if rho.ownKey v ∈ rho.sel (P.role d) then [.mk (.signed (rho.ownKey v) (P.role d)) m cs]
+      else []
     | none => [])) ++
-  (P.gossip st t).map (fun bc => .mk .none (.data bc.1) bc.2)
+  (P.gossip st t).map (fun mc => .mk .none mc.1 mc.2)
 
 /-- A tick: the clock (with the node's mempool), then, if awake, signing and
 release. -/
@@ -159,11 +177,11 @@ def step (w : V → Node (protoOf F E)) : Event V (protoOf F E).Object → V →
       Function.update w v ⟨(protoOf F E).process (w v).st o (digests rho.hash o), (w v).seen ++ [o]⟩
   | .restart v t =>
       Function.update w v
-        ⟨(protoOf F E).restore ((protoOf F E).durable (w v).st) t, (w v).seen⟩
+        ⟨(protoOf F E).restore (rho.ownKey v) ((protoOf F E).durable (w v).st) t, (w v).seen⟩
 
 /-- The world before event `i` (event cut `i`). -/
 def stateBefore (i : Nat) : V → Node (protoOf F E) :=
-  (rho.events.take i).foldl rho.step (initWorld F E)
+  (rho.events.take i).foldl rho.step rho.initWorld
 
 /-- The objects released by the tick at index `i`. -/
 def releasesAt (i : Nat) : List (protoOf F E).Object :=
@@ -198,11 +216,6 @@ def cutTime (i : Nat) : Time :=
   | k + 1 => match rho.events[k]? with
     | some e => e.time
     | none => 0
-
-/-- The validator that holds an authentication. -/
-def holderOf : Auth (protoOf F E).Label (protoOf F E).seats → Option V
-  | .signed ℓ i => some (rho.holder ℓ i)
-  | .none => none
 
 /-- Output `g` of node `v` at event cut `i`. -/
 def readIdx (g : O.Id) (v : V) (i : Nat) : Ledger :=

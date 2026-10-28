@@ -42,7 +42,7 @@ and will be removed.
    - **validity** is `ExecutionValid`;
    - **reads** are the protocol's output ledgers at event cuts;
    - **evidence** is the objects an honest node has seen, convicted under the
-     protocol's `conflicts` rule through the run's seat holders;
+     protocol's `conflicts` rule through the run's PKI (`signerOf`);
    - **the excuse** is an observed hash collision.
 
    Also read the statements of `ConsensusModelProofs`:
@@ -73,9 +73,15 @@ and will be removed.
   requires positive recurrence gaps and, for recovery/finality coverage,
   nonnegative GST. These guards do not enter `ProblemClaims` or the regimes.
 - **Signing and keys.**
-  - The engine signs. Seats are held by validators through the run's holder
-    map, which is an **embedding per label**: no validator holds two seats of
-    one label, so a quorum of seats is a quorum of distinct validators.
+  - The engine signs, with the node's own key in the duty's role, and only
+    if the run's selection (`sel`, admissible for the protocol's closed
+    `selSpec`) contains that key. Keys map to validators through the run's
+    PKI, a **bijection** `key : Fin n ≃ V`, so distinct keys are distinct
+    validators. Signatures bind their role (`Auth.signed k r`).
+  - `Credentials` (an execution condition): every signed object inside a
+    delivered object is signed by a key selected for its role, faulty signers
+    included; `Run.selected_of_observed` extends this to everything honest
+    nodes observed.
   - Accountability counts validators, with no committee premise.
 - **Transaction ingress is relayed by the network.** A transaction submitted
   to an awake honest node is relayed to every honest node awake throughout a
@@ -133,11 +139,12 @@ and will be removed.
    `A'`; the accountable fraction has the opposite order because it is a
    conclusion. `ProblemClaims.mono` proves this for a fixed slot interpretation.
 4. Implementation refinement:
-   - the deployed client matches the engine: signature encoding, the seat
-     holder mapping (at most one seat per label per validator), structural
+   - the deployed client matches the engine: signature encoding (binding the
+     role), the PKI (one key per validator), membership proofs that realize
+     `Credentials`, structural
      carriage, the seen filter and a persisted seen log, the persisted
      `durable` state, and the cumulative own-plus-relayed mempool;
-   - the hash is collision-resistant and never 0 on real items;
+   - the hash is collision-resistant on real items;
    - honest code uses digests only as received.
 
 Generic, read once: **model adequacy**. Clocks; delivery strictly before the

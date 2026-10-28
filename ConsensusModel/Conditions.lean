@@ -48,14 +48,28 @@ earlier event. Faulty validators sign anything. -/
 def Unforgeable : Prop :=
   ∀ (i : Nat) (w : V) (o : (protoOf F E).Object) (t : Time),
     rho.events[i]? = some (Event.deliver w o t) →
-    ∀ o', Obj.Contains o o' → ∀ u ∈ rho.honest, rho.holderOf o'.auth = some u →
+    ∀ o', Obj.Contains o o' → ∀ u ∈ rho.honest, rho.signerOf o'.auth = some u →
       ∃ (j : Nat) (t' : Time), j < i ∧ rho.events[j]? = some (Event.tick u t') ∧
         o' ∈ rho.releasesAt j
+
+/-- The run's selection is admissible for every role. -/
+def SelValid : Prop := ∀ r, ((protoOf F E).selSpec r).Admits (rho.sel r)
+
+/-- Credentials: every signed object inside a delivered object is signed by a
+key selected for its role, faulty signers included. This is the soundness of
+the deployed membership mechanism (a public committee list, VRF proofs, …): a
+model-adequacy binding, not something honest code checks. -/
+def Credentials : Prop :=
+  ∀ (i : Nat) (w : V) (o : (protoOf F E).Object) (t : Time),
+    rho.events[i]? = some (Event.deliver w o t) →
+    ∀ o', Obj.Contains o o' → ∀ k r, o'.auth = .signed k r → k ∈ rho.sel r
 
 /-- A valid execution. -/
 structure ExecutionValid : Prop extends
   ScheduleWellFormed rho, SleepWellFormed rho where
   unforgeable : Unforgeable rho
+  selValid : SelValid rho
+  credentials : Credentials rho
 
 /-- Node `w` holds `o` at deadline `d`: it released or received `o` at some
 `t' < d` and has not restarted in `(t', d)`. A receipt before a sleep does not

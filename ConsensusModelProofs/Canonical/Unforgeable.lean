@@ -1,5 +1,6 @@
 module
 public import ConsensusModelProofs.Canonical.Events
+public import ConsensusModelProofs.Candidates
 
 @[expose] public section
 
@@ -74,7 +75,7 @@ def Causal : Prop :=
     ∃ j v t', j < i ∧ rho.events[j]? = some (.tick v t') ∧ o ∈ rho.releasesAt j
 
 def SignedBefore (i : Nat) (o : (protoOf F E).Object) : Prop :=
-  ∀ u ∈ rho.honest, rho.holderOf o.auth = some u →
+  ∀ u ∈ rho.honest, rho.signerOf o.auth = some u →
     ∃ j t, j < i ∧ rho.events[j]? = some (.tick u t) ∧ o ∈ rho.releasesAt j
 
 def SafeBefore (i : Nat) (o : (protoOf F E).Object) : Prop :=
@@ -90,23 +91,6 @@ theorem safeBefore_mono {i j : Nat} (hij : i ≤ j) {o : (protoOf F E).Object}
     (h : rho.SafeBefore i o) : rho.SafeBefore j o :=
   fun d hd => rho.signedBefore_mono hij (h d hd)
 
-/-- Every signed candidate is signed by the node running the tick. -/
-theorem candidates_holder (st : (protoOf F E).State) (v : V) (t : Time)
-    {o : (protoOf F E).Object} (ho : o ∈ rho.candidates st v t) :
-    rho.holderOf o.auth = none ∨ rho.holderOf o.auth = some v := by
-  unfold candidates at ho
-  rcases List.mem_append.mp ho with hs | hg
-  · obtain ⟨d, _, hd⟩ := List.mem_flatMap.mp hs
-    cases ha : (protoOf F E).act st d with
-    | none => simp [ha] at hd
-    | some mc =>
-      obtain ⟨i, hi, rfl⟩ := List.mem_map.mp (by simpa [ha] using hd)
-      have hi' : rho.holder ((protoOf F E).label d) i = v := by
-        simpa [ownSeats] using (List.mem_filter.mp hi).2
-      exact Or.inr (by simp [holderOf, Obj.auth, hi'])
-  · obtain ⟨bc, _, rfl⟩ := List.mem_map.mp hg
-    exact Or.inl rfl
-
 theorem stateBefore_succ {i : Nat} {e : Event V (protoOf F E).Object}
     (hi : rho.events[i]? = some e) :
     rho.stateBefore (i + 1) = rho.step (rho.stateBefore i) e := by
@@ -120,16 +104,16 @@ theorem tick_safe {i : Nat} {v : V} {t : Time}
     (∀ o ∈ rho.releasesAt i, rho.SafeBefore (i + 1) o) := by
   have hr : ∀ o ∈ (rho.tick (rho.stateBefore i v) v t).2,
       rho.SignedBefore (i + 1) o := by
-    intro o ho u hu hholder
+    intro o ho u hu hsigner
     have hc : o ∈ rho.candidates
         ((protoOf F E).clock (rho.stateBefore i v).st t (mempool rho.inbox v t)) v t := by
       unfold tick at ho
       split at ho
       · exact releaseAll_subset _ _ _ o ho
       · simp at ho
-    rcases rho.candidates_holder _ v t hc with hn | hv
-    · rw [hn] at hholder; cases hholder
-    · have huv : u = v := Option.some.inj (hholder.symm.trans hv)
+    rcases rho.candidates_signerOf _ v t hc with hn | hv
+    · rw [hn] at hsigner; cases hsigner
+    · have huv : u = v := Option.some.inj (hsigner.symm.trans hv)
       subst u
       exact ⟨i, t, Nat.lt_succ_self i, hi, by simpa only [releasesAt, hi] using ho⟩
   change _ ∧ ∀ o ∈ rho.releasesAt i, _

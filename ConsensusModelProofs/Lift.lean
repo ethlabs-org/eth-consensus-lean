@@ -5,23 +5,23 @@ public import ConsensusModel.System
 namespace Consensus.Model
 variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
 namespace Obj
-variable {L : Type} {seats : L → Nat} {Item Body : Type}
+variable {n : Nat} {Role Item Body : Type}
 
-theorem partsList_eq (cs : List (Obj L seats Item Body)) :
+theorem partsList_eq (cs : List (Obj n Role Item Body)) :
     parts.partsList cs = cs.flatMap parts := by
   induction cs with
   | nil => rfl
   | cons c cs ih => simp [parts.partsList, ih]
 
-theorem parts_eq (o : Obj L seats Item Body) : o.parts = o :: o.carried.flatMap parts := by
+theorem parts_eq (o : Obj n Role Item Body) : o.parts = o :: o.carried.flatMap parts := by
   cases o
   simp [parts, partsList_eq, carried]
 
-theorem carried_size_lt (o : Obj L seats Item Body) : sizeOf o.carried < sizeOf o := by
+theorem carried_size_lt (o : Obj n Role Item Body) : sizeOf o.carried < sizeOf o := by
   cases o
   simp [carried]
 
-theorem contains_of_mem_parts (o d : Obj L seats Item Body) (h : d ∈ o.parts) : Contains o d := by
+theorem contains_of_mem_parts (o d : Obj n Role Item Body) (h : d ∈ o.parts) : Contains o d := by
   rw [parts_eq, List.mem_cons] at h
   rcases h with rfl | h
   · exact .refl _
@@ -30,14 +30,14 @@ theorem contains_of_mem_parts (o d : Obj L seats Item Body) (h : d ∈ o.parts) 
 termination_by sizeOf o
 decreasing_by exact lt_trans (List.sizeOf_lt_of_mem hc) (carried_size_lt _)
 
-theorem mem_parts_of_contains {o d : Obj L seats Item Body} (h : Contains o d) : d ∈ o.parts := by
+theorem mem_parts_of_contains {o d : Obj n Role Item Body} (h : Contains o d) : d ∈ o.parts := by
   induction h with
   | refl o => rw [parts_eq]; exact List.mem_cons_self
   | step hc _ ih =>
     rw [parts_eq]
     exact List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨_, hc, ih⟩)
 
-theorem mem_parts_iff (o d : Obj L seats Item Body) : d ∈ o.parts ↔ Contains o d :=
+theorem mem_parts_iff (o d : Obj n Role Item Body) : d ∈ o.parts ↔ Contains o d :=
   ⟨contains_of_mem_parts o d, mem_parts_of_contains⟩
 
 end Obj
@@ -46,9 +46,8 @@ namespace Run
 
 theorem not_hashCollision_of_injective {rho : Run F E} (hi : rho.InjectiveHash) :
     ¬ rho.HashCollision := by
-  rintro (⟨x, y, hne, _, _, he⟩ | ⟨x, _, hz⟩)
-  · exact hne (hi.1 he)
-  · exact hi.2 x hz
+  rintro ⟨x, y, hne, _, _, he⟩
+  exact hne (hi he)
 
 /-- A finite pool of all released or delivered roots. -/
 def roots (rho : Run F E) : List (protoOf F E).Object :=
@@ -76,10 +75,9 @@ theorem observedItems_finite (rho : Run F E) : {x | rho.ObservedItem x}.Finite :
   simp only [Finset.mem_coe, List.mem_toFinset, List.mem_filterMap]
   exact ⟨o, observed_mem_roots ho, hx⟩
 
-/-- Extend the observed collision-free hash to an injective nonzero hash. -/
+/-- Extend the observed collision-free hash to an injective hash. -/
 theorem extend_hash (rho : Run F E) (hn : ¬ rho.HashCollision) :
-    ∃ hash' : (protoOf F E).Item → Nat,
-      (Function.Injective hash' ∧ ∀ x, hash' x ≠ 0) ∧
+    ∃ hash' : (protoOf F E).Item → Nat, Function.Injective hash' ∧
       ∀ x, rho.ObservedItem x → hash' x = rho.hash x := by
   classical
   let S := rho.observedItems_finite.toFinset
@@ -87,16 +85,13 @@ theorem extend_hash (rho : Run F E) (hn : ¬ rho.HashCollision) :
   have bound : ∀ x, rho.ObservedItem x → rho.hash x ≤ M := by
     intro x hx
     exact Finset.le_sup (f := rho.hash) (by simpa [S] using hx)
-  have nz : ∀ x, rho.ObservedItem x → rho.hash x ≠ 0 := by
-    intro x hx hz
-    exact hn (Or.inr ⟨x, hx, hz⟩)
   have inj : ∀ a, rho.ObservedItem a → ∀ b, rho.ObservedItem b →
       rho.hash a = rho.hash b → a = b := by
     intro a ha b hb he
     by_contra hab
-    exact hn (Or.inl ⟨a, b, hab, ha, hb, he⟩)
+    exact hn ⟨a, b, hab, ha, hb, he⟩
   let f := fun x => if rho.ObservedItem x then rho.hash x else M + 1 + Encodable.encode x
-  refine ⟨f, ⟨?_, ?_⟩, ?_⟩
+  refine ⟨f, ?_, ?_⟩
   · intro a b he
     by_cases ha : rho.ObservedItem a <;> by_cases hb : rho.ObservedItem b
     · exact inj a ha b hb (by simpa [f, ha, hb] using he)
@@ -108,10 +103,6 @@ theorem extend_hash (rho : Run F E) (hn : ¬ rho.HashCollision) :
       omega
     · apply Encodable.encode_injective
       simpa [f, ha, hb] using he
-  · intro x
-    by_cases hx : rho.ObservedItem x
-    · simpa [f, hx] using nz x hx
-    · simp only [f, ite_eq_right hx]; omega
   · intro x hx; simp [f, hx]
 
 theorem digests_eq_of_observed (rho : Run F E) (hash' : (protoOf F E).Item → Nat)
@@ -173,7 +164,7 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
       refine ⟨v, hv.honest_only _ (List.mem_of_getElem? he), i, o,
         (List.getElem?_eq_some_iff.mp he).1, Or.inl ⟨t, he, ?_⟩, .refl _⟩
       simpa only [releasesAt, he, tick, ‹E.awake v t = true›, ↓reduceIte, r,
-        candidates, ownSeats, show r.inbox = rho.inbox from rfl] using ho
+        show r.inbox = rho.inbox from rfl, show r.candidates = rho.candidates from rfl] using ho
     · rfl
   have states : ∀ i, r.stateBefore i = rho.stateBefore i := by
     intro i
@@ -210,12 +201,14 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
     | restart => rfl
 
 /-- Runs in one environment differ only in their hash, which agrees on all
-items observed by the first run. -/
+items observed by the first run (same honest set, horizon, events, PKI,
+selection, submissions and relay). -/
 structure SameTrace (rho r : Run F E) : Prop where
   honest : r.honest = rho.honest
   horizon : r.horizon = rho.horizon
   events : r.events = rho.events
-  holder : r.holder = rho.holder
+  key : r.key = rho.key
+  sel : r.sel = rho.sel
   submit : r.submit = rho.submit
   relay : r.relay = rho.relay
   hash : ∀ x, rho.ObservedItem x → r.hash x = rho.hash x
@@ -230,7 +223,7 @@ theorem trace (hv : rho.ExecutionValid) :
   have hr : r = {rho with hash := r.hash} := by
     cases rho; cases r
     simp only [Run.mk.injEq]
-    exact ⟨h.honest, h.horizon, h.events, h.holder, h.submit, h.relay, trivial⟩
+    exact ⟨h.honest, h.horizon, h.events, h.key, h.sel, h.submit, h.relay, trivial⟩
   rw [hr]
   exact rho.rehash_trace hv r.hash h.hash
 
@@ -270,14 +263,16 @@ theorem executionValid (hv : rho.ExecutionValid) : r.ExecutionValid := by
     · simpa only [h.events] using hv.deliver_awake
     · simpa only [h.events] using hv.restart_at_wake
     · simpa only [h.events, h.honest, h.horizon] using hv.wake_restart
-  refine ⟨hs, hw, ?_⟩
-  simpa only [Unforgeable, holderOf, h.events, h.honest, h.holder, hr] using hv.unforgeable
+  refine ⟨hs, hw, ?_, ?_, ?_⟩
+  · simpa only [Unforgeable, signerOf, h.events, h.honest, h.key, hr] using hv.unforgeable
+  · simpa only [SelValid, h.sel] using hv.selValid
+  · simpa only [Credentials, h.events, h.sel] using hv.credentials
 
 end SameTrace
 
 theorem rehash_sameTrace (rho : Run F E) (hash' : (protoOf F E).Item → Nat)
     (ha : ∀ x, rho.ObservedItem x → hash' x = rho.hash x) :
-    rho.SameTrace {rho with hash := hash'} := ⟨rfl, rfl, rfl, rfl, rfl, rfl, ha⟩
+    rho.SameTrace {rho with hash := hash'} := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, ha⟩
 
 /-- Every collision-free run has an injective-hash trace twin. -/
 theorem injective_twin (rho : Run F E) (hn : ¬ rho.HashCollision) :

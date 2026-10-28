@@ -9,23 +9,23 @@ pool of released objects used by the canonical scheduler. -/
 namespace Consensus.Model
 
 namespace Obj
-variable {L : Type} {seats : L → Nat} {Item Body : Type}
+variable {n : Nat} {Role Item Body : Type}
 
-theorem partsList_eq (cs : List (Obj L seats Item Body)) :
+theorem partsList_eq (cs : List (Obj n Role Item Body)) :
     parts.partsList cs = cs.flatMap parts := by
   induction cs with
   | nil => rfl
   | cons c cs ih => simp [parts.partsList, ih]
 
-theorem parts_eq (o : Obj L seats Item Body) : o.parts = o :: o.carried.flatMap parts := by
+theorem parts_eq (o : Obj n Role Item Body) : o.parts = o :: o.carried.flatMap parts := by
   cases o
   simp [parts, partsList_eq, carried]
 
-theorem carried_size_lt (o : Obj L seats Item Body) : sizeOf o.carried < sizeOf o := by
+theorem carried_size_lt (o : Obj n Role Item Body) : sizeOf o.carried < sizeOf o := by
   cases o
   simp [carried]
 
-theorem contains_of_mem_parts (o d : Obj L seats Item Body) (h : d ∈ o.parts) : Contains o d := by
+theorem contains_of_mem_parts (o d : Obj n Role Item Body) (h : d ∈ o.parts) : Contains o d := by
   rw [parts_eq, List.mem_cons] at h
   rcases h with rfl | h
   · exact .refl _
@@ -34,14 +34,14 @@ theorem contains_of_mem_parts (o d : Obj L seats Item Body) (h : d ∈ o.parts) 
 termination_by sizeOf o
 decreasing_by exact lt_trans (List.sizeOf_lt_of_mem hc) (carried_size_lt _)
 
-theorem mem_parts_of_contains {o d : Obj L seats Item Body} (h : Contains o d) : d ∈ o.parts := by
+theorem mem_parts_of_contains {o d : Obj n Role Item Body} (h : Contains o d) : d ∈ o.parts := by
   induction h with
   | refl o => rw [parts_eq]; exact List.mem_cons_self
   | step hc _ ih =>
     rw [parts_eq]
     exact List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨_, hc, ih⟩)
 
-theorem mem_parts_iff (o d : Obj L seats Item Body) : d ∈ o.parts ↔ Contains o d :=
+theorem mem_parts_iff (o d : Obj n Role Item Body) : d ∈ o.parts ↔ Contains o d :=
   ⟨contains_of_mem_parts o d, mem_parts_of_contains⟩
 
 end Obj
@@ -63,18 +63,23 @@ def withEvents (es : List (Event V (protoOf F E).Object)) : Run F E :=
 @[simp] theorem withEvents_step (es : List (Event V (protoOf F E).Object)) :
     (rho.withEvents es).step = rho.step := rfl
 
+omit [DecidableEq V] in
 @[simp] theorem withEvents_tick (es : List (Event V (protoOf F E).Object)) :
     (rho.withEvents es).tick = rho.tick := rfl
 
 omit [DecidableEq V] in
-@[simp] theorem withEvents_holder (es : List (Event V (protoOf F E).Object)) :
-    (rho.withEvents es).holder = rho.holder := rfl
+@[simp] theorem withEvents_key (es : List (Event V (protoOf F E).Object)) :
+    (rho.withEvents es).key = rho.key := rfl
+
+omit [DecidableEq V] in
+@[simp] theorem withEvents_sel (es : List (Event V (protoOf F E).Object)) :
+    (rho.withEvents es).sel = rho.sel := rfl
 
 theorem stateBefore_append (xs ys : List (Event V (protoOf F E).Object))
     {i : Nat} (hi : i ≤ xs.length) :
     (rho.withEvents (xs ++ ys)).stateBefore i = (rho.withEvents xs).stateBefore i := by
-  change (List.take i (xs ++ ys)).foldl rho.step (initWorld F E) =
-    (List.take i xs).foldl rho.step (initWorld F E)
+  change (List.take i (xs ++ ys)).foldl rho.step rho.initWorld =
+    (List.take i xs).foldl rho.step rho.initWorld
   rw [List.take_append_of_le_length hi]
 
 theorem releasesAt_append (xs ys : List (Event V (protoOf F E).Object))

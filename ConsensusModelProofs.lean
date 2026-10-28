@@ -3,3 +3,6 @@ public import ConsensusModelProofs.Laws
 public import ConsensusModelProofs.CanonicalStatement
 public import ConsensusModelProofs.Lift
 public import ConsensusModelProofs.Canonical
+public import ConsensusModelProofs.Candidates
+public import ConsensusModelProofs.Credentials
+public import ConsensusModelProofs.Mempool

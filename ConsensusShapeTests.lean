@@ -1,3 +1,4 @@
 module
 public import ConsensusShapeTests.Problem
 public import ConsensusShapeTests.Premise
+public import ConsensusShapeTests.Model
