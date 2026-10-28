@@ -8,7 +8,8 @@ public import ConsensusModel.Objects
 /-! # The protocol interface (layer ½)
 
 What a protocol supplies to the execution model: its types, the sizes of its
-committees, a state machine, its three output ledgers, and its slashing rule.
+committees, a state machine, its output ledgers (one per output identifier
+of its schema), and its slashing rule.
 There is no slot, proposer or block here: a proposer is a label with one seat
 whose duty acts at the proposal time, and blocks are items of the protocol.
 
@@ -25,8 +26,8 @@ structure Public where
   Δ : Time
   Δ_pos : 0 < Δ
 
-/-- A protocol for public parameters `pub`. -/
-structure Protocol (pub : Public) : Type 1 where
+/-- A protocol for public parameters `pub`, with output identifiers `Out`. -/
+structure Protocol (pub : Public) (Out : Type) : Type 1 where
   State : Type
   /-- Signing labels; label `ℓ` has `seats ℓ` seats. -/
   Label : Type
@@ -69,7 +70,7 @@ structure Protocol (pub : Public) : Type 1 where
   recordOwn : State → Obj Label seats Item Body → List (Item × Nat) → State
   durable : State → Durable
   restore : Durable → Time → State
-  /-- The three output ledgers. -/
+  /-- The output ledgers, one per output identifier. -/
   out : Out → State → Ledger
   /-- The slashing rule: two objects that, signed by one validator, convict
   it. -/
@@ -78,11 +79,12 @@ structure Protocol (pub : Public) : Type 1 where
 attribute [instance] Protocol.decLabel Protocol.decItem Protocol.decBody Protocol.encItem
 
 /-- Wire objects of a protocol. -/
-abbrev Protocol.Object {pub : Public} (P : Protocol pub) : Type :=
+abbrev Protocol.Object {pub : Public} {Out : Type} (P : Protocol pub Out) : Type :=
   Obj P.Label P.seats P.Item P.Body
 
-/-- A protocol for every choice of the public parameters. -/
-abbrev Family := (pub : Public) → Protocol pub
+/-- A protocol for every choice of the public parameters, with the outputs of
+schema `O`. -/
+abbrev Family (O : OutputSchema) := (pub : Public) → Protocol pub O.Id
 
 end Consensus.Model
 

@@ -46,11 +46,11 @@ theorem mem_parts_iff (o d : Obj L seats Item Body) : d ∈ o.parts ↔ Contains
 
 end Obj
 
-variable {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
 
 /-- A closure consists exactly of the descendants of its roots. -/
-theorem mem_closure_iff {pub : Public} {P : Protocol pub} (l : List P.Object) (o : P.Object) :
-    o ∈ closure l ↔ ∃ r ∈ l, Obj.Contains r o := by
+theorem mem_closure_iff {pub : Public} {Out : Type} {P : Protocol pub Out} (l : List P.Object)
+    (o : P.Object) : o ∈ closure l ↔ ∃ r ∈ l, Obj.Contains r o := by
   simp only [closure, List.mem_flatMap, Obj.mem_parts_iff]
 
 namespace Run

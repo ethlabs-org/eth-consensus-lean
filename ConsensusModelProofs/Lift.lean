@@ -3,7 +3,7 @@ public import ConsensusModel.System
 
 @[expose] public section
 namespace Consensus.Model
-variable {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
 namespace Obj
 variable {L : Type} {seats : L → Nat} {Item Body : Type}
 
@@ -135,7 +135,7 @@ theorem stateBefore_succ (rho : Run F E) {i : Nat} {e : Event V (protoOf F E).Ob
 
 end Run
 
-theorem releaseAll_eq_of_digests {pub : Public} {P : Protocol pub}
+theorem releaseAll_eq_of_digests {pub : Public} {Out : Type} {P : Protocol pub Out}
     (hash hash' : P.Item → Nat) (nd : Node P) (cs : List P.Object)
     (ha : ∀ o ∈ (releaseAll hash nd cs).2, digests hash' o = digests hash o) :
     releaseAll hash' nd cs = releaseAll hash nd cs := by
@@ -290,13 +290,14 @@ end Run
 /-- Trace-invariant properties lift from injective hashes to collision-escaped claims.
 Only transport from a valid source satisfying `A` is required: assumptions move
 forward to its rehashed twin, and the conclusion moves back to the source. -/
-theorem holds_of_injective (F : Family) (V : Type) [Fintype V] [DecidableEq V]
-    (A P : (sysOf F V).Run → Prop)
+theorem holds_of_injective (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq V]
+    (A P : (sysOf O F V).Run → Prop)
     (ha : ∀ E (r s : Run F E), r.ExecutionValid → A ⟨E, r⟩ →
       r.SameTrace s → A ⟨E, s⟩)
     (hp : ∀ E (r s : Run F E), r.ExecutionValid → A ⟨E, r⟩ →
       r.SameTrace s → (P ⟨E, s⟩ → P ⟨E, r⟩))
-    (hi : ∀ r, (sysOf F V).Valid r → A r → r.2.InjectiveHash → P r) : (sysOf F V).Holds A P := by
+    (hi : ∀ r, (sysOf O F V).Valid r → A r → r.2.InjectiveHash → P r) :
+    (sysOf O F V).Holds A P := by
   rintro ⟨E, r⟩ hv ar
   by_cases hc : r.HashCollision
   · exact Or.inr hc
@@ -304,9 +305,9 @@ theorem holds_of_injective (F : Family) (V : Type) [Fintype V] [DecidableEq V]
     exact Or.inl (hp E r s hv ar hs (hi ⟨E, s⟩ (hs.executionValid hv) (ha E r s hv ar hs) hinj))
 
 /-- The converse direction of injective-hash lifting, on valid runs. -/
-theorem injective_of_holds (F : Family) (V : Type) [Fintype V] [DecidableEq V]
-    (A P : (sysOf F V).Run → Prop) (h : (sysOf F V).Holds A P) :
-    ∀ r, (sysOf F V).Valid r → A r → r.2.InjectiveHash → P r := by
+theorem injective_of_holds (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq V]
+    (A P : (sysOf O F V).Run → Prop) (h : (sysOf O F V).Holds A P) :
+    ∀ r, (sysOf O F V).Valid r → A r → r.2.InjectiveHash → P r := by
   intro r hv ha hi
   exact (h r hv ha).resolve_right (Run.not_hashCollision_of_injective hi)
 end Consensus.Model

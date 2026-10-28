@@ -1,12 +1,23 @@
 module
-public import ConsensusProblem.Properties
-public import ConsensusProblem.Assumptions
+public import ConsensusProblem.Atoms
 
 @[expose] public section
 
-/-! L0 fixes the environment assumptions and the closed execution-slot
-mapping per claim. L1 publishes A and instantiates the reviewed slots. Recovery
-and accountability expose the accountable-fraction escape explicitly. -/
+/-! # Contracts and claims (layer 0)
+
+A protocol advertises a `Contract`: for each capability it provides, a
+specification (`CapSpec`) made of premises in the closed premise language and
+Δ-coefficients. `ProblemClaims S X K` is the headline statement: the system
+`S`, with execution atoms interpreted by `X`, meets every claim of contract
+`K`. Its meaning depends only on this layer: what a protocol must prove is
+fixed here, for every protocol.
+
+Claims hold on valid runs whose premise holds, unless the run's excuse holds
+(an observed hash collision in the execution model). Safety and the safety
+half of recovery may also be escaped by global slashability of a fraction `α`
+when the contract says so; liveness is never escaped. Local accountability
+is unconditional: two conflicting honest reads convict `α` from their own
+evidence. -/
 
 namespace Consensus
 
@@ -22,115 +33,159 @@ def Holds (S : System V) (A P : S.Run → Prop) : Prop :=
 def HoldsAlways (S : System V) (P : S.Run → Prop) : Prop :=
   ∀ r, S.Valid r → P r
 
-/-- The reported bounds, as coefficients of the run's `Δ`. -/
-structure Bounds where
-  /-- Transaction latency of confirmed and stable, for recurrence gap `k`. -/
-  confirmedLive : Nat → Nat
-  stableLive : Nat → Nat
-  /-- After GST, when recovered safety starts. -/
-  recovery : Nat → Nat
-  /-- After GST, when finality liveness starts, and its latency. -/
-  finStart : Nat → Nat
-  finLive : Nat → Nat
+/-- The escaped form: on valid runs satisfying `A`, `P` holds, or the excuse
+holds, or (if the escape is `some α`) the run is globally slashable for `α`. -/
+def HoldsEsc (S : System V) (esc : Option ℚ) (A P : S.Run → Prop) : Prop :=
+  ∀ r, S.Valid r → A r → P r ∨ S.Excuse r ∨ ∃ α, esc = some α ∧ S.GloballySlashable α r
 
-/-- `c · Δ` in run `r`. -/
-def dur (S : System V) (r : S.Run) (c : Nat) : Time := (c : Time) * (S.trace r).point.env.Δ
+/-- The duration `k · Δ` in run `r`. -/
+def dur (S : System V) (r : S.Run) (k : Nat) : Time := ((k : Nat) : Time) * (S.trace r).point.env.Δ
 
-/-- Reviewed execution slots, interpreted by the model and shape libraries. -/
-structure ExecProfile (S : System V) where
-  sync : S.Run → Prop
-  healthyUntil : Time → S.Run → Prop
-  recurrent : Time → Nat → S.Run → Prop
+end System
 
-inductive ClaimKey where
-  | sleepy | stableInclusion | fastInclusion
-  | live (k : Nat)
-  | outage (T b₀ b₁ : Time)
-  | fastOutage (T b₀ b₁ : Time)
-  | recovery (k : Nat)
-  | finality (k : Nat)
-  deriving DecidableEq
+/-- A safety specification: its premise and an optional global-slashing
+escape fraction. -/
+structure SafetySpec (Prog : Type) where
+  premise : Premise Prog
+  escape : Option ℚ := none
 
-/-- The environment part of every reviewed claim. -/
-def EnvAssumption (A : Assumptions) (B : Bounds) (q : ClaimKey)
-    (p : EnvPoint V) : Prop :=
-  let c := (A.catchUp : Time) * p.env.Δ
-  let sleepy := p.env.gst = 0 ∧ EnvPoint.Throughout 0 p.horizon (p.ReadyAbove A.sleepyReadyAbove c)
-  let eta := ∀ t, 0 ≤ t → t ≤ p.horizon →
-    p.EtaSleepy A.stableEtaAbove ((A.eta : Time) * p.env.Δ) c t
-  let outage := fun lag T b₀ b₁ =>
-    (0 ≤ T ∧ T ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ p.horizon) ∧
-    T + (lag : Time) * p.env.Δ ≤ b₀ ∧
-    b₁ - b₀ ≤ (A.outageBudget : Time) * p.env.Δ ∧
-    (∀ t, 0 ≤ t → t < b₀ → p.ReadyAbove A.sleepyReadyAbove c t) ∧
-    (∀ t, 0 ≤ t → t < b₀ → p.EtaSleepy A.stableEtaAbove ((A.eta : Time) * p.env.Δ) c t)
-  let recovery := fun k =>
-    EnvPoint.Throughout p.env.gst p.horizon (p.ReadyAbove A.recovery.readyAbove c) ∧
-    (A.recovery.requireFull = true → p.FullParticipation p.env.gst) ∧
-    (A.recovery.noWakeAfterGST = true → p.NoWakeFrom p.env.gst) ∧
-    p.env.gst + (B.recovery k : Time) * p.env.Δ ≤ p.horizon
-  match q with
-  | .sleepy | .live _ => sleepy
-  | .stableInclusion => sleepy ∧ eta
-  | .fastInclusion => sleepy ∧ p.FullParticipation 0 ∧ p.FaultsBelow A.fastFaultsBelow
-  | .outage T b₀ b₁ => outage A.armingLag T b₀ b₁
-  | .fastOutage T b₀ b₁ => outage A.fastArmingLag T b₀ b₁ ∧
-      ∀ t, 0 ≤ t → t < b₀ → p.ReadyOfAllAtLeast A.fastOutageReadyAtLeast c t
-  | .recovery k => recovery k
-  | .finality k => recovery k ∧
-      EnvPoint.Throughout p.env.gst p.horizon (p.ReadyOfAll A.finalityReadyOfAll c)
+/-- A liveness specification, indexed by `Idx`: premise, start time and
+latency (a Δ-coefficient). -/
+structure LiveSpec (Prog Idx : Type) where
+  premise : Idx → Premise Prog
+  start : Idx → TimeExpr
+  latency : Idx → Nat
 
-/-- The claim-to-slot mapping is fixed here, with paired outage branches. -/
-def Exec (S : System V) (X : ExecProfile S) (q : ClaimKey) (r : S.Run) : Prop :=
-  match q with
-  | .sleepy | .stableInclusion | .fastInclusion => X.sync r
-  | .live k => X.sync r ∧ X.recurrent 0 k r
-  | .outage _ b₀ _ | .fastOutage _ b₀ _ => X.healthyUntil b₀ r
-  | .recovery k | .finality k => X.sync r ∧ X.recurrent (S.trace r).point.env.gst k r
+/-- A recovery specification, indexed by `Idx`: premise, recovery point (from
+which ready readers are safe and transactions live), latency, and an optional
+escape on the safety half only. -/
+structure RecoverySpec (Prog Idx : Type) where
+  premise : Idx → Premise Prog
+  start : Idx → TimeExpr
+  latency : Idx → Nat
+  escape : Option ℚ := none
 
-def Premise (S : System V) (A : Assumptions) (B : Bounds) (X : ExecProfile S)
-    (q : ClaimKey) (r : S.Run) : Prop :=
-  EnvAssumption A B q (S.trace r).point ∧ Exec S X q r
+/-- What a protocol claims for one capability: safety, liveness, optionally
+local accountability (unconditional, collision excuse only), resilience
+(premise over parameters `σ 0 = T`, `σ 1 = b₀`, `σ 2 = b₁`) and recovery. -/
+structure CapSpec (Prog Idx : Type) where
+  safety : SafetySpec Prog
+  live : LiveSpec Prog Idx
+  accountable : Option ℚ := none
+  resilience : Option (Premise Prog) := none
+  recovery : Option (RecoverySpec Prog Idx) := none
 
-/-- Accountability escape for the whole honest evidence set. -/
-def Slashed (S : System V) (α : ℚ) (r : S.Run) : Prop :=
-  (Fintype.card V : ℚ) * α ≤ (S.convicted r (S.honestEvidence r)).card
+/-- What a protocol advertises: an index type for liveness and recovery
+specs (nonempty), one catch-up coefficient shared by every claim (the
+readers' eligibility), and a specification per provided capability. -/
+structure Contract (O : OutputSchema) (Prog : Type) where
+  Idx : Type
+  idx_nonempty : Nonempty Idx
+  catchUp : Nat
+  spec : Capability → Option (CapSpec Prog Idx)
 
-def HoldsAccountable (S : System V) (α : ℚ) (A P : S.Run → Prop) : Prop :=
-  ∀ r, S.Valid r → A r → P r ∨ S.Excuse r ∨ S.Slashed α r
+/-- Mandatory parts: a resilient capability has a resilience premise and a
+recovery spec. -/
+def CapSpec.Complete {Prog Idx : Type} (c : Capability) (s : CapSpec Prog Idx) : Prop :=
+  c = .resilient → s.resilience.isSome ∧ s.recovery.isSome
 
-structure ProblemClaims (S : System V) (A : Assumptions) (B : Bounds)
-    (X : ExecProfile S) : Prop where
+/-- An optional fraction is absent or in `(0, 1]`. -/
+def FracWF (e : Option ℚ) : Prop := ∀ α, e = some α → 0 < α ∧ α ≤ 1
+
+/-- Structural well-formedness of a capability spec: every premise is
+well-formed, every escape and accountable fraction is in `(0, 1]`. -/
+structure CapSpec.WellFormed {Prog Idx : Type} (s : CapSpec Prog Idx) : Prop where
+  safety : s.safety.premise.WellFormed
+  safetyEscape : FracWF s.safety.escape
+  live : ∀ i, (s.live.premise i).WellFormed
+  accountable : FracWF s.accountable
+  resilience : ∀ P, s.resilience = some P → P.WellFormed
+  recovery : ∀ R, s.recovery = some R → (∀ i, (R.premise i).WellFormed) ∧ FracWF R.escape
+
+/-- Structural well-formedness of a contract (fraction ranges only). This is not
+a non-vacuity certificate: a well-formed contract may still have
+unsatisfiable premises. -/
+structure Contract.WellFormed {O : OutputSchema} {Prog : Type} (K : Contract O Prog) : Prop where
+  caps : ∀ c s, K.spec c = some s → s.WellFormed
+
+/-- The output resilience is measured against: the available output if
+provided, else the same output. -/
+def resilienceTarget (O : OutputSchema) (g : O.Id) : O.Id := (O.output .available).getD g
+
+/-- Schema package: a final output is provided. -/
+def OutputSchema.BFTCore (O : OutputSchema) : Prop := (O.output .final).isSome
+
+/-- Schema package: an available output and no final output. -/
+def OutputSchema.DACore (O : OutputSchema) : Prop :=
+  (O.output .available).isSome ∧ O.output .final = none
+
+/-- Schema package: both an available and a final output. -/
+def OutputSchema.EbbFlow (O : OutputSchema) : Prop :=
+  (O.output .available).isSome ∧ (O.output .final).isSome
+
+variable {V : Type} [Fintype V] [DecidableEq V]
+
+/-- The claims for one provided capability served by output `g`. -/
+structure CapClaims {Prog : Type} (S : System V) (X : ExecProfile S Prog)
+    (K : Contract S.schema Prog) (g : S.schema.Id) (s : CapSpec Prog K.Idx) : Prop where
+  /-- Safety from time 0 (or escape). -/
+  safe : ∀ σ, S.HoldsEsc s.safety.escape (fun r => s.safety.premise.eval S X K.catchUp σ r)
+    (fun r => (S.trace r).Safe g 0)
+  /-- Transaction liveness for ready readers. -/
+  live : ∀ i σ, S.Holds (fun r => (s.live.premise i).eval S X K.catchUp σ r)
+    (fun r => (S.trace r).TxLive (S.dur r K.catchUp) g
+      ((s.live.start i).eval (S.trace r).point σ) (S.dur r (s.live.latency i)))
+  /-- Local accountability: conflicting honest reads convict `α` from their
+  own evidence. -/
+  accountable : ∀ α, s.accountable = some α →
+    S.Holds (fun _ => True) (fun r => S.AccountablySafe r α g 0)
+  /-- Resilience: parameters `σ 0 = T` (protectedAt), `σ 1 = b₀`
+  (outageStart); the premise may also use `σ 2 = b₁` (outageEnd). -/
+  resilient : ∀ P, s.resilience = some P → ∀ σ,
+    S.Holds (fun r => P.eval S X K.catchUp σ r)
+      (fun r => (S.trace r).ProtectedThrough (S.dur r K.catchUp) g
+        (resilienceTarget S.schema g) (σ 0) (σ 1))
+  /-- Recovery, safety half: ready readers are safe from the recovery point
+  (or escape). -/
+  recoverySafe : ∀ R, s.recovery = some R → ∀ i σ,
+    S.HoldsEsc R.escape (fun r => (R.premise i).eval S X K.catchUp σ r)
+      (fun r => (S.trace r).ReadySafe (S.dur r K.catchUp) g
+        ((R.start i).eval (S.trace r).point σ))
+  /-- Recovery, liveness half. -/
+  recoveryLive : ∀ R, s.recovery = some R → ∀ i σ,
+    S.Holds (fun r => (R.premise i).eval S X K.catchUp σ r)
+      (fun r => (S.trace r).TxLive (S.dur r K.catchUp) g
+        ((R.start i).eval (S.trace r).point σ) (S.dur r (R.latency i)))
+
+/-- The headline: system `S`, with execution atoms interpreted by `X`, meets
+contract `K`. -/
+structure ProblemClaims {Prog : Type} (S : System V) (X : ExecProfile S Prog)
+    (K : Contract S.schema Prog) : Prop where
+  /-- The contract is structurally well-formed. -/
+  wf : K.WellFormed
+  /-- The system's laws. -/
   laws : S.Laws
-  nested : S.HoldsAlways (fun r => (S.trace r).Nested .finalized .stable ∧
-    (S.trace r).Nested .stable .confirmed)
-  finalizedMonotone : S.HoldsAlways (fun r => (S.trace r).Monotone .finalized 0)
-  nonFraming : S.HoldsAlways (fun r => S.NonFraming r)
-  finalizedAccountable : S.HoldsAccountable A.accFrac (fun _ => True)
-    (fun r => S.AccountablySafe r A.accFrac .finalized 0)
-  confirmedSafe : S.Holds (S.Premise A B X .sleepy) (fun r => (S.trace r).Safe .confirmed 0)
-  stableSafe : S.Holds (S.Premise A B X .sleepy) (fun r => (S.trace r).Safe .stable 0)
-  confirmedLive : ∀ k, S.Holds (S.Premise A B X (.live k))
-    (fun r => (S.trace r).TxLive (S.dur r A.catchUp) .confirmed 0 (S.dur r (B.confirmedLive k)))
-  stableLive : ∀ k, S.Holds (S.Premise A B X (.live k))
-    (fun r => (S.trace r).TxLive (S.dur r A.catchUp) .stable 0 (S.dur r (B.stableLive k)))
-  stablePersists : ∀ T b₀ b₁, S.Holds (S.Premise A B X (.outage T b₀ b₁))
-    (fun r => (S.trace r).PersistsThrough (S.dur r A.catchUp) .stable T b₀ b₁)
-  stablePersistsFast : ∀ T b₀ b₁, S.Holds (S.Premise A B X (.fastOutage T b₀ b₁))
-    (fun r => (S.trace r).PersistsThrough (S.dur r A.catchUp) .stable T b₀ b₁)
-  recovered : ∀ k, S.HoldsAccountable A.accFrac (S.Premise A B X (.recovery k))
-    (fun r => (S.trace r).ReadySafe (S.dur r A.catchUp) .confirmed
-        ((S.trace r).point.env.gst + S.dur r (B.recovery k)) ∧
-      (S.trace r).ReadySafe (S.dur r A.catchUp) .stable
-        ((S.trace r).point.env.gst + S.dur r (B.recovery k)))
-  finalizedLive : ∀ k, S.Holds (S.Premise A B X (.finality k))
-    (fun r => (S.trace r).TxLive (S.dur r A.catchUp) .finalized
-      ((S.trace r).point.env.gst + S.dur r (B.finStart k)) (S.dur r (B.finLive k)))
+  /-- A capability is provided exactly when it is specified. -/
+  provided : ∀ c, (S.schema.output c).isSome = (K.spec c).isSome
+  /-- Every spec has its mandatory parts. -/
+  complete : ∀ c s, K.spec c = some s → s.Complete c
+  /-- Honest validators are never convicted by honest evidence. -/
+  nonFraming : S.HoldsAlways S.NonFraming
+  /-- Lower-rank outputs are prefixes of higher-rank ones, unconditionally. -/
+  nested : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → S.schema.output c₁ = some g₁ →
+    S.schema.output c₂ = some g₂ → S.HoldsAlways (fun r => (S.trace r).Nested g₁ g₂)
+  /-- The final output never rolls back, unconditionally. -/
+  finalMonotone : ∀ g, S.schema.output .final = some g →
+    S.HoldsAlways (fun r => (S.trace r).Monotone g 0)
+  /-- The claims of every provided capability. -/
+  caps : ∀ c g s, S.schema.output c = some g → K.spec c = some s → CapClaims S X K g s
 
-/-- Accountable safety, non-framing and faults below the accountable fraction give agreement
-of `g`. -/
-theorem agree_of_accountable (S : System V) (hL : S.Laws) (r : S.Run) {g : Out} {t₀ : Time}
-    {α : ℚ} (hacc : S.AccountablySafe r α g t₀) (hnf : S.NonFraming r)
+namespace System
+
+/-- Accountable safety, non-framing and faults below the accountable fraction give
+agreement of `g`. -/
+theorem agree_of_accountable (S : System V) (hL : S.Laws) (r : S.Run) {g : S.schema.Id}
+    {t₀ : Time} {α : ℚ} (hacc : S.AccountablySafe r α g t₀) (hnf : S.NonFraming r)
     (hb : (S.trace r).point.FaultsBelow α) : (S.trace r).Agree g t₀ := by
   classical
   intro u hu v hv i j hi hj
@@ -144,8 +199,8 @@ theorem agree_of_accountable (S : System V) (hL : S.Laws) (r : S.Run) {g : Out} 
       refine Finset.mem_sdiff.mpr ⟨Finset.mem_univ x, fun hxh => hnf x hxh ?_⟩
       refine hL.convicts_mono r _ _ x ?_ hx'
       rintro o (ho | ho)
-      · exact ⟨u, hu, hL.view_mono r u i _ hi.2 ho⟩
-      · exact ⟨v, hv, hL.view_mono r v j _ hj.2 ho⟩
+      · exact ⟨u, hu, hL.view_mono r u i _ hi.1 ho⟩
+      · exact ⟨v, hv, hL.view_mono r v j _ hj.1 ho⟩
     change (Fintype.card V : ℚ) * α ≤
       (S.convicted r (S.view r u i ∪ S.view r v j)).card at hcard
     have hc : ((S.convicted r (S.view r u i ∪ S.view r v j)).card : ℚ) ≤
@@ -154,8 +209,9 @@ theorem agree_of_accountable (S : System V) (hL : S.Laws) (r : S.Run) {g : Out} 
     linarith
 
 /-- Non-framing and a strict fault cap exclude the global slashing escape. -/
-theorem not_slashed_of_nonFraming (S : System V) (r : S.Run) {α : ℚ}
-    (hnf : S.NonFraming r) (hb : (S.trace r).point.FaultsBelow α) : ¬ S.Slashed α r := by
+theorem not_globallySlashable_of_nonFraming (S : System V) (r : S.Run) {α : ℚ}
+    (hnf : S.NonFraming r) (hb : (S.trace r).point.FaultsBelow α) :
+    ¬ S.GloballySlashable α r := by
   classical
   have hsub : S.convicted r (S.honestEvidence r) ⊆ (S.trace r).point.faulty := by
     intro v hv
@@ -163,22 +219,39 @@ theorem not_slashed_of_nonFraming (S : System V) (r : S.Run) {α : ℚ}
     exact Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, fun hh => hnf v hh hc⟩
   have hc : ((S.convicted r (S.honestEvidence r)).card : ℚ) ≤
       (S.trace r).point.faulty.card := by exact_mod_cast Finset.card_le_card hsub
-  unfold Slashed EnvPoint.FaultsBelow at *
+  unfold GloballySlashable EnvPoint.FaultsBelow at *
   intro hs
   linarith
 
-/-- The accountable fraction is also the strict fault cap needed to derive
-finalized agreement, including elimination of the global slashing escape. -/
-theorem finalizedAgree_of_claims {S : System V} {A : Assumptions} {B : Bounds}
-    {X : ExecProfile S} (hc : ProblemClaims S A B X) (r : S.Run) (hv : S.Valid r)
-    (hb : (S.trace r).point.FaultsBelow A.accFrac) :
-    (S.trace r).Agree .finalized 0 ∨ S.Excuse r := by
-  rcases hc.finalizedAccountable r hv trivial with ha | he | hs
-  · exact Or.inl (agree_of_accountable S hc.laws r ha (hc.nonFraming r hv) hb)
-  · exact Or.inr he
-  · exact False.elim (not_slashed_of_nonFraming S r (hc.nonFraming r hv) hb hs)
+/-- An escaped claim with escape `α`, under non-framing and faults below `α`, is
+an unescaped claim. -/
+theorem safe_of_escape {S : System V} {α : ℚ} {A P : S.Run → Prop}
+    (hc : S.HoldsEsc (some α) A P) (hnf : S.HoldsAlways S.NonFraming) (r : S.Run)
+    (hv : S.Valid r) (hA : A r) (hb : (S.trace r).point.FaultsBelow α) : P r ∨ S.Excuse r := by
+  rcases hc r hv hA with h | h | ⟨β, hβ, hs⟩
+  · exact Or.inl h
+  · exact Or.inr h
+  · cases hβ
+    exact False.elim (not_globallySlashable_of_nonFraming S r (hnf r hv) hb hs)
+
+omit [Fintype V] [DecidableEq V] in
+/-- A weaker premise: a claim under `A` holds under any `B` implying `A`. -/
+theorem Holds.mono_premise {S : System V} {A B P : S.Run → Prop} (h : S.Holds A P)
+    (hAB : ∀ r, B r → A r) : S.Holds B P :=
+  fun r hv hb => h r hv (hAB r hb)
 
 end System
+
+/-- Local accountability, non-framing and faults below the accountable fraction give
+agreement of the capability's output. -/
+theorem ProblemClaims.agree_of_accountable {Prog : Type} {S : System V} {X : ExecProfile S Prog}
+    {K : Contract S.schema Prog} (hc : ProblemClaims S X K) {c : Capability} {g : S.schema.Id}
+    {s : CapSpec Prog K.Idx} {α : ℚ}
+    (hg : S.schema.output c = some g) (hs : K.spec c = some s) (ha : s.accountable = some α)
+    (r : S.Run) (hv : S.Valid r) (hb : (S.trace r).point.FaultsBelow α) :
+    (S.trace r).Agree g 0 ∨ S.Excuse r :=
+  ((hc.caps c g s hg hs).accountable α ha r hv trivial).imp
+    (fun h => S.agree_of_accountable hc.laws r h (hc.nonFraming r hv) hb) id
 
 end Consensus
 

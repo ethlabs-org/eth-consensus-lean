@@ -17,10 +17,12 @@ def main : IO UInt32 := do
     return 2
   let env ← importModules (modules.map ({ module := · })) {}
   for name in #[`Consensus.Model.canonical_run, `Consensus.Model.holds_of_injective,
-      `Consensus.Model.Run.rehash_trace, `Consensus.Shape.refinement,
-      `Consensus.Shape.liveFrom_txLive, `Consensus.Shape.profile_realizable,
-      `Consensus.Shape.exec_conservative, `Consensus.Shape.env_realizable,
-      `Consensus.System.agree_of_accountable, `Consensus.System.ProblemClaims.mono] do
+      `Consensus.Model.Run.rehash_trace, `Consensus.System.agree_of_accountable,
+      `Consensus.Premise.extremal_realizable, `Consensus.Premise.eval_of_evalAt,
+      `Consensus.EnvPoint.two_mul_card_faulty_union_lt,
+      `Consensus.ProblemClaims.agree_of_accountable,
+      `Consensus.Shape.Tests.Premise.provided_mismatch,
+      `Consensus.Shape.Tests.Premise.protected_after_window] do
     unless env.contains name do
       IO.eprintln s!"Missing required theorem: {name}"
       return 2

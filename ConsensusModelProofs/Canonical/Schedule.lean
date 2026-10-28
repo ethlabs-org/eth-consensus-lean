@@ -9,7 +9,7 @@ phase uses the fixed order from the honest finset and the released pool. -/
 
 namespace Consensus.Model
 
-variable {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
 
 namespace Run
 variable (rho : Run F E)

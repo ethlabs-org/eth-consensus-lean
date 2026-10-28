@@ -1,5 +1,10 @@
 # The generic contract, in three layers: review guide
 
+> **Stale (iteration 5 in progress).** This guide describes iteration 4. Layer 0
+> has been replaced (capabilities, premise language, per-capability contracts;
+> see `ConsensusProblem/{Basic,Properties,Premise,Atoms,Claims}.lean`) and layer 1
+> is being rebuilt; the guide is rewritten at the end of iteration 5.
+
 What it means for a protocol to be a correct consensus protocol, in three
 layers, each reviewed once:
 

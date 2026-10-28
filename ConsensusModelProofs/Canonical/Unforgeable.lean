@@ -11,7 +11,7 @@ namespace Consensus.Model
 
 /-- The seen filter preserves any predicate on all structural descendants,
 provided the roots of the objects actually released satisfy it. -/
-theorem releaseAll_preserves {pub : Public} {P : Protocol pub}
+theorem releaseAll_preserves {pub : Public} {Out : Type} {P : Protocol pub Out}
     (hash : P.Item → Nat) (Q : P.Object → Prop) (nd : Node P) (cs : List P.Object)
     (hs : ∀ o ∈ nd.seen, ∀ d, Obj.Contains o d → Q d)
     (hr : ∀ o ∈ (releaseAll hash nd cs).2, Q o) :
@@ -50,8 +50,8 @@ theorem releaseAll_preserves {pub : Public} {P : Protocol pub}
       simp only [hf]
       exact ih nd hs hr
 
-theorem releaseAll_subset {pub : Public} {P : Protocol pub} (hash : P.Item → Nat) (nd : Node P)
-    (cs : List P.Object) : ∀ o ∈ (releaseAll hash nd cs).2, o ∈ cs := by
+theorem releaseAll_subset {pub : Public} {Out : Type} {P : Protocol pub Out} (hash : P.Item → Nat)
+    (nd : Node P) (cs : List P.Object) : ∀ o ∈ (releaseAll hash nd cs).2, o ∈ cs := by
   induction cs generalizing nd with
   | nil => simp [releaseAll]
   | cons c cs ih =>
@@ -63,7 +63,7 @@ theorem releaseAll_subset {pub : Public} {P : Protocol pub} (hash : P.Item → N
       · exact List.mem_cons_of_mem c (ih _ o ho)
     · exact fun o ho => List.mem_cons_of_mem c (ih _ o ho)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
 namespace Run
 variable (rho : Run F E)
 

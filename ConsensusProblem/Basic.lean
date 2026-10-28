@@ -10,7 +10,8 @@ public import Mathlib.Order.Interval.Finset.Nat
 /-! # The consensus problem: objects, environment, systems (layer 0)
 
 What the consensus problem is, independently of any protocol or execution
-model: what users read (ledgers of transactions, for three named outputs), what
+model: what users read (ledgers of transactions, one per output of the
+protocol's output schema, each serving some of three capabilities), what
 the world is (an environment: `Δ`, GST, an awake profile; and per run the
 honest nodes, a horizon and transaction submissions), and what an
 abstract system of runs exposes. No network, messages, signatures or schedule:
@@ -34,23 +35,38 @@ abbrev Ledger := List Tx
 /-- Two lists are on one branch. -/
 def Compatible {α : Type} (a b : List α) : Prop := a <+: b ∨ b <+: a
 
-/-- The three outputs. -/
-inductive Out where
-  | confirmed
-  | stable
-  | finalized
+/-- The three services a protocol may provide: an available ledger (live under
+dynamic participation), a resilient ledger (persists through bounded
+outages), and a final ledger (safe under asynchrony, accountable). -/
+inductive Capability where
+  | available
+  | resilient
+  | final
   deriving DecidableEq, Repr
 
+/-- Nesting order: `final ⪯ resilient ⪯ available` (a lower rank is a prefix of
+a higher rank). -/
+def Capability.rank : Capability → Nat
+  | .final => 0
+  | .resilient => 1
+  | .available => 2
+
+/-- The physical outputs of a protocol and which capability each serves. Two
+capabilities may map to one output (aliasing); `none` means not provided. -/
+structure OutputSchema where
+  /-- The output identifiers. -/
+  Id : Type
+  /-- The output serving each capability, if provided. -/
+  output : Capability → Option Id
+
 /-- The physical environment: the message delay bound `Δ`, the GST, and when
-each node is awake. -/
+each node is awake. Time is in integer units; `Δ` is a positive integer number
+of units; nodes act at every integer time (unit ticks). -/
 structure Env (V : Type) where
   Δ : Time
   Δ_pos : 0 < Δ
   gst : Time
   awake : V → Time → Bool
-
-/-- A public time is a nonnegative multiple of `Δ`. -/
-def PublicTime {V : Type} (E : Env V) (t : Time) : Prop := ∃ k : Nat, t = (k : Time) * E.Δ
 
 /-- Awake now, asleep one time unit earlier. -/
 def Wakes {V : Type} (E : Env V) (v : V) (t : Time) : Prop :=
@@ -76,6 +92,12 @@ variable {V : Type} (p : EnvPoint V)
 /-- `v` is awake throughout `[a, b]`. -/
 def AwakeOnClosed (v : V) (a b : Time) : Prop :=
   ∀ u, a ≤ u → u ≤ b → p.env.awake v u = true
+
+/-- Every honest validator is awake at `t`. -/
+def FullAt (t : Time) : Prop := ∀ v ∈ p.honest, p.env.awake v t = true
+
+/-- No honest validator wakes at `t`. -/
+def NoWakeAt (t : Time) : Prop := ∀ v ∈ p.honest, ¬ Wakes p.env v t
 
 /-- `v` is ready at `t` with catch-up `c` (a duration): honest, and awake
 throughout `[max 0 (t − c − 1), t]`. -/
@@ -104,24 +126,21 @@ noncomputable def awakeIn (a b : Time) : Finset V := by
 /-- Domain of the environment coverage theorems; not a claim premise. -/
 def WellFormed : Prop := 0 ≤ p.horizon
 
+/-- The ready honest validators exceed fraction `θ` of the ready and faulty
+ones: `θ · (|ready| + |faulty|) < |ready|`. -/
 def ReadyAbove (θ : ℚ) (c t : Time) : Prop :=
   θ * ((p.readyAt c t).card + p.faulty.card : ℚ) < (p.readyAt c t).card
 
+/-- Fewer than fraction `β` of all validators are faulty. -/
 def FaultsBelow (β : ℚ) : Prop := (p.faulty.card : ℚ) < β * Fintype.card V
 
+/-- More than fraction `φ` of all validators are ready. -/
 def ReadyOfAll (φ : ℚ) (c t : Time) : Prop :=
   φ * Fintype.card V < ((p.readyAt c t).card : ℚ)
 
+/-- At least fraction `φ` of all validators are ready. -/
 def ReadyOfAllAtLeast (φ : ℚ) (c t : Time) : Prop :=
   φ * Fintype.card V ≤ ((p.readyAt c t).card : ℚ)
-
-def NoWakeFrom (s : Time) : Prop :=
-  ∀ v ∈ p.honest, ∀ t, s ≤ t → t ≤ p.horizon → ¬ Wakes p.env v t
-
-def Throughout (a b : Time) (Q : Time → Prop) : Prop := ∀ t, a ≤ t → t ≤ b → Q t
-
-abbrev HonestMajority := p.ReadyAbove (1 / 2)
-abbrev TwoThirdsReady := p.ReadyOfAll (2 / 3)
 
 /-- More ready honest validators than faulty ones. -/
 def ReadyMajority (c t : Time) : Prop := p.faulty.card < (p.readyAt c t).card
@@ -130,32 +149,22 @@ def ReadyMajority (c t : Time) : Prop := p.faulty.card < (p.readyAt c t).card
 def EtaSleepy (θ : ℚ) (η c t : Time) : Prop :=
   θ * ((p.awakeIn (t - η) t ∪ p.faulty).card : ℚ) < ((p.readyAt c t).card : ℚ)
 
-/-- Every honest validator is awake from `start` to the horizon. -/
-def FullParticipation (start : Time) : Prop :=
-  ∀ v ∈ p.honest, ∀ t, start ≤ t → t ≤ p.horizon → p.env.awake v t = true
-
-/-- Fewer than a quarter of the validators are faulty. -/
-abbrev BelowQuarter : Prop := p.FaultsBelow (1 / 4)
-
-/-- Fewer than a third of the validators are faulty. -/
-abbrev BelowOneThird : Prop := p.FaultsBelow (1 / 3)
-
 end EnvPoint
 
 /-- A trace: the environment point, a sequence of event cuts with their times,
-and what each node reads, for each output, at each cut. Generic in the element
+and what each node reads, for each output identifier in `Id`, at each cut. Generic in the element
 type, so that the same properties apply to transaction ledgers and to the block
 chains of a protocol shape. Cut `i` is the state after the first `i` events; its
 time is the time of its last event (`0` for the empty cut). -/
-structure Trace (V α : Type) where
+structure Trace (V α Id : Type) where
   point : EnvPoint V
   cuts : Nat
   cutTime : Nat → Time
-  read : Out → V → Nat → List α
+  read : Id → V → Nat → List α
 
 namespace Trace
 
-variable {V α : Type} (tr : Trace V α)
+variable {V α Id : Type} (tr : Trace V α Id)
 
 /-- The laws of a trace: cut times start at `0`, never decrease, and stay within
 the horizon. -/
@@ -168,24 +177,27 @@ structure Laws : Prop where
 def endCut (t : Time) : Nat := Nat.findGreatest (fun i => tr.cutTime i ≤ t) tr.cuts
 
 /-- The read of output `g` by node `v` at the end of time `t`. -/
-def readAt (g : Out) (v : V) (t : Time) : List α := tr.read g v (tr.endCut t)
+def readAt (g : Id) (v : V) (t : Time) : List α := tr.read g v (tr.endCut t)
 
-/-- Cut `i` includes an event at a time `≥ t₀`. -/
-def InCuts (t₀ : Time) (i : Nat) : Prop := tr.endCut (t₀ - 1) < i ∧ i ≤ tr.cuts
+/-- Cut `i` exists and is at time `≥ t₀` (cut 0 is at time 0, so it counts
+for every `t₀ ≤ 0`). -/
+def InCuts (t₀ : Time) (i : Nat) : Prop := i ≤ tr.cuts ∧ t₀ ≤ tr.cutTime i
 
 /-- The same trace with every read mapped by `f`. -/
-def map {β : Type} (f : List α → List β) : Trace V β :=
+def map {β : Type} (f : List α → List β) : Trace V β Id :=
   ⟨tr.point, tr.cuts, tr.cutTime, fun g v i => f (tr.read g v i)⟩
 
 end Trace
 
-/-- A system: a space of runs; for each run its trace of ledgers, its evidence
+/-- A system: an output schema and a space of runs; for each run its trace
+of ledgers (one per output identifier), its evidence
 (what each node has seen by each cut, and how evidence convicts validators),
 whether it is a valid execution, and the excuse under which escaped claims may
 fail. The model layer instantiates every field. -/
 structure System (V : Type) where
+  schema : OutputSchema
   Run : Type
-  trace : Run → Trace V Tx
+  trace : Run → Trace V Tx schema.Id
   Valid : Run → Prop
   Obs : Type
   view : Run → V → Nat → Set Obs

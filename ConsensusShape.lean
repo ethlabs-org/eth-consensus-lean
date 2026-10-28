@@ -1,5 +1,5 @@
 module
-public import ConsensusShape.Problem
-public import ConsensusShape.Refinement
-public import ConsensusShape.Realizable
-public import ConsensusShape.Regression
+public import ConsensusModel
+
+/-! Layer 1, the protocol shape: rebuilt in stage 5 of iteration 5. This root
+exists so that the library builds. -/

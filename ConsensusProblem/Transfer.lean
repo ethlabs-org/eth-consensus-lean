@@ -1,14 +1,22 @@
 module
 public import ConsensusProblem.Properties
 @[expose] public section
+
+/-! # Transfer of trace properties along prefix-monotone maps (layer 0)
+
+Mapping every read of a trace by a function that preserves prefixes (for
+example, from block chains to transaction ledgers) preserves every
+prefix-based property. -/
+
 namespace Consensus
 
+/-- Compatibility transfers along a prefix-monotone map. -/
 theorem Compatible.map {α β : Type} {f : List α → List β}
     (hf : ∀ {a b}, a <+: b → f a <+: f b) {a b : List α}
     (h : Compatible a b) : Compatible (f a) (f b) := h.imp hf hf
 
 namespace Trace
-variable {V α β : Type} {tr : Trace V α} {f : List α → List β}
+variable {V α β Id : Type} {tr : Trace V α Id} {f : List α → List β}
     (hf : ∀ {a b}, a <+: b → f a <+: f b)
 
 include hf
@@ -35,10 +43,15 @@ theorem Nested.map {g₁ g₂} (h : tr.Nested g₁ g₂) : (tr.map f).Nested g�
   intro v hv i hi
   exact hf (h v hv i hi)
 
-theorem PersistsThrough.map {c g T b₀ b₁} (h : tr.PersistsThrough c g T b₀ b₁) :
-    (tr.map f).PersistsThrough c g T b₀ b₁ := by
+theorem ProtectedThrough.map {c src dst T b₀} (h : tr.ProtectedThrough c src dst T b₀) :
+    (tr.map f).ProtectedThrough c src dst T b₀ := by
   intro v hv t ht ht' w hw ha
   exact hf (h v hv t ht ht' w hw ha)
+
+theorem CompatibleThrough.map {c src dst T b₀} (h : tr.CompatibleThrough c src dst T b₀) :
+    (tr.map f).CompatibleThrough c src dst T b₀ := by
+  intro v hv t ht ht' w hw ha
+  exact (h v hv t ht ht' w hw ha).map hf
 end Trace
 end Consensus
 end

@@ -31,7 +31,7 @@ noncomputable def eagerRelay {V : Type} [Fintype V] [DecidableEq V]
 /-- Every choice of protocol, environment and run data admits a valid run
 with partial synchrony and healthy delivery on every prefix. -/
 theorem canonical_run : CanonicalRun := by
-  intro F V _ _ E honest horizon hh holder submit hash
+  intro O F V _ _ E honest horizon hh holder submit hash
   classical
   let relay := eagerRelay E honest submit
   let base := mkRun (F := F) (E := E) honest horizon holder submit relay hash []

@@ -26,6 +26,9 @@ recorded it passes the digests of the items in the object's closure. -/
 
 namespace Consensus.Model
 
+/-- A public time is a nonnegative multiple of `Δ` (the tick grid of this
+iteration's engine). -/
+def PublicTime {V : Type} (E : Env V) (t : Time) : Prop := ∃ k : Nat, t = (k : Time) * E.Δ
 
 /-- A scheduler event at a node: a tick, the delivery of an object, or a
 restart (which the conditions allow only at a wake). -/
@@ -60,10 +63,11 @@ def pubOf {V : Type} [Fintype V] (E : Env V) : Public := ⟨Fintype.card V, E.Δ
 variable {V : Type} [Fintype V] [DecidableEq V]
 
 /-- The protocol that family `F` runs in environment `E`. -/
-abbrev protoOf (F : Family) (E : Env V) : Protocol (pubOf E) := F (pubOf E)
+abbrev protoOf {O : OutputSchema} (F : Family O) (E : Env V) : Protocol (pubOf E) O.Id :=
+  F (pubOf E)
 
 /-- A run of family `F` in environment `E`. -/
-structure Run (F : Family) (E : Env V) where
+structure Run {O : OutputSchema} (F : Family O) (E : Env V) where
   honest : Finset V
   horizon : Time
   events : List (Event V (protoOf F E).Object)
@@ -79,7 +83,7 @@ structure Run (F : Family) (E : Env V) where
   the engine. -/
   hash : (protoOf F E).Item → Nat
 
-variable {F : Family} {E : Env V}
+variable {O : OutputSchema} {F : Family O} {E : Env V}
 
 /-- The environment point of a run. -/
 def Run.point (rho : Run F E) : EnvPoint V := ⟨E, rho.honest, rho.horizon, rho.submit⟩
@@ -89,26 +93,27 @@ def Run.inbox (rho : Run F E) (v : V) (t : Time) : List Tx :=
   rho.submit v t ++ rho.relay v t
 
 /-- An engine node: the protocol state and the `seen` log. -/
-structure Node {pub : Public} (P : Protocol pub) where
+structure Node {pub : Public} {Out : Type} (P : Protocol pub Out) where
   st : P.State
   seen : List P.Object
 
 /-- The initial world. -/
-def initWorld (F : Family) (E : Env V) : V → Node (protoOf F E) :=
+def initWorld {O : OutputSchema} (F : Family O) (E : Env V) : V → Node (protoOf F E) :=
   fun _ => ⟨(protoOf F E).init, []⟩
 
 /-- The closure of a list of objects: the objects and everything they carry. -/
-def closure {pub : Public} {P : Protocol pub} (l : List P.Object) : List P.Object :=
+def closure {pub : Public} {Out : Type} {P : Protocol pub Out} (l : List P.Object) :
+    List P.Object :=
   l.flatMap Obj.parts
 
 /-- The digests the engine passes with object `o`: every item in its closure. -/
-def digests {pub : Public} {P : Protocol pub} (hash : P.Item → Nat) (o : P.Object) :
-    List (P.Item × Nat) :=
+def digests {pub : Public} {Out : Type} {P : Protocol pub Out} (hash : P.Item → Nat)
+    (o : P.Object) : List (P.Item × Nat) :=
   (o.parts.filterMap Obj.item?).map (fun x => (x, hash x))
 
 /-- Release candidates in order: a candidate is released if everything it
 carries is in the closure of `seen`; released objects join `seen` at once. -/
-def releaseAll {pub : Public} {P : Protocol pub} (hash : P.Item → Nat) :
+def releaseAll {pub : Public} {Out : Type} {P : Protocol pub Out} (hash : P.Item → Nat) :
     Node P → List P.Object → Node P × List P.Object
   | nd, [] => (nd, [])
   | nd, c :: cs =>
@@ -200,7 +205,7 @@ def holderOf : Auth (protoOf F E).Label (protoOf F E).seats → Option V
   | .none => none
 
 /-- Output `g` of node `v` at event cut `i`. -/
-def readIdx (g : Out) (v : V) (i : Nat) : Ledger :=
+def readIdx (g : O.Id) (v : V) (i : Nat) : Ledger :=
   (protoOf F E).out g (rho.stateBefore i v).st
 
 end Run
