@@ -17,8 +17,9 @@ standard thresholds (the final output is accountable for a third in every
 environment), the readers' catch-up `catchUp`; final liveness in the healthy
 regime from a GST, from the heal point `max g 0 + (catchUp + 1 + heal m)·Δ`,
 with at most `m` validators not ready from `readyFrom` on
-(`ProgressReq.notReadyAtMost m`, which also requires `m` below the validator
-count), and latency `latency m` (`Δ`-coefficients, affine in `m`). The bound
+(`ProgressReq.notReadyAtMost m`; for `m ≥ card V` it holds trivially and
+the reader-conditional liveness owes nothing where nobody is ready), and
+latency `latency m` (`Δ`-coefficients, affine in `m`). The bound
 is pointwise: the non-ready validators may change over time, so it does not by
 itself put a ready honest leader within `m + 1` rounds (an adversarial
 schedule can sleep exactly the current leader through each round). A concrete

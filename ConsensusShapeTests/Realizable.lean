@@ -21,9 +21,13 @@ public import Mathlib.Tactic
 * Rotating sleeper (review 3b B1): four honest validators, a different one
   asleep at each tick, catch-up `3`: healthy at ⅔ from `0`, yet nobody is
   ready from `3` on. `rotating_notReadyOn_false`: the not-ready bound fails
-  for every `m` (`m ≥ 4` by the count guard, `m < 4` since nobody is ready);
+  for `m < 4` (nobody is ready); `rotating_notReadyOn_trivial`: it holds
+  trivially for `m ≥ 4`;
   `rotating_proposalLive_vacuous`: the reader-conditional liveness the shape
-  claims use owes nothing there, so no family is refuted by it. -/
+  claims use owes nothing there, so no family is refuted by it.
+* `tendermint_largeIdx_prog` (review 3b r2 B1): with a fixed population
+  `Fin 5`, the Tendermint requirement at every index `m ≥ 5` holds on every
+  run, so a large index never makes the contract unrealizable. -/
 
 namespace Consensus.Shape.Tests.Realizable
 open Consensus Blocks Shape
@@ -134,20 +138,22 @@ section Rotating
 
 open Consensus.Shape.Tests.Good (rotPoint healthy_rotating_sleeper)
 
-/-- The not-ready bound fails on the rotating sleeper for every `m`, on any
-window `[start, stop]` with `max start 0 ≤ 3 ≤ stop`. -/
-theorem rotating_notReadyOn_false (m : Nat) {start stop : Time} (hs : max start 0 ≤ 3)
-    (he : 3 ≤ stop) : ¬ NotReadyOn rotPoint m 3 start stop := by
+/-- Below the validator count (`m < 4`) the not-ready bound fails on the
+rotating sleeper, on any window `[start, stop]` with `max start 0 ≤ 3 ≤ stop`:
+nobody is ready at `3`. -/
+theorem rotating_notReadyOn_false {m : Nat} (hm : m < 4) {start stop : Time}
+    (hs : max start 0 ≤ 3) (he : 3 ≤ stop) : ¬ NotReadyOn rotPoint m 3 start stop := by
   intro h
-  have hne := h.readyAt_nonempty hs he (by decide)
+  have hne := h.readyAt_nonempty (by simpa using hm) hs he (by decide)
   rw [healthy_rotating_sleeper.2 3 le_rfl] at hne
   exact Finset.not_nonempty_empty hne
 
-/-- The pointwise count alone is trivial for `m ≥ 4`: the count guard is what
-rejects it. -/
-theorem rotating_notReadyAtMost_trivial (t : Time) : rotPoint.NotReadyAtMost 4 3 t := by
-  unfold EnvPoint.NotReadyAtMost
-  simp
+/-- From the validator count on (`m ≥ 4`) the bound holds trivially, even on
+the rotating sleeper; what keeps it harmless is that the liveness it feeds is
+reader-conditional (`rotating_proposalLive_vacuous`). -/
+theorem rotating_notReadyOn_trivial {m : Nat} (hm : 4 ≤ m) (start stop : Time) :
+    NotReadyOn rotPoint m 3 start stop :=
+  NotReadyOn.of_card_le (by simpa using hm)
 
 /-- Reader-conditional proposal liveness is vacuous on the rotating sleeper
 from `3` on, for every family and run with that point: the shape claims
@@ -168,6 +174,29 @@ theorem rotating_proposalLive_vacuous {O : OutputSchema} {Info : Type} [Decidabl
   exact Finset.notMem_empty _ hmem
 
 end Rotating
+
+section LargeIndex
+
+/-- Review 3b r2 B1 (positive regression): for a fixed population (`Fin 5`)
+and a Tendermint index at least the population (`m = 5`, and every larger
+one), the progress requirement holds on every run of every family, window and
+catch-up. L0 `Realizable` fixes `V` before the index, so no not-ready index of
+an unbounded contract may be unsatisfiable. -/
+theorem tendermint_largeIdx_prog (F : ShapeFamily bftCore Unit) (catchUp : Nat)
+    (heal latency : Affine) (cap : Capability) (m : ℕ+) (hm : 5 ≤ (m : Nat))
+    (r : (sysOf bftCore (compiled F) (Fin 5)).Run) (start stop : Time) :
+    (sysOf bftCore (compiled F) (Fin 5)).prog (shapeProgress F (Fin 5))
+      (tendermintContract catchUp heal latency) cap m start stop r :=
+  NotReadyOn.of_card_le (by simpa using hm)
+
+/-- The concrete counterexample of the review: `V = Fin 5`, `m = 5`. -/
+example (F : ShapeFamily bftCore Unit) (cap : Capability)
+    (r : (sysOf bftCore (compiled F) (Fin 5)).Run) (start stop : Time) :
+    (sysOf bftCore (compiled F) (Fin 5)).prog (shapeProgress F (Fin 5))
+      (tendermintContract 1 ⟨0, 0⟩ ⟨0, 0⟩) cap (5 : ℕ+) start stop r :=
+  tendermint_largeIdx_prog F 1 _ _ cap 5 le_rfl r start stop
+
+end LargeIndex
 
 end Consensus.Shape.Tests.Realizable
 
