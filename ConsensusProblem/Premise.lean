@@ -12,9 +12,9 @@ participation fractions, evaluated at one time); and three execution atoms
 whose meaning is fixed below the protocol: partial synchrony and synchrony up
 to a time (fixed by the execution model), and a progress requirement (fixed by
 the protocol shape from reviewed building blocks). There is no disjunction or
-negation: every well-formed environment atom holds at the extremal point
-(`Premise.extremal_realizable`), so no premise can be made unsatisfiable by
-its environment part alone. -/
+negation: every well-formed environment atom holds at large enough extremal
+points, so the environment part of a well-formed premise holds there whenever
+its timing constraints hold (`Premise.extremal_realizable`). -/
 
 namespace Consensus
 

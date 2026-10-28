@@ -121,8 +121,11 @@ that a claim or premise evaluates.
   environment atoms (L0 vocabulary), `sync`/`syncUntil` (fixed by the
   execution model), and `progress` (fixed by the shape: `PatternRecurrence`
   over the skeleton's proposer roles and grid). There is no disjunction or
-  negation, so every well-formed environment part holds at the extremal point
-  (`Premise.extremal_realizable`).
+  negation, so the environment part of a well-formed premise holds at every
+  large enough extremal point (population `n ≥ N`) at which its timing
+  constraints (`TimesHold`, the `le` atoms) hold
+  (`Premise.extremal_realizable`). The timing constraints themselves can be
+  contradictory (`contradictory_wf_not_realizable`: `1 ≤ 0` is well-formed).
 - **Closed selection and identity.** Keys are `Fin n`; the run's PKI is a
   bijection `key : Fin n ≃ V`. Who acts in a role is run data `sel`, admissible
   for the protocol's closed `SelSpec` (`all`, `fixed S`, `sized m`). Honest code
@@ -170,21 +173,24 @@ An advertised instance is therefore three things:
 2. `Contract.Realizable F K` (a per-value certificate): every premise of every
    provided capability, for every index, has a `Witness` run (a faulty
    validator, valid, no hash collision, nobody convicted by honest evidence,
-   every progress window inside the horizon), with active service:
-   `LiveActive` (a transaction submitted to one honest node, a different honest
-   reader that was never submitted it, ready at the real deadline
-   `max t GST + Δ + D·Δ` within the horizon; `active_relay`: that reader
-   receives it by relay) and `ResilienceActive` (a nonempty outage inside the
-   horizon and a continuously eligible reader over it);
+   one full recurrence window per `progress` occurrence inside the horizon),
+   with active service: `LiveActive` (a transaction submitted at `t` to one
+   awake honest node, and a different honest reader that was never submitted
+   it and is ready at some `t'` with `max t GST + Δ + D·Δ ≤ t' ≤ horizon`, not
+   necessarily at that earliest deadline; `active_relay`: in a run where
+   everyone is always awake, that reader receives it by relay) and
+   `ResilienceActive` (`0 ≤ T < b₀ < b₁ ≤ horizon` and an honest reader awake
+   throughout `[max 0 (b₀ − catch-up − 1), b₁]`; it does not require anyone to
+   sleep);
 3. `coverage` (generic): any well-formed point, with any PKI and admissible
    selection, satisfying a premise's environment and progress parts is exactly
    the point, PKI and selection of a valid, collision-free, conviction-free run
    satisfying the whole premise. The protocol cannot make a premise harder to
    meet than its environment and progress parts.
 
-`goldilocks_realizable`, `streamlet_realizable` and `tendermint_realizable`
-hold for every family with the value's proposer selection size and grid
-(Tendermint: every family). They prove premise realizability, not the
+`goldilocks_realizable` (for well-formed `GoldilocksParams`),
+`streamlet_realizable` and `tendermint_realizable` hold for every family with
+the value's proposer selection size and grid (Tendermint: every family). They prove premise realizability, not the
 existence of a correct protocol.
 
 ## Adversary model
@@ -313,8 +319,9 @@ shape. The migration must discharge:
 ## Tests (`ConsensusShapeTests/`)
 
 - `Problem`: every L0 property has teeth; `InCuts` at cut 0; relay vocabulary;
-  three-output nesting; local accountability (`agree_of_accountable`) versus
-  the global escape.
+  three-output nesting; local accountability is not implied by the global
+  escape (`local_vs_global`; the L0 lemmas `System.agree_of_accountable` and
+  `ProblemClaims.agree_of_accountable` are in `ConsensusProblem/Claims`).
 - `Premise`: named terms, the extremal point, the cover counting step, the
   after-window part of resilience (`protected_after_window`),
   `provided_mismatch`.
@@ -331,14 +338,20 @@ shape. The migration must discharge:
   `ShapeClaims`; the positive control `recorder_live_testK` (also with negative
   GST) meets the obligation that refutes them.
 - `Realizable`: `coverage_keeps_selection`, `contradictory_wf_not_realizable`.
-- `Controls`: `positive_controls`: one canonical run of a Goldilocks-skeleton
-  family that, at index 1, satisfies every capability premise of
-  `goldilocksContract` with standard numbers as an active witness, with a
-  relayed submission, ready readers, in-horizon deadlines and an active outage.
-  Every other index is covered by `goldilocks_realizable`.
+- `Controls`: two canonical runs of a Goldilocks-skeleton family at index 1,
+  for `goldilocksContract` with `GoldilocksParams.standard` and arbitrary
+  well-formed numbers (premise tests, not feasible performance bounds).
+  `positive_controls` (everyone awake): every safety, liveness and recovery
+  premise as an active witness, with a relayed submission, ready readers and
+  in-horizon deadlines. `resilience_control`: the resilience premise as an
+  active witness in a run where an honest validator is asleep inside the
+  outage `[b₀, b₁)` while the reader stays eligible (a separate run: with
+  GST 0 and full participation, recovery forbids any sleep). Every other index
+  is covered by `goldilocks_realizable`.
 - `Vacuity`: `zero_catchUp_not_shapeClaims`, `escape_zero_rejected` (also
   `recoveryEscape_zero_rejected`, `accountable_zero_rejected`),
-  `resilient_without_recovery_rejected`, `noSync_live_rejected`, with the
+  `resilient_without_recovery_rejected`, `noSync_live_rejected` (also
+  `noSync_recovery_rejected`), with the
   control `goldilocks_structural`; `credential_forgery_excluded` (a delivered
   proposal signed by an unselected key violates `ExecutionValid`, with the
   concrete run `forgedProposal`).

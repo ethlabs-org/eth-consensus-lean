@@ -8,14 +8,16 @@ public import Mathlib.Tactic
 Contracts that would make `ShapeClaims` vacuous, or easier than intended, are
 rejected by its structural fields, for every family:
 
-* `zero_catchUp_not_shapeClaims`: catch-up `0` (no reader would have caught
-  up on anything);
+* `zero_catchUp_not_shapeClaims`: catch-up `0` (`Ready 0` is still
+  satisfiable, but the transaction-liveness bridge needs a positive catch-up,
+  `ShapeClaims.catchUp_pos`);
 * `escape_zero_rejected`, `recoveryEscape_zero_rejected`,
   `accountable_zero_rejected`: an escape or accountable fraction `0` (being
   "slashable for `0`" holds in every run, so the claim would be empty);
 * `resilient_without_recovery_rejected`: a resilient capability without a
   recovery spec (`¬ CapSpec.Complete`);
-* `noSync_live_rejected`: a liveness premise without `sync` (D-20).
+* `noSync_live_rejected`, `noSync_recovery_rejected`: a liveness or recovery
+  premise without `sync` (D-20).
 
 `goldilocks_structural` is the control: every well-formed Goldilocks contract
 passes these structural fields.
@@ -70,7 +72,14 @@ theorem noSync_live_rejected (F : ShapeFamily O Info) (K : Contract O ProgressRe
     (h : ¬ (s.live.premise i).HasSync) : ¬ ShapeClaims F K := fun hc =>
   h (hc.liveSync c s hs i).1
 
-/-- The rejection has teeth: full participation alone (no `sync`) is such a
+/-- A recovery premise without `sync` is rejected (D-20). -/
+theorem noSync_recovery_rejected (F : ShapeFamily O Info) (K : Contract O ProgressReq)
+    {c : Capability} {s : CapSpec ProgressReq K.Idx} {R : RecoverySpec ProgressReq K.Idx}
+    (hs : K.spec c = some s) (hR : s.recovery = some R) (i : K.Idx)
+    (h : ¬ (R.premise i).HasSync) : ¬ ShapeClaims F K := fun hc =>
+  h ((hc.liveSync c s hs i).2 R hR)
+
+/-- The rejections have teeth: full participation alone (no `sync`) is such a
 premise, while the sleepy model has `sync`. -/
 example : ¬ (Premise.always .full : Premise ProgressReq).HasSync := id
 example : (Premise.sleepy (1 / 2) : Premise ProgressReq).HasSync :=
