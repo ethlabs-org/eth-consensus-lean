@@ -29,7 +29,9 @@ which the validator is honest, for every latency `D ≥ 1` and every start
 `≥ 0` (also the healed obligation from every GST, negative ones included:
 `recorder_live_testK_healed`). So the refutations detect the leaks, not an
 unsatisfiable obligation. The control checks the liveness obligation in
-isolation, not jointly with output validity (its headers do not link). -/
+isolation, not jointly with output validity (its headers do not link).
+
+* The test contract tolerates arbitrary numbers of validators not ready. -/
 
 namespace Consensus.Shape.Tests.Leaks
 open Consensus Blocks Shape
@@ -53,6 +55,10 @@ def testK : Contract schema ProgressReq where
   idx_nonempty := ⟨1⟩
   params := Params.standard 1 0 1 (fun _ _ => 1) (fun _ k => (k : Nat) + 2)
   progress _ k := .recur ⟨Pattern.single, k⟩
+
+/-- The test recurrence tolerates any number of validators not ready. -/
+theorem testK_progressTolerant : testK.ProgressTolerant :=
+  fun _ _ _ => ⟨(1 : ℕ+), trivial⟩
 
 /-- The test skeleton: slots of one `Δ`, one proposer per slot, polling
 disabled, one committee kind (every key). -/

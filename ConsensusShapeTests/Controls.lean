@@ -31,6 +31,8 @@ five validators (`key 0` faulty), `Δ = 1`, horizon `20`:
   outage regime (η-sleepy with look-back `2`) and active outage (a protected
   source, a sleeper inside the window, an eligible reader).
 
+* The control contract tolerates arbitrary numbers of validators not ready.
+
 All witnesses are the generic ones of `regimes_realizable`
 (`sleepy_witness`, `healthy_witness`, `outage_witness`) at explicit
 numbers. -/
@@ -89,6 +91,12 @@ theorem ctrlK_admissible : ctrlK.params.Admissible := by
 theorem ctrlK_progressFits : ctrlK.ProgressFits ctrlFamily := by
   intro cap k pub
   cases cap <;> rfl
+
+/-- The control recurrences tolerate any number of validators not ready. -/
+theorem ctrlK_progressTolerant : ctrlK.ProgressTolerant := by
+  intro cap ho N
+  refine ⟨1, ?_⟩
+  cases cap <;> trivial
 
 /-- The control system: five validators. -/
 abbrev S : System (Fin 5) := sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)
@@ -156,7 +164,8 @@ theorem positive_controls (cap : Capability) :
 /-- The control family meets L0 `Realizable` at the control contract (the
 generic theorem at concrete numbers). -/
 theorem ctrl_realizable : Realizable S X ctrlK :=
-  (regimes_realizable ctrlFamily ctrlK ctrlK_admissible ctrlK_progressFits (Fin 5) card5).1
+  (regimes_realizable ctrlFamily ctrlK ctrlK_admissible ctrlK_progressFits ctrlK_progressTolerant
+    (Fin 5) card5).1
 
 /-- **Outage control**: `T = 1 < b₀ = 3 < b₁ = 4`, honest `key 2` asleep at
 `3`: the outage regime holds and the outage is active. -/

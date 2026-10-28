@@ -197,6 +197,13 @@ theorem goldilocks_progressFits {Info : Type} [DecidableEq Info] [Encodable Info
   intro cap k pub
   cases cap <;> exact hsel pub
 
+/-- Goldilocks recurrence requirements tolerate any number not ready. -/
+theorem goldilocks_progressTolerant (pp : FGSAParams) :
+    (goldilocksContract pp).ProgressTolerant := by
+  intro cap ho N
+  refine ⟨(1 : ℕ+), ?_⟩
+  cases cap <;> trivial
+
 /-- Reference numbers (fgsa-protocol.tex 3018–3026): `B_H^F` at `k = 2` is
 `295Δ` (`R = 2`) and `343Δ` (`R = 3`); the paper's `344Δ` and `412Δ` add
 `W_W(3)` to `B_H^F` at the **independent** healing gap `k = 2` (`lockK = 2`,

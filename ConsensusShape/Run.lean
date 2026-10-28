@@ -139,6 +139,10 @@ def shapeProgress (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V
     | recur ρ => exact PatternRecurrence.shrink hb h
     | notReadyAtMost m => exact NotReadyOn.shrink hb h
 
+  submit_irrel := by
+    intro π c s e p x σ h
+    cases π <;> exact h
+
 /-! ## The L0 regimes and quantities at a compiled run
 
 Shape-level names for the L0 definitions at the system run `⟨E, rho⟩` of the

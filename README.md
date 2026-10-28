@@ -44,6 +44,21 @@ that a claim or regime evaluates.
   - `OutageActive`: a ready source, a real sleeper inside the window and an
     eligible reader.
 
+  Two **stress witnesses** exercise liveness with many honest validators
+  asleep, so a progress requirement cannot quietly demand near-full
+  participation. For every provided output, at *some* index:
+  - `sleepyStress` (available, stable): a sleepy witness where at most
+    `⌊2n/3⌋` honest validators are ever awake (never an awake
+    supermajority), with `prog[0, horizon]` and `TxLiveActive`;
+  - `healthyStress` (every provided output): a healthy witness from every
+    GST where at most `⌊2n/3⌋ + 1` honest validators are ever awake (a
+    minimal awake supermajority).
+
+  A contract whose available progress is "at most one validator not ready"
+  at every index is therefore not realizable
+  (`notReadyAtMost_one_not_realizable`): a protocol that halts when two
+  validators sleep is not dynamically available.
+
 For shape protocols, `Accepted.good` (L2) proves all three parts. The good
 protocols we accept are
 `Good (sysOf O (compiled F) V) (shapeProgress F V) K`, for every finite `V`.
@@ -78,10 +93,6 @@ Derived in L0 (`Good.*`), and in the Goldilocks sheet:
 | **prefix forms** `sleepySafe_prefix` | `SyncUntil b ∧ SleepyOn θ c 0 b` ⇒ `ReadySafeUpTo c g 0 b ∨ HC`: the past is safe whatever happens after `b` |
 | `healedSafe_prefix` | partial synchrony with GST `g` for deadlines up to `b`, `HealthyOn φ g b`, `prog[ready, heal]` and `heal ≤ b` ⇒ `ReadySafeUpTo c g heal b ∨ HC` |
 | `outage_prefix` | the outage regime up to `b` ⇒ protection at reading times in `[b₀, b]` ∨ HC |
-
-Plan §1.5 also named `Good.final_accountable_prefix` and `Good.nonvacuous`.
-They are deliberately not added: accountability already has premise `True`
-and so covers prefix reads, and `Realizable` gives the clean witnesses.
 
 `TxLive c g start D` covers every submission: a transaction submitted to an
 awake honest node by `t` is in the `g`-read of every ready reader at every
@@ -196,12 +207,15 @@ structure Params.Admissible (P) : Prop :=
   1 ≤ catchUp,  0 ≤ θ ≤ ½,  0 ≤ φ ≤ ⅔,  0 ≤ cover ≤ ½,  1 − φ ≤ α ≤ 1,  1 ≤ budget
 ```
 
-A contract cannot buy its claims with a stronger environment, because each
-threshold must be at most its standard value. The healthy regime bounds
-faults below `1 − φ ≤ α` (`HealthyOn.faultsBelow`). `standard_admissible`
-shows that the standard numbers are admissible. `η`, `lag` and the
-heal/latency tables are free instance numbers: any `η` is realizable
-(`outage_witness`), and the reviewer reads them as numbers.
+A contract cannot buy its claims with stronger **thresholds**, because each
+of `θ`, `φ`, `cover` and `α` must be at most its standard value. The healthy
+regime bounds faults below `1 − φ ≤ α` (`HealthyOn.faultsBelow`).
+`standard_admissible` shows that the standard numbers are admissible. The
+other numbers are not bounded and carry part of the verdict: a larger
+`catchUp` means fewer ready readers, a larger `lag` a later protected source,
+a larger `η` a stricter outage participation condition, a small `budget` a
+short outage, and larger heal points and latencies weaker claims. Any `η` is
+realizable (`outage_witness`); the reviewer reads these as numbers.
 
 ### The progress slot
 
@@ -213,16 +227,29 @@ structure Progress (S : System V) (Prog : Type) extends External S where
   holds  : Prog → Time → Time → Time → (p : EnvPoint V) → Ext p.env → Prop  -- π c start stop
   mono   : s ≤ s' → e' ≤ e → holds π c s e p x → holds π c s' e' p x
   shrink : b ≤ p.horizon → holds π c s e p x → holds π c s e {p with horizon := b} x
+  submit_irrel : holds π c s e p x → holds π c s e {p with submit := σ} x
 ```
 
 By typing, `holds` reads only the environment point and the run's external
 data (`External`: in the model, the PKI and the selection). It cannot read
-the protocol's behaviour. Two properties make it a checked slot rather than
-an escape hatch:
+the protocol's behaviour, and by `submit_irrel` it cannot read the
+transaction submissions either: progress is about participation, never about
+which transactions arrive. (Otherwise "every submission is `42`" would be a
+legal requirement, and a constant ledger `[42]` that censors everything else
+would pass: `censoring_progress_rejected`.)
+
+The slot is checked, within limits:
 
 - `Adequate.covers` transports it to the covering run.
-- `Realizable` requires it to hold on every witness. A reader that never
-  holds fails `Good` (`false_progress_not_good`).
+- `Realizable` requires it to hold on every witness, and, at some index, on
+  the stress witnesses with many honest validators asleep. A reader that
+  never holds fails `Good` (`false_progress_not_good`); a requirement of
+  near-full participation at every index fails the stress witnesses.
+- What remains the instance's choice is how strong the leader requirement
+  is: a recurrence gap of one slot ("an honest ready proposer in *every*
+  slot") passes, because the witnesses' proposer stays awake. The reviewer
+  reads the gap as a number (open: whether to require tolerance of bad
+  slots).
 
 In L2 the slot is `ProgressReq` (`ConsensusBlocks/Selection.lean`):
 
@@ -236,6 +263,10 @@ In L2 the slot is `ProgressReq` (`ConsensusBlocks/Selection.lean`):
 `ProgressReq.Fits` requires a recurrence to sit on a skeleton with one
 proposer per slot (`.sized 1`). Otherwise an all-proposer selection would
 include a faulty key (`allProposers_unfit`, `allProposers_no_witness`).
+`Contract.ProgressTolerant` asks every provided output to have, for every
+`N`, an index whose requirement tolerates `N` validators not ready (a
+recurrence always; `.notReadyAtMost m` when `N ≤ m`): this is what the
+stress witnesses need (`notReadyAtMost_one_not_tolerant`).
 
 ### What an instance supplies
 
@@ -252,15 +283,31 @@ author, schedule or evidence collector.
 
 ### What L0 checks and what L1 proves
 
-L0 alone checks the property table, the regimes, the network rule, the
-numbers' range, adequacy (coverage of every environment and GST, prefix
-closure) and realizability. `Adequate` and `Realizable` exclude the
-vacuous forms: `Valid = ∅`, `Excuse = True`, a progress requirement that is
-false or never met, a log under which no regime holds, and validity
-restricted to synchronous runs. Two facts are about the system, not the
-definition, and L0 cannot check them. L1 (the model) proves them once, for
-every protocol:
+`Good S X K` is **the** definition for the systems of the model,
+`S = sysOf O (compiled F) V`. For an arbitrary L0 system it is a property of
+an abstraction that L0 trusts. L0 alone checks the property table, the
+regimes, the network rule, the numbers' range, adequacy (coverage of every
+environment and GST, prefix closure) and realizability. `Adequate` and
+`Realizable` exclude the vacuous forms: `Valid = ∅`, `Excuse = True`, a
+progress requirement that is false, never met or met only near full
+participation, a log under which no regime holds, and validity without runs
+at a late GST or without silent runs.
 
+L0 cannot check that the system is a real distributed protocol. Example: an
+**oracle system** with `Valid = True`, no sends, `Excuse = False`,
+`convicts = False`, and every node reading all transactions submitted to an
+awake honest node by `t − Δ`, ordered by submission time. It computes its
+reads from ground truth that no node has, yet it can meet every L0
+condition. Likewise a
+system whose `Valid` contains only eager, Byzantine-free runs passes
+`Adequate`. What rules these out is what `sysOf` fixes, proved once in L1
+for every protocol:
+
+- **`Valid` is every adversarial execution**: Byzantine signers (any
+  signature with their own keys), every schedule, relay and hash within the
+  execution conditions.
+- **Reads are local**: each output is computed by honest code from its own
+  view (the engine's state machine), not from the environment.
 - **The log is the real communication.** `sysOf`'s `log` is the engine's
   releases, deliveries and inboxes (`sysOf_log_faithful`,
   `sysOf_delivers_iff`). On execution-valid runs, for honest recipients
@@ -268,9 +315,11 @@ every protocol:
   honest wakes in `(0, horizon]` correspond to restarts
   (`Run.held_iff_served`). Faulty nodes have no wake/restart correspondence. **Boundary:** this
   shows that the log cannot invent sends or receipts, and that L0 delivery
-  is the engine's delivery. It does not make an arbitrary L0 system honest
-  about its log. It also does not show that handlers retain or use
+  is the engine's delivery. It does not show that handlers retain or use
   delivered data (that is the protocol's behaviour, judged by the claims).
+- **The excuse is an observed hash collision only.**
+- **Convictions are evidence-only slashing**: `convicts` reads the evidence,
+  the PKI and the protocol's `conflicts` rule.
 - **The external data are external.** `sysExternal` gives the PKI (`Fin n ≃
   V`) and the selection, fixed before execution. `Admits` is the protocol's
   `SelSpec`. Honest code never sees the selection, the PKI, the honest set,
@@ -299,6 +348,7 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Prop 
   admissible : K.params.Admissible
   serves : O.Serves
   progressFits : K.ProgressFits F
+  progressTolerant : K.ProgressTolerant
 theorem Accepted.good (h : Accepted F K) (V) [Fintype V] [DecidableEq V] :
     Good (sysOf O (compiled F) V) (shapeProgress F V) K
 theorem Accepted.activeService (h : Accepted F K) :
@@ -309,7 +359,8 @@ theorem Accepted.activeService (h : Accepted F K) :
 its bridges are `ledgerTrace` (reads are `ledgerOf` of the output chains)
 and `proposalLive_txLive` (proposal liveness and partial synchrony give
 transaction liveness). `sysOf_adequate` gives `Adequate`.
-`regimes_realizable` gives `Realizable`. `ActiveService`: a final or
+`regimes_realizable` gives `Realizable` (its stress witnesses keep keys
+`1..3`, respectively `1..⌊2n/3⌋+1`, awake and the rest asleep). `ActiveService`: a final or
 available output puts a relayed transaction into another honest node's
 read on a clean healthy witness. A silent service or empty outputs are
 therefore not accepted, for every protocol.
@@ -398,12 +449,12 @@ are the intended ones.
 
 ## Scope
 
-- **`stable := finalized` (Gasper-style) is not good** (OD-19, override 3).
+- **`stable := finalized` (Gasper-style) is not good** (iteration-6 decision).
   Stable must be sleepy-live (`DAClaims.sleepyLive`). A schema that aliases
   stable to final is good only if its final output is live under sleepy
   participation (`stable_alias_final_sleepy_live`). Aliasing stable to
   available is allowed (Goldilocks).
-- **Non-accountable BFT is out of scope** (OD-3). Final accountability is
+- **Non-accountable BFT is out of scope**. Final accountability is
   mandatory, for fraction `α ≥ 1 − φ` (standard ⅓), in every environment.
 - **One GST and one outage per run: partially closed.** The prefix forms
   (`Good.sleepySafe_prefix`, `healedSafe_prefix`, `outage_prefix`) make the
@@ -432,6 +483,9 @@ are the intended ones.
   run.
 - The network-level "knowledge of equivocation" service is not modelled (see
   the network section).
+- Recurrence progress is read as a number: a gap of one slot (an honest ready
+  proposer in every slot) is accepted; whether the definition should require
+  tolerance of bad proposer slots is open.
 
 ## Goldilocks
 
@@ -479,13 +533,23 @@ unproved, and it is never changed to fit FG-SA.
 - **§2, the `GoldilocksExtra` fields, stated:**
   - inclusion of every honest proposal (`includeSleepy`, `includeHealed`);
   - block-level growth (`growSleepy`, `growHealed`);
-  - first and recurring finality (`finalFirst`, `finalRecur`);
+  - first and recurring finality in the intended forms (`finalFirst`,
+    `finalRecur`: above the ready confirmed reads at the healing cut
+    `finalCut`, within `W_W`);
   - `liveDC`, `crossNest`;
   - A2 `outageWindow` (η-sleepy prefix only);
-  - weak continuation (`weakSafe`, `weakInclude`, `weakGrow`).
-- **§3, not yet stated, with reasons:** the static adversary, cut/seed
-  uniformity, FL3/FL4, paper-only rows, HEAD, the fast path, leak accounting
-  and the E1/E2 evidence binding.
+  - weak continuation (`weakSafe`, `weakCrossNest`, `weakInclude`,
+    `weakGrow`; inhabited: `weakPremise_inhabited`).
+- **§3, not yet stated, with reasons:** A6 (a two-run statement), fast
+  arming, cut/seed uniformity, FL3/FL4, paper-only rows, HEAD, the fast path,
+  leak accounting and the E1/E2 evidence binding. For the newer spec,
+  `available` must bind to the confirmed record `latestConfirmed`: its
+  read-time tip `ac_confirmed` can step back, which `ReadySafe` forbids.
+  P-TX-SCOPE: the target goes beyond proposal inclusion, to transaction
+  liveness, through the generic payload bridge.
+- **Weaker than intended (accepted):** A3 (η-sleepy during the window, the η
+  cap on the budget, eligible readers only), P-OUT-FIN-COMPAT before `b₀`,
+  ready rather than joined readers and proposers.
 
 **Migration obligations.** Each is a gate that the FG-SA migration must pass
 against the unchanged target:
@@ -502,11 +566,12 @@ against the unchanged target:
 8. Hash, relay across sleep, and endpoint receipt (one time unit).
 9. Finality liveness under ⅔-continuous participation.
 10. Weak-continuation uniformity.
-11. The FL1/FL2 block-level forms vs `FinalityLivenessGSTClaim_W` (not
-    claimed equivalent).
+11. FL1/FL2 in the intended forms from FG-SA's `FirstFinalityRecFEClaim_W` /
+    `FinalityLivenessGSTClaim_W` under `finRec gf`; `W_W` is shorter than one
+    guarded recurrence window (`finalRecur_delay_vs_window`).
 12. `CleanPrefixTruncation` vs `Adequate.prefixClosed`.
 
-**OD-23 risk.** Francesco answered OD-23 (2026-10-28): the outage regime is
+**Regime risk.** Francesco decided (2026-10-28): the outage regime is
 η-sleepy with an instance look-back (`η = 0` is plain sleepy), and the
 healthy regime is ⅔ continuously awake. The remaining risk is in
 obligations (1), (4) and (9). FG-SA's recovery and finality proofs assume
@@ -527,7 +592,7 @@ Francesco. Neither the sheet nor the definition is weakened.
 | M6 syncUntil unchecked | removed (no premise language) |
 | M7, M27 late GST, Δ | `Realizable` ∀ Δ, g ≥ 0; `healed_witness_late` (Δ = 7, GST 1000) |
 | M8 trivial outage | `OutageActive`; `outage_async_log`, `outage_witness_late`, `outage_control` |
-| M9 dynamic participation | sleepy regime; `sleepy_with_sleeper` |
+| M9 dynamic participation | sleepy regime; `sleepy_with_sleeper`; stress witnesses (`Realizable.sleepyStress`, `notReadyAtMost_one_not_realizable`) |
 | M10 thresholds | `Params.Admissible`; `admissibility_rejections`, `outage_times_teeth`, `healthy_needs_two_thirds` |
 | M11 wake at GST | healthy counts awake; progress from `readyFrom`; `healthy_wake_at_gst` |
 | M12 inclusion | sheet `includeSleepy`, `includeHealed` |
@@ -550,7 +615,7 @@ Francesco. Neither the sheet nor the definition is weakened.
 | M36, M39 leak/HP latency, HEAD | scope; sheet §3 |
 | M37 model adequacy | `Adequate` + `sysOf_adequate`, `sysOf_log_faithful`, `held_iff_served`; `silent_run_valid` |
 | M38 global escape | removed: local accountability only; `local_accountability_teeth` |
-| vacuous system | `Good = Behaviour ∧ Adequate ∧ Realizable`; `false_progress_not_good`, `empty_valid_not_good`, `excuse_true_not_good`, `no_admissible_not_good` |
+| vacuous system | `Good = Behaviour ∧ Adequate ∧ Realizable`; `false_progress_not_good`, `empty_valid_not_good`, `excuse_true_not_good`, `no_admissible_not_good`; progress cannot read submissions (`censoring_progress_rejected`) or demand near-full participation (`notReadyAtMost_one_not_realizable`) |
 
 ## Tests (`ConsensusShapeTests/`)
 
@@ -564,7 +629,8 @@ Francesco. Neither the sheet nor the definition is weakened.
   `outage_async_log`, `sleepy_with_sleeper`, `healthy_wake_at_gst`,
   `healthy_needs_two_thirds`, `healthy_faultsBelow`,
   `faulty_third_not_healthy`, `outage_times_teeth`).
-- `Good`: vacuous systems are not good; `prefix_sync_then_async`;
+- `Good`: vacuous systems are not good; `censoring_progress_rejected`;
+  `prefix_sync_then_async`;
   `healthy_rotating_sleeper`; η-sleepy history, brief wakes and startup;
   `stable_alias_final_sleepy_live`.
 - `Model`, `Blocks`, `Shape`: model mechanics, recurrence, compiled roles and
@@ -578,9 +644,10 @@ Francesco. Neither the sheet nor the definition is weakened.
 - `Controls`: `positive_controls`, `outage_control`, `ctrl_realizable` at
   explicit numbers.
 - `Vacuity`: admissibility rejections, progress fit,
+  `notReadyAtMost_one_not_realizable`, `notReadyAtMost_one_not_tolerant`,
   `credential_forgery_excluded`, `noService_not_accepted`.
 - `Goldilocks`: `reference_numbers`, `pp223_admissible`, `target_unfolds`,
-  `stable_is_confirmed`, `outageWindow_prefix_only`.
+  `stable_is_confirmed`, `outageWindow_prefix_only`, `weakPremise_inhabited`.
 - `Gaps`: one disposition per gap row, with `example`s for the
   by-construction rows.
 

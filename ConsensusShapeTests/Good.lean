@@ -5,31 +5,32 @@ public import Mathlib.Tactic
 
 /-! # Tests of the L0 definition of a good protocol
 
-* Vacuous systems are not good (review Astra B3):
+* Submission-dependent censoring progress is rejected by `submit_irrel`.
+* Vacuous systems are not good:
   `false_progress_not_good` (a progress reader that never holds violates
   `Realizable` for `|V| ≥ 5`), `no_admissible_not_good` (no admissible
   external data, e.g. `Admits := False`, violates `Adequate.admits`),
   `empty_valid_not_good` (no valid run violates `Adequate.covers`),
   `excuse_true_not_good` (an excuse on every run, likewise).
-* `prefix_sync_then_async` (review Opus B1): a log synchronous for deadlines up
+* `prefix_sync_then_async`: a log synchronous for deadlines up
   to `b = 1` whose later honest send is never received. It meets the premises
   of `Good.sleepySafe_prefix` at `b = 1` (`SyncUntil 1`, sleepy on `[0, 1]`)
   but is not partially synchronous with GST `0`, so the full-run sleepy
   regime (and `DAClaims.sleepySafe`) does not apply.
-* `healthy_rotating_sleeper` (review Astra B5, iteration 6 stage 4 B2): four
+* `healthy_rotating_sleeper`: four
   honest validators, one of them asleep at each time in turn. More than ⅔ are
   honest and awake at every time, but no validator is awake throughout, so the
   healthy regime (one fixed set awake throughout, no churn) is **rejected**;
   with catch-up `3` nobody is ready from time `3` on.
-* `eta_sleepy_history_sensitive` (stage 4 B1): the same rotation with
+* `eta_sleepy_history_sensitive`: the same rotation with
   catch-up `0` is plain ½-sleepy at every time, but not ½-η-sleepy with
   look-back `2` (at time `4` two validators are ready, all four were awake in
   `[2, 4]`): the outage regime's participation is history-sensitive. It meets
   the awake-count form, so the contract's form is the stronger premise.
-* `eta_sleepy_counts_brief` (stage 4 r2 B1): honest validators awake only
+* `eta_sleepy_counts_brief`: honest validators awake only
   briefly (never ready) count against η-sleepy participation in the look-back
   window, as in the awake-count form.
-* `eta_sleepy_startup` (stage 4 r2 B2): no participation history before time
+* `eta_sleepy_startup`: no participation history before time
   `0`; honest validators asleep throughout do not count at startup.
 * `stable_alias_final_sleepy_live` (override 3): a schema that aliases stable
   to final must make the final output live in the sleepy regime. -/
@@ -40,6 +41,19 @@ section Vacuous
 
 variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
   {X : Progress S Prog} {K : Contract S.schema Prog}
+
+omit [Fintype V] [DecidableEq V] in
+/-- A reader cannot gate progress on every submission being transaction `42`. -/
+theorem censoring_progress_rejected (v : V) (π : Prog) (c s e : Time)
+    (p : EnvPoint V) (x : X.Ext p.env)
+    (h : ∀ σ : V → Time → List Tx,
+      X.holds π c s e {p with submit := σ} x ↔
+        ∀ v t y, y ∈ σ v t → y = 42) : False := by
+  have hempty := (h (fun _ _ => [])).mpr (by simp)
+  have hfull := X.submit_irrel (fun _ _ => [43]) hempty
+  have hall := (h (fun _ _ => [43])).mp hfull
+  have := hall v 0 43 (by simp)
+  norm_num at this
 
 /-- A progress reader that never holds: not good (for `|V| ≥ 5`). -/
 theorem false_progress_not_good (hX : ∀ π c s e p x, ¬ X.holds π c s e p x)
@@ -291,7 +305,7 @@ theorem briefPoint_readyAt : briefPoint.readyAt 0 1 = {1, 2, 3} := by
   · intro hv
     refine ⟨?_, ?_, fun u _ _ => ?_⟩ <;> fin_cases v <;> simp_all
 
-/-- Briefly awake participants count (review stage 4 r2 B1): validators `4`–`9`
+/-- Briefly awake participants count: validators `4`–`9`
 are awake only at `0`, so at time `1` they are not ready. With catch-up `0` the
 run is plain ½-sleepy at `1` (`½·(3 + 1) < 3`), but not ½-η-sleepy with
 look-back `2`: the window `[0, 1]` sees nine honest validators awake
@@ -352,7 +366,7 @@ theorem startPoint_awakeIn (a b : Time) : startPoint.awakeIn a b ⊆ {1, 2} := b
   obtain ⟨h0, -, -, -, h2⟩ := hv
   fin_cases v <;> simp_all
 
-/-- No participation history before time `0` (review stage 4 r2 B2): honest
+/-- No participation history before time `0`: honest
 validators `3`–`6` sleep throughout, and the run is ½-η-sleepy on `[0, 10]`
 for every look-back, startup included (`½·3 < 2`). Readiness at negative
 times (vacuous) would have counted all seven validators at the start. -/

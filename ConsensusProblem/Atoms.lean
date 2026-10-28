@@ -112,10 +112,6 @@ theorem EtaReadyAbove.awakeForm {θ : ℚ} {η c t : Time} (h : p.EtaReadyAbove 
     exact_mod_cast Finset.card_le_card (p.readyAt_subset_awakeAt hc0 ht)
   exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left hc h0) (lt_of_lt_of_le h hr)
 
-/-- A larger absolute fault bound is weaker. -/
-theorem FaultsAtMost.mono {m m' : Nat} (h : p.FaultsAtMost m') (hle : m' ≤ m) : p.FaultsAtMost m :=
-  le_trans h hle
-
 /-- A larger fault bound is weaker. -/
 theorem FaultsBelow.mono {β β' : ℚ} (h : p.FaultsBelow β') (hle : β' ≤ β) : p.FaultsBelow β :=
   lt_of_lt_of_le h (mul_le_mul_of_nonneg_right hle (by positivity))

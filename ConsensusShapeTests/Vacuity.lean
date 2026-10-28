@@ -5,13 +5,14 @@ public import Mathlib.Tactic
 
 /-! # Bad contracts, bad protocols, credentials (L2)
 
+* A bound of one validator not ready fails the sleepy stress requirement.
 * **Admissibility rejections** (M10): a contract cannot buy its claims with a
   stronger environment. Each of `θ = 3/5`, `φ = 9/10`, `cover = 3/5`,
   `α = 1/4` (with `φ = 2/3`: `1 − φ > α`), `budget = 0` and `catchUp = 0`,
   changed alone from admissible standard numbers, is rejected
   (`reject_theta` … `reject_catchUp`, bundled as `admissibility_rejections`);
   `standard_admissible` is the control (the standard numbers are admissible).
-* **Progress fit** (M29): `allProposers_unfit` (review B2: a recurrence does
+* **Progress fit** (M29): `allProposers_unfit` (a recurrence does
   not fit a family that selects every key as proposer; the matching run-level
   fact is `Realizable.allProposers_no_witness`); `noProgressFit`,
   `noProgressFit_contract` (a recurrence on a poll skeleton, which has no slot
@@ -31,6 +32,43 @@ namespace Consensus.Shape.Tests.Vacuity
 open Consensus Blocks Shape
 open Consensus.Model (Public Key Obj pubOf protoOf sysOf)
 open Consensus.Shape.Tests.Shapes (schema pollSkel pollShape)
+
+/-- Near-full participation cannot meet sleepy stress below a supermajority. -/
+theorem notReadyAtMost_one_not_realizable {O : OutputSchema} {Info : Type}
+    [DecidableEq Info] [Encodable Info] (F : ShapeFamily O Info)
+    (K : Contract O ProgressReq) (V : Type) [Fintype V] [DecidableEq V]
+    (hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome)
+    (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) :
+    ¬ Realizable (sysOf O (compiled F) V) (shapeProgress F V) K := by
+  intro h
+  obtain ⟨i, r, -, hd, -, hprog, hlive, hawake⟩ :=
+    h.sleepyStress .available (Or.inl rfl) ho 1 one_pos
+  let S := sysOf O (compiled F) V
+  have hc : 0 ≤ S.cDur K r := mul_nonneg (by positivity) (S.pt r).env.Δ_pos.le
+  have hD : 0 ≤ S.lat K .available i r :=
+    mul_nonneg (by positivity) (S.pt r).env.Δ_pos.le
+  obtain ⟨x, t, t', u, w, ht, -, -, -, -, -, -, hdl, hth, -⟩ := hlive
+  have hH : 0 ≤ (S.pt r).horizon := by
+    have := le_max_left t 0
+    dsimp [S] at *
+    linarith [(S.pt r).env.Δ_pos]
+  change shapeHolds F (K.progress .available i) _ _ _ _ _ at hprog
+  rw [hp i] at hprog
+  have hready := hprog 0 (by simp) hH hH
+  have hsub := Finset.card_le_card ((S.pt r).readyAt_subset_awakeAt hc le_rfl)
+  have hb := hawake 0 le_rfl hH
+  change ((S.pt r).awakeAt 0).card ≤ 2 * Fintype.card V / 3 at hb
+  change Fintype.card V ≤ ((S.pt r).readyAt (S.cDur K r) 0).card + 1 at hready
+  omega
+
+/-- A fixed bound of one cannot tolerate arbitrary numbers not ready. -/
+theorem notReadyAtMost_one_not_tolerant {O : OutputSchema} (K : Contract O ProgressReq)
+    (ho : (O.output .available).isSome)
+    (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) : ¬ K.ProgressTolerant := by
+  intro h
+  obtain ⟨i, hi⟩ := h .available ho 2
+  rw [hp i] at hi
+  norm_num [ProgressReq.Tolerates] at hi
 
 section Admissibility
 

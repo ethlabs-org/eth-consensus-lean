@@ -62,6 +62,11 @@ theorem streamletContract_progressFits {Info : Type} [DecidableEq Info] [Encodab
     (streamletContract catchUp heal latency).ProgressFits F :=
   fun _ _ pub => hsel pub
 
+/-- Every provided output tolerates any number of validators not ready. -/
+theorem streamletContract_progressTolerant (catchUp : Nat) (heal latency : Affine) :
+    (streamletContract catchUp heal latency).ProgressTolerant :=
+  fun _ _ _ => ⟨(1 : ℕ+), trivial⟩
+
 end Consensus.Shape
 
 end

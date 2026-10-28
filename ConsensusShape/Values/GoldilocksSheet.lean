@@ -6,7 +6,10 @@ public import Mathlib.Tactic
 
 /-! # The Goldilocks properties sheet
 
-**Round-model FG-SA, `Δ_F = Δ`, slow arming, `κ = 2`.** `GoldilocksTarget F pp`
+**Round-model FG-SA, `Δ_F = Δ`, slow arming, `κ = 2`.** These pins (the
+intended properties allow `Δ_F ≥ Δ`, other `κ` and fast arming, and the final
+heal point couples the healing gap to `gf·R`) are instance restrictions of this
+target, not limits of the intended properties. `GoldilocksTarget F pp`
 is a *reviewed target*, not a proof that FG-SA meets it: the reviewed bindings
 (`GoldilocksBindings`: the skeleton), acceptance at the pinned numbers
 (`Accepted F (goldilocksContract pp)`, which gives the L0 `Good`), and the
@@ -52,8 +55,10 @@ E1/E2 evidence binding exists (obligation (7)).
 * A3 / P-OUT-CONTINUE (stable retention), P-OUT-FIN-COMPAT:
   `confirmed_persists` (stable = confirmed: M14 closed),
   `outage_final_compatible` (for `ResilienceReader`-eligible readers).
-* Tx-level consequence of L3, L8: `confirmed_txLive_sleepy` (latency
-  `(4k+6)·Δ`; not strict block growth).
+* Tx-level consequence of L3 (P-SYNC-AV-GROW): `confirmed_txLive_sleepy`
+  (latency `(4k+6)·Δ`; not strict block growth). Intended L8 (transaction
+  liveness) is "not claimed" in intended-opus; the contract claims it
+  (P-TX-SCOPE below).
 * Tx-level consequence of L5: `confirmed_txLive_healed`.
 * Tx-level consequence of FL1, FL2: `finalized_txLive` (every submitted
   transaction finalized by `max t heal + Δ + latency`; not FL1's
@@ -62,30 +67,52 @@ E1/E2 evidence binding exists (obligation (7)).
   every GST and arbitrarily late outages).
 * Numbers: `reference_bounds`, `goldilocks_admissible`, `budget_implies_V`,
   `range_head` (with the span loss), `final_latency_covers_window`,
-  `final_heal_covers_window`, `finalRecur_delay_covers_window` (the final
-  numbers cover one window plus the pattern span, for every `R` and `gf`),
+  `final_heal_covers_window` (the final latency and heal point cover one
+  window plus the pattern span, for every `R` and `gf`),
+  `finalRecur_delay_vs_window` (the intended FL2 delay `W_W` does not),
   `EnvPoint.two_mul_card_faulty_union_lt`.
 
 ## §2 From the extras (`GoldilocksExtra` fields; statements only)
 
 * L1 / P-SYNC-AV-INCLUDE: `includeSleepy`.
 * L4 / P-GST-AV-INCLUDE: `includeHealed`.
-* L3, L8 / P-SYNC-AV-GROW (block level): `growSleepy`.
+* L3 / P-SYNC-AV-GROW (block level): `growSleepy`.
 * L5 / P-GST-AV-GROW (block level): `growHealed`.
-* FL1 / P-GST-FIN-FIRST: `finalFirst`.
-* FL2 / P-GST-FIN-RECUR: `finalRecur`.
-* FL5: `liveDC`.
+* FL1 / P-GST-FIN-FIRST: `finalFirst` (intended form: strictly above every
+  ready confirmed read at the healing cut `finalCut`, by `finalCut + W_W`;
+  FG-SA proof: obligation (11)).
+* FL2 / P-GST-FIN-RECUR: `finalRecur` (intended form: from `finalCut`, by
+  `t + W_W`; obligation (11)).
+* FL5 / P-GST-FIN-GROW: `liveDC`.
 * A4 part / P-GST-CROSS-NEST: `crossNest`.
 * A2 / P-OUT-AV-SLOW: `outageWindow` (η-sleepy prefix to `b₀` only; no
   network or participation assumption inside the window).
-* P-WEAK-AV-SAFE: `weakSafe` (no suffix recurrence).
+* P-WEAK-AV-SAFE: `weakSafe` (no suffix recurrence) and its nesting conjunct
+  `F_x ⪯ S_y`, `weakCrossNest`.
 * P-WEAK-AV-INCLUDE: `weakInclude` (every qualifying honest proposal,
   persistent).
 * P-WEAK-AV-GROW: `weakGrow` (suffix recurrence `k'`).
 
 ## §3 Not yet stated (with reason)
 
-* A6 / P-WEAK-CORRUPTION: static adversary (the definition's scope).
+* A6 / P-WEAK-CORRUPTION: a two-run statement (a retained set compared
+  across a run and its corrupted continuation; its one-run form needs "honest
+  until `T_F`"). It is the only intended *available*-output "or ⅓ slashable"
+  result; the definition has accountability for the final output only.
+* P-OUT-AV-FAST (fast arming: `T + 4Δ ≤ b₀` with at least `⌈n/2⌉` awake
+  before `b₀`; FG-SA's `FastP1Claim`): the fixed outage regime has one arming
+  lag, and the pin is slow arming; fast arming needs a second lag with a
+  half-committee participation premise. A later extra.
+* P-NV-CONTINUATION: `WeakPremise` is inhabited (`weakPremise_inhabited` in
+  `ConsensusShapeTests/Goldilocks.lean`: the generic healthy witness, everyone
+  awake), so the weak extras are not vacuous.
+* P-MODEL-WELLFORMED: covered by `Valid` (`ExecutionValid`) and the L1 model.
+* P-TX-SCOPE: the intended guarantees stop at proposal inclusion; this target
+  goes further, to transaction liveness (`confirmed_txLive_*`,
+  `finalized_txLive`). This costs FG-SA nothing beyond the block-level
+  `ShapeClaims`: the generic bridge `proposalLive_txLive` turns proposal
+  liveness into transaction liveness through the engine-written payload
+  (`encodeTxs mempool`) and the L0 transaction relay (`Delivers.txs`).
 * Weak continuation, uniform cut/seed (one gate and seed fixed before the
   continuation, for every continuation): a two-run statement; obligation (10).
 * FL3, FL4 / P-GST-FIN-INCLUDE, -FRONTIER: per-proposal finality and finality
@@ -97,13 +124,34 @@ E1/E2 evidence binding exists (obligation (7)).
   RAW-TRANSFER, UNANIMOUS-GATE, FG-SERVICE, HEAL-EXISTS, HEAL-IMPROVED};
   P-LABEL-RAW-SAFE, P-LOCAL-FIN-KERNEL, P-FIN-STRONG-ALTERNATIVES:
   protocol-internal.
-* P-NEW-*: the fast path is not in the Lean model.
+* P-NEW-*: the fast path is not in the Lean model. **Newer spec, binding of
+  `available`:** in fgsa-spec.tex (989–993) the read-time tip
+  `ac_confirmed = dca(latestConfirmed, head)` can step back, so it is not
+  `ReadySafe` (which includes per-reader monotonicity). For the newer spec,
+  `available` must bind to the confirmed record `latestConfirmed`, not the
+  read-time tip (question for Francesco).
 * K1–K5 / P-LEAK-*: leak accounting (optional extra).
 * E1/E2 `conflicts` binding: needs an evidence block (migration step 0;
   obligation (7)).
 * P-OUT-DUTY-EXTEND, P-OUT-LEASE: protocol-internal.
 * P-OUT-PROGRESS-LIMIT, A2-limit, A7, L7, N7, FL-neg, FL-scope: negative or
   not-claimed facts, consistent with the sheet.
+
+## Weaker than intended (accepted)
+
+* A3 / P-OUT-CONTINUE (`confirmed_persists`): (a) η-sleepy participation
+  holds *during* the window (the prose assumes no participation during the
+  outage; the fixed outage regime is η-sleepy throughout, Francesco's
+  decision); (b) the budget is `min eta (4·lockK − 5)`: the η cap is A2's
+  (P1) restriction, A3 alone needs only (V); (c) retention is for
+  `ResilienceReader`s only, where the prose says every honest reader,
+  sleepers included.
+* P-OUT-FIN-COMPAT (`outage_final_compatible`): stated for reading times
+  `t ≥ b₀` under the full outage regime, for eligible readers; the intended
+  `0 ≤ t < b₀` part under the P1 premise (no assumption after the window) is
+  not stated; a later extra.
+* Readers and proposers are `Ready` (awake for the catch-up `18·Δ`) where
+  intended rows say "joined" (obligation (3)).
 
 ## Migration obligations
 
@@ -117,7 +165,9 @@ Francesco.
    the ⅔-continuous condition.
 2. GST shift to `max g 0` plus catch-up (gate F-1).
 3. `Ready` at catch-up `18·Δ` ⇒ joined / confirmed reader; ready at `b₀` and
-   awake ⇒ covered (F-3).
+   awake ⇒ covered (F-3). `IncludesFrom` and `ProposalLiveReady` require the
+   proposer to be ready, where the intended rows say "joined" (awake since the
+   previous slot start): a weaker claim, accepted.
 4. Outage continuation under η-sleepy participation (`η = eta`) throughout
    and cover ½ at `b₀`, partially synchronous with GST `b₁` after the window,
    vs FG-SA `OutageE` and its after-window premise (F-4); for A2
@@ -137,39 +187,21 @@ Francesco.
 9. Finality liveness under the ⅔-continuous healthy regime vs FG-SA's
    all-awake premise.
 10. Weak continuation: uniform cut/seed preservation.
-11. FL1/FL2 block-level forms (`finalFirst`, `finalRecur`) vs FG-SA's
-    `FinalityLivenessGSTClaim_W`. Not claimed equivalent: FL1 here asks for a
-    new finalized entry above the honest finalized reads at `max g 0`, while
-    intended P-GST-FIN-FIRST (and FG-SA) is strictly above the available
-    outputs at the healing cut; FL2 here starts at the final heal point with
-    delay `(W_W + 4·gf·R)·Δ` (the `4·gf·R` is one finality-recurrence window
-    for a fresh proposal), while intended FL2 starts at `t_ready + B_H^F` with
-    deadline `t + W_W`. The migration decides whether the stronger forms
-    become the target (Francesco).
+11. FL1/FL2 (`finalFirst`, `finalRecur`) are stated in the intended forms:
+    strictly above the ready confirmed reads at the healing cut
+    `finalCut = max g 0 + (29 + B_H^F(gf·R))·Δ` (intended `t_ready + B_H^F`),
+    by `finalCut + W_W` (FL1), and from every `t ≥ finalCut` by `t + W_W`
+    (FL2). The migration proves them from FG-SA's
+    `FirstFinalityRecFEClaim_W` / `FinalityLivenessGSTClaim_W` under the
+    contract's progress premise (`finRec gf`). `W_W(gf)` is shorter than one
+    guarded window of `finRec gf` by `4R − 5` (`finalRecur_delay_vs_window`),
+    so the proof must use FG-SA's own recurrence analysis, not one fresh
+    window; if `finRec gf` does not give FG-SA's `Rec_{FE,W}(gf)`, the gate
+    fails and goes back to Francesco.
 12. Prefix forms: FG-SA's `CleanPrefixTruncation` matches `Adequate.prefixClosed`
     on the FG-SA run model. -/
 
 namespace Consensus
-
-namespace Blocks
-
-/-- A pattern's span is at most any bound on its offsets. -/
-theorem Pattern.span_le {P : Pattern} {b : Nat} (h : ∀ j ∈ P.offsets, j ≤ b) : P.span ≤ b := by
-  unfold Pattern.span
-  generalize P.offsets = l at h ⊢
-  induction l with
-  | nil => exact Nat.zero_le _
-  | cons a l ih =>
-    simp only [List.foldr_cons]
-    exact max_le (h a List.mem_cons_self) (ih fun j hj => h j (List.mem_cons_of_mem _ hj))
-
-/-- `n` consecutive slots span `n − 1`. -/
-theorem Pattern.span_range (n : ℕ+) : (Pattern.range n).span = n - 1 :=
-  le_antisymm (Pattern.span_le fun j hj => by
-      have := List.mem_range.mp hj; omega)
-    (Pattern.le_span (List.mem_range.mpr (by have := n.pos; omega)))
-
-end Blocks
 
 namespace EnvPoint
 
@@ -221,6 +253,13 @@ theorem budget_implies_V (pp : FGSAParams) {Δ b₀ b₁ : Time} (hΔ : 0 < Δ)
   rw [hL]
   nlinarith
 
+/-- The finality pattern's span, `3R + 1` slots. -/
+theorem finRec_span (pp : FGSAParams) (gf : ℕ+) : (pp.finRec gf).pattern.span = 3 * pp.R + 1 := by
+  refine (Pattern.span_range
+    (⟨3 * pp.R + FGSAParams.κ, by unfold FGSAParams.κ; omega⟩ : ℕ+)).trans ?_
+  change 3 * pp.R + FGSAParams.κ - 1 = _
+  unfold FGSAParams.κ; omega
+
 /-- Head extraction for the finality recurrence: `3R + κ` consecutive honest
 ready proposers in every window of `gf·R` slots give one honest ready
 proposer in every window of `gf·R` slots, losing the pattern's span
@@ -231,22 +270,11 @@ theorem range_head (pp : FGSAParams) (gf : ℕ+) {V R : Type} [Fintype V] {p : E
     (h : PatternRecurrence p key sel lead G (pp.finRec gf) c start stop) :
     PatternRecurrence p key sel lead G ⟨Pattern.single, (pp.finRec gf).gap⟩ c start
       (min stop p.horizon - ((3 * pp.R + 1 : Nat) : Time) * G.slotLen p.env.Δ) := by
-  have hspan : (pp.finRec gf).pattern.span = 3 * pp.R + 1 := by
-    refine (Pattern.span_range
-      (⟨3 * pp.R + FGSAParams.κ, by unfold FGSAParams.κ; omega⟩ : ℕ+)).trans ?_
-    change 3 * pp.R + FGSAParams.κ - 1 = _
-    unfold FGSAParams.κ; omega
+  have hspan := finRec_span pp gf
   have h0 : 0 ∈ (pp.finRec gf).pattern.offsets :=
     List.mem_range.mpr (by simp [FGSAParams.κ])
   have := PatternRecurrence.single_of_zero h0 h
   rwa [hspan] at this
-
-/-- The finality pattern's span, `3R + 1` slots. -/
-theorem finRec_span (pp : FGSAParams) (gf : ℕ+) : (pp.finRec gf).pattern.span = 3 * pp.R + 1 := by
-  refine (Pattern.span_range
-    (⟨3 * pp.R + FGSAParams.κ, by unfold FGSAParams.κ; omega⟩ : ℕ+)).trans ?_
-  change 3 * pp.R + FGSAParams.κ - 1 = _
-  unfold FGSAParams.κ; omega
 
 /-- `B_H^F` is at least `12·P = 48·R` (`Δ`-coefficient), at every gap. -/
 theorem bhf_ge (pp : FGSAParams) (k : Nat) : 48 * pp.R ≤ pp.bhf k := by
@@ -283,16 +311,22 @@ theorem final_heal_covers_window (pp : FGSAParams) (gf : ℕ+) :
   have : (gf : Nat) * pp.R ≤ (gf + 2) * (4 * pp.R) := by nlinarith
   nlinarith
 
-/-- `finalRecur`'s delay `W_W(gf) + 4·gf·R` covers the guarded finality window
-(it exceeds it by `4R(gf − 1) + 5`). -/
-theorem finalRecur_delay_covers_window (pp : FGSAParams) (gf : ℕ+) :
-    finWindow pp gf + 4 * pp.R * (gf - 1) + 5 = pp.wW gf + 4 * (gf * pp.R) := by
-  have hg := gf.pos
+/-- The intended recurring-finality delay `W_W(gf)` (`finalRecur`) is shorter
+than one guarded finality window by `4R − 5`: `W_W(gf) + 4R = finWindow + 5`.
+The contract's recurrence alone does not put a whole window inside `W_W`; the
+intended FL2 relies on FG-SA's own analysis (obligation (11)). -/
+theorem finalRecur_delay_vs_window (pp : FGSAParams) (gf : ℕ+) :
+    pp.wW gf + 4 * pp.R = finWindow pp gf + 5 := by
   unfold finWindow
   rw [finRec_span]
   simp only [FGSAParams.wW, FGSAParams.P, FGSAParams.κ]
-  obtain ⟨m, hm⟩ : ∃ m, (gf : Nat) = m + 1 := ⟨gf - 1, by omega⟩
-  rw [hm, Nat.add_sub_cancel]; ring
+  ring
+
+/-- The healing cut for finality at index `gf` after GST `gst`:
+`max gst 0 + (29 + B_H^F(gf·R))·Δ`, the final heal point minus `W_W(gf)·Δ`
+(intended: `t_ready + B_H^F`). -/
+def finalCut (pp : FGSAParams) (gf : ℕ+) (gst Δ : Time) : Time :=
+  max gst 0 + ((29 + pp.bhf (gf * pp.R) : Nat) : Time) * Δ
 
 /-! ## Bindings, chain-level vocabulary, extras, target -/
 
@@ -402,7 +436,7 @@ structure GoldilocksExtra (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPara
       (shapeHeal (goldilocksContract pp) rho .available k gst) →
     IncludesFrom rho (shapeC (goldilocksContract pp) rho) gConfirmed
       (shapeHeal (goldilocksContract pp) rho .available k gst) 6 ∨ rho.HashCollision
-  /-- **L3, L8 / P-SYNC-AV-GROW** (block level). Sleepy with one honest ready
+  /-- **L3 / P-SYNC-AV-GROW** (block level). Sleepy with one honest ready
   proposer per window of `k` slots: joint strict growth of the confirmed
   output by `t + (4k + 6)·Δ`. -/
   growSleepy : ∀ k : ℕ+, AllRuns F fun _ rho => rho.ExecutionValid →
@@ -420,31 +454,32 @@ structure GoldilocksExtra (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPara
     CrossGrowth rho (shapeC (goldilocksContract pp) rho) gConfirmed gConfirmed
       (shapeHeal (goldilocksContract pp) rho .available k gst) (4 * k + 6) ∨ rho.HashCollision
   /-- **FL1 / P-GST-FIN-FIRST.** Healthy from `gst` with the finality
-  recurrence of `gf` on `[readyFrom, heal]`: a new finalized entry, above the
-  finalized read of every honest node at `max gst 0`, is in every ready
-  finalized read at the first-finality point
-  `max gst 0 + (29 + B_H^F(gf·R) + W_W(gf))·Δ`. -/
-  finalFirst : ∀ (gf : ℕ+) (gst : Time), AllRuns F fun _ rho => rho.ExecutionValid →
+  recurrence of `gf` on `[readyFrom, heal]`: a new finalized entry, strictly
+  above every ready confirmed read at the healing cut
+  `finalCut = max gst 0 + (29 + B_H^F(gf·R))·Δ`, is in every ready finalized
+  read at the first-finality point `finalCut + W_W(gf)·Δ` (the final heal
+  point). -/
+  finalFirst : ∀ (gf : ℕ+) (gst : Time), AllRuns F fun E rho => rho.ExecutionValid →
     ShapeHealthy (goldilocksContract pp) rho gst →
     ShapeProg (goldilocksContract pp) rho .final gf (shapeReady (goldilocksContract pp) rho gst)
       (shapeHeal (goldilocksContract pp) rho .final gf gst) →
     shapeHeal (goldilocksContract pp) rho .final gf gst ≤ rho.horizon →
-    (∃ h, NewAbove rho (shapeC (goldilocksContract pp) rho) gFinalized gFinalized
-      (· ∈ rho.honest) (max gst 0) (shapeHeal (goldilocksContract pp) rho .final gf gst) h) ∨
+    (∃ h, NewAbove rho (shapeC (goldilocksContract pp) rho) gConfirmed gFinalized
+      (fun x => rho.point.Ready (shapeC (goldilocksContract pp) rho) x (finalCut pp gf gst E.Δ))
+      (finalCut pp gf gst E.Δ) (shapeHeal (goldilocksContract pp) rho .final gf gst) h) ∨
       rho.HashCollision
   /-- **FL2 / P-GST-FIN-RECUR.** Healthy from `gst` with the finality
-  recurrence of `gf` from `readyFrom`: for every `t` from the first-finality
-  point, a new finalized entry at `t + (W_W(gf) + 4·gf·R)·Δ` above every
-  ready confirmed read at `t`. -/
+  recurrence of `gf` from `readyFrom`: for every `t` from the healing cut
+  `finalCut`, a new finalized entry strictly above every ready confirmed read
+  at `t` is in every ready finalized read at `t + W_W(gf)·Δ`. -/
   finalRecur : ∀ (gf : ℕ+) (gst : Time), AllRuns F fun E rho => rho.ExecutionValid →
     ShapeHealthy (goldilocksContract pp) rho gst →
     ShapeProg (goldilocksContract pp) rho .final gf (shapeReady (goldilocksContract pp) rho gst)
       rho.horizon →
-    (∀ t, shapeHeal (goldilocksContract pp) rho .final gf gst ≤ t →
-      t + ((pp.wW gf + 4 * (gf * pp.R) : Nat) : Time) * E.Δ ≤ rho.horizon →
+    (∀ t, finalCut pp gf gst E.Δ ≤ t → t + ((pp.wW gf : Nat) : Time) * E.Δ ≤ rho.horizon →
       ∃ h, NewAbove rho (shapeC (goldilocksContract pp) rho) gConfirmed gFinalized
         (fun x => rho.point.Ready (shapeC (goldilocksContract pp) rho) x t) t
-        (t + ((pp.wW gf + 4 * (gf * pp.R) : Nat) : Time) * E.Δ) h) ∨ rho.HashCollision
+        (t + ((pp.wW gf : Nat) : Time) * E.Δ) h) ∨ rho.HashCollision
   /-- **FL5** (LiveDC). Healthy from `gst` with the finality recurrence of
   `gf` from `readyFrom`: for every `t` from the first-finality point, an
   honest proposal released after `t` strictly extends every ready confirmed
@@ -491,6 +526,16 @@ structure GoldilocksExtra (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPara
     WeakPremise pp rho gst k →
     (chainTrace rho).ReadySafe (shapeC (goldilocksContract pp) rho) gConfirmed
       (shapeHeal (goldilocksContract pp) rho .available k gst) ∨ rho.HashCollision
+  /-- **P-WEAK-AV-SAFE, nesting conjunct.** Under the weak-continuation
+  premise: from the heal point, every ready finalized read is a prefix of every
+  ready confirmed read at the same time (`F_x ⪯ S_y`). -/
+  weakCrossNest : ∀ (k : ℕ+) (gst : Time), AllRuns F fun _ rho => rho.ExecutionValid →
+    WeakPremise pp rho gst k →
+    (∀ t, shapeHeal (goldilocksContract pp) rho .available k gst ≤ t → t ≤ rho.horizon →
+      ∀ x y, rho.point.Ready (shapeC (goldilocksContract pp) rho) x t →
+        rho.point.Ready (shapeC (goldilocksContract pp) rho) y t →
+        (chainTrace rho).readAt gFinalized x t <+: (chainTrace rho).readAt gConfirmed y t) ∨
+      rho.HashCollision
   /-- **P-WEAK-AV-INCLUDE.** Under the weak-continuation premise: every honest
   proposal released at `τ ≥ heal + 2` slots (`8Δ`) by a key ready at `τ` is in
   every ready confirmed read at every `t ∈ [τ + 6Δ, horizon]`. -/
@@ -642,7 +687,8 @@ theorem outage_final_compatible (T b₀ b₁ : Time) (r : (gSys F V).Run) (hv : 
   (goldilocks_good h V).persists_final_compatible (g := gConfirmed) (gf := gFinalized) rfl rfl r hv
     hO hvr hwh ht hth hr
 
-/-- **Tx-level consequence of L3, L8.** Sleepy with one honest ready proposer
+/-- **Tx-level consequence of L3** (and of the intended-but-unclaimed L8).
+Sleepy with one honest ready proposer
 per window of `k` slots: every submitted transaction is in every ready
 confirmed read from `t + Δ + (4k + 6)·Δ` (not strict block growth: that is the
 extra `growSleepy`). -/

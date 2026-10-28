@@ -61,6 +61,22 @@ theorem Pattern.le_span {P : Pattern} {j : Nat} (h : j ∈ P.offsets) : j ≤ P.
 /-- The single pattern has span `0`. -/
 theorem Pattern.span_single : Pattern.single.span = 0 := rfl
 
+/-- A pattern's span is at most any bound on its offsets. -/
+theorem Pattern.span_le {P : Pattern} {b : Nat} (h : ∀ j ∈ P.offsets, j ≤ b) : P.span ≤ b := by
+  unfold Pattern.span
+  generalize P.offsets = l at h ⊢
+  induction l with
+  | nil => exact Nat.zero_le _
+  | cons a l ih =>
+    simp only [List.foldr_cons]
+    exact max_le (h a List.mem_cons_self) (ih fun j hj => h j (List.mem_cons_of_mem _ hj))
+
+/-- `n` consecutive slots span `n − 1`. -/
+theorem Pattern.span_range (n : ℕ+) : (Pattern.range n).span = n - 1 :=
+  le_antisymm (Pattern.span_le fun j hj => by
+      have := List.mem_range.mp hj; omega)
+    (Pattern.le_span (List.mem_range.mpr (by have := n.pos; omega)))
+
 /-- A recurrence: a pattern recurring within every window of `gap` slots;
 `gap` is positive by type. -/
 structure Recurrence where

@@ -5,7 +5,7 @@ public import Mathlib.Tactic
 
 /-! # Network tests (L0 delivery, L1 faithfulness)
 
-* `endpoint_waker` (review B1 scenario): `Δ = 2`, GST `0`; validator 1 is
+* `endpoint_waker`: `Δ = 2`, GST `0`; validator 1 is
   asleep at `0` and `1` and awake from `2`. An honest send at `0` must be held
   by validator 1 at `2 = max 0 0 + Δ`, because it is awake *at* the deadline
   (Francesco's rule). The earlier model rule (awake throughout `[a, dl a)`)
@@ -15,24 +15,24 @@ public import Mathlib.Tactic
   ("received by that time").
 * `held_restart`: a receipt before a wake is held until the wake, not after.
 * `psync_mono_instance`: a later GST is weaker (`PSync.mono`).
-* `negative_send_covered` (review B1 of stage 1): sends at negative times are
+* `negative_send_covered`: sends at negative times are
   covered. Two always-awake honest validators, `Δ = 2`, GST `0`; validator 0
   sends at `-1` and nobody receives: not `PSync 0` (validator 1 must hold the
   message at `max (-1) 0 + 2 = 2`).
-* `agreesUpTo_empty_messages` (review B2 of stage 1): with an empty message
+* `agreesUpTo_empty_messages`: with an empty message
   type, logs whose inboxes differ at `0` do not agree up to `0`.
 * `faithful_relayedRun`: on the model test run, the system's log is the
   engine's (`sysOf_log_faithful`): inbox and sends. `faithful_receipt`: a run
   with a real delivery; its receipt is in the system's log, tagged with the
   run's environment, and a foreign tag is not.
-* `silent_run_valid` (stage 2; review Opus N2): for every protocol and run
+* `silent_run_valid`: for every protocol and run
   data, the canonical run with GST past the horizon is a valid run with no
   receipts at all, and it violates `PSync g'` at every `g'` for which some
   honest send has a deadline `max t g' + Δ` in the horizon at which an awake
   honest node has not sent the message itself (`silent_not_psync`, an L0
   fact about logs with no receipts). So `Adequate.covers` includes runs that
   no network premise admits.
-* `truncate_relayedRun` (stage 2): a concrete valid run (both validators tick
+* `truncate_relayedRun`: a concrete valid run (both validators tick
   at `0, 1, 2`; `42` relayed at `1`) truncated at `1` is valid, keeps exactly
   the four ticks at times `≤ 1`, is the L0 prefix of the full trace at `1`,
   and still holds the relayed transaction in its log. -/

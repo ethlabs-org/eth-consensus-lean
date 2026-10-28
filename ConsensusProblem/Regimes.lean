@@ -13,9 +13,11 @@ per capability and index a heal point and a latency. Every duration is a
 coefficient of `Δ`. `Params.standard` names the standard thresholds (½
 sleepy, ⅔ healthy, ½ cover, ⅓ accountable, look-back `0`);
 `Params.Admissible` requires the thresholds to be no stronger than the
-standard ones (and `1 − φ ≤ α`), so a contract cannot buy its claims with a
-stronger environment. The look-back `η` is an instance number like the lag
-and the budget: it is not bounded (any `η` is realizable, `Shape.outage_witness`).
+standard ones (and `1 − φ ≤ α`), so a contract cannot buy its claims with
+stronger thresholds. The other numbers (catch-up, lag, budget, look-back `η`,
+heal points, latencies) are instance numbers that the reviewer reads: larger
+values strengthen premises or weaken claims, and they are not bounded (any
+`η` is realizable, `Shape.outage_witness`).
 
 The regimes are fixed here, over an environment point and a communication log:
 
@@ -35,12 +37,9 @@ The regimes are fixed here, over an environment point and a communication log:
   than fraction `cover` ready at `b₀`; `T` is at least `lag·Δ` before `b₀`,
   and the window is at most `budget·Δ` long.
 
-The GST is a parameter of the regimes, not of the environment. A run after an
-outage is partially synchronous with GST `b₁` (`OutageNet` gives `PSync b₁`);
-the after-GST claims (healthy regime, `g = b₁`) apply to it when their
-participation and progress premises also hold (a fixed set of more than
-`φ·n` honest validators awake throughout from `b₁`): this does not follow from
-the outage participation. -/
+The GST is a parameter of the regimes, not of the environment. An outage run
+is partially synchronous with GST `b₁`, so the after-GST rows apply with
+`g = b₁` when their other premises hold. -/
 
 namespace Consensus
 
@@ -50,7 +49,8 @@ structure Params (Idx : Type) where
   catchUp : Nat
   /-- Sleepy threshold: `θ·(|ready| + |faulty|) < |ready|`. -/
   θ : ℚ
-  /-- Healthy threshold: `φ·n < |honest and awake|`. -/
+  /-- Healthy threshold: a fixed set of more than `φ·n` honest validators,
+  awake throughout from `max g 0`. -/
   φ : ℚ
   /-- Caught up at the outage start: `cover·n < |ready b₀|`. -/
   cover : ℚ

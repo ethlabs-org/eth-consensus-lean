@@ -10,14 +10,14 @@ public import Mathlib.Tactic
 * `coverage_keeps_selection`: `coverage` at a 3-node point with a selection
   that is *not* the extremal one (the proposer of every slot is key 2) returns
   a valid, collision-free run with exactly that selection, for every GST.
-* `allProposers_no_witness` (review B2): a family whose proposer selection is
+* `allProposers_no_witness`: a family whose proposer selection is
   `.sized (max 1 n)` selects every key at every slot of a valid run, so on a
   run with a faulty validator its pattern recurrence fails as soon as one
   whole window fits in `[start, stop]` and the horizon: such a progress
   requirement has no witness with a faulty validator.
   (`allProposers_unfit`, `noProgressFit`: acceptance rejects such
   requirements up front; see `Vacuity.lean`.)
-* Rotating sleeper (review 3b B1): four honest validators, a different one
+* Rotating sleeper: four honest validators, a different one
   asleep at each tick, catch-up `3`: more than ⅔ awake at every tick
   (but not healthy: no fixed set stays awake), and nobody is ready from
   `3` on. `rotating_notReadyOn_false`: the not-ready bound fails
@@ -25,10 +25,10 @@ public import Mathlib.Tactic
   trivially for `m ≥ 4`;
   `rotating_proposalLive_vacuous`: the reader-conditional liveness the shape
   claims use owes nothing there, so no family is refuted by it.
-* `tendermint_largeIdx_prog` (review 3b r2 B1): with a fixed population
+* `tendermint_largeIdx_prog`: with a fixed population
   `Fin 5`, the Tendermint requirement at every index `m ≥ 5` holds on every
   run, so a large index never makes the contract unrealizable.
-* Late witnesses (M4, M7, M27; stage 6): `healed_witness_late` — every good
+* Late witnesses: `healed_witness_late` — every good
   system has, at `Δ = 7` and GST `1000`, a clean healthy witness whose log has
   no receipt before `1000`, with progress, liveness and safety active after a
   heal point at or after `1000`; `outage_witness_late` — an active outage armed
@@ -164,7 +164,7 @@ theorem tendermint_largeIdx_prog (F : ShapeFamily bftCore Unit) (catchUp : Nat)
       (tendermintContract catchUp heal latency) cap m start stop r :=
   NotReadyOn.of_card_le (by simpa using hm)
 
-/-- The concrete counterexample of the review: `V = Fin 5`, `m = 5`. -/
+/-- The concrete counterexample of the rotating-sleeper case: `V = Fin 5`, `m = 5`. -/
 example (F : ShapeFamily bftCore Unit) (cap : Capability)
     (r : (sysOf bftCore (compiled F) (Fin 5)).Run) (start stop : Time) :
     (sysOf bftCore (compiled F) (Fin 5)).prog (shapeProgress F (Fin 5))

@@ -40,7 +40,7 @@ theorem sysOf_eagerFrom (rho : Run F E) {g : Time}
 external data. -/
 theorem sysOf_adequate {Prog : Type} (Y : Progress (sysOf O F V) Prog)
     (hY : Y.toExternal = sysExternal O F V) : (sysOf O F V).Adequate Y := by
-  obtain ⟨⟨Ext, ext, Admits⟩, holds, mono, shrink⟩ := Y
+  obtain ⟨⟨Ext, ext, Admits⟩, holds, mono, shrink, _⟩ := Y
   simp only [sysExternal, External.mk.injEq] at hY
   obtain ⟨rfl, hext, hadm⟩ := hY
   cases eq_of_heq hext

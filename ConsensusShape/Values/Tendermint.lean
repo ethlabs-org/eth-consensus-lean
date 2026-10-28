@@ -67,6 +67,13 @@ theorem tendermintContract_progressFits {Info : Type} [DecidableEq Info] [Encoda
     (tendermintContract catchUp heal latency).ProgressFits F :=
   fun _ _ _ => trivial
 
+/-- Every provided output tolerates any number of validators not ready. -/
+theorem tendermintContract_progressTolerant (catchUp : Nat) (heal latency : Affine) :
+    (tendermintContract catchUp heal latency).ProgressTolerant :=
+  by
+  intro cap ho N
+  exact ⟨⟨N + 1, by omega⟩, Nat.le_succ N⟩
+
 end Consensus.Shape
 
 end

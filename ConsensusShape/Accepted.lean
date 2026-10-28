@@ -10,12 +10,12 @@ public import ConsensusShape.Realizable
 (`Params.Admissible`: thresholds no stronger than standard), a served ledger
 (`OutputSchema.Serves`: a final output, or an available one), and progress
 requirements that fit the skeleton (`Contract.ProgressFits`: a recurrence needs
-one proposer per slot).
+one proposer per slot), and tolerate arbitrary numbers of validators not ready.
 
 `Accepted.good` gives the full L0 `Good` of the compiled system, for every
 finite validator type: `Accepted.behaviour` (the refinement of the shape
 claims), `Accepted.adequate` (the model's adequacy, proved once) and the
-generic `regimes_realizable` (from admissibility and the progress fit).
+generic `regimes_realizable` (from admissibility, progress fit and tolerance).
 `Accepted.activeService`: a final or available output actively serves
 transactions (`ActiveService`). -/
 
@@ -27,7 +27,8 @@ open Consensus.Model (pubOf sysOf)
 variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
 
 /-- An accepted instance: shape claims, admissible numbers, a served ledger,
-and progress requirements that fit the skeleton. -/
+and progress requirements that fit the skeleton and tolerate arbitrary numbers
+of validators not ready. -/
 structure Accepted (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Prop where
   /-- The chain-level claims (proved by the protocol). -/
   claims : ShapeClaims F K
@@ -37,6 +38,8 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract O ProgressReq) : Prop 
   serves : O.Serves
   /-- The progress requirements fit the skeleton. -/
   progressFits : K.ProgressFits F
+  /-- Every provided output tolerates arbitrary numbers of validators not ready. -/
+  progressTolerant : K.ProgressTolerant
 
 /-- An accepted instance has the L0 behaviour for every finite validator
 type. -/
@@ -58,7 +61,7 @@ theorem Accepted.good {F : ShapeFamily O Info} {K : Contract O ProgressReq}
     (h : Accepted F K) (V : Type) [Fintype V] [DecidableEq V] :
     Good (sysOf O (compiled F) V) (shapeProgress F V) K :=
   ⟨h.behaviour V, h.adequate V,
-    fun hn => (regimes_realizable F K h.admissible h.progressFits V hn).1⟩
+    fun hn => (regimes_realizable F K h.admissible h.progressFits h.progressTolerant V hn).1⟩
 
 /-- A live claim met on an active witness serves a transaction: one submitted
 to an honest node is in the `g`-read of another honest node, which was never
@@ -114,7 +117,8 @@ theorem Accepted.activeService {F : ShapeFamily O Info} {K : Contract O Progress
       ActiveService F K cap g := by
     intro cap g _ hl V _ _ hn i Δ gst hΔ hg
     obtain ⟨r, hw, hd, -, hH, hp, ha, -⟩ :=
-      (regimes_realizable F K h.admissible h.progressFits V hn).1.healthy cap i Δ gst hΔ hg
+      (regimes_realizable F K h.admissible h.progressFits h.progressTolerant V hn).1.healthy cap i
+        Δ gst hΔ hg
     refine ⟨r, hw, hd, hH, hp, ?_⟩
     rcases hl V i gst r hw.1 ⟨hH, hp⟩ with hlive | he
     · exact hlive.served ha

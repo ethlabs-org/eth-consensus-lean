@@ -12,7 +12,7 @@ public import Mathlib.Order.Interval.Finset.Nat
 What the consensus problem is, independently of any protocol or execution
 model: what users read (ledgers of transactions, one per output of the
 protocol's output schema, each serving some of three capabilities), what
-the world is (an environment: `Δ`, GST, an awake profile; and per run the
+the world is (an environment: `Δ` and an awake profile; and per run the
 honest nodes, a horizon and transaction submissions), and what an
 abstract system of runs exposes, including its communication log with opaque
 messages (`CommLog`; the network conditions on it are in `Network.lean`). No
@@ -129,6 +129,10 @@ noncomputable def awakeAt (t : Time) : Finset V := by
   classical
   exact p.honest.filter (fun v => p.env.awake v t = true)
 
+/-- At most `k` honest validators are awake at every time of `[0, horizon]`. -/
+def AwakeAtMost (k : Nat) : Prop :=
+  ∀ t, 0 ≤ t → t ≤ p.horizon → (p.awakeAt t).card ≤ k
+
 /-- The honest validators awake at some time in `[a, b]`. -/
 noncomputable def awakeIn (a b : Time) : Finset V := by
   classical
@@ -167,10 +171,6 @@ def NotReadyAtMost (m : Nat) (c t : Time) : Prop :=
 
 /-- Fewer than fraction `β` of all validators are faulty. -/
 def FaultsBelow (β : ℚ) : Prop := (p.faulty.card : ℚ) < β * Fintype.card V
-
-/-- At most `m` validators are faulty (an absolute fault bound, for latencies
-that depend on the number of faults). -/
-def FaultsAtMost (m : Nat) : Prop := p.faulty.card ≤ m
 
 /-- More than fraction `φ` of all validators are ready. -/
 def ReadyOfAll (φ : ℚ) (c t : Time) : Prop :=

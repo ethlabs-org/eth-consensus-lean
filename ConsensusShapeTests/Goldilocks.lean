@@ -16,9 +16,11 @@ public import Mathlib.Tactic
 * `target_unfolds`: `GoldilocksTarget` is bindings, acceptance and extras
   (`rfl`).
 * `stable_is_confirmed`: the schema aliases stable to confirmed (`rfl`).
-* `collapse_prefix_only`, `outageWindow_prefix_only` (review stage 5 B1): a
-  run whose participation collapses inside the outage is η-sleepy on the
-  prefix `[0, b₀]` but not through `b₁ − 1`; A2 asks only for the prefix. -/
+* `collapse_prefix_only`, `outageWindow_prefix_only`: a run whose
+  participation collapses inside the outage is η-sleepy on the prefix
+  `[0, b₀]` but not through `b₁ − 1`; A2 asks only for the prefix.
+* `weakPremise_inhabited` (P-NV-CONTINUATION): the weak-continuation premise
+  holds on the generic healthy witness, so the weak extras are not vacuous. -/
 
 namespace Consensus.Shape.Tests.Goldilocks
 
@@ -83,7 +85,7 @@ theorem stable_is_confirmed :
       goldilocksSchema.output .final = some GOut.finalized :=
   ⟨rfl, rfl, rfl⟩
 
-/-! ### A2 participation only on the prefix (review stage 5 B1) -/
+/-! ### A2 participation only on the prefix -/
 
 /-- Five validators, `0` faulty, `1` honest and always awake, `2`–`4` honest
 and awake up to time `5`, asleep after it: participation collapses at `6`,
@@ -177,6 +179,51 @@ theorem outageWindow_prefix_only {Info : Type} [DecidableEq Info] [Encodable Inf
     (chainTrace rho).ProtectedUpTo (shapeC (goldilocksContract pp) rho) gConfirmed gConfirmed
       T b₀ b₁ (min (b₁ - 1) rho.horizon) ∨ rho.HashCollision :=
   h.outageWindow T b₀ b₁ V E rho hv hT hs hη hc
+
+/-- **P-NV-CONTINUATION.** The weak-continuation premise is inhabited, so the
+weak extras (`weakSafe`, `weakCrossNest`, `weakInclude`, `weakGrow`) are not
+vacuous: the generic healthy witness (everyone awake, five validators) is
+healthy up to the heal point, has the recurrence of `k`, and is sleepy after
+the heal point. -/
+theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Encodable Info]
+    (F : ShapeFamily goldilocksSchema Info) (hb : GoldilocksBindings F) (pp : FGSAParams)
+    (k : ℕ+) {Δ : Time} (hΔ : 0 < Δ) (g : Time) :
+    ∃ (E : Env (Fin 5)) (rho : Model.Run (compiled F) E), rho.ExecutionValid ∧
+      WeakPremise pp rho g k := by
+  let K := goldilocksContract pp
+  let key : Fin (Fintype.card (Fin 5)) ≃ Fin 5 := (Fintype.equivFin (Fin 5)).symm
+  have hn : 5 ≤ Fintype.card (Fin 5) := by simp
+  have ha := goldilocks_admissible pp
+  have hf := hb.progressFits pp
+  have hL := progLen_nonneg F K .available k (⟨Δ, hΔ, allAwake⟩ : Env (Fin 5))
+  have hlat : 0 ≤ K.params.latDur Δ .available k := mul_nonneg (by positivity) hΔ.le
+  have hheal : 0 ≤ K.params.healPoint Δ .available k g :=
+    add_nonneg (le_max_right _ _) (mul_nonneg (by positivity) hΔ.le)
+  have hrdy : 0 ≤ readyFrom (K.params.cDur Δ) g := by
+    unfold readyFrom Params.cDur
+    have := le_max_right g 0
+    have : (0 : Time) ≤ (K.params.catchUp : Time) * Δ := mul_nonneg (by positivity) hΔ.le
+    linarith
+  obtain ⟨rho, hpt, -, hw, -, hH, hp, -, -, -⟩ := healthy_witness (F := F) (K := K) key hn hΔ
+    (K.params.healPoint Δ .available k g + readyFrom (K.params.cDur Δ) g +
+      K.params.latDur Δ .available k + progLen F K .available k ⟨Δ, hΔ, allAwake⟩ + Δ + 2)
+    ha hf .available k g (by linarith) (by linarith) (by linarith)
+  have hhh : shapeHeal K rho .available k g ≤ rho.horizon := by
+    have hh : rho.horizon = rho.point.horizon := rfl
+    rw [hh, hpt]
+    change K.params.healPoint Δ .available k g ≤ K.params.healPoint Δ .available k g +
+      readyFrom (K.params.cDur Δ) g + K.params.latDur Δ .available k +
+      progLen F K .available k ⟨Δ, hΔ, allAwake⟩ + Δ + 2
+    linarith
+  refine ⟨_, rho, hw.1, (Model.sysOf_delivers_iff rho _ _).mp hH.1, ?_,
+    (shapeProgress F (Fin 5)).mono le_rfl hhh hp, ?_⟩
+  · obtain ⟨S, hS, hcard, hawk⟩ := hH.2
+    exact ⟨S, hS, hcard, fun v hv u h1 h2 => hawk v hv u h1 (h2.trans hhh)⟩
+  · intro t _ _
+    rw [hpt]
+    refine readyAbove_of_card hn ha.θ_range _ t ?_ ?_
+    · rw [realPoint_faulty]; rfl
+    · exact (allAwake_readyAt key hn hΔ _ _ t).trans (Nat.le_succ _)
 
 end Consensus.Shape.Tests.Goldilocks
 

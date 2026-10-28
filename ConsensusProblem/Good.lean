@@ -27,7 +27,9 @@ contract `K` (numbers only). Three parts:
   that holds for the point and data; valid runs are closed under prefixes.
 * `Realizable` (for at least five validators): every regime of the table, at
   every `Δ`, every GST and arbitrarily late outages, is met by a clean witness
-  (valid, no excuse, a faulty and an honest validator) with active claims.
+  (valid, no excuse, a faulty and an honest validator) with active claims;
+  stress witnesses (`sleepyStress`, `healthyStress`) exercise each provided
+  output's liveness, at some index, with many honest validators asleep.
 
 What L0 cannot check, and L1 proves once for the model: the log is the
 engine's real communication (`Model.sysOf_log_faithful`), and the external data
@@ -49,11 +51,6 @@ def Holds (S : System V) (A P : S.Run → Prop) : Prop :=
 /-- On valid runs, `P` holds. -/
 def HoldsAlways (S : System V) (P : S.Run → Prop) : Prop :=
   ∀ r, S.Valid r → P r
-
-/-- A weaker premise: a claim under `A` holds under any `B` implying `A`. -/
-theorem Holds.mono_premise {S : System V} {A B P : S.Run → Prop} (h : S.Holds A P)
-    (hAB : ∀ r, B r → A r) : S.Holds B P :=
-  fun r hv hb => h r hv (hAB r hb)
 
 variable [Fintype V] [DecidableEq V]
 
@@ -113,7 +110,8 @@ structure External {V : Type} (S : System V) where
   Admits : (E : Env V) → Ext E → Prop
 
 /-- Progress requirements (leader-based progress), read **only** from the
-environment point and the external data (by typing). `holds π c start stop p x`:
+participation of the environment point — awake profile, honest set, horizon —
+and the external data; not from the submissions. `holds π c start stop p x`:
 requirement `π` with catch-up `c` holds on the window `[start, stop]`. A smaller
 window or a smaller horizon is weaker. -/
 structure Progress {V : Type} (S : System V) (Prog : Type) extends External S where
@@ -122,6 +120,9 @@ structure Progress {V : Type} (S : System V) (Prog : Type) extends External S wh
     s ≤ s' → e' ≤ e → holds π c s e p x → holds π c s' e' p x
   shrink : ∀ {π : Prog} {c s e : Time} {p : EnvPoint V} {x : Ext p.env} {b : Time},
     b ≤ p.horizon → holds π c s e p x → holds π c s e { p with horizon := b } x
+  /-- Progress does not read the transaction submissions. -/
+  submit_irrel : ∀ {π : Prog} {c s e : Time} {p : EnvPoint V} {x : Ext p.env}
+    (σ : V → Time → List Tx), holds π c s e p x → holds π c s e { p with submit := σ } x
 
 /-- What a protocol advertises: numbers (`Params`) over a nonempty index type,
 and a progress requirement per capability and index. -/
@@ -270,7 +271,8 @@ def OutageActive (c T b₀ b₁ : Time) (p : EnvPoint V) : Prop :=
 
 /-- **Realizability**: every regime is met by a clean witness with active
 claims, at every `Δ`, every GST (with a log silent before it), and arbitrarily
-late outages. -/
+late outages; and every provided output is live, at some index, with many
+honest validators asleep (stress witnesses). -/
 structure Realizable (S : System V) (X : Progress S Prog) (K : Contract S.schema Prog) :
     Prop where
   sleepy : ∀ cap i (Δ : Time), 0 < Δ → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ S.Sleepy K r ∧
@@ -281,6 +283,24 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract S.schema
     S.prog X K cap i (S.ready K g r) (S.pt r).horizon r ∧
     (S.trace r).TxLiveActive (S.cDur K r) (S.heal K cap i g r) (S.lat K cap i r) ∧
     SafeActive (S.cDur K r) (S.heal K cap i g r) (S.pt r)
+  /-- Sleepy stress: every provided available or stable output is live, at
+  some index, on a sleepy witness where at most `⌊2n/3⌋` honest validators
+  are awake at any time (never an awake supermajority). A progress
+  requirement that demands near-full participation at every index (e.g. at
+  most one validator not ready) fails here. -/
+  sleepyStress : ∀ cap, (cap = .available ∨ cap = .stable) → (S.schema.output cap).isSome →
+    ∀ Δ : Time, 0 < Δ → ∃ i r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ S.Sleepy K r ∧
+      S.prog X K cap i 0 (S.pt r).horizon r ∧
+      (S.trace r).TxLiveActive (S.cDur K r) 0 (S.lat K cap i r) ∧
+      (S.pt r).AwakeAtMost (2 * Fintype.card V / 3)
+  /-- Healthy stress: every provided output is live, at some index, on a
+  healthy witness from every GST where at most `⌊2n/3⌋ + 1` honest
+  validators are awake at any time (a minimal awake supermajority). -/
+  healthyStress : ∀ cap, (S.schema.output cap).isSome → ∀ (Δ g : Time), 0 < Δ → 0 ≤ g →
+    ∃ i r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ (S.log r).EagerFrom (S.pt r) g ∧
+      S.Healthy K g r ∧ S.prog X K cap i (S.ready K g r) (S.pt r).horizon r ∧
+      (S.trace r).TxLiveActive (S.cDur K r) (S.heal K cap i g r) (S.lat K cap i r) ∧
+      (S.pt r).AwakeAtMost (2 * Fintype.card V / 3 + 1)
   outage : ∀ (Δ : Time) (k : Nat), 0 < Δ → ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
     S.Outage K T b₀ b₁ r ∧ OutageActive (S.cDur K r) T b₀ b₁ (S.pt r) ∧ (k : Time) * Δ ≤ T
 
