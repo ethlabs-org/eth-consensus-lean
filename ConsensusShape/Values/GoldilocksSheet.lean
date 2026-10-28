@@ -16,6 +16,9 @@ what FG-SA proves today. A failed FG-SA feasibility gate or migration
 obligation leaves this target unproved and goes back to Francesco; the target
 is never changed to fit FG-SA.
 
+Ids such as `L1 / P-SYNC-AV-INCLUDE` are intended-property ids from those
+files, not the layer names L0/L1/L2.
+
 **OD-23 (answered by Francesco, 2026-10-28).** The fixed regimes are the
 definition; Goldilocks pins only numbers: the outage regime is η-sleepy, with
 Goldilocks' look-back `η = eta` (`FGSAParams.params`); the healthy regime is a

@@ -143,8 +143,9 @@ faulty ones:
 
 Numerator ready, denominator awake: anyone awake in the window counts against
 the threshold, even if never ready (a validator awake only briefly still
-counts), so for `0 ≤ θ` and `0 ≤ t` this implies the awake-count form
-`θ · |awake_[t−η, t] ∪ faulty| < |awake_t|`
+counts), so for `0 ≤ θ`, `0 < η`, a nonnegative catch-up `0 ≤ c` and
+`0 ≤ t` this implies the awake-count form
+`θ · |awake_[max 0 (t−η), t] ∪ faulty| < |awake_t|`
 (`EnvPoint.EtaReadyAbove.awakeForm`). Startup: the window is clamped at `0`,
 so no participation history before time `0` is assumed (readiness at negative
 times holds vacuously and is not used). `ready_t` is in the union only so the

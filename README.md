@@ -21,7 +21,8 @@ that a claim or regime evaluates.
 - **`Behaviour`** is the property table below. Each property holds on every
   valid run in its regime, unless the run's excuse holds (`System.Holds`; in
   the model the excuse is an observed hash collision). There are no other
-  escapes.
+  escapes. `Behaviour` also bundles the system's laws (`S.Laws`), the
+  numbers' admissibility (`admissible`) and the schema condition (`serves`).
 - **`Adequate`** rules out a system that is vacuous by construction:
   - `admits`: every environment has admissible external data;
   - `covers`: every well-formed environment point, every admissible external
@@ -29,12 +30,12 @@ that a claim or regime evaluates.
     Its log is eager from `g`: synchronous for `g ≤ 0`, asynchronous before
     `g`, silent for `g` past the horizon. The run carries every progress
     requirement that held for the point and the data;
-  - `prefixClosed`: the prefix of a valid run up to any `b` is a valid run
+  - `prefixClosed`: the prefix of a valid run up to any `b ∈ [0, horizon]` is a valid run
     with the same reads, views and log up to `b`, no new excuse, and the same
     progress on windows that end by `b`.
 - **`Realizable`** (at least five validators): every regime is met by a clean
   witness. A witness is valid, has no excuse, and has a faulty and an honest
-  validator. The witnesses exist at every `Δ`, at every GST (healthy: with a
+  validator. The witnesses exist at every `Δ`, at every GST `g ≥ 0` (healthy: with a
   log that is silent before the GST), and for outages armed arbitrarily late.
   Each witness has active claims:
   - `TxLiveActive`: a transaction to serve, read by a different honest node
@@ -78,6 +79,10 @@ Derived in L0 (`Good.*`), and in the Goldilocks sheet:
 | `healedSafe_prefix` | partial synchrony with GST `g` for deadlines up to `b`, `HealthyOn φ g b`, `prog[ready, heal]` and `heal ≤ b` ⇒ `ReadySafeUpTo c g heal b ∨ HC` |
 | `outage_prefix` | the outage regime up to `b` ⇒ protection at reading times in `[b₀, b]` ∨ HC |
 
+Plan §1.5 also named `Good.final_accountable_prefix` and `Good.nonvacuous`.
+They are deliberately not added: accountability already has premise `True`
+and so covers prefix reads, and `Realizable` gives the clean witnesses.
+
 `TxLive c g start D` covers every submission: a transaction submitted to an
 awake honest node by `t` is in the `g`-read of every ready reader at every
 `t' ∈ [max t start + Δ + D, horizon]`. `ReadySafe` covers ready readers
@@ -90,15 +95,9 @@ honest `ResilienceReader`. A `ResilienceReader` was caught up before the
 window and has been awake since then, or caught up after the window
 (`b₁ ≤ t − c − 1`).
 
-**After an outage.** No separate claim and no lemma are needed. `OutageNet
-b₀ b₁` contains `PSync b₁`, so a run after an outage is partially
-synchronous with GST `b₁`. Every after-GST row (healthy, `g = b₁`) applies
-to it by definition when its participation and progress premises hold:
-from `b₁` on, a fixed set of more than `φ·n` honest validators is awake
-throughout. The outage regime's η-sleepy participation does not imply this.
-Under sleepy participation alone after the outage, the claims that apply
-are resilience (`persists`, through the horizon) and the prefix forms. The
-sleepy rows need `PSync 0`, which an outage run does not have.
+An outage run is partially synchronous with GST `b₁` (`OutageNet b₀ b₁`
+contains `PSync b₁`), so the after-GST rows apply with `g = b₁` when their
+other premises hold.
 
 ### The network rule (`ConsensusProblem/Network.lean`)
 
@@ -123,13 +122,28 @@ The delivery rule, verbatim (`CommLog.Delivers.msgs`):
   at the deadline is first used by the node's next tick. That slack belongs
   to the protocol.
 
-Instances: `PSync g` (deadline `max a g + Δ`, up to the horizon),
-`SyncUntil b` (deadline `a + Δ`, for deadlines up to `b`), and
-`OutageNet b₀ b₁ = SyncUntil b₀ ∧ PSync b₁`. `PSync.mono`: a later GST is
-weaker. `EagerFrom g` is the shape of the canonical log: every honest send
-is received at every awake time from `max t g` on, and nothing is received
-before `g`. It meets every instance above (`EagerFrom.delivers`, `.psync`,
-`.syncUntil`).
+Instances: `PSync g` (deadline `max a g + Δ`), `SyncUntil b` (deadline
+`a + Δ`, for deadlines up to `b`), and `OutageNet b₀ b₁ = SyncUntil b₀ ∧
+PSync b₁`. Every delivery obligation (all three clauses, in every instance)
+applies only when its deadline is within both the cut and the horizon: a
+`SyncUntil b` with `b` past the horizon still promises nothing after the
+horizon. `PSync.mono`: a later GST is weaker.
+
+`EagerFrom g` is the shape of the canonical log: every honest send at `t` is
+received at every awake time in `[max t g, horizon]`, and no message is
+received before `g` ("silent" refers to message receipts only:
+`EagerFrom.txs` still relays transaction inboxes at once). It meets an
+instance only under these hypotheses:
+- `EagerFrom.delivers`: `Delivers dl cut` for any `dl` with `∀ a, max a g ≤
+  dl a`;
+- `EagerFrom.psync`: `PSync g'` for `g ≤ g'`;
+- `EagerFrom.syncUntil`: `SyncUntil b` for every `b`, given `g ≤ 0` and
+  `SendsFromZero`.
+
+It does not imply an arbitrary `SyncUntil b` or `OutageNet b₀ b₁`. Example:
+`Δ = 1`, `g = 10`, an honest send at `0` and an honest receiver awake
+throughout; an eager-from-10 log may first deliver at `10`, missing the
+synchronous deadline `1`.
 
 **Forwarded adversarial messages and equivocation.** Delivery is promised
 for honest sends. An honest node that re-releases an adversarial object
@@ -163,8 +177,8 @@ submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 With `η = 0`, η-sleepy is plain sleepy (`etaSleepyOn_zero`,
 `Regime.outage_eta_zero`). For `η > 0`, every validator awake at some time
 in the look-back window counts against the threshold, even one that was
-never ready. η-sleepy implies the awake-count form
-(`EtaReadyAbove.awakeForm`). The look-back is clamped at `0`: no
+never ready. For `0 ≤ θ`, `0 < η`, `0 ≤ c` and `0 ≤ t`, η-sleepy implies the
+awake-count form (`EtaReadyAbove.awakeForm`). The look-back is clamped at `0`: no
 participation history before time `0` is assumed. The GST is a parameter of
 the regimes, not of the environment. Weaker thresholds keep each regime
 (`Regime.*.of_le`).
@@ -227,7 +241,7 @@ include a faulty key (`allProposers_unfit`, `allProposers_no_witness`).
 
 1. A **schema** `OutputSchema`: which outputs serve the `available`,
    `stable` and `final` capabilities (aliasing allowed; see Scope). It must
-   `Serve`: a final output, or an available one.
+   satisfy `Serves`: a final output, or an available one.
 2. A **contract** `Contract O Prog`: a nonempty index type `Idx`, `params :
    Params Idx` and `progress : Capability → Idx → Prog`.
 3. For a shape protocol, a **shape family** `F`: a skeleton (grid, proposer,
@@ -240,14 +254,19 @@ author, schedule or evidence collector.
 
 L0 alone checks the property table, the regimes, the network rule, the
 numbers' range, adequacy (coverage of every environment and GST, prefix
-closure) and realizability. Two facts are about the system, not the
+closure) and realizability. `Adequate` and `Realizable` exclude the
+vacuous forms: `Valid = ∅`, `Excuse = True`, a progress requirement that is
+false or never met, a log under which no regime holds, and validity
+restricted to synchronous runs. Two facts are about the system, not the
 definition, and L0 cannot check them. L1 (the model) proves them once, for
 every protocol:
 
 - **The log is the real communication.** `sysOf`'s `log` is the engine's
   releases, deliveries and inboxes (`sysOf_log_faithful`,
-  `sysOf_delivers_iff`). On valid runs, L0 `Held` is engine holding:
-  restarts are exactly the wakes (`Run.held_iff_served`). **Boundary:** this
+  `sysOf_delivers_iff`). On execution-valid runs, for honest recipients
+  and deadlines within the horizon, L0 `Held` agrees with engine `Served`;
+  honest wakes in `(0, horizon]` correspond to restarts
+  (`Run.held_iff_served`). Faulty nodes have no wake/restart correspondence. **Boundary:** this
   shows that the log cannot invent sends or receipts, and that L0 delivery
   is the engine's delivery. It does not make an arbitrary L0 system honest
   about its log. It also does not show that handlers retain or use
@@ -301,71 +320,26 @@ the iteration-6 plan and reviews are in the run folder `iter6/`.
 
 ## Reading order
 
-1. **L0** (`ConsensusProblem/`):
-   - `Basic`: `Time`, `Tx`, `Ledger`, `Capability`, `OutputSchema`, `Env`
-     (`Δ`, awake profile; no GST), `EnvPoint` (honest set, horizon,
-     submissions; `Ready`, `readyAt`, `awakeAt`, `awakeIn`, `ReadyAbove`,
-     `EtaReadyAbove`, `AwakeOfAll`, `NotReadyAtMost`, `ReadyOfAll`,
-     `FaultsBelow`), `Trace`, `CommLog` (`sent`, `recv`, `inbox`), `System`
-     (with `log`).
-   - `Network`: `Held`, `TxHeld`, `Delivers` (`msgs`, `rewake`, `txs`),
-     `PSync`, `SyncUntil`, `OutageNet`, `EagerFrom`, `AgreesUpTo`,
-     `SendsFromZero`, with `PSync.mono`, `EagerFrom.delivers`/`.psync`, and
-     `Delivers.prefix`.
-   - `Properties`: `Agree`, `Monotone`, `Safe`, `ReadySafe`, `Nested`,
-     `ResilienceReader`, `ProtectedThrough`, `PrefixOf` (with
-     `ReadySafeUpTo`, `ProtectedUpTo` and the transfer lemmas), `TxLive`,
-     `TxLiveActive`, `AccountablySafe`, `NonFraming`.
-   - `Atoms`: monotonicity of the counting atoms, η-sleepy facts.
-   - `Regimes`: `Params`, `standard`, `Admissible`, `readyFrom`,
-     `SleepyOn`, `EtaSleepyOn`, `HealthyOn`, `OutageTimes`, `Regime.Sleepy`,
-     `Regime.Healthy`, `Regime.Outage`.
-   - `Good`: `System.Holds`, `Serves`, `External`, `Progress`, `Contract`,
-     `FinalClaims`, `DAClaims`, `Behaviour`, `System.Adequate`, `SafeActive`,
-     `OutageActive`, `Realizable`, `Good`, and the derived `Good.*`
-     theorems.
-   - `Transfer`: prefix-based properties transfer along prefix-monotone maps
-     of reads (used by `refinement` with `ledgerOf`).
-2. **L1** (`ConsensusModel/`, then the statements in `ConsensusModelProofs/`):
-   - `Objects` (`Auth.signed k r` binds key and role);
-   - `Protocol` (`Public`, `Key`, `SelSpec = all | fixed | sized`,
-     `Protocol`, `Family`);
-   - `Run` (the run data and the engine: `tick`, `candidates`, `protects`,
-     `releaseAll`, `mempool`);
-   - `Conditions` (`ExecutionValid`, `Unforgeable`, `SelValid`,
-     `Credentials`, `Run.log`, inclusive `Served`);
-   - `Evidence` (`Slashable`, `HashCollision`);
-   - `System` (`sysOf`, `sysExternal`).
+Entry points and key theorems only; the source files list the rest.
 
-   The proofs:
-   - `Faithful` (`sysOf_log_faithful`, `sysOf_delivers_iff`,
-     `Run.held_iff_served`, `Run.log_sendsFromZero`);
-   - `CanonicalStatement`/`Canonical` (`canonical_run`,
-     `canonical_run_from`: a valid run with a log eager from any GST);
-   - `Truncate` (`Run.truncate_valid`, `Run.truncate_prefix`);
-   - `Adequate` (`sysOf_adequate`);
-   - `Protection` (`Run.honestNeverSlashed`, `sysOf_nonFraming`,
-     `releaseAll_eq_carried`);
-   - `Credentials` (`Run.selected_of_observed`);
-   - `Lift` (`holds_of_injective`, `SameTrace.log_eq`);
-   - `Laws` (`sysOf_laws`).
+1. **L0** (`ConsensusProblem/`): `Basic` (`Env`, `EnvPoint`, `Trace`,
+   `CommLog`, `System`), `Network` (`Delivers`, `PSync`, `SyncUntil`,
+   `OutageNet`, `EagerFrom`), `Properties` (the claims, with the prefix
+   forms), `Atoms`, `Regimes` (`Params`, `Regime.*`), `Good` (`Behaviour`,
+   `System.Adequate`, `Realizable`, `Good`, the derived `Good.*`), and
+   `Transfer`.
+2. **L1** (`ConsensusModel/`: `Objects`, `Protocol`, `Run`, `Conditions`,
+   `Evidence`, `System` with `sysOf`/`sysExternal`), then the proofs in
+   `ConsensusModelProofs/`: `sysOf_log_faithful`, `Run.held_iff_served`,
+   `canonical_run_from`, `Run.truncate_valid`, `sysOf_adequate`,
+   `Run.honestNeverSlashed`, `sysOf_nonFraming`, `sysOf_laws`.
 3. **Blocks** (`ConsensusBlocks/`): `TimeGrid`, `Selection`, `Chains`,
    `Payload`.
-4. **L2** (`ConsensusShape/`):
-   - `Shape` (`Skeleton`, `ShapeRole`, closed `ProposalRole`, `ChainShape`,
-     `ShapeFamily`);
-   - `Compile` (`compile`, engine-written payload);
-   - `Run` (`chainTrace`, `ProposalLive`, `ProposalLiveReady`,
-     `OutputValid`, `shapeProgress`; `ShapeSleepy`/`ShapeHealthy`/
-     `ShapeOutage`/`ShapeProg` are the L0 definitions at the compiled run);
-   - `Claims` (`ShapeClaims`);
-   - `Payload`;
-   - `Refinement` (`refinement`);
-   - `Realizable` (`coverage`, `ProgressReq.Fits`,
-     `Contract.ProgressFits`, `sleepy_witness`, `healthy_witness`,
-     `outage_witness`, `regimes_realizable`);
-   - `Accepted`.
-5. **Values** (`ConsensusShape/Values/`): `Common` (`bftCore`), `Goldilocks`,
+4. **L2** (`ConsensusShape/`): `Shape`, `Compile`, `Run`
+   (`shapeProgress`), `Claims`, `Refinement` (`refinement`), `Realizable`
+   (`ProgressReq.Fits`, `regimes_realizable`), `Accepted`
+   (`Accepted.good`).
+5. **Values** (`ConsensusShape/Values/`): `Common`, `Goldilocks`,
    `GoldilocksSheet`, `Streamlet`, `Tendermint`.
 
 ## Why the meaning is fixed below the protocol
@@ -551,7 +525,7 @@ Francesco. Neither the sheet nor the definition is weakened.
 | M4 psync mandated | by construction (`DAClaims.healed*`, `FinalClaims.live`); `healed_witness_late` |
 | M5 final safety under asynchrony | `FinalClaims.accountable` has premise `True`; `Good.final_agree` |
 | M6 syncUntil unchecked | removed (no premise language) |
-| M7, M27 late GST, Δ | `Realizable` ∀ Δ, g; `healed_witness_late` (Δ = 7, GST 1000) |
+| M7, M27 late GST, Δ | `Realizable` ∀ Δ, g ≥ 0; `healed_witness_late` (Δ = 7, GST 1000) |
 | M8 trivial outage | `OutageActive`; `outage_async_log`, `outage_witness_late`, `outage_control` |
 | M9 dynamic participation | sleepy regime; `sleepy_with_sleeper` |
 | M10 thresholds | `Params.Admissible`; `admissibility_rejections`, `outage_times_teeth`, `healthy_needs_two_thirds` |
@@ -560,7 +534,7 @@ Francesco. Neither the sheet nor the definition is weakened.
 | M13 window-only P1 | sheet `outageWindow`; `outageWindow_prefix_only` |
 | M14 outage stable/finalized | closed: stable = confirmed (`stable_is_confirmed`, `confirmed_persists`); `persists_final_compatible` |
 | M15, M16 pinned params, instance | `goldilocksContract`, `reference_bounds`; target unproved (migration) |
-| M17 eventual liveness | scope: bounded-latency `TxLive` is stronger |
+| M17 eventual liveness | scope: outside the bounded-latency interface (every claim has a latency bound `lat`; eventual-only liveness cannot be expressed) |
 | M19, M26 weights, single Δ | scope |
 | M20 cross-node nesting | sheet `crossNest`, `liveDC` |
 | M21 recovery fault bound | `HealthyOn.faultsBelow`, `1 − φ ≤ α`; `healthy_faultsBelow`, `faulty_third_not_healthy` |
@@ -569,9 +543,9 @@ Francesco. Neither the sheet nor the definition is weakened.
 | M25 ready vs awake | healthy = fixed awake set; readers/progress ready; `healthy_rotating_sleeper`; obligation (6) |
 | M28 recovery starts | `healPoint = max g 0 + heal·Δ`, progress from `readyFrom` |
 | M29 faulty proposer witnesses | `ProgressFits`; `allProposers_unfit`, `allProposers_no_witness`, `recurrence_has_teeth` |
-| M30 safety vs liveness regime | same `Healthy`; safety window `[ready, heal]` ⊆ liveness window |
+| M30 safety vs liveness regime | same `Healthy`; for `heal ≤ horizon`, safety window `[ready, heal]` ⊆ liveness window `[ready, horizon]` |
 | M31–M33 validity, capacity, chain quality | scope |
-| M34 conditional accountability | accountability is unconditional (stronger) |
+| M34 conditional accountability | final-output accountability is unconditional; accountability for conflicting available reads is out of scope |
 | M35 one GST / one outage | partially closed: prefix forms (`prefix_sync_then_async`); after an outage = GST `b₁`; rest scope |
 | M36, M39 leak/HP latency, HEAD | scope; sheet §3 |
 | M37 model adequacy | `Adequate` + `sysOf_adequate`, `sysOf_log_faithful`, `held_iff_served`; `silent_run_valid` |
