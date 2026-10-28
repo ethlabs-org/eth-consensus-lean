@@ -6,3 +6,5 @@ public import ConsensusShapeTests.Blocks
 public import ConsensusShapeTests.Shape
 public import ConsensusShapeTests.Leaks
 public import ConsensusShapeTests.Realizable
+public import ConsensusShapeTests.Controls
+public import ConsensusShapeTests.Vacuity

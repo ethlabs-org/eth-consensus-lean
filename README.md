@@ -1,229 +1,357 @@
-# The generic contract, in three layers: review guide
+# The generic consensus contract: review guide
 
-> **Stale (iteration 5 in progress).** This guide describes iteration 4. Layer 0
-> has been replaced (capabilities, premise language, per-capability contracts;
-> see `ConsensusProblem/{Basic,Properties,Premise,Atoms,Claims}.lean`) and layer 1
-> is being rebuilt; the guide is rewritten at the end of iteration 5.
-
-What it means for a protocol to be a correct consensus protocol, in three
-layers, each reviewed once:
+What it means for a protocol to be a correct consensus protocol, in layers
+that are each reviewed once, for every protocol. A protocol that is written as
+a value of the generic chain shape and proves its `ShapeClaims` solves the
+layer-0 problem under the assumptions stated in its contract; reviewing the
+generic layers once, plus the protocol's contract (its named numbers), is
+enough to know what was proved.
 
 | Layer | Library | What it fixes |
 |---|---|---|
-| **L0, the problem** | `ConsensusProblem` | transactions, ledgers, three outputs; the environment (Δ, GST, awake profile, honest set, transaction submissions); safety, nesting, transaction liveness, persistence, accountability, non-framing; the claim form |
-| **L½, the model** | `ConsensusModel` | a shape-free execution model: protocol interface, engine, delivery, sleep and restarts, unforgeability, evidence, hashes; `sysOf F`, which makes any protocol family an L0 system |
-| **L1, our shape** | `ConsensusShape` | slots, one proposer per slot, full committees, block headers and chains, regimes, constants, `compile` onto L½; block-level claims `ShapeClaims`; the profile and bounds of the L0 claims |
+| **L0, the problem** | `ConsensusProblem` | transactions and ledgers; three capabilities (`available`, `resilient`, `final`) served by the outputs of an `OutputSchema`; the environment (Δ, GST, awake profile, honest set, horizon, submissions); safety, nesting, transaction liveness, resilience, ready-reader safety, accountability, non-framing; the closed premise language; `Contract` and the headline `ProblemClaims` |
+| **L½, the model** | `ConsensusModel`, `ConsensusModelProofs` | a shape-free execution model: identity (PKI), closed selection, credentials, the engine (unit ticks, delivery, sleep and restarts, slashing protection), evidence and hashes; `sysOf`, which makes every protocol family an L0 system; the proofs (`canonical_run`, `honestNeverSlashed`, `sysOf_nonFraming`, lifting) |
+| **Blocks** | `ConsensusBlocks` | protocol-free building blocks, each with at least two users: `TimeGrid`, selection premises (`HonestReadyIn`, `PatternRecurrence`), chains (`Header`, linkage, provenance), payload (`encodeTxs`, `ledgerOf`) |
+| **L1, the chain shape** | `ConsensusShape` | one generic `ChainShape` (skeleton + state machine), one `compile` onto L½, block-level claims `ShapeClaims`, `refinement`, coverage and the non-vacuity certificate `Contract.Realizable` |
+| **Values** | `ConsensusShape/Values` | Goldilocks, Streamlet and Tendermint as skeletons + contracts, each with a `*_realizable` certificate (no protocol proofs) |
 
-The headline is the refinement theorem `refinement`: for every family `F` of
-the shape and every finite nonempty validator type `V`,
-`ShapeClaims F A C → ProblemClaims (sysOf (compile ∘ F) V) A (bounds C) (profile A)`.
-A protocol that proves `ShapeClaims` therefore solves the L0 problem under L1's
-reviewed assumptions.
+Design and history: `repos/goldilocks/notes/generic-interface/layers-plan.md`
+in the workbench (sections "Iteration 5 plan", "Iteration 5b", "Iteration 5
+final design", "Decisions (Francesco, 2026-10-28)"), with the reviews it cites.
 
-Design and history: `notes/generic-interface/layers-plan.md` (and `plan.md`,
-`hash-plan.md`) in the workbench, with the Astra and Opus reviews they cite.
-The older single-layer contract (`AvailableChainContract*`) is being replaced
-and will be removed.
+## The headline
+
+```lean
+theorem refinement (F : ShapeFamily O Info) (K : Contract O ProgressReq) (V : Type)
+    [Fintype V] [DecidableEq V] :
+    ShapeClaims F K → ProblemClaims (sysOf O (compiled F) V) (shapeExec F V) K
+```
+
+For every shape family `F`, every contract `K` and every finite validator
+type `V`: chain-level claims give the L0 claims of the compiled system, with
+the `progress` premise atom interpreted by the shape (`shapeExec`: pattern
+recurrence of honest ready proposers on the shape's grid). The bridges are
+visible: `ledgerTrace` (reads are `ledgerOf` of the output chains,
+definitionally) with `ledgerOf_prefix`; `premiseBridge` (shape premises are L0
+premises, definitionally); `proposalLive_txLive` (proposal liveness and partial
+synchrony give transaction liveness); laws and non-framing come from L½
+(`sysOf_laws`, `sysOf_nonFraming`). `refinement` is not a non-vacuity
+statement; see "Well-formedness is not non-vacuity".
 
 ## Reading order
 
-1. **L0** (`ConsensusProblem/{Basic,Assumptions,Properties,Claims,Monotonicity}`). Check that agreement,
-   monotonicity, nesting, transaction liveness, persistence, accountability
-   and non-framing say what they should. Claims use `EnvAssumption A key ∧ Exec X key` on valid runs.
-   `ClaimKey` carries recurrence gaps or outage times; L0 fixes the mapping
-   to the closed `sync`, `healthyUntil`, and `recurrent` slots. Ordinary and
-   fast outages have separate claims, so their branches cannot mix.
-   Unconditional claims use `HoldsAlways`. Recovery and finalized
-   accountability additionally allow `Slashed A.accFrac`, counting validators
-   convicted by the whole honest evidence set. The layers below fix the
-   interpretation of delivery, recurrence, evidence, and the collision excuse.
-2. **L½** (`ConsensusModel/{Objects,Protocol,Run,Conditions,Evidence,System}`).
-   It fixes the meaning of L0's abstract fields:
-   - **validity** is `ExecutionValid`;
-   - **reads** are the protocol's output ledgers at event cuts;
-   - **evidence** is the objects an honest node has seen, convicted under the
-     protocol's `conflicts` rule through the run's PKI (`signerOf`);
-   - **the excuse** is an observed hash collision.
-
-   Also read the statements of `ConsensusModelProofs`:
-   - `sysOf_laws`;
-   - `CanonicalRun`, proved as `canonical_run`: every execution premise is
-     satisfiable for every protocol;
-   - the lifting theorems: the collision escape adds nothing beyond the
-     injective case.
-3. **L1** (`ConsensusShape`):
-   - `compile`, which turns our shape into an L½ protocol;
-   - the regimes (participation, delivery, recurrence);
-   - `Constants`;
-   - `ShapeClaims` and `refinement`;
-   - `Realizable`: `coverage`, `Witness`, `Contract.Realizable`,
-     `premise_realizable`;
-   - the values `Values/{Goldilocks,Streamlet,Tendermint}` and their
-     `*_realizable` certificates.
+1. **L0** (`ConsensusProblem/`):
+   - `Basic`: `Time`, `Tx`, `Ledger`, `Capability`, `OutputSchema`, `Env`,
+     `EnvPoint` (readiness `Ready c v t`: honest and awake on
+     `[max 0 (t − c − 1), t]`; `readyAt`, `ReadyAbove`, `ReadyOfAll`,
+     `EtaSleepy`, `FaultsBelow`), `Trace`, `System`, `InCuts` (cut 0 included
+     for `t₀ ≤ 0`).
+   - `Properties`: `Agree`, `Monotone`, `Safe`, `ReadySafe`, `Nested`,
+     `ProtectedThrough` (resilience during *and after* the window),
+     `CompatibleThrough` (defined, not advertised), `Trace.TxLive`,
+     `Trace.TxLiveActive`, `Trace.AccountablySafe` (local to the two
+     conflicting reads' views), `NonFraming`, `GloballySlashable`.
+   - `Premise`: the closed premise language (`TimeExpr`, `EnvAtom`, `Premise`
+     with `truth`, `le`, `atTime`, `throughout`, `sync`, `syncUntil`,
+     `progress`, `conj`), `ExecProfile`, `eval`, the named terms in namespace
+     `Premise` (`always`, `fromGST`, `after`, `before`, `sleepy`,
+     `honestMajority`, `faultsBelowThird`, `outageWindow`, `coverMajority`),
+     the resilience parameters `protectedAt`, `outageStart`, `outageEnd`, and
+     `Premise.extremal_realizable`.
+   - `Atoms`: monotonicity of the atoms and the counting step
+     `EnvPoint.two_mul_card_faulty_union_lt`.
+   - `Claims`: `SafetySpec`, `LiveSpec`, `RecoverySpec`, `CapSpec`,
+     `Contract` (one `catchUp` per contract, D-1), `CapSpec.Complete`,
+     `Contract.WellFormed`, `resilienceTarget`, `CapClaims`, `ProblemClaims`,
+     `ProblemClaims.agree_of_accountable`.
+   - `Transfer`: every prefix-based property transfers along a prefix-monotone
+     map of reads (used by `refinement` with `ledgerOf`).
+2. **L½** (`ConsensusModel/`): `Objects` (`Auth.signed k r` binds key and
+   role), `Protocol` (`Public`, `Key`, `SelSpec` = `all | fixed | sized`,
+   `Protocol`, `Family`), `Run` (the run data and the engine: `tick`,
+   `candidates`, `protects`, `releaseAll`, `mempool`), `Conditions`
+   (`ExecutionValid` = schedule and sleep well-formed, `Unforgeable`,
+   `SelValid`, `Credentials`; `PartialSynchrony`, `HealthyPrefixDelivery`),
+   `Evidence` (`Slashable`, `HashCollision`), `System` (`sysOf`,
+   `modelProfile`). Then the statements of `ConsensusModelProofs`:
+   - `canonical_run` (statement `CanonicalRun`): every PKI, admissible
+     selection, submission function and hash admits a valid, partially
+     synchronous run, healthy at every cut (`canonical_run_causal` adds
+     causality);
+   - `Run.honestNeverSlashed` and `sysOf_nonFraming` (slashing protection
+     makes non-framing a theorem for every protocol), `releaseAll_eq_carried`
+     (the guard is a no-op when own-signed objects never conflict);
+   - `Run.selected_of_observed` (every signed object honest nodes observed is
+     signed by a key selected for its role);
+   - lifting: `Run.rehash_trace`, `holds_of_injective` (the collision escape
+     adds nothing beyond the injective case); `sysOf_laws`.
+3. **Blocks** (`ConsensusBlocks/`): `TimeGrid` (slots of `slotTicks·Δ`),
+   `Selection` (`Pattern`, `ProgressReq` with `gap : ℕ+`, `HonestReadyIn`,
+   `PatternRecurrence`, `patternRecurrence_of_all`), `Chains` (`ParentRef`
+   with an explicit `root`, `Header` with `pos`, `input`, `info`, `Linked`,
+   `PosIncreasing`, `Provenant`), `Payload` (`encodeTxs`, `ledgerOf`,
+   `ledgerOf_prefix`).
+4. **L1** (`ConsensusShape/`):
+   - `Shape`: `Skeleton` (grid, `proposerSel`, `pollSel`, committee kinds
+     with phase and selection), `ShapeRole` (`proposer s`, `duty s k`,
+     `poll`), the closed `ProposalRole`, `ShapeDuty`, `ChainShape`,
+     `ShapeFamily`;
+   - `Compile`: `compile`, `compiled` (duties, roles, selections, the
+     engine-written payload);
+   - `Run`: `chainTrace`, `HonestProposal`, `ProposalLive`, `OutputValid`,
+     `shapeExec`, `ShapePremise`, `premiseBridge`;
+   - `Claims`: `Escaped`, `ShapeCapClaims`, `ShapeClaims`;
+   - `Payload`: `honestProposal_payload` (an honest proposal's payload is the
+     proposer's mempool at the release time);
+   - `Refinement`: `ledgerTrace`, `proposalLive_txLive`, `refinement`;
+   - `Realizable`: `coverage`, `Witness`, `LiveActive`, `ResilienceActive`,
+     `Contract.Realizable`, `premise_realizable`, `active_relay`.
+5. **Values** (`ConsensusShape/Values/`): `Common` (`Affine`, `bftCore`,
+   `optConj`), `Goldilocks` (`goldilocksSkeleton`, `GoldilocksParams`,
+   `GoldilocksParams.standard`, `goldilocksContract`,
+   `goldilocksContract_wellFormed`, `goldilocks_realizable`), `Streamlet`
+   (`streamlet_realizable`), `Tendermint` (`tendermint_realizable`).
 
 ## Why the meaning is fixed below the protocol
 
-- **No protocol-supplied premise predicate.** Every premise is environment
-  vocabulary (L0), an execution condition (L½: valid execution, delivery), or
-  a reviewed shape premise (L1: recurrence over the shape's slot timing). The
-  execution conditions evaluate what the protocol does, but the protocol
-  supplies no hook, author, decoder, schedule or hash, and evidence collection
-  and conviction are fixed around its one slashing rule, `conflicts`.
-  `canonical_run` makes delivery satisfiable for every protocol.
-  `exec_conservative` preserves every well-formed environment point admitted
-  by the L0 environment premise, while choosing ready proposers. Its domain
-  requires positive recurrence gaps and, for recovery/finality coverage,
-  nonnegative GST. These guards do not enter `ProblemClaims` or the regimes.
-- **Signing and keys.**
-  - The engine signs, with the node's own key in the duty's role, and only
-    if the run's selection (`sel`, admissible for the protocol's closed
-    `selSpec`) contains that key. Keys map to validators through the run's
-    PKI, a **bijection** `key : Fin n ≃ V`, so distinct keys are distinct
-    validators. Signatures bind their role (`Auth.signed k r`).
-  - `Credentials` (an execution condition): every signed object inside a
-    delivered object is signed by a key selected for its role, faulty signers
-    included; `Run.selected_of_observed` extends this to everything honest
-    nodes observed.
-  - Slashing protection is the engine's, generic over `conflicts`
-    (`protects`): an own-signed candidate that conflicts with itself, or in
-    either order with an own-signed object in the closure of `seen`, is not
-    released. `seen` survives restarts (as an EIP-3076 slashing-protection
-    database does; that the deployed client keeps it is model adequacy).
-    Hence `Run.honestNeverSlashed` and L0 non-framing (`sysOf_nonFraming`)
-    are theorems for every protocol, not obligations.
-  - Accountability counts validators, with no committee premise.
-- **Transaction ingress is relayed by the network.** A transaction submitted
-  to an awake honest node is relayed to every honest node awake throughout a
-  delivery window, including after a later wake. The scheduler chooses the
-  run's `relay` field. At each tick the engine supplies the cumulative
-  `mempool rho.inbox`, merging own submissions with relayed transactions;
-  honest code cannot distinguish their origin. This pool survives restarts.
-  Relay is otherwise unconstrained: the adversary may inject any transaction.
-  L1 encodes this pool into the proposer's header payload.
-- **Both output nesting pairs hold unconditionally:** `finalized ⪯ stable`
-  and `stable ⪯ confirmed`, at every event cut, including restart cuts.
-- **Transaction latency** is measured from `max t GST + Δ`: a transaction
-  submitted to some awake honest node by `t ≥ start` must occur in every
-  ready read at every `t' ≥ max t GST + Δ + D` within the horizon. The L1
-  bounds `D` stay unchanged. Refinement applies `LiveFrom` at `t' − D` and
-  delivery with `a = proposalTime − Δ`; `catchUp ≥ 1` supplies the required
-  awake history, and `PartialSynchrony` supplies strictly earlier ingress.
-- **Hashes are arbitrary run data.**
-  - Escaped claims read "X, or a hash collision was observed". The collision
-    scope is every item in the honest closure, under any signature, plus
-    digest 0, which is reserved.
-  - Honest code learns the hash only through the digests the engine passes.
-  - The lifting theorems show that, for claims invariant under rehashing
-    outside the observed items (which every exported claim is), the escaped
-    form is equivalent to proving X for injective, nonzero hashes.
-  - Collision resistance of the deployed hash (including "nothing hashes to
-    0") is an assumption.
-- **Outputs are pinned on both sides.**
-  - Above: safety, accountable safety and nesting (L0), plus provenance (L1).
-  - Below: transaction liveness (L0), plus inclusion and growth (L1).
+A protocol supplies a state machine and its numbers; it supplies no predicate
+that a claim or premise evaluates.
+
+- **Closed premise language.** Every premise is a term of `Premise`:
+  environment atoms (L0 vocabulary), `sync`/`syncUntil` (fixed by the
+  execution model), and `progress` (fixed by the shape: `PatternRecurrence`
+  over the skeleton's proposer roles and grid). There is no disjunction or
+  negation, so every well-formed environment part holds at the extremal point
+  (`Premise.extremal_realizable`).
+- **Closed selection and identity.** Keys are `Fin n`; the run's PKI is a
+  bijection `key : Fin n ≃ V`. Who acts in a role is run data `sel`, admissible
+  for the protocol's closed `SelSpec` (`all`, `fixed S`, `sized m`). Honest code
+  never sees `sel`, the PKI, the honest set, GST, the awake profile or the hash.
+- **Credentials.** `ExecutionValid.credentials`: every signed object inside a
+  delivered object is signed by a key selected for its role, faulty signers
+  included (`Run.selected_of_observed` extends it to everything observed).
+  Signatures bind their role, so a signature cannot be replayed in another
+  duty.
+- **Slashing protection in the engine.** The engine refuses an own-signed
+  candidate that conflicts, under the protocol's `conflicts`, with itself or
+  with an own-signed object in the closure of `seen` (`protects`); `seen`
+  survives restarts. Hence `Run.honestNeverSlashed` and L0 non-framing
+  (`sysOf_nonFraming`) hold for every protocol. A protocol whose `conflicts` is
+  always true silences itself and fails liveness (`conflictsTrue_silent`).
+- **Engine-written payload.** `compile` writes every proposal's `input :=
+  encodeTxs mempool` (and a slot proposal's position `pos := s`); the mempool is
+  the node's cumulative own and relayed transactions. Reads are `ledgerOf` of
+  the output chains (`ledgerTrace`).
+- **Closed `ProposalRole`.** Provenance (`OutputValid`) accepts a header only
+  if it was seen signed as the proposer of its own position (`proposer h.pos`)
+  or in the poll role. Committee signatures never make a header.
+- **Poll mode (decision T).** Besides slot proposals, a shape may propose at
+  any unit tick in the `poll` role, at a position (height) and with `info`
+  (round) it chooses; `pollSel := .fixed ∅` disables polling and then
+  `Credentials` forbids every `poll` signature (`poll_disabled_forged`). The
+  engine still writes the payload (`poll_proposal_local_height`).
+- **No hooks.** No protocol-supplied author, decoder, schedule, hash, premise or
+  evidence collector; evidence and conviction are fixed around the one rule
+  `conflicts`, and the excuse is an observed hash collision.
+- **Outputs are pinned on both sides.** Above: safety, nesting, local
+  accountability (L0) and provenance (`OutputValid`). Below: transaction
+  liveness (L0) through `ProposalLive`.
+
+## Well-formedness is not non-vacuity (D-24)
+
+`Contract.WellFormed` (the first field of `ShapeClaims`) is structural: every
+premise atom has its fraction in range, every escape and accountable fraction
+is in `(0, 1]`. A well-formed contract can still have an unsatisfiable premise
+(`contradictory_wf_not_realizable`), and then its claims say nothing.
+
+An advertised instance is therefore three things:
+
+1. `ShapeClaims F K` (proved by the protocol);
+2. `Contract.Realizable F K` (a per-value certificate): every premise of every
+   provided capability, for every index, has a `Witness` run (a faulty
+   validator, valid, no hash collision, nobody convicted by honest evidence,
+   every progress window inside the horizon), with active service:
+   `LiveActive` (a transaction submitted to one honest node, a different honest
+   reader that was never submitted it, ready at the real deadline
+   `max t GST + Δ + D·Δ` within the horizon; `active_relay`: that reader
+   receives it by relay) and `ResilienceActive` (a nonempty outage inside the
+   horizon and a continuously eligible reader over it);
+3. `coverage` (generic): any well-formed point, with any PKI and admissible
+   selection, satisfying a premise's environment and progress parts is exactly
+   the point, PKI and selection of a valid, collision-free, conviction-free run
+   satisfying the whole premise. The protocol cannot make a premise harder to
+   meet than its environment and progress parts.
+
+`goldilocks_realizable`, `streamlet_realizable` and `tendermint_realizable`
+hold for every family with the value's proposer selection size and grid
+(Tendermint: every family). They prove premise realizability, not the
+existence of a correct protocol.
+
+## Adversary model
+
+Static and all-knowing: the honest set is fixed per run; faulty validators sign
+anything with their own keys (only `Unforgeable` and `Credentials` bind them),
+and the scheduler chooses the events, relay and hash within the execution
+conditions. There is no adaptive corruption and no hook for it (scope limit).
+Selection is run data, chosen with the honest set; hiding it from honest code
+buys nothing against this adversary.
+
+## Model-adequacy bindings (generic, read once)
+
+- **PKI:** one key per validator, known to all (`key : Fin n ≃ V`).
+- **Credentials:** the deployed membership mechanism (public committee lists,
+  VRF proofs, …) is sound for the selection (`Credentials`).
+- **Signatures:** unforgeable, binding key and role (`Unforgeable`,
+  `Auth.signed`).
+- **Slashing protection:** the deployed client implements `protects` and
+  persists its seen log across restarts (as an EIP-3076 database does).
+- **Durable relay:** a transaction submitted to an awake honest node is held,
+  strictly before `max a GST + Δ`, by every honest node awake on the interval,
+  including after the source sleeps; the cumulative inbox survives restarts.
+- **Δ known:** honest code knows `Δ` (a positive integer) and `n`.
+- **Unit ticks:** every awake honest node ticks at every integer time
+  (`ScheduleWellFormed`); the unit divides Δ.
+- **Strict delivery deadlines:** what an honest node releases at `t` is held by
+  every honest node awake on `[a, max a GST + Δ)`, strictly before the
+  deadline, for every `a ≥ t` (`PartialSynchrony`); `syncUntil` uses `a + Δ`.
+- **Restarts** happen exactly at wakes; a receipt before a sleep does not serve
+  after the wake.
+- **Collision resistance** of the deployed hash on real items; honest code uses
+  digests only as received.
 
 ## Residual bindings (per instance)
 
-1. The output ledgers (and L1's chain getters) are what users read.
-2. `conflicts` is the slashing rule the chain enforces, and the deployed
-   client implements `protects` and keeps its log across restarts.
-3. Check **A first**, then the service bounds in `Constants`. Use
-   `Assumptions.standard catchUp eta armingLag fastArmingLag outageBudget
-   stableEtaAbove recoveryReadyAbove recoveryFull`, or publish named numbers
-   for every field. Standard fixes sleepy participation to ½, fast faults
-   to <¼, inclusive fast-outage participation to ½, finality participation
-   to >⅔, accountability to ⅓, and no wakes after GST. Timing, η-sleepiness,
-   recovery participation and full-recovery policy remain explicit instance
-   choices. A huge `catchUp` restricts readers to nodes that almost never slept.
-
-   `Assumptions.WellFormed` checks domains, not correctness: positive catch-up
-   and outage budget, nonnegative ready thresholds, positive fault/accountable
-   fractions, and every fraction strictly below 1 (inclusive thresholds too).
-   `Constants.Valid` only requires positive slot length; the previous
-   `budget ≤ eta`, lag ordering, and ½-to-¾ threshold restrictions are gone.
-   The positive catch-up obligation remains in `ShapeClaims`, supporting the
-   relay refinement, without requiring all of `WellFormed` for correctness.
-
-   `Assumptions.Weaker A A'` compares admitted environments componentwise
-   with equal catch-up. A claim under the weaker premises `A` restricts to
-   `A'`; the accountable fraction has the opposite order because it is a
-   conclusion. `ProblemClaims.mono` proves this for a fixed slot interpretation.
-4. Implementation refinement:
-   - the deployed client matches the engine: signature encoding (binding the
-     role), the PKI (one key per validator), membership proofs that realize
-     `Credentials`, structural
-     carriage, the seen filter and a persisted seen log, the persisted
-     `durable` state, and the cumulative own-plus-relayed mempool;
-   - the hash is collision-resistant on real items;
-   - honest code uses digests only as received.
-
-Generic, read once: **model adequacy**. Clocks; delivery strictly before the
-deadline `max a GST + Δ` (with integer time, a release at `t` with `Δ = 1` must
-be delivered at `t`, after the ticks), including to nodes that wake later;
-restarts only at wakes; unforgeable signatures. Transaction delivery uses
-strict deadlines too: an awake honest source's submission at nonnegative `τ`
-is held strictly before `max a GST + Δ` for every `a ≥ τ` whose deadline is
-within the horizon and whose recipient stays awake on that interval. Healthy
-prefix delivery uses `a + Δ`. This assumes reliable dissemination after
-acceptance even if the source subsequently sleeps. The canonical scheduler
-chooses both events and eager relay, preserving every fixed assignment,
-submission function and hash.
+1. The outputs (and L1's output chains) are what users read.
+2. `conflicts` is the slashing rule the chain enforces.
+3. The contract's named numbers are the intended ones: catch-up, fractions,
+   lags, budgets, latencies (for Goldilocks, `GoldilocksParams`, with
+   `GoldilocksParams.standard` fixing the standard fractions). A huge
+   `catchUp` restricts readers to nodes that almost never slept.
 
 ## Scope limits
 
-- No validity, fees or throughput for transactions. Ledgers may contain
-  unsubmitted transactions, and repeats are removed in L1.
-- Recovery exports ready-reader safety, or a collision, or `A.accFrac` of
-  validators convicted. It has no fault-cap premise. Its full-participation
-  and no-wake policies are explicit booleans in A. Finality adds participation
-  and no fault cap; standard >⅔ readiness implies <⅓ faults. Recovered
-  liveness remains an L1 block-level obligation.
-- At L0, ledgers may contain fabricated transactions: the refutation of a
-  fabricated-output family uses L1's block provenance (`outputValid`), which
-  has no L0 counterpart.
-- Well-formedness is not non-vacuity (D-24). An advertised instance is
-  `ShapeClaims` plus `Contract.Realizable` plus `coverage`. `coverage`: any
-  well-formed point, with any PKI and admissible selection, satisfying a
-  premise's environment and progress parts is the point, PKI and selection of
-  a valid, collision-free, conviction-free run satisfying the whole premise.
-  `Contract.Realizable`: every premise of every provided capability, for every
-  index, has a witness run with a faulty validator, no collision, no
-  conviction, every progress window inside the horizon, and active service
-  (`LiveActive`: a transaction submitted to one honest node and a different,
-  never-submitted honest reader ready at a reachable deadline; `active_relay`:
-  that reader really receives it by relay; `ResilienceActive`: a nonempty
-  outage inside the horizon with a continuously awake reader).
-  `goldilocks_realizable`, `streamlet_realizable` and `tendermint_realizable`
-  hold for every family with the value's proposer selection size and grid
-  (Tendermint: every family). This proves premise realizability, not
-  existence of a correct protocol.
-- FG-SA migration obligations for the Goldilocks value: (i) a validator ready
-  at the outage start is covered by FG-SA's join schedule (then `OutageE1`
-  follows from `coverMajority` by `EnvPoint.two_mul_card_faulty_union_lt`);
-  (ii) persistence after the window for continuously awake readers under the
-  post-window terms (`restoreLag`, `afterAbove`). The committee kinds, phases
-  and finality pattern of the Goldilocks skeleton are placeholders.
-- The collision escape is run-wide.
-- Accountability compares two reads in one run, not across runs.
-- Unit weights.
+- No transaction validity, fees or throughput; ledgers may contain
+  unsubmitted transactions.
+- No probabilistic or randomized protocols, no proof of work, unit weights
+  only, no non-validator readers, no responsiveness claims (unit ticks do not
+  block them, but none is stated).
+- No adaptive corruption.
+- Gasper's partitioned selection (`part`) is deferred (decision G).
+- Resilience covers continuously eligible readers only: a reader that sleeps
+  during the outage and wakes afterwards is not covered by `ProtectedThrough`.
+- The collision escape is run-wide; accountability compares two reads in one
+  run, not across runs.
+- At L0, ledgers may contain fabricated transactions; the refutation of a
+  fabricated-output family uses L1 provenance (`fabricated`).
+
+## FG-SA migration obligations
+
+The Goldilocks value's committee kinds, phases and finality pattern are
+placeholders until FG-SA (the `AvailableChain*` libraries) is migrated onto the
+shape. The migration must discharge:
+
+1. **Cover binding (D-17).** A validator `Ready c v b₀` at the outage start is
+   covered by FG-SA's join schedule (`v ∈ coveredNodes fast b₀`, with
+   `c = catchUp·Δ` covering the join window; needs `syncUntil b₀`). Then FG-SA's
+   `OutageE1` (`2·|faulty ∪ W| < n`) follows from the premise term
+   `coverMajority` by `EnvPoint.two_mul_card_faulty_union_lt`.
+2. **Post-window persistence.** `ProtectedThrough` asks for persistence after
+   the window too, for continuously awake readers, under the post-window terms
+   of the resilience premise (`sync`, GST at most `restoreLag·Δ` after the
+   outage end, participation above `afterAbove` from then on).
+3. **Quorums and Evidence blocks (D-13).** `quorum_inter`, equivocation (which
+   compares the signed statement, not carriage) and FFG evidence, with
+   `accountable_of_certs`, are added as blocks when their first users appear.
+
+## Decisions of iteration 5 (D-n)
+
+- **D-1 (design amendment).** One `catchUp` per `Contract`, shared by every
+  claim of every capability (the final design put catch-up inside each
+  liveness spec). Resilience, recovery and the D-17 cover term must use the
+  same reader eligibility to compose; moving the field into `CapSpec` is a
+  local change if a target needs two.
+- **D-2** Progress through abstract `Prog`/`Idx` at L0; chain shapes use
+  `ProgressReq` (pattern with `offsets ≠ []`, `gap : ℕ+`), admissibility by type.
+- **D-3** Premise parameters `σ`; every claim quantifies all `σ`.
+- **D-4** Safety (and recovery's safety half) may have a global-slashing
+  escape `Option ℚ`; liveness never; local accountability is unconditional.
+- **D-5** `ProtectedThrough`: during and after the window, `b₁` only in the
+  premise; readers continuously awake from `max 0 (b₀ − c − 1)`.
+- **D-6** A resilient capability has both a resilience premise and a recovery
+  spec (`CapSpec.Complete`); `final` always has monotonicity; nesting for every
+  provided ordered pair.
+- **D-7** Provided ⇔ specified is a claim field.
+- **D-8** `Contract.WellFormed` is the first claim field.
+- **D-9** `InCuts` includes cut 0 for `t₀ ≤ 0`.
+- **D-10** The iteration-4 L0 machinery (assumption records, bounds, claim
+  keys, fast paths, η-inclusion) is deleted; standard values are premise terms
+  and contract values.
+- **D-11** `restore` receives the own key.
+- **D-12** `SelSpec := all | fixed | sized`; `HonestReadyIn` requires a
+  nonempty, all-honest-and-ready selection; nonemptiness lemmas are
+  conditional.
+- **D-13** Blocks only with ≥ 2 users; Quorums/Evidence deferred.
+- **D-14** L1 liveness is `ProposalLive` (keyed by the release time); the
+  strict-prefix clause is dropped.
+- **D-15** One proposer selection for all slots, committee kinds with phases,
+  a poll selection.
+- **D-16** Streamlet and Tendermint are final-only; Goldilocks keeps three
+  outputs `confirmed`/`stable`/`finalized`.
+- **D-17** `coverMajority` + the counting lemma replace the during-window
+  η-term for FG-SA's outage bound.
+- **D-18** A sixth library `ConsensusBlocks`.
+- **D-19** No deadline-in-horizon premise: conclusions past the horizon are
+  vacuous anyway; realizability witnesses supply reachable deadlines.
+- **D-20** Every liveness and recovery premise of a shape contract contains
+  `sync` (`ShapeClaims.liveSync`).
+- **D-21** Phases live in the skeleton; epochs deferred.
+- **D-22** Recurrence starts at time 0 (`max start 0`).
+- **D-23** Protection fires on own-signed candidates only.
+- **D-24** Well-formedness ≠ non-vacuity (`Contract.Realizable`).
+- **D-25** Poll proposals with a closed `ProposalRole`.
+
+## Tests (`ConsensusShapeTests/`)
+
+- `Problem`: every L0 property has teeth; `InCuts` at cut 0; relay vocabulary;
+  three-output nesting; local accountability (`agree_of_accountable`) versus
+  the global escape.
+- `Premise`: named terms, the extremal point, the cover counting step, the
+  after-window part of resilience (`protected_after_window`),
+  `provided_mismatch`.
+- `Model`: relayed ingress and cumulative mempool, a forged role violates
+  `Credentials` (`forged_role_invalid`), `unit_ticks`, slashing protection
+  (`conflictsTrue_releases_unsigned_only`).
+- `Blocks`: grids, recurrence from any start, `recurrence_has_teeth`,
+  `ledgerOf`.
+- `Shape`: compiled roles and duties, `poll_disabled_forged`,
+  `poll_proposal_local_height`, `poll_duty_every_tick`.
+- `Leaks`: protocols that do nothing (`silent`), propose without outputting
+  (`proposeButGenesis`), fabricate outputs (`fabricated`) or silence
+  themselves by their slashing rule (`conflictsTrue_silent`) fail
+  `ShapeClaims`; the positive control `recorder_live_testK` (also with negative
+  GST) meets the obligation that refutes them.
+- `Realizable`: `coverage_keeps_selection`, `contradictory_wf_not_realizable`.
+- `Controls`: `positive_controls`: one canonical run of a Goldilocks-skeleton
+  family that, at index 1, satisfies every capability premise of
+  `goldilocksContract` with standard numbers as an active witness, with a
+  relayed submission, ready readers, in-horizon deadlines and an active outage.
+  Every other index is covered by `goldilocks_realizable`.
+- `Vacuity`: `zero_catchUp_not_shapeClaims`, `escape_zero_rejected` (also
+  `recoveryEscape_zero_rejected`, `accountable_zero_rejected`),
+  `resilient_without_recovery_rejected`, `noSync_live_rejected`, with the
+  control `goldilocks_structural`; `credential_forgery_excluded` (a delivered
+  proposal signed by an unselected key violates `ExecutionValid`, with the
+  concrete run `forgedProposal`).
 
 ## Verification
 
-After module changes, run:
-
 ```sh
+cd /srv/work/fradamt/goldilocks/generic-interface
 LAKE_RESTORE_ARTIFACTS=true lake build ConsensusProblem ConsensusModel ConsensusModelProofs ConsensusBlocks ConsensusShape ConsensusShapeTests
 lake env lean --run contract/CheckConsensusAxioms.lean
 ```
 
-The audit imports every `Consensus*` source module, including tests, and checks
-all their compiled declarations for dependencies outside `propext`,
-`Classical.choice`, and `Quot.sound`. Iteration 3 regression tests cover a
-single submission source, sleeping sources, both nesting pairs, injected
-relay content, strict deadlines, cumulative ingress across restarts, and the
-Δ > 1 catch-up gap.
-
-Iteration 4 tests cover the rational thresholds, named standard regimes,
-weaker-premise transport, accountable escapes, and the two retained obstruction
-regressions: an inclusive threshold of 1 excludes nonempty faults, and a
-negative horizon cannot be covered by a valid execution.
+The audit imports every `Consensus*` source module under `contract/`,
+including the tests, checks that the main theorems exist, and checks every
+compiled declaration for axioms outside `propext`, `Classical.choice` and
+`Quot.sound`. It prints `standard axioms only: true`.
