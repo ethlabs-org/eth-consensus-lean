@@ -23,6 +23,7 @@ def main : IO UInt32 := do
       `Consensus.ProblemClaims.agree_of_accountable,
       `Consensus.Shape.Tests.Premise.provided_mismatch,
       `Consensus.Shape.Tests.Premise.protected_after_window,
+      `Consensus.Shape.Tests.Premise.protected_wake_after,
       `Consensus.Model.Run.txHeld_mem_mempool, `Consensus.Model.SelSpec.admits_exists,
       `Consensus.Model.sysOf_laws, `Consensus.Model.Run.selected_of_observed,
       `Consensus.Model.Run.candidates_signer, `Consensus.Model.Run.credentials_of_causal,

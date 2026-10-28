@@ -119,10 +119,30 @@ start `b₀ = 1`, but resilience fails: at the horizon `2 > b₀` the reader has
 switched branch. The after-window part of `ProtectedThrough` has teeth. -/
 theorem protected_after_window :
     afterWindow.readAt () true 0 <+: afterWindow.readAt () false 1 ∧
-      ¬ afterWindow.ProtectedThrough 0 () () 0 1 := by
+      ¬ afterWindow.ProtectedThrough 0 () () 0 1 1 := by
   refine ⟨by decide, fun h => ?_⟩
   have hp := h true (Finset.mem_univ _) 2 (by decide) (by decide) false (Finset.mem_univ _)
-    (fun _ _ _ => rfl)
+    (Or.inl fun _ _ _ => rfl)
+  revert hp
+  decide
+
+/-- Reader `false` sleeps during the window `[1, 2)` and wakes at 2; from cut 4
+on its read is empty. Resilience fails: with catch-up 0 it is caught up after
+the window at time 4 (`2 ≤ 4 − 0 − 1`), so it is an eligible reader. Readers
+waking after the outage are covered. -/
+def wakeAfter : Trace Bool Nat Unit :=
+  ⟨⟨⟨1, by decide, 0, fun v u => v || decide (u < 1 ∨ 2 ≤ u)⟩, Finset.univ, 5,
+      fun _ _ => []⟩, 5,
+    fun i => (i : Int), fun _ v i => if v then [1] else if 4 ≤ i then [] else [1]⟩
+
+theorem protected_wake_after : ¬ wakeAfter.ProtectedThrough 0 () () 0 1 2 := by
+  intro h
+  have hr : wakeAfter.ResilienceReader 0 1 2 false 4 := by
+    refine Or.inr ⟨by decide, fun u h1 _ => ?_⟩
+    show (false || decide (u < 1 ∨ 2 ≤ u)) = true
+    simp only [Bool.false_or, decide_eq_true_eq]
+    right; norm_num at h1; linarith
+  have hp := h true (Finset.mem_univ _) 4 (by decide) (by decide) false (Finset.mem_univ _) hr
   revert hp
   decide
 

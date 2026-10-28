@@ -45,20 +45,29 @@ def ReadySafe (c : Time) (g : Id) (t₀ : Time) : Prop :=
 def Nested (g₁ g₂ : Id) : Prop :=
   ∀ v ∈ tr.point.honest, ∀ i, i ≤ tr.cuts → tr.read g₁ v i <+: tr.read g₂ v i
 
-/-- Resilience, during and after the window: every honest read of `src` at
-`T` is a prefix of the `dst` read, at every `t ∈ [b₀, horizon]`, of every
-honest node awake throughout `[max 0 (b₀ − c − 1), t]` (ready at `b₀` and not
-restarted since). -/
-def ProtectedThrough (c : Time) (src dst : Id) (T b₀ : Time) : Prop :=
+/-- Reader `w` is eligible for resilience at `t` (window `[b₀, b₁)`, catch-up
+`c`): it was caught up before the window and stayed awake since (awake
+throughout `[max 0 (b₀ − c − 1), t]`), or it caught up after the window
+(awake throughout `[t − c − 1, t]` with `b₁ ≤ t − c − 1`). Nodes that wake
+during the window are eligible once caught up after it: during the window
+there is no delivery guarantee. -/
+def ResilienceReader (c b₀ b₁ : Time) (w : V) (t : Time) : Prop :=
+  tr.point.AwakeOnClosed w (max 0 (b₀ - c - 1)) t ∨
+    (b₁ ≤ t - c - 1 ∧ tr.point.AwakeOnClosed w (t - c - 1) t)
+
+/-- Resilience, during and after the window `[b₀, b₁)`: every honest read of
+`src` at `T` is a prefix of the `dst` read, at every `t ∈ [b₀, horizon]`, of
+every honest `ResilienceReader`. -/
+def ProtectedThrough (c : Time) (src dst : Id) (T b₀ b₁ : Time) : Prop :=
   ∀ v ∈ tr.point.honest, ∀ t, b₀ ≤ t → t ≤ tr.point.horizon →
-    ∀ w ∈ tr.point.honest, tr.point.AwakeOnClosed w (max 0 (b₀ - c - 1)) t →
+    ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
     tr.readAt src v T <+: tr.readAt dst w t
 
 /-- The weaker non-contradiction form of `ProtectedThrough` (same
 quantifiers; defined, not advertised). -/
-def CompatibleThrough (c : Time) (src dst : Id) (T b₀ : Time) : Prop :=
+def CompatibleThrough (c : Time) (src dst : Id) (T b₀ b₁ : Time) : Prop :=
   ∀ v ∈ tr.point.honest, ∀ t, b₀ ≤ t → t ≤ tr.point.horizon →
-    ∀ w ∈ tr.point.honest, tr.point.AwakeOnClosed w (max 0 (b₀ - c - 1)) t →
+    ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
     Compatible (tr.readAt src v T) (tr.readAt dst w t)
 
 end Trace

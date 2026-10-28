@@ -43,13 +43,13 @@ theorem Nested.map {g₁ g₂} (h : tr.Nested g₁ g₂) : (tr.map f).Nested g�
   intro v hv i hi
   exact hf (h v hv i hi)
 
-theorem ProtectedThrough.map {c src dst T b₀} (h : tr.ProtectedThrough c src dst T b₀) :
-    (tr.map f).ProtectedThrough c src dst T b₀ := by
+theorem ProtectedThrough.map {c src dst T b₀ b₁} (h : tr.ProtectedThrough c src dst T b₀ b₁) :
+    (tr.map f).ProtectedThrough c src dst T b₀ b₁ := by
   intro v hv t ht ht' w hw ha
   exact hf (h v hv t ht ht' w hw ha)
 
-theorem CompatibleThrough.map {c src dst T b₀} (h : tr.CompatibleThrough c src dst T b₀) :
-    (tr.map f).CompatibleThrough c src dst T b₀ := by
+theorem CompatibleThrough.map {c src dst T b₀ b₁} (h : tr.CompatibleThrough c src dst T b₀ b₁) :
+    (tr.map f).CompatibleThrough c src dst T b₀ b₁ := by
   intro v hv t ht ht' w hw ha
   exact (h v hv t ht ht' w hw ha).map hf
 end Trace

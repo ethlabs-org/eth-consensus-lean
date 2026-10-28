@@ -152,7 +152,7 @@ structure CapClaims {Prog : Type} (S : System V) (X : ExecProfile S Prog)
   persists : ∀ P, s.resilience = some P → ∀ σ,
     S.Holds (fun r => P.eval S X K.catchUp σ r)
       (fun r => (S.trace r).ProtectedThrough (S.dur r K.catchUp) g
-        (resilienceTarget S.schema g) (σ 0) (σ 1))
+        (resilienceTarget S.schema g) (σ 0) (σ 1) (σ 2))
   /-- Recovery, safety half: ready readers are safe from the recovery point
   (or escape). -/
   recoverySafe : ∀ R, s.recovery = some R → ∀ i σ,

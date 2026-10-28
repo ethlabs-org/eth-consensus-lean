@@ -373,8 +373,11 @@ buys nothing against this adversary.
   an honest leader within `m + 1` rounds when at most `m` are faulty).
 - A Tendermint locked-value re-proposal carries the original signed header:
   the engine writes the payload of every new header.
-- Resilience covers continuously eligible readers only: a reader that sleeps
-  during the outage and wakes afterwards is not covered by `ProtectedThrough`.
+- Resilience (`ResilienceReader`) covers readers caught up before the outage
+  that stay awake, and readers caught up after it (awake throughout
+  `[t − c − 1, t]` with `b₁ ≤ t − c − 1`). A reader that wakes during the
+  outage is covered once it has caught up after the outage, not before:
+  there is no delivery guarantee during the outage.
 - The collision escape is run-wide; accountability compares two reads in one
   run, not across runs.
 - At L0, ledgers may contain fabricated transactions; the refutation of a
@@ -414,8 +417,9 @@ shape. The migration must discharge:
 - **D-3** Premise parameters `σ`; every claim quantifies all `σ`.
 - **D-4** Safety (and recovery's safety half) may have a global-slashing
   escape `Option ℚ`; liveness never; local accountability is unconditional.
-- **D-5** `ProtectedThrough`: during and after the window, `b₁` only in the
-  premise; readers continuously awake from `max 0 (b₀ − c − 1)`.
+- **D-5** `ProtectedThrough`: during and after the window `[b₀, b₁)`; eligible
+  readers (`ResilienceReader`) are caught up before the window and awake since,
+  or caught up after it (Francesco, 2026-10-28).
 - **D-6** A stable capability has both a resilience premise and a recovery
   spec (`CapSpec.Complete`); `final` always has monotonicity; nesting for every
   provided ordered pair.
