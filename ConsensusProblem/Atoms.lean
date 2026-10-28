@@ -22,6 +22,62 @@ theorem ReadyAbove.mono {θ θ' : ℚ} {c t : Time} (h : p.ReadyAbove θ' c t)
     (hle : θ ≤ θ') : p.ReadyAbove θ c t :=
   lt_of_le_of_lt (mul_le_mul_of_nonneg_right hle (by positivity)) h
 
+/-- With look-back `0`, η-sleepy is plain sleepy: the validators ready at
+some time in `[t, t]` are those ready at `t`, all honest, so disjoint from
+the faulty ones. -/
+theorem etaReadyAbove_zero (θ : ℚ) (c t : Time) :
+    p.EtaReadyAbove θ 0 c t ↔ p.ReadyAbove θ c t := by
+  classical
+  have hin : p.readyIn c (t - 0) t = p.readyAt c t := by
+    ext v
+    simp only [readyIn, readyAt, Finset.mem_filter, sub_zero]
+    constructor
+    · rintro ⟨hv, u, h1, h2, hr⟩
+      exact ⟨hv, (le_antisymm h2 h1) ▸ hr⟩
+    · rintro ⟨hv, hr⟩
+      exact ⟨hv, t, le_rfl, le_rfl, hr⟩
+  have hdis : Disjoint (p.readyAt c t) p.faulty := by
+    refine Finset.disjoint_left.mpr fun v hv hf => ?_
+    unfold readyAt at hv
+    exact (Finset.mem_sdiff.mp hf).2 (Finset.mem_filter.mp hv).1
+  unfold EtaReadyAbove ReadyAbove
+  rw [hin, Finset.card_union_of_disjoint hdis]
+  push_cast
+  rfl
+
+/-- η-sleepy (`η ≥ 0`, `θ ≥ 0`) implies plain sleepy. -/
+theorem EtaReadyAbove.readyAbove {θ : ℚ} {η c t : Time} (h : p.EtaReadyAbove θ η c t)
+    (h0 : 0 ≤ θ) (hη : 0 ≤ η) : p.ReadyAbove θ c t := by
+  classical
+  rw [← etaReadyAbove_zero]
+  unfold EtaReadyAbove at h ⊢
+  have hsub : p.readyIn c (t - 0) t ∪ p.faulty ⊆ p.readyIn c (t - η) t ∪ p.faulty := by
+    apply Finset.union_subset_union _ (Finset.Subset.refl _)
+    intro v hv
+    simp only [readyIn, Finset.mem_filter, sub_zero] at hv ⊢
+    obtain ⟨hv, u, h1, h2, hr⟩ := hv
+    exact ⟨hv, u, by linarith, h2, hr⟩
+  have hc : ((p.readyIn c (t - 0) t ∪ p.faulty).card : ℚ) ≤
+      (p.readyIn c (t - η) t ∪ p.faulty).card := by exact_mod_cast Finset.card_le_card hsub
+  exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left hc h0) h
+
+/-- A smaller fraction (`θ ≥ 0`) and a shorter look-back are weaker. -/
+theorem EtaReadyAbove.mono {θ θ' : ℚ} {η η' c t : Time} (h : p.EtaReadyAbove θ' η' c t)
+    (h0 : 0 ≤ θ) (hθ : θ ≤ θ') (hη : η ≤ η') : p.EtaReadyAbove θ η c t := by
+  classical
+  unfold EtaReadyAbove at h ⊢
+  have hsub : p.readyIn c (t - η) t ∪ p.faulty ⊆ p.readyIn c (t - η') t ∪ p.faulty := by
+    apply Finset.union_subset_union _ (Finset.Subset.refl _)
+    intro v hv
+    simp only [readyIn, Finset.mem_filter] at hv ⊢
+    obtain ⟨hv, u, h1, h2, hr⟩ := hv
+    exact ⟨hv, u, by linarith, h2, hr⟩
+  have hc : ((p.readyIn c (t - η) t ∪ p.faulty).card : ℚ) ≤
+      (p.readyIn c (t - η') t ∪ p.faulty).card := by exact_mod_cast Finset.card_le_card hsub
+  exact lt_of_le_of_lt
+    ((mul_le_mul_of_nonneg_left hc h0).trans
+      (mul_le_mul_of_nonneg_right hθ (by positivity))) h
+
 /-- A larger absolute fault bound is weaker. -/
 theorem FaultsAtMost.mono {m m' : Nat} (h : p.FaultsAtMost m') (hle : m' ≤ m) : p.FaultsAtMost m :=
   le_trans h hle

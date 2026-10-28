@@ -124,6 +124,19 @@ ones: `θ · (|ready| + |faulty|) < |ready|`. -/
 def ReadyAbove (θ : ℚ) (c t : Time) : Prop :=
   θ * ((p.readyAt c t).card + p.faulty.card : ℚ) < (p.readyAt c t).card
 
+/-- The honest validators ready at some time in `[a, b]`. -/
+noncomputable def readyIn (c a b : Time) : Finset V := by
+  classical
+  exact p.honest.filter (fun v => ∃ u, a ≤ u ∧ u ≤ b ∧ p.Ready c v u)
+
+/-- η-sleepy participation at `t` (look-back `η`, a duration): the ready
+honest validators exceed fraction `θ` of those ready at some time in
+`[t − η, t]` together with the faulty ones,
+`θ · |ready_[t−η, t] ∪ faulty| < |ready_t|`. With `η = 0` this is
+`ReadyAbove` (`EnvPoint.etaReadyAbove_zero`). -/
+def EtaReadyAbove (θ : ℚ) (η c t : Time) : Prop :=
+  θ * ((p.readyIn c (t - η) t ∪ p.faulty).card : ℚ) < (p.readyAt c t).card
+
 /-- The honest validators awake at `t`. -/
 noncomputable def awakeAt (t : Time) : Finset V := by
   classical

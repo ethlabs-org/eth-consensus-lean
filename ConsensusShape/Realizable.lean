@@ -12,9 +12,9 @@ public import Mathlib.Tactic
   is eager from `g`. Progress requirements read only the point, the PKI and
   the selection, so whatever progress holds there holds on that run.
 * The extremal selection (`extremalSel`) gives every `.sized m` role (`m`
-  below the population) the keys `1, …, m`, all honest under the extremal PKI
-  (`extremalKey`) when only validator `0` is faulty
-  (`extremalSel_proposers`).
+  below the population) the keys `1, …, m`; a `.sized 1` proposer role selects
+  exactly key `1` (`extremalSel_proposer_mem`), honest when only key `0` is
+  faulty.
 * `Contract.ProgressFits`: a recurrence requirement needs one proposer per
   slot (`.sized 1`).
 * Generic realizability (`regimes_realizable`, `realizable_active`): L0
@@ -101,32 +101,6 @@ theorem extremalSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : 
     ∀ r, ((protoOf (compiled F) E).selSpec r).Admits (extremalSel F E r) :=
   fun _ => extremalKeys_admits _
 
-/-- Under the extremal selection, a proposer selection `.sized m` with
-`1 ≤ m ≤ n` selects the keys `1, …, m`; at a point where validators
-`1, …, m` are honest and always awake, these are honest and ready, and at least
-one is selected. -/
-theorem extremalSel_proposers (F : ShapeFamily O Info) {n m : Nat}
-    (p : EnvPoint (Fin (n + 1))) (hm1 : 1 ≤ m) (hm : m ≤ n)
-    (hF : (F (pubOf p.env)).skel.proposerSel = .sized m)
-    (hp : ∀ v : Fin (n + 1), 1 ≤ v.val → v.val ≤ m → v ∈ p.honest ∧ ∀ t, p.env.awake v t = true) :
-    ∀ s c t, HonestReadyIn p (extremalKey n) (extremalSel F p.env)
-      (ShapeRole.proposer s : ShapeRole (F (pubOf p.env)).skel.Kind) c t := by
-  intro s c t
-  have hN : m < Fintype.card (Fin (n + 1)) := by rw [Fintype.card_fin]; omega
-  have hsel : extremalSel F p.env (ShapeRole.proposer s) =
-      Finset.univ.filter fun k => 1 ≤ k.val ∧ k.val ≤ m := by
-    change extremalKeys (F (pubOf p.env)).skel.proposerSel = _
-    rw [hF]
-    simp only [extremalKeys, hN, ↓reduceIte]
-  unfold HonestReadyIn
-  rw [hsel]
-  refine ⟨⟨⟨1, by omega⟩, by simp [hm1]⟩, ?_⟩
-  intro k hk
-  have hk' := (Finset.mem_filter.mp hk).2
-  have hv : (extremalKey n k).val = k.val := rfl
-  obtain ⟨hh, ha⟩ := hp (extremalKey n k) (by rw [hv]; exact hk'.1) (by rw [hv]; exact hk'.2)
-  exact ⟨hh, hh, fun u _ _ => ha u⟩
-
 /-- The relay is exercised: in a run partially synchronous with a GST at or
 before `start` where every validator is always awake, an active liveness
 witness (`TxLiveActive`) has an honest reader that receives the submitted
@@ -182,12 +156,18 @@ PKI `Fintype.equivFin`; the extremal selection (`.sized 1` proposer roles
 select key `1`, honest and always awake); transaction `42` submitted to
 `key 1` at time `0`, read by `key 2`.
 
-* sleepy and healthy: everyone awake; the healthy witness is the canonical run
-  from the GST `g` (silent before `g`), so recovery from a damaged prefix is
-  exercised;
+* sleepy and healthy: everyone awake (for healthy, the fixed set is all the
+  honest validators, awake throughout); the healthy witness is the canonical
+  run from the GST `g`, whose log has no message receipt before `g` (protocol
+  messages sent before `g` are delivered at `g + Δ` at the earliest;
+  transaction relay is part of the log too). The witness exercises delayed
+  delivery only as far as the family sends messages before `g`;
 * outage: honest `key 2` asleep exactly at `b₀`, so at most two validators
   are not ready at any time; with `n ≥ 5`, `n/2 < n − 2` gives the cover at
-  `b₀` (this is where five validators are needed).
+  `b₀` and η-sleepy participation for every look-back `η` (the look-back set
+  has at most `n` members); this is where five validators are needed. The log
+  is eager from `0`: the outage witness exercises participation (one honest
+  sleeper in the window), not asynchrony.
 
 Thresholds are proved at the standard bounds (`θ ≤ ½`, `φ ≤ ⅔`,
 `cover ≤ ½`), which `Params.Admissible` guarantees. -/
@@ -314,28 +294,10 @@ theorem card_le_readyAt (A : Finset V)
   obtain ⟨hh, ha⟩ := hA v hv
   exact Finset.mem_filter.mpr ⟨hh, hh, fun u _ _ => ha u⟩
 
-/-- A set of honest, always-awake validators is awake at every time. -/
-theorem card_le_awakeAt (A : Finset V)
-    (hA : ∀ v ∈ A, v ∈ (realPoint key hn Δ hΔ awake H).honest ∧ ∀ t, awake v t = true)
-    (t : Time) : A.card ≤ ((realPoint key hn Δ hΔ awake H).awakeAt t).card := by
-  classical
-  apply Finset.card_le_card
-  intro v hv
-  unfold EnvPoint.awakeAt
-  obtain ⟨hh, ha⟩ := hA v hv
-  exact Finset.mem_filter.mpr ⟨hh, ha t⟩
-
 /-- Everyone awake: all honest validators are ready at every time. -/
 theorem allAwake_readyAt (c t : Time) :
     Fintype.card V ≤ ((realPoint key hn Δ hΔ allAwake H).readyAt c t).card + 1 := by
   have := card_le_readyAt key hn hΔ allAwake H _ (fun v hv => ⟨hv, fun _ => rfl⟩) c t
-  have := realPoint_card_honest key hn hΔ allAwake H
-  omega
-
-/-- Everyone awake: all honest validators are awake at every time. -/
-theorem allAwake_awakeAt (t : Time) :
-    Fintype.card V ≤ ((realPoint key hn Δ hΔ allAwake H).awakeAt t).card + 1 := by
-  have := card_le_awakeAt key hn hΔ allAwake H _ (fun v hv => ⟨hv, fun _ => rfl⟩) t
   have := realPoint_card_honest key hn hΔ allAwake H
   omega
 
@@ -379,11 +341,25 @@ theorem readyOfAll_of_card {p : EnvPoint V} {φ : ℚ} (hφ : 0 ≤ φ ∧ φ �
   nlinarith [hφ.1, hφ.2]
 
 include hn in
+/-- The numbers: with `n ≥ 5` and at most two not ready, η-sleepy
+participation `θ ≤ ½` holds for every look-back (the look-back set has at
+most `n` members). -/
+theorem etaReadyAbove_of_card {p : EnvPoint V} {θ : ℚ} (hθ : 0 ≤ θ ∧ θ ≤ 1 / 2) (η c t : Time)
+    (hr : Fintype.card V ≤ (p.readyAt c t).card + 2) : p.EtaReadyAbove θ η c t := by
+  unfold EnvPoint.EtaReadyAbove
+  have hs : ((p.readyIn c (t - η) t ∪ p.faulty).card : ℚ) ≤ (Fintype.card V : ℚ) := by
+    exact_mod_cast Finset.card_le_univ _
+  have hr' : ((Fintype.card V : Nat) : ℚ) ≤ ((p.readyAt c t).card : ℚ) + 2 := by exact_mod_cast hr
+  have hn' : (5 : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast hn
+  nlinarith [hθ.1, hθ.2]
+
+include hn in
 omit [DecidableEq V] in
-theorem awakeOfAll_of_card {p : EnvPoint V} {φ : ℚ} (hφ : 0 ≤ φ ∧ φ ≤ 2 / 3) (t : Time)
-    (hr : Fintype.card V ≤ (p.awakeAt t).card + 1) : p.AwakeOfAll φ t := by
-  unfold EnvPoint.AwakeOfAll
-  have hr' : ((Fintype.card V : Nat) : ℚ) ≤ ((p.awakeAt t).card : ℚ) + 1 := by exact_mod_cast hr
+/-- The numbers: with `n ≥ 5` and one validator not in `A`, `φ ≤ ⅔` gives
+`φ·n < |A|`. -/
+theorem lt_card_of_card {A : Finset V} {φ : ℚ} (hφ : 0 ≤ φ ∧ φ ≤ 2 / 3)
+    (hr : A.card + 1 = Fintype.card V) : φ * Fintype.card V < (A.card : ℚ) := by
+  have hr' : (A.card : ℚ) + 1 = ((Fintype.card V : Nat) : ℚ) := by exact_mod_cast hr
   have hn' : (5 : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast hn
   nlinarith [hφ.1, hφ.2]
 
@@ -514,8 +490,9 @@ theorem sleepy_witness (ha : K.params.Admissible) (hf : K.ProgressFits F) (cap :
     change max 0 0 + Δ + K.params.latDur Δ cap i ≤ H
     simp only [max_self, zero_add]; linarith
 
-/-- The healthy witness at GST `g ≥ 0`: everyone awake, the canonical run from
-`g` (no receipt before `g`), horizon `H` long enough for one liveness deadline
+/-- The healthy witness at GST `g`: everyone awake (the fixed healthy set is
+all the honest validators), the canonical run from `g` (no receipt before
+`g`), horizon `H` long enough for one liveness deadline
 after the heal point, two cuts after it, and one progress window from
 `readyFrom`. -/
 theorem healthy_witness (ha : K.params.Admissible) (hf : K.ProgressFits F) (cap : Capability)
@@ -552,8 +529,9 @@ theorem healthy_witness (ha : K.params.Admissible) (hf : K.ProgressFits F) (cap 
   · change (realPoint key hn Δ hΔ allAwake H).faulty.Nonempty
     rw [realPoint_faulty]; exact Finset.singleton_nonempty _
   · exact ⟨_, realPoint_honest key hn hΔ allAwake H (j := 1) (by decide) (by decide)⟩
-  · intro t _ _
-    exact awakeOfAll_of_card hn ha.φ_range t (allAwake_awakeAt key hn hΔ H t)
+  · exact ⟨_, subset_rfl,
+      lt_card_of_card hn ha.φ_range (realPoint_card_honest key hn hΔ allAwake H),
+      fun _ _ _ _ _ => rfl⟩
   · change max (readyFrom (K.params.cDur Δ) g) 0 +
       progLen F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V) ≤ H
     rw [max_eq_left hrdy]; exact h3
@@ -600,9 +578,7 @@ theorem outage_witness (ha : K.params.Admissible) {T b₀ b₁ : Time}
   · exact (Model.sysOf_delivers_iff (O := O) rho _ _).mpr
       (he.syncUntil (Model.Run.log_sendsFromZero rho hv) le_rfl b₀)
   · intro t _ _
-    refine readyAbove_of_card hn ha.θ_range _ t ?_ (sleepAt_readyAt key hn hΔ H b₀ _ t)
-    change (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).faulty.card = 1
-    rw [realPoint_faulty]; rfl
+    exact etaReadyAbove_of_card hn ha.θ_range _ _ t (sleepAt_readyAt key hn hΔ H b₀ _ t)
   · exact readyOfAll_of_card hn ha.cover_range _ b₀ (sleepAt_readyAt key hn hΔ H b₀ _ b₀)
 
 end Witnesses

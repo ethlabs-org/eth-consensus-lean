@@ -16,11 +16,17 @@ public import Mathlib.Tactic
   of `Good.sleepySafe_prefix` at `b = 1` (`SyncUntil 1`, sleepy on `[0, 1]`)
   but is not partially synchronous with GST `0`, so the full-run sleepy
   regime (and `DAClaims.sleepySafe`) does not apply.
-* `healthy_rotating_sleeper` (review Astra B5): four honest validators, one of
-  them asleep at each time in turn. More than ⅔ are honest and awake at every
-  time (`HealthyFrom ⅔ 0`), while with catch-up `3` nobody is ready from time
-  `3` on: the healthy regime counts awake validators, readiness restricts only
-  readers and progress. -/
+* `healthy_rotating_sleeper` (review Astra B5, iteration 6 stage 4 B2): four
+  honest validators, one of them asleep at each time in turn. More than ⅔ are
+  honest and awake at every time, but no validator is awake throughout, so the
+  healthy regime (one fixed set awake throughout, no churn) is **rejected**;
+  with catch-up `3` nobody is ready from time `3` on.
+* `eta_sleepy_history_sensitive` (stage 4 B1): the same rotation with
+  catch-up `0` is plain ½-sleepy at every time, but not ½-η-sleepy with
+  look-back `2` (at time `4` two validators are ready, all four were ready in
+  `[2, 4]`): the outage regime's participation is history-sensitive.
+* `stable_alias_final_sleepy_live` (override 3): a schema that aliases stable
+  to final must make the final output live in the sleepy regime. -/
 
 namespace Consensus.Shape.Tests.Good
 
@@ -151,14 +157,26 @@ theorem rotPoint_awake_card (t : Int) : (rotPoint.awakeAt t).card = 3 := by
   rw [this, Finset.card_erase_of_mem (Finset.mem_univ _)]
   rfl
 
-/-- Healthy at ⅔ from time `0` (three of four awake at every time), while
-with catch-up `3` nobody is ready from time `3` on. -/
+/-- More than ⅔ honest and awake at every time, yet not healthy from `0`: every
+validator sleeps at some time in `[0, 10]`, so no fixed set stays awake (no
+churn allowed). With catch-up `3` nobody is ready from time `3` on. -/
 theorem healthy_rotating_sleeper :
-    rotPoint.HealthyFrom (2 / 3) 0 ∧ ∀ t, 3 ≤ t → rotPoint.readyAt 3 t = ∅ := by
-  refine ⟨fun t _ _ => ?_, fun t ht => ?_⟩
+    (∀ t, rotPoint.AwakeOfAll (2 / 3) t) ∧ ¬ rotPoint.HealthyFrom (2 / 3) 0 ∧
+      ∀ t, 3 ≤ t → rotPoint.readyAt 3 t = ∅ := by
+  refine ⟨fun t => ?_, ?_, fun t ht => ?_⟩
   · unfold EnvPoint.AwakeOfAll
     rw [rotPoint_awake_card]
     norm_num
+  · rintro ⟨H, -, hc, ha⟩
+    have hne : H.Nonempty := by
+      rw [← Finset.card_pos]
+      have : (0 : ℚ) < H.card := lt_of_le_of_lt (by positivity) hc
+      exact_mod_cast this
+    obtain ⟨v, hv⟩ := hne
+    have hv4 : (v : Nat) < 4 := v.isLt
+    have hu := ha v hv ((v : Nat) : Int) (by simp) (by change _ ≤ (10 : Int); omega)
+    simp [rotPoint] at hu
+    exact hu (Int.emod_eq_of_lt (by positivity) (by omega))
   · classical
     unfold EnvPoint.readyAt
     apply Finset.filter_false_of_mem
@@ -174,7 +192,84 @@ theorem healthy_rotating_sleeper :
     simp only [rotPoint, decide_eq_true_eq] at hu
     exact hu (a3 t _ hv0 hv4)
 
+theorem rotPoint_faulty : rotPoint.faulty = ∅ := by
+  unfold EnvPoint.faulty rotPoint; simp
+
+/-- The rotation with catch-up `0` is plain ½-sleepy on `[0, 10]` (some
+validator is ready at every time), but not ½-η-sleepy with look-back `2`: at
+time `4` only validators `1` and `2` are ready, while all four were ready at
+some time in `[2, 4]`. -/
+theorem eta_sleepy_history_sensitive :
+    rotPoint.SleepyOn (1 / 2) 0 0 10 ∧ ¬ rotPoint.EtaSleepyOn (1 / 2) 2 0 0 10 := by
+  classical
+  refine ⟨fun t ht0 _ => ?_, fun h => ?_⟩
+  · have hne : (rotPoint.readyAt 0 t).Nonempty := by
+      refine ⟨⟨((t + 1) % 4).toNat, by omega⟩, ?_⟩
+      unfold EnvPoint.readyAt
+      refine Finset.mem_filter.mpr ⟨Finset.mem_univ _, Finset.mem_univ _, fun u h1 h2 => ?_⟩
+      simp only [rotPoint, decide_eq_true_eq, ne_eq]
+      dsimp only [Time] at *
+      omega
+    have hc : (0 : ℚ) < (rotPoint.readyAt 0 t).card := by exact_mod_cast hne.card_pos
+    unfold EnvPoint.ReadyAbove
+    rw [rotPoint_faulty, Finset.card_empty]
+    push_cast
+    linarith
+  · have h4 := h 4 (by norm_num) (by norm_num)
+    unfold EnvPoint.EtaReadyAbove at h4
+    have hin : rotPoint.readyIn 0 (4 - 2) 4 ∪ rotPoint.faulty = Finset.univ := by
+      rw [rotPoint_faulty, Finset.union_empty]
+      apply Finset.eq_univ_of_forall
+      intro v
+      unfold EnvPoint.readyIn
+      refine Finset.mem_filter.mpr ⟨Finset.mem_univ _, ?_⟩
+      fin_cases v
+      · exact ⟨2, by norm_num, by norm_num, Finset.mem_univ _, fun u h1 h2 => by
+          simp only [rotPoint, decide_eq_true_eq, ne_eq]; simp at h1 ⊢
+          dsimp only [Time] at *; omega⟩
+      · exact ⟨4, by norm_num, le_rfl, Finset.mem_univ _, fun u h1 h2 => by
+          simp only [rotPoint, decide_eq_true_eq, ne_eq]; simp at h1 ⊢
+          dsimp only [Time] at *; omega⟩
+      · exact ⟨4, by norm_num, le_rfl, Finset.mem_univ _, fun u h1 h2 => by
+          simp only [rotPoint, decide_eq_true_eq, ne_eq]; simp at h1 ⊢
+          dsimp only [Time] at *; omega⟩
+      · exact ⟨2, by norm_num, by norm_num, Finset.mem_univ _, fun u h1 h2 => by
+          simp only [rotPoint, decide_eq_true_eq, ne_eq]; simp at h1 ⊢
+          dsimp only [Time] at *; omega⟩
+    have hat : rotPoint.readyAt 0 4 ⊆ {1, 2} := by
+      intro v hv
+      unfold EnvPoint.readyAt at hv
+      obtain ⟨-, -, hA⟩ := Finset.mem_filter.mp hv
+      have h3 := hA 3 (by norm_num) (by norm_num)
+      have h4' := hA 4 (by norm_num) le_rfl
+      simp only [rotPoint, decide_eq_true_eq, ne_eq] at h3 h4'
+      fin_cases v <;> simp_all
+    have hcard : (rotPoint.readyAt 0 4).card ≤ 2 :=
+      (Finset.card_le_card hat).trans (by decide)
+    rw [hin, Finset.card_univ, Fintype.card_fin] at h4
+    have : ((rotPoint.readyAt 0 4).card : ℚ) ≤ 2 := by exact_mod_cast hcard
+    norm_num at h4
+    linarith
+
 end Rotating
+
+section Alias
+
+variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
+  {X : Progress S Prog} {K : Contract S.schema Prog}
+
+/-- Stable aliased to final (override 3): if a good system's stable and final
+outputs are the same identifier, the final output is live in the sleepy
+regime. So a schema with `stable := final` is good only if its final output is
+sleepy-live. -/
+theorem stable_alias_final_sleepy_live (h : Good S X K) {g : S.schema.Id}
+    (hs : S.schema.output .stable = some g) (_hf : S.schema.output .final = some g)
+    (i : K.Idx) :
+    S.Holds (fun r => S.Sleepy K r ∧ S.prog X K .stable i 0 (S.pt r).horizon r)
+      (fun r => (S.trace r).TxLive (S.cDur K r) g 0 (S.lat K .stable i r)) :=
+  (h.behaviour.da .stable g (Or.inr rfl) hs).sleepyLive i
+
+end Alias
 
 end Consensus.Shape.Tests.Good
 

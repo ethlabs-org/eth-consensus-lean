@@ -301,14 +301,13 @@ theorem final_agree (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .fi
   ((h.behaviour.final g hg).accountable r hv trivial).imp
     (fun ha => S.agree_of_accountable h.behaviour.laws r ha (h.behaviour.nonFraming r hv) hb) id
 
-/-- Final safety in the healthy regime: more than `φ·n` honest and awake bounds
-the faults below `1 − φ ≤ α`. -/
+/-- Final safety in the healthy regime: a set of more than `φ·n` honest
+validators bounds the faults below `1 − φ ≤ α`. -/
 theorem final_safe_healthy (h : Good S X K) {g : S.schema.Id}
     (hg : S.schema.output .final = some g) (r : S.Run) (hv : S.Valid r) {gst : Time}
-    (hH : S.Healthy K gst r) (hh : max gst 0 ≤ (S.pt r).horizon) :
-    (S.trace r).Safe g 0 ∨ S.Excuse r := by
+    (hH : S.Healthy K gst r) : (S.trace r).Safe g 0 ∨ S.Excuse r := by
   have hb : (S.pt r).FaultsBelow K.params.α :=
-    (hH.2.faultsBelow hh).mono _ h.behaviour.admissible.α_range.1
+    hH.2.faultsBelow.mono _ h.behaviour.admissible.α_range.1
   exact (h.final_agree hg r hv hb).imp (fun ha => ⟨ha, h.behaviour.finalMonotone g hg r hv⟩) id
 
 /-- Through an outage, what a node ready at `T` read as stable is compatible
@@ -397,7 +396,7 @@ theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
 
 /-- Outage resilience of the past: a run in the outage regime up to `b`
 (synchronous for deadlines up to `b₀`, partially synchronous with GST `b₁` up
-to `b`, sleepy on `[0, b]`, covered at `b₀`) keeps what nodes ready at `T` read
+to `b`, η-sleepy on `[0, b]`, covered at `b₀`) keeps what nodes ready at `T` read
 as stable, at reading times in `[b₀, b]`, whatever happens after `b`. -/
 theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
     (hg : S.schema.output .stable = some g) (r : S.Run) (hv : S.Valid r)
@@ -405,7 +404,7 @@ theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
     (hT : OutageTimes K.params (S.pt r).env.Δ T b₀ b₁)
     (hs : (S.log r).SyncUntil (S.pt r) b₀)
     (hps : (S.log r).Delivers (S.pt r) (fun a => max a b₁ + (S.pt r).env.Δ) b)
-    (hθ : (S.pt r).SleepyOn K.params.θ (S.cDur K r) 0 b)
+    (hθ : (S.pt r).EtaSleepyOn K.params.θ (K.params.ηDur (S.pt r).env.Δ) (S.cDur K r) 0 b)
     (hcov : (S.pt r).ReadyOfAll K.params.cover (S.cDur K r) b₀) :
     (S.trace r).ProtectedUpTo (S.cDur K r) g (resilienceTarget S.schema g) T b₀ b₁ b ∨
       S.Excuse r := by

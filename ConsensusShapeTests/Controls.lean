@@ -9,21 +9,27 @@ The regimes of the L0 table are met by concrete runs, so no refutation in the
 other test modules comes from a regime that no run can meet, and `Good` is
 not vacuous at concrete numbers. A family with the Goldilocks skeleton that
 does nothing (`ctrlFamily`), at standard thresholds with catch-up, arming lag
-and outage budget `1`, heal and latency `1` (`ctrlParams`; arbitrary numbers
-that test the regimes only, not Goldilocks performance bounds), index `k = 1`,
+and outage budget `1`, outage look-back `η = 2`, heal and latency `1`
+(`ctrlParams`; arbitrary numbers that test the regimes only, not Goldilocks
+performance bounds), index `k = 1`,
 five validators (`key 0` faulty), `Δ = 1`, horizon `20`:
 
 * `positive_controls`, for every capability:
   - sleepy: everyone awake, the synchronous canonical run; the progress
-    requirement holds with a window inside the horizon, liveness is active
+    requirement holds with a window inside the horizon (`ProgressActive`),
+    liveness is active
     (transaction `42` submitted to `key 1` at `0`, read by `key 2`), and the
     transaction reaches `key 2` by network relay, never by submission;
-  - healthy at GST `5`: everyone awake, a log **silent before `5`** (no
-    receipt at all before the GST: the damaged prefix is total), progress
-    from `readyFrom`, liveness and safety active after the heal point.
+  - healthy at GST `5`: everyone awake (the fixed healthy set is all the
+    honest validators), a log with **no receipt before `5`**, progress from
+    `readyFrom` with a window inside the horizon, liveness and safety active
+    after the heal point. The do-nothing family sends no protocol messages,
+    so this control does not distinguish delayed from eager delivery of
+    protocol messages; it shows the regime is met with nothing received
+    before the GST.
 * `outage_control`: `T = 1 < b₀ = 3 < b₁ = 4`, honest `key 2` asleep at `3`,
-  outage regime and active outage (a protected source, a sleeper inside the
-  window, an eligible reader).
+  outage regime (η-sleepy with look-back `2`) and active outage (a protected
+  source, a sleeper inside the window, an eligible reader).
 
 All witnesses are the generic ones of `regimes_realizable`
 (`sleepy_witness`, `healthy_witness`, `outage_witness`) at explicit
@@ -58,17 +64,20 @@ def ctrlShape (pub : Public) : ChainShape pub GOut Unit where
 /-- The control family. -/
 def ctrlFamily : ShapeFamily goldilocksSchema Unit := ctrlShape
 
-/-- Standard thresholds; catch-up, arming lag and outage budget `1`; heal and
-latency `1` for every capability and index. -/
-def ctrlParams : Params ℕ+ := Params.standard 1 1 1 (fun _ _ => 1) (fun _ _ => 1)
+/-- Standard thresholds; catch-up, arming lag and outage budget `1`; outage
+look-back `η = 2`; heal and latency `1` for every capability and index. -/
+def ctrlParams : Params ℕ+ :=
+  { Params.standard 1 1 1 (fun _ _ => 1) (fun _ _ => 1) with η := 2 }
 
 /-- The control contract: the interim Goldilocks contract at `ctrlParams`,
 finality pattern `range 2`. -/
 abbrev ctrlK : Contract goldilocksSchema ProgressReq :=
   goldilocksContract ctrlParams (Pattern.range 2)
 
-theorem ctrlK_admissible : ctrlK.params.Admissible :=
-  Params.standard_admissible le_rfl le_rfl
+theorem ctrlK_admissible : ctrlK.params.Admissible := by
+  have h := Params.standard_admissible (Idx := ℕ+) (catchUp := 1) (lag := 1) (budget := 1)
+    (heal := fun _ _ => 1) (latency := fun _ _ => 1) le_rfl le_rfl
+  exact ⟨h.1, h.2, h.3, h.4, h.5, h.6⟩
 
 theorem ctrlK_progressFits : ctrlK.ProgressFits ctrlFamily :=
   goldilocksContract_progressFits _ _ _ fun _ => rfl
@@ -107,33 +116,34 @@ theorem progLen_nonneg' (cap : Capability) :
 before `5`), for every capability at index `1`. -/
 theorem positive_controls (cap : Capability) :
     (∃ r : S.Run, S.pt r = ptA ∧ S.Witness r ∧ S.Sleepy ctrlK r ∧
-      S.prog X ctrlK cap k1 0 (S.pt r).horizon r ∧
+      S.prog X ctrlK cap k1 0 (S.pt r).horizon r ∧ ProgressActive ctrlFamily ctrlK cap k1 0 r.2 ∧
       (S.trace r).TxLiveActive (S.cDur ctrlK r) 0 (S.lat ctrlK cap k1 r) ∧
       ∃ x, ∃ w ∈ r.2.honest, (∀ τ, x ∉ r.2.submit w τ) ∧ ∃ τ, 0 ≤ τ ∧ x ∈ r.2.relay w τ) ∧
     (∃ r : S.Run, S.pt r = ptA ∧ S.Witness r ∧
       (∀ w m t, (S.log r).recv w m t → 5 ≤ t) ∧ (S.log r).EagerFrom (S.pt r) 5 ∧
       S.Healthy ctrlK 5 r ∧ S.prog X ctrlK cap k1 (S.ready ctrlK 5 r) (S.pt r).horizon r ∧
+      ProgressActive ctrlFamily ctrlK cap k1 (S.ready ctrlK 5 r) r.2 ∧
       (S.trace r).TxLiveActive (S.cDur ctrlK r) (S.heal ctrlK cap k1 5 r) (S.lat ctrlK cap k1 r) ∧
       SafeActive (S.cDur ctrlK r) (S.heal ctrlK cap k1 5 r) (S.pt r)) := by
   have hL := progLen_le cap
   have hL0 := progLen_nonneg' cap
   have hlat : ctrlK.params.latDur 1 cap k1 = 1 := by cases cap <;> rfl
   constructor
-  · obtain ⟨rho, hpt, -, hw, hs, hp, -, ht⟩ :=
+  · obtain ⟨rho, hpt, -, hw, hs, hp, hpa, ht⟩ :=
       sleepy_witness (F := ctrlFamily) key5 card5 one_pos 20 ctrlK_admissible ctrlK_progressFits
         cap k1 (by rw [hlat]; linarith)
-    refine ⟨⟨_, rho⟩, hpt, hw, hs, hp, ht, ?_⟩
+    refine ⟨⟨_, rho⟩, hpt, hw, hs, hp, hpa, ht, ?_⟩
     have hps : CommLog.PSync rho.point rho.log 0 :=
       (Model.sysOf_delivers_iff (O := goldilocksSchema) rho _ _).mp hs.1
     exact active_relay rho hps le_rfl (mul_nonneg (Nat.cast_nonneg _) (Env.Δ_pos _).le)
       (fun _ _ => rfl) ht
   · have hheal : ctrlK.params.healPoint 1 cap k1 5 = 6 := by cases cap <;> rfl
     have hrdy : readyFrom (ctrlK.params.cDur 1) 5 = 7 := by decide
-    obtain ⟨rho, hpt, -, hw, he, hH, hp, -, ht, hsa⟩ :=
+    obtain ⟨rho, hpt, -, hw, he, hH, hp, hpa, ht, hsa⟩ :=
       healthy_witness (F := ctrlFamily) key5 card5 one_pos 20 ctrlK_admissible
         ctrlK_progressFits cap k1 5 (by rw [hheal, hlat]; norm_num) (by rw [hheal]; norm_num)
         (by rw [hrdy]; linarith)
-    exact ⟨⟨_, rho⟩, hpt, hw, he.quiet, he, hH, hp, ht, hsa⟩
+    exact ⟨⟨_, rho⟩, hpt, hw, he.quiet, he, hH, hp, hpa, ht, hsa⟩
 
 /-- The control family meets L0 `Realizable` at the control contract (the
 generic theorem at concrete numbers). -/

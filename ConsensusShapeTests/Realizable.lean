@@ -19,8 +19,9 @@ public import Mathlib.Tactic
 * `noProgressFit`: a recurrence on a poll skeleton (no slot proposers) does
   not fit; `notReadyAtMost_fits` (round robin) fits every skeleton.
 * Rotating sleeper (review 3b B1): four honest validators, a different one
-  asleep at each tick, catch-up `3`: healthy at ⅔ from `0`, yet nobody is
-  ready from `3` on. `rotating_notReadyOn_false`: the not-ready bound fails
+  asleep at each tick, catch-up `3`: more than ⅔ awake at every tick
+  (but not healthy: no fixed set stays awake), and nobody is ready from
+  `3` on. `rotating_notReadyOn_false`: the not-ready bound fails
   for `m < 4` (nobody is ready); `rotating_notReadyOn_trivial`: it holds
   trivially for `m ≥ 4`;
   `rotating_proposalLive_vacuous`: the reader-conditional liveness the shape
@@ -145,7 +146,7 @@ theorem rotating_notReadyOn_false {m : Nat} (hm : m < 4) {start stop : Time}
     (hs : max start 0 ≤ 3) (he : 3 ≤ stop) : ¬ NotReadyOn rotPoint m 3 start stop := by
   intro h
   have hne := h.readyAt_nonempty (by simpa using hm) hs he (by decide)
-  rw [healthy_rotating_sleeper.2 3 le_rfl] at hne
+  rw [healthy_rotating_sleeper.2.2 3 le_rfl] at hne
   exact Finset.not_nonempty_empty hne
 
 /-- From the validator count on (`m ≥ 4`) the bound holds trivially, even on
@@ -170,7 +171,7 @@ theorem rotating_proposalLive_vacuous {O : OutputSchema} {Info : Type} [Decidabl
     classical
     unfold EnvPoint.readyAt
     exact Finset.mem_filter.mpr ⟨hv.1, hv⟩
-  rw [healthy_rotating_sleeper.2 t (by linarith)] at hmem
+  rw [healthy_rotating_sleeper.2.2 t (by linarith)] at hmem
   exact Finset.notMem_empty _ hmem
 
 end Rotating
