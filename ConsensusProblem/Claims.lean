@@ -15,8 +15,8 @@ What this layer cannot check: that the profile is realistic and nonvacuous,
 that the excuse is meaningful, that `convicts` means misbehaviour. The model
 layer fixes the excuse and evidence (and proves every execution premise
 satisfiable, `canonical_run`); the shape layer fixes the profile. Satisfiability
-of the shape profiles is shown by positive controls (tests), not yet by a
-general theorem. -/
+of the shape profiles, with active service guards, is proved by
+`Consensus.Shape.profile_realizable`. -/
 
 namespace Consensus
 
@@ -38,9 +38,8 @@ structure Profile (S : System V) where
   sleepy : S.Run → Prop
   /-- For transaction liveness, with recurrence gap `k`. -/
   live : Nat → S.Run → Prop
-  /-- Outage `[b₀, b₁)` after a protected read at `T`, and its fast variant. -/
+  /-- An outage `[b₀, b₁)` after a protected read at `T`. -/
   outage : Time → Time → Time → S.Run → Prop
-  outageFast : Time → Time → Time → S.Run → Prop
   /-- Recovery after GST, with recurrence gap `k`. -/
   recovery : Nat → S.Run → Prop
   /-- Finality after GST, with recurrence gap `k`. -/
@@ -81,8 +80,6 @@ structure ProblemClaims (S : System V) (Prof : Profile S) (B : Bounds) : Prop wh
   /-- Persistence through an outage. -/
   stablePersists : ∀ T b₀ b₁, S.Holds (Prof.outage T b₀ b₁)
     (fun r => (S.trace r).PersistsThrough (S.dur r B.catchUp) .stable T b₀ b₁)
-  stablePersistsFast : ∀ T b₀ b₁, S.Holds (Prof.outageFast T b₀ b₁)
-    (fun r => (S.trace r).PersistsThrough (S.dur r B.catchUp) .stable T b₀ b₁)
   /-- Recovered safety, for ready readers. -/
   recovered : ∀ k, S.Holds (Prof.recovery k)
     (fun r => (S.trace r).ReadySafe (S.dur r B.catchUp) .confirmed
@@ -107,12 +104,13 @@ theorem agree_of_accountable (S : System V) (hL : S.Laws) (r : S.Run) {g : Out} 
     have hsub : S.convicted r (S.view r u i ∪ S.view r v j) ⊆ (S.trace r).point.faulty := by
       intro x hx
       have hx' : S.convicts r (S.view r u i ∪ S.view r v j) x := by
-        unfold convicted at hx; simpa using hx
+        unfold convicted Consensus.convicted at hx; simpa using hx
       refine Finset.mem_sdiff.mpr ⟨Finset.mem_univ x, fun hxh => hnf x hxh ?_⟩
       refine hL.convicts_mono r _ _ x ?_ hx'
       rintro o (ho | ho)
       · exact ⟨u, hu, hL.view_mono r u i _ hi.2 ho⟩
       · exact ⟨v, hv, hL.view_mono r v j _ hj.2 ho⟩
+    change Fintype.card V ≤ 3 * (S.convicted r (S.view r u i ∪ S.view r v j)).card at hcard
     have := Finset.card_le_card hsub
     unfold EnvPoint.BelowOneThird at hb
     omega

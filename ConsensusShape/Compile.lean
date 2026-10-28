@@ -5,7 +5,6 @@ public import ConsensusModel.System
 @[expose] public section
 
 namespace Consensus.Shape
-open AvailableChain (Slot)
 
 def encodeTxs (xs : List Nat) : Nat := Encodable.encode xs
 

@@ -4,7 +4,6 @@ public import ConsensusShape.Run
 
 /-! Block properties at event cuts and end-of-time cuts, using the shape chain getters. -/
 namespace Consensus.Shape
-open AvailableChain (Slot)
 open Model
 
 variable {V : Type} [Fintype V] [DecidableEq V] [Nonempty V] {F : Family} {E : Env V}
@@ -52,15 +51,6 @@ def LiveFrom (C : Constants) (g : Output F E) (t₀ : Time) (c : Nat) : Prop :=
         rho.point.Ready ((C.catchUp : Time) * E.Δ) w (t + (c : Time) * E.Δ) →
         Chain.Prec (readChainOut rho g v t)
           (Chain.upTo h (readChainOut rho g w (t + (c : Time) * E.Δ)))
-
-noncomputable def slashedBy (A : Set (compile (protoOf F E)).Object) : Finset V := by
-  classical
-  exact Finset.univ.filter (rho.Slashable A)
-
-def AccountablySafeFrom (g : Output F E) (t₀ : Time) : Prop :=
-  ∀ u ∈ rho.honest, ∀ v ∈ rho.honest, ∀ i j, InCuts rho t₀ i → InCuts rho t₀ j →
-    Chain.Compatible (readChainIdx rho g u i) (readChainIdx rho g v j) ∨
-      Fintype.card V ≤ 3 * (slashedBy rho (rho.ViewIdx u i ∪ rho.ViewIdx v j)).card
 
 end Run
 

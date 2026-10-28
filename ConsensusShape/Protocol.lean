@@ -3,7 +3,6 @@ public import ConsensusShape.Objects
 @[expose] public section
 
 namespace Consensus.Shape
-open AvailableChain (Slot)
 open Consensus.Model (Public)
 
 /-- Full committees have `n` seats. Proposal labels have one seat when `n > 0`

@@ -4,7 +4,6 @@ public import ConsensusShape.Constants
 @[expose] public section
 
 namespace Consensus.Shape
-open AvailableChain (Slot)
 open Model
 
 abbrev compiled (F : Family) : Model.Family := fun pub => compile (F pub)

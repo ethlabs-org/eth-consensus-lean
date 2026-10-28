@@ -17,21 +17,6 @@ namespace Consensus.Model
 
 variable {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
 
-/-- A public time is a nonnegative multiple of `Δ`. -/
-def PublicTime (E : Env V) (t : Time) : Prop := ∃ k : Nat, t = (k : Time) * E.Δ
-
-/-- `v` wakes at `t`: awake at `t`, asleep at `t − 1`. -/
-def Wakes (E : Env V) (v : V) (t : Time) : Prop :=
-  E.awake v t = true ∧ E.awake v (t - 1) = false
-
-/-- `v` is awake on `[a, b)`. -/
-def AwakeOn (E : Env V) (v : V) (a b : Time) : Prop :=
-  ∀ u, a ≤ u → u < b → E.awake v u = true
-
-/-- `v` is awake on `[a, b]`. -/
-def AwakeOnClosed (E : Env V) (v : V) (a b : Time) : Prop :=
-  ∀ u, a ≤ u → u ≤ b → E.awake v u = true
-
 namespace Run
 
 variable (rho : Run F E)

@@ -2,13 +2,13 @@ module
 public import Mathlib.Data.List.Basic
 public import Mathlib.Logic.Encodable.Basic
 public import ConsensusModel.Protocol
-public import AvailableChainModel.Objects.Identifiers
-public import AvailableChainModel.Objects.Time
 @[expose] public section
 
 /-! Headers and chains for the shape layer. Wire objects are those of ConsensusModel. -/
 namespace Consensus.Shape
-open AvailableChain (Slot)
+
+/-- A slot index. -/
+abbrev Slot := Nat
 
 /-- A block header. It names its parent by digest. `input` is the application
 input of the proposal; `aux` is protocol data (for example an encoding of the
@@ -41,9 +41,6 @@ def Preceq (c d : Chain) : Prop := c <+: d
 
 /-- `c ≺ d`: a strict prefix. -/
 def Prec (c d : Chain) : Prop := c <+: d ∧ c ≠ d
-
-/-- Two chains are on one branch. -/
-def Compatible (c d : Chain) : Prop := c <+: d ∨ d <+: c
 
 /-- Each header names the previous one (genesis, digest `0`, for the first). -/
 def LinkedFrom (hash : Header → Nat) : Nat → Chain → Prop

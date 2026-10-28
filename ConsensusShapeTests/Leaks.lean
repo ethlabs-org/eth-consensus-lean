@@ -7,7 +7,6 @@ public import ConsensusModelProofs.Lift
 namespace Consensus.Shape.Tests
 open Model
 open Run
-open AvailableChain (Slot)
 
 def env : Env (Fin 1) := ⟨1, by decide, 0, fun _ _ => true⟩
 
@@ -68,6 +67,14 @@ theorem majority {F : Family} (h : Time)
   unfold EnvPoint.ReadyMajority
   rw [hr]
   norm_num [EnvPoint.faulty, run, Model.mkRun, Model.Run.point]
+
+/-- Reserved digest zero makes even one observed item an escaped run. -/
+theorem hash_escape_needed {V : Type} [Fintype V] [DecidableEq V]
+    {F : Model.Family} {E : Env V} (r : Model.Run F E)
+    (hz : r.hash = fun _ => 0) (observed : ∃ x, r.ObservedItem x) :
+    r.HashCollision := by
+  obtain ⟨x, hx⟩ := observed
+  exact Or.inr ⟨x, hx, by rw [hz]⟩
 
 theorem empty_outputs (proposal : Bool) : ∀ C, ¬ ShapeClaims (family proposal false false) C := by
   intro C claims

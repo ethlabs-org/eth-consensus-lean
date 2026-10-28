@@ -1,6 +1,6 @@
 module
 public import ConsensusShape.Problem
-public import ConsensusShape.Transfer
+public import ConsensusProblem.Transfer
 public import ConsensusShape.Payload
 public import ConsensusModelProofs.Laws
 @[expose] public section
@@ -80,7 +80,7 @@ theorem refinement (C : Constants) : RefinementStatement F C V := by
         congr 1
         apply Finset.ext
         intro x
-        simp only [System.convicted, slashedBy, Finset.mem_filter, Finset.mem_univ, true_and]
+        simp only [Consensus.convicted, Finset.mem_filter, Finset.mem_univ, true_and]
         constructor
         · rintro ⟨o, ho, o', ho', h₁, h₂, h₃⟩
           refine ⟨o, ?_, o', ?_, h₁, h₂, h₃⟩
@@ -118,11 +118,9 @@ theorem refinement (C : Constants) : RefinementStatement F C V := by
   · rintro T b₀ b₁ ⟨E, rho⟩ _ ha
     try dsimp only []
     simp only [ledgerTrace]
-    exact (hc.stableResilient V E rho T b₀ b₁ ha).imp (fun h => h.map ledgerOf_prefix) id
-  · rintro T b₀ b₁ ⟨E, rho⟩ _ ha
-    try dsimp only []
-    simp only [ledgerTrace]
-    exact (hc.stableResilientFast V E rho T b₀ b₁ ha).imp (fun h => h.map ledgerOf_prefix) id
+    rcases ha with ha | ha
+    · exact (hc.stableResilient V E rho T b₀ b₁ ha).imp (fun h => h.map ledgerOf_prefix) id
+    · exact (hc.stableResilientFast V E rho T b₀ b₁ ha).imp (fun h => h.map ledgerOf_prefix) id
   · rintro k ⟨E, rho⟩ _ ha
     try dsimp only []
     simp only [ledgerTrace]

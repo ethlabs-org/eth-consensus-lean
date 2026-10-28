@@ -5,7 +5,6 @@ public import ConsensusShape.Regimes
 /-! Block-level obligations over the compiled model. Escaped fields use the model
 collision predicate; unconditional fields assume ExecutionValid. -/
 namespace Consensus.Shape
-open AvailableChain (Slot)
 open Model
 open Run
 
@@ -29,7 +28,7 @@ structure ShapeClaims (F : Family) (C : Constants) : Prop where
   honestNeverSlashed : AllRuns F fun _ rho => rho.ExecutionValid →
     rho.HonestNeverSlashed
   finalizedAccountable : AllRuns F fun _ rho => rho.ExecutionValid →
-    (AccountablySafeFrom rho (protoOf F _).finalized 0) ∨ rho.HashCollision
+    ((chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable .finalized 0) ∨ rho.HashCollision
   confirmedSafe : AllRuns F fun _ rho => Sleepy rho C →
     ((chainTrace rho).Safe .confirmed 0) ∨ rho.HashCollision
   stableSafe : AllRuns F fun _ rho => Sleepy rho C →

@@ -8,7 +8,6 @@ data, the constants and generic execution facts (`ExecutionValid`, delivery):
 never a protocol-supplied word. Participation counts ready nodes (awake through
 the catch-up window). -/
 namespace Consensus.Shape
-open AvailableChain (Slot)
 open Model
 
 variable {V : Type} [Fintype V] [DecidableEq V] [Nonempty V] {F : Family} {E : Env V}

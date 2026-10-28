@@ -8,8 +8,8 @@ public import ConsensusProblem.Basic
 Properties of a trace, generic in the element type (transaction ledgers here;
 block chains in a protocol shape). Safety and nesting read at every event cut (a
 client can expose any intermediate state); liveness and persistence read at the
-end of a time, for ready readers. Accountability and non-framing are properties
-of a system run (they need its evidence). -/
+end of a time, for ready readers. Accountability uses a trace together with
+its evidence and conviction rule; non-framing is a property of a system run. -/
 
 namespace Consensus
 
@@ -61,23 +61,31 @@ def Trace.TxLive {V : Type} (tr : Trace V Tx) (c : Time) (g : Out) (start D : Ti
   ∀ x t t', start ≤ t → tr.point.SubmittedToAll x t → t + D ≤ t' → t' ≤ tr.point.horizon →
     ∀ v, tr.point.Ready c v t' → x ∈ tr.readAt g v t'
 
+/-- Validators convicted by evidence, independently of an execution model. -/
+noncomputable def convicted {V O : Type} [Fintype V]
+    (convicts : Set O → V → Prop) (A : Set O) : Finset V := by
+  classical
+  exact Finset.univ.filter (convicts A)
+
+/-- Two honest reads are compatible, or their joint evidence convicts a third. -/
+def Trace.AccountablySafe {V α O : Type} [Fintype V] (tr : Trace V α)
+    (view : V → Nat → Set O) (convicts : Set O → V → Prop) (g : Out) (t₀ : Time) : Prop :=
+  ∀ u ∈ tr.point.honest, ∀ v ∈ tr.point.honest, ∀ i j,
+    tr.InCuts t₀ i → tr.InCuts t₀ j →
+    Compatible (tr.read g u i) (tr.read g v j) ∨
+      Fintype.card V ≤ 3 * (Consensus.convicted convicts (view u i ∪ view v j)).card
+
 namespace System
 
 variable {V : Type} [Fintype V] [DecidableEq V] (S : System V) (r : S.Run)
 
-/-- The validators that the evidence set `A` convicts. -/
-noncomputable def convicted (A : Set S.Obs) : Finset V := by
-  classical
-  exact Finset.univ.filter (S.convicts r A)
+/-- Validators convicted by a set of evidence. -/
+noncomputable def convicted (A : Set S.Obs) : Finset V :=
+  Consensus.convicted (S.convicts r) A
 
-/-- Accountable safety of `g` from `t₀`: two honest reads, at any nodes and
-cuts, are compatible, or what the two readers saw convicts a third of the
-validators. -/
-def AccountablySafe (g : Out) (t₀ : Time) : Prop :=
-  ∀ u ∈ (S.trace r).point.honest, ∀ v ∈ (S.trace r).point.honest, ∀ i j,
-    (S.trace r).InCuts t₀ i → (S.trace r).InCuts t₀ j →
-    Compatible ((S.trace r).read g u i) ((S.trace r).read g v j) ∨
-      Fintype.card V ≤ 3 * (S.convicted r (S.view r u i ∪ S.view r v j)).card
+/-- Accountable safety, using the generic trace-and-evidence property. -/
+abbrev AccountablySafe (g : Out) (t₀ : Time) : Prop :=
+  (S.trace r).AccountablySafe (S.view r) (S.convicts r) g t₀
 
 /-- No honest validator is convicted by what the honest nodes saw. -/
 def NonFraming : Prop :=

@@ -49,6 +49,17 @@ structure Env (V : Type) where
   gst : Time
   awake : V → Time → Bool
 
+/-- A public time is a nonnegative multiple of `Δ`. -/
+def PublicTime {V : Type} (E : Env V) (t : Time) : Prop := ∃ k : Nat, t = (k : Time) * E.Δ
+
+/-- Awake now, asleep one time unit earlier. -/
+def Wakes {V : Type} (E : Env V) (v : V) (t : Time) : Prop :=
+  E.awake v t = true ∧ E.awake v (t - 1) = false
+
+/-- Awake throughout the half-open interval `[a, b)`. -/
+def AwakeOn {V : Type} (E : Env V) (v : V) (a b : Time) : Prop :=
+  ∀ u, a ≤ u → u < b → E.awake v u = true
+
 /-- The environment point of a run: the environment, the honest nodes, the
 horizon, and the transactions submitted to each node at each time (private, per
 node, adversarially timed). -/
