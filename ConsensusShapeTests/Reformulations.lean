@@ -9,10 +9,10 @@ Each definition that was reformulated rather than moved or deleted is
 restated here in its old form (`Old*`, body verbatim; deleted helpers are
 inlined), with a lemma `new ↔ old` (or `new = old`) checked by Lean.
 
-* B1: `System.AccountablySafe`/`System.convicted` were abbreviations, inlined
-  at their uses; `GoldilocksBindings` is a `def` instead of a one-field
-  structure; `streamletContract`/`tendermintContract` are the specializations
-  of the shared `bftContract`. -/
+* B1: the wrapper `System.convicted` was inlined at its uses;
+  `GoldilocksBindings` is a `def` instead of a one-field structure;
+  `streamletContract`/`tendermintContract` are the specializations of the
+  shared `bftContract`. -/
 
 namespace Consensus.Shape.Tests.Reformulations
 
@@ -28,16 +28,8 @@ variable {V : Type} [Fintype V] (S : System V) (r : S.Run)
 noncomputable def OldConvicted (A : Set S.Obs) : Finset V :=
   Consensus.convicted (S.convicts r) A
 
-/-- The old `System.AccountablySafe`. -/
-abbrev OldAccountablySafe (α : ℚ) (g : S.schema.Id) (t₀ : Time) : Prop :=
-  (S.trace r).AccountablySafe (S.view r) (S.convicts r) α g t₀
-
 theorem convicted_eq (A : Set S.Obs) :
     Consensus.convicted (S.convicts r) A = OldConvicted S r A := rfl
-
-theorem accountablySafe_iff (α : ℚ) (g : S.schema.Id) (t₀ : Time) :
-    (S.trace r).AccountablySafe (S.view r) (S.convicts r) α g t₀ ↔
-      OldAccountablySafe S r α g t₀ := Iff.rfl
 
 end Accountable
 

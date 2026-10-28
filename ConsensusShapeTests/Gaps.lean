@@ -156,8 +156,7 @@ example (h : Good S X K) (cap : Capability) (g : S.schema.Id)
   (h.behaviour.da cap g hc hg).sleepySafe
 
 example (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g) :
-    S.Holds (fun _ => True) (fun r =>
-      (S.trace r).AccountablySafe (S.view r) (S.convicts r) K.params.α g 0) :=
+    S.Holds (fun _ => True) (fun r => S.AccountablySafe r K.params.α g 0) :=
   (h.behaviour.final g hg).accountable
 
 /- M28: heal points are anchored at `max g 0` (catch-up inside `heal`);

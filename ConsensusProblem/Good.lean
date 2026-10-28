@@ -57,8 +57,7 @@ variable [Fintype V] [DecidableEq V]
 /-- Accountable safety, non-framing and faults below the accountable fraction give
 agreement of `g`. -/
 theorem agree_of_accountable (S : System V) (hL : S.Laws) (r : S.Run) {g : S.schema.Id}
-    {t₀ : Time} {α : ℚ} (hacc : (S.trace r).AccountablySafe (S.view r) (S.convicts r) α g t₀)
-    (hnf : S.NonFraming r)
+    {t₀ : Time} {α : ℚ} (hacc : S.AccountablySafe r α g t₀) (hnf : S.NonFraming r)
     (hb : (S.trace r).point.FaultsBelow α) : (S.trace r).Agree g t₀ := by
   classical
   intro u hu v hv i j hi hj
@@ -189,8 +188,7 @@ in every environment (no premise), and transaction liveness from the heal
 point when healthy from a GST with progress from `readyFrom` to the horizon. -/
 structure FinalClaims (S : System V) (X : Progress S Prog) (K : Contract S.schema Prog)
     (g : S.schema.Id) : Prop where
-  accountable : S.Holds (fun _ => True) (fun r =>
-    (S.trace r).AccountablySafe (S.view r) (S.convicts r) K.params.α g 0)
+  accountable : S.Holds (fun _ => True) (fun r => S.AccountablySafe r K.params.α g 0)
   live : ∀ i gst, S.Holds
     (fun r => S.Healthy K gst r ∧ S.prog X K .final i (S.ready K gst r) (S.pt r).horizon r)
     (fun r => (S.trace r).TxLive (S.cDur K r) g (S.heal K .final i gst r) (S.lat K .final i r))

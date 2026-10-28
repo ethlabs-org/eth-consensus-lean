@@ -206,6 +206,11 @@ namespace System
 
 variable {V : Type} [Fintype V] [DecidableEq V] (S : System V) (r : S.Run)
 
+/-- Accountable safety of a run of the system: `Trace.AccountablySafe` with the
+system's trace, views and convictions for that run. -/
+abbrev AccountablySafe (α : ℚ) (g : S.schema.Id) (t₀ : Time) : Prop :=
+  (S.trace r).AccountablySafe (S.view r) (S.convicts r) α g t₀
+
 /-- No honest validator is convicted by what the honest nodes saw. -/
 def NonFraming : Prop :=
   ∀ v ∈ (S.trace r).point.honest, ¬ S.convicts r (S.honestEvidence r) v

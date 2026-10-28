@@ -174,9 +174,8 @@ accountability is local: global slashability would not satisfy it. -/
 theorem local_accountability_teeth :
     (Fintype.card (Fin 3) : ℚ) * (1 / 3) ≤
         (Consensus.convicted (localGlobal.convicts ()) (localGlobal.honestEvidence ())).card ∧
-      localGlobal.NonFraming () ∧ 
-      ¬ (localGlobal.trace ()).AccountablySafe (localGlobal.view ()) (localGlobal.convicts ())
-        (1 / 3) () 0 := by
+      localGlobal.NonFraming () ∧
+      ¬ localGlobal.AccountablySafe () (1 / 3) () 0 := by
   classical
   have hfull :
       Consensus.convicted (localGlobal.convicts ()) (localGlobal.honestEvidence ()) = {2} := by

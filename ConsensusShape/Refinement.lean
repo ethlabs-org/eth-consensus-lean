@@ -109,9 +109,7 @@ theorem mem_sysView (rho : Model.Run (compiled F) E) (v : V) (i : Nat)
 the two conviction sets coincide, and compatibility transfers along `ledgerOf`. -/
 theorem accountablySafe_ledger (rho : Model.Run (compiled F) E) {α : ℚ} {g : O.Id}
     (h : (chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable α g 0) :
-    ((sysOf O (compiled F) V).trace ⟨E, rho⟩).AccountablySafe
-      ((sysOf O (compiled F) V).view ⟨E, rho⟩) ((sysOf O (compiled F) V).convicts ⟨E, rho⟩)
-      α g 0 := by
+    (sysOf O (compiled F) V).AccountablySafe ⟨E, rho⟩ α g 0 := by
   intro u hu v hv i j hi hj
   rcases h u hu v hv i j hi hj with hh | hh
   · exact Or.inl (Compatible.map ledgerOf_prefix hh)

@@ -170,7 +170,6 @@ def main : IO UInt32 := do
       `Consensus.Shape.Tests.Reformulations.goldilocksBindings_iff,
       `Consensus.Shape.Tests.Reformulations.streamletContract_eq,
       `Consensus.Shape.Tests.Reformulations.tendermintContract_eq,
-      `Consensus.Shape.Tests.Reformulations.accountablySafe_iff,
       `Consensus.Shape.Tests.Problem.shortHistory_not_awake_delta,
       `Consensus.Shape.Tests.Leaks.schema_daCore] do
     unless env.contains name do

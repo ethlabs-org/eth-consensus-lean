@@ -575,8 +575,7 @@ theorem nonFraming (r : (gSys F V).Run) (hv : (gSys F V).Valid r) : (gSys F V).N
 `conflicts` predicate: two honest finalized reads are compatible, or their
 joint views convict at least a third of all validators. -/
 theorem finalized_accountable (r : (gSys F V).Run) (hv : (gSys F V).Valid r) :
-    ((gSys F V).trace r).AccountablySafe ((gSys F V).view r) ((gSys F V).convicts r)
-      (1 / 3) gFinalized 0 ∨ (gSys F V).Excuse r :=
+    (gSys F V).AccountablySafe r (1 / 3) gFinalized 0 ∨ (gSys F V).Excuse r :=
   ((goldilocks_good h V).behaviour.final gFinalized rfl).accountable r hv trivial
 
 /-- **F1, F2 / P-ANY-FIN-SAFE.** With fewer than a third faulty, the finalized
