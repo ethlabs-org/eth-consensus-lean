@@ -8,7 +8,7 @@ public import Mathlib.Tactic
 
 `slotAt?` on concrete grids; pattern recurrence holds from any start when
 every slot is honest and ready (the Streamlet pattern `[0,1,2,3,4]`); a negative
-progress start means start 0 (D-22); the window guard counts the whole pattern
+progress start means start 0; the window guard counts the whole pattern
 (`span_guard`); recurrence has teeth: on a two-node point
 whose only selected proposer key is faulty it fails as soon as one window fits
 in the horizon; `ledgerOf` of a two-header chain keeps first occurrences. -/
@@ -17,9 +17,9 @@ namespace Consensus.Blocks
 
 /-! ## Locality and non-vacuity of recurrence (moved from the library) -/
 
-variable {V : Type} [Fintype V] {R : Type}
+variable {V : Type} [Fintype V]
 variable {p : EnvPoint V} {key : Fin (Fintype.card V) ≃ V}
-  {sel : R → Finset (Fin (Fintype.card V))} {lead : Slot → R} {G : TimeGrid}
+  {sel : Slot → Finset (Fin (Fintype.card V))} {G : TimeGrid}
   {ρ : Recurrence} {c start stop : Time}
 
 /-- Bounded dependence: recurrence on `[start, stop]` reads only `Δ` and the
@@ -32,15 +32,15 @@ theorem PatternRecurrence.reads_upTo {p' : EnvPoint V} (hΔ : p'.env.Δ = p.env.
     (hh : min stop p'.horizon ≤ p.horizon)
     (hr : ∀ v t, t ≤ min stop p'.horizon → v ∈ p.honest → p.Ready c v t →
       v ∈ p'.honest ∧ p'.Ready c v t)
-    (h : PatternRecurrence p key sel lead G ρ c start stop) :
-    PatternRecurrence p' key sel lead G ρ c start stop := by
-  intro t ht h0 hst hhz
+    (h : PatternRecurrence p key sel G ρ c start stop) :
+    PatternRecurrence p' key sel G ρ c start stop := by
+  intro t ht hst hhz
   rw [hΔ] at hst hhz ⊢
   have hm : t + (ρ.len : Time) * G.slotLen p.env.Δ ≤ min stop p'.horizon := le_min hst hhz
-  obtain ⟨s, hs1, hs2, hall⟩ := h t ht h0 hst (le_trans hm hh)
+  obtain ⟨s, hs1, hs2, hall⟩ := h t ht hst (le_trans hm hh)
   refine ⟨s, hs1, hs2, fun j hj => ?_⟩
   obtain ⟨hne, hk⟩ := hall j hj
-  refine ⟨hne, fun k hk' => hr _ _ ?_ (hk k hk').1 (hk k hk').2⟩
+  refine ⟨hne, fun k hk' => (hr _ _ ?_ (hk k hk').1 (hk k hk')).2⟩
   have hl := G.slotLen_pos p.env.Δ_pos
   have hj' : (j : Time) ≤ ρ.pattern.span := by exact_mod_cast Pattern.le_span hj
   have hlen : (ρ.len : Time) = ((ρ.gap : Nat) : Time) + (ρ.pattern.span : Time) := by
@@ -51,11 +51,11 @@ theorem PatternRecurrence.reads_upTo {p' : EnvPoint V} (hΔ : p'.env.Δ = p.env.
 
 /-- Recurrence is non-vacuous: if one whole window fits in `[max start 0, stop]`
 and the horizon, the requirement yields an honest selected key. -/
-theorem PatternRecurrence.exists_honest (h : PatternRecurrence p key sel lead G ρ c start stop)
+theorem PatternRecurrence.exists_honest (h : PatternRecurrence p key sel G ρ c start stop)
     (hs : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ stop)
     (ht : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ p.horizon) :
-    ∃ s k, k ∈ sel (lead s) ∧ key k ∈ p.honest := by
-  obtain ⟨s, -, -, hall⟩ := h (max start 0) (le_max_left _ _) (le_max_right _ _) hs ht
+    ∃ s k, k ∈ sel s ∧ key k ∈ p.honest := by
+  obtain ⟨s, -, -, hall⟩ := h (max start 0) le_rfl hs ht
   obtain ⟨j, hj⟩ := List.exists_mem_of_ne_nil _ ρ.pattern.nonempty
   obtain ⟨⟨k, hk⟩, hks⟩ := hall j hj
   exact ⟨s + j, k, hk, (hks k hk).1⟩
@@ -66,7 +66,7 @@ namespace Consensus.Shape.Tests.Blocks
 open Consensus Blocks
 
 /-- Slots of two `Δ`. -/
-def grid : TimeGrid := ⟨2, by decide⟩
+def grid : TimeGrid := ⟨2⟩
 
 -- With `Δ = 3` slots are 6 units long: slot 2 starts at 12, slot 1 plus
 -- offset 3 is at 9, and time 7 is no slot time.
@@ -87,42 +87,39 @@ def streamlet : Recurrence := ⟨Pattern.range 5, 3⟩
 /-- Every slot is honest and ready on `point1`, so the Streamlet pattern recurs
 from any start. -/
 theorem streamlet_recurrence (c start stop : Time) :
-    PatternRecurrence point1 (pkiFin 1) (fun _ : Unit => Finset.univ) (fun _ => ()) grid streamlet
-      c start stop := by
+    PatternRecurrence point1 (pkiFin 1) (fun _ => Finset.univ) grid streamlet c start stop := by
   apply patternRecurrence_of_all (by decide)
   intro s j _
-  refine ⟨⟨0, Finset.mem_univ _⟩, fun k _ => ⟨Finset.mem_univ _, Finset.mem_univ _, ?_⟩⟩
+  refine ⟨⟨0, Finset.mem_univ _⟩, fun k _ => ⟨Finset.mem_univ _, ?_⟩⟩
   intro u _ _
   rfl
 
-/-- A non-positive start is the same premise as start 0 (D-22). -/
-theorem recurrence_nonpos_start {V R : Type} [Fintype V] (p : EnvPoint V)
-    (key : Fin (Fintype.card V) ≃ V) (sel : R → Finset (Fin (Fintype.card V)))
-    (lead : Slot → R) (G : TimeGrid) (π : Recurrence) (c start stop : Time) (hs : start ≤ 0) :
-    PatternRecurrence p key sel lead G π c start stop ↔
-      PatternRecurrence p key sel lead G π c 0 stop :=
-  ⟨fun h t _ ht hw hh => h t (hs.trans ht) ht hw hh, fun h t _ ht hw hh => h t ht ht hw hh⟩
+/-- A non-positive start is the same premise as start 0. -/
+theorem recurrence_nonpos_start {V : Type} [Fintype V] (p : EnvPoint V)
+    (key : Fin (Fintype.card V) ≃ V) (sel : Slot → Finset (Fin (Fintype.card V)))
+    (G : TimeGrid) (π : Recurrence) (c start stop : Time) (hs : start ≤ 0) :
+    PatternRecurrence p key sel G π c start stop ↔ PatternRecurrence p key sel G π c 0 stop := by
+  unfold PatternRecurrence
+  rw [max_eq_right hs, max_self]
 
 /-- Start `-5` is start `0`. -/
-theorem recurrence_negative_start {V R : Type} [Fintype V] (p : EnvPoint V)
-    (key : Fin (Fintype.card V) ≃ V) (sel : R → Finset (Fin (Fintype.card V)))
-    (lead : Slot → R) (G : TimeGrid) (π : Recurrence) (c stop : Time) :
-    PatternRecurrence p key sel lead G π c (-5) stop ↔
-      PatternRecurrence p key sel lead G π c 0 stop :=
-  recurrence_nonpos_start p key sel lead G π c (-5) stop (by decide)
+theorem recurrence_negative_start {V : Type} [Fintype V] (p : EnvPoint V)
+    (key : Fin (Fintype.card V) ≃ V) (sel : Slot → Finset (Fin (Fintype.card V)))
+    (G : TimeGrid) (π : Recurrence) (c stop : Time) :
+    PatternRecurrence p key sel G π c (-5) stop ↔ PatternRecurrence p key sel G π c 0 stop :=
+  recurrence_nonpos_start p key sel G π c (-5) stop (by decide)
 
 /-- The whole-pattern guard: the Streamlet recurrence (gap 3, span 4) reads 7
 slots per window, so with slots of `2·Δ` (`Δ = 1`) a window starting at `0`
 is read only when `stop ≥ 14`; with `stop = 13` nothing is read and
 recurrence holds vacuously, even with an empty selection. -/
 theorem span_guard (c : Time) :
-    PatternRecurrence point1 (pkiFin 1) (fun _ : Unit => ∅) (fun _ => ()) grid streamlet
-      c 0 13 := by
-  intro t ht _ hst _
+    PatternRecurrence point1 (pkiFin 1) (fun _ => ∅) grid streamlet c 0 13 := by
+  intro t ht hst _
   exfalso
   change t + ((3 + 4 : Nat) : Time) * ((2 : Nat) * 1) ≤ 13 at hst
   push_cast at hst
-  have : (0 : Time) ≤ t := ht
+  have : (0 : Time) ≤ t := le_trans (le_max_left _ _) ht
   have h14 : t + 14 ≤ 13 := by linarith
   linarith
 
@@ -132,17 +129,17 @@ def point2 : EnvPoint (Fin 2) :=
   ⟨⟨1, by decide, fun _ _ => true⟩, {0}, 10, fun _ _ => []⟩
 
 /-- The only proposer key is the faulty validator 1's. -/
-def faultySel : Unit → Finset (Fin (Fintype.card (Fin 2))) := fun _ => {(pkiFin 2).symm 1}
+def faultySel : Slot → Finset (Fin (Fintype.card (Fin 2))) := fun _ => {(pkiFin 2).symm 1}
 
 /-- Recurrence has teeth: when the only selected proposer key is faulty, no
 start admits recurrence of one honest proposer once a window (one slot of one
 `Δ`) fits in the horizon. -/
 theorem recurrence_has_teeth (c start : Time) (hs : start ≤ 5) :
-    ¬ PatternRecurrence point2 (pkiFin 2) faultySel (fun _ => ()) ⟨1, by decide⟩
+    ¬ PatternRecurrence point2 (pkiFin 2) faultySel ⟨1⟩
       ⟨Pattern.single, 1⟩ c start 10 := by
   intro h
   have hw : max start 0 + ((⟨Pattern.single, 1⟩ : Recurrence).len : Time) *
-      (⟨1, by decide⟩ : TimeGrid).slotLen point2.env.Δ ≤ 10 := by
+      (⟨1⟩ : TimeGrid).slotLen point2.env.Δ ≤ 10 := by
     change max start 0 + ((1 + 0 : Nat) : Time) * ((1 : Nat) * 1) ≤ 10
     have : max start 0 ≤ 5 := max_le hs (by norm_num)
     push_cast

@@ -16,8 +16,7 @@ The bridges are visible:
   `ledgerOf` (definitionally); with `ledgerOf_prefix` every prefix-based
   property (safety, nesting, monotonicity, resilience, ready safety)
   transfers.
-* Regimes: the shape claims use the L0 regimes at the compiled run
-  (definitionally).
+* Regimes: the shape claims use the L0 regimes of the compiled system.
 * `proposalLive_txLive`: reader-conditional proposal liveness and partial synchrony with a GST at
   or before the start give transaction liveness (the payload bridge, at the
   release time `τ`).
@@ -30,7 +29,7 @@ namespace Consensus.Shape
 open Blocks
 open Consensus.Model (pubOf protoOf sysOf Obj)
 
-variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
   {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- The compiled ledger trace is the chain trace mapped by `ledgerOf`. -/
@@ -38,7 +37,7 @@ theorem ledgerTrace (rho : Model.Run (compiled F) E) :
     (sysOf O (compiled F) V).trace ⟨E, rho⟩ = (chainTrace rho).map ledgerOf :=
   rfl
 
-/-- Transaction bridge (D-14; at the release time `τ`): apply
+/-- Transaction bridge (at the release time `τ`): apply
 `ProposalLiveReady` at `t' − D·Δ`, with the reader `v` ready at the deadline
 `t'` as the witness that a ready reader exists; the honest proposal is released at
 `τ > max t start + Δ` (strictly), within the horizon, by a key ready, so awake, at `τ − 1`. Partial
@@ -139,7 +138,7 @@ theorem psync_of_sys {rho : Model.Run (compiled F) E} {gst : Time}
 
 /-- The heal point is at or after the GST. -/
 theorem gst_le_heal (K : Contract ProgressReq) (rho : Model.Run (compiled F) E)
-    (cap : Capability) (i : K.Idx) (gst : Time) : gst ≤ shapeHeal K rho cap i gst := by
+    (cap : Capability) (i : K.Idx) (gst : Time) : gst ≤ (Sys F V).heal K cap i gst ⟨E, rho⟩ := by
   change gst ≤ max gst 0 + ((K.params.heal cap i : Nat) : Time) * E.Δ
   have : (0 : Time) ≤ ((K.params.heal cap i : Nat) : Time) * E.Δ :=
     mul_nonneg (by positivity) E.Δ_pos.le
@@ -152,33 +151,33 @@ the L0 behaviour of the compiled system, with progress read by
 theorem refinement (F : ShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
     [Fintype V] [DecidableEq V] (hc : ShapeClaims F K) (ha : K.params.Admissible)
     (hs : O.Serves) : Behaviour (sysOf O (compiled F) V) (shapeProgress F V) K := by
+  have hc := hc V
   refine ⟨Model.sysOf_laws _ _ _, ha, hs, Model.sysOf_nonFraming _ _ _, ?_, ?_, ?_, ?_, ?_⟩
-  · rintro c₁ c₂ g₁ g₂ hlt h₁ h₂ ⟨E, rho⟩ hv
-    exact (hc.nested c₁ c₂ g₁ g₂ hlt h₁ h₂ V E rho hv).map ledgerOf_prefix
-  · rintro g hg ⟨E, rho⟩ hv
-    exact (hc.finalMonotone g hg V E rho hv).map ledgerOf_prefix
+  · intro c₁ c₂ g₁ g₂ hlt h₁ h₂ r hv
+    exact (hc.nested c₁ c₂ g₁ g₂ hlt h₁ h₂ r hv).map ledgerOf_prefix
+  · intro g hg r hv
+    exact (hc.finalMonotone g hg r hv).map ledgerOf_prefix
   · intro g hg
     refine ⟨?_, ?_⟩
     · rintro ⟨E, rho⟩ hv -
-      exact (hc.finalAccountable g hg V E rho hv).imp (accountablySafe_ledger rho) id
-    · rintro i gst ⟨E, rho⟩ hv ⟨hH, hp⟩
-      exact (hc.finalLive g hg i gst V E rho hv hH hp).imp
-        (proposalLive_txLive hv (psync_of_sys hH.1) (gst_le_heal K rho .final i gst)) id
+      exact (hc.finalAccountable g hg ⟨E, rho⟩ hv trivial).imp (accountablySafe_ledger rho) id
+    · rintro i gst ⟨E, rho⟩ hv hA
+      exact (hc.finalLive g hg i gst ⟨E, rho⟩ hv hA).imp
+        (proposalLive_txLive hv (psync_of_sys hA.1.1) (gst_le_heal K rho .final i gst)) id
   · intro cap g hcap hg
     refine ⟨?_, ?_, ?_, ?_⟩
-    · rintro ⟨E, rho⟩ hv hS
-      exact (hc.sleepySafe cap g hcap hg V E rho hv hS).imp (fun h => h.map ledgerOf_prefix) id
-    · rintro i ⟨E, rho⟩ hv ⟨hS, hp⟩
-      exact (hc.sleepyLive cap g hcap hg i V E rho hv hS hp).imp
-        (proposalLive_txLive hv (psync_of_sys hS.1) le_rfl) id
-    · rintro i gst ⟨E, rho⟩ hv ⟨hH, hp⟩
-      exact (hc.healedSafe cap g hcap hg i gst V E rho hv hH hp).imp
-        (fun h => h.map ledgerOf_prefix) id
-    · rintro i gst ⟨E, rho⟩ hv ⟨hH, hp⟩
-      exact (hc.healedLive cap g hcap hg i gst V E rho hv hH hp).imp
-        (proposalLive_txLive hv (psync_of_sys hH.1) (gst_le_heal K rho cap i gst)) id
-  · rintro g hg T b₀ b₁ ⟨E, rho⟩ hv hO
-    exact (hc.persists g hg T b₀ b₁ V E rho hv hO).imp (fun h => h.map ledgerOf_prefix) id
+    · intro r hv hS
+      exact (hc.sleepySafe cap g hcap hg r hv hS).imp (fun h => h.map ledgerOf_prefix) id
+    · rintro i ⟨E, rho⟩ hv hA
+      exact (hc.sleepyLive cap g hcap hg i ⟨E, rho⟩ hv hA).imp
+        (proposalLive_txLive hv (psync_of_sys hA.1.1) le_rfl) id
+    · intro i gst r hv hA
+      exact (hc.healedSafe cap g hcap hg i gst r hv hA).imp (fun h => h.map ledgerOf_prefix) id
+    · rintro i gst ⟨E, rho⟩ hv hA
+      exact (hc.healedLive cap g hcap hg i gst ⟨E, rho⟩ hv hA).imp
+        (proposalLive_txLive hv (psync_of_sys hA.1.1) (gst_le_heal K rho cap i gst)) id
+  · intro g hg T b₀ b₁ r hv hO
+    exact (hc.persists g hg T b₀ b₁ r hv hO).imp (fun h => h.map ledgerOf_prefix) id
 
 end Consensus.Shape
 

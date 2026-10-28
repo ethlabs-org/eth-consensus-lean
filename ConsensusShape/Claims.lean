@@ -8,11 +8,10 @@ public import ConsensusShape.Run
 What a shape family proves about its compiled runs, for a contract `K`
 (numbers and progress requirements): the chain-level mirror of the L0
 behaviour table (`Behaviour`), each claim on every valid run of every
-validator set and environment, in the L0 regime (`ShapeSleepy`,
-`ShapeHealthy`, `ShapeOutage`, `ShapeProg` are the L0 definitions at the
-compiled run), and each risk-bearing claim "or an observed hash collision"
-(output validity, nesting and final monotonicity are unconditional, as in
-L0 `HoldsAlways`):
+validator set and environment, stated on the compiled system `Sys F V` with
+the L0 regimes and `System.Holds`: each risk-bearing claim holds "or an
+observed hash collision" (output validity, nesting and final monotonicity are
+unconditional, `HoldsAlways`):
 
 * always: output validity, nesting, final monotonicity;
 * final: local accountability for fraction `α`, and `ProposalLiveReady` from
@@ -34,66 +33,69 @@ namespace Consensus.Shape
 open Blocks
 open Consensus.Model (pubOf sysOf)
 
-variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 
-/-- A property of every run of the compiled family, over every finite
-validator set and every environment. -/
-def AllRuns (F : ShapeFamily O Info)
-    (Q : ∀ {V : Type} [Fintype V] [DecidableEq V] (E : Env V), Model.Run (compiled F) E → Prop) :
-    Prop :=
-  ∀ (V : Type) [Fintype V] [DecidableEq V] (E : Env V) (rho : Model.Run (compiled F) E), Q E rho
-
-/-- The chain-level claims of a shape family for contract `K`. -/
-structure ShapeClaims (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop where
-  /-- Every provided output is valid in every valid run. -/
-  outputValid : AllRuns F fun _ rho => rho.ExecutionValid →
-    ∀ c g, O.output c = some g → OutputValid rho g
+/-- The chain-level claims at validators `V`, on the compiled system
+`Sys F V`. Each field is its L0 `Behaviour` counterpart (`Holds`: on valid
+runs satisfying the regime, or an observed hash collision; `HoldsAlways`: no
+escape), with the chain trace of the run `r.2` for the ledger trace and
+`ProposalLiveReady` for `TxLive`; latencies are the `Nat` coefficients
+`K.params.latency`. -/
+structure ShapeClaimsAt (F : ShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
+    [Fintype V] [DecidableEq V] : Prop where
+  /-- Every provided output is valid. -/
+  outputValid : (Sys F V).HoldsAlways fun r => ∀ c g, O.output c = some g → OutputValid r.2 g
   /-- Lower-rank chains are prefixes of higher-rank ones. -/
   nested : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → O.output c₁ = some g₁ → O.output c₂ = some g₂ →
-    AllRuns F fun _ rho => rho.ExecutionValid → (chainTrace rho).Nested g₁ g₂
+    (Sys F V).HoldsAlways fun r => (chainTrace r.2).Nested g₁ g₂
   /-- The final chain never rolls back. -/
   finalMonotone : ∀ g, O.output .final = some g →
-    AllRuns F fun _ rho => rho.ExecutionValid → (chainTrace rho).Monotone g 0
+    (Sys F V).HoldsAlways fun r => (chainTrace r.2).Monotone g 0
   /-- Local accountability of the final chain for fraction `α`, in every
   environment: conflicting honest reads convict `α` from their own views. -/
-  finalAccountable : ∀ g, O.output .final = some g → AllRuns F fun _ rho => rho.ExecutionValid →
-    (chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable K.params.α g 0 ∨
-      rho.HashCollision
+  finalAccountable : ∀ g, O.output .final = some g → (Sys F V).Holds (fun _ => True)
+    fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0
   /-- Final liveness: healthy from `gst` with progress from `readyFrom` to the
   horizon, proposals are included from the heal point. -/
-  finalLive : ∀ g, O.output .final = some g → ∀ (i : K.Idx) (gst : Time),
-    AllRuns F fun _ rho => rho.ExecutionValid → ShapeHealthy K rho gst →
-      ShapeProg K rho .final i (shapeReady K rho gst) rho.horizon →
-      ProposalLiveReady rho (shapeC K rho) g (shapeHeal K rho .final i gst)
-        (K.params.latency .final i) ∨ rho.HashCollision
+  finalLive : ∀ g, O.output .final = some g → ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
+    (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K .final i
+      ((Sys F V).ready K gst r) ((Sys F V).pt r).horizon r)
+    fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g ((Sys F V).heal K .final i gst r)
+      (K.params.latency .final i)
   /-- Sleepy safety of an available or stable chain, for ready readers. -/
   sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-    AllRuns F fun _ rho => rho.ExecutionValid → ShapeSleepy K rho →
-      (chainTrace rho).ReadySafe (shapeC K rho) g 0 ∨ rho.HashCollision
+    (Sys F V).Holds ((Sys F V).Sleepy K) fun r =>
+      (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g 0
   /-- Sleepy liveness, with progress on the whole run. -/
   sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-    ∀ i : K.Idx, AllRuns F fun _ rho => rho.ExecutionValid → ShapeSleepy K rho →
-      ShapeProg K rho cap i 0 rho.horizon →
-      ProposalLiveReady rho (shapeC K rho) g 0 (K.params.latency cap i) ∨ rho.HashCollision
+    ∀ i : K.Idx, (Sys F V).Holds
+      (fun r => (Sys F V).Sleepy K r ∧ (Sys F V).prog (shapeProgress F V) K cap i 0
+        ((Sys F V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap i)
   /-- Healed safety: healthy from `gst` with progress on `[readyFrom, heal]`,
   ready readers are safe from the heal point. -/
   healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-    ∀ (i : K.Idx) (gst : Time), AllRuns F fun _ rho => rho.ExecutionValid →
-      ShapeHealthy K rho gst →
-      ShapeProg K rho cap i (shapeReady K rho gst) (shapeHeal K rho cap i gst) →
-      (chainTrace rho).ReadySafe (shapeC K rho) g (shapeHeal K rho cap i gst) ∨ rho.HashCollision
+    ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
+      (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap i
+        ((Sys F V).ready K gst r) ((Sys F V).heal K cap i gst r) r)
+      fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)
   /-- Healed liveness: healthy from `gst` with progress from `readyFrom` to the
   horizon, proposals are included from the heal point. -/
   healedLive : ∀ cap g, (cap = .available ∨ cap = .stable) → O.output cap = some g →
-    ∀ (i : K.Idx) (gst : Time), AllRuns F fun _ rho => rho.ExecutionValid →
-      ShapeHealthy K rho gst → ShapeProg K rho cap i (shapeReady K rho gst) rho.horizon →
-      ProposalLiveReady rho (shapeC K rho) g (shapeHeal K rho cap i gst) (K.params.latency cap i) ∨
-        rho.HashCollision
+    ∀ (i : K.Idx) (gst : Time), (Sys F V).Holds
+      (fun r => (Sys F V).Healthy K gst r ∧ (Sys F V).prog (shapeProgress F V) K cap i
+        ((Sys F V).ready K gst r) ((Sys F V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)
+        (K.params.latency cap i)
   /-- Outage resilience of the stable chain, into the resilience target. -/
   persists : ∀ g, O.output .stable = some g → ∀ T b₀ b₁,
-    AllRuns F fun _ rho => rho.ExecutionValid → ShapeOutage K rho T b₀ b₁ →
-      (chainTrace rho).ProtectedThrough (shapeC K rho) g (resilienceTarget O g) T b₀ b₁ ∨
-        rho.HashCollision
+    (Sys F V).Holds ((Sys F V).Outage K T b₀ b₁) fun r =>
+      (chainTrace r.2).ProtectedThrough ((Sys F V).cDur K r) g (resilienceTarget O g) T b₀ b₁
+
+/-- The chain-level claims of a shape family for contract `K`: at every finite
+validator type. -/
+def ShapeClaims (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop :=
+  ∀ (V : Type) [Fintype V] [DecidableEq V], ShapeClaimsAt F K V
 
 end Consensus.Shape
 

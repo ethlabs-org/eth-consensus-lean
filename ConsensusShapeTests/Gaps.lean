@@ -252,20 +252,20 @@ example := @Tests.Good.no_admissible_not_good
 `GoldilocksTarget` theorems (§1) and `GoldilocksExtra` fields (§2). -/
 
 -- M1
-example := @GoldilocksExtra.weakSafe
-example := @GoldilocksExtra.weakInclude
-example := @GoldilocksExtra.weakGrow
+example := @GoldilocksExtraAt.weakSafe
+example := @GoldilocksExtraAt.weakInclude
+example := @GoldilocksExtraAt.weakGrow
 -- M12
-example := @GoldilocksExtra.includeSleepy
-example := @GoldilocksExtra.includeHealed
+example := @GoldilocksExtraAt.includeSleepy
+example := @GoldilocksExtraAt.includeHealed
 -- M13
-example := @GoldilocksExtra.outageWindow
+example := @GoldilocksExtraAt.outageWindow
 -- M14
 example := @GoldilocksTarget.confirmed_persists
 example := @GoldilocksTarget.outage_final_compatible
 -- M20
-example := @GoldilocksExtra.crossNest
-example := @GoldilocksExtra.liveDC
+example := @GoldilocksExtraAt.crossNest
+example := @GoldilocksExtraAt.liveDC
 
 end Consensus.Shape.Tests.Gaps
 

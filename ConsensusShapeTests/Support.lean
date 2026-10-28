@@ -171,7 +171,7 @@ theorem duties_nodup (Δ t : Time) : (sk.duties Δ t).Nodup := by
 
 end Skeleton
 
-variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 
 /-- The extremal PKI on `Fin (n + 1)`: key `k` is validator `k`. -/
 def extremalKey (n : Nat) : Fin (Fintype.card (Fin (n + 1))) ≃ Fin (n + 1) :=

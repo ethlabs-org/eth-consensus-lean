@@ -28,7 +28,7 @@ namespace Consensus.Shape
 open Blocks
 open Consensus.Model (Public Key SelSpec Obj Msg)
 
-variable {Info : Type} [DecidableEq Info] [Encodable Info]
+variable {Info : Type} [DecidableEq Info] [Countable Info]
 
 namespace Skeleton
 

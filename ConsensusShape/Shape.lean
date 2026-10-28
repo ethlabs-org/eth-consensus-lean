@@ -13,7 +13,7 @@ signs committee and poll messages, gossips, processes, and reads chains. The
 engine-facing protocol is `compile` (next module); everything here is public
 syntax that a reviewer reads once for every protocol.
 
-Proposals come in two forms (D-25): a slot proposal (role `.proposer s`,
+Proposals come in two forms: a slot proposal (role `.proposer s`,
 released at the slot's time, at position `s`), and a poll proposal (role
 `.poll`, released at a unit tick the protocol chooses locally, at a position
 it chooses, for example a height). In both the engine writes the payload
@@ -24,7 +24,7 @@ namespace Consensus.Shape
 open Blocks
 open Consensus.Model (Public Key SelSpec Obj Msg)
 
-/-- Public block choices of a shape (D-15, D-21, D-25): the time grid, one
+/-- Public block choices of a shape: the time grid, one
 proposer selection for every slot, the poll selection (`.fixed ∅` disables
 polling), and a finite list of committee kinds, each with a phase (its
 `Δ`-offset within the slot) and a selection. -/
@@ -58,7 +58,7 @@ inductive ShapeRole (Kind : Type) where
   | poll
   deriving DecidableEq
 
-/-- Closed provenance rule (D-25): a header may be signed as a proposal by the
+/-- Closed provenance rule: a header may be signed as a proposal by the
 proposer of its own position, or in the poll role. -/
 def ProposalRole {Info Kind : Type} (h : Header Info) : ShapeRole Kind → Prop
   | .proposer s => s = h.pos
@@ -86,7 +86,7 @@ abbrev ShapeObj (n : Nat) (Kind Info Body : Type) : Type :=
 knows the public parameters and its own key (`init`, `restore`); the engine
 writes positions of slot proposals and every proposal's payload. -/
 structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info]
-    [Encodable Info] : Type 1 where
+    [Countable Info] : Type 1 where
   /-- The public skeleton. -/
   skel : Skeleton pub.n
   State : Type
@@ -135,7 +135,7 @@ attribute [instance] ChainShape.decBody
 
 /-- A chain shape for every choice of the public parameters, with the outputs
 of schema `O`. -/
-abbrev ShapeFamily (O : OutputSchema) (Info : Type) [DecidableEq Info] [Encodable Info] :=
+abbrev ShapeFamily (O : OutputSchema) (Info : Type) [DecidableEq Info] [Countable Info] :=
   (pub : Public) → ChainShape pub O.Id Info
 
 end Consensus.Shape

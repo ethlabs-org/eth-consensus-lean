@@ -165,29 +165,27 @@ theorem collapse_prefix_only :
 /-- A2 takes η-sleepy participation on the prefix `[0, b₀]` only (and nothing
 after `b₀`): this statement fails to type-check if the premise is extended
 into the outage window again. -/
-theorem outageWindow_prefix_only {Info : Type} [DecidableEq Info] [Encodable Info]
+theorem outageWindow_prefix_only {Info : Type} [DecidableEq Info] [Countable Info]
     {F : ShapeFamily goldilocksSchema Info} {pp : FGSAParams} (h : GoldilocksExtra F pp)
-    {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (rho : Model.Run (compiled F) E)
-    (T b₀ b₁ : Time) (hv : rho.ExecutionValid)
-    (hT : OutageTimes (goldilocksContract pp).params E.Δ T b₀ b₁)
-    (hs : CommLog.SyncUntil rho.point rho.log b₀)
-    (hη : rho.point.EtaSleepyOn (1 / 2) ((pp.eta : Time) * E.Δ)
-      (shapeC (goldilocksContract pp) rho) 0 b₀)
-    (hc : rho.point.ReadyOfAll (1 / 2) (shapeC (goldilocksContract pp) rho) b₀) :
-    (chainTrace rho).ProtectedUpTo (shapeC (goldilocksContract pp) rho) gConfirmed gConfirmed
-      T b₀ b₁ (min (b₁ - 1) rho.horizon) ∨ rho.HashCollision :=
-  h.outageWindow T b₀ b₁ V E rho hv hT hs hη hc
+    {V : Type} [Fintype V] [DecidableEq V] (r : (Sys F V).Run)
+    (T b₀ b₁ : Time) (hv : r.2.ExecutionValid)
+    (hT : OutageTimes (goldilocksContract pp).params r.1.Δ T b₀ b₁)
+    (hs : CommLog.SyncUntil r.2.point r.2.log b₀)
+    (hη : r.2.point.EtaSleepyOn (1 / 2) ((pp.eta : Time) * r.1.Δ) (gc r) 0 b₀)
+    (hc : r.2.point.ReadyOfAll (1 / 2) (gc r) b₀) :
+    (chainTrace r.2).ProtectedUpTo (gc r) gConfirmed gConfirmed
+      T b₀ b₁ (min (b₁ - 1) r.2.horizon) ∨ r.2.HashCollision :=
+  (h V).outageWindow T b₀ b₁ r hv ⟨hT, hs, hη, hc⟩
 
 /-- **P-NV-CONTINUATION.** The weak-continuation premise is inhabited, so the
 weak extras (`weakSafe`, `weakCrossNest`, `weakInclude`, `weakGrow`) are not
 vacuous: the generic healthy witness (everyone awake, five validators) is
 healthy up to the heal point, has the recurrence of `k`, and is sleepy after
 the heal point. -/
-theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Encodable Info]
+theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Countable Info]
     (F : ShapeFamily goldilocksSchema Info) (hb : GoldilocksBindings F) (pp : FGSAParams)
     (k : ℕ+) {Δ : Time} (hΔ : 0 < Δ) (g : Time) :
-    ∃ (E : Env (Fin 5)) (rho : Model.Run (compiled F) E), rho.ExecutionValid ∧
-      WeakPremise pp rho g k := by
+    ∃ r : (Sys F (Fin 5)).Run, (Sys F (Fin 5)).Valid r ∧ WeakPremise pp g k r := by
   let K := goldilocksContract pp
   let key : Fin (Fintype.card (Fin 5)) ≃ Fin 5 := (Fintype.equivFin (Fin 5)).symm
   have hn : 5 ≤ Fintype.card (Fin 5) := by simp
@@ -206,18 +204,19 @@ theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Encodable Info]
     (K.params.healPoint Δ .available k g + readyFrom (K.params.cDur Δ) g +
       K.params.latDur Δ .available k + progLen F K .available k ⟨Δ, hΔ, allAwake⟩ + Δ + 2)
     ha hf .available k g (by linarith) (by linarith) (by linarith)
-  have hhh : shapeHeal K rho .available k g ≤ rho.horizon := by
+  have hhh : gHeal pp k g ⟨_, rho⟩ ≤ rho.horizon := by
     have hh : rho.horizon = rho.point.horizon := rfl
     rw [hh, hpt]
     change K.params.healPoint Δ .available k g ≤ K.params.healPoint Δ .available k g +
       readyFrom (K.params.cDur Δ) g + K.params.latDur Δ .available k +
       progLen F K .available k ⟨Δ, hΔ, allAwake⟩ + Δ + 2
     linarith
-  refine ⟨_, rho, hw.1, (Model.sysOf_delivers_iff rho _ _).mp hH.1, ?_,
+  refine ⟨⟨_, rho⟩, hw.1, (Model.sysOf_delivers_iff rho _ _).mp hH.1, ?_,
     (shapeProgress F (Fin 5)).mono le_rfl hhh hp, ?_⟩
   · obtain ⟨S, hS, hcard, hawk⟩ := hH.2
     exact ⟨S, hS, hcard, fun v hv u h1 h2 => hawk v hv u h1 (h2.trans hhh)⟩
   · intro t _ _
+    change rho.point.ReadyAbove _ _ t
     rw [hpt]
     refine readyAbove_of_card hn ha.θ_range _ t ?_ ?_
     · rw [realPoint_faulty]; rfl

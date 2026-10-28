@@ -40,7 +40,7 @@ namespace Consensus.Shape
 open Blocks
 open Consensus.Model (pubOf protoOf)
 
-variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
   {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- D-14, unconditional (moved from the library; the shape claims use the
@@ -91,13 +91,13 @@ def testK : Contract ProgressReq where
   progress _ k := .recur ⟨Pattern.single, k⟩
 
 /-- The test recurrence tolerates any number of validators not ready. -/
-theorem testK_progressTolerant : Contract.ProgressTolerant schema testK :=
+theorem testK_progressTolerant : ProgressTolerant schema testK :=
   fun _ _ _ => ⟨(1 : ℕ+), trivial⟩
 
 /-- The test skeleton: slots of one `Δ`, one proposer per slot, polling
 disabled, one committee kind (every key). -/
 def testSkel (n : Nat) : Skeleton n where
-  grid := ⟨1, by decide⟩
+  grid := ⟨1⟩
   proposerSel := .sized 1
   pollSel := .fixed ∅
   Kind := Unit
@@ -137,6 +137,10 @@ def testSel : ShapeRole Unit → Finset (Fin (Fintype.card (Fin 1)))
   | _ => Finset.univ
 
 /-- An injective hash. -/
+instance : Encodable ParentRef := Encodable.ofEquiv _ ParentRef.equiv
+
+instance : Encodable (Header Unit) := Encodable.ofEquiv _ (Header.equiv Unit)
+
 def goodHash (h : Header Unit) : Nat := Encodable.encode h
 
 theorem goodHash_injective : Function.Injective goodHash := Encodable.encode_injective
@@ -171,20 +175,21 @@ theorem refuted_of_empty (F : ShapeFamily schema Unit)
     ext v
     simp only [EnvPoint.readyAt, Finset.mem_filter, Finset.mem_univ, iff_true]
     exact ⟨Finset.mem_univ v, hready c t v⟩
-  have hsleepy : ShapeSleepy testK r := by
+  have hsleepy : (Sys F (Fin 1)).Sleepy testK ⟨env, r⟩ := by
     refine ⟨(Model.sysOf_delivers_iff r _ _).mpr sync, ?_⟩
     intro t _ _
     change r.point.ReadyAbove (1 / 2) _ t
     unfold EnvPoint.ReadyAbove
     rw [hreadyAt, hfaulty]
     norm_num
-  have hprog : ShapeProg testK r .available (1 : ℕ+) 0 r.horizon := by
-    change PatternRecurrence r.point r.key r.sel ShapeRole.proposer _ _ _ _ _
+  have hprog : (Sys F (Fin 1)).prog (shapeProgress F (Fin 1)) testK .available (1 : ℕ+) 0
+      r.horizon ⟨env, r⟩ := by
+    change PatternRecurrence r.point r.key (fun s => r.sel (ShapeRole.proposer s)) _ _ _ _ _
     apply patternRecurrence_of_all env.Δ_pos
     intro s j _
-    exact ⟨hprop (s + j), fun k _ => ⟨Finset.mem_univ _, hready _ _ _⟩⟩
-  rcases hc.sleepyLive .available () (Or.inl rfl) rfl (1 : ℕ+) (Fin 1) env r valid hsleepy
-      hprog with hl | hcol
+    exact ⟨hprop (s + j), fun k _ => hready _ _ _⟩
+  rcases (hc (Fin 1)).sleepyLive .available () (Or.inl rfl) rfl (1 : ℕ+) ⟨env, r⟩ valid
+      ⟨hsleepy, hprog⟩ with hl | hcol
   · obtain ⟨τ, k, h, -, -, -, hin⟩ := hl 0 le_rfl
       (show (0 : Int) + ((testK.params.latency .available (1 : ℕ+) : Nat) : Int) * env.Δ ≤ 3 by
         decide) ⟨0, hready _ _ _⟩
@@ -221,7 +226,7 @@ theorem fabricated : ¬ ShapeClaims (family false false true) testK := by
     (testSel_admits _ _ _) (fun _ _ => []) goodHash 0
   let r : Model.Run (compiled (family false false true)) env :=
     Model.mkRun Finset.univ 0 (pkiFin 1) testSel (fun _ _ => []) relay goodHash es
-  have hv := hc.outputValid (Fin 1) env r valid .available () rfl 0
+  have hv := (hc (Fin 1)).outputValid ⟨env, r⟩ valid .available () rfl 0
     (by simp [r, Model.mkRun]) 0 (Nat.zero_le _)
   obtain ⟨_, _, _, _, ⟨j, _, hj, _⟩⟩ := hv.2.2 fab (List.mem_singleton_self _)
   exact Nat.not_lt_zero _ hj
@@ -536,7 +541,8 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
 latency and catch-up. -/
 theorem recorder_live_testK (rho : Model.Run (compiled (familyC false)) env)
     (hv : rho.ExecutionValid) (hh : rho.honest = Finset.univ) (k : ℕ+) :
-    ProposalLive rho (shapeC testK rho) () 0 (testK.params.latency .available k) :=
+    ProposalLive rho ((Sys (familyC false) (Fin 1)).cDur testK ⟨env, rho⟩) () 0
+      (testK.params.latency .available k) :=
   recorder_live rho hv hh _ _ le_rfl _ (by simp [testK, Params.standard])
 
 /-- The control also meets `testK`'s healed liveness obligation, from the heal
@@ -544,7 +550,8 @@ point after every GST (negative ones included: the heal point is relative to
 `max g 0`). -/
 theorem recorder_live_testK_healed (rho : Model.Run (compiled (familyC false)) env)
     (hv : rho.ExecutionValid) (hh : rho.honest = Finset.univ) (k : ℕ+) (gst : Time) :
-    ProposalLive rho (shapeC testK rho) () (shapeHeal testK rho .available k gst)
+    ProposalLive rho ((Sys (familyC false) (Fin 1)).cDur testK ⟨env, rho⟩) ()
+      ((Sys (familyC false) (Fin 1)).heal testK .available k gst ⟨env, rho⟩)
       (testK.params.latency .available k) := by
   refine recorder_live rho hv hh _ _ ?_ _ (by simp [testK, Params.standard])
   change (0 : Time) ≤ max gst 0 + ((1 : Nat) : Time) * 1

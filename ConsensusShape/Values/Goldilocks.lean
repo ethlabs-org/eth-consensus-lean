@@ -3,7 +3,7 @@ public import ConsensusShape.Accepted
 
 @[expose] public section
 
-/-! # Goldilocks as a value: pinned numbers (D-16, D-17)
+/-! # Goldilocks as a value: pinned numbers
 
 The Goldilocks skeleton and contract, with every number pinned by the
 round-model FG-SA parameters (`FGSAParams`: round length `R` slots, lock
@@ -65,7 +65,7 @@ inductive GKind where
   deriving DecidableEq, Repr
 
 /-- Slots of `4·Δ`. -/
-def goldilocksGrid : TimeGrid := ⟨4, by decide⟩
+def goldilocksGrid : TimeGrid := ⟨4⟩
 
 /-- The Goldilocks skeleton: one proposer per slot, polling disabled, the two
 placeholder committee kinds at phases 1 and 2, every key in each. -/
@@ -186,16 +186,16 @@ theorem goldilocks_admissible (pp : FGSAParams) : (goldilocksContract pp).params
     (lag := pp.lag) (heal := pp.heal) (latency := pp.latency) (by decide) hb with }
 
 /-- The Goldilocks progress fits every family with one proposer per slot. -/
-theorem goldilocks_progressFits {Info : Type} [DecidableEq Info] [Encodable Info]
+theorem goldilocks_progressFits {Info : Type} [DecidableEq Info] [Countable Info]
     (pp : FGSAParams) (F : ShapeFamily goldilocksSchema Info)
     (hsel : ∀ pub, (F pub).skel.proposerSel = .sized 1) :
-    (goldilocksContract pp).ProgressFits F := by
+    ProgressFits (goldilocksContract pp) F := by
   intro cap k pub
   cases cap <;> exact hsel pub
 
 /-- Goldilocks recurrence requirements tolerate any number not ready. -/
 theorem goldilocks_progressTolerant (pp : FGSAParams) :
-    Contract.ProgressTolerant goldilocksSchema (goldilocksContract pp) := by
+    ProgressTolerant goldilocksSchema (goldilocksContract pp) := by
   intro cap ho N
   refine ⟨(1 : ℕ+), ?_⟩
   cases cap <;> trivial

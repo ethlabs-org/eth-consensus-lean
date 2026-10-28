@@ -76,7 +76,7 @@ theorem bftContract_admissible (progress : Capability → ℕ+ → ProgressReq) 
 /-! ## Streamlet -/
 
 /-- Slots of `2·Δ`. -/
-def streamletGrid : TimeGrid := ⟨2, by decide⟩
+def streamletGrid : TimeGrid := ⟨2⟩
 
 /-- The Streamlet skeleton. -/
 def streamletSkeleton (n : Nat) : Skeleton n where
@@ -100,22 +100,22 @@ abbrev streamletContract : Nat → Affine → Affine → Contract ProgressReq :=
   bftContract streamletProg
 
 /-- The Streamlet progress fits every family with one proposer per slot. -/
-theorem streamletContract_progressFits {Info : Type} [DecidableEq Info] [Encodable Info]
+theorem streamletContract_progressFits {Info : Type} [DecidableEq Info] [Countable Info]
     (catchUp : Nat) (heal latency : Affine) (F : ShapeFamily bftCore Info)
     (hsel : ∀ pub, (F pub).skel.proposerSel = .sized 1) :
-    (streamletContract catchUp heal latency).ProgressFits F :=
+    ProgressFits (streamletContract catchUp heal latency) F :=
   fun _ _ pub => hsel pub
 
 /-- Every provided output tolerates any number of validators not ready. -/
 theorem streamletContract_progressTolerant (catchUp : Nat) (heal latency : Affine) :
-    Contract.ProgressTolerant bftCore (streamletContract catchUp heal latency) :=
+    ProgressTolerant bftCore (streamletContract catchUp heal latency) :=
   fun _ _ _ => ⟨(1 : ℕ+), trivial⟩
 
 /-! ## Tendermint -/
 
 /-- The Tendermint skeleton (the grid is unused). -/
 def tendermintSkeleton (n : Nat) : Skeleton n where
-  grid := ⟨1, by decide⟩
+  grid := ⟨1⟩
   proposerSel := .fixed ∅
   pollSel := .fixed Finset.univ
   Kind := Empty
@@ -134,14 +134,14 @@ abbrev tendermintContract : Nat → Affine → Affine → Contract ProgressReq :
   bftContract tendermintProg
 
 /-- The Tendermint progress fits every family (no slot proposers needed). -/
-theorem tendermintContract_progressFits {Info : Type} [DecidableEq Info] [Encodable Info]
+theorem tendermintContract_progressFits {Info : Type} [DecidableEq Info] [Countable Info]
     (catchUp : Nat) (heal latency : Affine) (F : ShapeFamily bftCore Info) :
-    (tendermintContract catchUp heal latency).ProgressFits F :=
+    ProgressFits (tendermintContract catchUp heal latency) F :=
   fun _ _ _ => trivial
 
 /-- Every provided output tolerates any number of validators not ready. -/
 theorem tendermintContract_progressTolerant (catchUp : Nat) (heal latency : Affine) :
-    Contract.ProgressTolerant bftCore (tendermintContract catchUp heal latency) := by
+    ProgressTolerant bftCore (tendermintContract catchUp heal latency) := by
   intro cap ho N
   exact ⟨⟨N + 1, by omega⟩, Nat.le_succ N⟩
 

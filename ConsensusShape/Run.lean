@@ -10,7 +10,7 @@ For a run of a compiled shape family: the chain trace (what each node's
 output chains are at each event cut, with the run's environment point and cut
 times), honest proposals (a header released by an honest key in a proposal
 role, at its release time), inclusion by a time, the liveness obligation
-`ProposalLiveReady` (D-14, reader-conditional),
+`ProposalLiveReady` (reader-conditional),
 output validity (linkage, increasing positions,
 provenance), and the shape's progress reader `shapeProgress` (L0
 `Progress`): pattern recurrence over the proposer roles of the grid, or a
@@ -22,8 +22,15 @@ namespace Consensus.Shape
 open Blocks
 open Consensus.Model (Public Key SelSpec Obj Msg pubOf protoOf sysOf sysExternal)
 
-variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
-  {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
+
+/-- The compiled system of family `F` at validators `V` (L1 `sysOf`). Its runs
+are pairs `r = ⟨E, rho⟩`; the L0 regimes and durations at `r` are the
+`System` accessors (`(Sys F V).Sleepy K r`, `.cDur K r`, `.heal K cap i gst r`, …). -/
+abbrev Sys (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] : System V :=
+  sysOf O (compiled F) V
+
+variable {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- The chain trace of a run: the run's point and event cuts, and each node's
 output chains at each cut. -/
@@ -31,8 +38,7 @@ def chainTrace (rho : Model.Run (compiled F) E) : Trace V (Header Info) O.Id :=
   ⟨rho.point, rho.events.length, rho.cutTime,
     fun g v i => (F (pubOf E)).out g (rho.stateBefore i v).st.1⟩
 
-/-- Honest key `k` released header `h` at time `τ`, signed in a proposal role
-(D-25). -/
+/-- Honest key `k` released header `h` at time `τ`, signed in a proposal role. -/
 def HonestProposal (rho : Model.Run (compiled F) E) (τ : Time) (k : Fin (Fintype.card V))
     (h : Header Info) : Prop :=
   rho.key k ∈ rho.honest ∧ ∃ r : ShapeRole (F (pubOf E)).skel.Kind, ∃ cs, ProposalRole h r ∧
@@ -44,7 +50,7 @@ def InBy (rho : Model.Run (compiled F) E) (c : Time) (g : O.Id) (h : Header Info
     Prop :=
   ∀ v, rho.point.Ready c v t → h ∈ (chainTrace rho).readAt g v t
 
-/-- D-14, reader-conditional: for every `t ≥ start` (with `t + D·Δ` in the
+/-- Reader-conditional: for every `t ≥ start` (with `t + D·Δ` in the
 horizon) at which some node is ready at the inclusion deadline `t + D·Δ`, a
 header released after `t`, at `τ`, by a key ready at `τ` in a proposal role, is
 in every ready read by `t + D·Δ`. `τ` is not bounded above: the obligation is
@@ -76,19 +82,19 @@ roles of the grid, or at most `m` validators not ready. A shape without slot
 proposers (`proposerSel := .fixed ∅`, e.g. a poll shape) never meets a
 recurrence with a window inside `[start, stop]` (`HonestReadyIn` needs a
 nonempty selection); acceptance therefore requires `.recur` only of shapes
-with one proposer per slot (`Contract.ProgressFits`). -/
+with one proposer per slot (`ProgressFits`). -/
 def shapeHolds (F : ShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V] :
     ProgressReq → Time → Time → Time → (p : EnvPoint V) →
       (sysExternal O (compiled F) V).Ext p.env → Prop
   | .recur ρ, c, s, e, p, x =>
-    PatternRecurrence (R := ShapeRole (F (pubOf p.env)).skel.Kind) p x.1 x.2
-      ShapeRole.proposer (F (pubOf p.env)).skel.grid ρ c s e
+    PatternRecurrence p x.1 (fun s => x.2 (ShapeRole.proposer s)) (F (pubOf p.env)).skel.grid ρ
+      c s e
   | .notReadyAtMost m, c, s, e, p, _ => NotReadyOn p m c s e
 
 /-- The shape's progress reader: the model's external data (PKI and
 selection) with `shapeHolds`. -/
 def shapeProgress (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
-    Progress (sysOf O (compiled F) V) ProgressReq where
+    Progress (Sys F V) ProgressReq where
   toExternal := sysExternal O (compiled F) V
   holds := shapeHolds F
   mono := by
@@ -105,41 +111,6 @@ def shapeProgress (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V
   submit_irrel := by
     intro π c s e p x σ h
     cases π <;> exact h
-
-/-! ## The L0 regimes and quantities at a compiled run
-
-Shape-level names for the L0 definitions at the system run `⟨E, rho⟩` of the
-compiled system; each is the L0 definition itself (`abbrev`). -/
-
-section Regimes
-
-variable (K : Contract ProgressReq) (rho : Model.Run (compiled F) E)
-
-/-- The catch-up duration `catchUp·Δ`. -/
-abbrev shapeC : Time := (sysOf O (compiled F) V).cDur K ⟨E, rho⟩
-
-/-- The sleepy regime (L0 `Regime.Sleepy`). -/
-abbrev ShapeSleepy : Prop := (sysOf O (compiled F) V).Sleepy K ⟨E, rho⟩
-
-/-- The healthy regime from GST `gst` (L0 `Regime.Healthy`). -/
-abbrev ShapeHealthy (gst : Time) : Prop := (sysOf O (compiled F) V).Healthy K gst ⟨E, rho⟩
-
-/-- The outage regime (L0 `Regime.Outage`). -/
-abbrev ShapeOutage (T b₀ b₁ : Time) : Prop :=
-  (sysOf O (compiled F) V).Outage K T b₀ b₁ ⟨E, rho⟩
-
-/-- The heal point of `cap` at `i` after GST `gst`. -/
-abbrev shapeHeal (cap : Capability) (i : K.Idx) (gst : Time) : Time :=
-  (sysOf O (compiled F) V).heal K cap i gst ⟨E, rho⟩
-
-/-- The start of progress windows after GST `gst`. -/
-abbrev shapeReady (gst : Time) : Time := (sysOf O (compiled F) V).ready K gst ⟨E, rho⟩
-
-/-- The progress requirement of `cap` at `i` holds on `[start, stop]`. -/
-abbrev ShapeProg (cap : Capability) (i : K.Idx) (start stop : Time) : Prop :=
-  (sysOf O (compiled F) V).prog (shapeProgress F V) K cap i start stop ⟨E, rho⟩
-
-end Regimes
 
 end Consensus.Shape
 

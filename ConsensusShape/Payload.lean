@@ -15,7 +15,7 @@ namespace Consensus.Shape
 open Blocks
 open Consensus.Model (pubOf protoOf Obj)
 
-variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
   {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 omit [DecidableEq V] in

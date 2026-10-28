@@ -89,12 +89,12 @@ theorem ctrlK_admissible : ctrlK.params.Admissible := by
     (heal := fun _ _ => 1) (latency := fun _ _ => 1) le_rfl le_rfl
   exact ⟨h.1, h.2, h.3, h.4, h.5, h.6⟩
 
-theorem ctrlK_progressFits : ctrlK.ProgressFits ctrlFamily := by
+theorem ctrlK_progressFits : ProgressFits ctrlK ctrlFamily := by
   intro cap k pub
   cases cap <;> rfl
 
 /-- The control recurrences tolerate any number of validators not ready. -/
-theorem ctrlK_progressTolerant : Contract.ProgressTolerant goldilocksSchema ctrlK := by
+theorem ctrlK_progressTolerant : ProgressTolerant goldilocksSchema ctrlK := by
   intro cap ho N
   refine ⟨1, ?_⟩
   cases cap <;> trivial
@@ -166,7 +166,7 @@ theorem positive_controls (cap : Capability) :
 generic theorem at concrete numbers). -/
 theorem ctrl_realizable : Realizable S X ctrlK :=
   (regimes_realizable ctrlFamily ctrlK ctrlK_admissible ctrlK_progressFits ctrlK_progressTolerant
-    (Fin 5) card5).1
+    (Fin 5) card5).toRealizable
 
 /-- **Outage control**: `T = 1 < b₀ = 3 < b₁ = 4`, honest `key 2` asleep at
 `3`: the outage regime holds and the outage is active. -/

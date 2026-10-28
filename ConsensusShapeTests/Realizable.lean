@@ -43,7 +43,7 @@ namespace Consensus.Shape
 open Blocks
 open Consensus.Model (pubOf protoOf)
 
-variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
   {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- Without a ready node from `start + D·Δ` on, the reader-conditional
@@ -99,18 +99,18 @@ selected at every slot of a valid run, so a faulty validator is always among
 the proposers and `PatternRecurrence` (every selected key honest and ready)
 fails whenever one window fits in the horizon. -/
 theorem allProposers_no_witness {O : OutputSchema} {Info : Type} [DecidableEq Info]
-    [Encodable Info] {F : ShapeFamily O Info}
+    [Countable Info] {F : ShapeFamily O Info}
     (hF : ∀ pub, (F pub).skel.proposerSel = .sized (max 1 pub.n))
     {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (rho : Model.Run (compiled F) E)
     (hsel : rho.SelValid) (hf : rho.point.faulty.Nonempty) (π : Recurrence) (c start stop : Time)
     (hs : max start 0 + (π.len : Time) * (F (pubOf E)).skel.grid.slotLen E.Δ ≤ stop)
     (hw : max start 0 + (π.len : Time) * (F (pubOf E)).skel.grid.slotLen E.Δ ≤ rho.horizon) :
-    ¬ PatternRecurrence (R := ShapeRole (F (pubOf E)).skel.Kind) rho.point rho.key rho.sel
-      ShapeRole.proposer (F (pubOf E)).skel.grid π c start stop := by
+    ¬ PatternRecurrence rho.point rho.key (fun s => rho.sel (ShapeRole.proposer s))
+      (F (pubOf E)).skel.grid π c start stop := by
   intro h
   obtain ⟨f, hf⟩ := hf
   have hfh : f ∉ rho.honest := (Finset.mem_sdiff.mp hf).2
-  obtain ⟨s, -, -, hall⟩ := h (max start 0) (le_max_left _ _) (le_max_right _ _) hs hw
+  obtain ⟨s, -, -, hall⟩ := h (max start 0) le_rfl hs hw
   obtain ⟨j, hj⟩ := List.exists_mem_of_ne_nil _ π.pattern.nonempty
   have hadm := hsel (ShapeRole.proposer (s + j))
   change ((F (pubOf E)).skel.proposerSel).Admits (rho.sel (ShapeRole.proposer (s + j))) at hadm
@@ -152,7 +152,7 @@ theorem rotating_notReadyOn_trivial {m : Nat} (hm : 4 ≤ m) (start stop : Time)
 from `3` on, for every family and run with that point: the shape claims
 demand no ready proposer where nobody is ready. -/
 theorem rotating_proposalLive_vacuous {O : OutputSchema} {Info : Type} [DecidableEq Info]
-    [Encodable Info] (F : ShapeFamily O Info) {E : Env (Fin 4)} (rho : Model.Run (compiled F) E)
+    [Countable Info] (F : ShapeFamily O Info) {E : Env (Fin 4)} (rho : Model.Run (compiled F) E)
     (hp : rho.point = rotPoint) (g : O.Id) {start : Time} (hs : 3 ≤ start) (D : Nat) :
     ProposalLiveReady rho 3 g start D := by
   apply ProposalLiveReady.of_noReady

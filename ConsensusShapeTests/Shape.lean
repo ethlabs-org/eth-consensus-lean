@@ -25,7 +25,7 @@ open Consensus.Model (Public Key Obj pubOf protoOf sysOf)
 /-- The trivial skeleton: slots of one `Δ`, one proposer per slot, polling
 disabled, one committee kind (phase 0, every key). -/
 def trivialSkel (n : Nat) : Skeleton n where
-  grid := ⟨1, by decide⟩
+  grid := ⟨1⟩
   proposerSel := .sized 1
   pollSel := .fixed ∅
   Kind := Unit
@@ -113,7 +113,7 @@ theorem poll_disabled_forged {V : Type} [Fintype V] {E : Env V}
 /-- The poll skeleton (decision T): slots of four `Δ`, no slot proposer, every
 key may poll, no committee kinds. -/
 def pollSkel (n : Nat) : Skeleton n where
-  grid := ⟨4, by decide⟩
+  grid := ⟨4⟩
   proposerSel := .fixed ∅
   pollSel := .fixed Finset.univ
   Kind := Empty

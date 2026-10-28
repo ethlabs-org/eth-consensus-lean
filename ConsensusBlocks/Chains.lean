@@ -1,6 +1,7 @@
 module
 public import ConsensusModel.Objects
 public import Mathlib.Logic.Equiv.List
+public import Mathlib.Data.Countable.Basic
 
 @[expose] public section
 
@@ -22,7 +23,7 @@ inductive ParentRef where
   | digest (d : Nat)
   deriving DecidableEq, Repr
 
-/-- `ParentRef ≃ Option Nat`, for the encoding. -/
+/-- `ParentRef ≃ Option Nat` (countability). -/
 def ParentRef.equiv : ParentRef ≃ Option Nat where
   toFun
     | .root => none
@@ -33,7 +34,7 @@ def ParentRef.equiv : ParentRef ≃ Option Nat where
   left_inv x := by cases x <;> rfl
   right_inv x := by cases x <;> rfl
 
-instance : Encodable ParentRef := Encodable.ofEquiv _ ParentRef.equiv
+instance : Countable ParentRef := ParentRef.equiv.injective.countable
 
 /-- A header: parent, position (slot or height), encoded payload (written by
 the engine), protocol information (e.g. a round). -/
@@ -48,15 +49,15 @@ structure Header (Info : Type) where
   info : Info
   deriving DecidableEq
 
-/-- `Header Info ≃ ParentRef × Nat × Nat × Info`, for the encoding. -/
+/-- `Header Info ≃ ParentRef × Nat × Nat × Info` (countability). -/
 def Header.equiv (Info : Type) : Header Info ≃ ParentRef × Nat × Nat × Info where
   toFun h := (h.parent, h.pos, h.input, h.info)
   invFun x := ⟨x.1, x.2.1, x.2.2.1, x.2.2.2⟩
   left_inv _ := rfl
   right_inv _ := rfl
 
-instance {Info : Type} [Encodable Info] : Encodable (Header Info) :=
-  Encodable.ofEquiv _ (Header.equiv Info)
+instance {Info : Type} [Countable Info] : Countable (Header Info) :=
+  (Header.equiv Info).injective.countable
 
 /-- A chain: headers oldest first, the root implicit before the first. -/
 abbrev Chain (Info : Type) := List (Header Info)
@@ -84,7 +85,7 @@ position). -/
 def PosIncreasing (c : Chain Info) : Prop := PosFrom 0 c
 
 /-- Provenance: every header is in `seen` as an item signed in a role that
-`ok` accepts for it (the shape passes its closed `ProposalRole`, D-25). -/
+`ok` accepts for it (the shape passes its closed `ProposalRole`). -/
 def Provenant {n : Nat} {Role Body : Type} (seen : Set (Model.Obj n Role (Header Info) Body))
     (ok : Header Info → Role → Prop) (c : Chain Info) : Prop :=
   ∀ h ∈ c, ∃ k r cs, ok h r ∧ Model.Obj.mk (.signed k r) (.item h) cs ∈ seen

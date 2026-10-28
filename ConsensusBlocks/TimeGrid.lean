@@ -17,16 +17,15 @@ abbrev Slot := Nat
 
 /-- Slots of `slotDeltas · Δ`; duties sit at `slotTime s + j · Δ` (phase `j`). -/
 structure TimeGrid where
-  /-- The slot length in multiples of `Δ`; positive. -/
-  slotDeltas : Nat
-  slotDeltas_pos : 0 < slotDeltas
+  /-- The slot length in multiples of `Δ`; positive by type. -/
+  slotDeltas : ℕ+
 
 namespace TimeGrid
 
 variable (G : TimeGrid)
 
 /-- The slot length in time units: `slotDeltas · Δ`. -/
-def slotLen (Δ : Time) : Time := (G.slotDeltas : Time) * Δ
+def slotLen (Δ : Time) : Time := ((G.slotDeltas : Nat) : Time) * Δ
 
 /-- The start time of slot `s`: `s · slotLen`. -/
 def slotTime (Δ : Time) (s : Slot) : Time := (s : Time) * G.slotLen Δ
@@ -37,7 +36,7 @@ def slotAt? (Δ off t : Time) : Option Slot :=
   else none
 
 theorem slotLen_pos {Δ : Time} (hΔ : 0 < Δ) : 0 < G.slotLen Δ :=
-  Int.mul_pos (by exact_mod_cast G.slotDeltas_pos) hΔ
+  Int.mul_pos (by exact_mod_cast G.slotDeltas.pos) hΔ
 
 theorem slotAt?_eq_some {Δ : Time} (hΔ : 0 < Δ) {off t : Time} {s : Slot} :
     G.slotAt? Δ off t = some s ↔ G.slotTime Δ s + off = t := by

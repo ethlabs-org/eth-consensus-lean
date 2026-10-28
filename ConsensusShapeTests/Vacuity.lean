@@ -37,7 +37,7 @@ open Consensus.Shape.Tests.Shapes (pollSkel pollShape)
 
 /-- Near-full participation cannot meet sleepy stress below a supermajority. -/
 theorem notReadyAtMost_one_not_realizable {O : OutputSchema} {Info : Type}
-    [DecidableEq Info] [Encodable Info] (F : ShapeFamily O Info)
+    [DecidableEq Info] [Countable Info] (F : ShapeFamily O Info)
     (K : Contract ProgressReq) (V : Type) [Fintype V] [DecidableEq V]
     (hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome)
     (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) :
@@ -66,7 +66,7 @@ theorem notReadyAtMost_one_not_realizable {O : OutputSchema} {Info : Type}
 /-- A fixed bound of one cannot tolerate arbitrary numbers not ready. -/
 theorem notReadyAtMost_one_not_tolerant {O : OutputSchema} (K : Contract ProgressReq)
     (ho : (O.output .available).isSome)
-    (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) : ¬ Contract.ProgressTolerant O K := by
+    (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) : ¬ ProgressTolerant O K := by
   intro h
   obtain ⟨i, hi⟩ := h .available ho 2
   rw [hp i] at hi
@@ -129,10 +129,10 @@ section ProgressFit
 /-- Acceptance rejects the all-proposers family up front: a recurrence
 requirement does not fit `.sized (max 1 n)` once `n ≥ 2`. -/
 theorem allProposers_unfit {O : OutputSchema} {Info : Type} [DecidableEq Info]
-    [Encodable Info] {F : ShapeFamily O Info}
+    [Countable Info] {F : ShapeFamily O Info}
     (hF : ∀ pub, (F pub).skel.proposerSel = .sized (max 1 pub.n))
     (K : Contract ProgressReq) (cap : Capability) (i : K.Idx) (ρ : Recurrence)
-    (hK : K.progress cap i = .recur ρ) : ¬ K.ProgressFits F := by
+    (hK : K.progress cap i = .recur ρ) : ¬ ProgressFits K F := by
   intro h
   have := h cap i ⟨2, 1, by decide⟩
   rw [hK] at this
@@ -144,7 +144,7 @@ theorem allProposers_unfit {O : OutputSchema} {Info : Type} [DecidableEq Info]
 fits only `.sized 1` proposers, and the poll skeleton has none. -/
 theorem noProgressFit_contract (K : Contract ProgressReq) (cap : Capability) (i : K.Idx)
     (ρ : Recurrence) (hK : K.progress cap i = .recur ρ) :
-    ¬ K.ProgressFits (show ShapeFamily schema Unit from fun pub => pollShape pub) := by
+    ¬ ProgressFits K (show ShapeFamily schema Unit from fun pub => pollShape pub) := by
   intro h
   have := h cap i ⟨1, 1, by decide⟩
   rw [hK] at this
@@ -152,12 +152,12 @@ theorem noProgressFit_contract (K : Contract ProgressReq) (cap : Capability) (i 
 
 /-- A bound on the validators not ready fits every skeleton (round robin). -/
 theorem notReadyAtMost_fits {n : Nat} (sk : Skeleton n) (m : ℕ+) :
-    (ProgressReq.notReadyAtMost m).Fits sk := trivial
+    ProgressReq.Fits sk (ProgressReq.notReadyAtMost m) := trivial
 
 
 end ProgressFit
 
-variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Encodable Info]
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 
 /-- Credential forgery (L2 form): a delivered object containing a
 proposal signed by a key not selected as the slot's proposer makes the run

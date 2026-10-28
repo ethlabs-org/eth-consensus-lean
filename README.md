@@ -254,7 +254,7 @@ The slot is checked, within limits:
   reads the gap as a number (open: whether to require tolerance of bad
   slots).
 
-In L2 the slot is `ProgressReq` (`ConsensusBlocks/Selection.lean`):
+In L2 the slot is `ProgressReq` (`ConsensusBlocks/Progress.lean`):
 
 - `.recur ⟨pattern, gap⟩`: `PatternRecurrence`. Every window
   `(t, t + gap·slot]` from `max start 0` whose whole pattern ends by `stop`
@@ -266,7 +266,7 @@ In L2 the slot is `ProgressReq` (`ConsensusBlocks/Selection.lean`):
 `ProgressReq.Fits` requires a recurrence to sit on a skeleton with one
 proposer per slot (`.sized 1`). Otherwise an all-proposer selection would
 include a faulty key (`allProposers_unfit`, `allProposers_no_witness`).
-`Contract.ProgressTolerant O K` asks every provided output of schema `O` to have, for every
+`ProgressTolerant O K` asks every provided output of schema `O` to have, for every
 `N`, an index whose requirement tolerates `N` validators not ready (a
 recurrence always; `.notReadyAtMost m` when `N ≤ m`): this is what the
 stress witnesses need (`notReadyAtMost_one_not_tolerant`).
@@ -339,7 +339,7 @@ and non-framing (`sysOf_nonFraming`, from slashing protection in the engine).
 |---|---|---|
 | **L0, the problem** | `ConsensusProblem` | transactions, ledgers, capabilities and `OutputSchema`; environment points; traces and `CommLog` (opaque messages); the network rule; the properties; `Params` and the fixed regimes; `Good = Behaviour ∧ Adequate ∧ Realizable` |
 | **L1, the model** | `ConsensusModel`, `ConsensusModelProofs` | a shape-free execution model: PKI, closed selection, credentials, the engine (unit ticks, delivery, sleep and restarts, slashing protection), evidence and hashes; `sysOf` (every protocol family as an L0 system, with its real log) and `sysExternal`; the proofs (`sysOf_log_faithful`, `held_iff_served`, `canonical_run_from`, `Run.truncate_*`, `sysOf_adequate`, `honestNeverSlashed`, `sysOf_nonFraming`; injective-hash lifting is checked in `ConsensusShapeTests/Lift`) |
-| Blocks | `ConsensusBlocks` | protocol-free building blocks with at least two users: `TimeGrid`, `Selection` (`Pattern`, `Recurrence`, `ProgressReq`, `HonestReadyIn`, `PatternRecurrence`, `NotReadyOn`), `Chains`, `Payload` (`encodeTxs`, `ledgerOf`) |
+| Blocks | `ConsensusBlocks` | protocol-free building blocks with at least two users: `TimeGrid`, `Progress` (`Pattern`, `Recurrence`, `ProgressReq`, `HonestReadyIn`, `PatternRecurrence`, `NotReadyOn`), `Chains`, `Payload` (`encodeTxs`, `ledgerOf`) |
 | **L2, the shape** | `ConsensusShape` | one generic `ChainShape`, `compile` onto L1, `shapeProgress`, chain-level `ShapeClaims`, `refinement` to `Behaviour`, `coverage`, generic `regimes_realizable`, the endpoint `Accepted` with `Accepted.good` |
 | Values | `ConsensusShape/Values` | Goldilocks (pinned numbers and the properties sheet); Streamlet and Tendermint are test values (`ConsensusShapeTests/Values`) |
 
@@ -350,8 +350,8 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop wh
   claims : ShapeClaims F K          -- proved by the protocol
   admissible : K.params.Admissible
   serves : O.Serves
-  progressFits : K.ProgressFits F
-  progressTolerant : Contract.ProgressTolerant O K
+  progressFits : ProgressFits K F
+  progressTolerant : ProgressTolerant O K
 theorem Accepted.good (h : Accepted F K) (V) [Fintype V] [DecidableEq V] :
     Good (sysOf O (compiled F) V) (shapeProgress F V) K
 theorem Accepted.activeService (h : Accepted F K) :
@@ -362,7 +362,8 @@ theorem Accepted.activeService (h : Accepted F K) :
 its bridges are `ledgerTrace` (reads are `ledgerOf` of the output chains)
 and `proposalLive_txLive` (proposal liveness and partial synchrony give
 transaction liveness). `sysOf_adequate` gives `Adequate`.
-`regimes_realizable` gives `Realizable` (its stress witnesses keep keys
+`regimes_realizable` gives `RealizableActive`, hence `Realizable`
+(`RealizableActive.toRealizable`; its stress witnesses keep keys
 `1..3`, respectively `1..⌊2n/3⌋+1`, awake and the rest asleep). `ActiveService`: a final or
 available output puts a relayed transaction into another honest node's
 read on a clean healthy witness. A silent service or empty outputs are
@@ -388,11 +389,12 @@ Entry points and key theorems only; the source files list the rest.
    `ConsensusModelProofs/`: `sysOf_log_faithful`, `Run.held_iff_served`,
    `canonical_run_from`, `Run.truncate_valid`, `sysOf_adequate`,
    `Run.honestNeverSlashed`, `sysOf_nonFraming`, `sysOf_laws`.
-3. **Blocks** (`ConsensusBlocks/`): `TimeGrid`, `Selection`, `Chains`,
+3. **Blocks** (`ConsensusBlocks/`): `TimeGrid`, `Progress`, `Chains`,
    `Payload`.
 4. **L2** (`ConsensusShape/`): `Shape`, `Compile`, `Run`
-   (`shapeProgress`), `Claims`, `Refinement` (`refinement`), `Realizable`
-   (`ProgressReq.Fits`, `regimes_realizable`), `Accepted`
+   (`Sys`, `shapeProgress`), `Claims`, `Refinement` (`refinement`),
+   `ProgressFit` (`ProgressFits`, `ProgressTolerant`), `Realizable`
+   (`RealizableActive`, `regimes_realizable`), `Accepted`
    (`Accepted.good`).
 5. **Values** (`ConsensusShape/Values/`): `Goldilocks`, `GoldilocksSheet`.
    Streamlet and Tendermint: `ConsensusShapeTests/Values`.
