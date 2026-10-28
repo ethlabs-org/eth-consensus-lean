@@ -20,9 +20,12 @@ theorem ledgerTrace (rho : Model.Run (compiled F) E) :
   cases g <;> rfl
 
 /-- Apply growth at the requested read time minus its latency. The resulting
-honest proposal is after submission, so its encoded mempool contains the transaction. -/
+honest proposal is after the network deadline. Partial synchrony and a full
+Δ of proposer awake history put the transaction in its encoded mempool. -/
 theorem liveFrom_txLive (rho : Model.Run (compiled F) E) {C : Constants}
     {g : Out} {start : Time} {d : Nat}
+    (hvalid : rho.ExecutionValid) (hsync : rho.PartialSynchrony)
+    (hcatch : 0 < C.catchUp)
     (hl : LiveFrom rho C (match g with
       | .confirmed => (protoOf F E).confirmed
       | .stable => (protoOf F E).stable
@@ -30,16 +33,47 @@ theorem liveFrom_txLive (rho : Model.Run (compiled F) E) {C : Constants}
     ((chainTrace rho).map ledgerOf).TxLive ((C.catchUp : Time) * E.Δ) g start
       ((d : Time) * E.Δ) := by
   intro x t t' ht hs hdt hh v hv
+  change max t E.gst + E.Δ + (d : Time) * E.Δ ≤ t' at hdt
+  change rho.point.SubmittedToSome x t at hs
   dsimp only [Time] at *
-  obtain ⟨s, h, hp, _, hprop, hin, _⟩ := hl (t' - (d : Time) * E.Δ)
-    (le_trans ht (le_sub_iff_add_le.mpr hdt))
+  obtain ⟨s, h, hp, hready, hprop, hin, _⟩ := hl (t' - (d : Time) * E.Δ)
+    (by have := E.Δ_pos; have := le_max_left t E.gst; dsimp only [Time] at *; omega)
     (by simpa only [sub_add_cancel] using (show t' ≤ rho.horizon from hh))
   have he : t' - (d : Time) * E.Δ + (d : Time) * E.Δ = t' := sub_add_cancel _ _
   rw [he] at hin
   have hin' := hin v hv
   have hmem : x ∈ decodeTxs h.input := by
     rw [honestProposal_payload rho hprop, decode_encodeTxs]
-    exact submitted_mem_mempool rho hprop.1 hs (le_trans (le_sub_iff_add_le.mpr hdt) (le_of_lt hp))
+    apply txHeld_mem_mempool rho
+    obtain ⟨u, hu, τ, hτ, hτt, haw, hx⟩ := hs
+    let p := (protoOf F E).proposalTime s
+    have hbound : max t E.gst + E.Δ < p := by
+      dsimp only [p] at *; dsimp only [Time] at *; omega
+    have hτa : τ ≤ p - E.Δ := by
+      have := le_max_left t E.gst
+      dsimp only [Time] at *; omega
+    have hga : E.gst ≤ p - E.Δ := by
+      have := le_max_right t E.gst
+      dsimp only [Time] at *; omega
+    have hdeadline : max (p - E.Δ) E.gst + E.Δ = p := by
+      rw [max_eq_left hga]; dsimp only [Time] at *; omega
+    have hph : p ≤ rho.horizon := by
+      obtain ⟨_, _, _, i, hi, _⟩ := hprop
+      exact (hvalid.in_horizon _ (List.mem_of_getElem? hi)).2
+    have hawake : AwakeOn E (proposerOf rho s) (p - E.Δ) p := by
+      intro z hz hzp
+      apply hready.2 z ?_ hzp.le
+      apply max_le (by dsimp only [Time] at *; omega)
+      have hc : (1 : Int) ≤ C.catchUp := by exact_mod_cast hcatch
+      have hd := E.Δ_pos
+      have hm : E.Δ ≤ (C.catchUp : Int) * E.Δ := by nlinarith
+      dsimp [p] at *
+      dsimp only [Time] at *; omega
+    have held := hsync.txs u hu x τ hτ haw hx (proposerOf rho s) hready.1
+      (p - E.Δ) hτa (by rw [hdeadline]; exact hph)
+      (by rw [hdeadline]; exact hph)
+      (by rw [hdeadline]; exact hawake)
+    rwa [hdeadline] at held
   change x ∈ ledgerOf ((chainTrace rho).read g v ((chainTrace rho).endCut t'))
   apply (mem_ledgerOf _ _).mpr
   refine ⟨h, ?_, hmem⟩
@@ -53,7 +87,8 @@ theorem refinement (C : Constants) : RefinementStatement F C V := by
   · rintro ⟨E, rho⟩ hv
     try dsimp only []
     simp only [ledgerTrace]
-    exact (hc.outputOrder V E rho hv).map ledgerOf_prefix
+    exact ⟨(hc.outputOrder V E rho hv).1.map ledgerOf_prefix,
+      (hc.outputOrder V E rho hv).2.map ledgerOf_prefix⟩
   · rintro ⟨E, rho⟩ hv
     try dsimp only []
     simp only [ledgerTrace]
@@ -110,11 +145,13 @@ theorem refinement (C : Constants) : RefinementStatement F C V := by
   · rintro k ⟨E, rho⟩ _ ha
     try dsimp only []
     simp only [ledgerTrace]
-    exact (hc.confirmedLive V E rho k ha).imp (liveFrom_txLive rho) id
+    exact (hc.confirmedLive V E rho k ha).imp
+      (liveFrom_txLive rho ha.valid ha.sync hc.constants.catchUp_pos) id
   · rintro k ⟨E, rho⟩ _ ha
     try dsimp only []
     simp only [ledgerTrace]
-    exact (hc.stableLive V E rho k ha).imp (liveFrom_txLive rho) id
+    exact (hc.stableLive V E rho k ha).imp
+      (liveFrom_txLive rho ha.valid ha.sync hc.constants.catchUp_pos) id
   · rintro T b₀ b₁ ⟨E, rho⟩ _ ha
     try dsimp only []
     simp only [ledgerTrace]
@@ -129,6 +166,7 @@ theorem refinement (C : Constants) : RefinementStatement F C V := by
   · rintro k ⟨E, rho⟩ _ ha
     try dsimp only []
     simp only [ledgerTrace]
-    exact (hc.finalizedLive V E rho k ha).imp (liveFrom_txLive rho) id
+    exact (hc.finalizedLive V E rho k ha).imp
+      (liveFrom_txLive rho ha.valid ha.sync hc.constants.catchUp_pos) id
 end Consensus.Shape
 end

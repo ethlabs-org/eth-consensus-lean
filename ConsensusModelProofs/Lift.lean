@@ -173,7 +173,7 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
       refine ⟨v, hv.honest_only _ (List.mem_of_getElem? he), i, o,
         (List.getElem?_eq_some_iff.mp he).1, Or.inl ⟨t, he, ?_⟩, .refl _⟩
       simpa only [releasesAt, he, tick, ‹E.awake v t = true›, ↓reduceIte, r,
-        candidates, ownSeats] using ho
+        candidates, ownSeats, show r.inbox = rho.inbox from rfl] using ho
     · rfl
   have states : ∀ i, r.stateBefore i = rho.stateBefore i := by
     intro i
@@ -217,6 +217,7 @@ structure SameTrace (rho r : Run F E) : Prop where
   events : r.events = rho.events
   holder : r.holder = rho.holder
   submit : r.submit = rho.submit
+  relay : r.relay = rho.relay
   hash : ∀ x, rho.ObservedItem x → r.hash x = rho.hash x
 
 namespace SameTrace
@@ -229,7 +230,7 @@ theorem trace (hv : rho.ExecutionValid) :
   have hr : r = {rho with hash := r.hash} := by
     cases rho; cases r
     simp only [Run.mk.injEq]
-    exact ⟨h.honest, h.horizon, h.events, h.holder, h.submit, trivial⟩
+    exact ⟨h.honest, h.horizon, h.events, h.holder, h.submit, h.relay, trivial⟩
   rw [hr]
   exact rho.rehash_trace hv r.hash h.hash
 
@@ -276,7 +277,7 @@ end SameTrace
 
 theorem rehash_sameTrace (rho : Run F E) (hash' : (protoOf F E).Item → Nat)
     (ha : ∀ x, rho.ObservedItem x → hash' x = rho.hash x) :
-    rho.SameTrace {rho with hash := hash'} := ⟨rfl, rfl, rfl, rfl, rfl, ha⟩
+    rho.SameTrace {rho with hash := hash'} := ⟨rfl, rfl, rfl, rfl, rfl, rfl, ha⟩
 
 /-- Every collision-free run has an injective-hash trace twin. -/
 theorem injective_twin (rho : Run F E) (hn : ¬ rho.HashCollision) :

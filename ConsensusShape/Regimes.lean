@@ -76,11 +76,11 @@ structure Recovery (k : Nat) : Prop where
   noWakeAfterGST : ∀ v ∈ rho.honest, ∀ t, E.gst ≤ t → t ≤ rho.horizon → ¬ Wakes E v t
   recurrence : Recurrence rho ((C.catchUp : Time) * E.Δ) E.gst k
   horizon : E.gst + ((C.recovery.eval k : Nat) : Time) * E.Δ ≤ rho.horizon
+  belowOneThird : rho.point.BelowOneThird
 
 /-- Finality: the recovery regime, fewer than a third faulty, and after GST
 more than two thirds of the validators ready. -/
 structure Finality (k : Nat) : Prop extends Recovery rho C k where
-  belowOneThird : rho.point.BelowOneThird
   finParticipation : ∀ t, E.gst ≤ t → t ≤ rho.horizon →
     2 * Fintype.card V < 3 * (rho.point.readyAt ((C.catchUp : Time) * E.Δ) t).card
 

@@ -30,7 +30,7 @@ def ActiveGuards {V : Type} [Fintype V] [DecidableEq V] [Nonempty V]
     E.gst + (C.finStart.eval k : Time) * E.Δ < (protoOf F E).proposalTime s ∧
     (k : Time) * (protoOf F E).slotLen ≤ r.horizon ∧
     ReadyProposer r ((C.catchUp : Time) * E.Δ) s ∧
-    r.point.SubmittedToAll 42 0 ∧
+    r.point.SubmittedToSome 42 0 ∧
     ∀ d ∈ serviceBounds C k,
       (protoOf F E).proposalTime s + (d : Time) * E.Δ ≤ r.horizon ∧
       (r.point.readyAt ((C.catchUp : Time) * E.Δ)
@@ -82,9 +82,10 @@ theorem profile_realizable (F : Family) (C : Constants) (hC : C.Valid)
           omega
         exact Fin.ext (ha.trans hb.symm)⟩
   let submit : V → Time → List Tx := fun _ t => if t = 0 then [42] else []
-  obtain ⟨es, valid, sync, healthy⟩ := Model.canonical_run (compiled F) V E
+  obtain ⟨relay, es, valid, sync, healthy⟩ := Model.canonical_run (compiled F) V E
     Finset.univ H hH holder submit realizableHash
-  let r := Model.mkRun (F := compiled F) (E := E) Finset.univ H holder submit realizableHash es
+  let r := Model.mkRun (F := compiled F) (E := E)
+    Finset.univ H holder submit relay realizableHash es
   have ready : ∀ c t, r.point.readyAt c t = Finset.univ := by
     intro c t; ext v
     simp [EnvPoint.readyAt, EnvPoint.Ready, EnvPoint.AwakeOnClosed, r, Model.mkRun, Model.Run.point,
@@ -131,7 +132,7 @@ theorem profile_realizable (F : Family) (C : Constants) (hC : C.Valid)
       nlinarith
   have sleepy : Sleepy r C := ⟨valid, sync, rfl, fun t _ _ => majority t⟩
   have recovery : Recovery r C k := by
-    refine ⟨valid, sync, ?_, fun _ => full _, ?_, recur, ?_⟩
+    refine ⟨valid, sync, ?_, fun _ => full _, ?_, recur, ?_, ?_⟩
     · intro t _ _; rw [ready, faulty]
       simp only [Finset.card_univ, Finset.card_empty, Nat.cast_zero, add_zero]
       have := hC.thetaRec_upper
@@ -142,6 +143,7 @@ theorem profile_realizable (F : Family) (C : Constants) (hC : C.Valid)
       change 0 + (C.recovery.eval k : Int) * 1 ≤ H
       simp only [zero_add, mul_one]
       dsimp only [H, Time] at *; omega
+    · simp [EnvPoint.BelowOneThird, faulty, Fintype.card_pos]
   have outage : Outage r C T (T + C.armingLag + 1) (T + C.armingLag + 2) := by
     refine ⟨valid, healthy _, ?_, ?_, ?_, fun t _ _ => majority t, fun t _ _ => eta t⟩
     · change 0 ≤ T ∧ T ≤ T + C.armingLag + 1 ∧
@@ -153,7 +155,7 @@ theorem profile_realizable (F : Family) (C : Constants) (hC : C.Valid)
     · change T + C.armingLag + 2 - (T + C.armingLag + 1) ≤ (C.budget : Int) * 1
       have := hC.budget_pos; simp only [Time] at *; omega
   refine ⟨r, ?_, ?_, sleepy, ⟨sleepy, fun t _ _ => eta t⟩,
-    ⟨sleepy, full 0, ?_⟩, ⟨sleepy, recur⟩, recovery, ⟨recovery, ?_, ?_⟩,
+    ⟨sleepy, full 0, ?_⟩, ⟨sleepy, recur⟩, recovery, ⟨recovery, ?_⟩,
     T, T + C.armingLag + 1, T + C.armingLag + 2, by omega, by omega, outage, ?_, ?_⟩
   · constructor
     · intro a b h; exact Encodable.encode_injective (Nat.add_right_cancel h)
@@ -171,7 +173,8 @@ theorem profile_realizable (F : Family) (C : Constants) (hC : C.Valid)
     · change (k : Int) * L ≤ H
       dsimp only [H, Time] at *
       omega
-    · intro v _; exact ⟨0, le_rfl, le_rfl, by simp [r, Model.mkRun, Model.Run.point, submit]⟩
+    · exact ⟨Classical.choice inferInstance, Finset.mem_univ _, 0, le_rfl, le_rfl, rfl,
+        by simp [r, Model.mkRun, Model.Run.point, submit]⟩
     · intro d hd
       have hb : d ≤ B := List.single_le_sum (fun _ _ => Nat.zero_le _) _ hd
       constructor
@@ -179,7 +182,6 @@ theorem profile_realizable (F : Family) (C : Constants) (hC : C.Valid)
         dsimp only [H, Time] at *; omega
       · rw [ready]; exact Finset.univ_nonempty
   · simp [EnvPoint.BelowQuarter, faulty, Fintype.card_pos]
-  · simp [EnvPoint.BelowOneThird, faulty, Fintype.card_pos]
   · intro t _ _; rw [ready]; simp only [Finset.card_univ]
     have := Fintype.card_pos (α := V); simp only [Time] at *; omega
   · refine ⟨?_, ?_⟩

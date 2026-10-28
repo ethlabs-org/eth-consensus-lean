@@ -5,7 +5,7 @@ layers, each reviewed once:
 
 | Layer | Library | What it fixes | Lines |
 |---|---|---|---|
-| **L0, the problem** | `ConsensusProblem` | transactions, ledgers, three outputs; the environment (Δ, GST, awake profile, honest set, private submissions); safety, nesting, transaction liveness, persistence, accountability, non-framing; the claim form | ~400 |
+| **L0, the problem** | `ConsensusProblem` | transactions, ledgers, three outputs; the environment (Δ, GST, awake profile, honest set, transaction submissions); safety, nesting, transaction liveness, persistence, accountability, non-framing; the claim form | ~400 |
 | **L½, the model** | `ConsensusModel` | a shape-free execution model: protocol interface, engine, delivery, sleep and restarts, unforgeability, evidence, hashes; `sysOf F`, which makes any protocol family an L0 system | ~600 |
 | **L1, our shape** | `ConsensusShape` | slots, one proposer per slot, full committees, block headers and chains, regimes, constants, `compile` onto L½; block-level claims `ShapeClaims`; the profile and bounds of the L0 claims | ~750 (definitions; ~1,000 with the refinement proof) |
 
@@ -64,11 +64,22 @@ and will be removed.
     map, which is an **embedding per label**: no validator holds two seats of
     one label, so a quorum of seats is a quorum of distinct validators.
   - Accountability counts validators, with no committee premise.
-- **Transactions are private per node.** The engine gives each node only its
-  own submissions; other nodes' submissions are not available to honest code
-  except through messages. L1 puts a proposer's mempool into its proposal.
-  (A node may include its own submissions, and an adversarial proposal may
-  contain any transaction.)
+- **Transaction ingress is relayed by the network.** A transaction submitted
+  to an awake honest node is relayed to every honest node awake throughout a
+  delivery window, including after a later wake. The scheduler chooses the
+  run's `relay` field. At each tick the engine supplies the cumulative
+  `mempool rho.inbox`, merging own submissions with relayed transactions;
+  honest code cannot distinguish their origin. This pool survives restarts.
+  Relay is otherwise unconstrained: the adversary may inject any transaction.
+  L1 encodes this pool into the proposer's header payload.
+- **Both output nesting pairs hold unconditionally:** `finalized ⪯ stable`
+  and `stable ⪯ confirmed`, at every event cut, including restart cuts.
+- **Transaction latency** is measured from `max t GST + Δ`: a transaction
+  submitted to some awake honest node by `t ≥ start` must occur in every
+  ready read at every `t' ≥ max t GST + Δ + D` within the horizon. The L1
+  bounds `D` stay unchanged. Refinement applies `LiveFrom` at `t' − D` and
+  delivery with `a = proposalTime − Δ`; `catchUp ≥ 1` supplies the required
+  awake history, and `PartialSynchrony` supplies strictly earlier ingress.
 - **Hashes are arbitrary run data.**
   - Escaped claims read "X, or a hash collision was observed". The collision
     scope is every item in the honest closure, under any signature, plus
@@ -90,30 +101,37 @@ and will be removed.
 3. The constants in L1, including the premise-side ones (catch-up, η, arming
    lags, outage budget, θ, θrec), are acceptable. Check `catchUp` first: a huge
    catch-up makes the claims about nodes that (almost) never slept. `Valid`
-   bounds only θ, θrec and `budget ≤ η`.
+   requires `catchUp ≥ 1`, positive slot length and outage budget, bounds θ
+   and θrec, and requires `budget ≤ η` and the fast arming lag no larger than
+   the ordinary one.
 4. Implementation refinement:
    - the deployed client matches the engine: signature encoding, the seat
      holder mapping (at most one seat per label per validator), structural
      carriage, the seen filter and a persisted seen log, the persisted
-     `durable` state, and the mempool;
+     `durable` state, and the cumulative own-plus-relayed mempool;
    - the hash is collision-resistant and never 0 on real items;
    - honest code uses digests only as received.
 
 Generic, read once: **model adequacy**. Clocks; delivery strictly before the
 deadline `max a GST + Δ` (with integer time, a release at `t` with `Δ = 1` must
 be delivered at `t`, after the ticks), including to nodes that wake later;
-restarts only at wakes; unforgeable signatures.
+restarts only at wakes; unforgeable signatures. Transaction delivery uses
+strict deadlines too: an awake honest source's submission at nonnegative `τ`
+is held strictly before `max a GST + Δ` for every `a ≥ τ` whose deadline is
+within the horizon and whose recipient stays awake on that interval. Healthy
+prefix delivery uses `a + Δ`. This assumes reliable dissemination after
+acceptance even if the source subsequently sleeps. The canonical scheduler
+chooses both events and eager relay, preserving every fixed assignment,
+submission function and hash.
 
 ## Scope limits
 
-- Transaction liveness needs a transaction submitted to **every** honest node.
-  There is no tx gossip in the shape.
 - No validity, fees or throughput for transactions. Ledgers may contain
   unsubmitted transactions, and repeats are removed in L1.
-- `finalized ⪯ stable` is not promised (plan Q9). Only `stable ⪯ confirmed`.
 - Recovery exports safety for ready readers only. Recovered liveness is an L1
   block-level field, not in L0. Recovery, and Finality which extends it,
-  assume no honest wake at or after GST (plan Q13).
+  assume fewer than one third faulty validators and no honest wake at or
+  after GST (plan Q13). Finality inherits this fault bound from Recovery.
 - At L0, ledgers may contain fabricated transactions: the refutation of a
   fabricated-output family uses L1's block provenance (`outputValid`), which
   has no L0 counterpart.
@@ -121,7 +139,24 @@ restarts only at wakes; unforgeable signatures.
   every family, valid constants, nonempty finite `V` and gap `k ≥ 1`, one run
   (with an injective hash) satisfies every regime with active deadlines and a
   nonempty protected outage. It shows the premises can hold, not that a
-  protocol satisfying `ShapeClaims` exists.
+  protocol satisfying `ShapeClaims` exists. The new Recovery fault bound and
+  positive catch-up requirement need no additional realizability condition.
 - The collision escape is run-wide.
 - Accountability compares two reads in one run, not across runs.
 - Unit weights.
+
+## Verification
+
+After module changes, run:
+
+```sh
+LAKE_RESTORE_ARTIFACTS=true lake build ConsensusProblem ConsensusModel ConsensusModelProofs ConsensusShape ConsensusShapeTests
+lake env lean --run contract/CheckConsensusAxioms.lean
+```
+
+The audit imports every `Consensus*` source module, including tests, and checks
+all their compiled declarations for dependencies outside `propext`,
+`Classical.choice`, and `Quot.sound`. Iteration 3 regression tests cover a
+single submission source, sleeping sources, both nesting pairs, injected
+relay content, strict deadlines, cumulative ingress across restarts, and the
+Δ > 1 catch-up gap.

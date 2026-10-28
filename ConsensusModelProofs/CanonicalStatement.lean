@@ -8,9 +8,9 @@ namespace Consensus.Model
 def mkRun {V : Type} [Fintype V] [DecidableEq V] {F : Family} {E : Env V}
     (honest : Finset V) (horizon : Time)
     (holder : (ℓ : (protoOf F E).Label) → Fin ((protoOf F E).seats ℓ) ↪ V)
-    (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat)
+    (submit relay : V → Time → List Tx) (hash : (protoOf F E).Item → Nat)
     (events : List (Event V (protoOf F E).Object)) : Run F E :=
-  ⟨honest, horizon, events, holder, submit, hash⟩
+  ⟨honest, horizon, events, holder, submit, relay, hash⟩
 
 /-- Every fixed assignment, submission function and hash admits a valid,
 partially synchronous schedule that is healthy at every cut. -/
@@ -19,8 +19,8 @@ def CanonicalRun : Prop :=
     (honest : Finset V) (horizon : Time), 0 ≤ horizon →
     ∀ (holder : (ℓ : (protoOf F E).Label) → Fin ((protoOf F E).seats ℓ) ↪ V)
       (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat),
-    ∃ events : List (Event V (protoOf F E).Object),
-      let rho := mkRun (F := F) (E := E) honest horizon holder submit hash events
+    ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
+      let rho := mkRun (F := F) (E := E) honest horizon holder submit relay hash events
       rho.ExecutionValid ∧ rho.PartialSynchrony ∧ ∀ cut, rho.HealthyPrefixDelivery cut
 end Consensus.Model
 end

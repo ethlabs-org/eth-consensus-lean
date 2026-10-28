@@ -2,3 +2,4 @@ module
 public import ConsensusShapeTests.Leaks
 public import ConsensusShapeTests.Controls
 public import ConsensusShapeTests.Problem
+public import ConsensusShapeTests.Iteration3

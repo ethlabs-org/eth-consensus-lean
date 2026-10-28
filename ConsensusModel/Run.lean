@@ -13,7 +13,7 @@ the events. Per node it keeps the protocol state and the `seen` log of every
 object the node released or received.
 
 At a tick of awake node `v` at `t`, the engine
-1. runs `clock` with `v`'s own submitted transactions up to `t` (its mempool);
+1. runs `clock` with `v`'s own and relayed transactions up to `t` (its mempool);
 2. builds the candidates from that state: for every due duty, in order, and
    every seat of its label that `v` holds, the duty's message signed with that
    seat; then unsigned gossip;
@@ -73,6 +73,8 @@ structure Run (F : Family) (E : Env V) where
   holder : (ℓ : (protoOf F E).Label) → Fin ((protoOf F E).seats ℓ) ↪ V
   /-- The transactions submitted to every node at every time. -/
   submit : V → Time → List Tx
+  /-- Transactions relayed by the network, chosen by the scheduler. -/
+  relay : V → Time → List Tx
   /-- The hash function: arbitrary, possibly with collisions; evaluated only by
   the engine. -/
   hash : (protoOf F E).Item → Nat
@@ -81,6 +83,10 @@ variable {F : Family} {E : Env V}
 
 /-- The environment point of a run. -/
 def Run.point (rho : Run F E) : EnvPoint V := ⟨E, rho.honest, rho.horizon, rho.submit⟩
+
+/-- Own submissions and network ingress are indistinguishable to honest code. -/
+def Run.inbox (rho : Run F E) (v : V) (t : Time) : List Tx :=
+  rho.submit v t ++ rho.relay v t
 
 /-- An engine node: the protocol state and the `seen` log. -/
 structure Node {pub : Public} (P : Protocol pub) where
@@ -138,7 +144,7 @@ def candidates (st : (protoOf F E).State) (v : V) (t : Time) :
 release. -/
 def tick (nd : Node (protoOf F E)) (v : V) (t : Time) :
     Node (protoOf F E) × List (protoOf F E).Object :=
-  let nd₁ : Node (protoOf F E) := ⟨(protoOf F E).clock nd.st t (mempool rho.submit v t), nd.seen⟩
+  let nd₁ : Node (protoOf F E) := ⟨(protoOf F E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩
   if E.awake v t then releaseAll rho.hash nd₁ (rho.candidates nd₁.st v t) else (nd₁, [])
 
 /-- One event. -/

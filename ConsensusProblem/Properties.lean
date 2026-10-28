@@ -55,10 +55,11 @@ def PersistsThrough (c : Time) (g : Out) (T b₀ b₁ : Time) : Prop :=
 end Trace
 
 /-- Transaction liveness of `g` from `start` with delay `D` (a duration): a
-transaction submitted to every honest node by `t ≥ start` is in the ledger of
-every ready reader at every time `t' ∈ [t + D, horizon]`. -/
+transaction submitted to some awake honest node by `t ≥ start` is in the ledger of
+every ready reader at every time `t' ∈ [max t GST + Δ + D, horizon]`. -/
 def Trace.TxLive {V : Type} (tr : Trace V Tx) (c : Time) (g : Out) (start D : Time) : Prop :=
-  ∀ x t t', start ≤ t → tr.point.SubmittedToAll x t → t + D ≤ t' → t' ≤ tr.point.horizon →
+  ∀ x t t', start ≤ t → tr.point.SubmittedToSome x t →
+    max t tr.point.env.gst + tr.point.env.Δ + D ≤ t' → t' ≤ tr.point.horizon →
     ∀ v, tr.point.Ready c v t' → x ∈ tr.readAt g v t'
 
 /-- Validators convicted by evidence, independently of an execution model. -/

@@ -122,7 +122,7 @@ theorem tick_safe {i : Nat} {v : V} {t : Time}
       rho.SignedBefore (i + 1) o := by
     intro o ho u hu hholder
     have hc : o ∈ rho.candidates
-        ((protoOf F E).clock (rho.stateBefore i v).st t (mempool rho.submit v t)) v t := by
+        ((protoOf F E).clock (rho.stateBefore i v).st t (mempool rho.inbox v t)) v t := by
       unfold tick at ho
       split at ho
       · exact releaseAll_subset _ _ _ o ho

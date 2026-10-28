@@ -41,7 +41,7 @@ theorem candidate_payload (st : (compile (protoOf F E)).State) (v : V) (t : Time
 /-- Release filtering cannot change a proposal payload. In particular, restarting
 before the tick does not affect the cumulative input supplied by the clock. -/
 theorem honestProposal_payload {s h} (hp : HonestProposal rho s h) :
-    h.input = encodeTxs (Model.mempool rho.submit (proposerOf rho s)
+    h.input = encodeTxs (Model.mempool rho.inbox (proposerOf rho s)
       ((protoOf F E).proposalTime s)) := by
   obtain ⟨_, _, cs, i, hi, ho⟩ := hp
   simp only [Model.Run.releasesAt, hi] at ho
@@ -51,20 +51,17 @@ theorem honestProposal_payload {s h} (hp : HonestProposal rho s h) :
     exact candidate_payload rho _ _ _ hc
   · simp at ho
 omit [DecidableEq V] [Nonempty V] in
-theorem submitted_mem_mempool {x : Tx} {v : V} {t p : Time}
-    (hv : v ∈ rho.honest) (hs : rho.point.SubmittedToAll x t) (htp : t ≤ p) :
-    x ∈ Model.mempool rho.submit v p := by
-  obtain ⟨τ, hτ, hτt, hx⟩ := hs v hv
-  have hτp : τ ≤ p := le_trans hτt htp
-  have hp : 0 ≤ p := le_trans hτ hτp
-  rw [Model.mempool, ite_eq_right (not_lt.mpr hp)]
+theorem txHeld_mem_mempool {x : Tx} {v : V} {p : Time}
+    (hs : rho.TxHeld v x p) : x ∈ Model.mempool rho.inbox v p := by
+  obtain ⟨τ, hτ, hτp, hx⟩ := hs
+  dsimp only [Time] at *
+  rw [Model.mempool, ite_eq_right (not_lt.mpr (le_trans hτ hτp.le))]
   apply List.mem_flatMap.mpr
   refine ⟨τ, ?_, hx⟩
   rw [List.bind_eq_flatMap]
   apply List.mem_flatMap.mpr
   refine ⟨τ.toNat, List.mem_range.mpr ?_, ?_⟩
-  · have := Int.toNat_le_toNat hτp
-    omega
+  · have := Int.toNat_le_toNat hτp.le; omega
   · change τ ∈ [(τ.toNat : Int)]
     simp [Int.toNat_of_nonneg hτ]
 

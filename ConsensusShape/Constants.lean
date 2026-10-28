@@ -55,6 +55,7 @@ structure Constants where
 /-- The bounds fixed by the contract. -/
 structure Constants.Valid (C : Constants) : Prop where
   slotTicks_pos : 0 < C.slotTicks
+  catchUp_pos : 0 < C.catchUp
   theta_lower : (1 / 2 : ℚ) ≤ C.θ
   theta_upper : C.θ ≤ 3 / 4
   thetaRec_lower : (1 / 2 : ℚ) ≤ C.θrec

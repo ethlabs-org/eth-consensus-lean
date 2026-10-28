@@ -44,12 +44,11 @@ theorem rollback_not_monotone : ¬ rollback.Monotone .confirmed 0 := by
 
 theorem omitted_not_txLive : ¬ omitted.TxLive 0 .confirmed 0 1 := by
   intro h
-  have hs : point.SubmittedToAll 42 0 := by
-    intro v _
-    exact ⟨0, le_rfl, le_rfl, by simp [point]⟩
-  have hr : point.Ready 0 true 1 := by
+  have hs : point.SubmittedToSome 42 0 := by
+    exact ⟨true, Finset.mem_univ _, 0, le_rfl, le_rfl, rfl, by simp [point]⟩
+  have hr : point.Ready 0 true 2 := by
     exact ⟨Finset.mem_univ _, fun _ _ _ => rfl⟩
-  have hx := h 42 0 1 (le_refl _) hs (le_refl _) (by decide) true hr
+  have hx := h 42 0 2 (le_refl _) hs (by decide) (by decide) true hr
   change 42 ∈ [] at hx
   cases hx
 end Consensus.Shape.Tests.Problem

@@ -12,7 +12,7 @@ public import Mathlib.Order.Interval.Finset.Nat
 What the consensus problem is, independently of any protocol or execution
 model: what users read (ledgers of transactions, for three named outputs), what
 the world is (an environment: `Δ`, GST, an awake profile; and per run the
-honest nodes, a horizon and private transaction submissions), and what an
+honest nodes, a horizon and transaction submissions), and what an
 abstract system of runs exposes. No network, messages, signatures or schedule:
 the model layer instantiates `System`.
 
@@ -61,8 +61,8 @@ def AwakeOn {V : Type} (E : Env V) (v : V) (a b : Time) : Prop :=
   ∀ u, a ≤ u → u < b → E.awake v u = true
 
 /-- The environment point of a run: the environment, the honest nodes, the
-horizon, and the transactions submitted to each node at each time (private, per
-node, adversarially timed). -/
+horizon, and the adversarially timed transactions submitted to each node.
+A transaction submitted to an awake honest node is relayed by the network. -/
 structure EnvPoint (V : Type) where
   env : Env V
   honest : Finset V
@@ -82,9 +82,9 @@ throughout `[max 0 (t − c − 1), t]`. -/
 def Ready (c : Time) (v : V) (t : Time) : Prop :=
   v ∈ p.honest ∧ p.AwakeOnClosed v (max 0 (t - c - 1)) t
 
-/-- Transaction `x` was submitted to every honest node by time `t`. -/
-def SubmittedToAll (x : Tx) (t : Time) : Prop :=
-  ∀ v ∈ p.honest, ∃ τ, 0 ≤ τ ∧ τ ≤ t ∧ x ∈ p.submit v τ
+/-- Transaction `x` was submitted to an awake honest node by time `t`. -/
+def SubmittedToSome (x : Tx) (t : Time) : Prop :=
+  ∃ v ∈ p.honest, ∃ τ, 0 ≤ τ ∧ τ ≤ t ∧ p.env.awake v τ = true ∧ x ∈ p.submit v τ
 
 variable [Fintype V] [DecidableEq V]
 

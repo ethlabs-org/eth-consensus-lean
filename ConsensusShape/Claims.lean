@@ -22,7 +22,7 @@ structure ShapeClaims (F : Family) (C : Constants) : Prop where
   constants : C.Valid
   slotTicks : ∀ pub, (F pub).slotTicks = C.slotTicks
   outputOrder : AllRuns F fun _ rho => rho.ExecutionValid →
-    (chainTrace rho).Nested .stable .confirmed
+    (chainTrace rho).Nested .finalized .stable ∧ (chainTrace rho).Nested .stable .confirmed
   finalizedMonotone : AllRuns F fun _ rho => rho.ExecutionValid →
     (chainTrace rho).Monotone .finalized 0
   honestNeverSlashed : AllRuns F fun _ rho => rho.ExecutionValid →

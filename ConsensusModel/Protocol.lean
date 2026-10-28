@@ -13,8 +13,8 @@ There is no slot, proposer or block here: a proposer is a label with one seat
 whose duty acts at the proposal time, and blocks are items of the protocol.
 
 The protocol knows only the public parameters `n` and `Δ`. It does not know the
-GST, the honest set, the awake profile, the seat assignment, other nodes'
-submissions, or the hash function: the engine gives it its own submitted
+GST, the honest set, the awake profile, the seat assignment, the submission
+or relay functions, or the hash function: the engine gives it its own and relayed
 transactions (at its ticks) and the digests of the items it receives or signs. -/
 
 namespace Consensus.Model
@@ -53,7 +53,7 @@ structure Protocol (pub : Public) : Type 1 where
   duties_spec : ∀ d t, d ∈ duties t ↔ actTime d = t
   duties_nodup : ∀ t, (duties t).Nodup
   init : State
-  /-- The clock update at a tick, with the node's own submitted transactions
+  /-- The clock update at a tick, with the node's cumulative own and relayed transactions
   so far. -/
   clock : State → Time → List Tx → State
   /-- What every seat of duty `d` signs: a message and carried objects. -/

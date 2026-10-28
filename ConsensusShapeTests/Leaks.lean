@@ -41,29 +41,29 @@ theorem goodHash_injective : Function.Injective goodHash := by
 
 theorem goodHash_nonzero (h : Header) : goodHash h ≠ 0 := Nat.succ_ne_zero _
 
-def run {F : Family} (h : Time)
+def run {F : Family} (relay : Fin 1 → Time → List Tx) (h : Time)
     (es : List (Event (Fin 1) (Model.protoOf (compiled F) env).Object)) :=
-  Model.mkRun (F := compiled F) (E := env) Finset.univ h seat (fun _ _ => []) goodHash es
+  Model.mkRun (F := compiled F) (E := env) Finset.univ h seat (fun _ _ => []) relay goodHash es
 
-theorem run_no_collision {F : Family} (h : Time)
+theorem run_no_collision {F : Family} (relay : Fin 1 → Time → List Tx) (h : Time)
     (es : List (Event (Fin 1) (Model.protoOf (compiled F) env).Object)) :
-    ¬ (run h es).HashCollision :=
+    ¬ (run relay h es).HashCollision :=
   Model.Run.not_hashCollision_of_injective ⟨goodHash_injective, goodHash_nonzero⟩
 
-theorem ready {F : Family} (h : Time)
+theorem ready {F : Family} (relay : Fin 1 → Time → List Tx) (h : Time)
     (es : List (Event (Fin 1) (Model.protoOf (compiled F) env).Object))
-    (c t : Time) (v : Fin 1) : (run h es).point.Ready c v t := by
+    (c t : Time) (v : Fin 1) : (run relay h es).point.Ready c v t := by
   have : v = 0 := Subsingleton.elim _ _
   simp [this, EnvPoint.Ready, EnvPoint.AwakeOnClosed, run, Model.mkRun, Model.Run.point, env]
 
-theorem majority {F : Family} (h : Time)
+theorem majority {F : Family} (relay : Fin 1 → Time → List Tx) (h : Time)
     (es : List (Event (Fin 1) (Model.protoOf (compiled F) env).Object)) (c t : Time) :
-    (run h es).point.ReadyMajority c t := by
+    (run relay h es).point.ReadyMajority c t := by
   classical
-  have hr : (run h es).point.readyAt c t = Finset.univ := by
+  have hr : (run relay h es).point.readyAt c t = Finset.univ := by
     ext v
     simp only [EnvPoint.readyAt, Finset.mem_filter, Finset.mem_univ]
-    exact ⟨fun _ => trivial, fun _ => ⟨Finset.mem_univ v, ready h es c t v⟩⟩
+    exact ⟨fun _ => trivial, fun _ => ⟨Finset.mem_univ v, ready relay h es c t v⟩⟩
   unfold EnvPoint.ReadyMajority
   rw [hr]
   norm_num [EnvPoint.faulty, run, Model.mkRun, Model.Run.point]
@@ -79,15 +79,15 @@ theorem hash_escape_needed {V : Type} [Fintype V] [DecidableEq V]
 theorem empty_outputs (proposal : Bool) : ∀ C, ¬ ShapeClaims (family proposal false false) C := by
   intro C claims
   let H : Time := 1 + (C.D_c : Time)
-  obtain ⟨es, valid, sync, _⟩ := Model.canonical_run (compiled (family proposal false false))
+  obtain ⟨relay, es, valid, sync, _⟩ := Model.canonical_run (compiled (family proposal false false))
     (Fin 1) env Finset.univ H (by dsimp [H]; positivity) seat (fun _ _ => []) goodHash
-  let r := run H es
-  have sleepy : Sleepy r C := ⟨valid, sync, rfl, fun t _ _ => majority H es _ t⟩
-  have inc := (claims.confirmedIncluded (Fin 1) env r sleepy).resolve_right (run_no_collision H es)
-  obtain ⟨h, _, inside⟩ := inc 1 (by norm_num [ShapeProtocol.proposalTime, ShapeProtocol.slotLen, protoOf, family, Model.pubOf, env]) (ready H es _ _ _)
+  let r := run relay H es
+  have sleepy : Sleepy r C := ⟨valid, sync, rfl, fun t _ _ => majority relay H es _ t⟩
+  have inc := (claims.confirmedIncluded (Fin 1) env r sleepy).resolve_right (run_no_collision relay H es)
+  obtain ⟨h, _, inside⟩ := inc 1 (by norm_num [ShapeProtocol.proposalTime, ShapeProtocol.slotLen, protoOf, family, Model.pubOf, env]) (ready relay H es _ _ _)
     (by simp [H, ShapeProtocol.proposalTime, ShapeProtocol.slotLen, protoOf, family,
       Model.pubOf, env, r, run, Model.mkRun])
-  have hin := inside 0 (ready H es _ _ _)
+  have hin := inside 0 (ready relay H es _ _ _)
   change h ∈ [] at hin
   cases hin
 
@@ -96,9 +96,9 @@ theorem proposeButGenesis : ∀ C, ¬ ShapeClaims (family true false false) C :=
 
 theorem fabricated : ∀ C, ¬ ShapeClaims (family false false true) C := by
   intro C claims
-  obtain ⟨es, valid, _, _⟩ := Model.canonical_run (compiled (family false false true))
+  obtain ⟨relay, es, valid, _, _⟩ := Model.canonical_run (compiled (family false false true))
     (Fin 1) env Finset.univ 2 (by decide) seat (fun _ _ => []) goodHash
-  let r := run 2 es
+  let r := run relay 2 es
   have hv := (claims.outputValid (Fin 1) env r valid).1 0
     (by simp [r, run, Model.mkRun]) 0 (Nat.zero_le _)
   have hm : (⟨0, 1, 7, 7⟩ : Header) ∈ readChainIdx r (protoOf (family false false true) env).confirmed 0 0 := by
@@ -109,9 +109,9 @@ theorem fabricated : ∀ C, ¬ ShapeClaims (family false false true) C := by
 
 theorem conflictsTrue : ∀ C, ¬ ShapeClaims (family false true false) C := by
   intro C claims
-  obtain ⟨es, valid, _, _⟩ := Model.canonical_run (compiled (family false true false))
+  obtain ⟨relay, es, valid, _, _⟩ := Model.canonical_run (compiled (family false true false))
     (Fin 1) env Finset.univ 0 (by decide) seat (fun _ _ => []) goodHash
-  let r := run 0 es
+  let r := run relay 0 es
   have ht : Event.tick (0 : Fin 1) 0 ∈ r.events :=
     valid.tick_total 0 (Finset.mem_univ _) 0 ⟨0, rfl⟩ (le_refl _) rfl
   obtain ⟨i, hi⟩ := List.mem_iff_getElem?.mp ht
@@ -122,7 +122,7 @@ theorem conflictsTrue : ∀ C, ¬ ShapeClaims (family false true false) C := by
     rw [Model.Run.releasesAt, hi]
     have hc : r.candidates
         ((Model.protoOf (compiled (family false true false)) env).clock
-          (r.stateBefore i 0).st 0 (Model.mempool r.submit 0 0)) 0 0 = [o] := by
+          (r.stateBefore i 0).st 0 (Model.mempool r.inbox 0 0)) 0 0 = [o] := by
       rfl
     unfold Model.Run.tick
     dsimp only []

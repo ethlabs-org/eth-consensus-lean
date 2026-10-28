@@ -25,23 +25,24 @@ def seat4 {F : Family} : (ℓ : (Model.protoOf (compiled F) env4).Label) →
       change Fin 1 at a b
       exact Subsingleton.elim a b⟩
 
-def submissions4 (_ : Fin 4) (t : Time) : List Tx := if t = 0 then [42] else []
+def submissions4 (v : Fin 4) (t : Time) : List Tx :=
+  if v = 0 ∧ t = 0 then [42] else []
 
-def run4 (es : List (Event (Fin 4) (Model.protoOf (compiled (family false false false)) env4).Object)) :=
+def run4 (relay : Fin 4 → Time → List Tx) (es : List (Event (Fin 4) (Model.protoOf (compiled (family false false false)) env4).Object)) :=
   Model.mkRun (F := compiled (family false false false)) (E := env4)
-    Finset.univ 20 seat4 submissions4 goodHash es
+    Finset.univ 20 seat4 submissions4 relay goodHash es
 
-theorem run4_no_hashCollision (es : List (Event (Fin 4)
+theorem run4_no_hashCollision (relay : Fin 4 → Time → List Tx) (es : List (Event (Fin 4)
     (Model.protoOf (compiled (family false false false)) env4).Object)) :
-    ¬ (run4 es).HashCollision :=
+    ¬ (run4 relay es).HashCollision :=
   Model.Run.not_hashCollision_of_injective ⟨goodHash_injective, goodHash_nonzero⟩
 
-theorem positive_controls : ∃ es,
-    let r := run4 es
+theorem positive_controls : ∃ relay es,
+    let r := run4 relay es
     Sleepy r controls ∧ StableSleepy r controls ∧ Fast r controls ∧
     LiveSleepy r controls 1 ∧ Outage r controls 2 4 6 ∧
     FastOutage r controls 2 4 6 ∧ Recovery r controls 1 ∧ Finality r controls 1 ∧
-    r.point.SubmittedToAll 42 0 ∧
+    r.point.SubmittedToSome 42 0 ∧
     (∀ d ∈ [controls.D_c, controls.D_s, controls.D_f, controls.growth.eval 1,
       controls.stableGrowth.eval 1, controls.recovery.eval 1,
       controls.recovery.eval 1 + controls.recGrowth.eval 1,
@@ -57,10 +58,10 @@ theorem positive_controls : ∃ es,
     (env4.gst + (controls.finStart.eval 1 : Time) * env4.Δ + (controls.finDelay.eval 1 : Time) * env4.Δ ≤ r.horizon ∧
       (r.point.readyAt (controls.catchUp * env4.Δ) (env4.gst + (controls.finStart.eval 1 : Time) * env4.Δ + (controls.finDelay.eval 1 : Time) * env4.Δ)).Nonempty) ∧
     (∃ t, (2 : Time) < 4 ∧ 4 ≤ t ∧ t < 6 ∧ t ≤ r.horizon ∧
-      ∃ w ∈ r.honest, (run4 es).point.AwakeOnClosed w (4 - (controls.catchUp : Time) * env4.Δ - 1) t) := by
-  obtain ⟨es, valid, sync, healthy⟩ := Model.canonical_run (compiled (family false false false)) (Fin 4) env4 Finset.univ 20
+      ∃ w ∈ r.honest, (run4 relay es).point.AwakeOnClosed w (4 - (controls.catchUp : Time) * env4.Δ - 1) t) := by
+  obtain ⟨relay, es, valid, sync, healthy⟩ := Model.canonical_run (compiled (family false false false)) (Fin 4) env4 Finset.univ 20
     (by decide) seat4 submissions4 goodHash
-  let r := run4 es
+  let r := run4 relay es
   have ready : ∀ t, r.point.readyAt (controls.catchUp * env4.Δ) t = Finset.univ := by
     intro t
     ext v
@@ -99,26 +100,26 @@ theorem positive_controls : ∃ es,
     refine ⟨valid, healthy 4, ?_, ?_, ?_, fun t _ _ => majority t, fun t _ _ => eta t⟩ <;>
       norm_num [controls, env4, r, run4, Model.mkRun, Model.Run.point]
   have recovery : Recovery r controls 1 := by
-    refine ⟨valid, sync, ?_, ?_, ?_, recur, ?_⟩
+    refine ⟨valid, sync, ?_, ?_, ?_, recur, ?_, ?_⟩
     · intro t _ _
       rw [ready t, faulty]
       norm_num [controls]
     · intro _; exact full
     · simp [Wakes, env4]
     · norm_num [controls, Affine.eval, env4, r, run4, Model.mkRun, Model.Run.point]
-  refine ⟨es, sleepy, ⟨sleepy, fun t _ _ => eta t⟩, ⟨sleepy, full, ?_⟩,
-    ⟨sleepy, recur⟩, outage, ⟨outage, ?_⟩, recovery, ⟨recovery, ?_, ?_⟩, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · simp [EnvPoint.BelowOneThird, faulty]
+  refine ⟨relay, es, sleepy, ⟨sleepy, fun t _ _ => eta t⟩, ⟨sleepy, full, ?_⟩,
+    ⟨sleepy, recur⟩, outage, ⟨outage, ?_⟩, recovery, ⟨recovery, ?_⟩, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · change r.point.BelowQuarter
     simp [EnvPoint.BelowQuarter, faulty]
   · intro t _ _
     change (4 + 1) / 2 ≤ (r.point.readyAt (controls.catchUp * env4.Δ) t).card
     simp [ready]
-  · change r.point.BelowOneThird
-    simp [EnvPoint.BelowOneThird, faulty]
   · intro t _ _
     change 2 * Fintype.card (Fin 4) < 3 * (r.point.readyAt (controls.catchUp * env4.Δ) t).card
     simp [ready]
-  · intro v _; exact ⟨0, le_rfl, le_rfl, by simp [r, run4, Model.mkRun, Model.Run.point, submissions4]⟩
+  · exact ⟨0, Finset.mem_univ _, 0, le_rfl, le_rfl, rfl,
+      by simp [r, run4, Model.mkRun, Model.Run.point, submissions4]⟩
   · simp [controls, Affine.eval, r, run4, Model.mkRun, Model.Run.point,
       EnvPoint.Ready, EnvPoint.AwakeOnClosed, env4]
   · refine ⟨0, le_rfl, ?_⟩

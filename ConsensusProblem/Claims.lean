@@ -64,7 +64,8 @@ def dur (S : System V) (r : S.Run) (c : Nat) : Time := (c : Time) * (S.trace r).
 structure ProblemClaims (S : System V) (Prof : Profile S) (B : Bounds) : Prop where
   laws : S.Laws
   /-- Unconditional, on valid runs. -/
-  nested : S.HoldsAlways (fun r => (S.trace r).Nested .stable .confirmed)
+  nested : S.HoldsAlways (fun r => (S.trace r).Nested .finalized .stable ∧
+    (S.trace r).Nested .stable .confirmed)
   finalizedMonotone : S.HoldsAlways (fun r => (S.trace r).Monotone .finalized 0)
   nonFraming : S.HoldsAlways (fun r => S.NonFraming r)
   /-- Accountability, on valid runs. -/
