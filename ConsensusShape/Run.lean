@@ -22,9 +22,8 @@ variable (rho : Model.Run (compiled F) E)
 
 def proposerOf (s : Slot) : V := rho.holder (.inr s) ⟨0, by exact Nat.zero_lt_succ 0⟩
 
-def Committees : Prop := ∀ ℓ : (protoOf F E).Label, Function.Bijective (rho.holder (.inl ℓ))
 
-def ShapeValid : Prop := rho.ExecutionValid ∧ Committees rho
+def ShapeValid : Prop := rho.ExecutionValid
 
 /-- Catch-up is a duration, rather than a coefficient of Δ. -/
 def ReadyProposer (c : Time) (s : Slot) : Prop :=

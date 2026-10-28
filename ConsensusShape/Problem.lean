@@ -18,26 +18,22 @@ def profile (C : Constants) : System.Profile (Model.sysOf (compiled F) V) where
   recovery k r := Recovery r.2 C k
   finality k r := Finality r.2 C k
 
-/-- Bounds are durations and hence depend on the public Δ. L0 uses one
-fixed set of bounds for an entire system; this system quantifies over Δ. -/
-def bounds (C : Constants) (Δ : Time) : System.Bounds where
-  catchUp := (C.catchUp : Time) * Δ
-  confirmedLive k := (C.growth.eval k : Time) * Δ
-  stableLive k := (C.stableGrowth.eval k : Time) * Δ
-  recovery k := (C.recovery.eval k : Time) * Δ
-  finStart k := (C.finStart.eval k : Time) * Δ
-  finLive k := (C.finDelay.eval k : Time) * Δ
+/-- The reported bounds, as coefficients of `Δ`. -/
+def bounds (C : Constants) : System.Bounds where
+  catchUp := C.catchUp
+  confirmedLive k := C.growth.eval k
+  stableLive k := C.stableGrowth.eval k
+  recovery k := C.recovery.eval k
+  finStart k := C.finStart.eval k
+  finLive k := C.finDelay.eval k
 
-/-- Candidate refinement implication, stated only. The explicit Δ is necessary
-because L0 Bounds stores durations, while sysOf ranges over all Δ. As written,
-profile does not restrict runs to this Δ: this is NOT asserted to follow from
-ShapeClaims. A future theorem needs run-dependent bounds in L0, or a system
-restricted to a fixed Δ (and corresponding model laws). Neither lower layer is
-changed here. -/
+/-- The refinement: the shape's claims give the consensus problem's claims for
+the compiled family, under the shape's profile and bounds. (Stated; proof
+pending.) -/
 def RefinementStatement (F : Family) (C : Constants) (V : Type)
-    [Fintype V] [DecidableEq V] [Nonempty V] (Δ : Time) : Prop :=
+    [Fintype V] [DecidableEq V] [Nonempty V] : Prop :=
   ShapeClaims F C → System.ProblemClaims (Model.sysOf (fun pub => compile (F pub)) V)
-    (profile C) (bounds C Δ)
+    (profile C) (bounds C)
 
 end Consensus.Shape
 end

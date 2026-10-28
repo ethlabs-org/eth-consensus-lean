@@ -49,17 +49,21 @@ structure Profile (S : System V) where
   /-- Finality after GST with recurrence gap `k`. -/
   finality : Nat → S.Run → Prop
 
-/-- The reported bounds (durations). -/
+/-- The reported bounds, as coefficients of the run's `Δ` (so that one set of
+bounds serves every `Δ`). -/
 structure Bounds where
-  catchUp : Time
+  catchUp : Nat
   /-- Transaction latency of confirmed and stable for recurrence gap `k`. -/
-  confirmedLive : Nat → Time
-  stableLive : Nat → Time
+  confirmedLive : Nat → Nat
+  stableLive : Nat → Nat
   /-- Time after GST from which recovered safety holds. -/
-  recovery : Nat → Time
+  recovery : Nat → Nat
   /-- Time after GST from which finality liveness holds, and its latency. -/
-  finStart : Nat → Time
-  finLive : Nat → Time
+  finStart : Nat → Nat
+  finLive : Nat → Nat
+
+/-- `c · Δ` of run `r`. -/
+def dur {V : Type} (S : System V) (r : S.Run) (c : Nat) : Time := (c : Time) * (S.env r).Δ
 
 /-- The consensus problem for system `S`, profile `Prof` and bounds `B`. -/
 structure ProblemClaims (S : System V) (Prof : Profile S) (B : Bounds) : Prop where
@@ -75,21 +79,22 @@ structure ProblemClaims (S : System V) (Prof : Profile S) (B : Bounds) : Prop wh
   stableSafe : S.Holds Prof.sleepy (fun r => S.Safe r .stable 0)
   /-- Transaction liveness. -/
   confirmedLive : ∀ k, S.Holds (Prof.live k)
-    (fun r => S.TxLive r B.catchUp .confirmed 0 (B.confirmedLive k))
+    (fun r => S.TxLive r (S.dur r B.catchUp) .confirmed 0 (S.dur r (B.confirmedLive k)))
   stableLive : ∀ k, S.Holds (Prof.live k)
-    (fun r => S.TxLive r B.catchUp .stable 0 (B.stableLive k))
+    (fun r => S.TxLive r (S.dur r B.catchUp) .stable 0 (S.dur r (B.stableLive k)))
   /-- Persistence through an outage. -/
   stablePersists : ∀ T b₀ b₁, S.Holds (Prof.outage T b₀ b₁)
-    (fun r => S.PersistsThrough r B.catchUp .stable T b₀ b₁)
+    (fun r => S.PersistsThrough r (S.dur r B.catchUp) .stable T b₀ b₁)
   stablePersistsFast : ∀ T b₀ b₁, S.Holds (Prof.outageFast T b₀ b₁)
-    (fun r => S.PersistsThrough r B.catchUp .stable T b₀ b₁)
+    (fun r => S.PersistsThrough r (S.dur r B.catchUp) .stable T b₀ b₁)
   /-- Recovered safety for ready readers. -/
   recovered : ∀ k, S.Holds (Prof.recovery k)
-    (fun r => S.ReadySafe r B.catchUp .confirmed ((S.env r).gst + B.recovery k) ∧
-      S.ReadySafe r B.catchUp .stable ((S.env r).gst + B.recovery k))
+    (fun r => S.ReadySafe r (S.dur r B.catchUp) .confirmed ((S.env r).gst + S.dur r (B.recovery k)) ∧
+      S.ReadySafe r (S.dur r B.catchUp) .stable ((S.env r).gst + S.dur r (B.recovery k)))
   /-- Finality liveness. -/
   finalizedLive : ∀ k, S.Holds (Prof.finality k)
-    (fun r => S.TxLive r B.catchUp .finalized ((S.env r).gst + B.finStart k) (B.finLive k))
+    (fun r => S.TxLive r (S.dur r B.catchUp) .finalized ((S.env r).gst + S.dur r (B.finStart k))
+      (S.dur r (B.finLive k)))
 
 /-- Accountable safety, non-framing and fewer than a third faulty give
 agreement of `g`. -/

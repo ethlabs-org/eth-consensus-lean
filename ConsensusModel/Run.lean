@@ -70,9 +70,10 @@ structure Run (F : Family) (E : Env V) where
   honest : Finset V
   horizon : Time
   events : List (Event V (protoOf F E).Object)
-  /-- The validator holding every seat (arbitrary; a shape may require
-  bijections). -/
-  holder : (ℓ : (protoOf F E).Label) → Fin ((protoOf F E).seats ℓ) → V
+  /-- The validator holding every seat. Within one label, distinct seats are
+  held by distinct validators (an embedding), so a quorum of seats is a quorum
+  of distinct validators; a full committee is a bijection automatically. -/
+  holder : (ℓ : (protoOf F E).Label) → Fin ((protoOf F E).seats ℓ) ↪ V
   /-- The transactions submitted to every node at every time. -/
   submit : V → Time → List Tx
   /-- The hash function: arbitrary, possibly with collisions; evaluated only by
