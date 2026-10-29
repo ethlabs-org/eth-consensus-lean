@@ -49,16 +49,20 @@ that a claim or regime evaluates.
   asleep, so a progress requirement cannot quietly demand near-full
   participation. For every provided available or stable output, at *some*
   index:
-  - `sleepyStress`: a sleepy witness where at most `⌊2n/3⌋` honest validators
-    are awake at any one time (`AwakeAtMost`: never an awake supermajority),
-    with `prog[0, horizon]` and `TxLiveActive`.
+  - `sleepyStress`: for every validator count, a sleepy witness where at most
+    two honest validators are awake at any one time (`AwakeAtMost 2`; the
+    witness also has a faulty validator, and with `θ ≤ ½` two ready honest
+    validators meet the sleepy threshold), with `prog[0, horizon]` and
+    `TxLiveActive`.
 
   The healthy regime is full participation, so it has no stress witness.
 
   A contract whose available progress is "at most one validator not ready"
   at every index is therefore not realizable
-  (`notReadyAtMost_one_not_realizable`): a protocol that halts when two
-  validators sleep is not dynamically available.
+  (`notReadyAtMost_one_not_realizable`), nor is any bound below `n − 2` at
+  every index (`notReadyAtMost_below_not_realizable`): a protocol that
+  needs a fixed fraction of the validators awake is not dynamically
+  available.
 
 For shape protocols, `Accepted.good` (L2) proves all three parts. The good
 protocols we accept are
@@ -408,7 +412,7 @@ and `proposalLive_txLive` (proposal liveness and partial synchrony give
 transaction liveness; it needs catch-up `≥ Δ`, `Admissible.catchUp_pos`, so a
 ready proposer was awake over the delivery interval before its release). `sysOf_adequate` gives `Adequate`.
 `regimes_realizable` gives `RealizableActive`, hence `Realizable`
-(`RealizableActive.toRealizable`; its stress witness keeps keys `1..3`
+(`RealizableActive.toRealizable`; its stress witness keeps keys `1` and `2`
 awake and the rest asleep). Corollary
 (`ConsensusShape/Service.lean`, `Accepted.activeService`): a final or
 available output puts a relayed transaction into another honest node's

@@ -77,7 +77,7 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
   sleepyStress : ∀ cap, (cap = .available ∨ cap = .stable) → (O.output cap).isSome →
     ∀ Δ : Time, 0 < Δ → ∃ i r, (Sys F V).Witness r ∧ ((Sys F V).pt r).env.Δ = Δ ∧
       (Sys F V).SleepyLive (shapeProgress F V) K cap i r ∧
-      ((Sys F V).pt r).AwakeAtMost (2 * Fintype.card V / 3) ∧ ProgressActive F K cap i 0 r.2
+      ((Sys F V).pt r).AwakeAtMost 2 ∧ ProgressActive F K cap i 0 r.2
   outage : ∀ (Δ : Time) (k : Nat), 0 < Δ → ∃ r T b₀ b₁, (Sys F V).Witness r ∧
     ((Sys F V).pt r).env.Δ = Δ ∧ (Sys F V).Outage K T b₀ b₁ r ∧
     OutageActive ((Sys F V).cDur K r) T b₀ b₁ ((Sys F V).pt r) ∧ (k : Time) * Δ ≤ T
@@ -172,7 +172,7 @@ PKI `Fintype.equivFin`; the extremal selection (`.sized 1` proposer roles
 select key `1`, honest and always awake); transaction `42` submitted to
 `key 1` at time `0`, read by `key 2`.
 
-* stress: three honest keys awake (sleepy);
+* stress: two honest keys (`1`, `2`) awake (sleepy), whatever `n`;
 * sleepy and healthy: everyone awake (healthy is full participation, and the
   one faulty validator is below `β·n` for `β ≥ ⅓`, `n ≥ 5`); the healthy witness is the canonical
   run from the GST `g`, whose log has no message receipt before `g` (protocol
@@ -595,56 +595,57 @@ theorem healthy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap 
       (K.params.latency cap i : Time) * Δ ≤ H
     rw [max_eq_right hheal]; exact h1
 
-/-- Sleepy stress: only honest keys `1`, `2`, `3` stay awake, with active
-liveness and progress on the synchronous canonical run. -/
+/-- Sleepy stress: only honest keys `1` and `2` stay awake, with active
+liveness and progress on the synchronous canonical run: with one faulty
+validator and `θ ≤ ½`, two ready honest validators meet the sleepy
+threshold. -/
 theorem sleepyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap : Capability)
     (i : K.Idx) (ht : ProgressReq.Tolerates (Fintype.card V) (K.progress cap i))
     (hH : Δ + (K.params.latency cap i : Time) * Δ +
-      progLen F K cap i (⟨Δ, hΔ, (awakeUpTo key 3)⟩ : Env V) ≤ H) :
-    ∃ rho : Model.Run (compiled F) (realPoint key hn Δ hΔ (awakeUpTo key 3) H).env,
-      rho.point = realPoint key hn Δ hΔ (awakeUpTo key 3) H ∧ rho.key = key ∧
+      progLen F K cap i (⟨Δ, hΔ, (awakeUpTo key 2)⟩ : Env V) ≤ H) :
+    ∃ rho : Model.Run (compiled F) (realPoint key hn Δ hΔ (awakeUpTo key 2) H).env,
+      rho.point = realPoint key hn Δ hΔ (awakeUpTo key 2) H ∧ rho.key = key ∧
       (Sys F V).Witness ⟨_, rho⟩ ∧ (Sys F V).Sleepy K ⟨_, rho⟩ ∧
       (Sys F V).prog (shapeProgress F V) K cap i 0 rho.horizon ⟨_, rho⟩ ∧
       ProgressActive F K cap i 0 rho ∧
       rho.point.TxLiveActive ((Sys F V).cDur K ⟨_, rho⟩) 0
         ((Sys F V).lat K cap i ⟨_, rho⟩) ∧
-      rho.point.AwakeAtMost (2 * Fintype.card V / 3) := by
-  have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, (awakeUpTo key 3)⟩ : Env V)
+      rho.point.AwakeAtMost 2 := by
+  have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, (awakeUpTo key 2)⟩ : Env V)
   have hlat : 0 ≤ (K.params.latency cap i : Time) * Δ := mul_nonneg (by positivity) hΔ.le
   have hH0 : 0 ≤ H := by linarith
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
-    real_run key F (realPoint key hn Δ hΔ (awakeUpTo key 3) H) hH0 0
-  refine ⟨Model.mkRun (F := compiled F) (E := (realPoint key hn Δ hΔ (awakeUpTo key 3) H).env)
-    (realPoint key hn Δ hΔ (awakeUpTo key 3) H).honest H key
-    (extremalSel F (realPoint key hn Δ hΔ (awakeUpTo key 3) H).env)
-    (realPoint key hn Δ hΔ (awakeUpTo key 3) H).submit relay hash
+    real_run key F (realPoint key hn Δ hΔ (awakeUpTo key 2) H) hH0 0
+  refine ⟨Model.mkRun (F := compiled F) (E := (realPoint key hn Δ hΔ (awakeUpTo key 2) H).env)
+    (realPoint key hn Δ hΔ (awakeUpTo key 2) H).honest H key
+    (extremalSel F (realPoint key hn Δ hΔ (awakeUpTo key 2) H).env)
+    (realPoint key hn Δ hΔ (awakeUpTo key 2) H).submit relay hash
       events,
     rfl, rfl, ⟨hv, hnc, ?_, ?_⟩, ⟨(Model.sysOf_eagerFrom _ he).psync le_rfl, ?_⟩,
     profile_holds key hn hΔ H _ (by intro t; simp [awakeUpTo, kv]) hf cap i ht _ _ _, ?_, ?_, ?_⟩
-  · change (realPoint key hn Δ hΔ (awakeUpTo key 3) H).faulty.Nonempty
+  · change (realPoint key hn Δ hΔ (awakeUpTo key 2) H).faulty.Nonempty
     rw [realPoint_faulty]; exact Finset.singleton_nonempty _
-  · exact ⟨_, realPoint_honest key hn hΔ (awakeUpTo key 3) H (j := 1) (by decide) (by decide)⟩
+  · exact ⟨_, realPoint_honest key hn hΔ (awakeUpTo key 2) H (j := 1) (by decide) (by decide)⟩
   · intro t _ _
-    change (realPoint key hn Δ hΔ (awakeUpTo key 3) H).ReadyAbove K.params.θ
+    change (realPoint key hn Δ hΔ (awakeUpTo key 2) H).ReadyAbove K.params.θ
       ((K.params.catchUp : Time) * Δ) t
     unfold EnvPoint.ReadyAbove
     rw [realPoint_faulty, Finset.card_singleton]
-    have hr := awakeUpTo_ready key hn hΔ H 3 (by omega) (((K.params.catchUp : Time) * Δ)) t
-    have hr' : (3 : ℚ) ≤ ((realPoint key hn Δ hΔ (awakeUpTo key 3) H).readyAt
+    have hr := awakeUpTo_ready key hn hΔ H 2 (by omega) (((K.params.catchUp : Time) * Δ)) t
+    have hr' : (2 : ℚ) ≤ ((realPoint key hn Δ hΔ (awakeUpTo key 2) H).readyAt
         (((K.params.catchUp : Time) * Δ)) t).card := by exact_mod_cast hr
     have := ha.θ_range.2
     push_cast
     nlinarith
-  · change max 0 0 + progLen F K cap i (⟨Δ, hΔ, (awakeUpTo key 3)⟩ : Env V) ≤ H
+  · change max 0 0 + progLen F K cap i (⟨Δ, hΔ, (awakeUpTo key 2)⟩ : Env V) ≤ H
     simp only [max_self, zero_add]; linarith
   · refine profile_txLiveActive key hn hΔ H _ (by intro t; simp [awakeUpTo, kv])
       (by intro t; simp [awakeUpTo, kv]) _ rfl _ _ _ ?_
     change max 0 0 + Δ + (K.params.latency cap i : Time) * Δ ≤ H
     simp only [max_self, zero_add]; linarith
   · intro t _ _
-    change ((realPoint key hn Δ hΔ (awakeUpTo key 3) H).awakeAt t).card ≤ _
-    rw [awakeUpTo_card key hn hΔ H 3 (by omega)]
-    omega
+    change ((realPoint key hn Δ hΔ (awakeUpTo key 2) H).awakeAt t).card ≤ _
+    rw [awakeUpTo_card key hn hΔ H 2 (by omega)]
 
 /-- The outage witness `(T, [b₀, b₁))`: honest `key 2` asleep exactly at
 `b₀`, everyone else always awake, the synchronous canonical run, horizon

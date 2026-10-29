@@ -17,8 +17,8 @@ contract `K` (numbers only). Three parts:
   prefix closure).
 * `Realizable` (for at least five validators): every regime, at every `Δ`,
   every GST and arbitrarily late outages, is met by a clean witness with
-  active claims, plus a sleepy stress witness with many honest validators
-  asleep.
+  active claims, plus a sleepy stress witness with at most two honest
+  validators awake.
 
 What L0 cannot check, and L1 proves once for the model: the log is the
 engine's real communication (`Model.sysOf_log_faithful`), and the external data
@@ -223,7 +223,8 @@ end System
 /-- **Realizability**: every regime is met by a clean witness with active
 claims, at every `Δ`, every GST (with a log silent before it), and arbitrarily
 late outages; and every provided available or stable output is live, at
-some index, with many honest validators asleep (sleepy stress witness). -/
+some index, with at most two honest validators awake (sleepy stress
+witness). -/
 structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     Prop where
   sleepy : ∀ cap i (Δ : Time), 0 < Δ → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
@@ -231,13 +232,15 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
   healthy : ∀ cap i (Δ g : Time), 0 < Δ → 0 ≤ g → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
     S.HealthyLive X K cap i g r ∧ SafeActive (S.cDur K r) (S.heal K cap i g r) (S.pt r)
   /-- Sleepy stress: every provided available or stable output is live, at
-  some index, on a sleepy witness where at most `⌊2n/3⌋` honest validators
-  are awake at any time (never an awake supermajority). A progress
-  requirement that demands near-full participation at every index (e.g. at
-  most one validator not ready) fails here. -/
+  some index, on a sleepy witness where at most two honest validators are
+  awake at any time, whatever the number of validators (the witness has a
+  faulty validator, so with `θ ≤ ½` two ready honest validators meet the
+  sleepy threshold). A progress requirement that demands any growing
+  participation at every index (e.g. at most `n − 3` validators not ready)
+  fails here. -/
   sleepyStress : ∀ cap, (cap = .available ∨ cap = .stable) → (S.schema.output cap).isSome →
     ∀ Δ : Time, 0 < Δ → ∃ i r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ S.SleepyLive X K cap i r ∧
-      (S.pt r).AwakeAtMost (2 * Fintype.card V / 3)
+      (S.pt r).AwakeAtMost 2
   outage : ∀ (Δ : Time) (k : Nat), 0 < Δ → ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
     S.Outage K T b₀ b₁ r ∧ OutageActive (S.cDur K r) T b₀ b₁ (S.pt r) ∧ (k : Time) * Δ ≤ T
 

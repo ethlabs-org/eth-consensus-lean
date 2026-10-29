@@ -24,7 +24,7 @@ exist in `Index.lean`.
 * M6 syncUntil unchecked: removed, no premise language; `SyncUntil` is used only inside the fixed outage regime and the prefix forms.
 * M7 late GST: `Realizable.healthy` ∀ Δ, g (`regimes_realizable`); test `healed_witness_late` (Δ = 7, GST 1000).
 * M8 trivial outage: `OutageActive` in `Realizable.outage`; tests `outage_async_log`, `outage_witness_late` (≥ 1000·Δ), `outage_control`.
-* M9 dynamic participation: construction, sleepy is `ReadyAbove θ`, `θ ≤ ½`; test `sleepy_with_sleeper`; stress witness (`Realizable.sleepyStress`, `notReadyAtMost_one_not_realizable`).
+* M9 dynamic participation: construction, sleepy is `ReadyAbove θ`, `θ ≤ ½`; test `sleepy_with_sleeper`; stress witness with at most two honest awake (`Realizable.sleepyStress`, `notReadyAtMost_one_not_realizable`, `notReadyAtMost_below_not_realizable`).
 * M10 thresholds: `Params.Admissible`; tests `admissibility_rejections`, `standard_admissible`, `outage_times_teeth`, `healthy_needs_full_participation`.
 * M11 wake at GST: `HealthyOn` counts every honest validator awake from `max g 0` (full participation); progress from `ready`; test `healthy_wake_at_gst`.
 * M12 inclusion of every proposal: sheet `includeSleepy`, `includeHealed`.

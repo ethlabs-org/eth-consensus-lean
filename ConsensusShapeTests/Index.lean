@@ -377,6 +377,7 @@ example := @Consensus.Shape.Tests.Vacuity.noProgressFit_contract
 example := @Consensus.Shape.Tests.Vacuity.noService_not_accepted
 example := @Consensus.Shape.Tests.Vacuity.notReadyAtMost_fits
 example := @Consensus.Shape.Tests.Vacuity.notReadyAtMost_one_not_realizable
+example := @Consensus.Shape.Tests.Vacuity.notReadyAtMost_below_not_realizable
 example := @Consensus.Shape.Tests.Vacuity.notReadyAtMost_one_not_tolerant
 example := @Consensus.Shape.Tests.Vacuity.reject_alpha
 example := @Consensus.Shape.Tests.Vacuity.reject_alpha_any

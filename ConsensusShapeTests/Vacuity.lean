@@ -7,7 +7,8 @@ public import Mathlib.Tactic
 
 /-! # Bad contracts, bad protocols, credentials (L2)
 
-* A bound of one validator not ready fails the sleepy stress requirement.
+* A bound of one validator not ready, or any bound below `n − 2` at every
+  index, fails the sleepy stress requirement (at most two honest awake).
 * **Admissibility rejections** (M10): a contract cannot buy its claims with a
   stronger environment. Each of `θ = 3/5`, `β = 1/4` (fewer faults than a
   third), `cover = 3/5`, `α = 1/4` (with `β = 1/3`: `β > α`), `budget = 0` and
@@ -36,12 +37,15 @@ open Consensus Blocks Shape
 open Consensus.Model (Public Key Obj pubOf protoOf sysOf)
 open Consensus.Shape.Tests.Shapes (pollSkel pollShape)
 
-/-- Near-full participation cannot meet sleepy stress below a supermajority. -/
-theorem notReadyAtMost_one_not_realizable {O : OutputSchema} {Info : Type}
+/-- A bound below `n − 2` validators not ready at every index cannot meet
+the sleepy stress witness (at most two honest validators awake): any fixed
+participation requirement of three or more ready validators fails. -/
+theorem notReadyAtMost_below_not_realizable {O : OutputSchema} {Info : Type}
     [DecidableEq Info] [Countable Info] (F : ShapeFamily O Info)
     (K : Contract ProgressReq) (V : Type) [Fintype V] [DecidableEq V]
-    (hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome)
-    (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) :
+    (hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome) (m : K.Idx → ℕ+)
+    (hm : ∀ i, (m i : Nat) + 3 ≤ Fintype.card V)
+    (hp : ∀ i, K.progress .available i = .notReadyAtMost (m i)) :
     ¬ Realizable (sysOf O (compiled F) V) (shapeProgress F V) K := by
   intro h
   obtain ⟨i, r, -, hd, ⟨-, hprog, hlive⟩, hawake⟩ :=
@@ -60,9 +64,20 @@ theorem notReadyAtMost_one_not_realizable {O : OutputSchema} {Info : Type}
   have hready := hprog 0 (by simp) hH hH
   have hsub := Finset.card_le_card ((S.pt r).readyAt_subset_awakeAt hc le_rfl)
   have hb := hawake 0 le_rfl hH
-  change ((S.pt r).awakeAt 0).card ≤ 2 * Fintype.card V / 3 at hb
-  change Fintype.card V ≤ ((S.pt r).readyAt (S.cDur K r) 0).card + 1 at hready
+  change ((S.pt r).awakeAt 0).card ≤ 2 at hb
+  change Fintype.card V ≤ ((S.pt r).readyAt (S.cDur K r) 0).card + (m i : Nat) at hready
+  have := hm i
   omega
+
+/-- Near-full participation (at most one validator not ready) cannot meet
+sleepy stress. -/
+theorem notReadyAtMost_one_not_realizable {O : OutputSchema} {Info : Type}
+    [DecidableEq Info] [Countable Info] (F : ShapeFamily O Info)
+    (K : Contract ProgressReq) (V : Type) [Fintype V] [DecidableEq V]
+    (hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome)
+    (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) :
+    ¬ Realizable (sysOf O (compiled F) V) (shapeProgress F V) K :=
+  notReadyAtMost_below_not_realizable F K V hn ho (fun _ => 1) (fun _ => by simp; omega) hp
 
 /-- A fixed bound of one cannot tolerate arbitrary numbers not ready. -/
 theorem notReadyAtMost_one_not_tolerant {O : OutputSchema} (K : Contract ProgressReq)
