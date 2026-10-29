@@ -545,19 +545,36 @@ replay_leaf() {
   /usr/bin/time -f '%M %e' -o "$t" lake env leanchecker "$m" || { echo "  leanchecker rejected $m"; return 1; }
   read -r kb secs <"$t"
   echo "  $m: ${secs}s, peak $((kb / 1024)) MB"
-  ((kb > PEAK_KB)) && PEAK_KB=$kb
   return 0
 }
-PEAK_KB=0
 SEARCH_PATH=()
+# Up to REPLAY_JOBS (default 2) leaves at once, each still one module per leanchecker process. Each
+# process is dominated by loading its environment (~3 s load vs ms of replay) and peaks at ~3.3 GB, so
+# two fit the 2-vCPU / 7 GB CI runner and halve the step (#13). Output is printed per leaf, in order.
 step_replay() {
   set +e
-  local rc=0 m n=0 start=$SECONDS
+  local rc=0 m i k=0 n=0 kb peak=0 start=$SECONDS njobs="${REPLAY_JOBS:-2}" pids=()
+  [[ "$njobs" =~ ^[1-9][0-9]*$ ]] || { echo "  REPLAY_JOBS must be a positive integer, not '$njobs'"; return 1; }
   load_search_path || { echo "  cannot determine the Lean search path"; return 1; }
   mapfile -t leaves < <(inv_kind leaf)
   ((${#leaves[@]} > 0)) || { echo "  no leaf modules"; return 1; }
-  for m in "${leaves[@]}"; do replay_leaf "$m" || rc=1; n=$((n + 1)); done
-  echo "  NOTE  leanchecker: $n leaf modules, $((SECONDS - start))s total, peak $((PEAK_KB / 1024)) MB"
+  for i in "${!leaves[@]}"; do
+    replay_leaf "${leaves[i]}" >"$WORK/replay.$i.out" 2>&1 &
+    pids+=("$!")
+    while ((${#pids[@]} - k >= njobs)); do
+      wait "${pids[k]}" || rc=1; cat "$WORK/replay.$k.out"; k=$((k + 1))
+    done
+  done
+  while ((k < ${#pids[@]})); do
+    wait "${pids[k]}" || rc=1; cat "$WORK/replay.$k.out"; k=$((k + 1))
+  done
+  for m in "${leaves[@]}"; do
+    n=$((n + 1))
+    # The last line is "<KB> <s>"; a rejected leaf's file starts with GNU time's exit-status line.
+    kb="$(tail -n 1 "$WORK/time.$m" 2>/dev/null | cut -d' ' -f1)"
+    [[ "$kb" =~ ^[0-9]+$ ]] && ((kb > peak)) && peak=$kb
+  done
+  echo "  NOTE  leanchecker: $n leaf modules, $njobs at a time, $((SECONDS - start))s total, peak $((peak / 1024)) MB per process"
   set -e
   return "$rc"
 }

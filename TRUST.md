@@ -33,7 +33,7 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   against `scripts/spec-snapshot.txt`, then owner review of every change (`spec-approved`).
   Proof values are omitted by proof irrelevance; non-proof auxiliary constants are included.
 - **Dependency drift:** exact pins; the upgrade above additionally used the dependency audit.
-- **Proofs:** leanchecker, sequentially on every default-library leaf module (parents own no
+- **Proofs:** leanchecker, one process per default-library leaf module (parents own no
   constants); `lake check`; check-decls; and the comparator: statement matching, axiom limits,
   identical reachable constants across exports (tamper resistance) and sandboxed replay, by Lean's
   kernel and, with `--paranoid`, by every external kernel bundled with Lean.

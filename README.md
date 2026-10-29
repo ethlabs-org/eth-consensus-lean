@@ -512,7 +512,7 @@ Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 2. **Imports:** enforce R1–R3, root coverage, library inventory and pinned-base names with `scripts/check-imports.py`.
 3. **Declarations:** EthLib check-decls checks every module of every default library for extra axioms, unfinished proofs, opaque/unsafe/partial declarations, extern/implemented_by/csimp and opaque reachability; empty scopes fail.
 4. **Spec surface:** check persisted extensions, diff the complete readable/structural snapshot (including pins/options), enforce theorem hygiene and constant-free parents; the `reach` report (which Spec definitions the review statements reach; not a gate) runs in `--full`, in `--changed` when step 4 runs, and in `--fast` with `--reach`.
-5. **Kernel replay:** run leanchecker sequentially on every default-library leaf, one module per process after checking it has no descendants; parent modules own no constants.
+5. **Kernel replay:** run leanchecker on every default-library leaf, one module per process after checking it has no descendants, two processes at a time (`REPLAY_JOBS`); parent modules own no constants.
 6. **Review pins:** require the tests root to import the compiled alpha-equality guards and exact axiom pins.
 7. **Backstop:** grep for unfinished/native proofs, kernel bypasses, Spec metacommands and unsafe lakefile options.
 8. **Vendored:** verify all vendored EthLib copies against `scripts/vendor.sha256`.
@@ -782,8 +782,8 @@ them and lists them as **CI-only**; `full.yml` always runs them, with their fixt
 fails on any skipped step. The shared box has `bwrap` (installed 2026-10-29), so a local `--full` run
 executes them too. The comparator runs with `--paranoid`: the review statements' closure is replayed by
 Lean's kernel and by every external kernel bundled with Lean (leanchecker-paranoid, lean4lean, nanoda,
-con-leche, con-ron), about 3 minutes in CI. leanchecker replays every default-library leaf sequentially,
-one module per process; never invoke it on a root or prefix with descendants.
+con-leche, con-ron), about 3 minutes in CI. leanchecker replays every default-library leaf,
+one module per process (two at a time); never invoke it on a root or prefix with descendants.
 
 CI caching (fast tier): Mathlib's oleans come from `lake exe cache get` (plus an actions/cache of
 `.lake/packages` keyed on the manifest and toolchain); the project's `.lake/build` is an actions/cache
