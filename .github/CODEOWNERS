@@ -2,16 +2,25 @@
 # Enforced only by a branch ruleset requiring Code Owner review, which needs @fradamt to be a collaborator
 # with write access (not yet set up). The trusted surface (Spec, challenge, comparator.json, toolchain,
 # manifest, review pins) is also checked by the CI job review-boundary (ci.yml) against the tag
-# `spec-approved`; the check infrastructure (scripts/, .github/, lakefile) only through this file.
-/ConsensusSpec/                     @fradamt
-/ConsensusSpec.lean                 @fradamt
-/ConsensusChallenge.lean            @fradamt
+# `spec-approved` (its path list: `trusted_paths` in scripts/boundaries.toml, kept in sync with this file);
+# the check infrastructure (scripts/, .github/, lakefile) only through this file.
+/ConsensusLean/Init.lean            @fradamt
+/ConsensusLean/Init/                @fradamt
+/ConsensusLean/Core.lean            @fradamt
+/ConsensusLean/Core/                @fradamt
+/ConsensusLean/Spec.lean            @fradamt
+/ConsensusLean/Spec/                @fradamt
+/ConsensusLean/Statements.lean      @fradamt
+/ConsensusLean/Statements/          @fradamt
+/ConsensusLean/ToMathlib.lean       @fradamt
+/ConsensusLean/ToMathlib/           @fradamt
+/Challenge.lean                     @fradamt
 /comparator.json                    @fradamt
 /lean-toolchain                     @fradamt
 /lakefile.toml                      @fradamt
 /lakefile.lean                      @fradamt
 /lake-manifest.json                 @fradamt
 /scripts/                           @fradamt
-/ConsensusTests/ReviewAxioms.lean   @fradamt
-/ConsensusTests/ReviewGuard.lean    @fradamt
+/ConsensusLeanTest/ReviewAxioms.lean @fradamt
+/ConsensusLeanTest/ReviewGuard.lean @fradamt
 /.github/                           @fradamt

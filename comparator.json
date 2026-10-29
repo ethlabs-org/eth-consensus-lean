@@ -1,4 +1,4 @@
-{ "challenge_module": "ConsensusChallenge", "solution_module": "ConsensusProofs.Review",
+{ "challenge_module": "Challenge", "solution_module": "Solution",
   "theorem_names": ["Consensus.Review.acceptedGood", "Consensus.Review.regimesRealizable",
                     "Consensus.Review.logFaithful", "Consensus.Review.heldIffServed"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }

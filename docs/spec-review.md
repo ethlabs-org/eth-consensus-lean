@@ -2,14 +2,21 @@
 
 ## Approval
 
-The trusted surface was **approved at `4b7c51484baa5725301d559d437f22a0ea5ab9a2` (4b7c5148) on 2026-10-29
+Since #5 the tag `spec-approved` points to the head of PR #30, the verbatim move of this surface to the single
+library `ConsensusLean` (section "Move to one library `ConsensusLean` (#5)" below). Before that, the trusted
+surface was **approved at `4b7c51484baa5725301d559d437f22a0ea5ab9a2` (4b7c5148) on 2026-10-29
 by claude-ethlabs on Francesco's authorization**: annotated tag `spec-approved` ("Owner approval (Francesco,
 granted to claude-ethlabs 2026-10-29): protected Spec / review statements / challenge / toolchain at 4b7c5148
 (post-reorg; verbatim moves + v4.35 internal term differences documented in the reorg evidence)").
 
-The **trusted surface**, checked by CI's `review-boundary` job against the tag (any difference fails):
-`ConsensusSpec/**`, `ConsensusSpec.lean`, `ConsensusChallenge.lean`, `comparator.json`, `lean-toolchain`,
-`lake-manifest.json`, `ConsensusTests/ReviewAxioms.lean`, `ConsensusTests/ReviewGuard.lean`.
+The **trusted surface**, checked by CI's `review-boundary` job against the tag (any difference fails), is the
+list `trusted_paths` in `scripts/boundaries.toml` (since #5): `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}`
+(each as `X.lean` and `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
+`ConsensusLeanTest/ReviewAxioms.lean`, `ConsensusLeanTest/ReviewGuard.lean`. At `4b7c5148` it was `ConsensusSpec/**`,
+`ConsensusSpec.lean`, `ConsensusChallenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
+`ConsensusTests/ReviewAxioms.lean`, `ConsensusTests/ReviewGuard.lean`; the move is recorded in
+"Move to one library `ConsensusLean` (#5)" below. The sections between describe the approved surface at
+`4b7c5148` under its current paths.
 The check infrastructure (`scripts/**`, `.github/**`, `lakefile.toml`; `lakefile.lean` must not exist) is
 owner-reviewed through `.github/CODEOWNERS` and PR review, not through the tag; it is described below
 because it defines what the checks enforce.
@@ -20,10 +27,11 @@ with git, Python and file reads only; the evidence script below reruns every tex
 
 ## Protected paths and declarations
 
-Every file below `ConsensusSpec/` is part of the claim. Namespaces remain `Consensus.*`.
-The Spec import closure excludes project Proofs, Instances and Tests.
+Every file of the spec group (`ConsensusLean/Init.lean`, `ConsensusLean/Spec/`, `ConsensusLean/Statements/`;
+`Core` and `ToMathlib` are empty) is part of the claim. Namespaces remain `Consensus.*`.
+The Spec import closure excludes project Lemmas, Proofs, Main, Instances, Solution and tests.
 
-| File under `ConsensusSpec/` | Meaning |
+| File under `ConsensusLean/Spec/` (`ConsensusSpec/` at `4b7c5148`) | Meaning |
 |---|---|
 | `Problem/Basic.lean` | Capabilities, output schemas, environments, points, traces, communication logs and systems. |
 | `Problem/Network.lean` | Delivery, `Held`/`TxHeld`, partial synchrony, cut/outage networks and eager logs. |
@@ -47,15 +55,15 @@ The Spec import closure excludes project Proofs, Instances and Tests.
 | `Shape/ProgressFit.lean` | Progress fit and tolerance, including participation and bad-proposer tolerance. |
 | `Shape/Active.lean` | Progress activity, `BadProposerEvery` and `RealizableActive` witnesses. |
 | `Shape/Accepted.lean` | Acceptance: claims, admissible numbers, service, progress fit and tolerance. |
-| `Statements.lean` | The four review propositions below. |
+| `../Statements/Review.lean` (`Statements.lean` at `4b7c5148`) | The four review propositions below. |
 
 | Other protected path | Meaning |
 |---|---|
-| `ConsensusSpec.lean` | Import-only root collecting the complete Spec; owns no declarations. |
-| `ConsensusChallenge.lean` | Non-default comparator challenge: Spec-only imports and four placeholder proofs. |
+| `ConsensusLean/Init.lean` | Curated public imports (`Mathlib.Init`, `Mathlib.Tactic.Common`); owns no declarations. Replaces the import-only root `ConsensusSpec.lean` of `4b7c5148` in the list. |
+| `Challenge.lean` | Non-default comparator challenge: imports exactly `ConsensusLean.Statements.Review`; four placeholder proofs. |
 | `comparator.json` | Challenge/solution modules, four theorem names and three permitted axioms. |
-| `ConsensusTests/ReviewAxioms.lean` | Compiled statement/type, binder-kind, completeness and exact axiom pins. |
-| `ConsensusTests/ReviewGuard.lean` | Shared implementation of those statement/completeness checks, also used by negative fixtures. |
+| `ConsensusLeanTest/ReviewAxioms.lean` | Compiled statement/type, binder-kind, completeness and exact axiom pins. |
+| `ConsensusLeanTest/ReviewGuard.lean` | Shared implementation of those statement/completeness checks, also used by negative fixtures. |
 | `lean-toolchain` | Exact Lean version: `leanprover/lean4:v4.35.0`. |
 | `lakefile.toml` | Libraries, default targets, Mathlib requirement, Lean options and checker executable. |
 | `lake-manifest.json` | Exact nine dependency revisions, URLs and configuration/manifest paths. |
@@ -63,7 +71,7 @@ The Spec import closure excludes project Proofs, Instances and Tests.
 | `scripts/**` | The trust-check driver, tools, reviewed data and positive/negative controls described next. |
 | `.github/**` | CI definitions and CODEOWNERS; changes can alter enforcement itself. |
 
-The review propositions are in `ConsensusSpec/Statements.lean`, inside
+The review propositions are in `ConsensusLean/Statements/Review.lean`, inside
 `namespace Consensus.Review` with `open Consensus.Shape Consensus.Model Consensus.Blocks`:
 
 ```lean
@@ -103,9 +111,9 @@ def HeldIffServed : Prop :=
 | `LogFaithful` | The system log records exactly engine releases, receipts and inboxes, with only the run's environment tag. `logFaithful` uses `Consensus.Model.sysOf_log_faithful`. |
 | `HeldIffServed` | On valid runs, for honest nodes and deadlines within the horizon, L0 holding equals engine service. `heldIffServed` uses `Consensus.Model.Run.held_iff_served`. |
 
-The four lower-case proofs are in `ConsensusProofs/Review.lean`. The source theorems
-are in `ConsensusProofs/Shape/Accepted.lean`, `Shape/Realizable.lean` and
-`Model/Faithful.lean` respectively (the last file supplies both model theorems).
+The four lower-case proofs are in `Solution.lean`. The source theorems
+are in `ConsensusLean/Main.lean`, `ConsensusLean/Proofs/RegimesRealizable/Main.lean` and
+`ConsensusLean/Proofs/Faithful/Main.lean` respectively (the last file supplies both model theorems).
 `ReviewAxioms.lean` compares each definition body to its source theorem's type by
 alpha-equality, plus an explicit comparison of all binder kinds (`{}`, `()`, `[]`, `⦃⦄`).
 `ReviewGuard.checkComplete` requires a pair for every non-proof, non-matcher constant
@@ -113,13 +121,13 @@ owned by Statements, including private constants and other namespaces.
 The guarded axiom output pins both sets of four proofs to exactly
 `propext`, `Classical.choice` and `Quot.sound`.
 
-The comparator matches the challenge against `ConsensusProofs.Review`, limits axioms,
+The comparator matches the challenge against `Solution`, limits axioms,
 replays exports in a sandbox and requires identical reachable constants across exports.
 Both sides use this tree's Spec. The snapshot and owner review detect Spec drift.
 The challenge's `sorry` proofs are deliberate and excluded from default libraries.
 
-`lakefile.toml` defaults to Spec, Proofs, Instances and Tests; challenge and fixture
-libraries are non-default. Its six options are `pp.unicode.fun=true`,
+`lakefile.toml` defaults to `ConsensusLean` (since #5; at `4b7c5148`: Spec, Proofs, Instances and Tests);
+`ConsensusLeanTest` is the `testDriver`; `Solution`, `Challenge` and the fixture libraries are non-default. Its six options are `pp.unicode.fun=true`,
 `relaxedAutoImplicit=false`, `weak.linter.mathlibStandardSet=true`,
 `weak.linter.flexible=false`, `weak.linter.style.header=false` and
 `maxSynthPendingDepth=3`. `scripts/pins.toml` independently pins all nine manifest packages.
@@ -129,14 +137,14 @@ The `scripts/**` stack is:
 | Files/groups | Review purpose |
 |---|---|
 | `check.sh` | Driver and self-tests: pins, build/freshness, imports, declarations, Spec surface, sequential replay, review pins, grep, vendor hashes, comparator, sandboxed Lake checks and docs. |
-| `check-imports.py` | Parsed imports, closure rules, root coverage, library inventory and base-name provenance constraints. |
+| `check-imports.py` | Parsed imports, module-group closure rules, generated-root listing, library inventory, trusted-path coverage and base-name provenance constraints. |
 | `check-pins.py` | Toolchain, dependency manifest, clean checkouts and actual Lake resolution. |
 | `SpecSurface.lean` | Snapshot, persisted extensions, theorem hygiene, constant-free parents, statement inventory and reachability; loads no checked extension state. |
-| `CheckDecls.lean` | Vendored EthLib declaration/axiom checker; detects unfinished proofs, unsafe/opaque/partial declarations and forbidden implementation hooks. |
+| `CheckDecls.lean` | Vendored EthLib declaration/axiom checker with two local patches (TRUST.md); detects unfinished proofs, unsafe/opaque/partial declarations and forbidden implementation hooks. |
 | `test_check_decls.sh`, `CheckDeclsTest.lean`, `CheckDeclsForeign.lean`, `CheckDeclsTest/**` | EthLib checker self-tests, including deliberately bad and exempt declarations. |
 | `LICENSE.EthLib` | CC0 licence for the vendored checker and tests. |
 | `fixtures/**` | Import, surface, review guard, grep, pins, docs, comparator and Lake replay controls. Deliberately invalid fixtures must fail. |
-| `boundaries.toml` | Reviewed library inventory, R1–R3 import permissions, base set, fixture exclusions and check configuration. |
+| `boundaries.toml` | Reviewed libraries, module groups (R1–R3 import permissions), base set, fixture exclusions, `trusted_paths` and check configuration. |
 | `pins.toml` | Reviewed exact toolchain and dependency provenance, including URLs/revisions/config paths. |
 | `spec-snapshot.txt` | Reviewed readable declarations and structural type/value hashes for every Spec-owned constant; header fixes pins/options. Proof values are omitted. |
 | `spec-extensions.txt` | Reviewed persisted-extension whitelist; not a complete audit of non-persisted source effects. |
@@ -487,14 +495,76 @@ git diff 2852f717 4b7c5148 -- lean-toolchain lakefile.toml lake-manifest.json
 git diff 1eb8b6ec 4b7c5148 -- scripts/spec-snapshot.txt
 ```
 
+## Move to one library `ConsensusLean` (#5)
+
+Approved by moving the tag `spec-approved` from `4b7c5148` to the head of PR #30 (`git cat-file -p spec-approved`
+shows the commit and the message). The move is a pure rename/move of the trusted surface with machine-checked
+equality of the compiled statements, which Francesco's rule lets claude-ethlabs approve; a change in meaning
+needs his review. Old and new paths:
+
+| At `4b7c5148` | Since #5 |
+|---|---|
+| `ConsensusSpec/{Problem,Model,Blocks,Shape}/*.lean` | `ConsensusLean/Spec/{Problem,Model,Blocks,Shape}/*.lean` (same file names) |
+| `ConsensusSpec/Statements.lean` | `ConsensusLean/Statements/Review.lean` |
+| `ConsensusSpec.lean` (import-only root) | removed; the generated root `ConsensusLean.lean` (not trusted) imports every module |
+| `ConsensusChallenge.lean` | `Challenge.lean` (imports exactly `ConsensusLean.Statements.Review`) |
+| `ConsensusTests/ReviewAxioms.lean`, `ReviewGuard.lean` | `ConsensusLeanTest/ReviewAxioms.lean`, `ReviewGuard.lean` |
+| `comparator.json` | same path; `challenge_module` `Challenge`, `solution_module` `Solution` |
+| — | `ConsensusLean/Init.lean` (new, trusted): `public import Mathlib.Init`, `public import Mathlib.Tactic.Common` |
+
+The trusted paths now live in one place, `trusted_paths` in `scripts/boundaries.toml`; CI's `review-boundary`
+checks the union of that list at the PR head and at the tag.
+
+**What changed in the trusted files** (`git diff -M 4b7c5148 spec-approved` on the old and new paths):
+- module names in `import` lines and in doc comments (a few comments re-wrapped to 100 columns), and
+  `ReviewAxioms`' `checkComplete` module argument;
+- `Spec/Problem/Basic.lean` and `Spec/Model/Objects.lean` (the two Spec modules that import no project module)
+  gain one last import, `public import ConsensusLean.Init`. Both already reached `Mathlib.Init` and
+  `Mathlib.Tactic.Common` through their Mathlib imports (same 1562-module closure), so the import adds no
+  constant, instance or attribute; as the last import it does not reorder the modules loaded before it;
+- `Challenge.lean` imports the statements module instead of the old Spec root; `comparator.json` names the new
+  modules.
+
+**Machine-checked equality.** A canonical dump of every constant owned by every project module (2556
+constants: Spec, Statements, Lemmas, Proofs, Main, Instances, Solution, tests), with the serializer of
+`2852f717:scripts/CheckSpec.lean` (binder names and mdata dropped; binder kinds, universe parameters by index,
+literals and projections kept) extended to write proof terms too, was taken at `888664e6` (old layout) and at
+the PR head. Old names were normalised through the module map (`_private.<M>.0.x` names carry module names).
+Result (`compare.py`):
+- the same 2556 names, after the suffix rename `_consensusTests` → `_consensusLeanTest` of two derived instance
+  names in `ConsensusLeanTest/Leaks.lean` (Lean derives the suffix from the root module name);
+- all 2556 constants identical in kind, universe count, type and value, proof terms included;
+- all 1161 constants of `Init`/`Spec`/`Statements` (the snapshot's 1161 records) identical including their
+  (mapped) owning module;
+- 9 realized `eq_1` equation lemmas (8 in tests, `Consensus.Model.mempool.eq_1` in Lemmas) are owned by another
+  module that also realizes them; their types and values are identical.
+
+`scripts/spec-snapshot.txt` changes only in module headers (`## ConsensusSpec.*` → `## ConsensusLean.Spec.*`,
+the root header removed, `## ConsensusLean.Init` added), in the two private matchers whose names carry their
+module (`_private.ConsensusSpec.Blocks.Chains.0…` and `_private.ConsensusSpec.Problem.Basic.0…`), and in the
+value hash of the two `Repr` instances that call them (`instReprParentRef.repr`, `instReprCapability.repr`), and in
+the raw hashes of `Consensus.Capability.noConfusionType`: its universe parameter has a hygienic name that contains
+the module name (`v._@.ConsensusLean.Spec.Problem.Basic._hygCtx._hyg.5`); the canonical dump numbers universe
+parameters and finds it identical. 48 header lines (24 removed, 24 added), 3 constants, nothing else.
+
+The full tier (kernel replay of every leaf, `lake check`, `lake comparator --paranoid` with the new
+`comparator.json`) passed on the PR branch (run 40962983080), on a trusted surface identical to the approved one.
+Reviews (PR #30): Codex gpt-6-astra and Claude Opus, three rounds, both APPROVE.
+
+Evidence files (kept): `/srv/runs/fradamt/consensus-lean/foundation-impl/single-library/`
+(`CanonDump.lean`, `map.tsv`, `canon-before.tsv.gz`, `canon-after.tsv.gz`, `compare.py`, `compare.out`).
+
 ## Verifying this approval
 
 ```sh
 git fetch origin --tags
 git cat-file -p spec-approved                      # annotated tag, object 4b7c5148
-git diff -M 2852f717 spec-approved -- ConsensusSpec ConsensusSpec.lean ConsensusChallenge.lean comparator.json lean-toolchain lake-manifest.json ConsensusTests/ReviewAxioms.lean ConsensusTests/ReviewGuard.lean
-git diff 1eb8b6ec spec-approved -- scripts/spec-snapshot.txt
-git diff spec-approved origin/main -- ConsensusSpec ConsensusSpec.lean ConsensusChallenge.lean comparator.json lean-toolchain lake-manifest.json ConsensusTests/ReviewAxioms.lean ConsensusTests/ReviewGuard.lean   # empty while main is covered
+# the 4b7c5148 approval (old paths)
+git diff -M 2852f717 4b7c5148 -- ConsensusSpec ConsensusSpec.lean ConsensusChallenge.lean comparator.json lean-toolchain lake-manifest.json ConsensusTests/ReviewAxioms.lean ConsensusTests/ReviewGuard.lean
+git diff 1eb8b6ec 4b7c5148 -- scripts/spec-snapshot.txt
+# the current surface (trusted_paths of scripts/boundaries.toml)
+mapfile -t protected < <(python3 -I -c 'import tomllib; print("\n".join(tomllib.load(open("scripts/boundaries.toml", "rb"))["checks"]["trusted_paths"]))')
+GIT_LITERAL_PATHSPECS=1 git diff spec-approved origin/main -- "${protected[@]}"   # empty while main is covered
 ```
 
 The nightly `full.yml` run on main (`gh run list --workflow full.yml --branch main`) is the correctness
@@ -509,7 +579,9 @@ diff, moves the tag to the PR head and re-runs the PR's failed job:
 
 ```sh
 git fetch origin pull/<pr>/head
-git diff spec-approved FETCH_HEAD -- ConsensusSpec ConsensusSpec.lean ConsensusChallenge.lean comparator.json lean-toolchain lake-manifest.json ConsensusTests/ReviewAxioms.lean ConsensusTests/ReviewGuard.lean
+paths() { git show "$1:scripts/boundaries.toml" | python3 -I -c 'import sys, tomllib; print("\n".join(tomllib.loads(sys.stdin.read())["checks"].get("trusted_paths", [])))' 2>/dev/null; }
+mapfile -t protected < <({ paths FETCH_HEAD; paths spec-approved; } | sort -u)
+GIT_LITERAL_PATHSPECS=1 git diff spec-approved FETCH_HEAD -- "${protected[@]}"
 git tag -f -a spec-approved -m "<who approved, on whose authority, what>" FETCH_HEAD && git push -f origin spec-approved
 gh run rerun <run-id> --failed
 ```

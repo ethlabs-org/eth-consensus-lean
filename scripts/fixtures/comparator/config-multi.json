@@ -1,4 +1,4 @@
-{"challenge_module":"ConsensusChallenge","solution_module":"ConsensusProofs.Review","theorem_names":[],"permitted_axioms":["propext","Quot.sound","Classical.choice"]}
-{ "challenge_module": "ConsensusChallenge", "solution_module": "ConsensusProofs.Review",
+{"challenge_module":"Challenge","solution_module":"Solution","theorem_names":[],"permitted_axioms":["propext","Quot.sound","Classical.choice"]}
+{ "challenge_module": "Challenge", "solution_module": "Solution",
   "theorem_names": ["Fx.Review.stmtA", "Fx.Review.stmtB"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }

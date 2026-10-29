@@ -1,6 +1,6 @@
 {
-  "challenge_module": "ConsensusChallenge",
-  "solution_module": "ConsensusProofs.Review",
+  "challenge_module": "Challenge",
+  "solution_module": "Solution",
   "theorem_names": [
     "Fx.Review.stmtA",
     "Fx.Review.stmtB"

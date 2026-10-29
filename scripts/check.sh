@@ -11,15 +11,15 @@
 #   3  declarations     axioms/sorry/opaque/unsafe/extern/csimp per library     (EthLib check-decls)
 #   4  Spec surface     persisted extensions, snapshot, theorems, noconst,      (SpecSurface.lean)
 #                       reach (report)
-#   5  kernel replay    every leaf module of every default library              (leanchecker)
+#   5  kernel replay    every leaf module of every checked library              (leanchecker)
 #   6  review pins      ReviewAxioms compiled into the tests root               (#guard_msgs)
 #   7  backstop         grep for sorry/admit/native_decide, Spec meta commands, lakefile options
 #   8  vendored         sha256 of every vendored copy                           (scripts/vendor.sha256)
-#   9  comparator config  exact comparator.json + ConsensusChallenge.lean    (jq, lean --deps-json)
+#   9  comparator config  exact comparator.json + Challenge.lean            (jq, lean --deps-json)
 #   10 lake check       sandboxed build + export + replay                       (needs bwrap)
 #   11 lake comparator  Spec statements vs proofs, axioms, sandboxed replay by  (needs bwrap)
 #                       Lean's kernel and every bundled external kernel (--paranoid)
-#   12 docs             README spec-file list = the files of the Spec library
+#   12 docs             README spec-file list = the files of the Spec surface (trusted group)
 # Every step with a negative fixture also runs it through the same function ("self-test" steps).
 #
 # Usage: scripts/check.sh [--fast | --full | --changed [<base>]] [--selftests] [--reach] [--no-build]
@@ -90,14 +90,19 @@ SURFACE=(lake env lean --run scripts/SpecSurface.lean)
 cfg() {
   python3 -I -c 'import sys, tomllib
 c = tomllib.load(open(sys.argv[1], "rb")); k = sys.argv[2]
-v = c["lib"] if k == "libs" else c["checks"][k] if k in c.get("checks", {}) else c[k]
-v = [l["name"] for l in v] if k == "libs" else v
+if k == "libs":
+    v = [l["name"] for l in c["lib"]]
+elif k == "trusted_group":  # the Spec surface: exactly one group with trusted = true
+    t = [g["name"] for g in c.get("group", []) if g.get("trusted") is True]
+    v = t[0] if len(t) == 1 else sys.exit(f"boundaries.toml: {len(t)} trusted groups (want exactly one)")
+else:
+    v = c["checks"][k] if k in c.get("checks", {}) else c[k]
 sys.stdout.write("".join(x + "\n" for x in v) if isinstance(v, list) else v + "\n")' "$CFG" "$1"
 }
 mapfile -t LIBS < <(cfg libs)
-SPEC_LIB="$(cfg spec_lib)"
-SPEC_MODULES=()  # every module of the Spec library's inventory; filled after step 2
-mapfile -t EXT_LIBS < <(cfg extension_libs)
+SPEC_GROUP="$(cfg trusted_group)"
+SPEC_MODULES=()  # every module of the inventory in the trusted group (the Spec surface); filled after step 2
+mapfile -t EXT_GROUPS < <(cfg extension_groups)
 mapfile -t EXTRA_TARGETS < <(cfg extra_build_targets)
 mapfile -t FIXTURE_LIBS < <(cfg fixture_libs)
 mapfile -t NOCONST_EXEMPT < <(cfg noconst_exempt)
@@ -108,13 +113,14 @@ CHALLENGE="$(cfg challenge_module)"
 SOLUTION="$(cfg solution_module)"
 STATEMENTS="$(cfg statements_module)"
 case "$THEOREMS_MODE" in report|enforce) ;; *) echo "check.sh: theorems_mode must be report or enforce" >&2; exit 2 ;; esac
-((${#LIBS[@]} > 0 && ${#EXT_LIBS[@]} > 0 && ${#EXTRA_TARGETS[@]} > 0)) || { echo "check.sh: empty configuration" >&2; exit 2; }
+[[ -n "$SPEC_GROUP" ]] && ((${#LIBS[@]} > 0 && ${#EXT_GROUPS[@]} > 0 && ${#EXTRA_TARGETS[@]} > 0)) ||
+  { echo "check.sh: empty configuration" >&2; exit 2; }
 
 # --- what each mode checks ------------------------------------------------------------------------
 BUILD_EXTRA=()            # extra targets built next to the default targets (set by the driver)
-DECL_LIBS=("${LIBS[@]}")  # libraries whose every module check-decls checks (step 3)
+DECL_LIBS=("${LIBS[@]}")  # libraries whose every module check-decls checks (step 3; a lib's name is its scope)
 CHANGED=()                # --changed: paths changed since $base (committed, staged, unstaged, untracked)
-CONE=()                   # --changed: default-library modules changed or (transitively) importing one
+CONE=()                   # --changed: checked-library modules changed or (transitively) importing one
 BUILD_TARGETS=()          # --changed: what step 1 builds
 do_surface=1 do_comparator_config=1
 
@@ -150,16 +156,24 @@ compute_changes() {
     return 0
   fi
   # cone: the changed modules and every module importing one, transitively; lib: a library with a module
-  # in the cone or a deleted file under its directory.
+  # in the cone or a deleted file under its directory; spec: a module of the trusted group in the cone, or a
+  # deleted file under a prefix of that group.
   DECL_LIBS=()
+  local spec_changed=0
   while IFS=$'\t' read -r tag lib m; do
     case "$tag" in
       cone) CONE+=("$m") ;;
       lib) DECL_LIBS+=("$lib") ;;
+      spec) spec_changed=1 ;;
     esac
   done < <(python3 -I - "$WORK/graph.tsv" "$CFG" "${CHANGED[@]}" <<'PY'
 import sys, tomllib
 graph, cfg, changed = sys.argv[1], tomllib.load(open(sys.argv[2], "rb")), sys.argv[3:]
+def under(m, p): return m == p or m.startswith(p + ".")
+def in_spec(m):  # longest prefix over every group decides
+    best = max(((p, g.get("trusted") is True) for g in cfg.get("group", []) for p in g.get("prefixes", []) if under(m, p)),
+               key=lambda x: len(x[0]), default=(None, False))
+    return best[1]
 lib_of, rdeps = {}, {}
 for line in open(graph):
     l, m, i = line.rstrip("\n").split("\t")
@@ -173,8 +187,10 @@ for f in changed:
     m = f[:-len(".lean")].replace("/", ".")
     if m in lib_of:
         todo.append(m)
-    else:  # deleted (or outside the default libraries)
-        libs |= {x["name"] for x in cfg["lib"] if f == x["dir"] + ".lean" or f.startswith(x["dir"] + "/")}
+    else:  # deleted (or outside the checked libraries)
+        libs |= {x["name"] for x in cfg["lib"] if under(m, x["name"])}
+        if in_spec(m):
+            print("spec", "", "", sep="\t")
 cone = set()
 while todo:
     m = todo.pop()
@@ -185,9 +201,11 @@ for m in sorted(cone):
     print("cone", lib_of[m], m, sep="\t")
 for l in sorted(libs | {lib_of[m] for m in cone}):
     print("lib", l, "", sep="\t")
+if any(in_spec(m) for m in cone):
+    print("spec", "", "", sep="\t")
 PY
   )
-  printf '%s\n' "${DECL_LIBS[@]}" | grep -qxF "$SPEC_LIB" || do_surface=0
+  ((spec_changed)) || do_surface=0
   do_comparator_config=$do_surface
   for f in "${CHANGED[@]}"; do
     [[ "$f" == comparator.json || "$f" == "$(mod_file "$CHALLENGE")" ]] && do_comparator_config=1
@@ -202,8 +220,10 @@ PY
   return 0
 }
 
-# Inventory queries (written by step 2): modules of a library; leaf or parent modules of all libraries.
+# Inventory queries (written by step 2: lib, module, leaf|parent, group): modules of a library; modules of a
+# group; leaf or parent modules of all libraries.
 inv_modules() { awk -F'\t' -v l="$1" '$1 == l { print $2 }' "$INV"; }
+inv_group() { awk -F'\t' -v g="$1" '$4 == g { print $2 }' "$INV"; }
 inv_kind() { awk -F'\t' -v k="$1" '$3 == k { print $2 }' "$INV"; }
 mod_file() { echo "${1//.//}.lean"; }
 
@@ -307,16 +327,18 @@ step_imports() {
   [[ $rc -eq 0 && -s "$INV" ]] || { echo "  no inventory: every later step needs it"; return 1; }
   # Every module named in [checks] must be in the inventory (a typo would silently check less).
   local m l bad=0
-  printf '%s\n' "${LIBS[@]}" | grep -qxF "$SPEC_LIB" || { echo "  FAIL[config] spec_lib: unknown library $SPEC_LIB"; bad=1; }
-  for m in "$SPEC_LIB" "$REVIEW_AXIOMS" "$REVIEW_ROOT" "$STATEMENTS" "$SOLUTION"; do
+  [[ -n "$(inv_group "$SPEC_GROUP")" ]] || { echo "  FAIL[config] trusted group $SPEC_GROUP has no module"; bad=1; }
+  for m in "$REVIEW_AXIOMS" "$REVIEW_ROOT" "$STATEMENTS" "$SOLUTION"; do
     cut -f2 "$INV" | grep -qxF "$m" || { echo "  FAIL[config] $m (boundaries.toml [checks]) is not in the inventory"; bad=1; }
   done
   for m in "${NOCONST_EXEMPT[@]}"; do
     inv_kind parent | grep -qxF "$m" || { echo "  FAIL[config] noconst_exempt $m is not a module with descendants"; bad=1; }
   done
-  for l in "${EXT_LIBS[@]}"; do
-    printf '%s\n' "${LIBS[@]}" | grep -qxF "$l" || { echo "  FAIL[config] extension_libs: unknown library $l"; bad=1; }
+  for l in "${EXT_GROUPS[@]}"; do
+    [[ -n "$(inv_group "$l")" ]] || { echo "  FAIL[config] extension_groups: group $l has no module"; bad=1; }
   done
+  # The statements module is in the trusted group (step 9's challenge imports exactly it).
+  inv_group "$SPEC_GROUP" | grep -qxF "$STATEMENTS" || { echo "  FAIL[config] $STATEMENTS is not in the trusted group"; bad=1; }
   return "$bad"
 }
 selftest_imports() { python3 -I scripts/check-imports.py --self-test "$FX/imports"; }
@@ -385,6 +407,13 @@ selftest_decls() {
   printf 'CheckFixtures.OrphanLib opaque\n' >"$WORK/fx-malformed.txt"
   expect_fail 'bad baseline line' decls_libs "$WORK/fx-inv.tsv" "$WORK/fx-malformed.txt" CheckFixtures.OrphanLib || rc=1
   expect_fail 'cannot read baseline' decls_libs "$WORK/fx-inv.tsv" "$WORK/does-not-exist" CheckFixtures.OrphanLib || rc=1
+  # A checked definition reaching an opaque constant only through an unchecked definition (an exempt
+  # `Proofs` one, a formatting instance) is reported.
+  out="$(decls_scope CheckFixtures.HiddenOpaque /dev/null CheckFixtures.HiddenOpaque.Use 2>&1)" &&
+    { echo "  HiddenOpaque passed"; rc=1; }
+  for f in 'reaches-opaque CheckFixtures.HiddenOpaque.Use.user:' 'reaches-opaque CheckFixtures.HiddenOpaque.Use.user2:'; do
+    grep -qF "$f" <<<"$out" && echo "  ok: HiddenOpaque reports ${f%:}" || { echo "  HiddenOpaque misses ${f%:}"; rc=1; }
+  done
   # BadSkipKernel passes check-decls (no axiom): only kernel replay (step 5) rejects it.
   expect_pass decls_scope CheckFixtures.BadSkipKernel /dev/null CheckFixtures.BadSkipKernel.A || rc=1
   set -e
@@ -422,8 +451,8 @@ make_snapshot() {  # make_snapshot <out> <modules...>
 step_surface() {
   set +e
   local rc=0 l ext_mods=()
-  for l in "${EXT_LIBS[@]}"; do mapfile -t -O "${#ext_mods[@]}" ext_mods < <(inv_modules "$l"); done
-  echo "  extensions over ${#ext_mods[@]} modules of ${EXT_LIBS[*]}"
+  for l in "${EXT_GROUPS[@]}"; do mapfile -t -O "${#ext_mods[@]}" ext_mods < <(inv_group "$l"); done
+  echo "  extensions over ${#ext_mods[@]} modules of the groups ${EXT_GROUPS[*]}"
   if ((update_extensions)); then
     "${SURFACE[@]}" extensions --allow /dev/null --modules "${ext_mods[@]}" |
       awk '$1 == "FAIL[ext]" { print $3 }' | LC_ALL=C sort -u >"$WORK/extensions.txt"
@@ -472,7 +501,7 @@ step_surface() {
   set -e
   return "$rc"
 }
-# noconst: no module with descendants (of any default library) owns a constant (leanchecker, step 5,
+# noconst: no module with descendants (of any checked library) owns a constant (leanchecker, step 5,
 # replays leaves only). Part of step 4; --changed runs it alone when no Spec module changed.
 step_noconst() {
   local parents=()
@@ -617,7 +646,7 @@ selftest_review() {
   done
   expect_fail 'does not match generated message' lake env lean "$FX/ReviewAxiomsBad.lean" || rc=1
   expect_pass lake env lean "$FX/ReviewAxiomsGood.lean" || rc=1
-  # The alpha-equality and completeness guards (ConsensusTests/ReviewGuard.lean) on fixtures.
+  # The alpha-equality and completeness guards (ConsensusLeanTest/ReviewGuard.lean) on fixtures.
   expect_fail 'is not alpha-equal' lake env lean "$FX/ReviewEqBad.lean" || rc=1
   expect_fail 'does not have the binder kinds' lake env lean "$FX/ReviewBinderBad.lean" || rc=1
   # Statements in another namespace, `eq_1`, `_Extra` and `private` ones all need a pair: in the
@@ -713,17 +742,17 @@ comparator_config_ok() {
     and (.theorem_names | sort) == $want
     and (.permitted_axioms | sort) == ["Classical.choice", "Quot.sound", "propext"])' "$1" >/dev/null
 }
-# challenge_ok <file> <statements file>: the challenge imports exactly the Spec root (lean --deps-json;
+# challenge_ok <file> <statements file>: the challenge imports exactly the statements module (lean --deps-json;
 # besides the implicit `Init`), and its text with comments removed (`--` to the end of the line, nested
-# `/- ... -/` blocks, wherever they occur) is exactly the template: `module`, `public import <Spec root>`,
+# `/- ... -/` blocks, wherever they occur) is exactly the template: `module`, `public import <statements>`,
 # `@[expose] public section`, one `theorem <s> : <S> := sorry` per statement S (`s` its lower-first
 # name; any order) and `end`. Nothing else, so no declaration can hide next to a comment.
 challenge_ok() {
   local f="$1" st="$2"
   lake env lean --deps-json "$f" |
-    jq -e --arg m "$SPEC_LIB" '.imports[0].errors == [] and ([.imports[0].result.imports[].module | select(. != "Init")] == [$m])' >/dev/null ||
-    { echo "  FAIL[challenge] $f must import exactly $SPEC_LIB"; return 1; }
-  python3 -I - "$f" "$st" "$SPEC_LIB" <<'PY' || return 1
+    jq -e --arg m "$STATEMENTS" '.imports[0].errors == [] and ([.imports[0].result.imports[].module | select(. != "Init")] == [$m])' >/dev/null ||
+    { echo "  FAIL[challenge] $f must import exactly $STATEMENTS"; return 1; }
+  python3 -I - "$f" "$st" "$STATEMENTS" <<'PY' || return 1
 import sys
 src, stmts, spec = open(sys.argv[1]).read(), open(sys.argv[2]).read().split(), sys.argv[3]
 out, i, depth = [], 0, 0
@@ -815,8 +844,8 @@ docs_ok() {
 }
 step_docs() {
   local files=()
-  mapfile -t files < <(for m in "${SPEC_MODULES[@]}"; do [[ "$m" == "$SPEC_LIB" ]] || mod_file "$m"; done)
-  docs_ok README.md "${files[@]}" && echo "  README.md lists the ${#files[@]} files of $SPEC_LIB"
+  mapfile -t files < <(for m in "${SPEC_MODULES[@]}"; do mod_file "$m"; done)
+  docs_ok README.md "${files[@]}" && echo "  README.md lists the ${#files[@]} files of the $SPEC_GROUP group"
 }
 selftest_docs() {
   set +e
@@ -881,18 +910,18 @@ if [[ "$mode" == changed ]] && ((${#BUILD_TARGETS[@]} == 0)); then
 else
   run_step "$build_label" step_build
 fi
-run_step "2 imports (check-imports.py, every library)" step_imports
+run_step "2 imports (check-imports.py, every checked library)" step_imports
 if [[ ! -s "$INV" ]]; then
   echo "check.sh: no inventory; the remaining steps need it"; echo; echo "check.sh: FAILURES PRESENT" >&2; exit 1
 fi
-mapfile -t SPEC_MODULES < <(inv_modules "$SPEC_LIB")
+mapfile -t SPEC_MODULES < <(inv_group "$SPEC_GROUP")
 run_selftest "2 imports self-test (fixtures/imports)" selftest_imports
 run_if "${#DECL_LIBS[@]}" "no library affected" "3 declarations (check-decls: ${DECL_LIBS[*]:-none})" step_decls
-run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope)" selftest_decls
+run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope, HiddenOpaque)" selftest_decls
 if ((do_surface)); then
   run_step "4 Spec surface (extensions, snapshot, theorems, noconst)" step_surface
 else
-  skip_step "4 Spec surface: extensions, snapshot, theorems" "no $SPEC_LIB module changed"
+  skip_step "4 Spec surface: extensions, snapshot, theorems" "no module of the $SPEC_GROUP group changed"
   run_if "${#DECL_LIBS[@]}" "no library affected" "4 noconst (every module with descendants)" step_noconst
 fi
 run_selftest "4 Spec surface self-test (CheckFixtures)" selftest_surface
@@ -910,7 +939,7 @@ full_only "10 lake check (+ fixtures/lakecheck-{bad,good})" step_lake_check
 # leanchecker skips the noconst-exempt parents (step 5); step 10's replay covers them, when it runs.
 [[ "$mode" != full ]] || have_bwrap || ((${#NOCONST_EXEMPT[@]} == 0)) || ci_only+=("kernel replay of ${NOCONST_EXEMPT[*]} (lake check)")
 full_only "11 lake comparator --paranoid (+ fixtures/comparator-{good,stmt,axiom,def}.json)" step_lake_comparator
-run_step "12 docs (README spec-files = the files of $SPEC_LIB)" step_docs
+run_step "12 docs (README spec-files = the files of the $SPEC_GROUP group)" step_docs
 run_selftest "12 docs self-test (README-good, README-missing)" selftest_docs
 
 echo

@@ -1,23 +1,24 @@
 name = "fx"
-defaultTargets = ["FxSpec", "FxImpl"]
+defaultTargets = ["Fx"]
+testDriver = "FxTest"
 
 [[lean_lib]]
-name = "FxSpec"
-globs = ["FxSpec.*"]
+name = "Fx"
+globs = ["Fx.*"]
 
 [[lean_lib]]
-name = "FxImpl"
-globs = ["FxImpl.*"]
+name = "FxTest"
+globs = ["FxTest.*"]
+
+[[lean_lib]]
+name = "FxSol"
 
 [[lean_lib]]
 name = "FxFix"
 roots = []
 globs = ["FxFix.+"]
 
-# A one-module glob that takes the name of a base library (Mathlib): it would pass the import rules as a
-# dependency module. No file, so only the module-prefix rule (not the file/directory rule) can catch it.
 [[lean_lib]]
 name = "Shadow"
-srcDir = "Fx"
 roots = []
 globs = ["Mathlib.Shadow"]

@@ -1,7 +1,9 @@
 name = "consensus-lean"
 version = "0.1.0"
 keywords = ["lean", "consensus", "specification"]
-defaultTargets = ["ConsensusSpec", "ConsensusProofs", "ConsensusInstances", "ConsensusTests"]
+defaultTargets = ["ConsensusLean"]
+testDriver = "ConsensusLeanTest"
+lintDriver = "batteries/runLinter"
 
 [leanOptions]
 pp.unicode.fun = true
@@ -16,32 +18,29 @@ name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.35.0"
 
-# TRUSTED. Definitions (L0 Problem, L1 Model, Blocks, L2 Shape). Imports only ConsensusSpec,
-# Mathlib and Lean (checked by scripts/, not by Lake).
+# The one certified library (plan §1): layers are module prefixes, not libraries: `Init` (curated imports),
+# `Core`/`Spec`/`Statements` (TRUSTED: definitions and the review statements), `Lemmas`, `Proofs/<M>/`,
+# `Main`, `ToMathlib`, `Instances/<P>/`. The root `ConsensusLean.lean` is generated
+# (`lake exe mk_all --lib ConsensusLean --module`) and imports every module; nothing in the library imports it.
+# Import rules: scripts/boundaries.toml (checked by scripts/, not by Lake).
 [[lean_lib]]
-name = "ConsensusSpec"
-globs = ["ConsensusSpec.*"]
+name = "ConsensusLean"
+globs = ["ConsensusLean.*"]
 
-# Proofs of the Spec statements and their support (lemmas, derived definitions, canonical runs,
-# witnesses). May import ConsensusSpec; never ConsensusInstances or ConsensusTests.
+# Tests (teeth, rejections, controls, review pins) and Index (README-cited names): `lake test`, never a
+# default target. Root generated likewise (`lake exe mk_all --lib ConsensusLeanTest --module`).
 [[lean_lib]]
-name = "ConsensusProofs"
-globs = ["ConsensusProofs.*"]
+name = "ConsensusLeanTest"
+globs = ["ConsensusLeanTest.*"]
 
-# Protocol values: Goldilocks (with its sheet), Bft, Streamlet, Tendermint. Never ConsensusTests.
+# Comparator solution (comparator.json): proofs of the review statements. Never a default target.
 [[lean_lib]]
-name = "ConsensusInstances"
-globs = ["ConsensusInstances.*"]
-
-# Tests (teeth, rejections, controls) and Index (README-cited names).
-[[lean_lib]]
-name = "ConsensusTests"
-globs = ["ConsensusTests.*"]
+name = "Solution"
 
 # Comparator challenge (comparator.json): the review statements with `sorry` proofs.
-# Never a default target; imports only ConsensusSpec.
+# Never a default target; imports only the review statements module.
 [[lean_lib]]
-name = "ConsensusChallenge"
+name = "Challenge"
 
 # Fixtures for the self-tests of scripts/check.sh. Deliberately bad (sorry, axioms, macros).
 # Never a default target; built only by check.sh. No root module: every fixture module is its own
@@ -58,7 +57,7 @@ name = "CheckDeclsTest"
 srcDir = "scripts"
 roots = ["CheckDeclsTest", "CheckDeclsForeign"]
 
-# EthLib check-decls (CC0; vendored copy with a local performance patch, see TRUST.md). Built by check.sh (`lake build check-decls`).
+# EthLib check-decls (CC0; vendored copy with two local patches, see TRUST.md). Built by check.sh (`lake build check-decls`).
 [[lean_exe]]
 name = "check-decls"
 srcDir = "scripts"

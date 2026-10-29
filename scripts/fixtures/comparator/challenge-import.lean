@@ -1,10 +1,10 @@
 module
-public import ConsensusSpec
-public import ConsensusProofs.Review
+public import ConsensusLean.Statements.Review
+public import Solution
 
 @[expose] public section
 
-/-! Negative fixture for check.sh step 9 (challenge_ok; never built): the challenge imports more than the Spec root. -/
+/-! Negative fixture for check.sh step 9 (challenge_ok; never built): the challenge imports more than the statements module. -/
 
 theorem Consensus.Review.acceptedGood : Consensus.Review.AcceptedGood := sorry
 theorem Consensus.Review.regimesRealizable : Consensus.Review.RegimesRealizable := sorry

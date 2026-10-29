@@ -1,8 +1,8 @@
 # sha256 of every vendored file (checked by scripts/check.sh step 8).
 # EthLib (CC0-1.0), copied 2026-10-29 from the clone /srv/runs/fradamt/consensus-lean/reuse/src/EthLib; every file
 # is byte-identical to ethereum/EthLib 6390c73ef040311e807b9047d99dca6b1be1c42f except CheckDecls.lean, which
-# carries one local performance patch (TRUST.md, #13).
-69b9fe48f5d913031348aa33895155e96236819ba7d86c9e36675a793c1241d6  scripts/CheckDecls.lean
+# carries two local patches (TRUST.md): a performance patch (#13) and the unchecked-child frontier fix (#5).
+03ed87d6cecae9a145ed47e56788978ffbe67a70055c3326f933a6d397edb10a  scripts/CheckDecls.lean
 591a1d993df5dc1a01a9cf645f71cbeffdb7da9fdff9e3ca8f5179f60ead9f25  scripts/test_check_decls.sh
 30e0ae65ec5035c7407009f4184164333a53d4328add72c55e7f0b5f751980e3  scripts/CheckDeclsTest.lean
 2e0cddcca85e19343dcea7103e2501ceb8b4f0d05efc9c25b218ae81ed168cc6  scripts/CheckDeclsForeign.lean

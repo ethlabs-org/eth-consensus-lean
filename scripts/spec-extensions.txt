@@ -1,7 +1,7 @@
-# Persisted-extension whitelist of the Spec-side libraries (scripts/check.sh step 4, SpecSurface
-# `extensions`): every extension with a stored entry in any module of the `extension_libs` of
+# Persisted-extension whitelist of the Spec surface (scripts/check.sh step 4, SpecSurface
+# `extensions`): every extension with a stored entry in any module of the `extension_groups` of
 # boundaries.toml, measured in batch C (v4.35.0) and reviewed; re-measured in B5 over the final
-# `ConsensusSpec` (a subset of C's list: `Lean.Meta.congrKindsExt`, `Lean.backwardDefeqAttr` and
+# Spec library, now the `spec` group (a subset of C's list: `Lean.Meta.congrKindsExt`, `Lean.backwardDefeqAttr` and
 # `Lean.defeqAttr` had entries only in proof modules and were removed). None registers a parser, syntax,
 # macro, elaborator, tactic, delaborator, unexpander, initializer, attribute, extern/implemented_by
 # or csimp; the five annotated names are applications of built-in attributes or generated metadata.

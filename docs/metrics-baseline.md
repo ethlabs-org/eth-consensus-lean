@@ -1,5 +1,8 @@
 # Baseline metrics (foundation plan §11 step 1)
 
+> Measured at `888664e6`, before the move to one library (#5): the module names below are the old ones
+> (`ConsensusSpec.*`, `ConsensusProofs.*`, ...); `scripts/layers.toml` maps the current names.
+
 Report-only numbers for the layout before the foundation reorg (#4), taken at `888664e6` (main,
 2026-10-29). Later steps compare against them. Nothing here is a gate: plan §6 makes depth, cones and
 critical path reports, with no thresholds.

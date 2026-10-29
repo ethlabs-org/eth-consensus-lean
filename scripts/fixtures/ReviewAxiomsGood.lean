@@ -1,6 +1,6 @@
 import CheckFixtures.Proof
 
-/-! Positive fixture for the pinned-axiom mechanism of `ConsensusTests/ReviewAxioms.lean`:
+/-! Positive fixture for the pinned-axiom mechanism of `ConsensusLeanTest/ReviewAxioms.lean`:
 the pinned message matches, so `lake env lean` exits 0. -/
 
 example : CheckFixtures.Proof.helper = 1 := CheckFixtures.Proof.helper_eq

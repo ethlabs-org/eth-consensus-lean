@@ -1,0 +1,19 @@
+name = "fx"
+defaultTargets = ["Fx"]
+testDriver = "FxTest"
+
+[[lean_lib]]
+name = "Fx"
+globs = ["Fx.*"]
+
+[[lean_lib]]
+name = "FxTest"
+globs = ["FxTest.*"]
+
+[[lean_lib]]
+name = "FxSol"
+
+[[lean_lib]]
+name = "FxFix"
+roots = []
+globs = ["FxFix.+"]

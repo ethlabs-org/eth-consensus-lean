@@ -1,23 +1,5 @@
 base = ["Init", "Mathlib"]
 fixture_libs = ["FxFix"]
 
-[[lib]]
-name = "FxSpec"
-root = "FxSpec"
-dir = "FxSpec"
-allow = ["FxSpec"]
-root_covers = true
-
-[[lib]]
-name = "FxImpl"
-root = "FxImpl"
-dir = "FxImpl"
-allow = ["FxImpl", "FxSpec"]
-root_covers = true
-
-[[lib]]
-name = "FxEmpty"
-root = "FxEmpty"
-dir = "FxEmpty"
-allow = ["FxEmpty"]
-root_covers = true
+[checks]
+proofs_component_prefixes = []

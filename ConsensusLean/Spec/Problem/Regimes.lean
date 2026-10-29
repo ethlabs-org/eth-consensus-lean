@@ -1,0 +1,155 @@
+module
+public import ConsensusLean.Spec.Problem.Network
+public import Mathlib.Tactic
+
+@[expose] public section
+
+/-! # Numbers and regimes (L0)
+
+A protocol's contract (`Contract`) supplies only numbers (`Params`) and a
+progress requirement per capability and index. Every duration is a
+coefficient of `Δ`. `Params.Admissible` bounds the thresholds by the standard
+ones (`Params.standard`), so a contract cannot buy its claims with stronger
+thresholds. The other numbers (catch-up, lag, budget, look-back `η`, heal
+points, latencies) are instance numbers that the reviewer reads: larger values
+strengthen premises or weaken claims, and they are not bounded (any `η` is
+realizable, `Shape.outage_witness`).
+
+The three regimes (`System.Sleepy`, `System.Healthy`, `System.Outage`) and
+the run quantities they use (`System.cDur`, `heal`, `ready`, `lat`) are read
+off a run's environment point and communication log. The GST is a parameter
+of the regimes, not of the environment; an outage run is partially
+synchronous with GST `b₁`, so the after-GST rows apply with `g = b₁`. -/
+
+namespace Consensus
+
+/-- The numbers of a protocol. Durations are `Δ`-coefficients. -/
+structure Params (Idx : Type) where
+  /-- Readers' catch-up `c`: a reader is ready after `c·Δ` awake. -/
+  catchUp : Nat
+  /-- Sleepy threshold: `θ·(|ready| + |faulty|) < |ready|`. -/
+  θ : ℚ
+  /-- Healthy fault bound: fewer than `β·n` faulty (`System.Healthy`). -/
+  β : ℚ
+  /-- Caught up at the outage start: `cover·n < |ready b₀|`. -/
+  cover : ℚ
+  /-- Accountable fraction of the final output. -/
+  α : ℚ
+  /-- Arming lag: `T + lag·Δ ≤ b₀`. -/
+  lag : Nat
+  /-- Outage budget: `b₁ ≤ b₀ + budget·Δ`. -/
+  budget : Nat
+  /-- Outage look-back `η·Δ` (`0`: plain sleepy). -/
+  η : Nat
+  /-- Heal point per capability and index (`System.heal`). -/
+  heal : Capability → Idx → Nat
+  /-- Transaction latency per capability and index. -/
+  latency : Capability → Idx → Nat
+
+namespace Params
+
+variable {Idx : Type}
+
+/-- The standard thresholds `θ = ½`, `β = ⅓`, `cover = ½`, `α = ⅓`, and
+look-back `η = 0` (an instance sets `η` with `{ standard … with η := k }`). -/
+def standard (catchUp lag budget : Nat) (heal latency : Capability → Idx → Nat) :
+    Params Idx :=
+  ⟨catchUp, 1 / 2, 1 / 3, 1 / 2, 1 / 3, lag, budget, 0, heal, latency⟩
+
+/-- Admissible numbers: thresholds no stronger than standard (the healthy
+fault bound `β ≥ ⅓`: a larger `β` admits more faults, a weaker premise),
+`β ≤ α` (so the healthy regime implies faults below the accountable
+fraction), a positive catch-up and a positive budget. -/
+structure Admissible (P : Params Idx) : Prop where
+  catchUp_pos : 1 ≤ P.catchUp
+  θ_range : 0 ≤ P.θ ∧ P.θ ≤ 1 / 2
+  β_range : 1 / 3 ≤ P.β
+  cover_range : 0 ≤ P.cover ∧ P.cover ≤ 1 / 2
+  α_range : P.β ≤ P.α ∧ P.α ≤ 1
+  budget_pos : 1 ≤ P.budget
+
+end Params
+
+namespace EnvPoint
+
+variable {V : Type} [Fintype V] [DecidableEq V] (p : EnvPoint V)
+
+/-- Sleepy participation on `[a, b]`. -/
+def SleepyOn (θ : ℚ) (c a b : Time) : Prop := ∀ t, a ≤ t → t ≤ b → p.ReadyAbove θ c t
+
+/-- η-sleepy participation (look-back `η`, a duration) on `[a, b]`. -/
+def EtaSleepyOn (θ : ℚ) (η c a b : Time) : Prop :=
+  ∀ t, a ≤ t → t ≤ b → p.EtaReadyAbove θ η c t
+
+/-- Healthy participation on `[max g 0, b]` (see `System.Healthy`): fewer
+than fraction `β` of all validators are faulty, and every honest validator is
+awake throughout (full participation). -/
+def HealthyOn (β : ℚ) (g b : Time) : Prop :=
+  (p.faulty.card : ℚ) < β * Fintype.card V ∧ ∀ v ∈ p.honest, p.AwakeOnClosed v (max g 0) b
+
+end EnvPoint
+
+/-- The outage times: armed at `T ≥ 0` at least `lag·Δ` before the window
+`[b₀, b₁)`, which lasts at most `budget·Δ`. -/
+def OutageTimes {Idx : Type} (P : Params Idx) (Δ T b₀ b₁ : Time) : Prop :=
+  0 ≤ T ∧ T + (P.lag : Time) * Δ ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + (P.budget : Time) * Δ
+
+/-- What a protocol advertises: numbers (`Params`) over a nonempty index type,
+and a progress requirement per capability and index. -/
+structure Contract (Prog : Type) where
+  Idx : Type
+  idx_nonempty : Nonempty Idx
+  params : Params Idx
+  progress : Capability → Idx → Prog
+
+namespace System
+
+variable {V : Type} (S : System V) {Prog : Type}
+
+/-- The environment point of a run. -/
+abbrev pt (r : S.Run) : EnvPoint V := (S.trace r).point
+
+/-- The catch-up duration `catchUp·Δ` of run `r`. -/
+def cDur (K : Contract Prog) (r : S.Run) : Time := (K.params.catchUp : Time) * (S.pt r).env.Δ
+
+/-- The heal point of `cap` at `i` after GST `g` in run `r`: `max g 0 + heal·Δ`
+(catch-up is inside `heal`; for final, the first finality). -/
+def heal (K : Contract Prog) (cap : Capability) (i : K.Idx) (g : Time) (r : S.Run) : Time :=
+  max g 0 + (K.params.heal cap i : Time) * (S.pt r).env.Δ
+
+/-- The start of progress windows after GST `g` in run `r`: the first time from
+which a node awake since `g` is ready, `max g 0 + catchUp·Δ + 1`. -/
+def ready (K : Contract Prog) (g : Time) (r : S.Run) : Time := max g 0 + S.cDur K r + 1
+
+/-- The latency `latency·Δ` of `cap` at `i` in run `r`. -/
+def lat (K : Contract Prog) (cap : Capability) (i : K.Idx) (r : S.Run) : Time :=
+  (K.params.latency cap i : Time) * (S.pt r).env.Δ
+
+variable [Fintype V] [DecidableEq V]
+
+/-- **Sleepy**: synchrony (`PSync 0`) and, at every time, the ready honest
+validators exceed fraction `θ` of the ready and faulty ones. -/
+def Sleepy (K : Contract Prog) (r : S.Run) : Prop :=
+  (S.log r).PSync (S.pt r) 0 ∧ (S.pt r).SleepyOn K.params.θ (S.cDur K r) 0 (S.pt r).horizon
+
+/-- **Healthy from GST `g`**: partial synchrony with GST `g`, fewer than
+`β·n` faulty validators, and full participation: every honest validator is
+awake throughout `[max g 0, horizon]` (awake, not ready: readiness restricts
+readers and progress only). -/
+def Healthy (K : Contract Prog) (g : Time) (r : S.Run) : Prop :=
+  (S.log r).PSync (S.pt r) g ∧ (S.pt r).HealthyOn K.params.β g (S.pt r).horizon
+
+/-- **Outage `[b₀, b₁)` armed at `T`** (`OutageTimes`): synchronous before
+`b₀`, partially synchronous with GST `b₁`, η-sleepy throughout (look-back
+`η·Δ`; `η = 0` is plain sleepy), more than `cover·n` ready at `b₀`. -/
+def Outage (K : Contract Prog) (T b₀ b₁ : Time) (r : S.Run) : Prop :=
+  OutageTimes K.params (S.pt r).env.Δ T b₀ b₁ ∧ (S.log r).OutageNet (S.pt r) b₀ b₁ ∧
+    (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.Δ) (S.cDur K r) 0
+      (S.pt r).horizon ∧
+    (S.pt r).ReadyOfAll K.params.cover (S.cDur K r) b₀
+
+end System
+
+end Consensus
+
+end

@@ -13,6 +13,11 @@ Checks and CI tiers: README "Verification".
   then wait for it (`/srv/status/<user>.<unit>.json`, `journalctl --user -u <unit>`).
 - **Iterate locally:** `lake env lean <file>` for one file (its imports built), or
   `turbo-lean check <file> --decl <name>` for a single declaration only. `lake build` stays the gate.
+  `lake build` builds only `ConsensusLean` by default; `lake test` builds `ConsensusLeanTest`
+  (the lakefile's `testDriver`, not a default target).
+- **Generated roots:** `ConsensusLean.lean` and `ConsensusLeanTest.lean` import every module of
+  their library. Regenerate with `lake exe mk_all --lib ConsensusLean --module` and
+  `lake exe mk_all --lib ConsensusLeanTest --module`; `check-imports.py` fails on an unlisted file.
 - **Before committing:** `scripts/check-changed.sh` (in a job). It builds the downstream cone of the
   changed modules and runs the fast checks restricted to what changed; read its `SKIP` lines to see
   what it did not check. A change to `scripts/` or the build configuration runs the whole fast mode.
@@ -20,8 +25,10 @@ Checks and CI tiers: README "Verification".
   (`scripts/check.sh --fast`, about 10–13 minutes; 17 with self-tests); kernel replay, `lake check` and
   `lake comparator --paranoid` run nightly (`full.yml`) or on demand (`gh workflow run full.yml --ref <branch>`).
   CI must be green to merge.
-- **Trusted surface** (`ConsensusSpec/**`, `ConsensusSpec.lean`, `ConsensusChallenge.lean`, `comparator.json`,
-  `lean-toolchain`, `lake-manifest.json`, `ConsensusTests/Review{Axioms,Guard}.lean`): CI's `review-boundary`
+- **Trusted surface** (`ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` as `X.lean` and `X/**`,
+  `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
+  `ConsensusLeanTest/Review{Axioms,Guard}.lean`): the list is `trusted_paths` in `scripts/boundaries.toml`,
+  and CI also checks the list at the tag. CI's `review-boundary`
   fails until the `spec-approved` tag covers the change. Never create or move the tag; say in the PR that it
   needs approval. `scripts/**`, `.github/**` and the lakefile are owner-reviewed via CODEOWNERS.
 - **Spec snapshot:** a Spec change fails step 4 until `scripts/spec-snapshot.txt` is regenerated

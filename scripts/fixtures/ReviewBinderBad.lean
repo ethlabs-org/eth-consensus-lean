@@ -1,7 +1,7 @@
-import ConsensusTests.ReviewGuard
+import ConsensusLeanTest.ReviewGuard
 
 /-! Negative fixture for the binder-kind half of the statement guard of
-`ConsensusTests/ReviewAxioms.lean` (same `Consensus.ReviewGuard.check`): `Stmt` and the type of
+`ConsensusLeanTest/ReviewAxioms.lean` (same `Consensus.ReviewGuard.check`): `Stmt` and the type of
 `src` are alpha-equal (`Expr` `==` ignores binder annotations) but `Stmt` binds `n` implicitly and
 `src` explicitly, so the `run_meta` throws, `#guard_msgs` (expecting no message) fails, and
 `lake env lean` exits nonzero with "does not have the binder kinds". The matching positive case

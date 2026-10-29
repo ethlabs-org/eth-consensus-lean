@@ -1,19 +1,25 @@
 name = "fx"
-defaultTargets = ["FxSpec", "FxImpl"]
+defaultTargets = ["Fx"]
+testDriver = "FxTest"
 
 [[lean_lib]]
-name = "FxSpec"
-globs = ["FxSpec.*"]
+name = "Fx"
+globs = ["Fx.*"]
 
 [[lean_lib]]
-name = "FxImpl"
-globs = ["FxImpl.*"]
+name = "FxTest"
+globs = ["FxTest.*"]
+
+[[lean_lib]]
+name = "FxSol"
 
 [[lean_lib]]
 name = "FxFix"
-srcDir = "Fx"
 roots = []
 globs = ["FxFix.+"]
 
-# Fx/Mathlib/Shadow.lean sits in a srcDir under a base library's name (Mathlib); no lib names it, so only
-# the file/directory rule (not the module-prefix rule) can catch it.
+[[lean_lib]]
+name = "Shadow"
+srcDir = "Fx2"
+roots = []
+globs = ["Shadow.+"]

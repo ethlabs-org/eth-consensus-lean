@@ -11,7 +11,7 @@ See `TRUST.md` for the assumptions and the roles of the checks.
 
 ## The review statement
 
-`ConsensusSpec/Statements.lean` states the claim and its three secondaries verbatim below
+`ConsensusLean/Statements/Review.lean` states the claim and its three secondaries verbatim below
 (in namespace `Consensus.Review`, opening `Consensus.Shape`, `Consensus.Model`, and `Consensus.Blocks`):
 
 ```lean
@@ -54,7 +54,7 @@ def HeldIffServed : Prop :=
 ```
 
 The acceptance premise is `Consensus.Shape.Accepted`, from
-`ConsensusSpec/Shape/Accepted.lean`:
+`ConsensusLean/Spec/Shape/Accepted.lean`:
 
 ```lean
 structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop where
@@ -73,15 +73,15 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop wh
 
 `Accepted` carries the admissibility, progress-fit and progress-tolerance premises of
 `RegimesRealizable`, as well as the protocol's claims and its served-output condition.
-`ConsensusProofs/Review.lean` proves each review statement by its source theorem.
-`ConsensusTests/ReviewAxioms.lean`, using `ConsensusTests/ReviewGuard.lean`, compiles
+`Solution.lean` proves each review statement by its source theorem.
+`ConsensusLeanTest/ReviewAxioms.lean`, using `ConsensusLeanTest/ReviewGuard.lean`, compiles
 alpha-equality guards (including binder kinds) and `#guard_msgs` pins of the exact axiom lists
 for both the review and source theorems. `ReviewGuard.checkComplete` requires every non-proof,
 non-matcher constant declared in the statements module to have a review pair, including private
 constants and declarations in other namespaces. The module must contain statements only.
 
-In CI, `lake comparator --config comparator.json` compares `ConsensusChallenge.lean`
-(the Spec statements with placeholder proofs) with `ConsensusProofs/Review.lean`:
+In CI, `lake comparator --config comparator.json` compares `Challenge.lean`
+(the Spec statements with placeholder proofs) with `Solution.lean`:
 matching statements, permitted axioms, sandboxed kernel replay, and identical reachable constants
 in both exports to resist build-time tampering. This checks the proofs against Spec built alone;
 Spec drift is checked by the snapshot diff and owner review.
@@ -95,7 +95,7 @@ ready proposer was awake over the delivery interval before its release). `sysOf_
 (`RealizableActive.toRealizable`; its stress witness keeps keys `1` and `2`
 awake and the rest asleep; its L2-only `badProposer` witness puts a faulty
 proposer slot in every progress window). Corollary
-(`ConsensusProofs/Shape/Service.lean`, `Accepted.activeService`): a final or
+(`ConsensusLean/Main.lean`, `Accepted.activeService`): a final or
 available output puts a relayed transaction into another honest node's
 read on a clean healthy witness (`ActiveService`). A silent service or empty
 outputs are therefore not accepted, for every protocol.
@@ -112,7 +112,7 @@ structure Good (S : System V) (X : Progress S Prog) (K : Contract Prog) : Prop w
   realizable : 5 ≤ Fintype.card V → Realizable S X K  -- every regime is met, with active claims
 ```
 
-(`ConsensusSpec/Problem/Good.lean`.) All three parts are L0 definitions. The
+(`ConsensusLean/Spec/Problem/Good.lean`.) All three parts are L0 definitions. The
 property list, the regimes, the network rule and the thresholds' admissible
 range are fixed. An instance chooses only the numbers in `Params`, and a
 progress requirement for each capability and index. It writes no predicate
@@ -190,8 +190,8 @@ Notation (the `System` accessors of `Regimes.lean`): `c = cDur = catchUp·Δ`;
 
 One field per row (`finalAccountable`, `healthyLive`, `sleepySafe`, `sleepyLive`,
 `healedSafe`, `persists`). Derived in L0 (`Good.*`,
-`ConsensusProofs/Problem/Facts/Good.lean`; `Agree`, `Safe`, `FaultsBelow`,
-`ReadySafeUpTo` are in `ConsensusProofs/Problem/Derived.lean`), and in the Goldilocks sheet:
+`ConsensusLean/Lemmas/Problem/Facts/Good.lean`; `Agree`, `Safe`, `FaultsBelow`,
+`ReadySafeUpTo` are in `ConsensusLean/Lemmas/Problem/Derived.lean`), and in the Goldilocks sheet:
 
 | Theorem | Statement |
 |---|---|
@@ -220,7 +220,7 @@ An outage run is partially synchronous with GST `b₁` (`OutageNet b₀ b₁`
 contains `PSync b₁`), so the after-GST rows apply with `g = b₁` when their
 other premises hold.
 
-### The network rule (`ConsensusSpec/Problem/Network.lean`)
+### The network rule (`ConsensusLean/Spec/Problem/Network.lean`)
 
 The delivery rule is Francesco's rule, normal delivery (`CommLog.Delivers.msgs`):
 
@@ -287,7 +287,7 @@ one witness per equivocation key would suffice. That service needs a real
 equivocation key or relation on messages, not just two distinct messages
 that share a key. It is a later option (layers-plan, "Later option").
 
-### The regimes, as formulas (`ConsensusSpec/Problem/Regimes.lean`)
+### The regimes, as formulas (`ConsensusLean/Spec/Problem/Regimes.lean`)
 
 Here `p` is the environment point (awake profile, honest set, horizon,
 submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
@@ -372,7 +372,7 @@ The slot is checked, within limits:
   slot" (`recur ⟨single, 1⟩`) is rejected (`recur_single_one_not_tolerant`).
   Beyond that, the reviewer reads the gap as a number.
 
-In L2 the slot is `ProgressReq` (`ConsensusSpec/Blocks/Progress.lean`):
+In L2 the slot is `ProgressReq` (`ConsensusLean/Spec/Blocks/Progress.lean`):
 
 - `.recur ⟨pattern, gap⟩`: `PatternRecurrence`. Every window
   `(t, t + gap·slot]` from `max start 0` whose whole pattern ends by `stop`
@@ -475,92 +475,121 @@ and non-framing (`sysOf_nonFraming`, from slashing protection in the engine).
 ## What to read (the trusted surface)
 
 To know what `Accepted F K` (or `Good`) means, read every file below, in this order.
-The library root only collects imports.
+The generated library root only collects imports.
 
 <!-- spec-files -->
 
-1. `ConsensusSpec/Problem/Basic.lean`: L0 vocabulary: capabilities, output schemas, environments and points, traces, communication logs and systems.
-2. `ConsensusSpec/Problem/Network.lean`: Delivery and holding (`Held`, `TxHeld`), partial synchrony, synchrony up to a cut, outage networks and eager logs.
-3. `ConsensusSpec/Problem/Properties.lean`: Trace claims: agreement, monotonicity, ready-reader safety, nesting, transaction liveness, resilience and local accountability.
-4. `ConsensusSpec/Problem/Regimes.lean`: `Params`, `Contract`, admissible numbers, sleepy/healthy/outage regimes and the `cDur`, `heal`, `ready`, `lat` accessors.
-5. `ConsensusSpec/Problem/Good.lean`: External data and progress readers, the property table (`Behaviour`), system adequacy, active claims and witnesses, `Realizable`, and `Good`.
-6. `ConsensusSpec/Model/Objects.lean`: Authenticated wire objects, carried-object closure, signers, items and decidable equality.
-7. `ConsensusSpec/Model/Protocol.lean`: Public parameters, closed selections, protocol interfaces, selection admissibility and families.
-8. `ConsensusSpec/Model/Run.lean`: Events and their order, runs, engine state, releases, inboxes, views, slashing protection and local reads.
-9. `ConsensusSpec/Model/Conditions.lean`: Signature unforgeability, valid selections, credentials, `ExecutionValid` and the engine communication log.
-10. `ConsensusSpec/Model/System.lean`: Evidence-based conviction, observed hash collisions, `sysOf`, and external PKI/selection data (`sysExternal`).
-11. `ConsensusSpec/Model/Served.lean`: Engine holding at a deadline (`Run.Served`), used by the `HeldIffServed` review statement.
-12. `ConsensusSpec/Blocks/TimeGrid.lean`: Slots, their lengths and times, with phases measured in multiples of Δ.
-13. `ConsensusSpec/Blocks/Progress.lean`: Patterns, recurrence windows, `ProgressReq`, `PatternRecurrence` and `NotReadyOn`.
-14. `ConsensusSpec/Blocks/Chains.lean`: Headers and chains, explicit roots and digests, structural prefixes, linkage and provenance.
-15. `ConsensusSpec/Blocks/Payload.lean`: Transaction encoding/decoding and `ledgerOf`: decoded inputs with first occurrences retained (`List.eraseDups`).
-16. `ConsensusSpec/Shape/Shape.lean`: Skeletons, closed signing roles and proposal provenance, duties, `ChainShape` and `ShapeFamily`.
-17. `ConsensusSpec/Shape/Compile.lean`: The compilation of skeleton duties and shape state machines to model protocols (`compiled`).
-18. `ConsensusSpec/Shape/Run.lean`: Compiled systems (`Sys`), chain traces, output validity, proposal liveness and `shapeProgress`.
-19. `ConsensusSpec/Shape/Claims.lean`: The chain-level safety, liveness, accountability and resilience claims (`ShapeClaims`).
-20. `ConsensusSpec/Shape/ProgressFit.lean`: `ProgressFits` and `ProgressTolerant`: one proposer per recurrence slot and bad-slot/participation tolerance.
-21. `ConsensusSpec/Shape/Active.lean`: Progress activity, `BadProposerEvery`, and `RealizableActive`, including its bad-proposer witness.
-22. `ConsensusSpec/Shape/Accepted.lean`: The acceptance premise `Accepted`: protocol claims, admissible numbers, service, progress fit and tolerance.
-23. `ConsensusSpec/Statements.lean`: The four review statements as `Prop` definitions: `AcceptedGood`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
+1. `ConsensusLean/Init.lean`: The curated imports every module elaborates under (`Mathlib.Init`, `Mathlib.Tactic.Common`); no declarations.
+2. `ConsensusLean/Spec/Problem/Basic.lean`: L0 vocabulary: capabilities, output schemas, environments and points, traces, communication logs and systems.
+3. `ConsensusLean/Spec/Problem/Network.lean`: Delivery and holding (`Held`, `TxHeld`), partial synchrony, synchrony up to a cut, outage networks and eager logs.
+4. `ConsensusLean/Spec/Problem/Properties.lean`: Trace claims: agreement, monotonicity, ready-reader safety, nesting, transaction liveness, resilience and local accountability.
+5. `ConsensusLean/Spec/Problem/Regimes.lean`: `Params`, `Contract`, admissible numbers, sleepy/healthy/outage regimes and the `cDur`, `heal`, `ready`, `lat` accessors.
+6. `ConsensusLean/Spec/Problem/Good.lean`: External data and progress readers, the property table (`Behaviour`), system adequacy, active claims and witnesses, `Realizable`, and `Good`.
+7. `ConsensusLean/Spec/Model/Objects.lean`: Authenticated wire objects, carried-object closure, signers, items and decidable equality.
+8. `ConsensusLean/Spec/Model/Protocol.lean`: Public parameters, closed selections, protocol interfaces, selection admissibility and families.
+9. `ConsensusLean/Spec/Model/Run.lean`: Events and their order, runs, engine state, releases, inboxes, views, slashing protection and local reads.
+10. `ConsensusLean/Spec/Model/Conditions.lean`: Signature unforgeability, valid selections, credentials, `ExecutionValid` and the engine communication log.
+11. `ConsensusLean/Spec/Model/System.lean`: Evidence-based conviction, observed hash collisions, `sysOf`, and external PKI/selection data (`sysExternal`).
+12. `ConsensusLean/Spec/Model/Served.lean`: Engine holding at a deadline (`Run.Served`), used by the `HeldIffServed` review statement.
+13. `ConsensusLean/Spec/Blocks/TimeGrid.lean`: Slots, their lengths and times, with phases measured in multiples of Δ.
+14. `ConsensusLean/Spec/Blocks/Progress.lean`: Patterns, recurrence windows, `ProgressReq`, `PatternRecurrence` and `NotReadyOn`.
+15. `ConsensusLean/Spec/Blocks/Chains.lean`: Headers and chains, explicit roots and digests, structural prefixes, linkage and provenance.
+16. `ConsensusLean/Spec/Blocks/Payload.lean`: Transaction encoding/decoding and `ledgerOf`: decoded inputs with first occurrences retained (`List.eraseDups`).
+17. `ConsensusLean/Spec/Shape/Shape.lean`: Skeletons, closed signing roles and proposal provenance, duties, `ChainShape` and `ShapeFamily`.
+18. `ConsensusLean/Spec/Shape/Compile.lean`: The compilation of skeleton duties and shape state machines to model protocols (`compiled`).
+19. `ConsensusLean/Spec/Shape/Run.lean`: Compiled systems (`Sys`), chain traces, output validity, proposal liveness and `shapeProgress`.
+20. `ConsensusLean/Spec/Shape/Claims.lean`: The chain-level safety, liveness, accountability and resilience claims (`ShapeClaims`).
+21. `ConsensusLean/Spec/Shape/ProgressFit.lean`: `ProgressFits` and `ProgressTolerant`: one proposer per recurrence slot and bad-slot/participation tolerance.
+22. `ConsensusLean/Spec/Shape/Active.lean`: Progress activity, `BadProposerEvery`, and `RealizableActive`, including its bad-proposer witness.
+23. `ConsensusLean/Spec/Shape/Accepted.lean`: The acceptance premise `Accepted`: protocol claims, admissible numbers, service, progress fit and tolerance.
+24. `ConsensusLean/Statements/Review.lean`: The four review statements as `Prop` definitions: `AcceptedGood`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
 
 <!-- /spec-files -->
 
 Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 
 0. **Pins:** exact toolchain, manifest, clean dependency checkouts and Lake's resolved search path match `scripts/pins.toml`.
-1. **Build:** compile the four default libraries, the challenge, fixtures and check-decls; `--no-build` still checks Lake freshness.
+1. **Build:** compile `ConsensusLean` (the default target), `ConsensusLeanTest` (what `lake test` builds), `Solution`, the challenge, fixtures and check-decls; `--no-build` still checks Lake freshness.
 2. **Imports:** enforce R1–R3, root coverage, library inventory and pinned-base names with `scripts/check-imports.py`.
-3. **Declarations:** EthLib check-decls checks every module of every default library for extra axioms, unfinished proofs, opaque/unsafe/partial declarations, extern/implemented_by/csimp and opaque reachability; empty scopes fail.
+3. **Declarations:** EthLib check-decls runs once per library scope (`ConsensusLean`, `ConsensusLeanTest`, `Solution`), checking every module for extra axioms, unfinished proofs, opaque/unsafe/partial declarations, extern/implemented_by/csimp and opaque reachability; empty scopes fail.
 4. **Spec surface:** check persisted extensions, diff the complete readable/structural snapshot (including pins/options), enforce theorem hygiene and constant-free parents; the `reach` report (which Spec definitions the review statements reach; not a gate) runs in `--full`, in `--changed` when step 4 runs, and in `--fast` with `--reach`.
-5. **Kernel replay:** run leanchecker on every default-library leaf, one module per process after checking it has no descendants, two processes at a time (`REPLAY_JOBS`); parent modules own no constants.
+5. **Kernel replay:** run leanchecker on every leaf module of the checked libraries, one module per process after checking it has no descendants, two processes at a time (`REPLAY_JOBS`); parent modules own no constants.
 6. **Review pins:** require the tests root to import the compiled alpha-equality guards and exact axiom pins.
 7. **Backstop:** grep for unfinished/native proofs, kernel bypasses, Spec metacommands and unsafe lakefile options.
 8. **Vendored:** verify all vendored EthLib copies against `scripts/vendor.sha256`.
 9. **Comparator config:** pin challenge/solution modules, all four statement names and exactly the three standard axioms; validate the Spec-only challenge.
 10. **Lake check (needs bubblewrap; skipped and listed as CI-only where `bwrap` is missing):** sandboxed build, export and kernel replay of the default targets, rejecting extra axioms.
 11. **Lake comparator (needs bubblewrap, likewise):** statement/axiom matching, sandboxed replay and agreement of reachable constants between challenge and solution exports.
-12. **Docs:** require the marked list above to equal every file under `ConsensusSpec/` exactly.
+12. **Docs:** require the marked list above to equal every file of the spec group exactly.
 
 Checks with fixtures exercise the same code paths on positive and negative controls.
 Spec drift is guarded by the snapshot diff plus owner review (`spec-approved`);
 dependency drift by pins; proof validity by replay, check-decls and the CI comparator.
 
-Proof support outside that surface: `ConsensusProofs/Problem/Derived.lean` defines
+Proof support outside that surface: `ConsensusLean/Lemmas/Problem/Derived.lean` defines
 `Agree`, `Safe`, `ReadySafeUpTo`, `FaultsBelow`, `SendsFromZero` and `Trace.map`,
-which `Good` does not read. `ConsensusProofs/Problem/Facts/` holds the derived `Good.*`
-lemmas, including `Good.served`; `ConsensusProofs/Blocks/Facts.lean` holds the block lemmas.
-`ConsensusProofs/Shape/Payload.lean` proves the payload bridges;
-`ConsensusProofs/Shape/Refinement.lean`, `ConsensusProofs/Shape/Realizable.lean`,
-`ConsensusProofs/Shape/Accepted.lean` and `ConsensusProofs/Shape/Service.lean` prove
+which `Good` does not read. `ConsensusLean/Lemmas/Problem/Facts/` holds the derived `Good.*`
+lemmas, including `Good.served`; `ConsensusLean/Lemmas/Blocks/Facts.lean` holds the block lemmas.
+`ConsensusLean/Lemmas/Shape/Payload.lean` proves the payload bridges;
+`ConsensusLean/Proofs/Behaviour/Main.lean`, `ConsensusLean/Proofs/RegimesRealizable/Main.lean`,
+and `ConsensusLean/Main.lean` prove
 refinement, coverage/witnesses, acceptance and `Accepted.activeService`.
-`ConsensusProofs/Model/` proves `sysOf_adequate`, `sysOf_log_faithful`,
+`ConsensusLean/Lemmas/Model/` and `ConsensusLean/Proofs/Faithful/Main.lean` prove
+`sysOf_adequate`, `sysOf_log_faithful`,
 `Run.held_iff_served`, `sysOf_nonFraming` and `sysOf_laws`, with support for canonical runs
 (`canonical_run_from`), truncation (`Run.truncate_*`), views (`Run.mem_viewIdx_iff`)
 and slashing protection (`honestNeverSlashed`). A node's `Run.ViewIdx` is the closure
 of its engine `seen` log; the view lemma gives the event-index form.
-Injective-hash lifting is checked in `ConsensusTests/Lift.lean`.
+Injective-hash lifting is checked in `ConsensusLeanTest/Lift.lean`.
 
 ## Layout
 
-Lean module names are global. The directories are `ConsensusSpec/`, `ConsensusProofs/`,
-`ConsensusInstances/` and `ConsensusTests/`, rather than `Spec/` etc.: a top-level `Spec`
-would collide with other packages. The library name is the module prefix; namespaces stay unchanged.
+Lean module names are global. The certified library is `ConsensusLean`; its layers are module
+prefixes under `ConsensusLean/`. Namespaces and declarations stay unchanged.
+The only default target is `ConsensusLean` (`defaultTargets = ["ConsensusLean"]`).
+`ConsensusLeanTest` is the test library, selected by the lakefile's `testDriver` and built by
+`lake test`; it is not a default target.
+`Solution` and `Challenge` are single-module libraries for the comparator.
 
-| Default library / directory | Contents | Import rules |
+| Layer under `ConsensusLean/` | Contents |
+|---|---|
+| `Init.lean` | Curated public imports: `Mathlib.Init` and `Mathlib.Tactic.Common`. |
+| `Core/`, `ToMathlib/` | Trusted support; both empty for now. |
+| `Spec/{Problem,Model,Blocks,Shape}/` | Trusted definitions. |
+| `Statements/Review.lean` | The four review statements. |
+| `Lemmas/{Problem,Model,Blocks,Shape}/` | Derived definitions, lemmas, canonical runs and witnesses. |
+| `Proofs/<M>/Main.lean` | Milestones: `Behaviour`, `RegimesRealizable`, `Faithful`. |
+| `Main.lean` | `Accepted.good` and `Accepted.activeService`. |
+| `Instances/<P>/{Spec,Statements}.lean` | Goldilocks (`Spec` and `Statements`), Bft, Streamlet, Tendermint (`Spec`). |
+
+`Init.lean` is imported last by `Spec/Problem/Basic.lean` and `Spec/Model/Objects.lean`,
+so every module reaches it. It is part of the trusted surface.
+`scripts/boundaries.toml` defines the module groups checked by `scripts/check-imports.py`:
+
+| Group | Modules | Import rules |
 |---|---|---|
-| `ConsensusSpec/` | Trusted definitions and review statements | R1: its closure, including the root, contains only Spec project modules and the pinned base set. |
-| `ConsensusProofs/` | Proofs, derived definitions, canonical runs and witnesses | R3: may import Spec and Proofs; never Instances, Tests, the challenge or fixtures. |
-| `ConsensusInstances/` | Goldilocks and sheet, Bft, Streamlet, Tendermint | R3: may import Spec, Proofs and Instances; never Tests, the challenge or fixtures. |
-| `ConsensusTests/` | Teeth, rejections, controls, review pins and citation index | May import the four default libraries, never the challenge or fixtures. |
+| spec | `ConsensusLean.{Init,Core,Spec,Statements,ToMathlib}` | R1: its closure contains only spec modules and the pinned base set. |
+| proofs | `ConsensusLean.{Lemmas,Proofs,Main}` | R3: may reach proofs and spec. |
+| instances | `ConsensusLean.Instances` | R3: may reach instances, proofs and spec. |
+| solution | `Solution` | R3: may reach proofs and spec. |
+| tests | `ConsensusLeanTest` | May reach all groups above and the library roots. |
 
-R2 applies to all four: every file is reached from its library root, and no non-root module
-imports a package root except in Tests. Roots and other modules with descendants own no constants.
+No group may reach a fixture library (`CheckFixtures`, `CheckDeclsTest`, `Challenge`).
+The full layer matrix of the foundation plan §2 replaces these groups in step 3 (issue #6).
+R2: every file of `ConsensusLean` and `ConsensusLeanTest` is imported by its library root.
+No module imports a library root except tests. The generated roots `ConsensusLean.lean` and
+`ConsensusLeanTest.lean` import every module of their library; `check-imports.py` fails on an
+unlisted file. Regenerate them with
+`lake exe mk_all --lib ConsensusLean --module` and
+`lake exe mk_all --lib ConsensusLeanTest --module`.
+The generated roots and other modules with descendants own no constants.
 R1's external base set is `Init`, `Std`, `Lean`, `Lake`, `Mathlib`, `Batteries`, `Aesop`, `Qq`,
 `ProofWidgets`, `Plausible`, `ImportGraph`, `LeanSearchClient`; unknown names fail.
 Pins establish the provenance of those names. R1 exceptions need a design review.
 The inventory configuration is cross-checked against `lakefile.toml`, including default targets
-and globs; module components named `Proofs` or `Exports` are refused because check-decls
-exempts those names (`ConsensusProofs` is a different, unexempted component).
+and globs. A `Proofs` component is allowed only under `ConsensusLean.Proofs`: check-decls
+exempts definitions there from reaches-opaque, which is sound because the spec group cannot
+reach them. `Exports` components are refused.
 
 In `scripts/`:
 
@@ -568,18 +597,19 @@ In `scripts/`:
 - `check-imports.py`, `boundaries.toml`: parsed imports, R1–R3 and library inventory.
 - `check-pins.py`, `pins.toml`: toolchain, dependency revisions, clean checkouts and resolution checks.
 - `SpecSurface.lean`, `spec-extensions.txt`, `spec-theorems.txt`, `spec-snapshot.txt`: persisted-extension policy, theorem hygiene and the reviewed Spec snapshot.
-- `CheckDecls.lean`, `check_decls_baseline.txt`: EthLib declaration checker (one local performance patch, see TRUST.md) and reviewed exceptions.
+- `CheckDecls.lean`, `check_decls_baseline.txt`: EthLib declaration checker (two local patches, see TRUST.md) and reviewed exceptions.
 - `test_check_decls.sh`, `CheckDeclsTest.lean`, `CheckDeclsTest/`, `CheckDeclsForeign.lean`: verbatim EthLib fixture suite.
 - `LICENSE.EthLib`, `vendor.sha256`: CC0 licence and hashes of every vendored copy.
 - `fixtures/`: import, Spec-surface, review-pin, grep, pins, docs, comparator and Lake-check controls.
 - `metrics-baseline.py`, `layers.toml`: report-only module metrics and the target layer of every module
   (`docs/metrics-baseline.md`); no check runs them.
 
-The non-default libraries are `ConsensusChallenge` (`ConsensusChallenge.lean`, comparator statements
-with placeholder proofs, importing Spec only), rootless `CheckFixtures` (under `scripts/fixtures/`,
-each fixture a separate target), and `CheckDeclsTest` (EthLib fixtures under `scripts/`).
-They may contain deliberately unfinished proofs or extra axioms; no default library imports them.
-`comparator.json` connects the challenge to `ConsensusProofs/Review.lean`.
+The fixture libraries are `Challenge` (`Challenge.lean`, comparator statements
+with placeholder proofs, importing exactly `ConsensusLean.Statements.Review`), rootless
+`CheckFixtures` (under `scripts/fixtures/`, each fixture a separate target), and `CheckDeclsTest`
+(EthLib fixtures under `scripts/`).
+They may contain deliberately unfinished proofs or extra axioms; no checked group reaches them.
+`comparator.json` connects the challenge to `Solution.lean`.
 
 ## Why the meaning is fixed below the protocol
 
@@ -682,11 +712,11 @@ are the intended ones.
   Beyond that, the gap is read as a number. The check is in L2 (L0 has no
   proposers): an L0 `Good` system with abstract progress is not bound by it.
 
-## Instances (`ConsensusInstances/`)
+## Instances (`ConsensusLean/Instances/`)
 
 ### Goldilocks
 
-`ConsensusInstances/Goldilocks.lean` pins the numbers (round-model FG-SA,
+`ConsensusLean/Instances/Goldilocks/Spec.lean` pins the numbers (round-model FG-SA,
 `Δ_F = Δ`, `κ = 2`, slow arming; `FGSAParams = ⟨R, lockK, eta⟩`):
 
 | Number | Value |
@@ -700,29 +730,31 @@ are the intended ones.
 `GoldilocksTarget F pp := GoldilocksBindings F ∧ Accepted F (goldilocksContract
 pp) ∧ GoldilocksExtra F pp` is a reviewed target, not a proof that FG-SA meets
 it; it is never changed to fit FG-SA. The sheet
-(`ConsensusInstances/GoldilocksSheet.lean`) holds every intended-property
+(`ConsensusLean/Instances/Goldilocks/Statements.lean`) holds every intended-property
 disposition: proved (`GoldilocksTarget.*`), stated (`GoldilocksExtraAt`
 fields), not yet stated (§3), weaker than intended, and the twelve migration
 obligations with the regime risk (obligations (1), (4), (9)).
 
 ### Bft, Streamlet and Tendermint
 
-`ConsensusInstances/Bft.lean` supplies the common final-only schema `bftCore`, affine bounds
+`ConsensusLean/Instances/Bft/Spec.lean` supplies the common final-only schema `bftCore`, affine bounds
 and `bftContract`: index `k : ℕ+`, standard thresholds, catch-up, heal point
 `max g 0 + (catchUp + 1 + heal k)·Δ`, and latency `latency k` in Δ-coefficients.
 Outage numbers are unused because there is no stable output.
 
-`ConsensusInstances/Streamlet.lean` gives `2·Δ` slots, one proposer per slot, polling disabled,
+`ConsensusLean/Instances/Streamlet/Spec.lean` gives `2·Δ` slots, one proposer per slot, polling disabled,
 and all-validator votes at phase 1. Progress is five consecutive honest ready proposers
 in every window of `k` slots (`Pattern.range 5`); gap 6 supplies the tolerant index.
 
-`ConsensusInstances/Tendermint.lean` gives a poll shape, no slot proposals or committee kinds,
+`ConsensusLean/Instances/Tendermint/Spec.lean` gives a poll shape, no slot proposals or committee kinds,
 and all-validator polling at every unit tick. Height is in `pos`, round in `info`; round-robin
 leadership is computed locally. A locked value is re-proposed by carrying its signed header.
 Progress is the pointwise `notReadyAtMost m` placeholder described in Scope.
 These are values and fit/tolerance proofs, with no concrete protocol proofs.
 
-## Tests (`ConsensusTests/`)
+## Tests (`ConsensusLeanTest/`)
+
+`lake test` builds this library, including the review pins and citation index.
 
 - `Problem`: every L0 property has teeth; local accountability (`local_accountability_teeth`).
 - `Network`: the delivery rule (wakers served within the bound, not instantly), faithfulness, silent runs and truncation.
@@ -734,14 +766,14 @@ These are values and fit/tolerance proofs, with no concrete protocol proofs.
 - `Controls`: positive controls at explicit numbers.
 - `Vacuity`: admissibility rejections, progress fit and tolerance, forgery, `noService_not_accepted`.
 - `Goldilocks`: `pp223_numbers`, `stable_is_confirmed`, `outageWindow_prefix_only`, `weakPremise_inhabited`.
-- `Lift`, `Support`, `Common`: injective-hash lifting and fixtures; the former `Values` live in `ConsensusInstances/Bft.lean`, `ConsensusInstances/Streamlet.lean` and `ConsensusInstances/Tendermint.lean`.
+- `Lift`, `Support`, `Common`: injective-hash lifting and fixtures; the former `Values` live in `ConsensusLean/Instances/Bft/Spec.lean`, `ConsensusLean/Instances/Streamlet/Spec.lean` and `ConsensusLean/Instances/Tendermint/Spec.lean`.
 - `ReviewAxioms`, `ReviewGuard`: statement alpha-equality, completeness and axiom pins.
 - `Gaps`: the gap dispositions. `Index`: every cited name, checked to exist.
 
 ### Gap dispositions
 
 One line per gap (M1–M39 and the vacuous system), with `example`s for the
-by-construction rows: `ConsensusTests/Gaps.lean`.
+by-construction rows: `ConsensusLeanTest/Gaps.lean`.
 
 ## Verification
 
@@ -761,6 +793,7 @@ On the shared box every build and check runs in a job (replace `<name>` and `<wo
 
 1. Iterate on one file with `lake env lean <file>` (after building its imports), or on one declaration with
    `turbo-lean check <file> --decl <name>` (a single declaration only; `lake build` stays the gate).
+   `lake build` builds `ConsensusLean` by default; `lake test` builds `ConsensusLeanTest`.
 2. Before committing, check what changed:
    ```sh
    job --mem 16G --cpus 8 consensus-lean <name> -- bash -lc "cd <worktree> && LAKE_RESTORE_ARTIFACTS=true scripts/check-changed.sh"
@@ -772,8 +805,8 @@ On the shared box every build and check runs in a job (replace `<name>` and `<wo
 
 `check.sh` refuses to run without `RUN_DIR` (set by `job`) or `CI`. Elsewhere: `CI=1 scripts/check.sh --full`.
 
-The build checks every cited name (`ConsensusTests/Index.lean`) and compiles the review
-type/axiom pins (`ConsensusTests/ReviewAxioms.lean`). `--no-build` skips compilation but still
+`lake test` checks every cited name (`ConsensusLeanTest/Index.lean`) and compiles the review
+type/axiom pins (`ConsensusLeanTest/ReviewAxioms.lean`). `--no-build` skips compilation but still
 uses Lake's freshness gate, so stale artifacts fail. Snapshot/extension updates fail deliberately so
 their diff is reviewed; CI refuses update flags and `--no-build`, and checks that the tree stays clean.
 
@@ -782,8 +815,8 @@ them and lists them as **CI-only**; `full.yml` always runs them, with their fixt
 fails on any skipped step. The shared box has `bwrap` (installed 2026-10-29), so a local `--full` run
 executes them too. The comparator runs with `--paranoid`: the review statements' closure is replayed by
 Lean's kernel and by every external kernel bundled with Lean (leanchecker-paranoid, lean4lean, nanoda,
-con-leche, con-ron), about 3 minutes in CI. leanchecker replays every default-library leaf,
-one module per process (two at a time); never invoke it on a root or prefix with descendants.
+con-leche, con-ron), about 3 minutes in CI. leanchecker replays every leaf module of the checked
+libraries, one module per process (two at a time); never invoke it on a root or prefix with descendants.
 
 CI caching (fast tier): Mathlib's oleans come from `lake exe cache get` (plus an actions/cache of
 `.lake/packages` keyed on the manifest and toolchain); the project's `.lake/build` is an actions/cache
@@ -796,10 +829,14 @@ comparator 1, setup 2). Fast tier (measured on PR #15, with self-tests because i
 17 minutes cold, 17 minutes with the build cache warm (setup 1.6, build 0.2, check-decls 4–7.5, Spec surface
 3, self-tests 4); without self-tests, the usual PR, about 10–13 minutes. check-decls is now the largest step.
 
-The owner-review boundary is separate from correctness. The **trusted surface** is `ConsensusSpec/**`,
-`ConsensusSpec.lean`, `ConsensusChallenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
-`ConsensusTests/ReviewAxioms.lean` and `ConsensusTests/ReviewGuard.lean`. The annotated git tag
-`spec-approved` marks the last approved commit (4b7c5148, approved 2026-10-29); only the owner, or an
+The owner-review boundary is separate from correctness. The **trusted surface** is
+`ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and `X/**`), `Challenge.lean`,
+`comparator.json`, `lean-toolchain`, `lake-manifest.json`, `ConsensusLeanTest/ReviewAxioms.lean` and
+`ConsensusLeanTest/ReviewGuard.lean`. The list lives in `scripts/boundaries.toml`
+(`[checks] trusted_paths`, plain paths that must cover every spec-group file); CI reads it as literal
+paths at the PR head and at the tag. The annotated git tag
+`spec-approved` marks the last approved commit (the PR #30 head: the verbatim move of #5; before it 4b7c5148,
+approved 2026-10-29); only the owner, or an
 agent he explicitly authorizes, moves it. CI job `review-boundary` fails while the trusted surface differs
 from that tag (it would only warn if the tag did not exist), so a PR changing it is approved by moving the
 tag to the PR's head before merge. The check infrastructure (`scripts/**`, `.github/**`, `lakefile.toml`,

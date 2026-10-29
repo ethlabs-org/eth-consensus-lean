@@ -17,8 +17,8 @@ option weak.linter.flexible = false
 option weak.linter.mathlibStandardSet = true
 option weak.linter.style.header = false
 
-## ConsensusSpec
-## ConsensusSpec.Blocks.Chains
+## ConsensusLean.Init
+## ConsensusLean.Spec.Blocks.Chains
 def Consensus.Blocks.Chain : Type → Type := fun Info => List.{0} (Consensus.Blocks.Header Info)
   #2330190150/2403974282
 def Consensus.Blocks.Chain.Linked : {Info : Type} → (Consensus.Blocks.Header Info → Nat) → Consensus.Blocks.Chain Info → Prop := fun {Info} hash c => Consensus.Blocks.Chain.LinkedFrom hash Consensus.Blocks.ParentRef.root c
@@ -136,16 +136,16 @@ def Consensus.Blocks.instDecidableEqParentRef.decEq.match_1 #3814663127/17780388
 def Consensus.Blocks.instReprParentRef : Repr.{0} Consensus.Blocks.ParentRef := Repr.mk.{0} Consensus.Blocks.instReprParentRef.repr
   #1821171690/4016315286
 def Consensus.Blocks.instReprParentRef.repr : Consensus.Blocks.ParentRef → Nat → Std.Format := fun x prec => Consensus.Blocks.instReprParentRef.repr.match_1✝.{1} (fun x => Std.Format) x (fun _ => Repr.addAppParen (Std.Format.nest (ite.{1} (GE.ge.{0} prec 1024) 1 2) (Std.Format.text "Consensus.Blocks.ParentRef.root")).group prec) fun a => Repr.addAppParen (Std.Format.nest (ite.{1} (GE.ge.{0} prec 1024) 1 2) (HAppend.hAppend.{0, 0, 0} (HAppend.hAppend.{0, 0, 0} (Std.Format.text "Consensus.Blocks.ParentRef.digest") Std.Format.line) (reprArg.{0} a))).group prec
-  #29127872/3988361842
-def _private.ConsensusSpec.Blocks.Chains.0.Consensus.Blocks.instReprParentRef.repr.match_1 #3191845119/866161350
-## ConsensusSpec.Blocks.Payload
+  #29127872/3911954711
+def _private.ConsensusLean.Spec.Blocks.Chains.0.Consensus.Blocks.instReprParentRef.repr.match_1 #3191845119/866161350
+## ConsensusLean.Spec.Blocks.Payload
 def Consensus.Blocks.decodeTxs : Nat → List.{0} Consensus.Tx := fun n => Option.getD.{0} (Encodable.decode.{0} n) List.nil.{0}
   #2228169644/738367264
 def Consensus.Blocks.encodeTxs : List.{0} Consensus.Tx → Nat := fun xs => Encodable.encode.{0} xs
   #4261788139/3703561008
 def Consensus.Blocks.ledgerOf : {Info : Type} → Consensus.Blocks.Chain Info → Consensus.Ledger := fun {Info} c => List.eraseDups.{0} (List.flatMap.{0, 0} (Function.comp.{1, 1, 1} Consensus.Blocks.decodeTxs Consensus.Blocks.Header.input) c)
   #3461060320/2992035079
-## ConsensusSpec.Blocks.Progress
+## ConsensusLean.Spec.Blocks.Progress
 def Consensus.Blocks.HonestReadyIn : {V : Type} → [inst : Fintype.{0} V] → Consensus.EnvPoint V → Equiv.{1, 1} (Fin (Fintype.card.{0} V)) V → (Consensus.Blocks.Slot → Finset.{0} (Fin (Fintype.card.{0} V))) → Consensus.Blocks.Slot → Consensus.Time → Consensus.Time → Prop := fun {V} [Fintype.{0} V] p key sel s c t => And (Finset.Nonempty.{0} (sel s)) (∀ (k : Fin (Fintype.card.{0} V)), Membership.mem.{0, 0} (sel s) k → p.Ready c (DFunLike.coe.{1, 1, 1} key k) t)
   #81833702/1167142315
 def Consensus.Blocks.NotReadyOn : {V : Type} → [Fintype.{0} V] → [DecidableEq.{1} V] → Consensus.EnvPoint V → Nat → Consensus.Time → Consensus.Time → Consensus.Time → Prop := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] p m c start stop => ∀ (t : Consensus.Time), LE.le.{0} (Max.max.{0} start 0) t → LE.le.{0} t stop → LE.le.{0} t p.horizon → p.NotReadyAtMost m c t
@@ -255,7 +255,7 @@ def Consensus.Blocks.instDecidableBadSlotSlack : (ρ : Consensus.Blocks.Recurren
   #293482654/116113618
 def Consensus.EnvPoint.NotReadyAtMost : {V : Type} → [Fintype.{0} V] → [DecidableEq.{1} V] → Consensus.EnvPoint V → Nat → Consensus.Time → Consensus.Time → Prop := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] p m c t => LE.le.{0} (Fintype.card.{0} V) (HAdd.hAdd.{0, 0, 0} (Finset.card.{0} (p.readyAt c t)) m)
   #1052132790/3332398901
-## ConsensusSpec.Blocks.TimeGrid
+## ConsensusLean.Spec.Blocks.TimeGrid
 def Consensus.Blocks.Slot : Type := Nat
   #3931117990/421340980
 induct Consensus.Blocks.TimeGrid : Type
@@ -288,7 +288,7 @@ def Consensus.Blocks.TimeGrid.slotLen : Consensus.Blocks.TimeGrid → Consensus.
   #510677156/633787167
 def Consensus.Blocks.TimeGrid.slotTime : Consensus.Blocks.TimeGrid → Consensus.Time → Consensus.Blocks.Slot → Consensus.Time := fun G Δ s => HMul.hMul.{0, 0, 0} (Nat.cast.{0} s) (G.slotLen Δ)
   #3067159933/991205583
-## ConsensusSpec.Model.Conditions
+## ConsensusLean.Spec.Model.Conditions
 def Consensus.Model.Run.Credentials : {V : Type} → [inst : Fintype.{0} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.Family O} → {E : Consensus.Env V} → Consensus.Model.Run F E → Prop := fun {V} [Fintype.{0} V] {O} {F} {E} rho => ∀ (i : Nat) (w : V) (o : (Consensus.Model.protoOf F E).Object) (t : Consensus.Time), Eq.{1} (GetElem?.getElem?.{0, 0, 0} rho.events i) (Option.some.{0} (Consensus.Model.Event.deliver w o t)) → ∀ (o' : Consensus.Model.Obj (Consensus.Model.pubOf E).n (Consensus.Model.protoOf F E).Role (Consensus.Model.protoOf F E).Item (Consensus.Model.protoOf F E).Body), Consensus.Model.Obj.Contains o o' → ∀ (k : Fin (Consensus.Model.pubOf E).n) (r : (Consensus.Model.protoOf F E).Role), Eq.{1} o'.auth (Consensus.Model.Auth.signed k r) → Membership.mem.{0, 0} (rho.sel r) k
   #1917310578/2588887694
 induct Consensus.Model.Run.ExecutionValid : {V : Type} → [inst : Fintype.{0} V] → [DecidableEq.{1} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.Family O} → {E : Consensus.Env V} → Consensus.Model.Run F E → Prop
@@ -334,7 +334,7 @@ def Consensus.Model.Run.Unforgeable : {V : Type} → [inst : Fintype.{0} V] → 
   #793472915/2415046161
 def Consensus.Model.Run.log : {V : Type} → [inst : Fintype.{0} V] → [DecidableEq.{1} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.Family O} → {E : Consensus.Env V} → Consensus.Model.Run F E → Consensus.CommLog V (Consensus.Model.protoOf F E).Object := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] {O} {F} {E} rho => { sent := rho.releases, recv := rho.receives, inbox := rho.inbox }
   #3728258369/27177657
-## ConsensusSpec.Model.Objects
+## ConsensusLean.Spec.Model.Objects
 induct Consensus.Model.Auth : Nat → Type → Type
   #1217220144/-
 def Consensus.Model.Auth._sizeOf_1 #3029399437/408453973
@@ -513,7 +513,7 @@ theorem Consensus.Model.instDecidableEqMsg.decEq._proof_4 #3728745502/-
 theorem Consensus.Model.instDecidableEqMsg.decEq._proof_5 #3860840916/-
 theorem Consensus.Model.instDecidableEqMsg.decEq._proof_6 #2723695276/-
 def Consensus.Model.instDecidableEqMsg.decEq.match_1 #349674875/2525371966
-## ConsensusSpec.Model.Protocol
+## ConsensusLean.Spec.Model.Protocol
 def Consensus.Model.Family : Consensus.OutputSchema → Type 1 := fun O => (pub : Consensus.Model.Public) → Consensus.Model.Protocol pub O.Id
   #3464297463/3461196828
 def Consensus.Model.Key : Consensus.Model.Public → Type := fun pub => Fin pub.n
@@ -656,7 +656,7 @@ theorem Consensus.Model.SelSpec.sized.injEq #1166224655/-
 def Consensus.Model.SelSpec.sized.noConfusion : {n : Nat} → {P : Sort u} → {m m' : Nat} → Eq.{1} (Consensus.Model.SelSpec.sized m) (Consensus.Model.SelSpec.sized m') → (Eq.{1} m m' → P) → P := fun {n} {P} {m m'} eq k => id.{u} (Consensus.Model.SelSpec.noConfusion.{u} ⋯ ⋯ k)
   #1898795650/4100937627
 theorem Consensus.Model.SelSpec.sized.sizeOf_spec #3258786113/-
-## ConsensusSpec.Model.Run
+## ConsensusLean.Spec.Model.Run
 induct Consensus.Model.Event : Type → Type → Type
   #2301245127/-
 def Consensus.Model.Event._sizeOf_1 #54690868/3121300357
@@ -856,10 +856,10 @@ def Consensus.Model.releaseAll._f #1362497251/3720212905
 def Consensus.Model.releaseAll._sunfold #4053479147/3958049569
 def Consensus.Model.releaseAll._unsafe_rec #4053479147/2740134097
 def Consensus.Model.releaseAll.match_1 #20616052/4028911469
-## ConsensusSpec.Model.Served
+## ConsensusLean.Spec.Model.Served
 def Consensus.Model.Run.Served : {V : Type} → [inst : Fintype.{0} V] → [DecidableEq.{1} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.Family O} → {E : Consensus.Env V} → Consensus.Model.Run F E → V → (Consensus.Model.protoOf F E).Object → Consensus.Time → Prop := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] {O} {F} {E} rho w o d => Exists.{1} fun t' => And (LE.le.{0} t' d) (And (Or (rho.releases w o t') (rho.receives w o t')) (∀ (u : Consensus.Time), Membership.mem.{0, 0} rho.events (Consensus.Model.Event.restart w u) → Not (And (LT.lt.{0} t' u) (LE.le.{0} u d))))
   #2196412810/1746995690
-## ConsensusSpec.Model.System
+## ConsensusLean.Spec.Model.System
 def Consensus.Model.Run.HashCollision : {V : Type} → [inst : Fintype.{0} V] → [DecidableEq.{1} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.Family O} → {E : Consensus.Env V} → Consensus.Model.Run F E → Prop := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] {O} {F} {E} rho => Exists.{1} fun x => Exists.{1} fun y => And (Ne.{1} x y) (And (rho.ObservedItem x) (And (rho.ObservedItem y) (Eq.{1} (rho.hash x) (rho.hash y))))
   #793472915/964990130
 def Consensus.Model.Run.ObservedItem : {V : Type} → [inst : Fintype.{0} V] → [DecidableEq.{1} V] → {O : Consensus.OutputSchema} → {F : Consensus.Model.Family O} → {E : Consensus.Env V} → Consensus.Model.Run F E → (Consensus.Model.protoOf F E).Item → Prop := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] {O} {F} {E} rho x => Exists.{1} fun o => And (Membership.mem.{0, 0} rho.Observed o) (Eq.{1} (Consensus.Model.Obj.item? o) (Option.some.{0} x))
@@ -872,7 +872,7 @@ def Consensus.Model.sysOf : (O : Consensus.OutputSchema) → Consensus.Model.Fam
   #2964985627/3329783762
 def Consensus.Model.tagLog : {V : Type} → {M : Consensus.Env V → Type} → (E : Consensus.Env V) → Consensus.CommLog V (M E) → Consensus.CommLog V ((E : Consensus.Env V) × M E) := fun {V} {M} E L => { sent := fun v m t => Exists.{1} fun o => And (Eq.{1} m (Sigma.mk.{0, 0} E o)) (L.sent v o t), recv := fun v m t => Exists.{1} fun o => And (Eq.{1} m (Sigma.mk.{0, 0} E o)) (L.recv v o t), inbox := L.inbox }
   #3638782349/861245120
-## ConsensusSpec.Problem.Basic
+## ConsensusLean.Spec.Problem.Basic
 induct Consensus.Capability : Type
   #3931117990/-
 def Consensus.Capability._sizeOf_1 #1792813754/628683350
@@ -894,8 +894,8 @@ def Consensus.Capability.final.elim : {motive : Consensus.Capability → Sort u}
   #1585430693/3514435425
 theorem Consensus.Capability.final.sizeOf_spec #4206912983/-
 def Consensus.Capability.noConfusion : {P : Sort v✝} → {x y : Consensus.Capability} → Eq.{1} x y → Consensus.Capability.noConfusionType.{v✝} P x y := fun {P} {x y} h => noConfusionEnum.{1, v✝} Consensus.Capability.ctorIdx h
-  #3250672109/3695362172
-def Consensus.Capability.noConfusionType #3682728236/1503493484
+  #782691331/2647983923
+def Consensus.Capability.noConfusionType #3615604829/2733836593
 def Consensus.Capability.ofNat #3233070466/1809329646
 theorem Consensus.Capability.ofNat_ctorIdx #4178600704/-
 def Consensus.Capability.rank : Consensus.Capability → Nat := fun x => Consensus.Capability.rank.match_1.{1} (fun x => Nat) x (fun _ => 0) (fun _ => 1) fun _ => 2
@@ -1173,9 +1173,9 @@ theorem Consensus.instDecidableEqCapability._proof_2 #154438770/-
 def Consensus.instReprCapability : Repr.{0} Consensus.Capability := Repr.mk.{0} Consensus.instReprCapability.repr
   #4236262256/3719497106
 def Consensus.instReprCapability.repr : Consensus.Capability → Nat → Std.Format := fun x prec => Consensus.instReprCapability.repr.match_1✝.{1} (fun x => Std.Format) x (fun _ => Repr.addAppParen (Std.Format.nest (ite.{1} (GE.ge.{0} prec 1024) 1 2) (Std.Format.text "Consensus.Capability.available")).group prec) (fun _ => Repr.addAppParen (Std.Format.nest (ite.{1} (GE.ge.{0} prec 1024) 1 2) (Std.Format.text "Consensus.Capability.stable")).group prec) fun _ => Repr.addAppParen (Std.Format.nest (ite.{1} (GE.ge.{0} prec 1024) 1 2) (Std.Format.text "Consensus.Capability.final")).group prec
-  #1635321805/2158431383
-def _private.ConsensusSpec.Problem.Basic.0.Consensus.instReprCapability.repr.match_1 #2160075690/1075871401
-## ConsensusSpec.Problem.Good
+  #1635321805/491354086
+def _private.ConsensusLean.Spec.Problem.Basic.0.Consensus.instReprCapability.repr.match_1 #2160075690/1075871401
+## ConsensusLean.Spec.Problem.Good
 induct Consensus.Behaviour : {V : Type} → [Fintype.{0} V] → [DecidableEq.{1} V] → {Prog : Type} → (S : Consensus.System V) → Consensus.Progress S Prog → Consensus.Contract Prog → Prop
   #1970519688/-
 theorem Consensus.Behaviour.admissible : ∀ {V : Type} [inst : Fintype.{0} V] [inst_1 : DecidableEq.{1} V] {Prog : Type} {S : Consensus.System V} {X : Consensus.Progress S Prog} {K : Consensus.Contract Prog}, Consensus.Behaviour S X K → K.params.Admissible
@@ -1346,7 +1346,7 @@ def Consensus.System.prog : {V : Type} → (S : Consensus.System V) → {Prog : 
   #3934379646/349801835
 def Consensus.resilienceTarget : (O : Consensus.OutputSchema) → O.Id → O.Id := fun O g => Option.getD.{0} (O.output Consensus.Capability.available) g
   #2940461660/2741341432
-## ConsensusSpec.Problem.Network
+## ConsensusLean.Spec.Problem.Network
 def Consensus.CommLog.AgreesUpTo : {V M : Type} → Consensus.CommLog V M → Consensus.CommLog V M → Consensus.Time → Prop := fun {V M} L L' b => And (∀ (v : V) (m : M) (t : Consensus.Time), LE.le.{0} t b → And (Iff (L.sent v m t) (L'.sent v m t)) (Iff (L.recv v m t) (L'.recv v m t))) (∀ (v : V) (t : Consensus.Time), LE.le.{0} t b → Eq.{1} (L.inbox v t) (L'.inbox v t))
   #3216363463/2479795983
 induct Consensus.CommLog.Delivers : {V M : Type} → Consensus.EnvPoint V → Consensus.CommLog V M → (Consensus.Time → Consensus.Time) → Consensus.Time → Prop
@@ -1391,7 +1391,7 @@ def Consensus.CommLog.SyncUntil : {V M : Type} → Consensus.EnvPoint V → Cons
   #1215548317/3779004358
 def Consensus.CommLog.TxHeld : {V M : Type} → Consensus.CommLog V M → V → Consensus.Tx → Consensus.Time → Prop := fun {V M} L w x d => Exists.{1} fun τ => And (LE.le.{0} 0 τ) (And (LE.le.{0} τ d) (Membership.mem.{0, 0} (L.inbox w τ) x))
   #1781800056/89557351
-## ConsensusSpec.Problem.Properties
+## ConsensusLean.Spec.Problem.Properties
 def Consensus.System.AccountablySafe : {V : Type} → [Fintype.{0} V] → (S : Consensus.System V) → S.Run → Rat → S.schema.Id → Consensus.Time → Prop := fun {V} [Fintype.{0} V] S r α g t₀ => (S.trace r).AccountablySafe (S.view r) (S.convicts r) α g t₀
   #2743147044/2215669525
 def Consensus.System.NonFraming : {V : Type} → (S : Consensus.System V) → S.Run → Prop := fun {V} S r => ∀ (v : V), Membership.mem.{0, 0} (S.trace r).point.honest v → Not (S.convicts r (S.honestEvidence r) v)
@@ -1437,7 +1437,7 @@ def Consensus.Trace.TxLive : {V Id : Type} → Consensus.Trace V Consensus.Tx Id
   #1258369792/685973100
 def Consensus.convicted : {V O : Type} → [Fintype.{0} V] → (Set.{0} O → V → Prop) → Set.{0} O → Finset.{0} V := fun {V O} [Fintype.{0} V] convicts A => Finset.filter.{0} (convicts A) Finset.univ.{0}
   #4080860808/1760672376
-## ConsensusSpec.Problem.Regimes
+## ConsensusLean.Spec.Problem.Regimes
 induct Consensus.Contract : Type → Type 1
   #232905561/-
 def Consensus.Contract.Idx : {Prog : Type} → Consensus.Contract Prog → Type := fun Prog self => self.1
@@ -1559,7 +1559,7 @@ def Consensus.System.pt : {V : Type} → (S : Consensus.System V) → S.Run → 
   #1930732205/3596897860
 def Consensus.System.ready : {V : Type} → (S : Consensus.System V) → {Prog : Type} → Consensus.Contract Prog → Consensus.Time → S.Run → Consensus.Time := fun {V} S {Prog} K g r => HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (Max.max.{0} g 0) (S.cDur K r)) 1
   #195491206/2211796880
-## ConsensusSpec.Shape.Accepted
+## ConsensusLean.Spec.Shape.Accepted
 induct Consensus.Shape.Accepted : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → Consensus.Shape.ShapeFamily O Info → Consensus.Contract Consensus.Blocks.ProgressReq → Prop
   #423925068/-
 theorem Consensus.Shape.Accepted.admissible : ∀ {O : Consensus.OutputSchema} {Info : Type} [inst : DecidableEq.{1} Info] [inst_1 : Countable.{1} Info] {F : Consensus.Shape.ShapeFamily O Info} {K : Consensus.Contract Consensus.Blocks.ProgressReq}, Consensus.Shape.Accepted F K → K.params.Admissible
@@ -1581,7 +1581,7 @@ def Consensus.Shape.Accepted.recOn : {O : Consensus.OutputSchema} → {Info : Ty
   #3897580377/1998730772
 theorem Consensus.Shape.Accepted.serves : ∀ {O : Consensus.OutputSchema} {Info : Type} [inst : DecidableEq.{1} Info] [inst_1 : Countable.{1} Info] {F : Consensus.Shape.ShapeFamily O Info} {K : Consensus.Contract Consensus.Blocks.ProgressReq}, Consensus.Shape.Accepted F K → O.Serves
   #2653546154/-
-## ConsensusSpec.Shape.Active
+## ConsensusLean.Spec.Shape.Active
 def Consensus.Shape.BadProposerEvery : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → (F : Consensus.Shape.ShapeFamily O Info) → (K : Consensus.Contract Consensus.Blocks.ProgressReq) → {V : Type} → [inst_2 : Fintype.{0} V] → Consensus.Capability → K.Idx → {E : Consensus.Env V} → Consensus.Model.Run (Consensus.Shape.compiled F) E → Prop := fun {O} {Info} [DecidableEq.{1} Info] [Countable.{1} Info] F K {V} [Fintype.{0} V] cap i {E} rho => Consensus.Shape.progLen.match_1.{1} (fun x => Prop) (K.progress cap i) (fun ρ => ∀ (a : Consensus.Blocks.Slot), Exists.{1} fun s => And (LE.le.{0} a s) (And (LT.lt.{0} s (HAdd.hAdd.{0, 0, 0} a ρ.gap.val)) (And (Finset.Nonempty.{0} (rho.sel (Consensus.Shape.ShapeRole.proposer s))) (∀ (k : Fin (Fintype.card.{0} V)), Membership.mem.{0, 0} (rho.sel (Consensus.Shape.ShapeRole.proposer s)) k → Not (Membership.mem.{0, 0} rho.honest (DFunLike.coe.{1, 1, 1} rho.key k)))))) fun m => True
   #3215090347/27493308
 def Consensus.Shape.ProgressActive : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → (F : Consensus.Shape.ShapeFamily O Info) → (K : Consensus.Contract Consensus.Blocks.ProgressReq) → {V : Type} → [inst_2 : Fintype.{0} V] → Consensus.Capability → K.Idx → Consensus.Time → {E : Consensus.Env V} → Consensus.Model.Run (Consensus.Shape.compiled F) E → Prop := fun {O} {Info} [DecidableEq.{1} Info] [Countable.{1} Info] F K {V} [Fintype.{0} V] cap i start {E} rho => LE.le.{0} (HAdd.hAdd.{0, 0, 0} (Max.max.{0} start 0) (Consensus.Shape.progLen F K cap i E)) rho.horizon
@@ -1610,7 +1610,7 @@ theorem Consensus.Shape.RealizableActive.sleepyStress : ∀ {O : Consensus.Outpu
 def Consensus.Shape.progLen : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → Consensus.Shape.ShapeFamily O Info → (K : Consensus.Contract Consensus.Blocks.ProgressReq) → {V : Type} → [Fintype.{0} V] → Consensus.Capability → K.Idx → Consensus.Env V → Consensus.Time := fun {O} {Info} [DecidableEq.{1} Info] [Countable.{1} Info] F K {V} [Fintype.{0} V] cap i E => Consensus.Shape.progLen.match_1.{1} (fun x => Consensus.Time) (K.progress cap i) (fun ρ => HMul.hMul.{0, 0, 0} (Nat.cast.{0} ρ.len) ((F (Consensus.Model.pubOf E)).skel.grid.slotLen E.Δ)) fun m => 0
   #1426840824/1921354137
 def Consensus.Shape.progLen.match_1 #1271716835/4162592156
-## ConsensusSpec.Shape.Claims
+## ConsensusLean.Spec.Shape.Claims
 def Consensus.Shape.ShapeClaims : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → Consensus.Shape.ShapeFamily O Info → Consensus.Contract Consensus.Blocks.ProgressReq → Prop := fun {O} {Info} [DecidableEq.{1} Info] [Countable.{1} Info] F K => ∀ (V : Type) [inst_2 : Fintype.{0} V] [inst_3 : DecidableEq.{1} V], Consensus.Shape.ShapeClaimsAt F K V
   #423925068/1146171911
 induct Consensus.Shape.ShapeClaimsAt : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → Consensus.Shape.ShapeFamily O Info → Consensus.Contract Consensus.Blocks.ProgressReq → (V : Type) → [Fintype.{0} V] → [DecidableEq.{1} V] → Prop
@@ -1642,7 +1642,7 @@ theorem Consensus.Shape.ShapeClaimsAt.sleepyLive : ∀ {O : Consensus.OutputSche
   #898663702/-
 theorem Consensus.Shape.ShapeClaimsAt.sleepySafe : ∀ {O : Consensus.OutputSchema} {Info : Type} [inst : DecidableEq.{1} Info] [inst_1 : Countable.{1} Info] {F : Consensus.Shape.ShapeFamily O Info} {K : Consensus.Contract Consensus.Blocks.ProgressReq} {V : Type} [inst_2 : Fintype.{0} V] [inst_3 : DecidableEq.{1} V], Consensus.Shape.ShapeClaimsAt F K V → ∀ (cap : Consensus.Capability) (g : O.Id), Or (Eq.{1} cap Consensus.Capability.available) (Eq.{1} cap Consensus.Capability.stable) → Eq.{1} (O.output cap) (Option.some.{0} g) → (Consensus.Shape.Sys F V).Holds ((Consensus.Shape.Sys F V).Sleepy K) fun r => (Consensus.Shape.chainTrace (Sigma.snd.{0, 0} r)).ReadySafe ((Consensus.Shape.Sys F V).cDur K r) g 0
   #2673400097/-
-## ConsensusSpec.Shape.Compile
+## ConsensusLean.Spec.Shape.Compile
 def Consensus.Shape.Skeleton.actAt : {n : Nat} → (sk : Consensus.Shape.Skeleton n) → Consensus.Time → Consensus.Time → List.{0} (Consensus.Shape.ShapeDuty sk.Kind) := fun {n} sk Δ t => List.filterMap.{0, 0} (fun k => Option.map.{0, 0} (fun s => Consensus.Shape.ShapeDuty.act s k) (sk.grid.slotAt? Δ (HMul.hMul.{0, 0, 0} (Nat.cast.{0} (sk.phase k)) Δ) t)) sk.kinds
   #466589650/3495809738
 def Consensus.Shape.Skeleton.duties : {n : Nat} → (sk : Consensus.Shape.Skeleton n) → Consensus.Time → Consensus.Time → List.{0} (Consensus.Shape.ShapeDuty sk.Kind) := fun {n} sk Δ t => HAppend.hAppend.{0, 0, 0} (HAppend.hAppend.{0, 0, 0} (sk.proposeAt Δ t) (sk.actAt Δ t)) (sk.pollAt t)
@@ -1667,7 +1667,7 @@ def Consensus.Shape.compile.match_5 #1562089051/3061144526
 def Consensus.Shape.compile.match_7 #1971360995/1511051366
 def Consensus.Shape.compiled : {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → {O : Consensus.OutputSchema} → Consensus.Shape.ShapeFamily O Info → Consensus.Model.Family O := fun {Info} [DecidableEq.{1} Info] [Countable.{1} Info] {O} F pub => Consensus.Shape.compile (F pub)
   #1016321395/1048844711
-## ConsensusSpec.Shape.ProgressFit
+## ConsensusLean.Spec.Shape.ProgressFit
 def Consensus.Shape.ProgressFits : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → Consensus.Contract Consensus.Blocks.ProgressReq → Consensus.Shape.ShapeFamily O Info → Prop := fun {O} {Info} [DecidableEq.{1} Info] [Countable.{1} Info] K F => ∀ (cap : Consensus.Capability) (i : K.Idx) (pub : Consensus.Model.Public), Consensus.Shape.ProgressReq.Fits (F pub).skel (K.progress cap i)
   #2402724129/3603318185
 def Consensus.Shape.ProgressReq.Fits : {n : Nat} → Consensus.Shape.Skeleton n → Consensus.Blocks.ProgressReq → Prop := fun {n} sk x => Consensus.Shape.ProgressReq.Fits.match_1.{1} (fun x => Prop) x (fun ρ => Eq.{1} sk.proposerSel (Consensus.Model.SelSpec.sized 1)) fun m => True
@@ -1677,7 +1677,7 @@ def Consensus.Shape.ProgressReq.Tolerates : Nat → Consensus.Blocks.ProgressReq
   #1917635103/628118423
 def Consensus.Shape.ProgressTolerant : Consensus.OutputSchema → Consensus.Contract Consensus.Blocks.ProgressReq → Prop := fun O K => ∀ (cap : Consensus.Capability), Eq.{1} (Option.isSome.{0} (O.output cap)) Bool.true → ∀ (N : Nat), Exists.{1} fun i => Consensus.Shape.ProgressReq.Tolerates N (K.progress cap i)
   #4064873868/2425964355
-## ConsensusSpec.Shape.Run
+## ConsensusLean.Spec.Shape.Run
 def Consensus.Shape.HonestProposal : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → {F : Consensus.Shape.ShapeFamily O Info} → {V : Type} → [inst_2 : Fintype.{0} V] → [DecidableEq.{1} V] → {E : Consensus.Env V} → Consensus.Model.Run (Consensus.Shape.compiled F) E → Consensus.Time → Fin (Fintype.card.{0} V) → Consensus.Blocks.Header Info → Prop := fun {O} {Info} [DecidableEq.{1} Info] [Countable.{1} Info] {F} {V} [Fintype.{0} V] [DecidableEq.{1} V] {E} rho τ k h => And (Membership.mem.{0, 0} rho.honest (DFunLike.coe.{1, 1, 1} rho.key k)) (Exists.{1} fun r => Exists.{1} fun cs => And (Consensus.Shape.ProposalRole h r) (rho.releases (DFunLike.coe.{1, 1, 1} rho.key k) (Consensus.Model.Obj.mk (Consensus.Model.Auth.signed k r) (Consensus.Model.Msg.item h) cs) τ))
   #1043217372/984422283
 def Consensus.Shape.InBy : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → {F : Consensus.Shape.ShapeFamily O Info} → {V : Type} → [inst_2 : Fintype.{0} V] → [DecidableEq.{1} V] → {E : Consensus.Env V} → Consensus.Model.Run (Consensus.Shape.compiled F) E → Consensus.Time → O.Id → Consensus.Blocks.Header Info → Consensus.Time → Prop := fun {O} {Info} [DecidableEq.{1} Info] [Countable.{1} Info] {F} {V} [Fintype.{0} V] [DecidableEq.{1} V] {E} rho c g h t => ∀ (v : V), rho.point.Ready c v t → Membership.mem.{0, 0} ((Consensus.Shape.chainTrace rho).readAt g v t) h
@@ -1698,7 +1698,7 @@ def Consensus.Shape.shapeProgress : {O : Consensus.OutputSchema} → {Info : Typ
 theorem Consensus.Shape.shapeProgress._proof_1 #3803257477/-
 theorem Consensus.Shape.shapeProgress._proof_2 #994873256/-
 theorem Consensus.Shape.shapeProgress._proof_3 #2706994089/-
-## ConsensusSpec.Shape.Shape
+## ConsensusLean.Spec.Shape.Shape
 induct Consensus.Shape.ChainShape : Consensus.Model.Public → Type → (Info : Type) → [DecidableEq.{1} Info] → [Countable.{1} Info] → Type 1
   #215412132/-
 def Consensus.Shape.ChainShape.Body : {pub : Consensus.Model.Public} → {Out Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → Consensus.Shape.ChainShape pub Out Info → Type := fun pub Out Info [DecidableEq.{1} Info] [Countable.{1} Info] self => self.3
@@ -1922,7 +1922,7 @@ theorem Consensus.Shape.instDecidableProposalRole._proof_1 #1939664749/-
 theorem Consensus.Shape.instDecidableProposalRole._proof_2 #308303189/-
 theorem Consensus.Shape.instDecidableProposalRole._proof_3 #286467213/-
 theorem Consensus.Shape.instDecidableProposalRole._proof_4 #4014462994/-
-## ConsensusSpec.Statements
+## ConsensusLean.Statements.Review
 def Consensus.Review.AcceptedGood : Prop := ∀ {O : Consensus.OutputSchema} {Info : Type} [inst : DecidableEq.{1} Info] [inst_1 : Countable.{1} Info] {F : Consensus.Shape.ShapeFamily O Info} {K : Consensus.Contract Consensus.Blocks.ProgressReq}, Consensus.Shape.Accepted F K → ∀ (V : Type) [inst_2 : Fintype.{0} V] [inst_3 : DecidableEq.{1} V], Consensus.Good (Consensus.Model.sysOf O (Consensus.Shape.compiled F) V) (Consensus.Shape.shapeProgress F V) K
   #3944470172/4065787343
 def Consensus.Review.HeldIffServed : Prop := ∀ {V : Type} [inst : Fintype.{0} V] [inst_1 : DecidableEq.{1} V] {O : Consensus.OutputSchema} {F : Consensus.Model.Family O} {E : Consensus.Env V} (rho : Consensus.Model.Run F E), rho.ExecutionValid → ∀ {w : V}, Membership.mem.{0, 0} rho.honest w → ∀ (o : (Consensus.Model.protoOf F E).Object) {d : Consensus.Time}, LE.le.{0} d rho.horizon → Iff (Consensus.CommLog.Held rho.point rho.log w o d) (rho.Served w o d)

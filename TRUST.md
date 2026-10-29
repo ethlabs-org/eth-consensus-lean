@@ -33,7 +33,7 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   against `scripts/spec-snapshot.txt`, then owner review of every change (`spec-approved`).
   Proof values are omitted by proof irrelevance; non-proof auxiliary constants are included.
 - **Dependency drift:** exact pins; the upgrade above additionally used the dependency audit.
-- **Proofs:** leanchecker, one process per default-library leaf module (parents own no
+- **Proofs:** leanchecker, one process per leaf module of the checked libraries (parents own no
   constants); `lake check`; check-decls; and the comparator: statement matching, axiom limits,
   identical reachable constants across exports (tamper resistance) and sandboxed replay, by Lean's
   kernel and, with `--paranoid`, by every external kernel bundled with Lean.
@@ -51,10 +51,15 @@ inside a bubblewrap sandbox wherever `bwrap` exists (CI full mode always; the sh
 EthLib check-decls is CC0-1.0 and SHA-256-pinned by `scripts/vendor.sha256`. Every vendored file was copied
 from the reuse-study clone (2026-10, no git metadata) and is byte-identical to
 [ethereum/EthLib](https://github.com/ethereum/EthLib) at `6390c73ef040311e807b9047d99dca6b1be1c42f` (checked 2026-10-29),
-except one local patch to `scripts/CheckDecls.lean` (#13): it computes the in-scope module indices once instead of
+except two local patches to `scripts/CheckDecls.lean`. The first (#13) computes the in-scope module indices once instead of
 rebuilding `EnvironmentHeader.moduleNames` (an array of every imported module) for each of ~450k constants. Same
 findings, counts and exit codes on every library and on `test_check_decls.sh`; step 3 about 25× faster.
-Upstream copy: `0032a6629a73ac37f49ca52b9bd665f2c6755b6014d629f8775c6f850f273bb2`; patched: `69b9fe48f5d913031348aa33895155e96236819ba7d86c9e36675a793c1241d6`.
+A second local patch (#5) fixes the reaches-opaque frontier: a definition that check-decls does not check
+(one in a module with a `Proofs` or `Exports` component, a `Repr`/`ToString` formatting definition, an `initialize`
+function) no longer counts as having reported the opaque constants it reaches; they are reported at the checked
+definition that unfolds it. Without it, the single `ConsensusLean` scope let a definition in `Main` or an instance
+reach an opaque unreported through such a definition (self-test fixture `CheckFixtures.HiddenOpaque`).
+Upstream copy: `0032a6629a73ac37f49ca52b9bd665f2c6755b6014d629f8775c6f850f273bb2`; with the #13 patch: `69b9fe48f5d913031348aa33895155e96236819ba7d86c9e36675a793c1241d6`; with both: `03ed87d6cecae9a145ed47e56788978ffbe67a70055c3326f933a6d397edb10a`.
 `scripts/test_check_decls.sh`: `591a1d993df5dc1a01a9cf645f71cbeffdb7da9fdff9e3ca8f5179f60ead9f25`.
 `vendor.sha256` also pins fixtures/licence. check-decls runs imported modules' initializers:
 a defence against mistakes, not an adversarial checker.
@@ -75,10 +80,17 @@ every check's verdict needs one review and evidence that the fixtures' verdicts 
 
 ## Trusted statements
 
-All of `ConsensusSpec/` is the claim (file list in `README.md`); R1 excludes Proofs/Instances/Tests from its imports. Pins/snapshot fix dependencies/meaning.
-`ConsensusSpec/Statements.lean` must hold statements only: every non-proof constant needs a
-review pair (`ConsensusTests/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers
-are exempt). `ConsensusTests/ReviewAxioms.lean` compiles alpha-equality/binder-kind and axiom pins.
+The spec group (`ConsensusLean.{Init,Core,Spec,Statements,ToMathlib}`) is the claim
+(file list in `README.md`); R1 limits its closure to spec modules and the pinned base set.
+It cannot reach proofs, instances, the solution, tests or fixtures. Pins/snapshot fix dependencies/meaning.
+The trusted surface is `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and
+`X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
+`ConsensusLeanTest/ReviewAxioms.lean` and `ConsensusLeanTest/ReviewGuard.lean`. `scripts/boundaries.toml`
+(`[checks] trusted_paths`) lists it, and check-imports.py requires it to cover every spec-group file;
+CI's `review-boundary` compares those paths (literal, at the PR head and at the tag) with `spec-approved`.
+`ConsensusLean/Statements/Review.lean` must hold statements only: every non-proof constant needs a
+review pair (`ConsensusLeanTest/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers
+are exempt). `ConsensusLeanTest/ReviewAxioms.lean` compiles alpha-equality/binder-kind and axiom pins.
 Primary: `Consensus.Review.AcceptedGood`; secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
 Only the owner, or an agent he explicitly authorizes (never the PR's author on its own), sets or moves
 `spec-approved`, after reviewing the protected changes.

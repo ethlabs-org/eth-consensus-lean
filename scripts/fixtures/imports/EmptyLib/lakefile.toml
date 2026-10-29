@@ -1,17 +1,17 @@
 name = "fx"
-defaultTargets = ["FxSpec", "FxImpl", "FxEmpty"]
+defaultTargets = ["Fx"]
+testDriver = "FxTest"
 
 [[lean_lib]]
-name = "FxSpec"
-globs = ["FxSpec.*"]
+name = "Fx"
+globs = ["Fx.*"]
 
 [[lean_lib]]
-name = "FxImpl"
-globs = ["FxImpl.*"]
+name = "FxTest"
+globs = ["FxTest.*"]
 
 [[lean_lib]]
-name = "FxEmpty"
-globs = ["FxEmpty.*"]
+name = "FxSol"
 
 [[lean_lib]]
 name = "FxFix"

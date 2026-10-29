@@ -1,5 +1,5 @@
 module
-public import ConsensusSpec
+public import ConsensusLean.Statements.Review
 
 @[expose] public section
 

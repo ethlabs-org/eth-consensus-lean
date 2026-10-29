@@ -1,6 +1,6 @@
 import CheckDeclsTest.Bad
 
-/-! Negative fixture for the pinned-axiom mechanism of `ConsensusTests/ReviewAxioms.lean`:
+/-! Negative fixture for the pinned-axiom mechanism of `ConsensusLeanTest/ReviewAxioms.lean`:
 `usesAssumed` depends on the axiom `assumed`, so the pinned standard list does not match and
 `lake env lean` exits nonzero. -/
 

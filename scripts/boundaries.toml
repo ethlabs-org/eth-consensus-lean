@@ -1,85 +1,114 @@
-# The one configuration file of scripts/check.sh and scripts/check-imports.py.
+# The one configuration file of scripts/check.sh, scripts/check-imports.py and CI's review-boundary job.
 # Every library path, module prefix and module name of the project lives here, so a change of layout
 # (a move of files) edits this file and nothing else in the check stack (fixture paths aside).
-# Protected path: changes are reviewed by the owner.
 #
-# Layout: the four libraries of the plan (ConsensusSpec / ConsensusProofs / ConsensusInstances /
-# ConsensusTests) with import rules R1-R3:
-#   R1  the closure of every ConsensusSpec module, root included, holds only ConsensusSpec modules (+ base);
-#   R2  every library: every file under its directory is reached from its root (root_covers); no non-root
-#       module imports a library root, except in the tests;
-#   R3  ConsensusProofs never reaches ConsensusInstances/ConsensusTests/ConsensusChallenge or a fixture;
-#       ConsensusInstances never reaches ConsensusTests or a fixture; ConsensusChallenge (a fixture lib for
-#       this check) may import only ConsensusSpec (checked by step 9).
+# Layout (plan §1, §11 step 2): one certified library `ConsensusLean` whose layers are module prefixes,
+# the tests `ConsensusLeanTest` (lake test) and the comparator solution `Solution`. The import rules are
+# those of the four libraries before the move, now over module groups:
+#   spec       Init, Core, Spec, Statements, ToMathlib: its closure holds only spec modules (+ base);
+#   proofs     Lemmas, Proofs/<M>/, Main: may reach spec;
+#   instances  Instances/<P>/: may reach proofs and spec;
+#   solution   Solution: may reach proofs and spec;
+#   tests      ConsensusLeanTest: may reach everything above and the library roots.
+# No module imports a generated library root, except in the tests; nothing reaches a fixture.
+# The full layer matrix of plan §2 replaces the groups in step 3 (#6).
 
 # R1 base set: top-level module names that may be imported from outside the project.
 base = ["Init", "Std", "Lean", "Lake", "Mathlib", "Batteries", "Aesop", "Qq", "ProofWidgets",
         "Plausible", "ImportGraph", "LeanSearchClient"]
 
 # Non-default libraries (fixtures, deliberately bad, and the comparator challenge, which holds `sorry`).
-# No default library may import them.
-fixture_libs = ["CheckFixtures", "CheckDeclsTest", "ConsensusChallenge"]
+# No checked library may import them.
+fixture_libs = ["CheckFixtures", "CheckDeclsTest", "Challenge"]
 
 # lean_exe targets of the lakefile (the check stack's tools). Every lakefile target is a [[lib]] below, a
 # fixture lib or one of these; no lib root, glob or file may take a top-level name of `base`.
 tool_exes = ["check-decls"]
 
-# One [[lib]] per default target of lakefile.toml (asserted). `allow`: module prefixes that the import
-# closure of every module of the library may contain. `root_covers` must be true: every file under `dir`
-# is reached from the root. `may_import_roots`: non-root modules may import a library root (tests only).
+# The checked libraries. A lib's root module is its name, and its name is its check-decls scope (step 3).
+# `default`: exactly the lakefile defaultTargets. `test_driver`: the lakefile testDriver.
+# `root_lists_all`: the lib is the root plus every file under its directory, and the root (generated:
+# `lake exe mk_all --lib <name> --module`) imports every other module; otherwise the lib is one module.
 [[lib]]
-name = "ConsensusSpec"
-root = "ConsensusSpec"
-dir = "ConsensusSpec"
-allow = ["ConsensusSpec"]
-root_covers = true
+name = "ConsensusLean"
+default = true
+root_lists_all = true
 
 [[lib]]
-name = "ConsensusProofs"
-root = "ConsensusProofs"
-dir = "ConsensusProofs"
-allow = ["ConsensusProofs", "ConsensusSpec"]
-root_covers = true
+name = "ConsensusLeanTest"
+test_driver = true
+root_lists_all = true
 
 [[lib]]
-name = "ConsensusInstances"
-root = "ConsensusInstances"
-dir = "ConsensusInstances"
-allow = ["ConsensusInstances", "ConsensusProofs", "ConsensusSpec"]
-root_covers = true
+name = "Solution"
 
-[[lib]]
-name = "ConsensusTests"
-root = "ConsensusTests"
-dir = "ConsensusTests"
-allow = ["ConsensusTests", "ConsensusInstances", "ConsensusProofs", "ConsensusSpec"]
-root_covers = true
-may_import_roots = true   # tests
+# Module groups: every module (except a generated root) is in exactly one group, by its longest prefix.
+# `allow`: the other groups its import closure may contain. `trusted`: the Spec surface (exactly one group):
+# snapshot, extensions, theorems, grep 7b and the README file list cover its modules.
+[[group]]
+name = "spec"
+prefixes = ["ConsensusLean.Init", "ConsensusLean.Core", "ConsensusLean.Spec", "ConsensusLean.Statements",
+            "ConsensusLean.ToMathlib"]
+allow = []
+trusted = true
+
+[[group]]
+name = "proofs"
+prefixes = ["ConsensusLean.Lemmas", "ConsensusLean.Proofs", "ConsensusLean.Main"]
+allow = ["spec"]
+
+[[group]]
+name = "instances"
+prefixes = ["ConsensusLean.Instances"]
+allow = ["spec", "proofs"]
+
+[[group]]
+name = "solution"
+prefixes = ["Solution"]
+allow = ["spec", "proofs"]
+
+[[group]]
+name = "tests"
+prefixes = ["ConsensusLeanTest"]
+allow = ["spec", "proofs", "instances", "solution"]
+may_import_roots = true
 
 # Settings of scripts/check.sh (ignored by check-imports.py).
 [checks]
-# The Spec library: the snapshot (scripts/spec-snapshot.txt), `theorems`, grep 7b and the README file list
-# (step 12) cover every module of its inventory (the root and every file under its directory; R1 keeps its
-# import closure inside it), so no module list is kept by hand.
-spec_lib = "ConsensusSpec"
-# Libraries whose every module is held to the persisted-extension whitelist (scripts/spec-extensions.txt).
-extension_libs = ["ConsensusSpec"]
+# The Spec surface is the `trusted` group above: the snapshot (scripts/spec-snapshot.txt), `theorems`,
+# grep 7b and the README file list (step 12) cover every module of the inventory in it (the closure of each
+# stays inside it), so no module list is kept by hand.
+# Groups whose every module is held to the persisted-extension whitelist (scripts/spec-extensions.txt).
+extension_groups = ["spec"]
+# Module prefixes where a `Proofs` component is allowed (check-decls exempts definitions in modules with a
+# `Proofs` component from reaches-opaque: sound only where no trusted module can reach them, which
+# check-imports.py checks). The plan's milestone proofs, `ConsensusLean/Proofs/<M>/`.
+proofs_component_prefixes = ["ConsensusLean.Proofs"]
 # Modules with descendants that may own constants. leanchecker expands a module name as a prefix, so such a
 # module would not be replayed by leanchecker (step 5), only by `lake check` (step 10, where bwrap exists).
-# None: every parent owns nothing (M moved the 8 proofs of ConsensusProofs.Model.Canonical to
-# Canonical/Construction.lean).
+# None: every parent owns nothing.
 noconst_exempt = []
 # `theorems` gate: "report" or "enforce". Enforced: a ranged theorem in a Spec module must be listed in
 # scripts/spec-theorems.txt.
 theorems_mode = "enforce"
 # The file that pins the review theorems' types and axioms (#guard_msgs, alpha-equality guards); it must be
 # imported directly by `review_root`.
-review_axioms_module = "ConsensusTests.ReviewAxioms"
-review_root = "ConsensusTests"
+review_axioms_module = "ConsensusLeanTest.ReviewAxioms"
+review_root = "ConsensusLeanTest"
 # Comparator (plan §3). Step 9 checks comparator.json against these modules and against the Prop
 # definitions of `statements_module`; step 11 runs `lake comparator` (where bwrap exists).
-challenge_module = "ConsensusChallenge"
-solution_module = "ConsensusProofs.Review"
-statements_module = "ConsensusSpec.Statements"
+challenge_module = "Challenge"
+solution_module = "Solution"
+statements_module = "ConsensusLean.Statements.Review"
 # Extra targets built by step 1 next to the default targets.
-extra_build_targets = ["CheckFixtures", "CheckDeclsTest", "check-decls", "ConsensusChallenge"]
+extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "Challenge"]
+# The trusted surface: CI's review-boundary job (ci.yml) fails on any difference of these paths from the tag
+# `spec-approved` (it reads this list at the PR head and at the tag, and checks their union, as literal paths).
+# check-imports.py requires plain relative paths that cover the file of every module of the trusted group:
+# each prefix of the group as a file and as a directory. Kept in sync with .github/CODEOWNERS and
+# docs/spec-review.md.
+trusted_paths = ["ConsensusLean/Init.lean", "ConsensusLean/Init", "ConsensusLean/Core.lean", "ConsensusLean/Core",
+                 "ConsensusLean/Spec.lean", "ConsensusLean/Spec", "ConsensusLean/Statements.lean",
+                 "ConsensusLean/Statements", "ConsensusLean/ToMathlib.lean", "ConsensusLean/ToMathlib",
+                 "Challenge.lean", "comparator.json", "lean-toolchain", "lake-manifest.json",
+                 "ConsensusLeanTest/ReviewAxioms.lean", "ConsensusLeanTest/ReviewGuard.lean"]

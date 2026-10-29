@@ -1,7 +1,7 @@
-import ConsensusTests.ReviewGuard
+import ConsensusLeanTest.ReviewGuard
 
 /-! Negative fixture for `Consensus.ReviewGuard.checkComplete` (the pair-completeness check of
-`ConsensusTests/ReviewAxioms.lean`) on the current file: only `Stmt` has a pair; the other
+`ConsensusLeanTest/ReviewAxioms.lean`) on the current file: only `Stmt` has a pair; the other
 statements sit in another namespace, have names that `Name.isInternalDetail` treats as internal
 (`eq_1`, `_Extra`) or are `private`. So the `run_meta` throws, `#guard_msgs` (expecting no
 message) fails, and `lake env lean` exits nonzero with "no review pair for

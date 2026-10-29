@@ -273,10 +273,16 @@ def check (env : Environment) (scope : Std.HashSet ModuleIdx) : Array Finding :=
     c matches .defnInfo _ && !inProofs env n && !inExports env n && !isFormatting env n c
       && !initFns.contains n
   let (_, opaqueMemo) := (spec.forM fun (n, _) => discard (opaquesOf env n)).run {}
+  -- Local patch (consensus-lean #5): a definition that is not checked here (a proof, a C export, formatting or
+  -- an `initialize` function) carries nothing; what it reaches is reported at the checked definition that
+  -- unfolds it.
+  let checked : NameSet := spec.foldl (init := {}) fun s (n, _) => s.insert n
+  let carries (d : Name) : Bool := checked.contains d || !(env.find? d |>.any (· matches .defnInfo _))
   for (n, c) in spec do
     if let .defnInfo v := c then
       let reached := (opaqueMemo.find? n).getD {}
-      let fresh := frontier env scope opaqueMemo (dropPanicMessages v.value).getUsedConstants reached
+      let children := (dropPanicMessages v.value).getUsedConstants.filter carries
+      let fresh := frontier env scope opaqueMemo children reached
       unless fresh.isEmpty do
         out := out.push ⟨"reaches-opaque", n, s!"unfolds to {fresh.take 3}"⟩
   for (thm, target) in csimpTheorems env do

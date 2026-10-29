@@ -1,6 +1,6 @@
 {
-  "challenge_module": "ConsensusChallenge",
-  "solution_module": "ConsensusProofs.Review",
+  "challenge_module": "Challenge",
+  "solution_module": "Solution",
   "theorem_names": [],
   "permitted_axioms": [
     "propext",

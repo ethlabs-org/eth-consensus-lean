@@ -1,10 +1,10 @@
 module
 public import CheckFixtures.ReviewEscape
 import all CheckFixtures.ReviewEscape
-public meta import ConsensusTests.ReviewGuard
+public meta import ConsensusLeanTest.ReviewGuard
 
 /-! Negative fixture for `Consensus.ReviewGuard.checkComplete` on an imported module, set up like
-`ConsensusTests/ReviewAxioms.lean` (`import all` for the private statements): only `Stmt` of
+`ConsensusLeanTest/ReviewAxioms.lean` (`import all` for the private statements): only `Stmt` of
 `CheckFixtures.ReviewEscape` (lib `CheckFixtures`, built first) has a pair, so the `run_meta`
 throws, `#guard_msgs` (expecting no message) fails, and `lake env lean` exits nonzero with "no
 review pair for [CheckFixtures.Elsewhere.Extra, CheckFixtures.ReviewEscape._Extra,
