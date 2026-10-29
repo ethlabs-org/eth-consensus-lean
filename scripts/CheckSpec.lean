@@ -10,15 +10,21 @@ Commands (every one takes `--lib <Root>` (repeatable), `--src <dir>` (default `.
 
 * `sanity`      every metadata query used below answers correctly on known constants.
 * `imports`     import closure rules (`--allowed P1,P2`, `--root-covers`, `--no-root-imports`).
-* `content`     no Prop-typed constant (proof) except projections, generated auxiliaries of a permitted
-                parent and allowlisted Prop-class instances (`--allowlist f`); no axiom, opaque,
-                unsafe, partial, implemented_by, extern, csimp; roots own nothing; dependencies.
+* `content`     no Prop-typed constant (proof) except projections, allowlisted instances of a permitted
+                Prop class (`--allowlist f`; `Countable` only) and generated auxiliaries: no declaration
+                range of their own (every declaration written in the source has one), a known suffix
+                one component below an owned parent of the kind that suffix is generated for, and, for
+                elaborator auxiliaries, reachable from the parent's value; no axiom, opaque, unsafe,
+                partial, implemented_by, extern, csimp; roots own nothing; dependencies.
 * `axioms`      every owned constant uses only `propext`, `Classical.choice`, `Quot.sound`.
-* `review`      review statements against theorems and source theorems (`--pairs f`).
+* `review`      review statements against theorems and source theorems (`--pairs f`) and the wiring
+                `--wired Root:Module` (default `ConsensusTests:ConsensusTests.ReviewAxioms`, always checked).
 * `snapshot`    readable snapshot (default) or canonical hash file (`--canonical`), `--out f`;
                 `--show <name>` prints the canonical S-expressions of one constant.
 * `canon-dump`  full canonical S-expressions of every owned constant, one file per module (`--out dir`).
-* `spec-source` source ban on the inventory's files (commands that run user metaprograms, etc.).
+* `spec-source` source ban on the inventory's files: banned words as tokens anywhere outside comments and
+                strings (any indentation, behind `set_option … in`/`open … in`, multi-line), every
+                `#command`, and attributes that register user code; fail-closed on raw/multi-line strings.
 
 Diagnostics only: `--modules A,B` replaces the inventory by the listed modules (no files, no roots).
 
@@ -46,7 +52,8 @@ structure Opts where
   pairs : Option System.FilePath := none
   stmtModule : Name := `ConsensusSpec.Statements
   thmModule : Name := `ConsensusProofs.Review
-  wired : Option (Name × Name) := none
+  /-- review wiring `Root:Module` (§4.4 item 4); defaults to the production pair. -/
+  wired : Name × Name := (`ConsensusTests, `ConsensusTests.ReviewAxioms)
   canonical : Bool := false
   out : Option System.FilePath := none
   showName : Option Name := none
@@ -72,7 +79,7 @@ partial def parseArgs (o : Opts) : List String → Except String Opts
   | "--thm-module" :: v :: rest => parseArgs { o with thmModule := v.toName } rest
   | "--wired" :: v :: rest =>
     match v.splitOn ":" with
-    | [r, m] => parseArgs { o with wired := some (r.toName, m.toName) } rest
+    | [r, m] => parseArgs { o with wired := (r.toName, m.toName) } rest
     | _ => .error s!"--wired expects Root:Module, got {v}"
   | "--modules" :: v :: rest => parseArgs { o with modules := o.modules ++ splitComma v } rest
   | "--canonical" :: rest => parseArgs { o with canonical := true } rest
@@ -133,10 +140,25 @@ def baseTops : List String :=
   ["Init", "Std", "Lean", "Lake", "Mathlib", "Batteries", "Aesop", "Qq", "ProofWidgets",
    "Plausible", "ImportGraph", "LeanSearchClient"]
 
-def isBase (m : Name) : Bool :=
-  match m.components.head? with
+/-- A base-set module: its top-level component is a pinned dependency package and it was not built by
+this project (`projectMods`, see `projectBuilt`), so a project file named `Mathlib/….lean` is not base. -/
+def isBase (projectMods : NameSet) (m : Name) : Bool :=
+  !projectMods.contains m && match m.components.head? with
   | some (.str .anonymous s) => baseTops.contains s
   | _ => false
+
+/-- Modules of the environment whose `.olean` lies in this project's own build directory
+(`<cwd>/.lake/build/`; dependency packages build under `.lake/packages/`). -/
+def projectBuilt (env : Environment) : IO NameSet := do
+  let build ← IO.FS.realPath ((← IO.currentDir) / ".lake" / "build")
+  let pfx := build.toString ++ "/"
+  let mut s : NameSet := {}
+  for m in env.header.moduleNames do
+    let f ← try some <$> findOLean m catch _ => pure none
+    if let some f := f then
+      let f ← IO.FS.realPath f
+      if f.toString.startsWith pfx then s := s.insert m
+  return s
 
 def kindStr : ConstantInfo → String
   | .defnInfo _ => "def" | .thmInfo _ => "theorem" | .axiomInfo _ => "axiom"
@@ -245,12 +267,24 @@ def cmdSanity (o : Opts) : IO UInt32 := do
   unless (allInstanceNames env #[`CheckFixtures.GoodSpec.A]).contains
       `CheckFixtures.GoodSpec.instCountableColor do
     errs := errs.push "instance entry CheckFixtures.GoodSpec.instCountableColor"
+  -- own declaration ranges: present on declarations written in the source, absent on generated ones
+  unless (← runCore env (findDeclarationRangesCore? `CheckFixtures.GoodSpec.instCountableColor)).isSome do
+    errs := errs.push "own range CheckFixtures.GoodSpec.instCountableColor"
+  for g in [`CheckFixtures.GoodSpec.Color.rec, `CheckFixtures.GoodSpec.Bounded.h._default,
+      `CheckFixtures.GoodSpec.Color.red.sizeOf_spec] do
+    unless env.contains g do errs := errs.push s!"generated constant {g} missing"
+    if (← runCore env (findDeclarationRangesCore? g)).isSome then
+      errs := errs.push s!"own range on generated {g} (should be none)"
+  -- project-built modules
+  let proj ← projectBuilt env
+  unless proj.contains `CheckFixtures.GoodSpec.A do errs := errs.push "projectBuilt CheckFixtures.GoodSpec.A"
+  if proj.contains `Mathlib.Logic.Equiv.Defs then errs := errs.push "projectBuilt Mathlib.Logic.Equiv.Defs (should be false)"
   if errs.isEmpty then IO.println "PASS sanity"
   reportSanity errs
 
 /-! ## imports -/
 
-def cmdImports (o : Opts) (inv : Array Mod) (env : Environment) : IO UInt32 := do
+def cmdImports (o : Opts) (inv : Array Mod) (env : Environment) (proj : NameSet) : IO UInt32 := do
   let names := env.header.moduleNames
   let data := env.header.moduleData
   let invNames := inv.map (·.name)
@@ -282,7 +316,7 @@ def cmdImports (o : Opts) (inv : Array Mod) (env : Environment) : IO UInt32 := d
   let mut bad := false
   for j in queue do
     let m := names[j]!
-    let ok := o.allowed.any (·.isPrefixOf m) || isBase m
+    let ok := o.allowed.any (·.isPrefixOf m) || isBase proj m
     unless ok do
       IO.println s!"FAIL[import] {m} (reached: {chain j})"
       bad := true
@@ -342,66 +376,109 @@ def numbered (pfx s : String) : Bool :=
   s.startsWith pfx && (let rest := (s.drop pfx.length).toString
     !rest.isEmpty && (rest.splitOn "_").all isDigits)
 
+/-- What a generated suffix requires of its parent constant `p = n.getPrefix`. -/
 inductive GenKind where
-  /-- kernel/structural/equational lemma: no reachability needed -/
-  | structural
-  /-- elaborator auxiliary: must be reachable from the parent's value -/
+  /-- kernel lemma of a constructor (`injEq`, `inj`, `sizeOf_spec`, `_flat_ctor`, `congr_simp`) -/
+  | ofCtor
+  /-- kernel lemma of an inductive type (`ofNat_ctorIdx`, `_sizeOf_<n>_eq`) -/
+  | ofInduct
+  /-- equational lemma of a non-Prop definition (`eq_<n>`, `eq_def`, `eq_unfold`, `splitter`,
+  `congr_simp`, `else_eq`; `brecOn.eq`) -/
+  | ofDefn
+  /-- elaborator auxiliary proof (`_proof_<n>`, `_simp_<n>`, `proof_<n>`): must also be reachable from
+  the parent's value -/
   | aux
-  /-- default value of a structure field -/
+  /-- default value of a structure field: the parent is the field's projection -/
   | dflt
-  deriving BEq
+  deriving BEq, Repr
 
-/-- Classify the last component `s` of a generated name whose parent constant is `p`. -/
-def genKind (p : Name) (s : String) : Option GenKind :=
-  if ["sizeOf_spec", "injEq", "inj", "ofNat_ctorIdx", "eq_def", "eq_unfold", "congr_simp",
-      "splitter", "_flat_ctor"].contains s || numbered "eq_" s ||
-      (s.startsWith "_sizeOf_" && s.endsWith "_eq" && isDigits ((s.drop 8).dropEnd 3).toString)
-    then some .structural
-  else if s == "eq" && (match p with
-      | .str _ b => b == "brecOn" || numbered "brecOn_" b
-      | _ => false) then some .structural
-  else if numbered "_proof_" s || numbered "_simp_" s || numbered "match_" s || numbered "proof_" s
-      || s == "_unary" || s == "_binary" || s == "_mutual" then some .aux
+/-- Classify the last component `s` of a generated name. A suffix that is generated for several parent
+kinds (`congr_simp`) is classified by the parent constant `pci`; `pIsBrecOn`: the parent is a
+`brecOn`/`brecOn_<n>` definition. -/
+def genKind (s : String) (pci : ConstantInfo) (pIsBrecOn : Bool) : Option GenKind :=
+  let isCtor := pci matches .ctorInfo _
+  let isDefn := pci matches .defnInfo _
+  if ["sizeOf_spec", "injEq", "inj", "_flat_ctor"].contains s then some .ofCtor
+  else if s == "congr_simp" then (if isCtor then some .ofCtor else if isDefn then some .ofDefn else none)
+  else if s == "ofNat_ctorIdx" ||
+      (s.startsWith "_sizeOf_" && s.endsWith "_eq" && isDigits ((s.drop 8).dropEnd 3).toString) then
+    some .ofInduct
+  else if ["eq_def", "eq_unfold", "splitter", "else_eq"].contains s || numbered "eq_" s then some .ofDefn
+  else if s == "eq" && pIsBrecOn then some .ofDefn
+  else if numbered "_proof_" s || numbered "_simp_" s || numbered "proof_" s then some .aux
   else if s == "_default" then some .dflt
   else none
 
+/-- The constant has its own declaration range (the elaborator records one for every declaration a user
+writes: `def`, `theorem`, `instance`, `where`/`let rec` functions, structure fields, constructors). The
+compiler and the kernel do not record ranges for the auxiliaries they generate. -/
+def hasOwnRange (env : Environment) (n : Name) : IO Bool := do
+  return (← runCore env (findDeclarationRangesCore? n)).isSome
+
 /-- Constants reachable from `p` through used-constant edges among `p`'s generated auxiliaries
-(names with prefix `p`). -/
-def reachableAux (env : Environment) (p : Name) : NameSet := Id.run do
+(names with prefix `p`). The walk starts at `p` and at its compiler/structural-recursion companions
+(`p._sunfold`, `p._unsafe_rec`, ...): non-Prop definitions without a declaration range, so a companion
+written by hand is never a starting point. -/
+def reachableAux (env : Environment) (rangeless : Name → Bool) (p : Name) : NameSet := Id.run do
   let mut seen : NameSet := {}
-  -- start from `p` and its compiler/structural-recursion companions (non-Prop definitions that the
-  -- elaborator links to `p` by name, e.g. the smart-unfolding `p._sunfold`)
-  let mut st : Array Name := #[p] ++
-    (["_sunfold", "_unsafe_rec", "_f", "_unary", "_binary", "_mutual"].map (Name.str p ·)
-      |>.filter env.contains).toArray
+  let companions := ["_sunfold", "_unsafe_rec", "_f", "_unary", "_binary", "_mutual"].map (Name.str p ·)
+    |>.filter fun c => rangeless c && (env.find? c matches some (.defnInfo _))
+  let mut st : Array Name := #[p] ++ companions.toArray
   while h : st.size > 0 do
     let q := st.back
     st := st.pop
     let some ci := env.find? q | continue
     for d in ci.getUsedConstantsAsSet.toList do
-      if p.isPrefixOf d && d != p && !seen.contains d then
+      -- (an auxiliary of a public `p` may be private: `_private.M.0.p._proof_1`)
+      if (p.isPrefixOf d || p.isPrefixOf (privateToUserName d)) && d != p && !seen.contains d then
         seen := seen.insert d; st := st.push d
   return seen
 
-/-- Rule (b): `n` is a generated auxiliary `p ++ s` of an owned parent `p` that is non-Prop-typed or an
-inductive/constructor (or, for a field default, a projection), and, for elaborator auxiliaries,
-reachable from `p`'s value. -/
-def genOk (env : Environment) (ownedSet propSet : NameSet) (n : Name) :
-    Option (Name × GenKind) → Bool
-  | none => false
-  | some (p, k) =>
-    match env.find? p with
-    | none => false
-    | some pci =>
-      let parentOk := !propSet.contains p ||
-        (match pci with | .inductInfo _ | .ctorInfo _ => true | _ => false) ||
-        (k == .dflt && env.isProjectionFn p)
-      ownedSet.contains p && parentOk &&
-        (match k with
-         | .structural | .dflt => true
-         | .aux => (reachableAux env p).contains n)
+/-- The parent of a generated name: its prefix with exactly one component removed. A generated auxiliary
+of a public declaration may itself be private (`_private.M.0.f.match_1.eq_1` of `f.match_1`), so for a
+private name the prefix of its user name is the parent when the private prefix is not a constant. -/
+def genParent (env : Environment) (n : Name) : Option Name :=
+  if env.contains n.getPrefix then some n.getPrefix
+  else match privateToUserName? n with
+    | some u => if env.contains u.getPrefix then some u.getPrefix else none
+    | none => none
 
-def cmdContent (o : Opts) (inv : Array Mod) (env : Environment) : IO UInt32 := do
+/-- Rule (b): `n` (Prop-typed, no declaration range of its own) is a generated auxiliary: its last
+component is a known generated suffix, its parent (exactly one component up) is an owned constant of the
+kind that suffix is generated for, the parent is not itself a proof (except inductives, constructors and,
+for field defaults, projections), the type of a kernel/equational lemma mentions the parent, and an
+elaborator auxiliary is reachable from the parent's value. Returns the reason on failure. -/
+def genCheck (env : Environment) (ownedSet propSet : NameSet) (rangeless : Name → Bool)
+    (n : Name) (ci : ConstantInfo) : Option String := Id.run do
+  let .str _ s := n | return some "not a generated name"
+  let some p := genParent env n | return some "no parent constant one component up"
+  let some pci := env.find? p | return some "no parent constant"
+  unless ownedSet.contains p do return some s!"parent {p} is not owned by the checked library"
+  let pIsBrecOn := match p with
+    | .str _ b => b == "brecOn" || numbered "brecOn_" b
+    | _ => false
+  let some k := genKind s pci pIsBrecOn | return some s!"suffix {s} is not generated for a {kindStr pci} parent"
+  let parentIsProof := propSet.contains p && !env.isProjectionFn p
+  let isCtor := match pci with | .ctorInfo _ => true | _ => false
+  let isInduct := match pci with | .inductInfo _ => true | _ => false
+  let isDefn := match pci with | .defnInfo _ => true | _ => false
+  let kindOk : Bool := match k with
+    | .ofCtor => isCtor
+    | .ofInduct => isInduct
+    | .ofDefn | .aux => isDefn && !parentIsProof && !env.isProjectionFn p
+    | .dflt => env.isProjectionFn p
+  unless kindOk do return some s!"suffix {s} is not generated for parent {p} ({kindStr pci})"
+  let structural := k == .ofCtor || k == .ofInduct || k == .ofDefn
+  if structural && s != "_flat_ctor" && !ci.type.getUsedConstants.contains p then
+    return some s!"type does not mention its parent {p}"
+  if k == .aux && !(reachableAux env rangeless p).contains n then
+    return some s!"not reachable from the value of {p}"
+  return none
+
+/-- Prop classes whose instances may be allowlisted (rule (c)). -/
+def allowedPropClasses : List Name := [`Countable]
+
+def cmdContent (o : Opts) (inv : Array Mod) (env : Environment) (proj : NameSet) : IO UInt32 := do
   let invNames := inv.map (·.name)
   let roots := if o.noRoot then #[] else o.libs
   let allow ← match o.allowlist with
@@ -422,6 +499,8 @@ def cmdContent (o : Opts) (inv : Array Mod) (env : Environment) : IO UInt32 := d
     for (n, ci) in cs do
       if ← isPropTyped ci then s := s.insert n
     return s
+  let rangeSet : NameSet ← cs.foldlM (init := {}) fun s (n, _) => do
+    return if ← hasOwnRange env n then s.insert n else s
   for (n, ci) in cs do
     let m := (modOf env n).get!
     if roots.contains m then fails := fails.push s!"FAIL[root-decl] {n} (owned by root {m})"
@@ -444,7 +523,7 @@ def cmdContent (o : Opts) (inv : Array Mod) (env : Environment) : IO UInt32 := d
     -- dependencies
     for d in ci.getUsedConstantsAsSet.toList do
       let ok := match modOf env d with
-        | some dm => invNames.contains dm || isBase dm
+        | some dm => invNames.contains dm || isBase proj dm
         | none => false
       unless ok do
         fails := fails.push s!"FAIL[dep] {n} uses {d} ({(modOf env d).getD `unknown})"
@@ -457,30 +536,21 @@ def cmdContent (o : Opts) (inv : Array Mod) (env : Environment) : IO UInt32 := d
       -- (c) allowlisted Prop-class instance
       if let some (_, cls) := allow.find? (·.1 == n) then
         let ok : Bool := match ci.type.getForallBody.getAppFn with
-          | .const c _ => c == cls && isClassEntry env cls && (match env.find? cls with
+          | .const c _ => c == cls && allowedPropClasses.contains cls && isClassEntry env cls &&
+              (match env.find? cls with
               | some cc => cc.type.getForallBody == .sort .zero
               | none => false)
           | _ => false
         if ok then continue
-        fails := fails.push s!"FAIL[theorem] {n} (allowlisted as class={cls}, but its type is not an instance of that Prop class)"
+        fails := fails.push s!"FAIL[theorem] {n} (allowlisted as class={cls}, but {cls} is not a permitted Prop class ({allowedPropClasses}) or its type is not an instance of it)"
+        continue
+      -- a declaration written by hand (it has a declaration range) is never a generated auxiliary
+      if rangeSet.contains n then
+        fails := fails.push s!"FAIL[theorem] {n} (a proof declared in the source)"
         continue
       -- (b) generated auxiliary of a permitted parent
-      let gen? : Option (Name × GenKind) := Id.run do
-        let mut p := n.getPrefix
-        let mut last := n
-        while !p.isAnonymous do
-          if env.contains p then
-            -- the generated part must be a single trailing component
-            if last.getPrefix == p then
-              match n with
-              | .str _ s => return (genKind p s).map (p, ·)
-              | _ => return none
-            return none
-          last := p
-          p := p.getPrefix
-        return none
-      let ok := genOk env ownedSet propSet n gen?
-      unless ok do fails := fails.push s!"FAIL[theorem] {n}"
+      if let some why := genCheck env ownedSet propSet (fun c => !rangeSet.contains c) n ci then
+        fails := fails.push s!"FAIL[theorem] {n} ({why})"
   if fails.isEmpty then
     IO.println s!"PASS content: {cs.size} constants in {inv.size} modules"
     return 0
@@ -556,7 +626,11 @@ def canonOf (ci : ConstantInfo) (isPropT : Bool) : String × String :=
   let sexpr := sexpr ci.levelParams
   let t := sexpr ci.type
   let v := match ci with
-    | .defnInfo d => if isPropT then "-" else sexpr d.value
+    | .defnInfo d =>
+      -- `unsafe` is part of the meaning; written only when present, so other definitions hash as before
+      -- (`partial` safety only occurs on the compiler's `X._unsafe_rec`; a `partial def X` is an opaque)
+      let sf := if d.safety == .unsafe then "(safety unsafe) " else ""
+      if isPropT then sf ++ "-" else sf ++ sexpr d.value
     | .thmInfo _ => "-"
     | .opaqueInfo d => if isPropT then "-" else sexpr d.value
     | .axiomInfo _ => "-"
@@ -708,9 +782,11 @@ def cmdSnapshot (o : Opts) (inv : Array Mod) (env : Environment) : IO UInt32 := 
       let mut cur := ""
       for (n, ci) in sorted do
         let isCtor := ci matches .ctorInfo _
-        let hasRange := (← findDeclarationRanges? n).isSome
+        -- own range only (`findDeclarationRanges?` lends recursors and `casesOn` their type's range)
+        let hasRange := (← findDeclarationRangesCore? n).isSome
         unless hasRange || isCtor || (← getEnv).isProjectionFn n do continue
-        if kernelAux (← getEnv) n then continue
+        -- the kernel-auxiliary name filter never hides a declaration written in the source
+        if !hasRange && kernelAux (← getEnv) n then continue
         let m := relModule inv (modOf (← getEnv) n).get!
         if m != cur then
           acc := acc.push s!"\n## {m}"
@@ -787,11 +863,11 @@ def cmdReview (o : Opts) (env : Environment) : IO UInt32 := do
       | none => fails := fails.push s!"FAIL[review-source] source theorem {src} not found"
     | _ => fails := fails.push s!"FAIL[review-type] {s} is not a definition"
   -- 4. wiring
-  if let some (r, m) := o.wired then
-    let ok := match modIdx env r with
-      | some i => env.header.moduleData[i]!.imports.any (·.module == m)
-      | none => false
-    unless ok do fails := fails.push s!"FAIL[review-wired] {r} does not import {m}"
+  let (r, m) := o.wired
+  let ok := match modIdx env r with
+    | some i => env.header.moduleData[i]!.imports.any (·.module == m)
+    | none => false
+  unless ok do fails := fails.push s!"FAIL[review-wired] {r} does not import {m} (or {r} is not loaded)"
   if count == 0 then IO.eprintln "no review pairs"; return 2
   if fails.isEmpty then
     IO.println s!"PASS review: {count} statements"
@@ -801,16 +877,24 @@ def cmdReview (o : Opts) (env : Environment) : IO UInt32 := do
 
 /-! ## spec-source: source ban on the inventory files -/
 
-/-- Remove comments (nested block comments, docstrings, line comments) and string literals. -/
-def stripComments (s : String) : String := Id.run do
+/-- Remove comments (nested block comments, docstrings, line comments), string literals and character
+literals, keeping line breaks. Fail-closed: the stripper must never remove code, so constructs it does
+not model are reported (raw string literals, string literals spanning lines). -/
+def stripComments (s : String) : String × Array String := Id.run do
   let cs := s.toList.toArray
   let mut out : Array Char := #[]
+  let mut errs : Array String := #[]
   let mut i := 0
   let mut depth := 0
   let mut inStr := false
+  let mut line := 1
+  let mut strLine := 0
+  let identLike (c : Char) : Bool := c.isAlphanum || c == '_' || c == '\'' || c == '!' || c == '?'
   while i < cs.size do
     let c := cs[i]!
     let n := cs[i+1]?.getD ' '
+    let prev := if i == 0 then ' ' else cs[i-1]!
+    if c == '\n' then line := line + 1
     if depth > 0 then
       if c == '/' && n == '-' then depth := depth + 1; i := i + 2
       else if c == '-' && n == '/' then depth := depth - 1; i := i + 2
@@ -818,75 +902,116 @@ def stripComments (s : String) : String := Id.run do
         if c == '\n' then out := out.push '\n'
         i := i + 1
     else if inStr then
-      if c == '\\' then i := i + 2
+      if c == '\\' then
+        if n == '\n' then line := line + 1; out := out.push '\n'
+        i := i + 2
       else
         if c == '"' then inStr := false
-        if c == '\n' then out := out.push '\n'
+        if c == '\n' then
+          out := out.push '\n'
+          errs := errs.push s!"{strLine}: string literal spans lines"
         i := i + 1
     else if c == '/' && n == '-' then depth := 1; i := i + 2
     else if c == '-' && n == '-' then
       while i < cs.size && cs[i]! != '\n' do i := i + 1
-    else if c == '"' then inStr := true; out := out.push ' '; i := i + 1
+    else if c == '"' then
+      if prev == 'r' || prev == '#' then errs := errs.push s!"{line}: raw string literal"
+      inStr := true; strLine := line; out := out.push ' '; i := i + 1
+    else if c == '\'' && !identLike prev then
+      -- character literal: 'x' or an escape '\..'
+      if n == '\\' then
+        let mut j := i + 2
+        while j < cs.size && cs[j]! != '\'' && cs[j]! != '\n' do j := j + 1
+        out := out.push ' '; i := if cs[j]? == some '\'' then j + 1 else j
+      else if cs[i+2]? == some '\'' then out := out.push ' '; i := i + 3
+      else out := out.push c; i := i + 1
     else out := out.push c; i := i + 1
-  return String.ofList out.toList
+  if inStr then errs := errs.push s!"{strLine}: unterminated string literal"
+  if depth > 0 then errs := errs.push "unterminated block comment"
+  return (String.ofList out.toList, errs)
 
-def bannedCommands : List String :=
+/-- Words that may not occur anywhere in a Spec file outside comments and strings: commands that state
+or discard a proof (`example`, `theorem`, `lemma`), add an axiom or an unchecked constant, or run a user
+metaprogram. Matched as whole tokens anywhere, whatever the indentation or wrapper (`set_option … in`,
+`open … in`, multi-line commands); in addition every `#command` is banned. -/
+def bannedWords : List String :=
   ["example", "theorem", "lemma", "axiom", "opaque", "unsafe", "partial", "run_cmd", "run_elab",
-   "run_meta", "#eval", "#exit", "elab", "elab_rules", "macro", "macro_rules", "syntax",
-   "declare_syntax_cat", "initialize", "builtin_initialize", "meta", "implemented_by", "extern", "csimp"]
+   "run_meta", "elab", "elab_rules", "macro", "macro_rules", "syntax", "declare_syntax_cat",
+   "initialize", "builtin_initialize", "meta", "implemented_by", "extern", "csimp",
+   "simproc", "dsimproc", "simproc_decl", "dsimproc_decl"]
 
-def modifiers : List String :=
-  ["private", "protected", "noncomputable", "public", "local", "scoped", "nonrec"]
+/-- Attribute names banned inside attribute brackets (`@[…]`, `attribute […]`): they register user code
+to run at elaboration time (elaborators, macros, delaborators, simprocs, initializers) or replace compiled
+code. Only inside brackets, since some are ordinary identifiers elsewhere (a field `init`). -/
+def bannedAttrs : List String :=
+  ["init", "builtin_init", "tactic", "builtin_tactic", "command_elab", "builtin_command_elab",
+   "term_elab", "builtin_term_elab", "macro", "builtin_macro", "delab", "builtin_delab", "app_unexpander",
+   "env_extension", "implemented_by", "extern", "csimp", "simproc", "dsimproc", "builtin_simproc",
+   "builtin_dsimproc", "command_parser", "term_parser", "tactic_parser", "code_action",
+   "command_code_action", "builtin_doc", "widget_module"]
 
 def isIdentChar (c : Char) : Bool := c.isAlphanum || c == '_' || c == '#' || c == '.' || c == '\''
 
 def tokens (s : String) : List String :=
   (s.split (fun c => !isIdentChar c)).toList.map (·.toString) |>.filter (· ≠ "")
 
-/-- Strip leading `@[...]` attribute blocks (bracket-balanced) and modifiers; return the attribute text
-and the rest. -/
-partial def stripPrefix (s : String) (attrs : String) : String × String :=
-  let s := s.trimAsciiStart.toString
-  if s.startsWith "@[" then
-    let cs := s.toList
-    let rec go (l : List Char) (d : Nat) (acc : List Char) : List Char × List Char :=
-      match l with
-      | [] => (acc.reverse, [])
-      | '[' :: r => go r (d+1) ('[' :: acc)
-      | ']' :: r => if d == 1 then ((']' :: acc).reverse, r) else go r (d-1) (']' :: acc)
-      | c :: r => go r d (c :: acc)
-    let (a, r) := go (cs.drop 1) 0 ['@']
-    stripPrefix (String.ofList r) (attrs ++ " " ++ String.ofList a)
-  else
-    match tokens s with
-    | t :: _ =>
-      if modifiers.contains t then stripPrefix (s.drop t.length).toString attrs else (attrs, s)
-    | [] => (attrs, s)
+/-- A `#`-command token (`#eval`, `#exit`, `#guard`, `#print`, ...); `#[` array literals give `#`. -/
+def isHashCommand (t : String) : Bool :=
+  t.startsWith "#" && ((t.drop 1).toString.toList.head?.map Char.isAlpha).getD false
+
+/-- Contents of every attribute bracket (`@[…]`, `attribute […]`) of a stripped text, bracket-balanced,
+with the line it starts on. -/
+def attrBlocks (text : String) : Array (Nat × String) := Id.run do
+  let cs := text.toList.toArray
+  let mut out := #[]
+  let mut line := 1
+  let mut i := 0
+  while i < cs.size do
+    let c := cs[i]!
+    if c == '\n' then line := line + 1
+    -- an attribute bracket opens at `@[`, or at the first `[` after the token `attribute`
+    let mut opens : Option Nat := none
+    if c == '@' && cs[i+1]? == some '[' then opens := some (i + 1)
+    else if c == 'a' && (i == 0 || !isIdentChar cs[i-1]!) &&
+        String.ofList (cs.extract i (i + 9)).toList == "attribute" &&
+        !((cs[i+9]?.map isIdentChar).getD false) then
+      let mut j := i + 9
+      while j < cs.size && cs[j]!.isWhitespace do j := j + 1
+      if cs[j]? == some '[' then opens := some j
+    if let some j0 := opens then
+      let mut depth := 0
+      let mut j := j0
+      let mut acc : Array Char := #[]
+      while j < cs.size do
+        let d := cs[j]!
+        if d == '[' then depth := depth + 1
+        if d == ']' then depth := depth - 1
+        acc := acc.push d
+        j := j + 1
+        if depth == 0 then break
+      out := out.push (line, String.ofList acc.toList)
+    i := i + 1
+  return out
 
 def cmdSpecSource (inv : Array Mod) : IO UInt32 := do
   let mut bad := false
   for md in inv do
-    let text := stripComments (← IO.FS.readFile md.file)
+    let (text, errs) := stripComments (← IO.FS.readFile md.file)
+    for e in errs do
+      IO.println s!"FAIL[spec-source] {md.file}:{e} (not supported in Spec sources)"
+      bad := true
     let mut ln := 0
     for line in text.splitOn "\n" do
       ln := ln + 1
-      if line.isEmpty then continue
-      -- `attribute [...]` commands and attribute blocks: banned attribute names
-      let (attrs, rest) := stripPrefix line ""
-      let attrText := if rest.trimAsciiStart.startsWith "attribute" then attrs ++ " " ++ rest else attrs
-      for t in tokens attrText do
-        if ["implemented_by", "extern", "csimp"].contains t then
-          IO.println s!"FAIL[spec-source] {md.file}:{ln}: attribute {t}"
+      for t in tokens line do
+        if bannedWords.contains t || isHashCommand t then
+          IO.println s!"FAIL[spec-source] {md.file}:{ln}: {t}"
           bad := true
-      -- only lines that start a command at column 0 (after attributes/modifiers)
-      let startsCol0 := !(line.startsWith " " || line.startsWith "\t")
-      if startsCol0 || line.trimAsciiStart.startsWith "@[" then
-        match tokens rest with
-        | t :: _ =>
-          if bannedCommands.contains t then
-            IO.println s!"FAIL[spec-source] {md.file}:{ln}: {t}"
-            bad := true
-        | [] => pure ()
+    for (l, blk) in attrBlocks text do
+      for t in tokens blk do
+        if bannedAttrs.contains t then
+          IO.println s!"FAIL[spec-source] {md.file}:{l}: attribute {t}"
+          bad := true
   if bad then return 1
   IO.println s!"PASS spec-source: {inv.size} files"
   return 0
@@ -917,8 +1042,8 @@ def run (args : List String) : IO UInt32 := do
   let rc ← reportSanity (← coreSanity env)
   if rc != 0 then return rc
   match cmd with
-  | "imports" => cmdImports o inv env
-  | "content" => cmdContent o inv env
+  | "imports" => cmdImports o inv env (← projectBuilt env)
+  | "content" => cmdContent o inv env (← projectBuilt env)
   | "axioms" => cmdAxioms o inv env
   | "review" => cmdReview o env
   | "snapshot" => cmdSnapshot o inv env

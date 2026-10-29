@@ -54,10 +54,25 @@ lib_args() { local l; for l in "$@"; do printf -- '--lib\n%s\n' "$l"; done; }
 # --- reusable checks (also the code paths of the self-tests) -----------------------------------
 
 # Source bans: words that admit an unproved statement or bypass the kernel.
+# Fail-closed: every input must exist, and a grep error (status 2) is a failure, not "no match".
 source_ban() {
-  local found
-  found="$(grep -rnwE --include='*.lean' 'sorry|admit|native_decide|sorryAx|ofReduceBool|trustCompiler' "$@" || true)"
-  found+="$(grep -rnE --include='*.lean' 'decide +\+native|set_option +debug\.skipKernelTC' "$@" || true)"
+  local found="" out p rc
+  if [[ $# -eq 0 ]]; then echo "FAIL[source] no inputs"; return 1; fi
+  for p in "$@"; do
+    if [[ ! -e "$p" ]]; then echo "FAIL[source] missing input $p"; return 1; fi
+  done
+  for p in 'sorry|admit|native_decide|sorryAx|ofReduceBool|trustCompiler' \
+           'decide +\+native|set_option +debug\.skipKernelTC'; do
+    rc=0
+    if [[ $p == sorry* ]]; then
+      out="$(grep -rnwE --include='*.lean' "$p" "$@")" || rc=$?
+    else
+      out="$(grep -rnE --include='*.lean' "$p" "$@")" || rc=$?
+    fi
+    if [[ $rc -gt 1 ]]; then echo "FAIL[source] grep error (status $rc) on $*"; return 1; fi
+    if [[ -n "$out" ]]; then found+="$out"$'\n'; fi
+  done
+  found="${found%$'\n'}"
   if [[ -n "$found" ]]; then
     while IFS= read -r line; do echo "FAIL[source] $line"; done <<<"$found"
     return 1
@@ -103,17 +118,18 @@ docs_check() {
 selftest_fail=0
 selftest_count=0
 
-# expect_fail <tag> <must-contain-regex|""> -- cmd...: nonzero exit and FAIL[<tag>] in the output
-# (and the extra regex, if given).
+# expect_fail <tag> <must-contain-regex|""> -- cmd...: exit status 1 (a check that ran and failed; a
+# crash or usage error exits otherwise) and a line `FAIL[<tag>] ...` that also matches the regex.
 expect_fail() {
   local tag="$1" extra="$2"; shift 3
-  local out rc
+  local out rc tagged
   selftest_count=$((selftest_count + 1))
   set +e; out="$("$@" 2>&1)"; rc=$?; set -e
-  if [[ $rc -ne 0 ]] && grep -qF "FAIL[$tag]" <<<"$out" && { [[ -z "$extra" ]] || grep -qE "$extra" <<<"$out"; }; then
+  tagged="$(grep -F "FAIL[$tag]" <<<"$out" || true)"
+  if [[ $rc -eq 1 && -n "$tagged" ]] && { [[ -z "$extra" ]] || grep -qE "$extra" <<<"$tagged"; }; then
     echo "  ok   expect FAIL[$tag]${extra:+ ($extra)}: $*"
   else
-    echo "  BAD  expected FAIL[$tag]${extra:+ ($extra)} and nonzero exit (rc=$rc): $*"
+    echo "  BAD  expected FAIL[$tag]${extra:+ ($extra)} on one line and exit 1 (rc=$rc): $*"
     sed 's/^/       | /' <<<"$out" | tail -20
     selftest_fail=1
   fi
@@ -127,6 +143,21 @@ expect_pass() {
     echo "  ok   expect pass: $*"
   else
     echo "  BAD  expected pass (rc=$rc): $*"
+    sed 's/^/       | /' <<<"$out" | tail -20
+    selftest_fail=1
+  fi
+}
+
+# expect_pass_out <regex> -- cmd...: passes and the output matches the regex.
+expect_pass_out() {
+  local extra="$1"; shift 2
+  local out rc
+  selftest_count=$((selftest_count + 1))
+  set +e; out="$("$@" 2>&1)"; rc=$?; set -e
+  if [[ $rc -eq 0 ]] && ! grep -q 'FAIL\[' <<<"$out" && grep -qE "$extra" <<<"$out"; then
+    echo "  ok   expect pass ($extra): $*"
+  else
+    echo "  BAD  expected pass and /$extra/ (rc=$rc): $*"
     sed 's/^/       | /' <<<"$out" | tail -20
     selftest_fail=1
   fi
@@ -186,12 +217,28 @@ step_selftests() {
   expect_fail theorem 'GoodSpec.instCountableColor' -- checkspec content --lib CheckFixtures.GoodSpec "${FIXSRC[@]}"
   expect_fail root-decl 'RootDecl.r' -- checkspec content --lib CheckFixtures.RootDecl "${FIXSRC[@]}"
   expect_fail theorem 'BadTheorem.t' -- checkspec content --lib CheckFixtures.BadTheorem "${FIXSRC[@]}"
-  expect_fail theorem 'BadDefProp.h$' -- checkspec content --lib CheckFixtures.BadDefProp "${FIXSRC[@]}"
+  expect_fail theorem 'BadDefProp.h ' -- checkspec content --lib CheckFixtures.BadDefProp "${FIXSRC[@]}"
   expect_fail theorem 'BadDefProp.h2' -- checkspec content --lib CheckFixtures.BadDefProp "${FIXSRC[@]}"
   expect_fail theorem 'BadMetaThm.sneaky' -- checkspec content --lib CheckFixtures.BadMetaThm "${FIXSRC[@]}"
-  expect_fail theorem 'BadMetaThm.Foo._proof_99' -- checkspec content --lib CheckFixtures.BadMetaThm "${FIXSRC[@]}"
+  expect_fail theorem 'BadMetaThm.Foo._proof_99 \(not reachable' -- checkspec content --lib CheckFixtures.BadMetaThm "${FIXSRC[@]}"
+  # rangeless (injected) auxiliaries: nested namespace, forged companion, suffix on the wrong parent kind
+  expect_fail theorem 'BadMetaThm.Bar.Inner._proof_1 \(no parent' -- checkspec content --lib CheckFixtures.BadMetaThm "${FIXSRC[@]}"
+  expect_fail theorem 'BadMetaThm.Foo2._proof_1 \(not reachable' -- checkspec content --lib CheckFixtures.BadMetaThm "${FIXSRC[@]}"
+  for g in Foo.injEq Foo.inj Foo.sizeOf_spec Foo._flat_ctor Foo.ofNat_ctorIdx Foo._sizeOf_1_eq Foo._default \
+      Col.injEq Col.eq_1 Col._default Col._proof_1; do
+    expect_fail theorem "BadMetaThm\\.${g} \\(suffix" -- checkspec content --lib CheckFixtures.BadMetaThm "${FIXSRC[@]}"
+  done
+  for g in Foo.eq_1 Foo.eq_def Foo.eq_unfold Foo.splitter Foo.congr_simp; do
+    expect_fail theorem "BadMetaThm\\.${g} \\(type does not mention" -- checkspec content --lib CheckFixtures.BadMetaThm "${FIXSRC[@]}"
+  done
+  # proofs written by hand under generated names (they have declaration ranges)
+  for g in foo.inj earlier.eq_999 bar._proof_99 Foo.injEq Foo.sizeOf_spec Foo._default Foo.splitter \
+      Foo._flat_ctor Col.injEq baz.Inner._proof_1 wh.proof_1; do
+    expect_fail theorem "BadGenName\\.${g} \\(a proof declared in the source" -- checkspec content --lib CheckFixtures.BadGenName "${FIXSRC[@]}"
+  done
   expect_fail theorem 'BadAllowlisted.t2' -- checkspec content --lib CheckFixtures.BadAllowlisted "${FIXSRC[@]}" --allowlist "$F/bad-allowlist.txt"
   expect_fail theorem 'BadAllowlisted.t3' -- checkspec content --lib CheckFixtures.BadAllowlisted "${FIXSRC[@]}" --allowlist "$F/bad-allowlist.txt"
+  expect_fail theorem 'BadAllowlisted.t4 .*class=Nonempty' -- checkspec content --lib CheckFixtures.BadAllowlisted "${FIXSRC[@]}" --allowlist "$F/bad-allowlist.txt"
   expect_fail allowlist-stale 'GoodSpec.nope' -- checkspec content --lib CheckFixtures.GoodSpec "${FIXSRC[@]}" --allowlist "$F/stale-allowlist.txt"
   expect_fail axiom 'BadAxiom.ax' -- checkspec content --lib CheckFixtures.BadAxiom "${FIXSRC[@]}"
   expect_fail opaque 'BadOpaque.o' -- checkspec content --lib CheckFixtures.BadOpaque "${FIXSRC[@]}"
@@ -200,10 +247,13 @@ step_selftests() {
   expect_fail implemented-by 'BadImplBy.f' -- checkspec content --lib CheckFixtures.BadImplBy "${FIXSRC[@]}"
   expect_fail extern 'BadExtern.f' -- checkspec content --lib CheckFixtures.BadExtern "${FIXSRC[@]}"
   expect_fail csimp 'BadCSimp.f_eq' -- checkspec content --lib CheckFixtures.BadCSimp "${FIXSRC[@]}"
+  expect_fail theorem 'BadCSimp.f_eq' -- checkspec content --lib CheckFixtures.BadCSimp "${FIXSRC[@]}"
   expect_fail dep 'GenDep.b._proof_1 uses CheckFixtures.Proof.le_helper' -- checkspec content --lib CheckFixtures.GenDep "${FIXSRC[@]}"
 
   echo "axioms"
   expect_pass checkspec axioms --lib CheckFixtures.GoodSpec "${FIXSRC[@]}"
+  # the root module is in the inventory (RootDecl.r is declared in the root file)
+  expect_pass_out 'in 2 modules' -- checkspec axioms --lib CheckFixtures.RootDecl "${FIXSRC[@]}"
   expect_fail axiom-use 'RootAxiom.u uses CheckFixtures.RootAxiom.ax' -- checkspec axioms --lib CheckFixtures.RootAxiom "${FIXSRC[@]}"
   expect_fail axiom-use 'BadAxiom.u uses CheckFixtures.BadAxiom.ax' -- checkspec axioms --lib CheckFixtures.BadAxiom "${FIXSRC[@]}"
   expect_fail axiom-use 'BadSorry.s uses sorryAx' -- checkspec axioms --lib CheckFixtures.BadSorry "${FIXSRC[@]}"
@@ -215,10 +265,13 @@ step_selftests() {
 
   echo "review"
   local R=(--lib CheckFixtures.ReviewBad "${FIXSRC[@]}" --stmt-module CheckFixtures.ReviewBad.A --thm-module CheckFixtures.ReviewBad.A)
-  expect_pass checkspec review "${R[@]}" --pairs "$F/review-pairs-good.txt" --wired CheckFixtures.ReviewBad:CheckFixtures.ReviewBad.A
-  expect_fail review-type 'ReviewBad.stmt ' -- checkspec review "${R[@]}" --pairs "$F/review-pairs-bad.txt"
-  expect_fail review-source 'ReviewBad.Stmt2' -- checkspec review "${R[@]}" --pairs "$F/review-pairs-badsource.txt"
+  local W=(--wired CheckFixtures.ReviewBad:CheckFixtures.ReviewBad.A)
+  expect_pass checkspec review "${R[@]}" --pairs "$F/review-pairs-good.txt" "${W[@]}"
+  expect_fail review-type 'ReviewBad.stmt ' -- checkspec review "${R[@]}" --pairs "$F/review-pairs-bad.txt" "${W[@]}"
+  expect_fail review-source 'ReviewBad.Stmt2' -- checkspec review "${R[@]}" --pairs "$F/review-pairs-badsource.txt" "${W[@]}"
   expect_fail review-wired 'does not import' -- checkspec review "${R[@]}" --pairs "$F/review-pairs-good.txt" --wired CheckFixtures.ReviewBad:CheckFixtures.Proof
+  # without --wired the production pair is required (absent here), so the wiring check cannot be skipped
+  expect_fail review-wired 'ConsensusTests does not import ConsensusTests.ReviewAxioms' -- checkspec review "${R[@]}" --pairs "$F/review-pairs-good.txt"
 
   echo "snapshot"
   local saved_update=$update_snapshot
@@ -243,11 +296,28 @@ step_selftests() {
   expect_pass checkspec spec-source --lib CheckFixtures.GoodSpec "${FIXSRC[@]}"
   expect_fail spec-source 'run_cmd' -- checkspec spec-source --lib CheckFixtures.BadMetaThm "${FIXSRC[@]}"
   expect_fail spec-source 'example' -- checkspec spec-source --lib CheckFixtures.BadExample "${FIXSRC[@]}"
+  # indented commands (Lean accepts them; the run_cmd ran at compile time)
+  expect_fail spec-source 'BadIndented/A.lean:12: example' -- checkspec spec-source --lib CheckFixtures.BadIndented "${FIXSRC[@]}"
+  expect_fail spec-source 'BadIndented/A.lean:13: theorem' -- checkspec spec-source --lib CheckFixtures.BadIndented "${FIXSRC[@]}"
+  expect_fail spec-source 'BadIndented/A.lean:14: run_cmd' -- checkspec spec-source --lib CheckFixtures.BadIndented "${FIXSRC[@]}"
+  # wrapped (`set_option … in`, `open … in`) and multi-line commands
+  expect_fail spec-source 'BadWrapped/A.lean:11: example' -- checkspec spec-source --lib CheckFixtures.BadWrapped "${FIXSRC[@]}"
+  expect_fail spec-source 'BadWrapped/A.lean:14: example' -- checkspec spec-source --lib CheckFixtures.BadWrapped "${FIXSRC[@]}"
+  expect_fail spec-source 'BadWrapped/A.lean:18: theorem' -- checkspec spec-source --lib CheckFixtures.BadWrapped "${FIXSRC[@]}"
+  # a character literal '"' does not hide code; raw strings are reported
+  expect_fail spec-source 'BadCharLit/A.lean:11: example' -- checkspec spec-source --lib CheckFixtures.BadCharLit "${FIXSRC[@]}"
+  expect_fail spec-source 'BadCharLit/A.lean:14: raw string' -- checkspec spec-source --lib CheckFixtures.BadCharLit "${FIXSRC[@]}"
+  # source-only fixtures (not compiled): attributes that register user code, and look-alike words
+  expect_fail spec-source 'SrcAttr/A.lean:3: attribute init' -- checkspec spec-source --lib SrcAttr --src "$F/source" --no-root
+  expect_fail spec-source 'SrcAttr/A.lean:4: attribute tactic' -- checkspec spec-source --lib SrcAttr --src "$F/source" --no-root
+  expect_fail spec-source 'SrcAttr/A.lean:7: attribute app_unexpander' -- checkspec spec-source --lib SrcAttr --src "$F/source" --no-root
+  expect_pass checkspec spec-source --lib SrcGood --src "$F/source" --no-root
 
   echo "source bans"
   expect_pass source_ban "$CF/GoodSpec" "$CF/GoodSpec.lean"
   expect_fail source 'sorry' -- source_ban "$CF/BadSorry"
   expect_fail source 'native_decide' -- source_ban "$CF/BadNative"
+  expect_fail source 'missing input' -- source_ban "$CF/GoodSpec" "$CF/DoesNotExist"
 
   echo "docs"
   expect_pass docs_check "$F/README-good.md" "$CF/GoodSpec"
