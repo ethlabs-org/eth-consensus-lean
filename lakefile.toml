@@ -14,7 +14,7 @@ maxSynthPendingDepth = 3
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "v4.34.1"
+rev = "v4.35.0"
 
 # L0, the problem: the definition of a good protocol.
 [[lean_lib]]

@@ -1,5 +1,5 @@
 module
-public import Mathlib.Data.Countable.Defs
+public import Mathlib.Basic.Countable.Defs
 public import Mathlib.Data.Fintype.Card
 public import ConsensusProblem.Basic
 public import ConsensusModel.Objects

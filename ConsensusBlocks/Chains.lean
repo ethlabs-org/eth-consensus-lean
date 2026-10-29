@@ -1,7 +1,7 @@
 module
 public import ConsensusModel.Objects
 public import Mathlib.Logic.Equiv.List
-public import Mathlib.Data.Countable.Basic
+public import Mathlib.Basic.Countable.Basic
 
 @[expose] public section
 
