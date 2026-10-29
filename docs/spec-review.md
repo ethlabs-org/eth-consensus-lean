@@ -2,10 +2,11 @@
 
 ## Approval
 
-Since #5 the tag `spec-approved` points to the head of PR #30, the verbatim move of this surface to the single
-library `ConsensusLean` (section "Move to one library `ConsensusLean` (#5)" below). Before that, the trusted
-surface was **approved at `4b7c51484baa5725301d559d437f22a0ea5ab9a2` (4b7c5148) on 2026-10-29
-by claude-ethlabs on Francesco's authorization**: annotated tag `spec-approved` ("Owner approval (Francesco,
+Since #5 the tag `spec-approved` points to `9c7433b988576147b46977bc9bab454fc8907c20` (9c7433b9), the head of
+PR #30 and the verbatim move of this surface to the single library `ConsensusLean` (section "Move to one library
+`ConsensusLean` (#5)" below). Before that, the trusted surface was **approved at
+`4b7c51484baa5725301d559d437f22a0ea5ab9a2` (4b7c5148) on 2026-10-29 by claude-ethlabs on Francesco's
+authorization**: annotated tag `spec-approved` ("Owner approval (Francesco,
 granted to claude-ethlabs 2026-10-29): protected Spec / review statements / challenge / toolchain at 4b7c5148
 (post-reorg; verbatim moves + v4.35 internal term differences documented in the reorg evidence)").
 
@@ -498,9 +499,15 @@ git diff 1eb8b6ec 4b7c5148 -- scripts/spec-snapshot.txt
 ## Move to one library `ConsensusLean` (#5)
 
 Approved by moving the tag `spec-approved` from `4b7c5148` to the head of PR #30 (`git cat-file -p spec-approved`
-shows the commit and the message). The move is a pure rename/move of the trusted surface with machine-checked
-equality of the compiled statements, which Francesco's rule lets claude-ethlabs approve; a change in meaning
-needs his review. Old and new paths:
+shows the commit and the message):
+- old: commit `4b7c51484baa5725301d559d437f22a0ea5ab9a2`;
+- new: commit `9c7433b988576147b46977bc9bab454fc8907c20` (tag object `6549c000aab70915fe25302b224f95ee7c3dcbc3`,
+  tagger `fradamt-agent` (the shared agent account), 2026-10-29 22:57:40 UTC);
+- main: the squash merge `81832ec49b98485fe279ccd8d6a2888da9c38c8d` (81832ec4) has the same tree as 9c7433b9
+  (`0065be7e`). 9c7433b9 is not on main (PR #30 was squash-merged), but the tag keeps it reachable.
+
+The move is a pure rename/move of the trusted surface with machine-checked equality of the compiled statements,
+which Francesco's rule lets claude-ethlabs approve; a change in meaning needs his review. Old and new paths:
 
 | At `4b7c5148` | Since #5 |
 |---|---|
@@ -558,7 +565,7 @@ Evidence files (kept): `/srv/runs/fradamt/consensus-lean/foundation-impl/single-
 
 ```sh
 git fetch origin --tags
-git cat-file -p spec-approved                      # annotated tag, object 4b7c5148
+git cat-file -p spec-approved                      # annotated tag, object 9c7433b9 (before #5: 4b7c5148)
 # the 4b7c5148 approval (old paths)
 git diff -M 2852f717 4b7c5148 -- ConsensusSpec ConsensusSpec.lean ConsensusChallenge.lean comparator.json lean-toolchain lake-manifest.json ConsensusTests/ReviewAxioms.lean ConsensusTests/ReviewGuard.lean
 git diff 1eb8b6ec 4b7c5148 -- scripts/spec-snapshot.txt
