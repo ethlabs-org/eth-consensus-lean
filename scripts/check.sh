@@ -531,7 +531,8 @@ step_lake_check() {
   set +e
   local rc=0
   lake check || rc=1
-  expect_fail - lake -d "$FX/lakecheck-bad" check || rc=1
+  # Rejected for the intended reason (the user axiom), not for a broken fixture or sandbox.
+  expect_fail "error: Axiom 'ax' is not permitted; it is used by 't'" lake -d "$FX/lakecheck-bad" check || rc=1
   expect_pass lake -d "$FX/lakecheck-good" check || rc=1
   set -e
   return "$rc"
