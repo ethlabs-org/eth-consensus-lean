@@ -2,6 +2,7 @@
 # the project's .lake/build via actions/cache, falling back to main's latest) and `scripts/check.sh --fast`:
 # pins, imports, check-decls, Spec surface + snapshot diff, review pins, grep backstop, vendored hashes,
 # comparator config, docs. Self-tests too when the change touches scripts/ or the build configuration.
+# Docs-only PRs use --changed <base>: cheap global checks, without Mathlib/project build caches.
 # Kernel replay, `lake check` and `lake comparator --paranoid` run in full.yml (nightly, manual, tags).
 # Pushes to work/* branches without a PR run nothing here: iterate locally (scripts/check-changed.sh).
 # Plus the review boundary (trusted surface vs the tag `spec-approved`). Action SHAs as in
@@ -33,6 +34,35 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      - name: Classify docs-only pull requests (otherwise full fast tier)
+        id: docs
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          docs_only=false
+          # Only PRs into main: a docs-only PR into an unchecked work/* branch, later retargeted to main
+          # (an `edited` event, which runs nothing), would otherwise carry a green check for unchecked code.
+          # Checkout is the PR merge commit: diff against its base, not the previous push.
+          # Materialize the diff first so a failed git command cannot look like an empty diff.
+          if [[ "$EVENT" == pull_request && "$BASE_REF" == main && -n "$BASE" && ! "$BASE" =~ ^0+$ ]] &&
+             git cat-file -e "$BASE^{commit}" 2>/dev/null &&
+             git merge-base --is-ancestor "$BASE" HEAD &&
+             git diff --no-renames --ignore-submodules=none --name-only -z "$BASE" HEAD -- > "$RUNNER_TEMP/pr-paths"; then
+            docs_only=true
+            while IFS= read -r -d '' path; do
+              case "$path" in
+                *.lean|scripts/*|.github/*|lakefile.toml|lake-manifest.json|lean-toolchain) docs_only=false; break ;;
+                *.md|docs/*) ;;
+                *) docs_only=false; break ;;
+              esac
+            done < "$RUNNER_TEMP/pr-paths"
+          fi
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+          echo "docs-only PR: $docs_only (otherwise --fast)"
+
       - name: Install elan v4.2.4 (pinned release, sha256-checked; toolchain from lean-toolchain)
         run: |
           set -euo pipefail
@@ -55,6 +85,7 @@ jobs:
           key: lake-pkgs-${{ runner.os }}-${{ hashFiles('lake-manifest.json', 'lean-toolchain') }}
 
       - name: Restore Mathlib olean cache
+        if: steps.docs.outputs.docs_only != 'true'
         run: lake exe cache get
 
       # Keyed on toolchain + manifest + commit. A miss falls back to the newest cache with the same toolchain
@@ -62,6 +93,7 @@ jobs:
       # Lake rebuilds only the modules whose inputs changed.
       - name: Restore project build (.lake/build)
         id: build-cache
+        if: steps.docs.outputs.docs_only != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .lake/build
@@ -85,23 +117,33 @@ jobs:
             echo "no change to ${paths[*]}: self-tests off (nightly)"; echo "flags=" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run scripts/check.sh --fast
+      - name: Run scripts/check.sh (docs-only --changed, otherwise --fast)
         env:
           CI: "1"
           FLAGS: ${{ steps.mode.outputs.flags }}
-        run: |
-          set -o pipefail
-          # shellcheck disable=SC2086
-          scripts/check.sh --fast $FLAGS 2>&1 | tee "$RUNNER_TEMP/check.log"
-
-      - name: Fast mode passed, tree clean
+          DOCS_ONLY: ${{ steps.docs.outputs.docs_only }}
+          BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
-          grep -q '^check.sh: PASSED (fast mode' "$RUNNER_TEMP/check.log"
+          if [[ "$DOCS_ONLY" == true ]]; then
+            scripts/check.sh --changed "$BASE" 2>&1 | tee "$RUNNER_TEMP/check.log"
+          else
+            # shellcheck disable=SC2086
+            scripts/check.sh --fast $FLAGS 2>&1 | tee "$RUNNER_TEMP/check.log"
+          fi
+
+      - name: Selected mode passed, tree clean
+        env:
+          DOCS_ONLY: ${{ steps.docs.outputs.docs_only }}
+        run: |
+          set -euo pipefail
+          mode=fast
+          [[ "$DOCS_ONLY" != true ]] || mode=changed
+          grep -q "^check.sh: PASSED ($mode mode" "$RUNNER_TEMP/check.log"
           test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
 
       - name: Save project build (.lake/build)
-        if: ${{ !cancelled() && steps.build-cache.outputs.cache-hit != 'true' }}
+        if: ${{ !cancelled() && steps.docs.outputs.docs_only != 'true' && steps.build-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .lake/build
