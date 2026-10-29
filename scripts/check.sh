@@ -22,11 +22,14 @@
 #   12 docs             README spec-file list = the files of the Spec surface (trusted group)
 # Every step with a negative fixture also runs it through the same function ("self-test" steps).
 #
-# Usage: scripts/check.sh [--fast | --full | --changed [<base>]] [--selftests] [--reach] [--no-build]
+# Usage: scripts/check.sh [--fast | --full [--split main|lake-check] | --changed [<base>]] [--selftests] [--reach] [--no-build]
 #                         [--update-snapshot] [--update-extensions]
 #   --fast (default)     every step except the heavy ones (5 kernel replay, 10 lake check, 11 lake
 #                        comparator) and the self-tests: CI on every pull request and push to main
 #   --full               everything, self-tests included: CI nightly, on demand and on milestone/release tags
+#   --split <part>       with --full, one of two parts run as parallel CI jobs: `lake-check` = step 0 (pins, with
+#                        its self-test) and step 10, `main` = every other step; each prints DEFER for the other
+#                        part's steps and ends with `check.sh: PART PASSED (split <part>; ...)`
 #   --changed [<base>]   the fast steps restricted to what changed since <base> (default: merge-base with
 #                        origin/main; uncommitted and untracked files count): build the changed modules'
 #                        downstream cone, check-decls on the affected libraries, Spec surface only if a Spec
@@ -45,12 +48,13 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-usage="usage: scripts/check.sh [--fast | --full | --changed [<base>]] [--selftests] [--reach] [--no-build] [--update-snapshot] [--update-extensions]"
-mode=fast base="" selftests=0 reach=0 no_build=0 update_snapshot=0 update_extensions=0
+usage="usage: scripts/check.sh [--fast | --full [--split main|lake-check] | --changed [<base>]] [--selftests] [--reach] [--no-build] [--update-snapshot] [--update-extensions]"
+mode=fast base="" split="" selftests=0 reach=0 no_build=0 update_snapshot=0 update_extensions=0
 while (($#)); do
   case "$1" in
     --fast) mode=fast ;;
     --full) mode=full ;;
+    --split) (($# > 1)) || { echo "--split needs a part" >&2; exit 2; }; split="$2"; shift ;;
     --changed) mode=changed; if (($# > 1)) && [[ "$2" != -* ]]; then base="$2"; shift; fi ;;
     --selftests) selftests=1 ;;
     --reach) reach=1 ;;
@@ -71,6 +75,9 @@ if [[ -n "${CI:-}" ]] && ((no_build || update_snapshot || update_extensions)); t
   exit 2
 fi
 [[ "$mode" == full ]] && selftests=1
+if [[ -n "$split" ]] && { [[ "$mode" != full ]] || [[ "$split" != main && "$split" != lake-check ]]; }; then
+  echo "check.sh: --split takes main or lake-check, with --full only" >&2; exit 2
+fi
 # The reach report (step 4) runs in --full, in --changed whenever step 4 runs (a Spec module changed), and
 # in --fast only with --reach (CI passes it when the Spec, the challenge or scripts/ changed).
 [[ "$mode" != fast ]] && reach=1
@@ -862,10 +869,23 @@ selftest_docs() {
 # --- driver ---------------------------------------------------------------------------------------
 overall=0
 skipped=()
+deferred=()
 ci_only=()
+# in_part <label>: whether this run's --split part runs the step (by its number): lake-check = 0 and 10.
+in_part() {
+  local n="${1%% *}"
+  case "$split" in
+    "") return 0 ;;
+    lake-check) [[ "$n" == 0 || "$n" == 10 ]] ;;
+    main) [[ "$n" != 10 ]] ;;
+  esac
+}
 run_step() {
   local label="$1"
   shift
+  if ! in_part "$label"; then
+    echo "DEFER $label (the other --split part)"; deferred+=("$label"); return 0
+  fi
   echo "--- $label ---"
   if "$@"; then printf 'PASS  %s\n' "$label"; else printf 'FAIL  %s\n' "$label"; overall=1; fi
 }
@@ -877,7 +897,7 @@ run_selftest() { run_if "$selftests" "self-test: --full or --selftests" "$@"; }
 full_only() {  # the heavy steps: --full only (CI: nightly, manual, milestone/release tags); bwrap ones need it
   if [[ "$mode" != full ]]; then
     skip_step "$1" "--full only: CI nightly"
-  elif [[ "$2" == step_lake_* ]] && ! have_bwrap; then
+  elif [[ "$2" == step_lake_* ]] && in_part "$1" && ! have_bwrap; then
     echo "SKIP  $1 (skipped: no bwrap)"; ci_only+=("$1")
   else
     run_step "$@"
@@ -911,10 +931,10 @@ else
   run_step "$build_label" step_build
 fi
 run_step "2 imports (check-imports.py, every checked library)" step_imports
-if [[ ! -s "$INV" ]]; then
+if in_part 2 && [[ ! -s "$INV" ]]; then
   echo "check.sh: no inventory; the remaining steps need it"; echo; echo "check.sh: FAILURES PRESENT" >&2; exit 1
 fi
-mapfile -t SPEC_MODULES < <(inv_group "$SPEC_GROUP")
+! in_part 2 || mapfile -t SPEC_MODULES < <(inv_group "$SPEC_GROUP")
 run_selftest "2 imports self-test (fixtures/imports)" selftest_imports
 run_if "${#DECL_LIBS[@]}" "no library affected" "3 declarations (check-decls: ${DECL_LIBS[*]:-none})" step_decls
 run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope, HiddenOpaque)" selftest_decls
@@ -948,6 +968,8 @@ if ((overall)); then
   echo "check.sh: FAILURES PRESENT" >&2
 elif ((${#skipped[@]})); then
   echo "check.sh: PASSED ($mode mode; ${#skipped[@]} steps skipped, listed as SKIP above)"
+elif [[ -n "$split" ]]; then
+  echo "check.sh: PART PASSED (split $split; ${#deferred[@]} steps deferred to the other part)"
 else
   echo "check.sh: ALL CHECKS PASSED"
 fi

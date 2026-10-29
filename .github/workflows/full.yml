@@ -1,6 +1,8 @@
 # Full tier: `scripts/check.sh --full` (every step and self-test, incl. leanchecker kernel replay, `lake check`
 # and `lake comparator --paranoid` in a bubblewrap sandbox) on a clean project build. Nightly (skipped when
 # main's head already passed a full run), on demand, and on `milestone*` / `release*` tags.
+# Two parallel jobs (#13): `lake check` (step 10, about 15 min of single-threaded export replay) and every
+# other step (`--split main`); the run passes only if both do.
 # The fast tier (ci.yml) runs on every pull request and push to main.
 name: full
 
@@ -46,11 +48,15 @@ jobs:
           fi
 
   full:
-    name: scripts/check.sh --full (incl. replay, lake check, lake comparator --paranoid)
+    name: scripts/check.sh --full --split ${{ matrix.part }}
     needs: gate
     if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [main, lake-check]
     steps:
       - name: Check out consensus-lean
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -86,24 +92,34 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           bwrap --ro-bind / / --unshare-user true    # smoke: fails the job if userns is still blocked
 
-      - name: Run scripts/check.sh --full (clean project build; no .lake/build cache)
+      - name: Run scripts/check.sh --full --split (clean project build; no .lake/build cache)
         env:
           CI: "1"
+          PART: ${{ matrix.part }}
         run: |
           set -o pipefail
-          scripts/check.sh --full 2>&1 | tee "$RUNNER_TEMP/check.log"
+          scripts/check.sh --full --split "$PART" 2>&1 | tee "$RUNNER_TEMP/check.log"
 
-      - name: No skipped sandbox steps, nothing skipped, tree clean
+      - name: No skipped sandbox steps, nothing skipped, this part passed, tree clean
+        env:
+          PART: ${{ matrix.part }}
         run: |
           set -euo pipefail
           if grep -E 'skipped: no bwrap|^SKIP ' "$RUNNER_TEMP/check.log"; then exit 1; fi
-          grep -qx 'check.sh: ALL CHECKS PASSED' "$RUNNER_TEMP/check.log"
+          grep -qE "^check.sh: PART PASSED \(split $PART; [0-9]+ steps deferred to the other part\)$" "$RUNNER_TEMP/check.log"
+          # The two parts must stay complements: lake-check ran step 10; main deferred exactly that one step.
+          case "$PART" in
+            lake-check) grep -q '^PASS  10 lake check' "$RUNNER_TEMP/check.log" || exit 1 ;;
+            main) { [[ "$(grep -c '^DEFER ' "$RUNNER_TEMP/check.log")" == 1 ]] &&
+                    grep -q '^DEFER 10 lake check' "$RUNNER_TEMP/check.log"; } || exit 1 ;;
+            *) exit 1 ;;
+          esac
           test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
 
       - name: Upload check log
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: check-log-full
+          name: check-log-full-${{ matrix.part }}
           path: ${{ runner.temp }}/check.log
           retention-days: 30

@@ -782,10 +782,10 @@ by-construction rows: `ConsensusLeanTest/Gaps.lean`.
 | Mode | Runs | Where |
 |---|---|---|
 | `--fast` (default) | steps 0–4, 6–9, 12: pins, build, imports, check-decls, Spec surface + snapshot diff, review pins, grep, vendored hashes, comparator config, docs; self-tests only with `--selftests`, step 4's `reach` report only with `--reach` | CI on every PR and push to main (`.github/workflows/ci.yml`, with `--selftests` when `scripts/` or the build configuration changed, `--reach` when the Spec, the challenge or `scripts/` changed) |
-| `--full` | everything: the fast steps, every self-test, leanchecker replay (5), `lake check` (10), `lake comparator --paranoid` (11) | CI nightly, on demand and on `milestone*`/`release*` tags (`.github/workflows/full.yml`, clean project build) |
+| `--full` | everything: the fast steps, every self-test, leanchecker replay (5), `lake check` (10), `lake comparator --paranoid` (11) | CI nightly, on demand and on `milestone*`/`release*` tags (`.github/workflows/full.yml`, clean project build), as two parallel jobs: `--split lake-check` (step 0 with its self-test, and step 10) and `--split main` (all other steps); each prints `DEFER` for the other's steps and ends with `check.sh: PART PASSED (split <part>; ...)`, and the run passes only if both do |
 | `--changed [<base>]` | the fast steps restricted to what changed since `<base>` (default: merge-base with `origin/main`, uncommitted and untracked files included): build of the changed modules' downstream cone, check-decls on the affected libraries, Spec surface and comparator config only if a Spec module (or the challenge, `comparator.json`, the solution's imports) changed (otherwise only noconst of step 4), grep on the changed files; pins, imports, review pins, vendored hashes and docs in full (cheap). A change of `scripts/` or of the build configuration falls back to `--fast` (with self-tests for `scripts/`); with `--selftests` it runs `--fast --selftests` | locally, `scripts/check-changed.sh [<base>]` |
 
-Only `--full` ends with `check.sh: ALL CHECKS PASSED`; the others end with `check.sh: PASSED (<mode> mode; ...)`.
+Only an unsplit `--full` ends with `check.sh: ALL CHECKS PASSED`; a `--split` part ends with `check.sh: PART PASSED (split <part>; ...)`, the other modes with `check.sh: PASSED (<mode> mode; ...)`.
 
 ### Local workflow
 
