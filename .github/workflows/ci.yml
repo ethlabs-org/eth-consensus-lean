@@ -1,7 +1,8 @@
 # Fast tier, on every pull request and every push to main: a cached build (Mathlib via `lake exe cache get`,
 # the project's .lake/build via actions/cache, falling back to main's latest) and `scripts/check.sh --fast`:
 # pins, imports, check-decls, Spec surface + snapshot diff, review pins, grep backstop, vendored hashes,
-# comparator config, docs. Self-tests too when the change touches scripts/ or the build configuration.
+# comparator config, docs. Self-tests too when the change touches scripts/ or the build configuration, and step 4's
+# reach report (not a gate) when it touches the Spec, the challenge or scripts/.
 # Docs-only PRs use --changed <base>: cheap global checks, without Mathlib/project build caches.
 # Kernel replay, `lake check` and `lake comparator --paranoid` run in full.yml (nightly, manual, tags).
 # Pushes to work/* branches without a PR run nothing here: iterate locally (scripts/check-changed.sh).
@@ -101,21 +102,32 @@ jobs:
           restore-keys: |
             lake-build-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}-
 
-      - name: Self-tests if the check stack or the build configuration changed
+      - name: Self-tests and reach report, from what the change touches
         id: mode
         env:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
           set -euo pipefail
           paths=(scripts lakefile.toml lakefile.lean lake-manifest.json lean-toolchain)
+          # Step 4's reach report (a report, not a gate): only when the Spec, the challenge or scripts/ changed (#13).
+          spec=(ConsensusSpec ConsensusSpec.lean ConsensusChallenge.lean scripts)
           if [[ -z "$BASE" || "$BASE" =~ ^0+$ ]] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
-            echo "no usable base ('$BASE'): self-tests on"; echo "flags=--selftests" >> "$GITHUB_OUTPUT"
-          elif [[ -n "$(git diff --name-only "$BASE" HEAD -- "${paths[@]}")" ]]; then
-            git diff --name-only "$BASE" HEAD -- "${paths[@]}"
-            echo "the check stack or the build configuration changed: self-tests on"; echo "flags=--selftests" >> "$GITHUB_OUTPUT"
+            echo "no usable base ('$BASE'): self-tests and reach report on"; flags="--selftests --reach"
           else
-            echo "no change to ${paths[*]}: self-tests off (nightly)"; echo "flags=" >> "$GITHUB_OUTPUT"
+            flags=""
+            if [[ -n "$(git diff --name-only "$BASE" HEAD -- "${paths[@]}")" ]]; then
+              git diff --name-only "$BASE" HEAD -- "${paths[@]}"
+              echo "the check stack or the build configuration changed: self-tests on"; flags="--selftests"
+            else
+              echo "no change to ${paths[*]}: self-tests off (nightly)"
+            fi
+            if [[ -n "$(git diff --name-only "$BASE" HEAD -- "${spec[@]}")" ]]; then
+              echo "the Spec, the challenge or scripts/ changed: reach report on"; flags="$flags --reach"
+            else
+              echo "no change to ${spec[*]}: reach report off (nightly)"
+            fi
           fi
+          echo "flags=$flags" >> "$GITHUB_OUTPUT"
 
       - name: Run scripts/check.sh (docs-only --changed, otherwise --fast)
         env:

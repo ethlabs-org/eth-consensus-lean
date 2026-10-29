@@ -22,7 +22,7 @@
 #   12 docs             README spec-file list = the files of the Spec library
 # Every step with a negative fixture also runs it through the same function ("self-test" steps).
 #
-# Usage: scripts/check.sh [--fast | --full | --changed [<base>]] [--selftests] [--no-build]
+# Usage: scripts/check.sh [--fast | --full | --changed [<base>]] [--selftests] [--reach] [--no-build]
 #                         [--update-snapshot] [--update-extensions]
 #   --fast (default)     every step except the heavy ones (5 kernel replay, 10 lake check, 11 lake
 #                        comparator) and the self-tests: CI on every pull request and push to main
@@ -32,6 +32,7 @@
 #                        downstream cone, check-decls on the affected libraries, Spec surface only if a Spec
 #                        module changed, grep on the changed files. A change of scripts/ or of the build
 #                        configuration falls back to --fast (with --selftests for scripts/). scripts/check-changed.sh
+#   --reach              in --fast mode, also run step 4's reach report (a report, not a gate)
 #   --selftests          also run the self-tests (fixtures) in --fast mode; with --changed, runs --fast
 #   --no-build           do not compile; `lake build --no-build` still fails on anything stale
 #   --update-snapshot    rewrite scripts/spec-snapshot.txt (the run then FAILS: review + commit it)
@@ -44,14 +45,15 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-usage="usage: scripts/check.sh [--fast | --full | --changed [<base>]] [--selftests] [--no-build] [--update-snapshot] [--update-extensions]"
-mode=fast base="" selftests=0 no_build=0 update_snapshot=0 update_extensions=0
+usage="usage: scripts/check.sh [--fast | --full | --changed [<base>]] [--selftests] [--reach] [--no-build] [--update-snapshot] [--update-extensions]"
+mode=fast base="" selftests=0 reach=0 no_build=0 update_snapshot=0 update_extensions=0
 while (($#)); do
   case "$1" in
     --fast) mode=fast ;;
     --full) mode=full ;;
     --changed) mode=changed; if (($# > 1)) && [[ "$2" != -* ]]; then base="$2"; shift; fi ;;
     --selftests) selftests=1 ;;
+    --reach) reach=1 ;;
     --no-build) no_build=1 ;;
     --update-snapshot) update_snapshot=1 ;;
     --update-extensions) update_extensions=1 ;;
@@ -69,6 +71,9 @@ if [[ -n "${CI:-}" ]] && ((no_build || update_snapshot || update_extensions)); t
   exit 2
 fi
 [[ "$mode" == full ]] && selftests=1
+# The reach report (step 4) runs in --full, in --changed whenever step 4 runs (a Spec module changed), and
+# in --fast only with --reach (CI passes it when the Spec, the challenge or scripts/ changed).
+[[ "$mode" != fast ]] && reach=1
 # The self-tests need the fixture libraries, which the changed-mode build does not compile.
 if [[ "$mode" == changed ]] && ((selftests)); then
   echo "check.sh: --changed --selftests runs --fast --selftests (the self-tests need the fixture builds; <base> ignored)"
@@ -452,7 +457,9 @@ step_surface() {
   fi
   # Report (not a gate): which Spec definitions the review statements reach.
   local seeds=() n_unreached
-  if "${SURFACE[@]}" statements --modules "$STATEMENTS" >"$WORK/statements-reach.txt" &&
+  if ((!reach)); then
+    echo "  NOTE  reach (report) not run: --fast without --reach (it runs with --full, or when the Spec changed)"
+  elif "${SURFACE[@]}" statements --modules "$STATEMENTS" >"$WORK/statements-reach.txt" &&
       mapfile -t seeds <"$WORK/statements-reach.txt" && ((${#seeds[@]} > 0)) &&
       "${SURFACE[@]}" reach --from "${seeds[@]}" --modules "${SPEC_MODULES[@]}" >"$WORK/reach.txt"; then
     n_unreached="$(grep -c '^UNREACHED' "$WORK/reach.txt")"

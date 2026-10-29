@@ -511,7 +511,7 @@ Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 1. **Build:** compile the four default libraries, the challenge, fixtures and check-decls; `--no-build` still checks Lake freshness.
 2. **Imports:** enforce R1–R3, root coverage, library inventory and pinned-base names with `scripts/check-imports.py`.
 3. **Declarations:** EthLib check-decls checks every module of every default library for extra axioms, unfinished proofs, opaque/unsafe/partial declarations, extern/implemented_by/csimp and opaque reachability; empty scopes fail.
-4. **Spec surface:** check persisted extensions, diff the complete readable/structural snapshot (including pins/options), enforce theorem hygiene and constant-free parents, and enumerate statements.
+4. **Spec surface:** check persisted extensions, diff the complete readable/structural snapshot (including pins/options), enforce theorem hygiene and constant-free parents; the `reach` report (which Spec definitions the review statements reach; not a gate) runs in `--full`, in `--changed` when step 4 runs, and in `--fast` with `--reach`.
 5. **Kernel replay:** run leanchecker sequentially on every default-library leaf, one module per process after checking it has no descendants; parent modules own no constants.
 6. **Review pins:** require the tests root to import the compiled alpha-equality guards and exact axiom pins.
 7. **Backstop:** grep for unfinished/native proofs, kernel bypasses, Spec metacommands and unsafe lakefile options.
@@ -747,7 +747,7 @@ by-construction rows: `ConsensusTests/Gaps.lean`.
 
 | Mode | Runs | Where |
 |---|---|---|
-| `--fast` (default) | steps 0–4, 6–9, 12: pins, build, imports, check-decls, Spec surface + snapshot diff, review pins, grep, vendored hashes, comparator config, docs; self-tests only with `--selftests` | CI on every PR and push to main (`.github/workflows/ci.yml`, with `--selftests` when `scripts/` or the build configuration changed) |
+| `--fast` (default) | steps 0–4, 6–9, 12: pins, build, imports, check-decls, Spec surface + snapshot diff, review pins, grep, vendored hashes, comparator config, docs; self-tests only with `--selftests`, step 4's `reach` report only with `--reach` | CI on every PR and push to main (`.github/workflows/ci.yml`, with `--selftests` when `scripts/` or the build configuration changed, `--reach` when the Spec, the challenge or `scripts/` changed) |
 | `--full` | everything: the fast steps, every self-test, leanchecker replay (5), `lake check` (10), `lake comparator --paranoid` (11) | CI nightly, on demand and on `milestone*`/`release*` tags (`.github/workflows/full.yml`, clean project build) |
 | `--changed [<base>]` | the fast steps restricted to what changed since `<base>` (default: merge-base with `origin/main`, uncommitted and untracked files included): build of the changed modules' downstream cone, check-decls on the affected libraries, Spec surface and comparator config only if a Spec module (or the challenge, `comparator.json`, the solution's imports) changed (otherwise only noconst of step 4), grep on the changed files; pins, imports, review pins, vendored hashes and docs in full (cheap). A change of `scripts/` or of the build configuration falls back to `--fast` (with self-tests for `scripts/`); with `--selftests` it runs `--fast --selftests` | locally, `scripts/check-changed.sh [<base>]` |
 
