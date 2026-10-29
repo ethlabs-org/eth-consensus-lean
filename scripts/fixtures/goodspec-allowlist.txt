@@ -1,0 +1,1 @@
+CheckFixtures.GoodSpec.instCountableColor  class=Countable  # Prop-class instance

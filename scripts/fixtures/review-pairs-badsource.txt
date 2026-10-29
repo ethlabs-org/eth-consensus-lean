@@ -1,0 +1,2 @@
+# statement 2 = 2 is not the type 1 = 1 of the source
+CheckFixtures.ReviewBad.Stmt2  CheckFixtures.ReviewBad.stmt2  CheckFixtures.ReviewBad.src

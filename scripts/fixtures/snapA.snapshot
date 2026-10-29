@@ -1,0 +1,6 @@
+# readable snapshot (printing level; the canonical file is the meaning check)
+
+## Defs
+def Snap.cmp u:0
+  : Nat → Nat → Prop
+  := fun a b ↦ LT.lt a b

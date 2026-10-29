@@ -1,0 +1,79 @@
+# readable snapshot (printing level; the canonical file is the meaning check)
+
+## A
+structure CheckFixtures.GoodSpec.Bounded u:0
+  : Type
+proj CheckFixtures.GoodSpec.Bounded.h u:0
+  : ∀ (self : CheckFixtures.GoodSpec.Bounded),
+      LE.le (CheckFixtures.GoodSpec.Bounded.n self) (CheckFixtures.GoodSpec.Bounded.n self)
+ctor CheckFixtures.GoodSpec.Bounded.mk u:0
+  : (n : Nat) → LE.le n n → CheckFixtures.GoodSpec.Bounded
+proj CheckFixtures.GoodSpec.Bounded.n u:0
+  : CheckFixtures.GoodSpec.Bounded → Nat
+inductive CheckFixtures.GoodSpec.Color u:0
+  : Type
+ctor CheckFixtures.GoodSpec.Color.green u:0
+  : CheckFixtures.GoodSpec.Color
+ctor CheckFixtures.GoodSpec.Color.red u:0
+  : CheckFixtures.GoodSpec.Color
+def CheckFixtures.GoodSpec.P u:0
+  : Prop
+  := ∀ (n : Nat), Eq n n
+structure CheckFixtures.GoodSpec.PS u:0
+  : Prop
+proj CheckFixtures.GoodSpec.PS.h u:0
+  : CheckFixtures.GoodSpec.PS → Eq 1 1
+ctor CheckFixtures.GoodSpec.PS.mk u:0
+  : Eq 1 1 → CheckFixtures.GoodSpec.PS
+abbrev CheckFixtures.GoodSpec.Small u:0
+  : Type
+  := Fin 3
+inductive CheckFixtures.GoodSpec.Tree u:0
+  : Type
+def CheckFixtures.GoodSpec.Tree.decEq u:0
+  : (a b : CheckFixtures.GoodSpec.Tree) → Decidable (Eq a b)
+  := fun x x_1 ↦
+      CheckFixtures.GoodSpec.Tree.brecOn x CheckFixtures.GoodSpec.Tree.decEq._f CheckFixtures.GoodSpec.Tree.decEqList._f x_1
+def CheckFixtures.GoodSpec.Tree.decEqList u:0
+  : (l l' : List CheckFixtures.GoodSpec.Tree) → Decidable (Eq l l')
+  := fun x x_1 ↦
+      CheckFixtures.GoodSpec.Tree.brecOn_1 x CheckFixtures.GoodSpec.Tree.decEq._f CheckFixtures.GoodSpec.Tree.decEqList._f
+        x_1
+ctor CheckFixtures.GoodSpec.Tree.node u:0
+  : Nat → List CheckFixtures.GoodSpec.Tree → CheckFixtures.GoodSpec.Tree
+def CheckFixtures.GoodSpec.colorEquiv u:0
+  : Equiv CheckFixtures.GoodSpec.Color CheckFixtures.GoodSpec.Color
+  := { toFun := id, invFun := id, left_inv := ⋯, right_inv := ⋯ }
+def[irreducible] CheckFixtures.GoodSpec.halve u:0
+  : Nat → Nat
+  := WellFounded.Nat.fix (fun x ↦ x) fun n a ↦ if h : LT.lt n 2 then 0 else HAdd.hAdd 1 (a (HSub.hSub n 2) ⋯)
+instance CheckFixtures.GoodSpec.instCountableColor u:0
+  : Countable CheckFixtures.GoodSpec.Color
+instance CheckFixtures.GoodSpec.instDecidableEqColor u:0
+  : DecidableEq CheckFixtures.GoodSpec.Color
+instance CheckFixtures.GoodSpec.instDecidableEqTree u:0
+  : DecidableEq CheckFixtures.GoodSpec.Tree
+instance CheckFixtures.GoodSpec.instReprColor u:0
+  : Repr CheckFixtures.GoodSpec.Color
+def CheckFixtures.GoodSpec.instReprColor.repr u:0
+  : CheckFixtures.GoodSpec.Color → Nat → Std.Format
+  := fun x prec ↦
+      CheckFixtures.GoodSpec.instReprColor.repr.match_1✝ (fun x ↦ Std.Format) x
+        (fun _ ↦
+          Repr.addAppParen
+            (Std.Format.group
+              (Std.Format.nest (ite (GE.ge prec 1024) 1 2) (Std.Format.text "CheckFixtures.GoodSpec.Color.red")))
+            prec)
+        fun _ ↦
+        Repr.addAppParen
+          (Std.Format.group
+            (Std.Format.nest (ite (GE.ge prec 1024) 1 2) (Std.Format.text "CheckFixtures.GoodSpec.Color.green")))
+          prec
+def CheckFixtures.GoodSpec.sumTo u:0
+  : Nat → Nat
+  := fun x ↦ Nat.brecOn x CheckFixtures.GoodSpec.sumTo._f
+
+## B
+def CheckFixtures.GoodSpec.fixed u:0
+  : CheckFixtures.GoodSpec.Color → Prop
+  := fun c ↦ Eq (DFunLike.coe CheckFixtures.GoodSpec.colorEquiv c) c
