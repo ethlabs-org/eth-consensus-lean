@@ -24,10 +24,10 @@ files, not the layer names L0/L1/L2.
 
 **OD-23 (answered by Francesco, 2026-10-28).** The fixed regimes are the
 definition; Goldilocks pins only numbers: the outage regime is η-sleepy, with
-Goldilocks' look-back `η = eta` (`FGSAParams.params`); the healthy regime is a
-fixed set of more than ⅔ of all validators, honest and continuously awake from
-`max g 0` (no churn). FG-SA's current recovery proof assumes every honest
-validator awake: obligation (1) below.
+Goldilocks' look-back `η = eta` (`FGSAParams.params`). The healthy regime
+(Francesco, 2026-10-29) is full participation: every honest validator awake
+from `max g 0`, with fewer than `β·n` faulty (`β = ⅓`), which is the premise of
+FG-SA's recovery proof (obligations (1) and (9) below are closed).
 
 **Where the dispositions are.** §1, proved from `Accepted`: the theorems in
 namespace `GoldilocksTarget` (below). §2, stated only: the fields of
@@ -110,10 +110,10 @@ Each is a gate the FG-SA migration must pass **against this unchanged
 target**; a failure leaves `GoldilocksTarget` unproved and goes back to
 Francesco.
 
-1. Healthy regime (a fixed set of more than ⅔ of all validators, honest and
-   continuously awake from `max g 0`, no churn) vs FG-SA Recovery₂ (every
-   honest validator awake, no restart after GST): prove FG-SA's recovery from
-   the ⅔-continuous condition.
+1. Closed (Francesco, 2026-10-29): the healthy regime is full participation
+   (every honest validator awake throughout `[max g 0, horizon]`, so no
+   restart after GST; fewer than `n/3` faulty), FG-SA Recovery₂'s premise; no
+   recovery from partial participation is owed.
 2. GST shift to `max g 0` plus catch-up (gate F-1).
 3. `Ready` at catch-up `18·Δ` ⇒ joined / confirmed reader; ready at `b₀` and
    awake ⇒ covered (F-3). `IncludesFrom` and `ProposalLiveReady` require the
@@ -138,8 +138,8 @@ Francesco.
    receipt-to-processing under endpoint delivery (F-9: FG-SA timing assumed
    receipt strictly before the deadline; endpoint receipt costs one time
    unit, at most `Δ`, absorbed by the `Δ`-rounded numbers or re-proved).
-9. Finality liveness under the ⅔-continuous healthy regime vs FG-SA's
-   all-awake premise.
+9. Closed (Francesco, 2026-10-29): finality liveness is owed under the
+   full-participation healthy regime, FG-SA's all-awake premise.
 10. Weak continuation: uniform cut/seed preservation.
 11. FL1/FL2 (`finalFirst`, `finalRecur`) are stated in the intended forms:
     strictly above the ready confirmed reads at the healing cut
@@ -368,15 +368,15 @@ theorem gHealFin_eq (gf : ℕ+) (gst : Time) (r : (Sys F V).Run) :
 end Pinned
 
 /-- The weak-continuation premise at gap `k` after GST `gst`: partially
-synchronous with GST `gst` (the whole run), healthy (a fixed set of more than
-`φ·n` honest validators continuously awake) up to the heal point, one honest
+synchronous with GST `gst` (the whole run), healthy (every honest validator
+awake, fewer than `β·n` faulty) up to the heal point, one honest
 ready proposer per window of `k` slots on `[ready, heal]`, and sleepy
 participation from the heal point to the horizon. No recurrence after the
 heal point. -/
 def WeakPremise {F : ShapeFamily goldilocksSchema Info} {V : Type} [Fintype V] [DecidableEq V]
     (pp : FGSAParams) (gst : Time) (k : ℕ+) (r : (Sys F V).Run) : Prop :=
   CommLog.PSync r.2.point r.2.log gst ∧
-    ((Sys F V).pt r).HealthyOn (goldilocksContract pp).params.φ gst (gHeal pp k gst r) ∧
+    ((Sys F V).pt r).HealthyOn (goldilocksContract pp).params.β gst (gHeal pp k gst r) ∧
     gProg pp .available k (gReady gst r) (gHeal pp k gst r) r ∧
     ((Sys F V).pt r).SleepyOn (goldilocksContract pp).params.θ (gc r) (gHeal pp k gst r)
       ((Sys F V).pt r).horizon
@@ -594,7 +594,7 @@ theorem confirmed_safe_healed_prefix (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
     (hv : (Sys F V).Valid r) {b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ ((Sys F V).pt r).horizon)
     (hs : ((Sys F V).log r).Delivers ((Sys F V).pt r)
       (fun a => max a gst + ((Sys F V).pt r).env.Δ) b)
-    (hH : ((Sys F V).pt r).HealthyOn (2 / 3) gst b)
+    (hH : ((Sys F V).pt r).HealthyOn (1 / 3) gst b)
     (hp : gProg pp .available k
       (gReady gst r)
       (gHeal pp k gst r) r)

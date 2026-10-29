@@ -28,22 +28,10 @@ namespace EnvPoint
 
 variable {V : Type} [Fintype V] [DecidableEq V] {p : EnvPoint V}
 
-/-- Healthy bounds the faults: a set of more than `φ·n` honest validators
-leaves fewer than `(1 − φ)·n` faulty. -/
-theorem HealthyOn.faultsBelow {φ : ℚ} {g b : Time} (h : p.HealthyOn φ g b) :
-    p.FaultsBelow (1 - φ) := by
-  classical
-  obtain ⟨H, hsub, ha, -⟩ := h
-  have hc : H.card ≤ p.honest.card := Finset.card_le_card hsub
-  have hsum : p.faulty.card + p.honest.card = Fintype.card V := by
-    unfold faulty
-    rw [Finset.card_sdiff_of_subset (Finset.subset_univ _), Finset.card_univ]
-    have := Finset.card_le_univ p.honest
-    omega
-  have hc' : (H.card : ℚ) ≤ p.honest.card := by exact_mod_cast hc
-  have hsum' : (p.faulty.card : ℚ) + p.honest.card = Fintype.card V := by exact_mod_cast hsum
-  unfold FaultsBelow
-  linarith
+/-- Healthy bounds the faults below `β`. -/
+theorem HealthyOn.faultsBelow {β : ℚ} {g b : Time} (h : p.HealthyOn β g b) :
+    p.FaultsBelow β :=
+  h.1
 
 end EnvPoint
 

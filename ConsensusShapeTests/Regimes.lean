@@ -21,19 +21,20 @@ it rejects.
 * `sleepy_with_sleeper` (M9): five validators, one faulty, honest validator 4
   asleep on `[2, 5]`. The point is ½-sleepy at every catch-up, and with the
   silent log every contract with `θ ≤ ½` has the sleepy regime there; it is not
-  healthy from `0` at ⅔ (three validators awake throughout are not more than
-  ⅔ of five): sleepy participation is the weaker, dynamic regime.
+  healthy from `0` at any fault bound (an honest validator sleeps, and the
+  healthy regime is full participation): sleepy participation is the weaker,
+  dynamic regime.
 * `healthy_wake_at_gst` (M11): three honest validators asleep before `5` and
-  awake from `5`. Healthy from GST `5` at ⅔ (the healthy regime counts awake,
+  awake from `5`. Healthy from GST `5` at `β = ⅓` (the healthy regime counts awake,
   not ready: a wake at GST is allowed), although nobody is ready at `5` with
   catch-up `2`; everyone is ready at `max 5 0 + 2 + 1 = 8`, where progress
   windows start.
-* `healthy_needs_two_thirds`: three honest validators, one always asleep:
-  exactly ⅔ awake is not healthy at `φ = ⅔` (the regime needs *more* than
-  ⅔), but is at `φ = ½`.
-* `faulty_third_not_healthy` (M21): healthy at ⅔ bounds the faults below ⅓
+* `healthy_needs_full_participation`: three honest validators, one always
+  asleep: not healthy at any fault bound `β` (the regime is full
+  participation); with everyone awake, healthy at every `β > 0`.
+* `faulty_third_not_healthy` (M21): healthy at `β` bounds the faults below `β`
   (`HealthyOn.faultsBelow`), on every point; so a point with one faulty
-  validator among three is never healthy at ⅔, however awake.
+  validator among three is never healthy at `β = ⅓`, however awake.
 * `outage_times_teeth`: with lag `2`, budget `3`, `Δ = 1`, `OutageTimes`
   accepts `T = 0, [2, 5)`, and rejects an arming at a negative time, an arming
   less than `lag·Δ` before the window, a window longer than `budget·Δ`, and an
@@ -161,12 +162,10 @@ theorem EtaSleepyOn.mono {θ θ' : ℚ} {η η' c a b : Time} (h : p.EtaSleepyOn
     (h0 : 0 ≤ θ) (hθ : θ ≤ θ') (hη : η ≤ η') : p.EtaSleepyOn θ η c a b :=
   fun t ha hb => (h t ha hb).mono p h0 hθ hη
 
-omit [DecidableEq V] in
-/-- A smaller fraction is weaker. -/
-theorem HealthyOn.mono {φ φ' : ℚ} {g b : Time} (h : p.HealthyOn φ' g b) (hle : φ ≤ φ') :
-    p.HealthyOn φ g b := by
-  obtain ⟨H, hH, hc, ha⟩ := h
-  exact ⟨H, hH, lt_of_le_of_lt (mul_le_mul_of_nonneg_right hle (by positivity)) hc, ha⟩
+/-- A larger fault bound is weaker. -/
+theorem HealthyOn.mono {β β' : ℚ} {g b : Time} (h : p.HealthyOn β' g b) (hle : β' ≤ β) :
+    p.HealthyOn β g b :=
+  ⟨lt_of_lt_of_le h.1 (mul_le_mul_of_nonneg_right hle (by positivity)), h.2⟩
 
 end EnvPoint
 
@@ -197,11 +196,10 @@ theorem Sleepy.of_le (hc : K'.params.catchUp = K.params.catchUp) (hθ : K'.param
   rw [cDur_of_catchUp hc]
   exact EnvPoint.SleepyOn.mono h.2 hθ
 
-omit [DecidableEq V] in
-/-- Weaker thresholds keep the healthy regime. -/
-theorem Healthy.of_le {g : Time} (hφ : K'.params.φ ≤ K.params.φ) (h : S.Healthy K g r) :
+/-- A weaker fault bound keeps the healthy regime. -/
+theorem Healthy.of_le {g : Time} (hβ : K.params.β ≤ K'.params.β) (h : S.Healthy K g r) :
     S.Healthy K' g r :=
-  ⟨h.1, EnvPoint.HealthyOn.mono h.2 hφ⟩
+  ⟨h.1, EnvPoint.HealthyOn.mono h.2 hβ⟩
 
 /-- Weaker thresholds (`θ' ≥ 0`), a shorter look-back, a shorter lag and a
 larger budget (same catch-up) keep the outage regime. -/
@@ -349,29 +347,20 @@ theorem ptS_readyAbove (c t : Time) : ptS.ReadyAbove (1 / 2) c t := by
 
 /-- A sleeper: honest validator `4` sleeps at `2`. The point is ½-sleepy at
 every catch-up; with the silent log, every contract with `θ ≤ ½` has the
-sleepy regime; the point is not healthy from `0` at ⅔. -/
+sleepy regime; the point is not healthy from `0` at any fault bound. -/
 theorem sleepy_with_sleeper :
     (4 : Fin 5) ∈ ptS.honest ∧ ptS.env.awake 4 2 = false ∧
     (∀ c, ptS.SleepyOn (1 / 2) c 0 ptS.horizon) ∧
     (∀ {Idx : Type} (P : Params Idx), P.θ ≤ 1 / 2 →
       (silentLog (Fin 5) Unit).PSync ptS 0 ∧
         ptS.SleepyOn P.θ ((P.catchUp : Time) * ptS.env.Δ) 0 ptS.horizon) ∧
-    ¬ ptS.HealthyOn (2 / 3) 0 ptS.horizon := by
+    ∀ β, ¬ ptS.HealthyOn β 0 ptS.horizon := by
   refine ⟨by decide, by decide, fun c t _ _ => ptS_readyAbove c t, fun P hθ => ?_, ?_⟩
   · exact ⟨silentLog_delivers _ (fun _ _ => rfl) _ _,
       fun t _ _ => (ptS_readyAbove _ t).mono _ hθ⟩
-  · rintro ⟨H, hH, hc, ha⟩
-    have hsub : H ⊆ {1, 2, 3} := by
-      intro v hv
-      have hvh := hH hv
-      have h4 : v ≠ 4 := by
-        rintro rfl
-        have := ha 4 hv 2 (by decide) (by decide)
-        exact absurd this (by decide)
-      fin_cases v <;> simp_all [ptS]
-    have : (H.card : ℚ) ≤ 3 := by exact_mod_cast Finset.card_le_card hsub
-    norm_num at hc
-    linarith
+  · rintro β ⟨-, ha⟩
+    have := ha 4 (by decide) 2 (by decide) (by decide)
+    exact absurd this (by decide)
 
 end Sleeper
 
@@ -382,16 +371,17 @@ horizon `20`. -/
 def ptG : EnvPoint (Fin 3) :=
   ⟨⟨1, by decide, fun _ t => decide (5 ≤ t)⟩, Finset.univ, 20, fun _ _ => []⟩
 
-/-- A wake at GST: healthy from `5` at ⅔ (and the healthy regime holds with the
-silent log for every `φ ≤ ⅔`), nobody ready at `5` with catch-up `2`,
+/-- A wake at GST: healthy from `5` at `β = ⅓` (and the healthy regime holds
+with the silent log for every `β ≥ ⅓`), nobody ready at `5` with catch-up `2`,
 everyone ready at `max 5 0 + 2 + 1 = 8`. -/
 theorem healthy_wake_at_gst :
-    ptG.HealthyOn (2 / 3) 5 ptG.horizon ∧
-    (∀ {Idx : Type} (P : Params Idx), P.φ ≤ 2 / 3 →
-      (silentLog (Fin 3) Unit).PSync ptG 5 ∧ ptG.HealthyOn P.φ 5 ptG.horizon) ∧
+    ptG.HealthyOn (1 / 3) 5 ptG.horizon ∧
+    (∀ {Idx : Type} (P : Params Idx), 1 / 3 ≤ P.β →
+      (silentLog (Fin 3) Unit).PSync ptG 5 ∧ ptG.HealthyOn P.β 5 ptG.horizon) ∧
     ptG.readyAt 2 5 = ∅ ∧ (max 5 0 + 2 + 1 : Time) = 8 ∧ ∀ v, ptG.Ready 2 v (max 5 0 + 2 + 1) := by
-  have hH : ptG.HealthyOn (2 / 3) 5 ptG.horizon := by
-    refine ⟨Finset.univ, subset_rfl, by norm_num, fun v _ u hu _ => ?_⟩
+  have hH : ptG.HealthyOn (1 / 3) 5 ptG.horizon := by
+    have hf : ptG.faulty = ∅ := by ext v; simp [EnvPoint.faulty, ptG]
+    refine ⟨by rw [hf]; norm_num, fun v _ u hu _ => ?_⟩
     simp only [ptG, decide_eq_true_eq]
     exact le_trans (le_max_left _ _) hu
   refine ⟨hH, fun P hφ => ⟨silentLog_delivers _ (fun _ _ => rfl) _ _, hH.mono hφ⟩, ?_,
@@ -410,32 +400,28 @@ theorem healthy_wake_at_gst :
 
 end WakeAtGST
 
-section TwoThirds
+section FullParticipation
 
 /-- Three honest validators; validator `2` always asleep. -/
 def ptT : EnvPoint (Fin 3) :=
   ⟨⟨1, by decide, fun v _ => decide (v ≠ 2)⟩, Finset.univ, 10, fun _ _ => []⟩
 
-/-- Exactly ⅔ awake is not healthy at `φ = ⅔`; it is at `φ = ½`. -/
-theorem healthy_needs_two_thirds :
-    ¬ ptT.HealthyOn (2 / 3) 0 ptT.horizon ∧ ptT.HealthyOn (1 / 2) 0 ptT.horizon := by
-  refine ⟨?_, ⟨{0, 1}, Finset.subset_univ _, by norm_num, ?_⟩⟩
-  · rintro ⟨H, -, hc, ha⟩
-    have hsub : H ⊆ {0, 1} := by
-      intro v hv
-      have h2 : v ≠ 2 := by
-        rintro rfl
-        have := ha 2 hv 0 (by decide) (by decide)
-        exact absurd this (by decide)
-      fin_cases v <;> simp_all
-    have h2 : H.card ≤ 2 := (Finset.card_le_card hsub).trans (by decide)
-    have hc' : (2 : ℚ) < H.card := by simpa using hc
-    have : 2 < H.card := by exact_mod_cast hc'
-    omega
-  · intro v hv u _ _
-    fin_cases hv <;> rfl
+/-- Three honest validators, everyone always awake. -/
+def ptA : EnvPoint (Fin 3) :=
+  ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ, 10, fun _ _ => []⟩
 
-end TwoThirds
+/-- The healthy regime is full participation: two of three honest validators
+awake throughout (no faults) is not healthy at any fault bound `β`; with
+everyone awake it is healthy at every `β > 0`. -/
+theorem healthy_needs_full_participation :
+    (∀ β, ¬ ptT.HealthyOn β 0 ptT.horizon) ∧ ∀ β, 0 < β → ptA.HealthyOn β 0 ptA.horizon := by
+  refine ⟨fun β h => ?_, fun β hβ => ⟨?_, fun _ _ _ _ _ => rfl⟩⟩
+  · have := h.2 2 (Finset.mem_univ _) 0 (by decide) (by decide)
+    exact absurd this (by decide)
+  · have hf : ptA.faulty = ∅ := by ext v; simp [EnvPoint.faulty, ptA]
+    rw [hf]; simp only [Finset.card_empty, Nat.cast_zero, Fintype.card_fin]; positivity
+
+end FullParticipation
 
 section Faults
 
@@ -443,8 +429,9 @@ section Faults
 def ptF : EnvPoint (Fin 3) :=
   ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ.erase 0, 10, fun _ _ => []⟩
 
-/-- So one faulty validator among three is never healthy at ⅔, on any window. -/
-theorem faulty_third_not_healthy (g b : Time) : ¬ ptF.HealthyOn (2 / 3) g b := by
+/-- So one faulty validator among three is never healthy at `β = ⅓`, on any
+window. -/
+theorem faulty_third_not_healthy (g b : Time) : ¬ ptF.HealthyOn (1 / 3) g b := by
   intro h
   have := h.faultsBelow
   unfold EnvPoint.FaultsBelow at this

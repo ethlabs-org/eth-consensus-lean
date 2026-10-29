@@ -21,7 +21,8 @@ public import Mathlib.Tactic
 * `healthy_rotating_sleeper`: four
   honest validators, one of them asleep at each time in turn. More than ⅔ are
   honest and awake at every time, but no validator is awake throughout, so the
-  healthy regime (one fixed set awake throughout, no churn) is **rejected**;
+  healthy regime (full participation: every honest validator awake
+  throughout) is **rejected** at every fault bound;
   with catch-up `3` nobody is ready from time `3` on.
 * `eta_sleepy_history_sensitive`: the same rotation with
   catch-up `0` is plain ½-sleepy at every time, but not ½-η-sleepy with
@@ -53,18 +54,23 @@ theorem AwakeOfAll.mono {φ φ' : ℚ} {t : Time} (h : p.AwakeOfAll φ' t) (hle 
 
 variable {p}
 
-omit [DecidableEq V] in
-/-- Healthy on `[max g 0, b]` gives more than `φ·n` honest and awake at every
-time in it. -/
-theorem HealthyOn.awakeOfAll {φ : ℚ} {g b t : Time} (h : p.HealthyOn φ g b)
-    (ht : max g 0 ≤ t) (htb : t ≤ b) : p.AwakeOfAll φ t := by
+/-- Healthy at fault bound `β` on `[max g 0, b]` gives more than `(1 − β)·n`
+honest and awake at every time in it (every honest validator is awake). -/
+theorem HealthyOn.awakeOfAll {β : ℚ} {g b t : Time} (h : p.HealthyOn β g b)
+    (ht : max g 0 ≤ t) (htb : t ≤ b) : p.AwakeOfAll (1 - β) t := by
   classical
-  obtain ⟨H, hH, hc, ha⟩ := h
-  have hsub : H ⊆ p.awakeAt t := by
+  obtain ⟨hc, ha⟩ := h
+  have hsub : p.honest ⊆ p.awakeAt t := by
     intro v hv
     unfold awakeAt
-    exact Finset.mem_filter.mpr ⟨hH hv, ha v hv t ht htb⟩
-  have : (H.card : ℚ) ≤ (p.awakeAt t).card := by exact_mod_cast Finset.card_le_card hsub
+    exact Finset.mem_filter.mpr ⟨hv, ha v hv t ht htb⟩
+  have : (p.honest.card : ℚ) ≤ (p.awakeAt t).card := by exact_mod_cast Finset.card_le_card hsub
+  have hsum : p.faulty.card + p.honest.card = Fintype.card V := by
+    unfold faulty
+    rw [Finset.card_sdiff_of_subset (Finset.subset_univ _), Finset.card_univ]
+    have := Finset.card_le_univ p.honest
+    omega
+  have hsum' : (p.faulty.card : ℚ) + p.honest.card = Fintype.card V := by exact_mod_cast hsum
   unfold AwakeOfAll
   linarith
 
@@ -213,26 +219,19 @@ theorem rotPoint_awake_card (t : Int) : (rotPoint.awakeAt t).card = 3 := by
   rw [this, Finset.card_erase_of_mem (Finset.mem_univ _)]
   rfl
 
-/-- More than ⅔ honest and awake at every time, yet not healthy from `0`: every
-validator sleeps at some time in `[0, 10]`, so no fixed set stays awake (no
-churn allowed). With catch-up `3` nobody is ready from time `3` on. -/
+/-- More than ⅔ honest and awake at every time, yet not healthy from `0` at
+any fault bound: validator `0` sleeps at time `0` (the healthy regime is full
+participation). With catch-up `3` nobody is ready from time `3` on. -/
 theorem healthy_rotating_sleeper :
-    (∀ t, rotPoint.AwakeOfAll (2 / 3) t) ∧ ¬ rotPoint.HealthyOn (2 / 3) 0 rotPoint.horizon ∧
+    (∀ t, rotPoint.AwakeOfAll (2 / 3) t) ∧ (∀ β, ¬ rotPoint.HealthyOn β 0 rotPoint.horizon) ∧
       ∀ t, 3 ≤ t → rotPoint.readyAt 3 t = ∅ := by
   refine ⟨fun t => ?_, ?_, fun t ht => ?_⟩
   · unfold EnvPoint.AwakeOfAll
     rw [rotPoint_awake_card]
     norm_num
-  · rintro ⟨H, -, hc, ha⟩
-    have hne : H.Nonempty := by
-      rw [← Finset.card_pos]
-      have : (0 : ℚ) < H.card := lt_of_le_of_lt (by positivity) hc
-      exact_mod_cast this
-    obtain ⟨v, hv⟩ := hne
-    have hv4 : (v : Nat) < 4 := v.isLt
-    have hu := ha v hv ((v : Nat) : Int) (by simp) (by change _ ≤ (10 : Int); omega)
+  · intro β h
+    have hu := h.2 0 (Finset.mem_univ _) 0 (by simp) (by change _ ≤ (10 : Int); omega)
     simp [rotPoint] at hu
-    exact hu (Int.emod_eq_of_lt (by positivity) (by omega))
   · classical
     unfold EnvPoint.readyAt
     apply Finset.filter_false_of_mem

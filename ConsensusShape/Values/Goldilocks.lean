@@ -17,8 +17,8 @@ this contract, and the Goldilocks extras, give.
 * Skeleton: slot proposals by one selected key per slot on a grid of `4·Δ`
   slots; polling disabled. The committee kinds `head`/`fin` and their phases
   are placeholders until the FG-SA migration fixes them.
-* Numbers (`FGSAParams.params`): standard thresholds (½ sleepy, ⅔ healthy,
-  ½ cover, ⅓ accountable); catch-up `18` (two slots + the `6Δ` join + one gate,
+* Numbers (`FGSAParams.params`): standard thresholds (½ sleepy, healthy faults
+  below ⅓, ½ cover, ⅓ accountable); catch-up `18` (two slots + the `6Δ` join + one gate,
   gate F-3); arming lag `L − 3Δ = 4·lockK − 4` (slow arming); outage budget
   `min eta (4·lockK − 5)` (implies FG-SA's condition (V), `budget_implies_V` in
   the sheet); outage look-back `η = eta` (the outage regime is η-sleepy,

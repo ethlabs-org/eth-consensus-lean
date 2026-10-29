@@ -9,8 +9,9 @@ public import Mathlib.Tactic
 
 * A bound of one validator not ready fails the sleepy stress requirement.
 * **Admissibility rejections** (M10): a contract cannot buy its claims with a
-  stronger environment. Each of `θ = 3/5`, `φ = 9/10`, `cover = 3/5`,
-  `α = 1/4` (with `φ = 2/3`: `1 − φ > α`), `budget = 0` and `catchUp = 0`,
+  stronger environment. Each of `θ = 3/5`, `β = 1/4` (fewer faults than a
+  third), `cover = 3/5`, `α = 1/4` (with `β = 1/3`: `β > α`), `budget = 0` and
+  `catchUp = 0`,
   changed alone from admissible standard numbers, is rejected
   (`reject_theta` … `reject_catchUp`, bundled as `admissibility_rejections`);
   `standard_admissible` is the control (the standard numbers are admissible).
@@ -86,19 +87,19 @@ theorem standard_admissible : std.Admissible :=
 theorem reject_theta : ¬ ({ std with θ := 3 / 5 } : Params Unit).Admissible :=
   fun h => by have := h.θ_range.2; norm_num at this
 
-/-- A healthy threshold above ⅔ is rejected. -/
-theorem reject_phi : ¬ ({ std with φ := 9 / 10 } : Params Unit).Admissible :=
-  fun h => by have := h.φ_range.2; norm_num at this
+/-- A healthy fault bound below ⅓ (a stronger premise) is rejected. -/
+theorem reject_beta : ¬ ({ std with β := 1 / 4 } : Params Unit).Admissible :=
+  fun h => by have := h.β_range; norm_num at this
 
 /-- A cover above ½ is rejected. -/
 theorem reject_cover : ¬ ({ std with cover := 3 / 5 } : Params Unit).Admissible :=
   fun h => by have := h.cover_range.2; norm_num at this
 
-/-- `α = 1/4` is rejected at every admissible-range `φ` (`1 − φ ≥ 1/3`). -/
+/-- `α = 1/4` is rejected at every admissible-range `β` (`β ≥ 1/3`). -/
 theorem reject_alpha_any {Idx : Type} (P : Params Idx) (hα : P.α = 1 / 4) : ¬ P.Admissible :=
-  fun h => by have := h.α_range.1; have := h.φ_range.2; rw [hα] at *; linarith
+  fun h => by have := h.α_range.1; have := h.β_range; rw [hα] at *; linarith
 
-/-- An accountable fraction below `1 − φ` is rejected (`α = 1/4`, `φ = 2/3`):
+/-- An accountable fraction below `β` is rejected (`α = 1/4`, `β = 1/3`):
 the healthy regime would not bound the faults below `α`. -/
 theorem reject_alpha : ¬ ({ std with α := 1 / 4 } : Params Unit).Admissible :=
   reject_alpha_any _ rfl
@@ -114,12 +115,12 @@ theorem reject_catchUp : ¬ ({ std with catchUp := 0 } : Params Unit).Admissible
 /-- All six rejections, beside the control. -/
 theorem admissibility_rejections :
     std.Admissible ∧ ¬ ({ std with θ := 3 / 5 } : Params Unit).Admissible ∧
-      ¬ ({ std with φ := 9 / 10 } : Params Unit).Admissible ∧
+      ¬ ({ std with β := 1 / 4 } : Params Unit).Admissible ∧
       ¬ ({ std with cover := 3 / 5 } : Params Unit).Admissible ∧
       ¬ ({ std with α := 1 / 4 } : Params Unit).Admissible ∧
       ¬ ({ std with budget := 0 } : Params Unit).Admissible ∧
       ¬ ({ std with catchUp := 0 } : Params Unit).Admissible :=
-  ⟨standard_admissible, reject_theta, reject_phi, reject_cover, reject_alpha, reject_budget,
+  ⟨standard_admissible, reject_theta, reject_beta, reject_cover, reject_alpha, reject_budget,
     reject_catchUp⟩
 
 end Admissibility

@@ -29,8 +29,8 @@ structure Params (Idx : Type) where
   catchUp : Nat
   /-- Sleepy threshold: `θ·(|ready| + |faulty|) < |ready|`. -/
   θ : ℚ
-  /-- Healthy threshold (`System.Healthy`). -/
-  φ : ℚ
+  /-- Healthy fault bound: fewer than `β·n` faulty (`System.Healthy`). -/
+  β : ℚ
   /-- Caught up at the outage start: `cover·n < |ready b₀|`. -/
   cover : ℚ
   /-- Accountable fraction of the final output. -/
@@ -50,21 +50,22 @@ namespace Params
 
 variable {Idx : Type}
 
-/-- The standard thresholds `θ = ½`, `φ = ⅔`, `cover = ½`, `α = ⅓`, and
+/-- The standard thresholds `θ = ½`, `β = ⅓`, `cover = ½`, `α = ⅓`, and
 look-back `η = 0` (an instance sets `η` with `{ standard … with η := k }`). -/
 def standard (catchUp lag budget : Nat) (heal latency : Capability → Idx → Nat) :
     Params Idx :=
-  ⟨catchUp, 1 / 2, 2 / 3, 1 / 2, 1 / 3, lag, budget, 0, heal, latency⟩
+  ⟨catchUp, 1 / 2, 1 / 3, 1 / 2, 1 / 3, lag, budget, 0, heal, latency⟩
 
-/-- Admissible numbers: thresholds no stronger than standard, `1 − φ ≤ α`
-(so the healthy regime implies faults below the accountable fraction), a
-positive catch-up and a positive budget. -/
+/-- Admissible numbers: thresholds no stronger than standard (the healthy
+fault bound `β ≥ ⅓`: a larger `β` admits more faults, a weaker premise),
+`β ≤ α` (so the healthy regime implies faults below the accountable
+fraction), a positive catch-up and a positive budget. -/
 structure Admissible (P : Params Idx) : Prop where
   catchUp_pos : 1 ≤ P.catchUp
   θ_range : 0 ≤ P.θ ∧ P.θ ≤ 1 / 2
-  φ_range : 0 ≤ P.φ ∧ P.φ ≤ 2 / 3
+  β_range : 1 / 3 ≤ P.β
   cover_range : 0 ≤ P.cover ∧ P.cover ≤ 1 / 2
-  α_range : 1 - P.φ ≤ P.α ∧ P.α ≤ 1
+  α_range : P.β ≤ P.α ∧ P.α ≤ 1
   budget_pos : 1 ≤ P.budget
 
 end Params
@@ -80,9 +81,11 @@ def SleepyOn (θ : ℚ) (c a b : Time) : Prop := ∀ t, a ≤ t → t ≤ b → 
 def EtaSleepyOn (θ : ℚ) (η c a b : Time) : Prop :=
   ∀ t, a ≤ t → t ≤ b → p.EtaReadyAbove θ η c t
 
-/-- Healthy participation on `[max g 0, b]` (see `System.Healthy`). -/
-def HealthyOn (φ : ℚ) (g b : Time) : Prop :=
-  ∃ H ⊆ p.honest, φ * Fintype.card V < (H.card : ℚ) ∧ ∀ v ∈ H, p.AwakeOnClosed v (max g 0) b
+/-- Healthy participation on `[max g 0, b]` (see `System.Healthy`): fewer
+than fraction `β` of all validators are faulty, and every honest validator is
+awake throughout (full participation). -/
+def HealthyOn (β : ℚ) (g b : Time) : Prop :=
+  (p.faulty.card : ℚ) < β * Fintype.card V ∧ ∀ v ∈ p.honest, p.AwakeOnClosed v (max g 0) b
 
 end EnvPoint
 
@@ -129,12 +132,12 @@ validators exceed fraction `θ` of the ready and faulty ones. -/
 def Sleepy (K : Contract Prog) (r : S.Run) : Prop :=
   (S.log r).PSync (S.pt r) 0 ∧ (S.pt r).SleepyOn K.params.θ (S.cDur K r) 0 (S.pt r).horizon
 
-/-- **Healthy from GST `g`**: partial synchrony with GST `g`, and one fixed set
-of more than `φ·n` honest validators, each awake throughout
-`[max g 0, horizon]` (no churn, so certificates are formable; awake, not
-ready: readiness restricts readers and progress only). -/
+/-- **Healthy from GST `g`**: partial synchrony with GST `g`, fewer than
+`β·n` faulty validators, and full participation: every honest validator is
+awake throughout `[max g 0, horizon]` (awake, not ready: readiness restricts
+readers and progress only). -/
 def Healthy (K : Contract Prog) (g : Time) (r : S.Run) : Prop :=
-  (S.log r).PSync (S.pt r) g ∧ (S.pt r).HealthyOn K.params.φ g (S.pt r).horizon
+  (S.log r).PSync (S.pt r) g ∧ (S.pt r).HealthyOn K.params.β g (S.pt r).horizon
 
 /-- **Outage `[b₀, b₁)` armed at `T`** (`OutageTimes`): synchronous before
 `b₀`, partially synchronous with GST `b₁`, η-sleepy throughout (look-back

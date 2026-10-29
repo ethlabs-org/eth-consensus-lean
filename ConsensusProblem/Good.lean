@@ -17,7 +17,8 @@ contract `K` (numbers only). Three parts:
   prefix closure).
 * `Realizable` (for at least five validators): every regime, at every `Δ`,
   every GST and arbitrarily late outages, is met by a clean witness with
-  active claims, plus stress witnesses with many honest validators asleep.
+  active claims, plus a sleepy stress witness with many honest validators
+  asleep.
 
 What L0 cannot check, and L1 proves once for the model: the log is the
 engine's real communication (`Model.sysOf_log_faithful`), and the external data
@@ -221,8 +222,8 @@ end System
 
 /-- **Realizability**: every regime is met by a clean witness with active
 claims, at every `Δ`, every GST (with a log silent before it), and arbitrarily
-late outages; and every provided output is live, at some index, with many
-honest validators asleep (stress witnesses). -/
+late outages; and every provided available or stable output is live, at
+some index, with many honest validators asleep (sleepy stress witness). -/
 structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     Prop where
   sleepy : ∀ cap i (Δ : Time), 0 < Δ → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
@@ -237,12 +238,6 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
   sleepyStress : ∀ cap, (cap = .available ∨ cap = .stable) → (S.schema.output cap).isSome →
     ∀ Δ : Time, 0 < Δ → ∃ i r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ S.SleepyLive X K cap i r ∧
       (S.pt r).AwakeAtMost (2 * Fintype.card V / 3)
-  /-- Healthy stress: every provided output is live, at some index, on a
-  healthy witness from every GST where at most `⌊2n/3⌋ + 1` honest
-  validators are awake at any time (a minimal awake supermajority). -/
-  healthyStress : ∀ cap, (S.schema.output cap).isSome → ∀ (Δ g : Time), 0 < Δ → 0 ≤ g →
-    ∃ i r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ S.HealthyLive X K cap i g r ∧
-      (S.pt r).AwakeAtMost (2 * Fintype.card V / 3 + 1)
   outage : ∀ (Δ : Time) (k : Nat), 0 < Δ → ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
     S.Outage K T b₀ b₁ r ∧ OutageActive (S.cDur K r) T b₀ b₁ (S.pt r) ∧ (k : Time) * Δ ≤ T
 

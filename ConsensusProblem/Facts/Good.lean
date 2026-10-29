@@ -75,8 +75,7 @@ theorem final_agree (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .fi
   (h.behaviour.finalAccountable g hg r hv trivial).imp
     (fun ha => S.agree_of_accountable h.behaviour.laws r ha (h.behaviour.nonFraming r hv) hb) id
 
-/-- Final safety in the healthy regime: a set of more than `φ·n` honest
-validators bounds the faults below `1 − φ ≤ α`. -/
+/-- Final safety in the healthy regime: the faults are below `β ≤ α`. -/
 theorem final_safe_healthy (h : Good S X K) {g : S.schema.Id}
     (hg : S.schema.output .final = some g) (r : S.Run) (hv : S.Valid r) {gst : Time}
     (hH : S.Healthy K gst r) : (S.trace r).Safe g 0 ∨ S.Excuse r := by
@@ -144,7 +143,7 @@ theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
     (r : S.Run) (hv : S.Valid r) (i : K.Idx) (gst : Time) {b : Time} (hb0 : 0 ≤ b)
     (hbh : b ≤ (S.pt r).horizon)
     (hs : (S.log r).Delivers (S.pt r) (fun a => max a gst + (S.pt r).env.Δ) b)
-    (hH : (S.pt r).HealthyOn K.params.φ gst b)
+    (hH : (S.pt r).HealthyOn K.params.β gst b)
     (hp : S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
     (hhb : S.heal K cap i gst r ≤ b) :
     (S.trace r).ReadySafeUpTo (S.cDur K r) g (S.heal K cap i gst r) b ∨ S.Excuse r := by

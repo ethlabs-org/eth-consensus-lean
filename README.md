@@ -45,15 +45,15 @@ that a claim or regime evaluates.
   - `OutageActive`: a ready source, a real sleeper inside the window and an
     eligible reader.
 
-  Two **stress witnesses** exercise liveness with many honest validators
+  A **stress witness** exercises liveness with many honest validators
   asleep, so a progress requirement cannot quietly demand near-full
-  participation. For every provided output, at *some* index:
-  - `sleepyStress` (available, stable): a sleepy witness where at most
-    `⌊2n/3⌋` honest validators are awake at any one time (`AwakeAtMost`:
-    never an awake supermajority), with `prog[0, horizon]` and `TxLiveActive`;
-  - `healthyStress` (every provided output): a healthy witness from every
-    GST where at most `⌊2n/3⌋ + 1` honest validators are awake at any one
-    time (a minimal awake supermajority).
+  participation. For every provided available or stable output, at *some*
+  index:
+  - `sleepyStress`: a sleepy witness where at most `⌊2n/3⌋` honest validators
+    are awake at any one time (`AwakeAtMost`: never an awake supermajority),
+    with `prog[0, horizon]` and `TxLiveActive`.
+
+  The healthy regime is full participation, so it has no stress witness.
 
   A contract whose available progress is "at most one validator not ready"
   at every index is therefore not realizable
@@ -92,10 +92,10 @@ One field per row (`finalAccountable`, `healthyLive`, `sleepySafe`, `sleepyLive`
 | Theorem | Statement |
 |---|---|
 | `final_agree` | `FaultsBelow α` ⇒ `Agree final 0 ∨ HC`, in any network |
-| `final_safe_healthy` | `Healthy g` ⇒ `Safe final 0 ∨ HC` (uses `1 − φ ≤ α`) |
+| `final_safe_healthy` | `Healthy g` ⇒ `Safe final 0 ∨ HC` (uses `β ≤ α`) |
 | `persists_final_compatible` | through an outage, the stable read at `T` and an eligible reader's final read are compatible |
 | **prefix forms** `sleepySafe_prefix` | `SyncUntil b ∧ SleepyOn θ c 0 b` ⇒ `ReadySafeUpTo c g 0 b ∨ HC`: the past is safe whatever happens after `b` |
-| `healedSafe_prefix` | partial synchrony with GST `g` for deadlines up to `b`, `HealthyOn φ g b`, `prog[ready, heal]` and `heal ≤ b` ⇒ `ReadySafeUpTo c g heal b ∨ HC` |
+| `healedSafe_prefix` | partial synchrony with GST `g` for deadlines up to `b`, `HealthyOn β g b`, `prog[ready, heal]` and `heal ≤ b` ⇒ `ReadySafeUpTo c g heal b ∨ HC` |
 | `outage_prefix` | the outage regime up to `b` ⇒ protection at reading times in `[b₀, b]` ∨ HC |
 
 `TxLive c g start D` covers every submission: a transaction submitted to an
@@ -192,7 +192,7 @@ submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 | Regime | Definition |
 |---|---|
 | `System.Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + \|faulty\|) < \|ready_t\|` |
-| `System.Healthy g` | `L.PSync p g ∧ ∃ H ⊆ honest, φ·n < \|H\| ∧ ∀ v ∈ H, v awake throughout [max g 0, horizon]` (one fixed set, no churn, so certificates can be formed; awake, not ready) |
+| `System.Healthy g` | `L.PSync p g ∧ \|faulty\| < β·n ∧ ∀ v ∈ honest, v awake throughout [max g 0, horizon]` (full participation; awake, not ready) |
 | `System.Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·Δ) c 0 horizon ∧ cover·n < \|ready_{b₀}\|` |
 | `OutageTimes` | `0 ≤ T ∧ T + lag·Δ ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·Δ` |
 | η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·Δ), t] ∪ faulty\| < \|ready_t\|` |
@@ -211,20 +211,22 @@ the regimes, not of the environment. Weaker thresholds keep each regime
 ```lean
 structure Params (Idx : Type) where
   catchUp : Nat   -- reader catch-up c = catchUp·Δ
-  θ φ cover α : ℚ -- sleepy, healthy, outage cover, accountable fraction
+  θ β cover α : ℚ -- sleepy, healthy fault bound, outage cover, accountable fraction
   lag budget η : Nat                         -- outage arming lag, budget, look-back (Δ-coefficients)
   heal latency : Capability → Idx → Nat      -- heal point after max g 0; transaction latency
-def Params.standard (catchUp lag budget heal latency) := ⟨catchUp, ½, ⅔, ½, ⅓, lag, budget, 0, heal, latency⟩
+def Params.standard (catchUp lag budget heal latency) := ⟨catchUp, ½, ⅓, ½, ⅓, lag, budget, 0, heal, latency⟩
 structure Params.Admissible (P) : Prop :=
-  1 ≤ catchUp,  0 ≤ θ ≤ ½,  0 ≤ φ ≤ ⅔,  0 ≤ cover ≤ ½,  1 − φ ≤ α ≤ 1,  1 ≤ budget
+  1 ≤ catchUp,  0 ≤ θ ≤ ½,  ⅓ ≤ β,  0 ≤ cover ≤ ½,  β ≤ α ≤ 1,  1 ≤ budget
 ```
 
-A contract cannot buy its claims with easier **thresholds**: `θ`, `φ` and
-`cover` must be at most their standard values (a smaller value is a stronger
-regime premise, hence a stronger claim), and accountability requires
-`1 − φ ≤ α ≤ 1` (a larger `α` convicts more, hence is stronger; at the standard
-`φ = ⅔`, `α ≥ ⅓`). The healthy regime bounds faults below `1 − φ ≤ α`
-(`HealthyOn.faultsBelow`).
+A contract cannot buy its claims with easier **thresholds**: `θ` and `cover`
+must be at most their standard values (a smaller value is a weaker regime
+premise, hence a stronger claim), and the healthy fault bound `β` at least
+its standard `⅓` (the premise is `|faulty| < β·n`: a larger `β` admits more
+faults). Accountability requires `β ≤ α ≤ 1` (a larger `α` convicts more,
+hence is stronger; at the standard `β = ⅓`, `α ≥ ⅓`), so the healthy regime
+bounds faults below `β ≤ α` (`HealthyOn.faultsBelow`) and final safety holds
+there (`final_safe_healthy`).
 `standard_admissible` shows that the standard numbers are admissible. The
 other numbers are not bounded and carry part of the verdict: a larger
 `catchUp` means fewer ready readers, a larger `lag` a later protected source,
@@ -257,9 +259,9 @@ The slot is checked, within limits:
 
 - `Adequate.covers` transports it to the covering run.
 - `Realizable` requires it to hold on every witness, and, at some index, on
-  the stress witnesses with many honest validators asleep. A reader that
+  the stress witness with many honest validators asleep. A reader that
   never holds fails `Good` (`false_progress_not_good`); a requirement of
-  near-full participation at every index fails the stress witnesses.
+  near-full participation at every index fails the stress witness.
 - What remains the instance's choice is how strong the leader requirement
   is: a recurrence gap of one slot ("an honest ready proposer in *every*
   slot") passes, because the witnesses' proposer stays awake. The reviewer
@@ -281,7 +283,7 @@ include a faulty key (`allProposers_unfit`, `allProposers_no_witness`).
 `ProgressTolerant O K` asks every provided output of schema `O` to have, for every
 `N`, an index whose requirement tolerates `N` validators not ready (a
 recurrence always; `.notReadyAtMost m` when `N ≤ m`): this is what the
-stress witnesses need (`notReadyAtMost_one_not_tolerant`).
+stress witness needs (`notReadyAtMost_one_not_tolerant`).
 
 ### What an instance supplies
 
@@ -406,8 +408,8 @@ and `proposalLive_txLive` (proposal liveness and partial synchrony give
 transaction liveness; it needs catch-up `≥ Δ`, `Admissible.catchUp_pos`, so a
 ready proposer was awake over the delivery interval before its release). `sysOf_adequate` gives `Adequate`.
 `regimes_realizable` gives `RealizableActive`, hence `Realizable`
-(`RealizableActive.toRealizable`; its stress witnesses keep keys
-`1..3`, respectively `1..⌊2n/3⌋+1`, awake and the rest asleep). Corollary
+(`RealizableActive.toRealizable`; its stress witness keeps keys `1..3`
+awake and the rest asleep). Corollary
 (`ConsensusShape/Service.lean`, `Accepted.activeService`): a final or
 available output puts a relayed transaction into another honest node's
 read on a clean healthy witness (`ActiveService`). A silent service or empty
@@ -479,15 +481,18 @@ are the intended ones.
   participation (`stable_alias_final_sleepy_live`). Aliasing stable to
   available is allowed (Goldilocks).
 - **Non-accountable BFT is out of scope**. Final accountability is
-  mandatory, for fraction `α ≥ 1 − φ` (standard ⅓), in every environment.
+  mandatory, for fraction `α ≥ β` (standard ⅓), in every environment.
 - **One GST and one outage per run: partially closed.** The prefix forms
   (`Good.sleepySafe_prefix`, `healedSafe_prefix`, `outage_prefix`) make the
   past safe before any later asynchrony. A run after an outage is a run with
   GST `b₁`. Runs with several GSTs or outages, judged as a whole, are out of
   scope.
-- **Healthy means no churn.** A fixed set of more than `φ·n` honest
-  validators is awake throughout from `max g 0`. A rotating ⅔ is not healthy
-  (`healthy_rotating_sleeper`).
+- **Healthy means full participation** (Francesco, 2026-10-29). Every
+  honest validator is awake throughout from `max g 0`, with fewer than `β·n`
+  faulty. A rotating ⅔ is not healthy (`healthy_rotating_sleeper`), nor is a
+  fixed ⅔ with one honest sleeper (`healthy_needs_full_participation`).
+  Liveness with honest validators asleep is asked by the sleepy regime and
+  its stress witness.
 - Static adversary, equal weights, one `Δ`, no probabilistic protocols, no
   proof of work, no non-validator readers, no responsiveness claim.
 - No transaction validity, fees, capacity or chain-quality bounds. Liveness
@@ -520,7 +525,7 @@ are the intended ones.
 
 | Number | Value |
 |---|---|
-| thresholds | standard (`θ = ½`, `φ = ⅔`, `cover = ½`, `α = ⅓`) |
+| thresholds | standard (`θ = ½`, `β = ⅓`, `cover = ½`, `α = ⅓`) |
 | catch-up; arming lag; budget; `η` | `18`; `4·lockK − 4`; `min eta (4·lockK − 5)`; `eta` |
 | heal (available, stable), gap `k`; final, index `gf` | `29 + B_H^F(k)`; `29 + B_H^F(gf·R) + W_W(gf)` |
 | latency | `4k + 6`; final `4·gf·R + 6 + W_W(gf)` |

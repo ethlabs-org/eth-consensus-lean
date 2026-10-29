@@ -21,7 +21,7 @@ public import Mathlib.Tactic
   requirements up front; see `Vacuity.lean`.)
 * Rotating sleeper: four honest validators, a different one
   asleep at each tick, catch-up `3`: more than ⅔ awake at every tick
-  (but not healthy: no fixed set stays awake), and nobody is ready from
+  (but not healthy: not every honest validator is awake), and nobody is ready from
   `3` on. `rotating_notReadyOn_false`: the not-ready bound fails
   for `m < 4` (nobody is ready); `rotating_notReadyOn_trivial`: it holds
   trivially for `m ≥ 4`;

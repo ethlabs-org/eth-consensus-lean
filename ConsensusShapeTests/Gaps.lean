@@ -24,9 +24,9 @@ exist in `Index.lean`.
 * M6 syncUntil unchecked: removed, no premise language; `SyncUntil` is used only inside the fixed outage regime and the prefix forms.
 * M7 late GST: `Realizable.healthy` ∀ Δ, g (`regimes_realizable`); test `healed_witness_late` (Δ = 7, GST 1000).
 * M8 trivial outage: `OutageActive` in `Realizable.outage`; tests `outage_async_log`, `outage_witness_late` (≥ 1000·Δ), `outage_control`.
-* M9 dynamic participation: construction, sleepy is `ReadyAbove θ`, `θ ≤ ½`; test `sleepy_with_sleeper`; stress witnesses (`Realizable.sleepyStress`, `notReadyAtMost_one_not_realizable`).
-* M10 thresholds: `Params.Admissible`; tests `admissibility_rejections`, `standard_admissible`, `outage_times_teeth`, `healthy_needs_two_thirds`.
-* M11 wake at GST: `HealthyOn` counts a fixed awake set; progress from `ready`; test `healthy_wake_at_gst`.
+* M9 dynamic participation: construction, sleepy is `ReadyAbove θ`, `θ ≤ ½`; test `sleepy_with_sleeper`; stress witness (`Realizable.sleepyStress`, `notReadyAtMost_one_not_realizable`).
+* M10 thresholds: `Params.Admissible`; tests `admissibility_rejections`, `standard_admissible`, `outage_times_teeth`, `healthy_needs_full_participation`.
+* M11 wake at GST: `HealthyOn` counts every honest validator awake from `max g 0` (full participation); progress from `ready`; test `healthy_wake_at_gst`.
 * M12 inclusion of every proposal: sheet `includeSleepy`, `includeHealed`.
 * M13 window-only P1: sheet `outageWindow`; test `outageWindow_prefix_only`.
 * M14 outage stable/finalized: closed; stable = confirmed (`stable_is_confirmed`, sheet `confirmed_persists`); `Good.persists_final_compatible` (sheet `outage_final_compatible`).
@@ -36,11 +36,11 @@ exist in `Index.lean`.
 * M18 adaptive corruption: scope, static adversary.
 * M19 weights / committees: scope, equal weights (`Fintype V`, counts).
 * M20 cross-node nesting: sheet `crossNest`, `liveDC`.
-* M21 recovery fault bound: construction, `HealthyOn.faultsBelow` and `1 − φ ≤ α` (`Good.final_safe_healthy`; `example`); test `faulty_third_not_healthy`.
+* M21 recovery fault bound: construction, `HealthyOn.faultsBelow` and `β ≤ α` (`Good.final_safe_healthy`; `example`); test `faulty_third_not_healthy`.
 * M22 instance vs FG-SA: obligations (1)–(12).
 * M23 cover / budget: sheet `budget_implies_V`; cover ½ vs `OutageE`: obligation (4).
 * M24 reader scope: construction, `ReadySafe` (ready readers) for available/stable, `AccountablySafe` (every honest reader) for final (`example`).
-* M25 ready vs awake: healthy = fixed awake set (no churn), readers and progress ready; test `healthy_rotating_sleeper`; obligation (6).
+* M25 ready vs awake: healthy = every honest validator awake (full participation), readers and progress ready; test `healthy_rotating_sleeper`; obligation (6).
 * M26 single Δ: scope (`Δ_F = Δ`).
 * M27 Δ = 1 witnesses: `Realizable` quantifies every `Δ`; test `healed_witness_late` (Δ = 7).
 * M28 recovery starts: construction, `heal = max g 0 + heal·Δ`, `ready = max g 0 + c + 1` (`example`).
@@ -66,10 +66,10 @@ section Generic
 variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
   {X : Progress S Prog} {K : Contract Prog}
 
-/- M1: the healed regime requires the fixed healthy set awake to the horizon
+/- M1: the healed regime requires every honest validator awake to the horizon
 ("stay in recovery"); a run that leaves it is outside the regime. -/
 example (r : S.Run) (g : Time) (h : S.Healthy K g r) :
-    (S.pt r).HealthyOn K.params.φ g (S.pt r).horizon := h.2
+    (S.pt r).HealthyOn K.params.β g (S.pt r).horizon := h.2
 
 /- M4: partially synchronous safety and liveness are mandated: they are
 fields of the fixed behaviour table (liveness for every provided output). -/
@@ -85,10 +85,10 @@ example (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g
     (S.trace r).Agree g 0 ∨ S.Excuse r :=
   h.final_agree hg r hv hb
 
-/- M21: the healthy regime bounds the faults below `1 − φ ≤ α`, so final
+/- M21: the healthy regime bounds the faults below `β ≤ α`, so final
 safety holds there. -/
 example (r : S.Run) (g : Time) (h : S.Healthy K g r) :
-    (S.pt r).FaultsBelow (1 - K.params.φ) := h.2.faultsBelow
+    (S.pt r).FaultsBelow K.params.β := h.2.faultsBelow
 
 example (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g) (r : S.Run)
     (hv : S.Valid r) {gst : Time} (hH : S.Healthy K gst r) :

@@ -69,7 +69,7 @@ theorem pp223_numbers :
       pp223.latency .final 1 = 4 * 2 + 6 + pp223.wW 1 ∧
     (goldilocksContract pp223).params.catchUp = 18 ∧ (goldilocksContract pp223).params.lag = 4 ∧
       (goldilocksContract pp223).params.budget = 3 ∧ (goldilocksContract pp223).params.η = 3 ∧
-      (goldilocksContract pp223).params.θ = 1 / 2 ∧ (goldilocksContract pp223).params.φ = 2 / 3 ∧
+      (goldilocksContract pp223).params.θ = 1 / 2 ∧ (goldilocksContract pp223).params.β = 1 / 3 ∧
       (goldilocksContract pp223).params.cover = 1 / 2 ∧
       (goldilocksContract pp223).params.α = 1 / 3 ∧
     (pp223.finRec 1).pattern.span = 7 ∧ ((pp223.finRec 1).gap : Nat) = 2 :=
@@ -214,8 +214,8 @@ theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Countable Info]
     linarith
   refine ⟨⟨_, rho⟩, hw.1, (Model.sysOf_delivers_iff rho _ _).mp hH.1, ?_,
     (shapeProgress F (Fin 5)).mono le_rfl hhh hp, ?_⟩
-  · obtain ⟨S, hS, hcard, hawk⟩ := hH.2
-    exact ⟨S, hS, hcard, fun v hv u h1 h2 => hawk v hv u h1 (h2.trans hhh)⟩
+  · obtain ⟨hcard, hawk⟩ := hH.2
+    exact ⟨hcard, fun v hv u h1 h2 => hawk v hv u h1 (h2.trans hhh)⟩
   · intro t _ _
     change rho.point.ReadyAbove _ _ t
     rw [hpt]
