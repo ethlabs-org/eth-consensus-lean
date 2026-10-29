@@ -1,0 +1,12 @@
+{
+  "challenge_module": "ConsensusChallenge",
+  "solution_module": "ConsensusProofs.Review",
+  "theorem_names": [
+    "Fx.Review.stmtA"
+  ],
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ]
+}

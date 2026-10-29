@@ -1,0 +1,12 @@
+# sha256 of every file copied verbatim (checked by scripts/check.sh step 8).
+# EthLib (CC0-1.0), copied 2026-10-29 from the clone /srv/runs/fradamt/consensus-lean/reuse/src/EthLib
+# (no git metadata in the clone; upstream URL and commit to be recorded in TRUST.md in B5).
+0032a6629a73ac37f49ca52b9bd665f2c6755b6014d629f8775c6f850f273bb2  scripts/CheckDecls.lean
+591a1d993df5dc1a01a9cf645f71cbeffdb7da9fdff9e3ca8f5179f60ead9f25  scripts/test_check_decls.sh
+30e0ae65ec5035c7407009f4184164333a53d4328add72c55e7f0b5f751980e3  scripts/CheckDeclsTest.lean
+2e0cddcca85e19343dcea7103e2501ceb8b4f0d05efc9c25b218ae81ed168cc6  scripts/CheckDeclsForeign.lean
+92fbd792d5222fc9b34eab7f613ce31d3ac08bd37de715e5461b4dc463c7a305  scripts/CheckDeclsTest/Bad.lean
+204890137ed0418752b54924f6436b910391172b9dc09ff53e9e5d4ce1d94616  scripts/CheckDeclsTest/Exports.lean
+cf41e0fe76e238ff17f993167f072818749422139c460169fc2a9dee0d0db34f  scripts/CheckDeclsTest/Good.lean
+7d05fc8363171e48666f3b11473326b2066957ea819cc0930dc2c984bf913fff  scripts/CheckDeclsTest/Proofs/Native.lean
+36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673  scripts/LICENSE.EthLib

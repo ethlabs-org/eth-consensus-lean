@@ -21,8 +21,8 @@ public import ConsensusShapeTests.Values
 
 Every name a reviewer or the README relies on, checked to exist by the build
 (`example := @X`). This checks **existence only**, not strength: what a test
-proves is its own statement (compiled in the gate). The axiom audit
-(`CheckConsensusAxioms.lean`) scans every declaration of every module.
+proves is its own statement (compiled in the gate). The declaration check
+(`scripts/check.sh`, EthLib check-decls) scans every declaration of every module.
 
 Kept here: the endpoint theorems, every theorem of the rejecting-test files
 (`Problem`, `Network`, `Regimes`, `Good`, `Leaks`, `Vacuity`), the names cited

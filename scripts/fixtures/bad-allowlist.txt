@@ -1,3 +1,0 @@
-CheckFixtures.BadAllowlisted.t2  class=Countable  # not an instance
-CheckFixtures.BadAllowlisted.t3  class=Eq  # Eq is not a class
-CheckFixtures.BadAllowlisted.t4  class=Nonempty  # Nonempty is not a permitted class

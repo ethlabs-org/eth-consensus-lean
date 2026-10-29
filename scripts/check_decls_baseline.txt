@@ -1,0 +1,2 @@
+# Accepted check-decls findings: `<Library> <kind> <declaration>  # reason`, one per line.
+# Target: empty. Every other finding fails scripts/check.sh step 3, and so does a stale entry.

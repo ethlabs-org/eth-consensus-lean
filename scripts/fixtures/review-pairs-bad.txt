@@ -1,2 +1,0 @@
-# statement, theorem (wrong type: True), source
-CheckFixtures.ReviewBad.Stmt  CheckFixtures.ReviewBad.stmt  CheckFixtures.ReviewBad.src

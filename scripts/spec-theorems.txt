@@ -1,0 +1,1 @@
+# Batch C report mode: all ranged user theorems are reported.

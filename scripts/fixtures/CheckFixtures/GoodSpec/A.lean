@@ -38,10 +38,12 @@ def sumTo : Nat → Nat
   | 0 => 0
   | n + 1 => n + 1 + sumTo n
 
-/-- Well-founded recursion with `termination_by` / `decreasing_by`. -/
-def halve (n : Nat) : Nat := if h : n < 2 then 0 else 1 + halve (n - 2)
-termination_by n
-decreasing_by omega
+/-- Structural halving; well-founded auxiliaries are covered by SnapAux. -/
+def halve : Nat → Nat
+  | 0 => 0
+  | 1 => 0
+  | n + 2 => 1 + halve n
+termination_by structural n => n
 
 /-- A Prop-class instance (allowlisted with `class=Countable`). -/
 instance instCountableColor : Countable Color :=

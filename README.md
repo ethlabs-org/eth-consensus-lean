@@ -590,12 +590,14 @@ by-construction rows: `ConsensusShapeTests/Gaps.lean`.
 ## Verification
 
 ```sh
-cd /srv/work/fradamt/goldilocks/generic-interface
-LAKE_RESTORE_ARTIFACTS=true lake build ConsensusProblem ConsensusModel ConsensusModelProofs ConsensusBlocks ConsensusShape ConsensusShapeTests
-lake env lean --run CheckConsensusAxioms.lean
+LAKE_RESTORE_ARTIFACTS=true lake build
+scripts/check.sh --no-build    # on the shared box: inside `job --mem 16G ...` (it refuses to run without RUN_DIR or CI)
 ```
 
-The build checks that every cited name exists (`ConsensusShapeTests/Index`).
-The audit imports every `Consensus*` module in this repository (tests included)
-and checks every compiled declaration for axioms outside `propext`,
-`Classical.choice` and `Quot.sound`; it prints `standard axioms only: true`.
+The build checks that every cited name exists (`ConsensusShapeTests/Index`) and pins the review
+theorems' types and axioms (`ConsensusShapeTests/ReviewAxioms`). `scripts/check.sh` runs the trust
+checks: dependency pins, import discipline, EthLib check-decls over every declaration of every library
+(axioms beyond `propext`, `Classical.choice` and `Quot.sound`, `sorry`, opaque/unsafe/extern/csimp), the
+Spec surface (persisted-extension whitelist and the Spec snapshot `scripts/spec-snapshot.txt`), kernel
+replay with `leanchecker`, a grep backstop, and the self-tests of every check. `lake check` and
+`lake comparator` need `bwrap` and run in CI only (`.github/workflows/ci.yml`).

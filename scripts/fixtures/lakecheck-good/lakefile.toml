@@ -1,0 +1,5 @@
+name = "lakecheck-good"
+defaultTargets = ["Fx"]
+
+[[lean_lib]]
+name = "Fx"
