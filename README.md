@@ -85,8 +85,7 @@ Notation (the `System` accessors of `Regimes.lean`): `c = cDur = catchUp·Δ`;
 | stable | outage resilience | `Outage T b₀ b₁` | `ProtectedThrough c stable target T b₀ b₁` |
 
 One field per row (`finalAccountable`, `healthyLive`, `sleepySafe`, `sleepyLive`,
-`healedSafe`, `persists`; `Reformulations.behaviour_iff` checks it against the
-earlier per-capability records). Derived in L0 (`Good.*`,
+`healedSafe`, `persists`). Derived in L0 (`Good.*`,
 `ConsensusProblem/Facts/Good.lean`; `Agree`, `Safe`, `FaultsBelow`,
 `ReadySafeUpTo` are in `ConsensusProblem/Derived.lean`), and in the Goldilocks sheet:
 
@@ -546,7 +545,6 @@ by-construction rows: `ConsensusShapeTests/Gaps.lean`.
 - `Vacuity`: admissibility rejections, progress fit and tolerance, forgery, `noService_not_accepted`.
 - `Goldilocks`: `pp223_numbers`, `stable_is_confirmed`, `outageWindow_prefix_only`, `weakPremise_inhabited`.
 - `Values`, `Lift`, `Support`, `Common`: Streamlet and Tendermint, injective-hash lifting, fixtures.
-- `Reformulations`: each reformulated definition against its old form.
 - `Gaps`: the gap dispositions. `Index`: every cited name, checked to exist.
 
 ## Verification

@@ -2,7 +2,7 @@ import Lean
 open Lean
 
 /-- Audit every declaration owned by every Consensus module in this repository,
-including tests (`ConsensusShapeTests`, with `Reformulations` and `Index`) and
+including tests (`ConsensusShapeTests`, with `Index`) and
 generated declarations, for axioms outside `propext`, `Classical.choice` and
 `Quot.sound`. Name existence is checked by the build (`ConsensusShapeTests/Index`).
 Run after the six-library Lake build:

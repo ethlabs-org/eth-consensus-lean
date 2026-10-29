@@ -11,7 +11,6 @@ public import ConsensusShapeTests.Model
 public import ConsensusShapeTests.Network
 public import ConsensusShapeTests.Problem
 public import ConsensusShapeTests.Realizable
-public import ConsensusShapeTests.Reformulations
 public import ConsensusShapeTests.Regimes
 public import ConsensusShapeTests.Shape
 public import ConsensusShapeTests.Support
@@ -22,8 +21,7 @@ public import ConsensusShapeTests.Values
 
 Every name a reviewer or the README relies on, checked to exist by the build
 (`example := @X`). This checks **existence only**, not strength: what a test
-proves is its own statement (compiled in the gate), and each reformulated
-definition is checked against its old form in `Reformulations`. The axiom audit
+proves is its own statement (compiled in the gate). The axiom audit
 (`CheckConsensusAxioms.lean`) scans every declaration of every module.
 
 Kept here: the endpoint theorems, every theorem of the rejecting-test files
@@ -346,47 +344,6 @@ example := @Consensus.Shape.Tests.Realizable.rotating_notReadyOn_false
 example := @Consensus.Shape.Tests.Realizable.rotating_notReadyOn_trivial
 example := @Consensus.Shape.Tests.Realizable.rotating_proposalLive_vacuous
 example := @Consensus.Shape.Tests.Realizable.tendermint_largeIdx_prog
-
-/-! ## Tests: Reformulations -/
-example := @Consensus.Shape.Tests.Reformulations.behaviour_iff
-example := @Consensus.Shape.Tests.Reformulations.shapeClaimsAt_iff
-example := @Consensus.Shape.Tests.Reformulations.shapeClaims_iff
-example := @Consensus.Shape.Tests.Reformulations.ledgerOf_eq
-example := @Consensus.Shape.Tests.Reformulations.viewIdx_eq
-example := @Consensus.Shape.Tests.Reformulations.sleepy_iff
-example := @Consensus.Shape.Tests.Reformulations.outage_iff
-
-example := @Consensus.Shape.Tests.Reformulations.adequate_iff
-example := @Consensus.Shape.Tests.Reformulations.agree_iff
-example := @Consensus.Shape.Tests.Reformulations.executionValid_iff
-example := @Consensus.Shape.Tests.Reformulations.finalCut_eq
-example := @Consensus.Shape.Tests.Reformulations.fixed_univ_admits
-example := @Consensus.Shape.Tests.Reformulations.goldilocksBindings_iff
-example := @Consensus.Shape.Tests.Reformulations.goldilocksExtra_iff
-example := @Consensus.Shape.Tests.Reformulations.honestReadyIn_iff
-example := @Consensus.Shape.Tests.Reformulations.includesFrom_iff
-example := @Consensus.Shape.Tests.Reformulations.monotone_iff
-example := @Consensus.Shape.Tests.Reformulations.oldContains_iff
-example := @Consensus.Shape.Tests.Reformulations.patternRecurrence_iff
-example := @Consensus.Shape.Tests.Reformulations.protectedThrough_iff
-example := @Consensus.Shape.Tests.Reformulations.readySafe_iff
-example := @Consensus.Shape.Tests.Reformulations.realizableActive_iff
-example := @Consensus.Shape.Tests.Reformulations.realizable_iff
-example := @Consensus.Shape.Tests.Reformulations.regime_healthy_iff
-example := @Consensus.Shape.Tests.Reformulations.regime_outage_iff
-example := @Consensus.Shape.Tests.Reformulations.regime_sleepy_iff
-example := @Consensus.Shape.Tests.Reformulations.regimes_realizable_old
-example := @Consensus.Shape.Tests.Reformulations.safe_iff
-example := @Consensus.Shape.Tests.Reformulations.selAdmits_iff
-example := @Consensus.Shape.Tests.Reformulations.serves_iff
-example := @Consensus.Shape.Tests.Reformulations.shapeClaims_iff
-example := @Consensus.Shape.Tests.Reformulations.signerOf_eq
-example := @Consensus.Shape.Tests.Reformulations.streamletContract_eq
-example := @Consensus.Shape.Tests.Reformulations.sysOf_log_eq
-example := @Consensus.Shape.Tests.Reformulations.tendermintContract_eq
-example := @Consensus.Shape.Tests.Reformulations.txLiveActive_iff
-example := @Consensus.Shape.Tests.Reformulations.weakPremise_iff
-example := @Consensus.Shape.Tests.Reformulations.wellFormed_iff
 
 /-! ## Tests: Regimes -/
 

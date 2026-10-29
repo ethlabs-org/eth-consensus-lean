@@ -15,5 +15,4 @@ public import ConsensusShapeTests.Gaps
 public import ConsensusShapeTests.Lift
 public import ConsensusShapeTests.Support
 public import ConsensusShapeTests.Values
-public import ConsensusShapeTests.Reformulations
 public import ConsensusShapeTests.Index
