@@ -1,0 +1,21 @@
+module
+public import ConsensusProofs.Problem
+public import Mathlib.Tactic
+@[expose] public section
+
+/-! # Shared test fixtures
+
+The identity PKI on `Fin n` and the one-output schema serving every
+capability, shared by the test files. -/
+
+namespace Consensus.Shape.Tests
+
+/-- The identity PKI on `Fin n`: key `k` is validator `k`. -/
+def pkiFin (n : Nat) : Fin (Fintype.card (Fin n)) ≃ Fin n := finCongr (Fintype.card_fin n)
+
+/-- One output, serving every capability. -/
+abbrev schema : OutputSchema := ⟨Unit, fun _ => some ()⟩
+
+end Consensus.Shape.Tests
+
+end

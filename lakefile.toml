@@ -1,7 +1,7 @@
 name = "consensus-lean"
 version = "0.1.0"
 keywords = ["lean", "consensus", "specification"]
-defaultTargets = ["ConsensusProblem", "ConsensusModel", "ConsensusModelProofs", "ConsensusBlocks", "ConsensusShape", "ConsensusShapeTests"]
+defaultTargets = ["ConsensusSpec", "ConsensusProofs", "ConsensusInstances", "ConsensusTests"]
 
 [leanOptions]
 pp.unicode.fun = true
@@ -16,33 +16,27 @@ name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.35.0"
 
-# L0, the problem: the definition of a good protocol.
+# TRUSTED. Definitions (L0 Problem, L1 Model, Blocks, L2 Shape). Imports only ConsensusSpec,
+# Mathlib and Lean (checked by scripts/, not by Lake).
 [[lean_lib]]
-name = "ConsensusProblem"
-globs = ["ConsensusProblem.*"]
+name = "ConsensusSpec"
+globs = ["ConsensusSpec.*"]
 
-# L1, the execution model, and its proofs.
+# Proofs of the Spec statements and their support (lemmas, derived definitions, canonical runs,
+# witnesses). May import ConsensusSpec; never ConsensusInstances or ConsensusTests.
 [[lean_lib]]
-name = "ConsensusModel"
-globs = ["ConsensusModel.*"]
+name = "ConsensusProofs"
+globs = ["ConsensusProofs.*"]
 
+# Protocol values: Goldilocks (with its sheet), Bft, Streamlet, Tendermint. Never ConsensusTests.
 [[lean_lib]]
-name = "ConsensusModelProofs"
-globs = ["ConsensusModelProofs.*"]
+name = "ConsensusInstances"
+globs = ["ConsensusInstances.*"]
 
-# Building blocks for shapes.
+# Tests (teeth, rejections, controls) and Index (README-cited names).
 [[lean_lib]]
-name = "ConsensusBlocks"
-globs = ["ConsensusBlocks.*"]
-
-# L2, the shape layer, with protocol values.
-[[lean_lib]]
-name = "ConsensusShape"
-globs = ["ConsensusShape.*"]
-
-[[lean_lib]]
-name = "ConsensusShapeTests"
-globs = ["ConsensusShapeTests.*"]
+name = "ConsensusTests"
+globs = ["ConsensusTests.*"]
 
 # Fixtures for the self-tests of scripts/check.sh. Deliberately bad (sorry, axioms, leaks).
 # Never a default target; built only by check.sh. No root module: fixtures that share declaration
