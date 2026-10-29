@@ -65,7 +65,10 @@ Mathlib `.olean` files fetched by `lake exe cache get` in CI or taken from the s
 artifact cache on the box are not rebuilt locally. leanchecker replays the project's modules only;
 `lake check` exports the default targets with the constants they use and replays that export, which
 re-checks what the project uses of them. A dependency's own lakefile in its pinned, clean checkout is trusted
-as upstream content. The check scripts/configuration are reviewed trust infrastructure.
+as upstream content. The check scripts/configuration (`scripts/**`, `.github/**`, the lakefile) are trust
+infrastructure reviewed by agents, not by the owner: Code Owner review (`.github/CODEOWNERS`) is not enforced (#21).
+A change to what a trust check checks needs two independent agent reviews linked in its PR; a speedup that keeps
+every check's verdict needs one review and evidence that the fixtures' verdicts are unchanged.
 
 ## Trusted statements
 
@@ -74,7 +77,8 @@ All of `ConsensusSpec/` is the claim (file list in `README.md`); R1 excludes Pro
 review pair (`ConsensusTests/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers
 are exempt). `ConsensusTests/ReviewAxioms.lean` compiles alpha-equality/binder-kind and axiom pins.
 Primary: `Consensus.Review.AcceptedGood`; secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
-Only the owner sets/moves `spec-approved` after reviewing protected changes.
+Only the owner, or an agent he explicitly authorizes (never the PR's author on its own), sets or moves
+`spec-approved`, after reviewing the protected changes.
 
 ## Assumed, not proved; per-instance bindings
 
