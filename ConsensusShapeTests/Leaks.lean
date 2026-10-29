@@ -90,9 +90,10 @@ def testK : Contract ProgressReq where
   params := Params.standard 1 0 1 (fun _ _ => 1) (fun _ k => (k : Nat) + 2)
   progress _ k := .recur ⟨Pattern.single, k⟩
 
-/-- The test recurrence tolerates any number of validators not ready. -/
+/-- The test recurrence tolerates any number of validators not ready and a
+bad proposer slot in every window (gap `2`). -/
 theorem testK_progressTolerant : ProgressTolerant schema testK :=
-  fun _ _ _ => ⟨(1 : ℕ+), trivial⟩
+  fun _ _ _ => ⟨(2 : ℕ+), show (⟨Pattern.single, 2⟩ : Recurrence).BadSlotSlack by decide⟩
 
 /-- The test skeleton: slots of one `Δ`, one proposer per slot, polling
 disabled, one committee kind (every key). -/

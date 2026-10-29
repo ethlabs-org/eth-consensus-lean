@@ -175,6 +175,66 @@ theorem patternRecurrence_of_all (hΔ : 0 < p.env.Δ)
     G.exists_slot_in_window hΔ (le_trans (le_max_right _ _) ht) (k := (ρ.gap : Nat)) ρ.gap.pos
   exact ⟨s, hs₁, hs₂, fun j hj => h s j hj⟩
 
+/-- The periodic bad slots of a recurrence with slack: with period
+`P = span + 2`, the slots `s` with `s % P = P − 1`. Every `gap ≥ P`
+consecutive slots contain one. -/
+theorem Recurrence.exists_bad_slot (hρ : ρ.BadSlotSlack) (a : Nat) :
+    ∃ s, a ≤ s ∧ s < a + (ρ.gap : Nat) ∧
+      s % (ρ.pattern.span + 2) = ρ.pattern.span + 1 := by
+  unfold Recurrence.BadSlotSlack at hρ
+  have hd := Nat.mod_add_div a (ρ.pattern.span + 2)
+  have hm := Nat.mod_lt a (show 0 < ρ.pattern.span + 2 by omega)
+  refine ⟨(ρ.pattern.span + 2) * (a / (ρ.pattern.span + 2)) + (ρ.pattern.span + 1), ?_, ?_, ?_⟩
+  · omega
+  · omega
+  · rw [Nat.mul_add_mod, Nat.mod_eq_of_lt (by omega)]
+
+/-- A start slot `s` with `s % (span + 2) = 0` has its whole pattern off the
+periodic bad slots. -/
+theorem Recurrence.pattern_good {s j : Nat} (hs : s % (ρ.pattern.span + 2) = 0)
+    (hj : j ∈ ρ.pattern.offsets) : (s + j) % (ρ.pattern.span + 2) ≠ ρ.pattern.span + 1 := by
+  have hjs := Pattern.le_span hj
+  rw [Nat.add_mod, hs, zero_add, Nat.mod_mod, Nat.mod_eq_of_lt (by omega : j < _)]
+  omega
+
+/-- Recurrence with a bad slot in every window: if the pattern is honest and
+ready from every start slot `s` with `s % (span + 2) = 0` (the periodic bad
+slots `s % (span + 2) = span + 1` are avoided, `Recurrence.pattern_good`),
+and the gap has the slack `span + 2 ≤ gap`, recurrence holds on every window,
+although every window holds a bad slot (`Recurrence.exists_bad_slot`). -/
+theorem patternRecurrence_of_periodic (hΔ : 0 < p.env.Δ) (hρ : ρ.BadSlotSlack)
+    (h : ∀ s j, s % (ρ.pattern.span + 2) = 0 → j ∈ ρ.pattern.offsets →
+      HonestReadyIn p key sel (s + j) c (G.slotTime p.env.Δ (s + j))) :
+    PatternRecurrence p key sel G ρ c start stop := by
+  intro t ht _ _
+  unfold Recurrence.BadSlotSlack at hρ
+  obtain ⟨P, hP⟩ : ∃ P, P = ρ.pattern.span + 2 := ⟨_, rfl⟩
+  rw [← hP] at h
+  have hl := G.slotLen_pos hΔ
+  obtain ⟨s₁, hs₁, hs₁'⟩ : ∃ s₁ : ℕ, t < G.slotTime p.env.Δ s₁ ∧
+      G.slotTime p.env.Δ s₁ ≤ t + ((1 : ℕ) : Time) * G.slotLen p.env.Δ :=
+    G.exists_slot_in_window hΔ (le_trans (le_max_right _ _) ht) (k := 1) le_rfl
+  obtain ⟨x, hx⟩ : ∃ x : Nat, x = s₁ + (P - 1) := ⟨_, rfl⟩
+  have hd := Nat.mod_add_div x P
+  have hm := Nat.mod_lt x (show 0 < P by omega)
+  obtain ⟨m, hm'⟩ : ∃ m, m = x / P := ⟨_, rfl⟩
+  rw [← hm'] at hd
+  have hlo : s₁ ≤ P * m := by omega
+  have hhi : P * m ≤ s₁ + (P - 1) := by omega
+  refine ⟨P * m, ?_, ?_, fun j hj => h _ j (Nat.mul_mod_right _ _) hj⟩
+  · obtain ⟨d, hd'⟩ := Nat.exists_eq_add_of_le hlo
+    rw [hd', G.slotTime_add]
+    have : (0 : Time) ≤ (d : Time) * G.slotLen p.env.Δ := by positivity
+    linarith
+  · obtain ⟨d, hd'⟩ := Nat.exists_eq_add_of_le hlo
+    have hdP : d ≤ P - 1 := by omega
+    rw [hd', G.slotTime_add]
+    have hd'' : (d : Time) + 1 ≤ ((ρ.gap : Nat) : Time) := by
+      have : d + 1 ≤ (ρ.gap : Nat) := by omega
+      exact_mod_cast this
+    push_cast at hs₁'
+    nlinarith
+
 /-- With one whole window inside `[max start 0, stop]` and the horizon,
 recurrence yields a start slot whose whole pattern is honest, ready and inside
 the horizon. -/

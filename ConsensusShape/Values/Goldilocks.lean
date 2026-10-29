@@ -193,12 +193,26 @@ theorem goldilocks_progressFits {Info : Type} [DecidableEq Info] [Countable Info
   intro cap k pub
   cases cap <;> exact hsel pub
 
-/-- Goldilocks recurrence requirements tolerate any number not ready. -/
+/-- Goldilocks recurrence requirements tolerate any number not ready and a
+bad proposer slot in every window: gap `2` for available and stable (one
+honest ready proposer in every two slots), finality index `gf = 5` for final
+(`5R ≥ 3R + κ + 1` slots for the pattern span `3R + κ − 1` plus two, as
+`R ≥ 2`). -/
 theorem goldilocks_progressTolerant (pp : FGSAParams) :
     ProgressTolerant goldilocksSchema (goldilocksContract pp) := by
   intro cap ho N
-  refine ⟨(1 : ℕ+), ?_⟩
-  cases cap <;> trivial
+  cases cap
+  · exact ⟨(2 : ℕ+), show (⟨Pattern.single, 2⟩ : Recurrence).BadSlotSlack by decide⟩
+  · exact ⟨(2 : ℕ+), show (⟨Pattern.single, 2⟩ : Recurrence).BadSlotSlack by decide⟩
+  · refine ⟨(5 : ℕ+), ?_⟩
+    change (pp.finRec 5).pattern.span + 2 ≤ ((pp.finRec 5).gap : Nat)
+    have := pp.hR
+    have hs : (pp.finRec 5).pattern.span = 3 * pp.R + FGSAParams.κ - 1 :=
+      Pattern.span_range _
+    have hg : ((pp.finRec 5).gap : Nat) = 5 * pp.R := rfl
+    rw [hs, hg]
+    unfold FGSAParams.κ
+    omega
 
 /-- Reference numbers (fgsa-protocol.tex 3018–3026): `B_H^F` at `k = 2` is
 `295Δ` (`R = 2`) and `343Δ` (`R = 3`); the paper's `344Δ` and `412Δ` add

@@ -106,10 +106,12 @@ theorem streamletContract_progressFits {Info : Type} [DecidableEq Info] [Countab
     ProgressFits (streamletContract catchUp heal latency) F :=
   fun _ _ pub => hsel pub
 
-/-- Every provided output tolerates any number of validators not ready. -/
+/-- Every provided output tolerates any number of validators not ready and a
+bad proposer slot in every window: at gap `6`, five consecutive proposers
+(span `4`) leave room for one bad slot. -/
 theorem streamletContract_progressTolerant (catchUp : Nat) (heal latency : Affine) :
     ProgressTolerant bftCore (streamletContract catchUp heal latency) :=
-  fun _ _ _ => ⟨(1 : ℕ+), trivial⟩
+  fun _ _ _ => ⟨(6 : ℕ+), show (⟨Pattern.range 5, 6⟩ : Recurrence).BadSlotSlack by decide⟩
 
 /-! ## Tendermint -/
 
@@ -139,7 +141,9 @@ theorem tendermintContract_progressFits {Info : Type} [DecidableEq Info] [Counta
     ProgressFits (tendermintContract catchUp heal latency) F :=
   fun _ _ _ => trivial
 
-/-- Every provided output tolerates any number of validators not ready. -/
+/-- Every provided output tolerates any number of validators not ready. The
+bound is not slot-based: its tolerant indices (`m ≥ n`) hold on every point,
+whoever leads, so the bad-proposer tolerance asks nothing more. -/
 theorem tendermintContract_progressTolerant (catchUp : Nat) (heal latency : Affine) :
     ProgressTolerant bftCore (tendermintContract catchUp heal latency) := by
   intro cap ho N

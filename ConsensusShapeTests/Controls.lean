@@ -93,11 +93,15 @@ theorem ctrlK_progressFits : ProgressFits ctrlK ctrlFamily := by
   intro cap k pub
   cases cap <;> rfl
 
-/-- The control recurrences tolerate any number of validators not ready. -/
+/-- The control recurrences tolerate any number of validators not ready and a
+bad proposer slot in every window (gap `2` for one proposer, `3` for two
+consecutive ones). -/
 theorem ctrlK_progressTolerant : ProgressTolerant goldilocksSchema ctrlK := by
   intro cap ho N
-  refine ⟨1, ?_⟩
-  cases cap <;> trivial
+  cases cap
+  · exact ⟨2, show (⟨Pattern.single, 2⟩ : Recurrence).BadSlotSlack by decide⟩
+  · exact ⟨2, show (⟨Pattern.single, 2⟩ : Recurrence).BadSlotSlack by decide⟩
+  · exact ⟨3, show (⟨Pattern.range 2, 3⟩ : Recurrence).BadSlotSlack by decide⟩
 
 /-- The control system: five validators. -/
 abbrev S : System (Fin 5) := sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)

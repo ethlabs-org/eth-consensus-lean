@@ -7,9 +7,12 @@ public import ConsensusShape.Shape
 
 What `Accepted` asks of a contract's progress requirements besides the
 claims: they fit the family's skeleton (`ProgressFits`) and every provided
-output tolerates arbitrary numbers of validators not ready
+output has indices that tolerate arbitrary numbers of validators not ready
+and a bad (faulty or not ready) proposer slot in every window
 (`ProgressTolerant`). Both feed the generic realizability theorem
-(`regimes_realizable`). -/
+(`regimes_realizable`), whose `badProposer` witness shows the second
+tolerance semantically: a run with a faulty proposer in every window meets
+the requirement and is live. -/
 
 namespace Consensus.Shape
 
@@ -31,14 +34,20 @@ every public parameter. -/
 def ProgressFits (K : Contract ProgressReq) (F : ShapeFamily O Info) : Prop :=
   ∀ cap i pub, ProgressReq.Fits (F pub).skel (K.progress cap i)
 
-/-- A requirement tolerates `N` validators not ready: recurrence always,
-while a bound must be at least `N`. -/
+/-- A requirement tolerates `N` validators not ready and a bad proposer slot
+in every window: a recurrence needs the slack `span + 2 ≤ gap` (its
+proposers stay ready on the witnesses, so the number not ready does not
+matter); a bound on the validators not ready must be at least `N`. For
+`N ≥ n` the bound holds on every point, so it also holds when every
+round-robin leader is faulty or asleep: such a requirement has no proposer
+slots to tolerate. -/
 def ProgressReq.Tolerates (N : Nat) : ProgressReq → Prop
-  | .recur _ => True
+  | .recur ρ => ρ.BadSlotSlack
   | .notReadyAtMost m => N ≤ m
 
-/-- Every provided output has an index tolerating any requested number of
-validators not ready. -/
+/-- Every provided output has, for every requested number `N`, an index
+tolerating `N` validators not ready and a bad proposer slot in every
+window. -/
 def ProgressTolerant (O : OutputSchema) (K : Contract ProgressReq) : Prop :=
   ∀ cap, (O.output cap).isSome → ∀ N : Nat, ∃ i, ProgressReq.Tolerates N (K.progress cap i)
 

@@ -53,6 +53,18 @@ structure Recurrence where
 /-- The slots a recurrence window reads: the window plus the pattern's span. -/
 def Recurrence.len (ρ : Recurrence) : Nat := (ρ.gap : Nat) + ρ.pattern.span
 
+/-- A recurrence leaves room for a bad proposer slot in every window:
+`span + 2 ≤ gap`. With a bad slot every `span + 2` slots, every window of
+`gap` slots holds a bad slot and a start slot whose whole pattern avoids the
+bad slots (`patternRecurrence_of_periodic`; the run-level witness is
+`RealizableActive.badProposer`). A gap of one slot (an honest ready proposer
+in *every* slot) or a pattern without slack is rejected
+(`ProgressReq.Tolerates`; test `recur_single_one_not_tolerant`). -/
+def Recurrence.BadSlotSlack (ρ : Recurrence) : Prop := ρ.pattern.span + 2 ≤ (ρ.gap : Nat)
+
+instance (ρ : Recurrence) : Decidable ρ.BadSlotSlack := by
+  unfold Recurrence.BadSlotSlack; infer_instance
+
 /-- A progress requirement: pattern recurrence (slot proposers), or a bound on
 the validators that are not ready (round-robin leaders). -/
 inductive ProgressReq where

@@ -44,7 +44,7 @@ exist in `Index.lean`.
 * M26 single Δ: scope (`Δ_F = Δ`).
 * M27 Δ = 1 witnesses: `Realizable` quantifies every `Δ`; test `healed_witness_late` (Δ = 7).
 * M28 recovery starts: construction, `heal = max g 0 + heal·Δ`, `ready = max g 0 + c + 1` (`example`).
-* M29 faulty proposer witnesses: `ProgressFits` (recurrence only on `.sized 1`); tests `allProposers_unfit`, `allProposers_no_witness`, `recurrence_has_teeth`.
+* M29 faulty proposer witnesses: `ProgressFits` (recurrence only on `.sized 1`); `ProgressTolerant` asks a bad proposer slot in every window (`Recurrence.BadSlotSlack`, witness `RealizableActive.badProposer`); tests `allProposers_unfit`, `allProposers_no_witness`, `recurrence_has_teeth`, `recur_single_one_not_tolerant`, `recur_single_one_bad_slots`.
 * M30 safety vs liveness regime: construction, one `Healthy` regime; safety window `[ready, heal]` ⊆ liveness window (`Progress.mono`; `example`).
 * M31 validity: scope; `TxLive` serves every submission.
 * M32 capacity: scope.

@@ -266,11 +266,11 @@ The slot is checked, within limits:
   the stress witness with many honest validators asleep. A reader that
   never holds fails `Good` (`false_progress_not_good`); a requirement of
   near-full participation at every index fails the stress witness.
-- What remains the instance's choice is how strong the leader requirement
-  is: a recurrence gap of one slot ("an honest ready proposer in *every*
-  slot") passes, because the witnesses' proposer stays awake. The reviewer
-  reads the gap as a number (open: whether to require tolerance of bad
-  slots).
+- In L2, acceptance also asks every provided output to have an index whose
+  requirement tolerates a bad (faulty or not ready) proposer slot in every
+  window (`ProgressTolerant`, below). "An honest ready proposer in *every*
+  slot" (`recur ⟨single, 1⟩`) is rejected (`recur_single_one_not_tolerant`).
+  Beyond that, the reviewer reads the gap as a number.
 
 In L2 the slot is `ProgressReq` (`ConsensusBlocks/Progress.lean`):
 
@@ -285,9 +285,30 @@ In L2 the slot is `ProgressReq` (`ConsensusBlocks/Progress.lean`):
 proposer per slot (`.sized 1`). Otherwise an all-proposer selection would
 include a faulty key (`allProposers_unfit`, `allProposers_no_witness`).
 `ProgressTolerant O K` asks every provided output of schema `O` to have, for every
-`N`, an index whose requirement tolerates `N` validators not ready (a
-recurrence always; `.notReadyAtMost m` when `N ≤ m`): this is what the
-stress witness needs (`notReadyAtMost_one_not_tolerant`).
+`N`, an index whose requirement (`ProgressReq.Tolerates N`) tolerates `N`
+validators not ready and a bad proposer slot in every window:
+
+- `.recur ρ`: the slack `span + 2 ≤ gap` (`Recurrence.BadSlotSlack`). With
+  a bad slot every `span + 2` slots, every window holds a bad slot and a
+  start slot whose whole pattern is good (`patternRecurrence_of_periodic`).
+  The witnesses' good proposer stays awake, so `N` does not matter.
+- `.notReadyAtMost m`: `N ≤ m`. Tendermint's requirement is not slot-based:
+  it bounds the validators not ready, not who leads. Its tolerant indices
+  (`m ≥ n`) hold on every point, so they hold when every round-robin leader
+  is faulty or asleep; the bad-slot requirement asks nothing more of it
+  (`BadProposerEvery` is `True` there). Whether a round-robin protocol is
+  live under such a requirement is the protocol's proof (Scope).
+
+The sleepy stress witness needs the first half
+(`notReadyAtMost_one_not_tolerant`). The second half is witnessed
+semantically: `regimes_realizable` also gives
+`RealizableActive.badProposer`, for every provided output, at a tolerant
+index, a healthy witness from every GST under a selection where faulty key
+`0` proposes one slot in every `span + 2`; every window of the requirement
+holds a faulty proposer slot (`BadProposerEvery`), and progress and an active
+liveness claim still hold. Gaps without slack at every index are rejected
+(`recur_noSlack_not_tolerant`; `recur_single_one_bad_slots` shows why:
+`recur ⟨single, 1⟩` fails once every slot has a faulty proposer).
 
 ### What an instance supplies
 
@@ -413,7 +434,8 @@ transaction liveness; it needs catch-up `≥ Δ`, `Admissible.catchUp_pos`, so a
 ready proposer was awake over the delivery interval before its release). `sysOf_adequate` gives `Adequate`.
 `regimes_realizable` gives `RealizableActive`, hence `Realizable`
 (`RealizableActive.toRealizable`; its stress witness keeps keys `1` and `2`
-awake and the rest asleep). Corollary
+awake and the rest asleep; its L2-only `badProposer` witness puts a faulty
+proposer slot in every progress window). Corollary
 (`ConsensusShape/Service.lean`, `Accepted.activeService`): a final or
 available output puts a relayed transaction into another honest node's
 read on a clean healthy witness (`ActiveService`). A silent service or empty
@@ -518,9 +540,11 @@ are the intended ones.
   run.
 - The network-level "knowledge of equivocation" service is not modelled (see
   the network section).
-- Recurrence progress is read as a number: a gap of one slot (an honest ready
-  proposer in every slot) is accepted; whether the definition should require
-  tolerance of bad proposer slots is open.
+- Liveness premises must tolerate a bad proposer slot in every window
+  (Francesco, 2026-10-29): `ProgressTolerant` asks `span + 2 ≤ gap` at some
+  index of every provided output, witnessed by `RealizableActive.badProposer`.
+  Beyond that, the gap is read as a number. The check is in L2 (L0 has no
+  proposers): an L0 `Good` system with abstract progress is not bound by it.
 
 ## Goldilocks
 
@@ -533,7 +557,7 @@ are the intended ones.
 | catch-up; arming lag; budget; `η` | `18`; `4·lockK − 4`; `min eta (4·lockK − 5)`; `eta` |
 | heal (available, stable), gap `k`; final, index `gf` | `29 + B_H^F(k)`; `29 + B_H^F(gf·R) + W_W(gf)` |
 | latency | `4k + 6`; final `4·gf·R + 6 + W_W(gf)` |
-| progress | `.recur ⟨single, k⟩`; final `.recur ⟨range(3R+κ), gf·R⟩` |
+| progress | `.recur ⟨single, k⟩`; final `.recur ⟨range(3R+κ), gf·R⟩` (tolerant indices: `k = 2`, `gf = 5`) |
 
 `GoldilocksTarget F pp := GoldilocksBindings F ∧ Accepted F (goldilocksContract
 pp) ∧ GoldilocksExtra F pp` is a reviewed target, not a proof that FG-SA meets

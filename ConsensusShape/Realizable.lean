@@ -20,8 +20,10 @@ public import Mathlib.Tactic
   `Realizable` for every family whose progress fits its skeleton and every
   progress-tolerant admissible contract and at least five validators, with active progress
   windows (`ProgressActive`). Witnesses: `sleepy_witness`,
-  `healthy_witness`, `outage_witness` and `sleepyStress_witness`; the stress
-  witness uses a bounded awake profile. -/
+  `healthy_witness`, `outage_witness` and `sleepyStress_witness` (a bounded
+  awake profile), and the L2-only bad-proposer witness (`healthy_witness_sel`
+  under the bad-slot selection `badSel`, `bad_selection`): a faulty proposer
+  slot in every progress window. -/
 
 namespace Consensus.Shape
 
@@ -64,6 +66,20 @@ def ProgressActive (cap : Capability) (i : K.Idx) (start : Time) {E : Env V}
     (rho : Model.Run (compiled F) E) : Prop :=
   max start 0 + progLen F K cap i E ≤ rho.horizon
 
+/-- Every window of the progress requirement of `cap` at `i` holds a bad
+proposer slot on run `rho`: for a recurrence, every `gap` consecutive slots
+contain a slot whose proposer selection is nonempty and entirely faulty (so
+every time window `(t, t + gap·slot]`, `t ≥ 0`, holds one). A bound on the
+validators not ready has no proposer slots: nothing is asked (its tolerant
+indices, `m ≥ n`, hold on every point, whoever leads). -/
+def BadProposerEvery (cap : Capability) (i : K.Idx) {E : Env V}
+    (rho : Model.Run (compiled F) E) : Prop :=
+  match K.progress cap i with
+  | .recur ρ => ∀ a : Slot, ∃ s, a ≤ s ∧ s < a + (ρ.gap : Nat) ∧
+      (rho.sel (ShapeRole.proposer s)).Nonempty ∧
+      ∀ k ∈ rho.sel (ShapeRole.proposer s), rho.key k ∉ rho.honest
+  | .notReadyAtMost _ => True
+
 /-- L0 `Realizable` of the compiled system, with every sleepy and healthy
 witness (stress included) also having an active progress window
 (`ProgressActive`) from the start of its progress premise. -/
@@ -81,9 +97,18 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
   outage : ∀ (Δ : Time) (k : Nat), 0 < Δ → ∃ r T b₀ b₁, (Sys F V).Witness r ∧
     ((Sys F V).pt r).env.Δ = Δ ∧ (Sys F V).Outage K T b₀ b₁ r ∧
     OutageActive ((Sys F V).cDur K r) T b₀ b₁ ((Sys F V).pt r) ∧ (k : Time) * Δ ≤ T
+  /-- Bad proposer slots: every provided output is live, at some index, on a
+  healthy witness from every GST whose every progress window holds a faulty
+  proposer slot (`BadProposerEvery`). A requirement that needs an honest
+  ready proposer in every slot (e.g. `recur ⟨single, 1⟩`) fails here. Not
+  part of L0 `Realizable` (L0 has no proposers). -/
+  badProposer : ∀ cap, (O.output cap).isSome → ∀ (Δ g : Time), 0 < Δ → 0 ≤ g →
+    ∃ i r, (Sys F V).Witness r ∧ ((Sys F V).pt r).env.Δ = Δ ∧
+      (Sys F V).HealthyLive (shapeProgress F V) K cap i g r ∧
+      ProgressActive F K cap i ((Sys F V).ready K g r) r.2 ∧ BadProposerEvery F K cap i r.2
 
-/-- Active realizability gives L0 realizability (all four witness families,
-dropping `ProgressActive`). -/
+/-- Active realizability gives L0 realizability (the four L0 witness
+families, dropping `ProgressActive`; `badProposer` has no L0 counterpart). -/
 theorem RealizableActive.toRealizable {V : Type} [Fintype V] [DecidableEq V]
     (h : RealizableActive F K V) : Realizable (Sys F V) (shapeProgress F V) K where
   sleepy cap i Δ hΔ := (h.sleepy cap i Δ hΔ).imp fun _ h => ⟨h.1, h.2.1, h.2.2.1⟩
@@ -158,6 +183,47 @@ theorem extremalSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : 
     (protoOf (compiled F) E).SelAdmits (extremalSel F E) :=
   fun _ => extremalKeys_admits _
 
+/-! ## The bad-slot selection -/
+
+/-- A proposer role at a periodic bad slot: slot `s` with `s % P = P − 1`. -/
+def badSlotRole {Kind : Type} (P : Nat) : ShapeRole Kind → Bool
+  | .proposer s => decide (s % P = P - 1)
+  | _ => false
+
+/-- The bad-slot selection with period `P`: key `0` (faulty at the witness
+points) proposes at every slot `s` with `s % P = P − 1`; every other role is
+selected as by `extremalSel`. -/
+def badSel (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
+    (hn : 0 < Fintype.card V) :
+    (protoOf (compiled F) E).Role → Finset (Fin (Fintype.card V)) :=
+  fun r => if badSlotRole (Kind := (F (pubOf E)).skel.Kind) P r then {⟨0, hn⟩}
+    else extremalSel F E r
+
+/-- With one proposer per slot, the bad-slot selection is admissible. -/
+theorem badSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
+    (hn : 0 < Fintype.card V) (hF : (F (pubOf E)).skel.proposerSel = .sized 1) :
+    (protoOf (compiled F) E).SelAdmits (badSel F E P hn) := by
+  intro r
+  unfold badSel
+  split_ifs with hb
+  · change ShapeRole (F (pubOf E)).skel.Kind at r
+    cases r with
+    | proposer s =>
+      change SelSpec.Admits (F (pubOf E)).skel.proposerSel _
+      rw [hF]
+      change ({⟨0, hn⟩} : Finset (Fin (Fintype.card V))).card = min 1 (Fintype.card V)
+      rw [Finset.card_singleton]; omega
+    | duty _ _ => simp [badSlotRole] at hb
+    | poll => simp [badSlotRole] at hb
+  · exact extremalSel_admits F E r
+
+/-- Under the bad-slot selection, the proposer of a bad slot is exactly
+key `0`. -/
+theorem badSel_bad (F : ShapeFamily O Info) {V : Type} [Fintype V] {E : Env V} {P : Nat}
+    (hn : 0 < Fintype.card V) {s : Slot} (hs : s % P = P - 1) :
+    badSel F E P hn (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) = {⟨0, hn⟩} := by
+  simp [badSel, badSlotRole, hs]
+
 /-! ## Generic realizability
 
 `regimes_realizable`: for every family whose progress fits its skeleton and
@@ -173,6 +239,10 @@ select key `1`, honest and always awake); transaction `42` submitted to
 `key 1` at time `0`, read by `key 2`.
 
 * stress: two honest keys (`1`, `2`) awake (sleepy), whatever `n`;
+* bad proposer: the healthy witness (everyone awake) under the bad-slot
+  selection, where faulty key `0` proposes every slot `s` with
+  `s % (span + 2) = span + 1` (so every window of a recurrence with
+  `span + 2 ≤ gap` holds a faulty proposer slot and a whole good pattern);
 * sleepy and healthy: everyone awake (healthy is full participation, and the
   one faulty validator is below `β·n` for `β ≥ ⅓`, `n ≥ 5`); the healthy witness is the canonical
   run from the GST `g`, whose log has no message receipt before `g` (protocol
@@ -340,6 +410,20 @@ theorem extremalSel_proposer_mem (F : ShapeFamily O Info) {E : Env V}
   simp only [extremalKeys, h1, ↓reduceIte, Finset.mem_filter, Finset.mem_univ, true_and]
   omega
 
+omit [DecidableEq V] in
+/-- Under the bad-slot selection with one proposer per slot, the proposer of
+a good slot is exactly key `1`. -/
+theorem badSel_good_mem (F : ShapeFamily O Info) {E : Env V} {P : Nat}
+    (hn : 0 < Fintype.card V) (hF : (F (pubOf E)).skel.proposerSel = .sized 1)
+    (h2 : 2 ≤ Fintype.card V) {s : Slot} (hs : s % P ≠ P - 1) (k : Fin (Fintype.card V)) :
+    k ∈ badSel F E P hn (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) ↔
+      k.val = 1 := by
+  have he : badSel F E P hn (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) =
+      extremalSel F E (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) := by
+    simp [badSel, badSlotRole, hs]
+  rw [he]
+  exact extremalSel_proposer_mem F hF h2 s k
+
 /-- Keys up to `k` stay awake; all larger keys stay asleep. -/
 def awakeUpTo (key : Fin (Fintype.card V) ≃ V) (k : Nat) : V → Time → Bool :=
   fun v _ => decide ((key.symm v).val ≤ k)
@@ -490,18 +574,29 @@ theorem profile_safeActive (awake : V → Time → Bool)
     ⟨h1, fun t _ _ => ha1 t⟩, ⟨h2, fun t _ _ => ha2 t⟩, ⟨h1, fun t _ _ => ha1 t⟩⟩
 
 /-- The canonical run at a witness point, from GST `g`, with some injective
-hash: valid, no collision, and eager from `g`; its point, PKI and selection are
-the given ones definitionally (`mkRun`). -/
-theorem real_run (F : ShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.horizon) (g : Time) :
+hash and an admissible selection `sel`: valid, no collision, and eager from
+`g`; its point, PKI and selection are the given ones definitionally
+(`mkRun`). -/
+theorem real_run_sel (F : ShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.horizon) (g : Time)
+    (sel : (protoOf (compiled F) p.env).Role → Finset (Fin (Fintype.card V)))
+    (hsel : (protoOf (compiled F) p.env).SelAdmits sel) :
     ∃ hash relay events,
       let rho := Model.mkRun (F := compiled F) (E := p.env) p.honest p.horizon key
-        (extremalSel F p.env) p.submit relay hash events
+        sel p.submit relay hash events
       rho.ExecutionValid ∧ ¬ rho.HashCollision ∧ CommLog.EagerFrom rho.point rho.log g := by
   obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf (compiled F) p.env).Item
   obtain ⟨relay, events, hv, he, -⟩ :=
     Model.canonical_run_from_causal O (compiled F) V p.env p.honest p.horizon hp key
-      (extremalSel F p.env) (extremalSel_admits F p.env) p.submit hash g
+      sel hsel p.submit hash g
   exact ⟨hash, relay, events, hv, Model.Run.not_hashCollision_of_injective hinj, he⟩
+
+/-- The canonical run at a witness point under the extremal selection. -/
+theorem real_run (F : ShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.horizon) (g : Time) :
+    ∃ hash relay events,
+      let rho := Model.mkRun (F := compiled F) (E := p.env) p.honest p.horizon key
+        (extremalSel F p.env) p.submit relay hash events
+      rho.ExecutionValid ∧ ¬ rho.HashCollision ∧ CommLog.EagerFrom rho.point rho.log g :=
+  real_run_sel key F p hp g _ (extremalSel_admits F p.env)
 
 /-- The sleepy witness: everyone awake, the synchronous canonical run, horizon
 `H` long enough for one liveness deadline and one progress window. -/
@@ -541,19 +636,24 @@ theorem sleepy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap :
     change max 0 0 + Δ + (K.params.latency cap i : Time) * Δ ≤ H
     simp only [max_self, zero_add]; linarith
 
-/-- The healthy witness at GST `g`: everyone awake (full participation, one
+/-- The healthy witness at GST `g` under an admissible selection `sel` at
+which the progress requirement holds: everyone awake (full participation, one
 faulty validator), the canonical run from `g` (no receipt before
 `g`), horizon `H` long enough for one liveness deadline
 after the heal point, two cuts after it, and one progress window from
 `ready`. -/
-theorem healthy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap : Capability)
-    (i : K.Idx) (g : Time)
+theorem healthy_witness_sel (ha : K.params.Admissible) (cap : Capability) (i : K.Idx) (g : Time)
+    (sel : (protoOf (compiled F) (realPoint key hn Δ hΔ allAwake H).env).Role →
+      Finset (Fin (Fintype.card V)))
+    (hsel : (protoOf (compiled F) (realPoint key hn Δ hΔ allAwake H).env).SelAdmits sel)
+    (hprog : ∀ c s e, shapeHolds F (K.progress cap i) c s e (realPoint key hn Δ hΔ allAwake H)
+      (key, sel))
     (h1 : max g 0 + (K.params.heal cap i : Time) * Δ + Δ + (K.params.latency cap i : Time) * Δ ≤ H)
     (h2 : max g 0 + (K.params.heal cap i : Time) * Δ + 2 ≤ H)
     (h3 : max g 0 + (K.params.catchUp : Time) * Δ + 1 +
       progLen F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V) ≤ H) :
     ∃ rho : Model.Run (compiled F) (realPoint key hn Δ hΔ allAwake H).env,
-      rho.point = realPoint key hn Δ hΔ allAwake H ∧ rho.key = key ∧
+      rho.point = realPoint key hn Δ hΔ allAwake H ∧ rho.key = key ∧ rho.sel = sel ∧
       (Sys F V).Witness ⟨_, rho⟩ ∧
       CommLog.EagerFrom ((Sys F V).pt ⟨_, rho⟩)
         ((Sys F V).log ⟨_, rho⟩) g ∧ (Sys F V).Healthy K g ⟨_, rho⟩ ∧
@@ -571,14 +671,13 @@ theorem healthy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap 
     have := le_max_right g 0; linarith
   have hH0 : 0 ≤ H := by linarith
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
-    real_run key F (realPoint key hn Δ hΔ allAwake H) hH0 g
+    real_run_sel key F (realPoint key hn Δ hΔ allAwake H) hH0 g sel hsel
   have hse := Model.sysOf_eagerFrom (O := O) _ he
   refine ⟨Model.mkRun (F := compiled F) (E := (realPoint key hn Δ hΔ allAwake H).env)
     (realPoint key hn Δ hΔ allAwake H).honest H key
-    (extremalSel F (realPoint key hn Δ hΔ allAwake H).env)
-    (realPoint key hn Δ hΔ allAwake H).submit relay hash events,
-    rfl, rfl, ⟨hv, hnc, ?_, ?_⟩, hse, ⟨hse.psync le_rfl, ?_⟩,
-    allAwake_holds key hn hΔ H hf cap i _ _ _, ?_, ?_,
+    sel (realPoint key hn Δ hΔ allAwake H).submit relay hash events,
+    rfl, rfl, rfl, ⟨hv, hnc, ?_, ?_⟩, hse, ⟨hse.psync le_rfl, ?_⟩,
+    hprog _ _ _, ?_, ?_,
     allAwake_safeActive key hn hΔ H _ _ h2⟩
   · change (realPoint key hn Δ hΔ allAwake H).faulty.Nonempty
     rw [realPoint_faulty]; exact Finset.singleton_nonempty _
@@ -594,6 +693,89 @@ theorem healthy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap 
     change max 0 (max g 0 + (K.params.heal cap i : Time) * Δ) + Δ +
       (K.params.latency cap i : Time) * Δ ≤ H
     rw [max_eq_right hheal]; exact h1
+
+/-- The healthy witness at GST `g` under the extremal selection (key `1`
+proposes every slot). -/
+theorem healthy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap : Capability)
+    (i : K.Idx) (g : Time)
+    (h1 : max g 0 + (K.params.heal cap i : Time) * Δ + Δ + (K.params.latency cap i : Time) * Δ ≤ H)
+    (h2 : max g 0 + (K.params.heal cap i : Time) * Δ + 2 ≤ H)
+    (h3 : max g 0 + (K.params.catchUp : Time) * Δ + 1 +
+      progLen F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V) ≤ H) :
+    ∃ rho : Model.Run (compiled F) (realPoint key hn Δ hΔ allAwake H).env,
+      rho.point = realPoint key hn Δ hΔ allAwake H ∧ rho.key = key ∧
+      (Sys F V).Witness ⟨_, rho⟩ ∧
+      CommLog.EagerFrom ((Sys F V).pt ⟨_, rho⟩)
+        ((Sys F V).log ⟨_, rho⟩) g ∧ (Sys F V).Healthy K g ⟨_, rho⟩ ∧
+      (Sys F V).prog (shapeProgress F V) K cap i ((Sys F V).ready K g ⟨_, rho⟩) rho.horizon
+        ⟨_, rho⟩ ∧
+      ProgressActive F K cap i ((Sys F V).ready K g ⟨_, rho⟩) rho ∧
+      rho.point.TxLiveActive ((Sys F V).cDur K ⟨_, rho⟩)
+        ((Sys F V).heal K cap i g ⟨_, rho⟩) ((Sys F V).lat K cap i ⟨_, rho⟩) ∧
+      SafeActive ((Sys F V).cDur K ⟨_, rho⟩) ((Sys F V).heal K cap i g ⟨_, rho⟩) rho.point := by
+  obtain ⟨rho, hp, hk, -, h⟩ := healthy_witness_sel key hn hΔ H ha cap i g _
+    (extremalSel_admits F _) (allAwake_holds key hn hΔ H hf cap i) h1 h2 h3
+  exact ⟨rho, hp, hk, h⟩
+
+/-- A selection for the bad-proposer witness at index `i` (tolerant of
+`n` validators not ready and of bad slots), on a profile where key `1`
+stays awake: for a recurrence, the bad-slot selection with period
+`span + 2` (key `0`, faulty, proposes one slot in every `span + 2`), under
+which the recurrence still holds and every window holds a faulty proposer
+slot; for a bound on the validators not ready, the extremal selection (the
+tolerant bound holds on every point). -/
+theorem bad_selection (awake : V → Time → Bool)
+    (ha1 : ∀ t, awake (kv key hn 1 (by decide)) t = true)
+    (hf : ProgressFits K F) (cap : Capability) (i : K.Idx)
+    (ht : ProgressReq.Tolerates (Fintype.card V) (K.progress cap i)) :
+    ∃ sel : (protoOf (compiled F) (realPoint key hn Δ hΔ awake H).env).Role →
+        Finset (Fin (Fintype.card V)),
+      (protoOf (compiled F) (realPoint key hn Δ hΔ awake H).env).SelAdmits sel ∧
+      (∀ c s e, shapeHolds F (K.progress cap i) c s e (realPoint key hn Δ hΔ awake H)
+        (key, sel)) ∧
+      ∀ rho : Model.Run (compiled F) (realPoint key hn Δ hΔ awake H).env, rho.sel = sel →
+        rho.key = key → rho.honest = (realPoint key hn Δ hΔ awake H).honest →
+        BadProposerEvery F K cap i rho := by
+  have hn0 : 0 < Fintype.card V := by omega
+  have hfit := hf cap i (pubOf (realPoint key hn Δ hΔ awake H).env)
+  cases hreq : K.progress cap i with
+  | recur ρ =>
+    rw [hreq] at hfit ht
+    change (F _).skel.proposerSel = .sized 1 at hfit
+    change ρ.BadSlotSlack at ht
+    have hP : ρ.pattern.span + 2 - 1 = ρ.pattern.span + 1 := by omega
+    refine ⟨badSel F (realPoint key hn Δ hΔ awake H).env (ρ.pattern.span + 2) hn0,
+      badSel_admits F _ _ hn0 hfit, fun c s e => ?_, fun rho hs hk hh => ?_⟩
+    · apply patternRecurrence_of_periodic hΔ ht
+      intro sl j hsl hj
+      have hg := Recurrence.pattern_good hsl hj
+      have hmem := badSel_good_mem F hn0 hfit (by omega) (s := sl + j)
+        (P := ρ.pattern.span + 2) (by rw [hP]; exact hg)
+      refine ⟨⟨⟨1, by omega⟩, (hmem _).mpr rfl⟩, fun k hk => ?_⟩
+      have hk1 : k = ⟨1, by omega⟩ := Fin.ext ((hmem k).mp hk)
+      subst hk1
+      have hh1 := realPoint_honest key hn hΔ awake H (j := 1) (by decide) (by decide)
+      exact ⟨hh1, fun t _ _ => ha1 t⟩
+    · unfold BadProposerEvery
+      rw [hreq]
+      intro a
+      obtain ⟨s, h1, h2, h3⟩ := Recurrence.exists_bad_slot ht a
+      have hb := badSel_bad F (E := (realPoint key hn Δ hΔ awake H).env) hn0 (s := s)
+        (P := ρ.pattern.span + 2) (by rw [hP]; exact h3)
+      refine ⟨s, h1, h2, ?_, ?_⟩
+      · rw [hs]; rw [hb]; exact Finset.singleton_nonempty _
+      · rw [hs]; rw [hb]
+        intro k hk'
+        rw [Finset.mem_singleton.mp hk', hk, hh]
+        intro hm
+        have : kv key hn 0 (by decide) ∈ (realPoint key hn Δ hΔ awake H).faulty := by
+          rw [realPoint_faulty]; exact Finset.mem_singleton_self _
+        exact (Finset.mem_sdiff.mp this).2 hm
+  | notReadyAtMost m =>
+    rw [hreq] at ht
+    refine ⟨extremalSel F _, extremalSel_admits F _, fun c s e => ?_, fun rho _ _ _ => ?_⟩
+    · exact NotReadyOn.of_card_le ht
+    · unfold BadProposerEvery; rw [hreq]; trivial
 
 /-- Sleepy stress: only honest keys `1` and `2` stay awake, with active
 liveness and progress on the synchronous canonical run: with one faulty
@@ -701,7 +883,7 @@ theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
     (hn : 5 ≤ Fintype.card V) : RealizableActive F K V := by
   let key : Fin (Fintype.card V) ≃ V := (Fintype.equivFin V).symm
   refine ⟨fun cap i Δ hΔ => ?_, fun cap i Δ g hΔ hg => ?_,
-    fun cap hc ho Δ hΔ => ?_, fun Δ k hΔ => ?_⟩
+    fun cap hc ho Δ hΔ => ?_, fun Δ k hΔ => ?_, fun cap ho Δ g hΔ hg => ?_⟩
   · obtain ⟨rho, -, -, hw, hs, hp, hpa, ht⟩ := sleepy_witness key hn hΔ _ ha hf cap i le_rfl
     exact ⟨⟨_, rho⟩, hw, rfl, ⟨hs, hp, ht⟩, hpa⟩
   · have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V)
@@ -732,6 +914,23 @@ theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
     obtain ⟨rho, -, -, hw, ho, hoa⟩ := outage_witness (F := F) key hn hΔ _ ha hT (by linarith)
       le_rfl le_rfl
     exact ⟨⟨_, rho⟩, _, _, _, hw, rfl, ho, hoa, le_rfl⟩
+  · obtain ⟨i, hi⟩ := ht cap ho (Fintype.card V)
+    have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V)
+    have hlat : 0 ≤ (K.params.latency cap i : Time) * Δ := mul_nonneg (by positivity) hΔ.le
+    have hheal : 0 ≤ (max g 0 + (K.params.heal cap i : Time) * Δ) :=
+      add_nonneg (le_max_right _ _) (mul_nonneg (by positivity) hΔ.le)
+    have hrdy : 0 ≤ (max g 0 + (K.params.catchUp : Time) * Δ + 1) := by
+      have := le_max_right g 0
+      have : (0 : Time) ≤ (K.params.catchUp : Time) * Δ := mul_nonneg (by positivity) hΔ.le
+      linarith
+    obtain ⟨sel, hsel, hprog, hbad⟩ := bad_selection key hn hΔ
+      ((max g 0 + (K.params.heal cap i : Time) * Δ) +
+        (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency cap i : Time) * Δ +
+        progLen F K cap i (⟨Δ, hΔ, allAwake⟩ : Env V) + Δ + 2) allAwake (fun _ => rfl) hf cap i hi
+    obtain ⟨rho, hpt, hk, hs, hw, he, hs', hp, hpa, ht', -⟩ := healthy_witness_sel key hn hΔ _ ha
+      cap i g sel hsel hprog (by linarith) (by linarith) (by linarith)
+    exact ⟨i, ⟨_, rho⟩, hw, rfl, ⟨he, hs', hp, ht'⟩, hpa,
+      hbad rho hs hk (congrArg EnvPoint.honest hpt)⟩
 
 end Realize
 

@@ -11,7 +11,8 @@ public import ConsensusShape.Realizable
 (`Params.Admissible`: thresholds no stronger than standard), a served ledger
 (`OutputSchema.Serves`: a final output, or an available one), and progress
 requirements that fit the skeleton (`ProgressFits`: a recurrence needs
-one proposer per slot), and tolerate arbitrary numbers of validators not ready.
+one proposer per slot), and tolerate arbitrary numbers of validators not
+ready and a bad proposer slot in every window (`ProgressTolerant`).
 
 `Accepted.good` gives the full L0 `Good` of the compiled system, for every
 finite validator type: `Accepted.behaviour` (the refinement of the shape
@@ -29,7 +30,7 @@ variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 
 /-- An accepted instance: shape claims, admissible numbers, a served ledger,
 and progress requirements that fit the skeleton and tolerate arbitrary numbers
-of validators not ready. -/
+of validators not ready and a bad proposer slot in every window. -/
 structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop where
   /-- The chain-level claims (proved by the protocol). -/
   claims : ShapeClaims F K
@@ -39,7 +40,8 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop wh
   serves : O.Serves
   /-- The progress requirements fit the skeleton. -/
   progressFits : ProgressFits K F
-  /-- Every provided output tolerates arbitrary numbers of validators not ready. -/
+  /-- Every provided output tolerates arbitrary numbers of validators not
+  ready and a bad proposer slot in every window. -/
   progressTolerant : ProgressTolerant O K
 
 /-- An accepted instance has the L0 behaviour for every finite validator

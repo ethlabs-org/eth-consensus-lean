@@ -21,6 +21,11 @@ public import Mathlib.Tactic
   fact is `Realizable.allProposers_no_witness`);
   `noProgressFit_contract` (a recurrence on a poll skeleton, which has no slot
   proposers); `notReadyAtMost_fits` (round robin fits every skeleton).
+* **Bad proposer slots** (decision 3): `recur_single_one_not_tolerant`
+  (an honest ready proposer in every slot, `recur ⟨single, 1⟩`, at every
+  index is not `ProgressTolerant`), generally `recur_noSlack_not_tolerant`
+  (`gap < span + 2` at every index); `recur_single_one_bad_slots` (why: it
+  fails on a point whose slots all have faulty proposers).
 * `credential_forgery_excluded`: the L2 form of the model-level credential
   test (`forged_role_invalid`): a delivered proposal signed by a key not
   selected as the slot's proposer violates `ExecutionValid`, for every family;
@@ -169,6 +174,45 @@ theorem noProgressFit_contract (K : Contract ProgressReq) (cap : Capability) (i 
 /-- A bound on the validators not ready fits every skeleton (round robin). -/
 theorem notReadyAtMost_fits {n : Nat} (sk : Skeleton n) (m : ℕ+) :
     ProgressReq.Fits sk (ProgressReq.notReadyAtMost m) := trivial
+
+/-- A recurrence without room for a bad proposer slot in every window
+(`gap < span + 2`) at every index of a provided output is not progress
+tolerant. -/
+theorem recur_noSlack_not_tolerant {O : OutputSchema} (K : Contract ProgressReq)
+    {cap : Capability} (ho : (O.output cap).isSome)
+    (hp : ∀ i, ∃ ρ : Recurrence, K.progress cap i = .recur ρ ∧ (ρ.gap : Nat) < ρ.pattern.span + 2) :
+    ¬ ProgressTolerant O K := by
+  intro h
+  obtain ⟨i, hi⟩ := h cap ho 0
+  obtain ⟨ρ, hρ, hlt⟩ := hp i
+  rw [hρ] at hi
+  change ρ.pattern.span + 2 ≤ (ρ.gap : Nat) at hi
+  omega
+
+/-- "Every slot's proposer is honest and ready" (`recur ⟨single, 1⟩` at every
+index) is rejected by acceptance (`ProgressTolerant`). -/
+theorem recur_single_one_not_tolerant {O : OutputSchema} (K : Contract ProgressReq)
+    {cap : Capability} (ho : (O.output cap).isSome)
+    (hp : ∀ i, K.progress cap i = .recur ⟨Pattern.single, 1⟩) : ¬ ProgressTolerant O K :=
+  recur_noSlack_not_tolerant K ho fun i => ⟨_, hp i, by decide⟩
+
+/-- Why: `recur ⟨single, 1⟩` fails as soon as one whole window fits in
+`[start, stop]` and the horizon and every slot has a nonempty, entirely faulty
+proposer selection; with slack (`BadSlotSlack`) it holds with a bad slot in
+every window (`patternRecurrence_of_periodic`). -/
+theorem recur_single_one_bad_slots {V : Type} [Fintype V] (p : EnvPoint V)
+    (key : Fin (Fintype.card V) ≃ V) (sel : Slot → Finset (Fin (Fintype.card V)))
+    (G : TimeGrid) (c start stop : Time)
+    (hbad : ∀ s, (sel s).Nonempty ∧ ∀ k ∈ sel s, key k ∉ p.honest)
+    (hs : max start 0 + ((⟨Pattern.single, 1⟩ : Recurrence).len : Time) * G.slotLen p.env.Δ ≤ stop)
+    (ht : max start 0 + ((⟨Pattern.single, 1⟩ : Recurrence).len : Time) * G.slotLen p.env.Δ ≤
+      p.horizon) :
+    ¬ PatternRecurrence p key sel G ⟨Pattern.single, 1⟩ c start stop := by
+  intro h
+  obtain ⟨s, hall⟩ := h.exists_inside hs ht
+  obtain ⟨-, hr⟩ := hall 0 (List.mem_singleton_self _)
+  obtain ⟨k, hk⟩ := (hbad (s + 0)).1
+  exact (hbad (s + 0)).2 k hk (hr.2 k hk).1
 
 
 end ProgressFit
