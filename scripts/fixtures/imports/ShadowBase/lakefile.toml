@@ -1,0 +1,21 @@
+name = "fx"
+defaultTargets = ["FxSpec", "FxImpl"]
+
+[[lean_lib]]
+name = "FxSpec"
+globs = ["FxSpec.*"]
+
+[[lean_lib]]
+name = "FxImpl"
+globs = ["FxImpl.*"]
+
+[[lean_lib]]
+name = "FxFix"
+roots = []
+globs = ["FxFix.+"]
+
+# Not a default target: its module takes the name of a base library (Mathlib) and so would pass the
+# import rules as a dependency module.
+[[lean_lib]]
+name = "Shadow"
+roots = ["Mathlib.Shadow"]

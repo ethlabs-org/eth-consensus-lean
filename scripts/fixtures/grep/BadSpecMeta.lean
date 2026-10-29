@@ -2,3 +2,4 @@
 run_cmd pure ()
 #eval 1
 initialize pure ()
+builtin_initialize pure ()

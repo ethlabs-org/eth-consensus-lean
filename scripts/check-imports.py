@@ -3,7 +3,9 @@
 
 Port of verified-consensus scripts/check-review-boundary.rb (CC0-1.0). Imports come from the pinned
 Lean parser (`lean --deps-json`), never from source text. Run as `python3 -I scripts/check-imports.py`.
-Configuration: scripts/boundaries.toml (`base`, `fixture_libs`, one `[[lib]]` per default library).
+Configuration: scripts/boundaries.toml (`base`, `fixture_libs`, `tool_exes`, one `[[lib]]` per default library).
+Every lakefile target is a configured library, a fixture library or a tool, and no project module, file or
+directory takes a top-level name of the base set (it would pass every check as a dependency module).
 Failures carry stable tags: FAIL[import] FAIL[base] FAIL[root] FAIL[root-import] FAIL[fixture] FAIL[config].
 """
 import argparse, json, subprocess, sys, tomllib
@@ -25,6 +27,22 @@ def check(tree, cfg_path, lakefile, inventory_out=None):
     base = set(cfg.get("base", []))
     lake_libs = {l["name"]: l for l in lake.get("lean_lib", [])}
     names = [l["name"] for l in libs]
+    if (tree / "lakefile.lean").exists():
+        fails.append("FAIL[config] lakefile.lean exists: Lake would use it instead of lakefile.toml")
+    for k, v in lake.items():  # targets: only lean_lib/lean_exe, each one known
+        if k not in ("lean_lib", "lean_exe", "require") and isinstance(v, list) and any(isinstance(x, dict) for x in v):
+            fails.append(f"FAIL[config] target: lakefile table [[{k}]] is not supported")
+    exes = lake.get("lean_exe", [])
+    known = set(names) | set(cfg.get("fixture_libs", [])) | set(cfg.get("tool_exes", []))
+    for t in list(lake_libs.values()) + exes:
+        if t["name"] not in known:
+            fails.append(f"FAIL[config] target: lakefile target {t['name']} is not a configured lib, fixture lib or tool")
+    stems = [p for t in lake_libs.values() for p in lib_prefixes(t)] + [e.get("root", e["name"]) for e in exes]
+    tops = [p.name.removesuffix(".lean") for d in {tree} | {tree / t["srcDir"] for t in list(lake_libs.values()) + exes
+            if "srcDir" in t} if d.is_dir() for p in d.iterdir()]
+    for x in sorted({m.split(".")[0] for m in stems} | set(tops)):
+        if x in base:
+            fails.append(f"FAIL[config] base name: {x} is a project module prefix, file or directory")
     if not libs or sorted(lake.get("defaultTargets", [])) != sorted(names):
         fails.append(f"FAIL[config] defaultTargets {lake.get('defaultTargets')} != configured libs {names}")
     if lake.get("srcDir", ".") not in (".", "./"):
@@ -112,6 +130,8 @@ CASES = {  # scripts/fixtures/imports/<case>: expected tag (None = must pass)
     "OrphanProofs": "FAIL[root]", "ChildImportsRoot": "FAIL[root-import]", "UnknownTop": "FAIL[base]",
     "FixtureImport": "FAIL[fixture]", "NoRootCovers": "FAIL[config]", "EmptyLib": "FAIL[config]",
     "LibMismatch": "FAIL[config]", "ProofsComponent": "FAIL[config]",
+    "LakefileLean": "FAIL[config] lakefile.lean", "ShadowBase": "FAIL[config] base name",
+    "UnknownTarget": "FAIL[config] target",
 }
 
 def self_test(fixtures):

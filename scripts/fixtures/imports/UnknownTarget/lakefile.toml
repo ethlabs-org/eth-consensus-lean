@@ -1,0 +1,19 @@
+name = "fx"
+defaultTargets = ["FxSpec", "FxImpl"]
+
+[[lean_lib]]
+name = "FxSpec"
+globs = ["FxSpec.*"]
+
+[[lean_lib]]
+name = "FxImpl"
+globs = ["FxImpl.*"]
+
+[[lean_lib]]
+name = "FxFix"
+roots = []
+globs = ["FxFix.+"]
+
+[[lean_lib]]
+name = "Extra"
+globs = ["Extra.*"]

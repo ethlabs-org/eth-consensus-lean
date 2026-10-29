@@ -2,10 +2,8 @@
 # --paranoid decision, review-boundary job, CODEOWNERS). Action SHAs as in verified-consensus verify.yml.
 name: check
 
+# Manual runs only until the B5 feasibility measurement (runner minutes); B5 adds push/pull_request.
 on:
-  push:
-    branches: [main, checks]
-  pull_request:
   workflow_dispatch:
 
 permissions:

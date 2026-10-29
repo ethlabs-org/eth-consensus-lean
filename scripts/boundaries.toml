@@ -13,6 +13,10 @@ base = ["Init", "Std", "Lean", "Lake", "Mathlib", "Batteries", "Aesop", "Qq", "P
 # Non-default libraries (fixtures, deliberately bad). No default library may import them.
 fixture_libs = ["CheckFixtures", "CheckDeclsTest"]
 
+# lean_exe targets of the lakefile (the check stack's tools). Every lakefile target is a [[lib]] below, a
+# fixture lib or one of these; no lib root, glob or file may take a top-level name of `base`.
+tool_exes = ["check-decls"]
+
 # One [[lib]] per default target of lakefile.toml (asserted). `allow`: module prefixes that the import
 # closure of every module of the library may contain. `root_covers` must be true: every file under `dir`
 # is reached from the root. `may_import_roots`: non-root modules may import another library's root

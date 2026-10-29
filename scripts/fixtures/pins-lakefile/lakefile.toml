@@ -1,0 +1,68 @@
+packagesDir = "vendor"
+name = "consensus-lean"
+version = "0.1.0"
+keywords = ["lean", "consensus", "specification"]
+defaultTargets = ["ConsensusProblem", "ConsensusModel", "ConsensusModelProofs", "ConsensusBlocks", "ConsensusShape", "ConsensusShapeTests"]
+
+[leanOptions]
+pp.unicode.fun = true
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+weak.linter.flexible = false
+weak.linter.style.header = false
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.35.0"
+
+# L0, the problem: the definition of a good protocol.
+[[lean_lib]]
+name = "ConsensusProblem"
+globs = ["ConsensusProblem.*"]
+
+# L1, the execution model, and its proofs.
+[[lean_lib]]
+name = "ConsensusModel"
+globs = ["ConsensusModel.*"]
+
+[[lean_lib]]
+name = "ConsensusModelProofs"
+globs = ["ConsensusModelProofs.*"]
+
+# Building blocks for shapes.
+[[lean_lib]]
+name = "ConsensusBlocks"
+globs = ["ConsensusBlocks.*"]
+
+# L2, the shape layer, with protocol values.
+[[lean_lib]]
+name = "ConsensusShape"
+globs = ["ConsensusShape.*"]
+
+[[lean_lib]]
+name = "ConsensusShapeTests"
+globs = ["ConsensusShapeTests.*"]
+
+# Fixtures for the self-tests of scripts/check.sh. Deliberately bad (sorry, axioms, macros).
+# Never a default target; built only by check.sh. No root module: every fixture module is its own
+# target, and fixtures that share declaration names (Snap*) are never imported into one environment.
+[[lean_lib]]
+name = "CheckFixtures"
+srcDir = "scripts/fixtures"
+roots = []
+globs = ["CheckFixtures.+"]
+
+# EthLib fixtures for check-decls (verbatim copies). Never a default target.
+[[lean_lib]]
+name = "CheckDeclsTest"
+srcDir = "scripts"
+roots = ["CheckDeclsTest", "CheckDeclsForeign"]
+
+# EthLib check-decls (verbatim copy, CC0). Built by check.sh (`lake build check-decls`).
+[[lean_exe]]
+name = "check-decls"
+srcDir = "scripts"
+root = "CheckDecls"
+supportInterpreter = true

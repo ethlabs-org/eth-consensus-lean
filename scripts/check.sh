@@ -4,7 +4,8 @@
 # Every path and module list comes from scripts/boundaries.toml (layout) and the inventory that
 # scripts/check-imports.py derives from it; nothing here is find-derived.
 #
-#   0  pins             toolchain + every dependency = scripts/pins.toml        (check-pins.py)
+#   0  pins             toolchain + every dependency = scripts/pins.toml, and   (check-pins.py)
+#                       Lake resolves exactly those checkouts (LEAN_PATH)
 #   1  build            default targets + fixtures + check-decls                (lake)
 #   2  imports          import discipline, root coverage, inventory             (check-imports.py)
 #   3  declarations     axioms/sorry/opaque/unsafe/extern/csimp per library     (EthLib check-decls)
@@ -97,6 +98,7 @@ expect_fail() {
   if [[ "$tag" != - ]] && ! grep -qF -- "$tag" <<<"$out"; then
     echo "  exit $rc but no '$tag' in the output of: $*"; echo "$out" | tail -20; return 1
   fi
+  [[ "$tag" == - ]] && tag=
   echo "  ok (exit $rc${tag:+, $tag}): $*"
 }
 expect_pass() {
@@ -106,14 +108,24 @@ expect_pass() {
 }
 
 # --- step 0: pins ---------------------------------------------------------------------------------
-pins_check() {  # pins_check <lean-toolchain> <lake-manifest.json>
-  python3 -I scripts/check-pins.py --toolchain "$1" --manifest "$2" --pins scripts/pins.toml \
-    --packages-dir .lake/packages
+# pins_check <lean-toolchain> <lake-manifest.json> <package-overrides.json> <lakefile.toml> [options]:
+# the checkouts are always the real .lake/packages (Lake's default packagesDir, the only one accepted).
+pins_check() {
+  python3 -I scripts/check-pins.py --toolchain "$1" --manifest "$2" --overrides "$3" --lakefile "$4" \
+    --pins scripts/pins.toml --packages-dir .lake/packages "${@:5}"
+}
+pins_fixture() {  # pins_fixture <case> [options]: fixtures/pins-<case>/ (its own lakefile.toml if it has one)
+  local d="$FX/pins-$1" lf=lakefile.toml
+  [[ -f "$d/lakefile.toml" ]] && lf="$d/lakefile.toml"
+  pins_check "$d/lean-toolchain" "$d/lake-manifest.json" "$d/package-overrides.json" "$lf" "${@:2}"
 }
 step_pins() {
   set +e
-  local rc=0 want
-  pins_check lean-toolchain lake-manifest.json || rc=1
+  local rc=0 want lp lib
+  # What Lake actually resolves (overrides, path dependencies, packagesDir) is in LEAN_PATH.
+  lp="$(lake env printenv LEAN_PATH)" && lib="$(lake env lean --print-libdir)" || { echo "  no LEAN_PATH"; rc=1; }
+  pins_check lean-toolchain lake-manifest.json .lake/package-overrides.json lakefile.toml \
+    --lean-path "$lp" --libdir "$lib" || rc=1
   want="$(python3 -I -c 'import tomllib; print(tomllib.load(open("scripts/pins.toml", "rb"))["lean_version"])')"
   if ! lake env lean --version | grep -qF "version $want,"; then
     echo "  lean --version is not $want: $(lake env lean --version)"; rc=1
@@ -123,10 +135,19 @@ step_pins() {
 }
 selftest_pins() {
   set +e
-  local rc=0 c
+  local rc=0 c lp lib
   for c in toolchain rev url extra; do
-    expect_fail 'FAIL[pins]' pins_check "$FX/pins-$c/lean-toolchain" "$FX/pins-$c/lake-manifest.json" || rc=1
+    expect_fail 'FAIL[pins]' pins_fixture "$c" || rc=1
   done
+  # Resolution mechanisms other than git checkouts in .lake/packages are refused.
+  for c in path override packagesdir subdir lakefile; do
+    expect_fail 'FAIL[pins] resolution' pins_fixture "$c" || rc=1
+  done
+  # A LEAN_PATH in which Lake resolved Cli elsewhere (what an override or path dependency produces).
+  lp="$(lake env printenv LEAN_PATH)" && lib="$(lake env lean --print-libdir)" || { echo "  no LEAN_PATH"; return 1; }
+  expect_fail 'FAIL[pins] resolution: LEAN_PATH has' pins_check lean-toolchain lake-manifest.json \
+    .lake/package-overrides.json lakefile.toml --libdir "$lib" \
+    --lean-path "$(sed 's#/\.lake/packages/Cli/#/.lake/Cli-altered/#' <<<"$lp")" || rc=1
   set -e
   return "$rc"
 }
@@ -398,20 +419,29 @@ selftest_replay() {
   load_search_path || { echo "  cannot determine the Lean search path"; return 1; }
   expect_fail 'found a problem in CheckFixtures.BadSkipKernel.A' replay_leaf CheckFixtures.BadSkipKernel.A || rc=1
   expect_fail 'refused' replay_leaf CheckFixtures.GoodSpec || rc=1
+  # Descendants only in another search-path directory (a dependency's build directory).
+  expect_fail 'packages/mathlib/.lake/build/lib/lean' replay_leaf Mathlib.Logic || rc=1
   expect_pass replay_leaf CheckFixtures.GoodSpec.A || rc=1
   set -e
   return "$rc"
 }
 
 # --- step 6: review pins --------------------------------------------------------------------------
-step_review() {  # compiled by step 1; here: the tests root really imports the pins module
-  lake env lean --deps-json "$(mod_file "$REVIEW_ROOT")" |
-    jq -e --arg m "$REVIEW_AXIOMS" '.imports[0].errors == [] and any(.imports[0].result.imports[]; .module == $m)' >/dev/null ||
-    { echo "  $REVIEW_ROOT does not import $REVIEW_AXIOMS"; return 1; }
+# review_imports <file> <module>: the header of <file> imports <module> directly (an import through a
+# helper module does not count: the pins must be compiled as part of the root's own build).
+review_imports() {
+  lake env lean --deps-json "$1" |
+    jq -e --arg m "$2" '.imports[0].errors == [] and any(.imports[0].result.imports[]; .module == $m)' >/dev/null ||
+    { echo "  FAIL[review] $1 does not import $2 directly"; return 1; }
 }
+step_review() { review_imports "$(mod_file "$REVIEW_ROOT")" "$REVIEW_AXIOMS"; }  # compiled by step 1
 selftest_review() {
   set +e
-  local rc=0
+  local rc=0 c
+  expect_pass review_imports "$FX/review-imports/Direct.lean" Fx.ReviewAxioms || rc=1
+  for c in Indirect Missing; do
+    expect_fail 'FAIL[review]' review_imports "$FX/review-imports/$c.lean" Fx.ReviewAxioms || rc=1
+  done
   expect_fail 'does not match generated message' lake env lean "$FX/ReviewAxiomsBad.lean" || rc=1
   expect_fail 'Type mismatch' lake env lean "$FX/ReviewTypeBad.lean" || rc=1
   expect_pass lake env lean "$FX/ReviewAxiomsGood.lean" || rc=1
@@ -429,11 +459,11 @@ scan() {  # scan <ere> [-w] <files...>
 }
 grep_7a() {
   local r=0
-  scan 'sorry|admit|native_decide|admitGoal|sorryAx' -w "$@" || r=2
+  scan 'sorry|admit|native_decide|admitGoal|sorryAx|mkSorry|mkLabeledSorry' -w "$@" || r=2
   scan 'skipKernelTC|decide \+native' "$@" || r=2
   return "$r"
 }
-grep_7b() { scan 'run_cmd|run_meta|run_elab|#eval|#exit|initialize' -w "$@"; }
+grep_7b() { scan 'run_cmd|run_meta|run_elab|#eval|#exit|(builtin_)?initialize' -w "$@"; }
 grep_7c() { scan 'skipKernelTC|plugins|moreLeanArgs|weakLeanArgs|moreServerArgs|loadDynlib|dynlibs|precompileModules|debug\.' "$@"; }
 step_grep() {
   local files=() spec=() found rc=0
@@ -442,13 +472,15 @@ step_grep() {
   ((${#files[@]} > 0 && ${#spec[@]} > 0)) || { echo "  no files to scan"; return 1; }
   found="$({ grep_7a "${files[@]}" && grep_7b "${spec[@]}" && grep_7c lakefile.toml; } 2>&1)" || rc=1
   [[ -z "$found" && $rc -eq 0 ]] || { echo "$found"; return 1; }
+  # Lake prefers lakefile.lean to lakefile.toml; every check here reads lakefile.toml (step 2 refuses it too).
+  [[ ! -e lakefile.lean ]] || { echo "  lakefile.lean exists"; return 1; }
   echo "  scanned ${#files[@]} library files, ${#spec[@]} Spec files, lakefile.toml"
 }
 selftest_grep() {
   set +e
   local rc=0
-  [[ $(grep_7a "$FX/grep/Bad.lean" | wc -l) -ge 6 ]] && echo "  ok: 7a flags grep/Bad.lean" || { echo "  7a misses grep/Bad.lean"; rc=1; }
-  [[ $(grep_7b "$FX/grep/BadSpecMeta.lean" | wc -l) -eq 3 ]] && echo "  ok: 7b flags grep/BadSpecMeta.lean" || { echo "  7b misses grep/BadSpecMeta.lean"; rc=1; }
+  [[ $(grep_7a "$FX/grep/Bad.lean" | wc -l) -ge 8 ]] && echo "  ok: 7a flags grep/Bad.lean" || { echo "  7a misses grep/Bad.lean"; rc=1; }
+  [[ $(grep_7b "$FX/grep/BadSpecMeta.lean" | wc -l) -eq 4 ]] && echo "  ok: 7b flags grep/BadSpecMeta.lean" || { echo "  7b misses grep/BadSpecMeta.lean"; rc=1; }
   [[ $(grep_7c "$FX/grep/lakefile-bad.toml" | wc -l) -ge 2 ]] && echo "  ok: 7c flags grep/lakefile-bad.toml" || { echo "  7c misses grep/lakefile-bad.toml"; rc=1; }
   [[ -z "$(grep_7a "$FX/ReviewAxiomsGood.lean")" ]] && echo "  ok: 7a passes a clean file" || { echo "  7a flags a clean file"; rc=1; }
   grep_7a "$FX/grep/does-not-exist.lean" >/dev/null; [[ $? -eq 2 ]] && echo "  ok: a missing file is an error" || { echo "  a missing file is not an error"; rc=1; }
@@ -543,7 +575,7 @@ else
 fi
 run_selftest "5 kernel replay self-test (BadSkipKernel, prefix refusal)" selftest_replay
 run_step "6 review pins ($REVIEW_ROOT imports $REVIEW_AXIOMS)" step_review
-run_selftest "6 review pins self-test (ReviewAxiomsBad, ReviewTypeBad, ReviewAxiomsGood)" selftest_review
+run_selftest "6 review pins self-test (review-imports, ReviewAxiomsBad, ReviewTypeBad, ReviewAxiomsGood)" selftest_review
 run_step "7 backstop (grep)" step_grep
 run_selftest "7 backstop self-test (fixtures/grep)" selftest_grep
 run_step "8 vendored files (scripts/vendor.sha256)" step_vendor
