@@ -2,10 +2,10 @@ import Lean
 open Lean
 
 /-- Audit every declaration owned by every Consensus module in this repository,
-including tests (`ConsensusShapeTests`, with `Index`) and
+including tests (`ConsensusTests`, with `Index`) and
 generated declarations, for axioms outside `propext`, `Classical.choice` and
-`Quot.sound`. Name existence is checked by the build (`ConsensusShapeTests/Index`).
-Run after the six-library Lake build:
+`Quot.sound`. Name existence is checked by the build (`ConsensusTests/Index`).
+Run after the default Lake build:
 `lake env lean --run CheckConsensusAxioms.lean`. It audits the modules under the current directory,
 so `scripts/fixtures/challenge-prefix/run.sh` runs it on a fixture directory. -/
 def main : IO UInt32 := do
