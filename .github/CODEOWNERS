@@ -1,0 +1,15 @@
+# Protected paths (plan §4.6): a change needs the owner's review. Effective only with branch protection
+# ("Require review from Code Owners"); the CI job review-boundary (ci.yml) checks the same list against the
+# owner's tag `spec-approved` either way. The owner replaces the account below with their own login.
+/ConsensusSpec/                     @fradamt-agent
+/ConsensusSpec.lean                 @fradamt-agent
+/ConsensusChallenge.lean            @fradamt-agent
+/comparator.json                    @fradamt-agent
+/lean-toolchain                     @fradamt-agent
+/lakefile.toml                      @fradamt-agent
+/lakefile.lean                      @fradamt-agent
+/lake-manifest.json                 @fradamt-agent
+/scripts/                           @fradamt-agent
+/ConsensusTests/ReviewAxioms.lean   @fradamt-agent
+/ConsensusTests/ReviewGuard.lean    @fradamt-agent
+/.github/                           @fradamt-agent

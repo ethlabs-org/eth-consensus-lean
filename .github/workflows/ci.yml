@@ -1,9 +1,12 @@
-# DRAFT (batch C): finalized when the checks branch is merged (plan §B5: feasibility run, timings,
-# --paranoid decision, review-boundary job, CODEOWNERS). Action SHAs as in verified-consensus verify.yml.
+# Correctness (scripts/check.sh with bubblewrap, so lake check and lake comparator run) and the review
+# boundary (protected paths unchanged since the owner's tag `spec-approved`). Action SHAs as in
+# verified-consensus verify.yml. The --paranoid comparator run is in paranoid.yml (weekly + manual).
 name: check
 
-# Manual runs only until the B5 feasibility measurement (runner minutes); B5 adds push/pull_request.
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -24,11 +27,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install elan (toolchain pinned by lean-toolchain)
+      - name: Install elan v4.2.4 (pinned release, sha256-checked; toolchain from lean-toolchain)
         run: |
           set -euo pipefail
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-            | sh -s -- -y --default-toolchain "$(cat lean-toolchain)"
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz -o "$RUNNER_TEMP/elan.tgz"
+          echo "42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  $RUNNER_TEMP/elan.tgz" | sha256sum --strict -c -
+          tar -xzf "$RUNNER_TEMP/elan.tgz" -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/elan-init" -y --no-modify-path --default-toolchain "$(cat lean-toolchain)"
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Report Lean toolchain
@@ -72,3 +77,34 @@ jobs:
           name: check-log
           path: ${{ runner.temp }}/check.log
           retention-days: 30
+
+  review-boundary:
+    # Red while a protected path (plan §4.6) differs from the commit tagged `spec-approved`, and red until
+    # the owner first sets the tag. Only the owner moves it, after reviewing the diff this job prints:
+    #   git tag -f spec-approved <sha> && git push -f origin spec-approved
+    name: Review boundary (protected paths = spec-approved)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out consensus-lean (full history and tags; fetch-depth 0 also fetches every tag)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Protected paths unchanged since spec-approved
+        run: |
+          set -euo pipefail
+          protected=(ConsensusSpec ConsensusSpec.lean ConsensusChallenge.lean comparator.json lean-toolchain
+                     lakefile.toml lakefile.lean lake-manifest.json scripts ConsensusTests/ReviewAxioms.lean
+                     ConsensusTests/ReviewGuard.lean .github)
+          if ! git rev-parse -q --verify 'refs/tags/spec-approved^{commit}' >/dev/null; then
+            echo "::error::no tag spec-approved: the owner has not yet approved the protected paths"
+            exit 1
+          fi
+          if ! git diff --quiet spec-approved HEAD -- "${protected[@]}"; then
+            echo "::error::protected paths changed since spec-approved ($(git rev-parse --short spec-approved)): awaiting owner review"
+            git diff --stat spec-approved HEAD -- "${protected[@]}"
+            exit 1
+          fi
+          echo "protected paths unchanged since spec-approved ($(git rev-parse --short spec-approved))"

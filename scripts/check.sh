@@ -9,15 +9,16 @@
 #   1  build            default targets + fixtures + check-decls                (lake)
 #   2  imports          import discipline, root coverage, inventory             (check-imports.py)
 #   3  declarations     axioms/sorry/opaque/unsafe/extern/csimp per library     (EthLib check-decls)
-#   4  Spec surface     persisted extensions, snapshot, theorems, noconst       (SpecSurface.lean)
+#   4  Spec surface     persisted extensions, snapshot, theorems, noconst,      (SpecSurface.lean)
+#                       reach (report)
 #   5  kernel replay    every leaf module of every default library              (leanchecker)
 #   6  review pins      ReviewAxioms compiled into the tests root               (#guard_msgs)
 #   7  backstop         grep for sorry/admit/native_decide, Spec meta commands, lakefile options
 #   8  vendored         sha256 of every verbatim copy                           (scripts/vendor.sha256)
-#   9  comparator config  exact comparator.json (from B4; fixtures run now)    (jq)
+#   9  comparator config  exact comparator.json + ConsensusChallenge.lean    (jq, lean --deps-json)
 #   10 lake check       sandboxed build + export + replay                       (needs bwrap)
-#   11 lake comparator  Spec statements vs proofs (from B4)                     (needs bwrap)
-#   12 docs             README spec-file list (from B5)
+#   11 lake comparator  Spec statements vs proofs, axioms, sandboxed replay     (needs bwrap)
+#   12 docs             README spec-file list = the files of the Spec library
 # Every step with a negative fixture also runs it through the same function ("self-test" steps).
 #
 # Usage: scripts/check.sh [--no-build] [--quick] [--update-snapshot] [--update-extensions]
@@ -66,10 +67,11 @@ cfg() {
 c = tomllib.load(open(sys.argv[1], "rb")); k = sys.argv[2]
 v = c["lib"] if k == "libs" else c["checks"][k] if k in c.get("checks", {}) else c[k]
 v = [l["name"] for l in v] if k == "libs" else v
-print("\n".join(v) if isinstance(v, list) else v)' "$CFG" "$1"
+sys.stdout.write("".join(x + "\n" for x in v) if isinstance(v, list) else v + "\n")' "$CFG" "$1"
 }
 mapfile -t LIBS < <(cfg libs)
-mapfile -t SPEC_MODULES < <(cfg spec_modules)
+SPEC_LIB="$(cfg spec_lib)"
+SPEC_MODULES=()  # every module of the Spec library's inventory; filled after step 2
 mapfile -t EXT_LIBS < <(cfg extension_libs)
 mapfile -t EXTRA_TARGETS < <(cfg extra_build_targets)
 mapfile -t NOCONST_EXEMPT < <(cfg noconst_exempt)
@@ -80,7 +82,7 @@ CHALLENGE="$(cfg challenge_module)"
 SOLUTION="$(cfg solution_module)"
 STATEMENTS="$(cfg statements_module)"
 case "$THEOREMS_MODE" in report|enforce) ;; *) echo "check.sh: theorems_mode must be report or enforce" >&2; exit 2 ;; esac
-((${#LIBS[@]} > 0 && ${#SPEC_MODULES[@]} > 0 && ${#EXT_LIBS[@]} > 0 && ${#EXTRA_TARGETS[@]} > 0)) || { echo "check.sh: empty configuration" >&2; exit 2; }
+((${#LIBS[@]} > 0 && ${#EXT_LIBS[@]} > 0 && ${#EXTRA_TARGETS[@]} > 0)) || { echo "check.sh: empty configuration" >&2; exit 2; }
 
 # Inventory queries (written by step 2): modules of a library; leaf or parent modules of all libraries.
 inv_modules() { awk -F'\t' -v l="$1" '$1 == l { print $2 }' "$INV"; }
@@ -105,6 +107,11 @@ expect_pass() {
   local out
   if out="$("$@" 2>&1)"; then echo "  ok (exit 0): $*"; return 0; fi
   echo "  expected exit 0: $*"; echo "$out" | tail -20; return 1
+}
+expect_silent() {  # exit 0 and no output (no warning, no message)
+  local out
+  if out="$("$@" 2>&1)" && [[ -z "$out" ]]; then echo "  ok (exit 0, no output): $*"; return 0; fi
+  echo "  expected exit 0 and no output: $*"; echo "$out" | tail -20; return 1
 }
 
 # --- step 0: pins ---------------------------------------------------------------------------------
@@ -182,7 +189,8 @@ step_imports() {
   [[ $rc -eq 0 && -s "$INV" ]] || { echo "  no inventory: every later step needs it"; return 1; }
   # Every module named in [checks] must be in the inventory (a typo would silently check less).
   local m l bad=0
-  for m in "${SPEC_MODULES[@]}" "$REVIEW_AXIOMS" "$REVIEW_ROOT"; do
+  printf '%s\n' "${LIBS[@]}" | grep -qxF "$SPEC_LIB" || { echo "  FAIL[config] spec_lib: unknown library $SPEC_LIB"; bad=1; }
+  for m in "$SPEC_LIB" "$REVIEW_AXIOMS" "$REVIEW_ROOT" "$STATEMENTS" "$SOLUTION"; do
     cut -f2 "$INV" | grep -qxF "$m" || { echo "  FAIL[config] $m (boundaries.toml [checks]) is not in the inventory"; bad=1; }
   done
   for m in "${NOCONST_EXEMPT[@]}"; do
@@ -322,7 +330,18 @@ step_surface() {
     "${SURFACE[@]}" theorems --allow scripts/spec-theorems.txt --report --modules "${SPEC_MODULES[@]}" |
       tee "$WORK/theorems-report.txt" | tail -3
     [[ ${PIPESTATUS[0]} -eq 0 ]] || rc=1
-    echo "  NOTE  theorems in report mode: $(grep -c '^REPORT' "$WORK/theorems-report.txt") ranged theorems in Spec modules (enforced from B3)"
+    echo "  NOTE  theorems in report mode: $(grep -c '^REPORT' "$WORK/theorems-report.txt") ranged theorems in Spec modules"
+  fi
+  # Report (not a gate): which Spec definitions the review statements reach.
+  local seeds=() n_unreached
+  if "${SURFACE[@]}" statements --modules "$STATEMENTS" >"$WORK/statements-reach.txt" &&
+      mapfile -t seeds <"$WORK/statements-reach.txt" && ((${#seeds[@]} > 0)) &&
+      "${SURFACE[@]}" reach --from "${seeds[@]}" --modules "${SPEC_MODULES[@]}" >"$WORK/reach.txt"; then
+    n_unreached="$(grep -c '^UNREACHED' "$WORK/reach.txt")"
+    echo "  NOTE  reach (report): the ${#seeds[@]} statements reach $(grep -vc '^UNREACHED' "$WORK/reach.txt") Spec constants; $n_unreached ranged Spec definitions are not reached (listed below)"
+    grep '^UNREACHED' "$WORK/reach.txt" | sed 's/^/    /'
+  else
+    echo "  reach failed"; rc=1
   fi
   mapfile -t parents < <(inv_kind parent | grep -vxF -f <(printf '%s\n' "${NOCONST_EXEMPT[@]}" | awk NF) )
   echo "  noconst over ${#parents[@]} modules with descendants"
@@ -449,8 +468,31 @@ selftest_review() {
     expect_fail 'FAIL[review]' review_imports "$FX/review-imports/$c.lean" Fx.ReviewAxioms || rc=1
   done
   expect_fail 'does not match generated message' lake env lean "$FX/ReviewAxiomsBad.lean" || rc=1
-  expect_fail 'Type mismatch' lake env lean "$FX/ReviewTypeBad.lean" || rc=1
   expect_pass lake env lean "$FX/ReviewAxiomsGood.lean" || rc=1
+  # The alpha-equality and completeness guards (ConsensusTests/ReviewGuard.lean) on fixtures.
+  expect_fail 'is not alpha-equal' lake env lean "$FX/ReviewEqBad.lean" || rc=1
+  expect_fail 'does not have the binder kinds' lake env lean "$FX/ReviewBinderBad.lean" || rc=1
+  # Statements in another namespace, `eq_1`, `_Extra` and `private` ones all need a pair: in the
+  # current file, and in an imported module (`import all`, as the production file does).
+  expect_fail 'no review pair for [CheckFixtures.Elsewhere.Extra, CheckFixtures.ReviewCompleteBad.Extra, CheckFixtures.ReviewCompleteBad._Extra, CheckFixtures.ReviewCompleteBad.eq_1, _private.scripts.fixtures.ReviewCompleteBad.0.CheckFixtures.ReviewCompleteBad.Priv]' \
+    lake env lean "$FX/ReviewCompleteBad.lean" || rc=1
+  expect_fail 'no review pair for [CheckFixtures.Elsewhere.Extra, CheckFixtures.ReviewEscape._Extra, CheckFixtures.ReviewEscape.eq_1, _private.CheckFixtures.ReviewEscape.0.CheckFixtures.ReviewEscape.Priv]' \
+    lake env lean "$FX/ReviewEscapeBad.lean" || rc=1
+  expect_silent lake env lean "$FX/ReviewGuardGood.lean" || rc=1
+  # The production pins file, on temporary copies: unchanged it passes; without one pair, or with a
+  # misspelt module, it fails (no vacuous pass).
+  local f="$(mod_file "$REVIEW_AXIOMS")" d="$WORK/review-mut"
+  mkdir -p "$d"
+  cp "$f" "$d/Same.lean"
+  grep -v '``Consensus.Review.HeldIffServed, ``Consensus.Model.Run.held_iff_served' "$f" |
+    sed 's/``Consensus.Model.sysOf_log_faithful),/``Consensus.Model.sysOf_log_faithful)]/' >"$d/DropPair.lean"
+  sed "s/checkComplete \`$STATEMENTS pairs/checkComplete \`${STATEMENTS}X pairs/" "$f" >"$d/Typo.lean"
+  if cmp -s "$f" "$d/DropPair.lean" || cmp -s "$f" "$d/Typo.lean"; then
+    echo "  a mutation of $f did not apply (its text changed: update the self-test)"; rc=1
+  fi
+  expect_silent lake env lean "$d/Same.lean" || rc=1
+  expect_fail 'no review pair for [Consensus.Review.HeldIffServed]' lake env lean "$d/DropPair.lean" || rc=1
+  expect_fail "module ${STATEMENTS}X is not imported" lake env lean "$d/Typo.lean" || rc=1
   set -e
   return "$rc"
 }
@@ -497,7 +539,7 @@ selftest_grep() {
 # --- step 8: vendored files -----------------------------------------------------------------------
 step_vendor() { sha256sum --strict -c scripts/vendor.sha256; }
 
-# --- step 9: comparator config (jq glue; the real comparator.json is added in B4) ------------------
+# --- step 9: comparator config (jq glue) and the challenge module ----------------------------------
 # comparator_config_ok <config.json> <statements file>: exactly the four keys, the challenge and
 # solution modules, one theorem per Prop statement (`Consensus.Review.S` -> `Consensus.Review.s`),
 # the three standard axioms, and no `definition_names`.
@@ -514,10 +556,45 @@ comparator_config_ok() {
     and (.theorem_names | sort) == $want
     and (.permitted_axioms | sort) == ["Classical.choice", "Quot.sound", "propext"])' "$1" >/dev/null
 }
+# challenge_ok <file> <statements file>: the challenge imports exactly the Spec root (lean --deps-json;
+# besides the implicit `Init`), and its text with comments removed (`--` to the end of the line, nested
+# `/- ... -/` blocks, wherever they occur) is exactly the template: `module`, `public import <Spec root>`,
+# `@[expose] public section`, one `theorem <s> : <S> := sorry` per statement S (`s` its lower-first
+# name; any order) and `end`. Nothing else, so no declaration can hide next to a comment.
+challenge_ok() {
+  local f="$1" st="$2"
+  lake env lean --deps-json "$f" |
+    jq -e --arg m "$SPEC_LIB" '.imports[0].errors == [] and ([.imports[0].result.imports[].module | select(. != "Init")] == [$m])' >/dev/null ||
+    { echo "  FAIL[challenge] $f must import exactly $SPEC_LIB"; return 1; }
+  python3 -I - "$f" "$st" "$SPEC_LIB" <<'PY' || return 1
+import sys
+src, stmts, spec = open(sys.argv[1]).read(), open(sys.argv[2]).read().split(), sys.argv[3]
+out, i, depth = [], 0, 0
+while i < len(src):  # drop comments (nested block comments, line comments); keep newlines
+    if src.startswith("/-", i): depth, i = depth + 1, i + 2
+    elif depth and src.startswith("-/", i): depth, i = depth - 1, i + 2
+    elif depth: out.append("\n" if src[i] == "\n" else ""); i += 1
+    elif src.startswith("--", i): i = src.find("\n", i) if "\n" in src[i:] else len(src)
+    else: out.append(src[i]); i += 1
+got = [" ".join(l.split()) for l in "".join(out).splitlines() if l.strip()]
+def thm(s):
+    *ns, last = s.split(".")
+    return f"theorem {'.'.join(ns + [last[:1].lower() + last[1:]])} : {s} := sorry"
+head = ["module", f"public import {spec}", "@[expose] public section"]
+ok = (depth == 0 and stmts and got[:3] == head and got[-1:] == ["end"]
+      and sorted(got[3:-1]) == sorted(thm(s) for s in stmts))
+if not ok:
+    print(f"  FAIL[challenge] {sys.argv[1]} (comments removed) is not the template for {len(stmts)} statements:")
+    print("\n".join("    " + l for l in got))
+sys.exit(0 if ok else 1)
+PY
+}
 step_comparator_config() {
-  if [[ ! -f comparator.json ]]; then echo "  NOTE  no comparator.json yet (wired in B4)"; return 0; fi
+  [[ -f comparator.json ]] || { echo "  no comparator.json"; return 1; }
   "${SURFACE[@]}" statements --modules "$STATEMENTS" >"$WORK/statements.txt" &&
-    comparator_config_ok comparator.json "$WORK/statements.txt"
+    comparator_config_ok comparator.json "$WORK/statements.txt" &&
+    challenge_ok "$(mod_file "$CHALLENGE")" "$WORK/statements.txt" &&
+    echo "  comparator.json and $(mod_file "$CHALLENGE") match the $(wc -l <"$WORK/statements.txt") statements of $STATEMENTS"
 }
 selftest_comparator_config() {
   set +e
@@ -527,6 +604,14 @@ selftest_comparator_config() {
     expect_fail - comparator_config_ok "$FX/comparator/config-$c.json" "$FX/comparator/statements.txt" || rc=1
   done
   expect_fail - comparator_config_ok "$FX/comparator/config-empty.json" "$FX/comparator/statements-empty.txt" || rc=1
+  # The challenge module: the real one against fixture statements lists, and fixture challenges.
+  "${SURFACE[@]}" statements --modules "$STATEMENTS" >"$WORK/statements.txt" || { echo "  statements failed"; rc=1; }
+  head -n -1 "$WORK/statements.txt" >"$WORK/statements-short.txt"
+  expect_fail 'FAIL[challenge]' challenge_ok "$(mod_file "$CHALLENGE")" "$WORK/statements-short.txt" || rc=1
+  expect_fail 'FAIL[challenge]' challenge_ok "$(mod_file "$CHALLENGE")" /dev/null || rc=1
+  for c in import weaker extra hidden; do
+    expect_fail 'FAIL[challenge]' challenge_ok "$FX/comparator/challenge-$c.lean" "$WORK/statements.txt" || rc=1
+  done
   set -e
   return "$rc"
 }
@@ -543,7 +628,49 @@ step_lake_check() {
   set -e
   return "$rc"
 }
-step_lake_comparator() { lake comparator --config comparator.json; }
+step_lake_comparator() {
+  set +e
+  local rc=0
+  lake comparator --config comparator.json || rc=1
+  # Fixtures over CheckFixtures.Cmp.* (exit 1 = rejected; each for its intended reason).
+  expect_pass lake comparator --config "$FX/comparator-good.json" || rc=1
+  expect_fail "Challenge and solution theorem statement do not match: 'CheckFixtures.Cmp.t'" \
+    lake comparator --config "$FX/comparator-stmt.json" || rc=1
+  expect_fail "Illegal axiom detected" lake comparator --config "$FX/comparator-axiom.json" || rc=1
+  expect_fail "Const does not match between challenge and target" lake comparator --config "$FX/comparator-def.json" || rc=1
+  set -e
+  return "$rc"
+}
+
+# --- step 12: docs --------------------------------------------------------------------------------
+# docs_ok <README> <expected files...>: the backticked `*.lean` paths between the lines
+# `<!-- spec-files -->` and `<!-- /spec-files -->` are exactly the expected files.
+docs_ok() {
+  local readme="$1" got want
+  shift
+  grep -qx '<!-- spec-files -->' "$readme" && grep -qx '<!-- /spec-files -->' "$readme" ||
+    { echo "  FAIL[docs] $readme has no spec-files markers"; return 1; }
+  got="$(sed -n '/^<!-- spec-files -->$/,/^<!-- \/spec-files -->$/p' "$readme" | grep -oE '`[^`]+\.lean`' | tr -d '`' | LC_ALL=C sort -u)"
+  want="$(printf '%s\n' "$@" | LC_ALL=C sort -u)"
+  [[ -n "$want" && "$got" == "$want" ]] ||
+    { echo "  FAIL[docs] $readme lists other files than expected:"; diff <(echo "$want") <(echo "$got") | sed 's/^/    /'; return 1; }
+}
+step_docs() {
+  local files=()
+  mapfile -t files < <(for m in "${SPEC_MODULES[@]}"; do [[ "$m" == "$SPEC_LIB" ]] || mod_file "$m"; done)
+  docs_ok README.md "${files[@]}" && echo "  README.md lists the ${#files[@]} files of $SPEC_LIB"
+}
+selftest_docs() {
+  set +e
+  local rc=0 good=("$FX/CheckFixtures/GoodSpec/A.lean" "$FX/CheckFixtures/GoodSpec/B.lean")
+  expect_pass docs_ok "$FX/README-good.md" "${good[@]}" || rc=1
+  expect_fail 'FAIL[docs]' docs_ok "$FX/README-missing.md" "${good[@]}" || rc=1
+  expect_fail 'FAIL[docs]' docs_ok "$FX/README-good.md" "${good[0]}" || rc=1
+  expect_fail 'FAIL[docs]' docs_ok "$FX/README-good.md" || rc=1
+  expect_fail 'FAIL[docs] ' docs_ok "$FX/comparator/README.md" "${good[@]}" || rc=1
+  set -e
+  return "$rc"
+}
 
 # --- driver ---------------------------------------------------------------------------------------
 overall=0
@@ -569,6 +696,7 @@ run_step "2 imports (check-imports.py)" step_imports
 if [[ ! -s "$INV" ]]; then
   echo "check.sh: no inventory; the remaining steps need it"; echo; echo "check.sh: FAILURES PRESENT" >&2; exit 1
 fi
+mapfile -t SPEC_MODULES < <(inv_modules "$SPEC_LIB")
 run_selftest "2 imports self-test (fixtures/imports)" selftest_imports
 run_step "3 declarations (check-decls per library)" step_decls
 run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope)" selftest_decls
@@ -581,21 +709,18 @@ else
 fi
 run_selftest "5 kernel replay self-test (BadSkipKernel, prefix refusal)" selftest_replay
 run_step "6 review pins ($REVIEW_ROOT imports $REVIEW_AXIOMS)" step_review
-run_selftest "6 review pins self-test (review-imports, ReviewAxiomsBad, ReviewTypeBad, ReviewAxiomsGood)" selftest_review
+run_selftest "6 review pins self-test (review-imports, ReviewAxioms*, Review{Eq,Binder,Complete,Escape}Bad, ReviewGuardGood, mutations)" selftest_review
 run_step "7 backstop (grep)" step_grep
 run_selftest "7 backstop self-test (fixtures/grep)" selftest_grep
 run_step "8 vendored files (scripts/vendor.sha256)" step_vendor
 run_step "9 comparator config" step_comparator_config
-run_selftest "9 comparator config self-test (fixtures/comparator)" selftest_comparator_config
-needs_bwrap "10 lake check" step_lake_check
+run_selftest "9 comparator config self-test (fixtures/comparator: configs, challenges)" selftest_comparator_config
+needs_bwrap "10 lake check (+ fixtures/lakecheck-{bad,good})" step_lake_check
 # leanchecker skips the noconst-exempt parents (step 5); step 10's replay covers them, when it runs.
 have_bwrap || ((${#NOCONST_EXEMPT[@]} == 0)) || ci_only+=("kernel replay of ${NOCONST_EXEMPT[*]} (lake check)")
-if [[ -f comparator.json ]]; then
-  needs_bwrap "11 lake comparator" step_lake_comparator
-else
-  echo "NOTE  11 lake comparator: no comparator.json yet (wired in B4)"
-fi
-echo "NOTE  12 docs: wired in B5"
+needs_bwrap "11 lake comparator (+ fixtures/comparator-{good,stmt,axiom,def}.json)" step_lake_comparator
+run_step "12 docs (README spec-files = the files of $SPEC_LIB)" step_docs
+run_selftest "12 docs self-test (README-good, README-missing)" selftest_docs
 
 echo
 ((${#ci_only[@]} == 0)) || echo "CI-only: ${ci_only[*]}"

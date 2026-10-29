@@ -1,17 +1,24 @@
 # The one configuration file of scripts/check.sh and scripts/check-imports.py.
 # Every library path, module prefix and module name of the project lives here, so a change of layout
-# (the B2/B3 moves) edits this file and nothing else in the check stack (fixture paths aside).
+# (a move of files) edits this file and nothing else in the check stack (fixture paths aside).
 # Protected path: changes are reviewed by the owner.
 #
-# Layout: the CURRENT (pre-move) six libraries. The rules below encode the layering that holds today,
-# measured with `lean --deps-json`; B2/B3 replace them with R1-R3 of the plan.
+# Layout: the four libraries of the plan (ConsensusSpec / ConsensusProofs / ConsensusInstances /
+# ConsensusTests) with import rules R1-R3:
+#   R1  the closure of every ConsensusSpec module, root included, holds only ConsensusSpec modules (+ base);
+#   R2  every library: every file under its directory is reached from its root (root_covers); no non-root
+#       module imports a library root, except in the tests;
+#   R3  ConsensusProofs never reaches ConsensusInstances/ConsensusTests/ConsensusChallenge or a fixture;
+#       ConsensusInstances never reaches ConsensusTests or a fixture; ConsensusChallenge (a fixture lib for
+#       this check) may import only ConsensusSpec (checked by step 9).
 
 # R1 base set: top-level module names that may be imported from outside the project.
 base = ["Init", "Std", "Lean", "Lake", "Mathlib", "Batteries", "Aesop", "Qq", "ProofWidgets",
         "Plausible", "ImportGraph", "LeanSearchClient"]
 
-# Non-default libraries (fixtures, deliberately bad). No default library may import them.
-fixture_libs = ["CheckFixtures", "CheckDeclsTest"]
+# Non-default libraries (fixtures, deliberately bad, and the comparator challenge, which holds `sorry`).
+# No default library may import them.
+fixture_libs = ["CheckFixtures", "CheckDeclsTest", "ConsensusChallenge"]
 
 # lean_exe targets of the lakefile (the check stack's tools). Every lakefile target is a [[lib]] below, a
 # fixture lib or one of these; no lib root, glob or file may take a top-level name of `base`.
@@ -19,83 +26,60 @@ tool_exes = ["check-decls"]
 
 # One [[lib]] per default target of lakefile.toml (asserted). `allow`: module prefixes that the import
 # closure of every module of the library may contain. `root_covers` must be true: every file under `dir`
-# is reached from the root. `may_import_roots`: non-root modules may import another library's root
-# (pre-move layout only; removed in B2/B3, except for tests).
+# is reached from the root. `may_import_roots`: non-root modules may import a library root (tests only).
 [[lib]]
-name = "ConsensusProblem"
-root = "ConsensusProblem"
-dir = "ConsensusProblem"
-allow = ["ConsensusProblem"]
+name = "ConsensusSpec"
+root = "ConsensusSpec"
+dir = "ConsensusSpec"
+allow = ["ConsensusSpec"]
 root_covers = true
 
 [[lib]]
-name = "ConsensusModel"
-root = "ConsensusModel"
-dir = "ConsensusModel"
-allow = ["ConsensusModel", "ConsensusProblem"]
-root_covers = true
-may_import_roots = true   # ConsensusModel.System imports ConsensusProblem (pre-move)
-
-[[lib]]
-name = "ConsensusModelProofs"
-root = "ConsensusModelProofs"
-dir = "ConsensusModelProofs"
-allow = ["ConsensusModelProofs", "ConsensusModel", "ConsensusProblem"]
+name = "ConsensusProofs"
+root = "ConsensusProofs"
+dir = "ConsensusProofs"
+allow = ["ConsensusProofs", "ConsensusSpec"]
 root_covers = true
 
 [[lib]]
-name = "ConsensusBlocks"
-root = "ConsensusBlocks"
-dir = "ConsensusBlocks"
-allow = ["ConsensusBlocks", "ConsensusModel", "ConsensusProblem"]
+name = "ConsensusInstances"
+root = "ConsensusInstances"
+dir = "ConsensusInstances"
+allow = ["ConsensusInstances", "ConsensusProofs", "ConsensusSpec"]
 root_covers = true
 
 [[lib]]
-name = "ConsensusShape"
-root = "ConsensusShape"
-dir = "ConsensusShape"
-allow = ["ConsensusShape", "ConsensusBlocks", "ConsensusModel", "ConsensusModelProofs", "ConsensusProblem"]
-root_covers = true
-may_import_roots = true   # ConsensusShape.{Run,Shape} import library roots (pre-move)
-
-[[lib]]
-name = "ConsensusShapeTests"
-root = "ConsensusShapeTests"
-dir = "ConsensusShapeTests"
-allow = ["ConsensusShapeTests", "ConsensusShape", "ConsensusBlocks", "ConsensusModel",
-         "ConsensusModelProofs", "ConsensusProblem"]
+name = "ConsensusTests"
+root = "ConsensusTests"
+dir = "ConsensusTests"
+allow = ["ConsensusTests", "ConsensusInstances", "ConsensusProofs", "ConsensusSpec"]
 root_covers = true
 may_import_roots = true   # tests
 
 # Settings of scripts/check.sh (ignored by check-imports.py).
 [checks]
-# The Spec modules: the snapshot (scripts/spec-snapshot.txt), `theorems` and grep 7b cover exactly these.
-# Pre-move: the 21 intended-trusted modules.
-spec_modules = [
-  "ConsensusProblem.Basic", "ConsensusProblem.Network", "ConsensusProblem.Properties",
-  "ConsensusProblem.Regimes", "ConsensusProblem.Good",
-  "ConsensusModel.Objects", "ConsensusModel.Protocol", "ConsensusModel.Run", "ConsensusModel.Conditions",
-  "ConsensusModel.System",
-  "ConsensusBlocks.TimeGrid", "ConsensusBlocks.Progress", "ConsensusBlocks.Chains", "ConsensusBlocks.Payload",
-  "ConsensusShape.Shape", "ConsensusShape.Compile", "ConsensusShape.Run", "ConsensusShape.Claims",
-  "ConsensusShape.ProgressFit", "ConsensusShape.Realizable", "ConsensusShape.Accepted",
-]
+# The Spec library: the snapshot (scripts/spec-snapshot.txt), `theorems`, grep 7b and the README file list
+# (step 12) cover every module of its inventory (the root and every file under its directory; R1 keeps its
+# import closure inside it), so no module list is kept by hand.
+spec_lib = "ConsensusSpec"
 # Libraries whose every module is held to the persisted-extension whitelist (scripts/spec-extensions.txt).
-extension_libs = ["ConsensusProblem", "ConsensusModel", "ConsensusBlocks", "ConsensusShape"]
-# Modules with descendants that own constants. leanchecker expands a module name as a prefix, so such a
-# module is not replayed by leanchecker (step 5) but by `lake check` (step 10, where bwrap exists); every
-# other parent must own nothing.
-# ConsensusModelProofs.Canonical (Canonical.lean next to Canonical/) owns 8 constants (proofs).
-noconst_exempt = ["ConsensusModelProofs.Canonical"]
-# `theorems` gate: "report" (pre-move: Spec modules still hold proofs) or "enforce" (from B3).
-theorems_mode = "report"
-# The file that pins the review theorems' axioms (#guard_msgs); it must be imported by `review_root`.
-review_axioms_module = "ConsensusShapeTests.ReviewAxioms"
-review_root = "ConsensusShapeTests"
-# Comparator (plan §3; comparator.json and these modules exist from B4). Step 9 checks comparator.json
-# against them and against the Prop definitions of `statements_module`.
+extension_libs = ["ConsensusSpec"]
+# Modules with descendants that may own constants. leanchecker expands a module name as a prefix, so such a
+# module would not be replayed by leanchecker (step 5), only by `lake check` (step 10, where bwrap exists).
+# None: every parent owns nothing (M moved the 8 proofs of ConsensusProofs.Model.Canonical to
+# Canonical/Construction.lean).
+noconst_exempt = []
+# `theorems` gate: "report" or "enforce". Enforced: a ranged theorem in a Spec module must be listed in
+# scripts/spec-theorems.txt.
+theorems_mode = "enforce"
+# The file that pins the review theorems' types and axioms (#guard_msgs, alpha-equality guards); it must be
+# imported directly by `review_root`.
+review_axioms_module = "ConsensusTests.ReviewAxioms"
+review_root = "ConsensusTests"
+# Comparator (plan §3). Step 9 checks comparator.json against these modules and against the Prop
+# definitions of `statements_module`; step 11 runs `lake comparator` (where bwrap exists).
 challenge_module = "ConsensusChallenge"
 solution_module = "ConsensusProofs.Review"
 statements_module = "ConsensusSpec.Statements"
 # Extra targets built by step 1 next to the default targets.
-extra_build_targets = ["CheckFixtures", "CheckDeclsTest", "check-decls"]
+extra_build_targets = ["CheckFixtures", "CheckDeclsTest", "check-decls", "ConsensusChallenge"]

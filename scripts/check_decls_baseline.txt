@@ -1,2 +1,4 @@
 # Accepted check-decls findings: `<Library> <kind> <declaration>  # reason`, one per line.
 # Target: empty. Every other finding fails scripts/check.sh step 3, and so does a stale entry.
+ConsensusTests reaches-opaque Consensus.ReviewGuard.check  # meta code run by `run_meta` in ReviewAxioms; calls Lean's Meta API (opaque/extern by design); not a proof or a Spec definition
+ConsensusTests reaches-opaque Consensus.ReviewGuard.checkComplete  # likewise (Lean.Meta.whnf, environment hashing)

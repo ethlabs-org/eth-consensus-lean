@@ -1,6 +1,8 @@
 # Persisted-extension whitelist of the Spec-side libraries (scripts/check.sh step 4, SpecSurface
 # `extensions`): every extension with a stored entry in any module of the `extension_libs` of
-# boundaries.toml, measured in batch C (v4.35.0) and reviewed. None registers a parser, syntax,
+# boundaries.toml, measured in batch C (v4.35.0) and reviewed; re-measured in B5 over the final
+# `ConsensusSpec` (a subset of C's list: `Lean.Meta.congrKindsExt`, `Lean.backwardDefeqAttr` and
+# `Lean.defeqAttr` had entries only in proof modules and were removed). None registers a parser, syntax,
 # macro, elaborator, tactic, delaborator, unexpander, initializer, attribute, extern/implemented_by
 # or csimp; the five annotated names are applications of built-in attributes or generated metadata.
 # Regenerate only with `check.sh --update-extensions` (a protected change).
@@ -17,13 +19,10 @@ Lean.IR.declMapExt
 Lean.Meta.Grind.grindExt  # the built-in @[grind] attribute applied (lemma metadata; no tactic registered)
 Lean.Meta.Match.Extension.extension
 Lean.Meta.completionBlackListExt
-Lean.Meta.congrKindsExt
 Lean.Meta.instanceExtension
 Lean.Meta.simpExtension  # the built-in @[simp] attribute applied (lemma metadata; no simproc registered)
 Lean.auxRecExt
-Lean.backwardDefeqAttr
 Lean.declRangeExt
-Lean.defeqAttr
 Lean.deprecatedModuleExt
 Lean.docStringExt
 Lean.noConfusionExt

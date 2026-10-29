@@ -1,1 +1,6 @@
-# Batch C report mode: all ranged user theorems are reported.
+# Ranged theorems allowed in the Spec modules (scripts/check.sh step 4, SpecSurface `theorems`, enforced).
+# Spec holds definitions and statements; a ranged `theorem` there is a proof that belongs in ConsensusProofs.
+# The entries are Prop-class instances of Spec types, kept next to their types (an instance placed in
+# ConsensusProofs would be an orphan instance, found only where Proofs is imported); proof-irrelevant.
+Consensus.Blocks.instCountableParentRef  # `Countable ParentRef`
+Consensus.Blocks.instCountableHeader     # `Countable (Header Info)` for `[Countable Info]`

@@ -7,7 +7,7 @@ public import Mathlib.Tactic
 
 /-! # The network: delivery lemmas (L0 facts)
 
-Lemmas about the network conditions of `ConsensusProblem/Network.lean`: holding,
+Lemmas about the network conditions of `ConsensusSpec/Problem/Network.lean`: holding,
 reindexing deadlines, eager logs, and transfer of delivery to a prefix. -/
 
 namespace Consensus

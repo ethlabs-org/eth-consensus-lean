@@ -55,7 +55,7 @@ E1/E2 evidence binding exists (obligation (7)).
   lag, and the pin is slow arming; fast arming needs a second lag with a
   half-committee participation premise. A later extra.
 * P-NV-CONTINUATION: `WeakPremise` is inhabited (`weakPremise_inhabited` in
-  `ConsensusShapeTests/Goldilocks.lean`: the generic healthy witness, everyone
+  `ConsensusTests/Goldilocks.lean`: the generic healthy witness, everyone
   awake), so the weak extras are not vacuous.
 * P-MODEL-WELLFORMED: covered by `Valid` (`ExecutionValid`) and the L1 model.
 * P-TX-SCOPE: the intended guarantees stop at proposal inclusion; this target
@@ -76,11 +76,17 @@ E1/E2 evidence binding exists (obligation (7)).
   P-LABEL-RAW-SAFE, P-LOCAL-FIN-KERNEL, P-FIN-STRONG-ALTERNATIVES:
   protocol-internal.
 * P-NEW-*: the fast path is not in the Lean model. **Newer spec, binding of
-  `available`:** in fgsa-spec.tex (989–993) the read-time tip
-  `ac_confirmed = dca(latestConfirmed, head)` can step back, so it is not
-  `ReadySafe` (which includes per-reader monotonicity). For the newer spec,
-  `available` must bind to the confirmed record `latestConfirmed`, not the
-  read-time tip (question for Francesco).
+  `available`:** in fgsa-spec.tex (989–993) the read-time tip `ac_confirmed =
+  dca(latestConfirmed, head)`. Under synchrony `head` extends
+  `latestConfirmed`, so `ac_confirmed = latestConfirmed`, which is monotone.
+  It can step back only under asynchrony, where per-reader monotonicity of
+  `available` is not required: `ReadySafe` (which includes per-reader
+  monotonicity) is asked only by `sleepySafe`, from time 0 in sleepy
+  (synchronous) runs, and by `healedSafe`, from the heal point (after GST) in
+  healthy runs, and monotonicity compares cuts within that interval only. So
+  `available` may bind to `ac_confirmed`, provided the protocol establishes
+  the synchronous invariant (`head` extends `latestConfirmed`) (Francesco,
+  2026-10-29). There is no FG-SA bridge yet.
 * K1–K5 / P-LEAK-*: leak accounting (optional extra).
 * E1/E2 `conflicts` binding: needs an evidence block (migration step 0;
   obligation (7)).
@@ -130,7 +136,7 @@ Francesco.
    the look-back ∪ faulty) is stronger than plain sleepy participation.
    The cover ½ at `b₀` gives FG-SA's `OutageE1` (faulty validators and
    uncovered wakers are fewer than half): `EnvPoint.two_mul_card_faulty_union_lt`
-   (tests: `ConsensusShapeTests/Goldilocks`).
+   (tests: `ConsensusTests/Goldilocks`).
 5. Readers caught up after the window (FG-SA proves repair-ready readers only).
 6. Ready-vs-awake counting (M25).
 7. E1/E2 evidence binding (`conflicts` = FG-SA's slashing rule).
@@ -169,7 +175,7 @@ Proved: `reference_bounds`, `goldilocks_admissible` (in `Goldilocks.lean`),
 `final_latency_covers_window`, `final_heal_covers_window` (the final latency and
 heal point cover one window plus the pattern span, for every `R` and `gf`),
 `finalRecur_delay_vs_window` (the intended FL2 delay `W_W` does not), and
-`EnvPoint.two_mul_card_faulty_union_lt` (tests: `ConsensusShapeTests/Goldilocks`). -/
+`EnvPoint.two_mul_card_faulty_union_lt` (tests: `ConsensusTests/Goldilocks`). -/
 
 /-- The outage budget implies FG-SA's condition (V):
 `b₁ − b₀ + ((b₀ − 6Δ) mod 4Δ) ≤ L·Δ`. -/
