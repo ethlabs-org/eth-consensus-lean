@@ -15,8 +15,8 @@
 #   7  backstop         grep for sorry/admit/native_decide, Spec meta commands, lakefile options
 #   8  vendored         sha256 of every verbatim copy                           (scripts/vendor.sha256)
 #   9  comparator config  exact comparator.json (from B4; fixtures run now)    (jq)
-#   10 lake check       sandboxed build + export + replay                       (needs bwrap: CI)
-#   11 lake comparator  Spec statements vs proofs (from B4)                     (needs bwrap: CI)
+#   10 lake check       sandboxed build + export + replay                       (needs bwrap)
+#   11 lake comparator  Spec statements vs proofs (from B4)                     (needs bwrap)
 #   12 docs             README spec-file list (from B5)
 # Every step with a negative fixture also runs it through the same function ("self-test" steps).
 #
@@ -142,6 +142,12 @@ selftest_pins() {
   # Resolution mechanisms other than git checkouts in .lake/packages are refused.
   for c in path override packagesdir subdir lakefile; do
     expect_fail 'FAIL[pins] resolution' pins_fixture "$c" || rc=1
+  done
+  # A dependency configFile/manifestFile outside its checkout (Lake loads <checkout>/<file>): the
+  # redirected lakefile keeps Cli's build directory, so LEAN_PATH and the checkout's status look unchanged.
+  for c in configFile manifestFile; do
+    expect_fail "FAIL[pins] resolution: Cli.$c is '../../../" pins_fixture "${c,,}" || rc=1
+    expect_fail "not a tracked file of the checkout $repo_root/.lake/packages/Cli" pins_fixture "${c,,}" || rc=1
   done
   # A LEAN_PATH in which Lake resolved Cli elsewhere (what an override or path dependency produces).
   lp="$(lake env printenv LEAN_PATH)" && lib="$(lake env lean --print-libdir)" || { echo "  no LEAN_PATH"; return 1; }
@@ -321,7 +327,7 @@ step_surface() {
   mapfile -t parents < <(inv_kind parent | grep -vxF -f <(printf '%s\n' "${NOCONST_EXEMPT[@]}" | awk NF) )
   echo "  noconst over ${#parents[@]} modules with descendants"
   ((${#NOCONST_EXEMPT[@]} == 0)) ||
-    echo "  NOTE  exempt from noconst, hence not replayed by leanchecker here (lake check in CI): ${NOCONST_EXEMPT[*]}"
+    echo "  NOTE  exempt from noconst, hence not replayed by leanchecker here (step 10 lake check replays them): ${NOCONST_EXEMPT[*]}"
   "${SURFACE[@]}" noconst --modules "${parents[@]}" || rc=1
   set -e
   return "$rc"
@@ -525,7 +531,7 @@ selftest_comparator_config() {
   return "$rc"
 }
 
-# --- steps 10, 11: lake check / lake comparator (bwrap sandbox: CI only on the shared box) --------------
+# --- steps 10, 11: lake check / lake comparator (bwrap sandbox; SKIP and listed CI-only without it) -----
 have_bwrap() { command -v bwrap >/dev/null; }
 step_lake_check() {
   set +e
@@ -567,7 +573,6 @@ run_selftest "2 imports self-test (fixtures/imports)" selftest_imports
 run_step "3 declarations (check-decls per library)" step_decls
 run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope)" selftest_decls
 run_step "4 Spec surface (extensions, snapshot, theorems, noconst)" step_surface
-((${#NOCONST_EXEMPT[@]} == 0)) || ci_only+=("kernel replay of ${NOCONST_EXEMPT[*]} (lake check)")
 run_selftest "4 Spec surface self-test (CheckFixtures)" selftest_surface
 if ((quick)); then
   echo "SKIP  5 kernel replay (skipped: --quick)"; partial+=("5 kernel replay")
@@ -583,6 +588,8 @@ run_step "8 vendored files (scripts/vendor.sha256)" step_vendor
 run_step "9 comparator config" step_comparator_config
 run_selftest "9 comparator config self-test (fixtures/comparator)" selftest_comparator_config
 needs_bwrap "10 lake check" step_lake_check
+# leanchecker skips the noconst-exempt parents (step 5); step 10's replay covers them, when it runs.
+have_bwrap || ((${#NOCONST_EXEMPT[@]} == 0)) || ci_only+=("kernel replay of ${NOCONST_EXEMPT[*]} (lake check)")
 if [[ -f comparator.json ]]; then
   needs_bwrap "11 lake comparator" step_lake_comparator
 else

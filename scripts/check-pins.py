@@ -2,7 +2,8 @@
 """Pins check (step 0 of scripts/check.sh): the toolchain and every dependency equal scripts/pins.toml.
 
 `lean-toolchain` equals `toolchain`; the manifest's package set equals the pinned set exactly, with
-identical url/rev/inputRev; with --packages-dir, every package's checkout is at its pinned rev and clean.
+identical url/rev/inputRev; with --packages-dir, every package's checkout is at its pinned rev and clean. Each package's configFile and
+manifestFile (which Lake resolves inside the checkout) equal their pins and are tracked files of that checkout.
 Only the resolution Lake uses by default is accepted: git packages without subDir in the manifest's
 `packagesDir = ".lake/packages"`, no package-overrides file, no `packagesDir` in the lakefile. With
 --lean-path (the LEAN_PATH of `lake env`), the directories Lake actually resolved must be exactly the pinned
@@ -13,6 +14,7 @@ import argparse, json, subprocess, sys, tomllib
 from pathlib import Path
 
 PACKAGES_DIR = ".lake/packages"
+REDIRECTS = ("configFile", "manifestFile")  # per-package paths in the manifest, relative to the checkout
 
 def check(toolchain, manifest, pins, packages_dir=None, overrides=None, lakefile=None, lean_path=None, libdir=None):
     pin = tomllib.loads(Path(pins).read_text())
@@ -39,6 +41,9 @@ def check(toolchain, manifest, pins, packages_dir=None, overrides=None, lakefile
         for k in ("url", "rev", "inputRev"):
             if want[n][k] != have[n].get(k):
                 fails.append(f"FAIL[pins] {n}.{k} is {have[n].get(k)!r}, pinned {want[n][k]!r}")
+        for k in REDIRECTS:  # Lake loads <checkout>/<configFile> and <checkout>/<manifestFile>
+            if want[n][k] != have[n].get(k):
+                fails.append(f"FAIL[pins] resolution: {n}.{k} is {have[n].get(k)!r}, pinned {want[n][k]!r}")
         if packages_dir:
             d = Path(packages_dir) / n
             head = subprocess.run(["git", "-C", str(d), "rev-parse", "HEAD"], capture_output=True, text=True)
@@ -47,6 +52,13 @@ def check(toolchain, manifest, pins, packages_dir=None, overrides=None, lakefile
                 fails.append(f"FAIL[pins] checkout {d} is at {head.stdout.strip() or head.stderr.strip()!r}, pinned {want[n]['rev']}")
             if dirty.returncode or dirty.stdout.strip():
                 fails.append(f"FAIL[pins] checkout {d} is not clean")
+            for k in REDIRECTS:  # the file Lake reads must be a tracked file of the checked checkout
+                rel = have[n].get(k)
+                f = (d / str(rel)).resolve()
+                if not isinstance(rel, str) or not f.is_relative_to(d.resolve()) or subprocess.run(
+                        ["git", "-C", str(d), "ls-files", "--error-unmatch", "--", str(f)], capture_output=True).returncode:
+                    fails.append(f"FAIL[pins] resolution: {n}.{k} {rel!r} resolves to {f}, "
+                                 f"not a tracked file of the checkout {d.resolve()}")
     if lean_path is not None:
         expect = {(Path(packages_dir or PACKAGES_DIR) / n / ".lake/build/lib/lean").resolve() for n in want}
         expect |= {Path(".lake/build/lib/lean").resolve()} | ({Path(libdir).resolve()} if libdir else set())

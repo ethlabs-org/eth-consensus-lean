@@ -14,8 +14,8 @@ from pathlib import Path
 def under(m, prefix):  # module-name prefix, component-wise: A covers A and A.x, not AB
     return m == prefix or m.startswith(prefix + ".")
 
-def lib_prefixes(lake_lib):  # module prefixes a lakefile lib owns (its roots and glob stems)
-    globs = [g.rsplit(".", 1)[0] for g in lake_lib.get("globs", []) if g.endswith((".*", ".+"))]
+def lib_prefixes(lake_lib):  # module prefixes a lakefile lib owns (its roots, glob stems and one-module globs)
+    globs = [g[:-2] if g.endswith((".*", ".+")) else g for g in lake_lib.get("globs", [])]
     return lake_lib.get("roots", [lake_lib["name"]]) + globs
 
 def check(tree, cfg_path, lakefile, inventory_out=None):
@@ -131,6 +131,7 @@ CASES = {  # scripts/fixtures/imports/<case>: expected tag (None = must pass)
     "FixtureImport": "FAIL[fixture]", "NoRootCovers": "FAIL[config]", "EmptyLib": "FAIL[config]",
     "LibMismatch": "FAIL[config]", "ProofsComponent": "FAIL[config]",
     "LakefileLean": "FAIL[config] lakefile.lean", "ShadowBase": "FAIL[config] base name",
+    "ShadowGlob": "FAIL[config] base name", "ShadowTop": "FAIL[config] base name",
     "UnknownTarget": "FAIL[config] target",
 }
 
@@ -139,6 +140,7 @@ def self_test(fixtures):
     assert under("A.B", "A") and under("A", "A") and not under("AB", "A") and not under("A", "A.B")
     assert lib_prefixes({"name": "F", "roots": [], "globs": ["F.+"]}) == ["F"]
     assert lib_prefixes({"name": "L", "globs": ["L.*"]}) == ["L", "L"]
+    assert lib_prefixes({"name": "S", "roots": [], "globs": ["M.S"]}) == ["M.S"]
     for case, tag in CASES.items():
         d = Path(fixtures) / case
         fails = check(d, d / "boundaries.toml", d / "lakefile.toml")

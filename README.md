@@ -600,4 +600,5 @@ checks: dependency pins, import discipline, EthLib check-decls over every declar
 (axioms beyond `propext`, `Classical.choice` and `Quot.sound`, `sorry`, opaque/unsafe/extern/csimp), the
 Spec surface (persisted-extension whitelist and the Spec snapshot `scripts/spec-snapshot.txt`), kernel
 replay with `leanchecker`, a grep backstop, and the self-tests of every check. `lake check` and
-`lake comparator` need `bwrap` and run in CI only (`.github/workflows/ci.yml`).
+`lake comparator` need `bwrap`: where it is missing they are skipped and listed as CI-only
+(`.github/workflows/ci.yml` runs them).

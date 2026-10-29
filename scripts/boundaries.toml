@@ -83,7 +83,8 @@ spec_modules = [
 # Libraries whose every module is held to the persisted-extension whitelist (scripts/spec-extensions.txt).
 extension_libs = ["ConsensusProblem", "ConsensusModel", "ConsensusBlocks", "ConsensusShape"]
 # Modules with descendants that own constants. leanchecker expands a module name as a prefix, so such a
-# module is not replayed locally (only by `lake check` in CI); every other parent must own nothing.
+# module is not replayed by leanchecker (step 5) but by `lake check` (step 10, where bwrap exists); every
+# other parent must own nothing.
 # ConsensusModelProofs.Canonical (Canonical.lean next to Canonical/) owns 8 constants (proofs).
 noconst_exempt = ["ConsensusModelProofs.Canonical"]
 # `theorems` gate: "report" (pre-move: Spec modules still hold proofs) or "enforce" (from B3).
