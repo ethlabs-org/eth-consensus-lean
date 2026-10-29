@@ -38,6 +38,11 @@ globs = ["ConsensusInstances.*"]
 name = "ConsensusTests"
 globs = ["ConsensusTests.*"]
 
+# Comparator challenge (comparator.json): the review statements with `sorry` proofs.
+# Never a default target; imports only ConsensusSpec.
+[[lean_lib]]
+name = "ConsensusChallenge"
+
 # Fixtures for the self-tests of scripts/check.sh. Deliberately bad (sorry, axioms, leaks).
 # Never a default target; built only by check.sh. No root module: fixtures that share declaration
 # names (Snap*) are never imported into one environment.

@@ -16,6 +16,7 @@ public import ConsensusTests.Shape
 public import ConsensusTests.Support
 public import ConsensusTests.Vacuity
 public import ConsensusInstances
+public import ConsensusProofs.Review
 
 /-! # Name index
 
@@ -30,6 +31,10 @@ by `Gaps` and the Goldilocks sheet, and the former audit list. -/
 
 /-! ## Endpoints -/
 
+example := @Consensus.Review.acceptedGood
+example := @Consensus.Review.regimesRealizable
+example := @Consensus.Review.logFaithful
+example := @Consensus.Review.heldIffServed
 example := @Consensus.Shape.Accepted.good
 example := @Consensus.Shape.Accepted.activeService
 example := @Consensus.Shape.refinement

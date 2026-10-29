@@ -12,7 +12,9 @@ def main : IO UInt32 := do
   let mut modules : Array Name := #[]
   let mut files : Array System.FilePath := #[]
   for entry in ← (System.FilePath.mk ".").readDir do
-    if entry.fileName.startsWith "Consensus" then
+    -- `ConsensusChallenge` (comparator challenge) holds `sorry` by design and redeclares the
+    -- `Consensus.Review` theorems; it is not a default target and is excluded here.
+    if entry.fileName.startsWith "Consensus" && !entry.fileName.startsWith "ConsensusChallenge" then
       if ← entry.path.isDir then
         files := files ++ (← entry.path.walkDir)
       else

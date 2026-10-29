@@ -21,8 +21,10 @@ public import ConsensusSpec.Shape.Claims
 public import ConsensusSpec.Shape.ProgressFit
 public import ConsensusSpec.Shape.Active
 public import ConsensusSpec.Shape.Accepted
+public import ConsensusSpec.Statements
 
 /-! The trusted surface: the definitions of the consensus problem (L0, `Problem`), the
 execution model (L1, `Model`), the building blocks (`Blocks`) and the protocol shape (L2, `Shape`),
-with the acceptance endpoint `Shape.Accepted`. Imports only; owns no declaration. Every module under
-`ConsensusSpec/` imports only `ConsensusSpec` modules, Mathlib and Lean. -/
+with the acceptance endpoint `Shape.Accepted` and the review statements (`Statements`). Imports
+only; owns no declaration. Every module under `ConsensusSpec/` imports only `ConsensusSpec` modules,
+Mathlib and Lean. -/
