@@ -32,7 +32,7 @@
 #                        downstream cone, check-decls on the affected libraries, Spec surface only if a Spec
 #                        module changed, grep on the changed files. A change of scripts/ or of the build
 #                        configuration falls back to --fast (with --selftests for scripts/). scripts/check-changed.sh
-#   --selftests          also run the self-tests (fixtures) in --fast mode
+#   --selftests          also run the self-tests (fixtures) in --fast mode; with --changed, runs --fast
 #   --no-build           do not compile; `lake build --no-build` still fails on anything stale
 #   --update-snapshot    rewrite scripts/spec-snapshot.txt (the run then FAILS: review + commit it)
 #   --update-extensions  rewrite scripts/spec-extensions.txt likewise
@@ -69,6 +69,11 @@ if [[ -n "${CI:-}" ]] && ((no_build || update_snapshot || update_extensions)); t
   exit 2
 fi
 [[ "$mode" == full ]] && selftests=1
+# The self-tests need the fixture libraries, which the changed-mode build does not compile.
+if [[ "$mode" == changed ]] && ((selftests)); then
+  echo "check.sh: --changed --selftests runs --fast --selftests (the self-tests need the fixture builds; <base> ignored)"
+  mode=fast
+fi
 
 CFG=scripts/boundaries.toml
 WORK="$(mktemp -d "${RUN_DIR:-${TMPDIR:-/tmp}}/check.XXXXXX")"
