@@ -170,15 +170,13 @@ theorem prefix_sync_then_async :
   have hnp : ¬ prefixLog.PSync prefixPoint 0 := by
     intro h
     obtain ⟨t', ht', hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 2 ⟨rfl, rfl⟩ 1 (Finset.mem_univ _)
-      (by decide) (by decide) rfl
+      2 le_rfl (by decide) (by decide) (fun _ _ _ => rfl)
     rcases hs with ⟨h1, -⟩ | h1
     · exact absurd h1 (by decide)
     · exact h1
-  refine ⟨⟨?_, ?_, ?_⟩, ?_, hnp, fun P h => hnp h.1⟩
-  · rintro v - m t ⟨-, rfl⟩ w - hc - -
-    exact absurd hc (by decide)
+  refine ⟨⟨?_, ?_⟩, ?_, hnp, fun P h => hnp h.1⟩
   · rintro v - m t ⟨-, rfl⟩ w - a ha hc - -
-    have h2 : ∀ a : Int, 2 < a → ¬ a + 1 ≤ 1 := by intro a h; omega
+    have h2 : ∀ a : Int, 2 ≤ a → ¬ a + 1 ≤ 1 := by intro a h; omega
     exact absurd hc (h2 a ha)
   · intro u _ x τ _ _ hx
     exact absurd hx (by simp [prefixPoint])

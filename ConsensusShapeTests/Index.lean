@@ -298,8 +298,9 @@ example := @Consensus.Shape.Tests.Model.unit_ticks
 /-! ## Tests: Network -/
 
 example := @Consensus.Shape.Tests.Network.agreesUpTo_empty_messages
-example := @Consensus.Shape.Tests.Network.endpoint_waker
-example := @Consensus.Shape.Tests.Network.endpoint_waker_silent
+example := @Consensus.Shape.Tests.Network.waker_within_bound
+example := @Consensus.Shape.Tests.Network.waker_within_bound_silent
+example := @Consensus.Shape.Tests.Network.waker_not_instant
 example := @Consensus.Shape.Tests.Network.faithful_receipt
 example := @Consensus.Shape.Tests.Network.faithful_relayedRun
 example := @Consensus.Shape.Tests.Network.held0

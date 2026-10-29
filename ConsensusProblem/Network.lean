@@ -7,13 +7,17 @@ public import Mathlib.Tactic
 /-! # The network (L0)
 
 Network conditions on a run's communication log (`CommLog`, opaque messages).
-The delivery rule is Francesco's sentence:
+The delivery rule is Francesco's rule, normal delivery:
 
-> every message an honest node sends at `t` is received by every honest node
-> that is awake at `max(t, GST) + Δ`, by that time.
+> every message an honest node sends at `t` is received, within the delivery
+> bound, by every honest node that is awake over the delivery interval, and is
+> re-served, within the bound, to nodes that wake later.
 
-`Delivers` states it for a deadline function (`msgs`), with re-service to
-nodes that wake later (`rewake`) and transaction delivery (`txs`). Partial
+`Delivers` states it for a deadline function `dl` (`msgs`): for every start
+`a ≥ t`, an honest node awake throughout `[a, dl a]` holds the message at
+`dl a`. With `dl a = max a GST + Δ`: a node awake over `[t, max(t, GST) + Δ]`
+has it by `max(t, GST) + Δ`, and a node that wakes at `u` (and stays awake)
+has it by `max(u, GST) + Δ`. Transactions (`txs`) follow the same rule. Partial
 synchrony (`PSync g`), synchrony up to a cut (`SyncUntil b`) and the outage
 network (`OutageNet b₀ b₁`) are instances; `EagerFrom g` is the shape of the
 model's canonical logs. Receipt is network service, not protocol use: what
@@ -41,20 +45,20 @@ def TxHeld (w : V) (x : Tx) (d : Time) : Prop :=
 /-- Delivery with deadline function `dl`, for deadlines up to `cut` and up to
 the horizon. -/
 structure Delivers (dl : Time → Time) (cut : Time) : Prop where
-  /-- Francesco's rule: an honest send at `t` is held, by `dl t`, by every
-  honest node awake at `dl t`. -/
-  msgs : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → ∀ w ∈ p.honest,
-    dl t ≤ cut → dl t ≤ p.horizon → p.env.awake w (dl t) = true → L.Held p w m (dl t)
-  /-- Re-service to later wakers (sleepy model): the same at every later
-  deadline `dl a`, `a > t`. A node awake at `dl a` has `m` then, even if it
-  slept in between. -/
-  rewake : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → ∀ w ∈ p.honest, ∀ a, t < a →
-    dl a ≤ cut → dl a ≤ p.horizon → p.env.awake w (dl a) = true → L.Held p w m (dl a)
-  /-- Transactions submitted to an awake honest node, likewise, at every
-  deadline `dl a` with `a` at or after the submission. -/
+  /-- Francesco's rule (normal delivery): an honest send at `t` is held at
+  `dl a`, for every start `a ≥ t`, by every honest node awake throughout the
+  delivery interval `[a, dl a]`. At `a = t` this is delivery within the bound
+  to nodes awake over `[t, dl t]`; at a later `a` it is re-service, within the
+  bound, to a node that wakes at `a` (a restart loses earlier receipts, see
+  `Held`). -/
+  msgs : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → ∀ w ∈ p.honest, ∀ a, t ≤ a →
+    dl a ≤ cut → dl a ≤ p.horizon → p.AwakeOnClosed w a (dl a) → L.Held p w m (dl a)
+  /-- Transactions submitted to an awake honest node, likewise: held at
+  `dl a`, for every start `a` at or after the submission, by every honest node
+  awake throughout `[a, dl a]`. -/
   txs : ∀ u ∈ p.honest, ∀ x τ, 0 ≤ τ → p.env.awake u τ = true → x ∈ p.submit u τ →
     ∀ w ∈ p.honest, ∀ a, τ ≤ a → dl a ≤ cut → dl a ≤ p.horizon →
-      p.env.awake w (dl a) = true → L.TxHeld w x (dl a)
+      p.AwakeOnClosed w a (dl a) → L.TxHeld w x (dl a)
 
 /-- Partial synchrony with GST `g`: deadline `max a g + Δ`, up to the horizon.
 `PSync 0` is synchrony. -/

@@ -82,18 +82,13 @@ theorem sysOf_delivers_iff (rho : Run F E) (dl : Time → Time) (cut : Time) :
   rw [sysOf_point]
   constructor
   · intro h
-    refine ⟨?_, ?_, h.txs⟩
-    · intro v hv o t hs w hw hc hh ha
-      exact (sysOf_held_iff rho w o _).mp (h.msgs v hv ⟨E, o⟩ t ⟨o, rfl, hs⟩ w hw hc hh ha)
-    · intro v hv o t hs w hw a hta hc hh ha
-      exact (sysOf_held_iff rho w o _).mp
-        (h.rewake v hv ⟨E, o⟩ t ⟨o, rfl, hs⟩ w hw a hta hc hh ha)
+    refine ⟨?_, h.txs⟩
+    intro v hv o t hs w hw a hta hc hh ha
+    exact (sysOf_held_iff rho w o _).mp (h.msgs v hv ⟨E, o⟩ t ⟨o, rfl, hs⟩ w hw a hta hc hh ha)
   · intro h
-    refine ⟨?_, ?_, h.txs⟩
-    · rintro v hv m t ⟨o, rfl, hs⟩ w hw hc hh ha
-      exact (sysOf_held_iff rho w o _).mpr (h.msgs v hv o t hs w hw hc hh ha)
-    · rintro v hv m t ⟨o, rfl, hs⟩ w hw a hta hc hh ha
-      exact (sysOf_held_iff rho w o _).mpr (h.rewake v hv o t hs w hw a hta hc hh ha)
+    refine ⟨?_, h.txs⟩
+    rintro v hv m t ⟨o, rfl, hs⟩ w hw a hta hc hh ha
+    exact (sysOf_held_iff rho w o _).mpr (h.msgs v hv o t hs w hw a hta hc hh ha)
 
 namespace Run
 

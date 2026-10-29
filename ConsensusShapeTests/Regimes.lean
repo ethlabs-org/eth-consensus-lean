@@ -238,7 +238,7 @@ def silentLog (V M : Type) : CommLog V M :=
 vacuously. -/
 theorem silentLog_delivers {V M : Type} (p : EnvPoint V) (hs : ∀ v t, p.submit v t = [])
     (dl : Time → Time) (cut : Time) : (silentLog V M).Delivers p dl cut := by
-  refine ⟨fun _ _ _ _ h => h.elim, fun _ _ _ _ h => h.elim, ?_⟩
+  refine ⟨fun _ _ _ _ h => h.elim, ?_⟩
   intro u _ x τ _ _ hx
   rw [hs] at hx
   exact absurd hx List.not_mem_nil
@@ -254,18 +254,15 @@ def logL : CommLog (Fin 2) Unit := ⟨fun v _ t => v = 0 ∧ t = 0, fun _ _ _ =>
 /-- A lost honest message: not partially synchronous for any GST `g ≤ 9`; for
 `g = 10` every deadline is past the horizon and nothing is required. -/
 theorem psync_lost_message : (∀ g : Time, g ≤ 9 → ¬ logL.PSync ptL g) ∧ logL.PSync ptL 10 := by
-  refine ⟨fun g hg h => ?_, ⟨?_, ?_, ?_⟩⟩
+  refine ⟨fun g hg h => ?_, ⟨?_, ?_⟩⟩
   · have hd : max 0 g + 1 ≤ 10 := by
       have : max 0 g ≤ 9 := max_le (by decide) hg
       dsimp only [Time] at *; omega
     obtain ⟨t', -, hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ 1 (Finset.mem_univ _)
-      hd hd rfl
+      0 le_rfl hd hd (fun _ _ _ => rfl)
     rcases hs with ⟨h1, -⟩ | h1
     · exact absurd h1 (by decide)
     · exact h1
-  · rintro v - m t ⟨-, rfl⟩ w - hc - -
-    change max 0 10 + 1 ≤ 10 at hc
-    exact absurd hc (by decide)
   · rintro v - m t ⟨-, rfl⟩ w - a - hc - -
     change max a 10 + 1 ≤ 10 at hc
     have := le_max_right a 10
@@ -300,21 +297,18 @@ theorem outage_async_log :
   have hnot : ∀ dl cut, dl 3 = 4 → 4 ≤ cut → ¬ logA.Delivers ptL dl cut := by
     intro dl cut h3 hc h
     obtain ⟨t', ht', hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 3 ⟨rfl, rfl⟩ 1
-      (Finset.mem_univ _) (by rw [h3]; exact hc) (by rw [h3]; decide) (by rw [h3]; rfl)
+      (Finset.mem_univ _) 3 le_rfl (by rw [h3]; exact hc) (by rw [h3]; decide)
+      (fun _ _ _ => rfl)
     rw [h3] at ht'
     rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
     · exact absurd h1 (by decide)
     · exact absurd ht' (by decide)
-  refine ⟨⟨⟨?_, ?_, ?_⟩, ⟨?_, ?_, ?_⟩⟩, hnot _ _ rfl (by decide), hnot _ _ rfl le_rfl⟩
-  · rintro v - m t ⟨-, rfl⟩ w - hc - -
-    exact absurd hc (by decide)
+  refine ⟨⟨⟨?_, ?_⟩, ⟨?_, ?_⟩⟩, hnot _ _ rfl (by decide), hnot _ _ rfl le_rfl⟩
   · rintro v - m t ⟨-, rfl⟩ w - a ha hc - -
     change a + 1 ≤ 3 at hc
     dsimp only [Time] at *; omega
   · intro u _ x τ _ _ hx
     exact absurd hx List.not_mem_nil
-  · rintro v - m t ⟨-, rfl⟩ w - - - -
-    exact logA_held w _ (by decide)
   · rintro v - m t ⟨-, rfl⟩ w - a - - - -
     refine logA_held w _ ?_
     change 7 ≤ max a 6 + 1

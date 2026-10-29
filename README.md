@@ -118,20 +118,26 @@ other premises hold.
 
 ### The network rule (`ConsensusProblem/Network.lean`)
 
-The delivery rule, verbatim (`CommLog.Delivers.msgs`):
+The delivery rule is Francesco's rule, normal delivery (`CommLog.Delivers.msgs`):
 
-> every message an honest node sends at `t` is received by every honest node
-> that is awake at `max(t, GST) + Δ`, by that time.
+> every message an honest node sends at `t` is received, within the delivery
+> bound, by every honest node that is awake over the delivery interval, and is
+> re-served, within the bound, to nodes that wake later.
 
-- "Received by that time" is `Held`. The node sent or received the message
+Formally, for a deadline function `dl` (`max a GST + Δ` in partial synchrony):
+for every start `a ≥ t`, every honest node awake throughout `[a, dl a]` holds
+the message at `dl a`. At `a = t`: a node awake over `[t, max(t, GST) + Δ]`
+has it by `max(t, GST) + Δ`. At a later `a`: a node that wakes at `a` and
+stays awake has it by `max(a, GST) + Δ`, not at the wake itself (no instant
+re-delivery; tests `waker_within_bound`, `waker_not_instant`).
+
+- "Has it at `d`" is `Held`. The node sent or received the message
   at some `t' ≤ d`, and did not wake in `(t', d]`. Receipt at the deadline
   itself counts. A restart loses earlier receipts.
-- **Rewake clause** (`Delivers.rewake`, a separate named clause for the
-  sleepy model): a node awake at a later deadline `dl a` (`a > t`) holds the
-  message then, even if it slept in between.
-- **Transactions** (`Delivers.txs`): a transaction submitted at `τ ≥ 0` to an
-  awake honest node is held (`TxHeld`, in the inbox at some `τ' ∈ [0, d]`)
-  by every honest node awake at `dl a`, for every `a ≥ τ`.
+- **Transactions** (`Delivers.txs`), the same rule: a transaction submitted at
+  `τ ≥ 0` to an awake honest node is held (`TxHeld`, in the inbox at some
+  `τ' ∈ [0, d]`) at `dl a` by every honest node awake throughout `[a, dl a]`,
+  for every `a ≥ τ`.
 - Sends are covered at every time, negative ones included. Submissions are
   covered from `0`. With `SendsFromZero` (in `Derived`; true of every valid model run),
   `PSync 0` is synchrony (`PSync.syncUntil_zero`).
@@ -141,7 +147,7 @@ The delivery rule, verbatim (`CommLog.Delivers.msgs`):
 
 Instances: `PSync g` (deadline `max a g + Δ`), `SyncUntil b` (deadline
 `a + Δ`, for deadlines up to `b`), and `OutageNet b₀ b₁ = SyncUntil b₀ ∧
-PSync b₁`. Every delivery obligation (all three clauses, in every instance)
+PSync b₁`. Every delivery obligation (both clauses, in every instance)
 applies only when its deadline is within both the cut and the horizon: a
 `SyncUntil b` with `b` past the horizon still promises nothing after the
 horizon. `PSync.mono` (tests): a later GST is weaker.
@@ -397,7 +403,8 @@ theorem Accepted.good (h : Accepted F K) (V) [Fintype V] [DecidableEq V] :
 `Accepted.good` combines three theorems. `refinement` gives `Behaviour`;
 its bridges are `ledgerTrace` (reads are `ledgerOf` of the output chains)
 and `proposalLive_txLive` (proposal liveness and partial synchrony give
-transaction liveness). `sysOf_adequate` gives `Adequate`.
+transaction liveness; it needs catch-up `≥ Δ`, `Admissible.catchUp_pos`, so a
+ready proposer was awake over the delivery interval before its release). `sysOf_adequate` gives `Adequate`.
 `regimes_realizable` gives `RealizableActive`, hence `Realizable`
 (`RealizableActive.toRealizable`; its stress witnesses keep keys
 `1..3`, respectively `1..⌊2n/3⌋+1`, awake and the rest asleep). Corollary
@@ -535,7 +542,7 @@ by-construction rows: `ConsensusShapeTests/Gaps.lean`.
 ## Tests (`ConsensusShapeTests/`)
 
 - `Problem`: every L0 property has teeth; local accountability (`local_accountability_teeth`).
-- `Network`: the endpoint rule, faithfulness, silent runs and truncation.
+- `Network`: the delivery rule (wakers served within the bound, not instantly), faithfulness, silent runs and truncation.
 - `Regimes`: what each regime admits and rejects; the explanatory L0 regime lemmas.
 - `Good`: vacuous systems are not good; censoring progress, rotating sleepers, η-sleepy history.
 - `Model`, `Blocks`, `Shape`: model mechanics, recurrence, compiled roles and poll mode.

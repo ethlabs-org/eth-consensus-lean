@@ -196,7 +196,8 @@ theorem active_relay {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableE
   change t' ≤ rho.horizon at hth
   have hm : max t gst ≤ max t start := max_le_max le_rfl hgs
   have hd : max t gst + E.Δ ≤ rho.horizon := by linarith
-  obtain ⟨τ, hτ, -, hxτ⟩ := hs.txs u hu x t ht0 hua hx w hw t le_rfl hd hd (hawake w _)
+  obtain ⟨τ, hτ, -, hxτ⟩ := hs.txs u hu x t ht0 hua hx w hw t le_rfl hd hd
+    (fun u _ _ => hawake w u)
   refine ⟨x, w, hw, hnw, τ, hτ, ?_⟩
   rcases List.mem_append.mp hxτ with h | h
   · exact absurd h (hnw τ)
