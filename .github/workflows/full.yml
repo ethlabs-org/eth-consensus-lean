@@ -1,0 +1,109 @@
+# Full tier: `scripts/check.sh --full` (every step and self-test, incl. leanchecker kernel replay, `lake check`
+# and `lake comparator --paranoid` in a bubblewrap sandbox) on a clean project build. Nightly (skipped when
+# main's head already passed a full run), on demand, and on `milestone*` / `release*` tags.
+# The fast tier (ci.yml) runs on every pull request and push to main.
+name: full
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+  push:
+    tags: ["milestone*", "release*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Skip a nightly run on an already checked commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          n=0
+          if [[ "$EVENT" == schedule ]]; then
+            n="$(gh run list -R "$GITHUB_REPOSITORY" --workflow full.yml --commit "$GITHUB_SHA" --status success --json databaseId --jq length)"
+          fi
+          if [[ "$n" -gt 0 ]]; then
+            echo "::notice::$GITHUB_SHA already passed a full run: nightly skipped"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  full:
+    name: scripts/check.sh --full (incl. replay, lake check, lake comparator --paranoid)
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Check out consensus-lean
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install elan v4.2.4 (pinned release, sha256-checked; toolchain from lean-toolchain)
+        run: |
+          set -euo pipefail
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz -o "$RUNNER_TEMP/elan.tgz"
+          echo "42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  $RUNNER_TEMP/elan.tgz" | sha256sum --strict -c -
+          tar -xzf "$RUNNER_TEMP/elan.tgz" -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/elan-init" -y --no-modify-path --default-toolchain "$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Report Lean toolchain
+        run: |
+          lean --version
+          lake --version
+
+      - name: Restore Lake packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .lake/packages
+          key: lake-pkgs-${{ runner.os }}-${{ hashFiles('lake-manifest.json', 'lean-toolchain') }}
+
+      - name: Restore Mathlib olean cache
+        run: lake exe cache get
+
+      - name: Sandbox for lake comparator / lake check
+        run: |
+          sudo apt-get update && sudo apt-get install -y bubblewrap jq
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --ro-bind / / --unshare-user true    # smoke: fails the job if userns is still blocked
+
+      - name: Run scripts/check.sh --full (clean project build; no .lake/build cache)
+        env:
+          CI: "1"
+        run: |
+          set -o pipefail
+          scripts/check.sh --full 2>&1 | tee "$RUNNER_TEMP/check.log"
+
+      - name: No skipped sandbox steps, nothing skipped, tree clean
+        run: |
+          set -euo pipefail
+          if grep -E 'skipped: no bwrap|^SKIP ' "$RUNNER_TEMP/check.log"; then exit 1; fi
+          grep -qx 'check.sh: ALL CHECKS PASSED' "$RUNNER_TEMP/check.log"
+          test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
+
+      - name: Upload check log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: check-log-full
+          path: ${{ runner.temp }}/check.log
+          retention-days: 30

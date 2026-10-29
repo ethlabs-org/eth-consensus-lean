@@ -18,7 +18,7 @@ def lib_prefixes(lake_lib):  # module prefixes a lakefile lib owns (its roots, g
     globs = [g[:-2] if g.endswith((".*", ".+")) else g for g in lake_lib.get("globs", [])]
     return lake_lib.get("roots", [lake_lib["name"]]) + globs
 
-def check(tree, cfg_path, lakefile, inventory_out=None):
+def check(tree, cfg_path, lakefile, inventory_out=None, graph_out=None):
     tree = Path(tree)
     cfg = tomllib.loads(Path(cfg_path).read_text())
     lake = tomllib.loads(Path(lakefile).read_text())
@@ -90,6 +90,11 @@ def check(tree, cfg_path, lakefile, inventory_out=None):
         mod = next(m for mods in inv.values() for m, p in mods if str(p) == f)
         imports[mod] = sorted({i["module"] for i in r["result"]["imports"]})
     owner = {m: n for n, mods in inv.items() for m, _ in mods}
+    if graph_out:  # `lib<TAB>module<TAB>import` per direct import (`-` for none): check.sh --changed's cone
+        with open(graph_out, "w") as out:
+            for m, n in owner.items():
+                for i in imports[m] or ["-"]:
+                    out.write(f"{n}\t{m}\t{i}\n")
     roots = {l["root"] for l in libs}
     for l in libs:
         n = l["name"]
@@ -155,11 +160,12 @@ if __name__ == "__main__":
     ap.add_argument("--lakefile", default="lakefile.toml")
     ap.add_argument("--tree", default=".")
     ap.add_argument("--inventory-out")
+    ap.add_argument("--graph-out", help="write the import graph of the default libraries (lib, module, import)")
     ap.add_argument("--self-test", metavar="FIXTURES_DIR", nargs="?", const="scripts/fixtures/imports")
     a = ap.parse_args()
     if a.self_test:
         sys.exit(0 if self_test(a.self_test) else 1)
-    fails = check(a.tree, a.config, a.lakefile, a.inventory_out)
+    fails = check(a.tree, a.config, a.lakefile, a.inventory_out, a.graph_out)
     for f in fails:
         print(f)
     print(f"check-imports: {'FAILED' if fails else 'passed'} ({len(fails)} findings)")

@@ -1,0 +1,66 @@
+# Monitoring: one short line per repository event to ntfy.sh (topic in the secret NTFY_TOPIC; nothing is
+# sent when the secret is empty). Event type, number or ref, action or conclusion, actor: never titles or
+# bodies. Every value reaches the script through env, never through ${{ }} inside `run`.
+name: notify
+
+on:
+  issues:
+    types: [opened, closed, reopened, labeled, unlabeled, assigned]
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [opened, synchronize, reopened, closed, ready_for_review]
+  pull_request_review:
+    types: [submitted]
+  push:
+  workflow_run:
+    workflows: [check, full]
+    types: [completed]
+  create:
+  delete:
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Post one line
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          ACTOR: ${{ github.actor }}
+          REF_NAME: ${{ github.ref_name }}
+          AFTER: ${{ github.event.after }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          ON_PR: ${{ github.event.issue.pull_request && 'PR' || '' }}
+          LABEL: ${{ github.event.label.name }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          REVIEW_STATE: ${{ github.event.review.state }}
+          WF_NAME: ${{ github.event.workflow_run.name }}
+          WF_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          WF_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WF_EVENT: ${{ github.event.workflow_run.event }}
+          WF_PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+          CREATED_REF: ${{ github.event.ref }}
+          REF_TYPE: ${{ github.event.ref_type }}
+        run: |
+          set -u
+          [[ -n "$NTFY_TOPIC" ]] || exit 0
+          case "$EVENT" in
+            issues) line="issue #$NUMBER $ACTION${LABEL:+ [$LABEL]}" ;;
+            issue_comment) line="comment on ${ON_PR:-issue} #$NUMBER" ;;
+            pull_request)
+              [[ "$ACTION" == closed && "$MERGED" == true ]] && ACTION=merged
+              line="PR #$NUMBER $ACTION ($HEAD_REF)" ;;
+            pull_request_review) line="review on PR #$NUMBER: $REVIEW_STATE" ;;
+            push) line="push $REF_NAME ${AFTER:0:8}" ;;
+            workflow_run) line="CI $WF_NAME: $WF_CONCLUSION ($WF_EVENT, $WF_BRANCH${WF_PR:+, PR #$WF_PR})" ;;
+            create|delete) line="$EVENT $REF_TYPE $CREATED_REF" ;;
+            *) line="$EVENT $ACTION" ;;
+          esac
+          line="consensus-lean: $line by $ACTOR"
+          curl -s -o /dev/null --max-time 20 -d "${line:0:300}" "https://ntfy.sh/$NTFY_TOPIC" || true

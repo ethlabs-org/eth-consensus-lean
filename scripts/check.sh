@@ -17,28 +17,42 @@
 #   8  vendored         sha256 of every verbatim copy                           (scripts/vendor.sha256)
 #   9  comparator config  exact comparator.json + ConsensusChallenge.lean    (jq, lean --deps-json)
 #   10 lake check       sandboxed build + export + replay                       (needs bwrap)
-#   11 lake comparator  Spec statements vs proofs, axioms, sandboxed replay     (needs bwrap)
+#   11 lake comparator  Spec statements vs proofs, axioms, sandboxed replay by  (needs bwrap)
+#                       Lean's kernel and every bundled external kernel (--paranoid)
 #   12 docs             README spec-file list = the files of the Spec library
 # Every step with a negative fixture also runs it through the same function ("self-test" steps).
 #
-# Usage: scripts/check.sh [--no-build] [--quick] [--update-snapshot] [--update-extensions]
+# Usage: scripts/check.sh [--fast | --full | --changed [<base>]] [--selftests] [--no-build]
+#                         [--update-snapshot] [--update-extensions]
+#   --fast (default)     every step except the heavy ones (5 kernel replay, 10 lake check, 11 lake
+#                        comparator) and the self-tests: CI on every pull request and push to main
+#   --full               everything, self-tests included: CI nightly, on demand and on milestone/release tags
+#   --changed [<base>]   the fast steps restricted to what changed since <base> (default: merge-base with
+#                        origin/main; uncommitted and untracked files count): build the changed modules'
+#                        downstream cone, check-decls on the affected libraries, Spec surface only if a Spec
+#                        module changed, grep on the changed files. A change of scripts/ or of the build
+#                        configuration falls back to --fast (with --selftests for scripts/). scripts/check-changed.sh
+#   --selftests          also run the self-tests (fixtures) in --fast mode
 #   --no-build           do not compile; `lake build --no-build` still fails on anything stale
-#   --quick              skip the self-tests and kernel replay (summary: partial)
 #   --update-snapshot    rewrite scripts/spec-snapshot.txt (the run then FAILS: review + commit it)
 #   --update-extensions  rewrite scripts/spec-extensions.txt likewise
-# With CI set, --quick, --update-* and --no-build are refused.
+# Every skipped step prints `SKIP  <step> (<reason>)`; only --full ends with `check.sh: ALL CHECKS PASSED`.
+# With CI set, --update-* and --no-build are refused.
 # On the shared box run it only inside `job --mem 16G ...` (it refuses to start without RUN_DIR or CI).
 
 set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-usage="usage: scripts/check.sh [--no-build] [--quick] [--update-snapshot] [--update-extensions]"
-no_build=0 quick=0 update_snapshot=0 update_extensions=0
+usage="usage: scripts/check.sh [--fast | --full | --changed [<base>]] [--selftests] [--no-build] [--update-snapshot] [--update-extensions]"
+mode=fast base="" selftests=0 no_build=0 update_snapshot=0 update_extensions=0
 while (($#)); do
   case "$1" in
+    --fast) mode=fast ;;
+    --full) mode=full ;;
+    --changed) mode=changed; if (($# > 1)) && [[ "$2" != -* ]]; then base="$2"; shift; fi ;;
+    --selftests) selftests=1 ;;
     --no-build) no_build=1 ;;
-    --quick) quick=1 ;;
     --update-snapshot) update_snapshot=1 ;;
     --update-extensions) update_extensions=1 ;;
     -h|--help) echo "$usage"; exit 0 ;;
@@ -50,10 +64,11 @@ if [[ -z "${RUN_DIR:-}" && -z "${CI:-}" ]]; then
   echo "check.sh: refusing to run without RUN_DIR (set by \`job\`) or CI: on the shared box run it in a job" >&2
   exit 2
 fi
-if [[ -n "${CI:-}" ]] && ((quick || no_build || update_snapshot || update_extensions)); then
-  echo "check.sh: --quick, --no-build and --update-* are refused in CI" >&2
+if [[ -n "${CI:-}" ]] && ((no_build || update_snapshot || update_extensions)); then
+  echo "check.sh: --no-build and --update-* are refused in CI" >&2
   exit 2
 fi
+[[ "$mode" == full ]] && selftests=1
 
 CFG=scripts/boundaries.toml
 WORK="$(mktemp -d "${RUN_DIR:-${TMPDIR:-/tmp}}/check.XXXXXX")"
@@ -74,6 +89,7 @@ SPEC_LIB="$(cfg spec_lib)"
 SPEC_MODULES=()  # every module of the Spec library's inventory; filled after step 2
 mapfile -t EXT_LIBS < <(cfg extension_libs)
 mapfile -t EXTRA_TARGETS < <(cfg extra_build_targets)
+mapfile -t FIXTURE_LIBS < <(cfg fixture_libs)
 mapfile -t NOCONST_EXEMPT < <(cfg noconst_exempt)
 THEOREMS_MODE="$(cfg theorems_mode)"
 REVIEW_AXIOMS="$(cfg review_axioms_module)"
@@ -83,6 +99,98 @@ SOLUTION="$(cfg solution_module)"
 STATEMENTS="$(cfg statements_module)"
 case "$THEOREMS_MODE" in report|enforce) ;; *) echo "check.sh: theorems_mode must be report or enforce" >&2; exit 2 ;; esac
 ((${#LIBS[@]} > 0 && ${#EXT_LIBS[@]} > 0 && ${#EXTRA_TARGETS[@]} > 0)) || { echo "check.sh: empty configuration" >&2; exit 2; }
+
+# --- what each mode checks ------------------------------------------------------------------------
+BUILD_EXTRA=()            # extra targets built next to the default targets (set by the driver)
+DECL_LIBS=("${LIBS[@]}")  # libraries whose every module check-decls checks (step 3)
+CHANGED=()                # --changed: paths changed since $base (committed, staged, unstaged, untracked)
+CONE=()                   # --changed: default-library modules changed or (transitively) importing one
+BUILD_TARGETS=()          # --changed: what step 1 builds
+do_surface=1 do_comparator_config=1
+
+# compute_changes: the change set since $base and its downstream cone (--changed). Falls back to --fast
+# (setting `mode`) where no sound restriction exists: the check stack or the build configuration changed.
+compute_changes() {
+  local f infra=() scripts_changed=0 tag lib m
+  if [[ -z "$base" ]]; then
+    base="$(git merge-base HEAD origin/main)" || { echo "check.sh: no merge-base with origin/main; pass a base" >&2; exit 2; }
+  fi
+  git rev-parse -q --verify "$base^{commit}" >/dev/null || { echo "check.sh: unknown base $base" >&2; exit 2; }
+  # NUL-delimited: git quotes unusual file names in its line output.
+  mapfile -d '' -t CHANGED < <({ git diff -z --no-renames --name-only "$base" --; git ls-files -z --others --exclude-standard; } | LC_ALL=C sort -zu)
+  echo "--- changes since $(git rev-parse --short "$base") (committed, staged, unstaged and untracked) ---"
+  ((${#CHANGED[@]})) && printf '  %s\n' "${CHANGED[@]}" || echo "  (none)"
+  for f in "${CHANGED[@]}"; do
+    case "$f" in
+      scripts/*) scripts_changed=1; infra+=("$f") ;;
+      lean-toolchain|lake-manifest.json|lakefile.toml|lakefile.lean) infra+=("$f") ;;
+    esac
+  done
+  if ((${#infra[@]})); then
+    mode=fast; ((scripts_changed)) && selftests=1
+    echo "  NOTE  the check stack or the build configuration changed (${#infra[@]} files): no sound restriction;"
+    echo "        running --fast on everything$( ((scripts_changed)) && echo ', with the self-tests (scripts/ changed)')"
+    return 0
+  fi
+  # Only the graph is used here (step 2 reports the findings); it is written whenever the imports parse.
+  python3 -I scripts/check-imports.py --config "$CFG" --lakefile lakefile.toml --graph-out "$WORK/graph.tsv" >/dev/null 2>&1 || true
+  if [[ ! -s "$WORK/graph.tsv" ]]; then
+    mode=fast
+    echo "  NOTE  no import graph (lean --deps-json failed; step 2 shows why): running --fast on everything"
+    return 0
+  fi
+  # cone: the changed modules and every module importing one, transitively; lib: a library with a module
+  # in the cone or a deleted file under its directory.
+  DECL_LIBS=()
+  while IFS=$'\t' read -r tag lib m; do
+    case "$tag" in
+      cone) CONE+=("$m") ;;
+      lib) DECL_LIBS+=("$lib") ;;
+    esac
+  done < <(python3 -I - "$WORK/graph.tsv" "$CFG" "${CHANGED[@]}" <<'PY'
+import sys, tomllib
+graph, cfg, changed = sys.argv[1], tomllib.load(open(sys.argv[2], "rb")), sys.argv[3:]
+lib_of, rdeps = {}, {}
+for line in open(graph):
+    l, m, i = line.rstrip("\n").split("\t")
+    lib_of[m] = l
+    if i != "-":
+        rdeps.setdefault(i, set()).add(m)
+libs, todo = set(), []
+for f in changed:
+    if not f.endswith(".lean"):
+        continue
+    m = f[:-len(".lean")].replace("/", ".")
+    if m in lib_of:
+        todo.append(m)
+    else:  # deleted (or outside the default libraries)
+        libs |= {x["name"] for x in cfg["lib"] if f == x["dir"] + ".lean" or f.startswith(x["dir"] + "/")}
+cone = set()
+while todo:
+    m = todo.pop()
+    if m not in cone:
+        cone.add(m)
+        todo += rdeps.get(m, ())
+for m in sorted(cone):
+    print("cone", lib_of[m], m, sep="\t")
+for l in sorted(libs | {lib_of[m] for m in cone}):
+    print("lib", l, "", sep="\t")
+PY
+  )
+  printf '%s\n' "${DECL_LIBS[@]}" | grep -qxF "$SPEC_LIB" || do_surface=0
+  do_comparator_config=$do_surface
+  for f in "${CHANGED[@]}"; do
+    [[ "$f" == comparator.json || "$f" == "$(mod_file "$CHALLENGE")" ]] && do_comparator_config=1
+  done
+  printf '%s\n' "${CONE[@]}" | grep -qxF "$SOLUTION" && do_comparator_config=1
+  BUILD_TARGETS=("${CONE[@]}")
+  ((do_comparator_config)) && BUILD_TARGETS+=("$CHALLENGE")
+  ((${#DECL_LIBS[@]})) && BUILD_TARGETS+=(check-decls)
+  echo "  downstream cone (built): ${#CONE[@]} modules"
+  ((${#CONE[@]})) && printf '    %s\n' "${CONE[@]}"
+  echo "  affected libraries (check-decls): ${DECL_LIBS[*]:-none}"
+  return 0
+}
 
 # Inventory queries (written by step 2): modules of a library; leaf or parent modules of all libraries.
 inv_modules() { awk -F'\t' -v l="$1" '$1 == l { print $2 }' "$INV"; }
@@ -166,15 +274,15 @@ selftest_pins() {
 }
 
 # --- step 1: build --------------------------------------------------------------------------------
-step_build() {
+step_build() {  # default targets + BUILD_EXTRA; --changed: BUILD_TARGETS only
   set +e
-  local rc=0
-  if ((no_build)); then
-    lake build --no-build || rc=1
-    lake build --no-build "${EXTRA_TARGETS[@]}" || rc=1
+  local rc=0 nb=()
+  ((no_build)) && nb=(--no-build)
+  if [[ "$mode" == changed ]]; then
+    lake build "${nb[@]}" "${BUILD_TARGETS[@]}" || rc=1
   else
-    lake build || rc=1
-    lake build "${EXTRA_TARGETS[@]}" || rc=1
+    lake build "${nb[@]}" || rc=1
+    lake build "${nb[@]}" "${BUILD_EXTRA[@]}" || rc=1
   fi
   set -e
   return "$rc"
@@ -235,9 +343,13 @@ split_baseline() {  # split_baseline <baseline> <outdir> <libs...>
 }
 # decls_libs <inventory> <baseline> <libs...>: check-decls once per library, over every inventory module.
 decls_libs() {
-  local inv="$1" baseline="$2" rc=0 l
+  local inv="$1" baseline="$2"
   shift 2
-  split_baseline "$baseline" "$WORK/bl" "$@" || return 1
+  split_baseline "$baseline" "$WORK/bl" "$@" && decls_each "$inv" "$@"
+}
+decls_each() {  # decls_each <inventory> <libs...>: needs the split baseline in $WORK/bl
+  local inv="$1" rc=0 l
+  shift
   for l in "$@"; do
     mapfile -t mods < <(awk -F'\t' -v l="$l" '$1 == l { print $2 }' "$inv")
     echo "  check-decls --scope $l (${#mods[@]} modules)"
@@ -245,7 +357,8 @@ decls_libs() {
   done
   return "$rc"
 }
-step_decls() { decls_libs "$INV" scripts/check_decls_baseline.txt "${LIBS[@]}"; }
+# The baseline is validated against every library; --changed checks only the affected ones (DECL_LIBS).
+step_decls() { split_baseline scripts/check_decls_baseline.txt "$WORK/bl" "${LIBS[@]}" && decls_each "$INV" "${DECL_LIBS[@]}"; }
 selftest_decls() {
   set +e
   local rc=0 out
@@ -343,13 +456,19 @@ step_surface() {
   else
     echo "  reach failed"; rc=1
   fi
+  step_noconst || rc=1
+  set -e
+  return "$rc"
+}
+# noconst: no module with descendants (of any default library) owns a constant (leanchecker, step 5,
+# replays leaves only). Part of step 4; --changed runs it alone when no Spec module changed.
+step_noconst() {
+  local parents=()
   mapfile -t parents < <(inv_kind parent | grep -vxF -f <(printf '%s\n' "${NOCONST_EXEMPT[@]}" | awk NF) )
   echo "  noconst over ${#parents[@]} modules with descendants"
   ((${#NOCONST_EXEMPT[@]} == 0)) ||
     echo "  NOTE  exempt from noconst, hence not replayed by leanchecker here (step 10 lake check replays them): ${NOCONST_EXEMPT[*]}"
-  "${SURFACE[@]}" noconst --modules "${parents[@]}" || rc=1
-  set -e
-  return "$rc"
+  "${SURFACE[@]}" noconst --modules "${parents[@]}"
 }
 # snap_compare <A> <B>: snapshots of two fixture modules (separate processes), `## ` lines dropped.
 snap_compare() {  # prints the diff; exit 1 = they differ (expected), anything else is an error
@@ -513,16 +632,25 @@ grep_7a() {
 }
 grep_7b() { scan 'run_cmd|run_meta|run_elab|#eval|#exit|(builtin_)?initialize' -w "$@"; }
 grep_7c() { scan 'skipKernelTC|plugins|moreLeanArgs|weakLeanArgs|moreServerArgs|loadDynlib|dynlibs|precompileModules|debug\.' "$@"; }
+only_changed() {  # only_changed <paths...>: those in CHANGED
+  awk 'NR == FNR { c[$0] = 1; next } $0 in c' <(printf '%s\n' "${CHANGED[@]}") <(printf '%s\n' "$@")
+}
 step_grep() {
-  local files=() spec=() found rc=0
+  local files=() spec=() found rc=0 what=""
   mapfile -t files < <(cut -f2 "$INV" | while read -r m; do mod_file "$m"; done)
   mapfile -t spec < <(for m in "${SPEC_MODULES[@]}"; do mod_file "$m"; done)
   ((${#files[@]} > 0 && ${#spec[@]} > 0)) || { echo "  no files to scan"; return 1; }
-  found="$({ grep_7a "${files[@]}" && grep_7b "${spec[@]}" && grep_7c lakefile.toml; } 2>&1)" || rc=1
+  if [[ "$mode" == changed ]]; then
+    mapfile -t files < <(only_changed "${files[@]}")
+    mapfile -t spec < <(only_changed "${spec[@]}")
+    what=" (changed files only)"
+  fi
+  found="$({ { ((${#files[@]} == 0)) || grep_7a "${files[@]}"; } &&
+    { ((${#spec[@]} == 0)) || grep_7b "${spec[@]}"; } && grep_7c lakefile.toml; } 2>&1)" || rc=1
   [[ -z "$found" && $rc -eq 0 ]] || { echo "$found"; return 1; }
   # Lake prefers lakefile.lean to lakefile.toml; every check here reads lakefile.toml (step 2 refuses it too).
   [[ ! -e lakefile.lean ]] || { echo "  lakefile.lean exists"; return 1; }
-  echo "  scanned ${#files[@]} library files, ${#spec[@]} Spec files, lakefile.toml"
+  echo "  scanned ${#files[@]} library files, ${#spec[@]} Spec files$what, lakefile.toml"
 }
 selftest_grep() {
   set +e
@@ -631,7 +759,8 @@ step_lake_check() {
 step_lake_comparator() {
   set +e
   local rc=0
-  lake comparator --config comparator.json || rc=1
+  # --paranoid: also leanchecker-paranoid, lean4lean, nanoda, con-leche, con-ron (~3 min in CI, measured in B5).
+  lake comparator --paranoid --config comparator.json || rc=1
   # Fixtures over CheckFixtures.Cmp.* (exit 1 = rejected; each for its intended reason).
   expect_pass lake comparator --config "$FX/comparator-good.json" || rc=1
   expect_fail "Challenge and solution theorem statement do not match: 'CheckFixtures.Cmp.t'" \
@@ -674,7 +803,7 @@ selftest_docs() {
 
 # --- driver ---------------------------------------------------------------------------------------
 overall=0
-partial=()
+skipped=()
 ci_only=()
 run_step() {
   local label="$1"
@@ -682,43 +811,76 @@ run_step() {
   echo "--- $label ---"
   if "$@"; then printf 'PASS  %s\n' "$label"; else printf 'FAIL  %s\n' "$label"; overall=1; fi
 }
-run_selftest() {
-  if ((quick)); then echo "SKIP  $1 (skipped: --quick)"; partial+=("$1"); else run_step "$@"; fi
+skip_step() { echo "SKIP  $1 ($2)"; skipped+=("$1"); }
+run_if() {  # run_if <0|1> <reason to skip> <label> <step...>
+  if (($1)); then run_step "${@:3}"; else skip_step "$3" "$2"; fi
 }
-needs_bwrap() {
-  if have_bwrap; then run_step "$@"; else echo "SKIP  $1 (skipped: no bwrap)"; ci_only+=("$1"); fi
+run_selftest() { run_if "$selftests" "self-test: --full or --selftests" "$@"; }
+full_only() {  # the heavy steps: --full only (CI: nightly, manual, milestone/release tags); bwrap ones need it
+  if [[ "$mode" != full ]]; then
+    skip_step "$1" "--full only: CI nightly"
+  elif [[ "$2" == step_lake_* ]] && ! have_bwrap; then
+    echo "SKIP  $1 (skipped: no bwrap)"; ci_only+=("$1")
+  else
+    run_step "$@"
+  fi
 }
+
+if [[ "$mode" == changed ]]; then compute_changes; fi
+# Self-test-only build targets: the fixture libraries except the comparator challenge (built in every
+# mode, so a broken challenge fails before the nightly comparator run).
+for t in "${EXTRA_TARGETS[@]}"; do
+  if ((selftests)) || ! printf '%s\n' "${FIXTURE_LIBS[@]}" | grep -qxF "$t" || [[ "$t" == "$CHALLENGE" ]]; then
+    BUILD_EXTRA+=("$t")
+  fi
+done
+echo "check.sh: mode $mode$( ((selftests)) && echo ', with self-tests')"
+if [[ "$mode" == changed ]]; then
+  build_label="1 build (the downstream cone: ${#CONE[@]} modules"
+  if ((do_comparator_config)); then build_label+=" + $CHALLENGE"; fi
+  if ((${#DECL_LIBS[@]})); then build_label+=" + check-decls"; fi
+  build_label+=")"
+else
+  build_label="1 build (default targets + ${BUILD_EXTRA[*]})"
+fi
+if ((no_build)); then build_label+=" (freshness only, --no-build)"; fi
 
 run_step "0 pins (toolchain + dependencies = scripts/pins.toml)" step_pins
 run_selftest "0 pins self-test (fixtures/pins-*)" selftest_pins
-run_step "1 build ($( ((no_build)) && echo 'freshness only, --no-build' || echo 'default targets') + ${EXTRA_TARGETS[*]})" step_build
-run_step "2 imports (check-imports.py)" step_imports
+if [[ "$mode" == changed ]] && ((${#BUILD_TARGETS[@]} == 0)); then
+  skip_step "1 build" "no Lean module changed"
+else
+  run_step "$build_label" step_build
+fi
+run_step "2 imports (check-imports.py, every library)" step_imports
 if [[ ! -s "$INV" ]]; then
   echo "check.sh: no inventory; the remaining steps need it"; echo; echo "check.sh: FAILURES PRESENT" >&2; exit 1
 fi
 mapfile -t SPEC_MODULES < <(inv_modules "$SPEC_LIB")
 run_selftest "2 imports self-test (fixtures/imports)" selftest_imports
-run_step "3 declarations (check-decls per library)" step_decls
+run_if "${#DECL_LIBS[@]}" "no library affected" "3 declarations (check-decls: ${DECL_LIBS[*]:-none})" step_decls
 run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope)" selftest_decls
-run_step "4 Spec surface (extensions, snapshot, theorems, noconst)" step_surface
-run_selftest "4 Spec surface self-test (CheckFixtures)" selftest_surface
-if ((quick)); then
-  echo "SKIP  5 kernel replay (skipped: --quick)"; partial+=("5 kernel replay")
+if ((do_surface)); then
+  run_step "4 Spec surface (extensions, snapshot, theorems, noconst)" step_surface
 else
-  run_step "5 kernel replay (leanchecker, every leaf module)" step_replay
+  skip_step "4 Spec surface: extensions, snapshot, theorems" "no $SPEC_LIB module changed"
+  run_if "${#DECL_LIBS[@]}" "no library affected" "4 noconst (every module with descendants)" step_noconst
 fi
+run_selftest "4 Spec surface self-test (CheckFixtures)" selftest_surface
+full_only "5 kernel replay (leanchecker, every leaf module)" step_replay
 run_selftest "5 kernel replay self-test (BadSkipKernel, prefix refusal)" selftest_replay
 run_step "6 review pins ($REVIEW_ROOT imports $REVIEW_AXIOMS)" step_review
 run_selftest "6 review pins self-test (review-imports, ReviewAxioms*, Review{Eq,Binder,Complete,Escape}Bad, ReviewGuardGood, mutations)" selftest_review
-run_step "7 backstop (grep)" step_grep
+run_step "7 backstop (grep$([[ "$mode" == changed ]] && echo ', changed files'))" step_grep
 run_selftest "7 backstop self-test (fixtures/grep)" selftest_grep
 run_step "8 vendored files (scripts/vendor.sha256)" step_vendor
-run_step "9 comparator config" step_comparator_config
+run_if "$do_comparator_config" "no change to the statements, the challenge, comparator.json or the solution's imports" \
+  "9 comparator config" step_comparator_config
 run_selftest "9 comparator config self-test (fixtures/comparator: configs, challenges)" selftest_comparator_config
-needs_bwrap "10 lake check (+ fixtures/lakecheck-{bad,good})" step_lake_check
+full_only "10 lake check (+ fixtures/lakecheck-{bad,good})" step_lake_check
 # leanchecker skips the noconst-exempt parents (step 5); step 10's replay covers them, when it runs.
-have_bwrap || ((${#NOCONST_EXEMPT[@]} == 0)) || ci_only+=("kernel replay of ${NOCONST_EXEMPT[*]} (lake check)")
-needs_bwrap "11 lake comparator (+ fixtures/comparator-{good,stmt,axiom,def}.json)" step_lake_comparator
+[[ "$mode" != full ]] || have_bwrap || ((${#NOCONST_EXEMPT[@]} == 0)) || ci_only+=("kernel replay of ${NOCONST_EXEMPT[*]} (lake check)")
+full_only "11 lake comparator --paranoid (+ fixtures/comparator-{good,stmt,axiom,def}.json)" step_lake_comparator
 run_step "12 docs (README spec-files = the files of $SPEC_LIB)" step_docs
 run_selftest "12 docs self-test (README-good, README-missing)" selftest_docs
 
@@ -726,8 +888,8 @@ echo
 ((${#ci_only[@]} == 0)) || echo "CI-only: ${ci_only[*]}"
 if ((overall)); then
   echo "check.sh: FAILURES PRESENT" >&2
-elif ((${#partial[@]})); then
-  echo "check.sh: PASSED (partial: ${partial[*]})"
+elif ((${#skipped[@]})); then
+  echo "check.sh: PASSED ($mode mode; ${#skipped[@]} steps skipped, listed as SKIP above)"
 else
   echo "check.sh: ALL CHECKS PASSED"
 fi

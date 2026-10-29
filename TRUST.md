@@ -33,14 +33,18 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   against `scripts/spec-snapshot.txt`, then owner review of every change (`spec-approved`).
   Proof values are omitted by proof irrelevance; non-proof auxiliary constants are included.
 - **Dependency drift:** exact pins; the upgrade above additionally used the dependency audit.
-- **Proofs:** leanchecker locally, sequentially on every default-library leaf module (parents own
-  no constants); `lake check`; check-decls; and the comparator's statement matching,
-  axiom limits, sandboxed replay and identical reachable constants across exports (tamper resistance).
+- **Proofs:** leanchecker, sequentially on every default-library leaf module (parents own no
+  constants); `lake check`; check-decls; and the comparator: statement matching, axiom limits,
+  identical reachable constants across exports (tamper resistance) and sandboxed replay, by Lean's
+  kernel and, with `--paranoid`, by every external kernel bundled with Lean.
   The comparator is **not a Spec-drift check**: both sides read the same source tree.
 
-`scripts/check.sh` wires checks and fixtures. `lake check` and `lake comparator` run inside a
-bubblewrap sandbox wherever `bwrap` exists (CI always; the shared box since 2026-10-29); without it
-check.sh skips them and lists them as CI-only.
+`scripts/check.sh` wires checks and fixtures. CI runs its fast mode (no replay, `lake check` or
+comparator; check-decls, snapshot diff and review pins included) on every pull request and push to main,
+and its full mode nightly, on demand and on milestone/release tags: a proof change merged after a green
+fast run is replayed by the kernel at the latest the next night. `lake check` and `lake comparator` run
+inside a bubblewrap sandbox wherever `bwrap` exists (CI full mode always; the shared box since
+2026-10-29); without it check.sh skips them and lists them as CI-only.
 
 ## Checking tools and open trust notes
 

@@ -5,7 +5,8 @@
 This project defines a good consensus protocol (`Good`), a generic execution model, and a shape layer.
 The review statement is `Consensus.Review.AcceptedGood`: accepted shapes give good protocols.
 Its three secondaries are `RegimesRealizable`, `LogFaithful`, and `HeldIffServed`.
-`scripts/check.sh` checks the trust boundary locally and in CI; GitHub Actions also runs sandboxed checks.
+`scripts/check.sh` checks the trust boundary locally and in CI: fast checks on every pull request, everything
+(including kernel replay, `lake check` and the sandboxed comparator) nightly; see "Verification".
 See `TRUST.md` for the assumptions and the roles of the checks.
 
 ## The review statement
@@ -742,41 +743,67 @@ by-construction rows: `ConsensusTests/Gaps.lean`.
 
 ## Verification
 
-On the shared box, run it inside a job (replace `<name>` and `<worktree>`); it builds what it checks
-(the default targets, the challenge, the fixtures and check-decls):
+`scripts/check.sh` has three modes; every step it does not run prints `SKIP  <step> (<reason>)`:
 
-```sh
-job --mem 16G --cpus 8 consensus-lean <name> -- bash -lc "cd <worktree> && LAKE_RESTORE_ARTIFACTS=true scripts/check.sh"
-```
+| Mode | Runs | Where |
+|---|---|---|
+| `--fast` (default) | steps 0–4, 6–9, 12: pins, build, imports, check-decls, Spec surface + snapshot diff, review pins, grep, vendored hashes, comparator config, docs; self-tests only with `--selftests` | CI on every PR and push to main (`.github/workflows/ci.yml`, with `--selftests` when `scripts/` or the build configuration changed) |
+| `--full` | everything: the fast steps, every self-test, leanchecker replay (5), `lake check` (10), `lake comparator --paranoid` (11) | CI nightly, on demand and on `milestone*`/`release*` tags (`.github/workflows/full.yml`, clean project build) |
+| `--changed [<base>]` | the fast steps restricted to what changed since `<base>` (default: merge-base with `origin/main`, uncommitted and untracked files included): build of the changed modules' downstream cone, check-decls on the affected libraries, Spec surface and comparator config only if a Spec module (or the challenge, `comparator.json`, the solution's imports) changed (otherwise only noconst of step 4), grep on the changed files; pins, imports, review pins, vendored hashes and docs in full (cheap). A change of `scripts/` or of the build configuration falls back to `--fast` (with self-tests for `scripts/`) | locally, `scripts/check-changed.sh [<base>]` |
 
-`check.sh` refuses to run without `RUN_DIR` (set by `job`) or `CI`. Elsewhere, a full run as CI does it:
+Only `--full` ends with `check.sh: ALL CHECKS PASSED`; the others end with `check.sh: PASSED (<mode> mode; ...)`.
 
-```sh
-CI=1 scripts/check.sh
-```
+### Local workflow
+
+On the shared box every build and check runs in a job (replace `<name>` and `<worktree>`):
+
+1. Iterate on one file with `lake env lean <file>` (after building its imports), or on one declaration with
+   `turbo-lean check <file> --decl <name>` (a single declaration only; `lake build` stays the gate).
+2. Before committing, check what changed:
+   ```sh
+   job --mem 16G --cpus 8 consensus-lean <name> -- bash -lc "cd <worktree> && LAKE_RESTORE_ARTIFACTS=true scripts/check-changed.sh"
+   ```
+3. Commit, push the `work/<agent>/<task>` branch and open a PR when ready: pushes without a PR run no CI.
+   The PR runs the fast tier; the nightly full run covers replay, `lake check` and the comparator.
+   Before a milestone, run the full check once (`scripts/check.sh --full` in a job, about an hour of CPU)
+   or trigger `full.yml` (`gh workflow run full.yml --ref <branch>`).
+
+`check.sh` refuses to run without `RUN_DIR` (set by `job`) or `CI`. Elsewhere: `CI=1 scripts/check.sh --full`.
 
 The build checks every cited name (`ConsensusTests/Index.lean`) and compiles the review
 type/axiom pins (`ConsensusTests/ReviewAxioms.lean`). `--no-build` skips compilation but still
-uses Lake's freshness gate, so stale artifacts fail. `--quick` skips replay and fixture self-tests
-and reports a partial run. Snapshot/extension updates fail deliberately so their diff is reviewed;
-CI refuses partial runs, update flags and `--no-build`, and checks that the tree stays clean.
+uses Lake's freshness gate, so stale artifacts fail. Snapshot/extension updates fail deliberately so
+their diff is reviewed; CI refuses update flags and `--no-build`, and checks that the tree stays clean.
 
-`lake check` and `lake comparator` need bubblewrap (`bwrap`). Where it is missing, check.sh skips
-them and lists them as **CI-only**; GitHub Actions (`.github/workflows/ci.yml`) always runs them, with
-their fixtures and a guard that fails on a skipped sandbox step. The shared box has `bwrap` (installed
-2026-10-29), so a local run there executes them too. `.github/workflows/paranoid.yml` runs
-`lake comparator --paranoid` (every external kernel bundled with Lean) weekly and on demand. Locally, leanchecker replays every default-library
-leaf sequentially, one module per process; never invoke it on a root or prefix with descendants.
+`lake check` and `lake comparator` need bubblewrap (`bwrap`). Where it is missing, `--full` skips
+them and lists them as **CI-only**; `full.yml` always runs them, with their fixtures and a guard that
+fails on any skipped step. The shared box has `bwrap` (installed 2026-10-29), so a local `--full` run
+executes them too. The comparator runs with `--paranoid`: the review statements' closure is replayed by
+Lean's kernel and by every external kernel bundled with Lean (leanchecker-paranoid, lean4lean, nanoda,
+con-leche, con-ron), about 3 minutes in CI. leanchecker replays every default-library leaf sequentially,
+one module per process; never invoke it on a root or prefix with descendants.
 
-CI timings: TBD
+CI caching (fast tier): Mathlib's oleans come from `lake exe cache get` (plus an actions/cache of
+`.lake/packages` keyed on the manifest and toolchain); the project's `.lake/build` is an actions/cache
+keyed on toolchain + manifest + commit, falling back to the PR's previous push or main's latest, so Lake
+rebuilds only changed modules and their dependents. The full tier builds the project from scratch.
 
-The owner-review boundary is separate from correctness. Protected paths are `ConsensusSpec/**`, `ConsensusSpec.lean`,
-`ConsensusChallenge.lean`, `comparator.json`, `lean-toolchain`, `lakefile.toml`, `lakefile.lean`
-(which must not exist), `lake-manifest.json`, `scripts/**`, `ConsensusTests/ReviewAxioms.lean`,
-`ConsensusTests/ReviewGuard.lean` and `.github/**` (also listed in `.github/CODEOWNERS`). The git tag `spec-approved` marks the last owner-reviewed commit; **only the
-owner sets or moves it**. CI job `review-boundary` is red while any protected path differs
-from that tag, and stays red until the owner first sets the tag. Reviewing the snapshot diff
-is the act that approves a Spec change; the comparator cannot replace that review.
+CI timings (GitHub-hosted runner): before the tiers, every push ran everything in about 50 minutes
+(build 3, check-decls 7.5, Spec surface 3.5, self-tests 4, leanchecker replay 9.5, `lake check` 19,
+comparator 1, setup 2). Fast tier (measured on PR #15, with self-tests because it changed `scripts/`):
+17 minutes cold, 17 minutes with the build cache warm (setup 1.6, build 0.2, check-decls 4–7.5, Spec surface
+3, self-tests 4); without self-tests, the usual PR, about 10–13 minutes. check-decls is now the largest step.
+
+The owner-review boundary is separate from correctness. The **trusted surface** is `ConsensusSpec/**`,
+`ConsensusSpec.lean`, `ConsensusChallenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
+`ConsensusTests/ReviewAxioms.lean` and `ConsensusTests/ReviewGuard.lean`. The annotated git tag
+`spec-approved` marks the last approved commit (4b7c5148, approved 2026-10-29); only the owner, or an
+agent he explicitly authorizes, moves it. CI job `review-boundary` fails while the trusted surface differs
+from that tag (it would only warn if the tag did not exist), so a PR changing it is approved by moving the
+tag to the PR's head before merge. The check infrastructure (`scripts/**`, `.github/**`, `lakefile.toml`,
+`lakefile.lean`, which must not exist) is owner-reviewed through `.github/CODEOWNERS` and PR review.
+Reviewing the snapshot diff is the act that approves a Spec change; the comparator cannot replace that
+review. `docs/spec-review.md` records what was approved and what changed since 2852f717.
 
 Design and history: `repos/goldilocks/notes/generic-interface/layers-plan.md`
 in the workbench (latest: "Iteration 6: the definition of a good protocol");
