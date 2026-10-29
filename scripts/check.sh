@@ -14,7 +14,7 @@
 #   5  kernel replay    every leaf module of every default library              (leanchecker)
 #   6  review pins      ReviewAxioms compiled into the tests root               (#guard_msgs)
 #   7  backstop         grep for sorry/admit/native_decide, Spec meta commands, lakefile options
-#   8  vendored         sha256 of every verbatim copy                           (scripts/vendor.sha256)
+#   8  vendored         sha256 of every vendored copy                           (scripts/vendor.sha256)
 #   9  comparator config  exact comparator.json + ConsensusChallenge.lean    (jq, lean --deps-json)
 #   10 lake check       sandboxed build + export + replay                       (needs bwrap)
 #   11 lake comparator  Spec statements vs proofs, axioms, sandboxed replay by  (needs bwrap)

@@ -515,7 +515,7 @@ Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 5. **Kernel replay:** run leanchecker sequentially on every default-library leaf, one module per process after checking it has no descendants; parent modules own no constants.
 6. **Review pins:** require the tests root to import the compiled alpha-equality guards and exact axiom pins.
 7. **Backstop:** grep for unfinished/native proofs, kernel bypasses, Spec metacommands and unsafe lakefile options.
-8. **Vendored:** verify all verbatim EthLib copies against `scripts/vendor.sha256`.
+8. **Vendored:** verify all vendored EthLib copies against `scripts/vendor.sha256`.
 9. **Comparator config:** pin challenge/solution modules, all four statement names and exactly the three standard axioms; validate the Spec-only challenge.
 10. **Lake check (needs bubblewrap; skipped and listed as CI-only where `bwrap` is missing):** sandboxed build, export and kernel replay of the default targets, rejecting extra axioms.
 11. **Lake comparator (needs bubblewrap, likewise):** statement/axiom matching, sandboxed replay and agreement of reachable constants between challenge and solution exports.
@@ -568,9 +568,9 @@ In `scripts/`:
 - `check-imports.py`, `boundaries.toml`: parsed imports, R1–R3 and library inventory.
 - `check-pins.py`, `pins.toml`: toolchain, dependency revisions, clean checkouts and resolution checks.
 - `SpecSurface.lean`, `spec-extensions.txt`, `spec-theorems.txt`, `spec-snapshot.txt`: persisted-extension policy, theorem hygiene and the reviewed Spec snapshot.
-- `CheckDecls.lean`, `check_decls_baseline.txt`: verbatim EthLib declaration checker and reviewed exceptions.
+- `CheckDecls.lean`, `check_decls_baseline.txt`: EthLib declaration checker (one local performance patch, see TRUST.md) and reviewed exceptions.
 - `test_check_decls.sh`, `CheckDeclsTest.lean`, `CheckDeclsTest/`, `CheckDeclsForeign.lean`: verbatim EthLib fixture suite.
-- `LICENSE.EthLib`, `vendor.sha256`: CC0 licence and hashes of every verbatim copy.
+- `LICENSE.EthLib`, `vendor.sha256`: CC0 licence and hashes of every vendored copy.
 - `fixtures/`: import, Spec-surface, review-pin, grep, pins, docs, comparator and Lake-check controls.
 
 The non-default libraries are `ConsensusChallenge` (`ConsensusChallenge.lean`, comparator statements

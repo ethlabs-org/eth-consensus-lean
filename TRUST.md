@@ -48,10 +48,13 @@ inside a bubblewrap sandbox wherever `bwrap` exists (CI full mode always; the sh
 
 ## Checking tools and open trust notes
 
-EthLib check-decls is CC0-1.0, copied verbatim and SHA-256-pinned by `scripts/vendor.sha256`.
-It was **copied from the reuse-study clone, 2026-10** at `/srv/runs/fradamt/consensus-lean/reuse/src/EthLib` (no git commit metadata);
-its package metadata names [ethereum/ethlib](https://github.com/ethereum/ethlib).
-`scripts/CheckDecls.lean`: `0032a6629a73ac37f49ca52b9bd665f2c6755b6014d629f8775c6f850f273bb2`.
+EthLib check-decls is CC0-1.0 and SHA-256-pinned by `scripts/vendor.sha256`. Every vendored file was copied
+from the reuse-study clone (2026-10, no git metadata) and is byte-identical to
+[ethereum/EthLib](https://github.com/ethereum/EthLib) at `6390c73ef040311e807b9047d99dca6b1be1c42f` (checked 2026-10-29),
+except one local patch to `scripts/CheckDecls.lean` (#13): it computes the in-scope module indices once instead of
+rebuilding `EnvironmentHeader.moduleNames` (an array of every imported module) for each of ~450k constants. Same
+findings, counts and exit codes on every library and on `test_check_decls.sh`; step 3 about 25× faster.
+Upstream copy: `0032a6629a73ac37f49ca52b9bd665f2c6755b6014d629f8775c6f850f273bb2`; patched: `69b9fe48f5d913031348aa33895155e96236819ba7d86c9e36675a793c1241d6`.
 `scripts/test_check_decls.sh`: `591a1d993df5dc1a01a9cf645f71cbeffdb7da9fdff9e3ca8f5179f60ead9f25`.
 `vendor.sha256` also pins fixtures/licence. check-decls runs imported modules' initializers:
 a defence against mistakes, not an adversarial checker.

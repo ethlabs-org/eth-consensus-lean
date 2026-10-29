@@ -58,7 +58,7 @@ name = "CheckDeclsTest"
 srcDir = "scripts"
 roots = ["CheckDeclsTest", "CheckDeclsForeign"]
 
-# EthLib check-decls (verbatim copy, CC0). Built by check.sh (`lake build check-decls`).
+# EthLib check-decls (CC0; vendored copy with a local performance patch, see TRUST.md). Built by check.sh (`lake build check-decls`).
 [[lean_exe]]
 name = "check-decls"
 srcDir = "scripts"
