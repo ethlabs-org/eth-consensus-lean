@@ -572,6 +572,8 @@ In `scripts/`:
 - `test_check_decls.sh`, `CheckDeclsTest.lean`, `CheckDeclsTest/`, `CheckDeclsForeign.lean`: verbatim EthLib fixture suite.
 - `LICENSE.EthLib`, `vendor.sha256`: CC0 licence and hashes of every vendored copy.
 - `fixtures/`: import, Spec-surface, review-pin, grep, pins, docs, comparator and Lake-check controls.
+- `metrics-baseline.py`, `layers.toml`: report-only module metrics and the target layer of every module
+  (`docs/metrics-baseline.md`); no check runs them.
 
 The non-default libraries are `ConsensusChallenge` (`ConsensusChallenge.lean`, comparator statements
 with placeholder proofs, importing Spec only), rootless `CheckFixtures` (under `scripts/fixtures/`,
