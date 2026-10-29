@@ -1,0 +1,45 @@
+name = "consensus-lean"
+version = "0.1.0"
+keywords = ["lean", "consensus", "specification"]
+defaultTargets = ["ConsensusProblem", "ConsensusModel", "ConsensusModelProofs", "ConsensusBlocks", "ConsensusShape", "ConsensusShapeTests"]
+
+[leanOptions]
+pp.unicode.fun = true
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+weak.linter.flexible = false
+weak.linter.style.header = false
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.34.1"
+
+# L0, the problem: the definition of a good protocol.
+[[lean_lib]]
+name = "ConsensusProblem"
+globs = ["ConsensusProblem.*"]
+
+# L1, the execution model, and its proofs.
+[[lean_lib]]
+name = "ConsensusModel"
+globs = ["ConsensusModel.*"]
+
+[[lean_lib]]
+name = "ConsensusModelProofs"
+globs = ["ConsensusModelProofs.*"]
+
+# Building blocks for shapes.
+[[lean_lib]]
+name = "ConsensusBlocks"
+globs = ["ConsensusBlocks.*"]
+
+# L2, the shape layer, with protocol values.
+[[lean_lib]]
+name = "ConsensusShape"
+globs = ["ConsensusShape.*"]
+
+[[lean_lib]]
+name = "ConsensusShapeTests"
+globs = ["ConsensusShapeTests.*"]

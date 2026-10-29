@@ -554,10 +554,10 @@ by-construction rows: `ConsensusShapeTests/Gaps.lean`.
 ```sh
 cd /srv/work/fradamt/goldilocks/generic-interface
 LAKE_RESTORE_ARTIFACTS=true lake build ConsensusProblem ConsensusModel ConsensusModelProofs ConsensusBlocks ConsensusShape ConsensusShapeTests
-lake env lean --run contract/CheckConsensusAxioms.lean
+lake env lean --run CheckConsensusAxioms.lean
 ```
 
 The build checks that every cited name exists (`ConsensusShapeTests/Index`).
-The audit imports every `Consensus*` module under `contract/` (tests included)
+The audit imports every `Consensus*` module in this repository (tests included)
 and checks every compiled declaration for axioms outside `propext`,
 `Classical.choice` and `Quot.sound`; it prints `standard axioms only: true`.
