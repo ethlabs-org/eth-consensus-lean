@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Amp orb setup: the toolchain and dependencies of CI (.github/workflows/ci.yml), installed once per
+# orb snapshot. Idempotent; a warm rerun only confirms what the snapshot already holds.
+set -euo pipefail
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+step() { printf '\n==> %s\n' "$*"; }
+timed() { local t=$SECONDS; "$@"; printf '    (%ss)\n' "$((SECONDS - t))"; }
+
+# bubblewrap for `lake check` / `lake comparator` (check.sh steps 10-11); jq for step 9.
+install_packages() {
+  local missing=()
+  command -v bwrap >/dev/null || missing+=(bubblewrap)
+  command -v jq >/dev/null || missing+=(jq)
+  if ((${#missing[@]})); then
+    sudo apt-get update -qq
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${missing[@]}"
+  fi
+  bwrap --ro-bind / / --unshare-user true
+}
+
+# elan v4.2.4, pinned and sha256-checked as in CI. The proxies are linked into /usr/local/bin so
+# every shell (login or not, services included) finds lean/lake without a profile hook.
+install_elan() {
+  local elan_bin="$HOME/.elan/bin"
+  if [[ ! -x "$elan_bin/elan" ]]; then
+    local tmp
+    tmp="$(mktemp -d)"
+    curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz -o "$tmp/elan.tgz"
+    echo "42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  $tmp/elan.tgz" | sha256sum --strict -c -
+    tar -xzf "$tmp/elan.tgz" -C "$tmp"
+    "$tmp/elan-init" -y --no-modify-path --default-toolchain none
+    rm -rf "$tmp"
+  fi
+  local f
+  for f in "$elan_bin"/*; do
+    [[ "$(readlink "/usr/local/bin/${f##*/}" 2>/dev/null)" == "$f" ]] || sudo ln -sfn "$f" "/usr/local/bin/${f##*/}"
+  done
+}
+
+# elan installs the lean-toolchain pin on first use; a warm run just reports it.
+install_toolchain() {
+  lean --version
+  lake --version
+}
+
+# Orb-only notes for agents; the repository's AGENTS.md describes the shared box (`job --mem`).
+write_agent_notes() {
+  local f="$HOME/.config/amp/AGENTS.md" marker="<!-- consensus-lean orb notes -->"
+  mkdir -p "${f%/*}"
+  grep -Fqx "$marker" "$f" 2>/dev/null && return 0
+  cat >>"$f" <<EOF
+
+$marker
+# consensus-lean in an Amp orb
+
+- This orb is not the shared box: there is no \`job\`; run builds and checks directly. \`scripts/check.sh\`
+  refuses to start without \`RUN_DIR\` or \`CI\`, so give it a scratch directory:
+  \`RUN_DIR="\$(mktemp -d)" scripts/check-changed.sh\` (or \`scripts/check.sh --fast\`).
+- \`.agents/setup\` installed elan, the pinned toolchain, bubblewrap, the Lake packages and the Mathlib
+  cache, and prebuilt the default targets; \`lake build\` only rebuilds what changed.
+- Kernel replay is memory-heavy (about 3.3 GB per leanchecker process); keep parallel runs within the
+  orb's memory (\`free -g\`).
+EOF
+}
+
+step "System packages (bubblewrap, jq)"; timed install_packages
+step "Agent notes (~/.config/amp/AGENTS.md)"; timed write_agent_notes
+step "elan v4.2.4"; timed install_elan
+step "Lean toolchain $(cat lean-toolchain)"; timed install_toolchain
+# Clones the pinned packages of lake-manifest.json and downloads Mathlib's prebuilt oleans.
+step "Lake packages and Mathlib cache"; timed lake exe cache get
+# Prebuild the default targets so the snapshot holds them (about 2 min cold, seconds warm). A broken
+# commit must not fail setup: that would block the snapshot that holds everything above.
+step "lake build (default targets)"
+t=$SECONDS
+lake build || echo "WARNING: lake build failed; the toolchain and Mathlib cache are still installed" >&2
+printf '    (%ss)\n' "$((SECONDS - t))"
