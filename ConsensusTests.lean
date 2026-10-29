@@ -15,4 +15,5 @@ public import ConsensusTests.Gaps
 public import ConsensusTests.Lift
 public import ConsensusTests.Support
 public import ConsensusTests.Index
+public import ConsensusTests.ReviewGuard
 public import ConsensusTests.ReviewAxioms

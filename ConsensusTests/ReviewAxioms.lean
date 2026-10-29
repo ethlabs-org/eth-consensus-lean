@@ -1,5 +1,6 @@
 module
 public import ConsensusProofs.Review
+public meta import ConsensusTests.ReviewGuard
 @[expose] public section
 
 /-! # Review pins
@@ -7,8 +8,9 @@ public import ConsensusProofs.Review
 Pinned by the build, pattern of verified-consensus `scripts/ReviewAxioms.lean` (compiled instead of
 parsed):
 * each review statement of `ConsensusSpec/Statements.lean` is *the* type of its source theorem:
-  a `run_meta` throws unless the statement's body is alpha-equal (`Expr` `==`) to the theorem's
-  type, so a later edit of either side breaks the build here;
+  a `run_meta` (`Consensus.ReviewGuard.check`, shared with the negative fixtures) throws unless
+  the statement's body is alpha-equal (`Expr` `==`) to the theorem's type with the same binder
+  kinds, so a later edit of either side breaks the build here;
 * each `#guard_msgs` pins the exact axiom list (`propext`, `Classical.choice`, `Quot.sound`) of the
   review theorems and of their source theorems; an unfinished proof or a new axiom changes the
   message and fails the build. -/
@@ -20,17 +22,14 @@ set_option linter.style.longLine false
 
 open Lean Meta
 
-/-! ## Statements are the source theorems' types (alpha-equality) -/
+/-! ## Statements are the source theorems' types (alpha-equality, same binder kinds) -/
 
 #guard_msgs in
-run_meta do
-  for (s, t) in [(``Consensus.Review.AcceptedGood, ``Consensus.Shape.Accepted.good),
-      (``Consensus.Review.RegimesRealizable, ``Consensus.Shape.regimes_realizable),
-      (``Consensus.Review.LogFaithful, ``Consensus.Model.sysOf_log_faithful),
-      (``Consensus.Review.HeldIffServed, ``Consensus.Model.Run.held_iff_served)] do
-    let some v := (← getConstInfo s).value? | throwError "{s} is not a definition"
-    unless v == (← getConstInfo t).type do
-      throwError "{s} is not alpha-equal to the type of {t}"
+run_meta Consensus.ReviewGuard.check [
+    (``Consensus.Review.AcceptedGood, ``Consensus.Shape.Accepted.good),
+    (``Consensus.Review.RegimesRealizable, ``Consensus.Shape.regimes_realizable),
+    (``Consensus.Review.LogFaithful, ``Consensus.Model.sysOf_log_faithful),
+    (``Consensus.Review.HeldIffServed, ``Consensus.Model.Run.held_iff_served)]
 
 /-! ## Axiom pins: the review theorems -/
 
