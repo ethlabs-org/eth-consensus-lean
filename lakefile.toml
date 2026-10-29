@@ -43,11 +43,24 @@ globs = ["ConsensusTests.*"]
 [[lean_lib]]
 name = "ConsensusChallenge"
 
-# Fixtures for the self-tests of scripts/check.sh. Deliberately bad (sorry, axioms, leaks).
-# Never a default target; built only by check.sh. No root module: fixtures that share declaration
-# names (Snap*) are never imported into one environment.
+# Fixtures for the self-tests of scripts/check.sh. Deliberately bad (sorry, axioms, macros).
+# Never a default target; built only by check.sh. No root module: every fixture module is its own
+# target, and fixtures that share declaration names (Snap*) are never imported into one environment.
 [[lean_lib]]
 name = "CheckFixtures"
 srcDir = "scripts/fixtures"
 roots = []
 globs = ["CheckFixtures.+"]
+
+# EthLib fixtures for check-decls (verbatim copies). Never a default target.
+[[lean_lib]]
+name = "CheckDeclsTest"
+srcDir = "scripts"
+roots = ["CheckDeclsTest", "CheckDeclsForeign"]
+
+# EthLib check-decls (verbatim copy, CC0). Built by check.sh (`lake build check-decls`).
+[[lean_exe]]
+name = "check-decls"
+srcDir = "scripts"
+root = "CheckDecls"
+supportInterpreter = true

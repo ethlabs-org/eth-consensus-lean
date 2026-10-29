@@ -1,0 +1,9 @@
+# Fixture for check-pins (never loaded): pins-configfile/lake-manifest.json gives Cli the configFile
+# ../../../scripts/fixtures/pins-configfile/dependency-lakefile.toml. Lake resolves it from the Cli
+# checkout (.lake/packages/Cli) to this file, which keeps Cli's name and build directory, so LEAN_PATH
+# and the checkout's Git status look unchanged, but takes the sources from an altered copy.
+name = "Cli"
+srcDir = "../../../scripts/fixtures/pins-configfile/Cli-altered"
+
+[[lean_lib]]
+name = "Cli"

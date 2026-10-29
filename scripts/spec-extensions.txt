@@ -1,0 +1,48 @@
+# Persisted-extension whitelist of the Spec-side libraries (scripts/check.sh step 4, SpecSurface
+# `extensions`): every extension with a stored entry in any module of the `extension_libs` of
+# boundaries.toml, measured in batch C (v4.35.0) and reviewed. None registers a parser, syntax,
+# macro, elaborator, tactic, delaborator, unexpander, initializer, attribute, extern/implemented_by
+# or csimp; the five annotated names are applications of built-in attributes or generated metadata.
+# Regenerate only with `check.sh --update-extensions` (a protected change).
+Lean.Compiler.LCNF.UnreachableBranches.functionSummariesExt
+Lean.Compiler.LCNF.baseExt
+Lean.Compiler.LCNF.impureSigExt
+Lean.Compiler.LCNF.monoExt
+Lean.Compiler.LCNF.monoTypeExt
+Lean.Compiler.LCNF.specExtension
+Lean.Compiler.inlineAttrs
+Lean.Elab.Structural.eqnInfoExt  # equation info of structurally recursive defs (generated)
+Lean.Elab.Term.elabAsElim  # the built-in @[elab_as_elim] attribute applied to a def (no elaborator registered)
+Lean.IR.declMapExt
+Lean.Meta.Grind.grindExt  # the built-in @[grind] attribute applied (lemma metadata; no tactic registered)
+Lean.Meta.Match.Extension.extension
+Lean.Meta.completionBlackListExt
+Lean.Meta.congrKindsExt
+Lean.Meta.instanceExtension
+Lean.Meta.simpExtension  # the built-in @[simp] attribute applied (lemma metadata; no simproc registered)
+Lean.auxRecExt
+Lean.backwardDefeqAttr
+Lean.declRangeExt
+Lean.defeqAttr
+Lean.deprecatedModuleExt
+Lean.docStringExt
+Lean.noConfusionExt
+Lean.noncomputableExt
+Lean.projectionFnInfoExt
+Lean.protectedExt
+_private.Lean.AuxRecursor.0.Lean.sparseCasesOnExt
+_private.Lean.Compiler.LCNF.MonoTypes.0.Lean.Compiler.LCNF.trivialStructureInfoExt
+_private.Lean.Compiler.LCNF.Specialize.0.Lean.Compiler.LCNF.Specialize.specCacheExt
+_private.Lean.Compiler.LCNF.ToImpureType.0.Lean.Compiler.LCNF.ctorLayoutExt
+_private.Lean.Compiler.LCNF.ToImpureType.0.Lean.Compiler.LCNF.impureTrivialStructureInfoExt
+_private.Lean.Compiler.LCNF.ToImpureType.0.Lean.Compiler.LCNF.impureTypeExt
+_private.Lean.Compiler.ModPkgExt.0.Lean.modPkgExt
+_private.Lean.DocString.Extension.0.Lean.moduleDocExt
+_private.Lean.ExtraModUses.0.Lean.extraModUses
+_private.Lean.Meta.Constructions.SparseCasesOn.0.Lean.Meta.sparseCasesOnInfoExt
+_private.Lean.Namespace.0.Lean.namespacesExt
+_private.Lean.OriginalConstKind.0.Lean.privateConstKindsExt
+_private.Lean.Structure.0.Lean.structureExt
+_private.Lean.Util.CollectAxioms.0.Lean.exportedAxiomsExt  # cached axiom sets of exported constants (read by #print axioms)
+recExt
+reducibilityCore

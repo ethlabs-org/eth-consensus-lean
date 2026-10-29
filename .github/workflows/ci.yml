@@ -1,0 +1,74 @@
+# DRAFT (batch C): finalized when the checks branch is merged (plan §B5: feasibility run, timings,
+# --paranoid decision, review-boundary job, CODEOWNERS). Action SHAs as in verified-consensus verify.yml.
+name: check
+
+# Manual runs only until the B5 feasibility measurement (runner minutes); B5 adds push/pull_request.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Build and run scripts/check.sh (incl. lake check / lake comparator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out consensus-lean
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install elan (toolchain pinned by lean-toolchain)
+        run: |
+          set -euo pipefail
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain "$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Report Lean toolchain
+        run: |
+          lean --version
+          lake --version
+
+      - name: Restore Lake packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .lake/packages
+          key: lake-pkgs-${{ runner.os }}-${{ hashFiles('lake-manifest.json', 'lean-toolchain') }}
+
+      - name: Restore Mathlib olean cache
+        run: lake exe cache get
+
+      - name: Sandbox for lake comparator / lake check
+        run: |
+          sudo apt-get update && sudo apt-get install -y bubblewrap jq
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --ro-bind / / --unshare-user true    # smoke: fails the job if userns is still blocked
+
+      - name: Run scripts/check.sh
+        env:
+          CI: "1"
+        run: |
+          set -o pipefail
+          scripts/check.sh 2>&1 | tee "$RUNNER_TEMP/check.log"
+
+      - name: No skipped sandbox steps, no partial run, no regenerated baseline
+        run: |
+          set -euo pipefail
+          if grep -E 'skipped: no bwrap|PASSED \(partial' "$RUNNER_TEMP/check.log"; then exit 1; fi
+          grep -qx 'check.sh: ALL CHECKS PASSED' "$RUNNER_TEMP/check.log"
+          test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
+
+      - name: Upload check log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: check-log
+          path: ${{ runner.temp }}/check.log
+          retention-days: 30

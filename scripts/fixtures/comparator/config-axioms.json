@@ -1,0 +1,14 @@
+{
+  "challenge_module": "ConsensusChallenge",
+  "solution_module": "ConsensusProofs.Review",
+  "theorem_names": [
+    "Fx.Review.stmtA",
+    "Fx.Review.stmtB"
+  ],
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice",
+    "Lean.ofReduceBool"
+  ]
+}

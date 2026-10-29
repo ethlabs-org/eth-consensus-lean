@@ -1,0 +1,7 @@
+# Fixture for grep backstop 7c (never used as a lakefile): banned lakefile options.
+name = "bad"
+moreLeanArgs = ["-Ddebug.skipKernelTC=true"]
+
+[[lean_lib]]
+name = "Bad"
+precompileModules = true
