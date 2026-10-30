@@ -2,6 +2,13 @@ module  -- shake: keep-all --deprecated_module: ignore
 
 public import ConsensusLean.Init
 public import ConsensusLean.Instances.Bft.Spec
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
@@ -13,6 +20,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface
