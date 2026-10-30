@@ -248,22 +248,22 @@ def FrozenTreeAgreement : Prop :=
           ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr
 
 /-- **HS.4, bounded common path and actual-report acquisition.** Under the HS shared premises with
-`Catch(2Δ)` and `Prop⁺(G_p)`, settled at `w` in the effective phase `(m, c)` (cut `i₀`), with
-`D = D_HS(G_p)`: (a) either the phase has changed by `w + D` (after all events there), or there are
-a slot `s` with `t_s ≥ r` (the first honest proposal after `r`, or the second one after a
-suppressing descendant source), a height `h ∈ {ℓ, m}` with `h ≥ 1`, an entry `E` at `h` and an
-honest proposal `W` of slot `s` extending `E` with state height `h`, such that `w ≤ t_s`, `v = t_s +
-6Δ ≤ w + D`, the phase
-is still `(m, c)` after all events at `v` (`v < e`), every honest slot-`s` vote is exactly `W` with
-`W` in its viable voter block tree or at or below its `fc_root`, by `v` every honest validator has
-actually received a source of state height `h` with entry `E` (an `ac_to_fg` return; not a
-higher descendant that suppresses the report at `h`) or has signed a matching
-row for `E` (so the report and row set has weight `n − f ≥ q`), and until the phase end every
-later honest vote and every honest proposal parent of a later slot extends `W`; (b) the client
-subclaim (P1/P2 of workbench#6): in the settled phase, at an honest `fg_attest` whose source `C`
-has state height `h ≥ ℓ` and entry `E` and is allowed in the phase geometry, the client signs a
-matching row for `E` (target or timeout), or has signed one at an earlier cut (its durable record
-holds it). -/
+`Catch(2Δ)` and `Prop⁺(G_p)`, settled at `w` in the effective phase `(m, c)` (cut `i₀`), with `D =
+D_HS(G_p)`: (a) either the phase has changed by `w + D` (after all events there), or there are a
+slot `s` with `t_s ≥ r` (the first honest proposal after `r`, or the second one after a suppressing
+descendant source), a height `h ∈ {ℓ, m}` with `h ≥ 1`, an entry `E` at `h` and an honest proposal
+`W` of slot `s` extending `E` with state height `h`, such that `w ≤ t_s`, `v = t_s + 6Δ ≤ w + D`,
+the phase is still `(m, c)` after all events at `v` (`v < e`), every honest slot-`s` vote is exactly
+`W` with `W` in its viable voter block tree or at or below its `fc_root`, by `v` every honest
+validator has actually received a current source of state height `h` with entry `E` (an `ac_to_fg`
+return in `[t_s, v]` of a block extending `W` and allowed in the phase geometry, so (b) applies to
+it; not a historical source, nor a higher descendant that suppresses the report at `h`) or has
+signed a matching row for `E` (so the report and row set has weight `n − f ≥ q`), and until the
+phase end every later honest vote and every honest proposal parent of a later slot extends `W`; (b)
+the client subclaim (P1/P2 of workbench#6): in the settled phase, at an honest `fg_attest` whose
+source `C` has state height `h ≥ ℓ` and entry `E` and is allowed in the phase geometry, the client
+signs a matching row for `E` (target or timeout), or has signed one at an earlier cut (its durable
+record holds it). -/
 def CommonPathAcquisition : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
@@ -282,8 +282,10 @@ def CommonPathAcquisition : Prop :=
           e.msg.head = W.root ∧
           (W ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
             Anc (tr.HonestBlocks H) W ℓ.frame.fcRoot)) ∧
-        (∀ y ∈ H, (∃ k ℓ C, SA.ToFGAt tr.projAC y k ℓ C ∧ tr.time k ≤ sp.ts s + 6 * sp.Δ ∧
-            EntryOf (tr.state y k).fg C E h ∧ ((tr.state y k).fg.σ C.root).h = h) ∨
+        (∀ y ∈ H, (∃ k ℓ C, SA.ToFGAt tr.projAC y k ℓ C ∧ sp.ts s ≤ tr.time k ∧
+            tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ (tr.state y k).fg.Anc W C ∧
+            EntryOf (tr.state y k).fg C E h ∧ ((tr.state y k).fg.σ C.root).h = h ∧
+            EffAllowed (tr.state y k).fg m c C) ∨
           ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ att.h = h ∧
             att.T = E.root) ∧
         (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →

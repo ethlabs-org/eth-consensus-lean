@@ -543,7 +543,9 @@ Modelling choices:
   "stable effective phase geometry on the compared events" is the phase constant from a cut at or before the previous
   freeze `t_{s−1} + 3Δ` (the voters' pre-freeze trees are compared) through every slot-`s` vote. HS.4's source "with
   entry `E`" has state height `h` (`fg_attest` signs at the source's own height), so a higher suppressing source does
-  not count. HS.3's "acceptance relay from the previous freeze" is `t_{s−1} + 3Δ ≥ ḡ` (relay holds
+  not count; it is current: returned in `[t_s, v]`, extending `W` and allowed in the phase geometry, so the client
+  subclaim (b) applies to it (phase-service.md §5: every candidate at the update extends the fresh proposal, and a
+  suppressing earlier report "occurred after P's creation, not in the archival prefix"; consensus-lean#88). HS.3's "acceptance relay from the previous freeze" is `t_{s−1} + 3Δ ≥ ḡ` (relay holds
   from `ḡ` under `Healthy`). HS.4's "by `v`" is at a cut at a time `≤ v`. HS.0 and HS.5's `Producer(A)` are HR.3
   (a), (b); HS.5's other conclusions (PhaseService, continuation, row delivery, consumption) are not transcribed yet.
 - **Witnesses** (`ConsensusLeanTest/GoldilocksHealing`): kind (a) for HR.2's premises and the phase vocabulary, and
