@@ -556,10 +556,6 @@ theorem frame_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)
       exact le_trans (ih j hj hc' B hB)
         (slot_mono sp (h.time_nonneg j) (h.time_mono (Nat.le_of_lt hj)))
 
-/-- **A0.7, joining.** -/
-theorem joined_keeps_votes : JoinedKeepsVotes sp := by
-  sorry
-
 /-! ### One vote per slot (A0.8)
 
 Only `try_vote` emits, at most one vote, of slot `slot(t)`, from a joined state with

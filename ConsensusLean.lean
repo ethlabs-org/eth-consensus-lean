@@ -10,6 +10,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree

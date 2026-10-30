@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 
 public section
 
