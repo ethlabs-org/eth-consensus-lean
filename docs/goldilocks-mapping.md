@@ -65,11 +65,15 @@ tree, digests, readiness: run-level or generic). Witnesses in `ConsensusLeanTest
 `oneValidator_finalizes`, `bound_entry_after_justification`, `gate_keeps_target_quorum`; and the G0.9 (c) limit
 witness `window_drops_unfinalized` (the window drops an unfinalized pair).
 
-Refinement obligations recorded for the run-level milestone: the client's input `(h_c, T_c)` is read as
-`(σe.h, σe.Th)` of the entry state `σe = Σ.σ[T_c]` (true because the entry block's own state has `Th = T_c`,
-`HeightStep`); `h_c = ⊥` (no source) is modelled by omitting the input; `Att.WellFormed` is composition's wire check folded into
-`stateTransition` (the run level shows that the handlers' checks give it); the fold has no duplicate-root check
-(`fg_on_block`), so roots of a chain need not be distinct at this level; digests map to roots (NoColl).
+Refinement obligations recorded for the run-level milestone: the client's input `(h_c, T_c)` is read as `(σe.h,
+σe.Th)` of the entry state `σe = Σ.σ[T_c]` (true because the entry block's own state has `Th = T_c`,
+`HeightStep`); `h_c = ⊥` (no source) is modelled by omitting the input; `Att.WellFormed` (`h ≥ 1`; a finality pair
+has `h_f < h`) is the form that fg.tex §Attestations gives every attestation, which composition §Blocks checks on
+the wire for every attestation a block carries, folded into `stateTransition`; `valid_attestation` alone does not
+imply it (an attestation that names the chain's own entry with a finality pair at `h_f ≥ h` passes its first
+branch), and a block that fails it is refused here where the node drops it before `fg_on_block`, the same outcome
+(the run level shows that the handlers' checks give it); the fold has no duplicate-root check (`fg_on_block`), so
+roots of a chain need not be distinct at this level; digests map to roots (NoColl).
 
 ## Common and Frame (shared base of FGStore and ACBase)
 
