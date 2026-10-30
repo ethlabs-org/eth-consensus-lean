@@ -42,6 +42,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   the shared box, so `lake check` and the comparator run locally.
 - 2026-10-29 ([index]). Rules about the project's structure must rest on external precedent, not on our own
   projects ([validation]).
+- 2026-10-30 ([#41]). License Apache-2.0, as the Verified-zkEVM Lean libraries (ArkLib, CompPoly, VCVio) and
+  Mathlib; vendored copies keep their own licences.
 
 ## Foundation plan (adopted 2026-10-29, all recommendations)
 
@@ -79,9 +81,10 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Open, for the owner
 
-- License (asked on [#17]); a branch ruleset enforcing owner review ([#21], option 2).
+- A branch ruleset enforcing owner review ([#21], option 2).
 
 [#2]: https://github.com/fradamt-agent/consensus-lean/issues/2
+[#41]: https://github.com/fradamt-agent/consensus-lean/issues/41
 [#4]: https://github.com/fradamt-agent/consensus-lean/issues/4
 [#5]: https://github.com/fradamt-agent/consensus-lean/issues/5
 [#6]: https://github.com/fradamt-agent/consensus-lean/issues/6

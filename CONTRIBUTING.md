@@ -76,4 +76,5 @@ tier (`gh workflow run full.yml --ref <branch>`: cold build, rebuild canary, rep
 
 ## License
 
-Not chosen yet (owner decision, asked on #17); until then the repository has no license file.
+Apache-2.0 (`LICENSE`), as the Verified-zkEVM Lean libraries (ArkLib, CompPoly, VCVio) and Mathlib, CSLib, FLT
+and Carleson. Vendored copies keep their own licences (`scripts/LICENSE.EthLib`, `scripts/LICENSE.axiom-audit`).
