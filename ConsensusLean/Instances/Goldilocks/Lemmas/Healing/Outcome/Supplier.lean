@@ -35,7 +35,9 @@ With `b = slot(a) + 3` (`cleanLabel`) and `R = t_{b+2k+2}` (`drainTime`, the `R_
   slot-`u` vote is `P` (`ready_unanimous`), and at every honest update of slot `u` (at
   `t_u + 6Δ`) the result is `P`, not vetoed, with fast selection `P`, and the FG source the tick
   returns extends `P`; or an honest accepted block has justified `P`'s entry by then
-  (`ready_update`).
+  (`ready_update`); and **report coverage** (`report_cover`, workbench#30 §2): by `t_u + 6Δ`
+  every honest node has an actual report extending `P`, or one honest node has an actual higher
+  report extending `P` (the supplier `entry_rows` consumes).
 
 Interfaces: every theorem but `stored_lock_below` and `drain_live_locks` is open; their paper
 proofs are workbench#6 §22–§23 and #7 §10, conditional on HR.4. -/
@@ -147,6 +149,24 @@ theorem ready_update (hp : ResetPremises tr H dg g ΔF a)
     ∃ y ∈ H, ∃ k' X, tr.AcceptAt y k' X ∧ tr.time k' ≤ tr.time kz ∧
       Store.JustifiesEntry sp.toParams (Payload sp.n) (tr.post k').fg P
         ((tr.post k').fg.σ P.root).h X := by
+  sorry
+
+/-- **Report coverage** (workbench#30 `entry-rows-exact.md` §2, the exact acquisition supplier
+of `entry_rows`): for an honest ready proposal `P` of slot `u` with `t_u ≥ R`, by
+`d = t_u + 6Δ` either every honest node has an actual `ac_to_fg` report `C` extending `P` (a
+report that suppresses a later one counts at its own cut), or some honest node has an actual
+report `C` extending `P` of a greater state height than `P` (a higher source). (`ready_update`'s
+returned-source clause is vacuous when nothing is returned, and its crossing arm carries no
+source; this supplier is the sharpened form.) -/
+theorem report_cover (hp : ResetPremises tr H dg g ΔF a)
+    (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H p k u P)
+    (hR : drainTime sp a ≤ sp.ts u) :
+    (∀ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+      Anc (tr.HonestBlocks H) P C) ∨
+    ∃ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+      Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   sorry
 
 end Consensus.Goldilocks.Healing
