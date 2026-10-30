@@ -368,6 +368,33 @@ theorem restartTime_of_castAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) 
     · split_ifs <;> rfl
   rw [post_of_castAt hr hy hc, h₂, h₁]
 
+/-- The pools at a state where an honest node runs the optimistic check are kept by the call. -/
+theorem optimisticPoint_pool_post (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {A : SAState sp.n} (hp : OptimisticPoint tr y k ℓ A) (σ : Nat) :
+    A.pool σ ⊆ (tr.state y (k + 1)).pool σ := by
+  obtain ⟨hc, ⟨m, hm, rfl⟩ | ⟨B, hB, rfl⟩ | ⟨e, he, rfl⟩⟩ := hp
+  · rw [state_succ_of_call hc]
+    have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
+    rw [hc.1, hm] at he
+    have h := (grow_optimistic (admitVote sp (tr.state y k) (tr.time k) m) ℓ.frame
+      (tr.time k)).trans (grow_tryVote y _ ℓ.frame (tr.time k))
+    change Grow _ _ (acOnMessage sp y (tr.state y k) ℓ.frame (tr.time k) m).1 at h
+    change acOnMessage sp y (tr.state y k) ℓ.frame (tr.time k) m = _ at he
+    rw [he] at h
+    exact h.1 σ
+  · rw [state_succ_of_call hc]
+    have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
+    rw [hc.1, hB] at he
+    have h := (grow_optimistic (blockReceipt sp (tr.state y k) (tr.time k) B) ℓ.frame
+      (tr.time k)).trans (grow_tryVote y _ ℓ.frame (tr.time k))
+    change Grow _ _ (acOnBlock sp y (tr.state y k) ℓ.frame (tr.time k) B).1 at h
+    change acOnBlock sp y (tr.state y k) ℓ.frame (tr.time k) B = _ at he
+    rw [he] at h
+    exact h.1 σ
+  · rw [state_succ_of_call hc, post_of_castAt hr hy ⟨hc, he⟩]
+    exact (grow_optimistic _ ℓ.frame (tr.time k)).1 σ
+
 end Consensus.Goldilocks.SA
 
 end

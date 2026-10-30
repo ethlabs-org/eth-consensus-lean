@@ -12,6 +12,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Source
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlocked
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
