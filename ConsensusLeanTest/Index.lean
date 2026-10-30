@@ -706,6 +706,7 @@ example := ``Consensus.Goldilocks.Regimes.FinalizedSafe
 example := ``Consensus.Goldilocks.Regimes.AlwaysStatements
 example := ``Consensus.Goldilocks.Regimes.CutAfter
 example := ``Consensus.Goldilocks.Regimes.ReadPoint
+example := ``Consensus.Goldilocks.Regimes.Boundary
 example := ``Consensus.Goldilocks.Regimes.catchUp
 example := ``Consensus.Goldilocks.Regimes.ReadyAt
 example := ``Consensus.Goldilocks.Regimes.readAfter

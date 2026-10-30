@@ -28,9 +28,10 @@ catch-up, and `gProg` only on `[gReady, gHeal]` without readiness; bridges B1–
 ḡ` follows from `Healthy`, `NoColl` from the target's collision excuse).
 
 **Open proof items** (obligations, not premises): the record transfer after the cut (`RecRet`,
-for `HealedSafe`); the confirmed tip keeping an included proposal across FG-only frame changes
-between AC calls (for `IncludeHealed`, which reads after all events at `t`, while H.4 concludes at
-AC calls); and `CrossNest`, which no H node gives (new R.3 work, blueprint 21).
+for `HealedSafe`); that a read after all events equals the read after the node's last AC call
+(for `IncludeHealed`, which reads after all events at `t`, while H.4 concludes after AC calls; see
+the mapping, "Reads between AC calls"); and `CrossNest`, which no H node gives (new R.3 work,
+blueprint 21).
 
 The transaction rows (`healthyLive`, `confirmed_txLive_healed`) are not stated over the run (no
 transactions there): the Refinement derives them from `IncludeHealed`.
@@ -131,13 +132,13 @@ def GrowHealed : Prop :=
 
 /-- **R.3, `crossNest`** (heal point `T ≥ T_heal`). Under the healing premises, from `T` on, the
 finalized read of every ready node is an ancestor of the confirmed read of every ready node at the
-same time (read points at that time). -/
+same time (read points at that time, between the readers' events). -/
 def CrossNest : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
     GoldilocksRun dg H tr → HealedPremises tr H dg g ΔF Gp a Tb T →
-    ∀ t x y i j, T ≤ t → ReadPoint tr i t → ReadPoint tr j t →
+    ∀ t x y i j, T ≤ t → ReadPoint tr i t → ReadPoint tr j t → Boundary tr x i → Boundary tr y j →
       ReadyAt tr H (catchUp sp) x t → ReadyAt tr H (catchUp sp) y t →
       Anc (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t)
 

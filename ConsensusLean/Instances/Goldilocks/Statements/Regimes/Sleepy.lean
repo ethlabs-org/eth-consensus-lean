@@ -53,6 +53,11 @@ def CutAfter (j : Nat) (t : Time) : Prop := (∀ k < j, tr.time k ≤ t) ∧ t <
 all events at `t` when `t < time j`). -/
 def ReadPoint (j : Nat) (t : Time) : Prop := (∀ k < j, tr.time k ≤ t) ∧ t ≤ tr.time j
 
+/-- The state of `y` before cut `j` is between two of its top-level events: cut `j` is not a later
+cut (position `≠ 0`) of an event of `y`. Inside an event the state can be one the model never
+reads, e.g. after an accepted `fg_on_block` and before its `ac_on_block`. -/
+def Boundary (y : Fin sp.n) (j : Nat) : Prop := tr.IsCall y j → tr.pos j = 0
+
 /-- The catch-up `c = 18Δ` (the target's `gc`). -/
 def catchUp (sp : SAParams) : Time := 18 * sp.Δ
 
@@ -75,15 +80,16 @@ def ProposerRecurrence (c : Time) (k : Nat) (a b : Time) : Prop :=
   ∀ s₀ : Nat, a < sp.ts s₀ → sp.ts (s₀ + k - 1 : Nat) ≤ b →
     ∃ s, s₀ ≤ s ∧ s < s₀ + k ∧ ReadyAt tr H c (sp.toParams.proposer s) (sp.ts s)
 
-/-- Ready-reader safety of the confirmed output at the read points of times in `[t₀, t₁]`:
+/-- Ready-reader safety of the confirmed output at the read points of times in `[t₀, t₁]` between
+the reader's events (`Boundary`):
 agreement of the reads of two ready nodes, and monotonicity of a node's reads between two read
 points where it is ready. -/
 def ReadySafeOn (c t₀ t₁ : Time) : Prop :=
-  (∀ y z i j t t', ReadPoint tr i t → ReadPoint tr j t' → t₀ ≤ t → t ≤ t₁ → t₀ ≤ t' → t' ≤ t₁ →
-    ReadyAt tr H c y t → ReadyAt tr H c z t' →
+  (∀ y z i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i → Boundary tr z j →
+    t₀ ≤ t → t ≤ t₁ → t₀ ≤ t' → t' ≤ t₁ → ReadyAt tr H c y t → ReadyAt tr H c z t' →
     Compatible (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr z j t')) ∧
-  ∀ y i j t t', ReadPoint tr i t → ReadPoint tr j t' → i ≤ j → t ≤ t' → t₀ ≤ t → t' ≤ t₁ →
-    ReadyAt tr H c y t → ReadyAt tr H c y t' →
+  ∀ y i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i → Boundary tr y j →
+    i ≤ j → t ≤ t' → t₀ ≤ t → t' ≤ t₁ → ReadyAt tr H c y t → ReadyAt tr H c y t' →
     Anc (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr y j t')
 
 end Defs
