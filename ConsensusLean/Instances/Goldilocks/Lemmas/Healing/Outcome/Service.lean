@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induct
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 
 public section
 
@@ -19,8 +20,8 @@ fradamt-agent/workbench `producer-reset-continuation.md` §17, §18 (BA) and §2
   predecessor when bound), by `t_u + 6Δ` either honest validators of weight `q` have signed a
   target row for `E`, carrying the predecessor `(h − 1, J)` at a bound entry, or an honest
   accepted block has justified `E` (and finalized the predecessor at a bound entry) — the
-  retained justified crossing. From `ready_unanimous`, `ready_update`, HR.4 (R1), (R4), G0.10
-  and `δ_t ≥ 2` (no timeout through `t_u + 6Δ`).
+  retained justified crossing. From `report_cover` (workbench#30 `entry-rows-exact.md`), HR.4
+  (R1), the honest client records (no high timeout) and `δ_t ≥ 2` (no timeout by `t_u + 6Δ`).
 * **The outcome** (`outcome_of_rows`, §26): with the window's honest ready proposal `W` whose
   parent extends `T` (retained ready inclusion), the rows reach `W`'s proposer before `t_{W.slot}`
   (`6Δ + Δ_F ≤ 4Δ·𝓕`) and give the literal `GW(E, 0, k_F)` at its acceptance of `W` (C0.3), unless
@@ -37,7 +38,7 @@ Both are `carrier_below_origin`: a carrier below a high origin is held or above 
 (`reset_origin_below`, (R3) and `ready_unanimous`), or a crossing of `W`'s entry lies below a high
 origin above `W` (`crossing_window_origin`, through a high row naming `W`).
 
-Interface: `entry_rows` is open, and `outcome_of_rows` uses the open private step
+Interface: `entry_rows` uses the open `report_cover`; `outcome_of_rows` the open private step
 `update_window_kept` (at that update `W` stays a viable-ancestor candidate, or a higher source
 intervened, below a high origin above `W`). -/
 
@@ -222,6 +223,231 @@ private theorem accepted_mem (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy :
 
 end FGTraces
 
+/-! ## The first crossing of an entry before its timeout (workbench#30 §5)
+
+As `Lemmas/FGStore/Window.lean` (`events_current`, `entry_facts`), at a reachable store. -/
+
+section Walk
+
+variable {P : Params} {ACP : Type} {acp₀ : ACP}
+
+/-- One block keeps the height and entry (and its slot), or enters the next height itself. -/
+private theorem step_entry_slot {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
+    {B : FG.FGBlock gp.n} (h : gp.stateTransition σ B = some σ') :
+    (σ'.h = σ.h ∧ σ'.Th = σ.Th ∧ σ'.ThSlot = σ.ThSlot) ∨
+      (σ'.h = σ.h + 1 ∧ σ'.Th = B.root ∧ σ'.ThSlot = B.slot) := by
+  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
+  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [he]
+  dsimp only
+  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
+    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
+  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
+  · exact Or.inr ⟨rfl, rfl, rfl⟩
+  · exact Or.inr ⟨rfl, rfl, rfl⟩
+  · exact Or.inl ⟨rfl, rfl, rfl⟩
+
+/-- Before the entry `(h₀, Tr)` of slot `u` is `δ_t` old, the height events keep it, its
+justification `(j, Jr)` and (bound) `(j, Jr)` pending or finalized, or justify it having
+finalized `(j, Jr)` at a bound height (`Window.lean`'s `events_current`, first half). -/
+private theorem events_keep {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
+    (he : gp.heightEvents σ = σ') {h₀ Tr u j Jr : Nat}
+    (hh : σ.h = h₀) (hT : σ.Th = Tr) (hu : σ.ThSlot = u) (hj : σ.hj = j) (hJ : σ.J = Jr)
+    (hpw : σ.pending.Pairwise (fun p r => p.1 < r.1))
+    (hmem : ∀ p ∈ σ.pending, σ.hF < p.1 ∧ p.1 ≤ σ.hj)
+    (hP : 0 < j ∧ j + 1 = h₀ → (j, Jr) ∈ σ.pending ∨ σ.hF = j ∧ σ.F = Jr)
+    (hs : σ.s < u + gp.δt) :
+    (σ'.h = h₀ ∧ σ'.Th = Tr ∧ σ'.ThSlot = u ∧ σ'.hj = j ∧ σ'.J = Jr ∧
+        (0 < j ∧ j + 1 = h₀ → (j, Jr) ∈ σ'.pending ∨ σ'.hF = j ∧ σ'.F = Jr)) ∨
+      (σ'.h = h₀ + 1 ∧ σ'.hj = h₀ ∧ σ'.J = Tr ∧ (0 < j ∧ j + 1 = h₀ → σ'.F = Jr ∧ σ'.hF = j)) := by
+  subst he hh hT hu hj hJ
+  obtain ⟨F, hF, hfp, hc⟩ := gp.finalizePrune_eq σ
+  have hP₁ : 0 < σ.hj ∧ σ.hj + 1 = σ.h →
+      (σ.hj, σ.J) ∈ σ.pending.filter (fun p => hF < p.1) ∨ hF = σ.hj ∧ F = σ.J := by
+    intro hb
+    simp only [List.mem_filter, decide_eq_true_eq]
+    rcases hP hb with hm | ⟨e1, e2⟩ <;> rcases hc with ⟨rfl, rfl⟩ | ⟨hm', -⟩
+    · exact Or.inl ⟨hm, (hmem _ hm).1⟩
+    · by_cases hlt : hF < σ.hj
+      · exact Or.inl ⟨hm, hlt⟩
+      · have he : hF = σ.hj := le_antisymm (hmem _ hm').2 (not_lt.1 hlt)
+        have := FG.eq_of_pairwise_fst_lt hpw hm' hm he
+        exact Or.inr ⟨he, (Prod.ext_iff.1 this).2⟩
+    · exact Or.inr ⟨e1, e2⟩
+    · have := hmem _ hm'
+      omega
+  by_cases hJ' : gp.justifies (gp.finalizePrune σ)
+  · -- justifying: the next height, with the predecessor finalized at a bound height
+    unfold FG.FGParams.heightEvents
+    simp only [hJ', ↓reduceIte]
+    rw [hfp] at hJ' ⊢
+    dsimp only [FG.ChainState.advance]
+    obtain ⟨-, hJ'⟩ := hJ'
+    refine Or.inr ⟨rfl, rfl, rfl, fun hb => ?_⟩
+    have he := hJ'.resolve_left (· hb)
+    dsimp only at he
+    rcases hP₁ hb with hm | ⟨-, hF'⟩
+    · have := (List.mem_filter.1 hm).2
+      simp only [decide_eq_true_eq] at this
+      omega
+    · exact ⟨hF', he⟩
+  have hTO : ¬ gp.timesOut (gp.finalizePrune σ) := by
+    rw [hfp]; rintro ⟨-, h⟩; dsimp only at h; omega
+  have e : gp.heightEvents σ = gp.finalizePrune σ := by
+    unfold FG.FGParams.heightEvents; simp only [hJ', hTO, ↓reduceIte]
+  rw [e, hfp]
+  exact Or.inl ⟨rfl, rfl, rfl, rfl, rfl, hP₁⟩
+
+/-- `events_keep` for one accepted block of a slot before `u + δ_t`. -/
+private theorem step_keep {gp : FG.FGParams} {c : List (FG.FGBlock gp.n)}
+    {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n} (hc : gp.chainState c = some σ)
+    (hB : gp.stateTransition σ B = some σ') {h₀ Tr u j Jr : Nat}
+    (hh : σ.h = h₀) (hT : σ.Th = Tr) (hu : σ.ThSlot = u) (hj : σ.hj = j) (hJ : σ.J = Jr)
+    (hP : 0 < j ∧ j + 1 = h₀ → (j, Jr) ∈ σ.pending ∨ σ.hF = j ∧ σ.F = Jr)
+    (hs : B.slot < u + gp.δt) :
+    (σ'.h = h₀ ∧ σ'.Th = Tr ∧ σ'.ThSlot = u ∧ σ'.hj = j ∧ σ'.J = Jr ∧
+        (0 < j ∧ j + 1 = h₀ → (j, Jr) ∈ σ'.pending ∨ σ'.hF = j ∧ σ'.F = Jr)) ∨
+      (σ'.h = h₀ + 1 ∧ σ'.hj = h₀ ∧ σ'.J = Tr ∧ (0 < j ∧ j + 1 = h₀ → σ'.F = Jr ∧ σ'.hF = j)) := by
+  obtain ⟨-, -, -, -, -, -, hpw, hmem, -, -⟩ := FG.chain_invariants gp c σ hc
+  obtain ⟨-, he⟩ := gp.stateTransition_eq_some.1 hB
+  obtain ⟨f, p, t, hf⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [hf] at he
+  exact events_keep he hh hT hu hj hJ hpw hmem hP hs
+
+/-- An entry block entered its height at its slot, with (bound) its predecessor pending. -/
+private theorem entry_slot_pending {st : Store P ACP} (hr : st.Reachable acp₀)
+    {T : NodeBlock P ACP} (hT : T ∈ st.tree) (hTe : (st.σ T.root).Th = T.root) :
+    (st.σ T.root).ThSlot = T.slot ∧
+      ((st.σ T.root).bound → ((st.σ T.root).hj, (st.σ T.root).J) ∈ (st.σ T.root).pending) := by
+  obtain ⟨-, hcoh, -, hg⟩ := Store.accepted_tree P ACP acp₀ _ hr
+  rcases Relation.ReflTransGen.cases_tail (hg T hT) with rfl | ⟨Z, -, hZ, -, hp⟩
+  · rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, Store.σ_genesis hr]
+    exact ⟨rfl, fun h => absurd h.1 (lt_irrefl 0)⟩
+  obtain ⟨-, -, -, hst⟩ := Store.step_σ hr hT hp
+  obtain ⟨c, -, -, -, hc⟩ := Store.chain_state_of_chain P ACP acp₀ _ hr Z hZ
+  rcases step_entry_slot hst with ⟨-, hTh, -⟩ | ⟨hh, -, hs⟩
+  · exfalso
+    obtain ⟨⟨E, hE, hEr, hEZ, -⟩, -⟩ := Store.entry_state_of_source P ACP acp₀ _ hr Z hZ
+    obtain rfl : E = T := hcoh.1 hE hT (hEr.trans (hTh.symm.trans hTe))
+    have := (hEZ.slot_le hcoh).1
+    have := hcoh.2 Z hZ E hT hp
+    omega
+  · refine ⟨hs, fun hb => ?_⟩
+    obtain ⟨-, -, -, -, h5⟩ := FG.height_step P.fg _ _ _ _ hc hst
+    exact List.mem_of_getLast? ((h5 hh).2.2 hb).2
+
+/-- **The first crossing of an entry before its timeout** (workbench#30 §5): from an entry `T` to
+`C`, all slots before `T.slot + δ_t`, each block keeps `T`'s height, entry and justification (all
+blocks from `T` to it too), or some `X` on the way justifies `T` and (bound) finalized `P_E`. -/
+private theorem crossing_walk {st : Store P ACP} (hr : st.Reachable acp₀) {T C : NodeBlock P ACP}
+    (hT : T ∈ st.tree) (hTe : (st.σ T.root).Th = T.root)
+    (hslot : ∀ W, st.Anc W C → W.slot < T.slot + P.fg.δt) :
+    ∀ W, st.Anc T W → st.Anc W C →
+      (((st.σ W.root).h = (st.σ T.root).h ∧ (st.σ W.root).Th = T.root ∧
+          (st.σ W.root).ThSlot = T.slot ∧ (st.σ W.root).hj = (st.σ T.root).hj ∧
+          (st.σ W.root).J = (st.σ T.root).J ∧
+          (0 < (st.σ T.root).hj ∧ (st.σ T.root).hj + 1 = (st.σ T.root).h →
+            ((st.σ T.root).hj, (st.σ T.root).J) ∈ (st.σ W.root).pending ∨
+            (st.σ W.root).hF = (st.σ T.root).hj ∧ (st.σ W.root).F = (st.σ T.root).J)) ∧
+        ∀ Y ∈ st.tree, st.Anc T Y → st.Anc Y W →
+          (st.σ Y.root).h = (st.σ T.root).h ∧ (st.σ Y.root).Th = T.root) ∨
+      ∃ X, Store.JustifiesEntry P ACP st T (st.σ T.root).h X ∧ st.Anc X W ∧
+        ((st.σ T.root).bound →
+          (st.σ X.root).F = (st.σ T.root).J ∧ (st.σ X.root).hF = (st.σ T.root).hj) := by
+  obtain ⟨-, hcoh, -, -⟩ := Store.accepted_tree P ACP acp₀ _ hr
+  obtain ⟨hTs, hPE⟩ := entry_slot_pending hr hT hTe
+  intro W hTW
+  induction hTW with
+  | refl =>
+    refine fun _ => Or.inl ⟨⟨rfl, hTe, hTs, rfl, rfl, fun hb => Or.inl (hPE hb)⟩,
+      fun Y _ hTY hYT => ?_⟩
+    obtain rfl := hTY.antisymm hcoh hYT
+    exact ⟨rfl, hTe⟩
+  | @tail W' W hTW' hpW ih =>
+    intro hWC
+    obtain ⟨h1, h2, hp'⟩ := hpW
+    rcases ih (Relation.ReflTransGen.head ⟨h1, h2, hp'⟩ hWC) with
+      ⟨⟨hh, hTh, hu, hj, hJ, hP⟩, hkeep⟩ | ⟨X, hX, hXW', hfin⟩
+    swap
+    · exact Or.inr ⟨X, hX, hXW'.tail ⟨h1, h2, hp'⟩, hfin⟩
+    obtain ⟨c, -, -, -, hc⟩ := Store.chain_state_of_chain P ACP acp₀ _ hr W' h1
+    obtain ⟨-, -, -, hst⟩ := Store.step_σ hr h2 hp'
+    have hkeep' : ∀ Y ∈ st.tree, st.Anc T Y → st.Anc Y W → Y ≠ W →
+        (st.σ Y.root).h = (st.σ T.root).h ∧ (st.σ Y.root).Th = T.root := by
+      intro Y hY hTY hYW hne
+      rcases Relation.ReflTransGen.cases_tail hYW with rfl | ⟨Z, hYZ, hZ, -, hZp⟩
+      · exact absurd rfl hne
+      · obtain rfl : Z = W' := hcoh.1 hZ h1 (Option.some.inj (hZp.symm.trans hp'))
+        exact hkeep Y hY hTY hYZ
+    rcases step_keep hc hst hh hTh hu hj hJ hP (hslot W hWC) with
+      hcur | ⟨-, hj', hJ', hfin⟩
+    · refine Or.inl ⟨hcur, fun Y hY hTY hYW => ?_⟩
+      by_cases hne : Y = W
+      · subst hne
+        exact ⟨hcur.1, hcur.2.1⟩
+      · exact hkeep' Y hY hTY hYW hne
+    · exact Or.inr ⟨W, ⟨h2, hTW'.tail ⟨h1, h2, hp'⟩, hj', hJ', hkeep'⟩, .refl, hfin⟩
+
+/-- The block named by a source's `T_h` is held and is the entry of its own state. -/
+private theorem source_entry {st : Store P ACP} (hr : st.Reachable acp₀) (src : NodeBlock P ACP) :
+    ∃ E ∈ st.tree, E.root = (st.σ src.root).Th ∧ (st.σ E.root).Th = E.root := by
+  rcases hs : st.blocks src.root with _ | X
+  · have hg : (st.σ src.root).Th = P.genesisRoot := by rw [Store.σ_of_blocks_none hr hs]; rfl
+    refine ⟨_, Store.genesis_mem hr, hg.symm, ?_⟩
+    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, Store.σ_genesis hr]; rfl
+  · have hXr : X.root = src.root := Goldilocks.Store.Reachable.blocks_root hr hs
+    have hX : X ∈ st.tree := by change st.blocks X.root = some X; rw [hXr]; exact hs
+    obtain ⟨⟨E, hE, hEr, -, -, hET⟩, -⟩ := Store.entry_state_of_source P ACP acp₀ _ hr X hX
+    rw [← hXr]
+    exact ⟨E, hE, hEr, hET.trans hEr.symm⟩
+
+end Walk
+
+/-! ## The honest client's records (workbench#30 §4) -/
+
+section Client
+
+/-- `create_attestation` signs `(h, T_h)` of its input with the record's finality pair and
+records it; a timeout only on a recorded timeout or another target at that height. -/
+private theorem createAtt_spec {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.ChainState n}
+    {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) :
+    a.val = v ∧ a.h = σe.h ∧ a.T = σe.Th ∧ a.fin = Λ.finalityPair σe ∧ Λ' = Λ.recordAtt a ∧
+      (a.timeout = true → Λ.timeout σe.h ≠ ∅ ∨ ∃ T', Λ.target σe.h = some T' ∧ T' ≠ σe.Th) := by
+  unfold FG.Record.createAtt at h
+  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T', τ⟩ <;> rw [hp] at h
+  · cases h
+  dsimp only at h
+  split_ifs at h
+  simp only [Option.some.injEq, Prod.mk.injEq] at h
+  obtain ⟨rfl, rfl⟩ := h
+  obtain ⟨rfl, rfl⟩ := Store.heightPair_eq hp
+  refine ⟨rfl, rfl, rfl, rfl, rfl, fun hτ => ?_⟩
+  unfold FG.Record.heightPair at hp
+  split_ifs at hp with h1 h2 h3 <;> simp only [Option.some.injEq, Prod.mk.injEq] at hp
+  · exact Or.inl h2
+  · simp_all
+  · push Not at h3
+    obtain ⟨T'', hT''⟩ := Option.ne_none_iff_exists'.1 h3.1
+    exact Or.inr ⟨T'', hT'', fun e => h3.2 (hT''.trans (by rw [e]))⟩
+
+/-- `create_attestation` signs nothing only on a lock of another root at the input's height, or
+a content of that height already sent. -/
+private theorem createAtt_none {n : Nat} {Λ : FG.Record} {v : Fin n} {σe : FG.ChainState n}
+    (h : Λ.createAtt v σe = none) :
+    (Λ.lock σe.h ≠ none ∧ Λ.lock σe.h ≠ some σe.Th) ∨ ∃ b ∈ Λ.sent, b.1 = σe.h := by
+  unfold FG.Record.createAtt at h
+  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T', τ⟩ <;> rw [hp] at h
+  · unfold FG.Record.heightPair at hp
+    split_ifs at hp with h1
+    exact Or.inl h1
+  · obtain ⟨rfl, -⟩ := Store.heightPair_eq hp
+    dsimp only at h
+    split_ifs at h with hany
+    obtain ⟨b, hb, hb'⟩ := List.any_eq_true.1 hany
+    exact Or.inr ⟨b, hb, (of_decide_eq_true hb').1⟩
+
+end Client
+
 /-! ## Runs: deadlines and the relay of a carrier -/
 
 section Runs
@@ -259,6 +485,363 @@ end Runs
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp a : Time} {cF kF : Nat}
 
+/-! ## The actual reports (workbench#30 §3) -/
+
+/-- A block that `ac_to_fg` returns is a candidate (as in `Retention/Rows`). -/
+private theorem mem_toFGCandidates {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
+    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2.1 = some C) :
+    C ∈ SA.toFGCandidates sp A Φ t := by
+  unfold SA.acToFG at h
+  dsimp only at h
+  split_ifs at h
+  split at h
+  · cases h
+  · rename_i C' hC'
+    split_ifs at h
+    cases h
+    exact (SA.deepest_mem hC').1
+
+/-- The selection of a fast-lock write is in the frame of its call (as in `Retention/Rows`). -/
+private theorem fastLockAt_frame_mem {x : Fin sp.n} {i s : Nat}
+    {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (h : SA.FastLockAt tr.projAC x i s D CV) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt x i ℓ) : D ∈ ℓ.frame.tree := by
+  rcases h with ⟨ℓ', C, ⟨hc', -⟩, -, -, hD, -⟩ | ⟨ℓ', A, ⟨hc', -⟩, -, hsel, -⟩
+  · obtain rfl : ℓ' = ℓ := Option.some.inj (hc'.2.symm.trans hc.2)
+    exact (SA.deepest_mem hD).1.1.1
+  · obtain rfl : ℓ' = ℓ := Option.some.inj (hc'.2.symm.trans hc.2)
+    unfold SA.optimisticSelect at hsel
+    dsimp only at hsel
+    split_ifs at hsel
+    exact (SA.deepest_mem hsel).1.1
+
+/-- The block of an actual report is in the reporter's FG tree. -/
+private theorem report_mem (hrun : GoldilocksRun dg H tr) {z : Fin sp.n} (hz : z ∈ H) {r : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (h : SA.ToFGAt tr.projAC z r ℓ C) : C ∈ (tr.state z r).fg.tree :=
+  mem_tree_of_frame hrun hz h.1 (mem_toFGCandidates h.2.2).1.1
+
+/-- **An actual high report has a stored high origin written before it** (workbench#30 §3, the
+prefix of `high_row_source`): `C` is the viable image of a live fast lock, below the stored block
+`B` of an earlier fast-lock write (`stored_fast_lock_provenance`); `B` is high as `C ⪯ B` is. -/
+private theorem high_report_origin (hp : ResetPremises tr H dg g ΔF a) {z : Fin sp.n} (hz : z ∈ H)
+    {r : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hrep : SA.ToFGAt tr.projAC z r ℓ C)
+    (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h) :
+    ∃ io < r, ∃ jo B, HighOrigin tr H g z io jo B ∧ Anc (tr.HonestBlocks H) C B := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hU := hr.coherent
+  obtain ⟨hpc, -, hC'⟩ := hrep
+  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := mem_toFGCandidates hC'
+  obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
+  obtain ⟨io, hio, CV, ℓw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
+    stored_fast_lock_provenance hr hz r l₀ hl₀ hlf
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hz hpc
+  obtain ⟨hΦw, -⟩ := SA.frameIn_of_callAt hr hz hcw
+  have hCt : C ∈ ℓ.frame.tree := hCv.1
+  obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
+  obtain rfl : C = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hCt) (hΦU hvat) hlb.symm
+  obtain rfl : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
+  set O := ℓw.frame.viableAncestor D
+  have hCO : Anc (tr.HonestBlocks H) (ℓ.frame.viableAncestor L) O := (hva.mono hΦU).trans hLO
+  have hOt : O ∈ (tr.state z io).fg.tree :=
+    mem_tree_of_frame hp.run hz hcw (SA.viableAncestor_anc hΦw (fastLockAt_frame_mem hfl hcw)).1
+  have hOr : O ∈ (tr.state z r).fg.tree := Compose.tree_mono hp.run.toLocalRun hz hio.le hOt
+  have hCOr := store_anc_of_honest_anc hp.run hp.noColl hz hCO hOr
+  have hOh : HZ tr H g + 1 ≤ ((tr.state z io).fg.σ O.root).h := by
+    rw [← σ_eq_honest hp.run hp.noColl hz hz hOr hOt]
+    exact hhC.trans (h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hz r) hCOr)
+  have hoO : HighOrigin tr H g z io l₀.slot O := by
+    unfold HighOrigin Compose.StoredFastLockAt
+    exact ⟨hz, joinedAt_of_fastLockAt hp.run hp.noColl hz hfl, ⟨CV, ℓw, D, hcw, hfl, rfl⟩, hOh⟩
+  exact ⟨io, hio, l₀.slot, O, hoO, hCO⟩
+
+/-! ## High entries and the honest records (workbench#30 §4) -/
+
+/-- **Two high-chain entries of one height are one block**: below two high origins, comparable
+(R1), they sit below the larger, held by its writer, where `entry_root_eq` applies. -/
+private theorem high_entry_eq (hp : ResetPremises tr H dg g ΔF a) {x x' : Fin sp.n}
+    {i j i' j' : Nat} {B B' Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (ho' : HighOrigin tr H g x' i' j' B')
+    (h₁ : Anc (tr.HonestBlocks H) Z₁ B) (h₂ : Anc (tr.HonestBlocks H) Z₂ B')
+    {y₁ y₂ : Fin sp.n} (hy₁ : y₁ ∈ H) (hy₂ : y₂ ∈ H) {m₁ m₂ : Nat}
+    (hZ₁ : Z₁ ∈ (tr.state y₁ m₁).fg.tree) (hZ₂ : Z₂ ∈ (tr.state y₂ m₂).fg.tree)
+    (hh : ((tr.state y₁ m₁).fg.σ Z₁.root).h = ((tr.state y₂ m₂).fg.σ Z₂.root).h)
+    (hT₁ : ((tr.state y₁ m₁).fg.σ Z₁.root).Th = Z₁.root)
+    (hT₂ : ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root) : Z₁.root = Z₂.root := by
+  have key : ∀ {w : Fin sp.n} {k : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}, w ∈ H →
+      D ∈ (tr.state w k).fg.tree → Anc (tr.HonestBlocks H) Z₁ D →
+      Anc (tr.HonestBlocks H) Z₂ D → Z₁.root = Z₂.root := by
+    intro w k D hw hD hZ₁D hZ₂D
+    have e₁ := σ_eq_run hp hy₁ hw hZ₁ (mem_tree_of_anc hp hw hZ₁D hD)
+    have e₂ := σ_eq_run hp hy₂ hw hZ₂ (mem_tree_of_anc hp hw hZ₂D hD)
+    exact entry_root_eq hp hw hD hZ₁D hZ₂D (by rw [← e₁, ← e₂, hh]) (by rw [← e₁, hT₁])
+      (by rw [← e₂, hT₂])
+  obtain ⟨CV, hs⟩ := ho.2.2.1
+  obtain ⟨CV', hs'⟩ := ho'.2.2.1
+  rcases (height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a
+    hp.reset).comparable x i j B x' i' j' B' ho ho' with hBB' | hB'B
+  · exact key ho'.1 (storedFastLock_mem hp.run hp.noColl ho'.1 hs').1 (h₁.trans hBB') h₂
+  · exact key ho.1 (storedFastLock_mem hp.run hp.noColl ho.1 hs).1 h₁ (h₂.trans hB'B)
+
+/-- **A high record entry is the high-chain entry of its height**: an honest record's target,
+timeout or lock entry at `h ≥ H_z + 1` is the root of every entry at `h` below a high origin. -/
+private theorem record_entry_eq (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
+    {i h r : Nat} (hh : HZ tr H g + 1 ≤ h)
+    (hr : (tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h ∨
+      (tr.state y i).record.lock h = some r)
+    {xo : Fin sp.n} {io jo : Nat} {B E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g xo io jo B) (hEB : Anc (tr.HonestBlocks H) E B) {z : Fin sp.n}
+    (hz : z ∈ H) {m : Nat} (hE : E ∈ (tr.state z m).fg.tree)
+    (hEh : ((tr.state z m).fg.σ E.root).h = h)
+    (hET : ((tr.state z m).fg.σ E.root).Th = E.root) : r = E.root := by
+  obtain ⟨x, i', j, B', ho', Z, hZB', rfl, w, hw, k, hZ, hZh, hZT⟩ := high_record_entry hp
+    (height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a hp.reset).rows
+    hy hh hr
+  exact high_entry_eq hp ho' ho hZB' hEB hw hz hZ hE (hZh.trans hEh.symm) hZT hET
+
+/-- An honest record changes only when the node signs, by recording the signed attestation. -/
+private theorem record_step (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+    (tr.state y (i + 1)).record = (tr.state y i).record ∨
+      ∃ att, tr.SignAt y i att ∧
+        (tr.state y (i + 1)).record = (tr.state y i).record.recordAtt att := by
+  by_cases hc : ∃ c, tr.CallAt y i c
+  · obtain ⟨c, hc⟩ := hc
+    have hlaw := hrun.cutLaw y hy i c hc
+    have hsucc := tr.state_succ_of_call hc
+    cases c with
+    | ac ℓ => exact Or.inl (by rw [hsucc]; exact hlaw.2.2.2)
+    | fg ℓ =>
+      rcases ℓ with ⟨B, _ | _⟩ | a' | ⟨C, _ | a'⟩
+      · exact Or.inl (by rw [hsucc, hlaw.2])
+      · exact Or.inl (by rw [hsucc]; exact hlaw.2.2.2)
+      · exact Or.inl (by rw [hsucc]; exact hlaw.2.2)
+      · exact Or.inl (by rw [hsucc, hlaw.2])
+      · exact Or.inr ⟨a', ⟨C, hc⟩, hsucc ▸ (createAtt_spec hlaw.1).2.2.2.2.1⟩
+  · exact Or.inl (by rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩])
+
+/-- **The sent contents of an honest record were signed earlier** (`record_attestation`). -/
+private theorem sent_origin (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {b : FG.Content} : ∀ i, b ∈ (tr.state y i).record.sent →
+      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b
+  | 0, hb => by
+    rw [Trace.state, hrun.init y hy] at hb
+    simp [Node.init, FG.Record.empty] at hb
+  | i + 1, hb => by
+    rcases record_step hrun hy i with he | ⟨att, hs, he⟩ <;> rw [he] at hb
+    · obtain ⟨k, hk, h⟩ := sent_origin hrun hy i hb
+      exact ⟨k, by omega, h⟩
+    · rcases List.mem_append.1 hb with hb | hb
+      · obtain ⟨k, hk, h⟩ := sent_origin hrun hy i hb
+        exact ⟨k, by omega, h⟩
+      · exact ⟨i, by omega, att, hs, (List.mem_singleton.1 hb).symm⟩
+
+/-- **The first-timeout step**: with no timeout recorded at its height, an honest high row is a
+target: another recorded target there is the high-chain entry, the row's own. -/
+private theorem sign_target (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) (hh : HZ tr H g + 1 ≤ att.h)
+    (he : (tr.state y k).record.timeout att.h = ∅) : att.timeout = false := by
+  obtain ⟨src, hc⟩ := hs
+  have hcl := (hp.run.cutLaw y hy k _ hc).1
+  change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
+    ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
+  obtain ⟨-, hah, haT, -, -, hτ⟩ := createAtt_spec hcl
+  rw [← Bool.not_eq_true]
+  intro hto
+  rw [← hah, ← haT] at hτ
+  rcases hτ hto with h' | ⟨T', hT', hne⟩
+  · exact h' he
+  · obtain ⟨_, -, l, O, hO, E, hE, hEO, hEr, hEh, hET⟩ := high_row_source hp hy ⟨src, hc⟩ hh
+    exact hne ((record_entry_eq hp hy hh (Or.inl hT') hO (hEO.mono fun X hX => ⟨y, hy, _, hX⟩)
+      hy hE hEh hET).trans hEr)
+
+/-- **No honest high timeout** (workbench#30 §4, first-timeout induction): the timeout sets of an
+honest record at the heights `≥ H_z + 1` stay empty. -/
+private theorem timeout_empty (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H) :
+    ∀ i h, HZ tr H g + 1 ≤ h → (tr.state y i).record.timeout h = ∅
+  | 0, h, _ => by
+    rw [Trace.state, hp.run.init y hy]
+    rfl
+  | i + 1, h, hh => by
+    rcases record_step hp.run hy i with he | ⟨att, hs, he⟩ <;> rw [he]
+    · exact timeout_empty hp hy i h hh
+    · simp only [FG.Record.recordAtt]
+      split_ifs with hto
+      · rw [Function.update_apply]
+        split_ifs with hha
+        · subst hha
+          have := sign_target hp hy hs hh (timeout_empty hp hy i _ hh)
+          simp_all
+        · exact timeout_empty hp hy i h hh
+      · exact timeout_empty hp hy i h hh
+
+/-- **An honest row of a high entry's height is its target row, with the predecessor at a bound
+entry** (workbench#30 §4): it names `T` (`high_entry_eq`), is no timeout (`timeout_empty`), and
+its `finality_pair` of `σ[T]` is `(h_j, J)`, which the high records permit (`record_entry_eq`). -/
+private theorem row_of_sign (hp : ResetPremises tr H dg g ΔF a) {z : Fin sp.n} (hz : z ∈ H)
+    {j : Nat} {att : FG.Att sp.n} (hs : tr.SignAt z j att) {T : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
+    {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
+    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → HZ tr H g + 1 ≤ σT.hj)
+    {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g xo io jo B) (hTB : Anc (tr.HonestBlocks H) T B) (hatt : att.h = σT.h) :
+    att.val = z ∧ att.T = T.root ∧ att.timeout = false ∧
+      (σT.bound → att.fin = some (σT.hj, σT.J)) := by
+  subst hσ
+  have hh : HZ tr H g + 1 ≤ att.h := hatt ▸ hhT
+  obtain ⟨src, hc⟩ := hs
+  have hcl := (hp.run.cutLaw z hz j _ hc).1
+  change (tr.state z j).record.createAtt z ((tr.state z j).fg.σ
+    ((tr.state z j).fg.σ src.root).Th) = some (att, _) at hcl
+  obtain ⟨hv, -, haT, hfin, -, -⟩ := createAtt_spec hcl
+  obtain ⟨_, -, l, O, hO, E, hE, hEO, hEr, hEh, hET⟩ := high_row_source hp hz ⟨src, hc⟩ hh
+  have hTr : att.T = T.root := hEr.symm.trans (high_entry_eq hp hO ho
+    (hEO.mono fun X hX => ⟨z, hz, _, hX⟩) hTB hz hy hE hT (hEh.trans hatt) hET hTe)
+  refine ⟨hv, hTr, sign_target hp hz ⟨src, hc⟩ hh (timeout_empty hp hz j _ hh), fun hb => ?_⟩
+  obtain ⟨E', hE', hE'r, hE'T⟩ := source_entry (Compose.fg_reachable hp.run.toLocalRun hz j) src
+  have hR : ((tr.state z j).fg.σ src.root).Th = T.root := by
+    rw [← hTr, haT, ← hE'r, hE'T]
+  have hE'eq : E' = T := (honest_coherent hp).1 ⟨z, hz, j, hE'⟩ ⟨y, hy, m, hT⟩ (hE'r.trans hR)
+  rw [hE'eq] at hE'
+  rw [hfin, hR, σ_eq_run hp hz hy hE' hT]
+  -- the records permit the predecessor: each high record entry at `h_j` is `J`'s block
+  obtain ⟨J₀, hJ₀, hJ₀T, hJ₀r, hJ₀h, hJ₀T'⟩ :=
+    (chain_pairs_entry (Compose.fg_reachable hp.run.toLocalRun hy m) hT).1 hb.1
+  have hsub : (tr.state y m).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, m, hX⟩
+  have heq := fun r hr => (record_entry_eq hp hz (hhj hb) (i := j) (r := r) hr ho
+    ((hJ₀T.mono hsub).trans hTB) hy hJ₀ hJ₀h hJ₀T').trans hJ₀r
+  have hperm : (tr.state z j).record.permits ((tr.state y m).fg.σ T.root).hj
+      ((tr.state y m).fg.σ T.root).J := by
+    refine ⟨?_, fun r hr => Finset.mem_singleton.2 (heq r (Or.inr (Or.inl hr))), ?_⟩
+    · rcases ht : (tr.state z j).record.target _ with _ | r
+      exacts [Or.inl rfl, Or.inr (by rw [heq r (Or.inl ht)])]
+    · rcases hl : (tr.state z j).record.lock _ with _ | r
+      exacts [Or.inl rfl, Or.inr (by rw [heq r (Or.inr (Or.inr hl))])]
+  unfold FG.Record.finalityPair
+  simp only [hb, hperm, ↓reduceIte]
+
+/-- **A same-height report gives a row of the entry's height by then** (workbench#30 §4): the
+client call after it (`toFG_attest`) reads `σ[T]`; it signs, or (no foreign lock,
+`record_entry_eq`) already sent a content of that height, signed earlier (`sent_origin`). -/
+private theorem sign_of_report (hp : ResetPremises tr H dg g ΔF a) {z : Fin sp.n} (hz : z ∈ H)
+    {r : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hrep : SA.ToFGAt tr.projAC z r ℓ C) {T : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
+    {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
+    (hhT : HZ tr H g + 1 ≤ σT.h) (hTC : Anc (tr.HonestBlocks H) T C)
+    (hCh : ((tr.state z r).fg.σ C.root).h = σT.h)
+    {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g xo io jo B) (hTB : Anc (tr.HonestBlocks H) T B) :
+    ∃ j att, tr.SignAt z j att ∧ tr.time j ≤ tr.time r ∧ att.h = σT.h := by
+  subst hσ
+  have hCt := report_mem hp.run hz hrep
+  obtain ⟨hpc, hcall, hC⟩ := hrep
+  have hTt := mem_tree_of_anc hp hz hTC hCt
+  have hσT := σ_eq_run hp hz hy hTt hT
+  have hCTh : ((tr.state z r).fg.σ C.root).Th = T.root := by
+    rw [Th_eq_of_anc (Compose.fg_reachable hp.run.toLocalRun hz r) (anc_tree_of_anc hp hz hTC hCt)
+      (by rw [hCh, hσT]), hσT, hTe]
+  rw [Compose.projAC_state hp.run.toLocalRun hz] at hC
+  obtain ⟨s, hs, hts, hfg⟩ :=
+    toFG_attest hp.run.toLocalRun hz (Compose.projAC_callAt.1 hpc) hcall hC
+  -- the entry state of the client call is `σ[T]`
+  have hσe : (tr.state z (r + 1)).fg.σ ((tr.state z (r + 1)).fg.σ C.root).Th =
+      (tr.state y m).fg.σ T.root := by
+    rw [hfg, hCTh, hσT]
+  cases s with
+  | some att =>
+    have hcl := (hp.run.cutLaw z hz _ _ hs).1
+    change (tr.state z (r + 1)).record.createAtt z ((tr.state z (r + 1)).fg.σ
+      ((tr.state z (r + 1)).fg.σ C.root).Th) = some (att, _) at hcl
+    exact ⟨r + 1, att, ⟨C, hs⟩, hts.le, by rw [(createAtt_spec hcl).2.1, hσe]⟩
+  | none =>
+    have hcl := (hp.run.cutLaw z hz _ _ hs).1
+    change (tr.state z (r + 1)).record.createAtt z ((tr.state z (r + 1)).fg.σ
+      ((tr.state z (r + 1)).fg.σ C.root).Th) = none at hcl
+    rw [hσe] at hcl
+    rcases createAtt_none hcl with ⟨hl, hl'⟩ | ⟨b, hb, hb1⟩
+    · obtain ⟨r', hr'⟩ := Option.ne_none_iff_exists'.1 hl
+      have := record_entry_eq hp hz hhT (Or.inr (Or.inr hr')) ho hTB hy hT rfl hTe
+      exact absurd (by rw [hr', this, hTe]) hl'
+    · obtain ⟨k, hk, att, hsk, rfl⟩ := sent_origin hp.run hz (r + 1) hb
+      exact ⟨k, att, hsk, (hp.run.time_mono hk.le).trans hts.le, hb1⟩
+
+/-! ## A higher report: the same first crossing and its origin (workbench#30 §5) -/
+
+/-- **A higher report gives the retained crossing** (workbench#30 §5): the reported `C ⪰ T`,
+accepted by `t_u + 6Δ`, has slot `≤ u + 1 < u + δ_t`; the first `X` leaving `T`'s height on the
+chain justifies `T` (`crossing_walk`), and `X ⪯ C ⪯ B`, `B` the report's origin. -/
+private theorem crossing_of_report (hp : ResetPremises tr H dg g ΔF a)
+    (hδ : 2 ≤ sp.toParams.δt) {z : Fin sp.n} (hz : z ∈ H) {r : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hrep : SA.ToFGAt tr.projAC z r ℓ C) {u : Nat} (hrt : tr.time r ≤ sp.ts u + 6 * sp.Δ)
+    {T : SA.Blk sp.n (List (FG.Att sp.n))} (hTu : T.slot = u) {y : Fin sp.n} (hy : y ∈ H)
+    {m : Nat} (hT : T ∈ (tr.state y m).fg.tree) {σT : FG.ChainState sp.n}
+    (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root) (hhT : HZ tr H g + 1 ≤ σT.h)
+    (hTC : Anc (tr.HonestBlocks H) T C) (hlt : σT.h < ((tr.state z r).fg.σ C.root).h) :
+    ∃ w ∈ H, ∃ k X, tr.AcceptAt w k X ∧ tr.time k ≤ sp.ts u + 6 * sp.Δ ∧
+      Store.JustifiesEntry sp.toParams (Payload sp.n) (tr.post k).fg T σT.h X ∧
+      (decide σT.bound = true →
+        ((tr.post k).fg.σ X.root).hF + 1 = σT.h ∧ ((tr.post k).fg.σ X.root).F = σT.J) ∧
+      ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ tr.time io ≤ sp.ts u + 6 * sp.Δ ∧
+        Anc (tr.HonestBlocks H) X B := by
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hCt := report_mem hp.run hz hrep
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hz r
+  have hcoh := (Store.accepted_tree _ _ _ _ hreach).2.1
+  have hTt := mem_tree_of_anc hp hz hTC hCt
+  have hσT := (σ_eq_run hp hz hy hTt hT).trans hσ
+  -- the report is high: below a stored high origin written before it
+  obtain ⟨io, hio, jo, B, ho, hCB⟩ := high_report_origin hp hz hrep (by omega)
+  -- the report was accepted by `t_u + 6Δ`, so its slot is at most `u + 1`
+  have hCslot : C.slot ≤ u + 1 := by
+    rcases tree_accepted hp.run.toLocalRun hz hCt with hg | ⟨k, hk, hacc⟩
+    · exfalso
+      have := genesis_not_high hp hz hCt (by rw [hg]; rfl)
+      omega
+    have hsl : C.slot ≤ sp.slot (tr.time k) := (hp.run.cutLaw z hz k _ hacc).1
+    have h1 : sp.ts (C.slot : Int) ≤ tr.time k :=
+      (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg k) _).2 (by exact_mod_cast hsl)
+    have h2 := hp.run.time_mono hk.le
+    have h3 : sp.ts ((u + 2 : Nat) : Int) = sp.ts u + 8 * sp.Δ := by
+      simp only [SA.SAParams.ts]; push_cast; ring
+    have := (SA.ts_lt_iff sp).1 (h1.trans_lt (by linarith : tr.time k < _))
+    omega
+  have hslot : ∀ W, (tr.state z r).fg.Anc W C → W.slot < T.slot + sp.toParams.fg.δt :=
+    fun W hW => by have := (hW.slot_le hcoh).1; change W.slot < T.slot + sp.toParams.δt; omega
+  rcases crossing_walk hreach hTt (by rw [hσT, hTe]) hslot C
+    (anc_tree_of_anc hp hz hTC hCt) .refl with ⟨⟨hh, -⟩, -⟩ | ⟨X, hJ, hXC, hfin⟩
+  · rw [hσT] at hh
+    omega
+  obtain ⟨hXt, hTX, hXhj, hXJ, hkeep⟩ := hJ
+  rcases tree_accepted hp.run.toLocalRun hz hXt with hg | ⟨kX, hkX, hacc⟩
+  · exfalso
+    rw [hg, show (sp.toParams.genesisBlock _).root = sp.toParams.genesisRoot from rfl,
+      Store.σ_genesis hreach, hσT] at hXhj
+    change 0 = _ at hXhj
+    omega
+  have hpost : (tr.post kX).fg = (tr.state z (kX + 1)).fg := by rw [tr.state_succ_of_call hacc]
+  have hXk : X ∈ (tr.state z (kX + 1)).fg.tree := by
+    rw [tr.state_succ_of_call hacc, (Store.tree_grows _ _ _ _
+      (Compose.fg_reachable hp.run.toLocalRun hz kX)).1 X _ (hp.run.cutLaw z hz kX _ hacc).2.1]
+    exact Set.mem_insert _ _
+  have hσX := σ_eq_run hp hz hz hXk hXt
+  have hsub : ∀ k, (tr.state z k).fg.tree ⊆ tr.HonestBlocks H := fun k X hX => ⟨z, hz, k, hX⟩
+  refine ⟨z, hz, kX, X, hacc, (hp.run.time_mono hkX.le).trans hrt, ?_, fun hb => ?_, z, io, jo,
+    B, ho, (hp.run.time_mono hio.le).trans hrt, (hXC.mono (hsub r)).trans hCB⟩
+  · -- the justification at the acceptance of `X`
+    rw [hpost, ← hσT]
+    refine ⟨hXk, anc_tree_of_anc hp hz (hTX.mono (hsub r)) hXk, by rw [hσX]; exact hXhj,
+      by rw [hσX]; exact hXJ, fun Y hY hTY hYX hne => ?_⟩
+    have hYX' := anc_tree_of_anc hp hz (hYX.mono (hsub _)) hXt
+    have hYr := mem_tree_of_anc hp hz (hYX.mono (hsub _)) hXt
+    rw [σ_eq_run hp hz hz hY hYr]
+    exact hkeep Y hYr (anc_tree_of_anc hp hz (hTY.mono (hsub _)) hYr) hYX' hne
+  · have hb' := of_decide_eq_true hb
+    obtain ⟨hF, hhF⟩ := hfin (by rw [hσT]; exact hb')
+    rw [hpost, hσX, hF, hhF, hσT]
+    exact ⟨hb'.2, rfl⟩
+
 /-- **Entry rows** (§17 corrected, §18 BA): under C1.2's premises, a served entry has its rows,
 or a retained justified crossing, by `t_u + 6Δ`. -/
 theorem entry_rows (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g ΔF)
@@ -273,7 +856,88 @@ theorem entry_rows (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g ΔF)
     EntryRows tr H g T ((tr.post i).fg.σ T.root).h ((tr.post i).fg.σ T.root).hj
       (decide ((tr.post i).fg.σ T.root).bound) ((tr.post i).fg.σ T.root).J
       (sp.ts u + 6 * sp.Δ) := by
-  sorry
+  have hp : ResetPremises tr H dg g ΔF a := ⟨hrun, hsh.healthy, hsh.noColl, ha⟩
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hΔF : sp.Δ ≤ ΔF := hsh.healthy.1.deltaF
+  -- `c_F ≥ 2` from `7Δ ≤ 6Δ + Δ_F ≤ 4Δ·c_F`, so `δ_t ≥ 2`
+  have hδ2 : 2 ≤ sp.toParams.δt := by
+    have hcF2 : (2 : Int) ≤ cF := by
+      by_contra hlt
+      have : (cF : Int) ≤ 1 := by omega
+      nlinarith
+    omega
+  obtain ⟨hy, hTacc, hTh⟩ := hE
+  have hTu : T.slot = u := hP.2.2.2.2.1
+  rw [← tr.state_succ_of_call hTacc] at hh hhj hTh ⊢
+  set σT := (tr.state y (i + 1)).fg.σ T.root with hσT
+  have hTt : T ∈ (tr.state y (i + 1)).fg.tree := by
+    rw [tr.state_succ_of_call hTacc, (Store.tree_grows _ _ _ _
+      (Compose.fg_reachable hrun.toLocalRun hy i)).1 T _ (hrun.cutLaw y hy i _ hTacc).2.1]
+    exact Set.mem_insert _ _
+  -- an actual report extending `T` is at least as high, so high, below a stored high origin
+  have hrep : ∀ z ∈ H, ∀ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C → Anc (tr.HonestBlocks H) T C →
+      σT.h ≤ ((tr.state z r).fg.σ C.root).h ∧
+      ∃ io < r, ∃ jo B, HighOrigin tr H g z io jo B ∧ Anc (tr.HonestBlocks H) C B := by
+    intro z hz r ℓ C h hTC
+    have hCt := report_mem hrun hz h
+    have hle : σT.h ≤ ((tr.state z r).fg.σ C.root).h := by
+      rw [hσT, ← σ_eq_run hp hz hy (mem_tree_of_anc hp hz hTC hCt) hTt]
+      exact h_le_of_store_anc (Compose.fg_reachable hrun.toLocalRun hz r)
+        (anc_tree_of_anc hp hz hTC hCt)
+    exact ⟨hle, high_report_origin hp hz h (hh.trans hle)⟩
+  -- §2 split: a higher actual report gives the retained crossing (§5)
+  rcases report_cover hp hc hP hR with hall | ⟨z, hz, r, ℓ, C, hrc, hrt, hTC, hlt⟩
+  swap
+  · rw [σ_eq_run hp hz hy (mem_tree_of_anc hp hz hTC (report_mem hrun hz hrc)) hTt] at hlt
+    exact entryRows_iff.2 (Or.inr (crossing_of_report hp hδ2 hz hrc hrt hTu hy hTt rfl hTh hh hTC
+      hlt))
+  by_cases hex : ∃ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧
+      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) T C ∧
+      σT.h < ((tr.state z r).fg.σ C.root).h
+  · obtain ⟨z, hz, r, ℓ, C, hrc, hrt, hTC, hlt⟩ := hex
+    exact entryRows_iff.2 (Or.inr (crossing_of_report hp hδ2 hz hrc hrt hTu hy hTt rfl hTh hh hTC
+      hlt))
+  push Not at hex
+  -- every honest report is at `T`'s height: one honest target row per honest node (§4)
+  have hrow : ∀ z : Fin sp.n, ∃ att : FG.Att sp.n, z ∈ H → att.val = z ∧
+      (∃ j, tr.SignAt att.val j att ∧ tr.time j ≤ sp.ts u + 6 * sp.Δ) ∧
+      att.h = σT.h ∧ att.T = T.root ∧ att.timeout = false ∧
+      (decide σT.bound = true → att.fin = some (σT.hj, σT.J)) := by
+    intro z
+    by_cases hz : z ∈ H
+    · obtain ⟨r, ℓ, C, hrc, hrt, hTC⟩ := hall z hz
+      obtain ⟨hle, io, -, jo, B, ho, hCB⟩ := hrep z hz r ℓ C hrc hTC
+      obtain ⟨j, att, hs, hj, hatt⟩ := sign_of_report hp hz hrc hy hTt rfl hTh hh hTC
+        (le_antisymm (hex z hz r ℓ C hrc hrt hTC) hle) ho (hTC.trans hCB)
+      obtain ⟨hv, h₂, h₃, h₄⟩ := row_of_sign hp hz hs hy hTt rfl hTh hh (fun hb => hhj hb.1 hb.2)
+        ho (hTC.trans hCB) hatt
+      exact ⟨att, fun _ => ⟨hv, ⟨j, by rw [hv]; exact hs, hj.trans hrt⟩, hatt, h₂, h₃,
+        fun hb => h₄ (of_decide_eq_true hb)⟩⟩
+    · exact ⟨⟨z, 0, 0, false, none⟩, fun h => absurd h hz⟩
+  choose f hf using hrow
+  classical
+  refine entryRows_iff.2 (Or.inl ⟨(Finset.univ.filter (· ∈ H)).image f, ?_, fun att hatt => ?_⟩)
+  · have himg : ((Finset.univ.filter (· ∈ H)).image f).image FG.Att.val =
+        Finset.univ.filter (· ∈ H) := by
+      rw [Finset.image_image]
+      refine (Finset.image_congr fun z hz => ?_).trans Finset.image_id
+      exact (hf z (Finset.mem_filter.1 (Finset.mem_coe.1 hz)).2).1
+    have hcard : (Finset.univ.filter (· ∈ H)).card = H.ncard := by
+      rw [← Set.ncard_coe_finset]
+      congr 1
+      ext z
+      simp
+    rw [himg, hcard]
+    have hn : H.ncard + Hᶜ.ncard = sp.n := by
+      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+    have h3 := hsh.healthy.2.2
+    have hn' : sp.n = sp.toParams.n := rfl
+    change (2 * sp.toParams.n + 2) / 3 ≤ _
+    omega
+  · obtain ⟨z, hz, rfl⟩ := Finset.mem_image.1 hatt
+    have hzH := (Finset.mem_filter.1 hz).2
+    obtain ⟨hv, hs, h₁, h₂, h₃, h₄⟩ := hf z hzH
+    exact ⟨by rw [hv]; exact hzH, hs, h₁, h₂, h₃, h₄⟩
 
 /-! ## The carriers -/
 
