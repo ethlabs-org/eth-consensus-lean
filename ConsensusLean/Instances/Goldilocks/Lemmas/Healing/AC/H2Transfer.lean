@@ -10,7 +10,8 @@ workbench `h2-open-items.md`:
 * §6.1 (with §§2–3 and §5's root-covered reads): a clean raw origin `(B, j)` is carried by every
   honest vote and honest proposal head of a later slot (`raw_origin_transfer`), by increasing
   duty label: the first slot-`(j+1)` votes from the raw evidence, fast (`raw_fast_first_votes`,
-  open) or slow (`raw_slow_first_votes`, open); the first proposal (§3, `raw_first_proposals`,
+  from A1.2 with `Inv`'s viability and §5's `Carry` above `Φ.F`, `h2_carry_fastLock`, open) or
+  slow (`raw_slow_first_votes`, open); the first proposal (§3, `raw_first_proposals`,
   open); later labels from the preceding honest batch (`h2_votes_continue`,
   `h2_proposals_continue`, open);
 * §5, drain: a lock live at a slot `σ` with `t_σ ≥ t₀ + 2Θ` sits below a clean raw origin of its
@@ -22,15 +23,91 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time}
 
-/-- **§6.1, first transfer of a fast target** (§2 for the regular arm with its actual result,
-§3's `3n/4` score for the optimistic arm; the counted seats oppose every conflicting lock of a
-smaller label, locks of label `j` compare by RR/RO/OO, a current-label optimistic lock needs an
-earlier bad honest vote): every honest vote of slot `j + 1` extends the selected block `B`. -/
+/-- A block between `Φ.F` and a block of a well-formed frame tree (inside a coherent `U`
+containing the tree) is in the tree. -/
+private theorem mem_tree_of_between {Φ : Frm sp.n FGP} (hU : Coherent U) (hΦ : FrameOK Φ)
+    (hΦU : Φ.tree ⊆ U) {B C : Blk sp.n FGP} (hFB : Anc U Φ.F B) (h : Anc U B C) :
+    C ∈ Φ.tree → B ∈ Φ.tree := by
+  induction h with
+  | refl => exact id
+  | @tail c d hBc e ih =>
+    intro hd
+    by_cases hdF : d = Φ.F
+    · subst hdF
+      obtain rfl := Anc.antisymm hU (hBc.tail e) hFB
+      exact hd
+    obtain rfl | ⟨q, -, hq⟩ :=
+      (Relation.ReflTransGen.cases_tail_iff _ _ _).1 (hΦ.rooted.2 d hd)
+    · exact absurd rfl hdF
+    have hqc : q = c := hU.1 (hΦU hq.1) e.1 (Option.some_injective _ (hq.2.2.symm.trans e.2.2))
+    subst hqc
+    exact ih hq.1
+
+/-- **An honest vote's head is a block of its voter's frame.** (Pending `getHead_mem` of
+`AC/Steps/Honest` being public.) -/
+theorem vote_head_frame (hI : InclusionRun tr H U g t₀) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y k ℓ e) :
+    ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head := by
+  sorry
+
+/-- **§5, `Carry` for a fast origin at a read not covered by `Φ.F`** (the counted heads accepted
+or resolved before `t_j + 2Δ` relay before `t_j + 3Δ`, pre-recovery heads by `Catch`; rooted
+retention keeps them until the read, as `B` is above `Φ.F`): at every honest vote of slot
+`j + 1` whose frame's `Φ.F` does not extend `B`, `Carry_y(j, CV, B)`. -/
+theorem h2_carry_fastLock (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (hx : x ∈ H)
+    {i j : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hjx : JoinedAt tr x (tr.time i))
+    (hfl : FastLockAt tr x i j B CV) (hj : t₀ + 4 * sp.Δ ≤ sp.ts j) :
+    ∀ y ∈ H, ∀ k ℓ e, CastAt tr y k ℓ e → e.msg.slot = j + 1 → ¬ Anc U B ℓ.frame.F →
+      CarryAt tr U y k e j CV := by
+  sorry
+
+/-- **§6.1, first transfer of a fast target** (A1.2 at each slot-`(j+1)` vote, by induction on
+cuts: the viability from `Inv` (the pair is P1), `Carry` from §5 at a read above `Φ.F`; a read
+with `B ⪯ Φ.F` is root-covered, its head extends `Φ.F`): every honest vote of slot `j + 1`
+extends the selected block `B`. -/
 theorem raw_fast_first_votes (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (hx : x ∈ H)
     {i j : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hjx : JoinedAt tr x (tr.time i))
     (hfl : FastLockAt tr x i j B CV) (hj : t₀ + 4 * sp.Δ ≤ sp.ts j) :
     ∀ y ∈ H, ∀ k e, VoteAt tr y k e → e.msg.slot = j + 1 → VoteExtends U e.msg B := by
-  sorry
+  have hrun := hI.run
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  have hg := hI.le
+  have hP1 : Protected tr H t₀ B j := Or.inl ⟨x, hx, i, CV, hjx, hfl, hj⟩
+  have hcarry := h2_carry_fastLock hI hx hjx hfl hj
+  suffices h : ∀ k, ∀ y ∈ H, ∀ e, VoteAt tr y k e → e.msg.slot = j + 1 → VoteExtends U e.msg B
+    from fun y hy k e hv hs => h k y hy e hv hs
+  intro k
+  induction k using Nat.strong_induction_on with
+  | _ k ih =>
+    intro y hy e ⟨ℓ, hc, he⟩ hes
+    have hca : CastAt tr y k ℓ e := ⟨hc, he⟩
+    obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc
+    obtain ⟨-, hsl, -, -⟩ := castAt_spec hr hy hca
+    have ht0 := hr.time_nonneg k
+    have htk : sp.ts (j + 1 : Nat) ≤ tr.time k :=
+      (ts_le_iff_le_slot sp ht0 _).2 (by rw [← hsl, hes])
+    by_cases hBF : Anc U B ℓ.frame.F
+    · -- root-covered: the head extends `Φ.F`
+      obtain ⟨Hd, hHd, hHdr⟩ := vote_head_frame hI hy hca
+      exact ⟨Hd, hΦU hHd, hHdr, hBF.trans ((hΦ.rooted.2 Hd hHd).mono hΦU)⟩
+    have hviab : ViableAtVote ℓ e (j + 1) B := by
+      rcases (hI.inv B j hP1 y hy k ℓ hc htk).2 e he with h | h
+      · exact Or.inl (hes ▸ h)
+      · refine Or.inr ?_
+        have hfc := hΦ.fcRoot_mem
+        have hFB : Anc U ℓ.frame.F B := by
+          rcases anc_total hU h ((hΦ.rooted.2 _ hfc).mono hΦU) with h' | h'
+          · exact absurd h' hBF
+          · exact h'
+        exact anc_tree_of_anc_U hU hΦ hΦU (mem_tree_of_between hU hΦ hΦU hFB h hfc) h hfc
+    have hT : gbar g ≤ sp.ts ((sp.slot (tr.time k) : Int) - 1) := by
+      rw [← hsl, hes, show ((j + 1 : Nat) : Int) - 1 = (j : Int) by push_cast; ring]
+      linarith
+    exact first_transfer sp FGP ro H U tr hrun j x y i k B CV ℓ e hx hfl hy hca hes
+      (hI.syncAC (by linarith) _) (hcarry y hy k ℓ e hca hes hBF) (hI.faultBound ht0 hT)
+      hviab (fun z hz k' hk' e' hv' hs' => ih k' hk' z hz e' hv' hs')
 
 /-- **§6.1, first transfer of a slow target** (the writer's saved regular results `C_l ⪰ B` of
 the window compare every live older lock by RR/RO; the current result gives §2's participant

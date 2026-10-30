@@ -85,6 +85,39 @@ theorem joinedAt {y : Fin sp.n} (hy : y ∈ H) {t : Time}
     (ht : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) : JoinedAt tr y t :=
   fun _ hk _ => (hI.restart_le hy hk).trans ht
 
+/-- `f < n/2` (from `3f ≤ n − 1`). -/
+theorem two_faulty_lt : 2 * Hᶜ.ncard < sp.n := by
+  have := hI.healthy.2.2.2
+  have := sp.toParams.hn
+  change 1 ≤ sp.n at this
+  omega
+
+/-- `Sync[a, b]` for every `a ≥ ḡ`. -/
+theorem syncAC {a : Time} (ha : gbar g ≤ a) (b : Time) :
+    SyncAC (goldilocksSA sp FGP ro) H U a b tr := by
+  have hg : ∀ τ, a ≤ τ → g ≤ τ := fun τ h => (le_gbar g).trans (ha.trans h)
+  refine ⟨fun x hx i m hm hai _ y hy j ℓ hc hdl => ?_,
+    fun x hx i B hB hai _ y hy j ℓ hc hdl hF =>
+      hI.healthy.2.1 x hx i B hB (hg _ hai) y hy j ℓ hc hdl hF⟩
+  have hmax : max (tr.time i) g = tr.time i := max_eq_left (hg _ hai)
+  have := hI.healthy.1 x hx i m hm y hy j ℓ hc (by rwa [hmax])
+  simpa only [hmax] using this
+
+/-- `f < h_t` at every `t` with `ḡ ≤ t_{slot(t)−1}`: every honest node is awake and joined
+there. -/
+theorem faultBound {t : Time} (ht0 : 0 ≤ t) (ht : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) :
+    FaultBound tr H t := by
+  have hts : sp.ts ((sp.slot t : Int) - 1) ≤ t :=
+    (ts_le_iff_le_slot sp ht0 _).mpr (by omega)
+  have hsub : {y | y ∈ H ∧ tr.awake y t ∧ JoinedAt tr y t} = H :=
+    Set.ext fun y => ⟨fun h => h.1, fun hy => ⟨hy, hI.awake hy (ht.trans hts), hI.joinedAt hy ht⟩⟩
+  unfold FaultBound honestAwakeJoined
+  rw [hsub]
+  have hn : H.ncard + Hᶜ.ncard = sp.n := by
+    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+  have := hI.two_faulty_lt
+  omega
+
 end InclusionRun
 
 end Consensus.Goldilocks.SA
