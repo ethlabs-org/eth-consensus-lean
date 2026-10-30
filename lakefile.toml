@@ -46,9 +46,13 @@ globs = ["ConsensusLeanTest.*"]
 name = "Solution"
 
 # Comparator challenge (comparator.json): the review statements with `sorry` proofs.
-# Never a default target; imports only the review statements module.
+# Never a default target; imports only the review statements module. Its template (check.sh step 9)
+# puts each statement on one line, `theorem <s> : <S> := sorry` with fully qualified names, which can
+# exceed 100 characters, so the line-length linter is off for this library only (the option is in
+# the Spec snapshot header, scripts/spec-snapshot.txt: changing it means regenerating the snapshot).
 [[lean_lib]]
 name = "Challenge"
+leanOptions = { weak.linter.style.longLine = false }
 
 # Fixtures for the self-tests of scripts/check.sh. Deliberately bad (sorry, axioms, macros).
 # Never a default target; built only by check.sh. No root module: every fixture module is its own

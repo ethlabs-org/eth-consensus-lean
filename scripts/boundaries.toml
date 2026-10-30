@@ -612,7 +612,10 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Proofs.ACSteps",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Lemmas.FGStore", "Instances.Goldilocks.Proofs.FGStore",
-         "Instances.Goldilocks.Proofs.ACBase"]
+         "Instances.Goldilocks.Proofs.ACBase", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Compose",
+         "Instances.Goldilocks.Proofs.ComposeAnyAC"]
 about = "comparator solution: the review statements and the finished instance milestones (each through its Main)"
 
 [[layer]]
@@ -715,7 +718,10 @@ milestone_statements_modules = ["ConsensusLean.Instances.Goldilocks.Statements.F
                                 "ConsensusLean.Instances.Goldilocks.Statements.AC.Steps",
                                 "ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local",
                                 "ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace",
-                                "ConsensusLean.Instances.Goldilocks.Statements.AC.Base"]
+                                "ConsensusLean.Instances.Goldilocks.Statements.AC.Base",
+                                "ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service",
+                                "ConsensusLean.Instances.Goldilocks.Statements.Compose.Interface",
+                                "ConsensusLean.Instances.Goldilocks.Statements.Compose.Node"]
 # Extra targets built by step 1 next to the default targets.
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
                        "spec-surface", "Challenge"]

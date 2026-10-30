@@ -15,5 +15,8 @@ theorem Consensus.Goldilocks.Store.fGStoreLocal : Consensus.Goldilocks.Store.FGS
 theorem Consensus.Goldilocks.Store.fGStoreTrace : Consensus.Goldilocks.Store.FGStoreTrace := sorry
 theorem Consensus.Goldilocks.SA.aCBase : Consensus.Goldilocks.SA.ACBase := sorry
 theorem Consensus.Goldilocks.localRunReachable : Consensus.Goldilocks.LocalRunReachable := sorry
+theorem Consensus.Goldilocks.Store.fGStoreService : Consensus.Goldilocks.Store.FGStoreService := sorry
+theorem Consensus.Goldilocks.Compose.composeInterfaceStatements : Consensus.Goldilocks.Compose.ComposeInterfaceStatements := sorry
+theorem Consensus.Goldilocks.Compose.composeNodeStatements : Consensus.Goldilocks.Compose.ComposeNodeStatements := sorry
 
 end

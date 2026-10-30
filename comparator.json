@@ -4,5 +4,8 @@
                     "Consensus.Goldilocks.FG.fGSafety", "Consensus.Goldilocks.SA.aCSteps",
                     "Consensus.Goldilocks.Store.fGStoreLocal",
                     "Consensus.Goldilocks.Store.fGStoreTrace", "Consensus.Goldilocks.SA.aCBase",
-                    "Consensus.Goldilocks.localRunReachable"],
+                    "Consensus.Goldilocks.localRunReachable",
+                    "Consensus.Goldilocks.Store.fGStoreService",
+                    "Consensus.Goldilocks.Compose.composeInterfaceStatements",
+                    "Consensus.Goldilocks.Compose.composeNodeStatements"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }

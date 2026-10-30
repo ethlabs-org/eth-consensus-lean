@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 
 @[expose] public section
 
@@ -54,5 +55,19 @@ theorem Consensus.Goldilocks.SA.aCBase : Consensus.Goldilocks.SA.ACBase :=
 /-- Goldilocks ACBase: the AC trace contract gives reachable states. -/
 theorem Consensus.Goldilocks.localRunReachable : Consensus.Goldilocks.LocalRunReachable :=
   Consensus.Goldilocks.localRun_reachable
+
+/-- Goldilocks FGStore, part 3: the FG service lemmas (G1.6–G1.8, G1.9 (a)). -/
+theorem Consensus.Goldilocks.Store.fGStoreService : Consensus.Goldilocks.Store.FGStoreService :=
+  Consensus.Goldilocks.Store.fg_store_service
+
+/-- Goldilocks Compose/AnyAC: the interface statements (C0.1, C0.3), for any AC. -/
+theorem Consensus.Goldilocks.Compose.composeInterfaceStatements :
+    Consensus.Goldilocks.Compose.ComposeInterfaceStatements :=
+  Consensus.Goldilocks.Compose.compose_interface_statements
+
+/-- Goldilocks Compose/AnyAC: the node statements (C0.2, C0.4, C0.5), for any AC. -/
+theorem Consensus.Goldilocks.Compose.composeNodeStatements :
+    Consensus.Goldilocks.Compose.ComposeNodeStatements :=
+  Consensus.Goldilocks.Compose.compose_node_statements
 
 end

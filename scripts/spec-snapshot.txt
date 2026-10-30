@@ -19,6 +19,7 @@ option weak.linter.flexible = false
 option weak.linter.mathlibStandardSet = true
 option weak.linter.style.header = false
 option weak.linter.style.longFile = 1500
+option lean_lib Challenge weak.linter.style.longLine = false
 
 ## ConsensusLean.Init
 ## ConsensusLean.Spec.Blocks.Chains
