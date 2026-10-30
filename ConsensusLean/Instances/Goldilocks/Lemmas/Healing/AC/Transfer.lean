@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalTransfer
 
 public section
 
@@ -31,13 +32,6 @@ private theorem viable_of_accepted_c (hS : StandaloneRun tr H U g) {y : Fin sp.n
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     {σ : Nat} (hes : e.msg.slot = σ + 1) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
     (hB : AcceptedBefore tr y B (sp.ts σ + 3 * sp.Δ)) : ViableAtVote ℓ e (σ + 1) B := by
-  sorry
-
-/-- **T1 §3–§4 at the proposal duty** ("The same argument applies at a proposal"; T1 §6, "Every
-good lock from an older evidence slot has transferred"): the head of every honest proposal of a
-slot after the label of a good origin extends its block. -/
-theorem origin_transfer_proposals (hS : StandaloneRun tr H U g) {B : Blk sp.n FGP} {j : Nat}
-    (hB : GoodOrigin tr H g B j) : ProposalsExtendAfter tr H U j B := by
   sorry
 
 /-- **T1 §4, a slow origin transfers to the votes** (A3/A5): for an honest slow lock of slot
@@ -94,6 +88,17 @@ theorem slow_origin_transfer_votes (hS : StandaloneRun tr H U g) {x : Fin sp.n} 
   rcases Nat.lt_or_ge (s + 1) e.msg.slot with h | h
   · exact votesExtendAfter_iff.1 hcont y hy i e hv h
   · exact hnext i y hy e hv (by omega)
+
+/-- **T1 §3–§4 at the proposal duty** ("The same argument applies at a proposal"; T1 §6, "Every
+good lock from an older evidence slot has transferred"): the head of every honest proposal of a
+slot after the label of a good origin extends its block: its votes do (T1 §3, §4), then
+`proposals_extend_of_origin` (ProposalTransfer). -/
+theorem origin_transfer_proposals (hS : StandaloneRun tr H U g) {B : Blk sp.n FGP} {j : Nat}
+    (hB : GoodOrigin tr H g B j) : ProposalsExtendAfter tr H U j B := by
+  refine proposals_extend_of_origin hS hB ?_
+  rcases goodOrigin_iff.1 hB with ⟨x, hx, i, CV, hfl, hs⟩ | ⟨x, hx, i, hsl, hs⟩
+  · exact fast_origin_transfer_votes hS hx hfl hs
+  · exact slow_origin_transfer_votes hS hx hsl hs
 
 /-- **T1 §6, unanimity**: for an honest proposal `P` of slot `p` (with its parent the head of
 its `ac_proposal`) at `t_p ≥ ḡ + 2Θ + 8Δ`, with the locks settled from `t_{p−1}`, every honest

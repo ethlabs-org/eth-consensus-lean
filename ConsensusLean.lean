@@ -100,6 +100,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalTransfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Saved
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting

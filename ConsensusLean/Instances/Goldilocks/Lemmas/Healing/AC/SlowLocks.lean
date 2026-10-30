@@ -72,27 +72,27 @@ theorem slow_window_results (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x
     obtain rfl : R = S := hU.1 hRU (hΦU hS) hRr
     exact ⟨k, R, CV, hR, Anc.mono hΦU hDS⟩
 
-/-- Every stored lock of an honest node sits below an origin of its slot: a result or an
-optimistic confirmation of an honest node. -/
+/-- Every stored lock of an honest node sits below an origin of its slot, written at an earlier
+cut: a result or an optimistic confirmation of the node. -/
 theorem lock_below_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ ∃ O, Anc U L O ∧
-      ∃ k CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV := by
+      ∃ k < i, ∃ CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV := by
   intro l hl
   cases hf : l.fast
-  · obtain ⟨j, -, B, hsl, L, hL, hLr, hLB⟩ := slow_lock_provenance hr hy i l hl hf
+  · obtain ⟨j, hj, B, hsl, L, hL, hLr, hLB⟩ := slow_lock_provenance hr hy i l hl hf
     obtain ⟨ℓX, C, hupd, hconf, -, hdeep, -⟩ := hsl
     have hΦU := (frameIn_of_callAt hr hy hupd.1).2
     obtain ⟨⟨-, -, hBC⟩, -⟩ := (deepest_mem hdeep).1
-    exact ⟨L, hL, hLr, C, hLB.trans (Anc.mono hΦU hBC), j, _,
+    exact ⟨L, hL, hLr, C, hLB.trans (Anc.mono hΦU hBC), j, hj, _,
       Or.inl ⟨ℓX, hupd, hconf, rfl⟩⟩
-  · obtain ⟨j, -, B, CV, hfl, L, hL, hLr, hLB⟩ := fast_lock_provenance hr hy i l hl hf
+  · obtain ⟨j, hj, B, CV, hfl, L, hL, hLr, hLB⟩ := fast_lock_provenance hr hy i l hl hf
     rcases hfl with ⟨ℓX, C, hupd, hconf, -, hfs, -⟩ | hopt
     · have hΦU := (frameIn_of_callAt hr hy hupd.1).2
       obtain ⟨⟨-, -, hBC⟩, -⟩ := (deepest_mem hfs).1
-      exact ⟨L, hL, hLr, C, hLB.trans (Anc.mono hΦU hBC), j, _,
+      exact ⟨L, hL, hLr, C, hLB.trans (Anc.mono hΦU hBC), j, hj, _,
         Or.inl ⟨ℓX, hupd, hconf, rfl⟩⟩
-    · exact ⟨L, hL, hLr, B, hLB, j, CV, Or.inr hopt⟩
+    · exact ⟨L, hL, hLr, B, hLB, j, hj, CV, Or.inr hopt⟩
 
 /-- **T1 §4, the live locks at a vote after a slow origin.** -/
 theorem slow_live_locks (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
@@ -122,7 +122,7 @@ theorem slow_live_locks (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈
       readPoint_locks_below_stored hr hy hc (show 0 < sp.slot (tr.time i) by omega) l₀ hl₀
         (show l₀.slot ≠ sp.slot (tr.time i) by omega)
     obtain rfl : B₀' = B₀ := hΦ.coherent.1 hB₀' hB₀ (hB₀'r.trans hB₀r.symm)
-    obtain ⟨L₁, hL₁, hL₁r, O, hL₁O, k, CV, hO⟩ := lock_below_origin hr hy i l₁ hl₁
+    obtain ⟨L₁, hL₁, hL₁r, O, hL₁O, k, -, CV, hO⟩ := lock_below_origin hr hy i l₁ hl₁
     obtain rfl : L₁ = B₁ := hU.1 hL₁ (hΦU hB₁) (hL₁r.trans hB₁r.symm)
     have hj₁ : ((s : Int) - sp.k) < (l₁.slot : Int) := by
       simp only at hlive
