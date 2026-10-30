@@ -1,11 +1,11 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 
 public section
 
 /-! # Goldilocks milestone ACSteps
 
-`ACSteps sp` from `Lemmas/AC/Steps`. -/
+`ACSteps sp` from `Lemmas/AC/Steps/`. -/
 
 namespace Consensus.Goldilocks.SA
 
