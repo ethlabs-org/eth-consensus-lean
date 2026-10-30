@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
@@ -101,45 +101,10 @@ private theorem exists_cuts {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set
   exact ⟨⟨Nat.find hlt, fun k hk => not_lt.1 (Nat.find_min hlt hk), Nat.find_spec hlt⟩,
     Nat.find hle, Nat.find_spec hle, fun k hk => not_le.1 (Nat.find_min hle hk)⟩
 
-/-- The FG projection's state of an honest node is the `(Σ, Λ)` part of its run state (an AC
-cut leaves both unchanged: the cut law). -/
-private theorem projFG_state {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-    {sg : A.Msg → Fin P.n} (hrun : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
-    (i : Nat) : tr.projFG.state y i = ((tr.state y i).fg, (tr.state y i).record) := by
-  induction i with
-  | zero => rfl
-  | succ i ih =>
-    rw [Trace.state, Trace.state]
-    by_cases hcy : tr.node i = y ∧ tr.label i ≠ none
-    · obtain ⟨c, hcl⟩ := Option.ne_none_iff_exists'.1 hcy.2
-      have hstep := hrun.cutLaw y hy i c ⟨hcy.1, hcl⟩
-      cases c with
-      | fg ℓ =>
-        have hp : tr.projFG.node i = y ∧ tr.projFG.label i ≠ none :=
-          ⟨hcy.1, by simp [RunTrace.projFG, hcl, RunTrace.fgLabel]⟩
-        rw [ite_eq_left_of_eq_true _ _ (eq_true hp), ite_eq_left_of_eq_true _ _ (eq_true hcy)]
-        rfl
-      | ac ℓ =>
-        have hp : ¬ (tr.projFG.node i = y ∧ tr.projFG.label i ≠ none) := by
-          simp [RunTrace.projFG, hcl, RunTrace.fgLabel]
-        rw [ite_eq_right_of_eq_false _ _ (eq_false hp), ite_eq_left_of_eq_true _ _ (eq_true hcy),
-          ih, hstep.2.2.1, hstep.2.2.2]
-    · have hp : ¬ (tr.projFG.node i = y ∧ tr.projFG.label i ≠ none) := fun h =>
-        hcy ⟨h.1, fun hn => h.2 (by simp [RunTrace.projFG, hn])⟩
-      rw [ite_eq_right_of_eq_false _ _ (eq_false hp),
-        ite_eq_right_of_eq_false _ _ (eq_false hcy), ih]
-
 private theorem projFG_store {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
     {sg : A.Msg → Fin P.n} (hrun : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
     (i : Nat) : tr.projFG.store y i = (tr.state y i).fg := by
-  simp only [FGTrace.store, projFG_state hrun hy i]
-
-private theorem signAt_of_projFG {y : Fin P.n} {k : Nat} {a : FG.Att P.n}
-    (h : tr.projFG.SignAt y k a) : tr.SignAt y k a := by
-  obtain ⟨src, hn, hl⟩ := h
-  refine ⟨src, hn, ?_⟩
-  change (tr.label k).bind RunTrace.fgLabel = _ at hl
-  rcases hk : tr.label k with _ | (ℓ | ℓ) <;> simp_all [RunTrace.fgLabel]
+  simp only [FGTrace.store, Compose.projFG_state hrun hy i]
 
 end Cuts
 
@@ -149,7 +114,8 @@ section Potential
 
 variable {P : Params} {ACP : Type} {tr : FGTrace P ACP} {H : Set (Fin P.n)}
 
-private theorem hmax_mono {acp₀ : ACP} {U : Set (NodeBlock P ACP)} (hr : FGLocalRun acp₀ H U tr)
+private theorem store_hmax_mono {acp₀ : ACP} {U : Set (NodeBlock P ACP)}
+    (hr : FGLocalRun acp₀ H U tr)
     {y : Fin P.n} (hy : y ∈ H) {k m : Nat} (hkm : k ≤ m) :
     (tr.store y k).hmax ≤ (tr.store y m).hmax := by
   obtain ⟨-, -, -, -, -, ⟨B, hB, hBh⟩, -⟩ :=
@@ -263,7 +229,7 @@ theorem reset_count {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   obtain ⟨-, hb, -⟩ := phase_count _ _ _ H _ tr.projFG hfg hq
   have hmono : ∀ y ∈ H, ∀ i j, i ≤ j →
       (tr.projFG.store y i).hmax ≤ (tr.projFG.store y j).hmax :=
-    fun y hy i j hij => hmax_mono hfg hy hij
+    fun y hy i j hij => store_hmax_mono hfg hy hij
   choose ph hph using exists_phase (tr := tr.projFG) ⟨y₀, hy₀⟩
   obtain ⟨φ, hφ⟩ : ∃ φ : Nat → Nat, ∀ i, φ i = 3 * (ph i).1 + (ph i).2.rank := ⟨_, fun _ => rfl⟩
   have hle : ∀ i j, i ≤ j → φ i ≤ φ j := fun i j hij => by
