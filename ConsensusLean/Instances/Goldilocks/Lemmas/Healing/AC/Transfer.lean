@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 
 public section
 
@@ -23,6 +25,14 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
 
+/-- Viability from acceptance before the freeze (Trivial, `viable_of_accepted`; private copy
+until it lands). -/
+private theorem viable_of_accepted_c (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
+    {σ : Nat} (hes : e.msg.slot = σ + 1) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
+    (hB : AcceptedBefore tr y B (sp.ts σ + 3 * sp.Δ)) : ViableAtVote ℓ e (σ + 1) B := by
+  sorry
+
 /-- **T1 §3–§4 at the proposal duty** ("The same argument applies at a proposal"; T1 §6, "Every
 good lock from an older evidence slot has transferred"): the head of every honest proposal of a
 slot after the label of a good origin extends its block. -/
@@ -39,7 +49,51 @@ labels `s`, `s + 1` as in §3; then A1.8 for the ancestor `D` of the result, and
 theorem slow_origin_transfer_votes (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) : VotesExtendAfter tr H U s D := by
-  sorry
+  have hrun := hS.run
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨ℓX, C, hupd, hconf, -, hdeep, -⟩ := id hsl
+  have hΦXU := (frameIn_of_callAt hr hx hupd.1).2
+  have hDC : Anc U D C := Anc.mono hΦXU (deepest_mem hdeep).1.1.2.2
+  have hres : ResultAt tr x i₀ s C (fastCounted sp (tr.state x i₀) ℓX.frame s C) :=
+    ⟨ℓX, hupd, hconf, rfl⟩
+  have hk := sp.two_le_k
+  have hs' : gbar g + 4 * sp.Δ ≤ sp.ts s := hs.trans ((ts_le_iff sp).2 (by omega))
+  have hcarry := trivial_carry_update hS hx hupd hs' C
+  -- the result has a counted vote, whose head extends `C`
+  obtain ⟨v₀, hv₀⟩ : (fastCounted sp (tr.state x i₀) ℓX.frame s C).Nonempty := by
+    have hmaj := result_majority hres
+    by_contra hne
+    rw [Set.not_nonempty_iff_eq_empty] at hne
+    simp [hne] at hmaj
+  have hnext : ∀ i, ∀ y ∈ H, ∀ e, VoteAt tr y i e → e.msg.slot = s + 1 →
+      VoteExtends U e.msg D := by
+    intro i
+    induction i using Nat.strong_induction_on with
+    | _ i ih =>
+      intro y hy e ⟨ℓ, hc, he⟩ hes
+      have hca : CastAt tr y i ℓ e := ⟨hc, he⟩
+      have hCy := hcarry y hy i e ⟨ℓ, hc, he⟩ hes
+      -- `D`, below the head of a counted vote, was accepted before the freeze
+      have hacc : AcceptedBefore tr y D (sp.ts s + 3 * sp.Δ) := by
+        obtain ⟨Hv, hHv, hHvr, hall⟩ := hCy.heads v₀ hv₀
+        obtain ⟨-, -, -, R, hR, hRr, hCR⟩ := hv₀
+        obtain rfl : R = Hv := hU.1 (hΦXU hR) hHv (hRr.trans hHvr.symm)
+        exact hall D (hDC.trans (Anc.mono hΦXU hCR))
+      exact result_transfer_anc sp hrun hx hres hDC hy hca hes hCy
+        (viable_of_accepted_c hS hy hca hes hs' hacc)
+        (slow_live_locks hS hx hsl hs hy hca hes
+          fun z hz j hj e' hv' hs'' => ih j hj z hz e' hv' hs'')
+        (writer_merged hrun hx hupd hy hca hes (hS.syncAC (by linarith) _))
+  have hs1 : gbar g + 4 * sp.Δ ≤ sp.ts (s + 1 : Nat) :=
+    hs'.trans ((ts_le_iff sp).2 (by push_cast; omega))
+  have hcont := votes_continue hS hs1 fun y hy i e hv hs => hnext i y hy e hv hs
+  rw [votesExtendAfter_iff]
+  intro y hy i e hv hlt
+  rcases Nat.lt_or_ge (s + 1) e.msg.slot with h | h
+  · exact votesExtendAfter_iff.1 hcont y hy i e hv h
+  · exact hnext i y hy e hv (by omega)
 
 /-- **T1 §6, unanimity**: for an honest proposal `P` of slot `p` (with its parent the head of
 its `ac_proposal`) at `t_p ≥ ḡ + 2Θ + 8Δ`, with the locks settled from `t_{p−1}`, every honest
