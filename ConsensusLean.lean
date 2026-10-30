@@ -64,7 +64,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Inclusion
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Outcome
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy
@@ -115,6 +114,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
