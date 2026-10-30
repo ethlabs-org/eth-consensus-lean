@@ -66,6 +66,8 @@ EOF
 }
 
 step "System packages (bubblewrap, jq)"; timed install_packages
+# The pre-push hook: a push to main must have passed scripts/push-main.sh (AGENTS.md "Land on main").
+step "git hooks (scripts/hooks)"; git config core.hooksPath scripts/hooks
 step "Agent notes (~/.config/amp/AGENTS.md)"; timed write_agent_notes
 step "elan v4.2.4"; timed install_elan
 step "Lean toolchain $(cat lean-toolchain)"; timed install_toolchain

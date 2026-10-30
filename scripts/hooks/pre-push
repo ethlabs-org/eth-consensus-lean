@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# pre-push hook (enabled by `git config core.hooksPath scripts/hooks`; .agents/setup does it in orbs): a push to
+# main must carry a commit that scripts/push-main.sh checked. Other branches and tags are not affected.
+marker="$(git rev-parse --git-common-dir)/push-main-verified"
+while read -r _lref lsha rref _rsha; do
+  [[ "$rref" == refs/heads/main ]] || continue
+  if [[ "$lsha" =~ ^0+$ ]]; then echo "pre-push: refusing to delete main" >&2; exit 1; fi
+  grep -qxF "$lsha" "$marker" 2>/dev/null && continue
+  echo "pre-push: ${lsha:0:8} has not passed scripts/push-main.sh; land on main with scripts/push-main.sh (AGENTS.md)" >&2
+  exit 1
+done
+exit 0

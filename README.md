@@ -837,8 +837,8 @@ On the shared box every build and check runs in a job (replace `<name>` and `<wo
    ```sh
    job --mem 16G --cpus 8 consensus-lean <name> -- bash -lc "cd <worktree> && LAKE_RESTORE_ARTIFACTS=true scripts/check-changed.sh"
    ```
-3. Commit, rebase on `origin/main` and push to `main` (a trusted-surface change goes through a PR instead, for
-   the tag). Every push to `main` runs the fast tier; the nightly full run covers replay, `lake check` and the
+3. Commit, rebase on `origin/main` and land with `scripts/push-main.sh` (it reruns step 2 against `origin/main`
+   and pushes only if it passes; a trusted-surface change goes through a PR instead, for the tag). Every push to `main` runs the fast tier; the nightly full run covers replay, `lake check` and the
    comparator.
    Before a milestone, run the full check once (`scripts/check.sh --full` in a job or an orb with at least 8 GB,
    about an hour of CPU). Dispatching `full.yml` on a branch costs about 45 billed Actions minutes: keep it for
