@@ -61,6 +61,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Adopt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Outcome
