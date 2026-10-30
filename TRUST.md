@@ -120,7 +120,9 @@ exception). The definitions the Goldilocks sheet reads from there, `Lemmas/Probl
 too; the tag freezes their text, not everything they import. `scripts/boundaries.toml`
 (`[checks] trusted_paths`) lists it, and check-boundaries.py requires it to cover every file of a trusted or
 `protected` layer;
-CI's `review-boundary` compares those paths (literal, at the PR head and at the tag) with `spec-approved`.
+CI's `review-boundary` (`scripts/review-boundary.sh`, self-tested on throwaway repositories) passes a change whose own
+diff touches none of those paths (literal; the lists at the PR head, its base and the tag united) and otherwise
+requires the trusted files at the PR head to equal those at `spec-approved`.
 `ConsensusLean/Statements/Review.lean` must hold statements only: every non-proof constant needs a
 review pair (`ConsensusLeanTest/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers
 are exempt). `ConsensusLeanTest/ReviewAxioms.lean` compiles alpha-equality/binder-kind and axiom pins.

@@ -192,7 +192,8 @@ jobs:
 
   review-boundary:
     # The trusted surface (`trusted_paths` in scripts/boundaries.toml; docs/spec-review.md) against the commit
-    # tagged `spec-approved`: a change the tag does not cover fails (without the tag, a warning only). The tag is an
+    # tagged `spec-approved` (scripts/review-boundary.sh): a change of the trusted surface that the tag does not cover
+    # fails; a change that touches no trusted path passes (without the tag, a warning only). The tag is an
     # agent approval: an agent other than the change's author moves it after the author's fidelity read-back of the
     # diff printed here and a green fast check (docs/spec-review.md). Check infrastructure (scripts/, .github/,
     # lakefile.toml) is not covered by the tag; agents maintain it (TRUST.md).
@@ -206,33 +207,12 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Trusted surface unchanged since spec-approved
-        run: |
-          set -euo pipefail
-          # The trusted paths: `trusted_paths` of scripts/boundaries.toml at HEAD, united with the list at the tag
-          # (where it has one), so a PR cannot drop a path from the check by editing the list. Literal pathspecs
-          # only: an entry with git pathspec magic (`:(exclude)...`) or a glob is refused, and git reads none.
-          export GIT_LITERAL_PATHSPECS=1
-          paths_at() {  # paths_at <rev>: the list in <rev>'s boundaries.toml, one per line (nothing if absent)
-            git show "$1:scripts/boundaries.toml" 2>/dev/null | python3 -I -c 'import sys, tomllib
-          print("\n".join(tomllib.loads(sys.stdin.read()).get("checks", {}).get("trusted_paths", [])))' || true
-          }
-          mapfile -t protected < <({ paths_at HEAD; paths_at 'refs/tags/spec-approved^{commit}'; } | awk NF | LC_ALL=C sort -u)
-          if [[ -z "$(paths_at HEAD)" ]]; then
-            echo "::error::scripts/boundaries.toml at HEAD has no [checks] trusted_paths"; exit 1
-          fi
-          for p in "${protected[@]}"; do
-            [[ "$p" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*(/[A-Za-z0-9_][A-Za-z0-9_.-]*)*$ && "/$p/" != */../* ]] ||
-              { echo "::error::trusted_paths entry '$p' is not a plain relative path"; exit 1; }
-          done
-          echo "trusted paths: ${protected[*]}"
-          if ! git rev-parse -q --verify 'refs/tags/spec-approved^{commit}' >/dev/null; then
-            echo "::warning title=Review boundary: not yet approved::no tag spec-approved: the trusted surface is not yet approved (non-blocking until the tag exists; see docs/spec-review.md)"
-            exit 0
-          fi
-          if ! git diff --quiet spec-approved HEAD -- "${protected[@]}"; then
-            echo "::error::trusted surface changed since spec-approved ($(git rev-parse --short spec-approved)): awaiting approval (an agent other than the author moves the tag to this PR head; docs/spec-review.md)"
-            git diff --stat spec-approved HEAD -- "${protected[@]}"
-            exit 1
-          fi
-          echo "trusted surface unchanged since spec-approved ($(git rev-parse --short spec-approved))"
+      - name: Review-boundary self-test (verdicts on throwaway repositories)
+        run: scripts/review-boundary.sh --self-test
+
+      # A change that touches no trusted path passes (so a tag moved to a PR head just before its merge does not
+      # turn unrelated changes red); otherwise the trusted files must equal the tag's. scripts/review-boundary.sh.
+      - name: Trusted surface covered by spec-approved
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: scripts/review-boundary.sh "$BASE"

@@ -882,9 +882,10 @@ too; the tag freezes their text, not everything they import. The list lives in `
 paths at the PR head and at the tag. The annotated git tag
 `spec-approved` marks the last approved commit (history in `docs/spec-review.md`). Since 2026-10-30 it is an
 agent approval: an agent other than the change's author (claude-ethlabs, or the amp-orbs coordinator) moves it
-after the author's fidelity read-back and a green fast check; nothing waits for the owner. CI job `review-boundary` fails while the trusted surface differs
-from that tag (it would only warn if the tag did not exist), so a PR changing it is approved by moving the
-tag to the PR's head before merge. The check infrastructure (`scripts/**`, `.github/**`, `lakefile.toml`,
+after the author's fidelity read-back and a green fast check; nothing waits for the owner. CI job `review-boundary` (`scripts/review-boundary.sh`, with
+fixtures) fails on a change that touches the trusted surface while the trusted files differ from that tag (it
+would only warn if the tag did not exist), so a PR changing it is approved by moving the tag to the PR's head
+before merge; a change that touches no trusted path passes, with a warning if the tag and the tree differ. The check infrastructure (`scripts/**`, `.github/**`, `lakefile.toml`,
 `lakefile.lean`, which must not exist) is not covered by the tag: agents maintain it (`TRUST.md`).
 Reviewing the snapshot diff is part of approving a Spec change; the comparator cannot replace that
 review. `docs/spec-review.md` records what was approved and what changed since 2852f717.
