@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.FGStore
+public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local
+public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks FGStore statements (part 1)
@@ -10,7 +11,9 @@ On `Spec/FG/Store`, labelled by kind (CONTRIBUTING "Statements"):
   statement).
 * (a) `accepts_b₁`: from the initial state the store accepts a block on genesis, so the
   hypotheses of `TreeGrows`, `FinalizedMonotone` and `AcceptIsFrameStep` (a reachable state
-  and an accepted block) hold together; the result is reachable. -/
+  and an accepted block) hold together; the result is reachable.
+* (a) `idle_localRun`: an FG trace with no FG call is an `FGLocalRun` for one honest validator
+  (the trace hypothesis of `FinalizedSafety` and `QuorumFreeEntries` is satisfiable). -/
 
 namespace Consensus.Goldilocks.Store.Test
 
@@ -65,6 +68,52 @@ theorem accepts_b₁ :
     split <;> simp_all
   obtain ⟨st', h⟩ := hon
   exact ⟨st', h, Relation.ReflTransGen.single (Or.inl ⟨b₁, h⟩)⟩
+
+/-- An FG trace in which no FG call happens: every cut is a stutter at time `0`. -/
+noncomputable def idleTrace : FGTrace P₁ Unit where
+  init _ := (Store.init (), FG.Record.empty)
+  node _ := ⟨0, Nat.one_pos⟩
+  time _ := 0
+  event _ := 0
+  pos _ := 0
+  label _ := none
+  post _ := (Store.init (), FG.Record.empty)
+  awake _ _ := True
+
+/-- Every state of the idle trace is the initial one. -/
+theorem idleTrace_state (y : Fin P₁.n) (i : Nat) :
+    idleTrace.state y i = (Store.init (), FG.Record.empty) := by
+  induction i with
+  | zero => rfl
+  | succ i ih =>
+    rw [Trace.state]
+    simp only [idleTrace, ne_eq, not_true_eq_false, and_false, ↓reduceIte]
+    exact ih
+
+/-- (a) The idle trace is an `FGLocalRun` for the honest set `{0}` inside `{genesis}`. -/
+theorem idle_localRun :
+    FGLocalRun () {⟨0, Nat.one_pos⟩} {P₁.genesisBlock ()} idleTrace where
+  coherent := ⟨Set.injOn_singleton _ _, fun B hB C hC h => by
+    simp only [Set.mem_singleton_iff] at hB hC; subst hB; subst hC
+    simp [Params.genesisBlock] at h⟩
+  init _ _ := rfl
+  exec i ℓ h := by simp [idleTrace] at h
+  tree_subset y _ i := by
+    intro B hB
+    rw [FGTrace.store, idleTrace_state] at hB
+    change (Store.init (P := P₁) ()).blocks B.root = some B at hB
+    simp only [Store.init] at hB
+    split at hB
+    · exact Set.mem_singleton_iff.mpr (Option.some_inj.mp hB).symm
+    · exact absurd hB (by simp)
+  time_nonneg _ := le_rfl
+  time_mono _ _ _ := le_rfl
+  attest_public y _ i src signed h := by simp [Trace.CallAt, idleTrace] at h
+  own_first y _ i B h := by simp [Trace.CallAt, idleTrace] at h
+  attest_order y _ j src signed h := by simp [Trace.CallAt, idleTrace] at h
+  own_payload y _ i B h := by simp [Trace.CallAt, idleTrace] at h
+  unforgeable y _ i a h := by
+    obtain ⟨ℓ, hℓ, -⟩ := h; simp [Trace.CallAt, idleTrace] at hℓ
 
 end Consensus.Goldilocks.Store.Test
 

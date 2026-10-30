@@ -52,6 +52,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Duties
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Label
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Sigma
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
 public import ConsensusLean.Instances.Goldilocks.Spec.Frame
 public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
@@ -76,7 +77,8 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Common
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
-public import ConsensusLean.Instances.Goldilocks.Statements.FGStore
+public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local
+public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.Frame
 public import ConsensusLean.Instances.Streamlet.Spec
 public import ConsensusLean.Instances.Tendermint.Spec
