@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 
 public section
 
@@ -17,13 +18,14 @@ paper splits it (workbench#14, healing-simple `h3-bridge.md` at `ab8459a`):
   sources behind delayed certificates, and the transfer/lock join at every intervening admission;
   §4 shows that RC at `t₀ = a_z + 8Δ` gives `Inv(t₀)`. RC itself is open, and no fixed `T_b` is
   established without it, so `T_b` stays existential.
-* `settled_geo`, the `Geo` half (H.3 (c3)): proved on paper (`h3-bridge.md` §5, from HS.1 and
-  the proposal sandwich; the floor and the case are fixed in a settled stable phase, `F` may
-  advance). It is taken here for `T_b ≥ 8Δ`, whose label alignment `r_AC(a_z + 8Δ) ≥ slot(a_z) + 3`
-  is `h3-bridge.md` §1.
+* `settled_geo`, the `Geo` half (H.3 (c3)): `h3-bridge.md` §5, from HS.1 and the proposal
+  sandwich (the floor and the case are fixed in a settled stable phase, `F` may advance); proved
+  in `Geo` (`geo_of_settled`) over the HS.1 interface `viable_witness_retention`. It holds for
+  every honest proposal of a settled phase: the reset, `T_b ≥ 8Δ`, `t_p` and `Prop⁺` are not
+  used.
 * `bridge` combines them at `max(T_b, 8Δ)`, by the monotonicity of `Inv` (`Inv.mono`).
 
-Interfaces: `reset_inv` and `settled_geo` are open. -/
+Interfaces: `reset_inv` is open; `settled_geo` rests on HS.1 (`viable_witness_retention`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -55,16 +57,17 @@ theorem reset_inv : ∃ Tb : Nat → Time → Time → Nat → Nat → Time,
 
 /-- **H.3 (c3), `Geo` in a settled phase** (`h3-bridge.md` §5, from HS.1): for `T_b ≥ 8Δ`, every
 honest proposal of a slot `p ≥ s_AC(a_z + T_b)` whose proposal and votes lie in one settled
-effective phase has `Geo(P)`. -/
+effective phase has `Geo(P)` (`geo_of_settled`, which needs neither the reset nor the slot bound).
+-/
 theorem settled_geo {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun dg H tr)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
-    {a Tb : Time} (ha : IsReset tr H g a) (hTb : 8 * sp.Δ ≤ Tb) (p : Nat)
+    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (_hp : PropPlus tr H g Gp)
+    {a Tb : Time} (_ha : IsReset tr H g a) (_hTb : 8 * sp.Δ ≤ Tb) (p : Nat)
     (P : SA.Blk sp.n (List (FG.Att sp.n))) (hP : HonestProposalRun tr H p P)
-    (htp : a + Tb + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p) (hph : InSettledPhase tr H g p) :
-    SA.Geo tr.projAC H p P := by
-  sorry
+    (_htp : a + Tb + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p) (hph : InSettledPhase tr H g p) :
+    SA.Geo tr.projAC H p P :=
+  geo_of_settled hrun hs hc p P hP hph
 
 /-- **H.3 (c), the bridge**, from `reset_inv` and `settled_geo`. -/
 theorem bridge : ∃ Tb : Nat → Time → Time → Nat → Nat → Time, (∀ n Δ ΔF k δt, 0 ≤ Tb n Δ ΔF k δt) ∧

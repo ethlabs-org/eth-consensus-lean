@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix
 
 public section
 
@@ -14,8 +15,10 @@ Paper: `hr4-boot-carry.md` (workbench#23), `producer-reset-continuation.md` §§
 Proved here: the label bound, half the committee, the low-`Σ.J` root, both carries (relay after
 the GST, `Retention/Relay`), (R4) (`Retention/Records`), HBoot's caches from G1.2 over the run
 (`finalized_anc_of_height_lt`, `Retention/Finality`), and R5 below the floor (a counted head of
-the origin, relayed in time; `relay_mem_voterBlockTree`). Open: `activation_caches` (§13), and R5
-above the floor (`height_lead_above`, §7). -/
+the origin, relayed in time; `relay_mem_voterBlockTree`), activation (`activation_caches`, the
+rows' sources compared before the first cut of `t_{j+1}`, `origins_compatible_before`) and R5
+above the floor (`height_lead_above`: no high contest, then the crossing of the floor, through
+`Retention/Prefix`). Open there: `row_origin_not_current` (the report-time bound). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -25,7 +28,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
-/-! ### Interfaces from the paper (open) -/
+/-! ### The base case, the vote premises and the records -/
 
 /-- **The label bound of a high origin** (§11, "Historical finality and acceptance": `j ≥ slot(c)`).
 The writer accepted the counted heads, of state height `≥ H_z + 1`, before `t_j + 2Δ`; no honest
@@ -98,23 +101,6 @@ theorem boot_caches (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y 
   obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
   exact finalized_anc_of_height_lt hp hy ho.1 hY hFm hYF.symm hBx (by omega)
 
-/-- **Activation of a high origin** (§13 "Activation uses earlier labels, not D's own transfer",
-"Retaining the witnesses and the frame"; §12, the pending boundary case). At the state at
-`t_{j+1}` after the reset (immediately before the first-transfer votes of the origin's label `j`,
-even when its write is later), every honest `Σ.F`, and every high honest `Σ.J`, is compatible with
-the origin's block: low finalized entries by G1.2, high ones through their row witnesses, whose
-sources are comparable with `B` by the label split (earlier labels by their votes, the same label
-by TSQ, later labels excluded by R4). -/
-theorem activation_caches (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
-    (hy : y ∈ H) {k₁ : Nat} (hk₁ : tr.FirstCutFrom k₁ (sp.ts (j + 1 : Nat)))
-    (ha : a < sp.ts (j + 1 : Nat))
-    (ih : ∀ k' < k₁, VoteInv tr H g k' ∧ CacheInv tr H g a k') :
-    Compatible (tr.HonestBlocks H) (tr.state y k₁).fg.F B ∧
-      (HZ tr H g + 1 ≤ (tr.state y k₁).fg.hj →
-        Compatible (tr.HonestBlocks H) (tr.state y k₁).fg.J B) := by
-  sorry
-
 /-- The label of a high origin starts at or after `g` (`t_j ≥ c_z > ḡ ≥ g`). -/
 private theorem g_le_ts (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {m : Nat}
@@ -125,6 +111,63 @@ private theorem g_le_ts (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j
   have h₄ := (SA.ts_le_iff sp).2 (show (j : Int) ≤ m by exact_mod_cast hm)
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   linarith
+
+/-- **Activation of a high origin** (§13 "Activation uses earlier labels, not D's own transfer",
+"Retaining the witnesses and the frame"; §12, the pending boundary case). At the state at
+`t_{j+1}` after the reset (immediately before the first-transfer votes of the origin's label `j`,
+even when its write is later), every honest `Σ.F`, and every high honest `Σ.J`, is compatible with
+the origin's block: low finalized entries by G1.2, high ones through their row witnesses, whose
+sources are comparable with `B` by the label split (earlier labels by their votes, the same label
+by TSQ, later labels excluded by R4). -/
+theorem activation_caches (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
+    (hy : y ∈ H) {k₁ : Nat} (hk₁ : tr.FirstCutFrom k₁ (sp.ts (j + 1 : Nat)))
+    (_ha : a < sp.ts (j + 1 : Nat))
+    (ih : ∀ k' < k₁, VoteInv tr H g k' ∧ CacheInv tr H g a k') :
+    Compatible (tr.HonestBlocks H) (tr.state y k₁).fg.F B ∧
+      (HZ tr H g + 1 ≤ (tr.state y k₁).fg.hj →
+        Compatible (tr.HonestBlocks H) (tr.state y k₁).fg.J B) := by
+  have hU := honest_coherent hp
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hy k₁
+  have hsub : (tr.state y k₁).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, k₁, hX⟩
+  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
+  have hgB := ((Goldilocks.Store.accepted_tree _ _ _ _
+    (Compose.fg_reachable hp.run.toLocalRun ho.1 i)).2.2.2 B hBx).mono
+      (fun X hX => (⟨x, ho.1, i, hX⟩ : X ∈ tr.HonestBlocks H))
+  have hvk : ∀ k' < k₁, VoteInv tr H g k' := fun k' hk' => (ih k' hk').1
+  have hact : i < k₁ ∨ ∀ c, tr.time c < sp.ts (j + 1 : Nat) → c < k₁ :=
+    Or.inr fun c hc => not_le.mp fun hle => absurd (hk₁.1.trans (hp.run.time_mono hle))
+      (not_le.mpr hc)
+  -- every honest row on the store was signed before `k₁` and names an entry comparable with `B`
+  have hrow : ∀ E ∈ (tr.state y k₁).fg.tree,
+      HZ tr H g + 1 ≤ ((tr.state y k₁).fg.σ E.root).h →
+      ((tr.state y k₁).fg.σ E.root).Th = E.root → ¬ Compatible (tr.HonestBlocks H) E B →
+      ∀ W ∈ (tr.state y k₁).fg.tree, ∀ att ∈ W.fgPayload, att.T = E.root → att.val ∉ H := by
+    intro E hE hEh _ hnc W hW att ha haT haH
+    rcases tree_accepted hp.run.toLocalRun hy hW with rfl | ⟨i', hi', hA⟩
+    · cases ha
+    obtain ⟨d, hdi, hsd⟩ :=
+      hp.run.att_unforgeable y hy i' att (Or.inr ⟨W, ⟨true, hA⟩, ha⟩) haH
+    obtain ⟨E', hE', hE'r, hE'h⟩ := signAt_entry hp.run haH hsd
+    obtain rfl : E' = E := hU.1 ⟨_, haH, d, hE'⟩ (hsub hE) (hE'r.trans haT)
+    obtain ⟨r, hrd, l, O, hoO, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
+      high_row_source hp haH hsd (by rw [← hE'h, σ_eq_run hp haH hy hE' hE]; exact hEh)
+    obtain rfl : E₀ = E' := hU.1 ⟨_, haH, r, hE₀⟩ (hsub hE) (hE₀r.trans haT)
+    have hEO : Anc (tr.HonestBlocks H) E₀ O := hE₀O.mono fun X hX => ⟨_, haH, r, hX⟩
+    rcases origins_compatible_before hp hvk ho (g_le_ts hp ho le_rfl) hact hoO (by omega) with
+      hBO | hOB
+    · exact hnc (SA.anc_total hU hEO hBO)
+    · exact hnc (Or.inl (hEO.trans hOB))
+  have hJ : HZ tr H g + 1 ≤ (tr.state y k₁).fg.hj →
+      Compatible (tr.HonestBlocks H) (tr.state y k₁).fg.J B :=
+    Store.J_compatible_of_rows hreach (faulty_lt_q hp.healthy) hU hsub hgB hrow
+  refine ⟨?_, hJ⟩
+  obtain ⟨-, -, hFJ, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
+  by_cases hlow : (tr.state y k₁).fg.hj ≤ HZ tr H g
+  · exact Or.inl (low_finalized_below_origin hp hy k₁ hlow ho)
+  · rcases hJ (by omega) with hJB | hBJ
+    · exact Or.inl ((hFJ.mono hsub).trans hJB)
+    · exact SA.anc_total hU (hFJ.mono hsub) hBJ
 
 /-- The caches at a vote (the last-call/first-cut split of `vote_state_caches`, repeated here
 since the vote step's module imports this one). -/
@@ -192,8 +235,7 @@ honest rows whose sources are comparable, by the earlier votes: prefix source co
 origins, both created before the vote), so the floor is `h_max − 1`, crossed by a chain with an
 honest row at the floor whose reported source `Q` (temporal stored origin of label `≤ m − 1`) is
 comparable with `B` and, being higher, extends it; `Q`'s counted honest head was relayed to the
-voter before its freeze, and is the witness. Open: the temporal stored-origin provenance of the
-rows (`hr4-cut-scope.md`) and the prefix source comparison. -/
+voter before its freeze (`row_origin_label_lt`), and is the witness. -/
 theorem height_lead_above (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
@@ -203,7 +245,110 @@ theorem height_lead_above (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
     (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
     ∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
       Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D := by
-  sorry
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hU := honest_coherent hp
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hy k
+  have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, k, hX⟩
+  have hvk : ∀ k' < k, VoteInv tr H g k' := fun k' hk' => (ih k' hk').1
+  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
+  have hBh := ho.2.2.2
+  -- two origins written before the vote lie below one held block
+  have hupper : ∀ {v₁ v₂ : Fin sp.n} {r₁ l₁ r₂ l₂ : Nat}
+      {O₁ O₂ : SA.Blk sp.n (List (FG.Att sp.n))}, HighOrigin tr H g v₁ r₁ l₁ O₁ → r₁ < k →
+      HighOrigin tr H g v₂ r₂ l₂ O₂ → r₂ < k → ∃ z ∈ H, ∃ m C, C ∈ (tr.state z m).fg.tree ∧
+        Anc (tr.HonestBlocks H) O₁ C ∧ Anc (tr.HonestBlocks H) O₂ C := by
+    intro v₁ v₂ r₁ l₁ r₂ l₂ O₁ O₂ ho₁ hr₁ ho₂ hr₂
+    obtain ⟨-, -, -, -, -, -, -, -, -, hO₁⟩ := highOrigin_mem hp ho₁
+    obtain ⟨-, -, -, -, -, -, -, -, -, hO₂⟩ := highOrigin_mem hp ho₂
+    rcases origins_compatible_before hp hvk ho₁ (g_le_ts hp ho₁ le_rfl) (Or.inl hr₁) ho₂ hr₂ with
+      h | h
+    · exact ⟨v₂, ho₂.1, r₂, O₂, hO₂, h, .refl⟩
+    · exact ⟨v₁, ho₁.1, r₁, O₁, hO₁, .refl, h⟩
+  -- no high contest: the top justification and the contest carrier's entry at `h_j` coincide
+  have hnc : ¬ ((tr.state y k).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state y k).fg.hmax) := by
+    rintro ⟨⟨hmj, C, hC, -, hCh, hJC⟩, hmax⟩
+    obtain ⟨-, hJm, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -⟩ :=
+      Goldilocks.Store.cache_invariants _ _ _ _ hreach
+    obtain ⟨EJ, hEJ, hEJr, hEJB, hcase⟩ := Store.J_entry_of_reachable hreach hBj
+    obtain rfl : EJ = (tr.state y k).fg.J := hU.1 (hsub hEJ) (hsub hJm) (hEJr.trans hBjJ)
+    rcases hcase with hg | ⟨hJh, hJT⟩
+    · exact hJC (hg ▸ (Goldilocks.Store.accepted_tree _ _ _ _ hreach).2.2.2 C hC)
+    have hJlt := Store.hj_lt_h hreach hBj
+    obtain ⟨W₂, -, att₂, -, v₂, -, d₂, hd₂, -, -, r₂, hr₂, l₂, O₂, ho₂, hJO⟩ :=
+      left_entry_origin hp hy hJm hJT (by omega) hEJB (by omega)
+    obtain ⟨EC, hEC, hECC, hECh, hECT⟩ :=
+      entry_at_height hreach hC (h := (tr.state y k).fg.hj) (by omega) (by omega)
+    obtain ⟨W₁, -, att₁, -, v₁, -, d₁, hd₁, -, -, r₁, hr₁, l₁, O₁, ho₁, hECO⟩ :=
+      left_entry_origin hp hy hEC hECT (by omega) hECC (by omega)
+    obtain ⟨z, hz, m', C', hC', hO₁C, hO₂C⟩ := hupper ho₁ (by omega) ho₂ (by omega)
+    have h₁ := hECO.trans hO₁C
+    have h₂ := hJO.trans hO₂C
+    have hEC' := mem_tree_of_anc hp hz h₁ hC'
+    have hJ' := mem_tree_of_anc hp hz h₂ hC'
+    have hσ₁ := σ_eq_run hp hy hz hEC hEC'
+    have hσ₂ := σ_eq_run hp hy hz hJm hJ'
+    have he := entry_root_eq hp hz hC' h₁ h₂
+      (by rw [← hσ₁, ← hσ₂, hECh, hJh, hBjhj]) (by rw [← hσ₁]; exact hECT)
+      (by rw [← hσ₂]; exact hJT)
+    obtain rfl : EC = (tr.state y k).fg.J := hU.1 (hsub hEC) (hsub hJm) he
+    exact hJC hECC
+  -- so the floor is `h_max − 1`
+  have hcon : ¬ (tr.state y k).fg.Contest := fun hcon => by
+    unfold Store.headHeightFloor at hfloor
+    simp only [hcon, ↓reduceIte] at hfloor
+    exact hnc ⟨hcon, by omega⟩
+  have hfl : (tr.state y k).fg.headHeightFloor = (tr.state y k).fg.hmax - 1 := by
+    unfold Store.headHeightFloor
+    simp only [hcon, ↓reduceIte]
+  rw [hfl] at hfloor
+  -- the crossing of the floor: its entry is named by an honest row with an earlier source origin
+  obtain ⟨-, -, -, -, -, ⟨C, hC, hCh⟩, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
+  obtain ⟨E, hE, hEC, hEh, hET⟩ :=
+    entry_at_height hreach hC (h := (tr.state y k).fg.hmax - 1) (by omega) (by omega)
+  obtain ⟨W, hW, att, ha, v, hv, d₁, hd₁, hsd, -, r, hrd, l, O, hoO, hEO⟩ :=
+    left_entry_origin hp hy hE hET (by omega) hEC (by omega)
+  -- the origin is comparable with `B`, and higher: it extends `B`
+  have hts' : sp.ts e.msg.slot ≤ tr.time k :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(SA.castAt_spec hr hy hc).2.1])
+  have hts : sp.ts (j + 1 : Nat) ≤ tr.time k :=
+    ((SA.ts_le_iff sp).mpr (by exact_mod_cast hj : ((j + 1 : Nat) : Int) ≤ e.msg.slot)).trans hts'
+  have hact : i < k ∨ ∀ c, tr.time c < sp.ts (j + 1 : Nat) → c < k :=
+    Or.inr fun c hc => not_le.mp fun hle => absurd (hts.trans (hp.run.time_mono hle))
+      (not_le.mpr hc)
+  have hBO : Anc (tr.HonestBlocks H) B O := by
+    rcases origins_compatible_before hp hvk ho (g_le_ts hp ho le_rfl) hact hoO (by omega) with
+      h | h
+    · exact h
+    · exfalso
+      have hEB := hEO.trans h
+      have hEx := mem_tree_of_anc hp ho.1 hEB hBx
+      have hle := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun ho.1 i)
+        (anc_tree_of_anc hp ho.1 hEB hBx)
+      rw [σ_eq_run hp ho.1 hy hEx hE] at hle
+      omega
+  -- a counted head of the origin, relayed to the voter before its freeze
+  obtain ⟨ℓw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := highOrigin_mem hp hoO
+  obtain ⟨u, hu⟩ := fastLock_counted_nonempty hflw
+  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr hoO.1 hflw u hu
+  have hOHv : Anc (tr.HonestBlocks H) O Hv :=
+    (Anc.mono (SA.frameIn_of_callAt hr hoO.1 hcw).2 hOD).trans hDHv
+  rcases hacc with hg | ⟨kw, hkw, hkwt⟩
+  · exact absurd hg (cutZ_lt_of_anc hp hoO hz hHvz hOHv).2
+  have hkwg : g ≤ tr.projAC.time kw := by
+    have := (cutZ_lt_of_anc hp hoO hoO.1 (acceptAt_mem hp hoO.1 hkw) hOHv).1
+    have := lt_cutZ sp g
+    have := le_gbar g
+    have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+    change g ≤ tr.time kw
+    linarith
+  have hlm := row_origin_label_lt hp hy hc hW ha hv hsd hd₁ hrd hoO
+  have hHvT := relay_mem_voterBlockTree hr (sync_after hp (sp.ts l + 2 * sp.Δ)) hoO.1 hkw hkwg
+    hkwt le_rfl hy hc (by omega) (hF.trans (hBO.trans hOHv))
+  have hHvy : Hv ∈ (tr.state y k).fg.tree := frame_tree_subset hp hy hc.1 hHvT.1
+  have hh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy (hEO.trans hOHv) hHvy)
+  refine ⟨Hv, hHvT, hBO.trans hOHv, ?_⟩
+  change (tr.state y k).fg.headHeightFloor ≤ _
+  omega
 
 /-- **(K2) at a vote, R5** (§5 Lemma R5; §11 item 1 for the votes through the ticks at `a_z`;
 §13 "Retaining the witnesses and the frame"; `t1-proof.md` §9 base case). At an honest vote of a
