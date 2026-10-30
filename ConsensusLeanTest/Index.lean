@@ -693,6 +693,21 @@ example := ``Consensus.Goldilocks.Healing.CleanLockDrain
 example := ``Consensus.Goldilocks.Healing.FrozenTreeAgreement
 example := ``Consensus.Goldilocks.Healing.CommonPathAcquisition
 example := ``Consensus.Goldilocks.Healing.PhaseServiceStatements
+example := ``Consensus.Goldilocks.Healing.slotsCeil
+example := ``Consensus.Goldilocks.Healing.acqSlots
+example := ``Consensus.Goldilocks.Healing.L_old
+example := ``Consensus.Goldilocks.Healing.oldSlots
+example := ``Consensus.Goldilocks.Healing.Mstar
+example := ``Consensus.Goldilocks.Healing.Zreset
+example := ``Consensus.Goldilocks.Healing.T_rec
+example := ``Consensus.Goldilocks.Healing.Rstar
+example := ``Consensus.Goldilocks.Healing.Rec
+example := ``Consensus.Goldilocks.Healing.UPat
+example := ``Consensus.Goldilocks.Healing.PatternPremises
+example := ``Consensus.Goldilocks.Healing.PatternRecovery
+example := ``Consensus.Goldilocks.Healing.FinalizingCoverage
+example := ``Consensus.Goldilocks.Healing.CacheAcceptanceAfterReset
+example := ``Consensus.Goldilocks.Healing.RecoveryStatements
 
 /-! ## Goldilocks Regimes (a milestone PR appends here only) -/
 

@@ -31,7 +31,7 @@ SA's chain reasoning identifies blocks by root):
   bound entry has finalized the predecessor (the gate), and at an unbound entry gives its
   actual bound successor.
 
-C1.3 (finalizing coverage recurs) is a candidate in the claims and is not transcribed.
+C1.3 (finalizing coverage recurs) is in `Statements/Healing/Recovery` (`FinalizingCoverage`).
 "At `t`" is read at a cut of the node at time `t` (`tr.IsCall y i`, `tr.time i = t`),
 with the state before the cut.
 

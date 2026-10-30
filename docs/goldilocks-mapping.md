@@ -477,6 +477,10 @@ HS.5's `Producer(A)` enter as conclusions (a), (b) of HR.3.
 | HS.2 | CLAIMS HS.2 | **clean-lock transfer and drain**: fast locks of label `≥ a` and slow locks with `j − k + 1 ≥ a` (stored blocks) transfer to the next votes (with `Carry` for fast) and later votes unless below `fc_root`; live locks from `r` are clean; honest proposals from `r` follow every earlier-label live lock | Healing | `Consensus.Goldilocks.Healing.CleanLockDrain` |
 | HS.3 | CLAIMS HS.3 | **frozen-tree agreement**: an honest ready proposal in a stable phase, with relay from the previous freeze and the lock premise, gets every honest vote of its slot with its ancestry retained; after `r` (settled, `Prop⁺`) without the lock premise, and later votes and proposal parents extend it | Healing | `Consensus.Goldilocks.Healing.FrozenTreeAgreement` |
 | HS.4 | CLAIMS HS.4 | **common path and actual-report acquisition**: the phase ends by `w + D` or a unanimous honest proposal `W` at height `h ∈ {ℓ, m}` with every honest validator holding a source with its entry or a matching row by `v = t_s + 6Δ`, later votes and parents extending `W`; the client subclaim (P1/P2) | Healing | `Consensus.Goldilocks.Healing.CommonPathAcquisition`, `Consensus.Goldilocks.Healing.PhaseServiceStatements` |
+| — | CLAIMS §"O.1" (draft 9: `Rec`, `UPat`, constants) | `⌈x/4Δ⌉` in slots; `b₀`, `L_old`, `r_old`, `M*`, `Z`, `T_rec`, `R_*`; the recovery predicate `Rec(t₀)` ((a), (c): C1.1's `Clean(s, m, B)` for every honest fast confirmation written after `t₀` and every `m > s`; (b): compatible honest sources after `t₀`, clean records at the first source of an entry entered after `t₀`); the pattern regime `UPat(W, M)` (with C1.2's `c_F`, `k_F`); C1.2's premises with `UPat` and `M ≥ M*` | Healing | `Consensus.Goldilocks.Healing.slotsCeil`, `Consensus.Goldilocks.Healing.acqSlots`, `Consensus.Goldilocks.Healing.L_old`, `Consensus.Goldilocks.Healing.oldSlots`, `Consensus.Goldilocks.Healing.Mstar`, `Consensus.Goldilocks.Healing.Zreset`, `Consensus.Goldilocks.Healing.T_rec`, `Consensus.Goldilocks.Healing.Rstar`, `Consensus.Goldilocks.Healing.Rec`, `Consensus.Goldilocks.Healing.UPat`, `Consensus.Goldilocks.Healing.PatternPremises` |
+| O.1 (node) | CLAIMS node O.1 (draft 9; reviewed conditional assembly, workbench#27) | **recovery under a bounded uniform pattern**: `Rec(ḡ + T_rec)`, and high honest `Σ.F` from `T_F = ḡ + T_rec − 12Δ` (not O.1's target) | Healing | `Consensus.Goldilocks.Healing.PatternRecovery` |
+| C1.3 | CLAIMS C1.3 (draft 9) | **recurring finalizing coverage**: from `R_*`, an honest proposal released in `[t, t + 4Δ(W + 1 + M)]` is ⪯ every honest `Σ.F` from `t + 4Δ(W + 1 + M) + Δ` | Healing | `Consensus.Goldilocks.Healing.FinalizingCoverage` |
+| HR.5 | CLAIMS HR.5 (G1.9 (b) after the reset) | **cache acceptance after the reset**: an honest acceptance after `a_z` of a block whose `σ.F` is high puts it under `Σ.F` | Healing | `Consensus.Goldilocks.Healing.CacheAcceptanceAfterReset`, `Consensus.Goldilocks.Healing.RecoveryStatements` |
 
 Modelling choices:
 
@@ -556,6 +560,17 @@ Modelling choices:
   suppressing earlier report "occurred after P's creation, not in the archival prefix"; consensus-lean#88). HS.3's "acceptance relay from the previous freeze" is `t_{s−1} + 3Δ ≥ ḡ` (relay holds
   from `ḡ` under `Healthy`). HS.4's "by `v`" is at a cut at a time `≤ v`. HS.0 and HS.5's `Producer(A)` are HR.3
   (a), (b); HS.5's other conclusions (PhaseService, continuation, row delivery, consumption) are not transcribed yet.
+- **Recovery** (`Statements/Healing/Recovery`): `UPat` is the regime node O.1 is proved under, not O.1's target, which
+  stays open (claims §"O.1", Status). `Rec` (a) and (c) are C1.1's `Clean(s, m, B)` for every `m > s`, at every
+  honest fast confirmation written after `t₀` by a joined node (`StoredFastLockAt`, of any label: a regular write of
+  label `s` happens at `t_s + 6Δ`). `Rec` (b)'s served entry is read through the compatibility of the honest sources
+  after `t₀` (part of `Rec`): an entry entered after `t₀` (slot start `> t₀`) is the entry at its height of such a
+  source's chain. C1.3 is stated here (not in `Compose/Service`) because it shares `UPat` and the constants with
+  node O.1, with its "accepted block whose state finalizes a block extending `P`". `W ≥ 1` is a premise
+  (`PatternPremises`). `Rec` (b) covers every entry entered after `t₀` at a post-`t₀` honest source's height; it is
+  the claims' served entry when the earliest honest source reaching `h` is after `t₀`, and an earlier source of
+  another entry at `h` would be low (HR.1 (a)) or a comparable high origin (HR.4 (R1)): a reading to check against
+  node O.1's proof. `M*`'s ceilings are integer ceilings of slots of `4Δ`.
 - **Witnesses** (`ConsensusLeanTest/GoldilocksHealing`): kind (a) for HR.2's premises and the phase vocabulary, and
   for `Catch` and `NoRestartAfter` with the run laws, and for `Healthy(0)` with `Catch` and `NoRestartAfter` on the
   infinite periodic `idleAC` run; arithmetic checks of `C_HS`, HR.3's bound and `T_heal`. No witness over Goldilocks
