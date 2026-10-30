@@ -151,13 +151,14 @@ section ProgressFit
 requirement does not fit `.sized (max 1 n)` once `n ≥ 2`. -/
 theorem allProposers_unfit {O : OutputSchema} {Info : Type} [DecidableEq Info]
     [Countable Info] {F : ShapeFamily O Info}
-    (hF : ∀ pub, (F pub).skel.proposerSel = .sized (max 1 pub.n))
+    (hF : ∀ pub s, (F pub).skel.proposerSel s = .sized (max 1 pub.n))
     (K : Contract ProgressReq) (cap : Capability) (i : K.Idx) (ρ : Recurrence)
     (hK : K.progress cap i = .recur ρ) : ¬ ProgressFits K F := by
   intro h
   have := h cap i ⟨2, 1, by decide⟩
   rw [hK] at this
-  change (F ⟨2, 1, by decide⟩).skel.proposerSel = .sized 1 at this
+  change ∀ s, (F ⟨2, 1, by decide⟩).skel.proposerSel s = .sized 1 at this
+  have := this 0
   rw [hF] at this
   cases this
 
@@ -169,7 +170,7 @@ theorem noProgressFit_contract (K : Contract ProgressReq) (cap : Capability) (i 
   intro h
   have := h cap i ⟨1, 1, by decide⟩
   rw [hK] at this
-  cases this
+  cases this 0
 
 /-- A bound on the validators not ready fits every skeleton (round robin). -/
 theorem notReadyAtMost_fits {n : Nat} (sk : Skeleton n) (m : ℕ+) :

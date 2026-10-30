@@ -17,7 +17,7 @@ def streamletGrid : TimeGrid := ⟨2⟩
 /-- The Streamlet skeleton. -/
 def streamletSkeleton (n : Nat) : Skeleton n where
   grid := streamletGrid
-  proposerSel := .sized 1
+  proposerSel := fun _ => .sized 1
   pollSel := .fixed ∅
   Kind := Unit
   decKind := inferInstance
@@ -36,7 +36,7 @@ abbrev streamletContract : Nat → Affine → Affine → Contract ProgressReq :=
 /-- The Streamlet progress fits every family with one proposer per slot. -/
 theorem streamletContract_progressFits {Info : Type} [DecidableEq Info] [Countable Info]
     (catchUp : Nat) (heal latency : Affine) (F : ShapeFamily bftCore Info)
-    (hsel : ∀ pub, (F pub).skel.proposerSel = .sized 1) :
+    (hsel : ∀ pub s, (F pub).skel.proposerSel s = .sized 1) :
     ProgressFits (streamletContract catchUp heal latency) F :=
   fun _ _ pub => hsel pub
 

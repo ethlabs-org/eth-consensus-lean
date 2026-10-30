@@ -71,7 +71,7 @@ def goldilocksGrid : TimeGrid := ⟨4⟩
 placeholder committee kinds at phases 1 and 2, every key in each. -/
 def goldilocksSkeleton (n : Nat) : Skeleton n where
   grid := goldilocksGrid
-  proposerSel := .sized 1
+  proposerSel := fun _ => .sized 1
   pollSel := .fixed ∅
   Kind := GKind
   decKind := inferInstance
@@ -186,7 +186,7 @@ theorem goldilocks_admissible (pp : FGSAParams) : (goldilocksContract pp).params
 /-- The Goldilocks progress fits every family with one proposer per slot. -/
 theorem goldilocks_progressFits {Info : Type} [DecidableEq Info] [Countable Info]
     (pp : FGSAParams) (F : ShapeFamily goldilocksSchema Info)
-    (hsel : ∀ pub, (F pub).skel.proposerSel = .sized 1) :
+    (hsel : ∀ pub s, (F pub).skel.proposerSel s = .sized 1) :
     ProgressFits (goldilocksContract pp) F := by
   intro cap k pub
   cases cap <;> exact hsel pub

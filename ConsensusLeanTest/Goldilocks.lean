@@ -191,7 +191,7 @@ theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Countable Info]
   let key : Fin (Fintype.card (Fin 5)) ≃ Fin 5 := (Fintype.equivFin (Fin 5)).symm
   have hn : 5 ≤ Fintype.card (Fin 5) := by simp
   have ha := goldilocks_admissible pp
-  have hf := goldilocks_progressFits pp F (fun pub => by rw [hb pub]; rfl)
+  have hf := goldilocks_progressFits pp F (fun pub _ => by rw [hb pub]; rfl)
   have hL := progLen_nonneg F K .available k (⟨Δ, hΔ, allAwake⟩ : Env (Fin 5))
   have hlat : 0 ≤ (K.params.latency .available k : Time) * Δ := mul_nonneg (by positivity) hΔ.le
   have hheal : 0 ≤ (max g 0 + (K.params.heal .available k : Time) * Δ) :=

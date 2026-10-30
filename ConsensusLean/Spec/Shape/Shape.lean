@@ -35,16 +35,16 @@ inductive Step (Kind : Type) where
   | pollPropose
   | poll
 
-/-- Public block choices of a shape: the time grid, one
-proposer selection for every slot, the poll selection (`.fixed ∅` disables
-polling), a finite list of committee kinds, each with a phase (its
-`Δ`-offset within the slot) and a selection, and the order of the steps
-within a tick. -/
+/-- Public block choices of a shape: the time grid, a proposer selection
+per slot, the poll selection (`.fixed ∅` disables polling), a finite list of
+committee kinds, each with a phase (its `Δ`-offset within the slot) and a
+selection, and the order of the steps within a tick. -/
 structure Skeleton (n : Nat) : Type 1 where
   /-- The time grid. -/
   grid : TimeGrid
-  /-- Who may propose at a slot (the same specification for every slot). -/
-  proposerSel : SelSpec n
+  /-- Who may propose at slot `s`: a fixed schedule (`fun s => .fixed {p s}`)
+  or a free choice of the run (`fun _ => .sized 1`). -/
+  proposerSel : Slot → SelSpec n
   /-- Who may sign in the poll role; `.fixed ∅` disables poll signatures (the
   poll steps' state updates still run). -/
   pollSel : SelSpec n

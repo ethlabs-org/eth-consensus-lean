@@ -21,12 +21,15 @@ open Blocks
 variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 
 /-- A progress requirement fits a skeleton: a recurrence needs one proposer
-per slot (`.sized 1`, independent of the population: with every key selected,
-a faulty validator is always among the proposers and recurrence has no witness,
-`allProposers_no_witness`); a bound on the validators not ready fits every
-skeleton. -/
+chosen by the run at every slot (`.sized 1`, independent of the population:
+with every key selected, a faulty validator is always among the proposers and
+recurrence has no witness, `allProposers_no_witness`; a fixed schedule is not
+admitted either: the generic bad-proposer witness needs a schedule-side
+condition, since a round-robin schedule whose period is coprime to the window
+puts every validator at the periodic bad slots, and a constant schedule has
+no witness at all); a bound on the validators not ready fits every skeleton. -/
 def ProgressReq.Fits {n : Nat} (sk : Skeleton n) : ProgressReq → Prop
-  | .recur _ => sk.proposerSel = .sized 1
+  | .recur _ => ∀ s, sk.proposerSel s = .sized 1
   | .notReadyAtMost _ => True
 
 /-- Every progress requirement of the contract fits the family's skeleton at

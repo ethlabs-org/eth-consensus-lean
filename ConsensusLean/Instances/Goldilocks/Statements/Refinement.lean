@@ -14,9 +14,9 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `Refinement
 (`Spec/Run`, `GoldilocksRun`).
 
 * **Simulation** (`Simulates`, `EngineSimulatesNode`). Every valid engine run (`ExecutionValid`)
-  of the family whose proposer selection realizes the setup's schedule (`SelIs`; the shape has
-  no access to the run's selection, and the spec's node proposes by its own `proposer`) is
-  simulated by a run of the spec's node: a `GoldilocksRun` at the engine's digest (`digestOf`)
+  of the family is simulated by a run of the spec's node (the skeleton's proposer selection is
+  the setup's schedule, `fixed {proposer s}` at every slot, so a valid run's proposer of a slot
+  is the spec node's own `proposer`): a `GoldilocksRun` at the engine's digest (`digestOf`)
   for the honest keys, with a monotone cut map `ι` from engine cuts to node cuts. The node state
   inside the shape's state agrees with the trace at every engine cut; each engine event is one
   group of the node (C0.4 kept: a tick at a public time is the node's tick with the engine's
@@ -78,11 +78,6 @@ def lastClock (v : V) : Nat → Time
     | some (.tick v' t) => if v' = v then t else lastClock v i
     | some (.restart v' t) => if v' = v then t else lastClock v i
     | _ => lastClock v i
-
-/-- The run's proposer selection realizes the setup's schedule: the proposer role of slot `s`
-selects exactly `proposer s` (the `.poll` role is everyone by `SelValid`). -/
-def SelIs : Prop :=
-  ∀ s : Nat, rho.sel (.proposer s) = {(S.params (pubOf E) hn).toParams.proposer s}
 
 /-- The object `o` of node `v`, queued at `τ`, is released at the first time from `τ` on at which
 `v` is awake, if there is one within the horizon: a body emitted inside a tick goes out in that
@@ -171,10 +166,10 @@ structure Simulates (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (ι 
 
 variable (V) in
 /-- **The engine simulates the node.** Every valid engine run of the family in any environment
-whose proposer selection realizes the setup is simulated by a run of the spec's node. -/
+is simulated by a run of the spec's node. -/
 def EngineSimulatesNode : Prop :=
   ∀ (E : Env V) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V),
-    rho.ExecutionValid → SelIs S rho hn → ∃ tr ι, Simulates S rho hn tr ι
+    rho.ExecutionValid → ∃ tr ι, Simulates S rho hn tr ι
 
 variable (V) in
 /-- **Reads are the shape's outputs.** The chain trace of a run reads, at every cut, the output
@@ -216,13 +211,12 @@ def EvidenceInView : Prop :=
 
 variable (V) in
 /-- **G1.5 (c), finalized accountability** (the run-level G1.3; target `finalized_accountable`).
-In a valid run whose selection realizes the setup, without an observed hash collision and with no
-observed item hashing to the genesis root, two honest finalized reads are compatible (one a
-prefix of the other), or at least `2q − n` validators are slashable on the two readers' views
-together. -/
+In a valid run without an observed hash collision and with no observed item hashing to the
+genesis root, two honest finalized reads are compatible (one a prefix of the other), or at least
+`2q − n` validators are slashable on the two readers' views together. -/
 def FinalizedAccountable : Prop :=
   ∀ (E : Env V) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V),
-    rho.ExecutionValid → SelIs S rho hn → ¬ rho.HashCollision → GenesisFresh S rho →
+    rho.ExecutionValid → ¬ rho.HashCollision → GenesisFresh S rho →
     ∀ u ∈ rho.honest, ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length, ∀ j ≤ rho.events.length,
       Consensus.Compatible ((chainTrace rho).read .finalized u i)
           ((chainTrace rho).read .finalized v j) ∨

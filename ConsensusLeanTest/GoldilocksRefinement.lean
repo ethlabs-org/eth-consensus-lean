@@ -6,12 +6,13 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Refinement
 
 Labelled by kind (CONTRIBUTING "Statements"):
 
-* (a) `selIs_selValid`: a run's selection that realizes the setup's schedule (`SelIs`) and takes
-  everyone in the poll role is admitted by the engine (`SelValid`), so the simulation hypothesis
-  `SelIs` of `EngineSimulatesNode` and `FinalizedAccountable` is satisfiable together with
-  `ExecutionValid.selValid`: the skeleton's `proposerSel := .sized 1` admits the singleton
-  `{proposer s}` (`card = min 1 n` for `n ≥ 1`), `pollSel := .fixed univ` admits `univ`, and
-  there are no committee kinds. -/
+* (a) `selValid_proposer`: in a run admitted by the engine (`SelValid`, part of
+  `ExecutionValid`), the proposer role of every slot selects exactly the setup's proposer of
+  that slot, the spec node's own `proposer`: the skeleton's per-slot `proposerSel` is the fixed
+  singleton `{proposer s}` (for `n ≥ 1`). This is the schedule hypothesis `SelIs` of the earlier
+  statements, now a consequence of validity rather than a premise.
+* (b) `selValid_exists`: a valid selection exists (the schedule with everyone polling), so
+  `SelValid` is satisfiable. -/
 
 namespace Consensus.Goldilocks.Refinement.Test
 
@@ -21,18 +22,44 @@ open Consensus.Model (pubOf SelSpec)
 variable {V : Type} [Fintype V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- A selection realizing the setup's schedule with everyone polling is admissible. -/
-theorem selIs_selValid (hsel : SelIs S rho hn) (hpoll : rho.sel .poll = Finset.univ) :
-    rho.SelValid := by
+/-- The skeleton's proposer selection at slot `s` is the singleton of the setup's proposer. -/
+theorem skeleton_proposerSel (s : Nat) :
+    (family S (pubOf E)).skel.proposerSel s =
+      .fixed {(S.params (pubOf E) hn).toParams.proposer s} := by
+  change SelSpec.fixed _ = _
+  congr 1
+  ext k
+  constructor
+  · intro hk
+    exact Finset.mem_singleton.mpr (Fin.ext (Finset.mem_filter.mp hk).2)
+  · intro hk
+    exact Finset.mem_filter.mpr
+      ⟨Finset.mem_univ _, congrArg Fin.val (Finset.mem_singleton.mp hk)⟩
+
+/-- In an admitted run, the proposer role of slot `s` selects exactly the setup's proposer. -/
+theorem selValid_proposer (hsel : rho.SelValid) (s : Nat) :
+    rho.sel (.proposer s) = {(S.params (pubOf E) hn).toParams.proposer s} := by
+  have h := hsel (.proposer s)
+  change ((family S (pubOf E)).skel.proposerSel s).Admits _ at h
+  rw [skeleton_proposerSel S hn s] at h
+  exact h
+
+include hn in
+/-- The schedule with everyone polling is an admissible selection. -/
+theorem selValid_exists :
+    ∃ sel : (Model.protoOf (compiled (family S)) E).Role → Finset (Fin (Fintype.card V)),
+      (Model.protoOf (compiled (family S)) E).SelAdmits sel := by
+  refine ⟨fun r => match r with
+    | .proposer s => {(S.params (pubOf E) hn).toParams.proposer s}
+    | .duty _ k => k.elim
+    | .poll => Finset.univ, ?_⟩
   intro r
   cases r with
   | proposer s =>
-    change (SelSpec.sized 1).Admits _
-    rw [SelSpec.Admits, hsel s, Nat.min_eq_left hn]
-    exact Finset.card_singleton _
+    change ((family S (pubOf E)).skel.proposerSel s).Admits _
+    rw [skeleton_proposerSel S hn s]
+    rfl
   | duty _ k => exact k.elim
-  | poll =>
-    change (SelSpec.fixed Finset.univ).Admits _
-    rw [SelSpec.Admits, hpoll]
+  | poll => rfl
 
 end Consensus.Goldilocks.Refinement.Test

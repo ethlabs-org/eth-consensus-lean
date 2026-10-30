@@ -27,7 +27,7 @@ open Consensus.Model (Public Key Obj pubOf protoOf sysOf)
 disabled, one committee kind (phase 0, every key). -/
 def trivialSkel (n : Nat) : Skeleton n where
   grid := ⟨1⟩
-  proposerSel := .sized 1
+  proposerSel := fun _ => .sized 1
   pollSel := .fixed ∅
   Kind := Unit
   decKind := inferInstance
@@ -114,7 +114,7 @@ theorem poll_disabled_forged {V : Type} [Fintype V] {E : Env V}
 key may poll, no committee kinds. -/
 def pollSkel (n : Nat) : Skeleton n where
   grid := ⟨4⟩
-  proposerSel := .fixed ∅
+  proposerSel := fun _ => .fixed ∅
   pollSel := .fixed Finset.univ
   Kind := Empty
   decKind := inferInstance

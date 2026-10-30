@@ -92,7 +92,7 @@ theorem ctrlK_admissible : ctrlK.params.Admissible := by
 
 theorem ctrlK_progressFits : ProgressFits ctrlK ctrlFamily := by
   intro cap k pub
-  cases cap <;> rfl
+  cases cap <;> intro _ <;> rfl
 
 /-- The control recurrences tolerate any number of validators not ready and a
 bad proposer slot in every window (gap `2` for one proposer, `3` for two

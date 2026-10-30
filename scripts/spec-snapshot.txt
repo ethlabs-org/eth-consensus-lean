@@ -1663,8 +1663,8 @@ def Consensus.Shape.Skeleton.proposeAt.match_1 #2447472902/914344057
 def Consensus.Shape.Skeleton.role : {n : Nat} → (sk : Consensus.Shape.Skeleton n) → Consensus.Shape.ShapeDuty sk.Kind → Consensus.Shape.ShapeRole sk.Kind := fun {n} sk x => Consensus.Shape.Skeleton.role.match_1.{1} sk (fun x => Consensus.Shape.ShapeRole sk.Kind) x (fun s hs => Consensus.Shape.ShapeRole.proposer s) (fun s k => Consensus.Shape.ShapeRole.duty s k) (fun t => Consensus.Shape.ShapeRole.poll) fun t => Consensus.Shape.ShapeRole.poll
   #1200018401/369170012
 def Consensus.Shape.Skeleton.role.match_1 #2199448601/874371809
-def Consensus.Shape.Skeleton.selSpec : {n : Nat} → (sk : Consensus.Shape.Skeleton n) → Consensus.Shape.ShapeRole sk.Kind → Consensus.Model.SelSpec n := fun {n} sk x => Consensus.Shape.Skeleton.selSpec.match_1.{1} sk (fun x => Consensus.Model.SelSpec n) x (fun s => sk.proposerSel) (fun s k => sk.kindSel k) fun _ => sk.pollSel
-  #4223809919/3605924932
+def Consensus.Shape.Skeleton.selSpec : {n : Nat} → (sk : Consensus.Shape.Skeleton n) → Consensus.Shape.ShapeRole sk.Kind → Consensus.Model.SelSpec n := fun {n} sk x => Consensus.Shape.Skeleton.selSpec.match_1.{1} sk (fun x => Consensus.Model.SelSpec n) x (fun s => sk.proposerSel s) (fun s k => sk.kindSel k) fun _ => sk.pollSel
+  #4223809919/656027313
 def Consensus.Shape.Skeleton.selSpec.match_1 #850285561/578697834
 def Consensus.Shape.Skeleton.stepAt : {n : Nat} → (sk : Consensus.Shape.Skeleton n) → Consensus.Time → Consensus.Time → Consensus.Shape.Step sk.Kind → List.{0} (Consensus.Shape.ShapeDuty sk.Kind) := fun {n} sk Δ t x => Consensus.Shape.Skeleton.stepAt.match_1.{1} sk (fun x => List.{0} (Consensus.Shape.ShapeDuty sk.Kind)) x (fun _ => sk.proposeAt Δ t) (fun k => sk.kindAt Δ t k) (fun _ => ite.{1} (LE.le.{0} 0 t) (List.cons.{0} (Consensus.Shape.ShapeDuty.pollPropose (Int.toNat t)) List.nil.{0}) List.nil.{0}) fun _ => ite.{1} (LE.le.{0} 0 t) (List.cons.{0} (Consensus.Shape.ShapeDuty.poll (Int.toNat t)) List.nil.{0}) List.nil.{0}
   #3479542475/1858100806
@@ -1683,8 +1683,8 @@ def Consensus.Shape.withMempool : {σ α β : Type} → List.{0} Consensus.Tx �
 ## ConsensusLean.Spec.Shape.ProgressFit
 def Consensus.Shape.ProgressFits : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → Consensus.Contract Consensus.Blocks.ProgressReq → Consensus.Shape.ShapeFamily O Info → Prop := fun {O} {Info} [DecidableEq.{1} Info] [Countable.{1} Info] K F => ∀ (cap : Consensus.Capability) (i : K.Idx) (pub : Consensus.Model.Public), Consensus.Shape.ProgressReq.Fits (F pub).skel (K.progress cap i)
   #2402724129/3603318185
-def Consensus.Shape.ProgressReq.Fits : {n : Nat} → Consensus.Shape.Skeleton n → Consensus.Blocks.ProgressReq → Prop := fun {n} sk x => Consensus.Shape.ProgressReq.Fits.match_1.{1} (fun x => Prop) x (fun ρ => Eq.{1} sk.proposerSel (Consensus.Model.SelSpec.sized 1)) fun m => True
-  #1726780601/2934594614
+def Consensus.Shape.ProgressReq.Fits : {n : Nat} → Consensus.Shape.Skeleton n → Consensus.Blocks.ProgressReq → Prop := fun {n} sk x => Consensus.Shape.ProgressReq.Fits.match_1.{1} (fun x => Prop) x (fun ρ => ∀ (s : Consensus.Blocks.Slot), Eq.{1} (sk.proposerSel s) (Consensus.Model.SelSpec.sized 1)) fun m => True
+  #1726780601/3220577058
 def Consensus.Shape.ProgressReq.Fits.match_1 #1271716835/4162592156
 def Consensus.Shape.ProgressReq.Tolerates : Nat → Consensus.Blocks.ProgressReq → Prop := fun N x => Consensus.Shape.ProgressReq.Fits.match_1.{1} (fun x => Prop) x (fun ρ => ρ.BadSlotSlack) fun m => LE.le.{0} N m.val
   #1917635103/628118423
@@ -1874,10 +1874,10 @@ induct Consensus.Shape.Skeleton : Nat → Type 1
   #888224850/-
 def Consensus.Shape.Skeleton.Kind : {n : Nat} → Consensus.Shape.Skeleton n → Type := fun n self => self.4
   #1537548604/3957236947
-def Consensus.Shape.Skeleton._sizeOf_1 #1266935606/2638966193
+def Consensus.Shape.Skeleton._sizeOf_1 #1266935606/387715776
 def Consensus.Shape.Skeleton._sizeOf_inst #3179161270/3095909086
-def Consensus.Shape.Skeleton.casesOn : {n : Nat} → {motive : Consensus.Shape.Skeleton n → Sort u} → (t : Consensus.Shape.Skeleton n) → ((grid : Consensus.Blocks.TimeGrid) → (proposerSel pollSel : Consensus.Model.SelSpec n) → (Kind : Type) → (decKind : DecidableEq.{1} Kind) → (kinds : List.{0} Kind) → (phase : Kind → Nat) → (kindSel : Kind → Consensus.Model.SelSpec n) → (order : List.{0} (Consensus.Shape.Step Kind)) → motive { grid := grid, proposerSel := proposerSel, pollSel := pollSel, Kind := Kind, decKind := decKind, kinds := kinds, phase := phase, kindSel := kindSel, order := order }) → motive t := fun {n} {motive} t mk => Consensus.Shape.Skeleton.rec.{u} (fun grid proposerSel pollSel Kind decKind kinds phase kindSel order => mk grid proposerSel pollSel Kind decKind kinds phase kindSel order) t
-  #1053559330/3288880171
+def Consensus.Shape.Skeleton.casesOn : {n : Nat} → {motive : Consensus.Shape.Skeleton n → Sort u} → (t : Consensus.Shape.Skeleton n) → ((grid : Consensus.Blocks.TimeGrid) → (proposerSel : Consensus.Blocks.Slot → Consensus.Model.SelSpec n) → (pollSel : Consensus.Model.SelSpec n) → (Kind : Type) → (decKind : DecidableEq.{1} Kind) → (kinds : List.{0} Kind) → (phase : Kind → Nat) → (kindSel : Kind → Consensus.Model.SelSpec n) → (order : List.{0} (Consensus.Shape.Step Kind)) → motive { grid := grid, proposerSel := proposerSel, pollSel := pollSel, Kind := Kind, decKind := decKind, kinds := kinds, phase := phase, kindSel := kindSel, order := order }) → motive t := fun {n} {motive} t mk => Consensus.Shape.Skeleton.rec.{u} (fun grid proposerSel pollSel Kind decKind kinds phase kindSel order => mk grid proposerSel pollSel Kind decKind kinds phase kindSel order) t
+  #1942117054/99984770
 def Consensus.Shape.Skeleton.ctorIdx #1266935606/1859578246
 def Consensus.Shape.Skeleton.decKind : {n : Nat} → (self : Consensus.Shape.Skeleton n) → DecidableEq.{1} self.Kind := fun n self => self.5
   #3590490503/265380765
@@ -1887,17 +1887,17 @@ def Consensus.Shape.Skeleton.kindSel : {n : Nat} → (self : Consensus.Shape.Ske
   #3105211736/3929842574
 def Consensus.Shape.Skeleton.kinds : {n : Nat} → (self : Consensus.Shape.Skeleton n) → List.{0} self.Kind := fun n self => self.6
   #3140574569/101568460
-ctor Consensus.Shape.Skeleton.mk : {n : Nat} → Consensus.Blocks.TimeGrid → Consensus.Model.SelSpec n → Consensus.Model.SelSpec n → (Kind : Type) → DecidableEq.{1} Kind → List.{0} Kind → (Kind → Nat) → (Kind → Consensus.Model.SelSpec n) → List.{0} (Consensus.Shape.Step Kind) → Consensus.Shape.Skeleton n
-  #3589406027/-
-def Consensus.Shape.Skeleton.mk._flat_ctor #3589406027/2199156718
-theorem Consensus.Shape.Skeleton.mk.inj #4053329399/-
-theorem Consensus.Shape.Skeleton.mk.injEq #3048402826/-
-def Consensus.Shape.Skeleton.mk.noConfusion : {n : Nat} → {P : Sort u} → {grid : Consensus.Blocks.TimeGrid} → {proposerSel pollSel : Consensus.Model.SelSpec n} → {Kind : Type} → {decKind : DecidableEq.{1} Kind} → {kinds : List.{0} Kind} → {phase : Kind → Nat} → {kindSel : Kind → Consensus.Model.SelSpec n} → {order : List.{0} (Consensus.Shape.Step Kind)} → {grid' : Consensus.Blocks.TimeGrid} → {proposerSel' pollSel' : Consensus.Model.SelSpec n} → {Kind' : Type} → {decKind' : DecidableEq.{1} Kind'} → {kinds' : List.{0} Kind'} → {phase' : Kind' → Nat} → {kindSel' : Kind' → Consensus.Model.SelSpec n} → {order' : List.{0} (Consensus.Shape.Step Kind')} → Eq.{2} { grid := grid, proposerSel := proposerSel, pollSel := pollSel, Kind := Kind, decKind := decKind, kinds := kinds, phase := phase, kindSel := kindSel, order := order } { grid := grid', proposerSel := proposerSel', pollSel := pollSel', Kind := Kind', decKind := decKind', kinds := kinds', phase := phase', kindSel := kindSel', order := order' } → (Eq.{1} grid grid' → HEq.{1} proposerSel proposerSel' → HEq.{1} pollSel pollSel' → Eq.{2} Kind Kind' → HEq.{1} decKind decKind' → HEq.{1} kinds kinds' → HEq.{1} phase phase' → HEq.{1} kindSel kindSel' → HEq.{1} order order' → P) → P := fun {n} {P} {grid} {proposerSel pollSel} {Kind} {decKind} {kinds} {phase} {kindSel} {order} {grid'} {proposerSel' pollSel'} {Kind'} {decKind'} {kinds'} {phase'} {kindSel'} {order'} eq k => id.{u} (Consensus.Shape.Skeleton.noConfusion.{u} ⋯ ⋯ k)
-  #1980447766/4266230627
-theorem Consensus.Shape.Skeleton.mk.sizeOf_spec #4032386812/-
+ctor Consensus.Shape.Skeleton.mk : {n : Nat} → Consensus.Blocks.TimeGrid → (Consensus.Blocks.Slot → Consensus.Model.SelSpec n) → Consensus.Model.SelSpec n → (Kind : Type) → DecidableEq.{1} Kind → List.{0} Kind → (Kind → Nat) → (Kind → Consensus.Model.SelSpec n) → List.{0} (Consensus.Shape.Step Kind) → Consensus.Shape.Skeleton n
+  #3159044903/-
+def Consensus.Shape.Skeleton.mk._flat_ctor #3159044903/3246236467
+theorem Consensus.Shape.Skeleton.mk.inj #1833013174/-
+theorem Consensus.Shape.Skeleton.mk.injEq #569284249/-
+def Consensus.Shape.Skeleton.mk.noConfusion : {n : Nat} → {P : Sort u} → {grid : Consensus.Blocks.TimeGrid} → {proposerSel : Consensus.Blocks.Slot → Consensus.Model.SelSpec n} → {pollSel : Consensus.Model.SelSpec n} → {Kind : Type} → {decKind : DecidableEq.{1} Kind} → {kinds : List.{0} Kind} → {phase : Kind → Nat} → {kindSel : Kind → Consensus.Model.SelSpec n} → {order : List.{0} (Consensus.Shape.Step Kind)} → {grid' : Consensus.Blocks.TimeGrid} → {proposerSel' : Consensus.Blocks.Slot → Consensus.Model.SelSpec n} → {pollSel' : Consensus.Model.SelSpec n} → {Kind' : Type} → {decKind' : DecidableEq.{1} Kind'} → {kinds' : List.{0} Kind'} → {phase' : Kind' → Nat} → {kindSel' : Kind' → Consensus.Model.SelSpec n} → {order' : List.{0} (Consensus.Shape.Step Kind')} → Eq.{2} { grid := grid, proposerSel := proposerSel, pollSel := pollSel, Kind := Kind, decKind := decKind, kinds := kinds, phase := phase, kindSel := kindSel, order := order } { grid := grid', proposerSel := proposerSel', pollSel := pollSel', Kind := Kind', decKind := decKind', kinds := kinds', phase := phase', kindSel := kindSel', order := order' } → (Eq.{1} grid grid' → HEq.{1} proposerSel proposerSel' → HEq.{1} pollSel pollSel' → Eq.{2} Kind Kind' → HEq.{1} decKind decKind' → HEq.{1} kinds kinds' → HEq.{1} phase phase' → HEq.{1} kindSel kindSel' → HEq.{1} order order' → P) → P := fun {n} {P} {grid} {proposerSel} {pollSel} {Kind} {decKind} {kinds} {phase} {kindSel} {order} {grid'} {proposerSel'} {pollSel'} {Kind'} {decKind'} {kinds'} {phase'} {kindSel'} {order'} eq k => id.{u} (Consensus.Shape.Skeleton.noConfusion.{u} ⋯ ⋯ k)
+  #3426039343/4029635745
+theorem Consensus.Shape.Skeleton.mk.sizeOf_spec #1193116538/-
 def Consensus.Shape.Skeleton.noConfusion : {P : Sort u} → {n : Nat} → {t : Consensus.Shape.Skeleton n} → {n' : Nat} → {t' : Consensus.Shape.Skeleton n'} → Eq.{1} n n' → HEq.{2} t t' → Consensus.Shape.Skeleton.noConfusionType.{u} P t t' := fun {P} {n} {t} {n'} {t'} eq_1 eq_2 => Eq.ndrec.{imax 2 u, 1} (motive := fun {n'} => {t' : Consensus.Shape.Skeleton n'} → HEq.{2} t t' → Consensus.Shape.Skeleton.noConfusionType.{u} P t t') (fun {t'} eq_2 => Eq.ndrec.{u, 2} (Consensus.Shape.Skeleton.casesOn.{u} t fun grid proposerSel pollSel Kind decKind kinds phase kindSel order k => k ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯) ⋯) eq_1 eq_2
-  #753950260/576400328
-def Consensus.Shape.Skeleton.noConfusionType #3087666765/1538239482
+  #753950260/817758455
+def Consensus.Shape.Skeleton.noConfusionType #3087666765/3364309228
 def Consensus.Shape.Skeleton.order : {n : Nat} → (self : Consensus.Shape.Skeleton n) → List.{0} (Consensus.Shape.Step self.Kind) := fun n self => self.9
   #2062078810/3399090593
 def Consensus.Shape.Skeleton.order._default #615219473/1530100910
@@ -1905,12 +1905,12 @@ def Consensus.Shape.Skeleton.phase : {n : Nat} → (self : Consensus.Shape.Skele
   #2677834326/310488681
 def Consensus.Shape.Skeleton.pollSel : {n : Nat} → Consensus.Shape.Skeleton n → Consensus.Model.SelSpec n := fun n self => self.3
   #432283391/109250741
-def Consensus.Shape.Skeleton.proposerSel : {n : Nat} → Consensus.Shape.Skeleton n → Consensus.Model.SelSpec n := fun n self => self.2
-  #432283391/2566173913
-recursor Consensus.Shape.Skeleton.rec : {n : Nat} → {motive : Consensus.Shape.Skeleton n → Sort u} → ((grid : Consensus.Blocks.TimeGrid) → (proposerSel pollSel : Consensus.Model.SelSpec n) → (Kind : Type) → (decKind : DecidableEq.{1} Kind) → (kinds : List.{0} Kind) → (phase : Kind → Nat) → (kindSel : Kind → Consensus.Model.SelSpec n) → (order : List.{0} (Consensus.Shape.Step Kind)) → motive { grid := grid, proposerSel := proposerSel, pollSel := pollSel, Kind := Kind, decKind := decKind, kinds := kinds, phase := phase, kindSel := kindSel, order := order }) → (t : Consensus.Shape.Skeleton n) → motive t
-  #3007405785/-
-def Consensus.Shape.Skeleton.recOn : {n : Nat} → {motive : Consensus.Shape.Skeleton n → Sort u} → (t : Consensus.Shape.Skeleton n) → ((grid : Consensus.Blocks.TimeGrid) → (proposerSel pollSel : Consensus.Model.SelSpec n) → (Kind : Type) → (decKind : DecidableEq.{1} Kind) → (kinds : List.{0} Kind) → (phase : Kind → Nat) → (kindSel : Kind → Consensus.Model.SelSpec n) → (order : List.{0} (Consensus.Shape.Step Kind)) → motive { grid := grid, proposerSel := proposerSel, pollSel := pollSel, Kind := Kind, decKind := decKind, kinds := kinds, phase := phase, kindSel := kindSel, order := order }) → motive t := fun {n} {motive} t mk => Consensus.Shape.Skeleton.rec.{u} mk t
-  #1053559330/2303576291
+def Consensus.Shape.Skeleton.proposerSel : {n : Nat} → Consensus.Shape.Skeleton n → Consensus.Blocks.Slot → Consensus.Model.SelSpec n := fun n self => self.2
+  #1807488171/2566173913
+recursor Consensus.Shape.Skeleton.rec : {n : Nat} → {motive : Consensus.Shape.Skeleton n → Sort u} → ((grid : Consensus.Blocks.TimeGrid) → (proposerSel : Consensus.Blocks.Slot → Consensus.Model.SelSpec n) → (pollSel : Consensus.Model.SelSpec n) → (Kind : Type) → (decKind : DecidableEq.{1} Kind) → (kinds : List.{0} Kind) → (phase : Kind → Nat) → (kindSel : Kind → Consensus.Model.SelSpec n) → (order : List.{0} (Consensus.Shape.Step Kind)) → motive { grid := grid, proposerSel := proposerSel, pollSel := pollSel, Kind := Kind, decKind := decKind, kinds := kinds, phase := phase, kindSel := kindSel, order := order }) → (t : Consensus.Shape.Skeleton n) → motive t
+  #285608390/-
+def Consensus.Shape.Skeleton.recOn : {n : Nat} → {motive : Consensus.Shape.Skeleton n → Sort u} → (t : Consensus.Shape.Skeleton n) → ((grid : Consensus.Blocks.TimeGrid) → (proposerSel : Consensus.Blocks.Slot → Consensus.Model.SelSpec n) → (pollSel : Consensus.Model.SelSpec n) → (Kind : Type) → (decKind : DecidableEq.{1} Kind) → (kinds : List.{0} Kind) → (phase : Kind → Nat) → (kindSel : Kind → Consensus.Model.SelSpec n) → (order : List.{0} (Consensus.Shape.Step Kind)) → motive { grid := grid, proposerSel := proposerSel, pollSel := pollSel, Kind := Kind, decKind := decKind, kinds := kinds, phase := phase, kindSel := kindSel, order := order }) → motive t := fun {n} {motive} t mk => Consensus.Shape.Skeleton.rec.{u} mk t
+  #1942117054/2749904262
 induct Consensus.Shape.Step : Type → Type
   #2330190150/-
 def Consensus.Shape.Step._sizeOf_1 #176479045/2576161415

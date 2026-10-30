@@ -23,7 +23,7 @@ five consecutive honest ready proposers (`Pattern.range 5`) in every window of
 `k` slots from `ready`.
 
 **Tendermint (decision T).** A poll shape: no slot proposals
-(`proposerSel := .fixed ∅`) and no committee kinds; every key may sign in the
+(`proposerSel := fun _ => .fixed ∅`) and no committee kinds; every key may sign in the
 poll role (`pollSel := .fixed univ`). Proposals come from the poll proposal duty
 (height in `pos`, round in `info`) and votes from the poll message duty, both
 at every unit tick; the round-robin leader of a round is computed locally from

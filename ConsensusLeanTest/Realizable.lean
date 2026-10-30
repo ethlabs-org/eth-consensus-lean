@@ -100,7 +100,7 @@ the proposers and `PatternRecurrence` (every selected key honest and ready)
 fails whenever one window fits in the horizon. -/
 theorem allProposers_no_witness {O : OutputSchema} {Info : Type} [DecidableEq Info]
     [Countable Info] {F : ShapeFamily O Info}
-    (hF : ∀ pub, (F pub).skel.proposerSel = .sized (max 1 pub.n))
+    (hF : ∀ pub s, (F pub).skel.proposerSel s = .sized (max 1 pub.n))
     {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (rho : Model.Run (compiled F) E)
     (hsel : rho.SelValid) (hf : rho.point.faulty.Nonempty) (π : Recurrence) (c start stop : Time)
     (hs : max start 0 + (π.len : Time) * (F (pubOf E)).skel.grid.slotLen E.Δ ≤ stop)
@@ -113,7 +113,8 @@ theorem allProposers_no_witness {O : OutputSchema} {Info : Type} [DecidableEq In
   obtain ⟨s, -, -, hall⟩ := h (max start 0) le_rfl hs hw
   obtain ⟨j, hj⟩ := List.exists_mem_of_ne_nil _ π.pattern.nonempty
   have hadm := hsel (ShapeRole.proposer (s + j))
-  change ((F (pubOf E)).skel.proposerSel).Admits (rho.sel (ShapeRole.proposer (s + j))) at hadm
+  change ((F (pubOf E)).skel.proposerSel (s + j)).Admits (rho.sel (ShapeRole.proposer (s + j)))
+    at hadm
   rw [hF] at hadm
   change (rho.sel (ShapeRole.proposer (s + j))).card = min (max 1 (Fintype.card V))
     (Fintype.card V) at hadm

@@ -96,13 +96,30 @@ where it is recorded; "Francesco" marks the owner's decisions.
   every proof of `1 ≤ n` (`FamilyState`; a `dite`/cast family was rejected). The simulation (`Simulates`) maps
   engine cuts to node cuts with a monotone `ι` and relates ticks, deliveries (`DeliverSeq`, one group per
   canonical object), restarts and releases; releases have the slack of the next awake tick (`ReleasedFrom`,
-  `RelayedFrom`). Two gaps recorded, not stated: the proposer selection is a hypothesis (`SelIs`; the generic
-  skeleton's `proposerSel` is one `SelSpec` for all slots, the shape cannot read the run's selection; it is
-  satisfiable with `SelValid`, `selIs_selValid` in `ConsensusLeanTest/GoldilocksRefinement.lean`; the
+  `RelayedFrom`). Two gaps recorded, not stated: the proposer selection was a hypothesis (`SelIs`; the generic
+  skeleton's `proposerSel` was one `SelSpec` for all slots, the shape cannot read the run's selection; the
   coordinator's decision: a per-slot selection in the generic skeleton as Refinement PR 3, [#93], then drop
-  `SelIs`, so that engine-level Goldilocks theorems do not carry it); the network premises' transport
+  `SelIs`, so that engine-level Goldilocks theorems do not carry it; done, see the next entry); the network
+  premises' transport
   (`Delivers` with `≤ max(a, g) + Δ` versus the spec's strict deadline; admission read as an instantaneous send
   versus the engine's relay at the next awake tick) is left to the regimes milestone.
+- 2026-10-30, amp-orbs (architecture), per-slot proposer selection ([#93]; `Spec/Shape/Shape`,
+  `Spec/Shape/ProgressFit`, `Refinement/Defs`). **The skeleton's proposer selection is per slot, and a
+  recurrence still fits only a run-chosen proposer.** `Skeleton.proposerSel : Slot → SelSpec n`, so that a
+  shape can fix its schedule (`fun s => .fixed {p s}`) or leave the choice to the run (`fun _ => .sized 1`); the
+  other instances are unchanged (`fun _ => …`). `ProgressReq.Fits (.recur _)` becomes `∀ s, proposerSel s =
+  .sized 1`: a `.fixed` schedule arm was rejected because the bad-proposer witness of `regimes_realizable`
+  (`badSel`: a faulty proposer at the periodic slots `s % P = P − 1`) needs a schedule-side condition: under a
+  round-robin schedule with period coprime to `P` those slots visit every validator, so the witness would need
+  everyone faulty, and a constant schedule has no witness at all; with the lifted condition `regimes_realizable` stays proved (its witnesses specialise the
+  fitting hypothesis per slot). Goldilocks' progress regimes are therefore stated in the instance (the claims'
+  ready-proposer premise), not through `.recur`; its `Spec/Baseline` skeleton keeps `fun _ => .sized 1`. The
+  Refinement skeleton sets `fun s => .fixed {proposer s}` and `SelIs` is dropped from `EngineSimulatesNode` and
+  `FinalizedAccountable`; `selValid_proposer` (`ConsensusLeanTest/GoldilocksRefinement.lean`) derives the former
+  hypothesis from `SelValid`. Baseline's `GoldilocksTarget` is not instantiated at the refinement family (its
+  bindings name `goldilocksSkeleton` over `goldilocksSchema`, and a fixed schedule does not fit its `.recur`
+  rows: a fixed schedule does not fit `.recur`, see above); the milestone statements are over `compiled (family S)` directly, and restating Baseline at the
+  refinement skeleton is left to the first-slice re-review ([#10], [#38]) as a recorded gap.
 
 - 2026-10-30, amp-orbs (coordinator), on the Regimes milestone (R.3). **Baseline's heal point is not raised to the
   proved bound.** The target pins `gHeal = max(g, 0) + (29 + B_H^F(k))·Δ` (from the FG-SA analysis); the only

@@ -100,7 +100,7 @@ theorem testK_progressTolerant : ProgressTolerant schema testK :=
 disabled, one committee kind (every key). -/
 def testSkel (n : Nat) : Skeleton n where
   grid := ⟨1⟩
-  proposerSel := .sized 1
+  proposerSel := fun _ => .sized 1
   pollSel := .fixed ∅
   Kind := Unit
   decKind := inferInstance

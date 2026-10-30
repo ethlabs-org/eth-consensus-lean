@@ -79,7 +79,7 @@ def OutputValid (rho : Model.Run (compiled F) E) (g : O.Id) : Prop :=
 /-- The requirement `π` with catch-up `c` on `[start, stop]` at point `p`, PKI
 `key` and selection `sel` of family `F`: pattern recurrence over the proposer
 roles of the grid, or at most `m` validators not ready. A shape without slot
-proposers (`proposerSel := .fixed ∅`, e.g. a poll shape) never meets a
+proposers (`proposerSel := fun _ => .fixed ∅`, e.g. a poll shape) never meets a
 recurrence with a window inside `[start, stop]` (`HonestReadyIn` needs a
 nonempty selection); acceptance therefore requires `.recur` only of shapes
 with one proposer per slot (`ProgressFits`). -/

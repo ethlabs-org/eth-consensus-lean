@@ -802,7 +802,6 @@ example := ``Consensus.Goldilocks.Refinement.honestKeys
 example := ``Consensus.Goldilocks.Refinement.digestOf
 example := ``Consensus.Goldilocks.Refinement.stateAt
 example := ``Consensus.Goldilocks.Refinement.lastClock
-example := ``Consensus.Goldilocks.Refinement.SelIs
 example := ``Consensus.Goldilocks.Refinement.ReleasedFrom
 example := ``Consensus.Goldilocks.Refinement.RelayedFrom
 example := ``Consensus.Goldilocks.Refinement.DeliverSeq
@@ -815,7 +814,9 @@ example := ``Consensus.Goldilocks.Refinement.ConflictsIff
 example := ``Consensus.Goldilocks.Refinement.EvidenceInView
 example := ``Consensus.Goldilocks.Refinement.FinalizedAccountable
 example := ``Consensus.Goldilocks.Refinement.RefinementStatements
-example := ``Consensus.Goldilocks.Refinement.Test.selIs_selValid
+example := ``Consensus.Goldilocks.Refinement.Test.skeleton_proposerSel
+example := ``Consensus.Goldilocks.Refinement.Test.selValid_proposer
+example := ``Consensus.Goldilocks.Refinement.Test.selValid_exists
 
 /-! ## Goldilocks (values and sheet) -/
 

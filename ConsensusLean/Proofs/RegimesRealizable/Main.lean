@@ -166,7 +166,7 @@ theorem badSel_apply (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V)
 
 /-- With one proposer per slot, the bad-slot selection is admissible. -/
 theorem badSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
-    (hn : 0 < Fintype.card V) (hF : (F (pubOf E)).skel.proposerSel = .sized 1) :
+    (hn : 0 < Fintype.card V) (hF : ∀ s, (F (pubOf E)).skel.proposerSel s = .sized 1) :
     (protoOf (compiled F) E).SelAdmits (badSel F E P hn) := by
   intro r
   rw [badSel_apply]
@@ -174,7 +174,7 @@ theorem badSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V
   · change ShapeRole (F (pubOf E)).skel.Kind at r
     cases r with
     | proposer s =>
-      change SelSpec.Admits (F (pubOf E)).skel.proposerSel _
+      change SelSpec.Admits ((F (pubOf E)).skel.proposerSel s) _
       rw [hF]
       change ({⟨0, hn⟩} : Finset (Fin (Fintype.card V))).card = min 1 (Fintype.card V)
       rw [Finset.card_singleton]; omega
@@ -385,12 +385,12 @@ omit [DecidableEq V] in
 /-- Under the extremal selection, a `.sized 1` proposer role selects exactly
 key `1`. -/
 theorem extremalSel_proposer_mem (F : ShapeFamily O Info) {E : Env V}
-    (hF : (F (pubOf E)).skel.proposerSel = .sized 1) (h2 : 2 ≤ Fintype.card V) (s : Slot)
-    (k : Fin (Fintype.card V)) :
+    (hF : ∀ s, (F (pubOf E)).skel.proposerSel s = .sized 1) (h2 : 2 ≤ Fintype.card V)
+    (s : Slot) (k : Fin (Fintype.card V)) :
     k ∈ extremalSel F E (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) ↔
       k.val = 1 := by
   rw [extremalSel_apply F E (.proposer s)]
-  change k ∈ extremalKeys (F (pubOf E)).skel.proposerSel ↔ _
+  change k ∈ extremalKeys ((F (pubOf E)).skel.proposerSel s) ↔ _
   rw [hF]
   have h1 : 1 < Fintype.card V := by omega
   simp only [extremalKeys_sized, h1, ↓reduceIte, Finset.mem_filter, Finset.mem_univ, true_and]
@@ -400,7 +400,7 @@ omit [DecidableEq V] in
 /-- Under the bad-slot selection with one proposer per slot, the proposer of
 a good slot is exactly key `1`. -/
 theorem badSel_good_mem (F : ShapeFamily O Info) {E : Env V} {P : Nat}
-    (hn : 0 < Fintype.card V) (hF : (F (pubOf E)).skel.proposerSel = .sized 1)
+    (hn : 0 < Fintype.card V) (hF : ∀ s, (F (pubOf E)).skel.proposerSel s = .sized 1)
     (h2 : 2 ≤ Fintype.card V) {s : Slot} (hs : s % P ≠ P - 1) (k : Fin (Fintype.card V)) :
     k ∈ badSel F E P hn (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) ↔
       k.val = 1 := by
@@ -467,7 +467,7 @@ theorem allAwake_holds (hf : ProgressFits K F) (cap : Capability) (i : K.Idx)
   cases K.progress cap i with
   | recur ρ =>
     intro hfit
-    change (F _).skel.proposerSel = .sized 1 at hfit
+    change ∀ s, (F _).skel.proposerSel s = .sized 1 at hfit
     apply patternRecurrence_of_all hΔ
     intro sl j _
     have hmem := extremalSel_proposer_mem F hfit (by omega) (sl + j)
@@ -520,7 +520,7 @@ theorem profile_holds (awake : V → Time → Bool)
   cases hreq : K.progress cap i with
   | recur ρ =>
     rw [hreq] at hfit ht
-    change (F _).skel.proposerSel = .sized 1 at hfit
+    change ∀ s, (F _).skel.proposerSel s = .sized 1 at hfit
     apply patternRecurrence_of_all hΔ
     intro sl j _
     have hmem := extremalSel_proposer_mem F hfit (by omega) (sl + j)
@@ -732,7 +732,7 @@ theorem bad_selection (awake : V → Time → Bool)
   cases hreq : K.progress cap i with
   | recur ρ =>
     rw [hreq] at hfit ht
-    change (F _).skel.proposerSel = .sized 1 at hfit
+    change ∀ s, (F _).skel.proposerSel s = .sized 1 at hfit
     change ρ.BadSlotSlack at ht
     have hP : ρ.pattern.span + 2 - 1 = ρ.pattern.span + 1 := by omega
     refine ⟨badSel F (realPoint key hn Δ hΔ awake H).env (ρ.pattern.span + 2) hn0,

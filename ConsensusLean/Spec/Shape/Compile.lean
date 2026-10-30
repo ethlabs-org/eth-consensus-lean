@@ -39,7 +39,7 @@ variable {n : Nat} (sk : Skeleton n)
 
 /-- The selection specification of each role. -/
 def selSpec : ShapeRole sk.Kind → SelSpec n
-  | .proposer _ => sk.proposerSel
+  | .proposer s => sk.proposerSel s
   | .duty _ k => sk.kindSel k
   | .poll => sk.pollSel
 

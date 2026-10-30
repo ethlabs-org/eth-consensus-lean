@@ -219,13 +219,14 @@ def blockOf (d : Nat) (h : Header Info) (k : Fin sp.n) (atts : List (FG.Att sp.n
     (p : Payload sp.n) : Blk sp :=
   ⟨d, parentRoot sp.genesisRoot h.parent, h.pos, k, h.input, atts, p⟩
 
-/-- The skeleton: slots of `4Δ`, one proposer per slot, everyone in the poll role, no committee
-kinds; two poll steps (the release of the bodies queued since the last tick), the node's tick as
-the poll proposal step, the slot proposal, then two poll steps (the FG update and the release of
-the tick's bodies). -/
-def skeleton (n : Nat) : Skeleton n where
+/-- The skeleton at the proposer schedule `proposer` (an index reduced modulo `n`, as in
+`Setup`): slots of `4Δ`, the schedule's proposer at every slot (the key `proposer s % n`; no key
+when `n = 0`), everyone in the poll role, no committee kinds; two poll steps (the release of the
+bodies queued since the last tick), the node's tick as the poll proposal step, the slot proposal,
+then two poll steps (the FG update and the release of the tick's bodies). -/
+def skeleton (n : Nat) (proposer : Nat → Nat) : Skeleton n where
   grid := ⟨4⟩
-  proposerSel := .sized 1
+  proposerSel := fun s => .fixed (Finset.univ.filter fun k : Fin n => k.val = proposer s % n)
   pollSel := .fixed Finset.univ
   Kind := Empty
   decKind := inferInstance
@@ -462,7 +463,7 @@ noncomputable def restore (k : Fin sp.n) (d : State sp ro) (t : Time) : State sp
 variable (sp ro) in
 /-- The Goldilocks node as a chain shape over its public parameters. -/
 noncomputable def goldilocksShape : ChainShape sp.pub Out Info where
-  skel := skeleton sp.n
+  skel := skeleton sp.n fun s => (sp.toParams.proposer s).val
   State := State sp ro
   Body := Body
   Durable := State sp ro
@@ -535,7 +536,7 @@ def FamilyState (S : Setup) (pub : Public) : Type :=
 output chains) output it at some proof of `1 ≤ n` and nothing without one. -/
 noncomputable def family (S : Setup) : ShapeFamily schema Info := fun pub =>
   let G := fun hn : 1 ≤ pub.n => goldilocksShape (S.params pub hn) (S.ro _)
-  { skel := skeleton pub.n
+  { skel := skeleton pub.n S.proposer
     State := FamilyState S pub
     Body := Body
     Durable := FamilyState S pub
