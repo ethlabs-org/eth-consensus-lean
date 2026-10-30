@@ -41,6 +41,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Node
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
@@ -67,6 +68,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Spec.Baseline
