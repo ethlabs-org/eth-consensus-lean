@@ -117,10 +117,10 @@ theorem result_transfer : ResultTransfer sp := by
     (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => hB.1) hdomA hviab
     (fun L hL => hlocks L hL) fun X' Cx hCx hp hCxC =>
       isBest_of_majority hΦ (merged_support_subset hrun.localRun hy hc (s + 1))
-        (fun B hB => hB.1.1) hCt
+        (fun B hB => hB.1.1)
         (result_supporters hrun hX hy hres hc hs hcarry hviab hd)
         (merged_voters_subset hrun.localRun hy hc hd)
-        (result_majority hrun.localRun hX hres) hCx hp hCxC
+        (result_majority hres) hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : C = getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
