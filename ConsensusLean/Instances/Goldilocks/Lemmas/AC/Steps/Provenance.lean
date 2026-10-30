@@ -336,6 +336,40 @@ private theorem provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
     · obtain ⟨j, hj, h⟩ := ih l hl
       exact ⟨j, hj.trans (Nat.lt_succ_self i), h⟩
 
+/-- Between cuts `a ≤ b`, the locks of an honest node sit below locks of cut `a` or below locks
+that the node wrote in `[a, b)`. -/
+private theorem fromP_between (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {a b : Nat} (hab : a ≤ b) :
+    FromP U (tr.state x a).locks (tr.state x b).locks fun s _ B => ∃ j, a ≤ j ∧ j < b ∧
+      ((∃ CV, OptimisticLockAt tr x j s B CV) ∨ ∃ ℓ, UpdateAt tr x j s ℓ) := by
+  induction b, hab using Nat.le_induction with
+  | base => exact FromP.of_eq rfl
+  | succ b hab ih =>
+    refine FromP.trans hr.coherent (ih.mono fun s f B ⟨j, h1, h2, h⟩ =>
+      ⟨j, h1, h2.trans (Nat.lt_succ_self b), h⟩) fun l hl => ?_
+    rw [Trace.state] at hl
+    split_ifs at hl with hnode
+    · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hnode.2
+      exact (call_fromP hr hx ⟨hnode.1, hℓ⟩ l hl).imp_right fun ⟨B, h, hB⟩ =>
+        ⟨B, ⟨b, hab, Nat.lt_succ_self b, h.2⟩, hB⟩
+    · exact Or.inl ⟨l, hl, rfl, rfl, Or.inl rfl⟩
+
+/-- **Lock provenance from a cut.** Every lock that an honest node holds at cut `b` sits below a
+lock of its slot that it held at cut `a ≤ b`, or below the block of a lock of its slot that the
+node wrote at a cut in `[a, b)`. -/
+theorem lock_provenance_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {a b : Nat} (hab : a ≤ b) :
+    ∀ l ∈ (tr.state x b).locks,
+      (∃ l' ∈ (tr.state x a).locks, l'.slot = l.slot ∧
+        (l' = l ∨ ∃ L ∈ U, L.root = l.block ∧ ∃ L' ∈ U, L'.root = l'.block ∧ Anc U L L')) ∨
+      ∃ j, a ≤ j ∧ j < b ∧ ∃ B,
+        ((∃ CV, OptimisticLockAt tr x j l.slot B CV) ∨ ∃ ℓ, UpdateAt tr x j l.slot ℓ) ∧
+        ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
+  intro l hl
+  rcases fromP_between hr hx hab l hl with ⟨l', hl', -, hs, hb⟩ | ⟨B, ⟨j, h1, h2, h⟩, hB⟩
+  · exact Or.inl ⟨l', hl', hs.symm, hb.imp Eq.symm id⟩
+  · exact Or.inr ⟨j, h1, h2, B, h, hB⟩
+
 /-- **Fast-lock provenance.** Every fast lock that an honest node holds before cut `i` sits below
 the block of a fast lock of its slot that the node wrote at an earlier cut. -/
 theorem fast_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
