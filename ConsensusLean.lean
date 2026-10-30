@@ -73,6 +73,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
