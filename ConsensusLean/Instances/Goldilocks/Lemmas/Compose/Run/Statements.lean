@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 
 public section
 

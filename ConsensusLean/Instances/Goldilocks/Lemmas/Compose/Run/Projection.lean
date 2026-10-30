@@ -42,10 +42,6 @@ theorem projAC_deadline (y : Fin P.n) (k : Nat) (τ : Time) :
     tr.projAC.deadline y k τ = tr.deadline y k τ P.Δ := by
   simp only [ACTrace.deadline, RunTrace.deadline, projAC_lastWake]
 
-/-- **The honest-object facts of the Goldilocks run's AC projection.** -/
-theorem goldilocks_ac_projection : GoldilocksACProjection := by
-  sorry
-
 /-- **`Sync` projects**: a send or admission of the AC projection is the run's, and its
 processing is the run's; an `ac_on_block(B)` follows the FG acceptance of `B` at its time, whose
 relay is an acceptance of `B`, followed at once by the AC call of `B` (not a restart, so with the
