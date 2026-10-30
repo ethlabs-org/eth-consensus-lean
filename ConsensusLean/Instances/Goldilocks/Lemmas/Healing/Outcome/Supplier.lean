@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 
 public section
 
@@ -41,8 +43,10 @@ With `b = slot(a) + 3` (`cleanLabel`) and `R = t_{b+2k+2}` (`drainTime`, the `R_
   report extending `P` (the supplier `entry_rows` consumes).
 
 Interfaces: every theorem but `stored_lock_below`, `drain_live_locks` and `clean_fast_transfer`
-(workbench#29 §9, over HR.4) is open; their paper proofs are workbench#6 §22–§23 and #7 §10,
-conditional on HR.4. -/
+(workbench#29 §9, over HR.4) and `clean_slow_transfer` is open; their paper proofs are
+workbench#6 §22–§23 and #7 §10, conditional on HR.4. `clean_slow_transfer` holds vacuously: a
+clean slow lock passes the fast test (every honest slot-`j` vote supports it, by the open
+`clean_result_next_votes`), so it is fast. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -200,6 +204,112 @@ theorem clean_fast_transfer (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} 
     SA.anc_tree_of_anc_U hU hΦ hΦU (SA.mem_of_anc hrO hOS.1) h (SA.mem_of_anc hBOΦ hOS.1),
     W, hWS, hWv, hBOΦ.trans hOW⟩
 
+/-! ### The clean slow transfer -/
+
+/-- **Clean regular-result transfer to the next slot** (open; the T3 paper orb's target): under the
+reset premises, every honest vote of slot `j + 1` extends the result `R` of an honest joined update
+of a clean label `j ≥ b` (fast, sub-fast or vetoed). -/
+theorem clean_result_next_votes (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+    {R : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hx : x ∈ H)
+    (hR : SA.ResultAt tr.projAC x i j R CV) (hb : cleanLabel sp a ≤ j) :
+    ∀ y ∈ H, ∀ k e, SA.VoteAt tr.projAC y k e → e.msg.slot = j + 1 →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg R := by
+  sorry
+
+/-- A deepest block of a set is the one `deepest` returns. -/
+private theorem deepest_eq_of_isDeepest {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
+    {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))} {D : SA.Blk sp.n (List (FG.Att sp.n))}
+    (h : SA.IsDeepest Φ S D) : SA.deepest Φ S = some D := by
+  have hex : ∃ B, SA.IsDeepest Φ S B := ⟨D, h⟩
+  cases hd : SA.deepest Φ S with
+  | none =>
+    unfold SA.deepest at hd
+    simp only [hex, ↓reduceDIte, reduceCtorEq] at hd
+  | some D' =>
+    have h' := SA.deepest_mem hd
+    by_contra hne
+    have hne' : D' ≠ D := fun h => hne (congrArg some h)
+    rcases h.2 D' h'.1 hne' with h₁ | ⟨h₁, h₂⟩ <;>
+      rcases h'.2 D h.1 (Ne.symm hne') with h₃ | ⟨h₃, h₄⟩ <;> omega
+
+/-- An honest validator is not an equivocator in an honest node's pool of a slot. -/
+private theorem honest_not_equivocator_pool (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n}
+    (hy : y ∈ H) (c s : Nat) {u : Fin sp.n} (hu : u ∈ H) :
+    u ∉ SA.equivocators {v | v ∈ (tr.projAC.state y c).pool s} := by
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hr := hrun.localRun
+  rintro ⟨v, hv, w, hw, hvw, rfl, hwv⟩
+  obtain ⟨jv, -, ev, hev, rfl⟩ := hrun.honest.pool_vote y hy c s _ hv hu
+  obtain ⟨jw, -, ew, hew, rfl⟩ := hrun.honest.pool_vote y hy c s _ hw (hwv ▸ hu)
+  rw [hwv] at hew
+  obtain ⟨-, rfl⟩ := (SA.one_vote_per_slot sp) _ ro H _ _ hr _ hu jv jw ev ew hev hew
+    ((SA.state_pool_slot sp hr hy c s _ hv).trans (SA.state_pool_slot sp hr hy c s _ hw).symm)
+  exact hvw rfl
+
+/-- **A clean slow lock is impossible** (the T3 paper orb): let `x` write a slow lock of label
+`j` on `S` with `b + k − 1 ≤ j`. The result of slot `j − 1` at `x` extends `S`
+(`SA.slow_window_results`; `j − 1 ≥ b` as `k ≥ 2`), so every honest slot-`j` vote extends `S`
+(`clean_result_next_votes`). Every honest validator votes in slot `j` (`half_committee`); its
+vote's head extends the reset seed, so it is high and was first accepted after `c_z > g`, and is
+relayed with the vote to `x` under `GST(g)`: at `x`'s update the vote is held, resolved before
+`t_j + 2Δ`, and its validator is no equivocator. So `S` has the honest validators (at least half
+of the committee) as supporters and passes the fast test, and the fast test selects it: the lock
+is fast. -/
+private theorem clean_slowLock_false (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n}
+    {i j : Nat} {S : SA.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H)
+    (hS : SA.SlowLockAt tr.projAC x i j S) (hb : cleanLabel sp a + sp.k ≤ j + 1) : False := by
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hr := hrun'.localRun
+  have hU := hr.coherent
+  have hk := sp.two_le_k
+  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+  rw [cleanLabel_eq] at hb
+  -- the result of slot `j − 1` extends `S`, and every honest slot-`j` vote extends it
+  obtain ⟨k₁, R, CV, hR, hSR⟩ := SA.slow_window_results hr hx hS (j - 1) (by omega) (by omega)
+  have hvotes := clean_result_next_votes hp hx hR (by rw [cleanLabel_eq]; omega)
+  rw [Nat.sub_add_cancel (by omega : 1 ≤ j)] at hvotes
+  -- `g ≤ ḡ < c_z < a < t_{slot(a)+1} ≤ t_j`
+  have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
+  have hlt := lt_cutZ sp g
+  have hg := le_gbar g
+  have hg0 := gbar_nonneg g
+  have ha0 : 0 ≤ a := by linarith
+  have h3 : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
+    have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+    omega
+  have hjt : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts j := (SA.ts_le_iff sp).2 (by omega)
+  -- the fast test passes on `S`, so it selects `S`
+  obtain ⟨ℓX, C, hupd, -, -, hdeep, hneq⟩ := hS
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hx hupd.1
+  have hD := SA.deepest_mem hdeep
+  obtain ⟨hSt, -, -⟩ := hD.1.1
+  refine hneq (deepest_eq_of_isDeepest
+    ⟨⟨hD.1.1, ?_⟩, fun X hX hne => hD.2 X ⟨hX.1, Or.inl hX.2⟩ hne⟩)
+  -- every honest validator with a slot-`j` vote supports `S`
+  obtain ⟨v₀, r₀, l₀, O, ho, hl₀⟩ := reset_seed hp
+  have hret := height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a hp.reset
+  have hsync : SyncAC (SA.goldilocksSA sp (List (FG.Att sp.n)) ro) H (tr.HonestBlocks H) g
+      (tr.projAC.time i) tr.projAC :=
+    Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr ΔF g _
+      hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
+  refine (half_committee hp (by linarith)).trans
+    (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_ (Set.toFinite _)))
+  rintro z ⟨hz, kz, e, ⟨ℓz, hcz, hez⟩, hes⟩
+  obtain ⟨Hd, hHd, hHdr, hOHd⟩ :=
+    (hret.votes v₀ r₀ l₀ O ho z hz kz ℓz e ⟨hcz, hez⟩ (by omega)).1
+  obtain ⟨Hd', hHd', hHd'r, hRHd'⟩ := hvotes z hz kz e ⟨ℓz, hcz, hez⟩ hes
+  obtain rfl : Hd = Hd' := hU.1 hHd hHd' (hHdr.trans hHd'r.symm)
+  have hSHd := hSR.trans hRHd'
+  obtain ⟨hHdt, hpool, hres⟩ := Compose.honest_vote_at_update hrun' hsync hx hupd
+    (by linarith) hHd ((Anc.mono hΦU (hΦ.rooted.2 S hSt)).trans hSHd) hz ⟨ℓz, hcz, hez⟩ hes
+    hHdr.symm fun kx hkx => by
+      have := (cutZ_lt_of_anc hp ho hz (acceptAt_mem hp hz hkx) hOHd).1
+      change g ≤ tr.time kx
+      linarith
+  exact ⟨honest_not_equivocator_pool hp hx i j hz, e.msg, ⟨hpool, hres⟩,
+    (SA.castAt_spec hr hz ⟨hcz, hez⟩).1, by rw [hes], Hd, hHdt, hHdr,
+    SA.anc_tree_of_anc_U hU hΦ hΦU hSt hSHd hHdt⟩
+
 /-- **Clean slow transfer** (phase-service §10, HS.2 (2), across phases): let an honest node `x`
 write at cut `i` a slow lock of label `j` on the raw selected block `S` (`SA.SlowLockAt`, before
 the move back), with a clean slow window (`b + k − 1 ≤ j`). Then every honest vote of a slot after
@@ -211,8 +321,8 @@ theorem clean_slow_transfer (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} 
     ∀ y ∈ H, ∀ k ℓ' e, SA.CastAt tr.projAC y k ℓ' e → j < e.msg.slot →
       SA.VoteExtends (tr.HonestBlocks H) e.msg S ∧
       (S ∈ ℓ'.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ'.frame e.msg.slot) ∨
-        Anc (tr.HonestBlocks H) S ℓ'.frame.fcRoot) := by
-  sorry
+        Anc (tr.HonestBlocks H) S ℓ'.frame.fcRoot) :=
+  (clean_slowLock_false hp hx hS hb).elim
 
 /-- **The joined duty, unanimity** (§23; phase-service §10, "Join with RN/RU"): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with

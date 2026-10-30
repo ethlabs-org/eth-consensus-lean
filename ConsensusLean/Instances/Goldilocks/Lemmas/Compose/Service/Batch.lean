@@ -97,19 +97,21 @@ private theorem lookup_of_mem {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {B : SA.
   obtain ⟨h₁, h₂⟩ := hin.choose_spec
   rw [hΦ.coherent.1 h₁ hB h₂]
 
-/-- **An honest slot-`s` vote at a joined updater of slot `s`**, under `Sync[0, t_s + 6Δ]`: the
-vote, cast by `t_s + Δ` and forwarded, is processed by the updater (awake, unrestarted since `t_s`)
-before `t_s + 2Δ` and admitted (its validator has no second slot-`s` vote), so it is in the
-updater's pool with a stamp below `t_s + 2Δ`; its head `P`, in the updater's frame and of a slot
-at most `s`, was accepted by the voter before its vote and relayed to the updater before
-`t_s + 2Δ`, so the vote is resolved before `t_s + 2Δ`. -/
-private theorem batch_at_update (hrun : SA.ACRun T H U) {k₀ : Nat}
-    (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U 0 (T.time k₀) T) {y : Fin sp.n} (hy : y ∈ H)
+/-- **An honest slot-`s` vote at a joined updater of slot `s`**, under `Sync[a₀, t_s + 6Δ]` with
+`a₀ ≤ t_s`: the vote, cast by `t_s + Δ` and forwarded, is processed by the updater (awake,
+unrestarted since `t_s`) before `t_s + 2Δ` and admitted (its validator has no second slot-`s`
+vote), so it is in the updater's pool with a stamp below `t_s + 2Δ`; its head `P`, above the
+updater's `Φ.F` and of a slot at most `s`, was accepted by the voter before its vote (at or after
+`a₀`, or it is genesis) and relayed to the updater before `t_s + 2Δ`, so it is in the updater's
+frame and the vote is resolved before `t_s + 2Δ`. -/
+theorem honest_vote_at_update (hrun : SA.ACRun T H U) {a₀ : Time} {k₀ : Nat}
+    (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a₀ (T.time k₀) T) {y : Fin sp.n} (hy : y ∈ H)
     {s : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hu : SA.UpdateAt T y k₀ s ℓ)
-    {P : SA.Blk sp.n FGP} (hPt : P ∈ ℓ.frame.tree) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
-    {e : SA.Em sp FGP} (hv : SA.VoteAt T x j e) (hes : e.msg.slot = s)
-    (hhead : e.msg.head = P.root) :
-    e.msg ∈ (T.state y k₀).pool s ∧
+    (ha₀ : a₀ ≤ sp.ts s) {P : SA.Blk sp.n FGP} (hPU : P ∈ U) (hFP : Anc U ℓ.frame.F P)
+    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : SA.Em sp FGP} (hv : SA.VoteAt T x j e)
+    (hes : e.msg.slot = s) (hhead : e.msg.head = P.root)
+    (hPa : ∀ kx, T.AcceptAt x kx P → a₀ ≤ T.time kx) :
+    P ∈ ℓ.frame.tree ∧ e.msg ∈ (T.state y k₀).pool s ∧
       SA.resolutionTime (T.state y k₀) ℓ.frame e.msg < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -118,7 +120,7 @@ private theorem batch_at_update (hrun : SA.ACRun T H U) {k₀ : Nat}
     simp only [SAParams.ts]; push_cast; ring
   have hrsy := update_restarts hr hy hu
   obtain ⟨hcy, -, htk₀, -⟩ := hu
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy
+  obtain ⟨hΦ, -⟩ := SA.frameIn_of_callAt hr hy hcy
   -- delivery deadlines at the updater, for objects of times up to `t_s + Δ`
   have hdl : ∀ k ≤ k₀, ∀ τ, τ ≤ sp.ts s + sp.Δ → T.deadline y k τ ≤ sp.ts s + 2 * sp.Δ := by
     intro k hk τ hτ
@@ -133,7 +135,7 @@ private theorem batch_at_update (hrun : SA.ACRun T H U) {k₀ : Nat}
   have hsj : sp.ts s ≤ T.time j := (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) s).2 (by omega)
   -- the vote is processed by the updater before `t_s + 2Δ`
   obtain ⟨k', hk'k₀, hjk', hp, hk'dl⟩ := hsync.1 x hx j e.msg ⟨ℓv, hcv, Or.inl ⟨e, hev, rfl⟩⟩
-    (hr.time_nonneg j) (by rw [htk₀]; linarith) y hy k₀ ℓ hcy
+    (ha₀.trans hsj) (by rw [htk₀]; linarith) y hy k₀ ℓ hcy
     (by rw [htk₀]; linarith [hdl k₀ le_rfl _ htj])
   have hk'lt : T.time k' < sp.ts s + 2 * sp.Δ := hk'dl.trans_le (hdl k' hk'k₀ _ htj)
   have hk'k₀' : k' < k₀ := lt_of_le_of_ne hk'k₀ (by rintro rfl; rw [htk₀] at hk'lt; linarith)
@@ -181,22 +183,28 @@ private theorem batch_at_update (hrun : SA.ACRun T H U) {k₀ : Nat}
     · rw [hst₁, etime_lt]
       linarith [hrsy k₁ hk₁.le ⟨ℓ₁, hc₁, hr₁⟩]
   -- the head: accepted by the voter before its vote, relayed to the updater before `t_s + 2Δ`
-  have hPU := hΦU hPt
   have hHdP : Hd = P := hU.1 ((SA.frameIn_of_callAt hr hx hcv).2 hHd) hPU (hHdr.trans hhead)
-  have hacc : SA.AcceptedBefore T y P (sp.ts s + 2 * sp.Δ) := by
+  have hacc : SA.AcceptedBefore T y P (sp.ts s + 2 * sp.Δ) ∧ P ∈ ℓ.frame.tree := by
     rcases frame_anc_accepted hr hx j ℓv hcv P (hHdP ▸ hHd) P .refl with hg | ⟨kx, hkx, hax⟩
-    · exact Or.inl hg
+    · refine ⟨Or.inl hg, ?_⟩
+      obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy k₀ ℓ hcy
+      obtain rfl : P = G := hU.1 hPU hGU (hg.trans hGr.symm)
+      rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFP with h | ⟨Q, -, hQ⟩
+      · exact h ▸ hΦ.rooted.1
+      · exact absurd (hQ.2.2.symm.trans hGp) (Option.some_ne_none _)
     · have hkxt : T.time kx ≤ sp.ts s + sp.Δ := (hr.time_mono hkx).trans htj
-      obtain ⟨ky, hky, hay, hkyt⟩ := hsync.2 x hx kx P hax (hr.time_nonneg kx)
+      obtain ⟨ky, hky, hay, hkyt⟩ := hsync.2 x hx kx P hax (hPa kx hax)
         (by rw [htk₀]; linarith) y hy k₀ ℓ hcy (by rw [htk₀]; linarith [hdl k₀ le_rfl _ hkxt])
-        ((hΦ.rooted.2 P hPt).mono hΦU)
-      exact Or.inr ⟨ky, hay, hkyt.trans_le (hdl ky hky _ hkxt)⟩
+        hFP
+      exact ⟨Or.inr ⟨ky, hay, hkyt.trans_le (hdl ky hky _ hkxt)⟩,
+        SA.mem_tree_of_acceptAt sp hr hy hay hky hcy hFP⟩
+  obtain ⟨hacc, hPt⟩ := hacc
   have hbst := SA.blockStamp_lt_of_acceptedBefore sp hr hy hcy hPt hacc
     (fun k hk hrk => by linarith [hrsy k hk hrk]) (Or.inl (by rw [htk₀]; linarith))
   have hPs : P.slot ≤ e.msg.slot := by
     rw [hU.1 hHd₂ hPU (hHd₂r.trans hhead)] at hHd₂s
     exact hHd₂s
-  refine ⟨hpool, ?_⟩
+  refine ⟨hPt, hpool, ?_⟩
   unfold SA.resolutionTime
   rw [hhead, lookup_of_mem hΦ hPt]
   dsimp only
@@ -220,9 +228,17 @@ theorem honest_batch_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s →
       e.msg ∈ (tr.projAC.state y k₀).pool s ∧
         SA.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
-          SA.ETime.of (sp.ts s + 2 * sp.Δ) := fun x hx j e hv hes =>
-  batch_at_update (goldilocks_ac_projection sp ro dg H tr hrun hnc)
-    (syncAC_of_sleepy hrun hsl le_rfl) hy hu hPt hx hv hes (hall x hx j e hv hes)
+          SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
+  intro x hx j e hv hes
+  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hr := hrun'.localRun
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hu.1
+  have h0 : (0 : Time) ≤ sp.ts s := by
+    simp only [SAParams.ts]
+    exact mul_nonneg (by linarith [sp.toParams.hΔ]) (Int.natCast_nonneg _)
+  exact (honest_vote_at_update hrun' (syncAC_of_sleepy hrun hsl le_rfl) hy hu h0 (hΦU hPt)
+    (Anc.mono hΦU (hΦ.rooted.2 P hPt)) hx hv hes (hall x hx j e hv hes)
+    fun kx _ => hr.time_nonneg kx).2
 
 end Consensus.Goldilocks.Compose
 
