@@ -61,7 +61,7 @@ def rootAC : NodeAC P₁ where
   restart _ s _ _ := (s, [])
 
 /-- The digest: the slot (genesis, of slot `0`, has root `0`). -/
-def dg₁ : Digest (List (FG.Att P₁.n)) Unit := fun _ s _ _ => s
+def dg₁ : Digest (List (FG.Att P₁.n)) Unit := fun _ s _ _ _ => s
 
 /-- The frame of the last call of a reachable AC state is well formed. -/
 theorem frameOK_of_reachableAt {P : Params} {FGP : Type} {A : ACInterface P FGP} {self : Fin P.n}
@@ -121,8 +121,8 @@ theorem public_zero : P₁.IsPublic 0 := ⟨0, rfl⟩
 
 /-- (a) The tick of time `0` is a step from the initial configuration. -/
 theorem tick_at_zero :
-    Node.Step dg₁ v₀ (Node.Config.init rootAC) .tick 0
-      ⟨(Node.exec dg₁ v₀ (Node.init rootAC) 0 .tick).1, 0, .post⟩ :=
+    Node.Step dg₁ v₀ (Node.Config.init rootAC) (.tick 0) 0
+      ⟨(Node.exec dg₁ v₀ (Node.init rootAC) 0 (.tick 0)).1, 0, .post⟩ :=
   ⟨le_rfl, ⟨public_zero, by simp [Node.Phase.at, Node.Config.init]⟩, trivial, rfl, rfl, rfl⟩
 
 /-- The slot of time `1` is `1`. -/
@@ -138,18 +138,18 @@ there, `ac_proposal` returns a proposal after the AC's tick step, and genesis's 
 digest: the hypotheses of `HonestBlockAccepted` hold together. -/
 theorem proposer_tick :
     (P₁.genesisBlock rootAC.genesisPayload).RootOk dg₁ ∧
-    Node.Step dg₁ v₀ (Node.Config.init rootAC) .tick 1
-      ⟨(Node.exec dg₁ v₀ (Node.init rootAC) 1 .tick).1, 1, .post⟩ ∧
+    Node.Step dg₁ v₀ (Node.Config.init rootAC) (.tick 0) 1
+      ⟨(Node.exec dg₁ v₀ (Node.init rootAC) 1 (.tick 0)).1, 1, .post⟩ ∧
     Node.Proposes (P := P₁) v₀ 1 ∧
-    ∃ d p, (Node.acProposal (Node.tickStep dg₁ v₀ (Node.init rootAC) 1 .acTick).1 1).2.2 =
+    ∃ d p, (Node.acProposal (Node.tickStep dg₁ v₀ (Node.init rootAC) 1 0 .acTick).1 1).2.2 =
       some (d, p) := by
   refine ⟨rfl, ⟨by decide, ⟨one_dvd _, by simp [Node.Phase.at, Node.Config.init]⟩, trivial, rfl,
     rfl, rfl⟩, proposes_at_one, _, (), rfl⟩
 
 /-- (b) The configuration after the tick of time `1` is reachable. -/
 theorem reachable_after_tick :
-    Node.Reachable dg₁ v₀ ⟨(Node.exec dg₁ v₀ (Node.init rootAC) 1 .tick).1, 1, .post⟩ :=
-  Relation.ReflTransGen.single ⟨.tick, 1, proposer_tick.2.1⟩
+    Node.Reachable dg₁ v₀ ⟨(Node.exec dg₁ v₀ (Node.init rootAC) 1 (.tick 0)).1, 1, .post⟩ :=
+  Relation.ReflTransGen.single ⟨.tick 0, 1, proposer_tick.2.1⟩
 
 end Consensus.Goldilocks.Compose.Test
 

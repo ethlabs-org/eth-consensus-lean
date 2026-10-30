@@ -28,8 +28,9 @@ variable {P : Params} {A : NodeAC P} (dg : Digest (List (FG.Att P.n)) A.Payload)
 `NoColl` of claims F.3, C0.3): equal digests of two blocks of `S` mean equal contents. -/
 def NoCollOn (S : Set A.Blk) : Prop :=
   ∀ B ∈ S, ∀ C ∈ S,
-    dg B.parent B.slot B.fgPayload B.acPayload = dg C.parent C.slot C.fgPayload C.acPayload →
-      B.parent = C.parent ∧ B.slot = C.slot ∧ B.fgPayload = C.fgPayload ∧
+    dg B.parent B.slot B.input B.fgPayload B.acPayload =
+        dg C.parent C.slot C.input C.fgPayload C.acPayload →
+      B.parent = C.parent ∧ B.slot = C.slot ∧ B.input = C.input ∧ B.fgPayload = C.fgPayload ∧
         B.acPayload = C.acPayload
 
 /-- **C0.1, three tips on one chain.** At a reachable configuration of an honest node and at
@@ -70,12 +71,12 @@ the digest is collision free on the tree with `B`, no held block has it; and
 `fg_on_block(Σ, B)` accepts `B`. -/
 def HonestBlockAccepted : Prop :=
   A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →
-    ∀ (cfg cfg' : Config A) (t : Time), Reachable dg self cfg → Step dg self cfg .tick t cfg' →
-      Proposes self t →
-      let st₁ := (tickStep dg self cfg.st t .acTick).1
+    ∀ (cfg cfg' : Config A) (t : Time) (x : Nat), Reachable dg self cfg →
+      Step dg self cfg (.tick x) t cfg' → Proposes self t →
+      let st₁ := (tickStep dg self cfg.st t x .acTick).1
       let r := acProposal st₁ t
       ∀ d p, r.2.2 = some (d, p) →
-        let B := mkBlock dg self r.1.fg t d.head p
+        let B := mkBlock dg self r.1.fg t x d.head p
         d.head ∈ r.1.fg.tree ∧ r.1.fg.Anc r.1.fg.F d.head ∧ d.head.slot < B.slot ∧
         (∀ a ∈ B.fgPayload, a.WellFormed ∧ (r.1.fg.σ d.head.root).validAtt a) ∧
         A.validPayload B ∧ B.RootOk dg ∧
@@ -113,13 +114,13 @@ when it returns a proposal, the own block, processed at once (`fg_on_block`, the
 processed at once). That a restart precedes the tick and the tick precedes the objects
 received at its time is `Node.Step` (`EventOK`). -/
 def TickOrder : Prop :=
-  ∀ (st : NodeState A) (t : Time), TickShape self t (onTick dg self st t).2
+  ∀ (st : NodeState A) (t : Time) (x : Nat), TickShape self t (onTick dg self st t x).2
 
 /-- **C0.5 (c), honest attestations are signed only in ticks.** An `fg_attest` cut that signs
 appears only in the cuts of a tick (so, by `Node.Step`, at a public time). -/
 def SignedOnlyInTicks : Prop :=
   ∀ (st : NodeState A) (t : Time) (e : Event A) (C : A.Blk) (a : FG.Att P.n),
-    Cut.fg (.attest C (some a)) ∈ (exec dg self st t e).2 → e = .tick
+    Cut.fg (.attest C (some a)) ∈ (exec dg self st t e).2 → ∃ x, e = .tick x
 
 /-- **C0.5 (b), the AC sees only blocks the FG accepted** (claims C0.5 (b), goldilocks#36). In
 the cuts of every event at every state, an AC cut with the call `ac_on_block(B)` comes right
@@ -179,9 +180,9 @@ def RecordIsClientRun : Prop :=
 configuration, the source `C` given to `fg_attest` is a block of the tree of the frame after
 the tick that extends `Σ.F` (the FG input contract: `Σ.σ[C]` is the state of a held block). -/
 def SourcesHeld : Prop :=
-  A.Requirements → ∀ (cfg cfg' : Config A) (t : Time), Reachable dg self cfg →
-    Step dg self cfg .tick t cfg' → ∀ (C : A.Blk) (s : Option (FG.Att P.n)),
-      Cut.fg (.attest C s) ∈ (exec dg self cfg.st t .tick).2 →
+  A.Requirements → ∀ (cfg cfg' : Config A) (t : Time) (x : Nat), Reachable dg self cfg →
+    Step dg self cfg (.tick x) t cfg' → ∀ (C : A.Blk) (s : Option (FG.Att P.n)),
+      Cut.fg (.attest C s) ∈ (exec dg self cfg.st t (.tick x)).2 →
         C ∈ cfg'.st.fg.tree ∧ cfg'.st.fg.Anc cfg'.st.fg.F C
 
 /-- The Compose/AnyAC node statements, for one node (one AC, digest and validator). -/

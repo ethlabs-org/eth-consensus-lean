@@ -68,11 +68,11 @@ structure RunOrder (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n
   /-- (b) At one time, the honest groups are in phase order. -/
   phase : ∀ y ∈ H, ∀ y' ∈ H, ∀ j j' t e e', tr.GroupAt dg y j t e → tr.GroupAt dg y' j' t e' →
     j < j' → e.phase ≤ e'.phase
-  /-- (c) The cuts of an honest tick at `t` from `j` are `on_tick`'s cuts, in C0.4's order, at
-  `j, j + 1, …`. -/
-  tick_steps : ∀ y ∈ H, ∀ j t, tr.TickAt dg y j t →
-    ∀ k, (hk : k < (Node.onTick dg y (tr.state y j) t).2.length) →
-      tr.label (j + k) = some (Node.onTick dg y (tr.state y j) t).2[k]
+  /-- (c) The cuts of an honest tick at `t` with the input `x` from `j` are `on_tick`'s cuts, in
+  C0.4's order, at `j, j + 1, …`. -/
+  tick_steps : ∀ y ∈ H, ∀ j t x, tr.GroupAt dg y j t (.tick x) →
+    ∀ k, (hk : k < (Node.onTick dg y (tr.state y j) t x).2.length) →
+      tr.label (j + k) = some (Node.onTick dg y (tr.state y j) t x).2[k]
   /-- (d) A block of an honest proposer processed by an honest node was processed by its proposer
   at or before, inside a tick. -/
   block_before : ∀ y ∈ H, ∀ i B, tr.BlockCallAt y i B → B.proposer ∈ H →

@@ -43,8 +43,9 @@ is a test by block). The proposer is not part of the digest input (composition.t
 the node's blocks have the slot proposer. -/
 def DigestDeterminesBlock : Prop :=
   ∀ (n : Nat) (FGP ACP : Type) (dg : Digest FGP ACP) (B C : Block n FGP ACP),
-    (dg B.parent B.slot B.fgPayload B.acPayload = dg C.parent C.slot C.fgPayload C.acPayload →
-      B.parent = C.parent ∧ B.slot = C.slot ∧ B.fgPayload = C.fgPayload ∧
+    (dg B.parent B.slot B.input B.fgPayload B.acPayload =
+        dg C.parent C.slot C.input C.fgPayload C.acPayload →
+      B.parent = C.parent ∧ B.slot = C.slot ∧ B.input = C.input ∧ B.fgPayload = C.fgPayload ∧
         B.acPayload = C.acPayload) →
     B.RootOk dg → C.RootOk dg → B.root = C.root → B.proposer = C.proposer → B = C
 

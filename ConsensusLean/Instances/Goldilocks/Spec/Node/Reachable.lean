@@ -55,7 +55,7 @@ def Config.init (A : NodeAC P) : Config A := ⟨Node.init A, 0, .pre⟩
 in phase `pre`; a restart in phase `pre`; a delivery after the tick when `t'` is public (in
 any phase otherwise). -/
 def EventOK (t' : Time) (ph : Phase) : Event A → Prop
-  | .tick => P.IsPublic t' ∧ ph = .pre
+  | .tick _ => P.IsPublic t' ∧ ph = .pre
   | .restart => ph = .pre
   | _ => P.IsPublic t' → ph = .post
 

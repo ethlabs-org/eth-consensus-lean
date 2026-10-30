@@ -106,7 +106,7 @@ private theorem callOK_from (hq : A.Requirements) (h : Node.LocalRun dg H sg tr)
     · rw [← hfr', hfr, tr.state_succ_of_call hacc]
       exact (Store.accept_is_frame_step P _ _ _ (fg_reachable h hy i')).1 B _ hlaw.2.1
     -- the payload: from the wire, or requirement 5 at the proposal's state
-    rcases blockCall_cases h hy hacc with hg | ⟨j, -, hg, hp, d, p, hdp, rfl, -⟩
+    rcases blockCall_cases h hy hacc with hg | ⟨j, x, -, hg, hp, d, p, hdp, rfl, -⟩
     · exact (h.wire y hy i' _ _ hg).2.2
     obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
     obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable dg y hq cfg hreach

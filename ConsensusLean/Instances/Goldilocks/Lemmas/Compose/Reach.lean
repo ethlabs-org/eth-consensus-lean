@@ -363,7 +363,7 @@ private theorem NInv.attest {st : NodeState A} {t : Time} (h : NInv dg self st t
     exact (atts_onAttestation _ a).1
 
 private theorem NInv.tickStep {st : NodeState A} {t : Time} (h : NInv dg self st t)
-    (s : TickStep) : NInv dg self (tickStep dg self st t s).1 t := by
+    (x : Nat) (s : TickStep) : NInv dg self (tickStep dg self st t x s).1 t := by
   cases s with
   | acTick => exact h.acCall dg self .tick ⟨frameIn_store h.fg, rfl⟩
   | proposal =>
@@ -393,9 +393,9 @@ private theorem NInv.tickStep {st : NodeState A} {t : Time} (h : NInv dg self st
 private theorem NInv.exec {st : NodeState A} {t : Time} (h : NInv dg self st t) (e : Event A)
     (hw : WireOK dg e) : NInv dg self (exec dg self st t e).1 t := by
   cases e with
-  | tick =>
+  | tick x =>
     simp only [Node.exec, onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil]
-    exact ((h.tickStep dg self _).tickStep dg self _).tickStep dg self _
+    exact ((h.tickStep dg self x _).tickStep dg self x _).tickStep dg self x _
   | block B => exact h.onBlock dg self B (fun _ => hw.2.2) hw.1
   | message m => exact h.acCall dg self _ ⟨frameIn_store h.fg, rfl, hw⟩
   | attestation a => exact h.onAttestation dg self a fun _ => hw
@@ -451,8 +451,9 @@ theorem three_tips : ThreeTips dg self := by
     (ht₀.trans ht)
 
 /-- The proposal step signs nothing. -/
-private theorem proposal_no_attest (st : NodeState A) (t : Time) (C : A.Blk)
-    (s : Option (FG.Att P.n)) : Cut.fg (.attest C s) ∉ (tickStep dg self st t .proposal).2 := by
+private theorem proposal_no_attest (st : NodeState A) (t : Time) (x : Nat) (C : A.Blk)
+    (s : Option (FG.Att P.n)) :
+    Cut.fg (.attest C s) ∉ (tickStep dg self st t x .proposal).2 := by
   simp only [Node.tickStep]
   split_ifs
   · split
@@ -466,10 +467,11 @@ private theorem proposal_no_attest (st : NodeState A) (t : Time) (C : A.Blk)
 /-- The source of a signing cut of the FG update is what `ac_to_fg` returned, and the update
 leaves the tree and `Σ.F`. -/
 private theorem fgUpdate_attest {st : NodeState A} {t : Time}
-    (hr : st.fg.Reachable A.genesisPayload) {C : A.Blk} {s : Option (FG.Att P.n)}
-    (h : Cut.fg (.attest C s) ∈ (tickStep dg self st t .fgUpdate).2) :
-    (Node.acToFG st t).2.2.1 = some C ∧ (tickStep dg self st t .fgUpdate).1.fg.tree = st.fg.tree ∧
-      (tickStep dg self st t .fgUpdate).1.fg.F = st.fg.F := by
+    (hr : st.fg.Reachable A.genesisPayload) {C : A.Blk} {s : Option (FG.Att P.n)} {x : Nat}
+    (h : Cut.fg (.attest C s) ∈ (tickStep dg self st t x .fgUpdate).2) :
+    (Node.acToFG st t).2.2.1 = some C ∧
+      (tickStep dg self st t x .fgUpdate).1.fg.tree = st.fg.tree ∧
+      (tickStep dg self st t x .fgUpdate).1.fg.F = st.fg.F := by
   simp only [Node.tickStep, Node.acToFG] at h ⊢
   cases hC' : (A.toFG st.ac (frame st) t).2.1 with
   | none => rw [hC'] at h; simp at h
@@ -495,24 +497,26 @@ private theorem fgUpdate_attest {st : NodeState A} {t : Time}
 
 /-- **C0.5 (c), the sources.** -/
 theorem sources_held : SourcesHeld dg self := by
-  intro hq cfg cfg' t h hs C s hC
+  intro hq cfg cfg' t x h hs C s hC
   obtain ⟨ht, -, -, hst, -, -⟩ := hs
   have hI := (nInv_of_reachable dg self h).mono dg self ht
-  have h₂ := (hI.tickStep dg self .acTick).tickStep dg self .proposal
-  have hcuts : exec dg self cfg.st t .tick =
-      ((tickStep dg self (tickStep dg self (tickStep dg self cfg.st t .acTick).1 t .proposal).1
-          t .fgUpdate).1,
-        (tickStep dg self cfg.st t .acTick).2 ++
-          (tickStep dg self (tickStep dg self cfg.st t .acTick).1 t .proposal).2 ++
-          (tickStep dg self (tickStep dg self (tickStep dg self cfg.st t .acTick).1 t .proposal).1
-            t .fgUpdate).2) := by
+  have h₂ := (hI.tickStep dg self x .acTick).tickStep dg self x .proposal
+  have hcuts : exec dg self cfg.st t (.tick x) =
+      ((tickStep dg self
+          (tickStep dg self (tickStep dg self cfg.st t x .acTick).1 t x .proposal).1
+          t x .fgUpdate).1,
+        (tickStep dg self cfg.st t x .acTick).2 ++
+          (tickStep dg self (tickStep dg self cfg.st t x .acTick).1 t x .proposal).2 ++
+          (tickStep dg self
+            (tickStep dg self (tickStep dg self cfg.st t x .acTick).1 t x .proposal).1
+            t x .fgUpdate).2) := by
     simp [Node.exec, onTick, runSteps, tickSteps]
   rw [hcuts] at hC
   rw [hst, hcuts]
   simp only [List.mem_append] at hC
   rcases hC with (hC | hC) | hC
   · simp [Node.tickStep, acCall] at hC
-  · exact absurd hC (proposal_no_attest dg self _ t C s)
+  · exact absurd hC (proposal_no_attest dg self _ t x C s)
   obtain ⟨hsrc, htree, hF⟩ := fgUpdate_attest dg self h₂.fg hC
   obtain ⟨t₀, ht₀, hR⟩ := h₂.ac hq
   obtain ⟨hCt, hFC, -⟩ := source_held A hq self _ (Store.accepted_tree P _ _ _ h₂.fg).2.1 _ _ t₀ hR
@@ -603,8 +607,8 @@ private theorem slotInv_of_reachable {cfg : Config A} (h : Reachable dg self cfg
 
 /-- At the tick of a slot start that the node proposes in, every held block is of an earlier
 slot (genesis, or accepted before that time: the tick runs before the objects of its time). -/
-private theorem slot_lt_of_tick {cfg cfg' : Config A} {t : Time} (h : Reachable dg self cfg)
-    (hs : Step dg self cfg .tick t cfg') (hp : Proposes self t) :
+private theorem slot_lt_of_tick {cfg cfg' : Config A} {t : Time} {x : Nat}
+    (h : Reachable dg self cfg) (hs : Step dg self cfg (.tick x) t cfg') (hp : Proposes self t) :
     ∀ X ∈ cfg.st.fg.tree, X.slot < P.slotOf t := by
   intro X hX
   obtain ⟨-, hinv⟩ := slotInv_of_reachable dg self h
@@ -637,16 +641,16 @@ private theorem σ_slot {fg : Store P A.Payload} (hr : fg.Reachable A.genesisPay
 
 /-- **C0.3.** -/
 theorem honest_block_accepted : HonestBlockAccepted dg self := by
-  intro hq hg cfg cfg' t hR hs hp
+  intro hq hg cfg cfg' t x hR hs hp
   dsimp only
   intro d p hdp
   have hI := (nInv_of_reachable dg self hR).mono dg self hs.1
-  have h₁ := hI.tickStep dg self .acTick
+  have h₁ := hI.tickStep dg self x .acTick
   obtain ⟨t₀, ht₀, hRA⟩ := h₁.ac hq
   have hcoh := (Store.accepted_tree P _ _ _ h₁.fg).2.1
   have hts : t = P.slotTime (P.slotOf t) := hp.2.1
-  have hprop : (A.proposal (tickStep dg self cfg.st t .acTick).1.ac
-      (frame (tickStep dg self cfg.st t .acTick).1) (P.slotTime (P.slotOf t))).2 =
+  have hprop : (A.proposal (tickStep dg self cfg.st t x .acTick).1.ac
+      (frame (tickStep dg self cfg.st t x .acTick).1) (P.slotTime (P.slotOf t))).2 =
       some (d, p) := by
     rw [← hts]; exact hdp
   obtain ⟨hHt, hFH⟩ := proposal_parent_held A hq self _ hcoh _ _ t₀ hRA (P.slotOf t)
@@ -654,8 +658,8 @@ theorem honest_block_accepted : HonestBlockAccepted dg self := by
   have hslot := slot_lt_of_tick dg self hR hs hp
   have hHs : d.head.slot < P.slotOf t := hslot _ hHt.1
   have hatts : ∀ a ∈
-      (mkBlock dg self (tickStep dg self cfg.st t .acTick).1.fg t d.head p).fgPayload,
-      a.WellFormed ∧ ((tickStep dg self cfg.st t .acTick).1.fg.σ d.head.root).validAtt a := by
+      (mkBlock dg self (tickStep dg self cfg.st t x .acTick).1.fg t x d.head p).fgPayload,
+      a.WellFormed ∧ ((tickStep dg self cfg.st t x .acTick).1.fg.σ d.head.root).validAtt a := by
     intro a ha
     obtain ⟨ha, hv⟩ := List.mem_filter.1 ha
     simp only [decide_eq_true_eq] at hv
@@ -663,8 +667,8 @@ theorem honest_block_accepted : HonestBlockAccepted dg self := by
   refine ⟨hHt.1, Anc.mono (fun _ h => h.1) hFH, hHs, hatts,
     hq.payload self _ hcoh _ _ t₀ hRA (P.slotOf t) (hts ▸ ht₀) d p hprop _ rfl rfl, rfl,
     fun hnc => ?_⟩
-  set fg := (tickStep dg self cfg.st t .acTick).1.fg with hfg
-  set B := mkBlock dg self fg t d.head p with hB
+  set fg := (tickStep dg self cfg.st t x .acTick).1.fg with hfg
+  set B := mkBlock dg self fg t x d.head p with hB
   have hnone : fg.blocks B.root = none := by
     cases hb : fg.blocks B.root with
     | none => rfl

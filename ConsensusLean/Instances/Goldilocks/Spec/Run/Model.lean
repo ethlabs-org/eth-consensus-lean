@@ -183,10 +183,10 @@ def InGroup (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n) (j i : Nat
     (e : Node.Event A) : Prop :=
   tr.GroupAt dg y j t e ∧ j ≤ i ∧ i < j + (Node.exec dg y (tr.state y j) t e).2.length
 
-/-- The tick of `y` at time `t` starts at cut `j`. -/
+/-- The tick of `y` at time `t` starts at cut `j` (with some input). -/
 def TickAt (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n) (j : Nat) (t : Time) :
     Prop :=
-  tr.GroupAt dg y j t .tick
+  ∃ x, tr.GroupAt dg y j t (.tick x)
 
 end RunTrace
 
@@ -196,7 +196,7 @@ namespace Node
 restarts first, then ticks, then deliveries. -/
 def Event.phase {A : NodeAC P} : Event A → Nat
   | .restart => 0
-  | .tick => 1
+  | .tick _ => 1
   | _ => 2
 
 /-- **A run of the node** (claims §"Runs"; decomposition §2 D, `Node.LocalRun`), for the honest

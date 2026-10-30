@@ -56,7 +56,7 @@ theorem onAttestation_init : (Store.init (P := P₁) ()).onAttestation a₀ = st
 theorem g₁_mem_stA : g₁ ∈ stA.tree := rfl
 
 /-- `w₀`'s proposal of slot `1` on genesis carrying `a₀`: root `1`. -/
-def Bs : NodeBlock P₁ Unit := ⟨1, some 0, 1, w₀, [a₀], ()⟩
+def Bs : NodeBlock P₁ Unit := ⟨1, some 0, 1, w₀, 0, [a₀], ()⟩
 
 /-- The chain state of `Bs`: `a₀` is a target quorum (`q = 1`) for genesis at the unbound height
 `1`, so `Bs` justifies genesis (`J = 0`, `h_j = 1`, pending `[(1, 0)]`) and enters height `2`
@@ -313,7 +313,7 @@ theorem trS_unboundEntry_first :
   exact ⟨rfl, rfl⟩
 
 /-- `w₀`'s proposal of slot `1` on genesis without attestations: root `1`. -/
-def Be : NodeBlock P₁ Unit := ⟨1, some 0, 1, w₀, [], ()⟩
+def Be : NodeBlock P₁ Unit := ⟨1, some 0, 1, w₀, 0, [], ()⟩
 
 /-- The chain state of `Be`: the initial one at slot `1` with latest block `Be` (no row, so no
 height event). -/

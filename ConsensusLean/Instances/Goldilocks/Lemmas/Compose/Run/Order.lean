@@ -17,7 +17,7 @@ open SA
 /-- **F.5 (run).** -/
 theorem event_order : EventOrder := by
   intro P A dg H sg tr h
-  refine ⟨fun i j hij => h.time_mono hij, h.phase_order, fun y hy j t ht k hk => ?_,
+  refine ⟨fun i j hij => h.time_mono hij, h.phase_order, fun y hy j t x ht k hk => ?_,
     h.block_unforgeable, fun y hy i a ha haH => ?_, h.msg_unforgeable, h.finite⟩
   · exact (ht.2.1 k hk).2.2.2.2
   · refine h.att_unforgeable y hy i a ?_ haH
@@ -65,7 +65,7 @@ theorem ready_implies_joined : ReadyImpliesJoined := by
     nlinarith
   by_contra hgt
   push Not at hgt
-  obtain ⟨j, hj⟩ := h.tick_of_awake y hy _ (by linarith)
+  obtain ⟨j, x, hj⟩ := h.tick_of_awake y hy _ (by linarith)
     (sp.toParams.slotTime_public _) (hawake _ (by rw [hmax]; exact hSw.le) hSt)
   obtain ⟨hjc, hjt⟩ := group_call hj
   have hjk : j < k := by

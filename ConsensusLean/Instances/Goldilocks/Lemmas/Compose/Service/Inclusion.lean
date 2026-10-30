@@ -28,8 +28,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro}
 
 /-- The first cut of a tick is the AC's tick. -/
-private theorem onTick_head (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) :
-    (Node.onTick dg y st t).2[0]? = some (Node.acCall y st t .tick).2 := by
+private theorem onTick_head (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
+    (x : Nat) : (Node.onTick dg y st t x).2[0]? = some (Node.acCall y st t .tick).2 := by
   simp [Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep]
 
 /-- Along cuts with no restart from `t_s + 6Δ` on, a node awake and joined at `t_s + 6Δ` and at a
@@ -68,13 +68,13 @@ private theorem update_recent (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy 
     exact hnr k' hr (by linarith) h₂
   have hpub : sp.toParams.IsPublic τ :=
     ⟨4 * s' + 6, by simp only [τ, SAParams.ts]; ring⟩
-  obtain ⟨j, hg⟩ := hrun.tick_of_awake y hy τ hτ0 hpub hwτ
+  obtain ⟨j, x, hg⟩ := hrun.tick_of_awake y hy τ hτ0 hpub hwτ
   have hne := hg.1
   obtain ⟨hn, htj, -, -, hl⟩ := hg.2.1 0 (List.length_pos_iff.2 hne)
   simp only [Nat.add_zero] at hn htj hl
-  have h0 : (Node.exec dg y (tr.state y j) τ .tick).2[0]'(List.length_pos_iff.2 hne) =
+  have h0 : (Node.exec dg y (tr.state y j) τ (.tick x)).2[0]'(List.length_pos_iff.2 hne) =
       (Node.acCall y (tr.state y j) τ .tick).2 :=
-    Option.some.inj ((List.getElem?_eq_getElem _).symm.trans (onTick_head y _ τ))
+    Option.some.inj ((List.getElem?_eq_getElem _).symm.trans (onTick_head y _ τ x))
   rw [h0] at hl
   set ℓ : ACLabel (goldilocksNode sp ro) :=
     ⟨.tick, Node.frame (tr.state y j), ((goldilocksNode sp ro).step y (tr.state y j).ac

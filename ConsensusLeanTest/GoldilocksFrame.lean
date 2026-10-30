@@ -25,11 +25,11 @@ namespace Consensus.Goldilocks.Test
 abbrev B1 := Block 1 Unit Unit
 
 /-- Genesis: root `0`, slot `0`, no parent. -/
-def g : B1 := ⟨0, none, 0, 0, (), ()⟩
+def g : B1 := ⟨0, none, 0, 0, 0, (), ()⟩
 /-- Block `1` on genesis, slot `1`. -/
-def b₁ : B1 := ⟨1, some 0, 1, 0, (), ()⟩
+def b₁ : B1 := ⟨1, some 0, 1, 0, 0, (), ()⟩
 /-- Block `2` on block `1`, slot `2`. -/
-def b₂ : B1 := ⟨2, some 1, 2, 0, (), ()⟩
+def b₂ : B1 := ⟨2, some 1, 2, 0, 0, (), ()⟩
 
 /-- The genesis frame. -/
 def Φ₀ : Frame 1 Unit Unit := ⟨{g}, g, g, {g}⟩

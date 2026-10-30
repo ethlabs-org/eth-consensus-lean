@@ -228,14 +228,14 @@ private theorem eventOK (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈
     rw [le_antisymm hle (not_lt.1 hlt)] at hg₀
     have := h.phase_order y hy y hy j₀ j t e₀ e hg₀ hg hj₀
     cases e <;> cases e₀ <;> simp_all [Event.phase]
-    exact absurd (h.tick_unique y hy j₀ j t hg₀ hg) (by omega)
+    exact absurd (h.tick_unique y hy j₀ j t ⟨_, hg₀⟩ ⟨_, hg⟩) (by omega)
   cases e with
-  | tick => exact ⟨h.tick_public y hy j t hg, hpre (by simp [Event.phase])⟩
+  | tick x => exact ⟨h.tick_public y hy j t ⟨x, hg⟩, hpre (by simp [Event.phase])⟩
   | restart => exact hpre (by simp [Event.phase])
   | _ =>
     -- a delivery at a public time: the tick of `t` ran before
     intro hpub
-    obtain ⟨j₀, hg₀⟩ := h.tick_of_awake y hy t (ht ▸ h.time_nonneg j) hpub
+    obtain ⟨j₀, x₀, hg₀⟩ := h.tick_of_awake y hy t (ht ▸ h.time_nonneg j) hpub
       (ht ▸ h.awake_of_call y hy j hc)
     have hj₀ : j₀ < j := by
       rcases lt_trichotomy j₀ j with hlt | rfl | hgt
@@ -245,7 +245,7 @@ private theorem eventOK (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈
     have htc : cfg.time = t :=
       le_antisymm hle ((group_call hg₀).2 ▸ hi.calls j₀ hj₀ (group_call hg₀).1)
     simp only [htc, Phase.at, lt_self_iff_false, ↓reduceIte]
-    exact hi.phase.2 ⟨j₀, hj₀, .tick, htc ▸ hg₀, by simp [Event.phase]⟩
+    exact hi.phase.2 ⟨j₀, hj₀, .tick x₀, htc ▸ hg₀, by simp [Event.phase]⟩
 
 private theorem gInv_init (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) :
     GInv dg tr y 0 (Config.init A) where

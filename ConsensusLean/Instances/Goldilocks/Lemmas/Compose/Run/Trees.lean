@@ -82,7 +82,7 @@ theorem accept_facts (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
       X.root ≠ P.genesisRoot := by
   obtain ⟨pr, σ', -, hnew, -, -, hσ, -⟩ := Store.onBlock_eq_some (h.cutLaw y hy k _ hk).2.1
   refine ⟨?_, (P.fg.stateTransition_eq_some.1 hσ).1.1, hnew, fun hg => ?_⟩
-  · rcases blockCall_cases h hy hk with hg | ⟨j, -, -, -, d, p, -, rfl, -⟩
+  · rcases blockCall_cases h hy hk with hg | ⟨j, x, -, -, -, d, p, -, rfl, -⟩
     · exact (h.wire y hy k _ _ hg).1
     · rfl
   · have hG := (Store.accepted_tree P _ _ _ (fg_reachable h hy k)).2.2.1
@@ -110,12 +110,12 @@ theorem tree_root_inj (h : Node.LocalRun dg H sg tr) (hnc : NoCollRun dg tr) {y 
   · exact absurd hr (accept_facts h hy hk).2.2.2
   obtain ⟨hro, hpr, -⟩ := accept_facts h hy hk
   obtain ⟨hro', hpr', -⟩ := accept_facts h hy' hk'
-  obtain ⟨h₁, h₂, h₃, h₄⟩ := hnc X (Or.inr ⟨y, k, true, hk⟩) X' (Or.inr ⟨y', k', true, hk'⟩)
+  obtain ⟨h₁, h₂, h₃, h₄, h₅⟩ := hnc X (Or.inr ⟨y, k, true, hk⟩) X' (Or.inr ⟨y', k', true, hk'⟩)
     (by rw [← hro, ← hro', hr])
-  obtain ⟨r, pa, sl, pp, fp, ap⟩ := X
-  obtain ⟨r', pa', sl', pp', fp', ap'⟩ := X'
-  simp only at hr h₁ h₂ h₃ h₄ hpr hpr'
-  subst hr h₁ h₂ h₃ h₄
+  obtain ⟨r, pa, sl, pp, inp, fp, ap⟩ := X
+  obtain ⟨r', pa', sl', pp', inp', fp', ap'⟩ := X'
+  simp only at hr h₁ h₂ h₃ h₄ h₅ hpr hpr'
+  subst hr h₁ h₂ h₃ h₄ h₅
   rw [hpr, hpr']
 
 /-- **The honest blocks of a run are coherent** under `NoColl`. -/

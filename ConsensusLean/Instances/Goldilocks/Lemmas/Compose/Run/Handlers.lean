@@ -91,14 +91,16 @@ private theorem paired_onBlock (y : Fin P.n) (st : NodeState A) (t : Time) (B : 
 
 /-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
 private theorem tick_cuts (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
-    (st : NodeState A) (t : Time) :
-    (exec dg y st t .tick).2 = (tickStep dg y st t .acTick).2 ++
-      (tickStep dg y (tickStep dg y st t .acTick).1 t .proposal).2 ++
-      (tickStep dg y (tickStep dg y (tickStep dg y st t .acTick).1 t .proposal).1 t .fgUpdate).2 :=
+    (st : NodeState A) (t : Time) (x : Nat) :
+    (exec dg y st t (.tick x)).2 = (tickStep dg y st t x .acTick).2 ++
+      (tickStep dg y (tickStep dg y st t x .acTick).1 t x .proposal).2 ++
+      (tickStep dg y (tickStep dg y (tickStep dg y st t x .acTick).1 t x .proposal).1
+        t x .fgUpdate).2 :=
   by simp [exec, onTick, runSteps, tickSteps]
 
 private theorem paired_tickStep (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
-    (st : NodeState A) (t : Time) (s : TickStep) : Paired (tickStep dg y st t s).2 := by
+    (st : NodeState A) (t : Time) (x : Nat) (s : TickStep) :
+    Paired (tickStep dg y st t x s).2 := by
   cases s with
   | acTick => exact paired_ac fun _ h => by cases h
   | proposal =>
@@ -121,10 +123,10 @@ private theorem paired_tickStep (dg : Digest (List (FG.Att P.n)) A.Payload) (y :
 private theorem paired_exec (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) : Paired (exec dg y st t e).2 := by
   cases e with
-  | tick =>
+  | tick x =>
     rw [tick_cuts]
-    exact ((paired_tickStep dg y st t _).append (paired_tickStep dg y _ t _)).append
-      (paired_tickStep dg y _ t _)
+    exact ((paired_tickStep dg y st t x _).append (paired_tickStep dg y _ t x _)).append
+      (paired_tickStep dg y _ t x _)
   | block B => exact paired_onBlock y st t B
   | message m => exact paired_ac fun _ h => by cases h
   | attestation a => exact paired_fg fun _ h => by cases h
@@ -132,9 +134,9 @@ private theorem paired_exec (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin
 
 /-- The FG update signs at its second cut, after its `ac_to_fg`, which returned the source. -/
 private theorem update_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
-    (st : NodeState A) (t : Time) {m : Nat} {C : A.Blk} {a : FG.Att P.n}
-    (hm : (tickStep dg y st t .fgUpdate).2[m]? = some (.fg (.attest C (some a)))) :
-    m = 1 ∧ (tickStep dg y st t .fgUpdate).2[0]? = some (.ac ⟨.toFG, frame st, []⟩) ∧
+    (st : NodeState A) (t : Time) (x : Nat) {m : Nat} {C : A.Blk} {a : FG.Att P.n}
+    (hm : (tickStep dg y st t x .fgUpdate).2[m]? = some (.fg (.attest C (some a)))) :
+    m = 1 ∧ (tickStep dg y st t x .fgUpdate).2[0]? = some (.ac ⟨.toFG, frame st, []⟩) ∧
       (A.toFG st.ac (frame st) t).2.1 = some C := by
   simp only [tickStep, acToFG] at hm ⊢
   split at hm
@@ -149,15 +151,15 @@ private theorem update_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (y : F
 
 /-- The proposal step signs nothing. -/
 private theorem proposal_no_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
-    (st : NodeState A) (t : Time) (C : A.Blk) (s : Option (FG.Att P.n)) :
-    Cut.fg (.attest C s) ∉ (tickStep dg y st t .proposal).2 := by
+    (st : NodeState A) (t : Time) (x : Nat) (C : A.Blk) (s : Option (FG.Att P.n)) :
+    Cut.fg (.attest C s) ∉ (tickStep dg y st t x .proposal).2 := by
   simp only [tickStep]
   split_ifs
   · split
     · simp [acProposal]
     · rename_i d p _
       simp only [proposeBlock, onBlock, List.mem_cons, acProposal, reduceCtorEq, false_or]
-      by_cases hf : P.slotOf t < (mkBlock dg y st.fg t d.head p).slot
+      by_cases hf : P.slotOf t < (mkBlock dg y st.fg t x d.head p).slot
       · simp [hf]
       · simp only [hf, ↓reduceIte]
         split <;> simp [acCall]
@@ -170,20 +172,21 @@ private theorem attest_prev (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin
     ∃ k', k = k' + 1 ∧ ∃ st₁, CutChain y t st ((exec dg y st t e).2.take k') st₁ ∧
       (exec dg y st t e).2[k']? = some (.ac ⟨.toFG, frame st₁, []⟩) ∧
       (A.toFG st₁.ac (frame st₁) t).2.1 = some C := by
-  obtain rfl : e = .tick := signed_only_in_ticks dg y st t e C a (List.mem_of_getElem? hk)
+  obtain ⟨x, rfl⟩ : ∃ x, e = .tick x :=
+    signed_only_in_ticks dg y st t e C a (List.mem_of_getElem? hk)
   rw [tick_cuts] at hk ⊢
-  set l₁ := (tickStep dg y st t .acTick).2 with hl₁
-  set r₂ := tickStep dg y (tickStep dg y st t .acTick).1 t .proposal
+  set l₁ := (tickStep dg y st t x .acTick).2 with hl₁
+  set r₂ := tickStep dg y (tickStep dg y st t x .acTick).1 t x .proposal
   have hch : CutChain y t st (l₁ ++ r₂.2) r₂.1 :=
-    chain_append y (tickStep_chain dg y st t _) (tickStep_chain dg y _ t _)
+    chain_append y (tickStep_chain dg y st t x _) (tickStep_chain dg y _ t x _)
   have hn : (l₁ ++ r₂.2).length ≤ k := by
     by_contra hlt
     rw [List.getElem?_append_left (by omega)] at hk
     rcases List.mem_append.1 (List.mem_of_getElem? hk) with hm | hm
     · simp [hl₁, tickStep, acCall] at hm
-    · exact proposal_no_attest dg y _ t C _ hm
+    · exact proposal_no_attest dg y _ t x C _ hm
   rw [List.getElem?_append_right hn] at hk
-  obtain ⟨hm, h0, hC⟩ := update_attest dg y r₂.1 t hk
+  obtain ⟨hm, h0, hC⟩ := update_attest dg y r₂.1 t x hk
   refine ⟨(l₁ ++ r₂.2).length, by omega, r₂.1, by rw [List.take_left' rfl]; exact hch, ?_, hC⟩
   rw [List.getElem?_append_right le_rfl, Nat.sub_self]
   exact h0
@@ -200,8 +203,8 @@ private theorem onBlock_block {y : Fin P.n} {st : NodeState A} {t : Time} {B' B 
 
 /-- The FG update makes no block cut. -/
 private theorem update_no_block (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
-    (st : NodeState A) (t : Time) (B : A.Blk) (acc : Bool) :
-    Cut.fg (.block B acc) ∉ (tickStep dg y st t .fgUpdate).2 := by
+    (st : NodeState A) (t : Time) (x : Nat) (B : A.Blk) (acc : Bool) :
+    Cut.fg (.block B acc) ∉ (tickStep dg y st t x .fgUpdate).2 := by
   simp only [tickStep]
   split
   · simp [acToFG]
@@ -210,10 +213,11 @@ private theorem update_no_block (dg : Digest (List (FG.Att P.n)) A.Payload) (y :
 
 /-- The block cut of the proposal step is its second, of the own proposal. -/
 private theorem proposal_block (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
-    (st : NodeState A) (t : Time) {B : A.Blk} {acc : Bool} {m : Nat}
-    (hm : (tickStep dg y st t .proposal).2[m]? = some (.fg (.block B acc))) :
+    (st : NodeState A) (t : Time) (x : Nat) {B : A.Blk} {acc : Bool} {m : Nat}
+    (hm : (tickStep dg y st t x .proposal).2[m]? = some (.fg (.block B acc))) :
     m = 1 ∧ Proposes y t ∧ ∃ d p, (acProposal st t).2.2 = some (d, p) ∧
-      B = mkBlock dg y st.fg t d.head p ∧ (acc = true ↔ ∃ fg', st.fg.onBlock B = some fg') := by
+      B = mkBlock dg y st.fg t x d.head p ∧
+      (acc = true ↔ ∃ fg', st.fg.onBlock B = some fg') := by
   simp only [tickStep] at hm
   split_ifs at hm with hp
   · split at hm
@@ -222,7 +226,7 @@ private theorem proposal_block (dg : Digest (List (FG.Att P.n)) A.Payload) (y : 
     rcases m with _ | m
     · simp [acProposal] at hm
     simp only [List.getElem?_cons_succ] at hm
-    obtain ⟨rfl, rfl⟩ := onBlock_block (B' := mkBlock dg y _ t d.head p) hm
+    obtain ⟨rfl, rfl⟩ := onBlock_block (B' := mkBlock dg y _ t x d.head p) hm
     refine ⟨rfl, hp, d, p, hdp, rfl, ?_⟩
     simp only [proposeBlock, onBlock] at hm
     split_ifs at hm
@@ -240,9 +244,9 @@ its third cut. -/
 private theorem exec_block (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) {B : A.Blk} {acc : Bool} {k : Nat}
     (hk : (exec dg y st t e).2[k]? = some (.fg (.block B acc))) :
-    (e = .block B ∧ k = 0) ∨ (e = .tick ∧ k = 2 ∧ Proposes y t ∧ ∃ d p,
-      (acProposal (tickStep dg y st t .acTick).1 t).2.2 = some (d, p) ∧
-      B = mkBlock dg y st.fg t d.head p ∧ (acc = true ↔ ∃ fg', st.fg.onBlock B = some fg') ∧
+    (e = .block B ∧ k = 0) ∨ (∃ x, e = .tick x ∧ k = 2 ∧ Proposes y t ∧ ∃ d p,
+      (acProposal (tickStep dg y st t x .acTick).1 t).2.2 = some (d, p) ∧
+      B = mkBlock dg y st.fg t x d.head p ∧ (acc = true ↔ ∃ fg', st.fg.onBlock B = some fg') ∧
       (∃ ℓ : ACLabel A, (exec dg y st t e).2[0]? = some (.ac ℓ)) ∧
       ∃ ℓ : ACLabel A, (exec dg y st t e).2[1]? = some (.ac ℓ)) := by
   cases e with
@@ -252,20 +256,20 @@ private theorem exec_block (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin 
   | message m => rcases k with _ | k <;> simp [exec, onMessage, acCall] at hk
   | attestation a => rcases k with _ | k <;> simp [exec, onAttestation] at hk
   | restart => rcases k with _ | k <;> simp [exec, restart, acCall] at hk
-  | tick =>
-    refine Or.inr ⟨rfl, ?_⟩
+  | tick x =>
+    refine Or.inr ⟨x, rfl, ?_⟩
     rw [tick_cuts] at hk ⊢
-    have hl₁ : (tickStep dg y st t .acTick).2.length = 1 := rfl
-    have hn : (tickStep dg y st t .acTick).2.length +
-        (tickStep dg y (tickStep dg y st t .acTick).1 t .proposal).2.length > k := by
+    have hl₁ : (tickStep dg y st t x .acTick).2.length = 1 := rfl
+    have hn : (tickStep dg y st t x .acTick).2.length +
+        (tickStep dg y (tickStep dg y st t x .acTick).1 t x .proposal).2.length > k := by
       by_contra hle
       rw [List.getElem?_append_right (by simp only [List.length_append]; omega)] at hk
-      exact update_no_block dg y _ t B acc (List.mem_of_getElem? hk)
+      exact update_no_block dg y _ t x B acc (List.mem_of_getElem? hk)
     rw [List.getElem?_append_left (by simp only [List.length_append]; omega)] at hk
     rcases k with _ | k
     · simp [tickStep, acCall] at hk
     rw [List.getElem?_append_right (by omega), hl₁, Nat.add_sub_cancel] at hk
-    obtain ⟨rfl, hp, d, p, hdp, rfl, hacc⟩ := proposal_block dg y _ t hk
+    obtain ⟨rfl, hp, d, p, hdp, rfl, hacc⟩ := proposal_block dg y _ t x hk
     refine ⟨rfl, hp, d, p, hdp, rfl, hacc, ⟨_, rfl⟩, ?_⟩
     rw [List.getElem?_append_left, List.getElem?_append_right (by rw [hl₁]), hl₁]
     · simp only [tickStep, hp, ↓reduceIte, Nat.sub_self]
@@ -335,9 +339,9 @@ private theorem exec_message (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fi
 /-- An `fg_attest` cut is in a tick. -/
 private theorem exec_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) {C : A.Blk} {s : Option (FG.Att P.n)}
-    (h : Cut.fg (.attest C s) ∈ (exec dg y st t e).2) : e = .tick := by
+    (h : Cut.fg (.attest C s) ∈ (exec dg y st t e).2) : ∃ x, e = .tick x := by
   cases e with
-  | tick => rfl
+  | tick x => exact ⟨x, rfl⟩
   | block B =>
     simp only [exec, onBlock, acCall] at h
     split_ifs at h
@@ -349,8 +353,8 @@ private theorem exec_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin
 
 /-- The FG update's `fg_attest` cut is its second. -/
 private theorem update_attest_pos (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
-    (st : NodeState A) (t : Time) {m : Nat} {C : A.Blk} {s : Option (FG.Att P.n)}
-    (hm : (tickStep dg y st t .fgUpdate).2[m]? = some (.fg (.attest C s))) : m = 1 := by
+    (st : NodeState A) (t : Time) (x : Nat) {m : Nat} {C : A.Blk} {s : Option (FG.Att P.n)}
+    (hm : (tickStep dg y st t x .fgUpdate).2[m]? = some (.fg (.attest C s))) : m = 1 := by
   simp only [tickStep, acToFG] at hm
   split at hm
   · rcases m with _ | m <;> simp at hm
@@ -361,28 +365,28 @@ private theorem update_attest_pos (dg : Digest (List (FG.Att P.n)) A.Payload) (y
 
 /-- In a tick, the FG cuts before an `fg_attest` cut are the own proposal's. -/
 private theorem tick_before_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
-    (st : NodeState A) (t : Time) {m m₂ : Nat} {ℓ : FGLabel P A.Payload} {C : A.Blk}
-    {s : Option (FG.Att P.n)} (hm : (exec dg y st t .tick).2[m]? = some (.fg ℓ))
-    (hm₂ : (exec dg y st t .tick).2[m₂]? = some (.fg (.attest C s))) (hlt : m < m₂) :
+    (st : NodeState A) (t : Time) (x : Nat) {m m₂ : Nat} {ℓ : FGLabel P A.Payload} {C : A.Blk}
+    {s : Option (FG.Att P.n)} (hm : (exec dg y st t (.tick x)).2[m]? = some (.fg ℓ))
+    (hm₂ : (exec dg y st t (.tick x)).2[m₂]? = some (.fg (.attest C s))) (hlt : m < m₂) :
     ∃ B acc, ℓ = .block B acc ∧ B.proposer = y ∧ P.slotTime B.slot = t := by
   rw [tick_cuts] at hm hm₂
-  set l := (tickStep dg y st t .acTick).2 ++
-    (tickStep dg y (tickStep dg y st t .acTick).1 t .proposal).2
+  set l := (tickStep dg y st t x .acTick).2 ++
+    (tickStep dg y (tickStep dg y st t x .acTick).1 t x .proposal).2
   have hl : l.length ≤ m₂ := by
     by_contra hlt'
     rw [List.getElem?_append_left (by omega)] at hm₂
     rcases List.mem_append.1 (List.mem_of_getElem? hm₂) with h | h
     · simp [tickStep, acCall] at h
-    · exact proposal_no_attest dg y _ t C s h
+    · exact proposal_no_attest dg y _ t x C s h
   rw [List.getElem?_append_right hl] at hm₂
   -- the FG update signs at its second cut
-  have h₂ := update_attest_pos dg y _ t hm₂
+  have h₂ := update_attest_pos dg y _ t x hm₂
   rcases lt_trichotomy m l.length with hml | hml | hml
   · rw [List.getElem?_append_left hml] at hm
     rcases m with _ | m
     · simp [l, tickStep, acCall] at hm
     rw [List.getElem?_append_right (by simp [tickStep]), show (m + 1 -
-      (tickStep dg y st t .acTick).2.length) = m by simp [tickStep]] at hm
+      (tickStep dg y st t x .acTick).2.length) = m by simp [tickStep]] at hm
     simp only [tickStep] at hm
     split_ifs at hm with hp
     · split at hm
@@ -566,21 +570,21 @@ AC cuts, so at the FG state before the tick. -/
 theorem blockCall_cases (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {B : A.Blk} {acc : Bool} (hc : tr.CallAt y i (.fg (.block B acc))) :
     tr.GroupAt dg y i (tr.time i) (.block B) ∨
-    ∃ j, i = j + 2 ∧ tr.TickAt dg y j (tr.time i) ∧ Proposes y (tr.time i) ∧ ∃ d p,
-      (acProposal (tickStep dg y (tr.state y j) (tr.time i) .acTick).1 (tr.time i)).2.2 =
+    ∃ j x, i = j + 2 ∧ tr.GroupAt dg y j (tr.time i) (.tick x) ∧ Proposes y (tr.time i) ∧ ∃ d p,
+      (acProposal (tickStep dg y (tr.state y j) (tr.time i) x .acTick).1 (tr.time i)).2.2 =
         some (d, p) ∧
-      B = mkBlock dg y (tr.state y j).fg (tr.time i) d.head p ∧
+      B = mkBlock dg y (tr.state y j).fg (tr.time i) x d.head p ∧
       (acc = true ↔ ∃ fg', (tr.state y j).fg.onBlock B = some fg') ∧
       (∃ ℓ : ACLabel A, tr.CallAt y j (.ac ℓ)) ∧ (∃ ℓ : ACLabel A, tr.CallAt y (j + 1) (.ac ℓ)) ∧
       (tr.state y i).fg = (tr.state y j).fg := by
   obtain ⟨j, e, k, hg, rfl, hk⟩ := call_in_group h hy hc
-  rcases exec_block dg y _ _ e hk with ⟨rfl, rfl⟩ | ⟨rfl, rfl, hp, d, p, hdp, hB, hacc, ⟨ℓ₀, h₀⟩,
-    ℓ₁, h₁⟩
+  rcases exec_block dg y _ _ e hk with ⟨rfl, rfl⟩ | ⟨x, rfl, rfl, hp, d, p, hdp, hB, hacc,
+    ⟨ℓ₀, h₀⟩, ℓ₁, h₁⟩
   · exact Or.inl hg
   have c₀ := (group_cut hg h₀).1
   have c₁ := (group_cut hg h₁).1
   rw [Nat.add_zero] at c₀
-  refine Or.inr ⟨j, rfl, hg, hp, d, p, hdp, hB, hacc, ⟨_, c₀⟩, ⟨_, c₁⟩, ?_⟩
+  refine Or.inr ⟨j, x, rfl, hg, hp, d, p, hdp, hB, hacc, ⟨_, c₀⟩, ⟨_, c₁⟩, ?_⟩
   rw [show j + 2 = j + 1 + 1 by omega, tr.state_succ_of_call c₁, (h.cutLaw y hy _ _ c₁).2.2.1,
     tr.state_succ_of_call c₀, (h.cutLaw y hy _ _ c₀).2.2.1]
 
@@ -597,18 +601,19 @@ theorem attestCall_tick (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈
     {C : A.Blk} {s : Option (FG.Att P.n)} (hc : tr.CallAt y i (.fg (.attest C s))) :
     ∃ j, j ≤ i ∧ tr.TickAt dg y j (tr.time i) := by
   obtain ⟨j, e, k, hg, rfl, hk⟩ := call_in_group h hy hc
-  obtain rfl := exec_attest dg y _ _ e (List.mem_of_getElem? hk)
-  exact ⟨j, by omega, hg⟩
+  obtain ⟨x, rfl⟩ := exec_attest dg y _ _ e (List.mem_of_getElem? hk)
+  exact ⟨j, by omega, x, hg⟩
 
 /-- **Before the tick of a time, a node's cuts at that time are restarts.** -/
 theorem before_tick (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j k : Nat}
     {t : Time} {c : Cut A} (hg : tr.TickAt dg y j t) (hc : tr.CallAt y k c) (hk : k < j)
     (ht : tr.time k = t) : ∃ ℓ : ACLabel A, c = .ac ℓ ∧ ℓ.call = .restart := by
   obtain ⟨j', e, m, hg', rfl, hm⟩ := call_in_group h hy hc
+  obtain ⟨x, hg⟩ := hg
   rw [ht] at hg' hm
-  have hph := h.phase_order y hy y hy j' j t e .tick hg' hg (by omega)
+  have hph := h.phase_order y hy y hy j' j t e (.tick x) hg' hg (by omega)
   cases e with
-  | tick => exact absurd (h.tick_unique y hy j' j t hg' hg) (by omega)
+  | tick x' => exact absurd (h.tick_unique y hy j' j t ⟨x', hg'⟩ ⟨x, hg⟩) (by omega)
   | restart =>
     rcases m with _ | m <;> simp [exec, restart, acCall] at hm
     exact ⟨_, hm.symm, rfl⟩
@@ -622,14 +627,14 @@ theorem fg_before_attest (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y �
     (ht : tr.time i = tr.time j) :
     ∃ B acc, ℓ = .block B acc ∧ B.proposer = y ∧ P.slotTime B.slot = tr.time j := by
   obtain ⟨j₀, e, k₂, hg, rfl, hk₂⟩ := call_in_group h hy hc
-  obtain rfl := exec_attest dg y _ _ e (List.mem_of_getElem? hk₂)
+  obtain ⟨x, rfl⟩ := exec_attest dg y _ _ e (List.mem_of_getElem? hk₂)
   by_cases hlt : i < j₀
-  · obtain ⟨ℓ', he, -⟩ := before_tick h hy hg hi hlt ht
+  · obtain ⟨ℓ', he, -⟩ := before_tick h hy ⟨x, hg⟩ hi hlt ht
     cases he
   have hlen := (List.getElem?_eq_some_iff.1 hk₂).1
   obtain ⟨hn, -, -, -, hl⟩ := hg.2.1 (i - j₀) (by omega)
   rw [Nat.add_sub_cancel' (not_lt.1 hlt), hi.2] at hl
-  exact tick_before_attest dg y _ _ (m := i - j₀)
+  exact tick_before_attest dg y _ _ x (m := i - j₀)
     (by rw [List.getElem?_eq_getElem (by omega), ← hl]) hk₂ (by omega)
 
 /-- **An accepted block in a restart or a tick is the node's own proposal of that time.** -/
@@ -640,7 +645,7 @@ theorem accept_in_tick (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ 
   have htk : tr.time k = t := by
     have := (hg.2.1 (k - j₀) (by omega)).2.1
     rwa [Nat.add_sub_cancel' hk] at this
-  rcases blockCall_cases h hy hc with hd | ⟨j, -, -, hp, d, p, -, rfl, -⟩
+  rcases blockCall_cases h hy hc with hd | ⟨j, x, -, -, hp, d, p, -, rfl, -⟩
   · obtain rfl := group_start hg hd hk hk'
     have := group_phase hg hd
     rw [this] at he

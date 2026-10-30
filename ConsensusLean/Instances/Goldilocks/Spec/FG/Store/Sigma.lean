@@ -29,10 +29,10 @@ repeats kept). -/
 def Block.fgView {n : Nat} {ACP : Type} (B : Block n (List (FG.Att n)) ACP) : FG.FGBlock n :=
   ⟨B.root, B.slot, B.proposer, B.fgPayload⟩
 
-/-- Genesis: the genesis root, no parent, slot `0`, no attestations, the AC payload `acp₀`.
-(Its proposer and AC payload are never read.) -/
+/-- Genesis: the genesis root, no parent, slot `0`, input `0`, no attestations, the AC payload
+`acp₀`. (Its proposer, input and AC payload are never read.) -/
 def Params.genesisBlock (P : Params) {ACP : Type} (acp₀ : ACP) : NodeBlock P ACP :=
-  ⟨P.genesisRoot, none, 0, P.proposer 0, [], acp₀⟩
+  ⟨P.genesisRoot, none, 0, P.proposer 0, 0, [], acp₀⟩
 
 /-- The FG state `Σ`. -/
 structure Store (P : Params) (ACP : Type) where

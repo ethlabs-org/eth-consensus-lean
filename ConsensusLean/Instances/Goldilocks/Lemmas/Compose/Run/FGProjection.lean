@@ -33,12 +33,12 @@ theorem own_accept (hq : A.Requirements) (hg₀ : (P.genesisBlock A.genesisPaylo
   obtain ⟨j', hj'i, hcall, hpos⟩ := h.block_unforgeable y hy i B ⟨true, hc⟩ (hp ▸ hy)
   rw [hp] at hcall
   obtain ⟨acc, hcall⟩ := hcall
-  rcases blockCall_cases h hy hcall with hg | ⟨j, rfl, hg, hpr, d, p, hdp, hB, hacc, ⟨ℓ₀, c₀⟩,
+  rcases blockCall_cases h hy hcall with hg | ⟨j, x, rfl, hg, hpr, d, p, hdp, hB, hacc, ⟨ℓ₀, c₀⟩,
     ⟨ℓ₁, c₁⟩, hfg⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   -- C0.3: the own block is accepted at its tick
   obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
-  have hC03 := honest_block_accepted dg y hq hg₀ cfg _ (tr.time (j + 2)) hreach hstep hpr d p
+  have hC03 := honest_block_accepted dg y hq hg₀ cfg _ (tr.time (j + 2)) x hreach hstep hpr d p
     (by rw [hst]; exact hdp)
   simp only [hst] at hC03
   have key : NoCollOn dg (insert B (tr.state y j).fg.tree) →
@@ -60,7 +60,7 @@ theorem own_accept (hq : A.Requirements) (hg₀ : (P.genesisBlock A.genesisPaylo
     change (tr.state y i).fg.blocks B.root = some B at this
     rw [hnew] at this
     cases this
-  refine ⟨j, rfl, hg, fun k hk hki => ?_, hfg, d.head, by rw [hB]; rfl⟩
+  refine ⟨j, rfl, ⟨x, hg⟩, fun k hk hki => ?_, hfg, d.head, by rw [hB]; rfl⟩
   rcases (show k = j ∨ k = j + 1 by omega) with rfl | rfl
   exacts [⟨_, c₀⟩, ⟨_, c₁⟩]
 

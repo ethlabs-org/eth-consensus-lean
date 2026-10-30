@@ -19,9 +19,10 @@ the new node state and its cuts in order (decomposition §1.5):
   content; then the own `on_block(B)` (the broadcast is the acceptance, which a run observes);
 * `attest(C)`: `fg_attest(Σ, Λ, C)`; when it signs, the record is replaced and the own
   attestation is processed at once by `on_attestation`;
-* `on_tick(t)`: the tick steps `tickSteps` in order (claims C0.4): the AC's tick; at `t_s`
-  with `s > 0`, for the slot's proposer, `ac_proposal`, then `propose_block` when it returns a
-  proposal; the FG update, `ac_to_fg` and then `attest(fg_confirmed)` when it is not `⊥`.
+* `on_tick(t)`, with the tick's input (the encoded transactions of a proposal): the tick steps
+  `tickSteps` in order (claims C0.4): the AC's tick; at `t_s` with `s > 0`, for the slot's
+  proposer, `ac_proposal`, then `propose_block` when it returns a proposal; the FG update,
+  `ac_to_fg` and then `attest(fg_confirmed)` when it is not `⊥`.
 
 `Event` is a top-level event of a node and `exec` runs its handler; `WireOK` is the input
 contract of a delivery (composition.tex §"Blocks": the root is the digest of the content, the
@@ -63,17 +64,18 @@ noncomputable def restart (self : Fin P.n) (st : NodeState A) (t : Time) :
   (r.1, [r.2])
 
 /-- The block `propose_block` makes at validator `self` and time `t` from the FG state `Σ`, the
-parent `H` and the AC payload `p`: slot `slot(t)`, the attestations
-`proposal_attestations(Σ, H)`, its root the digest `dg` of its content. -/
+parent `H`, the AC payload `p` and the input `x` (the tick's; `Block.input`): slot `slot(t)`,
+the attestations `proposal_attestations(Σ, H)`, its root the digest `dg` of its content. -/
 noncomputable def mkBlock (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
-    (fg : Store P A.Payload) (t : Time) (H : A.Blk) (p : A.Payload) : A.Blk :=
+    (fg : Store P A.Payload) (t : Time) (x : Nat) (H : A.Blk) (p : A.Payload) : A.Blk :=
   let atts := fg.proposalAttestations H
-  ⟨dg (some H.root) (P.slotOf t) atts p, some H.root, P.slotOf t, self, atts, p⟩
+  ⟨dg (some H.root) (P.slotOf t) x atts p, some H.root, P.slotOf t, self, x, atts, p⟩
 
-/-- `propose_block(H, p)`: the block, then the own `on_block`. -/
+/-- `propose_block(H, p)`: the block (with the tick's input `x`), then the own `on_block`. -/
 noncomputable def proposeBlock (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
-    (st : NodeState A) (t : Time) (H : A.Blk) (p : A.Payload) : NodeState A × List (Cut A) :=
-  onBlock self st t (mkBlock dg self st.fg t H p)
+    (st : NodeState A) (t : Time) (x : Nat) (H : A.Blk) (p : A.Payload) :
+    NodeState A × List (Cut A) :=
+  onBlock self st t (mkBlock dg self st.fg t x H p)
 
 /-- `attest(C)` at validator `self`: `fg_attest(Σ, Λ, C)`; when it signs `a`, the new record
 and the own `on_attestation(a)`. -/
@@ -106,9 +108,10 @@ instance (self : Fin P.n) (t : Time) : Decidable (Proposes (P := P) self t) :=
   inferInstanceAs (Decidable (0 < P.slotOf t ∧ t = P.slotTime (P.slotOf t) ∧
     P.proposer (P.slotOf t) = self))
 
-/-- One tick step at validator `self` and time `t`. -/
+/-- One tick step at validator `self` and time `t`, with the tick's input `x` (the encoded
+transactions a proposal carries; only the proposal step reads it). -/
 noncomputable def tickStep (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
-    (st : NodeState A) (t : Time) : TickStep → NodeState A × List (Cut A)
+    (st : NodeState A) (t : Time) (x : Nat) : TickStep → NodeState A × List (Cut A)
   | .acTick =>
       let r := acCall self st t .tick
       (r.1, [r.2])
@@ -118,7 +121,7 @@ noncomputable def tickStep (dg : Digest (List (FG.Att P.n)) A.Payload) (self : F
         match r.2.2 with
         | none => (r.1, [r.2.1])
         | some (d, p) =>
-            let r' := proposeBlock dg self r.1 t d.head p
+            let r' := proposeBlock dg self r.1 t x d.head p
             (r'.1, r.2.1 :: r'.2)
       else (st, [])
   | .fgUpdate =>
@@ -132,21 +135,23 @@ noncomputable def tickStep (dg : Digest (List (FG.Att P.n)) A.Payload) (self : F
 /-- The tick steps `steps` in order from `st`: each reads the state the earlier ones left; the
 cuts are concatenated. -/
 noncomputable def runSteps (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
-    (st : NodeState A) (t : Time) (steps : List TickStep) : NodeState A × List (Cut A) :=
+    (st : NodeState A) (t : Time) (x : Nat) (steps : List TickStep) :
+    NodeState A × List (Cut A) :=
   steps.foldl (fun acc step =>
-    let r := tickStep dg self acc.1 t step
+    let r := tickStep dg self acc.1 t x step
     (r.1, acc.2 ++ r.2)) (st, [])
 
-/-- `on_tick(t)` at validator `self`: `tickSteps` in order. -/
+/-- `on_tick(t)` at validator `self` with the input `x`: `tickSteps` in order. -/
 noncomputable def onTick (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
-    (st : NodeState A) (t : Time) : NodeState A × List (Cut A) :=
-  runSteps dg self st t tickSteps
+    (st : NodeState A) (t : Time) (x : Nat) : NodeState A × List (Cut A) :=
+  runSteps dg self st t x tickSteps
 
 /-- A top-level event of a node: a tick, a delivery (a block, an AC message, an attestation),
 a restart. -/
 inductive Event (A : NodeAC P) where
-  /-- The tick at a public time. -/
-  | tick
+  /-- The tick at a public time, with the input `x` (the encoded transactions the node's engine
+  supplies for a proposal at this time; `Block.input`). -/
+  | tick (x : Nat)
   /-- A block is received. -/
   | block (B : A.Blk)
   /-- An AC message is received. -/
@@ -159,7 +164,7 @@ inductive Event (A : NodeAC P) where
 /-- The handler of an event at validator `self` and time `t`. -/
 noncomputable def exec (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
     (st : NodeState A) (t : Time) : Event A → NodeState A × List (Cut A)
-  | .tick => onTick dg self st t
+  | .tick x => onTick dg self st t x
   | .block B => onBlock self st t B
   | .message m => onMessage self st t m
   | .attestation a => onAttestation st a
@@ -173,7 +178,7 @@ def WireOK (dg : Digest (List (FG.Att P.n)) A.Payload) : Event A → Prop
   | .block B => B.RootOk dg ∧ (∀ a ∈ B.fgPayload, a.WellFormed) ∧ A.validPayload B
   | .message m => A.validMsg m
   | .attestation a => a.WellFormed
-  | .tick => True
+  | .tick _ => True
   | .restart => True
 
 end Consensus.Goldilocks.Node

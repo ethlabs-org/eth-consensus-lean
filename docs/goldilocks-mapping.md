@@ -105,7 +105,10 @@ Not transcribed: F.5 (schema), which is Mathlib's `WellFounded.induction`; F.2's
 consequence of `DigestDeterminesBlock` along parent edges, stated where a store needs it). Deviations: F.3 needs
 `B.proposer = C.proposer`, because composition.tex digests `(parent root, slot, attestations, AC payload)` without
 the proposer (the node's blocks have the slot proposer, asserted by `state_transition`); its collision-freedom is
-about the two blocks' contents, not the whole digest. `Frame` carries `F` as a field (composition.tex derives it
+about the two blocks' contents, not the whole digest. `Block.input : Nat` is the engine's header input
+(`encodeTxs mempool`), which the spec folds into the AC payload (the AC fixes its payload's encoding): it is
+digested, compared by F.3 and `NoCollOn`, written by the proposer's tick and read by no handler
+(`docs/decisions.md`, "Goldilocks instance"). `Frame` carries `F` as a field (composition.tex derives it
 as the root of the tree; under `FrameOK` it is that root). `FrameOK` adds "roots injective on the tree", which
 `fg_on_block`'s duplicate-root test gives. The sequence statements of G0.3 (frame) assume that the trees lie in
 one coherent set `U` (at a node, the accepted tree): frames alone allow a block that left the tree to come back
@@ -307,6 +310,9 @@ Modelling choices:
   source and the attestation signed. A refused `fg_on_block` is a cut (a call with no write); a dropped future-slot
   block is no cut (no call). The broadcast of an own object is not a cut: a run observes it as the acceptance (own
   block) or the signing (own attestation).
+- **The tick carries the input** (`Node.Event.tick x`): the engine's header input that `mkBlock` writes into the
+  proposal's `Block.input` and that no handler reads. Statements over a tick quantify over it (`Step … (.tick x)`);
+  `RunTrace.TickAt` hides it (`∃ x`).
 - **`Node.Reachable` over-approximates a run.** `Node.Step` enforces composition.tex's order within a time (a
   restart in phase `pre`; the tick at a public time in phase `pre`, leaving `post`; a delivery at a public time
   only in `post`) and the wire checks. Three obligations are left to `Spec/Run`: (i) an awake node ticks at every

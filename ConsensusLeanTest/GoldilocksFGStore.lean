@@ -36,7 +36,7 @@ def P₁ : Params where
   δt := 2
 
 /-- A block on genesis: root `1`, slot `1`, no attestations. -/
-def b₁ : NodeBlock P₁ Unit := ⟨1, some 0, 1, ⟨0, Nat.one_pos⟩, [], ()⟩
+def b₁ : NodeBlock P₁ Unit := ⟨1, some 0, 1, ⟨0, Nat.one_pos⟩, 0, [], ()⟩
 
 /-- (a) The initial FG state is reachable. -/
 theorem init_reachable : (Store.init (P := P₁) ()).Reachable () := Relation.ReflTransGen.refl
@@ -144,7 +144,7 @@ def v₁ : Fin P₂.n := ⟨1, Nat.one_lt_two⟩
 theorem v₀_ne_v₁ : v₀ ≠ v₁ := by decide
 
 /-- Validator `0`'s proposal of slot `1` on genesis: root `1`, no attestations. -/
-def B₂ : NodeBlock P₂ Unit := ⟨1, some 0, 1, v₀, [], ()⟩
+def B₂ : NodeBlock P₂ Unit := ⟨1, some 0, 1, v₀, 0, [], ()⟩
 
 /-- The chain state of `B₂`: the initial one at slot `1` with latest block `B₂` (no quorum, so
 no height event). -/

@@ -56,7 +56,7 @@ noncomputable abbrev ro1 : ReplayOrder sp1 Unit := ReplayOrder.choice sp1
 noncomputable abbrev GA1 : ACInterface sp1.toParams Unit := goldilocksSA sp1 Unit ro1
 
 /-- Genesis: root `0`, no parent, slot `0`, empty payloads. -/
-def g : Blk sp1.n Unit := ⟨0, none, 0, v0, (), ([], [])⟩
+def g : Blk sp1.n Unit := ⟨0, none, 0, v0, 0, (), ([], [])⟩
 
 /-- The genesis frame. -/
 def Φ₀ : Frm sp1.n Unit := ⟨{g}, g, g, {g}⟩

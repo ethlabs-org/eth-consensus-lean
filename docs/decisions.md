@@ -67,6 +67,22 @@ where it is recorded; "Francesco" marks the owner's decisions.
 - A light roadmap with checked names now (`docs/roadmap.md`), leanblueprint later (trigger: a second instance or
   outside contributors). The Spec package split waits for reuse outside the project.
 
+## Goldilocks instance
+
+- 2026-10-30, amp-orbs (architecture), under the coordinator's criterion "the smallest trusted change that keeps
+  every proved milestone's proofs intact" ([#17], Refinement). **The spec block carries the engine's input**: the
+  engine hashes the whole header `(parent, pos, input, info)` and `compile` writes `input := encodeTxs mempool`
+  outside the shape's `Info`, so two engine blocks differing only in `input` have different hashes but, without
+  the field, one spec content; `RootOk` with one digest cannot hold of both, and the refinement cannot be stated
+  faithfully. Chosen: (B) a field `input : Nat` of `Common.Block`, the digest over `(parent, slot, input, FG
+  payload, AC payload)`, and the node's tick event carrying the input (`Node.Event.tick x`; `mkBlock` writes it;
+  the AC never reads it). Rejected: (P) the input through the AC payload via `ACInterface.proposal`, which
+  changes the generic AC interface, the SA payload pair and every `Lemmas/AC` file (16 proved files) and
+  `Spec/SA`; (B) leaves `Lemmas/AC` and `Lemmas/FGStore` (generic in the block type, no block literals) intact
+  and touches `Spec/Common/Block`, `Spec/Node`, `Spec/Run/Model`, the `Statements/Compose` files that pattern
+  the tick, five `Lemmas/Compose` files and the Goldilocks tests. The spec folds the input into the AC payload
+  (composition.tex: the AC fixes the encoding of its payload); the mapping records the field as that encoding.
+
 ## Process
 
 - 2026-10-29, Francesco ([#2]). Claude (claude-ethlabs) and the Amp orbs push and merge their own green,

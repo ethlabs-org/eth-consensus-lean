@@ -42,9 +42,9 @@ private theorem onBlock_ac {st : NodeState A} {t : Time} {B' B : A.Blk} {ℓ : A
   · simp at h
 
 /-- The AC cut of the proposal step with a block call is the own block's, after its acceptance. -/
-private theorem proposal_ac {st : NodeState A} {t : Time} {B : A.Blk} {ℓ : ACLabel A}
-    (h : Cut.ac ℓ ∈ (tickStep dg self st t .proposal).2) (hc : ℓ.call = .block B) :
-    (tickStep dg self st t .proposal).2 =
+private theorem proposal_ac {st : NodeState A} {t : Time} {x : Nat} {B : A.Blk} {ℓ : ACLabel A}
+    (h : Cut.ac ℓ ∈ (tickStep dg self st t x .proposal).2) (hc : ℓ.call = .block B) :
+    (tickStep dg self st t x .proposal).2 =
         [(Node.acProposal st t).2.1, .fg (.block B true), .ac ℓ] ∧
       B.slot ≤ P.slotOf t ∧ ∃ fg', (Node.acProposal st t).1.fg.onBlock B = some fg' := by
   simp only [Node.tickStep, Node.acProposal] at h ⊢
@@ -68,8 +68,8 @@ private theorem proposal_ac {st : NodeState A} {t : Time} {B : A.Blk} {ℓ : ACL
     simp at h
 
 /-- The FG update makes no block call. -/
-private theorem update_no_block {st : NodeState A} {t : Time} {ℓ : ACLabel A}
-    (h : Cut.ac ℓ ∈ (tickStep dg self st t .fgUpdate).2) : ℓ.call = .toFG := by
+private theorem update_no_block {st : NodeState A} {t : Time} {x : Nat} {ℓ : ACLabel A}
+    (h : Cut.ac ℓ ∈ (tickStep dg self st t x .fgUpdate).2) : ℓ.call = .toFG := by
   simp only [Node.tickStep] at h
   split at h
   · simp only [List.mem_singleton, Node.acToFG, Cut.ac.injEq] at h
@@ -94,14 +94,14 @@ theorem ac_sees_accepted_blocks : ACSeesAcceptedBlocks dg self := by
   | restart =>
     simp only [Node.exec, Node.restart, acCall, List.mem_singleton, Cut.ac.injEq] at h
     subst h; cases hc
-  | tick =>
-    have hcuts : exec dg self st t .tick =
-        ((tickStep dg self (tickStep dg self (tickStep dg self st t .acTick).1 t .proposal).1
-            t .fgUpdate).1,
-          (tickStep dg self st t .acTick).2 ++
-            (tickStep dg self (tickStep dg self st t .acTick).1 t .proposal).2 ++
-            (tickStep dg self (tickStep dg self (tickStep dg self st t .acTick).1 t .proposal).1
-              t .fgUpdate).2) := by
+  | tick x =>
+    have hcuts : exec dg self st t (.tick x) =
+        ((tickStep dg self (tickStep dg self (tickStep dg self st t x .acTick).1 t x .proposal).1
+            t x .fgUpdate).1,
+          (tickStep dg self st t x .acTick).2 ++
+            (tickStep dg self (tickStep dg self st t x .acTick).1 t x .proposal).2 ++
+            (tickStep dg self (tickStep dg self (tickStep dg self st t x .acTick).1 t x .proposal).1
+              t x .fgUpdate).2) := by
       simp [Node.exec, onTick, runSteps, tickSteps]
     rw [hcuts] at h ⊢
     simp only [List.mem_append] at h
@@ -109,13 +109,13 @@ theorem ac_sees_accepted_blocks : ACSeesAcceptedBlocks dg self := by
     · simp only [Node.tickStep, acCall, List.mem_singleton, Cut.ac.injEq] at h
       subst h; cases hc
     · obtain ⟨heq, hs, fg', hb⟩ := proposal_ac dg self h hc
-      refine ⟨(tickStep dg self st t .acTick).2 ++
-          [(Node.acProposal (tickStep dg self st t .acTick).1 t).2.1],
-        (tickStep dg self (tickStep dg self (tickStep dg self st t .acTick).1 t .proposal).1
-          t .fgUpdate).2,
-        (Node.acProposal (tickStep dg self st t .acTick).1 t).1, ?_,
-        .cons (st₁ := (tickStep dg self st t .acTick).1) ⟨rfl, rfl, rfl, rfl⟩
-          (.cons (st₁ := (Node.acProposal (tickStep dg self st t .acTick).1 t).1)
+      refine ⟨(tickStep dg self st t x .acTick).2 ++
+          [(Node.acProposal (tickStep dg self st t x .acTick).1 t).2.1],
+        (tickStep dg self (tickStep dg self (tickStep dg self st t x .acTick).1 t x .proposal).1
+          t x .fgUpdate).2,
+        (Node.acProposal (tickStep dg self st t x .acTick).1 t).1, ?_,
+        .cons (st₁ := (tickStep dg self st t x .acTick).1) ⟨rfl, rfl, rfl, rfl⟩
+          (.cons (st₁ := (Node.acProposal (tickStep dg self st t x .acTick).1 t).1)
             ⟨rfl, rfl, rfl, rfl⟩ (.nil _)), hs, accepted_facts hb⟩
       rw [heq]
       simp
