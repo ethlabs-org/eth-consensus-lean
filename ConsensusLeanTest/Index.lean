@@ -4,6 +4,7 @@ public import ConsensusLeanTest.Common
 public import ConsensusLeanTest.Controls
 public import ConsensusLeanTest.Gaps
 public import ConsensusLeanTest.Goldilocks
+public import ConsensusLeanTest.GoldilocksRefinement
 public import ConsensusLeanTest.Good
 public import ConsensusLeanTest.Leaks
 public import ConsensusLeanTest.Lift
@@ -728,6 +729,76 @@ example := ``Consensus.Goldilocks.Regimes.CrossNest
 example := ``Consensus.Goldilocks.Regimes.HealedStatements
 
 /-! ## Goldilocks Refinement (a milestone PR appends here only) -/
+
+example := ``Consensus.Goldilocks.Refinement.Out
+example := ``Consensus.Goldilocks.Refinement.schema
+example := ``Consensus.Goldilocks.Refinement.WireAtt
+example := ``Consensus.Goldilocks.Refinement.WireVote
+example := ``Consensus.Goldilocks.Refinement.Info
+example := ``Consensus.Goldilocks.Refinement.encodeAtt
+example := ``Consensus.Goldilocks.Refinement.decodeAtt
+example := ``Consensus.Goldilocks.Refinement.encodeVote
+example := ``Consensus.Goldilocks.Refinement.decodeVote
+example := ``Consensus.Goldilocks.Refinement.encodeInfo
+example := ``Consensus.Goldilocks.Refinement.decodeInfo
+example := ``Consensus.Goldilocks.Refinement.Body
+example := ``Consensus.Goldilocks.Refinement.Wire
+example := ``Consensus.Goldilocks.Refinement.voteObj
+example := ``Consensus.Goldilocks.Refinement.attObj
+example := ``Consensus.Goldilocks.Refinement.payloadObjs
+example := ``Consensus.Goldilocks.Refinement.blockObj
+example := ``Consensus.Goldilocks.Refinement.conflicts
+example := ``Consensus.Goldilocks.Refinement.decodeBlock
+example := ``Consensus.Goldilocks.Refinement.decodeVoteObj
+example := ``Consensus.Goldilocks.Refinement.decodeAttObj
+example := ``Consensus.Goldilocks.Refinement.canonEvent
+example := ``Consensus.Goldilocks.Refinement.delivered
+example := ``Consensus.Goldilocks.Refinement.parentRef
+example := ``Consensus.Goldilocks.Refinement.parentRoot
+example := ``Consensus.Goldilocks.Refinement.dgOf
+example := ``Consensus.Goldilocks.Refinement.rootOf
+example := ``Consensus.Goldilocks.Refinement.headerOf
+example := ``Consensus.Goldilocks.Refinement.blockOf
+example := ``Consensus.Goldilocks.Refinement.skeleton
+example := ``Consensus.Goldilocks.Refinement.State
+example := ``Consensus.Goldilocks.Refinement.emitted
+example := ``Consensus.Goldilocks.Refinement.apply
+example := ``Consensus.Goldilocks.Refinement.relayIf
+example := ``Consensus.Goldilocks.Refinement.processOne
+example := ``Consensus.Goldilocks.Refinement.process
+example := ``Consensus.Goldilocks.Refinement.recordOwn
+example := ``Consensus.Goldilocks.Refinement.nodeTick
+example := ``Consensus.Goldilocks.Refinement.propose
+example := ``Consensus.Goldilocks.Refinement.fgUpdate
+example := ``Consensus.Goldilocks.Refinement.poll
+example := ``Consensus.Goldilocks.Refinement.chainTo
+example := ``Consensus.Goldilocks.Refinement.outOf
+example := ``Consensus.Goldilocks.Refinement.restore
+example := ``Consensus.Goldilocks.Refinement.goldilocksShape
+example := ``Consensus.Goldilocks.Refinement.Setup
+example := ``Consensus.Goldilocks.Refinement.Setup.params
+example := ``Consensus.Goldilocks.SA.SAParams.pub
+example := ``Consensus.Goldilocks.Refinement.Blk
+example := ``Consensus.Goldilocks.Refinement.FamilyState
+example := ``Consensus.Goldilocks.Refinement.family
+example := ``Consensus.Goldilocks.Refinement.honestKeys
+example := ``Consensus.Goldilocks.Refinement.digestOf
+example := ``Consensus.Goldilocks.Refinement.stateAt
+example := ``Consensus.Goldilocks.Refinement.lastClock
+example := ``Consensus.Goldilocks.Refinement.SelIs
+example := ``Consensus.Goldilocks.Refinement.ReleasedFrom
+example := ``Consensus.Goldilocks.Refinement.RelayedFrom
+example := ``Consensus.Goldilocks.Refinement.DeliverSeq
+example := ``Consensus.Goldilocks.Refinement.Simulates
+example := ``Consensus.Goldilocks.Refinement.EngineSimulatesNode
+example := ``Consensus.Goldilocks.Refinement.ReadIsOut
+example := ``Consensus.Goldilocks.Refinement.GenesisFresh
+example := ``Consensus.Goldilocks.Refinement.NoCollTransport
+example := ``Consensus.Goldilocks.Refinement.ConflictsIff
+example := ``Consensus.Goldilocks.Refinement.EvidenceInView
+example := ``Consensus.Goldilocks.Refinement.FinalizedAccountable
+example := ``Consensus.Goldilocks.Refinement.RefinementStatements
+example := ``Consensus.Goldilocks.Refinement.Test.selIs_selValid
 
 /-! ## Goldilocks (values and sheet) -/
 

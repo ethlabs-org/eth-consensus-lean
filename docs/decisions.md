@@ -82,6 +82,27 @@ where it is recorded; "Francesco" marks the owner's decisions.
   and touches `Spec/Common/Block`, `Spec/Node`, `Spec/Run/Model`, the `Statements/Compose` files that pattern
   the tick, five `Lemmas/Compose` files and the Goldilocks tests. The spec folds the input into the AC payload
   (composition.tex: the AC fixes the encoding of its payload); the mapping records the field as that encoding.
+- 2026-10-30, amp-orbs (architecture), Refinement statements ([#17]; `Refinement/Defs`,
+  `Statements/Refinement`). **The Goldilocks node as a generic shape, simulated rather than equated.** The wire
+  format and digest are the refinement's choices, not the spec's: `n`-independent bodies (the family needs one
+  body type for every parameter set; a fixed-`n` body was rejected), canonical signed objects (a block's header
+  carries the canonical objects of its payload, so the engine's view contains the evidence G1.5 needs), a digest
+  from the engine's hash with the genesis root as a parameter (a header naming genesis by digest is dropped, so
+  `RootOk` holds by construction). The step order is `[poll, poll, pollPropose, propose, poll, poll]`: the node's
+  tick is the poll proposal step at the public times (a duty, so it runs only awake; putting it in `clock` was
+  rejected since `clock` runs asleep), two leading polls release the bodies queued since the last tick so that a
+  proposal carries only released objects (rejected: filtering own objects out of the proposal), the trailing
+  polls run the FG update and drain the tick's vote and attestation. The family's state is a Goldilocks state at
+  every proof of `1 ≤ n` (`FamilyState`; a `dite`/cast family was rejected). The simulation (`Simulates`) maps
+  engine cuts to node cuts with a monotone `ι` and relates ticks, deliveries (`DeliverSeq`, one group per
+  canonical object), restarts and releases; releases have the slack of the next awake tick (`ReleasedFrom`,
+  `RelayedFrom`). Two gaps recorded, not stated: the proposer selection is a hypothesis (`SelIs`; the generic
+  skeleton's `proposerSel` is one `SelSpec` for all slots, the shape cannot read the run's selection; it is
+  satisfiable with `SelValid`, `selIs_selValid` in `ConsensusLeanTest/GoldilocksRefinement.lean`; the
+  coordinator's decision: a per-slot selection in the generic skeleton as Refinement PR 3, [#93], then drop
+  `SelIs`, so that engine-level Goldilocks theorems do not carry it); the network premises' transport
+  (`Delivers` with `≤ max(a, g) + Δ` versus the spec's strict deadline; admission read as an instantaneous send
+  versus the engine's relay at the next awake tick) is left to the regimes milestone.
 
 - 2026-10-30, amp-orbs (coordinator), on the Regimes milestone (R.3). **Baseline's heal point is not raised to the
   proved bound.** The target pins `gHeal = max(g, 0) + (29 + B_H^F(k))·Δ` (from the FG-SA analysis); the only
@@ -142,6 +163,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
 [#8]: https://github.com/fradamt-agent/consensus-lean/issues/8
 [#10]: https://github.com/fradamt-agent/consensus-lean/issues/10
 [#11]: https://github.com/fradamt-agent/consensus-lean/issues/11
+[#93]: https://github.com/fradamt-agent/consensus-lean/issues/93
 [#17]: https://github.com/fradamt-agent/consensus-lean/issues/17
 [#21]: https://github.com/fradamt-agent/consensus-lean/issues/21
 [#38]: https://github.com/fradamt-agent/consensus-lean/issues/38
