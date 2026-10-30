@@ -32,8 +32,6 @@ def trivialSkel (n : Nat) : Skeleton n where
   Kind := Unit
   decKind := inferInstance
   kinds := [()]
-  kinds_nodup := List.nodup_singleton _
-  kinds_complete := fun _ => List.mem_singleton_self _
   phase := fun _ => 0
   kindSel := fun _ => .fixed Finset.univ
 
@@ -46,10 +44,10 @@ def trivialShape (pub : Public) : ChainShape pub Unit Unit where
   decBody := inferInstance
   init := fun _ => ()
   clock := fun s _ => s
-  propose := fun _ _ => none
-  act := fun _ _ _ => none
-  pollPropose := fun _ _ => none
-  poll := fun _ _ => none
+  propose := fun s _ => (s, none)
+  act := fun s _ _ => (s, none)
+  pollPropose := fun s _ => (s, none)
+  poll := fun s _ => (s, none)
   gossip := fun _ _ => []
   process := fun s _ _ => s
   recordOwn := fun s _ _ => s
@@ -77,16 +75,17 @@ theorem trivial_pollPropose_selSpec (pub : Public) :
 /-- The proposal of slot 2 is due at its slot time `2·Δ`. -/
 theorem trivial_propose_due (pub : Public) :
     ShapeDuty.propose 2 (by decide) ∈ (compile (trivialShape pub)).duties (2 * pub.Δ) :=
-  ((trivialShape pub).skel.duties_spec pub.Δ_pos _ _).mpr (by
+  ((trivialShape pub).skel.duties_spec pub.Δ_pos _ _).mpr ⟨List.mem_cons_self, by
     change (trivialSkel pub.n).grid.slotTime pub.Δ 2 = 2 * pub.Δ
-    simp [TimeGrid.slotTime, TimeGrid.slotLen, trivialSkel])
+    simp [TimeGrid.slotTime, TimeGrid.slotLen, trivialSkel]⟩
 
 /-- The committee duty of slot 3 is due at `3·Δ` (phase 0). -/
 theorem trivial_act_due (pub : Public) :
     ShapeDuty.act 3 () ∈ (compile (trivialShape pub)).duties (3 * pub.Δ) :=
-  ((trivialShape pub).skel.duties_spec pub.Δ_pos _ _).mpr (by
+  ((trivialShape pub).skel.duties_spec pub.Δ_pos _ _).mpr
+    ⟨List.mem_cons_of_mem _ List.mem_cons_self, by
     change (trivialSkel pub.n).grid.slotTime pub.Δ 3 + ((0 : Nat) : Time) * pub.Δ = 3 * pub.Δ
-    simp [TimeGrid.slotTime, TimeGrid.slotLen, trivialSkel])
+    simp [TimeGrid.slotTime, TimeGrid.slotLen, trivialSkel]⟩
 
 /-- Every read of the trivial family is the empty ledger, the image of the
 empty chain under `ledgerOf` (`ledgerTrace`). -/
@@ -120,8 +119,6 @@ def pollSkel (n : Nat) : Skeleton n where
   Kind := Empty
   decKind := inferInstance
   kinds := []
-  kinds_nodup := List.nodup_nil
-  kinds_complete := fun k => k.elim
   phase := fun _ => 0
   kindSel := fun k => k.elim
 
@@ -136,11 +133,11 @@ def pollShape (pub : Public) : ChainShape pub Unit Unit where
   decBody := inferInstance
   init := fun k => (k, 0)
   clock := fun s _ => s
-  propose := fun _ _ => none
-  act := fun _ _ _ => none
+  propose := fun s _ => (s, none)
+  act := fun s _ _ => (s, none)
   pollPropose := fun s t =>
-    if t.toNat % pub.n = s.1.val then some (.root, s.2 + 1, (), []) else none
-  poll := fun _ _ => none
+    (s, if t.toNat % pub.n = s.1.val then some (.root, s.2 + 1, (), []) else none)
+  poll := fun s _ => (s, none)
   gossip := fun _ _ => []
   process := fun s _ _ => s
   recordOwn := fun s _ _ => s
@@ -154,9 +151,9 @@ position chosen by the protocol), with the payload written by the engine from
 its mempool `xs`. -/
 theorem poll_proposal_local_height (pub : Public) (k : Key pub) (t : Nat) (xs : List Tx)
     (h : t % pub.n = k.val) :
-    (compile (pollShape pub)).act ((k, 5), xs) (ShapeDuty.pollPropose t) =
+    ((compile (pollShape pub)).act ((k, 5), xs) (ShapeDuty.pollPropose t)).2 =
       some (.item ⟨.root, 6, encodeTxs xs, ()⟩, []) := by
-  simp [compile, pollShape, h]
+  simp [compile, withMempool, pollShape, h]
 
 /-- Public parameters with `Δ = 2` and three keys. -/
 def pub2 : Public := ⟨3, 2, by decide⟩
@@ -166,7 +163,8 @@ proposal duty of tick 3 is due at 3: poll duties exist at every unit tick. -/
 theorem poll_duty_every_tick :
     (pollSkel pub2.n).grid.slotAt? pub2.Δ 0 3 = none ∧
       ShapeDuty.pollPropose 3 ∈ (compile (pollShape pub2)).duties 3 :=
-  ⟨by decide, ((pollShape pub2).skel.duties_spec pub2.Δ_pos _ _).mpr rfl⟩
+  ⟨by decide, ((pollShape pub2).skel.duties_spec pub2.Δ_pos _ _).mpr
+    ⟨List.mem_cons_of_mem _ List.mem_cons_self, rfl⟩⟩
 
 /-- `shapeProgress` keeps its data fields (plan §2.1: only its proof fields `mono`/`shrink`
 were rewritten, to inline term proofs). -/

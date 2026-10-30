@@ -22,8 +22,6 @@ def streamletSkeleton (n : Nat) : Skeleton n where
   Kind := Unit
   decKind := inferInstance
   kinds := [()]
-  kinds_nodup := List.nodup_singleton _
-  kinds_complete := fun _ => List.mem_singleton_self _
   phase := fun _ => 1
   kindSel := fun _ => .fixed Finset.univ
 

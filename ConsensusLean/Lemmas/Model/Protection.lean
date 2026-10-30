@@ -275,11 +275,9 @@ theorem tick_noConflict {i : Nat} {v : V} {t : Time} (he : rho.events[i]? = some
     (hs : c.signer? = some (rho.ownKey v)) (hs' : c'.signer? = some (rho.ownKey v)) :
     (protoOf F E).conflicts c c' = false := by
   simp only [releasesAt, he] at hc hc'
-  unfold tick at hc hc'
-  split at hc
-  · simp only [‹E.awake v t = true›, ↓reduceIte] at hc'
-    exact releaseAll_noConflict hc hc' hs hs'
-  · simp at hc
+  obtain ⟨cs, -, h2, -⟩ := rho.tick_flat (rho.stateBefore i v) v t
+  rw [h2] at hc hc'
+  exact releaseAll_noConflict hc hc' hs hs'
 
 /-- An own-signed object released by a tick never conflicts, in either order,
 with an own-signed object in the closure of the node's `seen` before it. -/
@@ -289,10 +287,9 @@ theorem tick_noConflict_seen {i : Nat} {v : V} {t : Time}
     (hs : c.signer? = some (rho.ownKey v)) (hs' : o.signer? = some (rho.ownKey v)) :
     (protoOf F E).conflicts c o = false ∧ (protoOf F E).conflicts o c = false := by
   simp only [releasesAt, he] at hc
-  unfold tick at hc
-  split at hc
-  · exact releaseAll_noConflict_seen hc ho hs hs'
-  · simp at hc
+  obtain ⟨cs, -, h2, -⟩ := rho.tick_flat (rho.stateBefore i v) v t
+  rw [h2] at hc
+  exact releaseAll_noConflict_seen hc ho hs hs'
 
 /-- No honest validator is slashable on what the honest nodes saw, for every
 protocol: both conflicting objects were released by the validator itself, and

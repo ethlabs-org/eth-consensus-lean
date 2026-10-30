@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Lemmas.Model.Objects
+public import ConsensusLean.Lemmas.Model.Candidates
 
 public section
 
@@ -43,10 +44,9 @@ omit [DecidableEq V] in
 /-- A tick appends exactly what it releases to `seen`. -/
 theorem tick_seen (nd : Node (protoOf F E)) (v : V) (t : Time) :
     (rho.tick nd v t).1.seen = nd.seen ++ (rho.tick nd v t).2 := by
-  unfold tick
-  split
-  · exact releaseAll_seen _ _ _ _
-  · simp
+  obtain ⟨cs, -, h2, h1⟩ := rho.tick_flat nd v t
+  rw [h1, h2]
+  exact releaseAll_seen _ _ _ _
 
 /-- What a tick releases is in the node's `seen` right after it. -/
 theorem releasesAt_seen {i : Nat} {v : V} {t : Time} (he : rho.events[i]? = some (.tick v t))

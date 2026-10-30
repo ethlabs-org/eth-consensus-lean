@@ -27,29 +27,53 @@ namespace Consensus.Shape
 open Blocks
 open Consensus.Model (Public Key SelSpec Obj Msg)
 
+/-- A step of a tick's order: the slot proposal, committee kind `k`, the poll
+proposal, the poll message. -/
+inductive Step (Kind : Type) where
+  | propose
+  | kind (k : Kind)
+  | pollPropose
+  | poll
+
 /-- Public block choices of a shape: the time grid, one
 proposer selection for every slot, the poll selection (`.fixed ∅` disables
-polling), and a finite list of committee kinds, each with a phase (its
-`Δ`-offset within the slot) and a selection. -/
+polling), a finite list of committee kinds, each with a phase (its
+`Δ`-offset within the slot) and a selection, and the order of the steps
+within a tick. -/
 structure Skeleton (n : Nat) : Type 1 where
   /-- The time grid. -/
   grid : TimeGrid
   /-- Who may propose at a slot (the same specification for every slot). -/
   proposerSel : SelSpec n
-  /-- Who may sign in the poll role; `.fixed ∅` disables polling. -/
+  /-- Who may sign in the poll role; `.fixed ∅` disables poll signatures (the
+  poll steps' state updates still run). -/
   pollSel : SelSpec n
   /-- Committee kinds. -/
   Kind : Type
   decKind : DecidableEq Kind
-  /-- Every kind, once, in the order the engine signs their duties. -/
+  /-- The committee kinds, in the order of the default `order`. -/
   kinds : List Kind
-  kinds_nodup : kinds.Nodup
-  kinds_complete : ∀ k, k ∈ kinds
   /-- The `Δ`-offset of the kind's duty from the slot start (not required to
   be below `slotDeltas`: a kind may act in a later slot's interval). -/
   phase : Kind → Nat
   /-- Who may sign for a kind (at every slot). -/
   kindSel : Kind → SelSpec n
+  /-- The steps of a tick, in the order the engine runs them; at a tick, the
+  steps due at it run (`Skeleton.duties`). By default the proposal, then the
+  kinds in `kinds` order, then the poll proposal and the poll message.
+
+  A step left out never runs. A step may repeat: a repeated step yields the
+  identical duty (the same slot and kind, so the same role and selection and,
+  under a typical slashing rule, at most one signed message per duty), so
+  repeats are for state-dependent placement or local work; two votes need two
+  kinds. A fixed order bounds the signed attempts per tick: there are no
+  reaction chains of state-dependent length, and a reaction to a receipt waits
+  for the next tick. Gossip is built once, after all the duties of the tick
+  (so no step sees the digests of the tick's gossip). Per-tick work goes in
+  `clock`, which runs at the start of every tick; work after the duties of an
+  awake tick goes in a trailing poll step (the poll steps are due at every
+  tick `t ≥ 0`; the other steps only at some ticks). -/
+  order : List (Step Kind) := [.propose] ++ kinds.map .kind ++ [.pollPropose, .poll]
 
 attribute [instance] Skeleton.decKind
 
@@ -102,18 +126,24 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   init : Key pub → State
   /-- The clock update at every tick. -/
   clock : State → Time → State
-  /-- Slot proposal: parent, info, carried objects. `compile` writes
-  `pos := s` and `input := encodeTxs mempool`. -/
+  /-- Slot proposal: the new state, and parent, info, carried objects.
+  `compile` writes `pos := s` and `input := encodeTxs mempool`. As for every
+  step, the state is applied whether or not the proposal is signed or
+  released. -/
   propose : State → Slot →
-    Option (ParentRef × Info × List (ShapeObj pub.n skel.Kind Info Body))
-  /-- The message of committee kind `k` at slot `s`: data and carried objects. -/
-  act : State → Slot → skel.Kind → Option (Body × List (ShapeObj pub.n skel.Kind Info Body))
-  /-- Poll proposal at tick `t`: parent, locally chosen position (height), info
-  (round), carried objects. `compile` writes `input := encodeTxs mempool`. -/
+    State × Option (ParentRef × Info × List (ShapeObj pub.n skel.Kind Info Body))
+  /-- Committee kind `k` at slot `s`: the new state, and data and carried
+  objects. -/
+  act : State → Slot → skel.Kind →
+    State × Option (Body × List (ShapeObj pub.n skel.Kind Info Body))
+  /-- Poll proposal at tick `t`: the new state, and parent, locally chosen
+  position (height), info (round), carried objects. `compile` writes
+  `input := encodeTxs mempool`. -/
   pollPropose : State → Time →
-    Option (ParentRef × Nat × Info × List (ShapeObj pub.n skel.Kind Info Body))
-  /-- Poll message at tick `t` (votes of poll protocols). -/
-  poll : State → Time → Option (Body × List (ShapeObj pub.n skel.Kind Info Body))
+    State × Option (ParentRef × Nat × Info × List (ShapeObj pub.n skel.Kind Info Body))
+  /-- Poll message at tick `t` (votes of poll protocols): the new state, and
+  data and carried objects. -/
+  poll : State → Time → State × Option (Body × List (ShapeObj pub.n skel.Kind Info Body))
   /-- Unsigned objects (items allowed); relay is done here, by carrying. -/
   gossip : State → Time →
     List (Msg (Header Info) Body × List (ShapeObj pub.n skel.Kind Info Body))

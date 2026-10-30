@@ -50,20 +50,6 @@ theorem releaseAll_preserves {pub : Public} {Out : Type} {P : Protocol pub Out}
       simp only [hf]
       exact ih nd hs hr
 
-theorem releaseAll_subset {pub : Public} {Out : Type} {P : Protocol pub Out}
-    (hash : P.Item → Nat) (k : Key pub) (nd : Node P) (cs : List P.Object) :
-    ∀ o ∈ (releaseAll P hash k nd cs).2, o ∈ cs := by
-  induction cs generalizing nd with
-  | nil => simp [releaseAll]
-  | cons c cs ih =>
-    unfold releaseAll
-    split
-    · intro o ho
-      rcases List.mem_cons.mp ho with rfl | ho
-      · exact List.mem_cons_self
-      · exact List.mem_cons_of_mem c (ih _ o ho)
-    · exact fun o ho => List.mem_cons_of_mem c (ih _ o ho)
-
 variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
 namespace Run
 variable (rho : Run F E)
@@ -112,26 +98,18 @@ theorem tick_safe {i : Nat} {v : V} {t : Time}
   have hr : ∀ o ∈ (rho.tick (rho.stateBefore i v) v t).2,
       rho.SignedBefore (i + 1) o := by
     intro o ho u hu hsigner
-    have hc : o ∈ rho.candidates
-        ((protoOf F E).clock (rho.stateBefore i v).st t (mempool rho.inbox v t)) v t := by
-      unfold tick at ho
-      split at ho
-      · exact releaseAll_subset _ _ _ _ o ho
-      · simp at ho
-    rcases rho.candidates_signerOf _ v t hc with hn | hv
+    rcases rho.tick_signerOf _ v t ho with hn | hv
     · rw [hn] at hsigner; cases hsigner
     · have huv : u = v := Option.some.inj (hsigner.symm.trans hv)
       subst u
       exact ⟨i, t, Nat.lt_succ_self i, hi, by simpa only [releasesAt, hi] using ho⟩
   change _ ∧ ∀ o ∈ rho.releasesAt i, _
   simp only [releasesAt, hi]
-  unfold tick at hr ⊢
-  split at hr
-  · simp only [‹E.awake v t = true›, ↓reduceIte]
-    exact releaseAll_preserves rho.hash _ (rho.SignedBefore (i + 1)) _ _
-      (fun o ho d hd => rho.signedBefore_mono (Nat.le_succ i) (hs o ho d hd)) hr
-  · simp only [‹¬ E.awake v t = true›, Bool.not_eq_true] at *
-    exact ⟨fun o ho => rho.safeBefore_mono (Nat.le_succ i) (hs o ho), by simp⟩
+  obtain ⟨cs, -, h2, h1⟩ := rho.tick_flat (rho.stateBefore i v) v t
+  rw [h2] at hr ⊢
+  rw [h1]
+  exact releaseAll_preserves rho.hash _ (rho.SignedBefore (i + 1)) _ _
+    (fun o ho d hd => rho.signedBefore_mono (Nat.le_succ i) (hs o ho d hd)) hr
 
 /-- Causal delivery of roots is enough for full structural unforgeability. -/
 theorem unforgeable_of_causal (hc : rho.Causal) : rho.Unforgeable := by
@@ -193,18 +171,24 @@ theorem unforgeable_of_causal (hc : rho.Causal) : rho.Unforgeable := by
   obtain ⟨k, t'', hk, hkt, hko⟩ := hs
   exact ⟨k, t'', by omega, hkt, hko⟩
 
-/-- A released object is a candidate of the releasing tick, built from the
-post-clock state, whose mempool is the node's mempool at the tick. -/
-theorem releases_candidate {u : V} {o : (protoOf F E).Object} {τ : Time}
+/-- A released object comes from the releasing tick (event `i`, from node
+`rho.stateBefore i u`): it is a signed duty candidate at a state the tick
+reaches from its post-clock state, whose mempool is the node's mempool at the
+tick, or gossip at the state after the tick's duties. -/
+theorem releases_provenance {u : V} {o : (protoOf F E).Object} {τ : Time}
     (h : rho.releases u o τ) :
-    ∃ st : (protoOf F E).State,
-      o ∈ rho.candidates ((protoOf F E).clock st τ (mempool rho.inbox u τ)) u τ := by
+    ∃ i, rho.events[i]? = some (.tick u τ) ∧
+      (rho.DutyCandidate
+          ((protoOf F E).clock (rho.stateBefore i u).st τ (mempool rho.inbox u τ)) u τ o ∨
+        o ∈ gossipCandidates (protoOf F E)
+          (rho.runDuties u
+            ⟨(protoOf F E).clock (rho.stateBefore i u).st τ (mempool rho.inbox u τ),
+              (rho.stateBefore i u).seen⟩ ((protoOf F E).duties τ)).1.st τ) := by
   obtain ⟨i, hi, ho⟩ := h
   simp only [releasesAt, hi] at ho
-  unfold Run.tick at ho
-  split at ho
-  · exact ⟨_, releaseAll_subset _ _ _ _ o ho⟩
-  · simp at ho
+  obtain ⟨cs, hcs, h2, -⟩ := rho.tick_flat (rho.stateBefore i u) u τ
+  rw [h2] at ho
+  exact ⟨i, hi, hcs o (releaseAll_subset _ _ _ _ o ho)⟩
 
 end Run
 end Consensus.Model

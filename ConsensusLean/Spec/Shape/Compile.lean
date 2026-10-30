@@ -13,15 +13,18 @@ the poll selection for the poll role.
 
 Duties: the proposal of positive slot `s` at `slotTime s`; committee kind `k`
 of slot `s` at `slotTime s + phase k · Δ`; the two poll duties at every unit tick
-`t ≥ 0`. The engine writes every proposal's payload (`input := encodeTxs
-mempool`) and a slot proposal's position (`pos := s`); a poll proposal's
-position is the shape's choice.
+`t ≥ 0`. The duties at `t` are the steps of the skeleton's `order` due at `t`,
+in that order (a repeated step gives its duty again). The engine writes every
+proposal's payload (`input := encodeTxs mempool`, the post-clock mempool
+`st.2`, which no step within a tick changes) and a slot proposal's position
+(`pos := s`); a poll proposal's position is the shape's choice.
 
-Same-tick semantics: all duties of a tick (the proposal, then the kinds in
-`kinds` order, then the poll duties) and gossip are built from one post-clock
-state; recording an earlier signature of the tick does not affect a later
-action of the same tick. Poll duties exist at every unit tick; a shape that
-does not poll returns `none` and sets `pollSel := .fixed ∅`. -/
+Same-tick semantics: the duties of a tick run one after the other (see
+`Model.Run.tick`), each from the state the previous one left, including the
+`recordOwn` of the messages released before it; gossip comes last, from the
+final state. The poll steps are due at every unit tick; a shape that does not
+poll returns `none` and sets `pollSel := .fixed ∅` (or leaves them out of
+`order`). -/
 
 namespace Consensus.Shape
 
@@ -53,21 +56,31 @@ def proposeAt (Δ t : Time) : List (ShapeDuty sk.Kind) :=
   | some s => if h : 0 < s then [.propose s h] else []
   | none => []
 
-/-- The committee duties at `t`, kinds in `kinds` order. -/
-def actAt (Δ t : Time) : List (ShapeDuty sk.Kind) :=
-  sk.kinds.filterMap fun k => (sk.grid.slotAt? Δ ((sk.phase k : Time) * Δ) t).map fun s => .act s k
+/-- The duty of committee kind `k` at `t`, if any. -/
+def kindAt (Δ t : Time) (k : sk.Kind) : List (ShapeDuty sk.Kind) :=
+  ((sk.grid.slotAt? Δ ((sk.phase k : Time) * Δ) t).map fun s => .act s k).toList
 
-/-- The poll duties at `t` (every unit tick `t ≥ 0`). -/
-def pollAt (t : Time) : List (ShapeDuty sk.Kind) :=
-  if 0 ≤ t then [.pollPropose t.toNat, .poll t.toNat] else []
+/-- The duties of a step at `t`: the poll steps are due at every unit tick
+`t ≥ 0`. -/
+def stepAt (Δ t : Time) : Step sk.Kind → List (ShapeDuty sk.Kind)
+  | .propose => sk.proposeAt Δ t
+  | .kind k => sk.kindAt Δ t k
+  | .pollPropose => if 0 ≤ t then [.pollPropose t.toNat] else []
+  | .poll => if 0 ≤ t then [.poll t.toNat] else []
 
-/-- The duties due at `t`, in signing order. -/
+/-- The duties due at `t`, in `order`. -/
 def duties (Δ t : Time) : List (ShapeDuty sk.Kind) :=
-  sk.proposeAt Δ t ++ sk.actAt Δ t ++ sk.pollAt t
+  sk.order.flatMap (sk.stepAt Δ t)
 
 end Skeleton
 
 variable {pub : Public} {Out : Type}
+
+/-- A shape step's result in the compiled state: the shape's new state with
+the mempool `xs` unchanged, and the message built by `f`. -/
+def withMempool {σ α β : Type} (xs : List Tx) (f : α → β) (r : σ × Option α) :
+    (σ × List Tx) × Option β :=
+  ((r.1, xs), r.2.map f)
 
 /-- The model protocol of a chain shape (see the module docstring). -/
 def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
@@ -87,12 +100,12 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
   init k := (S.init k, [])
   clock st t xs := (S.clock st.1 t, xs)
   act st d := match d with
-    | .propose s _ => (S.propose st.1 s).map fun (par, info, cs) =>
-        (.item ⟨par, s, encodeTxs st.2, info⟩, cs)
-    | .act s k => (S.act st.1 s k).map fun (b, cs) => (.data b, cs)
-    | .pollPropose t => (S.pollPropose st.1 (t : Time)).map fun (par, pos, info, cs) =>
-        (.item ⟨par, pos, encodeTxs st.2, info⟩, cs)
-    | .poll t => (S.poll st.1 (t : Time)).map fun (b, cs) => (.data b, cs)
+    | .propose s _ => withMempool st.2 (fun (par, info, cs) =>
+        (.item ⟨par, s, encodeTxs st.2, info⟩, cs)) (S.propose st.1 s)
+    | .act s k => withMempool st.2 (fun (b, cs) => (.data b, cs)) (S.act st.1 s k)
+    | .pollPropose t => withMempool st.2 (fun (par, pos, info, cs) =>
+        (.item ⟨par, pos, encodeTxs st.2, info⟩, cs)) (S.pollPropose st.1 (t : Time))
+    | .poll t => withMempool st.2 (fun (b, cs) => (.data b, cs)) (S.poll st.1 (t : Time))
   gossip st t := S.gossip st.1 t
   process st o hs := (S.process st.1 o hs, st.2)
   recordOwn st o hs := (S.recordOwn st.1 o hs, st.2)

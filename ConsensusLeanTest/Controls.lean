@@ -53,10 +53,10 @@ def ctrlShape (pub : Public) : ChainShape pub GOut Unit where
   decBody := inferInstance
   init := fun _ => ()
   clock := fun s _ => s
-  propose := fun _ _ => none
-  act := fun _ _ _ => none
-  pollPropose := fun _ _ => none
-  poll := fun _ _ => none
+  propose := fun s _ => (s, none)
+  act := fun s _ _ => (s, none)
+  pollPropose := fun s _ => (s, none)
+  poll := fun s _ => (s, none)
   gossip := fun _ _ => []
   process := fun s _ _ => s
   recordOwn := fun s _ _ => s

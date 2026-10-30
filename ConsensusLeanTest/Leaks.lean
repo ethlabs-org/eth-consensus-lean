@@ -105,8 +105,6 @@ def testSkel (n : Nat) : Skeleton n where
   Kind := Unit
   decKind := inferInstance
   kinds := [()]
-  kinds_nodup := List.nodup_singleton _
-  kinds_complete := fun _ => List.mem_singleton_self _
   phase := fun _ => 0
   kindSel := fun _ => .fixed Finset.univ
 
@@ -121,9 +119,9 @@ def family (proposal vote bad : Bool) : ShapeFamily schema Unit := fun pub => {
   State := Unit, Body := Unit, Durable := Unit
   decBody := inferInstance
   init := fun _ => (), clock := fun s _ => s
-  propose := fun _ _ => if proposal then some (.root, (), []) else none
-  act := fun _ _ _ => if vote then some ((), []) else none
-  pollPropose := fun _ _ => none, poll := fun _ _ => none
+  propose := fun s _ => (s, if proposal then some (.root, (), []) else none)
+  act := fun s _ _ => (s, if vote then some ((), []) else none)
+  pollPropose := fun s _ => (s, none), poll := fun s _ => (s, none)
   gossip := fun _ _ => []
   process := fun s _ _ => s, recordOwn := fun s _ _ => s
   durable := fun s => s, restore := fun _ d _ => d
@@ -244,9 +242,9 @@ def familyC (conf : Bool) : ShapeFamily schema Unit := fun pub => {
   State := Chain Unit, Body := Unit, Durable := Chain Unit
   decBody := inferInstance
   init := fun _ => [], clock := fun s _ => s
-  propose := fun _ _ => some (.root, (), [])
-  act := fun _ _ _ => some ((), [])
-  pollPropose := fun _ _ => none, poll := fun _ _ => none
+  propose := fun s _ => (s, some (.root, (), []))
+  act := fun s _ _ => (s, some ((), []))
+  pollPropose := fun s _ => (s, none), poll := fun s _ => (s, none)
   gossip := fun _ _ => []
   process := fun s _ _ => s
   recordOwn := fun s o _ => match o with
@@ -261,34 +259,30 @@ section C
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 omit [DecidableEq V] in
-/-- With `conflicts` always true, a release round records only unsigned
-objects, which leave the state unchanged. -/
-theorem releaseAll_state (hash : (protoOf (compiled (familyC true)) E).Item → Nat)
-    (k : Key (pubOf E))
-    (cs : List (protoOf (compiled (familyC true)) E).Object)
-    (nd : Model.Node (protoOf (compiled (familyC true)) E))
-    (hcs : ∀ c ∈ cs, c.signer? = none ∨ c.signer? = some k) :
-    (Model.releaseAll (protoOf (compiled (familyC true)) E) hash k nd cs).1.st = nd.st := by
-  induction cs generalizing nd with
-  | nil => rfl
-  | cons c cs ih =>
-    have hcs' : ∀ c' ∈ cs, c'.signer? = none ∨ c'.signer? = some k :=
-      fun c' hc' => hcs c' (List.mem_cons_of_mem _ hc')
-    unfold Model.releaseAll
-    split
-    · rename_i hrel
-      have hp : Model.protects (protoOf (compiled (familyC true)) E) k nd.seen c = true :=
-        (Bool.and_eq_true_iff.mp hrel).2
-      dsimp only
-      rw [ih _ hcs']
-      rcases hcs c List.mem_cons_self with hn | hk
-      · obtain ⟨a, m, cs'⟩ := c
-        cases a with
-        | signed k' r => simp [Model.Obj.signer?, Model.Obj.auth] at hn
-        | none => rfl
-      · have := (Model.protects_iff.mp hp hk).1
-        cases this
-    · exact ih nd hcs'
+/-- `familyC`'s duties leave the state unchanged. -/
+theorem familyC_act (conf : Bool) (st : (protoOf (compiled (familyC conf)) E).State)
+    (d : (protoOf (compiled (familyC conf)) E).Duty) :
+    ((protoOf (compiled (familyC conf)) E).act st d).1 = st := by
+  cases d <;> rfl
+
+omit [DecidableEq V] in
+/-- With `conflicts` always true, a tick records only unsigned objects, which
+leave the state unchanged. -/
+theorem familyC_tick_state (rho : Model.Run (compiled (familyC true)) E)
+    (nd : Model.Node (protoOf (compiled (familyC true)) E)) (v : V) (t : Time)
+    (h : nd.st.1 = []) : (rho.tick nd v t).1.st.1 = [] := by
+  refine rho.tick_invariant (fun s => s.1 = []) nd v t
+    (fun s d _ hs => by rw [familyC_act]; exact hs) ?_ h
+  intro s o hs ho hst
+  rcases rho.tick_signer nd v t ho with hn | hk
+  · obtain ⟨a, m, cs'⟩ := o
+    cases a with
+    | signed k' r => simp [Model.Obj.signer?, Model.Obj.auth] at hn
+    | none => exact hst
+  · obtain ⟨cs, -, h2, -⟩ := rho.tick_flat nd v t
+    rw [h2] at ho
+    have := Model.releaseAll_noConflict ho ho hk hk
+    cases this
 
 /-- Every node's state (its output) stays empty along every run of `familyC`. -/
 theorem familyC_state (rho : Model.Run (compiled (familyC true)) E) (i : Nat) (v : V) :
@@ -310,13 +304,7 @@ theorem familyC_state (rho : Model.Run (compiled (familyC true)) E) (i : Nat) (v
       by_cases hux : u = x
       · subst hux
         rw [Function.update_self]
-        unfold Model.Run.tick
-        split
-        · rw [releaseAll_state]
-          · exact hw u
-          · intro c hc
-            exact rho.candidates_signer _ u t hc
-        · exact hw u
+        exact familyC_tick_state rho _ u t (hw u)
       · rw [Function.update_of_ne hux]
         exact hw u
     | deliver x o t =>
@@ -414,6 +402,26 @@ theorem releaseAll_record (hash : (protoOf (compiled (familyC false)) E).Item �
       · exact ⟨List.mem_cons_of_mem _ (ih _ hc').1, (ih _ hc').2⟩
       · exact ih nd hc'
 
+omit [DecidableEq V] in
+/-- `recordOwn` only adds to `familyC`'s output. -/
+theorem familyC_recordOwn_mono (conf : Bool) (st : (protoOf (compiled (familyC conf)) E).State)
+    (o : (protoOf (compiled (familyC conf)) E).Object) (hs) {h : Header Unit}
+    (hh : h ∈ rec st.1) :
+    h ∈ rec ((protoOf (compiled (familyC conf)) E).recordOwn st o hs).1 := by
+  obtain ⟨a, m, cs'⟩ := o
+  change h ∈ rec ((familyC conf (pubOf E)).recordOwn st.1 (Obj.mk a m cs') hs)
+  simp only [familyC]
+  split <;> simp [hh]
+
+omit [DecidableEq V] in
+/-- A tick only adds to `familyC`'s output. -/
+theorem familyC_tick_mono (conf : Bool) (rho : Model.Run (compiled (familyC conf)) E)
+    (nd : Model.Node (protoOf (compiled (familyC conf)) E)) (v : V) (t : Time)
+    {h : Header Unit} (hh : h ∈ rec nd.st.1) : h ∈ rec ((rho.tick nd v t).1.st.1) :=
+  rho.tick_invariant (fun s => h ∈ rec s.1) nd v t
+    (fun s d _ hs => by rw [familyC_act]; exact hs)
+    (fun s o hs _ hst => familyC_recordOwn_mono conf s o hs hst) hh
+
 /-- `familyC`'s output only grows along a run. -/
 theorem familyC_mono (conf : Bool) (rho : Model.Run (compiled (familyC conf)) E) (v : V)
     {i : Nat} {h : Header Unit} (hh : h ∈ rec ((rho.stateBefore i v).st.1)) :
@@ -438,10 +446,7 @@ theorem familyC_mono (conf : Bool) (rho : Model.Run (compiled (familyC conf)) E)
         by_cases hux : v = x
         · subst hux
           rw [Function.update_self]
-          unfold Model.Run.tick
-          split
-          · exact releaseAll_mono conf _ _ _ _ ih
-          · exact ih
+          exact familyC_tick_mono conf rho _ v t ih
         · rw [Function.update_of_ne hux]
           exact ih
       | deliver x o t =>
@@ -503,28 +508,42 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
     obtain ⟨a, ha⟩ := Finset.card_eq_one.mp hc
     rw [ha, Finset.mem_singleton]
     exact hkey _ _
-  have hcand : Obj.mk (.signed (rho.ownKey v) (ShapeRole.proposer s)) (.item h) [] ∈
-      rho.candidates nd₁.st v (t + 1) := by
-    unfold Model.Run.candidates
-    apply List.mem_append_left
-    refine List.mem_flatMap.mpr ⟨.propose s hspos, ?_, ?_⟩
-    · refine (((familyC false) (pubOf env)).skel.duties_spec (pubOf env).Δ_pos _ (t + 1)).mpr ?_
-      change (s : Time) * ((1 : Nat) * 1) = t + 1
+  -- the proposal is the first duty of the tick
+  have hprop : ((familyC false) (pubOf env)).skel.proposeAt (pubOf env).Δ (t + 1) =
+      [.propose s hspos] := by
+    have hslot : ((familyC false) (pubOf env)).skel.grid.slotAt? (pubOf env).Δ 0 (t + 1) =
+        some s := by
+      rw [((familyC false) (pubOf env)).skel.grid.slotAt?_eq_some (pubOf env).Δ_pos]
+      change (s : Time) * ((1 : Nat) * 1) + 0 = t + 1
       rw [hsτ]; ring
-    · have hact : (protoOf (compiled (familyC false)) env).act nd₁.st (.propose s hspos) =
-          some (.item h, []) := rfl
-      have hrole : (protoOf (compiled (familyC false)) env).role (.propose s hspos) =
-          ShapeRole.proposer s := rfl
-      simp only [hact, hrole, hsel, ite_true]
-      exact List.mem_singleton_self _
-  have hrel := releaseAll_record rho.hash (rho.ownKey v) _ nd₁ hcand
+    simp only [Skeleton.proposeAt, hslot, hspos, dite_true]
+  let L : List (ShapeDuty ((familyC false) (pubOf env)).skel.Kind) :=
+    ([.kind (), .pollPropose, .poll] : List (Step Unit)).flatMap
+      (((familyC false) (pubOf env)).skel.stepAt (pubOf env).Δ (t + 1))
+  have hL : (protoOf (compiled (familyC false)) env).duties (t + 1) =
+      .propose s hspos :: L := by
+    change ((familyC false) (pubOf env)).skel.proposeAt (pubOf env).Δ (t + 1) ++ L = _
+    rw [hprop]
+    rfl
+  have hcand : Obj.mk (.signed (rho.ownKey v) (ShapeRole.proposer s)) (.item h) [] ∈
+      rho.signedCandidate v (.propose s hspos)
+        ((protoOf (compiled (familyC false)) env).act nd₁.st (.propose s hspos)).2 :=
+    (rho.mem_signedCandidate).mpr ⟨_, _, rfl, hsel, rfl⟩
+  have hrel := releaseAll_record rho.hash (rho.ownKey v) _
+    ⟨((protoOf (compiled (familyC false)) env).act nd₁.st (.propose s hspos)).1, nd₁.seen⟩ hcand
   have hrel' : Obj.mk (.signed (rho.ownKey v) (ShapeRole.proposer s)) (.item h) [] ∈
       rho.releasesAt i ∧ h ∈ rec ((rho.stateBefore (i + 1) v).st.1) := by
     simp only [Model.Run.releasesAt, hi', rho.stateBefore_succ hi', Model.Run.step,
       Function.update_self]
-    unfold Model.Run.tick
-    simp only [show env.awake v (t + 1) = true from rfl, ite_true]
-    exact hrel
+    rw [rho.tick_of_awake _ v _ rfl, hL]
+    erw [rho.runDuties_cons]
+    refine ⟨List.mem_append_left _ (List.mem_append_left _ hrel.1), ?_⟩
+    refine Model.releaseAll_invariant
+      (fun s : (protoOf (compiled (familyC false)) env).State => h ∈ rec s.1) _ _ _ _
+      (fun s o hs _ hst => familyC_recordOwn_mono false s o hs hst) ?_
+    exact rho.runDuties_invariant (fun s => h ∈ rec s.1) v L _
+      (fun s d _ hs => by rw [familyC_act]; exact hs)
+      (fun s o hs _ hst => familyC_recordOwn_mono false s o hs hst) hrel.2
   have hk0 : rho.key 0 ∈ rho.honest := by rw [hh]; exact Finset.mem_univ _
   refine ⟨t + 1, 0, h, lt_add_one t, ⟨hk0, fun u _ _ => rfl⟩,
     ⟨hk0, ShapeRole.proposer s, [], rfl, i, hi', ?_⟩, ?_⟩

@@ -15,15 +15,25 @@ object the node released or received.
 
 At a tick of awake node `v` at `t`, the engine
 1. runs `clock` with `v`'s own and relayed transactions up to `t` (its mempool);
-2. builds the candidates from that state: for every due duty, in order, if
-   `v`'s own key is selected for the duty's role, the duty's message signed
-   with that key in that role; then unsigned gossip;
+2. runs the due duties one after the other, in `duties` order, each from the
+   state the previous one left: `act` gives a new state, which the engine
+   applies unconditionally, and a message, which becomes a candidate signed
+   with `v`'s own key in the duty's role if that role selects the key (and is
+   dropped otherwise), and goes through release (3) before the next duty runs;
 3. releases a candidate only if every object it carries is already in the
    closure of `seen` (so honest code passes on no object it has not seen) and
    slashing protection allows it (`protects`: a candidate signed by the own
    key must not conflict, under the protocol's `conflicts`, with itself or
    with an own-signed object in the closure of `seen`), adds it to `seen`, and
-   records it with `recordOwn`.
+   records it with `recordOwn`;
+4. last, builds unsigned gossip from the final state and releases it as in 3.
+
+Same-tick semantics: a duty reads the state after the earlier duties of the
+tick, including the `recordOwn` of their released messages (which is how a
+node learns that it signed). It gets no other feedback: a duty whose message
+is unselected or refused leaves only its own state. Duties run only at awake
+ticks.
+
 At a delivery it runs `process`; at a restart, `restore` (with the own key) of
 `durable`, keeping `seen`. The `seen` log survives restarts, so slashing
 protection persists across them, as a validator's slashing-protection
@@ -144,6 +154,11 @@ def releaseAll {pub : Public} {Out : Type} (P : Protocol pub Out) (hash : P.Item
       (r.1, c :: r.2)
     else releaseAll P hash k nd cs
 
+/-- The gossip candidates at time `t` in state `st`: unsigned. -/
+def gossipCandidates {pub : Public} {Out : Type} (P : Protocol pub Out) (st : P.State)
+    (t : Time) : List P.Object :=
+  (P.gossip st t).map (fun mc => .mk .none mc.1 mc.2)
+
 /-- The transactions submitted to node `v` at times `0, …, t`. -/
 def mempool (submit : V → Time → List Tx) (v : V) (t : Time) : List Tx :=
   if t < 0 then [] else (List.range (t.toNat + 1)).flatMap (fun k => submit v k)
@@ -162,27 +177,41 @@ def signerOf (o : (protoOf F E).Object) : Option V := o.signer?.map rho.key
 seen nothing. -/
 def initWorld (v : V) : Node (protoOf F E) := ⟨(protoOf F E).init (rho.ownKey v), []⟩
 
-/-- The candidates of node `v` at time `t` in state `st`: the messages of the
-due duties whose role selects `v`'s key, signed with that key in that role,
-then unsigned gossip. -/
-def candidates (st : (protoOf F E).State) (v : V) (t : Time) :
-    List (protoOf F E).Object :=
-  let P := protoOf F E
-  ((P.duties t).flatMap (fun d =>
-    match P.act st d with
-    | some (m, cs) =>
-      if rho.ownKey v ∈ rho.sel (P.role d) then [.mk (.signed (rho.ownKey v) (P.role d)) m cs]
-      else []
-    | none => [])) ++
-  (P.gossip st t).map (fun mc => .mk .none mc.1 mc.2)
+/-- The candidate of duty `d` for node `v`, from `act`'s message: signed with
+`v`'s own key in the duty's role if that role selects the key, nothing
+otherwise. -/
+def signedCandidate (v : V) (d : (protoOf F E).Duty) :
+    Option (Msg (protoOf F E).Item (protoOf F E).Body × List (protoOf F E).Object) →
+      List (protoOf F E).Object
+  | some (m, cs) =>
+    if rho.ownKey v ∈ rho.sel ((protoOf F E).role d) then
+      [.mk (.signed (rho.ownKey v) ((protoOf F E).role d)) m cs]
+    else []
+  | none => []
 
-/-- A tick: the clock (with the node's mempool), then, if awake, signing and
-release. -/
+/-- One duty of node `v`: `act`'s state is applied, then its candidate (if any)
+is released. -/
+def dutyStep (v : V) (nd : Node (protoOf F E)) (d : (protoOf F E).Duty) :
+    Node (protoOf F E) × List (protoOf F E).Object :=
+  let a := (protoOf F E).act nd.st d
+  releaseAll (protoOf F E) rho.hash (rho.ownKey v) ⟨a.1, nd.seen⟩ (rho.signedCandidate v d a.2)
+
+/-- The duties `ds` of node `v`, one after the other, in order, from node
+`nd`: the final node and what the duties released, in order. -/
+def runDuties (v : V) (nd : Node (protoOf F E)) (ds : List (protoOf F E).Duty) :
+    Node (protoOf F E) × List (protoOf F E).Object :=
+  ds.foldl (fun r d => let s := rho.dutyStep v r.1 d; (s.1, r.2 ++ s.2)) (nd, [])
+
+/-- A tick: the clock (with the node's mempool), then, if awake, the due duties
+in order, then gossip from the final state. -/
 def tick (nd : Node (protoOf F E)) (v : V) (t : Time) :
     Node (protoOf F E) × List (protoOf F E).Object :=
   let nd₁ : Node (protoOf F E) := ⟨(protoOf F E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩
   if E.awake v t then
-    releaseAll (protoOf F E) rho.hash (rho.ownKey v) nd₁ (rho.candidates nd₁.st v t)
+    let r := rho.runDuties v nd₁ ((protoOf F E).duties t)
+    let g := releaseAll (protoOf F E) rho.hash (rho.ownKey v) r.1
+      (gossipCandidates (protoOf F E) r.1.st t)
+    (g.1, r.2 ++ g.2)
   else (nd₁, [])
 
 /-- One event. -/

@@ -32,16 +32,16 @@ theorem tick_honestSigned (nd : Node (protoOf F E)) {v : V} (hv : v ∈ rho.hone
     (hs : ∀ o ∈ nd.seen, rho.HonestSigned o) :
     (∀ o ∈ (rho.tick nd v t).1.seen, rho.HonestSigned o) ∧
       (∀ o ∈ (rho.tick nd v t).2, rho.HonestSigned o) := by
-  unfold tick
-  split
-  · refine releaseAll_preserves rho.hash _
-      (fun d => ∀ u, rho.signerOf d = some u → u ∈ rho.honest) _ _ hs ?_
+  have hr : ∀ o ∈ (rho.tick nd v t).2, ∀ u, rho.signerOf o = some u → u ∈ rho.honest := by
     intro o ho u hu
-    rcases rho.candidates_signerOf _ v t (releaseAll_subset _ _ _ _ o ho) with h | h <;>
-      rw [h] at hu
+    rcases rho.tick_signerOf nd v t ho with h | h <;> rw [h] at hu
     · cases hu
     · exact Option.some.inj hu ▸ hv
-  · exact ⟨hs, by simp⟩
+  obtain ⟨cs, -, h2, h1⟩ := rho.tick_flat nd v t
+  rw [h2] at hr ⊢
+  rw [h1]
+  exact releaseAll_preserves rho.hash _
+    (fun d => ∀ u, rho.signerOf d = some u → u ∈ rho.honest) _ _ hs hr
 
 /-- In a valid causal run, everything every node has seen is honestly
 signed. -/

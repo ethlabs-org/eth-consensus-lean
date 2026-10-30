@@ -6,9 +6,11 @@ public import Mathlib.Tactic
 
 /-! # Test support (moved from the library; no library proof uses them)
 
-* The act time of each skeleton duty and its characterization of `duties`
-  (`Skeleton.duties_spec`, under `0 < Δ`), and that `duties` lists each duty
-  once (`Skeleton.duties_nodup`). Execution reads only `duties`.
+* The act time and step of each skeleton duty and their characterization of
+  `duties` (`Skeleton.duties_spec`, under `0 < Δ`: the duty's step is in
+  `order` and its act time is `t`), and that `duties` lists each duty once when
+  `order` lists each step once (`Skeleton.duties_nodup`). Execution reads only
+  `duties`.
 * The extremal PKI `extremalKey` (key `k` is validator `k`) and
   `active_relay` (an active liveness witness exercises the relay). -/
 
@@ -28,147 +30,143 @@ def actTime (Δ : Time) : ShapeDuty sk.Kind → Time
   | .pollPropose t => (t : Time)
   | .poll t => (t : Time)
 
-theorem duties_spec {Δ : Time} (hΔ : 0 < Δ) (d : ShapeDuty sk.Kind) (t : Time) :
-    d ∈ sk.duties Δ t ↔ sk.actTime Δ d = t := by
-  unfold duties
-  simp only [List.mem_append]
-  cases d with
-  | propose s hs =>
-    have hA : ShapeDuty.propose s hs ∉ sk.actAt Δ t := by
-      simp [actAt]
-    have hP : ShapeDuty.propose s hs ∉ sk.pollAt t := by
-      unfold pollAt; split <;> simp
-    simp only [hA, hP, or_false, actTime]
-    rw [← add_zero (sk.grid.slotTime Δ s), ← sk.grid.slotAt?_eq_some hΔ]
-    unfold proposeAt
-    constructor
-    · intro h
-      split at h
-      · rename_i s' hs'
-        split at h
-        · simp only [List.mem_singleton, ShapeDuty.propose.injEq] at h
-          rw [hs', h]
-        · simp at h
-      · simp at h
-    · intro h
-      rw [h]
-      simp [hs]
-  | act s k =>
-    have hA : ShapeDuty.act s k ∉ sk.proposeAt Δ t := by
-      unfold proposeAt; split
-      · split <;> simp
-      · simp
-    have hP : ShapeDuty.act s k ∉ sk.pollAt t := by
-      unfold pollAt; split <;> simp
-    simp only [hA, hP, false_or, or_false, actTime]
-    rw [← sk.grid.slotAt?_eq_some hΔ]
-    simp only [actAt, List.mem_filterMap, Option.map_eq_some_iff, ShapeDuty.act.injEq]
-    constructor
-    · rintro ⟨k', -, s', hs', rfl, rfl⟩
-      exact hs'
-    · intro h
-      exact ⟨k, sk.kinds_complete k, s, h, rfl, rfl⟩
-  | pollPropose u =>
-    have hA : ShapeDuty.pollPropose u ∉ sk.proposeAt Δ t := by
-      unfold proposeAt; split
-      · split <;> simp
-      · simp
-    have hB : ShapeDuty.pollPropose u ∉ sk.actAt Δ t := by
-      simp [actAt]
-    simp only [hA, hB, false_or, actTime, pollAt]
-    split
-    · rename_i ht
-      simp only [List.mem_cons, ShapeDuty.pollPropose.injEq, List.not_mem_nil, or_false]
-      constructor
-      · rintro (rfl | h)
-        · exact Int.toNat_of_nonneg ht
-        · cases h
-      · intro h
-        left
-        rw [← h]
-        simp
-    · rename_i ht
-      simp only [List.not_mem_nil, false_iff]
-      intro h
-      exact ht (h ▸ Int.natCast_nonneg u)
-  | poll u =>
-    have hA : ShapeDuty.poll u ∉ sk.proposeAt Δ t := by
-      unfold proposeAt; split
-      · split <;> simp
-      · simp
-    have hB : ShapeDuty.poll u ∉ sk.actAt Δ t := by
-      simp [actAt]
-    simp only [hA, hB, false_or, actTime, pollAt]
-    split
-    · rename_i ht
-      simp only [List.mem_cons, ShapeDuty.poll.injEq, List.not_mem_nil, or_false]
-      constructor
-      · rintro (h | rfl)
-        · cases h
-        · exact Int.toNat_of_nonneg ht
-      · intro h
-        right
-        rw [← h]
-        simp
-    · rename_i ht
-      simp only [List.not_mem_nil, false_iff]
-      intro h
-      exact ht (h ▸ Int.natCast_nonneg u)
+/-- The step of each duty. -/
+def stepOf : ShapeDuty sk.Kind → Step sk.Kind
+  | .propose _ _ => .propose
+  | .act _ k => .kind k
+  | .pollPropose _ => .pollPropose
+  | .poll _ => .poll
 
-theorem duties_nodup (Δ t : Time) : (sk.duties Δ t).Nodup := by
-  have hP : (sk.proposeAt Δ t).Nodup := by
-    unfold proposeAt; split
-    · split <;> simp
-    · simp
-  have hA : (sk.actAt Δ t).Nodup := by
-    refine sk.kinds_nodup.filterMap ?_
-    intro a a' b hb hb'
-    obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp hb
-    obtain ⟨_, _, h⟩ := Option.map_eq_some_iff.mp hb'
-    cases h
-    rfl
-  have hQ : (sk.pollAt t).Nodup := by
-    unfold pollAt; split
-    · simp
-    · simp
-  have mP : ∀ a ∈ sk.proposeAt Δ t, ∃ s h, a = .propose s h := by
-    intro a ha
-    unfold proposeAt at ha
-    split at ha
-    · split at ha
-      · exact ⟨_, _, List.mem_singleton.mp ha⟩
-      · simp at ha
-    · simp at ha
-  have mA : ∀ a ∈ sk.actAt Δ t, ∃ s k, a = .act s k := by
-    intro a ha
-    simp only [actAt, List.mem_filterMap, Option.map_eq_some_iff] at ha
-    obtain ⟨k, _, s, _, rfl⟩ := ha
-    exact ⟨s, k, rfl⟩
-  have mQ : ∀ a ∈ sk.pollAt t, (∃ u, a = .pollPropose u) ∨ ∃ u, a = .poll u := by
-    intro a ha
-    unfold pollAt at ha
-    split at ha
-    · simp only [List.mem_cons, List.not_mem_nil, or_false] at ha
-      rcases ha with rfl | rfl
-      · exact Or.inl ⟨_, rfl⟩
-      · exact Or.inr ⟨_, rfl⟩
-    · simp at ha
+/-- A step's duties at `t` are the duties of that step whose act time is `t`. -/
+theorem mem_stepAt {Δ : Time} (hΔ : 0 < Δ) (t : Time) (x : Step sk.Kind)
+    (d : ShapeDuty sk.Kind) : d ∈ sk.stepAt Δ t x ↔ sk.stepOf d = x ∧ sk.actTime Δ d = t := by
+  cases x with
+  | propose =>
+    simp only [stepAt, proposeAt]
+    cases d with
+    | propose s hs =>
+      simp only [stepOf, actTime, true_and]
+      rw [← add_zero (sk.grid.slotTime Δ s), ← sk.grid.slotAt?_eq_some hΔ]
+      constructor
+      · intro h
+        split at h
+        · rename_i s' hs'
+          split at h
+          · simp only [List.mem_singleton, ShapeDuty.propose.injEq] at h
+            rw [hs', h]
+          · simp at h
+        · simp at h
+      · intro h
+        rw [h]
+        simp [hs]
+    | act s k =>
+      simp only [stepOf, reduceCtorEq, false_and, iff_false]
+      split
+      · split <;> simp
+      · simp
+    | pollPropose u =>
+      simp only [stepOf, reduceCtorEq, false_and, iff_false]
+      split
+      · split <;> simp
+      · simp
+    | poll u =>
+      simp only [stepOf, reduceCtorEq, false_and, iff_false]
+      split
+      · split <;> simp
+      · simp
+  | kind k =>
+    simp only [stepAt, kindAt, Option.mem_toList, Option.map_eq_some_iff]
+    cases d with
+    | act s k' =>
+      simp only [stepOf, Step.kind.injEq, actTime, ShapeDuty.act.injEq]
+      constructor
+      · rintro ⟨s', hs', rfl, rfl⟩
+        exact ⟨rfl, (sk.grid.slotAt?_eq_some hΔ).mp hs'⟩
+      · rintro ⟨rfl, h⟩
+        exact ⟨s, (sk.grid.slotAt?_eq_some hΔ).mpr h, rfl, rfl⟩
+    | propose s hs => simp [stepOf]
+    | pollPropose u => simp [stepOf]
+    | poll u => simp [stepOf]
+  | pollPropose =>
+    simp only [stepAt]
+    cases d with
+    | pollPropose u =>
+      simp only [stepOf, actTime, true_and]
+      split
+      · rename_i ht
+        simp only [List.mem_singleton, ShapeDuty.pollPropose.injEq]
+        constructor
+        · rintro rfl
+          exact Int.toNat_of_nonneg ht
+        · rintro rfl
+          simp
+      · rename_i ht
+        simp only [List.not_mem_nil, false_iff]
+        intro h
+        exact ht (h ▸ Int.natCast_nonneg u)
+    | propose s hs => simp only [stepOf, reduceCtorEq, false_and, iff_false]; split <;> simp
+    | act s k => simp only [stepOf, reduceCtorEq, false_and, iff_false]; split <;> simp
+    | poll u => simp only [stepOf, reduceCtorEq, false_and, iff_false]; split <;> simp
+  | poll =>
+    simp only [stepAt]
+    cases d with
+    | poll u =>
+      simp only [stepOf, actTime, true_and]
+      split
+      · rename_i ht
+        simp only [List.mem_singleton, ShapeDuty.poll.injEq]
+        constructor
+        · rintro rfl
+          exact Int.toNat_of_nonneg ht
+        · rintro rfl
+          simp
+      · rename_i ht
+        simp only [List.not_mem_nil, false_iff]
+        intro h
+        exact ht (h ▸ Int.natCast_nonneg u)
+    | propose s hs => simp only [stepOf, reduceCtorEq, false_and, iff_false]; split <;> simp
+    | act s k => simp only [stepOf, reduceCtorEq, false_and, iff_false]; split <;> simp
+    | pollPropose u => simp only [stepOf, reduceCtorEq, false_and, iff_false]; split <;> simp
+
+/-- A duty is due at `t` iff its step is in the skeleton's `order` and its act
+time is `t`. -/
+theorem duties_spec {Δ : Time} (hΔ : 0 < Δ) (d : ShapeDuty sk.Kind) (t : Time) :
+    d ∈ sk.duties Δ t ↔ sk.stepOf d ∈ sk.order ∧ sk.actTime Δ d = t := by
+  simp only [duties, List.mem_flatMap, sk.mem_stepAt hΔ]
+  constructor
+  · rintro ⟨x, hx, rfl, h⟩
+    exact ⟨hx, h⟩
+  · rintro ⟨hx, h⟩
+    exact ⟨_, hx, rfl, h⟩
+
+/-- With the default `order`, `duties` is the former fixed list: the proposal,
+the kinds in `kinds` order, then the two poll duties (at `t ≥ 0`). -/
+theorem duties_of_default_order {Δ t : Time}
+    (h : sk.order = [.propose] ++ sk.kinds.map .kind ++ [.pollPropose, .poll]) :
+    sk.duties Δ t = sk.proposeAt Δ t ++ sk.kinds.flatMap (sk.kindAt Δ t) ++
+      (if 0 ≤ t then [.pollPropose t.toNat, .poll t.toNat] else []) := by
+  simp only [duties, h, List.flatMap_append, List.flatMap_cons, List.flatMap_nil,
+    List.append_nil, List.flatMap_map, stepAt]
+  split <;> simp
+
+/-- With an order that lists each step once, `duties` lists each duty once. -/
+theorem duties_nodup {Δ : Time} (hΔ : 0 < Δ) (t : Time) (h : sk.order.Nodup) :
+    (sk.duties Δ t).Nodup := by
   unfold duties
-  rw [List.nodup_append, List.nodup_append]
-  refine ⟨⟨hP, hA, ?_⟩, hQ, ?_⟩
-  · intro a ha b hb hab
-    subst hab
-    obtain ⟨_, _, rfl⟩ := mP _ ha
-    obtain ⟨_, _, h⟩ := mA _ hb
-    cases h
-  · intro a ha b hb hab
-    subst hab
-    rcases mQ _ hb with ⟨_, rfl⟩ | ⟨_, rfl⟩ <;>
-      rcases List.mem_append.mp ha with ha | ha
-    · obtain ⟨_, _, h⟩ := mP _ ha; cases h
-    · obtain ⟨_, _, h⟩ := mA _ ha; cases h
-    · obtain ⟨_, _, h⟩ := mP _ ha; cases h
-    · obtain ⟨_, _, h⟩ := mA _ ha; cases h
+  refine List.nodup_flatMap.mpr ⟨fun x _ => ?_, h.imp fun {x y} hxy => ?_⟩
+  · cases x with
+    | propose =>
+      simp only [stepAt, proposeAt]
+      split
+      · split <;> simp
+      · simp
+    | kind k =>
+      simp only [stepAt, kindAt]
+      cases sk.grid.slotAt? Δ ((sk.phase k : Time) * Δ) t <;> simp
+    | pollPropose => simp only [stepAt]; split <;> simp
+    | poll => simp only [stepAt]; split <;> simp
+  · intro d hd hd'
+    exact hxy (((sk.mem_stepAt hΔ t x d).mp hd).1.symm.trans ((sk.mem_stepAt hΔ t y d).mp hd').1)
 
 end Skeleton
 

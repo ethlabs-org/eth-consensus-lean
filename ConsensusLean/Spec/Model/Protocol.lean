@@ -76,16 +76,23 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   admissible set of keys. -/
   selSpec : Role → SelSpec pub.n
   role : Duty → Role
-  /-- The duties due at a time, in the order the engine signs them. -/
+  /-- The duties due at a time, in the order the engine runs them (one after
+  the other, each from the state the previous one left). -/
   duties : Time → List Duty
   /-- The initial state of the node with the given key. -/
   init : Key pub → State
   /-- The clock update at a tick, with the node's cumulative own and relayed transactions
   so far. -/
   clock : State → Time → List Tx → State
-  /-- What the node signs for duty `d` (if selected for its role): a message
-  and carried objects. -/
-  act : State → Duty → Option (Msg Item Body × List (Obj pub.n Role Item Body))
+  /-- Duty `d`: the new state, and what the node signs for the duty (if selected
+  for its role): a message and carried objects. On an awake tick, when the duty
+  runs, the engine applies the state whether or not the node is selected and
+  whether or not the message is released. `act` gets no selection or
+  release-result argument and no failure feedback, so the state it returns
+  cannot depend on selection or refusal; a later duty (also within the tick)
+  learns of a successful release only through `recordOwn`. A purely local
+  step returns `none`. -/
+  act : State → Duty → State × Option (Msg Item Body × List (Obj pub.n Role Item Body))
   /-- Unsigned objects (items allowed). Relay of received objects is done here,
   by carrying them. -/
   gossip : State → Time → List (Msg Item Body × List (Obj pub.n Role Item Body))

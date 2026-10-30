@@ -76,8 +76,6 @@ def goldilocksSkeleton (n : Nat) : Skeleton n where
   Kind := GKind
   decKind := inferInstance
   kinds := [.head, .fin]
-  kinds_nodup := by decide
-  kinds_complete := fun k => by cases k <;> simp
   phase := fun | .head => 1 | .fin => 2
   kindSel := fun _ => .fixed Finset.univ
 

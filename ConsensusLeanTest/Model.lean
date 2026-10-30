@@ -27,7 +27,9 @@ validity rules out a negative horizon, credentials bind the role (a key
 selected for one role cannot sign in another), ticks happen at every
 integer time, and slashing protection: with `conflicts` always true the engine
 releases no signed object, so non-framing holds by construction, and
-protection ignores candidates signed by other keys. -/
+protection ignores candidates signed by other keys. Same-tick semantics
+(`seqProto`): a later duty of a tick sees the `recordOwn` of an earlier
+release, and `act`'s state is applied when the node is not selected. -/
 
 namespace Consensus.Shape.Tests.Model
 open Consensus Model
@@ -51,7 +53,7 @@ def proto (pub : Public) : Protocol pub Unit where
   duties := fun t => [t]
   init := fun _ => ()
   clock := fun _ _ _ => ()
-  act := fun _ _ => some (.data (), [])
+  act := fun _ _ => ((), some (.data (), []))
   gossip := fun _ _ => []
   process := fun _ _ _ => ()
   recordOwn := fun _ _ _ => ()
@@ -158,14 +160,11 @@ theorem conflictsTrue_releases_unsigned_only {V : Type} [Fintype V] [DecidableEq
     cases e with
     | tick v t =>
       simp only [Run.releasesAt, he] at ho
-      unfold Run.tick at ho
-      split at ho
-      · rcases rho.candidates_signer _ v t (releaseAll_subset _ _ _ _ o ho) with h | h
-        · exact h
-        · have hf : (protoOf familyC E).conflicts o o = false :=
-            rho.tick_noConflict he ho' ho' h h
-          cases hf
-      · simp at ho
+      rcases rho.tick_signer _ v t ho with h | h
+      · exact h
+      · have hf : (protoOf familyC E).conflicts o o = false :=
+          rho.tick_noConflict he ho' ho' h h
+        cases hf
     | deliver v p t => simp [Run.releasesAt, he] at ho
     | restart v t => simp [Run.releasesAt, he] at ho
 
@@ -183,6 +182,62 @@ theorem protects_other_key :
         (.mk (.signed 1 false) (.data ()) []) = true ∧
       protects (familyC (pubOf env)) 0 [] (.mk (.signed 0 false) (.data ()) []) = false := by
   decide
+
+/-! ## Same-tick semantics: duties run one after the other -/
+
+/-- Duties `false` then `true` at every time, each in its own role (every key).
+Each duty signs the current state; duty `false` also adds 1 to the state;
+`recordOwn` adds 10. -/
+def seqProto (pub : Public) : Protocol pub Unit where
+  State := Nat
+  Role := Bool
+  Duty := Bool
+  Item := Unit
+  Body := Nat
+  Durable := Unit
+  decRole := inferInstance
+  decItem := inferInstance
+  decBody := inferInstance
+  cntItem := inferInstance
+  selSpec := fun _ => .fixed Finset.univ
+  role := id
+  duties := fun _ => [false, true]
+  init := fun _ => 0
+  clock := fun s _ _ => s
+  act := fun s d => (if d then s else s + 1, some (.data s, []))
+  gossip := fun _ _ => []
+  process := fun s _ _ => s
+  recordOwn := fun s _ _ => s + 10
+  durable := fun _ => ()
+  restore := fun _ _ _ => 0
+  out := fun _ _ => []
+  conflicts := fun _ _ => false
+
+/-- The sequential test family. -/
+def seqFamily : Family schema := seqProto
+
+/-- A later duty reads the state the earlier one left, including the
+`recordOwn` of its release: duty `true` signs `0 + 1 + 10 = 11`. -/
+theorem later_duty_sees_recordOwn (rho : Run seqFamily env) (v : Fin 2)
+    (hsel : rho.sel = fun _ => Finset.univ) :
+    (rho.runDuties v ⟨(0 : Nat), []⟩ [false, true]).2 =
+      [.mk (.signed (rho.ownKey v) false) (.data (0 : Nat)) [],
+        .mk (.signed (rho.ownKey v) true) (.data (11 : Nat)) []] := by
+  erw [Run.runDuties_cons, Run.runDuties_cons, Run.runDuties_nil]
+  unfold Run.dutyStep Run.signedCandidate
+  simp [hsel, releaseAll, releasable, protects, Obj.carried, protoOf, seqFamily, seqProto]
+  rfl
+
+/-- `act`'s state is applied when the node is not selected: duty `false` is
+dropped, yet duty `true` signs `0 + 1 = 1`. -/
+theorem state_applied_unselected (rho : Run seqFamily env) (v : Fin 2)
+    (hsel : rho.sel = fun r => cond r Finset.univ ∅) :
+    (rho.runDuties v ⟨(0 : Nat), []⟩ [false, true]).2 =
+      [.mk (.signed (rho.ownKey v) true) (.data (1 : Nat)) []] := by
+  erw [Run.runDuties_cons, Run.runDuties_cons, Run.runDuties_nil]
+  unfold Run.dutyStep Run.signedCandidate
+  simp [hsel, releaseAll, releasable, protects, Obj.carried, protoOf, seqFamily, seqProto]
+  rfl
 
 end Consensus.Shape.Tests.Model
 end

@@ -31,12 +31,13 @@ theorem tick_authorized (nd : Node (protoOf F E)) (v : V) (t : Time)
     (hs : ∀ o ∈ nd.seen, rho.Authorized o) :
     (∀ o ∈ (rho.tick nd v t).1.seen, rho.Authorized o) ∧
       (∀ o ∈ (rho.tick nd v t).2, rho.Authorized o) := by
-  unfold tick
-  split
-  · exact releaseAll_preserves rho.hash _
-      (fun d => ∀ k r, d.auth = .signed k r → k ∈ rho.sel r) _ _ hs
-      (fun o ho k r ha => rho.candidates_selected _ v t (releaseAll_subset _ _ _ _ o ho) ha)
-  · exact ⟨hs, by simp⟩
+  have hr : ∀ o ∈ (rho.tick nd v t).2, ∀ k r, o.auth = .signed k r → k ∈ rho.sel r :=
+    fun o ho k r ha => rho.tick_selected nd v t ho ha
+  obtain ⟨cs, -, h2, h1⟩ := rho.tick_flat nd v t
+  rw [h2] at hr ⊢
+  rw [h1]
+  exact releaseAll_preserves rho.hash _
+    (fun d => ∀ k r, d.auth = .signed k r → k ∈ rho.sel r) _ _ hs hr
 
 /-- If every object delivered before event cut `i` is authorized, so is
 everything every node has seen at cut `i`. -/

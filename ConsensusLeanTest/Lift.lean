@@ -124,6 +124,44 @@ theorem releaseAll_eq_of_digests {pub : Public} {Out : Type} {P : Protocol pub O
       exact ih nd ha
 
 namespace Run
+
+omit [DecidableEq V] in
+private theorem runDuties_rehash (rho : Run F E) (hash' : (protoOf F E).Item → Nat) (v : V)
+    (ds : List (protoOf F E).Duty) (nd : Node (protoOf F E))
+    (ha : ∀ o ∈ (rho.runDuties v nd ds).2, digests hash' o = digests rho.hash o) :
+    ({rho with hash := hash'} : Run F E).runDuties v nd ds = rho.runDuties v nd ds := by
+  induction ds generalizing nd with
+  | nil => rfl
+  | cons d ds ih =>
+    rw [runDuties_cons] at ha
+    rw [runDuties_cons, runDuties_cons]
+    have hstep : ({rho with hash := hash'} : Run F E).dutyStep v nd d = rho.dutyStep v nd d :=
+      releaseAll_eq_of_digests rho.hash hash' _ _ _ fun o ho => ha o (List.mem_append_left _ ho)
+    rw [hstep, ih _ (fun o ho => ha o (List.mem_append_right _ ho))]
+
+omit [DecidableEq V] in
+/-- Replacing the hash preserves a tick whose releases keep their digests. -/
+theorem tick_rehash (rho : Run F E) (hash' : (protoOf F E).Item → Nat)
+    (nd : Node (protoOf F E)) (v : V) (t : Time)
+    (ha : ∀ o ∈ (rho.tick nd v t).2, digests hash' o = digests rho.hash o) :
+    ({rho with hash := hash'} : Run F E).tick nd v t = rho.tick nd v t := by
+  cases hw : E.awake v t
+  · rw [tick_of_asleep _ nd v t hw, tick_of_asleep _ nd v t hw]
+    rfl
+  · rw [tick_of_awake _ nd v t hw] at ha
+    have hR : ({rho with hash := hash'} : Run F E).runDuties v
+        ⟨(protoOf F E).clock nd.st t (mempool ({rho with hash := hash'} : Run F E).inbox v t),
+          nd.seen⟩ ((protoOf F E).duties t) =
+        rho.runDuties v ⟨(protoOf F E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩
+          ((protoOf F E).duties t) :=
+      runDuties_rehash rho hash' v _ _ fun o ho => ha o (List.mem_append_left _ ho)
+    rw [tick_of_awake _ nd v t hw, tick_of_awake _ nd v t hw, hR]
+    generalize rho.runDuties v ⟨(protoOf F E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩
+      ((protoOf F E).duties t) = R at ha ⊢
+    have hg := releaseAll_eq_of_digests rho.hash hash' (rho.ownKey v) R.1
+      (gossipCandidates (protoOf F E) R.1.st t) fun o ho => ha o (List.mem_append_right _ ho)
+    exact congrArg (fun g => (g.1, R.2 ++ g.2)) hg
+
 /-- Replacing the hash while preserving observed digests preserves the trace. -/
 theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf F E).Item → Nat)
     (ha : ∀ h, rho.ObservedItem h → hash' h = rho.hash h) :
@@ -134,18 +172,11 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
   have tick_eq : ∀ i v t, rho.events[i]? = some (.tick v t) →
       r.tick (rho.stateBefore i v) v t = rho.tick (rho.stateBefore i v) v t := by
     intro i v t he
-    unfold tick
-    change (if E.awake v t then releaseAll _ hash' _ _ _ else _) = _
-    split
-    · apply releaseAll_eq_of_digests
-      intro o ho
-      apply rho.digests_eq_of_observed hash' ha
-      refine ⟨v, hv.honest_only _ (List.mem_of_getElem? he), rho.mem_viewIdx_iff.mpr ⟨i, o,
-        (List.getElem?_eq_some_iff.mp he).1, Or.inl ⟨t, he, ?_⟩, .refl _⟩⟩
-      simpa only [releasesAt, he, tick, ‹E.awake v t = true›, ↓reduceIte, r,
-        show r.inbox = rho.inbox from rfl, show r.candidates = rho.candidates from rfl,
-        show r.ownKey = rho.ownKey from rfl] using ho
-    · rfl
+    refine rho.tick_rehash hash' _ v t fun o ho => ?_
+    apply rho.digests_eq_of_observed hash' ha
+    refine ⟨v, hv.honest_only _ (List.mem_of_getElem? he), rho.mem_viewIdx_iff.mpr ⟨i, o,
+      (List.getElem?_eq_some_iff.mp he).1, Or.inl ⟨t, he, ?_⟩, .refl _⟩⟩
+    simpa only [releasesAt, he] using ho
   have states : ∀ i, r.stateBefore i = rho.stateBefore i := by
     intro i
     induction i with

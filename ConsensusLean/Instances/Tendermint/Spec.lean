@@ -19,8 +19,6 @@ def tendermintSkeleton (n : Nat) : Skeleton n where
   Kind := Empty
   decKind := inferInstance
   kinds := []
-  kinds_nodup := List.nodup_nil
-  kinds_complete := fun k => nomatch k
   phase := fun k => nomatch k
   kindSel := fun k => nomatch k
 
