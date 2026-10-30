@@ -586,8 +586,11 @@ name = "Solution"
 prefixes = ["Solution"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour", "Proofs.RegimesRealizable",
-         "Proofs.Faithful", "Main"]
-about = "comparator solution: proofs of the review statements (no instances: narrower than plan §2, as before)"
+         "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.FG",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
+         "Instances.Goldilocks.Proofs.FGSafety"]
+about = "comparator solution: the review statements and the finished instance milestones (each through its Main)"
 
 [[layer]]
 name = "Test"
@@ -676,11 +679,15 @@ theorems_mode = "enforce"
 # imported directly by `review_root`.
 review_axioms_module = "ConsensusLeanTest.ReviewAxioms"
 review_root = "ConsensusLeanTest"
-# Comparator (plan §3). Step 9 checks comparator.json against these modules and against the Prop
-# definitions of `statements_module`; step 11 runs `lake comparator` (where bwrap exists).
+# Comparator (plan §3). Step 9 checks comparator.json against these modules and against the closed Prop
+# definitions of `statements_module` (the review statements, paired with their source theorems by
+# `review_axioms_module`) and of `milestone_statements_modules` (finished instance milestones, each a statements
+# module under `trusted_paths` whose closed Prop definitions `Solution` proves directly); the challenge imports exactly
+# these modules, in this order. Step 11 runs `lake comparator` (where bwrap exists).
 challenge_module = "Challenge"
 solution_module = "Solution"
 statements_module = "ConsensusLean.Statements.Review"
+milestone_statements_modules = ["ConsensusLean.Instances.Goldilocks.Statements.FGSafety"]
 # Extra targets built by step 1 next to the default targets.
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
                        "spec-surface", "Challenge"]

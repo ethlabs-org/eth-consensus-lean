@@ -74,7 +74,9 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop wh
 
 `Accepted` carries the admissibility, progress-fit and progress-tolerance premises of
 `RegimesRealizable`, as well as the protocol's claims and its served-output condition.
-`Solution.lean` proves each review statement by its source theorem.
+`Solution.lean` proves each review statement by its source theorem, and each finished instance
+milestone (the closed `Prop` definitions of `milestone_statements_modules` in `scripts/boundaries.toml`,
+today Goldilocks M₁ `FGSafety`) by its milestone proof, importing that milestone's `Main`.
 `ConsensusLeanTest/ReviewAxioms.lean`, using `ConsensusLeanTest/ReviewGuard.lean`, compiles
 alpha-equality guards (including binder kinds) and `#guard_msgs` pins of the exact axiom lists
 for both the review and source theorems. `ReviewGuard.checkComplete` requires every non-proof,
@@ -513,13 +515,13 @@ Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 1. **Build:** compile `ConsensusLean` (the default target), `ConsensusLeanTest` (what `lake test` builds), `Solution`, the challenge, check-decls and axiom-audit with `lake build --wfail --iofail` (any warning or info message fails, also one Lake replays from a built module; `warn.sorry = false` in the lakefile keeps `sorry` silent), and the deliberately bad fixtures without; `--no-build` still checks Lake freshness.
 2. **Boundaries:** enforce the layer matrix, the Init chain, root coverage, library inventory and pinned-base names with `scripts/check-boundaries.py` (source-level, no build).
 3. **Declarations:** EthLib check-decls runs once per library scope (`ConsensusLean`, `ConsensusLeanTest`, `Solution`), checking every module for extra axioms, unfinished proofs, opaque/unsafe/partial declarations, extern/implemented_by/csimp and opaque reachability; empty scopes fail. A `sorry` is allowed (and listed) only in the `sorry = true` layers of `scripts/boundaries.toml`, `Lemmas` and `Proofs.<M>` (foundation plan §5); anywhere else it fails.
-3b. **Axiom audit:** leanprover-community/axiom-audit over the import closure of `Solution` (the certified part): every declaration of `ConsensusLean` and `Solution` in it uses only `propext`, `Classical.choice` and `Quot.sound`, so a `sorry` (also through an import), `native_decide` or a declared axiom there fails. The same gate covers every declaration of `ConsensusLeanTest`: a test, witness or rejection built on an unfinished lemma proves nothing (step 7 refuses proof `example`s, which never enter the environment, so every test is a named declaration). `Solution` imports `Main` and every milestone, so all of them must be finished today; a new milestone may stay unfinished while neither `Main` nor `Solution` imports it (plan §5); the instances reach the generic library only through `Main`. A report lists the unfinished declarations of `ConsensusLean` (those that depend on `sorryAx`): the progress metric.
+3b. **Axiom audit:** leanprover-community/axiom-audit over the import closure of `Solution` (the certified part): every declaration of `ConsensusLean` and `Solution` in it uses only `propext`, `Classical.choice` and `Quot.sound`, so a `sorry` (also through an import), `native_decide` or a declared axiom there fails. The same gate covers every declaration of `ConsensusLeanTest`: a test, witness or rejection built on an unfinished lemma proves nothing (step 7 refuses proof `example`s, which never enter the environment, so every test is a named declaration). `Solution` imports `Main` and every milestone, so all of them must be finished today; a new milestone may stay unfinished while neither `Main` nor `Solution` imports it (plan §5); the instances reach the generic library only through `Main`, and a finished instance milestone enters `Solution` through its `Proofs/<M>/Main` (today Goldilocks M₁). A report lists the unfinished declarations of `ConsensusLean` (those that depend on `sorryAx`): the progress metric.
 4. **Spec surface:** check persisted extensions, diff the complete readable/structural snapshot (including pins/options), enforce theorem hygiene and constant-free parents; the `reach` report (which Spec definitions the review statements reach; not a gate) runs in `--full`, in `--changed` when step 4 runs, and in `--fast` with `--reach`.
 5. **Kernel replay:** run leanchecker on every leaf module of the checked libraries, one module per process after checking it has no descendants, two processes at a time (`REPLAY_JOBS`); parent modules own no constants.
 6. **Review pins:** require the tests root to import the compiled alpha-equality guards and exact axiom pins.
 7. **Backstop:** grep for `sorry`/`admit` outside the sorry layers (comments included; their count inside them, comments and strings removed, is reported), proof `example`s (only a bare `example := @Name` or ``` example := ``Name ``` reference is allowed), native proofs, kernel bypasses and `debug.` options, Spec metacommands and unsafe lakefile options.
 8. **Vendored:** verify all vendored EthLib copies against `scripts/vendor.sha256`.
-9. **Comparator config:** pin challenge/solution modules, all four statement names and exactly the three standard axioms; validate the Spec-only challenge.
+9. **Comparator config:** pin challenge/solution modules, every statement name (the four review statements and the closed statements of the `milestone_statements_modules`, each of which must have one) and exactly the three standard axioms; validate the Spec-only challenge.
 10. **Lake check (needs bubblewrap; skipped and listed as CI-only where `bwrap` is missing):** sandboxed build, export and kernel replay of the default targets, rejecting extra axioms. It rejects `sorryAx` too, so it checks the default targets only while the files of the sorry layers hold no `sorry`/`admit` token outside comments and strings (plan §5; otherwise a NOTE and, in CI, a warning); then the certified part is the `Solution` closure (3b, 5, 11). Its fixtures always run.
 11. **Lake comparator (needs bubblewrap, likewise):** statement/axiom matching, sandboxed replay and agreement of reachable constants between challenge and solution exports.
 12. **Docs:** require the marked list above to equal every file of the trusted layers exactly.
@@ -585,7 +587,7 @@ overlap); `allow` lists the layers it may import, written out in full:
 | `Main` | the above, every `Proofs.<M>` |
 | `Instances.<P>.Spec` | Init, ToMathlib, Core, Spec |
 | `Instances.Goldilocks.*` (one layer per component and level: `Spec.{Common,FG,Frame,Trace,FGStore,AC,SA,Node,Run}`, `Spec.Baseline` and `Statements.Baseline` (until `Baseline.lean` retires), `Refinement.Defs`, `Statements.*`, `Lemmas.*`, `Proofs.<M>`, `Main`) | its row in `scripts/boundaries.toml`: no FG layer imports an AC or SA layer and no AC or SA layer an FG layer; `Statements.FG` reaches only the chain-level FG |
-| `Solution` | every generic layer (no instances) |
+| `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`) |
 | `Test` (`ConsensusLeanTest`) | everything above; library roots, import-only aggregates, `import all` |
 
 The checker fails on: a missing, unparsable or mistyped config (missing or unknown keys included); a
@@ -640,7 +642,8 @@ In `scripts/`:
   (`docs/metrics-baseline.md`); step 13 prints its totals.
 
 The fixture libraries are `Challenge` (`Challenge.lean`, comparator statements
-with placeholder proofs, importing exactly `ConsensusLean.Statements.Review`), rootless
+with placeholder proofs, importing exactly `ConsensusLean.Statements.Review` and the
+`milestone_statements_modules`), rootless
 `CheckFixtures` (under `scripts/fixtures/`, each fixture a separate target), and `CheckDeclsTest`
 (EthLib fixtures under `scripts/`).
 They may contain deliberately unfinished proofs or extra axioms; no checked library reaches them.

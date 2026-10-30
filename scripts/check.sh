@@ -144,6 +144,8 @@ REVIEW_ROOT="$(cfg review_root)"
 CHALLENGE="$(cfg challenge_module)"
 SOLUTION="$(cfg solution_module)"
 STATEMENTS="$(cfg statements_module)"
+mapfile -t MILESTONE_STATEMENTS < <(cfg milestone_statements_modules)
+COMPARATOR_STATEMENTS=("$STATEMENTS" "${MILESTONE_STATEMENTS[@]}")  # step 9: the challenge imports exactly these
 case "$THEOREMS_MODE" in report|enforce) ;; *) echo "check.sh: theorems_mode must be report or enforce" >&2; exit 2 ;; esac
 ((${#LIBS[@]} > 0 && ${#DEFAULT_LIBS[@]} > 0 && ${#EXTRA_TARGETS[@]} > 0)) ||
   { echo "check.sh: empty configuration" >&2; exit 2; }
@@ -390,14 +392,20 @@ step_boundaries() {
   # Every module named in [checks] must be in the inventory (a typo would silently check less).
   local m l bad=0
   [[ -n "$(inv_trusted)" ]] || { echo "  FAIL[config] no module in a trusted layer"; bad=1; }
-  for m in "$REVIEW_AXIOMS" "$REVIEW_ROOT" "$STATEMENTS" "$SOLUTION"; do
+  for m in "$REVIEW_AXIOMS" "$REVIEW_ROOT" "${COMPARATOR_STATEMENTS[@]}" "$SOLUTION"; do
     cut -f2 "$INV" | grep -qxF "$m" || { echo "  FAIL[config] $m (boundaries.toml [checks]) is not in the inventory"; bad=1; }
   done
   for m in "${NOCONST_EXEMPT[@]}"; do
     inv_kind parent | grep -qxF "$m" || { echo "  FAIL[config] noconst_exempt $m is not a module with descendants"; bad=1; }
   done
-  # The statements module is in a trusted layer (step 9's challenge imports exactly it).
+  # The statements modules are frozen by the tag (step 9's challenge imports exactly them): the review
+  # statements module is in a trusted layer, each milestone statements module's file is under `trusted_paths`.
   inv_trusted | grep -qxF "$STATEMENTS" || { echo "  FAIL[config] $STATEMENTS is not in a trusted layer"; bad=1; }
+  for m in "${MILESTONE_STATEMENTS[@]}"; do
+    l="$(mod_file "$m")"
+    cfg trusted_paths | awk -v f="$l" '$0 == f || index(f, $0 "/") == 1 { ok = 1 } END { exit !ok }' ||
+      { echo "  FAIL[config] $l (milestone_statements_modules) is not under trusted_paths"; bad=1; }
+  done
   # The canary's edits (step 14, which runs only with --full or --canary) still apply: each `old` occurs once.
   canary_applies || bad=1
   return "$bad"
@@ -985,19 +993,21 @@ comparator_config_ok() {
     and (.theorem_names | sort) == $want
     and (.permitted_axioms | sort) == ["Classical.choice", "Quot.sound", "propext"])' "$1" >/dev/null
 }
-# challenge_ok <file> <statements file>: the challenge imports exactly the statements module (lean --deps-json;
-# besides the implicit `Init`), and its text with comments removed (`--` to the end of the line, nested
-# `/- ... -/` blocks, wherever they occur) is exactly the template: `module`, `public import <statements>`,
+# challenge_ok <file> <statements file>: the challenge imports exactly the statements modules
+# (COMPARATOR_STATEMENTS, in that order; lean --deps-json, besides the implicit `Init`), and its text with
+# comments removed (`--` to the end of the line, nested `/- ... -/` blocks, wherever they occur) is exactly
+# the template: `module`, one `public import <m>` per statements module (in that order),
 # `@[expose] public section`, one `theorem <s> : <S> := sorry` per statement S (`s` its lower-first
 # name; any order) and `end`. Nothing else, so no declaration can hide next to a comment.
 challenge_ok() {
   local f="$1" st="$2"
   lake env lean --deps-json "$f" |
-    jq -e --arg m "$STATEMENTS" '.imports[0].errors == [] and ([.imports[0].result.imports[].module | select(. != "Init")] == [$m])' >/dev/null ||
-    { echo "  FAIL[challenge] $f must import exactly $STATEMENTS"; return 1; }
-  python3 -I - "$f" "$st" "$STATEMENTS" <<'PY' || return 1
+    jq -e --args '.imports[0].errors == [] and ([.imports[0].result.imports[].module | select(. != "Init")] == $ARGS.positional)' \
+      "${COMPARATOR_STATEMENTS[@]}" >/dev/null ||
+    { echo "  FAIL[challenge-imports] $f must import exactly ${COMPARATOR_STATEMENTS[*]}"; return 1; }
+  python3 -I - "$f" "$st" "${COMPARATOR_STATEMENTS[@]}" <<'PY' || return 1
 import sys
-src, stmts, spec = open(sys.argv[1]).read(), open(sys.argv[2]).read().split(), sys.argv[3]
+src, stmts, specs = open(sys.argv[1]).read(), open(sys.argv[2]).read().split(), sys.argv[3:]
 out, i, depth = [], 0, 0
 while i < len(src):  # drop comments (nested block comments, line comments); keep newlines
     if src.startswith("/-", i): depth, i = depth + 1, i + 2
@@ -1009,9 +1019,9 @@ got = [" ".join(l.split()) for l in "".join(out).splitlines() if l.strip()]
 def thm(s):
     *ns, last = s.split(".")
     return f"theorem {'.'.join(ns + [last[:1].lower() + last[1:]])} : {s} := sorry"
-head = ["module", f"public import {spec}", "@[expose] public section"]
-ok = (depth == 0 and stmts and got[:3] == head and got[-1:] == ["end"]
-      and sorted(got[3:-1]) == sorted(thm(s) for s in stmts))
+head = ["module", *(f"public import {m}" for m in specs), "@[expose] public section"]
+ok = (depth == 0 and stmts and got[:len(head)] == head and got[-1:] == ["end"]
+      and sorted(got[len(head):-1]) == sorted(thm(s) for s in stmts))
 if not ok:
     print(f"  FAIL[challenge] {sys.argv[1]} (comments removed) is not the template for {len(stmts)} statements:")
     print("\n".join("    " + l for l in got))
@@ -1020,10 +1030,15 @@ PY
 }
 step_comparator_config() {
   [[ -f comparator.json ]] || { echo "  no comparator.json"; return 1; }
-  "${SURFACE[@]}" statements --modules "$STATEMENTS" >"$WORK/statements.txt" &&
+  local m
+  for m in "${MILESTONE_STATEMENTS[@]}"; do  # a milestone module with no closed statement would certify nothing
+    [[ -n "$("${SURFACE[@]}" statements --modules "$m")" ]] ||
+      { echo "  FAIL[challenge] milestone statements module $m has no closed Prop statement"; return 1; }
+  done
+  "${SURFACE[@]}" statements --modules "${COMPARATOR_STATEMENTS[@]}" >"$WORK/statements.txt" &&
     comparator_config_ok comparator.json "$WORK/statements.txt" &&
     challenge_ok "$(mod_file "$CHALLENGE")" "$WORK/statements.txt" &&
-    echo "  comparator.json and $(mod_file "$CHALLENGE") match the $(wc -l <"$WORK/statements.txt") statements of $STATEMENTS"
+    echo "  comparator.json and $(mod_file "$CHALLENGE") match the $(wc -l <"$WORK/statements.txt") statements of ${COMPARATOR_STATEMENTS[*]}"
 }
 selftest_comparator_config() {
   set +e
@@ -1034,12 +1049,15 @@ selftest_comparator_config() {
   done
   expect_fail - comparator_config_ok "$FX/comparator/config-empty.json" "$FX/comparator/statements-empty.txt" || rc=1
   # The challenge module: the real one against fixture statements lists, and fixture challenges.
-  "${SURFACE[@]}" statements --modules "$STATEMENTS" >"$WORK/statements.txt" || { echo "  statements failed"; rc=1; }
+  "${SURFACE[@]}" statements --modules "${COMPARATOR_STATEMENTS[@]}" >"$WORK/statements.txt" || { echo "  statements failed"; rc=1; }
   head -n -1 "$WORK/statements.txt" >"$WORK/statements-short.txt"
-  expect_fail 'FAIL[challenge]' challenge_ok "$(mod_file "$CHALLENGE")" "$WORK/statements-short.txt" || rc=1
-  expect_fail 'FAIL[challenge]' challenge_ok "$(mod_file "$CHALLENGE")" /dev/null || rc=1
-  for c in import weaker extra hidden; do
-    expect_fail 'FAIL[challenge]' challenge_ok "$FX/comparator/challenge-$c.lean" "$WORK/statements.txt" || rc=1
+  expect_fail 'is not the template' challenge_ok "$(mod_file "$CHALLENGE")" "$WORK/statements-short.txt" || rc=1
+  expect_fail 'is not the template' challenge_ok "$(mod_file "$CHALLENGE")" /dev/null || rc=1
+  for c in import fewer; do
+    expect_fail 'FAIL[challenge-imports]' challenge_ok "$FX/comparator/challenge-$c.lean" "$WORK/statements.txt" || rc=1
+  done
+  for c in weaker extra hidden; do
+    expect_fail 'is not the template' challenge_ok "$FX/comparator/challenge-$c.lean" "$WORK/statements.txt" || rc=1
   done
   set -e
   return "$rc"

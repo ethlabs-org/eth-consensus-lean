@@ -42,10 +42,12 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   closure that depends on an axiom other than the three standard ones (`sorryAx`, `native_decide`'s axioms, a
   declared axiom, also through imports), and so it does for every test declaration (a test built on an unfinished
   lemma proves nothing; grep step 7 refuses proof `example`s, which never enter the environment). `Solution` imports
-  `Main` and every milestone today, so all of them must be finished; a new milestone may stay unfinished while
-  neither imports it (step 3b's report lists what is unfinished). The instances reach the generic library only
-  through `Main`, inside the closure, so everything they use is finished today. The review
-  pins and the comparator check the review theorems' axioms too. axiom-audit's shared memo can under-count inside
+  `Main`, every generic milestone and each finished instance milestone's `Main` (today Goldilocks M₁)
+  today, so all of them must be finished; a new milestone may stay unfinished while neither imports it (step 3b's
+  report lists what is unfinished). The instances reach the generic library only through `Main`, inside the
+  closure, so everything they use is finished today. Step 9 and the comparator check the closed statements of the
+  `milestone_statements_modules` (instance statements modules under `trusted_paths`) next to the review statements. The review
+  pins and the comparator check the axioms of the review and milestone theorems too. axiom-audit's shared memo can under-count inside
   an inductive/constructor cycle when the declaration that uses the axiom directly is not audited (the tests gate,
   whose roots exclude the library): check-decls still fails a direct `sorry` outside the sorry layers. `lake build --wfail` runs with `warn.sorry = false`, so every other warning fails the build.
 - **Proofs:** leanchecker, one process per leaf module of the checked libraries (parents own no

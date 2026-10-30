@@ -15,8 +15,9 @@ parsed):
   declared in `ConsensusLean/Statements/Review.lean`, in any namespace, `private` (hence
   `import all`) or not, must have a pair (`Consensus.ReviewGuard.checkComplete`);
 * each `#guard_msgs` pins the exact axiom list (`propext`, `Classical.choice`, `Quot.sound`) of the
-  review theorems and of their source theorems; an unfinished proof or a new axiom changes the
-  message and fails the build. -/
+  review theorems, of their source theorems and of the solution's instance milestone theorems
+  (whose statements are the milestone definitions themselves, so they need no pair); an
+  unfinished proof or a new axiom changes the message and fails the build. -/
 
 -- `#guard_msgs in #print axioms` puts the command off column 0; the linter's warning would
 -- otherwise be part of the guarded messages; the pinned messages are longer than 100 columns.
@@ -50,6 +51,9 @@ run_meta do
 
 /-- info: 'Consensus.Review.heldIffServed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Review.heldIffServed
+
+/-- info: 'Consensus.Goldilocks.FG.fGSafety' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.FG.fGSafety
 
 /-! ## Axiom pins: the source theorems -/
 

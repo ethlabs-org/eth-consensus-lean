@@ -8,7 +8,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
-public import ConsensusLean.Instances.Goldilocks.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Trace
