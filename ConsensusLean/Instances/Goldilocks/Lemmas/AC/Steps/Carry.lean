@@ -95,26 +95,6 @@ theorem merged_voters_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
   · exact ⟨v, h, rfl⟩
   · exact ⟨x, hx, hxv⟩
 
-/-- Inside a coherent `U ⊇ Φ.tree` of a well-formed frame, the `U`-ancestry between two blocks
-of the tree is the tree's. -/
-private theorem anc_of_anc_U (hU : Coherent U) {Φ : Frm sp.n FGP}
-    (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {B C : Blk sp.n FGP} (hB : B ∈ Φ.tree)
-    (h : Anc U B C) : C ∈ Φ.tree → Φ.Anc B C := by
-  induction h with
-  | refl => exact fun _ => Relation.ReflTransGen.refl
-  | @tail c d hBc e ih =>
-    intro hd
-    by_cases hdF : d = Φ.F
-    · subst hdF
-      have := Anc.antisymm hU (hBc.tail e) ((hΦ.rooted.2 B hB).mono hΦU)
-      exact this ▸ Relation.ReflTransGen.refl
-    obtain rfl | ⟨p, -, hp⟩ :=
-      (Relation.ReflTransGen.cases_tail_iff _ _ _).1 (hΦ.rooted.2 d hd)
-    · exact absurd rfl hdF
-    have hpc : p = c := hU.1 (hΦU hp.1) e.1 (Option.some_injective _ (hp.2.2.symm.trans e.2.2))
-    subst hpc
-    exact (ih hp.1).tail hp
-
 /-- In a well-formed frame, `lookup` finds every block of the tree by its root. -/
 private theorem lookup_of_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {B : Blk sp.n FGP}
     (hB : B ∈ Φ.tree) : lookup Φ B.root = some B := by
@@ -307,7 +287,7 @@ theorem carried_supporter (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i
     simp only [show ¬ v.slot < Hv.slot by omega, ite_false, hfz]
     exact max_lt hheld.2 (hHvr ▸ hbs)
   refine ⟨hneq, v, Or.inl ?_, rfl, by simp [hvs], Hv, hHvt, hHvr,
-    anc_of_anc_U hU hΦ hΦU hC hCHv hHvt⟩
+    anc_tree_of_anc_U hU hΦ hΦU hC hCHv hHvt⟩
   refine List.mem_filter.2 ⟨List.mem_filter.2 ⟨?_, ?_⟩, by simpa using hres⟩
   · simp only [SAState.poolAt, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) by omega, ite_false]
     simpa [hvs] using hheld.1

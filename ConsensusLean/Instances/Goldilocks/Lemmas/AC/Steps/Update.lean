@@ -49,24 +49,6 @@ private theorem anc_of_isDeepest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set
   · have := depth_lt_of_anc hΦ hDX hne hXt
     rcases hD.2 X hX (Ne.symm hne) with h | h <;> omega
 
-/-- Inside a coherent `U ⊇ Φ.tree` of a well-formed frame, a block between `Φ.F` and a block of
-the tree is in the tree. -/
-private theorem mem_tree_of_between {U : Set (Blk sp.n FGP)} (hU : Coherent U)
-    {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {B C : Blk sp.n FGP}
-    (hFB : Anc U Φ.F B) (h : Anc U B C) : C ∈ Φ.tree → B ∈ Φ.tree := by
-  induction h with
-  | refl => exact id
-  | @tail c d hBc e ih =>
-    intro hd
-    by_cases hdF : d = Φ.F
-    · subst hdF
-      exact (Anc.antisymm hU hFB (hBc.tail e)) ▸ hΦ.rooted.1
-    obtain rfl | ⟨p, -, hp⟩ :=
-      (Relation.ReflTransGen.cases_tail_iff _ _ _).1 (hΦ.rooted.2 d hd)
-    · exact absurd rfl hdF
-    have hpc : p = c := hU.1 (hΦU hp.1) e.1 (Option.some_injective _ (hp.2.2.symm.trans e.2.2))
-    exact ih (hpc ▸ hp.1)
-
 /-- An honest node's calls run inside a `U` that holds genesis (the root of its initial
 frame). -/
 private theorem genesis_mem_U {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
@@ -124,7 +106,7 @@ theorem optimistic_next_update : OptimisticNextUpdate sp := by
     · exact ⟨B, hB, hΦ.rooted.2 B hB, Relation.ReflTransGen.refl,
         fun Hd hHd h => anc_tree_of_anc_U hU hΦ hΦU hB h hHd, id⟩
     have hBF : Anc U B Φ.F := (anc_total hU hBHd₀ ((hΦ.rooted.2 Hd₀ hHd₀).mono hΦU)).resolve_right
-      fun h => hB (mem_tree_of_between hU hΦ hΦU h hBHd₀ hHd₀)
+      fun h => hB (frame_mem_of_between sp hU hΦ hΦU hHd₀ hBHd₀ h)
     refine ⟨Φ.F, hΦ.rooted.1, Relation.ReflTransGen.refl, hBF,
       fun Hd hHd _ => hΦ.rooted.2 Hd hHd, fun _ hg => ?_⟩
     obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_U hr hz hc
