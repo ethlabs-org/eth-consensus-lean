@@ -83,6 +83,22 @@ where it is recorded; "Francesco" marks the owner's decisions.
   the tick, five `Lemmas/Compose` files and the Goldilocks tests. The spec folds the input into the AC payload
   (composition.tex: the AC fixes the encoding of its payload); the mapping records the field as that encoding.
 
+- 2026-10-30, amp-orbs (coordinator), on the Regimes milestone (R.3). **Baseline's heal point is not raised to the
+  proved bound.** The target pins `gHeal = max(g, 0) + (29 + B_H^F(k))·Δ` (from the FG-SA analysis); the only
+  healing result, claims H.4, gives `T_heal = ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b`, far above it. R.3 is
+  stated over the run at a heal point `T ≥ T_heal` (`Statements/Regimes/Healed`), with H.4's open premises (H.3
+  (c)'s bridge, `(U_all)`, `(U_B)`) as named hypotheses, and with H.4's regime premises that the target lacks
+  (`Catch(2Δ)`, `Prop⁺(G_p)`, the `δ_t` bound and the genesis root of `HSShared`); Baseline's `gHeal` is unchanged.
+  Raising `gHeal` to H.4's bound would weaken the review target to fit the proof we have, which AGENTS.md rules out,
+  and a larger proven bound is not evidence that `gHeal` is false. **Baseline R.3 at `gHeal` remains open; what is
+  proved (once the proofs land) is R.3 at `T_heal` under those premises.** `gHeal` changes only with a
+  counterexample (a reachable run that heals later than `gHeal`) or the owner's explicit decision (flagged to him).
+  Model evidence (workbench#8 `sa-fg-model`, measured at `528a15c`, recorded in the README at `e406004`): 9,600
+  `Healthy` runs (n ∈ {4, 5, 7}, k ∈ {2, 3}, δ_t ∈ {2, 3}; random, hostile and partition adversaries) all heal
+  within their horizon and none after `gHeal`; the largest available heal time is 0.049·`gHeal` and the largest
+  first-finality time 0.132·`gHeal`. The adversaries are not heal-delay optimizers and the horizons (128–224Δ after
+  `ḡ`) are below `gHeal`, so this is no counterexample search.
+
 ## Process
 
 - 2026-10-29, Francesco ([#2]). Claude (claude-ethlabs) and the Amp orbs push and merge their own green,

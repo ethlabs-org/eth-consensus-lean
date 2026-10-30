@@ -559,7 +559,8 @@ Modelling choices:
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `c6653258`, §"L2: regime theorems (skeleton)". Layout: the
 run-level forms of the `GoldilocksTarget` rows, over the Goldilocks run (`GoldilocksRun`; `Compose.NoCollRun` only
 where the target row allows the collision escape); the Refinement milestone carries them to the model system. R.7 and R.8 (no regime premise) are in
-`Statements/Regimes/Always`; R.1 and R.2 (`Sleepy`) in `Statements/Regimes/Sleepy`.
+`Statements/Regimes/Always`; R.1 and R.2 (`Sleepy`) in `Statements/Regimes/Sleepy`; R.3 (healed, at a heal point
+`T ≥ T_heal`) in `Statements/Regimes/Healed`.
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
@@ -568,6 +569,8 @@ where the target row allows the collision escape); the Refinement milestone carr
 | — | CLAIMS R.1, R.2 (the target's `Ready`, `gc`, `gProg`) | a read point and the first cut after a time; the catch-up `18Δ`; ready at `t` (honest, awake on `[max(0, t − c − 1), t]`); the confirmed read after all events at `t`; an honest proposal by a proposer ready at its release; one honest ready proposer in every `k`-slot window of `[a, b]`; ready-reader safety (agreement and monotonicity) on the cuts of `[t₀, t₁]` | Regimes | `Consensus.Goldilocks.Regimes.CutAfter`, `Consensus.Goldilocks.Regimes.ReadPoint`, `Consensus.Goldilocks.Regimes.catchUp`, `Consensus.Goldilocks.Regimes.ReadyAt`, `Consensus.Goldilocks.Regimes.readAfter`, `Consensus.Goldilocks.Regimes.ReadyProposalAt`, `Consensus.Goldilocks.Regimes.ProposerRecurrence`, `Consensus.Goldilocks.Regimes.ReadySafeOn` |
 | R.1 | CLAIMS R.1 (uses A1.2–A1.4, A1.6, C1.1, F.4) | **`sleepySafe`**: under `Sleepy`, ready-reader safety of the confirmed output on every cut; **`confirmed_safe_sleepy_prefix`**: `Sync[0, b]` and `f < h_t` at the slot points up to `b` give it on the cuts up to `b` | Regimes | `Consensus.Goldilocks.Regimes.SleepySafe`, `Consensus.Goldilocks.Regimes.SleepySafePrefix` |
 | R.2 | CLAIMS R.2 (uses A1.7, F.4) | **`includeSleepy`**: honest ready proposals are in every ready confirmed read from `τ + 6Δ`; **`growSleepy`**: with one honest ready proposer per `k` slots, a new common confirmed entry by `t + (4k + 6)Δ`, above every ready read at `t` | Regimes | `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy`, `Consensus.Goldilocks.Regimes.SleepyStatements` |
+| — | CLAIMS R.3 (heal point D1), H.4 (ii), (iii), H.3 (c) | `(U_all)` and `(U_B)` from `T` (H.4's open premises); the healing premises of R.3 at a heal point `T` (HS shared premises, `Catch(2Δ)`, `Prop⁺`, the reset, H.3 (c)'s bridge as a named hypothesis, `T ≥ T_heal`) | Regimes | `Consensus.Goldilocks.Regimes.UnanimousFrom`, `Consensus.Goldilocks.Regimes.UnanimousWithin`, `Consensus.Goldilocks.Regimes.HealedPremises` |
+| R.3 | CLAIMS R.3 (uses R.1, R.2, C1.1, H.4) | at a heal point `T ≥ T_heal` (not the target's `gHeal`): **`healedSafe`** (ready-reader safety from `T`); **`includeHealed`** (under `(U_all)`); **`growHealed`** (under `(U_B)` with `B = 4kΔ` and the recurrence from `gReady`); **`crossNest`** (ready finalized ⪯ ready confirmed from `T`) | Regimes | `Consensus.Goldilocks.Regimes.HealedSafe`, `Consensus.Goldilocks.Regimes.IncludeHealed`, `Consensus.Goldilocks.Regimes.GrowHealed`, `Consensus.Goldilocks.Regimes.CrossNest`, `Consensus.Goldilocks.Regimes.HealedStatements` |
 | R.7 | CLAIMS R.7 (uses G1.3–G1.5) | **`finalAccountable`**: conflicting honest finalized tips convict `≥ 2q − n` validators from the attestations on two chains the readers hold; **`nonFraming`**: an honest validator signs no slashable pair; **`finalized_safe_below_third`**: with `f < 2q − n`, honest finalized tips never conflict | Regimes | `Consensus.Goldilocks.Regimes.FinalAccountable`, `Consensus.Goldilocks.Regimes.NonFraming`, `Consensus.Goldilocks.Regimes.FinalizedSafe`, `Consensus.Goldilocks.Regimes.AlwaysStatements` |
 
 Modelling choices:
@@ -581,6 +584,15 @@ Modelling choices:
   `ProposerRecurrence` is over the windows of `k` slots starting in `(a, b]` (the target's `(t, t + 4kΔ]`), and
   `GrowSleepy` takes it up to its read time only (the target's `gProg … 0 horizon`). `confirmed_txLive_sleepy` is not stated over the run (no
   transactions there): the Refinement derives it from `IncludeSleepy`.
+- **R.3's heal point** is a parameter `T ≥ T_heal` (H.4), not the target's `gHeal = max(g, 0) + (29 + B_H^F(k))Δ`:
+  R.3 at `gHeal` stays open (docs/decisions.md, "Goldilocks instance", 2026-10-30). H.4's open premises are named
+  hypotheses: H.3 (c)'s `BridgeAt` (in `HealedPremises`), unanimity from `T` for `includeHealed` and within `4kΔ`
+  windows for `growHealed` (the `(U_all)`/`(U_B)` forms, used through H.4 (i) per proposal). Premises the target
+  lacks: `Catch(2Δ)` and `Prop⁺(G_p)` (bridges B1–B3 of the claims' premises table), and `HSShared`'s parameter bound
+  `6Δ + Δ_F ≤ 4Δδ_t` and genesis root. Open proof items (not premises): `RecRet` (`healedSafe`); the confirmed tip
+  across FG-only frame changes between AC calls (`includeHealed` reads after all events, H.4 concludes at AC calls);
+  `crossNest`, which no H node gives. `healthyLive` and `confirmed_txLive_healed` are derived in the Refinement from
+  `includeHealed` (no transactions in the run).
 - **Conflict** is incompatibility inside the honest blocks of the run (`tr.HonestBlocks H`), as in G1.4 and C1.1.
 - **`finalAccountable`** reads "conflicting honest reads convict from their own views" (G1.5: "among the attestations
   included on the chains held by the two readers, taken together") as: some block of each reader's tree at the cut

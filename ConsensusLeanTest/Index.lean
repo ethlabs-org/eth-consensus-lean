@@ -717,6 +717,14 @@ example := ``Consensus.Goldilocks.Regimes.SleepySafePrefix
 example := ``Consensus.Goldilocks.Regimes.IncludeSleepy
 example := ``Consensus.Goldilocks.Regimes.GrowSleepy
 example := ``Consensus.Goldilocks.Regimes.SleepyStatements
+example := ``Consensus.Goldilocks.Regimes.UnanimousFrom
+example := ``Consensus.Goldilocks.Regimes.UnanimousWithin
+example := ``Consensus.Goldilocks.Regimes.HealedPremises
+example := ``Consensus.Goldilocks.Regimes.HealedSafe
+example := ``Consensus.Goldilocks.Regimes.IncludeHealed
+example := ``Consensus.Goldilocks.Regimes.GrowHealed
+example := ``Consensus.Goldilocks.Regimes.CrossNest
+example := ``Consensus.Goldilocks.Regimes.HealedStatements
 
 /-! ## Goldilocks Refinement (a milestone PR appends here only) -/
 
