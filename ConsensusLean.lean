@@ -44,9 +44,13 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Client
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.State
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Duties
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Label
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Sigma
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
 public import ConsensusLean.Instances.Goldilocks.Spec.Frame
+public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
+public import ConsensusLean.Instances.Goldilocks.Spec.Node.Reachable
+public import ConsensusLean.Instances.Goldilocks.Spec.Node.State
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Actions
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Confirmation
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Events
@@ -63,6 +67,8 @@ public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Statements.Baseline
 public import ConsensusLean.Instances.Goldilocks.Statements.Common
+public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Interface
+public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore
 public import ConsensusLean.Instances.Goldilocks.Statements.Frame

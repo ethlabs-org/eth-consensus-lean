@@ -255,7 +255,63 @@ satisfiable). §4.7 case 1 (`CaseOneA13`, written with ACBase) has the same shap
 
 ## Compose/AnyAC
 
-Nothing cited yet; the milestone's statements PR fills this section.
+CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `a470648c` (goldilocks#21, #23–#32). SPEC pin:
+`shared/composition.tex` at goldilocks `a470648c` (§"State", §"Node", Figure "Node: handlers and duties"). Layout:
+decomposition §2 D (`Node`), §3.1 (the "Node" row), §4.1, §4.2 (the `ComposeAnyAC` layer). Milestone `Compose/AnyAC`
+covers the node parametric in the AC (`Spec/Node`) and the composition nodes C0.1–C0.5 stated at one node for **any**
+AC meeting requirements 1–5 (`ACInterface.Requirements`); no SA, no run, no engine. The run-level composition
+(C1.1, Service, Healing, Regimes) is over `Spec/Run`, later.
+
+| Node | Reference | Definition | Milestone | Lean name |
+|---|---|---|---|---|
+| — | SPEC `shared/composition.tex` §State | the node state `(Σ, 𝒜, Λ)` for an AC whose blocks carry attestation lists; its initial state; the frame `fg_to_ac(Σ)` | — | `Consensus.Goldilocks.NodeAC`, `Consensus.Goldilocks.NodeState`, `Consensus.Goldilocks.Node.init`, `Consensus.Goldilocks.Node.frame` |
+| — | decomposition §1.5 (cuts are component calls); CLAIMS C0.5 | the cuts: an FG call with its observations (`FGLabel`, in `Spec/FG/Store/Label` so that FG traces share it), an AC call with its `ACLabel`; the AC calls with the frame recomputed | — | `Consensus.Goldilocks.FGLabel`, `Consensus.Goldilocks.Cut`, `Consensus.Goldilocks.Node.acCall`, `Consensus.Goldilocks.Node.acProposal`, `Consensus.Goldilocks.Node.acToFG` |
+| — | SPEC `shared/composition.tex` Figure "Node" | the handlers: `on_block`, `on_ac_message`, `on_attestation`, a restart, `propose_block` (the block it makes), `attest` | — | `Consensus.Goldilocks.Node.onBlock`, `Consensus.Goldilocks.Node.onMessage`, `Consensus.Goldilocks.Node.onAttestation`, `Consensus.Goldilocks.Node.restart`, `Consensus.Goldilocks.Node.mkBlock`, `Consensus.Goldilocks.Node.proposeBlock`, `Consensus.Goldilocks.Node.attest` |
+| C0.4 | SPEC §Node (`on_tick`); CLAIMS C0.4 | the tick steps as data, their order, the proposer test, one step, the fold, `on_tick` | — | `Consensus.Goldilocks.Node.TickStep`, `Consensus.Goldilocks.Node.tickSteps`, `Consensus.Goldilocks.Node.Proposes`, `Consensus.Goldilocks.Node.tickStep`, `Consensus.Goldilocks.Node.runSteps`, `Consensus.Goldilocks.Node.onTick` |
+| — | SPEC §Model, §Node, §Blocks (wire checks) | top-level events and their handler; the wire checks of a delivery | — | `Consensus.Goldilocks.Node.Event`, `Consensus.Goldilocks.Node.exec`, `Consensus.Goldilocks.Node.WireOK` |
+| C0.4 | SPEC §Model, §Node (restart, tick, then the objects of a time); decomposition §2 D (`Node.Reachable`) | the phase of a node in a time; configurations; when an event may run; one event; reachable configurations | — | `Consensus.Goldilocks.Node.Phase`, `Consensus.Goldilocks.Node.Phase.at`, `Consensus.Goldilocks.Node.Config`, `Consensus.Goldilocks.Node.Config.init`, `Consensus.Goldilocks.Node.EventOK`, `Consensus.Goldilocks.Node.Event.phaseAfter`, `Consensus.Goldilocks.Node.Step`, `Consensus.Goldilocks.Node.Reaches`, `Consensus.Goldilocks.Node.Reachable` |
+| C0.5 | CLAIMS C0.5; decomposition §2 D (`I_link`, pointwise projection) | the law of one cut; a chain of cuts | — | `Consensus.Goldilocks.Node.CutStep`, `Consensus.Goldilocks.Node.CutChain` |
+| A0.6, A0.9 | CLAIMS A0.6, A0.9 (consequences); C0.1 at the AC; C0.5 (c) | for any AC meeting requirements 1–5: the tips are nested, the proposal parent, the source and every duty head are held and extend `Φ.F` | Compose/AnyAC | `Consensus.Goldilocks.Compose.TipsNested`, `Consensus.Goldilocks.Compose.ProposalParentHeld`, `Consensus.Goldilocks.Compose.SourceHeld`, `Consensus.Goldilocks.Compose.DutyHeadsHeld`, `Consensus.Goldilocks.Compose.InterfaceStatements`, `Consensus.Goldilocks.Compose.ComposeInterfaceStatements` |
+| C0.1 | CLAIMS C0.1 | three tips on one chain at the node | Compose/AnyAC | `Consensus.Goldilocks.Compose.ThreeTips` |
+| C0.2 | CLAIMS C0.2 (both halves) | finalized monotone along reachable configurations, across restarts; a restart keeps `Σ` and `Λ` | Compose/AnyAC | `Consensus.Goldilocks.Compose.FinalizedMonotone`, `Consensus.Goldilocks.Compose.RestartKeepsFG` |
+| C0.3 | CLAIMS C0.3 | honest blocks are accepted (with `NoColl` on the tree with the block) | Compose/AnyAC | `Consensus.Goldilocks.Compose.NoCollOn`, `Consensus.Goldilocks.Compose.HonestBlockAccepted` |
+| C0.4 | CLAIMS C0.4 | the shape of a tick's cuts | Compose/AnyAC | `Consensus.Goldilocks.Compose.ProposalCuts`, `Consensus.Goldilocks.Compose.UpdateCuts`, `Consensus.Goldilocks.Compose.TickShape`, `Consensus.Goldilocks.Compose.TickOrder` |
+| C0.5 | CLAIMS C0.5 (a), (b), (c) | every handler's cuts obey the cut law; the AC's states are reachable AC states inside the accepted tree; the FG's states are reachable; the record is a client run; the sources are held; attestations signed only in ticks | Compose/AnyAC | `Consensus.Goldilocks.Compose.ExecIsCutChain`, `Consensus.Goldilocks.Compose.ACStatesReachable`, `Consensus.Goldilocks.Compose.FGStatesReachable`, `Consensus.Goldilocks.Compose.RecordIsClientRun`, `Consensus.Goldilocks.Compose.SourcesHeld`, `Consensus.Goldilocks.Compose.SignedOnlyInTicks` |
+| — | the bundles | all of the above | Compose/AnyAC | `Consensus.Goldilocks.Compose.NodeStatements`, `Consensus.Goldilocks.Compose.ComposeNodeStatements` |
+
+Modelling choices:
+
+- **The node is parametric in the AC and the digest.** `NodeAC P := ACInterface P (List (FG.Att P.n))`; the
+  digest `dg` and the validator `self` are arguments. `Spec/Node` does not import the SA; `Spec/Run` plugs in
+  `goldilocksSA` (decomposition §2 D). The clock is not a field of the node state: every handler takes the time,
+  and `Node.Config` carries it with the phase.
+- **Cuts are component calls** (decomposition §1.5). Every handler returns its cuts in order; an AC cut carries the
+  call, the frame `fg_to_ac(Σ)` recomputed before it, and the emissions (`ACLabel`, shared with `Spec/AC/Trace`);
+  `ac_proposal` and `ac_to_fg` are cuts with no emissions and their returned value is used by the node. An FG cut
+  carries its observations (`FGLabel`): the block and whether it was accepted, the attestation processed, the
+  source and the attestation signed. A refused `fg_on_block` is a cut (a call with no write); a dropped future-slot
+  block is no cut (no call). The broadcast of an own object is not a cut: a run observes it as the acceptance (own
+  block) or the signing (own attestation).
+- **`Node.Reachable` over-approximates a run.** `Node.Step` enforces composition.tex's order within a time (a
+  restart in phase `pre`; the tick at a public time in phase `pre`, leaving `post`; a delivery at a public time
+  only in `post`) and the wire checks. Three obligations are left to `Spec/Run`: (i) an awake node ticks at every
+  public time; (ii) a restart follows a sleep (no cuts in between) and happens once per wake; (iii) an asleep node
+  receives nothing. Signatures are not modelled at the node: unforgeability is a run condition.
+- **C0.3** is stated on the intermediate states of the tick (`tickStep … .acTick`, then `acProposal`) and the
+  block `mkBlock` makes, with the hypotheses an actual tick step (`Node.Step … .tick`), `Proposes`, genesis's root
+  its digest, and `NoCollOn` on the tree with the block for the root-newness clause (and the acceptance, which
+  needs it). Its well-formedness clause for the block's attestations (the assertion of `state_transition`)
+  covers the node's own attestations, which need an FG client fact (`create_attestation` yields well-formed
+  attestations at reachable entry states) that is not yet stated: a proof obligation, flagged in the PR.
+- **C0.4** is the shape of a tick's cuts (`TickShape`); the restart/tick/deliveries order is `Node.Step` itself
+  (definitional, as the claims file says). "Signed only in ticks" is C0.5 (c). **C0.5 (a)** uses `ACInterface.ReachableAt`
+  with `U := Σ.T` (which only grows, so one coherent set serves the whole history) and the frame of the last call
+  equal to the current `fg_to_ac(Σ)` (every acceptance is followed at once by `ac_on_block`; attestations do not
+  change the frame).
+
+Witnesses in `ConsensusLeanTest/GoldilocksNode.lean`, on `rootAC` (an AC with no state that proposes `fc_root`):
+kind (a) `rootAC_requirements`, `init_reachable`, `tick_at_zero`, `proposer_tick`; kind (b)
+`reachable_after_tick`.
 
 ## Persist
 
