@@ -95,6 +95,119 @@ theorem merged_voters_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
   · exact ⟨v, h, rfl⟩
   · exact ⟨x, hx, hxv⟩
 
+/-- Inside a coherent `U ⊇ Φ.tree` of a well-formed frame, the `U`-ancestry between two blocks
+of the tree is the tree's. -/
+private theorem anc_of_anc_U (hU : Coherent U) {Φ : Frm sp.n FGP}
+    (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {B C : Blk sp.n FGP} (hB : B ∈ Φ.tree)
+    (h : Anc U B C) : C ∈ Φ.tree → Φ.Anc B C := by
+  induction h with
+  | refl => exact fun _ => Relation.ReflTransGen.refl
+  | @tail c d hBc e ih =>
+    intro hd
+    by_cases hdF : d = Φ.F
+    · subst hdF
+      have := Anc.antisymm hU (hBc.tail e) ((hΦ.rooted.2 B hB).mono hΦU)
+      exact this ▸ Relation.ReflTransGen.refl
+    obtain rfl | ⟨p, -, hp⟩ :=
+      (Relation.ReflTransGen.cases_tail_iff _ _ _).1 (hΦ.rooted.2 d hd)
+    · exact absurd rfl hdF
+    have hpc : p = c := hU.1 (hΦU hp.1) e.1 (Option.some_injective _ (hp.2.2.symm.trans e.2.2))
+    subst hpc
+    exact (ih hp.1).tail hp
+
+/-- In a well-formed frame, `lookup` finds every block of the tree by its root. -/
+private theorem lookup_of_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {B : Blk sp.n FGP}
+    (hB : B ∈ Φ.tree) : lookup Φ B.root = some B := by
+  cases h : lookup Φ B.root with
+  | none => exact absurd ⟨B, hB, rfl⟩ (lookup_eq_none h)
+  | some B' =>
+    obtain ⟨hB', hr⟩ := lookup_eq_some h
+    exact congrArg some (hΦ.coherent.1 hB' hB hr)
+
+private theorem admitVote_fields (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+    (admitVote sp A t v).blockStamp = A.blockStamp ∧
+      (admitVote sp A t v).restartTime = A.restartTime := by
+  unfold admitVote
+  split_ifs <;> exact ⟨rfl, rfl⟩
+
+private theorem optimistic_fields (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp ∧
+      (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
+  unfold optimisticConfirmation updateLatestConfirmed
+  split
+  · exact ⟨rfl, rfl⟩
+  · split_ifs <;> exact ⟨rfl, rfl⟩
+
+private theorem blockReceipt_blockStamp (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+    (blockReceipt sp A t B).blockStamp = Function.update A.blockStamp B.root (ETime.of t) := by
+  unfold blockReceipt
+  generalize blockVotes B = l
+  suffices h : ∀ A' : SAState sp.n,
+      (l.foldl (fun A v => admitVote sp A t v) A').blockStamp = A'.blockStamp from h _
+  induction l with
+  | nil => exact fun _ => rfl
+  | cons v l ih => exact fun A' => (ih _).trans (admitVote_fields _ _ _).1
+
+private theorem tryVote_readPoint (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) : ∀ e ∈ (tryVote sp x A Φ t).2, e.readPoint.blockStamp = A.blockStamp := by
+  unfold tryVote
+  dsimp only
+  split_ifs <;> simp
+
+private theorem onTick_readPoint (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) : ∀ e ∈ (acOnTick sp x A Φ t).2, e.readPoint.blockStamp = A.blockStamp := by
+  unfold acOnTick
+  dsimp only
+  split_ifs
+  all_goals first | exact tryVote_readPoint x A Φ t | simp
+
+/-- The read point of an honest vote has the block stamps of the state before its call, except
+for the block that an `on_block` call receives. -/
+private theorem readPoint_blockStamp (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {r : Nat}
+    (hrB : ∀ B, ℓ.call = .block B → r ≠ B.root) :
+    e.readPoint.blockStamp r = (tr.state y i).blockStamp r := by
+  obtain ⟨hc, he⟩ := hc
+  have hΦ : FrameOK ℓ.frame := by
+    rcases hr.frameLaw y hy i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
+  have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
+  rw [hc.1] at hx
+  have he' : e ∈ ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
+      ℓ.call).2 := by
+    rw [hx]; exact he
+  clear hx he
+  generalize tr.state y i = A at he' ⊢
+  revert hrB he'
+  cases ℓ.call with
+  | tick => exact fun _ he' => by rw [onTick_readPoint y A _ _ e he']
+  | proposal => intro _ he'; simp [ACInterface.step] at he'
+  | toFG => intro _ he'; simp [ACInterface.step] at he'
+  | message m =>
+    intro _ he'
+    rw [tryVote_readPoint y _ _ _ e he', (optimistic_fields _ _ _).1, (admitVote_fields _ _ _).1]
+  | block B =>
+    intro hrB he'
+    rw [tryVote_readPoint y _ _ _ e he', (optimistic_fields _ _ _).1, blockReceipt_blockStamp,
+      Function.update_of_ne (hrB B rfl)]
+  | restart =>
+    intro _ he'
+    change e ∈ (acRestart sp ro y A ℓ.frame (tr.time i)).2 at he'
+    rw [((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
+    simp at he'
+
+/-- An honest node's calls run inside a `U` that holds genesis (the root of its initial
+frame). -/
+private theorem genesis_mem_U (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.parent = none := by
+  induction i using Nat.strong_induction_on generalizing ℓ with
+  | _ i ih =>
+    rcases hr.frameLaw y hy i ℓ hc with
+      ⟨-, Φ₀, ⟨htree, hroot, -, hpar, -⟩, ⟨-, hΦ₀U⟩, -⟩ | ⟨j, ℓ', hj, hc', -, -⟩
+    · exact ⟨Φ₀.F, hΦ₀U (htree ▸ Set.mem_singleton _), hroot, hpar⟩
+    · exact ih j hj hc'
+
 /-- **A carried vote is a supporter.** A slot-`s` vote that an honest voter of slot `s + 1`
 holds, received before the vote freeze `t_s + 3Δ`, whose head (of slot at most `s`) extends a
 block `C` of the voter's tree and was accepted by the voter before the freeze, and whose
@@ -109,7 +222,96 @@ theorem carried_supporter (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i
       AcceptedBefore tr y Hv (sp.ts s + 3 * sp.Δ))
     (hneq : v.val ∉ equivocators (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes) :
     v.val ∈ supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s C := by
-  sorry
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  obtain ⟨Hv, hHvU, hHvr, hHvs, hCHv, hacc⟩ := hhead
+  obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
+    rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
+  obtain ⟨-, hslot, hjoin, -⟩ := castAt_spec hr hy hc
+  have hti : sp.slot (tr.time i) = s + 1 := hslot ▸ hs
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  -- the vote is cast after the freeze `t_s + 3Δ`
+  have hT : sp.ts s + 3 * sp.Δ < tr.time i := by
+    have h := (ts_le_iff_le_slot sp (hr.time_nonneg i) ((s : Int) + 1)).2
+      (by rw [hti]; push_cast; rfl)
+    simp only [SAParams.ts] at h ⊢
+    linarith
+  obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_U hr hy hc.1
+  -- the head is in the voter's tree
+  have hF : Anc U ℓ.frame.F Hv := ((hΦ.rooted.2 C hC).mono hΦU).trans hCHv
+  have hHvt : Hv ∈ ℓ.frame.tree := by
+    rcases hacc with hg | ⟨k, hk, hkt⟩
+    · obtain rfl : Hv = G := hU.1 hHvU hGU (hg.trans hGr.symm)
+      obtain h | ⟨c, -, hcp⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hF
+      · exact h ▸ hΦ.rooted.1
+      · exact absurd (hcp.2.2.symm.trans hGp) (Option.some_ne_none _)
+    · have hki : k ≤ i := by
+        by_contra h
+        have := hr.time_mono (le_of_not_ge h)
+        linarith
+      exact mem_tree_of_acceptAt sp hr hy hk hki hc.1 hF
+  -- the voter's restarts were before `t_s`
+  have hjp : joined sp (tr.post i) (tr.time i) := by
+    rw [post_of_castAt hr hy hc]
+    unfold joined at hjoin ⊢
+    rwa [(optimistic_fields _ _ _).2, (admitVote_fields _ _ _).2]
+  have hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < sp.ts s + 3 * sp.Δ := by
+    intro k hk hrk
+    have h := (joined_awake sp FGP ro H U tr hr y hy i ℓ hc.1 hjp).2 k hk hrk
+    rw [hti] at h
+    have : sp.ts (((s + 1 : Nat) : Int) - 1) = sp.ts s := by congr 1; push_cast; ring
+    linarith
+  -- the head is not the block that this very call receives
+  have hne : ∀ B, ℓ.call = .block B → v.head ≠ B.root := by
+    intro B₀ hcall hB
+    have key : ∀ Φ, (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
+        FrameStep Φ B₀ ℓ.frame := by
+      intro Φ hok
+      rw [hcall] at hok
+      exact hok.2.1
+    have hB₀ : ∀ Φ, FrameStep Φ B₀ ℓ.frame → B₀ = Hv := fun Φ hst =>
+      hU.1 (hΦU (hst.tree_eq ▸ ⟨Set.mem_insert _ _, hst.F'_anc_B⟩)) hHvU
+        (hB.symm.trans hHvr.symm)
+    rcases hacc with hg | ⟨k, hk, hkt⟩
+    · rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, hok⟩ | ⟨j, ℓ', -, -, -, hok⟩ <;>
+      · have hst := key _ hok
+        obtain rfl := hB₀ _ hst
+        obtain rfl : B₀ = G := hU.1 hHvU hGU (hg.trans hGr.symm)
+        obtain ⟨P, -, hP⟩ := hst.parent_mem
+        exact absurd (hP.symm.trans hGp) (Option.some_ne_none _)
+    · have hki : k < i := by
+        by_contra h
+        have := hr.time_mono (not_lt.1 h)
+        linarith
+      obtain ⟨ℓk, hck, hkB⟩ := hk
+      rcases hr.frameLaw y hy i ℓ hc.1 with ⟨hnc, -⟩ | ⟨j, ℓ', hj, hc', hnc, hok⟩
+      · exact hnc k (Nat.zero_le _) hki ℓk hck
+      have hkj : k ≤ j := by
+        by_contra h
+        exact hnc k (by omega) hki ℓk hck
+      have hst := key _ hok
+      obtain rfl := hB₀ _ hst
+      obtain ⟨-, hΦ'U⟩ : FrameOK ℓ'.frame ∧ ℓ'.frame.tree ⊆ U := by
+        rcases hr.frameLaw y hy j ℓ' hc' with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
+          exact h.1
+      have hanc : Anc U ℓ'.frame.F B₀ :=
+        Anc.mono (Set.insert_subset_iff.2 ⟨hHvU, hΦ'U⟩) (hst.F_anc_F'.trans hst.F'_anc_B)
+      exact hst.new (mem_tree_of_acceptAt sp hr hy ⟨ℓk, hck, hkB⟩ hkj hc' hanc)
+  -- the vote is resolved before the freeze
+  have hbs := blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hHvt hacc hrs
+  rw [hHvr, ← readPoint_blockStamp hr hy hc hne] at hbs
+  have hfz : freeze sp (s + 1) = sp.ts s + 3 * sp.Δ := by simp [freeze]
+  have hres : resolutionTime e.readPoint ℓ.frame v < ETime.of (freeze sp (s + 1)) := by
+    unfold resolutionTime
+    rw [← hHvr, lookup_of_mem hΦ hHvt]
+    simp only [show ¬ v.slot < Hv.slot by omega, ite_false, hfz]
+    exact max_lt hheld.2 (hHvr ▸ hbs)
+  refine ⟨hneq, v, Or.inl ?_, rfl, by simp [hvs], Hv, hHvt, hHvr,
+    anc_of_anc_U hU hΦ hΦU hC hCHv hHvt⟩
+  refine List.mem_filter.2 ⟨List.mem_filter.2 ⟨?_, ?_⟩, by simpa using hres⟩
+  · simp only [SAState.poolAt, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) by omega, ite_false]
+    simpa [hvs] using hheld.1
+  · simpa [hfz] using hheld.2
 
 /-- The validators counted for an update result are supporters of it in an honest voter's
 merged view of the next slot (A1.8 (a), (c), (d)). -/

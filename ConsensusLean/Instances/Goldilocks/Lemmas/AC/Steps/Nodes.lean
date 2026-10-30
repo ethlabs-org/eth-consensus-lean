@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 
 public section
 
@@ -21,7 +22,87 @@ theorem first_transfer : FirstTransfer sp := by
 
 /-- **A1.3.** -/
 theorem next_transfer : NextTransfer sp := by
-  sorry
+  intro FGP ro H U tr hrun m y i B ℓ e hy hc hs hall hhalf hcarry hfault hsync hviab hearlier
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  obtain ⟨-, -, -, hhead⟩ := castAt_spec hr hy hc
+  obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
+    rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
+      exact h.1
+  have hσ : ((m + 1 : Nat) : Int) - 1 = (m : Int) := by push_cast; ring
+  rw [hs, hσ] at hhead
+  have hdomA := voterBlockTree_anc hr hy hc
+  rw [hs] at hdomA
+  have hBt : B ∈ ℓ.frame.tree := by
+    rcases hviab with h | h
+    · exact h.1.1
+    · exact mem_of_anc h hΦ.fcRoot_mem
+  -- the honest voters of slot `m` are supporters of `B` at `y`
+  set SX : Set (Fin sp.n) := {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}
+  have hsupp : SX ⊆ supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) m B := by
+    rintro w ⟨hw, j, e', hv, hvs⟩
+    obtain ⟨ℓw, hcw⟩ := id hv
+    have hvw : e'.msg.val = w := (castAt_spec hr hw hcw).1
+    have hmem : e'.msg ∈ {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} :=
+      ⟨w, hw, j, e', hv, rfl, hvs⟩
+    -- `y` holds `e'.msg` itself (an honest validator has one slot-`m` vote)
+    have hheld : HeldBefore e.readPoint e'.msg (sp.ts m + 3 * sp.Δ) := by
+      rcases hcarry.holds _ hmem with h | ⟨v₁, v₂, h12, h1, h2, hv₁, hv₂, hs₁, hs₂, hh₁, hh₂⟩
+      · exact h
+      · exfalso
+        have hm : ∀ u, u.slot = m → HeldBefore e.readPoint u (sp.ts m + 3 * sp.Δ) →
+            u ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes := by
+          intro u hus hu
+          refine Or.inl (List.mem_filter.2 ⟨?_, ?_⟩)
+          · simp only [SAState.poolAt, show ¬ (((m + 1 : Nat) : Int) - 1 < 0) by omega, ite_false]
+            simpa [hus] using hu.1
+          · simpa [freeze] using hu.2
+        obtain ⟨j₁, -, e₁, hv₁', he₁⟩ :=
+          honest_merged_vote hrun hy hc (hm v₁ hs₁ hh₁) (hv₁.trans hvw ▸ hw)
+        have := (one_vote_per_slot sp) FGP ro H U tr hr w hw j₁ j e₁ e'
+          (hv₁.trans hvw ▸ hv₁') hv (by rw [he₁, hs₁, hvs])
+        exact h1 (he₁ ▸ this.2 ▸ rfl)
+    obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads _ hmem
+    obtain ⟨Hd, hHd, hHdr, hHds⟩ := honest_head hrun hw hv
+    obtain ⟨Hd', hHd', hHd'r, hBHd'⟩ := hall w hw j e' hv hvs
+    have h1 : Hd = Hv := hU.1 hHd hHv (hHdr.trans hHvr.symm)
+    have h2 : Hd' = Hv := hU.1 hHd' hHv (hHd'r.trans hHvr.symm)
+    have := carried_supporter hrun hy hc hs hBt hvs hheld
+      ⟨Hv, hHv, hHvr, h1 ▸ hvs ▸ hHds, h2 ▸ hBHd', hacc Hv Relation.ReflTransGen.refl⟩
+      (honest_not_equivocator hrun hy hc (hvw ▸ hw))
+    exact hvw ▸ this
+  -- counting: the voters at `y` are honest slot-`m` voters or faulty, and `f < |SX|`
+  have hHle : SX.ncard ≤ H.ncard := Set.ncard_le_ncard fun x hx => hx.1
+  have hhonest : honestAwakeJoined tr H (tr.time i) ≤ H.ncard :=
+    Set.ncard_le_ncard fun x hx => hx.1
+  have hfault' : Hᶜ.ncard < H.ncard := lt_of_lt_of_le hfault hhonest
+  have hn : H.ncard + Hᶜ.ncard = sp.n := by
+    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+  have hvoters : voters (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ⊆ SX ∪ Hᶜ := by
+    rintro w ⟨v, hv, rfl⟩
+    by_cases hw : v.val ∈ H
+    · obtain ⟨j, -, e', hv', he'⟩ := honest_merged_vote hrun hy hc hv hw
+      exact Or.inl ⟨hw, j, e', hv', by rw [he']; exact merged_vote_slot hr hy hc v hv⟩
+    · exact Or.inr hw
+  have h3 : (SX ∪ Hᶜ).ncard < 2 * SX.ncard := by
+    have := Set.ncard_union_le SX Hᶜ
+    omega
+  have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
+    (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) (m : Int) (fun B hB => hB.1) hdomA hviab
+    (locks_compatible_next hrun hy hc hs hBt hall
+      (S := SX) (fun w hw => by
+        obtain ⟨-, x, hx, hxv, hxs, hxa⟩ := hsupp hw
+        exact ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
+      hhalf (by omega) hearlier)
+    fun X' Cx hCx hp hCxC =>
+      isBest_of_majority hΦ (merged_support_subset hr hy hc (m + 1)) (fun B hB => hB.1.1)
+        hsupp hvoters h3 hCx hp hCxC
+  refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
+  by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)
+      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (m + 1)))
+      (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) (m : Int)
+  · exact he ▸ hBt
+  · exact (Anc.mem hcore he).2
 
 /-- **A1.4 (a).** -/
 theorem optimistic_transfer : OptimisticTransfer sp := by
