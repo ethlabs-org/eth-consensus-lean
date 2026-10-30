@@ -2,6 +2,9 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 
 public section
 
@@ -21,7 +24,16 @@ The reset is unique (`IsReset` is a least time), and the bound's closed forms ar
 §§1–8, the author's paper results with Astra's review applied), as the use in HR.3 needs them
 (`κ = 2Δ`, `G = G_p`); they become the HS statements' theorems when those are stated.
 
-Interfaces: `settle`, `producer` and `reset_count` are open. -/
+`reset_count` is proved from HS.0, HS.5, HR.1 (b) and HR.2 (b): the potential `3m + rank` of the
+effective phase (frontier `m`, case rank gap 0, top 1, contest 2) never falls (the honest `Σ.h_max`
+only grow; HR.2 (b) at a fixed frontier) and rises at each phase change (HR.2 (b): a change at a
+fixed frontier raises the rank). It rises in each of the six windows `(c_z + n(Δ + A), c_z + (n +
+1)(Δ + A)]`, so the frontier after all events at `c_z + 6(Δ + A)` is `≥ H_z + 2`; an honest block
+of that state height carries an honest row of height `H_z + 1` (HR.1 (b)), signed before it
+(unforgeability on the FG projection, C0.5 (c)); the reset is the time of the first cut with such
+a signing.
+
+Interfaces: `settle` and `producer` are open. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -48,13 +60,287 @@ theorem producer {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (hj' : FirstCutAfter tr j' (w + A_HS sp ΔF Gp)) : PhaseChanged tr.projFG H j j' := by
   sorry
 
+/-! ## Cuts of a run and its FG projection -/
+
+section Cuts
+
+variable {P : Params} {A : NodeAC P} {tr : RunTrace A}
+
+private theorem after_le_from {j j' : Nat} {t t' : Time} (h : FirstCutAfter tr j t)
+    (h' : tr.FirstCutFrom j' t') (htt : t < t') : j ≤ j' := by
+  by_contra hlt
+  have := h.1 j' (not_le.1 hlt)
+  have := h'.1
+  linarith
+
+private theorem from_le_after {j j' : Nat} {t t' : Time} (h : tr.FirstCutFrom j t)
+    (h' : FirstCutAfter tr j' t') (htt : t ≤ t') : j ≤ j' := by
+  by_contra hlt
+  have := h.2 j' (not_le.1 hlt)
+  have := h'.2
+  linarith
+
+private theorem after_le_after {j j' : Nat} {t t' : Time} (h : FirstCutAfter tr j t)
+    (h' : FirstCutAfter tr j' t') (htt : t ≤ t') : j ≤ j' := by
+  by_contra hlt
+  have := h.1 j' (not_le.1 hlt)
+  have := h'.2
+  linarith
+
+/-- In a run where an honest node is awake from `t₀` on, every time has a first cut after it
+and a first cut from it (`awake_in_horizon`). -/
+private theorem exists_cuts {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
+    {sg : A.Msg → Fin P.n} (hrun : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+    {t₀ : Time} (hawake : ∀ t, t₀ ≤ t → tr.awake y t) (t : Time) :
+    (∃ j, FirstCutAfter tr j t) ∧ ∃ j, tr.FirstCutFrom j t := by
+  classical
+  obtain ⟨i, -, hi⟩ := hrun.awake_in_horizon y hy _ (hawake (max t₀ (t + 1)) (le_max_left _ _))
+  have hti : t + 1 ≤ tr.time i := (le_max_right _ _).trans hi
+  have hlt : ∃ i, t < tr.time i := ⟨i, by linarith⟩
+  have hle : ∃ i, t ≤ tr.time i := ⟨i, by linarith⟩
+  exact ⟨⟨Nat.find hlt, fun k hk => not_lt.1 (Nat.find_min hlt hk), Nat.find_spec hlt⟩,
+    Nat.find hle, Nat.find_spec hle, fun k hk => not_le.1 (Nat.find_min hle hk)⟩
+
+/-- The FG projection's state of an honest node is the `(Σ, Λ)` part of its run state (an AC
+cut leaves both unchanged: the cut law). -/
+private theorem projFG_state {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
+    {sg : A.Msg → Fin P.n} (hrun : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+    (i : Nat) : tr.projFG.state y i = ((tr.state y i).fg, (tr.state y i).record) := by
+  induction i with
+  | zero => rfl
+  | succ i ih =>
+    rw [Trace.state, Trace.state]
+    by_cases hcy : tr.node i = y ∧ tr.label i ≠ none
+    · obtain ⟨c, hcl⟩ := Option.ne_none_iff_exists'.1 hcy.2
+      have hstep := hrun.cutLaw y hy i c ⟨hcy.1, hcl⟩
+      cases c with
+      | fg ℓ =>
+        have hp : tr.projFG.node i = y ∧ tr.projFG.label i ≠ none :=
+          ⟨hcy.1, by simp [RunTrace.projFG, hcl, RunTrace.fgLabel]⟩
+        rw [ite_eq_left_of_eq_true _ _ (eq_true hp), ite_eq_left_of_eq_true _ _ (eq_true hcy)]
+        rfl
+      | ac ℓ =>
+        have hp : ¬ (tr.projFG.node i = y ∧ tr.projFG.label i ≠ none) := by
+          simp [RunTrace.projFG, hcl, RunTrace.fgLabel]
+        rw [ite_eq_right_of_eq_false _ _ (eq_false hp), ite_eq_left_of_eq_true _ _ (eq_true hcy),
+          ih, hstep.2.2.1, hstep.2.2.2]
+    · have hp : ¬ (tr.projFG.node i = y ∧ tr.projFG.label i ≠ none) := fun h =>
+        hcy ⟨h.1, fun hn => h.2 (by simp [RunTrace.projFG, hn])⟩
+      rw [ite_eq_right_of_eq_false _ _ (eq_false hp),
+        ite_eq_right_of_eq_false _ _ (eq_false hcy), ih]
+
+private theorem projFG_store {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
+    {sg : A.Msg → Fin P.n} (hrun : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+    (i : Nat) : tr.projFG.store y i = (tr.state y i).fg := by
+  simp only [FGTrace.store, projFG_state hrun hy i]
+
+private theorem signAt_of_projFG {y : Fin P.n} {k : Nat} {a : FG.Att P.n}
+    (h : tr.projFG.SignAt y k a) : tr.SignAt y k a := by
+  obtain ⟨src, hn, hl⟩ := h
+  refine ⟨src, hn, ?_⟩
+  change (tr.label k).bind RunTrace.fgLabel = _ at hl
+  rcases hk : tr.label k with _ | (ℓ | ℓ) <;> simp_all [RunTrace.fgLabel]
+
+end Cuts
+
+/-! ## The effective phase as a potential -/
+
+section Potential
+
+variable {P : Params} {ACP : Type} {tr : FGTrace P ACP} {H : Set (Fin P.n)}
+
+private theorem hmax_mono {acp₀ : ACP} {U : Set (NodeBlock P ACP)} (hr : FGLocalRun acp₀ H U tr)
+    {y : Fin P.n} (hy : y ∈ H) {k m : Nat} (hkm : k ≤ m) :
+    (tr.store y k).hmax ≤ (tr.store y m).hmax := by
+  obtain ⟨-, -, -, -, -, ⟨B, hB, hBh⟩, -⟩ :=
+    Store.cache_invariants P ACP acp₀ _ (Store.store_reachable hr hy k)
+  obtain ⟨hB', hσ⟩ := Store.held_mono hr hy hkm hB
+  have := (Store.cache_invariants P ACP acp₀ _ (Store.store_reachable hr hy m)).2.2.2.2.1 B hB'
+  rwa [hσ, hBh] at this
+
+private theorem PhaseAt.frontier {i m : Nat} {c : PhaseCase (NodeBlock P ACP)}
+    (h : PhaseAt tr H i m c) : FrontierAt tr H i m := by
+  cases c <;> exact h.1
+
+private theorem exists_phase (hH : H.Nonempty) (i : Nat) :
+    ∃ p : Nat × PhaseCase (NodeBlock P ACP), PhaseAt tr H i p.1 p.2 := by
+  classical
+  obtain ⟨y, hy, hmax⟩ := Finset.exists_max_image H.toFinset (fun y => (tr.store y i).hmax)
+    (Set.toFinset_nonempty.2 hH)
+  have hf : FrontierAt tr H i (tr.store y i).hmax :=
+    ⟨⟨y, Set.mem_toFinset.1 hy, rfl⟩, fun z hz => hmax z (Set.mem_toFinset.2 hz)⟩
+  by_cases hJ : ∃ J, JustifiedAt tr H i ((tr.store y i).hmax - 1) J
+  · obtain ⟨J, hJ⟩ := hJ
+    by_cases hC : ContestAt tr H i (tr.store y i).hmax J
+    · exact ⟨(_, .contest J), hf, hJ, hC⟩
+    · exact ⟨(_, .top J), hf, hJ, hC⟩
+  · exact ⟨(_, .gap), hf, fun J hj => hJ ⟨J, hj⟩⟩
+
+private theorem PhaseCase.eq_of_rank {β : Type} {c c' : PhaseCase β} (hr : c.rank = c'.rank)
+    (hJ : ∀ J, c.topJ = some J → c'.topJ = some J) : c = c' := by
+  cases c <;> cases c' <;> simp_all [PhaseCase.rank, PhaseCase.topJ]
+
+private theorem PhaseCase.rank_le {β : Type} (c : PhaseCase β) : c.rank ≤ 2 := by
+  cases c <;> simp [PhaseCase.rank]
+
+/-- HR.2 (b): at a fixed frontier the case moves only forward, with one `J`. -/
+private def Forward (tr : FGTrace P ACP) (H : Set (Fin P.n)) : Prop :=
+  ∀ m i j c c', i ≤ j → PhaseAt tr H i m c → PhaseAt tr H j m c' →
+    c.rank ≤ c'.rank ∧ ∀ J, c.topJ = some J → c'.topJ = some J
+
+/-- The potential `3m + rank` of the effective phase does not fall (the frontier does not fall,
+and at a fixed frontier the case moves forward). -/
+private theorem pot_le (hb : Forward tr H)
+    (hmono : ∀ y ∈ H, ∀ i j, i ≤ j → (tr.store y i).hmax ≤ (tr.store y j).hmax)
+    {i j m m' : Nat} {c c' : PhaseCase (NodeBlock P ACP)} (hij : i ≤ j)
+    (h : PhaseAt tr H i m c) (h' : PhaseAt tr H j m' c') : 3 * m + c.rank ≤ 3 * m' + c'.rank := by
+  obtain ⟨y, hy, rfl⟩ := h.frontier.1
+  have hm := (hmono y hy i j hij).trans (h'.frontier.2 y hy)
+  have := c.rank_le
+  rcases hm.lt_or_eq with hlt | heq
+  · omega
+  · subst heq
+    have := (hb _ i j c c' hij h h').1
+    omega
+
+/-- A phase change raises the potential. -/
+private theorem pot_lt (hb : Forward tr H)
+    (hmono : ∀ y ∈ H, ∀ i j, i ≤ j → (tr.store y i).hmax ≤ (tr.store y j).hmax)
+    {i j m m' : Nat} {c c' : PhaseCase (NodeBlock P ACP)} (hij : i ≤ j)
+    (hch : PhaseChanged tr H i j) (h : PhaseAt tr H i m c) (h' : PhaseAt tr H j m' c') :
+    3 * m + c.rank < 3 * m' + c'.rank := by
+  obtain ⟨y, hy, rfl⟩ := h.frontier.1
+  have hm := (hmono y hy i j hij).trans (h'.frontier.2 y hy)
+  have := c.rank_le
+  rcases hm.lt_or_eq with hlt | heq
+  · omega
+  · subst heq
+    obtain ⟨h1, h2⟩ := hb _ i j c c' hij h h'
+    rcases h1.lt_or_eq with hlt | heq
+    · omega
+    · exact absurd (PhaseCase.eq_of_rank heq h2 ▸ h') (hch _ c h)
+
+end Potential
+
 /-- **The reset count** (HR.3 (c)): the reset exists by `c_z + 6(Δ + A_HS)`. -/
 theorem reset_count {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun dg H tr)
     (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp) :
     ∃ a, IsReset tr H g a ∧ a ≤ cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) := by
-  sorry
+  classical
+  obtain ⟨hgst, hawake, hf⟩ := hs.healthy
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  -- `A_HS ≥ 0` (`Δ_F ≥ Δ > 0`, and `G_p ≥ 0` from `Prop⁺(G_p)` at `ḡ`)
+  have hA : 0 ≤ A_HS sp ΔF Gp := by
+    obtain ⟨s, -, -, -, h1, h2, -⟩ := hp (gbar g) le_rfl
+    have hF := hgst.deltaF
+    have hk : (0 : Time) ≤ sp.k := Int.natCast_nonneg _
+    have hδ : (0 : Time) ≤ sp.toParams.δt := Int.natCast_nonneg _
+    simp only [A_HS, C_HS, D_HS]
+    nlinarith [mul_nonneg (by linarith : (0 : Time) ≤ 8 * sp.k + 48) hΔ.le,
+      mul_nonneg (mul_nonneg (by norm_num : (0 : Time) ≤ 4) hΔ.le) hδ]
+  have hH : H.Nonempty := by
+    by_contra h
+    rw [Set.not_nonempty_iff_eq_empty] at h
+    rw [h, Set.compl_empty, Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hf
+    have := sp.toParams.hn
+    omega
+  obtain ⟨y₀, hy₀⟩ := hH
+  have hcut := exists_cuts hrun.toLocalRun hy₀ (hawake y₀ hy₀)
+  choose fa hfa using fun t => (hcut t).1
+  choose ff hff using fun t => (hcut t).2
+  -- the FG projection and HR.2 (b) on it (`f < 2q − n` from `3f ≤ n − 1`)
+  have hreq : (goldilocksNode sp ro).Requirements :=
+    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
+      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
+      SA.proposal_payload_valid sp _ ro⟩
+  have hfg := Compose.fg_projection _ _ dg H _ tr hreq hs.genesisRoot hrun.toLocalRun hs.noColl
+  have hq : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
+    change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n
+    have := sp.toParams.hn
+    omega
+  obtain ⟨-, hb, -⟩ := phase_count _ _ _ H _ tr.projFG hfg hq
+  have hmono : ∀ y ∈ H, ∀ i j, i ≤ j →
+      (tr.projFG.store y i).hmax ≤ (tr.projFG.store y j).hmax :=
+    fun y hy i j hij => hmax_mono hfg hy hij
+  choose ph hph using exists_phase (tr := tr.projFG) ⟨y₀, hy₀⟩
+  obtain ⟨φ, hφ⟩ : ∃ φ : Nat → Nat, ∀ i, φ i = 3 * (ph i).1 + (ph i).2.rank := ⟨_, fun _ => rfl⟩
+  have hle : ∀ i j, i ≤ j → φ i ≤ φ j := fun i j hij => by
+    rw [hφ, hφ]; exact pot_le hb hmono hij (hph i) (hph j)
+  have hlt : ∀ i j, i ≤ j → PhaseChanged tr.projFG H i j → φ i < φ j := fun i j hij hch => by
+    rw [hφ, hφ]; exact pot_lt hb hmono hij hch (hph i) (hph j)
+  -- the times `u n = c_z + n(Δ + A)`: the phase changes in each `(u n, u (n + 1)]`
+  obtain ⟨u, hu⟩ : ∃ u : Nat → Time,
+      ∀ n, u n = cutZ sp.toParams g + n * (sp.Δ + A_HS sp ΔF Gp) := ⟨_, fun _ => rfl⟩
+  have hstep : ∀ n, φ (fa (u n)) + 1 ≤ φ (fa (u (n + 1))) := by
+    intro n
+    have hu1 : u (n + 1) = u n + sp.Δ + A_HS sp ΔF Gp := by
+      rw [hu, hu]; push_cast; ring
+    have hun : gbar g + 8 * sp.Δ ≤ u n := by
+      have := lt_cutZ sp g
+      have : (0 : Time) ≤ n * (sp.Δ + A_HS sp ΔF Gp) :=
+        mul_nonneg (Int.natCast_nonneg n) (by linarith)
+      rw [hu]; linarith
+    have h1 : fa (u n) ≤ ff (u n + sp.Δ) := after_le_from (hfa _) (hff _) (by linarith)
+    have h2 : ff (u n + sp.Δ) ≤ fa (u (n + 1)) :=
+      from_le_after (hff _) (hfa _) (by rw [hu1]; linarith)
+    rcases settle hrun hs hc (u n) hun _ _ (hfa _) (hff _) with hch | hset
+    · exact (hlt _ _ h1 hch).trans_le (hle _ _ h2)
+    · have hch := producer hrun hs hc hp _ hset _ _ (hff _)
+        (Eq.subst (motive := fun t => FirstCutAfter tr (fa (u (n + 1))) t) hu1 (hfa _))
+      exact (hle _ _ h1).trans_lt (hlt _ _ h2 hch)
+  have hsix : ∀ n, φ (fa (u 0)) + n ≤ φ (fa (u n)) := by
+    intro n
+    induction n with
+    | zero => exact le_rfl
+    | succ n ih => have := hstep n; omega
+  -- `H_z` is at most the frontier just after `c_z`; six changes raise it by two
+  have hu0 : u 0 = cutZ sp.toParams g := by rw [hu]; simp
+  have hHZ : HZ tr H g ≤ (ph (fa (u 0))).1 := by
+    unfold HZ
+    apply csSup_le'
+    rintro _ ⟨y, hy, j, hj, rfl⟩
+    rw [← hu0] at hj
+    obtain rfl : j = fa (u 0) :=
+      le_antisymm (after_le_after hj (hfa _) le_rfl) (after_le_after (hfa _) hj le_rfl)
+    rw [← projFG_store hrun.toLocalRun hy]
+    exact (hph _).frontier.2 y hy
+  have h6 : HZ tr H g + 2 ≤ (ph (fa (u 6))).1 := by
+    have := hsix 6
+    rw [hφ, hφ] at this
+    have := (ph (fa (u 0))).2.rank_le
+    have := (ph (fa (u 6))).2.rank_le
+    omega
+  -- an honest block of state height `≥ H_z + 2` before the first cut after `u 6`
+  obtain ⟨y, hy, hym⟩ := (hph (fa (u 6))).frontier.1
+  obtain ⟨-, -, -, -, -, ⟨X, hX, hXh⟩, -⟩ := Store.cache_invariants _ _ _ _
+    (Store.store_reachable hfg hy (fa (u 6)))
+  rw [projFG_store hrun.toLocalRun hy] at hX hXh hym
+  obtain ⟨-, -, -, hrow, -⟩ := cut_and_reset sp ro dg H tr g ΔF hrun hs.healthy hs.noColl
+  obtain ⟨Y, hYX, att, hatt, hval, hh⟩ := hrow y hy _ X hX (by omega)
+  -- HR.1 (b)'s row was signed before that cut, by unforgeability
+  have hY : Y ∈ (tr.projFG.store y (fa (u 6))).tree := by
+    rw [projFG_store hrun.toLocalRun hy]
+    by_cases he : Y = X
+    · exact he ▸ hX
+    · exact (Anc.mem hYX he).1
+  obtain ⟨k₀, hk₀, hsk₀⟩ : ∃ k₀ < fa (u 6), tr.SignAt att.val k₀ att := by
+    rcases Store.tree_accepted hfg hy hY with rfl | ⟨k, hk, hacc⟩
+    · simp [Params.genesisBlock] at hatt
+    · obtain ⟨j, hj, hsj⟩ := hfg.unforgeable y hy k att
+        ⟨.block Y true, hacc, by simpa [FGLabel.processed] using hatt⟩ hval
+      exact ⟨j, by omega, signAt_of_projFG hsj⟩
+  -- the reset: the first cut with an honest signing at height `H_z + 1`
+  have hex : ∃ k, ∃ y ∈ H, ∃ att : FG.Att sp.n, tr.SignAt y k att ∧ att.h = HZ tr H g + 1 :=
+    ⟨k₀, att.val, hval, att, hsk₀, hh⟩
+  obtain ⟨y', hy', att', hs', hh'⟩ := Nat.find_spec hex
+  refine ⟨tr.time (Nat.find hex), ⟨⟨y', hy', _, att', hs', hh', rfl⟩,
+    fun z hz k b hsk hb => hrun.time_mono (Nat.find_min' hex ⟨z, hz, b, hsk, hb⟩)⟩, ?_⟩
+  have := hrun.time_mono (Nat.find_min' hex ⟨att.val, hval, att, hsk₀, hh⟩)
+  have := (hfa (u 6)).1 k₀ hk₀
+  have h6' : u 6 = cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) := by rw [hu]; norm_num
+  linarith
 
 /-- The reset is unique. -/
 theorem IsReset.eq {P : Params} {A : NodeAC P} {tr : RunTrace A} {H : Set (Fin P.n)} {g a a' : Time}
