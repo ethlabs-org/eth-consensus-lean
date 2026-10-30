@@ -15,8 +15,8 @@ and A1.7 read of it, node-local at one cut of `y`:
 * `ServedFacts` at a cut where `y` is served (`ServedAt`): `HeadSupport` of the record's block,
   and the record step (G3: across the cut the record moves to a descendant); supplied by
   `sleepy_served_facts` (`Lemmas/Compose/Sleepy/Served`, which imports this file);
-* `included_facts` at the cuts of A1.7: the record's block extends the honest proposal and has
-  `HeadSupport`, or, when the record has left the frame, `Σ.F` extends the proposal. -/
+* `HeadSupport` is also what A1.7 reads (`served_head_support` after the update of `slot(t) − 2` or
+  `slot(t) − 1`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -52,26 +52,6 @@ structure ServedFacts (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (y : Fin
   record_step : ∀ E ∈ tr.HonestBlocks H, E.root = (tr.state y i).ac.latestConfirmed →
     ∃ E' ∈ tr.HonestBlocks H, E'.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
       Anc (tr.HonestBlocks H) E E'
-
-/-- **The inclusion facts under `Sleepy`** (open: workbench#12, the adoption of an honest
-proposal `P` of slot `s` by the update of slot `s`, over the Sleepy invariant). At a cut of A1.7,
-every record block in the frame extends `P` and has `HeadSupport`; when the record has left the
-frame, `Σ.F` extends `P`. -/
-theorem included_facts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF)
-    (hg : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
-    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k))
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hc : tr.IsCall y i) (ht : sp.ts s + 6 * sp.Δ ≤ tr.time i)
-    (hyw : tr.awake y (tr.time i)) (hyj : tr.JoinedAt y (tr.time i))
-    (hyw₀ : tr.awake y (sp.ts s + 6 * sp.Δ)) (hyj₀ : tr.JoinedAt y (sp.ts s + 6 * sp.Δ))
-    (hnr : ∀ k', tr.RestartAt y k' → sp.ts s + 6 * sp.Δ < tr.time k' → tr.time k' ≤ tr.time i →
-      False)
-    (hu : UpdatedNoRestart tr y i s) :
-    (∀ R, RecordAt tr y i R → Anc (tr.HonestBlocks H) P R ∧ HeadSupport tr y i R) ∧
-      ((¬ ∃ R, RecordAt tr y i R) → Anc (tr.HonestBlocks H) P (Node.frame (tr.state y i)).F) := by
-  sorry
 
 end Consensus.Goldilocks.Compose
 
