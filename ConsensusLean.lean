@@ -2,6 +2,13 @@ module  -- shake: keep-all --deprecated_module: ignore
 
 public import ConsensusLean.Init
 public import ConsensusLean.Instances.Bft.Spec
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Finality
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Quorum
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
+public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Spec.Baseline
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Client
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.State
