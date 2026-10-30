@@ -405,22 +405,6 @@ theorem resolution_stable : ResolutionStable sp := by
 theorem merged_opponents : MergedOpponents sp := by
   sorry
 
-/-- **A0.4 (a), (b).** -/
-theorem live_locks_chain : LiveLocksChain sp := by
-  sorry
-
-/-- **A0.4 (f).** -/
-theorem candidates_chain : CandidatesChain sp := by
-  sorry
-
-/-- **A0.5.** -/
-theorem lock_to_tip : LockToTip sp := by
-  sorry
-
-/-- **A0.6.** -/
-theorem interface_requirements : InterfaceRequirements sp := by
-  sorry
-
 /-- **A0.9.** -/
 theorem proposal_payload_valid : ProposalPayloadValid sp := by
   sorry

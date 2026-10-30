@@ -4,6 +4,7 @@ public import ConsensusLean.Init
 public import ConsensusLean.Instances.Bft.Spec
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule

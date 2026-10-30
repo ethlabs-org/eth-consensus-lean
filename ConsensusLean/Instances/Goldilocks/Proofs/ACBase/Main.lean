@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 
 public section
 

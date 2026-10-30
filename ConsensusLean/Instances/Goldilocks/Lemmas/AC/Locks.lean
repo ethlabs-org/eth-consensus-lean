@@ -42,10 +42,6 @@ theorem locks_move_back : LocksMoveBack sp := by
       (unlockTarget_anc sp hΦ V s hB).2.trans hB₁B₀⟩
   · exact ⟨l₀, hl₀, hs, hf, B₀, hB₀, hr₀, B, hB, hr, hB₁B₀⟩
 
-/-- **A0.4 (d).** -/
-theorem unlock_idempotent : UnlockIdempotent sp := by
-  sorry
-
 /-- **A0.4 (e).** -/
 theorem unlock_no_fallback : UnlockNoFallback sp := by
   intro FGP Φ V s hΦ he
