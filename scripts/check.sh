@@ -57,6 +57,9 @@
 # On the shared box run it only inside `job --mem 16G ...` (it refuses to start without RUN_DIR or CI).
 
 set -euo pipefail
+# Under pipefail, never end a pipeline in `grep -q` (or any reader that stops early): it exits on the first match, the
+# producer gets SIGPIPE (141) and the pipeline counts as failed, at random on a busy machine. Let grep read all of
+# its input instead: `producer | grep ... >/dev/null`.
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
@@ -244,10 +247,10 @@ PY
   for f in "${CHANGED[@]}"; do
     [[ "$f" == comparator.json || "$f" == "$(mod_file "$CHALLENGE")" ]] && do_comparator_config=1
   done
-  printf '%s\n' "${CONE[@]}" | grep -qxF "$SOLUTION" && do_comparator_config=1
-  printf '%s\n' "${CONE[@]}" | grep -qxF "$SOLUTION" || do_audit=0
-  printf '%s\n' "${CONE[@]}" | grep -qxF -f <(printf '%s\n' "${TEST_LIBS[@]}" | awk NF) || do_audit_tests=0
-  printf '%s\n' "${CONE[@]}" | grep -qxF -f <(printf '%s\n' "${DEFAULT_LIBS[@]}") || do_audit_report=0
+  printf '%s\n' "${CONE[@]}" | grep -xF "$SOLUTION" >/dev/null && do_comparator_config=1
+  printf '%s\n' "${CONE[@]}" | grep -xF "$SOLUTION" >/dev/null || do_audit=0
+  printf '%s\n' "${CONE[@]}" | grep -xF -f <(printf '%s\n' "${TEST_LIBS[@]}" | awk NF) >/dev/null || do_audit_tests=0
+  printf '%s\n' "${CONE[@]}" | grep -xF -f <(printf '%s\n' "${DEFAULT_LIBS[@]}") >/dev/null || do_audit_report=0
   BUILD_TARGETS=("${CONE[@]}")
   ((do_audit || do_audit_tests || do_audit_report)) && BUILD_TARGETS+=(axiom-audit)
   ((do_comparator_config)) && BUILD_TARGETS+=("$CHALLENGE")
@@ -312,7 +315,7 @@ step_pins() {
   pins_check lean-toolchain lake-manifest.json .lake/package-overrides.json lakefile.toml \
     --lean-path "$lp" --libdir "$lib" || rc=1
   want="$(python3 -I -c 'import tomllib; print(tomllib.load(open("scripts/pins.toml", "rb"))["lean_version"])')"
-  if ! lake env lean --version | grep -qF "version $want,"; then
+  if ! lake env lean --version | grep -F "version $want," >/dev/null; then
     echo "  lean --version is not $want: $(lake env lean --version)"; rc=1
   fi
   set -e
@@ -347,7 +350,7 @@ selftest_pins() {
 # bad_fixture <target>: a deliberately bad fixture library (any fixture lib except the challenge): built
 # without --wfail (its warnings are expected); everything else fails on any warning or info message.
 # `warn.sorry = false` (lakefile) keeps `sorry` silent: where it may stay is steps 3, 3b and 7's business.
-bad_fixture() { [[ "$1" != "$CHALLENGE" ]] && printf '%s\n' "${FIXTURE_LIBS[@]}" | grep -qxF "$1"; }
+bad_fixture() { [[ "$1" != "$CHALLENGE" ]] && printf '%s\n' "${FIXTURE_LIBS[@]}" | grep -xF "$1" >/dev/null; }
 build_strict() { lake build --wfail --iofail "$@"; }  # step 1 and its self-test
 step_build() {  # default targets + BUILD_EXTRA; --changed: BUILD_TARGETS only
   set +e
@@ -393,14 +396,14 @@ step_boundaries() {
   local m l bad=0
   [[ -n "$(inv_trusted)" ]] || { echo "  FAIL[config] no module in a trusted layer"; bad=1; }
   for m in "$REVIEW_AXIOMS" "$REVIEW_ROOT" "${COMPARATOR_STATEMENTS[@]}" "$SOLUTION"; do
-    cut -f2 "$INV" | grep -qxF "$m" || { echo "  FAIL[config] $m (boundaries.toml [checks]) is not in the inventory"; bad=1; }
+    cut -f2 "$INV" | grep -xF "$m" >/dev/null || { echo "  FAIL[config] $m (boundaries.toml [checks]) is not in the inventory"; bad=1; }
   done
   for m in "${NOCONST_EXEMPT[@]}"; do
-    inv_kind parent | grep -qxF "$m" || { echo "  FAIL[config] noconst_exempt $m is not a module with descendants"; bad=1; }
+    inv_kind parent | grep -xF "$m" >/dev/null || { echo "  FAIL[config] noconst_exempt $m is not a module with descendants"; bad=1; }
   done
   # The statements modules are frozen by the tag (step 9's challenge imports exactly them): the review
   # statements module is in a trusted layer, each milestone statements module's file is under `trusted_paths`.
-  inv_trusted | grep -qxF "$STATEMENTS" || { echo "  FAIL[config] $STATEMENTS is not in a trusted layer"; bad=1; }
+  inv_trusted | grep -xF "$STATEMENTS" >/dev/null || { echo "  FAIL[config] $STATEMENTS is not in a trusted layer"; bad=1; }
   for m in "${MILESTONE_STATEMENTS[@]}"; do
     l="$(mod_file "$m")"
     cfg trusted_paths | awk -v f="$l" '$0 == f || index(f, $0 "/") == 1 { ok = 1 } END { exit !ok }' ||
@@ -702,12 +705,12 @@ selftest_surface() {
     { echo "  SnapA/SnapB: no readable difference: $d"; rc=1; }
   # SnapHidden: readable lines equal, only a hash line differs.
   snap_differs CheckFixtures.SnapA.Defs CheckFixtures.SnapHidden.Defs d || rc=1
-  if [[ -n "$d" ]] && ! grep -E '^[<>] ' <<<"$d" | grep -qvE '^[<>]   #'; then
+  if [[ -n "$d" ]] && ! grep -E '^[<>] ' <<<"$d" | grep -vE '^[<>]   #' >/dev/null; then
     echo "  ok: SnapA/SnapHidden differ only in a hash line"
   else echo "  SnapA/SnapHidden: expected only a hash difference: $d"; rc=1; fi
   # SnapAux: an unranged auxiliary line differs (same readable lines).
   snap_differs CheckFixtures.SnapAuxA.Defs CheckFixtures.SnapAuxB.Defs d || rc=1
-  if [[ -n "$d" ]] && ! grep -E '^[<>] ' <<<"$d" | grep -qvE '^[<>] [a-z]+ [^ ]+ #'; then
+  if [[ -n "$d" ]] && ! grep -E '^[<>] ' <<<"$d" | grep -vE '^[<>] [a-z]+ [^ ]+ #' >/dev/null; then
     echo "  ok: SnapAuxA/SnapAuxB differ only in unranged auxiliary lines"
   else echo "  SnapAuxA/SnapAuxB: expected only unranged differences: $d"; rc=1; fi
   expect_fail 'FAIL[theorem]' "${SURFACE[@]}" theorems --allow /dev/null --modules CheckFixtures.BadTheorem.A || rc=1
@@ -1136,7 +1139,7 @@ step_docs() {
   mapfile -t files < <(for m in "${SPEC_MODULES[@]}"; do mod_file "$m"; done)
   { docs_ok README.md "${files[@]}" && echo "  README.md lists the ${#files[@]} files of the trusted layers"; } || rc=1
   # The name index is a module of a test library, so step 1 builds it (and the generated root imports it).
-  awk -F'\t' -v m="$NAME_INDEX" '$2 == m { print $1 }' "$INV" | grep -qxF -f <(printf '%s\n' "${TEST_LIBS[@]}") ||
+  awk -F'\t' -v m="$NAME_INDEX" '$2 == m { print $1 }' "$INV" | grep -xF -f <(printf '%s\n' "${TEST_LIBS[@]}") >/dev/null ||
     { echo "  FAIL[docs] name_index_module $NAME_INDEX is not a module of a test library (${TEST_LIBS[*]})"; rc=1; }
   "${DOCS[@]}" names "$(mod_file "$NAME_INDEX")" "${DOC_NAME_FILES[@]}" || rc=1
   "${DOCS[@]}" codeowners .github/CODEOWNERS . "$CODE_OWNER" "${OWNED_PATHS[@]}" || rc=1
@@ -1306,7 +1309,7 @@ if [[ "$mode" == changed ]]; then compute_changes; fi
 # Self-test-only build targets: the fixture libraries except the comparator challenge (built in every
 # mode, so a broken challenge fails before the nightly comparator run).
 for t in "${EXTRA_TARGETS[@]}"; do
-  if ((selftests)) || ! printf '%s\n' "${FIXTURE_LIBS[@]}" | grep -qxF "$t" || [[ "$t" == "$CHALLENGE" ]]; then
+  if ((selftests)) || ! printf '%s\n' "${FIXTURE_LIBS[@]}" | grep -xF "$t" >/dev/null || [[ "$t" == "$CHALLENGE" ]]; then
     BUILD_EXTRA+=("$t")
   fi
 done
