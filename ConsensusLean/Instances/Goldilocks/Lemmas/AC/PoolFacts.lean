@@ -148,6 +148,107 @@ theorem restart_admits (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState 
 
 end Admission
 
+/-! ### Pools only grow outside a restart; carried votes -/
+
+section Grows
+
+variable {sp} {FGP : Type}
+
+/-- Every pool of `A` is contained in the same pool of `A'`. -/
+def Grows (A A' : SAState sp.n) : Prop := ∀ σ, ∀ x ∈ A.pool σ, x ∈ A'.pool σ
+
+theorem Grows.trans {A B C : SAState sp.n} (h₁ : Grows A B) (h₂ : Grows B C) : Grows A C :=
+  fun σ x hx => h₂ σ x (h₁ σ x hx)
+
+theorem Grows.of_pool_eq {A A' : SAState sp.n} (h : A'.pool = A.pool) : Grows A A' :=
+  fun _ _ hx => h ▸ hx
+
+theorem grows_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+    Grows A (admitVote sp A t v) := by
+  intro σ x hx
+  unfold admitVote
+  split_ifs
+  · exact hx
+  · exact hx
+  · simp only [Function.update_apply]
+    split_ifs with hσ
+    · subst hσ; exact List.mem_append_left _ hx
+    · exact hx
+
+theorem grows_tryVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    Grows A (tryVote sp self A Φ t).1 := by
+  unfold tryVote
+  dsimp only
+  split_ifs
+  · exact fun _ _ h => h
+  · exact fun _ _ h => h
+  all_goals
+    refine Grows.trans ?_ (Grows.of_pool_eq (optimistic_pool_eq _ _ _))
+    refine Grows.trans (Grows.of_pool_eq ?_) (grows_admitVote _ _ _)
+    rfl
+
+theorem grows_fold_admit (t : Time) (l : List (Vote sp.n)) (A : SAState sp.n) :
+    Grows A (l.foldl (fun A v => admitVote sp A t v) A) := by
+  induction l generalizing A with
+  | nil => exact fun _ _ h => h
+  | cons v l ih => exact (grows_admitVote A t v).trans (ih _)
+
+/-- A vote of slot `slot(t) − 1` or `slot(t)` offered to admission at `t` ends up in its pool, or
+its validator then has two distinct votes there. -/
+theorem admitVote_held (A : SAState sp.n) (t : Time) (v : Vote sp.n)
+    (h₁ : (sp.slot t : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot t) :
+    v ∈ (admitVote sp A t v).pool v.slot ∨
+      v.val ∈ equivocators {x | x ∈ (admitVote sp A t v).pool v.slot} := by
+  unfold admitVote
+  split_ifs with ha hb
+  · rcases ha with ha | ha | ha
+    · omega
+    · omega
+    · exact Or.inl ha
+  · right
+    generalize hl : ((A.pool v.slot).filter (fun x => x.val = v.val)).dedup = l at hb
+    have hnd : l.Nodup := hl ▸ List.nodup_dedup _
+    have hmem : ∀ x ∈ l, x ∈ A.pool v.slot ∧ x.val = v.val := fun x hx => by
+      rw [← hl, List.mem_dedup, List.mem_filter, decide_eq_true_eq] at hx
+      exact hx
+    match l, hnd, hmem, hb with
+    | a :: b :: _, hnd, hmem, _ =>
+      have hab : a ≠ b := fun h => (List.nodup_cons.mp hnd).1 (h ▸ List.mem_cons_self)
+      obtain ⟨ha, hav⟩ := hmem a List.mem_cons_self
+      obtain ⟨hb', hbv⟩ := hmem b (List.mem_cons_of_mem _ List.mem_cons_self)
+      exact ⟨a, ha, b, hb', hab, hav, hbv⟩
+  · left
+    simp only [Function.update_apply, ite_true]
+    exact List.mem_append_right _ (List.mem_singleton_self _)
+
+/-- Equivocators of a larger vote set include those of a smaller one. -/
+theorem equivocators_mono {S T : Set (Vote sp.n)} (h : S ⊆ T) : equivocators S ⊆ equivocators T :=
+  fun _ ⟨x, hx, y, hy, hxy, hxi, hyi⟩ => ⟨x, h hx, y, h hy, hxy, hxi, hyi⟩
+
+/-- "Held or equivocating" is kept as the pools grow. -/
+theorem held_of_grows {A A' : SAState sp.n} (hg : Grows A A') {v : Vote sp.n}
+    (h : v ∈ A.pool v.slot ∨ v.val ∈ equivocators {x | x ∈ A.pool v.slot}) :
+    v ∈ A'.pool v.slot ∨ v.val ∈ equivocators {x | x ∈ A'.pool v.slot} :=
+  h.imp (hg _ _) fun he => equivocators_mono (fun x (hx : x ∈ A.pool v.slot) => hg _ x hx) he
+
+/-- After admitting the votes of `l` at `t`, each of them (of slot `slot(t) − 1` or `slot(t)`) is
+held, or its validator equivocates. -/
+theorem fold_admit_held (t : Time) (l : List (Vote sp.n))
+    (hl : ∀ v ∈ l, (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t) (A : SAState sp.n) :
+    ∀ v ∈ l, v ∈ (l.foldl (fun A v => admitVote sp A t v) A).pool v.slot ∨
+      v.val ∈ equivocators {x | x ∈ (l.foldl (fun A v => admitVote sp A t v) A).pool v.slot} := by
+  induction l generalizing A with
+  | nil => intro v hv; exact absurd hv List.not_mem_nil
+  | cons w l ih =>
+    intro v hv
+    simp only [List.foldl_cons]
+    rcases List.mem_cons.mp hv with rfl | hv
+    · obtain ⟨h₁, h₂⟩ := hl v List.mem_cons_self
+      exact held_of_grows (grows_fold_admit t l _) (admitVote_held A t v h₁ h₂)
+    · exact ih (fun u hu => hl u (List.mem_cons_of_mem _ hu)) _ v hv
+
+end Grows
+
 /-- **A0.1, admission slots.** -/
 theorem admission_slots : AdmissionSlots sp := by
   intro FGP ro self U _ A Φ t₀ _ c Φ' t _ _
@@ -180,7 +281,18 @@ theorem stamp_stable : StampStable sp := by
 
 /-- **A0.1, carried votes.** -/
 theorem carried_votes : CarriedVotes sp := by
-  sorry
+  intro FGP ro self U _ A Φ t₀ _ B Φ' t _ hok hBs
+  dsimp only
+  obtain ⟨-, -, hpay, -⟩ := hok
+  have hrange : ∀ v ∈ blockVotes B, (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t :=
+    fun v hv => by have := hpay.1 v hv; omega
+  intro v hv hnot
+  have hrec := fold_admit_held t (blockVotes B) hrange
+    { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } v hv
+  have hg : Grows (blockReceipt sp A t B) (acOnBlock sp self A Φ' t B).1 := by
+    unfold acOnBlock
+    exact (Grows.of_pool_eq (optimistic_pool_eq _ _ _)).trans (grows_tryVote _ _ _ _)
+  exact (held_of_grows hg hrec).resolve_left hnot
 
 /-- **A0.2, resolution is stable.** -/
 theorem resolution_stable : ResolutionStable sp := by
