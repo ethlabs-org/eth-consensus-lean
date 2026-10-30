@@ -33,7 +33,9 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
 - **Land on main (trunk-based, owner 2026-10-30, #2).** When `check-changed` passes (`--fast --selftests` for
   a change to `scripts/` or the build configuration), rebase on `origin/main` and push to `main`; no PR. Every
   push to `main` runs the fast tier (`scripts/check.sh --fast`); a red `main` is reverted at once by whoever
-  pushed it, then fixed. Kernel replay, `lake check` and `lake comparator --paranoid` run nightly (`full.yml`)
+  pushed it, then fixed. While GitHub Actions cannot run jobs (#50), the CI of record is the orb watcher
+  `scripts/orb-ci.sh` (an `amp orb service`): it runs the same fast tier on every new head of `main` and of every
+  open PR into `main`, records results on #63, and comments failures on #17 (main) or the PR. Kernel replay, `lake check` and `lake comparator --paranoid` run nightly (`full.yml`)
   or on demand in an orb with at least 8 GB (`CI=1 scripts/check.sh --full`); dispatching `full.yml` on a branch
   costs about 45 billed Actions minutes, so keep it for toolchain and Mathlib bumps (#50). A PR is needed only for a trusted-surface change
   (below). The commit message (or PR body) ends with a cost line
