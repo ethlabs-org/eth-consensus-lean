@@ -53,20 +53,20 @@ theorem raw_first_proposals (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP}
   sorry
 
 /-- **§6.1, later labels (votes)**: for a protected `(B, j)`, if every honest vote of a slot
-`m > j` with `t_m ≥ t₀ + 4Δ` extends `B`, so does every honest vote of a later slot (the
+`m ≥ j` with `t_m ≥ t₀ + 4Δ` extends `B`, so does every honest vote of a later slot (the
 preceding honest batch's `n − f` retained seats release older conflicting locks and dominate
 the walk; a label-`(m)` lock has an honest supporter; root-covered reads per §5). -/
 theorem h2_votes_continue (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j m : Nat}
-    (hB : Protected tr H t₀ B j) (hjm : j < m) (hm : t₀ + 4 * sp.Δ ≤ sp.ts m)
+    (hB : Protected tr H t₀ B j) (hjm : j ≤ m) (hm : t₀ + 4 * sp.Δ ≤ sp.ts m)
     (hv : ∀ x ∈ H, ∀ k e, VoteAt tr x k e → e.msg.slot = m → VoteExtends U e.msg B) :
     VotesExtendAfter tr H U m B := by
   sorry
 
 /-- **§6.1, later labels (proposals)**: for a protected `(B, j)`, if every honest vote of a slot
-`m > j` with `t_m ≥ t₀ + 4Δ` extends `B`, the head of every honest `ac_proposal` at `t_{m+1}`
+`m ≥ j` with `t_m ≥ t₀ + 4Δ` extends `B`, the head of every honest `ac_proposal` at `t_{m+1}`
 extends `B`. -/
 theorem h2_proposals_continue (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j m : Nat}
-    (hB : Protected tr H t₀ B j) (hjm : j < m) (hm : t₀ + 4 * sp.Δ ≤ sp.ts m)
+    (hB : Protected tr H t₀ B j) (hjm : j ≤ m) (hm : t₀ + 4 * sp.Δ ≤ sp.ts m)
     (hv : ∀ x ∈ H, ∀ k e, VoteAt tr x k e → e.msg.slot = m → VoteExtends U e.msg B) :
     ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) d pay, tr.CallAt x i ℓ →
       ℓ.call = .proposal → tr.time i = sp.ts (m + 1 : Nat) →
@@ -86,7 +86,7 @@ theorem raw_origin_transfer (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP}
     rcases cleanOrigin_iff.1 hB with ⟨x, hx, i, CV, hjx, hfl, hj⟩ | ⟨x, hx, i, hjx, hsl, hj⟩
     · exact ⟨raw_fast_first_votes hI hx hjx hfl hj, hj.trans ((ts_le_iff sp).2 (by omega))⟩
     · exact ⟨raw_slow_first_votes hI hx hjx hsl hj, hj.trans ((ts_le_iff sp).2 (by omega))⟩
-  have hcont := h2_votes_continue hI hB.protected (Nat.lt_succ_self j) hj1 hfirst
+  have hcont := h2_votes_continue hI hB.protected (Nat.le_succ j) hj1 hfirst
   have hvotes : VotesExtendAfter tr H U j B := votesExtendAfter_iff.2 fun y hy k e hv hlt => by
     rcases Nat.lt_or_ge (j + 1) e.msg.slot with h | h
     · exact votesExtendAfter_iff.1 hcont y hy k e hv h
