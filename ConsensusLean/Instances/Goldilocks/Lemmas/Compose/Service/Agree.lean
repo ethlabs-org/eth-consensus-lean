@@ -24,8 +24,8 @@ walk (the viable voter block tree, the merged view, from its unlocked anchor) is
 * `pivot` (open, `Service/Pivot`, §2.1, §2.2): a block `D` on the proposal walk such that every
   honest slot-`s` voter's walk passes a block of the path from `D` through `Q` to `P` (a voter
   whose anchor is a current-slot optimistic lock starts on that path above `D`);
-* `suffix_agree` (open, `Service/Suffix`, §3): at every block from `D` to `Q` at or above the
-  voter's anchor, the proposer's best child is the voter's best child;
+* `suffix_agree` (proved, `Service/Suffix`, §3): at every block from `D` below `Q` at or above
+  the voter's anchor, the proposer's best child is the voter's best child;
 * `stop_at_parent` (§3): at `Q` the voter's only eligible child is `P` (its slot is the current
   one; another slot-`s` block would be the honest proposer's second; no old child is eligible,
   `old_children_ineligible`, open), and the voter's walk stops at `P` (`P ∈` the voter's viable

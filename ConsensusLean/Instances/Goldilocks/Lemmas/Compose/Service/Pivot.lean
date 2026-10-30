@@ -29,7 +29,7 @@ below `D`; a lock of slot `s` sits below an optimistic selection with an honest 
 the earlier slot-`s` votes, which are `P`. So the anchor is below `D` (then `X = D`, which the
 vote extends by S2), or on `P`'s chain above `D` (then `X` is the anchor).
 
-The proposal walk passes every old origin (`proposal_passes_old`, `SA.anc_getHead`): the
+The proposal walk passes every old origin (`proposal_walk_passes_old`, `SA.anc_getHead`): the
 proposer holds it or has it below `Σ.F` (`proposal_holds_old`: an honest supporting head is
 relayed to the proposer, `proposer_relay`), and the children towards it win the walk
 (`proposal_best_toward_old`, the counts of §2.1: the honest slot-`(s−1)` batch, or the `3n/4`
@@ -124,7 +124,7 @@ private theorem acProposal_walk {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} {t 
   exact ⟨_, rfl, rfl, rfl⟩
 
 /-- The proposal walk goes from its start, in the tree, to the duty head. -/
-private theorem start_anc_head {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ)
+theorem acProposal_start_anc_head {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ)
     {t : Time} {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
     (h : (SA.acProposal sp A Φ t).2 = some (d, pay)) : d.start ∈ Φ.tree ∧ Φ.Anc d.start d.head := by
   obtain ⟨A₁, -, hst, hhd⟩ := acProposal_walk h
@@ -134,7 +134,7 @@ private theorem start_anc_head {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} (hΦ
 
 /-- Two vote times: a regular origin of label `m` (written at `t_m + 6Δ`) before a slot-`s` vote
 (at most `t_s + Δ`) has `m + 2 ≤ s`. -/
-private theorem add_two_le_of_time {m s : Nat}
+theorem ts_add_two_le {m s : Nat}
     (h : sp.ts (m : Int) + 6 * sp.Δ ≤ sp.ts (s : Int) + sp.Δ) : m + 2 ≤ s := by
   have hΔ := sp.toParams.hΔ
   simp only [SAParams.ts] at h
@@ -152,10 +152,15 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
 /-- **The old origins of slot `s`** (workbench#12 §2, the set whose deepest member is `D_s`): the
 regular origins of labels at most `s − 2` and the optimistic origins of labels at most `s − 1`,
 the origins whose events precede `t_s`. -/
-private def OldOrigin (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (s : Nat)
+def OldOrigin (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (s : Nat)
     (O : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ x ∈ H, ∃ k m CV, (SA.ResultAt tr.projAC x k m O CV ∧ m + 2 ≤ s) ∨
     (SA.OptimisticLockAt tr.projAC x k m O CV ∧ m + 1 ≤ s)
+
+theorem oldOrigin_iff {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {s : Nat}
+    {O : SA.Blk sp.n (List (FG.Att sp.n))} : OldOrigin tr H s O ↔
+      ∃ x ∈ H, ∃ k m CV, (SA.ResultAt tr.projAC x k m O CV ∧ m + 2 ≤ s) ∨
+        (SA.OptimisticLockAt tr.projAC x k m O CV ∧ m + 1 ≤ s) := Iff.rfl
 
 /-- An old origin of slot `s` is an origin of a label below `s`. -/
 private theorem OldOrigin.origin {s : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -208,7 +213,7 @@ private theorem eq_proposal (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg t
 
 /-- The proposer's restarts up to its proposal are at or before `t_{s−1}`: `ac_proposal` runs
 joined, and keeps the restart time. -/
-private theorem proposal_restarts (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem proposal_call_restarts (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -257,7 +262,7 @@ private theorem proposer_relay (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun d
     rw [hti]; simpa using (SA.slot_arithmetic sp s).1 0 (by omega)
   have hts : sp.ts (s : Int) = sp.ts ((s : Int) - 1) + 4 * sp.Δ := by
     simp only [SAParams.ts]; ring
-  have hrs := proposal_restarts hrun hnc hp hc hcall hd
+  have hrs := proposal_call_restarts hrun hnc hp hc hcall hd
   rw [hsi] at hrs
   have hdl : ∀ c ≤ i, tr.projAC.deadline p c (tr.projAC.time kx) ≤
       sp.ts ((s : Int) - 1) + 3 * sp.Δ := fun c hc' => by
@@ -430,7 +435,7 @@ private theorem proposal_best_toward_old (hrun : GoldilocksRun dg H tr) (hnc : N
     rintro w ⟨v₁, hv₁, v₂, hv₂, hne, h1, h2⟩ hw
     exact hnoeq w hw ⟨v₁, (hvotes' v₁).1 hv₁, v₂, (hvotes' v₂).1 hv₂, hne, h1, h2⟩
   -- the proposer's restarts, and the relay window
-  have hrs := proposal_restarts hrun hnc hp hc hcall hd
+  have hrs := proposal_call_restarts hrun hnc hp hc hcall hd
   rw [hsi, hσ] at hrs
   have hsync := syncAC_of_sleepy hrun hsl (a := 0) (b := sp.ts (s' : Int) + 2 * sp.Δ) le_rfl
   have hts0 : (0 : Time) ≤ sp.ts (s' : Int) := by
@@ -548,7 +553,7 @@ private theorem proposal_best_toward_old (hrun : GoldilocksRun dg H tr) (hnc : N
       omega
 
 /-- An AC call with the proposal label is a cut of a tick. -/
-private theorem proposal_in_tick {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
+theorem acProposal_in_tick {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
     {t : Time} {e : Node.Event (goldilocksNode sp ro)} {ℓ : ACLabel (goldilocksNode sp ro)}
     (h : Cut.ac ℓ ∈ (Node.exec dg y st t e).2) (hm : ℓ.call = .proposal) : ∃ x, e = .tick x := by
   cases e with
@@ -629,7 +634,7 @@ private theorem proposal_no_optimistic (hrun : GoldilocksRun dg H tr) (hnc : NoC
   -- the proposal call is the second cut of the proposer's tick at `t_s`
   obtain ⟨gi, ei, ki, hgi, rfl, hki⟩ := call_in_group hl hp (projAC_callAt.1 hc)
   rw [hti] at hgi hki
-  obtain ⟨xi, rfl⟩ := proposal_in_tick (List.mem_of_getElem? hki) hcall
+  obtain ⟨xi, rfl⟩ := acProposal_in_tick (List.mem_of_getElem? hki) hcall
   obtain ⟨hpr, hki1⟩ : Node.Proposes p (sp.ts s) ∧ ki = 1 := by
     rcases tick_ac_positions hki with ⟨h, -⟩ | h | ⟨hpr, ⟨-, h⟩ | ⟨h, -⟩⟩
     · rw [hcall] at h; cases h
@@ -709,7 +714,7 @@ private theorem proposal_locks_slot (hrun : GoldilocksRun dg H tr) (hnc : NoColl
   obtain ⟨x, hx, k', hki, CV, hR | hOp⟩ := originBefore_iff.1 hO
   · obtain ⟨-, ⟨-, -, htk, -⟩, -⟩ := hR
     have := hr.time_mono hki.le
-    have := add_two_le_of_time (sp := sp) (m := l.slot) (s := s) (by linarith [sp.toParams.hΔ])
+    have := ts_add_two_le (sp := sp) (m := l.slot) (s := s) (by linarith [sp.toParams.hΔ])
     omega
   · have hsl_i : sp.slot (tr.time i) = s := by
       rw [hti]
@@ -779,7 +784,7 @@ private theorem proposal_rows_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRu
   refine ⟨D, ⟨C, ?_, hDC⟩, hDs⟩
   have hii : tr.projAC.time i = tr.time i := rfl
   obtain ⟨z, hz, c, hck, CV, hR | hOp⟩ := originBefore_iff.1 hC
-  · refine ⟨z, hz, c, l, CV, Or.inl ⟨hR, add_two_le_of_time (sp := sp) ?_⟩⟩
+  · refine ⟨z, hz, c, l, CV, Or.inl ⟨hR, ts_add_two_le (sp := sp) ?_⟩⟩
     obtain ⟨-, ⟨-, -, htc, -⟩, -⟩ := hR
     have := hr.time_mono (show c ≤ i by omega)
     linarith
@@ -836,7 +841,7 @@ private theorem proposal_lock_below (hrun : GoldilocksRun dg H tr) (hnc : NoColl
 proposer (or below its `Σ.F`, below the walk's start), so viable or at or below `fc_root`
 (`held_origin_viable`); the proposer's live locks sit below origins, compatible with it (S1);
 and the children towards it win (`SA.anc_getHead`). -/
-private theorem proposal_passes_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem proposal_walk_passes_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -848,7 +853,7 @@ private theorem proposal_passes_old (hrun : GoldilocksRun dg H tr) (hnc : NoColl
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hinv := sleepy_invariant hrun hnc hsl
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hp hc
-  obtain ⟨hstart, hsQ⟩ := start_anc_head hΦ hd
+  obtain ⟨hstart, hsQ⟩ := acProposal_start_anc_head hΦ hd
   obtain ⟨A₁, hA₁, -, hhd⟩ := acProposal_walk hd
   obtain ⟨m, -, hOm⟩ := hO.origin
   rcases proposal_holds_old hrun hnc hsl hp hc hcall hd hti O hO with hOt | hOF
@@ -894,7 +899,7 @@ private theorem proposal_anchor_old (hrun : GoldilocksRun dg H tr) (hnc : NoColl
     have hls := proposal_locks_slot hrun hnc hsl hp hc hcall hd hti l hl
     refine ⟨O, ?_, hLO⟩
     obtain ⟨x, hx, k', hki, CV, hR | hOp⟩ := originBefore_iff.1 hO
-    · refine ⟨x, hx, k', l.slot, CV, Or.inl ⟨hR, add_two_le_of_time (sp := sp) ?_⟩⟩
+    · refine ⟨x, hx, k', l.slot, CV, Or.inl ⟨hR, ts_add_two_le (sp := sp) ?_⟩⟩
       obtain ⟨-, ⟨-, -, htk, -⟩, -⟩ := hR
       have := hr.time_mono hki.le
       have hii : tr.projAC.time i = tr.time i := rfl
@@ -927,7 +932,7 @@ private theorem vote_fcRoot_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun 
   refine ⟨D, ⟨C, ?_, hDC⟩, hDs⟩
   have hjj : tr.projAC.time j = tr.time j := rfl
   obtain ⟨z, hz, c, hck, CV, hR | hOp⟩ := originBefore_iff.1 hC
-  · refine ⟨z, hz, c, l, CV, Or.inl ⟨hR, add_two_le_of_time (sp := sp) ?_⟩⟩
+  · refine ⟨z, hz, c, l, CV, Or.inl ⟨hR, ts_add_two_le (sp := sp) ?_⟩⟩
     obtain ⟨-, ⟨-, -, htc, -⟩, -⟩ := hR
     have := hr.time_mono (show c ≤ j by omega)
     linarith
@@ -1011,7 +1016,7 @@ private theorem vote_anchor_cases (hrun : GoldilocksRun dg H tr) (hnc : NoCollRu
     obtain rfl : L₁ = B₁ := hU.1 ⟨y, hy, j, hL₁⟩ (hΦU hB₁) (hL₁r.trans hB₁r.symm)
     have hOld : OldOrigin tr H s O := by
       obtain ⟨x, hx, k', hkj, CV, hR | hOp⟩ := originBefore_iff.1 hO
-      · refine ⟨x, hx, k', l₁.slot, CV, Or.inl ⟨hR, add_two_le_of_time (sp := sp) ?_⟩⟩
+      · refine ⟨x, hx, k', l₁.slot, CV, Or.inl ⟨hR, ts_add_two_le (sp := sp) ?_⟩⟩
         obtain ⟨-, ⟨-, -, htk, -⟩, -⟩ := hR
         have := hr.time_mono hkj.le
         have hjj : tr.projAC.time j = tr.time j := rfl
@@ -1103,9 +1108,9 @@ theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp
     rw [← hPs, hB]
     exact hPr.1
   -- the proposal walk, from its start to `Q`
-  obtain ⟨hstart, hsQ⟩ := start_anc_head hΦp hd
+  obtain ⟨hstart, hsQ⟩ := acProposal_start_anc_head hΦp hd
   have hQt : d.head ∈ ℓp.frame.tree := mem_of_anc_left hsQ hstart
-  have hpass := proposal_passes_old hrun hnc hsl hp hc hcall hd hti
+  have hpass := proposal_walk_passes_old hrun hnc hsl hp hc hcall hd hti
   have hanch := proposal_anchor_old hrun hnc hsl hp hc hcall hd hti
   -- `D`: the deepest of the start and the old origins on the proposal walk
   obtain ⟨D, hD⟩ := SA.exists_deepest hΦp (S := {X | X ∈ ℓp.frame.tree ∧

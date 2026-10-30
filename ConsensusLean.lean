@@ -3,6 +3,7 @@ module  -- shake: keep-all --deprecated_module: ignore
 public import ConsensusLean.Init
 public import ConsensusLean.Instances.Bft.Spec
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
@@ -79,7 +80,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
