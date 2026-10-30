@@ -184,7 +184,7 @@ jobs:
     # The trusted surface (`trusted_paths` in scripts/boundaries.toml; docs/spec-review.md) against the commit
     # tagged `spec-approved`: a change the tag does not cover fails (without the tag, a warning only). Only the owner, or an agent he authorizes, moves the
     # tag, after reviewing the diff printed here. Check infrastructure (scripts/, .github/, lakefile.toml) is
-    # covered by CODEOWNERS and PR review instead.
+    # not covered by the tag; agents review it (issue #21, TRUST.md).
     name: Review boundary (trusted surface = spec-approved)
     runs-on: ubuntu-latest
     timeout-minutes: 10

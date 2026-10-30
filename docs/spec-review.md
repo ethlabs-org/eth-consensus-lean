@@ -19,8 +19,8 @@ list `trusted_paths` in `scripts/boundaries.toml` (since #5): `ConsensusLean/{In
 "Move to one library `ConsensusLean` (#5)" below. The sections between describe the approved surface at
 `4b7c5148` under its current paths.
 The check infrastructure (`scripts/**`, `.github/**`, `lakefile.toml`; `lakefile.lean` must not exist) is
-owner-reviewed through `.github/CODEOWNERS` and PR review, not through the tag; it is described below
-because it defines what the checks enforce.
+not covered by the tag: agents review it (`TRUST.md`, issue #21). It is described below because it defines what
+the checks enforce.
 
 This record compares `2852f717` (the informal "B1 fixes" review) with the approved commit. It was written
 with git, Python and file reads only; the evidence script below reruns every textual claim.

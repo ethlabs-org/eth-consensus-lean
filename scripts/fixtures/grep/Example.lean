@@ -1,4 +1,4 @@
--- Fixture for step 7 (never built): the proof examples (lines 4, 6, 7, 11-15; 11 follows a char literal that must not open a string) are flagged; bare references and comments are not.
+-- Fixture for step 7 (never built): the proof examples (lines 4, 6, 7, 11-15, 18; 11 follows a char literal that must not open a string) are flagged; bare references and comments are not.
 /- example : 2 = 2 := rfl -/
 example := @Nat.succ
 example : 1 = 1 := rfl
@@ -14,3 +14,5 @@ example := @Nat.succ "x"
 example := @Nat.succ 'x'
 example := @Nat.succ r"x"
 example := @Nat.zero
+example := ``Nat.zero
+example := ``Nat.succ rfl

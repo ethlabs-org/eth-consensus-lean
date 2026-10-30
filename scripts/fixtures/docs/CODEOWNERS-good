@@ -1,0 +1,4 @@
+# Fixture for check-docs.py `codeowners` (root scripts/fixtures/docs/tree): paths f.txt (a file), D (a directory), Spec (absent).
+/f.txt  @o
+/D/     @o
+/Spec   @o

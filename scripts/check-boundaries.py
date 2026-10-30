@@ -57,7 +57,8 @@ TOP_KEYS = REQUIRED_KEYS | {"exception", "tool_libs"}
 # [checks]: read by scripts/check.sh (and trusted_paths by CI's review-boundary job); a new key is added here.
 CHECKS_KEYS = {"proofs_component_prefixes", "noconst_exempt", "theorems_mode", "review_axioms_module", "review_root",
                "challenge_module", "solution_module", "statements_module", "extra_build_targets", "trusted_paths",
-               "canary_module", "canary_proof_edit", "canary_statement_edit"}
+               "canary_module", "canary_proof_edit", "canary_statement_edit", "doc_name_files", "name_index_module",
+               "code_owner", "codeowners_extra"}
 LIB_KEYS = {"name", "default", "test_driver", "root_lists_all"}
 LAYER_KEYS = {"name", "prefixes", "allow", "trusted", "sorry", "expose", "may_import_roots", "may_import_all",
               "about"}

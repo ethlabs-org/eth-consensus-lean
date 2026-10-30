@@ -25,7 +25,9 @@
 #                       targets only while no sorry layer holds `sorry` (plan §5)
 #   11 lake comparator  Spec statements vs proofs, axioms, sandboxed replay by  (needs bwrap)
 #                       Lean's kernel and every bundled external kernel (--paranoid)
-#   12 docs             README spec-file list = the files of the Spec surface (trusted layers)
+#   12 docs             README spec-file list = the files of the Spec surface (trusted layers);
+#                       names cited in the docs are in the name index (built: they exist);  (check-docs.py)
+#                       CODEOWNERS = trusted_paths + codeowners_extra
 #   13 metrics          depth, cones, expose and import counts (report)          (metrics-baseline.py)
 #   14 rebuild canary   a proof-only edit rebuilds one module (report); a        (lake; --full or --canary)
 #                       statement edit (control) must make an importer stale
@@ -132,6 +134,10 @@ SPEC_MODULES=()  # every module of the inventory in a trusted layer (the Spec su
 mapfile -t EXTRA_TARGETS < <(cfg extra_build_targets)
 mapfile -t FIXTURE_LIBS < <(cfg fixture_libs)
 mapfile -t NOCONST_EXEMPT < <(cfg noconst_exempt)
+mapfile -t DOC_NAME_FILES < <(cfg doc_name_files)
+NAME_INDEX="$(cfg name_index_module)"
+CODE_OWNER="$(cfg code_owner)"
+mapfile -t OWNED_PATHS < <(cfg trusted_paths; cfg codeowners_extra)
 THEOREMS_MODE="$(cfg theorems_mode)"
 REVIEW_AXIOMS="$(cfg review_axioms_module)"
 REVIEW_ROOT="$(cfg review_root)"
@@ -843,7 +849,7 @@ layer_files() {
 # lean_scan <sorry|example> <count|lines> <files...>: Lean source with comments (nested block comments and
 # docstrings, line comments) removed, and string, raw string and char literals (interpolations included) masked;
 # a name literal (`sorry) is not a match.
-# `sorry`: the tokens sorry and admit. `example`: an `example` other than a bare `example := @Name` reference
+# `sorry`: the tokens sorry and admit. `example`: an `example` other than a bare `example := @Name` (or ``Name) reference
 # (nothing after the name but the next command at column 0, or the end of the file: an argument must be
 # indented, so none can follow). An example never enters the environment, so neither check-decls nor the axiom
 # audit sees its proof (one built on an unfinished lemma would pass unseen). Prints the number of matches
@@ -852,8 +858,8 @@ lean_scan() {
   python3 -I - "$@" <<'PY'
 import re, sys
 pats = {"sorry": r"(?<![\w.'`])(?:sorry|admit)(?![\w'!?])", "example": r"(?<![\w.'`])example(?![\w'!?])"}
-ref = re.compile(r"example[ \t]*:=[ \t]*@[\w.'«»!?₀-₉]+[ \t]*(?:\n\s*)*")
-def bare_ref(code, at):  # `example := @Name`, then only the next command (a column-0 word, `#`, `@[`) or the end
+ref = re.compile(r"example[ \t]*:=[ \t]*(?:@|``)[\w.'«»!?₀-₉]+[ \t]*(?:\n\s*)*")
+def bare_ref(code, at):  # `example := @Name` or ``Name, then only the next command (a column-0 word, `#`, `@[`) or the end
     r = ref.match(code, at)
     if not r: return False
     k = r.end()
@@ -942,7 +948,8 @@ $FX/grep/Example.lean:11: example : 5 = 5 := rfl
 $FX/grep/Example.lean:12: example := @id<|rfl
 $FX/grep/Example.lean:13: example := @Nat.succ \"x\"
 $FX/grep/Example.lean:14: example := @Nat.succ 'x'
-$FX/grep/Example.lean:15: example := @Nat.succ r\"x\"" ]] && echo "  ok: only the proof examples of grep/Example.lean are flagged" ||
+$FX/grep/Example.lean:15: example := @Nat.succ r\"x\"
+$FX/grep/Example.lean:18: example := \`\`Nat.succ rfl" ]] && echo "  ok: only the proof examples of grep/Example.lean are flagged" ||
     { echo "  example scan: '$out'"; rc=1; }
   [[ $(grep_7b "$FX/grep/BadSpecMeta.lean" | wc -l) -eq 4 ]] && echo "  ok: 7b flags grep/BadSpecMeta.lean" || { echo "  7b misses grep/BadSpecMeta.lean"; rc=1; }
   [[ $(grep_7c "$FX/grep/lakefile-bad.toml" | wc -l) -ge 2 ]] && echo "  ok: 7c flags grep/lakefile-bad.toml" || { echo "  7c misses grep/lakefile-bad.toml"; rc=1; }
@@ -1084,10 +1091,17 @@ docs_ok() {
   [[ -n "$want" && "$got" == "$want" ]] ||
     { echo "  FAIL[docs] $readme lists other files than expected:"; diff <(echo "$want") <(echo "$got") | sed 's/^/    /'; return 1; }
 }
+DOCS=(python3 -I scripts/check-docs.py)
 step_docs() {
-  local files=()
+  local files=() rc=0
   mapfile -t files < <(for m in "${SPEC_MODULES[@]}"; do mod_file "$m"; done)
-  docs_ok README.md "${files[@]}" && echo "  README.md lists the ${#files[@]} files of the trusted layers"
+  { docs_ok README.md "${files[@]}" && echo "  README.md lists the ${#files[@]} files of the trusted layers"; } || rc=1
+  # The name index is a module of a test library, so step 1 builds it (and the generated root imports it).
+  awk -F'\t' -v m="$NAME_INDEX" '$2 == m { print $1 }' "$INV" | grep -qxF -f <(printf '%s\n' "${TEST_LIBS[@]}") ||
+    { echo "  FAIL[docs] name_index_module $NAME_INDEX is not a module of a test library (${TEST_LIBS[*]})"; rc=1; }
+  "${DOCS[@]}" names "$(mod_file "$NAME_INDEX")" "${DOC_NAME_FILES[@]}" || rc=1
+  "${DOCS[@]}" codeowners .github/CODEOWNERS . "$CODE_OWNER" "${OWNED_PATHS[@]}" || rc=1
+  return "$rc"
 }
 selftest_docs() {
   set +e
@@ -1097,6 +1111,35 @@ selftest_docs() {
   expect_fail 'FAIL[docs]' docs_ok "$FX/README-good.md" "${good[0]}" || rc=1
   expect_fail 'FAIL[docs]' docs_ok "$FX/README-good.md" || rc=1
   expect_fail 'FAIL[docs] ' docs_ok "$FX/comparator/README.md" "${good[@]}" || rc=1
+  local d="$FX/docs" own=(codeowners "$FX/docs/tree" @o f.txt D Spec)
+  expect_pass "${DOCS[@]}" names "$d/Index.lean" "$d/good.md" || rc=1
+  expect_fail 'does not list (example := ``Consensus.Absent)' "${DOCS[@]}" names "$d/Index.lean" "$d/unlisted.md" || rc=1
+  expect_fail 'does not list (example := ``Consensus.InBlock)' "${DOCS[@]}" names "$d/Index.lean" "$d/block-comment.md" || rc=1
+  expect_fail 'does not list (example := ``Consensus.InNested)' "${DOCS[@]}" names "$d/Index.lean" "$d/nested-comment.md" || rc=1
+  expect_fail 'does not list (example := ``Consensus.InLine)' "${DOCS[@]}" names "$d/Index.lean" "$d/line-comment.md" || rc=1
+  expect_fail 'Index-string.lean:3: not a' "${DOCS[@]}" names "$d/Index-string.lean" "$d/good.md" || rc=1
+  expect_fail 'Index-guard.lean:2: not a' "${DOCS[@]}" names "$d/Index-guard.lean" "$d/good.md" || rc=1
+  expect_fail 'Index-at.lean:2: not a' "${DOCS[@]}" names "$d/Index-at.lean" "$d/good.md" || rc=1
+  expect_fail 'fenced.md cites `Consensus.Absent`' "${DOCS[@]}" names "$d/Index.lean" "$d/fenced.md" || rc=1
+  expect_fail 'prose.md cites `Consensus.Absent`' "${DOCS[@]}" names "$d/Index.lean" "$d/prose.md" || rc=1
+  expect_fail '`Consensus.«Listed»` is not a plain name' "${DOCS[@]}" names "$d/Index.lean" "$d/quoted.md" || rc=1
+  expect_fail '`Consensus.Listed℘` is not a plain name' "${DOCS[@]}" names "$d/Index.lean" "$d/oddchar.md" || rc=1
+  expect_fail 'cites `Consensus.Absent2`' "${DOCS[@]}" names "$d/Index.lean" "$d/quote-root.md" || rc=1
+  expect_fail 'cites `Consensus.Absent3_`' "${DOCS[@]}" names "$d/Index.lean" "$d/quote-root.md" || rc=1
+  expect_fail "cites \`Consensus.Absent'\`" "${DOCS[@]}" names "$d/Index.lean" "$d/quote.md" || rc=1
+  expect_fail 'cannot read doc' "${DOCS[@]}" names "$d/Index.lean" "$d/good.md" "$d/absent.md" || rc=1
+  expect_fail 'cannot read name index' "${DOCS[@]}" names "$d/absent.lean" "$d/good.md" || rc=1
+  expect_fail 'no doc files given' "${DOCS[@]}" names "$d/Index.lean" || rc=1
+  expect_pass "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-good" "${own[@]:1}" || rc=1
+  expect_fail 'does not list B' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-good" "${own[@]:1}" B || rc=1
+  expect_fail 'lists scripts, which is not' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-extra" "${own[@]:1}" || rc=1
+  expect_fail 'is not anchored' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-unanchored" "${own[@]:1}" || rc=1
+  expect_fail 'trailing slash, but f.txt is not a directory' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-fileslash" "${own[@]:1}" || rc=1
+  expect_fail 'trailing slash, but Spec is not a directory' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-absentslash" "${own[@]:1}" || rc=1
+  expect_fail 'is owned by nobody' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-ownerless" "${own[@]:1}" || rc=1
+  expect_fail 'is owned by @o @x, not exactly @o' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-otherowner" "${own[@]:1}" || rc=1
+  expect_fail 'is listed twice' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-duplicate" "${own[@]:1}" || rc=1
+  expect_fail 'no paths given' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-good" "${own[@]:1:2}" || rc=1
   set -e
   return "$rc"
 }
@@ -1268,8 +1311,8 @@ full_only "10 lake check (+ fixtures/lakecheck-{bad,good})" step_lake_check
 # leanchecker skips the noconst-exempt parents (step 5); step 10's replay covers them, when it runs.
 [[ "$mode" != full ]] || have_bwrap || ((${#NOCONST_EXEMPT[@]} == 0)) || ci_only+=("kernel replay of ${NOCONST_EXEMPT[*]} (lake check)")
 full_only "11 lake comparator --paranoid (+ fixtures/comparator-{good,stmt,axiom,def}.json)" step_lake_comparator
-run_step "12 docs (README spec-files = the files of the trusted layers)" step_docs
-run_selftest "12 docs self-test (README-good, README-missing)" selftest_docs
+run_step "12 docs (README spec-files = the files of the trusted layers; cited names; CODEOWNERS)" step_docs
+run_selftest "12 docs self-test (README-good, README-missing, fixtures/docs)" selftest_docs
 run_step "13 metrics (report)" step_metrics
 if [[ "$mode" == changed ]] || ((!canary)); then
   skip_step "14 rebuild canary" "--full, or --canary (CI: when the build configuration changed)"

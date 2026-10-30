@@ -1,26 +1,26 @@
-# Protected paths (docs/spec-review.md): a change needs the owner's review. Owner: @fradamt (Francesco).
-# Enforced only by a branch ruleset requiring Code Owner review, which needs @fradamt to be a collaborator
-# with write access (not yet set up). The trusted surface (Spec, challenge, comparator.json, toolchain,
-# manifest, review pins) is also checked by the CI job review-boundary (ci.yml) against the tag
-# `spec-approved` (its path list: `trusted_paths` in scripts/boundaries.toml, kept in sync with this file);
-# the check infrastructure (scripts/, .github/, lakefile) only through this file.
+# Owner: @fradamt (Francesco). Code Owner review is not enforced (no branch ruleset; issue #21). The entries are
+# exactly `[checks] trusted_paths` and `codeowners_extra` of scripts/boundaries.toml (check.sh step 12): the
+# trusted surface, approved through the tag `spec-approved` (CI's review-boundary job; docs/spec-review.md); the
+# check infrastructure, which agents review (TRUST.md, issue #21); and the mapping docs (plan §4). A directory
+# entry ends in `/` only while the directory exists (`/X` matches a file or a directory X).
 /ConsensusLean/Init.lean            @fradamt
-/ConsensusLean/Init/                @fradamt
+/ConsensusLean/Init                 @fradamt
 /ConsensusLean/Core.lean            @fradamt
-/ConsensusLean/Core/                @fradamt
+/ConsensusLean/Core                 @fradamt
 /ConsensusLean/Spec.lean            @fradamt
 /ConsensusLean/Spec/                @fradamt
 /ConsensusLean/Statements.lean      @fradamt
 /ConsensusLean/Statements/          @fradamt
 /ConsensusLean/ToMathlib.lean       @fradamt
-/ConsensusLean/ToMathlib/           @fradamt
+/ConsensusLean/ToMathlib            @fradamt
 /Challenge.lean                     @fradamt
 /comparator.json                    @fradamt
 /lean-toolchain                     @fradamt
-/lakefile.toml                      @fradamt
-/lakefile.lean                      @fradamt
 /lake-manifest.json                 @fradamt
-/scripts/                           @fradamt
 /ConsensusLeanTest/ReviewAxioms.lean @fradamt
 /ConsensusLeanTest/ReviewGuard.lean @fradamt
+/scripts/                           @fradamt
 /.github/                           @fradamt
+/lakefile.toml                      @fradamt
+/lakefile.lean                      @fradamt
+/docs/goldilocks-mapping.md         @fradamt

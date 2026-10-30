@@ -7,7 +7,8 @@ The review statement is `Consensus.Review.AcceptedGood`: accepted shapes give go
 Its three secondaries are `RegimesRealizable`, `LogFaithful`, and `HeldIffServed`.
 `scripts/check.sh` checks the trust boundary locally and in CI: fast checks on every pull request, everything
 (including kernel replay, `lake check` and the sandboxed comparator) nightly; see "Verification".
-See `TRUST.md` for the assumptions and the roles of the checks.
+See `TRUST.md` for the assumptions and the roles of the checks. Milestones and their status: `docs/roadmap.md`;
+design decisions: `docs/decisions.md`; how to contribute: `CONTRIBUTING.md` and `AGENTS.md`.
 
 ## The review statement
 
@@ -516,7 +517,7 @@ Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 4. **Spec surface:** check persisted extensions, diff the complete readable/structural snapshot (including pins/options), enforce theorem hygiene and constant-free parents; the `reach` report (which Spec definitions the review statements reach; not a gate) runs in `--full`, in `--changed` when step 4 runs, and in `--fast` with `--reach`.
 5. **Kernel replay:** run leanchecker on every leaf module of the checked libraries, one module per process after checking it has no descendants, two processes at a time (`REPLAY_JOBS`); parent modules own no constants.
 6. **Review pins:** require the tests root to import the compiled alpha-equality guards and exact axiom pins.
-7. **Backstop:** grep for `sorry`/`admit` outside the sorry layers (comments included; their count inside them, comments and strings removed, is reported), proof `example`s (only a bare `example := @Name` reference is allowed), native proofs, kernel bypasses and `debug.` options, Spec metacommands and unsafe lakefile options.
+7. **Backstop:** grep for `sorry`/`admit` outside the sorry layers (comments included; their count inside them, comments and strings removed, is reported), proof `example`s (only a bare `example := @Name` or ``` example := ``Name ``` reference is allowed), native proofs, kernel bypasses and `debug.` options, Spec metacommands and unsafe lakefile options.
 8. **Vendored:** verify all vendored EthLib copies against `scripts/vendor.sha256`.
 9. **Comparator config:** pin challenge/solution modules, all four statement names and exactly the three standard axioms; validate the Spec-only challenge.
 10. **Lake check (needs bubblewrap; skipped and listed as CI-only where `bwrap` is missing):** sandboxed build, export and kernel replay of the default targets, rejecting extra axioms. It rejects `sorryAx` too, so it checks the default targets only while the files of the sorry layers hold no `sorry`/`admit` token outside comments and strings (plan §5; otherwise a NOTE and, in CI, a warning); then the certified part is the `Solution` closure (3b, 5, 11). Its fixtures always run.
@@ -838,7 +839,10 @@ On the shared box every build and check runs in a job (replace `<name>` and `<wo
 `check.sh` refuses to run without `RUN_DIR` (set by `job`) or `CI`. Elsewhere: `CI=1 scripts/check.sh --full`.
 
 `lake test` checks every cited name (`ConsensusLeanTest/Index.lean`) and compiles the review
-type/axiom pins (`ConsensusLeanTest/ReviewAxioms.lean`). `--no-build` skips compilation but still
+type/axiom pins (`ConsensusLeanTest/ReviewAxioms.lean`). Step 12 checks, without a build, that every name
+`docs/roadmap.md` and `docs/goldilocks-mapping.md` cite is in that index (as FLT's `checkdecls`
+checks its blueprint), and that `.github/CODEOWNERS` lists exactly `trusted_paths` and `codeowners_extra`
+(`scripts/check-docs.py`). `--no-build` skips compilation but still
 uses Lake's freshness gate, so stale artifacts fail. Snapshot/extension updates fail deliberately so
 their diff is reviewed; CI refuses update flags and `--no-build`, and checks that the tree stays clean.
 
@@ -872,10 +876,12 @@ approved 2026-10-29); only the owner, or an
 agent he explicitly authorizes, moves it. CI job `review-boundary` fails while the trusted surface differs
 from that tag (it would only warn if the tag did not exist), so a PR changing it is approved by moving the
 tag to the PR's head before merge. The check infrastructure (`scripts/**`, `.github/**`, `lakefile.toml`,
-`lakefile.lean`, which must not exist) is owner-reviewed through `.github/CODEOWNERS` and PR review.
+`lakefile.lean`, which must not exist) is not covered by the tag: agents review it (`TRUST.md`, issue #21).
 Reviewing the snapshot diff is the act that approves a Spec change; the comparator cannot replace that
 review. `docs/spec-review.md` records what was approved and what changed since 2852f717.
 
-Design and history: `repos/goldilocks/notes/generic-interface/layers-plan.md`
-in the workbench (latest: "Iteration 6: the definition of a good protocol");
-the iteration-6 plan and reviews are in the run folder `iter6/`.
+Design and history: `docs/decisions.md` summarises the design decisions; the full record is in the workbench:
+the index of this repository's decisions, plans and research is
+`repos/goldilocks/notes/generic-interface/consensus-lean/README.md`; the earlier layer design is
+`repos/goldilocks/notes/generic-interface/layers-plan.md` ("Iteration 6: the definition of a good protocol";
+its plan and reviews are in the run folder `iter6/`).
