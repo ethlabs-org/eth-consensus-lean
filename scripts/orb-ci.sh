@@ -8,7 +8,9 @@
 # It copies itself to $ORB_CI_HOME and runs the copy, checks out each head (a PR merged into main first, like
 # GitHub's merge commit) in its own worktree $ORB_CI_HOME/wt with hard-linked Lake packages, and keeps logs in
 # $ORB_CI_HOME/logs. Options: --once (one pass, then exit). Environment: ORB_CI_HOME (default ~/orb-ci),
-# ORB_CI_INTERVAL (seconds between passes, default 600), ORB_CI_REPO (the checkout it was started from).
+# ORB_CI_INTERVAL (seconds between passes, default 600), ORB_CI_REPO (the checkout it was started from),
+# ORB_CI_SIGN (the comments' sign-off), ORB_CI_JOB (the shared box: `job` options and scope, e.g.
+# '--mem 16G --cpus 8 consensus-lean'; each check.sh run is then a box `job`, waited for; unset in an orb).
 # Mode as in ci.yml: docs-only change -> `check.sh --changed <base>`; otherwise `--fast`, with `--selftests` when
 # scripts/ or the build configuration changed and `--canary` when the build configuration changed; then
 # scripts/review-boundary.sh <base> and a clean-tree check. <base>: the previously checked main head (if an
@@ -26,6 +28,24 @@ SLUG="$(gh repo view "$(git -C "$REPO" remote get-url origin)" --json nameWithOw
 export PATH="$HOME/.elan/bin:$PATH"
 mkdir -p "$LOGS"; touch "$DONE"
 log() { echo "$(date -u +%FT%TZ) $*"; }
+SIGN="${ORB_CI_SIGN:-— amp-orbs (process, orb-ci)}"
+
+in_ci() {  # in_ci <cmd...>: run the command with CI set; with ORB_CI_JOB, in a box `job` (which sets RUN_DIR)
+  [[ -n "${ORB_CI_JOB:-}" ]] || { CI=1 RUN_DIR="$(mktemp -d)" "$@"; return; }
+  local opts unit st run rc
+  read -ra opts <<<"$ORB_CI_JOB"
+  # The job's output goes to its run folder (not the journal, which may drop lines), printed when it ends.
+  unit="$(job "${opts[@]}" orb-ci -- bash -c 'CI=1 LAKE_RESTORE_ARTIFACTS=true "$@" >"$RUN_DIR/out.log" 2>&1' _ "$@" |
+    awk '$1 == "started" { print $2 }')"
+  [[ -n "$unit" ]] || { echo "orb-ci: job did not start"; return 1; }
+  while systemctl --user -q is-active "$unit"; do sleep 10; done
+  st="/srv/status/$(id -un).$unit.json"
+  read -r run rc < <(python3 -I -c 'import json, sys; s = json.load(open(sys.argv[1]))
+print(s.get("run_dir") or "-", s.get("exit", 1))' "$st" 2>/dev/null) || { echo "orb-ci: no status $st"; return 1; }
+  echo "orb-ci: job $unit, run folder $run, exit $rc"
+  cat "$run/out.log"
+  return "$rc"
+}
 
 setup_worktree() {
   [[ -d "$WT" ]] && return 0
@@ -85,9 +105,9 @@ print("\n".join(tomllib.load(open("scripts/boundaries.toml", "rb"))["checks"]["t
   {
     echo "orb-ci: $kind $id at $head (base ${base:-none}), mode $mode ${flags[*]}"
     if [[ "$mode" == changed ]]; then
-      CI=1 RUN_DIR="$(mktemp -d)" scripts/check.sh --changed "$base" || rc=1
+      in_ci scripts/check.sh --changed "$base" || rc=1
     else
-      CI=1 RUN_DIR="$(mktemp -d)" scripts/check.sh --fast "${flags[@]}" || rc=1
+      in_ci scripts/check.sh --fast "${flags[@]}" || rc=1
     fi
     echo "--- review boundary ---"; scripts/review-boundary.sh "$base" || rc=1
     [[ -z "$(git status --porcelain)" ]] || { echo "tree not clean:"; git status --porcelain; rc=1; }
@@ -100,16 +120,16 @@ print("\n".join(tomllib.load(open("scripts/boundaries.toml", "rb"))["checks"]["t
     record "$ref" "$head" "$what" "PASSED in ${secs}s"
     body="**orb-ci: PASSED** on \`${head:0:8}\` (merged into main \`${base:0:8}\`): \`check.sh $what\`, review boundary, clean tree; ${secs}s. Fallback CI while Actions is down (#50, results: #$ISSUE).
 
-— amp-orbs (process, orb-ci)"
+$SIGN"
   else
     fails="$(grep -E '^(FAIL|::error)' "$lg" | head -20)"
     record "$ref" "$head" "$what" "**FAILED** in ${secs}s"
     body="**orb-ci: FAILED** on \`${head:0:8}\` ($ref): \`check.sh $what\`, ${secs}s. Fallback CI while Actions is down (#50, results: #$ISSUE).
 
 \`\`\`
-${fails:-(no FAIL line; see the log in the orb: $lg)}
+${fails:-(no FAIL line; see the log $lg)}
 \`\`\`
-— amp-orbs (process, orb-ci)"
+$SIGN"
   fi
   if [[ "$kind" == pr ]]; then gh pr comment "$id" -R "$SLUG" --body "$body" >/dev/null || log "cannot comment on PR #$id"
   elif ((rc != 0)) && [[ "$kind" == main ]]; then gh issue comment 17 -R "$SLUG" --body "$body" >/dev/null || log "cannot comment on #17"; fi
