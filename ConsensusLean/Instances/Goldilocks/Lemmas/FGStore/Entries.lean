@@ -21,7 +21,7 @@ variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (
 /-! ## One block of the state transition -/
 
 /-- A progress bit after counting is old or set by a counted attestation on the entry. -/
-private theorem mem_foldl_prog {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
+theorem mem_foldl_prog {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
     {v : Fin n} (h : v ∈ (atts.foldl FG.ChainState.processAtt σ).prog) :
     v ∈ σ.prog ∨ ∃ a ∈ atts, a.val = v ∧ a.T = σ.Th := by
   induction atts generalizing σ with
@@ -41,7 +41,7 @@ private theorem mem_foldl_prog {n : Nat} {σ : FG.ChainState n} {atts : List (FG
 /-- An accepted block counts its attestations into the progress set `p`; then the state keeps
 its height, entry and progress set `p`, or (with a quorum in `p`) enters a new height with an
 empty progress set. The target set stays inside the progress set. -/
-private theorem step_prog {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
+theorem step_prog {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
     (h : gp.stateTransition σ B = some σ') (ht : σ.target ⊆ σ.prog) :
     σ'.target ⊆ σ'.prog ∧ ∃ p : Finset (Fin gp.n),
       (∀ v ∈ p, v ∈ σ.prog ∨ ∃ a ∈ B.atts, a.val = v ∧ a.T = σ.Th) ∧
@@ -66,7 +66,7 @@ private theorem step_prog {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : 
 /-! ## The store of an honest node along the trace -/
 
 /-- `fg_on_attestation` writes only the pool, adding at most its attestation. -/
-private theorem onAttestation_fields (st : Store P ACP) (b : FG.Att P.n) :
+theorem onAttestation_fields (st : Store P ACP) (b : FG.Att P.n) :
     (st.onAttestation b).blocks = st.blocks ∧ (st.onAttestation b).σ = st.σ ∧
       ∀ a ∈ (st.onAttestation b).atts, a ∈ st.atts ∨ a = b := by
   unfold onAttestation
@@ -75,7 +75,7 @@ private theorem onAttestation_fields (st : Store P ACP) (b : FG.Att P.n) :
   · exact ⟨rfl, rfl, fun a ha => by simpa using ha⟩
 
 /-- `addAtts` writes only the pool, adding at most the attestations of its list. -/
-private theorem addAtts_fields (st : Store P ACP) (l : List (FG.Att P.n)) :
+theorem addAtts_fields (st : Store P ACP) (l : List (FG.Att P.n)) :
     (st.addAtts l).blocks = st.blocks ∧ (st.addAtts l).σ = st.σ ∧
       ∀ a ∈ (st.addAtts l).atts, a ∈ st.atts ∨ a ∈ l := by
   induction l generalizing st with
@@ -92,7 +92,7 @@ private theorem addAtts_fields (st : Store P ACP) (l : List (FG.Att P.n)) :
 
 /-- An accepted block: its tests, its state transition, and the blocks, states and pool it
 writes. -/
-private theorem onBlock_fields {st st' : Store P ACP} {B : NodeBlock P ACP}
+theorem onBlock_fields {st st' : Store P ACP} {B : NodeBlock P ACP}
     (h : st.onBlock B = some st') :
     ∃ (pr : Nat) (σ' : FG.ChainState P.n), st.blocks B.root = none ∧ (st.blocks pr).isSome ∧
       B.parent = some pr ∧
@@ -110,12 +110,12 @@ private theorem onBlock_fields {st st' : Store P ACP} {B : NodeBlock P ACP}
   exact h3 a h
 
 /-- An honest node starts from the initial store. -/
-private theorem store_zero (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) :
+theorem store_zero (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) :
     tr.store y 0 = Store.init acp₀ := by
   simp [FGTrace.store, Trace.state, hr.init y hy]
 
 /-- The store after an honest node's acceptance is the one that `fg_on_block` returns. -/
-private theorem accept_onBlock (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H)
+theorem accept_onBlock (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H)
     {k : Nat} {B : NodeBlock P ACP} (h : tr.AcceptAt y k B) :
     (tr.store y k).onBlock B = some (tr.store y (k + 1)) := by
   obtain ⟨rfl, hl⟩ := h
@@ -124,7 +124,7 @@ private theorem accept_onBlock (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy
   · cases h2
 
 /-- One cut of an honest node: its store stays, accepts a block, or processes an attestation. -/
-private theorem store_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (m : Nat) :
+theorem store_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (m : Nat) :
     tr.store y (m + 1) = tr.store y m ∨
       (∃ B, tr.AcceptAt y m B ∧ (tr.store y m).onBlock B = some (tr.store y (m + 1))) ∨
       ∃ a, tr.CallAt y m (.attestation a) ∧
@@ -147,7 +147,7 @@ private theorem store_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y
     simp only [FGTrace.store, Trace.state, hc, ↓reduceIte]
 
 /-- A held root stays held, with the same block and state. -/
-private theorem held_mono (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {k m : Nat}
+theorem held_mono (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {k m : Nat}
     (hkm : k ≤ m) {r : Nat} {Z : NodeBlock P ACP} (hZ : (tr.store y k).blocks r = some Z) :
     (tr.store y m).blocks r = some Z ∧ (tr.store y m).σ r = (tr.store y k).σ r := by
   induction m, hkm using Nat.le_induction with
@@ -164,7 +164,7 @@ private theorem held_mono (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y 
       exact ih
 
 /-- An attestation in the pool of an honest node was processed by it at an earlier cut. -/
-private theorem pool_processed (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H)
+theorem pool_processed (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H)
     (m : Nat) : ∀ a ∈ (tr.store y m).atts, ∃ k < m, tr.ProcessAt y k a := by
   induction m with
   | zero => simp [store_zero hr hy, Store.init]
@@ -184,7 +184,7 @@ private theorem pool_processed (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy
       · exact ⟨m, by omega, _, hb, List.mem_singleton_self _⟩
 
 /-- In an honest node's store, the state of a block is the transition of its parent's. -/
-private theorem step_σ (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+theorem step_σ (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {W : NodeBlock P ACP} (hW : W ∈ (tr.store y i).tree) {pr : Nat} (hp : W.parent = some pr) :
     P.fg.stateTransition ((tr.store y i).σ pr) W.fgView = some ((tr.store y i).σ W.root) := by
   rcases tree_accepted hr hy hW with rfl | ⟨k, hk, hA⟩
@@ -198,7 +198,7 @@ private theorem step_σ (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y �
   exact ht
 
 /-- In an honest node's store, genesis has the initial state. -/
-private theorem σ_genesis (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (m : Nat) :
+theorem σ_genesis (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (m : Nat) :
     (tr.store y m).σ P.genesisRoot = FG.ChainState.init P.fg := by
   have h0 : (tr.store y 0).blocks P.genesisRoot = some (P.genesisBlock acp₀) := by
     simp [store_zero hr hy, Store.init]
