@@ -35,7 +35,7 @@ private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time
   · split_ifs <;> rfl
 
 /-- The walk of a subtree of a well-formed frame ends in the frame's tree. -/
-private theorem getHead_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FGP)}
+theorem getHead_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FGP)}
     (hT : T ⊆ Φ.tree) (A : SAState sp.n) (t : Time) (V : View sp.n) (σ : Int) :
     getHead sp A Φ t T V σ ∈ Φ.tree := by
   have ha : getAnchor sp A Φ t ∈ Φ.tree := by
@@ -88,18 +88,30 @@ theorem honest_not_equivocator (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ 
   exact hne (congrArg Emission.msg (one_vote_per_slot sp _ _ _ _ _ hr _ (hxx ▸ hw) _ _ _ _ hv₁
     hv₂ ((merged_vote_slot hr hy hc _ hx).trans (merged_vote_slot hr hy hc _ hx').symm)).2)
 
+/-- An honest vote's head is a block of the call's frame, of a slot no later than the vote's. -/
+theorem honest_head_frame (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr x j ℓ e) :
+    ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot := by
+  obtain ⟨hΦ, -⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
+    rcases hr.frameLaw x hx j ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨k, ℓ', -, -, -, h⟩ <;> exact h.1
+  obtain ⟨-, hs, -, hh⟩ := castAt_spec hr hx hc
+  have hm := getHead_mem hΦ (T := ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame
+    e.msg.slot)) (fun _ hB => hB.1.1) e.readPoint (tr.time j)
+    (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)
+  exact ⟨_, hm, hh.symm, (frame_slot_le sp hr hx hc.1 _ hm).trans hs.ge⟩
+
 /-- An honest vote's head is a block of its voter's frame, of a slot no later than the
 vote's. -/
 theorem honest_head (hrun : ACRun tr H U) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
     {e : Em sp FGP} (hv : VoteAt tr x j e) :
     ∃ Hd ∈ U, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot := by
-  have hr := hrun.localRun
   obtain ⟨ℓ, hc, he⟩ := hv
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
-    rcases hr.frameLaw x hx j ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨k, ℓ', -, -, -, h⟩ <;> exact h.1
-  obtain ⟨-, hs, -, hh⟩ := castAt_spec hr hx ⟨hc, he⟩
-  refine ⟨_, hΦU ?_, hh.symm, (frame_slot_le sp hr hx hc _ ?_).trans hs.ge⟩ <;>
-    exact getHead_mem hΦ (fun _ hB => hB.1.1) _ _ _ _
+    rcases hrun.localRun.frameLaw x hx j ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨k, ℓ', -, -, -, h⟩ <;>
+      exact h.1
+  obtain ⟨Hd, hHd, h⟩ := honest_head_frame hrun.localRun hx ⟨hc, he⟩
+  exact ⟨Hd, hΦU hHd, h⟩
 
 end Consensus.Goldilocks.SA
 
