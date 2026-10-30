@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
-public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 
 public section
 
@@ -29,14 +28,6 @@ theorem fg_store_local : FGStoreLocal := fun P ACP =>
 theorem fg_store_trace : FGStoreTrace := fun P ACP =>
   { finalizedSafety := finalized_safety P ACP
     quorumFreeEntries := quorum_free_entries P ACP }
-
-/-- **FGStore, part 3.** -/
-theorem fg_store_service : FGStoreService := fun P ACP =>
-  { boundEntry := bound_entry P ACP
-    unboundEntry := unbound_entry P ACP
-    crossing := crossing P ACP
-    coverage := coverage P ACP
-    cacheAcceptance := cache_acceptance P ACP }
 
 end Consensus.Goldilocks.Store
 
