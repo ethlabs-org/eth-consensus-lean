@@ -38,7 +38,8 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   or review time worse.
 - **Trusted surface** (`ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` as `X.lean` and `X/**`,
   `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
-  `ConsensusLeanTest/Review{Axioms,Guard}.lean`): the list is `trusted_paths` in `scripts/boundaries.toml`,
+  `ConsensusLeanTest/Review{Axioms,Guard}.lean`, and since #38 the instance files
+  `Instances/<P>/{Spec,Statements}` and `Instances/<P>/Refinement/Defs.lean`, and `Lemmas/Problem/Derived.lean`): the list is `trusted_paths` in `scripts/boundaries.toml`,
   and CI also checks the list at the tag. CI's `review-boundary` fails until the `spec-approved` tag covers
   the change. Say in the PR that it needs approval; only the owner, or an agent he explicitly authorizes
   (never the PR's author on its own), moves the tag.

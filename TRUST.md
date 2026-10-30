@@ -111,8 +111,14 @@ The trusted layers (`ConsensusLean.{Init,Core,Spec,Statements,ToMathlib}`) are t
 It cannot reach proofs, instances, the solution, tests or fixtures. Pins/snapshot fix dependencies/meaning.
 The trusted surface is `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and
 `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
-`ConsensusLeanTest/ReviewAxioms.lean` and `ConsensusLeanTest/ReviewGuard.lean`. `scripts/boundaries.toml`
-(`[checks] trusted_paths`) lists it, and check-boundaries.py requires it to cover every file of a trusted layer;
+`ConsensusLeanTest/ReviewAxioms.lean` and `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
+as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every instance `P`). The instance paths are
+tag-protected but are not trusted layers: their imports are not restricted to trusted layers (the Goldilocks
+`Baseline` modules and the Bft, Streamlet and Tendermint Specs import the generic `Main` through a reviewed
+exception). The definitions the Goldilocks sheet reads from there, `Lemmas/Problem/Derived.lean`, are in the list
+too; the tag freezes their text, not everything they import. `scripts/boundaries.toml`
+(`[checks] trusted_paths`) lists it, and check-boundaries.py requires it to cover every file of a trusted or
+`protected` layer;
 CI's `review-boundary` compares those paths (literal, at the PR head and at the tag) with `spec-approved`.
 `ConsensusLean/Statements/Review.lean` must hold statements only: every non-proof constant needs a
 review pair (`ConsensusLeanTest/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers

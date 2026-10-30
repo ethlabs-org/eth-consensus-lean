@@ -418,6 +418,11 @@ edit."Fx.lean" = [["public import Fx.Lemmas.N\n", "public import Fx.Lemmas.N\npu
 expect = "FAIL[config] Fx/Init.lean (module Fx.Init, layer Init) is not covered by trusted_paths"
 edit."boundaries.toml" = [['trusted_paths = ["Fx/Init.lean", ', 'trusted_paths = [']]
 
+[ProtectedUncovered]
+expect = "FAIL[config] Fx/Lemmas/L.lean (module Fx.Lemmas.L, layer Lemmas) is not covered by trusted_paths"
+edit."boundaries.toml" = [['name = "Lemmas"', '''name = "Lemmas"
+protected = true''']]
+
 [TrustedPathMagic]
 expect = "FAIL[config] trusted_paths entry ':(exclude)Fx/Spec'"
 edit."boundaries.toml" = [['"Fx/Statements"]', '"Fx/Statements", ":(exclude)Fx/Spec"]']]

@@ -564,7 +564,7 @@ The only default target is `ConsensusLean` (`defaultTargets = ["ConsensusLean"]`
 | `Lemmas/{Problem,Model,Blocks,Shape}/` | Derived definitions, lemmas, canonical runs and witnesses. |
 | `Proofs/<M>/Main.lean` | Milestones: `Behaviour`, `RegimesRealizable`, `Faithful`. |
 | `Main.lean` | `Accepted.good` and `Accepted.activeService`. |
-| `Instances/<P>/{Spec,Statements}.lean` | Goldilocks (`Spec` and `Statements`), Bft, Streamlet, Tendermint (`Spec`). |
+| `Instances/<P>/Spec.lean`, `Instances/<P>/{Spec,Statements}/` | Goldilocks (`Spec/`, `Statements/`: the baseline sheet in `Baseline.lean`, milestone statements beside it), Bft, Streamlet, Tendermint (`Spec.lean`). |
 
 `Init.lean` is imported last by `Spec/Problem/Basic.lean` and `Spec/Model/Objects.lean`,
 so every module reaches it. It is part of the trusted surface.
@@ -749,7 +749,7 @@ are the intended ones.
 
 ### Goldilocks
 
-`ConsensusLean/Instances/Goldilocks/Spec.lean` pins the numbers (round-model FG-SA,
+`ConsensusLean/Instances/Goldilocks/Spec/Baseline.lean` pins the numbers (round-model FG-SA,
 `Δ_F = Δ`, `κ = 2`, slow arming; `FGSAParams = ⟨R, lockK, eta⟩`):
 
 | Number | Value |
@@ -761,9 +761,10 @@ are the intended ones.
 | progress | `.recur ⟨single, k⟩`; final `.recur ⟨range(3R+κ), gf·R⟩` (tolerant indices: `k = 2`, `gf = 5`) |
 
 `GoldilocksTarget F pp := GoldilocksBindings F ∧ Accepted F (goldilocksContract
-pp) ∧ GoldilocksExtra F pp` is a reviewed target, not a proof that FG-SA meets
-it; it is never changed to fit FG-SA. The sheet
-(`ConsensusLean/Instances/Goldilocks/Statements.lean`) holds every intended-property
+pp) ∧ GoldilocksExtra F pp` is a pre-foundation target, **not approved** (#38): no
+proof targets it until the first slice (#10) re-reviews it against the current Goldilocks spec; it is
+never changed to fit FG-SA. The sheet
+(`ConsensusLean/Instances/Goldilocks/Statements/Baseline.lean`) holds every intended-property
 disposition: proved (`GoldilocksTarget.*`), stated (`GoldilocksExtraAt`
 fields), not yet stated (§3), weaker than intended, and the twelve migration
 obligations with the regime risk (obligations (1), (4), (9)).
@@ -868,7 +869,12 @@ comparator 1, setup 2). Fast tier (measured on PR #15, with self-tests because i
 The owner-review boundary is separate from correctness. The **trusted surface** is
 `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and `X/**`), `Challenge.lean`,
 `comparator.json`, `lean-toolchain`, `lake-manifest.json`, `ConsensusLeanTest/ReviewAxioms.lean` and
-`ConsensusLeanTest/ReviewGuard.lean`. The list lives in `scripts/boundaries.toml`
+`ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
+as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every instance `P`). The instance paths are
+tag-protected but are not trusted layers: their imports are not restricted to trusted layers (the Goldilocks
+`Baseline` modules and the Bft, Streamlet and Tendermint Specs import the generic `Main` through a reviewed
+exception). The definitions the Goldilocks sheet reads from there, `Lemmas/Problem/Derived.lean`, are in the list
+too; the tag freezes their text, not everything they import. The list lives in `scripts/boundaries.toml`
 (`[checks] trusted_paths`, plain paths that must cover every spec-group file); CI reads it as literal
 paths at the PR head and at the tag. The annotated git tag
 `spec-approved` marks the last approved commit (the PR #30 head: the verbatim move of #5; before it 4b7c5148,

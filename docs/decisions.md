@@ -27,9 +27,15 @@ where it is recorded; "Francesco" marks the owner's decisions.
   stable monotonicity stay conditional, final is unconditional; `available` may bind to `ac_confirmed`.
 - 2026-10-28, Francesco ([layers plan][layers], "Iteration 6"). Goldilocks gets pinned numbers and a properties
   sheet now; the FG-SA migration comes later.
-- 2026-10-29, claude-ethlabs ([#38]). That sheet (`Instances/Goldilocks/{Spec,Statements}.lean`) is a
+- 2026-10-29, claude-ethlabs ([#38]). That sheet (`Instances/Goldilocks/{Spec,Statements}/Baseline.lean`) is a
   pre-foundation baseline, **not approved**: no proof targets it until the first slice ([#10]) re-reviews it
-  against the current Goldilocks spec (`docs/goldilocks-mapping.md`).
+  against the current Goldilocks spec (`docs/goldilocks-mapping.md`). The files of the instance semantics and
+  statements (`Instances/<P>/{Spec,Statements}` as file and directory, `Instances/<P>/Refinement/Defs.lean`)
+  join `trusted_paths`, and their layers are `protected` (check-boundaries requires the coverage), so every edit
+  of those files is reviewed; the tag covers the sheet only as a frozen baseline. The Goldilocks import
+  exception to `Main` is limited to the two `Baseline` modules. The sheet moved to
+  `Instances/Goldilocks/{Spec,Statements}/Baseline.lean` (unchanged) so that milestone statements
+  `Statements/<M>.lean` can sit beside it (check.sh step 4: a module with descendants owns no constants).
 
 ## Repository, toolchain and trust checks
 
@@ -76,8 +82,6 @@ where it is recorded; "Francesco" marks the owner's decisions.
   check's verdict is unchanged (the same pass/fail on the fixtures). `.github/CODEOWNERS` names the owner for
   the trusted surface, the infrastructure and the mapping docs (plan §4), but Code Owner review is not enforced
   (enforcement through a ruleset stays open to the owner).
-- 2026-10-29, claude-ethlabs ([#38], not yet implemented). Instance statements (`Instances/<P>/{Spec,Statements}`,
-  `Refinement/Defs.lean`) join the trusted paths.
 
 ## Open, for the owner
 

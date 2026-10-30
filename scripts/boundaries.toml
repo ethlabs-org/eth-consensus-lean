@@ -59,7 +59,8 @@ name = "Solution"
 # in Core, Spec, Statements and the instance Spec/Statements layers; none in Lemmas, Proofs, Main and ToMathlib,
 # where a definition used elsewhere gets characterising lemmas instead; check-boundaries.py refuses `expose` on a
 # Lemmas, Proofs, ToMathlib or Main layer). Solution and Test also have it: they are leaves (nothing imports them),
-# so exposure there costs no rebuild. An empty layer is allowed.
+# so exposure there costs no rebuild. `protected`: not trusted, but `trusted_paths` must cover its files (the tag
+# freezes their text; check-boundaries.py). An empty layer is allowed.
 [[layer]]
 name = "Init"
 prefixes = ["ConsensusLean.Init"]
@@ -138,6 +139,7 @@ name = "Instances.Goldilocks.Spec"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Spec"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
+protected = true
 about = "Goldilocks semantics and pinned contract"
 
 [[layer]]
@@ -145,13 +147,15 @@ name = "Instances.Goldilocks.Statements"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Statements"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec"]
-about = "Goldilocks reviewed target (the properties sheet; also holds its §1 proofs)"
+protected = true
+about = "Goldilocks statements: milestone statements, and the pre-foundation sheet Baseline (not approved; holds its §1 proofs)"
 
 [[layer]]
 name = "Instances.Bft.Spec"
 prefixes = ["ConsensusLean.Instances.Bft.Spec"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
+protected = true
 about = "the BFT contract shape shared by Streamlet and Tendermint"
 
 [[layer]]
@@ -159,6 +163,7 @@ name = "Instances.Streamlet.Spec"
 prefixes = ["ConsensusLean.Instances.Streamlet.Spec"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
+protected = true
 about = "Streamlet as a value"
 
 [[layer]]
@@ -166,6 +171,7 @@ name = "Instances.Tendermint.Spec"
 prefixes = ["ConsensusLean.Instances.Tendermint.Spec"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
+protected = true
 about = "Tendermint as a value"
 
 [[layer]]
@@ -209,11 +215,15 @@ reason = """RegimesRealizable builds on the Behaviour milestone (plan §0 rule 1
 import; plan §4 would state it as Behaviour -> RegimesRealizable in RegimesRealizable's Main)."""
 
 [[exception]]
-from = ["ConsensusLean.Instances.Goldilocks", "ConsensusLean.Instances.Bft.Spec"]
+from = ["ConsensusLean.Instances.Goldilocks.Spec.Baseline", "ConsensusLean.Instances.Goldilocks.Statements.Baseline",
+        "ConsensusLean.Instances.Bft.Spec"]
 to = ["ConsensusLean.Main"]
 reason = """The instance Specs are values of the generic contract and import the generic Main (Accepted.good and
 its corollaries). Plan §2: Instances.P.Spec imports only generic Core and Spec, and the link to the contract
-is the refinement milestone (Instances.P.Refinement.Defs + Proofs); until that layer lands."""
+is the refinement milestone (Instances.P.Refinement.Defs + Proofs); until that layer lands. For Goldilocks only the
+pre-foundation Baseline modules: an exception does not extend to their importers, so a milestone statement that
+imported a Baseline module would fail the closure walk (it must not depend on Main or Lemmas, which the tag does not
+cover)."""
 
 [[exception]]
 from = ["ConsensusLean.Instances.Streamlet.Spec", "ConsensusLean.Instances.Tendermint.Spec"]
@@ -276,4 +286,23 @@ trusted_paths = ["ConsensusLean/Init.lean", "ConsensusLean/Init", "ConsensusLean
                  "ConsensusLean/Spec.lean", "ConsensusLean/Spec", "ConsensusLean/Statements.lean",
                  "ConsensusLean/Statements", "ConsensusLean/ToMathlib.lean", "ConsensusLean/ToMathlib",
                  "Challenge.lean", "comparator.json", "lean-toolchain", "lake-manifest.json",
-                 "ConsensusLeanTest/ReviewAxioms.lean", "ConsensusLeanTest/ReviewGuard.lean"]
+                 "ConsensusLeanTest/ReviewAxioms.lean", "ConsensusLeanTest/ReviewGuard.lean",
+                 # Instance semantics and statements (#38; foundation plan §1, §4): for every instance P,
+                 # Instances/P/{Spec,Statements} as file and directory and Instances/P/Refinement/Defs.lean,
+                 # existing or not. The layers marked `protected` must be covered (check-boundaries.py).
+                 # Lemmas/Problem/Derived.lean: the definitions the Goldilocks Baseline sheet reads (FaultsBelow,
+                 # Safe, ReadySafeUpTo), so that no unreviewed edit changes what the sheet says.
+                 "ConsensusLean/Lemmas/Problem/Derived.lean",
+                 "ConsensusLean/Instances/Bft/Spec.lean", "ConsensusLean/Instances/Bft/Spec",
+                 "ConsensusLean/Instances/Bft/Statements.lean", "ConsensusLean/Instances/Bft/Statements",
+                 "ConsensusLean/Instances/Bft/Refinement/Defs.lean", "ConsensusLean/Instances/Goldilocks/Spec.lean",
+                 "ConsensusLean/Instances/Goldilocks/Spec", "ConsensusLean/Instances/Goldilocks/Statements.lean",
+                 "ConsensusLean/Instances/Goldilocks/Statements",
+                 "ConsensusLean/Instances/Goldilocks/Refinement/Defs.lean",
+                 "ConsensusLean/Instances/Streamlet/Spec.lean", "ConsensusLean/Instances/Streamlet/Spec",
+                 "ConsensusLean/Instances/Streamlet/Statements.lean", "ConsensusLean/Instances/Streamlet/Statements",
+                 "ConsensusLean/Instances/Streamlet/Refinement/Defs.lean",
+                 "ConsensusLean/Instances/Tendermint/Spec.lean", "ConsensusLean/Instances/Tendermint/Spec",
+                 "ConsensusLean/Instances/Tendermint/Statements.lean",
+                 "ConsensusLean/Instances/Tendermint/Statements",
+                 "ConsensusLean/Instances/Tendermint/Refinement/Defs.lean"]

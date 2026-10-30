@@ -5,7 +5,7 @@ file per instance). Every Lean name here is fully qualified (namespace `Consensu
 `ConsensusLeanTest/Index.lean`, whose build checks that it exists (check.sh step 12).
 
 **Status: skeleton.** The only Goldilocks Lean today is the pre-foundation baseline
-(`ConsensusLean/Instances/Goldilocks/{Spec,Statements}.lean`): the round-model FG-SA numbers and the properties
+(`ConsensusLean/Instances/Goldilocks/{Spec,Statements}/Baseline.lean`): the round-model FG-SA numbers and the properties
 sheet. It is **not approved** and no proof targets it (issue #38). The first slice (issue #10) re-derives the
 statements from the current spec and fills the "First slice" table; each row then gets a read-back by an agent
 that did not write it (`CONTRIBUTING.md` "Statements").
@@ -43,7 +43,7 @@ All in fradamt-agent/goldilocks, `spec/`:
 
 What the model leaves out, and why. Generic exclusions (static adversary, equal weights, one `Δ`, no
 responsiveness claim, no transaction validity, …) are in README "Scope". For the baseline, the sheet's module
-docstring (`ConsensusLean/Instances/Goldilocks/Statements.lean`) lists the intended properties not yet stated
+docstring (`ConsensusLean/Instances/Goldilocks/Statements/Baseline.lean`) lists the intended properties not yet stated
 (§3), those stated weaker than intended, and the migration obligations. Known differences between the baseline
 and SPEC (issue #38): lock lifetime and outage budget, FG attestations after every tick instead of once per
 round, and the loose-BJ bounds (`K_W = 2`, general `Δ_F`). The first slice replaces this paragraph with one row

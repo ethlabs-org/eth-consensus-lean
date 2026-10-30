@@ -13,7 +13,21 @@ granted to claude-ethlabs 2026-10-29): protected Spec / review statements / chal
 The **trusted surface**, checked by CI's `review-boundary` job against the tag (any difference fails), is the
 list `trusted_paths` in `scripts/boundaries.toml` (since #5): `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}`
 (each as `X.lean` and `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
-`ConsensusLeanTest/ReviewAxioms.lean`, `ConsensusLeanTest/ReviewGuard.lean`. At `4b7c5148` it was `ConsensusSpec/**`,
+`ConsensusLeanTest/ReviewAxioms.lean`, `ConsensusLeanTest/ReviewGuard.lean`, and since #38 the instance semantics
+and statements: for every instance `P` `Instances/<P>/{Spec,Statements}` (file and directory) and
+`Instances/<P>/Refinement/Defs.lean`, existing or not; check-boundaries.py requires the `protected` instance
+layers to be covered. These are tag-protected, not trusted layers: the Goldilocks `Baseline` modules read
+definitions of the generic `Main` and `Lemmas/Problem/Derived.lean` (`FaultsBelow`, `Safe`, `ReadySafeUpTo`)
+through a reviewed import exception. `ConsensusLean/Lemmas/Problem/Derived.lean`, which defines those three, is
+in `trusted_paths` too (a Lemmas file, so not a trusted layer), so no unreviewed edit changes the definitions the sheet reads (a name scan of the sheet found no other definition
+outside the trusted paths that its statements read); its elaboration still depends on the unprotected modules it
+imports (a new declaration in `Consensus.Shape`, an instance or a notation there could change how its names
+resolve), so the tag freezes the sheet's text and definitions, not everything it imports. The exception is limited to the two `Baseline` modules and does not extend to their importers, so a
+milestone statement cannot depend on `Main` or `Lemmas`. **The Goldilocks files at #38 (`Spec/Baseline.lean`, `Statements/Baseline.lean`, moved from `Spec.lean`,
+`Statements.lean`; against the tagged files the differences are the one import of the moved Spec and #37's proof
+edit at `Statements/Baseline.lean:559` (`Trace.safe_iff.mpr`)) are a pre-foundation baseline, not
+approved**: the tag covers them so that every later edit is reviewed; no proof targets them, and approval comes
+only with the first slice (#10) re-reviewed against goldilocks `spec/goldilocks-claims.tex`. At `4b7c5148` it was `ConsensusSpec/**`,
 `ConsensusSpec.lean`, `ConsensusChallenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusTests/ReviewAxioms.lean`, `ConsensusTests/ReviewGuard.lean`; the move is recorded in
 "Move to one library `ConsensusLean` (#5)" below. The sections between describe the approved surface at

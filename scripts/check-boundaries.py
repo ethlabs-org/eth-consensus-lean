@@ -43,7 +43,8 @@ Visibility (plan §3): the attribute `expose` (whole-file `@[expose] public sect
 check-decls exemptions: a module with a `Proofs` component must be under
   `[checks].proofs_component_prefixes` and in a layer no trusted layer may reach; `Exports` is refused.
 `[checks].trusted_paths` (CI's review-boundary list) holds plain relative paths only and covers the file
-  of every module of a trusted layer.
+  of every module of a trusted layer and of every `protected` layer (an untrusted layer whose files the tag
+  still covers: the instance semantics and statements, #38).
 Failure tags: FAIL[config] FAIL[layer] FAIL[milestone] FAIL[import] FAIL[entry] FAIL[umbrella]
   FAIL[import-all] FAIL[root] FAIL[root-import] FAIL[aggregate] FAIL[init] FAIL[base] FAIL[fixture]
   FAIL[expose].
@@ -60,7 +61,7 @@ CHECKS_KEYS = {"proofs_component_prefixes", "noconst_exempt", "theorems_mode", "
                "canary_module", "canary_proof_edit", "canary_statement_edit", "doc_name_files", "name_index_module",
                "code_owner", "codeowners_extra"}
 LIB_KEYS = {"name", "default", "test_driver", "root_lists_all"}
-LAYER_KEYS = {"name", "prefixes", "allow", "trusted", "sorry", "expose", "may_import_roots", "may_import_all",
+LAYER_KEYS = {"name", "prefixes", "allow", "trusted", "protected", "sorry", "expose", "may_import_roots", "may_import_all",
               "about"}
 EXCEPTION_KEYS = {"from", "to", "reason"}
 
@@ -201,8 +202,8 @@ def validate(cfg):  # the shape of boundaries.toml (FAIL[config] findings)
             what = f"[[{kind}]] {e.get('name', n)}"
             for k in sorted(set(e) - keys):
                 bad(f"{what}: unknown key {k}")
-            for k in ("default", "test_driver", "root_lists_all", "trusted", "sorry", "expose", "may_import_roots",
-                      "may_import_all"):
+            for k in ("default", "test_driver", "root_lists_all", "trusted", "protected", "sorry", "expose",
+                      "may_import_roots", "may_import_all"):
                 if k in e and not isinstance(e[k], bool):
                     bad(f"{what}: {k} must be true or false")
             if kind != "exception" and (not isinstance(e.get("name"), str) or not e.get("name")):
@@ -426,7 +427,8 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
     for n, mods in inv.items():
         for m, p in mods:
             rel = p.relative_to(tree).as_posix()
-            if layer.get(m) in trusted_reach and not any(rel == t or rel.startswith(t + "/") for t in trusted_paths):
+            if (layer.get(m) in trusted_reach or layers.get(layer.get(m), {}).get("protected") is True) and \
+                    not any(rel == t or rel.startswith(t + "/") for t in trusted_paths):
                 fails.append(f"FAIL[config] {rel} (module {m}, layer {layer[m]}) is not covered by trusted_paths")
 
     # --- imports (lean --deps-json; the implicit prelude `Init` dropped)

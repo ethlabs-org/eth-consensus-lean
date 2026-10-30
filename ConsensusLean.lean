@@ -2,8 +2,8 @@ module  -- shake: keep-all --deprecated_module: ignore
 
 public import ConsensusLean.Init
 public import ConsensusLean.Instances.Bft.Spec
-public import ConsensusLean.Instances.Goldilocks.Spec
-public import ConsensusLean.Instances.Goldilocks.Statements
+public import ConsensusLean.Instances.Goldilocks.Spec.Baseline
+public import ConsensusLean.Instances.Goldilocks.Statements.Baseline
 public import ConsensusLean.Instances.Streamlet.Spec
 public import ConsensusLean.Instances.Tendermint.Spec
 public import ConsensusLean.Lemmas.Blocks.Facts

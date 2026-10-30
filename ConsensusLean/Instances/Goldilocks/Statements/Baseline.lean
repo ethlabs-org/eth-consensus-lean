@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec
+public import ConsensusLean.Instances.Goldilocks.Spec.Baseline
 public import Mathlib.Tactic
 
 @[expose] public section
