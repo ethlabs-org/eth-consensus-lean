@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
+public import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
 public import Mathlib.Data.Set.Finite.Basic
 @[expose] public section
 
@@ -15,6 +16,8 @@ On `Spec/AC` and `Spec/SA`, labelled by kind (CONTRIBUTING "Statements"), with o
 * (a) `localRun_one_tick`: an AC trace in which the validator makes one `on_tick` call at time
   `0` satisfies the AC trace contract `ACLocalRun` (the hypothesis of F.1 (c), A0.7's joined
   clause and A0.8).
+* (a) `acRun_one_tick`: that trace also satisfies the honest-object facts, so `ACRun` (the
+  hypothesis of every ACSteps statement) is satisfiable.
 
 `CaseOneA13` is decomposition §4.7 case 1 written against the AC trace contract (a test of the
 contract, not a milestone statement: A1.3 is stated in ACSteps): A1.3 per vote, with #21's
@@ -127,11 +130,6 @@ theorem localRun_one_tick :
     obtain ⟨rfl, rfl⟩ := oneTick_label h.2
     cases hr
 
-/-- The head of the vote `v` extends `B` inside `U`. -/
-def VoteExtends {sp : SAParams} {FGP : Type} (U : Set (Blk sp.n FGP)) (v : Vote sp.n)
-    (B : Blk sp.n FGP) : Prop :=
-  ∃ Hd ∈ U, Hd.root = v.head ∧ Anc U B Hd
-
 /-- **Decomposition §4.7 case 1: A1.3 per vote over an AC trace** (claims A1.3 at #21
 `05418956`; a test of the AC trace contract, not a milestone statement). For an honest `y` and
 its own vote emission `e` of slot `m + 1` at cut `i` (time `τ`): if every honest slot-`m` vote
@@ -154,6 +152,44 @@ def CaseOneA13 (sp : SAParams) : Prop :=
       ℓ.frame.Anc B ℓ.frame.fcRoot) →
     (∀ x ∈ H, ∀ j < i, ∀ e', VoteAt tr x j e' → e'.msg.slot = m + 1 → VoteExtends U e'.msg B) →
     VoteExtends U e.msg B
+
+end Consensus.Goldilocks.SA.Test
+
+namespace Consensus.Goldilocks.SA.Test
+
+/-- The one-tick trace's tick changes nothing: at time `0` neither the vote check nor the update
+runs. -/
+theorem oneTick_post (i : Nat) : oneTick.post i = SAState.initial 0 := by
+  have h0 : sp1.slot 0 = 0 := by simp [Params.slotOf]
+  have hΔ : sp1.Δ = 1 := rfl
+  simp [oneTick, acOnTick, joined, SAParams.ts, h0, hΔ, SAState.initial]
+
+/-- Every state of the one-tick trace is the initial state. -/
+theorem oneTick_state (y : Fin sp1.n) (i : Nat) : oneTick.state y i = SAState.initial 0 := by
+  induction i with
+  | zero => rfl
+  | succ i ih => simp only [Trace.state]; split_ifs <;> simp [oneTick_post, ih]
+
+/-- (a) The one-tick trace satisfies the AC trace contract and the honest-object facts (the
+hypothesis `ACRun` of every ACSteps statement). -/
+theorem acRun_one_tick : ACRun oneTick Set.univ ({g} : Set (Blk sp1.n Unit)) where
+  localRun := localRun_one_tick
+  honest :=
+    { pool_vote := fun y _ i σ v hv _ => by
+        rw [oneTick_state] at hv; simp [SAState.initial] at hv
+      message_vote := fun y _ i ℓ v h hc _ => by
+        obtain ⟨rfl, rfl⟩ := oneTick_label h.2
+        cases hc
+      carried_vote := fun y _ i ℓ h B hB v hv => by
+        obtain ⟨rfl, rfl⟩ := oneTick_label h.2
+        rw [Set.mem_singleton_iff.mp hB] at hv; simp [g, blockVotes] at hv
+      proposer := fun B ⟨y, _, i, ℓ, h, hB⟩ hg => by
+        obtain ⟨rfl, rfl⟩ := oneTick_label h.2
+        rw [Set.mem_singleton_iff.mp hB] at hg; exact absurd rfl hg
+      one_block := fun B B' ⟨_, _, i, ℓ, h, hB⟩ ⟨_, _, i', ℓ', h', hB'⟩ _ _ _ => by
+        obtain ⟨rfl, rfl⟩ := oneTick_label h.2
+        obtain ⟨rfl, rfl⟩ := oneTick_label h'.2
+        rw [Set.mem_singleton_iff.mp hB, Set.mem_singleton_iff.mp hB'] }
 
 end Consensus.Goldilocks.SA.Test
 

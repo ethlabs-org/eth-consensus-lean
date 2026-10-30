@@ -74,6 +74,9 @@ structure ACInterface (P : Params) (FGP : Type) where
   validPayload : Block P.n FGP Payload → Prop
   /-- The AC's wire checks of a message. -/
   validMsg : Msg → Prop
+  /-- The state holds (has admitted) the message: an honest node forwards an AC message when its
+  AC admits it, also from a block's payload (composition.tex §"Model"; goldilocks#28, #32). -/
+  holdsMsg : State → Msg → Prop
   /-- The AC payload of genesis. -/
   genesisPayload : Payload
   /-- The initial AC state. -/

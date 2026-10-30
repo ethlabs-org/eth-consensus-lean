@@ -28,12 +28,14 @@ for the honest validators `H`, inside the coherent set `U`:
   of the wake; and a restart is a wake (the node was asleep after its previous call).
 
 `SyncAC A H U a b tr` is the network premise `Sync[a, b]` (claims §"Premises") as the AC trace
-observes it: every AC message an honest node sends, or receives, at `τ ∈ [a, b]` is processed by
+observes it: every AC message an honest node sends, or admits (also from a block's payload), at
+`τ ∈ [a, b]` is processed by
 every honest `y` at a time in `[τ, max(τ, w_y) + Δ)` (`w_y` the latest wake of `y` at or before
-the processing; an honest node forwards every object it receives, so each receipt is a send
-whose delivery follows it; an earlier processing, e.g. a refused early receipt, does not count),
-and every block an honest node accepts at `τ ∈ [a, b]` is accepted by every
-honest `y` whose finalized tip it extends before that deadline (acceptance relay). Over the AC
+the processing; an honest node forwards an object when it accepts it, so each admission is a
+send whose delivery follows it; an earlier processing, e.g. a refused early receipt, does not
+count, and a refused receipt triggers nothing), and every block an honest node accepts at
+`τ ∈ [a, b]` is accepted by every honest `y` whose finalized tip it extends before that
+deadline (acceptance relay). Over the AC
 trace, "processed by `y` before the deadline" reads: at every call of `y` at or after the
 deadline, `y` has processed it at a cut before its own deadline; "whose finalized tip `B`
 extends" reads the frame of that call. -/
@@ -73,9 +75,15 @@ its call there (an own message is processed at once). -/
 def ProcessAt (y : Fin P.n) (k : Nat) (m : A.Msg) : Prop :=
   ∃ ℓ, tr.CallAt y k ℓ ∧ (ℓ.call = .message m ∨ ∃ e ∈ ℓ.emits, e.msg = m)
 
-/-- `x` sends `m` at cut `i` (an emission), or receives it there (an honest node forwards every
-object it receives, composition.tex §"Model"). -/
-def SendOrReceive (x : Fin P.n) (i : Nat) (m : A.Msg) : Prop := tr.ProcessAt x i m
+/-- `x` sends `m` at cut `i` (an emission), or admits it there: a call other than a restart
+after which its AC holds `m` and before which it did not, whether `m` came as a message or from
+the payload of a block the call accepts (`on_block`). An honest node forwards an AC message when
+its AC admits it, also from the payload of an accepted block; a refused receipt is not
+forwarded, and the restart's replay re-processes blocks already accepted and sends nothing
+(composition.tex §"Model"; claims §"How to read the DAG", A0.7; goldilocks#28, #32). -/
+def SendOrAdmit (x : Fin P.n) (i : Nat) (m : A.Msg) : Prop :=
+  ∃ ℓ, tr.CallAt x i ℓ ∧ ((∃ e ∈ ℓ.emits, e.msg = m) ∨
+    (ℓ.call ≠ .restart ∧ ¬ A.holdsMsg (tr.state x i) m ∧ A.holdsMsg (tr.post i) m))
 
 open Classical in
 /-- The latest wake of `y` at or before cut `k`: the time of its latest restart at a cut `≤ k`
@@ -126,16 +134,16 @@ structure ACLocalRun (A : ACInterface P FGP) (H : Set (Fin P.n)) (U : Set A.Blk)
     ∃ u : Time, 0 ≤ u ∧ u < tr.time i ∧ ¬ tr.awake y u ∧
       ∀ j < i, ∀ ℓ', tr.CallAt y j ℓ' → tr.time j < u
 
-/-- **`Sync[a, b]` over an AC trace.** Messages: every AC message that an honest `x` sends or
-receives at `τ ∈ [a, b]` (an honest node forwards every object it receives) is processed by
-every honest `y` at a time in `[τ, max(τ, w_y) + Δ)`: the delivery of that send or forward,
-not an earlier processing. Blocks
-(acceptance relay): every block that an honest `x` accepts at `τ ∈ [a, b]` is accepted by every
-honest `y` whose finalized tip it extends (inside `U`) before its deadline. Both read at every
-call of `y` at or after its deadline. -/
+/-- **`Sync[a, b]` over an AC trace** (claims §"Premises" at goldilocks `a470648c`). Messages:
+every AC message that an honest `x` sends or admits at `τ ∈ [a, b]`, also from a block's
+payload (an honest node forwards an AC message when it admits it) is processed by every honest
+`y` at a time in `[τ, max(τ, w_y) + Δ)`: the delivery of that send or forward, not an earlier
+processing; a refused receipt triggers nothing. Blocks (acceptance relay): every block that an
+honest `x` accepts at `τ ∈ [a, b]` is accepted by every honest `y` whose finalized tip it extends
+(inside `U`) before its deadline. Both read at every call of `y` at or after its deadline. -/
 def SyncAC (A : ACInterface P FGP) (H : Set (Fin P.n)) (U : Set A.Blk) (a b : Time)
     (tr : ACTrace A) : Prop :=
-  (∀ x ∈ H, ∀ i m, tr.SendOrReceive x i m → a ≤ tr.time i → tr.time i ≤ b →
+  (∀ x ∈ H, ∀ i m, tr.SendOrAdmit x i m → a ≤ tr.time i → tr.time i ≤ b →
     ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → tr.deadline y j (tr.time i) ≤ tr.time j →
       ∃ k ≤ j, tr.time i ≤ tr.time k ∧ tr.ProcessAt y k m ∧
         tr.time k < tr.deadline y k (tr.time i)) ∧

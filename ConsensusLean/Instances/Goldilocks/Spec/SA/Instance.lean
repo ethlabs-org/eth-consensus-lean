@@ -22,6 +22,7 @@ namespace Consensus.Goldilocks.SA
   Payload := Payload sp.n
   validPayload := validPayload
   validMsg := fun _ => True
+  holdsMsg := fun A v => v ∈ A.pool v.slot
   genesisPayload := ([], [])
   initial := SAState.initial sp.genesisRoot
   onMessage := acOnMessage sp

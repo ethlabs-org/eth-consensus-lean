@@ -43,6 +43,28 @@ noncomputable def getConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Na
   deepest Φ {B | B ∈ Φ.tree ∧ Φ.Anc Φ.F B ∧
     (voters {v | v ∈ A.pool s}).ncard < 2 * confirmationScore sp A Φ s B}
 
+/-- The non-genesis blocks of the tree at or above the result `C` (the path of the update). -/
+def confirmationPath (Φ : Frm sp.n FGP) (C : Blk sp.n FGP) : Set (Blk sp.n FGP) :=
+  {B | B ∈ Φ.tree ∧ B.root ≠ sp.genesisRoot ∧ Φ.Anc B C}
+
+/-- The fast test of the update of slot `s`: half of the committee or more supports `B`. -/
+def FastTest (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) (B : Blk sp.n FGP) : Prop :=
+  sp.n ≤ 2 * confirmationScore sp A Φ s B
+
+/-- The block `D` that the fast test of the update of slot `s` selects on the path of the result
+`C`: the deepest block of the path that passes it (whether or not a lock vetoes the result). -/
+noncomputable def fastSelect (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) (C : Blk sp.n FGP) :
+    Option (Blk sp.n FGP) :=
+  deepest Φ {B | B ∈ confirmationPath sp Φ C ∧ FastTest sp A Φ s B}
+
+/-- The validators the fast test counts for `B` in slot `s`, with their counted votes: the
+votes of the slot-`s` pool resolved before `t_s + 2Δ`, of validators with no second vote, whose
+head extends `B`. -/
+noncomputable def fastCounted (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) (B : Blk sp.n FGP) :
+    Set (Vote sp.n) :=
+  {v | v ∈ A.pool s ∧ v.val ∉ equivocators {x | x ∈ A.pool s} ∧
+    resolutionTime A Φ v < ETime.of (sp.ts s + 2 * sp.Δ) ∧ AncR Φ B v.head}
+
 open Classical in
 /-- `update_confirmation(𝒜, Φ, t, s)`, at `t_s + 6Δ`. -/
 noncomputable def updateConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
@@ -55,11 +77,11 @@ noncomputable def updateConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) (t :
     if conflictsWithLock sp A₁.locks Φ t C then A₁
     else
       let A₂ := updateLatestConfirmed sp A₁ Φ C
-      let path := {B | B ∈ Φ.tree ∧ B.root ≠ sp.genesisRoot ∧ Φ.Anc B C}
-      let fast := fun B => sp.n ≤ 2 * confirmationScore sp A Φ s B
+      let path := confirmationPath sp Φ C
+      let fast := FastTest sp A Φ s
       let slow := fun B : Blk sp.n FGP => ∀ j : Int, (s : Int) - sp.k < j → j < s →
         ∃ S ∈ Φ.tree, A₁.saved j = some S.root ∧ Φ.Anc B S
-      let D := deepest Φ {B | B ∈ path ∧ fast B}
+      let D := fastSelect sp A Φ s C
       let lockBlock := deepest Φ {B | B ∈ path ∧ (fast B ∨ slow B)}
       let N : Set (Nat × Bool) :=
         {p | (∃ B, D = some B ∧ p = (B.root, true)) ∨
@@ -73,20 +95,25 @@ def optimisticVoters (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) (B : Blk s
   {i | ∃ x ∈ A.pool s, x.val = i ∧ AncR Φ B x.head}
 
 open Classical in
-/-- `optimistic_confirmation(𝒜, Φ, t)`, after each receipt: for a joined node in a slot `s > 0`
-before `t_s + 2Δ`, a fast lock of slot `s` on the deepest block that passes (three quarters of
-the committee as `optimisticVoters`, and no conflicting live lock), and the record. -/
+/-- The block the optimistic check at `(𝒜, Φ, t)` locks, if any: for a joined node in a slot
+`s > 0` before `t_s + 2Δ`, the deepest block of the tree with three quarters of the committee as
+`optimisticVoters` and no conflicting live lock. -/
+noncomputable def optimisticSelect (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    Option (Blk sp.n FGP) :=
+  let s := sp.slot t
+  if ¬ joined sp A t ∨ s = 0 ∨ sp.ts s + 2 * sp.Δ ≤ t then none
+  else deepest Φ {B | B ∈ Φ.tree ∧ 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ s B).ncard ∧
+    ¬ conflictsWithLock sp A.locks Φ t B}
+
+/-- `optimistic_confirmation(𝒜, Φ, t)`, after each receipt: a fast lock of slot `slot(t)` on the
+block of `optimisticSelect`, and the record. -/
 noncomputable def optimisticConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     SAState sp.n :=
-  let s := sp.slot t
-  if ¬ joined sp A t ∨ s = 0 ∨ sp.ts s + 2 * sp.Δ ≤ t then A
-  else
-    let passes := fun B => 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ s B).ncard ∧
-      ¬ conflictsWithLock sp A.locks Φ t B
-    match deepest Φ {B | B ∈ Φ.tree ∧ passes B} with
-    | none => A
-    | some B =>
-      updateLatestConfirmed sp { A with locks := addLocks sp A.locks Φ t s {(B.root, true)} } Φ B
+  match optimisticSelect sp A Φ t with
+  | none => A
+  | some B =>
+    updateLatestConfirmed sp
+      { A with locks := addLocks sp A.locks Φ t (sp.slot t) {(B.root, true)} } Φ B
 
 open Classical in
 /-- `ac_confirmed(𝒜, Φ, t)`: the deepest common ancestor of the effective record

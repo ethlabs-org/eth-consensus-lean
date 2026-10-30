@@ -67,12 +67,16 @@ noncomputable def acOnMessage (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.
     (v : Vote sp.n) : SAState sp.n × List (Em sp FGP) :=
   tryVote sp self (optimisticConfirmation sp (admitVote sp A t v) Φ t) Φ t
 
+/-- The receipt part of `ac_on_block(𝒜, Φ, t, B)`: the stamp of `B`, then the admission of its
+votes in order. -/
+def blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) : SAState sp.n :=
+  (blockVotes B).foldl (fun A v => admitVote sp A t v)
+    { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) }
+
 /-- `ac_on_block(𝒜, Φ, t, B)` at validator `self`. -/
 noncomputable def acOnBlock (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (B : Blk sp.n FGP) : SAState sp.n × List (Em sp FGP) :=
-  let A₁ := { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) }
-  let A₂ := (blockVotes B).foldl (fun A v => admitVote sp A t v) A₁
-  tryVote sp self (optimisticConfirmation sp A₂ Φ t) Φ t
+  tryVote sp self (optimisticConfirmation sp (blockReceipt sp A t B) Φ t) Φ t
 
 open Classical in
 /-- `ac_on_tick(𝒜, Φ, t)` at validator `self`. -/

@@ -414,6 +414,36 @@ example := ``Consensus.Goldilocks.Trace.state
 
 /-! ## Goldilocks ACSteps (a milestone PR appends here only) -/
 
+example := ``Consensus.Goldilocks.SA.ACRun
+example := ``Consensus.Goldilocks.SA.ACSteps
+example := ``Consensus.Goldilocks.SA.CastAt
+example := ``Consensus.Goldilocks.SA.EarlierVotesExtend
+example := ``Consensus.Goldilocks.SA.FastLockAt
+example := ``Consensus.Goldilocks.SA.FastTest
+example := ``Consensus.Goldilocks.SA.FastUpdateAt
+example := ``Consensus.Goldilocks.SA.FirstTransfer
+example := ``Consensus.Goldilocks.SA.HonestObjects
+example := ``Consensus.Goldilocks.SA.NextTransfer
+example := ``Consensus.Goldilocks.SA.OptimisticLockAt
+example := ``Consensus.Goldilocks.SA.OptimisticNextUpdate
+example := ``Consensus.Goldilocks.SA.OptimisticPoint
+example := ``Consensus.Goldilocks.SA.OptimisticTransfer
+example := ``Consensus.Goldilocks.SA.ProposalAt
+example := ``Consensus.Goldilocks.SA.ProposerVotersAgree
+example := ``Consensus.Goldilocks.SA.ResultAt
+example := ``Consensus.Goldilocks.SA.ResultTransfer
+example := ``Consensus.Goldilocks.SA.SourceAge
+example := ``Consensus.Goldilocks.SA.SourceCompatible
+example := ``Consensus.Goldilocks.SA.ToFGAt
+example := ``Consensus.Goldilocks.SA.UpdateAt
+example := ``Consensus.Goldilocks.SA.ViableAtVote
+example := ``Consensus.Goldilocks.SA.VoteExtends
+example := ``Consensus.Goldilocks.SA.blockReceipt
+example := ``Consensus.Goldilocks.SA.confirmationPath
+example := ``Consensus.Goldilocks.SA.fastCounted
+example := ``Consensus.Goldilocks.SA.fastSelect
+example := ``Consensus.Goldilocks.SA.optimisticSelect
+
 /-! ## Goldilocks Compose/AnyAC (a milestone PR appends here only) -/
 
 /-! ## Goldilocks Persist (a milestone PR appends here only) -/

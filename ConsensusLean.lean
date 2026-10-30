@@ -30,6 +30,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
 public import ConsensusLean.Instances.Goldilocks.Spec.Frame
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Actions
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Confirmation
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.ForkChoice
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Instance
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Locks
@@ -40,6 +41,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Trace
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Views
 public import ConsensusLean.Instances.Goldilocks.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
+public import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Statements.Baseline
 public import ConsensusLean.Instances.Goldilocks.Statements.Common
 public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety

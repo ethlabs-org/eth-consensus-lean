@@ -189,13 +189,14 @@ Modelling choices:
   first.
 - **Placement.** The generic interface cannot name votes or joining, so `Carry`, `h_t` and the fault bound are in
   `Spec/SA/Trace`, not `Spec/AC/Trace`.
-- **`Sync` over the AC trace.**
-  - Every receipt by an honest node is a send, since honest nodes forward every object they receive (composition.tex
-    §"Model"). So the message clause triggers on every honest send or receipt in `[a, b]`, not only the first.
-  - The message must be processed at a time in `[τ, deadline)`. A processing before `τ` does not count, such as a
-    vote refused by admission because it arrived before its slot.
-  - The claims' literal wording ("first receives … is processed … before") admits that earlier processing, and
-    then A1.1 and A1.2 have counterexamples (goldilocks#28).
+- **`Sync` over the AC trace** (claims at goldilocks `a470648c`, #30 and #32):
+  - An honest node forwards an AC message when its AC admits it, also from the payload of an accepted block. A
+    refused receipt is not forwarded.
+  - So the message clause triggers on every honest send or admission in `[a, b]` (`ACInterface.holdsMsg`; for the
+    SA, the vote is in its pool after the call and was not before). The restart's replay is excluded, because it
+    re-processes blocks already accepted and sends nothing (A0.7).
+  - The message must be processed at a time in `[τ, deadline)`. A processing before `τ` does not count.
+  - goldilocks#28 has the counterexamples to the earlier "first receives … processed before" wording.
 - **Reachability.** It starts at time `0`, with genesis as the slot-0 block with no parent and the AC's genesis
   payload (`InitialFrame`; for the SA, two empty lists).
 - **Unforgeability.** The AC trace contract does not carry it; ACSteps adds it as a premise over AC traces, for
@@ -209,7 +210,44 @@ not a milestone statement) as `CaseOneA13`.
 
 ## ACSteps
 
-Nothing cited yet; the milestone's statements PR fills this section.
+CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `a470648c` (goldilocks#30, #32). SPEC pin: `fgsa-spec.tex` at goldilocks `95681941`.
+Layout: decomposition §3.1, §3.2. Milestone `ACSteps` covers the AC module's L1 step lemmas over AC traces of the SA:
+A1.1, A1.2, A1.3, A1.4, A1.5, A1.8 and A1.9. A1.2–A1.4 and A1.8 are per vote; A1.9 is per `ac_to_fg` call. A1.6 and
+A1.7 are run-level (Service). The healing kernels A1–A5 of healing-simple are not claims nodes yet.
+
+| Node | Reference | Definition | Milestone | Lean name |
+|---|---|---|---|---|
+| — | SPEC §"Confirmation" (named parts of the update and the optimistic check) | the update's path, fast test, fast selection and counted votes; the optimistic selection; the block receipt | — | `Consensus.Goldilocks.SA.confirmationPath`, `Consensus.Goldilocks.SA.FastTest`, `Consensus.Goldilocks.SA.fastSelect`, `Consensus.Goldilocks.SA.fastCounted`, `Consensus.Goldilocks.SA.optimisticSelect`, `Consensus.Goldilocks.SA.blockReceipt` |
+| — | CLAIMS §"L1 / Available chain" (events of the step lemmas) | votes and their viability; updates, results, fast lock writes of either origin with counted votes; `ac_to_fg` returns; proposals | — | `Consensus.Goldilocks.SA.VoteExtends`, `Consensus.Goldilocks.SA.CastAt`, `Consensus.Goldilocks.SA.ViableAtVote`, `Consensus.Goldilocks.SA.EarlierVotesExtend`, `Consensus.Goldilocks.SA.UpdateAt`, `Consensus.Goldilocks.SA.ResultAt`, `Consensus.Goldilocks.SA.FastUpdateAt`, `Consensus.Goldilocks.SA.OptimisticPoint`, `Consensus.Goldilocks.SA.OptimisticLockAt`, `Consensus.Goldilocks.SA.FastLockAt`, `Consensus.Goldilocks.SA.ToFGAt`, `Consensus.Goldilocks.SA.ProposalAt` |
+| — | CLAIMS §Runs (unforgeable signatures); FG acceptance (slot proposer) | honest objects over an AC trace; the bundle with the trace contract | — | `Consensus.Goldilocks.SA.HonestObjects`, `Consensus.Goldilocks.SA.ACRun` |
+| A1.1 | CLAIMS A1.1 | proposer and voters agree on unlocking | `ACSteps` | `Consensus.Goldilocks.SA.ProposerVotersAgree` |
+| A1.2 | CLAIMS A1.2 | first transfer, per vote | `ACSteps` | `Consensus.Goldilocks.SA.FirstTransfer` |
+| A1.3 | CLAIMS A1.3 | next transfer, per vote | `ACSteps` | `Consensus.Goldilocks.SA.NextTransfer` |
+| A1.4 | CLAIMS A1.4 (a), (b) | optimistic is fast: the transfer (per vote), the next update | `ACSteps` | `Consensus.Goldilocks.SA.OptimisticTransfer`, `Consensus.Goldilocks.SA.OptimisticNextUpdate` |
+| A1.5 | CLAIMS A1.5 | source age | `ACSteps` | `Consensus.Goldilocks.SA.SourceAge` |
+| A1.8 | CLAIMS A1.8 | result transfer, per vote | `ACSteps` | `Consensus.Goldilocks.SA.ResultTransfer` |
+| A1.9 | CLAIMS A1.9 | source compatibility after the cut, per call | `ACSteps` | `Consensus.Goldilocks.SA.SourceCompatible` |
+| — | the milestone | all of the above | `ACSteps` | `Consensus.Goldilocks.SA.ACSteps` |
+
+Modelling choices:
+
+- **Unforgeability and FG acceptance** are premises over the AC trace (`HonestObjects`; the coordinator's decision
+  on #54). Honest votes held by an honest node, in its pools or carried by its frame's blocks, were emitted earlier
+  by their validator's node. Every frame block has its slot's proposer. An honest proposer has at most one block per
+  slot. `Spec/Run` discharges them through the projection.
+- **Events inside a call** are named through the SA's own functions:
+  - the update's fast selection, with the votes it counts, at the tick of `t_s + 6Δ`;
+  - the optimistic check at its receipt states and after each own vote's admission (`OptimisticPoint`).
+  "Writes a fast lock on `B`" means the test selects `B`. The stored lock can be moved back, as the claims note.
+- **The A1.5 conclusion** "is the block of a fast lock written after `τ`" reads: at or below the block of a fast
+  lock of a slot `s'` with `slot(t) ≤ s' + 2` that the node wrote at a cut after `τ` (a lock moves only back).
+- **A1.9's "its unlocking in slot `s + 1`"** is its slot-`(s+1)` vote and its proposal at `t_{s+1}`.
+- **A1.2** follows the claims' text without a writer-pool hypothesis. That condition (A1.8 (d)) follows from
+  `Sync`, because votes admitted from a block's payload are forwarded too (goldilocks#32). Without that forwarding,
+  A1.2 would be false through block-carried votes (goldilocks#28).
+
+Witness in `ConsensusLeanTest/GoldilocksAC.lean`, kind (a): `acRun_one_tick` (the hypothesis `ACRun` is
+satisfiable). §4.7 case 1 (`CaseOneA13`, written with ACBase) has the same shape as `NextTransfer`.
 
 ## Compose/AnyAC
 
