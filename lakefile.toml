@@ -5,9 +5,16 @@ defaultTargets = ["ConsensusLean"]
 testDriver = "ConsensusLeanTest"
 lintDriver = "batteries/runLinter"
 
+# FLT's options (plan §6) plus the longFile soft bound. `warn.sorry = false`: `sorry` does not warn, so
+# `lake build --wfail` fails on every other warning while unfinished proofs stay possible; where `sorry` may
+# appear (only the `sorry = true` layers of scripts/boundaries.toml: Lemmas, Proofs) is checked by
+# scripts/check.sh (steps 3, 7) and the `Solution` closure must be free of it (step 3b, axiom audit).
 [leanOptions]
 pp.unicode.fun = true
+autoImplicit = false
 relaxedAutoImplicit = false
+warn.sorry = false
+weak.linter.style.longFile = 1500
 weak.linter.mathlibStandardSet = true
 weak.linter.flexible = false
 weak.linter.style.header = false
@@ -62,4 +69,18 @@ roots = ["CheckDeclsTest", "CheckDeclsForeign"]
 name = "check-decls"
 srcDir = "scripts"
 root = "CheckDecls"
+supportInterpreter = true
+
+# leanprover-community/axiom-audit v0.1.2 (Apache-2.0; vendored verbatim, see TRUST.md): the library and the
+# executable (its `Main.lean` as `AxiomAuditMain.lean`). Built by check.sh; step 3b audits the `Solution` closure
+# and reports the library's unfinished declarations. Never a default target.
+[[lean_lib]]
+name = "AxiomAudit"
+srcDir = "scripts"
+roots = ["AxiomAudit"]
+
+[[lean_exe]]
+name = "axiom-audit"
+srcDir = "scripts"
+root = "AxiomAuditMain"
 supportInterpreter = true

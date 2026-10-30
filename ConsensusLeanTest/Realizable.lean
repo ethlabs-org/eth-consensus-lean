@@ -183,7 +183,7 @@ theorem tendermint_largeIdx_prog (F : ShapeFamily bftCore Unit) (catchUp : Nat)
   NotReadyOn.of_card_le (by simpa using hm)
 
 /-- The concrete counterexample of the rotating-sleeper case: `V = Fin 5`, `m = 5`. -/
-example (F : ShapeFamily bftCore Unit) (cap : Capability)
+theorem rotating_sleeper_counterexample (F : ShapeFamily bftCore Unit) (cap : Capability)
     (r : (sysOf bftCore (compiled F) (Fin 5)).Run) (start stop : Time) :
     (sysOf bftCore (compiled F) (Fin 5)).prog (shapeProgress F (Fin 5))
       (tendermintContract 1 ⟨0, 0⟩ ⟨0, 0⟩) cap (5 : ℕ+) start stop r :=
@@ -226,7 +226,8 @@ theorem outage_witness_late (h : Realizable S X K) :
   exact ⟨r, T, b₀, b₁, hw, hΔ, ho, ha, by norm_num at hT; exact hT⟩
 
 /-- Every good system with at least five validators has both late witnesses. -/
-example (h : Good S X K) (h5 : 5 ≤ Fintype.card V) (cap : Capability) (i : K.Idx) :
+theorem good_late_witnesses (h : Good S X K) (h5 : 5 ≤ Fintype.card V) (cap : Capability)
+    (i : K.Idx) :
     (∃ r, S.Witness r ∧ (S.pt r).env.Δ = 7 ∧ 1000 ≤ S.heal K cap i 1000 r ∧
       SafeActive (S.cDur K r) (S.heal K cap i 1000 r) (S.pt r)) ∧
     ∃ r T b₀ b₁, S.Witness r ∧ S.Outage K T b₀ b₁ r ∧ 7000 ≤ T := by

@@ -141,7 +141,7 @@ The `scripts/**` stack is:
 | `check-boundaries.py` | Parsed imports, layer matrix and exceptions, Init chain, generated-root listing, library inventory, trusted-path coverage and base-name provenance constraints. |
 | `check-pins.py` | Toolchain, dependency manifest, clean checkouts and actual Lake resolution. |
 | `SpecSurface.lean` | Snapshot, persisted extensions, theorem hygiene, constant-free parents, statement inventory and reachability; loads no checked extension state. |
-| `CheckDecls.lean` | Vendored EthLib declaration/axiom checker with two local patches (TRUST.md); detects unfinished proofs, unsafe/opaque/partial declarations and forbidden implementation hooks. |
+| `CheckDecls.lean` | Vendored EthLib declaration/axiom checker with three local patches (TRUST.md); detects unfinished proofs, unsafe/opaque/partial declarations and forbidden implementation hooks. |
 | `test_check_decls.sh`, `CheckDeclsTest.lean`, `CheckDeclsForeign.lean`, `CheckDeclsTest/**` | EthLib checker self-tests, including deliberately bad and exempt declarations. |
 | `LICENSE.EthLib` | CC0 licence for the vendored checker and tests. |
 | `fixtures/**` | Import, surface, review guard, grep, pins, docs, comparator and Lake replay controls. Deliberately invalid fixtures must fail. |

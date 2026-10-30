@@ -33,14 +33,31 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   against `scripts/spec-snapshot.txt`, then owner review of every change (`spec-approved`).
   Proof values are omitted by proof irrelevance; non-proof auxiliary constants are included.
 - **Dependency drift:** exact pins; the upgrade above additionally used the dependency audit.
+- **Unfinished proofs** (foundation plan §5, the FLT/Carleson model): `sorry` may stay only in the
+  `sorry = true` layers of `scripts/boundaries.toml` (`Lemmas`, `Proofs.<M>`; check-boundaries.py refuses
+  the flag on a trusted layer, outside Lemmas/Proofs or outside the default library); no declaration of Spec,
+  Statements, Main, the instances, the tests or the solution contains one (check-decls `--sorry-ok`, grep step 7),
+  and it is never an axiom. **Certified = the import closure of
+  `Solution`**: axiom-audit (step 3b, every PR) fails any declaration of `ConsensusLean` or `Solution` in that
+  closure that depends on an axiom other than the three standard ones (`sorryAx`, `native_decide`'s axioms, a
+  declared axiom, also through imports), and so it does for every test declaration (a test built on an unfinished
+  lemma proves nothing; grep step 7 refuses proof `example`s, which never enter the environment). `Solution` imports
+  `Main` and every milestone today, so all of them must be finished; a new milestone may stay unfinished while
+  neither imports it (step 3b's report lists what is unfinished). The instances reach the generic library only
+  through `Main`, inside the closure, so everything they use is finished today. The review
+  pins and the comparator check the review theorems' axioms too. axiom-audit's shared memo can under-count inside
+  an inductive/constructor cycle when the declaration that uses the axiom directly is not audited (the tests gate,
+  whose roots exclude the library): check-decls still fails a direct `sorry` outside the sorry layers. `lake build --wfail` runs with `warn.sorry = false`, so every other warning fails the build.
 - **Proofs:** leanchecker, one process per leaf module of the checked libraries (parents own no
-  constants); `lake check`; check-decls; and the comparator: statement matching, axiom limits,
+  constants); `lake check` (of the default targets while the sorry layers' files hold no `sorry`/`admit` outside
+  comments and strings: it rejects `sorryAx`; otherwise only the comparator replays what the solution uses of the
+  dependencies); check-decls; axiom-audit; and the comparator: statement matching, axiom limits,
   identical reachable constants across exports (tamper resistance) and sandboxed replay, by Lean's
   kernel and, with `--paranoid`, by every external kernel bundled with Lean.
   The comparator is **not a Spec-drift check**: both sides read the same source tree.
 
 `scripts/check.sh` wires checks and fixtures. CI runs its fast mode (no replay, `lake check` or
-comparator; check-decls, snapshot diff and review pins included) on every pull request and push to main,
+comparator; check-decls, axiom audit, snapshot diff and review pins included) on every pull request and push to main,
 and its full mode nightly, on demand and on milestone/release tags: a proof change merged after a green
 fast run is replayed by the kernel at the latest the next night. `lake check` and `lake comparator` run
 inside a bubblewrap sandbox wherever `bwrap` exists (CI full mode always; the shared box since
@@ -59,10 +76,19 @@ A second local patch (#5) fixes the reaches-opaque frontier: a definition that c
 function) no longer counts as having reported the opaque constants it reaches; they are reported at the checked
 definition that unfolds it. Without it, the single `ConsensusLean` scope let a definition in `Main` or an instance
 reach an opaque unreported through such a definition (self-test fixture `CheckFixtures.HiddenOpaque`).
-Upstream copy: `0032a6629a73ac37f49ca52b9bd665f2c6755b6014d629f8775c6f850f273bb2`; with the #13 patch: `69b9fe48f5d913031348aa33895155e96236819ba7d86c9e36675a793c1241d6`; with both: `03ed87d6cecae9a145ed47e56788978ffbe67a70055c3326f933a6d397edb10a`.
+A third local patch (#7) adds `--sorry-ok PREFIX` (repeatable): a `sorry` finding at a declaration of a module
+under such a prefix is listed (`allowed sorry ...`) instead of failing; every other finding kind is unchanged.
+check.sh passes the prefixes of the `sorry = true` layers; without the option the tool behaves as before.
+Upstream copy: `0032a6629a73ac37f49ca52b9bd665f2c6755b6014d629f8775c6f850f273bb2`; with the #13 patch: `69b9fe48f5d913031348aa33895155e96236819ba7d86c9e36675a793c1241d6`; with #13 and #5: `03ed87d6cecae9a145ed47e56788978ffbe67a70055c3326f933a6d397edb10a`; with all three: `b941e9baa619e80d954e2cdaf32ba7d5f48a8b29e4c888d3b97a91cee42aa367`.
 `scripts/test_check_decls.sh`: `591a1d993df5dc1a01a9cf645f71cbeffdb7da9fdff9e3ca8f5179f60ead9f25`.
 `vendor.sha256` also pins fixtures/licence. check-decls runs imported modules' initializers:
 a defence against mistakes, not an adversarial checker.
+[leanprover-community/axiom-audit](https://github.com/leanprover-community/axiom-audit) v0.1.2
+(`46024e005996495c65ef609368e11ab39c4222e3`, Apache-2.0; the tool the foundation plan and lean-action's
+`axiom-audit` input name) is vendored verbatim as `scripts/AxiomAudit.lean` and `scripts/AxiomAuditMain.lean`
+(its `Main.lean`), SHA-256-pinned likewise. Like check-decls it loads `.olean` files with `trustLevel := 1024`:
+it reads which axioms each declaration uses, not whether the proofs check, so kernel replay (steps 5, 10, 11) and
+the grep for `debug.` options (step 7) cover what it trusts.
 
 `scripts/check-boundaries.py` checks the layer matrix of `scripts/boundaries.toml` on parsed imports
 (`lean --deps-json`; the inventory part started as a CC0 port of verified-consensus `check-review-boundary.rb`). `scripts/check-pins.py` checks provenance. Our `scripts/SpecSurface.lean` loads no extension state and runs no checked code.

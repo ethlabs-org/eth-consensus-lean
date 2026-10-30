@@ -7,3 +7,4 @@ set_option debug.skipKernelTC true in
 theorem e : 1 = 2 := sorryAx _ false
 elab "fake" : tactic => do Lean.Elab.Tactic.closeMainGoal `fake (← Lean.Meta.mkSorry (← Lean.Elab.Tactic.getMainTarget) false)
 elab "fake2" : tactic => do let _ ← Lean.Meta.mkLabeledSorry (.const ``Nat []) false true
+set_option debug.terminalTacticsAsSorry true in

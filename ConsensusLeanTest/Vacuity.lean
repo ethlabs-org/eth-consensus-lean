@@ -48,7 +48,7 @@ participation requirement of three or more ready validators fails. -/
 theorem notReadyAtMost_below_not_realizable {O : OutputSchema} {Info : Type}
     [DecidableEq Info] [Countable Info] (F : ShapeFamily O Info)
     (K : Contract ProgressReq) (V : Type) [Fintype V] [DecidableEq V]
-    (hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome) (m : K.Idx → ℕ+)
+    (_hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome) (m : K.Idx → ℕ+)
     (hm : ∀ i, (m i : Nat) + 3 ≤ Fintype.card V)
     (hp : ∀ i, K.progress .available i = .notReadyAtMost (m i)) :
     ¬ Realizable (sysOf O (compiled F) V) (shapeProgress F V) K := by

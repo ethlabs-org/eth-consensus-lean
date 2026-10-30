@@ -70,11 +70,11 @@ def grid : TimeGrid := ⟨2⟩
 
 -- With `Δ = 3` slots are 6 units long: slot 2 starts at 12, slot 1 plus
 -- offset 3 is at 9, and time 7 is no slot time.
-example : grid.slotAt? 3 0 12 = some 2 := by decide
-example : grid.slotAt? 3 3 9 = some 1 := by decide
-example : grid.slotAt? 3 0 7 = none := by decide
-example : grid.slotAt? 3 0 0 = some 0 := by decide
-example : grid.slotAt? 3 0 (-6) = none := by decide
+theorem slotAt_slot_two : grid.slotAt? 3 0 12 = some 2 := by decide
+theorem slotAt_with_offset : grid.slotAt? 3 3 9 = some 1 := by decide
+theorem slotAt_between_slots : grid.slotAt? 3 0 7 = none := by decide
+theorem slotAt_zero : grid.slotAt? 3 0 0 = some 0 := by decide
+theorem slotAt_negative : grid.slotAt? 3 0 (-6) = none := by decide
 
 /-- One validator, always awake, `Δ = 1`, horizon 100. -/
 def point1 : EnvPoint (Fin 1) :=

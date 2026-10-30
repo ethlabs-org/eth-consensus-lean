@@ -9,7 +9,8 @@ no build), so no stale build output can hide a violation. Run as `python3 -I scr
 Config: a missing, unparsable or mistyped file fails, and so does a missing or unknown key (a typo would
   check less), a `forbidden_imports` name outside `base`, and a `milestone_parents` or `init_exempt` entry
   that meets no layer.
-Libraries: every lakefile target is a configured lib, a fixture lib or a tool; `defaultTargets` is exactly
+Libraries: every lakefile target is a configured lib, a fixture lib or a tool (`tool_exes`, `tool_libs`: the
+  check stack's own tools, which no checked module may import: an unknown top-level name); `defaultTargets` is exactly
   the libs with `default = true`, `testDriver` the lib with `test_driver = true`. No project module, file
   or directory takes a top-level name of `base`. A lib's root module is its name. With `root_lists_all`
   the lib is the root plus every file under its directory (lakefile globs exactly `[<name>.*]`) and the
@@ -17,7 +18,9 @@ Libraries: every lakefile target is a configured lib, a fixture lib or a tool; `
 Layers: every module except a generated root is in exactly one `[[layer]]`: prefixes never overlap.
   `allow` lists the other layers a module may import directly; the lists are acyclic and downward-closed
   (a layer allows everything its allowed layers allow), so the direct rule bounds the whole import closure.
-  A trusted layer allows only trusted layers. Every directory `<parent>.<M>` under a `milestone_parents`
+  A trusted layer allows only trusted layers. `sorry = true` (where check.sh lets unfinished proofs stay) is
+  allowed only on an untrusted layer whose every prefix is in a default library and has a `Lemmas` or `Proofs`
+  component. Every directory `<parent>.<M>` under a `milestone_parents`
   entry is one milestone layer, entered from other layers only through `<parent>.<M>.Main`.
 Imports (each module, each import): an edge outside `allow` fails unless an `[[exception]]` lets the
   modules under its `from` import the modules under its `to`; an import into a milestone layer other than
@@ -43,12 +46,13 @@ from pathlib import Path
 
 REQUIRED_KEYS = {"base", "fixture_libs", "tool_exes", "init_module", "init_exempt", "milestone_parents",
                  "forbidden_imports", "lib", "layer", "checks"}
-TOP_KEYS = REQUIRED_KEYS | {"exception"}
+TOP_KEYS = REQUIRED_KEYS | {"exception", "tool_libs"}
 # [checks]: read by scripts/check.sh (and trusted_paths by CI's review-boundary job); a new key is added here.
 CHECKS_KEYS = {"proofs_component_prefixes", "noconst_exempt", "theorems_mode", "review_axioms_module", "review_root",
-               "challenge_module", "solution_module", "statements_module", "extra_build_targets", "trusted_paths"}
+               "challenge_module", "solution_module", "statements_module", "extra_build_targets", "trusted_paths",
+               "canary_module", "canary_proof_edit", "canary_statement_edit"}
 LIB_KEYS = {"name", "default", "test_driver", "root_lists_all"}
-LAYER_KEYS = {"name", "prefixes", "allow", "trusted", "may_import_roots", "may_import_all", "about"}
+LAYER_KEYS = {"name", "prefixes", "allow", "trusted", "sorry", "may_import_roots", "may_import_all", "about"}
 EXCEPTION_KEYS = {"from", "to", "reason"}
 
 def under(m, prefix):  # module-name prefix, component-wise: A covers A and A.x, not AB
@@ -102,7 +106,7 @@ def validate(cfg):  # the shape of boundaries.toml (FAIL[config] findings)
         bad(f"unknown top-level key {k}")
     for k in sorted(REQUIRED_KEYS - set(cfg)):
         bad(f"missing top-level key {k}")
-    for k in ("base", "fixture_libs", "tool_exes", "init_exempt", "milestone_parents", "forbidden_imports"):
+    for k in ("base", "fixture_libs", "tool_exes", "tool_libs", "init_exempt", "milestone_parents", "forbidden_imports"):
         if not strings(cfg.get(k, [])):
             bad(f"{k} must be a list of names")
     if not isinstance(cfg.get("init_module"), str) or not cfg.get("init_module"):
@@ -126,7 +130,7 @@ def validate(cfg):  # the shape of boundaries.toml (FAIL[config] findings)
             what = f"[[{kind}]] {e.get('name', n)}"
             for k in sorted(set(e) - keys):
                 bad(f"{what}: unknown key {k}")
-            for k in ("default", "test_driver", "root_lists_all", "trusted", "may_import_roots", "may_import_all"):
+            for k in ("default", "test_driver", "root_lists_all", "trusted", "sorry", "may_import_roots", "may_import_all"):
                 if k in e and not isinstance(e[k], bool):
                     bad(f"{what}: {k} must be true or false")
             if kind != "exception" and (not isinstance(e.get("name"), str) or not e.get("name")):
@@ -171,7 +175,7 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
         if k not in ("lean_lib", "lean_exe", "require") and isinstance(v, list) and any(isinstance(x, dict) for x in v):
             fails.append(f"FAIL[config] target: lakefile table [[{k}]] is not supported")
     exes = lake.get("lean_exe", [])
-    known = set(names) | set(cfg.get("fixture_libs", [])) | set(cfg.get("tool_exes", []))
+    known = set(names) | set(cfg.get("fixture_libs", [])) | set(cfg.get("tool_exes", [])) | set(cfg.get("tool_libs", []))
     for t in list(lake_libs.values()) + exes:
         if t["name"] not in known:
             fails.append(f"FAIL[config] target: lakefile target {t['name']} is not a configured lib, fixture lib or tool")
@@ -237,6 +241,15 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
     for n in sorted(trusted):
         for x in sorted(allow[n] - trusted):
             fails.append(f"FAIL[config] trusted layer {n} allows the untrusted layer {x}")
+    for n, l in sorted(layers.items()):  # `sorry = true` (check.sh steps 3, 7): only Lemmas and Proofs (plan §5)
+        if l.get("sorry") is True:
+            if n in trusted:
+                fails.append(f"FAIL[config] trusted layer {n} allows sorry")
+            for p in l["prefixes"]:
+                if not {"Lemmas", "Proofs"} & set(p.split(".")):
+                    fails.append(f"FAIL[config] layer {n}: sorry = true outside Lemmas and Proofs ({p})")
+                if not any(under(p, d) for d in defaults):
+                    fails.append(f"FAIL[config] layer {n}: sorry = true outside the default libraries ({p})")
     def reach(ns):  # layers reachable from ns through allow (ns included)
         out, todo = set(), list(ns)
         while todo:

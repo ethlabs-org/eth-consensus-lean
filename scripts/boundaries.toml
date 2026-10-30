@@ -15,9 +15,11 @@ base = ["Init", "Std", "Lean", "Lake", "Mathlib", "Batteries", "Aesop", "Qq", "P
 # No checked library may import them.
 fixture_libs = ["CheckFixtures", "CheckDeclsTest", "Challenge"]
 
-# lean_exe targets of the lakefile (the check stack's tools). Every lakefile target is a [[lib]] below, a
-# fixture lib or one of these; no lib root, glob or file may take a top-level name of `base`.
-tool_exes = ["check-decls"]
+# lean_exe targets of the lakefile (the check stack's tools) and the lean_lib targets only they use. Every
+# lakefile target is a [[lib]] below, a fixture lib or one of these; no lib root, glob or file may take a
+# top-level name of `base`. No checked module may import a tool module (an unknown top-level name).
+tool_exes = ["check-decls", "axiom-audit"]
+tool_libs = ["AxiomAudit"]
 
 # Every module (except a generated root) reaches this one through public imports (plan §1, CSLib Init).
 init_module = "ConsensusLean.Init"
@@ -51,7 +53,8 @@ name = "Solution"
 # `allow`: the other layers it may import directly, written out in full (the checker requires the lists to
 # be downward-closed, so this row also bounds everything the layer reaches). `trusted`: the Spec surface
 # (snapshot, extensions, theorems, grep 7b, the README file list, trusted_paths); it allows only trusted
-# layers. Tests: `may_import_roots` (the generated roots,
+# layers. `sorry`: unfinished proofs may stay here (plan §5: only Lemmas and Proofs, never a trusted layer;
+# check.sh steps 3 and 7 fail a `sorry` anywhere else, and step 3b fails one in the closure of the solution). Tests: `may_import_roots` (the generated roots,
 # import-only aggregates) and `may_import_all`. An empty layer is allowed.
 [[layer]]
 name = "Init"
@@ -91,24 +94,28 @@ about = "generic milestone and review statements as Props"
 [[layer]]
 name = "Lemmas"
 prefixes = ["ConsensusLean.Lemmas"]
+sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements"]
 about = "generic proof support, including derived definitions outside the trusted surface"
 
 [[layer]]
 name = "Proofs.Behaviour"
 prefixes = ["ConsensusLean.Proofs.Behaviour"]
+sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas"]
 about = "milestone: shape claims give the L0 Behaviour (refinement)"
 
 [[layer]]
 name = "Proofs.RegimesRealizable"
 prefixes = ["ConsensusLean.Proofs.RegimesRealizable"]
+sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas"]
 about = "milestone: RegimesRealizable"
 
 [[layer]]
 name = "Proofs.Faithful"
 prefixes = ["ConsensusLean.Proofs.Faithful"]
+sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas"]
 about = "milestone: LogFaithful and HeldIffServed"
 
@@ -227,7 +234,16 @@ challenge_module = "Challenge"
 solution_module = "Solution"
 statements_module = "ConsensusLean.Statements.Review"
 # Extra targets built by step 1 next to the default targets.
-extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "Challenge"]
+extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
+                       "Challenge"]
+# Rebuild canary (plan §6; check.sh step 14, a report): the proof-only edit `canary_proof_edit` = [old, new] (old
+# occurring exactly once) of `canary_module` must leave its .olean.hash unchanged and every default target up to
+# date; the control `canary_statement_edit` (a statement change that every use still elaborates with: an extra
+# instance argument) must make them stale.
+canary_module = "ConsensusLean.Lemmas.Blocks.Facts"
+canary_proof_edit = ["  unfold slotTime; push_cast; ring", "  have _canary : True := trivial; unfold slotTime; push_cast; ring"]
+canary_statement_edit = ["theorem slotTime_add {Δ : Time} (s j : Slot) :",
+                         "theorem slotTime_add {Δ : Time} (s j : Slot) [Inhabited Unit] :"]
 # The trusted surface: CI's review-boundary job (ci.yml) fails on any difference of these paths from the tag
 # `spec-approved` (it reads this list at the PR head and at the tag, and checks their union, as literal paths).
 # check-boundaries.py requires plain relative paths that cover the file of every module of a trusted layer:

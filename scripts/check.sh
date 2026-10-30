@@ -6,24 +6,33 @@
 #
 #   0  pins             toolchain + every dependency = scripts/pins.toml, and   (check-pins.py)
 #                       Lake resolves exactly those checkouts (LEAN_PATH)
-#   1  build            default targets + fixtures + check-decls                (lake)
+#   1  build            default targets + extras with --wfail --iofail; the     (lake; warn.sorry = false)
+#                       deliberately bad fixture libraries without
 #   2  boundaries       layer matrix, Init chain, roots, inventory (source)     (check-boundaries.py)
-#   3  declarations     axioms/sorry/opaque/unsafe/extern/csimp per library     (EthLib check-decls)
+#   3  declarations     axioms/sorry/opaque/unsafe/extern/csimp per library;    (EthLib check-decls)
+#                       `sorry` only in the `sorry = true` layers (Lemmas, Proofs)
+#   3b axiom audit      Solution closure and tests: only the three standard     (axiom-audit)
+#                       axioms (gate); unfinished declarations of the default library (report)
 #   4  Spec surface     persisted extensions, snapshot, theorems, noconst,      (SpecSurface.lean)
 #                       reach (report)
 #   5  kernel replay    every leaf module of every checked library              (leanchecker)
 #   6  review pins      ReviewAxioms compiled into the tests root               (#guard_msgs)
-#   7  backstop         grep for sorry/admit/native_decide, Spec meta commands, lakefile options
+#   7  backstop         grep for sorry/admit outside the sorry layers (count inside them reported), proof `example`s,
+#                       native_decide, kernel/debug options, Spec meta commands, lakefile options
 #   8  vendored         sha256 of every vendored copy                           (scripts/vendor.sha256)
 #   9  comparator config  exact comparator.json + Challenge.lean            (jq, lean --deps-json)
-#   10 lake check       sandboxed build + export + replay                       (needs bwrap)
+#   10 lake check       sandboxed build + export + replay; of the default       (needs bwrap)
+#                       targets only while no sorry layer holds `sorry` (plan §5)
 #   11 lake comparator  Spec statements vs proofs, axioms, sandboxed replay by  (needs bwrap)
 #                       Lean's kernel and every bundled external kernel (--paranoid)
 #   12 docs             README spec-file list = the files of the Spec surface (trusted layers)
+#   13 metrics          depth, cones, expose and import counts (report)          (metrics-baseline.py)
+#   14 rebuild canary   a proof-only edit rebuilds one module (report); a        (lake; --full or --canary)
+#                       statement edit (control) must make an importer stale
 # Every step with a negative fixture also runs it through the same function ("self-test" steps).
 #
-# Usage: scripts/check.sh [--fast | --full [--split main|lake-check] | --changed [<base>]] [--selftests] [--reach] [--no-build]
-#                         [--update-snapshot] [--update-extensions]
+# Usage: scripts/check.sh [--fast | --full [--split main|lake-check] | --changed [<base>]] [--selftests] [--reach] [--canary]
+#                         [--no-build] [--update-snapshot] [--update-extensions]
 #   --fast (default)     every step except the heavy ones (5 kernel replay, 10 lake check, 11 lake
 #                        comparator) and the self-tests: CI on every pull request and push to main
 #   --full               everything, self-tests included: CI nightly, on demand and on milestone/release tags
@@ -36,6 +45,7 @@
 #                        module changed, grep on the changed files. A change of scripts/ or of the build
 #                        configuration falls back to --fast (with --selftests for scripts/). scripts/check-changed.sh
 #   --reach              in --fast mode, also run step 4's reach report (a report, not a gate)
+#   --canary             in --fast mode, also run step 14 (CI passes it when the build configuration changed)
 #   --selftests          also run the self-tests (fixtures) in --fast mode; with --changed, runs --fast
 #   --no-build           do not compile; `lake build --no-build` still fails on anything stale
 #   --update-snapshot    rewrite scripts/spec-snapshot.txt (the run then FAILS: review + commit it)
@@ -48,8 +58,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-usage="usage: scripts/check.sh [--fast | --full [--split main|lake-check] | --changed [<base>]] [--selftests] [--reach] [--no-build] [--update-snapshot] [--update-extensions]"
-mode=fast base="" split="" selftests=0 reach=0 no_build=0 update_snapshot=0 update_extensions=0
+usage="usage: scripts/check.sh [--fast | --full [--split main|lake-check] | --changed [<base>]] [--selftests] [--reach] [--canary] [--no-build] [--update-snapshot] [--update-extensions]"
+mode=fast base="" split="" selftests=0 reach=0 canary=0 no_build=0 update_snapshot=0 update_extensions=0
 while (($#)); do
   case "$1" in
     --fast) mode=fast ;;
@@ -58,6 +68,7 @@ while (($#)); do
     --changed) mode=changed; if (($# > 1)) && [[ "$2" != -* ]]; then base="$2"; shift; fi ;;
     --selftests) selftests=1 ;;
     --reach) reach=1 ;;
+    --canary) canary=1 ;;
     --no-build) no_build=1 ;;
     --update-snapshot) update_snapshot=1 ;;
     --update-extensions) update_extensions=1 ;;
@@ -74,7 +85,7 @@ if [[ -n "${CI:-}" ]] && ((no_build || update_snapshot || update_extensions)); t
   echo "check.sh: --no-build and --update-* are refused in CI" >&2
   exit 2
 fi
-[[ "$mode" == full ]] && selftests=1
+[[ "$mode" == full ]] && selftests=1 canary=1
 if [[ -n "$split" ]] && { [[ "$mode" != full ]] || [[ "$split" != main && "$split" != lake-check ]]; }; then
   echo "check.sh: --split takes main or lake-check, with --full only" >&2; exit 2
 fi
@@ -99,11 +110,24 @@ cfg() {
 c = tomllib.load(open(sys.argv[1], "rb")); k = sys.argv[2]
 if k == "libs":
     v = [l["name"] for l in c["lib"]]
+elif k in ("default_libs", "test_libs"):
+    v = [l["name"] for l in c["lib"] if l.get("default" if k == "default_libs" else "test_driver") is True]
+elif k in ("sorry_layers", "sorry_prefixes"):  # the layers where `sorry` may stay (plan §5), and their prefixes
+    ls = [l for l in c["layer"] if l.get("sorry") is True]
+    v = [l["name"] for l in ls] if k == "sorry_layers" else [p for l in ls for p in l["prefixes"]]
 else:
     v = c["checks"][k] if k in c.get("checks", {}) else c[k]
 sys.stdout.write("".join(x + "\n" for x in v) if isinstance(v, list) else v + "\n")' "$CFG" "$1"
 }
 mapfile -t LIBS < <(cfg libs)
+mapfile -t DEFAULT_LIBS < <(cfg default_libs)
+mapfile -t TEST_LIBS < <(cfg test_libs)
+mapfile -t SORRY_LAYERS < <(cfg sorry_layers)
+mapfile -t SORRY_PREFIXES < <(cfg sorry_prefixes)
+SORRY_OK="${SORRY_PREFIXES[*]}"  # check-decls --sorry-ok prefixes (space-separated module names)
+CANARY_MODULE="$(cfg canary_module)"
+mapfile -t CANARY_PROOF < <(cfg canary_proof_edit)
+mapfile -t CANARY_STMT < <(cfg canary_statement_edit)
 SPEC_MODULES=()  # every module of the inventory in a trusted layer (the Spec surface); filled after step 2
 mapfile -t EXTRA_TARGETS < <(cfg extra_build_targets)
 mapfile -t FIXTURE_LIBS < <(cfg fixture_libs)
@@ -115,7 +139,7 @@ CHALLENGE="$(cfg challenge_module)"
 SOLUTION="$(cfg solution_module)"
 STATEMENTS="$(cfg statements_module)"
 case "$THEOREMS_MODE" in report|enforce) ;; *) echo "check.sh: theorems_mode must be report or enforce" >&2; exit 2 ;; esac
-((${#LIBS[@]} > 0 && ${#EXTRA_TARGETS[@]} > 0)) ||
+((${#LIBS[@]} > 0 && ${#DEFAULT_LIBS[@]} > 0 && ${#EXTRA_TARGETS[@]} > 0)) ||
   { echo "check.sh: empty configuration" >&2; exit 2; }
 
 # --- what each mode checks ------------------------------------------------------------------------
@@ -125,6 +149,7 @@ CHANGED=()                # --changed: paths changed since $base (committed, sta
 CONE=()                   # --changed: checked-library modules changed or (transitively) importing one
 BUILD_TARGETS=()          # --changed: what step 1 builds
 do_surface=1 do_comparator_config=1
+do_audit=1 do_audit_tests=1 do_audit_report=1  # step 3b: the gates (solution closure, tests); the unfinished report
 
 # compute_changes: the change set since $base and its downstream cone (--changed). Falls back to --fast
 # (setting `mode`) where no sound restriction exists: the check stack or the build configuration changed.
@@ -146,6 +171,7 @@ compute_changes() {
   done
   if ((${#infra[@]})); then
     mode=fast; ((scripts_changed)) && selftests=1
+    for f in "${infra[@]}"; do [[ "$f" == scripts/* ]] || canary=1; done
     echo "  NOTE  the check stack or the build configuration changed (${#infra[@]} files): no sound restriction;"
     echo "        running --fast on everything$( ((scripts_changed)) && echo ', with the self-tests (scripts/ changed)')"
     return 0
@@ -211,7 +237,11 @@ PY
     [[ "$f" == comparator.json || "$f" == "$(mod_file "$CHALLENGE")" ]] && do_comparator_config=1
   done
   printf '%s\n' "${CONE[@]}" | grep -qxF "$SOLUTION" && do_comparator_config=1
+  printf '%s\n' "${CONE[@]}" | grep -qxF "$SOLUTION" || do_audit=0
+  printf '%s\n' "${CONE[@]}" | grep -qxF -f <(printf '%s\n' "${TEST_LIBS[@]}" | awk NF) || do_audit_tests=0
+  printf '%s\n' "${CONE[@]}" | grep -qxF -f <(printf '%s\n' "${DEFAULT_LIBS[@]}") || do_audit_report=0
   BUILD_TARGETS=("${CONE[@]}")
+  ((do_audit || do_audit_tests || do_audit_report)) && BUILD_TARGETS+=(axiom-audit)
   ((do_comparator_config)) && BUILD_TARGETS+=("$CHALLENGE")
   ((${#DECL_LIBS[@]})) && BUILD_TARGETS+=(check-decls)
   echo "  downstream cone (built): ${#CONE[@]} modules"
@@ -304,16 +334,36 @@ selftest_pins() {
 }
 
 # --- step 1: build --------------------------------------------------------------------------------
+# bad_fixture <target>: a deliberately bad fixture library (any fixture lib except the challenge): built
+# without --wfail (its warnings are expected); everything else fails on any warning or info message.
+# `warn.sorry = false` (lakefile) keeps `sorry` silent: where it may stay is steps 3, 3b and 7's business.
+bad_fixture() { [[ "$1" != "$CHALLENGE" ]] && printf '%s\n' "${FIXTURE_LIBS[@]}" | grep -qxF "$1"; }
+build_strict() { lake build --wfail --iofail "$@"; }  # step 1 and its self-test
 step_build() {  # default targets + BUILD_EXTRA; --changed: BUILD_TARGETS only
   set +e
-  local rc=0 nb=()
+  local rc=0 nb=() strict=() loose=() t
   ((no_build)) && nb=(--no-build)
   if [[ "$mode" == changed ]]; then
-    lake build "${nb[@]}" "${BUILD_TARGETS[@]}" || rc=1
+    build_strict "${nb[@]}" "${BUILD_TARGETS[@]}" || rc=1
   else
-    lake build "${nb[@]}" || rc=1
-    lake build "${nb[@]}" "${BUILD_EXTRA[@]}" || rc=1
+    build_strict "${nb[@]}" || rc=1
+    for t in "${BUILD_EXTRA[@]}"; do
+      if bad_fixture "$t"; then loose+=("$t"); else strict+=("$t"); fi
+    done
+    ((${#strict[@]} == 0)) || build_strict "${nb[@]}" "${strict[@]}" || rc=1
+    ((${#loose[@]} == 0)) || lake build "${nb[@]}" "${loose[@]}" || rc=1
   fi
+  set -e
+  return "$rc"
+}
+# --wfail fails on a warning, also when Lake replays it from a built module (CheckFixtures.Warn is built by
+# step 1); `warn.sorry = false` lets `sorry` pass it (CheckFixtures.SorryQuiet).
+selftest_build() {
+  set +e
+  local rc=0
+  expect_fail 'has been deprecated' build_strict CheckFixtures.Warn || rc=1
+  expect_pass lake build CheckFixtures.Warn || rc=1
+  expect_pass build_strict CheckFixtures.SorryQuiet || rc=1
   set -e
   return "$rc"
 }
@@ -336,18 +386,22 @@ step_boundaries() {
   done
   # The statements module is in a trusted layer (step 9's challenge imports exactly it).
   inv_trusted | grep -qxF "$STATEMENTS" || { echo "  FAIL[config] $STATEMENTS is not in a trusted layer"; bad=1; }
+  # The canary's edits (step 14, which runs only with --full or --canary) still apply: each `old` occurs once.
+  canary_applies || bad=1
   return "$bad"
 }
 selftest_boundaries() { python3 -I scripts/check-boundaries.py --self-test "$FX/boundaries"; }
 
 # --- step 3: declarations (EthLib check-decls) ----------------------------------------------------
 # decls_scope <scope> <baseline> <modules...>: one check-decls process importing every given module;
-# fails on any finding, on a stale baseline entry, and on an empty scope (`0 declarations`).
+# fails on any finding, on a stale baseline entry, and on an empty scope (`0 declarations`). A `sorry` at a
+# declaration of a module under a prefix in SORRY_OK (the sorry layers) is listed, not a finding (local patch).
 decls_scope() {
-  local scope="$1" baseline="$2" out rc n
+  local scope="$1" baseline="$2" out rc n p ok=()
   shift 2
   (($# > 0)) || { echo "  no modules for scope $scope"; return 1; }
-  out="$(lake exe check-decls --scope "$scope" --baseline "$baseline" "$@" 2>&1)" && rc=0 || rc=$?
+  for p in $SORRY_OK; do ok+=(--sorry-ok "$p"); done
+  out="$(lake exe check-decls --scope "$scope" --baseline "$baseline" "${ok[@]}" "$@" 2>&1)" && rc=0 || rc=$?
   echo "$out"
   n="$(sed -nE "s/^check-decls: ([0-9]+) declarations under $scope,.*/\1/p" <<<"$out")"
   if [[ -z "$n" || "$n" -eq 0 ]]; then echo "  scope $scope: no declarations checked"; return 1; fi
@@ -388,6 +442,7 @@ decls_each() {  # decls_each <inventory> <libs...>: needs the split baseline in 
 }
 # The baseline is validated against every library; --changed checks only the affected ones (DECL_LIBS).
 step_decls() { split_baseline scripts/check_decls_baseline.txt "$WORK/bl" "${LIBS[@]}" && decls_each "$INV" "${DECL_LIBS[@]}"; }
+decls_scope_ok() { local SORRY_OK="$1"; shift; decls_scope "$@"; }  # decls_scope with other --sorry-ok prefixes
 selftest_decls() {
   set +e
   local rc=0 out
@@ -413,6 +468,99 @@ selftest_decls() {
   done
   # BadSkipKernel passes check-decls (no axiom): only kernel replay (step 5) rejects it.
   expect_pass decls_scope CheckFixtures.BadSkipKernel /dev/null CheckFixtures.BadSkipKernel.A || rc=1
+  # `sorry` placement: allowed under a --sorry-ok prefix (listed), a finding elsewhere and without the prefix.
+  local fxok=CheckFixtures.SorryPlace.Lemmas
+  out="$(decls_scope_ok "$fxok" CheckFixtures.SorryPlace /dev/null CheckFixtures.SorryPlace.Lemmas.A 2>&1)" &&
+    grep -qF 'allowed sorry CheckFixtures.SorryPlace.Lemmas.A.t' <<<"$out" &&
+    echo "  ok: a sorry under $fxok passes and is listed" || { echo "  SorryPlace.Lemmas: $out" | tail -5; rc=1; }
+  expect_fail 'sorry CheckFixtures.SorryPlace.Spec.t' \
+    decls_scope_ok "$fxok" CheckFixtures.SorryPlace /dev/null CheckFixtures.SorryPlace.Lemmas.A CheckFixtures.SorryPlace.Spec || rc=1
+  expect_fail 'sorry CheckFixtures.SorryPlace.Lemmas.A.t' \
+    decls_scope_ok "" CheckFixtures.SorryPlace /dev/null CheckFixtures.SorryPlace.Lemmas.A || rc=1
+  set -e
+  return "$rc"
+}
+
+# --- step 3b: axiom audit (leanprover-community/axiom-audit, vendored) ----------------------------
+# audit_closure <module> <roots...>: every declaration of a module under each root, in the import closure of
+# <module>, depends only on propext, Classical.choice and Quot.sound: `sorry` (sorryAx), native_decide
+# (Lean.ofReduceBool) and declared axioms fail, directly or through imports. An empty audit fails too.
+audit_closure() {
+  local m="$1" r rc=0
+  shift
+  for r in "$@"; do
+    lake exe axiom-audit --root "$r" --modules "$m" || rc=1
+  done
+  return "$rc"
+}
+# audit_report <root> <modules,...>: the declarations under <root> (in the closure of the modules) that depend on
+# sorryAx (unfinished) or another non-standard axiom. A report: it fails only when the tool cannot run.
+audit_report() {
+  local out rc
+  out="$(lake exe axiom-audit --root "$1" --modules "$2" --json 2>&1)" && rc=0 || rc=$?
+  if ((rc > 1)) || ! grep -q '^{' <<<"$out"; then
+    echo "$out" | tail -5; echo "  axiom-audit could not run (exit $rc)"; return 1
+  fi
+  grep '^{' <<<"$out" | tail -1 | python3 -I -c 'import json, sys
+r = json.load(sys.stdin)
+if r["audited"] == 0: sys.exit("  axiom-audit audited 0 declarations under %s: miswired root or modules" % r["root"])
+v = r["violations"]
+unfinished = sorted(x["decl"] for x in v if "sorryAx" in x["axioms"])
+other = sorted(x["decl"] + " -> " + ", ".join(x["axioms"]) for x in v if x["axioms"] != ["sorryAx"])
+print("  NOTE  unfinished (report): %d of the %d declarations under %s depend on sorryAx" % (len(unfinished), r["audited"], r["root"]))
+for d in unfinished[:50]: print("    " + d)
+if len(unfinished) > 50: print("    ... and %d more" % (len(unfinished) - 50))
+if other: print("  NOTE  %d depend on another non-standard axiom (step 3 fails them):" % len(other))
+for d in other[:50]: print("    " + d)'
+}
+step_audit() {
+  set +e
+  local rc=0 r
+  if ((do_audit)); then
+    echo "  gate: the import closure of $SOLUTION (roots: ${DEFAULT_LIBS[*]} $SOLUTION)"
+    audit_closure "$SOLUTION" "${DEFAULT_LIBS[@]}" "$SOLUTION" || rc=1
+  else
+    echo "  NOTE  gate not run: nothing in the closure of $SOLUTION changed"
+  fi
+  # A test, witness or rejection built on an unfinished lemma would prove nothing: no test declaration may
+  # depend on sorryAx (or another non-standard axiom), also through an import. Main and the instances may
+  # (plan §5: they are not certified); the report lists them.
+  if ((do_audit_tests)); then
+    for r in "${TEST_LIBS[@]}"; do
+      echo "  gate: every declaration of the tests $r"
+      audit_closure "$r" "$r" || rc=1
+    done
+  else
+    echo "  NOTE  tests gate not run: no test module changed"
+  fi
+  if ((do_audit_report)); then
+    for r in "${DEFAULT_LIBS[@]}"; do audit_report "$r" "$r" || rc=1; done
+  else
+    echo "  NOTE  report not run: no module of ${DEFAULT_LIBS[*]} changed"
+  fi
+  set -e
+  return "$rc"
+}
+# Fixtures CheckFixtures.Audit.*: a solution with a direct sorry, one reaching a sorry through an import, one with
+# a declared axiom and one with native_decide each fail; a clean one passes, and a sorry outside its closure
+# (Outside) does not fail it but is listed by the report.
+selftest_audit() {
+  set +e
+  local rc=0 fx=CheckFixtures.Audit out
+  expect_pass audit_closure $fx.SolGood $fx || rc=1
+  expect_fail "$fx.SolDirect.s → [sorryAx]" audit_closure $fx.SolDirect $fx || rc=1
+  expect_fail "$fx.Lemma.helper → [sorryAx]" audit_closure $fx.SolTransitive $fx || rc=1
+  expect_fail "$fx.SolTransitive.s → [sorryAx]" audit_closure $fx.SolTransitive $fx || rc=1
+  # As the tests gate runs it (the root is the module itself): the sorry comes from outside the root.
+  expect_fail "$fx.SolTransitive.s → [sorryAx]" audit_closure $fx.SolTransitive $fx.SolTransitive || rc=1
+  expect_fail "$fx.SolAxiom.s → [$fx.SolAxiom.ax]" audit_closure $fx.SolAxiom $fx || rc=1
+  # native_decide's auxiliary axiom (v4.35: a private `<decl>._native.native_decide.ax_*`), not Lean.ofReduceBool.
+  expect_fail "$fx.SolNative.s → [_private.$fx.SolNative.0.$fx.SolNative.s._native.native_decide.ax_" \
+    audit_closure $fx.SolNative $fx || rc=1
+  expect_fail 'audited 0 declaration' audit_closure $fx.SolGood CheckFixtures.Nowhere || rc=1
+  out="$(audit_report $fx "$fx.SolGood,$fx.Outside")" && grep -qF "    $fx.Outside.o" <<<"$out" &&
+    grep -qF 'NOTE  unfinished (report): 1 of the' <<<"$out" &&
+    echo "  ok: the report lists the sorry outside the closure" || { echo "  report: $out"; rc=1; }
   set -e
   return "$rc"
 }
@@ -678,11 +826,73 @@ scan() {  # scan <ere> [-w] <files...>
   grep -nE "$@" -e "$re" 2>&1 && rc=0 || rc=$?
   ((rc <= 1)) || { echo "  grep failed (exit $rc)"; return 2; }
 }
-grep_7a() {
+grep_7a() {  # every library file
   local r=0
-  scan 'sorry|admit|native_decide|admitGoal|sorryAx|mkSorry|mkLabeledSorry' -w "$@" || r=2
-  scan 'skipKernelTC|decide \+native' "$@" || r=2
+  scan 'native_decide|admitGoal|sorryAx|mkSorry|mkLabeledSorry' -w "$@" || r=2
+  scan 'skipKernelTC|decide \+native|debug\.[A-Za-z]' "$@" || r=2
   return "$r"
+}
+grep_sorry() { scan 'sorry|admit' -w "$@"; }  # the library files outside the sorry layers
+# layer_files <inventory> <in|out> <layers...>: the files of the inventory's modules in (or outside) the layers.
+layer_files() {
+  local inv="$1" which="$2"
+  shift 2
+  awk -F'\t' -v which="$which" -v ls="$*" 'BEGIN { n = split(ls, a, " "); for (i = 1; i <= n; i++) s[a[i]] = 1 }
+    (which == "in") == ($4 in s) { print $2 }' "$inv" | while read -r m; do mod_file "$m"; done
+}
+# lean_scan <sorry|example> <count|lines> <files...>: Lean source with comments (nested block comments and
+# docstrings, line comments) removed, and string, raw string and char literals (interpolations included) masked;
+# a name literal (`sorry) is not a match.
+# `sorry`: the tokens sorry and admit. `example`: an `example` other than a bare `example := @Name` reference
+# (nothing after the name but the next command at column 0, or the end of the file: an argument must be
+# indented, so none can follow). An example never enters the environment, so neither check-decls nor the axiom
+# audit sees its proof (one built on an unfinished lemma would pass unseen). Prints the number of matches
+# (count) or each as file:line: text (lines); fails on an unreadable file.
+lean_scan() {
+  python3 -I - "$@" <<'PY'
+import re, sys
+pats = {"sorry": r"(?<![\w.'`])(?:sorry|admit)(?![\w'!?])", "example": r"(?<![\w.'`])example(?![\w'!?])"}
+ref = re.compile(r"example[ \t]*:=[ \t]*@[\w.'«»!?₀-₉]+[ \t]*(?:\n\s*)*")
+def bare_ref(code, at):  # `example := @Name`, then only the next command (a column-0 word, `#`, `@[`) or the end
+    r = ref.match(code, at)
+    if not r: return False
+    k = r.end()
+    return k == len(code) or (code[k - 1] == "\n" and (re.match(r"[A-Za-z_#]", code[k]) or code.startswith("@[", k)))
+pat, mode, n = re.compile(pats[sys.argv[1]]), sys.argv[2], 0
+L = "\x01"  # what a literal's characters become: no token, but not blank either (an argument stays visible)
+for f in sys.argv[3:]:
+    src, out, i, depth = open(f).read(), [], 0, 0
+    while i < len(src):
+        if src.startswith("/-", i): depth, i = depth + 1, i + 2; out.append("  ")
+        elif depth and src.startswith("-/", i): depth, i = depth - 1, i + 2; out.append("  ")
+        elif depth: out.append("\n" if src[i] == "\n" else " "); i += 1
+        elif src.startswith("--", i): i = src.find("\n", i) if "\n" in src[i:] else len(src)
+        elif (c := re.compile(r"(?<![\w'.])'(?:\\.|[^\\'\n])'").match(src, i)):  # a char literal
+            out.append(L * (c.end() - i)); i = c.end()
+        elif (r := re.compile(r'(?<![\w.])r(#*)"').match(src, i)):  # a raw string r"...", r#"..."#
+            j = src.find('"' + r.group(1), r.end())
+            j = len(src) if j < 0 else j + 1 + len(r.group(1))
+            out.append("".join(c if c == "\n" else L for c in src[i:j])); i = j
+        elif src[i] == '"':  # a string literal (escapes skipped), newlines kept
+            j = i + 1
+            while j < len(src) and src[j] != '"': j += 2 if src[j] == "\\" else 1
+            out.append("".join(c if c == "\n" else L for c in src[i:j + 1])); i = j + 1
+        else: out.append(src[i]); i += 1
+    code = "".join(out)
+    for m in pat.finditer(code):
+        if sys.argv[1] == "example" and bare_ref(code, m.start()): continue
+        n += 1
+        ln = code.count("\n", 0, m.start()) + 1
+        if mode == "lines": print(f"{f}:{ln}: {src.split(chr(10))[ln - 1].strip()}")
+if mode == "count": print(n)
+PY
+}
+# sorry_count <inventory>: the sorry/admit tokens in the files of the sorry layers, comments removed: what step 7
+# reports and step 10 decides by.
+sorry_count() {
+  local lax=()
+  mapfile -t lax < <(layer_files "$1" in "${SORRY_LAYERS[@]}")
+  lean_scan sorry count "${lax[@]}"
 }
 grep_7b() { scan 'run_cmd|run_meta|run_elab|#eval|#exit|(builtin_)?initialize' -w "$@"; }
 grep_7c() { scan 'skipKernelTC|plugins|moreLeanArgs|weakLeanArgs|moreServerArgs|loadDynlib|dynlibs|precompileModules|debug\.' "$@"; }
@@ -690,7 +900,7 @@ only_changed() {  # only_changed <paths...>: those in CHANGED
   awk 'NR == FNR { c[$0] = 1; next } $0 in c' <(printf '%s\n' "${CHANGED[@]}") <(printf '%s\n' "$@")
 }
 step_grep() {
-  local files=() spec=() found rc=0 what=""
+  local files=() spec=() strict=() found rc=0 what="" n
   mapfile -t files < <(cut -f2 "$INV" | while read -r m; do mod_file "$m"; done)
   mapfile -t spec < <(for m in "${SPEC_MODULES[@]}"; do mod_file "$m"; done)
   ((${#files[@]} > 0 && ${#spec[@]} > 0)) || { echo "  no files to scan"; return 1; }
@@ -699,17 +909,41 @@ step_grep() {
     mapfile -t spec < <(only_changed "${spec[@]}")
     what=" (changed files only)"
   fi
+  mapfile -t strict < <(layer_files "$INV" out "${SORRY_LAYERS[@]}")
+  [[ "$mode" != changed ]] || mapfile -t strict < <(only_changed "${strict[@]}")
   found="$({ { ((${#files[@]} == 0)) || grep_7a "${files[@]}"; } &&
+    { ((${#strict[@]} == 0)) || grep_sorry "${strict[@]}"; } &&
+    { ((${#files[@]} == 0)) || lean_scan example lines "${files[@]}"; } &&
     { ((${#spec[@]} == 0)) || grep_7b "${spec[@]}"; } && grep_7c lakefile.toml; } 2>&1)" || rc=1
   [[ -z "$found" && $rc -eq 0 ]] || { echo "$found"; return 1; }
   # Lake prefers lakefile.lean to lakefile.toml; every check here reads lakefile.toml (step 2 refuses it too).
   [[ ! -e lakefile.lean ]] || { echo "  lakefile.lean exists"; return 1; }
-  echo "  scanned ${#files[@]} library files, ${#spec[@]} Spec files$what, lakefile.toml"
+  echo "  scanned ${#files[@]} library files (sorry/admit: the ${#strict[@]} outside the sorry layers ${SORRY_LAYERS[*]}; no proof \`example\`), ${#spec[@]} Spec files$what, lakefile.toml"
+  n="$(sorry_count "$INV")" || { echo "  cannot count sorry in the sorry layers"; return 1; }
+  echo "  NOTE  sorry/admit in the sorry layers (report, every file, comments removed): $n"
 }
 selftest_grep() {
   set +e
-  local rc=0
-  [[ $(grep_7a "$FX/grep/Bad.lean" | wc -l) -ge 8 ]] && echo "  ok: 7a flags grep/Bad.lean" || { echo "  7a misses grep/Bad.lean"; rc=1; }
+  local rc=0 out
+  [[ $(grep_7a "$FX/grep/Bad.lean" | wc -l) -eq 7 ]] && echo "  ok: 7a flags grep/Bad.lean" || { echo "  7a misses grep/Bad.lean"; rc=1; }
+  [[ $(grep_sorry "$FX/grep/Bad.lean" | wc -l) -eq 2 ]] && echo "  ok: sorry/admit flagged in grep/Bad.lean" || { echo "  sorry/admit missed in grep/Bad.lean"; rc=1; }
+  # Placement, through the inventory: a sorry in a Spec file is flagged, the one in a Lemmas file only counted.
+  printf 'Fx\tscripts.fixtures.grep.sorry.Lemmas\tleaf\tLemmas\t-\nFx\tscripts.fixtures.grep.sorry.Spec\tleaf\tSpec\ttrusted\n' >"$WORK/fx-sorry-inv.tsv"
+  out="$(layer_files "$WORK/fx-sorry-inv.tsv" out "${SORRY_LAYERS[@]}")"
+  [[ "$out" == "$FX/grep/sorry/Spec.lean" ]] && [[ $(grep_sorry "$out" | wc -l) -eq 1 ]] &&
+    echo "  ok: only the Spec fixture's sorry is outside the sorry layers" || { echo "  placement: '$out'"; rc=1; }
+  [[ "$(sorry_count "$WORK/fx-sorry-inv.tsv")" == 1 ]] && echo "  ok: the Lemmas fixture's sorry is counted, its comments are not" ||
+    { echo "  sorry_count: $(sorry_count "$WORK/fx-sorry-inv.tsv")"; rc=1; }
+  out="$(lean_scan example lines "$FX/grep/Example.lean")"
+  [[ "$out" == "$FX/grep/Example.lean:4: example : 1 = 1 := rfl
+$FX/grep/Example.lean:6: example := @id (0 = 0) rfl
+$FX/grep/Example.lean:7: example := @id
+$FX/grep/Example.lean:11: example : 5 = 5 := rfl
+$FX/grep/Example.lean:12: example := @id<|rfl
+$FX/grep/Example.lean:13: example := @Nat.succ \"x\"
+$FX/grep/Example.lean:14: example := @Nat.succ 'x'
+$FX/grep/Example.lean:15: example := @Nat.succ r\"x\"" ]] && echo "  ok: only the proof examples of grep/Example.lean are flagged" ||
+    { echo "  example scan: '$out'"; rc=1; }
   [[ $(grep_7b "$FX/grep/BadSpecMeta.lean" | wc -l) -eq 4 ]] && echo "  ok: 7b flags grep/BadSpecMeta.lean" || { echo "  7b misses grep/BadSpecMeta.lean"; rc=1; }
   [[ $(grep_7c "$FX/grep/lakefile-bad.toml" | wc -l) -ge 2 ]] && echo "  ok: 7c flags grep/lakefile-bad.toml" || { echo "  7c misses grep/lakefile-bad.toml"; rc=1; }
   [[ -z "$(grep_7a "$FX/ReviewAxiomsGood.lean")" ]] && echo "  ok: 7a passes a clean file" || { echo "  7a flags a clean file"; rc=1; }
@@ -802,8 +1036,20 @@ selftest_comparator_config() {
 have_bwrap() { command -v bwrap >/dev/null; }
 step_lake_check() {
   set +e
-  local rc=0
-  lake check || rc=1
+  local rc=0 n
+  # `lake check` rejects every non-standard axiom of the default targets, so it applies only while no sorry layer
+  # holds `sorry` (plan §5). After that, certified = the closure of the solution: step 3b's audit, the kernel
+  # replay of every leaf (step 5) and the comparator's sandboxed replay (step 11).
+  [[ -s "$INV" ]] || python3 -I scripts/check-boundaries.py --config "$CFG" --lakefile lakefile.toml --inventory-out "$INV" >/dev/null
+  if ! n="$(sorry_count "$INV")" || [[ -z "$n" ]]; then
+    echo "  cannot count sorry in the sorry layers"; rc=1
+  elif ((n == 0)); then
+    lake check || rc=1
+  else
+    echo "  NOTE  lake check of the default targets not run: $n sorry/admit in the sorry layers (plan §5);"
+    echo "        the Solution closure and the tests are audited (3b), and the solution replayed (5, 11)"
+    [[ -z "${CI:-}" ]] || echo "::warning title=lake check::not run on the default targets: $n sorry/admit in the sorry layers (plan §5)"
+  fi
   # Rejected for the intended reason (the user axiom), not for a broken fixture or sandbox.
   expect_fail "error: Axiom 'ax' is not permitted; it is used by 't'" lake -d "$FX/lakecheck-bad" check || rc=1
   expect_pass lake -d "$FX/lakecheck-good" check || rc=1
@@ -853,6 +1099,75 @@ selftest_docs() {
   expect_fail 'FAIL[docs] ' docs_ok "$FX/comparator/README.md" "${good[@]}" || rc=1
   set -e
   return "$rc"
+}
+
+# --- step 13: metrics (report) --------------------------------------------------------------------
+step_metrics() {
+  local out
+  out="$(python3 -I scripts/metrics-baseline.py --config "$CFG" --no-modules 2>&1)" || { echo "$out" | tail -5; return 1; }
+  echo "  NOTE  report (scripts/metrics-baseline.py, totals):"
+  sed -n '/^## Totals$/,/^Direct imports/p' <<<"$out" | grep '^- ' | cut -c1-400 | sed 's/^/    /'
+}
+
+# --- step 14: rebuild canary (report) --------------------------------------------------------------
+# A proof-only edit (`canary_proof_edit` = [old, new] in boundaries.toml) of `canary_module` must rebuild that one
+# module: its .olean.hash unchanged and every default target still up to date (plan §6; Lake module/test.sh). A
+# regression is reported (a warning in CI), not failed. The control, a statement edit, must make the default
+# targets stale; if it does not, the canary cannot see a rebuild, and the step fails, as it does when an edit no
+# longer applies or the module cannot be restored.
+canary_edit() {  # canary_edit <file> <old> <new> [--dry-run]: replace the one occurrence of <old>
+  python3 -I - "$@" <<'PY'
+import sys
+f, old, new = sys.argv[1:4]
+t = open(f).read()
+if t.count(old) != 1:
+    sys.exit(f"  FAIL[canary] {old!r} occurs {t.count(old)} times in {f}: update canary_* in scripts/boundaries.toml")
+if sys.argv[4:] != ["--dry-run"]:
+    open(f, "w").write(t.replace(old, new))
+PY
+}
+canary_applies() {  # both edits of the canary apply to the committed module (no write, no build)
+  ((${#CANARY_PROOF[@]} == 2 && ${#CANARY_STMT[@]} == 2)) ||
+    { echo "  FAIL[canary] canary_proof_edit and canary_statement_edit must each be [old, new]"; return 1; }
+  canary_edit "$(mod_file "$CANARY_MODULE")" "${CANARY_PROOF[@]}" --dry-run &&
+    canary_edit "$(mod_file "$CANARY_MODULE")" "${CANARY_STMT[@]}" --dry-run
+}
+step_canary() {
+  local f hash
+  f="$(mod_file "$CANARY_MODULE")" hash=".lake/build/lib/lean/${CANARY_MODULE//.//}.olean.hash"
+  [[ -f "$f" ]] && git diff --quiet -- "$f" || { echo "  FAIL[canary] $f is missing or has local changes"; return 1; }
+  canary_applies || return 1
+  cp "$f" "$WORK/canary.orig"
+  local rc=0
+  # The subshell restores the module and rebuilds it on any exit (also after a failure or a signal).
+  ( trap 'cp "$WORK/canary.orig" "$f"; lake build -q "$CANARY_MODULE" >/dev/null 2>&1' EXIT; trap 'exit 1' INT TERM
+    canary_run "$f" "$hash" ) || rc=1
+  # Restored: the module is back to its original interface, and nothing else is stale.
+  lake build -q --no-build && git diff --quiet -- "$f" ||
+    { echo "  FAIL[canary] the tree is not back to its built state after the canary"; rc=1; }
+  return "$rc"
+}
+canary_run() {  # canary_run <file> <hash file>, in a subshell that restores <file> on exit
+  local f="$1" hash="$2" h0 h1
+  lake build -q --no-build >/dev/null 2>&1 && [[ -f "$hash" ]] ||
+    { echo "  FAIL[canary] the default targets are not built: the canary needs a built tree"; exit 1; }
+  h0="$(cat "$hash")"
+  canary_edit "$f" "${CANARY_PROOF[@]}" || exit 1
+  lake build -q "$CANARY_MODULE" || { echo "  FAIL[canary] the proof edit does not build"; exit 1; }
+  h1="$(cat "$hash")"
+  if [[ "$h0" == "$h1" ]] && lake build -q --no-build >/dev/null 2>&1; then
+    echo "  NOTE  canary (report): the proof-only edit of $CANARY_MODULE rebuilt 1 module (.olean.hash unchanged)"
+  else
+    echo "  NOTE  canary (report): REGRESSION: a proof-only edit of $CANARY_MODULE leaves other modules stale (.olean.hash $h0 -> $h1)"
+    [[ -z "${CI:-}" ]] || echo "::warning title=Rebuild canary::a proof-only edit of $CANARY_MODULE rebuilds more than one module"
+  fi
+  cp "$WORK/canary.orig" "$f"
+  canary_edit "$f" "${CANARY_STMT[@]}" || exit 1
+  lake build -q "$CANARY_MODULE" || { echo "  FAIL[canary] the statement edit does not build"; exit 1; }
+  if lake build -q --no-build >/dev/null 2>&1; then
+    echo "  FAIL[canary] control: the statement edit of $CANARY_MODULE left every importer up to date"; exit 1
+  fi
+  echo "  ok: control: the statement edit makes the default targets stale"
 }
 
 # --- driver ---------------------------------------------------------------------------------------
@@ -910,6 +1225,7 @@ if [[ "$mode" == changed ]]; then
 else
   build_label="1 build (default targets + ${BUILD_EXTRA[*]})"
 fi
+build_label+=", --wfail --iofail"
 if ((no_build)); then build_label+=" (freshness only, --no-build)"; fi
 
 run_step "0 pins (toolchain + dependencies = scripts/pins.toml)" step_pins
@@ -919,6 +1235,7 @@ if [[ "$mode" == changed ]] && ((${#BUILD_TARGETS[@]} == 0)); then
 else
   run_step "$build_label" step_build
 fi
+run_selftest "1 build self-test (--wfail on a replayed warning; warn.sorry = false)" selftest_build
 run_step "2 boundaries (check-boundaries.py, every checked library)" step_boundaries
 if in_part 2 && [[ ! -s "$INV" ]]; then
   echo "check.sh: no inventory; the remaining steps need it"; echo; echo "check.sh: FAILURES PRESENT" >&2; exit 1
@@ -926,7 +1243,10 @@ fi
 ! in_part 2 || mapfile -t SPEC_MODULES < <(inv_trusted)
 run_selftest "2 boundaries self-test (fixtures/boundaries/cases.toml)" selftest_boundaries
 run_if "${#DECL_LIBS[@]}" "no library affected" "3 declarations (check-decls: ${DECL_LIBS[*]:-none})" step_decls
-run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope, HiddenOpaque)" selftest_decls
+run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope, HiddenOpaque, SorryPlace)" selftest_decls
+run_if "$((do_audit || do_audit_tests || do_audit_report))" "nothing in the closure of $SOLUTION, ${TEST_LIBS[*]} or ${DEFAULT_LIBS[*]} changed" \
+  "3b axiom audit (closure of $SOLUTION, ${TEST_LIBS[*]}: gate; unfinished in ${DEFAULT_LIBS[*]}: report)" step_audit
+run_selftest "3b axiom audit self-test (CheckFixtures.Audit)" selftest_audit
 if ((do_surface)); then
   run_step "4 Spec surface (extensions, snapshot, theorems, noconst)" step_surface
 else
@@ -950,6 +1270,12 @@ full_only "10 lake check (+ fixtures/lakecheck-{bad,good})" step_lake_check
 full_only "11 lake comparator --paranoid (+ fixtures/comparator-{good,stmt,axiom,def}.json)" step_lake_comparator
 run_step "12 docs (README spec-files = the files of the trusted layers)" step_docs
 run_selftest "12 docs self-test (README-good, README-missing)" selftest_docs
+run_step "13 metrics (report)" step_metrics
+if [[ "$mode" == changed ]] || ((!canary)); then
+  skip_step "14 rebuild canary" "--full, or --canary (CI: when the build configuration changed)"
+else
+  run_step "14 rebuild canary (report; the control must rebuild)" step_canary
+fi
 
 echo
 ((${#ci_only[@]} == 0)) || echo "CI-only: ${ci_only[*]}"

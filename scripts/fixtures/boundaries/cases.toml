@@ -83,6 +83,32 @@ edit."boundaries.toml" = [['''prefixes = ["Fx.Statements"]
 allow = ["Init", "ToMathlib", "Spec"]''', '''prefixes = ["Fx.Statements"]
 allow = ["Init", "ToMathlib", "Spec", "Lemmas"]''']]
 
+[SorryTrusted]
+expect = "FAIL[config] trusted layer Spec allows sorry"
+edit."boundaries.toml" = [['prefixes = ["Fx.Spec"]', '''prefixes = ["Fx.Spec"]
+sorry = true''']]
+
+[SorryOutside]
+expect = "FAIL[config] layer Main: sorry = true outside Lemmas and Proofs (Fx.Main)"
+edit."boundaries.toml" = [['prefixes = ["Fx.Main"]', '''prefixes = ["Fx.Main"]
+sorry = true''']]
+
+[SorryOutsideDefault]
+expect = "FAIL[config] layer TestLemmas: sorry = true outside the default libraries (FxTest.Lemmas)"
+edit."boundaries.toml" = [['[checks]', '''[[layer]]
+name = "TestLemmas"
+prefixes = ["FxTest.Lemmas"]
+allow = []
+sorry = true
+
+[checks]''']]
+
+[SorryNotBool]
+expect = "FAIL[config] [[layer]] Lemmas: sorry must be true or false"
+edit."boundaries.toml" = [['''prefixes = ["Fx.Lemmas"]
+sorry = true''', '''prefixes = ["Fx.Lemmas"]
+sorry = "yes"''']]
+
 [TrustedException]
 expect = "FAIL[config] exception 2: from Fx.Spec.B meets the trusted layer Spec"
 edit."boundaries.toml" = [['[checks]', '''[[exception]]

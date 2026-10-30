@@ -300,19 +300,21 @@ def readBaseline (path : System.FilePath) : IO (List (String × Name)) := do
     | [kind, decl] => some (kind, decl.toName)
     | _ => none
 
-/-- Entry point: `check-decls [--scope NAME] [--baseline FILE] [Module ...]`.
+/-- Entry point: `check-decls [--scope NAME] [--baseline FILE] [--sorry-ok PREFIX ...] [Module ...]`.
 It is `unsafe` because loading the environment extensions runs their initializers.
 The tool itself is not part of the checked scope. -/
 unsafe def run (args : List String) : IO UInt32 := do
-  let usage := "usage: check-decls [--scope NAME] [--baseline FILE] [Module ...]"
-  let rec parse : List String → Name → System.FilePath → List Name →
-      Except String (Name × System.FilePath × List Name)
-    | [], scope, baseline, mods => .ok (scope, baseline, mods.reverse)
-    | "--scope" :: s :: rest, _, baseline, mods => parse rest s.toName baseline mods
-    | "--baseline" :: b :: rest, scope, _, mods => parse rest scope b mods
-    | a :: rest, scope, baseline, mods =>
-      if a.startsWith "--" then .error s!"unknown option {a}" else parse rest scope baseline (a.toName :: mods)
-  let (scope, baselinePath, mods) ← match parse args `EthLib "scripts/check_decls_baseline.txt" [] with
+  let usage := "usage: check-decls [--scope NAME] [--baseline FILE] [--sorry-ok PREFIX ...] [Module ...]"
+  -- Local patch (consensus-lean #7): `--sorry-ok PREFIX`, repeatable.
+  let rec parse : List String → Name → System.FilePath → List Name → List Name →
+      Except String (Name × System.FilePath × List Name × List Name)
+    | [], scope, baseline, ok, mods => .ok (scope, baseline, ok, mods.reverse)
+    | "--scope" :: s :: rest, _, baseline, ok, mods => parse rest s.toName baseline ok mods
+    | "--baseline" :: b :: rest, scope, _, ok, mods => parse rest scope b ok mods
+    | "--sorry-ok" :: p :: rest, scope, baseline, ok, mods => parse rest scope baseline (p.toName :: ok) mods
+    | a :: rest, scope, baseline, ok, mods =>
+      if a.startsWith "--" then .error s!"unknown option {a}" else parse rest scope baseline ok (a.toName :: mods)
+  let (scope, baselinePath, sorryOk, mods) ← match parse args `EthLib "scripts/check_decls_baseline.txt" [] [] with
     | .ok r => pure r
     | .error e => do
       IO.eprintln s!"check-decls: {e}\n{usage}"
@@ -329,6 +331,14 @@ unsafe def run (args : List String) : IO UInt32 := do
   let baseline ← readBaseline baselinePath
   let indices := scopeModules env scope
   let findings := check env indices
+  -- Local patch (consensus-lean #7): a `sorry` finding at a declaration of a module under a `--sorry-ok` prefix (the
+  -- layers where unfinished proofs may stay) is listed, but is not a finding. Every other kind still is.
+  let allowedSorry (f : Finding) : Bool :=
+    f.kind == "sorry" && (moduleOf? env f.decl).any fun m => sorryOk.any (·.isPrefixOf m)
+  let allowed := findings.filter allowedSorry
+  let findings := findings.filter (!allowedSorry ·)
+  for f in allowed do
+    IO.println s!"allowed sorry {f.decl}: in {(moduleOf? env f.decl).getD .anonymous}, under a --sorry-ok prefix"
   let isListed (f : Finding) := baseline.contains (f.kind, f.decl)
   let fresh := findings.filter (!isListed ·)
   for f in fresh do

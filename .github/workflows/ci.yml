@@ -1,8 +1,9 @@
 # Fast tier, on every pull request and every push to main: a cached build (Mathlib via `lake exe cache get`,
 # the project's .lake/build via actions/cache, falling back to main's latest) and `scripts/check.sh --fast`:
-# pins, imports, check-decls, Spec surface + snapshot diff, review pins, grep backstop, vendored hashes,
-# comparator config, docs. Self-tests too when the change touches scripts/ or the build configuration, and step 4's
-# reach report (not a gate) when it touches the Spec, the challenge or scripts/.
+# pins, build (--wfail), imports, check-decls, axiom audit (solution closure, tests), Spec surface + snapshot diff,
+# review pins, grep backstop, vendored hashes, comparator config, docs, metrics (report). Self-tests too when the
+# change touches scripts/ or the build configuration, step 4's reach report (not a gate) when it touches the Spec,
+# the challenge or scripts/, and the rebuild canary (step 14, a report) when it touches the build configuration.
 # Docs-only PRs use --changed <base>: cheap global checks, without Mathlib/project build caches.
 # Kernel replay, `lake check` and `lake comparator --paranoid` run in full.yml (nightly, manual, tags).
 # Pushes to work/* branches without a PR run nothing here: iterate locally (scripts/check-changed.sh).
@@ -118,7 +119,7 @@ jobs:
           mapfile -t spec <<<"$trusted"
           spec+=(scripts)
           if [[ -z "$BASE" || "$BASE" =~ ^0+$ ]] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
-            echo "no usable base ('$BASE'): self-tests and reach report on"; flags="--selftests --reach"
+            echo "no usable base ('$BASE'): self-tests, reach report and rebuild canary on"; flags="--selftests --reach --canary"
           else
             flags=""
             if [[ -n "$(git diff --name-only "$BASE" HEAD -- "${paths[@]}")" ]]; then
@@ -126,6 +127,10 @@ jobs:
               echo "the check stack or the build configuration changed: self-tests on"; flags="--selftests"
             else
               echo "no change to ${paths[*]}: self-tests off (nightly)"
+            fi
+            build_config=(lakefile.toml lakefile.lean lake-manifest.json lean-toolchain)
+            if [[ -n "$(git diff --name-only "$BASE" HEAD -- "${build_config[@]}")" ]]; then
+              echo "the build configuration changed: rebuild canary on"; flags="$flags --canary"
             fi
             if [[ -n "$(git diff --name-only "$BASE" HEAD -- "${spec[@]}")" ]]; then
               echo "the Spec, the challenge or scripts/ changed: reach report on"; flags="$flags --reach"

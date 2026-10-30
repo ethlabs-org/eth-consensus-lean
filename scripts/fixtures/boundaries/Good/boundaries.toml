@@ -48,16 +48,19 @@ trusted = true
 [[layer]]
 name = "Lemmas"
 prefixes = ["Fx.Lemmas"]
+sorry = true
 allow = ["Init", "ToMathlib", "Spec", "Statements"]
 
 [[layer]]
 name = "Proofs.P"
 prefixes = ["Fx.Proofs.P"]
+sorry = true
 allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
 
 [[layer]]
 name = "Proofs.Q"
 prefixes = ["Fx.Proofs.Q"]
+sorry = true
 allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
 
 [[layer]]

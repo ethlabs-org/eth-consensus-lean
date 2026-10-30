@@ -33,5 +33,12 @@ Checks and CI tiers: README "Verification".
   and CI also checks the list at the tag. CI's `review-boundary`
   fails until the `spec-approved` tag covers the change. Never create or move the tag; say in the PR that it
   needs approval. `scripts/**`, `.github/**` and the lakefile are owner-reviewed via CODEOWNERS.
+- **Unfinished proofs:** `sorry` only under `Lemmas/` and `Proofs/` (the `sorry = true` layers of
+  `scripts/boundaries.toml`), never in Spec, Statements, Main, instances, tests or `Solution`, and never an axiom.
+  `lake build --wfail` ignores it (`warn.sorry = false`) but fails on every other warning. The closure of
+  `Solution` (today `Main` and every milestone) and every test must be free of it, also through imports (check.sh
+  step 3b); a new milestone stays out of `Main`/`Solution` until it is finished. Tests are named theorems, not
+  proof `example`s (step 7: an example never enters the environment, so no check sees its proof). Step 3b's
+  report lists what is unfinished.
 - **Spec snapshot:** a Spec change fails step 4 until `scripts/spec-snapshot.txt` is regenerated
   (`scripts/check.sh --update-snapshot`, which then fails on purpose) and the diff is committed for review.

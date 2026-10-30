@@ -64,13 +64,13 @@ def trivialFamily : ShapeFamily schema Unit := trivialShape
 -- Compiled roles and selections: a slot proposal signs as the slot's
 -- proposer (one key), a committee duty as its kind (every key), the poll
 -- duties in the poll role (no key).
-example (pub : Public) : (compile (trivialShape pub)).role (.propose 3 (by decide)) =
-    ShapeRole.proposer 3 := rfl
-example (pub : Public) :
+theorem trivial_propose_role (pub : Public) :
+    (compile (trivialShape pub)).role (.propose 3 (by decide)) = ShapeRole.proposer 3 := rfl
+theorem trivial_proposer_selSpec (pub : Public) :
     (compile (trivialShape pub)).selSpec (ShapeRole.proposer 3) = .sized 1 := rfl
-example (pub : Public) : (compile (trivialShape pub)).selSpec (ShapeRole.duty 3 ()) =
-    .fixed Finset.univ := rfl
-example (pub : Public) :
+theorem trivial_duty_selSpec (pub : Public) :
+    (compile (trivialShape pub)).selSpec (ShapeRole.duty 3 ()) = .fixed Finset.univ := rfl
+theorem trivial_pollPropose_selSpec (pub : Public) :
     (compile (trivialShape pub)).selSpec ((compile (trivialShape pub)).role (.pollPropose 3)) =
       .fixed ∅ := rfl
 
@@ -170,12 +170,12 @@ theorem poll_duty_every_tick :
 
 /-- `shapeProgress` keeps its data fields (plan §2.1: only its proof fields `mono`/`shrink`
 were rewritten, to inline term proofs). -/
-example {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
+theorem shapeProgress_holds {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
     (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
     (shapeProgress F V).holds = shapeHolds F := rfl
 
-example {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
-    (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
+theorem shapeProgress_toExternal {O : OutputSchema} {Info : Type} [DecidableEq Info]
+    [Countable Info] (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
     (shapeProgress F V).toExternal = Model.sysExternal O (compiled F) V := rfl
 
 end Consensus.Shape.Tests.Shapes
