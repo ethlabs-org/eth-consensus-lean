@@ -242,6 +242,37 @@ private theorem acRestart_blockStamp_genesis (ro : ReplayOrder sp FGP) (self : F
     simp only [SAState.initial, ite_true]
   · exact absurd rfl h.2.1
 
+/-- **How one lawful call writes the block stamps.** `ac_on_block(B)` at `t` stamps `B.root`
+with `t`; a restart at `t ≥ 0` with a well-formed frame stamps every block of the tree with `t`,
+genesis with `−∞`; every other call keeps the stamps. -/
+theorem step_blockStamp_eq (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState sp.n)
+    {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
+    (c : (goldilocksSA sp FGP ro).Call) :
+    (∀ B, c = .block B → ((goldilocksSA sp FGP ro).step self A Φ t c).1.blockStamp =
+        Function.update A.blockStamp B.root (ETime.of t)) ∧
+      (c = .restart → ∀ X ∈ Φ.tree, ((goldilocksSA sp FGP ro).step self A Φ t c).1.blockStamp
+        X.root = if X.root = sp.genesisRoot then ⊥ else ETime.of t) ∧
+      ((∀ B, c ≠ .block B) → c ≠ .restart →
+        ((goldilocksSA sp FGP ro).step self A Φ t c).1.blockStamp = A.blockStamp) := by
+  cases c with
+  | block B =>
+    refine ⟨fun B' hB => ?_, fun h => absurd h (by simp), fun h => absurd rfl (h B)⟩
+    cases hB
+    exact (acOnBlock_fields _ _ _ _ _).2
+  | restart =>
+    refine ⟨fun B h => absurd h (by simp), fun _ X hX => ?_, fun _ h => absurd rfl h⟩
+    split_ifs with hg
+    · rw [hg]; exact acRestart_blockStamp_genesis ro self A hΦ ht
+    · exact acRestart_blockStamp ro self A hΦ ht hX hg
+  | tick => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
+      fun _ _ => (acOnTick_fields _ _ _ _).2⟩
+  | proposal => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
+      fun _ _ => (acProposal_fields _ _ _).2⟩
+  | toFG => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
+      fun _ _ => (acToFG_fields _ _ _).2⟩
+  | message m => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
+      fun _ _ => (acOnMessage_fields _ _ _ _ _).2⟩
+
 end Fields
 
 private theorem ETime.of_le_of {t t' : Time} (h : t ≤ t') : ETime.of t ≤ ETime.of t' :=

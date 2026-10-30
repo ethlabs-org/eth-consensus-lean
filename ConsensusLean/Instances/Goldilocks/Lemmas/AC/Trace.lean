@@ -226,18 +226,274 @@ theorem mem_tree_of_acceptAt {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
       rw [hs.tree_eq]; exact ⟨Set.mem_insert _ _, hs.F'_anc_B⟩
   exact (retain_between sp h hy hck i ℓ hc hki).2 B hBk hF
 
+/-- The coherent set of an honest node's frames holds a genesis block (root `genesisRoot`, no
+parent): its first call follows an initial frame. -/
+theorem genesis_mem_of_call {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) :
+    ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ →
+      ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.parent = none := by
+  intro i
+  induction i using Nat.strong_induction_on with
+  | _ i ih =>
+    intro ℓ hc
+    rcases h.frameLaw y hy i ℓ hc with ⟨-, Φ₀, ⟨htree, hroot, -, hpar, -⟩, hin, -⟩ |
+      ⟨j, ℓ', hj, hc', -⟩
+    · exact ⟨Φ₀.F, hin.2 (htree ▸ rfl), hroot, hpar⟩
+    · exact ih j hj ℓ' hc'
+
+/-- The frame of an honest `on_block(B)` call holds `B`, which is in no frame of the node's
+earlier calls (it is new, and frames retain what extends their finalized tip). -/
+theorem accept_new {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {B : Blk sp.n FGP} (ha : tr.AcceptAt y i B) :
+    (∀ ℓ, tr.CallAt y i ℓ → B ∈ ℓ.frame.tree) ∧
+      ∀ k < i, ∀ ℓk, tr.CallAt y k ℓk → B ∉ ℓk.frame.tree := by
+  obtain ⟨ℓ, hc, hcall⟩ := ha
+  have hok : ∃ Φ, (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame ∧
+      ((∀ k < i, ∀ ℓk, ¬ tr.CallAt y k ℓk) ∨ ∃ j < i, ∃ ℓj, tr.CallAt y j ℓj ∧
+        tr.NoCallBetween y (j + 1) i ∧ Φ = ℓj.frame) := by
+    rcases h.frameLaw y hy i ℓ hc with ⟨hn, Φ₀, -, -, hok⟩ | ⟨j, ℓ', hj, hc', hnb, hok⟩
+    · exact ⟨Φ₀, hok, Or.inl fun k hk ℓk => hn k (Nat.zero_le _) hk ℓk⟩
+    · exact ⟨ℓ'.frame, hok, Or.inr ⟨j, hj, ℓ', hc', hnb, rfl⟩⟩
+  obtain ⟨Φ, hok, hprev⟩ := hok
+  have hs : FrameStep Φ B ℓ.frame := by
+    have := hok.2; rw [hcall] at this; exact this.1
+  have hBin : B ∈ ℓ.frame.tree := by
+    rw [hs.tree_eq]; exact ⟨Set.mem_insert _ _, hs.F'_anc_B⟩
+  refine ⟨fun ℓ' hc' => (Option.some.inj (hc'.2.symm.trans hc.2)) ▸ hBin,
+    fun k hk ℓk hck hBk => ?_⟩
+  rcases hprev with hn | ⟨j, hj, ℓj, hcj, hnb, rfl⟩
+  · exact hn k hk ℓk hck
+  have hkj : k ≤ j := by
+    by_contra hlt
+    exact hnb k (by omega) hk ℓk hck
+  have hinj : (goldilocksSA sp FGP ro).FrameIn U ℓj.frame := by
+    rcases h.frameLaw y hy j ℓj hcj with ⟨_, _, _, _, hok'⟩ | ⟨_, _, _, _, _, hok'⟩ <;>
+      exact hok'.1
+  have hFF := (callOK_retains sp h.coherent hinj hok).1
+  have hFB : Anc U ℓ.frame.F B := (hok.1.1.rooted.2 B hBin).mono hok.1.2
+  exact hs.new ((retain_between sp h hy hck j ℓj hcj hkj).2 B hBk (hFF.trans hFB))
+
+/-- An honest node accepts a block at most once. -/
+theorem accept_unique {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {k k' : Nat}
+    {B : Blk sp.n FGP} (hk : tr.AcceptAt y k B) (hk' : tr.AcceptAt y k' B) : k = k' := by
+  rcases lt_trichotomy k k' with hlt | heq | hlt
+  · obtain ⟨ℓ, hc, hcl⟩ := hk
+    exact absurd ((accept_new sp h hy ⟨ℓ, hc, hcl⟩).1 ℓ hc) ((accept_new sp h hy hk').2 k hlt ℓ hc)
+  · exact heq
+  · obtain ⟨ℓ, hc, hcl⟩ := hk'
+    exact absurd ((accept_new sp h hy ⟨ℓ, hc, hcl⟩).1 ℓ hc) ((accept_new sp h hy hk).2 k' hlt ℓ hc)
+
+/-- An honest node never accepts a block with the genesis root. -/
+theorem accept_ne_genesis {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {B : Blk sp.n FGP} (hk : tr.AcceptAt y k B) : B.root ≠ sp.genesisRoot := by
+  intro hg
+  obtain ⟨ℓ, hc, hcall⟩ := hk
+  obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp h hy k ℓ hc
+  have hBU : B ∈ U := (by
+    rcases h.frameLaw y hy k ℓ hc with ⟨_, _, _, _, hok⟩ | ⟨_, _, _, _, _, hok⟩ <;>
+      exact hok.1.2 ((accept_new sp h hy ⟨ℓ, hc, hcall⟩).1 ℓ hc))
+  have hBG : B = G := h.coherent.1 hBU hGU (hg.trans hGr.symm)
+  have hpar : ∃ P : Blk sp.n FGP, B.parent = some P.root := by
+    rcases h.frameLaw y hy k ℓ hc with ⟨_, _, _, _, hok⟩ | ⟨_, _, _, _, _, hok⟩ <;>
+    · have := hok.2; rw [hcall] at this
+      obtain ⟨P, -, hP⟩ := this.1.parent_mem
+      exact ⟨P, hP⟩
+  obtain ⟨P, hP⟩ := hpar
+  rw [hBG, hGp] at hP
+  exact absurd hP (by simp)
+
+/-- Every block of an honest node's frame at a call is of slot `0` (genesis), or the node
+accepted it at that call or an earlier one. -/
+theorem frame_genesis_or_accepted {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    ∀ B ∈ ℓ.frame.tree, B.slot = 0 ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
+  induction i using Nat.strong_induction_on generalizing ℓ with
+  | _ i ih =>
+    have step : ∀ Φ : Frm sp.n FGP,
+        (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
+        (∀ B ∈ Φ.tree, B.slot = 0 ∨ ∃ k ≤ i, tr.AcceptAt y k B) →
+        ∀ B ∈ ℓ.frame.tree, B.slot = 0 ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
+      intro Φ hok hv X hX
+      obtain ⟨-, hm⟩ := hok
+      generalize hcall : ℓ.call = c at hm
+      cases c with
+      | block B =>
+        rw [hm.1.tree_eq] at hX
+        rcases hX.1 with rfl | hX
+        · exact Or.inr ⟨i, le_rfl, ℓ, hc, hcall⟩
+        · exact hv X hX
+      | message m => exact hv X (hm.1 ▸ hX)
+      | tick => exact hv X (hm ▸ hX)
+      | proposal => exact hv X (hm ▸ hX)
+      | toFG => exact hv X (hm ▸ hX)
+      | restart => exact hv X (hm ▸ hX)
+    rcases hr.frameLaw y hy i ℓ hc with
+      ⟨-, Φ₀, ⟨htree, -, hslot, -, -⟩, -, hok⟩ | ⟨j, ℓ', hj, hc', -, hok⟩
+    · refine step Φ₀ hok fun B hB => ?_
+      rw [htree, Set.mem_singleton_iff] at hB
+      subst hB
+      exact Or.inl hslot
+    · exact step _ hok fun B hB =>
+        (ih j hj hc' B hB).imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans hj.le, h⟩
+
+/-- The stamp of a block of an honest node's frame after a call: `−∞` (genesis), the time of the
+node's acceptance of the block, or the time of one of its restarts, at or before the call. -/
+private theorem stamp_cases {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) :
+    ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
+      (tr.post i).blockStamp X.root = ⊥ ∨
+        (∃ k ≤ i, tr.AcceptAt y k X ∧ (tr.post i).blockStamp X.root = ETime.of (tr.time k)) ∨
+        (∃ r ≤ i, tr.RestartAt y r ∧ (tr.post i).blockStamp X.root = ETime.of (tr.time r)) := by
+  intro i
+  induction i using Nat.strong_induction_on with
+  | _ i ih =>
+    intro ℓ hc X hX
+    have hexec := h.exec i ℓ hc.2 (hc.1 ▸ hy)
+    rw [hc.1] at hexec
+    have hpost : tr.post i =
+        ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
+      rw [hexec]
+    -- the previous frame and the invariant for it, in the state before the call
+    obtain ⟨Φ, hok, hpre⟩ : ∃ Φ, (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame ∧
+        ∀ X ∈ Φ.tree, (tr.state y i).blockStamp X.root = ⊥ ∨
+          (∃ k ≤ i, tr.AcceptAt y k X ∧
+            (tr.state y i).blockStamp X.root = ETime.of (tr.time k)) ∨
+          (∃ r ≤ i, tr.RestartAt y r ∧
+            (tr.state y i).blockStamp X.root = ETime.of (tr.time r)) := by
+      rcases h.frameLaw y hy i ℓ hc with ⟨hn, Φ₀, ⟨htree, hroot, -, -, -⟩, -, hok⟩ |
+        ⟨j, ℓ', hj, hc', hnb, hok⟩
+      · refine ⟨Φ₀, hok, fun X hX => Or.inl ?_⟩
+        rw [htree, Set.mem_singleton_iff] at hX
+        rw [tr.state_of_noCall hn, h.init y hy, hX, hroot]
+        change (if sp.genesisRoot = sp.genesisRoot then ⊥ else ⊤) = (⊥ : ETime)
+        simp only [ite_true]
+      · refine ⟨ℓ'.frame, hok, fun X hX => ?_⟩
+        rw [tr.state_of_lastCall hc' hj hnb]
+        rcases ih j hj ℓ' hc' X hX with h0 | ⟨k, hk, h1, h2⟩ | ⟨r, hr, h1, h2⟩
+        · exact Or.inl h0
+        · exact Or.inr (Or.inl ⟨k, hk.trans hj.le, h1, h2⟩)
+        · exact Or.inr (Or.inr ⟨r, hr.trans hj.le, h1, h2⟩)
+    have hΦ' := hok.1
+    obtain ⟨hblk, hrst, hoth⟩ := step_blockStamp_eq ro y (tr.state y i) hΦ'.1
+      (h.time_nonneg i) ℓ.call
+    rw [hpost]
+    generalize hcall : ℓ.call = c at hok hblk hrst hoth
+    cases c with
+    | block B =>
+      rw [hblk B rfl, Function.update_apply]
+      obtain ⟨hin, hs, -, -⟩ := hok
+      split_ifs with hXB
+      · have : X = B := hin.1.coherent.1 hX (by
+          rw [hs.tree_eq]; exact ⟨Set.mem_insert _ _, hs.F'_anc_B⟩) hXB
+        subst this
+        exact Or.inr (Or.inl ⟨i, le_rfl, ⟨ℓ, hc, hcall⟩, rfl⟩)
+      · rw [hs.tree_eq] at hX
+        rcases hX.1 with rfl | hX'
+        · exact absurd rfl hXB
+        · exact hpre X hX'
+    | restart =>
+      rw [hrst rfl X hX]
+      split_ifs
+      · exact Or.inl rfl
+      · exact Or.inr (Or.inr ⟨i, le_rfl, ⟨ℓ, hc, hcall⟩, rfl⟩)
+    | tick => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2 ▸ hX)
+    | proposal => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2 ▸ hX)
+    | toFG => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2 ▸ hX)
+    | message m => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2.1 ▸ hX)
+
 /-- **Stamps of accepted blocks.** At an honest node's call, a block of the call's frame that the
 node accepted before `T` (or genesis) has a stamp below `T` in the state before the call, when
-every restart of the node up to the call was before `T`: the stamp of a block is written only
-when the node accepts it (once: it enters the frame once) and by a restart's replay (A0.7). -/
-theorem blockStamp_lt_of_acceptedBefore {FGP : Type} {ro : ReplayOrder sp FGP}
+every restart of the node up to the call was before `T` and the call does not itself accept the
+block (it is at or after `T`, or not `on_block(B)`): the stamp of a block is written only when
+the node accepts it (once) and by a restart's replay (A0.7). -/
+theorem blockStamp_lt_of_acceptedBefore {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) {B : Blk sp.n FGP}
     (hB : B ∈ ℓ.frame.tree) {T : Time} (hacc : AcceptedBefore tr y B T)
-    (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < T) :
+    (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < T)
+    (hi : T ≤ tr.time i ∨ ℓ.call ≠ .block B) :
     (tr.state y i).blockStamp B.root < ETime.of T := by
-  sorry
+  have hlt : ∀ t, t < T → ETime.of t < ETime.of T := fun t ht =>
+    WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr ht)
+  have hbot : (⊥ : ETime) < ETime.of T := WithBot.bot_lt_coe _
+  -- the call does not accept `B`
+  have hnot : ℓ.call ≠ .block B := by
+    rcases hi with hTi | hne
+    · intro hcall
+      have hai : tr.AcceptAt y i B := ⟨ℓ, hc, hcall⟩
+      rcases hacc with hg | ⟨k, hk, hkT⟩
+      · exact accept_ne_genesis sp h hy hai hg
+      · have := accept_unique sp h hy hk hai
+        subst this
+        exact absurd (lt_of_lt_of_le hkT hTi) (lt_irrefl _)
+    · exact hne
+  rcases tr.noCall_or_lastCall y i with hn | ⟨j, hj, ℓj, hcj, hnb⟩
+  · -- no earlier call: the frame of the first call grows from `{genesis}`
+    rw [tr.state_of_noCall hn, h.init y hy]
+    rcases h.frameLaw y hy i ℓ hc with ⟨-, Φ₀, ⟨htree, hroot, -, -, -⟩, -, hok⟩ |
+      ⟨j, ℓ', hj, hc', -⟩
+    · have hBΦ : B ∈ Φ₀.tree := by
+        obtain ⟨-, hm⟩ := hok
+        generalize hcall : ℓ.call = c at hm hnot
+        cases c with
+        | block B' =>
+          rw [hm.1.tree_eq] at hB
+          rcases hB.1 with rfl | hB'
+          · exact absurd rfl hnot
+          · exact hB'
+        | message m => exact hm.1 ▸ hB
+        | tick => exact hm ▸ hB
+        | proposal => exact hm ▸ hB
+        | toFG => exact hm ▸ hB
+        | restart => exact hm ▸ hB
+      rw [htree, Set.mem_singleton_iff] at hBΦ
+      rw [hBΦ, hroot]
+      change (if sp.genesisRoot = sp.genesisRoot then ⊥ else ⊤) < ETime.of T
+      simp only [ite_true]; exact hbot
+    · exact absurd hc' (hn j (Nat.zero_le _) hj ℓ')
+  · rw [tr.state_of_lastCall hcj hj hnb]
+    have hBj : B ∈ ℓj.frame.tree := by
+      rcases h.frameLaw y hy i ℓ hc with ⟨hn', -⟩ | ⟨j', ℓ', hj', hc', hnb', hok⟩
+      · exact absurd hcj (hn' j (Nat.zero_le _) hj ℓj)
+      have hjj : j' = j := by
+        rcases lt_trichotomy j' j with h1 | h1 | h1
+        · exact absurd hcj (hnb' j (by omega) hj ℓj)
+        · exact h1
+        · exact absurd hc' (hnb j' (by omega) hj' ℓ')
+      subst hjj
+      have : ℓ' = ℓj := Option.some.inj (hc'.2.symm.trans hcj.2)
+      subst this
+      obtain ⟨-, hm⟩ := hok
+      generalize hcall : ℓ.call = c at hm hnot
+      cases c with
+      | block B' =>
+        rw [hm.1.tree_eq] at hB
+        rcases hB.1 with rfl | hB'
+        · exact absurd rfl hnot
+        · exact hB'
+      | message m => exact hm.1 ▸ hB
+      | tick => exact hm ▸ hB
+      | proposal => exact hm ▸ hB
+      | toFG => exact hm ▸ hB
+      | restart => exact hm ▸ hB
+    rcases stamp_cases sp h hy j ℓj hcj B hBj with h0 | ⟨k, -, hk, h1⟩ | ⟨r, hr, hrr, h1⟩
+    · rw [h0]; exact hbot
+    · rw [h1]
+      rcases hacc with hg | ⟨k', hk', hkT⟩
+      · exact absurd hg (accept_ne_genesis sp h hy hk)
+      · rw [accept_unique sp h hy hk hk']; exact hlt _ hkT
+    · rw [h1]; exact hlt _ (hrs r (hr.trans hj.le) hrr)
 
 /-- **The state before a cut is initial or reachable.** The state of an honest node before cut `i`
 is the initial state (no call yet), or reachable inside `U` with the frame and the time of its

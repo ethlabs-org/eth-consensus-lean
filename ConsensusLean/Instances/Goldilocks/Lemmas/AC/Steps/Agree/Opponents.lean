@@ -299,7 +299,8 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
         · -- the proposer holds it, resolved
           have hbs : (tr.state p i).blockStamp x.head ≠ ⊤ := by
             refine hHdr ▸ (blockStamp_lt_of_acceptedBefore sp hr hp hcp hHdp
-              (T := tr.time i + 1) ?_ fun k hk hrk => ?_).trans (etime_of_lt_top _) |>.ne
+              (T := tr.time i + 1) ?_ (fun k hk hrk => ?_)
+              (Or.inr (by rw [hcall]; simp))).trans (etime_of_lt_top _) |>.ne
             · rcases frame_accepted hr hp i hcp Hd' hHdp with h | ⟨k, hk, h⟩
               · exact Or.inl h
               · exact Or.inr ⟨k, h, by linarith [hr.time_mono hk]⟩

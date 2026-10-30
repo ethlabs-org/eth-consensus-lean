@@ -278,7 +278,7 @@ theorem carried_supporter (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i
         Anc.mono (Set.insert_subset_iff.2 ⟨hHvU, hΦ'U⟩) (hst.F_anc_F'.trans hst.F'_anc_B)
       exact hst.new (mem_tree_of_acceptAt sp hr hy ⟨ℓk, hck, hkB⟩ hkj hc' hanc)
   -- the vote is resolved before the freeze
-  have hbs := blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hHvt hacc hrs
+  have hbs := blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hHvt hacc hrs (Or.inl hT.le)
   rw [hHvr, ← readPoint_blockStamp hr hy hc hne] at hbs
   have hfz : freeze sp (s + 1) = sp.ts s + 3 * sp.Δ := by simp [freeze]
   have hres : resolutionTime e.readPoint ℓ.frame v < ETime.of (freeze sp (s + 1)) := by
