@@ -36,7 +36,7 @@ private theorem honest_coherent (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun 
   (ac_projection _ _ dg H _ tr (requirements sp ro) hrun.toLocalRun hnc).coherent
 
 /-- Genesis is an honest block below every honest block. -/
-private theorem genesis_anc (hrun : GoldilocksRun dg H tr) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem honest_genesis_anc (hrun : GoldilocksRun dg H tr) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ tr.HonestBlocks H) :
     sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∈ tr.HonestBlocks H ∧
       Anc (tr.HonestBlocks H)
@@ -47,11 +47,11 @@ private theorem genesis_anc (hrun : GoldilocksRun dg H tr) {B : SA.Blk sp.n (Lis
   exact ⟨⟨y, hy, i, hg⟩, (hanc B hBt).mono fun X hX => ⟨y, hy, i, hX⟩⟩
 
 /-- An honest block with the genesis root is genesis. -/
-private theorem eq_genesis (hrun : GoldilocksRun dg H tr) (hU : Coherent (tr.HonestBlocks H))
+theorem honest_eq_genesis (hrun : GoldilocksRun dg H tr) (hU : Coherent (tr.HonestBlocks H))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
     (hr : B.root = sp.genesisRoot) :
     B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
-  hU.1 hB (genesis_anc hrun hB).1 hr
+  hU.1 hB (honest_genesis_anc hrun hB).1 hr
 
 /-- Genesis has no parent, so its only ancestor is itself. -/
 private theorem anc_genesis {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
@@ -71,11 +71,11 @@ theorem OnOriginChain.compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun
     Compatible (tr.HonestBlocks H) B B' := by
   have hU := honest_coherent hrun hnc
   rcases onOriginChain_iff.1 h with hg | ⟨C, s, hC, hBC⟩
-  · rw [eq_genesis hrun hU hB hg]
-    exact Or.inl (genesis_anc hrun hB').2
+  · rw [honest_eq_genesis hrun hU hB hg]
+    exact Or.inl (honest_genesis_anc hrun hB').2
   rcases onOriginChain_iff.1 h' with hg' | ⟨C', s', hC', hBC'⟩
-  · rw [eq_genesis hrun hU hB' hg']
-    exact Or.inr (genesis_anc hrun hB).2
+  · rw [honest_eq_genesis hrun hU hB' hg']
+    exact Or.inr (honest_genesis_anc hrun hB).2
   rcases hcomp C s C' s' hC hC' with hCC | hCC
   · exact Anc.total hU (hBC.trans hCC) hBC'
   · exact Anc.total hU hBC (hBC'.trans hCC)
@@ -89,7 +89,7 @@ theorem OnOriginChain.of_anc (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg 
       by_cases hne : A = B
       · exact hne ▸ hA
       · exact (hAB.mem hne).2
-    rw [eq_genesis hrun (honest_coherent hrun hnc) hBU hg] at hAB
+    rw [honest_eq_genesis hrun (honest_coherent hrun hnc) hBU hg] at hAB
     exact onOriginChain_iff.2 (Or.inl (by rw [anc_genesis hAB]; rfl))
   · exact onOriginChain_iff.2 (Or.inr ⟨C, s, hC, hAB.trans hBC⟩)
 

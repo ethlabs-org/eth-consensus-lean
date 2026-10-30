@@ -39,9 +39,9 @@ private theorem lastWake_coe {y : Fin P.n} {w : Time} :
     · obtain ⟨k, hk, h'⟩ := lastWake_coe h
       exact ⟨k, hk.trans (Nat.le_succ c), h'⟩
 
-/-- With every restart up to cut `c` at or before `a`, the deadline of `τ` is at most
-`max(τ, a) + Δ`. -/
-private theorem deadline_le {y : Fin P.n} {c : Nat} {a : Time}
+/-- **The deadline after restarts**: with every restart up to cut `c` at or before `a`, the
+deadline of `τ` is at most `max(τ, a) + Δ`. -/
+theorem ac_deadline_le_of_restarts {y : Fin P.n} {c : Nat} {a : Time}
     (h : ∀ k ≤ c, T.RestartAt y k → T.time k ≤ a) (τ : Time) :
     T.deadline y c τ ≤ max τ a + P.Δ := by
   unfold ACTrace.deadline
@@ -227,7 +227,7 @@ theorem carryAt_of_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {b
     rwa [hsi, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring] at this
   have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts s + 2 * sp.Δ → T.deadline y k τ < sp.ts s + 3 * sp.Δ := by
     intro k hk τ hτ
-    have h₁ := deadline_le (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
+    have h₁ := ac_deadline_le_of_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
     have h₂ := max_lt hτ (show sp.ts s < sp.ts s + 2 * sp.Δ by linarith)
     change T.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ at h₁
     linarith
@@ -363,7 +363,7 @@ theorem result_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
 sent) by the writer at a time in `[t_s, t_s + 2Δ)` (at or before the selection), and its head
 extends the selection and is genesis or was accepted by the writer before `t_s + 2Δ` (it is in
 the writer's frame at the selection). -/
-private theorem optimistic_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem optimistic_writer_votes (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat} {C : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hO : SA.OptimisticLockAt T x i₀ s C CV) :
     ∀ v ∈ CV, v.slot = s ∧
@@ -445,7 +445,7 @@ theorem optimistic_carry (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (hF : Anc (tr.HonestBlocks H) ℓ.frame.F C) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
   have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
-  have hW := optimistic_writer hr hx hO
+  have hW := optimistic_writer_votes hr hx hO
   exact carryAt_of_writer hr (sleepy_sync hrun hsl _) le_rfl hx hy hc hs fun v hv => by
     obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := hW v hv
     exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩
