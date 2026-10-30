@@ -34,12 +34,19 @@ Imports (each module, each import): an edge outside `allow` fails unless an `[[e
   tests); an aggregate import is still held to `allow`.
 Init chain: every module of a layer, except under an `init_exempt` prefix, reaches `init_module` through
   public imports.
+Visibility (plan §3): the attribute `expose` (whole-file `@[expose] public section`, on a declaration, or
+  through `attribute [expose]`; found in the code with comments and string/char literals blanked, inside a
+  balanced `@[...]`/`attribute [...]` list, also as `«expose»`) only in a layer with `expose = true`; that flag
+  never on a layer whose prefixes have a `Lemmas`, `Proofs`, `ToMathlib` or `Main` component. Not checked: the
+  bodies Lean exposes without the attribute (`abbrev`, instances of non-`Prop` classes); README "Layout". Known
+  scan limit: inside an interpolated string (`s!"..{..}.."`), a `'"'` char literal ends the string early.
 check-decls exemptions: a module with a `Proofs` component must be under
   `[checks].proofs_component_prefixes` and in a layer no trusted layer may reach; `Exports` is refused.
 `[checks].trusted_paths` (CI's review-boundary list) holds plain relative paths only and covers the file
   of every module of a trusted layer.
 Failure tags: FAIL[config] FAIL[layer] FAIL[milestone] FAIL[import] FAIL[entry] FAIL[umbrella]
-  FAIL[import-all] FAIL[root] FAIL[root-import] FAIL[aggregate] FAIL[init] FAIL[base] FAIL[fixture].
+  FAIL[import-all] FAIL[root] FAIL[root-import] FAIL[aggregate] FAIL[init] FAIL[base] FAIL[fixture]
+  FAIL[expose].
 """
 import argparse, json, re, shutil, subprocess, sys, tempfile, tomllib
 from pathlib import Path
@@ -52,7 +59,8 @@ CHECKS_KEYS = {"proofs_component_prefixes", "noconst_exempt", "theorems_mode", "
                "challenge_module", "solution_module", "statements_module", "extra_build_targets", "trusted_paths",
                "canary_module", "canary_proof_edit", "canary_statement_edit"}
 LIB_KEYS = {"name", "default", "test_driver", "root_lists_all"}
-LAYER_KEYS = {"name", "prefixes", "allow", "trusted", "sorry", "may_import_roots", "may_import_all", "about"}
+LAYER_KEYS = {"name", "prefixes", "allow", "trusted", "sorry", "expose", "may_import_roots", "may_import_all",
+              "about"}
 EXCEPTION_KEYS = {"from", "to", "reason"}
 
 def under(m, prefix):  # module-name prefix, component-wise: A covers A and A.x, not AB
@@ -75,6 +83,68 @@ def strip_comments(src):  # Lean comments (nested block comments, line comments)
             continue
         out.append(src[i] if not depth or src[i] == "\n" else " "); i += 1
     return "".join(out)
+
+def code_only(src):  # comments (nested), string and char literals blanked; newlines kept
+    out, i, n = [], 0, len(src)
+    while i < n:
+        c = src[i]
+        if c == "«":  # a quoted identifier is one token; only «expose» keeps its text
+            j = src.find("»", i + 1)
+            j = n if j < 0 else j + 1
+            tok = src[i:j]
+            closed = len(tok) >= 2 and tok.endswith("»")
+            out.append(tok if tok == "«expose»" else "«" + "x" * (len(tok) - 1 - closed) + "»" * closed); i = j
+            continue
+        if src.startswith("--", i):
+            while i < n and src[i] != "\n":
+                i += 1
+            continue
+        if src.startswith("/-", i):
+            depth = 0
+            while i < n:
+                if src.startswith("/-", i):
+                    depth += 1; out.append("  "); i += 2
+                elif src.startswith("-/", i):
+                    depth -= 1; out.append("  "); i += 2
+                    if depth == 0:
+                        break
+                else:
+                    out.append("\n" if src[i] == "\n" else " "); i += 1
+            continue
+        m = re.match(r'r(#*)"', src[i:]) if c == "r" and (i == 0 or not IDENT.match(src[i - 1])) else None
+        if m:  # raw string r"...", r#"..."#
+            end = src.find('"' + m.group(1), i + m.end())
+            end = n if end < 0 else end + 1 + len(m.group(1))
+            out.append("".join("\n" if x == "\n" else " " for x in src[i:end])); i = end
+            continue
+        if c == '"':
+            j = i + 1
+            while j < n and src[j] != '"':
+                j += 2 if src[j] == "\\" else 1
+            j = min(j + 1, n)
+            out.append("".join("\n" if x == "\n" else " " for x in src[i:j])); i = j
+            continue
+        if c == "'" and (i == 0 or not IDENT.match(src[i - 1])):
+            m = re.match(r"'(?:\\.[^']*|[^\\'\n])'", src[i:])
+            if m:
+                out.append(" " * m.end()); i += m.end()
+                continue
+        out.append(c); i += 1
+    return "".join(out)
+
+IDENT = re.compile(r"[\w'!?₀-₉ₐ-ₜ]")
+# The attribute `expose` in an attribute list: not part of a longer or dotted name.
+EXPOSE_NAME = re.compile(r"(?<![\w.'«])(?:expose|«expose»)(?![\w'!?»])")
+
+def has_expose(src):  # an `@[...]` or `attribute [...]` list (balanced brackets) naming `expose`
+    code = code_only(src)
+    for m in re.finditer(r"@\[|\battribute\s*\[", code):
+        i, depth = m.end(), 1
+        while i < len(code) and depth:
+            depth += {"[": 1, "]": -1}.get(code[i], 0); i += 1
+        if EXPOSE_NAME.search(code[m.end():i - 1]):
+            return True
+    return False
 
 HEADER_ITEM = re.compile(r"\s*(?:module|prelude|(?:public\s+)?(?:meta\s+)?import\s+(?:all\s+)?[^\s]+)(?=\s|$)")
 
@@ -130,7 +200,8 @@ def validate(cfg):  # the shape of boundaries.toml (FAIL[config] findings)
             what = f"[[{kind}]] {e.get('name', n)}"
             for k in sorted(set(e) - keys):
                 bad(f"{what}: unknown key {k}")
-            for k in ("default", "test_driver", "root_lists_all", "trusted", "sorry", "may_import_roots", "may_import_all"):
+            for k in ("default", "test_driver", "root_lists_all", "trusted", "sorry", "expose", "may_import_roots",
+                      "may_import_all"):
                 if k in e and not isinstance(e[k], bool):
                     bad(f"{what}: {k} must be true or false")
             if kind != "exception" and (not isinstance(e.get("name"), str) or not e.get("name")):
@@ -250,6 +321,10 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
                     fails.append(f"FAIL[config] layer {n}: sorry = true outside Lemmas and Proofs ({p})")
                 if not any(under(p, d) for d in defaults):
                     fails.append(f"FAIL[config] layer {n}: sorry = true outside the default libraries ({p})")
+        if l.get("expose") is True:  # plan §3: Lemmas, Proofs, ToMathlib and Main carry no @[expose]
+            for p in l["prefixes"]:
+                if {"Lemmas", "Proofs", "ToMathlib", "Main"} & set(p.split(".")):
+                    fails.append(f"FAIL[config] layer {n}: expose = true on Lemmas, Proofs, ToMathlib or Main ({p})")
     def reach(ns):  # layers reachable from ns through allow (ns included)
         out, todo = set(), list(ns)
         while todo:
@@ -398,6 +473,11 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
             used.update(cov)
             return True
         return False
+    for m in owner:  # @[expose] only in the exposed layers (plan §3)
+        L = layer.get(m)
+        if L and not layers[L].get("expose") and has_expose(path_of[m].read_text()):
+            fails.append(f"FAIL[expose] {m}: @[expose] in layer {L}, which has no expose = true (plan §3: "
+                         "public theorems, private helpers; a characterising lemma instead of an exposed body)")
     for m in owner:  # direct imports
         L = layer.get(m)
         flags = layers[L] if L else {}
@@ -515,6 +595,14 @@ def self_test(fixtures):
         shutil.rmtree(work)
     assert under("A.B", "A") and under("A", "A") and not under("AB", "A") and not under("A", "A.B")
     assert lib_prefixes({"name": "F", "roots": [], "globs": ["F.+"]}) == ["F"]
+    assert has_expose("@[\n  expose] public section") and has_expose("@[instance, «expose»] def x := 1") and \
+        has_expose('@[foo "]", expose] def x := 1') and has_expose('def s := "/-"\n@[expose] def x := 1') and \
+        has_expose("attribute [expose] f") and has_expose("@[simp, foo [a, b], expose] def x := 1")
+    assert not has_expose('def s := "@[expose]"') and not has_expose("-- @[expose]\n/- @[expose] -/") and \
+        not has_expose("@[no_expose, exposeFoo, foo_expose, Foo.expose] def x := 1") and \
+        not has_expose("/-- doc `@[expose]` -/ def x := 1") and not has_expose("def h' := '['\n#check expose") and \
+        not has_expose("def c := ']' @[simp] def expose := 1") and not has_expose("def «@[expose]» := 1")
+    assert has_expose("def «/-» := 0\n@[expose] def x := 1") and has_expose('def «"» := 0\n@[expose] def x := 1')
     assert import_only("module -- c\n/-! doc /- nested -/ -/\npublic import A.B\nimport all C\n") and \
         not import_only("module\npublic import A\ndef x := 1\n") and import_only("import A") and \
         not import_only("module\nimport A\n#check 1 -- import B\n")

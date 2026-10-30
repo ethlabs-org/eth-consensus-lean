@@ -88,6 +88,81 @@ expect = "FAIL[config] trusted layer Spec allows sorry"
 edit."boundaries.toml" = [['prefixes = ["Fx.Spec"]', '''prefixes = ["Fx.Spec"]
 sorry = true''']]
 
+# --- visibility (plan §3) --------------------------------------------------------------------------
+# The fixture modules are never built: the FAIL[expose] cases test what the scanner finds in the text.
+[ExposeConfigLemmas]
+expect = "FAIL[config] layer Lemmas: expose = true on Lemmas, Proofs, ToMathlib or Main (Fx.Lemmas)"
+edit."boundaries.toml" = [['prefixes = ["Fx.Lemmas"]', '''prefixes = ["Fx.Lemmas"]
+expose = true''']]
+
+[ExposeConfigType]
+expect = "FAIL[config] [[layer]] Spec: expose must be true or false"
+edit."boundaries.toml" = [['''allow = ["Init", "ToMathlib"]
+trusted = true
+expose = true''', '''allow = ["Init", "ToMathlib"]
+trusted = true
+expose = "yes"''']]
+
+[ExposeSectionInLemmas]
+expect = "FAIL[expose] Fx.Lemmas.L: @[expose] in layer Lemmas"
+edit."Fx/Lemmas/L.lean" = [['theorem l : S := rfl', '''@[expose] public section
+theorem l : S := rfl
+end''']]
+
+[ExposeDeclInProofs]
+expect = "FAIL[expose] Fx.Proofs.P.Aux: @[expose] in layer Proofs.P"
+edit."Fx/Proofs/P/Aux.lean" = [['theorem p0 : S := l', '''@[simp, expose] public def d : Nat := 0
+theorem p0 : S := l''']]
+
+[ExposeAttributeInMain]
+expect = "FAIL[expose] Fx.Main: @[expose] in layer Main"
+edit."Fx/Main.lean" = [['theorem main : S := q', '''attribute [expose] Nat.add
+theorem main : S := q''']]
+
+[ExposeInToMathlib]
+expect = "FAIL[expose] Fx.ToMathlib.T: @[expose] in layer ToMathlib"
+edit."Fx/ToMathlib/T.lean" = [['public import Mathlib.Logic.Basic', '''public import Mathlib.Logic.Basic
+@[expose] public section''']]
+
+[ExposeConfigProofs]
+expect = "FAIL[config] layer Proofs.P: expose = true on Lemmas, Proofs, ToMathlib or Main (Fx.Proofs.P)"
+edit."boundaries.toml" = [['prefixes = ["Fx.Proofs.P"]', '''prefixes = ["Fx.Proofs.P"]
+expose = true''']]
+
+[ExposeConfigMain]
+expect = "FAIL[config] layer Main: expose = true on Lemmas, Proofs, ToMathlib or Main (Fx.Main)"
+edit."boundaries.toml" = [['prefixes = ["Fx.Main"]', '''prefixes = ["Fx.Main"]
+expose = true''']]
+
+[ExposeConfigToMathlib]
+expect = "FAIL[config] layer ToMathlib: expose = true on Lemmas, Proofs, ToMathlib or Main (Fx.ToMathlib)"
+edit."boundaries.toml" = [['prefixes = ["Fx.ToMathlib"]', '''prefixes = ["Fx.ToMathlib"]
+expose = true''']]
+
+[ExposeMultiline]
+expect = "FAIL[expose] Fx.Lemmas.N: @[expose] in layer Lemmas"
+edit."Fx/Lemmas/N.lean" = [['theorem n : S := l', '''@[simp,
+  expose] public def d : Nat := 0
+theorem n : S := l''']]
+
+[ExposeGuillemets]
+expect = "FAIL[expose] Fx.Lemmas.N: @[expose] in layer Lemmas"
+edit."Fx/Lemmas/N.lean" = [['theorem n : S := l', '''@[«expose»] public def d : Nat := 0
+theorem n : S := l''']]
+
+[ExposeAfterTrickyString]
+expect = "FAIL[expose] Fx.Lemmas.N: @[expose] in layer Lemmas"
+edit."Fx/Lemmas/N.lean" = [['theorem n : S := l', '''def s : String := "/-"
+@[foo "]", expose] public def d : Nat := 0
+theorem n : S := l''']]
+
+[ExposeAfterQuotedName]
+expect = "FAIL[expose] Fx.Lemmas.N: @[expose] in layer Lemmas"
+edit."Fx/Lemmas/N.lean" = [['theorem n : S := l', '''public def «/-» : Nat := 0
+public def «"» : Nat := 0
+@[expose] public def d : Nat := 0
+theorem n : S := l''']]
+
 [SorryOutside]
 expect = "FAIL[config] layer Main: sorry = true outside Lemmas and Proofs (Fx.Main)"
 edit."boundaries.toml" = [['prefixes = ["Fx.Main"]', '''prefixes = ["Fx.Main"]

@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Lemmas.Model.Canonical.Network
 public import ConsensusLean.Lemmas.Model.Credentials
 
-@[expose] public section
+public section
 
 /-! # A canonical execution for every protocol
 
@@ -33,17 +33,26 @@ noncomputable def eagerRelay {V : Type} [Fintype V] [DecidableEq V]
       mempool (fun v τ => if E.awake v τ then submit v τ else []) u a
   else []
 
+theorem eagerRelay_apply {V : Type} [Fintype V] [DecidableEq V]
+    (E : Env V) (honest : Finset V) (submit : V → Time → List Tx) (w : V) (a : Time) :
+    eagerRelay E honest submit w a =
+      if w ∈ honest ∧ E.awake w a = true then
+        honest.toList.flatMap fun u =>
+          mempool (fun v τ => if E.awake v τ then submit v τ else []) u a
+      else [] := by rfl
+
 /-- The eager relay serves every awake honest recipient at every time from
 the submission on, whatever the event list. -/
 theorem eagerRelay_txs {O : OutputSchema} {F : Family O} {V : Type} [Fintype V] [DecidableEq V]
     {E : Env V} (rho : Run F E) (hrel : rho.relay = eagerRelay E rho.honest rho.submit) :
     rho.EagerTxDelivery := by
+  rw [Run.eagerTxDelivery_iff]
   intro u hu x τ hτ haw hx w hw a hτa hwa
   dsimp only [Time] at *
   change x ∈ rho.submit w a ++ rho.relay w a
   apply List.mem_append_right
   rw [hrel]
-  simp only [eagerRelay, hw, hwa, and_self, ↓reduceIte]
+  simp only [eagerRelay_apply, hw, hwa, and_self, ↓reduceIte]
   apply List.mem_flatMap.mpr
   refine ⟨u, Finset.mem_toList.mpr hu, ?_⟩
   rw [mempool, ite_eq_right (not_lt.mpr (le_trans hτ hτa))]
@@ -63,7 +72,7 @@ theorem Run.canonical_valid {O : OutputSchema} {F : Family O} {V : Type} [Fintyp
     (g : Time) : (base.withEvents (base.canonicalEvents g)).ExecutionValid :=
   base.canonical_valid_of g hh
     ((base.withEvents (base.canonicalEvents g)).unforgeable_of_causal (base.canonical_causal g))
-    hsel
+    (by rw [Run.withEvents_eq]; exact hsel)
     ((base.withEvents (base.canonicalEvents g)).credentials_of_causal (base.canonical_causal g))
 
 /-- `canonical_run_from` with one more fact about the schedule: its network
@@ -75,18 +84,21 @@ theorem canonical_run_from_causal (O : OutputSchema) (F : Family O) (V : Type) [
     (hsel : (protoOf F E).SelAdmits sel)
     (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) (g : Time) :
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
-      let rho := mkRun (F := F) (E := E) honest horizon key sel submit relay hash events
+      let rho := Run.mk (F := F) (E := E) honest horizon events key sel submit relay hash
       rho.ExecutionValid ∧ CommLog.EagerFrom rho.point rho.log g ∧ rho.Causal := by
   classical
   let relay := eagerRelay E honest submit
-  let base := mkRun (F := F) (E := E) honest horizon key sel submit relay hash []
+  let base := Run.mk (F := F) (E := E) honest horizon [] key sel submit relay hash
   refine ⟨relay, base.canonicalEvents g, ?_⟩
-  change (base.withEvents (base.canonicalEvents g)).ExecutionValid ∧
-    CommLog.EagerFrom (base.withEvents (base.canonicalEvents g)).point
-      (base.withEvents (base.canonicalEvents g)).log g ∧
-    (base.withEvents (base.canonicalEvents g)).Causal
-  exact ⟨base.canonical_valid hh hsel g, ⟨base.canonical_eagerFrom g hh, base.canonical_quiet g,
-    eagerRelay_txs (base.withEvents (base.canonicalEvents g)) rfl⟩, base.canonical_causal g⟩
+  have hb : Run.mk (F := F) (E := E) honest horizon (base.canonicalEvents g) key sel submit relay
+      hash = base.withEvents (base.canonicalEvents g) := by
+    rw [Run.withEvents_eq]
+  simp only [hb]
+  exact ⟨base.canonical_valid hh hsel g,
+    ⟨by rw [Run.withEvents_point]; exact base.canonical_eagerFrom g hh, base.canonical_quiet g,
+    Run.eagerTxDelivery_iff.mp <|
+      eagerRelay_txs (base.withEvents (base.canonicalEvents g)) (by rw [Run.withEvents_eq])⟩,
+    base.canonical_causal g⟩
 
 /-- Every PKI, admissible selection, submission function, hash and GST `g`
 admits a valid run whose log is eager from `g` (L0 `CommLog.EagerFrom`): no
@@ -100,7 +112,7 @@ theorem canonical_run_from (O : OutputSchema) (F : Family O) (V : Type) [Fintype
     (hsel : (protoOf F E).SelAdmits sel)
     (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) (g : Time) :
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
-      let rho := mkRun (F := F) (E := E) honest horizon key sel submit relay hash events
+      let rho := Run.mk (F := F) (E := E) honest horizon events key sel submit relay hash
       rho.ExecutionValid ∧ CommLog.EagerFrom rho.point rho.log g := by
   obtain ⟨relay, events, hv, he, -⟩ :=
     canonical_run_from_causal O F V E honest horizon hh key sel hsel submit hash g

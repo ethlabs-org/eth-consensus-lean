@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Spec.Shape.Accepted
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 
-@[expose] public section
+public section
 
 /-! # Acceptance: the theorems (L2)
 

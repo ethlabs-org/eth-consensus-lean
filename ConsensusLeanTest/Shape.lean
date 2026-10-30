@@ -93,7 +93,7 @@ empty chain under `ledgerOf` (`ledgerTrace`). -/
 theorem trivial_reads_empty {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (rho : Model.Run (compiled trivialFamily) E) (v : V) (i : Nat) :
     ((sysOf schema (compiled trivialFamily) V).trace ⟨E, rho⟩).read () v i = [] := by
-  rw [ledgerTrace]
+  rw [ledgerTrace, Trace.map_read]
   rfl
 
 /-- Polling disabled: with `pollSel := .fixed ∅`, a run with an admissible

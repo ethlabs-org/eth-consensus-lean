@@ -3,7 +3,7 @@ public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Spec.Problem.Regimes
 public import Mathlib.Tactic
 
-@[expose] public section
+public section
 
 /-! # Numbers and regimes (L0 facts)
 
@@ -31,7 +31,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {p : EnvPoint V}
 /-- Healthy bounds the faults below `β`. -/
 theorem HealthyOn.faultsBelow {β : ℚ} {g b : Time} (h : p.HealthyOn β g b) :
     p.FaultsBelow β :=
-  h.1
+  faultsBelow_iff.mpr h.1
 
 end EnvPoint
 

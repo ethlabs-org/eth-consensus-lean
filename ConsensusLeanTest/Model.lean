@@ -3,7 +3,9 @@ public import ConsensusLean.Lemmas.Model.Protocol
 public import ConsensusLean.Lemmas.Model.Laws
 public import ConsensusLean.Lemmas.Model.Objects
 public import ConsensusLean.Lemmas.Model.View
-public import ConsensusLean.Lemmas.Model.CanonicalStatement
+public import ConsensusLean.Spec.Model.System
+public import ConsensusLean.Lemmas.Problem.Facts.Transfer
+public import ConsensusLean.Lemmas.Problem.Facts.Good
 public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Candidates
 public import ConsensusLean.Lemmas.Model.Credentials
@@ -79,22 +81,22 @@ theorem sel_valid (rho : Run family env) (h : rho.sel = sel) : rho.SelValid := b
 /-- Ingress can inject an unsubmitted transaction. The cumulative inbox
 survives restarts and is available to the next clock. -/
 def relayedRun : Run family env :=
-  mkRun Finset.univ 5 (pkiFin 2) sel (fun _ _ => []) (fun _ t => if t = 2 then [42] else [])
-    (fun _ => 0) [.restart 0 3]
+  Run.mk Finset.univ 5 [.restart 0 3] (pkiFin 2) sel (fun _ _ => [])
+      (fun _ t => if t = 2 then [42] else []) (fun _ => 0)
 
 theorem injected_held : CommLog.TxHeld relayedRun.log 0 42 3 :=
-  ⟨2, by decide, by decide, by simp [relayedRun, mkRun, Run.log, Run.inbox]⟩
+  ⟨2, by decide, by decide, by simp [relayedRun, Run.log, Run.inbox]⟩
 
 /-- Holding is inclusive: the transaction relayed at `2` is held at the
 deadline `2` itself (L0 `TxHeld`, "received by that time"), … -/
 theorem held_at_deadline : CommLog.TxHeld relayedRun.log 0 42 2 :=
-  ⟨2, by decide, le_rfl, by simp [relayedRun, mkRun, Run.log, Run.inbox]⟩
+  ⟨2, by decide, le_rfl, by simp [relayedRun, Run.log, Run.inbox]⟩
 
 /-- … but not before it arrives. -/
 theorem not_held_before_relay : ¬ CommLog.TxHeld relayedRun.log 0 42 1 := by
   rintro ⟨τ, hτ, hτd, hx⟩
   have hne : τ ≠ 2 := by intro h; subst h; exact absurd hτd (by decide)
-  simp [relayedRun, mkRun, Run.log, Run.inbox, hne] at hx
+  simp [relayedRun, Run.log, Run.inbox, hne] at hx
 
 /-- … and it is processed at a later tick (the mempool at `5`, after the
 restart at `3`). -/
@@ -103,7 +105,7 @@ theorem relayed_mempool_after_restart : 42 ∈ mempool relayedRun.inbox 0 5 :=
 
 theorem injected_not_submitted : ¬ relayedRun.point.SubmittedToSome 42 5 := by
   rintro ⟨v, _, τ, _, _, _, hx⟩
-  simp [relayedRun, mkRun, Run.point] at hx
+  simp [relayedRun, Run.point] at hx
 
 /-- Validity rules out a negative horizon, for every protocol and
 environment: the empty time window of such a point is never a valid run. -/
@@ -117,14 +119,14 @@ theorem negativeHorizon_not_valid {O : OutputSchema} (F : Family O) {V : Type} [
 `true`; a run that delivers an object signed by key `1` in role `true` has an
 admissible selection but violates `Credentials`. -/
 def forgedRun : Run family env :=
-  mkRun Finset.univ 5 (pkiFin 2) sel (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
-    [.deliver 0 (.mk (.signed 1 true) (.data ()) []) 0]
+  Run.mk Finset.univ 5 [.deliver 0 (.mk (.signed 1 true) (.data ()) []) 0] (pkiFin 2) sel
+      (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
 
 theorem forged_role_invalid : forgedRun.SelValid ∧ ¬ forgedRun.Credentials := by
   refine ⟨sel_valid _ rfl, ?_⟩
   intro h
   have := h 0 0 _ 0 rfl _ (.refl _) 1 true rfl
-  simp [forgedRun, mkRun, sel] at this
+  simp [forgedRun, sel] at this
 
 /-- Hence a forged role makes the run invalid. -/
 theorem forged_role_not_valid : ¬ forgedRun.ExecutionValid :=

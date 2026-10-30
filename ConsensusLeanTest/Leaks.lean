@@ -167,11 +167,11 @@ theorem refuted_of_empty (F : ShapeFamily schema Unit)
   obtain ⟨relay, es, valid, eager⟩ := Model.canonical_run_from schema (compiled F) (Fin 1) env
     Finset.univ 3 (by decide) (pkiFin 1) sel hsel (fun _ _ => []) goodHash 0
   let r : Model.Run (compiled F) env :=
-    Model.mkRun Finset.univ 3 (pkiFin 1) sel (fun _ _ => []) relay goodHash es
+    Model.Run.mk Finset.univ 3 es (pkiFin 1) sel (fun _ _ => []) relay goodHash
   have sync : CommLog.PSync r.point r.log 0 := eager.psync le_rfl
   have hready : ∀ c t v, r.point.Ready c v t := env_ready r.point rfl rfl
   have hfaulty : r.point.faulty = ∅ := by
-    simp [EnvPoint.faulty, r, Model.mkRun, Model.Run.point]
+    simp [EnvPoint.faulty, r, Model.Run.point]
   have hreadyAt : ∀ c t, r.point.readyAt c t = Finset.univ := by
     intro c t
     ext v
@@ -199,7 +199,8 @@ theorem refuted_of_empty (F : ShapeFamily schema Unit)
     change h ∈ (chainTrace r).read () 0 _ at hmem
     rw [hout r valid] at hmem
     cases hmem
-  · exact Model.Run.not_hashCollision_of_injective (rho := r) goodHash_injective hcol
+  · exact Model.Run.not_hashCollision_of_injective (rho := r)
+      (Model.Run.injectiveHash_iff.mpr goodHash_injective) hcol
 
 /-- The test selection is admissible for every stateless family. -/
 theorem testSel_admits (proposal vote bad : Bool) (r : ShapeRole Unit) :
@@ -227,9 +228,9 @@ theorem fabricated : ¬ ShapeClaims (family false false true) testK := by
     (compiled (family false false true)) (Fin 1) env Finset.univ 0 le_rfl (pkiFin 1) testSel
     (testSel_admits _ _ _) (fun _ _ => []) goodHash 0
   let r : Model.Run (compiled (family false false true)) env :=
-    Model.mkRun Finset.univ 0 (pkiFin 1) testSel (fun _ _ => []) relay goodHash es
+    Model.Run.mk Finset.univ 0 es (pkiFin 1) testSel (fun _ _ => []) relay goodHash
   have hv := (hc (Fin 1)).outputValid ⟨env, r⟩ valid .available () rfl 0
-    (by simp [r, Model.mkRun]) 0 (Nat.zero_le _)
+    (by simp [r]) 0 (Nat.zero_le _)
   obtain ⟨_, _, _, _, hmem⟩ := hv.2.2 fab (List.mem_singleton_self _)
   obtain ⟨j, _, hj, _⟩ := r.mem_viewIdx_iff.mp hmem
   exact Nat.not_lt_zero _ hj

@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Spec.Model.Protocol
 
-@[expose] public section
+public section
 
 /-! Proofs about `Protocol.lean` definitions (moved from it; plan §1.1). -/
 

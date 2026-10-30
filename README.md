@@ -593,7 +593,12 @@ module's exception (printed with its path); allow lists that are cyclic, not dow
 trusted layer import an untrusted one; `import Mathlib`; an import of a library root or an import-only
 aggregate, or `import all`, outside the tests; a module that does not reach `ConsensusLean.Init` through
 public imports (except `ToMathlib` and the meta tool `ReviewGuard`); a fixture module or an unknown
-top-level name. Its self-test (`scripts/fixtures/boundaries/cases.toml`, one case per
+top-level name; the attribute `expose` (a whole-file `@[expose]` section, on a declaration, or `attribute
+[expose]`; comments and strings ignored) in a layer without `expose = true`, which only Core, Spec, Statements,
+the instance layers, the solution and the tests have (plan §3: Lemmas, Proofs, Main and ToMathlib export no
+bodies; the solution and the tests are leaves, so their exposure costs no rebuild), or `expose = true` on a
+Lemmas, Proofs, ToMathlib or Main layer. Lean also exports the bodies of `abbrev`s and of instances of non-`Prop`
+classes without the attribute; the checker does not flag those (today `Trace.Agree` and `kv`). Its self-test (`scripts/fixtures/boundaries/cases.toml`, one case per
 failure kind) runs in check.sh step 2. Today's deviations from the plan's matrix are reviewed
 `[[exception]]` entries, each with its reason: `Lemmas.Shape.Payload` uses the `Faithful` milestone;
 `RegimesRealizable` builds on `Behaviour`; the instance Specs import the generic `Main`; Streamlet and

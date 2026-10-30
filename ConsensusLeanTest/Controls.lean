@@ -158,7 +158,7 @@ theorem positive_controls (cap : Capability) :
     have hps : CommLog.PSync rho.point rho.log 0 :=
       (Model.sysOf_delivers_iff (O := goldilocksSchema) rho _ _).mp hs.1
     exact active_relay rho hps le_rfl (mul_nonneg (Nat.cast_nonneg _) (Env.Δ_pos _).le)
-      (fun _ _ => rfl) ht
+      (fun _ _ => by rw [realPoint_env]; exact allAwake_apply _ _) ht
   · have hheal : max (5 : Time) 0 + (ctrlK.params.heal cap k1 : Time) * 1 = 6 := by
       cases cap <;> rfl
     have hrdy : max (5 : Time) 0 + (ctrlK.params.catchUp : Time) * 1 + 1 = 7 := by decide
@@ -189,8 +189,9 @@ theorem outage_control :
   · change _ ∈ rho.point.honest
     rw [hpt]
     exact realPoint_honest key5 card5 one_pos _ 20 (j := 2) (by decide) (by decide)
-  · change sleepAt (kv key5 card5 2 (by decide)) 3 (kv key5 card5 2 (by decide)) 3 = false
-    simp [sleepAt]
+  · change rho.point.env.awake _ 3 = false
+    rw [hpt, realPoint_env]
+    simp [sleepAt_apply]
 
 end Consensus.Shape.Tests.Controls
 

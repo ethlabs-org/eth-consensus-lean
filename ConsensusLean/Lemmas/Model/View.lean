@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Lemmas.Model.Objects
 
-@[expose] public section
+public section
 
 /-! # Views (L1 proof support)
 

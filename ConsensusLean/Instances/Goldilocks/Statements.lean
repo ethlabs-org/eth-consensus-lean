@@ -556,7 +556,7 @@ theorem finalized_safe_below_third (r : (Sys F V).Run) (hv : (Sys F V).Valid r)
     (hb : ((Sys F V).pt r).FaultsBelow (1 / 3)) :
     ((Sys F V).trace r).Safe gFinalized 0 ∨ (Sys F V).Excuse r :=
   ((goldilocks_good h V).final_agree (g := gFinalized) rfl r hv hb).imp
-    (fun ha => ⟨ha, finalized_monotone h V r hv⟩) id
+    (fun ha => Trace.safe_iff.mpr ⟨ha, finalized_monotone h V r hv⟩) id
 
 /-- **A1 / P-SYNC-AV-SAFE, -MONO, -DYNAMIC.** Sleepy: ready-reader safety of the
 confirmed (= stable) output, catch-up `18·Δ`. -/

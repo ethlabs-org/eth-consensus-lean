@@ -3,7 +3,7 @@ public import ConsensusLean.Spec.Shape.Claims
 public import ConsensusLean.Lemmas.Shape.Payload
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
 
-@[expose] public section
+public section
 
 /-! # Refinement: shape claims give the L0 behaviour (L2)
 
@@ -34,7 +34,8 @@ variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 
 /-- The compiled ledger trace is the chain trace mapped by `ledgerOf`. -/
 theorem ledgerTrace (rho : Model.Run (compiled F) E) :
-    (sysOf O (compiled F) V).trace ⟨E, rho⟩ = (chainTrace rho).map ledgerOf :=
+    (sysOf O (compiled F) V).trace ⟨E, rho⟩ = (chainTrace rho).map ledgerOf := by
+  rw [Trace.map_eq]
   rfl
 
 /-- Transaction bridge (at the release time `τ`): apply
@@ -56,6 +57,7 @@ theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O
     (hl : ProposalLiveReady rho (((c₀ : Nat) : Time) * E.Δ) g start D) :
     ((chainTrace rho).map ledgerOf).TxLive (((c₀ : Nat) : Time) * E.Δ) g start
       (((D : Nat) : Time) * E.Δ) := by
+  rw [Trace.map_eq]
   intro x t t' hsub hdt hh v hv'
   change max t start + E.Δ + (D : Time) * E.Δ ≤ t' at hdt
   change rho.point.SubmittedToSome x t at hsub
@@ -158,24 +160,35 @@ theorem refinement (F : ShapeFamily O Info) (K : Contract ProgressReq) (V : Type
   have hc := hc V
   refine ⟨Model.sysOf_laws _ _ _, ha, hs, Model.sysOf_nonFraming _ _ _, ?_, ?_, ?_, ?_, ?_, ?_,
     ?_, ?_⟩
-  · intro c₁ c₂ g₁ g₂ hlt h₁ h₂ r hv
-    exact (hc.nested c₁ c₂ g₁ g₂ hlt h₁ h₂ r hv).map ledgerOf_prefix
-  · intro g hg r hv
-    exact (hc.finalMonotone g hg r hv).map ledgerOf_prefix
+  · rintro c₁ c₂ g₁ g₂ hlt h₁ h₂ ⟨E, rho⟩ hv
+    rw [ledgerTrace]
+    exact (hc.nested c₁ c₂ g₁ g₂ hlt h₁ h₂ ⟨E, rho⟩ hv).map ledgerOf_prefix
+  · rintro g hg ⟨E, rho⟩ hv
+    rw [ledgerTrace]
+    simp only [Trace.Monotone, Trace.map_point]
+    exact (hc.finalMonotone g hg ⟨E, rho⟩ hv).map ledgerOf_prefix
   · rintro g hg ⟨E, rho⟩ hv -
     exact (hc.finalAccountable g hg ⟨E, rho⟩ hv trivial).imp (accountablySafe_ledger rho) id
   · rintro cap g hg i gst ⟨E, rho⟩ hv hA
+    simp only [ledgerTrace]
     exact (hc.healthyLive cap g hg i gst ⟨E, rho⟩ hv hA).imp
       (proposalLive_txLive hv ha.catchUp_pos (psync_of_sys hA.1.1) (gst_le_heal K rho cap i gst)) id
-  · intro cap g hcap hg r hv hS
-    exact (hc.sleepySafe cap g hcap hg r hv hS).imp (fun h => h.map ledgerOf_prefix) id
+  · rintro cap g hcap hg ⟨E, rho⟩ hv hS
+    simp only [ledgerTrace]
+    exact (hc.sleepySafe cap g hcap hg ⟨E, rho⟩ hv hS).imp (fun h => h.map ledgerOf_prefix) id
   · rintro cap g hcap hg i ⟨E, rho⟩ hv hA
+    simp only [ledgerTrace]
     exact (hc.sleepyLive cap g hcap hg i ⟨E, rho⟩ hv hA).imp
       (proposalLive_txLive hv ha.catchUp_pos (psync_of_sys hA.1.1) le_rfl) id
-  · intro cap g hcap hg i gst r hv hA
-    exact (hc.healedSafe cap g hcap hg i gst r hv hA).imp (fun h => h.map ledgerOf_prefix) id
-  · intro g hg T b₀ b₁ r hv hO
-    exact (hc.persists g hg T b₀ b₁ r hv hO).imp (fun h => h.map ledgerOf_prefix) id
+  · rintro cap g hcap hg i gst ⟨E, rho⟩ hv hA
+    simp only [ledgerTrace]
+    exact (hc.healedSafe cap g hcap hg i gst ⟨E, rho⟩ hv hA).imp (fun h => h.map ledgerOf_prefix) id
+  · rintro g hg T b₀ b₁ ⟨E, rho⟩ hv hO
+    simp only [ledgerTrace]
+    refine (hc.persists g hg T b₀ b₁ ⟨E, rho⟩ hv hO).imp (fun h => ?_) id
+    unfold Trace.ProtectedThrough
+    rw [Trace.map_point]
+    exact h.map ledgerOf_prefix
 
 end Consensus.Shape
 

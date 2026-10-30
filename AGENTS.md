@@ -33,6 +33,16 @@ Checks and CI tiers: README "Verification".
   and CI also checks the list at the tag. CI's `review-boundary`
   fails until the `spec-approved` tag covers the change. Never create or move the tag; say in the PR that it
   needs approval. `scripts/**`, `.github/**` and the lakefile are owner-reviewed via CODEOWNERS.
+- **Visibility (plan §3):** no `@[expose]` in `Lemmas/`, `Proofs/`, `Main` or `ToMathlib/` (check-boundaries.py
+  fails on it): public theorems, private helpers, and no exported bodies, so a proof edit or the body edit of a
+  `Prop`-valued or noncomputable definition leaves the public `.olean` unchanged and rebuilds no importer (a
+  computable definition still exports its compiled code: a body edit that changes the code rebuilds importers). A
+  definition another module reasons about gets characterising lemmas next to it (`foo_iff`, `foo_eq`, field
+  `@[simp]` lemmas; proved `by rfl` or `Iff.rfl`, since a `:= rfl` term needs an exposed body; such lemmas are not
+  `dsimp` lemmas, which is the price, not a reason to expose), and users `rw`/`simp only` with them instead of
+  `unfold`/`change` through the body. Use them in the defining file too: `simp [foo]` or `unfold foo` there stores
+  `foo.eq_1`, whose statement is the body, in the public `.olean`. `abbrev` and instances of non-`Prop`
+  classes export their bodies anyway (not checked): use them for notation-like definitions only.
 - **Unfinished proofs:** `sorry` only under `Lemmas/` and `Proofs/` (the `sorry = true` layers of
   `scripts/boundaries.toml`), never in Spec, Statements, Main, instances, tests or `Solution`, and never an axiom.
   `lake build --wfail` ignores it (`warn.sorry = false`) but fails on every other warning. The closure of

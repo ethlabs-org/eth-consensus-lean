@@ -4,7 +4,7 @@ public import ConsensusLean.Proofs.Behaviour.Main
 public import ConsensusLean.Spec.Shape.ProgressFit
 public import Mathlib.Tactic
 
-@[expose] public section
+public section
 
 /-! # Coverage, the extremal selection and generic realizability (L2)
 
@@ -77,10 +77,10 @@ theorem coverage (F : ShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V]
   obtain ⟨relay, events, hv, he, hc⟩ :=
     Model.canonical_run_from_causal O (compiled F) V p.env p.honest p.horizon hp key sel hsel
       p.submit hash g
-  let rho := Model.mkRun (F := compiled F) (E := p.env) p.honest p.horizon key sel p.submit
-    relay hash events
+  let rho := Model.Run.mk (F := compiled F) (E := p.env) p.honest p.horizon events key sel p.submit
+      relay hash
   refine ⟨rho, rfl, rfl, rfl, hv, ?_, ?_, he⟩
-  · exact Model.Run.not_hashCollision_of_injective hinj
+  · exact Model.Run.not_hashCollision_of_injective (Model.Run.injectiveHash_iff.mpr hinj)
   · exact Model.convicted_honestEvidence_eq_empty rho (rho.not_slashable_of_causal hv hc)
 
 /-! ## The extremal selection -/
@@ -92,6 +92,14 @@ it. -/
 def extremalKeys {N : Nat} : SelSpec N → Finset (Fin N)
   | .fixed T => T
   | .sized m => if m < N then Finset.univ.filter fun k => 1 ≤ k.val ∧ k.val ≤ m else Finset.univ
+
+theorem extremalKeys_fixed {N : Nat} (T : Finset (Fin N)) :
+    extremalKeys (.fixed T) = T := by rfl
+
+theorem extremalKeys_sized {N : Nat} (m : Nat) :
+    extremalKeys (N := N) (.sized m) =
+      if m < N then Finset.univ.filter (fun k : Fin N => 1 ≤ k.val ∧ k.val ≤ m)
+      else Finset.univ := by rfl
 
 theorem extremalKeys_admits {N : Nat} (s : SelSpec N) : s.Admits (extremalKeys s) := by
   cases s with
@@ -117,6 +125,10 @@ def extremalSel (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) :
     (protoOf (compiled F) E).Role → Finset (Fin (Fintype.card V)) :=
   fun r => extremalKeys ((protoOf (compiled F) E).selSpec r)
 
+theorem extremalSel_apply (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V)
+    (r : (protoOf (compiled F) E).Role) :
+    extremalSel F E r = extremalKeys ((protoOf (compiled F) E).selSpec r) := by rfl
+
 theorem extremalSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) :
     (protoOf (compiled F) E).SelAdmits (extremalSel F E) :=
   fun _ => extremalKeys_admits _
@@ -128,6 +140,15 @@ def badSlotRole {Kind : Type} (P : Nat) : ShapeRole Kind → Bool
   | .proposer s => decide (s % P = P - 1)
   | _ => false
 
+theorem badSlotRole_proposer {Kind : Type} (P : Nat) (s : Slot) :
+    badSlotRole (Kind := Kind) P (.proposer s) = decide (s % P = P - 1) := by rfl
+
+theorem badSlotRole_duty {Kind : Type} (P : Nat) (k : Kind) (s : Slot) :
+    badSlotRole P (.duty s k) = false := by rfl
+
+theorem badSlotRole_poll {Kind : Type} (P : Nat) :
+    badSlotRole (Kind := Kind) P .poll = false := by rfl
+
 /-- The bad-slot selection with period `P`: key `0` (faulty at the witness
 points) proposes at every slot `s` with `s % P = P − 1`; every other role is
 selected as by `extremalSel`. -/
@@ -137,12 +158,18 @@ def badSel (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
   fun r => if badSlotRole (Kind := (F (pubOf E)).skel.Kind) P r then {⟨0, hn⟩}
     else extremalSel F E r
 
+theorem badSel_apply (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
+    (hn : 0 < Fintype.card V) (r : (protoOf (compiled F) E).Role) :
+    badSel F E P hn r =
+      if badSlotRole (Kind := (F (pubOf E)).skel.Kind) P r then {⟨0, hn⟩}
+      else extremalSel F E r := by rfl
+
 /-- With one proposer per slot, the bad-slot selection is admissible. -/
 theorem badSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
     (hn : 0 < Fintype.card V) (hF : (F (pubOf E)).skel.proposerSel = .sized 1) :
     (protoOf (compiled F) E).SelAdmits (badSel F E P hn) := by
   intro r
-  unfold badSel
+  rw [badSel_apply]
   split_ifs with hb
   · change ShapeRole (F (pubOf E)).skel.Kind at r
     cases r with
@@ -151,8 +178,8 @@ theorem badSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V
       rw [hF]
       change ({⟨0, hn⟩} : Finset (Fin (Fintype.card V))).card = min 1 (Fintype.card V)
       rw [Finset.card_singleton]; omega
-    | duty _ _ => simp [badSlotRole] at hb
-    | poll => simp [badSlotRole] at hb
+    | duty _ _ => simp [badSlotRole_duty] at hb
+    | poll => simp [badSlotRole_poll] at hb
   · exact extremalSel_admits F E r
 
 /-- Under the bad-slot selection, the proposer of a bad slot is exactly
@@ -160,7 +187,7 @@ key `0`. -/
 theorem badSel_bad (F : ShapeFamily O Info) {V : Type} [Fintype V] {E : Env V} {P : Nat}
     (hn : 0 < Fintype.card V) {s : Slot} (hs : s % P = P - 1) :
     badSel F E P hn (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) = {⟨0, hn⟩} := by
-  simp [badSel, badSlotRole, hs]
+  simp [badSel_apply F E P hn (.proposer s), badSlotRole_proposer, hs]
 
 /-! ## Generic realizability
 
@@ -214,11 +241,24 @@ def realPoint (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V) (Δ
   ⟨⟨Δ, hΔ, awake⟩, Finset.univ.erase (key ⟨0, by omega⟩), H,
     fun v t => if v = key ⟨1, by omega⟩ ∧ t = 0 then [42] else []⟩
 
+theorem realPoint_eq (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V) (Δ : Time)
+    (hΔ : 0 < Δ) (awake : V → Time → Bool) (H : Time) :
+    realPoint key hn Δ hΔ awake H =
+      ⟨⟨Δ, hΔ, awake⟩, Finset.univ.erase (key ⟨0, by omega⟩), H,
+        fun v t => if v = key ⟨1, by omega⟩ ∧ t = 0 then [42] else []⟩ := by rfl
+
 /-- Everyone awake at every time. -/
 def allAwake : V → Time → Bool := fun _ _ => true
 
 /-- `s` asleep exactly at time `b`; everyone else always awake. -/
 def sleepAt (s : V) (b : Time) : V → Time → Bool := fun v t => !(decide (v = s) && decide (t = b))
+
+omit [Fintype V] [DecidableEq V] in
+theorem allAwake_apply (v : V) (t : Time) : allAwake v t = true := by rfl
+
+omit [Fintype V] in
+theorem sleepAt_apply (s : V) (b : Time) (v : V) (t : Time) :
+    sleepAt s b v t = !(decide (v = s) && decide (t = b)) := by rfl
 
 section Point
 
@@ -229,14 +269,21 @@ variable (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V) {Δ : Ti
 abbrev kv (j : Nat) (hj : j < 5) : V := key ⟨j, by omega⟩
 
 omit [DecidableEq V] in
+theorem kv_eq (j : Nat) (hj : j < 5) : kv key hn j hj = key ⟨j, by omega⟩ := by rfl
+
+omit [DecidableEq V] in
 theorem kv_ne {j j' : Nat} {hj : j < 5} {hj' : j' < 5} (h : j ≠ j') :
     kv key hn j hj ≠ kv key hn j' hj' := by
   intro he
   have := congrArg Fin.val (key.injective he)
   exact h this
 
+theorem realPoint_env : (realPoint key hn Δ hΔ awake H).env = ⟨Δ, hΔ, awake⟩ := by rfl
+
+theorem realPoint_horizon : (realPoint key hn Δ hΔ awake H).horizon = H := by rfl
+
 theorem realPoint_faulty : (realPoint key hn Δ hΔ awake H).faulty = {kv key hn 0 (by decide)} := by
-  ext v; simp [EnvPoint.faulty, realPoint]
+  ext v; simp [EnvPoint.faulty, realPoint_eq]
 
 theorem realPoint_honest {j : Nat} (hj : j < 5) (h0 : j ≠ 0) :
     kv key hn j hj ∈ (realPoint key hn Δ hΔ awake H).honest :=
@@ -278,7 +325,7 @@ theorem sleepAt_readyAt (b c t : Time) :
     ((realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b) H).honest.erase
       (kv key hn 2 (by decide))) (fun v hv => by
       obtain ⟨hne, hv⟩ := Finset.mem_erase.mp hv
-      exact ⟨hv, fun t => by simp [sleepAt, hne]⟩) c t
+      exact ⟨hv, fun t => by simp [sleepAt_apply, hne]⟩) c t
   rw [Finset.card_erase_of_mem h2] at h
   have := realPoint_card_honest key hn hΔ (sleepAt (kv key hn 2 (by decide)) b) H
   omega
@@ -342,10 +389,11 @@ theorem extremalSel_proposer_mem (F : ShapeFamily O Info) {E : Env V}
     (k : Fin (Fintype.card V)) :
     k ∈ extremalSel F E (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) ↔
       k.val = 1 := by
+  rw [extremalSel_apply F E (.proposer s)]
   change k ∈ extremalKeys (F (pubOf E)).skel.proposerSel ↔ _
   rw [hF]
   have h1 : 1 < Fintype.card V := by omega
-  simp only [extremalKeys, h1, ↓reduceIte, Finset.mem_filter, Finset.mem_univ, true_and]
+  simp only [extremalKeys_sized, h1, ↓reduceIte, Finset.mem_filter, Finset.mem_univ, true_and]
   omega
 
 omit [DecidableEq V] in
@@ -358,13 +406,17 @@ theorem badSel_good_mem (F : ShapeFamily O Info) {E : Env V} {P : Nat}
       k.val = 1 := by
   have he : badSel F E P hn (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) =
       extremalSel F E (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) := by
-    simp [badSel, badSlotRole, hs]
+    simp [badSel_apply F E P hn (.proposer s), badSlotRole_proposer, hs]
   rw [he]
   exact extremalSel_proposer_mem F hF h2 s k
 
 /-- Keys up to `k` stay awake; all larger keys stay asleep. -/
 def awakeUpTo (key : Fin (Fintype.card V) ≃ V) (k : Nat) : V → Time → Bool :=
   fun v _ => decide ((key.symm v).val ≤ k)
+
+omit [DecidableEq V] in
+theorem awakeUpTo_apply (key : Fin (Fintype.card V) ≃ V) (k : Nat) (v : V) (t : Time) :
+    awakeUpTo key k v t = decide ((key.symm v).val ≤ k) := by rfl
 
 /-- The honest awake set contains exactly keys `1` through `k`. -/
 theorem awakeUpTo_card (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
@@ -374,7 +426,7 @@ theorem awakeUpTo_card (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.ca
   have he : ((realPoint key hn Δ hΔ (awakeUpTo key k) H).awakeAt t).map
       key.symm.toEmbedding = Finset.univ.filter (fun j => 1 ≤ j.val ∧ j.val ≤ k) := by
     ext j
-    simp [EnvPoint.awakeAt, realPoint, awakeUpTo, Fin.ext_iff]
+    simp [EnvPoint.awakeAt, realPoint_eq, awakeUpTo_apply, Fin.ext_iff]
     omega
   have hi : (Finset.univ.filter (fun j : Fin (Fintype.card V) =>
       1 ≤ j.val ∧ j.val ≤ k)).map Fin.valEmbedding = Finset.Icc 1 k := by
@@ -440,10 +492,10 @@ theorem allAwake_txLiveActive (p : EnvPoint V)
     realPoint_honest key hn hΔ allAwake H (by decide) (by decide),
     kv_ne key hn (by decide), ?_, hH, le_rfl,
     realPoint_honest key hn hΔ allAwake H (by decide) (by decide), fun _ _ _ => rfl⟩
-  · simp [realPoint]
+  · simp [realPoint_eq]
   · intro τ
     have : kv key hn 2 (by decide) ≠ kv key hn 1 (by decide) := kv_ne key hn (by decide)
-    simp [realPoint, this]
+    simp [realPoint_eq, this]
 
 /-- Everyone awake: safety is active after `t₀` (keys `1` and `2` ready at
 `t₀ + 1`, key `1` again at `t₀ + 2`). -/
@@ -495,10 +547,10 @@ theorem profile_txLiveActive (awake : V → Time → Bool)
     realPoint_honest key hn hΔ awake H (by decide) (by decide),
     kv_ne key hn (by decide), ?_, hH, le_rfl,
     realPoint_honest key hn hΔ awake H (by decide) (by decide), fun t _ _ => ha2 t⟩
-  · simp [realPoint]
+  · simp [realPoint_eq]
   · intro τ
     have : kv key hn 2 (by decide) ≠ kv key hn 1 (by decide) := kv_ne key hn (by decide)
-    simp [realPoint, this]
+    simp [realPoint_eq, this]
 
 /-- With keys `1` and `2` always awake, safety is active after `t₀`. -/
 theorem profile_safeActive (awake : V → Time → Bool)
@@ -514,25 +566,26 @@ theorem profile_safeActive (awake : V → Time → Bool)
 /-- The canonical run at a witness point, from GST `g`, with some injective
 hash and an admissible selection `sel`: valid, no collision, and eager from
 `g`; its point, PKI and selection are the given ones definitionally
-(`mkRun`). -/
+(a `Run` literal). -/
 theorem real_run_sel (F : ShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.horizon) (g : Time)
     (sel : (protoOf (compiled F) p.env).Role → Finset (Fin (Fintype.card V)))
     (hsel : (protoOf (compiled F) p.env).SelAdmits sel) :
     ∃ hash relay events,
-      let rho := Model.mkRun (F := compiled F) (E := p.env) p.honest p.horizon key
-        sel p.submit relay hash events
+      let rho := Model.Run.mk (F := compiled F) (E := p.env) p.honest p.horizon events key sel
+          p.submit relay hash
       rho.ExecutionValid ∧ ¬ rho.HashCollision ∧ CommLog.EagerFrom rho.point rho.log g := by
   obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf (compiled F) p.env).Item
   obtain ⟨relay, events, hv, he, -⟩ :=
     Model.canonical_run_from_causal O (compiled F) V p.env p.honest p.horizon hp key
       sel hsel p.submit hash g
-  exact ⟨hash, relay, events, hv, Model.Run.not_hashCollision_of_injective hinj, he⟩
+  exact ⟨hash, relay, events, hv,
+    Model.Run.not_hashCollision_of_injective (Model.Run.injectiveHash_iff.mpr hinj), he⟩
 
 /-- The canonical run at a witness point under the extremal selection. -/
 theorem real_run (F : ShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.horizon) (g : Time) :
     ∃ hash relay events,
-      let rho := Model.mkRun (F := compiled F) (E := p.env) p.honest p.horizon key
-        (extremalSel F p.env) p.submit relay hash events
+      let rho := Model.Run.mk (F := compiled F) (E := p.env) p.honest p.horizon events key
+          (extremalSel F p.env) p.submit relay hash
       rho.ExecutionValid ∧ ¬ rho.HashCollision ∧ CommLog.EagerFrom rho.point rho.log g :=
   real_run_sel key F p hp g _ (extremalSel_admits F p.env)
 
@@ -554,10 +607,10 @@ theorem sleepy_witness (ha : K.params.Admissible) (hf : ProgressFits K F) (cap :
   have hH0 : 0 ≤ H := by linarith
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run key F (realPoint key hn Δ hΔ allAwake H) hH0 0
-  refine ⟨Model.mkRun (F := compiled F) (E := (realPoint key hn Δ hΔ allAwake H).env)
-    (realPoint key hn Δ hΔ allAwake H).honest H key
-    (extremalSel F (realPoint key hn Δ hΔ allAwake H).env)
-    (realPoint key hn Δ hΔ allAwake H).submit relay hash events,
+  refine ⟨Model.Run.mk (F := compiled F) (E := (realPoint key hn Δ hΔ allAwake H).env)
+      (realPoint key hn Δ hΔ allAwake H).honest H events key
+      (extremalSel F (realPoint key hn Δ hΔ allAwake H).env)
+      (realPoint key hn Δ hΔ allAwake H).submit relay hash,
     rfl, rfl, ⟨hv, hnc, ?_, ?_⟩, ⟨(Model.sysOf_eagerFrom _ he).psync le_rfl, ?_⟩,
     allAwake_holds key hn hΔ H hf cap i _ _ _, ?_, ?_⟩
   · change (realPoint key hn Δ hΔ allAwake H).faulty.Nonempty
@@ -611,9 +664,9 @@ theorem healthy_witness_sel (ha : K.params.Admissible) (cap : Capability) (i : K
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run_sel key F (realPoint key hn Δ hΔ allAwake H) hH0 g sel hsel
   have hse := Model.sysOf_eagerFrom (O := O) _ he
-  refine ⟨Model.mkRun (F := compiled F) (E := (realPoint key hn Δ hΔ allAwake H).env)
-    (realPoint key hn Δ hΔ allAwake H).honest H key
-    sel (realPoint key hn Δ hΔ allAwake H).submit relay hash events,
+  refine ⟨Model.Run.mk (F := compiled F) (E := (realPoint key hn Δ hΔ allAwake H).env)
+      (realPoint key hn Δ hΔ allAwake H).honest H events key sel
+      (realPoint key hn Δ hΔ allAwake H).submit relay hash,
     rfl, rfl, rfl, ⟨hv, hnc, ?_, ?_⟩, hse, ⟨hse.psync le_rfl, ?_⟩,
     hprog _ _ _, ?_, ?_,
     allAwake_safeActive key hn hΔ H _ _ h2⟩
@@ -736,13 +789,13 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F) 
   have hH0 : 0 ≤ H := by linarith
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run key F (realPoint key hn Δ hΔ (awakeUpTo key 2) H) hH0 0
-  refine ⟨Model.mkRun (F := compiled F) (E := (realPoint key hn Δ hΔ (awakeUpTo key 2) H).env)
-    (realPoint key hn Δ hΔ (awakeUpTo key 2) H).honest H key
-    (extremalSel F (realPoint key hn Δ hΔ (awakeUpTo key 2) H).env)
-    (realPoint key hn Δ hΔ (awakeUpTo key 2) H).submit relay hash
-      events,
+  refine ⟨Model.Run.mk (F := compiled F) (E := (realPoint key hn Δ hΔ (awakeUpTo key 2) H).env)
+      (realPoint key hn Δ hΔ (awakeUpTo key 2) H).honest H events key
+      (extremalSel F (realPoint key hn Δ hΔ (awakeUpTo key 2) H).env)
+      (realPoint key hn Δ hΔ (awakeUpTo key 2) H).submit relay hash,
     rfl, rfl, ⟨hv, hnc, ?_, ?_⟩, ⟨(Model.sysOf_eagerFrom _ he).psync le_rfl, ?_⟩,
-    profile_holds key hn hΔ H _ (by intro t; simp [awakeUpTo, kv]) hf cap i ht _ _ _, ?_, ?_, ?_⟩
+    profile_holds key hn hΔ H _ (by intro t; simp [awakeUpTo_apply, kv_eq]) hf cap i ht _ _ _,
+    ?_, ?_, ?_⟩
   · change (realPoint key hn Δ hΔ (awakeUpTo key 2) H).faulty.Nonempty
     rw [realPoint_faulty]; exact Finset.singleton_nonempty _
   · exact ⟨_, realPoint_honest key hn hΔ (awakeUpTo key 2) H (j := 1) (by decide) (by decide)⟩
@@ -759,8 +812,8 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F) 
     nlinarith
   · change max 0 0 + progLen F K cap i (⟨Δ, hΔ, (awakeUpTo key 2)⟩ : Env V) ≤ H
     simp only [max_self, zero_add]; linarith
-  · refine profile_txLiveActive key hn hΔ H _ (by intro t; simp [awakeUpTo, kv])
-      (by intro t; simp [awakeUpTo, kv]) _ rfl _ _ _ ?_
+  · refine profile_txLiveActive key hn hΔ H _ (by intro t; simp [awakeUpTo_apply, kv_eq])
+      (by intro t; simp [awakeUpTo_apply, kv_eq]) _ rfl _ _ _ ?_
     change max 0 0 + Δ + (K.params.latency cap i : Time) * Δ ≤ H
     simp only [max_self, zero_add]; linarith
   · intro t _ _
@@ -782,15 +835,14 @@ theorem outage_witness (ha : K.params.Admissible) {T b₀ b₁ : Time}
   have h12 : kv key hn 1 (by decide) ≠ kv key hn 2 (by decide) := kv_ne key hn (by decide)
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run key F (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H) hH0 0
-  let rho := Model.mkRun (F := compiled F)
-    (E := (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).env)
-    (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).honest H key
-    (extremalSel F (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).env)
-    (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).submit relay
-    hash events
+  let rho := Model.Run.mk (F := compiled F)
+      (E := (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).env)
+      (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).honest H events key
+      (extremalSel F (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).env)
+      (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).submit relay hash
   have hse := Model.sysOf_eagerFrom (O := O) rho he
   have hawake1 : ∀ t, sleepAt (kv key hn 2 (by decide)) b₀ (kv key hn 1 (by decide)) t = true := by
-    intro t; simp [sleepAt, h12]
+    intro t; simp [sleepAt_apply, h12]
   have hh1 := realPoint_honest key hn hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H (j := 1)
     (by decide) (by decide)
   have hh2 := realPoint_honest key hn hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H (j := 2)
@@ -799,7 +851,7 @@ theorem outage_witness (ha : K.params.Admissible) {T b₀ b₁ : Time}
     ⟨hT0, hTb, hb, hH, ⟨_, hh1, fun u _ _ => hawake1 u⟩,
       ⟨_, hh2, b₀, le_rfl, by linarith,
         show sleepAt (kv key hn 2 (by decide)) b₀ (kv key hn 2 (by decide)) b₀ = false by
-          simp [sleepAt]⟩,
+          simp [sleepAt_apply]⟩,
       ⟨_, hh1, fun u _ _ => hawake1 u⟩⟩⟩
   · change (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).faulty.Nonempty
     rw [realPoint_faulty]; exact Finset.singleton_nonempty _

@@ -55,7 +55,11 @@ name = "Solution"
 # (snapshot, extensions, theorems, grep 7b, the README file list, trusted_paths); it allows only trusted
 # layers. `sorry`: unfinished proofs may stay here (plan §5: only Lemmas and Proofs, never a trusted layer;
 # check.sh steps 3 and 7 fail a `sorry` anywhere else, and step 3b fails one in the closure of the solution). Tests: `may_import_roots` (the generated roots,
-# import-only aggregates) and `may_import_all`. An empty layer is allowed.
+# import-only aggregates) and `may_import_all`. `expose`: `@[expose]` may appear here (plan §3: whole-file expose
+# in Core, Spec, Statements and the instance Spec/Statements layers; none in Lemmas, Proofs, Main and ToMathlib,
+# where a definition used elsewhere gets characterising lemmas instead; check-boundaries.py refuses `expose` on a
+# Lemmas, Proofs, ToMathlib or Main layer). Solution and Test also have it: they are leaves (nothing imports them),
+# so exposure there costs no rebuild. An empty layer is allowed.
 [[layer]]
 name = "Init"
 prefixes = ["ConsensusLean.Init"]
@@ -73,6 +77,7 @@ about = "general lemmas staged for upstreaming; imports only Mathlib"
 [[layer]]
 name = "Core"
 prefixes = ["ConsensusLean.Core"]
+expose = true
 allow = ["Init", "ToMathlib"]
 trusted = true
 about = "generic definitions below Spec; none split out yet"
@@ -80,6 +85,7 @@ about = "generic definitions below Spec; none split out yet"
 [[layer]]
 name = "Spec"
 prefixes = ["ConsensusLean.Spec"]
+expose = true
 allow = ["Init", "ToMathlib", "Core"]
 trusted = true
 about = "generic definitions and contract"
@@ -87,6 +93,7 @@ about = "generic definitions and contract"
 [[layer]]
 name = "Statements"
 prefixes = ["ConsensusLean.Statements"]
+expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
 trusted = true
 about = "generic milestone and review statements as Props"
@@ -129,36 +136,42 @@ about = "generic composition of the milestones (Accepted.good) and its corollari
 [[layer]]
 name = "Instances.Goldilocks.Spec"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Spec"]
+expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
 about = "Goldilocks semantics and pinned contract"
 
 [[layer]]
 name = "Instances.Goldilocks.Statements"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Statements"]
+expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec"]
 about = "Goldilocks reviewed target (the properties sheet; also holds its §1 proofs)"
 
 [[layer]]
 name = "Instances.Bft.Spec"
 prefixes = ["ConsensusLean.Instances.Bft.Spec"]
+expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
 about = "the BFT contract shape shared by Streamlet and Tendermint"
 
 [[layer]]
 name = "Instances.Streamlet.Spec"
 prefixes = ["ConsensusLean.Instances.Streamlet.Spec"]
+expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
 about = "Streamlet as a value"
 
 [[layer]]
 name = "Instances.Tendermint.Spec"
 prefixes = ["ConsensusLean.Instances.Tendermint.Spec"]
+expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
 about = "Tendermint as a value"
 
 [[layer]]
 name = "Solution"
 prefixes = ["Solution"]
+expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour", "Proofs.RegimesRealizable",
          "Proofs.Faithful", "Main"]
 about = "comparator solution: proofs of the review statements (no instances: narrower than plan §2, as before)"
@@ -166,6 +179,7 @@ about = "comparator solution: proofs of the review statements (no instances: nar
 [[layer]]
 name = "Test"
 prefixes = ["ConsensusLeanTest"]
+expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour", "Proofs.RegimesRealizable",
          "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec", "Instances.Goldilocks.Statements", "Instances.Bft.Spec",
          "Instances.Streamlet.Spec", "Instances.Tendermint.Spec", "Solution"]

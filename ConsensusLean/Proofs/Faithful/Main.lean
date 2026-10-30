@@ -6,7 +6,7 @@ public import ConsensusLean.Lemmas.Problem.Facts.Transfer
 public import ConsensusLean.Lemmas.Problem.Facts.Good
 public import ConsensusLean.Lemmas.Model.Protocol
 
-@[expose] public section
+public section
 
 /-! # The log of a compiled system is the engine's communication (L1)
 
@@ -119,6 +119,7 @@ theorem held_iff_served (rho : Run F E) (hv : rho.ExecutionValid) {w : V}
 `[0, horizon]`), so the L0 convenience `CommLog.PSync.syncUntil_zero` applies. -/
 theorem log_sendsFromZero (rho : Run F E) (hv : rho.ExecutionValid) :
     CommLog.SendsFromZero rho.point rho.log := by
+  rw [CommLog.sendsFromZero_iff]
   rintro v - o t ⟨i, hi, -⟩
   exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
 

@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
 public import ConsensusLean.Lemmas.Model.View
 
-@[expose] public section
+public section
 
 /-! # Slashing protection (L1)
 
@@ -115,6 +115,18 @@ def releaseAllCarried (P : Protocol pub Out) (hash : P.Item → Nat) :
       (r.1, c :: r.2)
     else releaseAllCarried P hash nd cs
 
+theorem releaseAllCarried_nil (hash : P.Item → Nat) (nd : Node P) :
+    releaseAllCarried P hash nd [] = (nd, []) := by rfl
+
+theorem releaseAllCarried_cons (hash : P.Item → Nat) (nd : Node P) (c : P.Object)
+    (cs : List P.Object) :
+    releaseAllCarried P hash nd (c :: cs) =
+      if releasable nd.seen c then
+        let nd' : Node P := ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩
+        let r := releaseAllCarried P hash nd' cs
+        (r.1, c :: r.2)
+      else releaseAllCarried P hash nd cs := by rfl
+
 /-- The guard is a no-op when own-signed objects never conflict (for liveness
 proofs): with no conflicting pair among `k`-signed objects of
 `closure nd.seen ++ closure cs`, `releaseAll` is the carried-only release. -/
@@ -139,7 +151,8 @@ theorem releaseAll_eq_carried (hash : P.Item → Nat) (k : Key pub) (nd : Node P
       refine List.mem_append_right _ ?_
       simp only [closure, List.flatMap_cons, List.mem_append] at ho ⊢
       exact Or.inr ho
-    unfold releaseAll releaseAllCarried
+    unfold releaseAll
+    rw [releaseAllCarried_cons]
     rw [hp, Bool.and_true]
     split
     · dsimp only
@@ -219,7 +232,8 @@ theorem seen_safe (hv : rho.ExecutionValid) (i : Nat) :
         · exact rho.safeBefore_mono (Nat.le_succ k) (ih w o (by simpa [step, hw] using ho))
       | deliver v p t =>
         have hsafe : rho.SafeBefore (k + 1) p := by
-          intro d hd u hu hh
+          refine safeBefore_iff.mpr fun d hd => signedBefore_iff.mpr ?_
+          intro u hu hh
           obtain ⟨j, t', hj, hjt, hjo⟩ := hv.unforgeable k v p t he d hd u hu hh
           exact ⟨j, t', by omega, hjt, hjo⟩
         intro w o ho
@@ -241,7 +255,8 @@ theorem signed_seen_released (hv : rho.ExecutionValid) {i : Nat} {v : V}
     (hs : rho.signerOf o = some u) :
     ∃ j < i, ∃ t, rho.events[j]? = some (.tick u t) ∧ o ∈ rho.releasesAt j := by
   obtain ⟨r, hr, hc⟩ := (mem_closure_iff _ _).mp ho
-  obtain ⟨j, t, hj, he, hjo⟩ := rho.seen_safe hv i v r hr o hc u hu hs
+  obtain ⟨j, t, hj, he, hjo⟩ :=
+    signedBefore_iff.mp (safeBefore_iff.mp (rho.seen_safe hv i v r hr) o hc) u hu hs
   exact ⟨j, hj, t, he, hjo⟩
 
 /-- Every object signed by an honest validator that an honest node saw was

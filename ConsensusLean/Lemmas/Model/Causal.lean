@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Protection
 
-@[expose] public section
+public section
 
 /-! # Causal runs convict nobody
 
@@ -81,7 +81,7 @@ theorem seen_honestSigned (hv : rho.ExecutionValid) (hc : rho.Causal) (i : Nat) 
             rcases List.mem_append.mp hm with hm | hm
             · exact old v o hm
             · rcases List.mem_singleton.mp hm with rfl
-              obtain ⟨j, u, t', hj, hju, hjo⟩ := hc k v o t he
+              obtain ⟨j, u, t', hj, hju, hjo⟩ := causal_iff.mp hc k v o t he
               have hu : u ∈ rho.honest := hv.honest_only _ (List.mem_of_getElem? hju)
               simp only [releasesAt, hju] at hjo
               exact (rho.tick_honestSigned _ hu t' (ih j (by omega) u)).2 o hjo

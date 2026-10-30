@@ -3,7 +3,7 @@ public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Spec.Problem.Properties
 public import Mathlib.Tactic
 
-@[expose] public section
+public section
 
 /-! # Environment atoms (L0 facts)
 
@@ -33,7 +33,8 @@ theorem readyAbove_iff_union (θ : ℚ) (c t : Time) :
 
 /-- A larger fault bound is weaker. -/
 theorem FaultsBelow.mono {β β' : ℚ} (h : p.FaultsBelow β') (hle : β' ≤ β) : p.FaultsBelow β :=
-  lt_of_lt_of_le h (mul_le_mul_of_nonneg_right hle (by positivity))
+  faultsBelow_iff.mpr <|
+    lt_of_lt_of_le (faultsBelow_iff.mp h) (mul_le_mul_of_nonneg_right hle (by positivity))
 
 end EnvPoint
 

@@ -441,7 +441,7 @@ window. -/
 theorem faulty_third_not_healthy (g b : Time) : ¬ ptF.HealthyOn (1 / 3) g b := by
   intro h
   have := h.faultsBelow
-  unfold EnvPoint.FaultsBelow at this
+  rw [EnvPoint.faultsBelow_iff] at this
   have hf : ptF.faulty = {0} := by ext v; simp [EnvPoint.faulty, ptF]
   rw [hf] at this
   norm_num at this

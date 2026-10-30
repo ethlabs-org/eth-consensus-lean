@@ -4,7 +4,7 @@ public import ConsensusLean.Lemmas.Problem.Facts.Transfer
 public import ConsensusLean.Lemmas.Problem.Facts.Good
 public import ConsensusLean.Lemmas.Model.Protocol
 
-@[expose] public section
+public section
 
 /-! Structural facts about objects (`Contains` is membership in `parts`) and
 the one-step unfolding of `stateBefore`; shared by the canonical-run

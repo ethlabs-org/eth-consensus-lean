@@ -4,7 +4,7 @@ public import ConsensusLean.Spec.Blocks.Progress
 public import ConsensusLean.Spec.Blocks.Chains
 public import ConsensusLean.Spec.Blocks.Payload
 
-@[expose] public section
+public section
 
 /-! # Building-block facts (outside the trusted surface)
 

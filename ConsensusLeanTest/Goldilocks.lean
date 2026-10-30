@@ -207,11 +207,15 @@ theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Countable Info]
     ha hf .available k g (by linarith) (by linarith) (by linarith)
   have hhh : gHeal pp k g ⟨_, rho⟩ ≤ rho.horizon := by
     have hh : rho.horizon = rho.point.horizon := rfl
-    rw [hh, hpt]
-    change (max g 0 + (K.params.heal .available k : Time) * Δ) ≤
+    have hd : ((Sys F (Fin 5)).pt ⟨_, rho⟩).env.Δ = Δ := by
+      change rho.point.env.Δ = Δ
+      rw [hpt, realPoint_env]
+    rw [hh, hpt, realPoint_horizon]
+    change (max g 0 + (K.params.heal .available k : Time) * ((Sys F (Fin 5)).pt ⟨_, rho⟩).env.Δ) ≤
       (max g 0 + (K.params.heal .available k : Time) * Δ) +
       (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency .available k : Time) * Δ +
       progLen F K .available k ⟨Δ, hΔ, allAwake⟩ + Δ + 2
+    rw [hd]
     linarith
   refine ⟨⟨_, rho⟩, hw.1, (Model.sysOf_delivers_iff rho _ _).mp hH.1, ?_,
     (shapeProgress F (Fin 5)).mono le_rfl hhh hp, ?_⟩

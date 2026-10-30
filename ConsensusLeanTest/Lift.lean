@@ -3,7 +3,9 @@ public import ConsensusLean.Lemmas.Model.Protocol
 public import ConsensusLean.Lemmas.Model.Laws
 public import ConsensusLean.Lemmas.Model.Objects
 public import ConsensusLean.Lemmas.Model.View
-public import ConsensusLean.Lemmas.Model.CanonicalStatement
+public import ConsensusLean.Spec.Model.System
+public import ConsensusLean.Lemmas.Problem.Facts.Transfer
+public import ConsensusLean.Lemmas.Problem.Facts.Good
 public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Candidates
 public import ConsensusLean.Lemmas.Model.Credentials
@@ -264,7 +266,7 @@ theorem rehash_sameTrace (rho : Run F E) (hash' : (protoOf F E).Item → Nat)
 theorem injective_twin (rho : Run F E) (hn : ¬ rho.HashCollision) :
     ∃ r : Run F E, rho.SameTrace r ∧ r.InjectiveHash := by
   obtain ⟨hash', hi, ha⟩ := rho.extend_hash hn
-  exact ⟨{rho with hash := hash'}, rho.rehash_sameTrace hash' ha, hi⟩
+  exact ⟨{rho with hash := hash'}, rho.rehash_sameTrace hash' ha, injectiveHash_iff.mpr hi⟩
 
 end Run
 

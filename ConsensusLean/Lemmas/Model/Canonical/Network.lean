@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Lemmas.Model.Canonical.Schedule
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
 
-@[expose] public section
+public section
 
 /-! The canonical network is causal, eager from its GST `g` and quiet before
 it. Prefix invariance identifies
@@ -20,12 +20,12 @@ theorem stages_prefix (g : Time) {m n : Nat} (hmn : m ≤ n) :
   | zero =>
     have : m = 0 := by omega
     subst m
-    exact ⟨[], rfl⟩
+    exact ⟨[], (List.append_nil _).symm⟩
   | succ n ih =>
     by_cases hm : m ≤ n
     · obtain ⟨tail, ht⟩ := ih hm
       refine ⟨tail ++ rho.layer g (rho.stages g n) (n : Time), ?_⟩
-      rw [stages, ht, List.append_assoc]
+      rw [stages_succ, ht, List.append_assoc]
     · have : m = n + 1 := by omega
       subst m
       exact ⟨[], (List.append_nil _).symm⟩
@@ -34,7 +34,7 @@ theorem front_prefix (g : Time) {k n : Nat} (hk : k < n) :
     ∃ tail, rho.stages g n = rho.front (rho.stages g k) (k : Time) ++ tail := by
   obtain ⟨tail, ht⟩ := rho.stages_prefix g (show k + 1 ≤ n by omega)
   refine ⟨rho.deliveryEvents g (rho.front (rho.stages g k) (k : Time)) (k : Time) ++ tail, ?_⟩
-  rw [ht, stages, layer, front]
+  rw [ht, stages_succ, layer_eq, front_eq]
   simp only [List.append_assoc]
 
 theorem tick_mem_stages (g : Time) {n : Nat} {v : V} {t : Time}
@@ -43,17 +43,20 @@ theorem tick_mem_stages (g : Time) {n : Nat} {v : V} {t : Time}
   apply (rho.mem_stages g n _).mpr
   refine ⟨t.toNat, hn, ?_⟩
   rw [Int.toNat_of_nonneg h0]
-  simp only [layer, List.mem_append]
+  simp only [layer_eq, List.mem_append]
   exact Or.inl (Or.inr ((rho.mem_tickEvents t _).mpr ⟨v, hv, ha, rfl⟩))
 
 theorem canonical_causal (g : Time) : (rho.withEvents (rho.canonicalEvents g)).Causal := by
+  rw [causal_iff]
   intro i w o t hi
+  rw [withEvents_events] at hi
   have hm := List.mem_of_getElem? hi
+  rw [canonicalEvents_eq] at hm
   obtain ⟨k, hk, he⟩ := (rho.mem_stages g _ _).mp hm
   have htk : t = (k : Time) := rho.layer_time g _ _ he
   subst t
   have hp : o ∈ rho.pool (rho.front (rho.stages g k) (k : Time)) := by
-    simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
+    simp only [layer_eq, List.mem_append, mem_wakeEvents, mem_tickEvents,
       mem_deliveryEvents] at he
     rcases he with (⟨v, _, _, _, h⟩ | ⟨v, _, _, h⟩) | ⟨_, v, _, _, p, hp, h⟩
     · cases h
@@ -61,11 +64,12 @@ theorem canonical_causal (g : Time) : (rho.withEvents (rho.canonicalEvents g)).C
     · cases h; exact hp
   obtain ⟨tail, htail⟩ := rho.front_prefix g hk
   obtain ⟨v, t', j, hj, ho⟩ := (rho.mem_pool _ _).mp hp
+  rw [withEvents_events] at hj
   have hjl : j < (rho.front (rho.stages g k) (k : Time)).length :=
     (List.getElem?_eq_some_iff.mp hj).1
   have hni : ¬ Event.deliver w o (k : Time) ∈ rho.front (rho.stages g k) (k : Time) := by
     intro h
-    simp only [front, List.mem_append] at h
+    simp only [front_eq, List.mem_append] at h
     rcases h with (h | h) | h
     · have hb := (rho.stages_time g k h).2
       exact lt_irrefl _ hb
@@ -77,15 +81,15 @@ theorem canonical_causal (g : Time) : (rho.withEvents (rho.canonicalEvents g)).C
     apply hni
     apply List.mem_of_getElem?
     rw [show (rho.front (rho.stages g k) (k : Time))[i]? =
-      (rho.canonicalEvents g)[i]? by rw [show (rho.canonicalEvents g) = _ from htail,
+      (rho.canonicalEvents g)[i]? by rw [(rho.canonicalEvents_eq g).trans htail,
         List.getElem?_append_left hil]]
     exact hi
   refine ⟨j, v, t', lt_of_lt_of_le hjl hile, ?_, ?_⟩
-  · change (rho.canonicalEvents g)[j]? = _
-    rw [show (rho.canonicalEvents g) = _ from htail, List.getElem?_append_left hjl]
+  · rw [withEvents_events]
+    rw [(rho.canonicalEvents_eq g).trans htail, List.getElem?_append_left hjl]
     exact hj
   · change (rho.withEvents (rho.canonicalEvents g)).releasesAt j |> fun l => o ∈ l
-    rw [show (rho.canonicalEvents g) = _ from htail, rho.releasesAt_append _ _ hjl]
+    rw [(rho.canonicalEvents_eq g).trans htail, rho.releasesAt_append _ _ hjl]
     exact ho
 
 /-- From GST `g` on, every honest release at `t` is received by every awake
@@ -99,8 +103,10 @@ theorem canonical_eagerFrom (g : Time) (h0 : 0 ≤ rho.horizon) :
   have hga : g ≤ a := le_trans (le_max_right t g) hmax
   change a ≤ rho.horizon at hah
   have hr0 := hr
+  rw [canonicalEvents_eq] at hr0
   obtain ⟨i, hi, _⟩ := hr
   have htm := List.mem_of_getElem? hi
+  rw [withEvents_events] at htm
   have ht0 := (rho.canonical_in_horizon g h0 htm).1
   have hwa := rho.canonical_tick_awake g v t htm
   have ha0 : 0 ≤ a := le_trans ht0 hta
@@ -109,6 +115,7 @@ theorem canonical_eagerFrom (g : Time) (h0 : 0 ≤ rho.horizon) :
     omega
   obtain ⟨tail, htail⟩ := rho.front_prefix g han
   have htfront : Event.tick v t ∈ rho.front (rho.stages g a.toNat) (a.toNat : Time) := by
+    rw [front_eq]
     by_cases heq : t = a
     · subst t
       apply List.mem_append_right
@@ -130,18 +137,20 @@ theorem canonical_eagerFrom (g : Time) (h0 : 0 ≤ rho.horizon) :
   have hpool := (rho.mem_pool _ o).mpr ⟨v, t, hr'⟩
   have hdel : Event.deliver w o a ∈ (rho.canonicalEvents g) := by
     apply rho.canonical_layer g a ha0 hah
-    simp only [layer, List.mem_append]
+    simp only [layer_eq, List.mem_append]
     apply Or.inr
     apply (rho.mem_deliveryEvents g _ a _).mpr
     exact ⟨hga, w, hw, haa, o, by simpa only [Int.toNat_of_nonneg ha0] using hpool, rfl⟩
+  rw [← withEvents_events rho (rho.canonicalEvents g)] at hdel
   exact List.mem_iff_getElem?.mp hdel
 
 /-- No delivery before GST `g`. -/
 theorem canonical_quiet (g : Time) :
     ∀ w o t, (rho.withEvents (rho.canonicalEvents g)).receives w o t → g ≤ t := by
   intro w o t ⟨i, hi⟩
+  rw [withEvents_events, canonicalEvents_eq] at hi
   obtain ⟨k, _, he⟩ := (rho.mem_stages g _ _).mp (List.mem_of_getElem? hi)
-  simp only [layer, List.mem_append, mem_wakeEvents, mem_tickEvents,
+  simp only [layer_eq, List.mem_append, mem_wakeEvents, mem_tickEvents,
     mem_deliveryEvents] at he
   rcases he with (⟨v, _, _, _, h⟩ | ⟨v, _, _, h⟩) | ⟨hg, v, _, _, p, _, h⟩
   · cases h

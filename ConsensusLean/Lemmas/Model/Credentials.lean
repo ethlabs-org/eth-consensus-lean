@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
 public import ConsensusLean.Lemmas.Model.View
 
-@[expose] public section
+public section
 
 /-! # Provenance is an authorized signer
 
@@ -117,7 +117,7 @@ theorem credentials_of_causal (hc : rho.Causal) : rho.Credentials := by
       intro k hk w o t he
       rcases Nat.lt_succ_iff_lt_or_eq.mp hk with hk | rfl
       · exact ih k hk w o t he
-      · obtain ⟨j, _, _, hj, _, hjo⟩ := hc k w o t he
+      · obtain ⟨j, _, _, hj, _, hjo⟩ := causal_iff.mp hc k w o t he
         exact rho.releasesAt_authorized j (fun m hm => ih m (by omega)) o hjo
   intro i w o t he
   exact D (i + 1) i (by omega) w o t he

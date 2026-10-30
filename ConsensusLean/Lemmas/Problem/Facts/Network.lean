@@ -3,7 +3,7 @@ public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Spec.Problem.Network
 public import Mathlib.Tactic
 
-@[expose] public section
+public section
 
 /-! # The network: delivery lemmas (L0 facts)
 
@@ -48,7 +48,7 @@ theorem PSync.syncUntil_zero (hns : L.SendsFromZero p) (h : L.PSync p 0) (b : Ti
     L.SyncUntil p b := by
   constructor
   · intro v hv m t hs w hw a hta _ hdh haw
-    have ht0 := hns v hv m t hs
+    have ht0 := sendsFromZero_iff.mp hns v hv m t hs
     have := h.msgs v hv m t hs w hw a hta
     simp only [max_eq_left (le_trans ht0 hta)] at this
     exact this hdh hdh haw

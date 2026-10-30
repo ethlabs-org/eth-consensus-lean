@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Lemmas.Model.Canonical.Events
 public import ConsensusLean.Lemmas.Model.Candidates
 
-@[expose] public section
+public section
 
 /-! A general engine invariant: causal receipt of released roots implies
 unforgeability of every nested authentication. The seen filter makes this
@@ -80,6 +80,19 @@ def SignedBefore (i : Nat) (o : (protoOf F E).Object) : Prop :=
 
 def SafeBefore (i : Nat) (o : (protoOf F E).Object) : Prop :=
   ∀ d, Obj.Contains o d → rho.SignedBefore i d
+
+variable {rho} in
+theorem causal_iff : rho.Causal ↔ ∀ i w o t, rho.events[i]? = some (.deliver w o t) →
+    ∃ j v t', j < i ∧ rho.events[j]? = some (.tick v t') ∧ o ∈ rho.releasesAt j := Iff.rfl
+
+variable {rho} in
+theorem signedBefore_iff {i : Nat} {o : (protoOf F E).Object} : rho.SignedBefore i o ↔
+    ∀ u ∈ rho.honest, rho.signerOf o = some u →
+      ∃ j t, j < i ∧ rho.events[j]? = some (.tick u t) ∧ o ∈ rho.releasesAt j := Iff.rfl
+
+variable {rho} in
+theorem safeBefore_iff {i : Nat} {o : (protoOf F E).Object} :
+    rho.SafeBefore i o ↔ ∀ d, Obj.Contains o d → rho.SignedBefore i d := Iff.rfl
 
 theorem signedBefore_mono {i j : Nat} (hij : i ≤ j) {o : (protoOf F E).Object}
     (h : rho.SignedBefore i o) : rho.SignedBefore j o := by

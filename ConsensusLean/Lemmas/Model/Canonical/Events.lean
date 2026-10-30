@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Lemmas.Model.Canonical.Delivery
 public import ConsensusLean.Lemmas.Model.Objects
 
-@[expose] public section
+public section
 
 /-! Structural closure facts, prefix invariance of execution, and the finite
 pool of released objects used by the canonical scheduler. -/
@@ -23,20 +23,40 @@ variable (rho : Run F E)
 def withEvents (es : List (Event V (protoOf F E).Object)) : Run F E :=
   { rho with events := es }
 
+omit [DecidableEq V] in
+theorem withEvents_eq (es : List (Event V (protoOf F E).Object)) :
+    rho.withEvents es = { rho with events := es } := by rfl
+
+omit [DecidableEq V] in
+@[simp] theorem withEvents_events (es : List (Event V (protoOf F E).Object)) :
+    (rho.withEvents es).events = es := by rfl
+
+omit [DecidableEq V] in
+@[simp] theorem withEvents_honest (es : List (Event V (protoOf F E).Object)) :
+    (rho.withEvents es).honest = rho.honest := by rfl
+
+omit [DecidableEq V] in
+@[simp] theorem withEvents_horizon (es : List (Event V (protoOf F E).Object)) :
+    (rho.withEvents es).horizon = rho.horizon := by rfl
+
+omit [DecidableEq V] in
+@[simp] theorem withEvents_point (es : List (Event V (protoOf F E).Object)) :
+    (rho.withEvents es).point = rho.point := by rfl
+
 @[simp] theorem withEvents_step (es : List (Event V (protoOf F E).Object)) :
-    (rho.withEvents es).step = rho.step := rfl
+    (rho.withEvents es).step = rho.step := by rfl
 
 omit [DecidableEq V] in
 @[simp] theorem withEvents_tick (es : List (Event V (protoOf F E).Object)) :
-    (rho.withEvents es).tick = rho.tick := rfl
+    (rho.withEvents es).tick = rho.tick := by rfl
 
 omit [DecidableEq V] in
 @[simp] theorem withEvents_key (es : List (Event V (protoOf F E).Object)) :
-    (rho.withEvents es).key = rho.key := rfl
+    (rho.withEvents es).key = rho.key := by rfl
 
 omit [DecidableEq V] in
 @[simp] theorem withEvents_sel (es : List (Event V (protoOf F E).Object)) :
-    (rho.withEvents es).sel = rho.sel := rfl
+    (rho.withEvents es).sel = rho.sel := by rfl
 
 theorem stateBefore_append (xs ys : List (Event V (protoOf F E).Object))
     {i : Nat} (hi : i ≤ xs.length) :
@@ -84,20 +104,27 @@ theorem releases_restrict (xs ys : List (Event V (protoOf F E).Object))
 def pool (es : List (Event V (protoOf F E).Object)) : List (protoOf F E).Object :=
   ((List.range es.length).flatMap (rho.withEvents es).releasesAt).dedup
 
+theorem pool_eq (es : List (Event V (protoOf F E).Object)) :
+    rho.pool es = ((List.range es.length).flatMap (rho.withEvents es).releasesAt).dedup := by rfl
+
+theorem nodup_pool (es : List (Event V (protoOf F E).Object)) : (rho.pool es).Nodup := by
+  rw [pool_eq]
+  exact List.nodup_dedup _
+
 theorem mem_pool (es : List (Event V (protoOf F E).Object)) (o : (protoOf F E).Object) :
     o ∈ rho.pool es ↔ ∃ v t, (rho.withEvents es).releases v o t := by
-  simp only [pool, List.mem_dedup, List.mem_flatMap, List.mem_range]
+  simp only [pool_eq, List.mem_dedup, List.mem_flatMap, List.mem_range]
   constructor
   · rintro ⟨i, hi, ho⟩
     have hie : es[i]? = some es[i] := List.getElem?_eq_getElem hi
     generalize he : es[i]? = e at *
     cases e with
-    | none => simp [releasesAt, withEvents, he] at ho
+    | none => simp [releasesAt, withEvents_eq, he] at ho
     | some e =>
       cases e with
       | tick v t => exact ⟨v, t, i, he, ho⟩
-      | deliver v p t => simp [releasesAt, withEvents, he] at ho
-      | restart v t => simp [releasesAt, withEvents, he] at ho
+      | deliver v p t => simp [releasesAt, withEvents_eq, he] at ho
+      | restart v t => simp [releasesAt, withEvents_eq, he] at ho
   · rintro ⟨v, t, i, hi, ho⟩
     exact ⟨i, (List.getElem?_eq_some_iff.mp hi).1, ho⟩
 

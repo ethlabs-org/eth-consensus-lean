@@ -38,12 +38,14 @@ name = "Spec"
 prefixes = ["Fx.Spec"]
 allow = ["Init", "ToMathlib"]
 trusted = true
+expose = true
 
 [[layer]]
 name = "Statements"
 prefixes = ["Fx.Statements"]
 allow = ["Init", "ToMathlib", "Spec"]
 trusted = true
+expose = true
 
 [[layer]]
 name = "Lemmas"
@@ -72,6 +74,7 @@ allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proof
 name = "Sol"
 prefixes = ["FxSol"]
 allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Main"]
+expose = true
 
 [[layer]]
 name = "Test"
@@ -79,6 +82,7 @@ prefixes = ["FxTest"]
 allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Main", "Sol"]
 may_import_roots = true
 may_import_all = true
+expose = true
 
 [[exception]]
 from = ["Fx.Proofs.Q"]

@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Lemmas.Model.View
 
-@[expose] public section
+public section
 namespace Consensus.Model
 
 variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}

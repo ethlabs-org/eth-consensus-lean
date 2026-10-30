@@ -238,10 +238,10 @@ open Consensus.Shape.Tests.Realizable (point3 sel3 sel3_admits)
 selection `sel3` (key 2 proposes every slot) that delivers to validator 1 a
 header of slot 0 signed by key 1 as proposer. -/
 def forgedProposal : Model.Run (compiled trivialFamily) point3.env :=
-  Model.mkRun point3.honest point3.horizon (pkiFin 3) sel3 (fun _ _ => []) (fun _ _ => [])
-    (fun _ => 1)
-    [.deliver 1 (.mk (.signed ⟨1, by simp⟩ (ShapeRole.proposer 0))
-      (.item ⟨.root, 0, 0, ()⟩) []) 0]
+  Model.Run.mk point3.honest point3.horizon
+      [.deliver 1 (.mk (.signed ⟨1, by simp⟩ (ShapeRole.proposer 0))
+        (.item ⟨.root, 0, 0, ()⟩) []) 0]
+      (pkiFin 3) sel3 (fun _ _ => []) (fun _ _ => []) (fun _ => 1)
 
 /-- The forged run has an admissible selection, and is invalid. -/
 theorem forgedProposal_invalid : forgedProposal.SelValid ∧ ¬ forgedProposal.ExecutionValid := by

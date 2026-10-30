@@ -7,7 +7,7 @@ public import ConsensusLean.Lemmas.Problem.Facts.Properties
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import Mathlib.Tactic
 
-@[expose] public section
+public section
 
 /-! # Consequences of a good protocol (L0 facts)
 
@@ -45,7 +45,7 @@ theorem agree_of_accountable (S : System V) (hL : S.Laws) (r : S.Run) {g : S.sch
       (Consensus.convicted (S.convicts r) (S.view r u i ∪ S.view r v j)).card at hcard
     have hc : ((Consensus.convicted (S.convicts r) (S.view r u i ∪ S.view r v j)).card : ℚ) ≤
         (S.trace r).point.faulty.card := by exact_mod_cast Finset.card_le_card hsub
-    unfold EnvPoint.FaultsBelow at hb
+    rw [EnvPoint.faultsBelow_iff] at hb
     linarith
 
 end System
@@ -81,7 +81,8 @@ theorem final_safe_healthy (h : Good S X K) {g : S.schema.Id}
     (hH : S.Healthy K gst r) : (S.trace r).Safe g 0 ∨ S.Excuse r := by
   have hb : (S.pt r).FaultsBelow K.params.α :=
     hH.2.faultsBelow.mono _ h.behaviour.admissible.α_range.1
-  exact (h.final_agree hg r hv hb).imp (fun ha => ⟨ha, h.behaviour.finalMonotone g hg r hv⟩) id
+  exact (h.final_agree hg r hv hb).imp
+    (fun ha => Trace.safe_iff.mpr ⟨ha, h.behaviour.finalMonotone g hg r hv⟩) id
 
 /-- Through an outage, what a node ready at `T` read as stable is compatible
 with the final read of every eligible reader (both are prefixes of its

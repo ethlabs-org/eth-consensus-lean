@@ -232,13 +232,13 @@ theorem faithful_relayedRun :
     ⟨Model.env, Model.relayedRun⟩
   refine ⟨hf.2.2.2, ?_, hf.1⟩
   rw [hf.2.2.2]
-  simp [Model.relayedRun, mkRun, Run.inbox]
+  simp [Model.relayedRun, Run.inbox]
 
 open Consensus.Model in
 /-- A model run with one real delivery: validator 1 receives `o` at `1`. -/
 def deliveredRun (o : (protoOf Model.family Model.env).Object) : Run Model.family Model.env :=
-  mkRun Finset.univ 5 (pkiFin 2) Model.sel (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
-    [.deliver 1 o 1]
+  Run.mk Finset.univ 5 [.deliver 1 o 1] (pkiFin 2) Model.sel (fun _ _ => []) (fun _ _ => [])
+      (fun _ => 0)
 
 open Consensus.Model in
 /-- The delivery is a receipt in the system's log, tagged with the run's
@@ -282,7 +282,7 @@ theorem silent_run_valid (O : OutputSchema) (F : Family O) (V : Type) [Fintype V
     (hsel : ∀ r, ((protoOf F E).selSpec r).Admits (sel r))
     (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) :
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
-      let rho := mkRun (F := F) (E := E) honest horizon key sel submit relay hash events
+      let rho := Run.mk (F := F) (E := E) honest horizon events key sel submit relay hash
       rho.ExecutionValid ∧ (∀ w o t, ¬ rho.receives w o t) ∧
         ∀ g' v w o t, v ∈ honest → rho.releases v o t → w ∈ honest →
           max t g' + E.Δ ≤ horizon → (∀ u, t ≤ u → u ≤ max t g' + E.Δ → E.awake w u = true) →
@@ -313,9 +313,8 @@ theorem silent_run_valid (O : OutputSchema) (F : Family O) (V : Type) [Fintype V
 open Consensus.Model in
 /-- Both validators tick at `0, 1, 2`; `42` is relayed to both at `1`. -/
 def tickedRun : Run Model.family Model.env :=
-  mkRun Finset.univ 2 (pkiFin 2) Model.sel (fun _ _ => []) (fun _ t => if t = 1 then [42] else [])
-    (fun _ => 0)
-    [.tick 0 0, .tick 1 0, .tick 0 1, .tick 1 1, .tick 0 2, .tick 1 2]
+  Run.mk Finset.univ 2 [.tick 0 0, .tick 1 0, .tick 0 1, .tick 1 1, .tick 0 2, .tick 1 2] (pkiFin 2)
+      Model.sel (fun _ _ => []) (fun _ t => if t = 1 then [42] else []) (fun _ => 0)
 
 open Consensus.Model in
 theorem tickedRun_valid : tickedRun.ExecutionValid := by
@@ -323,24 +322,24 @@ theorem tickedRun_valid : tickedRun.ExecutionValid := by
       tickedRun.events[i]? ≠ some (Event.deliver w o t) := by
     intro i w o t h
     have := List.mem_of_getElem? h
-    simp [tickedRun, mkRun] at this
+    simp [tickedRun] at this
   refine ⟨by decide, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, Model.sel_valid _ rfl, ?_⟩
-  · simp [tickedRun, mkRun, Event.keyLe, Event.time, Event.phase]
-  · simp [tickedRun, mkRun]
+  · simp [tickedRun, Event.keyLe, Event.time, Event.phase]
+  · simp [tickedRun]
   · intro e he
-    simp only [tickedRun, mkRun, List.mem_cons, List.not_mem_nil, or_false] at he
+    simp only [tickedRun, List.mem_cons, List.not_mem_nil, or_false] at he
     rcases he with rfl | rfl | rfl | rfl | rfl | rfl <;> decide
   · intro e _
     exact Finset.mem_univ _
   · intro v _ t ht0 ht2 _
     change t ≤ 2 at ht2
-    fin_cases v <;> interval_cases t <;> simp [tickedRun, mkRun]
+    fin_cases v <;> interval_cases t <;> simp [tickedRun]
   · intro v t _
     rfl
   · intro v o t _
     rfl
   · intro v t he
-    simp [tickedRun, mkRun] at he
+    simp [tickedRun] at he
   · intro v _ t _ _ hw
     exact absurd hw.2 (by simp [Model.env])
   · intro i w o t h
@@ -361,8 +360,8 @@ theorem truncate_relayedRun :
       ⟨Model.env, tickedRun.truncate 1⟩).inbox 0 1 := by
   refine ⟨?_, Run.truncate_valid tickedRun_valid (by decide) (by decide),
     (Run.truncate_prefix tickedRun_valid 1).1, ?_⟩
-  · simp [Run.truncate, tickedRun, mkRun, Event.time]
-  · simp [sysOf, tagLog, Run.log, Run.truncate, tickedRun, mkRun, Run.inbox]
+  · simp [Run.truncate_eq, tickedRun, Event.time]
+  · simp [sysOf, tagLog, Run.log, Run.truncate_eq, tickedRun, Run.inbox]
 
 end Consensus.Shape.Tests.Network
 

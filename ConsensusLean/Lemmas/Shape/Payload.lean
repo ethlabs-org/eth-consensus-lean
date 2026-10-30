@@ -7,7 +7,7 @@ public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Lemmas.Model.Adequate
 public import ConsensusLean.Lemmas.Blocks.Facts
 
-@[expose] public section
+public section
 
 /-! # Shape-level payload facts (L2)
 

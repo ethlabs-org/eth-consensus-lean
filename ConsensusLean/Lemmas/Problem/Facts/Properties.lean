@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Spec.Problem.Properties
 
-@[expose] public section
+public section
 
 /-! # Prefixes of traces (L0 facts)
 
@@ -63,6 +63,7 @@ theorem readySafeUpTo (h : tr'.PrefixOf tr b) {c : Time} {g : Id} {t₀ : Time}
     intro i hi hb
     have hc := h.le_cuts hi.1 hb
     exact ⟨⟨hc, by rw [h.cutTime i hc]; exact hi.2⟩, hc⟩
+  rw [readySafeUpTo_iff]
   constructor
   · intro u v i j hi hj hbi hbj hu hv
     obtain ⟨hi', hic⟩ := hin i hi hbi

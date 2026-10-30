@@ -3,7 +3,7 @@ public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Truncate
 public import Mathlib.Tactic
 
-@[expose] public section
+public section
 
 /-! # The model is adequate (L1)
 
@@ -28,6 +28,10 @@ variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O
 
 /-- The hash is injective: no collision can occur. -/
 def Run.InjectiveHash (rho : Run F E) : Prop := Function.Injective rho.hash
+
+omit [DecidableEq V] in
+theorem Run.injectiveHash_iff {rho : Run F E} : rho.InjectiveHash ↔ Function.Injective rho.hash :=
+  Iff.rfl
 
 /-- An injective hash has no collision. -/
 theorem Run.not_hashCollision_of_injective {rho : Run F E} (hi : rho.InjectiveHash) :
@@ -62,14 +66,14 @@ theorem sysOf_adequate {Prog : Type} (Y : Progress (sysOf O F V) Prog)
     obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf F p.env).Item
     obtain ⟨relay, events, hvalid, heager⟩ :=
       canonical_run_from O F V p.env p.honest p.horizon hp key sel hsel p.submit hash g
-    refine ⟨⟨p.env, mkRun p.honest p.horizon key sel p.submit relay hash events⟩,
+    refine ⟨⟨p.env, Run.mk p.honest p.horizon events key sel p.submit relay hash⟩,
       hvalid, ?_, rfl, sysOf_eagerFrom _ heager, fun _ _ _ _ h => h⟩
     rintro ⟨x, y, hxy, -, -, hh⟩
     exact hxy (hinj hh)
   · rintro ⟨E, rho⟩ hv b hb0 hbh
     obtain ⟨hP, hview, hlog, hexc⟩ := rho.truncate_prefix (O := O) hv b
     exact ⟨⟨E, rho.truncate b⟩, rho.truncate_valid hv hb0 hbh, hP, hview, hlog, hexc,
-      fun _ _ _ _ _ h => shrink hbh h⟩
+      fun _ _ _ _ _ h => by rw [Run.truncate_eq]; exact shrink hbh h⟩
 
 end Consensus.Model
 

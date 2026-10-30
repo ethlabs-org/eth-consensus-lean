@@ -15,7 +15,6 @@ public import ConsensusLean.Lemmas.Model.Canonical.Events
 public import ConsensusLean.Lemmas.Model.Canonical.Network
 public import ConsensusLean.Lemmas.Model.Canonical.Schedule
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
-public import ConsensusLean.Lemmas.Model.CanonicalStatement
 public import ConsensusLean.Lemmas.Model.Causal
 public import ConsensusLean.Lemmas.Model.Credentials
 public import ConsensusLean.Lemmas.Model.Laws

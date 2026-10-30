@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Lemmas.Model.View
 public import Mathlib.Tactic
 
-@[expose] public section
+public section
 
 /-! # Truncation: valid runs are closed under prefixes (L1)
 
@@ -27,6 +27,10 @@ variable (rho : Run F E)
 /-- The prefix of a run up to `b`: events with time `≤ b`, horizon `b`. -/
 def truncate (b : Time) : Run F E :=
   { rho with horizon := b, events := rho.events.filter (fun e => decide (e.time ≤ b)) }
+
+omit [DecidableEq V] in
+theorem truncate_eq (b : Time) : rho.truncate b =
+    { rho with horizon := b, events := rho.events.filter (fun e => decide (e.time ≤ b)) } := by rfl
 
 omit [DecidableEq V] in
 /-- On a time-sorted list, the events at times `≤ b` form a prefix, and every
@@ -147,7 +151,7 @@ theorem truncate_split (hs : rho.events.Pairwise Event.keyLe) (b : Time) :
 omit [DecidableEq V] in
 theorem mem_truncate_events {b : Time} {e : Event V (protoOf F E).Object} :
     e ∈ (rho.truncate b).events ↔ e ∈ rho.events ∧ e.time ≤ b := by
-  simp [truncate, List.mem_filter]
+  simp [truncate_eq, List.mem_filter]
 
 /-- The truncation of a valid run at `b ∈ [0, horizon]` is a valid run. -/
 theorem truncate_valid (hv : rho.ExecutionValid) {b : Time} (hb : 0 ≤ b)
