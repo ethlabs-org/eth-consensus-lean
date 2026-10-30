@@ -105,7 +105,7 @@ private theorem lastWake_cases (y : Fin sp.n) : ∀ c, tr.lastWake y c = ⊥ ∨
 
 /-- Under `Healthy(g)`, the delivery deadline of an object of time `τ` at an honest node is at
 most `max(τ, ḡ) + Δ` (no restart after `ḡ`). -/
-theorem StandaloneRun.deadline_le (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H)
+theorem HealthyBase.deadline_le (hS : HealthyBase tr H U g) {y : Fin sp.n} (hy : y ∈ H)
     (c : Nat) (τ : Time) : tr.deadline y c τ ≤ max τ (gbar g) + sp.Δ := by
   unfold ACTrace.deadline
   rcases lastWake_cases (tr := tr) y c with h | ⟨k, -, hrk, h⟩
@@ -267,7 +267,7 @@ theorem accepted_of_blockStamp_lt (hS : StandaloneRun tr H U g) {y : Fin sp.n} (
 /-- A vote an honest node holds at cut `a` is held at every later cut `b` with no restart in
 between, with a stamp before `T` when every cut before `a`, every own vote of its slot and every
 restart are before `T`. -/
-theorem stamp_lt_of_held (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H)
+theorem stamp_lt_of_held (hS : HealthyBase tr H U g) {y : Fin sp.n} (hy : y ∈ H)
     {a b : Nat} (hab : a ≤ b) {w : Vote sp.n} (hw : w ∈ (tr.state y a).pool w.slot) {T : Time}
     (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T) (hgT : gbar g < T)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) :
@@ -386,7 +386,7 @@ theorem carry_of_sent (hS : StandaloneRun tr H U g) {s : Nat}
         HeldBefore e.readPoint w (sp.ts s + 3 * sp.Δ) := by
       intro w hws hw
       refine heldBefore_readPoint hr hy hca (by rw [hes, hws]; omega) ?_
-      refine stamp_lt_of_held hS hy (by omega) (hws ▸ hw)
+      refine stamp_lt_of_held hS.toHealthyBase hy (by omega) (hws ▸ hw)
         (fun c hc' => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hc')) hk'T)
         (by rw [hws]; linarith) (by linarith) fun c hc1 _ hrc => ?_
       have := hS.restart_le hy hrc
