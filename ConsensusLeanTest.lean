@@ -5,6 +5,7 @@ public import ConsensusLeanTest.Common
 public import ConsensusLeanTest.Controls
 public import ConsensusLeanTest.Gaps
 public import ConsensusLeanTest.Goldilocks
+public import ConsensusLeanTest.GoldilocksAC
 public import ConsensusLeanTest.GoldilocksFG
 public import ConsensusLeanTest.GoldilocksFGStore
 public import ConsensusLeanTest.GoldilocksFrame

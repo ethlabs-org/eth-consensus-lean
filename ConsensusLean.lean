@@ -10,6 +10,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
 public import ConsensusLean.Instances.Goldilocks.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
+public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface
+public import ConsensusLean.Instances.Goldilocks.Spec.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Spec.Baseline
 public import ConsensusLean.Instances.Goldilocks.Spec.Common.Block
 public import ConsensusLean.Instances.Goldilocks.Spec.Common.Params
@@ -21,7 +23,18 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Sigma
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
 public import ConsensusLean.Instances.Goldilocks.Spec.Frame
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.Actions
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.Confirmation
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.ForkChoice
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.Instance
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.Locks
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.Restart
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.Schedule
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.State
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.Trace
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.Views
 public import ConsensusLean.Instances.Goldilocks.Spec.Trace
+public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Statements.Baseline
 public import ConsensusLean.Instances.Goldilocks.Statements.Common
 public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
