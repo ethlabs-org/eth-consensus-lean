@@ -5,4 +5,5 @@ public section
 
 /-! # Goldilocks runs (Persist, part 1)
 
-`run_statements` in `Compose/Run/Statements`, from `Run/{Order,Groups,Handlers,Projection}`. -/
+`run_statements` in `Compose/Run/Statements`, from `Run/{Order,Groups,Handlers,Trees}` and the
+projections (`Run/{ACProjection,FGProjection,Projection}`). -/

@@ -408,7 +408,8 @@ private theorem mem_init_tree {B : A.Blk} (hB : B ∈ (Node.init A).fg.tree) :
   split_ifs at hB
   exact (Option.some.inj hB).symm
 
-private theorem initialFrame : A.InitialFrame (frame (Node.init A)) := by
+/-- The frame of the initial node state is an initial frame. -/
+theorem init_initialFrame : A.InitialFrame (frame (Node.init A)) := by
   refine ⟨Set.ext fun B => ⟨fun hB => mem_init_tree hB.1, fun hB => ?_⟩, rfl, rfl, rfl, rfl⟩
   rw [Set.mem_singleton_iff.1 hB]
   refine ⟨?_, .refl⟩
@@ -422,7 +423,7 @@ private theorem nInv_of_reachable {cfg : Config A} (h : Reachable dg self cfg) :
   | refl =>
     exact
       { fg := .refl
-        ac := fun _ => ⟨0, le_rfl, .init _ initialFrame (frameIn_store .refl)⟩
+        ac := fun _ => ⟨0, le_rfl, .init _ init_initialFrame (frameIn_store .refl)⟩
         rcd := ⟨[], rfl, by simp [FG.Record.run]⟩
         wf := fun _ a ha => by cases ha
         roots := fun hg X hX => by rw [mem_init_tree hX]; exact hg }
