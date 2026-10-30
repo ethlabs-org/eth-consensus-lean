@@ -354,7 +354,7 @@ the honest nodes, grouped by top-level event; faulty nodes have no cuts.
 | F.5 (run) | CLAIMS F.5 (run) | the order facts (by time; restart < tick < delivery at one time; positions inside a tick; a send before its receipts); every run has them | Persist | `Consensus.Goldilocks.Compose.RunOrder`, `Consensus.Goldilocks.Compose.EventOrder` |
 | F.4 | CLAIMS F.4 (D4) | awake on `[max(0, t − c − 1), t]` with `c + 1 ≥ 8Δ` gives awake and joined at `t`, for `t ≥ 0` (the interval is empty for `t < 0`; consensus-lean#73) | Persist | `Consensus.Goldilocks.Compose.ReadyImpliesJoined` |
 | C0.5 | CLAIMS C0.5 (last sentence) | the AC projection is an `ACLocalRun` (with `U` the honest blocks; for an AC with requirements 1–5, since the own block's `ac_on_block` needs `ac_valid_payload`, consensus-lean#73); the FG projection is an `FGLocalRun` at `A.genesisPayload` (with the requirements and the genesis root, the premises of C0.3: the own block is accepted in its tick, so `own_first` holds; consensus-lean#73); the Goldilocks run's AC projection is an `SA.ACRun`; the states at the start of every event are `Node.Reachable`; `Sync` projects to `SyncAC`; joining and `h_t` project | Persist | `Consensus.Goldilocks.Compose.ACProjection`, `Consensus.Goldilocks.Compose.FGProjection`, `Consensus.Goldilocks.Compose.GoldilocksACProjection`, `Consensus.Goldilocks.Compose.GroupStatesReachable`, `Consensus.Goldilocks.Compose.SyncProjection`, `Consensus.Goldilocks.Compose.JoinedProjection`, `Consensus.Goldilocks.Compose.RunStatements` |
-| C1.1 | CLAIMS C1.1 (premises), G1.10 ("The scope of C1.1") | the honest votes of a slot; the excluded entries 𝓔 (conflict with `B`, strictly extend an honest `Σ.F` at `t_s`); `Clean(s, m, B)` with (K0) caches, (K1) row cut `K1_𝓔` by `Store.namers` on the FG projection at `t_{s+1} + Δ`, (K2) height lead; the premises (writer honest and joined, fast lock, `Sync[t_s, t_m + Δ]`, `Carry`, half-committee, later `Carry`, `f < h_t` at honest vote times, `NoColl`, `Clean`) | Persist | `Consensus.Goldilocks.Compose.honestVotes`, `Consensus.Goldilocks.Compose.excludedEntries`, `Consensus.Goldilocks.Compose.Clean`, `Consensus.Goldilocks.Compose.PersistPremises` |
+| C1.1 | CLAIMS C1.1 (premises), G1.10 ("The scope of C1.1") | the honest votes of a slot; the excluded entries 𝓔 (conflict with `B`, strictly extend an honest `Σ.F` at `t_s`); `Clean(s, m, B)` with (K0) caches, (K1) row cut `K1_𝓔` by `Store.namers` on the FG projection at `t_{s+1} + Δ`, (K2) height lead; the premises (writer honest and joined, a fast lock whose **stored** block (after the move back) is `B`, `Sync[t_s, t_m + Δ]`, `Carry`, half-committee, later `Carry`, `f < h_t` at honest vote times, `NoColl`, `Clean`) | Persist | `Consensus.Goldilocks.Compose.honestVotes`, `Consensus.Goldilocks.Compose.excludedEntries`, `Consensus.Goldilocks.Compose.Clean`, `Consensus.Goldilocks.Compose.StoredFastLockAt`, `Consensus.Goldilocks.Compose.PersistPremises` |
 | C1.1 | CLAIMS C1.1 (conclusion), G1.10 (a)–(c) at C1.1's scope | G1.10's conclusion at the scope of C1.1, spelled out at a node for `(B, s, T)`: (a) justified roots on accepted chains compatible with `B`, (b) the height bound at the deepest common ancestor, (c) caches compatible at every cut in `[t_s, T + Δ)` and after the own proposal at `T + Δ`; the conclusion for a slot `s'`: (iii) the cut at `T = t_{s'} + Δ`, (i) viability at every honest vote, (ii) every honest vote extends `B` | Persist | `Consensus.Goldilocks.Compose.CutScopeAt`, `Consensus.Goldilocks.Compose.PersistAt` |
 | C1.1 | CLAIMS C1.1 | **honest fast confirmations persist**; the corollary "recent source, next vote" | Persist | `Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist`, `Consensus.Goldilocks.Compose.RecentSourceNextVote`, `Consensus.Goldilocks.Compose.PersistStatements` |
 
@@ -425,6 +425,7 @@ the claims and are **not transcribed**.
 |---|---|---|---|---|
 | A1.6 | CLAIMS A1.6 | the update of a slot ran with no restart since; A1.6's condition at a cut (awake, joined, updated for `slot(t) − 2`); the record `𝒜.latest_confirmed` as a block of the frame's tree; **head extends the record**: the head extends the record in the frame, `ac_confirmed` is the record, and across served cuts the record extends | Service | `Consensus.Goldilocks.Compose.UpdatedNoRestart`, `Consensus.Goldilocks.Compose.ServedAt`, `Consensus.Goldilocks.Compose.RecordAt`, `Consensus.Goldilocks.Compose.HeadExtendsRecord` |
 | A1.7 | CLAIMS A1.7 | **inclusion**: an honest proposal of slot `s` by a joined proposer is in the confirmed tip of every honest node awake and joined at `t ≥ t_s + 6Δ`, awake and joined at `t_s + 6Δ`, with no restart in `(t_s + 6Δ, t]`, that has run the update of slot `s` before the cut with no restart since (`UpdatedNoRestart`; at the boundary `t = t_s + 6Δ` the state before the tick's first cut predates that update, consensus-lean#77); with the genesis root its digest, as C0.3 (consensus-lean#73) | Service | `Consensus.Goldilocks.Compose.Inclusion`, `Consensus.Goldilocks.Compose.ServiceStatements` |
+| C1.2 | CLAIMS C1.2 (goldilocks `6703bf05`, #37) | **AC outcome service**: under the healing regime after the reset (`HSShared`, `Catch(2Δ)`, `Prop⁺`, `a_z`), an entry whose block is an honest ready proposal from `R_z`, high (and with a high predecessor when bound), with retained ready inclusion, with `𝓕 = ⌈(6Δ + Δ_F)/(4Δ)⌉` and `δ_t ≥ 𝓕 + k_F`, gets by the end of its window a literal good window (`Store.GoodWindow` on the FG projection) or an accepted early justification (finalizing the predecessor when bound), its carrier relayed within `Δ` in both branches; an unbound entry is justified by then | Service | `Consensus.Goldilocks.Compose.RunEntry`, `Consensus.Goldilocks.Compose.EarlyOutcome`, `Consensus.Goldilocks.Compose.OutcomeService` |
 
 Modelling choices:
 
@@ -439,7 +440,94 @@ Modelling choices:
 
 ## Healing
 
-Nothing cited yet; the milestone's statements PR fills this section.
+CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `48aca059` (draft 8, goldilocks#34; §"Healing: top-level
+statements" and §"Healing: phase service" unchanged since `30ace044` apart from the H.2 (run) status (#36) and HR.3's evidence (#37, #40)). Layout: the run-level healing nodes HR.1–HR.4
+are over the Goldilocks run (`Spec/Run`, `GoldilocksRun`), HR.2 over FG traces (`FGLocalRun`), in
+`Statements/Healing/Run`, with H.2 (run), H.3 and H.4; H.1, its corollary and H.2, over driven AC traces of the SA, are
+in `Statements/Healing/AC`. HS.1–HS.5 are not transcribed as separate statements yet: HS.0 (`Settle(Δ)`) and
+HS.5's `Producer(A)` enter as conclusions (a), (b) of HR.3.
+
+| Node | Reference | Definition | Milestone | Lean name |
+|---|---|---|---|---|
+| — | CLAIMS HR.1 | "after all events at `t`" (the state before the first cut at a time `> t`); `c_z = t_{slot(ḡ)+3}`; `H_z`, the greatest honest `Σ.h_max` after all events at `c_z`; the reset `a_z`, the first time an honest validator signs an attestation of height `H_z + 1`; the honest accepted entries of heights `≥ H_z + 1` | Healing | `Consensus.Goldilocks.Healing.FirstCutAfter`, `Consensus.Goldilocks.Healing.cutZ`, `Consensus.Goldilocks.Healing.HZ`, `Consensus.Goldilocks.Healing.IsReset`, `Consensus.Goldilocks.Healing.HighEntries` |
+| Premises | CLAIMS §"Healing: top-level statements" (the two premises), §"Healing: phase service" (shared premises, constants) | `Catch(κ)` over a run; no honest restart after `t`; `Prop⁺(G_p)` (honest joined proposal at a slot start in every `[τ, τ + G_p]`, `τ ≥ ḡ`, with its slot-`(s−1)` support references held by every honest node at `t_s + Δ`); the HS shared premises (`NoColl`, the genesis root, `Healthy(g)`, no restart after `ḡ`, `δ_t ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉`); `D`, `C`, `A` with `G = G_p` | Healing | `Consensus.Goldilocks.Healing.CatchRun`, `Consensus.Goldilocks.Healing.NoRestartAfter`, `Consensus.Goldilocks.Healing.ReadyProposal`, `Consensus.Goldilocks.Healing.PropPlus`, `Consensus.Goldilocks.Healing.HSShared`, `Consensus.Goldilocks.Healing.D_HS`, `Consensus.Goldilocks.Healing.C_HS`, `Consensus.Goldilocks.Healing.A_HS` |
+| HR.2, HS | CLAIMS HR.2 (b), §"Healing: phase service" (phases, settled) | the effective phase over an FG trace at a cut: the frontier (greatest honest `Σ.h_max`), a justification at a height on an honest accepted chain, a contest against `J`, the three cases with their rank and top `J`, the phase `(m, c)`, a phase change; the evidence of a phase held by a store; **settled at `w`** (late enough, all joined, evidence held, pre-GST catch-up complete) | Healing | `Consensus.Goldilocks.Healing.FrontierAt`, `Consensus.Goldilocks.Healing.JustifiedAt`, `Consensus.Goldilocks.Healing.ContestAt`, `Consensus.Goldilocks.Healing.PhaseCase`, `Consensus.Goldilocks.Healing.PhaseCase.rank`, `Consensus.Goldilocks.Healing.PhaseCase.topJ`, `Consensus.Goldilocks.Healing.PhaseAt`, `Consensus.Goldilocks.Healing.PhaseChanged`, `Consensus.Goldilocks.Healing.HoldsEvidence`, `Consensus.Goldilocks.Healing.SettledAt` |
+| HR.4 | CLAIMS HR.4 | a high origin (a fast-lock write at an honest joined node, stored block of state height `≥ H_z + 1`); (R1)–(R4) for the reset `a` | Healing | `Consensus.Goldilocks.Healing.HighOrigin`, `Consensus.Goldilocks.Healing.RetentionAt` |
+| HR.1 | CLAIMS HR.1 (uses A1.5, G1.10 (K1)) | **cut and reset**: `c_z ≤ ḡ + 12Δ`; (a) rows up to `c_z` have height `≤ H_z`, sources from `c_z` on come from fast locks written after `ḡ`; (b) a chain of height `≥ H_z + 2` carries an honest row of height `H_z + 1`; (c) at the reset `a`: `a > c_z`, no high row before `a`, frontier `≤ H_z + 1` at the FG update of the ticks at `a`, rows at `a` of height `≤ H_z + 1`, K1's first clause at `T₀ = a − Δ` by `Store.namers`, rows at `a` in `(T₀, T]` | Healing | `Consensus.Goldilocks.Healing.CutAndReset` |
+| HR.2 | CLAIMS HR.2 | **phase count**: over an `FGLocalRun` with `f < 2q − n`, (a) one justified entry per height, (b) the phase moves only forward with one `J` while `m` is fixed, at most two changes per `m` | Healing | `Consensus.Goldilocks.Healing.PhaseCount` |
+| HR.3 | CLAIMS HR.3 (with HS.0, HS.5) | **reset existence**: (a) `c_z > ḡ + 8Δ` and `Settle(Δ)` from every `u ≥ c_z`; (b) `Producer(A)` from every settled `w`; (c) `a_z` exists, `a_z ≤ c_z + 6(Δ + A_HS) ≤ ḡ + 24Δ + 12C_HS`, with the closed forms | Healing | `Consensus.Goldilocks.Healing.ResetExistence` |
+| HR.4 | CLAIMS HR.4 | **height-scoped retention**: (R1)–(R4) for every reset `a` | Healing | `Consensus.Goldilocks.Healing.HeightScopedRetention`, `Consensus.Goldilocks.Healing.HealingRunStatements` |
+| — | CLAIMS §"Healing: top-level statements" (notation, driven AC traces, the two premises) | `ḡ`, `Θ = 4(k + 1)Δ`; `Healthy(g)` and `Catch(κ)` over an AC trace; trivial frames; an honest proposal of slot `p`; a **driven** AC trace (assigned proposer, slot order, held parent, no future slot, honest slot = honest proposal; tick and proposal order of C0.4); `Prop(G_p)` | Healing | `Consensus.Goldilocks.SA.gbar`, `Consensus.Goldilocks.SA.Θ`, `Consensus.Goldilocks.SA.HealthyAC`, `Consensus.Goldilocks.SA.CatchAC`, `Consensus.Goldilocks.SA.TrivialFrames`, `Consensus.Goldilocks.SA.HonestProposal`, `Consensus.Goldilocks.SA.Driven`, `Consensus.Goldilocks.SA.PropAC` |
+| H.1 | CLAIMS H.1 and corollary | **AC healing, standalone**: over driven traces with trivial frames, (i) an honest proposal with `t_p ≥ ḡ + 2Θ + 8Δ` gets every honest vote of its slot, (ii) it is in every honest confirmed tip from `t_p + 6Δ`; corollary under `Prop(G_p)` | Healing | `Consensus.Goldilocks.SA.ACHealingStandalone`, `Consensus.Goldilocks.SA.ACHealingStandaloneCorollary` |
+| H.2 | CLAIMS §"Healing: top-level statements" (protected blocks, `Inv`, `Geo`), H.2 | a slow lock write (the lock block of `update_confirmation`, not the fast test's `D`); the protected pairs `𝒫(t₀)` (P1)–(P3); `Inv(t₀)`; `Geo(P)`; **AC inclusion**: under `Inv(t₀)`, (i) `Geo(P)` gives unanimity, (ii) unanimity gives inclusion from `t_p + 6Δ` | Healing | `Consensus.Goldilocks.SA.SlowLockAt`, `Consensus.Goldilocks.SA.Protected`, `Consensus.Goldilocks.SA.Inv`, `Consensus.Goldilocks.SA.Geo`, `Consensus.Goldilocks.SA.ACInclusion`, `Consensus.Goldilocks.SA.HealingACStatements` |
+| H.2 (run) | CLAIMS H.2 (run) (uses C0.4, C0.5 (b)) | unanimity, honest proposal and inclusion over the AC projection; **AC inclusion in runs**: the projection is driven with `Healthy(g)`, `Catch(2Δ)`, and H.2's conclusions hold for the run | Healing | `Consensus.Goldilocks.Healing.Unanimous`, `Consensus.Goldilocks.Healing.HonestProposalRun`, `Consensus.Goldilocks.Healing.IncludedFrom`, `Consensus.Goldilocks.Healing.RunInclusion` |
+| H.3 | CLAIMS H.3 | one settled effective phase for a proposal and its votes; the bridge `Inv(a_z + T_b)` + `Geo` in settled phases; **FG non-interference**: some `T_b ≥ 0` depending on `(n, Δ, Δ_F, k, δ_t)` only, with (a) `a_z ≤ ḡ + 24Δ + 12C_HS`, (b) (R1)–(R4), (c) the bridge | Healing | `Consensus.Goldilocks.Healing.InSettledPhase`, `Consensus.Goldilocks.Healing.BridgeAt`, `Consensus.Goldilocks.Healing.NonInterference` |
+| H.4 | CLAIMS H.4 | `T_heal`; **available healing, assembled** (conditional on the bridge): (i) unanimous honest proposals after `T_heal` included, (ii) under `(U_B)`, (iii) under `(U_all)`, with the closed form of `T_heal` | Healing | `Consensus.Goldilocks.Healing.T_heal`, `Consensus.Goldilocks.Healing.AvailableHealing` |
+
+Modelling choices:
+
+- **HR.2 is over FG traces, not runs.** The claims make it an FG store node over the FG component trace, and the
+  phase reads only the honest `Σ`, which an `FGTrace` carries with the records, unforgeability and serialized
+  clients of `FGLocalRun`; it sits with G1.4 (`Store.FinalizedSafety`), whose `f < 2q − n` it shares. Runs reach
+  it through `Compose.FGProjection`; HR.3 reads the same phase on `tr.projFG`.
+- **The effective phase is global**: frontier, justifications and contests are read on the blocks that some honest
+  node has accepted by the cut (`σ` read at the holder), not on one node's `Σ.F`, `Σ.J` or local allowedness. So
+  HR.2's "an advance of an honest `Σ.F` below `m` changes no phase" holds by definition, and HR.3's "advances of
+  `Σ.F` below the frontier do not count" too. "Justified at `m − 1`" is `σ.h_j = m − 1` at some honest accepted
+  block (every justification is the latest one of the block that makes it). "At most two changes per `m`" counts
+  consecutive cuts with frontier `m` whose phases differ (`encard`, so an infinite count is not `0`).
+- **Times.** "At `t`" is the state before the first cut at a time `≥ t` (`FirstCutFrom`), "after all events at `t`"
+  the state before the first cut at a time `> t` (`FirstCutAfter`). `H_z` reads the latter at `c_z`. HS.0's
+  "phase at `u`" is after all events at `u` and "settled at `w`" at `w`; HR.3 (b)'s "by `w + A`" is after all events
+  at `w + A`. `HZ` is an `sSup`: under `Healthy(g)` the run is infinite, so the first cut after `c_z` exists.
+- **`a_z`** is the least signing time of an honest attestation of height `H_z + 1`; it is a public time because
+  honest signing happens only in ticks (a run law), so "first public time" is not repeated in `IsReset`.
+- **HR.1 (a), sources**: A1.5's "the block of a fast lock written after `ḡ`" is: `C` is the block of a live fast lock
+  of the node at the `ac_to_fg` call, of label `j`, and some fast-lock write of label `j` at that node after `ḡ`
+  selected a descendant of `C` (locks move only back, A0.4 (c)).
+- **HR.1 (c)**: K1's first clause is stated for every `𝓔` of honest accepted entries of heights `≥ H_z + 1`;
+  "every row signed at `a` lies in `(T₀, T]`" is stated for every `T ≥ a`.
+- **HR.4's stored block** is the selected block after the move back of `add_locks` (`viable_ancestor` in the
+  writing call's frame), as C1.1's "stored block after the move back"; (R2) is read after every cut of an honest
+  node at a time `≥ a` (its states from its tick at `a` on), for the origins written at that cut or earlier. (R1)'s
+  "so these entries lie on one chain" is a consequence and not stated.
+- **`Prop⁺(G_p)`**: "ready" and "support references accepted at every honest voter before its deadline" are read as
+  `vote_ready`'s condition on the slot-`(s−1)` support entries (a block of slot `≤ s − 1` with that root) held by
+  every honest node at `t_s + Δ`, the vote deadline.
+- **HS parameter bounds**: of "the protocol's parameter bounds", `k ≥ 2` is in `SAParams` and `Δ_F ≥ Δ` in `SyncOn`;
+  `δ_t ≥ x + 𝓕 + k_F` (with `x, k_F ≥ 0`, which `Params` does not carry) enters `HSShared` as its consequence
+  `4Δδ_t ≥ 6Δ + Δ_F`. `R ≥ 𝓕` has no counterpart (the model attests in every tick).
+- **Slots against `r_AC`, `s_AC`**: "`j ≥ r_AC(t₀)`" (the least slot with `t_r ≥ t₀ + 4Δ`) is `t_j ≥ t₀ + 4Δ`, and
+  "`j − k + 1 ≥ r_AC(t₀)`" is `t_{j−k+1} ≥ t₀ + 4Δ` over integer slots; "`p ≥ s_AC(t₀)`" is `t_p ≥ t₀ + 2Θ + 8Δ`
+  (slot times are increasing, so these are equivalent and no least slot is named).
+- **`Inv`, `Geo`**: `filtered(Φ, Φ.tree)` is `Φ.viableTree Φ.tree` and `Φ.allowed` is `Φ.viableHeads`; the vote
+  clause of `Inv` is viability in the voter block tree at every emission of the call. `Geo(P)` is read at every `ac_proposal` call of the
+  proposer at `t_p`.
+- **H.3 (c), H.4**: "a function of the parameters only" is a function of `(n, Δ, Δ_F, k, δ_t)` chosen before
+  the run (`K_W = 2` is fixed; `k_F` and `x` are not model parameters), so not of `G_p` or the proposer schedule.
+  H.4 is stated for any reset `a` and any `T_b ≥ 0` for which the bridge holds on the run, so it does not depend on
+  the choice in H.3. "Lie in one effective phase in which every honest node is settled" is `InSettledPhase`: the run is
+  settled (with `κ = 2Δ`) at some `w ≤ t_p` and the phase is constant on every cut from `w` through `t_p` and the
+  last honest slot-`p` vote.
+- **"`B ⪯ fc_root`" is block order** (consensus-lean#78), in `Inv` (inside `U`), HR.4 (R3), and C1.1's (K2) and (i)
+  (inside `tr.HonestBlocks H`), not ancestry inside the frame tree (`Φ.Anc`, as in `SA.ViableAtVote`): once an
+  honest `Σ.F` passes `B`, `B` leaves the frame tree and the frame reading fails. `tr.HonestBlocks H` holds every
+  block of an honest node's accepted tree, faulty proposals included, so it contains the voter's `fc_root` (in its
+  own `Σ.tree`) and `B`'s chain.
+- **Genesis root** (consensus-lean#73): `HSShared` and H.2 (run) take `genesis.RootOk dg`, as C0.3 and A1.7 do. Without
+  it an honest proposal whose digest is the genesis root is refused by every FG, so driven-trace clause (b) (H.2 (run)),
+  the reset's existence (HR.3, H.3 (a)) and C1.2's window proposal can fail. HR.1, HR.2 and HR.4 conclude nothing about
+  the acceptance of honest proposals and do not take it.
+- **Confirmed tip**: "in every honest confirmed tip at every `t ≥ t₁`" (H.2 (run), H.4) is `IncludedFrom`:
+  `ac_confirmed` after every AC call of an honest node at a time `≥ t₁`, with that call's frame. FG-only cuts
+  (attestations) are not read separately; H.4's proof is H.2 (run) (ii), which the claims state the same way.
+- **H.2 (run)** states both the bridge to H.2's premises (driven, `Healthy`, `Catch` on the projection) and the
+  run conclusion, so that its proof is the bridge plus H.2 with `GoldilocksACProjection`.
+- **Witnesses** (`ConsensusLeanTest/GoldilocksHealing`): kind (a) for HR.2's premises and the phase vocabulary, and
+  for `Catch` and `NoRestartAfter` with the run laws, and for `Healthy(0)` with `Catch` and `NoRestartAfter` on the
+  infinite periodic `idleAC` run; arithmetic checks of `C_HS`, HR.3's bound and `T_heal`. No witness over Goldilocks
+  traces for `HSShared`, `PropPlus` or the run statements (HR.1, HR.3, HR.4, H.2 (run), H.3, H.4), and none over
+  driven SA traces for H.1/H.2: they need an infinite live run of the Goldilocks SA (a follow-up).
 
 ## Regimes
 

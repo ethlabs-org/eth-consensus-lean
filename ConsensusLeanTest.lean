@@ -10,6 +10,7 @@ public import ConsensusLeanTest.GoldilocksFG
 public import ConsensusLeanTest.GoldilocksFGStore
 public import ConsensusLeanTest.GoldilocksFGStoreService
 public import ConsensusLeanTest.GoldilocksFrame
+public import ConsensusLeanTest.GoldilocksHealing
 public import ConsensusLeanTest.GoldilocksNode
 public import ConsensusLeanTest.GoldilocksRun
 public import ConsensusLeanTest.Good

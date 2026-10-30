@@ -111,7 +111,7 @@ theorem vote_step (hrun : GoldilocksRun dg H tr) (hp : PersistPremises tr H dg �
     have := (SA.ts_le_iff sp).mpr (Int.ofNat_le.mpr hsm)
     linarith
   have hcache := state_caches hrun hp k (fun j hj => (ih j hj).2) y hy hk hlt
-  have hK2 := (hp.clean.heightLead y hy k ℓ e hc hs hsm).imp_right (Anc.mono hΦU)
+  have hK2 := hp.clean.heightLead y hy k ℓ e hc hs hsm
   have hvi := vote_viable hrun hp.noColl hy hc hcache hK2
   exact ⟨hvi, vote_extends hrun hp hy hc hs hsm hvi
     fun z hz j hj e' ⟨ℓ', hc', he'⟩ h₁ h₂ => ((ih j hj).1 z hz ℓ' e' ⟨hc', he'⟩ h₁ h₂).2⟩

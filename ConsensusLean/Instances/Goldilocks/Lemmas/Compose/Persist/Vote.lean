@@ -217,7 +217,12 @@ theorem vote_extends (hrun : GoldilocksRun dg H tr) {ΔF : Time} {x : Fin sp.n} 
   have hearlier : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) k e.msg.slot B :=
     fun z hz j hj e' hv hsl => hprior z hz j hj e' hv (hsl ▸ hs) (hsl ▸ hsm)
   by_cases h1 : e.msg.slot = s + 1
-  · refine SA.first_transfer_stored sp hrun' hp.writer_honest hp.fastLock .refl hy hc h1
+  · obtain ⟨ℓw, D, hcw, hflD, hBD⟩ := hp.fastLock
+    have hΦwU : ℓw.frame.tree ⊆ tr.HonestBlocks H := by
+      rcases hr.frameLaw x hp.writer_honest i₀ ℓw hcw with
+        ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
+    refine SA.first_transfer_stored sp hrun' hp.writer_honest hflD
+      (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hy hc h1
       (syncAC_mono hsync0 le_rfl htm) (hp.carry y hy k e ⟨ℓ, hc.1, hc.2⟩ h1) hfault ?_ ?_
     · rw [← h1]; exact Or.inl hv
     · rw [← h1]; exact hearlier

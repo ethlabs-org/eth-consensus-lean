@@ -53,6 +53,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Statements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Outcome
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy
@@ -135,6 +136,8 @@ public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.Frame
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.AC
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 public import ConsensusLean.Instances.Streamlet.Spec
 public import ConsensusLean.Instances.Tendermint.Spec
 public import ConsensusLean.Lemmas.Blocks.Facts

@@ -61,11 +61,20 @@ structure Clean (s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
       sp.toParams.fg.q
   /-- (K2) Height lead: at each honest vote of a slot in `(s, m]`, the voter block tree holds a
   descendant of `B` (or `B`) whose state height is at least the voter's head height floor, or
-  `B ⪯ fc_root` at the voter. -/
+  `B ⪯ fc_root` at the voter (block order inside the honest blocks, as in (i)). -/
   heightLead : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
     (∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
       Anc (tr.HonestBlocks H) B D ∧ (tr.state y i).fg.IsViable D) ∨
-    ℓ.frame.Anc B ℓ.frame.fcRoot
+    Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot
+
+/-- **A stored fast lock** (claims C1.1, HR.4: "the stored block after the move back"): `x`
+writes a fast lock of slot `s` at cut `i` (fast test or optimistic confirmation) that selects `D`
+with counted votes `CV`, and `B` is the block it stores, `D` moved back to its viable ancestor in
+the frame of that write (`add_locks` keeps the live locks, each moved back: `liveLocks`). -/
+def StoredFastLockAt (x : Fin sp.n) (i s : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n)))
+    (CV : Set (Vote sp.n)) : Prop :=
+  ∃ ℓ D, tr.projAC.CallAt x i ℓ ∧ SA.FastLockAt tr.projAC x i s D CV ∧
+    B = ℓ.frame.viableAncestor D
 
 /-- **The premises of C1.1** for a fast lock of slot `s` on `B` with counted votes `CV`, written
 at cut `i₀` by the honest joined node `x`, and a later slot `m`: `Sync[t_s, t_m + Δ]`,
@@ -78,8 +87,9 @@ structure PersistPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (ΔF
     Prop where
   /-- The writer is honest. -/
   writer_honest : x ∈ H
-  /-- The writer writes the fast lock of slot `s` on `B` at cut `i₀`, counting `CV`. -/
-  fastLock : SA.FastLockAt tr.projAC x i₀ s B CV
+  /-- The writer writes a fast lock of slot `s` at cut `i₀`, counting `CV`, whose stored block
+  (after the move back) is `B` (claims C1.1). -/
+  fastLock : StoredFastLockAt tr x i₀ s B CV
   /-- The writer is joined at the write. -/
   writer_joined : SA.joined sp (tr.state x i₀).ac (tr.time i₀)
   /-- `s < m`. -/
@@ -146,9 +156,12 @@ of slot `s'`: (i) at that vote `B` is in the voter's viable voter block tree or 
 structure PersistAt (B : SA.Blk sp.n (List (FG.Att sp.n))) (s s' : Nat) : Prop where
   /-- (iii) G1.10 at the scope of C1.1 with `T = t_{s'} + Δ`, at every honest node. -/
   cut : ∀ y ∈ H, CutScopeAt tr H y B s (sp.ts s' + sp.Δ)
-  /-- (i) viability at every honest vote of slot `s'`. -/
+  /-- (i) viability at every honest vote of slot `s'`: `B` is in the viable voter block tree, or
+  `B ⪯ fc_root` in the block order of the honest blocks (not inside the frame tree, which `B`
+  leaves once `Σ.F` passes it; goldilocks claims C1.1 (i), consensus-lean#78). -/
   viable : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → e.msg.slot = s' →
-    SA.ViableAtVote ℓ e s' B
+    B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s') ∨
+      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot
   /-- (ii) every honest vote of slot `s'` extends `B`. -/
   extends_ : ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s' →
     SA.VoteExtends (tr.HonestBlocks H) e.msg B
