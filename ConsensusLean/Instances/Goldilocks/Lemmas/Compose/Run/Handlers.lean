@@ -632,6 +632,21 @@ theorem fg_before_attest (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y �
   exact tick_before_attest dg y _ _ (m := i - j₀)
     (by rw [List.getElem?_eq_getElem (by omega), ← hl]) hk₂ (by omega)
 
+/-- **An accepted block in a restart or a tick is the node's own proposal of that time.** -/
+theorem accept_in_tick (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j₀ k : Nat}
+    {t : Time} {e : Event A} (hg : tr.GroupAt dg y j₀ t e) (he : e.phase ≤ 1) (hk : j₀ ≤ k)
+    (hk' : k < j₀ + (exec dg y (tr.state y j₀) t e).2.length) {B : A.Blk}
+    (hc : tr.CallAt y k (.fg (.block B true))) : B.proposer = y ∧ P.slotTime B.slot = t := by
+  have htk : tr.time k = t := by
+    have := (hg.2.1 (k - j₀) (by omega)).2.1
+    rwa [Nat.add_sub_cancel' hk] at this
+  rcases blockCall_cases h hy hc with hd | ⟨j, -, -, hp, d, p, -, rfl, -⟩
+  · obtain rfl := group_start hg hd hk hk'
+    have := group_phase hg hd
+    rw [this] at he
+    simp [Event.phase] at he
+  · exact ⟨rfl, htk ▸ hp.2.1.symm⟩
+
 end Consensus.Goldilocks.Compose
 
 end

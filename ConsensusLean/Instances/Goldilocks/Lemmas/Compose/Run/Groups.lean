@@ -110,14 +110,15 @@ variable {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
 
 /-! ### Groups -/
 
-private theorem group_call {y : Fin P.n} {j : Nat} {t : Time} {e : Event A}
+/-- The first cut of a group is a call of its node at its time. -/
+theorem group_call {y : Fin P.n} {j : Nat} {t : Time} {e : Event A}
     (hg : tr.GroupAt dg y j t e) : tr.IsCall y j ∧ tr.time j = t := by
   obtain ⟨hn, ht, -, -, hl⟩ := hg.2.1 0 (List.length_pos_iff.2 hg.1)
   simp only [Nat.add_zero] at hn ht hl
   exact ⟨⟨_, hn, hl⟩, ht⟩
 
 /-- Two groups of one node starting at one cut have events of one phase. -/
-private theorem group_phase {y : Fin P.n} {j : Nat} {t t' : Time} {e e' : Event A}
+theorem group_phase {y : Fin P.n} {j : Nat} {t t' : Time} {e e' : Event A}
     (hg : tr.GroupAt dg y j t e) (hg' : tr.GroupAt dg y j t' e') : e.phase = e'.phase := by
   have h₀ := (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.2
   have h₀' := (hg'.2.1 0 (List.length_pos_iff.2 hg'.1)).2.2.2.2
@@ -132,7 +133,7 @@ private theorem group_phase {y : Fin P.n} {j : Nat} {t t' : Time} {e e' : Event 
     ← exec_head dg y (tr.state y j) t e' _ (mem hg'.1), Option.some.inj h₀]
 
 /-- A group of `y` starts at no cut strictly inside another group. -/
-private theorem group_start {y y' : Fin P.n} {j j' : Nat} {t t' : Time} {e e' : Event A}
+theorem group_start {y y' : Fin P.n} {j j' : Nat} {t t' : Time} {e e' : Event A}
     (hg : tr.GroupAt dg y j t e) (hg' : tr.GroupAt dg y' j' t' e') (h₁ : j ≤ j')
     (h₂ : j' < j + (exec dg y (tr.state y j) t e).2.length) : j' = j := by
   have := (hg.2.1 (j' - j) (by omega)).2.2.1
