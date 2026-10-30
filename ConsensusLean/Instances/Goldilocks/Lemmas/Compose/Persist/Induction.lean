@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Persist
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 
 public section
 
@@ -25,10 +26,14 @@ open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
-/-- C1.1 (i) and (ii) at the honest votes cast at cut `k` of a slot in `(s, m]`. -/
+/-- C1.1 (i) and (ii) at the honest votes cast at cut `k` of a slot in `(s, m]`. (i) reads "at or
+below `fc_root`" in the honest blocks (claims C1.1; the frame-tree reading of `ViableAtVote` fails
+once honest finality passes `B`, consensus-lean#78). -/
 def VoteInv (s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) (k : Nat) : Prop :=
   ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
-    SA.ViableAtVote ℓ e e.msg.slot B ∧ SA.VoteExtends (tr.HonestBlocks H) e.msg B
+    (B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
+      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) ∧
+    SA.VoteExtends (tr.HonestBlocks H) e.msg B
 
 /-- G1.10 at the scope of C1.1 at an honest call at cut `k` in `[t_s, t_m + 2Δ)`: the caches
 after the call are compatible with `B`, and a block it accepts satisfies (a) and (b). -/
@@ -66,6 +71,20 @@ theorem cut_step (hrun : GoldilocksRun dg H tr) (hp : PersistPremises tr H dg Δ
     (hv : VoteInv tr H s m B k) : CutInv tr H s m B k := by
   sorry
 
+/-- The state of `y` before cut `k` is its state before cut `j ≤ k`, or the state after a call of
+`y` at a cut in `[j, k)`. -/
+theorem state_of_le {y : Fin sp.n} {j k : Nat} (h : j ≤ k) :
+    tr.state y k = tr.state y j ∨ ∃ j', j ≤ j' ∧ j' < k ∧ tr.IsCall y j' ∧
+      tr.state y k = tr.post j' := by
+  induction k, h using Nat.le_induction with
+  | base => exact Or.inl rfl
+  | succ k hjk ih =>
+    by_cases hc : tr.IsCall y k
+    · obtain ⟨c, hc'⟩ := hc
+      exact Or.inr ⟨k, hjk, k.lt_succ_self, ⟨c, hc'⟩, Trace.state_succ_of_call _ hc'⟩
+    · rw [Trace.state_succ_of_not _ fun c hc' => hc ⟨c, hc'⟩]
+      exact ih.imp_right fun ⟨j', h₁, h₂, h₃, h₄⟩ => ⟨j', h₁, h₂.trans k.lt_succ_self, h₃, h₄⟩
+
 /-- **The caches of a state**: at a cut `k` at or after `t_s` whose earlier cuts are in the
 window, the caches of an honest node's state are those after its last call (`CutInv`) or, when
 that call is before `t_s`, those at `t_s` ((K0)). -/
@@ -75,7 +94,17 @@ theorem state_caches (hrun : GoldilocksRun dg H tr)
     (hle : ∀ j < k, tr.time j < sp.ts m + 2 * sp.Δ) :
     Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B ∧
       Compatible (tr.HonestBlocks H) (tr.state y k).fg.J B := by
-  sorry
+  classical
+  have hex : ∃ j, sp.ts s ≤ tr.time j := ⟨k, hk⟩
+  have hj₀k : Nat.find hex ≤ k := Nat.find_min' hex hk
+  have hfirst : tr.FirstCutFrom (Nat.find hex) (sp.ts s) :=
+    ⟨Nat.find_spec hex, fun j hj => not_le.mp (Nat.find_min hex hj)⟩
+  rcases state_of_le (tr := tr) (y := y) hj₀k with h | ⟨j', hj', hj'k, hc, h⟩
+  · rw [h]
+    exact hp.clean.caches y hy _ hfirst
+  · rw [h]
+    exact (hcut j' hj'k y hy hc
+      ((Nat.find_spec hex).trans (hrun.time_mono hj')) (hle j' hj'k)).1
 
 /-- **The join**: the invariant holds at every cut (strong induction on the cut index, F.5). -/
 theorem persist_inv (hrun : GoldilocksRun dg H tr)
@@ -121,8 +150,9 @@ theorem honest_fast_confirmations_persist : HonestFastConfirmationsPersist := by
     · exact state_caches hrun hp k (fun j _ => (hinv j).2) y hy (by linarith)
         fun j hj => by have := hk₁ j hj; linarith
   · exact (not_proposesAt_mid hX hk).elim
-  · have := ((hinv i).1 y hy ℓ e hc (hsl ▸ hs) (hsl ▸ hsm)).1
-    rwa [hsl] at this
+  · -- C1.1 (i) as stated reads "at or below `fc_root`" in the frame tree, which fails once
+    -- honest finality passes `B` (consensus-lean#78); `VoteInv` proves the claims' reading.
+    sorry
   · exact ((hinv i).1 y hy ℓ e ⟨hc, he⟩ (hsl ▸ hs) (hsl ▸ hsm)).2
 
 /-- **C1.1's corollary, recent source, next vote**: C1.1 (ii) at slot `m + 1`. -/
