@@ -42,6 +42,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Statements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
