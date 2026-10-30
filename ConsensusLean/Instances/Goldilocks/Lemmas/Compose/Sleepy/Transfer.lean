@@ -140,7 +140,7 @@ the honest slot-`s` voters outnumber the faulty validators, the voter holds ever
 vote and accepted its head before `t_s + 3Δ` (`Carry_y`), `B` is in the viable voter block tree
 or at or below `fc_root`, and every live lock block is compatible with `B`, the vote extends
 `B`: only faulty seats oppose or equivocate, so `B`'s children towards the vote win the walk. -/
-private theorem batch_transfer (hrun : SA.ACRun tr H U) {s : Nat} {y : Fin sp.n} (hy : y ∈ H)
+theorem vote_extends_of_batch (hrun : SA.ACRun tr H U) {s : Nat} {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {B : SA.Blk sp.n FGP}
     (hviab : SA.ViableAtVote ℓ e (s + 1) B)
@@ -244,7 +244,7 @@ private theorem origin_mem (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr
 /-- **§2.4, the timely honest batch**: the honest validators with a slot-`s` vote outnumber the
 faulty ones. The more than `f` honest validators awake and joined at `t_s + Δ` (`Sleepy`) tick
 there and vote in slot `s` (`try_vote` votes at `t_s + Δ` unless it already voted in slot `s`). -/
-private theorem honest_voters_exceed (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem faults_lt_honest_voters (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) (s : Nat) :
     Hᶜ.ncard < {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg.slot = s}.ncard := by
   refine lt_of_lt_of_le (faults_lt_awake_joined hsl s) (Set.ncard_le_ncard ?_)
@@ -259,7 +259,7 @@ awake since `t_s` with its pool kept) before `t_s + 2Δ`; its head, accepted by 
 is relayed to the voter before `t_s + 2Δ`, since the voter's `Σ.F` is below `B`, below the head
 (finality is monotone along the voter's chain). The analogue of `result_carry` for the whole
 honest batch. -/
-private theorem batch_carry (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem honest_batch_carry (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -398,8 +398,9 @@ theorem later_transfer_step (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg t
   swap
   · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot hr hy hc
     exact ⟨Hd, hΦU hHd, hHdr, hBf.trans (Anc.mono hΦU hfHd)⟩
-  exact batch_transfer hrun' hy hc hs (Or.inl hvB) hall (honest_voters_exceed hrun hnc hsl s)
-    (batch_carry hrun hnc hsl hy hc hs hall (Anc.mono hΦU (hΦ.rooted.2 B hvB.1.1)))
+  exact vote_extends_of_batch hrun' hy hc hs (Or.inl hvB) hall
+    (faults_lt_honest_voters hrun hnc hsl s)
+    (honest_batch_carry hrun hnc hsl hy hc hs hall (Anc.mono hΦU (hΦ.rooted.2 B hvB.1.1)))
     (vote_locks_compatible hrun hnc hsl hy hc hs hBc hE)
 
 /-- **Extending the vote frontier**: `P_{s+1}` and `V_s` give `V_{s+1}`. -/
