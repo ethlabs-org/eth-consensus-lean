@@ -20,11 +20,22 @@
 # Full tier (as full.yml, unsplit), one run and exit, in its own worktree $ORB_CI_HOME/wt-full, one at a time
 # (a lock): `check.sh --full` on main's head, which fails if a step is skipped or the tree is left dirty; a row
 # in the issue, and a #17 comment on failure. `--full nightly`: unless that head already passed a full run;
-# `--full tag`: once per new commit of the tag spec-approved, when main's head holds its trusted files
-# (`review-boundary.sh` with no base passes there), unless that head already passed; `--full now`: always.
+# `--full poll` (cheap, every minute, no lock): appends the tag spec-approved's commit to $ORB_CI_HOME/tags-seen
+# when it changed, so a tag that moves twice between full runs is still seen. `--full tag`: one run per commit in
+# tags-seen not yet in full-tags (handled): on that commit itself once it is on main, else (a PR head merged as
+# another commit) on the newest commit of main whose trusted files equal the tag's; pending until then
+# (full-tags-pending), dropped after a day; a row on the issue either way ("PASSED earlier" when that commit
+# already passed). `--full now`: main's head, always; `--full sha <commit> [<ref>]`: that commit.
 # ORB_CI_FULL_ENV: extra environment for check.sh --full (e.g. 'REPLAY_JOBS=5').
 set -uo pipefail
 HOME_DIR="${ORB_CI_HOME:-$HOME/orb-ci}"
+if [[ "${1:-} ${2:-}" == "--full poll" ]]; then  # before the copy and gh: runs every minute
+  c="$(git -C "${ORB_CI_REPO:?}" ls-remote origin 'refs/tags/spec-approved^{}' | cut -f1)"
+  [[ -n "$c" ]] || c="$(git -C "$ORB_CI_REPO" ls-remote origin refs/tags/spec-approved | cut -f1)"  # not annotated
+  [[ -z "$c" ]] || [[ "$(tail -n 1 "$HOME_DIR/tags-seen" 2>/dev/null | cut -d' ' -f1)" == "$c" ]] ||
+    echo "$c $(date +%s)" >>"$HOME_DIR/tags-seen"
+  exit 0
+fi
 if [[ "${ORB_CI_COPY:-}" != 1 ]]; then  # run from a copy: the checkout may change under a running script
   mkdir -p "$HOME_DIR"
   cp "${BASH_SOURCE[0]}" "$HOME_DIR/orb-ci.sh"
@@ -105,7 +116,7 @@ print(head + "|---|---|---|---|---|\n" + "\n".join([os.environ["ROW"]] + rows) +
 
 # check <kind> <id> <head>: kind main|pr; records the result in the issue and comments.
 check() {
-  local kind="$1" id="$2" head="$3" base flags=() mode=fast paths rc=0 t0=$SECONDS lg="$LOGS/$3.log" fails
+  local kind="$1" id="$2" head="$3" base flags=() mode=fast paths rc=0 t0=$SECONDS lg="$LOGS/$3.log" fails summary
   if [[ "$kind" == pr ]]; then cd "$WT_PR" || return 1; else cd "$WT" || return 1; fi
   : >"$lg"
   git checkout -q --detach -f origin/main && git clean -qfdx -e .lake || return 1
@@ -148,8 +159,8 @@ print("\n".join(tomllib.load(open("scripts/boundaries.toml", "rb"))["checks"]["t
     else
       in_ci scripts/check.sh --fast "${flags[@]}" || rc=1
     fi
-    echo "--- review boundary ---"; scripts/review-boundary.sh "$base" || rc=1
-    [[ -z "$(git status --porcelain)" ]] || { echo "tree not clean:"; git status --porcelain; rc=1; }
+    echo "--- review boundary ---"; scripts/review-boundary.sh "$base" || { echo "orb-ci FAIL: review boundary"; rc=1; }
+    [[ -z "$(git status --porcelain)" ]] || { echo "orb-ci FAIL: tree not clean"; git status --porcelain; rc=1; }
   } >>"$lg" 2>&1
   local secs=$((SECONDS - t0))
   local ref="main" what="--$mode ${flags[*]}" body
@@ -161,9 +172,9 @@ print("\n".join(tomllib.load(open("scripts/boundaries.toml", "rb"))["checks"]["t
 
 $SIGN"
   else
-    fails="$(grep -E '^(FAIL|::error)' "$lg" | head -20)"
-    record "$ref" "$head" "$what" "**FAILED** in ${secs}s"
-    body="**orb-ci: FAILED** on \`${head:0:8}\` ($ref): \`check.sh $what\`, ${secs}s. Fallback CI while Actions is down (#50, results: #$ISSUE).
+    fails="$(grep -E '^(FAIL|orb-ci FAIL|::error)' "$lg" | head -20)" summary="$(fail_summary "$lg")"
+    record "$ref" "$head" "$what" "**FAILED** in ${secs}s: $summary"
+    body="**orb-ci: FAILED** on \`${head:0:8}\` ($ref): $summary. \`check.sh $what\`, ${secs}s. Fallback CI while Actions is down (#50, results: #$ISSUE).
 
 \`\`\`
 ${fails:-(no FAIL line; see the log $lg)}
@@ -201,9 +212,20 @@ pass() {
   done <<<"$prs"
 }
 
+# fail_summary <log>: the failed checks, for a FAILED row and comment ("step 1 build, review boundary"): each
+# `FAIL  <n> <label> (...)` line of check.sh as "step <n> <label>", then each `orb-ci FAIL: <what>` line of this
+# script; at most about 120 characters.
+fail_summary() {
+  local s
+  s="$(grep -E '^(FAIL  [0-9]|orb-ci FAIL: )' "$1" | sed -E 's/^FAIL  /step /; s/^orb-ci FAIL: //; s/ \(.*//' |
+    awk 'NF && !seen[$0]++' | paste -sd ';' | sed 's/;/, /g')"
+  ((${#s} <= 120)) || s="${s:0:117}..."
+  echo "${s:-no FAIL line}"
+}
+
 # full_check <kind> <ref> <head>: the full tier on <head> (a commit of main), recorded as <ref>.
 full_check() {
-  local kind="$1" ref="$2" head="$3" rc=0 t0=$SECONDS lg="$LOGS/$3.full-$(date -u +%m%d-%H%M).log" fenv skipped body
+  local kind="$1" ref="$2" head="$3" rc=0 t0=$SECONDS lg="$LOGS/$3.full-$(date -u +%m%d-%H%M).log" fenv skipped body summary
   cd "$WT" && git checkout -q --detach -f "$head" && git clean -qfdx -e .lake || return 1
   read -ra fenv <<<"${ORB_CI_FULL_ENV:-}"
   {
@@ -213,17 +235,18 @@ full_check() {
   } >>"$lg" 2>&1
   # as full.yml: nothing skipped (no sandbox step left out), tree clean
   skipped="$(grep -E 'skipped: no bwrap|^SKIP ' "$lg")"
-  { [[ -z "$skipped" ]] || { echo "FAIL full tier: steps skipped:"; echo "$skipped"; rc=1; }
-    [[ -z "$(git status --porcelain)" ]] || { echo "FAIL full tier: tree not clean:"; git status --porcelain; rc=1; }
+  { [[ -z "$skipped" ]] || { echo "orb-ci FAIL: steps skipped"; echo "$skipped"; rc=1; }
+    [[ -z "$(git status --porcelain)" ]] || { echo "orb-ci FAIL: tree not clean"; git status --porcelain; rc=1; }
   } >>"$lg" 2>&1
   local secs=$((SECONDS - t0))
   if ((rc == 0)); then record "$ref" "$head" "--full" "PASSED in ${secs}s"
   else
-    record "$ref" "$head" "--full" "**FAILED** in ${secs}s"
-    body="**orb-ci: FAILED** on \`${head:0:8}\` ($ref): \`check.sh --full\`, ${secs}s. Fallback CI while Actions is down (#50, results: #$ISSUE).
+    summary="$(fail_summary "$lg")"
+    record "$ref" "$head" "--full" "**FAILED** in ${secs}s: $summary"
+    body="**orb-ci: FAILED** on \`${head:0:8}\` ($ref): $summary. \`check.sh --full\`, ${secs}s. Fallback CI while Actions is down (#50, results: #$ISSUE).
 
 \`\`\`
-$(grep -E '^(FAIL|::error)' "$lg" | head -20 || true)
+$(grep -E '^(FAIL|orb-ci FAIL|::error)' "$lg" | head -20 || true)
 \`\`\`
 (log: $lg)
 $SIGN"
@@ -233,10 +256,26 @@ $SIGN"
   log "full $kind ${head:0:8}: rc=$rc ${secs}s"
 }
 
-full_pass() {  # full_pass nightly|tag|now
+trusted_same() {  # trusted_same <a> <b>: the trusted files (the lists at both commits, united) are equal at a and b
+  local p=()
+  mapfile -t p < <(for r in "$1" "$2"; do git -C "$REPO" show "$r:scripts/boundaries.toml" 2>/dev/null |
+    python3 -I -c 'import sys, tomllib
+print("\n".join(tomllib.loads(sys.stdin.read()).get("checks", {}).get("trusted_paths", [])))' 2>/dev/null; done | sort -u)
+  ((${#p[@]})) && GIT_LITERAL_PATHSPECS=1 git -C "$REPO" diff --quiet "$1" "$2" -- "${p[@]}"
+}
+
+tag_target() {  # tag_target <tag commit>: the commit of main to check for it; nothing while main does not hold it
+  local c
+  if git -C "$REPO" merge-base --is-ancestor "$1" origin/main 2>/dev/null; then echo "$1"; return; fi
+  for c in $(git -C "$REPO" rev-list --first-parent -n 100 origin/main); do  # newest first
+    trusted_same "$1" "$c" && { echo "$c"; return; }
+  done
+}
+
+full_pass() {  # full_pass nightly|tag|now|sha <commit> [<ref>]
   exec 9>"$HOME_DIR/full.lock"
   if [[ "$1" == tag ]]; then flock -n 9 || return 0; else flock 9; fi  # one full run at a time
-  touch "$FULL_DONE" "$HOME_DIR/full-tags"
+  touch "$FULL_DONE" "$HOME_DIR/full-tags" "$HOME_DIR/tags-seen"
   git -C "$REPO" fetch -q --tags --force origin main || { log "fetch failed"; return 1; }
   setup_worktree "$WT" || { log "worktree setup failed"; return 1; }
   local head tag
@@ -246,19 +285,35 @@ full_pass() {  # full_pass nightly|tag|now
       if grep -q "^$head [a-z]* 0 " "$FULL_DONE"; then log "full: ${head:0:8} already passed"
       else full_check nightly "main (full)" "$head"; fi ;;
     now) full_check now "main (full, manual)" "$head" ;;
-    tag)
-      tag="$(git -C "$REPO" rev-parse -q --verify 'refs/tags/spec-approved^{commit}')" || return 0
-      grep -qx "$tag" "$HOME_DIR/full-tags" && return 0
-      # after the merge: main's head holds the tag's trusted files
-      (cd "$WT" && git checkout -q --detach -f "$head" && scripts/review-boundary.sh >/dev/null 2>&1) ||
-        { log "full: main ${head:0:8} does not hold spec-approved ${tag:0:8}'s trusted files yet"; return 0; }
-      { grep -q "^$head [a-z]* 0 " "$FULL_DONE" || full_check tag "main (full, tag ${tag:0:8})" "$head"; } &&
-        echo "$tag" >>"$HOME_DIR/full-tags" ;;
-    *) log "usage: orb-ci.sh --full nightly|tag|now"; return 2 ;;
+    sha)
+      head="$(git -C "$REPO" rev-parse -q --verify "${2:-}^{commit}")" || { log "full: no commit '${2:-}'"; return 2; }
+      full_check now "${3:-main (full, ${head:0:8})}" "$head" ;;
+    tag)  # until a pass handles nothing: tags-seen grows while a run goes on
+      local t at tgt again=1
+      while ((again)); do
+        again=0; : >"$HOME_DIR/full-tags-pending"
+        git -C "$REPO" fetch -q --tags --force origin main || { log "fetch failed"; return 1; }
+        while read -r t at; do
+          [[ -n "$t" ]] && ! grep -qx "$t" "$HOME_DIR/full-tags" || continue
+          git -C "$REPO" cat-file -e "$t^{commit}" 2>/dev/null || git -C "$REPO" fetch -q origin "$t" 2>/dev/null
+          tgt="$(tag_target "$t")"
+          if [[ -z "$tgt" ]]; then
+            if (($(date +%s) - ${at:-0} > 86400)); then log "full: spec-approved ${t:0:8} never reached main; dropped"
+              echo "$t" >>"$HOME_DIR/full-tags"
+            else echo "$t $at" >>"$HOME_DIR/full-tags-pending"; fi
+            continue
+          fi
+          if grep -q "^$tgt [a-z]* 0 " "$FULL_DONE"; then
+            record "main (full, tag ${t:0:8})" "$tgt" "--full" "PASSED earlier on this commit"
+          else full_check tag "main (full, tag ${t:0:8})" "$tgt" || continue; fi
+          echo "$t" >>"$HOME_DIR/full-tags"; again=1
+        done <"$HOME_DIR/tags-seen"
+      done ;;
+    *) log "usage: orb-ci.sh --full nightly|tag|now|poll|sha <commit> [<ref>]"; return 2 ;;
   esac
 }
 
-if [[ "${1:-}" == --full ]]; then full_pass "${2:-}"; exit; fi
+if [[ "${1:-}" == --full ]]; then full_pass "${@:2}"; exit; fi
 log "orb-ci started: $SLUG, worktree $WT, every ${INTERVAL}s"
 while true; do
   pass
