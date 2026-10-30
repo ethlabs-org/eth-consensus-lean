@@ -10,7 +10,7 @@ On `Spec/Run` with the AC `rootAC` of `ConsensusLeanTest/GoldilocksNode` (one va
 
 * (a) `oneTickRun_localRun`: the run whose only top-level event is the tick of time `0` of the
   validator (two cuts, `ac_on_tick` and `ac_to_fg`; the node is awake at `0` only) is a
-  `Node.LocalRun`: the hypothesis of `EventOrder`, `ACProjection`, `FGProjection`,
+  `Node.LocalRun`: the run hypothesis of `EventOrder`, `ACProjection`, `FGProjection`,
   `GroupStatesReachable` and `SyncProjection` is satisfiable by a run with a non-empty group, so
   the group law (`GroupAt`: the handler's cuts at consecutive indices under one event id), the
   cut law, the tick laws and the awake clamp hold together.

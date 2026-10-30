@@ -31,9 +31,11 @@ Service, Healing, Regimes) reads, over the spec's own run model (`Spec/Run`, dec
   `SyncAC` over the AC projection on the same window, and the joining and participation counts
   agree.
 
-Every statement is over `Node.LocalRun` (or `GoldilocksRun`) with `NoColl` on the blocks that
-occur in the run (`Compose.NoCollOn`). `docs/goldilocks-mapping.md` §"Persist" maps each
-statement to its node.
+Every statement is over `Node.LocalRun` (or `GoldilocksRun`) with `NoColl` on the objects of
+the run, the blocks that occur in it and genesis (`NoCollRun`, over `Compose.NoCollOn`); the two
+projections of an arbitrary AC also take the AC's requirements 1–5 and, for the FG projection,
+the genesis root, as C0.5 (a) and C0.3 do (consensus-lean#73). `docs/goldilocks-mapping.md`
+§"Persist" maps each statement to its node.
 
 Statements only: no proofs here. -/
 
@@ -43,9 +45,15 @@ open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
 
 variable {P : Params} {A : NodeAC P}
 
-/-- `NoColl` over a run: the digest is collision free on the blocks that occur in it. -/
+/-- `NoColl` over a run: the digest is collision free on the objects of the run (claims
+§"Premises": "no two distinct objects with one digest occur in the run"), the blocks that occur
+in it and genesis. Genesis is held by every node from `Store.init` but need not be the object of
+a block call, so `Occurs` alone could leave it out, while C0.3 (`HonestBlockAccepted`) takes
+`NoCollOn` on the tree with the own block, genesis included, for the own block's root to be new
+(consensus-lean#73). Every honest tree is inside this set: `Store.onBlock` adds only the block of
+its call, and nothing removes a block. -/
 def NoCollRun (dg : Digest (List (FG.Att P.n)) A.Payload) (tr : RunTrace A) : Prop :=
-  NoCollOn dg {B | tr.Occurs B}
+  NoCollOn dg (insert (P.genesisBlock A.genesisPayload) {B | tr.Occurs B})
 
 /-- The order facts of F.5 (run) over a run, for the honest validators `H`: (a) the cut index
 respects time; (b) at one time, the groups are in phase order (restarts, ticks, deliveries)
@@ -98,21 +106,33 @@ def ReadyImpliesJoined : Prop :=
       tr.awake y t ∧ tr.JoinedAt y t
 
 /-- **C0.5, the AC projection of a run is an AC trace with the contract**, for the honest
-validators, inside the honest blocks of the run, under `NoColl`. -/
+validators, inside the honest blocks of the run, for an AC with requirements 1–5 (as C0.5 (a)),
+under `NoColl`. Requirement 5 is needed: the own block's `ac_on_block` call must satisfy
+`CallOK`, whose `validPayload` the FG does not check (the FG accepts without reading the AC
+payload), so it holds only because the AC's own proposal passes `ac_valid_payload`
+(consensus-lean#73). -/
 def ACProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
     (sg : A.Msg → Fin P.n) (tr : RunTrace A),
-    Node.LocalRun dg H sg tr → NoCollRun dg tr → ACLocalRun A H (tr.HonestBlocks H) tr.projAC
+    A.Requirements → Node.LocalRun dg H sg tr → NoCollRun dg tr →
+      ACLocalRun A H (tr.HonestBlocks H) tr.projAC
 
 /-- **C0.5 (c), the FG projection of a run is an FG trace with the contract**, with the AC's
-genesis payload, inside the honest blocks of the run, under `NoColl`. Its tick-order laws
-(`own_first`, `attest_order`, `own_payload`) come from C0.4 and the group law; its
-unforgeability from the run's. -/
+genesis payload, inside the honest blocks of the run, for an AC with requirements 1–5 and a
+genesis whose root is its digest (the premises of C0.3), under `NoColl`. Its tick-order laws
+(`own_first`, `attest_order`, `own_payload`) come from C0.4 and the group law with C0.3: the own
+block is accepted in its tick, so the acceptance of the own proposal is the first FG cut at its
+time. Requirements 1–5 are needed: without requirement 1 (the AC's head is held) the own block
+can be refused at the tick, then accepted later at the same time after its parent and a copy of
+it arrive, against `own_first` (consensus-lean#73). The genesis root is taken as C0.3 takes it,
+so the proof is C0.3 (a refused own block is otherwise refused for ever at its node, its root
+being held). Its unforgeability is the run's. -/
 def FGProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
     (sg : A.Msg → Fin P.n) (tr : RunTrace A),
-    Node.LocalRun dg H sg tr → NoCollRun dg tr →
-      FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG
+    A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →
+      Node.LocalRun dg H sg tr → NoCollRun dg tr →
+        FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG
 
 /-- **The honest-object facts hold of the Goldilocks run's AC projection** (claims §"Runs";
 the premises `SA.HonestObjects` of the AC step statements): with the AC contract, `SA.ACRun`.

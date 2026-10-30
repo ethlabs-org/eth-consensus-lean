@@ -42,8 +42,9 @@ premises are satisfiable by such a run (together with `Node.LocalRun`) is the ki
 `periodicRun_localRun` with `periodicRun_healthy` and `periodicRun_sleepy` in
 `ConsensusLeanTest/GoldilocksRun.lean`.
 
-`NoColl` is `Compose.NoCollOn dg {B | tr.Occurs B}` (`Statements/Compose/Node`), stated where it
-is used. `Outage` and `Weak` are the regime milestone's. -/
+`NoColl` is `Compose.NoCollRun` (`Statements/Compose/Run`: `Compose.NoCollOn` on the blocks
+that occur in the run and genesis), stated where it is used. `Outage` and `Weak` are the regime
+milestone's. -/
 
 namespace Consensus.Goldilocks.RunTrace
 
