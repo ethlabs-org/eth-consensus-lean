@@ -255,6 +255,185 @@ theorem cutMap_mono : Monotone (cutMap S rho hn) :=
 
 end Refinement
 
+/-! ## Characterising lemmas
+
+The definitions above export no bodies (plan §3): other modules reason through these equations. -/
+
+namespace Node
+
+variable {P : Params} {A : NodeAC P}
+
+/-- `cutPosts` of no cut. -/
+theorem cutPosts_nil (self : Fin P.n) (t : Time) (st : NodeState A) :
+    cutPosts self t [] st = [] := by rfl
+
+/-- `cutPosts` of a cut and more: its post-state, then the rest from there. -/
+theorem cutPosts_cons (self : Fin P.n) (t : Time) (c : Cut A) (cs : List (Cut A))
+    (st : NodeState A) :
+    cutPosts self t (c :: cs) st =
+      cutPost self t st c :: cutPosts self t cs (cutPost self t st c) := by rfl
+
+/-- The post-state of an AC cut: the AC's step at the cut's frame, nothing else changed. -/
+theorem cutPost_ac (self : Fin P.n) (t : Time) (st : NodeState A) (ℓ : ACLabel A) :
+    cutPost self t st (.ac ℓ) = { st with ac := (A.step self st.ac ℓ.frame t ℓ.call).1 } := by rfl
+
+/-- The post-state of an accepted block cut: the store's `onBlock`. -/
+theorem cutPost_block_true (self : Fin P.n) (t : Time) (st : NodeState A) (B : A.Blk) :
+    cutPost self t st (.fg (.block B true)) = { st with fg := (st.fg.onBlock B).getD st.fg } :=
+  by rfl
+
+/-- A refused block cut changes nothing. -/
+theorem cutPost_block_false (self : Fin P.n) (t : Time) (st : NodeState A) (B : A.Blk) :
+    cutPost self t st (.fg (.block B false)) = st := by rfl
+
+/-- The post-state of an attestation cut: the store's `onAttestation`. -/
+theorem cutPost_attestation (self : Fin P.n) (t : Time) (st : NodeState A) (a : FG.Att P.n) :
+    cutPost self t st (.fg (.attestation a)) = { st with fg := st.fg.onAttestation a } := by rfl
+
+/-- A silent attest cut changes nothing. -/
+theorem cutPost_attest_none (self : Fin P.n) (t : Time) (st : NodeState A) (C : A.Blk) :
+    cutPost self t st (.fg (.attest C none)) = st := by rfl
+
+/-- The post-state of a signing attest cut: the new record. -/
+theorem cutPost_attest_some (self : Fin P.n) (t : Time) (st : NodeState A) (C : A.Blk)
+    (a : FG.Att P.n) :
+    cutPost self t st (.fg (.attest C (some a))) =
+      { st with record := ((st.fg.attest st.record self C).map Prod.snd).getD st.record } := by rfl
+
+end Node
+
+namespace Refinement
+
+open Shape Node
+open Consensus.Model (pubOf)
+open SA (SAParams ReplayOrder Vote Payload)
+
+section
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+/-- `groupRecs` unfolded: the handler's cuts zipped with their post-states, indexed by
+position. -/
+theorem groupRecs_eq (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+    (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
+    (e : Event (goldilocksNode sp ro)) :
+    groupRecs dg self st t id e =
+      ((exec dg self st t e).2.zip (cutPosts self t (exec dg self st t e).2 st)).mapIdx
+        fun k cp => ⟨self, t, id, k, cp.1, cp.2⟩ := by rfl
+
+/-- `deliverRecs` of no object. -/
+theorem deliverRecs_nil (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
+    (st : NodeState (goldilocksNode sp ro)) (sub : Nat) :
+    deliverRecs dg hs self t i [] st sub = [] := by rfl
+
+/-- `deliverRecs` of a canonical object and more: its group, then the rest from the handler's
+state. -/
+theorem deliverRecs_cons_some (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n)
+    (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
+    (e : Event (goldilocksNode sp ro)) (he : canonEvent sp ro hs o = some e) :
+    deliverRecs dg hs self t i (o :: os) st sub =
+      groupRecs dg self st t (Nat.pair i sub) e ++
+        deliverRecs dg hs self t i os (exec dg self st t e).1 (sub + 1) := by
+  simp only [deliverRecs, he]
+
+/-- `deliverRecs` of a dropped object and more: the rest, at the next sub-event index. -/
+theorem deliverRecs_cons_none (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n)
+    (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
+    (he : canonEvent sp ro hs o = none) :
+    deliverRecs dg hs self t i (o :: os) st sub = deliverRecs dg hs self t i os st (sub + 1) := by
+  simp only [deliverRecs, he]
+
+end
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+
+/-- The cuts of an engine tick at a public time: the node's tick group. -/
+theorem eventCuts_tick_public (i : Nat) (v : V) (t : Time)
+    (he : rho.events[i]? = some (.tick v t)) (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
+    eventCuts S rho hn i =
+      groupRecs (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
+        (.tick (encodeTxs (Model.mempool rho.inbox v t))) := by
+  simp only [eventCuts, he, hp, ↓reduceIte]
+
+/-- An engine tick at a non-public time has no cut. -/
+theorem eventCuts_tick_other (i : Nat) (v : V) (t : Time)
+    (he : rho.events[i]? = some (.tick v t))
+    (hp : ¬ (S.params (pubOf E) hn).toParams.IsPublic t) : eventCuts S rho hn i = [] := by
+  simp only [eventCuts, he, hp, ↓reduceIte]
+
+/-- The cuts of an engine delivery: `deliverRecs` of its delivered objects. -/
+theorem eventCuts_deliver (i : Nat) (v : V) (o : (Model.protoOf (compiled (family S)) E).Object)
+    (t : Time) (he : rho.events[i]? = some (.deliver v o t)) :
+    eventCuts S rho hn i =
+      deliverRecs (digestOf S rho) (Model.digests rho.hash o) (rho.ownKey v) t i
+        (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node 0 := by
+  simp only [eventCuts, he]
+
+/-- The cuts of an engine restart: the node's restart group. -/
+theorem eventCuts_restart (i : Nat) (v : V) (t : Time)
+    (he : rho.events[i]? = some (.restart v t)) :
+    eventCuts S rho hn i =
+      groupRecs (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
+        .restart := by
+  simp only [eventCuts, he]
+
+/-- No cut past the last engine event. -/
+theorem eventCuts_none (i : Nat) (he : rho.events[i]? = none) : eventCuts S rho hn i = [] := by
+  simp only [eventCuts, he]
+
+/-- The cut map steps by the number of cuts of the event. -/
+theorem cutMap_succ (i : Nat) :
+    cutMap S rho hn (i + 1) = cutMap S rho hn i + (eventCuts S rho hn i).length := by rfl
+
+/-- `allCuts` unfolded: the cuts of the events in order. -/
+theorem allCuts_eq :
+    allCuts S rho hn = (List.range rho.events.length).flatMap (eventCuts S rho hn) := by rfl
+
+/-- `cutTime` unfolded. -/
+theorem cutTime_eq (k : Nat) :
+    cutTime S rho hn k = ((allCuts S rho hn)[k]?).elim rho.horizon CutRec.time := by rfl
+
+/-- `cutLabel` unfolded. -/
+theorem cutLabel_eq (k : Nat) :
+    cutLabel S rho hn k = ((allCuts S rho hn)[k]?).map CutRec.label := by rfl
+
+/-- `awakeAt` unfolded. -/
+theorem awakeAt_iff (y : Fin (Fintype.card V)) (t : Time) :
+    awakeAt S rho hn y t ↔
+      E.awake (rho.key y) t = true ∧ 0 ≤ t ∧
+        ∃ k, cutLabel S rho hn k ≠ none ∧ t ≤ cutTime S rho hn k := Iff.rfl
+
+/-- The node of a cut of the trace. -/
+theorem simTrace_node (k : Nat) :
+    (simTrace S rho hn).node k = ((allCuts S rho hn)[k]?).elim ⟨0, hn⟩ CutRec.node := by rfl
+
+/-- The time of a cut of the trace. -/
+theorem simTrace_time (k : Nat) :
+    (simTrace S rho hn).time k = ((allCuts S rho hn)[k]?).elim rho.horizon CutRec.time := by rfl
+
+/-- The event id of a cut of the trace. -/
+theorem simTrace_event (k : Nat) :
+    (simTrace S rho hn).event k =
+      ((allCuts S rho hn)[k]?).elim (Nat.pair rho.events.length k) CutRec.event := by rfl
+
+/-- The position of a cut of the trace. -/
+theorem simTrace_pos (k : Nat) :
+    (simTrace S rho hn).pos k = ((allCuts S rho hn)[k]?).elim 0 CutRec.pos := by rfl
+
+/-- The label of a cut of the trace. -/
+theorem simTrace_label (k : Nat) :
+    (simTrace S rho hn).label k = ((allCuts S rho hn)[k]?).map CutRec.label := by rfl
+
+/-- The post-state of a cut of the trace. -/
+theorem simTrace_post (k : Nat) :
+    (simTrace S rho hn).post k = ((allCuts S rho hn)[k]?).elim (Node.init _) CutRec.post := by rfl
+
+end Refinement
+
 end Consensus.Goldilocks
 
 end
