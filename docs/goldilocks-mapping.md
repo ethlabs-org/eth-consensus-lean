@@ -143,7 +143,7 @@ stated: G0.3's "a block that leaves `Φ.tree` never returns" (it is `FrameNeverR
 `AcceptIsFrameStep`, with `U` the union of the trees, by `AcceptedTree`, `TreeGrows` and `FrameRealization`);
 G0.1 (store)'s "does not depend on the node, the arrival order or the time" (it follows from `ChainStateOfChain`
 under NoColl in F.3's form, and is stated with part 2, where two stores meet); G1.9 (statement not fixed); part 2's G1.6–G1.9, G1.10's C1.1 scope (a)–(c), and `Sync` over FG traces (with the statements that need it).
-Witnesses in `ConsensusLeanTest/GoldilocksFGStore.lean`, kind (a): `init_reachable`, `accepts_b₁`, `idle_localRun`.
+Witnesses in `ConsensusLeanTest/GoldilocksFGStore.lean`, kind (a): `init_reachable`, `accepts_b₁`, `idle_localRun`, `relay_localRun`.
 
 ## ACBase
 
