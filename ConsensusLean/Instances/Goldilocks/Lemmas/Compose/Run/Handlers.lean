@@ -497,6 +497,17 @@ theorem accept_next (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) 
   obtain ⟨hc', ht⟩ := group_cut hg hk'
   exact ⟨ℓ, hc', hb, ht⟩
 
+/-- The AC cut that follows an accepted block's FG cut is a later cut of the same event (its
+position is not `0`). -/
+theorem accept_next_pos (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+    {B : A.Blk} (hc : tr.CallAt y i (.fg (.block B true))) : tr.pos (i + 1) ≠ 0 := by
+  obtain ⟨j, e, k, hg, rfl, hk⟩ := call_in_group h hy hc
+  obtain ⟨ℓ, hk', -⟩ := (paired_exec dg y _ _ e).1 k B hk
+  obtain ⟨hk'', -⟩ := List.getElem?_eq_some_iff.1 hk'
+  have := (hg.2.1 _ hk'').2.2.2.1
+  rw [show j + k + 1 = j + (k + 1) by omega, this]
+  omega
+
 /-- **An AC block call follows the FG cut that accepts the block.** -/
 theorem acBlock_prev (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel A} {B : A.Blk} (hc : tr.CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B) :
