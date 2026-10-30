@@ -18,6 +18,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views

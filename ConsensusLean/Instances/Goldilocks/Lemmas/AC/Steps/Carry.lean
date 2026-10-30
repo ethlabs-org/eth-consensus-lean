@@ -313,20 +313,49 @@ theorem carried_supporter (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i
     simpa [hvs] using hheld.1
   · simpa [hfz] using hheld.2
 
-/-- The validators counted for an update result are supporters of it in an honest voter's
-merged view of the next slot (A1.8 (a), (c), (d)). -/
-theorem result_supporters (hrun : ACRun tr H U) {X y : Fin sp.n} (hX : X ∈ H) (hy : y ∈ H)
-    {i₀ i s : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hres : ResultAt tr X i₀ s C CV)
-    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) (hcarry : CarryAt tr U y i e s CV)
+/-- **A carried vote covers its validator.** The validator of a slot-`s` vote that `Carry_y`
+covers, whose head (of slot at most `s`) extends a block `C` of the voter's tree, is a supporter of
+`C` in the voter's merged view or an equivocator there (two other held votes of it, or a second
+vote beside the held one). -/
+theorem carried_cover (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
+    (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {CV : Set (Vote sp.n)}
+    (hcarry : CarryAt tr U y i e s CV) {v : Vote sp.n} (hv : v ∈ CV) (hvs : v.slot = s)
+    (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Hv.slot ≤ s ∧ Anc U C Hv) :
+    v.val ∈ supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s C ∪
+      equivocators (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes := by
+  have hU := hrun.localRun.coherent
+  have hm : ∀ u, u.slot = s → HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) →
+      u ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes := by
+    intro u hus hu
+    refine Or.inl (List.mem_filter.2 ⟨?_, ?_⟩)
+    · simp only [SAState.poolAt, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) by omega, ite_false]
+      simpa [hus] using hu.1
+    · simpa [freeze] using hu.2
+  rcases hcarry.holds v hv with hheld | ⟨v₁, v₂, h12, -, -, hv₁, hv₂, hs₁, hs₂, hh₁, hh₂⟩
+  · by_cases heq : v.val ∈ equivocators (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes
+    · exact Or.inr heq
+    obtain ⟨Hv, hHv, hHvr, hHvs, hCHv⟩ := hhead
+    obtain ⟨Hv', hHv', hHv'r, hacc⟩ := hcarry.heads v hv
+    obtain rfl : Hv' = Hv := hU.1 hHv' hHv (hHv'r.trans hHvr.symm)
+    exact Or.inl (carried_supporter hrun hy hc hs hC hvs hheld
+      ⟨Hv', hHv', hHv'r, hHvs, hCHv, hacc Hv' Relation.ReflTransGen.refl⟩ heq)
+  · exact Or.inr ⟨v₁, hm v₁ hs₁ hh₁, v₂, hm v₂ hs₂ hh₂, h12, hv₁, hv₂⟩
+
+/-- The validators that an honest `X`'s update counts for a block `C` (`fastCounted`, at a call of
+`X`) are supporters of `C` in an honest voter's merged view of the next slot, under `Carry_y` for
+the counted votes, `C` viable at the vote, and the writer-pool condition (A1.8 (a), (c), (d)). -/
+theorem counted_supporters (hrun : ACRun tr H U) {X y : Fin sp.n} (hX : X ∈ H) (hy : y ∈ H)
+    {i₀ i s : Nat} {C : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hcX : tr.CallAt X i₀ ℓX) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
+    (hcarry : CarryAt tr U y i e s (fastCounted sp (tr.state X i₀) ℓX.frame s C))
     (hviab : ViableAtVote ℓ e (s + 1) C)
     (hd : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s}) :
-    {w | ∃ v ∈ CV, v.val = w} ⊆
+    {w | ∃ v ∈ fastCounted sp (tr.state X i₀) ℓX.frame s C, v.val = w} ⊆
       supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s C := by
   have hr := hrun.localRun
   have hU := hr.coherent
-  obtain ⟨ℓX, ⟨hcX, -, -, -⟩, -, rfl⟩ := hres
   obtain ⟨hΦX, hΦXU⟩ : FrameOK ℓX.frame ∧ ℓX.frame.tree ⊆ U := by
     rcases hr.frameLaw X hX i₀ ℓX hcX with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
       exact h.1
