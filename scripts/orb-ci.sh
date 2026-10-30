@@ -6,7 +6,8 @@
 #   amp orb service start orb-ci --command 'bash <checkout>/scripts/orb-ci.sh'
 # Re-check commits of main on request: append their SHAs to $ORB_CI_HOME/queue (one per line).
 # It copies itself to $ORB_CI_HOME and runs the copy, checks out each head (a PR merged into main first, like
-# GitHub's merge commit) in its own worktree $ORB_CI_HOME/wt with hard-linked Lake packages, and keeps logs in
+# GitHub's merge commit) in its own worktree ($ORB_CI_HOME/wt for main, wt-pr for PRs) with hard-linked Lake
+# packages, removes the build outputs of modules whose source is not in the tree (prune_build), and keeps logs in
 # $ORB_CI_HOME/logs. Options: --once (one pass, then exit); --full nightly|tag|now (the full tier, below).
 # Environment: ORB_CI_HOME (default ~/orb-ci),
 # ORB_CI_INTERVAL (seconds between passes, default 600), ORB_CI_REPO (the checkout it was started from),
@@ -29,7 +30,7 @@ if [[ "${ORB_CI_COPY:-}" != 1 ]]; then  # run from a copy: the checkout may chan
   cp "${BASH_SOURCE[0]}" "$HOME_DIR/orb-ci.sh"
   ORB_CI_REPO="${ORB_CI_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" ORB_CI_COPY=1 exec bash "$HOME_DIR/orb-ci.sh" "$@"
 fi
-REPO="$ORB_CI_REPO" WT="$HOME_DIR/wt" LOGS="$HOME_DIR/logs" DONE="$HOME_DIR/done" ISSUE="${ORB_CI_ISSUE:-63}"
+REPO="$ORB_CI_REPO" WT="$HOME_DIR/wt" WT_PR="$HOME_DIR/wt-pr" LOGS="$HOME_DIR/logs" DONE="$HOME_DIR/done" ISSUE="${ORB_CI_ISSUE:-63}"
 INTERVAL="${ORB_CI_INTERVAL:-600}" FULL_DONE="$HOME_DIR/done-full"
 [[ "${1:-}" != --full ]] || WT="$HOME_DIR/wt-full"
 SLUG="$(gh repo view "$(git -C "$REPO" remote get-url origin)" --json nameWithOwner -q .nameWithOwner)"
@@ -57,11 +58,36 @@ print(s.get("run_dir") or "-", s.get("exit", 1))' "$st" 2>/dev/null) || { echo "
   return "$rc"
 }
 
-setup_worktree() {
-  [[ -d "$WT" ]] && return 0
-  git -C "$REPO" worktree add -q --detach "$WT" origin/main || return 1
-  mkdir -p "$WT/.lake" && cp -al "$REPO/.lake/packages" "$WT/.lake/packages" &&
-    { [[ ! -d "$REPO/.lake/build" ]] || cp -a "$REPO/.lake/build" "$WT/.lake/build"; }
+setup_worktree() {  # setup_worktree <dir>
+  [[ -d "$1" ]] && return 0
+  git -C "$REPO" worktree add -q --detach "$1" origin/main || return 1
+  mkdir -p "$1/.lake" && cp -al "$REPO/.lake/packages" "$1/.lake/packages" &&
+    { [[ ! -d "$REPO/.lake/build" ]] || cp -a "$REPO/.lake/build" "$1/.lake/build"; }
+}
+
+# In the checked-out tree: remove the build outputs (.lake/build/lib/lean/X.*, .lake/build/ir/X.*) of every module X
+# whose source X.lean is in none of the lakefile's source dirs, i.e. a module of a ref checked here before. A kept
+# .lake/build would otherwise let steps read its stale .oleans, and step 5 refuse a leaf with orphan descendants.
+prune_build() {
+  python3 -I -c 'import glob, os, tomllib
+try:
+    lake = tomllib.load(open("lakefile.toml", "rb"))
+except OSError:
+    raise SystemExit("orb-ci: no lakefile.toml, build outputs not pruned")
+dirs = {"."} | {t.get("srcDir", ".") for k in ("lean_lib", "lean_exe") for t in lake.get(k, [])}
+lib, ir, gone = ".lake/build/lib/lean", ".lake/build/ir", []
+for o in glob.glob(f"{lib}/**/*.olean", recursive=True):
+    m = os.path.relpath(o, lib)[:-len(".olean")]
+    if not any(os.path.isfile(os.path.join(d, m + ".lean")) for d in dirs):
+        gone.append(m.replace("/", "."))
+        for f in glob.glob(glob.escape(f"{lib}/{m}") + ".*") + glob.glob(glob.escape(f"{ir}/{m}") + ".*"):
+            os.remove(f)
+for root in (lib, ir):  # directories left empty
+    for d, _, _ in sorted(os.walk(root), key=lambda w: -len(w[0])):
+        if d != root and not os.listdir(d):
+            os.rmdir(d)
+if gone:
+    print(f"orb-ci: removed the build outputs of {len(gone)} modules without a source here:", *sorted(gone)[:20])'
 }
 
 record() {  # record <ref> <sha> <mode> <result>: a row at the top of the issue's table (the last 40 kept)
@@ -80,7 +106,7 @@ print(head + "|---|---|---|---|---|\n" + "\n".join([os.environ["ROW"]] + rows) +
 # check <kind> <id> <head>: kind main|pr; records the result in the issue and comments.
 check() {
   local kind="$1" id="$2" head="$3" base flags=() mode=fast paths rc=0 t0=$SECONDS lg="$LOGS/$3.log" fails
-  cd "$WT" || return 1
+  if [[ "$kind" == pr ]]; then cd "$WT_PR" || return 1; else cd "$WT" || return 1; fi
   : >"$lg"
   git checkout -q --detach -f origin/main && git clean -qfdx -e .lake || return 1
   if [[ "$kind" == main-recheck ]]; then
@@ -116,6 +142,7 @@ print("\n".join(tomllib.load(open("scripts/boundaries.toml", "rb"))["checks"]["t
   fi
   {
     echo "orb-ci: $kind $id at $head (base ${base:-none}), mode $mode ${flags[*]}"
+    prune_build
     if [[ "$mode" == changed ]]; then
       in_ci scripts/check.sh --changed "$base" || rc=1
     else
@@ -152,7 +179,7 @@ $SIGN"
 pass() {
   # --tags --force: spec-approved moves (review-boundary compares against it)
   git -C "$REPO" fetch -q --tags --force origin main || { log "fetch failed"; return; }
-  setup_worktree || { log "worktree setup failed"; return; }
+  { setup_worktree "$WT" && setup_worktree "$WT_PR"; } || { log "worktree setup failed"; return; }
   local head q
   # Re-checks on request: one commit of main per line in $HOME_DIR/queue (checked against its first parent).
   if [[ -s "$HOME_DIR/queue" ]]; then
@@ -181,6 +208,7 @@ full_check() {
   read -ra fenv <<<"${ORB_CI_FULL_ENV:-}"
   {
     echo "orb-ci: $ref at $head, mode full ${fenv[*]}"
+    prune_build
     in_ci env "${fenv[@]}" scripts/check.sh --full || rc=1
   } >>"$lg" 2>&1
   # as full.yml: nothing skipped (no sandbox step left out), tree clean
@@ -210,7 +238,7 @@ full_pass() {  # full_pass nightly|tag|now
   if [[ "$1" == tag ]]; then flock -n 9 || return 0; else flock 9; fi  # one full run at a time
   touch "$FULL_DONE" "$HOME_DIR/full-tags"
   git -C "$REPO" fetch -q --tags --force origin main || { log "fetch failed"; return 1; }
-  setup_worktree || { log "worktree setup failed"; return 1; }
+  setup_worktree "$WT" || { log "worktree setup failed"; return 1; }
   local head tag
   head="$(git -C "$REPO" rev-parse origin/main)"
   case "$1" in
