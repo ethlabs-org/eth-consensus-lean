@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
@@ -15,15 +15,14 @@ honest proposal `P` of slot `s` by a joined proposer, every honest slot-`s` vote
 slot-`(s−1)` pool view `pay`, from the unlocked anchor) ends at `Q = P.parent`, and each voter's
 walk (the viable voter block tree, the merged view, from its unlocked anchor) is compared with it:
 
-* `proposal_data` (open): the run's proposal of `P` is `ac_proposal`'s, at `t_s`, on the duty
+* `proposal_data` (proved): the run's proposal of `P` is `ac_proposal`'s, at `t_s`, on the duty
   head `Q`, with payload `pay`;
-* `pivot` (open, §2.1, §2.2): a block `D` that the proposal walk passes and that every honest
-  slot-`s` voter's walk passes (the deepest of genesis, the regular origins of labels at most
-  `s − 2` and the optimistic origins of labels at most `s − 1`; the voters pass it by S2, the
-  proposer by the honest batch; the voters' current-slot optimistic locks by the first vote not
-  `P`);
-* `suffix_agree` (open, §3): from `D` to `Q`, the proposer's winner is eligible for the voter (an
-  ancestor of `P`, in the frozen domain) with at least its proposer score, and every other
+* `pivot` (open, `Service/Pivot`, §2.1, §2.2): a block `D` on the proposal walk such that every
+  honest slot-`s` voter's walk passes a block of the path from `D` through `Q` to `P` (a voter
+  whose anchor is a current-slot optimistic lock starts on that path above `D`);
+* `suffix_agree` (open, §3): at every block from `D` to `Q`, the proposer's winner is eligible
+  for the voter (an ancestor of `P`, in the frozen domain) with at least its proposer score, and
+  every other
   eligible child of the voter is the proposer's with at most its proposer score (a sandwich:
   competitor scores can differ between the frames);
 * `stop_at_parent` (open, §3): at `Q` the voter's only eligible child is `P` (its slot is the
@@ -56,42 +55,59 @@ private theorem acProposal_head {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (F
   rfl
 
 /-- **The run's proposal of `P` is `ac_proposal`'s** at `t_s`: on the duty head `Q = P.parent`,
-with the payload `pay` (open: the tick's proposal step, `Node.proposeBlock`). -/
+with the payload `pay`. An own block is processed inside a tick (position `≠ 0`), so it is the
+proposal step's (`blockCall_cases`), made by `Node.proposeBlock` from `ac_proposal`'s duty head and
+payload at the cut after the tick's `ac_on_tick`. -/
 theorem proposal_data {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun dg H tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hP : tr.ProposesAt p k P) (hPs : P.slot = s)
-    (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) :
+    (hP : tr.ProposesAt p k P) (hPs : P.slot = s) :
     ∃ i ℓp d pay, tr.projAC.CallAt p i ℓp ∧ ℓp.call = .proposal ∧
       (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay) ∧
       tr.time i = sp.ts s ∧ P.parent = some d.head.root ∧ P.acPayload = pay := by
-  sorry
+  have h := hrun.toLocalRun
+  obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, -, htk⟩ := hP
+  rcases blockCall_cases h hp hcB with hg | ⟨j, x, rfl, hg, hPr, d, pay, hr, hB, -, -, -, -⟩
+  · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
+  set t := tr.time (j + 2)
+  set st := tr.state p j
+  set st1 := (Node.tickStep dg p st t x .acTick).1
+  have hcuts : (Node.exec dg p st t (.tick x)).2 = (Node.tickStep dg p st t x .acTick).2 ++
+      (Node.tickStep dg p st1 t x .proposal).2 ++
+      (Node.tickStep dg p (Node.tickStep dg p st1 t x .proposal).1 t x .fgUpdate).2 := by
+    simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, st1]
+  have h0 : (Node.exec dg p st t (.tick x)).2[0]? = some (Node.acCall p st t .tick).2 := by
+    rw [hcuts]; simp [Node.tickStep]
+  have h1 : (Node.exec dg p st t (.tick x)).2[1]? = some (Node.acProposal st1 t).2.1 := by
+    rw [hcuts]
+    simp only [Node.tickStep, hPr, ↓reduceIte]
+    split <;> simp [Node.acProposal, Node.acCall]
+  obtain ⟨hk0, hc0⟩ := List.getElem?_eq_some_iff.1 h0
+  obtain ⟨hk1, hc1⟩ := List.getElem?_eq_some_iff.1 h1
+  obtain ⟨hn0, ht0, -, -, hl0⟩ := hg.2.1 0 hk0
+  obtain ⟨hn1, ht1, -, -, hl1⟩ := hg.2.1 1 hk1
+  rw [hc0] at hl0
+  rw [hc1] at hl1
+  simp only [Nat.add_zero] at hn0 ht0 hl0
+  have hcall0 : tr.CallAt p j (Node.acCall p st t .tick).2 := ⟨hn0, hl0⟩
+  have hst1 : (tr.state p (j + 1)).ac = st1.ac := by
+    rw [tr.state_succ_of_call hcall0]
+    obtain ⟨-, hstep, -, -⟩ := hrun.cutLaw p hp j _ hcall0
+    rw [ht0] at hstep
+    exact (congrArg Prod.fst hstep).symm
+  have hts : t = sp.ts s := by
+    rw [htk, sp.slotTime_eq, hPs]; rfl
+  refine ⟨j + 1, ⟨.proposal, Node.frame st1, []⟩, d, pay, projAC_callAt.2 ⟨hn1, hl1⟩, rfl, ?_,
+    ht1.trans hts, by rw [hB]; rfl, by rw [hB]; rfl⟩
+  rw [projAC_state h hp, hst1, show tr.time (j + 1) = t from ht1]
+  exact hr
 
-/-- **The pivot** (workbench#12 §2.1, §2.2; open): a block `D` of the proposal walk, between its
-start and `Q`, that every honest slot-`s` voter's walk passes. -/
-theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) :
-    ∃ D, ℓp.frame.Anc d.start D ∧ ℓp.frame.Anc D d.head ∧
-      ∀ y ∈ H, ∀ j ℓy e, SA.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
-        ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) D ∧
-        ℓy.frame.Anc D (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-          (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
-          (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
-  sorry
-
-/-- **The suffix** (workbench#12 §3; open): along the proposal walk from the pivot `D` to `Q`, the
-proposer's best child is eligible for the voter with a score at least its proposer score (the
-path's supporters are the same in both views), and every other eligible child of the voter is
-eligible for the proposer with a voter score at most its proposer score. A sandwich, not equality:
-competitor scores can differ between the two frames in reachable runs (A1.7 model sweep, d55d292:
-543,903 differing counts, the vote still `P`). -/
+/-- **The suffix** (workbench#12 §3; open): at every block `X` from the pivot `D` to `Q` (in the
+proposer's tree), the proposer's best child is eligible for the voter with a score at least its
+proposer score (the path's supporters are the same in both views), and every other eligible child
+of the voter is eligible for the proposer with a voter score at most its proposer score. A
+sandwich, not equality: competitor scores can differ between the two frames in reachable runs
+(A1.7 model sweep, d55d292: 543,903 differing counts, the vote still `P`). -/
 theorem suffix_agree {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -105,10 +121,7 @@ theorem suffix_agree {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set 
     (hDQ : ℓp.frame.Anc D d.head) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s) :
-    ∀ m < ℓp.frame.tree.ncard,
-      let X := SA.ghost sp (ℓp.frame.viableTree ℓp.frame.tree)
-        (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
-        (SA.goldfishEligible sp ℓp.frame (tr.time i) (SA.View.ofLists pay) ((s : Int) - 1)) m D
+    ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
       X ≠ d.head →
       ∀ C, SA.IsBest sp (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
           {B | B ∈ ℓp.frame.viableTree ℓp.frame.tree ∧ B.parent = some X.root ∧
@@ -160,9 +173,9 @@ theorem stop_at_parent {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Se
   sorry
 
 /-- **Every honest slot-`s` vote is the honest proposal `P` of slot `s`** (workbench#12 §2–§3):
-each voter's walk reaches the pivot, then follows the proposal walk to `Q` and steps to `P`, where
-it stops (`ghost_follow`); with its full fuel it has stopped (`ghost_stopped`), so it ends at
-`P`. -/
+each voter's walk reaches a block `X` of the path from `D` to `P`; from `X` it is at `P`, or it
+follows the proposal walk to `Q` and steps to `P`, where it stops (`ghost_follow`); with its full
+fuel it has stopped (`ghost_stopped`), so it ends at `P`. -/
 theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -170,7 +183,7 @@ theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) :
     ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s → e.msg.head = P.root := by
   have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
-  obtain ⟨i, ℓp, d, pay, hc, hcall, hd, hti, hPQ, -⟩ := proposal_data hrun hnc hp hP hPs hpj
+  obtain ⟨i, ℓp, d, pay, hc, hcall, hd, hti, hPQ, -⟩ := proposal_data hrun hp hP hPs
   obtain ⟨D, hsD, hDQ, hvot⟩ := pivot hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ
   intro y hy j e ⟨ℓy, hcy, hey⟩ hes
   have hcast : SA.CastAt tr.projAC y j ℓy e := ⟨hcy, hey⟩
@@ -203,29 +216,65 @@ theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
     rw [← hW₁, hkp] at hadd
     rw [← hadd, hQ]
     exact SA.ghost_fuel_stable (by omega) hstop₀
-  -- the voter's walk: from its anchor to `D`, then to `P`, where it stops
+  have hW₁add : ∀ a b x, W₁ (a + b) x = W₁ b (W₁ a x) := fun a b x => by
+    rw [hW₁]; exact SA.ghost_add a b x
+  have hstopQ : ∀ m, W₁ m d.head = d.head := fun m => by
+    have h0 : W₁ 0 d.head = d.head := by rw [hW₁]; rfl
+    rw [hW₁] at h0 ⊢
+    exact (SA.ghost_fuel_stable (f := 0) (Nat.zero_le m) (by rw [h0]; exact hstop₁)).trans h0
+  -- the proposal walk from a block `X` of its path from `D` ends at `Q`
+  have hXQend : ∀ {X}, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
+      W₁ ℓp.frame.tree.ncard X = d.head := by
+    intro X hDX hXQ
+    obtain ⟨kx, -, hkx⟩ := SA.ghost_visits hΦp.coherent hTp _ hDX (h₁ ▸ hXQ)
+    rw [← hW₁] at hkx
+    rw [← hkx, ← hW₁add, add_comm, hW₁add, h₁, hstopQ]
+  -- the voter's walk passes a block `X` of the path from `D` through `Q` to `P`
   obtain ⟨hstep₀, hP₀⟩ := stop_at_parent hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hy hcast hes
-  have hfollow := SA.ghost_follow _ D h₁ hstop₁
-    (suffix_agree hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hsD hDQ hy hcast hes) hstep₀ hP₀
+  have hsuf := suffix_agree hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hsD hDQ hy hcast hes
   have hΦy := (SA.frameIn_of_callAt hr hy hcy).1
-  obtain ⟨haD, hDend⟩ := hvot y hy j ℓy e hcast hes
-  have hspec := (SA.castAt_spec hr hy hcast).2.2.2
-  rw [hes] at hspec
-  rw [hspec]
-  congr 1
+  obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j ℓy e hcast hes
   set W₂ := SA.ghost sp (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
     (SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1))
     (SA.goldfishEligible sp ℓy.frame (tr.time j) (SA.mergedVoteView sp e.readPoint ℓy.frame s)
       ((s : Int) - 1)) with hW₂
+  -- from `X`, the voter's walk ends at `P`
+  have hXP : ∃ fX, W₂ fX X = P := by
+    rcases hXc with rfl | ⟨hDX, hXQ⟩
+    · exact ⟨0, rfl⟩
+    refine ⟨ℓp.frame.tree.ncard + 1, SA.ghost_follow _ X ?_ hstop₁ ?_ hstep₀ hP₀⟩
+    · -- the proposal walk from `X` (on its path from `D`) ends at `Q`
+      exact hXQend hDX hXQ
+    · intro m hm hne
+      by_cases hXQ' : X = d.head
+      · exact absurd (by rw [hXQ']; exact hstopQ m) hne
+      have hXt : X ∈ ℓp.frame.tree := (Anc.mem hXQ hXQ').1
+      -- the position `W₁ m X` is between `D` and `Q`
+      have hXm : ℓp.frame.Anc X (W₁ m X) := by rw [hW₁]; exact SA.anc_ghost hTp m hXt
+      have hQm : ℓp.frame.Anc (W₁ m X) d.head := by
+        have hmem : W₁ m X ∈ ℓp.frame.tree := by
+          rcases eq_or_ne (W₁ m X) X with h | h
+          · rw [h]; exact hXt
+          · exact (Anc.mem hXm (Ne.symm h)).2
+        have hend : W₁ (ℓp.frame.tree.ncard - m) (W₁ m X) = d.head := by
+          rw [← hW₁add, Nat.add_sub_cancel' hm.le]
+          exact hXQend hDX hXQ
+        rw [← hend, hW₁]
+        exact SA.anc_ghost hTp _ hmem
+      exact hsuf _ (hDX.trans hXm) hQm hne
+  obtain ⟨fX, hfX⟩ := hXP
+  have hspec := (SA.castAt_spec hr hy hcast).2.2.2
+  rw [hes] at hspec
+  rw [hspec]
+  congr 1
   have hTy : ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ⊆ ℓy.frame.tree :=
     fun B hB => hB.1.1
   change W₂ ℓy.frame.tree.ncard (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) = P
-  obtain ⟨ky, -, hky⟩ := SA.ghost_visits hΦy.coherent hTy _ haD hDend
-  have hP₂ : W₂ (ky + (ℓp.frame.tree.ncard + 1))
-      (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) = P := by
+  obtain ⟨ky, -, hky⟩ := SA.ghost_visits hΦy.coherent hTy _ haX hXend
+  have hP₂ : W₂ (ky + fX) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) = P := by
     rw [hW₂, SA.ghost_add, ← hW₂]
     rw [← hW₂] at hky
-    rw [hky]; exact hfollow
+    rw [hky]; exact hfX
   have hstop₂ := SA.ghost_stopped hΦy.coherent hTy (hΦy.finite.subset hTy)
     (sc := SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s)
       ((s : Int) - 1))
@@ -233,10 +282,8 @@ theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
       (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1))
     (Set.ncard_le_ncard hTy hΦy.finite) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j))
   rw [← hW₂] at hstop₂
-  have hmax₁ := SA.ghost_fuel_stable (le_max_left (ℓy.frame.tree.ncard)
-    (ky + (ℓp.frame.tree.ncard + 1))) hstop₂
-  have hmax₂ := SA.ghost_fuel_stable (le_max_right (ℓy.frame.tree.ncard)
-    (ky + (ℓp.frame.tree.ncard + 1))) (hP₂ ▸ hP₀)
+  have hmax₁ := SA.ghost_fuel_stable (le_max_left (ℓy.frame.tree.ncard) (ky + fX)) hstop₂
+  have hmax₂ := SA.ghost_fuel_stable (le_max_right (ℓy.frame.tree.ncard) (ky + fX)) (hP₂ ▸ hP₀)
   rw [← hW₂] at hmax₁ hmax₂
   rw [← hmax₁, hmax₂, hP₂]
 
