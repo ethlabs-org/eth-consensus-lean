@@ -818,7 +818,7 @@ private theorem vote_slot_ne (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y
     exact absurd (lt_of_lt_of_le h₂ (h₁.trans (hkw.trans hj'))) (lt_irrefl _)
 
 /-- A call that is not a restart keeps `restart_time`. -/
-private theorem step_restartTime {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
+theorem step_restartTime {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call) (hc : c ≠ .restart) :
     ((goldilocksSA sp FGP ro).step self A Φ t c).1.restartTime = A.restartTime := by
   cases c with
