@@ -679,7 +679,7 @@ private theorem sleepy_sync (hrun : GoldilocksRun dg H tr) (hsl : tr.SleepyRun H
     {a b : Time} (ha : 0 ≤ a) :
     SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) a b tr.projAC :=
   sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr ΔF a b
-    hrun.toLocalRun (show tr.SyncOn H ΔF (fun τ => a ≤ τ ∧ τ ≤ b) id from
+    hrun.toLocalRun (show tr.SyncOn H ΔF (fun τ => a ≤ τ ∧ τ ≤ b) (fun τ => a ≤ τ ∧ τ ≤ b) id from
       ⟨hsl.1.deltaF, fun x hx i m hm hw => hsl.1.message x hx i m hm (ha.trans hw.1),
         fun x hx i B hB hw => hsl.1.block x hx i B hB (ha.trans hw.1),
         fun x hx i B hB hw => hsl.1.relay x hx i B hB (ha.trans hw.1),

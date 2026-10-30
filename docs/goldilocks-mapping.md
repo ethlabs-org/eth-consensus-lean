@@ -393,7 +393,10 @@ Modelling choices:
   is a field of `SyncOn` (`deltaF`), so every premise built on it has it. `Sync` carries the acceptance-relay clause
   (`relay`), the own proposal as a send (`block`: accepted or own), and admissions from payloads (`SendOrAdmitAt`,
   mirroring `ACTrace.SendOrAdmit`). `GST(g)` is `SyncOn` on every time with `eff τ = max τ g`: only the deadline
-  moves to `max(τ, g)`; the lower bound of the delivery interval stays the real send time `τ`.
+  moves to `max(τ, g)`; the lower bound of the delivery interval stays the real send time `τ`. Its acceptance relay
+  covers only acceptances at `τ ≥ g` (`SyncOn`'s relay window `Wr`, consensus-lean#96): `GST(g)` re-delivers old
+  objects but does not make them accepted (a block refused for a missing parent is not delivered again), so pre-`g`
+  acceptance catch-up is the regime premise `Catch(κ)`, as in the claims.
 - **Integer time.** The run keeps `Time = Int` (the claims take continuous time): "processed at a time in
   `[τ, deadline)`" is over integer times, and F.4's bridge reads "awake at `u`" as awake throughout `(u − 1, u]`.
 - **"The state of `y` at `t`"** is `y`'s state before the first cut of the run at a time `≥ t` (`FirstCutFrom`),

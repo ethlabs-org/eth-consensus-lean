@@ -9,22 +9,28 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Run.Model
 The premises of the claims (fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"Premises")
 over a run (`Spec/Run/Model`), for the honest validators `H`:
 
-* **`Sync`** (`SyncOn`, with a window `W` on the send time and a map `eff` to the effective
-  send time; `SyncRun a b` is `Sync[a, b]`, `GSTRun g` is `GST(g)`): every AC message that an
+* **`Sync`** (`SyncOn`, with a window `W` on the send time, a window `Wr` on the acceptance time
+  for the acceptance relay, and a map `eff` to the effective send time; `SyncRun a b` is
+  `Sync[a, b]`, `GSTRun g` is `GST(g)`): every AC message that an
   honest `x` sends or admits (also from the payload of an accepted block) at a time `τ` in the
   window is processed by every honest `y` at a time in `[τ, max(eff τ, w_y) + Δ)`, `w_y` the
   latest wake of `y` at or before its processing (the delivery of that send or forward, not an
   earlier processing; a refused receipt triggers nothing); every block an honest `x` sends (its
   own proposal) or accepts at `τ` in the window is processed (`fg_on_block`, accepted or
-  refused) by every honest `y` in that interval, and **acceptance relay**: an accepted block is
-  accepted by every honest `y` whose `Σ.F` it extends before the deadline; attestations likewise
+  refused) by every honest `y` in that interval, and **acceptance relay**: a block accepted at a
+  time in the relay window is accepted by every honest `y` whose `Σ.F` it extends before the
+  deadline; attestations likewise
   with `Δ_F`, from a signing or an admission. Over the run, "processed by `y` before the
   deadline" reads: at every call of `y` at or after the deadline, `y` has processed it at a cut
   before its own deadline (as `SyncAC`). `GST(g)` is `Sync[g, ∞)` with every object sent
   before `g` processed as if sent at `g` (`eff τ = max τ g`). The claims' "as if sent at `g`"
   is read for the deadline only: the deadline becomes `max(g, w_y) + Δ`, while the lower bound
   of the delivery interval stays the real send time, so an object sent before `g` may be
-  delivered before `g` (goldilocks#7, wording clarification for the claims).
+  delivered before `g` (goldilocks#7, wording clarification for the claims). The acceptance relay
+  of `GST(g)` covers only acceptances at `τ ≥ g` (claims: `Sync`'s relay "covers only `τ ≥ g`";
+  `GST(g)` re-delivers old objects, it does not make them accepted, since a block refused for a
+  missing parent is not delivered again): pre-`g` acceptance catch-up is the separate regime
+  premise `Catch(κ)` (`Healing.CatchRun`).
   `SyncOn` also carries the parameter bound `Δ_F ≥ Δ`, so every premise built on it has it.
 * **`Sleepy`**: `Sync[0, ∞)` and `f < h_t` at every `t ∈ {t_s, t_s + Δ, t_s + 2Δ}`, `h_t` the
   honest validators awake and joined at `t` (`JoinedAt`: every restart at or before `t` is at
@@ -83,8 +89,8 @@ def AttDeliveredBy (y : Fin P.n) (j : Nat) (τ₀ τ ΔF : Time) (a : FG.Att P.n
 
 /-- **`Sync` over a run**, for the sends in the window `W` with effective send time `eff`
 (claims §"Premises", `Sync[a, b]` and `GST(g)`; goldilocks `a470648c`). -/
-structure SyncOn (H : Set (Fin P.n)) (ΔF : Time) (W : Time → Prop) (eff : Time → Time) : Prop
-    where
+structure SyncOn (H : Set (Fin P.n)) (ΔF : Time) (W Wr : Time → Prop) (eff : Time → Time) :
+    Prop where
   /-- The parameter bound `Δ_F ≥ Δ` (claims §"Model"). -/
   deltaF : P.Δ ≤ ΔF
   /-- Every AC message an honest node sends or admits in the window is processed by every honest
@@ -97,10 +103,10 @@ structure SyncOn (H : Set (Fin P.n)) (ΔF : Time) (W : Time → Prop) (eff : Tim
   block : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B ∨ tr.OwnBlockAt x i B → W (tr.time i) →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (eff (tr.time i)) P.Δ ≤ tr.time j →
       tr.BlockDeliveredBy y j (tr.time i) (eff (tr.time i)) B
-  /-- Acceptance relay: every block an honest node accepts in the window is accepted before its
-  deadline by every honest node whose `Σ.F` it extends (inside the honest blocks of the run, as
-  `SyncAC` inside `U`). -/
-  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → W (tr.time i) →
+  /-- Acceptance relay: every block an honest node accepts in the relay window `Wr` is accepted
+  before its deadline by every honest node whose `Σ.F` it extends (inside the honest blocks of the
+  run, as `SyncAC` inside `U`). -/
+  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → Wr (tr.time i) →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (eff (tr.time i)) P.Δ ≤ tr.time j →
       Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
       tr.BlockAcceptedBy y j (eff (tr.time i)) B
@@ -112,16 +118,17 @@ structure SyncOn (H : Set (Fin P.n)) (ΔF : Time) (W : Time → Prop) (eff : Tim
 
 /-- **`Sync[a, b]`**: the sends at `τ ∈ [a, b]`, at their own time. -/
 def SyncRun (H : Set (Fin P.n)) (ΔF a b : Time) : Prop :=
-  tr.SyncOn H ΔF (fun τ => a ≤ τ ∧ τ ≤ b) id
+  tr.SyncOn H ΔF (fun τ => a ≤ τ ∧ τ ≤ b) (fun τ => a ≤ τ ∧ τ ≤ b) id
 
 /-- **`GST(g)`**: `Sync[g, ∞)`, and an object sent before `g` is processed as if sent at `g`:
-its deadline is `max(g, w_y) + Δ'`; it may still be delivered before `g`. -/
+its deadline is `max(g, w_y) + Δ'`; it may still be delivered before `g`. The acceptance relay
+covers only acceptances at `τ ≥ g` (pre-`g` acceptance catch-up is `Catch(κ)`). -/
 def GSTRun (H : Set (Fin P.n)) (ΔF g : Time) : Prop :=
-  tr.SyncOn H ΔF (fun _ => True) (fun τ => max τ g)
+  tr.SyncOn H ΔF (fun _ => True) (fun τ => g ≤ τ) (fun τ => max τ g)
 
 /-- **`Sleepy`**: `Sync[0, ∞)` and `f < h_t` at every `t ∈ {t_s, t_s + Δ, t_s + 2Δ}`. -/
 def SleepyRun (H : Set (Fin P.n)) (ΔF : Time) : Prop :=
-  tr.SyncOn H ΔF (fun τ => 0 ≤ τ) id ∧
+  tr.SyncOn H ΔF (fun τ => 0 ≤ τ) (fun τ => 0 ≤ τ) id ∧
     ∀ s : Nat, tr.FaultBound H (P.slotTime s) ∧ tr.FaultBound H (P.slotTime s + P.Δ) ∧
       tr.FaultBound H (P.slotTime s + 2 * P.Δ)
 

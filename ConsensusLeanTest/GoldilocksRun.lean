@@ -550,11 +550,11 @@ theorem periodicRun_localRun (sg : idleAC.Msg → Fin P₁.n) :
     rcases h with hc | ⟨B, ⟨_, hc⟩, -⟩ <;> exact absurd hc (periodicRun_no_fg y i _)
   msg_unforgeable y _ i m _ _ := m.elim
 
-/-- The periodic run satisfies `Sync` for every window and effective time: no AC message exists
-(`idleAC.Msg` is empty), and the run has no FG cut, so nothing is sent, accepted, admitted or
-signed. -/
-theorem periodicRun_syncOn (W : Time → Prop) (eff : Time → Time) :
-    periodicRun.SyncOn Set.univ 1 W eff where
+/-- The periodic run satisfies `Sync` for every window, relay window and effective time: no AC
+message exists (`idleAC.Msg` is empty), and the run has no FG cut, so nothing is sent, accepted,
+admitted or signed. -/
+theorem periodicRun_syncOn (W Wr : Time → Prop) (eff : Time → Time) :
+    periodicRun.SyncOn Set.univ 1 W Wr eff where
   deltaF := le_rfl
   message _ _ _ m _ := m.elim
   block x _ i B h := by
@@ -579,12 +579,12 @@ theorem periodicRun_faultBound {t : Time} (ht : 0 ≤ t) : periodicRun.FaultBoun
 `Healing`/`Regimes` statements is satisfiable by a `Node.LocalRun`, infinite as
 `awake_in_horizon` requires. -/
 theorem periodicRun_healthy : periodicRun.HealthyRun Set.univ 1 0 :=
-  ⟨periodicRun_syncOn _ _, fun _ _ t ht => show (0 : Int) ≤ t by simpa using ht, by simp⟩
+  ⟨periodicRun_syncOn _ _ _, fun _ _ t ht => show (0 : Int) ≤ t by simpa using ht, by simp⟩
 
 /-- (a) `Sleepy` holds on the periodic run (with `Δ_F = 1`): the premise of `Service` and of
 C1.1's `PersistPremises` is satisfiable by a `Node.LocalRun`. -/
 theorem periodicRun_sleepy : periodicRun.SleepyRun Set.univ 1 := by
-  refine ⟨periodicRun_syncOn _ _, fun s => ⟨?_, ?_, ?_⟩⟩
+  refine ⟨periodicRun_syncOn _ _ _, fun s => ⟨?_, ?_, ?_⟩⟩
   · exact periodicRun_faultBound (Int.natCast_nonneg s)
   · exact periodicRun_faultBound (by change (0 : Int) ≤ (s : Int) + 1; omega)
   · exact periodicRun_faultBound (by change (0 : Int) ≤ (s : Int) + 2 * 1; omega)

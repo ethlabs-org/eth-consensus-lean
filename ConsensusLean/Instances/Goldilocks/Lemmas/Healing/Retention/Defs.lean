@@ -30,7 +30,7 @@ theorem syncRun_of_gst {P : Params} {A : NodeAC P} {tr : RunTrace A} {H : Set (F
   · have := h.block x hx i B hB trivial
     simp only [he _ hw.1] at this
     exact this
-  · have := h.relay x hx i B hB trivial
+  · have := h.relay x hx i B hB (hga.trans hw.1)
     simp only [he _ hw.1] at this
     exact this
   · have := h.attestation x hx i at' hs trivial

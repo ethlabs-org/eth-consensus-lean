@@ -230,7 +230,7 @@ theorem projection_healthy (hrun : GoldilocksRun dg H tr) (_hnc : Compose.NoColl
     have hmax : max (tr.time i') g = tr.projAC.time (i' + 1) := by
       rw [show tr.projAC.time (i' + 1) = tr.time (i' + 1) from rfl, hti]; exact max_eq_left hgi
     rw [Compose.projAC_deadline] at hdl
-    obtain ⟨k, hk, hak, hkt⟩ := hgst.relay x hx i' B ha' trivial y hy j
+    obtain ⟨k, hk, hak, hkt⟩ := hgst.relay x hx i' B ha' (by rw [hti]; exact hgi) y hy j
       ⟨_, Compose.projAC_callAt.1 hc⟩ (by rw [hmax]; exact hdl) (frame_F hrun hy hc ▸ hanc)
     obtain ⟨hak', htk, hnr⟩ := ac_block_after h hy hak
     have hkj : k < j := by

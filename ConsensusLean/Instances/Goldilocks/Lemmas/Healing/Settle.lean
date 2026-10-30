@@ -337,7 +337,7 @@ theorem relay_held {ΔF g κ : Time} (hrun : Node.LocalRun dg H sg tr)
   have hτg : max (tr.time k₀) g = tr.time k₀ := max_eq_left ((le_gbar g).trans hτ)
   have hdl : ∀ k, tr.deadline y k (tr.time k₀) P.Δ = tr.time k₀ + P.Δ :=
     deadline_eq (hnr y hy) hτ
-  obtain ⟨k, -, hak, hlt⟩ := hh.1.relay x hx k₀ B hacc trivial y hy _ hcall
+  obtain ⟨k, -, hak, hlt⟩ := hh.1.relay x hx k₀ B hacc ((le_gbar g).trans hτ) y hy _ hcall
     (by rw [hτg, hdl]; linarith [hj.1, hrun.time_mono hj₂]) (by rw [hst]; exact hF)
   rw [hτg, hdl] at hlt
   refine ⟨k, ?_, hak⟩
