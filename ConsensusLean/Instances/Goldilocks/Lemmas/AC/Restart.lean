@@ -25,7 +25,8 @@ theorem parentOrder_exists {FGP : Type} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) :
   · intro B
     simp only [List.mem_mergeSort, Finset.mem_toList, Set.Finite.mem_toFinset, Set.mem_ofPred_eq]
   · intro i j hi hj hp
-    have hsorted := List.pairwise_mergeSort (le := fun a b : Blk sp.n FGP => decide (a.slot ≤ b.slot))
+    have hsorted :=
+      List.pairwise_mergeSort (le := fun a b : Blk sp.n FGP => decide (a.slot ≤ b.slot))
       (by intro a b c hab hbc; simp only [decide_eq_true_eq] at *; omega)
       (by intro a b; simp only [Bool.or_eq_true, decide_eq_true_eq]; omega) hS.toFinset.toList
     have hm : ∀ k (hk : k < (hS.toFinset.toList.mergeSort
@@ -103,7 +104,8 @@ theorem RestartInv.blockReceipt {FGP : Type} {A₀ A : SAState sp.n} {Φ : Frm s
         · exact h.blockStamp q⟩
   generalize { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } = A' at h₀
   have key : ∀ vs : List (Vote sp.n), (∀ v ∈ vs, v ∈ blockVotes B) → ∀ A',
-      RestartInv sp A₀ Φ t A' → RestartInv sp A₀ Φ t (vs.foldl (fun A v => SA.admitVote sp A t v) A') := by
+      RestartInv sp A₀ Φ t A' →
+        RestartInv sp A₀ Φ t (vs.foldl (fun A v => SA.admitVote sp A t v) A') := by
     intro vs
     induction vs with
     | nil => intro _ A' h; exact h
