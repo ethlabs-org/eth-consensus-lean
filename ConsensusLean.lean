@@ -38,6 +38,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
@@ -111,6 +112,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Standalone
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Agree
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Anchor
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Proposer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Setting
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Assembly
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Bridge

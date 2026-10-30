@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalTransfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Votes
 
 public section
 
@@ -103,7 +104,9 @@ theorem proposal_votes (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FGP
     (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) :
     ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by
-  sorry
+  obtain ⟨k, ℓp, d, pay, hk, hkc, hpay, htk, hPd, hPs, hPq, hPa, hacc⟩ := hP
+  exact proposal_votes_of_setting
+    ⟨hS, hpH, hk, hkc, hpay, htk, hPd, hPs, hPq, hPa, hacc, hp, hset⟩
 
 end Consensus.Goldilocks.SA
 
