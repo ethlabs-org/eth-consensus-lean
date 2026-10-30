@@ -30,7 +30,7 @@ Mapping from the Goldilocks references to the Lean names: `docs/goldilocks-mappi
 | Step | Lean names | Status |
 |---|---|---|
 | Pre-foundation baseline: pinned numbers and the properties sheet (`ConsensusLean/Instances/Goldilocks/`) | `Consensus.Shape.goldilocksContract`, `Consensus.Shape.GoldilocksTarget` | stated; **not approved**, no proof targets it (issue #38) |
-| First slice (foundation step 7, issue #10): Goldilocks Spec, `Refinement/Defs.lean`, `Statements/<M₁>`, witnesses, finite model; owner approval; then a two-agent proof pilot | — | planned (after the statements are settled in fradamt-agent/goldilocks: #4, #5, #7, #12) |
+| First slice (foundation step 7, issue #10): Goldilocks Spec, `Refinement/Defs.lean`, `Statements/<M₁>`, witnesses, finite model; approval (the tag); then a two-agent proof pilot | — | planned (after the statements are settled in fradamt-agent/goldilocks: #4, #5, #7, #12) |
 | Certification at the first finished milestone (foundation step 8, issue #11): `Challenge`/`Solution` entries, nightly replay and comparator | — | planned |
 
 ## Other instances

@@ -2,7 +2,24 @@
 
 ## Approval
 
-Since #5 the tag `spec-approved` points to `9c7433b988576147b46977bc9bab454fc8907c20` (9c7433b9), the head of
+**Current rule (owner, #2, 2026-10-30): nothing blocks on the owner.** The tag is an agent approval: an agent
+other than the change's author (claude-ethlabs, or the amp-orbs coordinator) moves it once the author has done a
+fidelity read-back (a subagent, in the author's own session) and CI's fast check is green. The tag message names
+the PR, the protected files changed against the previous tag, and the evidence. Before 2026-10-30 the owner
+approved, or authorized claude-ethlabs to.
+
+Tag history (`git cat-file -p spec-approved` shows the current message):
+
+| Commit | Tag object | Change | Moved by |
+|---|---|---|---|
+| `4b7c5148` | | post-reorg trusted surface | claude-ethlabs on Francesco's authorization (2026-10-29) |
+| `9c7433b9` | `6549c000` | PR #30: verbatim move to the single library (#5) | claude-ethlabs |
+| `c27122cf` | `4e506f96` | PR #43: instance semantics and statements as trusted paths; Goldilocks sheet to `Baseline.lean`; `Derived.lean` protected | claude-ethlabs |
+| `1cf90770` | `151658c8` | PR #44: Goldilocks M₁ (FG safety) semantics and statements | claude-ethlabs, after Francesco's statement review |
+| `ce9f849` | `068a5194` | PR #46: `Derived.lean` keeps only the sheet's definitions (pure removal) | claude-ethlabs |
+| `f98ed97` | `ab7d3566` | PR #49: Goldilocks Common and Frame statements (additions under `Instances/Goldilocks` only) | amp-orbs (coordinator, not the author); first agent approval |
+
+Since #5 the tag `spec-approved` pointed to `9c7433b988576147b46977bc9bab454fc8907c20` (9c7433b9), the head of
 PR #30 and the verbatim move of this surface to the single library `ConsensusLean` (section "Move to one library
 `ConsensusLean` (#5)" below). Before that, the trusted surface was **approved at
 `4b7c51484baa5725301d559d437f22a0ea5ab9a2` (4b7c5148) on 2026-10-29 by claude-ethlabs on Francesco's
@@ -34,7 +51,7 @@ only with the first slice (#10) re-reviewed against goldilocks `spec/goldilocks-
 "Move to one library `ConsensusLean` (#5)" below. The sections between describe the approved surface at
 `4b7c5148` under its current paths.
 The check infrastructure (`scripts/**`, `.github/**`, `lakefile.toml`; `lakefile.lean` must not exist) is
-not covered by the tag: agents review it (`TRUST.md`, issue #21). It is described below because it defines what
+not covered by the tag: agents maintain it (`TRUST.md`). It is described below because it defines what
 the checks enforce.
 
 This record compares `2852f717` (the informal "B1 fixes" review) with the approved commit. It was written
@@ -139,7 +156,7 @@ The guarded axiom output pins both sets of four proofs to exactly
 
 The comparator matches the challenge against `Solution`, limits axioms,
 replays exports in a sandbox and requires identical reachable constants across exports.
-Both sides use this tree's Spec. The snapshot and owner review detect Spec drift.
+Both sides use this tree's Spec. The snapshot and the approval of each change detect Spec drift.
 The challenge's `sorry` proofs are deliberate and excluded from default libraries.
 
 `lakefile.toml` defaults to `ConsensusLean` (since #5; at `4b7c5148`: Spec, Proofs, Instances and Tests);
@@ -595,16 +612,18 @@ evidence for the approved surface: kernel replay, `lake check` and `lake compara
 ## Later changes to the trusted surface
 
 Once the tag exists, `review-boundary` fails on a PR whose trusted surface differs from the tag, so such a
-change is approved **before** merge: the PR says that it needs approval; the owner (or an agent he
-explicitly authorizes; never the PR's author on its own) reviews it, including the `spec-snapshot.txt`
-diff, moves the tag to the PR head and re-runs the PR's failed job:
+change is approved **before** merge. The author does a fidelity read-back (a subagent, in the author's own
+session: the Lean read back into prose against the reference, including the `spec-snapshot.txt` diff) and gets
+the fast check green; then an agent other than the author (claude-ethlabs, or the amp-orbs coordinator) checks
+the protected diff below, moves the tag to the PR head with a message naming the PR, the protected files changed
+and the evidence, and re-runs the PR's failed job:
 
 ```sh
 git fetch origin pull/<pr>/head
 paths() { git show "$1:scripts/boundaries.toml" | python3 -I -c 'import sys, tomllib; print("\n".join(tomllib.loads(sys.stdin.read())["checks"].get("trusted_paths", [])))' 2>/dev/null; }
 mapfile -t protected < <({ paths FETCH_HEAD; paths spec-approved; } | sort -u)
 GIT_LITERAL_PATHSPECS=1 git diff spec-approved FETCH_HEAD -- "${protected[@]}"
-git tag -f -a spec-approved -m "<who approved, on whose authority, what>" FETCH_HEAD && git push -f origin spec-approved
+git tag -f -a spec-approved -m "spec-approved: <PR>; moved by <agent>; protected files changed: <...>; evidence: <...>" FETCH_HEAD && git push -f origin spec-approved
 gh run rerun <run-id> --failed
 ```
 

@@ -30,7 +30,7 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
 ## Roles of the checks
 
 - **Spec drift:** snapshot every Spec-owned constant (readable text plus structural hashes), diff
-  against `scripts/spec-snapshot.txt`, then owner review of every change (`spec-approved`).
+  against `scripts/spec-snapshot.txt`, then an agent approval of every change (`spec-approved`, moved by an agent other than its author).
   Proof values are omitted by proof irrelevance; non-proof auxiliary constants are included.
 - **Dependency drift:** exact pins; the upgrade above additionally used the dependency audit.
 - **Unfinished proofs** (foundation plan §5, the FLT/Carleson model): `sorry` may stay only in the
@@ -100,9 +100,10 @@ artifact cache on the box are not rebuilt locally. leanchecker replays the proje
 `lake check` exports the default targets with the constants they use and replays that export, which
 re-checks what the project uses of them. A dependency's own lakefile in its pinned, clean checkout is trusted
 as upstream content. The check scripts/configuration (`scripts/**`, `.github/**`, the lakefile) are trust
-infrastructure reviewed by agents, not by the owner: Code Owner review (`.github/CODEOWNERS`) is not enforced (#21).
-A change to what a trust check checks needs two independent agent reviews linked in its PR; a speedup that keeps
-every check's verdict needs one review and evidence that the fixtures' verdicts are unchanged.
+infrastructure maintained by agents, not reviewed by the owner: Code Owner review (`.github/CODEOWNERS`) is not
+enforced (#21). A change to what a trust check checks comes with fixtures that show the new verdicts; a speedup that
+keeps every check's verdict comes with evidence that the fixtures' verdicts are unchanged (owner, 2026-10-30: no
+review gates between agents).
 
 ## Trusted statements
 
@@ -124,8 +125,9 @@ CI's `review-boundary` compares those paths (literal, at the PR head and at the 
 review pair (`ConsensusLeanTest/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers
 are exempt). `ConsensusLeanTest/ReviewAxioms.lean` compiles alpha-equality/binder-kind and axiom pins.
 Primary: `Consensus.Review.AcceptedGood`; secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
-Only the owner, or an agent he explicitly authorizes (never the PR's author on its own), sets or moves
-`spec-approved`, after reviewing the protected changes.
+`spec-approved` is an agent approval (owner rule, 2026-10-30; nothing blocks on the owner): an agent other than
+the change's author (claude-ethlabs, or the amp-orbs coordinator) moves it after the author's fidelity read-back
+and a green fast check; the tag message names the PR, the protected files changed and the evidence.
 
 ## Assumed, not proved; per-instance bindings
 

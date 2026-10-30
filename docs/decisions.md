@@ -82,12 +82,26 @@ where it is recorded; "Francesco" marks the owner's decisions.
   check's verdict is unchanged (the same pass/fail on the fixtures). `.github/CODEOWNERS` names the owner for
   the trusted surface, the infrastructure and the mapping docs (plan §4), but Code Owner review is not enforced
   (enforcement through a ruleset stays open to the owner).
+- 2026-10-30, Francesco ([#2]). No imitation of human review process: there are no review gates between agents.
+  A subagent pass is a tool inside the author's own session. This replaces the review requirements of the
+  entries above; a check-infrastructure change still carries its fixture evidence.
+- 2026-10-30, Francesco ([#2]). **Nothing blocks on the owner**: he gives input and asks questions, and does not
+  approve PRs, statements or tag moves; agents own every decision and record it where the work is.
+  `spec-approved` stays, as an **agent approval**: an agent other than the change's author (claude-ethlabs, or
+  the amp-orbs coordinator) moves it after the author's fidelity read-back and a green fast check; the tag
+  message names the PR, the protected files changed and the evidence. This replaces the owner's authorization
+  in the entry on `spec-approved` above. First application: #49 (`f98ed97`), moved by amp-orbs.
+- 2026-10-30, amp-orbs (process), under that rule ([#50]). Trunk-based: after the local checks
+  (`scripts/check-changed.sh`; `--fast --selftests` for `scripts/` or build-configuration changes), rebase on
+  `origin/main` and push to `main`. CI runs on every push to `main`, and whoever made it red reverts at once. A PR
+  only for a trusted-surface change, since the tag must cover its head before it reaches `main`.
 
 ## Open, for the owner
 
 - A branch ruleset enforcing owner review ([#21], option 2).
 
 [#2]: https://github.com/fradamt-agent/consensus-lean/issues/2
+[#50]: https://github.com/fradamt-agent/consensus-lean/issues/50
 [#41]: https://github.com/fradamt-agent/consensus-lean/issues/41
 [#4]: https://github.com/fradamt-agent/consensus-lean/issues/4
 [#5]: https://github.com/fradamt-agent/consensus-lean/issues/5

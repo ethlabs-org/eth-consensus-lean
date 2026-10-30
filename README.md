@@ -85,7 +85,7 @@ In CI, `lake comparator --config comparator.json` compares `Challenge.lean`
 (the Spec statements with placeholder proofs) with `Solution.lean`:
 matching statements, permitted axioms, sandboxed kernel replay, and identical reachable constants
 in both exports to resist build-time tampering. This checks the proofs against Spec built alone;
-Spec drift is checked by the snapshot diff and owner review.
+Spec drift is checked by the snapshot diff and the approval of each change (`spec-approved`).
 
 `Accepted.good` combines three theorems. `refinement` gives `Behaviour`;
 its bridges are `ledgerTrace` (reads are `ledgerOf` of the output chains)
@@ -527,7 +527,7 @@ Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 14. **Rebuild canary (report; `--full`, or `--canary`, which CI passes when the build configuration changed):** a fixed proof-only edit of one module (`canary_*` in `scripts/boundaries.toml`) must leave its `.olean.hash` unchanged and every default target up to date; a regression is reported (a CI warning). Its control, a statement edit, must make the default targets stale, else the step fails.
 
 Checks with fixtures exercise the same code paths on positive and negative controls.
-Spec drift is guarded by the snapshot diff plus owner review (`spec-approved`);
+Spec drift is guarded by the snapshot diff plus the approval of each change (`spec-approved`);
 dependency drift by pins; proof validity by replay, check-decls and the CI comparator.
 
 Proof support outside that surface: `ConsensusLean/Lemmas/Problem/Derived.lean` defines
@@ -834,8 +834,9 @@ On the shared box every build and check runs in a job (replace `<name>` and `<wo
    ```sh
    job --mem 16G --cpus 8 consensus-lean <name> -- bash -lc "cd <worktree> && LAKE_RESTORE_ARTIFACTS=true scripts/check-changed.sh"
    ```
-3. Commit, push the `work/<agent>/<task>` branch and open a PR when ready: pushes without a PR run no CI.
-   The PR runs the fast tier; the nightly full run covers replay, `lake check` and the comparator.
+3. Commit, rebase on `origin/main` and push to `main` (a trusted-surface change goes through a PR instead, for
+   the tag). Every push to `main` runs the fast tier; the nightly full run covers replay, `lake check` and the
+   comparator.
    Before a milestone, run the full check once (`scripts/check.sh --full` in a job, about an hour of CPU)
    or trigger `full.yml` (`gh workflow run full.yml --ref <branch>`).
 
@@ -868,7 +869,7 @@ comparator 1, setup 2). Fast tier (measured on PR #15, with self-tests because i
 17 minutes cold, 17 minutes with the build cache warm (setup 1.6, build 0.2, check-decls 4–7.5, Spec surface
 3, self-tests 4); without self-tests, the usual PR, about 10–13 minutes. check-decls is now the largest step.
 
-The owner-review boundary is separate from correctness. The **trusted surface** is
+The approval boundary is separate from correctness. The **trusted surface** is
 `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and `X/**`), `Challenge.lean`,
 `comparator.json`, `lean-toolchain`, `lake-manifest.json`, `ConsensusLeanTest/ReviewAxioms.lean` and
 `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
@@ -879,13 +880,13 @@ exception). The definitions the Goldilocks sheet reads from there, `Lemmas/Probl
 too; the tag freezes their text, not everything they import. The list lives in `scripts/boundaries.toml`
 (`[checks] trusted_paths`, plain paths that must cover every spec-group file); CI reads it as literal
 paths at the PR head and at the tag. The annotated git tag
-`spec-approved` marks the last approved commit (the PR #30 head: the verbatim move of #5; before it 4b7c5148,
-approved 2026-10-29); only the owner, or an
-agent he explicitly authorizes, moves it. CI job `review-boundary` fails while the trusted surface differs
+`spec-approved` marks the last approved commit (history in `docs/spec-review.md`). Since 2026-10-30 it is an
+agent approval: an agent other than the change's author (claude-ethlabs, or the amp-orbs coordinator) moves it
+after the author's fidelity read-back and a green fast check; nothing waits for the owner. CI job `review-boundary` fails while the trusted surface differs
 from that tag (it would only warn if the tag did not exist), so a PR changing it is approved by moving the
 tag to the PR's head before merge. The check infrastructure (`scripts/**`, `.github/**`, `lakefile.toml`,
-`lakefile.lean`, which must not exist) is not covered by the tag: agents review it (`TRUST.md`, issue #21).
-Reviewing the snapshot diff is the act that approves a Spec change; the comparator cannot replace that
+`lakefile.lean`, which must not exist) is not covered by the tag: agents maintain it (`TRUST.md`).
+Reviewing the snapshot diff is part of approving a Spec change; the comparator cannot replace that
 review. `docs/spec-review.md` records what was approved and what changed since 2852f717.
 
 Design and history: `docs/decisions.md` summarises the design decisions; the full record is in the workbench:
