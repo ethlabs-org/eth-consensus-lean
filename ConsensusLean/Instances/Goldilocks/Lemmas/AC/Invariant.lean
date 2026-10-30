@@ -412,6 +412,14 @@ private theorem inv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self : 
 theorem pool_cap : PoolCap sp :=
   fun _ _ _ _ hU _ _ _ h => (inv_of_reachable sp hU h).pool
 
+/-- At a reachable state, every block of the frame tree has a stamp at or before the time of the
+last call (finite, or `−∞` for genesis). -/
+theorem tree_blockStamp_le {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
+    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {A : SAState sp.n} {Φ : Frm sp.n FGP} {t₀ : Time}
+    (h : (goldilocksSA sp FGP ro).ReachableAt self U A Φ t₀) :
+    ∀ X ∈ Φ.tree, A.blockStamp X.root ≤ ETime.of t₀ :=
+  (inv_of_reachable sp hU h).stamp_le
+
 /-- **A0.1, stamps along parent edges.** -/
 theorem stamp_parent : StampParent sp :=
   fun _ _ _ _ hU _ _ _ h => (inv_of_reachable sp hU h).stamp_parent
