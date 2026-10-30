@@ -7,7 +7,8 @@
 # Re-check commits of main on request: append their SHAs to $ORB_CI_HOME/queue (one per line).
 # It copies itself to $ORB_CI_HOME and runs the copy, checks out each head (a PR merged into main first, like
 # GitHub's merge commit) in its own worktree $ORB_CI_HOME/wt with hard-linked Lake packages, and keeps logs in
-# $ORB_CI_HOME/logs. Options: --once (one pass, then exit). Environment: ORB_CI_HOME (default ~/orb-ci),
+# $ORB_CI_HOME/logs. Options: --once (one pass, then exit); --full nightly|tag|now (the full tier, below).
+# Environment: ORB_CI_HOME (default ~/orb-ci),
 # ORB_CI_INTERVAL (seconds between passes, default 600), ORB_CI_REPO (the checkout it was started from),
 # ORB_CI_SIGN (the comments' sign-off), ORB_CI_JOB (the shared box: `job` options and scope, e.g.
 # '--mem 16G --cpus 8 consensus-lean'; each check.sh run is then a box `job`, waited for; unset in an orb).
@@ -15,6 +16,12 @@
 # scripts/ or the build configuration changed and `--canary` when the build configuration changed; then
 # scripts/review-boundary.sh <base> and a clean-tree check. <base>: the previously checked main head (if an
 # ancestor), or a PR's main.
+# Full tier (as full.yml, unsplit), one run and exit, in its own worktree $ORB_CI_HOME/wt-full, one at a time
+# (a lock): `check.sh --full` on main's head, which fails if a step is skipped or the tree is left dirty; a row
+# in the issue, and a #17 comment on failure. `--full nightly`: unless that head already passed a full run;
+# `--full tag`: once per new commit of the tag spec-approved, when main's head holds its trusted files
+# (`review-boundary.sh` with no base passes there), unless that head already passed; `--full now`: always.
+# ORB_CI_FULL_ENV: extra environment for check.sh --full (e.g. 'REPLAY_JOBS=5').
 set -uo pipefail
 HOME_DIR="${ORB_CI_HOME:-$HOME/orb-ci}"
 if [[ "${ORB_CI_COPY:-}" != 1 ]]; then  # run from a copy: the checkout may change under a running script
@@ -23,7 +30,8 @@ if [[ "${ORB_CI_COPY:-}" != 1 ]]; then  # run from a copy: the checkout may chan
   ORB_CI_REPO="${ORB_CI_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" ORB_CI_COPY=1 exec bash "$HOME_DIR/orb-ci.sh" "$@"
 fi
 REPO="$ORB_CI_REPO" WT="$HOME_DIR/wt" LOGS="$HOME_DIR/logs" DONE="$HOME_DIR/done" ISSUE="${ORB_CI_ISSUE:-63}"
-INTERVAL="${ORB_CI_INTERVAL:-600}"
+INTERVAL="${ORB_CI_INTERVAL:-600}" FULL_DONE="$HOME_DIR/done-full"
+[[ "${1:-}" != --full ]] || WT="$HOME_DIR/wt-full"
 SLUG="$(gh repo view "$(git -C "$REPO" remote get-url origin)" --json nameWithOwner -q .nameWithOwner)"
 export PATH="$HOME/.elan/bin:$PATH"
 mkdir -p "$LOGS"; touch "$DONE"
@@ -38,7 +46,9 @@ in_ci() {  # in_ci <cmd...>: run the command with CI set; with ORB_CI_JOB, in a 
   unit="$(job "${opts[@]}" orb-ci -- bash -c 'CI=1 LAKE_RESTORE_ARTIFACTS=true "$@" >"$RUN_DIR/out.log" 2>&1' _ "$@" |
     awk '$1 == "started" { print $2 }')"
   [[ -n "$unit" ]] || { echo "orb-ci: job did not start"; return 1; }
+  trap 'systemctl --user stop "$unit"; exit 143' TERM INT  # stopping this process stops its job
   while systemctl --user -q is-active "$unit"; do sleep 10; done
+  trap - TERM INT
   st="/srv/status/$(id -un).$unit.json"
   read -r run rc < <(python3 -I -c 'import json, sys; s = json.load(open(sys.argv[1]))
 print(s.get("run_dir") or "-", s.get("exit", 1))' "$st" 2>/dev/null) || { echo "orb-ci: no status $st"; return 1; }
@@ -57,12 +67,14 @@ setup_worktree() {
 record() {  # record <ref> <sha> <mode> <result>: a row at the top of the issue's table (the last 40 kept)
   local body row
   row="| $(date -u '+%m-%d %H:%M') | $1 | \`${2:0:8}\` | $3 | $4 |"
-  body="$(gh issue view "$ISSUE" -R "$SLUG" --json body -q .body)" || { log "cannot read issue $ISSUE"; return; }
+  exec 8>"$HOME_DIR/issue.lock"; flock 8  # the full tier and the watcher both edit the table
+  body="$(gh issue view "$ISSUE" -R "$SLUG" --json body -q .body)" || { log "cannot read issue $ISSUE"; exec 8>&-; return; }
   body="$(ROW="$row" python3 -c 'import os, sys
 b = sys.stdin.read(); head, rest = b.split("|---|---|---|---|---|\n", 1); rows, tail = rest.split("<!-- /orb-ci results -->", 1)
 rows = [r for r in rows.splitlines() if r.startswith("|")][:39]
 print(head + "|---|---|---|---|---|\n" + "\n".join([os.environ["ROW"]] + rows) + "\n<!-- /orb-ci results -->" + tail, end="")' <<<"$body")" &&
     gh issue edit "$ISSUE" -R "$SLUG" --body "$body" >/dev/null || log "cannot update issue $ISSUE"
+  exec 8>&-
 }
 
 # check <kind> <id> <head>: kind main|pr; records the result in the issue and comments.
@@ -162,6 +174,63 @@ pass() {
   done <<<"$prs"
 }
 
+# full_check <kind> <ref> <head>: the full tier on <head> (a commit of main), recorded as <ref>.
+full_check() {
+  local kind="$1" ref="$2" head="$3" rc=0 t0=$SECONDS lg="$LOGS/$3.full-$(date -u +%m%d-%H%M).log" fenv skipped body
+  cd "$WT" && git checkout -q --detach -f "$head" && git clean -qfdx -e .lake || return 1
+  read -ra fenv <<<"${ORB_CI_FULL_ENV:-}"
+  {
+    echo "orb-ci: $ref at $head, mode full ${fenv[*]}"
+    in_ci env "${fenv[@]}" scripts/check.sh --full || rc=1
+  } >>"$lg" 2>&1
+  # as full.yml: nothing skipped (no sandbox step left out), tree clean
+  skipped="$(grep -E 'skipped: no bwrap|^SKIP ' "$lg")"
+  { [[ -z "$skipped" ]] || { echo "FAIL full tier: steps skipped:"; echo "$skipped"; rc=1; }
+    [[ -z "$(git status --porcelain)" ]] || { echo "FAIL full tier: tree not clean:"; git status --porcelain; rc=1; }
+  } >>"$lg" 2>&1
+  local secs=$((SECONDS - t0))
+  if ((rc == 0)); then record "$ref" "$head" "--full" "PASSED in ${secs}s"
+  else
+    record "$ref" "$head" "--full" "**FAILED** in ${secs}s"
+    body="**orb-ci: FAILED** on \`${head:0:8}\` ($ref): \`check.sh --full\`, ${secs}s. Fallback CI while Actions is down (#50, results: #$ISSUE).
+
+\`\`\`
+$(grep -E '^(FAIL|::error)' "$lg" | head -20 || true)
+\`\`\`
+(log: $lg)
+$SIGN"
+    gh issue comment 17 -R "$SLUG" --body "$body" >/dev/null || log "cannot comment on #17"
+  fi
+  echo "$head $kind $rc $secs" >>"$FULL_DONE"
+  log "full $kind ${head:0:8}: rc=$rc ${secs}s"
+}
+
+full_pass() {  # full_pass nightly|tag|now
+  exec 9>"$HOME_DIR/full.lock"
+  if [[ "$1" == tag ]]; then flock -n 9 || return 0; else flock 9; fi  # one full run at a time
+  touch "$FULL_DONE" "$HOME_DIR/full-tags"
+  git -C "$REPO" fetch -q --tags --force origin main || { log "fetch failed"; return 1; }
+  setup_worktree || { log "worktree setup failed"; return 1; }
+  local head tag
+  head="$(git -C "$REPO" rev-parse origin/main)"
+  case "$1" in
+    nightly)
+      if grep -q "^$head [a-z]* 0 " "$FULL_DONE"; then log "full: ${head:0:8} already passed"
+      else full_check nightly "main (full)" "$head"; fi ;;
+    now) full_check now "main (full, manual)" "$head" ;;
+    tag)
+      tag="$(git -C "$REPO" rev-parse -q --verify 'refs/tags/spec-approved^{commit}')" || return 0
+      grep -qx "$tag" "$HOME_DIR/full-tags" && return 0
+      # after the merge: main's head holds the tag's trusted files
+      (cd "$WT" && git checkout -q --detach -f "$head" && scripts/review-boundary.sh >/dev/null 2>&1) ||
+        { log "full: main ${head:0:8} does not hold spec-approved ${tag:0:8}'s trusted files yet"; return 0; }
+      { grep -q "^$head [a-z]* 0 " "$FULL_DONE" || full_check tag "main (full, tag ${tag:0:8})" "$head"; } &&
+        echo "$tag" >>"$HOME_DIR/full-tags" ;;
+    *) log "usage: orb-ci.sh --full nightly|tag|now"; return 2 ;;
+  esac
+}
+
+if [[ "${1:-}" == --full ]]; then full_pass "${2:-}"; exit; fi
 log "orb-ci started: $SLUG, worktree $WT, every ${INTERVAL}s"
 while true; do
   pass
