@@ -310,17 +310,18 @@ theorem carried_cover (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : N
       ⟨Hv', hHv', hHv'r, hHvs, hCHv, hacc Hv' Relation.ReflTransGen.refl⟩ heq)
   · exact Or.inr ⟨v₁, hm v₁ hs₁ hh₁, v₂, hm v₂ hs₂ hh₂, h12, hv₁, hv₂⟩
 
-/-- The validators that an honest `X`'s update counts for a block `C` (`fastCounted`, at a call of
-`X`) are supporters of `C` in an honest voter's merged view of the next slot, under `Carry_y` for
-the counted votes, `C` viable at the vote, and the writer-pool condition (A1.8 (a), (c), (d)). -/
+/-- The validators that an honest `X`'s update counts for a block `D` (`fastCounted`, at a call of
+`X`) are supporters of every `C ⪯ D` in an honest voter's merged view of the next slot, under
+`Carry_y` for the counted votes, `C` viable at the vote, and the writer-pool condition (A1.8 (a),
+(c), (d)). -/
 theorem counted_supporters (hrun : ACRun tr H U) {X y : Fin sp.n} (hX : X ∈ H) (hy : y ∈ H)
-    {i₀ i s : Nat} {C : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hcX : tr.CallAt X i₀ ℓX) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hcarry : CarryAt tr U y i e s (fastCounted sp (tr.state X i₀) ℓX.frame s C))
+    {i₀ i s : Nat} {C D : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hcX : tr.CallAt X i₀ ℓX) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) (hCD : Anc U C D)
+    (hcarry : CarryAt tr U y i e s (fastCounted sp (tr.state X i₀) ℓX.frame s D))
     (hviab : ViableAtVote ℓ e (s + 1) C)
     (hd : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s}) :
-    {w | ∃ v ∈ fastCounted sp (tr.state X i₀) ℓX.frame s C, v.val = w} ⊆
+    {w | ∃ v ∈ fastCounted sp (tr.state X i₀) ℓX.frame s D, v.val = w} ⊆
       supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s C := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -362,7 +363,7 @@ theorem counted_supporters (hrun : ACRun tr H U) {X y : Fin sp.n} (hX : X ∈ H)
     obtain ⟨R, hR, hRr, hCR⟩ := hvanc
     have : R = Hd := hΦXU hR |> fun h => hU.1 h (hΦXU hHd) (hRr.trans hHdr.symm)
     subst this
-    exact Anc.mono hΦXU hCR
+    exact hCD.trans (Anc.mono hΦXU hCR)
   -- `y` holds `v` itself: two other votes of its validator would make it an equivocator at `X`
   have hheld : HeldBefore e.readPoint v (sp.ts s + 3 * sp.Δ) := by
     rcases hcarry.holds v ⟨hvp, hvw, hvres, hvanc⟩ with h | ⟨v₁, v₂, h12, h1, -, hv₁, hv₂, hs₁, hs₂,
