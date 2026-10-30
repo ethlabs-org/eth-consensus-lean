@@ -11,6 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Resolution
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
@@ -97,8 +98,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Saved
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Standalone
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Transfer
