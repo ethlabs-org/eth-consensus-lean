@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 
 public section
 

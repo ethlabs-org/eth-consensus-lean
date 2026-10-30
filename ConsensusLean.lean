@@ -97,6 +97,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Standalone
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Assembly
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Bridge
