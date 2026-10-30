@@ -336,6 +336,60 @@ private theorem exec_message (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fi
         · simp only [attest] at h
           split at h <;> simp [onAttestation] at h
 
+/-- An AC restart call is a restart event. -/
+private theorem exec_restart (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
+    (st : NodeState A) (t : Time) (e : Event A) {ℓ : ACLabel A}
+    (h : Cut.ac ℓ ∈ (exec dg y st t e).2) (hm : ℓ.call = .restart) : e = .restart := by
+  cases e with
+  | message m' =>
+    simp only [exec, onMessage, acCall, List.mem_singleton, Cut.ac.injEq] at h
+    subst h
+    cases hm
+  | attestation a => simp [exec, onAttestation] at h
+  | restart => rfl
+  | block B =>
+    simp only [exec, onBlock] at h
+    split_ifs at h
+    · simp at h
+    · split at h <;> simp [acCall] at h
+      subst h
+      cases hm
+  | tick =>
+    rw [tick_cuts] at h
+    simp only [List.mem_append] at h
+    rcases h with (h | h) | h
+    · simp only [tickStep, acCall, List.mem_singleton, Cut.ac.injEq] at h
+      subst h
+      cases hm
+    · simp only [tickStep] at h
+      split_ifs at h
+      · split at h
+        · simp only [acProposal, List.mem_singleton, Cut.ac.injEq] at h
+          subst h
+          cases hm
+        · rcases List.mem_cons.1 h with h | h
+          · simp only [acProposal, Cut.ac.injEq] at h
+            subst h
+            cases hm
+          · simp only [proposeBlock, onBlock] at h
+            split_ifs at h
+            · simp at h
+            · split at h <;> simp [acCall] at h
+              subst h
+              cases hm
+      · simp at h
+    · simp only [tickStep] at h
+      split at h
+      · simp only [acToFG, List.mem_singleton, Cut.ac.injEq] at h
+        subst h
+        cases hm
+      · rcases List.mem_cons.1 h with h | h
+        · simp only [acToFG, Cut.ac.injEq] at h
+          subst h
+          cases hm
+        · simp only [attest] at h
+          split at h <;> simp [onAttestation] at h
+
 /-- An `fg_attest` cut is in a tick. -/
 private theorem exec_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) {C : A.Blk} {s : Option (FG.Att P.n)}
@@ -651,6 +705,29 @@ theorem accept_in_tick (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ 
     rw [this] at he
     simp [Event.phase] at he
   · exact ⟨rfl, htk ▸ hp.2.1.symm⟩
+
+/-- **A call that is not a restart is in a group of a tick or a delivery.** -/
+theorem group_not_restart (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+    (hc : tr.IsCall y i) (hnr : ¬ tr.RestartAt y i) :
+    ∃ j e, j ≤ i ∧ tr.GroupAt dg y j (tr.time i) e ∧ 0 < e.phase := by
+  obtain ⟨c, hc⟩ := hc
+  obtain ⟨j, e, k, hg, rfl, hk⟩ := call_in_group h hy hc
+  refine ⟨j, e, by omega, hg, ?_⟩
+  cases e with
+  | restart =>
+    rcases k with _ | k <;> simp [exec, restart, acCall] at hk
+    exact absurd ⟨_, by rw [← hk] at hc; exact hc, rfl⟩ hnr
+  | _ => simp [Event.phase]
+
+/-- **A restart call is a restart group of its own.** -/
+theorem restartCall_group (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k : Nat}
+    (hk : tr.RestartAt y k) : tr.GroupAt dg y k (tr.time k) .restart := by
+  obtain ⟨ℓ, hc, hr⟩ := hk
+  obtain ⟨j, e, m, hg, rfl, hm⟩ := call_in_group h hy hc
+  obtain rfl := exec_restart dg y _ _ e (List.mem_of_getElem? hm) hr
+  rcases m with _ | m
+  · exact hg
+  · simp [exec, restart, acCall] at hm
 
 end Consensus.Goldilocks.Compose
 

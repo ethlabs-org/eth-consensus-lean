@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 
 public section
 
@@ -84,9 +86,136 @@ theorem sync_projection : SyncProjection := by
     simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
     exact hlt
 
-/-- **Joining and participation project.** -/
+section
+
+open SA
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+private theorem joined_iff {τ t : Time} (hτ : 0 ≤ τ) :
+    (0 < sp.toParams.slotOf t ∧ τ ≤ sp.toParams.slotTime (sp.toParams.slotOf t - 1)) ↔
+      τ ≤ sp.ts ((sp.slot t : Int) - 1) := by
+  have hΔ := sp.toParams.hΔ
+  rcases Nat.eq_zero_or_pos (sp.toParams.slotOf t) with h0 | hpos
+  · simp only [SAParams.slot, h0, lt_irrefl, false_and, false_iff, not_le, SAParams.ts]
+    push_cast
+    nlinarith
+  · rw [sp.slotTime_eq]
+    simp only [hpos, true_and, SAParams.ts, SAParams.slot]
+    push_cast [Nat.one_le_iff_ne_zero.2 hpos.ne']
+    rfl
+
+/-- The latest restart time before cut `i`. -/
+private noncomputable def lastBefore (tr : GoldilocksTrace sp ro) (y : Fin sp.n) :
+    Nat → WithBot Time
+  | 0 => ⊥
+  | i + 1 => tr.lastWake y i
+
+open Classical in
+private theorem lastBefore_succ (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i : Nat) :
+    lastBefore tr y (i + 1) =
+      if tr.RestartAt y i then (tr.time i : WithBot Time) else lastBefore tr y i := by
+  cases i <;> rfl
+
+private theorem lastBefore_le {dg} {H} {tr : GoldilocksTrace sp ro} (h : GoldilocksRun dg H tr)
+    (y : Fin sp.n) (x : Time) :
+    ∀ i, lastBefore tr y i ≤ x ↔ ∀ k < i, tr.RestartAt y k → tr.time k ≤ x := by
+  intro i
+  induction i with
+  | zero => simp [lastBefore]
+  | succ i ih =>
+    rw [lastBefore_succ]
+    split_ifs with hr
+    · refine ⟨fun hx k hk hk' => ?_, fun hall => WithBot.coe_le_coe.2 (hall i (by omega) hr)⟩
+      exact (h.time_mono (show k ≤ i by omega)).trans (WithBot.coe_le_coe.1 hx)
+    · rw [ih]
+      refine ⟨fun hall k hk hk' => ?_, fun hall k hk => hall k (by omega)⟩
+      rcases Nat.lt_succ_iff_lt_or_eq.1 hk with hk | rfl
+      exacts [hall k hk hk', absurd hk' hr]
+
+private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp ro} (h : GoldilocksRun dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) : ∀ i, (tr.state y i).ac.restartTime = lastBefore tr y i := by
+  intro i
+  induction i with
+  | zero => rw [Trace.state, h.init y hy]; rfl
+  | succ i ih =>
+    rw [lastBefore_succ, ← ih]
+    by_cases hc : ∃ c, tr.CallAt y i c
+    · obtain ⟨c, hc⟩ := hc
+      have hlaw := h.cutLaw y hy i c hc
+      rw [tr.state_succ_of_call hc]
+      cases c with
+      | ac ℓ =>
+        have hpost : (tr.post i).ac = ((goldilocksNode sp ro).step y (tr.state y i).ac ℓ.frame
+            (tr.time i) ℓ.call).1 := (congrArg Prod.fst hlaw.2.1).symm
+        rw [hpost]
+        split_ifs with hR
+        · obtain ⟨ℓ', hℓ', hr⟩ := hR
+          cases Option.some.inj (hc.2.symm.trans hℓ'.2)
+          rw [hr]
+          have hΦ : FrameOK ℓ.frame := hlaw.1 ▸
+            (Store.frame_realization _ _ _ _ (fg_reachable h.toLocalRun hy i)).1
+          exact (restart_state sp _ ro y _ ℓ.frame (tr.time i) hΦ
+            (h.time_nonneg i)).2.2.2.2.2.2.1
+        · exact step_restartTime y _ _ _ _ fun hr => hR ⟨ℓ, hc, hr⟩
+      | fg ℓ =>
+        split_ifs with hR
+        · obtain ⟨ℓ', hℓ', _⟩ := hR
+          cases Option.some.inj (hc.2.symm.trans hℓ'.2)
+        congr 1
+        cases ℓ with
+        | block B acc =>
+          cases acc
+          · rw [hlaw.2]
+          · exact hlaw.2.2.1
+        | attestation a => exact hlaw.2.1
+        | attest C s =>
+          cases s
+          · rw [hlaw.2]
+          · exact hlaw.2.2
+    · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
+      split_ifs with hR
+      · obtain ⟨ℓ, hℓ, _⟩ := hR
+        exact absurd ⟨_, hℓ⟩ hc
+      · rfl
+
+/-- **Joining and participation project**: a restart of the run is a restart of the AC
+projection, and the run's joined test (with `0 < slot(t)`) is the SA's on restart times `≥ 0`;
+the AC state's `restart_time` at a call is the time of the latest restart before it (a restart
+sets it, every other call keeps it), and the restarts at or before the time of a call other than
+a restart are the ones before it (restarts come first at a time). -/
 theorem joined_projection : JoinedProjection := by
-  sorry
+  intro sp ro dg H tr h y hy t
+  have hpt : ∀ z, (tr.JoinedAt z t ↔ SA.JoinedAt tr.projAC z t) := fun z => by
+    unfold RunTrace.JoinedAt SA.JoinedAt
+    refine forall_congr' fun k => ?_
+    rw [projAC_restartAt]
+    exact imp_congr_right fun _ => imp_congr_right fun _ => joined_iff (h.time_nonneg k)
+  refine ⟨hpt y, fun i hi hnr hit => ?_, ?_⟩
+  · -- the restarts at or before `t` are the restarts before `i`
+    have hset : ∀ k, tr.RestartAt y k → (tr.time k ≤ t ↔ k < i) := by
+      intro k hk
+      refine ⟨fun hkt => ?_, fun hki => hit ▸ h.time_mono hki.le⟩
+      by_contra hik
+      rcases Nat.lt_or_eq_of_le (not_lt.1 hik) with hik | rfl
+      · obtain ⟨j, e, hj, hg, hp⟩ := group_not_restart h.toLocalRun hy hi hnr
+        have htk : tr.time k = t := le_antisymm hkt (hit ▸ h.time_mono hik.le)
+        have hgk := restartCall_group h.toLocalRun hy hk
+        rw [htk] at hgk
+        rw [hit] at hg
+        have : e.phase ≤ 0 := h.phase_order y hy y hy j k t e .restart hg hgk (by omega)
+        omega
+      · exact hnr hk
+    unfold RunTrace.JoinedAt SA.joined
+    rw [restartTime_eq h hy, lastBefore_le h]
+    exact ⟨fun hj k hki hk => (joined_iff (h.time_nonneg k)).1 (hj k hk ((hset k hk).2 hki)),
+      fun hj k hk hkt => (joined_iff (h.time_nonneg k)).2 (hj k ((hset k hk).1 hkt) hk)⟩
+  · unfold RunTrace.honestAwakeJoined SA.honestAwakeJoined
+    congr 1
+    ext z
+    exact Iff.rfl.and (Iff.rfl.and (hpt z))
+
+end
 
 end Consensus.Goldilocks.Compose
 
