@@ -73,9 +73,14 @@ check() {
     else
       grep -qE '^(scripts/|lakefile\.(toml|lean)$|lake-manifest\.json$|lean-toolchain$)' <<<"$paths" && flags+=(--selftests)
       grep -qE '^(lakefile\.(toml|lean)$|lake-manifest\.json$|lean-toolchain$)' <<<"$paths" && flags+=(--canary)
+      # step 4's reach report when the trusted surface or scripts/ changed (as ci.yml)
+      local trusted=()
+      mapfile -t trusted < <(python3 -I -c 'import tomllib
+print("\n".join(tomllib.load(open("scripts/boundaries.toml", "rb"))["checks"]["trusted_paths"]))' 2>/dev/null)
+      GIT_LITERAL_PATHSPECS=1 git diff --quiet "$base" HEAD -- "${trusted[@]}" scripts || flags+=(--reach)
     fi
   else
-    flags+=(--selftests)
+    flags+=(--selftests --reach --canary)
   fi
   {
     echo "orb-ci: $kind $id at $head (base ${base:-none}), mode $mode ${flags[*]}"
