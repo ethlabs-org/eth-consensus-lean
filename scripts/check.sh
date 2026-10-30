@@ -365,10 +365,14 @@ step_build() {  # default targets + BUILD_EXTRA; --changed: BUILD_TARGETS only
   return "$rc"
 }
 # --wfail fails on a warning, also when Lake replays it from a built module (CheckFixtures.Warn is built by
-# step 1); `warn.sorry = false` lets `sorry` pass it (CheckFixtures.SorryQuiet).
+# step 1); `warn.sorry = false` lets `sorry` pass it (CheckFixtures.SorryQuiet). With a machine-wide Lake artifact
+# cache (the shared box, #39) step 1 may have restored the fixture from the cache, with a trace that holds no log,
+# so nothing would replay: the self-test drops the fixture's trace and builds with the cache off, so it compiles.
 selftest_build() {
   set +e
   local rc=0
+  local -x LAKE_ARTIFACT_CACHE=false
+  rm -f .lake/build/lib/lean/CheckFixtures/Warn.trace
   expect_fail 'has been deprecated' build_strict CheckFixtures.Warn || rc=1
   expect_pass lake build CheckFixtures.Warn || rc=1
   expect_pass build_strict CheckFixtures.SorryQuiet || rc=1
@@ -1179,6 +1183,8 @@ canary_applies() {  # both edits of the canary apply to the committed module (no
 }
 step_canary() {
   local f hash
+  # Artifact cache off (#39): a module served from the cache does not rewrite its .olean.hash in .lake/build.
+  local -x LAKE_ARTIFACT_CACHE=false
   f="$(mod_file "$CANARY_MODULE")" hash=".lake/build/lib/lean/${CANARY_MODULE//.//}.olean.hash"
   [[ -f "$f" ]] && git diff --quiet -- "$f" || { echo "  FAIL[canary] $f is missing or has local changes"; return 1; }
   canary_applies || return 1
