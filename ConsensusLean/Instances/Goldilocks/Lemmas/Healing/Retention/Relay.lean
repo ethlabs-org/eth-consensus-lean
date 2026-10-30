@@ -27,7 +27,8 @@ section Deadline
 
 variable {P : Params} {FGP : Type} {A : ACInterface P FGP} {T : ACTrace A}
 
-private theorem lastWake_coe {y : Fin P.n} {w : Time} :
+/-- A last wake is the time of a restart at or before the cut. -/
+theorem lastWake_restart {y : Fin P.n} {w : Time} :
     ∀ {c : Nat}, T.lastWake y c = (w : WithBot Time) → ∃ k ≤ c, T.RestartAt y k ∧ T.time k = w
   | 0, h => by
     unfold ACTrace.lastWake at h
@@ -38,19 +39,19 @@ private theorem lastWake_coe {y : Fin P.n} {w : Time} :
     unfold ACTrace.lastWake at h
     split_ifs at h with hr
     · exact ⟨c + 1, le_rfl, hr, WithBot.coe_injective h⟩
-    · obtain ⟨k, hk, h'⟩ := lastWake_coe h
+    · obtain ⟨k, hk, h'⟩ := lastWake_restart h
       exact ⟨k, hk.trans (Nat.le_succ c), h'⟩
 
 /-- With every restart up to cut `c` at or before `a`, the deadline of `τ` is at most
 `max(τ, a) + Δ`. -/
-private theorem deadline_le {y : Fin P.n} {c : Nat} {a : Time}
+theorem deadline_le_restarts {y : Fin P.n} {c : Nat} {a : Time}
     (h : ∀ k ≤ c, T.RestartAt y k → T.time k ≤ a) (τ : Time) :
     T.deadline y c τ ≤ max τ a + P.Δ := by
   unfold ACTrace.deadline
   rcases hw : T.lastWake y c with _ | w
   · change τ + P.Δ ≤ max τ a + P.Δ
     linarith [le_max_left τ a]
-  · obtain ⟨k, hk, hrk, rfl⟩ := lastWake_coe hw
+  · obtain ⟨k, hk, hrk, rfl⟩ := lastWake_restart hw
     change max τ (T.time k) + P.Δ ≤ max τ a + P.Δ
     linarith [max_le_max (le_refl τ) (h k hk hrk)]
 
@@ -125,7 +126,7 @@ private theorem stamp_ge_of_accept (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) 
 
 /-- At an honest vote, the pool of a slot other than the vote's, and the stamps of its votes,
 are those of the state after the vote's call (main's Sleepy `readPoint_slot`). -/
-private theorem readPoint_slot (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem readPoint_pool_of_ne (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
     {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) {σ : Nat} (hσ : e.msg.slot ≠ σ) :
     (T.state y (i + 1)).pool σ = e.readPoint.pool σ ∧
@@ -181,7 +182,7 @@ theorem carryAt_of_writer_window (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
     rwa [hsi, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring] at this
   have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts s + 2 * sp.Δ → T.deadline y k τ < sp.ts s + 3 * sp.Δ := by
     intro k hk τ hτ
-    have h₁ := deadline_le (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
+    have h₁ := deadline_le_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
     have h₂ := max_lt hτ (show sp.ts s < sp.ts s + 2 * sp.Δ by linarith)
     change T.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ at h₁
     linarith
@@ -219,7 +220,7 @@ theorem carryAt_of_writer_window (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
         SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
       intro u hu
       have hus : u.slot = s := SA.state_pool_slot sp hr hy (k' + 1) s u hu
-      obtain ⟨hpool, hstamp⟩ := readPoint_slot hr hy hc (σ := s) (by omega)
+      obtain ⟨hpool, hstamp⟩ := readPoint_pool_of_ne hr hy hc (σ := s) (by omega)
       have hu' := SA.pool_mono hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
       refine ⟨by rw [hus, ← hpool]; exact hu', ?_⟩
       rw [← hstamp u hus]
@@ -350,7 +351,7 @@ theorem relay_mem_voterBlockTree (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
     rwa [← hys] at this
   have hdl : ∀ k ≤ i, T.deadline y k (T.time kw) < sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
     intro k hk
-    have h₁ := deadline_le (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') (T.time kw)
+    have h₁ := deadline_le_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') (T.time kw)
     have h₂ := max_lt (show T.time kw < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by linarith)
       (show sp.ts ((e.msg.slot : Int) - 1) < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by
         linarith)

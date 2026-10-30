@@ -18,7 +18,7 @@ the GST, `Retention/Relay`), (R4) (`Retention/Records`), HBoot's caches from G1.
 the origin, relayed in time; `relay_mem_voterBlockTree`), activation (`activation_caches`, the
 rows' sources compared before the first cut of `t_{j+1}`, `origins_compatible_before`) and R5
 above the floor (`height_lead_above`: no high contest, then the crossing of the floor, through
-`Retention/Prefix`). Open there: `row_origin_not_current` (the report-time bound). -/
+`Retention/Prefix`, with the report-time bound `row_origin_not_current`). -/
 
 namespace Consensus.Goldilocks.Healing
 

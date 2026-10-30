@@ -1,5 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
+public import Mathlib.Tactic.Linarith
 
 public section
 
@@ -15,21 +18,23 @@ service"; `phase-service.md` §§2–5 and §7), and the interface through which
   subclaim), and `common_path_acquisition'` restates HS.4 with them;
 * `consume_continue` is HS.5's consumption and continuation (`phase-service.md` §6, §8.1;
   workbench#6 P3): from the acquired path, the phase changes by `w + A_HS`; one level down, its
-  three steps that HS.1–HS.4 do not export are `historical_source_rows`,
+  three steps that HS.1–HS.4 do not export are `historical_source_rows` (proved, `Source`),
   `fixed_upper_proposal_rows` and `mature_progress_consumption` (over `ProtectedBranch`,
   `ReportsBy`, `RowsBy` and `PathAt`, the pieces of `AcquiredPath`).
 
-This is the paper orb's proposed contract, not yet certified. Interfaces: HS.1–HS.4,
-`consume_continue` and its three helpers are open. -/
+HS.1 is proved (`Retain`). This is the paper orb's proposed contract, not yet certified.
+Interfaces: HS.2–HS.4, `consume_continue`, `fixed_upper_proposal_rows` and
+`mature_progress_consumption` are open. -/
 
 namespace Consensus.Goldilocks.Healing
 
 open SA (SAParams ReplayOrder Payload gbar)
 
 /-- **HS.1, effective-phase viable-witness retention** (`phase-service.md` §2 "Why lower finality
-is benign", §7 HS.1). -/
-theorem viable_witness_retention : ViableWitnessRetention := by
-  sorry
+is benign", §7 HS.1; proved in `Retain`, `viable_witness_retention_of`). -/
+theorem viable_witness_retention : ViableWitnessRetention :=
+  fun _ _ _ _ _ _ _ hrun hs _ _ _ _ _ hon _ hy _ hW _ hz _ h1 h2 =>
+    viable_witness_retention_of hrun hs hon hy hW hz h1 h2
 
 /-- **HS.2, clean-lock transfer and two-window drain** (`phase-service.md` §4 "Clean evidence and
 the two-window drain", §7 HS.2). -/
@@ -255,26 +260,59 @@ theorem common_path_acquisition' (hrun : GoldilocksRun dg H tr) (hs : HSShared t
 /-! ### HS.5's consumption, one level down (proposed contract)
 
 The paper orb's skeptical read-back of `consume_continue` names three steps that HS.1–HS.4 do not
-export: (1) HS.4's source arm gives a source at a time `≤ v`, with no `i₀ ≤ k` and no
-`EffAllowed`, so `ClientProgress` does not apply to it directly; (2) for the chosen height-`m`
-proposal `Y` of the continuation, HS.3 exports only the votes and parent extension, not the rows;
-(3) the FG inclusion and acceptance of the crossing (P3). They are stated over the data the
-assembly has; their exact form is a proposed contract, not yet certified. -/
+export: (1) the row of a current source (HS.4's source arm, #88: a source in `[t_s, v]`, allowed in
+the phase), from the `fg_attest` of the same tick and `ClientProgress`; (2) for the chosen
+height-`m` proposal `Y` of the continuation, HS.3 exports only the votes and parent extension, not
+the rows; (3) the FG inclusion and acceptance of the crossing (P3). They are stated over the data
+the assembly has; their exact form is a proposed contract, not yet certified. -/
 
 /-- **Current sources give matching rows** (`phase-service.md` §5 "an actual candidate passed to
 the FG serves `E`", §6): for the acquired path's witness, every honest validator that has, in
 `[t_s, v]`, `v = t_s + 6Δ`, received a source `C ⪰ W` of state height `h` with entry `E`, allowed
 in the phase (HS.4's current-source arm, #88), has signed a matching row for `E` at `h` by `v`:
 the `ac_to_fg` return is followed at once by the `fg_attest` of the same tick, at which
-`ClientProgress` applies (the phase holds through `v`). Open: that source-to-attest transport. -/
+`ClientProgress` applies (the phase holds through `v`; `toFG_attest` for the transport). -/
 theorem historical_source_rows (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+    (_hc : CatchRun tr H g (2 * sp.Δ)) (_hp : PropPlus tr H g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hcl : ClientProgress tr H i₀ m c) {s h : Nat}
     {E W : SA.Blk sp.n (List (FG.Att sp.n))} {kW : Nat}
     (hpath : PathAt tr H Gp w i₀ m c s h E W kW)
     (hrep : ReportsBy tr H (sp.ts s) (sp.ts s + 6 * sp.Δ) h m c E W) :
     RowsBy tr H (sp.ts s + 6 * sp.Δ) h E := by
-  sorry
+  classical
+  obtain ⟨-, -, -, -, -, -, -, hws, -, -, hon, -⟩ := hpath
+  intro y hy
+  rcases hrep y hy with ⟨k, ℓ, C, ⟨hcall, hto, hC⟩, hu, hv, -, hE, hCh, hall⟩ | hrow
+  · -- the source is attested in the same tick, at the same FG state
+    rw [Compose.projAC_state hrun.toLocalRun hy] at hC
+    obtain ⟨sg, hatt, ht, hfg⟩ :=
+      toFG_attest hrun.toLocalRun hy (Compose.projAC_callAt.1 hcall) hto hC
+    rw [← hfg] at hE hCh hall
+    -- the attest cut lies in the phase: after `i₀` (at a time `≥ w`) and before the first cut
+    -- after `v`
+    have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+    have hlate := hset.1.late
+    have hmax := le_max_right (gbar g + 2 * sp.Δ) (gbar g + 8 * sp.Δ)
+    have hex : ∃ i, sp.ts s + 6 * sp.Δ < tr.time i := by
+      obtain ⟨i, -, hi⟩ := hrun.awake_in_horizon y hy (sp.ts s + 6 * sp.Δ + 1)
+        (hs.healthy.2.1 y hy _ (by change gbar g ≤ _; linarith))
+      exact ⟨i, by linarith⟩
+    have hjv : FirstCutAfter tr (Nat.find hex) (sp.ts s + 6 * sp.Δ) :=
+      ⟨fun k hk => not_lt.1 (Nat.find_min hex hk), Nat.find_spec hex⟩
+    have hkv : k + 1 ≤ Nat.find hex := by
+      by_contra hlt
+      have := hrun.time_mono (show Nat.find hex ≤ k by omega)
+      linarith [hjv.2]
+    have hi₀ : i₀ ≤ k + 1 := by
+      by_contra hlt
+      have := hset.2.1.2 (k + 1) (by omega)
+      linarith
+    rcases hcl y hy (k + 1) C sg hatt hi₀ (fun k' h₁ h₂ => hon _ hjv k' h₁ (h₂.trans hkv))
+        E h hE hCh (hCh ▸ hall.2.1) hall with
+      ⟨att, rfl, hah, haT⟩ | ⟨k', hk', att, hsa, hah, haT⟩
+    · exact ⟨k + 1, att, ⟨C, hatt⟩, by rw [ht]; exact hv, hah, haT⟩
+    · exact ⟨k', att, hsa, (hrun.time_mono hk'.le).trans (by rw [ht]; exact hv), hah, haT⟩
+  · exact hrow
 
 /-- **Rows at `m` for a fixed upper proposal** (`phase-service.md` §8.1, the continuation, and
 §5's upper-height case; proposed contract): settled at `w` in `(m, c)`, let `Y` be an honest
