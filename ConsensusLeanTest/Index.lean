@@ -196,6 +196,36 @@ example := ``Consensus.Shape.streamletContract_progressTolerant
 example := ``Consensus.Shape.tendermintContract_progressFits
 example := ``Consensus.Shape.tendermintContract_progressTolerant
 
+/-! ## Goldilocks FG (milestone M₁) -/
+
+example := ``Consensus.Goldilocks.FG.FGParams
+example := ``Consensus.Goldilocks.FG.FGParams.q
+example := ``Consensus.Goldilocks.FG.Att
+example := ``Consensus.Goldilocks.FG.FGBlock
+example := ``Consensus.Goldilocks.FG.ChainState
+example := ``Consensus.Goldilocks.FG.ChainState.bound
+example := ``Consensus.Goldilocks.FG.Att.WellFormed
+example := ``Consensus.Goldilocks.FG.ChainState.validAtt
+example := ``Consensus.Goldilocks.FG.ChainState.processAtt
+example := ``Consensus.Goldilocks.FG.FGParams.heightEvents
+example := ``Consensus.Goldilocks.FG.FGParams.stateTransition
+example := ``Consensus.Goldilocks.FG.FGParams.chainState
+example := ``Consensus.Goldilocks.FG.Record
+example := ``Consensus.Goldilocks.FG.Record.createAtt
+example := ``Consensus.Goldilocks.FG.Record.run
+example := ``Consensus.Goldilocks.FG.slashable
+example := ``Consensus.Goldilocks.FG.QuorumIntersection
+example := ``Consensus.Goldilocks.FG.ChainInvariants
+example := ``Consensus.Goldilocks.FG.HeightStep
+example := ``Consensus.Goldilocks.FG.GatedConsumption
+example := ``Consensus.Goldilocks.FG.FinalityBeforeGate
+example := ``Consensus.Goldilocks.FG.Retention
+example := ``Consensus.Goldilocks.FG.RetentionThroughAppend
+example := ``Consensus.Goldilocks.FG.Aggregation
+example := ``Consensus.Goldilocks.FG.ClientSafety
+example := ``Consensus.Goldilocks.FG.AccountableSafety
+example := ``Consensus.Goldilocks.FG.FGSafety
+
 /-! ## Goldilocks (values and sheet) -/
 
 example := ``Consensus.Shape.goldilocksSchema
