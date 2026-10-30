@@ -29,6 +29,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time}
 
+/-- **Every slot has an honest vote**: an honest validator awake and joined at `t_s + Δ` (there
+are more than `f ≥ 0` of them) votes in slot `s`. -/
+theorem honest_vote_exists (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) (s : Nat) :
+    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s := by
+  sorry
+
 /-- **§2.1, an origin has an honest supporter**: an honest slot-`s` vote whose head extends it. -/
 theorem honest_supporter (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}

@@ -8,8 +8,9 @@ public section
 
 workbench#11 §2.3, §2.4 and §4 "Extend the vote frontier, simultaneously". Fix an honest
 slot-`(s+1)` vote, and assume `P_{s+1}`, `V_s` and that the honest slot-`(s+1)` votes at earlier
-cuts extend every origin of label at most `s` (the first-bad-vote argument). For every origin `C`
-of label `j ≤ s`:
+cuts extend the block in question (the first-bad-vote argument). The lock and later-batch steps
+are stated for a block `B` with the hypotheses they use, so that the proposal-adoption bootstrap
+(workbench#12 §4) applies them to the protected proposal; for an origin `C` of label `j ≤ s`:
 
 * **Locks** (`vote_locks_compatible`): every live lock block after the unlocking is compatible
   with `C`: a lock of slot at most `s` sits below an origin of its slot, compared with `C` by
@@ -33,40 +34,46 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time}
 
-/-- The honest slot-`σ` votes at cuts before `i` extend every origin of label at most `s`. -/
-def EarlierExtendAll (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (i σ s : Nat) : Prop :=
-  ∀ C j, Origin tr H C j → j ≤ s → SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i σ C
-
-/-- **The live locks at a slot-`(s+1)` vote are compatible with the origins of labels at most
-`s`.** -/
+/-- **The live locks at a slot-`(s+1)` vote are compatible with `B`**, a block compatible with
+every origin of label at most `s` that the earlier honest slot-`(s+1)` votes extend. -/
 theorem vote_locks_compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hP : OriginsBelow tr H (s + 1)) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
-    (hs : e.msg.slot = s + 1) (hE : EarlierExtendAll tr H i (s + 1) s)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat} (hC : Origin tr H C j) (hj : j ≤ s) :
+    (hsl : tr.SleepyRun H ΔF) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
+    (hBc : ∀ C j, Origin tr H C j → j ≤ s → Compatible (tr.HonestBlocks H) B C)
+    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) B) :
     ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
-      Compatible (tr.HonestBlocks H) L C := by
+      Compatible (tr.HonestBlocks H) L B := by
   sorry
 
-/-- **First transfer** (§2.3): an honest slot-`(s+1)` vote extends every origin of label `s`. -/
+/-- **First transfer** (§2.3): an honest slot-`(s+1)` vote extends an origin `C` of label `s`
+that the earlier honest slot-`(s+1)` votes extend. -/
 theorem first_transfer_step (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {s : Nat} (hP : OriginsBelow tr H (s + 1))
     (hV : VotesBelow tr H s) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hE : EarlierExtendAll tr H i (s + 1) s) {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hC : Origin tr H C s) : SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hC : Origin tr H C s)
+    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) C) :
+    SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
   sorry
 
-/-- **Later batch** (§2.4): an honest slot-`(s+1)` vote extends every origin of label `j < s`. -/
+/-- **Later batch** (§2.4): an honest slot-`(s+1)` vote extends a block `B` that every honest
+slot-`s` vote extends, compatible with every origin of label at most `s`, and extended by the
+earlier honest slot-`(s+1)` votes (an origin of label `j < s` by `V_s` and `P_{s+1}`; a protected
+proposal by its common batch, workbench#12 §4, S2P). -/
 theorem later_transfer_step (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hP : OriginsBelow tr H (s + 1))
-    (hV : VotesBelow tr H s) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hE : EarlierExtendAll tr H i (s + 1) s) {C : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
-    (hC : Origin tr H C j) (hj : j < s) : SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
+    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hP : OriginsBelow tr H (s + 1)) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
+    (hs : e.msg.slot = s + 1) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB : B ∈ tr.HonestBlocks H)
+    (hBc : ∀ C j, Origin tr H C j → j ≤ s → Compatible (tr.HonestBlocks H) B C)
+    (hall : ∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' → e'.msg.slot = s →
+      SA.VoteExtends (tr.HonestBlocks H) e'.msg B)
+    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) B) :
+    SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   sorry
 
 /-- **Extending the vote frontier**: `P_{s+1}` and `V_s` give `V_{s+1}`. -/
