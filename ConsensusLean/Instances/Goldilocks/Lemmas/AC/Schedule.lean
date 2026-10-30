@@ -86,6 +86,14 @@ theorem ts_le_iff_le_slot {t : Time} (ht : 0 ≤ t) (a : Int) : sp.ts a ≤ t �
     have := mul_le_mul_of_nonneg_left h hd.le
     nlinarith
 
+/-- `slot(t)` is monotone from time `0` on. -/
+theorem slot_mono {t t' : Time} (ht : 0 ≤ t) (h : t ≤ t') : sp.slot t ≤ sp.slot t' := by
+  have h1 := slot_eq sp ht
+  have h2 := slot_eq sp (le_trans ht h)
+  have : t / (4 * sp.Δ) ≤ t' / (4 * sp.Δ) := Int.ediv_le_ediv (four_delta_pos sp) h
+  rw [← h1, ← h2] at this
+  exact_mod_cast this
+
 /-- **F.1 (a).** -/
 theorem slot_arithmetic : SlotArithmetic sp := by
   intro s

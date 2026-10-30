@@ -97,6 +97,44 @@ theorem state_pool_slot {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.
     ∀ v ∈ (tr.state y i).pool σ, v.slot = σ := by
   sorry
 
+/-- The blocks of an honest call's frame are not of a future slot: the initial frame holds
+genesis, of slot `0`, and a frame step adds only the block of an `on_block` call, which is not of
+a future slot (the input contract); calls are at nondecreasing times from `0`. -/
+theorem frame_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) := by
+  induction i using Nat.strong_induction_on generalizing ℓ with
+  | _ i ih =>
+    have step : ∀ (Φ : Frm sp.n FGP) (c : (goldilocksSA sp FGP ro).Call),
+        (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) c ℓ.frame →
+        (∀ B ∈ Φ.tree, B.slot ≤ sp.slot (tr.time i)) →
+        ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) := by
+      intro Φ c hok hv X hX
+      obtain ⟨-, hc'⟩ := hok
+      cases c with
+      | block B =>
+        obtain ⟨hs, -, hB⟩ := hc'
+        rw [hs.tree_eq] at hX
+        rcases hX.1 with rfl | hX
+        · exact hB
+        · exact hv X hX
+      | message m => exact hv X (hc'.1 ▸ hX)
+      | tick => exact hv X (hc' ▸ hX)
+      | proposal => exact hv X (hc' ▸ hX)
+      | toFG => exact hv X (hc' ▸ hX)
+      | restart => exact hv X (hc' ▸ hX)
+    rcases h.frameLaw y hy i ℓ hc with
+      ⟨-, Φ₀, ⟨htree, -, hslot, -, -⟩, -, hok⟩ | ⟨j, ℓ', hj, hc', -, hok⟩
+    · refine step Φ₀ _ hok fun B hB => ?_
+      rw [htree, Set.mem_singleton_iff] at hB
+      subst hB
+      rw [hslot]; exact Nat.zero_le _
+    · refine step _ _ hok fun B hB => ?_
+      exact le_trans (ih j hj hc' B hB)
+        (slot_mono sp (h.time_nonneg j) (h.time_mono (Nat.le_of_lt hj)))
+
 /-- **F.1 (c), a joined node.** -/
 theorem joined_awake : JoinedAwake sp := by
   sorry
