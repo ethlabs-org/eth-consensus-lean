@@ -226,6 +226,63 @@ example := ``Consensus.Goldilocks.FG.ClientSafety
 example := ``Consensus.Goldilocks.FG.AccountableSafety
 example := ``Consensus.Goldilocks.FG.FGSafety
 
+/-! ## Goldilocks Common and Frame -/
+
+example := ``Consensus.Goldilocks.Anc
+example := ``Consensus.Goldilocks.AncAntisymm
+example := ``Consensus.Goldilocks.AncTotal
+example := ``Consensus.Goldilocks.Block
+example := ``Consensus.Goldilocks.Block.RootOk
+example := ``Consensus.Goldilocks.Coherent
+example := ``Consensus.Goldilocks.CommonStatements
+example := ``Consensus.Goldilocks.Compatible
+example := ``Consensus.Goldilocks.DeepestCommonAncestor
+example := ``Consensus.Goldilocks.Digest
+example := ``Consensus.Goldilocks.DigestDeterminesBlock
+example := ``Consensus.Goldilocks.FrameEntersOnce
+example := ``Consensus.Goldilocks.Frame
+example := ``Consensus.Goldilocks.Frame.IsViableAncestor
+example := ``Consensus.Goldilocks.Frame.Rooted
+example := ``Consensus.Goldilocks.Frame.viableAncestor
+example := ``Consensus.Goldilocks.Frame.viableTree
+example := ``Consensus.Goldilocks.FrameEvol
+example := ``Consensus.Goldilocks.FrameOK
+example := ``Consensus.Goldilocks.FrameSeq
+example := ``Consensus.Goldilocks.FrameSeqIn
+example := ``Consensus.Goldilocks.FrameStatements
+example := ``Consensus.Goldilocks.FrameStep
+example := ``Consensus.Goldilocks.FrameNeverReturns
+example := ``Consensus.Goldilocks.Params
+example := ``Consensus.Goldilocks.Params.IsPublic
+example := ``Consensus.Goldilocks.Params.q
+example := ``Consensus.Goldilocks.Params.slotOf
+example := ``Consensus.Goldilocks.FrameParentClosed
+example := ``Consensus.Goldilocks.ParentIn
+example := ``Consensus.Goldilocks.FrameRetention
+example := ``Consensus.Goldilocks.SlotOfSpec
+example := ``Consensus.Goldilocks.FrameStepAddsBlock
+example := ``Consensus.Goldilocks.ViableAncestorExists
+example := ``Consensus.Goldilocks.ViableAncestorSelf
+example := ``Consensus.Goldilocks.ViableTreeAncestorClosed
+
+/-! ## Goldilocks FGStore (a milestone PR appends here only) -/
+
+/-! ## Goldilocks ACBase (a milestone PR appends here only) -/
+
+/-! ## Goldilocks ACSteps (a milestone PR appends here only) -/
+
+/-! ## Goldilocks Compose/AnyAC (a milestone PR appends here only) -/
+
+/-! ## Goldilocks Persist (a milestone PR appends here only) -/
+
+/-! ## Goldilocks Service (a milestone PR appends here only) -/
+
+/-! ## Goldilocks Healing (a milestone PR appends here only) -/
+
+/-! ## Goldilocks Regimes (a milestone PR appends here only) -/
+
+/-! ## Goldilocks Refinement (a milestone PR appends here only) -/
+
 /-! ## Goldilocks (values and sheet) -/
 
 example := ``Consensus.Shape.goldilocksSchema

@@ -10,10 +10,16 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Spec.Baseline
+public import ConsensusLean.Instances.Goldilocks.Spec.Common.Block
+public import ConsensusLean.Instances.Goldilocks.Spec.Common.Params
+public import ConsensusLean.Instances.Goldilocks.Spec.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Client
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.State
+public import ConsensusLean.Instances.Goldilocks.Spec.Frame
 public import ConsensusLean.Instances.Goldilocks.Statements.Baseline
+public import ConsensusLean.Instances.Goldilocks.Statements.Common
 public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
+public import ConsensusLean.Instances.Goldilocks.Statements.Frame
 public import ConsensusLean.Instances.Streamlet.Spec
 public import ConsensusLean.Instances.Tendermint.Spec
 public import ConsensusLean.Lemmas.Blocks.Facts

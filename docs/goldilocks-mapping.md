@@ -71,6 +71,79 @@ Refinement obligations recorded for the run-level milestone: the client's input 
 `stateTransition` (the run level shows that the handlers' checks give it); the fold has no duplicate-root check
 (`fg_on_block`), so roots of a chain need not be distinct at this level; digests map to roots (NoColl).
 
+## Common and Frame (shared base of FGStore and ACBase)
+
+One section per Goldilocks milestone follows (Common/Frame, then FGStore, ACBase, ACSteps, Compose/AnyAC, Persist,
+Service, Healing, Regimes, Refinement); a milestone's statements PR edits only its own section, so parallel PRs do
+not collide (consensus-lean#50).
+
+CLAIMS pin: `goldilocks-claims.tex` at goldilocks `d9ea8d86` (goldilocks#21). Layout: decomposition §4.1
+(workbench `repos/goldilocks/notes/architecture/decomposition.md`). The statements are not a milestone of their
+own: `FGStore` and `ACBase` use them.
+
+| Node | Reference | Definition | Milestone | Lean name |
+|---|---|---|---|---|
+| — | SPEC `shared/composition.tex` §Blocks | block (parametric in the FG and AC payloads), digest, root check | — | `Consensus.Goldilocks.Block`, `Consensus.Goldilocks.Digest`, `Consensus.Goldilocks.Block.RootOk` |
+| — | SPEC `shared/composition.tex` §Blocks (tree, `⪯`, compatible) | ancestry inside a set of blocks; coherent set (F.2, F.3 on a set) | — | `Consensus.Goldilocks.ParentIn`, `Consensus.Goldilocks.Anc`, `Consensus.Goldilocks.Compatible`, `Consensus.Goldilocks.Coherent` |
+| — | SPEC `shared/composition.tex` §Model; `shared/fg.tex` `δ_t` | shared parameters, quorum, public time, `slot(t)` | — | `Consensus.Goldilocks.Params`, `Consensus.Goldilocks.Params.q`, `Consensus.Goldilocks.Params.IsPublic`, `Consensus.Goldilocks.Params.slotOf` |
+| — | SPEC `shared/composition.tex` §"The FG frame"; `fgsa-spec.tex` `viable_ancestor` | frame, viable tree, viable ancestor, rooted tree | — | `Consensus.Goldilocks.Frame`, `Consensus.Goldilocks.Frame.viableTree`, `Consensus.Goldilocks.Frame.IsViableAncestor`, `Consensus.Goldilocks.Frame.viableAncestor`, `Consensus.Goldilocks.Frame.Rooted` |
+| G0.4 (frame) | CLAIMS G0.4 (frame) | a well-formed frame | — | `Consensus.Goldilocks.FrameOK` |
+| G0.3 (frame) | CLAIMS G0.3 (frame) | a frame step `⊑_B`, its closure, a frame sequence | — | `Consensus.Goldilocks.FrameStep`, `Consensus.Goldilocks.FrameEvol`, `Consensus.Goldilocks.FrameSeq`, `Consensus.Goldilocks.FrameSeqIn` |
+| F.2 | CLAIMS F.2 (tree mathematics) | antisymmetry, ancestors form a chain, deepest common ancestor | Common | `Consensus.Goldilocks.AncAntisymm`, `Consensus.Goldilocks.AncTotal`, `Consensus.Goldilocks.DeepestCommonAncestor` |
+| F.3 | CLAIMS F.3 | a collision-free digest determines the block | Common | `Consensus.Goldilocks.DigestDeterminesBlock` |
+| — | SPEC `shared/composition.tex` §Model (`slot(t)`) | the slot of a time | Common | `Consensus.Goldilocks.SlotOfSpec` |
+| G0.4 (frame) | CLAIMS G0.4 (frame), consequences | viable ancestor exists, is unique, is a candidate itself; viable tree ancestor-closed; tree parent-closed | Frame | `Consensus.Goldilocks.ViableAncestorExists`, `Consensus.Goldilocks.ViableAncestorSelf`, `Consensus.Goldilocks.ViableTreeAncestorClosed`, `Consensus.Goldilocks.FrameParentClosed` |
+| G0.3 (frame) | CLAIMS G0.3 (frame), consequences | a step adds exactly `B`; retention; never returns; enters once | Frame | `Consensus.Goldilocks.FrameStepAddsBlock`, `Consensus.Goldilocks.FrameRetention`, `Consensus.Goldilocks.FrameNeverReturns`, `Consensus.Goldilocks.FrameEntersOnce` |
+| — | the bundles | all of the above | Common, Frame | `Consensus.Goldilocks.CommonStatements`, `Consensus.Goldilocks.FrameStatements` |
+
+Not transcribed: F.5 (schema), which is Mathlib's `WellFounded.induction`; F.2's "deepest, ties by root order"
+(the SA's fork choice defines it where it is used); F.3's "a root determines the whole chain of its block" (a
+consequence of `DigestDeterminesBlock` along parent edges, stated where a store needs it). Deviations: F.3 needs
+`B.proposer = C.proposer`, because composition.tex digests `(parent root, slot, attestations, AC payload)` without
+the proposer (the node's blocks have the slot proposer, asserted by `state_transition`); its collision-freedom is
+about the two blocks' contents, not the whole digest. `Frame` carries `F` as a field (composition.tex derives it
+as the root of the tree; under `FrameOK` it is that root). `FrameOK` adds "roots injective on the tree", which
+`fg_on_block`'s duplicate-root test gives. The sequence statements of G0.3 (frame) assume that the trees lie in
+one coherent set `U` (at a node, the accepted tree): frames alone allow a block that left the tree to come back
+under a reused root. Witnesses in `ConsensusLeanTest/GoldilocksFrame.lean`,
+all kind (a): `frameOK_Φ₀`, `frameOK_Φ₁`, `step_Φ₀_Φ₁`, `step_Φ₁_Φ₂`, `seq_hyps`.
+
+## FGStore
+
+Nothing cited yet; the milestone's statements PR fills this section.
+
+## ACBase
+
+Nothing cited yet; the milestone's statements PR fills this section.
+
+## ACSteps
+
+Nothing cited yet; the milestone's statements PR fills this section.
+
+## Compose/AnyAC
+
+Nothing cited yet; the milestone's statements PR fills this section.
+
+## Persist
+
+Nothing cited yet; the milestone's statements PR fills this section.
+
+## Service
+
+Nothing cited yet; the milestone's statements PR fills this section.
+
+## Healing
+
+Nothing cited yet; the milestone's statements PR fills this section.
+
+## Regimes
+
+Nothing cited yet; the milestone's statements PR fills this section.
+
+## Refinement
+
+Nothing cited yet; the milestone's statements PR fills this section.
+
 ## Exclusions
 
 What the model leaves out, and why. Generic exclusions (static adversary, equal weights, one `Δ`, no
