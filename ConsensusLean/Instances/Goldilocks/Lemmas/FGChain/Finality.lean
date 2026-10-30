@@ -14,7 +14,15 @@ namespace Consensus.Goldilocks.FG
 
 /-- **G0.8.** -/
 theorem finality_before_gate (gp : FGParams) : FinalityBeforeGate gp := by
-  sorry
+  intro σ _ hm hpw hle hq
+  cases hb : gp.bestFinal σ with
+  | none => exact absurd hq (Nat.not_le.2 (gp.bestFinal_eq_none hb _ hm))
+  | some r =>
+    obtain ⟨hr, -, hmax⟩ := gp.bestFinal_eq_some hb
+    have := eq_of_pairwise_fst_lt hpw hr hm (le_antisymm (hle r hr) (hmax _ hm hq))
+    subst this
+    simp only [FGParams.finalizePrune, hb, FGParams.justifies]
+    simp
 
 end Consensus.Goldilocks.FG
 

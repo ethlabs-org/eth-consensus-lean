@@ -11,7 +11,12 @@ namespace Consensus.Goldilocks.FG
 
 /-- **G1.1.** -/
 theorem quorum_intersection (gp : FGParams) : QuorumIntersection gp := by
-  sorry
+  intro S₁ S₂ h₁ h₂
+  have hu := Finset.card_union_add_card_inter S₁ S₂
+  have hn := (S₁ ∪ S₂).card_le_univ
+  simp only [Fintype.card_fin] at hn
+  have hq : gp.q = (2 * gp.n + 2) / 3 := rfl
+  omega
 
 end Consensus.Goldilocks.FG
 
