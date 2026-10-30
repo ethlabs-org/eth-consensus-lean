@@ -77,14 +77,25 @@ jobs:
           lean --version
           lake --version
 
+      # Saved only right after `cache get` below, so an exact hit always holds Mathlib's oleans and `cache get` (a
+      # ~22 s no-op then) is skipped. A docs-only run, which skips `cache get`, never saves it.
       - name: Restore Lake packages
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: pkgs
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .lake/packages
           key: lake-pkgs-${{ runner.os }}-${{ hashFiles('lake-manifest.json', 'lean-toolchain') }}
 
-      - name: Restore Mathlib olean cache
+      - name: Restore Mathlib olean cache (not needed on an exact packages cache hit)
+        if: steps.pkgs.outputs.cache-hit != 'true'
         run: lake exe cache get
+
+      - name: Save Lake packages (with Mathlib's oleans)
+        if: steps.pkgs.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .lake/packages
+          key: lake-pkgs-${{ runner.os }}-${{ hashFiles('lake-manifest.json', 'lean-toolchain') }}
 
       - name: Sandbox for lake comparator / lake check
         run: |
