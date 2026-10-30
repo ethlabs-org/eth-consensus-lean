@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
 
 public section
 
@@ -36,9 +37,11 @@ theorem proposal_held_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)
     P ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F P := by
   sorry
 
-/-- **`P` has a strict majority at the update's test** (workbench#12 §2–§4: every honest slot-`s`
-vote is `P`; the more than `f` honest validators awake and joined at `t_s + Δ` have their votes and
-`P` resolved before `t_s + 2Δ` at the joined updater; only faulty seats remain; open). -/
+/-- **`P` has a strict majority at the update's test** (workbench#12 §4): every honest slot-`s`
+vote is `P` (`honest_votes_eq_proposal`) and reaches the updater resolved
+(`honest_batch_at_update`); an honest validator has one slot-`s` vote in the pool (unforgeability,
+A0.8), so the honest slot-`s` voters support `P`; the other voters are faulty, and they are fewer
+(`faults_lt_honest_voters`). -/
 theorem proposal_majority_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
@@ -49,7 +52,46 @@ theorem proposal_majority_at_update {dg : Digest (List (FG.Att sp.n)) (Payload s
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
     (SA.voters {v | v ∈ (tr.state y k₀).ac.pool s}).ncard <
       2 * SA.confirmationScore sp (tr.state y k₀).ac ℓ.frame s P := by
-  sorry
+  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hr := hrun'.localRun
+  have hPt := (proposal_held_at_update hrun hnc hsl hp hP hPs hpj hy hu).1
+  have hall := honest_votes_eq_proposal hrun hnc hsl hp hP hPs hpj
+  have hbatch := honest_batch_at_update hrun hnc hsl hy hu hPt hall
+  rw [← projAC_state hrun.toLocalRun hy]
+  set A := tr.projAC.state y k₀
+  set Hv := {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg.slot = s}
+  have hcount : Hᶜ.ncard < Hv.ncard := faults_lt_honest_voters hrun hnc hsl s
+  -- an honest validator's slot-`s` pool votes are its one slot-`s` vote
+  have hone : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s →
+      ∀ v ∈ A.pool s, v.val = x → v = e.msg := by
+    intro x hx j e hv hs v hvp hvx
+    obtain ⟨j', -, e', hv', rfl⟩ := hrun'.honest.pool_vote y hy k₀ s v hvp (hvx ▸ hx)
+    have hs' := SA.state_pool_slot sp hr hy k₀ s _ hvp
+    rw [hvx] at hv'
+    exact congrArg (fun e : SA.Em sp (List (FG.Att sp.n)) => e.msg)
+      (SA.one_vote_per_slot sp _ ro H _ _ hr x hx j' j e' e hv' hv (hs'.trans hs.symm)).2
+  have hsupp : Hv ⊆ SA.supporters ℓ.frame ⟨{v | v ∈ A.pool s}, {v | v ∈ A.pool s ∧
+      SA.resolutionTime A ℓ.frame v < SA.ETime.of (sp.ts s + 2 * sp.Δ)}⟩ s P := by
+    rintro x ⟨hx, j, e, hv, hs⟩
+    obtain ⟨hvp, hres⟩ := hbatch x hx j e hv hs
+    obtain ⟨ℓx, hcx, hex⟩ := hv
+    have hval := (SA.castAt_spec hr hx ⟨hcx, hex⟩).1
+    refine ⟨?_, e.msg, ⟨hvp, hres⟩, hval, by exact_mod_cast hs, P, hPt,
+      (hall x hx j e ⟨ℓx, hcx, hex⟩ hs).symm, Relation.ReflTransGen.refl⟩
+    rintro ⟨v, hv, v', hv', hne, hvx, hv'x⟩
+    exact hne ((hone x hx j e ⟨ℓx, hcx, hex⟩ hs v hv hvx).trans
+      (hone x hx j e ⟨ℓx, hcx, hex⟩ hs v' hv' hv'x).symm)
+  have hvot : SA.voters {v | v ∈ A.pool s} ⊆ Hv ∪ Hᶜ := by
+    rintro w ⟨v, hv, rfl⟩
+    by_cases hw : v.val ∈ H
+    · obtain ⟨j, -, e, he, rfl⟩ := hrun'.honest.pool_vote y hy k₀ s _ hv hw
+      exact Or.inl ⟨hw, j, e, he, SA.state_pool_slot sp hr hy k₀ s _ hv⟩
+    · exact Or.inr hw
+  have h1 := Set.ncard_le_ncard hvot (Set.toFinite _)
+  have h2 := Set.ncard_union_le Hv Hᶜ
+  have h3 := Set.ncard_le_ncard hsupp (Set.toFinite _)
+  change _ < 2 * (SA.supporters ℓ.frame _ s P).ncard
+  omega
 
 /-- **No live lock of the updater vetoes `P`** (workbench#12 §4, S1P: the live locks are ancestors
 of origins compatible with `P`, and of the label-`(s+1)` optimistic origins transferred to `P` by
