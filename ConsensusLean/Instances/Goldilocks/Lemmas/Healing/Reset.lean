@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
@@ -33,7 +34,14 @@ of that state height carries an honest row of height `H_z + 1` (HR.1 (b)), signe
 (unforgeability on the FG projection, C0.5 (c)); the reset is the time of the first cut with such
 a signing.
 
-Interfaces: `settle` and `producer` are open. -/
+`settle` is proved from the facts of `Settle` (`phase-service.md` §8.3): unless the phase changes,
+the phase at `u + Δ` is the one after `u`; its witnesses of state height `m` were accepted by `u`
+and extend every honest `Σ.F` at `u + Δ` (strict-height G1.2), so they reach every honest node by
+`Catch(2Δ)` or acceptance relay; joining and the catch-up at `u + Δ` follow from no restart after
+`ḡ` and `Catch(2Δ)`.
+
+Interfaces: `producer` is open (and `settle` uses the chain-level G1.2 of `Settle`, open there
+only because its proof in `FGChain/Accountable` is private). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -48,7 +56,39 @@ theorem settle {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (hu : gbar g + 8 * sp.Δ ≤ u) (j j' : Nat) (hj : FirstCutAfter tr j u)
     (hj' : tr.FirstCutFrom j' (u + sp.Δ)) :
     PhaseChanged tr.projFG H j j' ∨ SettledAt tr H g (2 * sp.Δ) (u + sp.Δ) := by
-  sorry
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hreq : (goldilocksNode sp ro).Requirements :=
+    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
+      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
+      SA.proposal_payload_valid sp _ ro⟩
+  have hfg := Compose.fg_projection _ _ dg H _ tr hreq hs.genesisRoot hrun.toLocalRun hs.noColl
+  have hq : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
+    change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n
+    have := sp.toParams.hn
+    have := hs.healthy.2.2
+    omega
+  have hst : ∀ z ∈ H, ∀ i, tr.projFG.store z i = (tr.state z i).fg := fun z hz i => by
+    simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hz i]
+  have hw : gbar g + 2 * sp.Δ ≤ u + sp.Δ := by linarith
+  by_cases hch : PhaseChanged tr.projFG H j j'
+  · exact Or.inl hch
+  simp only [PhaseChanged, not_forall, not_not] at hch
+  obtain ⟨m, c, hc₁, hc₂⟩ := hch
+  refine Or.inr ⟨max_le (by linarith) (by linarith), joined_late hs.noRestart (by linarith),
+    fun j₀ hj₀ m' c' hc₀ y hy => ?_, catchRun_at hc hrun.toLocalRun hw⟩
+  obtain rfl : j₀ = j' := le_antisymm
+    (not_lt.1 fun h => absurd (hj₀.2 _ h) (not_lt.2 hj'.1))
+    (not_lt.1 fun h => absurd (hj'.2 _ h) (not_lt.2 hj₀.1))
+  obtain ⟨rfl, rfl⟩ := phaseAt_eq hfg hq hc₂ hc₀
+  -- every honest block of height `m` held after `u` is held by `y` at `u + Δ`
+  refine holdsEvidence_of_relay hfg hy hc₁ fun x hx B hB hBh => ?_
+  have hFB := finalized_anc hfg hq hy hx hB (hBh ▸ hc₂.frontierAt.2 y hy)
+  rw [hst x hx] at hB hFB
+  rw [hst y hy] at hFB ⊢
+  rcases Compose.tree_cases hrun.toLocalRun hx hB with rfl | ⟨k₀, hk₀, hacc⟩
+  · exact (Store.accepted_tree _ _ _ _ (Compose.fg_reachable hrun.toLocalRun hy j₀)).2.2.1
+  · exact relay_held hrun.toLocalRun hs.healthy hs.noRestart hc hx hy hacc hw
+      (by linarith [hj.1 k₀ hk₀]) hj' (Anc.mono (fun X hX => ⟨x, hx, j, hX⟩) hFB)
 
 /-- **HS.5, `Producer(A)`** (with `κ = 2Δ`, `G = G_p`): from a settled `w`, the effective phase
 has changed by `w + A_HS` (after all events there). -/
