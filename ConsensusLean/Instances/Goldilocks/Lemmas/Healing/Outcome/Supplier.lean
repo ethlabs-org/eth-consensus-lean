@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 
 public section
 
@@ -39,8 +40,9 @@ With `b = slot(a) + 3` (`cleanLabel`) and `R = t_{b+2k+2}` (`drainTime`, the `R_
   every honest node has an actual report extending `P`, or one honest node has an actual higher
   report extending `P` (the supplier `entry_rows` consumes).
 
-Interfaces: every theorem but `stored_lock_below` and `drain_live_locks` is open; their paper
-proofs are workbench#6 §22–§23 and #7 §10, conditional on HR.4. -/
+Interfaces: every theorem but `stored_lock_below`, `drain_live_locks` and `clean_fast_transfer`
+(workbench#29 §9, over HR.4) is open; their paper proofs are workbench#6 §22–§23 and #7 §10,
+conditional on HR.4. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -92,6 +94,60 @@ theorem drain_live_locks {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {L : Set SA.Loc
   simp only [cleanLabel]
   omega
 
+/-! ### The clean fast transfer -/
+
+/-- `f < n/2` under `Healthy(g)`. -/
+private theorem faulty_lt_half (hp : ResetPremises tr H dg g ΔF a) (x : Fin sp.n) :
+    2 * Hᶜ.ncard < sp.n := by
+  have := hp.healthy.2.2
+  have := Fin.pos x
+  have hn : sp.n = sp.toParams.n := rfl
+  omega
+
+/-- A fast lock of label `s` is written at or after `t_s` (the update of `s` runs at `t_s + 6Δ`,
+an optimistic confirmation of `s` in slot `s`). -/
+private theorem ts_le_of_fastLock (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n}
+    {i s : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hfl : SA.FastLockAt tr.projAC x i s D CV) : sp.ts s ≤ tr.time i := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hΔ := sp.toParams.hΔ
+  rcases hfl with ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ℓ, A, -, hsl, -⟩
+  · have ht' : tr.time i = sp.ts s + 6 * sp.Δ := ht
+    rw [ht']
+    linarith
+  · have hsl' : sp.slot (tr.time i) = s := hsl
+    exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) s).2 (by omega)
+
+/-- **The reset seed** (workbench#29 §9): a high origin `(O, l)` with `l ≤ slot(a)`. An honest
+row of height `H_z + 1` is signed at `a` (`IsReset`); its source is below a high origin written
+by the signer before the row (`high_row_source`), and a fast lock written by `a` has a label
+`≤ slot(a)`. -/
+private theorem reset_seed (hp : ResetPremises tr H dg g ΔF a) :
+    ∃ v r l O, HighOrigin tr H g v r l O ∧ l ≤ sp.slot a := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  obtain ⟨⟨y, hy, k, att, hs, hh, rfl⟩, -⟩ := hp.reset
+  obtain ⟨r, hrk, l, O, ho, -⟩ := high_row_source hp hy hs hh.ge
+  obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_mem hp ho
+  have h₁ : sp.ts l ≤ tr.time k := (ts_le_of_fastLock hp hfl).trans (hr.time_mono hrk.le)
+  exact ⟨y, r, l, O, ho, by exact_mod_cast (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) l).1 h₁⟩
+
+/-- In a coherent `U` containing the frame tree, a block `B` between a tree block `X` and a tree
+block `O` above it (`X ⪯ B ⪯ O` in `U`, `X ⪯ O` in the tree) is below `O` in the tree. -/
+private theorem frame_anc_of_between {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
+    (hU : Coherent U) {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦU : Φ.tree ⊆ U)
+    {X B O : SA.Blk sp.n (List (FG.Att sp.n))} (hXO : Φ.Anc X O) (hXB : Anc U X B)
+    (hBO : Anc U B O) : Φ.Anc B O := by
+  induction hXO generalizing B with
+  | refl =>
+    obtain rfl := Anc.antisymm hU hXB hBO
+    exact .refl
+  | tail _ hcd ih =>
+    rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hBO with rfl | ⟨c', hBc', hc'd⟩
+    · exact .refl
+    obtain rfl := hU.1 hc'd.1 (hΦU hcd.1)
+      (Option.some_injective _ (hc'd.2.2.symm.trans hcd.2.2))
+    exact (ih hXB hBc').tail hcd
+
 /-- **Clean fast transfer** (§23, HS.2 (1), across phases): a fast lock of label `j ≥ b` that an
 honest node joined at its write stores (after the move back) on `B` is extended by every honest
 vote of a slot after `j`, and at that vote `B` is in the voter's viable voter block tree or at or
@@ -105,7 +161,44 @@ theorem clean_fast_transfer (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} 
       SA.VoteExtends (tr.HonestBlocks H) e.msg B ∧
       (B ∈ ℓ'.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ'.frame e.msg.slot) ∨
         Anc (tr.HonestBlocks H) B ℓ'.frame.fcRoot) := by
-  sorry
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hr := hrun'.localRun
+  have hU := hr.coherent
+  have hret := height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a hp.reset
+  obtain ⟨hBt, D, hfl, hBD⟩ := storedFastLock_mem hp.run hp.noColl hx hw
+  -- a high `B` is a high origin: (R3)
+  by_cases hhigh : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h
+  · exact hret.votes x i j B ⟨hx, hj, ⟨CV, hw⟩, hhigh⟩
+  -- a low `B` is below the reset seed `O`: the honest slot-`j` votes counted by the write extend
+  -- `O` (R3, `l < j`), so `B ⪯ D` is comparable with `O`, and `O ⪯ B` would make `B` high
+  obtain ⟨v, r, l, O, ho, hl⟩ := reset_seed hp
+  rw [cleanLabel_eq] at hb
+  have hDO : Compatible (tr.HonestBlocks H) D O :=
+    SA.fastLock_compatible_of_votes hrun' hx (Nat.lt_succ_self i) hfl (faulty_lt_half hp x)
+      fun z hz c _ e ⟨ℓ, hcl, he⟩ hsl =>
+        (hret.votes v r l O ho z hz c ℓ e ⟨hcl, he⟩ (by omega)).1
+  have hBO : Anc (tr.HonestBlocks H) B O := by
+    have hc : Compatible (tr.HonestBlocks H) B O := by
+      rcases hDO with h | h
+      · exact Or.inl (hBD.trans h)
+      · exact SA.anc_total hU hBD h
+    rcases hc with h | h
+    · exact h
+    · exact absurd (high_of_anc hp ho hx hBt h) hhigh
+  -- later votes inherit `O`'s transfer and witness
+  intro y hy k ℓ' e hc hje
+  obtain ⟨⟨Hd, hHd, hHdr, hOHd⟩, hO⟩ := hret.votes v r l O ho y hy k ℓ' e hc (by omega)
+  refine ⟨⟨Hd, hHd, hHdr, hBO.trans hOHd⟩, ?_⟩
+  rcases hO with ⟨hOS, hrO, W, hWS, hWv, hOW⟩ | hO
+  swap
+  · exact Or.inr (hBO.trans hO)
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  rcases SA.anc_total hU hBO (hrO.mono hΦU) with h | h
+  · exact Or.inr h
+  have hBOΦ := frame_anc_of_between hU hΦU hrO h hBO
+  exact Or.inl ⟨SA.voterBlockTree_anc hr hy hc O hOS B hBOΦ,
+    SA.anc_tree_of_anc_U hU hΦ hΦU (SA.mem_of_anc hrO hOS.1) h (SA.mem_of_anc hBOΦ hOS.1),
+    W, hWS, hWv, hBOΦ.trans hOW⟩
 
 /-- **Clean slow transfer** (phase-service §10, HS.2 (2), across phases): let an honest node `x`
 write at cut `i` a slow lock of label `j` on the raw selected block `S` (`SA.SlowLockAt`, before
