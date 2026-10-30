@@ -26,14 +26,6 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
 
-/-- Viability from acceptance before the freeze (Trivial, `viable_of_accepted`; private copy
-until it lands). -/
-private theorem viable_of_accepted_c (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
-    {σ : Nat} (hes : e.msg.slot = σ + 1) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
-    (hB : AcceptedBefore tr y B (sp.ts σ + 3 * sp.Δ)) : ViableAtVote ℓ e (σ + 1) B := by
-  sorry
-
 /-- **T1 §4, a slow origin transfers to the votes** (A3/A5): for an honest slow lock of slot
 `s` on `D` with `s − k + 1 ≥ r`, every honest vote of a slot after `s` extends `D`. At a
 slot-`(s+1)` vote, every live lock of a label `j < s` has `j ≥ s − k + 1 ≥ r`, so its origin
@@ -76,7 +68,7 @@ theorem slow_origin_transfer_votes (hS : StandaloneRun tr H U g) {x : Fin sp.n} 
         obtain rfl : R = Hv := hU.1 (hΦXU hR) hHv (hRr.trans hHvr.symm)
         exact hall D (hDC.trans (Anc.mono hΦXU hCR))
       exact result_transfer_anc sp hrun hx hres hDC hy hca hes hCy
-        (viable_of_accepted_c hS hy hca hes hs' hacc)
+        (viable_of_accepted hS hy hca hes hs' (hΦXU (deepest_mem hdeep).1.1.1) hacc)
         (slow_live_locks hS hx hsl hs hy hca hes
           fun z hz j hj e' hv' hs'' => ih j hj z hz e' hv' hs'')
         (writer_merged hrun hx hupd hy hca hes (hS.syncAC (by linarith) _))
