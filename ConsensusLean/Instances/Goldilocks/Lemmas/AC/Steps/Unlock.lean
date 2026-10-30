@@ -66,8 +66,8 @@ variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
 /-- **An optimistic origin is compatible.** A block `D` of a frame inside `U` with three quarters
 of the committee as optimistic voters in a pool whose honest votes extend `B` is compatible with
 `B`, when `f < n/2`. -/
-theorem origin_compatible {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} (hU : Coherent U)
-    {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U) {A : SAState sp.n} {σ : Nat} {D B : Blk sp.n FGP}
+theorem origin_compatible (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
+    {A : SAState sp.n} {σ : Nat} {D B : Blk sp.n FGP}
     (h34 : 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ σ D).ncard) (hf : 2 * Hᶜ.ncard < sp.n)
     (hext : ∀ v ∈ A.pool σ, v.val ∈ H → VoteExtends U v B) : Compatible U D B := by
   obtain ⟨x, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hxH⟩ :=
@@ -76,9 +76,6 @@ theorem origin_compatible {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} (hU : Co
   obtain ⟨Hd, hHd, hHdr, hBHd⟩ := hext v hv (not_not.1 hxH)
   obtain rfl : R = Hd := hU.1 (hΦU hR) hHd (hRr.trans hHdr.symm)
   exact anc_total hU (Anc.mono hΦU hDR) hBHd
-
-variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-  {tr : SATrace sp FGP ro}
 
 /-- **The locks at a transfer vote.** At an honest `y`'s slot-`(m+1)` vote: if at least half of
 the committee have slot-`m` support votes in `y`'s merged view whose heads extend `B`, or

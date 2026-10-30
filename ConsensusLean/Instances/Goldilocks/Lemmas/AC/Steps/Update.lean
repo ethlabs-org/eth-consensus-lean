@@ -49,20 +49,6 @@ private theorem anc_of_isDeepest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set
   · have := depth_lt_of_anc hΦ hDX hne hXt
     rcases hD.2 X hX (Ne.symm hne) with h | h <;> omega
 
-/-- An honest node's calls run inside a `U` that holds genesis (the root of its initial
-frame). -/
-private theorem genesis_mem_U {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
-    ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.parent = none := by
-  induction i using Nat.strong_induction_on generalizing ℓ with
-  | _ i ih =>
-    rcases hr.frameLaw y hy i ℓ hc with
-      ⟨-, Φ₀, ⟨htree, hroot, -, hpar, -⟩, ⟨-, hΦ₀U⟩, -⟩ | ⟨j, ℓ', hj, hc', -, -⟩
-    · exact ⟨Φ₀.F, hΦ₀U (htree ▸ Set.mem_singleton _), hroot, hpar⟩
-    · exact ih j hj hc'
-
 variable (sp)
 
 /-- **A1.4 (b).** -/
@@ -109,7 +95,7 @@ theorem optimistic_next_update : OptimisticNextUpdate sp := by
       fun h => hB (frame_mem_of_between sp hU hΦ hΦU hHd₀ hBHd₀ h)
     refine ⟨Φ.F, hΦ.rooted.1, Relation.ReflTransGen.refl, hBF,
       fun Hd hHd _ => hΦ.rooted.2 Hd hHd, fun _ hg => ?_⟩
-    obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_U hr hz hc
+    obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hr hz _ _ hc
     have hFG := hU.1 (hΦU hΦ.rooted.1) hGU (hg.trans hGr.symm)
     obtain h | ⟨c, -, hcF⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hBF
     · exact hB (h ▸ hΦ.rooted.1)

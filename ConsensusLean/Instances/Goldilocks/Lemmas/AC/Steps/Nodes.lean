@@ -319,16 +319,7 @@ theorem source_age : SourceAge sp := by
       exact ((ts_le_iff_le_slot sp (hrun.localRun.time_nonneg j)) _).2 le_rfl
   · -- `C` is the viable ancestor of the lock's block, which is `L`
     have hCt : C ∈ ℓ.frame.tree := hCv.1
-    have hva : Anc ℓ.frame.tree (ℓ.frame.viableAncestor B₀) B₀ := by
-      unfold Frame.viableAncestor
-      split
-      · rename_i h
-        exact h.choose_spec.1
-      · exact Relation.ReflTransGen.refl
-    have hvat : ℓ.frame.viableAncestor B₀ ∈ ℓ.frame.tree := by
-      by_cases he : ℓ.frame.viableAncestor B₀ = B₀
-      · rw [he]; exact hB₀
-      · exact (Anc.mem hva he).1
+    obtain ⟨hvat, hva⟩ := viableAncestor_anc hΦ hB₀
     have hCe : C = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hCt) (hΦU hvat) hlb.symm
     have hLe : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
     subst hCe hLe

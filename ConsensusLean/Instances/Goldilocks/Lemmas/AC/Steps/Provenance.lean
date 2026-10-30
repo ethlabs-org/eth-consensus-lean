@@ -99,12 +99,14 @@ private theorem FromP.of_addLocks {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ
 
 /-! ## What each SA function does to the locks -/
 
-private theorem admitVote_locks (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+/-- Admitting a vote keeps the locks. -/
+theorem admitVote_locks_eq (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).locks = A.locks := by
   unfold admitVote
   split_ifs <;> rfl
 
-private theorem blockReceipt_locks (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+/-- The receipt of a block keeps the locks. -/
+theorem blockReceipt_locks (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).locks = A.locks := by
   unfold blockReceipt
   generalize hA' : ({ A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } :
@@ -114,9 +116,10 @@ private theorem blockReceipt_locks (A : SAState sp.n) (t : Time) (B : Blk sp.n F
   clear hA' this
   induction (blockVotes B) generalizing A' with
   | nil => rfl
-  | cons v l ih => rw [List.foldl_cons, ih, admitVote_locks]
+  | cons v l ih => rw [List.foldl_cons, ih, admitVote_locks_eq]
 
-private theorem updateLatestConfirmed_locks (A : SAState sp.n) (Φ : Frm sp.n FGP)
+/-- Updating the latest confirmed block keeps the locks. -/
+theorem updateLatestConfirmed_locks_eq (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (C : Blk sp.n FGP) : (updateLatestConfirmed sp A Φ C).locks = A.locks := by
   unfold updateLatestConfirmed
   split_ifs <;> rfl
@@ -130,7 +133,7 @@ private theorem FromP.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU :
   unfold optimisticConfirmation
   rcases h : optimisticSelect sp A Φ t with _ | B
   · exact FromP.of_eq rfl
-  · rw [updateLatestConfirmed_locks]
+  · rw [updateLatestConfirmed_locks_eq]
     refine FromP.of_addLocks hU hΦ hΦU rfl fun r f hr => ?_
     simp only [Set.mem_singleton_iff, Prod.mk.injEq] at hr
     obtain ⟨rfl, -⟩ := hr
@@ -147,7 +150,7 @@ private theorem FromP.of_optimistic_admit (hU : Coherent U) (hΦ : FrameOK Φ)
       (fun s _ B => s = sp.slot t ∧ optimisticSelect sp (admitVote sp A t v) Φ t = some B) :=
     by
   have := FromP.of_optimistic hU hΦ hΦU (admitVote sp A t v) t
-  rwa [admitVote_locks, hL] at this
+  rwa [admitVote_locks_eq, hL] at this
 
 private theorem FromP.of_tryVote (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (x : Fin sp.n) (A : SAState sp.n) (t : Time) :
@@ -181,7 +184,7 @@ private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
   · dsimp only
     split_ifs with hconf
     · exact FromP.of_eq rfl
-    · refine FromP.of_addLocks hU hΦ hΦU (updateLatestConfirmed_locks _ _ _) fun r f hr => ?_
+    · refine FromP.of_addLocks hU hΦ hΦU (updateLatestConfirmed_locks_eq _ _ _) fun r f hr => ?_
       rcases hr with ⟨D, hD, hr⟩ | ⟨-, D, hD, hr⟩
       · simp only [Prod.mk.injEq] at hr
         obtain ⟨rfl, rfl⟩ := hr
@@ -234,7 +237,8 @@ private theorem toFG_locks (A : SAState sp.n) (t : Time) :
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
 
-private theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+/-- The frame of an honest node's call is well formed and inside `U`. -/
+theorem frameIn_of_callAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
   rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
@@ -246,7 +250,7 @@ private theorem call_fromP (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
     FromP U (tr.state x i).locks (tr.post i).locks
       (fun s f B => (f = true → ∃ CV, FastLockAt tr x i s B CV) ∧
         ((∃ CV, OptimisticLockAt tr x i s B CV) ∨ ∃ ℓ', UpdateAt tr x i s ℓ')) := by
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hx hc
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
   have hU := hr.coherent
   have opt : ∀ s (f : Bool) B, (∃ CV, OptimisticLockAt tr x i s B CV) →
       (f = true → ∃ CV, FastLockAt tr x i s B CV) ∧

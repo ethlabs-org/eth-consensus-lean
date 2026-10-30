@@ -176,18 +176,6 @@ private theorem readPoint_blockStamp (hr : ACLocalRun (goldilocksSA sp FGP ro) H
     rw [((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
     simp at he'
 
-/-- An honest node's calls run inside a `U` that holds genesis (the root of its initial
-frame). -/
-private theorem genesis_mem_U (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
-    ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.parent = none := by
-  induction i using Nat.strong_induction_on generalizing ℓ with
-  | _ i ih =>
-    rcases hr.frameLaw y hy i ℓ hc with
-      ⟨-, Φ₀, ⟨htree, hroot, -, hpar, -⟩, ⟨-, hΦ₀U⟩, -⟩ | ⟨j, ℓ', hj, hc', -, -⟩
-    · exact ⟨Φ₀.F, hΦ₀U (htree ▸ Set.mem_singleton _), hroot, hpar⟩
-    · exact ih j hj hc'
-
 /-- **A carried vote is a supporter.** A slot-`s` vote that an honest voter of slot `s + 1`
 holds, received before the vote freeze `t_s + 3Δ`, whose head (of slot at most `s`) extends a
 block `C` of the voter's tree and was accepted by the voter before the freeze, and whose
@@ -216,7 +204,7 @@ theorem carried_supporter (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i
       (by rw [hti]; push_cast; rfl)
     simp only [SAParams.ts] at h ⊢
     linarith
-  obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_U hr hy hc.1
+  obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hr hy _ _ hc.1
   -- the head is in the voter's tree
   have hF : Anc U ℓ.frame.F Hv := ((hΦ.rooted.2 C hC).mono hΦU).trans hCHv
   have hHvt : Hv ∈ ℓ.frame.tree := by

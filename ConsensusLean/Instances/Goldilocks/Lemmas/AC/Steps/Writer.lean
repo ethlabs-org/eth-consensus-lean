@@ -189,40 +189,6 @@ private theorem cast_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
     exact absurd ((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1
       hne
 
-/-- Every block of an honest node's frame at a call is of slot `0` (genesis), or the node
-accepted it at that call or an earlier one. -/
-private theorem frame_accepted (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
-    ∀ B ∈ ℓ.frame.tree, B.slot = 0 ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
-  induction i using Nat.strong_induction_on generalizing ℓ with
-  | _ i ih =>
-    have step : ∀ Φ : Frm sp.n FGP,
-        (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
-        (∀ B ∈ Φ.tree, B.slot = 0 ∨ ∃ k ≤ i, tr.AcceptAt y k B) →
-        ∀ B ∈ ℓ.frame.tree, B.slot = 0 ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
-      intro Φ hok hv X hX
-      obtain ⟨-, hm⟩ := hok
-      generalize hcall : ℓ.call = c at hm
-      cases c with
-      | block B =>
-        rw [hm.1.tree_eq] at hX
-        rcases hX.1 with rfl | hX
-        · exact Or.inr ⟨i, le_rfl, ℓ, hc, hcall⟩
-        · exact hv X hX
-      | message m => exact hv X (hm.1 ▸ hX)
-      | tick => exact hv X (hm ▸ hX)
-      | proposal => exact hv X (hm ▸ hX)
-      | toFG => exact hv X (hm ▸ hX)
-      | restart => exact hv X (hm ▸ hX)
-    rcases hr.frameLaw y hy i ℓ hc with
-      ⟨-, Φ₀, ⟨htree, -, hslot, -, -⟩, -, hok⟩ | ⟨j, ℓ', hj, hc', -, hok⟩
-    · refine step Φ₀ hok fun B hB => ?_
-      rw [htree, Set.mem_singleton_iff] at hB
-      subst hB
-      exact Or.inl hslot
-    · exact step _ hok fun B hB =>
-        (ih j hj hc' B hB).imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans hj.le, h⟩
-
 /-- **The writer's pool, for the voter's pool.** -/
 theorem writer_pool (hrun : ACRun tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
@@ -310,7 +276,7 @@ theorem writer_merged (hrun : ACRun tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ 
       (readPoint_pool hr hy hc (by simpa using hv)).1
   -- a vote of a slot-`(s+1)` block of the tree, which `y` accepted at a cut `k ≤ i`
   obtain ⟨-, hys, -, -⟩ := castAt_spec hr hy hc
-  rcases frame_accepted hr hy hc.1 B hB with h0 | ⟨k, hki, ℓk, hck, hcall⟩
+  rcases frame_genesis_or_accepted sp hr hy hc.1 B hB with h0 | ⟨k, hki, ℓk, hck, hcall⟩
   · omega
   have hBk : B.slot ≤ sp.slot (tr.time k) := by
     rcases hr.frameLaw y hy k ℓk hck with ⟨-, Φ₀, -, -, hok⟩ | ⟨j, ℓ', -, -, -, hok⟩ <;>
