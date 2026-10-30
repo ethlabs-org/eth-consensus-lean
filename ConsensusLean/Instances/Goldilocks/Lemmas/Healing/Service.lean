@@ -2,6 +2,10 @@ module
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Acquire
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Drain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeVotes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeContinue
 public import Mathlib.Tactic.Linarith
 
 public section
@@ -23,8 +27,10 @@ service"; `phase-service.md` §§2–5 and §7), and the interface through which
   `ReportsBy`, `RowsBy` and `PathAt`, the pieces of `AcquiredPath`).
 
 HS.1 is proved (`Retain`). This is the paper orb's proposed contract, not yet certified.
-Interfaces: HS.2–HS.4, `consume_continue`, `fixed_upper_proposal_rows` and
-`mature_progress_consumption` are open. -/
+Interfaces: HS.2–HS.4 are open. `consume_continue`, `fixed_upper_proposal_rows` and
+`mature_progress_consumption` are assembled in `ConsumeContinue`, `ConsumeUpper` and
+`ConsumeMature` (`hs5-exact-helpers.md` §§2–4, with `ConsumeCrossing` for §3.1), open only
+through `upper_sources` (§§2.1–2.3, in `ConsumeUpper`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -37,19 +43,33 @@ theorem viable_witness_retention : ViableWitnessRetention :=
     viable_witness_retention_of hrun hs hon hy hW hz h1 h2
 
 /-- **HS.2, clean-lock transfer and two-window drain** (`phase-service.md` §4 "Clean evidence and
-the two-window drain", §7 HS.2). -/
+the two-window drain", §7 HS.2; `hs234-exact-interface.md` §3, assembled in `Drain`). -/
 theorem clean_lock_drain : CleanLockDrain := by
-  sorry
+  intro sp ro dg H tr g ΔF Gp w i₀ m c hrun hs hc hp hw
+  refine ⟨fun _ hx _ _ _ _ ho hj hi _ hy _ _ _ hv hjs hk => ⟨fun he =>
+      clean_fast_next hrun hs hc hp hw hx ho hj hi hy hv he hk, fun _ =>
+      clean_fast_later hrun hs hc hp hw hx ho hj hi hy hv hjs hk⟩,
+    fun _ hx _ _ _ ho hj hi _ hy _ _ _ hv hjs hk => ⟨fun he =>
+      clean_slow_next hrun hs hc hp hw hx ho hj hi hy hv he hk, fun _ =>
+      clean_slow_later hrun hs hc hp hw hx ho hj hi hy hv hjs hk⟩,
+    fun _ _ _ _ _ hr _ _ hl => live_lock_clean hr hl,
+    fun _ _ hP hr _ hy _ _ _ hv he hk _ hl hls _ hL hLr =>
+      live_lock_below_proposal hrun hs hc hp hw hP hr hy hv he hk hl hls hL hLr⟩
 
 /-- **HS.3, honest-proposal frozen-tree agreement** (`phase-service.md` §3 "Relay and the
 honest-proposal sandwich", §7 HS.3). -/
 theorem frozen_tree_agreement : FrozenTreeAgreement := by
-  sorry
+  intro sp ro dg H tr g ΔF w i₀ i m c hrun hs hc hw hi₀ p kP s P hP hikP hti hg hph
+  obtain ⟨iP, ℓp, d, pay, hS⟩ := agreeSetting_of hrun hs hc hw hi₀ hP hikP hti hg hph
+  exact ⟨fun hlock hstart => frozen_votes_unlocked hS hlock hstart,
+    fun _ hp hr => frozen_votes_clean hS hp hr clean_lock_drain⟩
 
 /-- **HS.4, bounded common path and actual-report acquisition** (`phase-service.md` §5 "First
 proposal, actual reports, and the one extra wait", §7 HS.4). -/
-theorem common_path_acquisition : CommonPathAcquisition := by
-  sorry
+theorem common_path_acquisition : CommonPathAcquisition :=
+  fun _ _ _ _ _ _ _ _ _ _ _ _ hrun hs hc hp hset =>
+    ⟨acquired_or_changed hrun hs hc hp hset clean_lock_drain frozen_tree_agreement,
+      client_progress hrun hs⟩
 
 section Contract
 
@@ -332,8 +352,9 @@ theorem fixed_upper_proposal_rows (hrun : GoldilocksRun dg H tr) (hs : HSShared 
     (hYh : ((tr.post kY).fg.σ Y.root).h = m) (hr : rTime sp w ≤ sp.ts s)
     (hbr : ProtectedBranch tr H i₀ m c s Y)
     (hon : ∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) :
-    ∃ E, EntryOf (tr.post kY).fg Y E m ∧ RowsBy tr H (sp.ts s + 6 * sp.Δ) m E := by
-  sorry
+    ∃ E, EntryOf (tr.post kY).fg Y E m ∧ RowsBy tr H (sp.ts s + 6 * sp.Δ) m E :=
+  fixed_upper_rows_of hrun hs hc hp hset clean_lock_drain hcl hY hYs hpH hYh hr hbr.1 hbr.2.1
+    hbr.2.2 hon
 
 /-- **Mature progress consumption** (P3 of workbench#6, included in HS.5: `phase-service.md` §6,
 §7 HS.5, §8.1; proposed contract): settled at `w` in `(m, c)`, let `W` be an honest proposal of
@@ -363,7 +384,10 @@ theorem mature_progress_consumption (hrun : GoldilocksRun dg H tr) (hs : HSShare
           max (sp.ts s + 6 * sp.Δ + ΔF) (sp.ts (E.slot + sp.toParams.δt : Nat)) + Gp + sp.Δ ∧
         h + 1 ≤ ((tr.post kX).fg.σ X.root).h ∧ Anc (tr.HonestBlocks H) W X ∧
         ∀ y ∈ H, ∃ k, tr.AcceptAt y k X ∧ tr.time k < sp.ts x + sp.Δ := by
-  sorry
+  by_cases hch : PhaseChanged tr.projFG H i₀ jb
+  · exact Or.inl hch
+  · exact Or.inr (mature_progress_of hrun hs hc hp hset viable_witness_retention hW hWs hpH hE hh
+      hws hbr.2.2 hrows hjb (phaseOn_of_not_changed hrun hs hset hch))
 
 /-- **HS.5, consumption and continuation** (`phase-service.md` §6, §8.1; workbench#6 P3): from
 the acquired path, a fresh honest ready inclusion proposal `X` (`Prop⁺` after
@@ -377,17 +401,22 @@ Its proof is meant to assemble `historical_source_rows` (the witness's reports b
 `mature_progress_consumption` (the crossing proposal `X` by `b ≤ w + C`; at `h = m` a crossing
 is a frontier rise), and, at `h = m − 1`, HS.3 (b) for `X` and for the next ready proposal `Y`
 after `t_X + 8Δ` (with HS.2's lock premise), `fixed_upper_proposal_rows` for `Y` and
-`mature_progress_consumption` again at `m` (by `t_X + Δ + C ≤ w + 2C`). The glue still open: a
-crossing proposal of height `m + 1` accepted by an honest node changes the phase; `ht(Y) = m`
-(it extends `X`, of height `m`, and the frontier is `m`); `E.slot ≤ s`; HS.3's timing premises
-for `X` and `Y`; and the time arithmetic. -/
+`mature_progress_consumption` again at `m` (by `t_X + Δ + C ≤ w + 2C`). The glue (a crossing
+proposal of height `m + 1` accepted in the phase is a frontier rise; `ht(Y) = m`; `E.slot ≤ s`;
+HS.3's timing premises for `X` and `Y`; the time arithmetic, with index inclusion of first cuts)
+is proved in `ConsumeContinue` (`consume_continue_of`, `hs5-exact-helpers.md` §4). -/
 theorem consume_continue (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
     (hret : ViableWitnessRetention) (hclean : CleanLockDrain) (hagree : FrozenTreeAgreement)
     (hset : SettledIn tr H g w i₀ m c) (hwit : AcquiredPath tr H Gp w i₀ m c)
     (hcl : ClientProgress tr H i₀ m c) (jA : Nat) (hjA : FirstCutAfter tr jA (w + A_HS sp ΔF Gp)) :
     PhaseChanged tr.projFG H i₀ jA := by
-  sorry
+  obtain ⟨s, h, E, W, kW, hpath, hrep⟩ := (acquiredPath_iff_exists tr H Gp w i₀ m c).1 hwit
+  have hrows := historical_source_rows hrun hs hc hp hset hcl hpath hrep
+  obtain ⟨h1, -, hW, hWs, hpH, hE, -, hws, hr, hvD, -, hbr⟩ := hpath
+  by_contra hnc
+  exact consume_continue_of hrun hs hc hp hret hclean hagree hset hcl h1 hW hWs hpH hE hws hr hvD
+    hbr.2.2 hrows hjA (phaseOn_of_not_changed hrun hs hset hnc)
 
 end Contract
 
