@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Service
 
@@ -25,11 +26,13 @@ fradamt-agent/workbench `producer-reset-continuation.md` §17, §18 (BA) and §2
   a retained chain justified `E` first (branch (ii)); the carrier is relayed within `Δ`; at an
   unbound entry `E` is justified by the window's end in both branches (G1.7 in branch (i)).
 
-Interface: `entry_rows` is open. `outcome_of_rows` is proved from two open private steps, one per
-branch, on the relay of the carrier: acceptance relay reaches only the honest nodes whose `Σ.F`
-the carrier extends, so each step says that at the relay deadline every honest node holds the
-carrier or has its `Σ.F` below it (`window_carrier_below`, `early_carrier_below`; the T3 paper
-orb's flag on branch (ii)). -/
+Acceptance relay reaches only the honest nodes whose `Σ.F` the carrier extends, so each branch
+needs that at the relay deadline every honest node holds the carrier or has its `Σ.F` below it.
+In branch (ii) this is `early_carrier_below`: the crossing lies below a high origin written by
+`t_u + 6Δ`, and HR.4 (R2) makes every honest `Σ.F` compatible with it.
+
+Interface: `entry_rows` is open, and `outcome_of_rows` uses the open private step
+`window_carrier_below` (the same relay condition for the window's carrier `W`, branch (i)). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -40,8 +43,10 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **The rows of a served entry by its deadline**: the entry `T` of height `h` (bound when
 `bound`, with predecessor justification `Jr` at `hj`) has, by `d`, a quorum of honest target rows
 signed by `d`, carrying the predecessor at a bound entry; or an honest node has accepted by `d` a
-block `X` that justifies `T` at `h` and, at a bound entry, has finalized the predecessor. -/
-def EntryRows (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+block `X` that justifies `T` at `h`, at a bound entry has finalized the predecessor, and lies below
+a high origin (HR.4) written by `d` (the crossing is extracted from an actual higher returned
+source, below its stored origin). -/
+def EntryRows (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time)
     (T : SA.Blk sp.n (List (FG.Att sp.n))) (h hj : Nat) (bound : Bool) (Jr : Nat) (d : Time) :
     Prop :=
   (∃ R : Finset (FG.Att sp.n), sp.toParams.fg.q ≤ (R.image FG.Att.val).card ∧
@@ -49,11 +54,12 @@ def EntryRows (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
       r.h = h ∧ r.T = T.root ∧ r.timeout = false ∧ (bound = true → r.fin = some (hj, Jr))) ∨
   ∃ y ∈ H, ∃ k X, tr.AcceptAt y k X ∧ tr.time k ≤ d ∧
     Store.JustifiesEntry sp.toParams (Payload sp.n) (tr.post k).fg T h X ∧
-    (bound = true → ((tr.post k).fg.σ X.root).hF + 1 = h ∧ ((tr.post k).fg.σ X.root).F = Jr)
+    (bound = true → ((tr.post k).fg.σ X.root).hF + 1 = h ∧ ((tr.post k).fg.σ X.root).F = Jr) ∧
+    ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ tr.time io ≤ d ∧ Anc (tr.HonestBlocks H) X B
 
-theorem entryRows_iff {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+theorem entryRows_iff {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {g : Time}
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {h hj : Nat} {bound : Bool} {Jr : Nat} {d : Time} :
-    EntryRows tr H T h hj bound Jr d ↔
+    EntryRows tr H g T h hj bound Jr d ↔
       ((∃ R : Finset (FG.Att sp.n), sp.toParams.fg.q ≤ (R.image FG.Att.val).card ∧
         ∀ r ∈ R, r.val ∈ H ∧ (∃ j, tr.SignAt r.val j r ∧ tr.time j ≤ d) ∧
           r.h = h ∧ r.T = T.root ∧ r.timeout = false ∧
@@ -61,7 +67,9 @@ theorem entryRows_iff {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
       ∃ y ∈ H, ∃ k X, tr.AcceptAt y k X ∧ tr.time k ≤ d ∧
         Store.JustifiesEntry sp.toParams (Payload sp.n) (tr.post k).fg T h X ∧
         (bound = true →
-          ((tr.post k).fg.σ X.root).hF + 1 = h ∧ ((tr.post k).fg.σ X.root).F = Jr)) :=
+          ((tr.post k).fg.σ X.root).hF + 1 = h ∧ ((tr.post k).fg.σ X.root).F = Jr) ∧
+        ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ tr.time io ≤ d ∧
+          Anc (tr.HonestBlocks H) X B) :=
   Iff.rfl
 
 /-! ## FG traces: pools, ancestry and justifications across honest stores -/
@@ -255,7 +263,7 @@ theorem entry_rows (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g ΔF)
     (hhj : 0 < ((tr.post i).fg.σ T.root).hj →
       ((tr.post i).fg.σ T.root).hj + 1 = ((tr.post i).fg.σ T.root).h →
       HZ tr H g + 1 ≤ ((tr.post i).fg.σ T.root).hj) :
-    EntryRows tr H T ((tr.post i).fg.σ T.root).h ((tr.post i).fg.σ T.root).hj
+    EntryRows tr H g T ((tr.post i).fg.σ T.root).h ((tr.post i).fg.σ T.root).hj
       (decide ((tr.post i).fg.σ T.root).bound) ((tr.post i).fg.σ T.root).J
       (sp.ts u + 6 * sp.Δ) := by
   sorry
@@ -350,32 +358,87 @@ private theorem window_carrier_below (hrun : GoldilocksRun dg H tr)
       W ∈ (tr.state z j).fg.tree ∨ Anc (tr.HonestBlocks H) (tr.state z j).fg.F W := by
   sorry
 
-/-- **The early carrier is not below a conflicting honest `Σ.F`** (open; §26 branch (ii), the
-T3 paper orb's flag): at the state at `t_u + 7Δ` every honest node holds the retained crossing `X`
-(an honest accepted block, by `t_u + 6Δ`, that justifies `T` and at a bound entry has finalized
-the predecessor) or has its `Σ.F` below `X`, so acceptance relay reaches it. A receiver may have
-finalized a descendant of `X` (then it holds `X`), or a different branch through `T`; the latter
-is what this excludes. -/
+/-- The FG projection of a Goldilocks run under the HS shared premises is an FG trace with its
+contract (C0.5 (c)). -/
+private theorem fg_run (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g ΔF) :
+    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
+  Compose.fg_projection _ _ dg H _ tr
+    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
+      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
+      SA.proposal_payload_valid sp _ ro⟩
+    hsh.genesisRoot hrun.toLocalRun hsh.noColl
+
+/-- `ḡ + 8Δ < a < t_u` for the reset `a` and a slot `u` from the drain on (`c_z < a`, HR.1 (c)). -/
+private theorem reset_lt (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g ΔF)
+    (ha : IsReset tr H g a) {u : Nat} (hR : drainTime sp a ≤ sp.ts u) :
+    SA.gbar g + 8 * sp.Δ < a ∧ a < sp.ts u := by
+  have h1 := cutZ_lt_reset hrun hsh.healthy ha
+  have h2 := lt_cutZ sp g
+  have ha0 : 0 ≤ a := by linarith [gbar_nonneg g, sp.toParams.hΔ]
+  have h3 : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
+    have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+    omega
+  have h4 : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts u :=
+    le_trans ((SA.ts_le_iff sp).2 (by push_cast; omega)) (drainTime_eq (sp := sp) a ▸ hR)
+  exact ⟨by linarith, by linarith⟩
+
+/-- **The early carrier is held or above every honest `Σ.F`** (§26 branch (ii), with the T3 paper
+orb's high origin): at the state at `t_u + 7Δ` every honest node holds the retained crossing `X`
+or has its `Σ.F` below `X`, so acceptance relay reaches it. `X` lies below the block `B` of a high
+origin written by `t_u + 6Δ`; by HR.4 (R2), read at a later call of the node (`Σ.F` only grows),
+its `Σ.F` is compatible with `B`, so with `X` (two ancestors of `B`); if `X ⪯ Σ.F`, `X` is held. -/
 private theorem early_carrier_below (hrun : GoldilocksRun dg H tr)
-    (hsh : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (hpp : PropPlus tr H g Gp)
-    (hcF₁ : 4 * sp.Δ * ((cF : Time) - 1) < 6 * sp.Δ + ΔF)
-    (hcF₂ : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (cF : Time)) (hδ : cF + kF ≤ sp.toParams.δt)
-    (ha : IsReset tr H g a) {p y : Fin sp.n} {k i u : Nat}
-    {T : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H p k u T)
-    (hE : Compose.RunEntry tr H y i T) (hR : drainTime sp a ≤ sp.ts u)
-    (hW : ∃ (w : Fin sp.n) (kw : Nat) (W : SA.Blk sp.n (List (FG.Att sp.n))),
-      ReadyProposal tr H w kw W.slot W ∧ u + cF ≤ W.slot ∧ W.slot ≤ u + cF + kF ∧
-      ∃ Pr, W.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) T Pr)
-    {x : Fin sp.n} (hx : x ∈ H) {kx : Nat} {X : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hXacc : tr.AcceptAt x kx X) (hXt : tr.time kx ≤ sp.ts u + 6 * sp.Δ)
-    (hXJ : Store.JustifiesEntry sp.toParams (Payload sp.n) (tr.post kx).fg T
-      ((tr.post i).fg.σ T.root).h X)
-    (hXb : decide ((tr.post i).fg.σ T.root).bound = true →
-      ((tr.post kx).fg.σ X.root).hF + 1 = ((tr.post i).fg.σ T.root).h ∧
-        ((tr.post kx).fg.σ X.root).F = ((tr.post i).fg.σ T.root).J) :
+    (hsh : HSShared tr H dg g ΔF) (ha : IsReset tr H g a) {u : Nat}
+    (hR : drainTime sp a ≤ sp.ts u) {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hXo : ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ tr.time io ≤ sp.ts u + 6 * sp.Δ ∧
+      Anc (tr.HonestBlocks H) X B) :
     ∀ z ∈ H, ∀ j, tr.FirstCutFrom j (sp.ts u + 7 * sp.Δ) →
       X ∈ (tr.state z j).fg.tree ∨ Anc (tr.HonestBlocks H) (tr.state z j).fg.F X := by
-  sorry
+  intro z hz j hj
+  obtain ⟨xo, io, jo, B, hO, hio, hXB⟩ := hXo
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨hga, hau⟩ := reset_lt hrun hsh ha hR
+  have hfg := fg_run hrun hsh
+  -- a tick of `z` after `j` and after the origin's cut, at the next slot start
+  have hj0 := hrun.time_nonneg j
+  have hjT : tr.time j < sp.ts ((sp.slot (tr.time j) : Int) + 1) := not_le.1 fun h => by
+    have := (SA.ts_le_iff_le_slot sp hj0 _).1 h
+    omega
+  obtain ⟨k', x', hg'⟩ := hrun.tick_of_awake z hz _ (by linarith)
+    ⟨4 * ((sp.slot (tr.time j) : Int) + 1), by simp only [SA.SAParams.ts]; ring⟩
+    (hsh.healthy.2.1 z hz _ (by change SA.gbar g ≤ _; linarith [hj.1]))
+  obtain ⟨hc', ht'⟩ := tick_first_cut hg'
+  have hjk : j ≤ k' := le_of_not_gt fun h => by
+    have := hrun.time_mono h.le
+    linarith
+  have hiok : io ≤ k' := le_of_not_gt fun h => by
+    have := hrun.time_mono h.le
+    linarith [hj.1]
+  -- (R2) after that call, and `Σ.F` at `j` below `Σ.F` there
+  have hcmp := ((height_scoped_retention sp ro dg H tr g ΔF hrun hsh.healthy hsh.noColl a
+    ha).caches z hz k' ⟨_, hc'⟩ (by linarith [hj.1]) xo io jo B hO hiok).1
+  have hmono : Anc (tr.HonestBlocks H) (tr.state z j).fg.F (tr.post k').fg.F := by
+    rw [← tr.state_succ_of_call hc']
+    exact run_F_mono hrun.toLocalRun hz (by omega)
+  have hFB : Compatible (tr.HonestBlocks H) (tr.state z j).fg.F B := by
+    rcases hcmp with h | h
+    · exact Or.inl (hmono.trans h)
+    · exact Anc.total hfg.coherent hmono h
+  have hFX : Anc (tr.HonestBlocks H) (tr.state z j).fg.F X ∨
+      Anc (tr.HonestBlocks H) X (tr.state z j).fg.F := by
+    rcases hFB with h | h
+    · exact Anc.total hfg.coherent h hXB
+    · exact Or.inr (hXB.trans h)
+  rcases hFX with h | h
+  · exact Or.inr h
+  · left
+    have hs : tr.projFG.store z j = (tr.state z j).fg := by
+      simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hz j]
+    have hFt : (tr.state z j).fg.F ∈ (tr.projFG.store z j).tree := by
+      rw [hs]
+      exact (Store.cache_invariants _ _ _ _ (Compose.fg_reachable hrun.toLocalRun hz j)).1
+    have := mem_of_anc (store_anc hfg hz h hFt) hFt
+    rwa [hs] at this
 
 /-- **The outcome from the rows** (§26): with the window's honest ready proposal whose parent
 extends `T`, the rows (or the retained crossing) give C1.2's conclusion: the literal good window
@@ -391,7 +454,7 @@ theorem outcome_of_rows (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g
     (hW : ∃ (w : Fin sp.n) (kw : Nat) (W : SA.Blk sp.n (List (FG.Att sp.n))),
       ReadyProposal tr H w kw W.slot W ∧ u + cF ≤ W.slot ∧ W.slot ≤ u + cF + kF ∧
       ∃ Pr, W.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) T Pr)
-    (hrows : EntryRows tr H T ((tr.post i).fg.σ T.root).h ((tr.post i).fg.σ T.root).hj
+    (hrows : EntryRows tr H g T ((tr.post i).fg.σ T.root).h ((tr.post i).fg.σ T.root).hj
       (decide ((tr.post i).fg.σ T.root).bound) ((tr.post i).fg.σ T.root).J
       (sp.ts u + 6 * sp.Δ)) :
     let h := ((tr.post i).fg.σ T.root).h
@@ -408,11 +471,7 @@ theorem outcome_of_rows (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g
   dsimp only
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hΔF : sp.Δ ≤ ΔF := hsh.healthy.1.deltaF
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
-  have hfg := Compose.fg_projection _ _ dg H _ tr hreq hsh.genesisRoot hrun.toLocalRun hsh.noColl
+  have hfg := fg_run hrun hsh
   have hst : ∀ z ∈ H, ∀ k, tr.projFG.store z k = (tr.state z k).fg := fun z hz k => by
     simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hz k]
   have hpost : ∀ z ∈ H, ∀ k B, tr.AcceptAt z k B → (tr.post k).fg = tr.projFG.store z (k + 1) :=
@@ -425,14 +484,7 @@ theorem outcome_of_rows (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g
   have hTu : T.slot = u := hP.2.2.2.2.1
   -- times: `ḡ + 8Δ < t_u` (the drain is after the reset, which is after `c_z`), `c_F ≥ 2`
   have hgu : SA.gbar g + 8 * sp.Δ < sp.ts u := by
-    have h1 := cutZ_lt_reset hrun hsh.healthy ha
-    have h2 := lt_cutZ sp g
-    have ha0 : 0 ≤ a := by linarith [gbar_nonneg g]
-    have h3 : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
-      omega
-    have h4 : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts u :=
-      le_trans ((SA.ts_le_iff sp).2 (by push_cast; omega)) (drainTime_eq (sp := sp) a ▸ hR)
+    have := reset_lt hrun hsh ha hR
     linarith
   have hcF : (2 : Int) ≤ cF := by
     by_contra hlt
@@ -443,7 +495,7 @@ theorem outcome_of_rows (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g
     simp only [SA.SAParams.ts]; push_cast; ring
   have hc2 : 4 * sp.Δ * 2 ≤ 4 * sp.Δ * cF := mul_le_mul_of_nonneg_left hcF (by linarith)
   have hk0 : 0 ≤ 4 * sp.Δ * kF := by positivity
-  rcases hrows with ⟨R, hRq, hRr⟩ | ⟨x, hx, kx, X, hXacc, hXt, hXJ, hXb⟩
+  rcases hrows with ⟨R, hRq, hRr⟩ | ⟨x, hx, kx, X, hXacc, hXt, hXJ, hXb, hXo⟩
   swap
   · -- the retained crossing: the early outcome, relayed
     have hXt' : tr.time kx < sp.ts ((u + cF + kF + 1 : Nat) : Int) := by rw [hT₁]; linarith
@@ -455,8 +507,7 @@ theorem outcome_of_rows (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g
       intro z hz
       obtain ⟨k', hA, hk'⟩ := relayed hrun hsh hc hx hz hXacc hXne (t := sp.ts u + 7 * sp.Δ)
         (by linarith) (by linarith)
-        (early_carrier_below hrun hsh hc hpp hcF₁ hcF₂ hδ ha hP hE hR hW hx hXacc hXt hXJ hXb
-          z hz)
+        (early_carrier_below hrun hsh ha hR hXo z hz)
       exact ⟨k', hA, by rw [hT₁]; linarith⟩
     exact ⟨Or.inr ⟨x, hx, kx, X, hXacc, hXt', hXJ, hXb, hrel⟩,
       fun _ => ⟨x, hx, kx, X, hXacc, hXt', hXJ⟩⟩
