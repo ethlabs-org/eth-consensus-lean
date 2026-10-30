@@ -70,7 +70,7 @@ theorem slow_origin_transfer_votes (hS : StandaloneRun tr H U g) {x : Fin sp.n} 
         exact hall D (hDC.trans (Anc.mono hΦXU hCR))
       exact result_transfer_anc sp hrun hx hres hDC hy hca hes hCy
         (viable_of_accepted hS hy hca hes hs' (hΦXU (deepest_mem hdeep).1.1.1) hacc)
-        (slow_live_locks hS hx hsl hs hy hca hes
+        (slow_live_locks hS.toHealthyBase hx hsl hs hy hca hes
           fun z hz j hj e' hv' hs'' => ih j hj z hz e' hv' hs'')
         (writer_merged hrun hx hupd hy hca hes (hS.syncAC (by linarith) _))
   have hs1 : gbar g + 4 * sp.Δ ≤ sp.ts (s + 1 : Nat) :=

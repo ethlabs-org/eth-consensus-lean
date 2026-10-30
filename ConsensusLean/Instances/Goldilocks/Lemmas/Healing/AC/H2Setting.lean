@@ -20,11 +20,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 /-- **H.2's premises** over an AC trace of the SA: the trace contract with the honest-object
 facts, a driven trace, `Healthy(g)`, `Catch(2Δ)`, and `Inv(t₀)` for some `t₀ ≥ ḡ`. -/
 structure InclusionRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (g t₀ : Time) : Prop where
-  run : ACRun tr H U
-  driven : Driven tr H
-  healthy : HealthyAC tr H U g
-  catchUp : CatchAC tr H U g (2 * sp.Δ)
+    (g t₀ : Time) : Prop extends HealthyBase tr H U g where
   le : gbar g ≤ t₀
   inv : Inv tr H U t₀
 
@@ -51,74 +47,6 @@ theorem CleanOrigin.protected {B : Blk sp.n FGP} {j : Nat} (h : CleanOrigin tr H
   rcases h with h | h
   exacts [Or.inl h, Or.inr (Or.inl h)]
 
-namespace InclusionRun
-
-variable (hI : InclusionRun tr H U g t₀)
-include hI
-
-/-- An honest node is awake from `ḡ` on. -/
-theorem awake {y : Fin sp.n} (hy : y ∈ H) {t : Time} (ht : gbar g ≤ t) : tr.awake y t :=
-  hI.healthy.2.2.1 y hy t ht
-
-/-- **No restart after `ḡ`**: a restart is a wake, and an honest node is awake from `ḡ` on. -/
-theorem restart_le {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : tr.RestartAt y k) :
-    tr.time k ≤ gbar g := by
-  by_contra hlt
-  rw [not_le] at hlt
-  have hr := hI.run.localRun
-  obtain ⟨ℓ, hc, hcall⟩ := hk
-  obtain ⟨u, hu0, -, hna, hbefore⟩ := hr.sleep_of_restart y hy k ℓ hc hcall
-  have hug : u < gbar g := by
-    by_contra h
-    exact hna (hI.awake hy (not_lt.mp h))
-  obtain ⟨k', ⟨ℓ', hc', -⟩, huk', hk'g⟩ :=
-    hr.restart_at_wake y hy u (gbar g) hu0 hug hna (hI.awake hy le_rfl)
-  have hk'k : k' < k := by
-    by_contra h
-    have := hr.time_mono (not_lt.mp h)
-    linarith
-  have := hbefore k' hk'k ℓ' hc'
-  linarith
-
-/-- An honest node is joined at every `t` with `ḡ ≤ t_{slot(t)−1}`. -/
-theorem joinedAt {y : Fin sp.n} (hy : y ∈ H) {t : Time}
-    (ht : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) : JoinedAt tr y t :=
-  fun _ hk _ => (hI.restart_le hy hk).trans ht
-
-/-- `f < n/2` (from `3f ≤ n − 1`). -/
-theorem two_faulty_lt : 2 * Hᶜ.ncard < sp.n := by
-  have := hI.healthy.2.2.2
-  have := sp.toParams.hn
-  change 1 ≤ sp.n at this
-  omega
-
-/-- `Sync[a, b]` for every `a ≥ ḡ`. -/
-theorem syncAC {a : Time} (ha : gbar g ≤ a) (b : Time) :
-    SyncAC (goldilocksSA sp FGP ro) H U a b tr := by
-  have hg : ∀ τ, a ≤ τ → g ≤ τ := fun τ h => (le_gbar g).trans (ha.trans h)
-  refine ⟨fun x hx i m hm hai _ y hy j ℓ hc hdl => ?_,
-    fun x hx i B hB hai _ y hy j ℓ hc hdl hF =>
-      hI.healthy.2.1 x hx i B hB (hg _ hai) y hy j ℓ hc hdl hF⟩
-  have hmax : max (tr.time i) g = tr.time i := max_eq_left (hg _ hai)
-  have := hI.healthy.1 x hx i m hm y hy j ℓ hc (by rwa [hmax])
-  simpa only [hmax] using this
-
-/-- `f < h_t` at every `t` with `ḡ ≤ t_{slot(t)−1}`: every honest node is awake and joined
-there. -/
-theorem faultBound {t : Time} (ht0 : 0 ≤ t) (ht : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) :
-    FaultBound tr H t := by
-  have hts : sp.ts ((sp.slot t : Int) - 1) ≤ t :=
-    (ts_le_iff_le_slot sp ht0 _).mpr (by omega)
-  have hsub : {y | y ∈ H ∧ tr.awake y t ∧ JoinedAt tr y t} = H :=
-    Set.ext fun y => ⟨fun h => h.1, fun hy => ⟨hy, hI.awake hy (ht.trans hts), hI.joinedAt hy ht⟩⟩
-  unfold FaultBound honestAwakeJoined
-  rw [hsub]
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have := hI.two_faulty_lt
-  omega
-
-end InclusionRun
 
 end Consensus.Goldilocks.SA
 

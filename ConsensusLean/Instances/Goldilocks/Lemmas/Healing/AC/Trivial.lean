@@ -682,7 +682,7 @@ theorem trivial_carry_votes (hS : StandaloneRun tr H U g) {m : Nat}
 /-- **Every honest node votes** in a slot `m ≥ r` (T1 §3, "the honest batch"): it is awake and
 joined at `t_m + Δ`, runs its tick there (`Driven`), and `try_vote` votes unless it voted in slot
 `m` already. -/
-theorem honest_votes_in_slot (hS : StandaloneRun tr H U g) {m : Nat}
+theorem honest_votes_in_slot (hS : HealthyBase tr H U g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) : ∀ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m := by
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
@@ -716,7 +716,7 @@ theorem honest_votes_in_slot (hS : StandaloneRun tr H U g) {m : Nat}
 `m ≥ r` every honest node votes (it is awake and joined at `t_m + Δ`, runs its tick there
 (`Driven`), and `try_vote` votes unless it voted in slot `m` already), so the honest voters of
 slot `m` are at least half of the committee. -/
-theorem honest_voters_half (hS : StandaloneRun tr H U g) {m : Nat}
+theorem honest_voters_half (hS : HealthyBase tr H U g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) :
     sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard := by
   have hall := honest_votes_in_slot hS hm
@@ -780,7 +780,7 @@ theorem votes_continue (hS : StandaloneRun tr H U g) {m : Nat}
   | succ d ih =>
     have hmd : gbar g + 4 * sp.Δ ≤ sp.ts (m + d : Nat) :=
       hm.trans ((ts_le_iff sp).2 (by push_cast; omega))
-    have hhalf := honest_voters_half hS hmd
+    have hhalf := honest_voters_half hS.toHealthyBase hmd
     obtain ⟨z, hz, jz, ez, hvz, hsz⟩ := Set.nonempty_of_ncard_ne_zero
       (s := {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m + d}) (by omega)
     have hcarry := trivial_carry_votes hS hmd

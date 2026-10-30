@@ -28,7 +28,7 @@ namespace Consensus.Goldilocks.SA
 /-- **H.1, AC healing standalone** (T1 §§2–6). -/
 theorem ac_healing_standalone (sp : SAParams) : ACHealingStandalone (sp := sp) :=
   fun _ _ _ _ _ _ hrun hdr htriv hheal hcatch _ _ hpH hP hp =>
-    ac_healing_standalone_of_parent ⟨hrun, hdr, htriv, hheal, hcatch⟩ hpH hP hp
+    ac_healing_standalone_of_parent ⟨⟨hrun, hdr, hheal, hcatch⟩, htriv⟩ hpH hP hp
 
 /-- **H.1 gives its corollary**: for `t ≥ ḡ + 2Θ + 8Δ`, `Prop(G_p)` gives a slot `p` with an
 honest proposer and `t ≤ t_p ≤ t + G_p`; the proposer is awake and joined at `t_p` (no restart
@@ -37,7 +37,7 @@ H.1 at `P` holds from `t_p + 6Δ ≤ t + G_p + 6Δ`. -/
 theorem corollary_of_standalone (sp : SAParams) (h : ACHealingStandalone (sp := sp)) :
     ACHealingStandaloneCorollary (sp := sp) := by
   intro FGP ro H U tr g Gp hrun hdr htriv hheal hcatch hprop t ht
-  have hS : StandaloneRun tr H U g := ⟨hrun, hdr, htriv, hheal, hcatch⟩
+  have hS : StandaloneRun tr H U g := ⟨⟨hrun, hdr, hheal, hcatch⟩, htriv⟩
   have hΘ := Θ_nonneg sp
   have hΔ := sp.toParams.hΔ
   obtain ⟨p, hp1, htp, htpG, hpH⟩ := hprop t (by linarith [gbar_nonneg g])

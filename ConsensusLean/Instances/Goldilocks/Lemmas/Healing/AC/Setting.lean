@@ -8,7 +8,8 @@ public section
 /-! # Goldilocks Healing: the setting of H.1 (healthy driven AC traces with trivial frames)
 
 H.1's premises over an AC trace of the SA (`StandaloneRun`: `ACRun`, `Driven`, `TrivialFrames`,
-`Healthy(g)` and `Catch(2Δ)`), and what they give at once (healing-simple `t1-proof.md` §1:
+`Healthy(g)` and `Catch(2Δ)`; all but the trivial frames are `HealthyBase`, shared with H.2),
+and what they give at once (healing-simple `t1-proof.md` §1:
 "every honest validator is awake from `g` onward ... There is no later restart"):
 
 * no honest node restarts after `ḡ` (`restart_le`): a restart is a wake, and an honest node is
@@ -26,15 +27,21 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
 
-/-- **H.1's premises** over an AC trace of the SA: the trace contract with the honest-object
-facts, a driven trace, trivial frames, `Healthy(g)` and `Catch(2Δ)`. -/
-structure StandaloneRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+/-- **The healthy premises shared by H.1 and H.2** over an AC trace of the SA: the trace
+contract with the honest-object facts, a driven trace, `Healthy(g)` and `Catch(2Δ)` (no
+assumption on the frames). -/
+structure HealthyBase (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (g : Time) : Prop where
   run : ACRun tr H U
   driven : Driven tr H
-  trivial : TrivialFrames tr H
   healthy : HealthyAC tr H U g
   catchUp : CatchAC tr H U g (2 * sp.Δ)
+
+/-- **H.1's premises** over an AC trace of the SA: the healthy premises (`HealthyBase`) and
+trivial frames. -/
+structure StandaloneRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+    (g : Time) : Prop extends HealthyBase tr H U g where
+  trivial : TrivialFrames tr H
 
 theorem le_gbar (g : Time) : g ≤ gbar g := le_max_left g 0
 
@@ -295,9 +302,9 @@ theorem tryVote_votes (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t :
 
 end VotedSlot
 
-namespace StandaloneRun
+namespace HealthyBase
 
-variable (hS : StandaloneRun tr H U g)
+variable (hS : HealthyBase tr H U g)
 include hS
 
 /-- An honest node is awake from `ḡ` on. -/
@@ -372,7 +379,7 @@ theorem faultBound {t : Time} (ht0 : 0 ≤ t) (ht : gbar g ≤ sp.ts ((sp.slot t
   have := hS.two_faulty_lt
   omega
 
-end StandaloneRun
+end HealthyBase
 
 /-! ### Vocabulary of the steps (T1 §§1–6) -/
 

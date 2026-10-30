@@ -421,7 +421,7 @@ theorem batch_proposal (hS : StandaloneRun tr H U g) {σ : Nat}
   have hU := hr.coherent
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
   set SX : Set (Fin sp.n) := {w | w ∈ H ∧ ∃ j e', VoteAt tr w j e' ∧ e'.msg.slot = σ}
-  have hhalf : sp.n ≤ 2 * SX.ncard := honest_voters_half hS hσ
+  have hhalf : sp.n ≤ 2 * SX.ncard := honest_voters_half hS.toHealthyBase hσ
   have hf := hS.two_faulty_lt
   -- `B` is in the proposer's tree
   have hBt : B ∈ ℓ.frame.tree := by
@@ -726,7 +726,8 @@ theorem update_first_proposal (hS : StandaloneRun tr H U g) {X : Fin sp.n} (hX :
     refine compat_down hU hYO ?_
     rcases (show l.slot = σ ∨ σ < l.slot by omega) with h | h
     · rw [h] at hopt
-      exact fastLock_fastLock_compatible hS hx (Or.inr hopt) hX (Or.inl hfu) (by linarith)
+      exact fastLock_fastLock_compatible hS.toHealthyBase hx (Or.inr hopt) hX (Or.inl hfu)
+        (by linarith)
     · exact optimisticLock_compatible hS hx hopt fun w hw j e hv hs =>
         votesExtendAfter_iff.1 hlater w hw j e hv (by omega)
 
@@ -810,7 +811,8 @@ theorem optimistic_first_proposal (hS : StandaloneRun tr H U g) {X : Fin sp.n} (
     refine compat_down hU hYO ?_
     rcases (show l.slot = σ ∨ σ < l.slot by omega) with h | h
     · rw [h] at hopt'
-      exact fastLock_fastLock_compatible hS hx (Or.inr hopt') hX (Or.inr hopt) (by linarith)
+      exact fastLock_fastLock_compatible hS.toHealthyBase hx (Or.inr hopt') hX (Or.inr hopt)
+        (by linarith)
     · exact optimisticLock_compatible hS hx hopt' fun w hw j e hv hs =>
         votesExtendAfter_iff.1 hlater w hw j e hv (by omega)
 
@@ -854,8 +856,8 @@ theorem slow_first_proposal (hS : StandaloneRun tr H U g) {X : Fin sp.n} (hX : X
       have hjr : gbar g + 4 * sp.Δ ≤ sp.ts l.slot := hs.trans ((ts_le_iff sp).2 (by omega))
       have hcomp : Compatible U O R := by
         rcases hO with hO | hO
-        · exact result_result_compatible hS hx hO hX hR hjr
-        · exact (result_optimistic_compatible hS hX hR hx hO hjr).symm
+        · exact result_result_compatible hS.toHealthyBase hx hO hX hR hjr
+        · exact (result_optimistic_compatible hS.toHealthyBase hX hR hx hO hjr).symm
       rcases hcomp with h | h
       · exact anc_total hU (hLO.trans h) hDR
       · exact anc_total hU hLO (hDR.trans h)

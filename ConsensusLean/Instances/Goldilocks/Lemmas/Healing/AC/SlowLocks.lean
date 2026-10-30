@@ -95,7 +95,7 @@ theorem lock_below_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
     · exact ⟨L, hL, hLr, B, hLB, j, hj, CV, Or.inr hopt⟩
 
 /-- **T1 §4, the live locks at a vote after a slow origin.** -/
-theorem slow_live_locks (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+theorem slow_live_locks (hS : HealthyBase tr H U g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)

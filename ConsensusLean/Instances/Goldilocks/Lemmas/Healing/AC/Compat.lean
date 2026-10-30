@@ -183,7 +183,7 @@ private theorem against_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
 /-- **T1 §2, two fast origins of one slot** (fast test or optimistic, in any combination; the
 optimistic/optimistic case of T1 §2): A1.9's same-slot lemma under `Sync[t_s, t_{s+1} + Δ]` and
 `f < n/2`. -/
-theorem fastLock_fastLock_compatible (hS : StandaloneRun tr H U g) {s : Nat} {x x' : Fin sp.n}
+theorem fastLock_fastLock_compatible (hS : HealthyBase tr H U g) {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hfl : FastLockAt tr x i s B CV) (hx' : x' ∈ H) (hfl' : FastLockAt tr x' i' s B' CV')
     (hs : gbar g ≤ sp.ts s) : Compatible U B B' :=
@@ -191,7 +191,7 @@ theorem fastLock_fastLock_compatible (hS : StandaloneRun tr H U g) {s : Nat} {x 
 
 /-- **T1 §2, regular/regular**: two results (`get_confirmation`, vetoed or not) of one slot
 `s ≥ r` at honest nodes are compatible. -/
-theorem result_result_compatible (hS : StandaloneRun tr H U g) {s : Nat} {x x' : Fin sp.n}
+theorem result_result_compatible (hS : HealthyBase tr H U g) {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hR' : ResultAt tr x' i' s C' CV')
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Compatible U C C' := by
@@ -210,7 +210,7 @@ theorem result_result_compatible (hS : StandaloneRun tr H U g) {s : Nat} {x x' :
 
 /-- **T1 §2, regular/optimistic**: a result of slot `s ≥ r` at an honest node is compatible
 with an honest optimistic confirmation of slot `s`. -/
-theorem result_optimistic_compatible (hS : StandaloneRun tr H U g) {s : Nat} {x x' : Fin sp.n}
+theorem result_optimistic_compatible (hS : HealthyBase tr H U g) {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {C B : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hO : OptimisticLockAt tr x' i' s B CV')
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Compatible U C B := by

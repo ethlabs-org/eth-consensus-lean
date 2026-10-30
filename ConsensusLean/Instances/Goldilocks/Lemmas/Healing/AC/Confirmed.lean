@@ -258,7 +258,7 @@ theorem result_extended (hS : StandaloneRun tr H U g) {s : Nat}
   dsimp only at hmaj
   have hHv : H ⊆ voters {v | v ∈ (tr.state x c).pool s} := by
     intro u hu
-    obtain ⟨j, e, hv, hes⟩ := honest_votes_in_slot hS hs u hu
+    obtain ⟨j, e, hv, hes⟩ := honest_votes_in_slot hS.toHealthyBase hs u hu
     obtain ⟨-, -, -, -, h⟩ := late_vote_held hS hx hc hs ht hu hv hes
     obtain ⟨hval, -⟩ := castAt_spec hr hu ⟨hv.choose_spec.1, hv.choose_spec.2⟩
     exact ⟨e.msg, (h c (Or.inl rfl)).1, hval⟩
@@ -339,7 +339,7 @@ theorem lock_compatible (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FG
     obtain ⟨hve, -⟩ := locksSettled_iff.1 hset y hy j (by linarith) l' hl' hlive' L' hL' hL'r
     obtain ⟨x, hx⟩ : H.Nonempty :=
       Set.nonempty_of_ncard_ne_zero (by have := two_faulty_lt_honest hS; omega)
-    obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slot hS hp4 x hx
+    obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slot hS.toHealthyBase hp4 x hx
     obtain ⟨Hd, hHd, hHdr, hLHd⟩ := votesExtendAfter_iff.1 hve x hx i e hv (by omega)
     obtain rfl : Hd = P := hU.1 hHd hPU (hHdr.trans (hexact x hx i e hv hes))
     exact Or.inl hLHd
@@ -442,7 +442,7 @@ theorem first_update_record (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.
       resolutionTime A ℓ.frame v < ETime.of (sp.ts p + 2 * sp.Δ) ∧
       ∀ v' ∈ A.pool p, v'.val = u → v' = v := by
     intro u hu
-    obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slot hS hp4 u hu
+    obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slot hS.toHealthyBase hp4 u hu
     obtain ⟨Hd, hHdt, hHdr, hHds, hh⟩ := late_vote_held hS hy hc hp4 (by rw [htk]; linarith)
       hu hv hes
     obtain ⟨hmem, hvst, hbst⟩ := hh k (Or.inl rfl)
@@ -899,7 +899,7 @@ theorem head_extends (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FGP}
     simpa [SAState.poolAt] using this
   have h1 : H ⊆ supporters ℓ.frame (voteView (tr.post j) ℓ.frame m ⊤) m P := by
     intro u hu
-    obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slot hS hm4 u hu
+    obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slot hS.toHealthyBase hm4 u hu
     obtain ⟨Hd, hHdt, hHdr, hHds, hh⟩ := late_vote_held hS hy hc hm4 htm hu hv hes
     obtain ⟨hmem, hvst, hbst⟩ := hh (j + 1) (Or.inr rfl)
     rw [hst] at hmem hvst hbst

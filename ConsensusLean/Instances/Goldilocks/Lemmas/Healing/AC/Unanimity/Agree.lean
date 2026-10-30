@@ -321,7 +321,7 @@ private theorem honest_supporter {s : Nat} (hs : UnanimitySetting tr H U g (s + 
   have hvot : H ⊆ voters (View.ofLists (voteViewList (tr.state (sp.toParams.proposer (s + 1)) k)
       ℓp.frame s ⊤)).votes := by
     intro w hw
-    obtain ⟨j', e', hv, hes⟩ := honest_votes_in_slot hS hσ w hw
+    obtain ⟨j', e', hv, hes⟩ := honest_votes_in_slot hS.toHealthyBase hσ w hw
     obtain ⟨ℓw, hcw, hew⟩ := id hv
     exact ⟨e'.msg, (mem_proposalView_votes hr hpH k s ℓp.frame _).2
       (honest_vote_at_proposal hS hpH hs.call hs.time hσ hw hv hes).1,

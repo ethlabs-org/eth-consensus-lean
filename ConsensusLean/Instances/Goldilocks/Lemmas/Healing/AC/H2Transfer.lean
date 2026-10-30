@@ -156,7 +156,7 @@ theorem h2_votes_continue (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {
   | succ d ih =>
     have hmd : gbar g + 4 * sp.Δ ≤ sp.ts (m + d : Nat) :=
       by linarith [(ts_le_iff sp).2 (show ((m : Nat) : Int) ≤ ((m + d : Nat) : Int) by omega)]
-    have hhalf := hI.honest_voters_half hmd
+    have hhalf := honest_voters_half hI.toHealthyBase hmd
     suffices h : ∀ k, ∀ x ∈ H, ∀ e, VoteAt tr x k e → e.msg.slot = m + (d + 1) →
         VoteExtends U e.msg B from fun x hx k e hve hs => h k x hx e hve hs
     intro k

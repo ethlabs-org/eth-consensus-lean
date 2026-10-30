@@ -4,78 +4,18 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 
 public section
 
-/-! # Goldilocks Healing: H.2, the honest batch, `Inv` at a vote, `Carry` for a batch
+/-! # Goldilocks Healing: H.2, `Inv` at a vote, `Carry` for a batch
 
-Under H.2's premises (`InclusionRun`): every honest node votes in a slot `m` with
-`t_m ≥ ḡ + 4Δ` and the honest voters are at least half of the committee (as H.1's, without
-trivial frames); `Inv` at a vote not covered by `Φ.F` gives the viability of a protected block and
-`Φ.F ⪯ B` (`inv_at_vote`); and `Carry_y` for an honest batch extending `B` (`h2_carry_votes`,
-§5's transport: relay after `ḡ`, `Catch(2Δ)` before). -/
+Under H.2's premises (`InclusionRun`, which extends H.1's `HealthyBase`, so H.1's honest-batch
+lemmas apply as they are): `Inv` at a vote not covered by `Φ.F` gives the viability of a
+protected block and `Φ.F ⪯ B` (`inv_at_vote`); and `Carry_y` for an honest batch extending `B`
+(`h2_carry_votes`, §5's transport: relay after `ḡ`, `Catch(2Δ)` before). -/
 
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time}
 
-namespace InclusionRun
-
-variable (hI : InclusionRun tr H U g t₀)
-include hI
-
-/-- The state of an honest node before a cut at a time `t` with `ḡ ≤ t_{slot(t)−1}` is
-joined at `t`. -/
-theorem joined_state {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
-    (ht : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)) :
-    joined sp (tr.state y i) (tr.time i) := by
-  unfold joined
-  rcases restartTime_state hI.run.localRun hy i with h | ⟨k, -, hrk, h⟩
-  · rw [h]; exact bot_le
-  · rw [h]; exact WithBot.coe_le_coe.mpr ((hI.restart_le hy hrk).trans ht)
-
-/-- **Every honest node votes in a slot `m` with `t_m ≥ ḡ + 4Δ`.** -/
-theorem honest_votes_in_slot {m : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) :
-    ∀ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m := by
-  have hr := hI.run.localRun
-  have hΔ := sp.toParams.hΔ
-  have hg0 := gbar_nonneg g
-  intro x hx
-  have hslot : sp.slot (sp.ts m + sp.Δ) = m := by
-    refine slot_of_mem sp m (by linarith) ?_
-    rw [show sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ by simp only [SAParams.ts]; push_cast; ring]
-    linarith
-  obtain ⟨c, ℓ, hc, hcall, htc⟩ := hI.driven.tick x hx (sp.ts m + sp.Δ) (by linarith)
-    ⟨4 * m + 1, by simp only [SAParams.ts]; ring⟩ (hI.awake hx (by linarith))
-  have hj := hI.joined_state hx c (by rw [htc, hslot, ts_sub_one]; linarith)
-  by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
-  · obtain ⟨j, -, e, he, hes⟩ := vote_of_votedSlot hr hx c _ hv
-    exact ⟨j, e, he, by rw [hes, htc, hslot]⟩
-  · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
-    obtain ⟨e, hem, hes⟩ := tryVote_votes x ℓ.frame hj hv hT
-    have he := hr.exec c ℓ hc.2 (hc.1 ▸ hx)
-    rw [hc.1, hcall] at he
-    have h2 : (acOnTick sp x (tr.state x c) ℓ.frame (tr.time c)).2 = ℓ.emits :=
-      congrArg Prod.snd he
-    have h3 : (acOnTick sp x (tr.state x c) ℓ.frame (tr.time c)).2 =
-        (tryVote sp x (tr.state x c) ℓ.frame (tr.time c)).2 := by
-      unfold acOnTick
-      dsimp only
-      split_ifs
-      all_goals first | rfl | exact absurd hj ‹_›
-    exact ⟨c, e, ⟨ℓ, hc, h2 ▸ h3 ▸ hem⟩, by rw [hes, htc, hslot]⟩
-
-/-- **The honest batch**: in a slot `m` with `t_m ≥ ḡ + 4Δ` the honest voters are at least half
-of the committee. -/
-theorem honest_voters_half {m : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) :
-    sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard := by
-  have hall := hI.honest_votes_in_slot hm
-  have hle := Set.ncard_le_ncard (s := H)
-    (t := {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}) fun x hx => ⟨hx, hall x hx⟩
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have := hI.two_faulty_lt
-  omega
-
-end InclusionRun
 
 /-- `Carry_y` for a set of votes is `Carry_y` for each of them (the fields are per vote), at a
 vote where `y` is awake and joined. -/
