@@ -258,7 +258,9 @@ theorem state_pool_slot {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) (i σ : Nat) :
     ∀ v ∈ (tr.state y i).pool σ, v.slot = σ := by
-  sorry
+  rcases state_reachable sp h hy i with h0 | ⟨Φ, t, hr, -⟩
+  · rw [h0]; intro v hv; simp [SAState.initial] at hv
+  · exact (pool_cap sp FGP ro y U h.coherent _ Φ t hr σ).1
 
 /-- The blocks of an honest call's frame are not of a future slot: the initial frame holds
 genesis, of slot `0`, and a frame step adds only the block of an `on_block` call, which is not of
