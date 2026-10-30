@@ -213,9 +213,48 @@ theorem proposal_payload_valid : ProposalPayloadValid sp := by
   · simp only [blockSupport, blockVotes, hBp, voteViewList, List.mem_filter] at hv ⊢
     exact hv.1
 
-/-- **A0.7, joining.** -/
+/-- At a reachable state, every pool vote is of a slot at most the slot of the last call's time
+(admission at `t` takes votes of slot `slot(t) − 1` or `slot(t)`, and calls are at nondecreasing
+times from `0`). -/
+theorem pool_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
+    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {A : (goldilocksSA sp FGP ro).State}
+    {Φ : (goldilocksSA sp FGP ro).Frm} {t₀ : Time}
+    (h : (goldilocksSA sp FGP ro).ReachableAt self U A Φ t₀) :
+    0 ≤ t₀ ∧ ∀ σ, ∀ x ∈ (A : SAState sp.n).pool σ, x.slot ≤ sp.slot t₀ := by
+  induction h with
+  | init Φ _ _ =>
+    refine ⟨le_rfl, fun σ x hx => ?_⟩
+    change x ∈ (SAState.initial sp.genesisRoot : SAState sp.n).pool σ at hx
+    simp [SAState.initial] at hx
+  | @step A Φ Φ' t t' c hr ht hok ih =>
+    obtain ⟨h0, hle⟩ := ih
+    refine ⟨le_trans h0 ht, fun σ x hx => ?_⟩
+    rcases admission_slots sp FGP ro self U hU A Φ t hr c Φ' t' ht hok σ x hx with
+      ⟨hx, -⟩ | hx | hx
+    · exact le_trans (hle σ x hx) (slot_mono sp h0 ht)
+    · omega
+    · omega
+
+/-- **A0.7, joining.** A joined node's restarts were before `t_{slot(t)−1}`, and before each the
+node had been asleep after its previous call (at `t'`), so the votes it erased are of slot at most
+`slot(t') < slot(t) − 1`. -/
 theorem joined_keeps_votes : JoinedKeepsVotes sp := by
-  sorry
+  intro FGP ro H U tr h y hy i ℓ hc hj j hji hr σ x hx
+  have hle := (joined_awake sp FGP ro H U tr h y hy i ℓ hc hj).2 j hji hr
+  obtain ⟨ℓr, hcr, hrr⟩ := hr
+  obtain ⟨u, -, hu, -, hbefore⟩ := h.sleep_of_restart y hy j ℓr hcr hrr
+  rcases tr.noCall_or_lastCall y j with hn | ⟨j', hj', ℓ', hc', hnb⟩
+  · rw [tr.state_of_noCall hn, h.init y hy] at hx
+    change x ∈ (SAState.initial sp.genesisRoot : SAState sp.n).pool σ at hx
+    simp [SAState.initial] at hx
+  · rw [tr.state_of_lastCall hc' hj' hnb] at hx
+    have hreach := localRun_reachable _ _ _ _ _ tr h y hy j' ℓ' hc'
+    have hxs := (pool_slot_le sp h.coherent hreach).2 σ x hx
+    have hlt : tr.time j' < sp.ts ((sp.slot (tr.time i) : Int) - 1) :=
+      lt_of_lt_of_le ((hbefore j' hj' ℓ' hc').trans hu) hle
+    have := (ts_le_iff_le_slot sp (h.time_nonneg j') ((sp.slot (tr.time i) : Int) - 1)).not.mp
+      (not_le.mpr hlt)
+    omega
 
 end Consensus.Goldilocks.SA
 
