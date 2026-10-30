@@ -60,6 +60,14 @@ theorem viableAncestor_self {Φ : Frm n FGP} (hΦ : FrameOK Φ) {B : Blk n FGP} 
   obtain ⟨hAB, -, hmax⟩ := viableAncestor_spec hΦ hB
   exact Anc.antisymm hΦ.coherent hAB (hmax B Relation.ReflTransGen.refl hc.symm)
 
+open Classical in
+/-- `viableAncestor B` is an ancestor of `B` in the tree, in any frame. -/
+theorem anc_viableAncestor (Φ : Frm n FGP) (B : Blk n FGP) : Φ.Anc (Φ.viableAncestor B) B := by
+  unfold Frame.viableAncestor
+  split_ifs with h
+  · exact h.choose_spec.1
+  · exact Relation.ReflTransGen.refl
+
 /-- The viable ancestor of a block of a well-formed frame is in the tree, below the block. -/
 theorem viableAncestor_anc {Φ : Frm n FGP} (hΦ : FrameOK Φ) {B : Blk n FGP} (hB : B ∈ Φ.tree) :
     Φ.viableAncestor B ∈ Φ.tree ∧ Φ.Anc (Φ.viableAncestor B) B :=

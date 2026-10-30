@@ -29,7 +29,33 @@ theorem frame_validPayload {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin 
     (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     ∀ B ∈ ℓ.frame.tree, validPayload B := by
-  sorry
+  have step : ∀ (Φ Φ' : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call),
+      (goldilocksSA sp FGP ro).CallOK U Φ t c Φ' → (∀ B ∈ Φ.tree, validPayload B) →
+      ∀ B ∈ Φ'.tree, validPayload B := by
+    intro Φ Φ' t c hok hv X hX
+    obtain ⟨-, hc⟩ := hok
+    cases c with
+    | block B =>
+      obtain ⟨hs, hB, -⟩ := hc
+      rw [hs.tree_eq] at hX
+      rcases hX.1 with rfl | hX
+      · exact hB
+      · exact hv X hX
+    | message m => exact hv X (hc.1 ▸ hX)
+    | tick => exact hv X (hc ▸ hX)
+    | proposal => exact hv X (hc ▸ hX)
+    | toFG => exact hv X (hc ▸ hX)
+    | restart => exact hv X (hc ▸ hX)
+  induction i using Nat.strong_induction_on generalizing ℓ with
+  | _ i ih =>
+    rcases h.frameLaw y hy i ℓ hc with
+      ⟨-, Φ₀, ⟨htree, -, -, -, hpay⟩, -, hok⟩ | ⟨j, ℓ', hj, hc', -, hok⟩
+    · refine step Φ₀ _ _ _ hok fun B hB => ?_
+      rw [htree, Set.mem_singleton_iff] at hB
+      subst hB
+      refine ⟨fun v hv => ?_, fun v hv => ?_⟩ <;>
+        simp [blockVotes, blockSupport, hpay] at hv
+    · exact step _ _ _ _ hok (ih j hj hc')
 
 /-- **F.1 (c), a joined node.** -/
 theorem joined_awake : JoinedAwake sp := by
