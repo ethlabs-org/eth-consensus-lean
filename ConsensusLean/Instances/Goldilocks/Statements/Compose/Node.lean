@@ -121,6 +121,25 @@ def SignedOnlyInTicks : Prop :=
   ∀ (st : NodeState A) (t : Time) (e : Event A) (C : A.Blk) (a : FG.Att P.n),
     Cut.fg (.attest C (some a)) ∈ (exec dg self st t e).2 → e = .tick
 
+/-- **C0.5 (b), the AC sees only blocks the FG accepted** (claims C0.5 (b), goldilocks#36). In
+the cuts of every event at every state, an AC cut with the call `ac_on_block(B)` comes right
+after the FG cut that accepts `B`, and at the FG state `Σ` before that cut `fg_on_block(Σ, B)`
+accepts: `B` is not of a future slot, its root is new, its full parent is held, it extends
+`Σ.F`, and `state_transition` passes from the parent's state (so its proposer is its slot's and
+its parent is of a smaller slot: the assertions of `state_transition`). A restart passes no
+block: its replay runs inside `ac_restart`, over the frame's tree. -/
+def ACSeesAcceptedBlocks : Prop :=
+  ∀ (st : NodeState A) (t : Time) (e : Event A) (ℓ : ACLabel A) (B : A.Blk),
+    Cut.ac ℓ ∈ (exec dg self st t e).2 → ℓ.call = .block B →
+      ∃ (cs₁ cs₂ : List (Cut A)) (st₁ : NodeState A),
+        (exec dg self st t e).2 = cs₁ ++ Cut.fg (.block B true) :: Cut.ac ℓ :: cs₂ ∧
+        CutChain self t st cs₁ st₁ ∧
+        B.slot ≤ P.slotOf t ∧ (st₁.fg.onBlock B).isSome ∧
+        st₁.fg.blocks B.root = none ∧
+        ∃ pr, B.parent = some pr ∧ (st₁.fg.blocks pr).isSome ∧
+          Anc (insert B st₁.fg.tree) st₁.fg.F B ∧
+          (P.fg.stateTransition (st₁.fg.σ pr) B.fgView).isSome
+
 /-- **C0.5, every handler's cuts obey the cut law.** The cuts of every event at every state
 form a `CutChain` from the state before to the state after: each AC cut executes the AC with
 the frame `fg_to_ac(Σ)` at that cut and changes only `𝒜`; each FG cut executes its FG call. -/
@@ -173,6 +192,7 @@ structure NodeStatements : Prop where
   honestBlockAccepted : HonestBlockAccepted dg self
   tickOrder : TickOrder dg self
   signedOnlyInTicks : SignedOnlyInTicks dg self
+  acSeesAcceptedBlocks : ACSeesAcceptedBlocks dg self
   execIsCutChain : ExecIsCutChain dg self
   acStatesReachable : ACStatesReachable dg self
   fgStatesReachable : FGStatesReachable dg self

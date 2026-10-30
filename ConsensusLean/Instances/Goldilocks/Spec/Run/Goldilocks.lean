@@ -1,0 +1,49 @@
+module
+public import ConsensusLean.Instances.Goldilocks.Spec.Run.Model
+public import ConsensusLean.Instances.Goldilocks.Spec.SA.Instance
+
+@[expose] public section
+
+/-! # Goldilocks runs: the concrete Goldilocks node
+
+The Goldilocks protocol is the node (`Spec/Node`) with the Goldilocks SA as its AC
+(composition.tex §"Composition"): `goldilocksNode sp ro` is `goldilocksSA` at the FG payload
+the node uses, `List (FG.Att n)`. `GoldilocksRun dg H ro tr` is a run of it: `Node.LocalRun`
+with the vote's validator as the message signer, plus **carried-vote unforgeability**, the
+instance of the run's unforgeability for votes that travel in a block's payload (claims
+§"Runs"; composition.tex §"Blocks"): a vote of an honest validator that an honest node
+processes in a block (`blockVotes`, the votes the payload carries) was emitted by that
+validator's node at an earlier cut. The generic node cannot state it: the AC interface does
+not say which messages a payload carries. -/
+
+namespace Consensus.Goldilocks
+
+open SA (SAParams ReplayOrder goldilocksSA Vote blockVotes Payload)
+
+variable (sp : SAParams)
+
+/-- The Goldilocks node's AC: the SA at the node's FG payload type, with the replay order
+`ro`. -/
+noncomputable abbrev goldilocksNode (ro : ReplayOrder sp (List (FG.Att sp.n))) :
+    NodeAC sp.toParams :=
+  goldilocksSA sp (List (FG.Att sp.n)) ro
+
+/-- A run trace of the Goldilocks protocol. -/
+abbrev GoldilocksTrace (ro : ReplayOrder sp (List (FG.Att sp.n))) :=
+  RunTrace (goldilocksNode sp ro)
+
+variable {sp} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+/-- **A run of the Goldilocks protocol** (claims §"Runs"): a run of the node with the SA, the
+vote's validator as the signer of a message, and carried-vote unforgeability. -/
+structure GoldilocksRun (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
+    (tr : GoldilocksTrace sp ro) : Prop
+    extends Node.LocalRun dg H (fun v : Vote sp.n => v.val) tr where
+  /-- A vote of an honest validator carried by a block that an honest node processes was emitted
+  by that validator's node at an earlier cut. -/
+  carried_vote_unforgeable : ∀ y ∈ H, ∀ i B, tr.BlockCallAt y i B →
+    ∀ v ∈ blockVotes B, v.val ∈ H → ∃ j < i, tr.EmitAt v.val j v
+
+end Consensus.Goldilocks
+
+end

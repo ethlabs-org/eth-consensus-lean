@@ -28,7 +28,8 @@ theorem compose_node_statements : ComposeNodeStatements := fun _ _ dg self =>
     acStatesReachable := ac_states_reachable dg self
     fgStatesReachable := fg_states_reachable dg self
     recordIsClientRun := record_is_client_run dg self
-    sourcesHeld := sources_held dg self }
+    sourcesHeld := sources_held dg self
+    acSeesAcceptedBlocks := ac_sees_accepted_blocks dg self }
 
 end Consensus.Goldilocks.Compose
 

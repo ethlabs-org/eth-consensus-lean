@@ -19,6 +19,12 @@ variable {P : Params} {A : NodeAC P} (dg : Digest (List (FG.Att P.n)) A.Payload)
 theorem honest_block_accepted : HonestBlockAccepted dg self := by
   sorry
 
+/-- **C0.5 (b), the AC sees only accepted blocks** (goldilocks#36). Open: by cases on the event;
+for a delivery from `Node.onBlock`, for a tick from the proposal step (`Node.proposeBlock`)
+with the earlier tick cuts as the prefix chain. -/
+theorem ac_sees_accepted_blocks : ACSeesAcceptedBlocks dg self := by
+  sorry
+
 end Consensus.Goldilocks.Compose
 
 end

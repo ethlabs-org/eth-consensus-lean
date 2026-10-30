@@ -514,6 +514,7 @@ example := ``Consensus.Goldilocks.Compose.UpdateCuts
 example := ``Consensus.Goldilocks.Compose.TickShape
 example := ``Consensus.Goldilocks.Compose.TickOrder
 example := ``Consensus.Goldilocks.Compose.SignedOnlyInTicks
+example := ``Consensus.Goldilocks.Compose.ACSeesAcceptedBlocks
 example := ``Consensus.Goldilocks.Compose.ExecIsCutChain
 example := ``Consensus.Goldilocks.Compose.ACStatesReachable
 example := ``Consensus.Goldilocks.Compose.FGStatesReachable
@@ -524,7 +525,84 @@ example := ``Consensus.Goldilocks.Compose.ComposeNodeStatements
 
 /-! ## Goldilocks Persist (a milestone PR appends here only) -/
 
+example := ``Consensus.Goldilocks.RunTrace
+example := ``Consensus.Goldilocks.RunTrace.IsCall
+example := ``Consensus.Goldilocks.RunTrace.NoCallBetween
+example := ``Consensus.Goldilocks.RunTrace.RestartAt
+example := ``Consensus.Goldilocks.RunTrace.BlockCallAt
+example := ``Consensus.Goldilocks.RunTrace.AcceptAt
+example := ``Consensus.Goldilocks.RunTrace.OwnBlockAt
+example := ``Consensus.Goldilocks.RunTrace.SignAt
+example := ``Consensus.Goldilocks.RunTrace.AttCallAt
+example := ``Consensus.Goldilocks.RunTrace.ProcessAttAt
+example := ``Consensus.Goldilocks.RunTrace.EmitAt
+example := ``Consensus.Goldilocks.RunTrace.MsgCallAt
+example := ``Consensus.Goldilocks.RunTrace.ProcessMsgAt
+example := ``Consensus.Goldilocks.RunTrace.SendOrAdmitAt
+example := ``Consensus.Goldilocks.RunTrace.SendOrAdmitAttAt
+example := ``Consensus.Goldilocks.RunTrace.Occurs
+example := ``Consensus.Goldilocks.RunTrace.HonestBlocks
+example := ``Consensus.Goldilocks.RunTrace.lastWake
+example := ``Consensus.Goldilocks.RunTrace.deadline
+example := ``Consensus.Goldilocks.RunTrace.FirstCutFrom
+example := ``Consensus.Goldilocks.RunTrace.ProposesAt
+example := ``Consensus.Goldilocks.RunTrace.InHorizon
+example := ``Consensus.Goldilocks.RunTrace.finalizedAt
+example := ``Consensus.Goldilocks.RunTrace.confirmedAt
+example := ``Consensus.Goldilocks.RunTrace.headAt
+example := ``Consensus.Goldilocks.RunTrace.GroupAt
+example := ``Consensus.Goldilocks.RunTrace.InGroup
+example := ``Consensus.Goldilocks.RunTrace.TickAt
+example := ``Consensus.Goldilocks.Node.Event.phase
+example := ``Consensus.Goldilocks.Node.LocalRun
+example := ``Consensus.Goldilocks.RunTrace.JoinedAt
+example := ``Consensus.Goldilocks.RunTrace.honestAwakeJoined
+example := ``Consensus.Goldilocks.RunTrace.FaultBound
+example := ``Consensus.Goldilocks.RunTrace.MsgDeliveredBy
+example := ``Consensus.Goldilocks.RunTrace.BlockDeliveredBy
+example := ``Consensus.Goldilocks.RunTrace.BlockAcceptedBy
+example := ``Consensus.Goldilocks.RunTrace.AttDeliveredBy
+example := ``Consensus.Goldilocks.RunTrace.SyncOn
+example := ``Consensus.Goldilocks.RunTrace.SyncRun
+example := ``Consensus.Goldilocks.RunTrace.GSTRun
+example := ``Consensus.Goldilocks.RunTrace.SleepyRun
+example := ``Consensus.Goldilocks.RunTrace.HealthyRun
+example := ``Consensus.Goldilocks.goldilocksNode
+example := ``Consensus.Goldilocks.GoldilocksTrace
+example := ``Consensus.Goldilocks.GoldilocksRun
+example := ``Consensus.Goldilocks.RunTrace.acLabel
+example := ``Consensus.Goldilocks.RunTrace.fgLabel
+example := ``Consensus.Goldilocks.RunTrace.projAC
+example := ``Consensus.Goldilocks.RunTrace.projFG
+example := ``Consensus.Goldilocks.Compose.NoCollRun
+example := ``Consensus.Goldilocks.Compose.RunOrder
+example := ``Consensus.Goldilocks.Compose.EventOrder
+example := ``Consensus.Goldilocks.Compose.ReadyImpliesJoined
+example := ``Consensus.Goldilocks.Compose.ACProjection
+example := ``Consensus.Goldilocks.Compose.FGProjection
+example := ``Consensus.Goldilocks.Compose.GoldilocksACProjection
+example := ``Consensus.Goldilocks.Compose.GroupStatesReachable
+example := ``Consensus.Goldilocks.Compose.SyncProjection
+example := ``Consensus.Goldilocks.Compose.JoinedProjection
+example := ``Consensus.Goldilocks.Compose.RunStatements
+example := ``Consensus.Goldilocks.Compose.honestVotes
+example := ``Consensus.Goldilocks.Compose.excludedEntries
+example := ``Consensus.Goldilocks.Compose.Clean
+example := ``Consensus.Goldilocks.Compose.PersistPremises
+example := ``Consensus.Goldilocks.Compose.CutScopeAt
+example := ``Consensus.Goldilocks.Compose.PersistAt
+example := ``Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist
+example := ``Consensus.Goldilocks.Compose.RecentSourceNextVote
+example := ``Consensus.Goldilocks.Compose.PersistStatements
+
 /-! ## Goldilocks Service (a milestone PR appends here only) -/
+
+example := ``Consensus.Goldilocks.Compose.UpdatedNoRestart
+example := ``Consensus.Goldilocks.Compose.ServedAt
+example := ``Consensus.Goldilocks.Compose.RecordAt
+example := ``Consensus.Goldilocks.Compose.HeadExtendsRecord
+example := ``Consensus.Goldilocks.Compose.Inclusion
+example := ``Consensus.Goldilocks.Compose.ServiceStatements
 
 /-! ## Goldilocks Healing (a milestone PR appends here only) -/
 
