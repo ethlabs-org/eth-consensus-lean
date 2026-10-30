@@ -1,0 +1,105 @@
+module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+
+public section
+
+/-! # Goldilocks milestone Service: A1.6, head extends the record
+
+A1.6 (`head_extends_record`) from the served-cut facts (`served_facts`, the open Sleepy
+induction) and the fork-choice lemmas (`SA.anc_acHead`, `SA.acConfirmed_eq`) at the frame of the
+cut, which is well formed since every FG cut of an honest node runs an FG handler. The record
+part follows cut by cut over the served window. -/
+
+namespace Consensus.Goldilocks.Compose
+
+open SA (SAParams ReplayOrder Payload)
+
+/-- The FG state of an honest node before every cut is reachable: every FG cut runs an FG
+handler, and an AC cut leaves `Σ` unchanged. -/
+private theorem fg_reachable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
+    {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A} (hrun : Node.LocalRun dg H sg tr)
+    {y : Fin P.n} (hy : y ∈ H) (i : Nat) : (tr.state y i).fg.Reachable A.genesisPayload := by
+  induction i with
+  | zero =>
+    change (tr.init y).fg.Reachable A.genesisPayload
+    rw [hrun.init y hy]
+    exact .refl
+  | succ i ih =>
+    rw [Trace.state]
+    split_ifs with hn
+    · obtain ⟨c, hc⟩ := Option.ne_none_iff_exists'.1 hn.2
+      have hcut := hrun.cutLaw y hy i c ⟨hn.1, hc⟩
+      cases c with
+      | ac ℓ => rw [hcut.2.2.1]; exact ih
+      | fg ℓ =>
+        cases ℓ with
+        | block B acc =>
+          cases acc
+          · rw [hcut.2]; exact ih
+          · exact ih.tail (Or.inl ⟨B, hcut.2.1⟩)
+        | attestation a => rw [hcut.1]; exact ih.tail (Or.inr ⟨a, rfl⟩)
+        | attest C sg' =>
+          cases sg'
+          · rw [hcut.2]; exact ih
+          · rw [hcut.2.1]; exact ih
+    · exact ih
+
+/-- The frame of an honest node before every cut is well formed. -/
+private theorem frameOK_state {P : Params} {A : NodeAC P}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
+    {tr : RunTrace A} (hrun : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
+    FrameOK (Node.frame (tr.state y i)) :=
+  (Store.frame_realization P A.Payload _ _ (fg_reachable hrun hy i)).1
+
+/-- **The head extends a supported record, which is the confirmed tip**: at a cut of an honest node,
+the head extends the record's block `R` when `R` has `HeadSupport`, and `ac_confirmed` is `R`. -/
+theorem head_confirmed_of_support {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : RecordAt tr y i R)
+    (hs : HeadSupport tr y i R) :
+    (Node.frame (tr.state y i)).Anc R (tr.headAt y i) ∧ tr.confirmedAt y i = R := by
+  have hΦ := frameOK_state hrun.toLocalRun hy i
+  have hH := SA.anc_acHead hΦ hR.1 hs.anchor_compatible hs.support
+  exact ⟨hH, SA.acConfirmed_eq hΦ hR.1 hR.2 hH⟩
+
+/-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9). -/
+private theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
+    (goldilocksNode sp ro).Requirements :=
+  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
+  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
+
+/-- **A1.6, head extends the record under synchrony.** -/
+theorem head_extends_record : HeadExtendsRecord := by
+  intro sp ro dg H tr ΔF hrun hnc hsl y hy i hs R hR
+  refine ⟨head_confirmed_of_support hrun hy hR ((served_facts hrun hnc hsl hy hs).head R hR),
+    fun i' hii' hserv R' hR' => ?_⟩
+  have hcoh := (ac_projection _ _ dg H _ tr (requirements sp ro) hrun.toLocalRun hnc).coherent
+  -- the record's block moves forward along the window
+  have key : ∀ m, i ≤ m → m ≤ i' → ∃ E ∈ tr.HonestBlocks H,
+      E.root = (tr.state y m).ac.latestConfirmed ∧ Anc (tr.HonestBlocks H) R E := by
+    intro m hm
+    induction m, hm using Nat.le_induction with
+    | base => exact fun _ => ⟨R, ⟨y, hy, i, hR.1.1⟩, hR.2, Relation.ReflTransGen.refl⟩
+    | succ m hm ih =>
+      intro hm'
+      obtain ⟨E, hE, hEr, hRE⟩ := ih (Nat.le_of_succ_le hm')
+      by_cases hn : tr.node m = y ∧ tr.label m ≠ none
+      · obtain ⟨c, hc⟩ := Option.ne_none_iff_exists'.1 hn.2
+        have hsm := hserv m hm (Nat.le_of_succ_le hm') ⟨c, hn.1, hc⟩
+        obtain ⟨E', hE', hE'r, hEE'⟩ := (served_facts hrun hnc hsl hy hsm).record_step E hE hEr
+        exact ⟨E', hE', hE'r, hRE.trans hEE'⟩
+      · have : tr.state y (m + 1) = tr.state y m := by simp only [Trace.state, hn, ↓reduceIte]
+        exact ⟨E, hE, this ▸ hEr, hRE⟩
+  obtain ⟨E, hE, hEr, hRE⟩ := key i' hii' le_rfl
+  have hR'H : R' ∈ tr.HonestBlocks H := ⟨y, hy, i', hR'.1.1⟩
+  rwa [hcoh.1 hR'H hE (hR'.2.trans hEr.symm)]
+
+end Consensus.Goldilocks.Compose
+
+end
