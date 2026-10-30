@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
@@ -40,7 +41,11 @@ and extend every honest `Σ.F` at `u + Δ` (strict-height G1.2), so they reach e
 `Catch(2Δ)` or acceptance relay; joining and the catch-up at `u + Δ` follow from no restart after
 `ḡ` and `Catch(2Δ)`.
 
-Interfaces: `producer` is open (and `settle` uses the chain-level G1.2 of `Settle`, open there
+`producer` is assembled from HS.4 (`common_path_acquisition'`) and HS.5's consumption step
+(`consume_continue`, with HS.1–HS.3), all open in `Service`; a phase change persists to later
+cuts (`PhaseChanged.mono`).
+
+Interfaces: none here (`settle` uses the chain-level G1.2 of `Settle`, open there
 only because its proof in `FGChain/Accountable` is private). -/
 
 namespace Consensus.Goldilocks.Healing
@@ -89,16 +94,6 @@ theorem settle {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   · exact (Store.accepted_tree _ _ _ _ (Compose.fg_reachable hrun.toLocalRun hy j₀)).2.2.1
   · exact relay_held hrun.toLocalRun hs.healthy hs.noRestart hc hx hy hacc hw
       (by linarith [hj.1 k₀ hk₀]) hj' (Anc.mono (fun X hX => ⟨x, hx, j, hX⟩) hFB)
-
-/-- **HS.5, `Producer(A)`** (with `κ = 2Δ`, `G = G_p`): from a settled `w`, the effective phase
-has changed by `w + A_HS` (after all events there). -/
-theorem producer {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun dg H tr)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
-    (w : Time) (hw : SettledAt tr H g (2 * sp.Δ) w) (j j' : Nat) (hj : tr.FirstCutFrom j w)
-    (hj' : FirstCutAfter tr j' (w + A_HS sp ΔF Gp)) : PhaseChanged tr.projFG H j j' := by
-  sorry
 
 /-! ## Cuts of a run and its FG projection -/
 
@@ -226,7 +221,81 @@ private theorem pot_lt (hb : Forward tr H)
     · omega
     · exact absurd (PhaseCase.eq_of_rank heq h2 ▸ h') (hch _ c h)
 
+/-- A phase change from `i` to `j₁` persists to every later cut `j₂` (the potential `3m + rank`
+rises from `i` to `j₁` and does not fall after: HR.2 (b) and the growth of the honest
+`Σ.h_max`). -/
+theorem PhaseChanged.mono {acp₀ : ACP} {U : Set (NodeBlock P ACP)} (hr : FGLocalRun acp₀ H U tr)
+    (hf : Hᶜ.ncard < 2 * P.fg.q - P.n) {i j₁ j₂ : Nat} (hij : i ≤ j₁) (hj : j₁ ≤ j₂)
+    (h : PhaseChanged tr H i j₁) : PhaseChanged tr H i j₂ := by
+  intro m c hi hi₂
+  obtain ⟨-, hb, -⟩ := phase_count P ACP acp₀ H U tr hr hf
+  have hmono : ∀ y ∈ H, ∀ i j, i ≤ j → (tr.store y i).hmax ≤ (tr.store y j).hmax :=
+    fun y hy i j hij => store_hmax_mono hr hy hij
+  obtain ⟨y, hy, -⟩ := hi.frontier.1
+  obtain ⟨p, hp⟩ := exists_phase (tr := tr) ⟨y, hy⟩ j₁
+  have := pot_lt hb hmono hij h hi hp
+  have := pot_le hb hmono hj hp hi₂
+  omega
+
 end Potential
+
+/-! ## HS.5 and the reset count -/
+
+/-- What every HS proof here starts from: the FG projection is an FG trace (C0.5 (c)), with
+`f < 2q − n` (from `3f ≤ n − 1`), some honest validator, and `0 ≤ D_HS ≤ A_HS` (`Δ_F ≥ Δ > 0`,
+and `G_p ≥ 0` from `Prop⁺(G_p)` at `ḡ`). -/
+private theorem hs_setup {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun dg H tr)
+    (hs : HSShared tr H dg g ΔF) (hp : PropPlus tr H g Gp) :
+    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
+      Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n ∧ H.Nonempty ∧
+      0 ≤ D_HS sp Gp ∧ D_HS sp Gp ≤ A_HS sp ΔF Gp := by
+  obtain ⟨hgst, -, hf⟩ := hs.healthy
+  have hreq : (goldilocksNode sp ro).Requirements :=
+    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
+      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
+      SA.proposal_payload_valid sp _ ro⟩
+  have hn := sp.toParams.hn
+  refine ⟨Compose.fg_projection _ _ dg H _ tr hreq hs.genesisRoot hrun.toLocalRun hs.noColl,
+    by change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n; omega, ?_, ?_⟩
+  · by_contra h
+    rw [Set.not_nonempty_iff_eq_empty] at h
+    rw [h, Set.compl_empty, Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hf
+    omega
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨s, -, -, -, h1, h2, -⟩ := hp (gbar g) le_rfl
+  have hF := hgst.deltaF
+  have hk : (0 : Time) ≤ sp.k := Int.natCast_nonneg _
+  have hδ : (0 : Time) ≤ sp.toParams.δt := Int.natCast_nonneg _
+  have hD : 0 ≤ D_HS sp Gp := by
+    simp only [D_HS]
+    nlinarith [mul_nonneg (by linarith : (0 : Time) ≤ 8 * sp.k + 48) hΔ.le]
+  refine ⟨hD, ?_⟩
+  simp only [A_HS, C_HS]
+  nlinarith [mul_nonneg (mul_nonneg (by norm_num : (0 : Time) ≤ 4) hΔ.le) hδ]
+
+/-- **HS.5, `Producer(A)`** (with `κ = 2Δ`, `G = G_p`): from a settled `w`, the effective phase
+has changed by `w + A_HS` (after all events there). Settled at `w` in the phase `(m, c)` at the
+state at `w` (cut `j`), HS.4 gives a phase change by `w + D_HS` (which persists to `w + A_HS`,
+`D_HS ≤ A_HS`) or the acquired common path, which HS.5's consumption step (`consume_continue`,
+with HS.1–HS.3) turns into a phase change by `w + A_HS`. -/
+theorem producer {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun dg H tr)
+    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+    (w : Time) (hw : SettledAt tr H g (2 * sp.Δ) w) (j j' : Nat) (hj : tr.FirstCutFrom j w)
+    (hj' : FirstCutAfter tr j' (w + A_HS sp ΔF Gp)) : PhaseChanged tr.projFG H j j' := by
+  obtain ⟨hfg, hq, ⟨y₀, hy₀⟩, hD, hDA⟩ := hs_setup hrun hs hp
+  obtain ⟨⟨m, c⟩, hph⟩ := exists_phase (tr := tr.projFG) ⟨y₀, hy₀⟩ j
+  have hset : SettledIn tr H g w j m c := ⟨hw, hj, hph⟩
+  obtain ⟨hch | hwit, hcl⟩ := common_path_acquisition' hrun hs hc hp hset
+  · obtain ⟨j₁, hj₁⟩ := (exists_cuts hrun.toLocalRun hy₀ (hs.healthy.2.1 y₀ hy₀)
+      (w + D_HS sp Gp)).1
+    exact (hch j₁ hj₁).mono hfg hq (from_le_after hj hj₁ (by linarith))
+      (after_le_after hj₁ hj' (by linarith))
+  · exact consume_continue hrun hs hc hp viable_witness_retention clean_lock_drain
+      frozen_tree_agreement hset hwit hcl j' hj'
 
 /-- **The reset count** (HR.3 (c)): the reset exists by `c_z + 6(Δ + A_HS)`. -/
 theorem reset_count {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
@@ -235,37 +304,12 @@ theorem reset_count {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp) :
     ∃ a, IsReset tr H g a ∧ a ≤ cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) := by
   classical
-  obtain ⟨hgst, hawake, hf⟩ := hs.healthy
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  -- `A_HS ≥ 0` (`Δ_F ≥ Δ > 0`, and `G_p ≥ 0` from `Prop⁺(G_p)` at `ḡ`)
-  have hA : 0 ≤ A_HS sp ΔF Gp := by
-    obtain ⟨s, -, -, -, h1, h2, -⟩ := hp (gbar g) le_rfl
-    have hF := hgst.deltaF
-    have hk : (0 : Time) ≤ sp.k := Int.natCast_nonneg _
-    have hδ : (0 : Time) ≤ sp.toParams.δt := Int.natCast_nonneg _
-    simp only [A_HS, C_HS, D_HS]
-    nlinarith [mul_nonneg (by linarith : (0 : Time) ≤ 8 * sp.k + 48) hΔ.le,
-      mul_nonneg (mul_nonneg (by norm_num : (0 : Time) ≤ 4) hΔ.le) hδ]
-  have hH : H.Nonempty := by
-    by_contra h
-    rw [Set.not_nonempty_iff_eq_empty] at h
-    rw [h, Set.compl_empty, Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hf
-    have := sp.toParams.hn
-    omega
-  obtain ⟨y₀, hy₀⟩ := hH
-  have hcut := exists_cuts hrun.toLocalRun hy₀ (hawake y₀ hy₀)
+  obtain ⟨hfg, hq, ⟨y₀, hy₀⟩, hD, hDA⟩ := hs_setup hrun hs hp
+  have hA : 0 ≤ A_HS sp ΔF Gp := hD.trans hDA
+  have hcut := exists_cuts hrun.toLocalRun hy₀ (hs.healthy.2.1 y₀ hy₀)
   choose fa hfa using fun t => (hcut t).1
   choose ff hff using fun t => (hcut t).2
-  -- the FG projection and HR.2 (b) on it (`f < 2q − n` from `3f ≤ n − 1`)
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
-  have hfg := Compose.fg_projection _ _ dg H _ tr hreq hs.genesisRoot hrun.toLocalRun hs.noColl
-  have hq : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
-    change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n
-    have := sp.toParams.hn
-    omega
   obtain ⟨-, hb, -⟩ := phase_count _ _ _ H _ tr.projFG hfg hq
   have hmono : ∀ y ∈ H, ∀ i j, i ≤ j →
       (tr.projFG.store y i).hmax ≤ (tr.projFG.store y j).hmax :=

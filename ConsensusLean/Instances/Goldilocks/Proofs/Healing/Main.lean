@@ -2,13 +2,14 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Standalone
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Bridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Assembly
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
 
 public section
 
 /-! # Goldilocks milestone Healing
 
 `HealingACStatements` (H.1, its corollary, H.2) and `HealingRunStatements` (HR.1–HR.4,
-H.2 (run), H.3, H.4) from `Lemmas/Healing/`. -/
+H.2 (run), H.3, H.4) and `PhaseServiceStatements` (HS.1–HS.4) from `Lemmas/Healing/`. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -27,6 +28,13 @@ theorem healing_run_statements : HealingRunStatements where
   runInclusion := run_inclusion
   nonInterference := non_interference
   availableHealing := available_healing
+
+/-- **Healing, the phase-service statements**: HS.1–HS.4. -/
+theorem phase_service_statements : PhaseServiceStatements where
+  viableWitnessRetention := viable_witness_retention
+  cleanLockDrain := clean_lock_drain
+  frozenTreeAgreement := frozen_tree_agreement
+  commonPathAcquisition := common_path_acquisition
 
 end Consensus.Goldilocks.Healing
 

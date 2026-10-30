@@ -137,6 +137,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
