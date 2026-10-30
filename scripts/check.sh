@@ -741,12 +741,27 @@ replay_leaf() {
   return 0
 }
 SEARCH_PATH=()
-# Up to REPLAY_JOBS (default 2) leaves at once, each still one module per leanchecker process. Each
-# process is dominated by loading its environment (~3 s load vs ms of replay) and peaks at ~3.3 GB, so
-# two fit the 2-vCPU / 7 GB CI runner and halve the step (#13). Output is printed per leaf, in order.
+# Up to REPLAY_JOBS leaves at once, each still one module per leanchecker process. Each process is dominated by
+# loading its environment (~3 s load vs ms of replay) and peaks at ~3.3 GB. Default: what the CPUs and memory
+# available to this process allow (its cgroup's cpu.max and memory.max where set, else nproc and MemTotal),
+# 3 GB per process, at least 1: 2 on the 2-vCPU / 7 GB CI runner (as before, #13), 5 in a 16 GB / 8-CPU box job.
+# Output is printed per leaf, in order.
+replay_jobs_default() {
+  local cg cpus mem q p
+  cg="/sys/fs/cgroup$(awk -F: '$1 == "0" { print $3 }' /proc/self/cgroup 2>/dev/null)"
+  cpus="$(nproc)"
+  if read -r q p 2>/dev/null <"$cg/cpu.max" && [[ "$q" =~ ^[0-9]+$ ]] && ((p > 0)); then
+    q=$(((q + p - 1) / p)); ((q < cpus)) && cpus=$q
+  fi
+  mem="$(awk '/^MemTotal:/ { print $2 * 1024 }' /proc/meminfo)"
+  if read -r q 2>/dev/null <"$cg/memory.max" && [[ "$q" =~ ^[0-9]+$ ]] && ((q < mem)); then mem=$q; fi
+  q=$((mem / (3 * 1024 * 1024 * 1024)))
+  ((q < cpus)) && cpus=$q
+  echo $((cpus > 0 ? cpus : 1))
+}
 step_replay() {
   set +e
-  local rc=0 m i k=0 n=0 kb peak=0 start=$SECONDS njobs="${REPLAY_JOBS:-2}" pids=()
+  local rc=0 m i k=0 n=0 kb peak=0 start=$SECONDS njobs="${REPLAY_JOBS:-$(replay_jobs_default)}" pids=()
   [[ "$njobs" =~ ^[1-9][0-9]*$ ]] || { echo "  REPLAY_JOBS must be a positive integer, not '$njobs'"; return 1; }
   load_search_path || { echo "  cannot determine the Lean search path"; return 1; }
   mapfile -t leaves < <(inv_kind leaf)
@@ -1242,6 +1257,7 @@ canary_run() {  # canary_run <file> <hash file>, in a subshell that restores <fi
 # --- driver ---------------------------------------------------------------------------------------
 overall=0
 skipped=()
+step_times=()
 deferred=()
 ci_only=()
 # in_part <label>: whether this run's --split part runs the step (by its number): lake-check = 0 and 10.
@@ -1260,7 +1276,11 @@ run_step() {
     echo "DEFER $label (the other --split part)"; deferred+=("$label"); return 0
   fi
   echo "--- $label ---"
-  if "$@"; then printf 'PASS  %s\n' "$label"; else printf 'FAIL  %s\n' "$label"; overall=1; fi
+  local t0=$SECONDS v=PASS
+  "$@" || { v=FAIL; overall=1; }
+  echo "  time: $((SECONDS - t0)) s"   # wall time of the step (#50); verdict lines unchanged
+  step_times+=("$((SECONDS - t0))s ${label%% (*}")
+  printf '%s  %s\n' "$v" "$label"
 }
 skip_step() { echo "SKIP  $1 ($2)"; skipped+=("$1"); }
 run_if() {  # run_if <0|1> <reason to skip> <label> <step...>
@@ -1348,6 +1368,8 @@ else
 fi
 
 echo
+echo "Step times (wall, longest first; $((SECONDS)) s in all):"
+printf '%s\n' "${step_times[@]}" | sort -rn | sed 's/^/  /'
 ((${#ci_only[@]} == 0)) || echo "CI-only: ${ci_only[*]}"
 if ((overall)); then
   echo "check.sh: FAILURES PRESENT" >&2
