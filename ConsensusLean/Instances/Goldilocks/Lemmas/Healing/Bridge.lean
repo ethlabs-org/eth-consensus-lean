@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 
 public section
 

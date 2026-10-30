@@ -109,6 +109,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclu
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Cut
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
