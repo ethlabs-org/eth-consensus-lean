@@ -3,6 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
 
 public section
 
@@ -101,13 +104,17 @@ theorem finalized_monotone : FinalizedMonotone dg self := by
 
 /-- The node invariant at a state for calls at time `t`: the FG state is reachable; under the
 requirements, the AC state is reachable inside the tree with the current frame, by a last call
-not after `t`; the record is the client run over some entry states, whose attestations are in
-the pool. -/
-private def NInv (st : NodeState A) (t : Time) : Prop :=
-  st.fg.Reachable A.genesisPayload ∧
-  (A.Requirements → ∃ t₀ ≤ t, A.ReachableAt self st.fg.tree st.ac (frame st) t₀) ∧
-  ∃ σes : List (FG.ChainState P.n), st.record = (FG.Record.run self FG.Record.empty σes).1 ∧
-    ∀ a ∈ (FG.Record.run self FG.Record.empty σes).2, a ∈ st.fg.atts
+not after `t`, and the pool holds well-formed attestations; the record is the client run over
+some entry states, whose attestations are in the pool; when genesis has its digest as root,
+every held block does. -/
+private structure NInv (v : Fin P.n) (st : NodeState A) (t : Time) : Prop where
+  fg : st.fg.Reachable A.genesisPayload
+  ac : A.Requirements → ∃ t₀ ≤ t, A.ReachableAt v st.fg.tree st.ac (frame st) t₀
+  rcd : ∃ σes : List (FG.ChainState P.n),
+    st.record = (FG.Record.run v FG.Record.empty σes).1 ∧
+      ∀ a ∈ (FG.Record.run v FG.Record.empty σes).2, a ∈ st.fg.atts
+  wf : A.Requirements → ∀ a ∈ st.fg.atts, a.WellFormed
+  roots : (P.genesisBlock A.genesisPayload).RootOk dg → ∀ X ∈ st.fg.tree, X.RootOk dg
 
 private theorem frameIn_store {st : NodeState A} (hr : st.fg.Reachable A.genesisPayload) :
     A.FrameIn st.fg.tree (frame st) :=
@@ -167,81 +174,184 @@ private theorem run_append (v : Fin P.n) :
       rw [ih Λ₁ σe a Λ' h]
       simp
 
-private theorem NInv.mono {st : NodeState A} {t t' : Time} (h : NInv self st t) (ht : t ≤ t') :
-    NInv self st t' :=
-  ⟨h.1, fun hq => (h.2.1 hq).imp fun _ h => ⟨h.1.trans ht, h.2⟩, h.2.2⟩
+/-- The result of the `finality_pair` scan is an element of the scanned list (or nothing). -/
+private theorem foldl_pair_mem {Q : Nat × Nat → Prop} :
+    ∀ (l : List (Nat × Nat)) (acc : Option (Nat × Nat)), (∀ r, acc = some r → Q r) →
+      (∀ p ∈ l, Q p) → ∀ r, l.foldl (fun acc p => match acc with
+        | none => some p
+        | some r => if r.1 < p.1 then some p else some r) acc = some r → Q r := by
+  intro l
+  induction l with
+  | nil => exact fun acc h _ r hr => h r hr
+  | cons p l ih =>
+    intro acc hacc hl r hr
+    refine ih _ (fun r' hr' => ?_) (fun q hq => hl q (List.mem_cons_of_mem _ hq)) r hr
+    cases acc with
+    | none => cases hr'; exact hl p List.mem_cons_self
+    | some r₀ =>
+      dsimp only at hr'
+      split_ifs at hr' with hlt
+      · cases hr'; exact hl p List.mem_cons_self
+      · cases hr'; exact hacc _ rfl
 
-private theorem NInv.acCall {st : NodeState A} {t : Time} (h : NInv self st t) (c : A.Call)
+/-- `create_attestation` at an entry state with the chain invariants (`1 ≤ h`, `h_j < h`, the
+pending pairs below `h`) signs a well-formed attestation. -/
+private theorem createAtt_wellFormed {Λ Λ' : FG.Record} {v : Fin P.n} {σe : FG.ChainState P.n}
+    {a : FG.Att P.n} (h1 : 1 ≤ σe.h) (h2 : σe.hj < σe.h) (h3 : ∀ p ∈ σe.pending, p.1 < σe.h)
+    (h : Λ.createAtt v σe = some (a, Λ')) : a.WellFormed := by
+  unfold FG.Record.createAtt at h
+  split at h
+  · cases h
+  rename_i hh T τ hhp
+  have hh' : hh = σe.h := by
+    unfold FG.Record.heightPair at hhp
+    split_ifs at hhp <;> cases hhp <;> rfl
+  split_ifs at h
+  cases h
+  subst hh'
+  refine ⟨h1, fun p hp => ?_⟩
+  unfold FG.Record.finalityPair at hp
+  split_ifs at hp
+  · simp only [Option.toList_some, List.mem_singleton] at hp
+    subst hp
+    exact h2
+  · simp at hp
+  · rcases hf : (σe.pending.filter (fun p => decide (Λ.permits p.1 p.2))).foldl _ none with _ | r
+    · rw [hf] at hp; simp at hp
+    · rw [hf] at hp
+      simp only [Option.toList_some, List.mem_singleton] at hp
+      subst hp
+      exact foldl_pair_mem (Q := fun p => p.1 < σe.h) _ none (fun _ h => by cases h)
+        (fun q hq => h3 q (List.mem_filter.1 hq).1) _ hf
+
+/-- The attestations of `addAtts` are the old ones or the added ones. -/
+private theorem mem_addAtts {fg : Store P A.Payload} {l : List (FG.Att P.n)} {a : FG.Att P.n}
+    (h : a ∈ (fg.addAtts l).atts) : a ∈ fg.atts ∨ a ∈ l := by
+  induction l generalizing fg with
+  | nil => exact Or.inl h
+  | cons b l ih =>
+    rw [Store.addAtts, List.foldl_cons, ← Store.addAtts] at h
+    rcases ih h with h | h
+    · unfold Store.onAttestation at h
+      split_ifs at h
+      · exact Or.inl h
+      · rcases List.mem_append.1 h with h | h
+        · exact Or.inl h
+        · exact Or.inr (List.mem_singleton.1 h ▸ List.mem_cons_self)
+    · exact Or.inr (List.mem_cons_of_mem _ h)
+
+private theorem NInv.mono {st : NodeState A} {t t' : Time} (h : NInv dg self st t) (ht : t ≤ t') :
+    NInv dg self st t' :=
+  ⟨h.fg, fun hq => (h.ac hq).imp fun _ h => ⟨h.1.trans ht, h.2⟩, h.rcd, h.wf, h.roots⟩
+
+/-- An AC call keeps everything but the AC state. -/
+private theorem NInv.ac' {st : NodeState A} {t : Time} (h : NInv dg self st t) (s : A.State)
+    (hs : A.Requirements → ∃ t₀ ≤ t, A.ReachableAt self st.fg.tree s (frame st) t₀) :
+    NInv dg self { st with ac := s } t :=
+  ⟨h.fg, hs, h.rcd, h.wf, h.roots⟩
+
+private theorem NInv.acCall {st : NodeState A} {t : Time} (h : NInv dg self st t) (c : A.Call)
     (hc : A.CallOK st.fg.tree (frame st) t c (frame st)) :
-    NInv self (acCall self st t c).1 t := by
-  obtain ⟨hr, hac, hrec⟩ := h
-  refine ⟨hr, fun hq => ?_, hrec⟩
-  obtain ⟨t₀, ht₀, hR⟩ := hac hq
-  exact ⟨t, le_rfl, .step c hR ht₀ hc⟩
+    NInv dg self (acCall self st t c).1 t :=
+  h.ac' dg self _ fun hq => by
+    obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
+    exact ⟨t, le_rfl, .step c hR ht₀ hc⟩
 
-private theorem NInv.acProposal {st : NodeState A} {t : Time} (h : NInv self st t) :
-    NInv self (Node.acProposal st t).1 t := by
-  obtain ⟨hr, hac, hrec⟩ := h
-  refine ⟨hr, fun hq => ?_, hrec⟩
-  obtain ⟨t₀, ht₀, hR⟩ := hac hq
-  exact ⟨t, le_rfl, .step .proposal hR ht₀ ⟨frameIn_store hr, rfl⟩⟩
+private theorem NInv.acProposal {st : NodeState A} {t : Time} (h : NInv dg self st t) :
+    NInv dg self (Node.acProposal st t).1 t :=
+  h.ac' dg self _ fun hq => by
+    obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
+    exact ⟨t, le_rfl, .step .proposal hR ht₀ ⟨frameIn_store h.fg, rfl⟩⟩
 
-private theorem NInv.acToFG {st : NodeState A} {t : Time} (h : NInv self st t) :
-    NInv self (Node.acToFG st t).1 t := by
-  obtain ⟨hr, hac, hrec⟩ := h
-  refine ⟨hr, fun hq => ?_, hrec⟩
-  obtain ⟨t₀, ht₀, hR⟩ := hac hq
-  exact ⟨t, le_rfl, .step .toFG hR ht₀ ⟨frameIn_store hr, rfl⟩⟩
+private theorem NInv.acToFG {st : NodeState A} {t : Time} (h : NInv dg self st t) :
+    NInv dg self (Node.acToFG st t).1 t :=
+  h.ac' dg self _ fun hq => by
+    obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
+    exact ⟨t, le_rfl, .step .toFG hR ht₀ ⟨frameIn_store h.fg, rfl⟩⟩
 
-/-- Processing an attestation keeps the invariant and puts the attestation in the pool. -/
-private theorem NInv.fgAtt {st : NodeState A} {t : Time} (h : NInv self st t) (a : FG.Att P.n)
-    (Λ : FG.Record)
+/-- Processing a well-formed attestation keeps the invariant. -/
+private theorem NInv.fgAtt {st : NodeState A} {t : Time} (h : NInv dg self st t) (a : FG.Att P.n)
+    (hwf : A.Requirements → a.WellFormed) (Λ : FG.Record)
     (hrec : ∃ σes : List (FG.ChainState P.n), Λ = (FG.Record.run self FG.Record.empty σes).1 ∧
       ∀ b ∈ (FG.Record.run self FG.Record.empty σes).2, b ∈ (st.fg.onAttestation a).atts) :
-    NInv self { st with fg := st.fg.onAttestation a, record := Λ } t := by
-  obtain ⟨hr, hac, -⟩ := h
+    NInv dg self { st with fg := st.fg.onAttestation a, record := Λ } t := by
+  have hr := h.fg
   have htree := (Store.tree_grows P _ _ _ hr).2 a
   have hfr := (Store.accept_is_frame_step P _ _ _ hr).2 a
-  refine ⟨hr.tail (Or.inr ⟨a, rfl⟩), fun hq => ?_, hrec⟩
-  obtain ⟨t₀, ht₀, hR⟩ := hac hq
-  refine ⟨t₀, ht₀, ?_⟩
-  change A.ReachableAt self (st.fg.onAttestation a).tree st.ac (st.fg.onAttestation a).toFrame t₀
-  rw [htree, hfr]
-  exact hR
+  refine ⟨hr.tail (Or.inr ⟨a, rfl⟩), fun hq => ?_, hrec, fun hq b hb => ?_, fun hg => ?_⟩
+  · obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
+    refine ⟨t₀, ht₀, ?_⟩
+    change A.ReachableAt self (st.fg.onAttestation a).tree st.ac (st.fg.onAttestation a).toFrame t₀
+    rw [htree, hfr]
+    exact hR
+  · change b ∈ (st.fg.onAttestation a).atts at hb
+    unfold Store.onAttestation at hb
+    split_ifs at hb
+    · exact h.wf hq b hb
+    · rcases List.mem_append.1 hb with hb | hb
+      · exact h.wf hq b hb
+      · exact List.mem_singleton.1 hb ▸ hwf hq
+  · change ∀ X ∈ (st.fg.onAttestation a).tree, X.RootOk dg
+    rw [htree]
+    exact h.roots hg
 
-private theorem NInv.onAttestation {st : NodeState A} {t : Time} (h : NInv self st t)
-    (a : FG.Att P.n) : NInv self (onAttestation st a).1 t := by
-  obtain ⟨σes, hrec, hsub⟩ := h.2.2
-  exact h.fgAtt self a st.record ⟨σes, hrec, fun b hb => (atts_onAttestation _ a).2 (hsub b hb)⟩
+private theorem NInv.onAttestation {st : NodeState A} {t : Time} (h : NInv dg self st t)
+    (a : FG.Att P.n) (hwf : A.Requirements → a.WellFormed) :
+    NInv dg self (onAttestation st a).1 t := by
+  obtain ⟨σes, hrec, hsub⟩ := h.rcd
+  exact h.fgAtt dg self a hwf st.record
+    ⟨σes, hrec, fun b hb => (atts_onAttestation _ a).2 (hsub b hb)⟩
 
-private theorem NInv.onBlock {st : NodeState A} {t : Time} (h : NInv self st t) (B : A.Blk)
-    (hv : A.Requirements → A.validPayload B) : NInv self (onBlock self st t B).1 t := by
+private theorem NInv.onBlock {st : NodeState A} {t : Time} (h : NInv dg self st t) (B : A.Blk)
+    (hv : A.Requirements → A.validPayload B) (hro : B.RootOk dg) :
+    NInv dg self (onBlock self st t B).1 t := by
   unfold Node.onBlock
   split_ifs with hf
   · exact h
   split
   · exact h
   rename_i fg' hb
-  obtain ⟨hr, hac, σes, hrec, hsub⟩ := h
+  have hr := h.fg
+  obtain ⟨σes, hrec, hsub⟩ := h.rcd
   have hr' : fg'.Reachable A.genesisPayload := hr.tail (Or.inl ⟨B, hb⟩)
   have htree := (Store.tree_grows P _ _ _ hr).1 B fg' hb
   have hstep := (Store.accept_is_frame_step P _ _ _ hr).1 B fg' hb
-  refine ⟨hr', fun hq => ?_, σes, hrec, fun a ha => atts_onBlock hb (hsub a ha)⟩
-  obtain ⟨t₀, ht₀, hR⟩ := hac hq
-  refine ⟨t, le_rfl, .step (.block B) (reachableAt_mono self ?_ hR) ht₀
-    ⟨frameIn_store (st := { st with fg := fg' }) hr', hstep, hv hq, Nat.le_of_not_lt hf⟩⟩
-  change st.fg.tree ⊆ fg'.tree
-  rw [htree]
-  exact Set.subset_insert _ _
+  refine ⟨hr', fun hq => ?_, ⟨σes, hrec, fun a ha => atts_onBlock hb (hsub a ha)⟩,
+    fun hq a ha => ?_, fun hg X hX => ?_⟩
+  · obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
+    refine ⟨t, le_rfl, .step (.block B) (reachableAt_mono self ?_ hR) ht₀
+      ⟨frameIn_store (st := { st with fg := fg' }) hr', hstep, hv hq, Nat.le_of_not_lt hf⟩⟩
+    change st.fg.tree ⊆ fg'.tree
+    rw [htree]
+    exact Set.subset_insert _ _
+  · change a ∈ fg'.atts at ha
+    obtain ⟨pr, σ', h₁, h₂, h₃, h₄, hσ', hfg⟩ := Store.onBlock_eq_some hb
+    subst hfg
+    rcases mem_addAtts ha with ha | ha
+    · rw [(Store.updateFinality_spec _ _).2.2.1] at ha
+      exact h.wf hq a ha
+    · exact ((P.fg.stateTransition_eq_some.1 hσ').1.2.2 a ha).1
+  · change X ∈ fg'.tree at hX
+    rw [htree] at hX
+    rcases hX with rfl | hX
+    · exact hro
+    · exact h.roots hg X hX
 
-private theorem NInv.attest {st : NodeState A} {t : Time} (h : NInv self st t) (C : A.Blk) :
-    NInv self (attest self st C).1 t := by
+private theorem NInv.attest {st : NodeState A} {t : Time} (h : NInv dg self st t) (C : A.Blk)
+    (hC : A.Requirements → C ∈ st.fg.tree) : NInv dg self (attest self st C).1 t := by
   unfold Node.attest
   split
   · exact h
   rename_i a Λ' heq
-  obtain ⟨σes, hrec, hsub⟩ := h.2.2
-  refine h.fgAtt self a Λ' ⟨σes ++ [st.fg.σ (st.fg.σ C.root).Th], ?_⟩
+  obtain ⟨σes, hrec, hsub⟩ := h.rcd
+  refine h.fgAtt dg self a (fun hq => ?_) Λ' ⟨σes ++ [st.fg.σ (st.fg.σ C.root).Th], ?_⟩
+  · -- the entry state of a held source has the chain invariants
+    have hr := h.fg
+    obtain ⟨⟨E, hE, hEr, -⟩, -⟩ := Store.entry_state_of_source P _ _ _ hr C (hC hq)
+    obtain ⟨c, -, -, -, hcs⟩ := Store.chain_state_of_chain P _ _ _ hr E hE
+    obtain ⟨h1, -, h3, -, -, -, -, h8, -⟩ := FG.chain_invariants P.fg _ _ hcs
+    rw [hEr] at h1 h3 h8
+    exact createAtt_wellFormed h1 h3 (fun p hp => lt_of_le_of_lt (h8 p hp).2 h3) heq
   have hc : (FG.Record.run self FG.Record.empty σes).1.createAtt self
       (st.fg.σ (st.fg.σ C.root).Th) = some (a, Λ') := by
     rw [← hrec]; exact heq
@@ -252,20 +362,20 @@ private theorem NInv.attest {st : NodeState A} {t : Time} (h : NInv self st t) (
   · rw [List.mem_singleton.1 hb]
     exact (atts_onAttestation _ a).1
 
-private theorem NInv.tickStep {st : NodeState A} {t : Time} (h : NInv self st t)
-    (s : TickStep) : NInv self (tickStep dg self st t s).1 t := by
+private theorem NInv.tickStep {st : NodeState A} {t : Time} (h : NInv dg self st t)
+    (s : TickStep) : NInv dg self (tickStep dg self st t s).1 t := by
   cases s with
-  | acTick => exact h.acCall self .tick ⟨frameIn_store h.1, rfl⟩
+  | acTick => exact h.acCall dg self .tick ⟨frameIn_store h.fg, rfl⟩
   | proposal =>
     simp only [Node.tickStep]
     split_ifs with hp
     · split
-      · exact h.acProposal self
+      · exact h.acProposal dg self
       · rename_i d p hdp
-        refine (h.acProposal self).onBlock self _ fun hq => ?_
-        obtain ⟨t₀, ht₀, hR⟩ := h.2.1 hq
+        refine (h.acProposal dg self).onBlock dg self _ (fun hq => ?_) rfl
+        obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
         have hts : t = P.slotTime (P.slotOf t) := hp.2.1
-        refine hq.payload self _ (Store.accepted_tree P _ _ _ h.1).2.1 _ _ t₀ hR (P.slotOf t)
+        refine hq.payload self _ (Store.accepted_tree P _ _ _ h.fg).2.1 _ _ t₀ hR (P.slotOf t)
           (hts ▸ ht₀) d p ?_ _ rfl rfl
         rw [← hts]
         exact hdp
@@ -273,60 +383,71 @@ private theorem NInv.tickStep {st : NodeState A} {t : Time} (h : NInv self st t)
   | fgUpdate =>
     simp only [Node.tickStep]
     split
-    · exact h.acToFG self
-    · exact (h.acToFG self).attest self _
+    · exact h.acToFG dg self
+    · rename_i C hC
+      refine (h.acToFG dg self).attest dg self _ fun hq => ?_
+      obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
+      exact (source_held A hq self _ (Store.accepted_tree P _ _ _ h.fg).2.1 _ _ t₀ hR t ht₀ C
+        hC).1.1
 
-private theorem NInv.exec {st : NodeState A} {t : Time} (h : NInv self st t) (e : Event A)
-    (hw : WireOK dg e) : NInv self (exec dg self st t e).1 t := by
+private theorem NInv.exec {st : NodeState A} {t : Time} (h : NInv dg self st t) (e : Event A)
+    (hw : WireOK dg e) : NInv dg self (exec dg self st t e).1 t := by
   cases e with
   | tick =>
     simp only [Node.exec, onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil]
     exact ((h.tickStep dg self _).tickStep dg self _).tickStep dg self _
-  | block B => exact h.onBlock self B fun _ => hw.2.2
-  | message m => exact h.acCall self _ ⟨frameIn_store h.1, rfl, hw⟩
-  | attestation a => exact h.onAttestation self a
-  | restart => exact h.acCall self _ ⟨frameIn_store h.1, rfl⟩
+  | block B => exact h.onBlock dg self B (fun _ => hw.2.2) hw.1
+  | message m => exact h.acCall dg self _ ⟨frameIn_store h.fg, rfl, hw⟩
+  | attestation a => exact h.onAttestation dg self a fun _ => hw
+  | restart => exact h.acCall dg self _ ⟨frameIn_store h.fg, rfl⟩
+
+private theorem mem_init_tree {B : A.Blk} (hB : B ∈ (Node.init A).fg.tree) :
+    B = P.genesisBlock A.genesisPayload := by
+  change (if B.root = P.genesisRoot then some (P.genesisBlock A.genesisPayload) else none) =
+    some B at hB
+  split_ifs at hB
+  exact (Option.some.inj hB).symm
 
 private theorem initialFrame : A.InitialFrame (frame (Node.init A)) := by
-  refine ⟨Set.ext fun B => ⟨fun hB => ?_, fun hB => ?_⟩, rfl, rfl, rfl, rfl⟩
-  · have h := hB.1
-    change (if B.root = P.genesisRoot then some (P.genesisBlock A.genesisPayload) else none) =
-      some B at h
-    split_ifs at h
-    exact (Option.some.inj h).symm
-  · rw [Set.mem_singleton_iff.1 hB]
-    refine ⟨?_, .refl⟩
-    change (if P.genesisRoot = P.genesisRoot then some (P.genesisBlock A.genesisPayload)
-      else none) = some (P.genesisBlock A.genesisPayload)
-    simp
+  refine ⟨Set.ext fun B => ⟨fun hB => mem_init_tree hB.1, fun hB => ?_⟩, rfl, rfl, rfl, rfl⟩
+  rw [Set.mem_singleton_iff.1 hB]
+  refine ⟨?_, .refl⟩
+  change (if P.genesisRoot = P.genesisRoot then some (P.genesisBlock A.genesisPayload)
+    else none) = some (P.genesisBlock A.genesisPayload)
+  simp
 
 private theorem nInv_of_reachable {cfg : Config A} (h : Reachable dg self cfg) :
-    NInv self cfg.st cfg.time := by
+    NInv dg self cfg.st cfg.time := by
   induction h with
   | refl =>
-    refine ⟨.refl, fun _ => ⟨0, le_rfl, .init _ initialFrame (frameIn_store .refl)⟩,
-      [], rfl, by simp [FG.Record.run]⟩
+    exact
+      { fg := .refl
+        ac := fun _ => ⟨0, le_rfl, .init _ initialFrame (frameIn_store .refl)⟩
+        rcd := ⟨[], rfl, by simp [FG.Record.run]⟩
+        wf := fun _ a ha => by cases ha
+        roots := fun hg X hX => by rw [mem_init_tree hX]; exact hg }
   | tail _ hs ih =>
     obtain ⟨e, t', ht, -, hw, hst, htime, -⟩ := hs
     rw [hst, htime]
-    exact (ih.mono self ht).exec dg self e hw
+    exact (ih.mono dg self ht).exec dg self e hw
 
 /-- **C0.5 (a), (b).** -/
 theorem ac_states_reachable : ACStatesReachable dg self := by
   intro hq cfg h
-  obtain ⟨hr, hac, -⟩ := nInv_of_reachable dg self h
-  exact ⟨(Store.accepted_tree P _ _ _ hr).2.1, hac hq⟩
+  have hI := nInv_of_reachable dg self h
+  exact ⟨(Store.accepted_tree P _ _ _ hI.fg).2.1, hI.ac hq⟩
 
 /-- **C0.5 (c), the record.** -/
 theorem record_is_client_run : RecordIsClientRun dg self := fun _ h =>
-  (nInv_of_reachable dg self h).2.2
+  (nInv_of_reachable dg self h).rcd
 
 /-- **C0.1.** -/
 theorem three_tips : ThreeTips dg self := by
   intro hq cfg h t ht
-  obtain ⟨hr, hac, -⟩ := nInv_of_reachable dg self h
-  obtain ⟨t₀, ht₀, hR⟩ := hac hq
-  exact tips_nested A hq self _ (Store.accepted_tree P _ _ _ hr).2.1 _ _ t₀ hR t (ht₀.trans ht)
+  have hI := nInv_of_reachable dg self h
+  obtain ⟨t₀, ht₀, hR⟩ := hI.ac hq
+  exact tips_nested A hq self _ (Store.accepted_tree P _ _ _ hI.fg).2.1 _ _ t₀ hR t
+    (ht₀.trans ht)
 
 /-- The proposal step signs nothing. -/
 private theorem proposal_no_attest (st : NodeState A) (t : Time) (C : A.Blk)
@@ -375,7 +496,7 @@ private theorem fgUpdate_attest {st : NodeState A} {t : Time}
 theorem sources_held : SourcesHeld dg self := by
   intro hq cfg cfg' t h hs C s hC
   obtain ⟨ht, -, -, hst, -, -⟩ := hs
-  have hI := (nInv_of_reachable dg self h).mono self ht
+  have hI := (nInv_of_reachable dg self h).mono dg self ht
   have h₂ := (hI.tickStep dg self .acTick).tickStep dg self .proposal
   have hcuts : exec dg self cfg.st t .tick =
       ((tickStep dg self (tickStep dg self (tickStep dg self cfg.st t .acTick).1 t .proposal).1
@@ -391,14 +512,190 @@ theorem sources_held : SourcesHeld dg self := by
   rcases hC with (hC | hC) | hC
   · simp [Node.tickStep, acCall] at hC
   · exact absurd hC (proposal_no_attest dg self _ t C s)
-  obtain ⟨hsrc, htree, hF⟩ := fgUpdate_attest dg self h₂.1 hC
-  obtain ⟨t₀, ht₀, hR⟩ := h₂.2.1 hq
-  obtain ⟨hCt, hFC, -⟩ := source_held A hq self _ (Store.accepted_tree P _ _ _ h₂.1).2.1 _ _ t₀ hR
+  obtain ⟨hsrc, htree, hF⟩ := fgUpdate_attest dg self h₂.fg hC
+  obtain ⟨t₀, ht₀, hR⟩ := h₂.ac hq
+  obtain ⟨hCt, hFC, -⟩ := source_held A hq self _ (Store.accepted_tree P _ _ _ h₂.fg).2.1 _ _ t₀ hR
     t ht₀ C hsrc
   dsimp only
   unfold Store.Anc
   rw [htree, hF]
   exact ⟨hCt.1, Anc.mono (fun _ h => h.1) hFC⟩
+
+/-! ### C0.3: the own block is accepted -/
+
+private theorem slotTime_slotOf_le {t : Time} (ht : 0 ≤ t) : P.slotTime (P.slotOf t) ≤ t :=
+  Nat.findGreatest_spec (P := fun s => P.slotTime s ≤ t) (Nat.zero_le _)
+    (by rw [P.slotTime_zero]; exact ht)
+
+/-- One cut adds to the tree only a block not of a future slot. -/
+private theorem step_tree {t : Time} {st st' : NodeState A} {c : Cut A}
+    (h : CutStep self t st c st') (hr : st.fg.Reachable A.genesisPayload) :
+    ∀ X ∈ st'.fg.tree, X ∈ st.fg.tree ∨ X.slot ≤ P.slotOf t := by
+  intro X hX
+  cases c with
+  | ac ℓ => rw [h.2.2.1] at hX; exact Or.inl hX
+  | fg ℓ =>
+    cases ℓ with
+    | block B acc =>
+      cases acc with
+      | true =>
+        obtain ⟨hs, hb, -, -⟩ := h
+        rw [(Store.tree_grows P _ _ _ hr).1 B _ hb] at hX
+        rcases hX with rfl | hX
+        · exact Or.inr hs
+        · exact Or.inl hX
+      | false => obtain ⟨-, rfl⟩ := h; exact Or.inl hX
+    | attestation a =>
+      rw [h.1, (Store.tree_grows P _ _ _ hr).2 a] at hX
+      exact Or.inl hX
+    | attest C s =>
+      cases s with
+      | none => obtain ⟨-, rfl⟩ := h; exact Or.inl hX
+      | some a => rw [h.2.1] at hX; exact Or.inl hX
+
+private theorem chain_tree {t : Time} {st st' : NodeState A} {cs : List (Cut A)}
+    (h : CutChain self t st cs st') (hr : st.fg.Reachable A.genesisPayload) :
+    ∀ X ∈ st'.fg.tree, X ∈ st.fg.tree ∨ X.slot ≤ P.slotOf t := by
+  induction h with
+  | nil => exact fun X hX => Or.inl hX
+  | cons hs _ ih =>
+    intro X hX
+    rcases ih (step_fg self hs hr).1 X hX with hX | hX
+    · exact step_tree self hs hr X hX
+    · exact Or.inr hX
+
+/-- The slots of the held blocks: genesis, or a block whose slot starts at or before the clock,
+before it in phase `pre`. -/
+private def SlotInv (cfg : Config A) : Prop :=
+  0 ≤ cfg.time ∧ ∀ X ∈ cfg.st.fg.tree, X.slot = 0 ∨
+    (P.slotTime X.slot ≤ cfg.time ∧ (cfg.phase = .pre → P.slotTime X.slot < cfg.time))
+
+private theorem slotInv_of_reachable {cfg : Config A} (h : Reachable dg self cfg) :
+    SlotInv cfg := by
+  induction h with
+  | refl => exact ⟨le_rfl, fun X hX => Or.inl (by rw [mem_init_tree hX]; rfl)⟩
+  | @tail c₁ c₂ hr₁ hs ih =>
+    obtain ⟨e, t', ht, hok, -, hst, htime, hph⟩ := hs
+    obtain ⟨h0, hold⟩ := ih
+    have hr := (nInv_of_reachable dg self hr₁).fg
+    refine ⟨htime ▸ h0.trans ht, fun X hX => ?_⟩
+    rw [hst] at hX
+    rw [htime, hph]
+    cases e with
+    | restart =>
+      -- a restart adds no block, and the phase at `t'` was `pre`
+      rcases hold X hX with h | ⟨h1, h2⟩
+      · exact Or.inl h
+      refine Or.inr ⟨h1.trans ht, fun _ => ?_⟩
+      change Phase.at c₁.time t' c₁.phase = .pre at hok
+      unfold Phase.at at hok
+      split_ifs at hok with hlt
+      · exact lt_of_le_of_lt h1 hlt
+      · exact lt_of_lt_of_le (h2 hok) ht
+    | _ =>
+      rcases chain_tree self (exec_is_cut_chain dg self c₁.st t' _) hr X hX with hX | hX
+      · rcases hold X hX with h | ⟨h1, -⟩
+        · exact Or.inl h
+        · exact Or.inr ⟨h1.trans ht, fun h => by cases h⟩
+      · exact Or.inr ⟨(P.slotTime_strictMono.monotone hX).trans
+          (slotTime_slotOf_le (h0.trans ht)), fun h => by cases h⟩
+
+/-- At the tick of a slot start that the node proposes in, every held block is of an earlier
+slot (genesis, or accepted before that time: the tick runs before the objects of its time). -/
+private theorem slot_lt_of_tick {cfg cfg' : Config A} {t : Time} (h : Reachable dg self cfg)
+    (hs : Step dg self cfg .tick t cfg') (hp : Proposes self t) :
+    ∀ X ∈ cfg.st.fg.tree, X.slot < P.slotOf t := by
+  intro X hX
+  obtain ⟨-, hinv⟩ := slotInv_of_reachable dg self h
+  obtain ⟨ht, ⟨-, hpre⟩, -⟩ := hs
+  rcases hinv X hX with h0 | ⟨h1, h2⟩
+  · rw [h0]; exact hp.1
+  have hlt : P.slotTime X.slot < t := by
+    unfold Phase.at at hpre
+    split_ifs at hpre with hlt
+    · exact lt_of_le_of_lt h1 hlt
+    · exact lt_of_lt_of_le (h2 hpre) ht
+  rw [hp.2.1] at hlt
+  exact P.slotTime_strictMono.lt_iff_lt.1 hlt
+
+/-- The chain state of a held block has that block's slot. -/
+private theorem σ_slot {fg : Store P A.Payload} (hr : fg.Reachable A.genesisPayload) {H : A.Blk}
+    (hH : H ∈ fg.tree) : (fg.σ H.root).s ≤ H.slot := by
+  obtain ⟨c, -, -, hlast, hcs⟩ := Store.chain_state_of_chain P _ _ _ hr H hH
+  rcases hlast with ⟨rfl, -⟩ | hlast
+  · have h := (show P.fg.chainState [] = some (FG.ChainState.init P.fg) from rfl).symm.trans hcs
+    rw [← Option.some.inj h]
+    exact Nat.zero_le _
+  · obtain ⟨c', rfl⟩ := List.getLast?_eq_some_iff.1 hlast
+    have e : ∀ l : List A.Blk, (List.map Block.fgView l : List (FG.FGBlock P.fg.n)) =
+        l.map (fun B => (Block.fgView B : FG.FGBlock P.n)) := fun l => rfl
+    rw [e, List.map_append, List.map_singleton] at hcs
+    obtain ⟨σ₀, -, hσ⟩ :=
+      Option.bind_eq_some_iff.1 ((FG.FGParams.chainState_append P.fg _ _).symm.trans hcs)
+    exact (P.fg.stateTransition_L_s hσ).2.1.le
+
+/-- **C0.3.** -/
+theorem honest_block_accepted : HonestBlockAccepted dg self := by
+  intro hq hg cfg cfg' t hR hs hp
+  dsimp only
+  intro d p hdp
+  have hI := (nInv_of_reachable dg self hR).mono dg self hs.1
+  have h₁ := hI.tickStep dg self .acTick
+  obtain ⟨t₀, ht₀, hRA⟩ := h₁.ac hq
+  have hcoh := (Store.accepted_tree P _ _ _ h₁.fg).2.1
+  have hts : t = P.slotTime (P.slotOf t) := hp.2.1
+  have hprop : (A.proposal (tickStep dg self cfg.st t .acTick).1.ac
+      (frame (tickStep dg self cfg.st t .acTick).1) (P.slotTime (P.slotOf t))).2 =
+      some (d, p) := by
+    rw [← hts]; exact hdp
+  obtain ⟨hHt, hFH⟩ := proposal_parent_held A hq self _ hcoh _ _ t₀ hRA (P.slotOf t)
+    (hts ▸ ht₀) d p hprop
+  have hslot := slot_lt_of_tick dg self hR hs hp
+  have hHs : d.head.slot < P.slotOf t := hslot _ hHt.1
+  have hatts : ∀ a ∈
+      (mkBlock dg self (tickStep dg self cfg.st t .acTick).1.fg t d.head p).fgPayload,
+      a.WellFormed ∧ ((tickStep dg self cfg.st t .acTick).1.fg.σ d.head.root).validAtt a := by
+    intro a ha
+    obtain ⟨ha, hv⟩ := List.mem_filter.1 ha
+    simp only [decide_eq_true_eq] at hv
+    exact ⟨h₁.wf hq a ha, hv.1⟩
+  refine ⟨hHt.1, Anc.mono (fun _ h => h.1) hFH, hHs, hatts,
+    hq.payload self _ hcoh _ _ t₀ hRA (P.slotOf t) (hts ▸ ht₀) d p hprop _ rfl rfl, rfl,
+    fun hnc => ?_⟩
+  set fg := (tickStep dg self cfg.st t .acTick).1.fg with hfg
+  set B := mkBlock dg self fg t d.head p with hB
+  have hnone : fg.blocks B.root = none := by
+    cases hb : fg.blocks B.root with
+    | none => rfl
+    | some X =>
+      exfalso
+      have hXr := Store.Reachable.blocks_root h₁.fg hb
+      have hX : X ∈ fg.tree := by
+        change fg.blocks X.root = some X
+        rw [hXr]; exact hb
+      have hXB := hnc X (Set.mem_insert_of_mem _ hX) B (Set.mem_insert _ _)
+        ((h₁.roots hg X hX).symm.trans (hXr.trans rfl))
+      have := hslot X hX
+      rw [hXB.2.1] at this
+      exact lt_irrefl _ this
+  refine ⟨hnone, ?_⟩
+  change ∃ fg', fg.onBlock B = some fg'
+  have hHb : fg.blocks d.head.root = some d.head := hHt.1
+  have hst : (fg.σ d.head.root).s < B.slot := lt_of_le_of_lt (σ_slot h₁.fg hHt.1) hHs
+  obtain ⟨σ', hσ'⟩ : ∃ σ', P.fg.stateTransition (fg.σ d.head.root) B.fgView = some σ' :=
+    ⟨_, P.fg.stateTransition_eq_some.2 ⟨⟨hp.2.2.symm, hst, hatts⟩, rfl⟩⟩
+  refine Option.ne_none_iff_exists'.1 ?_
+  unfold Store.onBlock
+  rw [show B.parent = some d.head.root from rfl]
+  dsimp only
+  split_ifs with hc
+  · exfalso
+    simp only [hnone, hHb, Option.isSome_none, Option.isNone_some, Bool.false_eq_true,
+      false_or] at hc
+    exact hc ((Anc.mono (Set.subset_insert _ _) (Anc.mono (fun _ h => h.1) hFH)).tail
+      ⟨Set.mem_insert_of_mem _ hHt.1, Set.mem_insert _ _, rfl⟩)
+  · rw [hσ']
+    exact Option.some_ne_none _
 
 end Consensus.Goldilocks.Compose
 
