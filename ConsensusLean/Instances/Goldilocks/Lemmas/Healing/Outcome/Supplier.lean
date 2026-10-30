@@ -22,12 +22,14 @@ With `b = slot(a) + 3` (`cleanLabel`) and `R = t_{b+2k+2}` (`drainTime`, the `R_
 * **The drain** (§23, HS.2 (3)): from `R` on, every live lock has a label at least `b + k + 2`, so
   every lock with a label before `b` or a slow window straddling `b` has expired
   (`drain_live_locks`).
-* **Clean fast origins are high** (`clean_fast_high`): a stored fast lock of label `≥ b` written
-  by an honest joined node is a high origin of HR.4, so HR.4 (R3) transfers it.
-* **Clean slow transfer** (`clean_slow_transfer`, phase-service §10, HS.2 (2)): a raw slow
-  selection `S` of an honest result of label `j` whose slow window is clean (`b + k − 1 ≤ j`)
-  is extended by every honest vote of a later slot, and is in the voter's viable voter block
-  tree or at or below its `fc_root` there.
+* **Clean fast transfer** (`clean_fast_transfer`, HS.2 (1)): the stored block of a fast lock of
+  label `≥ b` written by an honest joined node is extended by every honest vote of a later slot,
+  and is in the voter's viable voter block tree or at or below its `fc_root` there (HR.4 (R3)
+  when it is high; inherited from a high seed when it is a low ancestor of one).
+* **Clean slow transfer** (`clean_slow_transfer`, phase-service §10, HS.2 (2)): the raw slow
+  selection `S` of an honest update of label `j` (`SA.SlowLockAt`) whose slow window is clean
+  (`b + k − 1 ≤ j`) is extended by every honest vote of a later slot, and is in the voter's
+  viable voter block tree or at or below its `fc_root` there.
 * **The joined duty at honest ready proposals** (§23 "Joined duty conclusion", phase-service §10
   "Join with RN/RU"): for an honest ready proposal `P` of slot `u` with `t_u ≥ R`, every honest
   slot-`u` vote is `P` (`ready_unanimous`), and at every honest update of slot `u` (at
@@ -88,29 +90,29 @@ theorem drain_live_locks {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {L : Set SA.Loc
   simp only [cleanLabel]
   omega
 
-/-- **Clean fast origins are high**: under the reset premises, a fast lock of label `j ≥ b` that
-an honest node joined at its write stores (after the move back) is a high origin of HR.4, so
-(R1)–(R3) of `height_scoped_retention` apply to it. -/
-theorem clean_fast_high (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+/-- **Clean fast transfer** (§23, HS.2 (1), across phases): a fast lock of label `j ≥ b` that an
+honest node joined at its write stores (after the move back) on `B` is extended by every honest
+vote of a slot after `j`, and at that vote `B` is in the voter's viable voter block tree or at or
+below its `fc_root` (inside the honest blocks). (A high `B` is an HR.4 high origin, (R3); a low
+`B` can be an ancestor of a high seed, and then inherits the seed's transfer and witness.) -/
+theorem clean_fast_transfer (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hx : x ∈ H)
     (hj : tr.JoinedAt x (tr.time i)) (hw : Compose.StoredFastLockAt tr x i j B CV)
-    (hb : cleanLabel sp a ≤ j) : HighOrigin tr H g x i j B := by
+    (hb : cleanLabel sp a ≤ j) :
+    ∀ y ∈ H, ∀ k ℓ' e, SA.CastAt tr.projAC y k ℓ' e → j < e.msg.slot →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B ∧
+      (B ∈ ℓ'.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ'.frame e.msg.slot) ∨
+        Anc (tr.HonestBlocks H) B ℓ'.frame.fcRoot) := by
   sorry
 
-/-- **Clean slow transfer** (phase-service §10, HS.2 (2)): let an honest node `x` get the result
-`C` of its update of slot `j` at cut `i`, whose slow window is clean (`b + k − 1 ≤ j`), and let
-`S` be a block of `C`'s confirmation path that passes the slow test there (each saved result of
-the `k − 1` previous slots is a block of the frame extending `S`). Then every honest vote of a
-slot after `j` extends `S`, and at that vote `S` is in the voter's viable voter block tree or at
-or below its `fc_root` (inside the honest blocks). -/
+/-- **Clean slow transfer** (phase-service §10, HS.2 (2), across phases): let an honest node `x`
+write at cut `i` a slow lock of label `j` on the raw selected block `S` (`SA.SlowLockAt`, before
+the move back), with a clean slow window (`b + k − 1 ≤ j`). Then every honest vote of a slot after
+`j` extends `S`, and at that vote `S` is in the voter's viable voter block tree or at or below its
+`fc_root` (inside the honest blocks). Every stored image of the lock is an ancestor of `S` (RN). -/
 theorem clean_slow_transfer (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
-    {C S : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hx : x ∈ H) (hR : SA.ResultAt tr.projAC x i j C CV) (hu : SA.UpdateAt tr.projAC x i j ℓ)
-    (hb : cleanLabel sp a + sp.k ≤ j + 1)
-    (hS : S ∈ SA.confirmationPath sp ℓ.frame C)
-    (hslow : ∀ j' : Int, (j : Int) - sp.k < j' → j' < j →
-      ∃ S' ∈ ℓ.frame.tree, (tr.state x i).ac.saved j' = some S'.root ∧ ℓ.frame.Anc S S') :
+    {S : SA.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H) (hS : SA.SlowLockAt tr.projAC x i j S)
+    (hb : cleanLabel sp a + sp.k ≤ j + 1) :
     ∀ y ∈ H, ∀ k ℓ' e, SA.CastAt tr.projAC y k ℓ' e → j < e.msg.slot →
       SA.VoteExtends (tr.HonestBlocks H) e.msg S ∧
       (S ∈ ℓ'.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ'.frame e.msg.slot) ∨
