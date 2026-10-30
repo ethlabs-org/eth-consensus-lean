@@ -18,8 +18,9 @@ and statements: for every instance `P` `Instances/<P>/{Spec,Statements}` (file a
 `Instances/<P>/Refinement/Defs.lean`, existing or not; check-boundaries.py requires the `protected` instance
 layers to be covered. These are tag-protected, not trusted layers: the Goldilocks `Baseline` modules read
 definitions of the generic `Main` and `Lemmas/Problem/Derived.lean` (`FaultsBelow`, `Safe`, `ReadySafeUpTo`)
-through a reviewed import exception. `ConsensusLean/Lemmas/Problem/Derived.lean`, which defines those three, is
-in `trusted_paths` too (a Lemmas file, so not a trusted layer), so no unreviewed edit changes the definitions the sheet reads (a name scan of the sheet found no other definition
+through a reviewed import exception. `ConsensusLean/Lemmas/Problem/Derived.lean`, which defines only those three, `Agree`, and their
+characterising lemmas (which must sit with the unexposed bodies; other derived notions are in the unprotected
+`DerivedFacts.lean`), is in `trusted_paths` too (a Lemmas file, so not a trusted layer), so no unreviewed edit changes the definitions the sheet reads (a name scan of the sheet found no other definition
 outside the trusted paths that its statements read); its elaboration still depends on the unprotected modules it
 imports (a new declaration in `Consensus.Shape`, an instance or a notation there could change how its names
 resolve), so the tag freezes the sheet's text and definitions, not everything it imports. The exception is limited to the two `Baseline` modules and does not extend to their importers, so a

@@ -244,7 +244,7 @@ re-delivery; tests `waker_within_bound`, `waker_not_instant`).
   `τ' ∈ [0, d]`) at `dl a` by every honest node awake throughout `[a, dl a]`,
   for every `a ≥ τ`.
 - Sends are covered at every time, negative ones included. Submissions are
-  covered from `0`. With `SendsFromZero` (in `Derived`; true of every valid model run),
+  covered from `0`. With `SendsFromZero` (in `DerivedFacts`; true of every valid model run),
   `PSync 0` is synchrony (`PSync.syncUntil_zero`).
 - Receipt is a network service, not protocol use. In the model, what arrives
   at the deadline is first used by the node's next tick. That slack belongs
@@ -531,8 +531,9 @@ Spec drift is guarded by the snapshot diff plus owner review (`spec-approved`);
 dependency drift by pins; proof validity by replay, check-decls and the CI comparator.
 
 Proof support outside that surface: `ConsensusLean/Lemmas/Problem/Derived.lean` defines
-`Agree`, `Safe`, `ReadySafeUpTo`, `FaultsBelow`, `SendsFromZero` and `Trace.map`,
-which `Good` does not read. `ConsensusLean/Lemmas/Problem/Facts/` holds the derived `Good.*`
+`Agree`, `Safe`, `ReadySafeUpTo` and `FaultsBelow` with their characterising lemmas (tag-protected, because the
+Goldilocks sheet reads them), and `ConsensusLean/Lemmas/Problem/DerivedFacts.lean` defines `SendsFromZero` and
+`Trace.map` with theirs (not protected); `Good` reads none of them. `ConsensusLean/Lemmas/Problem/Facts/` holds the derived `Good.*`
 lemmas, including `Good.served`; `ConsensusLean/Lemmas/Blocks/Facts.lean` holds the block lemmas.
 `ConsensusLean/Lemmas/Shape/Payload.lean` proves the payload bridges;
 `ConsensusLean/Proofs/Behaviour/Main.lean`, `ConsensusLean/Proofs/RegimesRealizable/Main.lean`,

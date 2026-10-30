@@ -4,13 +4,15 @@ public import ConsensusLean.Spec.Problem.Network
 
 public section
 
-/-! # Derived notions (L0, outside the trusted surface)
+/-! # Derived notions read by instance statements (L0; tag-protected, not a trusted layer)
 
 Not needed to read `Good`: no definition of `Behaviour`, `Adequate`,
 `Realizable` or `Good`, and no L1/L2 definition that the endpoints read, uses
-them. They are read by the L0 facts (`Facts/*`), the Goldilocks sheet and the
-refinement proofs. Names and bodies are those of the trusted files they came
-from. -/
+them. They are read by the Goldilocks baseline sheet, so this file is in
+`trusted_paths` (#38); it holds only those definitions and their characterising
+lemmas (which must sit with the unexposed bodies, plan §3). Other derived notions
+and their lemmas go in `DerivedFacts.lean`, which is not protected. Names and
+bodies are those of the trusted files they came from. -/
 
 namespace Consensus
 
@@ -30,20 +32,6 @@ end EnvPoint
 namespace Trace
 
 variable {V α Id : Type} (tr : Trace V α Id)
-
-/-- The same trace with every read mapped by `f`. -/
-def map {β : Type} (f : List α → List β) : Trace V β Id :=
-  ⟨tr.point, tr.cuts, tr.cutTime, fun g v i => f (tr.read g v i)⟩
-
-theorem map_eq {β : Type} (f : List α → List β) :
-    tr.map f = ⟨tr.point, tr.cuts, tr.cutTime, fun g v i => f (tr.read g v i)⟩ := by rfl
-
-@[simp] theorem map_point {β : Type} (f : List α → List β) : (tr.map f).point = tr.point := by rfl
-@[simp] theorem map_cuts {β : Type} (f : List α → List β) : (tr.map f).cuts = tr.cuts := by rfl
-@[simp] theorem map_cutTime {β : Type} (f : List α → List β) :
-    (tr.map f).cutTime = tr.cutTime := by rfl
-@[simp] theorem map_read {β : Type} (f : List α → List β) (g : Id) (v : V) (i : Nat) :
-    (tr.map f).read g v i = f (tr.read g v i) := by rfl
 
 /-- No two honest reads of `g` at cuts from `t₀` on conflict. -/
 abbrev Agree (g : Id) (t₀ : Time) : Prop := tr.AgreeAmong (fun v _ => v ∈ tr.point.honest) g t₀
@@ -74,20 +62,6 @@ theorem readySafeUpTo_iff {c : Time} {g : Id} {t₀ b : Time} : tr.ReadySafeUpTo
       tr.read g v i <+: tr.read g v j)) := Iff.rfl
 
 end Trace
-
-namespace CommLog
-
-variable {V M : Type} (p : EnvPoint V) (L : CommLog V M)
-
-/-- No honest send before time `0`. Every valid model run's log has this
-(`Model.Run.log_sendsFromZero`). -/
-def SendsFromZero : Prop := ∀ v ∈ p.honest, ∀ m t, L.sent v m t → 0 ≤ t
-
-variable {p L} in
-theorem sendsFromZero_iff : SendsFromZero p L ↔ ∀ v ∈ p.honest, ∀ m t, L.sent v m t → 0 ≤ t :=
-  Iff.rfl
-
-end CommLog
 
 end Consensus
 

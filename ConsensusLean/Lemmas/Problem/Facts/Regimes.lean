@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Lemmas.Problem.Derived
+public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Spec.Problem.Regimes
 public import Mathlib.Tactic
 

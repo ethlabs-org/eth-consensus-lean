@@ -25,6 +25,7 @@ public import ConsensusLean.Lemmas.Model.Protocol
 public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.View
 public import ConsensusLean.Lemmas.Problem.Derived
+public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Lemmas.Problem.Facts.Atoms
 public import ConsensusLean.Lemmas.Problem.Facts.Good
 public import ConsensusLean.Lemmas.Problem.Facts.Network

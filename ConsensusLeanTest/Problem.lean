@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Spec.Problem.Good
-public import ConsensusLean.Lemmas.Problem.Derived
+public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Lemmas.Problem.Facts.Atoms
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
 public import ConsensusLean.Lemmas.Problem.Facts.Network
