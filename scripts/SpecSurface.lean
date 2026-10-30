@@ -4,7 +4,7 @@ import Lean
 open Lean Meta
 namespace SpecSurface
 
-def runMeta (env : Environment) (x : MetaM α) : IO α := do
+def runMeta {α : Type} (env : Environment) (x : MetaM α) : IO α := do
   let opts := (((({} : Options).setBool `pp.fullNames true).setBool `pp.universes true).setBool `pp.proofs false).set `pp.width (120 : Nat)
   (x.run' {} {}).toIO' { fileName := "SpecSurface", fileMap := default, options := opts } { env }
 
@@ -64,7 +64,13 @@ def run (args : List String) : IO UInt32 := do
   let mut failed := false
   let mut lines : Array String := #[]
   let mut seen : List String := []
-  let constants := env.constants.toList.toArray.qsort (fun a b => a.1.toString < b.1.toString)
+  -- The constants a module owns (`getModuleIdxFor?`), in name order: read from the module's own
+  -- `constNames` instead of filtering and sorting the whole environment once per call.
+  let ownedBy (idxs : Array Nat) : Array (Name × ConstantInfo) :=
+    (idxs.foldl (init := #[]) fun acc i => env.header.moduleData[i]!.constNames.foldl (init := acc) fun acc n =>
+      if env.getModuleIdxFor? n == some i then
+        match env.constants.find?' n with | some ci => acc.push (n, ci) | none => acc
+      else acc).qsort (fun a b => a.1.toString < b.1.toString)
   if cmd == "reach" then
     if seeds.isEmpty then throw (IO.userError "missing --from")
     for n in seeds do
@@ -76,11 +82,10 @@ def run (args : List String) : IO UInt32 := do
       if reached.contains n then continue
       reached := reached.insert n
       if let some ci := env.find? n then todo := ci.getUsedConstantsAsSet.toList ++ todo
+    let idxs := (List.range env.header.moduleNames.size).toArray.filter (mods.contains env.header.moduleNames[·]!)
     let result ← runMeta env do
       let mut result : Array String := #[]
-      for (n, ci) in constants do
-        let some i := env.getModuleIdxFor? n | continue
-        unless mods.contains env.header.moduleNames[i]! do continue
+      for (n, ci) in ownedBy idxs do
         if reached.contains n then result := result.push n.toString
         else if ci matches .defnInfo _ then
           if (← findDeclarationRanges? n).isSome then result := result.push s!"UNREACHED {n}"
@@ -96,7 +101,7 @@ def run (args : List String) : IO UInt32 := do
           unless allowed.contains ext.toString do
             lines := lines.push s!"FAIL[ext] {m} {ext}"; failed := true
       continue
-    let owned := constants.filter (fun (n, _) => env.getModuleIdxFor? n == some idx)
+    let owned := ownedBy #[idx]
     if cmd == "noconst" then
       unless owned.isEmpty do
         lines := lines.push s!"FAIL[noconst] {m} {owned.size} {String.intercalate " " (owned.toList.take 5 |>.map (·.1.toString))}"

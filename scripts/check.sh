@@ -104,7 +104,7 @@ CFG=scripts/boundaries.toml
 WORK="$(mktemp -d "${RUN_DIR:-${TMPDIR:-/tmp}}/check.XXXXXX")"
 INV="$WORK/inventory.tsv"
 FX=scripts/fixtures
-SURFACE=(lake env lean --run scripts/SpecSurface.lean)
+SURFACE=(lake exe spec-surface)  # scripts/SpecSurface.lean, compiled (lakefile); built by step 1
 
 # cfg <key>: a list or string of [checks] (or a top-level key) of boundaries.toml, one item per line.
 cfg() {
@@ -250,6 +250,8 @@ PY
   ((do_audit || do_audit_tests || do_audit_report)) && BUILD_TARGETS+=(axiom-audit)
   ((do_comparator_config)) && BUILD_TARGETS+=("$CHALLENGE")
   ((${#DECL_LIBS[@]})) && BUILD_TARGETS+=(check-decls)
+  # steps 4 (Spec surface, or noconst alone for any Lean change) and 9 call it
+  ((do_surface || do_comparator_config || ${#DECL_LIBS[@]})) && BUILD_TARGETS+=(spec-surface)
   echo "  downstream cone (built): ${#CONE[@]} modules"
   ((${#CONE[@]})) && printf '    %s\n' "${CONE[@]}"
   echo "  affected libraries (check-decls): ${DECL_LIBS[*]:-none}"
@@ -1264,6 +1266,7 @@ if [[ "$mode" == changed ]]; then
   build_label="1 build (the downstream cone: ${#CONE[@]} modules"
   if ((do_comparator_config)); then build_label+=" + $CHALLENGE"; fi
   if ((${#DECL_LIBS[@]})); then build_label+=" + check-decls"; fi
+  if ((do_surface || do_comparator_config || ${#DECL_LIBS[@]})); then build_label+=" + spec-surface"; fi
   build_label+=")"
 else
   build_label="1 build (default targets + ${BUILD_EXTRA[*]})"

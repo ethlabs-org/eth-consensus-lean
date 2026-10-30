@@ -8,8 +8,8 @@ cannot be read; exit 0 otherwise. Nothing here gates anything (scripts/check-bou
 
 Modules are those of the lakefile targets: every file matched by a lean_lib's globs (default: its roots;
 under its srcDir) or a lean_exe's root, plus every project file they import (Lake builds exactly these).
-Files that only check.sh compiles directly (scripts/SpecSurface.lean, scripts/fixtures/*.lean outside
-CheckFixtures) are not modules of a target and are not counted. Imports come from the pinned
+Files that only check.sh compiles directly (scripts/fixtures/*.lean outside CheckFixtures) are not
+modules of a target and are not counted. Imports come from the pinned
 Lean parser (`lake env lean --deps-json`, header only, no build), as in check-boundaries.py. The implicit
 `Init` import is not counted.
 

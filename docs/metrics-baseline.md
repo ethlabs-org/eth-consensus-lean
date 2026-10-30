@@ -26,8 +26,9 @@ The layer of a module is its `[[layer]]` in `scripts/boundaries.toml` (since ste
 `scripts/layers.toml` with the boundary checker's config); a generated root is `Aggregate`, a module of a
 target outside the checked libraries `(<target>)`. Milestones are the milestone layers (`Proofs.<M>`).
 
-Files that only check.sh compiles directly (`scripts/SpecSurface.lean`, the `scripts/fixtures/` files
-outside `CheckFixtures`) belong to no target, so they are not counted.
+Files that only check.sh compiles directly (the `scripts/fixtures/` files outside `CheckFixtures`) belong
+to no target, so they are not counted. (`scripts/SpecSurface.lean` was one of them until it became the
+`spec-surface` executable, after this baseline.)
 
 The build profile uses Lake's own per-module times (`lake build -v`). lakeprof was not used:
 installing it from GitHub was not permitted in this session (external code on the shared box).

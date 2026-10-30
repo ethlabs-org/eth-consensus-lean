@@ -18,7 +18,7 @@ fixture_libs = ["CheckFixtures", "CheckDeclsTest", "Challenge"]
 # lean_exe targets of the lakefile (the check stack's tools) and the lean_lib targets only they use. Every
 # lakefile target is a [[lib]] below, a fixture lib or one of these; no lib root, glob or file may take a
 # top-level name of `base`. No checked module may import a tool module (an unknown top-level name).
-tool_exes = ["check-decls", "axiom-audit"]
+tool_exes = ["check-decls", "axiom-audit", "spec-surface"]
 tool_libs = ["AxiomAudit"]
 
 # Every module (except a generated root) reaches this one through public imports (plan §1, CSLib Init).
@@ -683,7 +683,7 @@ solution_module = "Solution"
 statements_module = "ConsensusLean.Statements.Review"
 # Extra targets built by step 1 next to the default targets.
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
-                       "Challenge"]
+                       "spec-surface", "Challenge"]
 # Rebuild canary (plan §6; check.sh step 14, a report): the proof-only edit `canary_proof_edit` = [old, new] (old
 # occurring exactly once) of `canary_module` must leave its .olean.hash unchanged and every default target up to
 # date; the control `canary_statement_edit` (a statement change that every use still elaborates with: an extra

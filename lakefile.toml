@@ -72,6 +72,14 @@ srcDir = "scripts"
 root = "CheckDecls"
 supportInterpreter = true
 
+# Spec surface tool of check.sh steps 4 and 9 (ours; snapshot, extensions, theorems, noconst, statements, reach).
+# Compiled rather than `lean --run` (interpreted, about 45 s per call in CI). Built by check.sh. Never a default target.
+[[lean_exe]]
+name = "spec-surface"
+srcDir = "scripts"
+root = "SpecSurface"
+supportInterpreter = true
+
 # leanprover-community/axiom-audit v0.1.2 (Apache-2.0; vendored verbatim, see TRUST.md): the library and the
 # executable (its `Main.lean` as `AxiomAuditMain.lean`). Built by check.sh; step 3b audits the `Solution` closure
 # and reports the library's unfinished declarations. Never a default target.
