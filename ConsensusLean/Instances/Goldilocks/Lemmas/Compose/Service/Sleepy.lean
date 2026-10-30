@@ -6,21 +6,17 @@ public section
 /-! # Goldilocks runs under `Sleepy`: the facts the Service milestone reads (interface)
 
 The Sleepy safety induction from time `0` (claims A1.6, its "own induction from time 0"; the same
-induction is R.1, `sleepySafe`) is not proved yet, and its invariant is being fixed on paper
-(origins of every regular result and optimistic selection, their comparability, label-strict
-transfer to later honest votes, the locks and frames they constrain). This file holds what A1.6
+induction is R.1, `sleepySafe`; workbench#11, `Lemmas/Compose/Sleepy`). This file holds what A1.6
 and A1.7 read of it, node-local at one cut of `y`:
 
 * `HeadSupport R` (G1, G2): the anchor is compatible with `R`, and `R` is at or below the anchor,
   or `R` is in the viable tree with a strict majority of the latest view's voters as supporters
   (with `SA.anc_acHead`, the head extends `R`, and `ac_confirmed` is the record's block);
 * `ServedFacts` at a cut where `y` is served (`ServedAt`): `HeadSupport` of the record's block,
-  and the record step (G3: across the cut the record moves to a descendant);
+  and the record step (G3: across the cut the record moves to a descendant); supplied by
+  `sleepy_served_facts` (`Lemmas/Compose/Sleepy/Served`, which imports this file);
 * `included_facts` at the cuts of A1.7: the record's block extends the honest proposal and has
-  `HeadSupport`.
-
-When the invariant is stated (its own structure, here, for A1.6, A1.7 and R.1), `served_facts`
-and `included_facts` become its consequences. -/
+  `HeadSupport`, or, when the record has left the frame, `Σ.F` extends the proposal. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -57,16 +53,10 @@ structure ServedFacts (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (y : Fin
     ∃ E' ∈ tr.HonestBlocks H, E'.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
       Anc (tr.HonestBlocks H) E E'
 
-/-- **The served-cut facts under `Sleepy`** (open: the Sleepy safety induction). -/
-theorem served_facts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    (hs : ServedAt tr y i) : ServedFacts tr H y i := by
-  sorry
-
-/-- **The inclusion facts under `Sleepy`** (open: the Sleepy safety induction with the honest
-proposal's slot-`s` votes). At a cut of A1.7, the record's block extends the honest proposal `P`
-of slot `s` and has `HeadSupport`. -/
+/-- **The inclusion facts under `Sleepy`** (open: workbench#12, the adoption of an honest
+proposal `P` of slot `s` by the update of slot `s`, over the Sleepy invariant). At a cut of A1.7,
+every record block in the frame extends `P` and has `HeadSupport`; when the record has left the
+frame, `Σ.F` extends `P`. -/
 theorem included_facts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF)
@@ -79,7 +69,8 @@ theorem included_facts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Se
     (hnr : ∀ k', tr.RestartAt y k' → sp.ts s + 6 * sp.Δ < tr.time k' → tr.time k' ≤ tr.time i →
       False)
     (hu : UpdatedNoRestart tr y i s) :
-    ∃ R, RecordAt tr y i R ∧ Anc (tr.HonestBlocks H) P R ∧ HeadSupport tr y i R := by
+    (∀ R, RecordAt tr y i R → Anc (tr.HonestBlocks H) P R ∧ HeadSupport tr y i R) ∧
+      ((¬ ∃ R, RecordAt tr y i R) → Anc (tr.HonestBlocks H) P (Node.frame (tr.state y i)).F) := by
   sorry
 
 end Consensus.Goldilocks.Compose

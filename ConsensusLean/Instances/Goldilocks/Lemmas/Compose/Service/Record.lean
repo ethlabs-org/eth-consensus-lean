@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
@@ -10,17 +10,17 @@ public section
 
 /-! # Goldilocks milestone Service: A1.6, head extends the record
 
-A1.6 (`head_extends_record`) from the served-cut facts (`served_facts`, the open Sleepy
-induction) and the fork-choice lemmas (`SA.anc_acHead`, `SA.acConfirmed_eq`) at the frame of the
-cut, which is well formed since every FG cut of an honest node runs an FG handler. The record
-part follows cut by cut over the served window. -/
+A1.6 (`head_extends_record`) from the served-cut facts (`sleepy_served_facts`, a consequence of
+the Sleepy invariant) and the fork-choice lemmas (`SA.anc_acHead`, `SA.acConfirmed_eq`) at the
+frame of the cut, which is well formed since every FG cut of an honest node runs an FG handler.
+The record part follows cut by cut over the served window. -/
 
 namespace Consensus.Goldilocks.Compose
 
 open SA (SAParams ReplayOrder Payload)
 
 /-- The frame of an honest node before every cut is well formed. -/
-private theorem frameOK_state {P : Params} {A : NodeAC P}
+theorem frameOK_state {P : Params} {A : NodeAC P}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
     {tr : RunTrace A} (hrun : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
     FrameOK (Node.frame (tr.state y i)) :=
@@ -47,7 +47,7 @@ private theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att 
 /-- **A1.6, head extends the record under synchrony.** -/
 theorem head_extends_record : HeadExtendsRecord := by
   intro sp ro dg H tr ΔF hrun hnc hsl y hy i hs R hR
-  refine ⟨head_confirmed_of_support hrun hy hR ((served_facts hrun hnc hsl hy hs).head R hR),
+  refine ⟨head_confirmed_of_support hrun hy hR ((sleepy_served_facts hrun hnc hsl hy hs).head R hR),
     fun i' hii' hserv R' hR' => ?_⟩
   have hcoh := (ac_projection _ _ dg H _ tr (requirements sp ro) hrun.toLocalRun hnc).coherent
   -- the record's block moves forward along the window
@@ -62,7 +62,8 @@ theorem head_extends_record : HeadExtendsRecord := by
       by_cases hn : tr.node m = y ∧ tr.label m ≠ none
       · obtain ⟨c, hc⟩ := Option.ne_none_iff_exists'.1 hn.2
         have hsm := hserv m hm (Nat.le_of_succ_le hm') ⟨c, hn.1, hc⟩
-        obtain ⟨E', hE', hE'r, hEE'⟩ := (served_facts hrun hnc hsl hy hsm).record_step E hE hEr
+        obtain ⟨E', hE', hE'r, hEE'⟩ :=
+          (sleepy_served_facts hrun hnc hsl hy hsm).record_step E hE hEr
         exact ⟨E', hE', hE'r, hRE.trans hEE'⟩
       · have : tr.state y (m + 1) = tr.state y m := by simp only [Trace.state, hn, ↓reduceIte]
         exact ⟨E, hE, this ▸ hEr, hRE⟩

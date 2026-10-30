@@ -15,7 +15,8 @@ view's voters support it (`anc_acHead`): on the path from the anchor to `R`, the
 extends `fc_root` (the anchor is at least as deep as `fc_root`), is eligible by majority, and is
 the best child, since a validator that supports a sibling cannot support it (the view's support is
 among its votes, and a non-equivocator has one vote). When the head extends the record's block,
-`ac_confirmed` is that block (`acConfirmed_eq`). -/
+`ac_confirmed` is that block (`acConfirmed_eq`); when the tree holds no block named by the record,
+it is `Φ.F` (`acConfirmed_eq_F`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -149,6 +150,44 @@ theorem acConfirmed_eq {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
   change (deepest Φ S).getD Φ.F = R
   rw [hD, Option.getD_some]
   exact Anc.antisymm hΦ.coherent hDR hRD
+
+/-- At a well-formed frame, the head is in the tree. -/
+private theorem acHead_mem {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (t : Time) :
+    acHead sp A Φ t ∈ Φ.tree := by
+  have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
+    rintro X (hX | hX)
+    · exact hX.1
+    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.fcRoot_mem
+  obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.fcRoot, Or.inr rfl⟩
+  have haT : getAnchor sp A Φ t ∈ Φ.tree := by
+    simp only [getAnchor, hD, Option.getD_some]
+    exact hS (deepest_mem hD).1
+  have h := anc_ghost (fun X (hX : X ∈ Φ.viableTree Φ.tree) => hX.1)
+    (score := goldfishScore sp Φ (latestView sp A Φ t).1 (latestView sp A Φ t).2)
+    (eligible := goldfishEligible sp Φ t (latestView sp A Φ t).1 (latestView sp A Φ t).2)
+    Φ.tree.ncard haT
+  by_cases he : getAnchor sp A Φ t = acHead sp A Φ t
+  · exact he ▸ haT
+  · exact (Anc.mem h he).2
+
+/-- **The confirmed tip falls back to `Φ.F`** when the tree holds no block named by
+`latest_confirmed`. -/
+theorem acConfirmed_eq_F {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time}
+    (hr : ¬ InTree Φ A.latestConfirmed) : acConfirmed sp A Φ t = Φ.F := by
+  have hl : lookup Φ A.latestConfirmed = none := by
+    unfold lookup
+    exact dite_eq_right hr
+  set S := {X | X ∈ Φ.tree ∧ Φ.Anc X Φ.F ∧ Φ.Anc X (acHead sp A Φ t)}
+  have hS : S ⊆ Φ.tree := fun X hX => hX.1
+  obtain ⟨D, hD⟩ := exists_deepest hΦ hS
+    ⟨Φ.F, hΦ.rooted.1, Relation.ReflTransGen.refl, hΦ.rooted.2 _ (acHead_mem hΦ t)⟩
+  have hDS := (deepest_mem hD).1
+  change (deepest Φ {X | X ∈ Φ.tree ∧ Φ.Anc X ((lookup Φ A.latestConfirmed).getD Φ.F) ∧
+    Φ.Anc X (acHead sp A Φ t)}).getD Φ.F = Φ.F
+  rw [hl, Option.getD_none]
+  change (deepest Φ S).getD Φ.F = Φ.F
+  rw [hD, Option.getD_some]
+  exact Anc.antisymm hΦ.coherent hDS.2.1 (hΦ.rooted.2 _ hDS.1)
 
 end Consensus.Goldilocks.SA
 
