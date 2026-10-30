@@ -94,6 +94,29 @@ theorem lock_below_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
         Or.inl ⟨ℓX, hupd, hconf, rfl⟩⟩
     · exact ⟨L, hL, hLr, B, hLB, j, hj, CV, Or.inr hopt⟩
 
+/-- **The stored locks after a slow origin** (T1 §4): for an honest slow lock of slot `s` on `D`
+whose window is `≥ r`, at any cut of an honest node in a slot after `s`, every stored lock of slot
+at most `s` that is live there is compatible with `D`: its slot is in the window, so its origin is
+compatible with the writer's saved result of that slot (T1 §2), which extends `D`. -/
+theorem slow_stored_locks (hS : HealthyBase tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+    {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
+    (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} (hi : s + 1 ≤ sp.slot (tr.time i)) :
+    ∀ l ∈ (tr.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
+      ∀ Y ∈ U, Y.root = l.block → Compatible U Y D := by
+  have hr := hS.run.localRun
+  have hU := hr.coherent
+  intro l hl hlive hle Y hY hYr
+  obtain ⟨L, hL, hLr, O, hLO, k, -, CV, hO⟩ := lock_below_origin hr hy i l hl
+  obtain rfl : Y = L := hU.1 hY hL (hYr.trans hLr.symm)
+  obtain ⟨kx, R, CVx, hR, hDR⟩ := slow_window_results hr hx hsl (U := U) l.slot (by omega) hle
+  have hjr : gbar g + 4 * sp.Δ ≤ sp.ts l.slot := hs.trans ((ts_le_iff sp).2 (by omega))
+  have hcomp : Compatible U O R := by
+    rcases hO with hO | hO
+    · exact result_result_compatible hS hy hO hx hR hjr
+    · exact (result_optimistic_compatible hS hx hR hy hO hjr).symm
+  exact compat_of_below hU hLO hDR hcomp
+
 /-- **T1 §4, the live locks at a vote after a slow origin.** -/
 theorem slow_live_locks (hS : HealthyBase tr H U g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
@@ -122,20 +145,9 @@ theorem slow_live_locks (hS : HealthyBase tr H U g) {x : Fin sp.n} (hx : x ∈ H
       readPoint_locks_below_stored hr hy hc (show 0 < sp.slot (tr.time i) by omega) l₀ hl₀
         (show l₀.slot ≠ sp.slot (tr.time i) by omega)
     obtain rfl : B₀' = B₀ := hΦ.coherent.1 hB₀' hB₀ (hB₀'r.trans hB₀r.symm)
-    obtain ⟨L₁, hL₁, hL₁r, O, hL₁O, k, -, CV, hO⟩ := lock_below_origin hr hy i l₁ hl₁
-    obtain rfl : L₁ = B₁ := hU.1 hL₁ (hΦU hB₁) (hL₁r.trans hB₁r.symm)
-    have hj₁ : ((s : Int) - sp.k) < (l₁.slot : Int) := by
-      simp only at hlive
-      omega
-    obtain ⟨kx, R, CVx, hR, hDR⟩ := hwin l₁.slot hj₁ (by omega)
-    have hΔ := sp.toParams.hΔ
-    have hjr : gbar g + 4 * sp.Δ ≤ sp.ts l₁.slot :=
-      hs.trans ((ts_le_iff sp).2 (by omega))
-    have hcomp : Compatible U O R := by
-      rcases hO with hO | hO
-      · exact result_result_compatible hS hy hO hx hR hjr
-      · exact (result_optimistic_compatible hS hx hR hy hO hjr).symm
-    exact compat_of_below hU ((Anc.mono hΦU hA).trans hL₁O) hDR hcomp
+    simp only at hlive
+    exact down (Anc.mono hΦU hA) (slow_stored_locks hS hx hsl hs hy (by omega) l₁ hl₁
+      (by omega) (by omega) B₁ (hΦU hB₁) hB₁r)
   · -- a lock of slot `s + 1` or later is optimistic, over earlier honest slot-`(s+1)` votes
     obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
       lock_origin_readPoint hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)

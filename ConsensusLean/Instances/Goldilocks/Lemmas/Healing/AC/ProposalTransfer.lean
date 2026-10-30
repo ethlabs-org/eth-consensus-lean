@@ -490,26 +490,13 @@ private theorem trivial_slow_first_proposal (hS : StandaloneRun tr H U g) {X : F
   have hDC' : Anc U D C := Anc.mono hΦXU hDC
   have hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ := hs.trans ((ts_le_iff sp).2 (by omega))
   have hDt := result_block_at_proposal hS hX hres hσ hx hc ht hDC'
-  have hwin := slow_window_results hr hX hsl (U := U)
   -- every stored live lock is compatible with `D`
   have hall : ∀ l ∈ (tr.state x i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → ∀ Y ∈ U,
       Y.root = l.block → Compatible U Y D := by
     intro l hl hlive Y hY hYr
     rcases le_or_gt l.slot σ with hle | hlt
-    · obtain ⟨L, hL, hLr, O, hLO, k, -, CV, hO⟩ := lock_below_origin hr hx i l hl
-      obtain rfl : Y = L := hU.1 hY hL (hYr.trans hLr.symm)
-      obtain ⟨kx, R, CVx, hR, hDR⟩ := hwin l.slot (by rw [proposal_slot ht] at hlive; omega) hle
-      have hjr : gbar g + 4 * sp.Δ ≤ sp.ts l.slot := by
-        refine hs.trans ((ts_le_iff sp).2 ?_)
-        rw [proposal_slot ht] at hlive
-        omega
-      have hcomp : Compatible U O R := by
-        rcases hO with hO | hO
-        · exact result_result_compatible hS.toHealthyBase hx hO hX hR hjr
-        · exact (result_optimistic_compatible hS.toHealthyBase hX hR hx hO hjr).symm
-      rcases hcomp with h | h
-      · exact anc_total hU (hLO.trans h) hDR
-      · exact anc_total hU hLO (hDR.trans h)
+    · exact slow_stored_locks hS.toHealthyBase hX hsl hs hx (by rw [proposal_slot ht]) l hl hlive
+        hle Y hY hYr
     · obtain ⟨O, hYO, k, CV', hopt⟩ := proposal_high_lock hr hx ht hl hlt.le hY hYr
       exact compat_down hU hYO (optimisticLock_compatible hrun hS.two_faulty_lt hx hopt
         fun w hw j e hv hs => votesExtendAfter_iff.1 hlater w hw j e hv (by omega))
