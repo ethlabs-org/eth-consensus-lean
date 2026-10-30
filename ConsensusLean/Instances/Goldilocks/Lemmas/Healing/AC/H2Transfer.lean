@@ -43,13 +43,6 @@ private theorem mem_tree_of_between {Φ : Frm sp.n FGP} (hU : Coherent U) (hΦ :
     subst hqc
     exact ih hq.1
 
-/-- **An honest vote's head is a block of its voter's frame.** (Pending `getHead_mem` of
-`AC/Steps/Honest` being public.) -/
-theorem vote_head_frame (hI : InclusionRun tr H U g t₀) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y k ℓ e) :
-    ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head := by
-  sorry
-
 /-- **§5, `Carry` for a fast origin at a read not covered by `Φ.F`** (the counted heads accepted
 or resolved before `t_j + 2Δ` relay before `t_j + 3Δ`, pre-recovery heads by `Catch`; rooted
 retention keeps them until the read, as `B` is above `Φ.F`): at every honest vote of slot
@@ -90,7 +83,7 @@ theorem raw_fast_first_votes (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (h
       (ts_le_iff_le_slot sp ht0 _).2 (by rw [← hsl, hes])
     by_cases hBF : Anc U B ℓ.frame.F
     · -- root-covered: the head extends `Φ.F`
-      obtain ⟨Hd, hHd, hHdr⟩ := vote_head_frame hI hy hca
+      obtain ⟨Hd, hHd, hHdr, -⟩ := honest_head_frame hr hy hca
       exact ⟨Hd, hΦU hHd, hHdr, hBF.trans ((hΦ.rooted.2 Hd hHd).mono hΦU)⟩
     have hviab : ViableAtVote ℓ e (j + 1) B := by
       rcases (hI.inv B j hP1 y hy k ℓ hc htk).2 e he with h | h
