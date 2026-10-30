@@ -11,9 +11,81 @@ one vote per slot. -/
 
 namespace Consensus.Goldilocks
 
+namespace ACTrace
+
+variable {P : Params} {FGP : Type} {A : ACInterface P FGP} (tr : ACTrace A)
+
+/-- Before any call of `y`, its state is its initial state. -/
+theorem state_of_noCall {y : Fin P.n} {i : Nat} (h : tr.NoCallBetween y 0 i) :
+    tr.state y i = tr.init y := by
+  induction i with
+  | zero => rfl
+  | succ i ih =>
+    have hi : tr.state y (i + 1) = tr.state y i := by
+      simp only [Trace.state]
+      split_ifs with hc
+      · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.mp hc.2
+        exact absurd ⟨hc.1, hℓ⟩ (h i (Nat.zero_le _) (Nat.lt_succ_self _) ℓ)
+      · rfl
+    rw [hi]
+    exact ih fun k h0 hk ℓ => h k h0 (Nat.lt_succ_of_lt hk) ℓ
+
+/-- After a call of `y` at `j` and no call of `y` in `(j, i)`, its state is that call's
+post-state. -/
+theorem state_of_lastCall {y : Fin P.n} {j i : Nat} {ℓ : ACLabel A} (hc : tr.CallAt y j ℓ)
+    (hji : j < i) (h : tr.NoCallBetween y (j + 1) i) : tr.state y i = tr.post j := by
+  induction i with
+  | zero => omega
+  | succ i ih =>
+    simp only [Trace.state]
+    by_cases hij : i = j
+    · subst hij
+      have : tr.node i = y ∧ tr.label i ≠ none := ⟨hc.1, by rw [hc.2]; exact Option.some_ne_none _⟩
+      split_ifs
+      rfl
+    · split_ifs with hn
+      · obtain ⟨ℓ', hℓ'⟩ := Option.ne_none_iff_exists'.mp hn.2
+        exact absurd ⟨hn.1, hℓ'⟩ (h i (by omega) (Nat.lt_succ_self _) ℓ')
+      · exact ih (by omega) fun k hk hk' ℓ' => h k hk (Nat.lt_succ_of_lt hk') ℓ'
+
+/-- Before cut `i`, `y` made no call, or a last call at some `j < i`. -/
+theorem noCall_or_lastCall (y : Fin P.n) (i : Nat) :
+    tr.NoCallBetween y 0 i ∨
+      ∃ j < i, ∃ ℓ, tr.CallAt y j ℓ ∧ tr.NoCallBetween y (j + 1) i := by
+  induction i with
+  | zero => exact Or.inl fun k _ hk => absurd hk (Nat.not_lt_zero k)
+  | succ i ih =>
+    by_cases hc : ∃ ℓ, tr.CallAt y i ℓ
+    · obtain ⟨ℓ, hℓ⟩ := hc
+      exact Or.inr ⟨i, Nat.lt_succ_self _, ℓ, hℓ, fun k hk hk' => absurd hk' (by omega)⟩
+    · simp only [not_exists] at hc
+      have ext : ∀ a, (∀ k, a ≤ k → k < i → ∀ ℓ, ¬ tr.CallAt y k ℓ) →
+          ∀ k, a ≤ k → k < i + 1 → ∀ ℓ, ¬ tr.CallAt y k ℓ := by
+        intro a ha k hak hk ℓ
+        rcases Nat.lt_succ_iff_lt_or_eq.mp hk with hk | rfl
+        · exact ha k hak hk ℓ
+        · exact hc ℓ
+      rcases ih with h | ⟨j, hj, ℓ, hℓ, h⟩
+      · exact Or.inl (ext 0 h)
+      · exact Or.inr ⟨j, Nat.lt_succ_of_lt hj, ℓ, hℓ, ext (j + 1) h⟩
+
+end ACTrace
+
 /-- The AC trace contract gives reachable states. -/
 theorem localRun_reachable : LocalRunReachable := by
-  sorry
+  intro P FGP A H U tr h y hy i
+  induction i using Nat.strong_induction_on with
+  | _ i ih =>
+    intro ℓ hc
+    have hexec := h.exec i ℓ hc.2 (hc.1 ▸ hy)
+    rw [hc.1] at hexec
+    have hpost : tr.post i = (A.step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
+      rw [hexec]
+    rcases h.frameLaw y hy i ℓ hc with ⟨hnone, Φ₀, hinit, hin, hok⟩ | ⟨j, ℓ', hj, hc', hnb, hok⟩
+    · rw [hpost, tr.state_of_noCall hnone, h.init y hy]
+      exact .step ℓ.call (.init Φ₀ hinit hin) (h.time_nonneg i) hok
+    · rw [hpost, tr.state_of_lastCall hc' hj hnb]
+      exact .step ℓ.call (ih j hj ℓ' hc') (h.time_mono (Nat.le_of_lt hj)) hok
 
 end Consensus.Goldilocks
 
@@ -88,7 +160,11 @@ theorem state_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.
     (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     tr.state y i = SAState.initial sp.genesisRoot ∨
       ∃ Φ t, (goldilocksSA sp FGP ro).ReachableAt y U (tr.state y i) Φ t ∧ t ≤ tr.time i := by
-  sorry
+  rcases tr.noCall_or_lastCall y i with hnone | ⟨j, hj, ℓ, hc, hnb⟩
+  · exact Or.inl ((tr.state_of_noCall hnone).trans (h.init y hy))
+  · rw [tr.state_of_lastCall hc hj hnb]
+    exact Or.inr ⟨ℓ.frame, tr.time j, localRun_reachable _ _ _ _ _ tr h y hy j ℓ hc,
+      h.time_mono (Nat.le_of_lt hj)⟩
 
 /-- The slot-`σ` pool of an honest node's state before any cut holds only slot-`σ` votes. -/
 theorem state_pool_slot {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
