@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
@@ -20,11 +21,8 @@ walk (the viable voter block tree, the merged view, from its unlocked anchor) is
 * `pivot` (open, `Service/Pivot`, §2.1, §2.2): a block `D` on the proposal walk such that every
   honest slot-`s` voter's walk passes a block of the path from `D` through `Q` to `P` (a voter
   whose anchor is a current-slot optimistic lock starts on that path above `D`);
-* `suffix_agree` (open, §3): at every block from `D` to `Q`, the proposer's winner is eligible
-  for the voter (an ancestor of `P`, in the frozen domain) with at least its proposer score, and
-  every other
-  eligible child of the voter is the proposer's with at most its proposer score (a sandwich:
-  competitor scores can differ between the frames);
+* `suffix_agree` (open, `Service/Suffix`, §3): at every block from `D` to `Q` at or above the
+  voter's anchor, the proposer's best child is the voter's best child;
 * `stop_at_parent` (open, §3): at `Q` the voter's only eligible child is `P` (its slot is the
   current one; no old child is eligible), and the voter's walk stops at `P`.
 
@@ -102,41 +100,6 @@ theorem proposal_data {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set
   rw [projAC_state h hp, hst1, show tr.time (j + 1) = t from ht1]
   exact hr
 
-/-- **The suffix** (workbench#12 §3; open): at every block `X` from the pivot `D` to `Q` (in the
-proposer's tree) at or above the voter's anchor, the proposer's best child is the voter's best
-child. Only the winner is compared: in reachable runs (sa-fg-model 7f7e660) a voter-eligible
-competitor need not be proposer-eligible (the frame moves between the proposal read and the vote,
-e.g. `Σ.F` rises to `X` when the node accepts `P`, and every child of `X` becomes eligible), and
-competitor scores differ between the views; below the voter's anchor the proposer's best child can
-be outside the voter's viable tree. The model finds the voter's winner score strictly above every
-competitor's in all of these cases. -/
-theorem suffix_agree {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root)
-    {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsD : ℓp.frame.Anc d.start D)
-    (hDQ : ℓp.frame.Anc D d.head) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s) :
-    ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
-      Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X →
-      X ≠ d.head →
-      ∀ C, SA.IsBest sp (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
-          {B | B ∈ ℓp.frame.viableTree ℓp.frame.tree ∧ B.parent = some X.root ∧
-            SA.goldfishEligible sp ℓp.frame (tr.time i) (SA.View.ofLists pay)
-              ((s : Int) - 1) B} C →
-        SA.IsBest sp (SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s)
-            ((s : Int) - 1))
-          {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
-            B.parent = some X.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
-              (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
-  sorry
-
 /-- **The stop at `P.parent`** (workbench#12 §3; open): at `Q` a voter's only eligible child is
 `P`, and its walk has no best child at `P`. -/
 theorem stop_at_parent {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
@@ -178,7 +141,7 @@ theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
     ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s → e.msg.head = P.root := by
   have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
   obtain ⟨i, ℓp, d, pay, hc, hcall, hd, hti, hPQ, -⟩ := proposal_data hrun hp hP hPs
-  obtain ⟨D, hsD, hDQ, hvot⟩ := pivot hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ
+  obtain ⟨D, hsD, hDQ, hviab, hvot⟩ := pivot hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ
   suffices main : ∀ j, (∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' →
       e'.msg.slot = s → e'.msg.head = P.root) →
       ∀ y ∈ H, ∀ e, SA.VoteAt tr.projAC y j e → e.msg.slot = s → e.msg.head = P.root by
@@ -231,7 +194,8 @@ theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
     rw [← hkx, ← hW₁add, add_comm, hW₁add, h₁, hstopQ]
   -- the voter's walk passes a block `X` of the path from `D` through `Q` to `P`
   obtain ⟨hstep₀, hP₀⟩ := stop_at_parent hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hy hcast hes
-  have hsuf := suffix_agree hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hsD hDQ hy hcast hes
+  have hsuf :=
+    suffix_agree hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hsD hDQ hviab hy hcast hes
   have hΦy := (SA.frameIn_of_callAt hr hy hcy).1
   have hΦyU := (SA.frameIn_of_callAt hr hy hcy).2
   have hΦpU := (SA.frameIn_of_callAt hr hp hc).2

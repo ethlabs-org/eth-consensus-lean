@@ -33,7 +33,8 @@ origin or has it below `Σ.F` (`proposal_holds_old`), the children towards it wi
 walk (`proposal_best_toward_old`, the counts of §2.1), no honest optimistic check of slot `s`
 precedes the proposal (`proposal_no_optimistic`, so the proposer's stored locks are of slots below
 `s`), and `fc_root` is below an old origin at the proposal and at a vote
-(`proposal_fcRoot_old`, `vote_fcRoot_old`: the source labels before `t_s`, §2). -/
+(`proposal_fcRoot_old`, `vote_fcRoot_old`: the source labels before `t_s`, §2), and the path from
+`D` to `Q` is through viable heads of the proposal's frame (`proposal_suffix_viable`, §2). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -519,6 +520,24 @@ private theorem vote_anchor_cases (hrun : GoldilocksRun dg H tr) (hnc : NoCollRu
         omega
     exact (haB.trans (Anc.mono hΦU hB'B₁)).trans (hL₁O.trans (hDold O hOld))
 
+/-- **The proposal walk from `D` to `Q` is through viable heads** (workbench#12 §2: at `t_s`,
+`F ⪯ fc_root ⪯ D_s` and the head height floor is at most `ht(D_s)`, heights increase along the
+path), for `D` genesis or an old origin above every old origin (open; checked in the model:
+sa-fg-model 5f5328f, 237,268 checks). -/
+private theorem proposal_suffix_viable (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root)
+    {D : SA.Blk sp.n (List (FG.Att sp.n))} (hDt : D ∈ ℓp.frame.tree)
+    (hDQ : ℓp.frame.Anc D d.head) (hDkind : D.root = sp.genesisRoot ∨ OldOrigin tr H s D)
+    (hDold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O D) :
+    ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads := by
+  sorry
+
 /-- **The pivot** (workbench#12 §2.1, §2.2). For a voter, the earlier honest slot-`s` votes are
 assumed to be `P` (the caller's strong induction on the cut: a current-slot optimistic lock of the
 voter sits below one of them). -/
@@ -532,6 +551,7 @@ theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) :
     ∃ D, ℓp.frame.Anc d.start D ∧ ℓp.frame.Anc D d.head ∧
+      (∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads) ∧
       ∀ y ∈ H, ∀ j ℓy e, SA.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
         (∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = s →
           e'.msg.head = P.root) →
@@ -579,7 +599,8 @@ theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp
       · rw [Anc.antisymm hU hsO (hDold O hO)]
         exact Or.inr hO
     · exact Or.inr h
-  refine ⟨D, hsD, hDQ, fun y hy j ℓy e hcy hes hE => ?_⟩
+  refine ⟨D, hsD, hDQ, proposal_suffix_viable hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ
+    hDt hDQ hDkind hDold, fun y hy j ℓy e hcy hes hE => ?_⟩
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hhead := (SA.castAt_spec hr hy hcy).2.2.2
   rw [hes] at hhead
