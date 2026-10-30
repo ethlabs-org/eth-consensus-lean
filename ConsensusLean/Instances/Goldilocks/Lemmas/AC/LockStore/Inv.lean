@@ -1,0 +1,246 @@
+module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+
+public section
+
+/-! # Goldilocks SA: the stored locks sit below the record
+
+The invariant behind A0.4 (a), (b), (f) and A0.5: at a reachable state with frame `Φ` inside
+`U`, the stored record `latest_confirmed` names a block `E` of `U`, the block of every stored
+lock is an ancestor of `E` inside `U`, and `E` is in the tree whenever it extends `Φ.F`. The lock
+functions only move locks back; a new lock is on an ancestor of the block that the record then
+names, and that block does not conflict with any live lock, so a live lock that the record
+leaves behind would put the old record, and with it the new block, below it. Frame steps keep
+the invariant, since a block that extends the new `Φ.F` stays in the tree. -/
+
+namespace Consensus.Goldilocks.SA
+
+variable {sp : SAParams} {FGP : Type}
+
+/-- **The lock invariant** of a state `A` with frame `Φ` inside `U`. -/
+def LockInv (U : Set (Blk sp.n FGP)) (A : SAState sp.n) (Φ : Frm sp.n FGP) : Prop :=
+  ∃ E ∈ U, E.root = A.latestConfirmed ∧ (Anc U Φ.F E → E ∈ Φ.tree) ∧
+    ∀ l ∈ A.locks, ∀ X ∈ U, X.root = l.block → Anc U X E
+
+variable {U : Set (Blk sp.n FGP)}
+
+theorem lockInv_iff {A : SAState sp.n} {Φ : Frm sp.n FGP} :
+    LockInv U A Φ ↔ ∃ E ∈ U, E.root = A.latestConfirmed ∧ (Anc U Φ.F E → E ∈ Φ.tree) ∧
+      ∀ l ∈ A.locks, ∀ X ∈ U, X.root = l.block → Anc U X E :=
+  Iff.rfl
+
+/-- Locks that move back stay below the record. -/
+private theorem LockInv.movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
+    {A A' : SAState sp.n} (h : LockInv U A Φ) (hm : MovesBack sp Φ A.locks A'.locks)
+    (hl : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
+  obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
+  refine ⟨E, hE, hEr.trans hl.symm, hEt, fun l' hl' X hX hXr => ?_⟩
+  obtain ⟨l, hl, -, -, B, hB, hBr, B', hB', hB'r, hA⟩ := hm l' hl'
+  obtain rfl : X = B' := hU.1 hX (hΦU hB') (hXr.trans hB'r.symm)
+  exact (Anc.mono hΦU hA).trans (hlE l hl B (hΦU hB) hBr)
+
+open Classical in
+/-- **New locks below a new record.** The record moves to `C` (unless `C` is below it), and the
+stored locks become the live locks of the old ones with new ones on ancestors of `C`; when `C` is
+in the tree and conflicts with no live lock, the invariant holds after. -/
+private theorem LockInv.addLocks (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+    (hΦU : Φ.tree ⊆ U) {A A' : SAState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
+    {N : Set (Nat × Bool)} {C : Blk sp.n FGP} (hC : C ∈ Φ.tree)
+    (hconf : ¬ conflictsWithLock sp A.locks Φ t C)
+    (hlocks : A'.locks = SA.addLocks sp A.locks Φ t s N)
+    (hN : ∀ p ∈ N, ∃ Y ∈ Φ.tree, Y.root = p.1 ∧ Φ.Anc Y C)
+    (hrec : A'.latestConfirmed =
+      if AncR Φ C A.latestConfirmed then A.latestConfirmed else C.root) :
+    LockInv U A' Φ := by
+  obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
+  -- a lock of the new set: the live lock of an old one, or of a new one
+  have key : ∀ l' ∈ A'.locks, ∀ X ∈ U, X.root = l'.block →
+      X ∈ Φ.tree ∧ ((X ∈ liveLockBlocks sp A.locks Φ t ∧ Anc U X E) ∨ Φ.Anc X C) := by
+    intro l' hl' X hX hXr
+    rw [hlocks] at hl'
+    obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := hl'
+    obtain ⟨hvt, hva⟩ := viableAncestor_anc hΦ hB
+    obtain rfl : X = Φ.viableAncestor B := hU.1 hX (hΦU hvt) hXr
+    refine ⟨hvt, ?_⟩
+    rcases hl with hl | ⟨p, hp, rfl⟩
+    · exact Or.inl ⟨⟨hvt, _, ⟨l, hl, B, hB, hBr, hlive, rfl⟩, rfl⟩,
+        (Anc.mono hΦU hva).trans (hlE l hl B (hΦU hB) hBr)⟩
+    · obtain ⟨Y, hY, hYr, hYC⟩ := hN p hp
+      obtain rfl : B = Y := hΦ.coherent.1 hB hY (hBr.trans hYr.symm)
+      exact Or.inr (hva.trans hYC)
+  by_cases hA : AncR Φ C A.latestConfirmed
+  · simp only [hA, ↓reduceIte] at hrec
+    obtain ⟨R, hR, hRr, hCR⟩ := hA
+    obtain rfl : R = E := hU.1 (hΦU hR) hE (hRr.trans hEr.symm)
+    refine ⟨R, hE, hEr.trans hrec.symm, hEt, fun l' hl' X hX hXr => ?_⟩
+    obtain ⟨-, (⟨-, hYE⟩ | hYC)⟩ := key l' hl' X hX hXr
+    · exact hYE
+    · exact Anc.mono hΦU (hYC.trans hCR)
+  · simp only [hA, ↓reduceIte] at hrec
+    refine ⟨C, hΦU hC, hrec.symm, fun _ => hC, fun l' hl' X hX hXr => ?_⟩
+    obtain ⟨hY, (⟨hYl, hYE⟩ | hYC)⟩ := key l' hl' X hX hXr
+    · -- `C` is compatible with the live lock block `X`
+      have hcomp : Compatible Φ.tree C X := by
+        by_contra hnc
+        exact hconf ⟨X, hYl, hnc⟩
+      rcases hcomp with hCY | hYC
+      · -- `C ⪯ X ⪯ E`: then `E` is in the tree and the record does not move
+        exfalso
+        have hEt' : E ∈ Φ.tree := hEt ((Anc.mono hΦU (hΦ.rooted.2 X hY)).trans hYE)
+        exact hA ⟨E, hEt', hEr, hCY.trans (anc_tree_of_anc_U hU hΦ hΦU hY hYE hEt')⟩
+      · exact Anc.mono hΦU hYC
+    · exact Anc.mono hΦU hYC
+
+/-! ### Each SA function keeps the invariant -/
+
+private theorem LockInv.of_eq {Φ : Frm sp.n FGP} {A A' : SAState sp.n} (h : LockInv U A Φ)
+    (hl : A'.locks = A.locks) (hr : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
+  obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
+  exact ⟨E, hE, hEr.trans hr.symm, hEt, hl ▸ hlE⟩
+
+private theorem admitVote_keeps (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+    (admitVote sp A t v).locks = A.locks ∧
+      (admitVote sp A t v).latestConfirmed = A.latestConfirmed := by
+  unfold admitVote
+  split_ifs <;> exact ⟨rfl, rfl⟩
+
+private theorem blockReceipt_keeps (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+    (blockReceipt sp A t B).locks = A.locks ∧
+      (blockReceipt sp A t B).latestConfirmed = A.latestConfirmed := by
+  unfold blockReceipt
+  generalize blockVotes B = l
+  suffices h : ∀ A' : SAState sp.n, (l.foldl (fun A v => admitVote sp A t v) A').locks = A'.locks ∧
+      (l.foldl (fun A v => admitVote sp A t v) A').latestConfirmed = A'.latestConfirmed from
+    h _
+  induction l with
+  | nil => exact fun _ => ⟨rfl, rfl⟩
+  | cons v l ih =>
+    intro A'
+    simp only [List.foldl_cons]
+    exact ⟨(ih _).1.trans (admitVote_keeps _ _ _).1, (ih _).2.trans (admitVote_keeps _ _ _).2⟩
+
+private theorem updateLatestConfirmed_locks (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (C : Blk sp.n FGP) : (updateLatestConfirmed sp A Φ C).locks = A.locks := by
+  unfold updateLatestConfirmed
+  split_ifs <;> rfl
+
+variable (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+include hU hΦ hΦU
+
+private theorem LockInv.unlock {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) (s : Int)
+    (V : View sp.n) : LockInv U { A with locks := SA.unlock sp A.locks Φ t s V } Φ :=
+  h.movesBack hU hΦU (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 s V) rfl
+
+open Classical in
+private theorem LockInv.optimistic {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) :
+    LockInv U (optimisticConfirmation sp A Φ t) Φ := by
+  unfold optimisticConfirmation
+  rcases hsel : optimisticSelect sp A Φ t with _ | B
+  · exact h
+  · have hB := hsel
+    unfold optimisticSelect at hB
+    dsimp only at hB
+    split_ifs at hB
+    obtain ⟨⟨hBt, -, hconf⟩, -⟩ := deepest_mem hB
+    refine h.addLocks hU hΦ hΦU hBt hconf (N := {(B.root, true)}) (s := sp.slot t) ?_
+      (fun p hp => ⟨B, hBt, by rw [Set.mem_singleton_iff.1 hp], .refl⟩) ?_
+    · dsimp only; unfold updateLatestConfirmed; split_ifs <;> rfl
+    · dsimp only; unfold updateLatestConfirmed; split_ifs <;> rfl
+
+open Classical in
+private theorem LockInv.update {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) (s : Nat) :
+    LockInv U (updateConfirmation sp A Φ t s) Φ := by
+  unfold updateConfirmation
+  dsimp only
+  rcases hC : getConfirmation sp A Φ s with _ | C
+  · exact h.of_eq rfl rfl
+  · dsimp only
+    split_ifs with hconf
+    · exact h.of_eq rfl rfl
+    · have hCt := (deepest_mem hC).1.1
+      simp only [updateLatestConfirmed_locks]
+      refine (h.of_eq (A' := { A with saved := Function.update A.saved s (some C.root) }) rfl rfl
+        ).addLocks hU hΦ hΦU hCt hconf rfl (fun p hp => ?_) ?_
+      · rcases hp with ⟨D, hD, rfl⟩ | ⟨-, D, hD, rfl⟩
+        · exact ⟨D, (deepest_mem hD).1.1.1, rfl, (deepest_mem hD).1.1.2.2⟩
+        · exact ⟨D, (deepest_mem hD).1.1.1, rfl, (deepest_mem hD).1.1.2.2⟩
+      · unfold updateLatestConfirmed; split_ifs <;> rfl
+
+private theorem LockInv.tryVote {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
+    (t : Time) : LockInv U (SA.tryVote sp x A Φ t).1 Φ := by
+  unfold SA.tryVote
+  dsimp only
+  split_ifs
+  · exact h
+  · exact h
+  all_goals
+    refine LockInv.optimistic hU hΦ hΦU (LockInv.of_eq ?_ (admitVote_keeps _ _ _).1
+      (admitVote_keeps _ _ _).2) _
+    first
+    | exact LockInv.of_eq (h.unlock hU hΦ hΦU _ _ _) rfl rfl
+    | exact LockInv.of_eq h rfl rfl
+
+private theorem LockInv.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LockInv U A Φ)
+    (x : Fin sp.n) (t : Time) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) :
+    LockInv U ((goldilocksSA sp FGP ro).step x A Φ t c).1 Φ := by
+  cases c with
+  | tick =>
+    change LockInv U (acOnTick sp x A Φ t).1 Φ
+    unfold acOnTick
+    dsimp only
+    split_ifs
+    · exact (h.tryVote hU hΦ hΦU x t).update hU hΦ hΦU _ _
+    · exact h.update hU hΦ hΦU _ _
+    · exact h.tryVote hU hΦ hΦU x t
+    · exact h
+    · exact h
+  | proposal =>
+    change LockInv U (acProposal sp A Φ t).1 Φ
+    unfold acProposal
+    dsimp only
+    split_ifs
+    · exact h.unlock hU hΦ hΦU _ _ _
+    · exact h
+  | toFG =>
+    change LockInv U (acToFG sp A Φ t).1 Φ
+    unfold acToFG
+    dsimp only
+    split_ifs
+    · split
+      · exact h
+      · split_ifs
+        · exact h
+        · exact h.of_eq rfl rfl
+    · exact h
+  | message m =>
+    exact LockInv.tryVote hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
+      (h.of_eq (admitVote_keeps _ _ _).1 (admitVote_keeps _ _ _).2) _) _ _
+  | block B =>
+    exact LockInv.tryVote hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
+      (h.of_eq (blockReceipt_keeps _ _ _).1 (blockReceipt_keeps _ _ _).2) _) _ _
+  | restart =>
+    obtain ⟨-, hl, hr, -⟩ := (restart_state sp) FGP ro x A Φ t hΦ ht
+    exact h.of_eq hl hr
+
+omit hU hΦ hΦU
+
+/-- **The lock invariant at reachable states.** -/
+theorem lockInv_of_reachable {ro : ReplayOrder sp FGP} {x : Fin sp.n} (hU : Coherent U)
+    {A : (goldilocksSA sp FGP ro).State} {Φ : (goldilocksSA sp FGP ro).Frm} {t₀ : Time}
+    (hr : (goldilocksSA sp FGP ro).ReachableAt x U A Φ t₀) :
+    (goldilocksSA sp FGP ro).FrameIn U Φ ∧ 0 ≤ t₀ ∧ LockInv U A Φ := by
+  induction hr with
+  | init Φ hinit hin =>
+    obtain ⟨htree, hroot, -⟩ := hinit
+    have hF : Φ.F ∈ Φ.tree := htree ▸ rfl
+    refine ⟨hin, le_rfl, Φ.F, hin.2 hF, hroot, fun _ => hF, fun l hl => ?_⟩
+    exact absurd hl (Set.notMem_empty l)
+  | step c _ ht hok ih =>
+    obtain ⟨hin, ht₀, E, hE, hEr, hEt, hlE⟩ := ih
+    obtain ⟨hF, hX⟩ := callOK_retains sp hU hin hok
+    refine ⟨hok.1, ht₀.trans ht, LockInv.step hU hok.1.1 hok.1.2 ?_ x _ (ht₀.trans ht) c⟩
+    exact ⟨E, hE, hEr, fun h => hX E (hEt (hF.trans h)) h, hlE⟩
+
+end Consensus.Goldilocks.SA
+
+end
