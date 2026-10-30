@@ -93,11 +93,15 @@ theorem OnOriginChain.of_anc (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg 
     exact onOriginChain_iff.2 (Or.inl (by rw [anc_genesis hAB]; rfl))
   · exact onOriginChain_iff.2 (Or.inr ⟨C, s, hC, hAB.trans hBC⟩)
 
-/-- An honest confirmed output is an honest block on the origin chain: it is an ancestor of the
-effective record (the record's block, or `Σ.F` when the record is not in the frame). -/
-private theorem confirmed_on_chain (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun dg H tr)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    tr.confirmedAt y i ∈ tr.HonestBlocks H ∧ OnOriginChain tr H (tr.confirmedAt y i) := by
+/-- An honest confirmed read, at the state before any cut and at any time, is an honest block on
+the origin chain: it is an ancestor of the effective record (the record's block, or `Σ.F` when
+the record is not in the frame), whatever the head. -/
+theorem confirmed_read_on_chain (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun dg H tr)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) (t : Time) :
+    (goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) t ∈
+        tr.HonestBlocks H ∧
+      OnOriginChain tr H
+        ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) t) := by
   have hU := honest_coherent hrun hnc
   have hΦ : FrameOK (Node.frame (tr.state y i)) :=
     (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
@@ -124,7 +128,7 @@ private theorem confirmed_on_chain (hinv : SleepyInvariant tr H) (hrun : Goldilo
         (Node.frame (tr.state y i)).Anc X ((SA.lookup (Node.frame (tr.state y i))
           (tr.state y i).ac.latestConfirmed).getD (Node.frame (tr.state y i)).F) ∧
         (Node.frame (tr.state y i)).Anc X (SA.acHead sp (tr.state y i).ac
-          (Node.frame (tr.state y i)) (tr.time i))}).getD (Node.frame (tr.state y i)).F →
+          (Node.frame (tr.state y i)) t)}).getD (Node.frame (tr.state y i)).F →
       X ∈ (Node.frame (tr.state y i)).tree ∧ (Node.frame (tr.state y i)).Anc X
         ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
           (Node.frame (tr.state y i)).F) := by
@@ -133,7 +137,7 @@ private theorem confirmed_on_chain (hinv : SleepyInvariant tr H) (hrun : Goldilo
     · exact ⟨hΦ.rooted.1, hΦ.rooted.2 _ hCr.1⟩
     · obtain ⟨⟨hDt, hDC, -⟩, -⟩ := SA.deepest_mem hd
       exact ⟨hDt, hDC⟩
-  replace hX := hX (tr.confirmedAt y i) rfl
+  replace hX := hX _ rfl
   exact ⟨hsub hX.1, OnOriginChain.of_anc hrun hnc (hsub hX.1) (hX.2.mono hsub) hCr.2⟩
 
 /-- **R.1 from the invariant**: the confirmed outputs of honest nodes at any two cuts are
@@ -143,8 +147,8 @@ theorem SleepyInvariant.confirmed_compatible (hinv : SleepyInvariant tr H)
     ∀ y ∈ H, ∀ y' ∈ H, ∀ i i',
       Compatible (tr.HonestBlocks H) (tr.confirmedAt y i) (tr.confirmedAt y' i') := by
   intro y hy y' hy' i i'
-  obtain ⟨hB, hc⟩ := confirmed_on_chain hinv hrun hnc hy i
-  obtain ⟨hB', hc'⟩ := confirmed_on_chain hinv hrun hnc hy' i'
+  obtain ⟨hB, hc⟩ := confirmed_read_on_chain hinv hrun hnc hy i (tr.time i)
+  obtain ⟨hB', hc'⟩ := confirmed_read_on_chain hinv hrun hnc hy' i' (tr.time i')
   exact OnOriginChain.compatible hrun hnc hinv.origins_compatible hB hB' hc hc'
 
 end Consensus.Goldilocks.Compose
