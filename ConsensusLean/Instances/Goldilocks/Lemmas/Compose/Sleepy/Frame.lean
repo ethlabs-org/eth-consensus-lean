@@ -561,7 +561,7 @@ include hrun hnc hsl hy in
 /-- **The floor, or a crossing source above the block**: with no contest the floor is
 `h_max − 1`; when it is above a held block `B`, a carrier of height `h_max` crossed it with an
 honest source `D`, whose entry `E` of height `h_max − 1` extends `B`. -/
-private theorem floor_or_crossing (hsrc : HonestRowsSourced tr H G y i)
+theorem floor_or_crossing (hsrc : HonestRowsSourced tr H G y i)
     (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B) (hB : B ∈ (tr.state y i).fg.tree) :
