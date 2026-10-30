@@ -73,6 +73,15 @@ private theorem cutStep_unique {y : Fin P.n} {t : Time} {st st₁ st₂ : NodeSt
         have := (Prod.mk.inj (Option.some.inj (e₁.symm.trans e₂))).2
         simp_all
 
+/-- **Cut chains are deterministic.** -/
+theorem cutChain_unique {y : Fin P.n} {t : Time} {st st₁ st₂ : NodeState A} {cs : List (Cut A)}
+    (h₁ : CutChain y t st cs st₁) (h₂ : CutChain y t st cs st₂) : st₁ = st₂ := by
+  induction h₁ generalizing st₂ with
+  | nil => cases h₂; rfl
+  | cons hs _ ih =>
+    cases h₂ with
+    | cons hs' h' => exact ih (cutStep_unique hs hs' ▸ h')
+
 /-! ### The first cut of an event names its phase -/
 
 /-- The phase of the event a cut can start: a restart, a tick (both start with their AC call),
@@ -132,7 +141,7 @@ private theorem group_start {y y' : Fin P.n} {j j' : Nat} {t t' : Time} {e e' : 
 
 /-- A cut chain recorded at consecutive cuts of `y` from `j` ends, in the run, at its last
 state. -/
-private theorem chain_run (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {t : Time}
+theorem cutChain_run (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {t : Time}
     {st st' : NodeState A} {cs : List (Cut A)} (hch : CutChain y t st cs st') :
     ∀ j, tr.state y j = st →
       (∀ k (hk : k < cs.length), tr.node (j + k) = y ∧ tr.time (j + k) = t ∧
@@ -160,7 +169,7 @@ private theorem group_post (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y 
     tr.state y (j + (exec dg y (tr.state y j) t e).2.length) = (exec dg y (tr.state y j) t e).1 ∧
       tr.post (j + (exec dg y (tr.state y j) t e).2.length - 1) =
         (exec dg y (tr.state y j) t e).1 := by
-  have hs := chain_run h hy (exec_is_cut_chain dg y (tr.state y j) t e) j rfl fun k hk =>
+  have hs := cutChain_run h hy (exec_is_cut_chain dg y (tr.state y j) t e) j rfl fun k hk =>
     ⟨(hg.2.1 k hk).1, (hg.2.1 k hk).2.1, (hg.2.1 k hk).2.2.2.2⟩
   refine ⟨hs, ?_⟩
   obtain ⟨n, hn⟩ := Nat.exists_eq_succ_of_ne_zero (List.length_pos_iff.2 hg.1).ne'
@@ -245,14 +254,20 @@ private theorem gInv_init (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y �
   time := h.time_nonneg 0
   phase := by simp [Config.init]
 
+/-- The event of a group is one `Node.Step` from the configuration of its first cut. -/
+private theorem gInv_nodeStep (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j : Nat}
+    {t : Time} {e : Event A} {cfg : Config A} (hi : GInv dg tr y j cfg)
+    (hg : tr.GroupAt dg y j t e) :
+    Node.Step dg y cfg e t ⟨(exec dg y (tr.state y j) t e).1, t, e.phaseAfter⟩ :=
+  ⟨(group_call hg).2 ▸ hi.time, eventOK h hy hi hg, h.wire y hy j t e hg, by rw [hi.st], rfl, rfl⟩
+
 /-- The configuration after a group: one `Node.Step` by its event. -/
 private theorem gInv_step (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j : Nat}
     {t : Time} {e : Event A} {cfg : Config A} (hi : GInv dg tr y j cfg)
     (hg : tr.GroupAt dg y j t e) :
     GInv dg tr y (j + (exec dg y (tr.state y j) t e).2.length)
       ⟨(exec dg y (tr.state y j) t e).1, t, e.phaseAfter⟩ where
-  reach := hi.reach.tail ⟨e, t, (group_call hg).2 ▸ hi.time, eventOK h hy hi hg,
-    h.wire y hy j t e hg, by rw [hi.st], rfl, rfl⟩
+  reach := hi.reach.tail ⟨e, t, gInv_nodeStep h hy hi hg⟩
   st := (group_post h hy hg).1.symm
   calls k hk hc := by
     by_cases hkj : k < j
@@ -298,16 +313,23 @@ private theorem gInv_exists (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y
       exact hc ⟨_, hk.1, hk.2.2.2.2⟩
     exact ⟨cfg, gInv_skip h hcfg hc⟩
 
-/-- **The honest states of a run are reachable configurations.** -/
-theorem group_states_reachable : GroupStatesReachable := by
-  intro P A dg H sg tr h y hy j t e hg
+/-- **The event of an honest group is a step of the node** from a reachable configuration
+whose state is the state before the group. -/
+theorem group_step (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j : Nat}
+    {t : Time} {e : Event A} (hg : tr.GroupAt dg y j t e) :
+    ∃ cfg : Config A, Reachable dg y cfg ∧ cfg.st = tr.state y j ∧
+      Node.Step dg y cfg e t ⟨(exec dg y (tr.state y j) t e).1, t, e.phaseAfter⟩ := by
   obtain ⟨cfg, hcfg⟩ := gInv_exists h hy j fun j' t' e' hg' hlt => by
     by_contra
     exact absurd (group_start hg' hg hlt.le (by omega)) hlt.ne'
-  exact ⟨⟨cfg, hcfg.reach, hcfg.st, (group_call hg).2 ▸ hcfg.time⟩,
-    _, (gInv_step h hy hcfg hg).reach, (group_post h hy hg).2.symm, rfl⟩
+  exact ⟨cfg, hcfg.reach, hcfg.st, gInv_nodeStep h hy hcfg hg⟩
+
+/-- **The honest states of a run are reachable configurations.** -/
+theorem group_states_reachable : GroupStatesReachable := by
+  intro P A dg H sg tr h y hy j t e hg
+  obtain ⟨cfg, hr, hst, hs⟩ := group_step h hy hg
+  exact ⟨⟨cfg, hr, hst, hs.1⟩, _, hr.tail ⟨e, t, hs⟩, (group_post h hy hg).2.symm, rfl⟩
 
 end Consensus.Goldilocks.Compose
-
 
 end

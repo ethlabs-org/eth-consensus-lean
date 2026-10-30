@@ -77,7 +77,8 @@ theorem signed_only_in_ticks : SignedOnlyInTicks dg self := by
 
 /-! ### C0.5, the cut law -/
 
-private theorem chain_append {t : Time} {st st₁ st₂ : NodeState A} {cs cs' : List (Cut A)}
+/-- Cut chains compose. -/
+theorem chain_append {t : Time} {st st₁ st₂ : NodeState A} {cs cs' : List (Cut A)}
     (h : CutChain self t st cs st₁) (h' : CutChain self t st₁ cs' st₂) :
     CutChain self t st (cs ++ cs') st₂ := by
   induction h with
@@ -114,7 +115,8 @@ private theorem attest_chain (st : NodeState A) (t : Time) (C : A.Blk) :
     exact .cons (st₁ := { st with record := Λ' }) ⟨h, rfl, rfl⟩
       (chain_single self ⟨rfl, rfl, rfl⟩)
 
-private theorem tickStep_chain (st : NodeState A) (t : Time) (s : TickStep) :
+/-- The cuts of a tick step form a cut chain. -/
+theorem tickStep_chain (st : NodeState A) (t : Time) (s : TickStep) :
     CutChain self t st (tickStep dg self st t s).2 (tickStep dg self st t s).1 := by
   cases s with
   | acTick => exact acCall_chain self st t .tick

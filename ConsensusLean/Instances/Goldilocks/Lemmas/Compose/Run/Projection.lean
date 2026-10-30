@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 
 public section
 
