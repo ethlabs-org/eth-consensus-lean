@@ -98,6 +98,7 @@ theorem locks_compatible (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i 
       D ∈ Φ.tree → 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ m D).ncard →
       (∀ v ∈ A.pool m, v.val ∈ H → v.slot = m ∧
         ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) →
+      (∃ k ≤ i, A.pool m ⊆ (tr.state y (k + 1)).pool m) →
       Compatible U D B) :
     ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L B := by
   have hr := hrun.localRun
@@ -128,12 +129,12 @@ theorem locks_compatible (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i 
     · exact Or.inl (Anc.mono hΦU h)
     · exact Or.inr (Anc.mono hΦU h)
   -- a lock of slot `m` or later comes from an optimistic confirmation
-  obtain ⟨Φ', A, D, hΦ', hΦ'U, hD, h34, hpool, L₀, hL₀, hL₀r, hL₀D⟩ :=
+  obtain ⟨Φ', A, D, hΦ', hΦ'U, hD, h34, hpool, hsub, L₀, hL₀, hL₀r, hL₀D⟩ :=
     lock_origin_readPoint hrun hy hc l₀ hl₀ (by rw [hs]; push_cast; omega)
   obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
   refine down hL₀D ?_
   rcases (show l₀.slot = m ∨ m < l₀.slot by omega) with h | h
-  · exact hm Φ' A D hΦ' hΦ'U hD (h ▸ h34) (h ▸ hpool)
+  · exact hm Φ' A D hΦ' hΦ'U hD (h ▸ h34) (h ▸ hpool) (h ▸ hsub)
   -- of slot `m + 1`: the honest voters' votes are earlier slot-`(m+1)` votes
   refine origin_compatible hU hΦ'U h34 hf fun v hv hvH => ?_
   obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH

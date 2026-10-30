@@ -195,6 +195,49 @@ private theorem point_post (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
   rw [show tr.state x (j + 1) = tr.post j by simp [Trace.state, hc.1, hc.2],
     post_of_castAt hr hx ⟨hc, he⟩, optimistic_pool]
 
+private theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
+    (h : x ∈ A.pool σ) : x ∈ (admitVote sp A t v).pool σ := by
+  unfold admitVote
+  split_ifs
+  · exact h
+  · exact h
+  · simp only [Function.update_apply]
+    split_ifs with he
+    · subst he; exact List.mem_append_left _ h
+    · exact h
+
+private theorem tryVote_pool {x : Fin sp.n} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    {v : Vote sp.n} {σ : Nat} (h : v ∈ A.pool σ) : v ∈ (tryVote sp x A Φ t).1.pool σ := by
+  unfold tryVote
+  dsimp only
+  split_ifs
+  · exact h
+  · exact h
+  all_goals
+    rw [optimistic_pool]
+    exact mem_admitVote_pool h
+
+/-- The state the call of an optimistic point leaves holds the point's pools. -/
+private theorem point_pool_post (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {A : SAState sp.n} (hp : OptimisticPoint tr x j ℓ A) (σ : Nat) :
+    A.pool σ ⊆ (tr.state x (j + 1)).pool σ := by
+  obtain ⟨hc, h | h | ⟨e, he, rfl⟩⟩ := hp
+  rotate_left 2
+  · rw [point_post hr hx hc he]
+  all_goals
+    have hpost : tr.state x (j + 1) =
+        ((goldilocksSA sp FGP ro).step x (tr.state x j) ℓ.frame (tr.time j) ℓ.call).1 := by
+      have he := hr.exec j ℓ hc.2 (hc.1 ▸ hx)
+      rw [hc.1] at he
+      rw [he]
+      simp [Trace.state, hc.1, hc.2]
+    intro v hv
+    rw [hpost]
+    obtain ⟨_, hcall, rfl⟩ := h
+    rw [hcall]
+    exact tryVote_pool (by rwa [optimistic_pool])
+
 /-- **The slots at an optimistic point.** The slot-`σ` pool of a state at which an honest node
 runs the optimistic check holds only slot-`σ` votes. -/
 theorem optimisticPoint_pool_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
@@ -246,26 +289,29 @@ theorem optimisticPoint_pool_vote (hrun : ACRun tr H U) {x : Fin sp.n} (hx : x �
     exact ⟨j', Nat.lt_succ_iff.1 hj', h⟩
 
 /-- The conclusion of `lock_origin_readPoint` for the lock `l`, before cut `i`. -/
-private def Good (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (i : Nat)
-    (l : Lock) : Prop :=
+private def Good (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+    (y : Fin sp.n) (i : Nat) (l : Lock) : Prop :=
   ∃ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ ∧ Φ.tree ⊆ U ∧
     D ∈ Φ.tree ∧ 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ l.slot D).ncard ∧
     (∀ v ∈ A.pool l.slot, v.val ∈ H → v.slot = l.slot ∧
       ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) ∧
+    (∃ k ≤ i, A.pool l.slot ⊆ (tr.state y (k + 1)).pool l.slot) ∧
     ∃ L ∈ U, L.root = l.block ∧ Anc U L D
 
-private theorem Good.below (hU : Coherent U) {i : Nat} {l l' : Lock} (h : Good tr H U i l)
+private theorem Good.below (hU : Coherent U) {y : Fin sp.n} {i : Nat} {l l' : Lock}
+    (h : Good tr H U y i l)
     (hs : l'.slot = l.slot) {L' L : Blk sp.n FGP} (hL' : L' ∈ U) (hL'r : L'.root = l'.block)
-    (hL : L ∈ U) (hLr : L.root = l.block) (hA : Anc U L' L) : Good tr H U i l' := by
+    (hL : L ∈ U) (hLr : L.root = l.block) (hA : Anc U L' L) : Good tr H U y i l' := by
   unfold Good at h ⊢
   rw [hs]
-  obtain ⟨Φ, A, D, h1, h2, h3, h4, h5, M, hM, hMr, hMD⟩ := h
+  obtain ⟨Φ, A, D, h1, h2, h3, h4, h5, h6, M, hM, hMr, hMD⟩ := h
   obtain rfl : L = M := hU.1 hL hM (hLr.trans hMr.symm)
-  exact ⟨Φ, A, D, h1, h2, h3, h4, h5, L', hL', hL'r, hA.trans hMD⟩
+  exact ⟨Φ, A, D, h1, h2, h3, h4, h5, h6, L', hL', hL'r, hA.trans hMD⟩
 
 private theorem good_movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
-    {L L' : Set Lock} (hm : MovesBack sp Φ L L') {i : Nat} {s : Int}
-    (h : ∀ l ∈ L, s ≤ l.slot → Good tr H U i l) : ∀ l ∈ L', s ≤ l.slot → Good tr H U i l := by
+    {L L' : Set Lock} (hm : MovesBack sp Φ L L') {y : Fin sp.n} {i : Nat} {s : Int}
+    (h : ∀ l ∈ L, s ≤ l.slot → Good tr H U y i l) :
+    ∀ l ∈ L', s ≤ l.slot → Good tr H U y i l := by
   intro l' hl' hs
   obtain ⟨l, hl, hsl, -, B, hB, hBr, B', hB', hB'r, hA⟩ := hm l' hl'
   exact (h l hl (hsl ▸ hs)).below hU hsl (hΦU hB') hB'r (hΦU hB) hBr (hA.mono hΦU)
@@ -274,20 +320,24 @@ private theorem good_movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.
 `Good` when the check's pool is. -/
 private theorem good_of_select {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     {A : SAState sp.n} {t : Time} {D : Blk sp.n FGP} (hsel : optimisticSelect sp A Φ t = some D)
-    {i : Nat} (hpool : PoolOK tr H A i) :
+    {y : Fin sp.n} {i : Nat} (hpool : PoolOK tr H A i)
+    (hpost : ∃ k ≤ i, ∀ σ, A.pool σ ⊆ (tr.state y (k + 1)).pool σ) :
     D ∈ Φ.tree ∧ ∀ l : Lock, l.slot = sp.slot t → (∃ L ∈ U, L.root = l.block ∧ Anc U L D) →
-      Good tr H U i l := by
+      Good tr H U y i l := by
   unfold optimisticSelect at hsel
   dsimp only at hsel
   split_ifs at hsel
   obtain ⟨⟨hD, hn, -⟩, -⟩ := deepest_mem hsel
-  refine ⟨hD, fun l hl hb => ⟨Φ, A, D, hΦ, hΦU, hD, hl ▸ hn, fun v hv hvH => hpool _ v hv hvH, hb⟩⟩
+  obtain ⟨k, hk, hsub⟩ := hpost
+  exact ⟨hD, fun l hl hb => ⟨Φ, A, D, hΦ, hΦU, hD, hl ▸ hn, fun v hv hvH => hpool _ v hv hvH,
+    ⟨k, hk, hsub _⟩, hb⟩⟩
 
 private theorem good_optimistic (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
-    (hΦU : Φ.tree ⊆ U) {A : SAState sp.n} {t : Time} {i : Nat} {s : Int}
-    (h : ∀ l ∈ A.locks, s ≤ l.slot → Good tr H U i l)
-    (hnew : ∀ D, optimisticSelect sp A Φ t = some D → Good tr H U i ⟨D.root, sp.slot t, true⟩) :
-    ∀ l ∈ (optimisticConfirmation sp A Φ t).locks, s ≤ l.slot → Good tr H U i l := by
+    (hΦU : Φ.tree ⊆ U) {A : SAState sp.n} {t : Time} {y : Fin sp.n} {i : Nat} {s : Int}
+    (h : ∀ l ∈ A.locks, s ≤ l.slot → Good tr H U y i l)
+    (hnew : ∀ D, optimisticSelect sp A Φ t = some D →
+      Good tr H U y i ⟨D.root, sp.slot t, true⟩) :
+    ∀ l ∈ (optimisticConfirmation sp A Φ t).locks, s ≤ l.slot → Good tr H U y i l := by
   unfold optimisticConfirmation
   rcases hD : optimisticSelect sp A Φ t with _ | D
   · exact h
@@ -309,6 +359,7 @@ theorem lock_origin_readPoint (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H
         D ∈ Φ.tree ∧ 3 * sp.n ≤ 4 * (optimisticVoters sp A Φ l.slot D).ncard ∧
         (∀ v ∈ A.pool l.slot, v.val ∈ H → v.slot = l.slot ∧
           ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) ∧
+        (∃ k ≤ i, A.pool l.slot ⊆ (tr.state y (k + 1)).pool l.slot) ∧
         ∃ L ∈ U, L.root = l.block ∧ Anc U L D := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -318,12 +369,13 @@ theorem lock_origin_readPoint (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H
   rw [hes]
   -- the locks before the call: an earlier optimistic check (an update of their slot runs later)
   have hS : ∀ l ∈ (tr.state y i).locks, (sp.slot (tr.time i) : Int) - 1 ≤ l.slot →
-      Good tr H U i l := by
+      Good tr H U y i l := by
     intro l hl hsl
     obtain ⟨j, hj, B, horig, hb⟩ := lock_provenance hr hy i l hl
     rcases horig with ⟨CV, ℓ', A, hpt, hslot, hsel, -⟩ | ⟨ℓ', -, -, htj, -⟩
     · have hΦ' := frameIn_of_call hr hy hpt.1
-      refine (good_of_select hΦ'.1 hΦ'.2 hsel fun σ v hv hvH => ?_).2 l hslot.symm hb
+      refine (good_of_select hΦ'.1 hΦ'.2 hsel (fun σ v hv hvH => ?_)
+        ⟨j, hj.le, point_pool_post hr hy hpt⟩).2 l hslot.symm hb
       obtain ⟨hs, j', hj', h⟩ := optimisticPoint_pool_vote hrun hy hpt hv hvH
       exact ⟨hs, j', hj'.trans_lt hj, h⟩
     · have hji := hr.time_mono hj.le
@@ -333,11 +385,12 @@ theorem lock_origin_readPoint (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H
       simp only [SAParams.ts] at htj ht
       nlinarith
   -- the locks at `try_vote`'s input: also the optimistic check of the receipt
-  have hPl : ∀ l ∈ P.locks, (sp.slot (tr.time i) : Int) - 1 ≤ l.slot → Good tr H U i l := by
+  have hPl : ∀ l ∈ P.locks, (sp.slot (tr.time i) : Int) - 1 ≤ l.slot → Good tr H U y i l := by
     rcases hP with rfl | ⟨A, hA, rfl, hAl⟩
     · exact hS
     · refine good_optimistic hU hΦ hΦU (hAl ▸ hS) fun D hD => ?_
       obtain ⟨hDt, hg⟩ := good_of_select hΦ hΦU hD (receipt_poolOK hrun hy hc.1 hA)
+        ⟨i, le_rfl, point_pool_post hr hy ⟨hc.1, hA.imp_right Or.inl⟩⟩
       exact hg _ rfl ⟨D, hΦU hDt, rfl, Relation.ReflTransGen.refl⟩
   rw [hlocks]
   split_ifs

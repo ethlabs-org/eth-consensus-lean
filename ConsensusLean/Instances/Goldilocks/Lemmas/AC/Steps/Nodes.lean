@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 
 public section
 
@@ -16,10 +17,6 @@ The per-vote transfer lemmas over SA traces. -/
 namespace Consensus.Goldilocks.SA
 
 variable (sp : SAParams)
-
-/-- **A1.2.** -/
-theorem first_transfer : FirstTransfer sp := by
-  sorry
 
 /-- **A1.3.** -/
 theorem next_transfer : NextTransfer sp := by
@@ -94,7 +91,7 @@ theorem next_transfer : NextTransfer sp := by
     (locks_compatible hrun hy hc hs hBt (S := SX) (fun w hw => by
         obtain ⟨-, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
-      hhalf hf2 hearlier fun Φ' A D _ hΦ'U _ h34 hpool =>
+      hhalf hf2 hearlier fun Φ' A D _ hΦ'U _ h34 hpool _ =>
         origin_compatible hU hΦ'U h34 hf2 fun v hv hvH => by
           obtain ⟨hvs, j, -, e', hvote, rfl⟩ := hpool v hv hvH
           exact hall _ hvH j e' hvote hvs)
@@ -155,8 +152,9 @@ theorem optimistic_transfer : OptimisticTransfer sp := by
   have hm : ∀ (Φ' : Frm sp.n FGP) (A' : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ' →
       Φ'.tree ⊆ U → D ∈ Φ'.tree → 3 * sp.n ≤ 4 * (optimisticVoters sp A' Φ' s D).ncard →
       (∀ v ∈ A'.pool s, v.val ∈ H → v.slot = s ∧
-        ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) → Compatible U D B := by
-    intro Φ' A' D _ hΦ'U _ h34' hpool
+        ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) →
+      (∃ k ≤ i, A'.pool s ⊆ (tr.state y (k + 1)).pool s) → Compatible U D B := by
+    intro Φ' A' D _ hΦ'U _ h34' hpool _
     have hint : Hᶜ.ncard < (SX ∩ optimisticVoters sp A' Φ' s D).ncard := by
       have := Set.ncard_inter_add_ncard_union SX (optimisticVoters sp A' Φ' s D)
       have := Set.ncard_le_ncard (Set.subset_univ (SX ∪ optimisticVoters sp A' Φ' s D))
@@ -185,6 +183,92 @@ theorem optimistic_transfer : OptimisticTransfer sp := by
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1))) V (s : Int)
+  · exact he ▸ hBt
+  · exact (Anc.mem hcore he).2
+
+/-- **A1.2.** -/
+theorem first_transfer : FirstTransfer sp := by
+  intro FGP ro H U tr hrun s x y i₀ i B CV ℓ e hx hfl hy hc hs hsync hcarry hfault hviab hearlier
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  -- `f < h_τ` gives `f < n/2`
+  have hf : 2 * Hᶜ.ncard < sp.n := by
+    have hn : H.ncard + Hᶜ.ncard = sp.n := by
+      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+    have : honestAwakeJoined tr H (tr.time i) ≤ H.ncard := Set.ncard_le_ncard fun x hx => hx.1
+    unfold FaultBound at hfault
+    omega
+  rcases hfl with ⟨ℓX, C, hupd, hconf, -, hfs, rfl⟩ | hopt
+  swap
+  · exact optimistic_transfer sp FGP ro H U tr hrun s x y i₀ i B CV ℓ e hx hopt hf hy hc hs hsync
+      hcarry hviab hearlier
+  -- the fast test of `x`'s update: `B` on the result `C`'s path, with half of the committee
+  obtain ⟨-, -, -, hhead⟩ := castAt_spec hr hy hc
+  obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
+    rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
+      exact h.1
+  have hΦxU : ℓX.frame.tree ⊆ U := by
+    rcases hr.frameLaw x hx i₀ ℓX hupd.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
+      exact h.1.2
+  have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
+  rw [hs, hσ] at hhead
+  have hdomA := voterBlockTree_anc hr hy hc
+  rw [hs] at hdomA
+  have hBt : B ∈ ℓ.frame.tree := by
+    rcases hviab with h | h
+    · exact h.1.1
+    · exact mem_of_anc h hΦ.fcRoot_mem
+  obtain ⟨⟨-, -, hBC⟩, hfast⟩ := (deepest_mem hfs).1
+  set P := tr.state x i₀
+  set SX := {w | ∃ v ∈ fastCounted sp P ℓX.frame s B, v.val = w}
+  have hd := writer_merged hrun hx hupd hy hc hs hsync
+  have hsupp := counted_supporters hrun hx hy hupd.1 hc hs hcarry hviab hd
+  -- half of the committee are counted for `B`, and a strict majority of `x`'s participants
+  have hhalf : sp.n ≤ 2 * SX.ncard := by
+    refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
+    rintro w ⟨hw, v, ⟨hv, hres⟩, hval, -, hanc⟩
+    exact ⟨v, ⟨hv, hval ▸ hw, hres, hanc⟩, hval⟩
+  have hmaj : (voters {v | v ∈ P.pool s}).ncard < 2 * SX.ncard := by
+    refine lt_of_lt_of_le (result_majority (C := C) ⟨ℓX, hupd, hconf, rfl⟩)
+      (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
+    rintro w ⟨v, ⟨hv, hneq, hres, R, hR, hRr, hCR⟩, hval⟩
+    exact ⟨v, ⟨hv, hneq, hres, R, hR, hRr, hBC.trans hCR⟩, hval⟩
+  -- an optimistic origin of slot `s` at `y` shares a counted validator, whose single vote at
+  -- `x` is also the one `y` counted (forwarding)
+  have hm : ∀ (Φ' : Frm sp.n FGP) (A' : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ' →
+      Φ'.tree ⊆ U → D ∈ Φ'.tree → 3 * sp.n ≤ 4 * (optimisticVoters sp A' Φ' s D).ncard →
+      (∀ v ∈ A'.pool s, v.val ∈ H → v.slot = s ∧
+        ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) →
+      (∃ k ≤ i, A'.pool s ⊆ (tr.state y (k + 1)).pool s) → Compatible U D B := by
+    rintro Φ' A' D - hΦ'U - h34' - ⟨k, hk, hsub⟩
+    have hint : (∅ : Set (Fin sp.n)).ncard < (SX ∩ optimisticVoters sp A' Φ' s D).ncard := by
+      have := Set.ncard_inter_add_ncard_union SX (optimisticVoters sp A' Φ' s D)
+      have := Set.ncard_le_ncard (Set.subset_univ (SX ∪ optimisticVoters sp A' Φ' s D))
+      rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at this
+      rw [Set.ncard_empty]
+      omega
+    obtain ⟨w, ⟨⟨v₁, ⟨hv₁, hneq, -, R₁, hR₁, hR₁r, hBR₁⟩, rfl⟩, v₂, hv₂, hv₂w, R₂, hR₂, hR₂r,
+      hDR₂⟩, -⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard hint
+    obtain rfl : v₂ = v₁ := by
+      rcases writer_pool hrun hx hupd hy hc hs hsync hk v₂ (hsub hv₂) with h | h
+      · by_contra hne
+        exact hneq ⟨v₂, h, v₁, hv₁, hne, hv₂w, rfl⟩
+      · exact absurd (hv₂w ▸ h) hneq
+    obtain rfl : R₂ = R₁ := hU.1 (hΦ'U hR₂) (hΦxU hR₁) (hR₂r.trans hR₁r.symm)
+    exact anc_total hU (Anc.mono hΦ'U hDR₂) (Anc.mono hΦxU hBR₁)
+  have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
+    (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => hB.1) hdomA hviab
+    (locks_compatible hrun hy hc hs hBt (S := SX) (fun w hw => by
+        obtain ⟨-, x, hx, hxv, hxs, hxa⟩ := hsupp hw
+        exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
+      hhalf hf hearlier hm)
+    fun X' Cx hCx hp hCxC =>
+      isBest_of_majority hΦ (merged_support_subset hr hy hc (s + 1)) (fun B hB => hB.1.1)
+        hsupp (merged_voters_subset hr hy hc hd) hmaj hCx hp hCxC
+  refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
+  by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)
+      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+      (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
 
