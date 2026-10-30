@@ -17,5 +17,11 @@
                     "Consensus.Goldilocks.Compose.syncProjection",
                     "Consensus.Goldilocks.Compose.joinedProjection",
                     "Consensus.Goldilocks.Compose.honestFastConfirmationsPersist",
-                    "Consensus.Goldilocks.Compose.recentSourceNextVote"],
+                    "Consensus.Goldilocks.Compose.recentSourceNextVote",
+                    "Consensus.Goldilocks.Regimes.outputsNested",
+                    "Consensus.Goldilocks.Regimes.finalizedMonotone",
+                    "Consensus.Goldilocks.Regimes.outputsValid",
+                    "Consensus.Goldilocks.Regimes.finalAccountable",
+                    "Consensus.Goldilocks.Regimes.nonFraming",
+                    "Consensus.Goldilocks.Regimes.finalizedSafe"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }

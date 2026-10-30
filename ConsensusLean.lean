@@ -164,6 +164,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Service.Main
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface

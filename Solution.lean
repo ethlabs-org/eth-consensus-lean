@@ -9,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 
 @[expose] public section
 
@@ -119,5 +120,33 @@ theorem Consensus.Goldilocks.Compose.honestFastConfirmationsPersist :
 theorem Consensus.Goldilocks.Compose.recentSourceNextVote :
     Consensus.Goldilocks.Compose.RecentSourceNextVote :=
   Consensus.Goldilocks.Compose.recent_source_next_vote
+
+/-! Goldilocks Regimes: the rows that hold in every run (R.7, R.8; `Statements/Regimes/Always`). -/
+
+/-- Goldilocks Regimes: `OutputsNested`. -/
+theorem Consensus.Goldilocks.Regimes.outputsNested : Consensus.Goldilocks.Regimes.OutputsNested :=
+  Consensus.Goldilocks.Regimes.outputs_nested
+
+/-- Goldilocks Regimes: `FinalizedMonotone`. -/
+theorem Consensus.Goldilocks.Regimes.finalizedMonotone :
+    Consensus.Goldilocks.Regimes.FinalizedMonotone :=
+  Consensus.Goldilocks.Regimes.finalized_monotone
+
+/-- Goldilocks Regimes: `OutputsValid`. -/
+theorem Consensus.Goldilocks.Regimes.outputsValid : Consensus.Goldilocks.Regimes.OutputsValid :=
+  Consensus.Goldilocks.Regimes.outputs_valid
+
+/-- Goldilocks Regimes: `FinalAccountable`. -/
+theorem Consensus.Goldilocks.Regimes.finalAccountable :
+    Consensus.Goldilocks.Regimes.FinalAccountable :=
+  Consensus.Goldilocks.Regimes.final_accountable
+
+/-- Goldilocks Regimes: `NonFraming`. -/
+theorem Consensus.Goldilocks.Regimes.nonFraming : Consensus.Goldilocks.Regimes.NonFraming :=
+  Consensus.Goldilocks.Regimes.non_framing
+
+/-- Goldilocks Regimes: `FinalizedSafe`. -/
+theorem Consensus.Goldilocks.Regimes.finalizedSafe : Consensus.Goldilocks.Regimes.FinalizedSafe :=
+  Consensus.Goldilocks.Regimes.finalized_safe
 
 end

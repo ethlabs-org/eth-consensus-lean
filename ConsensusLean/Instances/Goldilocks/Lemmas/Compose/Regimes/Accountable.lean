@@ -22,7 +22,7 @@ FGStore (G1.4) through the run's FG projection:
 * `finalized_safe` (G1.4; `NoColl`, `f < 2q − n`): `Store.finalized_safety` over the FG
   projection (`fg_projection`).
 
-`always_statements` assembles R.7 with R.8 (`Outputs`). -/
+`Proofs/Regimes/Main` assembles R.7 with R.8 (`Outputs`) as `always_statements`. -/
 
 namespace Consensus.Goldilocks.Regimes
 
@@ -82,15 +82,6 @@ theorem finalized_safe : FinalizedSafe := by
   intro sp ro dg H tr hrun hnc hf y hy z hz i j
   have h := Store.finalized_safety sp.toParams _ _ H _ tr.projFG (fg_run hrun hnc) hf y hy z hz i j
   rwa [store_eq hrun hy, store_eq hrun hz] at h
-
-/-- **Milestone Regimes, the rows that hold in every run** (R.7, R.8). -/
-theorem always_statements : AlwaysStatements where
-  outputsNested := outputs_nested
-  finalizedMonotone := finalized_monotone
-  outputsValid := outputs_valid
-  finalAccountable := final_accountable
-  nonFraming := non_framing
-  finalizedSafe := finalized_safe
 
 end Consensus.Goldilocks.Regimes
 

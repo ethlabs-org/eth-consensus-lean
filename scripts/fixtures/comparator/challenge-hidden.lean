@@ -10,6 +10,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Persist
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always
 
 @[expose] public section
 
@@ -39,6 +40,12 @@ theorem Consensus.Goldilocks.Compose.syncProjection : Consensus.Goldilocks.Compo
 theorem Consensus.Goldilocks.Compose.joinedProjection : Consensus.Goldilocks.Compose.JoinedProjection := sorry
 theorem Consensus.Goldilocks.Compose.honestFastConfirmationsPersist : Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist := sorry
 theorem Consensus.Goldilocks.Compose.recentSourceNextVote : Consensus.Goldilocks.Compose.RecentSourceNextVote := sorry
+theorem Consensus.Goldilocks.Regimes.outputsNested : Consensus.Goldilocks.Regimes.OutputsNested := sorry
+theorem Consensus.Goldilocks.Regimes.finalizedMonotone : Consensus.Goldilocks.Regimes.FinalizedMonotone := sorry
+theorem Consensus.Goldilocks.Regimes.outputsValid : Consensus.Goldilocks.Regimes.OutputsValid := sorry
+theorem Consensus.Goldilocks.Regimes.finalAccountable : Consensus.Goldilocks.Regimes.FinalAccountable := sorry
+theorem Consensus.Goldilocks.Regimes.nonFraming : Consensus.Goldilocks.Regimes.NonFraming := sorry
+theorem Consensus.Goldilocks.Regimes.finalizedSafe : Consensus.Goldilocks.Regimes.FinalizedSafe := sorry
 /- harmless -/ axiom extra : False /- harmless -/
 
 end
