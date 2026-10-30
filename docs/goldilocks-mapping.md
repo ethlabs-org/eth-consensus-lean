@@ -564,7 +564,8 @@ CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `c6653258`, §"L2: regime
 run-level forms of the `GoldilocksTarget` rows, over the Goldilocks run (`GoldilocksRun`; `Compose.NoCollRun` only
 where the target row allows the collision escape); the Refinement milestone carries them to the model system. R.7 and R.8 (no regime premise) are in
 `Statements/Regimes/Always`; R.1 and R.2 (`Sleepy`) in `Statements/Regimes/Sleepy`; R.3 (healed, at a heal point
-`T ≥ T_heal`) in `Statements/Regimes/Healed`.
+`T ≥ T_heal`) in `Statements/Regimes/Healed`; R.5 (`Outage`) in `Statements/Regimes/Outage`; R.6 (`Weak`) in
+`Statements/Regimes/Weak`. R.4 is not stated (it needs O.1).
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
@@ -575,6 +576,10 @@ where the target row allows the collision escape); the Refinement milestone carr
 | R.2 | CLAIMS R.2 (uses A1.7, F.4) | **`includeSleepy`**: honest ready proposals are in every ready confirmed read from `τ + 6Δ`; **`growSleepy`**: with one honest ready proposer per `k` slots, a new common confirmed entry by `t + (4k + 6)Δ`, above every ready read at `t` | Regimes | `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy`, `Consensus.Goldilocks.Regimes.SleepyStatements` |
 | — | CLAIMS R.3 (heal point D1), H.4 (ii), (iii), H.3 (c) | `(U_all)` and `(U_B)` from `T` (H.4's open premises); the healing premises of R.3 at a heal point `T` (HS shared premises, `Catch(2Δ)`, `Prop⁺`, the reset, H.3 (c)'s bridge as a named hypothesis, `T ≥ T_heal`) | Regimes | `Consensus.Goldilocks.Regimes.UnanimousFrom`, `Consensus.Goldilocks.Regimes.UnanimousWithin`, `Consensus.Goldilocks.Regimes.HealedPremises` |
 | R.3 | CLAIMS R.3 (uses R.1, R.2, C1.1, H.4) | at a heal point `T ≥ T_heal` (not the target's `gHeal`): **`healedSafe`** (ready-reader safety from `T`); **`includeHealed`** (under `(U_all)`); **`growHealed`** (under `(U_B)` with `B = 4kΔ` and the recurrence from `gReady`); **`crossNest`** (ready finalized ⪯ ready confirmed from `T`) | Regimes | `Consensus.Goldilocks.Regimes.HealedSafe`, `Consensus.Goldilocks.Regimes.IncludeHealed`, `Consensus.Goldilocks.Regimes.GrowHealed`, `Consensus.Goldilocks.Regimes.CrossNest`, `Consensus.Goldilocks.Regimes.HealedStatements` |
+| — | CLAIMS §"Premises" (`Outage(T, b₀, b₁)`), R.5; fgsa-protocol.tex "Outage continuation under (V)" | honest and recently awake; η-sleepy participation at `t` (`θ = ½`); more than half of all ready at `t`; the resilience reader; the outage times with the arming lag `(4k − 4)Δ` and (V) with `L = (4k − 2)Δ`; **`Outage`** over the run | Regimes | `Consensus.Goldilocks.Regimes.RecentlyAwake`, `Consensus.Goldilocks.Regimes.EtaSleepyAt`, `Consensus.Goldilocks.Regimes.ReadyOfAllAt`, `Consensus.Goldilocks.Regimes.ResilienceReader`, `Consensus.Goldilocks.Regimes.OutageWindowTimes`, `Consensus.Goldilocks.Regimes.OutageRun` |
+| R.5 | CLAIMS R.5 (uses A1.2, A1.3, C1.1; (V)) | **`persists`**: under `Outage`, a ready read at `T` is an ancestor of every resilience reader's confirmed read from `b₀`; **`outageWindow`**: the same up to `b₁ − 1` with no premise after `b₀`; **`outage_final_compatible`**: compatible with every resilience reader's finalized read from `b₀` | Regimes | `Consensus.Goldilocks.Regimes.OutagePersists`, `Consensus.Goldilocks.Regimes.OutageWindow`, `Consensus.Goldilocks.Regimes.OutageFinalCompatible`, `Consensus.Goldilocks.Regimes.OutageStatements` |
+| — | CLAIMS §"Premises" (`Weak`), R.6 | the ready-proposer premise on `[ḡ, T]`; **`Weak`** with the healing premises cut at the heal point `T ≥ T_heal` | Regimes | `Consensus.Goldilocks.Regimes.PropPlusUntil`, `Consensus.Goldilocks.Regimes.WeakPremises` |
+| R.6 | CLAIMS R.6 (uses R.1–R.3) | at a heal point `T ≥ T_heal`: **`weakSafe`**, **`weakCrossNest`**, **`weakInclude`** (from `T + 8Δ`), **`weakGrow`** (recurrence from `T`) | Regimes | `Consensus.Goldilocks.Regimes.WeakSafe`, `Consensus.Goldilocks.Regimes.WeakCrossNest`, `Consensus.Goldilocks.Regimes.WeakInclude`, `Consensus.Goldilocks.Regimes.WeakGrow`, `Consensus.Goldilocks.Regimes.WeakStatements` |
 | R.7 | CLAIMS R.7 (uses G1.3–G1.5) | **`finalAccountable`**: conflicting honest finalized tips convict `≥ 2q − n` validators from the attestations on two chains the readers hold; **`nonFraming`**: an honest validator signs no slashable pair; **`finalized_safe_below_third`**: with `f < 2q − n`, honest finalized tips never conflict | Regimes | `Consensus.Goldilocks.Regimes.FinalAccountable`, `Consensus.Goldilocks.Regimes.NonFraming`, `Consensus.Goldilocks.Regimes.FinalizedSafe`, `Consensus.Goldilocks.Regimes.AlwaysStatements` |
 
 Modelling choices:
@@ -610,6 +615,28 @@ Modelling choices:
   across FG-only frame changes between AC calls (`includeHealed` reads after all events, H.4 concludes at AC calls);
   `crossNest`, which no H node gives. `healthyLive` and `confirmed_txLive_healed` are derived in the Refinement from
   `includeHealed` (no transactions in the run).
+- **R.5 (`Outage`)**: the claims replace the target's budget `b₁ − b₀ ≤ min(η, 4·lockK − 5)Δ` by (V),
+  `b₁ − b₀ + ((b₀ − 6Δ) mod 4Δ) ≤ (4k − 2)Δ` (fgsa-protocol.tex: the old budget does not imply continuation after
+  `b₁`), with the target's `lockK` read as the SA's `k` (D1) and the arming lag `(4·lockK − 4)Δ` kept. For `b₀` a
+  multiple of `Δ` the target's budget implies (V) (the `mod` term is then `≤ 3Δ`); for other `b₀` the Refinement
+  must relate them (open). `outageWindow` (the interval-only P1) takes `b₁ − b₀ ≤ (4k − 2)Δ` instead of (V), which
+  the target's budget implies. Synchrony "before `b₀`" is `Sync[0, b₀ − Δ]` (the model's `SyncUntil b₀`), and the
+  participation is the target's: η-sleepy at every time (`θ = ½`, `η = eta·Δ`) and more than half ready at `b₀`.
+- **R.6 (`Weak`)**: the heal point is `T ≥ T_heal`, as for R.3, and the healing premises are cut at `T`
+  (`WeakPremises`: honest awake on `[ḡ, T]`, ready honest more than faulty from `T`, the ready-proposer premise on
+  `[ḡ, T]`, plus R.3's); `weakInclude` and `weakGrow` also take H.4's open unanimity premises, as R.3 does. Its proof
+  needs H.4 and R.3 in a form that uses `Healthy` and the ready-proposer premise only up to `T` (open; H.4 is stated
+  under `Healthy(g)` and `Prop⁺(G_p)` on the whole run).
+- **R.4** (`finalFirst`, `finalRecur`, `liveDC`, `healthyLive` final, `finalized_txLive`) is not stated: its uses
+  have no fixed statements (C1.3 "statement not yet fixed", G1.9's full form, and O.1, which has none, with no
+  expression for `T_rec`), so neither its proof route nor a named O.1 hypothesis can be written yet. Deferred until
+  C1.3 and O.1 are fixed.
+- **Network model vs the spec's premises** (consensus-lean#92, architecture orb): the engine's delivery is `≤
+  max(a, g) + Δ` and relays an admitted object at the admitting node's next awake tick, where the spec's
+  `Sync`/`GST` ask for processing strictly before `max(τ, w_y) + Δ'` with admission as an instantaneous send. The
+  Refinement's transport from `PSync`/`SyncUntil` to `Sync`/`GST` must absorb the slack (a larger `Δ'`: `Δ` plus a
+  tick, non-strict to strict), or the spec's admission timing changes; the regime statements here keep the spec's
+  premises (open, Refinement).
 - **Conflict** is incompatibility inside the honest blocks of the run (`tr.HonestBlocks H`), as in G1.4 and C1.1.
 - **`finalAccountable`** reads "conflicting honest reads convict from their own views" (G1.5: "among the attestations
   included on the chains held by the two readers, taken together") as: some block of each reader's tree at the cut

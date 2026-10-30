@@ -217,7 +217,9 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Healed
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Outage
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Weak
 public import ConsensusLean.Instances.Streamlet.Spec
 public import ConsensusLean.Instances.Tendermint.Spec
 public import ConsensusLean.Lemmas.Blocks.Facts

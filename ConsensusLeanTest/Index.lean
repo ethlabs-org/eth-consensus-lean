@@ -727,6 +727,23 @@ example := ``Consensus.Goldilocks.Regimes.IncludeHealed
 example := ``Consensus.Goldilocks.Regimes.GrowHealed
 example := ``Consensus.Goldilocks.Regimes.CrossNest
 example := ``Consensus.Goldilocks.Regimes.HealedStatements
+example := ``Consensus.Goldilocks.Regimes.RecentlyAwake
+example := ``Consensus.Goldilocks.Regimes.EtaSleepyAt
+example := ``Consensus.Goldilocks.Regimes.ReadyOfAllAt
+example := ``Consensus.Goldilocks.Regimes.ResilienceReader
+example := ``Consensus.Goldilocks.Regimes.OutageWindowTimes
+example := ``Consensus.Goldilocks.Regimes.OutageRun
+example := ``Consensus.Goldilocks.Regimes.OutagePersists
+example := ``Consensus.Goldilocks.Regimes.OutageWindow
+example := ``Consensus.Goldilocks.Regimes.OutageFinalCompatible
+example := ``Consensus.Goldilocks.Regimes.OutageStatements
+example := ``Consensus.Goldilocks.Regimes.PropPlusUntil
+example := ``Consensus.Goldilocks.Regimes.WeakPremises
+example := ``Consensus.Goldilocks.Regimes.WeakSafe
+example := ``Consensus.Goldilocks.Regimes.WeakCrossNest
+example := ``Consensus.Goldilocks.Regimes.WeakInclude
+example := ``Consensus.Goldilocks.Regimes.WeakGrow
+example := ``Consensus.Goldilocks.Regimes.WeakStatements
 
 /-! ## Goldilocks Refinement (a milestone PR appends here only) -/
 
