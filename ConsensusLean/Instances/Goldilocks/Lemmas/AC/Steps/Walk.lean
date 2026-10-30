@@ -173,23 +173,18 @@ theorem ghost_add {T : Set (Blk sp.n FGP)} {sc : Blk sp.n FGP → Nat} {el : Blk
       | succ m => rw [ghost, dite_eq_right_iff.2 fun h' => absurd h' h]
 
 /-- **The voter's walk follows the proposer's to `P`.** Two walks from `D`: the first ends at `Q`
-and stops there; at every block it visits before `Q`, the first walk's best child `C` is eligible
-for the second with a score at least as large (the winner persists), and every other eligible
-child of the second walk is eligible for the first with a score at most as large (competitors
-reflect, possibly with fewer supporters): a sandwich, since scores of competitors can differ
-between the two views. At `Q` the second walk's only eligible child is `P`, where it stops. Then
-the second walk ends at `P` (with one more step). -/
+and stops there; at every block it visits before `Q`, the first walk's best child is also the
+second walk's best child (the eligible sets and scores may differ between the two views: competitor
+scores and the frames' viability can change between the proposal and the vote). At `Q` the second
+walk's only eligible child is `P`, where it stops. Then the second walk ends at `P` (with one more
+step). -/
 theorem ghost_follow {T₁ T₂ : Set (Blk sp.n FGP)} {sc₁ sc₂ : Blk sp.n FGP → Nat}
     {el₁ el₂ : Blk sp.n FGP → Prop} {Q P : Blk sp.n FGP} (f : Nat) (D : Blk sp.n FGP)
     (h₁ : ghost sp T₁ sc₁ el₁ f D = Q)
     (hstop : ¬ ∃ C, IsBest sp sc₁ {B | B ∈ T₁ ∧ B.parent = some Q.root ∧ el₁ B} C)
     (hstep : ∀ k < f, ghost sp T₁ sc₁ el₁ k D ≠ Q →
       ∀ C, IsBest sp sc₁ {B | B ∈ T₁ ∧ B.parent = some (ghost sp T₁ sc₁ el₁ k D).root ∧ el₁ B} C →
-        C ∈ {B | B ∈ T₂ ∧ B.parent = some (ghost sp T₁ sc₁ el₁ k D).root ∧ el₂ B} ∧
-        sc₁ C ≤ sc₂ C ∧
-        ∀ B ∈ {B | B ∈ T₂ ∧ B.parent = some (ghost sp T₁ sc₁ el₁ k D).root ∧ el₂ B}, B ≠ C →
-          B ∈ {B | B ∈ T₁ ∧ B.parent = some (ghost sp T₁ sc₁ el₁ k D).root ∧ el₁ B} ∧
-            sc₂ B ≤ sc₁ B)
+        IsBest sp sc₂ {B | B ∈ T₂ ∧ B.parent = some (ghost sp T₁ sc₁ el₁ k D).root ∧ el₂ B} C)
     (hQ : P ∈ {B | B ∈ T₂ ∧ B.parent = some Q.root ∧ el₂ B} ∧
       ∀ B ∈ {B | B ∈ T₂ ∧ B.parent = some Q.root ∧ el₂ B}, B = P)
     (hP : ¬ ∃ C, IsBest sp sc₂ {B | B ∈ T₂ ∧ B.parent = some P.root ∧ el₂ B} C) :
@@ -223,15 +218,7 @@ theorem ghost_follow {T₁ T₂ : Set (Blk sp.n FGP)} {sc₁ sc₂ : Blk sp.n FG
           IsBest.unique (Exists.choose_spec ⟨C, hC⟩) hC]
       have h0 := hstep 0 (Nat.succ_pos f) (by simpa [ghost] using hDQ)
       simp only [ghost] at h0
-      obtain ⟨hpers, hwin, hcomp⟩ := h0 C hC
-      have hC₂ : IsBest sp sc₂ {B | B ∈ T₂ ∧ B.parent = some D.root ∧ el₂ B} C := by
-        refine ⟨hpers, fun B hB hne => ?_⟩
-        obtain ⟨hB₁, hBs⟩ := hcomp B hB hne
-        rcases hC.2 B hB₁ hne with h | ⟨h, hr⟩
-        · exact Or.inl (by omega)
-        · rcases Nat.lt_or_ge (sc₂ B) (sc₂ C) with h' | h'
-          · exact Or.inl h'
-          · exact Or.inr ⟨by omega, hr⟩
+      have hC₂ := h0 C hC
       rw [ghost, dite_eq_left_of_eq_true (eq_true ⟨C, hC₂⟩),
         IsBest.unique (Exists.choose_spec ⟨C, hC₂⟩) hC₂]
       refine ih C (h1C ▸ h₁) fun k hk hne => ?_

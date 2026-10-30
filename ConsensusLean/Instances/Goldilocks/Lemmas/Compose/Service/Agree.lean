@@ -103,11 +103,13 @@ theorem proposal_data {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set
   exact hr
 
 /-- **The suffix** (workbench#12 §3; open): at every block `X` from the pivot `D` to `Q` (in the
-proposer's tree), the proposer's best child is eligible for the voter with a score at least its
-proposer score (the path's supporters are the same in both views), and every other eligible child
-of the voter is eligible for the proposer with a voter score at most its proposer score. A
-sandwich, not equality: competitor scores can differ between the two frames in reachable runs
-(A1.7 model sweep, d55d292: 543,903 differing counts, the vote still `P`). -/
+proposer's tree) at or above the voter's anchor, the proposer's best child is the voter's best
+child. Only the winner is compared: in reachable runs (sa-fg-model 7f7e660) a voter-eligible
+competitor need not be proposer-eligible (the frame moves between the proposal read and the vote,
+e.g. `Σ.F` rises to `X` when the node accepts `P`, and every child of `X` becomes eligible), and
+competitor scores differ between the views; below the voter's anchor the proposer's best child can
+be outside the voter's viable tree. The model finds the voter's winner score strictly above every
+competitor's in all of these cases. -/
 theorem suffix_agree {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -122,26 +124,17 @@ theorem suffix_agree {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set 
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
+      Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X →
       X ≠ d.head →
       ∀ C, SA.IsBest sp (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
           {B | B ∈ ℓp.frame.viableTree ℓp.frame.tree ∧ B.parent = some X.root ∧
             SA.goldfishEligible sp ℓp.frame (tr.time i) (SA.View.ofLists pay)
               ((s : Int) - 1) B} C →
-        C ∈ {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
-          B.parent = some X.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
-            (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} ∧
-        SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1) C ≤
-          SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s)
-            ((s : Int) - 1) C ∧
-        ∀ B ∈ {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
+        SA.IsBest sp (SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s)
+            ((s : Int) - 1))
+          {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
             B.parent = some X.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
-              (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B}, B ≠ C →
-          B ∈ {B | B ∈ ℓp.frame.viableTree ℓp.frame.tree ∧ B.parent = some X.root ∧
-            SA.goldfishEligible sp ℓp.frame (tr.time i) (SA.View.ofLists pay)
-              ((s : Int) - 1) B} ∧
-          SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s)
-              ((s : Int) - 1) B ≤
-            SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1) B := by
+              (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
   sorry
 
 /-- **The stop at `P.parent`** (workbench#12 §3; open): at `Q` a voter's only eligible child is
@@ -240,6 +233,8 @@ theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
   obtain ⟨hstep₀, hP₀⟩ := stop_at_parent hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hy hcast hes
   have hsuf := suffix_agree hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hsD hDQ hy hcast hes
   have hΦy := (SA.frameIn_of_callAt hr hy hcy).1
+  have hΦyU := (SA.frameIn_of_callAt hr hy hcy).2
+  have hΦpU := (SA.frameIn_of_callAt hr hp hc).2
   obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j ℓy e hcast hes hIH
   set W₂ := SA.ghost sp (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
     (SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1))
@@ -268,7 +263,8 @@ theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
           exact hXQend hDX hXQ
         rw [← hend, hW₁]
         exact SA.anc_ghost hTp _ hmem
-      exact hsuf _ (hDX.trans hXm) hQm hne
+      exact hsuf _ (hDX.trans hXm) hQm
+        ((haX.mono hΦyU).trans (hXm.mono hΦpU)) hne
   obtain ⟨fX, hfX⟩ := hXP
   have hspec := (SA.castAt_spec hr hy hcast).2.2.2
   rw [hes] at hspec
