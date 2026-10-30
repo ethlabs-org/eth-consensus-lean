@@ -281,8 +281,8 @@ reachable state. -/
 def ProposalPayloadValid : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP), (goldilocksSA sp FGP ro).ReqPayload
 
-/-- The ACBase statements. -/
-structure ACBase : Prop where
+/-- The ACBase statements, for the SA parameters `sp`. -/
+structure ACBaseAt : Prop where
   slotArithmetic : SlotArithmetic sp
   lockExpiry : LockExpiry sp
   joinedFrom : JoinedFrom sp
@@ -310,6 +310,9 @@ structure ACBase : Prop where
   joinedKeepsVotes : JoinedKeepsVotes sp
   oneVotePerSlot : OneVotePerSlot sp
   proposalPayloadValid : ProposalPayloadValid sp
+
+/-- **Milestone ACBase**: the ACBase statements for all SA parameters. -/
+def ACBase : Prop := ∀ sp : SAParams, ACBaseAt sp
 
 end Consensus.Goldilocks.SA
 

@@ -93,8 +93,8 @@ The Spec import closure excludes project Lemmas, Proofs, Main, Instances, Soluti
 | Other protected path | Meaning |
 |---|---|
 | `ConsensusLean/Init.lean` | Curated public imports (`Mathlib.Init`, `Mathlib.Tactic.Common`); owns no declarations. Replaces the import-only root `ConsensusSpec.lean` of `4b7c5148` in the list. |
-| `Challenge.lean` | Non-default comparator challenge: imports exactly `ConsensusLean.Statements.Review` and the `milestone_statements_modules` (today `ConsensusLean.Instances.Goldilocks.Statements.FGSafety`, `ConsensusLean.Instances.Goldilocks.Statements.AC.Steps`, `ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local` and `ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace`); one placeholder proof per statement (eight). |
-| `comparator.json` | Challenge/solution modules, the theorem names (four review, Goldilocks M₁, ACSteps and FGStore parts 1 and 2) and three permitted axioms. |
+| `Challenge.lean` | Non-default comparator challenge: imports exactly `ConsensusLean.Statements.Review` and the `milestone_statements_modules` (today `ConsensusLean.Instances.Goldilocks.Statements.FGSafety`, `ConsensusLean.Instances.Goldilocks.Statements.AC.Steps`, `ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local`, `ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace` and `ConsensusLean.Instances.Goldilocks.Statements.AC.Base`); one placeholder proof per statement (ten). |
+| `comparator.json` | Challenge/solution modules, the theorem names (four review, Goldilocks M₁, ACSteps, FGStore parts 1 and 2, and ACBase with `LocalRunReachable`) and three permitted axioms. |
 | `ConsensusLeanTest/ReviewAxioms.lean` | Compiled statement/type, binder-kind, completeness and exact axiom pins. |
 | `ConsensusLeanTest/ReviewGuard.lean` | Shared implementation of those statement/completeness checks, also used by negative fixtures. |
 | `lean-toolchain` | Exact Lean version: `leanprover/lean4:v4.35.0`. |

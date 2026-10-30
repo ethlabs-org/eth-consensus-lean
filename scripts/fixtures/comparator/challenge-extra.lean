@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace
+public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
 
 @[expose] public section
 
@@ -17,6 +18,8 @@ theorem Consensus.Goldilocks.FG.fGSafety : Consensus.Goldilocks.FG.FGSafety := s
 theorem Consensus.Goldilocks.SA.aCSteps : Consensus.Goldilocks.SA.ACSteps := sorry
 theorem Consensus.Goldilocks.Store.fGStoreLocal : Consensus.Goldilocks.Store.FGStoreLocal := sorry
 theorem Consensus.Goldilocks.Store.fGStoreTrace : Consensus.Goldilocks.Store.FGStoreTrace := sorry
+theorem Consensus.Goldilocks.SA.aCBase : Consensus.Goldilocks.SA.ACBase := sorry
+theorem Consensus.Goldilocks.localRunReachable : Consensus.Goldilocks.LocalRunReachable := sorry
 axiom Consensus.Review.extra : False
 
 end

@@ -358,6 +358,7 @@ example := ``Consensus.Goldilocks.DutyHead
 example := ``Consensus.Goldilocks.Emission
 example := ``Consensus.Goldilocks.LocalRunReachable
 example := ``Consensus.Goldilocks.SA.ACBase
+example := ``Consensus.Goldilocks.SA.ACBaseAt
 example := ``Consensus.Goldilocks.SA.AdmissionSlots
 example := ``Consensus.Goldilocks.SA.CandidatesChain
 example := ``Consensus.Goldilocks.SA.CarriedVotes

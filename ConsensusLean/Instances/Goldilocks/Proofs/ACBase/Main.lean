@@ -6,12 +6,12 @@ public section
 
 /-! # Goldilocks milestone ACBase
 
-`ACBase sp` and `LocalRunReachable` from `Lemmas/AC/`. -/
+`ACBase` (for every SA parameter set) and `LocalRunReachable` from `Lemmas/AC/`. -/
 
 namespace Consensus.Goldilocks.SA
 
-/-- **ACBase.** -/
-theorem acBase (sp : SAParams) : ACBase sp where
+/-- **ACBase** at the SA parameters `sp`. -/
+theorem acBaseAt (sp : SAParams) : ACBaseAt sp where
   slotArithmetic := slot_arithmetic sp
   lockExpiry := lock_expiry sp
   joinedFrom := joined_from sp
@@ -39,6 +39,9 @@ theorem acBase (sp : SAParams) : ACBase sp where
   joinedKeepsVotes := joined_keeps_votes sp
   oneVotePerSlot := one_vote_per_slot sp
   proposalPayloadValid := proposal_payload_valid sp
+
+/-- **ACBase.** -/
+theorem acBase : ACBase := acBaseAt
 
 end Consensus.Goldilocks.SA
 

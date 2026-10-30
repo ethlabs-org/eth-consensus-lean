@@ -13,5 +13,7 @@ theorem Consensus.Goldilocks.FG.fGSafety : Consensus.Goldilocks.FG.FGSafety := s
 theorem Consensus.Goldilocks.SA.aCSteps : Consensus.Goldilocks.SA.ACSteps := sorry
 theorem Consensus.Goldilocks.Store.fGStoreLocal : Consensus.Goldilocks.Store.FGStoreLocal := sorry
 theorem Consensus.Goldilocks.Store.fGStoreTrace : Consensus.Goldilocks.Store.FGStoreTrace := sorry
+theorem Consensus.Goldilocks.SA.aCBase : Consensus.Goldilocks.SA.ACBase := sorry
+theorem Consensus.Goldilocks.localRunReachable : Consensus.Goldilocks.LocalRunReachable := sorry
 
 end

@@ -6,6 +6,7 @@ public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 
 @[expose] public section
 
@@ -45,5 +46,13 @@ theorem Consensus.Goldilocks.Store.fGStoreLocal : Consensus.Goldilocks.Store.FGS
 /-- Goldilocks FGStore, part 2 so far: FG traces (G1.4, the core of G1.10). -/
 theorem Consensus.Goldilocks.Store.fGStoreTrace : Consensus.Goldilocks.Store.FGStoreTrace :=
   Consensus.Goldilocks.Store.fg_store_trace
+
+/-- Goldilocks ACBase, the AC interface and the SA's foundations. -/
+theorem Consensus.Goldilocks.SA.aCBase : Consensus.Goldilocks.SA.ACBase :=
+  Consensus.Goldilocks.SA.acBase
+
+/-- Goldilocks ACBase: the AC trace contract gives reachable states. -/
+theorem Consensus.Goldilocks.localRunReachable : Consensus.Goldilocks.LocalRunReachable :=
+  Consensus.Goldilocks.localRun_reachable
 
 end

@@ -184,7 +184,7 @@ Goldilocks SA, and F.1, A0.1–A0.9. The A1 step lemmas are `ACSteps`.
 | A0.8 | CLAIMS A0.8 | one vote per slot, across restarts | `ACBase` | `Consensus.Goldilocks.SA.OneVotePerSlot` |
 | A0.9 | CLAIMS A0.9 | requirement 5 for the SA | `ACBase` | `Consensus.Goldilocks.SA.ProposalPayloadValid` |
 | — | decomposition §2 D (not a claims node) | the AC trace contract gives reachable states | `ACBase` | `Consensus.Goldilocks.LocalRunReachable` |
-| — | the milestone | all of the above | `ACBase` | `Consensus.Goldilocks.SA.ACBase` |
+| — | the milestone | all of the above, at one and at every SA parameter set | `ACBase` | `Consensus.Goldilocks.SA.ACBaseAt`, `Consensus.Goldilocks.SA.ACBase` |
 
 Modelling choices:
 

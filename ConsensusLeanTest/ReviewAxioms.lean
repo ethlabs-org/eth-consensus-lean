@@ -64,6 +64,12 @@ run_meta do
 /-- info: 'Consensus.Goldilocks.Store.fGStoreTrace' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreTrace
 
+/-- info: 'Consensus.Goldilocks.SA.aCBase' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCBase
+
+/-- info: 'Consensus.Goldilocks.localRunReachable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.localRunReachable
+
 /-! ## Axiom pins: the source theorems -/
 
 /-- info: 'Consensus.Shape.Accepted.good' depends on axioms: [propext, Classical.choice, Quot.sound] -/
