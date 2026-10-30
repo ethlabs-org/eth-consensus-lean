@@ -48,6 +48,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Statements
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
@@ -69,6 +70,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Service.Main
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Spec.Baseline
