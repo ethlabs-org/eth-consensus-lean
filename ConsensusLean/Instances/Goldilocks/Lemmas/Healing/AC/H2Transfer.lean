@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Setting
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 
 public section
@@ -10,7 +10,8 @@ workbench `h2-open-items.md`:
 * §6.1 (with §§2–3 and §5's root-covered reads): a clean raw origin `(B, j)` is carried by every
   honest vote and honest proposal head of a later slot (`raw_origin_transfer`), by increasing
   duty label: the first slot-`(j+1)` votes from the raw evidence, fast (`raw_fast_first_votes`,
-  from A1.2 with `Inv`'s viability and §5's `Carry` above `Φ.F`, `h2_carry_fastLock`, open) or
+  from A1.2 with `Inv`'s viability and §5's `Carry` above `Φ.F`, `h2_carry_fastLock`: the
+  writer's counted heads relay by `Sync[ḡ, ·]` or catch up by `Catch(2Δ)`) or
   slow (`raw_slow_first_votes`, open); the first proposal (§3, `raw_first_proposals`,
   open); later labels from the preceding honest batch (`h2_votes_continue`,
   `h2_proposals_continue`, open);
@@ -52,7 +53,37 @@ theorem h2_carry_fastLock (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (hx :
     (hfl : FastLockAt tr x i j B CV) (hj : t₀ + 4 * sp.Δ ≤ sp.ts j) :
     ∀ y ∈ H, ∀ k ℓ e, CastAt tr y k ℓ e → e.msg.slot = j + 1 → ¬ Anc U B ℓ.frame.F →
       CarryAt tr U y k e j CV := by
-  sorry
+  have hr := hI.run.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  have hg := hI.le
+  have hP1 : Protected tr H t₀ B j := Or.inl ⟨x, hx, i, CV, hjx, hfl, hj⟩
+  intro y hy k ℓ e hc hs hBF
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc.1
+  obtain ⟨-, hsl, -, -⟩ := castAt_spec hr hy hc
+  have htk : sp.ts (j + 1 : Nat) ≤ tr.time k :=
+    (ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [← hsl, hs])
+  have hts : sp.ts (j + 1 : Nat) = sp.ts j + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  -- `Φ.F ⪯ B`: by `Inv`, `B` is in the frame's viable tree or below `fc_root`, and not below `Φ.F`
+  have hFB : Anc U ℓ.frame.F B := by
+    rcases (hI.inv B j hP1 y hy k ℓ hc.1 htk).1 with h | h
+    · rcases anc_total hU h ((hΦ.rooted.2 _ hΦ.fcRoot_mem).mono hΦU) with h' | h'
+      · exact absurd h' hBF
+      · exact h'
+    · exact (hΦ.rooted.2 B h.1).mono hΦU
+  refine carryAt_of_writer_catch hr (hI.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) (by linarith) le_rfl
+    hx hy hc hs fun v hv => ?_
+  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hBHv, h₃⟩ := Healing.fastLock_writer hr hx hfl v hv
+  refine ⟨h₁, h₂, Hv, hHv, hHvr, hFB.trans hBHv, ?_⟩
+  rcases h₃ with hgen | ⟨kw, hkw, hkwt⟩
+  · exact Or.inl hgen
+  by_cases hkg : gbar g ≤ tr.time kw
+  · exact Or.inr (Or.inl ⟨kw, hkw, hkg, hkwt⟩)
+  · -- accepted by the writer before `ḡ`: `Catch(2Δ)` at the vote
+    obtain ⟨k', hk', hacc, hk't⟩ := hI.catchUp x hx kw Hv hkw (not_le.1 hkg) y hy k ℓ hc.1
+      (by linarith) (hFB.trans hBHv)
+    exact Or.inr (Or.inr ⟨k', hk', hacc, by linarith⟩)
 
 /-- **§6.1, first transfer of a fast target** (A1.2 at each slot-`(j+1)` vote, by induction on
 cuts: the viability from `Inv` (the pair is P1), `Carry` from §5 at a read above `Φ.F`; a read
