@@ -95,13 +95,15 @@ def EventOrder : Prop :=
     Node.LocalRun dg H sg tr → RunOrder dg H sg tr
 
 /-- **F.4, Ready implies joined (D4).** In a Goldilocks run, an honest validator awake at every
-integer time of `[max(0, t − c − 1), t]` with `c + 1 ≥ 8Δ` is awake and joined at `t`: its
-latest restart is at or before `t − c − 1`, or there is none, and `t − t_{slot(t) − 1} < 8Δ`. -/
+integer time of `[max(0, t − c − 1), t]` with `c + 1 ≥ 8Δ` is awake and joined at `t ≥ 0`: its
+latest restart is at or before `t − c − 1`, or there is none, and `t − t_{slot(t) − 1} < 8Δ`.
+Times are from `0` (`t < 0` makes the awake interval empty, and no run law forces a node to be
+awake before `0`; consensus-lean#73). -/
 def ReadyImpliesJoined : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro),
-    GoldilocksRun dg H tr → ∀ y ∈ H, ∀ (t c : Time), 8 * sp.Δ ≤ c + 1 →
+    GoldilocksRun dg H tr → ∀ y ∈ H, ∀ (t c : Time), 0 ≤ t → 8 * sp.Δ ≤ c + 1 →
       (∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
       tr.awake y t ∧ tr.JoinedAt y t
 

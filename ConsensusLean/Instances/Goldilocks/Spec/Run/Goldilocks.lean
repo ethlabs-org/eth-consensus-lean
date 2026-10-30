@@ -8,13 +8,20 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Instance
 
 The Goldilocks protocol is the node (`Spec/Node`) with the Goldilocks SA as its AC
 (composition.tex §"Composition"): `goldilocksNode sp ro` is `goldilocksSA` at the FG payload
-the node uses, `List (FG.Att n)`. `GoldilocksRun dg H ro tr` is a run of it: `Node.LocalRun`
+the node uses, `List (FG.Att n)`. `GoldilocksRun dg H tr` is a run of it: `Node.LocalRun`
 with the vote's validator as the message signer, plus **carried-vote unforgeability**, the
 instance of the run's unforgeability for votes that travel in a block's payload (claims
 §"Runs"; composition.tex §"Blocks"): a vote of an honest validator that an honest node
 processes in a block (`blockVotes`, the votes the payload carries) was emitted by that
 validator's node at an earlier cut. The generic node cannot state it: the AC interface does
-not say which messages a payload carries. -/
+not say which messages a payload carries.
+
+A Goldilocks run also takes the genesis root: the genesis block's root is the digest `dg` of
+its content (`genesis_root_ok`). composition.tex §"Blocks" makes every block's root its
+content's digest; the Lean `genesisRoot` is a parameter of `Params`, so this is a premise
+relating it to `dg`, taken as C0.3 takes it. The generic statements over any AC (C0.3,
+`FGProjection`, `Inclusion`) keep it as their own premise; the Goldilocks run supplies it to
+the statements that reach the FG trace only through `FGProjection` (C1.1). -/
 
 namespace Consensus.Goldilocks
 
@@ -35,10 +42,14 @@ abbrev GoldilocksTrace (ro : ReplayOrder sp (List (FG.Att sp.n))) :=
 variable {sp} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **A run of the Goldilocks protocol** (claims §"Runs"): a run of the node with the SA, the
-vote's validator as the signer of a message, and carried-vote unforgeability. -/
+vote's validator as the signer of a message, carried-vote unforgeability, and the genesis
+block's root the digest of its content. -/
 structure GoldilocksRun (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) : Prop
     extends Node.LocalRun dg H (fun v : Vote sp.n => v.val) tr where
+  /-- The genesis block's root is the digest of its content: the premise `FGProjection` and
+  C0.3 take over any AC (the Lean genesis root is a parameter). -/
+  genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
   /-- A vote of an honest validator carried by a block that an honest node processes was emitted
   by that validator's node at an earlier cut. -/
   carried_vote_unforgeable : ∀ y ∈ H, ∀ i B, tr.BlockCallAt y i B →
