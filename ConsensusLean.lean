@@ -41,7 +41,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Node
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Cut
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run

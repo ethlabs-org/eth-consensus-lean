@@ -65,6 +65,20 @@ private theorem step_emitsHeads (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A :
 
 variable {H : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)} {tr : SA.SATrace sp FGP ro}
 
+/-- The state before an honest call is reachable, with a frame and time from which the call is
+lawful. -/
+theorem pre_reachable (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hcall : tr.CallAt y i ℓ) :
+    ∃ Φp tp, (goldilocksSA sp FGP ro).ReachableAt y U (tr.state y i) Φp tp ∧ tp ≤ tr.time i ∧
+      (goldilocksSA sp FGP ro).CallOK U Φp (tr.time i) ℓ.call ℓ.frame := by
+  rcases hr.frameLaw y hy i ℓ hcall with ⟨hn, Φ₀, hi, hf, hok⟩ | ⟨j, ℓ', hj, hc', hnb, hok⟩
+  · refine ⟨Φ₀, 0, ?_, hr.time_nonneg i, hok⟩
+    rw [tr.state_of_noCall hn, hr.init y hy]
+    exact .init Φ₀ hi hf
+  · refine ⟨ℓ'.frame, tr.time j, ?_, hr.time_mono hj.le, hok⟩
+    rw [tr.state_of_lastCall hc' hj hnb]
+    exact localRun_reachable _ _ _ _ _ tr hr y hy j ℓ' hc'
+
 /-- **An honest vote's head extends `fc_root`** (requirement 1, A0.6), and the vote is cast no
 later than `Δ` after the start of its slot. -/
 theorem cast_head_fcRoot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
@@ -76,16 +90,7 @@ theorem cast_head_fcRoot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : 
   obtain ⟨hcall, he⟩ := hc
   have hx := hr.exec i ℓ hcall.2 (hcall.1 ▸ hy)
   rw [hcall.1] at hx
-  obtain ⟨Φp, tp, hreach, htp, hok⟩ : ∃ Φp tp,
-      (goldilocksSA sp FGP ro).ReachableAt y U (tr.state y i) Φp tp ∧ tp ≤ tr.time i ∧
-        (goldilocksSA sp FGP ro).CallOK U Φp (tr.time i) ℓ.call ℓ.frame := by
-    rcases hr.frameLaw y hy i ℓ hcall with ⟨hn, Φ₀, hi, hf, hok⟩ | ⟨j, ℓ', hj, hc', hnb, hok⟩
-    · refine ⟨Φ₀, 0, ?_, hr.time_nonneg i, hok⟩
-      rw [tr.state_of_noCall hn, hr.init y hy]
-      exact .init Φ₀ hi hf
-    · refine ⟨ℓ'.frame, tr.time j, ?_, hr.time_mono hj.le, hok⟩
-      rw [tr.state_of_lastCall hc' hj hnb]
-      exact localRun_reachable _ _ _ _ _ tr hr y hy j ℓ' hc'
+  obtain ⟨Φp, tp, hreach, htp, hok⟩ := pre_reachable hr hy hcall
   have he' : e ∈ ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call).2 := by
     rw [hx]; exact he
   obtain ⟨⟨d, hd, hdr⟩, hle⟩ :=
@@ -105,26 +110,12 @@ end SA
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
   {H : Set (Fin sp.n)}
 
-/-- A cut of the AC projection is an AC cut of the run. -/
-theorem callAt_of_projAC {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y k ℓ) : tr.CallAt y k (.ac ℓ) := by
-  obtain ⟨hn, hl⟩ := hc
-  refine ⟨hn, ?_⟩
-  change (tr.label k).bind RunTrace.acLabel = some ℓ at hl
-  cases h : tr.label k with
-  | none => rw [h] at hl; cases hl
-  | some c =>
-    rw [h] at hl
-    cases c with
-    | ac ℓ' => cases hl; rfl
-    | fg _ => cases hl
-
 /-- The frame of an honest AC cut of a run is `fg_to_ac(Σ)` of the node's state. -/
 theorem frame_of_projAC {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
     ℓ.frame = Node.frame (tr.state y k) :=
-  (hrun.cutLaw y hy k _ (callAt_of_projAC hc)).1
+  (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).1
 
 /-- `Sync` on a window gives it on every subwindow. -/
 theorem syncAC_mono {P : Params} {FGP : Type} {A : ACInterface P FGP} {H : Set (Fin P.n)}

@@ -868,6 +868,106 @@ private theorem restartTime_ge (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) 
     rw [tr.state_of_lastCall hc' hj' hnb]
     exact ih j' hj' ℓ' hc' j hjj' hj
 
+/-! ### Where `voted_slot` comes from -/
+
+/-- A call keeps `voted_slot`, or emits a vote of `slot(t)` and sets `voted_slot` to it. -/
+private def VotedStep (A A' : SAState sp.n) (es : List (Em sp FGP)) (t : Time) : Prop :=
+  A'.votedSlot = A.votedSlot ∨ ∃ e ∈ es, e.msg.slot = sp.slot t ∧ A'.votedSlot = sp.slot t
+
+private theorem tryVote_votedStep (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) : VotedStep A (tryVote sp self A Φ t).1 (tryVote sp self A Φ t).2 t := by
+  unfold tryVote
+  dsimp only
+  split_ifs
+  · exact Or.inl rfl
+  · exact Or.inl rfl
+  all_goals
+    exact Or.inr ⟨_, List.mem_singleton_self _, rfl,
+      (optimistic_keeps _ _ _).1.trans (admitVote_keeps _ _ _).1⟩
+
+private theorem VotedStep.pre {A B A' : SAState sp.n} {es : List (Em sp FGP)} {t : Time}
+    (h : VotedStep B A' es t) (hv : B.votedSlot = A.votedSlot) : VotedStep A A' es t :=
+  h.imp_left (·.trans hv)
+
+private theorem step_votedStep {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A A' : SAState sp.n}
+    {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
+    (c : (goldilocksSA sp FGP ro).Call) {es : List (Em sp FGP)}
+    (hs : (goldilocksSA sp FGP ro).step self A Φ t c = (A', es)) :
+    A'.votedSlot = -1 ∨ VotedStep A A' es t := by
+  have h₁ := congrArg Prod.fst hs
+  have h₂ := congrArg Prod.snd hs
+  dsimp only at h₁ h₂
+  subst h₁ h₂
+  cases c with
+  | tick =>
+    right
+    change VotedStep A (acOnTick sp self A Φ t).1 (acOnTick sp self A Φ t).2 t
+    unfold acOnTick
+    dsimp only
+    have hr : VotedStep A
+        (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])).1
+        (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])).2 t := by
+      split_ifs
+      · exact tryVote_votedStep _ _ _ _
+      · exact Or.inl rfl
+    generalize (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])) = r
+      at hr ⊢
+    split_ifs
+    · rcases hr with h | ⟨e, he, h₁, h₂⟩
+      · exact Or.inl ((updateConfirmation_keeps _ _ _ _).1.trans h)
+      · exact Or.inr ⟨e, he, h₁, (updateConfirmation_keeps _ _ _ _).1.trans h₂⟩
+    · exact hr
+    · exact Or.inl rfl
+  | proposal => exact Or.inr (Or.inl (acProposal_keeps _ _ _).1)
+  | toFG => exact Or.inr (Or.inl (acToFG_keeps _ _ _).1)
+  | message m =>
+    exact Or.inr ((tryVote_votedStep _ _ _ _).pre
+      ((optimistic_keeps _ _ _).1.trans (admitVote_keeps _ _ _).1))
+  | block B =>
+    exact Or.inr ((tryVote_votedStep _ _ _ _).pre
+      ((optimistic_keeps _ _ _).1.trans (blockReceipt_keeps _ _ _).1))
+  | restart =>
+    left
+    exact (restart_state sp FGP ro self A Φ t hΦ ht).2.2.2.2.2.1
+
+/-- **`voted_slot` names a cast vote.** When an honest node's state before cut `i` has
+`voted_slot = σ ≥ 0`, the node cast a vote of slot `σ` at an earlier cut. -/
+theorem cast_of_votedSlot {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
+    {tr : SATrace sp FGP ro} (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) (i σ : Nat) (hv : (tr.state y i).votedSlot = σ) :
+    ∃ j < i, ∃ e, VoteAt tr y j e ∧ e.msg.slot = σ := by
+  induction i with
+  | zero =>
+    change (tr.init y).votedSlot = σ at hv
+    rw [h.init y hy] at hv
+    change (-1 : Int) = σ at hv
+    omega
+  | succ i ih =>
+    by_cases hc : ∃ ℓ, tr.CallAt y i ℓ
+    · obtain ⟨ℓ, hc⟩ := hc
+      have hst : tr.state y (i + 1) = tr.post i := by
+        simp [Trace.state, hc.1, hc.2]
+      rw [hst] at hv
+      have hexec := h.exec i ℓ hc.2 (hc.1 ▸ hy)
+      rw [hc.1] at hexec
+      have hΦ : FrameOK ℓ.frame := by
+        rcases h.frameLaw y hy i ℓ hc with ⟨-, _, -, -, hok⟩ | ⟨_, _, -, -, -, hok⟩ <;>
+          exact hok.1.1
+      rcases step_votedStep y hΦ (h.time_nonneg i) ℓ.call hexec with h₁ | h₁ | ⟨e, he, h₁, h₂⟩
+      · omega
+      · obtain ⟨j, hj, e, hve, hs⟩ := ih (h₁ ▸ hv)
+        exact ⟨j, by omega, e, hve, hs⟩
+      · exact ⟨i, by omega, e, ⟨ℓ, hc, he⟩, by omega⟩
+    · have hst : tr.state y (i + 1) = tr.state y i := by
+        rw [Trace.state]
+        split_ifs with h'
+        · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 h'.2
+          exact absurd ⟨ℓ, h'.1, hℓ⟩ hc
+        · rfl
+      rw [hst] at hv
+      obtain ⟨j, hj, e, hve, hs⟩ := ih hv
+      exact ⟨j, by omega, e, hve, hs⟩
+
 end OneVote
 
 /-- **F.1 (c), a joined node.** -/
