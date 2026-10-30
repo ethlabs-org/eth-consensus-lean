@@ -93,18 +93,49 @@ theorem proposal_majority_at_update {dg : Digest (List (FG.Att sp.n)) (Payload s
   change _ < 2 * (SA.supporters ℓ.frame _ s P).ncard
   omega
 
-/-- **No live lock of the updater vetoes `P`** (workbench#12 §4, S1P: the live locks are ancestors
-of origins compatible with `P`, and of the label-`(s+1)` optimistic origins transferred to `P` by
-the slot-`(s+1)` votes; open). -/
-theorem proposal_not_vetoed {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+/-- **No result of an honest joined update is vetoed** under `Sleepy` (workbench#8): a live lock
+block is an ancestor of a stored lock block, which is on the origin chain (S1); the result is an
+origin; blocks on the origin chain are compatible (S1), so the result is compatible with the live
+lock block. -/
+theorem result_not_vetoed {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
-    (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
-    ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) P := by
-  sorry
+    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
+    {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hC : SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some C) :
+    ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) C := by
+  have hinv := sleepy_invariant hrun hnc hsl
+  have hcoh := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun.coherent
+  have hfr : ℓ.frame = Node.frame (tr.state y k₀) := by
+    obtain ⟨⟨hn, hl⟩, -⟩ := hu
+    obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hl
+    obtain rfl : c = .ac ℓ := by
+      cases c with
+      | ac ℓ' => cases hcl; rfl
+      | fg _ => cases hcl
+    exact (hrun.cutLaw y hy k₀ (.ac ℓ) ⟨hn, hc⟩).1
+  have hΦ : FrameOK ℓ.frame := hfr ▸ frameOK_state hrun.toLocalRun hy k₀
+  have hHB : ℓ.frame.tree ⊆ tr.HonestBlocks H := fun X hX =>
+    ⟨y, hy, k₀, by rw [hfr] at hX; exact hX.1⟩
+  have hCt : C ∈ ℓ.frame.tree := (SA.deepest_mem hC).1.1
+  have hCo : Origin tr H C s := Origin.of_result hy
+    ⟨ℓ, hu, by rw [projAC_state hrun.toLocalRun hy]; exact hC, rfl⟩
+  rintro ⟨V, hV, hconf⟩
+  obtain ⟨l, hl, B₀, hB₀, hB₀r, -, rfl⟩ := SA.mem_liveLockBlocks hΦ hV
+  obtain ⟨L, hL, hLr, hch⟩ := hinv.locks y hy k₀ l hl
+  obtain rfl : L = B₀ := hcoh.1 ⟨y, hy, k₀, hL⟩ (hHB hB₀) (hLr.trans hB₀r.symm)
+  have hcomp := OnOriginChain.compatible hrun hnc hinv.origins_compatible (hHB hCt) (hHB hB₀)
+    (onOriginChain_iff.2 (Or.inr ⟨C, s, hCo, Relation.ReflTransGen.refl⟩)) hch
+  obtain ⟨hVt, hVB⟩ := SA.viableAncestor_anc hΦ hB₀
+  have hVB' := hVB.mono hHB
+  have hCV : Compatible (tr.HonestBlocks H) C (ℓ.frame.viableAncestor L) := by
+    rcases hcomp with h | h
+    · exact SA.anc_total hcoh h hVB'
+    · exact Or.inr (hVB'.trans h)
+  apply hconf
+  rcases hCV with h | h
+  · exact Or.inl (SA.anc_tree_of_anc_U hcoh hΦ hHB hCt h hVt)
+  · exact Or.inr (SA.anc_tree_of_anc_U hcoh hΦ hHB hVt h hCt)
 
 /-- A block strictly above a slot-`s` block has no supporter among the slot-`s` votes resolved by a
 cutoff: a vote cannot resolve to a head of a later slot. -/
@@ -133,7 +164,8 @@ private theorem confirmationScore_eq_zero {A : SA.SAState sp.n}
 
 /-- **The update of slot `s` returns exactly the honest proposal `P` of slot `s`, not vetoed**
 (workbench#12 §4): `P` is held above `Σ.F` with a strict majority, every block with a strict
-majority is on one chain with it (A0.3), and no block above it has a resolved slot-`s` supporter. -/
+majority is on one chain with it (A0.3), and no block above it has a resolved slot-`s` supporter;
+no result is vetoed (`result_not_vetoed`). -/
 theorem adopt_result {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -143,7 +175,8 @@ theorem adopt_result {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set 
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
     SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some P ∧
       ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) P := by
-  refine ⟨?_, proposal_not_vetoed hrun hnc hsl hp hP hPs hpj hy hu⟩
+  suffices hres : SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some P from
+    ⟨hres, result_not_vetoed hrun hnc hsl hy hu hres⟩
   obtain ⟨hPt, hFP⟩ := proposal_held_at_update hrun hnc hsl hp hP hPs hpj hy hu
   have hmaj := proposal_majority_at_update hrun hnc hsl hp hP hPs hpj hy hu
   have hΦ : FrameOK ℓ.frame := by
