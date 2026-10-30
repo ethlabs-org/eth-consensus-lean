@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 
 public section
 
@@ -9,7 +10,8 @@ workbench `h2-open-items.md` §7: the unanimous batch of slot `p` propagates to 
 vote (§7.1: `(P, p)` is protected by P3, so `h2_votes_continue`); every surviving lock image
 compares with `P` (§7.2, `h2_locks_compare`, open); the record read by `ac_confirmed` extends `P`
 (§§7.3–7.4, `h2_record_extends`, open), and so does the head (§7.5, `h2_head_extends`, open);
-`ac_confirmed` is their deepest common ancestor (`anc_acConfirmed`, open). -/
+`ac_confirmed` is their deepest common ancestor (`anc_acConfirmed`, from the frame lemma
+`anc_acConfirmed_of_frame` of `AC/Confirmed`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -70,7 +72,8 @@ theorem anc_acConfirmed (hI : InclusionRun tr H U g t₀) {y : Fin sp.n} (hy : y
     (hC : Anc U P ((lookup ℓ.frame (tr.post j).latestConfirmed).getD ℓ.frame.F))
     (hH : Anc U P (acHead sp (tr.post j) ℓ.frame (tr.time j))) :
     Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)) := by
-  sorry
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hI.run.localRun hy hc
+  exact anc_acConfirmed_of_frame hI.run.localRun.coherent hΦ hΦU hC hH
 
 /-- **H.2 (ii), §7**: for an honest proposal `P` of slot `p` at `t_p ≥ t₀ + 2Θ + 8Δ` with the
 locks settled from `t_{p−1}`, if every honest vote of slot `p` is `P`, then at every call of an
