@@ -1,30 +1,28 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.AC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Votes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Confirmed
 
 public section
 
 /-! # Goldilocks Healing: H.2, AC inclusion from the retention premise
 
 H.2 over driven AC traces of the SA with their frames, under `Healthy(g)`, `Catch(2Δ)` and
-`Inv(t₀)`. The claims mark H.2 **unverified** (status M, goldilocks-claims §"Healing: top-level
-statements"): its proof is H.1's (healing-simple `t1-proof.md` §§2–6) with each use of the
-trivial frame replaced, and five steps are open on paper:
-
-1. the retained-head score comparison (A1.1's pool and score part with retained heads, as HS.2);
-2. ancestor-target transfer (A1.8 transfers the actual result, an ancestor needs its own score
-   argument; phase-service §4);
-3. proposal-boundary transfer;
-4. sufficiency of `Geo(P)` for (i);
-5. `Carry` when a protected block is at or below `fc_root`, and the frame's move back during the
-   drain.
-
-Interface: the proof is open. -/
+`Inv(t₀)` (`InclusionRun`), assembled as in workbench `h2-open-items.md`: the locks are settled
+from `t₀ + 2Θ + 4Δ` (§5 drain and §6.1 raw-origin transfer, `H2Transfer`), so before every
+proposal of a slot `p` with `t_p ≥ t₀ + 2Θ + 8Δ`; then (i) from `Geo(P)` (§§1, 4, 6, `H2Votes`)
+and (ii) from the unanimous slot-`p` votes (§7, `H2Confirmed`). H.1 does not route through
+here. -/
 
 namespace Consensus.Goldilocks.SA
 
-/-- **H.2, AC inclusion from the retention premise** (open on paper: items 1–5 above). -/
+/-- **H.2, AC inclusion from the retention premise.** -/
 theorem ac_inclusion (sp : SAParams) : ACInclusion (sp := sp) := by
-  sorry
+  intro FGP ro H U tr g t₀ hrun hdr hh hc hg hinv p P hpH hP hp
+  have hI : InclusionRun tr H U g t₀ := ⟨hrun, hdr, hh, hc, hg, hinv⟩
+  have hΔ := sp.toParams.hΔ
+  have hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ) :=
+    (h2_locks_settled hI).mono (by linarith)
+  exact ⟨h2_proposal_votes hI hpH hP hp hset, h2_proposal_confirmed hI hpH hP hp hset⟩
 
 end Consensus.Goldilocks.SA
 
