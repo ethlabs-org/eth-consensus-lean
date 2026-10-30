@@ -698,6 +698,17 @@ Modelling choices (`docs/decisions.md` §"Goldilocks instance", the Refinement e
   `{proposer s}` of the setup's schedule, so a valid run's proposer of a slot is the spec node's own `proposer`
   (kind (a) witness `selValid_proposer`, `ConsensusLeanTest/GoldilocksRefinement.lean`; `selValid_exists` shows
   `SelValid` is satisfiable). The earlier hypothesis `SelIs` is gone.
+- **The simulating run is built from the engine run.** The proof of `EngineSimulatesNode`
+  (`Lemmas/Refinement/`) does not choose the node run existentially: every event of an honest node is replayed
+  through `Node.exec` on the node state the engine holds before it, and the handler's cuts with their post-states
+  are the trace's cuts (`simTrace`); the cut map counts the cuts of the earlier events (`cutMap`). The trace's awake
+  function is the environment's clamped to `[0, ∞)` and to the trace's horizon, so `awake_to` and
+  `awake_in_horizon` hold by construction. The steps are named `sorry` theorems: the shape's pure facts (`Shape`:
+  the decoders invert the canonical objects, `conflicts` is E1/E2, `protects` passes blocks and votes), the engine
+  side (`Steps`: the node state across each event, the clock, at most two bodies pending at a tick, a proposal
+  carries only released objects, `protects` passes an honest node's own attestation, the digests cover a block's
+  header), and one theorem per field of `GoldilocksRun` and `Simulates` over the trace (`Run`); `Simulation`
+  assembles them (`engineSimulatesNode`).
 - **Not linked: the Baseline target and the refinement family.** `GoldilocksTarget F pp` requires
   `GoldilocksBindings F` (the skeleton is `goldilocksSkeleton`, over `goldilocksSchema`); `family S` has its own
   schema and a skeleton that differs in `Kind`, `pollSel`, `order` and `proposerSel` (`fixed {proposer s}`, which a

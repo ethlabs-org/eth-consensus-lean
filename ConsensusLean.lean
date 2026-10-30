@@ -158,6 +158,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
