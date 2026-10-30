@@ -5,16 +5,16 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Events
 
 /-! # Goldilocks milestone ACSteps: the AC step lemmas over AC traces (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks main
-`a470648c`), the L1 nodes of the AC module (decomposition §3.1, §3.2): A1.1 (proposer and voters
-agree on unlocking), A1.2 (first transfer), A1.3 (next transfer), A1.4 (optimistic is fast),
-A1.5 (source age), A1.8 (result transfer) and A1.9 (source compatibility after the cut). A1.2–
-A1.4 and A1.8 are stated **per vote**: the conclusion is about one honest vote and the
-hypotheses about that vote and strictly earlier events (claims §"L1: components / Available
-chain"), so that C1.1's induction over events can discharge them; A1.9 is stated per `ac_to_fg`
-call. The origin of a lock or a result (a fast lock write, an update's result) is a fixed datum,
-as in the claims, and can be later than the vote (an update of slot `s` runs at `t_s + 6Δ`, after
-the slot-`(s+1)` votes). A1.6 and A1.7 are run-level (milestone Service).
+Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks main `a470648c`;
+A1.9 at `688e287b`), the L1 nodes of the AC module (decomposition §3.1, §3.2): A1.1 (proposer and
+voters agree on unlocking), A1.2 (first transfer), A1.3 (next transfer), A1.4 (optimistic is fast),
+A1.5 (source age), A1.8 (result transfer) and A1.9 (source compatibility after the cut). A1.2–A1.4
+and A1.8 are stated **per vote**: the conclusion is about one honest vote and the hypotheses about
+that vote and strictly earlier events (claims §"L1: components / Available chain"), so that C1.1's
+induction over events can discharge them; A1.9 is stated per `ac_to_fg` call. The origin of a lock
+or a result (a fast lock write, an update's result) is a fixed datum, as in the claims, and can be
+later than the vote (an update of slot `s` runs at `t_s + 6Δ`, after the slot-`(s+1)` votes). A1.6
+and A1.7 are run-level (milestone Service).
 
 Every statement is over an AC trace of the Goldilocks SA with its contract and the honest-object
 facts (`ACRun`, for the honest validators `H` inside the coherent set `U` of all frame blocks),
@@ -170,9 +170,12 @@ def ResultTransfer : Prop :=
 lock of slot `s` on `B` with counted votes `CV`. Assume `Sync[t_s, t_{s+1} + Δ]`,
 `Carry(s, S, B)` and `f < n/2`; let `x`'s `ac_to_fg` call at cut `i` be at a public time
 `t ∈ (t_{s+1} + Δ, t_m + Δ]`; assume every honest vote of a slot in `(s, m]` at an earlier cut
-extends `B`, and that at `x`, at each of its unlockings in slot `s + 1` (its slot-`(s+1)` vote and
-its proposal at `t_{s+1}`) and at the call, `Φ.F` and `fc_root` are compatible with `B`. Then
-the block `fg_confirmed ≠ ⊥` that the call returns is compatible with `B`. -/
+extends `B`, and that at the call `Φ.F` and `fc_root` are compatible with `B`, and either (i) `x`
+cast its slot-`(s+1)` vote at an earlier cut, and at the unlocking before that vote (the vote's
+call) `Φ.F` and `fc_root` are compatible with `B`, or (ii) `x` restarted after `t_s`, at an
+earlier cut (claims at goldilocks `688e287b`, goldilocks#33; not vacuous when `x` makes no
+unlocking in slot `s + 1`: consensus-lean#66). Then the block `fg_confirmed ≠ ⊥` that the call
+returns is compatible with `B`. -/
 def SourceCompatible : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro),
@@ -185,10 +188,9 @@ def SourceCompatible : Prop :=
     sp.ts (s + 1 : Nat) + sp.Δ < tr.time i → tr.time i ≤ sp.ts m + sp.Δ →
     (∀ z ∈ H, ∀ j < i, ∀ e, VoteAt tr z j e → s < e.msg.slot → e.msg.slot ≤ m →
       VoteExtends U e.msg B) →
-    (∀ j ℓ' e, CastAt tr x j ℓ' e → e.msg.slot = s + 1 →
-      Compatible U ℓ'.frame.F B ∧ Compatible U ℓ'.frame.fcRoot B) →
-    (∀ j ℓ' pay, ProposalAt tr x j ℓ' pay → tr.time j = sp.ts (s + 1 : Nat) →
-      Compatible U ℓ'.frame.F B ∧ Compatible U ℓ'.frame.fcRoot B) →
+    ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧
+        Compatible U ℓ'.frame.F B ∧ Compatible U ℓ'.frame.fcRoot B) ∨
+      (∃ k < i, tr.RestartAt x k ∧ sp.ts s < tr.time k)) →
     Compatible U ℓ.frame.F B → Compatible U ℓ.frame.fcRoot B →
     Compatible U C B
 
