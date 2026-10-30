@@ -12,7 +12,9 @@ honest slot-`s` voter's walk passes a block `X` of the path from `D` through `Q`
 origins of labels at most `s − 2` and the optimistic origins of labels at most `s − 1`; a voter
 whose anchor is at or below `D` passes `D` (S2 for regular origins, the three-quarter count for an
 optimistic origin of label `s − 1`); a voter whose anchor is a current-slot optimistic lock is on
-`P`'s chain above `D` (the first vote not `P`), and passes its anchor. -/
+`P`'s chain above `D` (the first vote not `P`: the hypothesis that the earlier honest slot-`s`
+votes are `P`, which the assembly `honest_votes_eq_proposal` supplies by induction on the cut
+index), and passes its anchor. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -32,6 +34,8 @@ theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp
     (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) :
     ∃ D, ℓp.frame.Anc d.start D ∧ ℓp.frame.Anc D d.head ∧
       ∀ y ∈ H, ∀ j ℓy e, SA.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
+        (∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = s →
+          e'.msg.head = P.root) →
         ∃ X, (X = P ∨ (ℓp.frame.Anc D X ∧ ℓp.frame.Anc X d.head)) ∧
           ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X ∧
           ℓy.frame.Anc X (SA.getHead sp e.readPoint ℓy.frame (tr.time j)

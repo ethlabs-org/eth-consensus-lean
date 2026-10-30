@@ -172,8 +172,9 @@ theorem stop_at_parent {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Se
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
   sorry
 
-/-- **Every honest slot-`s` vote is the honest proposal `P` of slot `s`** (workbench#12 §2–§3):
-each voter's walk reaches a block `X` of the path from `D` to `P`; from `X` it is at `P`, or it
+/-- **Every honest slot-`s` vote is the honest proposal `P` of slot `s`** (workbench#12 §2–§3), by
+induction on the vote's cut (the first vote not `P`; `pivot` reads the earlier ones): each voter's
+walk reaches a block `X` of the path from `D` to `P`; from `X` it is at `P`, or it
 follows the proposal walk to `Q` and steps to `P`, where it stops (`ghost_follow`); with its full
 fuel it has stopped (`ghost_stopped`), so it ends at `P`. -/
 theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
@@ -185,7 +186,13 @@ theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
   have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
   obtain ⟨i, ℓp, d, pay, hc, hcall, hd, hti, hPQ, -⟩ := proposal_data hrun hp hP hPs
   obtain ⟨D, hsD, hDQ, hvot⟩ := pivot hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ
-  intro y hy j e ⟨ℓy, hcy, hey⟩ hes
+  suffices main : ∀ j, (∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' →
+      e'.msg.slot = s → e'.msg.head = P.root) →
+      ∀ y ∈ H, ∀ e, SA.VoteAt tr.projAC y j e → e.msg.slot = s → e.msg.head = P.root by
+    intro x hx j
+    induction j using Nat.strong_induction_on generalizing x with
+    | _ j ih => exact main j (fun x' hx' j' hj' => ih j' hj' x' hx') x hx
+  intro j hIH y hy e ⟨ℓy, hcy, hey⟩ hes
   have hcast : SA.CastAt tr.projAC y j ℓy e := ⟨hcy, hey⟩
   have hsl_i : sp.slot (tr.time i) = s := by
     rw [hti]
@@ -233,7 +240,7 @@ theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
   obtain ⟨hstep₀, hP₀⟩ := stop_at_parent hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hy hcast hes
   have hsuf := suffix_agree hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hsD hDQ hy hcast hes
   have hΦy := (SA.frameIn_of_callAt hr hy hcy).1
-  obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j ℓy e hcast hes
+  obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j ℓy e hcast hes hIH
   set W₂ := SA.ghost sp (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
     (SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1))
     (SA.goldfishEligible sp ℓy.frame (tr.time j) (SA.mergedVoteView sp e.readPoint ℓy.frame s)
