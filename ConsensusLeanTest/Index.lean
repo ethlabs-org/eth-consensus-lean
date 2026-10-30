@@ -704,6 +704,19 @@ example := ``Consensus.Goldilocks.Regimes.FinalAccountable
 example := ``Consensus.Goldilocks.Regimes.NonFraming
 example := ``Consensus.Goldilocks.Regimes.FinalizedSafe
 example := ``Consensus.Goldilocks.Regimes.AlwaysStatements
+example := ``Consensus.Goldilocks.Regimes.CutAfter
+example := ``Consensus.Goldilocks.Regimes.ReadPoint
+example := ``Consensus.Goldilocks.Regimes.catchUp
+example := ``Consensus.Goldilocks.Regimes.ReadyAt
+example := ``Consensus.Goldilocks.Regimes.readAfter
+example := ``Consensus.Goldilocks.Regimes.ReadyProposalAt
+example := ``Consensus.Goldilocks.Regimes.ProposerRecurrence
+example := ``Consensus.Goldilocks.Regimes.ReadySafeOn
+example := ``Consensus.Goldilocks.Regimes.SleepySafe
+example := ``Consensus.Goldilocks.Regimes.SleepySafePrefix
+example := ``Consensus.Goldilocks.Regimes.IncludeSleepy
+example := ``Consensus.Goldilocks.Regimes.GrowSleepy
+example := ``Consensus.Goldilocks.Regimes.SleepyStatements
 
 /-! ## Goldilocks Refinement (a milestone PR appends here only) -/
 

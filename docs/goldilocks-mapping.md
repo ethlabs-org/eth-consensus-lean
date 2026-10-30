@@ -559,16 +559,28 @@ Modelling choices:
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `c6653258`, §"L2: regime theorems (skeleton)". Layout: the
 run-level forms of the `GoldilocksTarget` rows, over the Goldilocks run (`GoldilocksRun`; `Compose.NoCollRun` only
 where the target row allows the collision escape); the Refinement milestone carries them to the model system. R.7 and R.8 (no regime premise) are in
-`Statements/Regimes/Always`.
+`Statements/Regimes/Always`; R.1 and R.2 (`Sleepy`) in `Statements/Regimes/Sleepy`.
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
 | — | CLAIMS R.7 (G1.5's binding), R.8 (`outputValid`) | the attestations on the chain of a block of a node's tree; a valid output (in the tree, chain linked to genesis, each non-genesis block with its digest as root, accepted by the node, with its slot's proposer and an earlier parent) | Regimes | `Consensus.Goldilocks.Regimes.ChainAtts`, `Consensus.Goldilocks.Regimes.ValidOutput` |
 | R.8 | CLAIMS R.8 (uses C0.1, C0.2, F.2, F.3) | **`nested`**: finalized ⪯ confirmed ⪯ head at every honest cut; **`finalMonotone`**: the honest finalized tip moves only to descendants, across restarts; **`outputValid`**: the finalized and confirmed outputs are valid outputs of the node's tree | Regimes | `Consensus.Goldilocks.Regimes.OutputsNested`, `Consensus.Goldilocks.Regimes.FinalizedMonotone`, `Consensus.Goldilocks.Regimes.OutputsValid` |
+| — | CLAIMS R.1, R.2 (the target's `Ready`, `gc`, `gProg`) | a read point and the first cut after a time; the catch-up `18Δ`; ready at `t` (honest, awake on `[max(0, t − c − 1), t]`); the confirmed read after all events at `t`; an honest proposal by a proposer ready at its release; one honest ready proposer in every `k`-slot window of `[a, b]`; ready-reader safety (agreement and monotonicity) on the cuts of `[t₀, t₁]` | Regimes | `Consensus.Goldilocks.Regimes.CutAfter`, `Consensus.Goldilocks.Regimes.ReadPoint`, `Consensus.Goldilocks.Regimes.catchUp`, `Consensus.Goldilocks.Regimes.ReadyAt`, `Consensus.Goldilocks.Regimes.readAfter`, `Consensus.Goldilocks.Regimes.ReadyProposalAt`, `Consensus.Goldilocks.Regimes.ProposerRecurrence`, `Consensus.Goldilocks.Regimes.ReadySafeOn` |
+| R.1 | CLAIMS R.1 (uses A1.2–A1.4, A1.6, C1.1, F.4) | **`sleepySafe`**: under `Sleepy`, ready-reader safety of the confirmed output on every cut; **`confirmed_safe_sleepy_prefix`**: `Sync[0, b]` and `f < h_t` at the slot points up to `b` give it on the cuts up to `b` | Regimes | `Consensus.Goldilocks.Regimes.SleepySafe`, `Consensus.Goldilocks.Regimes.SleepySafePrefix` |
+| R.2 | CLAIMS R.2 (uses A1.7, F.4) | **`includeSleepy`**: honest ready proposals are in every ready confirmed read from `τ + 6Δ`; **`growSleepy`**: with one honest ready proposer per `k` slots, a new common confirmed entry by `t + (4k + 6)Δ`, above every ready read at `t` | Regimes | `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy`, `Consensus.Goldilocks.Regimes.SleepyStatements` |
 | R.7 | CLAIMS R.7 (uses G1.3–G1.5) | **`finalAccountable`**: conflicting honest finalized tips convict `≥ 2q − n` validators from the attestations on two chains the readers hold; **`nonFraming`**: an honest validator signs no slashable pair; **`finalized_safe_below_third`**: with `f < 2q − n`, honest finalized tips never conflict | Regimes | `Consensus.Goldilocks.Regimes.FinalAccountable`, `Consensus.Goldilocks.Regimes.NonFraming`, `Consensus.Goldilocks.Regimes.FinalizedSafe`, `Consensus.Goldilocks.Regimes.AlwaysStatements` |
 
 Modelling choices:
 
+- **Reads** (R.1, R.2): a read is the confirmed output at a read point `(j, t)` (the state before cut `j` is the state
+  at `t`), evaluated at `t` (`readAfter`): this covers the reads before each cut (`t = time j`, `confirmedAt`) and the
+  read after all events at `t` (`CutAfter`, the model's end-of-time cut), so R.1 and R.2 speak of the same reads; "from
+  `τ + 6Δ`" includes the update tick at `τ + 6Δ` (consensus-lean#77). `Ready` is the model's: honest and awake on
+  `[max(0, t − c − 1), t]` with `c = 18Δ`. `Sleepy`'s `f < h_t` is read at the slot points (`SleepyRun`); the prefix
+  form takes `Sync[0, b − Δ]` (the model's `SyncUntil b`: sends with deadline `≤ b`) and those points up to `b`.
+  `ProposerRecurrence` is over the windows of `k` slots starting in `(a, b]` (the target's `(t, t + 4kΔ]`), and
+  `GrowSleepy` takes it up to its read time only (the target's `gProg … 0 horizon`). `confirmed_txLive_sleepy` is not stated over the run (no
+  transactions there): the Refinement derives it from `IncludeSleepy`.
 - **Conflict** is incompatibility inside the honest blocks of the run (`tr.HonestBlocks H`), as in G1.4 and C1.1.
 - **`finalAccountable`** reads "conflicting honest reads convict from their own views" (G1.5: "among the attestations
   included on the chains held by the two readers, taken together") as: some block of each reader's tree at the cut
