@@ -28,7 +28,7 @@ init_module = "ConsensusLean.Init"
 init_exempt = ["ConsensusLean.ToMathlib", "ConsensusLeanTest.ReviewGuard"]
 # Every directory <parent>.<M> below is one milestone layer, imported from other layers only through
 # <parent>.<M>.Main (plan §2: Main may import every Proofs.<M>.Main; Proofs.<N>.Main only by an exception).
-milestone_parents = ["ConsensusLean.Proofs"]
+milestone_parents = ["ConsensusLean.Proofs", "ConsensusLean.Instances.Goldilocks.Proofs"]
 # Umbrella imports (plan §0 rule 3d): import the modules you need.
 forbidden_imports = ["Mathlib"]
 
@@ -56,7 +56,7 @@ name = "Solution"
 # layers. `sorry`: unfinished proofs may stay here (plan §5: only Lemmas and Proofs, never a trusted layer;
 # check.sh steps 3 and 7 fail a `sorry` anywhere else, and step 3b fails one in the closure of the solution). Tests: `may_import_roots` (the generated roots,
 # import-only aggregates) and `may_import_all`. `expose`: `@[expose]` may appear here (plan §3: whole-file expose
-# in Core, Spec, Statements and the instance Spec/Statements layers; none in Lemmas, Proofs, Main and ToMathlib,
+# in Core, Spec, Statements and the instance Spec/Statements layers and Refinement.Defs; none in Lemmas, Proofs, Main and ToMathlib,
 # where a definition used elsewhere gets characterising lemmas instead; check-boundaries.py refuses `expose` on a
 # Lemmas, Proofs, ToMathlib or Main layer). Solution and Test also have it: they are leaves (nothing imports them),
 # so exposure there costs no rebuild. `protected`: not trusted, but `trusted_paths` must cover its files (the tag
@@ -134,21 +134,428 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Proofs.Faithful"]
 about = "generic composition of the milestones (Accepted.good) and its corollaries"
 
+# Goldilocks (workbench repos/goldilocks/notes/architecture/decomposition.md §4.1, §4.2): components by level.
+# No FG layer allows AC or SA and no AC/SA layer allows an FG layer (they meet only in Spec.Frame and Spec.Trace);
+# Statements.FG allows only the chain-level FG; Statements.ComposeAnyAC states C0.* for any AC; Spec.Run never
+# allows Refinement. Each allow is the full downward closure. Baseline rows retire with Baseline.lean.
+# Spec.FG is one prefix per file (so Spec.FG.Store is its own layer): a new chain-level FG file needs its own line.
+# In no layer, so they cannot exist: Spec/FG.lean, Statements/Compose.lean, Instances/Goldilocks/{Spec,Statements}.lean.
 [[layer]]
-name = "Instances.Goldilocks.Spec"
-prefixes = ["ConsensusLean.Instances.Goldilocks.Spec"]
+name = "Instances.Goldilocks.Spec.Baseline"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.Baseline"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
 protected = true
-about = "Goldilocks semantics and pinned contract"
+about = "pre-foundation sheet (Baseline.lean); retires with it"
 
 [[layer]]
-name = "Instances.Goldilocks.Statements"
-prefixes = ["ConsensusLean.Instances.Goldilocks.Statements"]
+name = "Instances.Goldilocks.Spec.Common"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.Common"]
 expose = true
-allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec"]
+allow = ["Init", "ToMathlib", "Core", "Spec"]
 protected = true
-about = "Goldilocks statements: milestone statements, and the pre-foundation sheet Baseline (not approved; holds its §1 proofs)"
+about = "blocks (parametric in the FG and AC payloads), tree, params, validators"
+
+[[layer]]
+name = "Instances.Goldilocks.Spec.FG"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.FG.State", "ConsensusLean.Instances.Goldilocks.Spec.FG.Client",
+         "ConsensusLean.Instances.Goldilocks.Spec.FG.Slashing"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common"]
+protected = true
+about = "FG chain level, pure: state transition, client, slashing (one prefix per file, so Spec.FG.Store is its own layer)"
+
+[[layer]]
+name = "Instances.Goldilocks.Spec.Frame"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.Frame"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common"]
+protected = true
+about = "the FG frame the AC reads: viable tree, viable_ancestor, FrameOK, frame steps"
+
+[[layer]]
+name = "Instances.Goldilocks.Spec.Trace"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.Trace"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common"]
+protected = true
+about = "generic component traces: cuts, per-cut states, observations; no premises"
+
+[[layer]]
+name = "Instances.Goldilocks.Spec.FGStore"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.FG.Store"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.FG",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace"]
+protected = true
+about = "FG store level: Sigma, handlers, frame, duties, FG traces"
+
+[[layer]]
+name = "Instances.Goldilocks.Spec.AC"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.AC"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace"]
+protected = true
+about = "AC interface, A.Reachable, Requirements, AC traces"
+
+[[layer]]
+name = "Instances.Goldilocks.Spec.SA"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.SA"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.AC"]
+protected = true
+about = "the SA as an AC (polymorphic in the FG payload); no FG import"
+
+[[layer]]
+name = "Instances.Goldilocks.Spec.Node"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.Node"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.FG",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.FGStore",
+         "Instances.Goldilocks.Spec.AC"]
+protected = true
+about = "the node, parametric in the AC: tick steps, handlers, Node.Reachable"
+
+[[layer]]
+name = "Instances.Goldilocks.Spec.Run"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.Run"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.FG",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.FGStore",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node"]
+protected = true
+about = "runs (Trace NodeState, Node.LocalRun), premises, outputs, the concrete Goldilocks; never Refinement"
+
+[[layer]]
+name = "Instances.Goldilocks.Refinement.Defs"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Refinement.Defs"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.FG",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.FGStore",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.Run"]
+protected = true
+about = "the node as a chain Shape; compile"
+
+[[layer]]
+name = "Instances.Goldilocks.Statements.Baseline"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.Baseline"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Baseline"]
+protected = true
+about = "pre-foundation sheet (not approved; holds its §1 proofs)"
+
+[[layer]]
+name = "Instances.Goldilocks.Statements.Common"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.Common"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common"]
+protected = true
+about = "F.2, F.3, F.5 (schema): no Trace"
+
+[[layer]]
+name = "Instances.Goldilocks.Statements.FG"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.FGSafety"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Statements.Common"]
+protected = true
+about = "M1 FG safety, chain level only"
+
+[[layer]]
+name = "Instances.Goldilocks.Statements.Frame"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.Frame"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Statements.Common"]
+protected = true
+about = "frame lemmas statements"
+
+[[layer]]
+name = "Instances.Goldilocks.Statements.FGStore"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.FGStore"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.Frame"]
+protected = true
+about = "FG store statements"
+
+[[layer]]
+name = "Instances.Goldilocks.Statements.AC"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.AC"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.AC",
+         "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Statements.Frame"]
+protected = true
+about = "AC statements over AC traces and frames; no FG"
+
+[[layer]]
+name = "Instances.Goldilocks.Statements.ComposeAnyAC"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.Compose.Interface",
+         "ConsensusLean.Instances.Goldilocks.Statements.Compose.Node"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore"]
+protected = true
+about = "C0.1, C0.3, C0.4, C0.2: stated for any AC (no Statements.AC, no Spec.SA, no Spec.Run)"
+
+[[layer]]
+name = "Instances.Goldilocks.Statements.Compose"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.Compose.Run",
+         "ConsensusLean.Instances.Goldilocks.Statements.Compose.Persist",
+         "ConsensusLean.Instances.Goldilocks.Statements.Compose.Service",
+         "ConsensusLean.Instances.Goldilocks.Statements.Healing",
+         "ConsensusLean.Instances.Goldilocks.Statements.Regimes"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC"]
+protected = true
+about = "run-level composition, persistence, service, healing, regimes (listed by file: no Statements.Compose module)"
+
+[[layer]]
+name = "Instances.Goldilocks.Statements.Refinement"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.Refinement"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Refinement.Defs",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Statements.Compose"]
+protected = true
+about = "G1.5 and the engine simulation"
+
+[[layer]]
+name = "Instances.Goldilocks.Lemmas.Common"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Common"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Statements.Common"]
+
+[[layer]]
+name = "Instances.Goldilocks.Lemmas.FGChain"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.FGChain"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Lemmas.Common"]
+about = "chain-level FG helpers"
+
+[[layer]]
+name = "Instances.Goldilocks.Lemmas.FGStore"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.FGStore"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.Frame",
+         "Instances.Goldilocks.Statements.FGStore", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain"]
+
+[[layer]]
+name = "Instances.Goldilocks.Lemmas.AC"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.AC"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.AC",
+         "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.AC",
+         "Instances.Goldilocks.Lemmas.Common"]
+
+[[layer]]
+name = "Instances.Goldilocks.Lemmas.Compose"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
+         "Instances.Goldilocks.Lemmas.AC"]
+
+[[layer]]
+name = "Instances.Goldilocks.Lemmas.Refinement"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Refinement"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Refinement.Defs",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Statements.Refinement",
+         "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
+         "Instances.Goldilocks.Lemmas.FGStore", "Instances.Goldilocks.Lemmas.AC",
+         "Instances.Goldilocks.Lemmas.Compose"]
+
+[[layer]]
+name = "Instances.Goldilocks.Proofs.FGSafety"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.FGSafety"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain"]
+about = "Goldilocks milestone"
+
+[[layer]]
+name = "Instances.Goldilocks.Proofs.FGStore"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.FGStore"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.Frame",
+         "Instances.Goldilocks.Statements.FGStore", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore"]
+about = "Goldilocks milestone"
+
+[[layer]]
+name = "Instances.Goldilocks.Proofs.ACBase"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.ACBase"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.AC",
+         "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.AC",
+         "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.AC"]
+about = "Goldilocks milestone"
+
+[[layer]]
+name = "Instances.Goldilocks.Proofs.ACSteps"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.ACSteps"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.AC",
+         "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.AC",
+         "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.AC"]
+about = "Goldilocks milestone"
+
+[[layer]]
+name = "Instances.Goldilocks.Proofs.Persist"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Persist"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose"]
+about = "Goldilocks milestone"
+
+[[layer]]
+name = "Instances.Goldilocks.Proofs.Service"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Service"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose"]
+about = "Goldilocks milestone"
+
+[[layer]]
+name = "Instances.Goldilocks.Proofs.Healing"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Healing"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose"]
+about = "Goldilocks milestone"
+
+[[layer]]
+name = "Instances.Goldilocks.Proofs.Regimes"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Regimes"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose"]
+about = "Goldilocks milestone"
+
+[[layer]]
+name = "Instances.Goldilocks.Proofs.Refinement"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Refinement"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour",
+         "Proofs.RegimesRealizable", "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Refinement.Defs",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Statements.Refinement",
+         "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
+         "Instances.Goldilocks.Lemmas.FGStore", "Instances.Goldilocks.Lemmas.AC",
+         "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Refinement"]
+about = "Goldilocks milestone"
+
+[[layer]]
+name = "Instances.Goldilocks.Main"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Main"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour",
+         "Proofs.RegimesRealizable", "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Refinement.Defs",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Statements.Refinement",
+         "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
+         "Instances.Goldilocks.Lemmas.FGStore", "Instances.Goldilocks.Lemmas.AC",
+         "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Refinement",
+         "Instances.Goldilocks.Proofs.FGSafety", "Instances.Goldilocks.Proofs.FGStore",
+         "Instances.Goldilocks.Proofs.ACBase", "Instances.Goldilocks.Proofs.ACSteps",
+         "Instances.Goldilocks.Proofs.Persist", "Instances.Goldilocks.Proofs.Service",
+         "Instances.Goldilocks.Proofs.Healing", "Instances.Goldilocks.Proofs.Regimes",
+         "Instances.Goldilocks.Proofs.Refinement"]
+about = "composition of the Goldilocks milestones"
 
 [[layer]]
 name = "Instances.Bft.Spec"
@@ -187,8 +594,24 @@ name = "Test"
 prefixes = ["ConsensusLeanTest"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour", "Proofs.RegimesRealizable",
-         "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec", "Instances.Goldilocks.Statements", "Instances.Bft.Spec",
-         "Instances.Streamlet.Spec", "Instances.Tendermint.Spec", "Solution"]
+         "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Baseline", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Refinement.Defs",
+         "Instances.Goldilocks.Statements.Baseline", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.Frame",
+         "Instances.Goldilocks.Statements.FGStore", "Instances.Goldilocks.Statements.AC",
+         "Instances.Goldilocks.Statements.ComposeAnyAC", "Instances.Goldilocks.Statements.Compose",
+         "Instances.Goldilocks.Statements.Refinement", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
+         "Instances.Goldilocks.Lemmas.Refinement", "Instances.Goldilocks.Proofs.FGSafety",
+         "Instances.Goldilocks.Proofs.FGStore", "Instances.Goldilocks.Proofs.ACBase",
+         "Instances.Goldilocks.Proofs.ACSteps", "Instances.Goldilocks.Proofs.Persist",
+         "Instances.Goldilocks.Proofs.Service", "Instances.Goldilocks.Proofs.Healing",
+         "Instances.Goldilocks.Proofs.Regimes", "Instances.Goldilocks.Proofs.Refinement",
+         "Instances.Goldilocks.Main", "Instances.Bft.Spec", "Instances.Streamlet.Spec", "Instances.Tendermint.Spec",
+         "Solution"]
 may_import_roots = true
 may_import_all = true
 about = "tests, review pins (ReviewAxioms, ReviewGuard) and the README index"
@@ -239,8 +662,9 @@ imports another; shared material moves down to the generic layers."""
 # is kept by hand.
 # Module prefixes where a `Proofs` component is allowed (check-decls exempts definitions in modules with a
 # `Proofs` component from reaches-opaque: sound only where no trusted module can reach them, which
-# check-boundaries.py checks). The plan's milestone proofs, `ConsensusLean/Proofs/<M>/`.
-proofs_component_prefixes = ["ConsensusLean.Proofs"]
+# check-boundaries.py checks). The plan's milestone proofs, `ConsensusLean/Proofs/<M>/` and
+# `ConsensusLean/Instances/Goldilocks/Proofs/<M>/`.
+proofs_component_prefixes = ["ConsensusLean.Proofs", "ConsensusLean.Instances.Goldilocks.Proofs"]
 # Modules with descendants that may own constants. leanchecker expands a module name as a prefix, so such a
 # module would not be replayed by leanchecker (step 5), only by `lake check` (step 10, where bwrap exists).
 # None: every parent owns nothing.

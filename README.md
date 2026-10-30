@@ -584,7 +584,7 @@ overlap); `allow` lists the layers it may import, written out in full:
 | `Proofs.<M>` (one layer per milestone directory) | the above, Lemmas |
 | `Main` | the above, every `Proofs.<M>` |
 | `Instances.<P>.Spec` | Init, ToMathlib, Core, Spec |
-| `Instances.Goldilocks.Statements` | the above, Statements, `Instances.Goldilocks.Spec` |
+| `Instances.Goldilocks.*` (one layer per component and level: `Spec.{Common,FG,Frame,Trace,FGStore,AC,SA,Node,Run}`, `Spec.Baseline` and `Statements.Baseline` (until `Baseline.lean` retires), `Refinement.Defs`, `Statements.*`, `Lemmas.*`, `Proofs.<M>`, `Main`) | its row in `scripts/boundaries.toml`: no FG layer imports an AC or SA layer and no AC or SA layer an FG layer; `Statements.FG` reaches only the chain-level FG |
 | `Solution` | every generic layer (no instances) |
 | `Test` (`ConsensusLeanTest`) | everything above; library roots, import-only aggregates, `import all` |
 
@@ -597,7 +597,7 @@ aggregate, or `import all`, outside the tests; a module that does not reach `Con
 public imports (except `ToMathlib` and the meta tool `ReviewGuard`); a fixture module or an unknown
 top-level name; the attribute `expose` (a whole-file `@[expose]` section, on a declaration, or `attribute
 [expose]`; comments and strings ignored) in a layer without `expose = true`, which only Core, Spec, Statements,
-the instance layers, the solution and the tests have (plan §3: Lemmas, Proofs, Main and ToMathlib export no
+the instance Spec, Statements and `Refinement.Defs` layers, the solution and the tests have (plan §3: Lemmas, Proofs, Main and ToMathlib export no
 bodies; the solution and the tests are leaves, so their exposure costs no rebuild), or `expose = true` on a
 Lemmas, Proofs, ToMathlib or Main layer. Lean also exports the bodies of `abbrev`s and of instances of non-`Prop`
 classes without the attribute; the checker does not flag those (today `Trace.Agree` and `kv`). Its self-test (`scripts/fixtures/boundaries/cases.toml`, one case per
@@ -620,7 +620,8 @@ The external base set is `Init`, `Std`, `Lean`, `Lake`, `Mathlib`, `Batteries`, 
 `ProofWidgets`, `Plausible`, `ImportGraph`, `LeanSearchClient`; unknown names fail.
 Pins establish the provenance of those names.
 The inventory configuration is cross-checked against `lakefile.toml`, including default targets
-and globs. A `Proofs` component is allowed only under `ConsensusLean.Proofs`: check-decls
+and globs. A `Proofs` component is allowed only under `ConsensusLean.Proofs` and
+`ConsensusLean.Instances.Goldilocks.Proofs` (`[checks].proofs_component_prefixes`): check-decls
 exempts definitions there from reaches-opaque, which is sound because no trusted layer can
 reach them. `Exports` components are refused.
 
