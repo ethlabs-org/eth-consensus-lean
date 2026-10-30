@@ -68,11 +68,16 @@ def TrivialFrames (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop :=
     ℓ.frame.viableHeads = ℓ.frame.tree ∧
     ℓ.frame.tree = insert ℓ.frame.F {B | ∃ k ≤ i, tr.AcceptAt y k B}
 
-/-- `p`'s proposal at cut `k` (its `ac_proposal` at `t_s` returns the payload `pay`) is the block
-`P`: slot `s`, proposer `p`, payload `pay`, and `p` passes it to its own `ac_on_block` at a later
-cut at the same time. -/
+/-- `p`'s proposal of slot `s` is the block `P` it makes at `t_s` from `ac_proposal` (claims
+§"Healing: top-level statements", "honest proposal"): its `ac_proposal` at cut `k` at `t_s`
+returns the duty head `d` and the payload `pay`, and `P` has parent `d.head`, slot `s`, proposer
+`p` and payload `pay`; `p` passes it to its own `ac_on_block` at a later cut at the same time.
+(The parent is part of "the block made from `ac_proposal`": without it a block of the right slot
+and payload on another parent would count; consensus-lean#83.) -/
 def HonestProposal (tr : SATrace sp FGP ro) (p : Fin sp.n) (s : Nat) (P : Blk sp.n FGP) : Prop :=
-  ∃ k ℓ pay, ProposalAt tr p k ℓ pay ∧ tr.time k = sp.ts s ∧ P.slot = s ∧ P.proposer = p ∧
+  ∃ k ℓ d pay, tr.CallAt p k ℓ ∧ ℓ.call = .proposal ∧
+    (acProposal sp (tr.state p k) ℓ.frame (tr.time k)).2 = some (d, pay) ∧
+    tr.time k = sp.ts s ∧ P.parent = some d.head.root ∧ P.slot = s ∧ P.proposer = p ∧
     P.acPayload = pay ∧ ∃ j, k < j ∧ tr.AcceptAt p j P ∧ tr.time j = sp.ts s
 
 /-- **A driven AC trace** (claims §"Healing: top-level statements"), besides the AC wire checks:
@@ -81,7 +86,8 @@ slot's proposer, a slot at most `slot(t)`, and a parent of smaller slot that is 
 passed to `y`'s `ac_on_block` earlier; a block of an honest proposer's slot is that proposer's
 proposal; (b) the AC part of the tick order (C0.4): every honest node awake at a public time `t`
 runs its tick there; the honest proposer of a slot `s > 0` awake and joined at `t_s` runs
-`ac_proposal` after its tick and, when it returns a payload, passes its block to its own
+`ac_proposal` after its tick and, when it returns a payload, passes its block (on the returned
+head) to its own
 `ac_on_block` at once, before any object received at `t_s`. -/
 structure Driven (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop where
   /-- (a) Blocks have their slot's proposer, a slot not in the future, and an earlier parent. -/
