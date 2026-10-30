@@ -39,9 +39,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
