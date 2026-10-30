@@ -73,6 +73,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
