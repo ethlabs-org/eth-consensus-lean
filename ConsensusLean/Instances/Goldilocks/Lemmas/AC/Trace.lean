@@ -91,7 +91,7 @@ end Consensus.Goldilocks
 
 namespace Consensus.Goldilocks.SA
 
-variable (sp : SAParams)
+variable (sp : SAParams) {FGP : Type}
 
 /-- Every block of an honest node's frame passes `ac_valid_payload`: the initial frame holds
 genesis, whose payload is empty, and a frame step adds only the block of an `on_block` call,
@@ -129,15 +129,102 @@ theorem frame_validPayload {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin 
         simp [blockVotes, blockSupport, hpay] at hv
     · exact step _ _ _ _ hok (ih j hj hc')
 
+/-- A block between `Φ.F` and a block of a well-formed frame tree (ancestry inside a coherent `U`
+containing the tree) is in the tree. -/
+theorem frame_mem_of_between {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Frm sp.n FGP}
+    (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {A X : Blk sp.n FGP} (hX : X ∈ Φ.tree)
+    (hAX : Anc U A X) (hFA : Anc U Φ.F A) : A ∈ Φ.tree := by
+  induction hAX with
+  | refl => exact hX
+  | @tail c d hAc e ih =>
+    by_cases hdF : d = Φ.F
+    · subst hdF
+      have := Anc.antisymm hU (hAc.tail e) hFA
+      exact this ▸ hX
+    obtain rfl | ⟨p, -, hp⟩ :=
+      (Relation.ReflTransGen.cases_tail_iff _ _ _).1 (hΦ.rooted.2 d hX)
+    · exact absurd rfl hdF
+    have hpc : p = c := hU.1 (hΦU hp.1) e.1 (Option.some_injective _ (hp.2.2.symm.trans e.2.2))
+    subst hpc
+    exact ih hp.1
+
+/-- Across one lawful call, the finalized tip moves only forward (inside `U`) and a block of the
+old tree that extends the new tip is in the new tree. -/
+theorem callOK_retains {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)} (hU : Coherent U)
+    {Φ Φ' : Frm sp.n FGP} {t : Time} {c : (goldilocksSA sp FGP ro).Call}
+    (hΦ : (goldilocksSA sp FGP ro).FrameIn U Φ)
+    (hok : (goldilocksSA sp FGP ro).CallOK U Φ t c Φ') :
+    Anc U Φ.F Φ'.F ∧ ∀ X ∈ Φ.tree, Anc U Φ'.F X → X ∈ Φ'.tree := by
+  obtain ⟨hΦ', hc⟩ := hok
+  cases c with
+  | block B =>
+    obtain ⟨hs, -, -⟩ := hc
+    have hBin : B ∈ Φ'.tree := by
+      rw [hs.tree_eq]; exact ⟨Set.mem_insert _ _, hs.F'_anc_B⟩
+    have hins : insert B Φ.tree ⊆ U := Set.insert_subset (hΦ'.2 hBin) hΦ.2
+    refine ⟨hs.F_anc_F'.mono hins, fun X hX hFX => ?_⟩
+    have hF'mem : Φ'.F ∈ insert B Φ.tree := by
+      have := hΦ'.1.rooted.1; rw [hs.tree_eq] at this; exact this.1
+    rw [hs.tree_eq]
+    refine ⟨Set.mem_insert_of_mem _ hX, ?_⟩
+    rcases hF'mem with hF'B | hF'
+    · rw [hF'B] at hFX
+      have := frame_mem_of_between sp hU hΦ.1 hΦ.2 hX hFX
+        (hF'B ▸ hs.F_anc_F'.mono hins)
+      exact absurd this hs.new
+    · exact (anc_tree_of_anc_U hU hΦ.1 hΦ.2 hF' hFX hX).mono (Set.subset_insert _ _)
+  | message m => obtain ⟨rfl, -⟩ := hc; exact ⟨.refl, fun X hX _ => hX⟩
+  | tick => subst hc; exact ⟨.refl, fun X hX _ => hX⟩
+  | proposal => subst hc; exact ⟨.refl, fun X hX _ => hX⟩
+  | toFG => subst hc; exact ⟨.refl, fun X hX _ => hX⟩
+  | restart => subst hc; exact ⟨.refl, fun X hX _ => hX⟩
+
+/-- **Retention between two calls of one node.** For calls of an honest node at `j ≤ i`, the
+finalized tip moves forward, and a block of the frame at `j` that extends the tip at `i` is in the
+frame at `i`. -/
+theorem retain_between {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {ℓj : ACLabel (goldilocksSA sp FGP ro)} (hcj : tr.CallAt y j ℓj) :
+    ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ → j ≤ i →
+      Anc U ℓj.frame.F ℓ.frame.F ∧ ∀ X ∈ ℓj.frame.tree, Anc U ℓ.frame.F X → X ∈ ℓ.frame.tree := by
+  intro i
+  induction i using Nat.strong_induction_on with
+  | _ i ih =>
+    intro ℓ hc hji
+    rcases Nat.eq_or_lt_of_le hji with rfl | hji
+    · have : ℓ = ℓj := Option.some.inj (hc.2.symm.trans hcj.2)
+      subst this
+      exact ⟨.refl, fun X hX _ => hX⟩
+    rcases h.frameLaw y hy i ℓ hc with ⟨hnone, -⟩ | ⟨j', ℓ', hj', hc', hnb, hok⟩
+    · exact absurd hcj (hnone j (Nat.zero_le _) hji ℓj)
+    have hjj' : j ≤ j' := by
+      by_contra hlt
+      exact hnb j (by omega) hji ℓj hcj
+    obtain ⟨ihF, ihX⟩ := ih j' hj' ℓ' hc' hjj'
+    have hin : (goldilocksSA sp FGP ro).FrameIn U ℓ'.frame := by
+      rcases h.frameLaw y hy j' ℓ' hc' with ⟨_, _, _, _, hok'⟩ | ⟨_, _, _, _, _, hok'⟩
+      · exact hok'.1
+      · exact hok'.1
+    obtain ⟨hF, hX⟩ := callOK_retains sp h.coherent hin hok
+    exact ⟨ihF.trans hF, fun X hXj hFX => hX X (ihX X hXj (hF.trans hFX)) hFX⟩
+
 /-- **Retention at one node.** A block that an honest node accepted is in the frame of each of its
 later calls whose finalized tip it extends (inside `U`): the node's frames evolve by frame steps
 inside `U` (G0.3 (frame)), so a block leaves only when `Φ.F` moves past it, and never returns. -/
-theorem mem_tree_of_acceptAt {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+theorem mem_tree_of_acceptAt {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {k i : Nat}
     {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hk : tr.AcceptAt y k B)
     (hki : k ≤ i) (hc : tr.CallAt y i ℓ) (hF : Anc U ℓ.frame.F B) : B ∈ ℓ.frame.tree := by
-  sorry
+  obtain ⟨ℓk, hck, hcall⟩ := hk
+  have hBk : B ∈ ℓk.frame.tree := by
+    rcases h.frameLaw y hy k ℓk hck with ⟨_, _, _, _, hok⟩ | ⟨_, _, _, _, _, hok⟩ <;>
+    · obtain ⟨-, hc'⟩ := hok
+      rw [hcall] at hc'
+      obtain ⟨hs, -, -⟩ := hc'
+      rw [hs.tree_eq]; exact ⟨Set.mem_insert _ _, hs.F'_anc_B⟩
+  exact (retain_between sp h hy hck i ℓ hc hki).2 B hBk hF
 
 /-- **Stamps of accepted blocks.** At an honest node's call, a block of the call's frame that the
 node accepted before `T` (or genesis) has a stamp below `T` in the state before the call, when
