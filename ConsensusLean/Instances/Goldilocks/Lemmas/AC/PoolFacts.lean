@@ -3,12 +3,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 
 public section
 
-/-! # Goldilocks SA: pools, stamps and resolution at reachable states (A0.1–A0.3, A0.7, A0.9)
+/-! # Goldilocks SA: pools and stamps at reachable states (A0.1, A0.7, A0.9)
 
 The ACBase statements that ACSteps does not use: admission slots, stable stamps and carried votes
-(A0.1), stable resolution (A0.2), the merged view's opponents (A0.3), what a joined node kept at
-its restarts (A0.7) and the proposal payload (A0.9). Kept out of the import closure of ACSteps,
-so that ACSteps' closure is free of `sorry` while these are open. -/
+(A0.1), what a joined node kept at its restarts (A0.7) and the proposal payload (A0.9); and the
+properties every call other than the restart keeps (`VoteClosed`). Stable resolution (A0.2) and
+the merged view's opponents (A0.3) are in `Resolution`. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -156,6 +156,8 @@ variable {sp} {FGP : Type}
 
 /-- Every pool of `A` is contained in the same pool of `A'`. -/
 def Grows (A A' : SAState sp.n) : Prop := ∀ σ, ∀ x ∈ A.pool σ, x ∈ A'.pool σ
+
+theorem Grows.refl (A : SAState sp.n) : Grows A A := fun _ _ h => h
 
 theorem Grows.trans {A B C : SAState sp.n} (h₁ : Grows A B) (h₂ : Grows B C) : Grows A C :=
   fun σ x hx => h₂ σ x (h₁ σ x hx)
@@ -453,6 +455,68 @@ private theorem step_vok_keep (ro : ReplayOrder sp FGP) (self : Fin sp.n) {A : S
     exact ⟨h.of_eq (acToFG_pv A Φ t).1 (acToFG_pv A Φ t).2,
       Keep.of_eq (acToFG_pv A Φ t).1 (acToFG_pv A Φ t).2⟩
 
+/-- `P` is closed under admission and under every change that keeps the pools and the vote
+stamps: then every call other than the restart keeps it (`VoteClosed.step`). -/
+structure VoteClosed (P : SAState sp.n → Prop) : Prop where
+  admit : ∀ A t v, P A → P (admitVote sp A t v)
+  congr : ∀ A A' : SAState sp.n, A'.pool = A.pool → A'.voteStamp = A.voteStamp → P A → P A'
+
+theorem VoteClosed.tryVote {P : SAState sp.n → Prop} (hP : VoteClosed P) (self : Fin sp.n)
+    {A : SAState sp.n} (Φ : Frm sp.n FGP) (t : Time) (h : P A) : P (tryVote sp self A Φ t).1 := by
+  have key : ∀ {A₂ : SAState sp.n} (v : Vote sp.n), A₂.pool = A.pool →
+      A₂.voteStamp = A.voteStamp → P (optimisticConfirmation sp (admitVote sp A₂ t v) Φ t) :=
+    fun v hp hv => hP.congr _ _ (optimistic_pool_eq _ _ _) (optimistic_vs _ _ _)
+      (hP.admit _ _ _ (hP.congr _ _ hp hv h))
+  unfold SA.tryVote
+  dsimp only
+  split_ifs
+  · exact h
+  · exact h
+  all_goals exact key _ rfl rfl
+
+theorem VoteClosed.acOnBlock {P : SAState sp.n → Prop} (hP : VoteClosed P) (self : Fin sp.n)
+    {A : SAState sp.n} (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) (h : P A) :
+    P (SA.acOnBlock sp self A Φ t B).1 := by
+  unfold SA.acOnBlock blockReceipt
+  refine hP.tryVote self Φ t (hP.congr _ _ (optimistic_pool_eq _ _ _) (optimistic_vs _ _ _) ?_)
+  have h₀ : P { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } :=
+    hP.congr A _ rfl rfl h
+  generalize { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } = A₀ at h₀
+  induction blockVotes B generalizing A₀ with
+  | nil => exact h₀
+  | cons v l ih => exact ih _ (hP.admit _ _ _ h₀)
+
+theorem VoteClosed.step {P : SAState sp.n → Prop} (hP : VoteClosed P) (ro : ReplayOrder sp FGP)
+    (self : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) (t : Time)
+    {c : (goldilocksSA sp FGP ro).Call} (hc : c ≠ .restart) (h : P A) :
+    P ((goldilocksSA sp FGP ro).step self A Φ t c).1 := by
+  cases c with
+  | block B => exact hP.acOnBlock self Φ t B h
+  | message m =>
+    exact hP.tryVote self Φ t (hP.congr _ _ (optimistic_pool_eq _ _ _) (optimistic_vs _ _ _)
+      (hP.admit _ _ _ h))
+  | restart => exact absurd rfl hc
+  | proposal => exact hP.congr _ _ (acProposal_pv A Φ t).1 (acProposal_pv A Φ t).2 h
+  | toFG => exact hP.congr _ _ (acToFG_pv A Φ t).1 (acToFG_pv A Φ t).2 h
+  | tick =>
+    have hu : ∀ {B : SAState sp.n} (s : Nat), P B → P (updateConfirmation sp B Φ t s) :=
+      fun s hB =>
+        hP.congr _ _ (updateConfirmation_pool_eq _ _ _ _) (updateConfirmation_vs _ _ _ _) hB
+    have hv := hP.tryVote self Φ t h
+    change P (acOnTick sp self A Φ t).1
+    unfold acOnTick
+    dsimp only
+    split_ifs
+    all_goals first
+      | with_reducible exact h
+      | with_reducible exact hv
+      | with_reducible exact hu _ h
+      | with_reducible exact hu _ hv
+
+/-- Pools only grow outside a restart. -/
+theorem voteClosed_grows (A₀ : SAState sp.n) : VoteClosed (Grows A₀) :=
+  ⟨fun A t v h => h.trans (grows_admitVote A t v), fun _ _ hp _ h => h.trans (Grows.of_pool_eq hp)⟩
+
 end Stamps
 
 /-- **A0.1, admission slots.** -/
@@ -481,28 +545,30 @@ theorem admission_slots : AdmissionSlots sp := by
       · split_ifs at hx <;> exact hx
     · exact hx
 
+/-- The votes of a block received at `t`, of slot `slot(t) − 1` or `slot(t)`, are held after
+`ac_on_block`, or their validators equivocate there. -/
+theorem acOnBlock_held {FGP : Type} (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (B : Blk sp.n FGP)
+    (hrange : ∀ v ∈ blockVotes B, (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t) :
+    ∀ v ∈ blockVotes B, v ∈ (acOnBlock sp self A Φ t B).1.pool v.slot ∨
+      v.val ∈ equivocators {x | x ∈ (acOnBlock sp self A Φ t B).1.pool v.slot} := by
+  intro v hv
+  have hrec := fold_admit_held t (blockVotes B) hrange
+    { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } v hv
+  have hg : Grows (blockReceipt sp A t B) (acOnBlock sp self A Φ t B).1 := by
+    unfold acOnBlock
+    exact (Grows.of_pool_eq (optimistic_pool_eq _ _ _)).trans (grows_tryVote _ _ _ _)
+  exact held_of_grows hg hrec
+
 /-- **A0.1, carried votes.** -/
 theorem carried_votes : CarriedVotes sp := by
   intro FGP ro self U _ A Φ t₀ _ B Φ' t _ hok hBs
   dsimp only
   obtain ⟨-, -, hpay, -⟩ := hok
-  have hrange : ∀ v ∈ blockVotes B, (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t :=
-    fun v hv => by have := hpay.1 v hv; omega
   intro v hv hnot
-  have hrec := fold_admit_held t (blockVotes B) hrange
-    { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } v hv
-  have hg : Grows (blockReceipt sp A t B) (acOnBlock sp self A Φ' t B).1 := by
-    unfold acOnBlock
-    exact (Grows.of_pool_eq (optimistic_pool_eq _ _ _)).trans (grows_tryVote _ _ _ _)
-  exact (held_of_grows hg hrec).resolve_left hnot
-
-/-- **A0.2, resolution is stable.** -/
-theorem resolution_stable : ResolutionStable sp := by
-  sorry
-
-/-- **A0.3, the merged view's opponents.** -/
-theorem merged_opponents : MergedOpponents sp := by
-  sorry
+  refine (acOnBlock_held sp self A Φ' t B (fun v hv => ?_) v hv).resolve_left hnot
+  have := hpay.1 v hv
+  omega
 
 /-- **A0.9.** The payload of a proposal at `t_σ` is the slot-`(σ−1)` vote view of the pool, whose
 votes are of slot `σ − 1` (`pool_cap`) and whose support is among its votes. -/

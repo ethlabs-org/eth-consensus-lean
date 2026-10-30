@@ -10,7 +10,7 @@ public section
 By induction over `ReachableAt`: the pools hold votes of their slot, at most two per validator
 (`pool_cap`), and block stamps do not decrease along parent edges of the tree (`stamp_parent`);
 and how each call writes the block stamps (`step_blockStamp_eq`). The other reachable-state
-statements are in `PoolFacts` and `LockStore`. -/
+statements are in `PoolFacts`, `Resolution` and `LockStore`. -/
 
 namespace Consensus.Goldilocks.SA
 
