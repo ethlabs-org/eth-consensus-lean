@@ -16,6 +16,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Client
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.State
 public import ConsensusLean.Instances.Goldilocks.Spec.Frame
+public import ConsensusLean.Instances.Goldilocks.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.Baseline
 public import ConsensusLean.Instances.Goldilocks.Statements.Common
 public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
