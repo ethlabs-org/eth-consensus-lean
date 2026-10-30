@@ -42,6 +42,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups

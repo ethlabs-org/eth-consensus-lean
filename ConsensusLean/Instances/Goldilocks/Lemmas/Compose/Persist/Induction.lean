@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Persist
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 
 public section
 
@@ -55,22 +55,6 @@ variable {tr H}
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {ΔF : Time} {x : Fin sp.n}
   {i₀ s m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
 
-/-- **The vote step**: (i) and (ii) at the honest votes of cut `k`, from the invariant at every
-earlier cut. (i) from the caches at the vote (`state_caches`, (K0)) and (K2); (ii) by A1.2 /
-A1.4 (a) for slot `s + 1` and A1.3 after (their stored-block forms, #75). -/
-theorem vote_step (hrun : GoldilocksRun dg H tr) (hp : PersistPremises tr H dg ΔF x i₀ s m B CV)
-    (k : Nat) (ih : ∀ j < k, VoteInv tr H s m B j ∧ CutInv tr H s m B j) :
-    VoteInv tr H s m B k := by
-  sorry
-
-/-- **The cut step**: G1.10 at the scope of C1.1 at the honest call of cut `k`, from the
-invariant at every earlier cut and the votes of cut `k`. The honest rows it needs are signed at
-earlier cuts, with sources compatible with `B` by A1.9 (its stored-block form, #75). -/
-theorem cut_step (hrun : GoldilocksRun dg H tr) (hp : PersistPremises tr H dg ΔF x i₀ s m B CV)
-    (k : Nat) (ih : ∀ j < k, VoteInv tr H s m B j ∧ CutInv tr H s m B j)
-    (hv : VoteInv tr H s m B k) : CutInv tr H s m B k := by
-  sorry
-
 /-- The state of `y` before cut `k` is its state before cut `j ≤ k`, or the state after a call of
 `y` at a cut in `[j, k)`. -/
 theorem state_of_le {y : Fin sp.n} {j k : Nat} (h : j ≤ k) :
@@ -105,6 +89,40 @@ theorem state_caches (hrun : GoldilocksRun dg H tr)
   · rw [h]
     exact (hcut j' hj'k y hy hc
       ((Nat.find_spec hex).trans (hrun.time_mono hj')) (hle j' hj'k)).1
+
+/-- **The vote step**: (i) and (ii) at the honest votes of cut `k`, from the invariant at every
+earlier cut: the caches at the vote (`state_caches`) and (K2) give (i) (`vote_viable`), and (i)
+with the earlier votes gives (ii) (`vote_extends`). -/
+theorem vote_step (hrun : GoldilocksRun dg H tr) (hp : PersistPremises tr H dg ΔF x i₀ s m B CV)
+    (k : Nat) (ih : ∀ j < k, VoteInv tr H s m B j ∧ CutInv tr H s m B j) :
+    VoteInv tr H s m B k := by
+  intro y hy ℓ e hc hs hsm
+  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hp.noColl).localRun
+  obtain ⟨-, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
+    rcases hr.frameLaw y hy k ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
+  have hle : tr.time k ≤ sp.ts e.msg.slot + sp.Δ := (cast_head_fcRoot hr hy hc).2
+  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+  have hts : sp.ts e.msg.slot ≤ tr.time k :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr
+      (by rw [(SA.castAt_spec hr hy hc).2.1])
+  have hk : sp.ts s ≤ tr.time k := ((SA.ts_le_iff sp).mpr (Int.ofNat_le.mpr hs.le)).trans hts
+  have hlt : ∀ j < k, tr.time j < sp.ts m + 2 * sp.Δ := fun j hj => by
+    have := hrun.time_mono hj.le
+    have := (SA.ts_le_iff sp).mpr (Int.ofNat_le.mpr hsm)
+    linarith
+  have hcache := state_caches hrun hp k (fun j hj => (ih j hj).2) y hy hk hlt
+  have hK2 := (hp.clean.heightLead y hy k ℓ e hc hs hsm).imp_right (Anc.mono hΦU)
+  have hvi := vote_viable hrun hp.noColl hy hc hcache hK2
+  exact ⟨hvi, vote_extends hrun hp hy hc hs hsm hvi
+    fun z hz j hj e' ⟨ℓ', hc', he'⟩ h₁ h₂ => ((ih j hj).1 z hz ℓ' e' ⟨hc', he'⟩ h₁ h₂).2⟩
+
+/-- **The cut step**: G1.10 at the scope of C1.1 at the honest call of cut `k`, from the
+invariant at every earlier cut and the votes of cut `k`. The honest rows it needs are signed at
+earlier cuts, with sources compatible with `B` by A1.9 (its stored-block form, #75). -/
+theorem cut_step (hrun : GoldilocksRun dg H tr) (hp : PersistPremises tr H dg ΔF x i₀ s m B CV)
+    (k : Nat) (ih : ∀ j < k, VoteInv tr H s m B j ∧ CutInv tr H s m B j)
+    (hv : VoteInv tr H s m B k) : CutInv tr H s m B k := by
+  sorry
 
 /-- **The join**: the invariant holds at every cut (strong induction on the cut index, F.5). -/
 theorem persist_inv (hrun : GoldilocksRun dg H tr)
