@@ -136,13 +136,19 @@ the handlers reach, at one node; part 2 (G1.4, G1.6–G1.10, over FG traces) wai
 | G1.4 | CLAIMS G1.4 | finalized safety over FG traces | FGStore (part 2) | `Consensus.Goldilocks.Store.FinalizedSafety` |
 | G1.10 | CLAIMS G1.10 (the core, with the own proposal; decomposition §4.7 case 2) | quorum-free entries | FGStore (part 2) | `Consensus.Goldilocks.Store.namers`, `Consensus.Goldilocks.Store.QuorumFreeEntries` |
 | — | the part-2 bundle | the above, at one and at every parameter set | FGStore (part 2) | `Consensus.Goldilocks.Store.FGStoreTraceAt`, `Consensus.Goldilocks.Store.FGStoreTrace` |
+| — | CLAIMS §"L1: components / Finality gadget" (notation: entry, window, `D`); theorem.md (r9) §1–§2 | an entry block; an honest proposal (P5's inclusion rule); the good window `GW(E, a, k_F)` (P1–P6; P7 is `FGLocalRun`); a block that justifies an entry without leaving its height first | FGStore (part 3) | `Consensus.Goldilocks.Store.IsEntry`, `Consensus.Goldilocks.Store.HonestProposal`, `Consensus.Goldilocks.Store.GoodWindow`, `Consensus.Goldilocks.Store.JustifiesEntry` |
+| G1.6 | CLAIMS G1.6 (theorem A) | bound entry | FGStore (part 3) | `Consensus.Goldilocks.Store.BoundEntry` |
+| G1.7 | CLAIMS G1.7 (theorem B) | unbound entry, two windows | FGStore (part 3) | `Consensus.Goldilocks.Store.UnboundEntry` |
+| G1.8 | CLAIMS G1.8 (corollary C) | (a) crossing bound; (b) coverage after failed entries | FGStore (part 3) | `Consensus.Goldilocks.Store.Crossing`, `Consensus.Goldilocks.Store.Coverage` |
+| G1.9 (a) | CLAIMS G1.9 (a) | cache acceptance per `update_finality` call | FGStore (part 3) | `Consensus.Goldilocks.Store.afterJustification`, `Consensus.Goldilocks.Store.CacheAcceptance` |
+| — | the part-3 bundle | the above, at one and at every parameter set | FGStore (part 3) | `Consensus.Goldilocks.Store.FGStoreServiceAt`, `Consensus.Goldilocks.Store.FGStoreService` |
 
 Modelling notes: `Σ.T` and `Σ.σ` are kept by root (the store's duplicate test is by root, so a held root names one
 block); genesis takes an AC payload `acp₀` (never read). Restart keeps `Σ`, so it is no store step. Not yet
 stated: G0.3's "a block that leaves `Φ.tree` never returns" (it is `FrameNeverReturns` along the frames of
 `AcceptIsFrameStep`, with `U` the union of the trees, by `AcceptedTree`, `TreeGrows` and `FrameRealization`);
 G0.1 (store)'s "does not depend on the node, the arrival order or the time" (it follows from `ChainStateOfChain`
-under NoColl in F.3's form, and is stated with part 2, where two stores meet); G1.9 (statement not fixed); part 2's G1.6–G1.9, G1.10's C1.1 scope (a)–(c), and `Sync` over FG traces (with the statements that need it).
+under NoColl in F.3's form, and is stated with part 2, where two stores meet); G1.9 (b) (statement not fixed in the claims); G1.10's C1.1 scope (a)–(c) (Compose), and `Sync` over FG traces (with the statements that need it).
 Witnesses in `ConsensusLeanTest/GoldilocksFGStore.lean`, kind (a): `init_reachable`, `accepts_b₁`, `idle_localRun`, `relay_localRun`.
 
 ## ACBase

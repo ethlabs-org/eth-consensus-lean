@@ -105,6 +105,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local
+public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.Frame
 public import ConsensusLean.Instances.Streamlet.Spec
