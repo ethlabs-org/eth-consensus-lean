@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 
 public section
@@ -120,7 +122,56 @@ theorem raw_slow_first_votes (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (h
     {i j : Nat} {B : Blk sp.n FGP} (hjx : JoinedAt tr x (tr.time i))
     (hsl : SlowLockAt tr x i j B) (hj : t₀ + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1)) :
     ∀ y ∈ H, ∀ k e, VoteAt tr y k e → e.msg.slot = j + 1 → VoteExtends U e.msg B := by
-  sorry
+  have hrun := hI.run
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  have hg := hI.le
+  have hk := sp.two_le_k
+  have hP2 : Protected tr H t₀ B j := Or.inr (Or.inl ⟨x, hx, i, hjx, hsl, hj⟩)
+  obtain ⟨ℓX, C, hupd, hconf, -, hdeep, -⟩ := id hsl
+  have hΦXU := (frameIn_of_callAt hr hx hupd.1).2
+  have hDC : Anc U B C := Anc.mono hΦXU (deepest_mem hdeep).1.1.2.2
+  have hres : ResultAt tr x i j C (fastCounted sp (tr.state x i) ℓX.frame j C) :=
+    ⟨ℓX, hupd, hconf, rfl⟩
+  have hjt : t₀ + 4 * sp.Δ ≤ sp.ts j := hj.trans ((ts_le_iff sp).2 (by omega))
+  have hwin : gbar g + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1) := by linarith
+  have hts : sp.ts (j + 1 : Nat) = sp.ts j + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  suffices h : ∀ k, ∀ y ∈ H, ∀ e, VoteAt tr y k e → e.msg.slot = j + 1 → VoteExtends U e.msg B
+    from fun y hy k e hv hs => h k y hy e hv hs
+  intro k
+  induction k using Nat.strong_induction_on with
+  | _ k ih =>
+    intro y hy e ⟨ℓ, hc, he⟩ hes
+    have hca : CastAt tr y k ℓ e := ⟨hc, he⟩
+    obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc
+    obtain ⟨-, hsl', -, -⟩ := castAt_spec hr hy hca
+    have ht0 := hr.time_nonneg k
+    by_cases hBF : Anc U B ℓ.frame.F
+    · obtain ⟨Hd, hHd, hHdr, -⟩ := honest_head_frame hr hy hca
+      exact ⟨Hd, hΦU hHd, hHdr, hBF.trans ((hΦ.rooted.2 Hd hHd).mono hΦU)⟩
+    have htk : sp.ts (j + 1 : Nat) ≤ tr.time k :=
+      (ts_le_iff_le_slot sp ht0 _).2 (by rw [← hsl', hes])
+    obtain ⟨hviab, hFB⟩ := inv_at_vote hI hP2 hy hca htk hBF
+    -- `Carry` for the result's counted votes: relay after `ḡ`, `Catch(2Δ)` before
+    have hCy : CarryAt tr U y k e j (fastCounted sp (tr.state x i) ℓX.frame j C) := by
+      refine carryAt_of_writer_catch hr (hI.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) (by linarith)
+        le_rfl hx hy hca hes fun v hv => ?_
+      obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := Compose.result_writer hr hx hres v hv
+      have hFHv : Anc U ℓ.frame.F Hv := hFB.trans (hDC.trans hCHv)
+      refine ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, ?_⟩
+      rcases h₃ with hgen | ⟨kw, hkw, hkwt⟩
+      · exact Or.inl hgen
+      by_cases hkg : gbar g ≤ tr.time kw
+      · exact Or.inr (Or.inl ⟨kw, hkw, hkg, hkwt⟩)
+      · obtain ⟨k', hk', hacc, hk't⟩ := hI.catchUp x hx kw Hv hkw (not_le.1 hkg) y hy k ℓ hc
+          (by linarith) hFHv
+        exact Or.inr (Or.inr ⟨k', hk', hacc, by linarith⟩)
+    exact result_transfer_anc sp hrun hx hres hDC hy hca hes hCy (hes ▸ hviab)
+      (slow_live_locks hI.toHealthyBase hx hsl hwin hy hca hes
+        fun z hz k' hk' e' hv' hs' => ih k' hk' z hz e' hv' hs')
+      (writer_merged hrun hx hupd hy hca hes (hI.syncAC (by linarith) _))
 
 /-- **§3, proposal-boundary transfer**: the head of every honest `ac_proposal` at `t_{j+1}`
 extends a clean raw origin `(B, j)` (the full previous-slot pool and viable tree; the regular
@@ -193,6 +244,22 @@ theorem h2_proposals_continue (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FG
       (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) → Anc U B d.head := by
   sorry
 
+/-- **§6.1, raw-origin transfer (votes)**: a clean raw origin `(B, j)` is carried by every honest
+vote of a slot after `j`. -/
+theorem raw_origin_votes (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j : Nat}
+    (hB : CleanOrigin tr H t₀ B j) : VotesExtendAfter tr H U j B := by
+  have hk := sp.two_le_k
+  obtain ⟨hfirst, hj1⟩ : (∀ y ∈ H, ∀ k e, VoteAt tr y k e → e.msg.slot = j + 1 →
+      VoteExtends U e.msg B) ∧ t₀ + 4 * sp.Δ ≤ sp.ts (j + 1 : Nat) := by
+    rcases cleanOrigin_iff.1 hB with ⟨x, hx, i, CV, hjx, hfl, hj⟩ | ⟨x, hx, i, hjx, hsl, hj⟩
+    · exact ⟨raw_fast_first_votes hI hx hjx hfl hj, hj.trans ((ts_le_iff sp).2 (by omega))⟩
+    · exact ⟨raw_slow_first_votes hI hx hjx hsl hj, hj.trans ((ts_le_iff sp).2 (by omega))⟩
+  have hcont := h2_votes_continue hI hB.protected (Nat.le_succ j) hj1 hfirst
+  exact votesExtendAfter_iff.2 fun y hy k e hv hlt => by
+    rcases Nat.lt_or_ge (j + 1) e.msg.slot with h | h
+    · exact votesExtendAfter_iff.1 hcont y hy k e hv h
+    · exact hfirst y hy k e hv (by omega)
+
 /-- **§6.1, raw-origin transfer**: a clean raw origin `(B, j)` is carried by every honest vote
 and every honest proposal head of a slot after `j`. -/
 theorem raw_origin_transfer (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j : Nat}
@@ -200,17 +267,11 @@ theorem raw_origin_transfer (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP}
     VotesExtendAfter tr H U j B ∧ ProposalsExtendAfter tr H U j B := by
   have hΔ := sp.toParams.hΔ
   have hk := sp.two_le_k
-  -- the first votes, and `t_{j+1} ≥ t₀ + 4Δ`
-  obtain ⟨hfirst, hj1⟩ : (∀ y ∈ H, ∀ k e, VoteAt tr y k e → e.msg.slot = j + 1 →
-      VoteExtends U e.msg B) ∧ t₀ + 4 * sp.Δ ≤ sp.ts (j + 1 : Nat) := by
-    rcases cleanOrigin_iff.1 hB with ⟨x, hx, i, CV, hjx, hfl, hj⟩ | ⟨x, hx, i, hjx, hsl, hj⟩
-    · exact ⟨raw_fast_first_votes hI hx hjx hfl hj, hj.trans ((ts_le_iff sp).2 (by omega))⟩
-    · exact ⟨raw_slow_first_votes hI hx hjx hsl hj, hj.trans ((ts_le_iff sp).2 (by omega))⟩
-  have hcont := h2_votes_continue hI hB.protected (Nat.le_succ j) hj1 hfirst
-  have hvotes : VotesExtendAfter tr H U j B := votesExtendAfter_iff.2 fun y hy k e hv hlt => by
-    rcases Nat.lt_or_ge (j + 1) e.msg.slot with h | h
-    · exact votesExtendAfter_iff.1 hcont y hy k e hv h
-    · exact hfirst y hy k e hv (by omega)
+  have hj1 : t₀ + 4 * sp.Δ ≤ sp.ts (j + 1 : Nat) := by
+    rcases cleanOrigin_iff.1 hB with ⟨-, -, -, -, -, -, hj⟩ | ⟨-, -, -, -, -, hj⟩
+    · exact hj.trans ((ts_le_iff sp).2 (by omega))
+    · exact hj.trans ((ts_le_iff sp).2 (by omega))
+  have hvotes := raw_origin_votes hI hB
   refine ⟨hvotes, proposalsExtendAfter_iff.2 fun x hx i ℓ m d pay hc hcall ht hjm hd => ?_⟩
   rcases Nat.lt_or_ge (j + 1) m with h | h
   · obtain ⟨m', rfl⟩ : ∃ m', m = m' + 1 := ⟨m - 1, by omega⟩

@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 
 public section
 
@@ -9,7 +10,9 @@ public section
 Under H.2's premises (`InclusionRun`, which extends H.1's `HealthyBase`, so H.1's honest-batch
 lemmas apply as they are): `Inv` at a vote not covered by `Φ.F` gives the viability of a
 protected block and `Φ.F ⪯ B` (`inv_at_vote`); and `Carry_y` for an honest batch extending `B`
-(`h2_carry_votes`, §5's transport: relay after `ḡ`, `Catch(2Δ)` before). -/
+(`h2_carry_votes`, §5's transport: relay after `ḡ`, `Catch(2Δ)` before); every honest node is a
+voter at an honest update (`honest_voter_at_update`), so a result has an honest supporter
+(`result_honest_supporter`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -110,6 +113,93 @@ theorem h2_carry_votes (hI : InclusionRun tr H U g t₀) {m : Nat}
   · obtain ⟨k', hk', hacc', hk't⟩ := hI.catchUp x hx k Hd' hacc (not_le.1 hkg) y hy i ℓ hc.1
       (by linarith) (hFB.trans hBHd)
     exact Or.inr (Or.inr ⟨k', hk', hacc', by linarith⟩)
+
+private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (optimisticConfirmation sp A Φ t).pool = A.pool := by
+  unfold optimisticConfirmation updateLatestConfirmed
+  split
+  · rfl
+  · split_ifs <;> rfl
+
+/-- **An honest node is a voter at every honest update** of a slot `l` with `t_l ≥ ḡ + 4Δ`: its
+slot-`l` vote (or a pair of its slot-`l` votes) is in the writer's pool at the update, or it
+equivocates there. -/
+theorem honest_voter_at_update (hI : InclusionRun tr H U g t₀) {X : Fin sp.n} (hX : X ∈ H)
+    {i₀ l : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ l ℓX)
+    (hl : gbar g + 4 * sp.Δ ≤ sp.ts l) {z : Fin sp.n} (hz : z ∈ H) :
+    z ∈ voters {v | v ∈ (tr.state X i₀).pool l} := by
+  have hrun := hI.run
+  have hr := hrun.localRun
+  have hΔ := sp.toParams.hΔ
+  have hts : sp.ts (l + 1 : Nat) = sp.ts l + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes⟩ := honest_votes_in_slot hI.toHealthyBase hl z hz
+  obtain ⟨i, e', ⟨ℓ', hc', he'⟩, hes'⟩ :=
+    honest_votes_in_slot hI.toHealthyBase (show gbar g + 4 * sp.Δ ≤ sp.ts (l + 1 : Nat) by
+      linarith) z hz
+  obtain ⟨hval, hsl, -, -⟩ := castAt_spec hr hz ⟨hc, he⟩
+  obtain ⟨-, hsl', -, -⟩ := castAt_spec hr hz ⟨hc', he'⟩
+  have htk := vote_time_le hr hz ⟨ℓ, hc, he⟩
+  rw [← hsl, hes] at htk
+  have hti : sp.ts (l + 1 : Nat) ≤ tr.time i :=
+    (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [← hsl', hes'])
+  have hki : k ≤ i := by
+    by_contra h
+    have := hr.time_mono (not_le.1 h).le
+    linarith
+  -- after its slot-`l` vote, `z` holds that vote or two of its slot-`l` votes
+  have hpool : e.msg ∈ (tr.state z (k + 1)).pool l ∨
+      z ∈ equivocators {x | x ∈ (tr.state z (k + 1)).pool l} := by
+    rw [show tr.state z (k + 1) = tr.post k by simp [Trace.state, hc.1, hc.2],
+      post_of_castAt hr hz ⟨hc, he⟩, optimistic_pool, ← hes, ← hval]
+    exact admitVote_held _ _ _ (by omega) (by omega)
+  have hW := writer_pool hrun hX hupd hz ⟨hc', he'⟩ hes' (hI.syncAC (by linarith) _) hki
+  have hvot : ∀ v ∈ (tr.state z (k + 1)).pool l, v.val = z →
+      z ∈ voters {v | v ∈ (tr.state X i₀).pool l} := by
+    intro v hv hvz
+    rcases hW v hv with h | ⟨a, ha, -, -, -, hav, -⟩
+    · exact ⟨v, h, hvz⟩
+    · exact ⟨a, ha, hav.trans hvz⟩
+  rcases hpool with h | ⟨a, ha, -, -, -, hav, -⟩
+  · exact hvot _ h hval
+  · exact hvot a ha hav
+
+/-- **A result of a slot `l` with `t_l ≥ ḡ + 4Δ` has an honest supporter**: an honest slot-`l`
+vote whose head extends it (its counted validators are a strict majority of the writer's
+voters, which include every honest node, and `f < n/2`). -/
+theorem result_honest_supporter (hI : InclusionRun tr H U g t₀) {X : Fin sp.n} (hX : X ∈ H)
+    {i₀ l : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hR : ResultAt tr X i₀ l C CV)
+    (hl : gbar g + 4 * sp.Δ ≤ sp.ts l) :
+    ∃ x ∈ H, ∃ j e, VoteAt tr x j e ∧ e.msg.slot = l ∧ VoteExtends U e.msg C := by
+  have hrun := hI.run
+  have hr := hrun.localRun
+  have hmaj := result_majority hR
+  obtain ⟨ℓX, hu, -, hCV⟩ := hR
+  have hHV : H ⊆ voters {v | v ∈ (tr.state X i₀).pool l} := fun z hz =>
+    honest_voter_at_update hI hX hu hl hz
+  have hSV : {w | ∃ v ∈ CV, v.val = w} ⊆ voters {v | v ∈ (tr.state X i₀).pool l} := by
+    rintro w ⟨v, hv, rfl⟩
+    rw [hCV] at hv
+    exact ⟨v, hv.1, rfl⟩
+  obtain ⟨w, ⟨v, hv, rfl⟩, hwH⟩ : ∃ w ∈ {w | ∃ v ∈ CV, v.val = w}, w ∈ H := by
+    by_contra hno'
+    have hno : ∀ w ∈ {w | ∃ v ∈ CV, v.val = w}, w ∉ H := fun w hw hwH => hno' ⟨w, hw, hwH⟩
+    have hdisj : Disjoint H {w | ∃ v ∈ CV, v.val = w} :=
+      Set.disjoint_left.2 fun y hyH hyS => hno y hyS hyH
+    have h1 := Set.ncard_union_eq hdisj
+    have h2 := Set.ncard_le_ncard (Set.union_subset hHV hSV)
+    have h3 : {w | ∃ v ∈ CV, v.val = w}.ncard ≤ Hᶜ.ncard :=
+      Set.ncard_le_ncard fun y hy => hno y hy
+    have hn : H.ncard + Hᶜ.ncard = sp.n := by
+      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+    have := hI.two_faulty_lt
+    omega
+  rw [hCV] at hv
+  obtain ⟨hvp, -, -, R, hR, hRr, hCR⟩ := hv
+  obtain ⟨j, -, e, hve, rfl⟩ := hrun.honest.pool_vote X hX i₀ l _ hvp hwH
+  obtain ⟨-, hΦU⟩ := frameIn_of_callAt hr hX hu.1
+  exact ⟨_, hwH, j, e, hve, state_pool_slot sp hr hX i₀ l _ hvp, R, hΦU hR, hRr,
+    Anc.mono hΦU hCR⟩
 
 end Consensus.Goldilocks.SA
 

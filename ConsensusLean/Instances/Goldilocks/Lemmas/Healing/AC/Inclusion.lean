@@ -22,7 +22,7 @@ theorem ac_inclusion (sp : SAParams) : ACInclusion (sp := sp) := by
   have hΔ := sp.toParams.hΔ
   have hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ) :=
     (h2_locks_settled hI).mono (by linarith)
-  exact ⟨h2_proposal_votes hI hpH hP hp hset, h2_proposal_confirmed hI hpH hP hp hset⟩
+  exact ⟨h2_proposal_votes hI hpH hP hp hset, h2_proposal_confirmed hI hpH hP hp⟩
 
 end Consensus.Goldilocks.SA
 
