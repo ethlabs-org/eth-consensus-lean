@@ -1258,6 +1258,7 @@ canary_run() {  # canary_run <file> <hash file>, in a subshell that restores <fi
 overall=0
 skipped=()
 step_times=()
+build_failed=0
 deferred=()
 ci_only=()
 # in_part <label>: whether this run's --split part runs the step (by its number): lake-check = 0 and 10.
@@ -1275,9 +1276,13 @@ run_step() {
   if ! in_part "$label"; then
     echo "DEFER $label (the other --split part)"; deferred+=("$label"); return 0
   fi
+  # After a failed build, the steps that read build outputs would report on stale artifacts (#50): not run.
+  if ((build_failed)) && [[ " 3 3b 4 5 6 9 10 11 14 " == *" ${label%% *} "* ]]; then
+    skip_step "$label" "not run: step 1 failed, so the build outputs it reads may be stale"; return 0
+  fi
   echo "--- $label ---"
   local t0=$SECONDS v=PASS
-  "$@" || { v=FAIL; overall=1; }
+  "$@" || { v=FAIL; overall=1; [[ "$label" != "1 build self-test"* && "${label%% *}" == 1 ]] && build_failed=1; }
   echo "  time: $((SECONDS - t0)) s"   # wall time of the step (#50); verdict lines unchanged
   step_times+=("$((SECONDS - t0))s ${label%% (*}")
   printf '%s  %s\n' "$v" "$label"
