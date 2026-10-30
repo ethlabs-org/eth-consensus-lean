@@ -469,6 +469,11 @@ HS.5's `Producer(A)` enter as conclusions (a), (b) of HR.3.
 | H.2 (run) | CLAIMS H.2 (run) (uses C0.4, C0.5 (b)) | unanimity, honest proposal and inclusion over the AC projection; **AC inclusion in runs**: the projection is driven with `Healthy(g)`, `Catch(2Δ)`, and H.2's conclusions hold for the run | Healing | `Consensus.Goldilocks.Healing.Unanimous`, `Consensus.Goldilocks.Healing.HonestProposalRun`, `Consensus.Goldilocks.Healing.IncludedFrom`, `Consensus.Goldilocks.Healing.RunInclusion` |
 | H.3 | CLAIMS H.3 | one settled effective phase for a proposal and its votes; the bridge `Inv(a_z + T_b)` + `Geo` in settled phases; **FG non-interference**: some `T_b ≥ 0` depending on `(n, Δ, Δ_F, k, δ_t)` only, with (a) `a_z ≤ ḡ + 24Δ + 12C_HS`, (b) (R1)–(R4), (c) the bridge | Healing | `Consensus.Goldilocks.Healing.InSettledPhase`, `Consensus.Goldilocks.Healing.BridgeAt`, `Consensus.Goldilocks.Healing.NonInterference` |
 | H.4 | CLAIMS H.4 | `T_heal`; **available healing, assembled** (conditional on the bridge): (i) unanimous honest proposals after `T_heal` included, (ii) under `(U_B)`, (iii) under `(U_all)`, with the closed form of `T_heal` | Healing | `Consensus.Goldilocks.Healing.T_heal`, `Consensus.Goldilocks.Healing.AvailableHealing` |
+| HS | CLAIMS §"Healing: phase service" (shared definitions) | the phase floor `ℓ` (`m` in a contest, `m − 1` otherwise); a block allowed in the effective phase geometry; the phase constant over a range of cuts (before the phase end `e`); the entry of a source's chain at a height; `a` and `r` from `w`; settled at `w` in a phase; a vote that extends `B` with `B` viable at it; a stored slow lock | Healing | `Consensus.Goldilocks.Healing.phaseFloor`, `Consensus.Goldilocks.Healing.EffAllowed`, `Consensus.Goldilocks.Healing.PhaseOn`, `Consensus.Goldilocks.Healing.EntryOf`, `Consensus.Goldilocks.Healing.slotA`, `Consensus.Goldilocks.Healing.rTime`, `Consensus.Goldilocks.Healing.SettledIn`, `Consensus.Goldilocks.Healing.VoteKeeps`, `Consensus.Goldilocks.Healing.StoredSlowLockAt` |
+| HS.1 | CLAIMS HS.1 | **viable-witness retention**: a block allowed in the effective phase geometry is extended by every later honest `Σ.F` before `e`, stays in frame trees and allowed (or below `fc_root`), and its ancestors stay viable or below `fc_root`, also in the voter block tree when it is there | Healing | `Consensus.Goldilocks.Healing.ViableWitnessRetention` |
+| HS.2 | CLAIMS HS.2 | **clean-lock transfer and drain**: fast locks of label `≥ a` and slow locks with `j − k + 1 ≥ a` (stored blocks) transfer to the next votes (with `Carry` for fast) and later votes unless below `fc_root`; live locks from `r` are clean; honest proposals from `r` follow every earlier-label live lock | Healing | `Consensus.Goldilocks.Healing.CleanLockDrain` |
+| HS.3 | CLAIMS HS.3 | **frozen-tree agreement**: an honest ready proposal in a stable phase, with relay from the previous freeze and the lock premise, gets every honest vote of its slot with its ancestry retained; after `r` (settled, `Prop⁺`) without the lock premise, and later votes and proposal parents extend it | Healing | `Consensus.Goldilocks.Healing.FrozenTreeAgreement` |
+| HS.4 | CLAIMS HS.4 | **common path and actual-report acquisition**: the phase ends by `w + D` or a unanimous honest proposal `W` at height `h ∈ {ℓ, m}` with every honest validator holding a source with its entry or a matching row by `v = t_s + 6Δ`, later votes and parents extending `W`; the client subclaim (P1/P2) | Healing | `Consensus.Goldilocks.Healing.CommonPathAcquisition`, `Consensus.Goldilocks.Healing.PhaseServiceStatements` |
 
 Modelling choices:
 
@@ -529,6 +534,18 @@ Modelling choices:
   (attestations) are not read separately; H.4's proof is H.2 (run) (ii), which the claims state the same way.
 - **H.2 (run)** states both the bridge to H.2's premises (driven, `Healthy`, `Catch` on the projection) and the
   run conclusion, so that its proof is the bridge plus H.2 with `GoldilocksACProjection`.
+- **HS.1–HS.4** (`Statements/Healing/Service`): "before the phase end `e`" is `PhaseOn` from the cut that fixes the
+  phase (for HS.2–HS.4 the first cut at `w`); "label `j ≥ a`" is `t_j ≥ w + 4Δ`. Stored blocks (after the move back)
+  for the fast and slow locks of HS.2, as in C1.1 and HR.4. "Follows every effective live earlier-label lock" (HS.2
+  (3), HS.3's premise) is read at each honest slot-`s` vote: every live lock (`liveLocks`, moved back) of a label `< s`
+  of the voter is below the proposal or at or below the voter's `fc_root`; so HS.2 (3) gives HS.3's premise. `Carry`
+  in HS.2 (1), (2) is for the retained counted heads, i.e. when `B` is not at or below the voter's `fc_root`. HS.3's
+  "stable effective phase geometry on the compared events" is the phase constant from a cut at or before the previous
+  freeze `t_{s−1} + 3Δ` (the voters' pre-freeze trees are compared) through every slot-`s` vote. HS.4's source "with
+  entry `E`" has state height `h` (`fg_attest` signs at the source's own height), so a higher suppressing source does
+  not count. HS.3's "acceptance relay from the previous freeze" is `t_{s−1} + 3Δ ≥ ḡ` (relay holds
+  from `ḡ` under `Healthy`). HS.4's "by `v`" is at a cut at a time `≤ v`. HS.0 and HS.5's `Producer(A)` are HR.3
+  (a), (b); HS.5's other conclusions (PhaseService, continuation, row delivery, consumption) are not transcribed yet.
 - **Witnesses** (`ConsensusLeanTest/GoldilocksHealing`): kind (a) for HR.2's premises and the phase vocabulary, and
   for `Catch` and `NoRestartAfter` with the run laws, and for `Healthy(0)` with `Catch` and `NoRestartAfter` on the
   infinite periodic `idleAC` run; arithmetic checks of `C_HS`, HR.3's bound and `T_heal`. No witness over Goldilocks

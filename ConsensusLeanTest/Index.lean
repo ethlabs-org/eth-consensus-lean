@@ -678,6 +678,20 @@ example := ``Consensus.Goldilocks.Healing.RunInclusion
 example := ``Consensus.Goldilocks.Healing.NonInterference
 example := ``Consensus.Goldilocks.Healing.T_heal
 example := ``Consensus.Goldilocks.Healing.AvailableHealing
+example := ``Consensus.Goldilocks.Healing.phaseFloor
+example := ``Consensus.Goldilocks.Healing.EffAllowed
+example := ``Consensus.Goldilocks.Healing.PhaseOn
+example := ``Consensus.Goldilocks.Healing.EntryOf
+example := ``Consensus.Goldilocks.Healing.slotA
+example := ``Consensus.Goldilocks.Healing.rTime
+example := ``Consensus.Goldilocks.Healing.SettledIn
+example := ``Consensus.Goldilocks.Healing.VoteKeeps
+example := ``Consensus.Goldilocks.Healing.StoredSlowLockAt
+example := ``Consensus.Goldilocks.Healing.ViableWitnessRetention
+example := ``Consensus.Goldilocks.Healing.CleanLockDrain
+example := ``Consensus.Goldilocks.Healing.FrozenTreeAgreement
+example := ``Consensus.Goldilocks.Healing.CommonPathAcquisition
+example := ``Consensus.Goldilocks.Healing.PhaseServiceStatements
 
 /-! ## Goldilocks Regimes (a milestone PR appends here only) -/
 
