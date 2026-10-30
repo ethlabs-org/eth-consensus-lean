@@ -24,7 +24,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-! ## Helpers -/
 
-private theorem getHead_mem' {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FGP)}
+/-- The walk of a subtree of a well-formed frame ends in the frame's tree. -/
+theorem getHead_mem' {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FGP)}
     (hT : T ⊆ Φ.tree) (A : SAState sp.n) (t : Time) (V : View sp.n) (σ : Int) :
     getHead sp A Φ t T V σ ∈ Φ.tree := by
   have ha : getAnchor sp A Φ t ∈ Φ.tree := by
@@ -116,7 +117,7 @@ theorem StandaloneRun.deadline_le (hS : StandaloneRun tr H U g) {y : Fin sp.n} (
     linarith [max_le_max_left τ (hS.restart_le hy hrk)]
 
 /-- Under trivial frames, `Φ.F` is the same block at every honest call. -/
-private theorem trivial_F_eq (hS : StandaloneRun tr H U g) {y z : Fin sp.n} (hy : y ∈ H)
+theorem trivial_F_eq (hS : StandaloneRun tr H U g) {y z : Fin sp.n} (hy : y ∈ H)
     (hz : z ∈ H) {i j : Nat} {ℓ ℓ' : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
     (hc' : tr.CallAt z j ℓ') : ℓ.frame.F = ℓ'.frame.F := by
   have hr := hS.run.localRun
@@ -266,7 +267,7 @@ theorem accepted_of_blockStamp_lt (hS : StandaloneRun tr H U g) {y : Fin sp.n} (
 /-- A vote an honest node holds at cut `a` is held at every later cut `b` with no restart in
 between, with a stamp before `T` when every cut before `a`, every own vote of its slot and every
 restart are before `T`. -/
-private theorem stamp_lt_of_held (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H)
+theorem stamp_lt_of_held (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H)
     {a b : Nat} (hab : a ≤ b) {w : Vote sp.n} (hw : w ∈ (tr.state y a).pool w.slot) {T : Time}
     (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T) (hgT : gbar g < T)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) :
@@ -402,83 +403,35 @@ theorem carry_of_sent (hS : StandaloneRun tr H U g) {s : Nat}
         exact Or.inr ⟨a, b, hab, fun h => hv0 (h ▸ ha), fun h => hv0 (h ▸ hb), hav, hbv, has,
           hbs, hT a has ha, hT b hbs hb⟩
 
-/-- **Viability under trivial frames.** A block `B` extended by an honest vote of a slot
-`σ ≥ r` is in the viable voter block tree of every honest slot-`(σ+1)` vote, or is genesis
-(`Φ.fc_root`): the voter accepted it before the vote freeze `t_σ + 3Δ`, by acceptance relay or
-`Catch(2Δ)`. -/
-theorem trivial_viable (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+/-- **Viability at a vote from acceptance before the freeze** (under trivial frames): a block of
+`U` that is genesis, or that an honest voter of slot `σ + 1` (`σ ≥ r`) accepted before the vote
+freeze `t_σ + 3Δ`, is in the viable tree of its voter block tree (or is `fc_root`). -/
+theorem viable_of_accepted (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     (hes : e.msg.slot = σ + 1) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
-    (hB : ∃ z ∈ H, ∃ j e', VoteAt tr z j e' ∧ e'.msg.slot = σ ∧ VoteExtends U e'.msg B) :
+    (hBU : B ∈ U) (hB : AcceptedBefore tr y B (sp.ts σ + 3 * sp.Δ)) :
     ViableAtVote ℓ e (σ + 1) B := by
   have hr := hS.run.localRun
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
-  obtain ⟨z, hz, j, e', ⟨ℓz, hcz, hez⟩, hs', Hd, hHdU, hHdr, hBHd⟩ := hB
-  obtain ⟨hΦz, hΦzU⟩ := frameIn_of_callAt hr hz hcz
+  have hg0 := gbar_nonneg g
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc.1
-  obtain ⟨-, -, -, htreez⟩ := hS.trivial z hz j ℓz hcz
-  obtain ⟨-, hfcy, hvhy, htreey⟩ := hS.trivial y hy i ℓ hc.1
-  have hFF := trivial_F_eq hS hz hy hcz hc.1
-  -- the head of `z`'s vote is in its tree
-  obtain ⟨-, hslz, -, hhead⟩ := castAt_spec hr hz ⟨hcz, hez⟩
-  have hHdt : Hd ∈ ℓz.frame.tree := by
-    have hm := getHead_mem' hΦz (fun _ hX => hX.1.1) e'.readPoint (tr.time j)
-      (mergedVoteView sp e'.readPoint ℓz.frame e'.msg.slot) ((e'.msg.slot : Int) - 1)
-      (T := ℓz.frame.viableTree (voterBlockTree sp e'.readPoint ℓz.frame e'.msg.slot))
-    rwa [hU.1 hHdU (hΦzU hm) (hHdr.trans hhead)]
-  -- `B` is genesis, or `z` accepted it by its vote
-  have hgen : ∀ X, Anc U X ℓz.frame.F → X = ℓz.frame.F := by
-    intro X hX
-    obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hr hz j ℓz hcz
-    have hFG : ℓz.frame.F = G :=
-      hU.1 (hΦzU hΦz.rooted.1) hGU ((hS.trivial z hz j ℓz hcz).1.trans hGr.symm)
-    rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hX with h | ⟨c, -, hp⟩
-    · exact h.symm
-    · have := hp.2.2
-      rw [hFG, hGp] at this
-      exact absurd this (by simp)
-  have hcase : B = ℓz.frame.F ∨ ∃ k ≤ j, tr.AcceptAt z k B := by
-    rcases anc_total hU hBHd ((hΦz.rooted.2 Hd hHdt).mono hΦzU) with h | h
-    · exact Or.inl (hgen B h)
-    · have hBz := frame_mem_of_between sp hU hΦz hΦzU hHdt hBHd h
-      rw [htreez] at hBz
-      rcases hBz with h | h
-      · exact Or.inl h
-      · exact Or.inr h
-  rcases hcase with hBF | ⟨k, hkj, hacc⟩
-  · right
-    rw [hBF, hFF, hfcy]
-    exact Relation.ReflTransGen.refl
-  -- times: `z` accepted `B` by `t_σ + Δ`; `y` votes from `t_{σ+1}`
+  obtain ⟨hFy, hfcy, hvhy, htreey⟩ := hS.trivial y hy i ℓ hc.1
   have hσ1 : ((σ + 1 : Nat) : Int) - 1 = σ := by push_cast; ring
   have hts1 : sp.ts (σ + 1 : Nat) = sp.ts σ + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
-  have htk : tr.time k ≤ sp.ts σ + sp.Δ := by
-    have := vote_time_le hr hz ⟨ℓz, hcz, hez⟩
-    rw [← hslz, hs'] at this
-    exact (hr.time_mono hkj).trans this
   have hti : sp.ts σ + 4 * sp.Δ ≤ tr.time i := by
     obtain ⟨-, hsl, -, -⟩ := castAt_spec hr hy hc
     rw [← hts1]
     exact (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [← hsl, hes])
-  have hg0 := gbar_nonneg g
-  have hF : Anc U ℓ.frame.F B := by
-    have hBz : B ∈ ℓz.frame.tree := by
-      rw [htreez]; exact Set.mem_insert_of_mem _ ⟨k, hkj, hacc⟩
-    rw [← hFF]
-    exact (hΦz.rooted.2 B hBz).mono hΦzU
-  -- `y` accepted `B` before the freeze `t_σ + 3Δ`
-  obtain ⟨k', hk'i, hacc', hlt⟩ :
-      ∃ k' ≤ i, tr.AcceptAt y k' B ∧ tr.time k' < sp.ts σ + 3 * sp.Δ := by
-    by_cases hgk : g ≤ tr.time k
-    · have hmax : max (tr.time k) (gbar g) ≤ sp.ts σ + sp.Δ := max_le htk (by linarith)
-      obtain ⟨k', hk'i, hacc', hlt⟩ := hS.healthy.2.1 z hz k B hacc hgk y hy i ℓ hc.1
-        (by linarith [hS.deadline_le hy i (tr.time k)]) hF
-      exact ⟨k', hk'i, hacc', by linarith [hS.deadline_le hy k' (tr.time k)]⟩
-    · obtain ⟨k', hk'i, hacc', hlt⟩ := hS.catchUp z hz k B hacc
-        (lt_of_lt_of_le (not_le.1 hgk) (le_gbar g)) y hy i ℓ hc.1 (by linarith) hF
-      exact ⟨k', hk'i, hacc', by linarith⟩
+  rcases hB with hg | ⟨k', hacc', hlt⟩
+  · right
+    rw [hU.1 hBU (hΦU hΦ.rooted.1) (hg.trans hFy.symm), hfcy]
+    exact Relation.ReflTransGen.refl
+  have hk'i : k' ≤ i := by
+    by_contra h
+    have := hr.time_mono (le_of_lt (not_le.1 h))
+    linarith
   have hBy : B ∈ ℓ.frame.tree := by
     rw [htreey]; exact Set.mem_insert_of_mem _ ⟨k', hk'i, hacc'⟩
   have hst := blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hBy (Or.inr ⟨k', hacc', hlt⟩)
@@ -522,6 +475,85 @@ theorem trivial_viable (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ 
   refine ⟨hvbt, ?_, B, hvbt, by rw [hvhy]; exact hBy, Relation.ReflTransGen.refl⟩
   rw [hfcy]
   exact hΦ.rooted.2 B hBy
+
+
+/-- **Viability under trivial frames.** A block `B` extended by an honest vote of a slot
+`σ ≥ r` is in the viable voter block tree of every honest slot-`(σ+1)` vote, or is genesis
+(`Φ.fc_root`): the voter accepted it before the vote freeze `t_σ + 3Δ`, by acceptance relay or
+`Catch(2Δ)`. -/
+theorem trivial_viable (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
+    (hes : e.msg.slot = σ + 1) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
+    (hB : ∃ z ∈ H, ∃ j e', VoteAt tr z j e' ∧ e'.msg.slot = σ ∧ VoteExtends U e'.msg B) :
+    ViableAtVote ℓ e (σ + 1) B := by
+  have hr := hS.run.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨z, hz, j, e', ⟨ℓz, hcz, hez⟩, hs', Hd, hHdU, hHdr, hBHd⟩ := hB
+  obtain ⟨hΦz, hΦzU⟩ := frameIn_of_callAt hr hz hcz
+  obtain ⟨-, -, -, htreez⟩ := hS.trivial z hz j ℓz hcz
+  obtain ⟨-, hfcy, -, -⟩ := hS.trivial y hy i ℓ hc.1
+  have hFF := trivial_F_eq hS hz hy hcz hc.1
+  -- the head of `z`'s vote is in its tree
+  obtain ⟨-, hslz, -, hhead⟩ := castAt_spec hr hz ⟨hcz, hez⟩
+  have hHdt : Hd ∈ ℓz.frame.tree := by
+    have hm := getHead_mem' hΦz (fun _ hX => hX.1.1) e'.readPoint (tr.time j)
+      (mergedVoteView sp e'.readPoint ℓz.frame e'.msg.slot) ((e'.msg.slot : Int) - 1)
+      (T := ℓz.frame.viableTree (voterBlockTree sp e'.readPoint ℓz.frame e'.msg.slot))
+    rwa [hU.1 hHdU (hΦzU hm) (hHdr.trans hhead)]
+  -- `B` is genesis, or `z` accepted it by its vote
+  have hgen : ∀ X, Anc U X ℓz.frame.F → X = ℓz.frame.F := by
+    intro X hX
+    obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hr hz j ℓz hcz
+    have hFG : ℓz.frame.F = G :=
+      hU.1 (hΦzU hΦz.rooted.1) hGU ((hS.trivial z hz j ℓz hcz).1.trans hGr.symm)
+    rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hX with h | ⟨c, -, hp⟩
+    · exact h.symm
+    · have := hp.2.2
+      rw [hFG, hGp] at this
+      exact absurd this (by simp)
+  have hcase : B = ℓz.frame.F ∨ ∃ k ≤ j, tr.AcceptAt z k B := by
+    rcases anc_total hU hBHd ((hΦz.rooted.2 Hd hHdt).mono hΦzU) with h | h
+    · exact Or.inl (hgen B h)
+    · have hBz := frame_mem_of_between sp hU hΦz hΦzU hHdt hBHd h
+      rw [htreez] at hBz
+      rcases hBz with h | h
+      · exact Or.inl h
+      · exact Or.inr h
+  rcases hcase with hBF | ⟨k, hkj, hacc⟩
+  · right
+    rw [hBF, hFF, hfcy]
+    exact Relation.ReflTransGen.refl
+  -- times: `z` accepted `B` by `t_σ + Δ`; `y` votes from `t_{σ+1}`
+  have hts1 : sp.ts (σ + 1 : Nat) = sp.ts σ + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have htk : tr.time k ≤ sp.ts σ + sp.Δ := by
+    have := vote_time_le hr hz ⟨ℓz, hcz, hez⟩
+    rw [← hslz, hs'] at this
+    exact (hr.time_mono hkj).trans this
+  have hti : sp.ts σ + 4 * sp.Δ ≤ tr.time i := by
+    obtain ⟨-, hsl, -, -⟩ := castAt_spec hr hy hc
+    rw [← hts1]
+    exact (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [← hsl, hes])
+  have hg0 := gbar_nonneg g
+  have hF : Anc U ℓ.frame.F B := by
+    have hBz : B ∈ ℓz.frame.tree := by
+      rw [htreez]; exact Set.mem_insert_of_mem _ ⟨k, hkj, hacc⟩
+    rw [← hFF]
+    exact (hΦz.rooted.2 B hBz).mono hΦzU
+  -- `y` accepted `B` before the freeze `t_σ + 3Δ`
+  obtain ⟨k', hk'i, hacc', hlt⟩ :
+      ∃ k' ≤ i, tr.AcceptAt y k' B ∧ tr.time k' < sp.ts σ + 3 * sp.Δ := by
+    by_cases hgk : g ≤ tr.time k
+    · have hmax : max (tr.time k) (gbar g) ≤ sp.ts σ + sp.Δ := max_le htk (by linarith)
+      obtain ⟨k', hk'i, hacc', hlt⟩ := hS.healthy.2.1 z hz k B hacc hgk y hy i ℓ hc.1
+        (by linarith [hS.deadline_le hy i (tr.time k)]) hF
+      exact ⟨k', hk'i, hacc', by linarith [hS.deadline_le hy k' (tr.time k)]⟩
+    · obtain ⟨k', hk'i, hacc', hlt⟩ := hS.catchUp z hz k B hacc
+        (lt_of_lt_of_le (not_le.1 hgk) (le_gbar g)) y hy i ℓ hc.1 (by linarith) hF
+      exact ⟨k', hk'i, hacc', by linarith⟩
+  exact viable_of_accepted hS hy hc hes hσ (hΦzU (by
+    rw [htreez]; exact Set.mem_insert_of_mem _ ⟨k, hkj, hacc⟩)) (Or.inr ⟨k', hacc', hlt⟩)
 
 /-- A slot-`s` vote (`s ≥ r`) of an honest node's pool was admitted, not replayed by a restart,
 at a time in `[t_s, …)`, which is its stamp. -/
@@ -647,6 +679,39 @@ theorem trivial_carry_votes (hS : StandaloneRun tr H U g) {m : Nat}
   exact ⟨hvs, x, hx, j, ⟨ℓ, hc, Or.inl ⟨e', he, rfl⟩⟩, htj', by linarith, _, hΦU hG, hhead.symm,
     Or.inr ⟨j, ℓ, hc, by linarith, hG⟩⟩
 
+/-- **Every honest node votes** in a slot `m ≥ r` (T1 §3, "the honest batch"): it is awake and
+joined at `t_m + Δ`, runs its tick there (`Driven`), and `try_vote` votes unless it voted in slot
+`m` already. -/
+theorem honest_votes_in_slot (hS : StandaloneRun tr H U g) {m : Nat}
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) : ∀ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m := by
+  have hr := hS.run.localRun
+  have hΔ := sp.toParams.hΔ
+  have hg0 := gbar_nonneg g
+  intro x hx
+  have hslot : sp.slot (sp.ts m + sp.Δ) = m := by
+    refine slot_of_mem sp m (by linarith) ?_
+    rw [show sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ by simp only [SAParams.ts]; push_cast; ring]
+    linarith
+  obtain ⟨c, ℓ, hc, hcall, htc⟩ := hS.driven.tick x hx (sp.ts m + sp.Δ) (by linarith)
+    ⟨4 * m + 1, by simp only [SAParams.ts]; ring⟩ (hS.awake hx (by linarith))
+  have hj := hS.joined_state hx c (by rw [htc, hslot, ts_sub_one]; linarith)
+  by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
+  · obtain ⟨j, -, e, he, hes⟩ := vote_of_votedSlot hr hx c _ hv
+    exact ⟨j, e, he, by rw [hes, htc, hslot]⟩
+  · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
+    obtain ⟨e, hem, hes⟩ := tryVote_votes x ℓ.frame hj hv hT
+    have he := hr.exec c ℓ hc.2 (hc.1 ▸ hx)
+    rw [hc.1, hcall] at he
+    have h2 : (acOnTick sp x (tr.state x c) ℓ.frame (tr.time c)).2 = ℓ.emits :=
+      congrArg Prod.snd he
+    have h3 : (acOnTick sp x (tr.state x c) ℓ.frame (tr.time c)).2 =
+        (tryVote sp x (tr.state x c) ℓ.frame (tr.time c)).2 := by
+      unfold acOnTick
+      dsimp only
+      split_ifs
+      all_goals first | rfl | exact absurd hj ‹_›
+    exact ⟨c, e, ⟨ℓ, hc, h2 ▸ h3 ▸ hem⟩, by rw [hes, htc, hslot]⟩
+
 /-- **The honest batch** (T1 §3, "the honest batch has `n − f > n/2` seats"): in a slot
 `m ≥ r` every honest node votes (it is awake and joined at `t_m + Δ`, runs its tick there
 (`Driven`), and `try_vote` votes unless it voted in slot `m` already), so the honest voters of
@@ -654,34 +719,7 @@ slot `m` are at least half of the committee. -/
 theorem honest_voters_half (hS : StandaloneRun tr H U g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) :
     sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard := by
-  have hr := hS.run.localRun
-  have hΔ := sp.toParams.hΔ
-  have hg0 := gbar_nonneg g
-  have hall : ∀ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m := by
-    intro x hx
-    have hslot : sp.slot (sp.ts m + sp.Δ) = m := by
-      refine slot_of_mem sp m (by linarith) ?_
-      rw [show sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ by simp only [SAParams.ts]; push_cast; ring]
-      linarith
-    obtain ⟨c, ℓ, hc, hcall, htc⟩ := hS.driven.tick x hx (sp.ts m + sp.Δ) (by linarith)
-      ⟨4 * m + 1, by simp only [SAParams.ts]; ring⟩ (hS.awake hx (by linarith))
-    have hj := hS.joined_state hx c (by rw [htc, hslot, ts_sub_one]; linarith)
-    by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
-    · obtain ⟨j, -, e, he, hes⟩ := vote_of_votedSlot hr hx c _ hv
-      exact ⟨j, e, he, by rw [hes, htc, hslot]⟩
-    · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
-      obtain ⟨e, hem, hes⟩ := tryVote_votes x ℓ.frame hj hv hT
-      have he := hr.exec c ℓ hc.2 (hc.1 ▸ hx)
-      rw [hc.1, hcall] at he
-      have h2 : (acOnTick sp x (tr.state x c) ℓ.frame (tr.time c)).2 = ℓ.emits :=
-        congrArg Prod.snd he
-      have h3 : (acOnTick sp x (tr.state x c) ℓ.frame (tr.time c)).2 =
-          (tryVote sp x (tr.state x c) ℓ.frame (tr.time c)).2 := by
-        unfold acOnTick
-        dsimp only
-        split_ifs
-        all_goals first | rfl | exact absurd hj ‹_›
-      exact ⟨c, e, ⟨ℓ, hc, h2 ▸ h3 ▸ hem⟩, by rw [hes, htc, hslot]⟩
+  have hall := honest_votes_in_slot hS hm
   have hle := Set.ncard_le_ncard (s := H)
     (t := {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}) fun x hx => ⟨hx, hall x hx⟩
   have hn : H.ncard + Hᶜ.ncard = sp.n := by

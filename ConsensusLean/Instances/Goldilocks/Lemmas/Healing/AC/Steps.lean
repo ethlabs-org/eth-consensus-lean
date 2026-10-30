@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 
 public section
 
@@ -104,7 +105,36 @@ theorem proposal_confirmed (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n
       (tr.time j = sp.ts p + 6 * sp.Δ →
         ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
       Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)) := by
-  sorry
+  have hr := hS.run.localRun
+  have hΔ := sp.toParams.hΔ
+  have hΘ := Θ_nonneg sp
+  have hg0 := gbar_nonneg g
+  have hexact := proposal_votes hS hpH hP hp hset
+  have hPU : P ∈ U := by
+    obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, j, -, ⟨ℓ, hc, hcall⟩, -⟩ := hP
+    exact (frameIn_of_callAt hr hpH hc).2 ((accept_new sp hr hpH ⟨ℓ, hc, hcall⟩).1 ℓ hc)
+  intro y hy j ℓ hc ht htick
+  -- the node's tick at `t_p + 6Δ`, at or before the call
+  obtain ⟨k, hkj, ℓk, hck, hcallk, htk⟩ : ∃ k ≤ j, ∃ ℓk : ACLabel (goldilocksSA sp FGP ro),
+      tr.CallAt y k ℓk ∧ ℓk.call = .tick ∧ tr.time k = sp.ts p + 6 * sp.Δ := by
+    rcases eq_or_lt_of_le ht with heq | hlt
+    · obtain ⟨k, hkj, ℓk, hck, hcall, htk⟩ := htick heq.symm
+      exact ⟨k, hkj, ℓk, hck, hcall, htk.trans heq.symm⟩
+    · obtain ⟨k, ℓk, hck, hcall, htk⟩ := hS.driven.tick y hy (sp.ts p + 6 * sp.Δ)
+        (by linarith) ⟨4 * (p : Int) + 6, by simp only [SAParams.ts]; ring⟩
+        (hS.awake hy (by linarith))
+      refine ⟨k, ?_, ℓk, hck, hcall, htk⟩
+      by_contra h
+      have := hr.time_mono (le_of_lt (not_le.1 h))
+      linarith
+  obtain ⟨R, hR, hRr, hPR⟩ :=
+    record_extends hS hpH hP hp hset hexact hvotes hy hck hcallk htk j ℓ hc hkj
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc
+  have hPt := (proposal_mem_tree hS hpH hP (by linarith) hy hc (by linarith)).1
+  have hlocks := liveLock_compatible hS hp hset hexact hvotes hPU hy hc ht (Or.inr rfl)
+  rw [show tr.state y (j + 1) = tr.post j by simp [Trace.state, hc.1, hc.2]] at hlocks
+  exact anc_acConfirmed_of_record hr.coherent hΦ hΦU hR hRr hPR
+    (head_extends hS (by linarith) hvotes hy hc ht hPt hlocks)
 
 /-! ## Assembly -/
 
