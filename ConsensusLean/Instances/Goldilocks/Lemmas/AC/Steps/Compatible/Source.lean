@@ -15,7 +15,12 @@ slot `s'` that `x` wrote before the call (`fast_lock_provenance`), so `s' ≤ sl
 * `s' = s`: two fast locks of slot `s` (`fastLock_same_slot`);
 * `s' = s − 1`, so `slot(t) = s + 1`: in case (ii) `x` restarted after `t_s = t_{slot(t)−1}` and is
   not joined, so it returns nothing; in case (i) its slot-`(s+1)` unlocking moved the lock to a
-  block compatible with `B` (`locks_after_unlock`). -/
+  block compatible with `B` (`locks_after_unlock`).
+
+The fast lock enters only through its counted heads and the same-slot case, both of which pass
+from its block `D` down to any `B ⪯ D`, so the proof is for a lock on `D` and a block `B ⪯ D`
+(`source_compatible_stored`, the form C1.1 reads, with the stored block `Φ.viableAncestor D`);
+A1.9 is `B = D`. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -36,10 +41,27 @@ private theorem toFG_some {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t
     cases h
     exact ⟨(deepest_mem hC').1, hj, rfl⟩
 
-/-- **A1.9.** -/
-theorem source_compatible : SourceCompatible sp := by
-  intro FGP ro H U tr hrun s m w x i₀ i B CV ℓ C hw hfl hsync hcarry hf hx hto _ hlo hhi hvotes
-    hcase _ _
+/-- **A1.9 for the stored block**: `SourceCompatible` for a fast lock on `D`, with every
+hypothesis and the conclusion about a block `B ⪯ D` (the block the lock stores,
+`Φ.viableAncestor D`). -/
+theorem source_compatible_stored : ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro),
+    ACRun tr H U → ∀ (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat) (B D : Blk sp.n FGP)
+      (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (C : Blk sp.n FGP),
+    w ∈ H → FastLockAt tr w i₀ s D CV → Anc U B D →
+    SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr →
+    Carry tr H U s CV → 2 * Hᶜ.ncard < sp.n →
+    x ∈ H → ToFGAt tr x i ℓ C → sp.toParams.IsPublic (tr.time i) →
+    sp.ts (s + 1 : Nat) + sp.Δ < tr.time i → tr.time i ≤ sp.ts m + sp.Δ →
+    (∀ z ∈ H, ∀ j < i, ∀ e, VoteAt tr z j e → s < e.msg.slot → e.msg.slot ≤ m →
+      VoteExtends U e.msg B) →
+    ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧
+        Compatible U ℓ'.frame.F B ∧ Compatible U ℓ'.frame.fcRoot B) ∨
+      (∃ k < i, tr.RestartAt x k ∧ sp.ts s < tr.time k)) →
+    Compatible U ℓ.frame.F B → Compatible U ℓ.frame.fcRoot B →
+    Compatible U C B := by
+  intro FGP ro H U tr hrun s m w x i₀ i B D CV ℓ C hw hfl hBD hsync hcarry hf hx hto _ hlo hhi
+    hvotes hcase _ _
   have hr := hrun.localRun
   have hU := hr.coherent
   obtain ⟨hc, hcall, hC⟩ := hto
@@ -87,11 +109,14 @@ theorem source_compatible : SourceCompatible sp := by
       hvotes z hz j' hj' e hv (hes ▸ hlt) (by omega))
   · -- slot `s`: two fast locks of one slot
     subst heq
-    exact down hLB' ((fastLock_same_slot hrun hw hfl hx hfl' hsync hf).symm)
+    refine down hLB' ?_
+    rcases fastLock_same_slot hrun hw hfl hx hfl' hsync hf with h | h
+    exacts [Or.inr (hBD.trans h), anc_total hU h hBD]
   · -- slot `s − 1`, so `slot(t) = s + 1`
     have hσ : sp.slot (tr.time i) = s + 1 := by omega
     rcases hcase with ⟨j₁, hj₁, ℓ₁, e₁, hc₁, hs₁, hF₁, -⟩ | ⟨k, hk, hrk, htk⟩
-    · exact locks_after_unlock hrun hw hfl hcarry hx hc₁ hs₁ hF₁ hj₁ l₀ hl₀ hgt B₀ (hΦU hB₀) hB₀r
+    · exact locks_after_unlock hrun hw hfl hBD hcarry hx hc₁ hs₁ hF₁ hj₁ l₀ hl₀ hgt B₀ (hΦU hB₀)
+        hB₀r
     · -- a restart after `t_s` leaves `x` unjoined in slot `s + 1`
       exfalso
       have he := hr.exec i ℓ hc.2 (hc.1 ▸ hx)
@@ -107,6 +132,12 @@ theorem source_compatible : SourceCompatible sp := by
       have hc' : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
       rw [hc'] at this
       linarith
+
+/-- **A1.9.** -/
+theorem source_compatible : SourceCompatible sp :=
+  fun FGP ro H U tr hrun s m w x i₀ i B CV ℓ C hw hfl =>
+    source_compatible_stored sp FGP ro H U tr hrun s m w x i₀ i B B CV ℓ C hw hfl
+      Relation.ReflTransGen.refl
 
 end Consensus.Goldilocks.SA
 

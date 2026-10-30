@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks SA: the locks of a node after its slot-`(s+1)` unlocking (A1.9, case (i))
 
-Let an honest node write a fast lock of slot `s` on `B` with counted votes `CV`, under
+Let an honest node write a fast lock of slot `s` on `D ⪰ B` with counted votes `CV`, under
 `Carry(s, S, B)`. At an honest `x`'s slot-`(s+1)` vote, the counted validators (at least half of
 the committee) are supporters of `B` in `x`'s merged view or equivocate there, so its unlocking
 moves every lock of a slot below `s` to a block compatible with `B` (`unlock_compatible`; when
@@ -90,17 +90,21 @@ private theorem fastLock_counted (hrun : ACRun tr H U) {w : Fin sp.n} (hw : w �
       have := frame_slot_le sp hr hw hpt.1 R hR
       omega
 
-/-- **The locks after the unlocking of slot `s + 1`.** -/
+/-- **The locks after the unlocking of slot `s + 1`**, for a fast lock on `D` and any `B ⪯ D`
+(the block the lock stores). -/
 theorem locks_after_unlock (hrun : ACRun tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j b : Nat}
-    {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s B CV)
-    (hcarry : Carry tr H U s CV) (hx : x ∈ H) {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    {e : Em sp FGP} (hc : CastAt tr x j ℓ e) (hs : e.msg.slot = s + 1)
-    (hF : Compatible U ℓ.frame.F B) (hjb : j < b) :
+    {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s D CV)
+    (hBD : Anc U B D) (hcarry : Carry tr H U s CV) (hx : x ∈ H)
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr x j ℓ e)
+    (hs : e.msg.slot = s + 1) (hF : Compatible U ℓ.frame.F B) (hjb : j < b) :
     ∀ l ∈ (tr.state x b).locks, l.slot < s → ∀ L ∈ U, L.root = l.block → Compatible U L B := by
   have hr := hrun.localRun
   have hU := hr.coherent
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hx hc.1
   obtain ⟨hn, hcv⟩ := fastLock_counted hrun hw hfl
+  replace hcv : ∀ v ∈ CV, v.slot = s ∧ ∃ R ∈ U, R.root = v.head ∧ R.slot ≤ s ∧ Anc U B R :=
+    fun v hv => (hcv v hv).imp_right fun ⟨R, hR, h₁, h₂, h₃⟩ =>
+      ⟨R, hR, h₁, h₂, hBD.trans h₃⟩
   have hcar := hcarry x hx j e ⟨ℓ, hc⟩ hs
   have down : ∀ {X Y}, Anc U X Y → Compatible U Y B → Compatible U X B := by
     rintro X Y hXY (h | h)
