@@ -1,0 +1,87 @@
+# Header-only fixture (never built) for scripts/check-boundaries.py --self-test: the layer matrix of
+# scripts/boundaries.toml in miniature, with one milestone exception. cases.toml edits a copy of this tree.
+base = ["Init", "Mathlib"]
+fixture_libs = ["FxFix"]
+tool_exes = []
+init_module = "Fx.Init"
+init_exempt = ["Fx.ToMathlib"]
+milestone_parents = ["Fx.Proofs"]
+forbidden_imports = ["Mathlib"]
+
+[[lib]]
+name = "Fx"
+default = true
+root_lists_all = true
+
+[[lib]]
+name = "FxTest"
+test_driver = true
+root_lists_all = true
+
+[[lib]]
+name = "FxSol"
+
+[[layer]]
+name = "Init"
+prefixes = ["Fx.Init"]
+allow = []
+trusted = true
+
+[[layer]]
+name = "ToMathlib"
+prefixes = ["Fx.ToMathlib"]
+allow = []
+trusted = true
+
+[[layer]]
+name = "Spec"
+prefixes = ["Fx.Spec"]
+allow = ["Init", "ToMathlib"]
+trusted = true
+
+[[layer]]
+name = "Statements"
+prefixes = ["Fx.Statements"]
+allow = ["Init", "ToMathlib", "Spec"]
+trusted = true
+
+[[layer]]
+name = "Lemmas"
+prefixes = ["Fx.Lemmas"]
+allow = ["Init", "ToMathlib", "Spec", "Statements"]
+
+[[layer]]
+name = "Proofs.P"
+prefixes = ["Fx.Proofs.P"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "Proofs.Q"
+prefixes = ["Fx.Proofs.Q"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "Main"
+prefixes = ["Fx.Main"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q"]
+
+[[layer]]
+name = "Sol"
+prefixes = ["FxSol"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Main"]
+
+[[layer]]
+name = "Test"
+prefixes = ["FxTest"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Main", "Sol"]
+may_import_roots = true
+may_import_all = true
+
+[[exception]]
+from = ["Fx.Proofs.Q"]
+to = ["Fx.Proofs.P.Main"]
+reason = "fixture: milestone Q builds on milestone P"
+
+[checks]
+proofs_component_prefixes = ["Fx.Proofs"]
+trusted_paths = ["Fx/Init.lean", "Fx/ToMathlib", "Fx/Spec", "Fx/Statements"]

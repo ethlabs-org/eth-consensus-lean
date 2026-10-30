@@ -28,7 +28,7 @@ with git, Python and file reads only; the evidence script below reruns every tex
 
 ## Protected paths and declarations
 
-Every file of the spec group (`ConsensusLean/Init.lean`, `ConsensusLean/Spec/`, `ConsensusLean/Statements/`;
+Every file of the trusted layers (`ConsensusLean/Init.lean`, `ConsensusLean/Spec/`, `ConsensusLean/Statements/`;
 `Core` and `ToMathlib` are empty) is part of the claim. Namespaces remain `Consensus.*`.
 The Spec import closure excludes project Lemmas, Proofs, Main, Instances, Solution and tests.
 
@@ -138,14 +138,14 @@ The `scripts/**` stack is:
 | Files/groups | Review purpose |
 |---|---|
 | `check.sh` | Driver and self-tests: pins, build/freshness, imports, declarations, Spec surface, sequential replay, review pins, grep, vendor hashes, comparator, sandboxed Lake checks and docs. |
-| `check-imports.py` | Parsed imports, module-group closure rules, generated-root listing, library inventory, trusted-path coverage and base-name provenance constraints. |
+| `check-boundaries.py` | Parsed imports, layer matrix and exceptions, Init chain, generated-root listing, library inventory, trusted-path coverage and base-name provenance constraints. |
 | `check-pins.py` | Toolchain, dependency manifest, clean checkouts and actual Lake resolution. |
 | `SpecSurface.lean` | Snapshot, persisted extensions, theorem hygiene, constant-free parents, statement inventory and reachability; loads no checked extension state. |
 | `CheckDecls.lean` | Vendored EthLib declaration/axiom checker with two local patches (TRUST.md); detects unfinished proofs, unsafe/opaque/partial declarations and forbidden implementation hooks. |
 | `test_check_decls.sh`, `CheckDeclsTest.lean`, `CheckDeclsForeign.lean`, `CheckDeclsTest/**` | EthLib checker self-tests, including deliberately bad and exempt declarations. |
 | `LICENSE.EthLib` | CC0 licence for the vendored checker and tests. |
 | `fixtures/**` | Import, surface, review guard, grep, pins, docs, comparator and Lake replay controls. Deliberately invalid fixtures must fail. |
-| `boundaries.toml` | Reviewed libraries, module groups (R1–R3 import permissions), base set, fixture exclusions, `trusted_paths` and check configuration. |
+| `boundaries.toml` | Reviewed libraries, layer matrix and exceptions, base set, fixture exclusions, `trusted_paths` and check configuration. |
 | `pins.toml` | Reviewed exact toolchain and dependency provenance, including URLs/revisions/config paths. |
 | `spec-snapshot.txt` | Reviewed readable declarations and structural type/value hashes for every Spec-owned constant; header fixes pins/options. Proof values are omitted. |
 | `spec-extensions.txt` | Reviewed persisted-extension whitelist; not a complete audit of non-persisted source effects. |

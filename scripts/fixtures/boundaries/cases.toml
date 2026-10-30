@@ -1,0 +1,322 @@
+# Cases of `scripts/check-boundaries.py --self-test` (check.sh step 2 self-test). Each case is a copy of
+# Good/ (header-only modules, never built) with edits: `delete` (paths), `files` (path = new content) and
+# `edit` (path = [[old, new], ...], each old text matching exactly once). `expect`: the start of one finding
+# the case must produce; a case without it must pass.
+
+[Good]
+
+# --- configuration -------------------------------------------------------------------------------
+[MissingConfig]
+expect = "FAIL[config] cannot read the boundaries config"
+delete = ["boundaries.toml"]
+
+[BadToml]
+expect = "FAIL[config] the boundaries config"
+edit."boundaries.toml" = [['fixture_libs = ["FxFix"]', 'fixture_libs = ["FxFix"']]
+
+[UnknownKey]
+expect = "FAIL[config] [[layer]] Lemmas: unknown key alow"
+edit."boundaries.toml" = [['allow = ["Init", "ToMathlib", "Spec", "Statements"]', 'alow = ["Init", "ToMathlib", "Spec", "Statements"]']]
+
+[NoInitModule]
+expect = "FAIL[config] init_module"
+edit."boundaries.toml" = [['init_module = "Fx.Init"', '']]
+
+[MissingKey]
+expect = "FAIL[config] missing top-level key forbidden_imports"
+edit."boundaries.toml" = [['forbidden_imports = ["Mathlib"]', '']]
+
+[MisplacedKey]
+expect = "FAIL[config] [checks]: unknown key forbidden_imports"
+edit."boundaries.toml" = [['forbidden_imports = ["Mathlib"]', ''], ['[checks]', '''[checks]
+forbidden_imports = ["Mathlib"]''']]
+
+[ForbiddenTypo]
+expect = "FAIL[config] forbidden_imports entry MathLib is not under a base name"
+edit."boundaries.toml" = [['forbidden_imports = ["Mathlib"]', 'forbidden_imports = ["MathLib"]']]
+
+[MilestoneParentTypo]
+expect = "FAIL[config] milestone_parents entry Fx.Proof meets no layer prefix"
+edit."boundaries.toml" = [['milestone_parents = ["Fx.Proofs"]', 'milestone_parents = ["Fx.Proof"]']]
+
+[InitExemptTypo]
+expect = "FAIL[config] init_exempt entry Fx.ToMathllib meets no layer prefix"
+edit."boundaries.toml" = [['init_exempt = ["Fx.ToMathlib"]', 'init_exempt = ["Fx.ToMathllib"]']]
+
+[EmptyLib]
+expect = "FAIL[config] no [[lib]] entries"
+files."boundaries.toml" = '''
+base = ["Init", "Mathlib"]
+init_module = "Fx.Init"
+
+[[layer]]
+name = "All"
+prefixes = ["Fx"]
+allow = []
+'''
+
+[DupPrefix]
+expect = "FAIL[config] prefix Fx.Spec (layer Lemmas) overlaps Fx.Spec (layer Spec)"
+edit."boundaries.toml" = [['prefixes = ["Fx.Lemmas"]', 'prefixes = ["Fx.Lemmas", "Fx.Spec"]']]
+
+[NestedPrefix]
+expect = "FAIL[config] prefix Fx.Spec.B (layer Lemmas) overlaps Fx.Spec (layer Spec)"
+edit."boundaries.toml" = [['prefixes = ["Fx.Lemmas"]', 'prefixes = ["Fx.Lemmas", "Fx.Spec.B"]']]
+
+[UnknownLayer]
+expect = "FAIL[config] layer Test: allow entry Nope is not another layer"
+edit."boundaries.toml" = [['"Main", "Sol"]', '"Main", "Sol", "Nope"]']]
+
+[LayerCycle]
+expect = "FAIL[config] layer cycle"
+edit."boundaries.toml" = [['''prefixes = ["Fx.Init"]
+allow = []''', '''prefixes = ["Fx.Init"]
+allow = ["Spec"]''']]
+
+[NotClosed]
+expect = "FAIL[config] layer Lemmas: allow is not downward-closed: it allows Statements, which allows Init"
+edit."boundaries.toml" = [['allow = ["Init", "ToMathlib", "Spec", "Statements"]', 'allow = ["ToMathlib", "Spec", "Statements"]']]
+
+[TrustedAllowsUntrusted]
+expect = "FAIL[config] trusted layer Statements allows the untrusted layer Lemmas"
+edit."boundaries.toml" = [['''prefixes = ["Fx.Statements"]
+allow = ["Init", "ToMathlib", "Spec"]''', '''prefixes = ["Fx.Statements"]
+allow = ["Init", "ToMathlib", "Spec", "Lemmas"]''']]
+
+[TrustedException]
+expect = "FAIL[config] exception 2: from Fx.Spec.B meets the trusted layer Spec"
+edit."boundaries.toml" = [['[checks]', '''[[exception]]
+from = ["Fx.Spec.B"]
+to = ["Fx.Lemmas"]
+reason = "case"
+
+[checks]''']]
+files."Fx/Spec/B.lean" = "module\n\npublic import Fx.Lemmas.L\n"
+
+[StaleException]
+expect = "FAIL[config] exception 2 (from ['Fx.Lemmas'] to ['Fx.Main']) covers no import"
+edit."boundaries.toml" = [['[checks]', '''[[exception]]
+from = ["Fx.Lemmas"]
+to = ["Fx.Main"]
+reason = "case"
+
+[checks]''']]
+
+[StaleExceptionEntry]
+expect = "FAIL[config] exception 1: to entry Fx.Main covers no import"
+edit."boundaries.toml" = [['to = ["Fx.Proofs.P.Main"]', 'to = ["Fx.Proofs.P.Main", "Fx.Main"]']]
+
+[ExceptionNoReason]
+expect = "FAIL[config] exception 1: no reason"
+edit."boundaries.toml" = [['reason = "fixture: milestone Q builds on milestone P"', 'reason = " "']]
+
+# --- layers and milestones -----------------------------------------------------------------------
+[Unmapped]
+expect = "FAIL[layer] Fx.Other.D: in no layer"
+files."Fx/Other/D.lean" = "module\n\npublic import Fx.Spec.A\n"
+edit."Fx.lean" = [["public import Fx.Main\n", "public import Fx.Main\npublic import Fx.Other.D\n"]]
+
+[MilestoneUnmapped]
+expect = "FAIL[milestone] Fx.Proofs.R.Main: a milestone is a directory Fx.Proofs.<M> with its own layer"
+files."Fx/Proofs/R/Main.lean" = "module\n\npublic import Fx.Lemmas.L\n"
+edit."Fx.lean" = [["public import Fx.Proofs.Q.Main\n", "public import Fx.Proofs.Q.Main\npublic import Fx.Proofs.R.Main\n"]]
+
+[MilestoneFile]
+expect = "FAIL[milestone] Fx.Proofs.R: a milestone is a directory"
+files."Fx/Proofs/R.lean" = "module\n\npublic import Fx.Lemmas.L\n"
+edit."Fx.lean" = [["public import Fx.Proofs.Q.Main\n", "public import Fx.Proofs.Q.Main\npublic import Fx.Proofs.R\n"]]
+
+[MilestoneCoarse]
+expect = "FAIL[config] layer Proofs.P: prefix Fx.Proofs covers the milestone parent Fx.Proofs"
+edit."boundaries.toml" = [['prefixes = ["Fx.Proofs.P"]', 'prefixes = ["Fx.Proofs"]']]
+
+[MilestoneNoMain]
+expect = "FAIL[milestone] layer Proofs.P has modules but no entry module Fx.Proofs.P.Main"
+delete = ["Fx/Proofs/P/Main.lean"]
+files."Fx/Proofs/Q/Main.lean" = "module\n\npublic import Fx.Proofs.P.Aux\n\ntheorem q : S := p0\n"
+files."Fx/Main.lean" = "module\n\npublic import Fx.Proofs.Q.Main\n\ntheorem main : S := q\n"
+edit."Fx.lean" = [["public import Fx.Proofs.P.Main\n", ""]]
+
+# --- imports -------------------------------------------------------------------------------------
+[BadImport]
+expect = "FAIL[import] Fx.Lemmas.L (layer Lemmas) imported by Fx.Spec.B (layer Spec)"
+files."Fx/Spec/B.lean" = "module\n\npublic import Fx.Lemmas.L\n"
+
+[BadImportTransitive]
+expect = "FAIL[import] Fx.Proofs.P.Main (layer Proofs.P) reached from Fx.Lemmas.N -> Fx.Lemmas.M (layer Lemmas)"
+files."Fx/Lemmas/M.lean" = "module\n\npublic import Fx.Proofs.P.Main\n\ntheorem m : S := p\n"
+files."Fx/Lemmas/N.lean" = "module\n\npublic import Fx.Lemmas.M\n\ntheorem n : S := m\n"
+edit."boundaries.toml" = [['[checks]', '''[[exception]]
+from = ["Fx.Lemmas.M"]
+to = ["Fx.Proofs.P"]
+reason = "case: only M may reach P"
+
+[checks]''']]
+
+[CrossMilestone]
+expect = "FAIL[import] Fx.Proofs.P.Main (layer Proofs.P) imported by Fx.Proofs.Q.Main (layer Proofs.Q)"
+edit."boundaries.toml" = [['''[[exception]]
+from = ["Fx.Proofs.Q"]
+to = ["Fx.Proofs.P.Main"]
+reason = "fixture: milestone Q builds on milestone P"
+''', '']]
+
+[Entry]
+expect = "FAIL[entry] Fx.Main imports Fx.Proofs.P.Aux: the milestone layer Proofs.P is entered only through Fx.Proofs.P.Main"
+edit."Fx/Main.lean" = [["public import Fx.Proofs.P.Main\n", "public import Fx.Proofs.P.Main\npublic import Fx.Proofs.P.Aux\n"]]
+
+[EntryViaException]
+expect = "FAIL[entry] Fx.Proofs.Q.Main imports Fx.Proofs.P.Aux: the milestone layer Proofs.P is entered only through Fx.Proofs.P.Main"
+edit."Fx/Proofs/Q/Main.lean" = [["public import Fx.Proofs.P.Main\n", "public import Fx.Proofs.P.Aux\n"]]
+edit."boundaries.toml" = [['to = ["Fx.Proofs.P.Main"]', 'to = ["Fx.Proofs.P"]']]
+
+[SolutionImport]
+expect = "FAIL[import] FxSol (layer Sol) imported by Fx.Lemmas.M (layer Lemmas)"
+files."Fx/Lemmas/M.lean" = "module\n\npublic import FxSol\n"
+
+[TestImport]
+expect = "FAIL[import] FxTest.T (layer Test) imported by FxSol (layer Sol)"
+files."FxSol.lean" = "module\n\npublic import FxTest.T\n"
+
+[ImportMathlib]
+expect = "FAIL[umbrella] Fx.Spec.B imports Mathlib"
+files."Fx/Spec/B.lean" = "module\n\npublic import Fx.Init\npublic import Mathlib\n"
+
+[ImportAll]
+expect = "FAIL[import-all] Fx.Lemmas.M: import all Fx.Lemmas.L"
+files."Fx/Lemmas/M.lean" = "module\n\npublic import Fx.Lemmas.L\nimport all Fx.Lemmas.L\n\ntheorem m : S := l\n"
+
+[ImportAllExternal]
+expect = "FAIL[import-all] Fx.Spec.B: import all Mathlib.Logic.Basic"
+files."Fx/Spec/B.lean" = "module\n\npublic import Fx.Spec.A\nimport all Mathlib.Logic.Basic\n\ndef b := a\n"
+
+[RootImport]
+expect = "FAIL[root-import] Fx.Spec.B imports the library root Fx"
+files."Fx/Spec/B.lean" = "module\n\npublic import Fx\n"
+
+[ChildImportsRoot]
+expect = "FAIL[root-import] Fx.Lemmas.M imports the library root Fx"
+files."Fx/Lemmas/M.lean" = "module\n\npublic import Fx\n"
+
+[TestRootImport]
+expect = "FAIL[root-import] FxSol imports the library root FxTest"
+files."FxSol.lean" = "module\n\npublic import Fx.Main\npublic import FxTest\n"
+
+[AggregateImport]
+expect = "FAIL[aggregate] Fx.Lemmas.N imports Fx.Lemmas.M, an import-only module"
+files."Fx/Lemmas/M.lean" = "module -- re-exports\n\npublic import Fx.Lemmas.L\n\n/-! An aggregate. -/\n"
+files."Fx/Lemmas/N.lean" = "module\n\npublic import Fx.Lemmas.M\n\ntheorem n : S := l\n"
+
+[AggregateOutsideAllow]
+expect = "FAIL[import] FxTest.U (layer Test) imported by FxSol (layer Sol)"
+files."FxTest/U.lean" = "module\n\npublic import FxTest.T\n"
+files."FxSol.lean" = "module\n\npublic import Fx.Main\npublic import FxTest.U\n\ntheorem sol : Fx.S := Fx.main\n"
+edit."FxTest.lean" = [["public import FxTest.T\n", "public import FxTest.T\npublic import FxTest.U\n"]]
+edit."boundaries.toml" = [['''prefixes = ["FxSol"]''', '''prefixes = ["FxSol"]
+may_import_roots = true''']]
+
+[InitChain]
+expect = "FAIL[init] Fx.Spec.B does not reach Fx.Init through public imports"
+files."Fx/Spec/B.lean" = "module\n\npublic import Mathlib.Logic.Basic\n"
+
+[InitPrivate]
+expect = "FAIL[init] Fx.Spec.B does not reach Fx.Init through public imports"
+files."Fx/Spec/B.lean" = "module\n\nimport Fx.Spec.A\n"
+
+[UnknownTop]
+expect = "FAIL[base] Foo.Bar imported by Fx.Spec.B"
+files."Fx/Spec/B.lean" = "module\n\npublic import Fx.Spec.A\npublic import Foo.Bar\n"
+
+[FixtureImport]
+expect = "FAIL[fixture] FxTest.T imports the fixture module FxFix.X"
+edit."FxTest/T.lean" = [["public import FxSol\n", "public import FxSol\npublic import FxFix.X\n"]]
+
+# --- generated roots -----------------------------------------------------------------------------
+[Orphan]
+expect = "FAIL[root] Fx.Lemmas.N is not imported by the root Fx"
+edit."Fx.lean" = [["public import Fx.Lemmas.N\n", ""]]
+
+[OrphanTest]
+expect = "FAIL[root] FxTest.U is not imported by the root FxTest"
+files."FxTest/U.lean" = "module\n\npublic import Fx\n"
+
+[RootExtra]
+expect = "FAIL[root] the root Fx imports Mathlib.Logic.Basic, not a module of Fx"
+edit."Fx.lean" = [["public import Fx.Init\n", "public import Fx.Init\npublic import Mathlib.Logic.Basic\n"]]
+
+# --- libraries and the lakefile ------------------------------------------------------------------
+[GlobMismatch]
+expect = "FAIL[config] Fx: lakefile globs"
+edit."lakefile.toml" = [['globs = ["Fx.*"]', 'globs = ["Fx"]']]
+
+[SingleModuleDir]
+expect = "FAIL[config] FxSol: a single-module lib has no directory"
+files."FxSol/X.lean" = "module\n\npublic import Fx.Spec.A\n"
+
+[DefaultMismatch]
+expect = "FAIL[config] defaultTargets"
+edit."lakefile.toml" = [['defaultTargets = ["Fx"]', 'defaultTargets = ["Fx", "FxTest"]']]
+
+[TestDriverMismatch]
+expect = "FAIL[config] testDriver"
+edit."lakefile.toml" = [['testDriver = "FxTest"', '']]
+
+[UnknownTarget]
+expect = "FAIL[config] target: lakefile target Stray"
+edit."lakefile.toml" = [["[[lean_lib]]\nname = \"FxSol\"", "[[lean_lib]]\nname = \"FxSol\"\n\n[[lean_lib]]\nname = \"Stray\""]]
+
+[LakefileLean]
+expect = "FAIL[config] lakefile.lean"
+files."lakefile.lean" = ""
+
+[ShadowBase]
+expect = "FAIL[config] base name"
+files."Mathlib/Shadow.lean" = "module\n"
+edit."boundaries.toml" = [['fixture_libs = ["FxFix"]', 'fixture_libs = ["FxFix", "Shadow"]']]
+edit."lakefile.toml" = [["[[lean_lib]]\nname = \"FxSol\"", "[[lean_lib]]\nname = \"FxSol\"\n\n[[lean_lib]]\nname = \"Shadow\"\nroots = [\"Mathlib.Shadow\"]"]]
+
+[ShadowGlob]
+expect = "FAIL[config] base name"
+edit."boundaries.toml" = [['fixture_libs = ["FxFix"]', 'fixture_libs = ["FxFix", "Shadow"]']]
+edit."lakefile.toml" = [["[[lean_lib]]\nname = \"FxSol\"", "[[lean_lib]]\nname = \"FxSol\"\n\n[[lean_lib]]\nname = \"Shadow\"\nroots = []\nglobs = [\"Mathlib.Shadow\"]"]]
+
+[ShadowTop]
+expect = "FAIL[config] base name"
+files."Fx2/Mathlib/Shadow.lean" = "module\n"
+edit."boundaries.toml" = [['fixture_libs = ["FxFix"]', 'fixture_libs = ["FxFix", "Shadow"]']]
+edit."lakefile.toml" = [["[[lean_lib]]\nname = \"FxSol\"", "[[lean_lib]]\nname = \"FxSol\"\n\n[[lean_lib]]\nname = \"Shadow\"\nsrcDir = \"Fx2\"\nroots = []\nglobs = [\"Shadow.+\"]"]]
+
+# --- check-decls exemptions and the trusted paths ------------------------------------------------
+[ProofsComponent]
+expect = "FAIL[config] Fx.Lemmas.Proofs.C: a component named Proofs (exempt in check-decls) outside proofs_component_prefixes"
+files."Fx/Lemmas/Proofs/C.lean" = "module\n\npublic import Fx.Lemmas.L\n"
+edit."Fx.lean" = [["public import Fx.Lemmas.N\n", "public import Fx.Lemmas.N\npublic import Fx.Lemmas.Proofs.C\n"]]
+
+[ProofsTrusted]
+expect = "FAIL[config] proofs_component_prefixes Fx.Spec.Proofs is in layer Spec, reachable from a trusted layer"
+edit."boundaries.toml" = [['proofs_component_prefixes = ["Fx.Proofs"]', 'proofs_component_prefixes = ["Fx.Proofs", "Fx.Spec.Proofs"]']]
+
+[ProofsNested]
+expect = "FAIL[config] Fx.Proofs.Trusted.E: a component named Proofs (exempt in check-decls) in layer Spec, reachable from a trusted layer"
+files."Fx/Proofs/Trusted/E.lean" = "module\n\npublic import Fx.Spec.A\n"
+edit."Fx.lean" = [["public import Fx.Proofs.Q.Main\n", "public import Fx.Proofs.Q.Main\npublic import Fx.Proofs.Trusted.E\n"]]
+edit."boundaries.toml" = [['prefixes = ["Fx.Spec"]', 'prefixes = ["Fx.Spec", "Fx.Proofs.Trusted"]'], ['"Fx/Statements"]', '"Fx/Statements", "Fx/Proofs/Trusted"]']]
+
+[ProofsBroad]
+expect = "FAIL[config] Fx.Spec.Proofs.E: a component named Proofs (exempt in check-decls) in layer Spec"
+files."Fx/Spec/Proofs/E.lean" = "module\n\npublic import Fx.Spec.A\n"
+edit."Fx.lean" = [["public import Fx.Spec.B\n", "public import Fx.Spec.B\npublic import Fx.Spec.Proofs.E\n"]]
+edit."boundaries.toml" = [['proofs_component_prefixes = ["Fx.Proofs"]', 'proofs_component_prefixes = ["Fx"]']]
+
+[ExportsComponent]
+expect = "FAIL[config] Fx.Lemmas.Exports.E: a component named Exports"
+files."Fx/Lemmas/Exports/E.lean" = "module\n\npublic import Fx.Lemmas.L\n"
+edit."Fx.lean" = [["public import Fx.Lemmas.N\n", "public import Fx.Lemmas.N\npublic import Fx.Lemmas.Exports.E\n"]]
+
+[TrustedUncovered]
+expect = "FAIL[config] Fx/Init.lean (module Fx.Init, layer Init) is not covered by trusted_paths"
+edit."boundaries.toml" = [['trusted_paths = ["Fx/Init.lean", ', 'trusted_paths = [']]
+
+[TrustedPathMagic]
+expect = "FAIL[config] trusted_paths entry ':(exclude)Fx/Spec'"
+edit."boundaries.toml" = [['"Fx/Statements"]', '"Fx/Statements", ":(exclude)Fx/Spec"]']]

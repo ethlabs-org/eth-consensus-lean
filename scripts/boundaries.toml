@@ -1,19 +1,13 @@
-# The one configuration file of scripts/check.sh, scripts/check-imports.py and CI's review-boundary job.
-# Every library path, module prefix and module name of the project lives here, so a change of layout
-# (a move of files) edits this file and nothing else in the check stack (fixture paths aside).
+# The one configuration file of scripts/check-boundaries.py, scripts/check.sh, scripts/metrics-baseline.py and
+# CI's review-boundary job. Every library path, module prefix, layer and module name of the project lives here,
+# so a change of layout (a move of files) edits this file and nothing else in the check stack (fixtures aside).
 #
-# Layout (plan §1, §11 step 2): one certified library `ConsensusLean` whose layers are module prefixes,
-# the tests `ConsensusLeanTest` (lake test) and the comparator solution `Solution`. The import rules are
-# those of the four libraries before the move, now over module groups:
-#   spec       Init, Core, Spec, Statements, ToMathlib: its closure holds only spec modules (+ base);
-#   proofs     Lemmas, Proofs/<M>/, Main: may reach spec;
-#   instances  Instances/<P>/: may reach proofs and spec;
-#   solution   Solution: may reach proofs and spec;
-#   tests      ConsensusLeanTest: may reach everything above and the library roots.
-# No module imports a generated library root, except in the tests; nothing reaches a fixture.
-# The full layer matrix of plan §2 replaces the groups in step 3 (#6).
+# Layout (foundation plan §1): one certified library `ConsensusLean` whose layers are module prefixes, the tests
+# `ConsensusLeanTest` (lake test) and the comparator solution `Solution`. Import rules (plan §2): the [[layer]]
+# matrix below, checked at source level by scripts/check-boundaries.py (its docstring has every rule).
+# Deviations from the plan's matrix are the [[exception]] entries at the end, each with its reason.
 
-# R1 base set: top-level module names that may be imported from outside the project.
+# Top-level module names that may be imported from outside the project.
 base = ["Init", "Std", "Lean", "Lake", "Mathlib", "Batteries", "Aesop", "Qq", "ProofWidgets",
         "Plausible", "ImportGraph", "LeanSearchClient"]
 
@@ -24,6 +18,17 @@ fixture_libs = ["CheckFixtures", "CheckDeclsTest", "Challenge"]
 # lean_exe targets of the lakefile (the check stack's tools). Every lakefile target is a [[lib]] below, a
 # fixture lib or one of these; no lib root, glob or file may take a top-level name of `base`.
 tool_exes = ["check-decls"]
+
+# Every module (except a generated root) reaches this one through public imports (plan §1, CSLib Init).
+init_module = "ConsensusLean.Init"
+# Module prefixes exempt from the Init chain: ToMathlib imports only Mathlib (plan §1); ReviewGuard is a meta
+# tool on `Lean` alone, shared with the fixtures of check.sh step 6.
+init_exempt = ["ConsensusLean.ToMathlib", "ConsensusLeanTest.ReviewGuard"]
+# Every directory <parent>.<M> below is one milestone layer, imported from other layers only through
+# <parent>.<M>.Main (plan §2: Main may import every Proofs.<M>.Main; Proofs.<N>.Main only by an exception).
+milestone_parents = ["ConsensusLean.Proofs"]
+# Umbrella imports (plan §0 rule 3d): import the modules you need.
+forbidden_imports = ["Mathlib"]
 
 # The checked libraries. A lib's root module is its name, and its name is its check-decls scope (step 3).
 # `default`: exactly the lakefile defaultTargets. `test_driver`: the lakefile testDriver.
@@ -42,47 +47,168 @@ root_lists_all = true
 [[lib]]
 name = "Solution"
 
-# Module groups: every module (except a generated root) is in exactly one group, by its longest prefix.
-# `allow`: the other groups its import closure may contain. `trusted`: the Spec surface (exactly one group):
-# snapshot, extensions, theorems, grep 7b and the README file list cover its modules.
-[[group]]
-name = "spec"
-prefixes = ["ConsensusLean.Init", "ConsensusLean.Core", "ConsensusLean.Spec", "ConsensusLean.Statements",
-            "ConsensusLean.ToMathlib"]
+# The layer matrix (plan §2). A module is in the layer whose prefix covers it (prefixes never overlap).
+# `allow`: the other layers it may import directly, written out in full (the checker requires the lists to
+# be downward-closed, so this row also bounds everything the layer reaches). `trusted`: the Spec surface
+# (snapshot, extensions, theorems, grep 7b, the README file list, trusted_paths); it allows only trusted
+# layers. Tests: `may_import_roots` (the generated roots,
+# import-only aggregates) and `may_import_all`. An empty layer is allowed.
+[[layer]]
+name = "Init"
+prefixes = ["ConsensusLean.Init"]
 allow = []
 trusted = true
+about = "curated public imports every module reaches (linters, tactics); no options"
 
-[[group]]
-name = "proofs"
-prefixes = ["ConsensusLean.Lemmas", "ConsensusLean.Proofs", "ConsensusLean.Main"]
-allow = ["spec"]
+[[layer]]
+name = "ToMathlib"
+prefixes = ["ConsensusLean.ToMathlib"]
+allow = []
+trusted = true
+about = "general lemmas staged for upstreaming; imports only Mathlib"
 
-[[group]]
-name = "instances"
-prefixes = ["ConsensusLean.Instances"]
-allow = ["spec", "proofs"]
+[[layer]]
+name = "Core"
+prefixes = ["ConsensusLean.Core"]
+allow = ["Init", "ToMathlib"]
+trusted = true
+about = "generic definitions below Spec; none split out yet"
 
-[[group]]
-name = "solution"
+[[layer]]
+name = "Spec"
+prefixes = ["ConsensusLean.Spec"]
+allow = ["Init", "ToMathlib", "Core"]
+trusted = true
+about = "generic definitions and contract"
+
+[[layer]]
+name = "Statements"
+prefixes = ["ConsensusLean.Statements"]
+allow = ["Init", "ToMathlib", "Core", "Spec"]
+trusted = true
+about = "generic milestone and review statements as Props"
+
+[[layer]]
+name = "Lemmas"
+prefixes = ["ConsensusLean.Lemmas"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements"]
+about = "generic proof support, including derived definitions outside the trusted surface"
+
+[[layer]]
+name = "Proofs.Behaviour"
+prefixes = ["ConsensusLean.Proofs.Behaviour"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas"]
+about = "milestone: shape claims give the L0 Behaviour (refinement)"
+
+[[layer]]
+name = "Proofs.RegimesRealizable"
+prefixes = ["ConsensusLean.Proofs.RegimesRealizable"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas"]
+about = "milestone: RegimesRealizable"
+
+[[layer]]
+name = "Proofs.Faithful"
+prefixes = ["ConsensusLean.Proofs.Faithful"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas"]
+about = "milestone: LogFaithful and HeldIffServed"
+
+[[layer]]
+name = "Main"
+prefixes = ["ConsensusLean.Main"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour", "Proofs.RegimesRealizable",
+         "Proofs.Faithful"]
+about = "generic composition of the milestones (Accepted.good) and its corollaries"
+
+[[layer]]
+name = "Instances.Goldilocks.Spec"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec"]
+allow = ["Init", "ToMathlib", "Core", "Spec"]
+about = "Goldilocks semantics and pinned contract"
+
+[[layer]]
+name = "Instances.Goldilocks.Statements"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Statements"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec"]
+about = "Goldilocks reviewed target (the properties sheet; also holds its §1 proofs)"
+
+[[layer]]
+name = "Instances.Bft.Spec"
+prefixes = ["ConsensusLean.Instances.Bft.Spec"]
+allow = ["Init", "ToMathlib", "Core", "Spec"]
+about = "the BFT contract shape shared by Streamlet and Tendermint"
+
+[[layer]]
+name = "Instances.Streamlet.Spec"
+prefixes = ["ConsensusLean.Instances.Streamlet.Spec"]
+allow = ["Init", "ToMathlib", "Core", "Spec"]
+about = "Streamlet as a value"
+
+[[layer]]
+name = "Instances.Tendermint.Spec"
+prefixes = ["ConsensusLean.Instances.Tendermint.Spec"]
+allow = ["Init", "ToMathlib", "Core", "Spec"]
+about = "Tendermint as a value"
+
+[[layer]]
+name = "Solution"
 prefixes = ["Solution"]
-allow = ["spec", "proofs"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour", "Proofs.RegimesRealizable",
+         "Proofs.Faithful", "Main"]
+about = "comparator solution: proofs of the review statements (no instances: narrower than plan §2, as before)"
 
-[[group]]
-name = "tests"
+[[layer]]
+name = "Test"
 prefixes = ["ConsensusLeanTest"]
-allow = ["spec", "proofs", "instances", "solution"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour", "Proofs.RegimesRealizable",
+         "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec", "Instances.Goldilocks.Statements", "Instances.Bft.Spec",
+         "Instances.Streamlet.Spec", "Instances.Tendermint.Spec", "Solution"]
 may_import_roots = true
+may_import_all = true
+about = "tests, review pins (ReviewAxioms, ReviewGuard) and the README index"
 
-# Settings of scripts/check.sh (ignored by check-imports.py).
+
+
+# Reviewed deviations from the plan §2 matrix, each a debt with its reason. An exception lets the modules
+# under `from` import the modules under `to` (a milestone only through its `Main`), and so depend on what
+# those reach, through their own exceptions too (so RegimesRealizable reaches Faithful.Main through exception 2
+# then 1, and Streamlet/Tendermint reach Main through 4 then 3); it does not extend to the importers of the
+# `from` modules. None may start in a trusted layer, and every `from` and `to` entry must be used (a fixed
+# deviation must be removed).
+[[exception]]
+from = ["ConsensusLean.Lemmas.Shape.Payload", "ConsensusLean.Proofs.Behaviour.Main"]
+to = ["ConsensusLean.Proofs.Faithful.Main"]
+reason = """Lemmas.Shape.Payload uses the Faithful milestone, and the Behaviour milestone reaches it through
+Payload. Plan §2: Lemmas never import Proofs; move the Faithful facts Payload needs down to Lemmas, or state
+Behaviour as Faithful -> Behaviour (plan §4)."""
+
+[[exception]]
+from = ["ConsensusLean.Proofs.RegimesRealizable.Main"]
+to = ["ConsensusLean.Proofs.Behaviour.Main"]
+reason = """RegimesRealizable builds on the Behaviour milestone (plan §0 rule 1b: a reviewed cross-milestone
+import; plan §4 would state it as Behaviour -> RegimesRealizable in RegimesRealizable's Main)."""
+
+[[exception]]
+from = ["ConsensusLean.Instances.Goldilocks", "ConsensusLean.Instances.Bft.Spec"]
+to = ["ConsensusLean.Main"]
+reason = """The instance Specs are values of the generic contract and import the generic Main (Accepted.good and
+its corollaries). Plan §2: Instances.P.Spec imports only generic Core and Spec, and the link to the contract
+is the refinement milestone (Instances.P.Refinement.Defs + Proofs); until that layer lands."""
+
+[[exception]]
+from = ["ConsensusLean.Instances.Streamlet.Spec", "ConsensusLean.Instances.Tendermint.Spec"]
+to = ["ConsensusLean.Instances.Bft.Spec"]
+reason = """Streamlet and Tendermint share the BFT contract shape of Instances.Bft. Plan §2: an instance never
+imports another; shared material moves down to the generic layers."""
+
+# Settings of scripts/check.sh (check-boundaries.py reads only proofs_component_prefixes and trusted_paths).
 [checks]
-# The Spec surface is the `trusted` group above: the snapshot (scripts/spec-snapshot.txt), `theorems`,
-# grep 7b and the README file list (step 12) cover every module of the inventory in it (the closure of each
-# stays inside it), so no module list is kept by hand.
-# Groups whose every module is held to the persisted-extension whitelist (scripts/spec-extensions.txt).
-extension_groups = ["spec"]
+# The Spec surface is every module of a `trusted` layer above: the persisted-extension whitelist
+# (scripts/spec-extensions.txt), the snapshot (scripts/spec-snapshot.txt), `theorems`, grep 7b and the README
+# file list (step 12) cover each of them (their closure stays inside the trusted layers), so no module list
+# is kept by hand.
 # Module prefixes where a `Proofs` component is allowed (check-decls exempts definitions in modules with a
 # `Proofs` component from reaches-opaque: sound only where no trusted module can reach them, which
-# check-imports.py checks). The plan's milestone proofs, `ConsensusLean/Proofs/<M>/`.
+# check-boundaries.py checks). The plan's milestone proofs, `ConsensusLean/Proofs/<M>/`.
 proofs_component_prefixes = ["ConsensusLean.Proofs"]
 # Modules with descendants that may own constants. leanchecker expands a module name as a prefix, so such a
 # module would not be replayed by leanchecker (step 5), only by `lake check` (step 10, where bwrap exists).
@@ -104,8 +230,8 @@ statements_module = "ConsensusLean.Statements.Review"
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "Challenge"]
 # The trusted surface: CI's review-boundary job (ci.yml) fails on any difference of these paths from the tag
 # `spec-approved` (it reads this list at the PR head and at the tag, and checks their union, as literal paths).
-# check-imports.py requires plain relative paths that cover the file of every module of the trusted group:
-# each prefix of the group as a file and as a directory. Kept in sync with .github/CODEOWNERS and
+# check-boundaries.py requires plain relative paths that cover the file of every module of a trusted layer:
+# each prefix of those layers as a file and as a directory. Kept in sync with .github/CODEOWNERS and
 # docs/spec-review.md.
 trusted_paths = ["ConsensusLean/Init.lean", "ConsensusLean/Init", "ConsensusLean/Core.lean", "ConsensusLean/Core",
                  "ConsensusLean/Spec.lean", "ConsensusLean/Spec", "ConsensusLean/Statements.lean",

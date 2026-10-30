@@ -64,8 +64,8 @@ Upstream copy: `0032a6629a73ac37f49ca52b9bd665f2c6755b6014d629f8775c6f850f273bb2
 `vendor.sha256` also pins fixtures/licence. check-decls runs imported modules' initializers:
 a defence against mistakes, not an adversarial checker.
 
-`scripts/check-imports.py` is a CC0 port of verified-consensus `check-review-boundary.rb` using parsed
-imports for R1–R3. `scripts/check-pins.py` checks provenance. Our `scripts/SpecSurface.lean` loads no extension state and runs no checked code.
+`scripts/check-boundaries.py` checks the layer matrix of `scripts/boundaries.toml` on parsed imports
+(`lean --deps-json`; the inventory part started as a CC0 port of verified-consensus `check-review-boundary.rb`). `scripts/check-pins.py` checks provenance. Our `scripts/SpecSurface.lean` loads no extension state and runs no checked code.
 Its extension check is a persisted-extension policy, not a source audit: local/non-persisted commands
 are visible only through their effect in the snapshot. A grep backstop adds hygiene.
 
@@ -80,13 +80,13 @@ every check's verdict needs one review and evidence that the fixtures' verdicts 
 
 ## Trusted statements
 
-The spec group (`ConsensusLean.{Init,Core,Spec,Statements,ToMathlib}`) is the claim
-(file list in `README.md`); R1 limits its closure to spec modules and the pinned base set.
+The trusted layers (`ConsensusLean.{Init,Core,Spec,Statements,ToMathlib}`) are the claim
+(file list in `README.md`); they allow only trusted layers, so their closure holds only trusted modules and the pinned base set.
 It cannot reach proofs, instances, the solution, tests or fixtures. Pins/snapshot fix dependencies/meaning.
 The trusted surface is `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and
 `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusLeanTest/ReviewAxioms.lean` and `ConsensusLeanTest/ReviewGuard.lean`. `scripts/boundaries.toml`
-(`[checks] trusted_paths`) lists it, and check-imports.py requires it to cover every spec-group file;
+(`[checks] trusted_paths`) lists it, and check-boundaries.py requires it to cover every file of a trusted layer;
 CI's `review-boundary` compares those paths (literal, at the PR head and at the tag) with `spec-approved`.
 `ConsensusLean/Statements/Review.lean` must hold statements only: every non-proof constant needs a
 review pair (`ConsensusLeanTest/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers

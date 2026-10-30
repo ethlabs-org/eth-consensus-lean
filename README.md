@@ -510,7 +510,7 @@ Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 
 0. **Pins:** exact toolchain, manifest, clean dependency checkouts and Lake's resolved search path match `scripts/pins.toml`.
 1. **Build:** compile `ConsensusLean` (the default target), `ConsensusLeanTest` (what `lake test` builds), `Solution`, the challenge, fixtures and check-decls; `--no-build` still checks Lake freshness.
-2. **Imports:** enforce R1–R3, root coverage, library inventory and pinned-base names with `scripts/check-imports.py`.
+2. **Boundaries:** enforce the layer matrix, the Init chain, root coverage, library inventory and pinned-base names with `scripts/check-boundaries.py` (source-level, no build).
 3. **Declarations:** EthLib check-decls runs once per library scope (`ConsensusLean`, `ConsensusLeanTest`, `Solution`), checking every module for extra axioms, unfinished proofs, opaque/unsafe/partial declarations, extern/implemented_by/csimp and opaque reachability; empty scopes fail.
 4. **Spec surface:** check persisted extensions, diff the complete readable/structural snapshot (including pins/options), enforce theorem hygiene and constant-free parents; the `reach` report (which Spec definitions the review statements reach; not a gate) runs in `--full`, in `--changed` when step 4 runs, and in `--fast` with `--reach`.
 5. **Kernel replay:** run leanchecker on every leaf module of the checked libraries, one module per process after checking it has no descendants, two processes at a time (`REPLAY_JOBS`); parent modules own no constants.
@@ -520,7 +520,7 @@ Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 9. **Comparator config:** pin challenge/solution modules, all four statement names and exactly the three standard axioms; validate the Spec-only challenge.
 10. **Lake check (needs bubblewrap; skipped and listed as CI-only where `bwrap` is missing):** sandboxed build, export and kernel replay of the default targets, rejecting extra axioms.
 11. **Lake comparator (needs bubblewrap, likewise):** statement/axiom matching, sandboxed replay and agreement of reachable constants between challenge and solution exports.
-12. **Docs:** require the marked list above to equal every file of the spec group exactly.
+12. **Docs:** require the marked list above to equal every file of the trusted layers exactly.
 
 Checks with fixtures exercise the same code paths on positive and negative controls.
 Spec drift is guarded by the snapshot diff plus owner review (`spec-approved`);
@@ -564,51 +564,74 @@ The only default target is `ConsensusLean` (`defaultTargets = ["ConsensusLean"]`
 
 `Init.lean` is imported last by `Spec/Problem/Basic.lean` and `Spec/Model/Objects.lean`,
 so every module reaches it. It is part of the trusted surface.
-`scripts/boundaries.toml` defines the module groups checked by `scripts/check-imports.py`:
+`scripts/boundaries.toml` is the one configuration of the import rules (foundation plan §2), checked
+at source level by `scripts/check-boundaries.py` (module headers parsed by `lean --deps-json`; no build,
+so no stale build output hides a violation). Every module is in exactly one `[[layer]]` (prefixes never
+overlap); `allow` lists the layers it may import, written out in full:
 
-| Group | Modules | Import rules |
-|---|---|---|
-| spec | `ConsensusLean.{Init,Core,Spec,Statements,ToMathlib}` | R1: its closure contains only spec modules and the pinned base set. |
-| proofs | `ConsensusLean.{Lemmas,Proofs,Main}` | R3: may reach proofs and spec. |
-| instances | `ConsensusLean.Instances` | R3: may reach instances, proofs and spec. |
-| solution | `Solution` | R3: may reach proofs and spec. |
-| tests | `ConsensusLeanTest` | May reach all groups above and the library roots. |
+| Layer | May also import |
+|---|---|
+| `Init`, `ToMathlib` (trusted) | Mathlib only |
+| `Core` (trusted) | Init, ToMathlib |
+| `Spec` (trusted) | the above, Core |
+| `Statements` (trusted) | the above, Spec |
+| `Lemmas` | the above, Statements |
+| `Proofs.<M>` (one layer per milestone directory) | the above, Lemmas |
+| `Main` | the above, every `Proofs.<M>` |
+| `Instances.<P>.Spec` | Init, ToMathlib, Core, Spec |
+| `Instances.Goldilocks.Statements` | the above, Statements, `Instances.Goldilocks.Spec` |
+| `Solution` | every generic layer (no instances) |
+| `Test` (`ConsensusLeanTest`) | everything above; library roots, import-only aggregates, `import all` |
 
-No group may reach a fixture library (`CheckFixtures`, `CheckDeclsTest`, `Challenge`).
-The full layer matrix of the foundation plan §2 replaces these groups in step 3 (issue #6).
-R2: every file of `ConsensusLean` and `ConsensusLeanTest` is imported by its library root.
-No module imports a library root except tests. The generated roots `ConsensusLean.lean` and
-`ConsensusLeanTest.lean` import every module of their library; `check-imports.py` fails on an
-unlisted file. Regenerate them with
+The checker fails on: a missing, unparsable or mistyped config (missing or unknown keys included); a
+module in no layer; a `Proofs/<M>/` directory without its own layer, or a milestone imported other than
+through `Proofs.<M>.Main` (exception or not); an import outside `allow`, directly or through another
+module's exception (printed with its path); allow lists that are cyclic, not downward-closed, or let a
+trusted layer import an untrusted one; `import Mathlib`; an import of a library root or an import-only
+aggregate, or `import all`, outside the tests; a module that does not reach `ConsensusLean.Init` through
+public imports (except `ToMathlib` and the meta tool `ReviewGuard`); a fixture module or an unknown
+top-level name. Its self-test (`scripts/fixtures/boundaries/cases.toml`, one case per
+failure kind) runs in check.sh step 2. Today's deviations from the plan's matrix are reviewed
+`[[exception]]` entries, each with its reason: `Lemmas.Shape.Payload` uses the `Faithful` milestone;
+`RegimesRealizable` builds on `Behaviour`; the instance Specs import the generic `Main`; Streamlet and
+Tendermint share `Instances.Bft`. An exception lets the modules under its `from` depend on the modules
+under its `to` (and so on what those reach), never the importers of the `from` modules; none starts in a
+trusted layer, and every `from` and `to` entry must be used.
+
+The trusted layers' closure holds only trusted modules and the pinned base set: it cannot reach proofs,
+instances, the solution, tests or fixtures (`CheckFixtures`, `CheckDeclsTest`, `Challenge`).
+Every file of `ConsensusLean` and `ConsensusLeanTest` is imported by its library root. The generated
+roots `ConsensusLean.lean` and `ConsensusLeanTest.lean` import every module of their library;
+`check-boundaries.py` fails on an unlisted file. Regenerate them with
 `lake exe mk_all --lib ConsensusLean --module` and
 `lake exe mk_all --lib ConsensusLeanTest --module`.
 The generated roots and other modules with descendants own no constants.
-R1's external base set is `Init`, `Std`, `Lean`, `Lake`, `Mathlib`, `Batteries`, `Aesop`, `Qq`,
+The external base set is `Init`, `Std`, `Lean`, `Lake`, `Mathlib`, `Batteries`, `Aesop`, `Qq`,
 `ProofWidgets`, `Plausible`, `ImportGraph`, `LeanSearchClient`; unknown names fail.
-Pins establish the provenance of those names. R1 exceptions need a design review.
+Pins establish the provenance of those names.
 The inventory configuration is cross-checked against `lakefile.toml`, including default targets
 and globs. A `Proofs` component is allowed only under `ConsensusLean.Proofs`: check-decls
-exempts definitions there from reaches-opaque, which is sound because the spec group cannot
+exempts definitions there from reaches-opaque, which is sound because no trusted layer can
 reach them. `Exports` components are refused.
 
 In `scripts/`:
 
 - `check.sh`: the single driver, fixture self-tests and pass/fail/skip summary.
-- `check-imports.py`, `boundaries.toml`: parsed imports, R1–R3 and library inventory.
+- `check-boundaries.py`, `boundaries.toml`: the layer matrix, its exceptions and the library inventory.
 - `check-pins.py`, `pins.toml`: toolchain, dependency revisions, clean checkouts and resolution checks.
 - `SpecSurface.lean`, `spec-extensions.txt`, `spec-theorems.txt`, `spec-snapshot.txt`: persisted-extension policy, theorem hygiene and the reviewed Spec snapshot.
 - `CheckDecls.lean`, `check_decls_baseline.txt`: EthLib declaration checker (two local patches, see TRUST.md) and reviewed exceptions.
 - `test_check_decls.sh`, `CheckDeclsTest.lean`, `CheckDeclsTest/`, `CheckDeclsForeign.lean`: verbatim EthLib fixture suite.
 - `LICENSE.EthLib`, `vendor.sha256`: CC0 licence and hashes of every vendored copy.
-- `fixtures/`: import, Spec-surface, review-pin, grep, pins, docs, comparator and Lake-check controls.
-- `metrics-baseline.py`, `layers.toml`: report-only module metrics and the target layer of every module
-  (`docs/metrics-baseline.md`); no check runs them.
+- `fixtures/`: boundary, Spec-surface, review-pin, grep, pins, docs, comparator and Lake-check controls.
+- `metrics-baseline.py`: report-only module metrics per layer of `boundaries.toml`
+  (`docs/metrics-baseline.md`); no check runs it.
 
 The fixture libraries are `Challenge` (`Challenge.lean`, comparator statements
 with placeholder proofs, importing exactly `ConsensusLean.Statements.Review`), rootless
 `CheckFixtures` (under `scripts/fixtures/`, each fixture a separate target), and `CheckDeclsTest`
 (EthLib fixtures under `scripts/`).
-They may contain deliberately unfinished proofs or extra axioms; no checked group reaches them.
+They may contain deliberately unfinished proofs or extra axioms; no checked library reaches them.
 `comparator.json` connects the challenge to `Solution.lean`.
 
 ## Why the meaning is fixed below the protocol

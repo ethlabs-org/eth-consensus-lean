@@ -1,5 +1,0 @@
-base = ["Init", "Mathlib"]
-fixture_libs = ["FxFix"]
-
-[checks]
-proofs_component_prefixes = []

@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """Baseline metrics of the module graph (foundation plan §11 step 1). Report-only: no CI step runs it.
 
-Reports, as Markdown on stdout: a target layer for every module (scripts/layers.toml), import depth,
-downstream cones, `@[expose]` and import-kind counts, lines, and (with --timings) a build profile from
-Lake's per-module times. Exit 1 if a module maps to no layer, a layer is unknown, a rule matches no
-module, or the inputs cannot be read; exit 0 otherwise. Nothing here gates anything.
+Reports, as Markdown on stdout: the layer of every module (the [[layer]] matrix of scripts/boundaries.toml),
+import depth, downstream cones, `@[expose]` and import-kind counts, lines, and (with --timings) a build
+profile from Lake's per-module times. Exit 1 if a module of a checked library maps to no layer or the inputs
+cannot be read; exit 0 otherwise. Nothing here gates anything (scripts/check-boundaries.py does).
 
 Modules are those of the lakefile targets: every file matched by a lean_lib's globs (default: its roots;
 under its srcDir) or a lean_exe's root, plus every project file they import (Lake builds exactly these).
 Files that only check.sh compiles directly (scripts/SpecSurface.lean, scripts/fixtures/*.lean outside
 CheckFixtures) are not modules of a target and are not counted. Imports come from the pinned
-Lean parser (`lake env lean --deps-json`, header only, no build), as in check-imports.py. The implicit
+Lean parser (`lake env lean --deps-json`, header only, no build), as in check-boundaries.py. The implicit
 `Init` import is not counted.
 
-Usage: python3 -I scripts/metrics-baseline.py [--layers scripts/layers.toml] [--timings <lake build -v log>]
+Usage: python3 -I scripts/metrics-baseline.py [--config scripts/boundaries.toml] [--timings <lake build -v log>]
                                               [--json <out.json>] [--no-modules]
 """
 import argparse, json, re, statistics, subprocess, sys, tomllib
@@ -88,39 +88,33 @@ def load_graph(tree, lake):
     return mods, local, kinds
 
 def assign_layers(mods, cfg):
-    names = cfg.get("layers", {})
-    exact, prefix = cfg.get("exact", {}), cfg.get("prefix", {})
-    fails, layer, used = [], {}, set()
-    for k in sorted(set(cfg) - {"layers", "exact", "prefix", "milestones", "non_library"}):
-        fails.append(f"FAIL[config] unknown key {k}")
-    for k, v in names.items():
-        if not isinstance(v, str):
-            fails.append(f"FAIL[config] layer {k}: the value must be a description string (a key below [layers]?)")
-    for k, v in cfg.get("milestones", {}).items():
-        if not isinstance(v, str) or v not in mods:
-            fails.append(f"FAIL[config] milestone {k}: {v!r} is not a module name")
-    for k in cfg.get("non_library", []):
-        if k not in names:
-            fails.append(f"FAIL[layer] non_library: {k} is not in [layers]")
-    for k, v in list(exact.items()) + list(prefix.items()):
-        if v not in names:
-            fails.append(f"FAIL[layer] rule {k} -> {v}: {v} is not in [layers]")
+    """module -> layer of scripts/boundaries.toml (prefixes never overlap; check-boundaries.py validates the
+    file). A generated library root is `Aggregate`; a module of a target outside the checked libraries
+    (fixtures, the challenge, the check-decls tool) is `(<target>)`."""
+    fails, layer = [], {}
+    roots = {l["name"] for l in cfg.get("lib", []) if l.get("root_lists_all") is True}
+    checked = {l["name"] for l in cfg.get("lib", [])}
+    owner = {p: l["name"] for l in cfg.get("layer", []) for p in l.get("prefixes", [])}
     for m in mods:
-        if m in exact:
-            layer[m] = exact[m]; used.add(("exact", m)); continue
-        hits = [p for p in prefix if under(m, p)]
-        if not hits:
+        hit = [o for p, o in owner.items() if under(m, p)]
+        if m in roots:
+            layer[m] = "Aggregate"
+        elif hit:
+            layer[m] = hit[0]
+        elif mods[m][0] in checked:
             fails.append(f"FAIL[unmapped] {m} ({mods[m][1]}) maps to no layer")
-            continue
-        best = max(hits, key=len)
-        layer[m] = prefix[best]; used.add(("prefix", best))
-    for k in exact:
-        if ("exact", k) not in used:
-            fails.append(f"FAIL[stale] exact rule {k} matches no module")
-    for k in prefix:
-        if ("prefix", k) not in used:
-            fails.append(f"FAIL[stale] prefix rule {k} matches no module (or is always shadowed)")
+        else:
+            layer[m] = f"({mods[m][0]})"
     return layer, fails
+
+def milestones(cfg):
+    """milestone layer -> its entry module `<parent>.<M>.Main` (boundaries.toml `milestone_parents`)."""
+    out = {}
+    for l in cfg.get("layer", []):
+        for p in l.get("prefixes", []):
+            if any(under(p, P) and p.count(".") == P.count(".") + 1 for P in cfg.get("milestone_parents", [])):
+                out[l["name"]] = p + ".Main"
+    return out
 
 def closures(nodes, edges):
     """Reflexive-free transitive closure along `edges` (node -> list of nodes), restricted to `nodes`."""
@@ -191,7 +185,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--tree", default=".")
     ap.add_argument("--lakefile", default="lakefile.toml")
-    ap.add_argument("--layers", default="scripts/layers.toml")
+    ap.add_argument("--config", default="scripts/boundaries.toml")
     ap.add_argument("--timings", help="output of `lake build -v` (lines `Built <Module> (<t>s)`)")
     ap.add_argument("--json", help="also write every per-module number as JSON here")
     ap.add_argument("--no-modules", action="store_true", help="omit the per-module table")
@@ -199,13 +193,11 @@ def main():
     tree = Path(a.tree)
     try:
         lake = tomllib.loads((tree / a.lakefile).read_text())
-        cfg = tomllib.loads((tree / a.layers).read_text())
+        cfg = tomllib.loads((tree / a.config).read_text())
     except (OSError, tomllib.TOMLDecodeError) as e:
         sys.exit(f"FAIL[config] {e}")
     mods, local, kinds = load_graph(tree, lake)
     layer, fails = assign_layers(mods, cfg)
-    if any(f.startswith("FAIL[config]") for f in fails):
-        sys.exit("\n".join(fails))
     rev = defaultdict(list)
     for m in mods:
         for i in local[m]:
@@ -224,7 +216,7 @@ def main():
     if a.timings and not any(m in mods for m in times):
         sys.exit(f"FAIL[config] --timings {a.timings}: no `Built <module> (<time>)` line for a project module "
                  "(a cold `lake build -v` log is expected)")
-    ms_cfg = cfg.get("milestones", {})
+    ms_cfg = milestones(cfg)
     used_by = {m: sorted(k for k, top in ms_cfg.items() if top in mods and (m == top or m in up[top])) for m in mods}
 
     p = print
@@ -233,7 +225,7 @@ def main():
     p(f"Modules: {len(mods)} in lakefile targets, {nd} in the default targets "
       f"({', '.join(lake.get('defaultTargets', []))}).\n")
     # per layer
-    order = list(cfg.get("layers", {}))
+    order = [l["name"] for l in cfg.get("layer", [])] + ["Aggregate"]
     rows = []
     for L in order + sorted({*layer.values()} - set(order)):
         ms = [m for m in mods if layer.get(m) == L]
@@ -263,8 +255,8 @@ def main():
       f"`{' -> '.join(depth[top][1])}`.")
     dd = [depth[m][0] - 1 for m in deflt]
     p(f"- Depth over the default targets: max {max(dd)}, median {statistics.median(dd):g}.")
-    nonlib = set(cfg.get("non_library", [])) | {"Aggregate"}
-    libm = {m for m in mods if layer.get(m) not in nonlib}
+    deflibs = {l["name"] for l in cfg.get("lib", []) if l.get("default") is True}
+    libm = {m for m in mods if mods[m][0] in deflibs and layer.get(m) != "Aggregate"}
     def expand(i, acc, seen):  # an import of an aggregate counts as importing what the aggregate imports
         for j in local[i]:
             if j not in seen:
@@ -276,7 +268,7 @@ def main():
     if libm:
         ld = longest(libm, contracted, lambda m: 1)
         lt = max(sorted(libm), key=lambda m: ld[m][0])
-        p(f"- Library depth (layers outside `non_library` and Aggregate; an aggregate import counts as its imports): "
+        p(f"- Library depth (the default libraries without their roots; an aggregate import counts as its imports): "
           f"max {int(ld[lt][0]) - 1}, `{' -> '.join(ld[lt][1])}`.")
     cs = sorted(((len(down[m]), m) for m in deflt), reverse=True)
     p(f"- Downstream cone (default-target modules that import the module, transitively; {nd} = 100%): "
@@ -326,7 +318,7 @@ def main():
     if not a.no_modules:
         p("\n## Every module\n")
         p("Cone: default-target modules that import it (`-`: not a default-target module). "
-          "Milestones: the `[milestones]` proof modules of scripts/layers.toml whose imports reach it.\n")
+          "Milestones: the milestone layers of scripts/boundaries.toml whose `Main` reaches it.\n")
         rows = []
         for m in sorted(mods, key=lambda m: (order.index(layer[m]) if layer.get(m) in order else 99, m)):
             rows.append([f"`{m}`", layer.get(m, "**UNMAPPED**"), mods[m][0], fc[m]["lines"], depth[m][0] - 1,

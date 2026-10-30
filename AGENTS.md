@@ -17,7 +17,9 @@ Checks and CI tiers: README "Verification".
   (the lakefile's `testDriver`, not a default target).
 - **Generated roots:** `ConsensusLean.lean` and `ConsensusLeanTest.lean` import every module of
   their library. Regenerate with `lake exe mk_all --lib ConsensusLean --module` and
-  `lake exe mk_all --lib ConsensusLeanTest --module`; `check-imports.py` fails on an unlisted file.
+  `lake exe mk_all --lib ConsensusLeanTest --module`; `check-boundaries.py` fails on an unlisted file.
+- **Import boundaries:** the layer matrix in `scripts/boundaries.toml` (README "Layout"); check it in about
+  2 s, no build: `python3 -I scripts/check-boundaries.py`. A needed deviation is a reviewed `[[exception]]`.
 - **Before committing:** `scripts/check-changed.sh` (in a job). It builds the downstream cone of the
   changed modules and runs the fast checks restricted to what changed; read its `SKIP` lines to see
   what it did not check. A change to `scripts/` or the build configuration runs the whole fast mode.

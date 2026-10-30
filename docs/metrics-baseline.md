@@ -1,7 +1,7 @@
 # Baseline metrics (foundation plan §11 step 1)
 
 > Measured at `888664e6`, before the move to one library (#5): the module names below are the old ones
-> (`ConsensusSpec.*`, `ConsensusProofs.*`, ...); `scripts/layers.toml` maps the current names.
+> (`ConsensusSpec.*`, `ConsensusProofs.*`, ...); the `[[layer]]` entries of `scripts/boundaries.toml` map the current names.
 
 Report-only numbers for the layout before the foundation reorg (#4), taken at `888664e6` (main,
 2026-10-29). Later steps compare against them. Nothing here is a gate: plan §6 makes depth, cones and
@@ -22,10 +22,9 @@ job --mem 16G --cpus 8 consensus-lean metrics-cold -- bash -lc 'cd <worktree> &&
 python3 -I scripts/metrics-baseline.py --timings <RUN_DIR>/build.log
 ```
 
-`scripts/layers.toml` maps every module of the lakefile targets to its target layer in the plan
-(§1–§2). Step 2 (#5) moves modules there, and step 3 (#6) turns the map into the boundary checker's
-config and removes this file. Until then, an edit to either new file under `scripts/` runs the fast
-tier with self-tests (about 17 min), like any change to `scripts/`, though no check reads them.
+The layer of a module is its `[[layer]]` in `scripts/boundaries.toml` (since step 3, #6, which replaced
+`scripts/layers.toml` with the boundary checker's config); a generated root is `Aggregate`, a module of a
+target outside the checked libraries `(<target>)`. Milestones are the milestone layers (`Proofs.<M>`).
 
 Files that only check.sh compiles directly (`scripts/SpecSurface.lean`, the `scripts/fixtures/` files
 outside `CheckFixtures`) belong to no target, so they are not counted.
@@ -71,7 +70,7 @@ about 8). Lean v4.35.0, Mathlib v4.35.0.
   - `Instances.Streamlet.Spec → Instances.Bft.Spec` and `Instances.Tendermint.Spec → Instances.Bft.Spec`:
     one instance imports another, so the shared `Bft` material moves down.
   - `Instances.Bft.Spec → Aggregate`, and every other import of an aggregate.
-- **`Proofs` as a module component.** check-imports.py refuses module components named `Proofs` or
+- **`Proofs` as a module component.** check-imports.py (now check-boundaries.py) refuses module components named `Proofs` or
   `Exports` because the vendored check-decls exempts them, hard-coded in `scripts/CheckDecls.lean`
   (`inProofs`, `inExports`). The plan's `Proofs/<M>/` prefix needs one of three things:
   - a different component name;
@@ -223,7 +222,7 @@ Slowest modules:
 <details><summary>Every module: layer, lines, depth, cone, imports, expose, build time, milestones</summary>
 
 
-Cone: default-target modules that import it (`-`: not a default-target module). Milestones: the `[milestones]` proof modules of scripts/layers.toml whose imports reach it.
+Cone: default-target modules that import it (`-`: not a default-target module). Milestones (at `888664e6`): the `[milestones]` proof modules of the former scripts/layers.toml whose imports reach it.
 
 | module | layer | target | lines | depth | cone | public imp | plain imp | expose | build s | milestones |
 |---|---|---|---|---|---|---|---|---|---|---|
