@@ -304,7 +304,7 @@ theorem carryAt_of_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {b
 /-- **What a result's writer did with its counted votes**: each was admitted (or sent) by the
 writer at a time in `[t_s, t_s + 2Δ)` (its stamp, below the resolution time), and its head extends
 the result and is genesis or was accepted by the writer before `t_s + 2Δ` (the head's stamp). -/
-private theorem result_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem result_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat} {C : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt T X i₀ s C CV) :
     ∀ v ∈ CV, v.slot = s ∧
