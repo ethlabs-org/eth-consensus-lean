@@ -19,36 +19,6 @@ namespace Consensus.Goldilocks.Compose
 
 open SA (SAParams ReplayOrder Payload)
 
-/-- The FG state of an honest node before every cut is reachable: every FG cut runs an FG
-handler, and an AC cut leaves `Σ` unchanged. -/
-private theorem fg_reachable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
-    {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A} (hrun : Node.LocalRun dg H sg tr)
-    {y : Fin P.n} (hy : y ∈ H) (i : Nat) : (tr.state y i).fg.Reachable A.genesisPayload := by
-  induction i with
-  | zero =>
-    change (tr.init y).fg.Reachable A.genesisPayload
-    rw [hrun.init y hy]
-    exact .refl
-  | succ i ih =>
-    rw [Trace.state]
-    split_ifs with hn
-    · obtain ⟨c, hc⟩ := Option.ne_none_iff_exists'.1 hn.2
-      have hcut := hrun.cutLaw y hy i c ⟨hn.1, hc⟩
-      cases c with
-      | ac ℓ => rw [hcut.2.2.1]; exact ih
-      | fg ℓ =>
-        cases ℓ with
-        | block B acc =>
-          cases acc
-          · rw [hcut.2]; exact ih
-          · exact ih.tail (Or.inl ⟨B, hcut.2.1⟩)
-        | attestation a => rw [hcut.1]; exact ih.tail (Or.inr ⟨a, rfl⟩)
-        | attest C sg' =>
-          cases sg'
-          · rw [hcut.2]; exact ih
-          · rw [hcut.2.1]; exact ih
-    · exact ih
-
 /-- The frame of an honest node before every cut is well formed. -/
 private theorem frameOK_state {P : Params} {A : NodeAC P}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
