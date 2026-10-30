@@ -52,6 +52,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
@@ -142,6 +143,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention
