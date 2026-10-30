@@ -33,7 +33,9 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
 - **Land on main (trunk-based, owner 2026-10-30, #2)** with `scripts/push-main.sh`, never a bare `git push` to
   `main`: after rebasing on `origin/main` and committing everything, it runs `scripts/check.sh --changed
   origin/main` (the change's cone; the whole fast mode with self-tests for a `scripts/` change) and
-  `scripts/review-boundary.sh`, and pushes only if both pass, printing the check's result line. The pre-push hook
+  `scripts/review-boundary.sh`, and pushes only if both pass, printing the check's result line. If main moves during the check, it takes the landing
+  lock (the remote branch `push-main-lock`), rebases and checks again; other landers wait for the lock instead of
+  checking in vain (#50). Never create or delete that branch by hand except to clear a dead lock (it also expires). The pre-push hook
   `scripts/hooks/pre-push` refuses a push to `main` of a commit the script did not check; enable it once per clone
   with `git config core.hooksPath scripts/hooks` (`.agents/setup` does it in orbs). No PR; every push to `main` runs the fast tier (`scripts/check.sh --fast`); a red `main` is reverted at once by whoever
   pushed it, then fixed. While GitHub Actions cannot run jobs (#50), the CI of record is the orb watcher
