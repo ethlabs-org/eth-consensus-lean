@@ -695,6 +695,16 @@ example := ``Consensus.Goldilocks.Healing.PhaseServiceStatements
 
 /-! ## Goldilocks Regimes (a milestone PR appends here only) -/
 
+example := ``Consensus.Goldilocks.Regimes.ChainAtts
+example := ``Consensus.Goldilocks.Regimes.ValidOutput
+example := ``Consensus.Goldilocks.Regimes.OutputsNested
+example := ``Consensus.Goldilocks.Regimes.FinalizedMonotone
+example := ``Consensus.Goldilocks.Regimes.OutputsValid
+example := ``Consensus.Goldilocks.Regimes.FinalAccountable
+example := ``Consensus.Goldilocks.Regimes.NonFraming
+example := ``Consensus.Goldilocks.Regimes.FinalizedSafe
+example := ``Consensus.Goldilocks.Regimes.AlwaysStatements
+
 /-! ## Goldilocks Refinement (a milestone PR appends here only) -/
 
 /-! ## Goldilocks (values and sheet) -/

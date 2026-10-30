@@ -188,6 +188,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Frame
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.AC
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Service
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always
 public import ConsensusLean.Instances.Streamlet.Spec
 public import ConsensusLean.Instances.Tendermint.Spec
 public import ConsensusLean.Lemmas.Blocks.Facts

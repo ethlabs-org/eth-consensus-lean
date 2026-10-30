@@ -554,7 +554,33 @@ Modelling choices:
 
 ## Regimes
 
-Nothing cited yet; the milestone's statements PR fills this section.
+CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `c6653258`, §"L2: regime theorems (skeleton)". Layout: the
+run-level forms of the `GoldilocksTarget` rows, over the Goldilocks run (`GoldilocksRun`; `Compose.NoCollRun` only
+where the target row allows the collision escape); the Refinement milestone carries them to the model system. R.7 and R.8 (no regime premise) are in
+`Statements/Regimes/Always`.
+
+| Node | Reference | Definition | Milestone | Lean name |
+|---|---|---|---|---|
+| — | CLAIMS R.7 (G1.5's binding), R.8 (`outputValid`) | the attestations on the chain of a block of a node's tree; a valid output (in the tree, chain linked to genesis, each non-genesis block with its digest as root, accepted by the node, with its slot's proposer and an earlier parent) | Regimes | `Consensus.Goldilocks.Regimes.ChainAtts`, `Consensus.Goldilocks.Regimes.ValidOutput` |
+| R.8 | CLAIMS R.8 (uses C0.1, C0.2, F.2, F.3) | **`nested`**: finalized ⪯ confirmed ⪯ head at every honest cut; **`finalMonotone`**: the honest finalized tip moves only to descendants, across restarts; **`outputValid`**: the finalized and confirmed outputs are valid outputs of the node's tree | Regimes | `Consensus.Goldilocks.Regimes.OutputsNested`, `Consensus.Goldilocks.Regimes.FinalizedMonotone`, `Consensus.Goldilocks.Regimes.OutputsValid` |
+| R.7 | CLAIMS R.7 (uses G1.3–G1.5) | **`finalAccountable`**: conflicting honest finalized tips convict `≥ 2q − n` validators from the attestations on two chains the readers hold; **`nonFraming`**: an honest validator signs no slashable pair; **`finalized_safe_below_third`**: with `f < 2q − n`, honest finalized tips never conflict | Regimes | `Consensus.Goldilocks.Regimes.FinalAccountable`, `Consensus.Goldilocks.Regimes.NonFraming`, `Consensus.Goldilocks.Regimes.FinalizedSafe`, `Consensus.Goldilocks.Regimes.AlwaysStatements` |
+
+Modelling choices:
+
+- **Conflict** is incompatibility inside the honest blocks of the run (`tr.HonestBlocks H`), as in G1.4 and C1.1.
+- **`finalAccountable`** reads "conflicting honest reads convict from their own views" (G1.5: "among the attestations
+  included on the chains held by the two readers, taken together") as: some block of each reader's tree at the cut
+  of its read, whose chains' attestations together hold a slashable pair for each convicted validator. The fraction
+  is G1.3's `2q − n` (`≥ n/3`, G1.1); the contract's `α` is set by the Refinement.
+- **`NoColl`**: R.8 and `nonFraming` are `HoldsAlways` rows (no collision escape), so they take no `NoColl` and read
+  ancestry in the node's own tree; `finalAccountable` and `finalized_safe_below_third` take it.
+- **`nonFraming`** is stated on honest signings. The target row itself follows from the model's `sysOf_nonFraming`; the
+  run row serves the simulation (the engine's slashing guard is then a no-op).
+- **`outputValid`**: the model's `Linked`/`PosIncreasing`/`Provenant` read as the output's chain in the node's tree
+  linked to genesis with each block's root its digest (`RootOk`, for `Linked`), slots increasing, and each block
+  accepted by the node with the slot's proposer (seen in a proposal role, for `Provenant`).
+- **Witnesses**: none over `GoldilocksRun` yet (the follow-up of the Healing milestone: an infinite live run of the
+  Goldilocks SA); R.7 and R.8 have no premise beyond the run laws (and `NoColl`, `f < 2q − n` where stated).
 
 ## Refinement
 
