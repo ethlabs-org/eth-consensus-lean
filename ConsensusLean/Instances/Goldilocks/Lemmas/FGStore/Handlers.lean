@@ -73,7 +73,8 @@ theorem updateFinality_spec (st : Store P ACP) (σ : FG.ChainState P.n) :
 
 theorem onBlock_eq_some {st st' : Store P ACP} {B : NodeBlock P ACP}
     (h : st.onBlock B = some st') :
-    ∃ pr σ', B.parent = some pr ∧ st.blocks B.root = none ∧ (st.blocks pr).isSome ∧
+    ∃ pr, ∃ σ' : FG.ChainState P.n, B.parent = some pr ∧ st.blocks B.root = none ∧
+      (st.blocks pr).isSome ∧
       Goldilocks.Anc (insert B st.tree) st.F B ∧
       P.fg.stateTransition (st.σ pr) B.fgView = some σ' ∧
       st' = (updateFinality { st with blocks := Function.update st.blocks B.root (some B),
