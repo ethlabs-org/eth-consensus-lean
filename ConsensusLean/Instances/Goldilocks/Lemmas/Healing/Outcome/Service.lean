@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Service
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 
 public section
 
@@ -28,11 +29,17 @@ fradamt-agent/workbench `producer-reset-continuation.md` §17, §18 (BA) and §2
 
 Acceptance relay reaches only the honest nodes whose `Σ.F` the carrier extends, so each branch
 needs that at the relay deadline every honest node holds the carrier or has its `Σ.F` below it.
-In branch (ii) this is `early_carrier_below`: the crossing lies below a high origin written by
-`t_u + 6Δ`, and HR.4 (R2) makes every honest `Σ.F` compatible with it.
+Both are `carrier_below_origin`: a carrier below a high origin is held or above every honest
+`Σ.F`, since HR.4 (R2) makes every honest `Σ.F` compatible with the origin. In branch (ii)
+(`early_carrier_below`) the crossing lies below a high origin by `EntryRows`; in branch (i)
+(`window_carrier_below`) `W` lies below one by `window_origin`: the update of slot `W.slot`
+(`ready_update`) writes a fast lock stored on `W`, high because `W` is above the reset's origin
+(`reset_origin_below`, (R3) and `ready_unanimous`), or a crossing of `W`'s entry lies below a high
+origin above `W` (`crossing_window_origin`, through a high row naming `W`).
 
 Interface: `entry_rows` is open, and `outcome_of_rows` uses the open private step
-`window_carrier_below` (the same relay condition for the window's carrier `W`, branch (i)). -/
+`update_window_kept` (at that update `W` stays a viable-ancestor candidate, or a higher source
+intervened, below a high origin above `W`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -332,32 +339,6 @@ private theorem relayed (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g
   · exact absurd h hB
   · exact ⟨k', hA, hj.2 k' hk'⟩
 
-/-- **The window's carrier is not below a conflicting honest `Σ.F`** (open; §26, "the carrier is
-relayed within `Δ`"): in the rows branch, at the state at `t_{W.slot} + Δ` every honest node holds
-the window's honest ready proposal `W` or has its `Σ.F` below `W`, so acceptance relay reaches it.
-The acceptance relay (`Sync`) only promises acceptance to nodes whose `Σ.F` the block extends;
-the run premises of C1.2 do not by themselves exclude an honest `Σ.F` that conflicts with `W`
-(a finalization on another branch through `T` between `t_u` and `t_{W.slot} + Δ`). -/
-private theorem window_carrier_below (hrun : GoldilocksRun dg H tr)
-    (hsh : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (hpp : PropPlus tr H g Gp)
-    (hcF₁ : 4 * sp.Δ * ((cF : Time) - 1) < 6 * sp.Δ + ΔF)
-    (hcF₂ : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (cF : Time)) (hδ : cF + kF ≤ sp.toParams.δt)
-    (ha : IsReset tr H g a) {p y : Fin sp.n} {k i u : Nat}
-    {T : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H p k u T)
-    (hE : Compose.RunEntry tr H y i T) (hR : drainTime sp a ≤ sp.ts u)
-    {w : Fin sp.n} {kw : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hWP : ReadyProposal tr H w kw W.slot W) (hWs₁ : u + cF ≤ W.slot)
-    (hWs₂ : W.slot ≤ u + cF + kF) {Pr : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hWpar : W.parent = some Pr.root) (hTPr : Anc (tr.HonestBlocks H) T Pr)
-    {R : Finset (FG.Att sp.n)} (hRq : sp.toParams.fg.q ≤ (R.image FG.Att.val).card)
-    (hRr : ∀ r ∈ R, r.val ∈ H ∧ (∃ j, tr.SignAt r.val j r ∧ tr.time j ≤ sp.ts u + 6 * sp.Δ) ∧
-      r.h = ((tr.post i).fg.σ T.root).h ∧ r.T = T.root ∧ r.timeout = false ∧
-      (decide ((tr.post i).fg.σ T.root).bound = true →
-        r.fin = some (((tr.post i).fg.σ T.root).hj, ((tr.post i).fg.σ T.root).J))) :
-    ∀ z ∈ H, ∀ j, tr.FirstCutFrom j (sp.ts W.slot + sp.Δ) →
-      W ∈ (tr.state z j).fg.tree ∨ Anc (tr.HonestBlocks H) (tr.state z j).fg.F W := by
-  sorry
-
 /-- The FG projection of a Goldilocks run under the HS shared premises is an FG trace with its
 contract (C0.5 (c)). -/
 private theorem fg_run (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g ΔF) :
@@ -382,30 +363,35 @@ private theorem reset_lt (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg 
     le_trans ((SA.ts_le_iff sp).2 (by push_cast; omega)) (drainTime_eq (sp := sp) a ▸ hR)
   exact ⟨by linarith, by linarith⟩
 
-/-- **The early carrier is held or above every honest `Σ.F`** (§26 branch (ii), with the T3 paper
-orb's high origin): at the state at `t_u + 7Δ` every honest node holds the retained crossing `X`
-or has its `Σ.F` below `X`, so acceptance relay reaches it. `X` lies below the block `B` of a high
-origin written by `t_u + 6Δ`; by HR.4 (R2), read at a later call of the node (`Σ.F` only grows),
-its `Σ.F` is compatible with `B`, so with `X` (two ancestors of `B`); if `X ⪯ Σ.F`, `X` is held. -/
-private theorem early_carrier_below (hrun : GoldilocksRun dg H tr)
-    (hsh : HSShared tr H dg g ΔF) (ha : IsReset tr H g a) {u : Nat}
-    (hR : drainTime sp a ≤ sp.ts u) {X : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hXo : ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ tr.time io ≤ sp.ts u + 6 * sp.Δ ∧
-      Anc (tr.HonestBlocks H) X B) :
-    ∀ z ∈ H, ∀ j, tr.FirstCutFrom j (sp.ts u + 7 * sp.Δ) →
+/-- **A carrier below a high origin is held or above every honest `Σ.F`** (the T3 paper orb's
+high origin): at the state at a time `t ≥ a`, every honest node holds a block `X` that lies below
+the block `B` of a high origin, or has its `Σ.F` below `X`. By HR.4 (R2), read at a tick of the
+node after both that state and the origin's write (`Σ.F` only grows), its `Σ.F` is compatible
+with `B`, so with `X` (two ancestors of `B`); if `X ⪯ Σ.F`, `X` is held. -/
+private theorem carrier_below_origin (hrun : GoldilocksRun dg H tr)
+    (hsh : HSShared tr H dg g ΔF) (ha : IsReset tr H g a) {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hXo : ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ Anc (tr.HonestBlocks H) X B) {t : Time}
+    (hat : a ≤ t) :
+    ∀ z ∈ H, ∀ j, tr.FirstCutFrom j t →
       X ∈ (tr.state z j).fg.tree ∨ Anc (tr.HonestBlocks H) (tr.state z j).fg.F X := by
   intro z hz j hj
-  obtain ⟨xo, io, jo, B, hO, hio, hXB⟩ := hXo
+  obtain ⟨xo, io, jo, B, hO, hXB⟩ := hXo
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨hga, hau⟩ := reset_lt hrun hsh ha hR
+  have hga : SA.gbar g < a := by
+    have := cutZ_lt_reset hrun hsh.healthy ha
+    have := lt_cutZ sp g
+    linarith
   have hfg := fg_run hrun hsh
   -- a tick of `z` after `j` and after the origin's cut, at the next slot start
-  have hj0 := hrun.time_nonneg j
-  have hjT : tr.time j < sp.ts ((sp.slot (tr.time j) : Int) + 1) := not_le.1 fun h => by
-    have := (SA.ts_le_iff_le_slot sp hj0 _).1 h
+  have hjτ := le_max_left (tr.time j) (tr.time io)
+  have hioτ := le_max_right (tr.time j) (tr.time io)
+  set τ := max (tr.time j) (tr.time io)
+  have hτ0 : 0 ≤ τ := (hrun.time_nonneg j).trans hjτ
+  have hτT : τ < sp.ts ((sp.slot τ : Int) + 1) := not_le.1 fun h => by
+    have := (SA.ts_le_iff_le_slot sp hτ0 _).1 h
     omega
   obtain ⟨k', x', hg'⟩ := hrun.tick_of_awake z hz _ (by linarith)
-    ⟨4 * ((sp.slot (tr.time j) : Int) + 1), by simp only [SA.SAParams.ts]; ring⟩
+    ⟨4 * ((sp.slot τ : Int) + 1), by simp only [SA.SAParams.ts]; ring⟩
     (hsh.healthy.2.1 z hz _ (by change SA.gbar g ≤ _; linarith [hj.1]))
   obtain ⟨hc', ht'⟩ := tick_first_cut hg'
   have hjk : j ≤ k' := le_of_not_gt fun h => by
@@ -413,7 +399,7 @@ private theorem early_carrier_below (hrun : GoldilocksRun dg H tr)
     linarith
   have hiok : io ≤ k' := le_of_not_gt fun h => by
     have := hrun.time_mono h.le
-    linarith [hj.1]
+    linarith
   -- (R2) after that call, and `Σ.F` at `j` below `Σ.F` there
   have hcmp := ((height_scoped_retention sp ro dg H tr g ΔF hrun hsh.healthy hsh.noColl a
     ha).caches z hz k' ⟨_, hc'⟩ (by linarith [hj.1]) xo io jo B hO hiok).1
@@ -440,12 +426,242 @@ private theorem early_carrier_below (hrun : GoldilocksRun dg H tr)
     have := mem_of_anc (store_anc hfg hz h hFt) hFt
     rwa [hs] at this
 
+/-- **The early carrier is held or above every honest `Σ.F`** (§26 branch (ii), with the T3 paper
+orb's high origin): at the state at `t_u + 7Δ` every honest node holds the retained crossing `X`
+or has its `Σ.F` below `X`, so acceptance relay reaches it: `X` lies below the block of a high
+origin (`carrier_below_origin`). -/
+private theorem early_carrier_below (hrun : GoldilocksRun dg H tr)
+    (hsh : HSShared tr H dg g ΔF) (ha : IsReset tr H g a) {u : Nat}
+    (hR : drainTime sp a ≤ sp.ts u) {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hXo : ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ tr.time io ≤ sp.ts u + 6 * sp.Δ ∧
+      Anc (tr.HonestBlocks H) X B) :
+    ∀ z ∈ H, ∀ j, tr.FirstCutFrom j (sp.ts u + 7 * sp.Δ) →
+      X ∈ (tr.state z j).fg.tree ∨ Anc (tr.HonestBlocks H) (tr.state z j).fg.F X := by
+  obtain ⟨xo, io, jo, B, hO, -, hXB⟩ := hXo
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hau := (reset_lt hrun hsh ha hR).2
+  exact carrier_below_origin hrun hsh ha ⟨xo, io, jo, B, hO, hXB⟩ (by linarith)
+
+/-- An honest node is joined at a time `t` of slot `m + 1` with `ḡ ≤ t_m` (no honest restart
+after `ḡ`). -/
+private theorem joinedAt_of_slot (hsh : HSShared tr H dg g ΔF) {y : Fin sp.n} (hy : y ∈ H)
+    {t : Time} {m : Nat} (hm : sp.slot t = m + 1) (hg : SA.gbar g ≤ sp.ts m) :
+    tr.JoinedAt y t := by
+  intro k hk _
+  change 0 < sp.slot t ∧ tr.time k ≤ sp.toParams.slotTime (sp.slot t - 1)
+  rw [hm, Nat.add_sub_cancel, sp.slotTime_eq]
+  exact ⟨by omega, (hsh.noRestart y hy k hk).trans hg⟩
+
+/-- **An honest update of slot `s`** with `ḡ ≤ t_s`: the tick of an honest node at `t_s + 6Δ`
+(awake under `Healthy(g)`, joined: no honest restart after `ḡ`). -/
+private theorem update_exists (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g ΔF)
+    {y : Fin sp.n} (hy : y ∈ H) {s : Nat} (hs : SA.gbar g ≤ sp.ts s) :
+    ∃ k ℓ, SA.UpdateAt tr.projAC y k s ℓ := by
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨k, x, hg⟩ := hrun.tick_of_awake y hy (sp.ts s + 6 * sp.Δ)
+    (by linarith [gbar_nonneg g]) ⟨4 * (s : Int) + 6, by simp only [SA.SAParams.ts]; ring⟩
+    (hsh.healthy.2.1 y hy _ (by change SA.gbar g ≤ _; linarith))
+  obtain ⟨hc, ht⟩ := tick_first_cut hg
+  obtain ⟨ℓ, hl, hcall⟩ : ∃ ℓ : ACLabel (goldilocksNode sp ro),
+      tr.label k = some (.ac ℓ) ∧ ℓ.call = .tick := ⟨_, hc.2, rfl⟩
+  have hnr : ¬ tr.RestartAt y k := by
+    rintro ⟨ℓ', ⟨-, hl'⟩, hr'⟩
+    have h := hl'.symm.trans hl
+    injection h with h
+    injection h with h
+    rw [h, hcall] at hr'
+    cases hr'
+  have hslot : sp.slot (sp.ts s + 6 * sp.Δ) = s + 1 :=
+    SA.slot_of_mem sp (s + 1) (by simp only [SA.SAParams.ts]; push_cast; linarith)
+      (by simp only [SA.SAParams.ts]; push_cast; linarith)
+  have htk : tr.projAC.time k = sp.ts s + 6 * sp.Δ := ht
+  refine ⟨k, ℓ, Compose.projAC_callAt.2 ⟨hc.1, hl⟩, hcall, htk, ?_⟩
+  rw [Compose.projAC_state hrun.toLocalRun hy k, htk]
+  exact ((Compose.joined_projection sp ro dg H tr hrun y hy _).2.1 k ⟨_, hc⟩ hnr ht).1
+    (joinedAt_of_slot hsh hy hslot hs)
+
+/-- **A high origin below the window's carrier** (from the reset): the reset row (height
+`H_z + 1`, signed at `a`) has a high source below the stored block `O` of a high origin of label
+`l` with `t_l ≤ a < t_{W.slot}` (`high_row_source`); by HR.4 (R3) every honest vote of slot
+`W.slot` extends `O`, and by unanimity (`ready_unanimous`) such a vote, the proposer's own (awake
+and joined at `t_{W.slot} + Δ`), is `W`. -/
+private theorem reset_origin_below (hp : ResetPremises tr H dg g ΔF a)
+    (hsh : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
+    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hWP : ReadyProposal tr H w kw W.slot W)
+    (hRW : drainTime sp a ≤ sp.ts W.slot) (hga : SA.gbar g + 8 * sp.Δ < a)
+    (haW : a < sp.ts W.slot) (hWU : W ∈ tr.HonestBlocks H) :
+    ∃ x r l O, HighOrigin tr H g x r l O ∧ Anc (tr.HonestBlocks H) O W := by
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨⟨y, hy, k, att, hs, hh, hk⟩, -⟩ := hp.reset
+  obtain ⟨r, hrk, l, O, hO, -⟩ := high_row_source hp hy hs hh.ge
+  -- the origin's label is before `W.slot`
+  have hlr : sp.ts l ≤ tr.time r := by
+    obtain ⟨CV, ℓw, D, hcw, hfl, -⟩ := hO.2.2.1
+    rcases hfl with ⟨ℓ', C, hu, -⟩ | ⟨ℓ', A, -, hsl, -⟩
+    · have h : tr.time r = sp.ts l + 6 * sp.Δ := hu.2.2.1
+      linarith
+    · have h : sp.slot (tr.time r) = l := hsl
+      exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) l).2 (by omega)
+  have hl : l < W.slot := by
+    have := hp.run.time_mono hrk.le
+    exact_mod_cast (SA.ts_lt_iff sp).1 (show sp.ts l < sp.ts W.slot by linarith)
+  -- the proposer's slot-`W.slot` vote is `W`, and it extends `O`
+  have hwH := hWP.1
+  obtain ⟨m, hm⟩ : ∃ m, W.slot = m + 1 := ⟨W.slot - 1, by omega⟩
+  have hmW : sp.ts W.slot = sp.ts m + 4 * sp.Δ := by
+    rw [hm]; simp only [SA.SAParams.ts]; push_cast; ring
+  have hslot : sp.slot (sp.ts W.slot + sp.Δ) = m + 1 := by
+    rw [← hm]
+    exact SA.slot_of_mem sp W.slot (by linarith)
+      (by simp only [SA.SAParams.ts]; push_cast; linarith)
+  obtain ⟨kv, e, hv, hes, -⟩ := Compose.vote_of_awake_joined hp.run hp.noColl hwH
+    (hp.healthy.2.1 w hwH _ (by change SA.gbar g ≤ _; linarith))
+    (joinedAt_of_slot hsh hwH hslot (by linarith))
+  have hhead := ready_unanimous hp hc hWP hRW w hwH kv e hv hes
+  obtain ⟨ℓv, hcv, hev⟩ := hv
+  obtain ⟨⟨Hd, hHd, hHdr, hOHd⟩, -⟩ := (height_scoped_retention sp ro dg H tr g ΔF hp.run
+    hp.healthy hp.noColl a hp.reset).votes y r l O hO w hwH kv ℓv e ⟨hcv, hev⟩ (by omega)
+  obtain rfl : Hd = W := (honest_coherent hp).1 hHd hWU (hHdr.trans hhead)
+  exact ⟨y, r, l, O, hO, hOHd⟩
+
+/-- **The update of the window's slot keeps its write on `W`** (open; phase-service §10, "At
+`d = t_u + 6Δ` …", and §11 "If no higher descendant source intervenes, `P` is still viable and the
+fresh write survives"): at an honest update of slot `W.slot` whose result and fast selection are
+`W`, not vetoed, and whose returned sources extend `W` (`ready_update`'s first case), `W` is a
+candidate of `viable_ancestor` in the update's frame (in its viable tree, or at or below
+`fc_root`), so the fast lock is stored on `W` itself; or a higher descendant source intervened
+(extending `W`), and the stored block of its fast-lock write (A1.5,
+`stored_fast_lock_provenance`), above the source, is a high origin above `W`. -/
+private theorem update_window_kept (hp : ResetPremises tr H dg g ΔF a)
+    (hc : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
+    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hWP : ReadyProposal tr H w kw W.slot W)
+    (hRW : drainTime sp a ≤ sp.ts W.slot) {z : Fin sp.n} (hz : z ∈ H) {kz : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC z kz W.slot ℓ)
+    (hconf : SA.getConfirmation sp (tr.projAC.state z kz) ℓ.frame W.slot = some W)
+    (hnv : ¬ SA.conflictsWithLock sp (tr.projAC.state z kz).locks ℓ.frame (tr.time kz) W)
+    (hfs : SA.fastSelect sp (tr.projAC.state z kz) ℓ.frame W.slot W = some W)
+    (hsrc : ∀ k' ℓ' C, SA.ToFGAt tr.projAC z k' ℓ' C → tr.time k' = tr.time kz →
+      Anc (tr.HonestBlocks H) W C) :
+    (W ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc W ℓ.frame.fcRoot) ∨
+      ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ Anc (tr.HonestBlocks H) W B := by
+  sorry
+
+/-- **A crossing of the window's entry lies below a high origin above `W`** (`ready_update`'s
+second case): when an honest node has accepted a block `X` that justifies `W`'s entry at `W`'s
+height, `W` is the entry (`J_entry_of_reachable`; not genesis, since `W` is high,
+`reset_origin_below`), and some honest validator has a row naming `W` on `X`'s store, or `W`'s
+entry would be kept up to `X` (`entry_kept`, `f < q`), against `h_j < h` at `X`. That row is
+high (it names `W`, of height `≥ H_z + 1`, at its own height, `signAt_entry`), so its source lies
+below a high origin, above the row's entry `W` (`high_row_source`). -/
+private theorem crossing_window_origin (hp : ResetPremises tr H dg g ΔF a)
+    (hsh : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
+    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hWP : ReadyProposal tr H w kw W.slot W)
+    (hRW : drainTime sp a ≤ sp.ts W.slot) (hga : SA.gbar g + 8 * sp.Δ < a)
+    (haW : a < sp.ts W.slot) {y : Fin sp.n} (hy : y ∈ H) {k' : Nat}
+    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : tr.AcceptAt y k' X)
+    (hJ : Store.JustifiesEntry sp.toParams (Payload sp.n) (tr.post k').fg W
+      ((tr.post k').fg.σ W.root).h X) :
+    ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ Anc (tr.HonestBlocks H) W B := by
+  rw [← tr.state_succ_of_call hX] at hJ
+  obtain ⟨hXt, hWX, hhj, hJr, -⟩ := hJ
+  have hr := Compose.fg_reachable hp.run.toLocalRun hy (k' + 1)
+  have hWt := mem_of_anc hWX hXt
+  -- `W` is high, and it is the entry justified at `X`
+  obtain ⟨x, i, l, O, hO, hOW⟩ := reset_origin_below hp hsh hc hWP hRW hga haW ⟨y, hy, _, hWt⟩
+  have hWh := high_of_anc hp hO hy hWt hOW
+  obtain ⟨E, hE, hEr, -, hcase⟩ := Store.J_entry_of_reachable hr hXt
+  obtain rfl : E = W := (honest_coherent hp).1 ⟨y, hy, _, hE⟩ ⟨y, hy, _, hWt⟩ (hEr.trans hJr)
+  have hTh : ((tr.state y (k' + 1)).fg.σ E.root).Th = E.root := by
+    rcases hcase with hg | ⟨-, hTh⟩
+    · have := genesis_not_high hp hy hWt (by rw [hg]; rfl)
+      omega
+    · exact hTh
+  -- an honest row on the store names `W`
+  obtain ⟨W', hW't, att, hatt, hattT, hattv⟩ : ∃ W' ∈ (tr.state y (k' + 1)).fg.tree,
+      ∃ att ∈ W'.fgPayload, att.T = E.root ∧ att.val ∈ H := by
+    by_contra hno
+    push Not at hno
+    have h₁ := (Store.entry_kept hr (faulty_lt_q hp.healthy) hno hWX hTh).1
+    have h₂ := Store.hj_lt_h hr hXt
+    omega
+  rcases tree_accepted hp.run.toLocalRun hy hW't with rfl | ⟨kb, -, hb⟩
+  · cases hatt
+  obtain ⟨d, -, hsd⟩ := (fg_run hp.run hsh).unforgeable y hy kb att
+    ⟨_, Compose.projFG_callAt.2 hb, hatt⟩ hattv
+  have hs := signAt_of_projFG hsd
+  -- the row is high: it names `W` at its own height
+  obtain ⟨E', hE', hE'r, hE'h⟩ := signAt_entry hp.run hattv hs
+  obtain rfl : E' = E := (honest_coherent hp).1 ⟨_, hattv, _, hE'⟩ ⟨y, hy, _, hWt⟩
+    (hE'r.trans hattT)
+  have hh : HZ tr H g + 1 ≤ att.h := by
+    rw [← hE'h, σ_eq_run hp hattv hy hE' hWt]
+    exact hWh
+  obtain ⟨r, -, l, O', hO', E'', hE'', hE''O', hE''r, -⟩ := high_row_source hp hattv hs hh
+  obtain rfl : E'' = E' := (honest_coherent hp).1 ⟨_, hattv, _, hE''⟩ ⟨y, hy, _, hWt⟩
+    (hE''r.trans hattT)
+  exact ⟨_, r, l, O', hO', hE''O'.mono fun Z hZ => ⟨_, hattv, r, hZ⟩⟩
+
+/-- **A high origin above the window's carrier** (the T3 paper orb's route): the proposer's
+update of slot `W.slot` at `t_{W.slot} + 6Δ` (`ready_update`) writes a fast lock on `W`, stored on
+`W` itself (`update_window_kept`), a high origin: `W` is above the reset's origin
+(`reset_origin_below`), so it is high; or a higher source or a crossing intervened, below a high
+origin above `W` (`update_window_kept`, `crossing_window_origin`). -/
+private theorem window_origin (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (ha : IsReset tr H g a) {u : Nat}
+    (hR : drainTime sp a ≤ sp.ts u) {w : Fin sp.n} {kw : Nat}
+    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hWP : ReadyProposal tr H w kw W.slot W)
+    (hWs : u ≤ W.slot) :
+    ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ Anc (tr.HonestBlocks H) W B := by
+  have hp : ResetPremises tr H dg g ΔF a := ⟨hrun, hsh.healthy, hsh.noColl, ha⟩
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨hga, hau⟩ := reset_lt hrun hsh ha hR
+  have huW : sp.ts u ≤ sp.ts W.slot := (SA.ts_le_iff sp).2 (by exact_mod_cast hWs)
+  have hRW : drainTime sp a ≤ sp.ts W.slot := hR.trans huW
+  have hwH := hWP.1
+  obtain ⟨kz, ℓ, hu⟩ := update_exists hrun hsh hwH (s := W.slot) (by linarith)
+  rcases ready_update hp hc hWP hRW hwH hu with ⟨hconf, hnv, hfs, hsrc⟩ |
+    ⟨y, hy, k', X, hX, hk', hJ⟩
+  · rcases update_window_kept hp hc hWP hRW hwH hu hconf hnv hfs hsrc with hcand | ho
+    · have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hsh.noColl).localRun
+      have hWfr : W ∈ ℓ.frame.tree := (SA.deepest_mem hfs).1.1.1
+      have hWt := frame_tree_subset hp hwH hu.1 hWfr
+      have hfl : SA.FastLockAt tr.projAC w kz W.slot W
+          (SA.fastCounted sp (tr.projAC.state w kz) ℓ.frame W.slot W) :=
+        Or.inl ⟨ℓ, W, hu, hconf, hnv, hfs, rfl⟩
+      obtain ⟨x, r, l, O, hO, hOW⟩ :=
+        reset_origin_below hp hsh hc hWP hRW hga (by linarith) ⟨w, hwH, kz, hWt⟩
+      have hWo : HighOrigin tr H g w kz W.slot W := by
+        unfold HighOrigin Compose.StoredFastLockAt
+        exact ⟨hwH, joinedAt_of_fastLockAt hrun hsh.noColl hwH hfl,
+          ⟨_, ℓ, W, hu.1, hfl, (SA.viableAncestor_self (SA.frameIn_of_callAt hr hwH hu.1).1 hWfr
+            hcand).symm⟩, high_of_anc hp hO hwH hWt hOW⟩
+      exact ⟨w, kz, W.slot, W, hWo, .refl⟩
+    · exact ho
+  · exact crossing_window_origin hp hsh hc hWP hRW hga (by linarith) hy hX hJ
+
+/-- **The window's carrier is held or above every honest `Σ.F`** (§26, "the carrier is relayed
+within `Δ`", by the T3 paper orb's high-origin route): at the state at `t_{W.slot} + Δ` every
+honest node holds the window's honest ready proposal `W` or has its `Σ.F` below `W`, so
+acceptance relay reaches it: `W` lies below a high origin (`window_origin`), and
+`carrier_below_origin` applies. -/
+private theorem window_carrier_below (hrun : GoldilocksRun dg H tr)
+    (hsh : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (ha : IsReset tr H g a)
+    {u : Nat} (hR : drainTime sp a ≤ sp.ts u) {w : Fin sp.n} {kw : Nat}
+    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hWP : ReadyProposal tr H w kw W.slot W)
+    (hWs : u ≤ W.slot) :
+    ∀ z ∈ H, ∀ j, tr.FirstCutFrom j (sp.ts W.slot + sp.Δ) →
+      W ∈ (tr.state z j).fg.tree ∨ Anc (tr.HonestBlocks H) (tr.state z j).fg.F W := by
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hau := (reset_lt hrun hsh ha hR).2
+  have huW : sp.ts u ≤ sp.ts W.slot := (SA.ts_le_iff sp).2 (by exact_mod_cast hWs)
+  exact carrier_below_origin hrun hsh ha (window_origin hrun hsh hc ha hR hWP hWs) (by linarith)
+
 /-- **The outcome from the rows** (§26): with the window's honest ready proposal whose parent
 extends `T`, the rows (or the retained crossing) give C1.2's conclusion: the literal good window
 or the early outcome, with the carrier relayed, and at an unbound entry a justification by the
 window's end. -/
 theorem outcome_of_rows (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hpp : PropPlus tr H g Gp)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (_hpp : PropPlus tr H g Gp)
     (hcF₁ : 4 * sp.Δ * ((cF : Time) - 1) < 6 * sp.Δ + ΔF)
     (hcF₂ : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (cF : Time)) (hδ : cF + kF ≤ sp.toParams.δt)
     (ha : IsReset tr H g a) {p y : Fin sp.n} {k i u : Nat}
@@ -585,8 +801,7 @@ theorem outcome_of_rows (hrun : GoldilocksRun dg H tr) (hsh : HSShared tr H dg g
     intro z hz
     obtain ⟨k', hA, hk'⟩ := relayed hrun hsh hc hwH hz hacc hWne (t := sp.ts W.slot + sp.Δ)
       (by linarith) (by rw [hkw])
-      (window_carrier_below hrun hsh hc hpp hcF₁ hcF₂ hδ ha hP hE hR hWP hWs₁ hWs₂ hWpar hTPr
-        hRq hRr z hz)
+      (window_carrier_below hrun hsh hc ha hR hWP (by omega) z hz)
     exact ⟨k', hA, by rw [hT₁]; linarith⟩
   -- the unbound clause: the window's chain justifies `T` (G1.7's first half)
   obtain ⟨X, hXJ, -⟩ := Store.window_justifies hfg hgw
