@@ -27,6 +27,12 @@ def excludedEntries (H : Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrac
   {E | ¬ Compatible U E B ∧ ∃ z ∈ H, ∃ j, Ts ≤ tr.time j ∧ (∀ k < j, tr.time k < Ts) ∧
     Goldilocks.Anc U (tr.store z j).F E ∧ E ≠ (tr.store z j).F}
 
+/-- Membership in `excludedEntries`. -/
+theorem mem_excludedEntries {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)} {tr : FGTrace P ACP}
+    {Ts : Time} {B E : NodeBlock P ACP} : E ∈ excludedEntries H U tr Ts B ↔
+      ¬ Compatible U E B ∧ ∃ z ∈ H, ∃ j, Ts ≤ tr.time j ∧ (∀ k < j, tr.time k < Ts) ∧
+        Goldilocks.Anc U (tr.store z j).F E ∧ E ≠ (tr.store z j).F := Iff.rfl
+
 /-! ## One block of the state transition -/
 
 /-- One accepted block keeps the height and the entry, or enters the next height by itself; it
