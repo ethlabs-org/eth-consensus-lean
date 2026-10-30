@@ -49,10 +49,10 @@ theorem sleepy_invariant (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     fun y hy i => caches_on_chain hrun hnc hsl hy i, fun y hy i l hl => ?_,
     fun y hy i ℓ C h => source_on_chain hrun hnc hy h,
     fun y hy i C s hC hCt => held_origin_viable hrun hnc hsl (fun s => (hF s).1) hy i
-      (fun C' s' hC' => hcomp C s C' s' hC hC') hCt⟩
+      (fun C' s' hC' => hcomp C s C' s' hC hC'.origin) hCt⟩
   · exact votesBelow_iff.1 (hF e.msg.slot).2 C s hC y hy i e he hs le_rfl
   · obtain ⟨L, hL, hLr, C, hC, hLC⟩ := lock_origin hrun hnc hy i l hl
-    exact ⟨L, hL, hLr, onOriginChain_iff.2 (Or.inr ⟨C, l.slot, hC, hLC⟩)⟩
+    exact ⟨L, hL, hLr, onOriginChain_iff.2 (Or.inr ⟨C, l.slot, hC.origin, hLC⟩)⟩
 
 /-- **R.1's safety part under `Sleepy`**: the confirmed outputs of honest nodes at any two cuts
 are compatible (inside the honest blocks), whether or not the nodes are served. -/

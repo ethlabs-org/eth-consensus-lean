@@ -36,6 +36,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 def Origin (C : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat) : Prop :=
   ∃ x ∈ H, ∃ i CV, SA.ResultAt tr.projAC x i s C CV ∨ SA.OptimisticLockAt tr.projAC x i s C CV
 
+/-- An origin of label `s` whose event is at a cut before `i` (the origins a read at cut `i` can
+depend on). -/
+def OriginBefore (C : SA.Blk sp.n (List (FG.Att sp.n))) (s i : Nat) : Prop :=
+  ∃ x ∈ H, ∃ k < i, ∃ CV,
+    SA.ResultAt tr.projAC x k s C CV ∨ SA.OptimisticLockAt tr.projAC x k s C CV
+
 /-- `B` is on the ancestor closure of the origin chain: genesis, or an ancestor (inside the
 honest blocks) of an origin. -/
 def OnOriginChain (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
@@ -58,6 +64,28 @@ theorem origin_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} :
     Origin tr H C s ↔ ∃ x ∈ H, ∃ i CV,
       SA.ResultAt tr.projAC x i s C CV ∨ SA.OptimisticLockAt tr.projAC x i s C CV :=
   Iff.rfl
+
+theorem originBefore_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s i : Nat} :
+    OriginBefore tr H C s i ↔ ∃ x ∈ H, ∃ k < i, ∃ CV,
+      SA.ResultAt tr.projAC x k s C CV ∨ SA.OptimisticLockAt tr.projAC x k s C CV :=
+  Iff.rfl
+
+theorem OriginBefore.origin {C : SA.Blk sp.n (List (FG.Att sp.n))} {s i : Nat}
+    (h : OriginBefore tr H C s i) : Origin tr H C s :=
+  let ⟨x, hx, k, _, CV, h⟩ := h
+  ⟨x, hx, k, CV, h⟩
+
+/-- The result of an honest joined update is an origin of its slot. -/
+theorem Origin.of_result {x : Fin sp.n} (hx : x ∈ H) {i s : Nat}
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (h : SA.ResultAt tr.projAC x i s C CV) : Origin tr H C s :=
+  ⟨x, hx, i, CV, Or.inl h⟩
+
+/-- The selection of an honest optimistic check is an origin of its slot. -/
+theorem Origin.of_optimistic {x : Fin sp.n} (hx : x ∈ H) {i s : Nat}
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (h : SA.OptimisticLockAt tr.projAC x i s C CV) : Origin tr H C s :=
+  ⟨x, hx, i, CV, Or.inr h⟩
 
 theorem onOriginChain_iff {B : SA.Blk sp.n (List (FG.Att sp.n))} :
     OnOriginChain tr H B ↔

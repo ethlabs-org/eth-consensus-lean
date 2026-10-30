@@ -34,13 +34,14 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time}
 
-/-- **S3 at full reads**: once all origins compare, a block `B` that an honest node holds and that
-is compatible with every origin (an origin itself, or a protected proposal once it is) is at or
-below its `fc_root` or in its full viable tree. -/
+/-- **S3 at full reads**: once all origins compare, a block `B` that an honest node holds before
+cut `i` and that is compatible with every origin whose event precedes the cut (an origin itself;
+a protected proposal before its update, workbench#12 §4 S3P) is at or below its `fc_root` or in
+its full viable tree. -/
 theorem held_origin_viable (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) (hP : ∀ s, OriginsBelow tr H s) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hBc : ∀ C s, Origin tr H C s → Compatible (tr.HonestBlocks H) B C)
+    (hBc : ∀ C s, OriginBefore tr H C s i → Compatible (tr.HonestBlocks H) B C)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
     (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
       B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by

@@ -35,12 +35,12 @@ theorem record_origin (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr) {y 
       (C.root = sp.genesisRoot ∨ ∃ s, Origin tr H C s) := by
   sorry
 
-/-- **Every stored lock sits below an origin of its slot**, and names a block of the node's
-tree. -/
+/-- **Every stored lock sits below an origin of its slot** whose event precedes the cut, and names
+a block of the node's tree. -/
 theorem lock_origin (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).ac.locks, ∃ L ∈ (tr.state y i).fg.tree, L.root = l.block ∧
-      ∃ C, Origin tr H C l.slot ∧ Anc (tr.HonestBlocks H) L C := by
+      ∃ C, OriginBefore tr H C l.slot i ∧ Anc (tr.HonestBlocks H) L C := by
   sorry
 
 /-- **Every FG source is on the origin chain**: it is the block of a live fast lock. -/
