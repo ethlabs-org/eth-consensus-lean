@@ -63,6 +63,10 @@ structure FGStoreTraceAt : Prop where
   finalizedSafety : FinalizedSafety P ACP
   quorumFreeEntries : QuorumFreeEntries P ACP
 
+/-- **FGStore, part 2 (so far).** The FG trace statements hold at every parameter and AC payload
+type. The statements of G1.6–G1.9 over FG traces will extend `FGStoreTraceAt`. -/
+def FGStoreTrace : Prop := ∀ (P : Params) (ACP : Type), FGStoreTraceAt P ACP
+
 end Consensus.Goldilocks.Store
 
 end

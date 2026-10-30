@@ -1,5 +1,7 @@
 { "challenge_module": "Challenge", "solution_module": "Solution",
   "theorem_names": ["Consensus.Review.acceptedGood", "Consensus.Review.regimesRealizable",
                     "Consensus.Review.logFaithful", "Consensus.Review.heldIffServed",
-                    "Consensus.Goldilocks.FG.fGSafety"],
+                    "Consensus.Goldilocks.FG.fGSafety", "Consensus.Goldilocks.SA.aCSteps",
+                    "Consensus.Goldilocks.Store.fGStoreLocal",
+                    "Consensus.Goldilocks.Store.fGStoreTrace"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }

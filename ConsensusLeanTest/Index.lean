@@ -291,6 +291,7 @@ example := ``Consensus.Goldilocks.FGTrace
 example := ``Consensus.Goldilocks.FGTrace.AcceptAt
 example := ``Consensus.Goldilocks.FGTrace.ProcessAt
 example := ``Consensus.Goldilocks.FGTrace.SignAt
+example := ``Consensus.Goldilocks.Store.FGStoreTrace
 example := ``Consensus.Goldilocks.Store.FGStoreTraceAt
 example := ``Consensus.Goldilocks.Store.FinalizedSafety
 example := ``Consensus.Goldilocks.Store.QuorumFreeEntries
@@ -428,6 +429,7 @@ example := ``Consensus.Goldilocks.Trace.state
 
 example := ``Consensus.Goldilocks.SA.ACRun
 example := ``Consensus.Goldilocks.SA.ACSteps
+example := ``Consensus.Goldilocks.SA.ACStepsAt
 example := ``Consensus.Goldilocks.SA.CastAt
 example := ``Consensus.Goldilocks.SA.EarlierVotesExtend
 example := ``Consensus.Goldilocks.SA.FastLockAt

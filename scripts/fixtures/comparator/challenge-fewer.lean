@@ -10,5 +10,8 @@ theorem Consensus.Review.regimesRealizable : Consensus.Review.RegimesRealizable 
 theorem Consensus.Review.logFaithful : Consensus.Review.LogFaithful := sorry
 theorem Consensus.Review.heldIffServed : Consensus.Review.HeldIffServed := sorry
 theorem Consensus.Goldilocks.FG.fGSafety : Consensus.Goldilocks.FG.FGSafety := sorry
+theorem Consensus.Goldilocks.SA.aCSteps : Consensus.Goldilocks.SA.ACSteps := sorry
+theorem Consensus.Goldilocks.Store.fGStoreLocal : Consensus.Goldilocks.Store.FGStoreLocal := sorry
+theorem Consensus.Goldilocks.Store.fGStoreTrace : Consensus.Goldilocks.Store.FGStoreTrace := sorry
 
 end

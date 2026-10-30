@@ -194,8 +194,8 @@ def SourceCompatible : Prop :=
     Compatible U ℓ.frame.F B → Compatible U ℓ.frame.fcRoot B →
     Compatible U C B
 
-/-- The ACSteps statements. -/
-structure ACSteps : Prop where
+/-- The ACSteps statements, for the SA parameters `sp`. -/
+structure ACStepsAt : Prop where
   proposerVotersAgree : ProposerVotersAgree sp
   firstTransfer : FirstTransfer sp
   nextTransfer : NextTransfer sp
@@ -204,6 +204,9 @@ structure ACSteps : Prop where
   sourceAge : SourceAge sp
   resultTransfer : ResultTransfer sp
   sourceCompatible : SourceCompatible sp
+
+/-- **Milestone ACSteps**: the ACSteps statements for all SA parameters. -/
+def ACSteps : Prop := ∀ sp : SAParams, ACStepsAt sp
 
 end Consensus.Goldilocks.SA
 

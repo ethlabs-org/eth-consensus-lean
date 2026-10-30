@@ -589,7 +589,12 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.FG",
          "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
          "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
-         "Instances.Goldilocks.Proofs.FGSafety"]
+         "Instances.Goldilocks.Proofs.FGSafety", "Instances.Goldilocks.Spec.Frame",
+         "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.AC",
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Proofs.ACSteps",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Lemmas.FGStore", "Instances.Goldilocks.Proofs.FGStore"]
 about = "comparator solution: the review statements and the finished instance milestones (each through its Main)"
 
 [[layer]]
@@ -687,7 +692,10 @@ review_root = "ConsensusLeanTest"
 challenge_module = "Challenge"
 solution_module = "Solution"
 statements_module = "ConsensusLean.Statements.Review"
-milestone_statements_modules = ["ConsensusLean.Instances.Goldilocks.Statements.FGSafety"]
+milestone_statements_modules = ["ConsensusLean.Instances.Goldilocks.Statements.FGSafety",
+                                "ConsensusLean.Instances.Goldilocks.Statements.AC.Steps",
+                                "ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local",
+                                "ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace"]
 # Extra targets built by step 1 next to the default targets.
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
                        "spec-surface", "Challenge"]

@@ -7,12 +7,12 @@ public section
 
 /-! # Goldilocks milestone ACSteps
 
-`ACSteps sp` from `Lemmas/AC/Steps/`. -/
+`ACSteps` (for every SA parameter set) from `Lemmas/AC/Steps/`. -/
 
 namespace Consensus.Goldilocks.SA
 
-/-- **ACSteps.** -/
-theorem acSteps (sp : SAParams) : ACSteps sp where
+/-- **ACSteps** at the SA parameters `sp`. -/
+theorem acStepsAt (sp : SAParams) : ACStepsAt sp where
   proposerVotersAgree := proposer_voters_agree sp
   firstTransfer := first_transfer sp
   nextTransfer := next_transfer sp
@@ -21,6 +21,9 @@ theorem acSteps (sp : SAParams) : ACSteps sp where
   sourceAge := source_age sp
   resultTransfer := result_transfer sp
   sourceCompatible := source_compatible sp
+
+/-- **ACSteps.** -/
+theorem acSteps : ACSteps := acStepsAt
 
 end Consensus.Goldilocks.SA
 

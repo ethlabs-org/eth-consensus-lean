@@ -25,7 +25,7 @@ theorem fg_store_local : FGStoreLocal := fun P ACP =>
     entryStateOfSource := entry_state_of_source P ACP }
 
 /-- **FGStore, part 2 (so far).** -/
-theorem fg_store_trace (P : Params) (ACP : Type) : FGStoreTraceAt P ACP :=
+theorem fg_store_trace : FGStoreTrace := fun P ACP =>
   { finalizedSafety := finalized_safety P ACP
     quorumFreeEntries := quorum_free_entries P ACP }
 

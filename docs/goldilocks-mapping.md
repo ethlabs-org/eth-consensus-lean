@@ -135,7 +135,7 @@ the handlers reach, at one node; part 2 (G1.4, G1.6–G1.10, over FG traces) wai
 | — | decomposition §2 D (`FG.LocalRun`); claims C0.4, C0.5 (c) | FG state with the record; the execution law of an FG call; an FG trace; the FG trace contract (initial state, execution, trees in `U`, time order, signing at public times, own proposal first and from the pool, attest before receipts, unforgeability) | — | `Consensus.Goldilocks.FGState`, `Consensus.Goldilocks.FGLabel.Step`, `Consensus.Goldilocks.FGLabel.processed`, `Consensus.Goldilocks.FGTrace`, `Consensus.Goldilocks.FGTrace.SignAt`, `Consensus.Goldilocks.FGTrace.AcceptAt`, `Consensus.Goldilocks.FGTrace.ProcessAt`, `Consensus.Goldilocks.FGLocalRun` |
 | G1.4 | CLAIMS G1.4 | finalized safety over FG traces | FGStore (part 2) | `Consensus.Goldilocks.Store.FinalizedSafety` |
 | G1.10 | CLAIMS G1.10 (the core, with the own proposal; decomposition §4.7 case 2) | quorum-free entries | FGStore (part 2) | `Consensus.Goldilocks.Store.namers`, `Consensus.Goldilocks.Store.QuorumFreeEntries` |
-| — | the part-2 bundle | the above | FGStore (part 2) | `Consensus.Goldilocks.Store.FGStoreTraceAt` |
+| — | the part-2 bundle | the above, at one and at every parameter set | FGStore (part 2) | `Consensus.Goldilocks.Store.FGStoreTraceAt`, `Consensus.Goldilocks.Store.FGStoreTrace` |
 
 Modelling notes: `Σ.T` and `Σ.σ` are kept by root (the store's duplicate test is by root, so a held root names one
 block); genesis takes an AC payload `acp₀` (never read). Restart keeps `Σ`, so it is no store step. Not yet
@@ -236,7 +236,7 @@ A1.7 are run-level (Service). The healing kernels A1–A5 of healing-simple are 
 | A1.5 | CLAIMS A1.5 | source age | `ACSteps` | `Consensus.Goldilocks.SA.SourceAge` |
 | A1.8 | CLAIMS A1.8 | result transfer, per vote | `ACSteps` | `Consensus.Goldilocks.SA.ResultTransfer` |
 | A1.9 | CLAIMS A1.9 | source compatibility after the cut, per call | `ACSteps` | `Consensus.Goldilocks.SA.SourceCompatible` |
-| — | the milestone | all of the above | `ACSteps` | `Consensus.Goldilocks.SA.ACSteps` |
+| — | the milestone | all of the above, at one and at every SA parameter set | `ACSteps` | `Consensus.Goldilocks.SA.ACStepsAt`, `Consensus.Goldilocks.SA.ACSteps` |
 
 Modelling choices:
 

@@ -55,6 +55,15 @@ run_meta do
 /-- info: 'Consensus.Goldilocks.FG.fGSafety' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.FG.fGSafety
 
+/-- info: 'Consensus.Goldilocks.SA.aCSteps' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCSteps
+
+/-- info: 'Consensus.Goldilocks.Store.fGStoreLocal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreLocal
+
+/-- info: 'Consensus.Goldilocks.Store.fGStoreTrace' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreTrace
+
 /-! ## Axiom pins: the source theorems -/
 
 /-- info: 'Consensus.Shape.Accepted.good' depends on axioms: [propext, Classical.choice, Quot.sound] -/
