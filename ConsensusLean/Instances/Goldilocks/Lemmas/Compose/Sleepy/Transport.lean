@@ -69,7 +69,7 @@ private theorem etime_le {t t' : Time} : SA.ETime.of t ≤ SA.ETime.of t' ↔ t 
 
 /-- **Frames are closed under acceptance**: every ancestor (inside `U`) of a block of an honest
 node's frame at a call is genesis or was accepted by the node at that call or an earlier one. -/
-private theorem frame_anc_accepted (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem frame_anc_accepted (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     {y : Fin sp.n} (hy : y ∈ H) :
     ∀ i (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), T.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ X,
       Anc U X B → X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X := by
@@ -199,7 +199,7 @@ private theorem readPoint_slot (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U 
 from `0` to at least `t_s + 2Δ`: if each counted vote is of slot `s`, was sent or admitted by an
 honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has a head above `y`'s `Σ.F` that is genesis
 or that `w` accepted before `t_s + 2Δ`, then `Carry_y(s, ·, ·)` holds for the counted votes. -/
-private theorem carry_of_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {b : Time}
+theorem carryAt_of_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {b : Time}
     (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U 0 b T) {s : Nat}
     (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
@@ -430,7 +430,7 @@ theorem result_carry (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
   have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
   have hW := result_writer hr hX hR
-  exact carry_of_writer hr (sleepy_sync hrun hsl _) le_rfl hX hy hc hs fun v hv => by
+  exact carryAt_of_writer hr (sleepy_sync hrun hsl _) le_rfl hX hy hc hs fun v hv => by
     obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := hW v hv
     exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩
 
@@ -446,7 +446,7 @@ theorem optimistic_carry (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
   have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
   have hW := optimistic_writer hr hx hO
-  exact carry_of_writer hr (sleepy_sync hrun hsl _) le_rfl hx hy hc hs fun v hv => by
+  exact carryAt_of_writer hr (sleepy_sync hrun hsl _) le_rfl hx hy hc hs fun v hv => by
     obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := hW v hv
     exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩
 
