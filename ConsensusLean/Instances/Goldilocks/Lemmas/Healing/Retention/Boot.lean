@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 
 public section
 
@@ -11,10 +12,10 @@ HBoot (`boot_caches`), the activation of pending origins (`activation_caches`), 
 Paper: `hr4-boot-carry.md` (workbench#23), `producer-reset-continuation.md` §§5, 11, 13, 16.
 
 Proved here: the label bound, half the committee, the low-`Σ.J` root, both carries (relay after
-the GST, `Retention/Relay`), (R4) (`Retention/Records`), HBoot's caches from the open run version
-of G1.2 (`finalized_anc_of_lt`), and R5 below the floor (a counted head of the origin, relayed in
-time; `relay_mem_voterBlockTree`). Open: `finalized_anc_of_lt` (G1.2 over the run),
-`activation_caches` (§13), and R5 above the floor (`height_lead_above`, §7). -/
+the GST, `Retention/Relay`), (R4) (`Retention/Records`), HBoot's caches from G1.2 over the run
+(`finalized_anc_of_height_lt`, `Retention/Finality`), and R5 below the floor (a counted head of
+the origin, relayed in time; `relay_mem_voterBlockTree`). Open: `activation_caches` (§13), and R5
+above the floor (`height_lead_above`, §7). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -76,20 +77,6 @@ theorem hj_le_HZ_of_before (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (
   have := hk j (by omega)
   linarith
 
-/-- **G1.2 with client safety over the run** (claims G1.2, G1.4; `t1-proof.md` §9): a block
-finalized in an honest store (`F`, the finalized block of the state of a held `X`) is an ancestor
-of every honest block whose state height exceeds the finalized height: the finality quorum on
-`X`'s chain and the crossing quorum on `W`'s chain at that height share `2q − n > f` validators,
-an honest one of which would have signed an E1 pair. Open: the run version of the private
-`FG.finalization_meets_crossing` with `Store.finalized_safety`'s signing argument. -/
-theorem finalized_anc_of_lt (hp : ResetPremises tr H dg g ΔF a) {y z : Fin sp.n} (hy : y ∈ H)
-    (hz : z ∈ H) {k m : Nat} {X F W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hX : X ∈ (tr.state y k).fg.tree) (hF : F ∈ (tr.state y k).fg.tree)
-    (hFr : F.root = ((tr.state y k).fg.σ X.root).F) (hW : W ∈ (tr.state z m).fg.tree)
-    (hlt : ((tr.state y k).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h) :
-    Anc (tr.HonestBlocks H) F W := by
-  sorry
-
 /-- **HBoot, the caches before the reset** (§11 "Historical finality and acceptance";
 `t1-proof.md` §9). At a state all of whose earlier cuts are before `a`: no honest `Σ.J` is high
 (a justification at `h ≥ H_z + 1` needs an honest row at `h`, none before `a`, HR.1 (c)), and
@@ -109,7 +96,7 @@ theorem boot_caches (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y 
   have := hj_le_HZ_of_before hp hy hk hY
   have := ho.2.2.2
   obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
-  exact finalized_anc_of_lt hp hy ho.1 hY hFm hYF.symm hBx (by omega)
+  exact finalized_anc_of_height_lt hp hy ho.1 hY hFm hYF.symm hBx (by omega)
 
 /-- **Activation of a high origin** (§13 "Activation uses earlier labels, not D's own transfer",
 "Retaining the witnesses and the frame"; §12, the pending boundary case). At the state at

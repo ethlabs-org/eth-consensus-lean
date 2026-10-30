@@ -174,7 +174,7 @@ private theorem evidence {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
 
 /-- **G1.2.** A finalization at `j ≥ 1` on one chain meets the crossing of `j` on a chain
 without the finalized block in `2q − n` validators with an E1 pair. -/
-private theorem finalization_meets_crossing {c₁ c₂ : List (FGBlock gp.n)}
+theorem finalization_meets_crossing {c₁ c₂ : List (FGBlock gp.n)}
     {σ₁ σ₂ : ChainState gp.n} (h₁ : gp.chainState c₁ = some σ₁)
     (h₂ : gp.chainState c₂ = some σ₂) (hF : 1 ≤ σ₁.hF) (hlt : σ₁.hF < σ₂.h)
     (hnot : σ₁.F ∉ gp.roots c₂) :

@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
@@ -28,8 +29,8 @@ HS.0 (`Settle(Δ)`, claims §"Healing: phase service"; `phase-service.md` §8.3)
 * **Joined** (`joined_late`): no honest restart after `ḡ` makes every honest node joined from
   `ḡ + 8Δ` on.
 
-Interfaces: `finalization_meets_crossing` (G1.2 at the chain level) is open here only because the
-proved `FG.FGParams.finalization_meets_crossing` of `Lemmas/FGChain/Accountable.lean` is private. -/
+G1.2 at the chain level is `FG.FGParams.finalization_meets_crossing`
+(`Lemmas/FGChain/Accountable`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -42,18 +43,6 @@ section Stores
 
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)}
   {tr : FGTrace P ACP}
-
-/-- **G1.2 at the chain level** (claims G1.2): a finalization at `h_F ≥ 1` on one chain meets the
-crossing of `h_F` on a chain without the finalized block in `2q − n` validators with an E1 pair.
-This is `FG.FGParams.finalization_meets_crossing` (`Lemmas/FGChain/Accountable.lean`), proved there
-as a private lemma; making that one public closes this. -/
-private theorem finalization_meets_crossing (gp : FG.FGParams) {c₁ c₂ : List (FG.FGBlock gp.n)}
-    {σ₁ σ₂ : FG.ChainState gp.n} (h₁ : gp.chainState c₁ = some σ₁)
-    (h₂ : gp.chainState c₂ = some σ₂) (hF : 1 ≤ σ₁.hF) (hlt : σ₁.hF < σ₂.h)
-    (hnot : σ₁.F ∉ gp.roots c₂) :
-    ∃ S : Finset (Fin gp.n), 2 * gp.q - gp.n ≤ S.card ∧
-      ∀ v ∈ S, ∃ a ∈ gp.chainAtts c₁, ∃ b ∈ gp.chainAtts c₂, a.val = v ∧ FG.slashable a b := by
-  sorry
 
 /-- Every block of a chain of `S` linked from `A ∈ S` (and `A`) is an ancestor of its last
 block. -/
@@ -126,7 +115,7 @@ theorem finalized_anc (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.f
   · rw [hF0 h0]
     exact List.mem_cons_self
   by_contra hnot
-  obtain ⟨S, hS, hSv⟩ := finalization_meets_crossing P.fg h₁ h₂ h0 (by omega) hnot
+  obtain ⟨S, hS, hSv⟩ := P.fg.finalization_meets_crossing h₁ h₂ h0 (by omega) hnot
   obtain ⟨v, hvS, hv⟩ : ∃ v ∈ S, v ∈ H := by
     by_contra! hS'
     have := Set.ncard_le_ncard (s := (S : Set (Fin P.fg.n))) (t := Hᶜ) hS'

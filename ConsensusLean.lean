@@ -126,12 +126,17 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Crossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Cut
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
