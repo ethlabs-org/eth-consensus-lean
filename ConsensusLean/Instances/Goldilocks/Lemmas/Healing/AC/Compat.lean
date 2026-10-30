@@ -124,14 +124,16 @@ private theorem optimistic_side (hrun : ACRun tr H U) {X : Fin sp.n} (hX : X ∈
   exact admitted_of_held hr hX hvs (optimisticPoint_pool_post hr hX hpt s hv) le_rfl
     fun k' hk' _ => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk')) htk
 
-/-- A vote of `Fwd` reaches an honest node's update of slot `s` (its restarts at or before
-`t_s`) under `Sync`: the node holds it, or two other votes of its validator. -/
-private theorem fwd_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
+/-- A forwardable slot-`s` vote (`Fwd`: sent or admitted by an honest `X` in `[t_s, t_s + 2Δ)`)
+reaches an honest node's update of slot `s` (its restarts at or before `t_s`) under `Sync`: the
+node holds it, or two other votes of its validator. -/
+theorem fwd_reaches_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D : Blk sp.n FGP} {u : Fin sp.n}
-    (hu : Fwd tr U X s D u) :
+    (hu : ∃ v : Vote sp.n, v.val = u ∧ v.slot = s ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
+      ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < sp.ts s + 2 * sp.Δ) :
     ∃ v : Vote sp.n, v.val = u ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
       (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}) := by
   have hΔ := sp.toParams.hΔ
@@ -160,7 +162,8 @@ private theorem against_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     rw [Set.disjoint_left]
     intro u hu hu'
     obtain ⟨hne, v', hv', hv'u, R', hR', hR'r, hDR'⟩ := hS u hu'
-    obtain ⟨v, hvu, ⟨R, hR, hRr, hDR⟩, hv | heq⟩ := fwd_held hr hsync hX hY hc ht hrs (hT hu)
+    obtain ⟨v, hvu, ⟨R, hR, hRr, hDR⟩, hv | heq⟩ :=
+      fwd_reaches_update hr hsync hX hY hc ht hrs (hT hu)
     · obtain rfl : v = v' := by
         by_contra h
         exact hne ⟨v, hv, v', hv', h, hvu, hv'u⟩
@@ -170,7 +173,8 @@ private theorem against_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
   rw [← Set.ncard_union_eq hdisj]
   refine Set.ncard_le_ncard ?_
   rintro u (hu | hu)
-  · obtain ⟨v, rfl, -, hv | ⟨a, ha, -, -, -, hav, -⟩⟩ := fwd_held hr hsync hX hY hc ht hrs (hT hu)
+  · obtain ⟨v, rfl, -, hv | ⟨a, ha, -, -, -, hav, -⟩⟩ :=
+      fwd_reaches_update hr hsync hX hY hc ht hrs (hT hu)
     · exact ⟨v, hv, rfl⟩
     · exact ⟨a, ha, hav⟩
   · obtain ⟨-, v, hv, rfl, -⟩ := hS u hu
