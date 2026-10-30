@@ -267,6 +267,42 @@ example := ``Consensus.Goldilocks.ViableTreeAncestorClosed
 
 /-! ## Goldilocks FGStore (a milestone PR appends here only) -/
 
+example := ``Consensus.Goldilocks.Block.fgView
+example := ``Consensus.Goldilocks.NodeBlock
+example := ``Consensus.Goldilocks.Params.fg
+example := ``Consensus.Goldilocks.Params.genesisBlock
+example := ``Consensus.Goldilocks.Store
+example := ``Consensus.Goldilocks.Store.AcceptIsFrameStep
+example := ``Consensus.Goldilocks.Store.AcceptedTree
+example := ``Consensus.Goldilocks.Store.Anc
+example := ``Consensus.Goldilocks.Store.CacheInvariants
+example := ``Consensus.Goldilocks.Store.ChainStateOfChain
+example := ``Consensus.Goldilocks.Store.Contest
+example := ``Consensus.Goldilocks.Store.FGStoreLocal
+example := ``Consensus.Goldilocks.Store.FGStoreLocalAt
+example := ``Consensus.Goldilocks.Store.FinalizedMonotone
+example := ``Consensus.Goldilocks.Store.FrameRealization
+example := ``Consensus.Goldilocks.Store.EntryStateOfSource
+example := ``Consensus.Goldilocks.Store.HasViableDescendant
+example := ``Consensus.Goldilocks.Store.IsViable
+example := ``Consensus.Goldilocks.Store.LexLt
+example := ``Consensus.Goldilocks.Store.LinkedFromGenesis
+example := ``Consensus.Goldilocks.Store.OnChain
+example := ``Consensus.Goldilocks.Store.Reachable
+example := ``Consensus.Goldilocks.Store.Step
+example := ``Consensus.Goldilocks.Store.TreeGrows
+example := ``Consensus.Goldilocks.Store.addAtts
+example := ``Consensus.Goldilocks.Store.attest
+example := ``Consensus.Goldilocks.Store.fcRoot
+example := ``Consensus.Goldilocks.Store.headHeightFloor
+example := ``Consensus.Goldilocks.Store.init
+example := ``Consensus.Goldilocks.Store.onAttestation
+example := ``Consensus.Goldilocks.Store.onBlock
+example := ``Consensus.Goldilocks.Store.proposalAttestations
+example := ``Consensus.Goldilocks.Store.toFrame
+example := ``Consensus.Goldilocks.Store.tree
+example := ``Consensus.Goldilocks.Store.updateFinality
+
 /-! ## Goldilocks ACBase (a milestone PR appends here only) -/
 
 /-! ## Goldilocks ACSteps (a milestone PR appends here only) -/

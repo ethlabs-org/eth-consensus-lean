@@ -16,11 +16,16 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Common.Params
 public import ConsensusLean.Instances.Goldilocks.Spec.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Client
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.State
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Duties
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Sigma
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
 public import ConsensusLean.Instances.Goldilocks.Spec.Frame
 public import ConsensusLean.Instances.Goldilocks.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.Baseline
 public import ConsensusLean.Instances.Goldilocks.Statements.Common
 public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
+public import ConsensusLean.Instances.Goldilocks.Statements.FGStore
 public import ConsensusLean.Instances.Goldilocks.Statements.Frame
 public import ConsensusLean.Instances.Streamlet.Spec
 public import ConsensusLean.Instances.Tendermint.Spec
