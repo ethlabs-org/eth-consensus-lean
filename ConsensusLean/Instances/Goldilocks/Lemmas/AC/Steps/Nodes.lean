@@ -1,6 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 
 public section
 
@@ -96,7 +99,34 @@ theorem source_age : SourceAge sp := by
 
 /-- **A1.8.** -/
 theorem result_transfer : ResultTransfer sp := by
-  sorry
+  intro FGP ro H U tr hrun s X y i₀ i C CV ℓ e hX hres hy hc hs hcarry hviab hlocks hd
+  obtain ⟨-, -, -, hhead⟩ := castAt_spec hrun.localRun hy hc
+  have hU := hrun.localRun.coherent
+  obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
+    rcases hrun.localRun.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
+      exact h.1
+  have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
+  rw [hs, hσ] at hhead
+  have hdomA := voterBlockTree_anc hrun.localRun hy hc
+  rw [hs] at hdomA
+  have hCt : C ∈ ℓ.frame.tree := by
+    rcases hviab with h | h
+    · exact h.1.1
+    · exact mem_of_anc h hΦ.fcRoot_mem
+  have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
+    (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => hB.1) hdomA hviab
+    (fun L hL => hlocks L hL) fun X' Cx hCx hp hCxC =>
+      isBest_of_majority hΦ (merged_support_subset hrun.localRun hy hc (s + 1))
+        (fun B hB => hB.1.1) hCt
+        (result_supporters hrun hX hy hres hc hs hcarry hviab hd)
+        (merged_voters_subset hrun.localRun hy hc hd)
+        (result_majority hrun.localRun hX hres) hCx hp hCxC
+  refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
+  by_cases he : C = getHead sp e.readPoint ℓ.frame (tr.time i)
+      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+      (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
+  · exact he ▸ hCt
+  · exact (Anc.mem hcore he).2
 
 /-- **A1.9.** -/
 theorem source_compatible : SourceCompatible sp := by
