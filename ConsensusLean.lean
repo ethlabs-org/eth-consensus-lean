@@ -10,6 +10,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client

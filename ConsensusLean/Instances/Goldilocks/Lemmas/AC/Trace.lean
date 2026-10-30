@@ -21,6 +21,16 @@ namespace Consensus.Goldilocks.SA
 
 variable (sp : SAParams)
 
+/-- Every block of an honest node's frame passes `ac_valid_payload`: the initial frame holds
+genesis, whose payload is empty, and a frame step adds only the block of an `on_block` call,
+which passed the check (the input contract). -/
+theorem frame_validPayload {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    ∀ B ∈ ℓ.frame.tree, validPayload B := by
+  sorry
+
 /-- **F.1 (c), a joined node.** -/
 theorem joined_awake : JoinedAwake sp := by
   sorry
