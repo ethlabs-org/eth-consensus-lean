@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 public import ConsensusLeanTest.GoldilocksFGStore
 @[expose] public section
 
@@ -21,77 +22,9 @@ On `Statements/FGStore/Service`, labelled by kind (CONTRIBUTING "Statements"):
 
 namespace Consensus.Goldilocks.Store.Test
 
-/-- `afterJustification` changes only `h_max` (to `max Σ.h_max σ.h`) and, when the justification
-step fires, `J` and `h_j` (to `σ.h_j`). -/
-private theorem afterJustification_eq (P : Params) (ACP : Type) (st : Store P ACP)
-    (σ : FG.ChainState P.n) :
-    (afterJustification P ACP st σ).blocks = st.blocks ∧
-      (afterJustification P ACP st σ).σ = st.σ ∧ (afterJustification P ACP st σ).F = st.F ∧
-      (afterJustification P ACP st σ).hmax = max st.hmax σ.h ∧
-      ((afterJustification P ACP st σ) = { st with hmax := max st.hmax σ.h } ∨
-        (afterJustification P ACP st σ).hj = σ.hj) := by
-  unfold afterJustification; dsimp only
-  split <;> (try split) <;> first | exact ⟨rfl, rfl, rfl, rfl, Or.inl rfl⟩ |
-    exact ⟨rfl, rfl, rfl, rfl, Or.inr rfl⟩
-
-/-- The head height floor is `h_max` or `h_max − 1`. -/
-private theorem headHeightFloor_bounds {P : Params} {ACP : Type} (st : Store P ACP) :
-    st.hmax - 1 ≤ st.headHeightFloor ∧ st.headHeightFloor ≤ st.hmax := by
-  unfold headHeightFloor; split <;> omega
-
-/-- The finalization step of `update_finality` moves `Σ.F` to `X` when its four tests pass on
-the state after the justification step. -/
-private theorem updateFinality_F {P : Params} {ACP : Type} (st : Store P ACP)
-    (σ : FG.ChainState P.n) (X : NodeBlock P ACP) (hX : st.blocks σ.F = some X)
-    (hFX : st.Anc st.F X) (hne : st.F ≠ X)
-    (hJ : (afterJustification P ACP st σ).Anc X (afterJustification P ACP st σ).J)
-    (hV : (afterJustification P ACP st σ).HasViableDescendant X) :
-    (st.updateFinality σ).F = X := by
-  obtain ⟨hb, -, hF, -⟩ := afterJustification_eq P ACP st σ
-  unfold updateFinality
-  extract_lets st₁ st₂
-  have h2 : st₂ = afterJustification P ACP st σ := rfl
-  have ht : st₂.tree = st.tree := by unfold Store.tree; rw [h2, hb]
-  rw [show st₂.blocks σ.F = some X by rw [h2, hb, hX]]
-  dsimp only
-  rw [ite_eq_left ⟨by rw [Store.Anc, ht, h2, hF]; exact hFX, by rw [h2, hF]; exact hne,
-    by rw [h2]; exact hJ, by rw [h2]; exact hV⟩]
-
-/-- (a) G1.9 (a), cache acceptance, holds. The finalization step reads viability after the
-justification step: if `σ.h ≥ Σ.h_max`, `B` itself is viable there (the floor is at most
-`h_max = σ.h`) and extends `X`; otherwise `h_max` is unchanged, and a fired justification step
-sets `h_j := σ.h_j` with `σ.h_j + 1 ≤ σ.h < h_max`, so there is no contest, the floor `h_max − 1`
-is at most the floor after the `h_max` step, and the given viable descendant stays viable. So
-the four tests pass and `Σ.F` moves to `X`. -/
-theorem cacheAcceptance_holds (P : Params) (ACP : Type) : CacheAcceptance P ACP := by
-  intro st B X hB hlt hX hXB hFX hne hJ hV
-  obtain ⟨hb, hσ, -, hm, hj⟩ := afterJustification_eq P ACP st (st.σ B.root)
-  have ht : (afterJustification P ACP st (st.σ B.root)).tree = st.tree := by
-    unfold Store.tree; rw [hb]
-  have hfA := headHeightFloor_bounds (afterJustification P ACP st (st.σ B.root))
-  have hV' : (afterJustification P ACP st (st.σ B.root)).HasViableDescendant X := by
-    by_cases hle : st.hmax ≤ (st.σ B.root).h
-    · rw [Nat.max_eq_right hle] at hm
-      refine ⟨B, ht ▸ hB, by rw [Store.Anc, ht]; exact hXB, ?_⟩
-      unfold IsViable; rw [hσ]; omega
-    · rw [Nat.max_eq_left (Nat.le_of_not_le hle)] at hm
-      obtain ⟨B', hB', hanc, hv⟩ := hV
-      have h₁ := headHeightFloor_bounds ({ st with hmax := max st.hmax (st.σ B.root).h } :
-        Store P ACP)
-      have hs₁ : ({ st with hmax := max st.hmax (st.σ B.root).h } : Store P ACP).hmax =
-          st.hmax := Nat.max_eq_left (Nat.le_of_not_le hle)
-      have hfl : (afterJustification P ACP st (st.σ B.root)).headHeightFloor ≤
-          ({ st with hmax := max st.hmax (st.σ B.root).h } : Store P ACP).headHeightFloor := by
-        rcases hj with h | h
-        · rw [h]
-        · have hc : ¬ (afterJustification P ACP st (st.σ B.root)).Contest := fun hc => by
-            have := hc.1; omega
-          rw [headHeightFloor, ite_eq_right hc]
-          omega
-      refine ⟨B', ht ▸ hB', by rw [Store.Anc, ht]; exact hanc, ?_⟩
-      unfold IsViable at hv ⊢; rw [hσ]; exact hfl.trans hv
-  rw [updateFinality_F st _ X hX hFX hne hJ hV']
-  exact Relation.ReflTransGen.refl
+/-- (a) G1.9 (a), cache acceptance, holds (`cache_acceptance`). -/
+theorem cacheAcceptance_holds (P : Params) (ACP : Type) : CacheAcceptance P ACP :=
+  cache_acceptance P ACP
 
 /-- The only validator of `P₁`. -/
 def w₀ : Fin P₁.n := ⟨0, Nat.one_pos⟩
