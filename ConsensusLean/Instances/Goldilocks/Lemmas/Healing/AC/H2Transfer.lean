@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 
 public section
 
@@ -173,16 +175,110 @@ theorem raw_slow_first_votes (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (h
         fun z hz k' hk' e' hv' hs' => ih k' hk' z hz e' hv' hs')
       (writer_merged hrun hx hupd hy hca hes (hI.syncAC (by linarith) _))
 
-/-- **§3, proposal-boundary transfer**: the head of every honest `ac_proposal` at `t_{j+1}`
-extends a clean raw origin `(B, j)` (the full previous-slot pool and viable tree; the regular
-writer's participants and counted support relay before the proposal; `3n/4` for an optimistic
-origin). -/
-theorem raw_first_proposals (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j : Nat}
-    (hB : CleanOrigin tr H t₀ B j) :
-    ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) d pay, tr.CallAt x i ℓ →
-      ℓ.call = .proposal → tr.time i = sp.ts (j + 1 : Nat) →
-      (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) → Anc U B d.head := by
-  sorry
+/-- **(P) from a writer, after the GST or by catch-up** (§3; `carryAt_of_writer_catch` at the
+proposal duty): a slot-`σ` vote sent or admitted by an honest writer in `[t_σ, t_σ + 2Δ)`, whose
+head extends the proposer's `Φ.F` and is genesis, or was accepted by the writer from `a₀` on before
+`t_σ + 2Δ`, or by the proposer before `t_σ + 3Δ`, reaches the honest proposer of slot `σ + 1`
+(Sync relays the vote and the head before `t_σ + 3Δ`; rooted retention keeps the head). -/
+theorem heldAtProposal_of_writer (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {a₀ b : Time} (hsync : SyncAC (goldilocksSA sp FGP ro) H U a₀ b tr) {σ : Nat}
+    (ha₀ : a₀ ≤ sp.ts σ) (hb : sp.ts σ + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H)
+    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hc : tr.CallAt x i ℓ) (ht : tr.time i = sp.ts (σ + 1 : Nat))
+    (hrs : ∀ k ≤ i, tr.RestartAt x k → tr.time k < sp.ts σ) {v : Vote sp.n} (hvs : v.slot = σ)
+    (hsend : ∃ k, tr.SendOrAdmit w k v ∧ sp.ts σ ≤ tr.time k ∧ tr.time k < sp.ts σ + 2 * sp.Δ)
+    (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
+      (Hv.root = sp.genesisRoot ∨
+        (∃ k, tr.AcceptAt w k Hv ∧ a₀ ≤ tr.time k ∧ tr.time k < sp.ts σ + 2 * sp.Δ) ∨
+        ∃ k ≤ i, tr.AcceptAt x k Hv ∧ tr.time k < sp.ts σ + 3 * sp.Δ)) :
+    HeldAtProposal (tr.state x i) ℓ.frame σ v := by
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  have hts : sp.ts (σ + 1 : Nat) = sp.ts σ + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
+  have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts σ + 2 * sp.Δ → tr.deadline x k τ < sp.ts σ + 3 * sp.Δ := by
+    intro k hk τ hτ
+    have h₁ := Healing.deadline_le_restarts
+      (fun k' hk' hr' => (hrs k' (hk'.trans hk) hr').le) τ
+    have h₂ := max_lt hτ (show sp.ts σ < sp.ts σ + 2 * sp.Δ by linarith)
+    change tr.deadline x k τ ≤ max τ (sp.ts σ) + sp.Δ at h₁
+    linarith
+  refine heldAtProposal_iff.2 ⟨?_, ?_⟩
+  · obtain ⟨k, hsk, hk1, hk2⟩ := hsend
+    obtain ⟨k', hk'i, hkk', hp, hk'dl⟩ := hsync.1 w hw k v hsk (ha₀.trans hk1) (by linarith)
+      x hx i ℓ hc (by linarith [hdl i le_rfl _ hk2])
+    have hk'lt : tr.time k' < sp.ts σ + 3 * sp.Δ := hk'dl.trans (hdl k' hk'i _ hk2)
+    have hk'i' : k' < i := lt_of_le_of_ne hk'i (by rintro rfl; linarith)
+    have hnr : ∀ r, k' + 1 ≤ r → r < i → ¬ tr.RestartAt x r := fun r h₁ h₂ hrr => by
+      have := hrs r h₂.le hrr
+      have := hr.time_mono (show k' ≤ r by omega)
+      linarith
+    have hsk' : sp.slot (tr.time k') = σ :=
+      slot_of_mem sp σ (hk1.trans hkk') (by rw [hts]; linarith)
+    have hmono := pool_mono hr hx (show k' + 1 ≤ i by omega) hnr σ
+    rcases held_of_processAt hr hx hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
+      h | ⟨a, ha, c, hc', hac, hav, hcv⟩
+    · rw [hvs] at h
+      exact Or.inl (hmono h)
+    · rw [hvs] at ha hc'
+      exact Or.inr ⟨a, hmono ha, c, hmono hc', hac, hav, hcv⟩
+  · obtain ⟨Hv, hHv, hHvr, hFHv, hacc⟩ := hhead
+    obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hr hx i ℓ hc
+    obtain ⟨hHt, hAB⟩ : Hv ∈ ℓ.frame.tree ∧ AcceptedBefore tr x Hv (sp.ts σ + 3 * sp.Δ) := by
+      rcases hacc with hg | ⟨kw, hkw, hkwa, hkwt⟩ | ⟨ky, hky, hacc, hkyt⟩
+      · refine ⟨?_, Or.inl hg⟩
+        obtain rfl : Hv = G := hU.1 hHv hGU (hg.trans hGr.symm)
+        obtain h | ⟨c, -, hcp⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFHv
+        · exact h ▸ hΦ.rooted.1
+        · exact absurd (hcp.2.2.symm.trans hGp) (Option.some_ne_none _)
+      · obtain ⟨ky, hky, hacc, hkyt⟩ := hsync.2 w hw kw Hv hkw hkwa (by linarith) x hx i ℓ hc
+          (by linarith [hdl i le_rfl _ hkwt]) hFHv
+        exact ⟨mem_tree_of_acceptAt sp hr hx hacc hky hc hFHv,
+          Or.inr ⟨ky, hacc, hkyt.trans (hdl ky hky _ hkwt)⟩⟩
+      · exact ⟨mem_tree_of_acceptAt sp hr hx hacc hky hc hFHv, Or.inr ⟨ky, hacc, hkyt⟩⟩
+    refine ⟨Hv, hHt, hHvr, ?_⟩
+    exact (blockStamp_lt_of_acceptedBefore sp hr hx hc hHt hAB
+      (fun k hk hrk => (hrs k hk hrk).trans (by linarith))
+      (Or.inl (by rw [ht, hts]; linarith))).trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))
+
+/-- At a proposal of slot `σ + 1` with `t_σ ≥ ḡ + 4Δ`, under `Inv` for a protected `(B, j)` with
+`j ≤ σ` and `B ⋠ Φ.F`, `B` is viable or below `fc_root` in the proposer's tree, above `Φ.F`. -/
+private theorem viable_at_proposal (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j : Nat}
+    (hB : Protected tr H t₀ B j) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
+    (ht : sp.ts (j + 1 : Nat) ≤ tr.time i) (hBF : ¬ Anc U B ℓ.frame.F) :
+    (B ∈ ℓ.frame.tree ∧ (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot)) ∧
+      Anc U ℓ.frame.F B := by
+  have hr := hI.run.localRun
+  have hU := hr.coherent
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
+  rcases (hI.inv B j hB x hx i ℓ hc ht).1 with h | h
+  · have hFB := (anc_total hU h ((hΦ.rooted.2 _ hΦ.fcRoot_mem).mono hΦU)).resolve_left hBF
+    have hBt := mem_tree_of_between hU hΦ hΦU hFB h hΦ.fcRoot_mem
+    exact ⟨⟨hBt, Or.inr (anc_tree_of_anc_U hU hΦ hΦU hBt h hΦ.fcRoot_mem)⟩, hFB⟩
+  · exact ⟨⟨h.1, Or.inl h⟩, (hΦ.rooted.2 B h.1).mono hΦU⟩
+
+/-- (L-high) at a proposal of slot `σ + 1`: a stored lock of slot `> σ` is optimistic over votes
+that extend `B`; one of slot `σ` is compatible with `B` by `hsame`. -/
+private theorem high_locks (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (hx : x ∈ H)
+    {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) {B : Blk sp.n FGP}
+    (hlater : ∀ z ∈ H, ∀ k e, VoteAt tr z k e → σ < e.msg.slot → VoteExtends U e.msg B)
+    (hsame : ∀ k CV O, OptimisticLockAt tr x k σ O CV → Compatible U O B) :
+    HighLocksCompatible U (tr.state x i) (tr.time i) σ B := by
+  have hrun := hI.run
+  have hU := hrun.localRun.coherent
+  refine highLocksCompatible_iff.2 fun l hl _ hlσ Y hY hYr => ?_
+  obtain ⟨O, hYO, k, CV, hopt⟩ := proposal_high_lock hrun.localRun hx ht hl hlσ hY hYr
+  have hO : Compatible U O B := by
+    rcases (show l.slot = σ ∨ σ < l.slot by omega) with h | h
+    · rw [h] at hopt
+      exact hsame k CV O hopt
+    · exact optimisticLock_compatible hrun hI.two_faulty_lt hx hopt fun w hw j e hv hs =>
+        hlater w hw j e hv (by omega)
+  rcases hO with h | h
+  · exact Or.inl (hYO.trans h)
+  · exact anc_total hU hYO h
 
 /-- **§6.1, later labels (votes)**: for a protected `(B, j)`, if every honest vote of a slot
 `m ≥ j` with `t_m ≥ t₀ + 4Δ` extends `B`, so does every honest vote of a later slot (the
@@ -242,7 +338,36 @@ theorem h2_proposals_continue (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FG
     ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) d pay, tr.CallAt x i ℓ →
       ℓ.call = .proposal → tr.time i = sp.ts (m + 1 : Nat) →
       (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) → Anc U B d.head := by
-  sorry
+  have hrun := hI.run
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  have hg := hI.le
+  have hm4 : gbar g + 4 * sp.Δ ≤ sp.ts m := by linarith
+  have hcont := h2_votes_continue hI hB hjm hm hv
+  intro x hx i ℓ d pay hc hcall ht hprop
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
+  have hts : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  by_cases hBF : Anc U B ℓ.frame.F
+  · rw [(acProposal_head hprop).2]
+    exact hBF.trans ((hΦ.rooted.2 _ (getHead_mem hΦ (fun _ hX => hX.1) _ _ _ _)).mono hΦU)
+  obtain ⟨hV, hFB⟩ := viable_at_proposal hI hB hx hc
+    (ht ▸ (ts_le_iff sp).2 (by push_cast; omega)) hBF
+  have hlater : ∀ z ∈ H, ∀ k e, VoteAt tr z k e → m < e.msg.slot → VoteExtends U e.msg B :=
+    fun z hz k e hve hs => votesExtendAfter_iff.1 hcont z hz k e hve hs
+  refine batch_proposal hrun hI.two_faulty_lt (honest_voters_half hI.toHealthyBase hm4) hv hx hc
+    (proposal_slot ht) hprop hV (fun z hz k e hve hes => ?_)
+    (high_locks hI hx ht hlater fun k CV O hopt => optimisticLock_compatible hrun
+      hI.two_faulty_lt hx hopt hv)
+  obtain ⟨Hd', hHd', hHd'r, hBHd'⟩ := hv z hz k e hve hes
+  obtain ⟨Hd, hHdt, hHdr, -, hh⟩ := late_vote_held_of_frame hI.toHealthyBase hx hc hm4
+    (by rw [ht, hts]; linarith) hz hve hes fun Hd hHd hHdr => by
+      rw [hU.1 hHd hHd' (hHdr.trans hHd'r.symm)]
+      exact hFB.trans hBHd'
+  obtain ⟨hmem, -, hbs⟩ := hh i (Or.inl rfl)
+  exact heldAtProposal_iff.2 ⟨Or.inl (hes ▸ hmem), Hd, hHdt, hHdr,
+    (hHdr ▸ hbs).trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))⟩
 
 /-- **§6.1, raw-origin transfer (votes)**: a clean raw origin `(B, j)` is carried by every honest
 vote of a slot after `j`. -/
@@ -259,6 +384,97 @@ theorem raw_origin_votes (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j
     rcases Nat.lt_or_ge (j + 1) e.msg.slot with h | h
     · exact votesExtendAfter_iff.1 hcont y hy k e hv h
     · exact hfirst y hy k e hv (by omega)
+
+/-- **§3, proposal-boundary transfer**: the head of every honest `ac_proposal` at `t_{j+1}`
+extends a clean raw origin `(B, j)`: root-covered when `B ⪯ Φ.F`; otherwise `Inv` gives (V),
+the writer's counted votes reach the proposer ((P), Sync and `Catch`), and ProposalCore's
+fast-update (A1.2), optimistic (A1.4 (a)) or result (A1.8, with the slow window's
+`slow_stored_locks`) transfer applies. -/
+theorem raw_first_proposals (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j : Nat}
+    (hB : CleanOrigin tr H t₀ B j) :
+    ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) d pay, tr.CallAt x i ℓ →
+      ℓ.call = .proposal → tr.time i = sp.ts (j + 1 : Nat) →
+      (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) → Anc U B d.head := by
+  have hrun := hI.run
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  have hg := hI.le
+  have hk := sp.two_le_k
+  have hvotes := raw_origin_votes hI hB
+  intro x hx i ℓ d pay hc hcall ht hprop
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
+  have hslot := proposal_slot ht
+  have hts : sp.ts (j + 1 : Nat) = sp.ts j + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  by_cases hBF : Anc U B ℓ.frame.F
+  · rw [(acProposal_head hprop).2]
+    exact hBF.trans ((hΦ.rooted.2 _ (getHead_mem hΦ (fun _ hX => hX.1) _ _ _ _)).mono hΦU)
+  obtain ⟨hV, hFB⟩ := viable_at_proposal hI hB.protected hx hc ht.ge hBF
+  have hjt : t₀ + 4 * sp.Δ ≤ sp.ts j := by
+    rcases cleanOrigin_iff.1 hB with ⟨-, -, -, -, -, -, h⟩ | ⟨-, -, -, -, -, h⟩
+    · exact h
+    · exact h.trans ((ts_le_iff sp).2 (by omega))
+  have hrs : ∀ {z}, z ∈ H → ∀ k, tr.RestartAt z k → tr.time k < sp.ts j := fun hz k hrk =>
+    lt_of_le_of_lt (hI.restart_le hz hrk) (by linarith)
+  have hlater : ∀ z ∈ H, ∀ k e, VoteAt tr z k e → j < e.msg.slot → VoteExtends U e.msg B :=
+    fun z hz k e hv hs => votesExtendAfter_iff.1 hvotes z hz k e hv hs
+  -- (P) for the votes counted by an honest writer, given its writer facts
+  have hP : ∀ {X}, X ∈ H → ∀ {D : Blk sp.n FGP}, Anc U B D → ∀ v, v.slot = j →
+      (∃ k, tr.SendOrAdmit X k v ∧ sp.ts j ≤ tr.time k ∧ tr.time k < sp.ts j + 2 * sp.Δ) →
+      (∃ Hv ∈ U, Hv.root = v.head ∧ Anc U D Hv ∧
+        (Hv.root = sp.genesisRoot ∨ ∃ k, tr.AcceptAt X k Hv ∧ tr.time k < sp.ts j + 2 * sp.Δ)) →
+      HeldAtProposal (tr.state x i) ℓ.frame j v := by
+    intro X hX D hBD v hvs hsend ⟨Hv, hHv, hHvr, hDHv, hacc⟩
+    have hFHv := hFB.trans (hBD.trans hDHv)
+    refine heldAtProposal_of_writer hr (hI.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) (by linarith)
+      le_rfl hX hx hc ht (fun k _ hrk => hrs hx k hrk) hvs hsend ⟨Hv, hHv, hHvr, hFHv, ?_⟩
+    rcases hacc with hgen | ⟨kw, hkw, hkwt⟩
+    · exact Or.inl hgen
+    by_cases hkg : gbar g ≤ tr.time kw
+    · exact Or.inr (Or.inl ⟨kw, hkw, hkg, hkwt⟩)
+    · obtain ⟨k', hk', hacc', hk't⟩ := hI.catchUp X hX kw Hv hkw (not_le.1 hkg) x hx i ℓ hc
+        (by linarith) hFHv
+      exact Or.inr (Or.inr ⟨k', hk', hacc', by linarith⟩)
+  have hW : ∀ {X i₀ ℓX}, X ∈ H → UpdateAt tr X i₀ j ℓX → ∀ v ∈ (tr.state x i).pool j,
+      v ∈ (tr.state X i₀).pool j ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool j} :=
+    fun hX hupd => writer_pool_proposal hr hX hupd hx ht (hI.syncAC (by linarith) _)
+      (fun k _ hrk => (hrs hX k hrk).le) (fun k _ hrk => hrs hx k hrk)
+  rcases cleanOrigin_iff.1 hB with ⟨X, hX, i₀, CV, -, hfl, -⟩ | ⟨X, hX, i₀, -, hsl, hj⟩
+  · have hsame : ∀ k CV' O, OptimisticLockAt tr x k j O CV' → Compatible U O B :=
+      fun k CV' O hopt => fastLock_fastLock_compatible hI.toHealthyBase hx (Or.inr hopt) hX hfl
+        (by linarith)
+    have hPCV : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame j v := fun v hv => by
+      obtain ⟨h₁, h₂, h₃⟩ := Healing.fastLock_writer hr hX hfl v hv
+      exact hP hX Relation.ReflTransGen.refl v h₁ h₂ h₃
+    rcases hfl with hfu | hopt
+    · exact update_first_proposal hrun hX hfu hx hc hslot hprop hV hPCV
+        (hW hX hfu.choose_spec.choose_spec.1) (high_locks hI hx ht hlater hsame)
+    · exact optimistic_first_proposal hrun hI.two_faulty_lt hX hopt hx hc hslot hprop hV hPCV
+        (high_locks hI hx ht hlater hsame)
+  · obtain ⟨ℓX, C, hupd, hconf, -, hdeep, -⟩ := id hsl
+    have hres : ResultAt tr X i₀ j C (fastCounted sp (tr.state X i₀) ℓX.frame j C) :=
+      ⟨ℓX, hupd, hconf, rfl⟩
+    have hBC : Anc U B C :=
+      Anc.mono (frameIn_of_callAt hr hX hupd.1).2 (deepest_mem hdeep).1.1.2.2
+    have hwin : gbar g + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1) := by linarith
+    have hall : ∀ l ∈ (tr.state x i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → ∀ Y ∈ U,
+        Y.root = l.block → Compatible U Y B := by
+      intro l hl hlive Y hY hYr
+      rcases le_or_gt l.slot j with hle | hlt
+      · exact slow_stored_locks hI.toHealthyBase hX hsl hwin hx (by rw [hslot]) l hl hlive hle
+          Y hY hYr
+      · obtain ⟨O, hYO, k, CV', hopt⟩ := proposal_high_lock hr hx ht hl hlt.le hY hYr
+        rcases optimisticLock_compatible hrun hI.two_faulty_lt hx hopt fun w hw j' e hv hs =>
+            hlater w hw j' e hv (by omega) with h | h
+        · exact Or.inl (hYO.trans h)
+        · exact anc_total hU hYO h
+    exact result_first_proposal hrun hX hres hBC hx hc hslot hprop hV
+      (fun v hv => by
+        obtain ⟨h₁, h₂, h₃⟩ := Compose.result_writer hr hX hres v hv
+        exact hP hX hBC v h₁ h₂ h₃)
+      (hW hX hupd) (lowLocksCompatible_iff.2 fun l hl hlive _ => hall l hl hlive)
+      (highLocksCompatible_iff.2 fun l hl hlive _ => hall l hl hlive)
 
 /-- **§6.1, raw-origin transfer**: a clean raw origin `(B, j)` is carried by every honest vote
 and every honest proposal head of a slot after `j`. -/
