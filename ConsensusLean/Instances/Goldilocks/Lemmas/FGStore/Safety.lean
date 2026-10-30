@@ -35,15 +35,18 @@ private theorem anc_of_linked {P : Params} {ACP : Type} {S : Set (NodeBlock P AC
     · exact .head ⟨hA, hc C List.mem_cons_self, hl.1⟩ (ih C List.mem_cons_self)
     · exact ih X hX
 
-/-- What one honest store gives: a chain whose state finalizes its finalized tip, every block
-of `U` named by a root of the chain is compatible with that tip, and every attestation of the
-chain with an honest signer was signed before the cut. -/
-private theorem finalized_chain {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)}
+/-- **What one honest store gives**: a chain whose state finalizes its finalized tip, every block
+of `U` named by a root of the chain is compatible with that tip, every attestation of the chain
+with an honest signer was signed before the cut, and the chain is that of a block `B` of the
+store's tree (each attestation of the chain is in the payload of an ancestor of `B` there). -/
+theorem finalized_chain {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)}
     {U : Set (NodeBlock P ACP)} {tr : FGTrace P ACP} (hr : FGLocalRun acp₀ H U tr)
     {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
     ∃ c σ, P.fg.chainState c = some σ ∧ σ.F = (tr.store y i).F.root ∧
       (tr.store y i).F ∈ U ∧ (∀ X ∈ U, X.root ∈ P.fg.roots c → Compatible U X (tr.store y i).F) ∧
-      ∀ a ∈ P.fg.chainAtts c, a.val ∈ H → ∃ k < i, tr.SignAt a.val k a := by
+      (∀ a ∈ P.fg.chainAtts c, a.val ∈ H → ∃ k < i, tr.SignAt a.val k a) ∧
+      ∃ B ∈ (tr.store y i).tree, ∀ a ∈ P.fg.chainAtts c,
+        ∃ Y ∈ (tr.store y i).tree, (tr.store y i).Anc Y B ∧ a ∈ Y.fgPayload := by
   have hR := store_reachable hr hy i
   have hsub := hr.tree_subset y hy i
   obtain ⟨hF, -, -, -, -, -, B, hB, hBF⟩ := cache_invariants P ACP acp₀ _ hR
@@ -55,7 +58,8 @@ private theorem finalized_chain {P : Params} {ACP : Type} {acp₀ : ACP} {H : Se
     rcases hlast with ⟨rfl, rfl⟩ | h
     · rfl
     · simp [List.getLast?_cons, h])
-  refine ⟨_, _, hσ, hBF, hsub hF, fun X hXU hX => ?_, fun a ha hav => ?_⟩
+  refine ⟨_, _, hσ, hBF, hsub hF, fun X hXU hX => ?_, fun a ha hav => ?_, B, hB,
+    fun a ha => ?_⟩
   · obtain ⟨Y, hY, hYX⟩ : ∃ Y ∈ P.genesisBlock acp₀ :: c, Y.root = X.root := by
       simpa [FG.FGParams.roots, Block.fgView, Params.fg, Params.genesisBlock, eq_comm] using hX
     have hYt : Y ∈ (tr.store y i).tree := by
@@ -69,6 +73,9 @@ private theorem finalized_chain {P : Params} {ACP : Type} {acp₀ : ACP} {H : Se
     · cases haX
     · obtain ⟨k', hk', hs⟩ := hr.unforgeable y hy k a ⟨_, hacc, haX⟩ hav
       exact ⟨k', by omega, hs⟩
+  · obtain ⟨_, hX, haX⟩ := List.mem_flatMap.1 ha
+    obtain ⟨X, hXc, rfl⟩ := List.mem_map.1 hX
+    exact ⟨X, hc X hXc, hanc X (List.mem_cons_of_mem _ hXc), haX⟩
 
 variable (P : Params) (ACP : Type)
 
@@ -76,8 +83,8 @@ variable (P : Params) (ACP : Type)
 theorem finalized_safety : FinalizedSafety P ACP := by
   intro acp₀ H U tr hr hH y hy z hz i j
   by_contra hne
-  obtain ⟨c₁, σ₁, h₁, hF₁, hU₁, hc₁, ha₁⟩ := finalized_chain hr hy i
-  obtain ⟨c₂, σ₂, h₂, hF₂, hU₂, hc₂, ha₂⟩ := finalized_chain hr hz j
+  obtain ⟨c₁, σ₁, h₁, hF₁, hU₁, hc₁, ha₁, -⟩ := finalized_chain hr hy i
+  obtain ⟨c₂, σ₂, h₂, hF₂, hU₂, hc₂, ha₂, -⟩ := finalized_chain hr hz j
   obtain ⟨S, hS, hSv⟩ := FG.accountable_safety P.fg c₁ c₂ σ₁ σ₂ h₁ h₂
     (fun h => hne (hc₂ _ hU₁ (hF₁ ▸ h))) (fun h => hne (hc₁ _ hU₂ (hF₂ ▸ h)).symm)
   obtain ⟨v, hvS, hv⟩ : ∃ v ∈ S, v ∈ H := by

@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 
 public section
 
@@ -64,13 +65,38 @@ theorem own_accept (hq : A.Requirements) (hg₀ : (P.genesisBlock A.genesisPaylo
   rcases (show k = j ∨ k = j + 1 by omega) with rfl | rfl
   exacts [⟨_, c₀⟩, ⟨_, c₁⟩]
 
+/-- **The FG projection executes the FG** at the honest nodes (no `NoColl`): the initial state
+and every FG call's step. -/
+theorem fg_exec (h : Node.LocalRun dg H sg tr) : Store.FGExec A.genesisPayload H tr.projFG := by
+  refine ⟨fun y hy => by simp [RunTrace.projFG, h.init y hy, Node.init], fun i ℓ hl hH => ?_⟩
+  have hH : tr.node i ∈ H := hH
+  have hc : tr.CallAt (tr.node i) i (.fg ℓ) := projFG_callAt.1 ⟨rfl, hl⟩
+  have hlaw := h.cutLaw _ hH i _ hc
+  change FGLabel.Step (tr.node i) (tr.projFG.state (tr.node i) i) ℓ
+    ((tr.post i).fg, (tr.post i).record)
+  rw [projFG_state h hH]
+  cases ℓ with
+  | block B acc =>
+    cases acc with
+    | true => exact Or.inl ⟨rfl, hlaw.2.1, hlaw.2.2.2⟩
+    | false => exact Or.inr ⟨rfl, hlaw.1, by rw [hlaw.2]⟩
+  | attestation a => exact Prod.ext hlaw.1 hlaw.2.2
+  | attest C s =>
+    cases s with
+    | none =>
+      refine ⟨by rw [hlaw.2], ?_⟩
+      simp only [hlaw.1]
+      exact ⟨trivial, by rw [hlaw.2]⟩
+    | some a =>
+      exact ⟨hlaw.2.1, by simp [hlaw.1]⟩
+
 /-- **C0.5 (c), the FG projection.** -/
 theorem fg_projection : FGProjection := by
   intro P A dg H sg tr hq hg₀ h hnc
   refine
     { coherent := honest_blocks_coherent h hnc
-      init := fun y hy => by simp [RunTrace.projFG, h.init y hy, Node.init]
-      exec := fun i ℓ hl hH => ?_
+      init := (fg_exec h).init
+      exec := (fg_exec h).exec
       tree_subset := fun y hy i X hX => ⟨y, hy, i, by
         rw [FGTrace.store, projFG_state h hy] at hX
         exact hX⟩
@@ -86,26 +112,6 @@ theorem fg_projection : FGProjection := by
         ⟨B, acc, hℓ, hBp, hBs⟩
       own_payload := fun y hy i B hc hp _ a ha => ?_
       unforgeable := fun y hy i a ⟨ℓ, hc, ha⟩ hv => ?_ }
-  · have hH : tr.node i ∈ H := hH
-    have hc : tr.CallAt (tr.node i) i (.fg ℓ) := projFG_callAt.1 ⟨rfl, hl⟩
-    have hlaw := h.cutLaw _ hH i _ hc
-    change FGLabel.Step (tr.node i) (tr.projFG.state (tr.node i) i) ℓ
-      ((tr.post i).fg, (tr.post i).record)
-    rw [projFG_state h hH]
-    cases ℓ with
-    | block B acc =>
-      cases acc with
-      | true => exact Or.inl ⟨rfl, hlaw.2.1, hlaw.2.2.2⟩
-      | false => exact Or.inr ⟨rfl, hlaw.1, by rw [hlaw.2]⟩
-    | attestation a => exact Prod.ext hlaw.1 hlaw.2.2
-    | attest C s =>
-      cases s with
-      | none =>
-        refine ⟨by rw [hlaw.2], ?_⟩
-        simp only [hlaw.1]
-        exact ⟨trivial, by rw [hlaw.2]⟩
-      | some a =>
-        exact ⟨hlaw.2.1, by simp [hlaw.1]⟩
   · -- the own acceptance is after the tick's AC cuts and the restarts of its time
     have hc := projFG_callAt.1 hc
     have hck := projFG_callAt.1 hck
