@@ -42,7 +42,7 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   closure that depends on an axiom other than the three standard ones (`sorryAx`, `native_decide`'s axioms, a
   declared axiom, also through imports), and so it does for every test declaration (a test built on an unfinished
   lemma proves nothing; grep step 7 refuses proof `example`s, which never enter the environment). `Solution` imports
-  `Main`, every generic milestone and each finished instance milestone's `Main` (today Goldilocks M₁, ACBase, ACSteps, FGStore and Compose/AnyAC)
+  `Main`, every generic milestone and each finished instance milestone's `Main` (today Goldilocks M₁, ACBase, ACSteps, FGStore, Compose/AnyAC and Persist)
   today, so all of them must be finished; a new milestone may stay unfinished while neither imports it (step 3b's
   report lists what is unfinished). The instances reach the generic library only through `Main`, inside the
   closure, so everything they use is finished today. Step 9 and the comparator check the closed statements of the

@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
 
 @[expose] public section
 
@@ -69,5 +70,54 @@ theorem Consensus.Goldilocks.Compose.composeInterfaceStatements :
 theorem Consensus.Goldilocks.Compose.composeNodeStatements :
     Consensus.Goldilocks.Compose.ComposeNodeStatements :=
   Consensus.Goldilocks.Compose.compose_node_statements
+
+/-! Goldilocks Persist: part 1, the run statements (Compose/Run), and part 2, C1.1 and its
+corollary (Compose/Persist). -/
+
+/-- Goldilocks Persist: `EventOrder`. -/
+theorem Consensus.Goldilocks.Compose.eventOrder : Consensus.Goldilocks.Compose.EventOrder :=
+  Consensus.Goldilocks.Compose.event_order
+
+/-- Goldilocks Persist: `ReadyImpliesJoined`. -/
+theorem Consensus.Goldilocks.Compose.readyImpliesJoined :
+    Consensus.Goldilocks.Compose.ReadyImpliesJoined :=
+  Consensus.Goldilocks.Compose.ready_implies_joined
+
+/-- Goldilocks Persist: `ACProjection`. -/
+theorem Consensus.Goldilocks.Compose.aCProjection : Consensus.Goldilocks.Compose.ACProjection :=
+  Consensus.Goldilocks.Compose.ac_projection
+
+/-- Goldilocks Persist: `FGProjection`. -/
+theorem Consensus.Goldilocks.Compose.fGProjection : Consensus.Goldilocks.Compose.FGProjection :=
+  Consensus.Goldilocks.Compose.fg_projection
+
+/-- Goldilocks Persist: `GoldilocksACProjection`. -/
+theorem Consensus.Goldilocks.Compose.goldilocksACProjection :
+    Consensus.Goldilocks.Compose.GoldilocksACProjection :=
+  Consensus.Goldilocks.Compose.goldilocks_ac_projection
+
+/-- Goldilocks Persist: `GroupStatesReachable`. -/
+theorem Consensus.Goldilocks.Compose.groupStatesReachable :
+    Consensus.Goldilocks.Compose.GroupStatesReachable :=
+  Consensus.Goldilocks.Compose.group_states_reachable
+
+/-- Goldilocks Persist: `SyncProjection`. -/
+theorem Consensus.Goldilocks.Compose.syncProjection : Consensus.Goldilocks.Compose.SyncProjection :=
+  Consensus.Goldilocks.Compose.sync_projection
+
+/-- Goldilocks Persist: `JoinedProjection`. -/
+theorem Consensus.Goldilocks.Compose.joinedProjection :
+    Consensus.Goldilocks.Compose.JoinedProjection :=
+  Consensus.Goldilocks.Compose.joined_projection
+
+/-- Goldilocks Persist: `HonestFastConfirmationsPersist`. -/
+theorem Consensus.Goldilocks.Compose.honestFastConfirmationsPersist :
+    Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist :=
+  Consensus.Goldilocks.Compose.honest_fast_confirmations_persist
+
+/-- Goldilocks Persist: `RecentSourceNextVote`. -/
+theorem Consensus.Goldilocks.Compose.recentSourceNextVote :
+    Consensus.Goldilocks.Compose.RecentSourceNextVote :=
+  Consensus.Goldilocks.Compose.recent_source_next_vote
 
 end

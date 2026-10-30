@@ -8,6 +8,8 @@ public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Node
+public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Run
+public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Persist
 
 @[expose] public section
 
@@ -33,5 +35,15 @@ theorem Consensus.Goldilocks.localRunReachable : Consensus.Goldilocks.LocalRunRe
 theorem Consensus.Goldilocks.Store.fGStoreService : Consensus.Goldilocks.Store.FGStoreService := sorry
 theorem Consensus.Goldilocks.Compose.composeInterfaceStatements : Consensus.Goldilocks.Compose.ComposeInterfaceStatements := sorry
 theorem Consensus.Goldilocks.Compose.composeNodeStatements : Consensus.Goldilocks.Compose.ComposeNodeStatements := sorry
+theorem Consensus.Goldilocks.Compose.eventOrder : Consensus.Goldilocks.Compose.EventOrder := sorry
+theorem Consensus.Goldilocks.Compose.readyImpliesJoined : Consensus.Goldilocks.Compose.ReadyImpliesJoined := sorry
+theorem Consensus.Goldilocks.Compose.aCProjection : Consensus.Goldilocks.Compose.ACProjection := sorry
+theorem Consensus.Goldilocks.Compose.fGProjection : Consensus.Goldilocks.Compose.FGProjection := sorry
+theorem Consensus.Goldilocks.Compose.goldilocksACProjection : Consensus.Goldilocks.Compose.GoldilocksACProjection := sorry
+theorem Consensus.Goldilocks.Compose.groupStatesReachable : Consensus.Goldilocks.Compose.GroupStatesReachable := sorry
+theorem Consensus.Goldilocks.Compose.syncProjection : Consensus.Goldilocks.Compose.SyncProjection := sorry
+theorem Consensus.Goldilocks.Compose.joinedProjection : Consensus.Goldilocks.Compose.JoinedProjection := sorry
+theorem Consensus.Goldilocks.Compose.honestFastConfirmationsPersist : Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist := sorry
+theorem Consensus.Goldilocks.Compose.recentSourceNextVote : Consensus.Goldilocks.Compose.RecentSourceNextVote := sorry
 
 end
