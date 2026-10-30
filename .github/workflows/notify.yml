@@ -1,18 +1,15 @@
 # Monitoring: one short line per repository event to ntfy.sh (topic in the secret NTFY_TOPIC; nothing is
 # sent when the secret is empty). Event type, number or ref, action or conclusion, actor: never titles or
 # bodies. Every value reaches the script through env, never through ${{ }} inside `run`.
-# High-signal events only: every run is a billed Actions minute (#18). CI results only when they fail.
+# High-signal events only: every run is a billed Actions minute (#18). CI results only when they fail. No comment or
+# review events: they were most runs (307 runs, 219 billed minutes in a day of agent work, #50).
 name: notify
 
 on:
   issues:
     types: [opened, closed]
-  issue_comment:
-    types: [created]
   pull_request:
     types: [opened, closed, ready_for_review]
-  pull_request_review:
-    types: [submitted]
   workflow_run:
     workflows: [check, full]
     types: [completed]
@@ -33,10 +30,8 @@ jobs:
           ACTION: ${{ github.event.action }}
           ACTOR: ${{ github.actor }}
           NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
-          ON_PR: ${{ github.event.issue.pull_request && 'PR' || '' }}
           MERGED: ${{ github.event.pull_request.merged }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          REVIEW_STATE: ${{ github.event.review.state }}
           WF_NAME: ${{ github.event.workflow_run.name }}
           WF_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           WF_BRANCH: ${{ github.event.workflow_run.head_branch }}
@@ -47,11 +42,9 @@ jobs:
           [[ -n "$NTFY_TOPIC" ]] || exit 0
           case "$EVENT" in
             issues) line="issue #$NUMBER $ACTION" ;;
-            issue_comment) line="comment on ${ON_PR:-issue} #$NUMBER" ;;
             pull_request)
               [[ "$ACTION" == closed && "$MERGED" == true ]] && ACTION=merged
               line="PR #$NUMBER $ACTION ($HEAD_REF)" ;;
-            pull_request_review) line="review on PR #$NUMBER: $REVIEW_STATE" ;;
             workflow_run) line="CI $WF_NAME: $WF_CONCLUSION ($WF_EVENT, $WF_BRANCH${WF_PR:+, PR #$WF_PR})" ;;
             *) line="$EVENT $ACTION" ;;
           esac

@@ -34,7 +34,8 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   a change to `scripts/` or the build configuration), rebase on `origin/main` and push to `main`; no PR. Every
   push to `main` runs the fast tier (`scripts/check.sh --fast`); a red `main` is reverted at once by whoever
   pushed it, then fixed. Kernel replay, `lake check` and `lake comparator --paranoid` run nightly (`full.yml`)
-  or on demand (`gh workflow run full.yml --ref <branch>`). A PR is needed only for a trusted-surface change
+  or on demand in an orb with at least 8 GB (`CI=1 scripts/check.sh --full`); dispatching `full.yml` on a branch
+  costs about 45 billed Actions minutes, so keep it for toolchain and Mathlib bumps (#50). A PR is needed only for a trusted-surface change
   (below). The commit message (or PR body) ends with a cost line
   (`Cost: <agent-h> agent-h, <models>, <CPU-h> CPU-h`) and states the reason if the change makes build or CI
   time worse.

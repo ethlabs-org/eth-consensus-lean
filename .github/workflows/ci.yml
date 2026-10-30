@@ -22,7 +22,8 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A newer push supersedes a running check of the same ref, on main too (its tree contains the older commits).
+  cancel-in-progress: true
 
 jobs:
   check:
@@ -36,20 +37,23 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Classify docs-only pull requests (otherwise full fast tier)
+      - name: Classify docs-only changes (otherwise full fast tier)
         id: docs
         env:
           EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha }}
+          REF: ${{ github.ref }}
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
           docs_only=false
-          # Only PRs into main: a docs-only PR into an unchecked work/* branch, later retargeted to main
-          # (an `edited` event, which runs nothing), would otherwise carry a green check for unchecked code.
-          # Checkout is the PR merge commit: diff against its base, not the previous push.
+          # Only PRs into main and pushes to main (trunk-based): a docs-only PR into an unchecked work/* branch,
+          # later retargeted to main (an `edited` event, which runs nothing), would otherwise carry a green check for
+          # unchecked code. A PR's checkout is its merge commit: diff against its base, not the previous push; a
+          # push's base is the commit it replaced, which must be an ancestor (not a force push).
           # Materialize the diff first so a failed git command cannot look like an empty diff.
-          if [[ "$EVENT" == pull_request && "$BASE_REF" == main && -n "$BASE" && ! "$BASE" =~ ^0+$ ]] &&
+          if [[ ( "$EVENT" == pull_request && "$BASE_REF" == main ) || ( "$EVENT" == push && "$REF" == refs/heads/main ) ]] &&
+             [[ -n "$BASE" && ! "$BASE" =~ ^0+$ ]] &&
              git cat-file -e "$BASE^{commit}" 2>/dev/null &&
              git merge-base --is-ancestor "$BASE" HEAD &&
              git diff --no-renames --ignore-submodules=none --name-only -z "$BASE" HEAD -- > "$RUNNER_TEMP/pr-paths"; then
@@ -63,7 +67,8 @@ jobs:
             done < "$RUNNER_TEMP/pr-paths"
           fi
           echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
-          echo "docs-only PR: $docs_only (otherwise --fast)"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "docs-only change: $docs_only (otherwise --fast)"
 
       - name: Install elan v4.2.4 (pinned release, sha256-checked; toolchain from lean-toolchain)
         run: |
@@ -155,7 +160,7 @@ jobs:
           CI: "1"
           FLAGS: ${{ steps.mode.outputs.flags }}
           DOCS_ONLY: ${{ steps.docs.outputs.docs_only }}
-          BASE: ${{ github.event.pull_request.base.sha }}
+          BASE: ${{ steps.docs.outputs.base }}
         run: |
           set -euo pipefail
           if [[ "$DOCS_ONLY" == true ]]; then
@@ -190,29 +195,21 @@ jobs:
           path: ${{ runner.temp }}/check.log
           retention-days: 30
 
-  review-boundary:
-    # The trusted surface (`trusted_paths` in scripts/boundaries.toml; docs/spec-review.md) against the commit
-    # tagged `spec-approved` (scripts/review-boundary.sh): a change of the trusted surface that the tag does not cover
-    # fails; a change that touches no trusted path passes (without the tag, a warning only). The tag is an
-    # agent approval: an agent other than the change's author moves it after the author's fidelity read-back of the
-    # diff printed here and a green fast check (docs/spec-review.md). Check infrastructure (scripts/, .github/,
-    # lakefile.toml) is not covered by the tag; agents maintain it (TRUST.md).
-    name: Review boundary (trusted surface = spec-approved)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Check out consensus-lean (full history and tags; fetch-depth 0 also fetches every tag)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-
+      # Review boundary: the trusted surface (`trusted_paths` in scripts/boundaries.toml; docs/spec-review.md) against
+      # the commit tagged `spec-approved` (scripts/review-boundary.sh): a change of the trusted surface that the tag does
+      # not cover fails; a change that touches no trusted path passes (without the tag, a warning only). The tag is an
+      # agent approval: an agent other than the change's author moves it after the author's fidelity read-back of the
+      # diff printed here and a green fast check (docs/spec-review.md). Check infrastructure (scripts/, .github/,
+      # lakefile.toml) is not covered by the tag; agents maintain it (TRUST.md). These are steps of this job, not a
+      # job of their own: every job is billed at least one minute (#50). They run even when check.sh failed.
       - name: Review-boundary self-test (verdicts on throwaway repositories)
+        if: ${{ !cancelled() }}
         run: scripts/review-boundary.sh --self-test
 
       # A change that touches no trusted path passes (so a tag moved to a PR head just before its merge does not
       # turn unrelated changes red); otherwise the trusted files must equal the tag's. scripts/review-boundary.sh.
-      - name: Trusted surface covered by spec-approved
+      - name: Review boundary (trusted surface covered by spec-approved)
+        if: ${{ !cancelled() }}
         env:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: scripts/review-boundary.sh "$BASE"

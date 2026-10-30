@@ -27,7 +27,7 @@ authorization**: annotated tag `spec-approved` ("Owner approval (Francesco,
 granted to claude-ethlabs 2026-10-29): protected Spec / review statements / challenge / toolchain at 4b7c5148
 (post-reorg; verbatim moves + v4.35 internal term differences documented in the reorg evidence)").
 
-The **trusted surface**, checked by CI's `review-boundary` job against the tag (a change that touches it must equal the tag there), is the
+The **trusted surface**, checked by the review-boundary steps of CI's `check` job against the tag (a change that touches it must equal the tag there), is the
 list `trusted_paths` in `scripts/boundaries.toml` (since #5): `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}`
 (each as `X.lean` and `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusLeanTest/ReviewAxioms.lean`, `ConsensusLeanTest/ReviewGuard.lean`, and since #38 the instance semantics
@@ -619,7 +619,9 @@ passes, whatever the tag points at; it then warns if the trusted files differ fr
 session: the Lean read back into prose against the reference, including the `spec-snapshot.txt` diff) and gets
 the fast check green; then an agent other than the author (claude-ethlabs, or the amp-orbs coordinator) checks
 the protected diff below, moves the tag to the PR head with a message naming the PR, the protected files changed
-and the evidence, and re-runs the PR's failed job:
+and the evidence, checks the boundary on the PR's head in seconds (the review-boundary steps of CI's `check` job
+run the same script; re-running that job costs a whole fast-tier run, so do it only when the check log is needed),
+and merges:
 
 ```sh
 git fetch origin pull/<pr>/head
@@ -627,14 +629,15 @@ paths() { git show "$1:scripts/boundaries.toml" | python3 -I -c 'import sys, tom
 mapfile -t protected < <({ paths FETCH_HEAD; paths spec-approved; } | sort -u)
 GIT_LITERAL_PATHSPECS=1 git diff spec-approved FETCH_HEAD -- "${protected[@]}"
 git tag -f -a spec-approved -m "spec-approved: <PR>; moved by <agent>; protected files changed: <...>; evidence: <...>" FETCH_HEAD && git push -f origin spec-approved
-gh run rerun <run-id> --failed
+git checkout --detach FETCH_HEAD && scripts/review-boundary.sh "$(git merge-base FETCH_HEAD origin/main)"
+gh pr merge <pr> --squash --delete-branch   # main's push run checks the merge commit
 ```
 
 The job compares the trusted surface only, so the approval carries over to the merge or squash commit as
 long as main's trusted surface did not change meanwhile (otherwise the PR is updated and re-approved).
 
 **Timing of the move.** The tag should equal main's trusted files except for the minutes in which a tagged PR
-merges. Move it only after the PR's fast check is green, re-run its `review-boundary` job, and merge at once. If the
+merges. Move it only after the PR's fast check is green, check the boundary as above, and merge at once. If the
 merge cannot happen within minutes (a conflict, a red check, a question), move the tag back to the commit on
 `main` that it covered before (`git tag -f -a spec-approved -m "spec-approved: back to <sha> (<PR> not merged)"
 <sha>`), and move it again when the PR is ready. Unrelated changes stay green either way (they touch no trusted

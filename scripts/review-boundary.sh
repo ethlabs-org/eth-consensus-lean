@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Review boundary (ci.yml job `review-boundary`; docs/spec-review.md): the trusted surface against the tag
+# Review boundary (steps of ci.yml's `check` job; docs/spec-review.md): the trusted surface against the tag
 # `spec-approved`. Run in the repository, on the commit to check (HEAD):
 #   scripts/review-boundary.sh [<base>]   check HEAD; <base> is the commit the change starts from (a PR's base,
 #                                         the commit a push to main replaced), if any
