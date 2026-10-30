@@ -99,6 +99,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Setting

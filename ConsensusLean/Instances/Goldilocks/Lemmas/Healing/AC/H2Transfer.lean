@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 
 public section
@@ -23,26 +23,6 @@ namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time}
-
-/-- A block between `Φ.F` and a block of a well-formed frame tree (inside a coherent `U`
-containing the tree) is in the tree. -/
-private theorem mem_tree_of_between {Φ : Frm sp.n FGP} (hU : Coherent U) (hΦ : FrameOK Φ)
-    (hΦU : Φ.tree ⊆ U) {B C : Blk sp.n FGP} (hFB : Anc U Φ.F B) (h : Anc U B C) :
-    C ∈ Φ.tree → B ∈ Φ.tree := by
-  induction h with
-  | refl => exact id
-  | @tail c d hBc e ih =>
-    intro hd
-    by_cases hdF : d = Φ.F
-    · subst hdF
-      obtain rfl := Anc.antisymm hU (hBc.tail e) hFB
-      exact hd
-    obtain rfl | ⟨q, -, hq⟩ :=
-      (Relation.ReflTransGen.cases_tail_iff _ _ _).1 (hΦ.rooted.2 d hd)
-    · exact absurd rfl hdF
-    have hqc : q = c := hU.1 (hΦU hq.1) e.1 (Option.some_injective _ (hq.2.2.symm.trans e.2.2))
-    subst hqc
-    exact ih hq.1
 
 /-- **§5, `Carry` for a fast origin at a read not covered by `Φ.F`** (the counted heads accepted
 or resolved before `t_j + 2Δ` relay before `t_j + 3Δ`, pre-recovery heads by `Catch`; rooted
@@ -161,7 +141,46 @@ theorem h2_votes_continue (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {
     (hB : Protected tr H t₀ B j) (hjm : j ≤ m) (hm : t₀ + 4 * sp.Δ ≤ sp.ts m)
     (hv : ∀ x ∈ H, ∀ k e, VoteAt tr x k e → e.msg.slot = m → VoteExtends U e.msg B) :
     VotesExtendAfter tr H U m B := by
-  sorry
+  have hrun := hI.run
+  have hr := hrun.localRun
+  have hΔ := sp.toParams.hΔ
+  have hg := hI.le
+  rw [votesExtendAfter_iff]
+  suffices h : ∀ d : Nat, ∀ x ∈ H, ∀ k e, VoteAt tr x k e → e.msg.slot = m + d →
+      VoteExtends U e.msg B by
+    intro x hx k e hve hs
+    exact h (e.msg.slot - m) x hx k e hve (by omega)
+  intro d
+  induction d with
+  | zero => exact hv
+  | succ d ih =>
+    have hmd : gbar g + 4 * sp.Δ ≤ sp.ts (m + d : Nat) :=
+      by linarith [(ts_le_iff sp).2 (show ((m : Nat) : Int) ≤ ((m + d : Nat) : Int) by omega)]
+    have hhalf := hI.honest_voters_half hmd
+    suffices h : ∀ k, ∀ x ∈ H, ∀ e, VoteAt tr x k e → e.msg.slot = m + (d + 1) →
+        VoteExtends U e.msg B from fun x hx k e hve hs => h k x hx e hve hs
+    intro k
+    induction k using Nat.strong_induction_on with
+    | _ k ihk =>
+      intro y hy e ⟨ℓ, hc, he⟩ hes
+      have hca : CastAt tr y k ℓ e := ⟨hc, he⟩
+      obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc
+      obtain ⟨-, hsl, -, -⟩ := castAt_spec hr hy hca
+      have ht0 := hr.time_nonneg k
+      by_cases hBF : Anc U B ℓ.frame.F
+      · obtain ⟨Hd, hHd, hHdr, -⟩ := honest_head_frame hr hy hca
+        exact ⟨Hd, hΦU hHd, hHdr, hBF.trans ((hΦ.rooted.2 Hd hHd).mono hΦU)⟩
+      have htk : sp.ts (j + 1 : Nat) ≤ tr.time k :=
+        (ts_le_iff_le_slot sp ht0 _).2 (by rw [← hsl, hes]; push_cast; omega)
+      obtain ⟨hviab, hFB⟩ := inv_at_vote hI hB hy hca htk hBF
+      have hT : gbar g ≤ sp.ts ((sp.slot (tr.time k) : Int) - 1) := by
+        rw [← hsl, hes, show ((m + (d + 1) : Nat) : Int) - 1 = ((m + d : Nat) : Int) by
+          push_cast; ring]
+        linarith
+      exact next_transfer sp FGP ro H U tr hrun (m + d) y k B ℓ e hy hca (by omega) ih hhalf
+        (h2_carry_votes hI hmd ih hy hca (by omega) hFB) (hI.faultBound ht0 hT)
+        (hI.syncAC (by linarith) _) (hes ▸ hviab)
+        (fun z hz k' hk' e' hv' hs' => ihk k' hk' z hz e' hv' (by omega))
 
 /-- **§6.1, later labels (proposals)**: for a protected `(B, j)`, if every honest vote of a slot
 `m ≥ j` with `t_m ≥ t₀ + 4Δ` extends `B`, the head of every honest `ac_proposal` at `t_{m+1}`
