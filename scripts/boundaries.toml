@@ -394,6 +394,22 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Lemmas.AC"]
 
 [[layer]]
+name = "Instances.Goldilocks.Lemmas.Healing"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Healing"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
+         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose"]
+about = "healing support (H.1, H.2, HR.1–HR.4, H.3, H.4, C1.2): AC healing over AC traces, the reset and retention over runs"
+
+[[layer]]
 name = "Instances.Goldilocks.Lemmas.Refinement"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Refinement"]
 sorry = true
@@ -498,7 +514,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
-         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose"]
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Healing"]
 about = "Goldilocks milestone"
 
 [[layer]]
@@ -514,7 +530,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
-         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose"]
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Healing"]
 about = "Goldilocks milestone"
 
 [[layer]]
@@ -565,7 +581,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Statements.Refinement",
          "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
          "Instances.Goldilocks.Lemmas.FGStore", "Instances.Goldilocks.Lemmas.AC",
-         "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Refinement",
+         "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Refinement",
          "Instances.Goldilocks.Proofs.FGSafety", "Instances.Goldilocks.Proofs.FGStore",
          "Instances.Goldilocks.Proofs.ACBase", "Instances.Goldilocks.Proofs.ACSteps",
          "Instances.Goldilocks.Proofs.ComposeAnyAC",
@@ -633,7 +649,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Statements.ComposeAnyAC", "Instances.Goldilocks.Statements.Compose",
          "Instances.Goldilocks.Statements.Refinement", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
-         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Healing",
          "Instances.Goldilocks.Lemmas.Refinement", "Instances.Goldilocks.Proofs.FGSafety",
          "Instances.Goldilocks.Proofs.FGStore", "Instances.Goldilocks.Proofs.ACBase",
          "Instances.Goldilocks.Proofs.ACSteps", "Instances.Goldilocks.Proofs.ComposeAnyAC",
