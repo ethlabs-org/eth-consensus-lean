@@ -300,17 +300,363 @@ theorem frame_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)
       exact le_trans (ih j hj hc' B hB)
         (slot_mono sp (h.time_nonneg j) (h.time_mono (Nat.le_of_lt hj)))
 
-/-- **F.1 (c), a joined node.** -/
-theorem joined_awake : JoinedAwake sp := by
-  sorry
-
 /-- **A0.7, joining.** -/
 theorem joined_keeps_votes : JoinedKeepsVotes sp := by
   sorry
 
+/-! ### One vote per slot (A0.8)
+
+Only `try_vote` emits, at most one vote, of slot `slot(t)`, from a joined state with
+`voted_slot ≠ slot(t)`, and it writes `voted_slot ← slot(t)`; every other call keeps `voted_slot`
+and `restart_time`, except the restart, which emits nothing and writes `restart_time ← t`. -/
+
+section OneVote
+
+variable {sp}
+
+/-- A call from `A` at `t` that is not a restart, to `A'` with the emissions `es`: it keeps
+`restart_time`, keeps `voted_slot` or sets it to `slot(t)`, and emits at most one vote, of slot
+`slot(t)`, only from a joined `A` with `voted_slot ≠ slot(t)`, after which `voted_slot = slot(t)`.
+-/
+private def VoteStep (A A' : SAState sp.n) (es : List (Em sp FGP)) (t : Time) : Prop :=
+  A'.restartTime = A.restartTime ∧
+    (A'.votedSlot = A.votedSlot ∨ A'.votedSlot = sp.slot t) ∧ es.length ≤ 1 ∧
+    ∀ e ∈ es, e.msg.slot = sp.slot t ∧ joined sp A t ∧ A.votedSlot ≠ sp.slot t ∧
+      A'.votedSlot = sp.slot t
+
+private theorem VoteStep.refl (A : SAState sp.n) (t : Time) :
+    VoteStep (FGP := FGP) A A [] t :=
+  ⟨rfl, Or.inl rfl, Nat.zero_le _, fun _ h => absurd h List.not_mem_nil⟩
+
+private theorem VoteStep.pre {A B A' : SAState sp.n} {es : List (Em sp FGP)} {t : Time}
+    (h : VoteStep B A' es t) (hv : B.votedSlot = A.votedSlot)
+    (hr : B.restartTime = A.restartTime) : VoteStep A A' es t := by
+  obtain ⟨h₁, h₂, h₃, h₄⟩ := h
+  refine ⟨h₁.trans hr, hv ▸ h₂, h₃, fun e he => ?_⟩
+  obtain ⟨e₁, e₂, e₃, e₄⟩ := h₄ e he
+  exact ⟨e₁, by unfold joined at e₂ ⊢; rwa [← hr], hv ▸ e₃, e₄⟩
+
+private theorem VoteStep.post {A A' A'' : SAState sp.n} {es : List (Em sp FGP)} {t : Time}
+    (h : VoteStep A A' es t) (hv : A''.votedSlot = A'.votedSlot)
+    (hr : A''.restartTime = A'.restartTime) : VoteStep A A'' es t := by
+  obtain ⟨h₁, h₂, h₃, h₄⟩ := h
+  exact ⟨hr.trans h₁, hv ▸ h₂, h₃, fun e he => hv ▸ h₄ e he⟩
+
+private theorem admitVote_keeps (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+    (admitVote sp A t v).votedSlot = A.votedSlot ∧
+      (admitVote sp A t v).restartTime = A.restartTime := by
+  unfold admitVote
+  split_ifs <;> exact ⟨rfl, rfl⟩
+
+private theorem updateLatestConfirmed_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (C : Blk sp.n FGP) : (updateLatestConfirmed sp A Φ C).votedSlot = A.votedSlot ∧
+      (updateLatestConfirmed sp A Φ C).restartTime = A.restartTime := by
+  unfold updateLatestConfirmed
+  split_ifs <;> exact ⟨rfl, rfl⟩
+
+private theorem optimistic_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (optimisticConfirmation sp A Φ t).votedSlot = A.votedSlot ∧
+      (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
+  unfold optimisticConfirmation
+  split
+  · exact ⟨rfl, rfl⟩
+  · exact updateLatestConfirmed_keeps _ _ _
+
+private theorem updateConfirmation_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (s : Nat) : (updateConfirmation sp A Φ t s).votedSlot = A.votedSlot ∧
+      (updateConfirmation sp A Φ t s).restartTime = A.restartTime := by
+  unfold updateConfirmation
+  dsimp only
+  split
+  · exact ⟨rfl, rfl⟩
+  · split_ifs
+    · exact ⟨rfl, rfl⟩
+    · exact updateLatestConfirmed_keeps _ _ _
+
+private theorem blockReceipt_keeps (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+    (blockReceipt sp A t B).votedSlot = A.votedSlot ∧
+      (blockReceipt sp A t B).restartTime = A.restartTime := by
+  unfold blockReceipt
+  generalize blockVotes B = l
+  suffices h : ∀ A' : SAState sp.n,
+      (l.foldl (fun A v => admitVote sp A t v) A').votedSlot = A'.votedSlot ∧
+      (l.foldl (fun A v => admitVote sp A t v) A').restartTime = A'.restartTime from
+    h { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) }
+  induction l with
+  | nil => exact fun _ => ⟨rfl, rfl⟩
+  | cons v l ih =>
+    intro A'
+    simp only [List.foldl_cons]
+    exact ⟨(ih _).1.trans (admitVote_keeps _ _ _).1, (ih _).2.trans (admitVote_keeps _ _ _).2⟩
+
+private theorem tryVote_voteStep (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) : VoteStep A (tryVote sp self A Φ t).1 (tryVote sp self A Φ t).2 t := by
+  unfold tryVote
+  dsimp only
+  split_ifs with h₁ h₂
+  · exact VoteStep.refl A t
+  · exact VoteStep.refl A t
+  all_goals
+    simp only [not_or, not_not, not_lt] at h₁
+    obtain ⟨hj, hv, -⟩ := h₁
+    have k₁ := fun A₁ v => ((optimistic_keeps (admitVote sp A₁ t v) Φ t).1.trans
+      (admitVote_keeps A₁ t v).1)
+    have k₂ := fun A₁ v => ((optimistic_keeps (admitVote sp A₁ t v) Φ t).2.trans
+      (admitVote_keeps A₁ t v).2)
+    refine ⟨k₂ _ _, Or.inr (k₁ _ _), by simp, fun e he => ?_⟩
+    rw [List.mem_singleton] at he
+    subst he
+    exact ⟨rfl, hj, hv, k₁ _ _⟩
+
+private theorem acOnMessage_voteStep (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (v : Vote sp.n) :
+    VoteStep A (acOnMessage sp self A Φ t v).1 (acOnMessage sp self A Φ t v).2 t :=
+  (tryVote_voteStep _ _ _ _).pre
+    ((optimistic_keeps _ _ _).1.trans (admitVote_keeps _ _ _).1)
+    ((optimistic_keeps _ _ _).2.trans (admitVote_keeps _ _ _).2)
+
+private theorem acOnBlock_voteStep (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (B : Blk sp.n FGP) :
+    VoteStep A (acOnBlock sp self A Φ t B).1 (acOnBlock sp self A Φ t B).2 t :=
+  (tryVote_voteStep _ _ _ _).pre
+    ((optimistic_keeps _ _ _).1.trans (blockReceipt_keeps _ _ _).1)
+    ((optimistic_keeps _ _ _).2.trans (blockReceipt_keeps _ _ _).2)
+
+private theorem acOnTick_voteStep (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) : VoteStep A (acOnTick sp self A Φ t).1 (acOnTick sp self A Φ t).2 t := by
+  unfold acOnTick
+  dsimp only
+  have hr : VoteStep A
+      (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])).1
+      (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])).2 t := by
+    split_ifs
+    · exact tryVote_voteStep _ _ _ _
+    · exact VoteStep.refl A t
+  generalize (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])) = r at hr ⊢
+  split_ifs
+  · exact hr.post (updateConfirmation_keeps _ _ _ _).1 (updateConfirmation_keeps _ _ _ _).2
+  · exact hr
+  · exact VoteStep.refl A t
+
+private theorem acProposal_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (acProposal sp A Φ t).1.votedSlot = A.votedSlot ∧
+      (acProposal sp A Φ t).1.restartTime = A.restartTime := by
+  unfold acProposal
+  split_ifs <;> exact ⟨rfl, rfl⟩
+
+private theorem acToFG_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (acToFG sp A Φ t).1.votedSlot = A.votedSlot ∧
+      (acToFG sp A Φ t).1.restartTime = A.restartTime := by
+  unfold acToFG
+  dsimp only
+  split_ifs
+  · split
+    · exact ⟨rfl, rfl⟩
+    · split_ifs <;> exact ⟨rfl, rfl⟩
+  · exact ⟨rfl, rfl⟩
+
+/-- One call from `A` at `t ≥ 0` with a well-formed frame, to `A'` with the emissions `es`: a
+restart, which emits nothing and writes `restart_time ← t`, or a `VoteStep`. -/
+private theorem step_voteStep {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A A' : SAState sp.n}
+    {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
+    (c : (goldilocksSA sp FGP ro).Call) {es : List (Em sp FGP)}
+    (hs : (goldilocksSA sp FGP ro).step self A Φ t c = (A', es)) :
+    (es = [] ∧ A'.restartTime = (t : WithBot Time)) ∨ VoteStep A A' es t := by
+  have h₁ := congrArg Prod.fst hs
+  have h₂ := congrArg Prod.snd hs
+  dsimp only at h₁ h₂
+  subst h₁ h₂
+  cases c with
+  | tick => exact Or.inr (acOnTick_voteStep _ _ _ _)
+  | proposal =>
+    exact Or.inr ((VoteStep.refl A t).post (acProposal_keeps _ _ _).1 (acProposal_keeps _ _ _).2)
+  | toFG => exact Or.inr ((VoteStep.refl A t).post (acToFG_keeps _ _ _).1 (acToFG_keeps _ _ _).2)
+  | message m => exact Or.inr (acOnMessage_voteStep _ _ _ _ _)
+  | block B => exact Or.inr (acOnBlock_voteStep _ _ _ _ _)
+  | restart =>
+    obtain ⟨he, -, -, -, -, -, hr, -⟩ := restart_state sp FGP ro self A Φ t hΦ ht
+    exact Or.inl ⟨he, hr⟩
+
+variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
+  {tr : SATrace sp FGP ro}
+
+/-- An honest call at cut `i`: a restart at `time i` that emits nothing, or a `VoteStep`. -/
+private theorem call_voteStep (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    (ℓ.emits = [] ∧ (tr.post i).restartTime = (tr.time i : WithBot Time)) ∨
+      VoteStep (tr.state y i) (tr.post i) ℓ.emits (tr.time i) := by
+  have hexec := h.exec i ℓ hc.2 (hc.1 ▸ hy)
+  rw [hc.1] at hexec
+  have hΦ : FrameOK ℓ.frame := by
+    rcases h.frameLaw y hy i ℓ hc with ⟨-, _, -, -, hok⟩ | ⟨_, _, -, -, -, hok⟩ <;> exact hok.1.1
+  exact step_voteStep y hΦ (h.time_nonneg i) ℓ.call hexec
+
+/-- A vote of an honest node at cut `k` is of slot `slot(time k)`, from a joined state with
+`voted_slot ≠ slot(time k)`, after which `voted_slot = slot(time k)`. -/
+private theorem voteAt_spec (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {k : Nat} {e : Em sp FGP} (hv : VoteAt tr y k e) :
+    e.msg.slot = sp.slot (tr.time k) ∧ joined sp (tr.state y k) (tr.time k) ∧
+      (tr.state y k).votedSlot ≠ sp.slot (tr.time k) ∧
+      (tr.post k).votedSlot = sp.slot (tr.time k) := by
+  obtain ⟨ℓ, hc, he⟩ := hv
+  rcases call_voteStep h hy hc with ⟨hn, -⟩ | hs
+  · rw [hn] at he; exact absurd he List.not_mem_nil
+  · exact hs.2.2.2 e he
+
+/-- After an honest vote of slot `σ` at cut `k < i`, the state of the node before cut `i` still
+has `voted_slot = σ`, or cut `i` is of a later slot, or the node restarted at or after the vote. -/
+private theorem after_vote (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) (i : Nat) : ∀ k < i, ∀ e, VoteAt tr y k e →
+      (tr.state y i).votedSlot = e.msg.slot ∨ e.msg.slot < sp.slot (tr.time i) ∨
+        ∃ w : Time, (tr.state y i).restartTime = (w : WithBot Time) ∧ tr.time k ≤ w := by
+  induction i with
+  | zero => intro k hk; omega
+  | succ i ih =>
+    intro k hk e hv
+    have hmono : sp.slot (tr.time i) ≤ sp.slot (tr.time (i + 1)) :=
+      slot_mono sp (h.time_nonneg i) (h.time_mono (Nat.le_succ i))
+    have hslot := (voteAt_spec h hy hv).1
+    by_cases hcall : tr.node i = y ∧ tr.label i ≠ none
+    · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.mp hcall.2
+      have hc : tr.CallAt y i ℓ := ⟨hcall.1, hℓ⟩
+      have hst : tr.state y (i + 1) = tr.post i := by
+        simp only [Trace.state]; exact ite_eq_left hcall
+      rw [hst]
+      rcases Nat.lt_succ_iff_lt_or_eq.mp hk with hk | rfl
+      · have hki := h.time_mono (Nat.le_of_lt hk)
+        rcases call_voteStep h hy hc with ⟨-, hr⟩ | ⟨hr, hv', -, -⟩
+        · exact Or.inr (Or.inr ⟨_, hr, hki⟩)
+        · rcases ih k hk e hv with h₁ | h₂ | ⟨w, hw, hkw⟩
+          · rcases hv' with hv' | hv'
+            · exact Or.inl (hv'.trans h₁)
+            · have := slot_mono sp (h.time_nonneg k) hki
+              rcases Nat.lt_or_eq_of_le (hslot ▸ this) with hlt | heq
+              · exact Or.inr (Or.inl (lt_of_lt_of_le hlt hmono))
+              · exact Or.inl (by rw [hv', heq])
+          · exact Or.inr (Or.inl (lt_of_lt_of_le h₂ hmono))
+          · exact Or.inr (Or.inr ⟨w, hr.trans hw, hkw⟩)
+      · exact Or.inl (by rw [(voteAt_spec h hy hv).2.2.2, hslot])
+    · have hst : tr.state y (i + 1) = tr.state y i := by
+        simp only [Trace.state]; exact ite_eq_right hcall
+      rw [hst]
+      rcases Nat.lt_succ_iff_lt_or_eq.mp hk with hk | rfl
+      · rcases ih k hk e hv with h₁ | h₂ | h₃
+        · exact Or.inl h₁
+        · exact Or.inr (Or.inl (lt_of_lt_of_le h₂ hmono))
+        · exact Or.inr (Or.inr h₃)
+      · obtain ⟨ℓ, hc, -⟩ := hv
+        exact absurd ⟨hc.1, by rw [hc.2]; exact Option.some_ne_none _⟩ hcall
+
+/-- Two votes of an honest node at cuts `k < i` are of different slots. -/
+private theorem vote_slot_ne (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {k i : Nat} (hki : k < i) {e e' : Em sp FGP} (hv : VoteAt tr y k e)
+    (hv' : VoteAt tr y i e') : e.msg.slot ≠ e'.msg.slot := by
+  intro hσ
+  obtain ⟨hs', hj', hne', -⟩ := voteAt_spec h hy hv'
+  have hs := (voteAt_spec h hy hv).1
+  rcases after_vote h hy i k hki e hv with h₁ | h₂ | ⟨w, hw, hkw⟩
+  · exact hne' (by rw [h₁, hσ, hs'])
+  · omega
+  · unfold joined at hj'
+    rw [hw, WithBot.coe_le_coe] at hj'
+    have h₁ : sp.ts (sp.slot (tr.time k)) ≤ tr.time k :=
+      (ts_le_iff_le_slot sp (h.time_nonneg k) _).mpr le_rfl
+    have h₂ : sp.ts ((sp.slot (tr.time i) : Int) - 1) < sp.ts (sp.slot (tr.time k)) :=
+      (ts_lt_iff sp).mpr (by omega)
+    exact absurd (lt_of_lt_of_le h₂ (h₁.trans (hkw.trans hj'))) (lt_irrefl _)
+
+/-- A call that is not a restart keeps `restart_time`. -/
+private theorem step_restartTime {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call) (hc : c ≠ .restart) :
+    ((goldilocksSA sp FGP ro).step self A Φ t c).1.restartTime = A.restartTime := by
+  cases c with
+  | tick => exact (acOnTick_voteStep self A Φ t).1
+  | proposal => exact (acProposal_keeps A Φ t).2
+  | toFG => exact (acToFG_keeps A Φ t).2
+  | message m => exact (acOnMessage_voteStep self A Φ t m).1
+  | block B => exact (acOnBlock_voteStep self A Φ t B).1
+  | restart => exact absurd rfl hc
+
+/-- After an honest call at `i`, `restart_time` is at least the time of every restart of the node
+at a cut `≤ i`. -/
+private theorem restartTime_ge (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) : ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ →
+      ∀ j ≤ i, tr.RestartAt y j → (tr.time j : WithBot Time) ≤ (tr.post i).restartTime := by
+  intro i
+  induction i using Nat.strong_induction_on with
+  | _ i ih =>
+    intro ℓ hc j hji hj
+    have hexec := h.exec i ℓ hc.2 (hc.1 ▸ hy)
+    rw [hc.1] at hexec
+    have hΦ : FrameOK ℓ.frame := by
+      rcases h.frameLaw y hy i ℓ hc with ⟨-, _, -, -, hok⟩ | ⟨_, _, -, -, -, hok⟩ <;>
+        exact hok.1.1
+    have hpost : tr.post i =
+        ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
+      rw [hexec]
+    by_cases hr : ℓ.call = .restart
+    · rw [hpost, hr]
+      obtain ⟨-, -, -, -, -, -, hrt, -⟩ :=
+        restart_state sp FGP ro y (tr.state y i) ℓ.frame (tr.time i) hΦ (h.time_nonneg i)
+      change (tr.time j : WithBot Time) ≤ (acRestart sp ro y _ _ _).1.restartTime
+      rw [hrt]
+      exact WithBot.coe_le_coe.mpr (h.time_mono hji)
+    rw [hpost, step_restartTime y _ _ _ _ hr]
+    rcases Nat.eq_or_lt_of_le hji with rfl | hji
+    · obtain ⟨ℓj, hcj, hrj⟩ := hj
+      have : ℓj = ℓ := Option.some.inj (hcj.2.symm.trans hc.2)
+      exact absurd (this ▸ hrj) hr
+    rcases tr.noCall_or_lastCall y i with hn | ⟨j', hj', ℓ', hc', hnb⟩
+    · obtain ⟨ℓj, hcj, -⟩ := hj
+      exact absurd hcj (hn j (Nat.zero_le _) hji ℓj)
+    have hjj' : j ≤ j' := by
+      by_contra hlt
+      obtain ⟨ℓj, hcj, -⟩ := hj
+      exact hnb j (by omega) hji ℓj hcj
+    rw [tr.state_of_lastCall hc' hj' hnb]
+    exact ih j' hj' ℓ' hc' j hjj' hj
+
+end OneVote
+
+/-- **F.1 (c), a joined node.** -/
+theorem joined_awake : JoinedAwake sp := by
+  intro FGP ro H U tr h y hy i ℓ hc hj
+  have hle : ∀ j ≤ i, tr.RestartAt y j →
+      tr.time j ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) := fun j hji hr =>
+    WithBot.coe_le_coe.mp ((restartTime_ge h hy i ℓ hc j hji hr).trans hj)
+  refine ⟨fun u hu₁ hu₂ => ?_, hle⟩
+  by_contra hna
+  have hlt : u < tr.time i := lt_of_le_of_ne hu₂ fun he => hna (he ▸ h.awake_of_call y hy i ℓ hc)
+  obtain ⟨k, hk, hku, hki⟩ := h.restart_at_wake y hy u (tr.time i) (le_trans (le_max_left _ _) hu₁)
+    hlt hna (h.awake_of_call y hy i ℓ hc)
+  have hk' : k ≤ i := by
+    by_contra hik
+    obtain ⟨ℓk, hck, hrk⟩ := hk
+    obtain ⟨u', -, hu'k, -, hbefore⟩ := h.sleep_of_restart y hy k ℓk hck hrk
+    have := hbefore i (by omega) ℓ hc
+    exact absurd (lt_of_lt_of_le (this.trans hu'k) hki) (lt_irrefl _)
+  have h₁ := hle k hk' hk
+  have h₂ := le_trans (le_max_right _ _) hu₁
+  exact absurd (lt_of_lt_of_le hku (h₁.trans h₂)) (lt_irrefl _)
+
+
 /-- **A0.8.** -/
 theorem one_vote_per_slot : OneVotePerSlot sp := by
-  sorry
+  intro FGP ro H U tr h y hy i j e e' hv hv' hσ
+  rcases lt_trichotomy i j with hij | rfl | hji
+  · exact absurd hσ (vote_slot_ne h hy hij hv hv')
+  · refine ⟨rfl, ?_⟩
+    obtain ⟨ℓ, hc, he⟩ := hv
+    obtain ⟨ℓ', hc', he'⟩ := hv'
+    have : ℓ' = ℓ := Option.some.inj (hc'.2.symm.trans hc.2)
+    subst this
+    rcases call_voteStep h hy hc with ⟨hn, -⟩ | ⟨-, -, hl, -⟩
+    · rw [hn] at he; exact absurd he List.not_mem_nil
+    · rcases hm : ℓ'.emits with _ | ⟨a, _ | ⟨b, l⟩⟩
+      · rw [hm] at he; exact absurd he List.not_mem_nil
+      · rw [hm, List.mem_singleton] at he he'; exact he.trans he'.symm
+      · rw [hm] at hl; simp at hl
+  · exact absurd hσ.symm (vote_slot_ne h hy hji hv' hv)
 
 end Consensus.Goldilocks.SA
 
