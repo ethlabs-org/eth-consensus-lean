@@ -25,16 +25,6 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)} {d : DutyHead sp.n FGP (Payload sp.n)}
   {pay : Payload sp.n}
 
-private theorem isBest_congr {S S' : Set (Blk sp.n FGP)} {sc sc' : Blk sp.n FGP → Nat}
-    (hS : S = S') (hsc : ∀ B ∈ S, sc B = sc' B) {C : Blk sp.n FGP} :
-    IsBest sp sc S C ↔ IsBest sp sc' S' C := by
-  subst hS
-  constructor
-  · rintro ⟨hC, h⟩
-    exact ⟨hC, fun D hD hne => by rw [← hsc D hD, ← hsc C hC]; exact h D hD hne⟩
-  · rintro ⟨hC, h⟩
-    exact ⟨hC, fun D hD hne => by rw [hsc D hD, hsc C hC]; exact h D hD hne⟩
-
 /-- **The head of an honest slot-`p` vote ends the canonical walk from its anchor.** -/
 private theorem vote_walkEnd (hs : UnanimitySetting tr H U g p P k ℓp d pay) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -56,8 +46,8 @@ private theorem vote_walkEnd (hs : UnanimitySetting tr H U g p P k ℓp d pay) {
   have hw := walkEnd_ghost (sp := sp) (sc := goldfishScore sp ℓ.frame
       (mergedVoteView sp e.readPoint ℓ.frame p) ((p : Int) - 1))
     (el := goldfishEligible sp ℓ.frame (tr.time j) (mergedVoteView sp e.readPoint ℓ.frame p)
-      ((p : Int) - 1)) hU (hT.trans hΦU) hfin ℓ.frame.tree.ncard ha
-    ((Set.ncard_le_ncard (fun Y hY => hY.1) hfin).trans (Set.ncard_le_ncard hT hΦ.finite))
+      ((p : Int) - 1)) hU (hT.trans hΦU) hfin (Set.ncard_le_ncard hT hΦ.finite)
+    (getAnchor sp e.readPoint ℓ.frame (tr.time j))
   set Hd := ghost sp T (goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame p)
       ((p : Int) - 1)) (goldfishEligible sp ℓ.frame (tr.time j)
       (mergedVoteView sp e.readPoint ℓ.frame p) ((p : Int) - 1)) ℓ.frame.tree.ncard
@@ -71,7 +61,7 @@ private theorem vote_walkEnd (hs : UnanimitySetting tr H U g p P k ℓp d pay) {
   refine hw.congr hU (hT.trans hΦU) ha hHd (fun X _ => hag X) ?_
   obtain ⟨-, -, hstop⟩ := walkEnd_iff.1 hw
   refine walkEnd_self fun ⟨C, hC⟩ => hstop ⟨C, ?_⟩
-  exact (isBest_congr (hag Hd).1 (hag Hd).2).2 hC
+  exact (IsBest.congr (hag Hd).1 (hag Hd).2).2 hC
 
 /-- **T1 §6, unanimity**, in its setting. -/
 theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U g p P k ℓp d pay) :
@@ -84,9 +74,9 @@ theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U g p P k ℓp d p
   obtain ⟨hpw, hPU, hΦpU, hsd, hdP⟩ := proposal_walkEnd hs
   have hTU : T ⊆ U := Set.insert_subset hPU fun B hB => hΦpU hB.1
   -- a vote extending a block: its head block extends it
-  have hext : ∀ {x j ℓ e Hd B}, x ∈ H → CastAt tr x j ℓ e → Hd ∈ U → Hd.root = e.msg.head →
+  have hext : ∀ {e : Em sp FGP} {Hd B}, Hd ∈ U → Hd.root = e.msg.head →
       VoteExtends U e.msg B → Anc U B Hd := by
-    intro x j ℓ e Hd B _ _ hHd hr ⟨Hd', hHd', hr', hB⟩
+    intro e Hd B hHd hr ⟨Hd', hHd', hr', hB⟩
     obtain rfl : Hd' = Hd := hU.1 hHd' hHd (hr'.trans hr.symm)
     exact hB
   intro x₁ hx₁ j₁ e₁ hv₁ hes₁
@@ -114,31 +104,31 @@ theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U g p P k ℓp d p
     obtain ⟨Hw, hHw, hHwr, hw⟩ := vote_walkEnd hs hx hc hes
     obtain rfl : Hw = Hd := hU.1 hHw hHd (hHwr.trans hHdr.symm)
     obtain ⟨ha, hcases⟩ := vote_anchor_cases hs hx hc hes
-    have ha₀H : Anc U a₀ Hw := hext hx hc hHw hHwr (hall₀ x hx c e ⟨ℓ, hc⟩ hes)
+    have ha₀H : Anc U a₀ Hw := hext hHw hHwr (hall₀ x hx c e ⟨ℓ, hc⟩ hes)
     rcases anc_total hU (hw.anc hTU ha) ha₀H with h | h
-    · exact hw.of_anc hU hTU ha h ha₀H |>.unique hw₀
+    · exact hw.of_anc hU hTU h ha₀H |>.unique hw₀
     · have haE : Anc U (getAnchor sp e.readPoint ℓ.frame (tr.time c)) E₀ := by
         rcases hcases with ⟨-, hall⟩ | ⟨z, hz, j', hj', e', hv', hs', hext'⟩
-        · exact hext hx₀ hc₀ hE₀ hE₀r (hall x₀ hx₀ _ e₀ ⟨ℓ₀, hc₀⟩ hes₀)
+        · exact hext hE₀ hE₀r (hall x₀ hx₀ _ e₀ ⟨ℓ₀, hc₀⟩ hes₀)
         · obtain ⟨ℓ', hc', he'⟩ := hv'
           obtain ⟨Hz, hHz, hHzr⟩ := honest_head hs.standalone.run hz ⟨ℓ', hc', he'⟩
           have := ih j' hj' z hz ℓ' e' ⟨hc', he'⟩ hs' Hz hHz hHzr.1
-          exact this ▸ hext hz ⟨hc', he'⟩ hHz hHzr.1 hext'
-      exact hw.unique (hw₀.of_anc hU hTU ha₀ h haE)
+          exact this ▸ hext hHz hHzr.1 hext'
+      exact hw.unique (hw₀.of_anc hU hTU h haE)
   -- the canonical walk from `a₀` ends at `P`
   have hB : E₀ = P := by
     obtain ⟨hsU, hscases⟩ := proposal_anchor_cases hs
     have ha₀P : Anc U a₀ P := ha₀d.trans hdP
     rcases anc_total hU (hsd.trans hdP) ha₀P with h | h
-    · exact hw₀.unique (hpw.of_anc hU hTU hsU h ha₀P)
+    · exact hw₀.unique (hpw.of_anc hU hTU h ha₀P)
     · have hsE : Anc U d.start E₀ := by
         rcases hscases with hall | ⟨z, hz, j', e', hv', hs', hext'⟩
-        · exact hext hx₀ hc₀ hE₀ hE₀r (hall x₀ hx₀ _ e₀ ⟨ℓ₀, hc₀⟩ hes₀)
+        · exact hext hE₀ hE₀r (hall x₀ hx₀ _ e₀ ⟨ℓ₀, hc₀⟩ hes₀)
         · obtain ⟨ℓ', hc', he'⟩ := hv'
           obtain ⟨Hz, hHz, hHzr⟩ := honest_head hs.standalone.run hz ⟨ℓ', hc', he'⟩
           have := hA j' z hz ℓ' e' ⟨hc', he'⟩ hs' Hz hHz hHzr.1
-          exact this ▸ hext hz ⟨hc', he'⟩ hHz hHzr.1 hext'
-      exact (hw₀.of_anc hU hTU ha₀ h hsE).unique hpw
+          exact this ▸ hext hHz hHzr.1 hext'
+      exact (hw₀.of_anc hU hTU h hsE).unique hpw
   obtain ⟨ℓ₁, hc₁, he₁⟩ := hv₁
   obtain ⟨H₁, hH₁, hH₁r, -⟩ := honest_head hs.standalone.run hx₁ ⟨ℓ₁, hc₁, he₁⟩
   rw [← hH₁r, hA j₁ x₁ hx₁ ℓ₁ e₁ ⟨hc₁, he₁⟩ hes₁ H₁ hH₁ hH₁r, hB]

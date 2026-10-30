@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
 
 public section
 
@@ -494,73 +495,11 @@ theorem stamp_origin (h : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {y : Fi
     | toFG => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2 ▸ hX)
     | message m => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2.1 ▸ hX)
 
-private theorem admitVote_blockStamp' (A : SA.SAState sp.n) (t : Time) (v : SA.Vote sp.n) :
-    (SA.admitVote sp A t v).blockStamp = A.blockStamp := by
-  unfold SA.admitVote
-  split_ifs <;> rfl
+@[deprecated SA.readPoint_blockStamp_eq (since := "2026-10-30")]
+alias readPoint_blockStamp_eq := SA.readPoint_blockStamp_eq
 
-private theorem optimistic_blockStamp' (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) :
-    (SA.optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp := by
-  unfold SA.optimisticConfirmation SA.updateLatestConfirmed
-  split
-  · rfl
-  · split_ifs <;> rfl
-
-/-- The read point of an honest vote has the block stamps of the state its call leaves. -/
-theorem readPoint_blockStamp_eq (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
-    {e : SA.Em sp FGP} (hc : SA.CastAt tr y i ℓ e) :
-    e.readPoint.blockStamp = (tr.post i).blockStamp := by
-  rw [SA.post_of_castAt hr hy hc, optimistic_blockStamp', admitVote_blockStamp']
-
-private theorem tryVote_ready (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
-    (t : Time) {e : SA.Em sp FGP} (he : e ∈ (SA.tryVote sp x A Φ t).2)
-    (ht : t < sp.ts (sp.slot t) + sp.Δ) : SA.voteReady sp Φ (sp.slot t) := by
-  unfold SA.tryVote at he
-  dsimp only at he
-  split_ifs at he with h1 h2
-  · simp at he
-  · simp at he
-  all_goals
-    by_contra hn
-    exact h2 ⟨ht, Or.inr hn⟩
-
-private theorem step_ready (self : Fin sp.n) (A : SA.SAState sp.n) {Φ : SA.Frm sp.n FGP}
-    {t : Time} (hΦ : FrameOK Φ) (ht0 : 0 ≤ t) (c : (SA.goldilocksSA sp FGP ro).Call)
-    {e : SA.Em sp FGP} (he : e ∈ ((SA.goldilocksSA sp FGP ro).step self A Φ t c).2)
-    (ht : t < sp.ts (sp.slot t) + sp.Δ) : SA.voteReady sp Φ (sp.slot t) := by
-  cases c with
-  | tick =>
-    change e ∈ (SA.acOnTick sp self A Φ t).2 at he
-    have htt : t = sp.ts (sp.slot t) + sp.Δ := by
-      unfold SA.acOnTick at he
-      dsimp only at he
-      split_ifs at he <;> first | assumption | simp at he
-    linarith
-  | message m => exact tryVote_ready self _ Φ t he ht
-  | block B => exact tryVote_ready self _ Φ t he ht
-  | proposal => simp [ACInterface.step] at he
-  | toFG => simp [ACInterface.step] at he
-  | restart =>
-    change e ∈ (SA.acRestart sp ro self A Φ t).2 at he
-    rw [(SA.restart_state sp FGP ro self A Φ t hΦ ht0).1] at he
-    simp at he
-
-/-- **An early vote is ready**: an honest vote cast before `t_s + Δ` has a block of its slot in
-its frame (`vote_ready`). -/
-theorem cast_ready (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
-    (hc : SA.CastAt tr y i ℓ e) (ht : tr.time i < sp.ts e.msg.slot + sp.Δ) :
-    SA.voteReady sp ℓ.frame e.msg.slot := by
-  obtain ⟨hcall, he⟩ := hc
-  have hx := hr.exec i ℓ hcall.2 (hcall.1 ▸ hy)
-  rw [hcall.1] at hx
-  obtain ⟨hΦ, -⟩ := SA.frameIn_of_callAt hr hy hcall
-  have he' : e ∈ ((SA.goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
-      ℓ.call).2 := by rw [hx]; exact he
-  have hs := (SA.castAt_spec hr hy ⟨hcall, he⟩).2.1
-  rw [hs] at ht ⊢
-  exact step_ready y _ hΦ (hr.time_nonneg i) ℓ.call he' ht
+@[deprecated SA.cast_ready (since := "2026-10-30")]
+alias cast_ready := SA.cast_ready
 
 /-- The anchor of a walk is in the viable tree of the whole frame tree when `fc_root` is: it is
 `fc_root` or the deepest live lock block, a candidate at least as deep as `fc_root`. -/
@@ -832,7 +771,7 @@ theorem geo_of_settled (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g �
   -- the voter holds `P`
   have hPy : P ∈ (tr.state y iv).fg.tree := by
     by_cases hearly : tr.time iv < sp.ts p + sp.Δ
-    · obtain ⟨P', hP', hP's, -⟩ := cast_ready hr hy hce (by rw [hslot]; exact hearly)
+    · obtain ⟨P', hP', hP's, -⟩ := SA.cast_ready hr hy hce (by rw [hslot]; exact hearly)
       rw [hslot] at hP's
       exact mem_tree_of_frame hrun hy hce.1 (hslotP P' hP' hP's ▸ hP')
     · push Not at hearly
@@ -862,7 +801,7 @@ theorem geo_of_settled (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g �
     -- the proposer holds `X` at its proposal
     have hXp : X ∈ (tr.state (sp.toParams.proposer p) k).fg.tree := by
       rcases hX.2 with hst | ⟨P', hP', hP's, hXP'⟩
-      · rw [readPoint_blockStamp_eq hr hy hce] at hst
+      · rw [SA.readPoint_blockStamp_eq hr hy hce] at hst
         rcases stamp_origin hr hy iv ℓ hce.1 X hX.1 with hg | ⟨k₁, -, ℓ₁, hc₁, hX₁, hst₁⟩
         · exact hgen (hU.1 (hfU hX.1) ⟨_, hpH, k, Store.genesis_mem
             (Compose.fg_reachable hl hpH k)⟩ hg)
