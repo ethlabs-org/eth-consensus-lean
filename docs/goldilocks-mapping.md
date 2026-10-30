@@ -542,7 +542,8 @@ Modelling choices:
   for the fast and slow locks of HS.2, as in C1.1 and HR.4. "Follows every effective live earlier-label lock" (HS.2
   (3), HS.3's premise) is read at each honest slot-`s` vote: every live lock (`liveLocks`, moved back) of a label `< s`
   of the voter is below the proposal or at or below the voter's `fc_root`; so HS.2 (3) gives HS.3's premise. `Carry`
-  in HS.2 (1), (2) is for the retained counted heads, i.e. when `B` is not at or below the voter's `fc_root`. HS.3's
+  in HS.2 (1), (2) is for the retained counted heads; HS.3 (a) and (b) both assume the run settled at `w` in the
+  phase (`SettledIn`, as the claims' "HS.2–HS.5 assume that the run is settled at w"; #86 had it in (b) only), i.e. when `B` is not at or below the voter's `fc_root`. HS.3's
   "stable effective phase geometry on the compared events" is the phase constant from a cut at or before the previous
   freeze `t_{s−1} + 3Δ` (the voters' pre-freeze trees are compared) through every slot-`s` vote. HS.4's source "with
   entry `E`" has state height `h` (`fg_attest` signs at the source's own height), so a higher suppressing source does

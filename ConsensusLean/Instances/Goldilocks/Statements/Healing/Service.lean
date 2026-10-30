@@ -190,29 +190,29 @@ def CleanLockDrain : Prop :=
           ∀ L ∈ ℓ.frame.tree, L.root = l.block →
             Anc (tr.HonestBlocks H) L P ∨ Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot
 
-/-- **HS.3, honest-proposal frozen-tree agreement.** Under the HS shared premises with
-`Catch(2Δ)`: let `P` be the honest joined ready proposal of slot `s` (`ReadyProposal`, made at cut
-`kP`) in the effective phase `(m, c)` from a cut `i` at or before the previous freeze
-`t_{s−1} + 3Δ` through every honest slot-`s` vote (a stable effective phase geometry on the
-compared events, which include the voters' pre-freeze trees), with acceptance relay from the
-previous freeze `t_{s−1} + 3Δ` (`t_{s−1} + 3Δ ≥ ḡ`), and assume that the unlocked proposal walk
-follows every
-effective lock that can affect the slot-`s` voters: every live lock of a label `< s` of every
-honest slot-`s` voter at its vote has its block below `P` or at or below the voter's `fc_root`.
-Then (a) every honest slot-`s` vote is exactly `P`; at it `P` is a viable head of the voter's frame
-and in its viable voter block tree, or at or below its `fc_root`; and every ancestor of `P` is in
-that viable voter block tree or at or below `fc_root` (the unlocked parent path is retained).
-(b) Settled at `w` in `(m, c)` with `Prop⁺(G_p)` and `t_s ≥ r` (HS.2 supplies the lock premise):
-the conclusions of (a) hold without the lock premise, every honest vote of a slot `> s` until the
-phase end extends `P`, and every honest proposal of a slot `> s` until the phase end has a parent
-that extends `P` (if `P`'s entry is crossed its ancestry is still retained; no claim that the entry
-stays current). -/
+/-- **HS.3, honest-proposal frozen-tree agreement.** Under the HS shared premises with `Catch(2Δ)`,
+settled at `w` in the effective phase `(m, c)` (cut `i₀`; claims: "HS.2–HS.5 assume that the run is
+settled at w"): let `P` be the honest joined ready proposal of slot `s` (`ReadyProposal`, made at
+cut `kP`) in the effective phase `(m, c)` from a cut `i` at or before the previous freeze `t_{s−1} +
+3Δ` through every honest slot-`s` vote (a stable effective phase geometry on the compared events,
+which include the voters' pre-freeze trees), with acceptance relay from the previous freeze `t_{s−1}
++ 3Δ` (`t_{s−1} + 3Δ ≥ ḡ`), and assume that the unlocked proposal walk follows every effective lock
+that can affect the slot-`s` voters: every live lock of a label `< s` of every honest slot-`s` voter
+at its vote has its block below `P` or at or below the voter's `fc_root`. Then (a) every honest
+slot-`s` vote is exactly `P`; at it `P` is a viable head of the voter's frame and in its viable
+voter block tree, or at or below its `fc_root`; and every ancestor of `P` is in that viable voter
+block tree or at or below `fc_root` (the unlocked parent path is retained). (b) With `Prop⁺(G_p)`
+and `t_s ≥ r` (HS.2 supplies the lock premise): the conclusions of (a) hold without the lock
+premise, every honest vote of a slot `> s` until the phase end extends `P`, and every honest
+proposal of a slot `> s` until the phase end has a parent that extends `P` (if `P`'s entry is
+crossed its ancestry is still retained; no claim that the entry stays current). -/
 def FrozenTreeAgreement : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time) (i m : Nat)
+    (tr : GoldilocksTrace sp ro) (g ΔF w : Time) (i₀ i m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
     GoldilocksRun dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+    SettledIn tr H g w i₀ m c → i₀ ≤ i →
     ∀ (p : Fin sp.n) (kP s : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
       ReadyProposal tr H p kP s P → i ≤ kP → tr.time i ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ →
       gbar g ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ →
@@ -230,7 +230,7 @@ def FrozenTreeAgreement : Prop :=
           ∀ X, Anc (tr.HonestBlocks H) X P →
             X ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
             Anc (tr.HonestBlocks H) X ℓ.frame.fcRoot) ∧
-      ∀ (Gp w : Time) (i₀ : Nat), PropPlus tr H g Gp → SettledIn tr H g w i₀ m c → i₀ ≤ i →
+      ∀ Gp : Time, PropPlus tr H g Gp →
         rTime sp w ≤ sp.ts s →
         (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
           e.msg.head = P.root ∧
