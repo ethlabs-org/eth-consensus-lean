@@ -15,10 +15,6 @@ namespace Consensus.Goldilocks.SA
 
 variable (sp : SAParams)
 
-/-- **A1.1.** -/
-theorem proposer_voters_agree : ProposerVotersAgree sp := by
-  sorry
-
 /-- **A1.2.** -/
 theorem first_transfer : FirstTransfer sp := by
   sorry
@@ -128,9 +124,6 @@ theorem result_transfer : ResultTransfer sp := by
   · exact he ▸ hCt
   · exact (Anc.mem hcore he).2
 
-/-- **A1.9.** -/
-theorem source_compatible : SourceCompatible sp := by
-  sorry
 
 end Consensus.Goldilocks.SA
 

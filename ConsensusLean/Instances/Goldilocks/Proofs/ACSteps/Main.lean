@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible
 
 public section
 

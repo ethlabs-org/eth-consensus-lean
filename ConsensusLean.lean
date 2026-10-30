@@ -7,7 +7,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
