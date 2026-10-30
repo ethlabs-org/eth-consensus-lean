@@ -545,7 +545,11 @@ Modelling choices:
   in HS.2 (1), (2) is for the retained counted heads; HS.3 (a) and (b) both assume the run settled at `w` in the
   phase (`SettledIn`, as the claims' "HS.2–HS.5 assume that the run is settled at w"; #86 had it in (b) only), i.e. when `B` is not at or below the voter's `fc_root`. HS.3's
   "stable effective phase geometry on the compared events" is the phase constant from a cut at or before the previous
-  freeze `t_{s−1} + 3Δ` (the voters' pre-freeze trees are compared) through every slot-`s` vote. HS.4's source "with
+  freeze `t_{s−1} + 3Δ` (the voters' pre-freeze trees are compared) through every slot-`s` vote. HS.3 (a) also assumes that
+  each voter starts at or below the proposer's unlocked anchor (every live lock of a label `< s` of the proposer after
+  its `ac_proposal` at `t_s` is at or below a live lock block of the voter or its `fc_root`): a lock only the proposer
+  holds otherwise starts the proposal walk below where lock-free voters stop (consensus-lean#100; claims HS.3,
+  goldilocks#49). (b) needs no such premise: HS.2 puts every voter above every clean origin from `r`. HS.4's source "with
   entry `E`" has state height `h` (`fg_attest` signs at the source's own height), so a higher suppressing source does
   not count; it is current: returned in `[t_s, v]`, extending `W` and allowed in the phase geometry, so the client
   subclaim (b) applies to it (phase-service.md §5: every candidate at the update extends the fresh proposal, and a

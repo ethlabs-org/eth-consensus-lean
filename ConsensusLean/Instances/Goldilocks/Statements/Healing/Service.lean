@@ -198,7 +198,10 @@ cut `kP`) in the effective phase `(m, c)` from a cut `i` at or before the previo
 which include the voters' pre-freeze trees), with acceptance relay from the previous freeze `t_{s−1}
 + 3Δ` (`t_{s−1} + 3Δ ≥ ḡ`), and assume that the unlocked proposal walk follows every effective lock
 that can affect the slot-`s` voters: every live lock of a label `< s` of every honest slot-`s` voter
-at its vote has its block below `P` or at or below the voter's `fc_root`. Then (a) every honest
+at its vote has its block below `P` or at or below the voter's `fc_root`, and each voter's walk
+starts at or below the proposer's unlocked anchor: every live lock of a label `< s` of the proposer
+after its unlocking at `t_s` (the state after its `ac_proposal`) has its block at or below a live
+lock block of the voter or at or below its `fc_root` (consensus-lean#100). Then (a) every honest
 slot-`s` vote is exactly `P`; at it `P` is a viable head of the voter's frame and in its viable
 voter block tree, or at or below its `fc_root`; and every ancestor of `P` is in that viable voter
 block tree or at or below `fc_root` (the unlocked parent path is retained). (b) With `Prop⁺(G_p)`
@@ -222,6 +225,13 @@ def FrozenTreeAgreement : Prop :=
         ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
           ∀ L ∈ ℓ.frame.tree, L.root = l.block →
             Anc (tr.HonestBlocks H) L P ∨ Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot) →
+      (∀ kq ℓP, tr.projAC.CallAt p kq ℓP → ℓP.call = .proposal → tr.time kq = sp.ts s →
+        ∀ l ∈ SA.liveLocks sp (tr.post kq).ac.locks ℓP.frame (tr.time kq), l.slot < s →
+          ∀ L ∈ ℓP.frame.tree, L.root = l.block →
+            ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
+              (∃ l' ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k),
+                ∃ L' ∈ ℓ.frame.tree, L'.root = l'.block ∧ Anc (tr.HonestBlocks H) L L') ∨
+              Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot) →
         ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
           e.msg.head = P.root ∧
           ((P ∈ ℓ.frame.viableHeads ∧
