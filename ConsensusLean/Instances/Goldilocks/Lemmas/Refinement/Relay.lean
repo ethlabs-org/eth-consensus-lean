@@ -27,7 +27,13 @@ state to the simulating trace's cuts where the relay obligations of `Simulates` 
   (`stateAt_relay_seen`).
 * **Relaying** (`relayedFrom_of_deliver`). An object queued at a delivery stays queued until the
   node's next tick (`relayBuf_persist`), which is at its first awake time after the delivery, and
-  whose gossip releases the relay wrapper of the queue (`tick_relays`). -/
+  whose gossip releases the relay wrapper of the queue (`tick_relays`).
+* **Releasing.** Every emission is a vote of the emitting node (`emits_val`); a delivery or a
+  restart queues the votes it emits (`process_outbox`, `restore_outbox`), which wait in the outbox
+  (`outbox_persist`) and are released at the node's first awake time from the event on
+  (`releasedFrom_of_pending`). Two steps are open: what an honest node's tick releases of its own
+  cuts (`tick_releases`) and that the bodies pending at a tick go out in it (`pending_released`).
+-/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -966,6 +972,326 @@ theorem eq_deliver_of_cut {i : Nat}
 
 end
 
+
+/-! ## Releasing -/
+
+section
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+private theorem tryVote_val {FGP : Type} (self : Fin sp.n) (A : SA.SAState sp.n) (Φ)
+    (t : Time) : ∀ e ∈ (SA.tryVote (FGP := FGP) sp self A Φ t).2, e.msg.val = self := by
+  unfold SA.tryVote
+  dsimp only
+  split_ifs <;> simp
+
+private theorem foldl_emits_val {α σ ε : Type} (P : ε → Prop) (f : σ → α → σ × List ε)
+    (hf : ∀ s a, ∀ e ∈ (f s a).2, P e) :
+    ∀ (l : List α) (acc : σ × List ε), (∀ e ∈ acc.2, P e) →
+      ∀ e ∈ (l.foldl (fun acc a => ((f acc.1 a).1, acc.2 ++ (f acc.1 a).2)) acc).2, P e
+  | [], _, h => h
+  | a :: l, acc, h => foldl_emits_val P f hf l _ fun e he => by
+      rcases List.mem_append.mp he with he | he
+      · exact h e he
+      · exact hf _ _ e he
+
+/-- Every emission of the node's AC is a vote of its own validator. -/
+theorem emits_val (self : Fin sp.n) (s : (goldilocksNode sp ro).State)
+    (Φ : (goldilocksNode sp ro).Frm) (t : Time) (c : (goldilocksNode sp ro).Call) :
+    ∀ e ∈ ((goldilocksNode sp ro).step self s Φ t c).2, e.msg.val = self := by
+  cases c with
+  | tick =>
+    change ∀ e ∈ (SA.acOnTick sp self s Φ t).2, _
+    unfold SA.acOnTick
+    dsimp only
+    split_ifs <;> first | exact tryVote_val _ _ _ _ | simp
+  | proposal => simp [ACInterface.step]
+  | toFG => simp [ACInterface.step]
+  | message m => exact tryVote_val _ _ _ _
+  | block B => exact tryVote_val _ _ _ _
+  | restart =>
+    change ∀ e ∈ (SA.acRestart sp ro self s Φ t).2, _
+    unfold SA.acRestart
+    exact foldl_emits_val _ (fun A B => SA.acOnBlock sp self A Φ t B)
+      (fun _ _ => tryVote_val _ _ _ _) _ _ (by simp)
+
+/-- Every emission of an AC cut of a handler of `self` is a vote of `self`. -/
+theorem emits_val_of_mem_exec (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
+    (e : Event (goldilocksNode sp ro)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (h : Cut.ac ℓ ∈ (exec dg self st t e).2) : ∀ m ∈ ℓ.emits, m.msg.val = self := by
+  have key : ∀ {st st' : NodeState (goldilocksNode sp ro)} {cs},
+      CutChain self t st cs st' → Cut.ac ℓ ∈ cs → ∀ m ∈ ℓ.emits, m.msg.val = self := by
+    intro st st' cs hc
+    induction hc with
+    | nil => simp
+    | @cons st₀ st₁ _ c cs hstep _ ih =>
+      intro hm
+      rcases List.mem_cons.mp hm with hm | hm
+      · subst hm
+        obtain ⟨-, he, -, -⟩ := hstep
+        intro m hm'
+        have hm'' : m ∈ ((goldilocksNode sp ro).step self st₀.ac ℓ.frame t ℓ.call).2 := by
+          rw [he]; exact hm'
+        exact emits_val (ro := ro) self st₀.ac ℓ.frame t ℓ.call m hm''
+      · exact ih hm
+  exact key (Compose.exec_is_cut_chain (P := sp.toParams) (A := goldilocksNode sp ro) dg self
+    st t e) h
+
+/-- An FG block cut of a handler other than a tick's is its first cut. -/
+theorem pos_of_block_cut (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+    (st : NodeState (goldilocksNode sp ro)) (t : Time) {e : Event (goldilocksNode sp ro)}
+    (hne : ∀ x, e ≠ .tick x) {k : Nat} (hk : k < (exec dg self st t e).2.length) {B acc}
+    (h : (exec dg self st t e).2[k] = .fg (.block B acc)) : k = 0 := by
+  cases e with
+  | tick x => exact absurd rfl (hne x)
+  | block B' =>
+    by_cases hf : sp.toParams.slotOf t < B'.slot
+    · simp [exec, onBlock, hf] at hk
+    · cases hfg : st.fg.onBlock B' with
+      | none =>
+        simp only [exec, onBlock, hf, hfg, ↓reduceIte, List.length_cons,
+          List.length_nil] at hk
+        omega
+      | some fg' =>
+        simp only [exec, onBlock, acCall, hf, hfg, ↓reduceIte, List.length_cons,
+          List.length_nil] at hk h
+        rcases (show k = 0 ∨ k = 1 by omega) with rfl | rfl
+        · rfl
+        · simp at h
+  | message m =>
+    simp only [exec, onMessage, acCall] at hk h
+    simp at hk; subst hk; simp at h
+  | attestation a =>
+    simp only [exec, onAttestation] at hk h
+    simp at hk; subst hk; simp at h
+  | restart =>
+    simp only [exec, Node.restart, acCall] at hk h
+    simp at hk; subst hk; simp at h
+
+/-- A cut of a delivery is a cut of the handler of a canonical event, at its position. -/
+theorem mem_deliverRecs_exec (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
+    ∀ (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
+      {r : CutRec sp ro}, r ∈ deliverRecs dg hs self t i os st sub →
+      ∃ o e st', canonEvent sp ro hs o = some e ∧
+        ∃ k, ∃ hk : k < (exec dg self st' t e).2.length,
+          r.label = (exec dg self st' t e).2[k] ∧ r.pos = k
+  | [], _, _, _, hr => by simp [deliverRecs_nil] at hr
+  | o :: os, st, sub, r, hr => by
+    cases he : canonEvent sp ro hs o with
+    | none =>
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ he] at hr
+      exact mem_deliverRecs_exec dg hs self t i os st _ hr
+    | some e =>
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ e he] at hr
+      rcases List.mem_append.mp hr with hr | hr
+      · obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
+        obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs dg self st t _ e k hk
+        exact ⟨o, e, st, he, k, by rwa [length_groupRecs] at hk, hlab, hpos⟩
+      · exact mem_deliverRecs_exec dg hs self t i os _ _ hr
+
+/-- A canonical event is not a tick. -/
+theorem canonEvent_ne_tick {hs : List (Header Info × Nat)} {o : Wire sp.n}
+    {e : Event (goldilocksNode sp ro)} (he : canonEvent sp ro hs o = some e) :
+    ∀ x, e ≠ .tick x := by
+  rintro x rfl
+  rcases canonEvent_eq_some he with ⟨_, h, -⟩ | ⟨_, h, -⟩ | ⟨_, h, -⟩ <;> cases h
+
+private theorem processOne_outbox (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (σ : State sp ro) (o : Wire sp.n) :
+    (processOne hs σ o).outbox = σ.outbox ++
+      (canonEvent sp ro hs o).elim [] fun e => emitted (exec dg σ.self σ.node σ.now e).2 := by
+  unfold processOne
+  cases he : canonEvent sp ro hs o with
+  | none => simp
+  | some e =>
+    rcases canonEvent_eq_some he with ⟨B, rfl, -⟩ | ⟨v, rfl, -⟩ | ⟨a, rfl, -⟩
+    all_goals
+      dsimp only
+      rw [relayIf_eq]
+      rfl
+
+/-- **A delivery's outbox.** Processing the objects `os` from a shape state at clock `t` only
+grows the outbox, and queues the vote of every emission among the delivery's cuts, a vote of the
+state's own validator. -/
+theorem process_outbox (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (t : Time) (i : Nat) :
+    ∀ (os : List (Wire sp.n)) (σ : State sp ro) (sub : Nat), σ.now = t →
+      (∃ L, (os.foldl (processOne hs) σ).outbox = σ.outbox ++ L) ∧
+      ∀ r ∈ deliverRecs dg hs σ.self t i os σ.node sub, ∀ ℓ, r.label = .ac ℓ →
+        ∀ m ∈ ℓ.emits, Body.vote (encodeVote m.msg) ∈ (os.foldl (processOne hs) σ).outbox ∧
+          m.msg.val = σ.self
+  | [], σ, sub, ht => ⟨⟨[], by simp⟩, by simp [deliverRecs_nil]⟩
+  | o :: os, σ, sub, ht => by
+    obtain ⟨-, -, -, hnow₁, hself₁, hnode₁⟩ := processOne_eq dg hs σ o
+    obtain ⟨⟨L, hL⟩, hrec⟩ :=
+      process_outbox dg hs t i os (processOne hs σ o) (sub + 1) (hnow₁.trans ht)
+    rw [List.foldl_cons]
+    have hkeep : ∀ x ∈ (processOne hs σ o).outbox,
+        x ∈ (os.foldl (processOne hs) (processOne hs σ o)).outbox := fun x hx => by
+      rw [hL]; exact List.mem_append_left _ hx
+    refine ⟨⟨_, by rw [hL, processOne_outbox dg, List.append_assoc]⟩, fun r hr ℓ hl m hm => ?_⟩
+    rw [hself₁, hnode₁] at hrec
+    cases he : canonEvent sp ro hs o with
+    | none =>
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ he] at hr
+      rw [he] at hrec
+      simpa [hself₁] using hrec r hr ℓ hl m hm
+    | some e =>
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ e he] at hr
+      rw [he, Option.elim_some, ht] at hrec
+      rcases List.mem_append.mp hr with hr | hr
+      · obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
+        obtain ⟨-, -, -, -, hlab⟩ := getElem_groupRecs dg σ.self σ.node t _ e k hk
+        have hmem : Cut.ac ℓ ∈ (exec dg σ.self σ.node t e).2 := by
+          rw [← hl, hlab]; exact List.getElem_mem _
+        refine ⟨hkeep _ ?_, emits_val_of_mem_exec dg σ.self σ.node t e hmem m hm⟩
+        rw [processOne_outbox dg, he, Option.elim_some, ht]
+        exact List.mem_append_right _ (List.mem_flatMap.mpr ⟨_, hmem, by simpa using ⟨m, hm, rfl⟩⟩)
+      · simpa [hself₁] using hrec r hr ℓ hl m hm
+
+end
+
+section
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+
+/-- **The releases of a tick** (open: the engine's tick against the node's `on_tick`, release by
+release). At an honest node's tick at a public time, the engine releases the canonical object of
+the own block of every block cut inside the tick (position `≠ 0`, the proposal), the vote of
+every emission of the tick's AC cuts and the attestation of every signing `fg_attest` cut. The
+releases pass `releasable` (the restated `proposal_releasable`) and `protects` (votes and blocks
+never conflict; the own attestation is checked by `protects_own_att` at the pool after the
+`fgUpdate` of the first trailing poll); the emissions and the attestation are queued in the
+outbox and drained by the two trailing polls. -/
+theorem tick_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+    (hv' : v ∈ rho.honest) (he : rho.events[i]? = some (.tick v t))
+    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
+    ∀ r ∈ eventCuts S rho hn i,
+      (∀ B acc, r.label = .fg (.block B acc) → r.pos ≠ 0 →
+        blockObj (S.params (pubOf E) hn) B ∈ rho.releasesAt i) ∧
+      (∀ ℓ, r.label = .ac ℓ → ∀ m ∈ ℓ.emits, voteObj m.msg ∈ rho.releasesAt i) ∧
+      (∀ C a, r.label = .fg (.attest C (some a)) → attObj a ∈ rho.releasesAt i) := by
+  sorry
+
+/-- **Pending bodies go out at the next awake tick** (open). At a tick of an honest node, every
+body queued in its outbox before the tick (at most two, `outbox_le_two`) is released, signed by
+the node's own key in the poll role, by the tick's two leading poll steps. -/
+theorem pending_released (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
+    (hv' : v ∈ rho.honest) (he : rho.events[j]? = some (.tick v t)) :
+    ∀ b ∈ (stateAt S rho hn v j).outbox,
+      Model.Obj.mk (.signed (rho.ownKey v) .poll) (.data b) [] ∈ rho.releasesAt j := by
+  sorry
+
+omit [DecidableEq V] in
+/-- A restart queues its emissions. -/
+theorem restore_outbox (k : Fin (S.params (pubOf E) hn).n)
+    (d : State (S.params (pubOf E) hn) (S.ro _)) (t : Time) :
+    (restore k d t).outbox = d.outbox ++ emitted (Node.restart k d.node t).2 := rfl
+
+/-- Between ticks of the node the outbox only grows. -/
+theorem outbox_persist {i : Nat} {v : V} {b : Body} (hb : b ∈ (stateAt S rho hn v i).outbox) :
+    ∀ m, i ≤ m → (∀ l, i ≤ l → l < m → ∀ t, rho.events[l]? ≠ some (.tick v t)) →
+      b ∈ (stateAt S rho hn v m).outbox := by
+  intro m him
+  induction m, him using Nat.le_induction with
+  | base => exact fun _ => hb
+  | succ m him ih =>
+    intro hno
+    have hm := ih fun l h1 h2 => hno l h1 (by omega)
+    cases he : rho.events[m]? with
+    | none =>
+      simp only [stateAt, stateBefore_succ_none S rho he] at hm ⊢
+      exact hm
+    | some e =>
+      by_cases hne : e.node = v
+      · cases e with
+        | tick w t =>
+          simp only [Model.Event.node] at hne
+          subst hne
+          exact absurd he (hno m him (by omega) t)
+        | deliver w o t =>
+          simp only [Model.Event.node] at hne
+          subst hne
+          rw [stateAt_succ_deliver S rho hn he]
+          obtain ⟨⟨L, hL⟩, -⟩ := process_outbox (digestOf S rho) (Model.digests rho.hash o)
+            _ m (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn w m) 0 rfl
+          unfold process
+          rw [hL]
+          exact List.mem_append_left _ hm
+        | restart w t =>
+          simp only [Model.Event.node] at hne
+          subst hne
+          rw [stateAt_succ_restart S rho hn he]
+          change b ∈ (stateAt S rho hn w m).outbox ++ _
+          exact List.mem_append_left _ hm
+      · simp only [stateAt, stateBefore_succ_of_ne S rho he hne] at hm ⊢
+        exact hm
+
+/-- A tick of an awake honest node at a time after an event of it, within the horizon, comes
+after the event. -/
+theorem tick_after_event (hv : rho.ExecutionValid) {i : Nat}
+    {ev : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
+    (he : rho.events[i]? = some ev) {u : Time} (htu : ev.time < u) (hu : u ≤ rho.horizon)
+    (hw : E.awake ev.node u = true) : ∃ j, i < j ∧ rho.events[j]? = some (.tick ev.node u) := by
+  have hm := List.mem_of_getElem? he
+  have ht0 := (hv.in_horizon _ hm).1
+  obtain ⟨j, hj⟩ := List.mem_iff_getElem?.mp
+    (hv.tick_total _ (hv.honest_only _ hm) u (by linarith) hu hw)
+  refine ⟨j, ?_, hj⟩
+  rcases lt_trichotomy j i with h | rfl | h
+  · rcases keyLe_of_index_lt S rho hv hj he h with h' | h'
+    · have : u < ev.time := h'; linarith
+    · have : u = ev.time := h'.1; linarith
+  · rw [he] at hj
+    have : ev.time = u := congrArg Model.Event.time (Option.some.inj hj)
+    rw [this] at htu
+    exact absurd htu (lt_irrefl _)
+  · exact h
+
+open Classical in
+/-- **A body queued at an event is released** at the node's first awake time from the event
+on, if it has one within the horizon (`ReleasedFrom`): it waits in the outbox for the node's
+next tick, whose leading polls release it (`pending_released`). -/
+theorem releasedFrom_of_pending (hv : rho.ExecutionValid) {i : Nat}
+    {ev : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
+    (he : rho.events[i]? = some ev) {b : Body}
+    (hb : b ∈ (stateAt S rho hn ev.node (i + 1)).outbox) :
+    ReleasedFrom S rho ev.node
+      (Model.Obj.mk (.signed (rho.ownKey ev.node) .poll) (.data b) []) ev.time := by
+  have hhon := hv.honest_only _ (List.mem_of_getElem? he)
+  by_cases hex : ∃ j, i < j ∧ ∃ t', rho.events[j]? = some (.tick ev.node t')
+  · have hj := Nat.find_spec hex
+    obtain ⟨hij, t', he'⟩ := hj
+    have hmin := fun l (hl : l < Nat.find hex) => Nat.find_min hex hl
+    set j := Nat.find hex
+    have hbj : b ∈ (stateAt S rho hn ev.node j).outbox :=
+      outbox_persist S rho hn hb j (by omega) fun l h1 h2 t₁ hl =>
+        hmin l h2 ⟨by omega, t₁, hl⟩
+    have hrel := pending_released S rho hn hv hhon he' b hbj
+    have htt' : ev.time ≤ t' := by
+      rcases keyLe_of_index_lt S rho hv he he' hij with h | h
+      · exact h.le
+      · exact h.1.le
+    have hh' : t' ≤ rho.horizon := (hv.in_horizon _ (List.mem_of_getElem? he')).2
+    refine Or.inl ⟨t', htt', ⟨j, he', hrel⟩, fun u hu1 hu2 => ?_⟩
+    by_contra hwu
+    obtain ⟨ju, hiju, heu⟩ := tick_after_event S rho hv he hu1 (by linarith)
+      (by simpa using hwu)
+    rcases lt_trichotomy ju j with h | rfl | h
+    · exact hmin ju h ⟨hiju, u, heu⟩
+    · rw [he'] at heu; cases heu; exact lt_irrefl _ hu2
+    · rcases keyLe_of_index_lt S rho hv he' heu h with h' | h'
+      · have : t' < u := h'; linarith
+      · have : t' = u := h'.1; linarith
+  · refine Or.inr fun u hu1 hu2 => ?_
+    by_contra hwu
+    obtain ⟨ju, hiju, heu⟩ := tick_after_event S rho hv he hu1 hu2 (by simpa using hwu)
+    exact hex ⟨ju, hiju, u, heu⟩
+
+end
 
 end Consensus.Goldilocks.Refinement
 

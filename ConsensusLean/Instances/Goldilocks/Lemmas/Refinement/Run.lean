@@ -541,7 +541,37 @@ theorem simTrace_block_released (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ k B, (simTrace S rho hn).OwnBlockAt y k B →
       rho.releases (rho.key y) (blockObj (S.params (pubOf E) hn) B)
         ((simTrace S rho hn).time k) := by
-  sorry
+  rintro y _ k B ⟨⟨acc, hnode, hlab⟩, hpos⟩
+  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
+  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, hp', hlab'⟩ := simTrace_cut S rho hn hl
+  have hrl : r.label = .fg (.block B acc) := Option.some.inj (hlab'.symm.trans hlab)
+  have hpos' : r.pos ≠ 0 := hp' ▸ hpos
+  have hmem := List.mem_of_getElem? hidx
+  have hkey : ev.node = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
+  rw [ht, ← hkey]
+  cases ev with
+  | tick v t =>
+    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
+      by_contra hp
+      rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
+      simp at hmem
+    exact ⟨i, he, (tick_releases S rho hn hv (hv.honest_only _ (List.mem_of_getElem? he)) he hp
+      r hmem).1 B acc hrl hpos'⟩
+  | deliver v o t =>
+    exfalso
+    rw [eventCuts_deliver S rho hn i v o t he] at hmem
+    obtain ⟨o', e, st', hce, kk, hk, hlabk, hposk⟩ :=
+      mem_deliverRecs_exec _ _ _ _ _ _ _ _ hmem
+    exact hpos' (hposk.trans
+      (pos_of_block_cut _ _ _ _ (canonEvent_ne_tick hce) hk (hlabk.symm.trans hrl)))
+  | restart v t =>
+    exfalso
+    rw [eventCuts_restart S rho hn i v t he] at hmem
+    obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
+    obtain ⟨-, -, -, hposk, hlabk⟩ := getElem_groupRecs _ _ _ _ _ _ kk hk
+    have hk' := lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _)
+    exact hpos' (hposk.trans (pos_of_block_cut _ _ _ _ (e := .restart) (fun x h => by cases h)
+      hk' (hlabk.symm.trans hrl)))
 
 /-- The engine releases an honest node's vote from its emission on (the vote is queued in the
 outbox and released by a poll step of the next tick at which the node is awake; `outbox_le_two`
@@ -549,14 +579,96 @@ gives that two poll steps suffice). -/
 theorem simTrace_vote_released (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ k m, (simTrace S rho hn).EmitAt y k m →
       ReleasedFrom S rho (rho.key y) (voteObj m) ((simTrace S rho hn).time k) := by
-  sorry
+  rintro y _ k m ⟨ℓ, ⟨hnode, hlab⟩, em, hem, rfl⟩
+  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
+  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut S rho hn hl
+  have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
+  have hmem := List.mem_of_getElem? hidx
+  have hkey : ev.node = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
+  rw [ht, ← hkey]
+  cases ev with
+  | tick v t =>
+    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
+      by_contra hp
+      rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
+      simp at hmem
+    exact Or.inl ⟨t, le_rfl, ⟨i, he, (tick_releases S rho hn hv
+      (hv.honest_only _ (List.mem_of_getElem? he)) he hp r hmem).2.1 ℓ hrl em hem⟩,
+      fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
+  | deliver v o t =>
+    obtain ⟨hnow, hself⟩ := deliver_state S rho hn hv he
+    rw [eventCuts_deliver S rho hn i v o t he] at hmem
+    obtain ⟨-, h⟩ := process_outbox (digestOf S rho) (Model.digests rho.hash o) t i
+      (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) 0 hnow
+    obtain ⟨hb, hval⟩ := h r (by rw [hself]; exact hmem) ℓ hrl em hem
+    have hb' : Body.vote (encodeVote em.msg) ∈ (stateAt S rho hn v (i + 1)).outbox := by
+      rw [stateAt_succ_deliver S rho hn he]; exact hb
+    have hobj : @voteObj (pubOf E).n em.msg = Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (Body.vote (encodeVote em.msg))) [] := by
+      unfold voteObj
+      rw [show em.msg.val = rho.ownKey v from hval.trans hself]
+      rfl
+    rw [hobj]
+    exact releasedFrom_of_pending S rho hn hv he hb'
+  | restart v t =>
+    rw [eventCuts_restart S rho hn i v t he] at hmem
+    obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
+    obtain ⟨-, -, -, -, hlabk⟩ := getElem_groupRecs _ _ _ _ _ _ kk hk
+    have hk' := lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _)
+    have hcut := List.getElem_mem hk'
+    rw [← hlabk, hrl] at hcut
+    have hval := emits_val_of_mem_exec _ _ _ _ _ hcut em hem
+    have hb : Body.vote (encodeVote em.msg) ∈ (stateAt S rho hn v (i + 1)).outbox := by
+      rw [stateAt_succ_restart S rho hn he]
+      exact List.mem_append_right _
+        (List.mem_flatMap.mpr ⟨_, hcut, by simpa using ⟨em, hem, rfl⟩⟩)
+    have hobj : @voteObj (pubOf E).n em.msg = Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (Body.vote (encodeVote em.msg))) [] := by
+      unfold voteObj
+      rw [show em.msg.val = rho.ownKey v from hval]
+      rfl
+    rw [hobj]
+    exact releasedFrom_of_pending S rho hn hv he hb
 
 /-- The engine releases an honest node's attestation from its signing on (queued by `fgUpdate`,
 released by the tick's last poll steps; `protects_own_att` passes it). -/
 theorem simTrace_att_released (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ k a, (simTrace S rho hn).SignAt y k a →
       ReleasedFrom S rho (rho.key y) (attObj a) ((simTrace S rho hn).time k) := by
-  sorry
+  rintro y _ k a ⟨src, hnode, hlab⟩
+  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
+  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut S rho hn hl
+  have hrl : r.label = .fg (.attest src (some a)) := Option.some.inj (hlab'.symm.trans hlab)
+  have hmem := List.mem_of_getElem? hidx
+  have hkey : ev.node = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
+  rw [ht, ← hkey]
+  cases ev with
+  | tick v t =>
+    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
+      by_contra hp
+      rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
+      simp at hmem
+    exact Or.inl ⟨t, le_rfl, ⟨i, he, (tick_releases S rho hn hv
+      (hv.honest_only _ (List.mem_of_getElem? he)) he hp r hmem).2.2 src a hrl⟩,
+      fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
+  | deliver v o t =>
+    exfalso
+    rw [eventCuts_deliver S rho hn i v o t he] at hmem
+    obtain ⟨o', e, st', hce, kk, hk, hlabk, -⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ hmem
+    have hcut := List.getElem_mem hk
+    rw [← hlabk, hrl] at hcut
+    obtain ⟨x, rfl⟩ := Compose.signed_only_in_ticks _ _ st' t e src a hcut
+    exact canonEvent_ne_tick hce x rfl
+  | restart v t =>
+    exfalso
+    rw [eventCuts_restart S rho hn i v t he] at hmem
+    obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
+    obtain ⟨-, -, -, -, hlabk⟩ := getElem_groupRecs _ _ _ _ _ _ kk hk
+    have hk' := lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _)
+    have hcut := List.getElem_mem hk'
+    rw [← hlabk, hrl] at hcut
+    obtain ⟨x, hx⟩ := Compose.signed_only_in_ticks _ _ _ t .restart src a hcut
+    cases hx
 
 /-- An honest node relays a block it accepts from the wire. -/
 theorem simTrace_block_relayed (hv : rho.ExecutionValid) :
