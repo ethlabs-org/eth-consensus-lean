@@ -318,18 +318,28 @@ def SleepyRecurrenceSupplier : Prop :=
     Regimes.ProposerRecurrence (simTrace S rho hn) (honestKeys S rho) (runProposer S rho hn)
       (Regimes.catchUp (S.params (pubOf E) hn)) k 0 b
 
-/-- OPEN proposal evidence bridge (owner: Refinement). Unpack the canonical producer's
+/-- Proposal evidence bridge. Unpack the canonical producer's
 tick and `block_released`: its signed header is the engine proposal, and readiness transfers
 back through the key equivalence. The producer's time is explicitly bounded by the horizon.
 R.2 supplies the node producer, not this encoding/release proof. -/
 theorem sleepy_proposal (hv : rho.ExecutionValid) {τ : Time}
-    (hτ : 0 ≤ τ) (hτh : τ ≤ rho.horizon)
+    (_hτ : 0 ≤ τ) (_hτh : τ ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
     (hP : Regimes.ReadyProposalAt (simTrace S rho hn) (honestKeys S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) τ P) :
     ∃ k, rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) (rho.key k) τ ∧
       Shape.HonestProposal rho τ k (headerOf (S.params (pubOf E) hn) P) := by
-  sorry
+  obtain ⟨p, k, hr, hP, htime⟩ := hP
+  have hp := hP.2.1
+  subst p
+  refine ⟨P.proposer, ⟨hr.1, ?_⟩, hr.1, .proposer P.slot, payloadObjs P.fgPayload P.acPayload,
+    rfl, ?_⟩
+  · intro u hu hut
+    exact (simTrace_awake_of S rho hn hv P.proposer hr.1 u (hr.2 u hu hut)).1
+  · have hrel := simTrace_block_released S rho hn hv (simTrace_goldilocksRun S rho hn hv)
+      P.proposer hr.1 k P hP.1
+    rw [htime] at hrel
+    exact hrel
 
 /-- OPEN inclusion-to-chain consumer (owner: Refinement). Parent-closed coherent stores
 turn node ancestry into membership of the encoded non-genesis header. `sleepy_read_cut`
