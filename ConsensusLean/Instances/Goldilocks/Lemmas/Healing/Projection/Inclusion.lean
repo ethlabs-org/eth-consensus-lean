@@ -142,7 +142,7 @@ theorem projection_driven (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRu
     obtain ⟨Pb, hPb, hpar⟩ := hs.parent_mem
     exact ⟨hac.honest.proposer B ⟨y, hy, i, ℓ, hc, hBt⟩ hB, hslot, Pb, hpar,
       hr.coherent.2 Pb (hΦU hPb) B (hΦ'U hBt) hpar, hprev Pb hPb⟩
-  refine ⟨blocks, ?_, ?_, ?_, ?_⟩
+  refine ⟨blocks, ?_, ?_, ?_, ?_, ?_⟩
   · -- (a) a block of an honest proposer's slot is its proposal
     intro y hy i B ha hB hpH
     have hprop := (blocks y hy i B ha hB).1
@@ -206,6 +206,56 @@ theorem projection_driven (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRu
     rw [Nat.add_sub_cancel' hlt.le] at hev
     have := (hgi.2.2 jj hev.symm).1
     omega
+  · -- (b) no object of the proposal's time before the proposal
+    rintro y hy i j ℓ ℓ' hci hcj hprop htime hobj
+    obtain ⟨ji, ei, qi, hgi, rfl, hqi⟩ := Compose.call_in_group h hy (Compose.projAC_callAt.1 hci)
+    obtain ⟨jj, ej, qj, hgj, rfl, hqj⟩ := Compose.call_in_group h hy (Compose.projAC_callAt.1 hcj)
+    obtain ⟨x, rfl⟩ := exec_ac_proposal _ _ _ _ (List.mem_of_getElem? hqj) hprop
+    have hqj1 : qj = 1 := (onTick_ac_index _ _ _ _
+      (show (Node.onTick dg y (tr.state y jj) (tr.time (jj + qj)) x).2[qj]? = _ from hqj)).1 hprop
+    have htime' : tr.time (ji + qi) = tr.time (jj + qj) := htime
+    rw [htime'] at hgi hqi
+    -- a delivery's group at that time starts after the tick's
+    have later : ei.phase = 2 → jj + qj < ji + qi := by
+      intro hph
+      have hlt : jj < ji := by
+        rcases lt_trichotomy jj ji with h1 | rfl | h1
+        · exact h1
+        · have := Compose.group_phase hgi hgj
+          rw [hph] at this
+          simp [Node.Event.phase] at this
+        · have := h.phase_order y hy y hy ji jj _ _ _ hgi hgj h1
+          rw [hph] at this
+          simp [Node.Event.phase] at this
+      by_contra hle
+      have hqjlen := (List.getElem?_eq_some_iff.1 hqj).1
+      have hev := (hgj.2.1 (ji - jj) (by omega)).2.2.1
+      rw [Nat.add_sub_cancel' hlt.le] at hev
+      have := (hgi.2.2 jj hev.symm).1
+      omega
+    cases ei with
+    | tick x' =>
+      have hji : ji = jj := h.tick_unique y hy ji jj _ ⟨x', hgi⟩ ⟨x, hgj⟩
+      subst hji
+      have hidx := (onTick_ac_index _ _ _ _
+        (show (Node.onTick dg y (tr.state y ji) (tr.time (ji + qj)) x').2[qi]? = _ from hqi)).2
+      rcases hobj with ⟨m, hm⟩ | ⟨B, hB⟩
+      · exact absurd ((exec_ac_call _ _ _ _ (List.mem_of_getElem? hqi)).2 m hm) (by simp)
+      · have : ¬ qi ≤ 1 := fun hle => hidx hle B hB
+        omega
+    | block B => exact later rfl
+    | message m => exact later rfl
+    | attestation a =>
+      have := List.mem_of_getElem? hqi
+      simp [Node.exec, Node.onAttestation] at this
+    | restart =>
+      exfalso
+      have hm := List.mem_of_getElem? hqi
+      simp only [Node.exec, Node.restart, Node.acCall, List.mem_singleton, Cut.ac.injEq] at hm
+      subst hm
+      rcases hobj with ⟨m, hm⟩ | ⟨B, hB⟩
+      · cases hm
+      · cases hB
 
 /-- `Healthy(g)` over a run gives `Healthy(g)` on its AC projection. -/
 theorem projection_healthy (hrun : GoldilocksRun dg H tr) (_hnc : Compose.NoCollRun dg tr)

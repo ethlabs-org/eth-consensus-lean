@@ -15,7 +15,9 @@ those of `Compose/Run/{Groups,Handlers,Trees,Projection}`:
   restart, and every `ac_on_block` follows its FG acceptance, read on `projAC`
   (`ac_block_after`, `fg_accept_before`; C0.5 (b), `Compose.accept_next`,
   `Compose.acBlock_prev`);
-* an `ac_on_tick` cut is a tick's and an `ac_on_message` cut a delivery's (`exec_ac_call`);
+* an `ac_on_tick` cut is a tick's and an `ac_on_message` cut a delivery's (`exec_ac_call`), an
+  `ac_proposal` cut is a tick's, its second cut, and the tick's first two cuts are not
+  `ac_on_block` cuts (`exec_ac_proposal`, `onTick_ac_index`);
 * a tick's first cut is its `ac_on_tick`, and for a proposer its second is `ac_proposal`, from
   the AC state the tick left (`tick_first_cut`, `tick_proposal_call`);
 * C0.3 in a run: the own block of a proposal is accepted at once (`own_block_accepted`, from
@@ -145,6 +147,106 @@ theorem exec_ac_call (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A) {
     simp only [exec, Node.restart, Node.acCall, List.mem_singleton, Cut.ac.injEq] at hm
     subst hm
     exact ⟨fun h => (by cases h), fun m h => (by cases h)⟩
+
+/-- In the cuts of an event, an `ac_proposal` cut is a tick's. -/
+theorem exec_ac_proposal (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A)
+    {ℓ : ACLabel A} (hm : Cut.ac ℓ ∈ (exec dg y st t e).2) (hc : ℓ.call = .proposal) :
+    ∃ x, e = .tick x := by
+  cases e with
+  | tick x => exact ⟨x, rfl⟩
+  | block B =>
+    exfalso
+    simp only [exec, Node.onBlock] at hm
+    split_ifs at hm
+    · simp at hm
+    · split at hm
+      · simp at hm
+      · simp only [Node.acCall, List.mem_cons, reduceCtorEq, false_or, Cut.ac.injEq,
+          List.not_mem_nil, or_false] at hm
+        subst hm; cases hc
+  | message m =>
+    exfalso
+    simp only [exec, Node.onMessage, Node.acCall, List.mem_singleton, Cut.ac.injEq] at hm
+    subst hm; cases hc
+  | attestation a => simp [exec, Node.onAttestation] at hm
+  | restart =>
+    exfalso
+    simp only [exec, Node.restart, Node.acCall, List.mem_singleton, Cut.ac.injEq] at hm
+    subst hm; cases hc
+
+/-- The AC cuts of a tick by position: its `ac_proposal` cut is its second cut, and its first
+two cuts are not `ac_on_block` cuts. -/
+theorem onTick_ac_index (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) {k : Nat}
+    {ℓ : ACLabel A} (hk : (onTick dg y st t x).2[k]? = some (Cut.ac ℓ)) :
+    (ℓ.call = .proposal → k = 1) ∧ (k ≤ 1 → ∀ B, ℓ.call ≠ .block B) := by
+  -- the proposal step: no cuts, or the `ac_proposal` cut and then `ac_on_block` or FG cuts
+  have h2 : ∀ st' : NodeState A, (tickStep dg y st' t x .proposal).2 = [] ∨
+      ∃ ℓp Lb, ℓp.call = .proposal ∧ (tickStep dg y st' t x .proposal).2 = Cut.ac ℓp :: Lb ∧
+        ∀ ℓ', Cut.ac ℓ' ∈ Lb → ∃ B, ℓ'.call = .block B := by
+    intro st'
+    simp only [Node.tickStep]
+    split_ifs
+    · split
+      · exact Or.inr ⟨_, [], rfl, rfl, by simp⟩
+      · refine Or.inr ⟨_, _, rfl, rfl, fun ℓ' hm => ?_⟩
+        simp only [Node.proposeBlock, Node.onBlock] at hm
+        split_ifs at hm
+        · simp at hm
+        · split at hm
+          · simp at hm
+          · simp only [Node.acCall, List.mem_cons, reduceCtorEq, false_or, Cut.ac.injEq,
+              List.not_mem_nil, or_false] at hm
+            subst hm; exact ⟨_, rfl⟩
+    · exact Or.inl rfl
+  -- the FG update: the `ac_to_fg` cut, then FG cuts only
+  have h3 : ∀ st' : NodeState A, ∃ ℓt La, ℓt.call = .toFG ∧
+      (tickStep dg y st' t x .fgUpdate).2 = Cut.ac ℓt :: La ∧ ∀ ℓ', Cut.ac ℓ' ∉ La := by
+    intro st'
+    simp only [Node.tickStep]
+    split
+    · exact ⟨_, [], rfl, rfl, by simp⟩
+    · refine ⟨_, _, rfl, rfl, fun ℓ' hm => ?_⟩
+      simp only [Node.attest] at hm
+      split at hm <;> simp [Node.onAttestation] at hm
+  have h0 : (tickStep dg y st t x .acTick).2 = [(acCall y st t .tick).2] := rfl
+  rw [onTick_eq, h0] at hk
+  obtain ⟨ℓt, La, hℓt, h3e, hLa⟩ := h3 (tickStep dg y (tickStep dg y st t x .acTick).1 t x
+    .proposal).1
+  rw [h3e] at hk
+  rcases h2 (tickStep dg y st t x .acTick).1 with h2e | ⟨ℓp, Lb, hℓp, h2e, hLb⟩
+  · rw [h2e] at hk
+    rcases k with _ | _ | k
+    · simp only [List.cons_append, List.nil_append, List.getElem?_cons_zero,
+        Option.some.injEq, Node.acCall, Cut.ac.injEq] at hk
+      subst hk
+      exact ⟨fun h => (by cases h), fun _ B h => (by cases h)⟩
+    · simp only [List.cons_append, List.nil_append, List.append_nil, List.getElem?_cons_succ,
+        List.getElem?_cons_zero, Option.some.injEq, Cut.ac.injEq] at hk
+      subst hk
+      exact ⟨fun _ => rfl, fun _ B h => by rw [hℓt] at h; cases h⟩
+    · simp only [List.cons_append, List.nil_append, List.append_nil,
+        List.getElem?_cons_succ] at hk
+      exact absurd (List.mem_of_getElem? hk) (hLa ℓ)
+  · rw [h2e] at hk
+    rcases k with _ | _ | k
+    · simp only [List.cons_append, List.nil_append, List.getElem?_cons_zero,
+        Option.some.injEq, Node.acCall, Cut.ac.injEq] at hk
+      subst hk
+      exact ⟨fun h => (by cases h), fun _ B h => (by cases h)⟩
+    · simp only [List.cons_append, List.nil_append, List.getElem?_cons_succ,
+        List.getElem?_cons_zero, Option.some.injEq, Cut.ac.injEq] at hk
+      subst hk
+      exact ⟨fun _ => rfl, fun _ B h => by rw [hℓp] at h; cases h⟩
+    · simp only [List.cons_append, List.nil_append, List.getElem?_cons_succ] at hk
+      have hm := List.mem_of_getElem? hk
+      simp only [List.mem_append, List.mem_cons] at hm
+      refine ⟨fun hc => ?_, fun h => by omega⟩
+      rcases hm with hm | hm | hm
+      · obtain ⟨B, hB⟩ := hLb ℓ hm
+        rw [hB] at hc; cases hc
+      · simp only [Cut.ac.injEq] at hm
+        subst hm; rw [hℓt] at hc; cases hc
+      · exact absurd hm (hLa ℓ)
 
 /-- The first cut of a tick is its `ac_on_tick`. -/
 theorem tick_first_cut {y : Fin P.n} {j : Nat} {t : Time} {x : Nat}

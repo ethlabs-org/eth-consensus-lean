@@ -110,6 +110,12 @@ structure Driven (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop where
   /-- (b) No object received at a public time is processed before the tick there. -/
   tick_first : ∀ y ∈ H, ∀ i j ℓ ℓ', tr.CallAt y i ℓ → tr.CallAt y j ℓ' → ℓ'.call = .tick →
     tr.time i = tr.time j → (∃ m, ℓ.call = .message m) → j < i
+  /-- (b) No object received at a slot start is processed by its honest proposer before its
+  `ac_proposal` there: every AC message or block call of the node at the time of its `ac_proposal`
+  comes after it (the own block, passed at once, included). -/
+  proposal_first : ∀ y ∈ H, ∀ i j ℓ ℓ', tr.CallAt y i ℓ → tr.CallAt y j ℓ' →
+    ℓ'.call = .proposal → tr.time i = tr.time j →
+    ((∃ m, ℓ.call = .message m) ∨ ∃ B, ℓ.call = .block B) → j < i
 
 /-- **H.1, AC healing, standalone (trivial frame).** Over a driven AC trace of the SA with
 trivial frames, under `Healthy(g)`, `Catch(2Δ)`, `NoColl` (the coherence of `U`, part of
