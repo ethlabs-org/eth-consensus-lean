@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 public import ConsensusLean.Lemmas.Model.Protection
 
 public section
@@ -486,6 +487,23 @@ theorem poll_candidate_forward_queue (v : V)
     simp [forwardObj] at heq
     obtain ⟨rfl, rfl⟩ := heq
     exact hq
+
+omit [DecidableEq V] in
+/-- A released poll envelope retains its pre-duty queue witness. -/
+private theorem poll_release_forward_queue (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (u : Nat)
+    {o : Wire (Fintype.card V)} {t : Time} {p : Option (Wire (Fintype.card V))}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (ho : o ∈ (rho.dutyStep v nd (.poll u)).2)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (rho.ownKey v, t, p, B)) :
+    (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) ∈
+      (shapeOf S hn nd).forwards := by
+  unfold Model.Run.dutyStep at ho
+  split at ho
+  · exact poll_candidate_forward_queue S rho hn v nd u
+      (Model.releaseAll_subset _ _ _ _ o ho) hd
+  · exact False.elim (List.not_mem_nil ho)
 
 /-- An honestly signed forwarding envelope in seen closure has an actual prior release
 by that signer. This is authentication provenance, not yet an acceptance witness. -/
@@ -1107,6 +1125,295 @@ theorem held_forward_tick_or_processed (hv : rho.ExecutionValid) {v : V} {i : Na
         le_of_eq ht.symm, Or.inr ⟨rfl, ha⟩⟩
   · obtain ⟨k, hk, ht, hc⟩ := h
     exact Or.inr ⟨k, hk, ht, Or.inl hc⟩
+
+private theorem tick_forward_queue (hv : rho.ExecutionValid) {i : Nat} {v : V}
+    {u t : Time} {o : Wire (Fintype.card V)} {p : Option (Wire (Fintype.card V))}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (he : rho.events[i]? = some (.tick v u)) (ho : o ∈ rho.releasesAt i)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (rho.ownKey v, t, p, B)) :
+    ∃ s hs, (skeleton (Model.pubOf E)).proposeAt u = [.propose s hs] ∧
+      (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) ∈
+        (shapeOf S hn (rho.dutyStep v
+          (atProposal S rho v (rho.stateBefore i v) u) (.propose s hs)).1).forwards := by
+  have hu := (hv.in_horizon _ (List.mem_of_getElem? he)).1
+  have hw := hv.tick_awake v u (List.mem_of_getElem? he)
+  have hsel := poll_selected S rho hv v
+  have noPoll (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+      (hempty : (shapeOf S hn nd).forwards = [])
+      (h : o ∈ (rho.dutyStep v nd (.poll u.toNat)).2) : False := by
+    have hq := poll_release_forward_queue S rho hn v nd u.toNat h hd
+    rw [hempty] at hq
+    exact List.not_mem_nil hq
+  have noGossip (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+      (h : o ∈ (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+        rho.hash (rho.ownKey v) nd
+        (Model.gossipCandidates (Model.protoOf (compiled (family S)) E) nd.st u)).2) : False :=
+    gossip_not_forward S rho hn nd u (Model.releaseAll_subset _ _ _ _ o h) hd
+  have hclock : (shapeOf S hn
+      (⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st u
+        (Model.mempool rho.inbox v u), (rho.stateBefore i v).seen⟩ :
+        Model.Node (Model.protoOf (compiled (family S)) E))).forwards = [] :=
+    forwards_empty S rho hn hv v i
+  have hpoll (nd : Model.Node (Model.protoOf (compiled (family S)) E)) :
+      (shapeOf S hn (rho.dutyStep v nd (.poll u.toNat)).1).forwards = [] := by
+    rw [dutyStep_poll S rho hn v nd u.toNat hsel, poll_forwards]
+  simp only [Model.Run.releasesAt, he] at ho
+  rcases Skeleton.proposeAt_cases (skeleton (Model.pubOf E)) u with
+    ⟨hnil, _⟩ | ⟨s, hs, hone, _⟩
+  · obtain ⟨N1, N3, N5, N6, rfl, rfl, rfl, rfl, hrel⟩ :=
+      tick_unroll_nil S rho v (rho.stateBefore i v) u hu hw hnil
+    rw [hrel] at ho
+    rcases List.mem_append.mp ho with h | h
+    · rcases List.mem_append.mp h with h | h
+      · rcases List.mem_append.mp h with h | h
+        · rcases List.mem_append.mp h with h | h
+          · rcases List.mem_append.mp h with h | h
+            · exact False.elim (noPoll _ hclock h)
+            · exact False.elim (noPoll _ (hpoll _) h)
+          · rw [dutyStep_pollPropose_snd S rho hn] at h
+            exact False.elim (List.not_mem_nil h)
+        · have hz := atProposal_forwards_nil S rho hn hv v (rho.stateBefore i v) u
+          rw [atProposal_eq] at hz
+          exact False.elim (noPoll _ hz h)
+      · exact False.elim (noPoll _ (hpoll _) h)
+    · exact False.elim (noGossip _ h)
+  · obtain ⟨N1, N3, N4, N5, N6, rfl, rfl, rfl, rfl, rfl, hrel⟩ :=
+      tick_unroll_propose S rho v (rho.stateBefore i v) u hu hw s hs hone
+    rw [hrel] at ho
+    rcases List.mem_append.mp ho with h | h
+    · rcases List.mem_append.mp h with h | h
+      · rcases List.mem_append.mp h with h | h
+        · rcases List.mem_append.mp h with h | h
+          · rcases List.mem_append.mp h with h | h
+            · rcases List.mem_append.mp h with h | h
+              · exact False.elim (noPoll _ hclock h)
+              · exact False.elim (noPoll _ (hpoll _) h)
+            · rw [dutyStep_pollPropose_snd S rho hn] at h
+              exact False.elim (List.not_mem_nil h)
+          · unfold Model.Run.dutyStep at h
+            split at h
+            · obtain ⟨m, cs, _, _, ho⟩ := rho.mem_signedCandidate.mp
+                (Model.releaseAll_subset _ _ _ _ o h)
+              have ha := congrArg Model.Obj.auth
+                (ho.symm.trans (forwardObj_of_decodeForward _ _ _ _ _ _ hd))
+              cases ha
+            · exact False.elim (List.not_mem_nil h)
+        · refine ⟨s, hs, hone, ?_⟩
+          rw [atProposal_eq]
+          exact poll_release_forward_queue S rho hn v _ u.toNat h hd
+      · exact False.elim (noPoll _ (hpoll _) h)
+    · exact False.elim (noGossip _ h)
+
+private theorem tick_forward_acceptance_wire (hv : rho.ExecutionValid) {i : Nat} {v : V}
+    {u t : Time} {o : Wire (Fintype.card V)} {p : Option (Wire (Fintype.card V))}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (he : rho.events[i]? = some (.tick v u)) (ho : o ∈ rho.releasesAt i)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (rho.ownKey v, t, p, B)) :
+    ∃ C, ∃ parent : Option (Wire (Fintype.card V)),
+      .fg (.block C true) ∈ (exec (runProposer S rho hn) (digestOf S rho)
+        (rho.ownKey v) (stateAt S rho hn v i).node u
+        (.tick (encodeTxs (Model.mempool rho.inbox v u)))).2 ∧
+      (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) =
+        (u, parent.toList ++ [blockObj (S.params (Model.pubOf E) hn) C]) ∧
+      (S.params (Model.pubOf E) hn).toParams.IsPublic u := by
+  obtain ⟨s, hs, hone, hq⟩ := tick_forward_queue S rho hn hv he ho hd
+  have htime : u = (S.params (Model.pubOf E) hn).toParams.slotTime s := by
+    rcases Skeleton.proposeAt_cases (skeleton (Model.pubOf E)) u with
+      ⟨hno, _⟩ | ⟨s', hs', hyes, ht⟩
+    · rw [hno] at hone
+      cases hone
+    · have hh := List.singleton_inj.mp (hone.symm.trans hyes)
+      cases hh
+      exact ht.trans (slotTime_eq S hn s).symm
+  have hpub : (S.params (Model.pubOf E) hn).toParams.IsPublic u := by
+    rw [htime]
+    exact (S.params (Model.pubOf E) hn).toParams.slotTime_public s
+  have hsel := poll_selected S rho hv v
+  have hself : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) u)).self =
+      rho.ownKey v := by
+    rw [atProposal_self S rho hn v _ u hsel]
+    exact self_eq_ownKey S rho hn v i
+  have hnow := atProposal_now S rho hn v (rho.stateBefore i v) u hsel
+  rcases proposal_duty_forward_origin S rho hn v _ s hs
+      (selValid_proposer S rho hn hv.selValid s) hself
+      (by rw [hnow, htime]; exact slotOf_slotTime _ s) (hnow.trans htime) _ hq with
+    hq | ⟨C, parent, hc, hq⟩
+  · rw [atProposal_forwards_nil S rho hn hv] at hq
+    exact False.elim (List.not_mem_nil hq)
+  · rw [hnow] at hc hq
+    rw [atProposal_mempool] at hc
+    have hnode : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) u)).node =
+        (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node u .tick).1 := by
+      rw [atProposal_node S rho hn v _ u (fgDue_eq_false S rho hn v i) hsel,
+        nodeTick_node_public _ hpub]
+      exact congrArg (fun k => (Node.acCall k _ u .tick).1) (self_eq_ownKey S rho hn v i)
+    rw [hnode] at hc
+    refine ⟨C, parent, ?_, hq, hpub⟩
+    change _ ∈ (Node.onTick _ _ _ _ _ _).2
+    rw [onTick_cuts (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)]
+    exact List.mem_append_left _ (List.mem_append_right _ hc)
+
+private theorem tick_accepted_root {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
+    {B : Blk sp}
+    (hm : .fg (.block B true) ∈ (exec proposer dg self st t (.tick x)).2) :
+    B.RootOk dg ∧ B.parent ≠ none := by
+  change _ ∈ (onTick (A := goldilocksNode sp ro) proposer dg self st t x).2 at hm
+  rw [onTick_cuts (sp := sp) (ro := ro)] at hm
+  rcases List.mem_append.mp hm with hm | hm
+  · rcases List.mem_append.mp hm with hm | hm
+    · simp [tickStep, acCall] at hm
+    · simp only [tickStep] at hm
+      split_ifs at hm
+      · split at hm
+        · simp [acProposal] at hm
+        · simp only [proposeBlock, onBlock] at hm
+          split_ifs at hm
+          · simp [acProposal] at hm
+          · split at hm <;> simp [acCall, acProposal] at hm
+            obtain ⟨rfl, _⟩ := hm
+            exact ⟨rfl, by simp [mkBlock]⟩
+      · simp at hm
+  · simp only [tickStep] at hm
+    split at hm
+    · simp [acToFG] at hm
+    · simp only [attest, List.mem_cons, acToFG, reduceCtorEq, false_or] at hm
+      split at hm <;> simp [onAttestation] at hm
+
+omit [DecidableEq V] in
+private theorem decoded_block_root {o : Wire (Fintype.card V)}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (hc : Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) B))
+    (hd : decodeBlock (S.params (Model.pubOf E) hn) (Model.digests rho.hash o)
+      (blockObj (S.params (Model.pubOf E) hn) B) = some B) :
+    B.RootOk (digestOf S rho) ∧ B.parent ≠ none := by
+  obtain ⟨hroot, hpar, _, _⟩ := decodeBlock_wire hd
+  have hh := rootOf_digests_of_mem S rho o _ (List.mem_filterMap.mpr ⟨_, hc, rfl⟩)
+  rw [hh, Option.map_some, Option.some.injEq] at hroot
+  refine ⟨?_, hpar⟩
+  obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.mp hpar
+  change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload
+  rw [← hroot]
+  simp only [headerOf, hr]
+  rfl
+
+omit [DecidableEq V] in
+private theorem rooted_block_eq {B C : Blk (S.params (Model.pubOf E) hn)}
+    (hB : B.parent ≠ none) (hC : C.parent ≠ none)
+    (hrB : B.RootOk (digestOf S rho)) (hrC : C.RootOk (digestOf S rho))
+    (he : blockObj (S.params (Model.pubOf E) hn) B = blockObj _ C) : B = C := by
+  have hh := congrArg Model.Obj.msg he
+  have ha := congrArg Model.Obj.auth he
+  simp only [blockObj, Model.Obj.msg, Model.Msg.item.injEq] at hh
+  simp only [blockObj, Model.Obj.auth, Model.Auth.signed.injEq] at ha
+  have hp := congrArg (fun h => parentRoot S.genesisRoot h.parent) hh
+  have hs := congrArg Header.pos hh
+  have hx := congrArg Header.input hh
+  have hi := congrArg (fun h => decodeInfo (Fintype.card V) h.info) hh
+  obtain ⟨b, hb⟩ := Option.ne_none_iff_exists'.mp hB
+  obtain ⟨c, hc⟩ := Option.ne_none_iff_exists'.mp hC
+  simp only [headerOf, hb, hc, parentRoot_parentRef] at hp
+  simp only [headerOf, decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hi
+  have hparent : B.parent = C.parent := by simpa [hb, hc] using hp
+  change B.slot = C.slot at hs
+  change B.input = C.input at hx
+  have hroot : B.root = C.root := by
+    change B.root = digestOf S rho B.parent B.slot B.input B.fgPayload B.acPayload at hrB
+    rw [hrB, hparent, hs, hx, hi.1, hi.2]
+    exact hrC.symm
+  have hv := ha.1
+  cases B; cases C
+  simp_all
+
+/-- A forwarding release during a tick identifies an actual successful proposal cut,
+including the digest-backed root rather than just the serialized block fields. -/
+theorem tick_released_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v : V}
+    {u t : Time} {o : Wire (Fintype.card V)} {p : Option (Wire (Fintype.card V))}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (he : rho.events[i]? = some (.tick v u)) (ho : o ∈ rho.releasesAt i)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (rho.ownKey v, t, p, B)) :
+    ∃ k < cutMap S rho hn (i + 1),
+      (simTrace S rho hn).AcceptAt (rho.ownKey v) k B ∧
+      (simTrace S rho hn).time k = t := by
+  obtain ⟨C, parent, hc, hq, hpub⟩ := tick_forward_acceptance_wire S rho hn hv he ho hd
+  have ht : t = u := congrArg Prod.fst hq
+  have hw : blockObj (S.params (Model.pubOf E) hn) B = blockObj _ C := by
+    have hlast := congrArg List.getLast? (congrArg Prod.snd hq)
+    cases p <;> cases parent <;> simpa using hlast
+  have hcontains : Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) B) := by
+    rw [forwardObj_of_decodeForward _ _ _ _ _ _ hd]
+    exact Model.Obj.Contains.step (List.mem_append_right _ (List.mem_singleton_self _))
+      (Model.Obj.Contains.refl _)
+  obtain ⟨hrB, hpB⟩ := decoded_block_root S rho hn hcontains (decodeForward_child hd).1
+  obtain ⟨hrC, hpC⟩ := tick_accepted_root _ _ _ _ _ _ hc
+  have hBC := rooted_block_eq S rho hn hpB hpC hrB hrC hw
+  subst C
+  obtain ⟨m, hm, hcm⟩ := List.getElem_of_mem hc
+  have hm' : m < (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+      (stateAt S rho hn v i).node u (Nat.pair i 0)
+      (.tick (encodeTxs (Model.mempool rho.inbox v u)))).length := by
+    rw [length_groupRecs]; exact hm
+  have hf := getElem_groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+    (stateAt S rho hn v i).node u (Nat.pair i 0)
+    (.tick (encodeTxs (Model.mempool rho.inbox v u))) m hm'
+  have hmrec := List.getElem_mem hm'
+  have hr := (congrArg (fun rs =>
+    (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+      (stateAt S rho hn v i).node u (Nat.pair i 0)
+      (.tick (encodeTxs (Model.mempool rho.inbox v u))))[m]'hm' ∈ rs)
+    (eventCuts_tick_public S rho hn i v u he hpub)).mpr hmrec
+  obtain ⟨k, hk, ha, htime⟩ := acceptAt_of_eventCuts S rho hn
+    (List.getElem?_eq_some_iff.mp he).1 hr (hf.2.2.2.2.trans hcm)
+  exact ⟨k, hk, hf.1 ▸ ha, htime.trans (hf.2.1.trans ht.symm)⟩
+
+/-- Every actual publication has a successful source acceptance at its stamped time. -/
+theorem simTrace_forwardOrigin (hv : rho.ExecutionValid) :
+    ∀ r, (publisherExecution S rho).actual r → rho.key r.origin ∈ rho.honest → ∀ t p B,
+      decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash r.object) r.object =
+        some (r.origin, t, p, B) →
+      ∃ k, (simTrace S rho hn).AcceptAt r.origin k B ∧ (simTrace S rho hn).time k = t ∧
+        k < cutMap S rho hn (r.event + 1) ∧ t = (publisherExecution S rho).eventTime r.event := by
+  intro r hr _ t p B hd
+  have hk : rho.ownKey (rho.key r.origin) = r.origin := rho.key.symm_apply_apply _
+  have hd' := hd
+  rw [← hk] at hd'
+  have he := (publisherExecution S rho).actual_event r hr
+  have ho := (publisherExecution S rho).actual_release r hr
+  have hacc : ∃ k < cutMap S rho hn (r.event + 1),
+      (simTrace S rho hn).AcceptAt (rho.ownKey (rho.key r.origin)) k B ∧
+      (simTrace S rho hn).time k = t := by
+    rcases he with he | ⟨receipt, he⟩
+    · exact tick_released_forward_acceptance S rho hn hv he ho hd'
+    · exact delivery_released_forward_acceptance S rho hn hv he ho hd'
+  obtain ⟨k, hbound, ha, ht⟩ := hacc
+  exact ⟨k, hk ▸ ha, ht, hbound, publication_forward_stamp S rho hn hv r hr hd⟩
+
+/-- Prior authenticated holdings give a prior receipt call or an own acceptance.
+The receipt alternative deliberately retains refusal as a possibility. -/
+theorem simTrace_forwardHeldProcessed (hv : rho.ExecutionValid) :
+    ∀ y ∈ honestKeys S rho, ∀ i x t p B o,
+      x ∈ honestKeys S rho → o ∈ Model.closure (rho.stateBefore i (rho.key y)).seen →
+      decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+        some (x, t, p, B) →
+      ∃ k < cutMap S rho hn i, t ≤ (simTrace S rho hn).time k ∧
+        ((simTrace S rho hn).BlockCallAt y k B ∨ y = x ∧ (simTrace S rho hn).AcceptAt y k B) := by
+  intro y _ i x t p B o hx ho hd
+  have hy : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply _
+  rcases held_forward_tick_or_processed S rho hn hv ho hx hd with
+    ⟨hxy, j, hj, u, he, hr⟩ | ⟨k, hk, ht, hc⟩
+  · rw [hxy] at hd
+    obtain ⟨k, hk, ha, ht⟩ := tick_released_forward_acceptance S rho hn hv he hr hd
+    refine ⟨k, hk.trans_le (cutMap_mono S rho hn (Nat.succ_le_of_lt hj)),
+      le_of_eq ht.symm, Or.inr ⟨(hxy.trans hy).symm, hy ▸ ha⟩⟩
+  · refine ⟨k, hk, ht, ?_⟩
+    rcases hc with hc | ⟨hxy, ha⟩
+    · exact Or.inl (hy ▸ hc)
+    · exact Or.inr ⟨(hxy.trans hy).symm, hy ▸ ha⟩
 
 end Trace
 
