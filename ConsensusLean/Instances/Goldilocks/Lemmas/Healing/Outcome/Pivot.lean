@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
@@ -46,7 +47,7 @@ proposer's own locks).
 
 **The residual open steps** (private `sorry` lemmas below, each with its reason):
 `reset_proposal_passes` (the walk passes every old source), `reset_proposal_fcRoot` (the
-proposer's `fc_root`), `reset_suffix_viable` (the path from `D` to `Q` is viable), and
+proposer's `fc_root`), `proposal_low_entry` (a low honest row's entry is below an old source), and
 `reset_vote_fcRoot` (a voter's `fc_root`). The proposed T3 envelope `ready_source_envelope`
 (workbench `source-envelope-contract.md` at `cc62e27`) discharges none of them: its proposer scope
 `y = p ∧ c = kp` names the FG block-call cut `kp` of `ReadyProposal`, at which no AC call happens
@@ -548,6 +549,119 @@ private theorem stored_lock_old (hp : ResetPremises tr H dg g ΔF a)
     · exact absurd (high_of_anc hp ho hx hBt h) hhigh
   exact ⟨O, ⟨v, r₀, l₀, ho, lt_of_le_of_lt hr₀ (reset_lt_ts hp hR)⟩, hL'O.trans hBO⟩
 
+/-! ### Sources of the proposer's rows -/
+
+/-- A high row signed before the proposal has an old high origin. The write cannot be an
+optimistic check of the proposal's slot, and a regular write in that slot is later. -/
+private theorem proposal_high_row (hp : ResetPremises tr H dg g ΔF a)
+    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
+    (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hti : tr.time i = sp.ts u) {v : Fin sp.n} (hv : v ∈ H) {k : Nat}
+    {att : FG.Att sp.n} (hki : k < i) (hs : tr.SignAt v k att)
+    (hh : HZ tr H g + 1 ≤ att.h) :
+    ∃ E O, Compose.IsHonestSource tr H E att.T ∧ OldSrc tr H g u O ∧
+      Anc (tr.HonestBlocks H) E O := by
+  obtain ⟨r, hrk, l, O, ho, E, hE, hEO, hEr, -, hET⟩ := high_row_source hp hv hs hh
+  obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_mem hp ho
+  have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono (by omega)
+  have hlu : l < u := by
+    have hle : l ≤ u := by
+      have := (SA.ts_le_iff sp).1 ((ts_le_of_fastLock hp hfl).trans hrt)
+      exact_mod_cast this
+    by_contra hn
+    have hlu : l = u := by omega
+    rw [hlu] at hfl
+    rcases hfl with ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ | hop
+    · have ht' : tr.time r = sp.ts u + 6 * sp.Δ := ht
+      have := sp.toParams.hΔ
+      linarith
+    · exact proposal_no_optimistic hp hpH hci hcall hti v hv r (by omega) D CV hop
+  refine ⟨E, O, Compose.isHonestSource_iff.2 ⟨v, hv, r, hE, hET.trans hEr⟩,
+    ⟨v, r, l, ho, ?_⟩,
+    hEO.mono (fun X hX => ⟨v, hv, r, hX⟩)⟩
+  exact fastLock_time_lt hp hfl hlu (by have := sp.toParams.hΔ; linarith)
+
+/-- **Residual low row:** the named entry, not necessarily its actual signing source, lies
+below an old high origin. The source and entry have the same low height. No comparison of an
+arbitrary low source with the reset seed is assumed. -/
+private theorem proposal_low_entry (hp : ResetPremises tr H dg g ΔF a)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hcr : CleanResultNext tr H a)
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
+    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state p i).fg.tree)
+    {att : FG.Att sp.n} (ha : att ∈ X.fgPayload) (hv : att.val ∈ H)
+    (hscope : (tr.state p i).fg.hj ≤ ((tr.state p i).fg.σ att.T).h)
+    {r : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {src E : SA.Blk sp.n (List (FG.Att sp.n))} (hri : r + 1 < i)
+    (hsrc : SA.ToFGAt tr.projAC att.val r ℓ src)
+    (hsign : tr.CallAt att.val (r + 1) (.fg (.attest src (some att))))
+    (hlow : ((tr.state att.val r).fg.σ src.root).h ≤ HZ tr H g)
+    (hE : E ∈ (tr.state att.val r).fg.tree) (hEr : E.root = att.T)
+    (hEC : (tr.state att.val r).fg.Anc E src)
+    (hEh : ((tr.state att.val r).fg.σ E.root).h = ((tr.state att.val r).fg.σ src.root).h)
+    (hET : ((tr.state att.val r).fg.σ E.root).Th = E.root) :
+    ∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) E O := by
+  sorry
+
+/-- The scoped honest rows have entry witnesses below old sources. The split is on the
+actual `ac_to_fg` source height, which equals the named entry's height. -/
+private theorem proposal_rows_old (hp : ResetPremises tr H dg g ΔF a)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hcr : CleanResultNext tr H a)
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root) :
+    ∀ X ∈ (tr.state p i).fg.tree, ∀ att ∈ X.fgPayload, att.val ∈ H →
+      (tr.state p i).fg.hj ≤ ((tr.state p i).fg.σ att.T).h →
+      ∃ E, (∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) E O) ∧
+        Compose.IsHonestSource tr H E att.T := by
+  intro X hX att ha hv hscope
+  obtain ⟨m, hmi, -, k', hkm, src, hsg⟩ :=
+    Compose.honest_row_signed_before hp.run hp.noColl hP.1 hX ha hv
+  obtain ⟨r, rfl, ℓ, hcr', hto, -, hret, hfg⟩ :=
+    Compose.attest_source hp.run.toLocalRun hv hsg
+  have hpc := Compose.projAC_callAt.2 hcr'
+  have htoFG : SA.ToFGAt tr.projAC att.val r ℓ src := by
+    refine ⟨hpc, hto, ?_⟩
+    rw [Compose.projAC_state hp.run.toLocalRun hv]
+    exact hret
+  have hst : src ∈ (tr.state att.val r).fg.tree := by
+    have hCand : src ∈ SA.toFGCandidates sp (tr.state att.val r).ac ℓ.frame (tr.time r) := by
+      change (SA.acToFG sp (tr.state att.val r).ac ℓ.frame (tr.time r)).2.1 = some src at hret
+      unfold SA.acToFG at hret
+      dsimp only at hret
+      split_ifs at hret
+      split at hret
+      · cases hret
+      · rename_i C' hC'
+        split_ifs at hret
+        cases hret
+        exact (SA.deepest_mem hC').1
+    exact mem_tree_of_frame hp.run hv hpc hCand.1.1
+  obtain ⟨⟨E, hE, hEr, hEC, hEh, hET⟩, -⟩ :=
+    Store.entry_state_of_source _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hv r) src hst
+  have hcut := (hp.run.cutLaw att.val hv (r + 1) _ hsg).1
+  rw [hfg] at hcut
+  obtain ⟨hah, haT⟩ := Store.createAtt_eq hcut
+  have hET' : ((tr.state att.val r).fg.σ E.root).Th = E.root := hET.trans hEr.symm
+  have hEr' : E.root = att.T := by rw [haT, ← hEr, hET']
+  have hah' : att.h = ((tr.state att.val r).fg.σ src.root).h := by
+    rw [hah, ← hEr, hEh]
+  by_cases hh : HZ tr H g + 1 ≤ ((tr.state att.val r).fg.σ src.root).h
+  · obtain ⟨E', O, hEs, hO, hEO⟩ := proposal_high_row hp hP.1 hci hcall hti hv
+      (by omega) ⟨src, hsg⟩ (by omega)
+    exact ⟨E', ⟨O, hO, hEO⟩, hEs⟩
+  · obtain ⟨O, hO, hEO⟩ := proposal_low_entry hp hc hcr hP hR hci hcall hd hti hPQ
+      hX ha hv hscope (by omega) htoFG hsg (by omega) hE hEr' hEC hEh hET'
+    exact ⟨E, ⟨O, hO, hEO⟩,
+      Compose.isHonestSource_iff.2 ⟨att.val, hv, r, hE, hET'.trans hEr'⟩⟩
+
 /-! ### The residual open steps -/
 
 /-- **(Residual, proposal-time geometry) The proposal walk passes every old source**: every high
@@ -597,18 +711,14 @@ private theorem reset_proposal_fcRoot (hp : ResetPremises tr H dg g ΔF a)
       ∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) ℓp.frame.fcRoot O := by
   sorry
 
-/-- **(Residual, proposal-time floor) The proposal walk above every old source is through viable
+/-- **The proposal walk above every old source is through viable
 heads** (the post-reset `proposal_suffix_viable`): for a block `D` of the walk above its start and
 above every old source, every block from `D` to `Q` is a viable head of the proposal's frame.
 
-Why needed: the pivot's second conclusion. Why believed true: `fc_root ⪯ start ⪯ D`; the sources
-of the proposer's honest rows are actual reports by `t_u`, each below a fast-lock write's stored
-block before `t_u`, hence below an old source (or the seed) and so below `D` and pairwise
-comparable (R1); then there is no contest, and the floor is reached on the path or by a crossing
-entry `E ⪰ X` below its source, below `D ⪯ X`, so `E = X` (`floor_or_crossing`, which is stated
-under `SleepyRun` only). Not given by the envelope: clause 1 orients high reports below `Q`, not
-below `D`, and a report strictly between `D` and `Q` would leave a block of the path below the
-floor. -/
+The scoped rows have entry witnesses below old sources (`proposal_rows_old`, using the
+low-entry residual), hence below `D` and pairwise comparable. Since `fc_root ⪯ start ⪯ D`,
+the floor is reached on the path or by a crossing entry `E ⪰ X` below its source witness,
+below `D ⪯ X`, so `E = X`. This uses no proposal `fc_root` residual. -/
 private theorem reset_suffix_viable (hp : ResetPremises tr H dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hcr : CleanResultNext tr H a)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -620,7 +730,33 @@ private theorem reset_suffix_viable (hp : ResetPremises tr H dg g ΔF a)
     (D : SA.Blk sp.n (List (FG.Att sp.n))) (hDt : D ∈ ℓp.frame.tree)
     (hsD : ℓp.frame.Anc d.start D) (hDold : ∀ O, OldSrc tr H g u O → Anc (tr.HonestBlocks H) O D) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads := by
-  sorry
+  intro X hDX _
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hU := hr.coherent
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hP.1 hci
+  have hXt : X ∈ ℓp.frame.tree := mem_of_anc_left hDX hDt
+  have hDXU := hDX.mono hΦU
+  obtain ⟨A₁, -, hstart, -⟩ := acProposal_walk hd
+  have hfX : ℓp.frame.Anc ℓp.frame.fcRoot X := by
+    rw [hstart] at hsD
+    exact ((SA.fcRoot_anc_getAnchor hΦ A₁ (tr.time i)).trans hsD).trans hDX
+  have hsrc := proposal_rows_old hp hc hcr hP hR hci hcall hd hti hPQ
+  rw [Compose.frame_of_projAC hp.run hP.1 hci] at hXt hfX ⊢
+  obtain ⟨hXs, hFX⟩ := hXt
+  refine ⟨hXs, hFX, hfX.mono (fun _ h => h.1), ?_⟩
+  rcases Compose.floor_or_crossing_scoped hp.run hp.noColl (faulty_lt_half hp p) hP.1 hsrc
+      (fun D₁ D₂ ⟨O₁, hO₁, h₁⟩ ⟨O₂, hO₂, h₂⟩ =>
+        Anc.total hU (h₁.trans (hDold O₁ hO₁)) (h₂.trans (hDold O₂ hO₂)))
+      (fun D' ⟨O, hO, h⟩ => Or.inl ((h.trans (hDold O hO)).trans hDXU)) hXs with
+    hle | ⟨D', E, -, ⟨O, hO, hD'O⟩, hD's, hE, hXE, hEh, -⟩
+  · exact hle
+  obtain ⟨x, hx, k', -, -, hED', -, -⟩ :=
+    Compose.honest_source_entry hp.run hp.noColl hD's ⟨p, hP.1, i, hE⟩ rfl
+  obtain rfl : X = E := Anc.antisymm hU
+    (hXE.mono (fun _ h => ⟨p, hP.1, i, h⟩))
+    (((Anc.mono (T := tr.HonestBlocks H) (fun _ h => ⟨x, hx, k', h⟩) hED').trans hD'O).trans
+      ((hDold O hO).trans hDXU))
+  exact hEh.ge
 
 /-- **(Residual, vote-time root) A voter's `fc_root` is genesis, below an old source, or below
 `P`**: at an honest slot-`u` vote whose earlier honest slot-`u` votes are `P` (the post-reset

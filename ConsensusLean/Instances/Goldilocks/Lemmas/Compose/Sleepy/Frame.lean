@@ -351,6 +351,11 @@ def IsHonestSource (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (D : SA.Blk sp.n (List (FG.Att sp.n))) (T : Nat) : Prop :=
   ∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧ ((tr.state x k).fg.σ D.root).Th = T
 
+theorem isHonestSource_iff {D : SA.Blk sp.n (List (FG.Att sp.n))} {T : Nat} :
+    IsHonestSource tr H D T ↔
+      ∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧ ((tr.state x k).fg.σ D.root).Th = T :=
+  Iff.rfl
+
 /-- Every honest row on a block of `y`'s tree before cut `i` has a source satisfying `G`. -/
 def HonestRowsSourced (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i : Nat) : Prop :=
@@ -616,6 +621,26 @@ private theorem floor_or_crossing_of (hsrc : RowsAbove tr H G y i (tr.state y i)
   omega
 
 end Geometry
+
+/-- The scoped floor argument needs a fault bound, not the Sleepy regime. Only honest rows
+whose entry height is at least the reader's `h_j` need source witnesses. -/
+theorem floor_or_crossing_scoped (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    (hsrc : ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →
+      (tr.state y i).fg.hj ≤ ((tr.state y i).fg.σ a.T).h →
+      ∃ D, G D ∧ IsHonestSource tr H D a.T)
+    (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
+    (hB : B ∈ (tr.state y i).fg.tree) :
+    (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h ∨
+      ∃ D E X, G D ∧ IsHonestSource tr H D E.root ∧ E ∈ (tr.state y i).fg.tree ∧
+        (tr.state y i).fg.Anc B E ∧
+        ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.headHeightFloor ∧
+        X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧
+        (tr.state y i).fg.IsViable X :=
+  floor_or_crossing_of hrun hnc hf hy hsrc hGG hGB hB
 
 section Wrappers
 
