@@ -46,12 +46,12 @@ theorem viable_witness_retention : ViableWitnessRetention :=
 the two-window drain", §7 HS.2; `hs234-exact-interface.md` §3, assembled in `Drain`). -/
 theorem clean_lock_drain : CleanLockDrain := by
   intro sp ro dg H tr g ΔF Gp w i₀ m c hrun hs hc hp hw
-  refine ⟨fun _ hx _ _ _ _ ho hj hi _ hy _ _ _ hv hjs hk => ⟨fun he =>
-      clean_fast_next hrun hs hc hp hw hx ho hj hi hy hv he hk, fun _ =>
-      clean_fast_later hrun hs hc hp hw hx ho hj hi hy hv hjs hk⟩,
-    fun _ hx _ _ _ ho hj hi _ hy _ _ _ hv hjs hk => ⟨fun he =>
-      clean_slow_next hrun hs hc hp hw hx ho hj hi hy hv he hk, fun _ =>
-      clean_slow_later hrun hs hc hp hw hx ho hj hi hy hv hjs hk⟩,
+  refine ⟨fun _ hx _ _ _ _ ho hj _ _ hy _ _ _ hv hjs hk => ⟨fun he =>
+      clean_fast_next hrun hs hc hw hx ho hj hy hv he hk, fun _ =>
+      clean_fast_later hrun hs hc hw hx ho hj hy hv hjs hk⟩,
+    fun _ hx _ _ _ ho hj _ _ hy _ _ _ hv hjs hk => ⟨fun he =>
+      clean_slow_next hrun hs hc hw hx ho hj hy hv he hk, fun _ =>
+      clean_slow_later hrun hs hc hw hx ho hj hy hv hjs hk⟩,
     fun _ _ _ _ _ hr _ _ hl => live_lock_clean hr hl,
     fun _ _ hP hr _ hy _ _ _ hv he hk _ hl hls _ hL hLr =>
       live_lock_below_proposal hrun hs hc hp hw hP hr hy hv he hk hl hls hL hLr⟩

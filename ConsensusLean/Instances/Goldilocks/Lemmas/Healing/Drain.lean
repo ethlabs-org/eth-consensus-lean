@@ -8,20 +8,21 @@ public section
 
 `hs234-exact-interface.md` §3, under the settled context `Γ` of §1 (`DrainCommon`).
 
-* **Extension** (proved from §2's contracts): every in-phase honest vote of a slot `> j` extends
-  a clean origin's stored block `B` (`clean_fast_extends`, `clean_slow_extends`), by induction on
-  the cut of the vote (the first violating event): a vote whose `fc_root` is above `B` extends it;
-  a slot-`(j+1)` vote by A1.2 for a fast origin (`first_transfer_stored`, with `Carry` and frozen
-  viability from §2.1 and `Sync` from `GST(g)` after `ḡ ≤ t_j`) or by the slow first transfer
-  (`clean_slow_first_extends`, open) for a slow one; a later vote by A1.3 (`next_transfer`) from
-  the preceding honest batch (half of the committee and `f < h_t` after `c_z`, its `Carry` by
-  §2.1).
+* **Extension** (proved): every in-phase honest vote of a slot `> j` extends a clean origin's
+  stored block `B` (`clean_fast_extends`, `clean_slow_extends`), by induction on the cut of the
+  vote (the first violating event): a vote whose `fc_root` is above `B` extends it; a
+  slot-`(j+1)` vote by A1.2 for a fast origin (`first_transfer_stored`, with `Carry` and frozen
+  viability from §2.1 and `Sync` from `GST(g)` after `ḡ ≤ t_j`) or by A1.8 for the ancestor `B`
+  of the update's result for a slow one (`clean_slow_first_extends`, `result_transfer_anc`, the
+  live locks compared with `B` by `slow_live_locks_anc`); a later vote by A1.3
+  (`next_transfer`) from the preceding honest batch (half of the committee and `f < h_t` after
+  `c_z`, its `Carry` by §2.1).
 * **HS.2 (1), (2)** at the next slot and later (`clean_fast_next`, `clean_fast_later`,
   `clean_slow_next`, `clean_slow_later`): extension with §2.1's viability and `Carry`.
 * **HS.2 (3), the drain** (`live_lock_clean`, proved): a lock live at a time `≥ r` keeps its
   label `l` with `slot(now) ≤ l + k`, so `l ≥ a + k + 2`.
 * **HS.2 (3), the proposal boundary** (`live_lock_below_proposal`, proved from the open
-  `clean_fast_proposal`, `clean_slow_proposal`, with `stored_slow_lock_provenance`): a live lock of
+  `clean_fast_proposal`, `clean_slow_proposal` and `stored_slow_lock_provenance`): a live lock of
   a slot-`s` voter is the viable ancestor of a stored lock, below the stored block of the voter's
   own clean origin of its label (the drain), which the honest slot-`s` proposal extends unless it
   is at or below the voter's `fc_root`. -/
@@ -37,29 +38,101 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### Contracts of §3 (open) and stored slow-lock provenance -/
 
+/-- **The live locks at a slot-`(s+1)` vote after an honest slow lock on `D`**, compared with a
+block `B ⪯ D` whose earlier slot-`(s+1)` honest votes extend it (AC/SlowLocks'
+`slow_live_locks`, which compares the exempt label-`(s+1)` optimistic locks with `D` from votes
+extending `D`; here they extend only `B`): a lock of a label `≤ s` sits below a stored lock,
+compatible with the writer's saved result, which extends `D ⪰ B` (`slow_stored_locks`); a lock of
+label `s + 1` is optimistic over three quarters of the committee, whose honest votes extend
+`B`. -/
+private theorem slow_live_locks_anc {FGP : Type} {ro' : ReplayOrder sp FGP}
+    {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro'} (hS : SA.HealthyBase T H U g)
+    {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat} {D B : SA.Blk sp.n FGP}
+    (hsl : SA.SlowLockAt T x i₀ s D) (hBD : Anc U B D)
+    (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro')} {e : SA.Em sp FGP}
+    (hc : SA.CastAt T y i ℓ e) (hes : e.msg.slot = s + 1)
+    (hE : SA.EarlierVotesExtend T H U i (s + 1) B) :
+    ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (T.time i), Compatible U L B := by
+  have hrun := hS.run
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  have hsi : e.msg.slot = sp.slot (T.time i) := (SA.castAt_spec hr hy hc).2.1
+  have down : ∀ {X Y}, Anc U X Y → Compatible U Y B → Compatible U X B := by
+    rintro X Y hXY (h | h)
+    · exact Or.inl (hXY.trans h)
+    · exact SA.anc_total hU hXY h
+  rintro L ⟨hL, l, ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩, hlL⟩
+  have hLe : L = ℓ.frame.viableAncestor B₀ :=
+    hU.1 (hΦU hL) (hΦU (SA.viableAncestor_anc hΦ hB₀).1) hlL.symm
+  subst hLe
+  refine down (Anc.mono hΦU (SA.anc_viableAncestor _ B₀)) ?_
+  rcases le_or_gt l₀.slot s with hle | hlt
+  · obtain ⟨l₁, hl₁, hsl₁, B₁, hB₁, hB₁r, B₀', hB₀', hB₀'r, hA⟩ :=
+      SA.readPoint_locks_below_stored hr hy hc (show 0 < sp.slot (T.time i) by omega) l₀ hl₀
+        (show l₀.slot ≠ sp.slot (T.time i) by omega)
+    obtain rfl : B₀' = B₀ := hΦ.coherent.1 hB₀' hB₀ (hB₀'r.trans hB₀r.symm)
+    simp only at hlive
+    refine down (Anc.mono hΦU hA) ?_
+    rcases SA.slow_stored_locks hS hx hsl hs hy (by omega) l₁ hl₁ (by omega) (by omega) B₁
+        (hΦU hB₁) hB₁r with h | h
+    · exact SA.anc_total hU h hBD
+    · exact Or.inr (hBD.trans h)
+  · obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
+      SA.lock_origin_readPoint hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
+    obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
+    refine down hL₀D (SA.origin_compatible hU hΦ'U h34 hS.two_faulty_lt fun v hv hvH => ?_)
+    obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
+    obtain ⟨ℓ', hcj⟩ := id hvote
+    have hsj : e'.msg.slot = sp.slot (T.time j) := (SA.castAt_spec hr hvH hcj).2.1
+    have : sp.slot (T.time j) ≤ sp.slot (T.time i) :=
+      SA.slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
+    exact hE _ hvH j hj e' hvote (by omega)
+
 /-- **First transfer of a clean slow origin** (`hs234-exact-interface.md` §3, the slow helper;
-§2.2's ancestor-target score lemma with RR/RO): under `Γ`, at an in-phase honest slot-`(j+1)`
-vote whose `fc_root` is not above the stored block `B` of a clean slow lock of label `j`, given
-`Carry` of the writer's result votes, the frozen viability of `B`, and the earlier in-phase honest
-votes of slots `> j` extending `B`, the vote extends `B`: every saved result of the window extends
-the raw slow selection `S ⪰ B`, every surviving live lock compares with `S` by RR/RO (exempt labels
-`j` and `j + 1` separately), and the score walk reaches `S`. -/
+§2.2's ancestor-target score lemma): under `Γ` (without `Prop⁺`), at an honest slot-`(j+1)` vote,
+given `Carry` of the writer's result votes, the frozen viability of the stored block `B` and the
+earlier honest votes of slots `> j` extending `B`, the vote extends `B`. This is A1.8 for the
+ancestor `B ⪯ D ⪯ C` of the update's result `C` (`result_transfer_anc`: the counted supporters
+of `C` support every child towards `B`): the live locks compare with `B`
+(`slow_live_locks_anc`: the window's saved results by RR/RO, the exempt label-`(j+1)` optimistic
+locks over earlier honest votes), and the writer's pool covers the vote's merged view
+(`writer_merged`, `Sync` from `ḡ`). -/
 theorem clean_slow_first_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
-    (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : StoredSlowLockAt tr x i j B)
-    (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1)) (hi : PhaseOn tr.projFG H i₀ i m c)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n}
+    (hx : x ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : StoredSlowLockAt tr x i j B) (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1))
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e)
-    (he : e.msg.slot = j + 1) (hk : PhaseOn tr.projFG H i₀ k m c)
+    (he : e.msg.slot = j + 1)
     (hprior : ∀ z ∈ H, ∀ k' < k, ∀ e', SA.VoteAt tr.projAC z k' e' → j < e'.msg.slot →
       SA.VoteExtends (tr.HonestBlocks H) e'.msg B)
-    (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
     (hcarry : ∀ C CV, SA.ResultAt tr.projAC x i j C CV →
       SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV)
     (hviab : B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  sorry
+  have hS := healthyBase_of_hs hrun hs hc
+  have hr := hS.run.localRun
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hw8 := gbar_add_le_of_settled hw
+  obtain ⟨ℓw, D, hcw, hsl, rfl⟩ := ho
+  obtain ⟨ℓX, C, hupd, hconf, -, hdeep, -⟩ := id hsl
+  obtain rfl : ℓX = ℓw := Option.some.inj (hupd.1.2.symm.trans hcw.2)
+  have hΦU := (SA.frameIn_of_callAt hr hx hcw).2
+  have hBD : Anc (tr.HonestBlocks H) (ℓX.frame.viableAncestor D) D :=
+    Anc.mono hΦU (SA.anc_viableAncestor _ D)
+  have hDC : Anc (tr.HonestBlocks H) D C := Anc.mono hΦU (SA.deepest_mem hdeep).1.1.2.2
+  have hres : SA.ResultAt tr.projAC x i j C
+      (SA.fastCounted sp (tr.projAC.state x i) ℓX.frame j C) := ⟨ℓX, hupd, hconf, rfl⟩
+  have hjt : w + 4 * sp.Δ ≤ sp.ts j :=
+    hj.trans ((SA.ts_le_iff sp).2 (by have := sp.two_le_k; omega))
+  rw [he] at hviab
+  exact SA.result_transfer_anc sp hS.run hx hres (hBD.trans hDC) hy hv he (hcarry _ _ hres)
+    (Or.inl hviab)
+    (slow_live_locks_anc hS hx hsl hBD (by linarith) hy hv he
+      fun z hz k' hk' e' hv' hs' => hprior z hz k' hk' e' hv' (by omega))
+    (SA.writer_merged hS.run hx hupd hy hv he (hS.syncAC (by linarith) _))
 
 /-- **Proposal-boundary transfer of a clean fast origin** (`hs234-exact-interface.md` §2.2 last
 paragraph, §3 last paragraph): under `Γ`, let `P` be the honest proposal of a slot `s > j` with
@@ -67,7 +140,18 @@ paragraph, §3 last paragraph): under `Γ`, let `P` be the honest proposal of a 
 stored block `B`, before which every in-phase honest vote of a slot `> j` extends `B`. Then `P`
 extends `B`, or `B` is at or below `y`'s `fc_root`: the proposal walk over the full previous-slot
 pool and the full viable tree reaches `B` (first transfer at `s = j + 1`, including a retrospective
-regular write; the unanimous honest batch after). -/
+regular write; the unanimous honest batch after).
+
+Open. The parts: (i) the proposal's cut precedes the vote's cut (at an early vote the voter holds
+`P`, which it accepted after the proposer's own block call: `block_unforgeable`, as HS.3's
+private `proposal_before_holder`), so the proposer's read is in the phase and every honest vote it
+reads is covered by `hprior`; (ii) `B` is viable in the proposer's full tree (HS.1 (c) for the
+witness `W` of `viable_of_clean_vote`, relayed to the proposer by `t_s`); (iii) for `s > j + 1`,
+ProposalCore's `batch_proposal`; (iv) for `s = j + 1` only an optimistic origin is possible (a
+regular write is at `t_j + 6Δ`, after the vote), and `optimistic_first_proposal` is stated for the
+raw selection `D` with `HighLocksCompatible … D`, while the in-phase votes are known to extend
+only `B ⪯ D` (the exempt label-`(j+1)` optimistic locks compare with `B`): it needs an
+ancestor-target variant, as `result_transfer_anc` is for A1.8. -/
 theorem clean_fast_proposal (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
     (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
@@ -85,7 +169,9 @@ theorem clean_fast_proposal (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
 
 /-- **Proposal-boundary transfer of a clean slow origin** (`hs234-exact-interface.md` §2.2 last
 paragraph, §3 last paragraph): as `clean_fast_proposal`, for a slow lock of label `j` with
-`t_{j−k+1} ≥ w + 4Δ` and stored block `B`. -/
+`t_{j−k+1} ≥ w + 4Δ` and stored block `B`. Open, with the parts of `clean_fast_proposal`; at
+`s = j + 1` ProposalCore's `result_first_proposal` already takes an ancestor `B ⪯ C` of the
+result (low locks by `slow_stored_locks`, high locks by RR/RO and the earlier votes). -/
 theorem clean_slow_proposal (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
     (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
@@ -131,8 +217,8 @@ private theorem faultBound_proj (hrun : GoldilocksRun dg H tr) (hs : HSShared tr
 frozen viability at every in-phase honest vote of a slot `> j` (from the earlier votes), every
 such vote extends `B`. -/
 private theorem origin_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ))
-    (hw : SettledIn tr H g w i₀ m c) {j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
+    {j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hj : w + 4 * sp.Δ ≤ sp.ts j)
     (hfirst : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = j + 1 →
       PhaseOn tr.projFG H i₀ k m c → ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot →
@@ -141,8 +227,6 @@ private theorem origin_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr 
       SA.VoteExtends (tr.HonestBlocks H) e.msg B)
     (hviab : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c →
-      (∀ z ∈ H, ∀ k' < k, ∀ e', SA.VoteAt tr.projAC z k' e' → j < e'.msg.slot →
-        SA.VoteExtends (tr.HonestBlocks H) e'.msg B) →
       B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
         Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
     ∀ k, ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
@@ -188,31 +272,28 @@ private theorem origin_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr 
   refine SA.next_transfer sp _ ro H _ tr.projAC hrun' m' y k B ℓ e hy hv hm' hall
     (half_committee_of_healthy hrun hs (cutZ_le_of_clean hw (hj.trans hjm)))
     (honest_batch_carry hrun hs hc hw (hj.trans hjm) hall hy hv hm'
-      (hviab y hy k ℓ e hv hjs hk hprior) hBf)
+      (hviab y hy k ℓ e hv hjs hk) hBf)
     (faultBound_proj hrun hs hy ((cutZ_le_of_clean hw hj).trans (hjm.trans hmk)))
     (Compose.syncAC_mono hsync0 le_rfl hle) ?_ ?_
   · rw [← hm']
-    exact Or.inl ((hviab y hy k ℓ e hv hjs hk hprior).resolve_right hBf)
+    exact Or.inl ((hviab y hy k ℓ e hv hjs hk).resolve_right hBf)
   · rw [← hm']
     exact fun z hz j' hj' e' hv' hsl' => hprior z hz j' hj' e' hv' (hsl' ▸ hjs)
 
 /-- **Extension of a clean fast origin** (§3): every in-phase honest vote of a slot `> j`
 extends the stored block `B`. -/
 theorem clean_fast_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
-    (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
+    {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (ho : Compose.StoredFastLockAt tr x i j B CV) (hj : w + 4 * sp.Δ ≤ sp.ts j)
-    (hi : PhaseOn tr.projFG H i₀ i m c) :
+    (ho : Compose.StoredFastLockAt tr x i j B CV) (hj : w + 4 * sp.Δ ≤ sp.ts j) :
     ∀ k, ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hrun hs.noColl
   have hr := hrun'.localRun
   refine origin_extends hrun hs hc hw hj (fun y hy k ℓ e hv h1 hk hBf hprior => ?_)
-    (fun y hy k ℓ e hv hjs hk hprior =>
-      clean_fast_viable hrun hs hc hp hw hx ho hj hi hy hv hjs hk hprior)
-  have hviab := (clean_fast_viable hrun hs hc hp hw hx ho hj hi hy hv (by omega) hk
-    hprior).resolve_right hBf
+    (fun _ hy _ _ _ hv hjs hk => clean_fast_viable hrun hs hc hw hx ho hj hy hv hjs hk)
+  have hviab := (clean_fast_viable hrun hs hc hw hx ho hj hy hv (by omega) hk).resolve_right hBf
   obtain ⟨-, hle⟩ := Compose.cast_head_fcRoot hr hy hv
   have h0 := hr.time_nonneg k
   have htk : sp.ts e.msg.slot ≤ tr.time k :=
@@ -222,7 +303,7 @@ theorem clean_fast_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg
     ((le_gbar g).trans (gbar_le_of_clean hw hj))
   have hsync0 := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
     tr ΔF _ _ hrun.toLocalRun hsync
-  have hcarry := clean_fast_carry hrun hs hc hp hw hx ho hj hi hy hv h1 hk hprior hBf
+  have hcarry := clean_fast_carry hrun hs hc hw hx ho hj hy hv h1 hk hBf
   obtain ⟨ℓw, D, hcw, hflD, hBD⟩ := ho
   have hΦwU := (SA.frameIn_of_callAt hr hx hcw).2
   refine SA.first_transfer_stored sp hrun' hx hflD
@@ -242,66 +323,58 @@ private theorem clean_of_slow {j : Nat} (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int)
 /-- **Extension of a clean slow origin** (§3): every in-phase honest vote of a slot `> j`
 extends the stored block `B`. -/
 theorem clean_slow_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
-    (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
+    {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : StoredSlowLockAt tr x i j B)
-    (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1)) (hi : PhaseOn tr.projFG H i₀ i m c) :
+    (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1)) :
     ∀ k, ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg B :=
   origin_extends hrun hs hc hw (clean_of_slow hj)
     (fun _ hy _ _ _ hv h1 hk hBf hprior =>
-      clean_slow_first_extends hrun hs hc hp hw hx ho hj hi hy hv h1 hk hprior hBf
-        (fun _ _ hC => clean_slow_carry hrun hs hc hp hw hx ho hj hi hy hv h1 hk hprior hC hBf)
-        ((clean_slow_viable hrun hs hc hp hw hx ho hj hi hy hv (by omega) hk
-          hprior).resolve_right hBf))
-    (fun _ hy _ _ _ hv hjs hk hprior =>
-      clean_slow_viable hrun hs hc hp hw hx ho hj hi hy hv hjs hk hprior)
+      clean_slow_first_extends hrun hs hc hw hx ho hj hy hv h1 hprior
+        (fun _ _ hC => clean_slow_carry hrun hs hc hw hx ho hj hy hv h1 hk hC hBf)
+        ((clean_slow_viable hrun hs hc hw hx ho hj hy hv (by omega) hk).resolve_right hBf))
+    (fun _ hy _ _ _ hv hjs hk => clean_slow_viable hrun hs hc hw hx ho hj hy hv hjs hk)
 
 /-! ### HS.2 (1), (2) -/
 
 /-- **HS.2 (1) at the next slot** (`hs234-exact-interface.md` §3 `clean_fast_next`). -/
 theorem clean_fast_next (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
-    (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
+    {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (ho : Compose.StoredFastLockAt tr x i j B CV) (hj : w + 4 * sp.Δ ≤ sp.ts j)
-    (hi : PhaseOn tr.projFG H i₀ i m c) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : SA.CastAt tr.projAC y k ℓ e) (he : e.msg.slot = j + 1)
     (hk : PhaseOn tr.projFG H i₀ k m c) :
     VoteKeeps tr H ℓ e B ∧
       (¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot →
         SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV) := by
-  have hext := clean_fast_extends hrun hs hc hp hw hx ho hj hi
-  have hprior : ∀ z ∈ H, ∀ k' < k, ∀ e', SA.VoteAt tr.projAC z k' e' → j < e'.msg.slot →
-      SA.VoteExtends (tr.HonestBlocks H) e'.msg B :=
-    fun z hz k' hk' e' ⟨ℓ', hc', he'⟩ hs' =>
-      hext k' z hz ℓ' e' ⟨hc', he'⟩ hs' (hk.mono_right hk'.le)
+  have hext := clean_fast_extends hrun hs hc hw hx ho hj
   exact ⟨⟨hext k y hy ℓ e hv (by omega) hk,
-    clean_fast_viable hrun hs hc hp hw hx ho hj hi hy hv (by omega) hk hprior⟩,
-    clean_fast_carry hrun hs hc hp hw hx ho hj hi hy hv he hk hprior⟩
+    clean_fast_viable hrun hs hc hw hx ho hj hy hv (by omega) hk⟩,
+    clean_fast_carry hrun hs hc hw hx ho hj hy hv he hk⟩
 
 /-- **HS.2 (1) at a later slot** (`hs234-exact-interface.md` §3, the propagation helper). -/
 theorem clean_fast_later (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
-    (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
+    {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (ho : Compose.StoredFastLockAt tr x i j B CV) (hj : w + 4 * sp.Δ ≤ sp.ts j)
-    (hi : PhaseOn tr.projFG H i₀ i m c) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : SA.CastAt tr.projAC y k ℓ e) (hjs : j < e.msg.slot)
     (hk : PhaseOn tr.projFG H i₀ k m c) : VoteKeeps tr H ℓ e B := by
-  have hext := clean_fast_extends hrun hs hc hp hw hx ho hj hi
-  exact ⟨hext k y hy ℓ e hv hjs hk, clean_fast_viable hrun hs hc hp hw hx ho hj hi hy hv hjs hk
-    fun z hz k' hk' e' ⟨ℓ', hc', he'⟩ hs' =>
-      hext k' z hz ℓ' e' ⟨hc', he'⟩ hs' (hk.mono_right hk'.le)⟩
+  have hext := clean_fast_extends hrun hs hc hw hx ho hj
+  exact ⟨hext k y hy ℓ e hv hjs hk, clean_fast_viable hrun hs hc hw hx ho hj hy hv hjs hk⟩
 
 /-- **HS.2 (2) at the next slot** (`hs234-exact-interface.md` §3, the slow helper). -/
 theorem clean_slow_next (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
-    (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
+    {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : StoredSlowLockAt tr x i j B)
-    (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1)) (hi : PhaseOn tr.projFG H i₀ i m c)
+    (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1))
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e)
     (he : e.msg.slot = j + 1) (hk : PhaseOn tr.projFG H i₀ k m c) :
@@ -309,28 +382,22 @@ theorem clean_slow_next (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g 
       ∀ C CV, SA.ResultAt tr.projAC x i j C CV →
         ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot →
         SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV := by
-  have hext := clean_slow_extends hrun hs hc hp hw hx ho hj hi
-  have hprior : ∀ z ∈ H, ∀ k' < k, ∀ e', SA.VoteAt tr.projAC z k' e' → j < e'.msg.slot →
-      SA.VoteExtends (tr.HonestBlocks H) e'.msg B :=
-    fun z hz k' hk' e' ⟨ℓ', hc', he'⟩ hs' =>
-      hext k' z hz ℓ' e' ⟨hc', he'⟩ hs' (hk.mono_right hk'.le)
+  have hext := clean_slow_extends hrun hs hc hw hx ho hj
   exact ⟨⟨hext k y hy ℓ e hv (by omega) hk,
-    clean_slow_viable hrun hs hc hp hw hx ho hj hi hy hv (by omega) hk hprior⟩,
-    fun _ _ hC hroot => clean_slow_carry hrun hs hc hp hw hx ho hj hi hy hv he hk hprior hC hroot⟩
+    clean_slow_viable hrun hs hc hw hx ho hj hy hv (by omega) hk⟩,
+    fun _ _ hC hroot => clean_slow_carry hrun hs hc hw hx ho hj hy hv he hk hC hroot⟩
 
 /-- **HS.2 (2) at a later slot** (`hs234-exact-interface.md` §3, the propagation helper). -/
 theorem clean_slow_later (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
-    (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
+    {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : StoredSlowLockAt tr x i j B)
-    (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1)) (hi : PhaseOn tr.projFG H i₀ i m c)
+    (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1))
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e)
     (hjs : j < e.msg.slot) (hk : PhaseOn tr.projFG H i₀ k m c) : VoteKeeps tr H ℓ e B := by
-  have hext := clean_slow_extends hrun hs hc hp hw hx ho hj hi
-  exact ⟨hext k y hy ℓ e hv hjs hk, clean_slow_viable hrun hs hc hp hw hx ho hj hi hy hv hjs hk
-    fun z hz k' hk' e' ⟨ℓ', hc', he'⟩ hs' =>
-      hext k' z hz ℓ' e' ⟨hc', he'⟩ hs' (hk.mono_right hk'.le)⟩
+  have hext := clean_slow_extends hrun hs hc hw hx ho hj
+  exact ⟨hext k y hy ℓ e hv hjs hk, clean_slow_viable hrun hs hc hw hx ho hj hy hv hjs hk⟩
 
 /-! ### HS.2 (3): the drain and the proposal boundary -/
 
@@ -389,7 +456,7 @@ theorem live_lock_below_proposal (hrun : GoldilocksRun dg H tr) (hs : HSShared t
   · obtain ⟨r, hrk, O, hO, hLO⟩ :=
       stored_slow_lock_provenance hrun hs.noColl hy k l₀ hl₀ hf
     have hj := hclean.2 hf
-    have hext := clean_slow_extends hrun hs hc hp hw hy hO hj (hk.mono_right hrk.le)
+    have hext := clean_slow_extends hrun hs hc hw hy hO hj
     exact key O hLO (clean_slow_proposal hrun hs hc hp hw hy hO hj (hk.mono_right hrk.le) hP hr
       hls hy hv he hk hrk fun z hz k' hk' e' ⟨ℓ', hc', he'⟩ hs' =>
         hext k' z hz ℓ' e' ⟨hc', he'⟩ hs' (hk.mono_right hk'.le))
@@ -398,7 +465,7 @@ theorem live_lock_below_proposal (hrun : GoldilocksRun dg H tr) (hs : HSShared t
     have hO : Compose.StoredFastLockAt tr y r l₀.slot (ℓ'.frame.viableAncestor D) CV :=
       ⟨ℓ', D, hcw, hfl, rfl⟩
     have hj := hclean.1 hf
-    have hext := clean_fast_extends hrun hs hc hp hw hy hO hj (hk.mono_right hrk.le)
+    have hext := clean_fast_extends hrun hs hc hw hy hO hj
     exact key _ hLO (clean_fast_proposal hrun hs hc hp hw hy hO hj (hk.mono_right hrk.le) hP hr
       hls hy hv he hk hrk fun z hz k' hk' e' ⟨ℓ'', hc', he'⟩ hs' =>
         hext k' z hz ℓ'' e' ⟨hc', he'⟩ hs' (hk.mono_right hk'.le))
