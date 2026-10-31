@@ -10,7 +10,39 @@ public section
 
 `ac_projection` and `fg_projection` are in `Run/ACProjection` and `Run/FGProjection`. -/
 
-namespace Consensus.Goldilocks.Compose
+namespace Consensus.Goldilocks
+
+/-- Source-window service with inclusive lower bound and recipient-deadline cutoff.
+The relay is actual acceptance; network receipt alone does not supply it. -/
+structure RunTrace.SyncWindowBefore {P : Params} {A : NodeAC P} (tr : RunTrace A)
+    (H : Set (Fin P.n)) (ΔF a b : Time) : Prop where
+  deltaF : P.Δ ≤ ΔF
+  message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m → a ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
+      tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
+      tr.MsgDeliveredBy y j (tr.time i) (tr.time i) m
+  block : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B ∨ tr.OwnBlockAt x i B → a ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
+      tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
+      tr.BlockDeliveredBy y j (tr.time i) (tr.time i) B
+  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → a ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
+      tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
+      Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
+      tr.BlockAcceptedBy y j (tr.time i) B
+  attestation : ∀ x ∈ H, ∀ i att, tr.SendOrAdmitAttAt x i att → a ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) ΔF ≤ b →
+      tr.deadline y j (tr.time i) ΔF ≤ tr.time j →
+      tr.AttDeliveredBy y j (tr.time i) (tr.time i) ΔF att
+
+/-- At source lower bound zero the existing finite service contract is unchanged. -/
+theorem syncWindowBefore_zero_iff {P : Params} {A : NodeAC P} {tr : RunTrace A}
+    {H : Set (Fin P.n)} {ΔF b : Time} :
+    tr.SyncWindowBefore H ΔF 0 b ↔ tr.SyncBefore H ΔF b :=
+  ⟨fun h => ⟨h.deltaF, h.message, h.block, h.relay, h.attestation⟩,
+    fun h => ⟨h.deltaF, h.message, h.block, h.relay, h.attestation⟩⟩
+
+namespace Compose
 
 open Node
 
@@ -42,11 +74,12 @@ theorem projAC_deadline (y : Fin P.n) (k : Nat) (τ : Time) :
     tr.projAC.deadline y k τ = tr.deadline y k τ P.Δ := by
   simp only [ACTrace.deadline, RunTrace.deadline, projAC_lastWake]
 
-/-- Deadline-bounded service projects without assuming service after the finite horizon. -/
-theorem syncBefore_projection {proposer : Nat → Fin P.n}
-    {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {ΔF b : Time}
-    {sg : A.Msg → Fin P.n} (h : LocalRun proposer dg H sg tr) (hs : tr.SyncBefore H ΔF b) :
-    SyncACBefore H (tr.HonestBlocks H) b tr.projAC := by
+/-- Projection preserves both the inclusive source bound and recipient-deadline cutoff. -/
+theorem syncWindowBefore_projection {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {ΔF a b : Time}
+    {sg : A.Msg → Fin P.n} (h : LocalRun proposer dg H sg tr)
+    (hs : tr.SyncWindowBefore H ΔF a b) :
+    SyncACWindowBefore H (tr.HonestBlocks H) a b tr.projAC := by
   refine ⟨fun x hx i m hsa hai y hy j ℓ hc hdb hdl => ?_,
     fun x hx i B hacc hai y hy j ℓ hc hdb hdl hanc => ?_⟩
   · obtain ⟨ℓ₀, hc₀, hm⟩ := hsa
@@ -82,6 +115,14 @@ theorem syncBefore_projection {proposer : Nat → Fin P.n}
     rw [projAC_deadline, htk, ← hti]
     simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
     exact hlt
+
+/-- Deadline-bounded service projects without assuming service after the finite horizon. -/
+theorem syncBefore_projection {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {ΔF b : Time}
+    {sg : A.Msg → Fin P.n} (h : LocalRun proposer dg H sg tr) (hs : tr.SyncBefore H ΔF b) :
+    SyncACBefore H (tr.HonestBlocks H) b tr.projAC :=
+  (syncACWindowBefore_zero_iff _ _ _ _).mp
+    (syncWindowBefore_projection h (syncWindowBefore_zero_iff.mpr hs))
 
 /-- **`Sync` projects**: a send or admission of the AC projection is the run's, and its
 processing is the run's; an `ac_on_block(B)` follows the FG acceptance of `B` at its time, whose
@@ -257,6 +298,8 @@ theorem joined_projection : JoinedProjection := by
 
 end
 
-end Consensus.Goldilocks.Compose
+end Compose
+
+end Consensus.Goldilocks
 
 end

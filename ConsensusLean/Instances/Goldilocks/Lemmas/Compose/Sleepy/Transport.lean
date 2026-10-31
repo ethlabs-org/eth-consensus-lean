@@ -209,7 +209,7 @@ private theorem carryAt_of_writer_service
     {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
     (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a b T ∨
-      SyncACBefore H U (T.time i) T)
+      SyncACWindowBefore H U a (T.time i) T)
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
       ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
@@ -253,7 +253,7 @@ private theorem carryAt_of_writer_service
           linarith [hdl i le_rfl _ hkwt]
         have delivered := hsync.elim
           (fun h => h.2 w hw kw Hv hkw hakw (by linarith) y hy i ℓ hc.1 hdi hFHv)
-          (fun h => h.relay w hw kw Hv hkw (hr.time_nonneg kw) y hy i ℓ hc.1 hdi hdi hFHv)
+          (fun h => h.relay w hw kw Hv hkw hakw y hy i ℓ hc.1 hdi hdi hFHv)
         obtain ⟨ky, hky, hacc', hkyt⟩ := delivered
         exact Or.inr ⟨ky, hacc', hkyt.trans (hdl ky hky _ hkwt)⟩
       · exact hold kw Hv hkw (not_le.1 hakw) hFHv
@@ -273,7 +273,7 @@ private theorem carryAt_of_writer_service
       linarith [hdl i le_rfl _ hk2]
     have delivered := hsync.elim
       (fun h => h.1 w hw k v hsend (ha.trans hk1) (by linarith) y hy i ℓ hc.1 hdi)
-      (fun h => h.message w hw k v hsend (hr.time_nonneg k) y hy i ℓ hc.1 hdi hdi)
+      (fun h => h.message w hw k v hsend (ha.trans hk1) y hy i ℓ hc.1 hdi hdi)
     obtain ⟨k', hk'i, hkk', hp, hk'dl⟩ := delivered
     have hk'lt : T.time k' < sp.ts s + 3 * sp.Δ := hk'dl.trans (hdl k' hk'i _ hk2)
     obtain ⟨ℓ', hc', -⟩ := id hp
@@ -338,6 +338,36 @@ theorem carryAt_of_writer_win (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T
     SA.CarryAt T U y i e s CV :=
   carryAt_of_writer_service hr ha hb hw hy hc hs (Or.inl hsync) hW hold
 
+/-- Windowed writer transport combines new-source service with old-head catch-up. -/
+theorem carryAt_of_writer_window_before (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+    {a κ b : Time} (hsync : SyncACWindowBefore H U a b T) {s : Nat} (ha : a ≤ sp.ts s)
+    (hcatch : CatchACWindowBefore T H U a κ b) (hcatchTime : a + κ ≤ sp.ts s + 3 * sp.Δ)
+    {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) (hi : T.time i ≤ b)
+    {CV : Set (Vote sp.n)}
+    (hW : ∀ v ∈ CV, v.slot = s ∧
+      (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
+      ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
+        (Hv.root = sp.genesisRoot ∨ ∃ k, T.AcceptAt w k Hv ∧ T.time k < sp.ts s + 2 * sp.Δ)) :
+    SA.CarryAt T U y i e s CV := by
+  have restricted : SyncACWindowBefore H U a (T.time i) T := {
+    message := fun x hx k m hm h0 z hz j ℓ hc hd ht =>
+      hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans hi) ht
+    relay := fun x hx k B hB h0 z hz j ℓ hc hd ht hanc =>
+      hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans hi) ht hanc }
+  refine carryAt_of_writer_service hr (b := sp.ts s + 2 * sp.Δ) ha le_rfl
+    hw hy hc hs (Or.inr restricted) hW ?_
+  intro k B hk hka hanc
+  have hslot := (SA.castAt_spec hr hy hc).2.1
+  have hstart : sp.ts (s + 1 : Nat) ≤ T.time i :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by omega)
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  obtain ⟨j, -, hj, hjt⟩ := hcatch.relay w hw k B hk hka y hy i ℓ hc.1
+    (by rw [hts] at hstart; linarith [sp.toParams.hΔ]) hi hanc
+  exact Or.inr ⟨j, hj, hjt.trans_le hcatchTime⟩
+
 /-- Writer transport needs recipient service only up to the receiving vote's time. -/
 theorem carryAt_of_writer_before (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     {b : Time} (hsync : SyncACBefore H U b T) {s : Nat}
@@ -350,18 +380,13 @@ theorem carryAt_of_writer_before (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
       ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
         (Hv.root = sp.genesisRoot ∨ ∃ k, T.AcceptAt w k Hv ∧ T.time k < sp.ts s + 2 * sp.Δ)) :
     SA.CarryAt T U y i e s CV := by
-  have restricted : SyncACBefore H U (T.time i) T := {
-    message := fun x hx k m hm h0 z hz j ℓ hc hd ht =>
-      hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans hi) ht
-    relay := fun x hx k B hB h0 z hz j ℓ hc hd ht ha =>
-      hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans hi) ht ha }
-  exact carryAt_of_writer_service hr (a := 0) (b := sp.ts s + 2 * sp.Δ)
-    (by
-      have hΔ := sp.toParams.hΔ
-      simp only [SAParams.ts]
-      exact mul_nonneg (by linarith) (Int.natCast_nonneg s))
-    le_rfl hw hy hc hs (Or.inr restricted) hW
-    fun k _ _ hk _ => absurd hk (not_lt.2 (hr.time_nonneg k))
+  have hs0 : 0 ≤ sp.ts s := by
+    have := sp.toParams.hΔ
+    simp only [SAParams.ts]
+    positivity
+  exact carryAt_of_writer_window_before hr ((syncACWindowBefore_zero_iff _ _ _ _).mpr hsync) hs0
+    (κ := 0) ⟨fun _ _ k _ _ hk => absurd hk (not_lt.2 (hr.time_nonneg k))⟩
+    (by linarith [sp.toParams.hΔ]) hw hy hc hs hi hW
 
 /-- **`Carry_y` from a writer.** For an honest `y` casting its slot-`(s+1)` vote, under `Sync`
 from `0` to at least `t_s + 2Δ`: if each counted vote is of slot `s`, was sent or admitted by an
@@ -667,6 +692,22 @@ theorem optimistic_carry (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
   optimistic_carry_upTo hrun hnc (hsl.prefix (le_max_right (tr.time i) 0)) hx hO hy hc hs
     (le_max_left _ _) hF
 
+/-- A result's writer pool needs only sources since the result slot's start. -/
+theorem result_writer_pool_window_before {a b : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
+    {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat} (ha : a ≤ sp.ts s)
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hR : SA.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
+    ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
+      v ∈ (tr.projAC.state X i₀).pool s ∨
+        v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} := by
+  obtain ⟨ℓX, hupd, -, -⟩ := hR
+  exact SA.writer_merged_window_before (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
+    hsync hX ha hupd hi₀ hy hc hs
+
 /-- A1.8 (d) uses AC recipient service only through the result's writer update. -/
 theorem result_writer_pool_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
@@ -678,10 +719,9 @@ theorem result_writer_pool_before {b : Time} (hrun : GoldilocksRun proposer dg H
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
     ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.projAC.state X i₀).pool s ∨
-        v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} := by
-  obtain ⟨ℓX, hupd, -, -⟩ := hR
-  exact SA.writer_merged_before (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
-    hsync hX hupd hi₀ hy hc hs
+        v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} :=
+  result_writer_pool_window_before hrun hnc ((syncACWindowBefore_zero_iff _ _ _ _).mpr hsync)
+    hX (by have := sp.toParams.hΔ; simp only [SAParams.ts]; positivity) hR hi₀ hy hc hs
 
 /-- **A1.8 (d) on the window from slot `s₀ ≤ s` to `b`**, for a result within `b`. -/
 theorem result_writer_pool_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
