@@ -107,6 +107,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
