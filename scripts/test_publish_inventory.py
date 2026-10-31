@@ -21,6 +21,8 @@ class GitAPI:
         self.objects = {}
         self.head = None
         self.fail_write = False
+        self.main = A
+        self.advance_main = None
 
     def store(self, data):
         sha = hashlib.sha1(M["encoded"](data)).hexdigest()
@@ -28,6 +30,8 @@ class GitAPI:
         return {"sha": sha}
 
     def request(self, slug, path, data=None, missing=False, method="POST"):
+        if path == "git/ref/heads/main":
+            return {"object": {"sha": self.main}}
         if path == "git/ref/heads/ci-inventory":
             return {"object": {"sha": self.head}} if self.head else None
         if path.startswith("git/commits/"):
@@ -44,6 +48,9 @@ class GitAPI:
             files.update({entry["path"]: entry["sha"] for entry in data["tree"]})
             return self.store(files)
         if path == "git/commits":
+            if self.advance_main:
+                self.main = self.advance_main
+                self.advance_main = None
             return self.store({**data, "tree": {"sha": data["tree"]}})
         if path in ("git/refs", "git/refs/heads/ci-inventory"):
             if self.fail_write:
@@ -106,6 +113,7 @@ class Publication(unittest.TestCase):
         self.assertEqual(self.api.read(f"commits/{A}.json"), initial)
 
     def test_latest_never_regresses_on_recheck_or_retry(self):
+        self.api.main = B
         newer = self.capture(B, date="2026-10-31T02:00:00Z")
         self.publish(newer)
         self.publish(self.capture(A))
@@ -115,6 +123,7 @@ class Publication(unittest.TestCase):
 
     def test_pending_recheck_promotes_main_eligibility_without_replacing_report(self):
         self.publish(self.capture())
+        self.api.main = B
         first = self.capture(B, kind="main-recheck", date="2026-10-31T02:00:00Z", inventory=None)
         self.api.fail_write = True
         with self.assertRaises(RuntimeError):
@@ -129,6 +138,7 @@ class Publication(unittest.TestCase):
 
     def test_failed_atomic_write_preserves_latest_and_outbox_then_retries(self):
         self.publish(self.capture())
+        self.api.main = B
         self.capture(B, date="2026-10-31T02:00:00Z")
         self.api.fail_write = True
         publish = lambda slug, item: M["publish"](slug, item, self.api.request)
@@ -140,6 +150,44 @@ class Publication(unittest.TestCase):
             self.assertEqual(M["flush"](self.home, "fixture/repo"), 0)
         self.assertEqual(self.api.read("latest.json")["commit"], B)
         self.assertFalse(list((self.home / "inventory-outbox").glob("*.json")))
+
+    def test_current_recheck_advances_existing_immutable_report(self):
+        self.publish(self.capture())
+        item = self.capture(B, kind="main-recheck", date="2026-10-30T01:00:00Z", inventory=None)
+        self.publish(item)  # historical initially: record only
+        original = self.api.read(f"commits/{B}.json")
+        self.assertEqual(self.api.read("latest.json")["commit"], A)
+        self.api.main = B
+        self.publish(item)
+        self.assertEqual(self.api.read("latest.json")["commit"], B)
+        self.assertEqual(self.api.read("latest.json")["availability"], "unavailable")
+        self.assertEqual(self.api.read(f"commits/{B}.json"), original)
+
+    def test_main_advances_during_publish_and_retry_rechecks_eligibility(self):
+        self.publish(self.capture())
+        item = self.capture(B, kind="main-recheck")
+        self.api.main = B
+        self.api.advance_main = C
+        with self.assertRaisesRegex(RuntimeError, "main advanced"):
+            self.publish(item)
+        self.assertEqual(self.api.read("latest.json")["commit"], A)
+        self.publish(self.capture(C))
+        self.publish(item)
+        self.assertEqual(self.api.read("latest.json")["commit"], C)
+
+    def test_data_cas_failure_retry_cannot_regress_new_main(self):
+        self.publish(self.capture())
+        item = self.capture(B, kind="main-recheck")
+        self.api.main = B
+        self.api.fail_write = True
+        with self.assertRaises(RuntimeError):
+            self.publish(item)
+        self.api.fail_write = False
+        self.api.main = C
+        self.publish(self.capture(C))
+        self.publish(item)
+        self.assertEqual(self.api.read("latest.json")["commit"], C)
+        self.assertEqual(self.api.read(f"commits/{B}.json")["commit"], B)
 
     def test_invalid_oversize_ambiguous_and_unrelated_old_reports(self):
         old = self.home / "old/check.stale"

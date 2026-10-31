@@ -111,8 +111,11 @@ def publish(slug, item, request=api):
         payload_blob = blob(report)
         changes.append({"path": path, "mode": "100644", "type": "blob", "sha": payload_blob})
     latest = blob_json(files["latest.json"]) if "latest.json" in files else None
-    # Only normal main observations advance latest; old retries cannot move it back.
-    if item["kind"] == "main" and (latest is None or report["checked_at"] > latest["checked_at"]):
+    # A current-head recheck may discover an existing immutable report. Historical
+    # retries/rechecks must not replace discovery, regardless of their timestamps.
+    advance = (latest is None or latest["commit"] != report["commit"]) and (
+        call("git/ref/heads/main")["object"]["sha"] == report["commit"])
+    if advance:
         latest = {"schema_version": 1, "commit": report["commit"], "checked_at": report["checked_at"],
                   "published_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                   "availability": report["availability"],
@@ -128,6 +131,8 @@ def publish(slug, item, request=api):
     tree_sha = call("git/trees", tree_data)["sha"]
     commit_sha = call("git/commits", {"message": f"Inventory for {report['commit']}",
                                       "tree": tree_sha, "parents": [parent] if parent else []})["sha"]
+    if advance and call("git/ref/heads/main")["object"]["sha"] != report["commit"]:
+        raise RuntimeError("main advanced during publication; retained for retry")
     if parent:
         # GitHub refuses a non-fast-forward racing publisher; retry from fresh ref.
         call(f"git/refs/heads/{BRANCH}", {"sha": commit_sha, "force": False}, method="PATCH")

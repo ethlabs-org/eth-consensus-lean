@@ -54,10 +54,14 @@ be rendered as zero sorry or a successful proof status.
 `commits/<full SHA>.json` is first-record-wins, including an unavailable first
 capture. A later successful recheck cannot silently replace it. Git blob URLs
 are content-addressed; reports and latest are published in one atomic data-branch
-commit. Latest advances only for normal main observations with newer `checked_at`,
-not full runs, older rechecks or delayed upload retries. Rechecks still get an
-immutable record if no prior record exists. This assumes the box's UTC clock does
-not move backwards; consumers always verify against observed main regardless.
+commit. Normal main checks and rechecks may advance latest only when their exact
+full source SHA equals freshly read remote main. This includes an existing immutable
+report, even if its original `checked_at` is older. Historical rechecks/retries still
+publish their immutable report but never replace latest. Full runs do not publish.
+Main is checked again immediately before updating the data ref; a changed head
+leaves the upload pending for retry. Concurrent data-ref writes use non-force
+fast-forward protection. GitHub cannot atomically compare main and update a different
+ref: main can move just after the final read, so consumers must still compare SHAs.
 
 Publication failure leaves latest unchanged. Latest alone cannot distinguish an
 upload outage from a pending check: show unknown/pending/stale, retaining the last
