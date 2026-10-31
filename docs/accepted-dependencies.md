@@ -82,21 +82,21 @@ Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbe
 | `Consensus.Goldilocks.Refinement.accepted_healthyLive` | Available/stable branches OPEN; final branch references accepted_healthyLive_final and its explicit supplier route below. |
 | `Consensus.Goldilocks.Refinement.final_window_extract` | OPEN: actual ready four-anchor proposals/cuts on the canonical finite trace, surviving ancestry and carrier processing by query + latency(.final,i)·Δe. Joint accepted_latency synthesis must supply transport slack, not just A3≤deadline. |
 | `Consensus.Goldilocks.Refinement.final_inherited_progress` | OPEN: inherited post-A0 entry has no birth lower bound; if uncrossed through A1's parent, distinct credited/pool current-entry progress reaches quorum. |
-| `Consensus.Goldilocks.Refinement.final_first_crossing` | OPEN, consumes inherited progress: birth-s entry OR first post-A0 crossing by s+d−1 (justify OR timeout); only the latter has exposure age≤d−2. |
+| `Consensus.Goldilocks.Refinement.final_first_crossing` | Body closed conditional on InheritedProgress: birth-s entry OR first post-A0 crossing by s+d−1 (justify OR timeout); only the latter has exposure age≤d−2. Canonical store coherence, actual mandatory inclusion and dedup are derived, not extra premises. |
 | `Consensus.Goldilocks.Refinement.final_row_supply` | OPEN: designated protected first entry/actual bound successor, local no-timeout condition; already justified OR distinct honest exact valid paired targets, prior matching reports/dedup included. Report/delivery bounds apply only to the quorum branch. |
 | `Consensus.Goldilocks.Refinement.final_bounded_crossings` | OPEN, consumes first crossing and row supply: justification by s+d+1, actual bound successor with separate birth-s w≥1/post-A0 w≥2 cases, no timeout before designated service and chain finalization above A0 by A3. |
 | `Consensus.Goldilocks.Refinement.final_cache_acceptance` | OPEN, consumes only A3 chain-finalized coverage of A0, projected from bounded crossings by the assembly: actual cache ancestry at the exact engine-scaled query endpoint and later horizon-bounded ready CutAfter reads. Not arbitrary-delay acceptance or receipt alone. |
 | `Consensus.Goldilocks.Refinement.final_payload_projection` | OPEN: finite node cache coverage to the exact engine ProposalLiveReady endpoint, preserving its reader condition, latency scaling and collision escape. |
-| `Consensus.Goldilocks.Refinement.accepted_healthyLive_final` | Assembly explicitly references extraction, inherited progress, first crossing, row supply, bounded crossings, cache acceptance and payload projection. All seven suppliers remain sorry leaves; no new public Healthy premises. |
+| `Consensus.Goldilocks.Refinement.accepted_healthyLive_final` | Assembly explicitly references extraction, inherited progress, first crossing, row supply, bounded crossings, cache acceptance and payload projection. First crossing is conditionally closed; the other six suppliers remain sorry leaves. No new public Healthy premises; accepted coefficients remain OPEN. |
 | `Consensus.Goldilocks.Refinement.accepted_sleepySafe` | OPEN: finite R.1 localization and engine service/read bridges; Sleepy suppliers above. |
 | `Consensus.Goldilocks.Refinement.accepted_sleepyLive` | OPEN: finite R.2 recurrence, inclusion and deadline transport; Sleepy suppliers above. |
 | `Consensus.Goldilocks.Refinement.accepted_healedSafe` | OPEN: finite preparation plus progress-free preservation, RecRet/base closure. |
 | `Consensus.Goldilocks.Refinement.accepted_persists` | OPEN: R.5 finite pre-outage service and actual repair; no late-wake SyncRun inference. |
 | `Consensus.Goldilocks.Refinement.proposal_releasable` | Proved (f614a12): scheduled proposal dependencies are in the actual engine closure; Steps wrapper of scheduled_proposal_releasable. |
-| `Consensus.Goldilocks.Refinement.simTrace_att_unforgeable` | OPEN: actual canonical attestation origin/authentication history; Healing box, Run. |
+| `Consensus.Goldilocks.Refinement.simTrace_att_unforgeable` | Proved (c52d387): actual canonical attestation origin/authentication history. |
 | `Consensus.Goldilocks.Refinement.simTrace_block_unforgeable` | Proved (f9963e2): valid canonical calls carrying an honest proposer's block have an earlier own-block cut. |
-| `Consensus.Goldilocks.Refinement.simTrace_carried_vote_unforgeable` | OPEN: carried vote source and recursive object history; Healing box, Run. |
-| `Consensus.Goldilocks.Refinement.simTrace_msg_unforgeable` | OPEN: actual message signing/admission provenance; Healing box, Run. |
+| `Consensus.Goldilocks.Refinement.simTrace_carried_vote_unforgeable` | Proved (62d11ce): carried vote source and recursive object history. |
+| `Consensus.Goldilocks.Refinement.simTrace_msg_unforgeable` | Proved (62d11ce): actual message signing/admission provenance. |
 | `Consensus.Goldilocks.Refinement.simTrace_vote_released` | Proved (54a9a89): valid execution plus canonical GoldilocksRun gives release of emitted votes at their emission time. |
 
 ## Ownership and architecture
