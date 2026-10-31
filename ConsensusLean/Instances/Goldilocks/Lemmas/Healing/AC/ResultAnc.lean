@@ -54,6 +54,56 @@ theorem result_transfer_anc {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin
   · exact he ▸ hDt
   · exact (Anc.mem hcore he).2
 
+/-- A strict majority result has an earlier honest counted supporter when its
+participants number at least twice the faulty validators. -/
+theorem result_honest_supporter_of_participants {FGP : Type} {ro : ReplayOrder sp FGP}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U)
+    {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {B C : Blk sp.n FGP}
+    {CV : Set (Vote sp.n)} (hR : ResultAt tr x i s C CV) (hBC : Anc U B C)
+    (hparticipants : 2 * Hᶜ.ncard ≤ (voters {v | v ∈ (tr.state x i).pool s}).ncard) :
+    ∃ z ∈ H, ∃ q < i, ∃ e, VoteAt tr z q e ∧ e.msg ∈ CV ∧
+      e.msg.slot = s ∧ VoteExtends U e.msg B := by
+  have hmaj := result_majority hR
+  obtain ⟨z, ⟨v, hv, hvz⟩, hz⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard
+    (s := Hᶜ) (t := {w | ∃ v ∈ CV, v.val = w}) (by omega)
+  have hzH : z ∈ H := not_not.mp hz
+  obtain ⟨ℓ, hupd, _, hCV⟩ := hR
+  have hv' := hv
+  rw [hCV] at hv'
+  obtain ⟨hvp, _, _, R, hRt, hroot, hCR⟩ := hv'
+  have hvH : v.val ∈ H := hvz.symm ▸ hzH
+  obtain ⟨q, hq, e, he, hmsg⟩ := hrun.honest.pool_vote x hx i s v hvp hvH
+  have hslot := state_pool_slot sp hrun.localRun hx i s v hvp
+  refine ⟨v.val, hvH, q, hq, e, he, hmsg.symm ▸ hv, ?_, ?_⟩
+  · simpa only [hmsg] using hslot
+  · rw [hmsg]
+    have hΦU := (frameIn_of_callAt hrun.localRun hx hupd.1).2
+    exact ⟨R, hΦU hRt, hroot, hBC.trans (Anc.mono hΦU hCR)⟩
+
+/-- Carrying a result carries every ancestor of the result before the freeze.
+This uses a counted head, not an honest-supporter premise. -/
+theorem result_ancestor_accepted_before {FGP : Type} {ro : ReplayOrder sp FGP}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {x y : Fin sp.n} (hx : x ∈ H) {i₀ i s : Nat} {B C : Blk sp.n FGP}
+    {CV : Set (Vote sp.n)} {e : Em sp FGP}
+    (hR : ResultAt tr x i₀ s C CV) (hBC : Anc U B C)
+    (hcarry : CarryAt tr U y i e s CV) :
+    AcceptedBefore tr y B (sp.ts s + 3 * sp.Δ) := by
+  have hmaj := result_majority hR
+  have hne : CV.Nonempty := by
+    by_contra h
+    rw [Set.not_nonempty_iff_eq_empty.mp h] at hmaj
+    simp at hmaj
+  obtain ⟨v, hv⟩ := hne
+  obtain ⟨Hv, hHv, hHvr, hall⟩ := hcarry.heads v hv
+  obtain ⟨ℓ, hupd, _, rfl⟩ := hR
+  obtain ⟨_, _, _, R, hR, hRr, hCR⟩ := hv
+  have hΦU := (frameIn_of_callAt hr hx hupd.1).2
+  obtain rfl : R = Hv := hr.coherent.1 (hΦU hR) hHv (hRr.trans hHvr.symm)
+  exact hall B (hBC.trans (Anc.mono hΦU hCR))
+
 end Consensus.Goldilocks.SA
 
 end
