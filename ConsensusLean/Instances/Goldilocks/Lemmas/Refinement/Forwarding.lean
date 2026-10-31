@@ -394,6 +394,26 @@ noncomputable def dutyBatches {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
       ⟨⟨a.1, nd.seen⟩, rho.signedCandidate v d a.2⟩ else ⟨nd, []⟩
     batch :: dutyBatches rho v (rho.dutyStep v nd d).1 ds
 
+/-- No duties produce no release batches. -/
+theorem dutyBatches_nil {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    {O : OutputSchema} {F : Family O} (rho : Model.Run F E) (v : V)
+    (nd : Model.Node (protoOf F E)) : dutyBatches rho v nd [] = [] := by
+  rfl
+
+/-- The next batch retains its duty position even when unselected; later batches start
+from the actual duty-step result. -/
+theorem dutyBatches_cons {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    {O : OutputSchema} {F : Family O} (rho : Model.Run F E) (v : V)
+    (nd : Model.Node (protoOf F E)) (d : (protoOf F E).Duty)
+    (ds : List (protoOf F E).Duty) :
+    dutyBatches rho v nd (d :: ds) =
+      (let a := (protoOf F E).act nd.st d
+       let batch : ReleaseBatch (protoOf F E) :=
+         if rho.ownKey v ∈ rho.sel ((protoOf F E).role d) then
+           ⟨⟨a.1, nd.seen⟩, rho.signedCandidate v d a.2⟩ else ⟨nd, []⟩
+       batch :: dutyBatches rho v (rho.dutyStep v nd d).1 ds) := by
+  rfl
+
 /-- Actual event batches, including the final gossip batch. No synthetic batch labels are
 allowed: publication indices must select an entry in this list. -/
 noncomputable def eventBatches {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
@@ -415,6 +435,27 @@ noncomputable def eventBatches {V : Type} [Fintype V] [DecidableEq V] {E : Env V
     dutyBatches rho v start ((protoOf F E).deliverDuties t) ++
       [⟨r.1, gossipCandidates (protoOf F E) r.1.st t⟩]
   | _ => []
+
+/-- Characterization by the actual event, without exposing the implementation body. -/
+theorem eventBatches_eq {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    {O : OutputSchema} {F : Family O} (rho : Model.Run F E) (i : Nat) :
+    eventBatches rho i = (match rho.events[i]? with
+      | some (.tick v t) =>
+        let nd := rho.stateBefore i v
+        let start := ⟨(protoOf F E).clock nd.st t (mempool rho.inbox v t), nd.seen⟩
+        if E.awake v t then
+          let r := rho.runDuties v start ((protoOf F E).duties t)
+          dutyBatches rho v start ((protoOf F E).duties t) ++
+            [⟨r.1, gossipCandidates (protoOf F E) r.1.st t⟩]
+        else []
+      | some (.deliver v o t) =>
+        let nd := rho.stateBefore i v
+        let start := ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+        let r := rho.runDuties v start ((protoOf F E).deliverDuties t)
+        dutyBatches rho v start ((protoOf F E).deliverDuties t) ++
+          [⟨r.1, gossipCandidates (protoOf F E) r.1.st t⟩]
+      | _ => []) := by
+  rfl
 
 /-- A real candidate prefix: ties both its state and candidates to the engine event. -/
 def ExecutedPublication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
@@ -553,6 +594,12 @@ theorem publisherExecution_actual_iff (r : Publication (protoOf (compiled (famil
         Model.protects (protoOf (compiled (family S)) E) r.origin nd.seen r.object = true ∧
         (protoOf (compiled (family S)) E).dependencies.ready
           (Model.closure nd.seen) r.object = true := by
+  rfl
+
+/-- Publication time is the time of the actual indexed event. -/
+theorem publisherExecution_eventTime_eq (i : Nat) :
+    (publisherExecution S rho).eventTime i =
+      ((rho.events[i]?).map Model.Event.time).getD 0 := by
   rfl
 
 /-- OPEN: honest signed publication must originate in actual acceptance at the stamp.
