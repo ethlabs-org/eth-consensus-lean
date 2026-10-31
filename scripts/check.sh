@@ -309,14 +309,18 @@ pins_fixture() {  # pins_fixture <case> [options]: fixtures/pins-<case>/ (its ow
 }
 step_pins() {
   set +e
-  local rc=0 want lp lib
+  local rc=0 want lp lib probe
+  local -a env_info=()
   # What Lake actually resolves (overrides, path dependencies, packagesDir) is in LEAN_PATH.
-  lp="$(lake env printenv LEAN_PATH)" && lib="$(lake env lean --print-libdir)" || { echo "  no LEAN_PATH"; rc=1; }
+  # Load Lake once, not three times; still ask its selected Lean for the library and version.
+  probe="$(lake env bash -ec 'printenv LEAN_PATH; lean --print-libdir; lean --version')" || { echo "  no Lake environment"; rc=1; }
+  mapfile -t env_info <<<"$probe"
+  lp="${env_info[0]:-}" lib="${env_info[1]:-}"
   pins_check lean-toolchain lake-manifest.json .lake/package-overrides.json lakefile.toml \
     --lean-path "$lp" --libdir "$lib" || rc=1
   want="$(python3 -I -c 'import tomllib; print(tomllib.load(open("scripts/pins.toml", "rb"))["lean_version"])')"
-  if ! lake env lean --version | grep -F "version $want," >/dev/null; then
-    echo "  lean --version is not $want: $(lake env lean --version)"; rc=1
+  if ! grep -F "version $want," <<<"${env_info[2]:-}" >/dev/null; then
+    echo "  lean --version is not $want: ${env_info[2]:-missing}"; rc=1
   fi
   set -e
   return "$rc"
@@ -1330,6 +1334,7 @@ run_step "0 pins (toolchain + dependencies = scripts/pins.toml)" step_pins
 run_selftest "0 pins self-test (fixtures/pins-*)" selftest_pins
 run_selftest "0 landing cancellation self-test (local Git remotes)" python3 -I scripts/test_push_main.py
 run_selftest "0 box CI parity self-test (local Git remotes)" python3 -I scripts/test_orb_ci.py
+run_selftest "0 warm worktree isolation self-test" python3 -I scripts/test_worktree_setup.py
 if [[ "$mode" == changed ]] && ((${#BUILD_TARGETS[@]} == 0)); then
   skip_step "1 build" "no Lean module changed"
 else

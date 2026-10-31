@@ -10,8 +10,20 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
 ## Working on this repo
 
 - **Worktree per task.** Work on `work/<agent>/<task>` in your own worktree; never in a tree another
-  agent uses. On the shared box, hard-link the packages instead of fetching them:
-  `mkdir -p <wt>/.lake && cp -al <main>/.lake/packages <wt>/.lake/packages`.
+  agent uses. On the shared box, seed a fresh worktree (no `.lake` yet) from a quiescent warm checkout:
+  `python3 -I scripts/worktree-setup.py <warm-source> <wt>` (run the script from a checkout that has it).
+  The toolchain, manifest and Lake configuration must match. This reuses packages **and project build
+  artifacts**: hard-links only the Lean outputs Lake v4.35 unlinks before rebuilding; copies mutable
+  traces, hashes, setup files, native outputs, package sources and Git metadata. Do not use `cp -al`
+  on an entire writable `.lake`: Lake overwrites some bookkeeping in place. Never seed from a live
+  watcher/build tree, edit shared outputs in place, or run `lake clean`/cache maintenance on the source
+  during setup. Do not edit linked artifacts manually; use Lake to rebuild. Re-audit the helper on a
+  Lean upgrade. No `lake exe cache get` on the box; normal builds use `LAKE_RESTORE_ARTIFACTS=true`.
+  Warm seeding is not a guaranteed setup speedup: with a fully hot shared project artifact cache,
+  packages-only setup plus restoration measured 2.7 s versus 4.7 s for the safer full seed alone.
+  Without project cache reuse (both Lake cache flags false), packages-only full build took 114.9 s
+  versus 1.75 s with warm outputs at the same revision (plus 4.7 s to seed). Package artifacts remain
+  warm in both cases; this models a fresh environment without cached project outputs, not cold Mathlib.
   No `git checkout <path>`, `git restore`, `git stash` or `git reset` that discards or hides work (plan §7):
   commit first, or ask.
 - **Every build in a job** (shared memory pool; OOM kills hit everyone):
@@ -22,6 +34,20 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   `turbo-lean check <file> --decl <name>` for a single declaration only. `lake build` stays the gate.
   `lake build` builds only `ConsensusLean` by default; `lake test` builds `ConsensusLeanTest`
   (the lakefile's `testDriver`, not a default target).
+  A single-module build does **not** check downstream callers after an interface change: use
+  `scripts/check-changed.sh` for that. A measured 105-module interface-migration cone took 42.6 s
+  versus 44.9 s for full `lake build`; no-op targeted/full took 0.8/1.4 s (box, 16G/8 CPU, warm).
+  Capacity planning: the migration peaked at 7.3 GiB summed process RSS (shared pages counted more
+  than once), largest Lean 1.55 GiB, Lake about 0.94 GiB. Budget 16G/8 CPU per build; at most two
+  concurrent agent builds across the box while reserving another 16G/8 CPU for CI. Check `jobs-all`
+  and available memory first; do not infer spare capacity from warm cgroup accounting of shared pages.
+  These are independent **jobs/worktrees**, each already spawning multiple Lean children under its
+  CPU quota, not two Lean children total. Concurrent Lake invocations sharing one output directory
+  are not established safe; do not do that. This is a measured recommendation, not a scheduler
+  reservation; one build per agent still applies.
+  The cold-project control reached 18.0 GiB summed RSS (largest Lean 1.72 GiB), but only 3.7 GiB
+  job-accounted peak due to already-resident shared pages; its CPU use averaged about seven cores.
+  Do not size cold multi-job capacity from the smaller cgroup number alone.
 - **Generated roots:** `ConsensusLean.lean` and `ConsensusLeanTest.lean` import every module of
   their library. Regenerate with `lake exe mk_all --lib ConsensusLean --module` and
   `lake exe mk_all --lib ConsensusLeanTest --module`; `check-boundaries.py` fails on an unlisted file.
