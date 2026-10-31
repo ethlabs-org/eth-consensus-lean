@@ -138,6 +138,43 @@ theorem anc_in_store (hr : st.Reachable acp₀) {U : Set (Blk sp)}
       subst Q
       exact (ih eq.1).tail eq
 
+/-- A sufficiently fueled parent walk links to genesis and preserves increasing positions.
+The hash/encoding identity is isolated in `hhash`, so root tagging can change independently. -/
+theorem chainTo_append_valid (hr : st.Reachable acp₀) (hash : Blocks.Header Info → Nat)
+    (hhash : ∀ X ∈ st.tree, X.root ≠ sp.genesisRoot →
+      parentRef sp.genesisRoot (some X.root) = .digest (hash (headerOf sp X)))
+    {B : Blk sp} (hB : B ∈ st.tree) {fuel : Nat} (hf : B.slot < fuel)
+    (tail : Blocks.Chain Info)
+    (hl : Blocks.Chain.LinkedFrom hash (parentRef sp.genesisRoot (some B.root)) tail)
+    (hp : Blocks.Chain.PosFrom B.slot tail) :
+    Blocks.Chain.Linked hash (chainTo st.blocks fuel B ++ tail) ∧
+      Blocks.Chain.PosIncreasing (chainTo st.blocks fuel B ++ tail) := by
+  induction fuel generalizing B tail with
+  | zero => omega
+  | succ fuel ih =>
+    by_cases hg : B.root = sp.genesisRoot
+    · have hgen := (Store.accepted_tree _ _ _ _ hr).2.2.1
+      have he := (Store.accepted_tree _ _ _ _ hr).2.1.1 hB hgen hg
+      have hslot : B.slot = 0 := congrArg Block.slot he
+      simpa [chainTo, hg, parentRef, Blocks.Chain.Linked, Blocks.Chain.PosIncreasing,
+        hslot] using And.intro hl hp
+    · obtain he | ⟨P, _, e⟩ :=
+        (Relation.ReflTransGen.cases_tail_iff _ _ _).1
+          ((Store.accepted_tree _ _ _ _ hr).2.2.2 B hB)
+      · exact (hg (congrArg Block.root he)).elim
+      have hlt := (Store.accepted_tree _ _ _ _ hr).2.1.2 P e.1 B hB e.2.2
+      have hpar : B.parent.bind st.blocks = some P := by
+        rw [e.2.2, Option.bind_some]; exact e.1
+      have hl' : Blocks.Chain.LinkedFrom hash (parentRef sp.genesisRoot (some P.root))
+          (headerOf sp B :: tail) := by
+        refine ⟨?_, ?_⟩
+        · change parentRef sp.genesisRoot B.parent = _
+          rw [e.2.2]
+        · rwa [hhash B hB hg] at hl
+      have hp' : Blocks.Chain.PosFrom P.slot (headerOf sp B :: tail) := ⟨hlt, hp⟩
+      simpa only [chainTo, ite_eq_right hg, hpar, List.append_assoc, List.singleton_append] using
+        ih e.1 (by omega) (headerOf sp B :: tail) hl' hp'
+
 /-- Every emitted header belongs to a non-genesis ancestor held in the store. -/
 theorem mem_chainTo (hr : st.Reachable acp₀) {B : Blk sp} (hB : B ∈ st.tree)
     {fuel : Nat} {h : Blocks.Header Info} (hh : h ∈ chainTo st.blocks fuel B) :

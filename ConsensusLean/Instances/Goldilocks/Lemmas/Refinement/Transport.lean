@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Evidence
 public import ConsensusLean.Spec.Shape.Claims
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 
 public section
 
@@ -47,7 +48,44 @@ supplies its signed proposer-role object. No global root injectivity is used: co
 local to this store. Empty V is vacuous. Status: argument complete for the current encoding;
 tagged-root changes must re-establish the parent/hash conversion identities. -/
 theorem engine_outputValid (hv : rho.ExecutionValid) (g : Out) : OutputValid rho g := by
-  sorry
+  intro v hv' i hi
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
+  have hs := simTrace_simulates S rho hn hv
+  have hy := honest_ownKey (S := S) hv'
+  have hr := Compose.fg_reachable hs.run.toLocalRun hy (cutMap S rho hn i)
+  have hhash : ∀ X ∈ ((simTrace S rho hn).state (rho.ownKey v)
+      (cutMap S rho hn i)).fg.tree, X.root ≠ (S.params (pubOf E) hn).genesisRoot →
+      parentRef (S.params (pubOf E) hn).genesisRoot (some X.root) =
+        .digest (rho.hash (headerOf (S.params (pubOf E) hn) X)) := by
+    intro X hX hg
+    obtain ⟨hroot, _, _, P, _, hpar, _⟩ :=
+      (Regimes.validOutput_of_mem hs.run hy hX).2 X .refl hg
+    have he : X.root = rho.hash (headerOf (S.params (pubOf E) hn) X) := by
+      simpa [Block.RootOk, digestOf, dgOf, headerOf, hpar] using hroot
+    change (if X.root = (S.params (pubOf E) hn).genesisRoot then ParentRef.root
+      else ParentRef.digest X.root) = _
+    rw [ite_eq_right hg, he]
+  let blocks := ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.blocks
+  have hvalid : ∀ B ∈ ((simTrace S rho hn).state (rho.ownKey v)
+      (cutMap S rho hn i)).fg.tree,
+      Chain.Linked rho.hash (chainTo blocks (B.slot + 1) B) ∧
+      Chain.PosIncreasing (chainTo blocks (B.slot + 1) B) ∧
+      Chain.Provenant (rho.ViewIdx v i) ProposalRole (chainTo blocks (B.slot + 1) B) := by
+    intro B hB
+    have hstruct := chainTo_append_valid hr rho.hash hhash hB (Nat.lt_succ_self _) []
+      trivial trivial
+    simp only [List.append_nil] at hstruct
+    refine ⟨hstruct.1, hstruct.2, ?_⟩
+    intro h hh
+    obtain ⟨X, hX, _, hg, rfl⟩ := mem_chainTo hr hB hh
+    exact ⟨X.proposer, .proposer X.slot, _, rfl, held_in_view S rho hn hv hv' hX hg⟩
+  rw [readIsOut V S E rho hn]
+  simp only [outOf, hs.state v hv' i hi]
+  cases g with
+  | finalized => exact hvalid _ (Store.cache_invariants _ _ _ _ hr).1
+  | confirmed =>
+    have hΦ := (Store.frame_realization _ _ _ _ hr).1
+    exact hvalid _ (Regimes.sa_tips hΦ (stateAt S rho hn v i).now).1.1
 
 /-- CLAIMS R.8/C0.1: instantiate engine simulation, then transport node nesting through
 `outputs_nested`. The empty-validator case has no readers. No collision escape.
@@ -246,7 +284,8 @@ it covers both outputs, so the capability lookup hypothesis needs no additional 
 Status: argument complete relative to `engine_outputValid`. -/
 theorem shape_outputValid : (Sys (family S) V).HoldsAlways
     (fun r => ∀ c g, schema.output c = some g → OutputValid r.2 g) := by
-  sorry
+  intro r hv c g _
+  exact engine_outputValid S r.2 hv g
 
 /-- R.8 nesting, exact second `ShapeClaimsAt` field. Paper argument for the engine bridge:
 the schema aliases available/stable to confirmed and maps final to finalized; the only
