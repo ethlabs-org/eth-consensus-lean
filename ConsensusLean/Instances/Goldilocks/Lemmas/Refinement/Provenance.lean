@@ -1,6 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement
 public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
+import ConsensusLean.Lemmas.Model.Objects
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 
 public section
 
@@ -110,23 +113,25 @@ theorem engine_signing_history (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rh
         a ∈ (FG.Record.run (rho.ownKey v) FG.Record.empty inputs).2 := by
   sorry
 
-/-- **NO PAPER PROOF — implementation refinement boundary.** Restart retains the signing
-record, including at a wake boundary after a sleeping interval. Unfold the engine's durable /
-restore operations and the node's restart: only AC restart metadata changes, never `record`.
-This is an explicit obligation of `engine_signing_history`, not a new reset assumption. -/
-theorem engine_restart_record (hv : rho.ExecutionValid) {v : V} {i : Nat} {t : Time}
+/-- Restart retains the signing record, including at a wake boundary after a sleeping
+interval. This follows directly from the engine's durable/restore operations and the node's
+restart, independently of execution validity. -/
+theorem engine_restart_record (_hv : rho.ExecutionValid) {v : V} {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.restart v t)) :
     (stateAt S rho hn v (i + 1)).node.record = (stateAt S rho hn v i).node.record := by
-  sorry
+  simp only [stateAt, rho.stateBefore_succ he, Model.Run.step, Function.update_self]
+  rfl
 
 /-- **Paper G0.5 (`FG.client_safety`) after the implementation history lemma.** Put both
-signings in a common later actual prefix, use `engine_signing_history`, then client safety on
-its `EntryInputs`. No node-simulation or network-timing premise is needed. -/
+signings in the history before an event after both signings, then apply client safety to its
+`EntryInputs`. No node-simulation or network-timing premise is needed. -/
 theorem engine_signings_nonFraming (hv : rho.ExecutionValid) {v : V}
     (hv' : v ∈ rho.honest) {i p j q : Nat} {a b : FG.Att (Fintype.card V)}
     (ha : EngineSignsAt S rho hn v i p a) (hb : EngineSignsAt S rho hn v j q b) :
     ¬ FG.slashable a b := by
-  sorry
+  obtain ⟨inputs, hi, _, hs⟩ := engine_event_signing_history S rho hn hv hv' (max i j + 1)
+  exact FG.client_safety _ _ inputs hi a (hs i p a (by omega) ha)
+    b (hs j q b (by omega) hb)
 
 /-- **NO PAPER PROOF — implementation release inverse.** An honest attestation in the
 closure of `seen` at an actual duty boundary has an earlier actual signing. Credentials gives
@@ -152,7 +157,42 @@ theorem engine_att_protected (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.
     (ha : EngineSignsAt S rho hn v j q a) :
     Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v) nd.seen
       (attObj a) = true := by
-  sorry
+  have hinj {a b : FG.Att (Fintype.card V)} (h : attObj a = attObj b) : a = b := by
+    injection h with _ h₂
+    injection h₂ with h₃
+    injection h₃ with h₄
+    have hd := congrArg (decodeAtt (Fintype.card V)) h₄
+    simpa only [decodeAtt_encodeAtt, Option.some.injEq] using hd
+  have hself : conflicts (attObj a) (attObj a) = false := by
+    apply Bool.eq_false_iff.mpr
+    intro h
+    obtain ⟨b, c, hb, hc', hbc⟩ := (conflicts_iff _ _ _).mp h
+    obtain rfl := hinj hb
+    obtain rfl := hinj hc'
+    exact engine_signings_nonFraming S rho hn hv hv' ha ha hbc
+  unfold Model.protects
+  split
+  · simp only [Bool.and_eq_true, Bool.not_eq_true']
+    refine ⟨hself, ?_⟩
+    rw [List.all_eq_true]
+    intro o ho
+    by_cases hk : o.signer? = some (rho.ownKey v)
+    · have hconf : conflicts (attObj a) o = false ∧ conflicts o (attObj a) = false := by
+        constructor <;> apply Bool.eq_false_iff.mpr <;> intro h
+        · obtain ⟨b, c, hb, rfl, hbc⟩ := (conflicts_iff _ _ _).mp h
+          obtain rfl := hinj hb
+          have hcval : c.val = rho.ownKey v := Option.some.inj hk
+          obtain ⟨j', q', _, hc'⟩ := engine_seen_att_signed S rho hn hv hv' hv' hc hcval ho
+          exact engine_signings_nonFraming S rho hn hv hv' ha hc' hbc
+        · obtain ⟨b, c, rfl, hc', hbc⟩ := (conflicts_iff _ _ _).mp h
+          obtain rfl := hinj hc'
+          have hbval : b.val = rho.ownKey v := Option.some.inj hk
+          obtain ⟨j', q', _, hb⟩ := engine_seen_att_signed S rho hn hv hv' hv' hc hbval ho
+          exact engine_signings_nonFraming S rho hn hv hv' hb ha hbc
+      change (_ != _ || !(conflicts (attObj a) o || conflicts o (attObj a))) = true
+      simp [hconf.1, hconf.2]
+    · simp [hk]
+  · rfl
 
 end Consensus.Goldilocks.Refinement
 
