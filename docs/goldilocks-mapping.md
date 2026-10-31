@@ -684,7 +684,11 @@ Modelling choices:
   `Sync`/`GST` ask for processing strictly before `max(τ, w_y) + Δ'` with admission as an instantaneous send. The
   Refinement's transport from `PSync`/`SyncUntil` to `Sync`/`GST` must absorb the slack (a larger `Δ'`: `Δ` plus a
   tick, non-strict to strict), or the spec's admission timing changes; the regime statements here keep the spec's
-  premises (open, Refinement).
+  premises. Quantified in consensus-lean#107 (owner decision): `PSync g` gives `Sync` with deadlines `+1` time unit
+  for own sends (endpoint) and `+2` for admissions and acceptance relay (relay at the next tick), and no relay at all
+  by an admitter that sleeps from the next tick on (a semantic gap under `Sleepy`/`Outage`, none under `Healthy`
+  after `ḡ`). Recommended there: the protocol runs at `Δ_p ≥ Δ_e + 2` (spec statements unchanged) and a decision on
+  relay across sleep. Not stated as a theorem until then (false as `PSync ⇒ GSTRun` at `Δ_p = Δ_e`).
 - **Conflict** is incompatibility inside the honest blocks of the run (`tr.HonestBlocks H`), as in G1.4 and C1.1.
 - **`finalAccountable`** reads "conflicting honest reads convict from their own views" (G1.5: "among the attestations
   included on the chains held by the two readers, taken together") as: some block of each reader's tree at the cut
@@ -697,8 +701,14 @@ Modelling choices:
 - **`outputValid`**: the model's `Linked`/`PosIncreasing`/`Provenant` read as the output's chain in the node's tree
   linked to genesis with each block's root its digest (`RootOk`, for `Linked`), slots increasing, and each block
   accepted by the node with the slot's proposer (seen in a proposal role, for `Provenant`).
-- **Witnesses**: none over `GoldilocksRun` yet (the follow-up of the Healing milestone: an infinite live run of the
-  Goldilocks SA); R.7 and R.8 have no premise beyond the run laws (and `NoColl`, `f < 2q − n` where stated).
+- **Witnesses** (`ConsensusLeanTest/GoldilocksWitness`, #69): the one-validator tick run (`n = 1`, `f = 0`, `Δ = 1`,
+  awake and ticking at every time) is a `GoldilocksRun` (kind (a), `tickRun_goldilocksRun`) with `Sync` for every
+  window, `Healthy(g)`, `Catch(κ)` and the HS shared premises (kind (a)). `HealedPremises`, `PatternPremises` and
+  `FinalPremises` are reduced to facts of that run's behaviour, hypotheses of `tickRun_healedPremises`,
+  `tickRun_patternPremises`, `tickRun_finalPremises`: `Prop⁺(G_p)`, the reset (`IsReset`), H.3 (c)'s bridge
+  (`BridgeAt`) and `UPat(1, M)` (open, W3). `n = 1` shows the premises consistent, not met with faults (a faulty
+  witness is a follow-up). R.7 and R.8 have no premise beyond the run laws (and `NoColl`, `f < 2q − n` where
+  stated).
 
 ## Refinement
 
@@ -739,8 +749,8 @@ Modelling choices (`docs/decisions.md` §"Goldilocks instance", the Refinement e
 - **Not stated: the network premises' transport.** The engine's `Delivers` bounds a receipt by `max(a, g) + Δ`
   (`≤`) where the spec requires processing strictly before `max(τ, w_y) + Δ'`, and the spec reads an admission as
   an instantaneous send (`SendOrAdmitAt`) where the engine relays at the admitting node's next awake tick
-  (`RelayedFrom`). The transport `PSync`/`SyncUntil` → `Sync`/`GST` waits for the spec orb's decision on the slack
-  and belongs to the regimes milestone; this section records the gap.
+  (`RelayedFrom`). The transport `PSync`/`SyncUntil` → `Sync`/`GST` is quantified in consensus-lean#107 (endpoint
+  `+1`, relay at the next tick `+1`, relay across sleep) and waits for the owner's decision there.
 - **The proposer selection is the schedule.** The generic skeleton's proposer selection is per slot
   (`proposerSel : Slot → SelSpec n`, consensus-lean#93); the Goldilocks skeleton sets it to the fixed singleton
   `{proposer s}` of the setup's schedule, so a valid run's proposer of a slot is the spec node's own `proposer`
