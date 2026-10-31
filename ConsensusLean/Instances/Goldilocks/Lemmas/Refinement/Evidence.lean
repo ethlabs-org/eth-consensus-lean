@@ -79,13 +79,16 @@ Paper argument (implementation bridge, not a quotation): apply `tree_cases` at n
 `k < cutMap i`. Apply `accepted_in_view` with that strict inequality. That theorem locates an
 engine event `j` with `cutMap j ≤ k`; monotonicity forces `j < i`, so even simultaneous events
 cannot move evidence past the read. No collision or awake-at-read assumption is needed.
-Status: argument complete relative to the existing simulation/acceptance lemmas; Lean open. -/
+Status: proved relative to the existing simulation/acceptance lemmas. -/
 theorem held_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
     {i : Nat} {B : Blk (S.params (pubOf E) hn)}
     (hB : B ∈ ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree)
     (hg : B.root ≠ (S.params (pubOf E) hn).genesisRoot) :
     blockObj (S.params (pubOf E) hn) B ∈ rho.ViewIdx v i := by
-  sorry
+  rcases Compose.tree_cases (simTrace_goldilocksRun S rho hn hv).toLocalRun
+      (honest_ownKey (S := S) hv') hB with hgen | ⟨k, hk, hacc⟩
+  · exact (hg (congrArg Block.root hgen)).elim
+  · exact accepted_in_view S rho hn hv hv' hacc hk
 
 /-- CLAIMS G1.5 evidence binding: canonical block objects carry their payload attestations,
 and views are closed under carried objects. Genesis has no attestations. This applies to ANY
@@ -97,12 +100,21 @@ genesis itself, whose FG payload is empty. Membership of `a` excludes that case.
 B.acPayload`, which includes `attObj a` by list-map membership. Compose this direct containment
 with the view's witnessing containment (`mem_viewIdx_iff`); views are transitively closed
 under carried objects. This uses every held block, not the false restriction that R.7's
-witness chains end at the finalized tips. Status: argument complete; Lean open. -/
+witness chains end at the finalized tips. The proof uses the acceptance alternative directly;
+the genesis alternative has no attestations. Status: proved. -/
 theorem held_att_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
     {i : Nat} {B : Blk (S.params (pubOf E) hn)}
     (hB : B ∈ ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree)
     {a : FG.Att (Fintype.card V)} (ha : a ∈ B.fgPayload) : attObj a ∈ rho.ViewIdx v i := by
-  sorry
+  rcases Compose.tree_cases (simTrace_goldilocksRun S rho hn hv).toLocalRun
+      (honest_ownKey (S := S) hv') hB with hgen | ⟨k, hk, hacc⟩
+  · subst B
+    simp [Params.genesisBlock] at ha
+  · have hb := accepted_in_view S rho hn hv hv' hacc hk
+    obtain ⟨j, o, hj, ho, hc⟩ := rho.mem_viewIdx_iff.mp hb
+    refine rho.mem_viewIdx_iff.mpr ⟨j, o, hj, ho, hc.trans (.step ?_ (.refl _))⟩
+    change attObj a ∈ payloadObjs B.fgPayload B.acPayload
+    exact List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
 
 variable (V) in
 /-- CLAIMS Refinement G1.5 (b): `mem_chainTo` places each read header in the held tree;
@@ -114,9 +126,19 @@ the read header `headerOf B` for a held block B. `decodeInfo_encodeInfo` and inj
 `some` identify the decoded list `atts` with `B.fgPayload`; apply `held_att_in_view` to `a`.
 If V is empty there is no reader, so no simulation with `n ≥ 1` is required. The bound
 `i ≤ events.length` is exactly the domain of simulation's state agreement.
-Status: argument complete relative to simulation; Lean open. -/
+Status: proved relative to simulation. -/
 theorem evidenceInView : EvidenceInView V S := by
-  sorry
+  intro E rho hv v hv' i hi h hh atts p hd a ha
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
+  have hs := simTrace_simulates S rho hn hv
+  have hr := Compose.fg_reachable hs.run.toLocalRun (honest_ownKey (S := S) hv')
+    (cutMap S rho hn i)
+  rw [read_finalized hs hv' hi] at hh
+  obtain ⟨B, hB, _, _, rfl⟩ := mem_chainTo hr (Store.cache_invariants _ _ _ _ hr).1 hh
+  have hd' : (B.fgPayload, B.acPayload) = (atts, p) := by
+    simpa only [headerOf, decodeInfo_encodeInfo, Option.some.injEq] using hd
+  have he : B.fgPayload = atts := congrArg Prod.fst hd'
+  exact held_att_in_view S rho hn hv hv' hB (by rw [he]; exact ha)
 
 end Consensus.Goldilocks.Refinement
 
