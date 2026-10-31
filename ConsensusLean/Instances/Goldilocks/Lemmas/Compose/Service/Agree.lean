@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.StopCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 
@@ -147,7 +148,7 @@ theorem old_children_ineligible {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)
 /-- **The stop at `P.parent`** (workbench#12 §3): at `Q` a voter's only eligible child is `P` (of
 the current slot; another block of slot `s` would be a second block of the honest proposer, and
 an old child is ineligible, `old_children_ineligible`), and its walk has no best child at `P` (no
-block of the frame is of a later slot). -/
+block of the frame is of a later slot): `SA.stop_core` from the two leaves. -/
 theorem stop_at_parent {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -173,39 +174,15 @@ theorem stop_at_parent {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Se
         B.parent = some P.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
-  have hr := hrun'.localRun
-  have hU := hr.coherent
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
-  have hsj : sp.slot (tr.time j) = s := (SA.castAt_spec hr hy hcy).2.1.symm.trans hes
-  have hslot := SA.frame_slot_le sp hr hy hcy.1
-  have hPv := proposal_at_voter hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hy hcy hes
-  have hPt : P ∈ ℓy.frame.tree := hPv.1.1
-  have hfb : ∀ B ∈ ℓy.frame.tree, SA.HonestFrameBlock tr.projAC H B := fun B hB =>
-    ⟨y, hy, j, ℓy, hcy.1, hB⟩
-  -- a block of the voter's frame with a parent is not genesis
+  have hU := hrun'.localRun.coherent
+  have hΦU := (SA.frameIn_of_callAt hrun'.localRun hy hcy.1).2
   have hng : ∀ B ∈ ℓy.frame.tree, B.parent ≠ none → B.root ≠ sp.genesisRoot := by
     intro B hB hpar hg
-    have := honest_eq_genesis hrun hU (hΦU hB) hg
-    rw [this] at hpar
+    rw [honest_eq_genesis hrun hU (hΦU hB) hg] at hpar
     exact hpar (by simp [Params.genesisBlock])
-  have hpp : P.proposer = sp.toParams.proposer s :=
-    hPs ▸ hrun'.honest.proposer P (hfb P hPt) (hng P hPt (by rw [hPQ]; simp))
-  refine ⟨⟨⟨hPv, hPQ, Or.inr (Or.inl (hPs.trans hsj.symm))⟩, fun B ⟨hBv, hBQ, hBe⟩ => ?_⟩, ?_⟩
-  · have hBt : B ∈ ℓy.frame.tree := hBv.1.1
-    rcases Nat.lt_or_ge B.slot s with hlt | hge
-    · exact absurd hBe (old_children_ineligible hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hy
-        hcy hes B hBv hBQ hlt)
-    have hBs : B.slot = s := le_antisymm (hsj ▸ hslot B hBt) hge
-    have hBp : B.proposer = sp.toParams.proposer s :=
-      hBs ▸ hrun'.honest.proposer B (hfb B hBt) (hng B hBt (by rw [hBQ]; simp))
-    have hpH : P.proposer ∈ H := by rw [hP.2.1]; exact hp
-    exact (hrun'.honest.one_block P B (hfb P hPt) (hfb B hBt) hpH (hpp.trans hBp.symm)
-      (hPs.trans hBs.symm)).symm
-  · rintro ⟨C, ⟨⟨hCv, hCP, -⟩, -⟩⟩
-    have hCt : C ∈ ℓy.frame.tree := hCv.1.1
-    have h1 := hU.2 P (hΦU hPt) C (hΦU hCt) hCP
-    have h2 : C.slot ≤ sp.slot (tr.time j) := hslot C hCt
-    omega
+  exact SA.stop_core hrun' hy hcy hes hPs hPQ (by rw [hP.2.1]; exact hp) hng
+    (proposal_at_voter hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hy hcy hes)
+    (old_children_ineligible hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hy hcy hes)
 
 
 /-- **Every honest slot-`s` vote is the honest proposal `P` of slot `s`** (workbench#12 §2–§3), by
