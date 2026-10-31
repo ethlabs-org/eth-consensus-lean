@@ -39,6 +39,26 @@ theorem tick_authorized (nd : Node (protoOf F E)) (v : V) (t : Time)
   exact releaseAll_preserves rho.hash _
     (fun d => ∀ k r, d.auth = .signed k r → k ∈ rho.sel r) _ _ hs hr
 
+omit [DecidableEq V] in
+/-- A delivery of an authorized object keeps `seen` authorized and releases
+only authorized objects. -/
+theorem deliver_authorized (nd : Node (protoOf F E)) (v : V) (p : (protoOf F E).Object)
+    (t : Time) (hs : ∀ o ∈ nd.seen, rho.Authorized o) (hp : rho.Authorized p) :
+    (∀ o ∈ (rho.deliver nd v p t).1.seen, rho.Authorized o) ∧
+      (∀ o ∈ (rho.deliver nd v p t).2, rho.Authorized o) := by
+  have hr : ∀ o ∈ (rho.deliver nd v p t).2, ∀ k r, o.auth = .signed k r → k ∈ rho.sel r :=
+    fun o ho k r ha => rho.deliver_selected nd v p t ho ha
+  have hs' : ∀ o ∈ nd.seen ++ [p], rho.Authorized o := by
+    intro o ho
+    rcases List.mem_append.mp ho with ho | ho
+    · exact hs o ho
+    · rw [List.mem_singleton.mp ho]; exact hp
+  obtain ⟨cs, -, h2, h1⟩ := rho.deliver_flat nd v p t
+  rw [h2] at hr ⊢
+  rw [h1]
+  exact releaseAll_preserves rho.hash _
+    (fun d => ∀ k r, d.auth = .signed k r → k ∈ rho.sel r) _ _ hs' hr
+
 /-- If every object delivered before event cut `i` is authorized, so is
 everything every node has seen at cut `i`. -/
 theorem seen_authorized (i : Nat)
@@ -69,17 +89,14 @@ theorem seen_authorized (i : Nat)
       | deliver v p t =>
         by_cases hw : w = v
         · subst w
-          have hm : o ∈ (rho.stateBefore k v).seen ++ [p] := by simpa [step] using ho
-          rcases List.mem_append.mp hm with hm | hm
-          · exact old v o hm
-          · rcases List.mem_singleton.mp hm with rfl
-            exact hd k (by omega) v o t he
+          exact (rho.deliver_authorized _ v p t (old v) (hd k (by omega) v p t he)).1 o
+            (by simpa [step] using ho)
         · exact old w o (by simpa [step, hw] using ho)
 
-/-- If every object delivered before event cut `i` is authorized, so is every
-object released at event `i`. -/
+/-- If every object delivered at an event `k ≤ i` is authorized, so is every
+object released at event `i` (a delivery at `i` releases from its object). -/
 theorem releasesAt_authorized (i : Nat)
-    (hd : ∀ k < i, ∀ w o t, rho.events[k]? = some (.deliver w o t) → rho.Authorized o) :
+    (hd : ∀ k ≤ i, ∀ w o t, rho.events[k]? = some (.deliver w o t) → rho.Authorized o) :
     ∀ o ∈ rho.releasesAt i, rho.Authorized o := by
   cases he : rho.events[i]? with
   | none => simp [releasesAt, he]
@@ -87,8 +104,12 @@ theorem releasesAt_authorized (i : Nat)
     cases e with
     | tick v t =>
       simp only [releasesAt, he]
-      exact (rho.tick_authorized _ v t (rho.seen_authorized i hd v)).2
-    | deliver v p t => simp [releasesAt, he]
+      exact (rho.tick_authorized _ v t
+        (rho.seen_authorized i (fun k hk => hd k hk.le) v)).2
+    | deliver v p t =>
+      simp only [releasesAt, he]
+      exact (rho.deliver_authorized _ v p t
+        (rho.seen_authorized i (fun k hk => hd k hk.le) v) (hd i le_rfl v p t he)).2
     | restart v t => simp [releasesAt, he]
 
 /-- Every signed object inside anything an honest node observed is signed by
@@ -97,7 +118,7 @@ theorem selected_of_observed (hv : rho.ExecutionValid) {o : (protoOf F E).Object
     (ho : o ∈ rho.Observed) {o' : (protoOf F E).Object} (hc : Obj.Contains o o')
     {k : Fin (Fintype.card V)} {r : (protoOf F E).Role} (ha : o'.auth = .signed k r) :
     k ∈ rho.sel r := by
-  have hd : ∀ i, ∀ j < i, ∀ w o t, rho.events[j]? = some (Event.deliver w o t) →
+  have hd : ∀ i, ∀ j ≤ i, ∀ w o t, rho.events[j]? = some (Event.deliver w o t) →
       rho.Authorized o :=
     fun _ j _ w o t he => hv.credentials j w o t he
   obtain ⟨v, _, hov⟩ := ho

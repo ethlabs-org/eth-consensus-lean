@@ -64,9 +64,10 @@ theorem canonical_causal (g : Time) : (rho.withEvents (rho.canonicalEvents g)).C
     · cases h; exact hp
   obtain ⟨tail, htail⟩ := rho.front_prefix g hk
   obtain ⟨v, t', j, hj, ho⟩ := (rho.mem_pool _ _).mp hp
-  rw [withEvents_events] at hj
+  obtain ⟨e, hje, _, _⟩ := hj.exists_event
+  rw [withEvents_events] at hje
   have hjl : j < (rho.front (rho.stages g k) (k : Time)).length :=
-    (List.getElem?_eq_some_iff.mp hj).1
+    (List.getElem?_eq_some_iff.mp hje).1
   have hni : ¬ Event.deliver w o (k : Time) ∈ rho.front (rho.stages g k) (k : Time) := by
     intro h
     simp only [front_eq, List.mem_append] at h
@@ -85,53 +86,56 @@ theorem canonical_causal (g : Time) : (rho.withEvents (rho.canonicalEvents g)).C
         List.getElem?_append_left hil]]
     exact hi
   refine ⟨j, v, t', lt_of_lt_of_le hjl hile, ?_, ?_⟩
-  · rw [withEvents_events]
-    rw [(rho.canonicalEvents_eq g).trans htail, List.getElem?_append_left hjl]
-    exact hj
+  · rw [(rho.canonicalEvents_eq g).trans htail]
+    exact rho.sendsAt_append _ tail hj
   · change (rho.withEvents (rho.canonicalEvents g)).releasesAt j |> fun l => o ∈ l
     rw [(rho.canonicalEvents_eq g).trans htail, rho.releasesAt_append _ _ hjl]
     exact ho
 
+/-- A canonical event whose time is below `a` lies in the stages before `a`. -/
+theorem mem_stages_of_time_lt (g : Time) {n : Nat} {e : Event V (protoOf F E).Object}
+    (he : e ∈ rho.stages g n) {a : Time} (ha : e.time < a) : e ∈ rho.stages g a.toNat := by
+  obtain ⟨k, _, hk⟩ := (rho.mem_stages g n e).mp he
+  have htk : e.time = (k : Time) := rho.layer_time g _ _ hk
+  refine (rho.mem_stages g _ e).mpr ⟨k, ?_, hk⟩
+  rw [htk] at ha
+  have h := (Int.toNat_lt_toNat (lt_of_le_of_lt (Int.natCast_nonneg k) ha)).mpr ha
+  simpa using h
+
 /-- From GST `g` on, every honest release at `t` is received by every awake
-honest node at every time `a` with `max t g ≤ a ≤ horizon`. -/
+honest node at every time `a` with `max t g < a ≤ horizon`. The bound is strict
+because a delivery at `a` can release at `a`, after the schedule's deliveries
+at `a` were fixed; such a release is served from `a + 1` on. -/
 theorem canonical_eagerFrom (g : Time) (h0 : 0 ≤ rho.horizon) :
     ∀ v ∈ rho.honest, ∀ o t, (rho.withEvents (rho.canonicalEvents g)).releases v o t →
-      ∀ w ∈ rho.honest, ∀ a, max t g ≤ a → a ≤ rho.horizon →
+      ∀ w ∈ rho.honest, ∀ a, max t g < a → a ≤ rho.horizon →
         E.awake w a = true → (rho.withEvents (rho.canonicalEvents g)).receives w o a := by
   intro v hv o t hr w hw a hmax hah haa
-  have hta : t ≤ a := le_trans (le_max_left t g) hmax
-  have hga : g ≤ a := le_trans (le_max_right t g) hmax
+  have hta : t < a := lt_of_le_of_lt (le_max_left t g) hmax
+  have hga : g ≤ a := le_of_lt (lt_of_le_of_lt (le_max_right t g) hmax)
   change a ≤ rho.horizon at hah
   have hr0 := hr
   rw [canonicalEvents_eq] at hr0
   obtain ⟨i, hi, _⟩ := hr
-  have htm := List.mem_of_getElem? hi
+  obtain ⟨e, hie, _, het⟩ := hi.exists_event
+  have htm := List.mem_of_getElem? hie
   rw [withEvents_events] at htm
-  have ht0 := (rho.canonical_in_horizon g h0 htm).1
-  have hwa := rho.canonical_tick_awake g v t htm
-  have ha0 : 0 ≤ a := le_trans ht0 hta
+  have ht0 : 0 ≤ t := het ▸ (rho.canonical_in_horizon g h0 htm).1
+  have ha0 : 0 ≤ a := le_trans ht0 (le_of_lt hta)
   have han : a.toNat < rho.horizon.toNat + 1 := by
     have := Int.toNat_le_toNat hah
     omega
   obtain ⟨tail, htail⟩ := rho.front_prefix g han
-  have htfront : Event.tick v t ∈ rho.front (rho.stages g a.toNat) (a.toNat : Time) := by
-    rw [front_eq]
-    by_cases heq : t = a
-    · subst t
-      apply List.mem_append_right
-      exact (rho.mem_tickEvents _ _).mpr
-        ⟨v, hv, by simpa only [Int.toNat_of_nonneg ha0] using hwa,
-          by rw [Int.toNat_of_nonneg ha0]⟩
-    · have hlt : t < a := lt_of_le_of_ne hta heq
-      apply List.mem_append_left
-      apply List.mem_append_left
-      apply rho.tick_mem_stages g hv hwa ht0
-      exact (Int.toNat_lt_toNat (lt_of_le_of_lt ht0 hlt)).mpr hlt
   have hr' :
       (rho.withEvents (rho.front (rho.stages g a.toNat) (a.toNat : Time))).releases v o t := by
     apply rho.releases_restrict _ tail
     · rw [← htail]; exact rho.stages_nodup g _
-    · exact htfront
+    · intro e' he' _ het'
+      rw [← htail] at he'
+      rw [front_eq]
+      apply List.mem_append_left
+      apply List.mem_append_left
+      exact rho.mem_stages_of_time_lt g he' (het' ▸ hta)
     · rw [← htail]
       exact hr0
   have hpool := (rho.mem_pool _ o).mpr ⟨v, t, hr'⟩

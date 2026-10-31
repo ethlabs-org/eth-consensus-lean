@@ -21,8 +21,9 @@ has it by `max(u, GST) + Δ`. Transactions (`txs`) follow the same rule. Partial
 synchrony (`PSync g`), synchrony up to a cut (`SyncUntil b`) and the outage
 network (`OutageNet b₀ b₁`) are instances; `EagerFrom g` is the shape of the
 model's canonical logs. Receipt is network service, not protocol use: what
-arrives at a deadline is first used by the node's next tick, and that slack
-belongs to the protocol. Sends are covered at every time, submissions from
+arrives at a deadline is processed at the delivery (whose own releases leave
+then) and first read by a tick at the node's next tick; that slack belongs
+to the protocol. Sends are covered at every time, submissions from
 `0`. -/
 
 namespace Consensus
@@ -72,11 +73,13 @@ synchronous with GST `b₁` (asynchronous during `[b₀, b₁)`). -/
 def OutageNet (b₀ b₁ : Time) : Prop := L.SyncUntil p b₀ ∧ L.PSync p b₁
 
 /-- Eager from `g`: every honest send at `t` is received by every honest node
-at every awake time `a` with `max t g ≤ a ≤ horizon`; no message is received
-before `g`; transactions submitted to awake honest nodes are relayed at once to
-every awake honest node. `g > horizon`: a silent network. -/
+at every awake time `a` with `max t g < a ≤ horizon` (strictly after the send
+and after `g`: a send made in reaction to a receipt at `t` cannot be served at
+`t` itself); no message is received before `g`; transactions submitted to
+awake honest nodes are relayed at once to every awake honest node.
+`g > horizon`: a silent network. -/
 structure EagerFrom (g : Time) : Prop where
-  recv : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → ∀ w ∈ p.honest, ∀ a, max t g ≤ a →
+  recv : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → ∀ w ∈ p.honest, ∀ a, max t g < a →
     a ≤ p.horizon → p.env.awake w a = true → L.recv w m a
   quiet : ∀ w m t, L.recv w m t → g ≤ t
   txs : ∀ u ∈ p.honest, ∀ x τ, 0 ≤ τ → p.env.awake u τ = true → x ∈ p.submit u τ →

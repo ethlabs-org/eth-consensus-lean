@@ -58,23 +58,23 @@ variable (rho : Run F E)
 causality for every carried authentication. -/
 def Causal : Prop :=
   ∀ i w o t, rho.events[i]? = some (.deliver w o t) →
-    ∃ j v t', j < i ∧ rho.events[j]? = some (.tick v t') ∧ o ∈ rho.releasesAt j
+    ∃ j v t', j < i ∧ rho.SendsAt v j t' ∧ o ∈ rho.releasesAt j
 
 def SignedBefore (i : Nat) (o : (protoOf F E).Object) : Prop :=
   ∀ u ∈ rho.honest, rho.signerOf o = some u →
-    ∃ j t, j < i ∧ rho.events[j]? = some (.tick u t) ∧ o ∈ rho.releasesAt j
+    ∃ j t, j < i ∧ rho.SendsAt u j t ∧ o ∈ rho.releasesAt j
 
 def SafeBefore (i : Nat) (o : (protoOf F E).Object) : Prop :=
   ∀ d, Obj.Contains o d → rho.SignedBefore i d
 
 variable {rho} in
 theorem causal_iff : rho.Causal ↔ ∀ i w o t, rho.events[i]? = some (.deliver w o t) →
-    ∃ j v t', j < i ∧ rho.events[j]? = some (.tick v t') ∧ o ∈ rho.releasesAt j := Iff.rfl
+    ∃ j v t', j < i ∧ rho.SendsAt v j t' ∧ o ∈ rho.releasesAt j := Iff.rfl
 
 variable {rho} in
 theorem signedBefore_iff {i : Nat} {o : (protoOf F E).Object} : rho.SignedBefore i o ↔
     ∀ u ∈ rho.honest, rho.signerOf o = some u →
-      ∃ j t, j < i ∧ rho.events[j]? = some (.tick u t) ∧ o ∈ rho.releasesAt j := Iff.rfl
+      ∃ j t, j < i ∧ rho.SendsAt u j t ∧ o ∈ rho.releasesAt j := Iff.rfl
 
 variable {rho} in
 theorem safeBefore_iff {i : Nat} {o : (protoOf F E).Object} :
@@ -102,7 +102,7 @@ theorem tick_safe {i : Nat} {v : V} {t : Time}
     · rw [hn] at hsigner; cases hsigner
     · have huv : u = v := Option.some.inj (hsigner.symm.trans hv)
       subst u
-      exact ⟨i, t, Nat.lt_succ_self i, hi, by simpa only [releasesAt, hi] using ho⟩
+      exact ⟨i, t, Nat.lt_succ_self i, Or.inl hi, by simpa only [releasesAt, hi] using ho⟩
   change _ ∧ ∀ o ∈ rho.releasesAt i, _
   simp only [releasesAt, hi]
   obtain ⟨cs, -, h2, h1⟩ := rho.tick_flat (rho.stateBefore i v) v t
@@ -110,6 +110,34 @@ theorem tick_safe {i : Nat} {v : V} {t : Time}
   rw [h1]
   exact releaseAll_preserves rho.hash _ (rho.SignedBefore (i + 1)) _ _
     (fun o ho d hd => rho.signedBefore_mono (Nat.le_succ i) (hs o ho d hd)) hr
+
+/-- A delivery of an object safe before it keeps `seen` safe and releases only
+safe objects: the twin of `tick_safe`, from the processed `seen ++ [p]`. -/
+theorem deliver_safe {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
+    (hi : rho.events[i]? = some (.deliver v p t))
+    (hs : ∀ o ∈ (rho.stateBefore i v).seen, rho.SafeBefore i o) (hp : rho.SafeBefore i p) :
+    (∀ o ∈ (rho.deliver (rho.stateBefore i v) v p t).1.seen, rho.SafeBefore (i + 1) o) ∧
+    (∀ o ∈ rho.releasesAt i, rho.SafeBefore (i + 1) o) := by
+  have hr : ∀ o ∈ (rho.deliver (rho.stateBefore i v) v p t).2,
+      rho.SignedBefore (i + 1) o := by
+    intro o ho u hu hsigner
+    rcases rho.deliver_signerOf _ v p t ho with hn | hv
+    · rw [hn] at hsigner; cases hsigner
+    · have huv : u = v := Option.some.inj (hsigner.symm.trans hv)
+      subst u
+      exact ⟨i, t, Nat.lt_succ_self i, Or.inr ⟨p, hi⟩, by simpa only [releasesAt, hi] using ho⟩
+  have hs' : ∀ o ∈ (rho.stateBefore i v).seen ++ [p], rho.SafeBefore i o := by
+    intro o ho
+    rcases List.mem_append.mp ho with ho | ho
+    · exact hs o ho
+    · rw [List.mem_singleton.mp ho]; exact hp
+  change _ ∧ ∀ o ∈ rho.releasesAt i, _
+  simp only [releasesAt, hi]
+  obtain ⟨cs, -, h2, h1⟩ := rho.deliver_flat (rho.stateBefore i v) v p t
+  rw [h2] at hr ⊢
+  rw [h1]
+  exact releaseAll_preserves rho.hash _ (rho.SignedBefore (i + 1)) _ _
+    (fun o ho d hd => rho.signedBefore_mono (Nat.le_succ i) (hs' o ho d hd)) hr
 
 /-- Causal delivery of roots is enough for full structural unforgeability. -/
 theorem unforgeable_of_causal (hc : rho.Causal) : rho.Unforgeable := by
@@ -146,16 +174,11 @@ theorem unforgeable_of_causal (hc : rho.Causal) : rho.Unforgeable := by
               · exact rho.safeBefore_mono (Nat.le_succ k) (old w o (by simpa [step, hw] using ho))
             | deliver v p t =>
               obtain ⟨j, u, t', hj, hjt, hp⟩ := hc k v p t he
-              have hsafe : rho.SafeBefore (k + 1) p :=
-                rho.safeBefore_mono (by omega) ((ih j (by omega)).2 p hp)
+              have hsafe := (rho.deliver_safe he (old v)
+                (rho.safeBefore_mono (by omega) ((ih j (by omega)).2 p hp))).1
               intro w o ho
               by_cases hw : w = v
-              · subst w
-                have hm : o ∈ (rho.stateBefore k v).seen ++ [p] := by simpa [step] using ho
-                rcases List.mem_append.mp hm with hm | hm
-                · exact rho.safeBefore_mono (Nat.le_succ k) (old v o hm)
-                · rcases List.mem_singleton.mp hm with rfl
-                  exact hsafe
+              · subst w; exact hsafe o (by simpa [step] using ho)
               · exact rho.safeBefore_mono (Nat.le_succ k) (old w o (by simpa [step, hw] using ho))
       refine ⟨hseen, ?_⟩
       cases he : rho.events[i]? with
@@ -163,7 +186,10 @@ theorem unforgeable_of_causal (hc : rho.Causal) : rho.Unforgeable := by
       | some e =>
         cases e with
         | tick v t => exact (rho.tick_safe he (hseen v)).2
-        | deliver v p t => simp [releasesAt, he]
+        | deliver v p t =>
+          obtain ⟨j, u, t', hj, hjt, hp⟩ := hc i v p t he
+          exact (rho.deliver_safe he (hseen v)
+            (rho.safeBefore_mono (by omega) ((ih j hj).2 p hp))).2
         | restart v t => simp [releasesAt, he]
   intro i w o t hi d hd u hu hh
   obtain ⟨j, v, t', hj, he, ho⟩ := hc i w o t hi
@@ -171,24 +197,37 @@ theorem unforgeable_of_causal (hc : rho.Causal) : rho.Unforgeable := by
   obtain ⟨k, t'', hk, hkt, hko⟩ := hs
   exact ⟨k, t'', by omega, hkt, hko⟩
 
-/-- A released object comes from the releasing tick (event `i`, from node
-`rho.stateBefore i u`): it is a signed duty candidate at a state the tick
+/-- A released object comes from the releasing event `i`, from node
+`rho.stateBefore i u`. At a tick: a signed duty candidate at a state the tick
 reaches from its post-clock state, whose mempool is the node's mempool at the
-tick, or gossip at the state after the tick's duties. -/
+tick, or gossip at the state after the tick's duties. At a delivery of `p`: a
+signed delivery-duty candidate at a state the delivery reaches from the
+processed state, or gossip at the state after the delivery duties. -/
 theorem releases_provenance {u : V} {o : (protoOf F E).Object} {τ : Time}
     (h : rho.releases u o τ) :
-    ∃ i, rho.events[i]? = some (.tick u τ) ∧
+    (∃ i, rho.events[i]? = some (.tick u τ) ∧
       (rho.DutyCandidate
           ((protoOf F E).clock (rho.stateBefore i u).st τ (mempool rho.inbox u τ)) u τ o ∨
         o ∈ gossipCandidates (protoOf F E)
           (rho.runDuties u
             ⟨(protoOf F E).clock (rho.stateBefore i u).st τ (mempool rho.inbox u τ),
-              (rho.stateBefore i u).seen⟩ ((protoOf F E).duties τ)).1.st τ) := by
-  obtain ⟨i, hi, ho⟩ := h
-  simp only [releasesAt, hi] at ho
-  obtain ⟨cs, hcs, h2, -⟩ := rho.tick_flat (rho.stateBefore i u) u τ
-  rw [h2] at ho
-  exact ⟨i, hi, hcs o (releaseAll_subset _ _ _ _ o ho)⟩
+              (rho.stateBefore i u).seen⟩ ((protoOf F E).duties τ)).1.st τ)) ∨
+    ∃ i p, rho.events[i]? = some (.deliver u p τ) ∧
+      (rho.DeliverCandidate
+          ((protoOf F E).process (rho.stateBefore i u).st p (digests rho.hash p)) u τ o ∨
+        o ∈ gossipCandidates (protoOf F E)
+          (rho.runDuties u
+            ⟨(protoOf F E).process (rho.stateBefore i u).st p (digests rho.hash p),
+              (rho.stateBefore i u).seen ++ [p]⟩ ((protoOf F E).deliverDuties τ)).1.st τ) := by
+  obtain ⟨i, hi | ⟨p, hi⟩, ho⟩ := h
+  · simp only [releasesAt, hi] at ho
+    obtain ⟨cs, hcs, h2, -⟩ := rho.tick_flat (rho.stateBefore i u) u τ
+    rw [h2] at ho
+    exact Or.inl ⟨i, hi, hcs o (releaseAll_subset _ _ _ _ o ho)⟩
+  · simp only [releasesAt, hi] at ho
+    obtain ⟨cs, hcs, h2, -⟩ := rho.deliver_flat (rho.stateBefore i u) u p τ
+    rw [h2] at ho
+    exact Or.inr ⟨i, p, hi, hcs o (releaseAll_subset _ _ _ _ o ho)⟩
 
 end Run
 end Consensus.Model

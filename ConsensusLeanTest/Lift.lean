@@ -162,6 +162,29 @@ theorem tick_rehash (rho : Run F E) (hash' : (protoOf F E).Item → Nat)
       (gossipCandidates (protoOf F E) R.1.st t) fun o ho => ha o (List.mem_append_right _ ho)
     exact congrArg (fun g => (g.1, R.2 ++ g.2)) hg
 
+omit [DecidableEq V] in
+/-- Replacing the hash preserves a delivery whose object and releases keep
+their digests. -/
+theorem deliver_rehash (rho : Run F E) (hash' : (protoOf F E).Item → Nat)
+    (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object) (t : Time)
+    (hd : digests hash' o = digests rho.hash o)
+    (ha : ∀ o' ∈ (rho.deliver nd v o t).2, digests hash' o' = digests rho.hash o') :
+    ({rho with hash := hash'} : Run F E).deliver nd v o t = rho.deliver nd v o t := by
+  rw [rho.deliver_eq] at ha
+  have hR : ({rho with hash := hash'} : Run F E).runDuties v
+      ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+      ((protoOf F E).deliverDuties t) =
+      rho.runDuties v ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+        ((protoOf F E).deliverDuties t) :=
+    runDuties_rehash rho hash' v _ _ fun o' ho => ha o' (List.mem_append_left _ ho)
+  rw [deliver_eq, rho.deliver_eq]
+  simp only [hd, hR]
+  generalize rho.runDuties v ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+    ((protoOf F E).deliverDuties t) = R at ha ⊢
+  have hg := releaseAll_eq_of_digests rho.hash hash' (rho.ownKey v) R.1
+    (gossipCandidates (protoOf F E) R.1.st t) fun o' ho => ha o' (List.mem_append_right _ ho)
+  exact congrArg (fun g => (g.1, R.2 ++ g.2)) hg
+
 /-- Replacing the hash while preserving observed digests preserves the trace. -/
 theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf F E).Item → Nat)
     (ha : ∀ h, rho.ObservedItem h → hash' h = rho.hash h) :
@@ -175,7 +198,17 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
     refine rho.tick_rehash hash' _ v t fun o ho => ?_
     apply rho.digests_eq_of_observed hash' ha
     refine ⟨v, hv.honest_only _ (List.mem_of_getElem? he), rho.mem_viewIdx_iff.mpr ⟨i, o,
-      (List.getElem?_eq_some_iff.mp he).1, Or.inl ⟨t, he, ?_⟩, .refl _⟩⟩
+      (List.getElem?_eq_some_iff.mp he).1, Or.inl ⟨t, Or.inl he, ?_⟩, .refl _⟩⟩
+    simpa only [releasesAt, he] using ho
+  have deliver_same : ∀ i v o t, rho.events[i]? = some (.deliver v o t) →
+      r.deliver (rho.stateBefore i v) v o t = rho.deliver (rho.stateBefore i v) v o t := by
+    intro i v o t he
+    have hv' := hv.honest_only _ (List.mem_of_getElem? he)
+    have hi := (List.getElem?_eq_some_iff.mp he).1
+    refine rho.deliver_rehash hash' _ v o t (rho.digests_eq_of_observed hash' ha
+      ⟨v, hv', rho.mem_viewIdx_iff.mpr ⟨i, o, hi, Or.inr ⟨t, he⟩, .refl _⟩⟩) fun o' ho => ?_
+    refine rho.digests_eq_of_observed hash' ha ⟨v, hv', rho.mem_viewIdx_iff.mpr ⟨i, o', hi,
+      Or.inl ⟨t, Or.inr ⟨o, he⟩, ?_⟩, .refl _⟩⟩
     simpa only [releasesAt, he] using ho
   have states : ∀ i, r.stateBefore i = rho.stateBefore i := by
     intro i
@@ -189,27 +222,22 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
         cases e with
         | tick v t => simp only [step, tick_eq i v t he]
         | restart v t => rfl
-        | deliver v o t =>
-          have ho : o ∈ rho.Observed :=
-            ⟨v, hv.honest_only _ (List.mem_of_getElem? he), rho.mem_viewIdx_iff.mpr ⟨i, o,
-              (List.getElem?_eq_some_iff.mp he).1, Or.inr ⟨t, he⟩, .refl _⟩⟩
-          simp only [step]
-          simp only [show r.hash = hash' from rfl, rho.digests_eq_of_observed hash' ha ho]
+        | deliver v o t => simp only [step, deliver_same i v o t he]
   refine ⟨states, ?_⟩
   intro i
   change r.releasesAt i = rho.releasesAt i
-  unfold releasesAt
-  change (match rho.events[i]? with | some (.tick v t) => _ | _ => _) = _
+  have hr : r.events = rho.events := rfl
   cases he : rho.events[i]? with
-  | none => rfl
+  | none => simp only [releasesAt, hr, he]
   | some e =>
     cases e with
     | tick v t =>
-      change (r.tick (r.stateBefore i v) v t).2 = _
-      rw [states i]
+      simp only [releasesAt, hr, he, states i]
       exact congrArg Prod.snd (tick_eq i v t he)
-    | deliver => rfl
-    | restart => rfl
+    | deliver v o t =>
+      simp only [releasesAt, hr, he, states i]
+      exact congrArg Prod.snd (deliver_same i v o t he)
+    | restart => simp only [releasesAt, hr, he]
 
 /-- Runs in one environment differ only in their hash, which agrees on all
 items observed by the first run (same honest set, horizon, events, PKI,
@@ -254,7 +282,7 @@ theorem readIdx_eq (hv : rho.ExecutionValid) : r.readIdx = rho.readIdx := by
 theorem releases_eq (hv : rho.ExecutionValid) : r.releases = rho.releases := by
   obtain ⟨_, hr⟩ := h.trace hv
   funext v o t
-  simp only [Run.releases, h.events, hr]
+  simp only [Run.releases, Run.SendsAt, h.events, hr]
 
 theorem receives_eq : r.receives = rho.receives := by
   funext v o t
@@ -283,7 +311,8 @@ theorem executionValid (hv : rho.ExecutionValid) : r.ExecutionValid := by
   · simpa only [h.events] using hv.deliver_awake
   · simpa only [h.events] using hv.restart_at_wake
   · simpa only [h.events, h.honest, h.horizon] using hv.wake_restart
-  · simpa only [Unforgeable, signerOf, h.events, h.honest, h.key, hr] using hv.unforgeable
+  · simpa only [Unforgeable, SendsAt, signerOf, h.events, h.honest, h.key, hr] using
+      hv.unforgeable
   · simpa only [SelValid, h.sel] using hv.selValid
   · simpa only [Credentials, h.events, h.sel] using hv.credentials
 

@@ -867,9 +867,10 @@ private theorem deliver_state (hv : rho.ExecutionValid) {i : Nat} {v : V}
   ⟨(now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he),
     stateAt_self S rho hn v i⟩
 
-/-- A cut of a delivery to an honest node: the relay obligations of its delivered object, from
-`process_relay` on the engine's state before the delivery. -/
-private theorem relay_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : Nat}
+/-- A cut of a delivery to an honest node: its delivered object is queued by the delivery's
+`process` (`process_relay`) and relayed by the delivery's gossip at its own time
+(`deliver_relays`), as a carried object of a released relay wrapper. -/
+theorem relays_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : Nat}
     (hnode : (simTrace S rho hn).node k = y) (hl : (simTrace S rho hn).label k ≠ none)
     (hdel : ∀ r : CutRec (S.params (pubOf E) hn) (S.ro _), (allCuts S rho hn)[k]? = some r →
       (r.pos = 0 ∧ ∃ ℓ, r.label = .fg ℓ) ∨ ∃ ℓ m, r.label = .ac ℓ ∧ ℓ.call = .message m) :
@@ -879,7 +880,8 @@ private theorem relay_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)
           (∃ ℓ m, r.label = .ac ℓ ∧ ℓ.call = .message m ∧ m ∈ r.post.ac.pool m.slot ∧
             x = voteObj m) ∨
           (∃ a, r.label = .fg (.attestation a) ∧ x = attObj a)) →
-        RelayedFrom S rho (rho.key y) x ((simTrace S rho hn).time k) := by
+        ∃ cs, x ∈ cs ∧ rho.releases (rho.key y) (.mk .none (.data .relay) cs)
+          ((simTrace S rho hn).time k) := by
   obtain ⟨r, i, ev, hr, he, -, -, hidx, hn', ht, -, hlab⟩ := simTrace_cut S rho hn hl
   have hmem := List.mem_of_getElem? hidx
   obtain ⟨v, o, t, rfl⟩ := eq_deliver_of_cut S rho hn he hmem (hdel r hr)
@@ -888,17 +890,19 @@ private theorem relay_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)
   subst hkey
   refine ⟨r, hlab, by rw [simTrace_post, hr]; rfl, fun x hx => ?_⟩
   rw [ht]
-  apply relayedFrom_of_deliver S rho hn hv he
-  rw [stateAt_succ_deliver S rho hn he]
   rw [eventCuts_deliver S rho hn i _ o t he] at hmem
   obtain ⟨hnow, hself⟩ := deliver_state S rho hn hv he
   obtain ⟨h1, h2, h3⟩ := (process_relay (digestOf S rho) (Model.digests rho.hash o) t i
     (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn _ i) 0 hnow).2.2.2 r
     (by rw [hself]; exact hmem)
-  rcases hx with ⟨B, hB, rfl⟩ | ⟨ℓ, m, hℓ, hc, hp, rfl⟩ | ⟨a, ha, rfl⟩
-  · exact h1 B hB
-  · exact h2 ℓ m hℓ hc hp
-  · exact h3 a ha
+  have hq : x ∈
+      (process (stateAt S rho hn (rho.key y) i) o (Model.digests rho.hash o)).relayBuf := by
+    rcases hx with ⟨B, hB, rfl⟩ | ⟨ℓ, m, hℓ, hc, hp, rfl⟩ | ⟨a, ha, rfl⟩
+    · exact h1 B hB
+    · exact h2 ℓ m hℓ hc hp
+    · exact h3 a ha
+  obtain ⟨cs, hxcs, hrel⟩ := deliver_relays S rho hn he hq
+  exact ⟨cs, hxcs, i, Or.inr ⟨o, he⟩, hrel⟩
 
 /-- The engine releases an honest node's own block at the tick that proposes it (the proposal
 duty's candidate is `blockObj` of the block, `releasable` by `proposal_releasable`, passed by
@@ -921,8 +925,8 @@ theorem simTrace_block_released (hv : rho.ExecutionValid) :
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
       simp at hmem
-    exact ⟨i, he, (tick_releases S rho hn hv (hv.honest_only _ (List.mem_of_getElem? he)) he hp
-      r hmem).1 B acc hrl hpos'⟩
+    exact ⟨i, Or.inl he, (tick_releases S rho hn hv (hv.honest_only _ (List.mem_of_getElem? he))
+      he hp r hmem).1 B acc hrl hpos'⟩
   | deliver v o t =>
     exfalso
     rw [eventCuts_deliver S rho hn i v o t he] at hmem
@@ -940,8 +944,8 @@ theorem simTrace_block_released (hv : rho.ExecutionValid) :
       hk' (hlabk.symm.trans hrl)))
 
 /-- The engine releases an honest node's vote from its emission on (the vote is queued in the
-outbox and released by a poll step of the next tick at which the node is awake; `outbox_le_two`
-gives that two poll steps suffice). -/
+outbox and released by the next poll step: the tick's own trailing polls, the delivery's poll
+step, or the leading polls of the tick after a restart). -/
 theorem simTrace_vote_released (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ k m, (simTrace S rho hn).EmitAt y k m →
       ReleasedFrom S rho (rho.key y) (voteObj m) ((simTrace S rho hn).time k) := by
@@ -958,24 +962,13 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid) :
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
       simp at hmem
-    exact Or.inl ⟨t, le_rfl, ⟨i, he, (tick_releases S rho hn hv
+    exact Or.inl ⟨t, le_rfl, ⟨i, Or.inl he, (tick_releases S rho hn hv
       (hv.honest_only _ (List.mem_of_getElem? he)) he hp r hmem).2.1 ℓ hrl em hem⟩,
       fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
   | deliver v o t =>
-    obtain ⟨hnow, hself⟩ := deliver_state S rho hn hv he
-    rw [eventCuts_deliver S rho hn i v o t he] at hmem
-    obtain ⟨-, h⟩ := process_outbox (digestOf S rho) (Model.digests rho.hash o) t i
-      (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) 0 hnow
-    obtain ⟨hb, hval⟩ := h r (by rw [hself]; exact hmem) ℓ hrl em hem
-    have hb' : Body.vote (encodeVote em.msg) ∈ (stateAt S rho hn v (i + 1)).outbox := by
-      rw [stateAt_succ_deliver S rho hn he]; exact hb
-    have hobj : @voteObj (pubOf E).n em.msg = Model.Obj.mk (.signed (rho.ownKey v) .poll)
-        (.data (Body.vote (encodeVote em.msg))) [] := by
-      unfold voteObj
-      rw [show em.msg.val = rho.ownKey v from hval.trans hself]
-      rfl
-    rw [hobj]
-    exact releasedFrom_of_pending S rho hn hv he hb'
+    -- open: the vote goes out at the delivery's own poll step (`deliverOrder := [.poll]`);
+    -- restated with the release fields (#107 PR 2)
+    sorry
   | restart v t =>
     rw [eventCuts_restart S rho hn i v t he] at hmem
     obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
@@ -1014,7 +1007,7 @@ theorem simTrace_att_released (hv : rho.ExecutionValid) :
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
       simp at hmem
-    exact Or.inl ⟨t, le_rfl, ⟨i, he, (tick_releases S rho hn hv
+    exact Or.inl ⟨t, le_rfl, ⟨i, Or.inl he, (tick_releases S rho hn hv
       (hv.honest_only _ (List.mem_of_getElem? he)) he hp r hmem).2.2 src a hrl⟩,
       fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
   | deliver v o t =>
@@ -1036,7 +1029,8 @@ theorem simTrace_att_released (hv : rho.ExecutionValid) :
     obtain ⟨x, hx⟩ := Compose.signed_only_in_ticks _ _ _ t .restart src a hcut
     cases hx
 
-/-- An honest node relays a block it accepts from the wire. -/
+/-- An honest node relays a block it accepts from the wire, at the delivery's own time
+(`relays_of_cut`). -/
 theorem simTrace_block_relayed (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ k B, (simTrace S rho hn).AcceptAt y k B →
       (simTrace S rho hn).pos k = 0 →
@@ -1044,10 +1038,11 @@ theorem simTrace_block_relayed (hv : rho.ExecutionValid) :
           ((simTrace S rho hn).time k) := by
   rintro y _ k B ⟨hnode, hlab⟩ hpos
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, hrl, -, hrel⟩ := relay_of_cut S rho hn hv hnode hl fun r hr => Or.inl
+  obtain ⟨r, hrl, -, hrel⟩ := relays_of_cut S rho hn hv hnode hl fun r hr => Or.inl
     ⟨by rw [simTrace_pos, hr] at hpos; exact hpos, _,
       Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab)⟩
-  exact hrel _ (Or.inl ⟨B, Option.some.inj (hrl.symm.trans hlab), rfl⟩)
+  obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inl ⟨B, Option.some.inj (hrl.symm.trans hlab), rfl⟩)
+  exact Or.inl ⟨_, cs, le_rfl, hx, hcs, fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
 
 /-- An honest node relays a vote it admits from the wire. -/
 theorem simTrace_vote_relayed (hv : rho.ExecutionValid) :
@@ -1056,11 +1051,12 @@ theorem simTrace_vote_relayed (hv : rho.ExecutionValid) :
         RelayedFrom S rho (rho.key y) (voteObj m) ((simTrace S rho hn).time k) := by
   rintro y _ k m ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ hpool
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, hrl, hpost, hrel⟩ := relay_of_cut S rho hn hv hnode hl fun r hr => Or.inr
+  obtain ⟨r, hrl, hpost, hrel⟩ := relays_of_cut S rho hn hv hnode hl fun r hr => Or.inr
     ⟨ℓ, m, Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab),
       hcall⟩
-  exact hrel _ (Or.inr (Or.inl ⟨ℓ, m, Option.some.inj (hrl.symm.trans hlab), hcall,
-    hpost ▸ hpool, rfl⟩))
+  obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inr (Or.inl ⟨ℓ, m, Option.some.inj (hrl.symm.trans hlab),
+    hcall, hpost ▸ hpool, rfl⟩))
+  exact Or.inl ⟨_, cs, le_rfl, hx, hcs, fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
 
 /-- An honest node relays an attestation it receives from the wire. -/
 theorem simTrace_att_relayed (hv : rho.ExecutionValid) :
@@ -1069,10 +1065,11 @@ theorem simTrace_att_relayed (hv : rho.ExecutionValid) :
         RelayedFrom S rho (rho.key y) (attObj a) ((simTrace S rho hn).time k) := by
   rintro y _ k a ⟨hnode, hlab⟩ hpos
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, hrl, -, hrel⟩ := relay_of_cut S rho hn hv hnode hl fun r hr => Or.inl
+  obtain ⟨r, hrl, -, hrel⟩ := relays_of_cut S rho hn hv hnode hl fun r hr => Or.inl
     ⟨by rw [simTrace_pos, hr] at hpos; exact hpos, _,
       Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab)⟩
-  exact hrel _ (Or.inr (Or.inr ⟨a, Option.some.inj (hrl.symm.trans hlab), rfl⟩))
+  obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inr (Or.inr ⟨a, Option.some.inj (hrl.symm.trans hlab), rfl⟩))
+  exact Or.inl ⟨_, cs, le_rfl, hx, hcs, fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
 
 /-! ## `LocalRun`: groups, the cut law and the wire checks
 

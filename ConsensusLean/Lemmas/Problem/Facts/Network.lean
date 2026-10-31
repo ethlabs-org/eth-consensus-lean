@@ -57,27 +57,27 @@ theorem PSync.syncUntil_zero (hns : L.SendsFromZero p) (h : L.PSync p 0) (b : Ti
     simp only [max_eq_left (le_trans hτ hτa)] at this
     exact this hdh hdh haw
 
-/-- An eager log meets every deadline function at or above `max a g`, at
+/-- An eager log meets every deadline function strictly above `max a g`, at
 every cut. -/
 theorem EagerFrom.delivers {g : Time} (h : L.EagerFrom p g) {dl : Time → Time}
-    (hdl : ∀ a, max a g ≤ dl a) (cut : Time) : L.Delivers p dl cut := by
+    (hdl : ∀ a, max a g < dl a) (cut : Time) : L.Delivers p dl cut := by
   constructor
   · intro v hv m t hs w hw a hta _ hdh haw
-    have hle : max t g ≤ dl a := le_trans (max_le_max hta le_rfl) (hdl a)
+    have hle : max t g < dl a := lt_of_le_of_lt (max_le_max hta le_rfl) (hdl a)
     exact held_of_recv (h.recv v hv m t hs w hw (dl a) hle hdh
-      (haw (dl a) (le_trans (le_max_left a g) (hdl a)) le_rfl))
+      (haw (dl a) (le_trans (le_max_left a g) (hdl a).le) le_rfl))
   · intro u hu x τ hτ hua hx w hw a hτa _ _ haw
-    have hle : τ ≤ dl a := le_trans hτa (le_trans (le_max_left a g) (hdl a))
+    have hle : τ ≤ dl a := le_trans hτa (le_trans (le_max_left a g) (hdl a).le)
     exact ⟨dl a, le_trans hτ hle, le_rfl, h.txs u hu x τ hτ hua hx w hw (dl a) hle
-      (haw (dl a) (le_trans (le_max_left a g) (hdl a)) le_rfl)⟩
+      (haw (dl a) (le_trans (le_max_left a g) (hdl a).le) le_rfl)⟩
 
 /-- An eager log from `g` is partially synchronous with every GST `g' ≥ g`. -/
 theorem EagerFrom.psync {g g' : Time} (h : L.EagerFrom p g) (hg : g ≤ g') : L.PSync p g' := by
   apply h.delivers
   intro a
   have := p.env.Δ_pos
-  exact max_le (le_trans (le_max_left a g') (by linarith))
-    (le_trans hg (le_trans (le_max_right a g') (by linarith)))
+  exact max_lt (lt_of_le_of_lt (le_max_left a g') (by linarith))
+    (lt_of_le_of_lt hg (lt_of_le_of_lt (le_max_right a g') (by linarith)))
 
 /-- An eager log from `g ≤ 0` with no honest send before `0` is synchronous up
 to every cut. -/

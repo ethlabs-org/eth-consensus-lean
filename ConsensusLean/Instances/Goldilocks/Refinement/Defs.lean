@@ -28,24 +28,27 @@ instance"):
   `r = g`, `.digest r` otherwise (`parentRef`). A header whose parent is `.digest g` is dropped
   (it would name genesis by a second parent), so every admitted block satisfies `RootOk` by
   construction, without the shape evaluating the hash.
-* **Steps.** `order := [.poll, .poll, .pollPropose, .propose, .poll, .poll]`. A poll step
-  releases the oldest queued body (an emitted vote or a signed attestation) and, when the
-  node's tick has made it due, first runs the FG update. The two leading polls release what
-  deliveries and a restart emitted since the last tick (at most a vote each: the node votes once
-  per slot), so that a proposal of this tick carries only released objects (the engine releases
-  a block only if it has seen everything it carries). The poll proposal step never proposes: it
-  is the node's tick (`ac_on_tick`) at the public times, as a duty so that it runs only while
-  the node is awake (the engine's `clock` runs asleep too, and only keeps the time). The slot
-  proposal step is C0.4's proposal step (`ac_proposal`, then the own `on_block` through
-  `recordOwn`, which brings the digest). The first trailing poll runs the FG update
+* **Steps.** `order := [.poll, .poll, .pollPropose, .propose, .poll, .poll]` and
+  `deliverOrder := [.poll]`. A poll step releases the oldest queued body (an emitted vote or a
+  signed attestation) and, when the node's tick has made it due, first runs the FG update. The
+  poll at a delivery releases the vote the delivery emitted, if any (at most one: the node
+  votes once per slot), at the delivery's own time; the FG update is due only between a tick's
+  poll proposal step and its first trailing poll, never at a delivery, so the delivery poll is
+  a drain. The two leading polls of a tick release what a restart emitted (a restart releases
+  nothing itself), so that a proposal of this tick carries only released objects (the engine
+  releases a block only if it has seen everything it carries). The poll proposal step never
+  proposes: it is the node's tick (`ac_on_tick`) at the public times, as a duty so that it runs
+  only while the node is awake (the engine's `clock` runs asleep too, and only keeps the time).
+  The slot proposal step is C0.4's proposal step (`ac_proposal`, then the own `on_block`
+  through `recordOwn`, which brings the digest). The first trailing poll runs the FG update
   (`ac_to_fg`, then `attest`, written out as `Node.tickStep … .fgUpdate` does) and queues the
   attestation; the two trailing polls drain the tick's at most one vote and one attestation.
 * **Relay.** An admitted object (a block held after the call, a vote the pool holds, an
-  attestation) is relayed at the tick's gossip as a carried object of an unsigned `.relay`
-  wrapper; the engine releases an emission at the node's next awake tick, not at the cut that
-  emitted it (the slack the statements carry).
+  attestation) is relayed at the gossip of the event that admitted it (a delivery or a tick) as
+  a carried object of an unsigned `.relay` wrapper; a delivery's emission and relay leave at the
+  delivery's own time (`Model.Run.deliver`), as the spec's relay rule sends them.
 * **Restart.** Everything is durable (the spec keeps `Σ`, `𝒜`, `Λ` and restarts the AC); the
-  queued bodies are kept, so a sleep delays a send rather than losing it.
+  queued bodies are kept and leave at the tick that follows the restart at the wake time.
 * **Outputs.** `confirmed` is `ac_confirmed`, `finalized` is `Σ.F`, each as the chain of
   headers from genesis (excluded) to the block, read from `Σ.T` by parent walk (fuel: the slot).
 * **Slashing rule.** `conflicts` is `FG.slashable` on two canonical attestation objects.
@@ -223,7 +226,9 @@ def blockOf (d : Nat) (h : Header Info) (k : Fin sp.n) (atts : List (FG.Att sp.n
 `Setup`): slots of `4Δ`, the schedule's proposer at every slot (the key `proposer s % n`; no key
 when `n = 0`), everyone in the poll role, no committee kinds; two poll steps (the release of the
 bodies queued since the last tick), the node's tick as the poll proposal step, the slot proposal,
-then two poll steps (the FG update and the release of the tick's bodies). -/
+then two poll steps (the FG update and the release of the tick's bodies); one poll step at every
+delivery (the release of the vote the delivery emitted, if any; the FG update is never due at a
+delivery). -/
 def skeleton (n : Nat) (proposer : Nat → Nat) : Skeleton n where
   grid := ⟨4⟩
   proposerSel := fun s => .fixed (Finset.univ.filter fun k : Fin n => k.val = proposer s % n)
@@ -234,6 +239,7 @@ def skeleton (n : Nat) (proposer : Nat → Nat) : Skeleton n where
   phase := fun k => k.elim
   kindSel := fun k => k.elim
   order := [.poll, .poll, .pollPropose, .propose, .poll, .poll]
+  deliverOrder := [.poll]
 
 /-- The shape's state: the own key, the node state `(Σ, 𝒜, Λ)`, the current time (set by the
 clock), the bodies emitted or signed and not yet released, the admitted objects not yet relayed,

@@ -71,15 +71,15 @@ theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O
   have he : t' - (D : Time) * E.Δ + (D : Time) * E.Δ = t' := sub_add_cancel _ _
   rw [he] at hin
   have hmem : x ∈ decodeTxs h.input := by
-    rw [honestProposal_payload hprop, decode_encodeTxs]
+    rw [honestProposal_payload hv hprop, decode_encodeTxs]
     obtain ⟨u, hu, τ₀, hτ₀, hτ₀t, haw, hx⟩ := hsub
     have hτa : τ₀ ≤ τ - E.Δ - 1 := by dsimp only [Time] at *; omega
     have hga : gst ≤ τ - E.Δ - 1 := by dsimp only [Time] at *; omega
     have hdl : max (τ - E.Δ - 1) gst + E.Δ = τ - 1 := by
       rw [max_eq_left hga]; dsimp only [Time] at *; omega
     have hτh : τ ≤ rho.horizon := by
-      obtain ⟨-, -, -, -, i, hi, -⟩ := hprop
-      exact (hv.in_horizon _ (List.mem_of_getElem? hi)).2
+      obtain ⟨-, -, -, -, i, hi | ⟨_, hi⟩, -⟩ := hprop <;>
+        exact (hv.in_horizon _ (List.mem_of_getElem? hi)).2
     have hawake : rho.point.AwakeOnClosed (rho.key k) (τ - E.Δ - 1) (τ - 1) := by
       intro u hu₁ hu₂
       refine hready.2 u ?_ ?_

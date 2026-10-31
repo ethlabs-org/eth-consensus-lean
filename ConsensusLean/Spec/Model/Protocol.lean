@@ -79,6 +79,10 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   /-- The duties due at a time, in the order the engine runs them (one after
   the other, each from the state the previous one left). -/
   duties : Time → List Duty
+  /-- The duties the engine runs at a delivery at the given time, in order,
+  after `process` and before gossip, so that what a receipt makes the node
+  emit leaves at the delivery's own time. Default: none. -/
+  deliverDuties : Time → List Duty := fun _ => []
   /-- The initial state of the node with the given key. -/
   init : Key pub → State
   /-- The clock update at a tick, with the node's cumulative own and relayed transactions

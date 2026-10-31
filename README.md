@@ -249,8 +249,9 @@ re-delivery; tests `waker_within_bound`, `waker_not_instant`).
   covered from `0`. With `SendsFromZero` (in `DerivedFacts`; true of every valid model run),
   `PSync 0` is synchrony (`PSync.syncUntil_zero`).
 - Receipt is a network service, not protocol use. In the model, what arrives
-  at the deadline is first used by the node's next tick. That slack belongs
-  to the protocol.
+  at the deadline is processed at the delivery, which may run the protocol's
+  delivery duties and release at once; a tick first reads it at the node's
+  next tick. That slack belongs to the protocol.
 
 Instances: `PSync g` (deadline `max a g + Δ`), `SyncUntil b` (deadline
 `a + Δ`, for deadlines up to `b`), and `OutageNet b₀ b₁ = SyncUntil b₀ ∧
@@ -695,8 +696,9 @@ within the execution conditions. There is no adaptive corruption.
 - **Δ known; unit ticks:** honest code knows `Δ` and `n`. Every awake honest
   node ticks at every integer time.
 - **Order within one time:** restarts, then ticks, then deliveries. What
-  arrives at a deadline is used by the next tick. Restarts happen exactly at
-  wakes.
+  arrives at a deadline is processed at the delivery (whose duties and gossip
+  leave at that time) and read by a tick at the next tick. Restarts happen
+  exactly at wakes.
 - **Collision resistance** of the deployed hash on real items.
 
 Per instance, the reviewer binds three things: the outputs are what users

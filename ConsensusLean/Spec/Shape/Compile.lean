@@ -14,7 +14,9 @@ the poll selection for the poll role.
 Duties: the proposal of positive slot `s` at `slotTime s`; committee kind `k`
 of slot `s` at `slotTime s + phase k · Δ`; the two poll duties at every unit tick
 `t ≥ 0`. The duties at `t` are the steps of the skeleton's `order` due at `t`,
-in that order (a repeated step gives its duty again). The engine writes every
+in that order (a repeated step gives its duty again); the duties at a delivery
+at `t` are the steps of `deliverOrder` due at `t`, and the engine releases the
+gossip after them at the delivery's own time. The engine writes every
 proposal's payload (`input := encodeTxs mempool`, the post-clock mempool
 `st.2`, which no step within a tick changes) and a slot proposal's position
 (`pos := s`); a poll proposal's position is the shape's choice.
@@ -72,6 +74,10 @@ def stepAt (Δ t : Time) : Step sk.Kind → List (ShapeDuty sk.Kind)
 def duties (Δ t : Time) : List (ShapeDuty sk.Kind) :=
   sk.order.flatMap (sk.stepAt Δ t)
 
+/-- The duties run at a delivery at `t`, in `deliverOrder`. -/
+def deliverDuties (Δ t : Time) : List (ShapeDuty sk.Kind) :=
+  sk.deliverOrder.flatMap (sk.stepAt Δ t)
+
 end Skeleton
 
 variable {pub : Public} {Out : Type}
@@ -97,6 +103,7 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
   selSpec := S.skel.selSpec
   role := S.skel.role
   duties := S.skel.duties pub.Δ
+  deliverDuties := S.skel.deliverDuties pub.Δ
   init k := (S.init k, [])
   clock st t xs := (S.clock st.1 t, xs)
   act st d := match d with

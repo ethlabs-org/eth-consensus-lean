@@ -27,8 +27,7 @@ def Unforgeable : Prop :=
   ∀ (i : Nat) (w : V) (o : (protoOf F E).Object) (t : Time),
     rho.events[i]? = some (Event.deliver w o t) →
     ∀ o', Obj.Contains o o' → ∀ u ∈ rho.honest, rho.signerOf o' = some u →
-      ∃ (j : Nat) (t' : Time), j < i ∧ rho.events[j]? = some (Event.tick u t') ∧
-        o' ∈ rho.releasesAt j
+      ∃ (j : Nat) (t' : Time), j < i ∧ rho.SendsAt u j t' ∧ o' ∈ rho.releasesAt j
 
 /-- The run's selection is admissible for every role. -/
 def SelValid : Prop := (protoOf F E).SelAdmits rho.sel

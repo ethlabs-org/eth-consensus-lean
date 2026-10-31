@@ -165,7 +165,13 @@ theorem conflictsTrue_releases_unsigned_only {V : Type} [Fintype V] [DecidableEq
       · have hf : (protoOf familyC E).conflicts o o = false :=
           rho.tick_noConflict he ho' ho' h h
         cases hf
-    | deliver v p t => simp [Run.releasesAt, he] at ho
+    | deliver v p t =>
+      simp only [Run.releasesAt, he] at ho
+      rcases rho.deliver_signer _ v p t ho with h | h
+      · exact h
+      · have hf : (protoOf familyC E).conflicts o o = false :=
+          rho.deliver_noConflict he ho' ho' h h
+        cases hf
     | restart v t => simp [Run.releasesAt, he] at ho
 
 /-- Hence non-framing, which a protocol convicting everything would violate

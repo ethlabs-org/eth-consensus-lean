@@ -103,18 +103,28 @@ theorem truncate_index_lt (hys : ∀ e ∈ ys, b < e.time) {i : Nat}
   rw [hsplit, List.getElem?_append_right (by omega)] at h
   exact absurd (hys e (List.mem_of_getElem? h)) (not_lt.mpr he)
 
+omit [DecidableEq V] in
+/-- At a kept index, the truncation has the same sending events. -/
+theorem truncate_sendsAt_iff {v : V} {i : Nat} {t : Time}
+    (hi : i < (rho.truncate b).events.length) :
+    (rho.truncate b).SendsAt v i t ↔ rho.SendsAt v i t := by
+  unfold SendsAt
+  rw [truncate_getElem? hsplit hi]
+
 theorem truncate_releases_iff (hys : ∀ e ∈ ys, b < e.time) {v : V}
     {o : (protoOf F E).Object} {t : Time} (ht : t ≤ b) :
     (rho.truncate b).releases v o t ↔ rho.releases v o t := by
   constructor
   · rintro ⟨i, hi, ho⟩
-    have hil : i < (rho.truncate b).events.length := (List.getElem?_eq_some_iff.mp hi).1
-    rw [truncate_getElem? hsplit hil] at hi
+    have hil : i < (rho.truncate b).events.length := by
+      rcases hi with hi | ⟨_, hi⟩ <;> exact (List.getElem?_eq_some_iff.mp hi).1
+    rw [truncate_sendsAt_iff hsplit hil] at hi
     rw [truncate_releasesAt hsplit hil] at ho
     exact ⟨i, hi, ho⟩
   · rintro ⟨i, hi, ho⟩
-    have hil := truncate_index_lt hsplit hys hi ht
-    rw [← truncate_getElem? hsplit hil] at hi
+    have hil : i < (rho.truncate b).events.length := by
+      rcases hi with hi | ⟨_, hi⟩ <;> exact truncate_index_lt hsplit hys hi ht
+    rw [← truncate_sendsAt_iff hsplit hil] at hi
     rw [← truncate_releasesAt hsplit hil] at ho
     exact ⟨i, hi, ho⟩
 
@@ -181,7 +191,7 @@ theorem truncate_valid (hv : rho.ExecutionValid) {b : Time} (hb : 0 ≤ b)
     obtain ⟨j, t', hj, hjt, hjo⟩ := hv.unforgeable i w o t hi o' hc u hu hsg
     have hjl : j < (rho.truncate b).events.length := lt_trans hj hil
     refine ⟨j, t', hj, ?_, ?_⟩
-    · rw [truncate_getElem? hsplit hjl]; exact hjt
+    · exact (truncate_sendsAt_iff hsplit hjl).mpr hjt
     · rw [truncate_releasesAt hsplit hjl]; exact hjo
   · intro i w o t hi o' hc k r ha
     have hil : i < (rho.truncate b).events.length := (List.getElem?_eq_some_iff.mp hi).1

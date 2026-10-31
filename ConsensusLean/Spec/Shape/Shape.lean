@@ -67,13 +67,23 @@ structure Skeleton (n : Nat) : Type 1 where
   under a typical slashing rule, at most one signed message per duty), so
   repeats are for state-dependent placement or local work; two votes need two
   kinds. A fixed order bounds the signed attempts per tick: there are no
-  reaction chains of state-dependent length, and a reaction to a receipt waits
-  for the next tick. Gossip is built once, after all the duties of the tick
-  (so no step sees the digests of the tick's gossip). Per-tick work goes in
-  `clock`, which runs at the start of every tick; work after the duties of an
-  awake tick goes in a trailing poll step (the poll steps are due at every
-  tick `t ≥ 0`; the other steps only at some ticks). -/
+  reaction chains of state-dependent length, and a reaction to a receipt runs
+  at the delivery only if `deliverOrder` lists a step for it. Gossip is built
+  once, after all the duties of the tick (so no step sees the digests of the
+  tick's gossip). Per-tick work goes in `clock`, which runs at the start of
+  every tick; work after the duties of an awake tick goes in a trailing poll
+  step (the poll steps are due at every tick `t ≥ 0`; the other steps only at
+  some ticks). -/
   order : List (Step Kind) := [.propose] ++ kinds.map .kind ++ [.pollPropose, .poll]
+  /-- The steps the engine runs at a delivery, in order, after `process` and
+  before the delivery's gossip (`Model.Run.deliver`); the steps due at the
+  delivery's time run (`Skeleton.deliverDuties`). By default none: a receipt
+  then only changes the state, and its gossip leaves at the delivery. A shape
+  that reacts to receipts (a poll vote sent when the receipt completes the
+  node's view) lists the step here, typically `[.poll]`, so that the reaction
+  leaves at the delivery's own time and not at a next tick that a sleeping
+  node may never take. -/
+  deliverOrder : List (Step Kind) := []
 
 attribute [instance] Skeleton.decKind
 

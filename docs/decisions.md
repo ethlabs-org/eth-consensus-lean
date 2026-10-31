@@ -137,6 +137,30 @@ where it is recorded; "Francesco" marks the owner's decisions.
   rows: a fixed schedule does not fit `.recur`, see above); the milestone statements are over `compiled (family S)` directly, and restating Baseline at the
   refinement skeleton is left to the first-slice re-review ([#10], [#38]) as a recorded gap.
 
+- 2026-10-31, amp-orbs (architecture), delivery-time release in the engine ([#107], coordinator's decision
+  option (a); `Spec/Model/{Protocol,Run,Conditions}`, `Spec/Shape/{Shape,Compile}`, `Spec/Problem/Network`,
+  `Refinement/Defs`). **What a delivery makes a node emit, relay or acknowledge leaves at the delivery's own
+  time.** A protocol has `deliverDuties : Time → List Duty` (default `[]`; a skeleton lists them as
+  `deliverOrder`, default `[]`), and `Run.step` at `.deliver v o t` runs them on the processed node and then the
+  gossip `releaseAll`, as an awake tick does; `releasesAt` has a deliver branch, `releases v o t` holds at the
+  delivery's own time `t` through `Run.SendsAt` (a tick or a delivery of `v` at `t`), and `Unforgeable`'s
+  earlier send may be a delivery. Reason: the protocol texts read an admission or a vote cast at a receipt as an
+  instantaneous send (sa-protocol.tex "the network relays each accepted object"; fgsa-protocol Relay "use the
+  acceptance time, also for … an asleep receiver"), the claims' proofs A1.2/C1.1 (`writer_pool`), A1.3
+  (`fastLock_same_slot`) and A1.7 (`honest_vote_at_update`) and the Sleepy invariant rely on it, and the
+  sa-fg-model showed that release at the next awake tick, or even one unit late, breaks R.1/S1 under a
+  sleeping admitter while delivery-time release had no violation. Rejected: weakening `SyncOn`/`SyncAC` to the
+  sender's first awake time (the proofs cannot absorb it), a gossip-only release at deliveries (a vote cast at a
+  receipt would still wait), and votes carrying their head block (a spec change for an engine defect). The
+  Goldilocks skeleton's delivery duty is one `.poll`, a drain: `fgDue` is false at every cut (set only by the
+  tick's `pollPropose`), so a delivery emits at most the queued vote and the relay gossip and `signed_only_in_ticks`
+  stands. `CommLog.EagerFrom.recv` becomes strict (`max t g < a`): the canonical schedule fixes the deliveries at
+  `a` before the delivery-time releases at `a` exist, so those are served from `a + 1`. No `Statements/` file
+  names `EagerFrom`; `Spec/Problem/Good.lean` uses it existentially (`Adequate.covers`, `HealthyLive`), so the
+  strict form asks those witness runs for one receipt less (none at the send's own time), and every regime
+  premise they serve (`PSync`, `SyncUntil`, `OutageNet`: deadlines at least `a + Δ`, `Δ > 0`) is still
+  implied (`EagerFrom.psync`). The other instances' skeletons keep the default and rebuild unchanged. The Goldilocks `ReleasedFrom`/`RelayedFrom` and the six
+  release and relay fields of `Simulates` are restated at the delivery time in a second PR.
 - 2026-10-30, amp-orbs (coordinator), on the Regimes milestone (R.3). **Baseline's heal point is not raised to the
   proved bound.** The target pins `gHeal = max(g, 0) + (29 + B_H^F(k))·Δ` (from the FG-SA analysis); the only
   healing result, claims H.4, gives `T_heal = ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b`, far above it. R.3 is
@@ -204,6 +228,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
 [#10]: https://github.com/fradamt-agent/consensus-lean/issues/10
 [#11]: https://github.com/fradamt-agent/consensus-lean/issues/11
 [#93]: https://github.com/fradamt-agent/consensus-lean/issues/93
+[#107]: https://github.com/fradamt-agent/consensus-lean/issues/107
 [#17]: https://github.com/fradamt-agent/consensus-lean/issues/17
 [#21]: https://github.com/fradamt-agent/consensus-lean/issues/21
 [#38]: https://github.com/fradamt-agent/consensus-lean/issues/38

@@ -32,9 +32,14 @@ Same-tick semantics: a duty reads the state after the earlier duties of the
 tick, including the `recordOwn` of their released messages (which is how a
 node learns that it signed). It gets no other feedback: a duty whose message
 is unselected or refused leaves only its own state. Duties run only at awake
-ticks.
+ticks and at deliveries (which the conditions make only to awake nodes).
 
-At a delivery it runs `process`; at a restart, `restore` (with the own key) of
+At a delivery to awake node `v` at `t`, the engine runs `process`, adds the
+object to `seen`, then runs the protocol's `deliverDuties t` as in 2–3 and
+gossip as in 4, from the processed state: what the delivery makes the node
+emit, relay or acknowledge leaves at the delivery's own time, not at the
+next tick (which may never come if the node sleeps). At a restart it runs
+`restore` (with the own key) of
 `durable`, keeping `seen`. The `seen` log survives restarts, so slashing
 protection persists across them, as a validator's slashing-protection
 database does (EIP-3076); that the deployed engine keeps it is part of model
@@ -214,11 +219,22 @@ def tick (nd : Node (protoOf F E)) (v : V) (t : Time) :
     (g.1, r.2 ++ g.2)
   else (nd₁, [])
 
+/-- A delivery of `o` to node `v` at `t`: `process` and the `seen` entry, then
+the delivery duties in order, then gossip from the final state. No awake test:
+the conditions deliver only to awake nodes (`ExecutionValid.deliver_awake`). -/
+def deliver (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object) (t : Time) :
+    Node (protoOf F E) × List (protoOf F E).Object :=
+  let nd₁ : Node (protoOf F E) :=
+    ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+  let r := rho.runDuties v nd₁ ((protoOf F E).deliverDuties t)
+  let g := releaseAll (protoOf F E) rho.hash (rho.ownKey v) r.1
+    (gossipCandidates (protoOf F E) r.1.st t)
+  (g.1, r.2 ++ g.2)
+
 /-- One event. -/
 def step (w : V → Node (protoOf F E)) : Event V (protoOf F E).Object → V → Node (protoOf F E)
   | .tick v t => Function.update w v (rho.tick (w v) v t).1
-  | .deliver v o _ =>
-      Function.update w v ⟨(protoOf F E).process (w v).st o (digests rho.hash o), (w v).seen ++ [o]⟩
+  | .deliver v o t => Function.update w v (rho.deliver (w v) v o t).1
   | .restart v t =>
       Function.update w v
         ⟨(protoOf F E).restore (rho.ownKey v) ((protoOf F E).durable (w v).st) t, (w v).seen⟩
@@ -227,15 +243,24 @@ def step (w : V → Node (protoOf F E)) : Event V (protoOf F E).Object → V →
 def stateBefore (i : Nat) : V → Node (protoOf F E) :=
   (rho.events.take i).foldl rho.step rho.initWorld
 
-/-- The objects released by the tick at index `i`. -/
+/-- The objects released by the event at index `i`: by its tick or its
+delivery (a restart releases nothing). -/
 def releasesAt (i : Nat) : List (protoOf F E).Object :=
   match rho.events[i]? with
   | some (.tick v t) => (rho.tick (rho.stateBefore i v) v t).2
+  | some (.deliver v o t) => (rho.deliver (rho.stateBefore i v) v o t).2
   | _ => []
 
-/-- Node `v` released `o` at its tick at `t`. -/
+/-- Event `i` is a sending event of node `v` at `t`: its tick at `t`, or a
+delivery to it at `t`. -/
+def SendsAt (v : V) (i : Nat) (t : Time) : Prop :=
+  rho.events[i]? = some (Event.tick v t) ∨
+    ∃ o : (protoOf F E).Object, rho.events[i]? = some (Event.deliver v o t)
+
+/-- Node `v` released `o` at `t`: at its tick at `t` or at a delivery to it at
+`t`. The send time is the event's own time. -/
 def releases (v : V) (o : (protoOf F E).Object) (t : Time) : Prop :=
-  ∃ i : Nat, rho.events[i]? = some (Event.tick v t) ∧ o ∈ rho.releasesAt i
+  ∃ i : Nat, rho.SendsAt v i t ∧ o ∈ rho.releasesAt i
 
 /-- Node `v` received `o` at `t`. -/
 def receives (v : V) (o : (protoOf F E).Object) (t : Time) : Prop :=

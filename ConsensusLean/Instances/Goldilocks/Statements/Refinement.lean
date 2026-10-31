@@ -24,9 +24,12 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `Refinement
   group) or no cut (a tick at a non-public time, a dropped object); every labelled node cut
   belongs to an engine event; awake agrees up to the spec's horizon clamp. The engine releases
   what the node sends: an own block at its proposal time, a vote or an attestation at the first
-  awake time from its emission (`ReleasedFrom`; a body emitted at a delivery waits for the next
-  tick, and a sleep delays it), and an admitted block, vote or attestation in a relay wrapper at
-  the next awake time after the admission (`RelayedFrom`).
+  awake time from its emission (`ReleasedFrom`: in the tick or at the delivery that emits it;
+  only a sleep after a restart's emission delays it), and an admitted block, vote or
+  attestation in a relay wrapper at the first awake time from the admission (`RelayedFrom`:
+  the admitting delivery's own time, since the engine delivers only to awake nodes). The
+  first-awake-time forms predate the engine's delivery-time release (consensus-lean#107) and
+  are restated at the exact times in a later revision.
 * **Reads** (`ReadIsOut`): the chain trace reads the shape's outputs of the node state at the
   shape's clock, which is the time of the node's last tick or restart (`lastClock`).
 * **`NoColl` transport** (`NoCollTransport`): no observed hash collision and no observed item
@@ -41,10 +44,10 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `Refinement
 
 Not stated: the transport of the engine's network premises (`CommLog.PSync`, `SyncUntil`) to the
 spec's `Sync`/`GST` (`Spec/Run/Premises`). The engine's `Delivers` bounds a receipt by
-`max(a, g) + Δ` while the spec requires processing strictly before `max(τ, w_y) + Δ'`, and the
-spec treats an admission as an instantaneous send while the engine relays at the admitting
-node's next awake tick (`RelayedFrom`): the regimes milestone states the transport, once the
-spec orb decides the slack. `docs/goldilocks-mapping.md` §"Refinement" maps each statement.
+`max(a, g) + Δ` while the spec requires processing strictly before `max(τ, w_y) + Δ'`; the
+engine relays an admission at the admitting delivery's own time, as the spec's instantaneous
+send (consensus-lean#107), so only that endpoint slack remains: the regimes milestone states the
+transport. `docs/goldilocks-mapping.md` §"Refinement" maps each statement.
 
 Statements only: no proofs here. -/
 
@@ -80,19 +83,20 @@ def lastClock (v : V) : Nat → Time
     | _ => lastClock v i
 
 /-- The object `o` of node `v`, queued at `τ`, is released at the first time from `τ` on at which
-`v` is awake, if there is one within the horizon: a body emitted inside a tick goes out in that
-tick, a body emitted at a delivery at the next tick, and a sleep delays the send. -/
+`v` is awake, if there is one within the horizon: a body emitted inside a tick or at a delivery
+goes out in that event, and a sleep after a restart's emission delays the send. -/
 def ReleasedFrom (v : V) (o : (Model.protoOf (compiled (family S)) E).Object) (τ : Time) :
     Prop :=
   (∃ t', τ ≤ t' ∧ rho.releases v o t' ∧ ∀ u, τ < u → u < t' → E.awake v u = false) ∨
     ∀ u, τ < u → u ≤ rho.horizon → E.awake v u = false
 
 /-- The object `o` admitted by node `v` at `τ` is relayed, as a carried object of an unsigned
-relay wrapper, at the first time after `τ` at which `v` is awake, if there is one within the
-horizon. -/
+relay wrapper, at the first time from `τ` on at which `v` is awake, if there is one within the
+horizon; the engine delivers only to awake nodes and releases the relay at the delivery, so
+that time is `τ` itself. -/
 def RelayedFrom (v : V) (o : (Model.protoOf (compiled (family S)) E).Object) (τ : Time) :
     Prop :=
-  (∃ t' cs, τ < t' ∧ o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) t' ∧
+  (∃ t' cs, τ ≤ t' ∧ o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) t' ∧
       ∀ u, τ < u → u < t' → E.awake v u = false) ∨
     ∀ u, τ < u → u ≤ rho.horizon → E.awake v u = false
 

@@ -51,6 +51,10 @@ omit [DecidableEq V] in
     (rho.withEvents es).tick = rho.tick := by rfl
 
 omit [DecidableEq V] in
+@[simp] theorem withEvents_deliver (es : List (Event V (protoOf F E).Object)) :
+    (rho.withEvents es).deliver = rho.deliver := by rfl
+
+omit [DecidableEq V] in
 @[simp] theorem withEvents_key (es : List (Event V (protoOf F E).Object)) :
     (rho.withEvents es).key = rho.key := by rfl
 
@@ -73,32 +77,59 @@ theorem releasesAt_append (xs ys : List (Event V (protoOf F E).Object))
     List.getElem?_append_left hi, rho.stateBefore_append xs ys hi.le]
   rfl
 
+omit [DecidableEq V] in
+/-- The event of a sending event: its index holds a tick or a delivery of the
+node at the time. -/
+theorem SendsAt.exists_event {v : V} {i : Nat} {t : Time} (hs : rho.SendsAt v i t) :
+    ∃ e, rho.events[i]? = some e ∧ e.node = v ∧ e.time = t := by
+  rcases hs with he | ⟨o, he⟩
+  · exact ⟨_, he, rfl, rfl⟩
+  · exact ⟨_, he, rfl, rfl⟩
+
+omit [DecidableEq V] in
+/-- A sending event in a prefix is one in the longer list. -/
+theorem sendsAt_append (xs ys : List (Event V (protoOf F E).Object)) {v : V} {i : Nat}
+    {t : Time} (hs : (rho.withEvents xs).SendsAt v i t) :
+    (rho.withEvents (xs ++ ys)).SendsAt v i t := by
+  rcases hs with he | ⟨o, he⟩
+  · have hil : i < xs.length := (List.getElem?_eq_some_iff.mp he).1
+    exact Or.inl ((List.getElem?_append_left hil).trans he)
+  · have hil : i < xs.length := (List.getElem?_eq_some_iff.mp he).1
+    exact Or.inr ⟨o, (List.getElem?_append_left hil).trans he⟩
+
 /-- Releases at an index depend only on the prefix through that index. -/
 theorem releases_prefix (xs ys : List (Event V (protoOf F E).Object))
     {v : V} {o : (protoOf F E).Object} {t : Time}
     (h : (rho.withEvents xs).releases v o t) :
     (rho.withEvents (xs ++ ys)).releases v o t := by
   obtain ⟨i, hi, ho⟩ := h
-  have hil : i < xs.length := List.getElem?_eq_some_iff.mp hi |>.1
-  refine ⟨i, ?_, ?_⟩
-  · exact (List.getElem?_append_left hil).trans hi
-  · rw [rho.releasesAt_append xs ys hil]
-    exact ho
+  obtain ⟨e, he, -, -⟩ := hi.exists_event
+  have hil : i < xs.length := (List.getElem?_eq_some_iff.mp he).1
+  refine ⟨i, rho.sendsAt_append xs ys hi, ?_⟩
+  rw [rho.releasesAt_append xs ys hil]
+  exact ho
 
-/-- Restrict a release to a prefix containing its tick. Uniqueness of events
-ensures that both runs refer to the same tick index. -/
+/-- Restrict a release to a prefix containing every event of the node at the
+release time (so its sending event). Uniqueness of events ensures that both
+runs refer to the same index. -/
 theorem releases_restrict (xs ys : List (Event V (protoOf F E).Object))
     (hn : (xs ++ ys).Nodup) {v : V} {o : (protoOf F E).Object} {t : Time}
-    (ht : Event.tick v t ∈ xs)
+    (hin : ∀ e ∈ xs ++ ys, e.node = v → e.time = t → e ∈ xs)
     (hr : (rho.withEvents (xs ++ ys)).releases v o t) :
     (rho.withEvents xs).releases v o t := by
-  obtain ⟨j, hj⟩ := List.mem_iff_getElem?.mp ht
-  have hjl : j < xs.length := (List.getElem?_eq_some_iff.mp hj).1
   obtain ⟨i, hi, ho⟩ := hr
+  obtain ⟨e, he, hev, het⟩ := hi.exists_event
+  rw [withEvents_events] at he
+  have hex : e ∈ xs := hin e (List.mem_of_getElem? he) hev het
+  obtain ⟨j, hj⟩ := List.mem_iff_getElem?.mp hex
+  have hjl : j < xs.length := (List.getElem?_eq_some_iff.mp hj).1
   have hji : j = i := (hn.getElem?_inj (by simp; omega)).mp
-    ((List.getElem?_append_left hjl).trans (hj.trans hi.symm))
+    ((List.getElem?_append_left hjl).trans (hj.trans he.symm))
   subst i
-  exact ⟨j, hj, by rwa [rho.releasesAt_append xs ys hjl] at ho⟩
+  refine ⟨j, ?_, by rwa [rho.releasesAt_append xs ys hjl] at ho⟩
+  rcases hi with hi | ⟨p, hi⟩
+  · exact Or.inl ((List.getElem?_append_left hjl).symm.trans hi)
+  · exact Or.inr ⟨p, (List.getElem?_append_left hjl).symm.trans hi⟩
 
 /-- The finite pool of objects released in a prefix, deduplicated. -/
 def pool (es : List (Event V (protoOf F E).Object)) : List (protoOf F E).Object :=
@@ -122,11 +153,12 @@ theorem mem_pool (es : List (Event V (protoOf F E).Object)) (o : (protoOf F E).O
     | none => simp [releasesAt, withEvents_eq, he] at ho
     | some e =>
       cases e with
-      | tick v t => exact ⟨v, t, i, he, ho⟩
-      | deliver v p t => simp [releasesAt, withEvents_eq, he] at ho
+      | tick v t => exact ⟨v, t, i, Or.inl he, ho⟩
+      | deliver v p t => exact ⟨v, t, i, Or.inr ⟨p, he⟩, ho⟩
       | restart v t => simp [releasesAt, withEvents_eq, he] at ho
   · rintro ⟨v, t, i, hi, ho⟩
-    exact ⟨i, (List.getElem?_eq_some_iff.mp hi).1, ho⟩
+    obtain ⟨e, he, -, -⟩ := hi.exists_event
+    exact ⟨i, (List.getElem?_eq_some_iff.mp he).1, ho⟩
 
 end Run
 end Consensus.Model

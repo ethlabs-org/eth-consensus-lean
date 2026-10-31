@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 public import ConsensusLean.Lemmas.Model.Objects
@@ -25,19 +26,22 @@ state to the simulating trace's cuts where the relay obligations of `Simulates` 
   state at the delivery's time, keeps the clock and the own index, only grows the relay queue,
   and queues the canonical object of every accepted block, every vote the pool holds after its
   `ac_on_message` call, and every attestation among the delivery's cuts (`deliverRecs`).
-* **The engine's state across an event** (`stateAt_succ_deliver`, `_restart`, `_tick`,
-  `stateBefore_succ_of_ne`), what the shape's steps keep (`propose_keeps`, `nodeTick_keeps`,
-  `poll_keeps`, `recordOwn_keeps`), the compiled duties (`act_preserves`, `tick_preserves`), and
-  two invariants: the own index is the own key (`stateAt_self`) and the relay queue is seen
-  (`stateAt_relay_seen`).
-* **Relaying** (`relayedFrom_of_deliver`). An object queued at a delivery stays queued until the
-  node's next tick (`relayBuf_persist`), which is at its first awake time after the delivery, and
-  whose gossip releases the relay wrapper of the queue (`tick_relays`).
+* **The engine's state across an event** (`stateAt_succ_deliver`: the shape of
+  `Model.Run.deliver`; `_restart`, `_tick`, `stateBefore_succ_of_ne`), what the shape's steps
+  keep (`propose_keeps`, `nodeTick_keeps`, `poll_keeps`, `recordOwn_keeps`), the compiled
+  duties (`act_preserves`, `tick_preserves`), and two invariants: the own index is the own key
+  (`stateAt_self`) and the relay queue is seen (`stateAt_relay_seen`).
+* **Relaying.** The gossip of a tick or a delivery releases the unsigned relay wrapper of the
+  relay queue (`tick_relays`, `deliver_relays`): what a delivery queues leaves at the delivery's
+  own time.
 * **Releasing.** Every emission is a vote of the emitting node (`emits_val`); a delivery or a
   restart queues the votes it emits (`process_outbox`, `restore_outbox`), which wait in the outbox
-  (`outbox_persist`) and are released at the node's first awake time from the event on
-  (`releasedFrom_of_pending`). Two steps are open: what an honest node's tick releases of its own
-  cuts (`tick_releases`) and that the bodies pending at a tick go out in it (`pending_released`).
+  between the node's ticks and deliveries (`outbox_persist`), whose poll steps release them.
+  Open: what an honest node's tick releases of its own cuts (`tick_releases`), that the bodies
+  pending at a tick go out in it (`pending_released`), and that a queued body goes out at the
+  node's first awake time from the event on (`releasedFrom_of_pending`). The open obligations
+  `outbox_le_two`, `outbox_empty_after_tick` and `protects_own_att` (moved here from `Steps`) are
+  unused.
 -/
 
 namespace Consensus.Goldilocks.Refinement
@@ -495,14 +499,20 @@ section
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- An engine delivery runs the shape's `process` on the delivered object. -/
+/-- An engine delivery: the node after it is the engine's `deliver` (`process`, the delivery's
+poll step, the gossip; `deliver_pres`). -/
+theorem stateBefore_succ_deliver {i : Nat} {v : V}
+    {o : (Model.protoOf (compiled (family S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t)) :
+    rho.stateBefore (i + 1) v = (rho.deliver (rho.stateBefore i v) v o t).1 := by
+  simp only [rho.stateBefore_succ he, Model.Run.step, Function.update_self]
+
+/-- An engine delivery: the Goldilocks state after it is the shape of the engine's `deliver`. -/
 theorem stateAt_succ_deliver {i : Nat} {v : V}
     {o : (Model.protoOf (compiled (family S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) :
-    stateAt S rho hn v (i + 1) =
-      process (stateAt S rho hn v i) o (Model.digests rho.hash o) := by
-  simp only [stateAt, rho.stateBefore_succ he, Model.Run.step, Function.update_self]
-  rfl
+    stateAt S rho hn v (i + 1) = (rho.deliver (rho.stateBefore i v) v o t).1.st.1 hn :=
+  stateAt_deliver S rho hn v he
 
 /-- An engine restart runs the shape's `restore` with the own key. -/
 theorem stateAt_succ_restart {i : Nat} {v : V} {t : Time}
@@ -651,6 +661,39 @@ theorem recordOwn_eq (st : (Model.protoOf (compiled (family S)) E).State)
       recordOwn (st.1 hn) o hs :=
   rfl
 
+
+omit [DecidableEq V] in
+/-- The digests the engine passes with a block object map the block's header to the engine's hash of
+it. -/
+theorem rootOf_digests_blockObj (B : Blk (S.params (pubOf E) hn)) :
+    rootOf (Model.digests rho.hash (blockObj (S.params (pubOf E) hn) B))
+        (headerOf (S.params (pubOf E) hn) B) =
+      some (rho.hash (headerOf (S.params (pubOf E) hn) B)) :=
+  rootOf_digests_item S rho _ _ _
+
+/-- An object in a list is among the list's parts. -/
+theorem mem_partsList {n : Nat} {R I B : Type} (c : Model.Obj n R I B) :
+    ∀ cs : List (Model.Obj n R I B), c ∈ cs → c ∈ Model.Obj.parts.partsList cs
+  | [], h => absurd h List.not_mem_nil
+  | c' :: cs, h => by
+    rw [List.mem_cons] at h
+    simp only [Model.Obj.parts.partsList, List.mem_append]
+    rcases h with rfl | h
+    · left; cases c; simp [Model.Obj.parts]
+    · right; exact mem_partsList c cs h
+
+omit [DecidableEq V] in
+/-- The digests the engine passes with a relay wrapper map the header of each carried block object
+to the engine's hash of it. -/
+theorem rootOf_digests_relay (cs : List (Wire (Fintype.card V))) (B : Blk (S.params (pubOf E) hn))
+    (hB : blockObj (S.params (pubOf E) hn) B ∈ cs) :
+    rootOf (Model.digests rho.hash (.mk .none (.data .relay) cs))
+        (headerOf (S.params (pubOf E) hn) B) =
+      some (rho.hash (headerOf (S.params (pubOf E) hn) B)) := by
+  apply rootOf_digests_of_mem
+  simp only [Model.Obj.parts, List.filterMap_cons, Model.Obj.item?]
+  exact List.mem_filterMap.2 ⟨blockObj _ B, mem_partsList _ cs hB, rfl⟩
+
 end
 
 
@@ -706,7 +749,10 @@ theorem stateAt_self (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey v
           simp only [Model.Event.node] at hne
           subst hne
           rw [stateAt_succ_deliver S rho hn he]
-          exact (process_relay (digestOf S rho) _ _ i _ _ 0 rfl).2.2.1.trans ih
+          exact deliver_pres S rho hn (fun st => st.self = rho.ownKey w)
+            (fun st t h => (poll_keeps st t).2.trans h)
+            (fun st _ _ hs h => (recordOwn_keeps st _ hs).2.trans h) w _ o t
+            ((process_relay (digestOf S rho) _ _ i _ _ 0 rfl).2.2.1.trans ih)
         | restart w t =>
           simp only [Model.Event.node] at hne
           subst hne
@@ -715,6 +761,23 @@ theorem stateAt_self (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey v
       · simp only [stateAt, stateBefore_succ_of_ne S rho he hne] at ih ⊢
         exact ih
 
+
+/-- The relay queue after a delivery's `process` is in the closure of what the node has seen with
+the delivered object, if the queue before it was. -/
+theorem process_relay_seen {i : Nat} {v : V} (o : (Model.protoOf (compiled (family S)) E).Object)
+    (ih : ∀ x ∈ (stateAt S rho hn v i).relayBuf, x ∈ Model.closure (rho.stateBefore i v).seen) :
+    ∀ x ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).relayBuf,
+      x ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) := by
+  obtain ⟨⟨L, hL, hLos⟩, -⟩ := process_relay (digestOf S rho) (Model.digests rho.hash o)
+    _ i (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) 0 rfl
+  intro x hx
+  unfold process at hx
+  rw [hL] at hx
+  rw [Model.closure_append]
+  rcases List.mem_append.mp hx with hx | hx
+  · exact List.mem_append_left _ (ih x hx)
+  · exact List.mem_append_right _ (List.mem_flatMap.mpr
+      ⟨o, List.mem_singleton_self _, contains_of_mem_delivered (hLos x hx)⟩)
 
 /-- **The relay queue is seen.** Every object queued for relay by node `v` is in the closure of
 what `v` has seen. -/
@@ -755,16 +818,15 @@ theorem stateAt_relay_seen (v : V) : ∀ i, ∀ x ∈ (stateAt S rho hn v i).rel
           subst hne
           intro x hx
           rw [stateAt_succ_deliver S rho hn he] at hx
-          obtain ⟨⟨L, hL, hLos⟩, -⟩ := process_relay (digestOf S rho) (Model.digests rho.hash o)
-            _ i (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn w i) 0 rfl
-          rw [rho.stateBefore_succ he]
-          simp only [Model.Run.step, Function.update_self, Model.closure_append]
-          unfold process at hx
-          rw [hL] at hx
-          rcases List.mem_append.mp hx with hx | hx
-          · exact List.mem_append_left _ (ih x hx)
-          · refine List.mem_append_right _ (List.mem_flatMap.mpr ⟨o, List.mem_singleton_self _, ?_⟩)
-            exact contains_of_mem_delivered (hLos x hx)
+          have hQ := deliver_pres S rho hn
+            (fun st => ∀ x ∈ st.relayBuf, x ∈ Model.closure ((rho.stateBefore i w).seen ++ [o]))
+            (fun st t h => by rw [(poll_keeps st t).1]; exact h)
+            (fun st _ _ hs h => by
+              rcases (recordOwn_keeps st _ hs).1 with h' | h' <;> rw [h']
+              · exact h
+              · simp) w _ o t (process_relay_seen S rho hn o ih) x hx
+          rw [stateBefore_succ_deliver S rho he, rho.deliver_seen, Model.closure_append]
+          exact List.mem_append_left _ hQ
         | restart w t =>
           simp only [Model.Event.node] at hne
           subst hne
@@ -973,81 +1035,71 @@ theorem tick_relays {j : Nat} {v : V} {t : Time} (he : rho.events[j]? = some (.t
   · exact List.mem_cons_self
   · rename_i h; exact absurd hc h
 
-/-- Between ticks of the node the relay queue only grows. -/
-theorem relayBuf_persist {i : Nat} {v : V} {x : Wire (S.params (pubOf E) hn).n}
-    (hx : x ∈ (stateAt S rho hn v i).relayBuf) :
-    ∀ m, i ≤ m → (∀ l, i ≤ l → l < m → ∀ t, rho.events[l]? ≠ some (.tick v t)) →
-      x ∈ (stateAt S rho hn v m).relayBuf := by
-  intro m him
-  induction m, him using Nat.le_induction with
-  | base => exact fun _ => hx
-  | succ m him ih =>
-    intro hno
-    have hm := ih fun l h1 h2 => hno l h1 (by omega)
-    cases he : rho.events[m]? with
-    | none =>
-      simp only [stateAt, stateBefore_succ_none S rho he] at hm ⊢
-      exact hm
-    | some e =>
-      by_cases hne : e.node = v
-      · cases e with
-        | tick w t =>
-          simp only [Model.Event.node] at hne
-          subst hne
-          exact absurd he (hno m him (by omega) t)
-        | deliver w o t =>
-          simp only [Model.Event.node] at hne
-          subst hne
-          rw [stateAt_succ_deliver S rho hn he]
-          obtain ⟨⟨L, hL, -⟩, -⟩ := process_relay (digestOf S rho) (Model.digests rho.hash o)
-            _ m (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn w m) 0 rfl
-          unfold process
-          rw [hL]
-          exact List.mem_append_left _ hm
-        | restart w t =>
-          simp only [Model.Event.node] at hne
-          subst hne
-          rw [stateAt_succ_restart S rho hn he]
-          exact hm
-      · simp only [stateAt, stateBefore_succ_of_ne S rho he hne] at hm ⊢
-        exact hm
-
-open Classical in
-/-- **An object queued at a delivery is relayed** at the node's first awake time after the
-delivery, if it has one within the horizon (`RelayedFrom`). -/
-theorem relayedFrom_of_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {o : (Model.protoOf (compiled (family S)) E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v o t)) {x : Wire (S.params (pubOf E) hn).n}
-    (hx : x ∈ (stateAt S rho hn v (i + 1)).relayBuf) : RelayedFrom S rho v x t := by
-  by_cases hex : ∃ j, i < j ∧ ∃ t', rho.events[j]? = some (.tick v t')
-  · have hj := Nat.find_spec hex
-    obtain ⟨hij, t', he'⟩ := hj
-    have hmin := fun l (hl : l < Nat.find hex) => Nat.find_min hex hl
-    set j := Nat.find hex
-    have hw : E.awake v t' = true := hv.tick_awake v t' (List.mem_of_getElem? he')
-    have hxj : x ∈ (stateAt S rho hn v j).relayBuf :=
-      relayBuf_persist S rho hn hx j (by omega) fun l h1 h2 t₁ hl =>
-        hmin l h2 ⟨by omega, t₁, hl⟩
-    obtain ⟨cs, hxcs, hrel⟩ := tick_relays S rho hn he' hw hxj
-    have htt' : t < t' := by
-      rcases keyLe_of_index_lt S rho hv he he' hij with h | h
-      · exact h
-      · exact absurd h.2 (by simp [Model.Event.phase])
-    have hh' : t' ≤ rho.horizon := (hv.in_horizon _ (List.mem_of_getElem? he')).2
-    refine Or.inl ⟨t', cs, htt', hxcs, ⟨j, he', hrel⟩, fun u hu1 hu2 => ?_⟩
-    by_contra hwu
-    obtain ⟨ju, hiju, heu⟩ := tick_after_deliver S rho hv he hu1 (by linarith)
-      (by simpa using hwu)
-    rcases lt_trichotomy ju j with h | rfl | h
-    · exact hmin ju h ⟨hiju, u, heu⟩
-    · rw [he'] at heu; cases heu; exact lt_irrefl _ hu2
-    · rcases keyLe_of_index_lt S rho hv he' heu h with h' | h'
-      · have : t' < u := h'; linarith
-      · have : t' = u := h'.1; linarith
-  · refine Or.inr fun u hu1 hu2 => ?_
-    by_contra hwu
-    obtain ⟨ju, hiju, heu⟩ := tick_after_deliver S rho hv he hu1 hu2 (by simpa using hwu)
-    exact hex ⟨ju, hiju, u, heu⟩
+/-- **A delivery relays what it queued.** The gossip of a delivery to node `v` releases the
+unsigned relay wrapper of its relay queue, which carries everything the delivery's `process`
+queued (`process_relay`), at the delivery's own time. -/
+theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled (family S)) E).Object}
+    {t : Time} (he : rho.events[j]? = some (.deliver v o t)) {x : Wire (S.params (pubOf E) hn).n}
+    (hx : x ∈ (process (stateAt S rho hn v j) o (Model.digests rho.hash o)).relayBuf) :
+    ∃ cs, x ∈ cs ∧ Model.Obj.mk .none (.data .relay) cs ∈ rho.releasesAt j := by
+  simp only [Model.Run.releasesAt, he]
+  rw [rho.deliver_eq]
+  set nd := rho.stateBefore j v
+  set R := rho.runDuties v ⟨(Model.protoOf (compiled (family S)) E).process nd.st o
+    (Model.digests rho.hash o), nd.seen ++ [o]⟩
+    ((Model.protoOf (compiled (family S)) E).deliverDuties t)
+  -- the queue after the delivery's duties keeps `x` and holds only seen objects
+  have hkeep : x ∈ (R.1.st.1 hn).relayBuf :=
+    rho.runDuties_invariant (fun s => x ∈ (s.1 hn).relayBuf) v _ _
+      (fun s d _ hs => act_preserves S hn (fun st => x ∈ st.relayBuf)
+        (fun st s h => by rw [(propose_keeps st s).1]; exact h)
+        (fun st h => by rw [(nodeTick_keeps st).1]; exact h)
+        (fun st t h => by rw [(poll_keeps st t).1]; exact h) s d hs)
+      (fun s o hs ho hq => by
+        obtain ⟨k, r, m, cs, rfl⟩ := runDuties_signed S rho v _ _ o ho
+        have h := recordOwn_relayBuf_signed (s.1 hn) (k := k) (r := r) (m := m) (cs := cs) hs
+        rw [← h] at hq
+        exact hq)
+      hx
+  have hseen : ∀ y ∈ (R.1.st.1 hn).relayBuf, y ∈ Model.closure R.1.seen := by
+    have hQ : ∀ y ∈ (R.1.st.1 hn).relayBuf, y ∈ Model.closure (nd.seen ++ [o]) :=
+      rho.runDuties_invariant
+        (fun s => ∀ y ∈ (s.1 hn).relayBuf, y ∈ Model.closure (nd.seen ++ [o])) v _ _
+        (fun s d _ hs => act_preserves S hn
+          (fun st => ∀ y ∈ st.relayBuf, y ∈ Model.closure (nd.seen ++ [o]))
+          (fun st s h => by rw [(propose_keeps st s).1]; exact h)
+          (fun st h => by rw [(nodeTick_keeps st).1]; exact h)
+          (fun st t h => by rw [(poll_keeps st t).1]; exact h) s d hs)
+        (fun s o hs _ hq => by
+          change ∀ y ∈ (recordOwn (s.1 hn) o hs).relayBuf, _
+          rcases (recordOwn_keeps (s.1 hn) o hs).1 with h' | h' <;> rw [h']
+          · exact hq
+          · simp)
+        (process_relay_seen S rho hn o (stateAt_relay_seen S rho hn v j))
+    intro y hy
+    rw [runDuties_seen S rho v, Model.closure_append]
+    exact List.mem_append_left _ (hQ y hy)
+  generalize hcs : (R.1.st.1 hn).relayBuf = cs at hkeep hseen
+  have hgo : Model.gossipCandidates (Model.protoOf (compiled (family S)) E) R.1.st t =
+      [Model.Obj.mk .none (.data .relay) cs] := by
+    obtain ⟨c, cs₀, rfl⟩ := List.exists_cons_of_ne_nil (List.ne_nil_of_mem hkeep)
+    have hcs' : ∀ h', (R.1.st.1 h').relayBuf = c :: cs₀ := fun _ => hcs
+    simp only [Model.gossipCandidates, Model.protoOf, compiled, compile, family, hn,
+      ↓reduceDIte, goldilocksShape, hcs']
+    rfl
+  refine ⟨cs, hkeep, List.mem_append_right _ ?_⟩
+  have hc : (Model.releasable R.1.seen (Model.Obj.mk .none (.data .relay) cs) &&
+      Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v) R.1.seen
+        (Model.Obj.mk .none (.data .relay) cs)) = true := by
+    simp only [Model.releasable, Model.protects, Bool.and_eq_true, List.all_eq_true,
+      decide_eq_true_eq]
+    refine ⟨fun y hy => hseen y hy, ?_⟩
+    simp [Model.Obj.signer?, Model.Obj.auth]
+  rw [hgo]
+  simp only [Model.releaseAll]
+  split
+  · exact List.mem_cons_self
+  · rename_i h; exact absurd hc h
 
 /-- A cut of an engine event that is an FG cut at position `0`, or an `ac_on_message` cut, is a
 cut of a delivery. -/
@@ -1335,9 +1387,10 @@ theorem restore_outbox (k : Fin (S.params (pubOf E) hn).n)
     (d : State (S.params (pubOf E) hn) (S.ro _)) (t : Time) :
     (restore k d t).outbox = d.outbox ++ emitted (Node.restart k d.node t).2 := rfl
 
-/-- Between ticks of the node the outbox only grows. -/
+/-- Between ticks and deliveries of the node (whose poll steps pop it) the outbox only grows. -/
 theorem outbox_persist {i : Nat} {v : V} {b : Body} (hb : b ∈ (stateAt S rho hn v i).outbox) :
-    ∀ m, i ≤ m → (∀ l, i ≤ l → l < m → ∀ t, rho.events[l]? ≠ some (.tick v t)) →
+    ∀ m, i ≤ m → (∀ l, i ≤ l → l < m → ∀ t, rho.events[l]? ≠ some (.tick v t) ∧
+      ∀ o, rho.events[l]? ≠ some (.deliver v o t)) →
       b ∈ (stateAt S rho hn v m).outbox := by
   intro m him
   induction m, him using Nat.le_induction with
@@ -1355,16 +1408,11 @@ theorem outbox_persist {i : Nat} {v : V} {b : Body} (hb : b ∈ (stateAt S rho h
         | tick w t =>
           simp only [Model.Event.node] at hne
           subst hne
-          exact absurd he (hno m him (by omega) t)
+          exact absurd he (hno m him (by omega) t).1
         | deliver w o t =>
           simp only [Model.Event.node] at hne
           subst hne
-          rw [stateAt_succ_deliver S rho hn he]
-          obtain ⟨⟨L, hL⟩, -⟩ := process_outbox (digestOf S rho) (Model.digests rho.hash o)
-            _ m (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn w m) 0 rfl
-          unfold process
-          rw [hL]
-          exact List.mem_append_left _ hm
+          exact absurd he ((hno m him (by omega) t).2 o)
         | restart w t =>
           simp only [Model.Event.node] at hne
           subst hne
@@ -1398,42 +1446,44 @@ theorem tick_after_event (hv : rho.ExecutionValid) {i : Nat}
 open Classical in
 /-- **A body queued at an event is released** at the node's first awake time from the event
 on, if it has one within the horizon (`ReleasedFrom`): it waits in the outbox for the node's
-next tick, whose leading polls release it (`pending_released`). -/
+next tick or delivery, whose poll steps release it. -/
 theorem releasedFrom_of_pending (hv : rho.ExecutionValid) {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
     (he : rho.events[i]? = some ev) {b : Body}
     (hb : b ∈ (stateAt S rho hn ev.node (i + 1)).outbox) :
     ReleasedFrom S rho ev.node
       (Model.Obj.mk (.signed (rho.ownKey ev.node) .poll) (.data b) []) ev.time := by
-  have hhon := hv.honest_only _ (List.mem_of_getElem? he)
-  by_cases hex : ∃ j, i < j ∧ ∃ t', rho.events[j]? = some (.tick ev.node t')
-  · have hj := Nat.find_spec hex
-    obtain ⟨hij, t', he'⟩ := hj
-    have hmin := fun l (hl : l < Nat.find hex) => Nat.find_min hex hl
-    set j := Nat.find hex
-    have hbj : b ∈ (stateAt S rho hn ev.node j).outbox :=
-      outbox_persist S rho hn hb j (by omega) fun l h1 h2 t₁ hl =>
-        hmin l h2 ⟨by omega, t₁, hl⟩
-    have hrel := pending_released S rho hn hv hhon he' b hbj
-    have htt' : ev.time ≤ t' := by
-      rcases keyLe_of_index_lt S rho hv he he' hij with h | h
-      · exact h.le
-      · exact h.1.le
-    have hh' : t' ≤ rho.horizon := (hv.in_horizon _ (List.mem_of_getElem? he')).2
-    refine Or.inl ⟨t', htt', ⟨j, he', hrel⟩, fun u hu1 hu2 => ?_⟩
-    by_contra hwu
-    obtain ⟨ju, hiju, heu⟩ := tick_after_event S rho hv he hu1 (by linarith)
-      (by simpa using hwu)
-    rcases lt_trichotomy ju j with h | rfl | h
-    · exact hmin ju h ⟨hiju, u, heu⟩
-    · rw [he'] at heu; cases heu; exact lt_irrefl _ hu2
-    · rcases keyLe_of_index_lt S rho hv he' heu h with h' | h'
-      · have : t' < u := h'; linarith
-      · have : t' = u := h'.1; linarith
-  · refine Or.inr fun u hu1 hu2 => ?_
-    by_contra hwu
-    obtain ⟨ju, hiju, heu⟩ := tick_after_event S rho hv he hu1 hu2 (by simpa using hwu)
-    exact hex ⟨ju, hiju, u, heu⟩
+  -- open: a delivery's poll step now pops the outbox at the delivery (`deliverOrder`); restated
+  -- with the release fields (`ReleasedFrom` loses its sleep clause, second PR of #107)
+  sorry
+
+
+/-! ## The open release obligations -/
+
+/-- **At most two bodies pending at a tick.** Between two ticks an honest node queues at most
+its SA vote and its attestation, so two poll steps release everything queued. -/
+theorem outbox_le_two (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) (i : Nat)
+    (t : Time) (he : rho.events[i]? = some (.tick v t)) :
+    (stateAt S rho hn v i).outbox.length ≤ 2 := by
+  sorry
+
+/-- After an awake honest node's tick at a public time nothing is pending: the tick's own bodies
+were released by its last poll steps. -/
+theorem outbox_empty_after_tick (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest)
+    (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
+    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
+    (stateAt S rho hn v (i + 1)).outbox = [] := by
+  sorry
+
+/-- **`protects` never blocks an honest node.** An honest node's own attestation in its pool
+passes the own-object guard against everything it has seen: an honest signer's attestations
+never conflict (`non_framing`, Lemmas/Compose/Regimes). -/
+theorem protects_own_att (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) (i : Nat)
+    (a : FG.Att (Fintype.card V)) (ha : a ∈ (stateAt S rho hn v i).node.fg.atts)
+    (hself : a.val = rho.ownKey v) :
+    Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v)
+      (rho.stateBefore i v).seen (attObj a) = true := by
+  sorry
 
 end
 

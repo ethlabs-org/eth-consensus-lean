@@ -546,7 +546,7 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
       (fun s o hs _ hst => familyC_recordOwn_mono false s o hs hst) hrel.2
   have hk0 : rho.key 0 ∈ rho.honest := by rw [hh]; exact Finset.mem_univ _
   refine ⟨t + 1, 0, h, lt_add_one t, ⟨hk0, fun u _ _ => rfl⟩,
-    ⟨hk0, ShapeRole.proposer s, [], rfl, i, hi', ?_⟩, ?_⟩
+    ⟨hk0, ShapeRole.proposer s, [], rfl, i, Or.inl hi', ?_⟩, ?_⟩
   · rw [← hown]; exact hrel'.1
   · intro w _
     have hw : w = v := Subsingleton.elim _ _

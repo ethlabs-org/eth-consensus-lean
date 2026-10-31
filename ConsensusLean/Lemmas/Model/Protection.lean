@@ -203,7 +203,8 @@ theorem viewIdx_closure {v : V} {i : Nat} {o : (protoOf F E).Object}
 
 /-- In a valid run, everything in any node's `seen` before cut `i` is safe
 before `i`: every object it contains that is signed by an honest validator
-was released by that validator at an earlier tick. -/
+was released by that validator at an earlier sending event (a tick or a
+delivery). -/
 theorem seen_safe (hv : rho.ExecutionValid) (i : Nat) :
     ∀ v, ∀ o ∈ (rho.stateBefore i v).seen, rho.SafeBefore i o := by
   induction i with
@@ -231,40 +232,33 @@ theorem seen_safe (hv : rho.ExecutionValid) (i : Nat) :
           exact rho.safeBefore_mono (Nat.le_succ k) (ih v o (by simpa [step] using ho))
         · exact rho.safeBefore_mono (Nat.le_succ k) (ih w o (by simpa [step, hw] using ho))
       | deliver v p t =>
-        have hsafe : rho.SafeBefore (k + 1) p := by
-          refine safeBefore_iff.mpr fun d hd => signedBefore_iff.mpr ?_
-          intro u hu hh
-          obtain ⟨j, t', hj, hjt, hjo⟩ := hv.unforgeable k v p t he d hd u hu hh
-          exact ⟨j, t', by omega, hjt, hjo⟩
+        have hp : rho.SafeBefore k p := safeBefore_iff.mpr fun d hd =>
+          signedBefore_iff.mpr (hv.unforgeable k v p t he d hd)
+        have hsafe := (rho.deliver_safe he (ih v) hp).1
         intro w o ho
         by_cases hw : w = v
-        · subst w
-          have hm : o ∈ (rho.stateBefore k v).seen ++ [p] := by simpa [step] using ho
-          rcases List.mem_append.mp hm with hm | hm
-          · exact rho.safeBefore_mono (Nat.le_succ k) (ih v o hm)
-          · rcases List.mem_singleton.mp hm with rfl
-            exact hsafe
+        · subst w; exact hsafe o (by simpa [step] using ho)
         · exact rho.safeBefore_mono (Nat.le_succ k) (ih w o (by simpa [step, hw] using ho))
 
 /-- General invariant for every valid run: an object in the closure of a
 node's `seen` before event `i`, signed by honest `u`, was released by `u` at a
-tick event `j < i`. -/
+sending event (tick or delivery) `j < i`. -/
 theorem signed_seen_released (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {o : (protoOf F E).Object} {u : V}
     (ho : o ∈ closure (rho.stateBefore i v).seen) (hu : u ∈ rho.honest)
     (hs : rho.signerOf o = some u) :
-    ∃ j < i, ∃ t, rho.events[j]? = some (.tick u t) ∧ o ∈ rho.releasesAt j := by
+    ∃ j < i, ∃ t, rho.SendsAt u j t ∧ o ∈ rho.releasesAt j := by
   obtain ⟨r, hr, hc⟩ := (mem_closure_iff _ _).mp ho
   obtain ⟨j, t, hj, he, hjo⟩ :=
     signedBefore_iff.mp (safeBefore_iff.mp (rho.seen_safe hv i v r hr) o hc) u hu hs
   exact ⟨j, hj, t, he, hjo⟩
 
 /-- Every object signed by an honest validator that an honest node saw was
-released by that validator at a tick. -/
+released by that validator at a sending event (a tick or a delivery). -/
 theorem released_of_observed (hv : rho.ExecutionValid) {o : (protoOf F E).Object}
     (ho : o ∈ rho.Observed) {u : V} (hu : u ∈ rho.honest)
     (hs : rho.signerOf o = some u) :
-    ∃ j t, rho.events[j]? = some (.tick u t) ∧ o ∈ rho.releasesAt j := by
+    ∃ j t, rho.SendsAt u j t ∧ o ∈ rho.releasesAt j := by
   obtain ⟨v, -, hov⟩ := ho
   obtain ⟨j, -, t, he, hjo⟩ := rho.signed_seen_released hv (rho.viewIdx_closure hov) hu hs
   exact ⟨j, t, he, hjo⟩
@@ -291,10 +285,35 @@ theorem tick_noConflict_seen {i : Nat} {v : V} {t : Time}
   rw [h2] at hc
   exact releaseAll_noConflict_seen hc ho hs hs'
 
+/-- Two own-signed objects released by one delivery never conflict. -/
+theorem deliver_noConflict {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v p t))
+    {c c' : (protoOf F E).Object} (hc : c ∈ rho.releasesAt i) (hc' : c' ∈ rho.releasesAt i)
+    (hs : c.signer? = some (rho.ownKey v)) (hs' : c'.signer? = some (rho.ownKey v)) :
+    (protoOf F E).conflicts c c' = false := by
+  simp only [releasesAt, he] at hc hc'
+  obtain ⟨cs, -, h2, -⟩ := rho.deliver_flat (rho.stateBefore i v) v p t
+  rw [h2] at hc hc'
+  exact releaseAll_noConflict hc hc' hs hs'
+
+/-- An own-signed object released by a delivery never conflicts, in either
+order, with an own-signed object in the closure of the node's `seen` before
+it. -/
+theorem deliver_noConflict_seen {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v p t)) {c o : (protoOf F E).Object}
+    (hc : c ∈ rho.releasesAt i) (ho : o ∈ closure (rho.stateBefore i v).seen)
+    (hs : c.signer? = some (rho.ownKey v)) (hs' : o.signer? = some (rho.ownKey v)) :
+    (protoOf F E).conflicts c o = false ∧ (protoOf F E).conflicts o c = false := by
+  simp only [releasesAt, he] at hc
+  obtain ⟨cs, -, h2, -⟩ := rho.deliver_flat (rho.stateBefore i v) v p t
+  rw [h2] at hc
+  exact releaseAll_noConflict_seen hc (closure_mono (fun x hx => List.mem_append_left _ hx) ho)
+    hs hs'
+
 /-- No honest validator is slashable on what the honest nodes saw, for every
 protocol: both conflicting objects were released by the validator itself, and
-the later one (by event, or by position within one tick) was checked against
-the earlier one. -/
+the later one (by event, or by position within one tick or delivery) was
+checked against the earlier one. -/
 theorem honestNeverSlashed (hv : rho.ExecutionValid) :
     ∀ v ∈ rho.honest, ¬ rho.Slashable rho.Observed v := by
   rintro x hx ⟨o, ho, o', ho', hs, hs', hc⟩
@@ -302,18 +321,31 @@ theorem honestNeverSlashed (hv : rho.ExecutionValid) :
   obtain ⟨j', t', hj', hjo'⟩ := rho.released_of_observed hv ho' hx hs'
   have hk := rho.signer_of_signerOf hs
   have hk' := rho.signer_of_signerOf hs'
+  have nc {i t c c'} (hi : rho.SendsAt x i t) (hc : c ∈ rho.releasesAt i)
+      (hc' : c' ∈ rho.releasesAt i) (hs : c.signer? = some (rho.ownKey x))
+      (hs' : c'.signer? = some (rho.ownKey x)) : (protoOf F E).conflicts c c' = false := by
+    rcases hi with he | ⟨p, he⟩
+    · exact rho.tick_noConflict he hc hc' hs hs'
+    · exact rho.deliver_noConflict he hc hc' hs hs'
+  have ncs {i t c o} (hi : rho.SendsAt x i t) (hc : c ∈ rho.releasesAt i)
+      (ho : o ∈ closure (rho.stateBefore i x).seen) (hs : c.signer? = some (rho.ownKey x))
+      (hs' : o.signer? = some (rho.ownKey x)) :
+      (protoOf F E).conflicts c o = false ∧ (protoOf F E).conflicts o c = false := by
+    rcases hi with he | ⟨p, he⟩
+    · exact rho.tick_noConflict_seen he hc ho hs hs'
+    · exact rho.deliver_noConflict_seen he hc ho hs hs'
   rcases lt_trichotomy j j' with hlt | rfl | hgt
   · have hm : o ∈ closure (rho.stateBefore j' x).seen :=
       mem_closure_of_mem (rho.seen_mono hlt x (rho.releasesAt_seen hj hjo))
-    have := (rho.tick_noConflict_seen hj' hjo' hm hk' hk).2
+    have := (ncs hj' hjo' hm hk' hk).2
     rw [hc] at this
     cases this
-  · have := rho.tick_noConflict hj hjo hjo' hk hk'
+  · have := nc hj hjo hjo' hk hk'
     rw [hc] at this
     cases this
   · have hm : o' ∈ closure (rho.stateBefore j x).seen :=
       mem_closure_of_mem (rho.seen_mono hgt x (rho.releasesAt_seen hj' hjo'))
-    have := (rho.tick_noConflict_seen hj hjo hm hk hk').1
+    have := (ncs hj hjo hm hk hk').1
     rw [hc] at this
     cases this
 

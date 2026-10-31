@@ -25,6 +25,10 @@ clock, the two leading poll steps and the node's tick); `proposal_releasable` is
 because the proposal the engine releases is `propose` of that node, not of the node before the
 tick. `node_of_tick_public` then matches `tick_node_eq` against the node's `onTick`.
 
+A delivery runs `process`, then the delivery's poll step (`deliverOrder := [.poll]`, at `t ≥ 0`)
+and the gossip (`Model.Run.deliver`); the FG update is never due there, so the poll only pops the
+outbox, and the gossip's candidates are unsigned (`deliver_pres`).
+
 The remaining `sorry` theorems are the open obligations. -/
 
 namespace Consensus.Goldilocks.Refinement
@@ -323,6 +327,170 @@ theorem shapeOf_restore (k : Fin (Fintype.card V))
       ((Model.protoOf (compiled (family S)) E).durable nd.st) t).1 hn =
       restore k (nd.st.1 hn) t := rfl
 
+omit [DecidableEq V] in
+/-- Running two lists of duties in sequence is running their concatenation. -/
+theorem runDuties_fst_append (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (ds ds' : List (Model.protoOf (compiled (family S)) E).Duty) :
+    (rho.runDuties v nd (ds ++ ds')).1 = (rho.runDuties v (rho.runDuties v nd ds).1 ds').1 := by
+  unfold Model.Run.runDuties
+  rw [List.foldl_append]
+  generalize ds.foldl _ _ = acc
+  induction ds' generalizing acc with
+  | nil => rfl
+  | cons d ds' ih =>
+    rw [List.foldl_cons, List.foldl_cons, ih]
+    conv_rhs => rw [ih]
+
+/-! ## Duty steps and the node state -/
+
+/-- Recording an own signed data body changes nothing: the shape keeps no record of it. -/
+theorem recordOwn_data (st : State sp ro) (k : Fin sp.n) (r : ShapeRole Empty) (b : Body)
+    (cs : List (Wire sp.n)) hs : recordOwn st (.mk (.signed k r) (.data b) cs) hs = st := by
+  cases r <;> rfl
+
+omit [DecidableEq V] in
+/-- `releaseAll` of candidates that `recordOwn` ignores leaves the shape's state unchanged. -/
+theorem releaseAll_shape_eq (k : Fin (Fintype.card V)) :
+    ∀ (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+      (cs : List (Model.protoOf (compiled (family S)) E).Object),
+      (∀ c ∈ cs, ∀ (st : State (S.params (pubOf E) hn) (S.ro _)) hs, recordOwn st c hs = st) →
+      shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E) rho.hash k nd cs).1 =
+        shapeOf S hn nd
+  | _, [], _ => rfl
+  | nd, c :: cs, h => by
+    unfold Model.releaseAll
+    split
+    · rw [releaseAll_shape_eq k _ cs (fun c hc => h c (List.mem_cons_of_mem _ hc))]
+      exact h c (List.mem_cons_self ..) _ _
+    · exact releaseAll_shape_eq k nd cs (fun c hc => h c (List.mem_cons_of_mem _ hc))
+
+omit [DecidableEq V] in
+/-- A poll step's signed candidate is a data body, which `recordOwn` ignores. -/
+theorem signedCandidate_poll_recordOwn (v : V) (t : Nat)
+    (o : Option (Body × List (Model.protoOf (compiled (family S)) E).Object)) :
+    ∀ c ∈ rho.signedCandidate v (.poll t) (o.map fun bc => (.data bc.1, bc.2)),
+      ∀ (st : State (S.params (pubOf E) hn) (S.ro _)) hs, recordOwn st c hs = st := by
+  cases o with
+  | none => simp [Model.Run.signedCandidate]
+  | some bc =>
+    simp only [Option.map, Model.Run.signedCandidate]
+    split
+    · intro c hc
+      simp only [List.mem_singleton] at hc
+      subst hc
+      intro st hs
+      exact recordOwn_data st _ _ _ _ hs
+    · simp
+
+omit [DecidableEq V] in
+/-- The engine's poll duty step is the shape's `poll`: its released body is not recorded. -/
+theorem dutyStep_poll (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (t : Nat) :
+    shapeOf S hn (rho.dutyStep v nd (.poll t)).1 = (poll (shapeOf S hn nd) t).1 := by
+  unfold Model.Run.dutyStep
+  refine (releaseAll_shape_eq S rho hn _ _ _ ?_).trans (shapeOf_act_poll S hn nd.st t)
+  exact signedCandidate_poll_recordOwn S rho hn v t _
+
+omit [DecidableEq V] in
+/-- The engine's `pollPropose` duty step is the shape's `nodeTick`: it releases nothing. -/
+theorem dutyStep_pollPropose (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (t : Nat) :
+    shapeOf S hn (rho.dutyStep v nd (.pollPropose t)).1 = nodeTick (shapeOf S hn nd) := by
+  unfold Model.Run.dutyStep
+  have h2 : ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).2 = none := by
+    change Option.map _ ((family S (pubOf E)).pollPropose nd.st.1 t).2 = none
+    simp only [family, dite_eq_left hn]; rfl
+  change shapeOf S hn (Model.releaseAll _ _ _
+    ⟨((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).1, nd.seen⟩
+    (rho.signedCandidate v (.pollPropose t)
+      ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).2)).1 = _
+  rw [h2]
+  exact shapeOf_act_pollPropose S hn nd.st t
+
+omit [DecidableEq V] in
+/-- Running a duty then a list of duties. -/
+theorem runDuties_fst_cons (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (d : (Model.protoOf (compiled (family S)) E).Duty)
+    (ds : List (Model.protoOf (compiled (family S)) E).Duty) :
+    (rho.runDuties v nd (d :: ds)).1 = (rho.runDuties v (rho.dutyStep v nd d).1 ds).1 :=
+  runDuties_fst_append S rho v nd [d] ds
+
+omit [DecidableEq V] in
+/-- Running no duties is the identity. -/
+theorem runDuties_fst_nil (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E)) :
+    (rho.runDuties v nd []).1 = nd := rfl
+
+/-- Recording an unsigned own object keeps the node state. -/
+theorem recordOwn_none_node (st : State sp ro) (m : Model.Msg (Header Info) Body)
+    (cs : List (Wire sp.n)) hs : (recordOwn st (.mk .none m cs) hs).node = st.node := by
+  cases m with
+  | data b => cases b <;> rfl
+  | item h => rfl
+
+/-- A poll step with no FG update due keeps the node state. -/
+theorem poll_node_of_fgDue (st : State sp ro) (t : Time) (h : st.fgDue = false) :
+    (poll st t).1.node = st.node := by
+  unfold poll
+  simp only [h, Bool.false_eq_true, ite_false]
+  split <;> rfl
+
+omit [DecidableEq V] in
+/-- The duties at a delivery at `t ≥ 0`: one poll step (`deliverOrder := [.poll]`). -/
+theorem deliverDuties_eq (t : Time) (ht : 0 ≤ t) :
+    (Model.protoOf (compiled (family S)) E).deliverDuties t = [.poll t.toNat] := by
+  change (skeleton (Fintype.card V) S.proposer).deliverDuties E.Δ t = _
+  simp [Skeleton.deliverDuties, Skeleton.stepAt, skeleton, ht]
+  rfl
+
+omit [DecidableEq V] in
+/-- A delivery at a negative time has no duties. -/
+theorem deliverDuties_eq_nil (t : Time) (ht : t < 0) :
+    (Model.protoOf (compiled (family S)) E).deliverDuties t = [] := by
+  change (skeleton (Fintype.card V) S.proposer).deliverDuties E.Δ t = _
+  simp [Skeleton.deliverDuties, Skeleton.stepAt, skeleton, not_le.2 ht]
+  rfl
+
+omit [DecidableEq V] in
+/-- A property of the shape's state preserved by `recordOwn` of the candidates is preserved by
+`releaseAll` of them. -/
+theorem releaseAll_pres_mem (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
+    (k : Fin (Fintype.card V)) :
+    ∀ (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+      (cs : List (Model.protoOf (compiled (family S)) E).Object),
+      (∀ c ∈ cs, ∀ st hs, Q st → Q (recordOwn st c hs)) → Q (shapeOf S hn nd) →
+      Q (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E) rho.hash k nd cs).1)
+  | _, [], _, h => h
+  | nd, c :: cs, hrec, h => by
+    unfold Model.releaseAll
+    split
+    · exact releaseAll_pres_mem Q k _ cs (fun c hc => hrec c (List.mem_cons_of_mem _ hc))
+        (hrec c (List.mem_cons_self ..) _ _ h)
+    · exact releaseAll_pres_mem Q k nd cs (fun c hc => hrec c (List.mem_cons_of_mem _ hc)) h
+
+omit [DecidableEq V] in
+/-- A property of the shape's state preserved by `poll` and by `recordOwn` of unsigned objects
+holds after an engine delivery if it holds for the processed state: the delivery runs one poll
+step (at `t ≥ 0`) and the gossip, whose candidates are unsigned. -/
+theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
+    (hpoll : ∀ st t, Q st → Q (poll st t).1)
+    (hrec : ∀ st m cs hs, Q st → Q (recordOwn st (.mk .none m cs) hs)) (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (o : (Model.protoOf (compiled (family S)) E).Object) (t : Time)
+    (h : Q (process (nd.st.1 hn) o (Model.digests rho.hash o))) :
+    Q (shapeOf S hn (rho.deliver nd v o t).1) := by
+  unfold Model.Run.deliver
+  simp only
+  apply releaseAll_pres_mem S rho hn Q
+  · intro c hc st hs hq
+    obtain ⟨mc, _, rfl⟩ := List.mem_map.1 hc
+    exact hrec st _ _ hs hq
+  · rcases le_or_gt 0 t with ht | ht
+    · rw [deliverDuties_eq S t ht]
+      erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll]
+      exact hpoll _ _ h
+    · rw [deliverDuties_eq_nil S t ht, runDuties_fst_nil]
+      exact h
+
 /-! ## `stateAt` across an event -/
 
 /-- The shape's state before the first event is its initial state at the own key. -/
@@ -359,16 +527,15 @@ theorem stateAt_tick (v : V) {i : Nat} {t : Time} (he : rho.events[i]? = some (.
   rw [stateAt_succ S rho hn v he]
   simp only [Model.Run.step, Function.update_self]
 
-/-- The shape's state after a delivery to `v` is the shape's `process` of the delivered object with
-the engine's digests. -/
+/-- The shape's state after a delivery to `v` is the shape of the engine's `deliver`: the shape's
+`process` of the delivered object with the engine's digests, then the delivery's poll step and
+gossip (`deliver_pres`). -/
 theorem stateAt_deliver (v : V) {i : Nat} {t : Time}
     {o : (Model.protoOf (compiled (family S)) E).Object}
     (he : rho.events[i]? = some (.deliver v o t)) :
-    stateAt S rho hn v (i + 1) =
-      process (stateAt S rho hn v i) o (Model.digests rho.hash o) := by
+    stateAt S rho hn v (i + 1) = shapeOf S hn (rho.deliver (rho.stateBefore i v) v o t).1 := by
   rw [stateAt_succ S rho hn v he]
   simp only [Model.Run.step, Function.update_self]
-  rfl
 
 /-- The shape's state after a restart of `v` is the shape's `restore` at the own key. -/
 theorem stateAt_restart (v : V) {i : Nat} {t : Time}
@@ -400,7 +567,10 @@ theorem self_eq_ownKey (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey
         | deliver v' o t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_deliver S rho hn _ he]
-          exact (process_self _ _ _).trans (self_eq_ownKey v' i)
+          exact deliver_pres S rho hn (fun st => st.self = rho.ownKey v')
+            (fun st t h => (poll_self st t).trans h)
+            (fun st _ _ hs h => (recordOwn_self st _ hs).trans h) v' _ o t
+            ((process_self _ _ _).trans (self_eq_ownKey v' i))
         | restart v' t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_restart S rho hn _ he]; rfl
@@ -458,7 +628,10 @@ theorem now_eq_lastClock (_hv : rho.ExecutionValid) (v : V) :
         | deliver v' o t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_deliver S rho hn _ he, lastClock_succ_deliver S rho _ he]
-          exact (process_now _ _ _).trans (now_eq_lastClock _hv v' i)
+          exact deliver_pres S rho hn (fun st => st.now = lastClock S rho v' i)
+            (fun st t h => (poll_now st t).trans h)
+            (fun st _ _ hs h => (recordOwn_now st _ hs).trans h) v' _ o t
+            ((process_now _ _ _).trans (now_eq_lastClock _hv v' i))
         | restart v' t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_restart S rho hn _ he, lastClock_succ_restart S rho _ he]; rfl
@@ -493,20 +666,6 @@ theorem duties_eq_nil (t : Time) (ht : t < 0) :
     not_le.2 ht]
   rfl
 
-omit [DecidableEq V] in
-/-- Running two lists of duties in sequence is running their concatenation. -/
-theorem runDuties_fst_append (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (ds ds' : List (Model.protoOf (compiled (family S)) E).Duty) :
-    (rho.runDuties v nd (ds ++ ds')).1 = (rho.runDuties v (rho.runDuties v nd ds).1 ds').1 := by
-  unfold Model.Run.runDuties
-  rw [List.foldl_append]
-  generalize ds.foldl _ _ = acc
-  induction ds' generalizing acc with
-  | nil => rfl
-  | cons d ds' ih =>
-    rw [List.foldl_cons, List.foldl_cons, ih]
-    conv_rhs => rw [ih]
-
 /-- The FG update is never due at a cut: every tick ends with a poll step, which runs it. -/
 theorem fgDue_eq_false (v : V) : ∀ i, (stateAt S rho hn v i).fgDue = false
   | 0 => rfl
@@ -540,7 +699,10 @@ theorem fgDue_eq_false (v : V) : ∀ i, (stateAt S rho hn v i).fgDue = false
         | deliver v' o t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_deliver S rho hn _ he]
-          exact (process_fgDue _ _ _).trans (fgDue_eq_false v' i)
+          exact deliver_pres S rho hn (fun st => st.fgDue = false)
+            (fun st t _ => poll_fgDue st t)
+            (fun st _ _ hs h => (recordOwn_fgDue st _ hs).trans h) v' _ o t
+            ((process_fgDue _ _ _).trans (fgDue_eq_false v' i))
         | restart v' t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_restart S rho hn _ he]; rfl
@@ -690,7 +852,15 @@ theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.hone
     (stateAt S rho hn v (i + 1)).node =
       deliverState (digestOf S rho) (Model.digests rho.hash o) (rho.ownKey v) t
         (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node := by
+  have hpre := (fgDue_eq_false S rho hn v i)
   rw [stateAt_deliver S rho hn v he]
+  refine (deliver_pres S rho hn
+    (fun st => st.node = (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node ∧
+      st.fgDue = false)
+    (fun st t h => ⟨(poll_node_of_fgDue st t h.2).trans h.1, poll_fgDue st t⟩)
+    (fun st _ _ hs h =>
+      ⟨(recordOwn_none_node st _ _ hs).trans h.1, (recordOwn_fgDue st _ hs).trans h.2⟩)
+    v _ o t ⟨rfl, (process_fgDue _ _ _).trans hpre⟩).1.trans ?_
   unfold process
   refine (foldl_processOne_node (digestOf S rho) _ _ _).trans ?_
   rw [self_eq_ownKey, now_eq_lastClock S rho hn hv, lastClock_of_deliver S rho hv v he]
@@ -703,85 +873,6 @@ theorem node_of_restart (_hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.hon
       (Node.exec (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t .restart).1 := by
   rw [stateAt_restart S rho hn v he]
   rfl
-
-/-! ## Duty steps and the node state -/
-
-/-- Recording an own signed data body changes nothing: the shape keeps no record of it. -/
-theorem recordOwn_data (st : State sp ro) (k : Fin sp.n) (r : ShapeRole Empty) (b : Body)
-    (cs : List (Wire sp.n)) hs : recordOwn st (.mk (.signed k r) (.data b) cs) hs = st := by
-  cases r <;> rfl
-
-omit [DecidableEq V] in
-/-- `releaseAll` of candidates that `recordOwn` ignores leaves the shape's state unchanged. -/
-theorem releaseAll_shape_eq (k : Fin (Fintype.card V)) :
-    ∀ (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-      (cs : List (Model.protoOf (compiled (family S)) E).Object),
-      (∀ c ∈ cs, ∀ (st : State (S.params (pubOf E) hn) (S.ro _)) hs, recordOwn st c hs = st) →
-      shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E) rho.hash k nd cs).1 =
-        shapeOf S hn nd
-  | _, [], _ => rfl
-  | nd, c :: cs, h => by
-    unfold Model.releaseAll
-    split
-    · rw [releaseAll_shape_eq k _ cs (fun c hc => h c (List.mem_cons_of_mem _ hc))]
-      exact h c (List.mem_cons_self ..) _ _
-    · exact releaseAll_shape_eq k nd cs (fun c hc => h c (List.mem_cons_of_mem _ hc))
-
-omit [DecidableEq V] in
-/-- A poll step's signed candidate is a data body, which `recordOwn` ignores. -/
-theorem signedCandidate_poll_recordOwn (v : V) (t : Nat)
-    (o : Option (Body × List (Model.protoOf (compiled (family S)) E).Object)) :
-    ∀ c ∈ rho.signedCandidate v (.poll t) (o.map fun bc => (.data bc.1, bc.2)),
-      ∀ (st : State (S.params (pubOf E) hn) (S.ro _)) hs, recordOwn st c hs = st := by
-  cases o with
-  | none => simp [Model.Run.signedCandidate]
-  | some bc =>
-    simp only [Option.map, Model.Run.signedCandidate]
-    split
-    · intro c hc
-      simp only [List.mem_singleton] at hc
-      subst hc
-      intro st hs
-      exact recordOwn_data st _ _ _ _ hs
-    · simp
-
-omit [DecidableEq V] in
-/-- The engine's poll duty step is the shape's `poll`: its released body is not recorded. -/
-theorem dutyStep_poll (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (t : Nat) :
-    shapeOf S hn (rho.dutyStep v nd (.poll t)).1 = (poll (shapeOf S hn nd) t).1 := by
-  unfold Model.Run.dutyStep
-  refine (releaseAll_shape_eq S rho hn _ _ _ ?_).trans (shapeOf_act_poll S hn nd.st t)
-  exact signedCandidate_poll_recordOwn S rho hn v t _
-
-omit [DecidableEq V] in
-/-- The engine's `pollPropose` duty step is the shape's `nodeTick`: it releases nothing. -/
-theorem dutyStep_pollPropose (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (t : Nat) :
-    shapeOf S hn (rho.dutyStep v nd (.pollPropose t)).1 = nodeTick (shapeOf S hn nd) := by
-  unfold Model.Run.dutyStep
-  have h2 : ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).2 = none := by
-    change Option.map _ ((family S (pubOf E)).pollPropose nd.st.1 t).2 = none
-    simp only [family, dite_eq_left hn]; rfl
-  change shapeOf S hn (Model.releaseAll _ _ _
-    ⟨((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).1, nd.seen⟩
-    (rho.signedCandidate v (.pollPropose t)
-      ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).2)).1 = _
-  rw [h2]
-  exact shapeOf_act_pollPropose S hn nd.st t
-
-omit [DecidableEq V] in
-/-- Running a duty then a list of duties. -/
-theorem runDuties_fst_cons (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (d : (Model.protoOf (compiled (family S)) E).Duty)
-    (ds : List (Model.protoOf (compiled (family S)) E).Duty) :
-    (rho.runDuties v nd (d :: ds)).1 = (rho.runDuties v (rho.dutyStep v nd d).1 ds).1 :=
-  runDuties_fst_append S rho v nd [d] ds
-
-omit [DecidableEq V] in
-/-- Running no duties is the identity. -/
-theorem runDuties_fst_nil (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E)) :
-    (rho.runDuties v nd []).1 = nd := rfl
 
 /-! ## The digests of an own object -/
 
@@ -814,39 +905,6 @@ theorem rootOf_digests_item (a : Model.Auth (Fintype.card V) (ShapeRole Empty)) 
     rootOf (Model.digests rho.hash (.mk a (.item h) cs)) h = some (rho.hash h) :=
   rootOf_digests_of_mem S rho _ h
     (List.mem_filterMap.2 ⟨.mk a (.item h) cs, by simp [Model.Obj.parts], rfl⟩)
-
-omit [DecidableEq V] in
-/-- The digests the engine passes with a block object map the block's header to the engine's hash of
-it. -/
-theorem rootOf_digests_blockObj (B : Blk (S.params (pubOf E) hn)) :
-    rootOf (Model.digests rho.hash (blockObj (S.params (pubOf E) hn) B))
-        (headerOf (S.params (pubOf E) hn) B) =
-      some (rho.hash (headerOf (S.params (pubOf E) hn) B)) :=
-  rootOf_digests_item S rho _ _ _
-
-/-- An object in a list is among the list's parts. -/
-theorem mem_partsList {n : Nat} {R I B : Type} (c : Model.Obj n R I B) :
-    ∀ cs : List (Model.Obj n R I B), c ∈ cs → c ∈ Model.Obj.parts.partsList cs
-  | [], h => absurd h List.not_mem_nil
-  | c' :: cs, h => by
-    rw [List.mem_cons] at h
-    simp only [Model.Obj.parts.partsList, List.mem_append]
-    rcases h with rfl | h
-    · left; cases c; simp [Model.Obj.parts]
-    · right; exact mem_partsList c cs h
-
-omit [DecidableEq V] in
-/-- The digests the engine passes with a relay wrapper map the header of each carried block object
-to the engine's hash of it. -/
-theorem rootOf_digests_relay (cs : List (Wire (Fintype.card V))) (B : Blk (S.params (pubOf E) hn))
-    (hB : blockObj (S.params (pubOf E) hn) B ∈ cs) :
-    rootOf (Model.digests rho.hash (.mk .none (.data .relay) cs))
-        (headerOf (S.params (pubOf E) hn) B) =
-      some (rho.hash (headerOf (S.params (pubOf E) hn) B)) := by
-  apply rootOf_digests_of_mem
-  simp only [Model.Obj.parts, List.filterMap_cons, Model.Obj.item?]
-  exact List.mem_filterMap.2 ⟨blockObj _ B, mem_partsList _ cs hB, rfl⟩
-
 
 /-! ## Slots -/
 
@@ -1065,20 +1123,6 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
 
 
 /-! ## The node state across a tick -/
-
-/-- Recording an unsigned own object keeps the node state. -/
-theorem recordOwn_none_node (st : State sp ro) (m : Model.Msg (Header Info) Body)
-    (cs : List (Wire sp.n)) hs : (recordOwn st (.mk .none m cs) hs).node = st.node := by
-  cases m with
-  | data b => cases b <;> rfl
-  | item h => rfl
-
-/-- A poll step with no FG update due keeps the node state. -/
-theorem poll_node_of_fgDue (st : State sp ro) (t : Time) (h : st.fgDue = false) :
-    (poll st t).1.node = st.node := by
-  unfold poll
-  simp only [h, Bool.false_eq_true, ite_false]
-  split <;> rfl
 
 /-- A poll step with the FG update due runs it on the node state. -/
 theorem poll_node_of_fgDue_true (st : State sp ro) (t : Time) (h : st.fgDue = true) :
@@ -1435,33 +1479,6 @@ theorem node_of_tick_public (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.h
         (fun par info cs hprop => proposal_releasable S rho hn hv v hv' i t he s par info cs
           hprop)]
     erw [hPnode, hPnow, hPmem]
-
-/-! ## The open release obligations -/
-
-/-- **At most two bodies pending at a tick.** Between two ticks an honest node queues at most
-its SA vote and its attestation, so two poll steps release everything queued. -/
-theorem outbox_le_two (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) (i : Nat)
-    (t : Time) (he : rho.events[i]? = some (.tick v t)) :
-    (stateAt S rho hn v i).outbox.length ≤ 2 := by
-  sorry
-
-/-- After an awake honest node's tick at a public time nothing is pending: the tick's own bodies
-were released by its last poll steps. -/
-theorem outbox_empty_after_tick (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest)
-    (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
-    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
-    (stateAt S rho hn v (i + 1)).outbox = [] := by
-  sorry
-
-/-- **`protects` never blocks an honest node.** An honest node's own attestation in its pool
-passes the own-object guard against everything it has seen: an honest signer's attestations
-never conflict (`non_framing`, Lemmas/Compose/Regimes). -/
-theorem protects_own_att (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) (i : Nat)
-    (a : FG.Att (Fintype.card V)) (ha : a ∈ (stateAt S rho hn v i).node.fg.atts)
-    (hself : a.val = rho.ownKey v) :
-    Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v)
-      (rho.stateBefore i v).seen (attObj a) = true := by
-  sorry
 
 end Engine
 

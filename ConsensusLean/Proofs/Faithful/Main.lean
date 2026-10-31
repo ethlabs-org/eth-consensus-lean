@@ -110,9 +110,8 @@ theorem held_iff_served (rho : Run F E) (hv : rho.ExecutionValid) {w : V}
     refine ⟨t', ht, hs, ?_⟩
     intro u h₁ h₂ hwk
     have ht0 : 0 ≤ t' := by
-      rcases hs with ⟨i, hi, -⟩ | ⟨i, hi⟩
-      · exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
-      · exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
+      rcases hs with ⟨i, hi | ⟨_, hi⟩, -⟩ | ⟨i, hi⟩ <;>
+        exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
     exact hn u (hv.wake_restart w hw u (lt_of_le_of_lt ht0 h₁) (le_trans h₂ hd) hwk) ⟨h₁, h₂⟩
 
 /-- On a valid run no send happens before time `0` (event times are in
@@ -120,8 +119,7 @@ theorem held_iff_served (rho : Run F E) (hv : rho.ExecutionValid) {w : V}
 theorem log_sendsFromZero (rho : Run F E) (hv : rho.ExecutionValid) :
     CommLog.SendsFromZero rho.point rho.log := by
   rw [CommLog.sendsFromZero_iff]
-  rintro v - o t ⟨i, hi, -⟩
-  exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
+  rintro v - o t ⟨i, hi | ⟨_, hi⟩, -⟩ <;> exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
 
 end Run
 

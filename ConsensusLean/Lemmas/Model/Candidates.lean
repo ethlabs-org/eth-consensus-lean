@@ -440,6 +440,189 @@ theorem tick_duty (nd : Node (protoOf F E)) (v : V) (t : Time)
     injection he with h₁
     cases h₁
 
+/-! ## Deliveries
+
+A delivery runs `process`, adds the object to `seen`, then the delivery duties
+and gossip exactly as an awake tick runs its duties and gossip, from the
+processed node (`Run.deliver_eq`). The tick lemmas above transfer: the
+delivery releases what one `releaseAll` call from the processed `seen`
+releases on its candidates (`Run.deliver_flat`), every released object is
+unsigned or signed with the own key in a selecting role (`Run.deliver_auth`),
+and an invariant kept by the delivery duties and the records holds after the
+delivery (`Run.deliver_invariant`). -/
+
+omit [DecidableEq V] in
+/-- A delivery, unfolded: the processed node, its delivery duties, then gossip. -/
+theorem deliver_eq (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object) (t : Time) :
+    rho.deliver nd v o t =
+      ((releaseAll (protoOf F E) rho.hash (rho.ownKey v)
+          (rho.runDuties v ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+            ((protoOf F E).deliverDuties t)).1
+          (gossipCandidates (protoOf F E)
+            (rho.runDuties v
+              ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+              ((protoOf F E).deliverDuties t)).1.st t)).1,
+        (rho.runDuties v ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+          ((protoOf F E).deliverDuties t)).2 ++
+        (releaseAll (protoOf F E) rho.hash (rho.ownKey v)
+          (rho.runDuties v ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+            ((protoOf F E).deliverDuties t)).1
+          (gossipCandidates (protoOf F E)
+            (rho.runDuties v
+              ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+              ((protoOf F E).deliverDuties t)).1.st t)).2) := rfl
+
+omit [DecidableEq V] in
+/-- A property of states that holds after `process` and is kept by the
+delivery duties and by `recordOwn` of every object the delivery releases holds
+after the delivery. -/
+theorem deliver_invariant (Q : (protoOf F E).State → Prop) (nd : Node (protoOf F E)) (v : V)
+    (o : (protoOf F E).Object) (t : Time)
+    (hact : ∀ s, ∀ d ∈ (protoOf F E).deliverDuties t, Q s → Q ((protoOf F E).act s d).1)
+    (hrec : ∀ s o' hs, o' ∈ (rho.deliver nd v o t).2 → Q s → Q ((protoOf F E).recordOwn s o' hs))
+    (h₁ : Q ((protoOf F E).process nd.st o (digests rho.hash o))) :
+    Q (rho.deliver nd v o t).1.st := by
+  rw [rho.deliver_eq nd v o t] at hrec ⊢
+  exact releaseAll_invariant Q _ _ _ _
+    (fun s o' hs ho => hrec s o' hs (List.mem_append_right _ ho))
+    (rho.runDuties_invariant Q v _ _ hact
+      (fun s o' hs ho => hrec s o' hs (List.mem_append_left _ ho)) h₁)
+
+omit [DecidableEq V] in
+/-- The delivery ends in a state it reaches from the processed state. -/
+theorem deliver_reach (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object) (t : Time) :
+    TickReach (protoOf F E) ((protoOf F E).deliverDuties t)
+      ((protoOf F E).process nd.st o (digests rho.hash o)) (rho.deliver nd v o t).1.st :=
+  rho.deliver_invariant _ nd v o t (fun _ _ hd hs => .act hd hs)
+    (fun _ o' hs _ h => .recordOwn o' hs h) .refl
+
+/-- A signed duty candidate of a delivery to node `v` at `t` whose processed
+state is `st₁`: the candidate of a delivery duty at a state the delivery
+reaches. -/
+def DeliverCandidate (st₁ : (protoOf F E).State) (v : V) (t : Time)
+    (o : (protoOf F E).Object) : Prop :=
+  ∃ d ∈ (protoOf F E).deliverDuties t, ∃ st,
+    TickReach (protoOf F E) ((protoOf F E).deliverDuties t) st₁ st ∧
+      o ∈ rho.signedCandidate v d ((protoOf F E).act st d).2
+
+omit [DecidableEq V] in
+theorem deliverCandidate_iff {st₁ : (protoOf F E).State} {v : V} {t : Time}
+    {o : (protoOf F E).Object} : rho.DeliverCandidate st₁ v t o ↔
+      ∃ d ∈ (protoOf F E).deliverDuties t, ∃ st,
+        TickReach (protoOf F E) ((protoOf F E).deliverDuties t) st₁ st ∧
+          o ∈ rho.signedCandidate v d ((protoOf F E).act st d).2 := Iff.rfl
+
+omit [DecidableEq V] in
+/-- The delivery releases what one `releaseAll` call from the processed node
+(`nd.seen ++ [o]`) releases on the delivery's candidates, and leaves the same
+`seen`: signed delivery-duty candidates at states the delivery reaches from
+the processed state, and gossip at the state after the delivery duties. -/
+theorem deliver_flat (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object) (t : Time) :
+    ∃ cs : List (protoOf F E).Object,
+      (∀ c ∈ cs,
+        rho.DeliverCandidate ((protoOf F E).process nd.st o (digests rho.hash o)) v t c ∨
+          c ∈ gossipCandidates (protoOf F E)
+            (rho.runDuties v
+              ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+              ((protoOf F E).deliverDuties t)).1.st t) ∧
+      (rho.deliver nd v o t).2 = (releaseAll (protoOf F E) rho.hash (rho.ownKey v)
+        ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩ cs).2 ∧
+      (rho.deliver nd v o t).1.seen = (releaseAll (protoOf F E) rho.hash (rho.ownKey v)
+        ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩ cs).1.seen := by
+  obtain ⟨cs, hcs, h2, h1, -⟩ := foldl_duties_flat rho v ((protoOf F E).deliverDuties t)
+    ((protoOf F E).deliverDuties t) (fun _ hd => hd)
+    ((protoOf F E).process nd.st o (digests rho.hash o))
+    ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩ [] .refl
+  generalize hR : rho.runDuties v
+    ⟨(protoOf F E).process nd.st o (digests rho.hash o), nd.seen ++ [o]⟩
+    ((protoOf F E).deliverDuties t) = R
+  have hR' := hR
+  unfold runDuties at hR'
+  rw [hR'] at h1 h2
+  have hdel : rho.deliver nd v o t =
+      ((releaseAll (protoOf F E) rho.hash (rho.ownKey v) R.1
+          (gossipCandidates (protoOf F E) R.1.st t)).1,
+        R.2 ++ (releaseAll (protoOf F E) rho.hash (rho.ownKey v) R.1
+          (gossipCandidates (protoOf F E) R.1.st t)).2) := by
+    rw [← hR]; rfl
+  have hgo := releaseAll_seen_only rho.hash (rho.ownKey v) h1
+    (gossipCandidates (protoOf F E) R.1.st t)
+  refine ⟨cs ++ gossipCandidates (protoOf F E) R.1.st t, ?_, ?_, ?_⟩
+  · intro c hc
+    rcases List.mem_append.mp hc with hc | hc
+    · exact Or.inl (hcs c hc)
+    · exact Or.inr hc
+  · rw [hdel, releaseAll_append, h2, List.nil_append, hgo.1]
+  · rw [hdel, releaseAll_append, hgo.2]
+
+omit [DecidableEq V] in
+/-- Every object a delivery to `v` releases is unsigned, or signed with `v`'s
+own key in a role whose selection contains that key. -/
+theorem deliver_auth (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object) (t : Time)
+    {o' : (protoOf F E).Object} (ho : o' ∈ (rho.deliver nd v o t).2) :
+    o'.auth = .none ∨ ∃ r, o'.auth = .signed (rho.ownKey v) r ∧ rho.ownKey v ∈ rho.sel r := by
+  obtain ⟨cs, hcs, h2, -⟩ := rho.deliver_flat nd v o t
+  rw [h2] at ho
+  rcases hcs o' (releaseAll_subset _ _ _ _ o' ho) with ⟨d, -, st, -, hc⟩ | hc
+  · obtain ⟨m, cs, -, hk, rfl⟩ := (rho.mem_signedCandidate).mp hc
+    exact Or.inr ⟨_, rfl, hk⟩
+  · obtain ⟨mc, -, rfl⟩ := mem_gossipCandidates.mp hc
+    exact Or.inl rfl
+
+omit [DecidableEq V] in
+/-- Every object a delivery to `v` releases is unsigned or signed by `v`'s own
+key. -/
+theorem deliver_signer (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object) (t : Time)
+    {o' : (protoOf F E).Object} (ho : o' ∈ (rho.deliver nd v o t).2) :
+    o'.signer? = none ∨ o'.signer? = some (rho.ownKey v) := by
+  rcases rho.deliver_auth nd v o t ho with h | ⟨r, h, _⟩
+  · exact Or.inl (by simp [Obj.signer?, h])
+  · exact Or.inr (by simp [Obj.signer?, h])
+
+omit [DecidableEq V] in
+/-- Every signed object a delivery releases is signed by a key selected for
+its role. -/
+theorem deliver_selected (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object)
+    (t : Time) {o' : (protoOf F E).Object} (ho : o' ∈ (rho.deliver nd v o t).2) {k r}
+    (ha : o'.auth = .signed k r) : k ∈ rho.sel r := by
+  rcases rho.deliver_auth nd v o t ho with h | ⟨r', h, hk⟩
+  · rw [h] at ha; cases ha
+  · rw [h] at ha; cases ha; exact hk
+
+omit [DecidableEq V] in
+/-- Through the PKI, every signed object a delivery to `v` releases is signed
+by `v`. -/
+theorem deliver_signerOf (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object)
+    (t : Time) {o' : (protoOf F E).Object} (ho : o' ∈ (rho.deliver nd v o t).2) :
+    rho.signerOf o' = none ∨ rho.signerOf o' = some v := by
+  rcases rho.deliver_auth nd v o t ho with h | ⟨r, h, _⟩
+  · exact Or.inl (by simp [signerOf, Obj.signer?, h])
+  · exact Or.inr (by simp [signerOf, Obj.signer?, ownKey, h])
+
+omit [DecidableEq V] in
+/-- A signed object a delivery releases is the candidate of a delivery duty of
+its role at a state the delivery reaches from the processed state: `act`'s
+message and carried objects there. -/
+theorem deliver_duty (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object) (t : Time)
+    {a : Model.Auth (Fintype.card V) (protoOf F E).Role} {m cs}
+    (ho : Obj.mk a m cs ∈ (rho.deliver nd v o t).2) {k r} (ha : a = .signed k r) :
+    ∃ d ∈ (protoOf F E).deliverDuties t, (protoOf F E).role d = r ∧ ∃ st,
+      TickReach (protoOf F E) ((protoOf F E).deliverDuties t)
+        ((protoOf F E).process nd.st o (digests rho.hash o)) st ∧
+      ((protoOf F E).act st d).2 = some (m, cs) := by
+  subst ha
+  obtain ⟨cs', hcs, h2, -⟩ := rho.deliver_flat nd v o t
+  rw [h2] at ho
+  rcases hcs _ (releaseAll_subset _ _ _ _ _ ho) with ⟨d, hd, st, hst, hc⟩ | hc
+  · obtain ⟨m', cs'', hact, -, he⟩ := (rho.mem_signedCandidate).mp hc
+    injection he with h₁ h₂ h₃
+    injection h₁ with _ hr
+    subst h₂ h₃
+    exact ⟨d, hd, hr.symm, st, hst, hact⟩
+  · obtain ⟨mc, -, he⟩ := mem_gossipCandidates.mp hc
+    injection he with h₁
+    cases h₁
+
 end Run
 end Consensus.Model
 end
