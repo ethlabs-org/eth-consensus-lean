@@ -44,6 +44,21 @@ def blockObjs (cs : List (Cut (goldilocksNode sp ro))) : List (Wire sp.n) :=
     | .fg (.block B _) => [blockObj sp B]
     | _ => []
 
+theorem mem_blockObjs {cs : List (Cut (goldilocksNode sp ro))} {o : Wire sp.n} :
+    o ∈ blockObjs cs ↔ ∃ B acc, Cut.fg (.block B acc) ∈ cs ∧ o = blockObj sp B := by
+  simp only [blockObjs, List.mem_flatMap]
+  constructor
+  · rintro ⟨c, hc, ho⟩
+    cases c with
+    | ac => simp at ho
+    | fg l =>
+      cases l with
+      | block B acc => exact ⟨B, acc, hc, List.mem_singleton.mp ho⟩
+      | attestation => simp at ho
+      | attest => simp at ho
+  · rintro ⟨B, acc, hc, rfl⟩
+    exact ⟨_, hc, List.mem_singleton_self _⟩
+
 theorem emitted_append (cs cs' : List (Cut (goldilocksNode sp ro))) :
     emitted (cs ++ cs') = emitted cs ++ emitted cs' := by simp [emitted]
 
