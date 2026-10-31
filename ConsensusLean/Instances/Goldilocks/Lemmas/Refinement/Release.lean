@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
 
 public section
 

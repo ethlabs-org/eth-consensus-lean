@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 public import ConsensusLean.Lemmas.Model.Objects

@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 
 public section

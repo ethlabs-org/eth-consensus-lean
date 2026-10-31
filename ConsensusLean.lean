@@ -196,6 +196,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Chains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Evidence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
