@@ -7,8 +7,8 @@
 # Re-check commits of main on request: append their SHAs to $ORB_CI_HOME/queue (one per line).
 # It copies itself to $ORB_CI_HOME and runs the copy, checks out each head (a PR merged into main first, like
 # GitHub's merge commit) in its own worktree ($ORB_CI_HOME/wt for main, wt-pr for PRs) with hard-linked Lake
-# packages, removes the build outputs of modules whose source is not in the tree (prune_build), and keeps logs in
-# $ORB_CI_HOME/logs. Options: --once (one pass, then exit); --full nightly|tag|now (the full tier, below).
+# packages, removes the build outputs of modules whose source is not in the tree (prune_build), and keeps one log
+# per check in $ORB_CI_HOME/logs (<sha>.<kind>-<time>.log). A new head of main is checked before each PR head. Options: --once (one pass, then exit); --full nightly|tag|now (the full tier, below).
 # Environment: ORB_CI_HOME (default ~/orb-ci),
 # ORB_CI_INTERVAL (seconds between passes, default 600), ORB_CI_REPO (the checkout it was started from),
 # ORB_CI_SIGN (the comments' sign-off), ORB_CI_JOB (the shared box: `job` options and scope, e.g.
@@ -116,7 +116,7 @@ print(head + "|---|---|---|---|---|\n" + "\n".join([os.environ["ROW"]] + rows) +
 
 # check <kind> <id> <head>: kind main|pr; records the result in the issue and comments.
 check() {
-  local kind="$1" id="$2" head="$3" base flags=() mode=fast paths rc=0 t0=$SECONDS lg="$LOGS/$3.log" fails summary
+  local kind="$1" id="$2" head="$3" base flags=() mode=fast paths rc=0 t0=$SECONDS lg="$LOGS/$3.$1-$(date -u +%m%d-%H%M%S).log" fails summary
   if [[ "$kind" == pr ]]; then cd "$WT_PR" || return 1; else cd "$WT" || return 1; fi
   : >"$lg"
   git checkout -q --detach -f origin/main && git clean -qfdx -e .lake || return 1
@@ -199,17 +199,25 @@ pass() {
     done <"$HOME_DIR/queue"
     : >"$HOME_DIR/queue"
   fi
-  head="$(git -C "$REPO" rev-parse origin/main)"
-  grep -q "^$head main " "$DONE" || check main "" "$head"
+  main_if_new
   local prs
   prs="$(gh pr list -R "$SLUG" --state open --base main --json number,headRefOid,isDraft \
     -q '.[] | select(.isDraft | not) | "\(.number) \(.headRefOid)"')" || { log "PR list failed"; return; }
   while read -r n sha; do
     [[ -n "$n" ]] || continue
     grep -q "^$sha " "$DONE" && continue
+    main_if_new  # main first: a push to main does not wait behind the PR heads queued in this pass
+    grep -q "^$sha " "$DONE" && continue
     git -C "$REPO" fetch -q origin "pull/$n/head" || continue
     check pr "$n" "$sha"
   done <<<"$prs"
+}
+
+main_if_new() {  # fetch main (and the tag) and check its head unless that was done
+  local head
+  git -C "$REPO" fetch -q --tags --force origin main || { log "fetch failed"; return; }
+  head="$(git -C "$REPO" rev-parse origin/main)"
+  grep -q "^$head main " "$DONE" || check main "" "$head"
 }
 
 # fail_summary <log>: the failed checks, for a FAILED row and comment ("step 1 build, review boundary"): each
@@ -225,7 +233,7 @@ fail_summary() {
 
 # full_check <kind> <ref> <head>: the full tier on <head> (a commit of main), recorded as <ref>.
 full_check() {
-  local kind="$1" ref="$2" head="$3" rc=0 t0=$SECONDS lg="$LOGS/$3.full-$(date -u +%m%d-%H%M).log" fenv skipped body summary
+  local kind="$1" ref="$2" head="$3" rc=0 t0=$SECONDS lg="$LOGS/$3.full-$(date -u +%m%d-%H%M%S).log" fenv skipped body summary
   cd "$WT" && git checkout -q --detach -f "$head" && git clean -qfdx -e .lake || return 1
   read -ra fenv <<<"${ORB_CI_FULL_ENV:-}"
   {
