@@ -139,6 +139,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeFrozen
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSuffix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Assembly

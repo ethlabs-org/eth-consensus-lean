@@ -66,17 +66,17 @@ private theorem proposal_before_holder
   have := hl.tick_unique p hpH j₀ j'' _ h₀ (by rw [← ht]; exact ⟨x, hg⟩)
   omega
 
-/-- **`P` is frozen-viable at every honest slot-`s` vote** (`hs234-exact-interface.md` §4, "use
-`P` itself as frozen witness"): `P` is held by the voter (ready at an early vote, `cast_ready`;
-relayed by `t_s + Δ` otherwise, `relay_held`), allowed (its parent is a viable head of the
-proposer, whose walk starts in the viable tree, `proposal_head_viable`, read with the aligned
-readers at the proposal cut, which precedes the vote), so a viable head of the voter (HS.1,
-`viableHead_of_allowed`), and in the voter block tree as the slot-`s` block. -/
-theorem proposal_frozen_viable (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+/-- **The frozen facts at a vote**: `P` is frozen-viable (`proposal_frozen_viable`, whose
+docstring has the argument), `Q` is a viable head of the proposer, and the phase and evidence
+hold from `i₀` through the vote. -/
+private theorem frozen_core (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) :
-    P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) := by
+    (P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
+      d.head ∈ ℓp.frame.viableHeads) ∧
+    (i₀ ≤ iP ∧ iP < j ∧ PhaseOn tr.projFG H i₀ j m c ∧
+      ∀ z ∈ H, ∀ k', i₀ ≤ k' → HoldsEvidence (tr.state z k').fg m c) := by
   have hrun := hS.run
   have hs := hS.shared
   have hl := hrun.toLocalRun
@@ -170,6 +170,7 @@ theorem proposal_frozen_viable (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p k
       hΦ₀.fcRoot_anc_viableHeads Bm hBv⟩
   have hPrv : d.head ∈ ℓp.frame.viableHeads := proposal_head_viable hr hpH hS.call
     hS.call_proposal (σ := s) (by rw [sp.slotTime_eq]; exact hS.time) hS.payload hfc₀
+  have hQv := hPrv
   rw [hfr₀] at hPrv
   have hPrt : d.head ∈ (tr.state p iP).fg.tree := hPrv.1
   obtain ⟨-, hPrE⟩ :=
@@ -207,11 +208,46 @@ theorem proposal_frozen_viable (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p k
     (hiPj.le.trans h1)) h2) hy (hPallow y hy j hPy) hy le_rfl le_rfl hPy
   have hfrv : ℓy.frame = Node.frame (tr.state y j) := Compose.frame_of_projAC hrun hy hcy.1
   have hΦy := (SA.frameIn_of_callAt hr hy hcy.1).1
+  refine ⟨⟨?_, hQv⟩, hiP0, hiPj, hwin, hev⟩
   rw [hfrv] at hΦy ⊢
   have hPt : P ∈ (Node.frame (tr.state y j)).tree := hΦy.viableHeads_subset hPv
   have hPV : P ∈ SA.voterBlockTree sp e.readPoint (Node.frame (tr.state y j)) s :=
     ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩
   exact ⟨hPV, hΦy.fcRoot_anc_viableHeads P hPv, P, hPV, hPv, .refl⟩
+
+/-- **`P` is frozen-viable at every honest slot-`s` vote** (`hs234-exact-interface.md` §4, "use
+`P` itself as frozen witness"): `P` is held by the voter (ready at an early vote, `cast_ready`;
+relayed by `t_s + Δ` otherwise, `relay_held`), allowed (its parent is a viable head of the
+proposer, whose walk starts in the viable tree, `proposal_head_viable`, read with the aligned
+readers at the proposal cut, which precedes the vote), so a viable head of the voter (HS.1,
+`viableHead_of_allowed`), and in the voter block tree as the slot-`s` block. -/
+theorem proposal_frozen_viable (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
+    (hes : e.msg.slot = s) :
+    P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) :=
+  (frozen_core hS hy hcy hes).1.1
+
+/-- **`Q` is a viable head of the proposer** (`proposal_head_viable`: the proposal walk starts in
+the viable tree, `fc_root` being below the evidence block of height `m`, allowed and so a viable
+head, HS.1), read at the proposal cut, which precedes an honest slot-`s` vote. -/
+theorem proposal_head_viableHead (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
+    (hes : e.msg.slot = s) : d.head ∈ ℓp.frame.viableHeads :=
+  (frozen_core hS hy hcy hes).1.2
+
+/-- **The phase at a vote**: the proposal's cut is between the settled cut `i₀` and an honest
+slot-`s` vote, the phase `(m, c)` holds from `i₀` through the vote, and every honest node holds
+the evidence from `i₀` on (the phase from the vote's `PhaseOn` and the sandwich; the proposal's
+cut precedes every holder of `P`). -/
+theorem vote_phase (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
+    (hes : e.msg.slot = s) :
+    i₀ ≤ iP ∧ iP < j ∧ PhaseOn tr.projFG H i₀ j m c ∧
+      ∀ z ∈ H, ∀ k', i₀ ≤ k' → HoldsEvidence (tr.state z k').fg m c :=
+  (frozen_core hS hy hcy hes).2
 
 end Main
 

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeFrozen
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.StopCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
@@ -14,18 +14,17 @@ proposal walk at or above an honest slot-`s` voter's anchor, the proposer's best
 voter's best child (`proposal_suffix`); and `P` is the voter's only eligible child of
 `Q = P.parent` (`proposal_only_child`). Their pieces:
 
-* `winner_voter_tree` (proved): the proposer's best child `C` at `X` is on the walk below `Q`,
-  so an ancestor of `P`, in the voter's viable voter block tree (`P` is,
+* the winner (inline in `proposal_suffix`): the proposer's best child `C` at `X` is on the walk
+  below `Q`, so an ancestor of `P`, in the voter's viable voter block tree (`P` is,
   `proposal_frozen_viable`, and `fc_root ⪯ anchor ⪯ X ⪯ C`);
 * `suffix_reflect` (open): a child `B ≠ P` of a block of the walk in the voter's viable voter
   block tree is in the proposer's viable tree (received before the freeze and relayed to the
   proposer by `t_s`, or below `Q`; a viable head at or above it at the proposer, aligned readers);
 * `suffix_viable_iff` (open): a block of both trees is a viable head of the voter exactly when it
   is one of the proposer (aligned readers, `viableHeads_iff`, `effAllowed_transfer`);
-* `suffix_views_agree` (open): the proposal's view and the voter's merged view have the same
-  equivocators and voters, and the same supporters for every block of both trees;
-* `proposal_head_viableHead` (open): `Q` is a viable head of the proposer
-  (`proposal_head_viable`, as in `proposal_frozen_viable`).
+* `proposal_views_agree` (open, `AgreeViews`): the proposal's view and the voter's merged view
+  have the same equivocators and voters, and the same supporters for every block of both trees;
+* `Q` is a viable head of the proposer (`proposal_head_viableHead`, `AgreeFrozen`).
 
 When `X` is a proposer viable head, `C` (of a slot below `s`) is eligible there by a strict
 majority only, so the best child carries over (`SA.isBest_transfer`); otherwise `X` is a viable
@@ -97,14 +96,7 @@ variable (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
   {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
   {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
 
-include hS
-
-/-- **`Q` is a viable head of the proposer** (`proposal_head_viable`: the proposal walk starts
-in the viable tree; as in `proposal_frozen_viable`; open). -/
-private theorem proposal_head_viableHead : d.head ∈ ℓp.frame.viableHeads := by
-  sorry
-
-include hy hcy hes
+include hS hy hcy hes
 
 /-- **Viable heads agree** on the blocks of both trees (aligned readers in the settled phase,
 `viableHeads_iff`, `effAllowed_transfer`; open). -/
@@ -113,25 +105,13 @@ private theorem suffix_viable_iff {X : SA.Blk sp.n (List (FG.Att sp.n))}
     X ∈ ℓy.frame.viableHeads ↔ X ∈ ℓp.frame.viableHeads := by
   sorry
 
-/-- **Competitors reflect**: a child `B ≠ P` of a block `X ⪯ Q` of the proposer's tree in the
-voter's viable voter block tree is in the proposer's viable tree (open). -/
+/-- **Competitors reflect**: a child `B ≠ P` of a block `d.start ⪯ X ⪯ Q` of the proposer's tree
+in the voter's viable voter block tree is in the proposer's viable tree (open). -/
 private theorem suffix_reflect {X B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hXQ : ℓp.frame.Anc X d.head) (hBX : B.parent = some X.root) (hBP : B ≠ P)
+    (hsX : ℓp.frame.Anc d.start X) (hXQ : ℓp.frame.Anc X d.head) (hBX : B.parent = some X.root)
+    (hBP : B ≠ P)
     (hB : B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s)) :
     B ∈ ℓp.frame.viableTree ℓp.frame.tree := by
-  sorry
-
-/-- **The views agree**: the proposal's view and the voter's merged view have the same
-equivocators and voters, and the same supporters for every block of both trees (open). -/
-private theorem suffix_views_agree :
-    SA.equivocators (SA.View.ofLists pay).votes =
-        SA.equivocators (SA.mergedVoteView sp e.readPoint ℓy.frame s).votes ∧
-      SA.voters (SA.View.ofLists pay).votes =
-        SA.voters (SA.mergedVoteView sp e.readPoint ℓy.frame s).votes ∧
-      ∀ X ∈ ℓp.frame.tree, X ∈ ℓy.frame.tree →
-        SA.supporters ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1) X =
-          SA.supporters ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)
-            X := by
   sorry
 
 /-- The scores of the blocks of both trees agree. -/
@@ -139,7 +119,7 @@ private theorem suffix_scores {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hBp : B ∈ ℓp.frame.tree) (hBy : B ∈ ℓy.frame.tree) :
     SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B =
       SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1) B := by
-  obtain ⟨heq, -, hsup⟩ := suffix_views_agree hS hy hcy hes
+  obtain ⟨heq, -, hsup⟩ := proposal_views_agree hS hy hcy hes
   simp only [SA.goldfishScore, heq, hsup B hBp hBy]
 
 end Leaves
@@ -224,7 +204,7 @@ theorem proposal_suffix (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P i
   -- competitors reflect; scores and voters agree
   have hrefl : ∀ B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s),
       B.parent = some X.root → B ∈ ℓp.frame.viableTree ℓp.frame.tree := fun B hB hBX =>
-    suffix_reflect hS hy hcy hes hXQ hBX (by
+    suffix_reflect hS hy hcy hes (hsD.trans hDX) hXQ hBX (by
       rintro rfl
       exact hne (hΦp.coherent.1 hXt hQt (Option.some_injective _ (hBX.symm.trans hS.parent))))
       hB
@@ -232,7 +212,7 @@ theorem proposal_suffix (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P i
   by_cases hXv : X ∈ ℓp.frame.viableHeads
   · have hslot : sp.slot (tr.time iP) = s := by
       rw [hS.time]; exact SA.slot_of_mem sp s le_rfl ((SA.ts_lt_iff sp).2 (by push_cast; omega))
-    exact SA.isBest_transfer hXv (by omega) (suffix_views_agree hS hy hcy hes).2.1 hsc hT
+    exact SA.isBest_transfer hXv (by omega) (proposal_views_agree hS hy hcy hes).2.1 hsc hT
       (fun B hB => hB.1.1) hCy hrefl hC
   · have hXv' : X ∉ ℓy.frame.viableHeads := fun h =>
       hXv ((suffix_viable_iff hS hy hcy hes hXt hXy).1 h)
@@ -294,8 +274,8 @@ theorem proposal_only_child (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s
         (Option.some_injective _ (hq.2.2.symm.trans hBQ))
       exact hq.1
   have hQvy : d.head ∈ ℓy.frame.viableHeads :=
-    (suffix_viable_iff hS hy hcy hes hQt hQy).2 (proposal_head_viableHead hS)
-  have hBp := suffix_reflect hS hy hcy hes .refl hBQ hBP hB
+    (suffix_viable_iff hS hy hcy hes hQt hQy).2 (proposal_head_viableHead hS hy hcy hes)
+  have hBp := suffix_reflect hS hy hcy hes (hw.anc hT hst) .refl hBQ hBP hB
   have hsc := suffix_scores hS hy hcy hes hBp.1 hBt
   have hsj : sp.slot (tr.time j) = s := (SA.castAt_spec hr hy hcy).2.1.symm.trans hes
   have help : SA.goldfishEligible sp ℓp.frame (tr.time iP) (SA.View.ofLists pay)
@@ -305,7 +285,7 @@ theorem proposal_only_child (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s
     · have h' : B.slot = s := by rw [← hsj]; exact h
       omega
     · refine Or.inr (Or.inr ?_)
-      rw [(suffix_views_agree hS hy hcy hes).2.1, ← hsc]
+      rw [(proposal_views_agree hS hy hcy hes).2.1, ← hsc]
       exact h
   exact hstop (SA.exists_isBest hΦp (S := {C | C ∈ ℓp.frame.viableTree ℓp.frame.tree ∧
     C.parent = some d.head.root ∧ SA.goldfishEligible sp ℓp.frame (tr.time iP)
