@@ -40,11 +40,11 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 and awake intervals by canonical simulation. Both ends are inside the finite horizon; the
 catch-up is the NODE duration, not silently `18 * E.Δ`. R.1 defines the same closed interval,
 but supplies no engine proof. -/
-theorem sleepy_ready (_hv : rho.ExecutionValid) {v : V} {t : Time}
+theorem ready_transport (_hv : rho.ExecutionValid) {c : Time} {v : V} {t : Time}
     (_ht : 0 ≤ t) (hth : t ≤ rho.horizon)
-    (hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) v t) :
+    (hr : rho.point.Ready c v t) :
     Regimes.ReadyAt (simTrace S rho hn) (honestKeys S rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) (rho.ownKey v) t := by
+      c (rho.ownKey v) t := by
   have hkey : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
   constructor
   · change rho.key (rho.ownKey v) ∈ rho.honest
@@ -53,6 +53,13 @@ theorem sleepy_ready (_hv : rho.ExecutionValid) {v : V} {t : Time}
   · intro τ hτ hτt
     rw [simTrace_awake_iff, awakeAt_iff, hkey]
     exact ⟨hr.2 τ hτ hτt, (le_max_left _ _).trans hτ, hτt.trans hth⟩
+
+theorem sleepy_ready (hv : rho.ExecutionValid) {v : V} {t : Time}
+    (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
+    (hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) v t) :
+    Regimes.ReadyAt (simTrace S rho hn) (honestKeys S rho)
+      (Regimes.catchUp (S.params (pubOf E) hn)) (rho.ownKey v) t :=
+  ready_transport S rho hn hv ht hth hr
 
 /-- Quorum bridge. Half-ready means faulty < ready; transport
 counts through the key equivalence and use ready-implies-joined at each slot point.
@@ -154,9 +161,9 @@ private theorem event_before_endCut (hv : rho.ExecutionValid) {t : Time} (ht : 0
 engine event at `t` before advancing to a later node time, including the terminal filler
 cut. A ready node has a tick at `t`, so its last clock is `t`, not the next node cut's time.
 This supplies the exact state/clock read needed by finite R.2. No paper proof of encoding. -/
-theorem sleepy_read_cut (hv : rho.ExecutionValid) {v : V} {t : Time}
+theorem ready_read_cut (hv : rho.ExecutionValid) {c : Time} (hc : 0 ≤ c) {v : V} {t : Time}
     (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
-    (hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) v t) :
+    (hr : rho.point.Ready c v t) :
     Regimes.CutAfter (simTrace S rho hn) (cutMap S rho hn ((chainTrace rho).endCut t)) t ∧
       Regimes.Boundary (simTrace S rho hn) (rho.ownKey v)
         (cutMap S rho hn ((chainTrace rho).endCut t)) ∧
@@ -215,8 +222,6 @@ theorem sleepy_read_cut (hv : rho.ExecutionValid) {v : V} {t : Time}
     simpa using (hg.2.1 0 (by omega)).2.2.2.1
   · have hw : E.awake v t = true := hr.2 t (by
       apply max_le ht
-      unfold Regimes.catchUp
-      have := (S.params (pubOf E) hn).toParams.hΔ
       linarith) le_rfl
     obtain ⟨i, hi⟩ := List.mem_iff_getElem?.mp (hv.tick_total v hr.1 t ht hth hw)
     have hin : i < n := (event_before_endCut S rho hv ht hi).mpr le_rfl
@@ -228,6 +233,18 @@ theorem sleepy_read_cut (hv : rho.ExecutionValid) {v : V} {t : Time}
     rcases hlo with hlo | ⟨hlo, _⟩
     · exact le_antisymm hhi hlo.le
     · exact hlo.symm
+
+theorem sleepy_read_cut (hv : rho.ExecutionValid) {v : V} {t : Time}
+    (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
+    (hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) v t) :
+    Regimes.CutAfter (simTrace S rho hn) (cutMap S rho hn ((chainTrace rho).endCut t)) t ∧
+      Regimes.Boundary (simTrace S rho hn) (rho.ownKey v)
+        (cutMap S rho hn ((chainTrace rho).endCut t)) ∧
+      (stateAt S rho hn v ((chainTrace rho).endCut t)).now = t :=
+  ready_read_cut S rho hn hv (by
+    unfold Regimes.catchUp
+    have := (S.params (pubOf E) hn).toParams.hΔ
+    linarith) ht hth hr
 
 /-- OPEN finite R.1 consumer (owner: Regimes/Refinement). Localize the R.1 induction to
 cuts observed through `b`; all network invocations must have recipient deadlines ≤ b.
@@ -397,12 +414,12 @@ def SleepyRecurrenceSupplier : Prop :=
 tick and `block_released`: its signed header is the engine proposal, and readiness transfers
 back through the key equivalence. The producer's time is explicitly bounded by the horizon.
 R.2 supplies the node producer, not this encoding/release proof. -/
-theorem sleepy_proposal (hv : rho.ExecutionValid) {τ : Time}
+theorem ready_proposal (hv : rho.ExecutionValid) {c : Time} {τ : Time}
     (_hτ : 0 ≤ τ) (_hτh : τ ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
     (hP : Regimes.ReadyProposalAt (simTrace S rho hn) (honestKeys S rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) τ P) :
-    ∃ k, rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) (rho.key k) τ ∧
+      c τ P) :
+    ∃ k, rho.point.Ready c (rho.key k) τ ∧
       Shape.HonestProposal rho τ k (headerOf (S.params (pubOf E) hn) P) := by
   obtain ⟨p, k, hr, hP, htime⟩ := hP
   have hp := hP.2.1
@@ -416,23 +433,67 @@ theorem sleepy_proposal (hv : rho.ExecutionValid) {τ : Time}
     rw [htime] at hrel
     exact hrel
 
+theorem sleepy_proposal (hv : rho.ExecutionValid) {τ : Time}
+    (hτ : 0 ≤ τ) (hτh : τ ≤ rho.horizon)
+    {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
+    (hP : Regimes.ReadyProposalAt (simTrace S rho hn) (honestKeys S rho)
+      (Regimes.catchUp (S.params (pubOf E) hn)) τ P) :
+    ∃ k, rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) (rho.key k) τ ∧
+      Shape.HonestProposal rho τ k (headerOf (S.params (pubOf E) hn) P) :=
+  ready_proposal S rho hn hv hτ hτh hP
+
+/-- Final-cache ancestry at the finite endpoint becomes engine final-output membership.
+The readiness duration is supplied unchanged by the caller. -/
+theorem finalized_inBy (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {c t : Time} (hc : 0 ≤ c) (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
+    {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
+    (hroot : P.root ≠ (S.params (pubOf E) hn).genesisRoot)
+    (hinc : ∀ y j, Regimes.ReadyAt (simTrace S rho hn) (honestKeys S rho) c y t →
+      Regimes.CutAfter (simTrace S rho hn) j t →
+      Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho)) P
+        ((simTrace S rho hn).state y j).fg.F) :
+    InBy rho c .finalized (headerOf (S.params (pubOf E) hn) P) t := by
+  intro v hr
+  let i := (chainTrace rho).endCut t
+  let j := cutMap S rho hn i
+  have hs := simTrace_simulates S rho hn hv
+  have hi : i ≤ rho.events.length := Nat.findGreatest_le _
+  have hy := honest_ownKey (S := S) hr.1
+  have hreach := Compose.fg_reachable hs.run.toLocalRun hy j
+  have htip := (Store.cache_invariants _ _ _ _ hreach).1
+  have hcut := ready_read_cut S rho hn hv hc ht hth hr
+  have ha := hinc _ j (ready_transport S rho hn hv ht hth hr) hcut.1
+  have hanc := anc_in_store hreach (Compose.honest_blocks_coherent hs.run.toLocalRun hnc)
+    (fun _ h => ⟨_, hy, j, h⟩) ha htip
+  have hprefix := chainTo_prefix hreach hanc
+  have hmem : headerOf (S.params (pubOf E) hn) P ∈
+      chainTo ((simTrace S rho hn).state (rho.ownKey v) j).fg.blocks (P.slot + 1) P := by
+    simp only [chainTo, ite_eq_right hroot]
+    split <;> simp
+  have hout := hprefix.subset hmem
+  change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .finalized v i
+  rw [readIsOut V S E rho hn, outOf, hs.state v hr.1 i hi]
+  exact hout
+
 /-- Inclusion-to-chain consumer. Parent-closed coherent stores
 turn node ancestry into membership of the encoded non-genesis header. `sleepy_read_cut`
 supplies the end-of-time cut and exact output clock. Keep readiness, producer provenance,
 collision freedom and the finite observation bound; ancestry alone is not engine inclusion.
 Depends on the chain lemmas, canonical simulation and the encoding repair. -/
-theorem sleepy_inBy (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn)) {τ t : Time}
+theorem confirmed_inBy (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {c : Time} (hc : 0 ≤ c) {τ t : Time}
     (hτ : 0 ≤ τ) (hτt : τ ≤ t) (hth : t ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
     (hP : Regimes.ReadyProposalAt (simTrace S rho hn) (honestKeys S rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) τ P)
+      c τ P)
     (hinc : ∀ y j, Regimes.ReadyAt (simTrace S rho hn) (honestKeys S rho)
-      (Regimes.catchUp (S.params (pubOf E) hn)) y t →
+      c y t →
       Regimes.CutAfter (simTrace S rho hn) j t →
       Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho)) P
         (Regimes.readAfter (simTrace S rho hn) y j t)) :
-    InBy rho (Regimes.catchUp (S.params (pubOf E) hn)) .confirmed
+    InBy rho c .confirmed
       (headerOf (S.params (pubOf E) hn) P) t := by
   have hs := simTrace_simulates S rho hn hv
   have hroot : P.root ≠ (S.params (pubOf E) hn).genesisRoot := by
@@ -453,8 +514,8 @@ theorem sleepy_inBy (hv : rho.ExecutionValid)
   have hframe := (Store.frame_realization _ _ _ _ hreach).1
   have htip := (Regimes.sa_tips
     (A := ((simTrace S rho hn).state (rho.ownKey v) j).ac) hframe t).1.1
-  have hcut := sleepy_read_cut S rho hn hv (hτ.trans hτt) hth hr
-  have ha := hinc _ j (sleepy_ready S rho hn hv (hτ.trans hτt) hth hr) hcut.1
+  have hcut := ready_read_cut S rho hn hv hc (hτ.trans hτt) hth hr
+  have ha := hinc _ j (ready_transport S rho hn hv (hτ.trans hτt) hth hr) hcut.1
   have hanc := anc_in_store hreach (Compose.honest_blocks_coherent hs.run.toLocalRun hnc)
     (fun _ h => ⟨_, hy, j, h⟩) ha htip
   have hprefix := chainTo_prefix hreach hanc
@@ -466,6 +527,24 @@ theorem sleepy_inBy (hv : rho.ExecutionValid)
   change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .confirmed v i
   rw [readIsOut V S E rho hn, outOf, hs.state v hr.1 i hi, hcut.2.2]
   exact hout
+
+theorem sleepy_inBy (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn)) {τ t : Time}
+    (hτ : 0 ≤ τ) (hτt : τ ≤ t) (hth : t ≤ rho.horizon)
+    {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
+    (hP : Regimes.ReadyProposalAt (simTrace S rho hn) (honestKeys S rho)
+      (Regimes.catchUp (S.params (pubOf E) hn)) τ P)
+    (hinc : ∀ y j, Regimes.ReadyAt (simTrace S rho hn) (honestKeys S rho)
+      (Regimes.catchUp (S.params (pubOf E) hn)) y t →
+      Regimes.CutAfter (simTrace S rho hn) j t →
+      Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho)) P
+        (Regimes.readAfter (simTrace S rho hn) y j t)) :
+    InBy rho (Regimes.catchUp (S.params (pubOf E) hn)) .confirmed
+      (headerOf (S.params (pubOf E) hn) P) t :=
+  confirmed_inBy S rho hn hv hnc (by
+    unfold Regimes.catchUp
+    have := (S.params (pubOf E) hn).toParams.hΔ
+    linarith) hτ hτt hth hP hinc
 
 /-- OPEN arbitrary-cut safety consumer (owner: Refinement). R.1 bounds node reads; the
 engine exposes every event cut, not only end-of-time reads. Relate each ready reader's

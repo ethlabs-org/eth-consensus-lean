@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Final
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 
 public section
@@ -1102,8 +1103,9 @@ theorem final_cache_acceptance (Q : FinalQuery S A V) (W : FinalWindowData S A V
       W.Extends (W.block 0) F) : W.CacheCoverage := by
   sorry
 
-/-- OPEN payload/read projection of the finite supplier package, without old FinalPremises
-or UPat. Paper workbench b3ca078, four-anchor-window.md / fixed-timeout-synthesis.md. -/
+/-- Conditional payload/read projection of the finite supplier package. Uses the engine's
+existing catch-up duration, raw own-block release, and final cache membership at endCut.
+Window extraction and CacheCoverage remain explicit inputs; no coefficient is synthesized. -/
 theorem final_payload_projection
     (windows : ∀ Q : FinalQuery S A V, Nonempty (FinalWindowData S A V Q))
     (coverage : ∀ (Q : FinalQuery S A V) (W : FinalWindowData S A V Q), W.CacheCoverage) :
@@ -1114,7 +1116,47 @@ theorem final_payload_projection
           ((Sys (family S) V).ready (K S A) gst r) ((Sys (family S) V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys (family S) V).cDur (K S A) r)
         g ((Sys (family S) V).heal (K S A) .final i gst r) ((K S A).params.latency .final i) := by
-  sorry
+  intro g hg i gst r hv ⟨hhealthy, hprog⟩
+  have hg' : g = Out.finalized := Option.some.inj hg.symm
+  subst g
+  by_cases hcollision : r.2.HashCollision
+  · exact Or.inr hcollision
+  left
+  intro t hm hb hr
+  obtain ⟨v, hvr⟩ := hr
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
+  let Q : FinalQuery S A V := ⟨r, hn, i, gst, t, hv, hcollision, hhealthy,
+    hprog, hm, hb, v, hvr⟩
+  obtain ⟨W⟩ := windows Q
+  have ht : 0 ≤ t := by
+    have hd := r.1.Δ_pos
+    have hg0 : (0 : Time) ≤ max gst 0 := le_max_right _ _
+    have hp : 0 ≤ ((K S A).params.heal .final i : Time) * r.1.Δ :=
+      mul_nonneg (Int.natCast_nonneg _) hd.le
+    exact (add_nonneg hg0 hp).trans hm
+  have hτ : 0 ≤ Q.trace.time (W.cut 0) := ht.trans W.fresh.le
+  have hτh : Q.trace.time (W.cut 0) ≤ r.2.horizon := (W.bounded 0).trans hb
+  have hproposal : Regimes.ReadyProposalAt Q.trace (honestKeys S r.2)
+      ((Sys (family S) V).cDur (K S A) r) (Q.trace.time (W.cut 0)) (W.block 0) :=
+    ⟨_, W.cut 0, W.ready 0, W.proposals 0, rfl⟩
+  obtain ⟨k, hk, hrel⟩ := ready_proposal S r.2 hn hv hτ hτh hproposal
+  refine ⟨Q.trace.time (W.cut 0), k, headerOf Q.params (W.block 0), W.fresh, hk, hrel, ?_⟩
+  have hc : 0 ≤ (Sys (family S) V).cDur (K S A) r := by
+    exact mul_nonneg (Int.natCast_nonneg _) r.1.Δ_pos.le
+  have hdeadline : 0 ≤ Q.deadline := ht.trans (by
+    change t ≤ t + _
+    exact le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) r.1.Δ_pos.le))
+  have hroot : (W.block 0).root ≠ Q.params.genesisRoot := by
+    have run := simTrace_goldilocksRun S r.2 hn hv
+    rcases Compose.blockCall_cases run.toLocalRun (W.ready 0).1 (W.accepted 0) with hg | hg
+    · have hz := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
+      exact False.elim ((W.proposals 0).1.2 (by simpa using hz))
+    · obtain ⟨j, x, _, _, _, d, p, _, hB, _⟩ := hg
+      rw [hB]
+      exact taggedRoot_ne _ _
+  exact finalized_inBy S r.2 hn hv
+    (noCollTransport V S r.1 r.2 hn hv hcollision) hc hdeadline hb hroot
+    (fun y j hy hj => coverage Q W y Q.deadline j le_rfl hb hy hj)
 
 /-- Statement-only assembly of the OPEN four-anchor suppliers; not a completed liveness proof.
 Paper: workbench b3ca078, four-anchor-window.md and fixed-timeout-synthesis.md. -/
