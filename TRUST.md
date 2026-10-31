@@ -71,6 +71,22 @@ project build: a proof change merged after a green fast run is replayed by the k
 and a dirty tree; without bubblewrap a standalone check skips these steps and lists them as CI-only, which is
 not a passing full CI result. No trust-check verdict is removed by disabling Actions.
 
+Step 3c is **report only**, not a new trust gate. `scripts/sorry-inventory.py` reads the
+Accepted ledger's `toml sorry-inventory` block (`modules`, `roots`) and compiled tables
+headed `Declaration` and `Paper argument/status`. Names must be fully qualified; other
+tables are explicitly listed as excluded (planned/draft material is not compiled coverage).
+Missing ledger, empty/missing roots, stale artifacts, nonexistent rows and unmapped direct
+`sorryAx` owners report incomplete; no generic Accepted structure substitutes for an absent
+instance assembly. `SpecSurface dependencies` loads private declarations without extension
+initializers and exports type/body edges. Cycle-safe reverse reachability lists every
+sorry-dependent ancestor **within the configured declaration closure**, not the whole import
+closure. One entry represents a direct owning declaration, not each source `sorry` occurrence.
+Files are logical paths relative to the owning module's package source root. JSON schema 1
+is saved at the printed `check.*/sorry-inventory.json` path under the job's run directory.
+`mapped` means rows exist and contain argument text or OPEN, not that the paper argument is
+valid or the proof is finished. Its regression fixtures are gates for the tool's behavior;
+inventory findings and runtime errors do not change existing check verdicts.
+
 ## Checking tools and open trust notes
 
 EthLib check-decls is CC0-1.0 and SHA-256-pinned by `scripts/vendor.sha256`. Every vendored file was copied

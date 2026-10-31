@@ -13,6 +13,7 @@
 #                       `sorry` only in the `sorry = true` layers (Lemmas, Proofs)
 #   3b axiom audit      Solution closure and tests: only the three standard     (axiom-audit)
 #                       axioms (gate); unfinished declarations of the default library (report)
+#   3c sorry inventory  Accepted declaration closure and ledger (REPORT ONLY; JSON in WORK)
 #   4  Spec surface     persisted extensions, snapshot, theorems, noconst,      (SpecSurface.lean)
 #                       reach (report)
 #   5  kernel replay    every leaf module of every checked library              (leanchecker)
@@ -1190,6 +1191,13 @@ selftest_docs() {
   return "$rc"
 }
 
+# --- step 3c: Accepted sorry inventory (report only, including tool errors) ------------------------
+step_sorry_inventory() {
+  python3 -I scripts/sorry-inventory.py --json-out "$WORK/sorry-inventory.json" ||
+    echo "  REPORT sorry inventory could not run/write JSON; no coverage claim"
+  return 0
+}
+
 # --- step 13: metrics (report) --------------------------------------------------------------------
 step_metrics() {
   local out
@@ -1284,7 +1292,7 @@ run_step() {
     echo "DEFER $label (the other --split part)"; deferred+=("$label"); return 0
   fi
   # After a failed build, the steps that read build outputs would report on stale artifacts (#50): not run.
-  if ((build_failed)) && [[ " 3 3b 4 5 6 9 10 11 14 " == *" ${label%% *} "* ]]; then
+  if ((build_failed)) && [[ " 3 3b 3c 4 5 6 9 10 11 14 " == *" ${label%% *} "* ]]; then
     skip_step "$label" "not run: step 1 failed, so the build outputs it reads may be stale"; return 0
   fi
   echo "--- $label ---"
@@ -1352,6 +1360,8 @@ run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptySco
 run_if "$((do_audit || do_audit_tests || do_audit_report))" "nothing in the closure of $SOLUTION, ${TEST_LIBS[*]} or ${DEFAULT_LIBS[*]} changed" \
   "3b axiom audit (closure of $SOLUTION, ${TEST_LIBS[*]}: gate; unfinished in ${DEFAULT_LIBS[*]}: report)" step_audit
 run_selftest "3b axiom audit self-test (CheckFixtures.Audit)" selftest_audit
+run_step "3c Accepted sorry inventory (REPORT ONLY)" step_sorry_inventory
+run_selftest "3c sorry inventory self-test (private/type/cyclic dependencies, ledger)" python3 -I scripts/test_sorry_inventory.py
 if ((do_surface)); then
   run_step "4 Spec surface (extensions, snapshot, theorems, noconst)" step_surface
 else

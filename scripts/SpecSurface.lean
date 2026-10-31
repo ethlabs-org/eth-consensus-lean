@@ -26,7 +26,7 @@ def allow (path : String) : IO (List String) := do
 
 def run (args : List String) : IO UInt32 := do
   let cmd :: rest := args | throw (IO.userError "missing subcommand")
-  unless ["extensions", "snapshot", "theorems", "noconst", "statements", "reach"].contains cmd do
+  unless ["extensions", "snapshot", "theorems", "noconst", "statements", "reach", "dependencies"].contains cmd do
     throw (IO.userError s!"unknown subcommand: {cmd}")
   let mut rest := rest
   let mut allowPath : Option String := none
@@ -44,7 +44,7 @@ def run (args : List String) : IO UInt32 := do
       if p.startsWith "--" then throw (IO.userError "missing --out argument")
       out := some p; rest := xs
     | "--from" :: xs =>
-      unless cmd == "reach" do throw (IO.userError "unexpected --from")
+      unless cmd == "reach" || cmd == "dependencies" do throw (IO.userError "unexpected --from")
       let names := xs.takeWhile (· != "--modules")
       if names.isEmpty then throw (IO.userError "empty --from")
       seeds := names.map String.toName; rest := xs.drop names.length
@@ -61,6 +61,24 @@ def run (args : List String) : IO UInt32 := do
     else pure []
   initSearchPath (← findSysroot)
   let env ← importModules (mods.map ({module := ·})) {} (loadExts := false) (level := .private)
+  if cmd == "dependencies" then
+    if seeds.isEmpty then throw (IO.userError "missing --from")
+    let mut visited : NameSet := {}
+    let mut todo := seeds
+    while let n :: ns := todo do
+      todo := ns
+      if visited.contains n then continue
+      visited := visited.insert n
+      let some ci := env.find? n | do
+        IO.println (Json.mkObj [("missing", toJson n.toString)]).compress
+        continue
+      let deps := ci.getUsedConstantsAsSet.toList
+      todo := deps ++ todo
+      let owner := (env.getModuleIdxFor? n).map (env.header.moduleNames[·]!.toString)
+      IO.println (Json.mkObj [
+        ("declaration", toJson n.toString), ("module", toJson owner),
+        ("dependencies", toJson (deps.map Name.toString |>.mergeSort (· < ·))) ]).compress
+    return 0
   let mut failed := false
   let mut lines : Array String := #[]
   let mut seen : List String := []
