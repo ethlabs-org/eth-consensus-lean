@@ -391,6 +391,10 @@ private theorem ts_nonneg (s : Nat) : (0 : Time) ≤ sp.ts s := by
   simp only [SAParams.ts]
   exact mul_nonneg (by linarith) (Int.natCast_nonneg s)
 
+/-- Slot starts are monotone in the slot. -/
+theorem ts_le_ts {s s' : Nat} (h : s ≤ s') : sp.ts s ≤ sp.ts s' :=
+  (SA.ts_le_iff sp).2 (by exact_mod_cast h)
+
 /-- Under `Sleepy`, `f < n/2`. -/
 theorem two_faults_lt_of_sleepy (hsl : tr.SleepyRun H ΔF) : 2 * Hᶜ.ncard < sp.n := by
   have h := (hsl.2 0).1
@@ -422,35 +426,35 @@ theorem syncAC_of_sleepy (hrun : GoldilocksRun dg H tr) (hsl : tr.SleepyRun H Δ
         fun x hx i B hB hw => hsl.1.relay x hx i B hB (ha.trans hw.1),
         fun x hx i a' h hw => hsl.1.attestation x hx i a' h (ha.trans hw.1)⟩)
 
-variable {b : Time}
+variable {b : Time} {s₀ : Nat}
 
-/-- Under the prefix premises up to `b ≥ 0`, `f < n/2` (`f < h_0`). -/
-theorem two_faults_lt_of_prefix (hpre : SleepyPrefix tr H ΔF b) : 2 * Hᶜ.ncard < sp.n := by
-  obtain ⟨hb, -, hfb⟩ := sleepyPrefix_iff.1 hpre
-  have h := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb)
-  have hle : tr.honestAwakeJoined H (sp.ts (0 : Nat) + 0) ≤ H.ncard :=
+/-- On the window from slot `s₀` to `b`, `f < n/2` (`f < h_{t_{s₀}}`). -/
+theorem two_faults_lt_of_window (hwin : SleepyWindow tr H ΔF s₀ b) : 2 * Hᶜ.ncard < sp.n := by
+  obtain ⟨hb, -, hfb⟩ := sleepyWindow_iff.1 hwin
+  have h := hfb s₀ le_rfl 0 (by simp) (by simpa using hb)
+  have hle : tr.honestAwakeJoined H (sp.ts s₀ + 0) ≤ H.ncard :=
     Set.ncard_le_ncard fun x hx => hx.1
   have hn : H.ncard + Hᶜ.ncard = sp.n := by
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
   unfold RunTrace.FaultBound at h
   omega
 
-/-- Under the prefix premises up to `b`, more than `f` honest validators are awake and joined at
-`t_s + Δ ≤ b`. -/
-theorem faults_lt_awake_joined_upTo (hpre : SleepyPrefix tr H ΔF b) (s : Nat)
+/-- On the window from slot `s₀` to `b`, more than `f` honest validators are awake and joined at
+`t_s + Δ ≤ b` for `s ≥ s₀`. -/
+theorem faults_lt_awake_joined_win (hwin : SleepyWindow tr H ΔF s₀ b) {s : Nat} (hs₀ : s₀ ≤ s)
     (hs : sp.ts s + sp.Δ ≤ b) :
     Hᶜ.ncard <
       {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)}.ncard := by
-  have h := (sleepyPrefix_iff.1 hpre).2.2 s sp.Δ (by simp) hs
+  have h := (sleepyWindow_iff.1 hwin).2.2 s hs₀ sp.Δ (by simp) hs
   unfold RunTrace.FaultBound RunTrace.honestAwakeJoined at h
   exact h
 
-/-- Under the prefix premises up to `b`, `Sync[a, b']` holds of the AC projection for
-`0 ≤ a` and `b' ≤ b − Δ`. -/
-theorem syncAC_of_prefix (hrun : GoldilocksRun dg H tr) (hpre : SleepyPrefix tr H ΔF b)
-    {a b' : Time} (ha : 0 ≤ a) (hb : b' ≤ b - sp.Δ) :
+/-- On the window from slot `s₀` to `b`, `Sync[a, b']` holds of the AC projection for
+`t_{s₀} ≤ a` and `b' ≤ b − Δ`. -/
+theorem syncAC_of_window (hrun : GoldilocksRun dg H tr) (hwin : SleepyWindow tr H ΔF s₀ b)
+    {a b' : Time} (ha : sp.ts s₀ ≤ a) (hb : b' ≤ b - sp.Δ) :
     SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) a b' tr.projAC :=
-  have hs := (sleepyPrefix_iff.1 hpre).2.1
+  have hs := (sleepyWindow_iff.1 hwin).2.1
   sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr ΔF a b'
     hrun.toLocalRun (show tr.SyncOn H ΔF (fun τ => a ≤ τ ∧ τ ≤ b') (fun τ => a ≤ τ ∧ τ ≤ b') id
       from ⟨hs.deltaF,
@@ -458,6 +462,29 @@ theorem syncAC_of_prefix (hrun : GoldilocksRun dg H tr) (hpre : SleepyPrefix tr 
         fun x hx i B hB hw => hs.block x hx i B hB ⟨ha.trans hw.1, hw.2.trans hb⟩,
         fun x hx i B hB hw => hs.relay x hx i B hB ⟨ha.trans hw.1, hw.2.trans hb⟩,
         fun x hx i a' h hw => hs.attestation x hx i a' h ⟨ha.trans hw.1, hw.2.trans hb⟩⟩)
+
+/-- Under `SleepyFrom`, `f < n/2` (`f < h_{t_{s₀}}`). -/
+theorem two_faults_lt_of_from (hfrom : SleepyFrom tr H ΔF s₀) : 2 * Hᶜ.ncard < sp.n :=
+  two_faults_lt_of_window (hfrom.window (b := sp.ts s₀) le_rfl)
+
+/-- Under the prefix premises up to `b ≥ 0`, `f < n/2` (`f < h_0`). -/
+theorem two_faults_lt_of_prefix (hpre : SleepyPrefix tr H ΔF b) : 2 * Hᶜ.ncard < sp.n :=
+  two_faults_lt_of_window hpre.window
+
+/-- Under the prefix premises up to `b`, more than `f` honest validators are awake and joined at
+`t_s + Δ ≤ b`. -/
+theorem faults_lt_awake_joined_upTo (hpre : SleepyPrefix tr H ΔF b) (s : Nat)
+    (hs : sp.ts s + sp.Δ ≤ b) :
+    Hᶜ.ncard <
+      {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)}.ncard :=
+  faults_lt_awake_joined_win hpre.window (Nat.zero_le s) hs
+
+/-- Under the prefix premises up to `b`, `Sync[a, b']` holds of the AC projection for
+`0 ≤ a` and `b' ≤ b − Δ`. -/
+theorem syncAC_of_prefix (hrun : GoldilocksRun dg H tr) (hpre : SleepyPrefix tr H ΔF b)
+    {a b' : Time} (ha : 0 ≤ a) (hb : b' ≤ b - sp.Δ) :
+    SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) a b' tr.projAC :=
+  syncAC_of_window hrun hpre.window (by rwa [ts_natCast_zero]) hb
 
 /-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
 private theorem tick_cuts (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
@@ -565,15 +592,28 @@ private theorem result_optimistic_compatible (hrun : GoldilocksRun dg H tr)
   have := hle (SA.voters {v | v ∈ (tr.projAC.state X i).pool s})
   omega
 
+/-- `honest_vote_exists_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
+private theorem honest_vote_exists_win (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hwin : SleepyWindow tr H ΔF s₀ b) {s : Nat} (hs₀ : s₀ ≤ s) (hs : sp.ts s + sp.Δ ≤ b) :
+    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s := by
+  obtain ⟨y, hy, hw, hj⟩ := Set.nonempty_of_ncard_ne_zero
+    (Nat.zero_lt_of_lt (faults_lt_awake_joined_win hwin hs₀ hs)).ne'
+  obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined hrun hnc hy hw hj
+  exact ⟨y, hy, k, e, hv, hs⟩
+
 /-- **Every slot up to `b` has an honest vote**: an honest validator awake and joined at
 `t_s + Δ ≤ b` (there are more than `f ≥ 0` of them) votes in slot `s`. -/
 theorem honest_vote_exists_upTo (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) (s : Nat) (hs : sp.ts s + sp.Δ ≤ b) :
-    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s := by
-  obtain ⟨y, hy, hw, hj⟩ := Set.nonempty_of_ncard_ne_zero
-    (Nat.zero_lt_of_lt (faults_lt_awake_joined_upTo hpre s hs)).ne'
-  obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined hrun hnc hy hw hj
-  exact ⟨y, hy, k, e, hv, hs⟩
+    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s :=
+  honest_vote_exists_win hrun hnc hpre.window (Nat.zero_le s) hs
+
+/-- **Every slot from `s₀` has an honest vote** under `SleepyFrom`. -/
+theorem honest_vote_exists_from (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hfrom : SleepyFrom tr H ΔF s₀) {s : Nat} (hs₀ : s₀ ≤ s) :
+    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s :=
+  honest_vote_exists_win hrun hnc (hfrom.window (b := sp.ts s + sp.Δ)
+    ((ts_le_ts hs₀).trans (le_add_of_nonneg_right sp.toParams.hΔ.le))) hs₀ le_rfl
 
 /-- **Every slot has an honest vote**: an honest validator awake and joined at `t_s + Δ` (there
 are more than `f ≥ 0` of them) votes in slot `s`. -/
@@ -583,11 +623,10 @@ theorem honest_vote_exists (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr
   honest_vote_exists_upTo hrun hnc (hsl.prefix (le_max_right (sp.ts s + sp.Δ) 0)) s
     (le_max_left _ _)
 
-/-- **§2.1 up to `b`, an origin within `b` has an honest supporter**: an honest slot-`s` vote at a
-time `≤ b` whose head extends it. -/
-theorem honest_supporter_upTo (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hC : OriginWithin tr H C s b) :
+/-- `honest_supporter_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
+private theorem honest_supporter_win (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hwin : SleepyWindow tr H ΔF s₀ b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hs₀ : s₀ ≤ s) (hC : OriginWithin tr H C s b) :
     ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
@@ -598,8 +637,8 @@ theorem honest_supporter_upTo (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg
     have hmaj := SA.result_majority hR
     obtain ⟨ℓX, hu, -, hCV⟩ := hR
     have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-    have hJ := faults_lt_awake_joined_upTo hpre s (by linarith)
-    have hsync := syncAC_of_prefix hrun hpre (a := sp.ts s) (b' := sp.ts s + sp.Δ) (ts_nonneg s)
+    have hJ := faults_lt_awake_joined_win hwin hs₀ (by linarith)
+    have hsync := syncAC_of_window hrun hwin (a := sp.ts s) (b' := sp.ts s + sp.Δ) (ts_le_ts hs₀)
       (by linarith)
     have hJV : {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)} ⊆
         SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy =>
@@ -628,7 +667,7 @@ theorem honest_supporter_upTo (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg
       SA.state_pool_slot sp hr hX i₀ s _ hvp, R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
   · -- an optimistic selection: `3n/4 > f` voters
     obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO
-    have hf := two_faults_lt_of_prefix hpre
+    have hf := two_faults_lt_of_window hwin
     obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hCR⟩, huH⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
         (t := SA.optimisticVoters sp A ℓ.frame s C) (by omega)
@@ -636,6 +675,27 @@ theorem honest_supporter_upTo (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg
     obtain ⟨hvs, j, hj, e, hve, rfl⟩ := SA.optimisticPoint_pool_vote hrun' hX hpt hv huH
     exact ⟨_, huH, j, e, hve, (hrun.time_mono hj).trans hi₀, hvs, R, hΦU hR, hRr,
       Anc.mono hΦU hCR⟩
+
+/-- **§2.1 up to `b`, an origin within `b` has an honest supporter**: an honest slot-`s` vote at a
+time `≤ b` whose head extends it. -/
+theorem honest_supporter_upTo (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hpre : SleepyPrefix tr H ΔF b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hC : OriginWithin tr H C s b) :
+    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
+      SA.VoteExtends (tr.HonestBlocks H) e.msg C :=
+  honest_supporter_win hrun hnc hpre.window (Nat.zero_le s) hC
+
+/-- **§2.1 from `s₀`, an origin of label `s ≥ s₀` has an honest supporter**: an honest slot-`s`
+vote whose head extends it, under `SleepyFrom`. -/
+theorem honest_supporter_from (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hfrom : SleepyFrom tr H ΔF s₀) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hC : OriginFrom tr H C s s₀) :
+    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s ∧
+      SA.VoteExtends (tr.HonestBlocks H) e.msg C :=
+  have ⟨b, hb⟩ := hC.origin.exists_within
+  have ⟨x, hx, j, e, hv, _, hs, hext⟩ := honest_supporter_win hrun hnc
+    (hfrom.window (le_max_right b (sp.ts s₀))) hC.le (hb.mono (le_max_left b _))
+  ⟨x, hx, j, e, hv, hs, hext⟩
 
 /-- **§2.1, an origin has an honest supporter**: an honest slot-`s` vote whose head extends it. -/
 theorem honest_supporter (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
@@ -648,9 +708,10 @@ theorem honest_supporter (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (hsl.prefix (le_max_right b 0)) (hb.mono (le_max_left b 0))
   ⟨x, hx, j, e, hv, hs, hext⟩
 
-/-- **§2.2 up to `b`, origins within `b` of one label are compatible** (RR, RO, OO). -/
-theorem same_label_compatible_upTo (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+/-- `same_label_compatible_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
+private theorem same_label_compatible_win (hrun : GoldilocksRun dg H tr)
+    (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b)
+    {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hs₀ : s₀ ≤ s)
     (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
     Compatible (tr.HonestBlocks H) C C' := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
@@ -662,7 +723,7 @@ theorem same_label_compatible_upTo (hrun : GoldilocksRun dg H tr) (hnc : NoCollR
       SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ)
         tr.projAC := fun hi ⟨_, hu, _⟩ => by
     have ht : tr.time _ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-    exact syncAC_of_prefix hrun hpre (ts_nonneg s) (by rw [hts]; linarith)
+    exact syncAC_of_window hrun hwin (ts_le_ts hs₀) (by rw [hts]; linarith)
   obtain ⟨X, hX, i, CV, hi, hR | hO⟩ := originWithin_iff.1 hC <;>
     obtain ⟨X', hX', i', CV', hi', hR' | hO'⟩ := originWithin_iff.1 hC'
   · -- RR: each side's counted validators reach the other writer, where none supports it
@@ -678,7 +739,7 @@ theorem same_label_compatible_upTo (hrun : GoldilocksRun dg H tr) (hnc : NoCollR
   · -- OO: an honest validator in common, with one slot-`s` vote
     have hr := hrun'.localRun
     have hU := hr.coherent
-    have hf := two_faults_lt_of_prefix hpre
+    have hf := two_faults_lt_of_window hwin
     have hle : ∀ T : Set (Fin sp.n), T.ncard ≤ sp.n := fun T =>
       (Set.ncard_le_ncard (Set.subset_univ T)).trans (by rw [Set.ncard_univ, Nat.card_fin])
     by_contra hnc'
@@ -700,6 +761,24 @@ theorem same_label_compatible_upTo (hrun : GoldilocksRun dg H tr) (hnc : NoCollR
       (hvs.trans hv's.symm)
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦU' hR') (hRr.trans hR'r.symm)
     exact hnc' (SA.anc_total hU (Anc.mono hΦU hBR) (Anc.mono hΦU' hBR'))
+
+/-- **§2.2 up to `b`, origins within `b` of one label are compatible** (RR, RO, OO). -/
+theorem same_label_compatible_upTo (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hpre : SleepyPrefix tr H ΔF b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
+    Compatible (tr.HonestBlocks H) C C' :=
+  same_label_compatible_win hrun hnc hpre.window (Nat.zero_le s) hC hC'
+
+/-- **§2.2 from `s₀`, origins of one label `s ≥ s₀` are compatible** under `SleepyFrom`. -/
+theorem same_label_compatible_from (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hfrom : SleepyFrom tr H ΔF s₀) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hC : OriginFrom tr H C s s₀) (hC' : OriginFrom tr H C' s s₀) :
+    Compatible (tr.HonestBlocks H) C C' :=
+  have ⟨b, hb⟩ := hC.origin.exists_within
+  have ⟨b', hb'⟩ := hC'.origin.exists_within
+  same_label_compatible_win hrun hnc (hfrom.window (le_max_right (max b b') (sp.ts s₀))) hC.le
+    (hb.mono ((le_max_left b b').trans (le_max_left _ _)))
+    (hb'.mono ((le_max_right b b').trans (le_max_left _ _)))
 
 /-- **§2.2, origins of one label are compatible** (RR, RO, OO). -/
 theorem same_label_compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
@@ -753,6 +832,28 @@ theorem origins_below_succ (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr
     (hsl.prefix (le_max_right (max b b') 0)) (hP.upTo _) (hV.upTo _)) C j C' j' hj hj'
     (hb.mono ((le_max_left b b').trans (le_max_left _ 0)))
     (hb'.mono ((le_max_right b b').trans (le_max_left _ 0)))
+
+/-- **Extending the origin frontier from `s₀`**: `P_s` and `V_s` from `s₀` give `P_{s+1}` from
+`s₀`, under `SleepyFrom`. -/
+theorem origins_below_succ_from (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hfrom : SleepyFrom tr H ΔF s₀) {s : Nat} (hP : OriginsBelowFrom tr H s₀ s)
+    (hV : VotesBelowFrom tr H s₀ s) : OriginsBelowFrom tr H s₀ (s + 1) := by
+  have hU := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun.coherent
+  rw [originsBelowFrom_iff] at hP ⊢
+  -- an origin of label `s` and one of label `j < s` are below the honest supporter's head
+  have hnew : ∀ C C' j, j < s → OriginFrom tr H C s s₀ → OriginFrom tr H C' j s₀ →
+      Compatible (tr.HonestBlocks H) C C' := by
+    intro C C' j hj hC hC'
+    obtain ⟨x, hx, i, e, hv, hs, hext⟩ := honest_supporter_from hrun hnc hfrom hC
+    exact compatible_of_voteExtends hU hext
+      (votesBelowFrom_iff.1 hV C' j hC' x hx i e hv (by omega) (by omega))
+  intro C j C' j' hj hj' hC hC'
+  rcases Nat.lt_succ_iff_lt_or_eq.1 hj with hj | rfl <;>
+    rcases Nat.lt_succ_iff_lt_or_eq.1 hj' with hj' | rfl
+  · exact hP C j C' j' hj hj' hC hC'
+  · exact Or.symm (hnew C' C j hj hC' hC)
+  · exact hnew C C' j' hj' hC hC'
+  · exact same_label_compatible_from hrun hnc hfrom hC hC'
 
 end Consensus.Goldilocks.Compose
 
