@@ -11,6 +11,21 @@ one vote per slot. -/
 
 namespace Consensus.Goldilocks
 
+/-- AC service restricted to recipient deadlines within a finite horizon. -/
+structure SyncACBefore {P : Params} {FGP : Type} {A : ACInterface P FGP}
+    (H : Set (Fin P.n)) (U : Set A.Blk) (b : Time) (ac : ACTrace A) : Prop where
+  /-- Message processing preserves its source lower bound and strict deadline. -/
+  message : ∀ x ∈ H, ∀ i m, ac.SendOrAdmit x i m → 0 ≤ ac.time i →
+    ∀ y ∈ H, ∀ j ℓ, ac.CallAt y j ℓ → ac.deadline y j (ac.time i) ≤ b →
+      ac.deadline y j (ac.time i) ≤ ac.time j →
+      ∃ k ≤ j, ac.time i ≤ ac.time k ∧ ac.ProcessAt y k m ∧
+        ac.time k < ac.deadline y k (ac.time i)
+  /-- Acceptance relay retains the finalized-ancestor condition. -/
+  relay : ∀ x ∈ H, ∀ i B, ac.AcceptAt x i B → 0 ≤ ac.time i →
+    ∀ y ∈ H, ∀ j ℓ, ac.CallAt y j ℓ → ac.deadline y j (ac.time i) ≤ b →
+      ac.deadline y j (ac.time i) ≤ ac.time j → Anc U ℓ.frame.F B →
+      ∃ k ≤ j, ac.AcceptAt y k B ∧ ac.time k < ac.deadline y k (ac.time i)
+
 namespace ACTrace
 
 variable {P : Params} {FGP : Type} {A : ACInterface P FGP} (tr : ACTrace A)

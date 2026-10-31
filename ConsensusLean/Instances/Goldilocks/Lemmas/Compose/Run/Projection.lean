@@ -42,6 +42,47 @@ theorem projAC_deadline (y : Fin P.n) (k : Nat) (τ : Time) :
     tr.projAC.deadline y k τ = tr.deadline y k τ P.Δ := by
   simp only [ACTrace.deadline, RunTrace.deadline, projAC_lastWake]
 
+/-- Deadline-bounded service projects without assuming service after the finite horizon. -/
+theorem syncBefore_projection {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {ΔF b : Time}
+    {sg : A.Msg → Fin P.n} (h : LocalRun proposer dg H sg tr) (hs : tr.SyncBefore H ΔF b) :
+    SyncACBefore H (tr.HonestBlocks H) b tr.projAC := by
+  refine ⟨fun x hx i m hsa hai y hy j ℓ hc hdb hdl => ?_,
+    fun x hx i B hacc hai y hy j ℓ hc hdb hdl hanc => ?_⟩
+  · obtain ⟨ℓ₀, hc₀, hm⟩ := hsa
+    have hsa' : tr.SendOrAdmitAt x i m := ⟨ℓ₀, projAC_callAt.1 hc₀, by
+      rw [projAC_state h hx] at hm
+      exact hm⟩
+    obtain ⟨k, hkj, htk, hp, hlt⟩ := hs.message x hx i m hsa' hai y hy j
+      ⟨_, projAC_callAt.1 hc⟩ (by rw [← projAC_deadline]; exact hdb)
+      (by rw [← projAC_deadline]; exact hdl)
+    refine ⟨k, hkj, htk, ?_, by rw [projAC_deadline]; exact hlt⟩
+    rcases hp with ⟨ℓ', hc', hm'⟩ | ⟨ℓ', hc', hm'⟩
+    exacts [⟨ℓ', projAC_callAt.2 hc', Or.inl hm'⟩, ⟨ℓ', projAC_callAt.2 hc', Or.inr hm'⟩]
+  · obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
+    have hc := projAC_callAt.1 hc
+    obtain ⟨i', rfl, hi', hti⟩ := acBlock_prev h hx (projAC_callAt.1 hc₀) hb
+    have hfr : ℓ.frame.F = (tr.state y j).fg.F := by
+      rw [(h.cutLaw y hy j _ hc).1]
+      rfl
+    obtain ⟨k, hkj, hk, hlt⟩ := hs.relay x hx i' B hi' (hti ▸ hai) y hy j ⟨_, hc⟩
+      (by rw [hti, ← projAC_deadline]; exact hdb)
+      (by rw [hti, ← projAC_deadline]; exact hdl) (hfr ▸ hanc)
+    obtain ⟨ℓ', hc', hb', htk⟩ := accept_next h hy hk
+    have hkj' : k + 1 ≤ j := by
+      rcases Nat.lt_or_eq_of_le hkj with hlt' | rfl
+      · omega
+      · cases Option.some.inj (hk.2.symm.trans hc.2)
+    have hnr : ¬ tr.RestartAt y (k + 1) := fun ⟨ℓr, hcr, hr⟩ => by
+      cases Option.some.inj (hc'.2.symm.trans hcr.2)
+      rw [hb'] at hr
+      cases hr
+    refine ⟨k + 1, hkj', ⟨ℓ', projAC_callAt.2 hc', hb'⟩, ?_⟩
+    change tr.time (k + 1) < tr.projAC.deadline y (k + 1) (tr.time (i' + 1))
+    rw [projAC_deadline, htk, ← hti]
+    simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
+    exact hlt
+
 /-- **`Sync` projects**: a send or admission of the AC projection is the run's, and its
 processing is the run's; an `ac_on_block(B)` follows the FG acceptance of `B` at its time, whose
 relay is an acceptance of `B`, followed at once by the AC call of `B` (not a restart, so with the

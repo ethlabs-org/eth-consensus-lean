@@ -311,6 +311,36 @@ private theorem deadline_eq {y : Fin sp.n} {c : Nat} {τ : Time}
   · obtain ⟨k, hk, hrk, rfl⟩ := lastWake_eq_coe hw
     simp [Option.elim, max_eq_left (h k hk hrk)]
 
+/-- Processing before the source deadline puts a recent vote in the pool, or exposes an
+equivocation, when the receiver has not restarted since the source time. -/
+private theorem held_of_deadline_processing
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {X : Fin sp.n}
+    {k : Nat} {v : Vote sp.n} (hX : X ∈ H) {i : Nat}
+    (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
+    (hdl : tr.time k + sp.Δ ≤ tr.time i)
+    (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
+      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t)
+    (hp : ∃ k' ≤ i, tr.time k ≤ tr.time k' ∧ tr.ProcessAt X k' v ∧
+      tr.time k' < tr.deadline X k' (tr.time k)) :
+    v ∈ (tr.state X i).pool v.slot ∨
+      v.val ∈ equivocators {w | w ∈ (tr.state X i).pool v.slot} := by
+  obtain ⟨k', hk'i, hkk', hproc, hk'dl⟩ := hp
+  have hd : tr.deadline X k' (tr.time k) = tr.time k + sp.Δ :=
+    deadline_eq fun k'' hk'' hr' => hrs k'' (hk''.trans hk'i) hr'
+  rw [hd] at hk'dl
+  have hk'lt : k' < i := lt_of_le_of_ne hk'i (by rintro rfl; linarith)
+  obtain ⟨h₁, h₂⟩ := hslot _ hkk' hk'dl
+  have hmono := pool_mono hr hX (Nat.succ_le_of_lt hk'lt) (fun k'' hk'' hk''i hrk'' => by
+    obtain ⟨ℓ'', hc'', hcall''⟩ := hrk''
+    obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart X hX k'' ℓ'' hc'' hcall''
+    obtain ⟨ℓ', hc', -⟩ := hproc
+    have := hprev k' (by omega) ℓ' hc'
+    have := hrs k'' hk''i.le ⟨ℓ'', hc'', hcall''⟩
+    linarith) v.slot
+  rcases held_of_processAt hr hX hproc h₁ h₂ with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
+  · exact Or.inl (hmono h)
+  · exact Or.inr ⟨a, hmono ha, b, hmono hb, hab, hav, hbv⟩
+
 /-- **Forwarding under `Sync`.** A vote that an honest `y` sends or admits at a cut `k` inside
 the window of `Sync` is held, at a later call of an honest `X` at least `Δ` after it, by `X`, or
 `X` holds two other votes of its validator; when every restart of `X` up to that call is at or
@@ -328,21 +358,26 @@ theorem sync_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {a b : Ti
       v.val ∈ equivocators {w | w ∈ (tr.state X i).pool v.slot} := by
   have hd : ∀ c ≤ i, tr.deadline X c (tr.time k) = tr.time k + sp.Δ := fun c hc =>
     deadline_eq fun k' hk' hr' => hrs k' (hk'.trans hc) hr'
-  obtain ⟨k', hk'i, hkk', hproc, hk'dl⟩ := hsync.1 y hy k v hsend ha hb X hX i ℓ hc
-    (by rw [hd i le_rfl]; exact hdl)
-  rw [hd k' hk'i] at hk'dl
-  have hk'lt : k' < i := lt_of_le_of_ne hk'i (by rintro rfl; linarith)
-  obtain ⟨h₁, h₂⟩ := hslot _ hkk' hk'dl
-  have hmono := pool_mono hr hX (Nat.succ_le_of_lt hk'lt) (fun k'' hk'' hk''i hrk'' => by
-    obtain ⟨ℓ'', hc'', hcall''⟩ := hrk''
-    obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart X hX k'' ℓ'' hc'' hcall''
-    obtain ⟨ℓ', hc', -⟩ := hproc
-    have := hprev k' (by omega) ℓ' hc'
-    have := hrs k'' hk''i.le ⟨ℓ'', hc'', hcall''⟩
-    linarith) v.slot
-  rcases held_of_processAt hr hX hproc h₁ h₂ with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
-  · exact Or.inl (hmono h)
-  · exact Or.inr ⟨a, hmono ha, b, hmono hb, hab, hav, hbv⟩
+  exact held_of_deadline_processing hr hX hrs hdl hslot
+    (hsync.1 y hy k v hsend ha hb X hX i ℓ hc (by rw [hd i le_rfl]; exact hdl))
+
+/-- Forwarding under finite service uses only the source's recipient deadline, not a
+whole-run synchrony premise. The source plus `Δ` must lie inside the horizon. -/
+theorem sync_before_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {b : Time}
+    (hsync : SyncACBefore H U b tr) {y X : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit y k v)
+    (hb : tr.time k + sp.Δ ≤ b) (hX : X ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt X i ℓ)
+    (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
+    (hdl : tr.time k + sp.Δ ≤ tr.time i)
+    (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
+      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t) :
+    v ∈ (tr.state X i).pool v.slot ∨
+      v.val ∈ equivocators {w | w ∈ (tr.state X i).pool v.slot} := by
+  have hd : tr.deadline X i (tr.time k) = tr.time k + sp.Δ := deadline_eq hrs
+  exact held_of_deadline_processing hr hX hrs hdl hslot
+    (hsync.message y hy k v hsend (hr.time_nonneg k) X hX i ℓ hc
+      (by rw [hd]; exact hb) (by rw [hd]; exact hdl))
 
 /-- The state a cast leaves holds the votes of the vote's read point, with their stamps. -/
 theorem readPoint_pool (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
