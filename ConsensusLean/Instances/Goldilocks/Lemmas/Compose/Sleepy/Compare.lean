@@ -340,14 +340,31 @@ private theorem relayed_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
     fun t ht₁ ht₂ => by rw [slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]; omega
   rwa [hvs] at this
 
+/-- Relay delivery to an update uses no recipient deadline beyond that update. -/
+private theorem relayed_held_before (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {s : Nat} {b : Time} (hsync : SyncACBefore H U b tr)
+    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hb : tr.time c ≤ b)
+    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D : Blk sp.n FGP} {u : Fin sp.n}
+    (hu : Relayed tr U X s D u) :
+    ∃ v : Vote sp.n, v.val = u ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
+      (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}) := by
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨v, rfl, hvs, hR, k, hsend, h1, h2⟩ := hu
+  refine ⟨v, rfl, hR, ?_⟩
+  have := sync_before_forward hr hsync hX hsend (by linarith) hY hc
+    (fun k' hk' hr' => (hrs k' hk' hr').trans h1) (by rw [ht]; linarith)
+    fun t ht₁ ht₂ => by rw [slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]; omega
+  rwa [hvs] at this
+
 /-- **Against an update.** At an honest update of slot `s` whose validators `S` support `DY`
 without equivocating, the validators `T` with relayed votes for a block `D` that conflicts with
 `DY` are voters there, and none is in `S`. -/
-private theorem relayed_against (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
-    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D DY : Blk sp.n FGP}
+private theorem relayed_against_of_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
+    {X Y : Fin sp.n} {c : Nat} {D DY : Blk sp.n FGP}
+    (held : ∀ {u}, Relayed tr U X s D u →
+      ∃ v : Vote sp.n, v.val = u ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
+        (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}))
     {S T : Set (Fin sp.n)}
     (hS : ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
       ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U DY R)
@@ -358,7 +375,7 @@ private theorem relayed_against (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
     rw [Set.disjoint_left]
     intro u hu hu'
     obtain ⟨hne, v', hv', hv'u, R', hR', hR'r, hDR'⟩ := hS u hu'
-    obtain ⟨v, hvu, ⟨R, hR, hRr, hDR⟩, hv | heq⟩ := relayed_held hr hsync hX hY hc ht hrs (hT hu)
+    obtain ⟨v, hvu, ⟨R, hR, hRr, hDR⟩, hv | heq⟩ := held (hT hu)
     · obtain rfl : v = v' := by
         by_contra h
         exact hne ⟨v, hv, v', hv', h, hvu, hv'u⟩
@@ -369,11 +386,23 @@ private theorem relayed_against (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
   refine Set.ncard_le_ncard ?_
   rintro u (hu | hu)
   · obtain ⟨v, rfl, -, hv | ⟨a, ha, -, -, -, hav, -⟩⟩ :=
-      relayed_held hr hsync hX hY hc ht hrs (hT hu)
+      held (hT hu)
     · exact ⟨v, hv, rfl⟩
     · exact ⟨a, ha, hav⟩
   · obtain ⟨-, v, hv, rfl, -⟩ := hS u hu
     exact ⟨v, hv, rfl⟩
+
+private theorem relayed_against (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
+    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
+    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
+    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D DY : Blk sp.n FGP}
+    {S T : Set (Fin sp.n)}
+    (hS : ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
+      ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U DY R)
+    (hT : T ⊆ Relayed tr U X s D) (hnc : ¬ Compatible U D DY) :
+    T.ncard + S.ncard ≤ (voters {v | v ∈ (tr.state Y c).pool s}).ncard :=
+  relayed_against_of_held hr (relayed_held hr hsync hX hY hc ht hrs) hS hT hnc
 
 end Consensus.Goldilocks.SA
 
@@ -866,6 +895,64 @@ private theorem same_label_compatible_win (hrun : GoldilocksRun proposer dg H tr
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦU' hR') (hRr.trans hR'r.symm)
     exact hnc' (SA.anc_total hU (Anc.mono hΦU hBR) (Anc.mono hΦU' hBR'))
 
+/-- Origins of one label compare using recipient deadlines only up to `b`. -/
+theorem same_label_compatible_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hsync : tr.SyncBefore H ΔF b)
+    (hf : 2 * Hᶜ.ncard < sp.n)
+    {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
+    Compatible (tr.HonestBlocks H) C C' := by
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hs := syncBefore_projection hrun.toLocalRun hsync
+  have hle : ∀ T : Set (Fin sp.n), T.ncard ≤ sp.n := fun T =>
+    (Set.ncard_le_ncard (Set.subset_univ T)).trans (by rw [Set.ncard_univ, Nat.card_fin])
+  have hro : ∀ {X x i i' D D' CV CV'}, X ∈ H → x ∈ H → tr.time i ≤ b →
+      SA.ResultAt tr.projAC X i s D CV → SA.OptimisticLockAt tr.projAC x i' s D' CV' →
+      Compatible (tr.HonestBlocks H) D D' := by
+    intro X x i i' D D' CV CV' hX hx hi hR hO
+    by_contra hnc'
+    obtain ⟨ℓ, S, hc, ht, hrs, hmaj, -, hS⟩ := SA.result_side hrun' hX hR
+    obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := SA.optimistic_seats hrun' hx hO
+    have := SA.relayed_against_of_held hrun'.localRun
+      (SA.relayed_held_before hrun'.localRun hs hx hX hc ht hi hrs) hS hT
+      fun h => hnc' (Or.symm h)
+    have := hle (SA.voters {v | v ∈ (tr.projAC.state X i).pool s})
+    omega
+  obtain ⟨X, hX, i, CV, hi, hR | hO⟩ := originWithin_iff.1 hC <;>
+    obtain ⟨X', hX', i', CV', hi', hR' | hO'⟩ := originWithin_iff.1 hC'
+  · by_contra hnc'
+    obtain ⟨ℓ, S, hc, ht, hrs, hmaj, hSF, hS⟩ := SA.result_side hrun' hX hR
+    obtain ⟨ℓ', S', hc', ht', hrs', hmaj', hSF', hS'⟩ := SA.result_side hrun' hX' hR'
+    have h1 := SA.relayed_against_of_held hrun'.localRun
+      (SA.relayed_held_before hrun'.localRun hs hX' hX hc ht hi hrs) hS hSF'
+      fun h => hnc' (Or.symm h)
+    have h2 := SA.relayed_against_of_held hrun'.localRun
+      (SA.relayed_held_before hrun'.localRun hs hX hX' hc' ht' hi' hrs') hS' hSF hnc'
+    omega
+  · exact hro hX hX' hi hR hO'
+  · exact Or.symm (hro hX' hX hi' hR' hO)
+  · have hr := hrun'.localRun
+    have hU := hr.coherent
+    by_contra hnc'
+    obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO
+    obtain ⟨ℓ', A', hpt', hΦU', h34', -⟩ := SA.optimistic_seats hrun' hX' hO'
+    have hI := Set.ncard_inter_add_ncard_union (SA.optimisticVoters sp A ℓ.frame s C)
+      (SA.optimisticVoters sp A' ℓ'.frame s C')
+    have := hle (SA.optimisticVoters sp A ℓ.frame s C ∪ SA.optimisticVoters sp A' ℓ'.frame s C')
+    obtain ⟨u, ⟨⟨v, hv, rfl, R, hR, hRr, hBR⟩, ⟨v', hv', hv'u, R', hR', hR'r, hBR'⟩⟩, huH⟩ :=
+      Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
+        (t := SA.optimisticVoters sp A ℓ.frame s C ∩ SA.optimisticVoters sp A' ℓ'.frame s C')
+        (by omega)
+    have huH := not_not.1 huH
+    obtain ⟨hvs, j₁, -, e₁, he₁, rfl⟩ := SA.optimisticPoint_pool_vote hrun' hX hpt hv huH
+    obtain ⟨hv's, j₂, -, e₂, he₂, rfl⟩ :=
+      SA.optimisticPoint_pool_vote hrun' hX' hpt' hv' (hv'u ▸ huH)
+    rw [hv'u] at he₂
+    obtain ⟨-, rfl⟩ := (SA.one_vote_per_slot sp) _ ro H _ tr.projAC hr _ huH j₁ j₂ e₁ e₂ he₁ he₂
+      (hvs.trans hv's.symm)
+    obtain rfl : R = R' := hU.1 (hΦU hR) (hΦU' hR') (hRr.trans hR'r.symm)
+    exact hnc' (SA.anc_total hU (Anc.mono hΦU hBR) (Anc.mono hΦU' hBR'))
+
 /-- **§2.2 up to `b`, origins within `b` of one label are compatible** (RR, RO, OO). -/
 theorem same_label_compatible_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
@@ -924,6 +1011,37 @@ theorem origins_below_succ_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : N
   · exact Or.symm (hnew C' C j hj hC' hC)
   · exact hnew C C' j' hj' hC hC'
   · exact same_label_compatible_upTo hrun hnc hpre hC hC'
+
+/-- The finite-deadline origin step preserves the horizon on every vote witness. -/
+theorem origins_below_succ_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBound H (sp.ts s + d))
+    {s : Nat} (hP : OriginsBelowUpTo tr H s b) (hV : VotesBelowUpTo tr H s b) :
+    OriginsBelowUpTo tr H (s + 1) b := by
+  have hU := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
+  have hf : 2 * Hᶜ.ncard < sp.n := by
+    have h := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb)
+    change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts 0 + 0) at h
+    have hle : tr.honestAwakeJoined H (sp.ts 0 + 0) ≤ H.ncard :=
+      Set.ncard_le_ncard fun x hx => hx.1
+    have hn : H.ncard + Hᶜ.ncard = sp.n := by
+      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+    omega
+  rw [originsBelowUpTo_iff] at hP ⊢
+  have hnew : ∀ C C' j, j < s → OriginWithin tr H C s b → OriginWithin tr H C' j b →
+      Compatible (tr.HonestBlocks H) C C' := by
+    intro C C' j hj hC hC'
+    obtain ⟨x, hx, i, e, hv, hib, hs, hext⟩ := honest_supporter_before hrun hnc hb hsync hfb hC
+    exact compatible_of_voteExtends hU hext
+      (votesBelowUpTo_iff.1 hV C' j hC' x hx i e hv hib (by omega) (by omega))
+  intro C j C' j' hj hj' hC hC'
+  rcases Nat.lt_succ_iff_lt_or_eq.1 hj with hj | rfl <;>
+    rcases Nat.lt_succ_iff_lt_or_eq.1 hj' with hj' | rfl
+  · exact hP C j C' j' hj hj' hC hC'
+  · exact Or.symm (hnew C' C j hj hC' hC)
+  · exact hnew C C' j' hj' hC hC'
+  · exact same_label_compatible_before hrun hnc hsync hf hC hC'
 
 /-- **Extending the origin frontier**: `P_s` and `V_s` give `P_{s+1}`. -/
 theorem origins_below_succ (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
