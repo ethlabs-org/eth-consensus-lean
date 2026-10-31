@@ -173,22 +173,7 @@ private theorem suffix_reflect {X B : SA.Blk sp.n (List (FG.Att sp.n))}
           (by linarith [hS.start_time]) (by linarith) hS.call hS.time.ge hFW
       exact ⟨W, hWt, (suffix_viable_iff hS hy hcy hes hWt hWV.1).1 hWv, hBW.mono hΦyU⟩
     · -- `W` is below the slot-`s` block `P`, so `B` is below `Q`
-      have hs1 := hS.one_le_slot
-      obtain ⟨-, -, -, -, -, -, -, -, -, -, -, hPprop, -, ja, -, hacc, -⟩ :=
-        honestProposalRun_of_ready hrun hnc hS.ready
-      rw [← hS.ready.2.1] at hPprop hacc
-      obtain ⟨jℓ, hcj, hcallj⟩ := hacc
-      have hPj : P ∈ jℓ.frame.tree := (SA.accept_new sp hr hpH ⟨jℓ, hcj, hcallj⟩).1 jℓ hcj
-      have hfb : SA.HonestFrameBlock tr.projAC H P' := ⟨y, hy, j, ℓy, hcy.1, hP'⟩
-      have hroot : P'.root ≠ sp.genesisRoot := by
-        intro hg
-        have hG := Store.genesis_mem (Compose.fg_reachable hl hy j)
-        obtain rfl := hU.1 (hΦyU hP') ⟨y, hy, j, hG⟩ hg
-        simp only [Params.genesisBlock] at hP's
-        omega
-      obtain rfl : P = P' := hac.honest.one_block P P' ⟨_, hpH, ja, jℓ, hcj, hPj⟩ hfb
-        (hPprop ▸ hpH) (by rw [hPprop, hac.honest.proposer P' hfb hroot, hP's, hS.ready.2.1])
-        (by rw [hPs, hP's])
+      obtain rfl : P' = P := frame_slot_eq_proposal hS hy hcy.1 P' hP' hP's
       rcases Relation.ReflTransGen.cases_tail (hBW.trans hWP') with rfl | ⟨Y, hBY, hYP⟩
       · exact absurd rfl hBP
       · obtain rfl : Y = d.head := hU.1 (hΦyU hYP.1) (hΦpU hQt)

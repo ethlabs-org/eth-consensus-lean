@@ -115,20 +115,8 @@ theorem proposal_views_agree (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP 
     rw [hpayk, ← this.2]
   obtain ⟨-, hΦpU⟩ := SA.frameIn_of_callAt hr hpH hS.call
   obtain ⟨-, hΦyU⟩ := SA.frameIn_of_callAt hr hy hcy.1
-  -- the slot-`s` block of the voter's frame is `P`
-  obtain ⟨jℓ, hcj, hcallj⟩ := hacc
-  have hPj : P ∈ jℓ.frame.tree := (SA.accept_new sp hr hpH ⟨jℓ, hcj, hcallj⟩).1 jℓ hcj
-  have hslotP : ∀ P' ∈ ℓy.frame.tree, P'.slot = s' + 1 → P' = P := by
-    intro P' hP' hP's
-    have hfb : SA.HonestFrameBlock tr.projAC H P' := ⟨y, hy, j, ℓy, hcy.1, hP'⟩
-    have hroot : P'.root ≠ sp.genesisRoot := by
-      intro hg
-      have hG := Store.genesis_mem (Compose.fg_reachable hl hy j)
-      obtain rfl := hU.1 (hΦyU hP') ⟨y, hy, j, hG⟩ hg
-      simp [Params.genesisBlock] at hP's
-    exact (hac.honest.one_block P P' ⟨_, hpH, ja, jℓ, hcj, hPj⟩ hfb (hPprop ▸ hpH)
-      (by rw [hPprop, hac.honest.proposer P' hfb hroot, hP's, hS.ready.2.1])
-      (by rw [hPs, hP's])).symm
+  have hslotP : ∀ P' ∈ ℓy.frame.tree, P'.slot = s' + 1 → P' = P :=
+    frame_slot_eq_proposal hS hy hcy.1
   -- `Sync` on `[t_{s−1}, t_s]` from `GST(g)`
   have hga : g ≤ sp.ts (s' : Int) := by have := le_gbar g; linarith
   have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
