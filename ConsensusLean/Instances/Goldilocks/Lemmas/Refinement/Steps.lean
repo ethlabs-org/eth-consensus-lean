@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Provenance
 public import ConsensusLean.Lemmas.Model.Objects
 
 public section
@@ -1400,7 +1401,19 @@ theorem dutyStep_propose_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Pr
   rw [← shapeOf_act_propose S hn nd.st s hs] at this
   exact this
 
-/-- **A proposal carries only released objects**, at the node the proposal duty runs on. -/
+/-- **OPEN; NO PAPER PROOF.** Scheduled replacement for `proposal_releasable`: derive slot
+start from the schedule. Induct with pool/att provenance in `seen` or pending outputs; polls
+release via engine history/guard safety; slot-start tick emits no vote. No `GoldilocksRun`. -/
+theorem scheduled_proposal_releasable (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i p : Nat} {t : Time} {s : Slot}
+    {nd : Model.Node (Model.protoOf (compiled (family S)) E)}
+    (hscheduled : EngineProposalAt S rho v i p t s nd)
+    {par : ParentRef} {info : Info} {cs : List (Wire (Fintype.card V))}
+    (hprop : (propose (shapeOf S hn nd) s).2 = some (par, info, cs)) :
+    ∀ o ∈ cs, o ∈ Model.closure nd.seen := by
+  sorry
+
+/-- **Legacy; NO PAPER PROOF for arbitrary `s,t`.** Use `scheduled_proposal_releasable`. -/
 theorem proposal_releasable (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (par : ParentRef)
     (info : Info) (cs : List (Wire (Fintype.card V)))
