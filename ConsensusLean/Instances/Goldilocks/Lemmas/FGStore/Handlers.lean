@@ -93,6 +93,27 @@ theorem onBlock_eq_some {st st' : Store P ACP} {B : NodeBlock P ACP}
   exact ⟨pr, σ', hpr, hc.1, Option.isSome_iff_ne_none.2 hc.2.1, hc.2.2, hσ',
     (Option.some.inj h).symm⟩
 
+/-- A successful source transition also succeeds at a receiver with the same parent
+state, provided its own new-root, held-parent and finalized-ancestry guards hold.
+Establishing those guards at a historical receipt is a separate obligation. -/
+theorem onBlock_transfer {src src' dst : Store P ACP} {B : NodeBlock P ACP} {pr : Nat}
+    (hsrc : src.onBlock B = some src') (hparent : B.parent = some pr)
+    (hnew : dst.blocks B.root = none) (hheld : (dst.blocks pr).isSome)
+    (hstate : dst.σ pr = src.σ pr)
+    (hanc : Goldilocks.Anc (insert B dst.tree) dst.F B) :
+    ∃ dst', dst.onBlock B = some dst' := by
+  obtain ⟨root, σ', hp, _, _, _, hσ, _⟩ := onBlock_eq_some hsrc
+  have heq : root = pr := Option.some.inj (hp.symm.trans hparent)
+  subst root
+  have htransition : P.fg.stateTransition (dst.σ pr) B.fgView = some σ' := by
+    rw [hstate]
+    exact hσ
+  obtain ⟨parent, hparentHeld⟩ := Option.isSome_iff_exists.mp hheld
+  unfold onBlock
+  simp only [hparent, hnew, hparentHeld, Option.isSome_none, Option.isNone_some,
+    Bool.false_eq_true, hanc, not_true_eq_false, or_self, ↓reduceIte, htransition]
+  exact ⟨_, rfl⟩
+
 end Consensus.Goldilocks.Store
 
 end
