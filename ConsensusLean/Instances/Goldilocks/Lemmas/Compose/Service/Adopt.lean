@@ -154,14 +154,15 @@ theorem proposal_majority_at_update {dg : Digest (List (FG.Att sp.n)) (Payload s
 block is an ancestor of a stored lock block, which is on the origin chain (S1); the result is an
 origin; blocks on the origin chain are compatible (S1), so the result is compatible with the live
 lock block. -/
-theorem result_not_vetoed {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat}
+theorem result_not_vetoed_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {b : Time}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hinv : SleepyInvariantUpTo tr H b) {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
+    (hb : tr.time k₀ ≤ b)
     {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hC : SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some C) :
     ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) C := by
-  have hinv := sleepy_invariant hrun hnc hsl
   have hcoh := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
   have hfr : ℓ.frame = Node.frame (tr.state y k₀) := by
     obtain ⟨⟨hn, hl⟩, -⟩ := hu
@@ -175,14 +176,17 @@ theorem result_not_vetoed {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H :
   have hHB : ℓ.frame.tree ⊆ tr.HonestBlocks H := fun X hX =>
     ⟨y, hy, k₀, by rw [hfr] at hX; exact hX.1⟩
   have hCt : C ∈ ℓ.frame.tree := (SA.deepest_mem hC).1.1
-  have hCo : Origin tr H C s := Origin.of_result hy
-    ⟨ℓ, hu, by rw [projAC_state hrun.toLocalRun hy]; exact hC, rfl⟩
+  have hCo : OriginWithin tr H C s b := originWithin_iff.2
+    ⟨y, hy, k₀, _, hb, Or.inl ⟨ℓ, hu,
+      by rw [projAC_state hrun.toLocalRun hy]; exact hC, rfl⟩⟩
   rintro ⟨V, hV, hconf⟩
   obtain ⟨l, hl, B₀, hB₀, hB₀r, -, rfl⟩ := SA.mem_liveLockBlocks hΦ hV
-  obtain ⟨L, hL, hLr, hch⟩ := hinv.locks y hy k₀ l hl
+  obtain ⟨L, hL, hLr, hch⟩ := hinv.locks y hy k₀
+    (fun k hk => (hrun.time_mono hk.le).trans hb) l hl
   obtain rfl : L = B₀ := hcoh.1 ⟨y, hy, k₀, hL⟩ (hHB hB₀) (hLr.trans hB₀r.symm)
-  have hcomp := OnOriginChain.compatible hrun hnc hinv.origins_compatible (hHB hCt) (hHB hB₀)
-    (onOriginChain_iff.2 (Or.inr ⟨C, s, hCo, Relation.ReflTransGen.refl⟩)) hch
+  have hcomp := OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible
+    (hHB hCt) (hHB hB₀)
+    (onOriginChainWithin_iff.2 (Or.inr ⟨C, s, hCo, Relation.ReflTransGen.refl⟩)) hch
   obtain ⟨hVt, hVB⟩ := SA.viableAncestor_anc hΦ hB₀
   have hVB' := hVB.mono hHB
   have hCV : Compatible (tr.HonestBlocks H) C (ℓ.frame.viableAncestor L) := by
@@ -193,6 +197,17 @@ theorem result_not_vetoed {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H :
   rcases hCV with h | h
   · exact Or.inl (SA.anc_tree_of_anc_U hcoh hΦ hHB hCt h hVt)
   · exact Or.inr (SA.anc_tree_of_anc_U hcoh hΦ hHB hVt h hCt)
+
+/-- Whole-run Sleepy supplies the finite invariant at the update's time. -/
+theorem result_not_vetoed {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
+    {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hC : SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some C) :
+    ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) C :=
+  result_not_vetoed_before hrun hnc
+    (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀))) hy hu le_rfl hC
 
 /-- A block strictly above a slot-`s` block has no supporter among the slot-`s` votes resolved by a
 cutoff: a vote cannot resolve to a head of a later slot. -/
