@@ -153,6 +153,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Drain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainCommon
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome

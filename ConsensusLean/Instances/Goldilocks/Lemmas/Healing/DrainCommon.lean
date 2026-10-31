@@ -355,15 +355,70 @@ private theorem mem_voterBlockTree_of_accept {FGP : Type} {ro' : ReplayOrder sp 
       rw [hoth hb hrs]
   exact ⟨hWt, Or.inl (by rw [SA.readPoint_blockStamp_eq hr hy hc, hpost]; exact hbs)⟩
 
-/-- **§2.1, aligned witnesses** (`hs234-exact-interface.md` §2.1): under `Γ` (without `Prop⁺`),
-let an honest vote of a clean slot `j` (`t_j ≥ w + 4Δ`) extend `B`. At every in-phase honest vote
-of a later slot, `B` is in the viable voter block tree or at or below `fc_root`. The earlier
-vote's head is in its voter's full viable tree (`fc_root` is, by the phase's frontier block;
-`getAnchor_viable`; the walk steps in the frozen viable tree), so below a viable head `W` of that
-voter, which is effectively allowed (`viableHeads_iff`). `W` was accepted by that voter before
-`t_j + Δ`; it relays (post-`ḡ`) or was caught up by `ḡ + 2Δ` (`Catch(2Δ)`) to the later voter
-before its freeze, above its `Σ.F` (HS.1 (a)), so it is in the later voter block tree, and HS.1
-(d) retains every ancestor of `W`. A genesis witness makes `B` the genesis, at or below
+/-- **The aligned witness of a clean vote** (`hs234-exact-interface.md` §2.1): under `Γ`
+(without `Prop⁺`), let an honest vote of a clean slot `j` (`t_j ≥ w + 4Δ`, cut `kz`) extend `B`,
+and let the phase hold from `i₀` through a cut `k` after `t_j + Δ`. Then `i₀ ≤ kz < k`, the vote
+is cast by `t_j + Δ`, and `B` is below a block `W` effectively allowed at the vote (its head is in
+its voter's full viable tree: `fc_root` is there, by the phase's frontier block,
+`getAnchor_viable`, and the walk steps in the frozen viable tree; so it is below a viable head,
+allowed by `viableHeads_iff`) that is genesis or that the voter accepted before `t_j + 2Δ`. -/
+theorem clean_vote_witness (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
+    (hz : z ∈ H) {kz : Nat} {e' : SA.Em sp (List (FG.Att sp.n))}
+    (hvz : SA.VoteAt tr.projAC z kz e') {j : Nat} (hj : w + 4 * sp.Δ ≤ sp.ts j)
+    (hes : e'.msg.slot = j) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hext : SA.VoteExtends (tr.HonestBlocks H) e'.msg B) {k : Nat}
+    (hk : PhaseOn tr.projFG H i₀ k m c) (hkt : sp.ts j + sp.Δ < tr.time k) :
+    i₀ ≤ kz ∧ kz < k ∧ tr.time kz ≤ sp.ts j + sp.Δ ∧
+      ∃ W, Anc (tr.HonestBlocks H) B W ∧ EffAllowed (tr.state z kz).fg m c W ∧
+        (W.root = sp.genesisRoot ∨
+          ∃ kw ≤ kz, tr.projAC.AcceptAt z kw W ∧ tr.time kw < sp.ts j + 2 * sp.Δ) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hs.noColl).localRun
+  have hU := hr.coherent
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨ℓz, hcz, hez⟩ := hvz
+  have hvz : SA.CastAt tr.projAC z kz ℓz e' := ⟨hcz, hez⟩
+  obtain ⟨-, hΦzU⟩ := SA.frameIn_of_callAt hr hz hcz
+  have hsz := (SA.castAt_spec hr hz hvz).2.1
+  have htz : sp.ts j ≤ tr.time kz :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg kz) _).2 (by rw [← hes, hsz])
+  have htz' : tr.time kz ≤ sp.ts j + sp.Δ := by
+    have := (Compose.cast_head_fcRoot hr hz hvz).2
+    rw [hes] at this
+    exact this
+  have hkzk : kz < k := by
+    by_contra h
+    have := hr.time_mono (not_lt.1 h)
+    change tr.time k ≤ tr.time kz at this
+    linarith
+  have hi₀z : i₀ ≤ kz := le_of_settled hw (by linarith)
+  have hphz := hk kz hi₀z hkzk.le
+  have hev : HoldsEvidence (tr.state z kz).fg m c := by
+    have h := hw.1.evidence i₀ hw.2.1 m c hw.2.2 z hz
+    rw [projFG_store_eq hrun hz] at h
+    exact holdsEvidence_mono hrun hs.noColl hz hi₀z h
+  obtain ⟨Hd, ⟨hHdt, -, W, hWt, hWv, hHdW⟩, hHdr⟩ :=
+    head_viable hr hz hvz (fcRoot_viable hrun hs hc hz hcz hphz hev)
+  obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hext
+  obtain rfl : Hd = Hv := hU.1 (hΦzU hHdt) hHv (hHdr.trans hHvr.symm)
+  have hWst : W ∈ (tr.state z kz).fg.tree := mem_tree_of_frame hrun hz hcz hWt
+  have hWE : EffAllowed (tr.state z kz).fg m c W := by
+    rw [Compose.frame_of_projAC hrun hz hcz] at hWv
+    exact ((viableHeads_iff hrun hs hc hz hphz hev hWst).1 hWv).2
+  refine ⟨hi₀z, hkzk, htz', W, hBHv.trans (Anc.mono hΦzU hHdW), hWE, ?_⟩
+  rcases Compose.frame_anc_accepted hr hz kz ℓz hcz W hWt W .refl with hg | ⟨kw, hkw, hacc⟩
+  · exact Or.inl hg
+  · refine Or.inr ⟨kw, hkw, hacc, ?_⟩
+    have := hr.time_mono hkw
+    change tr.time kw ≤ tr.time kz at this
+    linarith
+
+/-- **§2.1, aligned witnesses at a vote** (`hs234-exact-interface.md` §2.1): under `Γ` (without
+`Prop⁺`), let an honest vote of a clean slot `j` extend `B`. At every in-phase honest vote of a
+later slot, `B` is in the viable voter block tree or at or below `fc_root`: the witness `W` of
+`clean_vote_witness` relays (post-`ḡ`) or was caught up by `ḡ + 2Δ` (`Catch(2Δ)`) to the later
+voter before its freeze, above its `Σ.F` (HS.1 (a)), so it is in the later voter block tree, and
+HS.1 (d) retains every ancestor of `W`. A genesis witness makes `B` the genesis, at or below
 `fc_root`. -/
 theorem viable_of_clean_vote (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
@@ -379,18 +434,7 @@ theorem viable_of_clean_vote (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H 
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hs.noColl).localRun
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨ℓz, hcz, hez⟩ := hvz
-  have hvz : SA.CastAt tr.projAC z kz ℓz e' := ⟨hcz, hez⟩
-  obtain ⟨hΦz, hΦzU⟩ := SA.frameIn_of_callAt hr hz hcz
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hv.1
-  -- times: the earlier vote is in `[t_j, t_j + Δ]`, the later one from `t_{j+1}` on
-  have hsz := (SA.castAt_spec hr hz hvz).2.1
-  have htz : sp.ts j ≤ tr.time kz :=
-    (SA.ts_le_iff_le_slot sp (hr.time_nonneg kz) _).2 (by rw [← hes, hsz])
-  have htz' : tr.time kz ≤ sp.ts j + sp.Δ := by
-    have := (Compose.cast_head_fcRoot hr hz hvz).2
-    rw [hes] at this
-    exact this
   have hty : sp.ts e.msg.slot ≤ tr.time k :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [(SA.castAt_spec hr hy hv).2.1])
   have hjσ : sp.ts j + 4 * sp.Δ ≤ sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ := by
@@ -398,45 +442,22 @@ theorem viable_of_clean_vote (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H 
     linarith
   have hσ : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
     simp only [SAParams.ts]; ring
-  have hkzk : kz ≤ k := by
-    by_contra h
-    have := hr.time_mono (not_le.1 h).le
-    change tr.time k ≤ tr.time kz at this
-    linarith
-  have hi₀z : i₀ ≤ kz := le_of_settled hw (by linarith)
-  have hphz := hk kz hi₀z hkzk
+  obtain ⟨hi₀z, hkzk, -, W, hBW, hWE, hWo⟩ :=
+    clean_vote_witness hrun hs hc hw hz hvz hj hes hext hk (by linarith)
   have hon : PhaseOn tr.projFG H kz k m c := fun k' h1 h2 => hk k' (hi₀z.trans h1) h2
-  have hev : HoldsEvidence (tr.state z kz).fg m c := by
-    have h := hw.1.evidence i₀ hw.2.1 m c hw.2.2 z hz
-    rw [projFG_store_eq hrun hz] at h
-    exact holdsEvidence_mono hrun hs.noColl hz hi₀z h
-  -- the earlier vote's head is below a viable, allowed head `W` of its voter
-  obtain ⟨Hd, ⟨hHdt, -, W, hWt, hWv, hHdW⟩, hHdr⟩ :=
-    head_viable hr hz hvz (fcRoot_viable hrun hs hc hz hcz hphz hev)
-  obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hext
-  obtain rfl : Hd = Hv := hU.1 (hΦzU hHdt) hHv (hHdr.trans hHvr.symm)
-  have hBW : Anc (tr.HonestBlocks H) B W := hBHv.trans (Anc.mono hΦzU hHdW)
-  have hWst : W ∈ (tr.state z kz).fg.tree := mem_tree_of_frame hrun hz hcz hWt
-  have hWE : EffAllowed (tr.state z kz).fg m c W := by
-    rw [Compose.frame_of_projAC hrun hz hcz] at hWv
-    exact ((viableHeads_iff hrun hs hc hz hphz hev hWst).1 hWv).2
-  -- HS.1 at the later vote
-  have hret := viable_witness_retention_of hrun hs hon hz hWE hy hkzk le_rfl
+  have hret := viable_witness_retention_of hrun hs hon hz hWE hy hkzk.le le_rfl
   have hFW : Anc (tr.HonestBlocks H) ℓ.frame.F W := by
     rw [Compose.frame_of_projAC hrun hy hv.1]
     exact hret.1
-  rcases Compose.frame_anc_accepted hr hz kz ℓz hcz W hWt W .refl with hg | ⟨kw, hkw, hacc⟩
+  have hWU : W ∈ tr.HonestBlocks H := ⟨z, hz, kz, hWE.1⟩
+  rcases hWo with hg | ⟨kw, hkw, hacc, hkwt⟩
   · -- a genesis witness: `B` and `Σ.F` are the genesis
     right
-    obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hz kz ℓz hcz
-    obtain rfl : W = G := hU.1 (hΦzU hWt) hGU (hg.trans hGr.symm)
+    obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy k ℓ hv.1
+    obtain rfl : W = G := hU.1 hWU hGU (hg.trans hGr.symm)
     rw [eq_of_anc_parent_none hBW hGp, ← eq_of_anc_parent_none hFW hGp]
     exact hΦ.F_anc_fcRoot.mono hΦU
   -- `W` is in the later voter block tree: relayed after `ḡ`, caught up before
-  have hkwt : tr.time kw < sp.ts j + 2 * sp.Δ := by
-    have := hr.time_mono hkw
-    change tr.time kw ≤ tr.time kz at this
-    linarith
   have hWv' : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
     by_cases hkg : gbar g ≤ tr.time kw
     · have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
@@ -455,6 +476,50 @@ theorem viable_of_clean_vote (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H 
   exact (hret.2.2 ℓ e hv (by rw [Compose.frame_of_projAC hrun hy hv.1]; exact hWv') B hBW).imp
     (fun h => by rwa [← Compose.frame_of_projAC hrun hy hv.1]) fun h => by
       rwa [← Compose.frame_of_projAC hrun hy hv.1]
+
+/-- **§2.1, aligned witnesses in a frame** (`hs234-exact-interface.md` §2.1, the proposal
+boundary of §2.2): under `Γ` (without `Prop⁺`), let an honest vote of a clean slot `j` extend
+`B`. At every in-phase cut of an honest node at a time `≥ t_j + 3Δ`, every ancestor of `B` is at
+or below its `fc_root` or in the viable tree of its frame: the witness `W` of
+`clean_vote_witness` is held there (genesis, or relayed by `t_j + 3Δ` above its `Σ.F` (HS.1 (a)),
+or caught up, `relay_held`), and HS.1 (c) retains its ancestors. -/
+theorem clean_vote_frame (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
+    (hz : z ∈ H) {kz : Nat} {e' : SA.Em sp (List (FG.Att sp.n))}
+    (hvz : SA.VoteAt tr.projAC z kz e') {j : Nat} (hj : w + 4 * sp.Δ ≤ sp.ts j)
+    (hes : e'.msg.slot = j) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hext : SA.VoteExtends (tr.HonestBlocks H) e'.msg B) {q : Fin sp.n} (hq : q ∈ H) {kq : Nat}
+    (hkq : PhaseOn tr.projFG H i₀ kq m c) (hkt : sp.ts j + 3 * sp.Δ ≤ tr.time kq) :
+    ∀ X, Anc (tr.HonestBlocks H) X B →
+      Anc (tr.HonestBlocks H) X (Node.frame (tr.state q kq)).fcRoot ∨
+        X ∈ (Node.frame (tr.state q kq)).viableTree (Node.frame (tr.state q kq)).tree := by
+  classical
+  have hl := hrun.toLocalRun
+  have hU := Compose.honest_blocks_coherent hl hs.noColl
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hw8 := gbar_add_le_of_settled hw
+  obtain ⟨hi₀z, hkzk, htz, W, hBW, hWE, hWo⟩ :=
+    clean_vote_witness hrun hs hc hw hz hvz hj hes hext hkq (by linarith)
+  have hon : PhaseOn tr.projFG H kz kq m c := fun k' h1 h2 => hkq k' (hi₀z.trans h1) h2
+  have hret := viable_witness_retention_of hrun hs hon hz hWE hq hkzk.le le_rfl
+  have hWq : W ∈ (tr.state q kq).fg.tree := by
+    rcases hWo with hg | ⟨kw, -, hacc, hkwt⟩
+    · have hG := Store.genesis_mem (Compose.fg_reachable hl hq kq)
+      obtain rfl : W = _ := hU.1 ⟨z, hz, kz, hWE.1⟩ ⟨q, hq, kq, hG⟩ hg
+      exact hG
+    obtain ⟨kw', rfl, haccr, htw⟩ := fg_accept_before hl hz hacc
+    have hex : ∃ a, tr.time kq ≤ tr.time a := ⟨kq, le_rfl⟩
+    have hj₁ : tr.FirstCutFrom (Nat.find hex) (tr.time kq) :=
+      ⟨Nat.find_spec hex, fun a ha => not_le.1 (Nat.find_min hex ha)⟩
+    have hle : Nat.find hex ≤ kq := Nat.find_min' hex le_rfl
+    have hz₁ : kz ≤ Nat.find hex := by
+      by_contra hn
+      have := hl.time_mono (not_le.1 hn).le
+      linarith [hj₁.1]
+    have hF := (viable_witness_retention_of hrun hs hon hz hWE hq hz₁ hle).1
+    exact Compose.tree_mono hl hq hle (relay_held hl hs.healthy hs.noRestart hc hz hq haccr
+      (by linarith) (by rw [htw]; linarith) hj₁ hF)
+  exact fun X hXB => (hret.2.1 hWq).2.2 X (hXB.trans hBW)
 
 /-- **Frozen viability of a clean fast origin** (`hs234-exact-interface.md` §2.1 "aligned
 witnesses", §3 first helper): under `Γ` (without `Prop⁺`), let `x` write a fast lock of a clean

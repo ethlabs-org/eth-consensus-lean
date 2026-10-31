@@ -54,7 +54,7 @@ theorem clean_lock_drain : CleanLockDrain := by
       clean_slow_later hrun hs hc hw hx ho hj hy hv hjs hk⟩,
     fun _ _ _ _ _ hr _ _ hl => live_lock_clean hr hl,
     fun _ _ hP hr _ hy _ _ _ hv he hk _ hl hls _ hL hLr =>
-      live_lock_below_proposal hrun hs hc hp hw hP hr hy hv he hk hl hls hL hLr⟩
+      live_lock_below_proposal hrun hs hc hw hP hr hy hv he hk hl hls hL hLr⟩
 
 /-- **HS.3, honest-proposal frozen-tree agreement** (`phase-service.md` §3 "Relay and the
 honest-proposal sandwich", §7 HS.3). -/
