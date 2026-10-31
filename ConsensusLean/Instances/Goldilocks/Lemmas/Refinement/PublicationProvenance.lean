@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
 public import ConsensusLean.Lemmas.Model.Protection
 
 public section
@@ -175,6 +176,35 @@ theorem processOne_forward_origin (proposer : Nat → Fin sp.n)
     · exact Or.inl h
     · exact Or.inr ⟨_, C, p, he, hm, hq⟩
 
+/-- A successful canonical handler cut names the exact decoded input block. -/
+private theorem accepted_canonEvent_block (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (hs : List (Header Info × Nat)) (st : State sp ro) (o : Wire sp.n)
+    {e : Event (goldilocksNode sp ro)} {B : Blk sp}
+    (he : canonEvent sp ro hs o = some e)
+    (hb : .fg (.block B true) ∈ (exec proposer dg st.self st.node st.now e).2) :
+    decodeBlock sp hs o = some B := by
+  rcases canonEvent_cases (ro := ro) hs o with h | ⟨C, h⟩ | ⟨v, h⟩ | ⟨a, h⟩
+  · rw [h] at he
+    cases he
+  · have heq := Option.some.inj (he.symm.trans h)
+    subst e
+    simp only [exec, onBlock] at hb
+    split at hb
+    · exact False.elim (List.not_mem_nil hb)
+    · split at hb
+      · simp at hb
+      · simp only [List.mem_cons, List.not_mem_nil, Cut.fg.injEq,
+          FGLabel.block.injEq, and_true, acCall, reduceCtorEq, or_false] at hb
+        subst C
+        exact decodeBlock_of_canonEvent h
+  · have heq := Option.some.inj (he.symm.trans h)
+    subst e
+    simp [exec, onMessage, acCall] at hb
+  · have heq := Option.some.inj (he.symm.trans h)
+    subst e
+    simp [exec, onAttestation] at hb
+
 /-- A fresh queue entry from recursive receipt has a successful record in that exact
 delivery traversal, including its node and clock. -/
 theorem foldl_processOne_forward_origin (proposer : Nat → Fin sp.n)
@@ -185,13 +215,14 @@ theorem foldl_processOne_forward_origin (proposer : Nat → Fin sp.n)
     q ∈ st.forwards ∨ ∃ B, ∃ p : Option (Wire sp.n), ∃ r,
       r ∈ deliverRecs proposer dg hs st.self st.now i os st.node sub ∧
       r.label = .fg (.block B true) ∧ r.node = st.self ∧ r.time = st.now ∧
-      q = (st.now, p.toList ++ [blockObj sp B]) := by
+      q = (st.now, p.toList ++ [blockObj sp B]) ∧
+      decodeBlock sp hs (blockObj sp B) = some B ∧ blockObj sp B ∈ os := by
   intro os
   induction os with
   | nil => intro st sub h; exact Or.inl h
   | cons o os ih =>
     intro st sub h
-    rcases ih (processOne hs st o) (sub + 1) h with h | ⟨B, p, r, hm, hl, hn, ht, hq⟩
+    rcases ih (processOne hs st o) (sub + 1) h with h | ⟨B, p, r, hm, hl, hn, ht, hq, hd, ho⟩
     · rcases processOne_forward_origin proposer dg hs st o q h with h | ⟨e, B, p, he, hm, hq⟩
       · exact Or.inl h
       · obtain ⟨j, hj, hlabel⟩ := List.getElem_of_mem hm
@@ -200,12 +231,17 @@ theorem foldl_processOne_forward_origin (proposer : Nat → Fin sp.n)
           rwa [length_groupRecs]
         obtain ⟨hn, ht, _, _, hl⟩ :=
           getElem_groupRecs proposer dg st.self st.node st.now (Nat.pair i sub) e j hj'
-        refine Or.inr ⟨B, p, _, ?_, hl.trans hlabel, hn, ht, hq⟩
-        rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he]
-        exact List.mem_append_left _ (List.getElem_mem hj')
+        have hd := accepted_canonEvent_block proposer dg hs st o he hm
+        have hd' : decodeBlock sp hs (blockObj sp B) = some B := by
+          rwa [eq_blockObj_of_decodeBlock hd] at hd
+        refine Or.inr ⟨B, p, _, ?_, hl.trans hlabel, hn, ht, hq, hd', ?_⟩
+        · rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he]
+          exact List.mem_append_left _ (List.getElem_mem hj')
+        · rw [eq_blockObj_of_decodeBlock hd]
+          exact List.mem_cons_self
     · simp only [processOne_self, processOne_now] at hm hn ht hq
       rw [processOne_node proposer dg] at hm
-      refine Or.inr ⟨B, p, r, ?_, hl, hn, ht, hq⟩
+      refine Or.inr ⟨B, p, r, ?_, hl, hn, ht, hq, hd, List.mem_cons_of_mem _ ho⟩
       cases he : canonEvent sp ro hs o with
       | none =>
         rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he]
@@ -300,7 +336,7 @@ private theorem stamped_process (t : Time) (st : State sp ro) o hs
   intro q hq
   rcases foldl_processOne_forward_origin (fun _ => st.self)
       (fun _ _ _ _ _ => 0) hs 0 q _ st 0 hq with
-    hq | ⟨B, p, r, _, _, _, _, he⟩
+    hq | ⟨B, p, r, _, _, _, _, he, _⟩
   · exact h.2 q hq
   · rw [he]
     exact h.1
@@ -584,6 +620,35 @@ theorem acceptAt_of_eventCuts {i : Nat} (hi : i < rho.events.length)
 
 /-- The processing phase of an actual delivery queues only wrappers for acceptances in
 that delivery, at its actual time. The event-boundary queue is empty, not a premise. -/
+theorem delivery_forward_acceptance_decoded (hv : rho.ExecutionValid) {i : Nat} {v : V}
+    {o : Wire (Fintype.card V)} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t))
+    (q : Time × List (Wire (Fintype.card V)))
+    (hq : q ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).forwards) :
+    ∃ B, ∃ p : Option (Wire (Fintype.card V)), ∃ k < cutMap S rho hn (i + 1),
+      (simTrace S rho hn).AcceptAt (rho.ownKey v) k B ∧
+      (simTrace S rho hn).time k = t ∧
+      q = (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) ∧
+      decodeBlock (S.params (Model.pubOf E) hn) (Model.digests rho.hash o)
+        (blockObj (S.params (Model.pubOf E) hn) B) = some B ∧
+      Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) B) := by
+  have ht : (stateAt S rho hn v i).now = t :=
+    (now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he)
+  rcases foldl_processOne_forward_origin (runProposer S rho hn) (digestOf S rho)
+      (Model.digests rho.hash o) i q _ (stateAt S rho hn v i) 0 hq with
+    h | ⟨B, p, r, hr, hb, hn', ht', hq, hd, ho⟩
+  · rw [forwards_empty S rho hn hv v i] at h
+    exact False.elim (List.not_mem_nil h)
+  · simp only [stateAt_self, ht] at hr hn' ht' hq
+    have hr' : r ∈ eventCuts S rho hn i := by
+      rw [eventCuts_deliver S rho hn i v o t he]
+      exact hr
+    obtain ⟨k, hk, ha, htime⟩ := acceptAt_of_eventCuts S rho hn
+      (List.getElem?_eq_some_iff.mp he).1 hr' hb
+    exact ⟨B, p, k, hk, hn' ▸ ha, htime.trans ht', hq, hd,
+      contains_of_mem_delivered ho⟩
+
+/-- The queue-only projection of exact delivery acceptance provenance. -/
 theorem delivery_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {o : Wire (Fintype.card V)} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
@@ -593,20 +658,72 @@ theorem delivery_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v : V}
       (simTrace S rho hn).AcceptAt (rho.ownKey v) k B ∧
       (simTrace S rho hn).time k = t ∧
       q = (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) := by
-  have ht : (stateAt S rho hn v i).now = t :=
-    (now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he)
-  rcases foldl_processOne_forward_origin (runProposer S rho hn) (digestOf S rho)
-      (Model.digests rho.hash o) i q _ (stateAt S rho hn v i) 0 hq with
-    h | ⟨B, p, r, hr, hb, hn', ht', hq⟩
-  · rw [forwards_empty S rho hn hv v i] at h
-    exact False.elim (List.not_mem_nil h)
-  · simp only [stateAt_self, ht] at hr hn' ht' hq
-    have hr' : r ∈ eventCuts S rho hn i := by
-      rw [eventCuts_deliver S rho hn i v o t he]
-      exact hr
-    obtain ⟨k, hk, ha, htime⟩ := acceptAt_of_eventCuts S rho hn
-      (List.getElem?_eq_some_iff.mp he).1 hr' hb
-    exact ⟨B, p, k, hk, hn' ▸ ha, htime.trans ht', hq⟩
+  obtain ⟨B, p, k, hk, ha, ht, hq, _⟩ :=
+    delivery_forward_acceptance_decoded S rho hn hv he q hq
+  exact ⟨B, p, k, hk, ha, ht, hq⟩
+
+/-- Digest-backed decoding identifies the exact accepted block behind a delivery queue
+entry. Wire equality supplies its header, not its root. -/
+theorem delivery_decoded_forward_acceptance (hv : rho.ExecutionValid)
+    {i : Nat} {v : V} {receipt o : Wire (Fintype.card V)} {u t : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (he : rho.events[i]? = some (.deliver v receipt u))
+    (hq : (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) ∈
+      (process (stateAt S rho hn v i) receipt (Model.digests rho.hash receipt)).forwards)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (rho.ownKey v, t, p, B)) :
+    ∃ k < cutMap S rho hn (i + 1),
+      (simTrace S rho hn).AcceptAt (rho.ownKey v) k B ∧
+      (simTrace S rho hn).time k = t := by
+  obtain ⟨C, p', k, hk, ha, ht, heq, hc, hcontains⟩ :=
+    delivery_forward_acceptance_decoded S rho hn hv he _ hq
+  have htime : t = u := congrArg Prod.fst heq
+  have hwire : blockObj (S.params (Model.pubOf E) hn) B = blockObj _ C := by
+    have hlast := congrArg List.getLast? (congrArg Prod.snd heq)
+    cases p <;> cases p' <;> simpa using hlast
+  have hBC : B = C := by
+    have hchild : Model.Obj.Contains o (blockObj (S.params (Model.pubOf E) hn) C) := by
+      rw [← hwire, forwardObj_of_decodeForward _ _ _ _ _ _ hd]
+      apply Model.Obj.Contains.step
+        (List.mem_append_right _ (List.mem_singleton_self _)) (Model.Obj.Contains.refl _)
+    have hroot (r : Wire (Fintype.card V))
+        (h : Model.Obj.Contains r (blockObj (S.params (Model.pubOf E) hn) C)) :
+        rootOf (Model.digests rho.hash r) (headerOf (S.params (Model.pubOf E) hn) C) =
+          some (rho.hash (headerOf (S.params (Model.pubOf E) hn) C)) := by
+      exact rootOf_digests_of_mem S rho r _ (List.mem_filterMap.mpr ⟨_, h, rfl⟩)
+    have hc' := decodeBlock_transport hc ((hroot o hchild).trans (hroot receipt hcontains).symm)
+    rw [← hwire, (decodeForward_child hd).1] at hc'
+    exact Option.some.inj hc'
+  subst C
+  exact ⟨k, hk, ha, ht.trans htime.symm⟩
+
+/-- A decoded forwarding object released by a delivery originates in an actual
+acceptance in that delivery, with the same root and timestamp. -/
+theorem delivery_released_forward_acceptance (hv : rho.ExecutionValid)
+    {i : Nat} {v : V} {receipt o : Wire (Fintype.card V)} {u t : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (he : rho.events[i]? = some (.deliver v receipt u))
+    (ho : o ∈ rho.releasesAt i)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (rho.ownKey v, t, p, B)) :
+    ∃ k < cutMap S rho hn (i + 1),
+      (simTrace S rho hn).AcceptAt (rho.ownKey v) k B ∧
+      (simTrace S rho hn).time k = t := by
+  obtain ⟨b, hb, ho⟩ := released_candidate_batch S rho (Or.inr ⟨receipt, he⟩) ho
+  rw [eventBatches_eq, he] at hb
+  rcases List.mem_append.mp hb with hb | hb
+  · have hu := (hv.in_horizon _ (List.mem_of_getElem? he)).1
+    rw [deliverDuties_eq S u hu] at hb
+    erw [dutyBatches_cons, dutyBatches_nil] at hb
+    have hb' := List.mem_singleton.mp hb
+    subst b
+    split at ho
+    · have hq := poll_candidate_forward_queue S rho hn v _ u.toNat ho hd
+      exact delivery_decoded_forward_acceptance S rho hn hv he hq hd
+    · exact False.elim (List.not_mem_nil ho)
+  · have hb' := List.mem_singleton.mp hb
+    subst b
+    exact False.elim (gossip_not_forward S rho hn _ u ho hd)
 
 /-- Receipt witnesses require only a block call, including a refused call. -/
 theorem blockCallAt_of_allCuts {k : Nat}
