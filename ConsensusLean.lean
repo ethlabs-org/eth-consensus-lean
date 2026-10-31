@@ -55,6 +55,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accounta
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Weak
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
@@ -241,8 +242,8 @@ public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.Frame
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.AC
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always
