@@ -26,6 +26,36 @@ structure SyncACBefore {P : Params} {FGP : Type} {A : ACInterface P FGP}
       ac.deadline y j (ac.time i) ≤ ac.time j → Anc U ℓ.frame.F B →
       ∃ k ≤ j, ac.AcceptAt y k B ∧ ac.time k < ac.deadline y k (ac.time i)
 
+/-- AC service from an inclusive source-time lower bound through a recipient-deadline cutoff. -/
+structure SyncACWindowBefore {P : Params} {FGP : Type} {A : ACInterface P FGP}
+    (H : Set (Fin P.n)) (U : Set A.Blk) (a b : Time) (ac : ACTrace A) : Prop where
+  /-- Message processing keeps the source lower bound and strict service deadline. -/
+  message : ∀ x ∈ H, ∀ i m, ac.SendOrAdmit x i m → a ≤ ac.time i →
+    ∀ y ∈ H, ∀ j ℓ, ac.CallAt y j ℓ → ac.deadline y j (ac.time i) ≤ b →
+      ac.deadline y j (ac.time i) ≤ ac.time j →
+      ∃ k ≤ j, ac.time i ≤ ac.time k ∧ ac.ProcessAt y k m ∧
+        ac.time k < ac.deadline y k (ac.time i)
+  /-- Acceptance relay retains the receiver's finalized-ancestor condition. -/
+  relay : ∀ x ∈ H, ∀ i B, ac.AcceptAt x i B → a ≤ ac.time i →
+    ∀ y ∈ H, ∀ j ℓ, ac.CallAt y j ℓ → ac.deadline y j (ac.time i) ≤ b →
+      ac.deadline y j (ac.time i) ≤ ac.time j → Anc U ℓ.frame.F B →
+      ∃ k ≤ j, ac.AcceptAt y k B ∧ ac.time k < ac.deadline y k (ac.time i)
+
+/-- Setting the source lower bound to zero recovers finite-deadline AC service exactly. -/
+theorem syncACWindowBefore_zero_iff {P : Params} {FGP : Type} {A : ACInterface P FGP}
+    (H : Set (Fin P.n)) (U : Set A.Blk) (b : Time) (ac : ACTrace A) :
+    SyncACWindowBefore H U 0 b ac ↔ SyncACBefore H U b ac := by
+  exact ⟨fun h => ⟨h.message, h.relay⟩, fun h => ⟨h.message, h.relay⟩⟩
+
+/-- Old honest acceptances are caught up strictly before `a + κ`, as observed at calls
+from that endpoint through `b`. This does not assert acceptance after the observation cutoff. -/
+structure CatchACWindowBefore {P : Params} {FGP : Type} {A : ACInterface P FGP}
+    (ac : ACTrace A) (H : Set (Fin P.n)) (U : Set A.Blk) (a κ b : Time) : Prop where
+  /-- The receiver must extend its finalized block; the returned acceptance is an actual cut. -/
+  relay : ∀ x ∈ H, ∀ i B, ac.AcceptAt x i B → ac.time i < a →
+    ∀ y ∈ H, ∀ j ℓ, ac.CallAt y j ℓ → a + κ ≤ ac.time j → ac.time j ≤ b →
+      Anc U ℓ.frame.F B → ∃ k ≤ j, ac.AcceptAt y k B ∧ ac.time k < a + κ
+
 namespace ACTrace
 
 variable {P : Params} {FGP : Type} {A : ACInterface P FGP} (tr : ACTrace A)
