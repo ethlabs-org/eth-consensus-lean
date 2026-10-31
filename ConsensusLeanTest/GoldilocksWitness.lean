@@ -13,26 +13,30 @@ one validator (`n = 1`, `f = 0`) this shows the premises **consistent**, not met
 witness with a faulty validator, e.g. `n = 4`, `f = 1` silent, is a follow-up).
 
 * **The tick run** (`ConsensusLeanTest/GoldilocksTickRun`; `tickRun`, for any node AC `A` with
-  `n = 1`, `Δ = 1`): the validator is awake at
-  every time `t ≥ 0` and ticks there with input `0`; nothing else happens. Its node states are the
-  handler's (`Node.exec`) folded over the ticks; the cuts of the tick of time `t` are at the indices
-  `8t, 8t + 1, …` (a tick makes at most seven cuts, `onTick_length`), the rest of each block of
-  eight unlabelled under its own event id. (a) `tickRun_localRun`: it is a `Node.LocalRun` (own
-  votes count
-  as processed through their emission, own blocks and attestations are processed inside the tick,
-  so no delivery is needed); the attestation pool holds only attestations the validator signed
-  earlier (`tickRun_pool`).
+  `n = 1`, `Δ = 1`): the validator is awake at every time `t ≥ 0` and ticks there with input `0`;
+  nothing else happens. Its node states are the handler's (`Node.exec`) folded over the ticks; the
+  cuts of the tick of time `t` are at the indices `8t, 8t + 1, …` (a tick makes at most seven cuts,
+  `onTick_length`), the rest of each block of eight unlabelled under its own event id.
+  (a) `tickRun_localRun`: it is a `Node.LocalRun` (own votes count as processed through their
+  emission, own blocks and attestations are processed inside the tick, so no delivery is needed);
+  the attestation pool holds only attestations the validator signed earlier (`tickRun_pool`).
 * **The Goldilocks node** (`One`: `goldilocksNode` with `k = 2`, `δ_t = 2`, `t_s = 4s`, a
   collision-free digest `dg1`): (a) `tickRun_goldilocksRun`: the tick run is a `GoldilocksRun` (the
   vote pool holds only votes the validator emitted earlier, `tickRun_votes`, so carried votes are
   unforgeable); (a) `tickRun_syncOn`, `tickRun_healthy`, `tickRun_catch`, `tickRun_hsShared`:
-  `Sync` for every window, `Healthy(g)`, `Catch(κ)` and the HS shared premises hold on it.
-* **The regime premises** (`tickRun_healedPremises`, `tickRun_patternPremises`,
-  `tickRun_finalPremises`): met outright except for the facts about this run's behaviour, which are
-  hypotheses of these theorems (#69, W3): the reset `a_z` (`IsReset`: an honest attestation at
-  height `H_z + 1`), H.3 (c)'s bridge `BridgeAt` (the AC invariant and `Geo`), and `UPat(1, M)`'s
-  retained inclusion. Proved: a ready proposal at every slot `s ≥ 1` (`tickRun_readyProposal`)
-  and `Prop⁺(G_p)` for `G_p ≥ 4Δ` (`tickRun_propPlus`). -/
+  `Sync` for every window, `Healthy(g)`, `Catch(κ)` and the HS shared premises hold on it; (a) a
+  ready proposal at every slot `s ≥ 1` (`tickRun_readyProposal`) and `Prop⁺(G_p)` for `G_p ≥ 4Δ`
+  (`tickRun_propPlus`).
+* **The regime premises.** Here `tickRun_healedPremises`, `tickRun_patternPremises` and
+  `tickRun_finalPremises` reduce `HealedPremises`, `PatternPremises` and `FinalPremises` to the
+  reset (`IsReset`), H.3 (c)'s bridge (`BridgeAt`) and `UPat(1, M)`. Those three facts are proved
+  for this run in `ConsensusLeanTest/GoldilocksWitnessRun` (`tickRun_isReset`, with `a_z = aZ g`;
+  `tickRun_bridgeAt`; `tickRun_upat`, over `GoldilocksWitnessChain` and `GoldilocksWitnessTicks`),
+  so the premises hold with no hypothesis left beyond the parameter bounds: (a)
+  `healedPremises_tickRun`, `patternPremises_tickRun`, `finalPremises_tickRun` (there). Caveat:
+  `BridgeAt`'s `Geo` part holds vacuously here (`not_inSettledPhase`: the own block, accepted at
+  `t_p` between `ac_proposal` and the vote, raises `h_max`, so no proposal and its votes lie in one
+  settled phase); the witness does not exercise `Geo`. -/
 
 
 namespace Consensus.Goldilocks.Witness
