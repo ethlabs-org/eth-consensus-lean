@@ -705,8 +705,9 @@ Modelling choices:
   awake and ticking at every time) is a `GoldilocksRun` (kind (a), `tickRun_goldilocksRun`) with `Sync` for every
   window, `Healthy(g)`, `Catch(κ)` and the HS shared premises (kind (a)). `HealedPremises`, `PatternPremises` and
   `FinalPremises` are reduced to facts of that run's behaviour, hypotheses of `tickRun_healedPremises`,
-  `tickRun_patternPremises`, `tickRun_finalPremises`: `Prop⁺(G_p)`, the reset (`IsReset`), H.3 (c)'s bridge
-  (`BridgeAt`) and `UPat(1, M)` (open, W3). `n = 1` shows the premises consistent, not met with faults (a faulty
+  `tickRun_patternPremises`, `tickRun_finalPremises`: the reset (`IsReset`), H.3 (c)'s bridge (`BridgeAt`) and
+  `UPat(1, M)`'s retained inclusion (open, W3); a ready proposal at every slot `≥ 1` (`tickRun_readyProposal`) and
+  `Prop⁺(G_p)` for `G_p ≥ 4Δ` (`tickRun_propPlus`) are proved. `n = 1` shows the premises consistent, not met with faults (a faulty
   witness is a follow-up). R.7 and R.8 have no premise beyond the run laws (and `NoColl`, `f < 2q − n` where
   stated).
 
