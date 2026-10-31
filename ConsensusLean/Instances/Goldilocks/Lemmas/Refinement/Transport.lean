@@ -128,8 +128,15 @@ equal `encodeInfo` values to recover all five fields required by `NoCollOn`. Pro
 is irrelevant: that conclusion does not compare proposers. For genesis versus a non-genesis
 block, `GenesisFresh` excludes equal digests; two genesis entries are immediate.
 OPEN: prove all-occurrences provenance from the canonical construction, including refused
-block calls and calls at non-honest nodes. `Occurs` has no honesty guard. The target no longer
-quantifies arbitrary simulation witnesses, whose laws do not supply this provenance.
+block calls. `Occurs` has no honesty guard, but `simTrace_cut` identifies its engine event;
+`ExecutionValid.honest_only` then proves that its node is honest. No separate non-honest
+canonical call case remains in a valid run. Tick provenance can use `tick_releases` for
+either acceptance flag. For deliveries, `accepted_in_view` and `process_relay` cover only
+accepted calls; the missing join must instead retain the decoded object's membership in
+the delivered list through `deliverRecs`, including refused calls, and transport that object
+to the final engine view. `mem_deliverRecs_exec` currently forgets that membership.
+The target no longer quantifies arbitrary simulation witnesses, whose laws do not supply
+this provenance.
 Tagged freshness is proved by `genesisFresh`; it does not by itself prove occurrence coverage. -/
 theorem noCollTransport : NoCollTransport V S := by
   sorry
@@ -270,7 +277,9 @@ Paper reduction: choose the canonical simulation, obtain its `NoCollRun` using
 `noCollTransport`, then use `final_accountable_of_noColl` at the two bounded cuts.
 OPEN transitively on canonical collision transport. No freshness premise remains. -/
 theorem finalizedAccountable : FinalizedAccountable V S := by
-  sorry
+  intro E rho hn hv hnc u hu v hv' i hi j hj
+  exact final_accountable_of_noColl S rho hn hv (noCollTransport V S E rho hn hv hnc)
+    hu hv' hi hj
 
 section Claims
 
@@ -325,12 +334,34 @@ After a freshness-free collision transport is available, split on `HashCollision
 that excuse when present. Otherwise obtain the natural-number accountability bound for each
 pair of honest reads. Write n=3m+r with r=0,1,2: `2q−n` is respectively m,m+1,m+2, so its
 rational cast is at least n/3. Since n≥0 and α≤1/3, nα≤n/3, which gives the exact field.
-Empty V has no honest reader and is vacuous. OPEN: current encoding supplies no such
-freshness-free transport; the arithmetic and collision-case split do not resolve it. -/
+Empty V has no honest reader and is vacuous. The assembly and arithmetic are proved;
+the conclusion remains transitively OPEN on `noCollTransport`'s occurrence provenance. -/
 theorem shape_finalAccountable (K : Contract ProgressReq) (hα : K.params.α ≤ 1 / 3) :
     ∀ g, schema.output .final = some g → (Sys (family S) V).Holds (fun _ => True)
       (fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0) := by
-  sorry
+  intro g hg r hv _
+  have hg' : g = .finalized := (Option.some.inj hg).symm
+  subst g
+  by_cases hc : r.2.HashCollision
+  · exact Or.inr hc
+  left
+  intro u hu v hv' i j hi hj
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨u⟩
+  rcases finalizedAccountable V S r.1 r.2 hn hv hc u hu v hv' i hi.1 j hj.1 with h | h
+  · exact Or.inl h
+  right
+  have hq : Fintype.card V ≤
+      3 * (2 * (S.params (pubOf r.1) hn).toParams.q - Fintype.card V) := by
+    simp only [Params.q]
+    omega
+  have hq' : (Fintype.card V : ℚ) ≤
+      3 * ((2 * (S.params (pubOf r.1) hn).toParams.q - Fintype.card V : Nat) : ℚ) := by
+    exact_mod_cast hq
+  have h' : ((2 * (S.params (pubOf r.1) hn).toParams.q - Fintype.card V : Nat) : ℚ) ≤
+      (convicted r.2.Slashable (r.2.ViewIdx u i ∪ r.2.ViewIdx v j)).card := by
+    exact_mod_cast h
+  have hα' := mul_le_mul_of_nonneg_left hα (show (0 : ℚ) ≤ Fintype.card V by positivity)
+  linarith
 
 end Claims
 
