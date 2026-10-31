@@ -47,6 +47,11 @@ instance"):
   attestation) is relayed at the gossip of the event that admitted it (a delivery or a tick) as
   a carried object of an unsigned `.relay` wrapper; a delivery's emission and relay leave at the
   delivery's own time (`Model.Run.deliver`), as the spec's relay rule sends them.
+  Separately, successful block acceptance cuts queue fresh signed `.forward` wrappers, including
+  own proposals. The durable node-root map supplies exact same-origin parent wrappers. A selected
+  `pollBatch` emits its ordinary body followed by all pending wrappers in acceptance order;
+  `releaseAll` checks each against actual prefix holdings. Duplicate/refused calls do not mint
+  wrappers. Unsigned compatibility relay is retained, but certifies no acceptance timestamp.
 * **Restart.** Everything is durable (the spec keeps `Σ`, `𝒜`, `Λ` and restarts the AC); the
   queued bodies are kept and leave at the tick that follows the restart at the wake time.
 * **Outputs.** `confirmed` is `ac_confirmed`, `finalized` is `Σ.F`, each as the chain of
@@ -272,6 +277,10 @@ structure State where
   relayBuf : List (Wire sp.n)
   /-- The FG update of this tick has not run yet. -/
   fgDue : Bool
+  /-- Exact locally created wrappers, indexed by node root and retained across restarts. -/
+  wrappers : Nat → Option (Wire sp.n) := fun _ => none
+  /-- Signed forwarding bodies awaiting the next selected poll, in acceptance order. -/
+  forwards : List (Time × List (Wire sp.n)) := []
 
 variable {sp ro}
 
@@ -280,11 +289,6 @@ def emitted (cs : List (Cut (goldilocksNode sp ro))) : List Body :=
   cs.flatMap fun
     | .ac ℓ => ℓ.emits.map fun e => .vote (encodeVote e.msg)
     | .fg _ => []
-
-/-- The state after a handler's result: its node state, its emissions queued. -/
-def apply (st : State sp ro)
-    (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro))) : State sp ro :=
-  { st with node := r.1, outbox := st.outbox ++ emitted r.2 }
 
 /-- Queue `o` for relay if `c`. -/
 def relayIf (st : State sp ro) (c : Prop) [Decidable c] (o : Wire sp.n) : State sp ro :=
@@ -322,6 +326,34 @@ def forwardObj (origin : Fin sp.n) (acceptedAt : Time) (parent : Option (Wire sp
     (B : Blk sp) : Wire sp.n :=
   .mk (.signed origin .poll) (.data (.forward acceptedAt))
     (parent.toList ++ [blockObj sp B])
+
+/-- Queue a wrapper only for an actual successful block cut. Parent lookup uses node roots;
+the wire encoding stays in `blockObj`. A missing non-genesis parent leaves the queue unchanged:
+the reachable-state invariant must rule out that case, rather than minting an orphan wrapper. -/
+def queueAccepted (st : State sp ro) (B : Blk sp) : State sp ro :=
+  match B.parent with
+  | none => st
+  | some root =>
+      let parent := if root = sp.genesisRoot then some none else (st.wrappers root).map some
+      match parent with
+      | none => st
+      | some p =>
+          { st with
+            wrappers := Function.update st.wrappers B.root (some (forwardObj sp st.self st.now p B))
+            forwards := st.forwards ++ [(st.now, p.toList ++ [blockObj sp B])] }
+
+/-- Record handler state and emissions, then queue publications for successful acceptance
+cuts in their executed order. Refused and duplicate block calls cannot create fresh wrappers. -/
+def apply (st : State sp ro)
+    (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro))) : State sp ro :=
+  let publications := r.2.foldl (fun s c => match c with
+    | .fg (.block B true) => queueAccepted s B
+    | _ => s) st
+  { st with
+    node := r.1
+    outbox := st.outbox ++ emitted r.2
+    wrappers := publications.wrappers
+    forwards := publications.forwards }
 
 variable (sp) in
 open Classical in
@@ -503,13 +535,21 @@ noncomputable def fgUpdate (st : State sp ro) : State sp ro :=
           { st₁ with node := (Node.onAttestation { r.1 with record := Λ' } a).1,
                      outbox := st₁.outbox ++ [.att (encodeAtt a)] }
 
-/-- A poll step: the FG update when due, then the oldest queued body is released. -/
+/-- A poll step: the FG update when due, then the oldest queued ordinary body.
+Clear the forwarding queue; `pollBatch` captures its contents before this step. -/
 noncomputable def poll (st : State sp ro) (_ : Time) :
     State sp ro × Option (Body × List (Wire sp.n)) :=
   let st₁ := if st.fgDue then fgUpdate st else st
   match st₁.outbox with
-  | [] => (st₁, none)
-  | b :: rest => ({ st₁ with outbox := rest }, some (b, []))
+  | [] => ({ st₁ with forwards := [] }, none)
+  | b :: rest => ({ st₁ with outbox := rest, forwards := [] }, some (b, []))
+
+/-- Keep the ordinary poll emission, then drain acceptance wrappers in parent-first order.
+The engine signs the entire list and checks each candidate against its actual release prefix. -/
+noncomputable def pollBatch (st : State sp ro) (t : Time) :
+    State sp ro × List (Body × List (Wire sp.n)) :=
+  let r := poll st t
+  (r.1, r.2.toList ++ st.forwards.map fun p => (.forward p.1, p.2))
 
 /-- The chain of headers from genesis (excluded) to `B`, oldest first, by parent walk in the
 held blocks `blocks`, with `fuel` steps at most. -/
@@ -546,12 +586,13 @@ noncomputable def goldilocksShape : ChainShape sp.pub Out Info where
   Body := Body
   Durable := State sp ro
   decBody := inferInstance
-  init k := ⟨k, Node.init (goldilocksNode sp ro), 0, [], [], false⟩
+  init k := ⟨k, Node.init (goldilocksNode sp ro), 0, [], [], false, fun _ => none, []⟩
   clock st t := { st with now := t }
   propose := propose
   act := fun _ _ k => k.elim
   pollPropose st _ := (nodeTick st, none)
   poll := poll
+  pollBatch := pollBatch
   gossip st _ :=
     match st.relayBuf with
     | [] => []
@@ -631,6 +672,10 @@ noncomputable def family (S : Setup) : ShapeFamily schema Info := fun pub =>
     poll := fun st t =>
       if hn : 1 ≤ pub.n then (fun _ => ((G hn).poll (st hn) t).1, ((G hn).poll (st hn) t).2)
       else (st, none)
+    pollBatch := fun st t =>
+      if hn : 1 ≤ pub.n then
+        (fun _ => ((G hn).pollBatch (st hn) t).1, ((G hn).pollBatch (st hn) t).2)
+      else (st, [])
     gossip := fun st t => if hn : 1 ≤ pub.n then (G hn).gossip (st hn) t else []
     process := fun st o hs hn => (G hn).process (st hn) o hs
     dependencies := dependencies pub.n

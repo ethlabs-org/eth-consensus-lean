@@ -104,7 +104,7 @@ omit [DecidableEq V] in
 theorem shapeOf_act_poll (st : (Model.protoOf (compiled (family S)) E).State) (t : Nat) :
     ((Model.protoOf (compiled (family S)) E).act st (.poll t)).1.1 hn =
       (poll (st.1 hn) t).1 := by
-  change ((family S (pubOf E)).poll st.1 t).1 hn = _
+  change ((family S (pubOf E)).pollBatch st.1 t).1 hn = _
   simp only [family, dite_eq_left hn]
   rfl
 

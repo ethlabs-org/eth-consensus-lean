@@ -6,9 +6,9 @@ public section
 /-! # Open network transport suppliers
 
 These are goals for the concrete publisher/simulation adapter, not extra premises of Accepted.
-The trace parameters are independent of `Setup.params`: the frozen family still has equal
-engine and protocol delays, and assuming a +1 equality for that family would be contradictory.
-Instantiation must use the future audited +1 family, not a cast justified by that equality.
+The trace parameters remain independent here. `Setup.params` now gives protocol delay
+Δp = Δe + 1; this endpoint slack does not instantiate any supplier below. For FG row service,
+ΔF := sp.Δ is the protocol bound, not the engine delay.
 All three suppliers include message, block, acceptance-relay and attestation service. Receipt
 alone proves none of the acceptance-relay fields. No supplier is claimed implemented here.
 -/

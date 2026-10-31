@@ -229,4 +229,50 @@ theorem outage_contract_window (S : Setup) (A : AcceptanceAssumptions S)
     Regimes.OutageWindowTimes (S.params pub hn) T b₀ b₁ :=
   acceptance_outage_times S A C pub hn T b₀ b₁ h
 
+/-- Actual successful cuts queue a parent and child at one timestamp, with the child's
+exact parent wrapper supplied by the persistent root map. Refusal queues neither. -/
+theorem acceptance_publication_order {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (A B : Blk sp)
+    (ha : A.parent = some sp.genesisRoot) (hb : B.parent = some A.root)
+    (hroot : A.root ≠ sp.genesisRoot) (hq : st.forwards = []) :
+    (apply st (st.node, [.fg (.block A true), .fg (.block B true)])).forwards =
+      [(st.now, [blockObj sp A]),
+       (st.now, [forwardObj sp st.self st.now none A, blockObj sp B])] ∧
+    (apply st (st.node, [.fg (.block A false)])).forwards = [] := by
+  simp [apply, queueAccepted, ha, hb, hroot, hq, Function.update]
+
+/-- The installed poll drains all timestamped wrappers in order and retains their durable map. -/
+theorem publisher_poll_drain {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time)
+    (hf : st.fgDue = false) (ho : st.outbox = []) :
+    (goldilocksShape sp ro).pollBatch st t =
+      ({ st with forwards := [] }, st.forwards.map fun p => (.forward p.1, p.2)) := by
+  simp [goldilocksShape, pollBatch, poll, hf, ho]
+  rfl
+
+/-- A duplicate block is refused by the actual node handler and creates no fresh candidate. -/
+theorem duplicate_no_publication {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp)
+    (hs : st.node.fg.blocks B.root = some B) :
+    (apply st (Node.onBlock st.self st.node st.now B)).forwards = st.forwards := by
+  unfold Node.onBlock
+  split
+  · rfl
+  · have hr : st.node.fg.onBlock B = none := by
+      unfold Store.onBlock
+      cases hp : B.parent <;> simp [hs]
+    rw [hr]
+    rfl
+
+/-- Wire equality alone cannot identify an accepted block's root: headers omit that field.
+Publication provenance must use decoding with the engine digest, not only `forwardObj` equality. -/
+theorem forwarding_root_alias (sp : SA.SAParams) (x : Fin sp.n) (t : Time)
+    (p : Option (Wire sp.n)) (B : Blk sp) :
+    forwardObj sp x t p { B with root := B.root + 1 } = forwardObj sp x t p B ∧
+      ({ B with root := B.root + 1 } : Blk sp) ≠ B := by
+  refine ⟨rfl, ?_⟩
+  intro h
+  have hr := congrArg (fun C : Blk sp => C.root) h
+  simp at hr
+
 end Consensus.Goldilocks.Refinement.Test

@@ -85,6 +85,18 @@ where it is recorded; "Francesco" marks the owner's decisions.
   changes. This interface extension is separate from installing the revised
   Goldilocks publisher. Delivery clocks need no change: `lastClock_deliver`
   and `now_eq_lastClock` already establish the receipt time from event order.
+- 2026-10-31, concrete Goldilocks publisher (#107, implementation in progress).
+  Successful block cuts, including own-proposal acceptance, enqueue signed
+  timestamped wrappers. Duplicate/refused calls do not enqueue them. A durable
+  node-root-to-wrapper map supplies the exact same-origin parent; the next
+  selected poll drains the event queue in acceptance order through `releaseAll`.
+  Missing non-genesis parents produce no candidate: a reachable-state invariant
+  must exclude this case. Candidate construction is not successful publication;
+  the five publication contracts still require actual prefix-guard and provenance
+  proofs. Existing vote/attestation polling remains before the forwarding drain.
+  No timing API or generic execution premise changes. The old singleton poll
+  release analyses must account explicitly for forwarding releases and their
+  additions to `seen`; they cannot be reused as equalities for the new batches.
 - 2026-10-31, Francesco (contract assumptions versus guarantees). Loose numbers
   are acceptable for latency, healing time and catch-up guarantees, not as a reason
   to strengthen assumptions. Choose progress recurrence as weak as the proofs allow:

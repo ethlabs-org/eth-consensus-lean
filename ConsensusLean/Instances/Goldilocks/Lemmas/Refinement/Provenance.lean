@@ -279,7 +279,7 @@ private theorem history_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
       unfold nodeTick
       split <;> exact h
     | poll t =>
-      change HasHistory _ (((family S (pubOf E)).poll nd.st.1 t).1 hn) signed
+      change HasHistory _ (((family S (pubOf E)).pollBatch nd.st.1 t).1 hn) signed
       simp only [family, dite_eq_left hn]
       change HasHistory _ (poll (nd.st.1 hn) t).1 signed
       exact history_poll h _
@@ -395,7 +395,7 @@ private theorem history_duty_sign {v : V} {signed : FG.Att (Fintype.card V) → 
       simp only [show (Model.protoOf (compiled (family S)) E).role (.poll k) = .poll from rfl,
         hsel, ↓reduceIte]
       apply history_release
-      change HasHistory _ (((family S (pubOf E)).poll nd.st.1 k).1 hn) _
+      change HasHistory _ (((family S (pubOf E)).pollBatch nd.st.1 k).1 hn) _
       simp only [family, dite_eq_left hn]
       exact hsign
     apply history_mono hall
@@ -937,7 +937,7 @@ private theorem queued_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
       obtain ⟨a, he, hv, ha⟩ := h w ((nodeTick_att _ _).mp hw)
       exact ⟨a, he, hv.trans (nodeTick_self _).symm, Or.inl ha⟩
     | poll t =>
-      change Queued (((family S (pubOf E)).poll nd.st.1 t).1 hn) _
+      change Queued (((family S (pubOf E)).pollBatch nd.st.1 t).1 hn) _
       simp only [family, dite_eq_left hn]
       apply queued_mono (poll_queued (nd.st.1 hn) t h).1
       intro a ha
@@ -1082,17 +1082,21 @@ private theorem duty_released_att {v : V} {signed : FG.Att (Fintype.card V) → 
       cases hm
     | poll t =>
       have hp : (poll (nd.st.1 hn) t).2 = some (.att (encodeAtt a), []) := by
-        change _ ∈ (((family S (pubOf E)).poll nd.st.1 t).2.toList.map
+        change _ ∈ (((family S (pubOf E)).pollBatch nd.st.1 t).2.map
           (fun (b, cs) => (Model.Msg.data b, cs))) at hm
         simp only [family, dite_eq_left hn] at hm
-        change _ ∈ ((poll (nd.st.1 hn) t).2.toList.map
+        change _ ∈ ((pollBatch (nd.st.1 hn) t).2.map
           (fun (b, cs) => (Model.Msg.data b, cs))) at hm
         obtain ⟨⟨b, cs⟩, hb, heq⟩ := List.mem_map.mp hm
         have hp := Prod.mk.inj heq
         have hb' := Model.Msg.data.inj hp.1
         have hcs' := hp.2
         subst b cs
-        exact Option.mem_toList.mp hb
+        simp only [pollBatch, List.mem_append] at hb
+        rcases hb with hb | hb
+        · exact Option.mem_toList.mp hb
+        obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
+        cases heq
       obtain ⟨b, hb, _, hs⟩ := (poll_queued (nd.st.1 hn) t h).2 _ _ hp
       have hab : a = b := by
         have hh := congrArg (decodeAtt (Fintype.card V)) hb

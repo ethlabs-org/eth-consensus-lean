@@ -410,32 +410,39 @@ theorem poll_poll_nil (st : State sp ro) (t t' : Time) (h : st.outbox.length ≤
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
 
+/-- Polling clears only pending forwarding candidates, not the durable wrapper map. -/
+theorem poll_forwards (st : State sp ro) (t : Time) : (poll st t).1.forwards = [] := by
+  unfold poll
+  dsimp only
+  split <;> rfl
+
 /-- The object a poll step of `v` releases for the body `b`. -/
 noncomputable abbrev pollObj (v : V) (b : Body) : (Model.protoOf (compiled (family S)) E).Object :=
   .mk (.signed (rho.ownKey v) .poll) (.data b) []
 
 omit [DecidableEq V] in
-/-- The candidate of the engine's poll duty is the shape's poll body. -/
+/-- The poll candidates are its ordinary body followed by fresh wrappers in queue order. -/
 theorem act_poll_snd (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Nat) :
     ((Model.protoOf (compiled (family S)) E).act nd.st (.poll t)).2 =
-      ((poll (shapeOf S hn nd) t).2.map (fun bc => (.data bc.1, bc.2))).toList := by
-  change (((family S (pubOf E)).poll nd.st.1 t).2.toList.map _) = _
+      ((poll (shapeOf S hn nd) t).2.map (fun bc => (.data bc.1, bc.2))).toList ++
+        (shapeOf S hn nd).forwards.map (fun p => (.data (.forward p.1), p.2)) := by
+  change (((family S (pubOf E)).pollBatch nd.st.1 t).2.map _) = _
   simp only [family, dite_eq_left hn]
-  exact Option.toList_map.symm
+  change List.map _ ((poll (nd.st.1 hn) t).2.toList ++
+    (nd.st.1 hn).forwards.map _) = _
+  erw [List.map_append, List.map_map, Option.toList_map]
+  rfl
 
 omit [DecidableEq V] in
-/-- The unchanged Goldilocks handlers still emit at most one candidate per duty. -/
+/-- Non-poll duties still emit at most one candidate. -/
 theorem act_candidates_length (st : (Model.protoOf (compiled (family S)) E).State)
-    (d : (Model.protoOf (compiled (family S)) E).Duty) :
+    (d : (Model.protoOf (compiled (family S)) E).Duty) (hd : ∀ t, d ≠ .poll t) :
     (((Model.protoOf (compiled (family S)) E).act st d).2).length ≤ 1 := by
   cases d with
   | propose s hs => exact Option.length_toList_le
   | act s k => cases k
   | pollPropose t => exact Option.length_toList_le
-  | poll t =>
-    change (List.map _ (((family S (pubOf E)).poll st.1 t).2.toList)).length ≤ 1
-    erw [List.length_map]
-    exact Option.length_toList_le
+  | poll t => exact False.elim (hd t rfl)
 
 omit [DecidableEq V] in
 /-- A duty step appends what it releases to `seen`. -/
@@ -448,9 +455,10 @@ theorem dutyStep_seen (v : V) (nd : Model.Node (Model.protoOf (compiled (family 
   · exact (List.append_nil _).symm
 
 omit [DecidableEq V] in
-/-- A duty step releases only objects whose carried objects the node has seen. -/
+/-- A non-poll duty's sole candidate carries only pre-duty holdings. Poll batches instead
+check each candidate against prefix holdings. -/
 theorem dutyStep_carried (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (d : (Model.protoOf (compiled (family S)) E).Duty) :
+    (d : (Model.protoOf (compiled (family S)) E).Duty) (hd : ∀ t, d ≠ .poll t) :
     ∀ c ∈ (rho.dutyStep v nd d).2, ∀ x ∈ c.carried, x ∈ Model.closure nd.seen := by
   intro c hc x hx
   unfold Model.Run.dutyStep at hc
@@ -461,9 +469,9 @@ theorem dutyStep_carried (v : V) (nd : Model.Node (Model.protoOf (compiled (fami
     rw [← hl]; unfold Model.Run.signedCandidate
     split
     · rw [List.length_map]
-      exact act_candidates_length S nd.st d
+      exact act_candidates_length S nd.st d hd
     · rw [List.length_map]
-      exact act_candidates_length S nd.st d
+      exact act_candidates_length S nd.st d hd
   match l, hlen with
   | [], _ => simp [Model.releaseAll] at hc
   | [c'], _ =>
@@ -478,16 +486,23 @@ theorem dutyStep_carried (v : V) (nd : Model.Node (Model.protoOf (compiled (fami
     · simp [Model.releaseAll] at hc
 
 omit [DecidableEq V] in
-/-- What a poll step releases: at most the poll object of the head of `pollPre`'s outbox. -/
+/-- A poll releases its ordinary head or one of its forwarding candidates. -/
 theorem dutyStep_poll_sub (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
     (t : Nat) : ∀ o ∈ (rho.dutyStep v nd (.poll t)).2,
-      ∃ b, (pollPre (shapeOf S hn nd)).outbox.head? = some b ∧ o = pollObj S rho v b := by
+      (∃ b, (pollPre (shapeOf S hn nd)).outbox.head? = some b ∧ o = pollObj S rho v b) ∨
+      ∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs := by
   intro o ho
   unfold Model.Run.dutyStep at ho
   split at ho <;> (try simp at ho)
   obtain ⟨m, cs, hact, -, rfl⟩ :=
     (rho.mem_signedCandidate).mp (Model.releaseAll_subset _ _ _ _ o ho)
   rw [act_poll_snd S hn, (poll_outbox _ _).2] at hact
+  rcases List.mem_append.mp hact with hact | hact
+  swap
+  · obtain ⟨⟨τ, cs'⟩, _, he⟩ := List.mem_map.mp hact
+    cases he
+    exact Or.inr ⟨τ, cs', rfl⟩
+  apply Or.inl
   cases hh : (pollPre (shapeOf S hn nd)).outbox.head? with
   | none =>
     simp only [hh, Option.map_none, Option.toList_none] at hact
@@ -506,7 +521,7 @@ theorem dutyStep_poll_rel (v : V) (nd : Model.Node (Model.protoOf (compiled (fam
     (hb : (pollPre (shapeOf S hn nd)).outbox.head? = some b)
     (hp : Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v) nd.seen
       (pollObj S rho v b) = true) :
-    (rho.dutyStep v nd (.poll t)).2 = [pollObj S rho v b] := by
+    pollObj S rho v b ∈ (rho.dutyStep v nd (.poll t)).2 := by
   unfold Model.Run.dutyStep
   simp only [show (Model.protoOf (compiled (family S)) E).role (.poll t) = .poll from rfl,
     hsel, ↓reduceIte]
@@ -514,14 +529,14 @@ theorem dutyStep_poll_rel (v : V) (nd : Model.Node (Model.protoOf (compiled (fam
   have hrole : (Model.protoOf (compiled (family S)) E).role (.poll t) = .poll := rfl
   simp only [Option.map_some, Option.toList_some, Model.Run.signedCandidate, hrole]
   rw [ite_eq_left hsel]
-  erw [List.map_cons, List.map_nil]
+  erw [List.singleton_append, List.map_cons]
   have hc : (Model.releasable nd.seen (pollObj S rho v b) &&
       Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v) nd.seen
         (pollObj S rho v b)) = true :=
     Bool.and_eq_true_iff.2 ⟨by simp [Model.releasable, Model.Obj.carried], hp⟩
   unfold Model.releaseAll
   split
-  · rfl
+  · exact List.mem_cons_self
   · rename_i h
     apply False.elim
     apply h
@@ -593,7 +608,7 @@ theorem dutyStep_propose_shape (v : V)
       ∃ c hs', shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1 =
         recordOwn (propose (shapeOf S hn nd) s).1 c hs' := by
   have hact1 := shapeOf_act_propose S hn nd.st s hs
-  have hlen := act_candidates_length S nd.st (.propose s hs)
+  have hlen := act_candidates_length S nd.st (.propose s hs) (fun _ h => by cases h)
   unfold Model.Run.dutyStep
   simp only [show (Model.protoOf (compiled (family S)) E).role (.propose s hs) =
     .proposer s from rfl, hsel, ↓reduceIte]
@@ -872,7 +887,7 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
               unfold poll
               simp only [hf, Bool.false_eq_true, ite_false]
               rcases hq with ⟨hvotes, hnil | ⟨b, hb, hslot⟩⟩
-              · simp only [hnil]; exact ⟨hf, hn', hvotes, Or.inl hnil⟩
+              · simp only [hnil]; exact ⟨trivial, hn', (by simp), Or.inl rfl⟩
               · simp only [hb]
                 exact ⟨trivial, hn', (by simp), Or.inl rfl⟩)
             (by
@@ -937,7 +952,11 @@ theorem deliver_not_att (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
   · rw [deliverDuties_eq S t ht] at h
     erw [Model.Run.runDuties_cons, Model.Run.runDuties_nil] at h
     simp only [List.append_nil] at h
-    obtain ⟨b, hb, heq⟩ := dutyStep_poll_sub S rho hn v _ _ _ h
+    rcases dutyStep_poll_sub S rho hn v _ _ _ h with ⟨b, hb, heq⟩ | ⟨τ, cs, heq⟩
+    swap
+    · have hmsg := congrArg Model.Obj.msg heq
+      change Model.Msg.data (Body.att (encodeAtt a)) = Model.Msg.data (Body.forward τ) at hmsg
+      cases hmsg
     have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
       (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
     change (pollPre (process (stateAt S rho hn v i) o (Model.digests rho.hash o))).outbox.head? =
@@ -990,9 +1009,7 @@ theorem pending_released (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
   refine List.mem_append_left _ ?_
   have hsel : rho.ownKey v ∈ rho.sel .poll := by
     rw [selValid_poll S rho hv.selValid]; exact Finset.mem_univ _
-  have key : ∀ l, l = [pollObj S rho v b] → pollObj S rho v b ∈ l :=
-    fun l hl => hl ▸ List.mem_singleton_self _
-  refine key _ (dutyStep_poll_rel S rho hn v _ _ hsel (b := b) ?_ ?_)
+  refine dutyStep_poll_rel S rho hn v _ _ hsel (b := b) ?_ ?_
   · have hf := fgDue_eq_false S rho hn v j
     change (pollPre { stateAt S rho hn v j with now := t }).outbox.head? = some b
     unfold pollPre
@@ -1107,6 +1124,82 @@ theorem releasedFrom_of_pending (hv : rho.ExecutionValid) {i : Nat}
 
 
 end Pending
+
+section ForwardingQueue
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+
+omit [DecidableEq V] in
+/-- Unsigned gossip does not alter pending signed publications. -/
+theorem gossip_forwards (k : Fin (Fintype.card V))
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Time) :
+    (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E) rho.hash k nd
+      (Model.gossipCandidates (Model.protoOf (compiled (family S)) E) nd.st t)).1).forwards =
+      (shapeOf S hn nd).forwards := by
+  suffices h : ∀ (nd' : Model.Node (Model.protoOf (compiled (family S)) E))
+      (cs : List (Model.protoOf (compiled (family S)) E).Object), (∀ c ∈ cs, c.auth = .none) →
+      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E) rho.hash k nd'
+        cs).1).forwards = (shapeOf S hn nd').forwards from
+    h _ _ fun c hc => by
+      obtain ⟨mc, -, rfl⟩ := Model.mem_gossipCandidates.mp hc
+      rfl
+  intro nd' cs
+  induction cs generalizing nd' with
+  | nil => intro _; rfl
+  | cons c cs ih =>
+    intro hc
+    unfold Model.releaseAll
+    split
+    · rw [ih _ fun c' h => hc c' (List.mem_cons_of_mem _ h)]
+      obtain ⟨a, m, cs'⟩ := c
+      have : a = .none := hc _ List.mem_cons_self
+      subst this
+      change (recordOwn (shapeOf S hn nd') (.mk .none m cs') _).forwards = _
+      cases m with
+      | item h => rfl
+      | data b => cases b <;> rfl
+    · exact ih _ fun c' h => hc c' (List.mem_cons_of_mem _ h)
+
+/-- Every honest event drains the forwarding queue; restarts retain an already empty queue.
+This is a queue fact, not a claim that every candidate passed its release guard. -/
+theorem forwards_empty (hv : rho.ExecutionValid) (v : V) :
+    ∀ i, (stateAt S rho hn v i).forwards = []
+  | 0 => rfl
+  | i + 1 => by
+    have ih := forwards_empty hv v i
+    cases he : rho.events[i]? with
+    | none => rw [stateAt_succ_none S rho hn v he]; exact ih
+    | some ev =>
+      by_cases hnode : ev.node = v
+      · have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
+        cases ev with
+        | tick w t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          rw [stateAt_tick S rho hn v he]
+          rw [tick_of_awake S rho v _ t (hv.tick_awake v t (List.mem_of_getElem? he)),
+            gossip_forwards, duties_eq S t ht, runDuties_fst_append]
+          change (shapeOf S hn (rho.dutyStep v _ (.poll t.toNat)).1).forwards = []
+          rw [dutyStep_poll S rho hn _ _ _ (poll_selected S rho hv v)]
+          exact poll_forwards _ _
+        | deliver w o t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          rw [stateAt_deliver S rho hn v he]
+          unfold Model.Run.deliver
+          rw [gossip_forwards, deliverDuties_eq S t ht]
+          erw [runDuties_fst_cons, runDuties_fst_nil,
+            dutyStep_poll S rho hn _ _ _ (poll_selected S rho hv v)]
+          exact poll_forwards _ _
+        | restart w t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          rw [stateAt_restart S rho hn v he]
+          exact ih
+      · rw [state_of_other S rho hn v i ev he hnode]; exact ih
+
+end ForwardingQueue
 
 end Consensus.Goldilocks.Refinement
 

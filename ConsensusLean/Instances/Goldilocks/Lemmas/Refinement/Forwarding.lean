@@ -146,10 +146,12 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- OPEN: honest signed publication must originate in actual acceptance at the stamp.
 Argument: only the acceptance handler queues these candidates; authentication rules out
-other honest origins. This must be proved about the revised producer, not the parser. -/
+other honest origins. The engine digest identifies the root omitted by the wire header
+(#122); wire equality alone does not identify B. This remains a producer obligation. -/
 def ForwardOrigin : Prop :=
   ∀ r, pubExec.actual r → rho.key r.origin ∈ rho.honest → ∀ t p B,
-    r.object = forwardObj (S.params (pubOf E) hn) r.origin t p B →
+    decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
+      some (r.origin, t, p, B) →
     ∃ k, tr.AcceptAt r.origin k B ∧ tr.time k = t ∧
       k < cutMap (r.event + 1) ∧ t = pubExec.eventTime r.event
 
@@ -168,19 +170,23 @@ def ForwardAtAcceptance : Prop :=
 same-event publication order is candidate order, not strict timestamp order. -/
 def ForwardParentEarlier : Prop :=
   ∀ r, pubExec.actual r → rho.key r.origin ∈ rho.honest → ∀ t p B,
-    r.object = forwardObj (S.params (pubOf E) hn) r.origin t (some p) B →
+    decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
+      some (r.origin, t, some p, B) →
     ∃ q A pt pp ka kb, pubExec.actual q ∧ Publication.Before q r ∧ q.origin = r.origin ∧
       q.object = p ∧ p = forwardObj (S.params (pubOf E) hn) r.origin pt pp A ∧
+      decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash p) p =
+        some (r.origin, pt, pp, A) ∧
       B.parent = some A.root ∧ tr.AcceptAt r.origin ka A ∧ tr.AcceptAt r.origin kb B ∧
       ka < kb ∧ tr.time ka = pt ∧ tr.time kb = t
 
 /-- OPEN: recursive receipt processing turns prior authenticated holdings into prior calls;
 own publications instead use actual acceptance. Refused calls do not establish acceptance. -/
 def ForwardHeldProcessed : Prop :=
-  ∀ y ∈ honestKeys S rho, ∀ i x t p B,
+  ∀ y ∈ honestKeys S rho, ∀ i x t p B o,
     x ∈ honestKeys S rho →
-    forwardObj (S.params (pubOf E) hn) x t p B ∈
-      Model.closure (rho.stateBefore i (rho.key y)).seen →
+    o ∈ Model.closure (rho.stateBefore i (rho.key y)).seen →
+    decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B) →
     ∃ k < cutMap i, t ≤ tr.time k ∧
       (tr.BlockCallAt y k B ∨ y = x ∧ tr.AcceptAt y k B)
 
