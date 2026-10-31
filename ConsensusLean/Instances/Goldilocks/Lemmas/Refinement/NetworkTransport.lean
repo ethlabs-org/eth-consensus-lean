@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 
 public section
 
@@ -113,5 +114,32 @@ theorem publication_held_syncUntil (hn : 1 ≤ Fintype.card V) {b : Time}
   exact ⟨hnet.msgs _ hx _ _
     ⟨r.event, (publisherExecution S rho).actual_event r hr,
       (publisherExecution S rho).actual_release r hr⟩ y hy a ha hlt.le hh hawake, hlt⟩
+
+/-- Delivery of an honest publication yields a real block call at receipt time, no earlier
+than its source event. A bounded receipt therefore gives a strictly protocol-bounded call.
+This includes refused calls; it does not establish acceptance or supply network delivery. -/
+theorem publication_received_blockCall (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    {i : Nat} {v : V} {receipt : Wire (Fintype.card V)} {t u base : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (he : rho.events[i]? = some (.deliver v receipt u))
+    (hc : Model.Obj.Contains receipt r.object)
+    (hd : decodeForward (S.params (Model.pubOf E) hn)
+      (Model.digests rho.hash r.object) r.object = some (r.origin, t, p, B))
+    (hu : u ≤ base + E.Δ) :
+    ∃ k < cutMap S rho hn (i + 1),
+      (simTrace S rho hn).BlockCallAt (rho.ownKey v) k B ∧
+      (simTrace S rho hn).time k = u ∧
+      (publisherExecution S rho).eventTime r.event ≤ (simTrace S rho hn).time k ∧
+      (simTrace S rho hn).time k < base + (S.params (Model.pubOf E) hn).Δ := by
+  have htu := received_forward_stamp_le S rho hn hv he hc hx hd
+  obtain ⟨k, hk, hcall, htime⟩ := received_forward_blockCall S rho hn he hc hd htu
+  refine ⟨k, hk, hcall, htime, ?_, ?_⟩
+  · rw [htime, ← publication_forward_stamp S rho hn hv r hr hd]
+    exact htu
+  · rw [htime]
+    exact delivery_endpoint_slack base u E.Δ (S.params (Model.pubOf E) hn).Δ rfl hu
 
 end Consensus.Goldilocks.Refinement
