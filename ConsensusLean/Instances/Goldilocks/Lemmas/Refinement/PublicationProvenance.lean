@@ -1882,6 +1882,50 @@ theorem received_forward_accepted (hv : rho.ExecutionValid)
     exact False.elim (hp (hgen ▸ rfl))
   · exact ⟨k, hk.trans_le hej, ha⟩
 
+/-- A historical receipt before a strict deadline gives an acceptance before that
+deadline. The acceptance is bounded by its actual source event, never by the time
+of the next cut (which may belong to a later event or terminal filler). -/
+theorem received_forward_accepted_before (hv : rho.ExecutionValid)
+    (hrun : GoldilocksRun (runProposer S rho hn) (digestOf S rho)
+      (honestKeys S rho) (simTrace S rho hn))
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V)}
+    {x : Fin (Fintype.card V)} {u t deadline : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (he : rho.events[i]? = some (.deliver v receipt u)) (hy : v ∈ rho.honest)
+    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∈ rho.honest)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B))
+    (hij : cutMap S rho hn (i + 1) ≤ j)
+    (hFB : Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
+      ((simTrace S rho hn).state (rho.ownKey v) j).fg.F B)
+    (hu : u < deadline) :
+    ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).AcceptAt (rho.ownKey v) k B ∧
+      (simTrace S rho hn).time k ≤ u ∧ (simTrace S rho hn).time k < deadline := by
+  have hy' : rho.ownKey v ∈ honestKeys S rho := by
+    change rho.key (rho.ownKey v) ∈ rho.honest
+    simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using hy
+  have hFB' := (Healing.run_F_mono hrun.toLocalRun hy' hij).trans hFB
+  obtain ⟨k, hk, ha⟩ := received_forward_accepted S rho hn hv hrun hnc
+    he hy hc hx hd le_rfl hFB'
+  obtain ⟨r, q, ev, _, hq, hstart, _, _, _, ht, _⟩ :=
+    simTrace_cut S rho hn (by rw [ha.2]; simp)
+  have hqi : q ≤ i := by
+    by_contra h
+    have hm : cutMap S rho hn (i + 1) ≤ cutMap S rho hn q :=
+      cutMap_mono S rho hn (by omega)
+    exact (not_lt_of_ge (hm.trans hstart)) hk
+  have htime : (simTrace S rho hn).time k ≤ u := by
+    rw [ht]
+    rcases hqi.lt_or_eq with hlt | rfl
+    · rcases keyLe_of_index_lt S rho hv hq he hlt with h | h
+      · exact h.le
+      · exact h.1.le
+    · rw [he] at hq
+      cases hq
+      exact le_rfl
+  exact ⟨k, hk, ha, htime, htime.trans_lt hu⟩
+
 /-- Prior authenticated holdings give a prior receipt call or an own acceptance.
 The receipt alternative deliberately retains refusal as a possibility. -/
 theorem simTrace_forwardHeldProcessed (hv : rho.ExecutionValid) :
