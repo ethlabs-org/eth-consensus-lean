@@ -16,6 +16,9 @@ public import ConsensusLeanTest.GoldilocksRefinement
 public import ConsensusLeanTest.GoldilocksRun
 public import ConsensusLeanTest.GoldilocksTickRun
 public import ConsensusLeanTest.GoldilocksWitness
+public import ConsensusLeanTest.GoldilocksWitnessChain
+public import ConsensusLeanTest.GoldilocksWitnessRun
+public import ConsensusLeanTest.GoldilocksWitnessTicks
 public import ConsensusLeanTest.Good
 public import ConsensusLeanTest.Index
 public import ConsensusLeanTest.Leaks

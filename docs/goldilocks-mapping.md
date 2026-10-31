@@ -703,12 +703,15 @@ Modelling choices:
   accepted by the node with the slot's proposer (seen in a proposal role, for `Provenant`).
 - **Witnesses** (`ConsensusLeanTest/GoldilocksWitness`, #69): the one-validator tick run (`n = 1`, `f = 0`, `Δ = 1`,
   awake and ticking at every time) is a `GoldilocksRun` (kind (a), `tickRun_goldilocksRun`) with `Sync` for every
-  window, `Healthy(g)`, `Catch(κ)` and the HS shared premises (kind (a)). `HealedPremises`, `PatternPremises` and
-  `FinalPremises` are reduced to facts of that run's behaviour, hypotheses of `tickRun_healedPremises`,
-  `tickRun_patternPremises`, `tickRun_finalPremises`: the reset (`IsReset`), H.3 (c)'s bridge (`BridgeAt`) and
-  `UPat(1, M)`'s retained inclusion (open, W3); a ready proposal at every slot `≥ 1` (`tickRun_readyProposal`) and
-  `Prop⁺(G_p)` for `G_p ≥ 4Δ` (`tickRun_propPlus`) are proved. `n = 1` shows the premises consistent, not met with faults (a faulty
-  witness is a follow-up). R.7 and R.8 have no premise beyond the run laws (and `NoColl`, `f < 2q − n` where
+  window, `Healthy(g)`, `Catch(κ)` and the HS shared premises (kind (a)), with a ready proposal at every slot `≥ 1`
+  (`tickRun_readyProposal`) and `Prop⁺(G_p)` for `G_p ≥ 4Δ` (`tickRun_propPlus`). `HealedPremises`, `PatternPremises`
+  and `FinalPremises` hold outright (`healedPremises_tickRun`, `patternPremises_tickRun`, `finalPremises_tickRun` in
+  `GoldilocksWitnessRun`, W3; the run computed tick by tick in `GoldilocksWitnessChain`, `GoldilocksWitnessTicks`):
+  the reset is `a_z = t_{slot(ḡ)+4}` (`tickRun_isReset`), H.3 (c)'s bridge holds with `Inv(t₀)` for every `t₀` and
+  `Geo` required of no proposal, since each own block raises the frontier between its proposal and its votes, so no
+  proposal lies in one settled effective phase (`not_inSettledPhase`; the witness does not exercise `Geo`, which fails
+  on this run), and `UPat(1, M)` with its retained inclusion (`tickRun_upat`). `n = 1` shows the premises consistent,
+  not met with faults (a faulty witness is a follow-up). R.7 and R.8 have no premise beyond the run laws (and `NoColl`, `f < 2q − n` where
   stated).
 
 ## Refinement
