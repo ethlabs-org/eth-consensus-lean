@@ -20,8 +20,8 @@ The bookkeeping of the bodies (votes and attestations) an honest node queues for
   most one vote between them (the AC votes on its tick at `t_s + Δ`, on its own block only at
   `t_s`), so the two trailing polls leave the outbox empty.
 * **At most one vote queued at every cut** (`outbox_inv`), and the queued bodies go out at the
-  next tick (`pending_released`). Delivery polls also drain votes; exact-time release from
-  a pending body remains an open obligation (`releasedFrom_of_pending`). -/
+  next tick (`pending_released`). Delivery polls also drain votes; the outbox is empty between
+  engine events (`outbox_empty`), discharging `releasedFrom_of_pending`. -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -953,16 +953,79 @@ theorem pending_released (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
   · obtain ⟨w, rfl⟩ := hvote b hb
     exact protects_of_not_att S _ _ _ (fun k w' h => by cases h)
 
-/-- **A body pending after an event was released at that event's time** (open). The
-tick-only persistence proof does not establish this exact-time obligation. -/
+/-- A delivery's poll drains its at-most-one queued vote. -/
+private theorem outbox_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+    {o : (Model.protoOf (compiled (family S)) E).Object}
+    (he : rho.events[i]? = some (.deliver v o t)) :
+    (stateAt S rho hn v (i + 1)).outbox = [] := by
+  have hm := List.mem_of_getElem? he
+  have ht := (hv.in_horizon _ hm).1
+  have hnow : (stateAt S rho hn v i).now = t :=
+    (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
+  have hpre : OneVote t (stateAt S rho hn v i) := by
+    rcases (outbox_inv S rho hn hv v (hv.honest_only _ hm) i).2 with h | h
+    · exact absurd h (not_lastRestart_deliver S rho hv he)
+    · rwa [hnow] at h
+  have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht
+    (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) hnow hpre
+  have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
+    (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
+  rw [stateAt_deliver S rho hn v he]
+  unfold Model.Run.deliver
+  rw [gossip_outbox, deliverDuties_eq S t ht]
+  erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll]
+  change (poll (process (stateAt S rho hn v i) o (Model.digests rho.hash o)) t.toNat).1.outbox = []
+  rw [(poll_outbox _ _).1, pollPre_eq, hf]
+  simp only [Bool.false_eq_true, ite_false]
+  change OneVote t (process (stateAt S rho hn v i) o (Model.digests rho.hash o)) at hproc
+  rcases hproc.2 with h | ⟨b, h, -⟩ <;> rw [h] <;> rfl
+
+/-- Honest nodes have no pending bodies between engine events: ticks and deliveries drain
+their queues, and restarts emit nothing. -/
+private theorem outbox_empty (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
+    ∀ i, (stateAt S rho hn v i).outbox = []
+  | 0 => rfl
+  | i + 1 => by
+    have ih := outbox_empty hv v hv' i
+    cases he : rho.events[i]? with
+    | none => rw [stateAt_succ_none S rho hn v he]; exact ih
+    | some ev =>
+      by_cases hnode : ev.node = v
+      · cases ev with
+        | tick w t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          rw [stateAt_tick S rho hn v he]
+          exact outbox_after_tick S rho hn v _ t
+            (hv.in_horizon _ (List.mem_of_getElem? he)).1
+            (hv.tick_awake v t (List.mem_of_getElem? he)) (fgDue_eq_false S rho hn v i)
+            (by change (stateAt S rho hn v i).outbox.length ≤ 1; rw [ih]; simp)
+        | deliver w o t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          exact outbox_after_deliver S rho hn hv he
+        | restart w t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          rw [stateAt_restart S rho hn v he]
+          have hnil := restart_emits_nil (S.ro _) (rho.ownKey v)
+            (stateAt S rho hn v i).node.ac (frame (stateAt S rho hn v i).node) t
+            (hv.in_horizon _ (List.mem_of_getElem? he)).1
+          change (stateAt S rho hn v i).outbox ++ emitted [Cut.ac ⟨.restart, _, _⟩] = []
+          rw [hnil, ih]
+          simp [emitted]
+      · rw [state_of_other S rho hn v i ev he hnode]; exact ih
+
+/-- **A body pending after an event was released at that event's time.** In this engine
+there is no pending body after an honest event. -/
 theorem releasedFrom_of_pending (hv : rho.ExecutionValid) {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
     (he : rho.events[i]? = some ev) {b : Body}
     (hb : b ∈ (stateAt S rho hn ev.node (i + 1)).outbox) :
     ReleasedFrom S rho ev.node
       (Model.Obj.mk (.signed (rho.ownKey ev.node) .poll) (.data b) []) ev.time := by
-  -- Delivery polls drain the queue too; the tick-only persistence argument no longer applies.
-  sorry
+  rw [outbox_empty S rho hn hv ev.node (hv.honest_only _ (List.mem_of_getElem? he))] at hb
+  exact absurd hb List.not_mem_nil
 
 
 end Pending
