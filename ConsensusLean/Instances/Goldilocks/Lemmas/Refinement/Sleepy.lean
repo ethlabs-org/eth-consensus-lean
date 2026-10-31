@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
@@ -269,7 +270,7 @@ theorem sleepy_include_finite (hv : rho.ExecutionValid)
       (Regimes.readAfter (simTrace S rho hn) y j t) := by
   sorry
 
-/-- OPEN finite R.2 growth consumer (owner: Regimes/Refinement). Select a ready scheduled
+/-- Finite R.2 growth consumer (owner: Regimes/Refinement). Select a ready scheduled
 producer in `(t, t+4kΔ]`, leaving `6Δ` before `b = t+(4k+6)Δ`. Apply finite inclusion and
 finite safety; slot bounds exclude the new block from every earlier ready read. The explicit
 upper producer bound is needed to transport release/proposal evidence inside the horizon.
@@ -285,7 +286,7 @@ theorem sleepy_grow_finite (hv : rho.ExecutionValid)
       (simTrace S rho hn).FaultBound (honestKeys S rho) ((S.params (pubOf E) hn).ts s + d))
     (hrec : Regimes.ProposerRecurrence (simTrace S rho hn) (honestKeys S rho)
       (runProposer S rho hn) (Regimes.catchUp (S.params (pubOf E) hn)) k 0 b)
-    (hreader : ∃ v, Regimes.ReadyAt (simTrace S rho hn) (honestKeys S rho)
+    (_hreader : ∃ v, Regimes.ReadyAt (simTrace S rho hn) (honestKeys S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) v b) :
     ∃ τ P, t < τ ∧ τ + 6 * (S.params (pubOf E) hn).Δ ≤ b ∧
       Regimes.ReadyProposalAt (simTrace S rho hn) (honestKeys S rho)
@@ -306,7 +307,79 @@ theorem sleepy_grow_finite (hv : rho.ExecutionValid)
           Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
             (Regimes.readAfter (simTrace S rho hn) x jx t)
             (Regimes.readAfter (simTrace S rho hn) y j b) := by
-  sorry
+  let sp := S.params (pubOf E) hn
+  let tr := simTrace S rho hn
+  let H := honestKeys S rho
+  have hrun := simTrace_goldilocksRun S rho hn hv
+  have hΔ := sp.toParams.hΔ
+  have hcoh := Compose.honest_blocks_coherent hrun.toLocalRun hnc
+  have hb0 : 0 ≤ b := by rw [hb]; positivity
+  set s₀ := sp.slot t + 1
+  have hts₀ : t < sp.ts s₀ := by
+    by_contra h
+    have := (SA.ts_le_iff_le_slot sp ht (s₀ : Int)).1 (not_lt.1 h)
+    omega
+  have hts₀' : sp.ts s₀ ≤ t + 4 * sp.Δ := by
+    have := (SA.ts_le_iff_le_slot sp ht (sp.slot t : Int)).2 le_rfl
+    simp only [SA.SAParams.ts] at this ⊢
+    push_cast [s₀]
+    linarith
+  obtain ⟨s, hs₀s, hss, hready⟩ := hrec s₀ (lt_of_le_of_lt ht hts₀) (by
+    rw [hb]
+    simp only [SA.SAParams.ts] at hts₀' ⊢
+    have h1k : (1 : Time) ≤ k := by exact_mod_cast hk
+    rw [show ((s₀ + k - 1 : Nat) : Time) = (s₀ : Time) + k - 1 by
+      rw [Nat.cast_sub (by omega)]; push_cast; ring]
+    nlinarith)
+  have hts : t < sp.ts s :=
+    lt_of_lt_of_le hts₀ ((SA.ts_le_iff sp).2 (by exact_mod_cast hs₀s))
+  have htsD : sp.ts s + 6 * sp.Δ ≤ b := by
+    have : sp.ts s ≤ sp.ts (s₀ + (k - 1) : Nat) :=
+      (SA.ts_le_iff sp).2 (by push_cast; omega)
+    rw [hb]
+    simp only [SA.SAParams.ts] at this hts₀' ⊢
+    push_cast at this hts₀' ⊢
+    rw [show ((k - 1 : Nat) : Time) = k - 1 by rw [Nat.cast_sub hk]; simp] at this
+    nlinarith
+  obtain ⟨kP, P, hP, hkP⟩ := Regimes.ready_proposer_proposes hrun hnc (by omega) hready
+  have hPslot : P.slot = s := by
+    have h := hP.2.2
+    rw [hkP, sp.slotTime_eq] at h
+    simp only [SA.SAParams.ts] at h
+    have := SA.four_delta_pos sp
+    exact_mod_cast (mul_left_cancel₀ this.ne' h).symm
+  have hRP : Regimes.ReadyProposalAt tr H (Regimes.catchUp sp) (sp.ts s) P :=
+    ⟨_, kP, hready, hP, hkP⟩
+  have hinc : ∀ y j, Regimes.ReadyAt tr H (Regimes.catchUp sp) y b →
+      Regimes.CutAfter tr j b → Anc (tr.HonestBlocks H) P (Regimes.readAfter tr y j b) :=
+    fun y j hy hj => sleepy_include_finite S rho hn hv hnc hb0 hbh hsync hf
+      (ht.trans hts.le) (by linarith) hRP htsD le_rfl hy hj
+  have hnot : ∀ x jx, Regimes.ReadyAt tr H (Regimes.catchUp sp) x t →
+      Regimes.CutAfter tr jx t → ¬ Anc (tr.HonestBlocks H) P (Regimes.readAfter tr x jx t) := by
+    intro x jx hx hjx hPx
+    have hΦ := Compose.frameOK_state hrun.toLocalRun hx.1 jx
+    have hmem := (Regimes.sa_tips (A := (tr.state x jx).ac) hΦ t).1
+    have hXs : (Regimes.readAfter tr x jx t).slot ≤ sp.slot t := by
+      change (SA.acConfirmed sp (tr.state x jx).ac (Node.frame (tr.state x jx)) t).slot ≤ _
+      rcases Compose.tree_cases hrun.toLocalRun hx.1 hmem.1 with hg | ⟨q, hq, hacc⟩
+      · rw [hg]; exact Nat.zero_le _
+      · exact ((hrun.cutLaw x hx.1 q _ hacc).1).trans
+          (SA.slot_mono sp (hrun.time_nonneg q) (hjx.1 q hq))
+    have := (Anc.slot_le hcoh hPx).1
+    have hslt : sp.slot t < s := by
+      by_contra h
+      have := (SA.ts_le_iff_le_slot sp ht (s : Int)).2 (by omega)
+      linarith
+    omega
+  refine ⟨sp.ts s, P, hts, htsD, hRP, hinc,
+    fun x jx hx hjx => ⟨hnot x jx hx hjx, fun y j hy hj => ?_⟩⟩
+  have hsafe := sleepy_safe_finite S rho hn hv hnc hb0 hbh hsync hf
+  have hcompat := hsafe.1 x y jx j t b ⟨hjx.1, hjx.2.le⟩ ⟨hj.1, hj.2.le⟩
+    (Regimes.cutAfter_boundary hrun hx.1 hjx) (Regimes.cutAfter_boundary hrun hy.1 hj)
+    ht (by linarith) hb0 le_rfl hx hy
+  rcases hcompat with h | h
+  · exact h
+  · exact absurd ((hinc y j hy hj).trans h) (hnot x jx hx hjx)
 
 /-- OPEN missing grid supplier (owner: family/timing integration). Single-pattern engine
 recurrence must become node recurrence at exactly the same selected schedule. This is only

@@ -423,7 +423,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Statements.Refinement",
          "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
          "Instances.Goldilocks.Lemmas.FGStore", "Instances.Goldilocks.Lemmas.AC",
-         "Instances.Goldilocks.Lemmas.Compose"]
+         "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Healing"]
 
 [[layer]]
 name = "Instances.Goldilocks.Proofs.FGSafety"
@@ -565,7 +565,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Statements.Refinement",
          "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
          "Instances.Goldilocks.Lemmas.FGStore", "Instances.Goldilocks.Lemmas.AC",
-         "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Refinement"]
+         "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Healing",
+         "Instances.Goldilocks.Lemmas.Refinement"]
 about = "Goldilocks milestone"
 
 [[layer]]

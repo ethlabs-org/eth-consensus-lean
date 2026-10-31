@@ -588,6 +588,7 @@ overlap); `allow` lists the layers it may import, written out in full:
 | `Main` | the above, every `Proofs.<M>` |
 | `Instances.<P>.Spec` | Init, ToMathlib, Core, Spec |
 | `Instances.Goldilocks.*` (one layer per component and level: `Spec.{Common,FG,Frame,Trace,FGStore,AC,SA,Node,Run}`, `Spec.Baseline` and `Statements.Baseline` (until `Baseline.lean` retires), `Refinement.Defs`, `Statements.*`, `Lemmas.*`, `Proofs.<M>`, `Main`) | its row in `scripts/boundaries.toml`: no FG layer imports an AC or SA layer and no AC or SA layer an FG layer; `Statements.FG` reaches only the chain-level FG |
+| `Instances.Goldilocks.Lemmas.Refinement` | its row above, including `Lemmas.Healing` for finite regime consumers and healing/final adapters; Healing cannot import Refinement |
 | `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`, `Instances.Goldilocks.Proofs.ACBase`, `Instances.Goldilocks.Proofs.ACSteps`, `Instances.Goldilocks.Proofs.FGStore`, `Instances.Goldilocks.Proofs.ComposeAnyAC`, `Instances.Goldilocks.Proofs.Persist`, `Instances.Goldilocks.Proofs.Regimes` and `Instances.Goldilocks.Proofs.Service`, with `Instances.Goldilocks.Lemmas.Healing`, which holds R.2's proofs) |
 | `Test` (`ConsensusLeanTest`) | everything above; library roots, import-only aggregates, `import all` |
 
