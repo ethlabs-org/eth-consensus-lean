@@ -80,17 +80,19 @@ def WeakSafe : Prop :=
     GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T →
     ∀ t₁, ReadySafeOn tr H (catchUp sp) T t₁
 
-/-- **R.6, `weakCrossNest`.** Under `Weak`: from `T` on, every ready finalized read is an ancestor
-of every ready confirmed read at the same time. -/
+/-- **R.6, `weakCrossNest`** (corrected, consensus-lean#104, as R.3's `CrossNest`). Under
+`Weak`, from `T` on: (1) at one time, every ready finalized read is compatible with every ready
+confirmed read; (2) the finalized read of a node ready at `t` is an ancestor of the confirmed read
+of every node ready at every `t' ≥ t + Δ`. -/
 def WeakCrossNest : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
     GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T →
-    ∀ t x y i j, T ≤ t → ReadPoint tr i t → ReadPoint tr j t →
-      Boundary tr x i → Boundary tr y j →
-      ReadyAt tr H (catchUp sp) x t → ReadyAt tr H (catchUp sp) y t →
-      Anc (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t)
+    ∀ t t' x y i j, T ≤ t → t ≤ t' → ReadPoint tr i t → ReadPoint tr j t' → Boundary tr x i →
+      Boundary tr y j → ReadyAt tr H (catchUp sp) x t → ReadyAt tr H (catchUp sp) y t' →
+      (t' = t → Compatible (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t')) ∧
+      (t + sp.Δ ≤ t' → Anc (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t'))
 
 /-- **R.6, `weakInclude`.** Under `Weak` and unanimity from `T` (H.4's open `(U_all)` form, as
 `IncludeHealed`): every honest proposal released at `τ ≥ T + 8Δ` by a

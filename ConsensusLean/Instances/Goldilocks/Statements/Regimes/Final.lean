@@ -32,8 +32,8 @@ read `Σ.F` of the node's state (`(tr.state y j).fg.F`).
 
 **Open proof items** (obligations, not premises): C1.3's proposer is ready at its release (from
 `Healthy` and `T ≥ ḡ + T_rec`); no honest read at `t` holds a block of a slot starting after `t`;
-`LiveDC`'s last clause from `HealedSafe` and `CrossNest` at `t + D_fin` (so R.4 inherits R.3's
-open proof items).
+`LiveDC`'s last clause from `HealedSafe` and the reader's own nesting `Σ.F ⪯ confirmed` (C0.1)
+at `t + D_fin` (so R.4 inherits R.3's open proof items, but not the cross-node `CrossNest`).
 
 The transaction rows (`healthyLive` (final), `finalized_txLive`) are not stated over the run (no
 transactions there): the Refinement derives them from `FinalInclude` (a proposal released at

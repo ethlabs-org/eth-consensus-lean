@@ -35,15 +35,15 @@ theorem healed_safe_until : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.A
     ∀ t₁, ReadySafeOn tr H (catchUp sp) T t₁ := by
   sorry
 
-/-- **R.3 `crossNest` with the premises cut at `T`** (open). -/
+/-- **R.3 `crossNest` with the premises cut at `T`** (open; the corrected form, #104). -/
 theorem cross_nest_until : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
     GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T →
-    ∀ t x y i j, T ≤ t → ReadPoint tr i t → ReadPoint tr j t →
-      Boundary tr x i → Boundary tr y j →
-      ReadyAt tr H (catchUp sp) x t → ReadyAt tr H (catchUp sp) y t →
-      Anc (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t) := by
+    ∀ t t' x y i j, T ≤ t → t ≤ t' → ReadPoint tr i t → ReadPoint tr j t' → Boundary tr x i →
+      Boundary tr y j → ReadyAt tr H (catchUp sp) x t → ReadyAt tr H (catchUp sp) y t' →
+      (t' = t → Compatible (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t')) ∧
+      (t + sp.Δ ≤ t' → Anc (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t')) := by
   sorry
 
 /-- **R.3 `includeHealed` with the premises cut at `T`** (open): R.3's conclusion for every
