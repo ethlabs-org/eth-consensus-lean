@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 
+set_option linter.style.longFile 1600
+
 public section
 
 /-! # Goldilocks Refinement: the simulating trace is a run, and the engine agrees with it
@@ -374,14 +376,86 @@ theorem simTrace_block_unforgeable (hv : rho.ExecutionValid) :
       B.proposer ∈ honestKeys S rho → ∃ j ≤ i, (simTrace S rho hn).OwnBlockAt B.proposer j B := by
   sorry
 
-/-- OPEN: engine `Credentials` assigns every delivered proposal, including a faulty signer's,
+private theorem delivery_block_authorized {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
+    (Q : Blk sp → Prop) :
+    ∀ (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),
+      (∀ o ∈ os, ∀ B, o = blockObj sp B → Q B) →
+      ∀ r ∈ deliverRecs proposer dg hs self t i os st sub, r.pos = 0 →
+      ∀ B acc, r.label = .fg (.block B acc) → Q B := by
+  intro os
+  induction os with
+  | nil => intro st sub _ r hr; simp [deliverRecs_nil] at hr
+  | cons o os ih =>
+    intro st sub hQ r hr hpos B acc hl
+    cases he : canonEvent sp ro hs o with
+    | none =>
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
+      exact ih st (sub + 1) (fun o ho => hQ o (List.mem_cons_of_mem _ ho)) r hr hpos B acc hl
+    | some e =>
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he] at hr
+      rcases List.mem_append.mp hr with hr | hr
+      · obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
+        obtain ⟨_, _, _, hp, hlabel⟩ := getElem_groupRecs proposer dg self st t _ e k hk
+        have hk0 : k = 0 := hp.symm.trans hpos
+        subst k
+        obtain ⟨c, cs, hcs⟩ := List.exists_cons_of_length_pos
+          (show 0 < (exec proposer dg self st t e).2.length by rwa [length_groupRecs] at hk)
+        rw [List.getElem_of_eq hcs] at hlabel
+        have hc : c = .fg (.block B acc) := hlabel.symm.trans hl
+        subst c
+        have hevent := exec_head_fg (P := sp.toParams) (A := goldilocksNode sp ro)
+          (ℓ := .block B acc) proposer dg self st t e hcs
+        rcases hevent with ⟨B', acc', he', hh⟩ | ⟨a, _, hh⟩
+        · cases hh
+          rw [he'] at he
+          rcases canonEvent_eq_some (sp := sp) (ro := ro) he with
+            ⟨B', hh, ho⟩ | ⟨v, hh, _⟩ | ⟨a, hh, _⟩
+          · cases hh
+            exact hQ o List.mem_cons_self B ho
+          · cases hh
+          · cases hh
+        · cases hh
+      · exact ih _ (sub + 1) (fun o ho => hQ o (List.mem_cons_of_mem _ ho)) r hr hpos B acc hl
+
+/-- Engine `Credentials` assigns every delivered proposal, including a faulty signer's,
 to the selected proposer. Decode the group's source object and use `selValid_proposer` to
 identify its signer with the run schedule. This is separate from honest-source unforgeability. -/
 theorem simTrace_proposerCredential (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ j t B,
       (simTrace S rho hn).GroupAt (runProposer S rho hn) (digestOf S rho) y j t (.block B) →
         B.proposer = runProposer S rho hn B.slot := by
-  sorry
+  intro y _ j t B hg
+  obtain ⟨r, i, ev, he, hstart, _, hidx, hpos, _, _, hphase⟩ := groupAt_start S rho hn hg
+  obtain ⟨hne, hcuts, _⟩ := hg
+  obtain ⟨_, _, _, _, hl⟩ := hcuts 0 (List.length_pos_of_ne_nil hne)
+  rw [Nat.add_zero] at hl
+  have hr : (allCuts S rho hn)[j]? = some r := by
+    have h := allCuts_getElem?_add S rho hn i (j - cutMap S rho hn i)
+      (List.getElem?_eq_some_iff.mp he).1 (List.getElem?_eq_some_iff.mp hidx).1
+    rw [Nat.add_sub_cancel' hstart, hidx] at h
+    exact h
+  cases ev with
+  | tick v t' => simp [Event.phase, Model.Event.phase] at hphase
+  | restart v t' => simp [Event.phase, Model.Event.phase] at hphase
+  | deliver v o t' =>
+    have hrmem := List.mem_of_getElem? hidx
+    rw [eventCuts_deliver S rho hn i v o t' he] at hrmem
+    have hrlabel : (simTrace S rho hn).label j = some r.label := by
+      rw [simTrace_label, hr]
+      rfl
+    obtain ⟨c, cs, hcs⟩ := List.exists_cons_of_ne_nil hne
+    rw [hrlabel, Option.some.injEq, List.getElem_of_eq hcs] at hl
+    obtain ⟨acc, hc⟩ := exec_block_head _ _ _ _ _ B hcs
+    apply delivery_block_authorized _ _ _ _ _ _
+      (fun B => B.proposer = runProposer S rho hn B.slot) _ _ _ ?_ r hrmem hpos B acc
+      (hl.trans hc)
+    intro x hx B' hxB
+    have hcred := hv.credentials i v o t' he x (contains_of_mem_delivered hx)
+      B'.proposer (.proposer B'.slot) (by rw [hxB]; rfl)
+    rw [selValid_proposer S rho hn hv.selValid] at hcred
+    exact Finset.mem_singleton.mp hcred
 
 /-- An attestation of an honest signer that an honest node processes was signed by that signer
 at an earlier cut. -/
