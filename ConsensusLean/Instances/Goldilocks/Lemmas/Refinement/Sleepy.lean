@@ -32,16 +32,23 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- OPEN engine readiness bridge (owner: Refinement). Map honesty by the key equivalence
+/-- Engine readiness bridge. Map honesty by the key equivalence
 and awake intervals by canonical simulation. Both ends are inside the finite horizon; the
 catch-up is the NODE duration, not silently `18 * E.Δ`. R.1 defines the same closed interval,
 but supplies no engine proof. -/
-theorem sleepy_ready (hv : rho.ExecutionValid) {v : V} {t : Time}
-    (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
+theorem sleepy_ready (_hv : rho.ExecutionValid) {v : V} {t : Time}
+    (_ht : 0 ≤ t) (hth : t ≤ rho.horizon)
     (hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) v t) :
     Regimes.ReadyAt (simTrace S rho hn) (honestKeys S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) (rho.ownKey v) t := by
-  sorry
+  have hkey : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
+  constructor
+  · change rho.key (rho.ownKey v) ∈ rho.honest
+    rw [hkey]
+    exact hr.1
+  · intro τ hτ hτt
+    rw [simTrace_awake_iff, awakeAt_iff, hkey]
+    exact ⟨hr.2 τ hτ hτt, (le_max_left _ _).trans hτ, hτt.trans hth⟩
 
 /-- OPEN quorum bridge (owner: Refinement). Half-ready means faulty < ready; transport
 counts through the key equivalence and use ready-implies-joined at each slot point.
