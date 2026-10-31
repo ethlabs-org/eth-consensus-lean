@@ -15,6 +15,14 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-10-31, coordinator (#107 protocol-delay implementation).
+  The concrete family's `Setup.params` uses `Δ_p = Δ_e + 1`; its skeleton and node slot
+  starts both use `4Δ_p`. The standalone node shape receives protocol parameters already
+  chosen, so its grid uses `sp.Δ` without adding another unit. Generic network delivery,
+  engine clocks, `SyncOn` and `SyncAC` are unchanged. The extra unit converts the inclusive
+  engine endpoint to the strict node endpoint only; it budgets no relay delay and proves
+  no actual row-production or network-to-node service obligation.
+
 - 2026-10-31, coordinator (canonical collision transport, following #121).
   Protect the canonical trace construction in `Statements/Refinement/Trace`; keep its proofs
   in `Lemmas/Refinement/Trace`. Collision transport targets this constructed trace, not every

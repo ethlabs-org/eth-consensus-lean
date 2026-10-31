@@ -197,4 +197,19 @@ theorem tagged_genesis_boundary :
       parentRoot 7 (.digest 7) = some 8 ∧ parentRef 7 (some 8) = .digest 7 ∧
       parentRef 7 (some 7) = .root := by decide
 
+/-- Engine Δ=2 induces protocol Δ=3, not a second increment in the node shape's grid. -/
+theorem protocol_delay_grid (S : Setup) :
+    let pub : Model.Public := ⟨1, 2, by decide⟩
+    (S.params pub (by decide)).Δ = 3 ∧
+      (family S pub).skel.grid.slotTime 1 = 12 ∧
+      (goldilocksShape (S.params pub (by decide)) (S.ro 1)).skel.grid.slotTime 1 = 12 := by
+  exact ⟨rfl, rfl, rfl⟩
+
+/-- Inclusive engine delivery becomes strict protocol delivery, including the endpoint. -/
+theorem protocol_delivery_endpoint (S : Setup) (pub : Model.Public) (hn : 1 ≤ pub.n)
+    (base delivered : Time) (h : delivered ≤ base + pub.Δ) :
+    delivered < base + (S.params pub hn).Δ := by
+  change delivered < base + (pub.Δ + 1)
+  linarith
+
 end Consensus.Goldilocks.Refinement.Test

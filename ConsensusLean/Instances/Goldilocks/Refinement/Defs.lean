@@ -238,14 +238,14 @@ def blockOf (d : Nat) (h : Header Info) (k : Fin sp.n) (atts : List (FG.Att sp.n
     (p : Payload sp.n) : Blk sp :=
   ⟨taggedRoot sp.genesisRoot d, parentRoot sp.genesisRoot h.parent, h.pos, k, h.input, atts, p⟩
 
-/-- The skeleton lets the run select one proposer at every slot of `4Δ`, with
+/-- The skeleton uses protocol delay `Δ_p = pub.Δ + 1`, selecting one proposer per `4Δ_p`, with
 everyone in the poll role and no committee kinds; two poll steps (the release of the
 bodies queued since the last tick), the node's tick as the poll proposal step, the slot proposal,
 then two poll steps (the FG update and the release of the tick's bodies); one poll step at every
 delivery (the release of the vote the delivery emitted, if any; the FG update is never due at a
 delivery). -/
 def skeleton (pub : Public) : Skeleton pub.n where
-  grid := ⟨4 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
+  grid := ⟨4 * (pub.Δ + 1), mul_pos (by decide) (by have := pub.Δ_pos; linarith)⟩
   proposerSel := fun _ => .sized 1
   pollSel := .fixed Finset.univ
   Kind := Empty
@@ -538,9 +538,10 @@ noncomputable def restore (k : Fin sp.n) (d : State sp ro) (t : Time) : State sp
   { apply { d with self := k, now := t } r with fgDue := false }
 
 variable (sp ro) in
-/-- The Goldilocks node as a chain shape over its public parameters. -/
+/-- The Goldilocks node as a chain shape over already chosen protocol parameters.
+Its grid uses `sp.Δ` directly: only `Setup.params` converts the engine delay to protocol delay. -/
 noncomputable def goldilocksShape : ChainShape sp.pub Out Info where
-  skel := skeleton sp.pub
+  skel := { skeleton sp.pub with grid := ⟨4 * sp.Δ, mul_pos (by decide) sp.toParams.hΔ⟩ }
   State := State sp ro
   Body := Body
   Durable := State sp ro
@@ -580,15 +581,15 @@ structure Setup where
   not on a proposer schedule or timing parameters. -/
   ro : (n : Nat) → SA.ReplayOrderData n genesisRoot (List (FG.Att n))
 
-/-- The SA parameters at the public parameters `pub` (with `n ≥ 1`): slots of `4Δ`.
+/-- The SA parameters use protocol delay `pub.Δ + 1` and slots of four protocol delays.
 The run's proposer selection is independent of these runtime parameters. -/
 abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : SAParams where
   toParams :=
     { n := pub.n
       hn := hn
-      Δ := pub.Δ
-      hΔ := pub.Δ_pos
-      slotTime := fun s => 4 * pub.Δ * s
+      Δ := pub.Δ + 1
+      hΔ := by have := pub.Δ_pos; linarith
+      slotTime := fun s => 4 * (pub.Δ + 1) * s
       slotTime_zero := by simp
       slotTime_strictMono := fun a b h =>
         mul_lt_mul_of_pos_left (by exact_mod_cast h) (by have := pub.Δ_pos; linarith)
