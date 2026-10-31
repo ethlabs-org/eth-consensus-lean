@@ -5,6 +5,7 @@ import all ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 @[expose] public section
@@ -211,5 +212,21 @@ theorem protocol_delivery_endpoint (S : Setup) (pub : Model.Public) (hn : 1 ≤ 
     delivered < base + (S.params pub hn).Δ := by
   change delivered < base + (pub.Δ + 1)
   linarith
+
+/-- Old k=2 coefficients fail independently: Δe=1 gives insufficient lag;
+Δe=8, Δp=9, b₀=89 has phase 35, so the old duration 24 violates lifetime 54. -/
+theorem old_outage_coefficients_fail :
+    (4 : Int) * 1 < 4 * (1 + 1) ∧
+      (89 : Int) ≥ 4 * 9 ∧
+      24 + (89 - 6 * 9) % (4 * 9) > (4 * 2 - 2) * 9 ∧
+      16 + (89 - 6 * 9) % (4 * 9) ≤ (4 * 2 - 2) * 9 := by decide
+
+/-- The public contract's time assumptions imply the actual node window at every engine delay. -/
+theorem outage_contract_window (S : Setup) (A : AcceptanceAssumptions S)
+    (C : AcceptanceCoefficients) (pub : Model.Public) (hn : 1 ≤ pub.n)
+    (T b₀ b₁ : Time)
+    (h : Consensus.OutageTimes (acceptanceContract A C).params pub.Δ T b₀ b₁) :
+    Regimes.OutageWindowTimes (S.params pub hn) T b₀ b₁ :=
+  acceptance_outage_times S A C pub hn T b₀ b₁ h
 
 end Consensus.Goldilocks.Refinement.Test

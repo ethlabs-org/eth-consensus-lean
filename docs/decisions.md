@@ -15,6 +15,17 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-10-31, coordinator (outage coefficient correctness audit after #125).
+  Accepted's engine-unit arming lag is `8k−8`, and its budget is `min(η,4k−6)`.
+  The former `4k−4` lag fails already at Δ_e=1, Δ_p=2. The former `4k−5`
+  budget can violate phase-sensitive (V): k=2, Δ_e=8, Δ_p=9, b₀=89 gives
+  remainder 35 and duration 24, totaling 59 > lifetime 54, even with node arming satisfied.
+  The corrected lag uses Δ_p≤2Δ_e; the budget reserves the full phase remainder
+  below 4Δ_p. A universal Lean theorem derives the unchanged node `OutageWindowTimes`
+  from the concrete contract's times. This strengthens the advertised outage premises
+  for correctness; it does not weaken (V), change lifetime, or prove network/participation
+  transport. Positive integer engine delays and k≥2 suffice; no new caller premise.
+
 - 2026-10-31, coordinator (#107 protocol-delay implementation).
   The concrete family's `Setup.params` uses `Δ_p = Δ_e + 1`; its skeleton and node slot
   starts both use `4Δ_p`. The standalone node shape receives protocol parameters already
