@@ -107,28 +107,29 @@ theorem finalized_anc_of_height_lt (hp : ResetPremises tr H proposer dg g ΔF a)
   rw [hst hy, hst hz] at h
   exact h hX hF hFr hW hlt
 
-/-- **G1.2 at strict height: a low `Σ.F` is below a high origin** (`hr4-cut-scope.md` §3, "For
-low finalized height `d ≤ H`, `B`'s accepted chain has height `> d`"; claims G1.2;
+/-- **G1.2 at strict height: a low `Σ.F` is below an honest-held high block**
+(`hr4-cut-scope.md` §3, "For low finalized height `d ≤ H`, `B`'s accepted chain has height `> d`";
+claims G1.2;
 `producer-reset-continuation.md` §11 "Historical finality and acceptance"). When an honest
 node's `Σ.h_j ≤ H_z`, its `Σ.F ⪯ Σ.J` is genesis or finalized at a height
 `d = σ[Σ.F].h ≤ σ[Σ.J].h = Σ.h_j ≤ H_z < σ[B].h` (`fin_pair_entry`; a genesis `Σ.J` makes `Σ.F`
 genesis), so `Σ.F ⪯ B` by G1.2 (`finalized_anc_of_height_lt`). -/
-theorem low_finalized_below_origin (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n}
-    (hy : y ∈ H) (m : Nat) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
-    {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
+theorem low_finalized_below_high_block (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {m i : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBt : B ∈ (tr.state x i).fg.tree)
+    (hhigh : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h)
+    (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) :
     Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := by
   have hreach := Compose.fg_reachable hp.run.toLocalRun hy m
   have hU := Compose.honest_blocks_coherent hp.run.toLocalRun hp.noColl
   have hsub : (tr.state y m).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, m, hX⟩
   have hcoh : Coherent (tr.state y m).fg.tree := hU.mono hsub
-  obtain ⟨CV, hst⟩ := ho.2.2.1
-  obtain ⟨hBt, -⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
   have hg := Store.genesis_mem hreach
   have hgB : Anc (tr.HonestBlocks H)
       (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B :=
     ((Goldilocks.Store.accepted_tree _ _ _ _
-      (Compose.fg_reachable hp.run.toLocalRun ho.1 i)).2.2.2 B hBt).mono
-        (fun X hX => (⟨x, ho.1, i, hX⟩ : X ∈ tr.HonestBlocks H))
+      (Compose.fg_reachable hp.run.toLocalRun hx i)).2.2.2 B hBt).mono
+        (fun X hX => (⟨x, hx, i, hX⟩ : X ∈ tr.HonestBlocks H))
   obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ hreach
   have hgF : (tr.state y m).fg.Anc (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)
@@ -148,9 +149,17 @@ theorem low_finalized_below_origin (hp : ResetPremises tr H proposer dg g ΔF a)
     rw [hEg] at hFJ
     exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
   have h₁ := h_le_of_store_anc hreach hFJ
-  have h₂ := ho.2.2.2
-  refine finalized_anc_of_height_lt hp hy ho.1 hBf hFm hBfF.symm hBt ?_
+  refine finalized_anc_of_height_lt hp hy hx hBf hFm hBfF.symm hBt ?_
   omega
+
+/-- The origin-specialized form of strict-height finalized ancestry. -/
+theorem low_finalized_below_origin (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n}
+    (hy : y ∈ H) (m : Nat) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
+    {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
+    Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := by
+  obtain ⟨CV, hst⟩ := ho.2.2.1
+  exact low_finalized_below_high_block hp hy ho.1
+    (storedFastLock_mem hp.run hp.noColl ho.1 hst).1 ho.2.2.2 hlow
 
 end Consensus.Goldilocks.Healing
 
