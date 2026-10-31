@@ -28,7 +28,7 @@ walk (the viable voter block tree, the merged view, from its unlocked anchor) is
   the voter's anchor, the proposer's best child is the voter's best child;
 * `stop_at_parent` (§3): at `Q` the voter's only eligible child is `P` (its slot is the current
   one; another slot-`s` block would be the honest proposer's second; no old child is eligible,
-  `old_children_ineligible`, open), and the voter's walk stops at `P` (`P ∈` the voter's viable
+  `old_children_ineligible`, proved), and the voter's walk stops at `P` (`P ∈` the voter's viable
   voter block tree, `proposal_at_voter` in `Service/Suffix`).
 
 The assembly (`honest_votes_eq_proposal`) joins them with the walk lemmas of `Steps/Walk`
@@ -107,7 +107,7 @@ theorem proposal_data {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set
 
 /-- **No old child of `Q` is eligible at the voter** (workbench#12 §3: at `Q` the proposal walk
 stopped, so no old child of `Q` is eligible at the proposer, and its score and the majority
-denominator agree at the voter; open). -/
+denominator agree at the voter; `old_child_ineligible` in `Service/Suffix`, from `pivot`). -/
 theorem old_children_ineligible {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
@@ -125,7 +125,10 @@ theorem old_children_ineligible {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)
       B.parent = some d.head.root → B.slot < s →
       ¬ SA.goldfishEligible sp ℓy.frame (tr.time j)
         (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B := by
-  sorry
+  intro B hB hBQ hBs
+  obtain ⟨D, -, hDQ, hviab, -⟩ := pivot hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ
+  exact old_child_ineligible hrun hnc hsl hp hP hPs hc hcall hd hti hPQ hDQ hviab hy hcy hes hB
+    hBQ hBs
 
 /-- **The stop at `P.parent`** (workbench#12 §3): at `Q` a voter's only eligible child is `P` (of
 the current slot; another block of slot `s` would be a second block of the honest proposer, and
