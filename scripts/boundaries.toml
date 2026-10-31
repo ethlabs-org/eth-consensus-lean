@@ -755,8 +755,8 @@ extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckD
 # instance argument) must make them stale.
 canary_module = "ConsensusLean.Lemmas.Blocks.Facts"
 canary_proof_edit = ["  unfold slotTime; push_cast; ring", "  have _canary : True := trivial; unfold slotTime; push_cast; ring"]
-canary_statement_edit = ["theorem slotTime_add {Δ : Time} (s j : Slot) :",
-                         "theorem slotTime_add {Δ : Time} (s j : Slot) [Inhabited Unit] :"]
+canary_statement_edit = ["theorem slotTime_add (s j : Slot) :",
+                         "theorem slotTime_add (s j : Slot) [Inhabited Unit] :"]
 # Step 12 (cited names, checkdecls-style; plan §4): every `Consensus.…` token in these docs (prose and code) must
 # be a plain name listed in `name_index_module` (a module of a test library) as `example := ``Name`, a resolved
 # name literal; building it (`lake test`) checks that each is a declaration.

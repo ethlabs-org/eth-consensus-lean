@@ -614,7 +614,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 omit [DecidableEq V] in
 /-- The AC does not vote on its tick at a slot start: it votes on its tick only at `t_s + Δ`. -/
 theorem slotStart_ne_tickVote (t : Time) (s : Nat)
-    (hts : t = (skeleton (Fintype.card V) S.proposer).grid.slotTime E.Δ s) :
+    (hts : t = (skeleton (pubOf E) S.proposer).grid.slotTime s) :
     t ≠ (S.params (pubOf E) hn).ts ((S.params (pubOf E) hn).slot t) +
       (S.params (pubOf E) hn).Δ := by
   intro h
@@ -654,7 +654,7 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _)) (
     (N3 : Model.Node (Model.protoOf (compiled (family S)) E))
     (hN3 : shapeOf S hn N3 = nodeTick (poll (poll { σ with now := t } t.toNat).1 t.toNat).1) :
     (shapeOf S hn (rho.runDuties v N3
-      ((skeleton (Fintype.card V) S.proposer).proposeAt E.Δ t)).1).outbox.length ≤ 1 := by
+      ((skeleton (pubOf E) S.proposer).proposeAt t)).1).outbox.length ≤ 1 := by
   set σc : State (S.params (pubOf E) hn) (S.ro _) := { σ with now := t }
   have h2 : (poll (poll σc t.toNat).1 t.toNat).1.outbox = [] := by
     rw [(poll_outbox _ _).1]
@@ -686,7 +686,7 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _)) (
         exact acOnTick_emits (S.ro _) _ _ _ t (fun h => hne (by rw [h]; rfl))
     · rw [h2]; simp
   have hnow : (shapeOf S hn N3).now = t := by rw [hN3, nodeTick_now, h2s]
-  rcases Skeleton.proposeAt_cases (skeleton (Fintype.card V) S.proposer) E.Δ_pos t with
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.proposer) t with
     ⟨hnil, _⟩ | ⟨s, hs, hone, hts⟩
   · rw [hnil]; erw [runDuties_fst_nil]; exact h3.1
   · rw [hone]; erw [runDuties_fst_cons, runDuties_fst_nil]

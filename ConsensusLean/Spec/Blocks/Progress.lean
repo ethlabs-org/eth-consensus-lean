@@ -87,11 +87,11 @@ selected for slot `s + j`, at the time of slot `s + j`. -/
 def PatternRecurrence (p : EnvPoint V) (key : Fin (Fintype.card V) ≃ V)
     (sel : Slot → Finset (Fin (Fintype.card V))) (G : TimeGrid) (ρ : Recurrence)
     (c start stop : Time) : Prop :=
-  ∀ t, max start 0 ≤ t → t + (ρ.len : Time) * G.slotLen p.env.Δ ≤ stop →
-    t + (ρ.len : Time) * G.slotLen p.env.Δ ≤ p.horizon →
-    ∃ s, t < G.slotTime p.env.Δ s ∧
-      G.slotTime p.env.Δ s ≤ t + ((ρ.gap : Nat) : Time) * G.slotLen p.env.Δ ∧
-      ∀ j ∈ ρ.pattern.offsets, HonestReadyIn p key sel (s + j) c (G.slotTime p.env.Δ (s + j))
+  ∀ t, max start 0 ≤ t → t + (ρ.len : Time) * G.slotLen ≤ stop →
+    t + (ρ.len : Time) * G.slotLen ≤ p.horizon →
+    ∃ s, t < G.slotTime s ∧
+      G.slotTime s ≤ t + ((ρ.gap : Nat) : Time) * G.slotLen ∧
+      ∀ j ∈ ρ.pattern.offsets, HonestReadyIn p key sel (s + j) c (G.slotTime (s + j))
 
 /-- At most `m` validators are not ready (faulty, or honest and not ready) at
 `t`. -/

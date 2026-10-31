@@ -12,7 +12,7 @@ proposer selection for every slot, the kind's selection for a committee duty,
 the poll selection for the poll role.
 
 Duties: the proposal of positive slot `s` at `slotTime s`; committee kind `k`
-of slot `s` at `slotTime s + phase k · Δ`; the two poll duties at every unit tick
+of slot `s` at `slotTime s + phase k`; the two poll duties at every unit tick
 `t ≥ 0`. The duties at `t` are the steps of the skeleton's `order` due at `t`,
 in that order (a repeated step gives its duty again); the duties at a delivery
 at `t` are the steps of `deliverOrder` due at `t`, and the engine releases the
@@ -53,30 +53,30 @@ def role : ShapeDuty sk.Kind → ShapeRole sk.Kind
   | .poll _ => .poll
 
 /-- The positive proposal slot at `t`, if any. -/
-def proposeAt (Δ t : Time) : List (ShapeDuty sk.Kind) :=
-  match sk.grid.slotAt? Δ 0 t with
+def proposeAt (t : Time) : List (ShapeDuty sk.Kind) :=
+  match sk.grid.slotAt? 0 t with
   | some s => if h : 0 < s then [.propose s h] else []
   | none => []
 
 /-- The duty of committee kind `k` at `t`, if any. -/
-def kindAt (Δ t : Time) (k : sk.Kind) : List (ShapeDuty sk.Kind) :=
-  ((sk.grid.slotAt? Δ ((sk.phase k : Time) * Δ) t).map fun s => .act s k).toList
+def kindAt (t : Time) (k : sk.Kind) : List (ShapeDuty sk.Kind) :=
+  ((sk.grid.slotAt? (sk.phase k) t).map fun s => .act s k).toList
 
 /-- The duties of a step at `t`: the poll steps are due at every unit tick
 `t ≥ 0`. -/
-def stepAt (Δ t : Time) : Step sk.Kind → List (ShapeDuty sk.Kind)
-  | .propose => sk.proposeAt Δ t
-  | .kind k => sk.kindAt Δ t k
+def stepAt (t : Time) : Step sk.Kind → List (ShapeDuty sk.Kind)
+  | .propose => sk.proposeAt t
+  | .kind k => sk.kindAt t k
   | .pollPropose => if 0 ≤ t then [.pollPropose t.toNat] else []
   | .poll => if 0 ≤ t then [.poll t.toNat] else []
 
 /-- The duties due at `t`, in `order`. -/
-def duties (Δ t : Time) : List (ShapeDuty sk.Kind) :=
-  sk.order.flatMap (sk.stepAt Δ t)
+def duties (t : Time) : List (ShapeDuty sk.Kind) :=
+  sk.order.flatMap (sk.stepAt t)
 
 /-- The duties run at a delivery at `t`, in `deliverOrder`. -/
-def deliverDuties (Δ t : Time) : List (ShapeDuty sk.Kind) :=
-  sk.deliverOrder.flatMap (sk.stepAt Δ t)
+def deliverDuties (t : Time) : List (ShapeDuty sk.Kind) :=
+  sk.deliverOrder.flatMap (sk.stepAt t)
 
 end Skeleton
 
@@ -102,8 +102,8 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
   cntItem := inferInstance
   selSpec := S.skel.selSpec
   role := S.skel.role
-  duties := S.skel.duties pub.Δ
-  deliverDuties := S.skel.deliverDuties pub.Δ
+  duties := S.skel.duties
+  deliverDuties := S.skel.deliverDuties
   init k := (S.init k, [])
   clock st t xs := (S.clock st.1 t, xs)
   act st d := match d with

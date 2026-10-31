@@ -205,8 +205,8 @@ theorem recur_single_one_bad_slots {V : Type} [Fintype V] (p : EnvPoint V)
     (key : Fin (Fintype.card V) ≃ V) (sel : Slot → Finset (Fin (Fintype.card V)))
     (G : TimeGrid) (c start stop : Time)
     (hbad : ∀ s, (sel s).Nonempty ∧ ∀ k ∈ sel s, key k ∉ p.honest)
-    (hs : max start 0 + ((⟨Pattern.single, 1⟩ : Recurrence).len : Time) * G.slotLen p.env.Δ ≤ stop)
-    (ht : max start 0 + ((⟨Pattern.single, 1⟩ : Recurrence).len : Time) * G.slotLen p.env.Δ ≤
+    (hs : max start 0 + ((⟨Pattern.single, 1⟩ : Recurrence).len : Time) * G.slotLen ≤ stop)
+    (ht : max start 0 + ((⟨Pattern.single, 1⟩ : Recurrence).len : Time) * G.slotLen ≤
       p.horizon) :
     ¬ PatternRecurrence p key sel G ⟨Pattern.single, 1⟩ c start stop := by
   intro h

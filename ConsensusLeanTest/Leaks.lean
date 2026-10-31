@@ -98,8 +98,8 @@ theorem testK_progressTolerant : ProgressTolerant schema testK :=
 
 /-- The test skeleton: slots of one `Δ`, one proposer per slot, polling
 disabled, one committee kind (every key). -/
-def testSkel (n : Nat) : Skeleton n where
-  grid := ⟨1⟩
+def testSkel (pub : Public) : Skeleton pub.n where
+  grid := ⟨pub.Δ, pub.Δ_pos⟩
   proposerSel := fun _ => .sized 1
   pollSel := .fixed ∅
   Kind := Unit
@@ -115,7 +115,7 @@ def fab : Header Unit := ⟨.root, 1, 7, ()⟩
 `conflicts` is always true), and output nothing or (if `bad`) the fabricated
 header. -/
 def family (proposal vote bad : Bool) : ShapeFamily schema Unit := fun pub => {
-  skel := testSkel pub.n
+  skel := testSkel pub
   State := Unit, Body := Unit, Durable := Unit
   decBody := inferInstance
   init := fun _ => (), clock := fun s _ => s
@@ -185,7 +185,7 @@ theorem refuted_of_empty (F : ShapeFamily schema Unit)
   have hprog : (Sys F (Fin 1)).prog (shapeProgress F (Fin 1)) testK .available (1 : ℕ+) 0
       r.horizon ⟨env, r⟩ := by
     change PatternRecurrence r.point r.key (fun s => r.sel (ShapeRole.proposer s)) _ _ _ _ _
-    apply patternRecurrence_of_all env.Δ_pos
+    apply patternRecurrence_of_all
     intro s j _
     exact ⟨hprop (s + j), fun k _ => hready _ _ _⟩
   rcases (hc (Fin 1)).sleepyLive .available () (Or.inl rfl) rfl (1 : ℕ+) ⟨env, r⟩ valid
@@ -238,7 +238,7 @@ theorem fabricated : ¬ ShapeClaims (family false false true) testK := by
 /-- A protocol that proposes and votes at every slot and outputs the headers
 of its own released signed items, with `conflicts` constantly `conf`. -/
 def familyC (conf : Bool) : ShapeFamily schema Unit := fun pub => {
-  skel := testSkel pub.n
+  skel := testSkel pub
   State := Chain Unit, Body := Unit, Durable := Chain Unit
   decBody := inferInstance
   init := fun _ => [], clock := fun s _ => s
@@ -509,20 +509,20 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
     rw [ha, Finset.mem_singleton]
     exact hkey _ _
   -- the proposal is the first duty of the tick
-  have hprop : ((familyC false) (pubOf env)).skel.proposeAt (pubOf env).Δ (t + 1) =
+  have hprop : ((familyC false) (pubOf env)).skel.proposeAt (t + 1) =
       [.propose s hspos] := by
-    have hslot : ((familyC false) (pubOf env)).skel.grid.slotAt? (pubOf env).Δ 0 (t + 1) =
+    have hslot : ((familyC false) (pubOf env)).skel.grid.slotAt? 0 (t + 1) =
         some s := by
-      rw [((familyC false) (pubOf env)).skel.grid.slotAt?_eq_some (pubOf env).Δ_pos]
+      rw [((familyC false) (pubOf env)).skel.grid.slotAt?_eq_some]
       change (s : Time) * ((1 : Nat) * 1) + 0 = t + 1
       rw [hsτ]; ring
     simp only [Skeleton.proposeAt, hslot, hspos, dite_true]
   let L : List (ShapeDuty ((familyC false) (pubOf env)).skel.Kind) :=
     ([.kind (), .pollPropose, .poll] : List (Step Unit)).flatMap
-      (((familyC false) (pubOf env)).skel.stepAt (pubOf env).Δ (t + 1))
+      (((familyC false) (pubOf env)).skel.stepAt (t + 1))
   have hL : (protoOf (compiled (familyC false)) env).duties (t + 1) =
       .propose s hspos :: L := by
-    change ((familyC false) (pubOf env)).skel.proposeAt (pubOf env).Δ (t + 1) ++ L = _
+    change ((familyC false) (pubOf env)).skel.proposeAt (t + 1) ++ L = _
     rw [hprop]
     rfl
   have hcand : Obj.mk (.signed (rho.ownKey v) (ShapeRole.proposer s)) (.item h) [] ∈

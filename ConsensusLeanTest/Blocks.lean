@@ -22,26 +22,25 @@ variable {p : EnvPoint V} {key : Fin (Fintype.card V) ≃ V}
   {sel : Slot → Finset (Fin (Fintype.card V))} {G : TimeGrid}
   {ρ : Recurrence} {c start stop : Time}
 
-/-- Bounded dependence: recurrence on `[start, stop]` reads only `Δ` and the
+/-- Bounded dependence: recurrence on `[start, stop]` reads only the fixed grid and the
 honest-ready status of the keys at times up to `min stop horizon` (readiness
-at `t` is the awake history up to `t`). A point `p'` with the same `Δ`, no
+at `t` is the awake history up to `t`). A point `p'` with no
 larger effective window, and every honest-ready key of `p` also honest-ready
 in `p'` at those times inherits the recurrence; in particular a point that
 agrees with `p` up to `min stop horizon` (suffix replacement). -/
-theorem PatternRecurrence.reads_upTo {p' : EnvPoint V} (hΔ : p'.env.Δ = p.env.Δ)
+theorem PatternRecurrence.reads_upTo {p' : EnvPoint V}
     (hh : min stop p'.horizon ≤ p.horizon)
     (hr : ∀ v t, t ≤ min stop p'.horizon → v ∈ p.honest → p.Ready c v t →
       v ∈ p'.honest ∧ p'.Ready c v t)
     (h : PatternRecurrence p key sel G ρ c start stop) :
     PatternRecurrence p' key sel G ρ c start stop := by
   intro t ht hst hhz
-  rw [hΔ] at hst hhz ⊢
-  have hm : t + (ρ.len : Time) * G.slotLen p.env.Δ ≤ min stop p'.horizon := le_min hst hhz
+  have hm : t + (ρ.len : Time) * G.slotLen ≤ min stop p'.horizon := le_min hst hhz
   obtain ⟨s, hs1, hs2, hall⟩ := h t ht hst (le_trans hm hh)
   refine ⟨s, hs1, hs2, fun j hj => ?_⟩
   obtain ⟨hne, hk⟩ := hall j hj
   refine ⟨hne, fun k hk' => (hr _ _ ?_ (hk k hk').1 (hk k hk')).2⟩
-  have hl := G.slotLen_pos p.env.Δ_pos
+  have hl := G.slotLen_pos
   have hj' : (j : Time) ≤ ρ.pattern.span := by exact_mod_cast Pattern.le_span hj
   have hlen : (ρ.len : Time) = ((ρ.gap : Nat) : Time) + (ρ.pattern.span : Time) := by
     simp [Recurrence.len]
@@ -52,8 +51,8 @@ theorem PatternRecurrence.reads_upTo {p' : EnvPoint V} (hΔ : p'.env.Δ = p.env.
 /-- Recurrence is non-vacuous: if one whole window fits in `[max start 0, stop]`
 and the horizon, the requirement yields an honest selected key. -/
 theorem PatternRecurrence.exists_honest (h : PatternRecurrence p key sel G ρ c start stop)
-    (hs : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ stop)
-    (ht : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ p.horizon) :
+    (hs : max start 0 + (ρ.len : Time) * G.slotLen ≤ stop)
+    (ht : max start 0 + (ρ.len : Time) * G.slotLen ≤ p.horizon) :
     ∃ s k, k ∈ sel s ∧ key k ∈ p.honest := by
   obtain ⟨s, -, -, hall⟩ := h (max start 0) le_rfl hs ht
   obtain ⟨j, hj⟩ := List.exists_mem_of_ne_nil _ ρ.pattern.nonempty
@@ -65,16 +64,25 @@ end Consensus.Blocks
 namespace Consensus.Shape.Tests.Blocks
 open Consensus Blocks
 
-/-- Slots of two `Δ`. -/
-def grid : TimeGrid := ⟨2⟩
+/-- Slots of two time units. -/
+def grid : TimeGrid := ⟨2, by decide⟩
 
 -- With `Δ = 3` slots are 6 units long: slot 2 starts at 12, slot 1 plus
 -- offset 3 is at 9, and time 7 is no slot time.
-theorem slotAt_slot_two : grid.slotAt? 3 0 12 = some 2 := by decide
-theorem slotAt_with_offset : grid.slotAt? 3 3 9 = some 1 := by decide
-theorem slotAt_between_slots : grid.slotAt? 3 0 7 = none := by decide
-theorem slotAt_zero : grid.slotAt? 3 0 0 = some 0 := by decide
-theorem slotAt_negative : grid.slotAt? 3 0 (-6) = none := by decide
+theorem slotAt_slot_two : (⟨6, by decide⟩ : TimeGrid).slotAt? 0 12 = some 2 := by decide
+theorem slotAt_with_offset : (⟨6, by decide⟩ : TimeGrid).slotAt? 3 9 = some 1 := by decide
+theorem slotAt_between_slots : (⟨6, by decide⟩ : TimeGrid).slotAt? 0 7 = none := by decide
+theorem slotAt_zero : grid.slotAt? 0 0 = some 0 := by decide
+theorem slotAt_negative : grid.slotAt? 0 (-6) = none := by decide
+
+/-- Endpoint slack changes the slot grid, not the engine's delay. -/
+def slackGrid : TimeGrid where
+  slotLen := 16
+  slotLen_pos := by decide
+
+/-- At engine delay 3, protocol delay 4 gives sixteen-unit slots. -/
+theorem slack_grid_slots : slackGrid.slotAt? 0 16 = some 1 ∧
+    slackGrid.slotAt? 0 12 = none := by decide
 
 /-- One validator, always awake, `Δ = 1`, horizon 100. -/
 def point1 : EnvPoint (Fin 1) :=
@@ -88,7 +96,7 @@ def streamlet : Recurrence := ⟨Pattern.range 5, 3⟩
 from any start. -/
 theorem streamlet_recurrence (c start stop : Time) :
     PatternRecurrence point1 (pkiFin 1) (fun _ => Finset.univ) grid streamlet c start stop := by
-  apply patternRecurrence_of_all (by decide)
+  apply patternRecurrence_of_all
   intro s j _
   refine ⟨⟨0, Finset.mem_univ _⟩, fun k _ => ⟨Finset.mem_univ _, ?_⟩⟩
   intro u _ _
@@ -135,11 +143,11 @@ def faultySel : Slot → Finset (Fin (Fintype.card (Fin 2))) := fun _ => {(pkiFi
 start admits recurrence of one honest proposer once a window (one slot of one
 `Δ`) fits in the horizon. -/
 theorem recurrence_has_teeth (c start : Time) (hs : start ≤ 5) :
-    ¬ PatternRecurrence point2 (pkiFin 2) faultySel ⟨1⟩
+    ¬ PatternRecurrence point2 (pkiFin 2) faultySel ⟨1, by decide⟩
       ⟨Pattern.single, 1⟩ c start 10 := by
   intro h
   have hw : max start 0 + ((⟨Pattern.single, 1⟩ : Recurrence).len : Time) *
-      (⟨1⟩ : TimeGrid).slotLen point2.env.Δ ≤ 10 := by
+      (⟨1, by decide⟩ : TimeGrid).slotLen ≤ 10 := by
     change max start 0 + ((1 + 0 : Nat) : Time) * ((1 : Nat) * 1) ≤ 10
     have : max start 0 ≤ 5 := max_le hs (by norm_num)
     push_cast

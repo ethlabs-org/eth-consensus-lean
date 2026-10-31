@@ -784,7 +784,7 @@ and `bftContract`: index `k : ℕ+`, standard thresholds, catch-up, heal point
 Outage numbers are unused because there is no stable output.
 
 `ConsensusLean/Instances/Streamlet/Spec.lean` gives `2·Δ` slots, one proposer per slot, polling disabled,
-and all-validator votes at phase 1. Progress is five consecutive honest ready proposers
+and all-validator votes at offset `Δ`. Progress is five consecutive honest ready proposers
 in every window of `k` slots (`Pattern.range 5`); gap 6 supplies the tolerant index.
 
 `ConsensusLean/Instances/Tendermint/Spec.lean` gives a poll shape, no slot proposals or committee kinds,

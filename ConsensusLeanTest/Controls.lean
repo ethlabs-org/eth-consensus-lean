@@ -46,7 +46,7 @@ open Consensus.Model (Public pubOf sysOf)
 /-- A Goldilocks-skeleton shape that does nothing. Any shape would do: the
 canonical run (as in `coverage`) is valid whatever the protocol does. -/
 def ctrlShape (pub : Public) : ChainShape pub GOut Unit where
-  skel := goldilocksSkeleton pub.n
+  skel := goldilocksSkeleton pub
   State := Unit
   Body := Unit
   Durable := Unit

@@ -229,9 +229,10 @@ bodies queued since the last tick), the node's tick as the poll proposal step, t
 then two poll steps (the FG update and the release of the tick's bodies); one poll step at every
 delivery (the release of the vote the delivery emitted, if any; the FG update is never due at a
 delivery). -/
-def skeleton (n : Nat) (proposer : Nat → Nat) : Skeleton n where
-  grid := ⟨4⟩
-  proposerSel := fun s => .fixed (Finset.univ.filter fun k : Fin n => k.val = proposer s % n)
+def skeleton (pub : Public) (proposer : Nat → Nat) : Skeleton pub.n where
+  grid := ⟨4 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
+  proposerSel := fun s => .fixed
+    (Finset.univ.filter fun k : Fin pub.n => k.val = proposer s % pub.n)
   pollSel := .fixed Finset.univ
   Kind := Empty
   decKind := inferInstance
@@ -470,7 +471,7 @@ noncomputable def restore (k : Fin sp.n) (d : State sp ro) (t : Time) : State sp
 variable (sp ro) in
 /-- The Goldilocks node as a chain shape over its public parameters. -/
 noncomputable def goldilocksShape : ChainShape sp.pub Out Info where
-  skel := skeleton sp.n fun s => (sp.toParams.proposer s).val
+  skel := skeleton sp.pub fun s => (sp.toParams.proposer s).val
   State := State sp ro
   Body := Body
   Durable := State sp ro
@@ -543,7 +544,7 @@ def FamilyState (S : Setup) (pub : Public) : Type :=
 output chains) output it at some proof of `1 ≤ n` and nothing without one. -/
 noncomputable def family (S : Setup) : ShapeFamily schema Info := fun pub =>
   let G := fun hn : 1 ≤ pub.n => goldilocksShape (S.params pub hn) (S.ro _)
-  { skel := skeleton pub.n S.proposer
+  { skel := skeleton pub S.proposer
     State := FamilyState S pub
     Body := Body
     Durable := FamilyState S pub

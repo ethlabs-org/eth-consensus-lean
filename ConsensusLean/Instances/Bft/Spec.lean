@@ -18,7 +18,7 @@ arbitrary progress function is neither (the rejecting tests in `Vacuity`).
 Values are skeletons and contracts only; they carry no protocol proofs.
 
 **Streamlet.** A grid of `2·Δ` slots, one proposer per slot, polling
-disabled, one committee kind (votes) at phase 1 signed by every key. Progress:
+disabled, one committee kind (votes) at offset `Δ` signed by every key. Progress:
 five consecutive honest ready proposers (`Pattern.range 5`) in every window of
 `k` slots from `ready`.
 

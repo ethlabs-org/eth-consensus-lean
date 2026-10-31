@@ -12,17 +12,17 @@ open Consensus.Model (Public SelSpec pubOf)
 /-! ## Streamlet -/
 
 /-- Slots of `2·Δ`. -/
-def streamletGrid : TimeGrid := ⟨2⟩
+def streamletGrid (pub : Public) : TimeGrid := ⟨2 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
 
 /-- The Streamlet skeleton. -/
-def streamletSkeleton (n : Nat) : Skeleton n where
-  grid := streamletGrid
+def streamletSkeleton (pub : Public) : Skeleton pub.n where
+  grid := streamletGrid pub
   proposerSel := fun _ => .sized 1
   pollSel := .fixed ∅
   Kind := Unit
   decKind := inferInstance
   kinds := [()]
-  phase := fun _ => 1
+  phase := fun _ => pub.Δ.toNat
   kindSel := fun _ => .fixed Finset.univ
 
 /-- Streamlet progress: five consecutive honest proposers within every window

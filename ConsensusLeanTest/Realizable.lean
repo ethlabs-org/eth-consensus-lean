@@ -103,8 +103,8 @@ theorem allProposers_no_witness {O : OutputSchema} {Info : Type} [DecidableEq In
     (hF : ∀ pub s, (F pub).skel.proposerSel s = .sized (max 1 pub.n))
     {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (rho : Model.Run (compiled F) E)
     (hsel : rho.SelValid) (hf : rho.point.faulty.Nonempty) (π : Recurrence) (c start stop : Time)
-    (hs : max start 0 + (π.len : Time) * (F (pubOf E)).skel.grid.slotLen E.Δ ≤ stop)
-    (hw : max start 0 + (π.len : Time) * (F (pubOf E)).skel.grid.slotLen E.Δ ≤ rho.horizon) :
+    (hs : max start 0 + (π.len : Time) * (F (pubOf E)).skel.grid.slotLen ≤ stop)
+    (hw : max start 0 + (π.len : Time) * (F (pubOf E)).skel.grid.slotLen ≤ rho.horizon) :
     ¬ PatternRecurrence rho.point rho.key (fun s => rho.sel (ShapeRole.proposer s))
       (F (pubOf E)).skel.grid π c start stop := by
   intro h

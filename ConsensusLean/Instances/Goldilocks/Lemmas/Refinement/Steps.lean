@@ -438,7 +438,7 @@ omit [DecidableEq V] in
 /-- The duties at a delivery at `t ≥ 0`: one poll step (`deliverOrder := [.poll]`). -/
 theorem deliverDuties_eq (t : Time) (ht : 0 ≤ t) :
     (Model.protoOf (compiled (family S)) E).deliverDuties t = [.poll t.toNat] := by
-  change (skeleton (Fintype.card V) S.proposer).deliverDuties E.Δ t = _
+  change (skeleton (pubOf E) S.proposer).deliverDuties t = _
   simp [Skeleton.deliverDuties, Skeleton.stepAt, skeleton, ht]
   rfl
 
@@ -446,7 +446,7 @@ omit [DecidableEq V] in
 /-- A delivery at a negative time has no duties. -/
 theorem deliverDuties_eq_nil (t : Time) (ht : t < 0) :
     (Model.protoOf (compiled (family S)) E).deliverDuties t = [] := by
-  change (skeleton (Fintype.card V) S.proposer).deliverDuties E.Δ t = _
+  change (skeleton (pubOf E) S.proposer).deliverDuties t = _
   simp [Skeleton.deliverDuties, Skeleton.stepAt, skeleton, not_le.2 ht]
   rfl
 
@@ -644,24 +644,24 @@ theorem now_eq_lastClock (_hv : rho.ExecutionValid) (v : V) :
 proposal if due, one poll step. -/
 abbrev dutiesInit (t : Time) : List (Model.protoOf (compiled (family S)) E).Duty :=
   [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++
-    (skeleton (Fintype.card V) S.proposer).proposeAt E.Δ t ++ [.poll t.toNat]
+    (skeleton (pubOf E) S.proposer).proposeAt t ++ [.poll t.toNat]
 
 omit [DecidableEq V] in
 /-- The duties of a tick at `t ≥ 0`: `dutiesInit` and one more poll step. -/
 theorem duties_eq (t : Time) (ht : 0 ≤ t) :
     (Model.protoOf (compiled (family S)) E).duties t = dutiesInit S t ++ [.poll t.toNat] := by
-  change (skeleton (Fintype.card V) S.proposer).duties E.Δ t = _
+  change (skeleton (pubOf E) S.proposer).duties t = _
   simp only [Skeleton.duties, Skeleton.stepAt, skeleton, ht, ite_true, List.flatMap_cons,
     List.flatMap_nil, List.append_nil, List.cons_append, List.nil_append, dutiesInit]
   exact congrArg (fun l => ShapeDuty.poll t.toNat :: .poll t.toNat :: .pollPropose t.toNat :: l)
-    (List.append_assoc ((skeleton (Fintype.card V) S.proposer).proposeAt E.Δ t)
+    (List.append_assoc ((skeleton (pubOf E) S.proposer).proposeAt t)
       [ShapeDuty.poll t.toNat] [ShapeDuty.poll t.toNat]).symm
 
 omit [DecidableEq V] in
 /-- A tick at a negative time has no duties. -/
 theorem duties_eq_nil (t : Time) (ht : t < 0) :
     (Model.protoOf (compiled (family S)) E).duties t = [] := by
-  change (skeleton (Fintype.card V) S.proposer).duties E.Δ t = _
+  change (skeleton (pubOf E) S.proposer).duties t = _
   simp [Skeleton.duties, Skeleton.stepAt, Skeleton.proposeAt, skeleton, TimeGrid.slotAt?,
     not_le.2 ht]
   rfl
@@ -909,11 +909,9 @@ theorem rootOf_digests_item (a : Model.Auth (Fintype.card V) (ShapeRole Empty)) 
 /-! ## Slots -/
 
 /-- A time is in slot `s` of a grid starting at `0` exactly when it is the slot's start. -/
-theorem slotAt?_zero_iff (G : TimeGrid) {Δ : Time} (hΔ : 0 < Δ) (t : Time) (s : Slot) :
-    G.slotAt? Δ 0 t = some s ↔ t = G.slotTime Δ s := by
-  have hL : 0 < G.slotLen Δ := by
-    unfold TimeGrid.slotLen
-    exact mul_pos (by exact_mod_cast G.slotDeltas.pos) hΔ
+theorem slotAt?_zero_iff (G : TimeGrid) (t : Time) (s : Slot) :
+    G.slotAt? 0 t = some s ↔ t = G.slotTime s := by
+  have hL := G.slotLen_pos
   unfold TimeGrid.slotAt? TimeGrid.slotTime
   simp only [sub_zero]
   constructor
@@ -931,24 +929,24 @@ theorem slotAt?_zero_iff (G : TimeGrid) {Δ : Time} (hΔ : 0 < Δ) (t : Time) (s
 
 /-- A skeleton proposes nothing at a time that starts no positive slot, and one `propose s` duty at
 the start of slot `s > 0`. -/
-theorem Skeleton.proposeAt_cases {n : Nat} (sk : Skeleton n) {Δ : Time} (hΔ : 0 < Δ) (t : Time) :
-    (sk.proposeAt Δ t = [] ∧ ∀ s, 0 < s → t ≠ sk.grid.slotTime Δ s) ∨
-      ∃ s, ∃ h : 0 < s, sk.proposeAt Δ t = [.propose s h] ∧ t = sk.grid.slotTime Δ s := by
+theorem Skeleton.proposeAt_cases {n : Nat} (sk : Skeleton n) (t : Time) :
+    (sk.proposeAt t = [] ∧ ∀ s, 0 < s → t ≠ sk.grid.slotTime s) ∨
+      ∃ s, ∃ h : 0 < s, sk.proposeAt t = [.propose s h] ∧ t = sk.grid.slotTime s := by
   unfold Skeleton.proposeAt
-  match hs : sk.grid.slotAt? Δ 0 t with
+  match hs : sk.grid.slotAt? 0 t with
   | none =>
     left
     refine ⟨rfl, fun s hs' ht => ?_⟩
-    have := (slotAt?_zero_iff sk.grid hΔ t s).2 ht
+    have := (slotAt?_zero_iff sk.grid t s).2 ht
     rw [hs] at this
     cases this
   | some s =>
     by_cases h : 0 < s
     · right
-      exact ⟨s, h, by simp [h], (slotAt?_zero_iff sk.grid hΔ t s).1 hs⟩
+      exact ⟨s, h, by simp [h], (slotAt?_zero_iff sk.grid t s).1 hs⟩
     · left
       refine ⟨by simp [h], fun s' hs' ht => ?_⟩
-      have := (slotAt?_zero_iff sk.grid hΔ t s').2 ht
+      have := (slotAt?_zero_iff sk.grid t s').2 ht
       rw [hs] at this
       cases this
       exact h hs'
@@ -977,9 +975,8 @@ omit [DecidableEq V] in
 /-- The setup's slot start is the skeleton grid's slot start. -/
 theorem slotTime_eq (s : Nat) :
     (S.params (pubOf E) hn).toParams.slotTime s =
-      (skeleton (Fintype.card V) S.proposer).grid.slotTime E.Δ s := by
-  simp only [Setup.params, skeleton, TimeGrid.slotTime, TimeGrid.slotLen]
-  push_cast
+      (skeleton (pubOf E) S.proposer).grid.slotTime s := by
+  simp only [Setup.params, skeleton, TimeGrid.slotTime, pubOf]
   ring
 
 omit [DecidableEq V] in
@@ -1331,7 +1328,7 @@ theorem tick_node_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (family S
     (t : Time) (ht : 0 ≤ t) (hw : E.awake v t = true) :
     (shapeOf S hn (rho.tick nd v t).1).node =
       (poll (poll (shapeOf S hn (rho.runDuties v (atProposal S rho v nd t)
-          ((skeleton (Fintype.card V) S.proposer).proposeAt E.Δ t)).1) t.toNat).1
+          ((skeleton (pubOf E) S.proposer).proposeAt t)).1) t.toNat).1
         t.toNat).1.node := by
   rw [tick_of_awake S rho v nd t hw, gossip_node_eq, duties_eq S t ht, runDuties_fst_append]
   erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll]
@@ -1350,7 +1347,7 @@ theorem node_of_tick_other (hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.h
   have hw := hv.tick_awake v t (List.mem_of_getElem? he)
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   rw [stateAt_tick S rho hn v he, tick_node_eq S rho hn v _ t ht hw]
-  rcases Skeleton.proposeAt_cases (skeleton (Fintype.card V) S.proposer) E.Δ_pos t with
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.proposer) t with
     ⟨hnil, _⟩ | ⟨s, hs, _, hts⟩
   · rw [hnil]
     erw [runDuties_fst_nil]
@@ -1441,7 +1438,7 @@ theorem node_of_tick_public (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.h
     (encodeTxs (Model.mempool rho.inbox v t)),
     tickStep_acTick (sp := S.params (pubOf E) hn) (digestOf S rho) (rho.ownKey v) _ t
     (encodeTxs (Model.mempool rho.inbox v t))]
-  rcases Skeleton.proposeAt_cases (skeleton (Fintype.card V) S.proposer) E.Δ_pos t with
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.proposer) t with
     ⟨hnil, hno⟩ | ⟨s, hs, hone, hts⟩
   · rw [hnil]
     erw [runDuties_fst_nil]

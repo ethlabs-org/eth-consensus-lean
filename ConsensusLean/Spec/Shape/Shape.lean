@@ -37,7 +37,7 @@ inductive Step (Kind : Type) where
 
 /-- Public block choices of a shape: the time grid, a proposer selection
 per slot, the poll selection (`.fixed ∅` disables polling), a finite list of
-committee kinds, each with a phase (its `Δ`-offset within the slot) and a
+committee kinds, each with a phase (its time offset within the slot) and a
 selection, and the order of the steps within a tick. -/
 structure Skeleton (n : Nat) : Type 1 where
   /-- The time grid. -/
@@ -53,8 +53,8 @@ structure Skeleton (n : Nat) : Type 1 where
   decKind : DecidableEq Kind
   /-- The committee kinds, in the order of the default `order`. -/
   kinds : List Kind
-  /-- The `Δ`-offset of the kind's duty from the slot start (not required to
-  be below `slotDeltas`: a kind may act in a later slot's interval). -/
+  /-- The nonnegative time offset of the kind's duty from the slot start (not required to
+  be below the slot length: a kind may act in a later slot's interval). -/
   phase : Kind → Nat
   /-- Who may sign for a kind (at every slot). -/
   kindSel : Kind → SelSpec n

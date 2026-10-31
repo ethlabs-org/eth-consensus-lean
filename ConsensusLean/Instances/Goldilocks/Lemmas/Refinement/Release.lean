@@ -314,7 +314,7 @@ omit [DecidableEq V] in
 /-- An awake tick at `t ≥ 0`, duty by duty, when no slot proposal is due. -/
 theorem tick_unroll_nil (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
     (t : Time) (ht : 0 ≤ t) (hw : E.awake v t = true)
-    (hnil : (skeleton (Fintype.card V) S.proposer).proposeAt E.Δ t = []) :
+    (hnil : (skeleton (pubOf E) S.proposer).proposeAt t = []) :
     ∃ N1 N3 N5 N6 : Model.Node (Model.protoOf (compiled (family S)) E),
       N1 = (rho.dutyStep v ⟨(Model.protoOf (compiled (family S)) E).clock nd.st t
           (Model.mempool rho.inbox v t), nd.seen⟩ (.poll t.toNat)).1 ∧
@@ -341,7 +341,7 @@ omit [DecidableEq V] in
 /-- An awake tick at the start of slot `s > 0`, duty by duty. -/
 theorem tick_unroll_propose (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
     (t : Time) (ht : 0 ≤ t) (hw : E.awake v t = true) (s : Slot) (hs : 0 < s)
-    (hone : (skeleton (Fintype.card V) S.proposer).proposeAt E.Δ t = [.propose s hs]) :
+    (hone : (skeleton (pubOf E) S.proposer).proposeAt t = [.propose s hs]) :
     ∃ N1 N3 N4 N5 N6 : Model.Node (Model.protoOf (compiled (family S)) E),
       N1 = (rho.dutyStep v ⟨(Model.protoOf (compiled (family S)) E).clock nd.st t
           (Model.mempool rho.inbox v t), nd.seen⟩ (.poll t.toNat)).1 ∧
@@ -621,7 +621,7 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
       simp only [List.append_nil, List.nil_append]
       rfl
   simp only [Model.Run.releasesAt, he]
-  rcases Skeleton.proposeAt_cases (skeleton (Fintype.card V) S.proposer) E.Δ_pos t with
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.proposer) t with
     ⟨hnil, hno⟩ | ⟨s, hs, hone, hts⟩
   · -- no slot proposal at `t`
     obtain ⟨N1, N3, N5, N6, rfl, rfl, rfl, rfl, heq⟩ := tick_unroll_nil S rho v nd t ht hw hnil
@@ -817,8 +817,8 @@ theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Tim
   rw [hσ] at hlen hf ⊢
   obtain ⟨hR1, hR2, hR3, -, hS3, hout2, -, -, hnow2, hfg2⟩ :=
     leading_polls S rho hn v nd t hsel hf hlen
-  have hnil : (skeleton (Fintype.card V) S.proposer).proposeAt E.Δ t = [] := by
-    rcases Skeleton.proposeAt_cases (skeleton (Fintype.card V) S.proposer) E.Δ_pos t with
+  have hnil : (skeleton (pubOf E) S.proposer).proposeAt t = [] := by
+    rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.proposer) t with
       ⟨h, -⟩ | ⟨s, hs, -, hts⟩
     · exact h
     · exfalso; apply hnp

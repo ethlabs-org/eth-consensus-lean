@@ -15,6 +15,15 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-10-31, Francesco (coordinator decision, #107). The generic `TimeGrid` supplies an
+  absolute positive slot length, and the skeleton supplies duty offsets in time units. Neither
+  depends on network Δ generically; each instance constructs them from its public parameters.
+  The generic progress and realizability proofs need only positive slot length, not scaling or
+  divisibility by Δ. Existing instances retain their concrete slot and phase times.
+  Goldilocks's subsequent family repair uses exactly Δ_p = Δ_e + 1, not 2Δ_e.
+  Contract catch-up, heal and latency remain engine-delay coefficients; conservative numbers
+  are allowed to simplify proofs, but the intended resilience fractions 1/2 and 1/3 stay fixed.
+  This generic grid change does not yet change the Goldilocks family or its contract.
 - 2026-10-28, Francesco ([layers plan][layers], "Iteration 6"). The generic layers define a good protocol as a
   fixed property table, each property with a fixed regime; an instance supplies only numbers. Precise protocol
   properties live in the instance's properties sheet. Layers: L0 problem, L1 model, L2 shape. The network is

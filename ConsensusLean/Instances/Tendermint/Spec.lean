@@ -12,8 +12,8 @@ open Consensus.Model (Public SelSpec pubOf)
 /-! ## Tendermint -/
 
 /-- The Tendermint skeleton (the grid is unused). -/
-def tendermintSkeleton (n : Nat) : Skeleton n where
-  grid := ⟨1⟩
+def tendermintSkeleton (pub : Public) : Skeleton pub.n where
+  grid := ⟨pub.Δ, pub.Δ_pos⟩
   proposerSel := fun _ => .fixed ∅
   pollSel := .fixed Finset.univ
   Kind := Empty

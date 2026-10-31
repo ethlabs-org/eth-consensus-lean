@@ -42,7 +42,7 @@ omit [DecidableEq V] in
 theorem progLen_nonneg (cap : Capability) (i : K.Idx) (E : Env V) : 0 ≤ progLen F K cap i E := by
   unfold progLen
   split
-  · exact mul_nonneg (by positivity) ((F (pubOf E)).skel.grid.slotLen_pos E.Δ_pos).le
+  · exact mul_nonneg (by positivity) (F (pubOf E)).skel.grid.slotLen_pos.le
   · exact le_rfl
 
 /-- Active realizability gives L0 realizability (the four L0 witness
@@ -468,7 +468,7 @@ theorem allAwake_holds (hf : ProgressFits K F) (cap : Capability) (i : K.Idx)
   | recur ρ =>
     intro hfit
     change ∀ s, (F _).skel.proposerSel s = .sized 1 at hfit
-    apply patternRecurrence_of_all hΔ
+    apply patternRecurrence_of_all
     intro sl j _
     have hmem := extremalSel_proposer_mem F hfit (by omega) (sl + j)
     refine ⟨⟨⟨1, by omega⟩, (hmem _).mpr rfl⟩, fun k hk => ?_⟩
@@ -521,7 +521,7 @@ theorem profile_holds (awake : V → Time → Bool)
   | recur ρ =>
     rw [hreq] at hfit ht
     change ∀ s, (F _).skel.proposerSel s = .sized 1 at hfit
-    apply patternRecurrence_of_all hΔ
+    apply patternRecurrence_of_all
     intro sl j _
     have hmem := extremalSel_proposer_mem F hfit (by omega) (sl + j)
     refine ⟨⟨⟨1, by omega⟩, (hmem _).mpr rfl⟩, fun k hk => ?_⟩
@@ -737,7 +737,7 @@ theorem bad_selection (awake : V → Time → Bool)
     have hP : ρ.pattern.span + 2 - 1 = ρ.pattern.span + 1 := by omega
     refine ⟨badSel F (realPoint key hn Δ hΔ awake H).env (ρ.pattern.span + 2) hn0,
       badSel_admits F _ _ hn0 hfit, fun c s e => ?_, fun rho hs hk hh => ?_⟩
-    · apply patternRecurrence_of_periodic hΔ ht
+    · apply patternRecurrence_of_periodic ht
       intro sl j hsl hj
       have hg := Recurrence.pattern_good hsl hj
       have hmem := badSel_good_mem F hn0 hfit (by omega) (s := sl + j)

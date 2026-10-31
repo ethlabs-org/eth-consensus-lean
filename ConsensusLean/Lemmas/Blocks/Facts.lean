@@ -19,48 +19,45 @@ namespace TimeGrid
 
 variable (G : TimeGrid)
 
-theorem slotLen_pos {Δ : Time} (hΔ : 0 < Δ) : 0 < G.slotLen Δ :=
-  Int.mul_pos (by exact_mod_cast G.slotDeltas.pos) hΔ
-
-theorem slotAt?_eq_some {Δ : Time} (hΔ : 0 < Δ) {off t : Time} {s : Slot} :
-    G.slotAt? Δ off t = some s ↔ G.slotTime Δ s + off = t := by
-  have hl := G.slotLen_pos hΔ
+theorem slotAt?_eq_some {off t : Time} {s : Slot} :
+    G.slotAt? off t = some s ↔ G.slotTime s + off = t := by
+  have hl := G.slotLen_pos
   unfold slotAt? slotTime
-  by_cases hc : 0 ≤ t - off ∧ (t - off) % G.slotLen Δ = 0
+  by_cases hc : 0 ≤ t - off ∧ (t - off) % G.slotLen = 0
   · rw [ite_eq_left hc, Option.some.injEq]
     obtain ⟨h0, hm⟩ := hc
-    have hdiv : 0 ≤ (t - off) / G.slotLen Δ := Int.ediv_nonneg h0 hl.le
-    have ht : (t - off) / G.slotLen Δ * G.slotLen Δ = t - off :=
+    have hdiv : 0 ≤ (t - off) / G.slotLen := Int.ediv_nonneg h0 hl.le
+    have ht : (t - off) / G.slotLen * G.slotLen = t - off :=
       Int.ediv_mul_cancel (Int.dvd_of_emod_eq_zero hm)
     constructor
     · rintro rfl
       rw [Int.toNat_of_nonneg hdiv, ht]; ring
     · intro he
-      have : t - off = (s : Time) * G.slotLen Δ := by linarith
+      have : t - off = (s : Time) * G.slotLen := by linarith
       rw [this, Int.mul_ediv_cancel _ hl.ne']; simp
   · rw [ite_eq_right hc]
     refine ⟨fun h => (nomatch h), fun he => ?_⟩
-    have : t - off = (s : Time) * G.slotLen Δ := by linarith
+    have : t - off = (s : Time) * G.slotLen := by linarith
     exact absurd ⟨this ▸ Int.mul_nonneg (by positivity) hl.le, this ▸ Int.mul_emod_left _ _⟩ hc
 
-theorem slotTime_add {Δ : Time} (s j : Slot) :
-    G.slotTime Δ (s + j) = G.slotTime Δ s + (j : Time) * G.slotLen Δ := by
+theorem slotTime_add (s j : Slot) :
+    G.slotTime (s + j) = G.slotTime s + (j : Time) * G.slotLen := by
   unfold slotTime; push_cast; ring
 
 /-- Every window `(t, t + k · slotLen]` with `t ≥ 0` and `k ≥ 1` contains a slot
 start. -/
-theorem exists_slot_in_window {Δ : Time} (hΔ : 0 < Δ) {t : Time} (ht : 0 ≤ t) {k : Nat}
+theorem exists_slot_in_window {t : Time} (ht : 0 ≤ t) {k : Nat}
     (hk : 1 ≤ k) :
-    ∃ s, t < G.slotTime Δ s ∧ G.slotTime Δ s ≤ t + k * G.slotLen Δ := by
-  have hl := G.slotLen_pos hΔ
-  refine ⟨(t / G.slotLen Δ).toNat + 1, ?_, ?_⟩
-  · have hq : 0 ≤ t / G.slotLen Δ := Int.ediv_nonneg ht hl.le
+    ∃ s, t < G.slotTime s ∧ G.slotTime s ≤ t + k * G.slotLen := by
+  have hl := G.slotLen_pos
+  refine ⟨(t / G.slotLen).toNat + 1, ?_, ?_⟩
+  · have hq : 0 ≤ t / G.slotLen := Int.ediv_nonneg ht hl.le
     unfold slotTime
     push_cast
     rw [Int.toNat_of_nonneg hq]
     have := Int.lt_ediv_add_one_mul_self t hl
     linarith
-  · have hq : 0 ≤ t / G.slotLen Δ := Int.ediv_nonneg ht hl.le
+  · have hq : 0 ≤ t / G.slotLen := Int.ediv_nonneg ht hl.le
     unfold slotTime
     push_cast
     rw [Int.toNat_of_nonneg hq]
@@ -149,7 +146,7 @@ per window, losing the pattern's span at the end of the window `[start, stop]`
 theorem PatternRecurrence.single_of_zero (h0 : 0 ∈ ρ.pattern.offsets)
     (h : PatternRecurrence p key sel G ρ c start stop) :
     PatternRecurrence p key sel G ⟨Pattern.single, ρ.gap⟩ c start
-      (min stop p.horizon - (ρ.pattern.span : Time) * G.slotLen p.env.Δ) := by
+      (min stop p.horizon - (ρ.pattern.span : Time) * G.slotLen) := by
   intro t ht hst _
   have hlen : ((⟨Pattern.single, ρ.gap⟩ : Recurrence).len : Time) = ((ρ.gap : Nat) : Time) := by
     simp [Recurrence.len, Pattern.span_single]
@@ -166,13 +163,13 @@ theorem PatternRecurrence.single_of_zero (h0 : 0 ∈ ρ.pattern.offsets)
 
 /-- If every slot has an honest ready pattern, recurrence holds on every
 window (no domain hypothesis: windows start at `t ≥ 0`, gaps are positive). -/
-theorem patternRecurrence_of_all (hΔ : 0 < p.env.Δ)
+theorem patternRecurrence_of_all
     (h : ∀ s j, j ∈ ρ.pattern.offsets →
-      HonestReadyIn p key sel (s + j) c (G.slotTime p.env.Δ (s + j))) :
+      HonestReadyIn p key sel (s + j) c (G.slotTime (s + j))) :
     PatternRecurrence p key sel G ρ c start stop := by
   intro t ht _ _
   obtain ⟨s, hs₁, hs₂⟩ :=
-    G.exists_slot_in_window hΔ (le_trans (le_max_right _ _) ht) (k := (ρ.gap : Nat)) ρ.gap.pos
+    G.exists_slot_in_window (le_trans (le_max_right _ _) ht) (k := (ρ.gap : Nat)) ρ.gap.pos
   exact ⟨s, hs₁, hs₂, fun j hj => h s j hj⟩
 
 /-- The periodic bad slots of a recurrence with slack: with period
@@ -202,18 +199,18 @@ ready from every start slot `s` with `s % (span + 2) = 0` (the periodic bad
 slots `s % (span + 2) = span + 1` are avoided, `Recurrence.pattern_good`),
 and the gap has the slack `span + 2 ≤ gap`, recurrence holds on every window,
 although every window holds a bad slot (`Recurrence.exists_bad_slot`). -/
-theorem patternRecurrence_of_periodic (hΔ : 0 < p.env.Δ) (hρ : ρ.BadSlotSlack)
+theorem patternRecurrence_of_periodic (hρ : ρ.BadSlotSlack)
     (h : ∀ s j, s % (ρ.pattern.span + 2) = 0 → j ∈ ρ.pattern.offsets →
-      HonestReadyIn p key sel (s + j) c (G.slotTime p.env.Δ (s + j))) :
+      HonestReadyIn p key sel (s + j) c (G.slotTime (s + j))) :
     PatternRecurrence p key sel G ρ c start stop := by
   intro t ht _ _
   unfold Recurrence.BadSlotSlack at hρ
   obtain ⟨P, hP⟩ : ∃ P, P = ρ.pattern.span + 2 := ⟨_, rfl⟩
   rw [← hP] at h
-  have hl := G.slotLen_pos hΔ
-  obtain ⟨s₁, hs₁, hs₁'⟩ : ∃ s₁ : ℕ, t < G.slotTime p.env.Δ s₁ ∧
-      G.slotTime p.env.Δ s₁ ≤ t + ((1 : ℕ) : Time) * G.slotLen p.env.Δ :=
-    G.exists_slot_in_window hΔ (le_trans (le_max_right _ _) ht) (k := 1) le_rfl
+  have hl := G.slotLen_pos
+  obtain ⟨s₁, hs₁, hs₁'⟩ : ∃ s₁ : ℕ, t < G.slotTime s₁ ∧
+      G.slotTime s₁ ≤ t + ((1 : ℕ) : Time) * G.slotLen :=
+    G.exists_slot_in_window (le_trans (le_max_right _ _) ht) (k := 1) le_rfl
   obtain ⟨x, hx⟩ : ∃ x : Nat, x = s₁ + (P - 1) := ⟨_, rfl⟩
   have hd := Nat.mod_add_div x P
   have hm := Nat.mod_lt x (show 0 < P by omega)
@@ -224,7 +221,7 @@ theorem patternRecurrence_of_periodic (hΔ : 0 < p.env.Δ) (hρ : ρ.BadSlotSlac
   refine ⟨P * m, ?_, ?_, fun j hj => h _ j (Nat.mul_mod_right _ _) hj⟩
   · obtain ⟨d, hd'⟩ := Nat.exists_eq_add_of_le hlo
     rw [hd', G.slotTime_add]
-    have : (0 : Time) ≤ (d : Time) * G.slotLen p.env.Δ := by positivity
+    have : (0 : Time) ≤ (d : Time) * G.slotLen := by positivity
     linarith
   · obtain ⟨d, hd'⟩ := Nat.exists_eq_add_of_le hlo
     have hdP : d ≤ P - 1 := by omega
@@ -239,11 +236,11 @@ theorem patternRecurrence_of_periodic (hΔ : 0 < p.env.Δ) (hρ : ρ.BadSlotSlac
 recurrence yields a start slot whose whole pattern is honest, ready and inside
 the horizon. -/
 theorem PatternRecurrence.exists_inside (h : PatternRecurrence p key sel G ρ c start stop)
-    (hs : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ stop)
-    (ht : max start 0 + (ρ.len : Time) * G.slotLen p.env.Δ ≤ p.horizon) :
-    ∃ s, ∀ j ∈ ρ.pattern.offsets, G.slotTime p.env.Δ (s + j) ≤ p.horizon ∧
-      HonestReadyIn p key sel (s + j) c (G.slotTime p.env.Δ (s + j)) := by
-  have hl := G.slotLen_pos p.env.Δ_pos
+    (hs : max start 0 + (ρ.len : Time) * G.slotLen ≤ stop)
+    (ht : max start 0 + (ρ.len : Time) * G.slotLen ≤ p.horizon) :
+    ∃ s, ∀ j ∈ ρ.pattern.offsets, G.slotTime (s + j) ≤ p.horizon ∧
+      HonestReadyIn p key sel (s + j) c (G.slotTime (s + j)) := by
+  have hl := G.slotLen_pos
   obtain ⟨s, -, hs', hall⟩ := h (max start 0) le_rfl hs ht
   refine ⟨s, fun j hj => ⟨?_, hall j hj⟩⟩
   have hj' : (j : Time) ≤ ρ.pattern.span := by exact_mod_cast Pattern.le_span hj

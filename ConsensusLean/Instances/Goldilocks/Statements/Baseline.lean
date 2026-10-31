@@ -210,7 +210,7 @@ theorem range_head (pp : FGSAParams) (gf : ℕ+) {V : Type} [Fintype V] {p : Env
     {G : TimeGrid} {c start stop : Time}
     (h : PatternRecurrence p key sel G (pp.finRec gf) c start stop) :
     PatternRecurrence p key sel G ⟨Pattern.single, (pp.finRec gf).gap⟩ c start
-      (min stop p.horizon - ((3 * pp.R + 1 : Nat) : Time) * G.slotLen p.env.Δ) := by
+      (min stop p.horizon - ((3 * pp.R + 1 : Nat) : Time) * G.slotLen) := by
   have hspan := finRec_span pp gf
   have h0 : 0 ∈ (pp.finRec gf).pattern.offsets :=
     List.mem_range.mpr (by simp [FGSAParams.κ])
@@ -276,7 +276,7 @@ abbrev gFinalized : goldilocksSchema.Id := GOut.finalized
 /-- The reviewed bindings: the Goldilocks skeleton (grid of `4·Δ` slots, one
 proposer per slot). The E1/E2 `conflicts` binding is obligation (7). -/
 def GoldilocksBindings (F : ShapeFamily goldilocksSchema Info) : Prop :=
-  ∀ pub, (F pub).skel = goldilocksSkeleton pub.n
+  ∀ pub, (F pub).skel = goldilocksSkeleton pub
 
 section Vocabulary
 

@@ -25,8 +25,8 @@ open Consensus.Model (Public Key Obj pubOf protoOf sysOf)
 
 /-- The trivial skeleton: slots of one `Δ`, one proposer per slot, polling
 disabled, one committee kind (phase 0, every key). -/
-def trivialSkel (n : Nat) : Skeleton n where
-  grid := ⟨1⟩
+def trivialSkel (pub : Public) : Skeleton pub.n where
+  grid := ⟨pub.Δ, pub.Δ_pos⟩
   proposerSel := fun _ => .sized 1
   pollSel := .fixed ∅
   Kind := Unit
@@ -35,9 +35,23 @@ def trivialSkel (n : Nat) : Skeleton n where
   phase := fun _ => 0
   kindSel := fun _ => .fixed Finset.univ
 
+/-- An absolute grid need not be divisible by the environment delay. -/
+def slackSkel : Skeleton 1 :=
+  { trivialSkel ⟨1, 3, by decide⟩ with
+    grid := ⟨16, by decide⟩
+    phase := fun _ => 4 }
+
+/-- Slot 1 with absolute offset 4 is time 20, not 19 or 15. -/
+theorem slack_phase_timing :
+    slackSkel.kindAt 20 () = [.act 1 ()] ∧
+    slackSkel.kindAt 19 () = [] ∧ slackSkel.kindAt 15 () = [] ∧
+    slackSkel.stepAt 19 .poll = [.poll 19] := by
+  have hphase : slackSkel.phase () = 4 := rfl
+  norm_num [Skeleton.kindAt, Skeleton.stepAt, TimeGrid.slotAt?, hphase, slackSkel]
+
 /-- The trivial slot shape: nothing is proposed, signed or output. -/
 def trivialShape (pub : Public) : ChainShape pub Unit Unit where
-  skel := trivialSkel pub.n
+  skel := trivialSkel pub
   State := Unit
   Body := Unit
   Durable := Unit
@@ -75,17 +89,17 @@ theorem trivial_pollPropose_selSpec (pub : Public) :
 /-- The proposal of slot 2 is due at its slot time `2·Δ`. -/
 theorem trivial_propose_due (pub : Public) :
     ShapeDuty.propose 2 (by decide) ∈ (compile (trivialShape pub)).duties (2 * pub.Δ) :=
-  ((trivialShape pub).skel.duties_spec pub.Δ_pos _ _).mpr ⟨List.mem_cons_self, by
-    change (trivialSkel pub.n).grid.slotTime pub.Δ 2 = 2 * pub.Δ
-    simp [TimeGrid.slotTime, TimeGrid.slotLen, trivialSkel]⟩
+  ((trivialShape pub).skel.duties_spec _ _).mpr ⟨List.mem_cons_self, by
+    change (trivialSkel pub).grid.slotTime 2 = 2 * pub.Δ
+    simp [TimeGrid.slotTime, trivialSkel]⟩
 
 /-- The committee duty of slot 3 is due at `3·Δ` (phase 0). -/
 theorem trivial_act_due (pub : Public) :
     ShapeDuty.act 3 () ∈ (compile (trivialShape pub)).duties (3 * pub.Δ) :=
-  ((trivialShape pub).skel.duties_spec pub.Δ_pos _ _).mpr
+  ((trivialShape pub).skel.duties_spec _ _).mpr
     ⟨List.mem_cons_of_mem _ List.mem_cons_self, by
-    change (trivialSkel pub.n).grid.slotTime pub.Δ 3 + ((0 : Nat) : Time) * pub.Δ = 3 * pub.Δ
-    simp [TimeGrid.slotTime, TimeGrid.slotLen, trivialSkel]⟩
+    change (trivialSkel pub).grid.slotTime 3 + ((0 : Nat) : Time) = 3 * pub.Δ
+    simp [TimeGrid.slotTime, trivialSkel]⟩
 
 /-- Every read of the trivial family is the empty ledger, the image of the
 empty chain under `ledgerOf` (`ledgerTrace`). -/
@@ -112,8 +126,8 @@ theorem poll_disabled_forged {V : Type} [Fintype V] {E : Env V}
 
 /-- The poll skeleton (decision T): slots of four `Δ`, no slot proposer, every
 key may poll, no committee kinds. -/
-def pollSkel (n : Nat) : Skeleton n where
-  grid := ⟨4⟩
+def pollSkel (pub : Public) : Skeleton pub.n where
+  grid := ⟨4 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
   proposerSel := fun _ => .fixed ∅
   pollSel := .fixed Finset.univ
   Kind := Empty
@@ -126,7 +140,7 @@ def pollSkel (n : Nat) : Skeleton n where
 round-robin leader of tick `t` (key `t mod n`) proposes a child of the root at
 height `ht + 1`, chosen locally. -/
 def pollShape (pub : Public) : ChainShape pub Unit Unit where
-  skel := pollSkel pub.n
+  skel := pollSkel pub
   State := Key pub × Nat
   Body := Unit
   Durable := Key pub × Nat
@@ -161,9 +175,9 @@ def pub2 : Public := ⟨3, 2, by decide⟩
 /-- Time 3 is off the slot grid (slots of `4·Δ = 8`), and yet the poll
 proposal duty of tick 3 is due at 3: poll duties exist at every unit tick. -/
 theorem poll_duty_every_tick :
-    (pollSkel pub2.n).grid.slotAt? pub2.Δ 0 3 = none ∧
+    (pollSkel pub2).grid.slotAt? 0 3 = none ∧
       ShapeDuty.pollPropose 3 ∈ (compile (pollShape pub2)).duties 3 :=
-  ⟨by decide, ((pollShape pub2).skel.duties_spec pub2.Δ_pos _ _).mpr
+  ⟨by decide, ((pollShape pub2).skel.duties_spec _ _).mpr
     ⟨List.mem_cons_of_mem _ List.mem_cons_self, rfl⟩⟩
 
 /-- `shapeProgress` keeps its data fields (plan §2.1: only its proof fields `mono`/`shrink`

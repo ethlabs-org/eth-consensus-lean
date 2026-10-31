@@ -65,18 +65,18 @@ inductive GKind where
   deriving DecidableEq, Repr
 
 /-- Slots of `4·Δ`. -/
-def goldilocksGrid : TimeGrid := ⟨4⟩
+def goldilocksGrid (pub : Public) : TimeGrid := ⟨4 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
 
 /-- The Goldilocks skeleton: one proposer per slot, polling disabled, the two
 placeholder committee kinds at phases 1 and 2, every key in each. -/
-def goldilocksSkeleton (n : Nat) : Skeleton n where
-  grid := goldilocksGrid
+def goldilocksSkeleton (pub : Public) : Skeleton pub.n where
+  grid := goldilocksGrid pub
   proposerSel := fun _ => .sized 1
   pollSel := .fixed ∅
   Kind := GKind
   decKind := inferInstance
   kinds := [.head, .fin]
-  phase := fun | .head => 1 | .fin => 2
+  phase := fun | .head => pub.Δ.toNat | .fin => 2 * pub.Δ.toNat
   kindSel := fun _ => .fixed Finset.univ
 
 /-- Round-model FG-SA parameters (`Δ_F = Δ`, `κ = 2`, slow arming): the round

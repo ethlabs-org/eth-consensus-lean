@@ -27,11 +27,11 @@ variable (F : ShapeFamily O Info) (K : Contract ProgressReq)
 variable {V : Type} [Fintype V] [DecidableEq V]
 
 /-- The length of one window of the progress requirement of `cap` at `i` on
-the grid at `Δ`, pattern span included (`0` for a bound on the validators
+the instance's grid, pattern span included (`0` for a bound on the validators
 not ready). -/
 def progLen (cap : Capability) (i : K.Idx) (E : Env V) : Time :=
   match K.progress cap i with
-  | .recur ρ => (ρ.len : Time) * (F (pubOf E)).skel.grid.slotLen E.Δ
+  | .recur ρ => (ρ.len : Time) * (F (pubOf E)).skel.grid.slotLen
   | .notReadyAtMost _ => 0
 
 /-- The progress requirement of `cap` at `i` is active from `start`:
