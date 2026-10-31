@@ -4,8 +4,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
@@ -473,6 +475,86 @@ private def OldSrc (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time) 
     (O : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ (x : Fin sp.n) (i j : Nat), HighOrigin tr H g x i j O ∧ tr.time i < sp.ts u
 
+/-- R2 also compares a pre-call finalized cache with an origin written later: compare at a
+future honest tick, then use monotonicity of `F` backwards. -/
+private theorem finalized_compatible_high_origin (hp : ResetPremises tr H dg g ΔF a)
+    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hac : a ≤ tr.time c)
+    {x : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j O) :
+    Compatible (tr.HonestBlocks H) (tr.state z c).fg.F O := by
+  have hΔ := sp.toParams.hΔ
+  have hga : SA.gbar g < a := by
+    have := cutZ_lt_reset hp.run hp.healthy hp.reset
+    have := lt_cutZ sp g
+    linarith
+  have hcτ := le_max_left (tr.time c) (tr.time i)
+  have hiτ := le_max_right (tr.time c) (tr.time i)
+  set τ := max (tr.time c) (tr.time i)
+  have hτ0 : 0 ≤ τ := (hp.run.time_nonneg c).trans hcτ
+  have hτT : τ < sp.ts ((sp.slot τ : Int) + 1) := not_le.1 fun h => by
+    have := (SA.ts_le_iff_le_slot sp hτ0 _).1 h
+    omega
+  obtain ⟨k, q, hg⟩ := hp.run.tick_of_awake z hz _ (by linarith)
+    ⟨4 * ((sp.slot τ : Int) + 1), by simp only [SA.SAParams.ts]; ring⟩
+    (hp.healthy.2.1 z hz _ (by change SA.gbar g ≤ _; linarith))
+  obtain ⟨hcall, ht⟩ := tick_first_cut hg
+  have hck : c ≤ k := le_of_not_gt fun h => by
+    have := hp.run.time_mono h.le
+    linarith
+  have hik : i ≤ k := le_of_not_gt fun h => by
+    have := hp.run.time_mono h.le
+    linarith
+  have hcmp := ((height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a
+    hp.reset).caches z hz k ⟨_, hcall⟩ (by linarith) x i j O ho hik).1
+  have hmono : Anc (tr.HonestBlocks H) (tr.state z c).fg.F (tr.post k).fg.F := by
+    rw [← tr.state_succ_of_call hcall]
+    exact run_F_mono hp.run.toLocalRun hz (by omega)
+  rcases hcmp with h | h
+  · exact Or.inl (hmono.trans h)
+  · exact Anc.total (honest_coherent hp) hmono h
+
+/-- A high supporting head accepted by an honest voter before the previous slot's relay
+deadline is held in the proposal frame. Its height rules out pre-GST acceptance. -/
+private theorem proposal_relay_high (hp : ResetPremises tr H dg g ΔF a)
+    {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u)
+    {x : Fin sp.n} {r l : Nat} {O B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x r l O) (hOB : Anc (tr.HonestBlocks H) O B)
+    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hacc : tr.projAC.AcceptAt z c B)
+    (hct : tr.time c < sp.ts ((u : Int) - 1) + 2 * sp.Δ)
+    (hFB : Anc (tr.HonestBlocks H) ℓp.frame.F B) :
+    B ∈ ℓp.frame.tree ∧ SA.AcceptedBefore tr.projAC p B (sp.ts ((u : Int) - 1) + 3 * sp.Δ) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hΔ := sp.toParams.hΔ
+  have hgc : g ≤ tr.time c := by
+    have := (cutZ_lt_of_anc hp ho hz (acceptAt_mem hp hz hacc) hOB).1
+    have := lt_cutZ sp g
+    have := le_gbar g
+    linarith
+  have hsi : sp.slot (tr.time i) = u := by
+    rw [hti]; simpa using (SA.slot_arithmetic sp u).1 0 (by omega)
+  have hts : sp.ts (u : Int) = sp.ts ((u : Int) - 1) + 4 * sp.Δ := by
+    simp only [SAParams.ts]; ring
+  have hrs := Compose.proposal_call_restarts hp.run hp.noColl hpH hci hcall hd
+  rw [hsi] at hrs
+  have hdl : ∀ k ≤ i, tr.projAC.deadline p k (tr.projAC.time c) ≤
+      sp.ts ((u : Int) - 1) + 3 * sp.Δ := fun k hk => by
+    have hd := deadline_le_restarts (T := tr.projAC)
+      (fun c' hc' hr' => hrs c' (hc'.trans hk) hr') (tr.projAC.time c)
+    have := max_le hct.le (show sp.ts ((u : Int) - 1) ≤ sp.ts ((u : Int) - 1) + 2 * sp.Δ by
+      linarith)
+    change _ ≤ max (tr.time c) (sp.ts ((u : Int) - 1)) + sp.Δ at hd
+    linarith
+  have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
+    tr ΔF g (tr.time c) hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
+  obtain ⟨k, hki, hak, hkt⟩ := hsync.2 z hz c B hacc hgc le_rfl p hpH i ℓp hci
+    (by have := hdl i le_rfl; change _ ≤ tr.time i; linarith) hFB
+  exact ⟨SA.mem_tree_of_acceptAt sp hr hpH hak hki hci hFB,
+    Or.inr ⟨k, hak, lt_of_lt_of_le hkt (hdl k hki)⟩⟩
+
 /-- The label of an old source is below `u`. -/
 private theorem label_lt_of_old (hp : ResetPremises tr H dg g ΔF a) {u : Nat} {x : Fin sp.n}
     {i j : Nat}
@@ -482,6 +564,54 @@ private theorem label_lt_of_old (hp : ResetPremises tr H dg g ΔF a) {u : Nat} {
   by_contra hcon
   have h1 : sp.ts u ≤ sp.ts j := (SA.ts_le_iff sp).2 (by omega)
   linarith [ts_le_of_fastLock hp hfl]
+
+/-- An old source is held by the proposer, or below its finalized cache. Relay starts at an
+honest supporting vote head, not at the possibly later write of the origin. -/
+private theorem proposal_holds_old (hp : ResetPremises tr H dg g ΔF a)
+    {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hai : a ≤ tr.time i)
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hO : OldSrc tr H g u O) :
+    O ∈ ℓp.frame.tree ∨ Anc (tr.HonestBlocks H) O ℓp.frame.F := by
+  obtain ⟨x, r, l, ho, hrt⟩ := hO
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hr := hrun.localRun
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hpH hci
+  have hcmp := finalized_compatible_high_origin hp hpH hai ho
+  have hfr := Compose.frame_of_projAC hp.run hpH hci
+  have hF : ℓp.frame.F = (tr.state p i).fg.F := by rw [hfr]; rfl
+  rw [← hF] at hcmp
+  rcases hcmp with hFO | hOF
+  · left
+    obtain ⟨ℓ, D, CV, hcx, hfl, -, -, -, hOD, -⟩ := highOrigin_mem hp ho
+    obtain ⟨z, hz, j, e, hv, hes, B, hB, hBr, hDB⟩ :=
+      SA.fastLock_honest_vote hrun (faulty_lt_half hp p) ho.1 hfl
+    have hOB := (hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2).trans hDB
+    obtain ⟨ℓz, hcz, he⟩ := hv
+    obtain ⟨⟨B', hB't, hB'r, -⟩, hjt⟩ := Compose.cast_head_fcRoot hr hz ⟨hcz, he⟩
+    have hEq : B' = B := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hcz).2 hB't) hB
+      (hB'r.trans hBr.symm)
+    rw [hEq] at hB't
+    have hlu := label_lt_of_old hp ho hrt
+    have hts : sp.ts l ≤ sp.ts ((u : Int) - 1) := (SA.ts_le_iff sp).2 (by omega)
+    have hjt' : tr.time j ≤ sp.ts ((u : Int) - 1) + sp.Δ := by
+      rw [hes] at hjt
+      change tr.time j ≤ sp.ts l + sp.Δ at hjt
+      linarith
+    rcases Compose.frame_anc_accepted hr hz j ℓz hcz B hB't B .refl with hg | ⟨c, hcj, hacc⟩
+    · exact False.elim ((cutZ_lt_of_anc hp ho hz
+        (mem_tree_of_frame hp.run hz hcz hB't) hOB).2 hg)
+    have hct : tr.time c < sp.ts ((u : Int) - 1) + 2 * sp.Δ := by
+      have := hr.time_mono hcj
+      change tr.time c ≤ tr.time j at this
+      linarith
+    have hBt := (proposal_relay_high hp hpH hci hcall hd hti ho hOB hz hacc hct
+      (hFO.trans hOB)).1
+    exact mem_between hr.coherent hΦ hΦU hΦ.rooted.1 hBt hFO hOB
+  · exact Or.inr hOF
 
 /-- **A stored lock of a clean label at a cut by `t_u + Δ` sits below an old source**: it is not
 slow (`clean_slowLock_false`), so it sits below the stored block `O` of a fast-lock write of its
