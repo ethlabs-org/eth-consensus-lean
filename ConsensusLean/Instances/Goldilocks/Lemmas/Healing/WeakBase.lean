@@ -299,4 +299,99 @@ end Base
 
 end Consensus.Goldilocks.Regimes
 
+namespace Consensus.Goldilocks.Healing
+
+open SA (SAParams ReplayOrder Payload)
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+
+/-- The global old inventory: an actual honest signature, its self-entry realization
+at fixed replay height, and the exact old-source antecedent. None of these witnesses
+is restricted to objects held at the initialization cut. -/
+structure OldHonest (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (s₀ : Nat)
+    (E : SA.Blk sp.n (List (FG.Att sp.n))) (h : Nat) : Prop where
+  signed : ∃ v ∈ H, ∃ d a, tr.SignAt v d a ∧ E.root = a.T
+  entry : ∃ x ∈ H, ∃ k, E ∈ (tr.state x k).fg.tree ∧
+    ((tr.state x k).fg.σ E.root).Th = E.root ∧ ((tr.state x k).fg.σ E.root).h = h
+  oldSource : ∃ D C l, (∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧
+    ((tr.state x k).fg.σ D.root).Th = E.root) ∧ Compose.Origin tr H C l ∧ l < s₀ ∧
+      Anc (tr.HonestBlocks H) D C
+
+/-- Coverage has a whole-run recent-origin witness, without an upper label bound
+or an extra standalone genesis alternative. -/
+def OldEntryCovered (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (s₀ : Nat)
+    (E : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+  ∃ C l, Compose.OriginFrom tr H C l s₀ ∧ Anc (tr.HonestBlocks H) E C
+
+theorem oldEntryCovered_iff (s₀ : Nat) (E : SA.Blk sp.n (List (FG.Att sp.n))) :
+    OldEntryCovered tr H s₀ E ↔
+      ∃ C l, Compose.OriginFrom tr H C l s₀ ∧ Anc (tr.HonestBlocks H) E C := by rfl
+
+private theorem updateFinality_hj_le {P : Params} {ACP : Type}
+    (st : Store P ACP) (σ : FG.ChainState P.n) : st.hj ≤ (st.updateFinality σ).hj := by
+  rcases (Store.updateFinality_spec st σ).2.2.2.2.1 with h | ⟨_, he, _, hlex⟩
+  · exact le_of_eq h.2.symm
+  · rw [he]
+    rcases hlex with h | h
+    · exact h.le
+    · exact le_of_eq h.1
+
+/-- Honest cache height is monotone at all cuts, including sleeping intervals and
+restart AC calls; readiness is not a premise. -/
+theorem run_hj_mono {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {proposer : Nat → Fin sp.n} (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i ≤ j) :
+    (tr.state y i).fg.hj ≤ (tr.state y j).fg.hj := by
+  induction j, hij using Nat.le_induction with
+  | base => exact le_rfl
+  | succ j _ ih =>
+    apply ih.trans
+    by_cases hc : ∃ c, tr.CallAt y j c
+    · obtain ⟨c, hc⟩ := hc
+      rw [tr.state_succ_of_call hc]
+      have h := hrun.cutLaw y hy j c hc
+      cases c with
+      | ac ℓ => rw [h.2.2.1]
+      | fg c =>
+        cases c with
+        | block B ok =>
+          cases ok with
+          | false => rw [h.2]
+          | true =>
+            obtain ⟨pr, σ, _, _, _, _, _, he⟩ := Store.onBlock_eq_some h.2.1
+            rw [he]
+            obtain ⟨atts, hatt⟩ := Store.addAtts_eq
+              (Store.updateFinality _ σ) B.fgPayload
+            rw [hatt]
+            exact updateFinality_hj_le
+              { (tr.state y j).fg with
+                blocks := Function.update (tr.state y j).fg.blocks B.root (some B),
+                σ := Function.update (tr.state y j).fg.σ B.root σ } σ
+        | attestation a =>
+          rw [h.1]
+          obtain ⟨atts, he⟩ := Store.onAttestation_eq (tr.state y j).fg a
+          rw [he]
+        | attest C att =>
+          cases att with
+          | none => rw [h.2]
+          | some att => rw [h.2.1]
+    · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
+
+/-- Conditional preservation of the all-honest old-entry inventory. The base cut
+`Q` and its initialization are explicit: this does not identify `Q` with the slot
+label `s₀`, nor prove that the inventory is initialized there. -/
+theorem oldHonest_inventory_preserved {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {proposer : Nat → Fin sp.n} (hrun : GoldilocksRun proposer dg H tr) {s₀ Q : Nat}
+    (hinit : ∀ y ∈ H, ∀ E h, OldHonest tr H s₀ E h →
+      OldEntryCovered tr H s₀ E ∨ h < (tr.state y Q).fg.hj) :
+    ∀ i, Q ≤ i → ∀ y ∈ H, ∀ E h, OldHonest tr H s₀ E h →
+      OldEntryCovered tr H s₀ E ∨ h < (tr.state y i).fg.hj := by
+  intro i hi y hy E h hE
+  rcases hinit y hy E h hE with hcov | hlt
+  · exact Or.inl hcov
+  · exact Or.inr (hlt.trans_le (run_hj_mono hrun hy hi))
+
+end Consensus.Goldilocks.Healing
+
 end
