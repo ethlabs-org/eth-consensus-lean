@@ -628,6 +628,29 @@ noncomputable def deliverState (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
       | some e => deliverState dg hs self t os (exec dg self st t e).1
       | none => deliverState dg hs self t os st
 
+/-- `deliverState` of no objects is the state. -/
+theorem deliverState_nil (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time)
+    (st : NodeState (goldilocksNode sp ro)) : deliverState dg hs self t [] st = st := by
+  simp only [deliverState]
+
+/-- `deliverState` of a canonical object runs its handler first. -/
+theorem deliverState_cons_some (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (o : Wire sp.n)
+    (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro))
+    (e : Event (goldilocksNode sp ro)) (he : canonEvent sp ro hs o = some e) :
+    deliverState dg hs self t (o :: os) st =
+      deliverState dg hs self t os (exec dg self st t e).1 := by
+  simp only [deliverState, he]
+
+/-- `deliverState` skips a dropped object. -/
+theorem deliverState_cons_none (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (o : Wire sp.n)
+    (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro))
+    (he : canonEvent sp ro hs o = none) :
+    deliverState dg hs self t (o :: os) st = deliverState dg hs self t os st := by
+  simp only [deliverState, he]
+
 /-- The canonical event of a wire object, if any, is a block, a message or an attestation. -/
 theorem canonEvent_cases hs (o : Wire sp.n) :
     canonEvent sp ro hs o = none ∨ (∃ B, canonEvent sp ro hs o = some (.block B)) ∨
@@ -1183,6 +1206,17 @@ noncomputable def atProposal (v : V) (nd : Model.Node (Model.protoOf (compiled (
     (Model.mempool rho.inbox v t), nd.seen⟩
     ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
       List (Model.protoOf (compiled (family S)) E).Duty)).1
+
+omit [DecidableEq V] in
+/-- `atProposal` unfolded: the engine's `runDuties` of the two leading polls and the proposal
+poll on the clocked node (for modules that cannot see its body). -/
+theorem atProposal_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (t : Time) :
+    atProposal S rho v nd t =
+      (rho.runDuties v ⟨(Model.protoOf (compiled (family S)) E).clock nd.st t
+        (Model.mempool rho.inbox v t), nd.seen⟩
+        ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
+          List (Model.protoOf (compiled (family S)) E).Duty)).1 := by rfl
 
 omit [DecidableEq V] in
 /-- The shape at the proposal duty: `nodeTick` of two poll steps of the clocked state. -/

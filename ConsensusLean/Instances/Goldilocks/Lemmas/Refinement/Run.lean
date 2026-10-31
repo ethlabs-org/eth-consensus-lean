@@ -423,13 +423,301 @@ theorem simTrace_carried_vote_unforgeable (hv : rho.ExecutionValid) :
         ∃ j < i, (simTrace S rho hn).EmitAt v.val j v := by
   sorry
 
+/-! ## Blocks of cuts
+
+The trace's state across a block of cuts: unchanged across other nodes' cuts, the handler's
+state across a group, `deliverState` across a delivery's groups; and a block with the engine's
+ids is a `GroupAt` / `DeliverSeq` of the trace. -/
+
+section
+
+variable {P : Params} {A : NodeAC P}
+
+/-- The `k`-th post-state of a cut list is the fold of its first `k + 1` cuts. -/
+theorem cutPosts_getElem (self : Fin P.n) (t : Time) (cs : List (Cut A)) (st : NodeState A)
+    (k : Nat) (hk : k < (cutPosts self t cs st).length) :
+    (cutPosts self t cs st)[k] = (cs.take (k + 1)).foldl (cutPost self t) st := by
+  induction cs generalizing st k with
+  | nil => simp [cutPosts_nil] at hk
+  | cons c cs ih =>
+    rw [List.getElem_of_eq (cutPosts_cons self t c cs st) hk]
+    cases k with
+    | zero => simp
+    | succ k =>
+      rw [cutPosts_cons, List.length_cons] at hk
+      rw [List.getElem_cons_succ, ih _ _ (by omega), List.take_succ_cons, List.foldl_cons]
+
+end
+
+section
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+
+/-- The post-state of cut `k` of a group: the handler's `k`-th post-state. -/
+theorem getElem_groupRecs_post (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
+    (e : Event (goldilocksNode sp ro)) (k : Nat) (hk : k < (groupRecs dg self st t id e).length) :
+    (groupRecs dg self st t id e)[k].post =
+      (cutPosts self t (exec dg self st t e).2 st)[k]'(by
+        rw [length_cutPosts]; rwa [length_groupRecs] at hk) := by
+  rw [List.getElem_of_eq (groupRecs_eq dg self st t id e) hk, List.getElem_mapIdx,
+    List.getElem_zip]
+
+/-- A tick makes a cut (the AC's tick). -/
+theorem exec_tick_ne_nil (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
+    (exec dg self st t (.tick x)).2 ≠ [] := by
+  simp [Node.exec, onTick, runSteps, tickSteps, Node.tickStep]
+
+/-- A restart makes a cut (`ac_restart`). -/
+theorem exec_restart_ne_nil (st : NodeState (goldilocksNode sp ro)) (t : Time) :
+    (exec dg self st t .restart).2 ≠ [] := by
+  simp [Node.exec, Node.restart]
+
+end
+
+/-- The trace's state is unchanged over a block of cuts of other nodes. -/
+private theorem state_of_block_ne {y : Fin (S.params (pubOf E) hn).n} {j0 : Nat} (len : Nat)
+    (hne : ∀ k < len, ∀ r, (allCuts S rho hn)[j0 + k]? = some r → r.node ≠ y) :
+    (simTrace S rho hn).state y (j0 + len) = (simTrace S rho hn).state y j0 := by
+  induction len with
+  | zero => rfl
+  | succ k ih =>
+    change (simTrace S rho hn).state y (j0 + k).succ = _
+    rw [Trace.state.eq_2, ite_eq_right, ih (fun k' hk' => hne k' (by omega))]
+    rintro ⟨hnode, hlab⟩
+    rw [simTrace_node] at hnode
+    cases hr : (allCuts S rho hn)[j0 + k]? with
+    | none => rw [simTrace_label, hr] at hlab; exact hlab rfl
+    | some r =>
+      rw [hr] at hnode
+      exact hne k (by omega) r hr hnode
+
+/-- The trace's state across a group block at `j0`: the handler's state, by the cut law's
+successors. -/
+private theorem state_of_group
+    (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
+    {y : Fin (S.params (pubOf E) hn).n} {j0 : Nat}
+    {st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))} {t : Time} {id : Nat}
+    {e : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
+    (hcut : ∀ k < (groupRecs dg y st t id e).length,
+      (allCuts S rho hn)[j0 + k]? = (groupRecs dg y st t id e)[k]?)
+    (h0 : (simTrace S rho hn).state y j0 = st) :
+    (simTrace S rho hn).state y (j0 + (groupRecs dg y st t id e).length) =
+      (exec dg y st t e).1 := by
+  have key : ∀ k ≤ (exec dg y st t e).2.length,
+      (simTrace S rho hn).state y (j0 + k) =
+        ((exec dg y st t e).2.take k).foldl (cutPost y t) st := by
+    intro k
+    induction k with
+    | zero => intro _; simpa using h0
+    | succ k ih =>
+      intro hk
+      have hk' : k < (groupRecs dg y st t id e).length := by
+        rw [length_groupRecs]; omega
+      have hr := hcut k hk'
+      rw [List.getElem?_eq_getElem hk'] at hr
+      obtain ⟨hnode, -, -, -, -⟩ := getElem_groupRecs dg y st t id e k hk'
+      change (simTrace S rho hn).state y (j0 + k).succ = _
+      rw [Trace.state.eq_2, ite_eq_left, simTrace_post, hr, Option.elim_some,
+        getElem_groupRecs_post, cutPosts_getElem]
+      rw [simTrace_node, hr, Option.elim_some, hnode, simTrace_label, hr]
+      simp
+  rw [length_groupRecs, key _ le_rfl, List.take_length, foldl_cutPost_exec]
+
+/-- The trace's state across a delivery block at `j0`: `deliverState`. -/
+private theorem state_of_deliverRecs
+    (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
+    {y : Fin (S.params (pubOf E) hn).n} {t : Time} {i : Nat}
+    (hs : List (Header Info × Nat)) (os : List (Wire (S.params (pubOf E) hn).n)) :
+    ∀ (j0 sub : Nat) (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))),
+    (∀ k < (deliverRecs dg hs y t i os st sub).length,
+      (allCuts S rho hn)[j0 + k]? = (deliverRecs dg hs y t i os st sub)[k]?) →
+    (simTrace S rho hn).state y j0 = st →
+    (simTrace S rho hn).state y (j0 + (deliverRecs dg hs y t i os st sub).length) =
+      deliverState dg hs y t os st := by
+  induction os with
+  | nil => intro j0 sub st _ h0; rw [deliverRecs_nil, List.length_nil, deliverState_nil]; exact h0
+  | cons o os ih =>
+    intro j0 sub st hcut h0
+    cases he : canonEvent (S.params (pubOf E) hn) (S.ro _) hs o with
+    | none =>
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ he] at hcut ⊢
+      rw [deliverState_cons_none _ _ _ _ _ _ _ he]
+      exact ih j0 (sub + 1) st hcut h0
+    | some e =>
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ e he] at hcut ⊢
+      rw [deliverState_cons_some _ _ _ _ _ _ _ _ he, List.length_append]
+      have h1 : (simTrace S rho hn).state y
+          (j0 + (groupRecs dg y st t (Nat.pair i sub) e).length) = (exec dg y st t e).1 :=
+        state_of_group S rho hn dg (fun k hk => by
+          rw [hcut k (by rw [List.length_append]; omega), List.getElem?_append_left hk]) h0
+      rw [← Nat.add_assoc]
+      refine ih (j0 + (groupRecs dg y st t (Nat.pair i sub) e).length) (sub + 1) _
+        (fun k hk => ?_) h1
+      rw [Nat.add_assoc, hcut _ (by rw [List.length_append]; omega),
+        List.getElem?_append_right (Nat.le_add_right _ _), Nat.add_sub_cancel_left]
+
+/-- The event id of an existing cut is its record's. -/
+private theorem event_of_getElem? {k : Nat} {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+    (hr : (allCuts S rho hn)[k]? = some r) : (simTrace S rho hn).event k = r.event := by
+  rw [simTrace_event, hr]; rfl
+
+/-- A cut with an event id of engine event `i` lies in the range of event `i`. -/
+private theorem range_of_event {i : Nat} (hi : i < rho.events.length) {k s : Nat}
+    (h : (simTrace S rho hn).event k = Nat.pair i s) :
+    cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) := by
+  cases hr : (allCuts S rho hn)[k]? with
+  | none =>
+    rw [simTrace_event, hr, Option.elim_none, Nat.pair_eq_pair] at h
+    omega
+  | some r =>
+    rw [event_of_getElem? S rho hn hr] at h
+    obtain ⟨i', ev, he, h1, h2, h3⟩ := exists_event_of_getElem? S rho hn hr
+    obtain ⟨-, -, s', hs'⟩ := mem_eventCuts S rho hn he (List.mem_of_getElem? h3)
+    rw [hs', Nat.pair_eq_pair] at h
+    obtain ⟨rfl, -⟩ := h
+    exact ⟨h1, h2⟩
+
+/-- A block of group cuts at `j0` whose event id is unique to the block is a group of the
+trace; its length is the handler's cut count on the trace's state. -/
+private theorem groupAt_of_group
+    (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
+    {y : Fin (S.params (pubOf E) hn).n} {j0 : Nat}
+    {st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))} {t : Time} {id : Nat}
+    {e : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
+    (hcut : ∀ k < (groupRecs dg y st t id e).length,
+      (allCuts S rho hn)[j0 + k]? = (groupRecs dg y st t id e)[k]?)
+    (h0 : (simTrace S rho hn).state y j0 = st) (hne : (exec dg y st t e).2 ≠ [])
+    (huniq : ∀ k, (simTrace S rho hn).event k = id →
+      j0 ≤ k ∧ k < j0 + (groupRecs dg y st t id e).length) :
+    (simTrace S rho hn).GroupAt dg y j0 t e ∧
+      (groupRecs dg y st t id e).length =
+        (exec dg y ((simTrace S rho hn).state y j0) t e).2.length := by
+  subst h0
+  set st := (simTrace S rho hn).state y j0 with hst
+  have hlen := length_groupRecs dg y st t id e
+  have hfact : ∀ k (hk : k < (exec dg y st t e).2.length),
+      (simTrace S rho hn).node (j0 + k) = y ∧ (simTrace S rho hn).time (j0 + k) = t ∧
+        (simTrace S rho hn).event (j0 + k) = id ∧ (simTrace S rho hn).pos (j0 + k) = k ∧
+        (simTrace S rho hn).label (j0 + k) = some (exec dg y st t e).2[k] := by
+    intro k hk
+    have hk' : k < (groupRecs dg y st t id e).length := by omega
+    have hr := hcut k hk'
+    rw [List.getElem?_eq_getElem hk'] at hr
+    obtain ⟨h1, h2, h3, h4, h5⟩ := getElem_groupRecs dg y st t id e k hk'
+    refine ⟨?_, ?_, ?_, ?_, ?_⟩
+    · rw [simTrace_node, hr, Option.elim_some, h1]
+    · rw [simTrace_time, hr, Option.elim_some, h2]
+    · rw [event_of_getElem? S rho hn hr, h3]
+    · rw [simTrace_pos, hr, Option.elim_some, h4]
+    · rw [simTrace_label, hr, Option.map_some, h5]
+  have h0' : (simTrace S rho hn).event j0 = id := by
+    have := (hfact 0 (List.length_pos_of_ne_nil hne)).2.2.1
+    rwa [Nat.add_zero] at this
+  refine ⟨⟨hne, ?_, ?_⟩, hlen⟩
+  · intro k hk
+    obtain ⟨h1, h2, h3, h4, h5⟩ := hfact k hk
+    exact ⟨h1, h2, h3.trans h0'.symm, h4, h5⟩
+  · intro k hk
+    rw [← hlen]
+    exact huniq k (hk.trans h0')
+
+/-- A delivery block at `j0` whose sub-event ids from `sub` on are unique to the block is a
+`DeliverSeq` of the trace. -/
+private theorem deliverSeq_of_recs
+    (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
+    {y : Fin (S.params (pubOf E) hn).n} {t : Time} {i : Nat}
+    (hs : List (Header Info × Nat)) (os : List (Wire (S.params (pubOf E) hn).n)) :
+    ∀ (j0 sub : Nat) (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))),
+    (∀ k < (deliverRecs dg hs y t i os st sub).length,
+      (allCuts S rho hn)[j0 + k]? = (deliverRecs dg hs y t i os st sub)[k]?) →
+    (simTrace S rho hn).state y j0 = st →
+    (∀ k s, (simTrace S rho hn).event k = Nat.pair i s → sub ≤ s →
+      j0 ≤ k ∧ k < j0 + (deliverRecs dg hs y t i os st sub).length) →
+    DeliverSeq (simTrace S rho hn) dg hs y t os j0
+      (j0 + (deliverRecs dg hs y t i os st sub).length) := by
+  induction os with
+  | nil =>
+    intro j0 sub st _ _ _
+    rw [deliverRecs_nil, List.length_nil, Nat.add_zero]
+    exact .nil j0
+  | cons o os ih =>
+    intro j0 sub st hcut h0 huniq
+    cases he : canonEvent (S.params (pubOf E) hn) (S.ro _) hs o with
+    | none =>
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ he] at hcut huniq ⊢
+      exact .drop he (ih j0 (sub + 1) st hcut h0 fun k s hk hs => huniq k s hk (by omega))
+    | some e =>
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ e he] at hcut huniq ⊢
+      rcases eq_or_ne (exec dg y st t e).2 [] with hnil | hnil
+      · have hg : groupRecs dg y st t (Nat.pair i sub) e = [] :=
+          List.length_eq_zero_iff.mp (by rw [length_groupRecs, hnil, List.length_nil])
+        have hst : (exec dg y st t e).1 = st := by
+          have := foldl_cutPost_exec dg y st t e
+          rwa [hnil, List.foldl_nil, eq_comm] at this
+        rw [hg, List.nil_append, hst] at hcut huniq ⊢
+        exact .noCut e he (by rw [h0]; exact hnil)
+          (ih j0 (sub + 1) st hcut h0 fun k s hk hs => huniq k s hk (by omega))
+      · have hlen := length_groupRecs dg y st t (Nat.pair i sub) e
+        have hcutg : ∀ k < (groupRecs dg y st t (Nat.pair i sub) e).length,
+            (allCuts S rho hn)[j0 + k]? = (groupRecs dg y st t (Nat.pair i sub) e)[k]? :=
+          fun k hk => by
+            rw [hcut k (by rw [List.length_append]; omega), List.getElem?_append_left hk]
+        -- a cut with an id of the rest is past the group; one with the group's id is in it
+        have hrest : ∀ k, (groupRecs dg y st t (Nat.pair i sub) e).length ≤ k →
+            k < (groupRecs dg y st t (Nat.pair i sub) e).length +
+              (deliverRecs dg hs y t i os (exec dg y st t e).1 (sub + 1)).length →
+            ∃ s, sub + 1 ≤ s ∧ (simTrace S rho hn).event (j0 + k) = Nat.pair i s := by
+          intro k hk1 hk2
+          have hr := hcut k (by rw [List.length_append]; omega)
+          have hlt : k - (groupRecs dg y st t (Nat.pair i sub) e).length <
+              (deliverRecs dg hs y t i os (exec dg y st t e).1 (sub + 1)).length := by omega
+          rw [List.getElem?_append_right hk1, List.getElem?_eq_getElem hlt] at hr
+          obtain ⟨-, -, s, hs1, hs2⟩ := mem_deliverRecs dg y hs t i (List.getElem_mem hlt)
+          exact ⟨s, hs1, by rw [event_of_getElem? S rho hn hr, hs2]⟩
+        have hgrp : ∀ k < (groupRecs dg y st t (Nat.pair i sub) e).length,
+            (simTrace S rho hn).event (j0 + k) = Nat.pair i sub := by
+          intro k hk
+          have hr := hcutg k hk
+          rw [List.getElem?_eq_getElem hk] at hr
+          rw [event_of_getElem? S rho hn hr]
+          exact (getElem_groupRecs dg y st t (Nat.pair i sub) e k hk).2.2.1
+        obtain ⟨hG, hGlen⟩ := groupAt_of_group S rho hn dg hcutg h0 hnil fun k hk => by
+          obtain ⟨h1, h2⟩ := huniq k sub hk le_rfl
+          rw [List.length_append] at h2
+          refine ⟨h1, ?_⟩
+          by_contra h3
+          obtain ⟨s, hs1, hs2⟩ := hrest (k - j0) (by omega) (by omega)
+          rw [Nat.add_sub_cancel' h1, hk, Nat.pair_eq_pair] at hs2
+          omega
+        refine .event e he hG ?_
+        rw [← hGlen, List.length_append, ← Nat.add_assoc]
+        refine ih (j0 + (groupRecs dg y st t (Nat.pair i sub) e).length) (sub + 1) _
+          (fun k hk => ?_) (state_of_group S rho hn dg hcutg h0) (fun k s hk hs => ?_)
+        · rw [Nat.add_assoc, hcut _ (by rw [List.length_append]; omega),
+            List.getElem?_append_right (Nat.le_add_right _ _), Nat.add_sub_cancel_left]
+        · obtain ⟨h1, h2⟩ := huniq k s hk (by omega)
+          rw [List.length_append, ← Nat.add_assoc] at h2
+          refine ⟨?_, h2⟩
+          by_contra h3
+          have := hgrp (k - j0) (by omega)
+          rw [Nat.add_sub_cancel' h1, hk, Nat.pair_eq_pair] at this
+          omega
+
 /-! ## `Simulates`: the engine agrees with the trace -/
 
 /-- Every labelled node cut lies in the range of some engine event. -/
 theorem simTrace_covered :
     ∀ k, (simTrace S rho hn).label k ≠ none →
       ∃ i < rho.events.length, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) := by
-  sorry
+  intro k hk
+  rw [simTrace_label] at hk
+  have hlt : k < (allCuts S rho hn).length := by
+    by_contra h
+    rw [List.getElem?_eq_none_iff.mpr (by omega)] at hk
+    exact hk rfl
+  obtain ⟨i, hi, h1, h2, -⟩ := allCuts_getElem? S rho hn k hlt
+  exact ⟨i, hi, h1, h2⟩
 
 /-- The node state inside the shape's state is the trace's state at the mapped cut (by induction
 on the events, from `node_of_tick_public`, `node_of_tick_other`, `node_of_deliver`,
@@ -438,7 +726,56 @@ theorem simTrace_state (hv : rho.ExecutionValid) :
     ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length,
       (stateAt S rho hn v i).node =
         (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
-  sorry
+  intro v hv' i
+  induction i with
+  | zero =>
+    intro _
+    rw [cutMap_zero]
+    exact (congrArg (·.node) (stateAt_zero S rho hn v)).trans
+      (simTrace_init_eq S rho hn (rho.ownKey v)).symm
+  | succ i ih =>
+    intro hi
+    have hi' : i < rho.events.length := by omega
+    have ih := ih (by omega)
+    have he : rho.events[i]? = some rho.events[i] := List.getElem?_eq_getElem hi'
+    rw [cutMap_succ]
+    by_cases hne : rho.events[i].node ≠ v
+    · rw [state_of_other S rho hn v i _ he hne]
+      refine ih.trans (state_of_block_ne S rho hn _ (fun k hk r hr => ?_)).symm
+      rw [allCuts_getElem?_add S rho hn i k hi' hk] at hr
+      obtain ⟨hnode, -, -⟩ := mem_eventCuts S rho hn he (List.mem_of_getElem? hr)
+      rw [hnode]
+      exact fun h => hne (rho.key.symm.injective h)
+    rw [not_not] at hne
+    have hcut : ∀ k < (eventCuts S rho hn i).length,
+        (allCuts S rho hn)[cutMap S rho hn i + k]? = (eventCuts S rho hn i)[k]? :=
+      fun k hk => allCuts_getElem?_add S rho hn i k hi' hk
+    cases hev : rho.events[i] with
+    | tick w t =>
+      rw [hev] at he hne
+      simp only [Model.Event.node] at hne
+      subst hne
+      by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
+      · rw [eventCuts_tick_public S rho hn i w t he hp] at hcut ⊢
+        rw [node_of_tick_public S rho hn hv w hv' i t he hp]
+        exact (state_of_group S rho hn _ hcut ih.symm).symm
+      · rw [eventCuts_tick_other S rho hn i w t he hp, List.length_nil, Nat.add_zero,
+          node_of_tick_other S rho hn hv w hv' i t he hp]
+        exact ih
+    | deliver w o t =>
+      rw [hev] at he hne
+      simp only [Model.Event.node] at hne
+      subst hne
+      rw [eventCuts_deliver S rho hn i w o t he] at hcut ⊢
+      rw [node_of_deliver S rho hn hv w hv' i o t he]
+      exact (state_of_deliverRecs S rho hn _ _ _ _ _ _ hcut ih.symm).symm
+    | restart w t =>
+      rw [hev] at he hne
+      simp only [Model.Event.node] at hne
+      subst hne
+      rw [eventCuts_restart S rho hn i w t he] at hcut ⊢
+      rw [node_of_restart S rho hn hv w hv' i t he]
+      exact (state_of_group S rho hn _ hcut ih.symm).symm
 
 /-- An engine tick of an honest node at a public time is the node's tick with the engine's input,
 one group. -/
@@ -450,7 +787,27 @@ theorem simTrace_tick_public_group (hv : rho.ExecutionValid) :
           cutMap S rho hn (i + 1) = cutMap S rho hn i + (Node.exec (digestOf S rho) (rho.ownKey v)
             ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t
             (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length := by
-  sorry
+  intro v hv' i t he hp
+  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
+  rw [cutMap_succ, eventCuts_tick_public S rho hn i v t he hp]
+  have h0 := (simTrace_state S rho hn hv v hv' i hi.le).symm
+  have hne := exec_tick_ne_nil (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+    (encodeTxs (Model.mempool rho.inbox v t))
+  have hcut : ∀ k < (groupRecs (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+      (Nat.pair i 0) (.tick (encodeTxs (Model.mempool rho.inbox v t)))).length,
+      (allCuts S rho hn)[cutMap S rho hn i + k]? = (groupRecs (digestOf S rho) (rho.ownKey v)
+        (stateAt S rho hn v i).node t (Nat.pair i 0)
+        (.tick (encodeTxs (Model.mempool rho.inbox v t))))[k]? := fun k hk => by
+    rw [← eventCuts_tick_public S rho hn i v t he hp] at hk ⊢
+    exact allCuts_getElem?_add S rho hn i k hi hk
+  have huniq : ∀ k, (simTrace S rho hn).event k = Nat.pair i 0 → cutMap S rho hn i ≤ k ∧
+      k < cutMap S rho hn i + (groupRecs (digestOf S rho) (rho.ownKey v)
+        (stateAt S rho hn v i).node t (Nat.pair i 0)
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).length := fun k hk => by
+    have := range_of_event S rho hn hi hk
+    rwa [cutMap_succ, eventCuts_tick_public S rho hn i v t he hp] at this
+  obtain ⟨hG, hlen⟩ := groupAt_of_group S rho hn (digestOf S rho) hcut h0 hne huniq
+  exact ⟨hG, congrArg (cutMap S rho hn i + ·) hlen⟩
 
 /-- An honest node awake at a public time (from `0` on) ticks there. -/
 theorem simTrace_tick_of_awake (hv : rho.ExecutionValid) :
@@ -465,18 +822,27 @@ theorem simTrace_tick_of_awake (hv : rho.ExecutionValid) :
   exact ⟨_, _, hg⟩
 
 /-- An engine tick at a non-public time has no cut. -/
-theorem simTrace_tick_other (hv : rho.ExecutionValid) :
+theorem simTrace_tick_other (_hv : rho.ExecutionValid) :
     ∀ v ∈ rho.honest, ∀ i t, rho.events[i]? = some (.tick v t) →
       ¬ (S.params (pubOf E) hn).toParams.IsPublic t →
         cutMap S rho hn (i + 1) = cutMap S rho hn i := by
-  sorry
+  intro v _ i t he hp
+  rw [cutMap_succ, eventCuts_tick_other S rho hn i v t he hp, List.length_nil, Nat.add_zero]
 
 /-- An engine delivery to an honest node is the groups of the canonical objects it delivers. -/
 theorem simTrace_deliver (hv : rho.ExecutionValid) :
     ∀ v ∈ rho.honest, ∀ i o t, rho.events[i]? = some (.deliver v o t) →
       DeliverSeq (simTrace S rho hn) (digestOf S rho) (Model.digests rho.hash o) (rho.ownKey v) t
         (delivered (S.params (pubOf E) hn) o) (cutMap S rho hn i) (cutMap S rho hn (i + 1)) := by
-  sorry
+  intro v hv' i o t he
+  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
+  rw [cutMap_succ, eventCuts_deliver S rho hn i v o t he]
+  refine deliverSeq_of_recs S rho hn (digestOf S rho) _ _ _ 0 _ (fun k hk => ?_)
+    (simTrace_state S rho hn hv v hv' i hi.le).symm (fun k s hk _ => ?_)
+  · rw [← eventCuts_deliver S rho hn i v o t he] at hk ⊢
+    exact allCuts_getElem?_add S rho hn i k hi hk
+  · have := range_of_event S rho hn hi hk
+    rwa [cutMap_succ, eventCuts_deliver S rho hn i v o t he] at this
 
 /-- An engine restart of an honest node is the node's restart group. -/
 theorem simTrace_restart (hv : rho.ExecutionValid) :
@@ -484,14 +850,33 @@ theorem simTrace_restart (hv : rho.ExecutionValid) :
       (simTrace S rho hn).GroupAt (digestOf S rho) (rho.ownKey v) (cutMap S rho hn i) t .restart ∧
         cutMap S rho hn (i + 1) = cutMap S rho hn i + (Node.exec (digestOf S rho) (rho.ownKey v)
           ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t .restart).2.length := by
-  sorry
+  intro v hv' i t he
+  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
+  rw [cutMap_succ, eventCuts_restart S rho hn i v t he]
+  have h0 := (simTrace_state S rho hn hv v hv' i hi.le).symm
+  have hne := exec_restart_ne_nil (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+  have hcut : ∀ k < (groupRecs (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+      (Nat.pair i 0) .restart).length,
+      (allCuts S rho hn)[cutMap S rho hn i + k]? = (groupRecs (digestOf S rho) (rho.ownKey v)
+        (stateAt S rho hn v i).node t (Nat.pair i 0) .restart)[k]? := fun k hk => by
+    rw [← eventCuts_restart S rho hn i v t he] at hk ⊢
+    exact allCuts_getElem?_add S rho hn i k hi hk
+  have huniq : ∀ k, (simTrace S rho hn).event k = Nat.pair i 0 → cutMap S rho hn i ≤ k ∧
+      k < cutMap S rho hn i + (groupRecs (digestOf S rho) (rho.ownKey v)
+        (stateAt S rho hn v i).node t (Nat.pair i 0) .restart).length := fun k hk => by
+    have := range_of_event S rho hn hi hk
+    rwa [cutMap_succ, eventCuts_restart S rho hn i v t he] at this
+  obtain ⟨hG, hlen⟩ := groupAt_of_group S rho hn (digestOf S rho) hcut h0 hne huniq
+  exact ⟨hG, congrArg (cutMap S rho hn i + ·) hlen⟩
 
 /-- An honest node awake in the trace is awake in the environment, within `[0, horizon]`: the
 trace's horizon is within the engine's, as every cut's time is an event's. -/
 theorem simTrace_awake_of (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ t, (simTrace S rho hn).awake y t →
       E.awake (rho.key y) t = true ∧ 0 ≤ t ∧ t ≤ rho.horizon := by
-  sorry
+  intro y _ t hw
+  obtain ⟨hwE, ht0, k, -, htk⟩ := (awake_iff' S rho hn y t).mp hw
+  exact ⟨hwE, ht0, htk.trans (time_bounds S rho hn hv k).2⟩
 
 /-- The engine's Goldilocks state at a delivery: at the delivery's time, with the own key. -/
 private theorem deliver_state (hv : rho.ExecutionValid) {i : Nat} {v : V}
