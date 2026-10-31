@@ -52,7 +52,11 @@ release() {
   git push -q --force-with-lease="$lock_ref:$held" "$remote" ":$lock_ref" 2>/dev/null || true
   held=""
 }
-trap release EXIT INT TERM
+# Cancellation must stop the landing, not merely release its lock and resume.
+# EXIT performs cleanup for both normal completion and signal-triggered exits.
+trap release EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 git fetch -q --tags --force "$remote" main || die "cannot fetch $remote main"
 [[ -z "$(git status --porcelain)" ]] ||
