@@ -454,9 +454,9 @@ theorem simTrace_cut {k : Nat} (hk : (simTrace S rho hn).label k ≠ none) :
   · rw [simTrace_pos, hr]; rfl
   · rw [simTrace_label, hr]; rfl
 
-/-- Past the last node cut the trace is unlabelled, at the horizon. -/
+/-- Past the last node cut the trace is unlabelled, strictly after the observation horizon. -/
 theorem simTrace_of_getElem?_none {k : Nat} (hk : (allCuts S rho hn)[k]? = none) :
-    (simTrace S rho hn).label k = none ∧ (simTrace S rho hn).time k = rho.horizon := by
+    (simTrace S rho hn).label k = none ∧ (simTrace S rho hn).time k = rho.horizon + 1 := by
   simp [simTrace_label, simTrace_time, hk]
 
 end Consensus.Goldilocks.Refinement

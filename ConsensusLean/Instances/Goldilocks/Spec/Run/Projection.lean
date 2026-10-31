@@ -47,6 +47,7 @@ def projAC : ACTrace A where
   label i := (tr.label i).bind acLabel
   post i := (tr.post i).ac
   awake := tr.awake
+  observationHorizon := tr.observationHorizon
 
 /-- The FG trace of a run: the FG cuts, over the `(Σ, Λ)` parts of the node states. -/
 def projFG : FGTrace P A.Payload where
@@ -58,6 +59,7 @@ def projFG : FGTrace P A.Payload where
   label i := (tr.label i).bind fgLabel
   post i := ((tr.post i).fg, (tr.post i).record)
   awake := tr.awake
+  observationHorizon := tr.observationHorizon
 
 end Consensus.Goldilocks.RunTrace
 

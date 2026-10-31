@@ -153,8 +153,10 @@ that `y` proposes at `T + Δ`"). -/
 def ProposesAt (y : Fin P.n) (k : Nat) (B : A.Blk) : Prop :=
   tr.OwnBlockAt y k B ∧ B.proposer = y ∧ tr.time k = P.slotTime B.slot
 
-/-- The time `t` is within the run's horizon: some cut at or after it is labelled. -/
-def InHorizon (t : Time) : Prop := ∃ i, tr.label i ≠ none ∧ t ≤ tr.time i
+/-- The time `t` has a cut at or after it, covered either by a labelled action or by
+explicit finite observation metadata. Observation coverage invents no protocol calls. -/
+def InHorizon (t : Time) : Prop :=
+  ∃ i, (tr.label i ≠ none ∨ ∃ T, tr.observationHorizon = some T ∧ t ≤ T) ∧ t ≤ tr.time i
 
 /-- The finalized output of `y` before cut `i`: `Σ.F` (claims §"Outputs"). -/
 noncomputable def finalizedAt (y : Fin P.n) (i : Nat) : A.Blk := (tr.state y i).fg.F

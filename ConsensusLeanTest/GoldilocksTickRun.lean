@@ -963,7 +963,8 @@ theorem tickRun_localRun (h1 : P.n = 1) (hΔ : P.Δ = 1) (sg : A.Msg → Fin P.n
   awake_in_horizon y _ t ht := by
     have htt : ((t.toNat : Nat) : Int) = t := Int.toNat_of_nonneg ht
     refine ⟨8 * t.toNat, ?_, ?_⟩
-    · rw [tickRun_label, show 8 * t.toNat / 8 = t.toNat by omega,
+    · left
+      rw [tickRun_label, show 8 * t.toNat / 8 = t.toNat by omega,
         show 8 * t.toNat % 8 = 0 by omega, tickCuts_head]
       simp
     · rw [tickRun_time, show 8 * t.toNat / 8 = t.toNat by omega, htt]

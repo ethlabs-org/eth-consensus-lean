@@ -4,6 +4,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 import all ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Proofs.RegimesRealizable.Main
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks refinement statements
@@ -134,5 +137,57 @@ theorem forward_dependency_preheld :
       (dependencies 1).ready [other] child = false ∧
       (dependencies 1).ready [parent] child = true := by
   decide
+
+/-- Without observation metadata the legacy action-covered horizon is unchanged. -/
+theorem action_only_horizon {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (tr : GoldilocksTrace sp ro) (h : tr.observationHorizon = none) (t : Time) :
+    tr.InHorizon t ↔ ∃ i, tr.label i ≠ none ∧ t ≤ tr.time i := by
+  simp [RunTrace.InHorizon, h]
+
+/-- Projection preserves finite observation metadata, including the absence of it. -/
+theorem projection_observation {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (tr : GoldilocksTrace sp ro) :
+    tr.projAC.observationHorizon = tr.observationHorizon ∧
+      tr.projFG.observationHorizon = tr.observationHorizon := ⟨rfl, rfl⟩
+
+/-- Regression #118: a non-public terminal observation belongs to a valid run. -/
+def terminalPoint : EnvPoint (Fin 1) :=
+  ⟨⟨2, by decide, fun _ _ => true⟩, Finset.univ, 1, fun _ _ => []⟩
+
+/-- A ready reader remains awake at the finite horizon, and a strictly later unlabelled
+cut exists. The old constant-horizon filler makes this conclusion impossible. -/
+theorem terminal_observation (S : Setup) :
+    ∃ rho : Model.Run (compiled (family S)) terminalPoint.env,
+      rho.ExecutionValid ∧ rho.horizon = 1 ∧
+      rho.point.Ready (Regimes.catchUp (S.params (pubOf terminalPoint.env) (by decide)))
+        0 rho.horizon ∧
+      (simTrace S rho (by decide)).awake (rho.ownKey 0) rho.horizon ∧
+      ∃ j, (simTrace S rho (by decide)).label j = none ∧
+        Regimes.CutAfter (simTrace S rho (by decide)) j rho.horizon := by
+  let sel : (Model.protoOf (compiled (family S)) terminalPoint.env).Role →
+      Finset (Fin (Fintype.card (Fin 1))) := fun _ => Finset.univ
+  have hsel : (Model.protoOf (compiled (family S)) terminalPoint.env).SelAdmits sel := by
+    intro r
+    cases r with
+    | proposer s => change (Finset.univ : Finset (Fin 1)).card = min 1 1; decide
+    | poll => rfl
+    | duty s k => exact k.elim
+  obtain ⟨rho, hp, _, _, hv, _, _, _⟩ := Shape.coverage (family S) terminalPoint
+    (by decide) (by exact Equiv.refl _) sel hsel 0
+  have hh : rho.horizon = 1 := congrArg EnvPoint.horizon hp
+  have hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf terminalPoint.env) (by decide)))
+      0 rho.horizon := by
+    rw [hp]
+    exact ⟨Finset.mem_univ _, fun _ _ _ => rfl⟩
+  refine ⟨rho, hv, hh, hr, ?_, (allCuts S rho (by decide)).length, ?_, ?_⟩
+  · exact ⟨rfl, hv.horizon_nonneg, le_rfl⟩
+  · rw [simTrace_label, List.getElem?_length]; rfl
+  · constructor
+    · intro k hk
+      apply simTrace_labelled_time_le S rho (by decide) hv
+      rw [simTrace_label, List.getElem?_eq_getElem hk]
+      simp
+    · rw [simTrace_time, List.getElem?_length]
+      simp
 
 end Consensus.Goldilocks.Refinement.Test

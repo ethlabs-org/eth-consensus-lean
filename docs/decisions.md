@@ -15,6 +15,18 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-10-31, coordinator and spec read-back ([#118](https://github.com/fradamt-agent/consensus-lean/issues/118)).
+  Separate finite observation coverage from labelled protocol-action coverage. `Trace.observationHorizon`
+  defaults to `none` (legacy action-only horizon); `InHorizon` also admits a cut reaching a time covered
+  by explicit finite metadata. Canonical traces set the engine horizon, clamp wakefulness to `[0,horizon]`,
+  and stutter unlabelled at `horizon+1`. No engine premise, generic readiness condition, handler call,
+  signing or duty is added. A valid one-validator, Δ=2, horizon=1 witness showed that the old filler could
+  never supply the strictly later cut required by `sleepy_read_cut`.
+  The horizon audit found six Healing consumers using only the retained cut/time bound, and three test
+  constructors using labelled coverage (now injected into the action alternative). Canonical labelled
+  cuts remain bounded by the engine horizon; `Simulates.covered` still covers actions only. Both component
+  projections preserve observation metadata. Unlabelled padding alone is not a readiness repair.
+
 - 2026-10-31, coordinator (Accepted existential guarantees, owner rule).
   Restore the concrete family acceptance root with fixed assumptions and
   existential finite catch-up, heal and latency coefficients. Standard fractions

@@ -70,22 +70,50 @@ private theorem labelled_iff (k : Nat) :
   simp [simTrace_label]
 
 private theorem time_bounds (hv : rho.ExecutionValid) (k : Nat) :
-    0 ≤ (simTrace S rho hn).time k ∧ (simTrace S rho hn).time k ≤ rho.horizon := by
+    0 ≤ (simTrace S rho hn).time k ∧ (simTrace S rho hn).time k ≤ rho.horizon + 1 := by
   cases hk : (allCuts S rho hn)[k]? with
   | none =>
     rw [(simTrace_of_getElem?_none S rho hn hk).2]
-    exact ⟨hv.horizon_nonneg, le_rfl⟩
+    exact ⟨by linarith [hv.horizon_nonneg], le_rfl⟩
   | some r =>
     have hl : (simTrace S rho hn).label k ≠ none := by rw [simTrace_label, hk]; simp
     obtain ⟨-, i, ev, -, he, -, -, -, -, ht, -⟩ := simTrace_cut S rho hn hl
     rw [ht]
-    exact hv.in_horizon ev (List.mem_of_getElem? he)
+    have h := hv.in_horizon ev (List.mem_of_getElem? he)
+    exact ⟨h.1, by linarith [h.2]⟩
+
+/-- Protocol actions, unlike observation filler, stay within the engine horizon. -/
+theorem simTrace_labelled_time_le (hv : rho.ExecutionValid) {k : Nat}
+    (hl : (simTrace S rho hn).label k ≠ none) :
+    (simTrace S rho hn).time k ≤ rho.horizon := by
+  obtain ⟨_, _, ev, _, he, _, _, _, _, ht, _⟩ := simTrace_cut S rho hn hl
+  rw [ht]
+  exact (hv.in_horizon ev (List.mem_of_getElem? he)).2
 
 private theorem awake_iff' (y : Fin (Fintype.card V)) (t : Time) :
     (simTrace S rho hn).awake y t ↔ E.awake (rho.key y) t = true ∧ 0 ≤ t ∧
-      ∃ k, (simTrace S rho hn).label k ≠ none ∧ t ≤ (simTrace S rho hn).time k := by
+      t ≤ rho.horizon := by
   rw [simTrace_awake_iff, awakeAt_iff]
-  simp only [cutLabel_eq, cutTime_eq, simTrace_label, simTrace_time]
+
+/-- Canonical labelled coverage cannot extend its explicit observation horizon. -/
+theorem simTrace_inHorizon_le (hv : rho.ExecutionValid) {t : Time}
+    (ht : (simTrace S rho hn).InHorizon t) : t ≤ rho.horizon := by
+  obtain ⟨k, hk, htk⟩ := (simTrace_inHorizon_iff S rho hn t).mp ht
+  rcases hk with hk | hk
+  · have hl : (simTrace S rho hn).label k ≠ none := by
+      simpa only [simTrace_label, cutLabel_eq] using hk
+    have ht' : t ≤ (simTrace S rho hn).time k := by
+      simpa only [simTrace_time, cutTime_eq] using htk
+    exact ht'.trans (simTrace_labelled_time_le S rho hn hv hl)
+  · exact hk
+
+/-- Environment wakefulness transports throughout the canonical observation horizon. -/
+theorem simTrace_awake_to (hv : rho.ExecutionValid) :
+    ∀ y ∈ honestKeys S rho, ∀ t, E.awake (rho.key y) t = true → 0 ≤ t →
+      (simTrace S rho hn).InHorizon t → (simTrace S rho hn).awake y t := by
+  intro y hy t hw ht hh
+  exact simTrace_awake_before_horizon S rho hn y hy t hw ht
+    (simTrace_inHorizon_le S rho hn hv hh)
 
 /-- The first cut of a group: a cut at position `0` of an engine event at the group's node and
 time, whose phase is the group's event's. -/
@@ -247,7 +275,8 @@ theorem simTrace_awake_of_call (hv : rho.ExecutionValid) :
   have hl : (simTrace S rho hn).label i ≠ none := by rw [hlab]; simp
   obtain ⟨-, i₀, ev, -, he, -, -, -, hn', ht, -⟩ := simTrace_cut S rho hn hl
   have hkey : ev.node = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
-  refine (awake_iff' S rho hn y _).mpr ⟨?_, (time_bounds S rho hn hv i).1, i, hl, le_rfl⟩
+  refine (awake_iff' S rho hn y _).mpr
+    ⟨?_, (time_bounds S rho hn hv i).1, simTrace_labelled_time_le S rho hn hv hl⟩
   rw [ht, ← hkey]
   exact event_awake S rho hv he
 
@@ -264,7 +293,8 @@ theorem simTrace_restart_of_sleep (hv : rho.ExecutionValid) :
   have hwt : E.awake (rho.key y) ev.time = true := hkey ▸ event_awake S rho hv he
   have hwu : E.awake (rho.key y) u = false := by
     by_contra h
-    exact hsleep ((awake_iff' S rho hn y u).mpr ⟨by simpa using h, hu0, i, hl, hut.le⟩)
+    exact hsleep ((awake_iff' S rho hn y u).mpr
+      ⟨by simpa using h, hu0, hut.le.trans (simTrace_labelled_time_le S rho hn hv hl)⟩)
   obtain ⟨w, huw, hwt', hw1, hw2⟩ :=
     exists_wake (E.awake (rho.key y)) hwu hwt (by rw [← ht]; exact hut.le)
   have hth := (hv.in_horizon ev (List.mem_of_getElem? he)).2
@@ -305,12 +335,11 @@ theorem simTrace_restart_at_wake (hv : rho.ExecutionValid) :
         ∃ k, (simTrace S rho hn).RestartAt y k ∧ u < (simTrace S rho hn).time k ∧
           (simTrace S rho hn).time k ≤ v := by
   intro y hy u v hu0 huv hsu hav
-  obtain ⟨hwv, -, k, hk, hvk⟩ := (awake_iff' S rho hn y v).mp hav
+  obtain ⟨hwv, -, hvh⟩ := (awake_iff' S rho hn y v).mp hav
   have hwu : E.awake (rho.key y) u = false := by
     by_contra h
-    exact hsu ((awake_iff' S rho hn y u).mpr ⟨by simpa using h, hu0, k, hk, by linarith⟩)
+    exact hsu ((awake_iff' S rho hn y u).mpr ⟨by simpa using h, hu0, huv.le.trans hvh⟩)
   obtain ⟨w, huw, hwv', hw1, hw2⟩ := exists_wake _ hwu hwv huv.le
-  have hvh : v ≤ rho.horizon := hvk.trans (time_bounds S rho hn hv k).2
   obtain ⟨ir, hir⟩ :=
     List.mem_iff_getElem?.mp
       (hv.wake_restart _ hy w (by linarith) (by linarith) ⟨hw1, hw2⟩)
@@ -899,8 +928,7 @@ theorem simTrace_tick_of_awake (hv : rho.ExecutionValid) :
       (simTrace S rho hn).awake y t →
       ∃ j, (simTrace S rho hn).TickAt (runProposer S rho hn) (digestOf S rho) y j t := by
   intro y hy t ht0 hp hw
-  obtain ⟨hwE, -, k, -, htk⟩ := (awake_iff' S rho hn y t).mp hw
-  have hth : t ≤ rho.horizon := htk.trans (time_bounds S rho hn hv k).2
+  obtain ⟨hwE, -, hth⟩ := (awake_iff' S rho hn y t).mp hw
   obtain ⟨i, he⟩ := List.mem_iff_getElem?.mp (hv.tick_total _ hy t ht0 hth hwE)
   obtain ⟨hg, -⟩ := simTrace_tick_public_group S rho hn hv _ hy i t he hp
   rw [ownKey_key] at hg
@@ -962,14 +990,13 @@ theorem simTrace_restart (hv : rho.ExecutionValid) :
     groupAt_of_group S rho hn (runProposer S rho hn) (digestOf S rho) hcut h0 hne huniq
   exact ⟨hG, congrArg (cutMap S rho hn i + ·) hlen⟩
 
-/-- An honest node awake in the trace is awake in the environment, within `[0, horizon]`: the
-trace's horizon is within the engine's, as every cut's time is an event's. -/
-theorem simTrace_awake_of (hv : rho.ExecutionValid) :
+/-- An honest node awake in the trace is awake in the environment, within `[0, horizon]`,
+by the canonical observation clamp; unlabelled filler lies beyond that interval. -/
+theorem simTrace_awake_of (_hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ t, (simTrace S rho hn).awake y t →
       E.awake (rho.key y) t = true ∧ 0 ≤ t ∧ t ≤ rho.horizon := by
   intro y _ t hw
-  obtain ⟨hwE, ht0, k, -, htk⟩ := (awake_iff' S rho hn y t).mp hw
-  exact ⟨hwE, ht0, htk.trans (time_bounds S rho hn hv k).2⟩
+  exact (awake_iff' S rho hn y t).mp hw
 
 /-- An honest node's signings in the simulating trace are pairwise not slashable (`non_framing`
 over the trace, a Goldilocks run). -/

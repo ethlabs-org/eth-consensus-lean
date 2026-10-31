@@ -19,7 +19,7 @@ before an engine cut.
   threaded through the handlers; a dropped object, or a canonical object whose handler makes no
   cut, contributes nothing. The sub-event index gives each group its own event id (`Nat.pair`).
 * A restart is the restart group.
-* After the last engine cut the trace stutters: unlabelled cuts at the horizon, each under its own
+* After the last engine cut the trace stutters: unlabelled cuts at horizon + 1, each under its own
   event id.
 * The trace's awake function is the environment's, clamped to `[0, ∞)` and to the trace's horizon
   (`awakeAt`), so that `awake_in_horizon` holds by construction and `Simulates.awake_to` is the
@@ -194,22 +194,21 @@ noncomputable def cutMap : Nat → Nat
 noncomputable def allCuts : List (CutRec (S.params (pubOf E) hn) (S.ro _)) :=
   (List.range rho.events.length).flatMap (eventCuts S rho hn)
 
-/-- The time of node cut `k`: the time of its engine event; the horizon past the last cut. -/
+/-- The time of node cut `k`: its engine event's time; horizon + 1 after the last cut. -/
 noncomputable def cutTime (k : Nat) : Time :=
-  ((allCuts S rho hn)[k]?).elim rho.horizon CutRec.time
+  ((allCuts S rho hn)[k]?).elim (rho.horizon + 1) CutRec.time
 
 /-- The label of node cut `k`: its cut; none past the last cut. -/
 noncomputable def cutLabel (k : Nat) :
     Option (Cut (goldilocksNode (S.params (pubOf E) hn) (S.ro _))) :=
   ((allCuts S rho hn)[k]?).map CutRec.label
 
-/-- The trace's awake function: the environment's, from time `0` on and within the trace's
-horizon (some labelled cut at or after the time). -/
-def awakeAt (y : Fin (Fintype.card V)) (t : Time) : Prop :=
-  E.awake (rho.key y) t = true ∧ 0 ≤ t ∧ ∃ k, cutLabel S rho hn k ≠ none ∧ t ≤ cutTime S rho hn k
+/-- The trace's awake function: the environment's on the finite observation interval. -/
+def awakeAt (_hn : 1 ≤ Fintype.card V) (y : Fin (Fintype.card V)) (t : Time) : Prop :=
+  E.awake (rho.key y) t = true ∧ 0 ≤ t ∧ t ≤ rho.horizon
 
 /-- **The simulating trace** of the engine run `rho`: the node cuts of its events in order
-(`allCuts`), then unlabelled cuts at the horizon under fresh event ids. -/
+(`allCuts`), then unlabelled cuts at horizon + 1 under fresh event ids. -/
 noncomputable def simTrace : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _) where
   init _ := Node.init _
   node k := ((allCuts S rho hn)[k]?).elim ⟨0, hn⟩ CutRec.node
@@ -219,6 +218,7 @@ noncomputable def simTrace : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _) wh
   label := cutLabel S rho hn
   post k := ((allCuts S rho hn)[k]?).elim (Node.init _) CutRec.post
   awake := awakeAt S rho hn
+  observationHorizon := some rho.horizon
 
 /-- Every node of the trace starts from the initial node state. -/
 theorem simTrace_init_eq (y : Fin (Fintype.card V)) :
@@ -227,8 +227,9 @@ theorem simTrace_init_eq (y : Fin (Fintype.card V)) :
 
 /-- The trace's horizon is `awakeAt`'s clamp. -/
 theorem simTrace_inHorizon_iff (t : Time) :
-    (simTrace S rho hn).InHorizon t ↔ ∃ k, cutLabel S rho hn k ≠ none ∧ t ≤ cutTime S rho hn k :=
-  Iff.rfl
+    (simTrace S rho hn).InHorizon t ↔
+      ∃ k, (cutLabel S rho hn k ≠ none ∨ t ≤ rho.horizon) ∧ t ≤ cutTime S rho hn k := by
+  simp [RunTrace.InHorizon, simTrace]
 
 /-- The trace's awake function is `awakeAt`. -/
 theorem simTrace_awake_iff (y : Fin (Fintype.card V)) (t : Time) :
@@ -239,14 +240,18 @@ theorem simTrace_awake_iff (y : Fin (Fintype.card V)) (t : Time) :
 (`LocalRun.awake_in_horizon`). -/
 theorem simTrace_awake_in_horizon :
     ∀ y ∈ honestKeys S rho, ∀ t, (simTrace S rho hn).awake y t →
-      (simTrace S rho hn).InHorizon t :=
-  fun _ _ _ h => h.2.2
+      (simTrace S rho hn).InHorizon t := by
+  intro y _ t h
+  refine (simTrace_inHorizon_iff S rho hn t).mpr
+    ⟨(allCuts S rho hn).length, Or.inr h.2.2, ?_⟩
+  simp only [cutTime, List.getElem?_length, Option.elim_none]
+  linarith [h.2.2]
 
 /-- An honest node awake in the environment at a time from `0` within the trace's horizon is
 awake in the trace: `awakeAt` is that clamp (`Simulates.awake_to`). -/
-theorem simTrace_awake_to :
+theorem simTrace_awake_before_horizon :
     ∀ y ∈ honestKeys S rho, ∀ t, E.awake (rho.key y) t = true → 0 ≤ t →
-      (simTrace S rho hn).InHorizon t → (simTrace S rho hn).awake y t :=
+      t ≤ rho.horizon → (simTrace S rho hn).awake y t :=
   fun _ _ _ hw h0 hh => ⟨hw, h0, hh⟩
 
 /-- The trace's cut map starts at `0`. -/
@@ -410,17 +415,18 @@ theorem allCuts_eq :
 
 /-- `cutTime` unfolded. -/
 theorem cutTime_eq (k : Nat) :
-    cutTime S rho hn k = ((allCuts S rho hn)[k]?).elim rho.horizon CutRec.time := by rfl
+    cutTime S rho hn k = ((allCuts S rho hn)[k]?).elim (rho.horizon + 1) CutRec.time := by rfl
 
 /-- `cutLabel` unfolded. -/
 theorem cutLabel_eq (k : Nat) :
     cutLabel S rho hn k = ((allCuts S rho hn)[k]?).map CutRec.label := by rfl
 
+omit [DecidableEq V] in
 /-- `awakeAt` unfolded. -/
 theorem awakeAt_iff (y : Fin (Fintype.card V)) (t : Time) :
     awakeAt S rho hn y t ↔
       E.awake (rho.key y) t = true ∧ 0 ≤ t ∧
-        ∃ k, cutLabel S rho hn k ≠ none ∧ t ≤ cutTime S rho hn k := Iff.rfl
+        t ≤ rho.horizon := Iff.rfl
 
 /-- The node of a cut of the trace. -/
 theorem simTrace_node (k : Nat) :
@@ -428,7 +434,8 @@ theorem simTrace_node (k : Nat) :
 
 /-- The time of a cut of the trace. -/
 theorem simTrace_time (k : Nat) :
-    (simTrace S rho hn).time k = ((allCuts S rho hn)[k]?).elim rho.horizon CutRec.time := by rfl
+    (simTrace S rho hn).time k =
+      ((allCuts S rho hn)[k]?).elim (rho.horizon + 1) CutRec.time := by rfl
 
 /-- The event id of a cut of the trace. -/
 theorem simTrace_event (k : Nat) :

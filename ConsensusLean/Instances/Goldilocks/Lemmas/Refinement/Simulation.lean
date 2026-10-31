@@ -32,7 +32,7 @@ theorem simTrace_simulates (hv : rho.ExecutionValid) :
   deliver := simTrace_deliver S rho hn hv
   restart := simTrace_restart S rho hn hv
   awake_of := simTrace_awake_of S rho hn hv
-  awake_to := simTrace_awake_to S rho hn
+  awake_to := simTrace_awake_to S rho hn hv
   block_released := simTrace_block_released S rho hn hv (simTrace_goldilocksRun S rho hn hv)
   vote_released := simTrace_vote_released S rho hn hv (simTrace_goldilocksRun S rho hn hv)
   att_released := simTrace_att_released S rho hn hv (simTrace_goldilocksRun S rho hn hv)

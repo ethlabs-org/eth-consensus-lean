@@ -40,8 +40,9 @@ over a run (`Spec/Run/Model`), for the honest validators `H`:
 
 **Infinite runs.** Under `Healthy(g)` (an honest node awake at every later time) and under
 `Sleepy` (`f < h_t` needs an honest node awake at every slot's `t_s`), the awake clamp
-`awake_in_horizon` makes the run infinite: a labelled cut at or after every time, a tick of
-every awake honest node at every public time (`tick_of_awake`). This is the intended reading:
+`awake_in_horizon` makes cut times unbounded, with labelled coverage beyond any finite
+observation horizon, and a tick of every awake honest node at every public time
+(`tick_of_awake`). This is the intended reading:
 runs are `Nat`-indexed traces of the protocol running forever, and a finite trace is a prefix
 that says nothing after its last cut, so it satisfies neither regime premise. That the two
 premises are satisfiable by such a run (together with `Node.LocalRun`) is the kind (a) witness

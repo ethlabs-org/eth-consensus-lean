@@ -197,7 +197,8 @@ theorem oneTickRun_localRun (sg : rootAC.Msg → Fin P₁.n) :
     obtain ⟨_, h'⟩ := h'
     rw [(oneTickRun_groupAt h).1, (oneTickRun_groupAt h').1]
   tick_of_awake y _ t _ _ ht := ⟨0, by cases ht; exact oneTickRun_tickAt y⟩
-  awake_in_horizon y _ t ht := ⟨0, by rw [oneTickRun, tickCuts_eq]; exact Option.some_ne_none _,
+  awake_in_horizon y _ t ht := ⟨0,
+    Or.inl (by rw [oneTickRun, tickCuts_eq]; exact Option.some_ne_none _),
     by cases ht; exact le_rfl⟩
   awake_of_call _ _ _ _ := rfl
   restart_of_sleep y _ i u _ hu hlt _ _ := absurd (lt_of_le_of_lt hu hlt) (lt_irrefl 0)
@@ -539,7 +540,8 @@ theorem periodicRun_localRun (sg : idleAC.Msg → Fin P₁.n) :
   awake_in_horizon y _ t ht := by
     have htt : ((t.toNat : Nat) : Int) = t := Int.toNat_of_nonneg ht
     refine ⟨3 * t.toNat, ?_, ?_⟩
-    · rw [show 3 * t.toNat = 3 * t.toNat + 0 from rfl, periodicRun_label_eq _ _ (by omega), htt]
+    · left
+      rw [show 3 * t.toNat = 3 * t.toNat + 0 from rfl, periodicRun_label_eq _ _ (by omega), htt]
       exact List.getElem?_eq_getElem (List.length_pos_of_ne_nil (idleTickCuts_ne_nil ht)) ▸
         Option.some_ne_none _
     · rw [show 3 * t.toNat = 3 * t.toNat + 0 from rfl, periodicRun_time _ _ (by omega), htt]
