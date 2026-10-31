@@ -46,7 +46,7 @@ private theorem processAtt_bits {n : Nat} (σ : FG.ChainState n) (a : FG.Att n) 
 
 /-- Counting a list of attestations only adds bits; each one on the entry sets its target bit
 (a target) and its finality bit (for a pending pair). -/
-private theorem foldl_bits {n : Nat} (σ : FG.ChainState n) (atts : List (FG.Att n)) :
+theorem foldl_bits {n : Nat} (σ : FG.ChainState n) (atts : List (FG.Att n)) :
     (∀ k, σ.fin k ⊆ (atts.foldl FG.ChainState.processAtt σ).fin k) ∧
       σ.target ⊆ (atts.foldl FG.ChainState.processAtt σ).target ∧
       ∀ a ∈ atts, a.h = σ.h → a.T = σ.Th →
@@ -188,7 +188,7 @@ private theorem events_current {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
       exact hb
 
 /-- One accepted block at the current entry: `events_current` for its counted state. -/
-private theorem step_current {gp : FG.FGParams} {c : List (FG.FGBlock gp.n)}
+theorem step_current {gp : FG.FGParams} {c : List (FG.FGBlock gp.n)}
     {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n} (hc : gp.chainState c = some σ)
     (hB : gp.stateTransition σ B = some σ') {h₀ Tr u j Jr : Nat}
     (hh : σ.h = h₀) (hT : σ.Th = Tr) (hu : σ.ThSlot = u) (hj : σ.hj = j) (hJ : σ.J = Jr)
@@ -225,7 +225,7 @@ private theorem anc_parent {st : Store P ACP} {X W W' : NodeBlock P ACP} (hW' : 
 
 /-- The rows on the chain of a held block are not above its height, and those on its entry have
 set their target bits (targets) and their finality bits (for pairs still pending). -/
-private theorem rows_counted (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (m : Nat)
+theorem rows_counted (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (m : Nat)
     {W : NodeBlock P ACP} (hW : W ∈ (tr.store y m).tree) :
     ∀ X, (tr.store y m).Anc X W → ∀ r ∈ X.fgPayload, r.h ≤ ((tr.store y m).σ W.root).h ∧
       (r.h = ((tr.store y m).σ W.root).h → r.T = ((tr.store y m).σ W.root).Th →
@@ -265,7 +265,7 @@ private theorem rows_counted (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy :
 
 /-- The state of an entry block entered its height at the block's slot; at a bound height, its
 predecessor is pending there. -/
-private theorem entry_facts (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {m : Nat}
+theorem entry_facts (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {m : Nat}
     {T : NodeBlock P ACP} (hT : T ∈ (tr.store y m).tree)
     (hTe : ((tr.store y m).σ T.root).Th = T.root) :
     ((tr.store y m).σ T.root).ThSlot = T.slot ∧ (((tr.store y m).σ T.root).bound →
