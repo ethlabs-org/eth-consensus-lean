@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Evidence
 public import ConsensusLean.Spec.Shape.Claims
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 
 public section
 
@@ -166,7 +167,26 @@ theorem final_accountable_of_noColl (hv : rho.ExecutionValid)
         ((chainTrace rho).read .finalized v j) ∨
       2 * (S.params (pubOf E) hn).toParams.q - Fintype.card V ≤
         (convicted rho.Slashable (rho.ViewIdx u i ∪ rho.ViewIdx v j)).card := by
-  sorry
+  classical
+  by_cases hc : Compatible ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
+      ((simTrace S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i))
+      ((simTrace S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j))
+  · exact Or.inl (compatible_reads S rho hn hv hnc hu hv' hi hj hc)
+  · right
+    obtain ⟨X, _, Y, _, W, hW, hw⟩ := Regimes.final_accountable _ _ _ _ _ _
+      (simTrace_goldilocksRun S rho hn hv) hnc _ (honest_ownKey (S := S) hu)
+      _ (honest_ownKey (S := S) hv') _ _ hc
+    have hmem : ∀ a ∈ Regimes.ChainAtts (simTrace S rho hn) (rho.ownKey u)
+        (cutMap S rho hn i) X ∪ Regimes.ChainAtts (simTrace S rho hn) (rho.ownKey v)
+        (cutMap S rho hn j) Y, attObj a ∈ rho.ViewIdx u i ∪ rho.ViewIdx v j := by
+      intro a ha
+      rcases ha with ⟨B, hB, _, ha⟩ | ⟨B, hB, _, ha⟩
+      · exact Or.inl (held_att_in_view S rho hn hv hu hB ha)
+      · exact Or.inr (held_att_in_view S rho hn hv hv' hB ha)
+    refine hW.trans (convicted_count S rho W ?_)
+    intro k hk
+    obtain ⟨a, ha, b, hb, hak, hab⟩ := hw k hk
+    exact ⟨a, b, hmem a ha, hmem b hb, hak, hab⟩
 
 variable (V) in
 /-- CLAIMS Refinement G1.5 (c), R.7: assemble simulation, collision transport, structural
