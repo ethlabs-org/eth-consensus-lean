@@ -427,14 +427,15 @@ satisfiable together with the awake clamp). The regime witness is over an AC tha
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `4ea71d05`, §"Available chain, after C1.1" (unchanged since
 `688e287b`). Layout:
 decomposition §3.1 (the "Run" row). Over the Goldilocks run under `Sleepy` and `NoColl` (the claims say only
-"under `Sleepy`"; `NoColl` enters through their use of C1.1 and is made explicit). C1.2 and C1.3 are "to be fixed" in
-the claims and are **not transcribed**.
+"under `Sleepy`"; `NoColl` enters through their use of C1.1 and is made explicit). C1.2 (claims at goldilocks `6703bf05`) is
+stated in `Statements/Healing/Outcome` (milestone Healing, its premises are the healing regime); C1.3 is in
+`Statements/Healing/Recovery`.
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
 | A1.6 | CLAIMS A1.6 | the update of a slot ran with no restart since; A1.6's condition at a cut (awake, joined, updated for `slot(t) − 2`); the record `𝒜.latest_confirmed` as a block of the frame's tree; **head extends the record**: the head extends the record in the frame, `ac_confirmed` is the record, and across served cuts the record extends | Service | `Consensus.Goldilocks.Compose.UpdatedNoRestart`, `Consensus.Goldilocks.Compose.ServedAt`, `Consensus.Goldilocks.Compose.RecordAt`, `Consensus.Goldilocks.Compose.HeadExtendsRecord` |
 | A1.7 | CLAIMS A1.7 | **inclusion**: an honest proposal of slot `s` by a joined proposer is in the confirmed tip of every honest node awake and joined at `t ≥ t_s + 6Δ`, awake and joined at `t_s + 6Δ`, with no restart in `(t_s + 6Δ, t]`, that has run the update of slot `s` before the cut with no restart since (`UpdatedNoRestart`; at the boundary `t = t_s + 6Δ` the state before the tick's first cut predates that update, consensus-lean#77); with the genesis root its digest, as C0.3 (consensus-lean#73) | Service | `Consensus.Goldilocks.Compose.Inclusion`, `Consensus.Goldilocks.Compose.ServiceStatements` |
-| C1.2 | CLAIMS C1.2 (goldilocks `6703bf05`, #37) | **AC outcome service**: under the healing regime after the reset (`HSShared`, `Catch(2Δ)`, `Prop⁺`, `a_z`), an entry whose block is an honest ready proposal from `R_z`, high (and with a high predecessor when bound), with retained ready inclusion, with `𝓕 = ⌈(6Δ + Δ_F)/(4Δ)⌉` and `δ_t ≥ 𝓕 + k_F`, gets by the end of its window a literal good window (`Store.GoodWindow` on the FG projection) or an accepted early justification (finalizing the predecessor when bound), its carrier relayed within `Δ` in both branches; an unbound entry is justified by then | Service | `Consensus.Goldilocks.Compose.RunEntry`, `Consensus.Goldilocks.Compose.EarlyOutcome`, `Consensus.Goldilocks.Compose.OutcomeService` |
+| C1.2 | CLAIMS C1.2 (goldilocks `6703bf05`, #37) | **AC outcome service**: under the healing regime after the reset (`HSShared`, `Catch(2Δ)`, `Prop⁺`, `a_z`), an entry whose block is an honest ready proposal from `R_z`, high (and with a high predecessor when bound), with retained ready inclusion, with `𝓕 = ⌈(6Δ + Δ_F)/(4Δ)⌉` and `δ_t ≥ 𝓕 + k_F`, gets by the end of its window a literal good window (`Store.GoodWindow` on the FG projection) or an accepted early justification (finalizing the predecessor when bound), its carrier relayed within `Δ` in both branches; an unbound entry is justified by then (stated in `Statements/Healing/Outcome`, next to its proof, since its premises are the healing regime) | Healing | `Consensus.Goldilocks.Compose.RunEntry`, `Consensus.Goldilocks.Compose.EarlyOutcome`, `Consensus.Goldilocks.Compose.OutcomeService` |
 
 Modelling choices:
 

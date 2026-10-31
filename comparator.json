@@ -27,5 +27,7 @@
                     "Consensus.Goldilocks.Regimes.sleepySafe",
                     "Consensus.Goldilocks.Regimes.sleepySafePrefix",
                     "Consensus.Goldilocks.Regimes.includeSleepy",
-                    "Consensus.Goldilocks.Regimes.growSleepy"],
+                    "Consensus.Goldilocks.Regimes.growSleepy",
+                    "Consensus.Goldilocks.Compose.headExtendsRecord",
+                    "Consensus.Goldilocks.Compose.inclusion"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }

@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Service
-public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Service
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Outcome
 
 @[expose] public section
 

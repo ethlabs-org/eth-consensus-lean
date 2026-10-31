@@ -12,6 +12,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Persist
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Service
 
 @[expose] public section
 
@@ -57,5 +58,7 @@ theorem Consensus.Goldilocks.Regimes.sleepySafe : Consensus.Goldilocks.Regimes.S
 theorem Consensus.Goldilocks.Regimes.sleepySafePrefix : Consensus.Goldilocks.Regimes.SleepySafePrefix := sorry
 theorem Consensus.Goldilocks.Regimes.includeSleepy : Consensus.Goldilocks.Regimes.IncludeSleepy := sorry
 theorem Consensus.Goldilocks.Regimes.growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy := sorry
+theorem Consensus.Goldilocks.Compose.headExtendsRecord : Consensus.Goldilocks.Compose.HeadExtendsRecord := sorry
+theorem Consensus.Goldilocks.Compose.inclusion : Consensus.Goldilocks.Compose.Inclusion := sorry
 
 end

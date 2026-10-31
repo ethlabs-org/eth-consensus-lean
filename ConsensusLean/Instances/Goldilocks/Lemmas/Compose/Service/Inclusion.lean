@@ -140,7 +140,7 @@ private theorem record_extends (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun d
     exact ⟨E', hE', hE'r, hPE.trans hEE'⟩
 
 /-- **A1.7, inclusion.** -/
-theorem inclusion : Inclusion := by
+theorem inclusion_sleepy : Inclusion := by
   intro sp ro dg H tr ΔF hrun hnc hsl hg p hp k P s hP hPs hpj y hy i hc ht hyw hyj hyw₀ hyj₀ hnr hu
   have hinv := sleepy_invariant hrun hnc hsl
   have hcoh :=

@@ -259,6 +259,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.Frame
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.AC
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Outcome
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Service

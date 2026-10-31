@@ -10,6 +10,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Service.Main
 
 @[expose] public section
 
@@ -167,5 +168,16 @@ theorem Consensus.Goldilocks.Regimes.includeSleepy : Consensus.Goldilocks.Regime
 /-- Goldilocks Regimes: `GrowSleepy`. -/
 theorem Consensus.Goldilocks.Regimes.growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy :=
   Consensus.Goldilocks.Regimes.grow_sleepy
+
+/-! Goldilocks Service: the available chain after C1.1 (A1.6, A1.7; `Compose/Service`). -/
+
+/-- Goldilocks Service: `HeadExtendsRecord`. -/
+theorem Consensus.Goldilocks.Compose.headExtendsRecord :
+    Consensus.Goldilocks.Compose.HeadExtendsRecord :=
+  Consensus.Goldilocks.Compose.head_extends_record
+
+/-- Goldilocks Service: `Inclusion`. -/
+theorem Consensus.Goldilocks.Compose.inclusion : Consensus.Goldilocks.Compose.Inclusion :=
+  Consensus.Goldilocks.Compose.inclusion_sleepy
 
 end
