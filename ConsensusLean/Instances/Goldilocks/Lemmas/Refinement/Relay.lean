@@ -16,6 +16,11 @@ state to the simulating trace's cuts where the relay obligations of `Simulates` 
 
 * **Canonical objects.** An object a delivery's canonical event stands for is that event's
   canonical object (`canonEvent_eq_some`: `blockObj`, `voteObj`, `attObj`).
+* **Wire checks and groups.** A decoded block passes the checks `decodeBlock` makes
+  (`decodeBlock_wire`), a decoded attestation is well-formed (`wellFormed_of_canonEvent`), a
+  `DeliverSeq` covers its cuts by groups of canonical objects (`deliverSeq_cover`), a handler's
+  first FG cut names its event (`exec_head_fg`), and a cut chain steps by the cut law at every cut
+  (`cutStep_of_cutChain`).
 * **A delivery's relay queue** (`process_relay`). The shape's `process` of a delivery, from a
   state at the delivery's time, keeps the clock and the own index, only grows the relay queue,
   and queues the canonical object of every accepted block, every vote the pool holds after its
@@ -156,6 +161,145 @@ theorem canonEvent_eq_some {hs : List (Header Info × Nat)} {o : Wire sp.n}
         simp only [hB, hv, ha, Option.some.injEq] at h
         exact Or.inr (Or.inr ⟨a, h.symm, eq_attObj_of_decodeAttObj ha⟩)
       | none => simp [hB, hv, ha] at h
+
+/-! ## Wire checks, deliveries and handlers' first cuts -/
+
+/-- A delivery sequence covers its range of cuts by groups of canonical objects it delivers. -/
+theorem deliverSeq_cover {tr : GoldilocksTrace sp ro}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {hs : List (Header Info × Nat)}
+    {y : Fin sp.n} {t : Time} {os : List (Wire sp.n)} {j j' : Nat}
+    (h : DeliverSeq tr dg hs y t os j j') :
+    j ≤ j' ∧ ∀ k, j ≤ k → k < j' → ∃ j0 e o, o ∈ os ∧ canonEvent sp ro hs o = some e ∧
+      tr.GroupAt dg y j0 t e ∧ j0 ≤ k ∧ k < j0 + (Node.exec dg y (tr.state y j0) t e).2.length := by
+  induction h with
+  | nil j => exact ⟨le_rfl, fun k h1 h2 => absurd h2 (by omega)⟩
+  | @event o os j j' e he hg _ ih =>
+    refine ⟨by omega, fun k h1 h2 => ?_⟩
+    by_cases hk : k < j + (Node.exec dg y (tr.state y j) t e).2.length
+    · exact ⟨j, e, o, List.mem_cons_self .., he, hg, h1, hk⟩
+    · obtain ⟨j0, e', o', ho, he', hg', h3, h4⟩ := ih.2 k (by omega) h2
+      exact ⟨j0, e', o', List.mem_cons_of_mem _ ho, he', hg', h3, h4⟩
+  | drop _ _ ih =>
+    refine ⟨ih.1, fun k h1 h2 => ?_⟩
+    obtain ⟨j0, e', o', ho, he', hg', h3, h4⟩ := ih.2 k h1 h2
+    exact ⟨j0, e', o', List.mem_cons_of_mem _ ho, he', hg', h3, h4⟩
+  | noCut _ _ _ _ ih =>
+    refine ⟨ih.1, fun k h1 h2 => ?_⟩
+    obtain ⟨j0, e', o', ho, he', hg', h3, h4⟩ := ih.2 k h1 h2
+    exact ⟨j0, e', o', List.mem_cons_of_mem _ ho, he', hg', h3, h4⟩
+
+/-- A delivered object is the delivery's object or carried by its relay bundle. -/
+theorem mem_delivered {o x : Wire sp.n} (h : x ∈ delivered sp o) :
+    x = o ∨ ∃ cs, o = .mk .none (.data .relay) cs ∧ x ∈ cs := by
+  unfold delivered at h
+  split at h
+  · exact Or.inr ⟨_, rfl, h⟩
+  · exact Or.inl (List.mem_singleton.1 h)
+
+/-- A decoded block passes the checks `decodeBlock` makes: the digests map its header to its root,
+it has a parent, its attestations are well-formed and its AC payload is valid. -/
+theorem decodeBlock_wire {hs : List (Header Info × Nat)} {o : Wire sp.n} {B : Blk sp}
+    (h : decodeBlock sp hs o = some B) :
+    rootOf hs (headerOf sp B) = some B.root ∧ B.parent ≠ none ∧
+      (∀ a ∈ B.fgPayload, a.WellFormed) ∧ SA.validPayload B := by
+  obtain rfl := eq_blockObj_of_decodeBlock h
+  simp only [decodeBlock, blockObj] at h
+  split at h
+  · rename_i atts p d hdec hroot
+    simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
+    obtain ⟨⟨-, -, -, hwf, hval⟩, hB⟩ := h
+    have hr : B.root = d := by rw [← hB]; rfl
+    refine ⟨hr ▸ hroot, ?_, ?_, ?_⟩
+    · rw [← hB]
+      simp only [blockOf]
+      cases (headerOf sp B).parent <;> simp [parentRoot]
+    · rw [← hB]; exact hwf
+    · rw [← hB]; exact hval
+  · simp at h
+
+/-- A received object standing for a block event decodes to that block. -/
+theorem decodeBlock_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n} {B : Blk sp}
+    (h : canonEvent sp ro hs o = some (.block B)) : decodeBlock sp hs o = some B := by
+  cases hb : decodeBlock sp hs o with
+  | some B' => simp only [canonEvent, hb, Option.some.injEq, Event.block.injEq] at h; rw [h]
+  | none =>
+    cases hv : decodeVoteObj sp o <;> cases ha : decodeAttObj sp o <;>
+      simp [canonEvent, hb, hv, ha] at h
+
+/-- A received object standing for an attestation event decodes to a well-formed attestation. -/
+theorem wellFormed_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n}
+    {a : FG.Att sp.n} (h : canonEvent sp ro hs o = some (.attestation a)) : a.WellFormed := by
+  have hd : decodeAttObj sp o = some a := by
+    cases hb : decodeBlock sp hs o with
+    | some B' => simp [canonEvent, hb] at h
+    | none =>
+      cases hv : decodeVoteObj sp o with
+      | some v => simp [canonEvent, hb, hv] at h
+      | none =>
+        cases ha : decodeAttObj sp o with
+        | some a' =>
+          simp only [canonEvent, hb, hv, ha, Option.some.injEq, Event.attestation.injEq] at h
+          rw [h]
+        | none => simp [canonEvent, hb, hv, ha] at h
+  unfold decodeAttObj at hd
+  split at hd
+  · rename_i k w
+    cases hw : decodeAtt sp.n w with
+    | none => simp [hw] at hd
+    | some a' =>
+      simp only [hw, Option.filter_some, decide_eq_true_eq] at hd
+      split_ifs at hd with hk
+      cases hd
+      exact hk.2
+  · cases hd
+
+section
+
+variable {P : Params} {A : NodeAC P}
+
+/-- Cut `m` of a cut chain steps by the cut law from the fold of the cuts before it. -/
+theorem cutStep_of_cutChain {self : Fin P.n} {t : Time} {st st' : NodeState A}
+    {cs : List (Cut A)} (h : CutChain self t st cs st') (m : Nat) (hm : m < cs.length) :
+    CutStep self t ((cs.take m).foldl (cutPost self t) st) cs[m]
+      ((cs.take (m + 1)).foldl (cutPost self t) st) := by
+  induction h generalizing m with
+  | nil => simp at hm
+  | cons hc _ ih =>
+    cases m with
+    | zero => simpa [cutPost_of_cutStep hc] using hc
+    | succ m =>
+      simp only [List.take_succ_cons, List.foldl_cons, List.getElem_cons_succ,
+        cutPost_of_cutStep hc]
+      exact ih m (by simpa using hm)
+
+/-- An FG first cut of a handler is a block's or an attestation's, of the handler's event. -/
+theorem exec_head_fg (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (e : Event A) {ℓ : FGLabel P A.Payload} {cs : List (Cut A)}
+    (h : (exec dg self st t e).2 = .fg ℓ :: cs) :
+    (∃ B acc, e = .block B ∧ ℓ = .block B acc) ∨ ∃ a, e = .attestation a ∧ ℓ = .attestation a := by
+  cases e with
+  | tick x => simp [Node.exec, onTick, runSteps, tickSteps, Node.tickStep, acCall] at h
+  | block B =>
+    simp only [Node.exec, onBlock] at h
+    split_ifs at h
+    cases hfg : st.fg.onBlock B <;> simp only [hfg, List.cons.injEq, Cut.fg.injEq] at h
+    · exact Or.inl ⟨B, false, rfl, h.1.symm⟩
+    · exact Or.inl ⟨B, true, rfl, h.1.symm⟩
+  | message m => simp [Node.exec, onMessage, acCall] at h
+  | attestation a => cases h; exact Or.inr ⟨a, rfl, rfl⟩
+  | restart => simp [Node.exec, Node.restart, acCall] at h
+
+/-- The first cut of a block's handler is the FG's call on the block. -/
+theorem exec_block_head (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (B : A.Blk) {c : Cut A} {cs : List (Cut A)}
+    (h : (exec dg self st t (.block B)).2 = c :: cs) : ∃ acc, c = .fg (.block B acc) := by
+  simp only [Node.exec, onBlock] at h
+  split_ifs at h
+  cases hfg : st.fg.onBlock B <;> simp only [hfg, List.cons.injEq] at h
+  · exact ⟨false, h.1.symm⟩
+  · exact ⟨true, h.1.symm⟩
+
+end
 
 /-! ## Processing a delivery -/
 
