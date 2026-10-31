@@ -15,6 +15,25 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-10-31, coordinator (Accepted existential guarantees, owner rule).
+  Restore the concrete family acceptance root with fixed assumptions and
+  existential finite catch-up, heal and latency coefficients. Standard fractions
+  stay 1/3 and 1/2; final progress is the chosen local pattern at every positive
+  outer gap X. The timeout package is fixed before choosing coefficients and
+  independent of X. Outage lag/budget/look-back are not existential guarantees.
+  Each numeric witness is a named OPEN leaf, shared by all nine claim adapters;
+  admissibility, singleton progress fit and tolerance are proved separately.
+  This is a proof skeleton, not a completed acceptance result, and does not
+  revive the legacy consecutive-pattern or latency formulas.
+  Current conservative `finalWindow` is [0, δt−1, δt+1, δt+3], with δt≥4;
+  replace it in one place if a weaker two-anchor recurrence is proved. Its
+  first-honest-descendant usable-row/earlier-justification supplier, inherited
+  progress bootstrap, productive AC chain and cache acceptance remain OPEN
+  (workbench healing-simple/four-anchor-window.md). The single-delivery-bound
+  model maps Δ_F := Δ_p, giving c_F=ceil(7/4)=2. This is weaker than the
+  intended network model: actual row delays in (Δ, Δ_F] cannot be represented
+  (r9 instance-proposal §3.8). The canonical FG-row service bridge is a named
+  OPEN transport obligation, not an additional Healthy premise.
 - 2026-10-31, Francesco (contract assumptions versus guarantees). Loose numbers
   are acceptable for latency, healing time and catch-up guarantees, not as a reason
   to strengthen assumptions. Choose progress recurrence as weak as the proofs allow:

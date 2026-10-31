@@ -27,10 +27,9 @@ inventory, not evidence that the Accepted skeleton is complete.
 
 ## Mechanical report contract
 
-The concrete Accepted assembly is not present at this revision: `roots = []` is
-deliberate and reports **incomplete / NOT MET**, never an empty successful closure.
-The generic Accepted structure is not a substitute. Populate roots only with the
-qualified concrete theorem after its migrated module builds.
+The concrete existential assembly now builds. It is a skeleton, not a proof:
+numeric witnesses and adapters remain OPEN, and transitive suppliers are reported
+from its compiled closure. Fixed assumptions precede finite guarantee witnesses.
 
 ```toml sorry-inventory
 modules = [
@@ -39,18 +38,51 @@ modules = [
   "ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Provenance",
   "ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps",
   "ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy",
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted",
 ]
-roots = []
+roots = ["Consensus.Goldilocks.Refinement.accepted"]
 ```
 
-Only the three tables headed `Declaration` and `Paper argument/status` below
+Only tables headed `Declaration` and `Paper argument/status` below
 claim existing compiled declarations. The report validates every such row even
-while the assembly is missing. Planned publication/network, healing-plan and
+when outside the assembly closure. Planned publication/network, healing-plan and
 external FinitePlan draft tables are **noncompiled scope**, explicitly excluded
 from row validation and sorry coverage. Their OPEN text is not compiled evidence.
 Argument text is preserved from the owners; mechanical mapping does not validate
 the paper argument or certify any proof. Source files use repository-relative
 paths; names in compiled rows are fully qualified.
+
+## Concrete acceptance assembly
+
+The root fixes standard fractions, `finalWindow S = [0,δt−1,δt+1,δt+3]`,
+δt≥4 and positive outage look-back. Outage lag is 4k−4 and budget is min(look-back,4k−5).
+Only catch-up (positive Nat), heal and latency (Nat-valued functions at each gap)
+are existential. They are independent of validator set, execution and horizon.
+Every positive outer gap X is an index; tolerance uses X=span+2. Timeout has no X.
+The three numeric leaves must be solved jointly with the five remaining adapters;
+their arbitrary separate instantiation would not prove the endpoint. Local-pattern
+sufficiency remains OPEN, not supplied by the timeout inequality alone.
+The one-Δ model maps Δ_F:=Δ_p, hence c_F=2; this deliberately excludes the
+intended model's independent slower FG delivery. The engine-owned actual-row
+service bridge, first-honest-descendant usable rows (exposure up to δt−2) or
+earlier justification, inherited progress, productive chain and cache acceptance
+remain OPEN. The four-anchor paper argument is conditional on those joins.
+Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbench/blob/fd8cb311fac057347fb49e32cf17841e27a75e76/repos/goldilocks/notes/healing-simple/four-anchor-window.md#general-fixed-timeout-d4).
+
+| Declaration | Paper argument/status |
+|---|---|
+| `Consensus.Goldilocks.Refinement.accepted_catchUp` | OPEN: finite positive uniform catch-up; canonical timing adapter required. Spec orb. |
+| `Consensus.Goldilocks.Refinement.accepted_heal` | OPEN: finite healing at each gap, joint with bounded preparation/preservation; no whole-run progress. Spec orb. |
+| `Consensus.Goldilocks.Refinement.accepted_latency` | OPEN: finite latency at every gap; final local-pattern service and cache acceptance unresolved. Spec orb. |
+| `Consensus.Goldilocks.Refinement.accepted_outputValid` | Reduction to shape_outputValid; its supplier remains OPEN. |
+| `Consensus.Goldilocks.Refinement.accepted_nested` | Reduction to shape_nested; exact generic field, no collision escape. |
+| `Consensus.Goldilocks.Refinement.accepted_finalMonotone` | Reduction to shape_finalMonotone; exact generic field. |
+| `Consensus.Goldilocks.Refinement.accepted_finalAccountable` | Reduction to shape_finalAccountable at fixed 1/3; encoding/transport OPEN. |
+| `Consensus.Goldilocks.Refinement.accepted_healthyLive` | OPEN: R.3/R.4 finite healthy service and final recurrence; no completed paper argument for exact endpoint. Spec orb/healing owner. |
+| `Consensus.Goldilocks.Refinement.accepted_sleepySafe` | OPEN: finite R.1 localization and engine service/read bridges; Sleepy suppliers above. |
+| `Consensus.Goldilocks.Refinement.accepted_sleepyLive` | OPEN: finite R.2 recurrence, inclusion and deadline transport; Sleepy suppliers above. |
+| `Consensus.Goldilocks.Refinement.accepted_healedSafe` | OPEN: finite preparation plus progress-free preservation, RecRet/base closure. |
+| `Consensus.Goldilocks.Refinement.accepted_persists` | OPEN: R.5 finite pre-outage service and actual repair; no late-wake SyncRun inference. |
 
 ## Ownership and architecture
 
@@ -329,6 +361,6 @@ bound dirty entries or prove finality progress. No final latency coefficient is 
 
 ## Still missing from this inventory
 
-Exact top-level Accepted assembly, remaining finite adapter types,
-outage/final leaves, and a mechanical comparison against every reachable sorry.
+Remaining finite adapter types, deeper outage/final leaves, and completed paper
+arguments for every reachable sorry.
 The ledger is not a completion certificate until those are present and the gate runs.
