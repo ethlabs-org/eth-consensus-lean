@@ -22,7 +22,7 @@ bridge), early enough before `T` (`t_{s₀+k} ≤ T`, `t_{s₀+2} + 6Δ ≤ T`),
 (consensus-lean#17, 2026-10-31):
 
 * `weak_sleepyFrom`: `Sync` and `f < h_t` from `t_{s₀}` (`GST(g)` from `ḡ`; every honest node
-  awake and joined on `[ḡ, T]`, the ready ones from `T`) (acbase; open);
+  awake on `[ḡ, T]` and joined from `t_{s₀}`, the ready ones from `T`) (proved);
 * `weak_base_locks`, `weak_base_sources`, `weak_base_old_blocks`: `SleepyBase`'s (1) (a read-point
   lock of a slot `< s₀` is live only at votes of slots `< s₀ + k`, so before `T`, under `Healthy`
   and H.2's drain), (3b) (A1.5: a source is below the stored block of a recent fast lock) and (6)
@@ -83,11 +83,6 @@ section Base
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp a Tb T : Time} {s₀ : Nat}
-
-/-- **`Sync` and `f < h_t` from `t_{s₀}`** under `Weak` (open; acbase). -/
-theorem weak_sleepyFrom (hrun : GoldilocksRun dg H tr) (hw : WeakPremises tr H dg g ΔF Gp a Tb T)
-    (hs₀ : a + Tb ≤ sp.ts s₀) : SleepyFrom tr H ΔF s₀ := by
-  sorry
 
 /-- **(1) Old live locks** (open; acbase): a read-point lock of a slot `< s₀` is live at a vote
 of a slot `> s₀` only before `t_{s₀+k} ≤ T`, where `Healthy` and H.2's drain hold. -/
@@ -160,6 +155,59 @@ private theorem weak_cutZ_lt_reset (hrun : GoldilocksRun dg H tr)
   have := (Healing.signAt_h_le hrun hy hs).trans
     ((Healing.hmax_mono hrun.toLocalRun hy hkj).trans (Healing.hmax_le_HZ hy hj))
   omega
+
+/-- **`Sync` and `f < h_t` from `t_{s₀}`** under `Weak`: full participation up to `T`,
+and the ready honest validators thereafter. -/
+theorem weak_sleepyFrom (hrun : GoldilocksRun dg H tr) (hw : WeakPremises tr H dg g ΔF Gp a Tb T)
+    (hs₀ : a + Tb ≤ sp.ts s₀) : SleepyFrom tr H ΔF s₀ := by
+  have hΔ := sp.toParams.hΔ
+  have hstart : gbar g + 8 * sp.Δ < sp.ts s₀ := by
+    have := Healing.lt_cutZ sp g
+    have := weak_cutZ_lt_reset hrun hw
+    have := hw.offset
+    linarith
+  have hg : g ≤ sp.ts s₀ := by have := Healing.le_gbar g; linarith
+  refine sleepyFrom_iff.2 ⟨⟨hw.gst.deltaF, ?_, ?_, ?_, ?_⟩, ?_⟩
+  · intro x hx i m hm hi
+    simpa only [max_eq_left (hg.trans hi), id_eq] using hw.gst.message x hx i m hm trivial
+  · intro x hx i B hB hi
+    simpa only [max_eq_left (hg.trans hi), id_eq] using hw.gst.block x hx i B hB trivial
+  · intro x hx i B hB hi
+    simpa only [max_eq_left (hg.trans hi), id_eq] using hw.gst.relay x hx i B hB (hg.trans hi)
+  · intro x hx i att hatt hi
+    simpa only [max_eq_left (hg.trans hi), id_eq] using
+      hw.gst.attestation x hx i att hatt trivial
+  · intro s hs d hd
+    have hss : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by exact_mod_cast hs)
+    have hd0 : 0 ≤ d := by
+      simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hd
+      rcases hd with rfl | rfl | rfl <;> linarith
+    have ht0 : 0 ≤ sp.ts s + d := by have := Healing.gbar_nonneg g; linarith
+    by_cases ht : sp.ts s + d ≤ T
+    · have hsub : H ⊆ {y | y ∈ H ∧ tr.awake y (sp.ts s + d) ∧
+          tr.JoinedAt y (sp.ts s + d)} := by
+        intro y hy
+        refine ⟨hy, ready_implies_joined sp ro dg H tr hrun y hy _ (8 * sp.Δ - 1)
+          ht0 (by linarith) ?_⟩
+        intro u hu hut
+        exact hw.awake y hy u (by
+          have := le_max_right 0 (sp.ts s + d - (8 * sp.Δ - 1) - 1)
+          linarith)
+          (hut.trans ht)
+      have hle : H.ncard ≤ tr.honestAwakeJoined H (sp.ts s + d) := Set.ncard_le_ncard hsub
+      have hn : H.ncard + Hᶜ.ncard = sp.n := by
+        rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+      have hf := hw.faults
+      have hpos := sp.toParams.hn
+      change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts s + d)
+      change 0 < sp.n at hpos
+      omega
+    · have hsub : {y | ReadyAt tr H (catchUp sp) y (sp.ts s + d)} ⊆
+          {y | y ∈ H ∧ tr.awake y (sp.ts s + d) ∧ tr.JoinedAt y (sp.ts s + d)} := by
+        intro y hy
+        exact ⟨hy.1, ready_implies_joined sp ro dg H tr hrun y hy.1 _ (catchUp sp)
+          ht0 (by simp only [catchUp]; linarith) hy.2⟩
+      exact (hw.sleepyAfter _ (not_le.1 ht).le).trans_le (Set.ncard_le_ncard hsub)
 
 /-- **(6) Old blocks caught up**: `Catch(2Δ)` and `GST(g)`'s relay. -/
 theorem weak_base_old_blocks (hrun : GoldilocksRun dg H tr)
