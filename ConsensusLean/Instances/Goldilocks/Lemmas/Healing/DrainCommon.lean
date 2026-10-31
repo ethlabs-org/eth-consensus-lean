@@ -218,8 +218,7 @@ private theorem accept_of_catch (hrun : GoldilocksRun dg H tr) (hc : CatchRun tr
 
 /-! ### §2.1: aligned witnesses -/
 
-/-- The AC projection under the HS premises is a healthy driven AC trace (H.1's `HealthyBase`;
-`AcquireSources.healthyBase_projAC`, which imports this file, restated). -/
+/-- The AC projection under the HS premises is a healthy driven AC trace (H.1's `HealthyBase`). -/
 theorem healthyBase_of_hs (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) : SA.HealthyBase tr.projAC H (tr.HonestBlocks H) g :=
   ⟨Compose.goldilocks_ac_projection sp ro dg H tr hrun hs.noColl,

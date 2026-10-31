@@ -23,8 +23,8 @@ readers). At `y`'s tick at `v` (not a slot start, so its cuts are `ac_on_tick`, 
 there compares with `Y` (`update_locks_compatible`, `hs5-exact-helpers.md` §2.2: a clean origin of
 a label `< s` by HS.2's transfer to an honest slot-`s` vote, which is `Y`; a label `≥ s` through
 an honest counted vote or result supporter of slot `s` or `s + 1`). The AC projection is a healthy
-driven trace (`healthyBase_projAC`), so H.1's `first_update_post` applies: the tick is the
-slot-`s` update, its result is `Y`, not vetoed, and `Y` passes the fast test, so it is the
+driven trace (`DrainCommon.healthyBase_of_hs`), so H.1's `first_update_post` applies: the tick is
+the slot-`s` update, its result is `Y`, not vetoed, and `Y` passes the fast test, so it is the
 update's fast selection (`SA.fastSelect_eq_result`) and is locked fast with label `s`. At the
 `ac_to_fg` that follows, `Y` is a candidate, and every candidate is below a live lock that
 compares with `Y`, so the deepest candidate `C` extends `Y`. Either `C` is returned, or the report
@@ -223,15 +223,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem add_le_rTime (sp : SAParams) (w : Time) : w + 4 * sp.Δ ≤ rTime sp w :=
   (slotA_spec sp w).trans ((SA.ts_le_iff sp).2 (by push_cast; omega))
 
-/-- **The AC projection of a run under the HS premises is a healthy driven AC trace**
-(H.1's `HealthyBase`; H.2 (run)'s projection facts). -/
-theorem healthyBase_projAC (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) : SA.HealthyBase tr.projAC H (tr.HonestBlocks H) g :=
-  ⟨Compose.goldilocks_ac_projection sp ro dg H tr hrun hs.noColl,
-    projection_driven hrun hs.noColl hs.genesisRoot hs.healthy,
-    projection_healthy hrun hs.noColl hs.healthy,
-    projection_catch hrun hs.noColl hs.healthy hc⟩
-
 /-- **The cut after a tick's `ac_on_tick` is its `ac_to_fg`** when the tick is not a proposal
 duty (the proposal step makes no cut). -/
 private theorem tick_toFG_call {y : Fin sp.n} {j : Nat} {t : Time} {x : Nat}
@@ -347,7 +338,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun dg H tr) (hs : HSShared tr
   have hnc := hs.noColl
   have hr' := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
   have hU := hr'.coherent
-  have hS := healthyBase_projAC hrun hs hc
+  have hS := healthyBase_of_hs hrun hs hc
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hg8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hset.1.late
   have hw4 := add_le_rTime sp w
@@ -508,7 +499,7 @@ theorem protected_sources (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg 
   have hacr := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
   have hr' := hacr.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
-  have hS := healthyBase_projAC hrun hs hc
+  have hS := healthyBase_of_hs hrun hs hc
   -- time
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hg8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hset.1.late
