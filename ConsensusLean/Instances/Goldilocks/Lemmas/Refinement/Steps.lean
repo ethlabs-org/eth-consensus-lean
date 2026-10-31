@@ -25,14 +25,25 @@ theorem scheduled_proposal_releasable (hv : rho.ExecutionValid) {v : V}
     ∀ o ∈ cs, o ∈ Model.closure nd.seen := by
   sorry
 
-/-- **Legacy; NO PAPER PROOF for arbitrary `s,t`.** Use `scheduled_proposal_releasable`. -/
+/-- The release guarantee applies to the selected proposal at its scheduled slot start. -/
 theorem proposal_releasable (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (par : ParentRef)
     (info : Info) (cs : List (Wire (Fintype.card V)))
+    (hs : 0 < s) (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
+    (hselected : rho.ownKey v ∈ rho.sel (.proposer s))
     (hprop : (propose (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) s).2 =
       some (par, info, cs)) :
     ∀ o ∈ cs, o ∈ Model.closure (atProposal S rho v (rho.stateBefore i v) t).seen := by
-  sorry
+  apply scheduled_proposal_releasable S rho hn hv hv' (i := i) (p := 3) (t := t) (s := s)
+    (hprop := hprop)
+  rw [engineProposalAt_iff]
+  refine ⟨he, hv.tick_awake v t (List.mem_of_getElem? he), hs, ?_, hselected, ?_⟩
+  · rw [duties_eq S t (hv.in_horizon _ (List.mem_of_getElem? he)).1]
+    simp only [dutiesInit, hone]
+    rfl
+  · rw [duties_eq S t (hv.in_horizon _ (List.mem_of_getElem? he)).1, atProposal_eq]
+    simp only [dutiesInit, hone]
+    rfl
 
 /-- **`Simulates.tick`'s node step at a public time.** An engine tick of an honest node at a public
 time runs the node's tick with the encoded mempool on the node state before it. -/
@@ -104,8 +115,8 @@ theorem node_of_tick_public (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.h
       hself', hnow',
       dutyStep_propose_node S rho hn v _ s hs (selValid_proposer S rho hn hv.selValid s) hPself
         (by rw [hPnow, hts']; exact slotOf_slotTime _ s) (hPnow.trans hts')
-        (fun par info cs hprop => proposal_releasable S rho hn hv v hv' i t he s par info cs
-          hprop)]
+        (fun hselected par info cs hprop =>
+          proposal_releasable S rho hn hv v hv' i t he s par info cs hs hone hselected hprop)]
     erw [hPnode, hPnow, hPmem]
 
 end Engine

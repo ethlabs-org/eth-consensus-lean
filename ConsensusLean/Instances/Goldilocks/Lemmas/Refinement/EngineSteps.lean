@@ -997,7 +997,8 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (hslot : (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s)
     (hst : (shapeOf S hn nd).now = (S.params (pubOf E) hn).toParams.slotTime s)
-    (hrel : ∀ par info cs, (propose (shapeOf S hn nd) s).2 = some (par, info, cs) →
+    (hrel : rho.ownKey v ∈ rho.sel (.proposer s) →
+      ∀ par info cs, (propose (shapeOf S hn nd) s).2 = some (par, info, cs) →
       ∀ o ∈ cs, o ∈ Model.closure nd.seen) :
     (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1).node =
       (tickStep (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
@@ -1015,6 +1016,7 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
   · have hmem : rho.ownKey v ∈ rho.sel (.proposer s) := by
       rw [hsel]
       exact Finset.mem_singleton.2 (hp.trans hself).symm
+    have hrel := hrel hmem
     simp only [show (Model.protoOf (compiled (family S)) E).role (.propose s hs) =
       .proposer s from rfl, hmem, ↓reduceIte]
     simp only [propose] at hact1 hact2 hrel

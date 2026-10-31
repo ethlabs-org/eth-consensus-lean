@@ -155,7 +155,8 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (hslot : (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s)
     (hst : (shapeOf S hn nd).now = (S.params (pubOf E) hn).toParams.slotTime s)
-    (hrel : ∀ par info cs, (propose (shapeOf S hn nd) s).2 = some (par, info, cs) →
+    (hrel : rho.ownKey v ∈ rho.sel (.proposer s) →
+      ∀ par info cs, (propose (shapeOf S hn nd) s).2 = some (par, info, cs) →
       ∀ o ∈ cs, o ∈ Model.closure nd.seen) :
     (rho.dutyStep v nd (.propose s hs)).2 =
         blockObjs (Node.tickStep (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
@@ -177,6 +178,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
   · have hmem : rho.ownKey v ∈ rho.sel (.proposer s) := by
       rw [hsel]
       exact Finset.mem_singleton.2 (hp.trans hself).symm
+    have hrel := hrel hmem
     simp only [show (Model.protoOf (compiled (family S)) E).role (.propose s hs) =
       .proposer s from rfl, hmem, ↓reduceIte]
     simp only [propose] at hact1 hact2 hrel
@@ -532,7 +534,8 @@ the tick's cuts emit followed by the attestation they sign, at most two bodies. 
 theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     (hv' : v ∈ rho.honest) (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
-    (hrel : ∀ s par info cs,
+    (hrel : ∀ s (hs : 0 < s), (skeleton (pubOf E)).proposeAt t = [.propose s hs] →
+      rho.ownKey v ∈ rho.sel (.proposer s) → ∀ par info cs,
       (propose (shapeOf S hn (preNode S rho v (rho.stateBefore i v) t)) s).2 =
         some (par, info, cs) →
       ∀ o ∈ cs, o ∈ Model.closure (preNode S rho v (rho.stateBefore i v) t).seen) :
@@ -708,8 +711,9 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
       rw [hnowN3, hts']; exact slotOf_slotTime _ s
     have hst : (shapeOf S hn N3).now = (S.params (pubOf E) hn).toParams.slotTime s :=
       hnowN3.trans hts'
-    have hrel' : ∀ par info cs, (propose (shapeOf S hn N3) s).2 = some (par, info, cs) →
-        ∀ o ∈ cs, o ∈ Model.closure N3.seen := fun par info cs h => hrel s par info cs h
+    have hrel' : rho.ownKey v ∈ rho.sel (.proposer s) →
+        ∀ par info cs, (propose (shapeOf S hn N3) s).2 = some (par, info, cs) →
+        ∀ o ∈ cs, o ∈ Model.closure N3.seen := hrel s hs hone
     obtain ⟨hR4, ho4⟩ := dutyStep_propose_full S rho hn v N3 s hs hsp hselfN3 hslot hst hrel'
     have hn4 := dutyStep_propose_node S rho hn v N3 s hs hsp hselfN3 hslot hst hrel'
     rw [hnodeN3, hnowN3, hmem] at hR4 ho4 hn4
@@ -834,12 +838,14 @@ theorem preNode_eq_atProposal (v : V) (nd : Model.Node (Model.protoOf (compiled 
 (`proposal_releasable`, Steps). -/
 theorem preNode_releasable (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     (hv' : v ∈ rho.honest) (he : rho.events[i]? = some (.tick v t)) :
-    ∀ s par info cs,
+    ∀ s (hs : 0 < s), (skeleton (pubOf E)).proposeAt t = [.propose s hs] →
+      rho.ownKey v ∈ rho.sel (.proposer s) → ∀ par info cs,
       (propose (shapeOf S hn (preNode S rho v (rho.stateBefore i v) t)) s).2 =
         some (par, info, cs) →
       ∀ o ∈ cs, o ∈ Model.closure (preNode S rho v (rho.stateBefore i v) t).seen := by
   rw [preNode_eq_atProposal]
-  exact fun s par info cs h => proposal_releasable S rho hn hv v hv' i t he s par info cs h
+  exact fun s hs hone hsel par info cs h =>
+    proposal_releasable S rho hn hv v hv' i t he s par info cs hs hone hsel h
 
 /-- At a tick at a non-public time an honest node releases only its queued body and unsigned
 gossip. -/
