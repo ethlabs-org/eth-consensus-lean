@@ -335,6 +335,44 @@ private theorem honest_batch_carry_win (hrun : GoldilocksRun proposer dg H tr)
   exact ⟨hr.awake_of_call y hy i ℓ hc.1, (SA.castAt_spec hr hy hc).2.2.1,
     fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
 
+/-- The honest batch reaches a next-slot vote using recipient service within the horizon. -/
+theorem honest_batch_carry_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hsync : tr.SyncBefore H ΔF b)
+    {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hall : ∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' → e'.msg.slot = s →
+      SA.VoteExtends (tr.HonestBlocks H) e'.msg B)
+    (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B) :
+    SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s
+      {v | ∃ x ∈ H, ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg = v ∧ v.slot = s} := by
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hU := hr.coherent
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hone : ∀ v ∈ {v | ∃ x ∈ H, ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg = v ∧ v.slot = s},
+      SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s {v} := by
+    rintro v ⟨x, hx, k, e', ⟨ℓk, hck, he'⟩, rfl, hvs⟩
+    have hk := (SA.castAt_spec hr hx ⟨hck, he'⟩).2.1
+    obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := cast_head_fcRoot hr hx ⟨hck, he'⟩
+    obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hall x hx k e' ⟨ℓk, hck, he'⟩ hvs
+    obtain rfl : Hd = Hv :=
+      hU.1 ((SA.frameIn_of_callAt hr hx hck).2 hHd) hHv (hHdr.trans hHvr.symm)
+    have hkt' : tr.projAC.time k < sp.ts s + 2 * sp.Δ := by
+      rw [hvs] at hkt
+      linarith
+    refine carryAt_of_writer_before hr (syncBefore_projection hrun.toLocalRun hsync)
+      hx hy hc hs hib ?_
+    rintro v rfl
+    refine ⟨hvs, ⟨k, ⟨ℓk, hck, Or.inl ⟨e', he', rfl⟩⟩,
+      (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega), hkt'⟩,
+      Hd, hHv, hHvr, hF.trans hBHv, ?_⟩
+    rcases frame_anc_accepted hr hx k ℓk hck Hd hHd Hd .refl with hg | ⟨k', hk', hacc⟩
+    · exact Or.inl hg
+    · exact Or.inr ⟨k', hacc, lt_of_le_of_lt (hr.time_mono hk') hkt'⟩
+  exact ⟨hr.awake_of_call y hy i ℓ hc.1, (SA.castAt_spec hr hy hc).2.2.1,
+    fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
+
 /-- **§2.4 up to `b`, the batch reaches the next voters** at times `≤ b` (`Carry_y` for the
 honest slot-`s` votes), when they all extend `B` and the voter's `Σ.F` is at or below `B`. -/
 theorem honest_batch_carry_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)

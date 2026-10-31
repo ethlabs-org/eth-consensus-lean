@@ -768,7 +768,8 @@ slot-`(s+1)` voter whose `Σ.F` it extends: its voter accepted it (or it is gene
 `t_m + Δ ≤ t_s + Δ`, and `Sync` relays the acceptance (from `t_{s₀}` on; an earlier one by
 `hold`) to the voter, awake since its last restart at or before `t_s`, by `t_s + 2Δ`. -/
 private theorem honest_head_accepted (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {s₀ : Nat} {b : Time} (hwin : SleepyWindow tr H ΔF s₀ b) {s : Nat} {y : Fin sp.n}
+    {s₀ : Nat} {b : Time} (hservice : SleepyWindow tr H ΔF s₀ b ∨ tr.SyncBefore H ΔF b)
+    {s : Nat} {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
@@ -813,12 +814,14 @@ private theorem honest_head_accepted (hrun : GoldilocksRun proposer dg H tr) (hn
   by_cases hm₀ : sp.ts s₀ ≤ tr.time m
   swap
   · exact hold x hx m Hd (projFG_callAt.1 hA) (not_le.1 hm₀) hFHd
-  obtain ⟨k', hk'i, hAy, hk't⟩ := (sleepyWindow_iff.1 hwin).2.1.relay x hx m Hd
-    (projFG_callAt.1 hA) ⟨hm₀, by linarith⟩ y hy i ⟨_, projAC_callAt.1 hc.1⟩
-    (by
-      have := hdl i le_rfl
-      change tr.deadline y i (tr.time m) sp.Δ ≤ tr.time i
-      linarith) hFy
+  have hdi : tr.deadline y i (tr.time m) sp.Δ ≤ tr.time i := by
+    linarith [hdl i le_rfl]
+  have delivered := hservice.elim
+    (fun hwin => (sleepyWindow_iff.1 hwin).2.1.relay x hx m Hd
+      (projFG_callAt.1 hA) ⟨hm₀, by linarith⟩ y hy i ⟨_, projAC_callAt.1 hc.1⟩ hdi hFy)
+    (fun hsync => hsync.relay x hx m Hd (projFG_callAt.1 hA) (hrun.time_nonneg m)
+      y hy i ⟨_, projAC_callAt.1 hc.1⟩ (hdi.trans hib) hdi hFy)
+  obtain ⟨k', hk'i, hAy, hk't⟩ := delivered
   obtain ⟨ℓy, hcy, hby, hty⟩ := accept_next hrun.toLocalRun hy hAy
   have hk't' : tr.time k' < tr.deadline y k' (tr.time m) sp.Δ := hk't
   have := hdl k' hk'i
@@ -923,7 +926,8 @@ vote (workbench#11 §3, the frozen witness): it was accepted by its voter by `t_
 and relayed to `y` (joined, so awake since `t_s`, with `Σ.F` below it) before the freeze
 `t_s + 3Δ`. -/
 private theorem honest_head_frozen (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {s₀ : Nat} {b : Time} (hwin : SleepyWindow tr H ΔF s₀ b) {s : Nat} {y : Fin sp.n}
+    {s₀ : Nat} {b : Time} (hservice : SleepyWindow tr H ΔF s₀ b ∨ tr.SyncBefore H ΔF b)
+    {s : Nat} {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
@@ -938,7 +942,7 @@ private theorem honest_head_frozen (hrun : GoldilocksRun proposer dg H tr) (hnc 
   obtain ⟨Hd, hHd, hHdr, hZHd⟩ := hZ
   have hFHd := hFZ.trans hZHd
   exact ⟨Hd, accepted_voter_tree hrun hnc hy hc hs hHd
-    (honest_head_accepted hrun hnc hwin hy hc hs hib hold hx hv hs' hHd hHdr hFHd) hFHd, hZHd⟩
+    (honest_head_accepted hrun hnc hservice hy hc hs hib hold hx hv hs' hHd hHdr hFHd) hFHd, hZHd⟩
 
 /-! ### The source labels at a vote -/
 
@@ -1427,7 +1431,8 @@ compatible with `B`, each extended by an honest vote of a slot `≤ s`) and the 
 before `t_{s₀}` caught up (`hold`), a block `B` that an honest slot-`s` vote extends is in the
 viable tree of the voter block tree, or at or below `fc_root`. -/
 private theorem vote_frame_of {s₀ : Nat} {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b) {s : Nat} {y : Fin sp.n}
+    (hnc : NoCollRun dg tr) (hservice : SleepyWindow tr H ΔF s₀ b ∨ tr.SyncBefore H ΔF b)
+    (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
@@ -1445,7 +1450,6 @@ private theorem vote_frame_of {s₀ : Nat} {b : Time} (hrun : GoldilocksRun prop
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
   have hU := (projFG_localRun hrun hnc).coherent
-  have hf := two_faults_lt_of_window hwin
   have hfr := frame_of_projAC hrun hy hc.1
   have hΦ : FrameOK ℓ.frame := by
     rw [hfr]; exact (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
@@ -1477,7 +1481,8 @@ private theorem vote_frame_of {s₀ : Nat} {b : Time} (hrun : GoldilocksRun prop
   have hFB : Anc (tr.HonestBlocks H) ℓ.frame.F B := (Anc.mono hΦU hΦ.F_anc_fcRoot).trans hfB
   -- the relayed honest slot-`s` head extending `B`
   obtain ⟨x, hx, k, e', hve, hs', hext⟩ := hw
-  obtain ⟨W, hW, hBW⟩ := honest_head_frozen hrun hnc hwin hy hc hs hib hold hx hve hs'.le hext hFB
+  obtain ⟨W, hW, hBW⟩ :=
+    honest_head_frozen hrun hnc hservice hy hc hs hib hold hx hve hs'.le hext hFB
   have hWt : W ∈ (tr.state y i).fg.tree := by
     have := hW.1; rw [hfr] at this; exact this.1
   have hBW' := honest_held_anc hrun hnc hy hBW hWt
@@ -1490,7 +1495,7 @@ private theorem vote_frame_of {s₀ : Nat} {b : Time} (hrun : GoldilocksRun prop
     obtain ⟨x₀, hx₀, k₀, -, -, hED, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, i, hE⟩ rfl
     have hEDU : Anc (tr.HonestBlocks H) E D := hED.mono (fg_tree_subset_honest hx₀ k₀)
     have hFD : Anc (tr.HonestBlocks H) ℓ.frame.F D := hFB.trans ((hBE.mono hsU).trans hEDU)
-    obtain ⟨W', hW', hDW'⟩ := honest_head_frozen hrun hnc hwin hy hc hs hib hold hx' hve' hs''
+    obtain ⟨W', hW', hDW'⟩ := honest_head_frozen hrun hnc hservice hy hc hs hib hold hx' hve' hs''
       hext' hFD
     have hW't : W' ∈ (tr.state y i).fg.tree := by
       have := hW'.1; rw [hfr] at this; exact this.1
@@ -1528,12 +1533,54 @@ theorem vote_frame_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc 
     (fun C C' ⟨j, hC, hj⟩ ⟨j', hC', hj'⟩ =>
       originsBelowUpTo_iff.1 hP C j C' j' (by omega) (by omega) hC hC')
     (fun C ⟨j, hC, hj⟩ => hBc C j hC hj)
-  refine vote_frame_of hrun hnc hpre.window hy hc hs hib
+  refine vote_frame_of hrun hnc (Or.inl hpre.window) hf hy hc hs hib
     (fun _ _ m _ _ hm _ => absurd hm (by rw [ts_natCast_zero]; exact not_lt.2 (hrun.time_nonneg m)))
     (hsrc.above _) hGG (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ => ?_) hB hGB
     (let ⟨x, hx, k, e', hv, hs', hext⟩ := hw; ⟨x, hx, k, e', hv, hs', hext⟩)
   obtain ⟨x', hx', k', e'', hve', -, hs'', Hd, hHd, hHdr, hCHd⟩ :=
     honest_supporter_upTo hrun hnc hpre hC
+  exact ⟨x', hx', k', e'', hve', hs''.trans_le hj, Hd, hHd, hHdr, hDC.trans hCHd⟩
+
+/-- The frozen witness at a vote needs only recipient service within its finite horizon. -/
+theorem vote_frame_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBound H (sp.ts s + d))
+    {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
+    (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB : B ∈ tr.HonestBlocks H)
+    (hBc : ∀ C j, OriginWithin tr H C j b → j ≤ s → Compatible (tr.HonestBlocks H) B C)
+    (hw : ∃ x ∈ H, ∃ k e', SA.VoteAt tr.projAC x k e' ∧ e'.msg.slot = s ∧
+      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
+    B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
+      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
+  have hU := (projFG_localRun hrun hnc).coherent
+  have hf : 2 * Hᶜ.ncard < sp.n := by
+    have h := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb)
+    change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts 0 + 0) at h
+    have hle : tr.honestAwakeJoined H (sp.ts 0 + 0) ≤ H.ncard :=
+      Set.ncard_le_ncard fun x hx => hx.1
+    have hn : H.ncard + Hᶜ.ncard = sp.n := by
+      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+    omega
+  have hib' : ∀ k < i, tr.time k ≤ b := fun k hk => (hrun.time_mono hk.le).trans hib
+  have hsrc : HonestRowsSourced tr H (fun D => ∃ C, (∃ j, OriginWithin tr H C j b ∧ j ≤ s) ∧
+      Anc (tr.HonestBlocks H) D C) y i := by
+    intro X hX a ha hav
+    obtain ⟨D, -, hDs, C, j, hC, hj, hDC⟩ := vote_row_source hrun hnc hf hy hc hs hX ha hav
+    exact ⟨D, ⟨C, ⟨j, hC.within hib', hj⟩, hDC⟩, hDs⟩
+  obtain ⟨hGG, hGB⟩ := below_tips_compatible hU
+    (Q := fun C => ∃ j, OriginWithin tr H C j b ∧ j ≤ s)
+    (fun C C' ⟨j, hC, hj⟩ ⟨j', hC', hj'⟩ =>
+      originsBelowUpTo_iff.1 hP C j C' j' (by omega) (by omega) hC hC')
+    (fun C ⟨j, hC, hj⟩ => hBc C j hC hj)
+  refine vote_frame_of (s₀ := 0) hrun hnc (Or.inr hsync) hf hy hc hs hib
+    (fun _ _ m _ _ hm _ => absurd hm (by rw [ts_natCast_zero]; exact not_lt.2 (hrun.time_nonneg m)))
+    (hsrc.above _) hGG (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ => ?_) hB hGB hw
+  obtain ⟨x', hx', k', e'', hve', -, hs'', Hd, hHd, hHdr, hCHd⟩ :=
+    honest_supporter_before hrun hnc hb hsync hfb hC
   exact ⟨x', hx', k', e'', hve', hs''.trans_le hj, Hd, hHd, hHdr, hDC.trans hCHd⟩
 
 /-- **S3 at votes (the frozen witness)**: at an honest slot-`(s+1)` vote, a block `B` of the honest
@@ -1588,7 +1635,7 @@ theorem vote_frame_from {s₀ : Nat} (hrun : GoldilocksRun proposer dg H tr) (hn
     (fun C C' ⟨j, hC, hj⟩ ⟨j', hC', hj'⟩ =>
       originsBelowFrom_iff.1 hP C j C' j' (by omega) (by omega) hC hC')
     (fun C ⟨j, hC, hj⟩ => hBc C j hC hj)
-  refine vote_frame_of hrun hnc (hfrom.window (le_max_right (tr.time i) _)) hy hc hs
+  refine vote_frame_of hrun hnc (Or.inl (hfrom.window (le_max_right (tr.time i) _))) hf hy hc hs
     (le_max_left _ _) (hbase.old_blocks y hy i ℓ e hc s hs hs₀) hsrc hGG
     (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ => ?_) hB hGB hw
   obtain ⟨x', hx', k', e'', hve', hs'', Hd, hHd, hHdr, hCHd⟩ :=
