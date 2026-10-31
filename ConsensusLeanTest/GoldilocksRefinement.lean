@@ -190,4 +190,11 @@ theorem terminal_observation (S : Setup) :
     · rw [simTrace_time, List.getElem?_length]
       simp
 
+/-- Raw hashes at and on both sides of genesis round-trip without naming genesis.
+In particular, a raw parent digest equal to genesis is a valid non-genesis reference. -/
+theorem tagged_genesis_boundary :
+    taggedRoot 7 6 = 6 ∧ taggedRoot 7 7 = 8 ∧ taggedRoot 7 8 = 9 ∧
+      parentRoot 7 (.digest 7) = some 8 ∧ parentRef 7 (some 8) = .digest 7 ∧
+      parentRef 7 (some 7) = .root := by decide
+
 end Consensus.Goldilocks.Refinement.Test

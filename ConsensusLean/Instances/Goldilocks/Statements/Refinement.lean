@@ -181,13 +181,14 @@ def ReadIsOut : Prop :=
     ∀ (g : Out) (v : V) (i : Nat),
       (chainTrace rho).read g v i = outOf (stateAt S rho hn v i).node (stateAt S rho hn v i).now g
 
-/-- No observed item hashes to the genesis root (the engine's hash is arbitrary; the genesis root
-is a parameter, the digest of no header). -/
-def GenesisFresh : Prop := ∀ x, rho.ObservedItem x → rho.hash x ≠ S.genesisRoot
+/-- Every observed item's tagged node root differs from genesis. The raw engine
+hash remains arbitrary, including hashes equal to the numeric genesis root. -/
+def GenesisFresh : Prop :=
+  ∀ x, rho.ObservedItem x → taggedRoot S.genesisRoot (rho.hash x) ≠ S.genesisRoot
 
 variable (V) in
-/-- **`NoColl` transport.** Without an observed hash collision, and with no observed item hashing
-to the genesis root, the simulating run satisfies the spec's `NoColl` (`NoCollRun`: on the
+/-- **`NoColl` transport.** Without an observed hash collision, and with tagged observed roots
+disjoint from genesis, the simulating run satisfies the spec's `NoColl` (`NoCollRun`: on the
 blocks that occur in it and genesis). -/
 def NoCollTransport : Prop :=
   ∀ (E : Env V) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V) tr ι,
@@ -213,8 +214,8 @@ def EvidenceInView : Prop :=
 
 variable (V) in
 /-- **G1.5 (c), finalized accountability** (the run-level G1.3; target `finalized_accountable`).
-In a valid run without an observed hash collision and with no observed item hashing to the
-genesis root, two honest finalized reads are compatible (one a prefix of the other), or at least
+In a valid run without an observed hash collision and with tagged observed roots disjoint from
+genesis, two honest finalized reads are compatible (one a prefix of the other), or at least
 `2q − n` validators are slashable on the two readers' views together. -/
 def FinalizedAccountable : Prop :=
   ∀ (E : Env V) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V),

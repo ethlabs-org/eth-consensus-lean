@@ -18,10 +18,9 @@ The cited paper establishes the node-level source theorems. The docstrings below
 separate mathematical arguments for the engine bridges, not quotations or completed Lean
 proofs. An argument marked OPEN still lacks an identified premise or encoding repair.
 
-The current `NoCollTransport` and `FinalizedAccountable` interfaces still carry raw
-`GenesisFresh`. It cannot be inferred from arbitrary engine hashes. The encoding owner must
-replace that obligation before these endpoints can discharge unconditional Accepted claims.
-No theorem here asserts raw freshness or silently adds it to Accepted. -/
+The current `NoCollTransport` and `FinalizedAccountable` interfaces still carry
+`GenesisFresh`, now proved by tagged roots. Canonical occurrence coverage remains OPEN;
+tagging alone does not discharge collision transport. -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -30,6 +29,11 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+
+/-- Tagged node roots exclude genesis even when the raw hash equals it. -/
+theorem genesisFresh : GenesisFresh S rho := by
+  intro x _
+  exact taggedRoot_ne _ _
 
 /-- CLAIMS R.8/F.2: a valid node output has a parent-closed chain with strictly increasing
 slots and digest-correct roots. The canonical header walk transports these to `Linked` and
@@ -60,11 +64,10 @@ theorem engine_outputValid (hv : rho.ExecutionValid) (g : Out) : OutputValid rho
     intro X hX hg
     obtain ⟨hroot, _, _, P, _, hpar, _⟩ :=
       (Regimes.validOutput_of_mem hs.run hy hX).2 X .refl hg
-    have he : X.root = rho.hash (headerOf (S.params (pubOf E) hn) X) := by
+    have he : X.root = taggedRoot S.genesisRoot
+        (rho.hash (headerOf (S.params (pubOf E) hn) X)) := by
       simpa [Block.RootOk, digestOf, dgOf, headerOf, hpar] using hroot
-    change (if X.root = (S.params (pubOf E) hn).genesisRoot then ParentRef.root
-      else ParentRef.digest X.root) = _
-    rw [ite_eq_right hg, he]
+    simp only [parentRef, he, rawRoot_taggedRoot, taggedRoot_ne, ite_false]
   let blocks := ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.blocks
   have hvalid : ∀ B ∈ ((simTrace S rho hn).state (rho.ownKey v)
       (cutMap S rho hn i)).fg.tree,
@@ -114,7 +117,7 @@ theorem engine_finalMonotone (hv : rho.ExecutionValid) :
 variable (V) in
 /-- CLAIMS F.3/§Premises, SPEC §Blocks: each occurring block's header is observed; equal
 non-genesis digests reduce to equal observed headers and the encoding is injective. Genesis
-is handled separately. This is the CURRENT interface, pending the tagged-root repair.
+is handled separately. This is the CURRENT interface, pending canonical occurrence coverage.
 
 Conditional paper argument: first prove that EVERY block in `tr.Occurs` has an observed
 canonical header and a nonempty parent (including REFUSED block calls, not just held blocks).
@@ -127,8 +130,7 @@ OPEN: this statement quantifies arbitrary `Simulates`, not only `simTrace`. The 
 field locates cuts in an engine interval but alone does not identify their event or show
 that their node is honest; run cut laws are guarded by honesty, while `Occurs` has no such
 guard. A complete all-occurrences source argument from the current interface is not supplied.
-Independently, raw freshness is not derivable for Accepted: arbitrary hashes may hit genesis.
-The tagged encoding must repair freshness; it does not by itself prove occurrence coverage. -/
+Tagged freshness is proved by `genesisFresh`; it does not by itself prove occurrence coverage. -/
 theorem noCollTransport : NoCollTransport V S := by
   sorry
 
@@ -319,7 +321,7 @@ theorem shape_finalMonotone : ∀ g, schema.output .final = some g →
 /-- R.7/G1.1/G1.5, exact fourth `ShapeClaimsAt` field for any contract with `α ≤ 1/3`.
 Paper reduction for the engine bridge: `q = ceil(2n/3)` gives `n/3 ≤ 2q−n`, and key
 equivalence preserves conviction counts. Only this field permits the collision escape.
-ENCODING BLOCKER: raw `GenesisFresh` cannot be derived; the tagged-root repair is required.
+OPEN: canonical collision transport still requires all-occurrences provenance.
 This endpoint intentionally has no freshness premise, including for the empty validator set.
 After a freshness-free collision transport is available, split on `HashCollision`; return
 that excuse when present. Otherwise obtain the natural-number accountability bound for each

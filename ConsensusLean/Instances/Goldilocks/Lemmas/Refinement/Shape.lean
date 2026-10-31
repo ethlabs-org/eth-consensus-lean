@@ -51,21 +51,21 @@ theorem decodeAtt_eq_some {n : Nat} {w : WireAtt} {a : FG.Att n} (h : decodeAtt 
   · cases h; rfl
   · exact absurd h (by simp)
 
+theorem taggedRoot_ne (g h : Nat) : taggedRoot g h ≠ g := by
+  simp only [taggedRoot]; split <;> omega
+
+theorem rawRoot_taggedRoot (g h : Nat) : rawRoot g (taggedRoot g h) = h := by
+  simp only [rawRoot, taggedRoot]; split <;> (try split) <;> omega
+
+theorem taggedRoot_rawRoot (g r : Nat) (h : r ≠ g) : taggedRoot g (rawRoot g r) = r := by
+  simp only [rawRoot, taggedRoot]; split <;> (try split) <;> omega
+
 /-- The parent root of the parent reference of a named root is that root. -/
 theorem parentRoot_parentRef (g : Nat) (r : Nat) :
     parentRoot g (parentRef g (some r)) = some r := by
   by_cases h : r = g
   · subst h; simp [parentRef, parentRoot]
-  · simp [parentRef, parentRoot, h]
-
-/-- No parent reference is a digest of the genesis root. -/
-theorem parentRef_ne_digest (g : Nat) (p : Option Nat) : parentRef g p ≠ .digest g := by
-  cases p with
-  | none => simp [parentRef]
-  | some r =>
-    by_cases h : r = g
-    · subst h; simp [parentRef]
-    · simp [parentRef, h]
+  · simp [parentRef, parentRoot, h, taggedRoot_rawRoot g r h]
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
@@ -75,27 +75,30 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 engine's digests map to its root, with well-formed attestations and a valid AC payload, decodes
 to the block. -/
 theorem decodeBlock_blockObj (hs : List (Header Info × Nat)) (B : Blk sp)
-    (hpar : B.parent ≠ none) (hroot : rootOf hs (headerOf sp B) = some B.root)
+    (hpar : B.parent ≠ none) (hne : B.root ≠ sp.genesisRoot)
+    (hroot : rootOf hs (headerOf sp B) = some (rawRoot sp.genesisRoot B.root))
     (hwf : ∀ a ∈ B.fgPayload, a.WellFormed) (hval : SA.validPayload B) :
     decodeBlock sp hs (blockObj sp B) = some B := by
   obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hpar
-  have hB : blockOf sp B.root (headerOf sp B) B.proposer B.fgPayload B.acPayload = B := by
-    simp only [blockOf, headerOf, hr, parentRoot_parentRef]
+  have hB : blockOf sp (rawRoot sp.genesisRoot B.root) (headerOf sp B)
+      B.proposer B.fgPayload B.acPayload = B := by
+    simp only [blockOf, headerOf, hr, parentRoot_parentRef, taggedRoot_rawRoot _ _ hne]
     cases B; simp_all
   have hinfo : decodeInfo sp.n (headerOf sp B).info = some (B.fgPayload, B.acPayload) := by
     simp [headerOf, decodeInfo_encodeInfo]
   classical
   simp only [decodeBlock, blockObj, hinfo, hroot]
   rw [hB]
-  simp [parentRef_ne_digest, hval, headerOf]
+  simp [hval, headerOf]
   exact hwf
 
 /-- The canonical object of such a block stands for the node's `block` event. -/
 theorem canonEvent_blockObj (hs : List (Header Info × Nat)) (B : Blk sp)
-    (hpar : B.parent ≠ none) (hroot : rootOf hs (headerOf sp B) = some B.root)
+    (hpar : B.parent ≠ none) (hne : B.root ≠ sp.genesisRoot)
+    (hroot : rootOf hs (headerOf sp B) = some (rawRoot sp.genesisRoot B.root))
     (hwf : ∀ a ∈ B.fgPayload, a.WellFormed) (hval : SA.validPayload B) :
     canonEvent sp ro hs (blockObj sp B) = some (.block B) := by
-  simp [canonEvent, decodeBlock_blockObj hs B hpar hroot hwf hval]
+  simp [canonEvent, decodeBlock_blockObj hs B hpar hne hroot hwf hval]
 
 /-- The canonical object of a vote decodes to the vote. -/
 theorem decodeVoteObj_voteObj (v : Vote sp.n) : decodeVoteObj sp (voteObj v) = some v := by

@@ -24,10 +24,10 @@ instance"):
   only in a canonical form (`blockObj`, `voteObj`, `attObj`; read back by `decodeBlock`,
   `decodeVoteObj`, `decodeAttObj`, together `canonEvent`), anything else is dropped.
 * **Digest.** The engine hashes the header; the node's digest is `dgOf hash g`: `none ↦ g` (the
-  genesis root is a parameter) and `some r ↦ hash` of the header with parent `.root` when
-  `r = g`, `.digest r` otherwise (`parentRef`). A header whose parent is `.digest g` is dropped
-  (it would name genesis by a second parent), so every admitted block satisfies `RootOk` by
-  construction, without the shape evaluating the hash.
+  genesis root is a parameter) and `some r ↦ taggedRoot g (hash header)`. The injective tag
+  reserves `g` for genesis; `parentRef` decodes other node roots to raw engine digests.
+  In particular, `.digest g` names a non-genesis block, not a second genesis representation.
+  Every admitted block satisfies `RootOk` without the shape evaluating the hash.
 * **Steps.** `order := [.poll, .poll, .pollPropose, .propose, .poll, .poll]` and
   `deliverOrder := [.poll]`. A poll step releases the oldest queued body (an emitted vote or a
   signed attestation) and, when the node's tick has made it due, first runs the FG update. The
@@ -190,24 +190,30 @@ def conflicts {n : Nat} : Wire n → Wire n → Bool
       | _, _ => false
   | _, _ => false
 
-/-- The header's parent reference of a block parent named by root, with genesis root `g`:
-genesis is `.root`, any other root a `.digest`. -/
+/-- Embed a raw digest among node roots, reserving `g` exclusively for genesis. -/
+def taggedRoot (g h : Nat) : Nat := if h < g then h else h + 1
+
+/-- Inverse of `taggedRoot` on non-genesis roots. -/
+def rawRoot (g r : Nat) : Nat := if r < g then r else r - 1
+
+/-- The header's parent reference: genesis is `.root`, other node roots decode
+to raw engine digests. -/
 def parentRef (g : Nat) : Option Nat → ParentRef
   | none => .root
-  | some r => if r = g then .root else .digest r
+  | some r => if r = g then .root else .digest (rawRoot g r)
 
 /-- The block parent (by root) a header's parent reference names, with genesis root `g`. -/
 def parentRoot (g : Nat) : ParentRef → Option Nat
   | .root => some g
-  | .digest r => some r
+  | .digest r => some (taggedRoot g r)
 
 /-- The node's digest from the engine's hash with genesis root `g`: genesis (no parent) has
-root `g`; any other block's root is the hash of its header (`parentRef` for the parent). -/
+root `g`; any other block's root is the tagged hash of its header (`parentRef` for the parent). -/
 def dgOf {n : Nat} (hash : Header Info → Nat) (g : Nat) : Digest (List (FG.Att n)) (Payload n) :=
   fun par slot x atts p =>
     match par with
     | none => g
-    | some r => hash ⟨parentRef g (some r), slot, x, encodeInfo atts p⟩
+    | some r => taggedRoot g (hash ⟨parentRef g (some r), slot, x, encodeInfo atts p⟩)
 
 /-- The digest of header `h` among the digests `hs` the engine passed. -/
 def rootOf (hs : List (Header Info × Nat)) (h : Header Info) : Option Nat :=
@@ -230,7 +236,7 @@ def headerOf (B : Blk sp) : Header Info :=
 /-- The block of a header `h` with digest `d`, signed by `k`, with the decoded payloads. -/
 def blockOf (d : Nat) (h : Header Info) (k : Fin sp.n) (atts : List (FG.Att sp.n))
     (p : Payload sp.n) : Blk sp :=
-  ⟨d, parentRoot sp.genesisRoot h.parent, h.pos, k, h.input, atts, p⟩
+  ⟨taggedRoot sp.genesisRoot d, parentRoot sp.genesisRoot h.parent, h.pos, k, h.input, atts, p⟩
 
 /-- The skeleton lets the run select one proposer at every slot of `4Δ`, with
 everyone in the poll role and no committee kinds; two poll steps (the release of the
@@ -294,15 +300,15 @@ def blockObj (B : Blk sp) : Wire sp.n :=
 variable (sp) in
 open Classical in
 /-- The block a received object is the canonical object of, given the digests `hs` the engine
-passed: a header signed in its slot's proposer role, whose indices decode, with a digest, not
-naming genesis by digest, carrying its payload's objects, with well-formed attestations and a
+passed: a header signed in its slot's proposer role, whose indices decode, with a raw digest,
+carrying its payload's objects, with well-formed attestations and a
 valid AC payload. Such an object is `blockObj` of the block it decodes to. -/
 noncomputable def decodeBlock (hs : List (Header Info × Nat)) : Wire sp.n → Option (Blk sp)
   | .mk (.signed k (.proposer s)) (.item h) cs =>
       match decodeInfo sp.n h.info, rootOf hs h with
       | some (atts, p), some d =>
           let B := blockOf sp d h k atts p
-          if h.pos = s ∧ h.parent ≠ .digest sp.genesisRoot ∧ cs = payloadObjs atts p ∧
+          if h.pos = s ∧ cs = payloadObjs atts p ∧
               (∀ a ∈ atts, a.WellFormed) ∧ SA.validPayload B then some B
           else none
       | _, _ => none

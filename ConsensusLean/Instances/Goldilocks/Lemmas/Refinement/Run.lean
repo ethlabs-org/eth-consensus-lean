@@ -1256,8 +1256,8 @@ private theorem wireOK_of_delivered (o : (Model.protoOf (compiled (family S)) E)
         some (rho.hash (headerOf _ B)) := by
       apply rootOf_digests_of_mem
       exact List.mem_filterMap.2 ⟨blockObj _ B, mem_delivered ho, rfl⟩
-    have hrt := hroot.symm.trans hh
-    rw [Option.some.injEq] at hrt
+    rw [hh, Option.map_some, Option.some.injEq] at hroot
+    have hrt := hroot.symm
     obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hpar
     refine ⟨?_, hwf, hval⟩
     change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload

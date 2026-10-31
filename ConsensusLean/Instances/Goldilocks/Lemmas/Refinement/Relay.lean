@@ -95,9 +95,9 @@ theorem eq_blockObj_of_decodeBlock {hs : List (Header Info × Nat)} {o : Wire sp
     split at h
     · rename_i atts p d hdec hroot
       simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
-      obtain ⟨⟨hpos, hpar, rfl, -, -⟩, rfl⟩ := h
+      obtain ⟨⟨hpos, rfl, -, -⟩, rfl⟩ := h
       obtain ⟨par, pos, input, info⟩ := hd
-      simp only at hpos hpar hdec
+      simp only at hpos hdec
       subst hpos
       have hinfo := encodeInfo_of_decodeInfo hdec
       simp only [blockObj, headerOf, blockOf, hinfo]
@@ -105,8 +105,7 @@ theorem eq_blockObj_of_decodeBlock {hs : List (Header Info × Nat)} {o : Wire sp
       cases par with
       | root => simp [parentRoot, parentRef]
       | digest r =>
-        have : r ≠ sp.genesisRoot := fun e => hpar (by rw [e])
-        simp [parentRoot, parentRef, this]
+        simp [parentRoot, parentRef, taggedRoot_ne, rawRoot_taggedRoot]
     · cases h
   · cases h
 
@@ -197,16 +196,16 @@ theorem mem_delivered {o x : Wire sp.n} (h : x ∈ delivered sp o) :
 it has a parent, its attestations are well-formed and its AC payload is valid. -/
 theorem decodeBlock_wire {hs : List (Header Info × Nat)} {o : Wire sp.n} {B : Blk sp}
     (h : decodeBlock sp hs o = some B) :
-    rootOf hs (headerOf sp B) = some B.root ∧ B.parent ≠ none ∧
+    (rootOf hs (headerOf sp B)).map (taggedRoot sp.genesisRoot) = some B.root ∧ B.parent ≠ none ∧
       (∀ a ∈ B.fgPayload, a.WellFormed) ∧ SA.validPayload B := by
   obtain rfl := eq_blockObj_of_decodeBlock h
   simp only [decodeBlock, blockObj] at h
   split at h
   · rename_i atts p d hdec hroot
     simp only [Option.ite_none_right_eq_some, Option.some.injEq] at h
-    obtain ⟨⟨-, -, -, hwf, hval⟩, hB⟩ := h
-    have hr : B.root = d := by rw [← hB]; rfl
-    refine ⟨hr ▸ hroot, ?_, ?_, ?_⟩
+    obtain ⟨⟨-, -, hwf, hval⟩, hB⟩ := h
+    have hr : B.root = taggedRoot sp.genesisRoot d := by rw [← hB]; rfl
+    refine ⟨by rw [hroot, Option.map_some, hr], ?_, ?_, ?_⟩
     · rw [← hB]
       simp only [blockOf]
       cases (headerOf sp B).parent <;> simp [parentRoot]
