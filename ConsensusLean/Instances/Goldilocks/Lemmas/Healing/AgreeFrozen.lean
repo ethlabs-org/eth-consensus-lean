@@ -16,7 +16,9 @@ cut precedes every slot-`s` vote (`proposal_before_vote`: an early voter holds `
 after its proposer's own block call, the tick of the proposal), so the phase holds at it.
 
 The aligned-reader facts are `Geo`'s (`viableHeads_iff`, `proposal_head_viable`,
-`proposal_call_tick`, `effAllowed_transfer`, `effAllowed_of_anc`) and `SA.cast_ready`. -/
+`proposal_call_tick`, `effAllowed_transfer`, `effAllowed_of_anc`) and `SA.cast_ready`. The same
+proof gives that `Q` is a viable head of the proposer (`proposal_head_viableHead`) and the phase
+facts at a vote (`phase_at_vote`); `exists_firstCutFrom_le` is the first cut from a time. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -31,7 +33,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {P : SA.Blk sp.n (List (FG.Att sp.n))} {iP : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
 
-private theorem exists_firstCutFrom' {t : Time} {j : Nat} (hj : t ≤ tr.time j) :
+/-- A cut at or after `t` gives a first cut from `t`, at or before it. -/
+theorem exists_firstCutFrom_le {t : Time} {j : Nat} (hj : t ≤ tr.time j) :
     ∃ j₁, tr.FirstCutFrom j₁ t ∧ j₁ ≤ j := by
   classical
   have hex : ∃ k, t ≤ tr.time k := ⟨j, hj⟩
@@ -194,7 +197,7 @@ private theorem frozen_core (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s
       obtain ⟨kf, rfl, hkf, hkft⟩ := fg_accept_before hl hpH ⟨jℓ, hcj, hcallj⟩
       have htj' : tr.time (kf + 1) = sp.ts s := htja
       have hPk := mem_tree_of_frame hrun hpH hcj hPj
-      obtain ⟨jv, hjv, hjvj⟩ := exists_firstCutFrom' (tr := tr) hearly
+      obtain ⟨jv, hjv, hjvj⟩ := exists_firstCutFrom_le (tr := tr) hearly
       have hj0 : i₀ ≤ kf + 1 := le_of_settledIn hS.settled (by rw [htj']; exact hws.le)
       have hjjv : kf + 1 ≤ jv := by
         by_contra hn
@@ -241,7 +244,7 @@ theorem proposal_head_viableHead (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p
 slot-`s` vote, the phase `(m, c)` holds from `i₀` through the vote, and every honest node holds
 the evidence from `i₀` on (the phase from the vote's `PhaseOn` and the sandwich; the proposal's
 cut precedes every holder of `P`). -/
-theorem vote_phase (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+theorem phase_at_vote (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) :

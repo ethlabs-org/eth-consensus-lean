@@ -17,12 +17,12 @@ voter's best child (`proposal_suffix`); and `P` is the voter's only eligible chi
 * the winner (inline in `proposal_suffix`): the proposer's best child `C` at `X` is on the walk
   below `Q`, so an ancestor of `P`, in the voter's viable voter block tree (`P` is,
   `proposal_frozen_viable`, and `fc_root ⪯ anchor ⪯ X ⪯ C`);
-* `suffix_reflect` (open): a child `B ≠ P` of a block of the walk in the voter's viable voter
+* `suffix_reflect`: a child `B ≠ P` of a block of the walk in the voter's viable voter
   block tree is in the proposer's viable tree (received before the freeze and relayed to the
   proposer by `t_s`, or below `Q`; a viable head at or above it at the proposer, aligned readers);
-* `suffix_viable_iff` (open): a block of both trees is a viable head of the voter exactly when it
+* `suffix_viable_iff`: a block of both trees is a viable head of the voter exactly when it
   is one of the proposer (aligned readers, `viableHeads_iff`, `effAllowed_transfer`);
-* `proposal_views_agree` (open, `AgreeViews`): the proposal's view and the voter's merged view
+* `proposal_views_agree` (`AgreeViews`): the proposal's view and the voter's merged view
   have the same equivocators and voters, and the same supporters for every block of both trees;
 * `Q` is a viable head of the proposer (`proposal_head_viableHead`, `AgreeFrozen`).
 
@@ -99,20 +99,107 @@ variable (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
 include hS hy hcy hes
 
 /-- **Viable heads agree** on the blocks of both trees (aligned readers in the settled phase,
-`viableHeads_iff`, `effAllowed_transfer`; open). -/
+`viableHeads_iff`, `effAllowed_transfer`). -/
 private theorem suffix_viable_iff {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hXp : X ∈ ℓp.frame.tree) (hXy : X ∈ ℓy.frame.tree) :
     X ∈ ℓy.frame.viableHeads ↔ X ∈ ℓp.frame.viableHeads := by
-  sorry
+  have hrun := hS.run
+  have hnc := hS.shared.noColl
+  have hpH : p ∈ H := hS.ready.1
+  obtain ⟨hiP0, hiPj, hwin, hev⟩ := phase_at_vote hS hy hcy hes
+  rw [Compose.frame_of_projAC hrun hy hcy.1] at hXy ⊢
+  rw [Compose.frame_of_projAC hrun hpH hS.call] at hXp ⊢
+  have hXy' : X ∈ (tr.state y j).fg.tree := hXy.1
+  have hXp' : X ∈ (tr.state p iP).fg.tree := hXp.1
+  rw [viableHeads_iff hrun hS.shared hS.catchUp hy (hwin j (hiP0.trans hiPj.le) le_rfl)
+      (hev y hy j (hiP0.trans hiPj.le)) hXy',
+    viableHeads_iff hrun hS.shared hS.catchUp hpH (hwin iP hiP0 hiPj.le) (hev p hpH iP hiP0) hXp']
+  exact ⟨fun h => ⟨hXp.2, effAllowed_transfer hrun hnc hy hpH h.2 hXp'⟩,
+    fun h => ⟨hXy.2, effAllowed_transfer hrun hnc hpH hy h.2 hXy'⟩⟩
 
 /-- **Competitors reflect**: a child `B ≠ P` of a block `d.start ⪯ X ⪯ Q` of the proposer's tree
-in the voter's viable voter block tree is in the proposer's viable tree (open). -/
+in the voter's viable voter block tree is in the proposer's viable tree: the voter's viable head
+`W ⪰ B` was received before the freeze, so relayed to the proposer by `t_s` (`stamp_origin`,
+`relay_held`) and a viable head there (`suffix_viable_iff`), or is below the slot-`s` block `P`,
+so `B ⪯ Q`, a viable head of the proposer (`proposal_head_viableHead`). -/
 private theorem suffix_reflect {X B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hsX : ℓp.frame.Anc d.start X) (hXQ : ℓp.frame.Anc X d.head) (hBX : B.parent = some X.root)
     (hBP : B ≠ P)
     (hB : B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s)) :
     B ∈ ℓp.frame.viableTree ℓp.frame.tree := by
-  sorry
+  have hrun := hS.run
+  have hl := hrun.toLocalRun
+  have hs := hS.shared
+  have hnc := hs.noColl
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hr := hac.localRun
+  have hU : Coherent (tr.HonestBlocks H) := hr.coherent
+  have hpH : p ∈ H := hS.ready.1
+  have hPs : P.slot = s := hS.ready.2.2.2.2.1
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hpH hS.call
+  obtain ⟨-, hΦyU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  have hfrp : ℓp.frame = Node.frame (tr.state p iP) := Compose.frame_of_projAC hrun hpH hS.call
+  have hQv := proposal_head_viableHead hS hy hcy hes
+  have hQt : d.head ∈ ℓp.frame.tree := hΦp.viableHeads_subset hQv
+  have hXt : X ∈ ℓp.frame.tree := SA.mem_of_anc hXQ hQt
+  obtain ⟨⟨hBt, -⟩, -, W, hWV, hWv, hBW⟩ := hB
+  have hFB : Anc (tr.HonestBlocks H) ℓp.frame.F B :=
+    ((hΦp.rooted.2 X hXt).mono hΦpU).trans (.single ⟨hΦpU hXt, hΦyU hBt, hBX⟩)
+  -- a viable head of the proposer above `B`
+  obtain ⟨W', hW't, hW'v, hBW'⟩ : ∃ W' ∈ ℓp.frame.tree, W' ∈ ℓp.frame.viableHeads ∧
+      Anc (tr.HonestBlocks H) B W' := by
+    rcases hWV.2 with hst | ⟨P', hP', hP's, hWP'⟩
+    · -- `W` was received before the freeze, so relayed to the proposer by `t_s`
+      have hFW : Anc (tr.HonestBlocks H) ℓp.frame.F W := hFB.trans (hBW.mono hΦyU)
+      have hWt : W ∈ ℓp.frame.tree := by
+        rw [SA.readPoint_blockStamp_eq hr hy hcy] at hst
+        rcases stamp_origin hr hy j ℓy hcy.1 W hWV.1 with hg | ⟨k₁, -, ℓ₁, hc₁, hW₁, hst₁⟩
+        · have hG := Store.genesis_mem (Compose.fg_reachable hl hpH iP)
+          obtain rfl := hU.1 (hΦyU hWV.1) ⟨p, hpH, iP, hG⟩ hg
+          exact mem_frame_of_held hrun hnc hpH hS.call hG hFW
+        rw [hst₁] at hst
+        have ht₁ : tr.time k₁ < sp.ts s - sp.Δ := by
+          have h := WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hst)
+          have hfz : SA.freeze sp s = sp.ts s - sp.Δ := by
+            unfold SA.freeze SAParams.ts
+            ring
+          rw [hfz] at h
+          exact h
+        have hw8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hS.settled.1.late
+        have hwi : w ≤ tr.time i := hS.settled.2.1.1.trans (hl.time_mono hS.settled_le)
+        have hts : sp.ts ((s : Int) - 1) + 4 * sp.Δ = sp.ts s := by simp only [SAParams.ts]; ring
+        exact mem_frame_of_relay hS hy hpH (mem_tree_of_frame hrun hy hc₁ hW₁)
+          (by linarith [hS.start_time]) (by linarith) hS.call hS.time.ge hFW
+      exact ⟨W, hWt, (suffix_viable_iff hS hy hcy hes hWt hWV.1).1 hWv, hBW.mono hΦyU⟩
+    · -- `W` is below the slot-`s` block `P`, so `B` is below `Q`
+      have hs1 := hS.one_le_slot
+      obtain ⟨-, -, -, -, -, -, -, -, -, -, -, hPprop, -, ja, -, hacc, -⟩ :=
+        honestProposalRun_of_ready hrun hnc hS.ready
+      rw [← hS.ready.2.1] at hPprop hacc
+      obtain ⟨jℓ, hcj, hcallj⟩ := hacc
+      have hPj : P ∈ jℓ.frame.tree := (SA.accept_new sp hr hpH ⟨jℓ, hcj, hcallj⟩).1 jℓ hcj
+      have hfb : SA.HonestFrameBlock tr.projAC H P' := ⟨y, hy, j, ℓy, hcy.1, hP'⟩
+      have hroot : P'.root ≠ sp.genesisRoot := by
+        intro hg
+        have hG := Store.genesis_mem (Compose.fg_reachable hl hy j)
+        obtain rfl := hU.1 (hΦyU hP') ⟨y, hy, j, hG⟩ hg
+        simp only [Params.genesisBlock] at hP's
+        omega
+      obtain rfl : P = P' := hac.honest.one_block P P' ⟨_, hpH, ja, jℓ, hcj, hPj⟩ hfb
+        (hPprop ▸ hpH) (by rw [hPprop, hac.honest.proposer P' hfb hroot, hP's, hS.ready.2.1])
+        (by rw [hPs, hP's])
+      rcases Relation.ReflTransGen.cases_tail (hBW.trans hWP') with rfl | ⟨Y, hBY, hYP⟩
+      · exact absurd rfl hBP
+      · obtain rfl : Y = d.head := hU.1 (hΦyU hYP.1) (hΦpU hQt)
+          (Option.some.inj (hYP.2.2.symm.trans hS.parent))
+        exact ⟨d.head, hQt, hQv, Anc.mono hΦyU hBY⟩
+  have hBp : B ∈ ℓp.frame.tree := SA.frame_mem_of_between sp hU hΦp hΦpU hW't hBW' hFB
+  obtain ⟨⟨A₁, hst⟩, -⟩ := acProposal_spec hS.payload
+  have hfs := SA.fcRoot_anc_getAnchor hΦp A₁ (tr.time iP)
+  rw [← hst] at hfs
+  exact ⟨hBp, (hfs.trans hsX).trans (.single ⟨hXt, hBp, hBX⟩), W', hW't, hW'v,
+    SA.anc_tree_of_anc_U hU hΦp hΦpU hBp hBW' hW't⟩
 
 /-- The scores of the blocks of both trees agree. -/
 private theorem suffix_scores {B : SA.Blk sp.n (List (FG.Att sp.n))}
