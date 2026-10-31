@@ -1261,6 +1261,68 @@ private theorem cut_self {v : V} {i p : Nat} {nd}
       ⟨(Model.protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
         (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _ hh).1
 
+/-- Every queued attestation at an actual duty boundary has an actual engine signing.
+This supplies guard safety when the ordinary poll removes it from the queue. -/
+theorem engine_queued_att_signed {v : V} {i p : Nat} {nd}
+    (hc : EngineDutyCut S rho v i p nd) {w : WireAtt}
+    (hm : Body.att w ∈ (nd.st.1 hn).outbox) :
+    ∃ a j q, w = encodeAtt a ∧ a.val = (nd.st.1 hn).self ∧
+      EngineSignsAt S rho hn v j q a := by
+  cases hc with
+  | tick he hw hp =>
+    rename_i t
+    obtain ⟨a, heq, hval, ha⟩ := queued_duties S rho hn
+      ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
+      (queued_before S rho hn v i) w hm
+    rcases ha with ⟨j, q, _, ha⟩ | ⟨q, d, hd, ha⟩
+    · exact ⟨a, j, q, heq, hval, ha⟩
+    · have hq : q < p := lt_of_lt_of_le
+        (List.getElem?_eq_some_iff.mp hd).1 (List.length_take_le _ _)
+      rw [List.getElem?_take_of_lt hq] at hd
+      simp only [List.take_take, Nat.min_eq_left (Nat.le_of_lt hq)] at ha
+      exact ⟨a, i, q, heq, hval, signs_of_tick S rho hn he hw hd ha⟩
+  | deliver he hp =>
+    rename_i t o
+    have hproc : Queued
+        (process ((rho.stateBefore i v).st.1 hn) o (Model.digests rho.hash o))
+        (fun a => ∃ j q, j < i ∧ EngineSignsAt S rho hn v j q a) := by
+      intro w hw
+      obtain ⟨a, heq, hval, ha⟩ := queued_before S rho hn v i w
+        ((process_att _ _ _ _).mp hw)
+      exact ⟨a, heq, hval.trans (process_self _ _ _).symm, ha⟩
+    obtain ⟨a, heq, hval, ha⟩ := queued_duties S rho hn
+      ⟨(Model.protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
+        (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _ hproc w hm
+    rcases ha with ⟨j, q, _, ha⟩ | ⟨q, d, hd, ha⟩
+    · exact ⟨a, j, q, heq, hval, ha⟩
+    · have hq : q < p := lt_of_lt_of_le
+        (List.getElem?_eq_some_iff.mp hd).1 (List.length_take_le _ _)
+      rw [List.getElem?_take_of_lt hq] at hd
+      simp only [List.take_take, Nat.min_eq_left (Nat.le_of_lt hq)] at ha
+      exact ⟨a, i, q, heq, hval, signs_of_deliver S rho hn he hd ha⟩
+
+/-- A scheduled poll's ordinary attestation candidate comes from an engine signing,
+including an attestation created by this poll's own FG update. -/
+theorem engine_poll_att_signed {v : V} {i p : Nat} {nd} {k : Nat}
+    (hc : EngineDutyCut S rho v i p nd)
+    (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
+        ((Model.protoOf (compiled (family S)) E).duties t)[p]? = some (.poll k)) ∨
+      ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
+        ((Model.protoOf (compiled (family S)) E).deliverDuties t)[p]? = some (.poll k))
+    (hsel : rho.ownKey v ∈ rho.sel .poll) {w cs}
+    (hm : (poll (nd.st.1 hn) k).2 = some (.att w, cs)) :
+    ∃ a j q, w = encodeAtt a ∧ a.val = (nd.st.1 hn).self ∧
+      EngineSignsAt S rho hn v j q a := by
+  have hq : Queued (nd.st.1 hn) (fun a => ∃ j q, EngineSignsAt S rho hn v j q a) := by
+    intro w hw
+    obtain ⟨a, j, q, he, hv, ha⟩ := engine_queued_att_signed S rho hn hc hw
+    exact ⟨a, he, hv, j, q, ha⟩
+  obtain ⟨a, he, hv, ha⟩ := (poll_queued (nd.st.1 hn) k hq).2 w cs hm
+  rcases ha with ⟨j, q, ha⟩ | ⟨hdue, C, Λ', hC, ha⟩
+  · exact ⟨a, j, q, he, hv, ha⟩
+  · exact ⟨a, i, p, he, hv, nd, hc, k, hd, hsel, hdue, C, Λ', hC, ha⟩
+
 private theorem signing_val {v : V} {i p : Nat} {a}
     (hs : EngineSignsAt S rho hn v i p a) : a.val = rho.ownKey v := by
   obtain ⟨nd, hc, k, _, _, _, C, Λ', _, ha⟩ := hs
@@ -1393,6 +1455,28 @@ theorem engine_att_protected (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.
       simp [hconf.1, hconf.2]
     · simp [hk]
   · rfl
+
+/-- The own-object guard admits the ordinary attestation produced by an actual poll. -/
+theorem engine_poll_att_protected (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i p : Nat} {nd} {k : Nat}
+    (hc : EngineDutyCut S rho v i p nd)
+    (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
+        ((Model.protoOf (compiled (family S)) E).duties t)[p]? = some (.poll k)) ∨
+      ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
+        ((Model.protoOf (compiled (family S)) E).deliverDuties t)[p]? = some (.poll k))
+    (hsel : rho.ownKey v ∈ rho.sel .poll) {w cs}
+    (hm : (poll (nd.st.1 hn) k).2 = some (.att w, cs)) :
+    Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v) nd.seen
+      (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true := by
+  obtain ⟨a, j, q, rfl, hval, ha⟩ := engine_poll_att_signed S rho hn hc hd hsel hm
+  have hp := engine_att_protected S rho hn hv hv' hc ha
+  have he := hval.trans (cut_self S rho hn hc)
+  have ho : attObj a = (.mk (.signed (rho.ownKey v) .poll)
+      (.data (.att (encodeAtt a))) [] : Wire (Fintype.card V)) := by
+    unfold attObj
+    rw [he]
+  rw [ho] at hp
+  exact hp
 
 end Consensus.Goldilocks.Refinement
 

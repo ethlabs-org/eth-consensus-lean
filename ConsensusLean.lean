@@ -203,6 +203,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransp
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
