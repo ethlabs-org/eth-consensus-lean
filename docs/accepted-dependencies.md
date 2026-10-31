@@ -78,7 +78,15 @@ Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbe
 | `Consensus.Goldilocks.Refinement.accepted_nested` | Reduction to shape_nested; exact generic field, no collision escape. |
 | `Consensus.Goldilocks.Refinement.accepted_finalMonotone` | Reduction to shape_finalMonotone; exact generic field. |
 | `Consensus.Goldilocks.Refinement.accepted_finalAccountable` | Reduction to shape_finalAccountable at fixed 1/3; encoding/transport OPEN. |
-| `Consensus.Goldilocks.Refinement.accepted_healthyLive` | OPEN: R.3/R.4 finite healthy service and final recurrence; no completed paper argument for exact endpoint. Spec orb/healing owner. |
+| `Consensus.Goldilocks.Refinement.accepted_healthyLive` | Available/stable branches OPEN; final branch references accepted_healthyLive_final and its explicit supplier route below. |
+| `Consensus.Goldilocks.Refinement.final_window_extract` | OPEN: actual ready four-anchor proposals/cuts on the canonical finite trace, surviving ancestry and carrier processing by query + latency(.final,i)·Δe. Joint accepted_latency synthesis must supply transport slack, not just A3≤deadline. |
+| `Consensus.Goldilocks.Refinement.final_inherited_progress` | OPEN: inherited post-A0 entry has no birth lower bound; if uncrossed through A1's parent, distinct credited/pool current-entry progress reaches quorum. |
+| `Consensus.Goldilocks.Refinement.final_first_crossing` | OPEN, consumes inherited progress: birth-s entry OR first post-A0 crossing by s+d−1 (justify OR timeout); only the latter has exposure age≤d−2. |
+| `Consensus.Goldilocks.Refinement.final_row_supply` | OPEN: designated protected first entry/actual bound successor, local no-timeout condition; already justified OR distinct honest exact valid paired targets, prior matching reports/dedup included. Report/delivery bounds apply only to the quorum branch. |
+| `Consensus.Goldilocks.Refinement.final_bounded_crossings` | OPEN, consumes first crossing and row supply: justification by s+d+1, actual bound successor with separate birth-s w≥1/post-A0 w≥2 cases, no timeout before designated service and chain finalization above A0 by A3. |
+| `Consensus.Goldilocks.Refinement.final_cache_acceptance` | OPEN, consumes only A3 chain-finalized coverage of A0, projected from bounded crossings by the assembly: actual cache ancestry at the exact engine-scaled query endpoint and later horizon-bounded ready CutAfter reads. Not arbitrary-delay acceptance or receipt alone. |
+| `Consensus.Goldilocks.Refinement.final_payload_projection` | OPEN: finite node cache coverage to the exact engine ProposalLiveReady endpoint, preserving its reader condition, latency scaling and collision escape. |
+| `Consensus.Goldilocks.Refinement.accepted_healthyLive_final` | Assembly explicitly references extraction, inherited progress, first crossing, row supply, bounded crossings, cache acceptance and payload projection. All seven suppliers remain sorry leaves; no new public Healthy premises. |
 | `Consensus.Goldilocks.Refinement.accepted_sleepySafe` | OPEN: finite R.1 localization and engine service/read bridges; Sleepy suppliers above. |
 | `Consensus.Goldilocks.Refinement.accepted_sleepyLive` | OPEN: finite R.2 recurrence, inclusion and deadline transport; Sleepy suppliers above. |
 | `Consensus.Goldilocks.Refinement.accepted_healedSafe` | OPEN: finite preparation plus progress-free preservation, RecRet/base closure. |
@@ -91,6 +99,18 @@ Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbe
 | `Consensus.Goldilocks.Refinement.simTrace_vote_released` | OPEN: emitted vote is released through actual engine candidates; R.6 owner, Run. |
 
 ## Ownership and architecture
+
+The four-anchor skeleton above is pinned to workbench `b3ca078`,
+`four-anchor-window.md` and `fixed-timeout-synthesis.md`. Its statements are under
+review, not proved. The cache endpoint is the original query plus the SAME joint
+`accepted_latency` coefficient times engine Δe; no separate output-delay witness,
+catch-up substitution or guessed 2Δ bound is introduced. `FinalWindowData` contains
+operational witnesses, not any of the five desired supplier conclusions.
+Canonical store coherence and actual parent membership must be derived from successful
+acceptance and no observed collision; the total σ map's default values supply no such facts.
+The row supplier must derive normalization and coherent prior-report history from the
+finite canonical execution and Healthy. Its target-quorum branch explicitly identifies
+the parent's current height and entry root; stale-finality validity alone is insufficient.
 
 The spec orb owns this table and integrates rows sent by other owners. Owners edit
 their assigned Lean modules, not this table concurrently.
@@ -110,16 +130,17 @@ restart order. Credentials supplies ideal selection validity; receivers check ro
 syntax, not a preconfigured proposer schedule. Selection gates duty execution before
 mutation. The protocol timing target is Δp = Δe + 1, with delivery-time relay.
 
-Publication is not implemented by the existing unsigned relay: the revised publisher
-needs an accepted-block-to-own-wrapper map and parent-first same-event draining of
-all fresh wrappers, including own proposals. Successful releases require actual
-event/candidate-prefix indices, not a fabricated timestamp order. Shape parsing is
-not acceptance provenance. In the current family, `processOne` queues the raw
-canonical object `o` through `relayIf`, and `goldilocksShape.gossip` emits `.relay`;
-neither constructs `forwardObj` at acceptance. The `forwardObj`/`decodeForward`
-format and dependency policy from #116 therefore do not establish fresh-wrapper
-acceptance provenance. The concrete publisher adapter remains OPEN independently
-of parser correctness.
+The runtime publisher is installed by #124: successful block-acceptance cuts,
+including own proposals, populate a durable node-root-to-own-wrapper map and queue
+fresh signed wrappers in acceptance order. `pollBatch` emits the ordinary body
+followed by the queued wrappers, preserving parent-first order. The unsigned relay
+remains for compatibility; it is not the acceptance publisher. Successful releases
+still require actual event/candidate-prefix indices and release guards, not a
+fabricated timestamp order. Shape parsing is not acceptance provenance. The
+runtime implementation and the `forwardObj`/`decodeForward` format do not by
+themselves prove acceptance provenance or total successful release: both proof
+obligations remain OPEN. Validated declaration rows will record the separate
+publication proof work.
 
 `NoCollTransport` currently quantifies arbitrary `Simulates` traces. Caller audit
 found no consumer needing that generality: the concrete accountability and read

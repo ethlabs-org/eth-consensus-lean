@@ -4,6 +4,7 @@ public import ConsensusLean.Spec.Shape.Accepted
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Outage
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Final
 
 public section
 
@@ -138,6 +139,244 @@ theorem accepted_finalAccountable : ∀ g, schema.output .final = some g →
         (K S A).params.α g 0 := by
   exact shape_finalAccountable V S (K S A) (by norm_num [Params.standard])
 
+/-- A single reader-conditional final query, with the original engine-scaled latency.
+No supplier conclusion is a new premise of Healthy. -/
+structure FinalQuery where
+  run : (Sys (family S) V).Run
+  hn : 1 ≤ Fintype.card V
+  index : (K S A).Idx
+  gst : Time
+  query : Time
+  valid : (Sys (family S) V).Valid run
+  noCollision : ¬ run.2.HashCollision
+  healthy : (Sys (family S) V).Healthy (K S A) gst run
+  progress : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) .final index
+    ((Sys (family S) V).ready (K S A) gst run) run.2.horizon run
+  mature : (Sys (family S) V).heal (K S A) .final index gst run ≤ query
+  bounded : query + ((K S A).params.latency .final index : Time) * run.1.Δ ≤ run.2.horizon
+  reader : ∃ v, run.2.point.Ready ((Sys (family S) V).cDur (K S A) run) v
+    (query + ((K S A).params.latency .final index : Time) * run.1.Δ)
+
+namespace FinalQuery
+
+variable {S A V}
+
+abbrev params (Q : FinalQuery S A V) := S.params (Model.pubOf Q.run.1) Q.hn
+noncomputable abbrev trace (Q : FinalQuery S A V) := simTrace S Q.run.2 Q.hn
+noncomputable abbrev deadline (Q : FinalQuery S A V) : Time :=
+  Q.query + ((K S A).params.latency .final Q.index : Time) * Q.run.1.Δ
+
+end FinalQuery
+
+/-- Operational window witnesses only. The processing field is an OPEN endpoint-specific
+transport budget, not acceptance or a freely chosen output delay. Source: workbench b3ca078,
+four-anchor-window.md and fixed-timeout-synthesis.md. -/
+structure FinalWindowData (Q : FinalQuery S A V) where
+  start : Nat
+  block : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))
+  cut : Fin 4 → Nat
+  slots : ∀ a, (block a).slot = start + (![0, S.δt - 1, S.δt + 1, S.δt + 3] a)
+  proposals : ∀ a, Q.trace.ProposesAt (block a).proposer (cut a) (block a)
+  accepted : ∀ a, Q.trace.AcceptAt (block a).proposer (cut a) (block a)
+  ready : ∀ a, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+    ((Sys (family S) V).cDur (K S A) Q.run) (block a).proposer (Q.trace.time (cut a))
+  fresh : Q.query < Q.trace.time (cut 0)
+  ordered : StrictMono cut
+  bounded : ∀ a, Q.trace.time (cut a) ≤ Q.deadline
+  chain : ∀ a b, a ≤ b → Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) (block a) (block b)
+  /-- Actual canonical processing before the exact query deadline; deriving sufficient slack
+  from the jointly chosen accepted_latency remains OPEN. No acceptance is assumed here. -/
+  carrierProcessed : ∀ y, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+    ((Sys (family S) V).cDur (K S A) Q.run) y Q.deadline →
+    ∃ j, Q.trace.BlockCallAt y j (block 3) ∧ Q.trace.time j ≤ Q.deadline
+
+namespace FinalWindowData
+
+variable {S A V} {Q : FinalQuery S A V} (W : FinalWindowData S A V Q)
+
+/-- Use the actual last anchor's store, not an independently chosen chain-state map. -/
+noncomputable abbrev store := (Q.trace.post (W.cut 3)).fg
+noncomputable abbrev state (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) := W.store.σ B.root
+abbrev OnChain (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
+  Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) B (W.block 3)
+abbrev Extends (_W : FinalWindowData S A V Q)
+    (B C : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
+  Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) B C
+
+/-- An actual entry-creating transition, whether justification or timeout. -/
+def Entry (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
+  W.OnChain B ∧ (W.state B).Th = B.root ∧ (W.state B).ThSlot = B.slot
+
+/-- The actual first crossing after A0, or A0's own newly created entry. -/
+def Selected (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
+  W.Entry B ∧ W.Extends (W.block 0) B ∧
+    (B = W.block 0 ∨
+      (W.start + 1 ≤ B.slot ∧ B.slot ≤ W.start + (S.δt - 1) ∧
+        ∀ D, W.OnChain D → W.Extends (W.block 0) D → W.Extends D B →
+          W.start < D.slot → D.slot < B.slot → (W.state D).Th = (W.state (W.block 0)).Th))
+
+/-- No crossing of the inherited entry on the serving parent's chain. -/
+def Uncrossed (P : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
+  ∀ D, W.Extends (W.block 0) D → W.Extends D P →
+    (W.state D).h = (W.state (W.block 0)).h ∧ (W.state D).Th = (W.state (W.block 0)).Th
+
+/-- Quorum counts identities once, including previously credited rows. -/
+def InheritedProgress : Prop :=
+  ∀ P, (W.block 1).parent = some P.root → W.Extends (W.block 0) P →
+    (W.state (W.block 0)).ThSlot < W.start → W.Uncrossed P →
+    ∃ ids : Finset (Fin Q.params.n), Q.params.toParams.fg.q ≤ ids.card ∧
+      ∀ x ∈ ids, x ∈ (W.state P).prog ∨
+        ∃ a ∈ (Q.trace.state (W.block 1).proposer (W.cut 1)).fg.atts,
+          a.val = x ∧ a.WellFormed ∧ (W.state P).validAtt a ∧
+          a.h = (W.state P).h ∧ a.T = (W.state P).Th
+
+/-- Only the selected first descendant has the d−2 exposure bound. -/
+def FirstCrossing : Prop :=
+  ∃ B, W.Selected B ∧
+    (B = W.block 0 ∨
+      (B.slot ≤ W.start + (S.δt - 1) ∧ W.start + (S.δt - 1) - B.slot ≤ S.δt - 2))
+
+/-- A justification on the surviving chain is distinct from a timeout crossing. -/
+def JustifiedBy (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (v : Nat) : Prop :=
+  ∃ D, W.OnChain D ∧ W.Extends B D ∧ D.slot ≤ v ∧
+    (W.state D).J = B.root ∧ (W.state D).hj = (W.state B).h
+
+open Classical in
+/-- Selected entry or its actual bound successor, at the designated exposing anchor.
+An arbitrary no-timeout entry is deliberately not admitted by this domain. -/
+def Protected (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (e : Nat) : Prop :=
+  (W.Selected B ∧ e = if B = W.block 0 then W.start else W.start + (S.δt - 1)) ∨
+  (∃ D, W.Selected D ∧ W.Entry B ∧ W.Extends D B ∧
+    (W.state B).J = D.root ∧ (W.state B).bound ∧
+    B.slot ≤ W.start + (S.δt + 1) ∧
+    e = if B.slot ≤ W.start + (S.δt - 1) then W.start + (S.δt - 1)
+      else W.start + (S.δt + 1))
+
+/-- Exact target rows with actual signing provenance; prior matching reports count.
+Timing is only in this quorum branch, never imposed on already-justified entries.
+The pair is tested against the actual parent, and identities are not multiplied. -/
+def TargetRows (B P : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (e : Nat) (a : Fin 4) : Prop :=
+  (W.state P).h = (W.state B).h ∧ (W.state P).Th = B.root ∧
+  ∃ ids : Finset (Fin Q.params.n), Q.params.toParams.fg.q ≤ ids.card ∧
+    ∀ x ∈ ids, x ∈ honestKeys S Q.run.2 ∧ ∃ row j,
+      Q.trace.SignAt x j row ∧ row.val = x ∧ row.h = (W.state B).h ∧ row.T = B.root ∧
+      row.timeout = false ∧ row.WellFormed ∧ (W.state P).validAtt row ∧
+      Q.trace.time j ≤ Q.params.ts e + 6 * Q.params.Δ ∧
+      Q.params.ts e + 7 * Q.params.Δ ≤ Q.deadline ∧
+      ((x ∈ (W.state P).target ∧
+          ((W.state B).bound → x ∈ (W.state P).fin (W.state B).hj ∨
+            (W.state B).hj ≤ (W.state P).hF)) ∨
+        (row ∈ (Q.trace.state (W.block a).proposer (W.cut a)).fg.atts ∧
+          ∃ k, Q.trace.ProcessAttAt (W.block a).proposer k row ∧ k < W.cut a ∧
+            Q.trace.time k < Q.params.ts e + 7 * Q.params.Δ)) ∧
+      ((W.state B).bound →
+        row.fin = some ((W.state B).hj, (W.state B).J) ∧
+        (((W.state B).hj, (W.state B).J) ∈ (W.state P).pending ∨
+          (W.state B).hj ≤ (W.state P).hF))
+
+/-- OPEN stable-entry normalization, prior-report/dedup and mandatory pool validity supplier.
+No-timeout is local and must be discharged by the bounded-crossing argument. -/
+def RowSupply : Prop :=
+  ∀ B e, W.Protected B e → ∀ a : Fin 4,
+    (e + 2 = (W.block a).slot ∨ (B = W.block 0 ∧ a = 1)) →
+    ∀ P, (W.block a).parent = some P.root → W.Extends B P →
+      (∀ D, W.Extends B D → W.Extends D P →
+        (W.state D).h = (W.state B).h ∨ W.JustifiedBy B D.slot) →
+      W.JustifiedBy B P.slot ∨ W.TargetRows B P e a
+
+open Classical in
+/-- Justification creates the actual bound successor. The birth-s branch permits w=1;
+only the strictly post-A0 crossing has w≥2. Earlier successor justification finalizes B. -/
+def BoundedCrossings : Prop :=
+  ∃ B C, W.Selected B ∧ W.JustifiedBy B (W.start + (S.δt + 1)) ∧
+    W.Entry C ∧ W.Extends B C ∧ (W.state C).J = B.root ∧ (W.state C).bound ∧
+    W.start + (if B = W.block 0 then 1 else 2) ≤ C.slot ∧
+    C.slot ≤ W.start + (S.δt + 1) ∧
+    (let v := if C.slot ≤ W.start + (S.δt - 1) then W.start + (S.δt + 1)
+      else W.start + (S.δt + 3)
+     ∀ D, W.OnChain D → W.Extends C D → D.slot < v →
+       (W.state D).h = (W.state C).h ∨ (W.state B).h ≤ (W.state D).hF) ∧
+    ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧ W.Extends B F
+
+/-- Actual cache acceptance and persistence at the original endpoint, not mere delivery. -/
+def CacheCoverage : Prop :=
+  ∀ y t j, Q.deadline ≤ t → t ≤ Q.run.2.horizon →
+    Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+      ((Sys (family S) V).cDur (K S A) Q.run) y t → Regimes.CutAfter Q.trace j t →
+    W.Extends (W.block 0) (Q.trace.state y j).fg.F
+
+end FinalWindowData
+
+/-- OPEN extraction and endpoint budget; four-anchor-window.md / fixed-timeout-synthesis.md
+at workbench b3ca078. Synthesizing accepted_latency must leave enough time for actual carrier
+processing by the exact engine-scaled endpoint. No numeric output delay is invented. -/
+theorem final_window_extract (Q : FinalQuery S A V) : Nonempty (FinalWindowData S A V Q) := by
+  sorry
+
+/-- OPEN inherited progress, with no lower bound on inherited birth. Paper: workbench b3ca078,
+four-anchor-window.md and fixed-timeout-synthesis.md, inherited-entry bootstrap. -/
+theorem final_inherited_progress (Q : FinalQuery S A V) (W : FinalWindowData S A V Q) :
+    W.InheritedProgress := by
+  sorry
+
+/-- OPEN first crossing, justification OR timeout; exposure d−2 applies only to the first
+post-A0 descendant. Paper: workbench b3ca078, four-anchor-window.md / fixed-timeout-synthesis.md. -/
+theorem final_first_crossing (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
+    (progress : W.InheritedProgress) : W.FirstCrossing := by
+  sorry
+
+/-- OPEN exact-entry rows, including coherent prior reports and dedup; paper workbench b3ca078,
+four-anchor-window.md / fixed-timeout-synthesis.md. Only designated protected entries qualify.
+Deriving normalization and prior-report history from Healthy and the finite canonical simulation
+remains OPEN; these conclusions are not assumed in the window context. -/
+theorem final_row_supply (Q : FinalQuery S A V) (W : FinalWindowData S A V Q) :
+    W.RowSupply := by
+  sorry
+
+/-- OPEN bounded crossing assembly; paper workbench b3ca078, four-anchor-window.md /
+fixed-timeout-synthesis.md. Consumes the earlier suppliers; handles birth-s separately. -/
+theorem final_bounded_crossings (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
+    (crossing : W.FirstCrossing) (rows : W.RowSupply) : W.BoundedCrossings := by
+  sorry
+
+/-- OPEN acceptance, not receipt. Paper workbench b3ca078, four-anchor-window.md /
+fixed-timeout-synthesis.md. The latency budget and cache timing are jointly OPEN. -/
+theorem final_cache_acceptance (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
+    (coverage : ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧
+      W.Extends (W.block 0) F) : W.CacheCoverage := by
+  sorry
+
+/-- OPEN payload/read projection of the finite supplier package, without old FinalPremises
+or UPat. Paper workbench b3ca078, four-anchor-window.md / fixed-timeout-synthesis.md. -/
+theorem final_payload_projection
+    (windows : ∀ Q : FinalQuery S A V, Nonempty (FinalWindowData S A V Q))
+    (coverage : ∀ (Q : FinalQuery S A V) (W : FinalWindowData S A V Q), W.CacheCoverage) :
+    ∀ g, schema.output .final = some g →
+    ∀ (i : (K S A).Idx) (gst : Time), (Sys (family S) V).Holds
+      (fun r => (Sys (family S) V).Healthy (K S A) gst r ∧
+        (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) .final i
+          ((Sys (family S) V).ready (K S A) gst r) ((Sys (family S) V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys (family S) V).cDur (K S A) r)
+        g ((Sys (family S) V).heal (K S A) .final i gst r) ((K S A).params.latency .final i) := by
+  sorry
+
+/-- Statement-only assembly of the OPEN four-anchor suppliers; not a completed liveness proof.
+Paper: workbench b3ca078, four-anchor-window.md and fixed-timeout-synthesis.md. -/
+theorem accepted_healthyLive_final : ∀ g, schema.output .final = some g →
+    ∀ (i : (K S A).Idx) (gst : Time), (Sys (family S) V).Holds
+      (fun r => (Sys (family S) V).Healthy (K S A) gst r ∧
+        (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) .final i
+          ((Sys (family S) V).ready (K S A) gst r) ((Sys (family S) V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys (family S) V).cDur (K S A) r)
+        g ((Sys (family S) V).heal (K S A) .final i gst r) ((K S A).params.latency .final i) := by
+  apply final_payload_projection S A V (final_window_extract S A V)
+  intro Q W
+  have crossings := final_bounded_crossings S A V Q W
+      (final_first_crossing S A V Q W (final_inherited_progress S A V Q W))
+      (final_row_supply S A V Q W)
+  obtain ⟨B, C, hB, _, _, _, _, _, _, _, _, F, hF, hBF⟩ := crossings
+  exact final_cache_acceptance S A V Q W ⟨F, hF, hB.2.1.trans hBF⟩
+
 /-- R3 available/stable inclusion; R4 FinalInclude for final.
 NO PAPER PROOF for exact contract gHeal, bounded recurrence→node progress,
 or repaired engine timing transport. See generic-r3-bridge-audit.md.
@@ -150,7 +389,11 @@ theorem accepted_healthyLive : ∀ cap g, schema.output cap = some g →
           ((Sys (family S) V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys (family S) V).cDur (K S A) r)
         g ((Sys (family S) V).heal (K S A) cap i gst r) ((K S A).params.latency cap i) := by
-  sorry
+  intro cap
+  cases cap with
+  | final => exact accepted_healthyLive_final S A V
+  | available => sorry
+  | stable => sorry
 
 /-- R1, sleepy-record-invariant.md §§2–5.1 and sleepy-proposal-adoption.md
 §§2–4 (conditional S1–S4 package). NO PAPER PROOF for engine network,
