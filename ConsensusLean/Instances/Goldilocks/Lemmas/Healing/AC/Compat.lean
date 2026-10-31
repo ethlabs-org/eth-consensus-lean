@@ -229,6 +229,97 @@ theorem result_optimistic_compatible (hS : HealthyBase tr H U proposer g)
   rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hle
   omega
 
+private theorem fwd_reaches_update_window_before
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {a b : Time} {s : Nat}
+    (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
+    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt Y c ℓ)
+    (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hb : tr.time c ≤ b)
+    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s)
+    {D : Blk sp.n FGP} {u : Fin sp.n} (hu : Fwd tr U X s D u) :
+    ∃ v : Vote sp.n, v.val = u ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
+      (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}) := by
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨v, rfl, hvs, hR, k, hsend, h1, h2⟩ := hu
+  refine ⟨v, rfl, hR, ?_⟩
+  have h := sync_window_before_forward hr hsync hX hsend (ha.trans h1)
+    (by linarith) hY hc (fun k' hk' hr' => (hrs k' hk' hr').trans h1)
+    (by linarith) fun t ht₁ ht₂ => by
+      rw [slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]
+      omega
+  rwa [hvs] at h
+
+private theorem against_update_window_before
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {a b : Time} {s : Nat}
+    (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
+    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt Y c ℓ)
+    (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hb : tr.time c ≤ b)
+    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s)
+    {D DY : Blk sp.n FGP} {S T : Set (Fin sp.n)}
+    (hS : ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
+      ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U DY R)
+    (hT : T ⊆ Fwd tr U X s D) (hnc : ¬ Compatible U D DY) :
+    T.ncard + S.ncard ≤ (voters {v | v ∈ (tr.state Y c).pool s}).ncard := by
+  have hU := hr.coherent
+  have hf := fun {u} (hu : Fwd tr U X s D u) =>
+    fwd_reaches_update_window_before hr hsync ha hX hY hc ht hb hrs hu
+  have hdisj : Disjoint T S := by
+    rw [Set.disjoint_left]
+    intro u hu hu'
+    obtain ⟨hne, v', hv', hv'u, R', hR', hR'r, hDR'⟩ := hS u hu'
+    obtain ⟨v, hvu, ⟨R, hR, hRr, hDR⟩, hv | heq⟩ := hf (hT hu)
+    · obtain rfl : v = v' := by
+        by_contra h
+        exact hne ⟨v, hv, v', hv', h, hvu, hv'u⟩
+      obtain rfl : R = R' := hU.1 hR hR' (hRr.trans hR'r.symm)
+      exact hnc (anc_total hU hDR hDR')
+    · exact hne heq
+  rw [← Set.ncard_union_eq hdisj]
+  refine Set.ncard_le_ncard ?_
+  rintro u (hu | hu)
+  · obtain ⟨v, rfl, -, hv | ⟨a, ha, -, -, -, hav, -⟩⟩ := hf (hT hu)
+    · exact ⟨v, hv, rfl⟩
+    · exact ⟨a, ha, hav⟩
+  · obtain ⟨-, v, hv, rfl, -⟩ := hS u hu
+    exact ⟨v, hv, rfl⟩
+
+/-- Same-slot results are compatible using only service through their observation cutoff. -/
+theorem result_result_compatible_window_before (hrun : ACRun proposer tr H U)
+    {a b : Time} {s : Nat} (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
+    {x x' : Fin sp.n} (hx : x ∈ H) (hx' : x' ∈ H)
+    {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
+    (hR : ResultAt tr x i s C CV) (hR' : ResultAt tr x' i' s C' CV')
+    (hi : tr.time i ≤ b) (hi' : tr.time i' ≤ b)
+    (hreset : ∀ y ∈ H, ∀ q ≤ max i i', tr.RestartAt y q → tr.time q ≤ sp.ts s) :
+    Compatible U C C' := by
+  by_contra hnc
+  obtain ⟨ℓ, S, hc, ht, hmaj, hSF, hSs⟩ := result_side hrun hx hR
+  obtain ⟨ℓ', S', hc', ht', hmaj', hSF', hSs'⟩ := result_side hrun hx' hR'
+  have h1 := against_update_window_before hrun.localRun hsync ha hx' hx hc ht hi
+    (fun q hq => hreset x hx q (hq.trans (le_max_left _ _))) hSs hSF'
+    fun h => hnc (Or.symm h)
+  have h2 := against_update_window_before hrun.localRun hsync ha hx hx' hc' ht' hi'
+    (fun q hq => hreset x' hx' q (hq.trans (le_max_right _ _))) hSs' hSF hnc
+  omega
+
+/-- A result and optimistic lock of one slot agree with windowed message service. -/
+theorem result_optimistic_compatible_window_before (hrun : ACRun proposer tr H U)
+    {a b : Time} {s : Nat} (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
+    {x x' : Fin sp.n} (hx : x ∈ H) (hx' : x' ∈ H)
+    {i i' : Nat} {C O : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
+    (hR : ResultAt tr x i s C CV) (hO : OptimisticLockAt tr x' i' s O CV')
+    (hi : tr.time i ≤ b) (_hi' : tr.time i' ≤ b)
+    (hreset : ∀ q ≤ i, tr.RestartAt x q → tr.time q ≤ sp.ts s) : Compatible U C O := by
+  by_contra hnc
+  obtain ⟨ℓ, S, hc, ht, hmaj, -, hSs⟩ := result_side hrun hx hR
+  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_side hrun hx' hO
+  have h1 := against_update_window_before hrun.localRun hsync ha hx' hx hc ht hi hreset
+    hSs hT fun h => hnc (Or.symm h)
+  have hle := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ (tr.state x i).pool s}))
+  rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hle
+  omega
+
 end Consensus.Goldilocks.SA
 
 end

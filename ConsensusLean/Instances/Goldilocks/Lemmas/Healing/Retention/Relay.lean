@@ -380,6 +380,70 @@ theorem relay_mem_voterBlockTree (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
   rw [← readPoint_blockStamp hr hy hc hne] at hbs
   exact ⟨hWt, Or.inl hbs⟩
 
+/-- A counted head reaches the actual voter freeze through either window service or
+catch-up of an old acceptance. Only recipient observations through `b` are used. -/
+theorem relay_mem_voterBlockTree_window_before
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
+    (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
+    {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : SA.Blk sp.n FGP}
+    (hkw : T.AcceptAt w kw W) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
+    {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
+    (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
+    (hF : Anc U ℓ.frame.F W) : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
+  have hU := hr.coherent
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨-, hys, hyj, -⟩ := SA.castAt_spec hr hy hc
+  have hm : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
+    simp only [SAParams.ts]; ring
+  have hti : sp.ts e.msg.slot ≤ T.time i :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [hys])
+  have hsm : sp.ts s ≤ sp.ts ((e.msg.slot : Int) - 1) := (SA.ts_le_iff sp).2 (by omega)
+  have hrsy : ∀ k ≤ i, T.RestartAt y k → T.time k ≤ sp.ts ((e.msg.slot : Int) - 1) := by
+    have hj' : SA.joined sp (T.post i) (T.time i) := by
+      unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc]; exact hyj
+    intro k hk hrk
+    have := ((SA.joined_awake sp) FGP ro H U T hr y hy i ℓ hc.1 hj').2 k hk hrk
+    rwa [← hys] at this
+  have hdl : ∀ k ≤ i, T.deadline y k (T.time kw) < sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
+    intro k hk
+    have h₁ := deadline_le_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') (T.time kw)
+    have h₂ := max_lt (show T.time kw < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by linarith)
+      (show sp.ts ((e.msg.slot : Int) - 1) < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by
+        linarith)
+    change T.deadline y k (T.time kw) ≤ max (T.time kw) (sp.ts ((e.msg.slot : Int) - 1)) + sp.Δ
+      at h₁
+    linarith
+  have haccepted : ∃ ky ≤ i, T.AcceptAt y ky W ∧ T.time ky < SA.freeze sp e.msg.slot := by
+    by_cases ha : a ≤ T.time kw
+    · obtain ⟨ky, hky, hacc, hkyt⟩ := hsync.relay w hw kw W hkw ha y hy i ℓ hc.1
+        (by linarith [hdl i le_rfl]) (by linarith [hdl i le_rfl]) hF
+      refine ⟨ky, hky, hacc, ?_⟩
+      have := hdl ky hky
+      unfold SA.freeze
+      linarith
+    · obtain ⟨ky, hky, hacc, hkyt⟩ := hcatch.relay w hw kw W hkw (lt_of_not_ge ha)
+        y hy i ℓ hc.1 (by linarith) hi hF
+      refine ⟨ky, hky, hacc, ?_⟩
+      unfold SA.freeze
+      linarith
+  obtain ⟨ky, hky, hacc, hkyt⟩ := haccepted
+  have hfz : SA.freeze sp e.msg.slot ≤ T.time i := by unfold SA.freeze; linarith
+  have hWt := SA.mem_tree_of_acceptAt sp hr hy hacc hky hc.1 hF
+  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt⟩)
+    (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold SA.freeze; linarith))
+    (Or.inl hfz)
+  have hne : ∀ B, ℓ.call = .block B → W.root ≠ B.root := by
+    intro B₀ hcall hB
+    have hB₀ := (SA.accept_new sp hr hy ⟨ℓ, hc.1, hcall⟩).1 ℓ hc.1
+    obtain rfl : B₀ = W := hU.1 ((SA.frameIn_of_callAt hr hy hc.1).2 hB₀)
+      ((SA.frameIn_of_callAt hr hy hc.1).2 hWt) hB.symm
+    have heq := SA.accept_unique sp hr hy hacc ⟨ℓ, hc.1, hcall⟩
+    rw [heq] at hkyt
+    linarith
+  rw [← readPoint_blockStamp hr hy hc hne] at hbs
+  exact ⟨hWt, Or.inl hbs⟩
+
 /-- **What the writer of a fast lock did with its counted votes** (main's Sleepy
 `result_writer` and `optimistic_writer`, for the selected block): each was admitted (or sent) by
 the writer at a time in `[t_s, t_s + 2Δ)`, and its head extends the selected block and is genesis
