@@ -8,9 +8,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 
--- The served head is proved once for the whole run and for the prefix up to a horizon (through
--- the private `ReadInv`); splitting the file would expose the private record-write helpers.
-set_option linter.style.longFile 1600
+-- The served head shares a proof across whole-run, prefix and deadline-bounded service through
+-- the private `ReadInvWith`; splitting would expose the private record-write helpers.
+set_option linter.style.longFile 1700
 
 public section
 
@@ -720,10 +720,10 @@ the stored locks and the caches; origins `O`, among them those whose event prece
 viable at the cuts up to `i` and extended by the earlier honest votes of later slots;
 `Sync[0, t − Δ]`; and `f < h_t` at the slot points `t_s + Δ ≤ t`. Under `Sleepy` with the full
 invariant (`ReadInv.of_full`), or up to `b ≥ t` (`ReadInv.of_upTo`). -/
-private structure ReadInv (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+private structure ReadInvWith (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop)
-    (O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (y : Fin sp.n) (i : Nat) (t : Time) :
-    Prop where
+    (O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (y : Fin sp.n) (i : Nat) (t : Time)
+    (Service : Prop) : Prop where
   compat : ∀ X Y, X ∈ tr.HonestBlocks H → Y ∈ tr.HonestBlocks H → Ch X → Ch Y →
     Compatible (tr.HonestBlocks H) X Y
   anc : ∀ A B, A ∈ tr.HonestBlocks H → Anc (tr.HonestBlocks H) A B → Ch B → Ch A
@@ -736,9 +736,23 @@ private structure ReadInv (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
       C ∈ (Node.frame (tr.state y m)).viableTree (Node.frame (tr.state y m)).tree
   vote_extends : ∀ C s, O C s → ∀ x ∈ H, ∀ k < i, ∀ e, SA.VoteAt tr.projAC x k e →
     s < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg C
-  sync : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) 0 (t - sp.Δ) tr.projAC
+  sync : Service
   awake : ∀ s : Nat, sp.ts s + sp.Δ ≤ t →
     Hᶜ.ncard < {x | x ∈ H ∧ tr.awake x (sp.ts s + sp.Δ) ∧ tr.JoinedAt x (sp.ts s + sp.Δ)}.ncard
+
+private abbrev ReadInv (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+    (Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop)
+    (O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (y : Fin sp.n) (i : Nat) (t : Time) :=
+  ReadInvWith tr H Ch O y i t
+    (SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) 0 (t - sp.Δ) tr.projAC)
+
+private abbrev ReadService (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (t : Time) :=
+  SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) 0 (t - sp.Δ) tr.projAC ∨
+    SyncACBefore H (tr.HonestBlocks H) t tr.projAC
+
+private theorem ReadInv.service {Ch O y i t} (h : ReadInv tr H Ch O y i t) :
+    ReadInvWith tr H Ch O y i t (ReadService tr H t) :=
+  { h with sync := Or.inl h.sync }
 
 /-- `ReadInv` from the full invariant under `Sleepy`. -/
 private theorem ReadInv.of_full (hinv : SleepyInvariant tr H)
@@ -780,6 +794,32 @@ private theorem ReadInv.of_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
       hinv.vote_extends C s hO x hx k e hv (hi k hk) hs
     sync := syncAC_of_prefix hrun hpre le_rfl (by linarith)
     awake := fun s hs => faults_lt_awake_joined_upTo hpre s (hs.trans ht) }
+
+private theorem ReadInvWith.of_before {b : Time} (hinv : SleepyInvariantUpTo tr H b)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hi : ∀ k < i, tr.time k ≤ b) {t : Time}
+    (ht : t ≤ b) (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ t → tr.FaultBound H (sp.ts s + sp.Δ)) :
+    ReadInvWith tr H (fun B => OnOriginChainWithin tr H B b)
+      (fun C s => OriginWithin tr H C s b) y i t (ReadService tr H t) :=
+  have ⟨C, hC, hCr, hgo⟩ := hinv.record y hy i hi
+  { compat := fun _ _ hX hY hXc hYc =>
+      OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible hX hY hXc hYc
+    anc := fun _ _ hA hAB h => OnOriginChainWithin.of_anc hrun hnc hA hAB h
+    record := ⟨C, hC, hCr,
+      onOriginChainWithin_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)⟩
+    locks := hinv.locks y hy i hi
+    caches := hinv.caches y hy i hi
+    origin := fun _ _ h => h.within hi
+    viable := fun m hm C s hO hC => hinv.viable y hy m (fun k hk => hi k (by omega)) C s hO hC
+    vote_extends := fun C s hO x hx k hk e hv hs =>
+      hinv.vote_extends C s hO x hx k e hv (hi k hk) hs
+    sync := Or.inr {
+      message := fun x hx k m hm h0 z hz j ℓ hc hd hj =>
+        hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans ht) hj
+      relay := fun x hx k B hB h0 z hz j ℓ hc hd hj ha =>
+        hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans ht) hj ha }
+    awake := hfb }
 
 /-- **The tick of the latest view's slot at a read.** At a read of an honest node at `t`, with
 `l` the latest view's slot at `t`: `t_l + 2Δ ≤ t`, the node's restarts up to `t` are at or before
@@ -953,7 +993,7 @@ latest view's slot, the head `Hd` of an honest slot-`l` vote that extends the no
 its frame, with a finite stamp: the voter accepted it before its vote, and it is relayed to the
 node before `t_l + 2Δ` (by its tick then), with no restart since. -/
 private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {t : Time} (hsync : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) 0 (t - sp.Δ) tr.projAC)
+    {t : Time} (hsync : ReadService tr H t)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     (hrd : ReadAt proposer dg tr y i t) {L : Nat}
     (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
@@ -991,15 +1031,17 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
       obtain ⟨-, -, hgen, -⟩ := Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hy jc)
       rwa [hU.1 hHd ⟨y, hy, jc, hgen⟩ hg]
     · have hkt : tr.projAC.time k ≤ sp.ts L + sp.Δ := (hr.time_mono hk).trans htj'
-      obtain ⟨k₂, hk₂j, hk₂, hk₂t⟩ :=
-        hsync.2 x hx k Hd' hkA
-          (hr.time_nonneg k) (by have hkt' : tr.time k ≤ sp.ts L + sp.Δ := hkt; linarith)
-          y hy jc ℓj hcj
-          (by
-            have := deadline_le (fun r hr' hrr => hres' r hrr (hjct r hr')) (tr.projAC.time k)
-            change _ ≤ tr.time jc
-            rw [htj]
-            linarith [max_le hkt (show sp.ts L ≤ sp.ts L + sp.Δ by linarith)]) hFj
+      have hdl : tr.projAC.deadline y jc (tr.projAC.time k) ≤ tr.projAC.time jc := by
+        have := deadline_le (fun r hr' hrr => hres' r hrr (hjct r hr')) (tr.projAC.time k)
+        change _ ≤ tr.time jc
+        rw [htj]
+        linarith [max_le hkt (show sp.ts L ≤ sp.ts L + sp.Δ by linarith)]
+      obtain ⟨k₂, hk₂j, hk₂, hk₂t⟩ := hsync.elim
+        (fun h => h.2 x hx k Hd' hkA (hr.time_nonneg k)
+          (by have hkt' : tr.time k ≤ sp.ts L + sp.Δ := hkt; linarith)
+          y hy jc ℓj hcj hdl hFj)
+        (fun h => h.relay x hx k Hd' hkA (hr.time_nonneg k)
+          y hy jc ℓj hcj (hdl.trans (hjct jc le_rfl)) hdl hFj)
       have hd₂ := deadline_le (fun r hr' hrr => hres' r hrr (hjct r (hr'.trans hk₂j)))
         (tr.projAC.time k)
       have hmax : max (tr.projAC.time k) (sp.ts L) ≤ sp.ts L + sp.Δ := max_le hkt (by linarith)
@@ -1037,7 +1079,8 @@ private theorem latest_honest_supporter (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
     {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop} (hI : ReadInv tr H Ch O y i t)
+    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
+    (hI : ReadInvWith tr H Ch O y i t (ReadService tr H t))
     (hrd : ReadAt proposer dg tr y i t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : R ∈ (Node.frame (tr.state y i)).tree) {j : Nat} (hO : O R j)
     (hjl : (j : Int) < (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) :
@@ -1105,7 +1148,7 @@ validator awake and joined at `t_l + Δ`, with `l` the latest view's slot, votes
 then, and its vote reaches the node before `t_l + 2Δ ≤ t`, so before the read, and the node has
 not restarted since. -/
 private theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {t : Time} (hsync : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) 0 (t - sp.Δ) tr.projAC)
+    {t : Time} (hsync : ReadService tr H t)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     (hrd : ReadAt proposer dg tr y i t) {L : Nat}
     (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
@@ -1129,9 +1172,13 @@ private theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc 
   have hdl : ∀ c ≤ jc, tr.projAC.deadline y c (tr.projAC.time k) ≤ tr.projAC.time k + sp.Δ :=
     fun c hcj' => (deadline_le (fun r hr' hrr => hres' r hrr (hjct r (hr'.trans hcj'))) _).trans
       (by rw [max_eq_left hk0])
-  obtain ⟨k', hk'j, hkk', hp, hk'dl⟩ := hsync.1 x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩
-    (hr.time_nonneg k) (by have hk' : tr.time k ≤ sp.ts L + sp.Δ := hk; linarith) y hy jc ℓj hcj
-    (by have := hdl jc le_rfl; change _ ≤ tr.time jc; rw [htj]; linarith)
+  have hdj : tr.projAC.deadline y jc (tr.projAC.time k) ≤ tr.projAC.time jc := by
+    have := hdl jc le_rfl; change _ ≤ tr.time jc; rw [htj]; linarith
+  obtain ⟨k', hk'j, hkk', hp, hk'dl⟩ := hsync.elim
+    (fun h => h.1 x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
+      (by have hk' : tr.time k ≤ sp.ts L + sp.Δ := hk; linarith) y hy jc ℓj hcj hdj)
+    (fun h => h.message x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
+      y hy jc ℓj hcj (hdj.trans (hjct jc le_rfl)) hdj)
   have hk'dl' : tr.projAC.time k' < sp.ts L + 2 * sp.Δ := by
     have := hdl k' hk'j; linarith
   have hk'i : k' < i :=
@@ -1162,7 +1209,8 @@ awake and joined at `t_l + Δ` are voters, and the other voters are faulty. -/
 private theorem latest_majority (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
     {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop} (hI : ReadInv tr H Ch O y i t)
+    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
+    (hI : ReadInvWith tr H Ch O y i t (ReadService tr H t))
     (hrd : ReadAt proposer dg tr y i t)
     {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ (Node.frame (tr.state y i)).tree) {j : Nat}
     (hO : O R j)
@@ -1265,7 +1313,8 @@ stored on `R`). -/
 private theorem record_label_or_lock (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
     {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop} (hI : ReadInv tr H Ch O y i t)
+    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
+    (hI : ReadInvWith tr H Ch O y i t (ReadService tr H t))
     (hle : ∀ k < i, tr.time k ≤ t) {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : RecordAt tr y i R)
     (hRf : ¬ (Node.frame (tr.state y i)).Anc R (Node.frame (tr.state y i)).fcRoot) :
     0 ≤ t ∧ (R ∈ SA.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t ∨
@@ -1355,7 +1404,8 @@ majority of the latest view's voters at `t` as supporters. -/
 private theorem head_support_at (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
     {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop} (hI : ReadInv tr H Ch O y i t)
+    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
+    (hI : ReadInvWith tr H Ch O y i t (ReadService tr H t))
     (hle : ∀ k < i, tr.time k ≤ t) (hrd : 0 ≤ t → ReadAt proposer dg tr y i t)
     {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : RecordAt tr y i R) :
     Compatible (Node.frame (tr.state y i)).tree
@@ -1423,7 +1473,8 @@ private theorem read_head_support_of (hrun : GoldilocksRun proposer dg H tr) (hn
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
     {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
     {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
-    (hI : ∀ m, (∀ k < m, tr.time k ≤ t) → ReadInv tr H Ch O y m t)
+    (hI : ∀ m, (∀ k < m, tr.time k ≤ t) →
+      ReadInvWith tr H Ch O y m t (ReadService tr H t))
     (hle : ∀ k < i, tr.time k ≤ t) (hti : t ≤ tr.time i)
     (hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : RecordAt tr y i R) :
@@ -1485,8 +1536,8 @@ theorem read_head_support (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun pr
               (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
               (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
               R).ncard)) :=
-  read_head_support_of hrun hnc hy (fun m _ => ReadInv.of_full hinv hrun hnc hsl hy m t) hle hti
-    hwj hR
+  read_head_support_of hrun hnc hy
+    (fun m _ => (ReadInv.of_full hinv hrun hnc hsl hy m t).service) hle hti hwj hR
 
 /-- **G1, G2 at a read up to `b`** (for R.1 up to `b`): `read_head_support` for a read at a time
 `t ≤ b`, from the invariant up to `b` under the prefix premises up to `b`. -/
@@ -1508,8 +1559,34 @@ theorem read_head_support_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
               (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
               R).ncard)) :=
   read_head_support_of hrun hnc hy
-    (fun _ hm => ReadInv.of_upTo hinv hrun hnc hpre hy (fun k hk => (hm k hk).trans htb) htb) hle
+    (fun _ hm => (ReadInv.of_upTo hinv hrun hnc hpre hy
+      (fun k hk => (hm k hk).trans htb) htb).service) hle
     hti hwj hR
+
+/-- G1, G2 with recipient service bounded by the read time, not the next cut's time.
+Only the fault bounds at `t_s + Δ ≤ t` are needed for the latest-view majority. -/
+theorem read_head_support_before {b : Time} (hinv : SleepyInvariantUpTo tr H b)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time} (htb : t ≤ b)
+    (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ t → tr.FaultBound H (sp.ts s + sp.Δ))
+    (hle : ∀ k < i, tr.time k ≤ t) (hti : t ≤ tr.time i)
+    (hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hR : RecordAt tr y i R) :
+    Compatible (Node.frame (tr.state y i)).tree
+        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
+      ((Node.frame (tr.state y i)).Anc R
+          (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+        (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
+          (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
+              t).1.votes).ncard <
+            2 * (SA.supporters (Node.frame (tr.state y i))
+              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
+              R).ncard)) :=
+  read_head_support_of hrun hnc hy
+    (fun _ hm => ReadInvWith.of_before hinv hrun hnc hsync hy
+      (fun k hk => (hm k hk).trans htb) htb hfb) hle hti hwj hR
 
 /-- **G1, G2 at a served cut**: at a cut of an honest node awake and joined at its time that has
 run the update of slot `slot(t) − 2` or `slot(t) − 1` with no restart since (A1.6's condition,
@@ -1522,7 +1599,7 @@ theorem served_head_support (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun 
     HeadSupport tr y i R :=
   -- the update clause is not needed here: joining at `t` already excludes the restarts after the
   -- latest view's slot started, which would clear the pools
-  have h := head_support_at hrun hnc hy (ReadInv.of_full hinv hrun hnc hsl hy i (tr.time i))
+  have h := head_support_at hrun hnc hy (ReadInv.of_full hinv hrun hnc hsl hy i (tr.time i)).service
     (fun _ hk => hrun.time_mono hk.le) (fun _ => readAt_self hrun hy hc hw hj) hR
   ⟨h.1, h.2⟩
 
