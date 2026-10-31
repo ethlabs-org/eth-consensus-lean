@@ -189,12 +189,13 @@ private theorem cast_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
     exact absurd ((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1
       hne
 
-/-- **The writer's pool, for the voter's pool.** -/
-theorem writer_pool (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+private theorem writer_pool_of_sync (hrun : ACRun proposer tr H U) {X : Fin sp.n}
+    (hX : X ∈ H) {i₀ s : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr) {k : Nat}
+    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr ∨
+      SyncACBefore H U (tr.time i₀) tr) {k : Nat}
     (hk : k ≤ i) :
     ∀ v ∈ (tr.state y (k + 1)).pool s, v ∈ (tr.state X i₀).pool s ∨
       v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} := by
@@ -239,16 +240,22 @@ theorem writer_pool (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ H)
       have := cast_time_le hr hy hc
       rw [hsi, hts] at this; linarith
     have hki : tr.time k' ≤ tr.time i := hr.time_mono (by omega)
-    have := sync_forward hr hsync hy hsend hsk hki hX hupd.1
-      (fun k'' hk'' hr'' => (hrsX k'' hk'' hr'').trans hsk) (by rw [hupd.2.2.1]; linarith)
-      fun t h₁ h₂ => by
-        have ht : 0 ≤ t := (hr.time_nonneg k').trans h₁
-        have ha := (ts_le_iff_le_slot sp ht s).1 (hsk.trans h₁)
-        have hb : ¬ ((s + 2 : Nat) : Int) ≤ sp.slot t := fun h => by
-          have := (ts_le_iff_le_slot sp ht _).2 h
-          rw [hts₂] at this; linarith
-        rw [hvs]; omega
-    rwa [hvs] at this
+    have hrs : ∀ k'' ≤ i₀, tr.RestartAt X k'' → tr.time k'' ≤ tr.time k' :=
+      fun k'' hk'' hr'' => (hrsX k'' hk'' hr'').trans hsk
+    have hdl : tr.time k' + sp.Δ ≤ tr.time i₀ := by rw [hupd.2.2.1]; linarith
+    have hslot : ∀ t, tr.time k' ≤ t → t < tr.time k' + sp.Δ →
+        (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t := by
+      intro t h₁ h₂
+      have ht : 0 ≤ t := (hr.time_nonneg k').trans h₁
+      have ha := (ts_le_iff_le_slot sp ht s).1 (hsk.trans h₁)
+      have hb : ¬ ((s + 2 : Nat) : Int) ≤ sp.slot t := fun h => by
+        have := (ts_le_iff_le_slot sp ht _).2 h
+        rw [hts₂] at this; linarith
+      rw [hvs]; omega
+    have hheld := hsync.elim
+      (fun h => sync_forward hr h hy hsend hsk hki hX hupd.1 hrs hdl hslot)
+      (fun h => sync_before_forward hr h hy hsend hdl hX hupd.1 hrs hdl hslot)
+    rwa [hvs] at hheld
   · -- a restart's vote is of a block of slot at most `s`, so of slot below `s`
     have hBv := (frame_validPayload sp hr hy hck B hB).1 v hvB
     have hBs := frame_slot_le sp hr hy hck B hB
@@ -258,12 +265,13 @@ theorem writer_pool (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ H)
       rw [hts] at this; linarith
     omega
 
-/-- **The writer-pool condition** (A1.8 (d)) from `Sync[t_s, τ]`. -/
-theorem writer_merged (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+private theorem writer_merged_of_sync (hrun : ACRun proposer tr H U) {X : Fin sp.n}
+    (hX : X ∈ H) {i₀ s : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr) :
+    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr ∨
+      SyncACBefore H U (tr.time i₀) tr) :
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} := by
   have hr := hrun.localRun
@@ -272,7 +280,7 @@ theorem writer_merged (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ 
     simp only [SAState.poolAt] at hv
     split_ifs at hv with hneg
     · simp at hv
-    exact writer_pool hrun hX hupd hy hc hs hsync le_rfl v
+    exact writer_pool_of_sync hrun hX hupd hy hc hs hsync le_rfl v
       (readPoint_pool hr hy hc (by simpa using hv)).1
   -- a vote of a slot-`(s+1)` block of the tree, which `y` accepted at a cut `k ≤ i`
   obtain ⟨-, hys, -, -⟩ := castAt_spec hr hy hc
@@ -293,7 +301,7 @@ theorem writer_merged (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ 
       w ∈ (tr.state y (k + 1)).pool s := fun w hw => by
     rw [state_succ_of_call hck, hpost]
     exact tryVote_pool _ _ _ _ _ (by rw [optimistic_pool]; exact hw)
-  have hw := writer_pool hrun hX hupd hy hc hs hsync hki
+  have hw := writer_pool_of_sync hrun hX hupd hy hc hs hsync hki
   rcases blockReceipt_held (tr.state y k) hvB (t := tr.time k) (by omega) (by omega) with
     h | ⟨a, ha, b, hb, hab, hav, hbv⟩
   · rw [hvs] at h
@@ -304,6 +312,57 @@ theorem writer_merged (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ 
       · exact Or.inr ⟨a, ha', b, hb', hab, hav, hbv⟩
       · exact Or.inr (hbv ▸ hb')
     · exact Or.inr (hav ▸ ha')
+
+/-- **The writer's pool, for the voter's pool.** -/
+theorem writer_pool (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+    {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
+    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr) {k : Nat}
+    (hk : k ≤ i) :
+    ∀ v ∈ (tr.state y (k + 1)).pool s, v ∈ (tr.state X i₀).pool s ∨
+      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} :=
+  writer_pool_of_sync hrun hX hupd hy hc hs (Or.inl hsync) hk
+
+/-- **The writer-pool condition** (A1.8 (d)) from `Sync[t_s, τ]`. -/
+theorem writer_merged (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+    {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
+    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr) :
+    ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
+      v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} :=
+  writer_merged_of_sync hrun hX hupd hy hc hs (Or.inl hsync)
+
+/-- The writer's pool needs recipient service only through its update time. -/
+theorem writer_pool_before (hrun : ACRun proposer tr H U) {b : Time}
+    (hsync : SyncACBefore H U b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+    {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX)
+    (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {k : Nat} (hk : k ≤ i) :
+    ∀ v ∈ (tr.state y (k + 1)).pool s, v ∈ (tr.state X i₀).pool s ∨
+      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} := by
+  exact writer_pool_of_sync hrun hX hupd hy hc hs (Or.inr {
+    message := fun x hx k m hm h0 z hz j ℓ hc hd ht =>
+      hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans hi₀) ht
+    relay := fun x hx k B hB h0 z hz j ℓ hc hd ht ha =>
+      hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans hi₀) ht ha }) hk
+
+/-- A1.8 (d) needs recipient service only through the writer's update time. -/
+theorem writer_merged_before (hrun : ACRun proposer tr H U) {b : Time}
+    (hsync : SyncACBefore H U b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+    {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX)
+    (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) :
+    ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
+      v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} := by
+  exact writer_merged_of_sync hrun hX hupd hy hc hs (Or.inr {
+    message := fun x hx k m hm h0 z hz j ℓ hc hd ht =>
+      hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans hi₀) ht
+    relay := fun x hx k B hB h0 z hz j ℓ hc hd ht ha =>
+      hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans hi₀) ht ha })
 
 end Consensus.Goldilocks.SA
 

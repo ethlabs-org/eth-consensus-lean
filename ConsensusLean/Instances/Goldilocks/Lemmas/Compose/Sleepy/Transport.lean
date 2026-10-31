@@ -667,6 +667,22 @@ theorem optimistic_carry (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
   optimistic_carry_upTo hrun hnc (hsl.prefix (le_max_right (tr.time i) 0)) hx hO hy hc hs
     (le_max_left _ _) hF
 
+/-- A1.8 (d) uses AC recipient service only through the result's writer update. -/
+theorem result_writer_pool_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hR : SA.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
+    ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
+      v ∈ (tr.projAC.state X i₀).pool s ∨
+        v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} := by
+  obtain ⟨ℓX, hupd, -, -⟩ := hR
+  exact SA.writer_merged_before (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
+    hsync hX hupd hi₀ hy hc hs
+
 /-- **A1.8 (d) on the window from slot `s₀ ≤ s` to `b`**, for a result within `b`. -/
 theorem result_writer_pool_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b) {X : Fin sp.n} (hX : X ∈ H)
