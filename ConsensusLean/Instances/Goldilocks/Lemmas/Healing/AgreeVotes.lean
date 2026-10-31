@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSuffix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeLater
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 
@@ -273,7 +274,36 @@ theorem voter_reaches_start_clean {Gp : Time}
       ℓy.frame.Anc d.start (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
         (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
         (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
-  sorry
+  have hrun := hS.run
+  have hnc := hS.shared.noColl
+  have hr' := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr' hy hcy.1
+  -- the proposal walk's start is below the vote (a clean lock of the proposer, or its root)
+  have hext : SA.VoteExtends (tr.HonestBlocks H) e.msg d.start := by
+    rcases proposal_start_cases hS with h | h
+    · rw [h] at hlow ⊢
+      exact voter_passes_proposer_root hS hp hr hdrain hlock hy hcy hes hIH hbelow hlow
+    · exact proposer_lock_extends hS hr h hy hcy hes
+  obtain ⟨Hd, hHd, hHdr, hsH⟩ := hext
+  have hGt : SA.getHead sp e.readPoint ℓy.frame (tr.time j)
+      (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
+      (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) ∈ ℓy.frame.tree :=
+    SA.getHead_mem hΦ (fun _ hB => hB.1.1) _ _ _ _
+  have hhead := (SA.castAt_spec hr' hy hcy).2.2.2
+  rw [hes] at hhead
+  obtain rfl := hU.1 hHd (hΦU hGt) (hHdr.trans hhead)
+  -- `d.start ⪯ P`, so the anchor is below `d.start`
+  have hat := getAnchor_mem hΦ e.readPoint (tr.time j)
+  obtain ⟨-, hdt, hsd⟩ := proposal_walk hS
+  obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr' hS.ready.1 hS.call
+  have hPU : P ∈ tr.HonestBlocks H := hΦU (proposal_frozen_viable hS hy hcy hes).1.1
+  have hsP : Anc (tr.HonestBlocks H) d.start P :=
+    (Anc.mono hΦpU hsd).tail ⟨hΦpU hdt, hPU, hS.parent⟩
+  have haS := (SA.anc_total hU hbelow hsP).resolve_right hlow
+  obtain ⟨hst, hsG⟩ :=
+    mem_of_between hU hΦ hΦU (((hΦ.rooted.2 _ hat).mono hΦU).trans haS) hsH hGt
+  exact ⟨SA.anc_tree_of_anc_U hU hΦ hΦU hat haS hst, hsG⟩
 
 /-- **The stop at `P`** (`hs234-exact-interface.md` §4; workbench#12 §3): at `Q` the voter's only
 eligible child is `P` (`proposal_frozen_viable`, eligible as of the current slot;
@@ -320,7 +350,7 @@ honest in-phase proposal of a later slot has a parent extending `P` (the honest 
 slot and the cut; each later event bounded by its own `PhaseOn i₀`). -/
 theorem later_extend {Gp : Time}
     (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
-    (hp : PropPlus tr H g Gp) (hr : rTime sp w ≤ sp.ts s) (hdrain : CleanLockDrain)
+    (_hp : PropPlus tr H g Gp) (hr : rTime sp w ≤ sp.ts s) (_hdrain : CleanLockDrain)
     (hvotes : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       e.msg.head = P.root ∧
       ((P ∈ ℓ.frame.viableHeads ∧
@@ -334,8 +364,8 @@ theorem later_extend {Gp : Time}
     ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' → P'.slot = s' →
       tr.ProposesAt (sp.toParams.proposer s') k' P' → sp.toParams.proposer s' ∈ H →
       PhaseOn tr.projFG H i₀ k' m c →
-      ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr := by
-  sorry
+      ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr :=
+  later_extend_of_setting hS hr fun y hy k ℓ e hv hs => (hvotes y hy k ℓ e hv hs).1
 
 /-- A slot-`s` block in the viable voter tree of slot `s` is a viable head
 (`hs234-exact-interface.md` §4, "cannot have an earlier-slot descendant"): its viable head
