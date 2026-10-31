@@ -727,42 +727,50 @@ private theorem proposal_locks_slot (hrun : GoldilocksRun dg H tr) (hnc : NoColl
     exact absurd (hls ▸ hOp)
       (proposal_no_optimistic hrun hnc hsl hp hc hcall hd hti x hx k' hki O CV)
 
-/-- **`fc_root` below the old origins, from the sources**: at an honest node's cut whose honest
-rows all have sources below old origins, `Σ.J` is genesis (`h_j = 0`) or the entry of such a
-source (`justified_honest_source`, `honest_source_entry`), and `Σ.F` is below `Σ.J`. -/
-private theorem fcRoot_old_of_rows (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    (hsrc : HonestRowsSourced tr H
-      (fun D => ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) y j) :
+/-- **`fc_root` in a downward-closed set, from the sources**: at an honest node's cut whose honest
+rows all have sources in a set `R` closed under ancestors, `Σ.J` is genesis (`h_j = 0`) or the
+entry of such a source (`justified_honest_source`, `honest_source_entry`), so in `R`, and `Σ.F` is
+below `Σ.J`. -/
+theorem fcRoot_of_rows (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {R : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    (hRc : ∀ A B, Anc (tr.HonestBlocks H) A B → R B → R A)
+    (hsrc : HonestRowsSourced tr H R y j) :
     (Node.frame (tr.state y j)).fcRoot.root = sp.genesisRoot ∨
-      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) (Node.frame (tr.state y j)).fcRoot O := by
+      R (Node.frame (tr.state y j)).fcRoot := by
   have hU : Coherent (tr.HonestBlocks H) :=
     (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun.coherent
   have hR := fg_reachable hrun.toLocalRun hy j
   obtain ⟨hFt, hJt, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hR
   have hsU : (tr.state y j).fg.tree ⊆ tr.HonestBlocks H := fun Z hZ => ⟨y, hy, j, hZ⟩
-  have hJ : (tr.state y j).fg.J.root = sp.genesisRoot ∨
-      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) (tr.state y j).fg.J O := by
+  have hJ : (tr.state y j).fg.J.root = sp.genesisRoot ∨ R (tr.state y j).fg.J := by
     by_cases h0 : (tr.state y j).fg.hj = 0
     · left
       rw [justified_genesis hrun h0 hy]
       rfl
-    obtain ⟨-, -, D, ⟨O, hO, hDO⟩, hDs⟩ :=
-      justified_honest_source hrun hnc hsl hy hsrc (by omega)
+    obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source hrun hnc hsl hy hsrc (by omega)
     obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, j, hJt⟩ rfl
-    exact Or.inr ⟨O, hO,
-      (Anc.mono (T := tr.HonestBlocks H) (fun Z hZ => ⟨x, hx, k, hZ⟩) hJD).trans hDO⟩
-  change (tr.state y j).fg.fcRoot.root = _ ∨ ∃ O, _ ∧ Anc _ (tr.state y j).fg.fcRoot O
+    exact Or.inr (hRc _ _ (Anc.mono (T := tr.HonestBlocks H) (fun Z hZ => ⟨x, hx, k, hZ⟩) hJD) hD)
+  change (tr.state y j).fg.fcRoot.root = _ ∨ R (tr.state y j).fg.fcRoot
   unfold Store.fcRoot
   split_ifs
   · exact hJ
-  rcases hJ with hg | ⟨O, hO, hJO⟩
+  rcases hJ with hg | hJR
   · left
     have h2 := (honest_genesis_anc hrun (hsU hFt)).2
     rw [← honest_eq_genesis hrun hU (hsU hJt) hg] at h2
     rw [Anc.antisymm hU (Anc.mono hsU hFJ) h2]
     exact hg
-  · exact Or.inr ⟨O, hO, (Anc.mono hsU hFJ).trans hJO⟩
+  · exact Or.inr (hRc _ _ (Anc.mono hsU hFJ) hJR)
+
+/-- `fc_root` below the old origins, from the sources (`fcRoot_of_rows`). -/
+private theorem fcRoot_old_of_rows (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    (hsrc : HonestRowsSourced tr H
+      (fun D => ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) y j) :
+    (Node.frame (tr.state y j)).fcRoot.root = sp.genesisRoot ∨
+      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) (Node.frame (tr.state y j)).fcRoot O :=
+  fcRoot_of_rows hrun hnc hsl hy (fun _ _ hAB ⟨O, hO, hBO⟩ => ⟨O, hO, hAB.trans hBO⟩) hsrc
 
 /-- **The proposer's honest rows have sources below old origins** (workbench#12 §2): every honest
 row the proposer holds was signed before cut `i`, with a source below an origin before the
