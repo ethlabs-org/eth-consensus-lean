@@ -73,8 +73,10 @@ source's chain: the served entry, the sources after `t₀` being compatible), it
 holds no target, timeout or lock at `h` for another block. (This covers every entry entered after
 `t₀` at the height of a post-`t₀` honest source, which is the claims' served entry when the earliest
 honest source reaching `h` is after `t₀`; an earlier source of a different entry at `h` would be
-pre-`c_z` and so at height `≤ H_z` (HR.1 (a)), or a high origin comparable with the later ones (HR.4
-(R1)); this reading is checked against the proof of node O.1.) -/
+pre-`c_z` and so at height `≤ H_z` (by `H_z`'s and the store's `h_max` monotonicity), or a high
+origin comparable with the later ones (HR.4). Checked against node O.1's proof (§27, workbench#27
+§4): the conditional assembly covers this quantifier without asking that the earliest honest
+source reaching `h` be after `t₀`.) -/
 structure Rec (t₀ : Time) : Prop where
   /-- (a), (c) `Clean(s, m, B)` for the honest fast confirmations written after `t₀`. -/
   clean : ∀ x ∈ H, ∀ i s B CV, Compose.StoredFastLockAt tr x i s B CV → t₀ < tr.time i →

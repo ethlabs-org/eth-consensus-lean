@@ -136,6 +136,13 @@ where it is recorded; "Francesco" marks the owner's decisions.
   within their horizon and none after `gHeal`; the largest available heal time is 0.049·`gHeal` and the largest
   first-finality time 0.132·`gHeal`. The adversaries are not heal-delay optimizers and the horizons (128–224Δ after
   `ḡ`) are below `gHeal`, so this is no counterexample search.
+- 2026-10-30, amp-orbs (spec), on the Regimes milestone (R.4), as for R.3 (coordinator's go-ahead). **R.4 is stated at
+  a heal point, not at the target's numbers**: over the run at a parameter `T ≥ max(T_heal, ḡ + T_rec)` with the
+  deadline `D_fin = 4Δ(W + 1 + M) + 2Δ` (claims C1.3), under R.3's premises and `UPat(W, M)` with `M ≥ M*`, the
+  regime claims node O.1 is proved under (`Statements/Regimes/Final`). `UPat` is a premise the target lacks: the
+  target asks for the contract's finality recurrence `gProg .final gf` only, and O.1's target for that premise has no
+  statement (claims §"O.1", open). Baseline's `gHealFin`, `finalCut` and `W_W(gf)` are unchanged; **Baseline R.4 at
+  its own numbers and premises remains open.**
 
 ## Process
 

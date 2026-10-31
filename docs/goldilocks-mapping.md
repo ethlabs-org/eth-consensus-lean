@@ -561,16 +561,22 @@ Modelling choices:
   from `ḡ` under `Healthy`). HS.4's "by `v`" is at a cut at a time `≤ v`. HS.0 and HS.5's `Producer(A)` are HR.3
   (a), (b); HS.5's other conclusions (PhaseService, continuation, row delivery, consumption) are not transcribed yet.
 - **Recovery** (`Statements/Healing/Recovery`): `UPat` is the regime node O.1 is proved under, not O.1's target, which
-  stays open (claims §"O.1", Status). `Rec` (a) and (c) are C1.1's `Clean(s, m, B)` for every `m > s`, at every
-  honest fast confirmation written after `t₀` by a joined node (`StoredFastLockAt`, of any label: a regular write of
-  label `s` happens at `t_s + 6Δ`). `Rec` (b)'s served entry is read through the compatibility of the honest sources
-  after `t₀` (part of `Rec`): an entry entered after `t₀` (slot start `> t₀`) is the entry at its height of such a
-  source's chain. C1.3 is stated here (not in `Compose/Service`) because it shares `UPat` and the constants with
-  node O.1, with its "accepted block whose state finalizes a block extending `P`". `W ≥ 1` is a premise
-  (`PatternPremises`). `Rec` (b) covers every entry entered after `t₀` at a post-`t₀` honest source's height; it is
-  the claims' served entry when the earliest honest source reaching `h` is after `t₀`, and an earlier source of
-  another entry at `h` would be low (HR.1 (a)) or a comparable high origin (HR.4 (R1)): a reading to check against
-  node O.1's proof. `M*`'s ceilings are integer ceilings of slots of `4Δ`.
+  stays open (claims §"O.1", Status). `Rec` (a) and (c) are C1.1's `Clean(s, m, B)` for every `m > s`, at every honest
+  fast confirmation written after `t₀` by a joined node (`StoredFastLockAt`, of any label: a regular write of label
+  `s` happens at `t_s + 6Δ`). `Rec` (b)'s served entry is read through the compatibility of the honest sources after
+  `t₀` (part of `Rec`): an entry entered after `t₀` (slot start `> t₀`) is the entry at its height of such a source's
+  chain. C1.3 is stated here (not in `Compose/Service`) because it shares `UPat` and the constants with node O.1, with
+  its "accepted block whose state finalizes a block extending `P`". `W ≥ 1` is a premise (`PatternPremises`). `Rec`
+  (b) covers every entry entered after `t₀` at a post-`t₀` honest source's height; it is the claims' served entry when
+  the earliest honest source reaching `h` is after `t₀`. **Checked against node O.1's proof** (healing orb,
+  2026-10-30, against §27 and workbench#27 `o1-section27-review.md` §4): for any such entry `E` the caller's cached
+  high `F₀` at a call in `[T_F, t₀)` satisfies `F₀ ⪯ C` and `E ⪯ C`, and `E ⪯ F₀` is excluded (`t_{E.slot} > t₀`, no
+  future blocks), so `F₀ ≺ E` and `h ≥ H_z + 1`; actual-source stored-origin provenance and whole-run HR.4 identify
+  `E` with any earlier recorded root at `h`, so §16's record argument applies without asking that the earliest honest
+  source reaching `h` be after `t₀`. An earlier pre-`c_z` source has height `≤ H_z` by `H_z`'s and the store's `h_max`
+  monotonicity (not HR.1 (a), which bounds signed rows only). So the broader quantifier is covered under the
+  conditional O.1 assembly and its imports; no narrowing is needed. `M*`'s ceilings are integer ceilings of slots of
+  `4Δ`.
 - **Witnesses** (`ConsensusLeanTest/GoldilocksHealing`): kind (a) for HR.2's premises and the phase vocabulary, and
   for `Catch` and `NoRestartAfter` with the run laws, and for `Healthy(0)` with `Catch` and `NoRestartAfter` on the
   infinite periodic `idleAC` run; arithmetic checks of `C_HS`, HR.3's bound and `T_heal`. No witness over Goldilocks
@@ -584,7 +590,8 @@ run-level forms of the `GoldilocksTarget` rows, over the Goldilocks run (`Goldil
 where the target row allows the collision escape); the Refinement milestone carries them to the model system. R.7 and R.8 (no regime premise) are in
 `Statements/Regimes/Always`; R.1 and R.2 (`Sleepy`) in `Statements/Regimes/Sleepy`; R.3 (healed, at a heal point
 `T ≥ T_heal`) in `Statements/Regimes/Healed`; R.5 (`Outage`) in `Statements/Regimes/Outage`; R.6 (`Weak`) in
-`Statements/Regimes/Weak`. R.4 is not stated (it needs O.1).
+`Statements/Regimes/Weak`; R.4 (final, at a heal point `T ≥ T_heal`, `T ≥ ḡ + T_rec`, under `UPat(W, M)`) in
+`Statements/Regimes/Final`.
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
@@ -599,6 +606,8 @@ where the target row allows the collision escape); the Refinement milestone carr
 | R.5 | CLAIMS R.5 (uses A1.2, A1.3, C1.1; (V)) | **`persists`**: under `Outage`, a ready read at `T` is an ancestor of every resilience reader's confirmed read from `b₀`; **`outageWindow`**: the same up to `b₁ − 1` with no premise after `b₀`; **`outage_final_compatible`**: compatible with every resilience reader's finalized read from `b₀` | Regimes | `Consensus.Goldilocks.Regimes.OutagePersists`, `Consensus.Goldilocks.Regimes.OutageWindow`, `Consensus.Goldilocks.Regimes.OutageFinalCompatible`, `Consensus.Goldilocks.Regimes.OutageStatements` |
 | — | CLAIMS §"Premises" (`Weak`), R.6 | the ready-proposer premise on `[ḡ, T]`; **`Weak`** with the healing premises cut at the heal point `T ≥ T_heal` | Regimes | `Consensus.Goldilocks.Regimes.PropPlusUntil`, `Consensus.Goldilocks.Regimes.WeakPremises` |
 | R.6 | CLAIMS R.6 (uses R.1–R.3) | at a heal point `T ≥ T_heal`: **`weakSafe`**, **`weakCrossNest`**, **`weakInclude`** (from `T + 8Δ`), **`weakGrow`** (recurrence from `T`) | Regimes | `Consensus.Goldilocks.Regimes.WeakSafe`, `Consensus.Goldilocks.Regimes.WeakCrossNest`, `Consensus.Goldilocks.Regimes.WeakInclude`, `Consensus.Goldilocks.Regimes.WeakGrow`, `Consensus.Goldilocks.Regimes.WeakStatements` |
+| — | CLAIMS R.4 (heal point D1), node O.1, C1.3 | the final deadline `D_fin = 4Δ(W + 1 + M) + 2Δ` (C1.3's coverage deadline for the coverage requested at `t + Δ`); the premises of R.4 at a heal point `T`: R.3's `HealedPremises` (`T ≥ T_heal`), node O.1's and C1.3's `PatternPremises` (`UPat(W, M)`, `M ≥ M*`) and `T ≥ ḡ + T_rec` | Regimes | `Consensus.Goldilocks.Regimes.D_fin`, `Consensus.Goldilocks.Regimes.FinalPremises` |
+| R.4 | CLAIMS R.4 (uses C1.3, G1.9, R.3, O.1's open target; here node O.1's regime) | at a heal point `T` (not the target's `gHealFin`/`finalCut`), deadline `D_fin` (not `W_W(gf)`): **`liveDC`** (an honest ready proposal released after `t`, a new finalized entry at `t + D_fin` above the ready confirmed reads at `t`; `finalRecur` is it without the proposal, `finalFirst` is `finalRecur` at `t = T`); **block form of `healthyLive` (final) / `finalized_txLive`** (a ready proposal released in `[t + Δ, t + Δ + 4Δ(W + 1 + M)]`, in every ready finalized read from `t + D_fin` on) | Regimes | `Consensus.Goldilocks.Regimes.LiveDC`, `Consensus.Goldilocks.Regimes.FinalInclude`, `Consensus.Goldilocks.Regimes.FinalStatements` |
 | R.7 | CLAIMS R.7 (uses G1.3–G1.5) | **`finalAccountable`**: conflicting honest finalized tips convict `≥ 2q − n` validators from the attestations on two chains the readers hold; **`nonFraming`**: an honest validator signs no slashable pair; **`finalized_safe_below_third`**: with `f < 2q − n`, honest finalized tips never conflict | Regimes | `Consensus.Goldilocks.Regimes.FinalAccountable`, `Consensus.Goldilocks.Regimes.NonFraming`, `Consensus.Goldilocks.Regimes.FinalizedSafe`, `Consensus.Goldilocks.Regimes.AlwaysStatements` |
 
 Modelling choices:
@@ -646,10 +655,18 @@ Modelling choices:
   `[ḡ, T]`, plus R.3's); `weakInclude` and `weakGrow` also take H.4's open unanimity premises, as R.3 does. Its proof
   needs H.4 and R.3 in a form that uses `Healthy` and the ready-proposer premise only up to `T` (open; H.4 is stated
   under `Healthy(g)` and `Prop⁺(G_p)` on the whole run).
-- **R.4** (`finalFirst`, `finalRecur`, `liveDC`, `healthyLive` final, `finalized_txLive`) is not stated: its uses
-  have no fixed statements (C1.3 "statement not yet fixed", G1.9's full form, and O.1, which has none, with no
-  expression for `T_rec`), so neither its proof route nor a named O.1 hypothesis can be written yet. Deferred until
-  C1.3 and O.1 are fixed.
+- **R.4 (final)**: the heal point is a parameter `T` with `T ≥ T_heal` (R.3's, for the confirmed reads that the new
+  finalized entry must extend) and `T ≥ ḡ + T_rec` (node O.1's, so `Rec(T)` holds and C1.3 covers every window from
+  `T`, since `R_* ≤ ḡ + T_rec`); the one deadline `D_fin` is C1.3's coverage requested at `t + Δ` (so the proposal is
+  released after `t`, and after a transaction submitted at `t` has reached a ready proposer). **Premise the target
+  lacks: `UPat(W, M)` with `M ≥ M*`** (and C1.2's `c_F`, `k_F`), the regime node O.1 is proved under, in place of the
+  contract's finality recurrence `gProg .final gf`; plus R.3's (`Catch(2Δ)`, `Prop⁺`, the `δ_t` bound, the genesis
+  root, H.3 (c)'s bridge). R.4 under the contract's premise needs O.1's target (open, claims §"O.1"); R.4 at the
+  target's numbers (`gHealFin`, `finalCut`, `W_W(gf)`) stays open (docs/decisions.md). No unanimity premise: the rows
+  cover one honest proposal per C1.3 window. `finalFirst` and `finalRecur` are not stated apart (with one deadline
+  they are `LiveDC`'s consequences). The finalized read after all events at `t'` is covered because C1.3 concludes at
+  every honest call from its deadline and an awake honest node calls again after `t'` (its state between calls is
+  that of the next call). The transaction rows are the Refinement's, from `FinalInclude`.
 - **Network model vs the spec's premises** (consensus-lean#92, architecture orb): the engine's delivery is `≤
   max(a, g) + Δ` and relays an admitted object at the admitting node's next awake tick, where the spec's
   `Sync`/`GST` ask for processing strictly before `max(τ, w_y) + Δ'` with admission as an instantaneous send. The

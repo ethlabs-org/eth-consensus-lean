@@ -759,6 +759,11 @@ example := ``Consensus.Goldilocks.Regimes.WeakCrossNest
 example := ``Consensus.Goldilocks.Regimes.WeakInclude
 example := ``Consensus.Goldilocks.Regimes.WeakGrow
 example := ``Consensus.Goldilocks.Regimes.WeakStatements
+example := ``Consensus.Goldilocks.Regimes.D_fin
+example := ``Consensus.Goldilocks.Regimes.FinalPremises
+example := ``Consensus.Goldilocks.Regimes.LiveDC
+example := ``Consensus.Goldilocks.Regimes.FinalInclude
+example := ``Consensus.Goldilocks.Regimes.FinalStatements
 
 /-! ## Goldilocks Refinement (a milestone PR appends here only) -/
 
