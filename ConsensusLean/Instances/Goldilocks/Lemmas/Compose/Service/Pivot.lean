@@ -736,8 +736,8 @@ private theorem proposal_locks_slot (hrun : GoldilocksRun proposer dg H tr) (hnc
 rows all have sources in a set `R` closed under ancestors, `Σ.J` is genesis (`h_j = 0`) or the
 entry of such a source (`justified_honest_source`, `honest_source_entry`), so in `R`, and `Σ.F` is
 below `Σ.J`. -/
-theorem fcRoot_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+theorem fcRoot_of_rows_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {R : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hRc : ∀ A B, Anc (tr.HonestBlocks H) A B → R B → R A)
     (hsrc : HonestRowsSourced tr H R y j) :
@@ -753,7 +753,7 @@ theorem fcRoot_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun 
     · left
       rw [justified_genesis hrun h0 hy]
       rfl
-    obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source hrun hnc hsl hy hsrc (by omega)
+    obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source_before hrun hnc hf hy hsrc (by omega)
     obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, j, hJt⟩ rfl
     exact Or.inr (hRc _ _ (Anc.mono (T := tr.HonestBlocks H) (fun Z hZ => ⟨x, hx, k, hZ⟩) hJD) hD)
   change (tr.state y j).fg.fcRoot.root = _ ∨ R (tr.state y j).fg.fcRoot
@@ -767,6 +767,16 @@ theorem fcRoot_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun 
     rw [Anc.antisymm hU (Anc.mono hsU hFJ) h2]
     exact hg
   · exact Or.inr (hRc _ _ (Anc.mono hsU hFJ) hJR)
+
+/-- Whole-run Sleepy supplies the numerical fault bound for the row argument. -/
+theorem fcRoot_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {R : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    (hRc : ∀ A B, Anc (tr.HonestBlocks H) A B → R B → R A)
+    (hsrc : HonestRowsSourced tr H R y j) :
+    (Node.frame (tr.state y j)).fcRoot.root = sp.genesisRoot ∨
+      R (Node.frame (tr.state y j)).fcRoot :=
+  fcRoot_of_rows_of hrun hnc (two_faults_lt_of_sleepy hsl) hy hRc hsrc
 
 /-- `fc_root` below the old origins, from the sources (`fcRoot_of_rows`). -/
 private theorem fcRoot_old_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)

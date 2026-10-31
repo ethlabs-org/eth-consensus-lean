@@ -665,6 +665,17 @@ theorem frame_crossing_source (hsrc : HonestRowsSourced tr H G y i)
   frame_crossing_source_of hrun hnc (two_faults_lt_of_sleepy hsl) hy (hsrc.above 0) hW
     (Nat.zero_le j) hj1 hj2
 
+/-- Justification provenance uses only the numerical fault bound and the supplied row sources. -/
+theorem justified_honest_source_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    (hsrc : HonestRowsSourced tr H G y i)
+    (hj : 1 ≤ (tr.state y i).fg.hj) :
+    ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h = (tr.state y i).fg.hj ∧
+      ((tr.state y i).fg.σ (tr.state y i).fg.J.root).Th = (tr.state y i).fg.J.root ∧
+      ∃ D, G D ∧ IsHonestSource tr H D (tr.state y i).fg.J.root :=
+  justified_honest_source_of hrun hnc hf hy (hsrc.above _) hj
+
 include hrun hnc hsl hy in
 /-- **The justification has an honest source**: at `h_j ≥ 1`, `Σ.J` is an entry block of height
 `h_j`, and an honest row of its target quorum has a source satisfying `G`. -/
@@ -673,7 +684,7 @@ theorem justified_honest_source (hsrc : HonestRowsSourced tr H G y i)
     ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h = (tr.state y i).fg.hj ∧
       ((tr.state y i).fg.σ (tr.state y i).fg.J.root).Th = (tr.state y i).fg.J.root ∧
       ∃ D, G D ∧ IsHonestSource tr H D (tr.state y i).fg.J.root :=
-  justified_honest_source_of hrun hnc (two_faults_lt_of_sleepy hsl) hy (hsrc.above _) hj
+  justified_honest_source_before hrun hnc (two_faults_lt_of_sleepy hsl) hy hsrc hj
 
 include hrun hnc hsl hy in
 /-- **No contest from genesis.** -/
@@ -1002,7 +1013,7 @@ private theorem tick_ac_call {y : Fin sp.n} {st : NodeState (goldilocksNode sp r
       | (simp only [List.mem_cons, List.not_mem_nil, reduceCtorEq, or_false] at h')
 
 /-- `no_optimistic_before_held_row` with `f < n/2`. -/
-private theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
+theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}

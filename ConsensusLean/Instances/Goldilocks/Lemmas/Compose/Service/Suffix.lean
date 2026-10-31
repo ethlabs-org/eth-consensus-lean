@@ -238,10 +238,12 @@ private theorem stamp_ge_of_accept {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
 an honest node accepted at a time `τ` with `max(τ, a) + Δ` at most the time of a call of an
 honest `z` whose restarts up to it are at or before `a`, is in that call's frame when it extends
 its `Σ.F`. -/
-theorem relay_mem (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H)
+theorem relay_mem_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {b : Time} (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBU : B ∈ tr.HonestBlocks H) {jz : Nat}
-    {ℓz : ACLabel (goldilocksNode sp ro)} (hcz : tr.projAC.CallAt z jz ℓz) {a : Time}
+    {ℓz : ACLabel (goldilocksNode sp ro)} (hcz : tr.projAC.CallAt z jz ℓz)
+    (hb : tr.time jz ≤ b) {a : Time}
     (hrs : ∀ c ≤ jz, tr.projAC.RestartAt z c → tr.projAC.time c ≤ a)
     (hacc : B.root = sp.genesisRoot ∨ ∃ kx, tr.projAC.AcceptAt x kx B ∧
       max (tr.projAC.time kx) a + sp.Δ ≤ tr.projAC.time jz)
@@ -255,10 +257,28 @@ theorem relay_mem (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr
     obtain h | ⟨c, -, hcp⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hF
     · exact h ▸ hΦ.rooted.1
     · exact absurd (hcp.2.2.symm.trans hGp) (Option.some_ne_none _)
-  obtain ⟨k', hk', hAz, -⟩ := (syncAC_of_sleepy hrun hsl (a := 0) (b := tr.projAC.time kx)
-    le_rfl).2 x hx kx B hkx (hr.time_nonneg kx) le_rfl z hz jz ℓz hcz
-    ((ac_deadline_le_of_restarts hrs _).trans hdl) hF
+  have hd := (ac_deadline_le_of_restarts hrs _).trans hdl
+  obtain ⟨k', hk', hAz, -⟩ := hsync.relay x hx kx B hkx (hr.time_nonneg kx)
+    z hz jz ℓz hcz (hd.trans hb) hd hF
   exact SA.mem_tree_of_acceptAt sp hr hz hAz hk' hcz hF
+
+/-- Whole-run service specializes the bounded acceptance relay. -/
+theorem relay_mem (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBU : B ∈ tr.HonestBlocks H) {jz : Nat}
+    {ℓz : ACLabel (goldilocksNode sp ro)} (hcz : tr.projAC.CallAt z jz ℓz) {a : Time}
+    (hrs : ∀ c ≤ jz, tr.projAC.RestartAt z c → tr.projAC.time c ≤ a)
+    (hacc : B.root = sp.genesisRoot ∨ ∃ kx, tr.projAC.AcceptAt x kx B ∧
+      max (tr.projAC.time kx) a + sp.Δ ≤ tr.projAC.time jz)
+    (hF : Anc (tr.HonestBlocks H) ℓz.frame.F B) : B ∈ ℓz.frame.tree := by
+  have hs : tr.SyncBefore H ΔF (tr.time jz) :=
+    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
+      hsl.1.message x hx i m hm h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
+      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
+  exact relay_mem_before hrun hnc (syncBefore_projection hrun.toLocalRun hs)
+    hx hz hBU hcz le_rfl hrs hacc hF
 
 /-- **The honest rows at a vote have old sources** (as `Pivot`'s `vote_fcRoot_old`): every
 honest row an honest slot-`s` voter holds was signed before the vote, with a source below an
