@@ -113,10 +113,14 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Compare
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Setting
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Suffix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Votes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalTransfer

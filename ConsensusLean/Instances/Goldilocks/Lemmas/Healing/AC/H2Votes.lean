@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Compare
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
@@ -12,7 +13,7 @@ vote not on `P`: the voter's anchor is below `P` (`Duty(P)`'s first clause, §6 
 `h2_duty_anchor`); then the voter's walk reaches the proposer's path (§6, second clause),
 the retained heads give equal scores and majority eligibility on it (§1), `Geo` aligns the
 low-parent eligibility arm, and the persist/reflect comparison (§4) makes the vote `P`
-(`h2_votes_of_duty`, open). -/
+(`h2_votes_of_duty`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -181,7 +182,71 @@ theorem h2_votes_of_duty (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp
     ∀ i, ∀ x ∈ H, ∀ ℓ e, CastAt tr x i ℓ e → e.msg.slot = p →
       (∀ y ∈ H, ∀ j e', VoteAt tr y j e' → e'.msg.slot = p → j < i → e'.msg.head = P.root) →
       e.msg.head = P.root := by
-  sorry
+  have hS := hI.toHealthyBase
+  have hr := hI.run.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  have hΘ := Θ_nonneg sp
+  have hg := hI.le
+  have hg0 := gbar_nonneg g
+  have hp0 : 0 < p := by
+    by_contra hn
+    have : p = 0 := by omega
+    subst p
+    have hz : sp.ts (0 : Nat) = 0 := by simp [SAParams.ts]
+    rw [hz] at hp
+    linarith
+  obtain ⟨s, rfl⟩ := Nat.exists_eq_succ_of_ne_zero (Nat.ne_of_gt hp0)
+  have hP' := hP
+  obtain ⟨k, ℓp, d, pay, hck, hcall, hpay, htk, hQP, hPs, -, hPpay,
+    j, hkj, hacc, -⟩ := hP'
+  have hPnot := (accept_new sp hr hpH hacc).2 k hkj ℓp hck
+  obtain ⟨hΦp, hΦpU⟩ := frameIn_of_callAt hr hpH hck
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  intro i x hx ℓ e hc hes hfirst
+  have haP := hduty x hx i ℓ e hc hes hfirst
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc.1
+  have hPv := (hgeo k ℓp hck hcall htk x hx i ℓ e hc hes).1
+  have hPt := hΦ.viableHeads_subset hPv
+  obtain ⟨heq, hvot, hsup⟩ := h2_views_agree hS hpH hP hck hcall htk hpay hPpay hPs
+    (by rw [hts] at hp; linarith) hx hc hes hPt
+  have hsc : ∀ B ∈ ℓp.frame.tree, B ∈ ℓ.frame.tree →
+      goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1))
+        (((s + 1 : Nat) : Int) - 1) B =
+      goldfishScore sp ℓp.frame (View.ofLists pay) (((s + 1 : Nat) : Int) - 1) B := by
+    intro B hBp hBy
+    have hσ : ((s + 1 : Nat) : Int) - 1 = s := by push_cast; ring
+    simp only [goldfishScore, hσ, heq, hsup B hBp hBy]
+  refine h2_compare_reader hS hp0 hpH hP hck hcall htk (by linarith) hgeo hPnot hPs
+    hpay hQP hx hc hes hvot hsc haP ?_
+  obtain ⟨hst, hfs, hw⟩ := h2_parent_walkEnd hΦp hpay
+  have hQt : d.head ∈ ℓp.frame.tree := by
+    rcases eq_or_ne d.start d.head with he | he
+    · exact he ▸ hst
+    · exact (Anc.mem (hw.anc (fun _ h => h.1) hst) he).2
+  have hsP : Anc U d.start P := (hw.anc (fun _ h => hΦpU h.1) (hΦpU hst)).tail
+    ⟨hΦpU hQt, hΦU hPt, hQP⟩
+  have hh := (castAt_spec hr hx hc).2.2.2
+  rw [hes] at hh
+  rcases h2_proposal_anchor hr hpH hck htk hpay
+      (h2_proposal_locks_below hI hpH hck hcall htk) hset with he | hall
+  · rw [he]
+    rcases anc_total hU haP ((hfs.mono hΦpU).trans hsP) with haR | hRa
+    · exact h2_reader_reaches_root hS hpH hck hcall htk hgeo
+        ((hfs.mono hΦpU).trans hsP) hx hc hes hPs haR
+    · exact hRa.trans (anc_ghost (fun B hB => hΦU hB.1.1) ℓ.frame.tree.ncard
+        (by
+          have hfa := fcRoot_anc_getAnchor hΦ e.readPoint (tr.time i)
+          rcases Relation.ReflTransGen.cases_tail hfa with he | ⟨_, _, he⟩
+          · exact he.symm ▸ hΦU hΦ.fcRoot_mem
+          · exact hΦU he.2.1))
+  · obtain ⟨Hd, hHd, hHdr, hsHd⟩ := hall x hx i e ⟨ℓ, hc⟩ hes
+    have hget := getHead_mem hΦ (T := ℓ.frame.viableTree
+      (voterBlockTree sp e.readPoint ℓ.frame (s + 1))) (fun B hB => hB.1.1) e.readPoint (tr.time i)
+      (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (((s + 1 : Nat) : Int) - 1)
+    obtain rfl := hU.1 hHd (hΦU hget) (hHdr.trans hh)
+    exact hsHd
 
 /-- **H.2 (i), §§1, 4, 6**: for an honest proposal `P` of slot `p` at `t_p ≥ t₀ + 2Θ + 8Δ` with
 the locks settled from `t_{p−1}`, `Geo(P)` makes every honest vote of slot `p` the proposal (by
