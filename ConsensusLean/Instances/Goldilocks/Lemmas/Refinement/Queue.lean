@@ -336,6 +336,143 @@ private def Pending (st : State sp ro) (o : Wire sp.n) : Prop :=
 private def Available (seen : List (Wire sp.n)) (st : State sp ro) (o : Wire sp.n) : Prop :=
   o ∈ seen.flatMap Model.Obj.parts ∨ Pending st o
 
+private theorem parts_append {n : Nat} (a b : List (Wire n)) :
+    a.flatMap Model.Obj.parts ⊆ (a ++ b).flatMap Model.Obj.parts := by
+  rw [List.flatMap_append]
+  exact List.subset_append_left _ _
+
+private theorem carried_parts {n : Nat} (auth : Model.Auth n (ShapeRole Empty))
+    (m : Model.Msg (Header Info) Body) (cs : List (Wire n)) {x : Wire n}
+    (hx : x ∈ cs) : x ∈ (Model.Obj.mk auth m cs).parts := by
+  rw [Model.Obj.parts_eq]
+  exact List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨x, hx,
+    by rw [Model.Obj.parts_eq]; exact List.mem_cons_self⟩)
+
+private def VoteOwned (st : State sp ro) : Prop :=
+  ∀ v, .vote (encodeVote v) ∈ st.outbox → v.val = st.self
+
+private theorem emitted_owned (self : Fin sp.n)
+    (cs : List (Cut (goldilocksNode sp ro)))
+    (h : ∀ ℓ, Cut.ac ℓ ∈ cs → ∀ e ∈ ℓ.emits, e.msg.val = self) :
+    ∀ v, .vote (encodeVote v) ∈ emitted cs → v.val = self := by
+  intro v hv
+  obtain ⟨c, hc, hv⟩ := List.mem_flatMap.mp hv
+  cases c with
+  | fg c => cases hv
+  | ac ℓ =>
+    obtain ⟨e, he, heq⟩ := List.mem_map.mp hv
+    have heq' := congrArg (decodeVote sp.n) (Body.vote.inj heq)
+    simp only [decodeVote_encodeVote, Option.some.injEq] at heq'
+    subst v
+    exact h ℓ hc e he
+
+private theorem apply_owned (st : State sp ro) r (h : VoteOwned st)
+    (he : ∀ v, .vote (encodeVote v) ∈ emitted r.2 → v.val = st.self) :
+    VoteOwned (apply st r) := by
+  intro v hv
+  rcases List.mem_append.mp hv with hv | hv
+  · exact h v hv
+  · exact he v hv
+
+private theorem call_owned (st : State sp ro) (c : (goldilocksNode sp ro).Call)
+    (h : VoteOwned st) :
+    VoteOwned (apply st ((Node.acCall st.self st.node st.now c).1,
+      [(Node.acCall st.self st.node st.now c).2])) := by
+  apply apply_owned st _ h
+  apply emitted_owned
+  intro ℓ hℓ e he
+  have hℓ := Cut.ac.inj (List.mem_singleton.mp hℓ)
+  subst ℓ
+  exact emits_val st.self st.node.ac (frame st.node) st.now c e he
+
+private theorem tick_owned (st : State sp ro) (h : VoteOwned st) :
+    VoteOwned (nodeTick st) := by
+  unfold nodeTick
+  split
+  · exact call_owned st .tick h
+  · exact h
+
+private theorem block_owned (st : State sp ro) (B : Blk sp) (h : VoteOwned st) :
+    VoteOwned (apply st (Node.onBlock st.self st.node st.now B)) := by
+  apply apply_owned st _ h
+  apply emitted_owned
+  intro ℓ hℓ e he
+  unfold Node.onBlock at hℓ
+  split_ifs at hℓ
+  · cases hℓ
+  · split at hℓ
+    · simp at hℓ
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hℓ
+      rcases hℓ with hℓ | hℓ
+      · cases hℓ
+      · have hℓ := Cut.ac.inj hℓ
+        subst ℓ
+        exact emits_val _ _ _ _ _ e he
+
+private theorem processOne_owned hs (st : State sp ro) o (h : VoteOwned st) :
+    VoteOwned (processOne hs st o) := by
+  classical
+  unfold processOne
+  split
+  · dsimp only
+    unfold relayIf
+    split <;> exact block_owned st _ h
+  · dsimp only
+    unfold relayIf
+    split <;> exact call_owned st _ h
+  · unfold relayIf
+    split <;> simpa only [VoteOwned, apply, Node.onAttestation, emitted,
+      List.flatMap_cons, List.flatMap_nil, List.nil_append, List.append_nil] using h
+  · exact h
+
+private theorem process_owned (st : State sp ro) o hs (h : VoteOwned st) :
+    VoteOwned (process st o hs) := by
+  unfold process
+  generalize delivered sp o = os
+  induction os generalizing st with
+  | nil => exact h
+  | cons o os ih => exact ih _ (processOne_owned hs st o h)
+
+private theorem record_owned (st : State sp ro) o hs (h : VoteOwned st) :
+    VoteOwned (recordOwn st o hs) := by
+  unfold recordOwn
+  split
+  · exact h
+  · split
+    · exact block_owned st _ h
+    · exact h
+  · exact h
+
+private theorem fg_owned (st : State sp ro) (h : VoteOwned st) :
+    VoteOwned (fgUpdate st) := by
+  unfold fgUpdate
+  dsimp only
+  split
+  · exact h
+  · split
+    · exact h
+    · intro v hv
+      rcases List.mem_append.mp hv with hv | hv
+      · exact h v hv
+      · cases List.mem_singleton.mp hv
+
+private theorem poll_owned (st : State sp ro) (t : Time) (h : VoteOwned st) :
+    VoteOwned (poll st t).1 := by
+  have hi : VoteOwned (if st.fgDue then fgUpdate st else st) := by
+    split
+    · exact fg_owned st h
+    · exact h
+  unfold poll
+  generalize (if st.fgDue then fgUpdate st else st) = pre at hi ⊢
+  dsimp only
+  split
+  · exact hi
+  · rename_i b rest he
+    intro v hv
+    apply hi v
+    rw [he]
+    exact List.mem_cons_of_mem _ hv
+
 private theorem pending_mono {st st' : State sp ro} (h : st.outbox ⊆ st'.outbox)
     {o : Wire sp.n} : Pending st o → Pending st' o := by
   rintro (⟨v, rfl, hv⟩ | ⟨a, rfl, ha⟩)
@@ -556,6 +693,407 @@ private theorem poll_inventory (seen seen' : List (Wire sp.n)) (st : State sp ro
       · exact Or.inr (Or.inr ⟨a, rfl, hr⟩)
 
 end ShapeInventory
+
+section EngineInventory
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+
+omit [DecidableEq V] in
+private theorem release_owned (k : Fin (Fintype.card V))
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (cs)
+    (h : VoteOwned (shapeOf S hn nd)) :
+    VoteOwned (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+      rho.hash k nd cs).1) := by
+  induction cs generalizing nd with
+  | nil => exact h
+  | cons c cs ih =>
+    unfold Model.releaseAll
+    split
+    · exact ih _ (record_owned (shapeOf S hn nd) c _ h)
+    · exact ih nd h
+
+omit [DecidableEq V] in
+private theorem duty_owned (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (d)
+    (h : VoteOwned (shapeOf S hn nd)) :
+    VoteOwned (shapeOf S hn (rho.dutyStep v nd d).1) := by
+  classical
+  unfold Model.Run.dutyStep
+  split
+  · apply release_owned
+    cases d with
+    | act s k => exact k.elim
+    | poll t =>
+      change VoteOwned (((Model.protoOf (compiled (family S)) E).act nd.st (.poll t)).1.1 hn)
+      rw [shapeOf_act_poll S hn]
+      exact poll_owned _ _ h
+    | pollPropose t =>
+      change VoteOwned (((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).1.1 hn)
+      rw [shapeOf_act_pollPropose S hn]
+      exact tick_owned _ h
+    | propose s hs =>
+      change VoteOwned (((Model.protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn)
+      rw [shapeOf_act_propose S hn]
+      intro v hv
+      rw [(propose_keeps' _ _).1] at hv
+      exact (h v hv).trans (propose_self _ _).symm
+  · exact h
+
+omit [DecidableEq V] in
+private theorem duties_owned (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (ds)
+    (h : VoteOwned (shapeOf S hn nd)) :
+    VoteOwned (shapeOf S hn (rho.runDuties v nd ds).1) := by
+  induction ds generalizing nd with
+  | nil => exact h
+  | cons d ds ih =>
+    rw [runDuties_fst_cons]
+    exact ih _ (duty_owned S rho hn v nd d h)
+
+private theorem cut_owned (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
+    {i p : Nat} {nd} (hc : EngineDutyCut S rho v i p nd) :
+    VoteOwned (shapeOf S hn nd) := by
+  have hbase : VoteOwned (stateAt S rho hn v i) := by
+    intro w hw
+    rw [outbox_empty S rho hn hv v hv' i] at hw
+    cases hw
+  cases hc with
+  | tick he hw hp =>
+    exact duties_owned S rho hn v _ _ hbase
+  | deliver he hp =>
+    apply duties_owned
+    exact process_owned _ _ _ hbase
+
+omit [DecidableEq V] in
+private theorem duty_seen (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (d) :
+    (rho.dutyStep v nd d).1.seen = nd.seen ++ (rho.dutyStep v nd d).2 := by
+  unfold Model.Run.dutyStep
+  split
+  · exact Model.releaseAll_seen _ _ _ _
+  · simp
+
+private theorem poll_duty_inventory (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i p : Nat} {nd} {k : Nat}
+    (hc : EngineDutyCut S rho v i p nd)
+    (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
+        ((Model.protoOf (compiled (family S)) E).duties t)[p]? = some (.poll k)) ∨
+      ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
+        ((Model.protoOf (compiled (family S)) E).deliverDuties t)[p]? = some (.poll k))
+    (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
+    Inventory (Available (rho.dutyStep v nd (.poll k)).1.seen
+      (shapeOf S hn (rho.dutyStep v nd (.poll k)).1))
+      (shapeOf S hn (rho.dutyStep v nd (.poll k)).1).node := by
+  have hsel := poll_selected S rho hv v
+  rw [dutyStep_poll S rho hn v nd k hsel]
+  have hmem : ∀ b, (pollPre (shapeOf S hn nd)).outbox.head? = some b →
+      Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v) nd.seen
+        (pollObj S rho v b) = true →
+      pollObj S rho v b ∈ (rho.dutyStep v nd (.poll k)).1.seen.flatMap Model.Obj.parts := by
+    intro b hb hp
+    apply Model.mem_closure_of_mem
+    rw [duty_seen S rho v nd (.poll k)]
+    exact List.mem_append_right _ (dutyStep_poll_rel S rho hn v nd k hsel hb hp)
+  apply poll_inventory nd.seen _ _ _ h
+  · rw [duty_seen S rho v nd (.poll k)]
+    exact parts_append _ _
+  · intro w hw
+    rw [← pollPre_eq] at hw
+    have hown : VoteOwned (pollPre (shapeOf S hn nd)) := by
+      rw [pollPre_eq]
+      split
+      · exact fg_owned _ (cut_owned S rho hn hv hv' hc)
+      · exact cut_owned S rho hn hv hv' hc
+    have hval := (hown w (List.mem_of_mem_head? (Option.mem_def.mpr hw))).trans
+      ((by rw [pollPre_eq]; split <;> simp [fgUpdate_self] :
+        (pollPre (shapeOf S hn nd)).self = (shapeOf S hn nd).self).trans
+          (cut_self S rho hn hc))
+    have ho : voteObj w = pollObj S rho v (.vote (encodeVote w)) := by
+      unfold voteObj pollObj
+      rw [hval]
+      rfl
+    rw [ho]
+    exact hmem _ hw (protects_of_not_att S _ _ _ (fun k w h => by cases h))
+  · intro a ha
+    rw [← pollPre_eq] at ha
+    have hpoll : (poll (nd.st.1 hn) k).2 = some (.att (encodeAtt a), []) := by
+      rw [(poll_outbox _ _).2, ha]
+      rfl
+    obtain ⟨a', j, q, he, hval, hsign⟩ := engine_poll_att_signed S rho hn hc hd hsel hpoll
+    have he' := congrArg (decodeAtt (Fintype.card V)) he
+    simp only [decodeAtt_encodeAtt, Option.some.injEq] at he'
+    subst a'
+    have ho : attObj a = pollObj S rho v (.att (encodeAtt a)) := by
+      unfold attObj pollObj
+      rw [hval.trans (cut_self S rho hn hc)]
+      rfl
+    rw [ho]
+    exact hmem _ ha (engine_poll_att_protected S rho hn hv hv' hc hd hsel hpoll)
+
+private def PayloadCarried (o : Wire (Fintype.card V)) : Prop :=
+  ∀ k s hd cs, o = .mk (.signed k (.proposer s)) (.item hd) cs →
+    ∀ atts p, decodeInfo (Fintype.card V) hd.info = some (atts, p) →
+      ∀ x ∈ payloadObjs atts p, x ∈ o.parts
+
+omit [DecidableEq V] in
+private theorem release_inventory (k : Fin (Fintype.card V))
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (cs)
+    (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node)
+    (hp : ∀ o ∈ cs, PayloadCarried o) :
+    Inventory (Available (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+        rho.hash k nd cs).1.seen
+      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+        rho.hash k nd cs).1))
+      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+        rho.hash k nd cs).1).node := by
+  induction cs generalizing nd with
+  | nil => exact h
+  | cons c cs ih =>
+    unfold Model.releaseAll
+    split
+    · apply ih
+      · apply record_inventory (nd.seen ++ [c]) (shapeOf S hn nd) _ c
+        · apply inventory_mono h
+          intro o ho
+          exact available_mono (parts_append _ _)
+            (fun _ h => h) ho
+        · intro key s hd os he atts p hi x hx
+          apply List.mem_flatMap.mpr
+          exact ⟨c, List.mem_append_right _ (List.mem_singleton_self _),
+            hp c List.mem_cons_self key s hd os he atts p hi x hx⟩
+      · exact fun o ho => hp o (List.mem_cons_of_mem _ ho)
+    · exact ih nd h (fun o ho => hp o (List.mem_cons_of_mem _ ho))
+
+omit [DecidableEq V] in
+include hn in
+private theorem proposal_carried (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s) :
+    ∀ o ∈ rho.signedCandidate v (.propose s hs)
+      ((Model.protoOf (compiled (family S)) E).act nd.st (.propose s hs)).2,
+      PayloadCarried o := by
+  intro o ho
+  obtain ⟨m, cs, hm, _, rfl⟩ := rho.mem_signedCandidate.mp ho
+  rw [act_propose_snd S hn] at hm
+  obtain ⟨⟨par, info, os⟩, hp, he⟩ := Option.mem_toList.mp hm |> Option.mem_map.mp
+  cases he
+  intro key slot hd cs he atts p hi x hx
+  cases he
+  unfold propose at hp
+  dsimp only at hp
+  split at hp
+  · cases hp
+  · cases Option.some.inj hp
+    simp only [decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hi
+    obtain ⟨rfl, rfl⟩ := hi
+    exact carried_parts _ _ _ hx
+
+omit [DecidableEq V] in
+private theorem proposal_duty_inventory (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
+    Inventory (Available (rho.dutyStep v nd (.propose s hs)).1.seen
+      (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1))
+      (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1).node := by
+  unfold Model.Run.dutyStep
+  split
+  · apply release_inventory
+    · have hact := shapeOf_act_propose S hn nd.st s hs
+      change Inventory (Available nd.seen
+        (((Model.protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn))
+        (((Model.protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn).node
+      rw [hact]
+      have hi := inventory_proposal h (shapeOf S hn nd).now
+      unfold propose
+      dsimp only
+      split <;> exact hi
+    · exact proposal_carried S rho hn v nd s hs
+  · exact h
+
+omit [DecidableEq V] in
+private theorem tick_duty_inventory (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (k : Nat)
+    (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
+    Inventory (Available (rho.dutyStep v nd (.pollPropose k)).1.seen
+      (shapeOf S hn (rho.dutyStep v nd (.pollPropose k)).1))
+      (shapeOf S hn (rho.dutyStep v nd (.pollPropose k)).1).node := by
+  rw [duty_seen S rho v nd (.pollPropose k), dutyStep_pollPropose_snd S rho hn,
+    List.append_nil]
+  by_cases hsel : rho.ownKey v ∈ rho.sel .poll
+  · rw [dutyStep_pollPropose S rho hn v nd k hsel]
+    exact tick_inventory _ _ h
+  · unfold Model.Run.dutyStep
+    simp only [show (Model.protoOf (compiled (family S)) E).role (.pollPropose k) = .poll from rfl,
+      hsel, ↓reduceIte]
+    exact h
+
+private theorem prefix_inventory (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) (i : Nat)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (ds : List (Model.protoOf (compiled (family S)) E).Duty)
+    (hcut : ∀ p, p ≤ ds.length → EngineDutyCut S rho v i p
+      (rho.runDuties v nd (ds.take p)).1)
+    (hsched : ∀ (p k : Nat), ds[p]? = some (ShapeDuty.poll k) →
+      (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
+        ((Model.protoOf (compiled (family S)) E).duties t)[p]? = some (.poll k)) ∨
+      ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
+        ((Model.protoOf (compiled (family S)) E).deliverDuties t)[p]? = some (.poll k))
+    (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
+    ∀ p, p ≤ ds.length →
+      let out := (rho.runDuties v nd (ds.take p)).1
+      Inventory (Available out.seen (shapeOf S hn out)) (shapeOf S hn out).node := by
+  intro p
+  induction p with
+  | zero => exact fun _ => h
+  | succ p ih =>
+    intro hp
+    have hlt : p < ds.length := by omega
+    have hi := ih (Nat.le_of_lt hlt)
+    have hd := List.getElem?_eq_getElem hlt
+    rw [List.take_add_one, hd]
+    simp only [Option.toList_some]
+    rw [runDuties_fst_append, runDuties_fst_cons, runDuties_fst_nil]
+    cases he : ds[p] with
+    | act s k => exact k.elim
+    | propose s hs => exact proposal_duty_inventory S rho hn v _ s hs hi
+    | pollPropose k => exact tick_duty_inventory S rho hn v _ k hi
+    | poll k =>
+      exact poll_duty_inventory S rho hn hv hv' (hcut p (Nat.le_of_lt hlt))
+        (hsched p k (hd.trans (congrArg some he))) hi
+
+private theorem event_inventory (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
+    ∀ i, Inventory (Available (rho.stateBefore i v).seen (stateAt S rho hn v i))
+      (stateAt S rho hn v i).node := by
+  intro i
+  induction i with
+  | zero => exact inventory_init _
+  | succ i ih =>
+    change Inventory (Available (rho.stateBefore i v).seen (shapeOf S hn (rho.stateBefore i v)))
+      (shapeOf S hn (rho.stateBefore i v)).node at ih
+    have hg : ∀ nd t, Inventory (Available nd.seen (shapeOf S hn nd))
+        (shapeOf S hn nd).node →
+        Inventory (Available (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+          rho.hash (rho.ownKey v) nd (Model.gossipCandidates _ nd.st t)).1.seen
+          (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+            rho.hash (rho.ownKey v) nd (Model.gossipCandidates _ nd.st t)).1))
+          (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+            rho.hash (rho.ownKey v) nd (Model.gossipCandidates _ nd.st t)).1).node := by
+      intro nd t h
+      apply release_inventory S rho hn _ nd _ h
+      intro o ho
+      obtain ⟨mc, _, rfl⟩ := Model.mem_gossipCandidates.mp ho
+      intro key s hd cs he
+      cases he
+    cases he : rho.events[i]? with
+    | none =>
+      have heq : rho.stateBefore (i + 1) = rho.stateBefore i := by
+        simp only [Model.Run.stateBefore, List.take_add_one, he, Option.toList_none,
+          List.append_nil]
+      simpa only [stateAt, heq] using ih
+    | some e =>
+      change Inventory (Available (rho.stateBefore (i + 1) v).seen
+        (shapeOf S hn (rho.stateBefore (i + 1) v)))
+        (shapeOf S hn (rho.stateBefore (i + 1) v)).node
+      rw [rho.stateBefore_succ he]
+      cases e with
+      | tick u t =>
+        by_cases hu : v = u
+        · subst u
+          simp only [Model.Run.step, Function.update_self, Model.Run.tick]
+          split
+          · rename_i hw
+            apply hg
+            have hi := prefix_inventory S rho hn hv hv' i
+              ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+                (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
+              (fun p hp => .tick he hw hp)
+              (fun p k hk => Or.inl ⟨t, he, hw, hk⟩) ih _ (Nat.le_refl _)
+            simpa only [List.take_length] using hi
+          · exact ih
+        · simpa only [Model.Run.step, Function.update_of_ne hu] using ih
+      | deliver u o t =>
+        by_cases hu : v = u
+        · subst u
+          simp only [Model.Run.step, Function.update_self, Model.Run.deliver]
+          apply hg
+          have hp : Inventory (Available ((rho.stateBefore i v).seen ++ [o])
+              (process (stateAt S rho hn v i) o (Model.digests rho.hash o)))
+              (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node := by
+            apply process_inventory
+            · exact inventory_mono ih (fun _ => available_mono (parts_append _ _) (fun _ h => h))
+            · intro x hx
+              exact List.mem_flatMap.mpr
+                ⟨o, List.mem_append_right _ (List.mem_singleton_self _), hx⟩
+          have hi := prefix_inventory S rho hn hv hv' i
+            ⟨(Model.protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
+              (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _
+            (fun p hp => .deliver he hp)
+            (fun p k hk => Or.inr ⟨t, o, he, hk⟩) hp _ (Nat.le_refl _)
+          simpa only [List.take_length] using hi
+        · simpa only [Model.Run.step, Function.update_of_ne hu] using ih
+      | restart u t =>
+        by_cases hu : v = u
+        · subst u
+          simp only [Model.Run.step, Function.update_self]
+          exact restore_inventory _ _ _ _ ih
+        · simpa only [Model.Run.step, Function.update_of_ne hu] using ih
+
+/-- Proposal payloads of actual scheduled honest duties were already released or received.
+The proof uses engine-event inventory and the empty queue at the slot-start proposal. -/
+theorem scheduled_proposal_releasable (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i p : Nat} {t : Time} {s : Slot}
+    {nd : Model.Node (Model.protoOf (compiled (family S)) E)}
+    (hscheduled : EngineProposalAt S rho v i p t s nd)
+    {par : ParentRef} {info : Info} {cs : List (Wire (Fintype.card V))}
+    (hprop : (propose (shapeOf S hn nd) s).2 = some (par, info, cs)) :
+    ∀ o ∈ cs, o ∈ Model.closure nd.seen := by
+  obtain ⟨he, hw, hs, hd, hsel, rfl⟩ :=
+    (engineProposalAt_iff S rho v i p t s nd).mp hscheduled
+  have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
+  have hi := prefix_inventory S rho hn hv hv' i
+    ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+      (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
+    (fun q hq => .tick he hw hq) (fun q k hk => Or.inl ⟨t, he, hw, hk⟩)
+    (event_inventory S rho hn hv v hv' i) p
+    (Nat.le_of_lt (List.getElem?_eq_some_iff.mp hd).1)
+  have hout : (shapeOf S hn (rho.runDuties v
+      ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
+      (((Model.protoOf (compiled (family S)) E).duties t).take p)).1).outbox = [] := by
+    rw [duties_eq S t ht] at hd ⊢
+    rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with ⟨hnone, _⟩ |
+      ⟨s', hs', hone, htime⟩
+    · simp only [dutiesInit, hnone, List.append_nil] at hd
+      change ([ShapeDuty.poll t.toNat, .poll t.toNat, .pollPropose t.toNat,
+        .poll t.toNat, .poll t.toNat] : List (ShapeDuty Empty))[p]? = some (.propose s hs) at hd
+      have hm := List.mem_of_getElem? hd
+      simp at hm
+    · have hp : p = 3 ∧ s = s' := by
+        simp only [dutiesInit, hone] at hd
+        change ([ShapeDuty.poll t.toNat, .poll t.toNat, .pollPropose t.toNat,
+          .propose s' hs', .poll t.toNat, .poll t.toNat] : List (ShapeDuty Empty))[p]? =
+            some (.propose s hs) at hd
+        have hlt := (List.getElem?_eq_some_iff.mp hd).1
+        simp only [List.length_cons, List.length_nil] at hlt
+        interval_cases p <;> simp_all
+      obtain ⟨rfl, rfl⟩ := hp
+      simp only [dutiesInit, hone]
+      change (shapeOf S hn (rho.runDuties v
+        ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+          (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
+        [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat]).1).outbox = []
+      rw [← atProposal_eq]
+      exact atProposal_outbox_nil S rho hn hv i hv' s
+        (htime.trans (slotTime_eq S hn s).symm)
+  intro o ho
+  rcases proposal_inventory _ hi s hprop o ho with hseen | (⟨w, _, hw⟩ | ⟨a, _, ha⟩)
+  · exact hseen
+  · rw [hout] at hw
+    cases hw
+  · rw [hout] at ha
+    cases ha
+
+end EngineInventory
 
 end Consensus.Goldilocks.Refinement
 

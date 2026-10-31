@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Queue
 
 public section
 
@@ -12,18 +12,6 @@ section Engine
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
-
-/-- **OPEN; NO PAPER PROOF.** Scheduled replacement for `proposal_releasable`: derive slot
-start from the schedule. Induct with pool/att provenance in `seen` or pending outputs; polls
-release via engine history/guard safety; slot-start tick emits no vote. No `GoldilocksRun`. -/
-theorem scheduled_proposal_releasable (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i p : Nat} {t : Time} {s : Slot}
-    {nd : Model.Node (Model.protoOf (compiled (family S)) E)}
-    (hscheduled : EngineProposalAt S rho v i p t s nd)
-    {par : ParentRef} {info : Info} {cs : List (Wire (Fintype.card V))}
-    (hprop : (propose (shapeOf S hn nd) s).2 = some (par, info, cs)) :
-    ∀ o ∈ cs, o ∈ Model.closure nd.seen := by
-  sorry
 
 /-- The release guarantee applies to the selected proposal at its scheduled slot start. -/
 theorem proposal_releasable (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) (i : Nat)

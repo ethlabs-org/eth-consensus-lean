@@ -1240,7 +1240,8 @@ private theorem duties_closure (v : V)
       simp only [hsel, ↓reduceIte, List.append_nil]
       exact ih ha
 
-private theorem cut_self {v : V} {i p : Nat} {nd}
+/-- The node key at an actual duty boundary is its own engine key. -/
+theorem cut_self {v : V} {i p : Nat} {nd}
     (hc : EngineDutyCut S rho v i p nd) : (nd.st.1 hn).self = rho.ownKey v := by
   have h := history_events S rho hn v i
   cases hc with
