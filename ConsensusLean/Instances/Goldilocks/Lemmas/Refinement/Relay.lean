@@ -188,13 +188,9 @@ theorem deliverSeq_cover {tr : GoldilocksTrace sp ro}
     obtain ⟨j0, e', o', ho, he', hg', h3, h4⟩ := ih.2 k h1 h2
     exact ⟨j0, e', o', List.mem_cons_of_mem _ ho, he', hg', h3, h4⟩
 
-/-- A delivered object is the delivery's object or carried by its relay bundle. -/
+/-- A delivered object belongs to the received object's recursive closure. -/
 theorem mem_delivered {o x : Wire sp.n} (h : x ∈ delivered sp o) :
-    x = o ∨ ∃ cs, o = .mk .none (.data .relay) cs ∧ x ∈ cs := by
-  unfold delivered at h
-  split at h
-  · exact Or.inr ⟨_, rfl, h⟩
-  · exact Or.inl (List.mem_singleton.1 h)
+    x ∈ o.parts := h
 
 /-- A decoded block passes the checks `decodeBlock` makes: the digests map its header to its root,
 it has a parent, its attestations are well-formed and its AC payload is valid. -/
@@ -543,13 +539,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A delivered object is the delivery's object or carried by it. -/
 theorem contains_of_mem_delivered {o x : Wire sp.n} (h : x ∈ delivered sp o) :
-    Model.Obj.Contains o x := by
-  unfold delivered at h
-  split at h
-  · exact .step h (.refl x)
-  · rw [List.mem_singleton] at h
-    subst h
-    exact .refl _
+    Model.Obj.Contains o x := h
 
 /-- The slot proposal keeps the relay queue and the own index. -/
 theorem propose_keeps (st : State sp ro) (s : Slot) :

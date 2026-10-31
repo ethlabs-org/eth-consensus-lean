@@ -1,5 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
+import all ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks refinement statements
@@ -73,5 +76,40 @@ theorem released_requires_same_time (v : V)
 theorem relayed_at_horizon (v : V) (o : (Model.protoOf (compiled (family S)) E).Object)
     (h : RelayedFrom S rho v o rho.horizon) :
     ∃ cs, o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) rho.horizon := h
+
+omit [DecidableEq V] in
+/-- A canonical block carrying one vote runs the block handler first and then the actual
+message handler on its resulting state. This holds whether the block handler accepts, refuses,
+or silently drops the block: none of those outcomes skips the payload message. -/
+theorem payload_message_after_block {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (hs : List (Blocks.Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
+    (st : NodeState (goldilocksNode sp ro)) (B : Blk sp) (v : SA.Vote sp.n)
+    (ha : B.fgPayload = []) (hp : B.acPayload = ([v], []))
+    (hc : canonEvent sp ro hs (blockObj sp B) = some (.block B)) :
+    deliverRecs dg hs self t i (delivered sp (blockObj sp B)) st 0 =
+      groupRecs dg self st t (Nat.pair i 0) (.block B) ++
+      groupRecs dg self (Node.onBlock self st t B).1 t (Nat.pair i 1) (.message v) := by
+  have hd : delivered sp (blockObj sp B) = [blockObj sp B, voteObj v] := by
+    simp [delivered, blockObj, payloadObjs, ha, hp, voteObj, Model.Obj.parts,
+      Model.Obj.parts.partsList]
+  rw [hd]
+  simp [deliverRecs, hc, canonEvent_voteObj, Node.exec]
+
+omit [DecidableEq V] in
+/-- Two nested relay wrappers still execute the carried vote's message handler, with its
+actual cuts and post-states, rather than dropping the inner wrapper's contents. -/
+theorem nested_payload_message {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (hs : List (Blocks.Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
+    (st : NodeState (goldilocksNode sp ro)) (v : SA.Vote sp.n) :
+    deliverRecs dg hs self t i
+      (delivered sp (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]])) st 0 =
+      groupRecs dg self st t (Nat.pair i 2) (.message v) := by
+  simp [delivered, Model.Obj.parts, Model.Obj.parts.partsList, deliverRecs,
+    canonEvent, decodeBlock, decodeVoteObj, decodeAttObj, voteObj,
+    decodeVote_encodeVote, Option.filter]
 
 end Consensus.Goldilocks.Refinement.Test

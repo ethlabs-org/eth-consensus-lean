@@ -343,11 +343,12 @@ noncomputable def processOne (hs : List (Header Info × Nat)) (st : State sp ro)
   | _ => st
 
 variable (sp) in
-/-- The objects a delivery processes, in order: the carried objects of an unsigned relay wrapper
-(one level), otherwise the object itself. -/
-def delivered : Wire sp.n → List (Wire sp.n)
-  | .mk .none (.data .relay) cs => cs
-  | o => [o]
+/-- The objects a delivery processes, in preorder: the received object, then recursively every
+carried object. Noncanonical wrappers make no node call. A canonical block is processed before
+its payload votes and attestations, which receive their own message/attestation calls even if
+the block is refused. Thus admitting a payload vote is followed by actual message processing
+at the same delivery time, rather than merely adding it to the AC pool. -/
+def delivered (o : Wire sp.n) : List (Wire sp.n) := o.parts
 
 /-- Processing a delivered object: its `delivered` objects one by one through `processOne`. -/
 noncomputable def process (st : State sp ro) (o : Wire sp.n) (hs : List (Header Info × Nat)) :

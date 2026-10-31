@@ -1115,10 +1115,8 @@ private theorem wireOK_of_delivered (o : (Model.protoOf (compiled (family S)) E)
   · obtain ⟨hroot, hpar, hwf, hval⟩ := decodeBlock_wire (decodeBlock_of_canonEvent he)
     have hh : rootOf (Model.digests rho.hash o) (headerOf _ B) =
         some (rho.hash (headerOf _ B)) := by
-      rcases mem_delivered ho with ho | ⟨cs, rfl, hcs⟩
-      · subst ho
-        exact rootOf_digests_blockObj S rho hn B
-      · exact rootOf_digests_relay S rho hn cs B hcs
+      apply rootOf_digests_of_mem
+      exact List.mem_filterMap.2 ⟨blockObj _ B, mem_delivered ho, rfl⟩
     have hrt := hroot.symm.trans hh
     rw [Option.some.injEq] at hrt
     obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hpar

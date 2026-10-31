@@ -69,6 +69,19 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- 2026-10-31, amp-orbs (architecture), transport repair under
+  [#107](https://github.com/fradamt-agent/consensus-lean/issues/107).
+  **Process received payload objects in preorder.** A delivery now traverses the entire object
+  closure, processing a canonical block before its carried votes and attestations. Wrappers have
+  no canonical node event; nested wrappers no longer hide their contents. The existing node
+  handlers are unchanged, but their engine-driven invocation sequence changes: payload votes get
+  actual message calls, including when the containing block is refused or silently dropped.
+  This is intentional independent service of authenticated carried objects, not acceptance of the
+  containing block. Block-before-payload preserves the existing block handler's priority (including
+  any vote it emits); subsequent message handlers use the resulting state. The one-vote invariant
+  applies to arbitrary same-time object lists, so one delivery poll still drains the emitted vote.
+  This slice does not repair own-proposal payload processing, repeated-forwarding freshness under
+  `Held`, or the finite-window transport. It does not weaken `SyncRun` or claim that transport is proved.
 - 2026-10-31, Francesco ([#104](https://github.com/fradamt-agent/consensus-lean/issues/104), revised decision).
   **Drop cross-node nesting rather than restate it.** Remove Baseline's `crossNest` and `weakCrossNest`,
   R.3's `CrossNest` and R.6's `WeakCrossNest`, their bundle fields and the open `cross_nest_until` interface.
