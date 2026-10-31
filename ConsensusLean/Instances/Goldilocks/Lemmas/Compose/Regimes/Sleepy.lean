@@ -16,8 +16,10 @@ block, or `Σ.F` when the record is not in the frame; `ready_read_record`), whic
 descendants (`effective_record_mono`): the monotone half (`sleepy_ready_mono`). Together,
 `sleepy_safe : SleepySafe`.
 
-`SleepySafePrefix` waits on the Sleepy invariant under the prefix premises
-(`SleepyInvariantUpTo`, the Sleepy box). -/
+Up to a horizon `b` (`SleepySafePrefix`), the same two halves hold at the read points of times
+`≤ b`, whose earlier cuts are within `b`, from the invariant up to `b` (`sleepy_invariant_upTo`,
+under the prefix premises `SleepyPrefix`): `read_compatible`, `ready_read_record_upTo` and
+`effective_record_mono_upTo`. Together, `sleepy_safe_prefix : SleepySafePrefix`. -/
 
 namespace Consensus.Goldilocks.Regimes
 
@@ -67,19 +69,32 @@ private theorem lookup_getD_of_not {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {r : 
     obtain ⟨hR', hr'⟩ := SA.lookup_eq_some h
     exact absurd ⟨R', hR', hr'⟩ hn
 
+/-- The confirmed read is the effective record (the record's block when it is in the frame, else
+`Σ.F`) when it is one of the two (`ready_read_record`'s conclusion). -/
+private theorem read_effective_of (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {j : Nat} {t : Time}
+    (h : (∃ R ∈ (Node.frame (tr.state y j)).tree,
+        R.root = (tr.state y j).ac.latestConfirmed ∧ readAfter tr y j t = R) ∨
+      ((¬ ∃ R ∈ (Node.frame (tr.state y j)).tree,
+          R.root = (tr.state y j).ac.latestConfirmed) ∧
+        readAfter tr y j t = (tr.state y j).fg.F)) :
+    readAfter tr y j t = (SA.lookup (Node.frame (tr.state y j))
+      (tr.state y j).ac.latestConfirmed).getD (Node.frame (tr.state y j)).F := by
+  have hΦ : FrameOK (Node.frame (tr.state y j)) :=
+    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy j)).1
+  rcases h with ⟨R, hR, hRr, h⟩ | ⟨hn, h⟩
+  · rw [h, lookup_getD_of_mem hΦ hR hRr]
+  · rw [h, lookup_getD_of_not hn]
+    rfl
+
 /-- At a ready read point (between the reader's events), the confirmed read is the effective
 record: the record's block when it is in the frame, else `Σ.F`. -/
 theorem ready_read_effective (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} {j : Nat} {t : Time} (hrp : ReadPoint tr j t)
     (hb : Boundary tr y j) (hready : ReadyAt tr H (catchUp sp) y t) :
     readAfter tr y j t = (SA.lookup (Node.frame (tr.state y j))
-      (tr.state y j).ac.latestConfirmed).getD (Node.frame (tr.state y j)).F := by
-  have hΦ : FrameOK (Node.frame (tr.state y j)) :=
-    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hready.1 j)).1
-  rcases ready_read_record hrun hnc hsl hrp hb hready with ⟨R, hR, hRr, h⟩ | ⟨hn, h⟩
-  · rw [h, lookup_getD_of_mem hΦ hR hRr]
-  · rw [h, lookup_getD_of_not hn]
-    rfl
+      (tr.state y j).ac.latestConfirmed).getD (Node.frame (tr.state y j)).F :=
+  read_effective_of hrun hready.1 (ready_read_record hrun hnc hsl hrp hb hready)
 
 /-- **R.1, the monotone half of `ReadySafeOn`** under `Sleepy`, for every window and catch-up
 `18Δ`. -/
@@ -96,6 +111,22 @@ theorem sleepy_ready_mono (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
 /-- **R.1, `sleepySafe` / `confirmed_safe_sleepy`.** -/
 theorem sleepy_safe : SleepySafe := fun _ _ _ _ _ _ hrun hnc hsl t₁ =>
   ⟨sleepy_ready_agree hrun hnc hsl _ 0 t₁, sleepy_ready_mono hrun hnc hsl 0 t₁⟩
+
+/-- **R.1, `confirmed_safe_sleepy_prefix`**: under `Sync[0, b − Δ]` and `f < h_t` at the slot
+points up to `b`, the read points of times in `[0, b]` have their earlier cuts within `b`; the
+agreement half is `read_compatible` and the monotone half is the effective record up to `b`. -/
+theorem sleepy_safe_prefix : SleepySafePrefix := by
+  intro sp ro dg H tr ΔF b hrun hnc hb hsync hfb
+  have hpre : SleepyPrefix tr H ΔF b := sleepyPrefix_iff.2 ⟨hb, hsync, hfb⟩
+  have hinv := sleepy_invariant_upTo hrun hnc hpre
+  refine ⟨fun y z i j t t' hi hj _ _ _ htb _ htb' hy hz => ?_,
+    fun y i j t t' hi hj hbi hbj hij htt _ htb hy hy' => ?_⟩
+  · exact hinv.read_compatible hrun hnc hy.1 hz.1 (fun k hk => (hi.1 k hk).trans htb)
+      (fun k hk => (hj.1 k hk).trans htb') t t'
+  · rw [read_effective_of hrun hy.1 (ready_read_record_upTo hrun hnc hpre hi hbi hy
+        (htt.trans htb)),
+      read_effective_of hrun hy'.1 (ready_read_record_upTo hrun hnc hpre hj hbj hy' htb)]
+    exact effective_record_mono_upTo hrun hnc hpre hy.1 hij fun k hk => (hj.1 k hk).trans htb
 
 end Consensus.Goldilocks.Regimes
 
