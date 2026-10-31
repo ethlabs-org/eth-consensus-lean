@@ -115,7 +115,42 @@ theorem compatible_reads (hv : rho.ExecutionValid)
       ((simTrace S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j))) :
     Consensus.Compatible ((chainTrace rho).read .finalized u i)
       ((chainTrace rho).read .finalized v j) := by
-  sorry
+  have hs := simTrace_simulates S rho hn hv
+  have hu' := honest_ownKey (S := S) hu
+  have hv'' := honest_ownKey (S := S) hv'
+  have hri := Compose.fg_reachable hs.run.toLocalRun hu' (cutMap S rho hn i)
+  have hrj := Compose.fg_reachable hs.run.toLocalRun hv'' (cutMap S rho hn j)
+  have hU := Compose.honest_blocks_coherent hs.run.toLocalRun hnc
+  have hsi : ((simTrace S rho hn).state (rho.ownKey u) (cutMap S rho hn i)).fg.tree ⊆
+      (simTrace S rho hn).HonestBlocks (honestKeys S rho) := fun _ h => ⟨_, hu', _, h⟩
+  have hsj : ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn j)).fg.tree ⊆
+      (simTrace S rho hn).HonestBlocks (honestKeys S rho) := fun _ h => ⟨_, hv'', _, h⟩
+  have hFi := (Store.cache_invariants _ _ _ _ hri).1
+  have hFj := (Store.cache_invariants _ _ _ _ hrj).1
+  rw [read_finalized hs hu hi, read_finalized hs hv' hj]
+  rcases hc with hc | hc
+  · left
+    have ha := anc_in_store hrj hU hsj hc hFj
+    have hm : (simTrace S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i) ∈
+        ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn j)).fg.tree := by
+      by_cases he : (simTrace S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i) =
+          (simTrace S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j)
+      · exact he ▸ hFj
+      · exact (Anc.mem ha he).1
+    simp only [RunTrace.finalizedAt]
+    rw [chainTo_agree hri hrj hU hsi hsj hFi hm]
+    exact chainTo_prefix hrj ha
+  · right
+    have ha := anc_in_store hri hU hsi hc hFi
+    have hm : (simTrace S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j) ∈
+        ((simTrace S rho hn).state (rho.ownKey u) (cutMap S rho hn i)).fg.tree := by
+      by_cases he : (simTrace S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j) =
+          (simTrace S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i)
+      · exact he ▸ hFi
+      · exact (Anc.mem ha he).1
+    simp only [RunTrace.finalizedAt]
+    rw [chainTo_agree hrj hri hU hsj hsi hFj hm]
+    exact chainTo_prefix hri ha
 
 omit [DecidableEq V] in
 /-- CLAIMS G1.5's validator-count step:

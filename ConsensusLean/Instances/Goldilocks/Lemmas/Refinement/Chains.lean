@@ -91,6 +91,53 @@ theorem chainTo_mono {st' : Store sp.toParams (Payload sp.n)} (hr : st.Reachable
         simp only [hp, hp']
         rw [ih e.1]
 
+/-- Coherent stores compute the same chain for a shared held block. -/
+theorem chainTo_agree {st' : Store sp.toParams (Payload sp.n)}
+    (hr : st.Reachable acp₀) (hr' : st'.Reachable acp₀)
+    {U : Set (Blk sp)} (hc : Coherent U) (hs : st.tree ⊆ U) (hs' : st'.tree ⊆ U)
+    {B : Blk sp} (hB : B ∈ st.tree) (hB' : B ∈ st'.tree) (fuel : Nat) :
+    chainTo st.blocks fuel B = chainTo st'.blocks fuel B := by
+  induction fuel generalizing B with
+  | zero => rfl
+  | succ fuel ih =>
+    simp only [chainTo]
+    split_ifs with hg
+    · rfl
+    · obtain he | ⟨P, _, e⟩ :=
+        (Relation.ReflTransGen.cases_tail_iff _ _ _).1
+          ((Store.accepted_tree _ _ _ _ hr).2.2.2 B hB)
+      · exact (hg (congrArg Block.root he)).elim
+      obtain he | ⟨P', _, e'⟩ :=
+        (Relation.ReflTransGen.cases_tail_iff _ _ _).1
+          ((Store.accepted_tree _ _ _ _ hr').2.2.2 B hB')
+      · exact (hg (congrArg Block.root he)).elim
+      have heq : P = P' := hc.1 (hs e.1) (hs' e'.1)
+        (Option.some.inj (e.2.2.symm.trans e'.2.2))
+      subst P'
+      have hp : B.parent.bind st.blocks = some P := by
+        rw [e.2.2, Option.bind_some]; exact e.1
+      have hp' : B.parent.bind st'.blocks = some P := by
+        rw [e'.2.2, Option.bind_some]; exact e'.1
+      simp only [hp, hp']
+      rw [ih e.1 e'.1]
+
+/-- Ancestry in a coherent superset restricts to a reachable store below a held tip. -/
+theorem anc_in_store (hr : st.Reachable acp₀) {U : Set (Blk sp)}
+    (hc : Coherent U) (hs : st.tree ⊆ U) {B C : Blk sp}
+    (h : Anc U B C) (hC : C ∈ st.tree) : st.Anc B C := by
+  induction h with
+  | refl => exact .refl
+  | @tail P C _ e ih =>
+    obtain he | ⟨Q, _, eq⟩ :=
+      (Relation.ReflTransGen.cases_tail_iff _ _ _).1
+        ((Store.accepted_tree _ _ _ _ hr).2.2.2 C hC)
+    · subst C
+      cases e.2.2
+    · have hQP : Q = P := hc.1 (hs eq.1) e.1
+        (Option.some.inj (eq.2.2.symm.trans e.2.2))
+      subst Q
+      exact (ih eq.1).tail eq
+
 /-- Every emitted header belongs to a non-genesis ancestor held in the store. -/
 theorem mem_chainTo (hr : st.Reachable acp₀) {B : Blk sp} (hB : B ∈ st.tree)
     {fuel : Nat} {h : Blocks.Header Info} (hh : h ∈ chainTo st.blocks fuel B) :
