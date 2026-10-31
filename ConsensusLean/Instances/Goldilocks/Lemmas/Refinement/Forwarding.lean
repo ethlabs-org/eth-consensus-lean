@@ -613,6 +613,15 @@ def ForwardOrigin : Prop :=
     ∃ k, tr.AcceptAt r.origin k B ∧ tr.time k = t ∧
       k < cutMap (r.event + 1) ∧ t = pubExec.eventTime r.event
 
+/-- Characterize the origin obligation without exposing its definition body. -/
+theorem forwardOrigin_iff : ForwardOrigin S rho hn tr cutMap pubExec ↔
+    ∀ r, pubExec.actual r → rho.key r.origin ∈ rho.honest → ∀ t p B,
+      decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
+        some (r.origin, t, p, B) →
+      ∃ k, tr.AcceptAt r.origin k B ∧ tr.time k = t ∧
+        k < cutMap (r.event + 1) ∧ t = pubExec.eventTime r.event := by
+  rfl
+
 /-- OPEN: acceptance queues and drains a wrapper in the same event, including own proposals.
 The installed producer still needs missing-parent exclusion and successful release proofs. -/
 def ForwardAtAcceptance : Prop :=
@@ -647,6 +656,17 @@ def ForwardHeldProcessed : Prop :=
       some (x, t, p, B) →
     ∃ k < cutMap i, t ≤ tr.time k ∧
       (tr.BlockCallAt y k B ∨ y = x ∧ tr.AcceptAt y k B)
+
+/-- Characterize prior processing without exposing its definition body. -/
+theorem forwardHeldProcessed_iff : ForwardHeldProcessed S rho hn tr cutMap ↔
+    ∀ y ∈ honestKeys S rho, ∀ i x t p B o,
+      x ∈ honestKeys S rho →
+      o ∈ Model.closure (rho.stateBefore i (rho.key y)).seen →
+      decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash o) o =
+        some (x, t, p, B) →
+      ∃ k < cutMap i, t ≤ tr.time k ∧
+        (tr.BlockCallAt y k B ∨ y = x ∧ tr.AcceptAt y k B) := by
+  rfl
 
 /-- OPEN: accepted canonical objects and exact parent wrappers are in the publisher's seen
 closure at the actual candidate prefix; signing and dependency guards do not suppress it. -/
