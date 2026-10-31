@@ -1121,13 +1121,13 @@ theorem mem_closure_of_contains {l : List (Model.protoOf (compiled (family S)) E
   exact (Model.mem_closure_iff _ _).mpr ⟨r, hr, hc.trans h⟩
 
 /-- A signing cut of an honest node's tick at a public time is a signing of the simulating
-trace. -/
-theorem signAt_of_tick_cut {j : Nat} {v : V} {t : Time}
+trace before the end of that engine event. -/
+theorem signAt_before_tick_end {j : Nat} {v : V} {t : Time}
     (he : rho.events[j]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) {C} {b : FG.Att (Fintype.card V)}
     (hc : Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2) :
-    ∃ k, (simTrace S rho hn).SignAt (rho.ownKey v) k b := by
+    ∃ k < cutMap S rho hn (j + 1), (simTrace S rho hn).SignAt (rho.ownKey v) k b := by
   have hj : j < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
   have hEC := eventCuts_tick_public S rho hn j v t he hp
   obtain ⟨m, hm, hcm⟩ := List.getElem_of_mem hc
@@ -1142,7 +1142,8 @@ theorem signAt_of_tick_cut {j : Nat} {v : V} {t : Time}
     lt_of_lt_of_eq hm
       (length_groupRecs (sp := S.params (pubOf E) hn) (ro := S.ro _) _ _ _ _ _ _ _).symm
   obtain ⟨hnode, -, -, -, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm''
-  refine ⟨cutMap S rho hn j + m, C, ?_, ?_⟩
+  refine ⟨cutMap S rho hn j + m, ?_, C, ?_, ?_⟩
+  · rw [cutMap_succ]; omega
   · rw [simTrace_node, hk]
     simp only [Option.elim_some]
     rw [show (eventCuts S rho hn j)[m] = (groupRecs (runProposer S rho hn)
@@ -1156,6 +1157,16 @@ theorem signAt_of_tick_cut {j : Nat} {v : V} {t : Time}
       (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v j).node t (Nat.pair j 0)
       (.tick (encodeTxs (Model.mempool rho.inbox v t))))[m] from by simp only [hEC], hlab, hcm]
+
+/-- A signing cut of a public tick is a signing of the simulating trace. -/
+theorem signAt_of_tick_cut {j : Nat} {v : V} {t : Time}
+    (he : rho.events[j]? = some (.tick v t))
+    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) {C} {b : FG.Att (Fintype.card V)}
+    (hc : Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+      (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2) :
+    ∃ k, (simTrace S rho hn).SignAt (rho.ownKey v) k b := by
+  obtain ⟨k, _, hk⟩ := signAt_before_tick_end S rho hn he hp hc
+  exact ⟨k, hk⟩
 
 /-- The canonical attestation object is injective. -/
 theorem attObj_inj {n : Nat} {a b : FG.Att n} (h : (attObj a : Wire n) = attObj b) : a = b := by

@@ -100,6 +100,53 @@ private theorem tick_cuts (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P
         t x .fgUpdate).2 :=
   by simp [exec, onTick, runSteps, tickSteps]
 
+/-- A tick processes its own attestation immediately after signing it. -/
+theorem tick_attestation_prev (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
+    (st : NodeState A) (t : Time) (x : Nat) {k : Nat} {a : FG.Att P.n}
+    (hk : (exec proposer dg y st t (.tick x)).2[k]? = some (.fg (.attestation a))) :
+    ∃ j < k, ∃ C, (exec proposer dg y st t (.tick x)).2[j]? =
+      some (.fg (.attest C (some a))) := by
+  rw [tick_cuts] at hk ⊢
+  set l := (tickStep proposer dg y st t x .acTick).2 ++
+    (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).2
+  have hn : l.length ≤ k := by
+    by_contra h
+    rw [List.getElem?_append_left (by omega)] at hk
+    have hm := List.mem_of_getElem? hk
+    rcases List.mem_append.mp hm with hm | hm
+    · simp [tickStep, acCall] at hm
+    · simp only [tickStep] at hm
+      split_ifs at hm
+      · split at hm
+        · simp [acProposal] at hm
+        · simp only [proposeBlock, onBlock] at hm
+          split_ifs at hm
+          · simp [acProposal] at hm
+          · split at hm <;> simp [acProposal, acCall] at hm
+      · simp at hm
+  rw [List.getElem?_append_right hn] at hk
+  have hu : ∀ (s : NodeState A) {m : Nat},
+      (tickStep proposer dg y s t x .fgUpdate).2[m]? = some (.fg (.attestation a)) →
+      m = 2 ∧ ∃ C, (tickStep proposer dg y s t x .fgUpdate).2[1]? =
+        some (.fg (.attest C (some a))) := by
+    intro s m hm
+    simp only [tickStep] at hm ⊢
+    split at hm
+    · rcases m with _ | m <;> simp [acToFG] at hm
+    · rename_i C hC
+      simp only [attest] at hm ⊢
+      split at hm
+      · rcases m with _ | _ | m <;> simp [acToFG] at hm
+      · rename_i a' rec ha
+        simp only [onAttestation] at hm ⊢
+        rcases m with _ | _ | _ | m <;> simp [acToFG] at hm
+        subst a'
+        exact ⟨rfl, C, rfl⟩
+  obtain ⟨hm, C, hC⟩ := hu _ hk
+  refine ⟨l.length + 1, by omega, C, ?_⟩
+  rw [List.getElem?_append_right (by omega)]
+  simpa using hC
+
 private theorem paired_tickStep (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (x : Nat) (s : TickStep) :
     Paired (tickStep proposer dg y st t x s).2 := by
