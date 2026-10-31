@@ -64,12 +64,12 @@ def OutageWindowTimes (sp : SAParams) (T b₀ b₁ : Time) : Prop :=
     b₁ - b₀ + (b₀ - 6 * sp.Δ) % (4 * sp.Δ) ≤ (4 * (sp.k : Time) - 2) * sp.Δ
 
 /-- **`Outage(T, b₀, b₁)`** over the run (η = `eta·Δ`): the outage times with (V), synchrony for the
-sends with deadline `≤ b₀` (`Sync[0, b₀ − Δ]`), `GST(b₁)`, η-sleepy participation at every time,
-and more than half of all validators ready at `b₀`. -/
+recipient deadlines `≤ b₀` (including the latest wake), `GST(b₁)`, η-sleepy participation at every
+time, and more than half of all validators ready at `b₀`. -/
 def OutageRun {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (ΔF : Time) (eta : Nat)
     (T b₀ b₁ : Time) : Prop :=
-  OutageWindowTimes sp T b₀ b₁ ∧ tr.SyncRun H ΔF 0 (b₀ - sp.Δ) ∧ tr.GSTRun H ΔF b₁ ∧
+  OutageWindowTimes sp T b₀ b₁ ∧ tr.SyncBefore H ΔF b₀ ∧ tr.GSTRun H ΔF b₁ ∧
     (∀ t, 0 ≤ t → EtaSleepyAt tr H (catchUp sp) (eta * sp.Δ) t) ∧
     ReadyOfAllAt tr H (catchUp sp) b₀
 
@@ -97,7 +97,7 @@ def OutageWindow : Prop :=
     (tr : GoldilocksTrace sp ro) (ΔF : Time) (eta : Nat) (T b₀ b₁ : Time),
     GoldilocksRun dg H tr → Compose.NoCollRun dg tr →
     0 ≤ T → T + (4 * (sp.k : Time) - 4) * sp.Δ ≤ b₀ → b₀ ≤ b₁ →
-    b₁ - b₀ ≤ (4 * (sp.k : Time) - 2) * sp.Δ → tr.SyncRun H ΔF 0 (b₀ - sp.Δ) →
+    b₁ - b₀ ≤ (4 * (sp.k : Time) - 2) * sp.Δ → tr.SyncBefore H ΔF b₀ →
     (∀ t, 0 ≤ t → t ≤ b₀ → EtaSleepyAt tr H (catchUp sp) (eta * sp.Δ) t) →
     ReadyOfAllAt tr H (catchUp sp) b₀ →
     ∀ v jv, ReadyAt tr H (catchUp sp) v T → CutAfter tr jv T →

@@ -69,6 +69,19 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- 2026-10-31, coordinator-authorized R.5/OC repair ([#107](https://github.com/fradamt-agent/consensus-lean/issues/107)).
+  **Pre-outage synchrony cuts off recipient deadlines, not send times.** `SyncBefore` requires
+  service only when the recipient's protocol deadline, including its latest wake, is at most
+  `b₀`. `OutageRun` and `OutageWindow` use it instead of `SyncRun 0 (b₀ − Δ)`; the latter still
+  imposed obligations after arbitrary later wakes inside the outage. `SyncRun`, `SyncOn` and
+  the generic `Outage` are unchanged. The cutoff is conservatively the protocol deadline itself,
+  not its last admissible integer processing time: deadline `b₀` is covered, `b₀ + 1` is not.
+  With `Δ_p = Δ_e + 1`, a qualifying protocol deadline leaves the engine endpoint at most
+  `b₀ − 1`. Later calls still check qualifying pre-outage deadlines; attestation deadlines use
+  `Δ_F`. Strict processing bounds and send-time lower bounds are retained. This changes the
+  premises of the still-unproved outage rows, not their conclusions. Acceptance relay remains
+  an explicit obligation: receipt alone cannot invent acceptance of a discarded missing-parent
+  block. No ancestry, Catch, R.3 or R.4 decision is encoded, and no transport proof is claimed.
 - 2026-10-31, amp-orbs (architecture), transport repair under
   [#107](https://github.com/fradamt-agent/consensus-lean/issues/107).
   **Process received payload objects in preorder.** A delivery now traverses the entire object

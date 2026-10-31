@@ -661,7 +661,10 @@ Modelling choices:
   `b₁`), with the target's `lockK` read as the SA's `k` (D1) and the arming lag `(4·lockK − 4)Δ` kept. For `b₀` a
   multiple of `Δ` the target's budget implies (V) (the `mod` term is then `≤ 3Δ`); for other `b₀` the Refinement
   must relate them (open). `outageWindow` (the interval-only P1) takes `b₁ − b₀ ≤ (4k − 2)Δ` instead of (V), which
-  the target's budget implies. Synchrony "before `b₀`" is `Sync[0, b₀ − Δ]` (the model's `SyncUntil b₀`), and the
+  the target's budget implies. Synchrony "before `b₀`" is `Consensus.Goldilocks.RunTrace.SyncBefore`:
+  recipient protocol deadlines (including the latest wake) at most `b₀`, not the send window
+  `Sync[0, b₀ − Δ]`, which would still require service after later wakes during the outage. The
+  protocol deadline itself is cut off, not its last admissible integer processing time; the
   participation is the target's: η-sleepy at every time (`θ = ½`, `η = eta·Δ`) and more than half ready at `b₀`.
 - **R.6 (`Weak`)**: the heal point is `T ≥ T_heal`, as for R.3, and the healing premises are cut at `T`
   (`WeakPremises`: honest awake on `[ḡ, T]`, ready honest more than faulty from `T`, the ready-proposer premise on

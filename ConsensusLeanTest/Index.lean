@@ -746,6 +746,7 @@ example := ``Consensus.Goldilocks.Regimes.EtaSleepyAt
 example := ``Consensus.Goldilocks.Regimes.ReadyOfAllAt
 example := ``Consensus.Goldilocks.Regimes.ResilienceReader
 example := ``Consensus.Goldilocks.Regimes.OutageWindowTimes
+example := ``Consensus.Goldilocks.RunTrace.SyncBefore
 example := ``Consensus.Goldilocks.Regimes.OutageRun
 example := ``Consensus.Goldilocks.Regimes.OutagePersists
 example := ``Consensus.Goldilocks.Regimes.OutageWindow

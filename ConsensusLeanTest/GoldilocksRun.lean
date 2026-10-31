@@ -589,6 +589,24 @@ theorem periodicRun_sleepy : periodicRun.SleepyRun Set.univ 1 := by
   · exact periodicRun_faultBound (by change (0 : Int) ≤ (s : Int) + 1; omega)
   · exact periodicRun_faultBound (by change (0 : Int) ≤ (s : Int) + 2 * 1; omega)
 
+/-- The deadline-cut premise is satisfiable on the existing periodic local-run witness. -/
+theorem periodicRun_syncBefore (b : Time) : periodicRun.SyncBefore Set.univ 1 b := by
+  have h := periodicRun_syncOn (fun _ => True) (fun _ => True) id
+  exact ⟨h.deltaF,
+    fun x hx i m hm _ y hy j hj _ hd => h.message x hx i m hm trivial y hy j hj hd,
+    fun x hx i B hB _ y hy j hj _ hd => h.block x hx i B hB trivial y hy j hj hd,
+    fun x hx i B hB _ y hy j hj _ hd ha => h.relay x hx i B hB trivial y hy j hj hd ha,
+    fun x hx i a ha _ y hy j hj _ hd => h.attestation x hx i a ha trivial y hy j hj hd⟩
+
+/-- A block deadline exactly at the outage boundary remains covered, even at a later call. -/
+theorem syncBefore_block_boundary {P : Params} {A : NodeAC P} (tr : RunTrace A)
+    (H : Set (Fin P.n)) (ΔF b : Time) (h : tr.SyncBefore H ΔF b)
+    (x y : Fin P.n) (hx : x ∈ H) (hy : y ∈ H) (i j : Nat) (B : A.Blk)
+    (hs : tr.AcceptAt x i B ∨ tr.OwnBlockAt x i B) (ht : 0 ≤ tr.time i)
+    (hj : tr.IsCall y j) (heq : tr.deadline y j (tr.time i) P.Δ = b)
+    (hafter : b ≤ tr.time j) : tr.BlockDeliveredBy y j (tr.time i) (tr.time i) B :=
+  h.block x hx i B hs ht y hy j hj heq.le (heq.trans_le hafter)
+
 end Consensus.Goldilocks.Compose.Test
 
 end

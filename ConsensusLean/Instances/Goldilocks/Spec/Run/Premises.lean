@@ -120,6 +120,37 @@ structure SyncOn (H : Set (Fin P.n)) (ΔF : Time) (W Wr : Time → Prop) (eff : 
 def SyncRun (H : Set (Fin P.n)) (ΔF a b : Time) : Prop :=
   tr.SyncOn H ΔF (fun τ => a ≤ τ ∧ τ ≤ b) (fun τ => a ≤ τ ∧ τ ≤ b) id
 
+/-- Synchrony before an outage, for recipient deadlines at most `b`. Unlike `SyncRun`,
+the cutoff applies to the deadline including the recipient's latest wake, not merely to
+the sender's time. A later call still checks an earlier qualifying deadline, but a wake
+whose deadline lies after `b` creates no pre-outage service obligation. All processing
+lower bounds and strict upper bounds are unchanged. -/
+structure SyncBefore (H : Set (Fin P.n)) (ΔF b : Time) : Prop where
+  /-- The attestation delay is at least the protocol delay. -/
+  deltaF : P.Δ ≤ ΔF
+  /-- Message service for nonnegative sends/admissions with recipient deadline at most `b`. -/
+  message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m → 0 ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
+      tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
+      tr.MsgDeliveredBy y j (tr.time i) (tr.time i) m
+  /-- Block processing with the same recipient deadline cutoff. -/
+  block : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B ∨ tr.OwnBlockAt x i B → 0 ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
+      tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
+      tr.BlockDeliveredBy y j (tr.time i) (tr.time i) B
+  /-- The existing acceptance-relay obligation, restricted to pre-outage deadlines.
+  This remains a protocol premise, not a consequence of network receipt alone. -/
+  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → 0 ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
+      tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
+      Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
+      tr.BlockAcceptedBy y j (tr.time i) B
+  /-- Attestation service uses its own delay, including in the cutoff. -/
+  attestation : ∀ x ∈ H, ∀ i a, tr.SendOrAdmitAttAt x i a → 0 ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) ΔF ≤ b →
+      tr.deadline y j (tr.time i) ΔF ≤ tr.time j →
+      tr.AttDeliveredBy y j (tr.time i) (tr.time i) ΔF a
+
 /-- **`GST(g)`**: `Sync[g, ∞)`, and an object sent before `g` is processed as if sent at `g`:
 its deadline is `max(g, w_y) + Δ'`; it may still be delivered before `g`. The acceptance relay
 covers only acceptances at `τ ≥ g` (pre-`g` acceptance catch-up is `Catch(κ)`). -/
