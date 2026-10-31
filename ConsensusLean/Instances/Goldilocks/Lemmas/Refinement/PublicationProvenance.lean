@@ -687,6 +687,206 @@ theorem received_forward_stamp_le (hv : rho.ExecutionValid) {i : Nat} {v : V}
     · exact le_of_lt hlt
     · exact le_of_eq heq
 
+omit [DecidableEq V] in
+private theorem batch_closure_source (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (cs)
+    {o : Wire (Fintype.card V)}
+    (ho : o ∈ Model.closure (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+      rho.hash (rho.ownKey v) nd cs).1.seen) :
+    o ∈ Model.closure nd.seen ∨
+      o ∈ (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+        rho.hash (rho.ownKey v) nd cs).2 := by
+  let Q := fun c => c = o → o ∈ Model.closure nd.seen ∨
+    o ∈ (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+      rho.hash (rho.ownKey v) nd cs).2
+  have h := Model.releaseAll_preserves rho.hash (rho.ownKey v) Q nd cs
+    (fun c hc b hb he => Or.inl (he ▸ (Model.mem_closure_iff _ _).mpr ⟨c, hc, hb⟩))
+    (fun c hc he => Or.inr (he ▸ hc))
+  obtain ⟨c, hc, hco⟩ := (Model.mem_closure_iff _ _).mp ho
+  exact h.1 c hc o hco rfl
+
+omit [DecidableEq V] in
+private theorem duties_closure_source (v : V) :
+    ∀ ds (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+      (o : Wire (Fintype.card V)),
+    o ∈ Model.closure (rho.runDuties v nd ds).1.seen →
+      o ∈ Model.closure nd.seen ∨ o ∈ (rho.runDuties v nd ds).2 := by
+  intro ds
+  induction ds with
+  | nil => intro nd o ho; exact Or.inl ho
+  | cons d ds ih =>
+    intro nd o ho
+    rw [rho.runDuties_cons] at ho ⊢
+    rcases ih _ o ho with ho | ho
+    · unfold Model.Run.dutyStep at ho ⊢
+      split at ho
+      · rename_i hsel
+        simp only [hsel, ↓reduceIte]
+        rcases batch_closure_source S rho v _ _ ho with ho | ho
+        · exact Or.inl ho
+        · exact Or.inr (List.mem_append_left _ ho)
+      · rename_i hsel
+        exact Or.inl ho
+    · exact Or.inr (List.mem_append_right _ ho)
+
+/-- A held object originates in an exact local release or an enclosing receipt. Nested
+release payloads do not create a third case: the release guard required them earlier. -/
+theorem held_release_or_receipt {v : V} {i : Nat} {o : Wire (Fintype.card V)}
+    (ho : o ∈ Model.closure (rho.stateBefore i v).seen) :
+    ∃ j < i, ∃ t, (rho.SendsAt v j t ∧ o ∈ rho.releasesAt j) ∨
+      ∃ receipt, rho.events[j]? = some (.deliver v receipt t) ∧
+        Model.Obj.Contains receipt o := by
+  induction i with
+  | zero => exact False.elim (List.not_mem_nil ho)
+  | succ i ih =>
+    have old (h : o ∈ Model.closure (rho.stateBefore i v).seen) :
+        ∃ j < i + 1, ∃ t, (rho.SendsAt v j t ∧ o ∈ rho.releasesAt j) ∨
+          ∃ receipt, rho.events[j]? = some (.deliver v receipt t) ∧
+            Model.Obj.Contains receipt o := by
+      obtain ⟨j, hj, t, h⟩ := ih h
+      exact ⟨j, by omega, t, h⟩
+    cases he : rho.events[i]? with
+    | none =>
+      have hh : rho.stateBefore (i + 1) = rho.stateBefore i := by
+        simp [Model.Run.stateBefore, List.take_add_one, he]
+      exact old (hh ▸ ho)
+    | some ev =>
+      rw [rho.stateBefore_succ he] at ho
+      by_cases hnode : ev.node = v
+      · cases ev with
+        | restart w t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          exact old (by simpa only [Model.Run.step, Function.update_self] using ho)
+        | tick w t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          simp only [Model.Run.step, Function.update_self, Model.Run.tick] at ho
+          split at ho
+          · rcases batch_closure_source S rho v _ _ ho with ho | ho
+            · rcases duties_closure_source S rho v _ _ o ho with ho | ho
+              · exact old ho
+              · refine ⟨i, by omega, t, Or.inl ⟨Or.inl he, ?_⟩⟩
+                simp only [Model.Run.releasesAt, he, Model.Run.tick]
+                split
+                · exact List.mem_append_left _ ho
+                · contradiction
+            · refine ⟨i, by omega, t, Or.inl ⟨Or.inl he, ?_⟩⟩
+              simp only [Model.Run.releasesAt, he, Model.Run.tick]
+              split
+              · exact List.mem_append_right _ ho
+              · contradiction
+          · exact old ho
+        | deliver w receipt t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          simp only [Model.Run.step, Function.update_self, Model.Run.deliver] at ho
+          rcases batch_closure_source S rho v _ _ ho with ho | ho
+          · rcases duties_closure_source S rho v _ _ o ho with ho | ho
+            · rw [Model.closure_append] at ho
+              rcases List.mem_append.mp ho with ho | ho
+              · exact old ho
+              · obtain ⟨r, hr, hc⟩ := (Model.mem_closure_iff _ _).mp ho
+                have hr' := List.mem_singleton.mp hr
+                subst r
+                exact ⟨i, by omega, t, Or.inr ⟨receipt, he, hc⟩⟩
+            · refine ⟨i, by omega, t, Or.inl ⟨Or.inr ⟨receipt, he⟩, ?_⟩⟩
+              simp only [Model.Run.releasesAt, he, Model.Run.deliver]
+              exact List.mem_append_left _ ho
+          · refine ⟨i, by omega, t, Or.inl ⟨Or.inr ⟨receipt, he⟩, ?_⟩⟩
+            simp only [Model.Run.releasesAt, he, Model.Run.deliver]
+            exact List.mem_append_right _ ho
+      · cases ev with
+        | tick w t | deliver w receipt t | restart w t =>
+          simp only [Model.Event.node] at hnode
+          exact old (by
+            simpa only [Model.Run.step, Function.update_of_ne (Ne.symm hnode)] using ho)
+
+/-- Held honest forwarding envelopes either were released locally, or already have a
+real receipt call before the requested cut. The latter may be a refused block call. -/
+theorem held_forward_release_or_call (hv : rho.ExecutionValid) {v : V} {i : Nat}
+    {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∈ rho.honest)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B)) :
+    (∃ j < i, ∃ u, rho.SendsAt v j u ∧ o ∈ rho.releasesAt j) ∨
+      ∃ k < cutMap S rho hn i, t ≤ (simTrace S rho hn).time k ∧
+        (simTrace S rho hn).BlockCallAt (rho.ownKey v) k B := by
+  obtain ⟨j, hj, u, h⟩ := held_release_or_receipt S rho ho
+  rcases h with ⟨he, hr⟩ | ⟨receipt, he, hc⟩
+  · exact Or.inl ⟨j, hj, u, he, hr⟩
+  · have htu := received_forward_stamp_le S rho hn hv he hc hx hd
+    obtain ⟨k, hk, hcall, htime⟩ := received_forward_blockCall S rho hn he hc hd htu
+    exact Or.inr ⟨k, hk.trans_le (cutMap_mono S rho hn (Nat.succ_le_of_lt hj)),
+      htime ▸ htu, hcall⟩
+
+private theorem dutyBatches_signer (v : V) :
+    ∀ ds (nd : Model.Node (Model.protoOf (compiled (family S)) E)) b,
+    b ∈ dutyBatches rho v nd ds → ∀ o ∈ b.candidates,
+      o.signer? = some (rho.ownKey v) := by
+  intro ds
+  induction ds with
+  | nil => intro nd b hb; rw [dutyBatches_nil] at hb; exact False.elim (List.not_mem_nil hb)
+  | cons d ds ih =>
+    intro nd b hb o ho
+    rw [dutyBatches_cons] at hb
+    rcases List.mem_cons.mp hb with rfl | hb
+    · split at ho
+      · obtain ⟨m, cs, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
+        rfl
+      · exact False.elim (List.not_mem_nil ho)
+    · exact ih _ b hb o ho
+
+/-- A signed forwarding object released locally is signed by that node. Carried
+forwarding objects are deliberately not claimed to have the local signer. -/
+theorem released_forward_signer {i : Nat} {v : V} {u : Time}
+    (he : rho.SendsAt v i u) {o : Wire (Fintype.card V)} (ho : o ∈ rho.releasesAt i)
+    {x : Fin (Fintype.card V)} {t : Time} {p : Option (Wire (Fintype.card V))}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B)) : x = rho.ownKey v := by
+  obtain ⟨b, hb, ho⟩ := released_candidate_batch S rho he ho
+  have hsign : o.signer? = some (rho.ownKey v) := by
+    rcases he with he | ⟨receipt, he⟩
+    all_goals
+      rw [eventBatches_eq, he] at hb
+      simp only at hb
+    · split at hb
+      · rcases List.mem_append.mp hb with hb | hb
+        · exact dutyBatches_signer S rho v _ _ b hb o ho
+        · have heq := List.mem_singleton.mp hb
+          subst b
+          obtain ⟨mc, _, rfl⟩ := Model.mem_gossipCandidates.mp ho
+          have hsign := decodeForward_signer hd
+          change none = some x at hsign
+          cases hsign
+      · exact False.elim (List.not_mem_nil hb)
+    · rcases List.mem_append.mp hb with hb | hb
+      · exact dutyBatches_signer S rho v _ _ b hb o ho
+      · have heq := List.mem_singleton.mp hb
+        subst b
+        obtain ⟨mc, _, rfl⟩ := Model.mem_gossipCandidates.mp ho
+        have hsign := decodeForward_signer hd
+        change none = some x at hsign
+        cases hsign
+  exact Option.some.inj ((decodeForward_signer hd).symm.trans hsign)
+
+/-- Holdings of another honest node's forwarding envelope always have an earlier
+receipt call; only the self-signed case needs the own-publication acceptance join. -/
+theorem held_other_forward_call (hv : rho.ExecutionValid) {v : V} {i : Nat}
+    {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∈ rho.honest)
+    (hne : x ≠ rho.ownKey v)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B)) :
+    ∃ k < cutMap S rho hn i, t ≤ (simTrace S rho hn).time k ∧
+      (simTrace S rho hn).BlockCallAt (rho.ownKey v) k B := by
+  rcases held_forward_release_or_call S rho hn hv ho hx hd with ⟨j, _, u, he, hr⟩ | h
+  · exact False.elim (hne (released_forward_signer S rho hn he hr hd))
+  · exact h
+
 end Trace
 
 end Consensus.Goldilocks.Refinement
