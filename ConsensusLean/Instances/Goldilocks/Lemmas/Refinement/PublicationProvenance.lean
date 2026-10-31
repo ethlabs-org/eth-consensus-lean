@@ -292,6 +292,13 @@ theorem deliverRecs_block_call (proposer : Nat → Fin sp.n)
 private def QueueStamped (t : Time) (st : State sp ro) : Prop :=
   st.now = t ∧ ∀ q ∈ st.forwards, q.1 = t
 
+private theorem nodeTick_forwards (st : State sp ro) :
+    (nodeTick st).forwards = st.forwards := by
+  unfold nodeTick
+  split
+  · simp [apply, acCall]
+  · rfl
+
 private theorem stamped_apply (t : Time) (st : State sp ro) r
     (h : QueueStamped t st) : QueueStamped t (apply st r) := by
   refine ⟨h.1, ?_⟩
@@ -345,6 +352,79 @@ section Trace
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+
+private theorem atProposal_forwards_nil (hv : rho.ExecutionValid) (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Time) :
+    (shapeOf S hn (atProposal S rho v nd t)).forwards = [] := by
+  rw [atProposal_shape S rho hn v nd t (poll_selected S rho hv v), nodeTick_forwards,
+    poll_forwards]
+
+omit [DecidableEq V] in
+/-- A proposal duty creates forwarding entries only for successful cuts of the
+corresponding proposal step. Rejected release guards create no new entries. -/
+theorem proposal_duty_forward_origin (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
+    (hself : (shapeOf S hn nd).self = rho.ownKey v)
+    (hslot : (S.params (Model.pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s)
+    (hst : (shapeOf S hn nd).now = (S.params (Model.pubOf E) hn).toParams.slotTime s)
+    (q : Time × List (Wire (Fintype.card V)))
+    (hq : q ∈ (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1).forwards) :
+    q ∈ (shapeOf S hn nd).forwards ∨ ∃ B, ∃ p : Option (Wire (Fintype.card V)),
+      .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
+        (rho.ownKey v) (shapeOf S hn nd).node (shapeOf S hn nd).now
+        (encodeTxs nd.st.2) .proposal).2 ∧
+      q = ((shapeOf S hn nd).now, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) := by
+  have hact2 := act_propose_snd S hn nd s hs
+  have hact1 := shapeOf_act_propose S hn nd.st s hs
+  unfold Model.Run.dutyStep at hq
+  split at hq
+  · rename_i hselected
+    change rho.ownKey v ∈ rho.sel (.proposer s) at hselected
+    have hp : Proposes (P := (S.params (Model.pubOf E) hn).toParams)
+        (runProposer S rho hn) (rho.ownKey v) (shapeOf S hn nd).now := by
+      rw [hst, proposes_iff S hn _ _ s hs]
+      exact (Finset.mem_singleton.mp (hsel ▸ hselected)).symm
+    generalize (Model.protoOf (compiled (family S)) E).act nd.st (.propose s hs) = a
+      at hact1 hact2 hq
+    dsimp only at hq
+    simp only [propose] at hact1 hact2
+    simp only [Node.tickStep, hp, ite_true]
+    rcases hr : (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.2 with _ | ⟨d, p⟩
+    · simp only [hr] at hact1 hact2
+      erw [hact2] at hq
+      simp only [Option.map_none, Option.toList_none, Model.Run.signedCandidate] at hq
+      split at hq
+      all_goals
+        change q ∈ (a.1.1 hn).forwards at hq
+        rw [hact1] at hq
+        exact Or.inl hq
+    · simp only [hr] at hact1 hact2
+      erw [hact2] at hq
+      have hrole : (Model.protoOf (compiled (family S)) E).role (.propose s hs) =
+          .proposer s := rfl
+      simp only [Option.map, Option.toList_some, Model.Run.signedCandidate, hrole,
+        hselected, ↓reduceIte] at hq
+      erw [List.map_cons, List.map_nil] at hq
+      unfold Model.releaseAll at hq
+      split at hq
+      · change q ∈ (recordOwn (a.1.1 hn) _ _).forwards at hq
+        rw [hact1] at hq
+        simp only [recordOwn, decodeInfo_encodeInfo] at hq
+        erw [rootOf_digests_item] at hq
+        dsimp only at hq
+        have hb := blockOf_eq_mkBlock S rho hn (rho.ownKey v)
+          (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
+          (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p s hslot
+        erw [hb] at hq
+        rcases apply_forward_origin (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)
+            _ _ q hq with hq | ⟨B, parent, hB, hq⟩
+        · exact Or.inl hq
+        · refine Or.inr ⟨B, parent, ?_, hq⟩
+          simp only [Node.proposeBlock]
+          exact List.mem_cons_of_mem _ (by simpa only [hself] using hB)
+      · exact Or.inl (by change q ∈ (a.1.1 hn).forwards at hq; simpa [hact1] using hq)
+  · exact Or.inl hq
 
 omit [DecidableEq V] in
 /-- A decoded envelope's child is decoded identically inside any enclosing receipt.
@@ -1003,6 +1083,30 @@ theorem held_other_forward_call (hv : rho.ExecutionValid) {v : V} {i : Nat}
   rcases held_forward_release_or_call S rho hn hv ho hx hd with ⟨j, _, u, he, hr⟩ | h
   · exact False.elim (hne (released_forward_signer S rho hn he hr hd))
   · exact h
+
+/-- The only remaining origin case for held honest forwarding envelopes is a local
+tick publication. All receipts and local delivery publications already have trace witnesses. -/
+theorem held_forward_tick_or_processed (hv : rho.ExecutionValid) {v : V} {i : Nat}
+    {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∈ rho.honest)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B)) :
+    (x = rho.ownKey v ∧ ∃ j < i, ∃ u,
+      rho.events[j]? = some (.tick v u) ∧ o ∈ rho.releasesAt j) ∨
+    ∃ k < cutMap S rho hn i, t ≤ (simTrace S rho hn).time k ∧
+      ((simTrace S rho hn).BlockCallAt (rho.ownKey v) k B ∨
+        x = rho.ownKey v ∧ (simTrace S rho hn).AcceptAt (rho.ownKey v) k B) := by
+  rcases held_forward_release_or_call S rho hn hv ho hx hd with ⟨j, hj, u, he, hr⟩ | h
+  · have hxv := released_forward_signer S rho hn he hr hd
+    subst x
+    rcases he with he | ⟨receipt, he⟩
+    · exact Or.inl ⟨rfl, j, hj, u, he, hr⟩
+    · obtain ⟨k, hk, ha, ht⟩ := delivery_released_forward_acceptance S rho hn hv he hr hd
+      exact Or.inr ⟨k, hk.trans_le (cutMap_mono S rho hn (Nat.succ_le_of_lt hj)),
+        le_of_eq ht.symm, Or.inr ⟨rfl, ha⟩⟩
+  · obtain ⟨k, hk, ht, hc⟩ := h
+    exact Or.inr ⟨k, hk, ht, Or.inl hc⟩
 
 end Trace
 
