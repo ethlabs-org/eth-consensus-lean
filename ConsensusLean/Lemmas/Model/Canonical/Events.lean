@@ -131,20 +131,61 @@ theorem releases_restrict (xs ys : List (Event V (protoOf F E).Object))
   · exact Or.inl ((List.getElem?_append_left hjl).symm.trans hi)
   · exact Or.inr ⟨p, (List.getElem?_append_left hjl).symm.trans hi⟩
 
-/-- The finite pool of objects released in a prefix, deduplicated. -/
+/-- A first-occurrence pool prefix contains the entire original prefix before
+the corresponding first release. -/
+theorem firstRelease_prefix {α : Type} [DecidableEq α] (xs : List α)
+    (p : Nat) (o : α) (ho : xs.reverse.dedup.reverse[p]? = some o) :
+    ∃ i, xs[i]? = some o ∧ xs.take i ⊆ xs.reverse.dedup.reverse.take p := by
+  induction xs using List.reverseRecOn with
+  | nil => simp at ho
+  | append_singleton xs a ih =>
+    by_cases ha : a ∈ xs
+    · have he : (xs ++ [a]).reverse.dedup.reverse = xs.reverse.dedup.reverse := by
+        simp [List.reverse_append, List.dedup_cons_of_mem, ha]
+      rw [he] at ho ⊢
+      obtain ⟨i, hi, hp⟩ := ih ho
+      have hil := (List.getElem?_eq_some_iff.mp hi).1
+      exact ⟨i, (List.getElem?_append_left hil).trans hi,
+        by simpa only [List.take_append_of_le_length hil.le] using hp⟩
+    · have he : (xs ++ [a]).reverse.dedup.reverse = xs.reverse.dedup.reverse ++ [a] := by
+        simp [List.reverse_append, List.dedup_cons_of_notMem, ha]
+      rw [he] at ho ⊢
+      by_cases hp : p < xs.reverse.dedup.reverse.length
+      · rw [List.getElem?_append_left hp] at ho
+        obtain ⟨i, hi, hsub⟩ := ih ho
+        have hil := (List.getElem?_eq_some_iff.mp hi).1
+        exact ⟨i, (List.getElem?_append_left hil).trans hi,
+          by simpa only [List.take_append_of_le_length hil.le,
+            List.take_append_of_le_length hp.le] using hsub⟩
+      · have hpl := (List.getElem?_eq_some_iff.mp ho).1
+        have heq : p = xs.reverse.dedup.reverse.length := by
+          simp only [List.length_append, List.length_singleton] at hpl
+          omega
+        subst p
+        simp only [List.getElem?_append_right (Nat.le_refl _), Nat.sub_self,
+          List.getElem?_cons_zero, Option.some.injEq] at ho
+        subst o
+        refine ⟨xs.length, by simp, ?_⟩
+        simp only [List.take_append_length]
+        intro b hb
+        simpa using hb
+
+/-- The finite pool of objects released in a prefix, retaining first release order. -/
 def pool (es : List (Event V (protoOf F E).Object)) : List (protoOf F E).Object :=
-  ((List.range es.length).flatMap (rho.withEvents es).releasesAt).dedup
+  ((List.range es.length).flatMap (rho.withEvents es).releasesAt).reverse.dedup.reverse
 
 theorem pool_eq (es : List (Event V (protoOf F E).Object)) :
-    rho.pool es = ((List.range es.length).flatMap (rho.withEvents es).releasesAt).dedup := by rfl
+    rho.pool es =
+      ((List.range es.length).flatMap (rho.withEvents es).releasesAt).reverse.dedup.reverse := by
+  rfl
 
 theorem nodup_pool (es : List (Event V (protoOf F E).Object)) : (rho.pool es).Nodup := by
-  rw [pool_eq]
+  rw [pool_eq, List.nodup_reverse]
   exact List.nodup_dedup _
 
 theorem mem_pool (es : List (Event V (protoOf F E).Object)) (o : (protoOf F E).Object) :
     o ∈ rho.pool es ↔ ∃ v t, (rho.withEvents es).releases v o t := by
-  simp only [pool_eq, List.mem_dedup, List.mem_flatMap, List.mem_range]
+  simp only [pool_eq, List.mem_reverse, List.mem_dedup, List.mem_flatMap, List.mem_range]
   constructor
   · rintro ⟨i, hi, ho⟩
     have hie : es[i]? = some es[i] := List.getElem?_eq_getElem hi

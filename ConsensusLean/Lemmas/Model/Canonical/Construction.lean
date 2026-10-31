@@ -74,6 +74,7 @@ theorem Run.canonical_valid {O : OutputSchema} {F : Family O} {V : Type} [Fintyp
     ((base.withEvents (base.canonicalEvents g)).unforgeable_of_causal (base.canonical_causal g))
     (by rw [Run.withEvents_eq]; exact hsel)
     ((base.withEvents (base.canonicalEvents g)).credentials_of_causal (base.canonical_causal g))
+    (base.canonical_delivery_ready g)
 
 /-- `canonical_run_from` with one more fact about the schedule: its network
 is causal (every delivery is an earlier release), so it carries no object

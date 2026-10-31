@@ -397,7 +397,7 @@ theorem releaseAll_record (hash : (protoOf (compiled (familyC false)) E).Item �
           split
           · exact List.all_eq_true.mpr fun _ _ => Bool.or_true _
           · rfl
-        exact absurd (Bool.and_eq_true_iff.mpr ⟨hrl, hpr⟩) hn
+        exact absurd (Bool.and_eq_true_iff.mpr ⟨Bool.and_eq_true_iff.mpr ⟨hrl, hpr⟩, rfl⟩) hn
     · split
       · exact ⟨List.mem_cons_of_mem _ (ih _ hc').1, (ih _ hc').2⟩
       · exact ih nd hc'

@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement
+public import ConsensusLean.Lemmas.Model.Objects
 
 public section
 
@@ -199,6 +200,89 @@ theorem protects_voteObj {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (v : Vote (Fintype.card V)) :
     Model.protects (Model.protoOf (compiled (family S)) E) k seen (voteObj v) = true :=
   protects_of_not_att S k seen _ (fun _ _ h => by cases h)
+
+/-- A raw block with canonical vote/attestation payload has no forwarding dependencies. -/
+theorem dependencies_item {n : Nat} (held : List (Wire n))
+    (auth : Model.Auth n (ShapeRole Empty)) (h : Header Info)
+    (atts : List (FG.Att n)) (p : Payload n) :
+    (dependencies n).ready held (.mk auth (.item h) (payloadObjs atts p)) = true := by
+  simp [dependencies, Model.Obj.parts, forwardParent?, payloadObjs]
+  simp only [Model.Obj.partsList_eq]
+  simp [attObj, voteObj, Model.Obj.parts, Model.Obj.parts.partsList]
+  rintro x (⟨a, _, rfl⟩ | ⟨a, _, rfl⟩ | ⟨a, _, rfl⟩) <;> rfl
+
+/-- A dependency projected from a forwarding shape is a carried object. -/
+theorem forwardParent_contains {n : Nat} (o parent : Wire n)
+    (h : forwardParent? o = some parent) : Model.Obj.Contains o parent := by
+  unfold forwardParent? at h
+  split at h
+  · cases h
+    exact Model.Obj.Contains.step (by simp [Model.Obj.carried]) (.refl _)
+  · cases h
+
+/-- Relaying already-held objects cannot introduce an unmet wrapper dependency. -/
+theorem dependencies_relay {n : Nat} (seen cs : List (Wire n))
+    (h : ∀ c ∈ cs, c ∈ seen.flatMap Model.Obj.parts) :
+    (dependencies n).ready (seen.flatMap Model.Obj.parts)
+      (.mk .none (.data .relay) cs) = true := by
+  simp only [dependencies, Model.Obj.parts, List.all_cons, forwardParent?, Bool.true_and,
+    Model.Obj.partsList_eq, List.all_eq_true]
+  intro part hp
+  obtain ⟨c, hc, hp⟩ := List.mem_flatMap.mp hp
+  change (match forwardParent? part with
+    | none => true
+    | some parent => decide (parent ∈ seen.flatMap Model.Obj.parts)) = true
+  cases he : forwardParent? part with
+  | none => rfl
+  | some parent =>
+    apply decide_eq_true
+    obtain ⟨root, hr, hd⟩ := List.mem_flatMap.mp (h c hc)
+    exact List.mem_flatMap.mpr
+      ⟨root, hr, (show Model.Obj.Contains root c from hd).trans
+        ((show Model.Obj.Contains c part from hp).trans (forwardParent_contains part parent he))⟩
+
+/-- The parameter-free dependency projection preserves the exact parent reference. -/
+theorem forwardParent_forwardObj (origin : Fin sp.n) (t : Time)
+    (parent : Option (Wire sp.n)) (B : Blk sp) :
+    forwardParent? (forwardObj sp origin t parent B) = parent := by
+  cases parent <;> rfl
+
+/-- A genesis-parent forwarding wrapper decodes under the explicit wire checks. -/
+theorem decodeForward_genesis (hs : List (Header Info × Nat)) (origin : Fin sp.n)
+    (t : Time) (B : Blk sp) (hb : decodeBlock sp hs (blockObj sp B) = some B)
+    (hp : B.parent = some sp.genesisRoot) (ht : 0 ≤ t)
+    (hslt : sp.toParams.slotTime B.slot ≤ t) :
+    decodeForward sp hs (forwardObj sp origin t none B) = some (origin, t, none, B) := by
+  simp [forwardObj, decodeForward, hb, hp, ht, hslt]
+
+/-- A non-genesis forwarding wrapper retains the exact same-origin parent wrapper. -/
+theorem decodeForward_parent (hs : List (Header Info × Nat)) (origin : Fin sp.n)
+    (t pt : Time) (B A : Blk sp) (parent : Wire sp.n) (pp : Option (Wire sp.n))
+    (hb : decodeBlock sp hs (blockObj sp B) = some B)
+    (hparent : decodeForward sp hs parent = some (origin, pt, pp, A))
+    (hp : B.parent = some A.root) (hg : A.root ≠ sp.genesisRoot)
+    (hslot : A.slot < B.slot) (hpt : pt ≤ t) (ht : 0 ≤ t)
+    (hslt : sp.toParams.slotTime B.slot ≤ t) :
+    decodeForward sp hs (forwardObj sp origin t (some parent) B) =
+      some (origin, t, some parent, B) := by
+  simp [forwardObj, decodeForward, hb, hparent, hp, hg, hslot, hpt, ht, hslt]
+
+/-- Successful parsing identifies the entire authenticated object, not only its timestamp. -/
+theorem forwardObj_of_decodeForward (hs : List (Header Info × Nat)) (o : Wire sp.n)
+    (origin : Fin sp.n) (t : Time) (parent : Option (Wire sp.n)) (B : Blk sp)
+    (h : decodeForward sp hs o = some (origin, t, parent, B)) :
+    o = forwardObj sp origin t parent B := by
+  unfold decodeForward at h
+  split at h
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, _, h⟩ := h
+    split at h <;> simp_all [forwardObj]
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, _, ⟨⟨k, pt, pp, A⟩, _, h⟩⟩ := h
+    split at h <;> simp_all [forwardObj]
+    rw [← h.2.2.1]
+    rfl
+  · simp at h
 
 end Consensus.Goldilocks.Refinement
 

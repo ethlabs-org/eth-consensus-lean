@@ -323,7 +323,7 @@ theorem tickedRun_valid : tickedRun.ExecutionValid := by
     intro i w o t h
     have := List.mem_of_getElem? h
     simp [tickedRun] at this
-  refine ⟨by decide, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, Model.sel_valid _ rfl, ?_⟩
+  refine ⟨by decide, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, Model.sel_valid _ rfl, ?_⟩
   · simp [tickedRun, Event.keyLe, Event.time, Event.phase]
   · simp [tickedRun]
   · intro e he
@@ -338,6 +338,8 @@ theorem tickedRun_valid : tickedRun.ExecutionValid := by
     rfl
   · intro v o t _
     rfl
+  · intro i v o t he
+    exact False.elim (hnd i v o t he)
   · intro v t he
     simp [tickedRun] at he
   · intro v _ t _ _ hw

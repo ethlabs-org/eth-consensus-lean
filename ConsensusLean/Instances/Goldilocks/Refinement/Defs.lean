@@ -151,10 +151,20 @@ inductive Body where
   | att (a : WireAtt)
   /-- The unsigned relay wrapper; its carried objects are the relayed ones. -/
   | relay
+  /-- Forwarding tag with a claimed acceptance time. Authentication and actual acceptance
+  provenance are established separately. -/
+  | forward (acceptedAt : Time)
   deriving DecidableEq
 
 /-- The wire objects of the shape (no committee kinds). -/
 abbrev Wire (n : Nat) := ShapeObj n Empty Info Body
+
+/-- The exact dependency reference of a parent-bearing forwarding shape. This computable
+projection needs no protocol parameters or digests and certifies no validity or provenance.
+Raw blocks and genesis-wrapper shapes have no dependency reference. -/
+def forwardParent? {n : Nat} : Wire n → Option (Wire n)
+  | .mk (.signed _ .poll) (.data (.forward _)) [parent, _] => some parent
+  | _ => none
 
 /-- The canonical object of a vote: signed by its validator in the `.poll` role, carrying
 nothing. -/
@@ -301,6 +311,40 @@ noncomputable def decodeBlock (hs : List (Header Info × Nat)) : Wire sp.n → O
   | _ => none
 
 variable (sp) in
+/-- A signed forwarding wrapper. The optional exact parent wrapper precedes the canonical
+child block, so recursive delivery processing replays the parent first. Construction alone
+does not certify acceptance, freshness, or dependency readiness. -/
+def forwardObj (origin : Fin sp.n) (acceptedAt : Time) (parent : Option (Wire sp.n))
+    (B : Blk sp) : Wire sp.n :=
+  .mk (.signed origin .poll) (.data (.forward acceptedAt))
+    (parent.toList ++ [blockObj sp B])
+
+variable (sp) in
+open Classical in
+/-- Parse a canonical authenticated forwarding chain, using the same engine digests for all
+nested blocks. A parent wrapper has the same origin, an earlier slot and no later timestamp.
+The genesis-root parent terminates the chain. These are wire checks only: actual acceptance
+and first-release provenance must be established separately for honest origins. -/
+noncomputable def decodeForward (hs : List (Header Info × Nat)) :
+    Wire sp.n → Option (Fin sp.n × Time × Option (Wire sp.n) × Blk sp)
+  | .mk (.signed origin .poll) (.data (.forward t)) [child] => do
+      let B ← decodeBlock sp hs child
+      if child = blockObj sp B ∧ B.parent = some sp.genesisRoot ∧
+          0 ≤ t ∧ sp.toParams.slotTime B.slot ≤ t then
+        some (origin, t, none, B)
+      else none
+  | .mk (.signed origin .poll) (.data (.forward t)) [parent, child] => do
+      let B ← decodeBlock sp hs child
+      let (parentOrigin, parentTime, _, A) ← decodeForward hs parent
+      if child = blockObj sp B ∧ parentOrigin = origin ∧ B.parent = some A.root ∧
+          A.root ≠ sp.genesisRoot ∧ A.slot < B.slot ∧ parentTime ≤ t ∧
+          0 ≤ t ∧ sp.toParams.slotTime B.slot ≤ t then
+        some (origin, t, some parent, B)
+      else none
+  | _ => none
+termination_by o => sizeOf o
+
+variable (sp) in
 /-- The vote a received object is the canonical object of (`voteObj`): signed by its validator
 in the `.poll` role, carrying nothing. -/
 def decodeVoteObj : Wire sp.n → Option (Vote sp.n)
@@ -355,6 +399,25 @@ def delivered (o : Wire sp.n) : List (Wire sp.n) := o.parts
 noncomputable def process (st : State sp ro) (o : Wire sp.n) (hs : List (Header Info × Nat)) :
     State sp ro :=
   (delivered sp o).foldl (processOne hs) st
+
+/-- Every forwarding shape requires its exact parent wrapper to be held before
+the envelope. Raw blocks have no dependency. Parsing and honest provenance,
+not this shape-only policy, establish same-origin acceptance and freshness. -/
+def dependencies (n : Nat) : Model.DependencyPolicy (Wire n) where
+  ready held o := o.parts.all fun part =>
+    match forwardParent? part with
+    | none => true
+    | some parent => decide (parent ∈ held)
+  mono := by
+    intro held held' o hsub h
+    simp only [List.all_eq_true] at h ⊢
+    intro part hp
+    specialize h part hp
+    cases hi : forwardParent? part with
+    | none => simp
+    | some parent =>
+      simp only [hi, decide_eq_true_eq] at h ⊢
+      exact hsub h
 
 /-- The node's cuts for the engine's delivery of the objects `os` to `y` at time `t`, given the
 digests `hs`, from cut `j` to cut `j'`: in order, one top-level event (`canonEvent`) per
@@ -487,6 +550,7 @@ noncomputable def goldilocksShape : ChainShape sp.pub Out Info where
     | [] => []
     | cs => [(.data .relay, cs)]
   process := process
+  dependencies := dependencies sp.n
   recordOwn := recordOwn
   durable := id
   restore := restore
@@ -564,6 +628,7 @@ noncomputable def family (S : Setup) : ShapeFamily schema Info := fun pub =>
       else (st, none)
     gossip := fun st t => if hn : 1 ≤ pub.n then (G hn).gossip (st hn) t else []
     process := fun st o hs hn => (G hn).process (st hn) o hs
+    dependencies := dependencies pub.n
     recordOwn := fun st o hs hn => (G hn).recordOwn (st hn) o hs
     durable := id
     restore := fun k d t hn => (G hn).restore k (d hn) t

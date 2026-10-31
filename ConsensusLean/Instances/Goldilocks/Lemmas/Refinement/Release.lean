@@ -245,7 +245,8 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
           erw [hB]
           simp only [Node.proposeBlock, hself, emitted, List.flatMap_cons, Node.acProposal]
           rfl
-      · rename_i h; exact absurd hc h
+      · rename_i h
+        exact False.elim (h (Bool.and_eq_true_iff.2 ⟨hc, dependencies_item _ _ _ _ _⟩))
   · simp only [propose, hp, ite_false] at hact1 hact2
     simp only [Node.tickStep, hP.not.2 hp, ite_false]
     rw [hact2]
@@ -300,14 +301,19 @@ theorem dutyStep_poll_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (fami
       unfold Model.releaseAll
       split
       · rfl
-      · rename_i h; exact absurd hc h
+      · rename_i h
+        apply False.elim
+        apply h
+        refine Bool.and_eq_true_iff.2 ⟨hc, ?_⟩
+        change (dependencies _).ready _ (.mk (.signed _ .poll) (.data b) []) = true
+        cases b <;> rfl
     · rw [ite_eq_right hp]
       have hc : ¬ (Model.releasable nd.seen (pollObj S rho v b) &&
           Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v) nd.seen
             (pollObj S rho v b)) = true := fun h => hp (Bool.and_eq_true_iff.1 h).2
       unfold Model.releaseAll
       split
-      · rename_i h; exact absurd h hc
+      · rename_i h; exact False.elim (hc (Bool.and_eq_true_iff.mp h).1)
       · rfl
 
 omit [DecidableEq V] in

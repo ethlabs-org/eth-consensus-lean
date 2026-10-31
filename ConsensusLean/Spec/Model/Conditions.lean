@@ -6,9 +6,9 @@ public import ConsensusLean.Spec.Problem.Network
 
 /-! # Conditions (L1)
 
-Conditions on runs. None of them mentions anything the protocol supplies:
-they speak about the environment, the run data, and what the engine did
-(ticks, releases, receipts, restarts). Participation (readiness, majorities,
+Conditions on runs speak about the environment, the run data, and what the engine did
+(ticks, releases, receipts, restarts); delivery additionally checks the protocol's
+holdings-only dependency policy. Participation (readiness, majorities,
 fault bounds) is environment vocabulary, defined once in L0
 (`Consensus.EnvPoint`) and applied to `Run.point`. -/
 
@@ -60,6 +60,9 @@ structure ExecutionValid : Prop where
   -- Sleep.
   tick_awake : ∀ v t, Event.tick v t ∈ rho.events → E.awake v t = true
   deliver_awake : ∀ v o t, Event.deliver v o t ∈ rho.events → E.awake v t = true
+  /-- A receipt is a dependency-ready delivery, not a refused raw arrival. -/
+  delivery_ready : ∀ i v o t, rho.events[i]? = some (.deliver v o t) →
+    (protoOf F E).dependencies.ready (closure (rho.stateBefore i v).seen) o = true
   restart_at_wake : ∀ v t, Event.restart v t ∈ rho.events → 0 < t ∧ Wakes E v t
   wake_restart : ∀ v ∈ rho.honest, ∀ t, 0 < t → t ≤ rho.horizon →
     Wakes E v t → Event.restart v t ∈ rho.events

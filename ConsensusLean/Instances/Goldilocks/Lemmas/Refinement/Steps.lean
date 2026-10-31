@@ -1096,7 +1096,7 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
         exact Finset.mem_singleton.2 (hp.trans hself).symm
       rw [ite_eq_left hmem]
       unfold Model.releaseAll
-      rw [ite_eq_left (Bool.and_eq_true_iff.2 ⟨?_, ?_⟩)]
+      rw [ite_eq_left (Bool.and_eq_true_iff.2 ⟨Bool.and_eq_true_iff.2 ⟨?_, ?_⟩, ?_⟩)]
       · change (recordOwn (a.1.1 hn) _ _).node = _
         rw [hact1]
         simp only [recordOwn, decodeInfo_encodeInfo]
@@ -1112,6 +1112,7 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
         exact List.all_eq_true.2 fun o ho => decide_eq_true (hrel _ _ _ rfl o ho)
       · exact protects_of_not_att S _ _ _ (fun k w h => by
           cases h)
+      · exact dependencies_item _ _ _ _ _
   · simp only [propose, hp, ite_false] at hact1 hact2
     simp only [tickStep, hP.not.2 hp, ite_false]
     rw [hact2]

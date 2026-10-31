@@ -115,6 +115,7 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
     | .poll t => withMempool st.2 (fun (b, cs) => (.data b, cs)) (S.poll st.1 (t : Time))
   gossip st t := S.gossip st.1 t
   process st o hs := (S.process st.1 o hs, st.2)
+  dependencies := S.dependencies
   recordOwn st o hs := (S.recordOwn st.1 o hs, st.2)
   durable st := S.durable st.1
   restore k d t := (S.restore k d t, [])

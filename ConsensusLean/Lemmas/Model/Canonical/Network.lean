@@ -92,6 +92,95 @@ theorem canonical_causal (g : Time) : (rho.withEvents (rho.canonicalEvents g)).C
     rw [(rho.canonicalEvents_eq g).trans htail, rho.releasesAt_append _ _ hjl]
     exact ho
 
+/-- Earlier entries of one recipient's delivery batch are already held at
+the current entry, even when all entries have the same timestamp. -/
+theorem delivery_batch_held (pre post : List (Event V (protoOf F E).Object))
+    (os : List (protoOf F E).Object) (v : V) (t : Time) (p : Nat) :
+    os.take p ⊆
+      ((rho.withEvents (pre ++ os.map (fun o => .deliver v o t) ++ post)).stateBefore
+        (pre.length + p) v).seen := by
+  intro a ha
+  obtain ⟨j, he⟩ := List.mem_iff_getElem?.mp ha
+  have hjp : j < p := lt_of_lt_of_le (List.getElem?_eq_some_iff.mp he).1
+    (List.length_take_le _ _)
+  have hja : os[j]? = some a := by
+    simpa only [List.getElem?_take, hjp, ↓reduceIte] using he
+  have hjl := (List.getElem?_eq_some_iff.mp hja).1
+  let r := rho.withEvents (pre ++ os.map (fun o => .deliver v o t) ++ post)
+  have hev : r.events[pre.length + j]? = some (.deliver v a t) := by
+    dsimp only [r]
+    rw [withEvents_events]
+    rw [List.getElem?_append_left (by simp; omega),
+      List.getElem?_append_right (by omega)]
+    simp [List.getElem?_map, hja]
+  apply r.seen_mono (show pre.length + j + 1 ≤ pre.length + p by omega) v
+  rw [r.stateBefore_succ hev]
+  simp only [step, Function.update_self, deliver_seen]
+  exact List.mem_append_left _ (List.mem_append_right _ (List.mem_singleton_self _))
+
+/-- The eager scheduler delivers only dependency-ready objects. The pool's
+first-release order and the release guard suffice; no protocol law is assumed. -/
+theorem canonical_delivery_ready (g : Time) :
+    ∀ i v o t, (rho.canonicalEvents g)[i]? = some (.deliver v o t) →
+      (protoOf F E).dependencies.ready
+        (closure ((rho.withEvents (rho.canonicalEvents g)).stateBefore i v).seen) o = true := by
+  classical
+  intro i v o t hi
+  have hm := List.mem_of_getElem? hi
+  rw [canonicalEvents_eq] at hm
+  obtain ⟨k, hk, he⟩ := (rho.mem_stages g _ _).mp hm
+  have ht : t = (k : Time) := rho.layer_time g _ _ he
+  subst t
+  have hd : g ≤ (k : Time) ∧ v ∈ rho.honest ∧ E.awake v (k : Time) = true ∧
+      o ∈ rho.pool (rho.front (rho.stages g k) (k : Time)) := by
+    simp only [layer_eq, List.mem_append, mem_wakeEvents, mem_tickEvents,
+      mem_deliveryEvents] at he
+    rcases he with (⟨w, _, _, _, h⟩ | ⟨w, _, _, h⟩) | ⟨hg, w, hw, ha, a, hp, h⟩
+    · cases h
+    · cases h
+    · cases h; exact ⟨hg, hw, ha, hp⟩
+  let front := rho.front (rho.stages g k) (k : Time)
+  let os := rho.pool front
+  let vs := (rho.honest.filter (fun w => E.awake w (k : Time) = true)).toList
+  have hv : v ∈ vs := by simp [vs, hd.2.1, hd.2.2.1]
+  obtain ⟨before, after, hvs⟩ := List.mem_iff_append.mp hv
+  obtain ⟨p, hp⟩ := List.mem_iff_getElem?.mp hd.2.2.2
+  obtain ⟨tail, htail⟩ := rho.stages_prefix g (show k + 1 ≤ rho.horizon.toNat + 1 by omega)
+  let pre := front ++ before.flatMap (fun w => os.map (fun a => .deliver w a (k : Time)))
+  let post := after.flatMap (fun w => os.map (fun a => .deliver w a (k : Time))) ++ tail
+  have hfull : rho.canonicalEvents g =
+      pre ++ os.map (fun a => .deliver v a (k : Time)) ++ post := by
+    rw [canonicalEvents_eq, htail, stages_succ, layer_eq]
+    simp only [deliveryEvents_eq, hd.1, ↓reduceIte]
+    change _ ++ (_ ++ _ ++ vs.flatMap _) ++ tail = _
+    rw [hvs]
+    simp [pre, post, front, front_eq, os, List.flatMap_append, List.append_assoc]
+  have hp' : os[p]? = some o := hp
+  have hpl := (List.getElem?_eq_some_iff.mp hp').1
+  have hev : (rho.canonicalEvents g)[pre.length + p]? = some (.deliver v o (k : Time)) := by
+    rw [hfull, List.getElem?_append_left (by simp; omega),
+      List.getElem?_append_right (by omega)]
+    simp [List.getElem?_map, hp']
+  have hn : (rho.canonicalEvents g).Nodup := by
+    rw [canonicalEvents_eq]; exact rho.stages_nodup g _
+  have hi' : i = pre.length + p :=
+    (hn.getElem?_inj (List.getElem?_eq_some_iff.mp hi).1).mp
+      (hi.trans hev.symm)
+  obtain ⟨rest, hrest⟩ := rho.front_prefix g hk
+  have hc : (rho.withEvents front).Causal := rho.causal_prefix front rest (by
+    rw [← hrest, ← canonicalEvents_eq]; exact rho.canonical_causal g)
+  have hr := (rho.withEvents front).pool_ready hc p o
+    (by simpa only [os, pool_eq, withEvents_events, withEvents_eq] using hp')
+  have hr' : (protoOf F E).dependencies.ready (closure (os.take p)) o = true := by
+    simpa only [os, pool_eq, withEvents_events, withEvents_eq] using hr
+  apply (protoOf F E).dependencies.mono _ _ _ ?_ hr'
+  intro a ha
+  obtain ⟨r, hm, hh⟩ := (mem_closure_iff _ a).mp ha
+  apply (mem_closure_iff _ a).mpr
+  refine ⟨r, ?_, hh⟩
+  rw [hi', hfull]
+  exact rho.delivery_batch_held pre post os v (k : Time) p hm
+
 /-- A canonical event whose time is below `a` lies in the stages before `a`. -/
 theorem mem_stages_of_time_lt (g : Time) {n : Nat} {e : Event V (protoOf F E).Object}
     (he : e ∈ rho.stages g n) {a : Time} (ha : e.time < a) : e ∈ rho.stages g a.toNat := by

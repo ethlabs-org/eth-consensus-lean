@@ -15,6 +15,21 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-10-31, Francesco (coordinator-directed dependency repair). A single monotone
+  holdings policy governs release and delivery. The engine releases a candidate only
+  when its dependencies are already held, and valid receipts satisfy the same policy.
+  The predicate is decidable and depends only on holdings and the object, preserving
+  rehashing invariance; neither it nor protocol handlers receives the hash function.
+  Other instances use the unrestricted policy. The canonical scheduler retains first
+  releases rather than last duplicates, preserving dependency order at the same timestamps.
+  Goldilocks's fresh child forwarding wrapper depends on the complete same-origin signed
+  parent wrapper, not merely a raw parent hash. Carried references are recursively processed,
+  not inert pointers. The pre-envelope dependency must already be held; nesting it in the
+  current envelope does not satisfy that requirement. This differs from legacy `depsS`,
+  which also required `parentFG.isSome`; accepted-parent and timely-processing conclusions
+  remain protocol proof obligations. Source/time authentication, closure-to-prior-processing
+  (or own acceptance), and store-to-seen/no-suppressed-release joins must be proved separately.
+  No FIFO channel, retry queue or separate full-ancestry envelope is assumed.
 - 2026-10-31, Francesco (coordinator decision, #107). The generic `TimeGrid` supplies an
   absolute positive slot length, and the skeleton supplies duty offsets in time units. Neither
   depends on network Δ generically; each instance constructs them from its public parameters.

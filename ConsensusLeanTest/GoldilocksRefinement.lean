@@ -112,4 +112,38 @@ theorem nested_payload_message {sp : SA.SAParams}
     canonEvent, decodeBlock, decodeVoteObj, decodeAttObj, voteObj,
     decodeVote_encodeVote, Option.filter]
 
+/-- Unsigned timestamps cannot certify forwarding freshness. -/
+theorem unsigned_forward_rejected (sp : SA.SAParams) (hs : List (Blocks.Header Info × Nat))
+    (t : Time) (cs : List (Wire sp.n)) :
+    decodeForward sp hs (.mk .none (.data (.forward t)) cs) = none := by
+  simp [decodeForward]
+
+/-- A parent signed by a different origin cannot satisfy the forwarding chain. -/
+theorem foreign_parent_rejected (sp : SA.SAParams) (hs : List (Blocks.Header Info × Nat))
+    (x y : Fin sp.n) (hne : y ≠ x) (t pt : Time) (B A : Blk sp)
+    (p : Wire sp.n) (pp : Option (Wire sp.n))
+    (hb : decodeBlock sp hs (blockObj sp B) = some B)
+    (hp : decodeForward sp hs p = some (y, pt, pp, A)) :
+    decodeForward sp hs (forwardObj sp x t (some p) B) = none := by
+  simp [forwardObj, decodeForward, hb, hp, hne]
+
+/-- A negative claimed acceptance time is rejected even for a canonical genesis child. -/
+theorem negative_forward_rejected (sp : SA.SAParams) (hs : List (Blocks.Header Info × Nat))
+    (x : Fin sp.n) (t : Time) (ht : t < 0) (B : Blk sp)
+    (hb : decodeBlock sp hs (blockObj sp B) = some B) :
+    decodeForward sp hs (forwardObj sp x t none B) = none := by
+  simp [forwardObj, decodeForward, hb, not_le.mpr ht]
+
+/-- Carrying a parent in the current envelope is insufficient: the exact parent
+must already be held. A different timestamped object does not substitute for it. -/
+theorem forward_dependency_preheld :
+    let parent : Wire 1 := .mk (.signed 0 .poll) (.data (.forward 1)) []
+    let other : Wire 1 := .mk (.signed 0 .poll) (.data (.forward 2)) []
+    let child : Wire 1 := .mk (.signed 0 .poll) (.data (.forward 3))
+      [parent, .mk .none (.data .relay) []]
+    (dependencies 1).ready [] child = false ∧
+      (dependencies 1).ready [other] child = false ∧
+      (dependencies 1).ready [parent] child = true := by
+  decide
+
 end Consensus.Goldilocks.Refinement.Test

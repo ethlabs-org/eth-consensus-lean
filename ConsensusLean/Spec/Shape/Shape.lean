@@ -159,6 +159,9 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
     List (Msg (Header Info) Body × List (ShapeObj pub.n skel.Kind Info Body))
   /-- Processing a delivered object, with the digests of the items it contains. -/
   process : State → ShapeObj pub.n skel.Kind Info Body → List (Header Info × Nat) → State
+  /-- Engine-held dependencies for release and delivery. -/
+  dependencies : Model.DependencyPolicy (ShapeObj pub.n skel.Kind Info Body) :=
+    .trivial _
   /-- Recording an own released object, with the digests of the items it
   contains. -/
   recordOwn : State → ShapeObj pub.n skel.Kind Info Body → List (Header Info × Nat) → State

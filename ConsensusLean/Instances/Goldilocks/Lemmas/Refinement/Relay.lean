@@ -1019,7 +1019,8 @@ theorem tick_relays {j : Nat} {v : V} {t : Time} (he : rho.events[j]? = some (.t
   simp only [Model.releaseAll]
   split
   · exact List.mem_cons_self
-  · rename_i h; exact absurd hc h
+  · rename_i h
+    exact False.elim (h (Bool.and_eq_true_iff.2 ⟨hc, dependencies_relay _ _ hseen⟩))
 
 /-- **A delivery relays what it queued.** The gossip of a delivery to node `v` releases the
 unsigned relay wrapper of its relay queue, which carries everything the delivery's `process`
@@ -1085,7 +1086,8 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled (family S
   simp only [Model.releaseAll]
   split
   · exact List.mem_cons_self
-  · rename_i h; exact absurd hc h
+  · rename_i h
+    exact False.elim (h (Bool.and_eq_true_iff.2 ⟨hc, dependencies_relay _ _ hseen⟩))
 
 /-- A cut of an engine event that is an FG cut at position `0`, or an `ac_on_message` cut, is a
 cut of a delivery. -/

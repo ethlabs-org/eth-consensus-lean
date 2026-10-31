@@ -451,7 +451,7 @@ theorem dutyStep_carried (v : V) (nd : Model.Node (Model.protoOf (compiled (fami
     · rename_i h
       simp only [Model.releaseAll, List.mem_singleton] at hc
       subst hc
-      have h1 := (Bool.and_eq_true_iff.1 h).1
+      have h1 := (Bool.and_eq_true_iff.1 (Bool.and_eq_true_iff.1 h).1).1
       unfold Model.releasable at h1
       exact of_decide_eq_true (List.all_eq_true.1 h1 x hx)
     · simp [Model.releaseAll] at hc
@@ -495,7 +495,13 @@ theorem dutyStep_poll_rel (v : V) (nd : Model.Node (Model.protoOf (compiled (fam
   unfold Model.releaseAll
   split
   · rfl
-  · rename_i h; exact absurd hc h
+  · rename_i h
+    apply False.elim
+    apply h
+    apply Bool.and_eq_true_iff.2
+    refine ⟨hc, ?_⟩
+    change (dependencies _).ready _ (.mk (.signed _ .poll) (.data b) []) = true
+    cases b <;> rfl
 
 omit [DecidableEq V] in
 include hn in

@@ -65,6 +65,29 @@ def proto (pub : Public) : Protocol pub Unit where
 /-- The test family. -/
 def family : Family schema := proto
 
+/-- Data depends on a previously held item; items have no dependency. -/
+def dependentProto : Protocol ⟨1, 1, by decide⟩ Unit :=
+  { proto ⟨1, 1, by decide⟩ with
+    dependencies := {
+      ready := fun held (o : Obj 1 Bool Unit Unit) => match o.msg with
+        | .item _ => true
+        | .data _ => held.any fun p => p.item?.isSome
+      mono := by
+        intro held held' o hsub h
+        split at h
+        · rfl
+        · simp only [List.any_eq_true] at h ⊢
+          obtain ⟨p, hp, hr⟩ := h
+          exact ⟨p, hsub hp, hr⟩ } }
+
+/-- Dependencies must precede a release; later candidates cannot retroactively enable it. -/
+theorem release_dependency_order :
+    let parent : dependentProto.Object := .mk .none (.item ()) []
+    let child : dependentProto.Object := .mk .none (.data ()) []
+    (releaseAll dependentProto (fun _ => 0) 0 ⟨(), []⟩ [child, parent]).2 = [parent] ∧
+    (releaseAll dependentProto (fun _ => 0) 0 ⟨(), []⟩ [parent, child]).2 = [parent, child] := by
+  decide
+
 /-- Two validators, always awake, `Δ = 3`, `GST = 4`. -/
 def env : Env (Fin 2) := ⟨3, by decide, fun _ _ => true⟩
 

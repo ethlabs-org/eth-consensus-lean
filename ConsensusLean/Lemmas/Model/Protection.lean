@@ -76,7 +76,8 @@ theorem releaseAll_noConflict_seen {hash : P.Item → Nat} {k : Key pub} {nd : N
     next hf =>
       dsimp only at h
       rcases List.mem_cons.mp h with rfl | h
-      · exact (protects_iff.mp (Bool.and_eq_true_iff.mp hf).2 hs).2 o ho hs'
+      · exact (protects_iff.mp (Bool.and_eq_true_iff.mp
+          (Bool.and_eq_true_iff.mp hf).1).2 hs).2 o ho hs'
       · exact ih h (closure_mono (fun x hx => List.mem_append_left _ hx) ho)
     next => exact ih h ho
 
@@ -90,9 +91,10 @@ theorem releaseAll_noConflict {hash : P.Item → Nat} {k : Key pub} {nd : Node P
   | nil => simp [releaseAll] at h
   | cons d cs ih =>
     unfold releaseAll at h h'
-    by_cases hf : (releasable nd.seen d && protects P k nd.seen d) = true
+    by_cases hf : ((releasable nd.seen d && protects P k nd.seen d) &&
+        P.dependencies.ready (closure nd.seen) d) = true
     · simp only [hf, ↓reduceIte] at h h'
-      have hp := protects_iff.mp (Bool.and_eq_true_iff.mp hf).2
+      have hp := protects_iff.mp (Bool.and_eq_true_iff.mp (Bool.and_eq_true_iff.mp hf).1).2
       have hd : d ∈ closure (nd.seen ++ [d]) :=
         mem_closure_of_mem (List.mem_append_right _ (List.mem_singleton_self d))
       rcases List.mem_cons.mp h with rfl | h <;> rcases List.mem_cons.mp h' with rfl | h'
@@ -103,13 +105,13 @@ theorem releaseAll_noConflict {hash : P.Item → Nat} {k : Key pub} {nd : Node P
     · simp only [hf, Bool.false_eq_true, ↓reduceIte] at h h'
       exact ih h h'
 
-/-- The carried-only release: the engine's release without slashing
-protection. -/
+/-- The carried/dependency release: the engine's release without slashing
+protection, retaining the dependency guard. -/
 def releaseAllCarried (P : Protocol pub Out) (hash : P.Item → Nat) :
     Node P → List P.Object → Node P × List P.Object
   | nd, [] => (nd, [])
   | nd, c :: cs =>
-    if releasable nd.seen c then
+    if releasable nd.seen c && P.dependencies.ready (closure nd.seen) c then
       let nd' : Node P := ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩
       let r := releaseAllCarried P hash nd' cs
       (r.1, c :: r.2)
@@ -121,7 +123,7 @@ theorem releaseAllCarried_nil (hash : P.Item → Nat) (nd : Node P) :
 theorem releaseAllCarried_cons (hash : P.Item → Nat) (nd : Node P) (c : P.Object)
     (cs : List P.Object) :
     releaseAllCarried P hash nd (c :: cs) =
-      if releasable nd.seen c then
+      if releasable nd.seen c && P.dependencies.ready (closure nd.seen) c then
         let nd' : Node P := ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩
         let r := releaseAllCarried P hash nd' cs
         (r.1, c :: r.2)

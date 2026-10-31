@@ -54,6 +54,18 @@ def Admits : SelSpec n → Finset (Fin n) → Prop
 
 end SelSpec
 
+/-- Engine-only dependency policy. Readiness depends monotonically on held
+objects, not on hashes or the protocol's acceptance state. -/
+structure DependencyPolicy (Object : Type) where
+  ready : List Object → Object → Bool
+  mono : ∀ held held' o, held ⊆ held' → ready held o = true →
+    ready held' o = true
+
+/-- No dependency restrictions. -/
+def DependencyPolicy.trivial (Object : Type) : DependencyPolicy Object where
+  ready := fun _ _ => true
+  mono := fun _ _ _ _ _ => rfl
+
 /-- A protocol for public parameters `pub`, with output identifiers `Out`. -/
 structure Protocol (pub : Public) (Out : Type) : Type 1 where
   State : Type
@@ -103,6 +115,8 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   /-- Processing a delivered object, with the digests of the items it
   contains. Total: any object, at any time. -/
   process : State → Obj pub.n Role Item Body → List (Item × Nat) → State
+  /-- Dependencies held before release or delivery. Other handler guards are separate. -/
+  dependencies : DependencyPolicy (Obj pub.n Role Item Body) := .trivial _
   /-- Recording an object the node has just released, with the digests of the
   items it contains. -/
   recordOwn : State → Obj pub.n Role Item Body → List (Item × Nat) → State

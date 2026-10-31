@@ -43,6 +43,31 @@ theorem releaseAll_subset (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
       · exact List.mem_cons_of_mem c (ih _ o ho)
     · exact fun o ho => List.mem_cons_of_mem c (ih _ o ho)
 
+/-- A release is ready at any receiver holding the sender's initial objects
+and all preceding releases of this call. This includes same-event release order. -/
+theorem releaseAll_ready (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
+    (cs : List P.Object) :
+    ∀ i o, (releaseAll P hash k nd cs).2[i]? = some o →
+      P.dependencies.ready
+        (closure (nd.seen ++ (releaseAll P hash k nd cs).2.take i)) o = true := by
+  induction cs generalizing nd with
+  | nil => simp [releaseAll]
+  | cons c cs ih =>
+    simp only [releaseAll]
+    split
+    next hf =>
+      intro i o ho
+      cases i with
+      | zero =>
+        simp only [List.getElem?_cons_zero, Option.some.injEq] at ho
+        subst o
+        simpa using (Bool.and_eq_true_iff.mp hf).2
+      | succ i =>
+        simp only [List.getElem?_cons_succ] at ho
+        have h := ih ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩ i o ho
+        simpa only [List.take_succ_cons, List.append_assoc, List.singleton_append] using h
+    next hf => exact ih nd
+
 /-- What `releaseAll` releases and the `seen` it leaves depend only on `seen`,
 not on the state. -/
 theorem releaseAll_seen_only (hash : P.Item → Nat) (k : Key pub) {nd nd' : Node P}
@@ -53,7 +78,8 @@ theorem releaseAll_seen_only (hash : P.Item → Nat) (k : Key pub) {nd nd' : Nod
   | nil => simp [releaseAll, h]
   | cons c cs ih =>
     simp only [releaseAll, h]
-    by_cases hf : (releasable nd'.seen c && protects P k nd'.seen c) = true
+    by_cases hf : (releasable nd'.seen c && protects P k nd'.seen c &&
+      P.dependencies.ready (closure nd'.seen) c) = true
     · simp only [hf, ↓reduceIte]
       have h' := ih (nd := ⟨P.recordOwn nd.st c (digests hash c), nd'.seen ++ [c]⟩)
         (nd' := ⟨P.recordOwn nd'.st c (digests hash c), nd'.seen ++ [c]⟩) rfl
@@ -72,7 +98,8 @@ theorem releaseAll_append (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
   | nil => simp [releaseAll]
   | cons c cs ih =>
     simp only [List.cons_append, releaseAll]
-    by_cases hf : (releasable nd.seen c && protects P k nd.seen c) = true
+    by_cases hf : (releasable nd.seen c && protects P k nd.seen c &&
+      P.dependencies.ready (closure nd.seen) c) = true
     · simp only [hf, ↓reduceIte, ih, List.cons_append]
     · simp only [hf, Bool.false_eq_true, ↓reduceIte, ih]
 
@@ -120,7 +147,8 @@ theorem releaseAll_invariant (Q : P.State → Prop) (hash : P.Item → Nat) (k :
   | nil => exact h
   | cons c cs ih =>
     simp only [releaseAll] at hrec ⊢
-    by_cases hf : (releasable nd.seen c && protects P k nd.seen c) = true
+    by_cases hf : (releasable nd.seen c && protects P k nd.seen c &&
+      P.dependencies.ready (closure nd.seen) c) = true
     · simp only [hf, ↓reduceIte] at hrec ⊢
       exact ih _ (fun s o hs ho => hrec s o hs (List.mem_cons_of_mem _ ho))
         (hrec _ c _ List.mem_cons_self h)
@@ -373,6 +401,16 @@ theorem tick_flat (nd : Node (protoOf F E)) (v : V) (t : Time) :
     exact ⟨[], by simp, by simp [htick, releaseAll], by simp [htick, releaseAll]⟩
 
 omit [DecidableEq V] in
+/-- Tick releases satisfy dependencies using only holdings and earlier releases. -/
+theorem tick_ready (nd : Node (protoOf F E)) (v : V) (t : Time) (i : Nat)
+    (o : (protoOf F E).Object) (ho : (rho.tick nd v t).2[i]? = some o) :
+    (protoOf F E).dependencies.ready
+      (closure (nd.seen ++ (rho.tick nd v t).2.take i)) o = true := by
+  obtain ⟨cs, _, h2, _⟩ := rho.tick_flat nd v t
+  rw [h2] at ho ⊢
+  exact releaseAll_ready rho.hash (rho.ownKey v) nd cs i o ho
+
+omit [DecidableEq V] in
 /-- Every object a tick of `v` releases is unsigned, or signed with `v`'s own
 key in a role whose selection contains that key. -/
 theorem tick_auth (nd : Node (protoOf F E)) (v : V) (t : Time) {o : (protoOf F E).Object}
@@ -554,6 +592,17 @@ theorem deliver_flat (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object
     · exact Or.inr hc
   · rw [hdel, releaseAll_append, h2, List.nil_append, hgo.1]
   · rw [hdel, releaseAll_append, hgo.2]
+
+omit [DecidableEq V] in
+/-- Delivery releases may additionally use the just-processed received object. -/
+theorem deliver_ready (nd : Node (protoOf F E)) (v : V) (p : (protoOf F E).Object)
+    (t : Time) (i : Nat) (o : (protoOf F E).Object)
+    (ho : (rho.deliver nd v p t).2[i]? = some o) :
+    (protoOf F E).dependencies.ready
+      (closure ((nd.seen ++ [p]) ++ (rho.deliver nd v p t).2.take i)) o = true := by
+  obtain ⟨cs, _, h2, _⟩ := rho.deliver_flat nd v p t
+  rw [h2] at ho ⊢
+  exact releaseAll_ready rho.hash (rho.ownKey v) _ cs i o ho
 
 omit [DecidableEq V] in
 /-- Every object a delivery to `v` releases is unsigned, or signed with `v`'s

@@ -153,7 +153,8 @@ def releaseAll {pub : Public} {Out : Type} (P : Protocol pub Out) (hash : P.Item
     (k : Key pub) : Node P → List P.Object → Node P × List P.Object
   | nd, [] => (nd, [])
   | nd, c :: cs =>
-    if releasable nd.seen c && protects P k nd.seen c then
+    if releasable nd.seen c && protects P k nd.seen c &&
+        P.dependencies.ready (closure nd.seen) c then
       let nd' : Node P := ⟨P.recordOwn nd.st c (digests hash c), nd.seen ++ [c]⟩
       let r := releaseAll P hash k nd' cs
       (r.1, c :: r.2)

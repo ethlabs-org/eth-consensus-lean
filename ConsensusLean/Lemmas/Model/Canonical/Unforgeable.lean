@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Lemmas.Model.Canonical.Events
 public import ConsensusLean.Lemmas.Model.Candidates
+public import ConsensusLean.Lemmas.Model.View
 
 public section
 
@@ -29,7 +30,8 @@ theorem releaseAll_preserves {pub : Public} {Out : Type} {P : Protocol pub Out}
         intro d hd
         rcases hd.cases with rfl | ⟨_, hm, hc⟩
         · exact hr d List.mem_cons_self
-        · have hm' := List.all_eq_true.mp (Bool.and_eq_true_iff.mp hf).1 _ hm
+        · have hm' := List.all_eq_true.mp
+            (Bool.and_eq_true_iff.mp (Bool.and_eq_true_iff.mp hf).1).1 _ hm
           have hmem : _ ∈ closure nd.seen := of_decide_eq_true hm'
           obtain ⟨o, ho, hoc⟩ := (mem_closure_iff _ _).mp hmem
           exact hs o ho d (hoc.trans hc)
@@ -59,6 +61,119 @@ causality for every carried authentication. -/
 def Causal : Prop :=
   ∀ i w o t, rho.events[i]? = some (.deliver w o t) →
     ∃ j v t', j < i ∧ rho.SendsAt v j t' ∧ o ∈ rho.releasesAt j
+
+/-- Causality restricts to an event prefix. -/
+theorem causal_prefix (xs ys : List (Event V (protoOf F E).Object))
+    (hc : (rho.withEvents (xs ++ ys)).Causal) : (rho.withEvents xs).Causal := by
+  rw [withEvents_eq] at hc ⊢
+  intro i v o t hi
+  have hil : i < xs.length := (List.getElem?_eq_some_iff.mp hi).1
+  obtain ⟨j, w, s, hj, hs, hr⟩ := hc i v o t
+    ((List.getElem?_append_left hil).trans hi)
+  refine ⟨j, w, s, hj, ?_, ?_⟩
+  · rcases hs with hs | ⟨q, hs⟩
+    · exact Or.inl ((List.getElem?_append_left (lt_trans hj hil)).symm.trans hs)
+    · exact Or.inr ⟨q, (List.getElem?_append_left (lt_trans hj hil)).symm.trans hs⟩
+  · have he := rho.releasesAt_append xs ys (lt_trans hj hil)
+    rw [withEvents_eq, withEvents_eq] at he
+    rwa [he] at hr
+
+/-- In a causal run every held root has an earlier release, including roots
+received at the current sender from a different validator. -/
+theorem seen_released_before (hc : rho.Causal) {i : Nat} {v : V}
+    {o : (protoOf F E).Object} (ho : o ∈ (rho.stateBefore i v).seen) :
+    ∃ j < i, o ∈ rho.releasesAt j := by
+  obtain ⟨j, hj, hs | ⟨t, ht⟩⟩ := rho.seen_source ho
+  · obtain ⟨_, _, hr⟩ := hs
+    exact ⟨j, hj, hr⟩
+  · obtain ⟨k, _, _, hk, _, hr⟩ := hc j v o t ht
+    exact ⟨k, lt_trans hk hj, hr⟩
+
+/-- A causal release depends only on roots released earlier, including earlier
+positions in the same engine event. No extra tick is needed for a dependency. -/
+theorem release_ready_of_prefix (hc : rho.Causal) (i p : Nat)
+    (o : (protoOf F E).Object) (ho : (rho.releasesAt i)[p]? = some o)
+    (held : List (protoOf F E).Object)
+    (hprev : ∀ j < i, ∀ a ∈ rho.releasesAt j, a ∈ held)
+    (hsame : ∀ a ∈ (rho.releasesAt i).take p, a ∈ held) :
+    (protoOf F E).dependencies.ready (closure held) o = true := by
+  have hseen (v : V) : (rho.stateBefore i v).seen ⊆ held := by
+    intro a ha
+    obtain ⟨j, hj, hr⟩ := rho.seen_released_before hc ha
+    exact hprev j hj a hr
+  have hclosure {xs : List (protoOf F E).Object} (hx : xs ⊆ held) :
+      closure xs ⊆ closure held := by
+    intro a ha
+    obtain ⟨root, hr, hd⟩ := (mem_closure_iff xs a).mp ha
+    exact (mem_closure_iff held a).mpr ⟨root, hx hr, hd⟩
+  cases he : rho.events[i]? with
+  | none => simp [releasesAt, he] at ho
+  | some e =>
+    cases e with
+    | restart v t => simp [releasesAt, he] at ho
+    | tick v t =>
+      have hr := rho.tick_ready (rho.stateBefore i v) v t p o
+        (by simpa only [releasesAt, he] using ho)
+      apply (protoOf F E).dependencies.mono _ _ _ (hclosure ?_) hr
+      intro a ha
+      rcases List.mem_append.mp ha with ha | ha
+      · exact hseen v ha
+      · apply hsame a
+        simpa only [releasesAt, he] using ha
+    | deliver v q t =>
+      have hr := rho.deliver_ready (rho.stateBefore i v) v q t p o
+        (by simpa only [releasesAt, he] using ho)
+      apply (protoOf F E).dependencies.mono _ _ _ (hclosure ?_) hr
+      intro a ha
+      rcases List.mem_append.mp ha with ha | ha
+      · rcases List.mem_append.mp ha with ha | ha
+        · exact hseen v ha
+        · have haq := List.mem_singleton.mp ha
+          obtain ⟨j, _, _, hj, _, hq⟩ := hc i v q t he
+          exact haq ▸ hprev j hj q hq
+      · apply hsame a
+        simpa only [releasesAt, he] using ha
+
+/-- Flattening event-local release lists preserves the causal dependency order. -/
+theorem release_ready_flat (hc : rho.Causal) (n p : Nat)
+    (o : (protoOf F E).Object)
+    (ho : ((List.range n).flatMap rho.releasesAt)[p]? = some o) :
+    (protoOf F E).dependencies.ready
+      (closure (((List.range n).flatMap rho.releasesAt).take p)) o = true := by
+  induction n with
+  | zero => simp at ho
+  | succ n ih =>
+    let xs := (List.range n).flatMap rho.releasesAt
+    have he : (List.range (n + 1)).flatMap rho.releasesAt = xs ++ rho.releasesAt n := by
+      simp [List.range_succ, xs]
+    rw [he] at ho ⊢
+    by_cases hp : p < xs.length
+    · rw [List.getElem?_append_left hp] at ho
+      rw [List.take_append_of_le_length hp.le]
+      exact ih ho
+    · have hp' : xs.length ≤ p := Nat.le_of_not_gt hp
+      rw [List.getElem?_append_right hp'] at ho
+      rw [List.take_append, List.take_of_length_le hp']
+      apply rho.release_ready_of_prefix hc n (p - xs.length) o ho
+      · intro j hj a ha
+        exact List.mem_append_left _ (List.mem_flatMap.mpr
+          ⟨j, List.mem_range.mpr hj, ha⟩)
+      · intro a ha
+        exact List.mem_append_right _ ha
+
+/-- Deduplicating by first occurrence keeps every release dependency in the
+earlier pool prefix. -/
+theorem pool_ready (hc : rho.Causal) (p : Nat) (o : (protoOf F E).Object)
+    (ho : (rho.pool rho.events)[p]? = some o) :
+    (protoOf F E).dependencies.ready
+      (closure ((rho.pool rho.events).take p)) o = true := by
+  have he : rho.withEvents rho.events = rho := by rw [withEvents_eq]
+  rw [pool_eq, he] at ho ⊢
+  obtain ⟨i, hi, hsub⟩ := firstRelease_prefix _ p o ho
+  apply (protoOf F E).dependencies.mono _ _ _ ?_ (rho.release_ready_flat hc _ i o hi)
+  intro a ha
+  obtain ⟨r, hr, hd⟩ := (mem_closure_iff _ a).mp ha
+  exact (mem_closure_iff _ a).mpr ⟨r, hsub hr, hd⟩
 
 def SignedBefore (i : Nat) (o : (protoOf F E).Object) : Prop :=
   ∀ u ∈ rho.honest, rho.signerOf o = some u →
