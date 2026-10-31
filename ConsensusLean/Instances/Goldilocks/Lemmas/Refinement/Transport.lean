@@ -127,13 +127,25 @@ Paper argument: for each `k ∈ W`, take its witnesses a,b. `slashable a b` incl
 Thus the finset image of W under the equivalence `rho.key` is contained in `convicted ... A`.
 Injectivity gives image cardinality `W.card`; finset cardinal monotonicity gives the bound.
 No execution validity, honesty, collision freedom or nonempty-V premise is needed.
-Status: argument complete directly from definitions; Lean open. -/
+Status: proved directly from definitions. -/
 theorem convicted_count {A : Set (Model.protoOf (compiled (family S)) E).Object}
     (W : Finset (Fin (Fintype.card V)))
     (hw : ∀ k ∈ W, ∃ a b : FG.Att (Fintype.card V),
       attObj a ∈ A ∧ attObj b ∈ A ∧ a.val = k ∧ FG.slashable a b) :
     W.card ≤ (convicted rho.Slashable A).card := by
-  sorry
+  classical
+  have hsub : W.image rho.key ⊆ convicted rho.Slashable A := by
+    intro x hx
+    obtain ⟨k, hk, rfl⟩ := Finset.mem_image.mp hx
+    obtain ⟨a, b, ha, hb, hak, hab⟩ := hw k hk
+    have hbk : b.val = k := hab.1.symm.trans hak
+    simp only [convicted, Finset.mem_filter, Finset.mem_univ, true_and]
+    refine ⟨attObj a, ha, attObj b, hb, ?_, ?_, ?_⟩
+    · simp [Model.Run.signerOf, attObj, Model.Obj.signer?, Model.Obj.auth, hak]
+    · simp [Model.Run.signerOf, attObj, Model.Obj.signer?, Model.Obj.auth, hbk]
+    · exact (conflicts_iff _ _ _).mpr ⟨a, b, rfl, rfl, hab⟩
+  simpa only [Finset.card_image_of_injective W rho.key.injective] using
+    Finset.card_le_card hsub
 
 /-- CLAIMS R.7/G1.5: bind every witness attestation on the TWO HELD CHAINS from
 `Regimes.final_accountable` via `held_att_in_view`; `conflicts_iff` converts slashability,
