@@ -16,6 +16,16 @@ stated under `Healthy(g)` and `Prop⁺(G_p)` on the whole run, while `Weak` give
 the healed configuration at `T` (an R.1/R.2-style invariant started at `T`, not at genesis). Its
 owner is to be assigned (consensus-lean#17).
 
+For `healed_safe_until` the plan (consensus-lean#17, 2026-10-31) is the Sleepy record invariant
+over a window starting at `s₀ = r_AC(a + T_b)` (a second pass of the Sleepy box, after
+`SleepyInvariantUpTo`), from a base at `s₀`: (1) the live locks of labels `< s₀` are compatible with
+the origins of labels `≥ s₀` (they expire by `t_{s₀+k} < a + T_b + (4k + 8)Δ ≤ T_heal ≤ T`, using
+`a ≤ ḡ + 24Δ + 12C_HS`); (2) RecRet; (3) `Σ.F`, `Σ.J` and FG sources on the chain of those origins;
+(4) their viability (`Inv(a + T_b)`, in `BridgeAt`); (5) every honest row held from `t_{s₀}` names
+an entry on that chain or at or below the cut's `fc_root`. Part of the same until-`T` gap: (1) uses
+ResetExistence's bound on `a` and H.2's drain, both stated under `Healthy(g)` on the whole run and
+used here only up to `T`.
+
 The four open steps keep R.3's conclusions; they differ from R.3 only in the premises (and, for
 growth, the proposer recurrence from `T` instead of from `ḡ + 18Δ + 1`, as `WeakGrow`). R.6's rows
 follow: `WeakSafe` and `WeakCrossNest` are the first two; `WeakInclude` is the third for proposals
