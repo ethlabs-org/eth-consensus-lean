@@ -64,6 +64,7 @@ fi
 if [[ "${ORB_CI_COPY:-}" != 1 ]]; then  # run from a copy: the checkout may change under a running script
   mkdir -p "$HOME_DIR"
   cp "${BASH_SOURCE[0]}" "$HOME_DIR/orb-ci.sh"
+  cp "$(dirname "${BASH_SOURCE[0]}")/publish-inventory.py" "$HOME_DIR/publish-inventory.py"
   ORB_CI_REPO="${ORB_CI_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" ORB_CI_COPY=1 exec bash "$HOME_DIR/orb-ci.sh" "$@"
 fi
 REPO="$ORB_CI_REPO" WT="$HOME_DIR/wt" WT_PR="$HOME_DIR/wt-pr" LOGS="$HOME_DIR/logs" DONE="$HOME_DIR/done" ISSUE="${ORB_CI_ISSUE:-63}"
@@ -76,7 +77,8 @@ log() { echo "$(date -u +%FT%TZ) $*"; }
 SIGN="${ORB_CI_SIGN:-— amp-orbs (process, orb-ci)}"
 
 in_ci() {  # in_ci <cmd...>: run the command with CI set; with ORB_CI_JOB, in a box `job` (which sets RUN_DIR)
-  [[ -n "${ORB_CI_JOB:-}" ]] || { CI=1 RUN_DIR="$(mktemp -d)" "$@"; return; }
+  CI_RUN=""
+  [[ -n "${ORB_CI_JOB:-}" ]] || { CI_RUN="$(mktemp -d)"; CI=1 RUN_DIR="$CI_RUN" "$@"; return; }
   local opts unit st run rc
   read -ra opts <<<"$ORB_CI_JOB"
   # The job's output goes to its run folder (not the journal, which may drop lines), printed when it ends.
@@ -89,6 +91,7 @@ in_ci() {  # in_ci <cmd...>: run the command with CI set; with ORB_CI_JOB, in a 
   st="/srv/status/$(id -un).$unit.json"
   read -r run rc < <(python3 -I -c 'import json, sys; s = json.load(open(sys.argv[1]))
 print(s.get("run_dir") or "-", s.get("exit", 1))' "$st" 2>/dev/null) || { echo "orb-ci: no status $st"; return 1; }
+  [[ "$run" == - ]] || CI_RUN="$run"
   echo "orb-ci: job $unit, run folder $run, exit $rc"
   cat "$run/out.log"
   return "$rc"
@@ -142,6 +145,7 @@ print(head + "|---|---|---|---|---|\n" + "\n".join([os.environ["ROW"]] + rows) +
 # check <kind> <id> <head>: kind main|pr; records the result in the issue and comments.
 check() {
   local kind="$1" id="$2" head="$3" base flags=() mode=fast paths rc=0 t0=$SECONDS lg="$LOGS/$3.$1-$(date -u +%m%d-%H%M%S).log" fails summary
+  local CI_RUN="" observed_at="$(date -u +%FT%TZ)"
   if [[ "$kind" == pr ]]; then cd "$WT_PR" || return 1; else cd "$WT" || return 1; fi
   : >"$lg"
   git checkout -q --detach -f origin/main && git clean -qfdx -e .lake || return 1
@@ -212,6 +216,11 @@ $SIGN"
   fi
   if [[ "$kind" == pr ]]; then gh pr comment "$id" -R "$SLUG" --body "$body" >/dev/null || log "cannot comment on PR #$id"
   elif ((rc != 0)) && [[ "$kind" == main ]]; then gh issue comment 17 -R "$SLUG" --body "$body" >/dev/null || log "cannot comment on #17"; fi
+  if [[ "$kind" != pr ]]; then
+    python3 -I "$HOME_DIR/publish-inventory.py" --home "$HOME_DIR" capture "$head" "$kind" "$CI_RUN" "$observed_at" \
+      "$([[ "$rc" == 0 ]] && echo passed || echo failed)" || log "REPORT inventory capture failed for $head"
+    python3 -I "$HOME_DIR/publish-inventory.py" --home "$HOME_DIR" flush "$SLUG" || log "REPORT inventory upload pending; retry next pass"
+  fi
   echo "$head $kind $rc $secs" >>"$DONE"
   log "$kind ${id:-main} ${head:0:8}: rc=$rc ${secs}s"
 }
@@ -372,6 +381,7 @@ full_pass() {  # full_pass nightly|tag|now|sha <commit> [<ref>]
 if [[ "${1:-}" == --full ]]; then full_pass "${@:2}"; exit; fi
 log "orb-ci started: $SLUG, worktree $WT, every ${INTERVAL}s"
 while true; do
+  python3 -I "$HOME_DIR/publish-inventory.py" --home "$HOME_DIR" flush "$SLUG" || log "REPORT inventory upload pending; retry next pass"
   pass
   [[ "${1:-}" == --once ]] && break
   sleep "$INTERVAL"

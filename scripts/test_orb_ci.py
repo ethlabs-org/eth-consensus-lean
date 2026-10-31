@@ -55,6 +55,12 @@ output = config.get("output")
 if output is None:
     output = ("check.sh: ALL CHECKS PASSED" if mode == "full" else
               "check.sh: PASSED (" + mode + " mode; fixture)")
+if config.get("inventory"):
+    work = pathlib.Path(os.environ["RUN_DIR"]) / "check.fixture"
+    work.mkdir()
+    (work / "sorry-inventory.json").write_text(json.dumps({
+        "schema_version": 1, "mode": "report-only", "status": "incomplete",
+        "issues": ["fixture open debt"], "roots": [], "sorries": []}))
 print(output)
 raise SystemExit(config.get("exit", 0))
 '''
@@ -194,6 +200,45 @@ class OrbCI(unittest.TestCase):
         self.configure(exit=1)
         self.invoke("--once")
         self.verdict(sha, False, "fast")
+
+    def test_inventory_capture_and_retry_do_not_change_verdict(self):
+        sha = self.change()
+        self.configure(inventory=True)
+        self.invoke("--once")  # gh API stub refuses publishing; captured report must survive.
+        self.verdict(sha, True, "fast")
+        outbox = self.home / f"inventory-outbox/{sha}.json"
+        first = json.loads(outbox.read_text())
+        self.assertEqual(first["report"]["commit"], sha)
+        self.assertEqual(first["report"]["inventory"]["issues"], ["fixture open debt"])
+        self.assertIn("inventory upload pending", self.invoke("--once"))
+        self.assertEqual(len(self.calls()), 1, "publication retry reran checks")
+        self.assertEqual(json.loads(outbox.read_text()), first)
+        sha2 = self.change("Other.lean")
+        self.configure(exit=1)
+        self.invoke("--once")
+        self.verdict(sha2, False, "fast")
+        second = json.loads((self.home / f"inventory-outbox/{sha2}.json").read_text())
+        self.assertEqual(second["report"]["availability"], "unavailable")
+        self.assertIsNone(second["report"]["inventory"], "old job report leaked into failed build")
+
+    def test_cached_pair_refresh_preserves_pair_on_invalid_update(self):
+        self.write(self.repo / "scripts/orb-ci.sh", "#!/bin/bash\necho fixture\n")
+        self.write(self.repo / "scripts/publish-inventory.py", "print('fixture')\n")
+        self.commit("valid pair")
+        self.git("push", "origin", "main")
+        refresh = SCRIPT.with_name("orb-ci-refresh.sh")
+        def invoke():
+            return subprocess.run(["bash", str(refresh)], env=self.env, cwd=self.repo,
+                                  capture_output=True, text=True, timeout=20)
+        self.assertEqual(invoke().returncode, 0)
+        before = [(self.home / f).read_bytes() for f in ("orb-ci.sh", "publish-inventory.py")]
+        self.write(self.repo / "scripts/orb-ci.sh", "#!/bin/bash\necho changed\n")
+        self.write(self.repo / "scripts/publish-inventory.py", "invalid python (\n")
+        self.commit("invalid pair")
+        self.git("push", "origin", "main")
+        self.assertNotEqual(invoke().returncode, 0)
+        self.assertEqual([(self.home / f).read_bytes() for f in ("orb-ci.sh", "publish-inventory.py")], before)
+        self.assertFalse([p for p in self.home.glob("refresh.*") if p.is_dir()])
 
     def test_review_boundary_self_test_failure_fails_docs(self):
         sha = self.change("docs/guide.md")
