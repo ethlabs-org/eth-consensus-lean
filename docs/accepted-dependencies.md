@@ -83,6 +83,12 @@ Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbe
 | `Consensus.Goldilocks.Refinement.accepted_sleepyLive` | OPEN: finite R.2 recurrence, inclusion and deadline transport; Sleepy suppliers above. |
 | `Consensus.Goldilocks.Refinement.accepted_healedSafe` | OPEN: finite preparation plus progress-free preservation, RecRet/base closure. |
 | `Consensus.Goldilocks.Refinement.accepted_persists` | OPEN: R.5 finite pre-outage service and actual repair; no late-wake SyncRun inference. |
+| `Consensus.Goldilocks.Refinement.proposal_releasable` | OPEN: actual scheduled proposal passes engine release guards; R.6 owner, Steps. |
+| `Consensus.Goldilocks.Refinement.simTrace_att_unforgeable` | OPEN: actual canonical attestation origin/authentication history; R.6 owner, Run. |
+| `Consensus.Goldilocks.Refinement.simTrace_block_unforgeable` | OPEN: actual canonical block origin/authentication history; R.6 owner, Run. |
+| `Consensus.Goldilocks.Refinement.simTrace_carried_vote_unforgeable` | OPEN: carried vote source and recursive object history; R.6 owner, Run. |
+| `Consensus.Goldilocks.Refinement.simTrace_msg_unforgeable` | OPEN: actual message signing/admission provenance; R.6 owner, Run. |
+| `Consensus.Goldilocks.Refinement.simTrace_vote_released` | OPEN: emitted vote is released through actual engine candidates; R.6 owner, Run. |
 
 ## Ownership and architecture
 
