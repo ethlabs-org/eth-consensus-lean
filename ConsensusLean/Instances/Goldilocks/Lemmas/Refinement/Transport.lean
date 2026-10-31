@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Evidence
 public import ConsensusLean.Spec.Shape.Claims
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 
 public section
 
@@ -52,10 +53,12 @@ theorem engine_outputValid (hv : rho.ExecutionValid) (g : Out) : OutputValid rho
 Paper argument: fix a reader, obtain `n ≥ 1`, instantiate `simTrace_simulates`, and apply
 `outputs_nested` at the bounded engine cut. That proved bridge uses the actual shape clock
 and `chainTo_prefix`; no identification with the next cut's time is necessary.
-Status: argument complete relative to simulation; Lean open. -/
+Status: proved relative to simulation. -/
 theorem engine_nested (hv : rho.ExecutionValid) :
     (chainTrace rho).Nested .finalized .confirmed := by
-  sorry
+  intro v hv' i hi
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
+  exact outputs_nested (simTrace_simulates S rho hn hv) v hv' i hi
 
 /-- CLAIMS R.8/C0.2: simulation's monotone cut map and `finalized_monotone` transport the
 durable finalized chain across ticks, deliveries and restarts. No collision escape.
@@ -65,7 +68,9 @@ store-growth preservation of the earlier chain, then ancestry-to-prefix. `InCuts
 both read bounds. Empty V is vacuous. Status: argument complete relative to simulation. -/
 theorem engine_finalMonotone (hv : rho.ExecutionValid) :
     (chainTrace rho).Monotone .finalized 0 := by
-  sorry
+  intro v i j hi hij hj hv' hv''
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
+  exact finalized_monotone (simTrace_simulates S rho hn hv) v i j hi hij hj hv' hv''
 
 variable (V) in
 /-- CLAIMS F.3/§Premises, SPEC §Blocks: each occurring block's header is observed; equal
@@ -185,14 +190,25 @@ g₁,g₂, and `HoldsAlways` supplies execution validity. Status: argument compl
 theorem shape_nested : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank →
     schema.output c₁ = some g₁ → schema.output c₂ = some g₂ →
       (Sys (family S) V).HoldsAlways (fun r => (chainTrace r.2).Nested g₁ g₂) := by
-  sorry
+  intro c₁ c₂ g₁ g₂ hr h₁ h₂ r hv
+  cases c₁ <;> cases c₂ <;> simp only [Capability.rank] at hr <;> try omega
+  all_goals have he₁ := Option.some.inj h₁
+  all_goals have he₂ := Option.some.inj h₂
+  all_goals cases he₁; cases he₂
+  · intro v _ i _
+    exact ⟨[], by simp⟩
+  · exact engine_nested S r.2 hv
+  · exact engine_nested S r.2 hv
 
 /-- R.8 final monotonicity, exact third `ShapeClaimsAt` field. Paper argument: the lookup
 equality forces g=finalized. Unfold `HoldsAlways` to obtain execution validity, then apply
 `engine_finalMonotone`. No extra regime or collision premise. Status: argument complete. -/
 theorem shape_finalMonotone : ∀ g, schema.output .final = some g →
     (Sys (family S) V).HoldsAlways (fun r => (chainTrace r.2).Monotone g 0) := by
-  sorry
+  intro g hg r hv
+  have hg' : g = .finalized := (Option.some.inj hg).symm
+  subst g
+  exact engine_finalMonotone S r.2 hv
 
 /-- R.7/G1.1/G1.5, exact fourth `ShapeClaimsAt` field for any contract with `α ≤ 1/3`.
 Paper reduction for the engine bridge: `q = ceil(2n/3)` gives `n/3 ≤ 2q−n`, and key
