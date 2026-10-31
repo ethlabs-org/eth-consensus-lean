@@ -155,6 +155,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainCommon
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
