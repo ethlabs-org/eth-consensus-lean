@@ -863,7 +863,7 @@ theorem honest_vote_call (hrun : GoldilocksRun proposer dg H tr)
 slot-`(s+1)` vote whose `Σ.F` it extends: it is in the voter's frame, and its stamp at the read
 point is below `t_s + 3Δ` (the voter's restarts were before, and this call does not receive
 it). -/
-private theorem accepted_voter_tree (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem accepted_voter_tree (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1) {X : SA.Blk sp.n (List (FG.Att sp.n))}
