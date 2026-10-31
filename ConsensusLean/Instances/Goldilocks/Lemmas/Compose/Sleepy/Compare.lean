@@ -577,6 +577,43 @@ private theorem awake_participant (hrun : GoldilocksRun proposer dg H tr) (hnc :
   · exact ⟨e.msg, h, hval⟩
   · exact ⟨a, ha, hav.trans hval⟩
 
+/-- Awake joined validators participate in a result observed before the finite deadline
+cutoff. Only their vote deadlines are used; later receiver wakes are irrelevant. -/
+theorem awake_participant_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {s : Nat} {b : Time}
+    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
+    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
+    (hib : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
+    (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
+    y ∈ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hw hj
+  obtain ⟨hval, hsl', -, -⟩ := SA.castAt_spec hr hy ⟨hc, he⟩
+  have hsk : sp.ts s ≤ tr.projAC.time k :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
+  have ht : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
+  change tr.time k ≤ sp.ts s + sp.Δ at hk
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hkb : tr.projAC.time k + sp.Δ ≤ b := by
+    change tr.time k + sp.Δ ≤ b
+    linarith
+  have hki : tr.projAC.time k + sp.Δ ≤ tr.projAC.time i₀ := by
+    change tr.time k + sp.Δ ≤ tr.time i₀
+    linarith
+  have := SA.sync_before_forward hr hsync hy ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩ hkb hX hu.1
+    (fun k' hk' hr' => (SA.update_restarts hr hX hu k' hk' hr').trans hsk) hki
+    fun t h₁ h₂ => by
+      change t < tr.time k + sp.Δ at h₂
+      have : sp.slot t = s := SA.slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith)
+      omega
+  rw [hes] at this
+  rcases this with h | ⟨a, ha, -, -, -, hav, -⟩
+  · exact ⟨e.msg, h, hval⟩
+  · exact ⟨a, ha, hav.trans hval⟩
+
 /-- **A result and an optimistic selection of one slot are compatible** (RO): the `≥ 3n/4`
 optimistic seats reach the writer, where none supports the result. -/
 private theorem result_optimistic_compatible (hrun : GoldilocksRun proposer dg H tr)
@@ -673,6 +710,68 @@ private theorem honest_supporter_win (hrun : GoldilocksRun proposer dg H tr) (hn
   · -- an optimistic selection: `3n/4 > f` voters
     obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO
     have hf := two_faults_lt_of_window hwin
+    obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hCR⟩, huH⟩ :=
+      Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
+        (t := SA.optimisticVoters sp A ℓ.frame s C) (by omega)
+    have huH : v.val ∈ H := not_not.1 huH
+    obtain ⟨hvs, j, hj, e, hve, rfl⟩ := SA.optimisticPoint_pool_vote hrun' hX hpt hv huH
+    exact ⟨_, huH, j, e, hve, (hrun.time_mono hj).trans hi₀, hvs, R, hΦU hR, hRr,
+      Anc.mono hΦU hCR⟩
+
+/-- An origin within the finite horizon has an honest supporter using only deadline-bounded
+service and the fault bounds at slot points inside the horizon. -/
+theorem honest_supporter_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {b : Time} (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBound H (sp.ts s + d))
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hC : OriginWithin tr H C s b) :
+    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
+      SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hr := hrun'.localRun
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨X, hX, i₀, CV, hi₀, hR | hO⟩ := originWithin_iff.1 hC
+  · have hmaj := SA.result_majority hR
+    obtain ⟨ℓX, hu, -, hCV⟩ := hR
+    have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
+    have hJ := hfb s sp.Δ (by simp) (by linarith)
+    change Hᶜ.ncard <
+      {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)}.ncard at hJ
+    have hJV : {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)} ⊆
+        SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy =>
+      awake_participant_before hrun hnc (syncBefore_projection hrun.toLocalRun hsync)
+        hX hu hi₀ hy.1 hy.2.1 hy.2.2
+    have hSV : {w | ∃ v ∈ CV, v.val = w} ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
+      rintro w ⟨v, hv, rfl⟩
+      rw [hCV] at hv
+      exact ⟨v, hv.1, rfl⟩
+    obtain ⟨w, ⟨v, hv, rfl⟩, hwH⟩ : ∃ w ∈ {w | ∃ v ∈ CV, v.val = w}, w ∈ H := by
+      by_contra hno'
+      have hno : ∀ w ∈ {w | ∃ v ∈ CV, v.val = w}, w ∉ H := fun w hw hwH => hno' ⟨w, hw, hwH⟩
+      have hdisj : Disjoint
+          {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)}
+          {w | ∃ v ∈ CV, v.val = w} :=
+        Set.disjoint_left.2 fun y hyJ hyS => hno y hyS hyJ.1
+      have h1 := Set.ncard_union_eq hdisj
+      have h2 := Set.ncard_le_ncard (Set.union_subset hJV hSV)
+      have h3 : {w | ∃ v ∈ CV, v.val = w}.ncard ≤ Hᶜ.ncard :=
+        Set.ncard_le_ncard fun y hy => hno y hy
+      omega
+    rw [hCV] at hv
+    obtain ⟨hvp, -, -, R, hR, hRr, hCR⟩ := hv
+    obtain ⟨j, hj, e, hve, rfl⟩ := hrun'.honest.pool_vote X hX i₀ s _ hvp hwH
+    obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hX hu.1
+    exact ⟨_, hwH, j, e, hve, (hrun.time_mono hj.le).trans hi₀,
+      SA.state_pool_slot sp hr hX i₀ s _ hvp, R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
+  · obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO
+    have hf : 2 * Hᶜ.ncard < sp.n := by
+      have h := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb)
+      change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts 0 + 0) at h
+      have hle : tr.honestAwakeJoined H (sp.ts 0 + 0) ≤ H.ncard :=
+        Set.ncard_le_ncard fun x hx => hx.1
+      have hn : H.ncard + Hᶜ.ncard = sp.n := by
+        rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+      omega
     obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hCR⟩, huH⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
         (t := SA.optimisticVoters sp A ℓ.frame s C) (by omega)
