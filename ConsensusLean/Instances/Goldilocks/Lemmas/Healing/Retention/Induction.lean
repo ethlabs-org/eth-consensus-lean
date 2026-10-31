@@ -296,6 +296,88 @@ theorem height_scoped_retention : HeightScopedRetention := by
     fun x i j B ho y hy k ℓ e hc hj => (voteInv_iff.1 (hinv k).1) x i j B ho y hy ℓ e hc hj,
     high_records hp hcomp hrows⟩
 
+/-- Vote extension with frozen viability or global root coverage at a bounded cut.
+Global coverage deliberately allows targets below the frame's finalized root. -/
+def RawVoteAt (P : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (Q : Time)
+    (k : Nat) : Prop :=
+  ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+    j < e.msg.slot → tr.time k ≤ Q → SA.VoteExtends (tr.HonestBlocks H) e.msg B ∧
+      (B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
+        Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
+
+theorem rawVoteAt_iff (P : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop)
+    (Q : Time) (k : Nat) : RawVoteAt (tr := tr) (H := H) P Q k ↔
+    ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+      j < e.msg.slot → tr.time k ≤ Q → SA.VoteExtends (tr.HonestBlocks H) e.msg B ∧
+        (B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
+          Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) := by rfl
+
+/-- Activated raw targets compare with high origins at strictly earlier cuts. -/
+def RawCompareAt (P : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (g : Time)
+    (k : Nat) : Prop :=
+  ∀ B j, P B j → sp.ts (j + 1 : Nat) ≤ tr.time k →
+    ∀ x r l O, r < k → HighOrigin tr H g x r l O → Compatible (tr.HonestBlocks H) B O
+
+theorem rawCompareAt_iff (P : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop)
+    (g : Time) (k : Nat) : RawCompareAt (tr := tr) (H := H) P g k ↔
+    ∀ B j, P B j → sp.ts (j + 1 : Nat) ≤ tr.time k →
+      ∀ x r l O, r < k → HighOrigin tr H g x r l O →
+        Compatible (tr.HonestBlocks H) B O := by rfl
+
+/-- Bounded decreasing-cut assembly. Service, participant counts, cache geometry,
+floor extraction and the local transfer steps are caller obligations, never obtained
+from a globally assumed activation invariant. -/
+theorem raw_vote_activation_before (hp : ResetPremises tr H proposer dg g ΔF a)
+    (P : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (Q : Time)
+    (hcompare : ∀ k, tr.time k ≤ Q →
+      (∀ q < k, RawVoteAt (tr := tr) (H := H) P Q q) →
+      RawCompareAt (tr := tr) (H := H) P g k)
+    (hroot : ∀ k, RawCompareAt (tr := tr) (H := H) P g k →
+      ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+        j < e.msg.slot → tr.time k ≤ Q → Compatible (tr.HonestBlocks H) ℓ.frame.fcRoot B)
+    (hlow : ∀ k B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+      j < e.msg.slot → tr.time k ≤ Q → Anc (tr.HonestBlocks H) ℓ.frame.F B →
+      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ B.root).h →
+      B ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)
+    (hhigh : ∀ k, RawCompareAt (tr := tr) (H := H) P g k →
+      ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+        j < e.msg.slot → tr.time k ≤ Q → Anc (tr.HonestBlocks H) ℓ.frame.F B →
+        ((tr.state y k).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor →
+        ∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
+          Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D)
+    (htransfer : ∀ k, (∀ q < k, RawVoteAt (tr := tr) (H := H) P Q q) →
+      ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+        j < e.msg.slot → tr.time k ≤ Q → SA.ViableAtVote ℓ e e.msg.slot B →
+        SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
+    ∀ k, tr.time k ≤ Q → RawCompareAt (tr := tr) (H := H) P g k ∧
+      RawVoteAt (tr := tr) (H := H) P Q k := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  intro k
+  induction k using Nat.strong_induction_on with
+  | _ k ih =>
+    intro hk
+    have hprior : ∀ q < k, RawVoteAt (tr := tr) (H := H) P Q q := by
+      intro q hq
+      exact (ih q hq ((hr.time_mono hq.le).trans hk)).2
+    have hcomp := hcompare k hk hprior
+    refine ⟨hcomp, (rawVoteAt_iff P Q k).mpr ?_⟩
+    intro B j hP y hy ℓ e hc hj htime
+    have hroot' := hroot k hcomp B j hP y hy ℓ e hc hj htime
+    obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
+    by_cases hcovered : Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot
+    · obtain ⟨⟨Hd, hHd, hHdr, hpath⟩, _⟩ := Compose.cast_head_fcRoot hr hy hc
+      exact ⟨⟨Hd, hΦU hHd, hHdr, hcovered.trans (Anc.mono hΦU hpath)⟩, Or.inr hcovered⟩
+    have hfcB := hroot'.resolve_right hcovered
+    have hFB := (Anc.mono hΦU hΦ.F_anc_fcRoot).trans hfcB
+    have hK2 : ∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
+        Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D := by
+      by_cases hf : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ B.root).h
+      · exact ⟨B, hlow k B j hP y hy ℓ e hc hj htime hFB hf, .refl, hf⟩
+      · exact hhigh k hcomp B j hP y hy ℓ e hc hj htime hFB (not_le.mp hf)
+    have hvi := (vote_viable_of_root hp.run hp.noColl hy hc hroot' (Or.inl hK2)).resolve_right
+      hcovered
+    exact ⟨htransfer k hprior B j hP y hy ℓ e hc hj htime (Or.inl hvi), Or.inl hvi⟩
+
 end Consensus.Goldilocks.Healing
 
 end
