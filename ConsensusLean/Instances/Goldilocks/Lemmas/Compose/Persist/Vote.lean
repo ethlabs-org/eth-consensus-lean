@@ -117,6 +117,14 @@ theorem frame_of_projAC {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     ℓ.frame = Node.frame (tr.state y k) :=
   (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).1
 
+/-- An honest AC cut retains the FG store and observes its pre-cut frame.
+Both facts follow directly from the cut law, without collision freedom. -/
+theorem ac_cut_fg_unchanged {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
+    (tr.post k).fg = (tr.state y k).fg ∧ ℓ.frame = Node.frame (tr.state y k) :=
+  ⟨(hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).2.2.1, frame_of_projAC hrun hy hc⟩
+
 /-- `Sync` on a window gives it on every subwindow. -/
 theorem syncAC_mono {P : Params} {FGP : Type} {A : ACInterface P FGP} {H : Set (Fin P.n)}
     {U : Set A.Blk} {a b a' b' : Time} {tr : ACTrace A} (h : SyncAC A H U a b tr) (ha : a ≤ a')
