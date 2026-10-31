@@ -113,15 +113,58 @@ theorem h2_duty_anchor (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp.n
 
 /-- **§3, no current-slot lock at the proposal input** (claims, driven trace (b): at `t_p` the
 proposer runs its tick, then `ac_proposal`, then the objects received): every stored lock of the
-honest proposer of slot `p` at its `ac_proposal` at `t_p` has a slot below `p`. Open until
-`Driven.proposal_first` (a transcription of (b), owned by the spec orb) is on main; it follows
-from it, as a slot-`p` lock needs an optimistic check at an object call at a time `≥ t_p`. -/
+honest proposer of slot `p` at its `ac_proposal` at `t_p` has a slot below `p`: a slot-`p` lock
+needs an optimistic check at an object call at a time `≥ t_p`, after the proposal. -/
 theorem h2_proposal_locks_below (hI : InclusionRun tr H U g t₀) {p : Nat}
     (hpH : sp.toParams.proposer p ∈ H) {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)}
     (hck : tr.CallAt (sp.toParams.proposer p) k ℓp) (hcall : ℓp.call = .proposal)
     (htk : tr.time k = sp.ts p) :
     ∀ l ∈ (tr.state (sp.toParams.proposer p) k).locks, l.slot < p := by
-  sorry
+  have hr := hI.run.localRun
+  have hΔ := sp.toParams.hΔ
+  intro l hl
+  obtain ⟨j, hj, B, horig, -⟩ := lock_provenance hr hpH k l hl
+  have ht : tr.time j ≤ sp.ts p := by simpa only [htk] using hr.time_mono hj.le
+  rcases horig with ⟨CV, ℓ, A, ⟨hc, hop⟩, hslot, -⟩ | ⟨ℓ, -, -, htj, -⟩
+  · by_contra hn
+    have hstart : sp.ts p ≤ tr.time j :=
+      (ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by
+        rw [hslot]; exact_mod_cast Nat.le_of_not_gt hn)
+    have htime : tr.time j = sp.ts p := le_antisymm ht hstart
+    have hslots : sp.slot (tr.time j) = p := by
+      rw [htime]
+      exact slot_of_mem sp p le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
+    have hobj : (∃ m, ℓ.call = .message m) ∨ ∃ B, ℓ.call = .block B := by
+      rcases hop with ⟨m, hm, -⟩ | ⟨B, hB, -⟩ | ⟨e, he, -⟩
+      · exact Or.inl ⟨m, hm⟩
+      · exact Or.inr ⟨B, hB⟩
+      have hexec := hr.exec j ℓ hc.2 (hc.1 ▸ hpH)
+      rw [hc.1] at hexec
+      have hem : e ∈ ((goldilocksSA sp FGP ro).step (sp.toParams.proposer p)
+          (tr.state (sp.toParams.proposer p) j) ℓ.frame
+          (tr.time j) ℓ.call).2 := by rw [hexec]; exact he
+      cases hcl : ℓ.call with
+      | message m => exact Or.inl ⟨m, rfl⟩
+      | block B => exact Or.inr ⟨B, rfl⟩
+      | tick =>
+        rw [hcl] at hem
+        change e ∈ (acOnTick sp _ _ _ _).2 at hem
+        have hne : tr.time j ≠ sp.ts (sp.slot (tr.time j)) + sp.Δ := by
+          rw [hslots, htime]; linarith
+        unfold acOnTick at hem
+        split_ifs at hem <;> simp_all
+      | proposal => simp [hcl, ACInterface.step] at hem
+      | toFG => simp [hcl, ACInterface.step] at hem
+      | restart =>
+        rw [hcl] at hem
+        change e ∈ (acRestart sp ro _ _ _ _).2 at hem
+        rw [((restart_state sp) FGP ro _ _ ℓ.frame (tr.time j)
+          (frameIn_of_callAt hr hpH hc).1 (hr.time_nonneg j)).1] at hem
+        simp at hem
+    have := hI.driven.proposal_first _ hpH j k ℓ ℓp hc hck hcall (htime.trans htk.symm) hobj
+    omega
+  · have hlt : sp.ts l.slot < sp.ts p := by rw [htj] at ht; linarith
+    exact_mod_cast (ts_lt_iff sp).1 hlt
 
 /-- **§§1, 4, with §6's second clause**: with every honest slot-`p` voter's anchor below `P` up to
 the first vote not on `P`, `Geo(P)` makes every honest vote of slot `p` the proposal (the
