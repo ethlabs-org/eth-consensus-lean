@@ -1,10 +1,18 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Weak
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 
 public section
 
 /-! # Goldilocks milestone Regimes: R.6's base for the Sleepy invariant from `s₀`
+
+This module lives in Healing because the base uses the reset and acceptance projection lemmas;
+the Compose layer is below Healing in the import matrix.
 
 `healed_safe_until` (R.6, `Lemmas/Compose/Regimes/Weak`) goes through the Sleepy record invariant
 started at a label `s₀` after the reset (`Compose.sleepy_invariant_from`, over `SleepyFrom` and
@@ -19,7 +27,7 @@ bridge), early enough before `T` (`t_{s₀+k} ≤ T`, `t_{s₀+2} + 6Δ ≤ T`),
   lock of a slot `< s₀` is live only at votes of slots `< s₀ + k`, so before `T`, under `Healthy`
   and H.2's drain), (3b) (A1.5: a source is below the stored block of a recent fast lock) and (6)
   (`Catch(2Δ)` for the acceptances before `ḡ`, `GST(g)`'s relay for those in `[ḡ, t_{s₀})`, the
-  voter joined) (acbase; open);
+  voter joined). Sources and old blocks are proved; locks remain open;
 * `weak_base_until`: the facts (2), (3a), (5) and (5′) at the cuts up to `T` (`BaseFacts` at
   `· ≤ T`), the paper obligation of the T3 orb (open);
 * `weak_base_extend`: the same facts at every cut (`BaseFacts` at every time), from those up to
@@ -90,22 +98,123 @@ theorem weak_base_locks (hrun : GoldilocksRun dg H tr) (hw : WeakPremises tr H d
         ∀ C j, OriginFrom tr H C j s₀ → j < e.msg.slot → Compatible (tr.HonestBlocks H) L C := by
   sorry
 
-/-- **(3b) Sources** (open; acbase): A1.5. -/
+/-- **(3b) Sources**: the two-slot age bound puts the supporting lock's origin after `s₀`. -/
 theorem weak_base_sources (hrun : GoldilocksRun dg H tr)
-    (hw : WeakPremises tr H dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀) :
+    (hw : WeakPremises tr H dg g ΔF Gp a Tb T) (_hs₀ : a + Tb ≤ sp.ts s₀) :
     ∀ y ∈ H, ∀ i ℓ C, SA.ToFGAt tr.projAC y i ℓ C → sp.ts (s₀ + 2 : Nat) ≤ tr.time i →
       (∃ C' l, Origin tr H C' l ∧ l < s₀ ∧ Anc (tr.HonestBlocks H) C C') →
         OnOriginChainFrom tr H C s₀ := by
-  sorry
+  intro y hy i ℓ C hto hi _
+  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hw.noColl).localRun
+  obtain ⟨hpc, -, hC⟩ := hto
+  have hCand : C ∈ SA.toFGCandidates sp (tr.projAC.state y i) ℓ.frame (tr.time i) := by
+    unfold SA.acToFG at hC
+    dsimp only at hC
+    split_ifs at hC
+    split at hC
+    · cases hC
+    · rename_i C' hC'
+      split_ifs at hC
+      cases hC
+      exact (SA.deepest_mem hC').1
+  obtain ⟨hCv, l, hl, hlC, -, hls⟩ := hCand
+  rw [projAC_state hrun.toLocalRun hy i] at hl
+  obtain ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩ := hl
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hpc
+  obtain ⟨hvt, hva⟩ := SA.viableAncestor_anc hΦ hB
+  obtain rfl : C = ℓ.frame.viableAncestor B := hΦ.coherent.1 hCv.1 hvt hlC.symm
+  obtain ⟨L, hL, hLr, C', hC', hLC'⟩ := lock_origin hrun hw.noColl hy i l₀ hl₀
+  obtain rfl : B = L := hr.coherent.1 (hΦU hB) ⟨y, hy, i, hL⟩ (hBr.trans hLr.symm)
+  have hslot := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) (s₀ + 2 : Nat)).1 hi
+  have hl : s₀ ≤ l₀.slot := by
+    change sp.slot (tr.time i) ≤ l₀.slot + 2 at hls
+    exact_mod_cast (show (s₀ : Int) ≤ l₀.slot by omega)
+  exact onOriginChainFrom_iff.2
+    (Or.inr ⟨C', l₀.slot, originFrom_iff.2 ⟨hC'.origin, hl⟩, (hva.mono hΦU).trans hLC'⟩)
 
-/-- **(6) Old blocks caught up** (open; acbase): `Catch(2Δ)` and `GST(g)`'s relay. -/
+/-- The reset is after `c_z`; post-`T` readiness supplies a cut after `c_z` without
+assuming full participation after `T`. -/
+private theorem weak_cutZ_lt_reset (hrun : GoldilocksRun dg H tr)
+    (hw : WeakPremises tr H dg g ΔF Gp a Tb T) : Healing.cutZ sp.toParams g < a := by
+  classical
+  let t := max T (max 0 (Healing.cutZ sp.toParams g + 1))
+  have ht0 : 0 ≤ t := (le_max_left _ _).trans (le_max_right _ _)
+  obtain ⟨z, hz⟩ := Set.nonempty_of_ncard_ne_zero
+    (Nat.ne_of_gt ((Nat.zero_le _).trans_lt (hw.sleepyAfter t (le_max_left _ _))))
+  obtain ⟨m, -, hm⟩ := hrun.awake_in_horizon z hz.1 t
+    (hz.2 t (max_le ht0 (by have := sp.toParams.hΔ; simp only [catchUp]; linarith)) le_rfl)
+  have hex : ∃ j, Healing.cutZ sp.toParams g < tr.time j :=
+    ⟨m, by
+      have := le_max_right T (max 0 (Healing.cutZ sp.toParams g + 1))
+      have := le_max_right 0 (Healing.cutZ sp.toParams g + 1)
+      dsimp [t] at hm
+      linarith⟩
+  have hj : Healing.FirstCutAfter tr (Nat.find hex) (Healing.cutZ sp.toParams g) :=
+    ⟨fun k hk => not_lt.1 (Nat.find_min hex hk), Nat.find_spec hex⟩
+  obtain ⟨⟨y, hy, k, att, hs, hatt, hka⟩, -⟩ := hw.reset
+  by_contra h
+  have hkj : k ≤ Nat.find hex := by
+    by_contra h'
+    have := hrun.time_mono (le_of_not_ge h')
+    linarith [hj.2]
+  have := (Healing.signAt_h_le hrun hy hs).trans
+    ((Healing.hmax_mono hrun.toLocalRun hy hkj).trans (Healing.hmax_le_HZ hy hj))
+  omega
+
+/-- **(6) Old blocks caught up**: `Catch(2Δ)` and `GST(g)`'s relay. -/
 theorem weak_base_old_blocks (hrun : GoldilocksRun dg H tr)
     (hw : WeakPremises tr H dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀) :
     ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → ∀ s, e.msg.slot = s + 1 →
       s₀ ≤ s → ∀ x ∈ H, ∀ m B, tr.AcceptAt x m B → tr.time m < sp.ts s₀ →
         Anc (tr.HonestBlocks H) ℓ.frame.F B →
           SA.AcceptedBefore tr.projAC y B (sp.ts s + 3 * sp.Δ) := by
-  sorry
+  classical
+  intro y hy i ℓ e hc s hs hs₀' x hx m B hacc hm hF
+  have hΔ := sp.toParams.hΔ
+  have hss : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by exact_mod_cast hs₀')
+  have hgs : gbar g + 2 * sp.Δ < sp.ts s₀ := by
+    have := Healing.lt_cutZ sp g
+    have := weak_cutZ_lt_reset hrun hw
+    have := hw.offset
+    linarith
+  obtain ⟨hrs, hti⟩ := honest_vote_restarts hrun hw.noColl hy hc hs
+  have hrs' : ∀ c ≤ i, tr.RestartAt y c → tr.time c ≤ sp.ts s :=
+    fun c hci ⟨ℓr, hcr, hrr⟩ => hrs c hci ⟨ℓr, projAC_callAt.2 hcr, hrr⟩
+  have hFy : Anc (tr.HonestBlocks H) (tr.state y i).fg.F B := by
+    rw [frame_of_projAC hrun hy hc.1] at hF
+    exact hF
+  by_cases hmg : tr.time m < gbar g
+  · have hex : ∃ j, gbar g + 2 * sp.Δ ≤ tr.time j := ⟨i, by linarith⟩
+    have hj : tr.FirstCutFrom (Nat.find hex) (gbar g + 2 * sp.Δ) :=
+      ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩
+    have hji : Nat.find hex ≤ i := Nat.find_min' hex (by linarith)
+    obtain ⟨k, hk, hAk⟩ := hw.catchPremise x hx m B hacc hmg y hy _ hj
+      ((Healing.run_F_mono hrun.toLocalRun hy hji).trans hFy)
+    obtain ⟨hAk', htk, -⟩ := Healing.ac_block_after hrun.toLocalRun hy hAk
+    exact Or.inr ⟨k + 1, hAk', by
+      change tr.time (k + 1) < _
+      rw [htk]
+      have := hj.2 k hk
+      linarith⟩
+  · have hdl : ∀ c ≤ i, tr.deadline y c (tr.time m) sp.Δ ≤ sp.ts s + sp.Δ := by
+      intro c hci
+      have := deadline_le_of_restarts (fun k hk hr => hrs' k (hk.trans hci) hr)
+        (tr.time m) sp.Δ
+      have := max_le (hm.le.trans hss) (le_refl (sp.ts s))
+      linarith
+    have hmax : max (tr.time m) g = tr.time m :=
+      max_eq_left ((Healing.le_gbar g).trans (not_lt.1 hmg))
+    obtain ⟨k, hki, hAk, hkt⟩ := hw.gst.relay x hx m B hacc
+      ((Healing.le_gbar g).trans (not_lt.1 hmg)) y hy i ⟨_, projAC_callAt.1 hc.1⟩
+      (by rw [hmax]; have := hdl i le_rfl; linarith)
+      hFy
+    rw [hmax] at hkt
+    obtain ⟨hAk', htk, -⟩ := Healing.ac_block_after hrun.toLocalRun hy hAk
+    exact Or.inr ⟨k + 1, hAk', by
+      change tr.time (k + 1) < _
+      rw [htk]
+      have := hdl k hki
+      linarith⟩
 
 /-- **(2), (3a), (5), (5′) up to `T`** (open; the T3 orb's paper obligation). -/
 theorem weak_base_until (hrun : GoldilocksRun dg H tr)
