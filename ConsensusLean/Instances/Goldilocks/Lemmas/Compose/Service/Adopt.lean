@@ -24,9 +24,10 @@ open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-/-- **`P` is in the updater's tree, above its `Σ.F`** (workbench#12 §4: `F ≤ P` through the
-update, by the finality-pair sources of labels at most `s + 1`; `P` and its ancestry are accepted by
-the joined updater before the deadline; open). -/
+/-- **`P` is in the updater's tree, above its `Σ.F`** (workbench#12 §4): `Σ.F ⪯ P`
+(`updater_F_anc_proposal`), so the acceptance relay brings `P`, accepted by its proposer at `t_s`,
+to the updater, joined (restarts at or before `t_s`), before `t_s + Δ ≤ t_s + 6Δ`
+(`relay_mem`). -/
 theorem proposal_held_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
@@ -36,7 +37,61 @@ theorem proposal_held_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)
     (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
     P ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F P := by
-  sorry
+  have h := hrun.toLocalRun
+  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hr := hrun'.localRun
+  have hU : Coherent (tr.HonestBlocks H) := hr.coherent
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hu.1
+  -- the frame of the update is the node's frame
+  have hfr : ℓ.frame = Node.frame (tr.state y k₀) := by
+    obtain ⟨hn, hl⟩ := hu.1
+    obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hl
+    obtain rfl : c = .ac ℓ := by
+      cases c with
+      | ac ℓ' => cases hcl; rfl
+      | fg _ => cases hcl
+    exact (hrun.cutLaw y hy k₀ (.ac ℓ) ⟨hn, hc⟩).1
+  have hF : Anc (tr.HonestBlocks H) ℓ.frame.F P := by
+    rw [hfr]; exact updater_F_anc_proposal hrun hnc hsl hp hP hPs hpj hy hu
+  -- `P` is accepted by its proposer at `t_s`, and the AC cut of that block follows
+  have hacc := proposal_accepted hrun hnc hp hP
+  have hPU : P ∈ tr.HonestBlocks H := by
+    refine ⟨p, hp, k + 1, ?_⟩
+    rw [tr.state_succ_of_call hacc,
+      (Store.tree_grows _ _ _ _ (fg_reachable h hp _)).1 P _ (h.cutLaw p hp _ _ hacc).2.1]
+    exact Set.mem_insert _ _
+  obtain ⟨ℓ', hc', hcall', ht'⟩ := accept_next h hp hacc
+  have htk : tr.time k = sp.ts s := by
+    rw [hP.2.2, sp.slotTime_eq, hPs]; rfl
+  -- the updater's restarts are at or before `t_s` (joined at `t_s + 6Δ`)
+  have hrs : ∀ c ≤ k₀, tr.projAC.RestartAt y c → tr.projAC.time c ≤ sp.ts s := by
+    obtain ⟨hc, hcall, ht, hj⟩ := hu
+    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    have hts₂ : sp.ts (s + 2 : Nat) = sp.ts s + 8 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    have he := hr.exec k₀ ℓ hc.2 (hc.1 ▸ hy)
+    rw [hc.1] at he
+    have hpost : SA.joined sp (tr.projAC.post k₀) (tr.projAC.time k₀) := by
+      have hp' : tr.projAC.post k₀ = ((SA.goldilocksSA sp (List (FG.Att sp.n)) ro).step y
+          (tr.projAC.state y k₀) ℓ.frame (tr.projAC.time k₀) ℓ.call).1 := by rw [he]
+      unfold SA.joined at hj ⊢
+      rw [hp', SA.step_restartTime y _ _ _ _ (by rw [hcall]; simp)]
+      exact hj
+    have hsl : sp.slot (tr.projAC.time k₀) = s + 1 :=
+      SA.slot_of_mem sp (s + 1) (by rw [ht, hts]; linarith) (by rw [ht, hts₂]; linarith)
+    intro c hck hrc
+    have := ((SA.joined_awake sp) _ ro H _ tr.projAC hr y hy k₀ ℓ hc hpost).2 c hck hrc
+    rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
+  have hPt : P ∈ ℓ.frame.tree := by
+    refine relay_mem hrun hnc hsl hp hy hPU hu.1 hrs (Or.inr ⟨k + 1,
+      ⟨ℓ', projAC_callAt.2 hc', hcall'⟩, ?_⟩) hF
+    have htk₀ : tr.projAC.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
+    have : tr.projAC.time (k + 1) = sp.ts s := ht'.trans htk
+    rw [htk₀, this, max_self]
+    linarith
+  exact ⟨hPt, SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.rooted.1 hF hPt⟩
 
 /-- **`P` has a strict majority at the update's test** (workbench#12 §4): every honest slot-`s`
 vote is `P` (`honest_votes_eq_proposal`) and reaches the updater resolved
