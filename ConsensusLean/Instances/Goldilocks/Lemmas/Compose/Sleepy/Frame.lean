@@ -1396,6 +1396,19 @@ theorem held_origin_viable_upTo {b : Time} (hrun : GoldilocksRun proposer dg H t
     (fun C l C' l' hC hC' => originsBelowUpTo_iff.1 (hP (l + l' + 1)) C l C' l' (by omega)
       (by omega) (hC.within hi) (hC'.within hi)) hBc hBt
 
+/-- Full-read viability uses the finite frontier and fault bound, with no service premise. -/
+theorem held_origin_viable_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
+    (hP : ∀ s, OriginsBelowUpTo tr H s b) {y : Fin sp.n}
+    (hy : y ∈ H) (i : Nat) (hi : ∀ k < i, tr.time k ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hBc : ∀ C s, OriginBefore tr H C s i → Compatible (tr.HonestBlocks H) B C)
+    (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+      B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
+  held_origin_viable_of hrun hnc hf hy i
+    (fun C l C' l' hC hC' => originsBelowUpTo_iff.1 (hP (l + l' + 1)) C l C' l' (by omega)
+      (by omega) (hC.within hi) (hC'.within hi)) hBc hBt
+
 /-- **S3 at full reads from `s₀`**: at a cut from `t_{s₀}`, once the origins of labels `≥ s₀`
 compare, a block `B` that an honest node holds and that is compatible with every origin of a
 label `≥ s₀` is at or below its `fc_root` or in its full viable tree. The honest rows (at heights
