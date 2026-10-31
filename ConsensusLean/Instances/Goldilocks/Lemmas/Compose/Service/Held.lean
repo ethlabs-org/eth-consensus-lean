@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 
 public section
 
@@ -17,7 +18,7 @@ workbench#12 §4, "`F ≤ P` through the update": at an honest node's joined upd
   every such source is compatible with `P` (`rows_compatible`), and so is `Σ.J`, genesis or the
   entry of one, and `Σ.F ⪯ Σ.J`.
 * `Σ.F` is genesis, or strictly below a block `B` of the tree that finalizes it
-  (`finalizer_above`, the FG store's strict finalization), of a slot at most `s + 1` (`B` is in
+  (`Store.F_lt_finalizer`, the FG store's strict finalization), of a slot at most `s + 1` (`B` is in
   the frame of the update, `frame_slot_le`); so `Σ.F` has a slot at most `s` and, compatible with
   `P`, is at or below `P`. -/
 
@@ -28,13 +29,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time}
-
-/-- **The finalized tip is strictly below a block that finalizes it**, unless it is genesis (the FG
-store's strict finalization; open: amp-orbs fgsafety lands it as `Store.F_lt_finalizer`). -/
-private theorem finalizer_above {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
-    (hr : st.Reachable acp₀) (hF : st.F ≠ P.genesisBlock acp₀) :
-    ∃ B ∈ st.tree, (st.σ B.root).F = st.F.root ∧ st.Anc st.F B ∧ st.F ≠ B := by
-  sorry
 
 /-- The honest proposal is an honest block. -/
 private theorem proposal_honest (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
@@ -180,7 +174,7 @@ theorem updater_F_anc_proposal (hrun : GoldilocksRun dg H tr)
   by_cases hg : (tr.state y k₀).fg.F =
       sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload
   · exact honest_genesis_root_anc hrun hU (hsU hFt) (by rw [hg]; rfl) hPU
-  obtain ⟨B, hBt, -, hFB, hne⟩ := finalizer_above hR hg
+  obtain ⟨B, hBt, -, hFB, hne⟩ := Store.F_lt_finalizer hR hg
   have hfr : ℓ.frame = Node.frame (tr.state y k₀) := by
     obtain ⟨hn, hl⟩ := hu.1
     obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hl
