@@ -202,11 +202,14 @@ or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has a h
 `Σ.F` that is genesis or that `w` accepted before `t_s + 2Δ`, and every head that `w` accepted
 before `a` (outside the relay window) reaches `y` before the freeze `t_s + 3Δ` (`hold`), then
 `Carry_y(s, ·, ·)` holds for the counted votes. -/
-theorem carryAt_of_writer_win (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
-    (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a b T) {s : Nat} (ha : a ≤ sp.ts s)
+private theorem carryAt_of_writer_service
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
+    {s : Nat} (ha : a ≤ sp.ts s)
     (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
+    (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a b T ∨
+      SyncACBefore H U (T.time i) T)
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
       ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
@@ -246,8 +249,12 @@ theorem carryAt_of_writer_win (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T
       rcases hacc with hg | ⟨kw, hkw, hkwt⟩
       · exact Or.inl hg
       by_cases hakw : a ≤ T.time kw
-      · obtain ⟨ky, hky, hacc', hkyt⟩ := hsync.2 w hw kw Hv hkw hakw (by linarith) y hy i ℓ
-          hc.1 (by linarith [hdl i le_rfl _ hkwt]) hFHv
+      · have hdi : T.deadline y i (T.time kw) ≤ T.time i := by
+          linarith [hdl i le_rfl _ hkwt]
+        have delivered := hsync.elim
+          (fun h => h.2 w hw kw Hv hkw hakw (by linarith) y hy i ℓ hc.1 hdi hFHv)
+          (fun h => h.relay w hw kw Hv hkw (hr.time_nonneg kw) y hy i ℓ hc.1 hdi hdi hFHv)
+        obtain ⟨ky, hky, hacc', hkyt⟩ := delivered
         exact Or.inr ⟨ky, hacc', hkyt.trans (hdl ky hky _ hkwt)⟩
       · exact hold kw Hv hkw (not_le.1 hakw) hFHv
     rcases hyacc with hg | ⟨ky, ⟨ℓk, hck, hcall⟩, hkyt'⟩
@@ -262,8 +269,12 @@ theorem carryAt_of_writer_win (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T
     · exact Or.inr ⟨k, hkX, lt_of_le_of_lt (hr.time_mono hk) hkyt'⟩
   · -- the vote: forwarded by `w`, processed by `y` before `t_s + 3Δ` and kept
     obtain ⟨hvs, ⟨k, hsend, hk1, hk2⟩, -⟩ := hW v hv
-    obtain ⟨k', hk'i, hkk', hp, hk'dl⟩ := hsync.1 w hw k v hsend (ha.trans hk1)
-      (by linarith) y hy i ℓ hc.1 (by linarith [hdl i le_rfl _ hk2])
+    have hdi : T.deadline y i (T.time k) ≤ T.time i := by
+      linarith [hdl i le_rfl _ hk2]
+    have delivered := hsync.elim
+      (fun h => h.1 w hw k v hsend (ha.trans hk1) (by linarith) y hy i ℓ hc.1 hdi)
+      (fun h => h.message w hw k v hsend (hr.time_nonneg k) y hy i ℓ hc.1 hdi hdi)
+    obtain ⟨k', hk'i, hkk', hp, hk'dl⟩ := delivered
     have hk'lt : T.time k' < sp.ts s + 3 * sp.Δ := hk'dl.trans (hdl k' hk'i _ hk2)
     obtain ⟨ℓ', hc', -⟩ := id hp
     -- no restart of `y` after `k'` up to its vote
@@ -311,6 +322,46 @@ theorem carryAt_of_writer_win (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T
           SA.state_pool_slot sp hr hy _ s c hc', hheld a ha', hheld c hc'⟩
         · rintro rfl; exact hv' ha'
         · rintro rfl; exact hv' hc'
+
+/-- Writer transport with a sender window, including pre-window accepted heads. -/
+theorem carryAt_of_writer_win (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
+    (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a b T) {s : Nat} (ha : a ≤ sp.ts s)
+    (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
+    (hW : ∀ v ∈ CV, v.slot = s ∧
+      (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
+      ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
+        (Hv.root = sp.genesisRoot ∨ ∃ k, T.AcceptAt w k Hv ∧ T.time k < sp.ts s + 2 * sp.Δ))
+    (hold : ∀ k Hv, T.AcceptAt w k Hv → T.time k < a → Anc U ℓ.frame.F Hv →
+      SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ)) :
+    SA.CarryAt T U y i e s CV :=
+  carryAt_of_writer_service hr ha hb hw hy hc hs (Or.inl hsync) hW hold
+
+/-- Writer transport needs recipient service only up to the receiving vote's time. -/
+theorem carryAt_of_writer_before (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+    {b : Time} (hsync : SyncACBefore H U b T) {s : Nat}
+    {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) (hi : T.time i ≤ b)
+    {CV : Set (Vote sp.n)}
+    (hW : ∀ v ∈ CV, v.slot = s ∧
+      (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
+      ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
+        (Hv.root = sp.genesisRoot ∨ ∃ k, T.AcceptAt w k Hv ∧ T.time k < sp.ts s + 2 * sp.Δ)) :
+    SA.CarryAt T U y i e s CV := by
+  have restricted : SyncACBefore H U (T.time i) T := {
+    message := fun x hx k m hm h0 z hz j ℓ hc hd ht =>
+      hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans hi) ht
+    relay := fun x hx k B hB h0 z hz j ℓ hc hd ht ha =>
+      hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans hi) ht ha }
+  exact carryAt_of_writer_service hr (a := 0) (b := sp.ts s + 2 * sp.Δ)
+    (by
+      have hΔ := sp.toParams.hΔ
+      simp only [SAParams.ts]
+      exact mul_nonneg (by linarith) (Int.natCast_nonneg s))
+    le_rfl hw hy hc hs (Or.inr restricted) hW
+    fun k _ _ hk _ => absurd hk (not_lt.2 (hr.time_nonneg k))
 
 /-- **`Carry_y` from a writer.** For an honest `y` casting its slot-`(s+1)` vote, under `Sync`
 from `0` to at least `t_s + 2Δ`: if each counted vote is of slot `s`, was sent or admitted by an
@@ -505,6 +556,22 @@ theorem result_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
       exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩)
     (acceptedBefore_of_old hrun hold hX)
 
+/-- A result's counted votes reach a next-slot voter using only deadlines within `b`. -/
+theorem result_carry_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hsync : tr.SyncBefore H ΔF b) {X : Fin sp.n} (hX : X ∈ H)
+    {i₀ s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hR : SA.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
+    (hF : Anc (tr.HonestBlocks H) ℓ.frame.F C) :
+    SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  refine carryAt_of_writer_before hr (syncBefore_projection hrun.toLocalRun hsync)
+    hX hy hc hs hib ?_
+  intro v hv
+  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := result_writer hr hX hR v hv
+  exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩
+
 /-- **A result's counted votes reach the next voters at times `≤ b`** (`Carry_y`), under the
 prefix premises up to `b`, when the voter's `Σ.F` is at or below the result. -/
 theorem result_carry_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -554,6 +621,22 @@ theorem optimistic_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
       obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := hW v hv
       exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩)
     (acceptedBefore_of_old hrun hold hx)
+
+/-- An optimistic writer's votes reach a next-slot voter within the recipient horizon. -/
+theorem optimistic_carry_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hsync : tr.SyncBefore H ΔF b) {x : Fin sp.n} (hx : x ∈ H)
+    {i₀ s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hO : SA.OptimisticLockAt tr.projAC x i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
+    (hF : Anc (tr.HonestBlocks H) ℓ.frame.F C) :
+    SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  refine carryAt_of_writer_before hr (syncBefore_projection hrun.toLocalRun hsync)
+    hx hy hc hs hib ?_
+  intro v hv
+  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := optimistic_writer_votes hr hx hO v hv
+  exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩
 
 /-- **An optimistic selection's counted votes reach the next voters at times `≤ b`**
 (`Carry_y`), under the prefix premises up to `b`, when the voter's `Σ.F` is at or below the
