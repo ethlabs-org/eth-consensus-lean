@@ -6,6 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Lemmas.Model.Protection
 
 public section
@@ -15,6 +17,29 @@ namespace Consensus.Goldilocks.Refinement
 open Blocks Shape Node
 
 variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+
+/-- On one coherent ancestor chain, an unheld child above the receiver's finalized
+tip can be attached to its held parent. No agreement between receivers is used. -/
+private theorem receipt_ancestry {n : Nat} {FGP ACP : Type}
+    {U T : Set (Block n FGP ACP)} {F A P B : Block n FGP ACP}
+    (hU : Coherent U) (hF : F ∈ T) (hAB : Anc U A B) (hFB : Anc U F B)
+    (hparent : ParentIn U P A) (hP : P ∈ T)
+    (hlocal : ∀ {X Y}, Anc U X Y → Y ∈ T → Anc T X Y) :
+    A ∈ T ∨ Anc (insert A T) F A := by
+  rcases Anc.total hU hAB hFB with hAF | hFA
+  · have h := hlocal hAF hF
+    by_cases he : A = F
+    · exact Or.inl (he ▸ hF)
+    · exact Or.inl (h.mem he).1
+  · by_cases he : F = A
+    · exact Or.inl (he ▸ hF)
+    · rcases hFA.cases_tail with heq | ⟨Q, hFQ, hQA⟩
+      · exact False.elim (he heq.symm)
+      · have hQP : Q = P := hU.1 hQA.1 hparent.1
+          (Option.some.inj (hQA.2.2.symm.trans hparent.2.2))
+        subst Q
+        exact Or.inr (((hlocal hFQ hP).mono (Set.subset_insert _ _)).tail
+          ⟨Or.inr hP, Or.inl rfl, hparent.2.2⟩)
 
 /-- Decoding a forwarding envelope identifies its canonical child using the supplied
 digests and bounds the child's slot by the acceptance stamp. -/
@@ -47,6 +72,34 @@ theorem decodeForward_signer {hs : List (Header Info × Nat)} {o : Wire sp.n}
     (h : decodeForward sp hs o = some (x, t, p, B)) : o.signer? = some x := by
   rw [forwardObj_of_decodeForward hs o x t p B h]
   rfl
+
+/-- The parser's recursive parent is authenticated by the same source, precedes the
+child's slot and stamp, and names its exact parent root; the leaf names genesis. -/
+theorem decodeForward_parent_cases {hs : List (Header Info × Nat)} {o : Wire sp.n}
+    {x : Fin sp.n} {t : Time} {p : Option (Wire sp.n)} {B : Blk sp}
+    (h : decodeForward sp hs o = some (x, t, p, B)) :
+    (p = none ∧ B.parent = some sp.genesisRoot) ∨
+      ∃ parent pt pp A, p = some parent ∧
+        decodeForward sp hs parent = some (x, pt, pp, A) ∧
+        B.parent = some A.root ∧ A.root ≠ sp.genesisRoot ∧ A.slot < B.slot ∧ pt ≤ t := by
+  unfold decodeForward at h
+  split at h
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, _, h⟩ := h
+    split at h
+    · rename_i hp
+      cases h
+      exact Or.inl ⟨rfl, hp.2.1⟩
+    · simp at h
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, _, ⟨⟨y, pt, pp, A⟩, hd, h⟩⟩ := h
+    split at h
+    · rename_i hp
+      cases h
+      exact Or.inr ⟨_, pt, pp, A, rfl, hp.2.1 ▸ hd,
+        hp.2.2.1, hp.2.2.2.1, hp.2.2.2.2.1, hp.2.2.2.2.2.1⟩
+    · simp at h
+  · simp at h
 
 /-- Decoding the same canonical block under two digest tables agrees when they agree
 on that block's header; this is the root-sensitive replacement for wire injectivity. -/
@@ -1373,11 +1426,9 @@ theorem tick_released_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v 
 
 /-- Every actual publication has a successful source acceptance at its stamped time. -/
 theorem simTrace_forwardOrigin (hv : rho.ExecutionValid) :
-    ∀ r, (publisherExecution S rho).actual r → rho.key r.origin ∈ rho.honest → ∀ t p B,
-      decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash r.object) r.object =
-        some (r.origin, t, p, B) →
-      ∃ k, (simTrace S rho hn).AcceptAt r.origin k B ∧ (simTrace S rho hn).time k = t ∧
-        k < cutMap S rho hn (r.event + 1) ∧ t = (publisherExecution S rho).eventTime r.event := by
+    ForwardOrigin S rho hn (simTrace S rho hn) (cutMap S rho hn)
+      (publisherExecution S rho) := by
+  apply (forwardOrigin_iff S rho hn _ _ _).mpr
   intro r hr _ t p B hd
   have hk : rho.ownKey (rho.key r.origin) = r.origin := rho.key.symm_apply_apply _
   have hd' := hd
@@ -1396,12 +1447,8 @@ theorem simTrace_forwardOrigin (hv : rho.ExecutionValid) :
 /-- Prior authenticated holdings give a prior receipt call or an own acceptance.
 The receipt alternative deliberately retains refusal as a possibility. -/
 theorem simTrace_forwardHeldProcessed (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ i x t p B o,
-      x ∈ honestKeys S rho → o ∈ Model.closure (rho.stateBefore i (rho.key y)).seen →
-      decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
-        some (x, t, p, B) →
-      ∃ k < cutMap S rho hn i, t ≤ (simTrace S rho hn).time k ∧
-        ((simTrace S rho hn).BlockCallAt y k B ∨ y = x ∧ (simTrace S rho hn).AcceptAt y k B) := by
+    ForwardHeldProcessed S rho hn (simTrace S rho hn) (cutMap S rho hn) := by
+  apply (forwardHeldProcessed_iff S rho hn _ _).mpr
   intro y _ i x t p B o hx ho hd
   have hy : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply _
   rcases held_forward_tick_or_processed S rho hn hv ho hx hd with
