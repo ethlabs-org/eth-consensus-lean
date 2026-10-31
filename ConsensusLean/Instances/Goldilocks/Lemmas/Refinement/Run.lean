@@ -1123,9 +1123,57 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid)
       (simTrace_nonFraming S rho hn hrun (hv.honest_only _ (List.mem_of_getElem? he)))
       r hmem).2.1 ℓ hrl em hem⟩
   | deliver v o t =>
-    -- open: the vote goes out at the delivery's own poll step (`deliverOrder := [.poll]`);
-    -- restated with the release fields (#107 PR 2)
-    sorry
+    have hm := List.mem_of_getElem? he
+    have ht0 := (hv.in_horizon _ hm).1
+    have hnow : (stateAt S rho hn v i).now = t :=
+      (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
+    rw [eventCuts_deliver S rho hn i v o t he] at hmem
+    have hmem' := hmem
+    rw [← stateAt_self S rho hn v i] at hmem'
+    obtain ⟨hb, hval⟩ := (process_outbox (runProposer S rho hn) (digestOf S rho)
+      (Model.digests rho.hash o) t i _ (stateAt S rho hn v i) 0 hnow).2
+      r hmem' ℓ hrl em hem
+    have hpre : OneVote t (stateAt S rho hn v i) := by
+      rcases (outbox_inv S rho hn hv v (hv.honest_only _ hm) i).2 with h | h
+      · exact absurd h (not_lastRestart_deliver S rho hv he)
+      · rwa [hnow] at h
+    have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht0
+      (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) hnow hpre
+    have hone : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox =
+        [Body.vote (encodeVote em.msg)] := by
+      have hlen := ((atMostOneVote_iff _).mp hproc.atMost).2
+      match hq : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox with
+      | [] => change _ ∈ (process _ _ _).outbox at hb; rw [hq] at hb; cases hb
+      | [b] =>
+        change _ ∈ (process _ _ _).outbox at hb
+        rw [hq, List.mem_singleton] at hb
+        rw [hb]
+      | _ :: _ :: _ =>
+        change (process _ _ _).outbox.length ≤ 1 at hlen
+        rw [hq] at hlen
+        simp at hlen
+    have hobj : voteObj em.msg = pollObj S rho v (Body.vote (encodeVote em.msg)) := by
+      unfold voteObj pollObj
+      rw [hval, stateAt_self]
+      rfl
+    rw [hobj]
+    refine ⟨i, Or.inr ⟨o, he⟩, ?_⟩
+    simp only [Model.Run.releasesAt, he]
+    unfold Model.Run.deliver
+    rw [deliverDuties_eq S t ht0]
+    refine List.mem_append_left _ ?_
+    erw [Model.Run.runDuties_cons]
+    refine List.mem_append_left _ ?_
+    apply dutyStep_poll_rel S rho hn v _ _ (poll_selected S rho hv v)
+    · change (pollPre (process (stateAt S rho hn v i) o
+        (Model.digests rho.hash o))).outbox.head? = some _
+      rw [pollPre_eq]
+      have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
+        (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
+      rw [hf]
+      simp only [Bool.false_eq_true, ite_false, hone]
+      rfl
+    · exact protects_of_not_att S _ _ _ (fun k w h => by cases h)
   | restart v t =>
     rw [eventCuts_restart S rho hn i v t he] at hmem
     obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
