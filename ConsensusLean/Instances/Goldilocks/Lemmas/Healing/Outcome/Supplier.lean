@@ -333,12 +333,14 @@ theorem ready_unanimous (hp : ResetPremises tr H dg g ΔF a)
     (hR : drainTime sp a ≤ sp.ts u) : Unanimous tr H u P := by
   sorry
 
-/-- **The joined duty at the update** (§23, §17 "Exact remaining premise"; phase-service §10):
-under the reset premises and `Catch(2Δ)`, for an honest ready proposal `P` of slot `u` with
-`t_u ≥ R` and every honest node `z` running its update of slot `u` (at `t_u + 6Δ`, joined):
-either the result is `P`, not vetoed, its fast test selects `P`, and every FG source `z` returns
-at that time extends `P`; or an honest node has accepted, by then, a block `X` that justifies
-`P`'s entry at `P`'s height (a retained justified crossing). -/
+/-- **The joined duty at the update** (§23, §17 "Exact remaining premise"; phase-service §10;
+restated with the healing orb, workbench#30-style): under the reset premises and `Catch(2Δ)`, for
+an honest ready proposal `P` of slot `u` with `t_u ≥ R` and every honest node `z` running its
+update of slot `u` (at `t_u + 6Δ`, joined, cut `kz`): either the result is `P`, not vetoed, its
+fast test selects `P`, and every FG source `z` returns at a cut at or after the update, at its
+time, extends `P`; or some honest node has an actual `ac_to_fg` report `C` by then that extends
+`P` with a greater state height than `P` in the reporter's state (a higher source; `P` need not
+be an entry). -/
 theorem ready_update (hp : ResetPremises tr H dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H p k u P)
@@ -347,11 +349,11 @@ theorem ready_update (hp : ResetPremises tr H dg g ΔF a)
     (SA.getConfirmation sp (tr.projAC.state z kz) ℓ.frame u = some P ∧
       ¬ SA.conflictsWithLock sp (tr.projAC.state z kz).locks ℓ.frame (tr.time kz) P ∧
       SA.fastSelect sp (tr.projAC.state z kz) ℓ.frame u P = some P ∧
-      ∀ k' ℓ' C, SA.ToFGAt tr.projAC z k' ℓ' C → tr.time k' = tr.time kz →
+      ∀ k' ℓ' C, kz ≤ k' → SA.ToFGAt tr.projAC z k' ℓ' C → tr.time k' = tr.time kz →
         Anc (tr.HonestBlocks H) P C) ∨
-    ∃ y ∈ H, ∃ k' X, tr.AcceptAt y k' X ∧ tr.time k' ≤ tr.time kz ∧
-      Store.JustifiesEntry sp.toParams (Payload sp.n) (tr.post k').fg P
-        ((tr.post k').fg.σ P.root).h X := by
+    ∃ z' ∈ H, ∃ r ℓ' C, SA.ToFGAt tr.projAC z' r ℓ' C ∧ tr.time r ≤ tr.time kz ∧
+      Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state z' r).fg.σ P.root).h < ((tr.state z' r).fg.σ C.root).h := by
   sorry
 
 /-- **Report coverage** (workbench#30 `entry-rows-exact.md` §2, the exact acquisition supplier
@@ -359,8 +361,8 @@ of `entry_rows`): for an honest ready proposal `P` of slot `u` with `t_u ≥ R`,
 `d = t_u + 6Δ` either every honest node has an actual `ac_to_fg` report `C` extending `P` (a
 report that suppresses a later one counts at its own cut), or some honest node has an actual
 report `C` extending `P` of a greater state height than `P` (a higher source). (`ready_update`'s
-returned-source clause is vacuous when nothing is returned, and its crossing arm carries no
-source; this supplier is the sharpened form.) -/
+returned-source clause is vacuous when nothing is returned; this supplier quantifies over every
+honest node's actual reports.) -/
 theorem report_cover (hp : ResetPremises tr H dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H p k u P)
