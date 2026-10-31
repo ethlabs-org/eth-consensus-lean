@@ -149,7 +149,7 @@ private theorem σ_of_unheld {st : Store P ACP} (h : st.Reachable acp₀) {r : N
       exact ih
 
 /-- The state of every root of a reachable store is a valid client input. -/
-private theorem entry_input {st : Store P ACP} (h : st.Reachable acp₀) (r : Nat) :
+theorem entry_input {st : Store P ACP} (h : st.Reachable acp₀) (r : Nat) :
     1 ≤ (st.σ r).h ∧ (st.σ r).hj < (st.σ r).h ∧ ∀ p ∈ (st.σ r).pending, p.1 < (st.σ r).h := by
   obtain ⟨c, hc⟩ : ∃ c, P.fg.chainState c = some (st.σ r) := by
     rcases hb : st.blocks r with _ | X
