@@ -85,8 +85,8 @@ variable {pub : Public} {Out : Type}
 /-- A shape step's result in the compiled state: the shape's new state with
 the mempool `xs` unchanged, and the message built by `f`. -/
 def withMempool {σ α β : Type} (xs : List Tx) (f : α → β) (r : σ × Option α) :
-    (σ × List Tx) × Option β :=
-  ((r.1, xs), r.2.map f)
+    (σ × List Tx) × List β :=
+  ((r.1, xs), (r.2.map f).toList)
 
 /-- The model protocol of a chain shape (see the module docstring). -/
 def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
@@ -112,7 +112,9 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
     | .act s k => withMempool st.2 (fun (b, cs) => (.data b, cs)) (S.act st.1 s k)
     | .pollPropose t => withMempool st.2 (fun (par, pos, info, cs) =>
         (.item ⟨par, pos, encodeTxs st.2, info⟩, cs)) (S.pollPropose st.1 (t : Time))
-    | .poll t => withMempool st.2 (fun (b, cs) => (.data b, cs)) (S.poll st.1 (t : Time))
+    | .poll t =>
+      let r := S.pollBatch st.1 (t : Time)
+      ((r.1, st.2), r.2.map fun (b, cs) => (.data b, cs))
   gossip st t := S.gossip st.1 t
   process st o hs := (S.process st.1 o hs, st.2)
   dependencies := S.dependencies

@@ -154,6 +154,10 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   /-- Poll message at tick `t` (votes of poll protocols): the new state, and
   data and carried objects. -/
   poll : State → Time → State × Option (Body × List (ShapeObj pub.n skel.Kind Info Body))
+  /-- Ordered poll candidates. The default preserves the single-message poll;
+  a publisher may override it to drain a parent-first queue in one selected duty. -/
+  pollBatch : State → Time → State × List (Body × List (ShapeObj pub.n skel.Kind Info Body)) :=
+    fun st t => let r := poll st t; (r.1, r.2.toList)
   /-- Unsigned objects (items allowed); relay is done here, by carrying. -/
   gossip : State → Time →
     List (Msg (Header Info) Body × List (ShapeObj pub.n skel.Kind Info Body))

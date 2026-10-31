@@ -183,20 +183,17 @@ def signerOf (o : (protoOf F E).Object) : Option V := o.signer?.map rho.key
 seen nothing. -/
 def initWorld (v : V) : Node (protoOf F E) := ⟨(protoOf F E).init (rho.ownKey v), []⟩
 
-/-- The candidate of duty `d` for node `v`, from `act`'s message: signed with
-`v`'s own key in the duty's role if that role selects the key, nothing
-otherwise. -/
+/-- The ordered candidates of duty `d`, signed with the selected node's own key
+in the duty's role. An unselected node produces no candidates. -/
 def signedCandidate (v : V) (d : (protoOf F E).Duty) :
-    Option (Msg (protoOf F E).Item (protoOf F E).Body × List (protoOf F E).Object) →
-      List (protoOf F E).Object
-  | some (m, cs) =>
-    if rho.ownKey v ∈ rho.sel ((protoOf F E).role d) then
-      [.mk (.signed (rho.ownKey v) ((protoOf F E).role d)) m cs]
-    else []
-  | none => []
+    List (Msg (protoOf F E).Item (protoOf F E).Body × List (protoOf F E).Object) →
+      List (protoOf F E).Object := fun candidates =>
+  if rho.ownKey v ∈ rho.sel ((protoOf F E).role d) then
+    candidates.map fun (m, cs) => .mk (.signed (rho.ownKey v) ((protoOf F E).role d)) m cs
+  else []
 
-/-- One selected duty of node `v`: `act`'s state is applied, then its candidate (if any)
-is released. An unselected duty does not execute or mutate state. -/
+/-- One selected duty of node `v`: `act`'s state is applied, then its candidates
+are released in order. An unselected duty does not execute or mutate state. -/
 def dutyStep (v : V) (nd : Node (protoOf F E)) (d : (protoOf F E).Duty) :
     Node (protoOf F E) × List (protoOf F E).Object :=
   if rho.ownKey v ∈ rho.sel ((protoOf F E).role d) then

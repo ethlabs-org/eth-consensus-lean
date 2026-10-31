@@ -418,9 +418,24 @@ omit [DecidableEq V] in
 /-- The candidate of the engine's poll duty is the shape's poll body. -/
 theorem act_poll_snd (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Nat) :
     ((Model.protoOf (compiled (family S)) E).act nd.st (.poll t)).2 =
-      (poll (shapeOf S hn nd) t).2.map (fun bc => (.data bc.1, bc.2)) := by
-  change Option.map _ ((family S (pubOf E)).poll nd.st.1 t).2 = _
-  simp only [family, dite_eq_left hn]; rfl
+      ((poll (shapeOf S hn nd) t).2.map (fun bc => (.data bc.1, bc.2))).toList := by
+  change (((family S (pubOf E)).poll nd.st.1 t).2.toList.map _) = _
+  simp only [family, dite_eq_left hn]
+  exact Option.toList_map.symm
+
+omit [DecidableEq V] in
+/-- The unchanged Goldilocks handlers still emit at most one candidate per duty. -/
+theorem act_candidates_length (st : (Model.protoOf (compiled (family S)) E).State)
+    (d : (Model.protoOf (compiled (family S)) E).Duty) :
+    (((Model.protoOf (compiled (family S)) E).act st d).2).length ≤ 1 := by
+  cases d with
+  | propose s hs => exact Option.length_toList_le
+  | act s k => cases k
+  | pollPropose t => exact Option.length_toList_le
+  | poll t =>
+    change (List.map _ (((family S (pubOf E)).poll st.1 t).2.toList)).length ≤ 1
+    erw [List.length_map]
+    exact Option.length_toList_le
 
 omit [DecidableEq V] in
 /-- A duty step appends what it releases to `seen`. -/
@@ -445,8 +460,10 @@ theorem dutyStep_carried (v : V) (nd : Model.Node (Model.protoOf (compiled (fami
   have hlen : l.length ≤ 1 := by
     rw [← hl]; unfold Model.Run.signedCandidate
     split
-    · split <;> simp
-    · simp
+    · rw [List.length_map]
+      exact act_candidates_length S nd.st d
+    · rw [List.length_map]
+      exact act_candidates_length S nd.st d
   match l, hlen with
   | [], _ => simp [Model.releaseAll] at hc
   | [c'], _ =>
@@ -472,10 +489,13 @@ theorem dutyStep_poll_sub (v : V) (nd : Model.Node (Model.protoOf (compiled (fam
     (rho.mem_signedCandidate).mp (Model.releaseAll_subset _ _ _ _ o ho)
   rw [act_poll_snd S hn, (poll_outbox _ _).2] at hact
   cases hh : (pollPre (shapeOf S hn nd)).outbox.head? with
-  | none => simp [hh] at hact
+  | none =>
+    simp only [hh, Option.map_none, Option.toList_none] at hact
+    exact False.elim (List.not_mem_nil hact)
   | some b =>
-    simp only [hh, Option.map_some] at hact
-    obtain ⟨rfl, rfl⟩ := hact
+    simp only [hh, Option.map_some, Option.toList_some] at hact
+    have hact := List.mem_singleton.mp hact
+    cases hact
     exact ⟨b, rfl, rfl⟩
 
 omit [DecidableEq V] in
@@ -492,8 +512,9 @@ theorem dutyStep_poll_rel (v : V) (nd : Model.Node (Model.protoOf (compiled (fam
     hsel, ↓reduceIte]
   rw [act_poll_snd S hn, (poll_outbox _ _).2, hb]
   have hrole : (Model.protoOf (compiled (family S)) E).role (.poll t) = .poll := rfl
-  simp only [Option.map_some, Model.Run.signedCandidate, hrole]
+  simp only [Option.map_some, Option.toList_some, Model.Run.signedCandidate, hrole]
   rw [ite_eq_left hsel]
+  erw [List.map_cons, List.map_nil]
   have hc : (Model.releasable nd.seen (pollObj S rho v b) &&
       Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v) nd.seen
         (pollObj S rho v b)) = true :=
@@ -516,11 +537,12 @@ theorem dutyStep_pollPropose_snd (v : V)
     (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Nat) :
     (rho.dutyStep v nd (.pollPropose t)).2 = [] := by
   unfold Model.Run.dutyStep
-  have h2 : ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).2 = none := by
-    change Option.map _ ((family S (pubOf E)).pollPropose nd.st.1 t).2 = none
+  have h2 : ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).2 = [] := by
+    change (Option.map _ ((family S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
     simp only [family, dite_eq_left hn]; rfl
   dsimp only
   rw [h2]
+  simp [Model.Run.signedCandidate, Model.releaseAll]
   split <;> rfl
 
 omit [DecidableEq V] in
@@ -571,19 +593,21 @@ theorem dutyStep_propose_shape (v : V)
       ∃ c hs', shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1 =
         recordOwn (propose (shapeOf S hn nd) s).1 c hs' := by
   have hact1 := shapeOf_act_propose S hn nd.st s hs
+  have hlen := act_candidates_length S nd.st (.propose s hs)
   unfold Model.Run.dutyStep
   simp only [show (Model.protoOf (compiled (family S)) E).role (.propose s hs) =
     .proposer s from rfl, hsel, ↓reduceIte]
-  generalize (Model.protoOf (compiled (family S)) E).act nd.st (.propose s hs) = a at hact1
+  generalize (Model.protoOf (compiled (family S)) E).act nd.st (.propose s hs) = a at hact1 hlen
   cases hc : rho.signedCandidate v (.propose s hs) a.2 with
   | nil => exact Or.inl hact1
   | cons c cs =>
     have hcs : cs = [] := by
       unfold Model.Run.signedCandidate at hc
       split at hc
-      · split at hc
-        · simp only [List.cons.injEq] at hc; exact hc.2.symm
-        · cases hc
+      · have he := congrArg List.length hc
+        rw [List.length_map, List.length_cons] at he
+        have : cs.length = 0 := by omega
+        exact List.length_eq_zero_iff.mp this
       · cases hc
     subst hcs
     unfold Model.releaseAll

@@ -53,7 +53,7 @@ def proto (pub : Public) : Protocol pub Unit where
   duties := fun t => [t]
   init := fun _ => ()
   clock := fun _ _ _ => ()
-  act := fun _ _ => ((), some (.data (), []))
+  act := fun _ _ => ((), [(.data (), [])])
   gossip := fun _ _ => []
   process := fun _ _ _ => ()
   recordOwn := fun _ _ _ => ()
@@ -87,6 +87,40 @@ theorem release_dependency_order :
     (releaseAll dependentProto (fun _ => 0) 0 ⟨(), []⟩ [child, parent]).2 = [parent] ∧
     (releaseAll dependentProto (fun _ => 0) 0 ⟨(), []⟩ [parent, child]).2 = [parent, child] := by
   decide
+
+/-- One selected duty emits a batch; data needs an earlier item release. -/
+def batchProto (pub : Public) : Protocol pub Unit :=
+  { proto pub with
+    Duty := Time
+    act := fun _ (t : Time) => ((), if t = 0 then [(.item (), []), (.data (), [])]
+      else [(.data (), []), (.item (), [])])
+    dependencies := {
+      ready := fun held o => match o.msg with
+        | .item _ => true
+        | .data _ => held.any fun p => p.item?.isSome
+      mono := by
+        intro held held' o hsub h
+        split at h
+        · rfl
+        · simp only [List.any_eq_true] at h ⊢
+          obtain ⟨p, hp, hr⟩ := h
+          exact ⟨p, hsub hp, hr⟩ } }
+
+/-- Batch order is observable through the duty interface: parent-first releases both;
+child-first refuses the child without retry. Unselected duties release neither. -/
+theorem signed_batch_dependency_order :
+    let rho : Run (O := schema) batchProto (Env.mk 1 (by decide) (fun _ _ => true)) :=
+      Run.mk Finset.univ 1 [] (pkiFin 1) (fun _ => Finset.univ)
+        (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
+    let parent := Obj.mk (.signed (0 : Fin 1) false) (.item ()) []
+    let child := Obj.mk (.signed (0 : Fin 1) false) (.data ()) []
+    (rho.dutyStep 0 ⟨(), []⟩ (0 : Time)).2 = [parent, child] ∧
+    (rho.dutyStep 0 ⟨(), []⟩ (1 : Time)).2 = [parent] ∧
+    ({ rho with sel := fun _ => ∅ }.dutyStep 0 ⟨(), []⟩ (0 : Time)).2 = [] := by
+  simp [Run.dutyStep, Run.signedCandidate, Run.ownKey, batchProto, proto, protoOf,
+    releaseAll, releasable, protects, Obj.carried, Model.closure, Obj.parts, Obj.item?,
+    Obj.msg, pkiFin]
+  exact ⟨rfl, rfl⟩
 
 /-- Two validators, always awake, `Δ = 3`, `GST = 4`. -/
 def env : Env (Fin 2) := ⟨3, by decide, fun _ _ => true⟩
@@ -233,7 +267,7 @@ def seqProto (pub : Public) : Protocol pub Unit where
   duties := fun _ => [false, true]
   init := fun _ => 0
   clock := fun s _ _ => s
-  act := fun s d => (if d then s else s + 1, some (.data s, []))
+  act := fun s d => (if d then s else s + 1, [(.data s, [])])
   gossip := fun _ _ => []
   process := fun s _ _ => s
   recordOwn := fun s _ _ => s + 10

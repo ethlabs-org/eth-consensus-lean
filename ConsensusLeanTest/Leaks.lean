@@ -528,7 +528,7 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
   have hcand : Obj.mk (.signed (rho.ownKey v) (ShapeRole.proposer s)) (.item h) [] ∈
       rho.signedCandidate v (.propose s hspos)
         ((protoOf (compiled (familyC false)) env).act nd₁.st (.propose s hspos)).2 :=
-    (rho.mem_signedCandidate).mpr ⟨_, _, rfl, hsel, rfl⟩
+    (rho.mem_signedCandidate).mpr ⟨_, _, List.mem_singleton_self _, hsel, rfl⟩
   have hrel := releaseAll_record rho.hash (rho.ownKey v) _
     ⟨((protoOf (compiled (familyC false)) env).act nd₁.st (.propose s hspos)).1, nd₁.seen⟩ hcand
   have hrel' : Obj.mk (.signed (rho.ownKey v) (ShapeRole.proposer s)) (.item h) [] ∈

@@ -100,15 +100,15 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   /-- The clock update at a tick, with the node's cumulative own and relayed transactions
   so far. -/
   clock : State → Time → List Tx → State
-  /-- Duty `d`: the new state, and what the node signs for the duty (if selected
-  for its role): a message and carried objects. On an awake tick, when the duty
-  runs, the engine applies the state whether or not the node is selected and
-  whether or not the message is released. `act` gets no selection or
+  /-- Duty `d`: the new state and ordered candidates signed in its selected role.
+  An unselected duty does not execute. For a selected duty the engine applies
+  the state even if candidates are refused. `act` gets no selection or
   release-result argument and no failure feedback, so the state it returns
   cannot depend on selection or refusal; a later duty (also within the tick)
   learns of a successful release only through `recordOwn`. A purely local
-  step returns `none`. -/
-  act : State → Duty → State × Option (Msg Item Body × List (Obj pub.n Role Item Body))
+  step returns `[]`. Candidates are released in list order through `releaseAll`;
+  each successful release updates holdings before the next candidate's guards. -/
+  act : State → Duty → State × List (Msg Item Body × List (Obj pub.n Role Item Body))
   /-- Unsigned objects (items allowed). Relay of received objects is done here,
   by carrying them. -/
   gossip : State → Time → List (Msg Item Body × List (Obj pub.n Role Item Body))

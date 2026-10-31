@@ -183,15 +183,19 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
     rcases hr : (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.2 with _ | ⟨d, p⟩
     · simp only [hr] at hact1 hact2
       rw [hact2]
+      simp only [Option.map_none, Option.toList_none, Model.Run.signedCandidate]
+      erw [List.map_nil]
+      simp only [ite_self, Model.releaseAll]
       refine ⟨by
-        simp [Model.Run.signedCandidate, Model.releaseAll, blockObjs, Node.acProposal]; rfl, ?_⟩
+        simp [blockObjs, Node.acProposal]; rfl, ?_⟩
       change (a.1.1 hn).outbox = _
       rw [hact1]
       simp [emitted, Node.acProposal]
     · simp only [hr] at hact1 hact2 hrel
       rw [hact2]
       have hrole : (Model.protoOf (compiled (family S)) E).role (.propose s hs) = .proposer s := rfl
-      simp only [Option.map, Model.Run.signedCandidate, hrole]
+      simp only [Option.map, Option.toList_some, Model.Run.signedCandidate, hrole]
+      erw [List.map_cons, List.map_nil]
       have hmem : rho.ownKey v ∈ rho.sel (.proposer s) := by
         rw [hsel]
         exact Finset.mem_singleton.2 (hp.trans hself).symm
@@ -299,11 +303,15 @@ theorem dutyStep_poll_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (fami
     hsel, ↓reduceIte]
   rw [act_poll_snd S hn, (poll_outbox _ _).2]
   cases hh : (pollPre (shapeOf S hn nd)).outbox.head? with
-  | none => rfl
+  | none =>
+    simp only [Option.map_none, Option.toList_none, Model.Run.signedCandidate]
+    erw [List.map_nil]
+    simp [Model.releaseAll, relHead]
   | some b =>
     have hrole : (Model.protoOf (compiled (family S)) E).role (.poll k) = .poll := rfl
-    simp only [Option.map_some, Model.Run.signedCandidate, hrole]
+    simp only [Option.map_some, Option.toList_some, Model.Run.signedCandidate, hrole]
     rw [ite_eq_left hsel]
+    erw [List.map_cons, List.map_nil]
     unfold relHead
     simp only [Option.elim_some]
     by_cases hp : Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v) nd.seen

@@ -43,40 +43,47 @@ theorem tickReach_mempool {S : ChainShape pub Out Info} {ds : List (compile S).D
 state it acts from. -/
 theorem act_item_payload (S : ChainShape pub Out Info) (st : (compile S).State)
     (d : (compile S).Duty) {h : Header Info} {cs}
-    (hact : ((compile S).act st d).2 = some (.item h, cs)) : h.input = encodeTxs st.2 := by
+    (hact : (.item h, cs) ∈ ((compile S).act st d).2) : h.input = encodeTxs st.2 := by
+  change List.Mem (Msg.item h, cs) ((compile S).act st d).2 at hact
+  dsimp only [compile] at hact
   cases d with
   | propose s _ =>
     cases hp : (S.propose st.1 s).2 with
-    | none => simp [compile, withMempool, hp] at hact
+    | none =>
+      simp only [withMempool, hp, Option.map_none, Option.toList_none] at hact
+      exact False.elim (List.not_mem_nil hact)
     | some x =>
       obtain ⟨par, info, cs'⟩ := x
-      simp only [compile, withMempool, hp, Option.map_some, Option.some.injEq] at hact
+      simp only [withMempool, hp, Option.map_some, Option.toList_some] at hact
+      have hact := List.mem_singleton.mp hact
       injection hact with hm
       injection hm with hm
-      rw [← hm]
+      exact congrArg Header.input hm
   | act s k =>
     cases hp : (S.act st.1 s k).2 with
-    | none => simp [compile, withMempool, hp] at hact
+    | none =>
+      simp only [withMempool, hp, Option.map_none, Option.toList_none] at hact
+      exact False.elim (List.not_mem_nil hact)
     | some x =>
-      simp only [compile, withMempool, hp, Option.map_some, Option.some.injEq] at hact
+      simp only [withMempool, hp, Option.map_some, Option.toList_some] at hact
+      have hact := List.mem_singleton.mp hact
       injection hact with hm
       cases hm
   | pollPropose u =>
     cases hp : (S.pollPropose st.1 (u : Time)).2 with
-    | none => simp [compile, withMempool, hp] at hact
+    | none =>
+      simp only [withMempool, hp, Option.map_none, Option.toList_none] at hact
+      exact False.elim (List.not_mem_nil hact)
     | some x =>
       obtain ⟨par, pos, info, cs'⟩ := x
-      simp only [compile, withMempool, hp, Option.map_some, Option.some.injEq] at hact
+      simp only [withMempool, hp, Option.map_some, Option.toList_some] at hact
+      have hact := List.mem_singleton.mp hact
       injection hact with hm
       injection hm with hm
-      rw [← hm]
+      exact congrArg Header.input hm
   | poll u =>
-    cases hp : (S.poll st.1 (u : Time)).2 with
-    | none => simp [compile, withMempool, hp] at hact
-    | some x =>
-      simp only [compile, withMempool, hp, Option.map_some, Option.some.injEq] at hact
-      injection hact with hm
-      cases hm
+    obtain ⟨⟨b, bs⟩, _, he⟩ := List.mem_map.mp hact
+    cases he
 
 end Compile
 

@@ -34,6 +34,17 @@ where it is recorded; "Francesco" marks the owner's decisions.
   intended network model: actual row delays in (Δ, Δ_F] cannot be represented
   (r9 instance-proposal §3.8). The canonical FG-row service bridge is a named
   OPEN transport obligation, not an additional Healthy premise.
+- 2026-10-31, coordinator-approved ordered duty batches (#107). A selected
+  protocol duty returns an ordered list of candidates, all signed by its own
+  key in that duty's role. The existing `releaseAll` checks each candidate
+  against the holdings left by successful earlier candidates; rejection does
+  not retry or reorder the batch. This permits same-event parent-wrapper
+  publication before a child's dependency check. Shape `pollBatch` defaults
+  to the existing optional poll as a zero-or-one list; other shape handlers
+  likewise compile to zero-or-one lists. No network or realizability premise
+  changes. This interface extension is separate from installing the revised
+  Goldilocks publisher. Delivery clocks need no change: `lastClock_deliver`
+  and `now_eq_lastClock` already establish the receipt time from event order.
 - 2026-10-31, Francesco (contract assumptions versus guarantees). Loose numbers
   are acceptable for latency, healing time and catch-up guarantees, not as a reason
   to strengthen assumptions. Choose progress recurrence as weak as the proofs allow:

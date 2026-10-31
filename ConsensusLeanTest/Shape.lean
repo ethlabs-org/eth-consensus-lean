@@ -166,7 +166,7 @@ its mempool `xs`. -/
 theorem poll_proposal_local_height (pub : Public) (k : Key pub) (t : Nat) (xs : List Tx)
     (h : t % pub.n = k.val) :
     ((compile (pollShape pub)).act ((k, 5), xs) (ShapeDuty.pollPropose t)).2 =
-      some (.item ⟨.root, 6, encodeTxs xs, ()⟩, []) := by
+      [(.item ⟨.root, 6, encodeTxs xs, ()⟩, [])] := by
   simp [compile, withMempool, pollShape, h]
 
 /-- Public parameters with `Δ = 2` and three keys. -/

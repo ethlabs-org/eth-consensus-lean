@@ -239,20 +239,18 @@ theorem releaseAll_shape_eq (k : Fin (Fintype.card V)) :
 omit [DecidableEq V] in
 /-- A poll step's signed candidate is a data body, which `recordOwn` ignores. -/
 theorem signedCandidate_poll_recordOwn (v : V) (t : Nat)
-    (o : Option (Body × List (Model.protoOf (compiled (family S)) E).Object)) :
+    (o : List (Body × List (Model.protoOf (compiled (family S)) E).Object)) :
     ∀ c ∈ rho.signedCandidate v (.poll t) (o.map fun bc => (.data bc.1, bc.2)),
       ∀ (st : State (S.params (pubOf E) hn) (S.ro _)) hs, recordOwn st c hs = st := by
-  cases o with
-  | none => simp [Model.Run.signedCandidate]
-  | some bc =>
-    simp only [Option.map, Model.Run.signedCandidate]
-    split
-    · intro c hc
-      simp only [List.mem_singleton] at hc
-      subst hc
-      intro st hs
-      exact recordOwn_data st _ _ _ _ hs
-    · simp
+  intro c hc st hs
+  unfold Model.Run.signedCandidate at hc
+  split at hc
+  next hk =>
+    obtain ⟨⟨m, cs⟩, hm, rfl⟩ := List.mem_map.mp hc
+    obtain ⟨⟨b, bs⟩, _, he⟩ := List.mem_map.mp hm
+    cases he
+    exact recordOwn_data st _ _ _ _ hs
+  next hk => simp at hc
 
 omit [DecidableEq V] in
 /-- The engine's poll duty step is the shape's `poll`: its released body is not recorded. -/
@@ -273,15 +271,16 @@ theorem dutyStep_pollPropose (v : V) (nd : Model.Node (Model.protoOf (compiled (
   unfold Model.Run.dutyStep
   simp only [show (Model.protoOf (compiled (family S)) E).role (.pollPropose t) = .poll from rfl,
     hsel, ↓reduceIte]
-  have h2 : ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).2 = none := by
-    change Option.map _ ((family S (pubOf E)).pollPropose nd.st.1 t).2 = none
+  have h2 : ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).2 = [] := by
+    change (Option.map _ ((family S (pubOf E)).pollPropose nd.st.1 t).2).toList = []
     simp only [family, dite_eq_left hn]; rfl
   change shapeOf S hn (Model.releaseAll _ _ _
     ⟨((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).1, nd.seen⟩
     (rho.signedCandidate v (.pollPropose t)
       ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).2)).1 = _
   rw [h2]
-  exact shapeOf_act_pollPropose S hn nd.st t
+  simpa [Model.Run.signedCandidate, hsel, Model.releaseAll] using
+    shapeOf_act_pollPropose S hn nd.st t
 
 omit [DecidableEq V] in
 /-- Running a duty then a list of duties. -/
@@ -964,9 +963,9 @@ with the node's mempool. -/
 theorem act_propose_snd (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (s : Slot)
     (hs : 0 < s) :
     ((Model.protoOf (compiled (family S)) E).act nd.st (.propose s hs)).2 =
-      (propose (shapeOf S hn nd) s).2.map
-        (fun r => (.item ⟨r.1, s, encodeTxs nd.st.2, r.2.1⟩, r.2.2)) := by
-  change Option.map _ ((family S (pubOf E)).propose nd.st.1 s).2 = _
+      ((propose (shapeOf S hn nd) s).2.map
+        (fun r => (.item ⟨r.1, s, encodeTxs nd.st.2, r.2.1⟩, r.2.2))).toList := by
+  change (Option.map _ ((family S (pubOf E)).propose nd.st.1 s).2).toList = _
   simp only [family, dite_eq_left hn]; rfl
 
 omit [DecidableEq V] in
@@ -1023,12 +1022,16 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
     rcases hr : (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.2 with _ | ⟨d, p⟩
     · simp only [hr] at hact1 hact2
       rw [hact2]
+      simp only [Option.map_none, Option.toList_none, Model.Run.signedCandidate]
+      erw [List.map_nil]
+      simp only [ite_self, Model.releaseAll]
       change (a.1.1 hn).node = _
       rw [hact1]
     · simp only [hr] at hact1 hact2 hrel
       rw [hact2]
       have hrole : (Model.protoOf (compiled (family S)) E).role (.propose s hs) = .proposer s := rfl
-      simp only [Option.map, Model.Run.signedCandidate, hrole]
+      simp only [Option.map, Option.toList_some, Model.Run.signedCandidate, hrole]
+      erw [List.map_cons, List.map_nil]
       have hmem : rho.ownKey v ∈ rho.sel (.proposer s) := by
         rw [hsel]
         exact Finset.mem_singleton.2 (hp.trans hself).symm

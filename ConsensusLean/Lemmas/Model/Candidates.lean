@@ -171,14 +171,14 @@ omit [DecidableEq V] in
 /-- What `signedCandidate` gives: `act`'s message, signed with the own key in
 the duty's role, if that role selects the key. -/
 theorem mem_signedCandidate {v : V} {d : (protoOf F E).Duty}
-    {a : Option (Msg (protoOf F E).Item (protoOf F E).Body × List (protoOf F E).Object)}
+    {a : List (Msg (protoOf F E).Item (protoOf F E).Body × List (protoOf F E).Object)}
     {o : (protoOf F E).Object} :
     o ∈ rho.signedCandidate v d a ↔
-      ∃ m cs, a = some (m, cs) ∧ rho.ownKey v ∈ rho.sel ((protoOf F E).role d) ∧
+      ∃ m cs, (m, cs) ∈ a ∧ rho.ownKey v ∈ rho.sel ((protoOf F E).role d) ∧
         o = .mk (.signed (rho.ownKey v) ((protoOf F E).role d)) m cs := by
-  rcases a with _ | ⟨m, cs⟩
-  · simp [signedCandidate]
-  · by_cases hk : rho.ownKey v ∈ rho.sel ((protoOf F E).role d) <;> simp [signedCandidate, hk]
+  by_cases hk : rho.ownKey v ∈ rho.sel ((protoOf F E).role d)
+  · simp [signedCandidate, hk, eq_comm]
+  · simp [signedCandidate, hk]
 
 omit [DecidableEq V] in
 private theorem foldl_duties_acc (v : V) (ds : List (protoOf F E).Duty)
@@ -475,7 +475,7 @@ theorem tick_duty (nd : Node (protoOf F E)) (v : V) (t : Time)
     ∃ d ∈ (protoOf F E).duties t, (protoOf F E).role d = r ∧ ∃ st,
       TickReach (protoOf F E) ((protoOf F E).duties t)
         ((protoOf F E).clock nd.st t (mempool rho.inbox v t)) st ∧
-      ((protoOf F E).act st d).2 = some (m, cs) := by
+      (m, cs) ∈ ((protoOf F E).act st d).2 := by
   subst ha
   obtain ⟨cs', hcs, h2, -⟩ := rho.tick_flat nd v t
   rw [h2] at ho
@@ -669,7 +669,7 @@ theorem deliver_duty (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object
     ∃ d ∈ (protoOf F E).deliverDuties t, (protoOf F E).role d = r ∧ ∃ st,
       TickReach (protoOf F E) ((protoOf F E).deliverDuties t)
         ((protoOf F E).process nd.st o (digests rho.hash o)) st ∧
-      ((protoOf F E).act st d).2 = some (m, cs) := by
+      (m, cs) ∈ ((protoOf F E).act st d).2 := by
   subst ha
   obtain ⟨cs', hcs, h2, -⟩ := rho.deliver_flat nd v o t
   rw [h2] at ho
