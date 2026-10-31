@@ -11,6 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Persist
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 public import Solution
 
 @[expose] public section
@@ -46,5 +47,9 @@ theorem Consensus.Goldilocks.Regimes.outputsValid : Consensus.Goldilocks.Regimes
 theorem Consensus.Goldilocks.Regimes.finalAccountable : Consensus.Goldilocks.Regimes.FinalAccountable := sorry
 theorem Consensus.Goldilocks.Regimes.nonFraming : Consensus.Goldilocks.Regimes.NonFraming := sorry
 theorem Consensus.Goldilocks.Regimes.finalizedSafe : Consensus.Goldilocks.Regimes.FinalizedSafe := sorry
+theorem Consensus.Goldilocks.Regimes.sleepySafe : Consensus.Goldilocks.Regimes.SleepySafe := sorry
+theorem Consensus.Goldilocks.Regimes.sleepySafePrefix : Consensus.Goldilocks.Regimes.SleepySafePrefix := sorry
+theorem Consensus.Goldilocks.Regimes.includeSleepy : Consensus.Goldilocks.Regimes.IncludeSleepy := sorry
+theorem Consensus.Goldilocks.Regimes.growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy := sorry
 
 end

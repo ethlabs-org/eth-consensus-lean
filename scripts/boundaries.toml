@@ -546,7 +546,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
-         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose"]
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
+         "Instances.Goldilocks.Lemmas.Healing"]
 about = "Goldilocks milestone"
 
 [[layer]]
@@ -632,7 +633,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Compose",
          "Instances.Goldilocks.Proofs.ComposeAnyAC", "Instances.Goldilocks.Proofs.Persist",
-         "Instances.Goldilocks.Proofs.Regimes"]
+         "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Proofs.Regimes"]
 about = "comparator solution: the review statements and the finished instance milestones (each through its Main)"
 
 [[layer]]
@@ -741,7 +742,8 @@ milestone_statements_modules = ["ConsensusLean.Instances.Goldilocks.Statements.F
                                 "ConsensusLean.Instances.Goldilocks.Statements.Compose.Node",
                                 "ConsensusLean.Instances.Goldilocks.Statements.Compose.Run",
                                 "ConsensusLean.Instances.Goldilocks.Statements.Compose.Persist",
-                                "ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always"]
+                                "ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always",
+                                "ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy"]
 # Extra targets built by step 1 next to the default targets.
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
                        "spec-surface", "Challenge"]

@@ -23,5 +23,9 @@
                     "Consensus.Goldilocks.Regimes.outputsValid",
                     "Consensus.Goldilocks.Regimes.finalAccountable",
                     "Consensus.Goldilocks.Regimes.nonFraming",
-                    "Consensus.Goldilocks.Regimes.finalizedSafe"],
+                    "Consensus.Goldilocks.Regimes.finalizedSafe",
+                    "Consensus.Goldilocks.Regimes.sleepySafe",
+                    "Consensus.Goldilocks.Regimes.sleepySafePrefix",
+                    "Consensus.Goldilocks.Regimes.includeSleepy",
+                    "Consensus.Goldilocks.Regimes.growSleepy"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }

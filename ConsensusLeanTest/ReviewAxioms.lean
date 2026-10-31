@@ -127,6 +127,18 @@ run_meta do
 /-- info: 'Consensus.Goldilocks.Regimes.finalizedSafe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Regimes.finalizedSafe
 
+/-- info: 'Consensus.Goldilocks.Regimes.sleepySafe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.sleepySafe
+
+/-- info: 'Consensus.Goldilocks.Regimes.sleepySafePrefix' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.sleepySafePrefix
+
+/-- info: 'Consensus.Goldilocks.Regimes.includeSleepy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.includeSleepy
+
+/-- info: 'Consensus.Goldilocks.Regimes.growSleepy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.growSleepy
+
 /-! ## Axiom pins: the source theorems -/
 
 /-- info: 'Consensus.Shape.Accepted.good' depends on axioms: [propext, Classical.choice, Quot.sound] -/
