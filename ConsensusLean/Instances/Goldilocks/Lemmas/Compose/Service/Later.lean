@@ -1,5 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Adopt
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 
 public section
 
@@ -20,7 +23,86 @@ open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-/-- **A later update adopts `P`** (`s' > s`; open). -/
+/-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
+private theorem tick_cuts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} (y : Fin sp.n)
+    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
+    (Node.exec dg y st t (.tick x)).2 = (Node.tickStep dg y st t x .acTick).2 ++
+      (Node.tickStep dg y (Node.tickStep dg y st t x .acTick).1 t x .proposal).2 ++
+      (Node.tickStep dg y (Node.tickStep dg y (Node.tickStep dg y st t x .acTick).1 t x
+        .proposal).1 t x .fgUpdate).2 := by
+  simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps]
+
+/-- **An honest validator awake and joined at `t_s + 6Δ` runs the update of slot `s`** there: its
+tick at that public time starts with `ac_on_tick`, joined. -/
+private theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun dg H tr)
+    {x : Fin sp.n} (hx : x ∈ H) {s : Nat} (hw : tr.awake x (sp.ts s + 6 * sp.Δ))
+    (hj : tr.JoinedAt x (sp.ts s + 6 * sp.Δ)) :
+    ∃ k ℓ, SA.UpdateAt tr.projAC x k s ℓ := by
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have h0 : (0 : Time) ≤ sp.ts s := by
+    simp only [SAParams.ts]
+    exact mul_nonneg (by linarith) (Int.natCast_nonneg s)
+  obtain ⟨j, c, hj'⟩ := hrun.tick_of_awake x hx _ (by linarith)
+    (show sp.toParams.IsPublic _ from Dvd.intro (4 * (s : Int) + 6)
+      (by simp only [SAParams.ts]; ring)) hw
+  obtain ⟨-, hk, -⟩ := hj'
+  have hlen : 0 < (Node.exec dg x (tr.state x j) (sp.ts s + 6 * sp.Δ) (.tick c)).2.length := by
+    rw [tick_cuts]; simp [Node.tickStep]
+  obtain ⟨hn0, ht0, -, -, hl0⟩ := hk 0 hlen
+  have hget : (Node.exec dg x (tr.state x j) (sp.ts s + 6 * sp.Δ) (.tick c)).2[0]'hlen =
+      (Node.acCall x (tr.state x j) (sp.ts s + 6 * sp.Δ) .tick).2 := by
+    simp only [tick_cuts]; rfl
+  rw [hget] at hl0
+  simp only [Nat.add_zero] at hn0 ht0 hl0
+  obtain ⟨ℓ, hl, hcall⟩ : ∃ ℓ : ACLabel (goldilocksNode sp ro),
+      tr.label j = some (.ac ℓ) ∧ ℓ.call = .tick := ⟨_, hl0, rfl⟩
+  have hnr : ¬ tr.RestartAt x j := by
+    rintro ⟨ℓ', ⟨-, hl'⟩, hr'⟩
+    have h := hl'.symm.trans hl
+    injection h with h
+    injection h with h
+    rw [h, hcall] at hr'
+    cases hr'
+  have htj : tr.projAC.time j = sp.ts s + 6 * sp.Δ := ht0
+  refine ⟨j, ℓ, ⟨hn0, by simp [RunTrace.projAC, hl, RunTrace.acLabel]⟩, hcall, htj, ?_⟩
+  rw [projAC_state hrun.toLocalRun hx j, htj]
+  exact ((joined_projection sp ro dg H tr hrun x hx _).2.1 j ⟨_, hn0, hl⟩ hnr ht0).1 hj
+
+open Classical in
+/-- The record after a joined tick at `t_s + 6Δ` whose update of slot `s` has a result `C` that
+no live lock vetoes: the old record when `C` is below it in the tree, else `C` (as in
+`Service/Adopt`). -/
+private theorem acOnTick_update_record (self : Fin sp.n) {A : SA.SAState sp.n}
+    {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    {t : Time} (ht : t = sp.ts s + 6 * sp.Δ) (hj : SA.joined sp A t)
+    (hC : SA.getConfirmation sp A Φ s = some C) (hv : ¬ SA.conflictsWithLock sp A.locks Φ t C) :
+    (SA.acOnTick sp self A Φ t).1.latestConfirmed =
+      if SA.AncR Φ C A.latestConfirmed then A.latestConfirmed else C.root := by
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have h6 : t = sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ := ht.trans (SA.slot_arithmetic sp s).2.2
+  have hsl : sp.slot t = s + 1 := by
+    have := (SA.slot_arithmetic sp (s + 1)).1 2 (by omega)
+    rw [h6]
+    simpa using this
+  have hne : ¬ t = sp.ts ((s + 1 : Nat) : Int) + sp.Δ := by rw [h6]; intro h; linarith
+  unfold SA.acOnTick
+  rw [ite_eq_right (not_not.2 hj)]
+  simp only [hsl]
+  rw [ite_eq_right hne, ite_eq_left ⟨h6, Nat.succ_pos s⟩, Nat.add_sub_cancel]
+  simp only [SA.updateConfirmation, hC]
+  rw [ite_eq_right hv]
+  simp only [SA.updateLatestConfirmed]
+  split_ifs <;> rfl
+
+/-- **A later update adopts `P`** (`s' > s`). `P` is a regular origin: more than `f ≥ 0` honest
+validators are awake and joined at `t_{s+1} + 2Δ = t_s + 6Δ` (`Sleepy`), and the update of slot
+`s` of one of them returns `P` (`adopt_result`). Every honest slot-`s'` vote extends it (S2), and
+`Σ.F` is compatible with it (S1). When `P ⪯ Σ.F`, the second disjunct holds. Otherwise each honest
+slot-`s'` vote's head is above `Σ.F`, so it is held and resolved at the update
+(`honest_vote_at_update`); then `P` is in the frame with a strict majority (the honest slot-`s'`
+voters support it, the rest are faulty), the deepest majority block above `Σ.F` extends it, is not
+vetoed (`result_not_vetoed`), and the record moves to it or keeps a deeper one. -/
 theorem later_update_adopts_gt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -30,7 +112,150 @@ theorem later_update_adopts_gt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) :
     ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y (k₀ + 1)).fg.F) := by
-  sorry
+  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hr := hrun'.localRun
+  have hU := hr.coherent
+  have hinv := sleepy_invariant hrun hnc hsl
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  -- `P` is a regular origin of label `s`
+  obtain ⟨hPo, hPU⟩ : Origin tr H P s ∧ P ∈ tr.HonestBlocks H := by
+    have hfb := (hsl.2 (s + 1)).2.2
+    have hT : sp.toParams.slotTime (s + 1) + 2 * sp.toParams.Δ =
+        sp.ts s + 6 * sp.Δ := by
+      rw [sp.slotTime_eq]; simp only [SAParams.ts]; push_cast; ring
+    unfold RunTrace.FaultBound RunTrace.honestAwakeJoined at hfb
+    rw [hT] at hfb
+    obtain ⟨x, hx, hw, hj⟩ := Set.nonempty_of_ncard_ne_zero (Nat.zero_lt_of_lt hfb).ne'
+    obtain ⟨kx, ℓx, hux⟩ := update_of_awake_joined hrun hx hw hj
+    obtain ⟨hC, -⟩ := adopt_result hrun hnc hsl hp hP hPs hpj hx hux
+    have hfx : ℓx.frame = Node.frame (tr.state x kx) := by
+      obtain ⟨⟨hn, hl⟩, -⟩ := hux
+      obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hl
+      obtain rfl : c = .ac ℓx := by
+        cases c with
+        | ac ℓ' => cases hcl; rfl
+        | fg _ => cases hcl
+      exact (hrun.cutLaw x hx kx (.ac ℓx) ⟨hn, hc⟩).1
+    have hPt : P ∈ ℓx.frame.tree := (SA.deepest_mem hC).1.1
+    rw [hfx] at hPt
+    exact ⟨Origin.of_result hx ⟨ℓx, hux, by rw [projAC_state hrun.toLocalRun hx]; exact hC, rfl⟩,
+      x, hx, kx, hPt.1⟩
+  -- the update's cut
+  obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hu.1.2
+  obtain rfl : c = .ac ℓ := by
+    cases c with
+    | ac ℓ' => cases hcl; rfl
+    | fg _ => cases hcl
+  obtain ⟨hfr, hstep, hfg, -⟩ := hrun.cutLaw y hy k₀ (.ac ℓ) ⟨hu.1.1, hc⟩
+  have hpost : tr.state y (k₀ + 1) = tr.post k₀ := by
+    rw [Trace.state, ite_eq_left ⟨hu.1.1, by rw [hc]; exact Option.some_ne_none _⟩]
+  have hΦ : FrameOK ℓ.frame := hfr ▸ frameOK_state hrun.toLocalRun hy k₀
+  have hHB : ℓ.frame.tree ⊆ tr.HonestBlocks H := fun X hX =>
+    ⟨y, hy, k₀, by rw [hfr] at hX; exact hX.1⟩
+  have hFeq : ℓ.frame.F = (tr.state y k₀).fg.F := by rw [hfr]; rfl
+  have hFU : (tr.state y k₀).fg.F ∈ tr.HonestBlocks H := hFeq ▸ hHB hΦ.rooted.1
+  -- `Σ.F` and `P` are compatible (both on the origin chain)
+  rcases OnOriginChain.compatible hrun hnc hinv.origins_compatible hPU hFU
+      (onOriginChain_iff.2 (Or.inr ⟨P, s, hPo, Relation.ReflTransGen.refl⟩))
+      (hinv.caches y hy k₀).1 with hPF | hFP
+  · -- `Σ.F` has passed `P`
+    obtain ⟨E, hE, hEr, -⟩ := hinv.record y hy (k₀ + 1)
+    refine ⟨E, ⟨y, hy, k₀ + 1, hE⟩, hEr, Or.inr ?_⟩
+    rw [hpost, hfg]
+    exact hPF
+  -- every honest slot-`s'` vote is held and resolved at the update, its head above `P`
+  have hbatch : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s' →
+      ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Anc (tr.HonestBlocks H) P Hd ∧
+        e.msg ∈ (tr.projAC.state y k₀).pool s' ∧
+        SA.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
+          SA.ETime.of (sp.ts s' + 2 * sp.Δ) := by
+    intro x hx j e hv hes
+    obtain ⟨Hd, hHdU, hHdr, hPHd⟩ := hinv.vote_extends P s hPo x hx j e hv (by omega)
+    have h0 : (0 : Time) ≤ sp.ts s' := by
+      simp only [SAParams.ts]
+      exact mul_nonneg (by linarith) (Int.natCast_nonneg _)
+    obtain ⟨hHdt, hpool, hres⟩ := honest_vote_at_update hrun' (syncAC_of_sleepy hrun hsl le_rfl)
+      hy hu h0 hHdU (hFeq ▸ hFP.trans hPHd) hx hv hes hHdr.symm
+      fun kx _ => hr.time_nonneg kx
+    exact ⟨Hd, hHdt, hHdr, hPHd, hpool, hres⟩
+  -- `P` is in the frame, above `Σ.F`
+  have hPt : P ∈ ℓ.frame.tree := by
+    obtain ⟨x, hx, j, e, hv, hes⟩ := honest_vote_exists hrun hnc hsl s'
+    obtain ⟨Hd, hHdt, -, hPHd, -⟩ := hbatch x hx j e hv hes
+    rw [hfr] at hHdt ⊢
+    have hPHd' := honest_held_anc hrun hnc hy hPHd hHdt.1
+    have hPfg : P ∈ (tr.state y k₀).fg.tree := by
+      by_cases hne : P = Hd
+      · exact hne ▸ hHdt.1
+      · exact (Goldilocks.Anc.mem hPHd' hne).1
+    exact ⟨hPfg, honest_held_anc hrun hnc hy hFP hPfg⟩
+  have hFPΦ : ℓ.frame.Anc ℓ.frame.F P := hΦ.rooted.2 P hPt
+  -- `P` has a strict majority at the update's test
+  have hmaj : (SA.voters {v | v ∈ (tr.state y k₀).ac.pool s'}).ncard <
+      2 * SA.confirmationScore sp (tr.state y k₀).ac ℓ.frame s' P := by
+    rw [← projAC_state hrun.toLocalRun hy]
+    set A := tr.projAC.state y k₀
+    set Hv := {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg.slot = s'}
+    have hcount : Hᶜ.ncard < Hv.ncard := faults_lt_honest_voters hrun hnc hsl s'
+    have hone : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s' →
+        ∀ v ∈ A.pool s', v.val = x → v = e.msg := by
+      intro x hx j e hv hs v hvp hvx
+      obtain ⟨j', -, e', hv', rfl⟩ := hrun'.honest.pool_vote y hy k₀ s' v hvp (hvx ▸ hx)
+      have hs' := SA.state_pool_slot sp hr hy k₀ s' _ hvp
+      rw [hvx] at hv'
+      exact congrArg (fun e : SA.Em sp (List (FG.Att sp.n)) => e.msg)
+        (SA.one_vote_per_slot sp _ ro H _ _ hr x hx j' j e' e hv' hv (hs'.trans hs.symm)).2
+    have hsupp : Hv ⊆ SA.supporters ℓ.frame ⟨{v | v ∈ A.pool s'}, {v | v ∈ A.pool s' ∧
+        SA.resolutionTime A ℓ.frame v < SA.ETime.of (sp.ts s' + 2 * sp.Δ)}⟩ s' P := by
+      rintro x ⟨hx, j, e, hv, hs⟩
+      obtain ⟨Hd, hHdt, hHdr, hPHd, hvp, hres⟩ := hbatch x hx j e hv hs
+      obtain ⟨ℓx, hcx, hex⟩ := hv
+      have hval := (SA.castAt_spec hr hx ⟨hcx, hex⟩).1
+      refine ⟨?_, e.msg, ⟨hvp, hres⟩, hval, by exact_mod_cast hs, Hd, hHdt, hHdr,
+        SA.anc_tree_of_anc_U hU hΦ hHB hPt hPHd hHdt⟩
+      rintro ⟨v, hv, v', hv', hne, hvx, hv'x⟩
+      exact hne ((hone x hx j e ⟨ℓx, hcx, hex⟩ hs v hv hvx).trans
+        (hone x hx j e ⟨ℓx, hcx, hex⟩ hs v' hv' hv'x).symm)
+    have hvot : SA.voters {v | v ∈ A.pool s'} ⊆ Hv ∪ Hᶜ := by
+      rintro w ⟨v, hv, rfl⟩
+      by_cases hw : v.val ∈ H
+      · obtain ⟨j, -, e, he, rfl⟩ := hrun'.honest.pool_vote y hy k₀ s' _ hv hw
+        exact Or.inl ⟨hw, j, e, he, SA.state_pool_slot sp hr hy k₀ s' _ hv⟩
+      · exact Or.inr hw
+    have h1 := Set.ncard_le_ncard hvot (Set.toFinite _)
+    have h2 := Set.ncard_union_le Hv Hᶜ
+    have h3 := Set.ncard_le_ncard hsupp (Set.toFinite _)
+    change _ < 2 * (SA.supporters ℓ.frame _ s' P).ncard
+    omega
+  -- the result is the deepest majority block above `Σ.F`, which extends `P`
+  set A := (tr.state y k₀).ac
+  set S := {B | B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F B ∧
+    (SA.voters {v | v ∈ A.pool s'}).ncard < 2 * SA.confirmationScore sp A ℓ.frame s' B}
+  have hS : S ⊆ ℓ.frame.tree := fun X hX => hX.1
+  set V : SA.View sp.n := ⟨{v | v ∈ A.pool s'}, {v | v ∈ A.pool s' ∧
+    SA.resolutionTime A ℓ.frame v < SA.ETime.of (sp.ts s' + 2 * sp.Δ)}⟩
+  have hcs : ∀ B, SA.confirmationScore sp A ℓ.frame s' B = (SA.supporters ℓ.frame V s' B).ncard :=
+    fun _ => rfl
+  have hsub : V.support ⊆ V.votes := fun _ hv => hv.1
+  have hch : ∀ B ∈ S, ∀ C ∈ S, Compatible ℓ.frame.tree B C := fun B hB C hC =>
+    SA.majority_chain sp _ ℓ.frame V s' B C hΦ hsub hB.1 hC.1 (hcs B ▸ hB.2.2) (hcs C ▸ hC.2.2)
+  obtain ⟨D, hD⟩ := SA.exists_deepest hΦ hS ⟨P, hPt, hFPΦ, hmaj⟩
+  have hPD := SA.anc_deepest hΦ hS hch hD P ⟨hPt, hFPΦ, hmaj⟩
+  have hC : SA.getConfirmation sp A ℓ.frame s' = some D := hD
+  have hv := result_not_vetoed hrun hnc hsl hy hu hC
+  -- the record moves to the result, or keeps a deeper one
+  obtain ⟨-, hcall, ht, hj⟩ := hu
+  rw [projAC_state hrun.toLocalRun hy] at hj
+  classical
+  have hrec : (tr.state y (k₀ + 1)).ac.latestConfirmed =
+      if SA.AncR ℓ.frame D A.latestConfirmed then A.latestConfirmed else D.root := by
+    rw [hpost, show (tr.post k₀).ac = _ from (congrArg Prod.fst hstep).symm, hcall]
+    exact acOnTick_update_record y ht hj hC hv
+  have hDt : D ∈ ℓ.frame.tree := (SA.deepest_mem hC).1.1
+  split_ifs at hrec with hA
+  · obtain ⟨R, hR, hRr, hDR⟩ := hA
+    exact ⟨R, hHB hR, hRr.trans hrec.symm, Or.inl (Anc.mono hHB (hPD.trans hDR))⟩
+  · exact ⟨D, hHB hDt, hrec.symm, Or.inl (hPD.mono hHB)⟩
 
 /-- **An update of a slot `s' ≥ s` adopts the honest proposal of slot `s`**: the record names a
 block extending `P`, or `Σ.F` extends `P`. -/
