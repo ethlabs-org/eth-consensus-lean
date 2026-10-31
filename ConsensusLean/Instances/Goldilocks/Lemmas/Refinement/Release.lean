@@ -963,32 +963,6 @@ theorem att_released_inv (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
     · exact hnotpend _ h
     · exact absurd h (by simp [attObj, Model.Obj.auth])
 
-/-- At the proposal duty of an honest node's tick at the start of a slot nothing is queued: the
-leading polls emptied the outbox, and the AC does not vote on its tick at a slot start. -/
-theorem atProposal_outbox_nil (hv : rho.ExecutionValid) (i : Nat) {v : V} {t : Time}
-    (hv' : v ∈ rho.honest) (s : Nat)
-    (hts : t = (S.params (pubOf E) hn).toParams.slotTime s) :
-    (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).outbox = [] := by
-  have hsel : rho.ownKey v ∈ rho.sel .poll := by
-    rw [selValid_poll S rho hv.selValid]; exact Finset.mem_univ _
-  obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v hv' i
-  obtain ⟨-, hlen⟩ := (atMostOneVote_iff _).1 hamo
-  have hf := fgDue_eq_false S rho hn v i
-  rw [← preNode_eq_atProposal]
-  obtain ⟨-, -, -, -, hS3, hout2, -, -, hnow2, -⟩ :=
-    leading_polls S rho hn v (rho.stateBefore i v) t hsel hf hlen
-  change (shapeOf S hn (rho.dutyStep v _ (.pollPropose t.toNat)).1).outbox = []
-  rw [hS3]
-  unfold nodeTick
-  split_ifs
-  · simp only [apply, hout2, List.nil_append, emitted, acCall, List.flatMap_cons,
-      List.flatMap_nil, List.append_nil, List.map_eq_nil_iff]
-    by_contra hne
-    rw [hnow2] at hne
-    have h := acOnTick_emits (S.ro _) _ _ _ t hne
-    exact slotStart_ne_tickVote S hn t s (hts.trans (slotTime_eq S hn s)) h
-  · exact hout2
-
 end Inventory2
 
 /-! ## The releases of a tick -/

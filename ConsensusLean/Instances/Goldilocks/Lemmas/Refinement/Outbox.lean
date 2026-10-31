@@ -1031,7 +1031,7 @@ private theorem outbox_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
 
 /-- Honest nodes have no pending bodies between engine events: ticks and deliveries drain
 their queues, and restarts emit nothing. -/
-private theorem outbox_empty (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
+theorem outbox_empty (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
     ∀ i, (stateAt S rho hn v i).outbox = []
   | 0 => rfl
   | i + 1 => by
@@ -1065,6 +1065,34 @@ private theorem outbox_empty (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.
           rw [hnil, ih]
           simp [emitted]
       · rw [state_of_other S rho hn v i ev he hnode]; exact ih
+
+/-- At a slot start the leading polls drain the queue and the AC tick emits no vote. -/
+theorem atProposal_outbox_nil (hv : rho.ExecutionValid) (i : Nat) {v : V} {t : Time}
+    (hv' : v ∈ rho.honest) (s : Nat)
+    (hts : t = (S.params (pubOf E) hn).toParams.slotTime s) :
+    (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).outbox = [] := by
+  rw [atProposal_shape S rho hn v _ t (poll_selected S rho hv v)]
+  set σ : State (S.params (pubOf E) hn) (S.ro _) := { stateAt S rho hn v i with now := t }
+  have hout : σ.outbox = [] := outbox_empty S rho hn hv v hv' i
+  have hf : σ.fgDue = false := fgDue_eq_false S rho hn v i
+  have hpre : pollPre σ = σ := by rw [pollPre_eq, hf]; rfl
+  have hout2 : (poll (poll σ t.toNat).1 t.toNat).1.outbox = [] := by
+    rw [(poll_outbox _ _).1, pollPre_eq, poll_fgDue]
+    simp only [Bool.false_eq_true, ite_false]
+    rw [(poll_outbox _ _).1, hpre, hout]
+    rfl
+  have hnow2 : (poll (poll σ t.toNat).1 t.toNat).1.now = t := by
+    rw [poll_now, poll_now]
+  change (nodeTick (poll (poll σ t.toNat).1 t.toNat).1).outbox = []
+  unfold nodeTick
+  split_ifs
+  · simp only [apply, hout2, List.nil_append, emitted, acCall, List.flatMap_cons,
+      List.flatMap_nil, List.append_nil, List.map_eq_nil_iff]
+    by_contra hne
+    rw [hnow2] at hne
+    exact slotStart_ne_tickVote S hn t s (hts.trans (slotTime_eq S hn s))
+      (acOnTick_emits (S.ro _) _ _ _ t hne)
+  · exact hout2
 
 /-- **A body pending after an event was released at that event's time.** In this engine
 there is no pending body after an honest event. -/
