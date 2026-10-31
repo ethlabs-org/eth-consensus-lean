@@ -363,9 +363,10 @@ theorem sync_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {a b : Ti
 
 /-- Forwarding under finite service uses only the source's recipient deadline, not a
 whole-run synchrony premise. The source plus `Δ` must lie inside the horizon. -/
-theorem sync_before_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {b : Time}
-    (hsync : SyncACBefore H U b tr) {y X : Fin sp.n} (hy : y ∈ H)
+theorem sync_window_before_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {a b : Time} (hsync : SyncACWindowBefore H U a b tr) {y X : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit y k v)
+    (ha : a ≤ tr.time k)
     (hb : tr.time k + sp.Δ ≤ b) (hX : X ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt X i ℓ)
     (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
@@ -376,8 +377,23 @@ theorem sync_before_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {b
       v.val ∈ equivocators {w | w ∈ (tr.state X i).pool v.slot} := by
   have hd : tr.deadline X i (tr.time k) = tr.time k + sp.Δ := deadline_eq hrs
   exact held_of_deadline_processing hr hX hrs hdl hslot
-    (hsync.message y hy k v hsend (hr.time_nonneg k) X hX i ℓ hc
+    (hsync.message y hy k v hsend ha X hX i ℓ hc
       (by rw [hd]; exact hb) (by rw [hd]; exact hdl))
+
+/-- Finite service from time zero specializes windowed forwarding. -/
+theorem sync_before_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {b : Time}
+    (hsync : SyncACBefore H U b tr) {y X : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit y k v)
+    (hb : tr.time k + sp.Δ ≤ b) (hX : X ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt X i ℓ)
+    (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
+    (hdl : tr.time k + sp.Δ ≤ tr.time i)
+    (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
+      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t) :
+    v ∈ (tr.state X i).pool v.slot ∨
+      v.val ∈ equivocators {w | w ∈ (tr.state X i).pool v.slot} :=
+  sync_window_before_forward hr ⟨hsync.message, hsync.relay⟩ hy hsend
+    (hr.time_nonneg k) hb hX hc hrs hdl hslot
 
 /-- The state a cast leaves holds the votes of the vote's read point, with their stamps. -/
 theorem readPoint_pool (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}

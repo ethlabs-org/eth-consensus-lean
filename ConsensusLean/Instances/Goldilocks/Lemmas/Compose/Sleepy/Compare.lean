@@ -608,9 +608,10 @@ private theorem awake_participant (hrun : GoldilocksRun proposer dg H tr) (hnc :
 
 /-- Awake joined validators participate in a result observed before the finite deadline
 cutoff. Only their vote deadlines are used; later receiver wakes are irrelevant. -/
-theorem awake_participant_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {s : Nat} {b : Time}
-    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+theorem awake_participant_window_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {s : Nat} {a b : Time}
+    (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
+    (ha : a ≤ sp.ts s)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
     {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
     (hib : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
@@ -632,7 +633,8 @@ theorem awake_participant_before (hrun : GoldilocksRun proposer dg H tr)
   have hki : tr.projAC.time k + sp.Δ ≤ tr.projAC.time i₀ := by
     change tr.time k + sp.Δ ≤ tr.time i₀
     linarith
-  have := SA.sync_before_forward hr hsync hy ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩ hkb hX hu.1
+  have := SA.sync_window_before_forward hr hsync hy ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩
+    (ha.trans hsk) hkb hX hu.1
     (fun k' hk' hr' => (SA.update_restarts hr hX hu k' hk' hr').trans hsk) hki
     fun t h₁ h₂ => by
       change t < tr.time k + sp.Δ at h₂
@@ -642,6 +644,38 @@ theorem awake_participant_before (hrun : GoldilocksRun proposer dg H tr)
   rcases this with h | ⟨a, ha, -, -, -, hav, -⟩
   · exact ⟨e.msg, h, hval⟩
   · exact ⟨a, ha, hav.trans hval⟩
+
+/-- The zero-source finite participant theorem retains its original interface. -/
+theorem awake_participant_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {s : Nat} {b : Time}
+    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
+    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
+    (hib : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
+    (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
+    y ∈ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} :=
+  awake_participant_window_before hrun hnc ⟨hsync.message, hsync.relay⟩
+    (ts_nonneg s) hX hu hib hy hw hj
+
+/-- If every honest validator is awake and joined, windowed forwarding gives more than
+twice the faulty population in the actual update pool. No head resolution is needed. -/
+theorem honest_participants_window_before
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {a b : Time} {s : Nat}
+    (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
+    (ha : a ≤ sp.ts s) {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
+    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
+    (hib : tr.time i₀ ≤ b)
+    (hready : ∀ y ∈ H, tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ))
+    (hf : 3 * Hᶜ.ncard < sp.n) :
+    2 * Hᶜ.ncard < (SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s}).ncard := by
+  have hsub : H ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy =>
+    awake_participant_window_before hrun hnc hsync ha hX hu hib hy
+      (hready y hy).1 (hready y hy).2
+  have hcount := Set.ncard_le_ncard hsub
+  have htotal : H.ncard + Hᶜ.ncard = sp.n := by
+    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+  omega
 
 /-- **A result and an optimistic selection of one slot are compatible** (RO): the `≥ 3n/4`
 optimistic seats reach the writer, where none supports the result. -/
