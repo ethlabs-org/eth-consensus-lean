@@ -25,6 +25,33 @@ Provenance and finite sleepy interfaces are integrated, but their proofs remain 
 Healing supplier types remain a separate draft outside the library. This is a partial
 inventory, not evidence that the Accepted skeleton is complete.
 
+## Mechanical report contract
+
+The concrete Accepted assembly is not present at this revision: `roots = []` is
+deliberate and reports **incomplete / NOT MET**, never an empty successful closure.
+The generic Accepted structure is not a substitute. Populate roots only with the
+qualified concrete theorem after its migrated module builds.
+
+```toml sorry-inventory
+modules = [
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Evidence",
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport",
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Provenance",
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps",
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy",
+]
+roots = []
+```
+
+Only the three tables headed `Declaration` and `Paper argument/status` below
+claim existing compiled declarations. The report validates every such row even
+while the assembly is missing. Planned publication/network, healing-plan and
+external FinitePlan draft tables are **noncompiled scope**, explicitly excluded
+from row validation and sorry coverage. Their OPEN text is not compiled evidence.
+Argument text is preserved from the owners; mechanical mapping does not validate
+the paper argument or certify any proof. Source files use repository-relative
+paths; names in compiled rows are fully qualified.
+
 ## Ownership and architecture
 
 The spec orb owns this table and integrates rows sent by other owners. Owners edit
@@ -76,21 +103,21 @@ does not mean its dependencies are proved.
 
 | Declaration | Statement and dependencies | Paper argument/status |
 |---|---|---|
-| `held_in_view` | Valid run, honest reader, non-genesis block held at mapped cut ⇒ canonical object in indexed view; tree_cases, accepted_in_view | F.2/G1.5: obtain earlier acceptance and its source event, including equal-time events. Argument supplied relative to simulation. |
-| `held_att_in_view` | Any held block's payload attestation is in reader view; held_in_view, payloadObjs, transitive containment | Genesis payload empty; canonical block carries each attestation. Argument supplied. |
-| `evidenceInView` | Finalized header payload attestations occur in reader view; simulation, finalized read, cache/chain and decode bridges | G1.5(b): identify held block, round-trip payload, apply held evidence. Argument supplied. |
-| `engine_outputValid` | ExecutionValid ⇒ every output valid; local coherence, chainTo, held_in_view | R.8/F.2: slot induction, linkage, strict parent slots, canonical provenance; no collision escape. Argument supplied; recheck after tagging. |
-| `engine_nested` | ExecutionValid ⇒ finalized nested in confirmed; simulation, outputs_nested | R.8/C0.1 at actual shape clock; empty validator type vacuous. Argument supplied. |
-| `engine_finalMonotone` | ExecutionValid ⇒ finalized monotone; simulation, finalized_monotone | R.8/C0.2: ordered mapped cuts and preserved store ancestry give prefix. Argument supplied. |
-| `noCollTransport` | No collision plus PROVIDED GenesisFresh ⇒ NoCollRun; currently arbitrary simulating trace | F.3: observed header injectivity and genesis separation. OPEN all-occurrences source coverage and canonical-only signature repair; raw freshness is not an Accepted premise. |
-| `compatible_reads` | Canonical NoCollRun, honest bounded reads and compatible node tips ⇒ compatible engine chains | R.7/F.3: coherent union identifies cross-store parent walks. Argument supplied; walk lemma unformalized. |
-| `convicted_count` | Finite key set with slashable canonical witnesses in A ⇒ cardinality ≤ convicted(A) | G1.5: injective rho.key image is contained in convicted. No honesty/collision premise. Argument supplied. |
-| `final_accountable_of_noColl` | Canonical NoCollRun and valid honest bounded reads ⇒ compatible or ≥2q−n convicted | R.7/G1.3–G1.5: node witnesses, held payload evidence, inject keys. Argument supplied relative to bridges. |
-| `finalizedAccountable` | FinalizedAccountable, retaining provided freshness/no-collision | Compose canonical simulation, collision transport, prior row. OPEN transitively; does not derive freshness. |
-| `shape_outputValid` | HoldsAlways output validity for every schema lookup | R.8: unfold valid runs and apply engine_outputValid. Argument supplied. |
-| `shape_nested` | Increasing schema ranks ⇒ HoldsAlways Nested | R.8: finalized/confirmed bridge or confirmed reflexivity. Argument supplied. |
-| `shape_finalMonotone` | Final schema lookup ⇒ HoldsAlways monotonicity | R.8: lookup identifies finalized. Argument supplied. |
-| `shape_finalAccountable` | Contract α≤1/3 ⇒ accountable safety, NO freshness premise | R.7: collision escape or convicted bound; 2q−n≥n/3. OPEN freshness-free encoding and source transport, not arithmetic. |
+| `Consensus.Goldilocks.Refinement.held_in_view` | Valid run, honest reader, non-genesis block held at mapped cut ⇒ canonical object in indexed view; tree_cases, accepted_in_view | F.2/G1.5: obtain earlier acceptance and its source event, including equal-time events. Argument supplied relative to simulation. |
+| `Consensus.Goldilocks.Refinement.held_att_in_view` | Any held block's payload attestation is in reader view; held_in_view, payloadObjs, transitive containment | Genesis payload empty; canonical block carries each attestation. Argument supplied. |
+| `Consensus.Goldilocks.Refinement.evidenceInView` | Finalized header payload attestations occur in reader view; simulation, finalized read, cache/chain and decode bridges | G1.5(b): identify held block, round-trip payload, apply held evidence. Argument supplied. |
+| `Consensus.Goldilocks.Refinement.engine_outputValid` | ExecutionValid ⇒ every output valid; local coherence, chainTo, held_in_view | R.8/F.2: slot induction, linkage, strict parent slots, canonical provenance; no collision escape. Argument supplied; recheck after tagging. |
+| `Consensus.Goldilocks.Refinement.engine_nested` | ExecutionValid ⇒ finalized nested in confirmed; simulation, outputs_nested | R.8/C0.1 at actual shape clock; empty validator type vacuous. Argument supplied. |
+| `Consensus.Goldilocks.Refinement.engine_finalMonotone` | ExecutionValid ⇒ finalized monotone; simulation, finalized_monotone | R.8/C0.2: ordered mapped cuts and preserved store ancestry give prefix. Argument supplied. |
+| `Consensus.Goldilocks.Refinement.noCollTransport` | No collision plus PROVIDED GenesisFresh ⇒ NoCollRun; currently arbitrary simulating trace | F.3: observed header injectivity and genesis separation. OPEN all-occurrences source coverage and canonical-only signature repair; raw freshness is not an Accepted premise. |
+| `Consensus.Goldilocks.Refinement.compatible_reads` | Canonical NoCollRun, honest bounded reads and compatible node tips ⇒ compatible engine chains | R.7/F.3: coherent union identifies cross-store parent walks. Argument supplied; walk lemma unformalized. |
+| `Consensus.Goldilocks.Refinement.convicted_count` | Finite key set with slashable canonical witnesses in A ⇒ cardinality ≤ convicted(A) | G1.5: injective rho.key image is contained in convicted. No honesty/collision premise. Argument supplied. |
+| `Consensus.Goldilocks.Refinement.final_accountable_of_noColl` | Canonical NoCollRun and valid honest bounded reads ⇒ compatible or ≥2q−n convicted | R.7/G1.3–G1.5: node witnesses, held payload evidence, inject keys. Argument supplied relative to bridges. |
+| `Consensus.Goldilocks.Refinement.finalizedAccountable` | FinalizedAccountable, retaining provided freshness/no-collision | Compose canonical simulation, collision transport, prior row. OPEN transitively; does not derive freshness. |
+| `Consensus.Goldilocks.Refinement.shape_outputValid` | HoldsAlways output validity for every schema lookup | R.8: unfold valid runs and apply engine_outputValid. Argument supplied. |
+| `Consensus.Goldilocks.Refinement.shape_nested` | Increasing schema ranks ⇒ HoldsAlways Nested | R.8: finalized/confirmed bridge or confirmed reflexivity. Argument supplied. |
+| `Consensus.Goldilocks.Refinement.shape_finalMonotone` | Final schema lookup ⇒ HoldsAlways monotonicity | R.8: lookup identifies finalized. Argument supplied. |
+| `Consensus.Goldilocks.Refinement.shape_finalAccountable` | Contract α≤1/3 ⇒ accountable safety, NO freshness premise | R.7: collision escape or convicted bound; 2q−n≥n/3. OPEN freshness-free encoding and source transport, not arithmetic. |
 
 ## Provenance leaves
 
@@ -98,15 +125,15 @@ Owner: R.6 box. Exact statements integrated in Provenance and Steps; all remain 
 Names have the same refinement prefix. No simTrace signing correspondence may
 be used upstream of selected-duty/node agreement.
 
-| Declaration | Dependencies / argument | Status |
+| Declaration | Dependencies / argument | Paper argument/status |
 |---|---|---|
-| `engine_event_signing_history` | Actual store reachability, entry bounds, selected poll transitions, restart record; joint event/duty induction | OPEN implementation proof |
-| `engine_signing_history` | Event history and duty-prefix history | OPEN implementation proof |
-| `engine_restart_record` | Durable and restore definitions | OPEN implementation proof |
-| `engine_signings_nonFraming` | Signing history, G0.5/FG.client_safety | Argument route supplied; upstream OPEN |
-| `engine_seen_att_signed` | Credentials, actual poll release→queued-sign inverse, same-event prefixes | OPEN implementation proof |
-| `engine_att_protected` | Nonframing, seen inverse, conflicts encoding; G0.5 corollary | Upstream implementation bridge OPEN |
-| `scheduled_proposal_releasable` | Actual EngineProposalAt, selected slot-start, pool/att provenance, drain/guard | OPEN implementation proof |
+| `Consensus.Goldilocks.Refinement.engine_event_signing_history` | Actual store reachability, entry bounds, selected poll transitions, restart record; joint event/duty induction | OPEN implementation proof |
+| `Consensus.Goldilocks.Refinement.engine_signing_history` | Event history and duty-prefix history | OPEN implementation proof |
+| `Consensus.Goldilocks.Refinement.engine_restart_record` | Durable and restore definitions | OPEN implementation proof |
+| `Consensus.Goldilocks.Refinement.engine_signings_nonFraming` | Signing history, G0.5/FG.client_safety | Argument route supplied; upstream OPEN |
+| `Consensus.Goldilocks.Refinement.engine_seen_att_signed` | Credentials, actual poll release→queued-sign inverse, same-event prefixes | OPEN implementation proof |
+| `Consensus.Goldilocks.Refinement.engine_att_protected` | Nonframing, seen inverse, conflicts encoding; G0.5 corollary | Upstream implementation bridge OPEN |
+| `Consensus.Goldilocks.Refinement.scheduled_proposal_releasable` | Actual EngineProposalAt, selected slot-start, pool/att provenance, drain/guard | OPEN implementation proof |
 
 ## Finite sleepy transport leaves
 
@@ -116,19 +143,19 @@ All use canonical `simTrace` and, where needed, `runProposer S rho hn`.
 There are nine OPEN theorem leaves and two supplier definitions, not proved suppliers.
 Here Δp is the node parameter, c = catchUp = 18Δp, and b≤horizon.
 
-| Declaration | Contract and dependencies | Status |
+| Declaration | Contract and dependencies | Paper argument/status |
 |---|---|---|
-| `sleepy_ready` | Valid run, 0≤t≤horizon and engine Ready c at t ⇒ node ReadyAt; canonical awake/key equivalence | OPEN implementation bridge |
-| `sleepy_faultBound` | SleepyOn(1/2,c,0,b) ⇒ node FaultBound at ts(s)+d≤b for d∈{0,Δp,2Δp}; ready-implies-joined and key counts | OPEN implementation bridge |
-| `SleepyServiceSupplier` | SyncUntil b ⇒ node SyncBefore H Δp b on valid runs with 0≤b≤horizon | Definition only; strict deadline slack and acceptance relay OPEN; repaired window may differ |
-| `sleepy_read_cut` | Ready reader at 0≤t≤horizon ⇒ CutAfter and Boundary at cutMap(endCut t), with output clock t; terminal filler included | OPEN event/clock bridge |
-| `sleepy_safe_finite` | Valid run, canonical NoCollRun, SyncBefore through b and bounded slot quorum ⇒ ReadySafeOn 0 b | OPEN finite R.1 localization |
-| `sleepy_include_finite` | Same finite premises, ready proposal at 0≤τ≤b, τ+6Δp≤t≤b, ready reader and CutAfter at t ⇒ proposal ancestry of read | OPEN finite R.2 localization |
-| `sleepy_grow_finite` | Same service/quorum/noColl, t≥0, k≥1, b=t+(4k+6)Δp, selected-schedule recurrence and ready reader at b ⇒ fresh proposal after t included in ready b reads, excluded from ready t reads, with read extension | OPEN finite R.2; depends on inclusion/safety |
-| `SleepyRecurrenceSupplier` | Engine single-pattern recurrence on family grid ⇒ node recurrence for runProposer, same c and [0,b] | Definition only; grid/duration adapter OPEN |
-| `sleepy_proposal` | Valid run and ready node proposal at 0≤τ≤horizon ⇒ ready key and engine HonestProposal of encoded header | OPEN canonical release/key bridge |
-| `sleepy_inBy` | Valid run, NoCollRun, ready proposal and node inclusion at all ready CutAfter t reads, 0≤τ≤t≤horizon ⇒ engine InBy confirmed | OPEN structural consumer; read_cut and chain transport |
-| `sleepy_safe_engine` | Valid run, NoCollRun, SyncBefore/quorum through horizon ⇒ engine ReadySafe confirmed | OPEN arbitrary-cut clock/compatibility transport; endCut alone insufficient |
+| `Consensus.Goldilocks.Refinement.sleepy_ready` | Valid run, 0≤t≤horizon and engine Ready c at t ⇒ node ReadyAt; canonical awake/key equivalence | OPEN implementation bridge |
+| `Consensus.Goldilocks.Refinement.sleepy_faultBound` | SleepyOn(1/2,c,0,b) ⇒ node FaultBound at ts(s)+d≤b for d∈{0,Δp,2Δp}; ready-implies-joined and key counts | OPEN implementation bridge |
+| `Consensus.Goldilocks.Refinement.SleepyServiceSupplier` | SyncUntil b ⇒ node SyncBefore H Δp b on valid runs with 0≤b≤horizon | Definition only; strict deadline slack and acceptance relay OPEN; repaired window may differ |
+| `Consensus.Goldilocks.Refinement.sleepy_read_cut` | Ready reader at 0≤t≤horizon ⇒ CutAfter and Boundary at cutMap(endCut t), with output clock t; terminal filler included | OPEN event/clock bridge |
+| `Consensus.Goldilocks.Refinement.sleepy_safe_finite` | Valid run, canonical NoCollRun, SyncBefore through b and bounded slot quorum ⇒ ReadySafeOn 0 b | OPEN finite R.1 localization |
+| `Consensus.Goldilocks.Refinement.sleepy_include_finite` | Same finite premises, ready proposal at 0≤τ≤b, τ+6Δp≤t≤b, ready reader and CutAfter at t ⇒ proposal ancestry of read | OPEN finite R.2 localization |
+| `Consensus.Goldilocks.Refinement.sleepy_grow_finite` | Same service/quorum/noColl, t≥0, k≥1, b=t+(4k+6)Δp, selected-schedule recurrence and ready reader at b ⇒ fresh proposal after t included in ready b reads, excluded from ready t reads, with read extension | OPEN finite R.2; depends on inclusion/safety |
+| `Consensus.Goldilocks.Refinement.SleepyRecurrenceSupplier` | Engine single-pattern recurrence on family grid ⇒ node recurrence for runProposer, same c and [0,b] | Definition only; grid/duration adapter OPEN |
+| `Consensus.Goldilocks.Refinement.sleepy_proposal` | Valid run and ready node proposal at 0≤τ≤horizon ⇒ ready key and engine HonestProposal of encoded header | OPEN canonical release/key bridge |
+| `Consensus.Goldilocks.Refinement.sleepy_inBy` | Valid run, NoCollRun, ready proposal and node inclusion at all ready CutAfter t reads, 0≤τ≤t≤horizon ⇒ engine InBy confirmed | OPEN structural consumer; read_cut and chain transport |
+| `Consensus.Goldilocks.Refinement.sleepy_safe_engine` | Valid run, NoCollRun, SyncBefore/quorum through horizon ⇒ engine ReadySafe confirmed | OPEN arbitrary-cut clock/compatibility transport; endCut alone insufficient |
 
 R.1/R.2 motivate these reductions, but do not prove the engine bridges. Existing
 SleepySafePrefix requires SyncRun with receiver obligations beyond b; IncludeSleepy
