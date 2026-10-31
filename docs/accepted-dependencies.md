@@ -55,7 +55,8 @@ paths; names in compiled rows are fully qualified.
 ## Concrete acceptance assembly
 
 The root fixes standard fractions, `finalWindow S = [0,δt−1,δt+1,δt+3]`,
-δt≥4 and positive outage look-back. Outage lag is 4k−4 and budget is min(look-back,4k−5).
+δt≥4 and positive outage look-back η. Engine-unit outage lag is 8k−8 and budget
+is min(η,4k−6), corrected in f416034 to imply the unchanged node time window at Δp=Δe+1.
 Only catch-up (positive Nat), heal and latency (Nat-valued functions at each gap)
 are existential. They are independent of validator set, execution and horizon.
 Every positive outer gap X is an index; tolerance uses X=span+2. Timeout has no X.
@@ -91,12 +92,12 @@ Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbe
 | `Consensus.Goldilocks.Refinement.accepted_sleepyLive` | OPEN: finite R.2 recurrence, inclusion and deadline transport; Sleepy suppliers above. |
 | `Consensus.Goldilocks.Refinement.accepted_healedSafe` | OPEN: finite preparation plus progress-free preservation, RecRet/base closure. |
 | `Consensus.Goldilocks.Refinement.accepted_persists` | OPEN: R.5 finite pre-outage service and actual repair; no late-wake SyncRun inference. |
-| `Consensus.Goldilocks.Refinement.proposal_releasable` | OPEN: actual scheduled proposal passes engine release guards; R.6 owner, Steps. |
-| `Consensus.Goldilocks.Refinement.simTrace_att_unforgeable` | OPEN: actual canonical attestation origin/authentication history; R.6 owner, Run. |
-| `Consensus.Goldilocks.Refinement.simTrace_block_unforgeable` | OPEN: actual canonical block origin/authentication history; R.6 owner, Run. |
-| `Consensus.Goldilocks.Refinement.simTrace_carried_vote_unforgeable` | OPEN: carried vote source and recursive object history; R.6 owner, Run. |
-| `Consensus.Goldilocks.Refinement.simTrace_msg_unforgeable` | OPEN: actual message signing/admission provenance; R.6 owner, Run. |
-| `Consensus.Goldilocks.Refinement.simTrace_vote_released` | OPEN: emitted vote is released through actual engine candidates; R.6 owner, Run. |
+| `Consensus.Goldilocks.Refinement.proposal_releasable` | Proved (f614a12): scheduled proposal dependencies are in the actual engine closure; Steps wrapper of scheduled_proposal_releasable. |
+| `Consensus.Goldilocks.Refinement.simTrace_att_unforgeable` | OPEN: actual canonical attestation origin/authentication history; Healing box, Run. |
+| `Consensus.Goldilocks.Refinement.simTrace_block_unforgeable` | Proved (f9963e2): valid canonical calls carrying an honest proposer's block have an earlier own-block cut. |
+| `Consensus.Goldilocks.Refinement.simTrace_carried_vote_unforgeable` | OPEN: carried vote source and recursive object history; Healing box, Run. |
+| `Consensus.Goldilocks.Refinement.simTrace_msg_unforgeable` | OPEN: actual message signing/admission provenance; Healing box, Run. |
+| `Consensus.Goldilocks.Refinement.simTrace_vote_released` | Proved (54a9a89): valid execution plus canonical GoldilocksRun gives release of emitted votes at their emission time. |
 
 ## Ownership and architecture
 
@@ -121,7 +122,7 @@ their assigned Lean modules, not this table concurrently.
 | Finite sleepy transport | Healing box | Lemmas/Refinement/Sleepy; nine OPEN leaves, two supplier definitions |
 | Healing/R.3/R.4/R.5 | Healing paper orb and T3 | exact supplier declarations pending finite adapters |
 | Always fields | Healing box | Lemmas/Refinement/Evidence and Transport |
-| Simulation/provenance, scheduled proposal | R.6 box | Provenance and Steps |
+| Simulation/provenance, scheduled proposal | R.6 box | Provenance and Steps; remaining Run unforgeability leaves owned by Healing box |
 | Network/publication | Engine thread | new Lemmas/Refinement/Forwarding and NetworkTransport |
 
 Replay order uses only validator count and genesis root. The local family repair
@@ -142,18 +143,16 @@ themselves prove acceptance provenance or total successful release: both proof
 obligations remain OPEN. Validated declaration rows will record the separate
 publication proof work.
 
-`NoCollTransport` currently quantifies arbitrary `Simulates` traces. Caller audit
-found no consumer needing that generality: the concrete accountability and read
-bridges use `simTrace`. The intended repair is canonical-only transport, retaining
-the weaker `Simulates` interface. **OPEN boundary repair:** the trusted statement
-cannot import the current Lemmas-owned canonical construction; expose that
-construction at an allowed definition boundary before changing the statement.
-Tagged genesis roots alone do not establish source coverage of all occurrences.
+`NoCollTransport` targets the canonical `simTrace` since #123, whose construction
+lives at the protected statement boundary. The proof in 38cfe5f covers every
+canonical occurrence, including refused calls, using observed header injectivity
+and tagged genesis separation. It needs valid execution and no observed collision,
+not a caller-supplied GenesisFresh or arbitrary simulation witness.
 
 ## Always-field leaves
 
-All names below have prefix `Consensus.Goldilocks.Refinement.`; all are existing
-Lean sorries, owned by the Healing box. Exact statements live in
+All names below have prefix `Consensus.Goldilocks.Refinement.`; status is per row,
+with remaining obligations owned by the Healing box. Exact statements live in
 `Lemmas/Refinement/Evidence.lean` and `Transport.lean`. Paper locations are
 `goldilocks-claims.tex` at `4ea71d05`, R.7/R.8/F.2/F.3/G1.5, and
 `shared/composition.tex` §Blocks/§Model, as mapped in `goldilocks-mapping.md`.
@@ -168,7 +167,7 @@ does not mean its dependencies are proved.
 | `Consensus.Goldilocks.Refinement.engine_outputValid` | ExecutionValid ⇒ every output valid; local coherence, chainTo, held_in_view | R.8/F.2: slot induction, linkage, strict parent slots, canonical provenance; no collision escape. Argument supplied; recheck after tagging. |
 | `Consensus.Goldilocks.Refinement.engine_nested` | ExecutionValid ⇒ finalized nested in confirmed; simulation, outputs_nested | R.8/C0.1 at actual shape clock; empty validator type vacuous. Argument supplied. |
 | `Consensus.Goldilocks.Refinement.engine_finalMonotone` | ExecutionValid ⇒ finalized monotone; simulation, finalized_monotone | R.8/C0.2: ordered mapped cuts and preserved store ancestry give prefix. Argument supplied. |
-| `Consensus.Goldilocks.Refinement.noCollTransport` | No collision plus PROVIDED GenesisFresh ⇒ NoCollRun; currently arbitrary simulating trace | F.3: observed header injectivity and genesis separation. OPEN all-occurrences source coverage and canonical-only signature repair; raw freshness is not an Accepted premise. |
+| `Consensus.Goldilocks.Refinement.noCollTransport` | ExecutionValid and no observed collision ⇒ NoCollRun on canonical simTrace | Proved (38cfe5f): all-occurrences provenance, including refused calls, observed header injectivity and tagged genesis separation; no provided freshness premise. |
 | `Consensus.Goldilocks.Refinement.compatible_reads` | Canonical NoCollRun, honest bounded reads and compatible node tips ⇒ compatible engine chains | R.7/F.3: coherent union identifies cross-store parent walks. Argument supplied; walk lemma unformalized. |
 | `Consensus.Goldilocks.Refinement.convicted_count` | Finite key set with slashable canonical witnesses in A ⇒ cardinality ≤ convicted(A) | G1.5: injective rho.key image is contained in convicted. No honesty/collision premise. Argument supplied. |
 | `Consensus.Goldilocks.Refinement.final_accountable_of_noColl` | Canonical NoCollRun and valid honest bounded reads ⇒ compatible or ≥2q−n convicted | R.7/G1.3–G1.5: node witnesses, held payload evidence, inject keys. Argument supplied relative to bridges. |
@@ -192,7 +191,7 @@ be used upstream of selected-duty/node agreement.
 | `Consensus.Goldilocks.Refinement.engine_signings_nonFraming` | Signing history, G0.5/FG.client_safety | Argument route supplied; upstream OPEN |
 | `Consensus.Goldilocks.Refinement.engine_seen_att_signed` | Credentials, actual poll release→queued-sign inverse, same-event prefixes | OPEN implementation proof |
 | `Consensus.Goldilocks.Refinement.engine_att_protected` | Nonframing, seen inverse, conflicts encoding; G0.5 corollary | Upstream implementation bridge OPEN |
-| `Consensus.Goldilocks.Refinement.scheduled_proposal_releasable` | Actual EngineProposalAt, selected slot-start, pool/att provenance, drain/guard | OPEN implementation proof |
+| `Consensus.Goldilocks.Refinement.scheduled_proposal_releasable` | Actual EngineProposalAt, selected slot-start, pool/att provenance, drain/guard | Proved (f614a12) from actual engine inventory |
 
 ## Finite sleepy transport leaves
 
@@ -224,16 +223,28 @@ scaling, finite locality, arbitrary-cut clocks and canonical collision encoding 
 
 ## Publication and network leaves
 
-Owner: engine thread. Planned exact declarations in the two new refinement lemma
-modules; not yet integrated. All implementation obligations explicitly **OPEN**.
+Engine thread owns Forwarding and NetworkTransport; R.6 owns ForwardOrigin and
+ForwardHeldProcessed in PublicationProvenance. The runtime is installed by #124.
+The following proved implementation rows are pinned to publisher branch 42efa6e;
+they do not discharge total successful publication or the remaining network suppliers.
+
+| Declaration (Refinement namespace) | Statement/status |
+|---|---|
+| `publisherExecution`, `publisherExecution_actual_iff` | Proved construction/characterization: actual executed batch prefix and all three release guards; actual event, timestamp and release. |
+| `publisherExecution_objects_seen` | Proved AcceptedObjectsSeen for that concrete execution; no validity or network assumptions. |
+| `stateAt_wrappersCover` | Proved by unconditional event induction: every held non-genesis root has a durable wrapper-map entry. |
+| `onBlock_queues_acceptance` | Proved: WrappersCover and an actual successful onBlock cut append the acceptance wrapper. |
+| `apply_forward_origin` | Proved: a queue member is old or comes from an actual successful cut at st.now. |
+| `PSyncFGRowTransport` | Named OPEN proposition: PSync plus actual attestation send/admission supplies bounded processing, with ΔF=sp.Δ. |
+
+Remaining publication/network targets (not discharged by the preceding helper proofs):
 
 | Planned declaration | Required statement |
 |---|---|
-| `forwarding_origin` | Actual successful honest-origin wrapper release ⇒ actual acceptance at claimed stamp before release prefix |
+| `forwarding_origin` | OPEN, R.6: actual successful honest-origin wrapper release ⇒ actual acceptance at claimed stamp before release prefix |
 | `forwarding_at_acceptance` | Actual honest acceptance ⇒ successful matching wrapper release in same event |
 | `forwarding_parent_earlier` | Child release ⇒ exact same-origin parent release earlier in actual release order and strictly earlier parent acceptance cut |
-| `forwarding_held_processed` | Pre-delivery held wrapper ⇒ earlier canonical processing at time≥stamp, or receiver's own actual acceptance |
-| `accepted_objects_seen` | At publication prefix, carried block/parent wrapper are held and release/dependency/protection guards pass |
+| `forwarding_held_processed` | OPEN, R.6: pre-delivery held wrapper ⇒ earlier canonical processing at time≥stamp, or receiver's own actual acceptance |
 | `psync_block_processed` | PSync service to actual processing, explicit horizon/call bounds |
 | `syncBefore_block_processed` | Deadline-cut service to actual processing; not whole-run Sync |
 | `parent_wrapper_processing_before_child` | Parent-first prior recursive payload processing from held dependency and provenance |

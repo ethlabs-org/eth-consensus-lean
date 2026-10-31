@@ -20,10 +20,10 @@ instead use `SyncBefore`, which bounds the recipient's deadline, and bound all o
 by `b`. Their proofs need a dependency-local version of R.1/R.2, not direct application of
 `IncludeSleepy`/`GrowSleepy` (both currently require whole-run `SleepyRun`).
 
-The missing network supplier is named as a proposition, NOT asserted as a theorem. Current
-`Setup.params` has Δp = Δe; inclusive engine receipt does not imply strict node processing
-before the same deadline. The pending Δp = Δe + 1 repair must also reconcile catch-up,
-slot grid, recurrence and latency coefficients. No impossible strict-delay premise is used.
+The missing network supplier is named as a proposition, NOT asserted as a theorem. Since #125,
+`Setup.params` has Δp = Δe + 1 with matching protocol slots. This absorbs the inclusive/strict
+endpoint difference, not relay delay or the missing processing proof. Catch-up, recurrence
+and latency transport remain separate obligations. No impossible strict-delay premise is used.
 The raw-genesis/canonical collision bridge is separately owned by the encoding integration.
 -/
 
@@ -102,9 +102,9 @@ theorem sleepy_faultBound (hv : rho.ExecutionValid) {b : Time}
   exact hlt.trans_le hcount
 
 /-- OPEN missing service supplier (owner: timing/encoding integration), not a proved or
-assumed fact of Accepted. A proposed interface after the timing repair: finite engine
+assumed fact of Accepted. With the #125 timing adapter installed: finite engine
 deadline service yields node deadline-bounded service, including acceptance relay.
-Receipt alone does not prove acceptance relay, and Δp = Δe currently lacks strict slack.
+Receipt alone does not prove acceptance relay; Δp = Δe + 1 supplies endpoint slack only.
 This definition records the missing obligation without adding a vacuous `hdelay` premise.
 The repaired supplier may require a larger engine service window, which must be propagated
 to the consumer and contract rather than assumed away. -/
