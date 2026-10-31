@@ -44,6 +44,20 @@ after the latter's cutoff. The concrete adapter must discharge the same four ser
 def SyncRunTransport : Prop :=
   rho.log.PSync rho.point 0 → ∀ a b, 0 ≤ a → tr.SyncRun H ΔF a b
 
+/-- OPEN concrete supplier: actual signed/admitted FG rows receive the protocol delay,
+not an independent setup coefficient. This services an existing attestation; it never
+produces a row. Source emission/admission must supply an actual released canonical object;
+engine service supplies holdings by Δe, provenance and recursive processing supply the call
+after its source time, and the installed Δp = Δe + 1 gives the strict endpoint. The adapter
+must still identify keys, cuts, awake intervals and horizon. This is not an extra Healthy
+premise; source availability and usable-row obligations remain separate. -/
+def PSyncFGRowTransport : Prop :=
+  ∀ g, rho.log.PSync rho.point g →
+    ∀ x ∈ H, ∀ i a, tr.SendOrAdmitAttAt x i a →
+      ∀ y ∈ H, ∀ j, tr.IsCall y j →
+        tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
+        tr.AttDeliveredBy y j (tr.time i) (max (tr.time i) g) sp.Δ a
+
 /-- Pure endpoint arithmetic, independent of the unimplemented adapter. Service at the engine
 endpoint is strictly before the protocol endpoint, including equality at the engine bound.
 This buys no forwarding delay and is paid once, not once per ancestor. -/
