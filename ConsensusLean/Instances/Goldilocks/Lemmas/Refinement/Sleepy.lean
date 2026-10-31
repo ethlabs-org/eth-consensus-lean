@@ -74,7 +74,43 @@ def SleepyServiceSupplier : Prop :=
     rho.log.SyncUntil rho.point b →
     (simTrace S rho hn).SyncBefore (honestKeys S rho) (S.params (pubOf E) hn).Δ b
 
-/-- OPEN end-of-time cut bridge (owner: Refinement). The canonical cut map covers every
+private theorem event_before_endCut (hv : rho.ExecutionValid) {t : Time} (ht : 0 ≤ t)
+    {i : Nat} {e : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
+    (he : rho.events[i]? = some e) :
+    i < (chainTrace rho).endCut t ↔ e.time ≤ t := by
+  classical
+  let n := (chainTrace rho).endCut t
+  have hnle : n ≤ rho.events.length := Nat.findGreatest_le _
+  have hnTime : rho.cutTime n ≤ t :=
+    Nat.findGreatest_spec (P := fun i => rho.cutTime i ≤ t)
+      (Nat.zero_le _) (by simpa [Model.Run.cutTime] using ht)
+  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
+  constructor
+  · intro hin
+    cases hn : n with
+    | zero => omega
+    | succ k =>
+      have hk : k < rho.events.length := by omega
+      let f := rho.events[k]
+      have hf : rho.events[k]? = some f := List.getElem?_eq_getElem hk
+      have hft : f.time ≤ t := by simpa [hn, Model.Run.cutTime, hf] using hnTime
+      have hik : i ≤ k := by omega
+      rcases hik.lt_or_eq with hik | rfl
+      · have horder := keyLe_of_lt S rho hv he hf hik
+        have hef : e.time ≤ f.time := by
+          rcases horder with h | ⟨h, _⟩
+          · exact h.le
+          · exact h.le
+        exact hef.trans hft
+      · rw [he] at hf
+        exact (Option.some.inj hf) ▸ hft
+  · intro het
+    have hle : i + 1 ≤ Nat.findGreatest (fun k => rho.cutTime k ≤ t) rho.events.length :=
+      Nat.le_findGreatest (by omega)
+      (by simpa [Model.Run.cutTime, he] using het)
+    exact hle
+
+/-- End-of-time cut bridge. The canonical cut map covers every
 engine event at `t` before advancing to a later node time, including the terminal filler
 cut. A ready node has a tick at `t`, so its last clock is `t`, not the next node cut's time.
 This supplies the exact state/clock read needed by finite R.2. No paper proof of encoding. -/
@@ -85,7 +121,73 @@ theorem sleepy_read_cut (hv : rho.ExecutionValid) {v : V} {t : Time}
       Regimes.Boundary (simTrace S rho hn) (rho.ownKey v)
         (cutMap S rho hn ((chainTrace rho).endCut t)) ∧
       (stateAt S rho hn v ((chainTrace rho).endCut t)).now = t := by
-  sorry
+  classical
+  let n := (chainTrace rho).endCut t
+  let j := cutMap S rho hn n
+  have hnle : n ≤ rho.events.length := Nat.findGreatest_le _
+  have hprev : ∀ k < j, (simTrace S rho hn).time k ≤ t := by
+    intro k hk
+    have hlen : k < (allCuts S rho hn).length := by
+      rw [length_allCuts]
+      exact hk.trans_le (cutMap_mono S rho hn hnle)
+    have hl : (simTrace S rho hn).label k ≠ none := by
+      rw [simTrace_label, List.getElem?_eq_getElem hlen]
+      simp
+    obtain ⟨_, i, e, _, he, hi, _, _, _, htime, _⟩ := simTrace_cut S rho hn hl
+    have hin : i < n := by
+      by_contra h
+      have := cutMap_mono S rho hn (Nat.le_of_not_gt h)
+      omega
+    rw [htime]
+    exact (event_before_endCut S rho hv ht he).mp hin
+  have hnext : t < (simTrace S rho hn).time j := by
+    cases hrj : (allCuts S rho hn)[j]? with
+    | none =>
+      rw [(simTrace_of_getElem?_none S rho hn hrj).2]
+      linarith
+    | some r =>
+      have hl : (simTrace S rho hn).label j ≠ none := by
+        rw [simTrace_label, hrj]; simp
+      obtain ⟨_, i, e, _, he, _, hi, _, _, htime, _⟩ := simTrace_cut S rho hn hl
+      have hni : n ≤ i := by
+        by_contra h
+        have := cutMap_mono S rho hn (show i + 1 ≤ n by omega)
+        omega
+      rw [htime]
+      exact lt_of_not_ge fun het => by
+        have := (event_before_endCut S rho hv ht he).mpr het
+        omega
+  refine ⟨⟨hprev, hnext⟩, ?_, ?_⟩
+  · rintro ⟨c, hc⟩
+    have hy : rho.ownKey v ∈ honestKeys S rho := by
+      change rho.key (rho.ownKey v) ∈ rho.honest
+      rw [show rho.key (rho.ownKey v) = v from rho.key.apply_symm_apply v]
+      exact hr.1
+    obtain ⟨j0, e, hg, hle, hlt⟩ := simTrace_grouped S rho hn hv _ hy j c hc
+    have heq : j0 = j := by
+      by_contra h
+      have h0 := (hg.2.1 0 (by omega)).2.1
+      simp only [Nat.add_zero] at h0
+      have := hprev j0 (lt_of_le_of_ne hle h)
+      rw [h0] at this
+      exact (not_lt_of_ge this) hnext
+    subst j0
+    simpa using (hg.2.1 0 (by omega)).2.2.2.1
+  · have hw : E.awake v t = true := hr.2 t (by
+      apply max_le ht
+      unfold Regimes.catchUp
+      have := (S.params (pubOf E) hn).toParams.hΔ
+      linarith) le_rfl
+    obtain ⟨i, hi⟩ := List.mem_iff_getElem?.mp (hv.tick_total v hr.1 t ht hth hw)
+    have hin : i < n := (event_before_endCut S rho hv ht hi).mpr le_rfl
+    rw [now_eq_lastClock S rho hn hv]
+    apply lastClock_of_between S rho v t i (Or.inl hi) n hin
+    intro k hik hkn e he
+    have hlo := keyLe_of_lt S rho hv hi he hik
+    have hhi := (event_before_endCut S rho hv ht he).mp hkn
+    rcases hlo with hlo | ⟨hlo, _⟩
+    · exact le_antisymm hhi hlo.le
+    · exact hlo.symm
 
 /-- OPEN finite R.1 consumer (owner: Regimes/Refinement). Localize the R.1 induction to
 cuts observed through `b`; all network invocations must have recipient deadlines ≤ b.
