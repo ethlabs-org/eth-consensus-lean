@@ -253,6 +253,58 @@ theorem deliverRecs_block_call (proposer : Nat → Fin sp.n)
           (sub + 1) ⟨x, hx, he⟩
         exact ⟨r, List.mem_append_right _ hr, accepted, ha⟩
 
+private def QueueStamped (t : Time) (st : State sp ro) : Prop :=
+  st.now = t ∧ ∀ q ∈ st.forwards, q.1 = t
+
+private theorem stamped_apply (t : Time) (st : State sp ro) r
+    (h : QueueStamped t st) : QueueStamped t (apply st r) := by
+  refine ⟨h.1, ?_⟩
+  intro q hq
+  rcases apply_forward_origin st r q hq with hq | ⟨B, p, _, rfl⟩
+  · exact h.2 q hq
+  · exact h.1
+
+private theorem stamped_recordOwn (t : Time) (st : State sp ro) o hs
+    (h : QueueStamped t st) : QueueStamped t (recordOwn st o hs) := by
+  unfold recordOwn
+  split
+  · exact h
+  · split
+    · exact stamped_apply t st _ h
+    · exact h
+  · exact h
+
+private theorem stamped_propose (t : Time) (st : State sp ro) s
+    (h : QueueStamped t st) : QueueStamped t (propose st s).1 := by
+  unfold propose
+  dsimp only
+  split <;> exact h
+
+private theorem stamped_nodeTick (t : Time) (st : State sp ro)
+    (h : QueueStamped t st) : QueueStamped t (nodeTick st) := by
+  unfold nodeTick
+  split
+  · exact stamped_apply t st _ h
+  · exact h
+
+private theorem stamped_poll (t : Time) (st : State sp ro) u
+    (h : QueueStamped t st) : QueueStamped t (poll st u).1 := by
+  refine ⟨(poll_now st u).trans h.1, ?_⟩
+  intro q hq
+  rw [poll_forwards] at hq
+  exact False.elim (List.not_mem_nil hq)
+
+private theorem stamped_process (t : Time) (st : State sp ro) o hs
+    (h : QueueStamped t st) : QueueStamped t (process st o hs) := by
+  refine ⟨(process_now st o hs).trans h.1, ?_⟩
+  intro q hq
+  rcases foldl_processOne_forward_origin (fun _ => st.self)
+      (fun _ _ _ _ _ => 0) hs 0 q _ st 0 hq with
+    hq | ⟨B, p, r, _, _, _, _, he⟩
+  · exact h.2 q hq
+  · rw [he]
+    exact h.1
+
 section Trace
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
@@ -333,6 +385,176 @@ theorem decoded_forward_seen_released (hv : rho.ExecutionValid) {i : Nat} {v : V
   change o.signer?.map rho.key = some (rho.key x)
   rw [decodeForward_signer hd]
   rfl
+
+omit [DecidableEq V] in
+private theorem duty_forward_stamp (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (d : (Model.protoOf (compiled (family S)) E).Duty) (u : Time)
+    (hs : QueueStamped u (shapeOf S hn nd))
+    {o : Wire (Fintype.card V)} {t : Time} {p : Option (Wire (Fintype.card V))}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (ho : o ∈ rho.signedCandidate v d ((Model.protoOf (compiled (family S)) E).act nd.st d).2)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (rho.ownKey v, t, p, B)) : t = u := by
+  cases d with
+  | poll n => exact hs.2 _ (poll_candidate_forward_queue S rho hn v nd n ho hd)
+  | act s k => exact k.elim
+  | propose s hpos =>
+    obtain ⟨m, cs, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
+    have he := forwardObj_of_decodeForward _ _ _ _ _ _ hd
+    have ha := congrArg Model.Obj.auth he
+    change Model.Auth.signed (rho.ownKey v) (ShapeRole.proposer (Kind := Empty) s) =
+      .signed (rho.ownKey v) ShapeRole.poll at ha
+    cases ha
+  | pollPropose n =>
+    have hempty : ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose n)).2 = [] := by
+      simp only [Model.protoOf, compiled, compile, family, dite_eq_left hn, goldilocksShape]
+      rfl
+    obtain ⟨m, cs, hm, _, _⟩ := rho.mem_signedCandidate.mp ho
+    rw [hempty] at hm
+    exact False.elim (List.not_mem_nil hm)
+
+omit [DecidableEq V] in
+private theorem gossip_not_forward
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (u : Time)
+    {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (ho : o ∈ Model.gossipCandidates (Model.protoOf (compiled (family S)) E) nd.st u)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B)) : False := by
+  obtain ⟨mc, _, rfl⟩ := Model.mem_gossipCandidates.mp ho
+  have hsign := decodeForward_signer hd
+  change none = some x at hsign
+  cases hsign
+
+private theorem dutyBatches_forward_stamp (v : V) (u : Time) :
+    ∀ (ds : List (Model.protoOf (compiled (family S)) E).Duty)
+      (nd : Model.Node (Model.protoOf (compiled (family S)) E)),
+    QueueStamped u (shapeOf S hn nd) →
+    ∀ b ∈ dutyBatches rho v nd ds, ∀ o ∈ b.candidates,
+    ∀ t p B, decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (rho.ownKey v, t, p, B) → t = u := by
+  intro ds
+  induction ds with
+  | nil => intro nd hs b hb; rw [dutyBatches_nil] at hb; exact False.elim (List.not_mem_nil hb)
+  | cons d ds ih =>
+    intro nd hs b hb o ho t p B hd
+    rw [dutyBatches_cons] at hb
+    rcases List.mem_cons.mp hb with rfl | hb
+    · split at ho
+      · exact duty_forward_stamp S rho hn v nd d u hs ho hd
+      · exact False.elim (List.not_mem_nil ho)
+    · exact ih _ (dutyStep_pres S rho hn (QueueStamped u)
+        (stamped_recordOwn u) (stamped_propose u) (stamped_nodeTick u) (stamped_poll u)
+        v nd d hs) b hb o ho t p B hd
+
+private theorem runDuties_candidate_batch (v : V) :
+    ∀ ds (nd : Model.Node (Model.protoOf (compiled (family S)) E)) o,
+    o ∈ (rho.runDuties v nd ds).2 →
+    ∃ b ∈ dutyBatches rho v nd ds, o ∈ b.candidates := by
+  intro ds
+  induction ds with
+  | nil => intro nd o ho; rw [rho.runDuties_nil] at ho; exact False.elim (List.not_mem_nil ho)
+  | cons d ds ih =>
+    intro nd o ho
+    rw [rho.runDuties_cons] at ho
+    rcases List.mem_append.mp ho with ho | ho
+    · rw [dutyBatches_cons]
+      unfold Model.Run.dutyStep at ho
+      split at ho
+      · rename_i hsel
+        refine ⟨_, List.mem_cons_self, ?_⟩
+        simp only [hsel, ↓reduceIte]
+        exact Model.releaseAll_subset _ _ _ _ o ho
+      · exact False.elim (List.not_mem_nil ho)
+    · obtain ⟨b, hb, ho⟩ := ih _ o ho
+      rw [dutyBatches_cons]
+      exact ⟨b, List.mem_cons_of_mem _ hb, ho⟩
+
+/-- Every engine release belongs to a concrete event batch. This inverse needs no
+acceptance or provenance premise. -/
+theorem released_candidate_batch {i : Nat} {v : V} {u : Time}
+    (he : rho.SendsAt v i u) {o : Wire (Fintype.card V)} (ho : o ∈ rho.releasesAt i) :
+    ∃ b ∈ eventBatches rho i, o ∈ b.candidates := by
+  rcases he with he | ⟨receipt, he⟩
+  · rw [eventBatches_eq, he]
+    simp only [Model.Run.releasesAt, he, Model.Run.tick] at ho
+    split at ho
+    · rename_i hw
+      simp only [hw, ↓reduceIte]
+      rcases List.mem_append.mp ho with ho | ho
+      · obtain ⟨b, hb, ho⟩ := runDuties_candidate_batch S rho v _ _ o ho
+        exact ⟨b, List.mem_append_left _ hb, ho⟩
+      · exact ⟨_, List.mem_append_right _ List.mem_cons_self,
+          Model.releaseAll_subset (P := Model.protoOf (compiled (family S)) E) _ _ _ _ o ho⟩
+    · exact False.elim (List.not_mem_nil ho)
+  · rw [eventBatches_eq, he]
+    simp only [Model.Run.releasesAt, he, Model.Run.deliver] at ho
+    rcases List.mem_append.mp ho with ho | ho
+    · obtain ⟨b, hb, ho⟩ := runDuties_candidate_batch S rho v _ _ o ho
+      exact ⟨b, List.mem_append_left _ hb, ho⟩
+    · exact ⟨_, List.mem_append_right _ List.mem_cons_self,
+        Model.releaseAll_subset (P := Model.protoOf (compiled (family S)) E) _ _ _ _ o ho⟩
+
+/-- A forwarding candidate in an actual event batch has that event's timestamp. -/
+theorem eventBatches_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V}
+    {u : Time} (he : rho.SendsAt v i u)
+    (b : ReleaseBatch (Model.protoOf (compiled (family S)) E))
+    (hb : b ∈ eventBatches rho i) {o : Wire (Fintype.card V)} (ho : o ∈ b.candidates)
+    {t : Time} {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (rho.ownKey v, t, p, B)) : t = u := by
+  rcases he with he | ⟨receipt, he⟩
+  · rw [eventBatches_eq, he] at hb
+    simp only at hb
+    split at hb
+    · rcases List.mem_append.mp hb with hb | hb
+      · apply dutyBatches_forward_stamp S rho hn v u _ _ ?_ b hb o ho t p B hd
+        change QueueStamped u { stateAt S rho hn v i with now := u }
+        refine ⟨rfl, ?_⟩
+        intro q hq
+        change q ∈ (stateAt S rho hn v i).forwards at hq
+        rw [forwards_empty S rho hn hv v i] at hq
+        exact False.elim (List.not_mem_nil hq)
+      · have heq := List.mem_singleton.mp hb
+        subst b
+        exact False.elim (gossip_not_forward S rho hn _ u ho hd)
+    · exact False.elim (List.not_mem_nil hb)
+  · rw [eventBatches_eq, he] at hb
+    rcases List.mem_append.mp hb with hb | hb
+    · apply dutyBatches_forward_stamp S rho hn v u _ _ ?_ b hb o ho t p B hd
+      change QueueStamped u
+        (process (stateAt S rho hn v i) receipt (Model.digests rho.hash receipt))
+      apply stamped_process
+      refine ⟨(now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he), ?_⟩
+      intro q hq
+      rw [forwards_empty S rho hn hv v i] at hq
+      exact False.elim (List.not_mem_nil hq)
+    · have heq := List.mem_singleton.mp hb
+      subst b
+      exact False.elim (gossip_not_forward S rho hn _ u ho hd)
+
+/-- An actually released forwarding envelope has the sending event's timestamp. -/
+theorem released_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {u : Time}
+    (he : rho.SendsAt v i u) {o : Wire (Fintype.card V)} (ho : o ∈ rho.releasesAt i)
+    {t : Time} {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (rho.ownKey v, t, p, B)) : t = u := by
+  obtain ⟨b, hb, ho⟩ := released_candidate_batch S rho he ho
+  exact eventBatches_forward_stamp S rho hn hv he b hb ho hd
+
+/-- Every actual forwarding publication bears its own event's time. -/
+theorem publication_forward_stamp (hv : rho.ExecutionValid)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) {t : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash r.object) r.object =
+      some (r.origin, t, p, B)) : t = (publisherExecution S rho).eventTime r.event := by
+  apply released_forward_stamp S rho hn hv ((publisherExecution S rho).actual_event r hr)
+    ((publisherExecution S rho).actual_release r hr) (p := p) (B := B)
+  have hk : rho.ownKey (rho.key r.origin) = r.origin := rho.key.symm_apply_apply _
+  rw [hk]
+  exact hd
 
 /-- An indexed successful canonical cut supplies acceptance at its actual recorded time.
 In particular this bridge never turns a refused block call into acceptance. -/
@@ -435,6 +657,35 @@ theorem received_forward_blockCall {i : Nat} {v : V}
   refine ⟨cutMap S rho hn i + j, ?_, hn' ▸ hcall, htime.trans ht'⟩
   rw [cutMap_succ]
   omega
+
+/-- Authentication and event order bound an honest forwarding envelope's stamp by
+its receipt time, even when the envelope is nested inside the delivered object. -/
+theorem received_forward_stamp_le (hv : rho.ExecutionValid) {i : Nat} {v : V}
+    {receipt o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t u : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (he : rho.events[i]? = some (.deliver v receipt u))
+    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∈ rho.honest)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B)) : t ≤ u := by
+  have hsign : rho.signerOf o = some (rho.key x) := by
+    change o.signer?.map rho.key = some (rho.key x)
+    rw [decodeForward_signer hd]
+    rfl
+  obtain ⟨j, s, hj, hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hx hsign
+  have hd' : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (rho.ownKey (rho.key x), t, p, B) := by
+    simpa only [Model.Run.ownKey, Equiv.symm_apply_apply] using hd
+  have ht := released_forward_stamp S rho hn hv hs ho hd'
+  rw [ht]
+  obtain ⟨hi, hei⟩ := List.getElem?_eq_some_iff.mp he
+  rcases hs with hs | ⟨receipt', hs⟩
+  all_goals
+    obtain ⟨hj', hej⟩ := List.getElem?_eq_some_iff.mp hs
+    have horder := List.pairwise_iff_getElem.mp hv.sorted j i hj' hi hj
+    rw [hej, hei] at horder
+    rcases horder with hlt | ⟨heq, _⟩
+    · exact le_of_lt hlt
+    · exact le_of_eq heq
 
 end Trace
 
