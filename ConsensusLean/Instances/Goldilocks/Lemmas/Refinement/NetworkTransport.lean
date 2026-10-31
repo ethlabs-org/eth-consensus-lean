@@ -75,4 +75,43 @@ theorem delivery_endpoint_before_cutoff (base cutoff Δe Δp : Time)
   simp only [Time] at *
   omega
 
+/-- Partial synchrony services an actual successful publication strictly before the
+protocol endpoint. The start may be a later wake; its entire engine delivery interval
+must be awake and inside the horizon. This proves holdings, not a node call or row production. -/
+theorem publication_held_psync (hn : 1 ≤ Fintype.card V) {g : Time}
+    (hnet : rho.log.PSync rho.point g)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    {y : V} (hy : y ∈ rho.honest) {a : Time}
+    (ha : (publisherExecution S rho).eventTime r.event ≤ a)
+    (hh : max a g + E.Δ ≤ rho.horizon)
+    (hawake : rho.point.AwakeOnClosed y a (max a g + E.Δ)) :
+    rho.log.Held rho.point y r.object (max a g + E.Δ) ∧
+      max a g + E.Δ < max a g + (S.params (Model.pubOf E) hn).Δ := by
+  constructor
+  · exact hnet.msgs _ hx _ _
+      ⟨r.event, (publisherExecution S rho).actual_event r hr,
+        (publisherExecution S rho).actual_release r hr⟩ y hy a ha hh hh hawake
+  · change max a g + E.Δ < max a g + (E.Δ + 1)
+    linarith
+
+/-- Before an outage, only qualifying recipient deadlines receive service. The protocol
+deadline may equal the cutoff: the engine endpoint is still strictly below it. -/
+theorem publication_held_syncUntil (hn : 1 ≤ Fintype.card V) {b : Time}
+    (hnet : rho.log.SyncUntil rho.point b)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    {y : V} (hy : y ∈ rho.honest) {a : Time}
+    (ha : (publisherExecution S rho).eventTime r.event ≤ a)
+    (hb : a + (S.params (Model.pubOf E) hn).Δ ≤ b)
+    (hh : a + E.Δ ≤ rho.horizon)
+    (hawake : rho.point.AwakeOnClosed y a (a + E.Δ)) :
+    rho.log.Held rho.point y r.object (a + E.Δ) ∧ a + E.Δ < b := by
+  have hlt : a + E.Δ < b := by
+    change a + (E.Δ + 1) ≤ b at hb
+    linarith
+  exact ⟨hnet.msgs _ hx _ _
+    ⟨r.event, (publisherExecution S rho).actual_event r hr,
+      (publisherExecution S rho).actual_release r hr⟩ y hy a ha hlt.le hh hawake, hlt⟩
+
 end Consensus.Goldilocks.Refinement
