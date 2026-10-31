@@ -62,8 +62,32 @@ theorem mem_blockObjs {cs : List (Cut (goldilocksNode sp ro))} {o : Wire sp.n} :
 theorem emitted_append (cs cs' : List (Cut (goldilocksNode sp ro))) :
     emitted (cs ++ cs') = emitted cs ++ emitted cs' := by simp [emitted]
 
+theorem mem_emitted {cs : List (Cut (goldilocksNode sp ro))} {v : Vote sp.n} :
+    Body.vote (encodeVote v) ∈ emitted cs ↔
+      ∃ ℓ, Cut.ac ℓ ∈ cs ∧ ∃ em ∈ ℓ.emits, em.msg = v := by
+  simp only [emitted, List.mem_flatMap]
+  constructor
+  · rintro ⟨c, hc, hv⟩
+    cases c with
+    | fg => simp at hv
+    | ac ℓ =>
+      obtain ⟨em, hem, heq⟩ := List.mem_map.mp hv
+      have h := congrArg (decodeVote sp.n) (Body.vote.inj heq)
+      rw [decodeVote_encodeVote, decodeVote_encodeVote] at h
+      exact ⟨ℓ, hc, em, hem, Option.some.inj h⟩
+  · rintro ⟨ℓ, hc, em, hem, heq⟩
+    exact ⟨_, hc, List.mem_map.mpr ⟨em, hem, by rw [heq]⟩⟩
+
 theorem attBodies_append (cs cs' : List (Cut (goldilocksNode sp ro))) :
     attBodies (cs ++ cs') = attBodies cs ++ attBodies cs' := by simp [attBodies]
+
+theorem vote_not_mem_attBodies (cs : List (Cut (goldilocksNode sp ro))) (w : WireVote) :
+    Body.vote w ∉ attBodies cs := by
+  simp only [attBodies, List.mem_flatMap, not_exists, not_and]
+  intro c _
+  cases c with
+  | ac => simp
+  | fg l => cases l <;> simp; split <;> simp
 
 theorem blockObjs_append (cs cs' : List (Cut (goldilocksNode sp ro))) :
     blockObjs (cs ++ cs') = blockObjs cs ++ blockObjs cs' := by simp [blockObjs]

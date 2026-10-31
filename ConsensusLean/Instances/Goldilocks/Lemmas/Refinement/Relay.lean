@@ -1319,9 +1319,52 @@ theorem processOne_outbox_eq (proposer : Nat → Fin sp.n)
       rw [relayIf_eq]
       rfl
 
-/-- **A delivery's outbox.** Processing the objects `os` from a shape state at clock `t` only
-grows the outbox, and queues the vote of every emission among the delivery's cuts, a vote of the
-state's own validator. -/
+/-- Every body pending after delivery was already queued or emitted by one of its cuts. -/
+theorem process_outbox_source (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (t : Time) (i : Nat) :
+    ∀ (os : List (Wire sp.n)) (σ : State sp ro) (sub : Nat), σ.now = t →
+      ∀ b ∈ (os.foldl (processOne hs) σ).outbox,
+        b ∈ σ.outbox ∨ ∃ r ∈ deliverRecs proposer dg hs σ.self t i os σ.node sub,
+          ∃ ℓ, r.label = .ac ℓ ∧ ∃ em ∈ ℓ.emits, b = .vote (encodeVote em.msg)
+  | [], σ, _, _, b, hb => Or.inl hb
+  | o :: os, σ, sub, ht, b, hb => by
+    obtain ⟨_, _, _, hnow, hself, hnode⟩ := processOne_eq proposer dg hs σ o
+    rcases process_outbox_source proposer dg hs t i os (processOne hs σ o) (sub + 1)
+      (hnow.trans ht) b hb with hb | ⟨r, hr, ℓ, hl, em, hem, hb⟩
+    · rw [processOne_outbox_eq proposer dg] at hb
+      rcases List.mem_append.mp hb with hb | hb
+      · exact Or.inl hb
+      · cases he : canonEvent sp ro hs o with
+        | none => simp [he] at hb
+        | some e =>
+          simp only [he, Option.elim_some, emitted] at hb
+          obtain ⟨c, hc, hb⟩ := List.mem_flatMap.mp hb
+          cases c with
+          | fg => simp at hb
+          | ac ℓ =>
+            obtain ⟨em, hem, rfl⟩ := List.mem_map.mp hb
+            rw [ht] at hc
+            obtain ⟨k, hk, hck⟩ := List.getElem_of_mem hc
+            have hk' : k < (groupRecs proposer dg σ.self σ.node t (Nat.pair i sub) e).length :=
+              by rwa [length_groupRecs]
+            refine Or.inr ⟨(groupRecs proposer dg σ.self σ.node t (Nat.pair i sub) e)[k],
+              ?_, ℓ, ?_, em, hem, rfl⟩
+            · rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he]
+              exact List.mem_append_left _ (List.getElem_mem hk')
+            · exact (getElem_groupRecs _ _ _ _ _ _ _ k hk').2.2.2.2.trans hck
+    · refine Or.inr ⟨r, ?_, ℓ, hl, em, hem, hb⟩
+      rw [hself, hnode] at hr
+      cases he : canonEvent sp ro hs o with
+      | none =>
+        rw [he] at hr
+        rwa [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he]
+      | some e =>
+        rw [he, Option.elim_some, ht] at hr
+        rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he]
+        exact List.mem_append_right _ hr
+
+/-- A delivery queues each emission, preserving previously pending bodies. -/
 theorem process_outbox (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (t : Time) (i : Nat) :

@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 
-set_option linter.style.longFile 2000
+set_option linter.style.longFile 2200
 
 public section
 
@@ -705,13 +705,163 @@ theorem simTrace_att_unforgeable (hv : rho.ExecutionValid) :
       a.val ∈ honestKeys S rho → ∃ j < i, (simTrace S rho hn).SignAt a.val j a := by
   sorry
 
+private theorem emit_of_record {i : Nat} {ev}
+    (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+    (hr : r ∈ eventCuts S rho hn i) {ℓ} (hl : r.label = .ac ℓ)
+    {em} (hem : em ∈ ℓ.emits) :
+    ∃ k < cutMap S rho hn (i + 1),
+      (simTrace S rho hn).EmitAt (rho.ownKey ev.node) k em.msg := by
+  have hnode := (mem_eventCuts S rho hn he hr).1
+  obtain ⟨m, hm, hrm⟩ := List.getElem_of_mem hr
+  have hk := allCuts_getElem?_add S rho hn i m (List.getElem?_eq_some_iff.mp he).1 hm
+  rw [List.getElem?_eq_getElem hm, hrm] at hk
+  refine ⟨cutMap S rho hn i + m, ?_, ℓ, ⟨?_, ?_⟩, em, hem, rfl⟩
+  · rw [cutMap_succ]; omega
+  · rw [simTrace_node, hk]; exact hnode
+  · rw [simTrace_label, hk]; exact congrArg some hl
+
+private theorem emit_of_tick_body {i : Nat} {v : V} {t : Time}
+    (he : rho.events[i]? = some (.tick v t))
+    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) {m : Vote (Fintype.card V)}
+    (hm : Body.vote (encodeVote m) ∈ emitted (exec (runProposer S rho hn) (digestOf S rho)
+      (rho.ownKey v) (stateAt S rho hn v i).node t
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2) :
+    ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m := by
+  obtain ⟨ℓ, hc, em, hem, rfl⟩ := mem_emitted.mp hm
+  obtain ⟨q, hq, hcq⟩ := List.getElem_of_mem hc
+  have hq' : q < (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+      (stateAt S rho hn v i).node t (Nat.pair i 0)
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).length := by
+    rwa [length_groupRecs]
+  apply emit_of_record S rho hn he (r := (groupRecs (runProposer S rho hn) (digestOf S rho)
+    (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
+    (.tick (encodeTxs (Model.mempool rho.inbox v t))))[q]) ?_ ?_ hem
+  · rw [eventCuts_tick_public S rho hn i v t he hp]; exact List.getElem_mem hq'
+  · exact (getElem_groupRecs _ _ _ _ _ _ _ q hq').2.2.2.2.trans hcq
+
+private theorem released_vote_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+    (hs : rho.SendsAt v i t) (hv' : v ∈ rho.honest) {m : Vote (Fintype.card V)}
+    (hb : voteObj m ∈ rho.releasesAt i) :
+    ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m := by
+  have hbody : ∀ b, voteObj m = pollObj S rho v b → b = Body.vote (encodeVote m) := by
+    intro b heq
+    exact (Model.Msg.data.inj (congrArg Model.Obj.msg heq)).symm
+  rcases hs with he | ⟨o, he⟩
+  · have hnil := outbox_empty S rho hn hv v hv' i
+    by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
+    · obtain ⟨N4, N5, Q, R4, F, G, hr, _, _, hF, hG, _, hQ, hR4, _⟩ :=
+        tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hv hv' he)
+      have hq : ∀ seen ob, (∀ b, ob = some b → b ∈ Q) →
+          voteObj m ∈ relHead S rho v seen ob →
+          ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m := by
+        intro seen ob hmem hb
+        obtain ⟨b, hob, heq⟩ := mem_relHead S rho hb
+        have hbq := hmem b hob
+        rw [hbody b heq, hQ] at hbq
+        rcases List.mem_append.mp hbq with hbq | hbq
+        · exact emit_of_tick_body S rho hn he hp hbq
+        · exact False.elim (vote_not_mem_attBodies _ _ hbq)
+      rw [hr] at hb
+      rcases List.mem_append.mp hb with hb | hb
+      · rcases List.mem_append.mp hb with hb | hb
+        · rcases List.mem_append.mp hb with hb | hb
+          · rcases List.mem_append.mp hb with hb | hb
+            · obtain ⟨b, hb, _⟩ := mem_relHead S rho hb
+              simp [hnil] at hb
+            · rw [hR4] at hb
+              obtain ⟨B, acc, _, heq⟩ := mem_blockObjs.mp hb
+              have hh := congrArg Model.Obj.msg heq
+              cases hh
+          · rcases List.mem_append.mp hb with hb | hb
+            · exact hq _ _ (fun _ h => List.mem_of_mem_head? h) hb
+            · obtain ⟨τ, cs, heq⟩ := hF _ hb
+              have hh := congrArg Model.Obj.msg heq
+              cases hh
+        · exact hq _ _ (fun _ h => List.mem_of_mem_tail (List.mem_of_mem_head? h)) hb
+      · have hh := hG _ hb; cases hh
+    · rcases tick_other_releases S rho hn hv hv' he hp _ hb with hb | hb
+      · obtain ⟨b, hb, _⟩ := mem_relHead S rho hb
+        simp [hnil] at hb
+      · cases hb
+  · have ht0 := (hv.in_horizon _ (List.mem_of_getElem? he)).1
+    have hnow : (stateAt S rho hn v i).now = t :=
+      (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
+    simp only [Model.Run.releasesAt, he, Model.Run.deliver] at hb
+    rcases List.mem_append.mp hb with hb | hb
+    · rw [deliverDuties_eq S t ht0] at hb
+      erw [Model.Run.runDuties_cons, Model.Run.runDuties_nil] at hb
+      simp only [List.append_nil] at hb
+      rcases dutyStep_poll_sub S rho hn v _ _ _ hb with ⟨b, hb, heq⟩ | ⟨τ, cs, heq⟩
+      · have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
+          (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
+        change (pollPre (process (stateAt S rho hn v i) o
+          (Model.digests rho.hash o))).outbox.head? = some b at hb
+        rw [pollPre_eq, hf] at hb
+        have hb' := List.mem_of_mem_head? hb
+        rw [hbody b heq] at hb'
+        rcases process_outbox_source (runProposer S rho hn) (digestOf S rho)
+          (Model.digests rho.hash o) t i _ (stateAt S rho hn v i) 0 hnow _ hb' with
+          hb | ⟨r, hr, ℓ, hl, em, hem, heq⟩
+        · rw [outbox_empty S rho hn hv v hv' i] at hb; cases hb
+        · have hm := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj heq)
+          rw [decodeVote_encodeVote, decodeVote_encodeVote] at hm
+          have hm := Option.some.inj hm
+          rw [hm]
+          apply emit_of_record S rho hn he (r := r) ?_ hl hem
+          rw [eventCuts_deliver S rho hn i v o t he, ← stateAt_self S rho hn v i]
+          exact hr
+      · have hh := congrArg Model.Obj.msg heq; cases hh
+    · have hh := gossip_unsigned S rho _ _ _ _ hb; cases hh
+
 /-- An AC message of an honest signer that an honest node receives was emitted by that signer's
 node at an earlier cut. -/
 theorem simTrace_msg_unforgeable (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ i (m : Vote (Fintype.card V)),
       (simTrace S rho hn).MsgCallAt y i m → m.val ∈ honestKeys S rho →
         ∃ j < i, (simTrace S rho hn).EmitAt m.val j m := by
-  sorry
+  rintro y _ k m ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ hhon
+  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
+  obtain ⟨r, i, ev, _, he, hstart, _, hidx, _, _, _, hlab'⟩ := simTrace_cut S rho hn hl
+  have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
+  have hmem := List.mem_of_getElem? hidx
+  obtain ⟨v, o, t, rfl⟩ := eq_deliver_of_cut S rho hn he hmem (Or.inr ⟨ℓ, m, hrl, hcall⟩)
+  rw [eventCuts_deliver S rho hn i v o t he] at hmem
+  obtain ⟨o', e, st', ho, hce, q, hq, hc, _⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
+  have hcut := List.getElem_mem hq
+  rw [← hc, hrl] at hcut
+  have heq : e = .message m := by
+    cases e with
+    | tick x => exact False.elim (canonEvent_ne_tick hce x rfl)
+    | message m' =>
+      simp only [exec, onMessage, acCall, List.mem_singleton, Cut.ac.injEq] at hcut
+      subst ℓ
+      cases hcall
+      rfl
+    | block B =>
+      simp only [exec, onBlock] at hcut
+      split_ifs at hcut
+      · simp at hcut
+      · split at hcut <;> simp [acCall] at hcut
+        subst ℓ
+        cases hcall
+    | attestation => simp [exec, onAttestation] at hcut
+    | restart =>
+      simp only [exec, Node.restart, acCall, List.mem_singleton, Cut.ac.injEq] at hcut
+      subst ℓ
+      cases hcall
+  subst e
+  have ho' : o' = voteObj m := by
+    rcases canonEvent_eq_some hce with ⟨_, h, _⟩ | ⟨m', h, ho⟩ | ⟨_, h, _⟩
+    · cases h
+    · cases h; exact ho
+    · cases h
+  subst o'
+  obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he _ (contains_of_mem_delivered ho)
+    (rho.key m.val) hhon rfl
+  obtain ⟨q, hq, hem⟩ := released_vote_cut S rho hn hv hs hhon hb
+  have hle : cutMap S rho hn (j + 1) ≤ cutMap S rho hn i :=
+    cutMap_mono S rho hn (Nat.succ_le_of_lt hj)
+  exact ⟨q, by omega, by simpa only [ownKey_key] using hem⟩
 
 /-! ## `GoldilocksRun` -/
 
@@ -724,13 +874,89 @@ theorem simTrace_genesis_root_ok :
         (digestOf S rho) := by
   rfl
 
-/-- A vote of an honest validator carried by a block that an honest node processes was emitted
-by that validator's node at an earlier cut. -/
+/-- An honest-signed payload object of any called block was released before its engine event. -/
+private theorem block_payload_source (hv : rho.ExecutionValid) {k : Nat} {y}
+    {B : Blk (S.params (pubOf E) hn)} (hc : (simTrace S rho hn).BlockCallAt y k B)
+    {o : Wire (Fintype.card V)} (ho : o ∈ payloadObjs B.fgPayload B.acPayload)
+    {u : V} (hu : u ∈ rho.honest) (hsign : rho.signerOf o = some u) :
+    ∃ i t, cutMap S rho hn (i + 1) ≤ k ∧ rho.SendsAt u i t ∧ o ∈ rho.releasesAt i := by
+  obtain ⟨acc, hnode, hlab⟩ := hc
+  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
+  obtain ⟨r, i, ev, _, he, hstart, _, hidx, _, _, _, hlab'⟩ := simTrace_cut S rho hn hl
+  have hrl : r.label = .fg (.block B acc) := Option.some.inj (hlab'.symm.trans hlab)
+  have hmem := List.mem_of_getElem? hidx
+  have hbefore : ∀ j < i, cutMap S rho hn (j + 1) ≤ k := by
+    intro j hj
+    exact (cutMap_mono S rho hn (show j + 1 ≤ i by omega)).trans hstart
+  cases ev with
+  | tick v t =>
+    have hv' := hv.honest_only _ (List.mem_of_getElem? he)
+    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
+      by_contra hp
+      rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
+      simp at hmem
+    rw [eventCuts_tick_public S rho hn i v t he hp] at hmem
+    obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hmem
+    obtain ⟨_, _, _, _, hc⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
+    have hcut := List.getElem_mem (lt_of_lt_of_eq hm (length_groupRecs _ _ _ _ _ _ _))
+    rw [← hc, hrl] at hcut
+    obtain ⟨N4, N5, Q, R4, F, G, _, _, _, _, _, _, _, hR4, hcar, _⟩ :=
+      tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hv hv' he)
+    have hB : blockObj (S.params (pubOf E) hn) B ∈ R4 := by
+      rw [hR4]; exact mem_blockObjs.mpr ⟨B, acc, hcut, rfl⟩
+    have ho' := hcar _ hB o ho
+    have hnil := outbox_empty S rho hn hv v hv' i
+    have hrel : relHead S rho v (rho.stateBefore i v).seen
+        (stateAt S rho hn v i).outbox.head? = [] := by
+      apply List.eq_nil_iff_forall_not_mem.mpr
+      intro x hx
+      obtain ⟨b, hb, _⟩ := mem_relHead S rho hx
+      simp [hnil] at hb
+    simp only [Model.Event.node] at ho'
+    rw [hrel, List.append_nil] at ho'
+    obtain ⟨j, hj, t', hs, hr⟩ := rho.signed_seen_released hv ho' hu hsign
+    exact ⟨j, t', hbefore j hj, hs, hr⟩
+  | deliver v x t =>
+    rw [eventCuts_deliver S rho hn i v x t he] at hmem
+    obtain ⟨x', e, st', hx, hce, m, hm, hc, _⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
+    have hcut := List.getElem_mem hm
+    rw [← hc, hrl] at hcut
+    have heq : e = .block B := by
+      cases e with
+      | tick x => exact False.elim (canonEvent_ne_tick hce x rfl)
+      | block B' =>
+        simp only [exec, onBlock] at hcut
+        split_ifs at hcut
+        · simp at hcut
+        · split at hcut <;> simp [acCall] at hcut <;> simp_all
+      | message => simp [exec, onMessage, acCall] at hcut
+      | attestation => simp [exec, onAttestation] at hcut
+      | restart => simp [exec, Node.restart, acCall] at hcut
+    subst e
+    obtain rfl := eq_blockObj_of_decodeBlock (decodeBlock_of_canonEvent hce)
+    have hcontains := (contains_of_mem_delivered hx).trans (Model.Obj.Contains.step ho (.refl o))
+    obtain ⟨j, t', hj, hs, hr⟩ := hv.unforgeable i v x t he o hcontains u hu hsign
+    exact ⟨j, t', hbefore j hj, hs, hr⟩
+  | restart v t =>
+    rw [eventCuts_restart S rho hn i v t he] at hmem
+    obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hmem
+    obtain ⟨_, _, _, _, hc⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
+    have hcut := List.getElem_mem (lt_of_lt_of_eq hm (length_groupRecs _ _ _ _ _ _ _))
+    rw [← hc, hrl] at hcut
+    simp [exec, Node.restart, acCall] at hcut
+
+/-- Honest carried votes originate in earlier canonical emission cuts. -/
 theorem simTrace_carried_vote_unforgeable (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ i B, (simTrace S rho hn).BlockCallAt y i B →
       ∀ v ∈ blockVotes B, v.val ∈ honestKeys S rho →
         ∃ j < i, (simTrace S rho hn).EmitAt v.val j v := by
-  sorry
+  intro y _ k B hc m hm hh
+  have hmem : voteObj m ∈ payloadObjs B.fgPayload B.acPayload :=
+    List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
+  obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hv hc hmem hh
+    (show rho.signerOf (voteObj m) = some (rho.key m.val) from rfl)
+  obtain ⟨q, hq, he⟩ := released_vote_cut S rho hn hv hs hh hr
+  exact ⟨q, hq.trans_le hik, by simpa only [ownKey_key] using he⟩
 
 /-! ## Blocks of cuts
 
