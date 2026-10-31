@@ -111,6 +111,18 @@ theorem h2_duty_anchor (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp.n
     · exact hlock D h
     · rw [Set.mem_singleton_iff.1 h]; exact hfc
 
+/-- **§3, no current-slot lock at the proposal input** (claims, driven trace (b): at `t_p` the
+proposer runs its tick, then `ac_proposal`, then the objects received): every stored lock of the
+honest proposer of slot `p` at its `ac_proposal` at `t_p` has a slot below `p`. Open until
+`Driven.proposal_first` (a transcription of (b), owned by the spec orb) is on main; it follows
+from it, as a slot-`p` lock needs an optimistic check at an object call at a time `≥ t_p`. -/
+theorem h2_proposal_locks_below (hI : InclusionRun tr H U g t₀) {p : Nat}
+    (hpH : sp.toParams.proposer p ∈ H) {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)}
+    (hck : tr.CallAt (sp.toParams.proposer p) k ℓp) (hcall : ℓp.call = .proposal)
+    (htk : tr.time k = sp.ts p) :
+    ∀ l ∈ (tr.state (sp.toParams.proposer p) k).locks, l.slot < p := by
+  sorry
+
 /-- **§§1, 4, with §6's second clause**: with every honest slot-`p` voter's anchor below `P` up to
 the first vote not on `P`, `Geo(P)` makes every honest vote of slot `p` the proposal (the
 reader's walk reaches the proposer's path, §6; on it the retained heads give equal scores and
