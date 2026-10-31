@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 public import ConsensusLean.Spec.Shape.Run
 
@@ -50,7 +51,7 @@ theorem sleepy_ready (_hv : rho.ExecutionValid) {v : V} {t : Time}
     rw [simTrace_awake_iff, awakeAt_iff, hkey]
     exact ⟨hr.2 τ hτ hτt, (le_max_left _ _).trans hτ, hτt.trans hth⟩
 
-/-- OPEN quorum bridge (owner: Refinement). Half-ready means faulty < ready; transport
+/-- Quorum bridge. Half-ready means faulty < ready; transport
 counts through the key equivalence and use ready-implies-joined at each slot point.
 Only points through `b` are claimed, including slot zero. Depends on `sleepy_ready` and
 the node readiness/join lemma, not on synchrony or whole-run participation. -/
@@ -60,7 +61,43 @@ theorem sleepy_faultBound (hv : rho.ExecutionValid) {b : Time}
     ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf E) hn).Δ,
       2 * (S.params (pubOf E) hn).Δ} : Set Time), (S.params (pubOf E) hn).ts s + d ≤ b →
       (simTrace S rho hn).FaultBound (honestKeys S rho) ((S.params (pubOf E) hn).ts s + d) := by
-  sorry
+  classical
+  intro s d hd htb
+  let t := (S.params (pubOf E) hn).ts s + d
+  have hΔ := (S.params (pubOf E) hn).toParams.hΔ
+  have ht : 0 ≤ t := by
+    simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hd
+    rcases hd with rfl | rfl | rfl <;>
+      dsimp [t, SA.SAParams.ts] <;> positivity
+  have hh := hhalf t ht htb
+  have hlt : rho.point.faulty.card <
+      (rho.point.readyAt (Regimes.catchUp (S.params (pubOf E) hn)) t).card := by
+    unfold EnvPoint.ReadyAbove at hh
+    have hq : (rho.point.faulty.card : ℚ) <
+        (rho.point.readyAt (Regimes.catchUp (S.params (pubOf E) hn)) t).card := by
+      linarith
+    exact_mod_cast hq
+  have hf : (honestKeys S rho)ᶜ.ncard = rho.point.faulty.card := by
+    have heq : (honestKeys S rho)ᶜ = rho.key ⁻¹' (↑rho.point.faulty : Set V) := by
+      ext k
+      simp [honestKeys, EnvPoint.faulty, Model.Run.point]
+    rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
+      (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset]
+  have hcount : (rho.point.readyAt (Regimes.catchUp (S.params (pubOf E) hn)) t).card ≤
+      (simTrace S rho hn).honestAwakeJoined (honestKeys S rho) t := by
+    rw [← Set.ncard_coe_finset]
+    apply Set.ncard_le_ncard_of_injOn rho.ownKey
+    · intro v hv'
+      have hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn)) v t :=
+        (Finset.mem_filter.mp hv').2
+      have hready := sleepy_ready S rho hn hv ht (htb.trans hb) hr
+      refine ⟨hready.1, ?_⟩
+      exact Compose.ready_implies_joined _ _ _ _ _ _ (simTrace_goldilocksRun S rho hn hv)
+        _ hready.1 t _ ht (by unfold Regimes.catchUp; linarith) hready.2
+    · exact rho.key.symm.injective.injOn
+  change (honestKeys S rho)ᶜ.ncard < _
+  rw [hf]
+  exact hlt.trans_le hcount
 
 /-- OPEN missing service supplier (owner: timing/encoding integration), not a proved or
 assumed fact of Accepted. A proposed interface after the timing repair: finite engine
