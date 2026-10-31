@@ -37,11 +37,7 @@ state to the simulating trace's cuts where the relay obligations of `Simulates` 
 * **Releasing.** Every emission is a vote of the emitting node (`emits_val`); a delivery or a
   restart queues the votes it emits (`process_outbox`, `restore_outbox`), which wait in the outbox
   between the node's ticks and deliveries (`outbox_persist`), whose poll steps release them.
-  Open: what an honest node's tick releases of its own cuts (`tick_releases`), that the bodies
-  pending at a tick go out in it (`pending_released`), and that a queued body goes out at the
-  node's first awake time from the event on (`releasedFrom_of_pending`). The open obligations
-  `outbox_le_two`, `outbox_empty_after_tick` and `protects_own_att` (moved here from `Steps`) are
-  unused.
+  The outbox bookkeeping and tick releases are proved in `Outbox` and `Release`.
 -/
 
 namespace Consensus.Goldilocks.Refinement
@@ -334,7 +330,7 @@ private theorem blocks_of_onBlock {st st' : Store sp.toParams (Payload sp.n)}
 
 /-- One delivered object: the node state its handler leaves (at the clock), its own index and
 clock kept, the relay queue extended by at most the object. -/
-private theorem processOne_eq (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem processOne_eq (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (σ : State sp ro) (o : Wire sp.n) :
     ∃ L, (processOne hs σ o).relayBuf = σ.relayBuf ++ L ∧ (∀ x ∈ L, x = o) ∧
       (processOne hs σ o).now = σ.now ∧ (processOne hs σ o).self = σ.self ∧
@@ -1294,7 +1290,8 @@ theorem canonEvent_ne_tick {hs : List (Header Info × Nat)} {o : Wire sp.n}
   rintro x rfl
   rcases canonEvent_eq_some he with ⟨_, h, -⟩ | ⟨_, h, -⟩ | ⟨_, h, -⟩ <;> cases h
 
-private theorem processOne_outbox (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+/-- The outbox after one received object: its handler's emissions queued. -/
+theorem processOne_outbox_eq (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (σ : State sp ro) (o : Wire sp.n) :
     (processOne hs σ o).outbox = σ.outbox ++
       (canonEvent sp ro hs o).elim [] fun e => emitted (exec dg σ.self σ.node σ.now e).2 := by
@@ -1327,7 +1324,7 @@ theorem process_outbox (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     have hkeep : ∀ x ∈ (processOne hs σ o).outbox,
         x ∈ (os.foldl (processOne hs) (processOne hs σ o)).outbox := fun x hx => by
       rw [hL]; exact List.mem_append_left _ hx
-    refine ⟨⟨_, by rw [hL, processOne_outbox dg, List.append_assoc]⟩, fun r hr ℓ hl m hm => ?_⟩
+    refine ⟨⟨_, by rw [hL, processOne_outbox_eq dg, List.append_assoc]⟩, fun r hr ℓ hl m hm => ?_⟩
     rw [hself₁, hnode₁] at hrec
     cases he : canonEvent sp ro hs o with
     | none =>
@@ -1343,7 +1340,7 @@ theorem process_outbox (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
         have hmem : Cut.ac ℓ ∈ (exec dg σ.self σ.node t e).2 := by
           rw [← hl, hlab]; exact List.getElem_mem _
         refine ⟨hkeep _ ?_, emits_val_of_mem_exec dg σ.self σ.node t e hmem m hm⟩
-        rw [processOne_outbox dg, he, Option.elim_some, ht]
+        rw [processOne_outbox_eq dg, he, Option.elim_some, ht]
         exact List.mem_append_right _ (List.mem_flatMap.mpr ⟨_, hmem, by simpa using ⟨m, hm, rfl⟩⟩)
       · simpa [hself₁] using hrec r hr ℓ hl m hm
 
@@ -1353,33 +1350,6 @@ section
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
-
-/-- **The releases of a tick** (open: the engine's tick against the node's `on_tick`, release by
-release). At an honest node's tick at a public time, the engine releases the canonical object of
-the own block of every block cut inside the tick (position `≠ 0`, the proposal), the vote of
-every emission of the tick's AC cuts and the attestation of every signing `fg_attest` cut. The
-releases pass `releasable` (the restated `proposal_releasable`) and `protects` (votes and blocks
-never conflict; the own attestation is checked by `protects_own_att` at the pool after the
-`fgUpdate` of the first trailing poll); the emissions and the attestation are queued in the
-outbox and drained by the two trailing polls. -/
-theorem tick_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
-    (hv' : v ∈ rho.honest) (he : rho.events[i]? = some (.tick v t))
-    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
-    ∀ r ∈ eventCuts S rho hn i,
-      (∀ B acc, r.label = .fg (.block B acc) → r.pos ≠ 0 →
-        blockObj (S.params (pubOf E) hn) B ∈ rho.releasesAt i) ∧
-      (∀ ℓ, r.label = .ac ℓ → ∀ m ∈ ℓ.emits, voteObj m.msg ∈ rho.releasesAt i) ∧
-      (∀ C a, r.label = .fg (.attest C (some a)) → attObj a ∈ rho.releasesAt i) := by
-  sorry
-
-/-- **Pending bodies go out at the next awake tick** (open). At a tick of an honest node, every
-body queued in its outbox before the tick (at most two, `outbox_le_two`) is released, signed by
-the node's own key in the poll role, by the tick's two leading poll steps. -/
-theorem pending_released (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
-    (hv' : v ∈ rho.honest) (he : rho.events[j]? = some (.tick v t)) :
-    ∀ b ∈ (stateAt S rho hn v j).outbox,
-      Model.Obj.mk (.signed (rho.ownKey v) .poll) (.data b) [] ∈ rho.releasesAt j := by
-  sorry
 
 omit [DecidableEq V] in
 /-- A restart queues its emissions. -/
@@ -1442,48 +1412,6 @@ theorem tick_after_event (hv : rho.ExecutionValid) {i : Nat}
     rw [this] at htu
     exact absurd htu (lt_irrefl _)
   · exact h
-
-open Classical in
-/-- **A body queued at an event is released** at the node's first awake time from the event
-on, if it has one within the horizon (`ReleasedFrom`): it waits in the outbox for the node's
-next tick or delivery, whose poll steps release it. -/
-theorem releasedFrom_of_pending (hv : rho.ExecutionValid) {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
-    (he : rho.events[i]? = some ev) {b : Body}
-    (hb : b ∈ (stateAt S rho hn ev.node (i + 1)).outbox) :
-    ReleasedFrom S rho ev.node
-      (Model.Obj.mk (.signed (rho.ownKey ev.node) .poll) (.data b) []) ev.time := by
-  -- open: a delivery's poll step now pops the outbox at the delivery (`deliverOrder`); restated
-  -- with the release fields (`ReleasedFrom` loses its sleep clause, second PR of #107)
-  sorry
-
-
-/-! ## The open release obligations -/
-
-/-- **At most two bodies pending at a tick.** Between two ticks an honest node queues at most
-its SA vote and its attestation, so two poll steps release everything queued. -/
-theorem outbox_le_two (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) (i : Nat)
-    (t : Time) (he : rho.events[i]? = some (.tick v t)) :
-    (stateAt S rho hn v i).outbox.length ≤ 2 := by
-  sorry
-
-/-- After an awake honest node's tick at a public time nothing is pending: the tick's own bodies
-were released by its last poll steps. -/
-theorem outbox_empty_after_tick (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest)
-    (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
-    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
-    (stateAt S rho hn v (i + 1)).outbox = [] := by
-  sorry
-
-/-- **`protects` never blocks an honest node.** An honest node's own attestation in its pool
-passes the own-object guard against everything it has seen: an honest signer's attestations
-never conflict (`non_framing`, Lemmas/Compose/Regimes). -/
-theorem protects_own_att (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) (i : Nat)
-    (a : FG.Att (Fintype.card V)) (ha : a ∈ (stateAt S rho hn v i).node.fg.atts)
-    (hself : a.val = rho.ownKey v) :
-    Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v)
-      (rho.stateBefore i v).seen (attObj a) = true := by
-  sorry
 
 end
 

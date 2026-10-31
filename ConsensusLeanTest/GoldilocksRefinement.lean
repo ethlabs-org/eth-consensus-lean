@@ -62,4 +62,16 @@ theorem selValid_exists :
   | duty _ k => exact k.elim
   | poll => rfl
 
+variable [DecidableEq V]
+
+/-- Exact-time release cannot be satisfied solely by a later send, even at the horizon. -/
+theorem released_requires_same_time (v : V)
+    (o : (Model.protoOf (compiled (family S)) E).Object) (τ : Time)
+    (h : ReleasedFrom S rho v o τ) : rho.releases v o τ := h
+
+/-- An admission at the horizon still requires a relay at that same time. -/
+theorem relayed_at_horizon (v : V) (o : (Model.protoOf (compiled (family S)) E).Object)
+    (h : RelayedFrom S rho v o rho.horizon) :
+    ∃ cs, o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) rho.horizon := h
+
 end Consensus.Goldilocks.Refinement.Test

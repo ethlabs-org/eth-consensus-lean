@@ -1,7 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 
 public section
 
@@ -38,6 +39,9 @@ theorem simTrace_init :
 omit [DecidableEq V] in
 private theorem ownKey_key (y : Fin (Fintype.card V)) : rho.ownKey (rho.key y) = y :=
   rho.key.symm_apply_apply y
+
+omit [DecidableEq V] in
+private theorem ownKey_key' (v : V) : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
 
 omit [DecidableEq V] in
 private theorem key_of_ownKey {v : V} {y : Fin (Fintype.card V)} (h : rho.ownKey v = y) :
@@ -859,6 +863,16 @@ theorem simTrace_awake_of (hv : rho.ExecutionValid) :
   obtain ⟨hwE, ht0, k, -, htk⟩ := (awake_iff' S rho hn y t).mp hw
   exact ⟨hwE, ht0, htk.trans (time_bounds S rho hn hv k).2⟩
 
+/-- An honest node's signings in the simulating trace are pairwise not slashable (`non_framing`
+over the trace, a Goldilocks run). -/
+private theorem simTrace_nonFraming
+    (hrun : GoldilocksRun (digestOf S rho) (honestKeys S rho) (simTrace S rho hn))
+    {v : V} (hv' : v ∈ rho.honest) :
+    ∀ k k' a b, (simTrace S rho hn).SignAt (rho.ownKey v) k a →
+      (simTrace S rho hn).SignAt (rho.ownKey v) k' b → ¬ FG.slashable a b :=
+  Regimes.non_framing _ _ _ _ _ hrun (rho.ownKey v)
+    (by change rho.key (rho.ownKey v) ∈ rho.honest; rw [ownKey_key']; exact hv')
+
 /-- The engine's Goldilocks state at a delivery: at the delivery's time, with the own key. -/
 private theorem deliver_state (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {o : (Model.protoOf (compiled (family S)) E).Object} {t : Time}
@@ -907,7 +921,8 @@ theorem relays_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : 
 /-- The engine releases an honest node's own block at the tick that proposes it (the proposal
 duty's candidate is `blockObj` of the block, `releasable` by `proposal_releasable`, passed by
 `protects_blockObj`). -/
-theorem simTrace_block_released (hv : rho.ExecutionValid) :
+theorem simTrace_block_released (hv : rho.ExecutionValid)
+    (hrun : GoldilocksRun (digestOf S rho) (honestKeys S rho) (simTrace S rho hn)) :
     ∀ y ∈ honestKeys S rho, ∀ k B, (simTrace S rho hn).OwnBlockAt y k B →
       rho.releases (rho.key y) (blockObj (S.params (pubOf E) hn) B)
         ((simTrace S rho hn).time k) := by
@@ -925,8 +940,10 @@ theorem simTrace_block_released (hv : rho.ExecutionValid) :
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
       simp at hmem
-    exact ⟨i, Or.inl he, (tick_releases S rho hn hv (hv.honest_only _ (List.mem_of_getElem? he))
-      he hp r hmem).1 B acc hrl hpos'⟩
+    exact ⟨i, Or.inl he, (tick_releases S rho hn hv
+      (hv.honest_only _ (List.mem_of_getElem? he)) he hp
+      (simTrace_nonFraming S rho hn hrun (hv.honest_only _ (List.mem_of_getElem? he)))
+      r hmem).1 B acc hrl hpos'⟩
   | deliver v o t =>
     exfalso
     rw [eventCuts_deliver S rho hn i v o t he] at hmem
@@ -943,10 +960,10 @@ theorem simTrace_block_released (hv : rho.ExecutionValid) :
     exact hpos' (hposk.trans (pos_of_block_cut _ _ _ _ (e := .restart) (fun x h => by cases h)
       hk' (hlabk.symm.trans hrl)))
 
-/-- The engine releases an honest node's vote from its emission on (the vote is queued in the
-outbox and released by the next poll step: the tick's own trailing polls, the delivery's poll
-step, or the leading polls of the tick after a restart). -/
-theorem simTrace_vote_released (hv : rho.ExecutionValid) :
+/-- The engine releases an honest node's vote at its emission time: the tick's trailing polls
+or the delivery's poll. A restart at its own time emits no vote. -/
+theorem simTrace_vote_released (hv : rho.ExecutionValid)
+    (hrun : GoldilocksRun (digestOf S rho) (honestKeys S rho) (simTrace S rho hn)) :
     ∀ y ∈ honestKeys S rho, ∀ k m, (simTrace S rho hn).EmitAt y k m →
       ReleasedFrom S rho (rho.key y) (voteObj m) ((simTrace S rho hn).time k) := by
   rintro y _ k m ⟨ℓ, ⟨hnode, hlab⟩, em, hem, rfl⟩
@@ -962,9 +979,10 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid) :
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
       simp at hmem
-    exact Or.inl ⟨t, le_rfl, ⟨i, Or.inl he, (tick_releases S rho hn hv
-      (hv.honest_only _ (List.mem_of_getElem? he)) he hp r hmem).2.1 ℓ hrl em hem⟩,
-      fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
+    exact ⟨i, Or.inl he, (tick_releases S rho hn hv
+      (hv.honest_only _ (List.mem_of_getElem? he)) he hp
+      (simTrace_nonFraming S rho hn hrun (hv.honest_only _ (List.mem_of_getElem? he)))
+      r hmem).2.1 ℓ hrl em hem⟩
   | deliver v o t =>
     -- open: the vote goes out at the delivery's own poll step (`deliverOrder := [.poll]`);
     -- restated with the release fields (#107 PR 2)
@@ -989,9 +1007,10 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid) :
     rw [hobj]
     exact releasedFrom_of_pending S rho hn hv he hb
 
-/-- The engine releases an honest node's attestation from its signing on (queued by `fgUpdate`,
-released by the tick's last poll steps; `protects_own_att` passes it). -/
-theorem simTrace_att_released (hv : rho.ExecutionValid) :
+/-- The engine releases an honest node's attestation at its signing time (queued by `fgUpdate`,
+released by the tick's last poll steps; `tick_releases`, `Release`). -/
+theorem simTrace_att_released (hv : rho.ExecutionValid)
+    (hrun : GoldilocksRun (digestOf S rho) (honestKeys S rho) (simTrace S rho hn)) :
     ∀ y ∈ honestKeys S rho, ∀ k a, (simTrace S rho hn).SignAt y k a →
       ReleasedFrom S rho (rho.key y) (attObj a) ((simTrace S rho hn).time k) := by
   rintro y _ k a ⟨src, hnode, hlab⟩
@@ -1007,9 +1026,10 @@ theorem simTrace_att_released (hv : rho.ExecutionValid) :
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
       simp at hmem
-    exact Or.inl ⟨t, le_rfl, ⟨i, Or.inl he, (tick_releases S rho hn hv
-      (hv.honest_only _ (List.mem_of_getElem? he)) he hp r hmem).2.2 src a hrl⟩,
-      fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
+    exact ⟨i, Or.inl he, (tick_releases S rho hn hv
+      (hv.honest_only _ (List.mem_of_getElem? he)) he hp
+      (simTrace_nonFraming S rho hn hrun (hv.honest_only _ (List.mem_of_getElem? he)))
+      r hmem).2.2 src a hrl⟩
   | deliver v o t =>
     exfalso
     rw [eventCuts_deliver S rho hn i v o t he] at hmem
@@ -1042,7 +1062,7 @@ theorem simTrace_block_relayed (hv : rho.ExecutionValid) :
     ⟨by rw [simTrace_pos, hr] at hpos; exact hpos, _,
       Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab)⟩
   obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inl ⟨B, Option.some.inj (hrl.symm.trans hlab), rfl⟩)
-  exact Or.inl ⟨_, cs, le_rfl, hx, hcs, fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
+  exact ⟨cs, hx, hcs⟩
 
 /-- An honest node relays a vote it admits from the wire. -/
 theorem simTrace_vote_relayed (hv : rho.ExecutionValid) :
@@ -1056,7 +1076,7 @@ theorem simTrace_vote_relayed (hv : rho.ExecutionValid) :
       hcall⟩
   obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inr (Or.inl ⟨ℓ, m, Option.some.inj (hrl.symm.trans hlab),
     hcall, hpost ▸ hpool, rfl⟩))
-  exact Or.inl ⟨_, cs, le_rfl, hx, hcs, fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
+  exact ⟨cs, hx, hcs⟩
 
 /-- An honest node relays an attestation it receives from the wire. -/
 theorem simTrace_att_relayed (hv : rho.ExecutionValid) :
@@ -1069,7 +1089,7 @@ theorem simTrace_att_relayed (hv : rho.ExecutionValid) :
     ⟨by rw [simTrace_pos, hr] at hpos; exact hpos, _,
       Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab)⟩
   obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inr (Or.inr ⟨a, Option.some.inj (hrl.symm.trans hlab), rfl⟩))
-  exact Or.inl ⟨_, cs, le_rfl, hx, hcs, fun u h1 h2 => absurd (h1.trans h2) (lt_irrefl _)⟩
+  exact ⟨cs, hx, hcs⟩
 
 /-! ## `LocalRun`: groups, the cut law and the wire checks
 
@@ -1347,8 +1367,7 @@ theorem simTrace_wire (hv : rho.ExecutionValid) :
 
 /-! ## The trace is a Goldilocks run -/
 
-/-- **The simulating trace is a Goldilocks run** at the engine's digest, for the honest keys:
-the fields above. -/
+/-- **The simulating trace is a Goldilocks run** at the engine's digest, for the honest keys. -/
 theorem simTrace_goldilocksRun (hv : rho.ExecutionValid) :
     GoldilocksRun (digestOf S rho) (honestKeys S rho) (simTrace S rho hn) where
   init := simTrace_init S rho hn

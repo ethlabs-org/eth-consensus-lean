@@ -23,13 +23,10 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `Refinement
   input, a delivery is the groups of the canonical objects it carries, a restart is a restart
   group) or no cut (a tick at a non-public time, a dropped object); every labelled node cut
   belongs to an engine event; awake agrees up to the spec's horizon clamp. The engine releases
-  what the node sends: an own block at its proposal time, a vote or an attestation at the first
-  awake time from its emission (`ReleasedFrom`: in the tick or at the delivery that emits it;
-  only a sleep after a restart's emission delays it), and an admitted block, vote or
-  attestation in a relay wrapper at the first awake time from the admission (`RelayedFrom`:
-  the admitting delivery's own time, since the engine delivers only to awake nodes). The
-  first-awake-time forms predate the engine's delivery-time release (consensus-lean#107) and
-  are restated at the exact times in a later revision.
+  what the node sends: an own block at its proposal time, a vote or an attestation at its
+  emission or signing time (`ReleasedFrom`), and an admitted block, vote or attestation in a
+  relay wrapper at the admission time (`RelayedFrom`). These obligations include the horizon
+  and do not depend on a future awake time (consensus-lean#107).
 * **Reads** (`ReadIsOut`): the chain trace reads the shape's outputs of the node state at the
   shape's clock, which is the time of the node's last tick or restart (`lastClock`).
 * **`NoColl` transport** (`NoCollTransport`): no observed hash collision and no observed item
@@ -82,23 +79,17 @@ def lastClock (v : V) : Nat → Time
     | some (.restart v' t) => if v' = v then t else lastClock v i
     | _ => lastClock v i
 
-/-- The object `o` of node `v`, queued at `τ`, is released at the first time from `τ` on at which
-`v` is awake, if there is one within the horizon: a body emitted inside a tick or at a delivery
-goes out in that event, and a sleep after a restart's emission delays the send. -/
+/-- The object `o` of node `v` is released at its emission time `τ`, with no later-tick
+or no-future-awake alternative. -/
 def ReleasedFrom (v : V) (o : (Model.protoOf (compiled (family S)) E).Object) (τ : Time) :
     Prop :=
-  (∃ t', τ ≤ t' ∧ rho.releases v o t' ∧ ∀ u, τ < u → u < t' → E.awake v u = false) ∨
-    ∀ u, τ < u → u ≤ rho.horizon → E.awake v u = false
+  rho.releases v o τ
 
 /-- The object `o` admitted by node `v` at `τ` is relayed, as a carried object of an unsigned
-relay wrapper, at the first time from `τ` on at which `v` is awake, if there is one within the
-horizon; the engine delivers only to awake nodes and releases the relay at the delivery, so
-that time is `τ` itself. -/
+relay wrapper, at that same time `τ`, including an admission at the horizon. -/
 def RelayedFrom (v : V) (o : (Model.protoOf (compiled (family S)) E).Object) (τ : Time) :
     Prop :=
-  (∃ t' cs, τ ≤ t' ∧ o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) t' ∧
-      ∀ u, τ < u → u < t' → E.awake v u = false) ∨
-    ∀ u, τ < u → u ≤ rho.horizon → E.awake v u = false
+  ∃ cs, o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) τ
 
 /-- **The node run `tr` with the cut map `ι` simulates the engine run `rho`** (claims
 §"Refinement": "the engine simulates the node (C0.4 kept)"). -/
@@ -150,10 +141,10 @@ structure Simulates (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (ι 
   proposes it. -/
   block_released : ∀ y ∈ honestKeys S rho, ∀ k B, tr.OwnBlockAt y k B →
     rho.releases (rho.key y) (blockObj (S.params (pubOf E) hn) B) (tr.time k)
-  /-- The engine releases an honest node's vote from its emission on. -/
+  /-- The engine releases an honest node's vote at its emission time. -/
   vote_released : ∀ y ∈ honestKeys S rho, ∀ k m, tr.EmitAt y k m →
     ReleasedFrom S rho (rho.key y) (voteObj m) (tr.time k)
-  /-- The engine releases an honest node's attestation from its signing on. -/
+  /-- The engine releases an honest node's attestation at its signing time. -/
   att_released : ∀ y ∈ honestKeys S rho, ∀ k a, tr.SignAt y k a →
     ReleasedFrom S rho (rho.key y) (attObj a) (tr.time k)
   /-- An honest node relays a block it accepts from the wire (a delivery, position `0`). -/
