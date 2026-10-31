@@ -275,6 +275,8 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement
+public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
+public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Final
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Healed

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Refinement
+public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
 public section
@@ -38,25 +38,6 @@ open Blocks
 namespace Node
 
 variable {P : Params} {A : NodeAC P}
-
-/-- The node state after cut `c` of validator `self` at time `t` from `st`: the successor the cut
-law `CutStep` determines (an AC cut writes the AC's step, an accepted block the store's `onBlock`,
-an attestation the store's `onAttestation`, a signing attest the new record; a refused block and
-a silent attest change nothing). -/
-noncomputable def cutPost (self : Fin P.n) (t : Time) (st : NodeState A) : Cut A → NodeState A
-  | .ac ℓ => { st with ac := (A.step self st.ac ℓ.frame t ℓ.call).1 }
-  | .fg (.block B true) => { st with fg := (st.fg.onBlock B).getD st.fg }
-  | .fg (.block _ false) => st
-  | .fg (.attestation a) => { st with fg := st.fg.onAttestation a }
-  | .fg (.attest _ none) => st
-  | .fg (.attest C (some _)) =>
-      { st with record := ((st.fg.attest st.record self C).map Prod.snd).getD st.record }
-
-/-- The post-states of the cuts `cs` in order from `st`, one per cut. -/
-noncomputable def cutPosts (self : Fin P.n) (t : Time) :
-    List (Cut A) → NodeState A → List (NodeState A)
-  | [], _ => []
-  | c :: cs, st => cutPost self t st c :: cutPosts self t cs (cutPost self t st c)
 
 /-- The cut law's successor is `cutPost`. -/
 theorem cutPost_of_cutStep {self : Fin P.n} {t : Time} {st st' : NodeState A} {c : Cut A}
@@ -119,106 +100,8 @@ open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-/-- One cut of the simulating trace: its node, time, event id, position, label and post-state. -/
-structure CutRec (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) where
-  /-- The node of the cut. -/
-  node : Fin sp.n
-  /-- The time of the cut. -/
-  time : Time
-  /-- The event id of the cut's group. -/
-  event : Nat
-  /-- The position inside the group. -/
-  pos : Nat
-  /-- The label. -/
-  label : Cut (goldilocksNode sp ro)
-  /-- The node state after the cut. -/
-  post : NodeState (goldilocksNode sp ro)
-
-/-- The cuts of the top-level event `e` of `self` at time `t` on `st`, under the event id `id`:
-the handler's cuts at positions `0, 1, …` with their post-states. -/
-noncomputable def groupRecs (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
-    (e : Event (goldilocksNode sp ro)) : List (CutRec sp ro) :=
-  let cs := (exec proposer dg self st t e).2
-  (cs.zip (cutPosts self t cs st)).mapIdx fun k cp => ⟨self, t, id, k, cp.1, cp.2⟩
-
-/-- The cuts of a delivery of the objects `os` to `self` at time `t`, from the node state `st`,
-the sub-event index `sub` on: the group of each canonical object (`canonEvent`) under the event
-id `Nat.pair i sub` of the engine event `i`, the state threaded through the handlers; nothing for
-a dropped object. -/
-noncomputable def deliverRecs (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
-    List (Wire sp.n) → NodeState (goldilocksNode sp ro) → Nat → List (CutRec sp ro)
-  | [], _, _ => []
-  | o :: os, st, sub =>
-      match canonEvent sp ro hs o with
-      | some e =>
-          groupRecs proposer dg self st t (Nat.pair i sub) e ++
-            deliverRecs proposer dg hs self t i os (exec proposer dg self st t e).1 (sub + 1)
-      | none => deliverRecs proposer dg hs self t i os st (sub + 1)
-
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
-
-open Classical in
-/-- The node cuts of engine event `i`: a tick at a public time is the node's tick with the
-engine's input (the encoded mempool) on the node state the engine holds before the event, a tick
-at a non-public time has none; a delivery is `deliverRecs` of its `delivered` objects with the
-digests the engine passes; a restart is the restart group. Nothing past the last event. -/
-noncomputable def eventCuts (i : Nat) : List (CutRec (S.params (pubOf E) hn) (S.ro _)) :=
-  match rho.events[i]? with
-  | some (.tick v t) =>
-      if (S.params (pubOf E) hn).toParams.IsPublic t then
-        groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-          (stateAt S rho hn v i).node t (Nat.pair i 0)
-          (.tick (encodeTxs (Model.mempool rho.inbox v t)))
-      else []
-  | some (.deliver v o t) =>
-      deliverRecs (runProposer S rho hn) (digestOf S rho)
-        (Model.digests rho.hash o) (rho.ownKey v) t i
-        (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node 0
-  | some (.restart v t) =>
-      groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-        (stateAt S rho hn v i).node t (Nat.pair i 0)
-        .restart
-  | none => []
-
-/-- The cut map `ι`: the number of node cuts of the engine events before engine cut `i`. -/
-noncomputable def cutMap : Nat → Nat
-  | 0 => 0
-  | i + 1 => cutMap i + (eventCuts S rho hn i).length
-
-/-- All node cuts of the run, in order. -/
-noncomputable def allCuts : List (CutRec (S.params (pubOf E) hn) (S.ro _)) :=
-  (List.range rho.events.length).flatMap (eventCuts S rho hn)
-
-/-- The time of node cut `k`: its engine event's time; horizon + 1 after the last cut. -/
-noncomputable def cutTime (k : Nat) : Time :=
-  ((allCuts S rho hn)[k]?).elim (rho.horizon + 1) CutRec.time
-
-/-- The label of node cut `k`: its cut; none past the last cut. -/
-noncomputable def cutLabel (k : Nat) :
-    Option (Cut (goldilocksNode (S.params (pubOf E) hn) (S.ro _))) :=
-  ((allCuts S rho hn)[k]?).map CutRec.label
-
-/-- The trace's awake function: the environment's on the finite observation interval. -/
-def awakeAt (_hn : 1 ≤ Fintype.card V) (y : Fin (Fintype.card V)) (t : Time) : Prop :=
-  E.awake (rho.key y) t = true ∧ 0 ≤ t ∧ t ≤ rho.horizon
-
-/-- **The simulating trace** of the engine run `rho`: the node cuts of its events in order
-(`allCuts`), then unlabelled cuts at horizon + 1 under fresh event ids. -/
-noncomputable def simTrace : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _) where
-  init _ := Node.init _
-  node k := ((allCuts S rho hn)[k]?).elim ⟨0, hn⟩ CutRec.node
-  time := cutTime S rho hn
-  event k := ((allCuts S rho hn)[k]?).elim (Nat.pair rho.events.length k) CutRec.event
-  pos k := ((allCuts S rho hn)[k]?).elim 0 CutRec.pos
-  label := cutLabel S rho hn
-  post k := ((allCuts S rho hn)[k]?).elim (Node.init _) CutRec.post
-  awake := awakeAt S rho hn
-  observationHorizon := some rho.horizon
 
 /-- Every node of the trace starts from the initial node state. -/
 theorem simTrace_init_eq (y : Fin (Fintype.card V)) :

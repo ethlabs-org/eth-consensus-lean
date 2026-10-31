@@ -18,8 +18,8 @@ The cited paper establishes the node-level source theorems. The docstrings below
 separate mathematical arguments for the engine bridges, not quotations or completed Lean
 proofs. An argument marked OPEN still lacks an identified premise or encoding repair.
 
-The current `NoCollTransport` and `FinalizedAccountable` interfaces still carry
-`GenesisFresh`, now proved by tagged roots. Canonical occurrence coverage remains OPEN;
+`NoCollTransport` targets the canonical trace. `GenesisFresh` is proved by tagged roots,
+not assumed by accountability. Canonical occurrence coverage remains OPEN;
 tagging alone does not discharge collision transport. -/
 
 namespace Consensus.Goldilocks.Refinement
@@ -119,17 +119,17 @@ variable (V) in
 non-genesis digests reduce to equal observed headers and the encoding is injective. Genesis
 is handled separately. This is the CURRENT interface, pending canonical occurrence coverage.
 
-Conditional paper argument: first prove that EVERY block in `tr.Occurs` has an observed
-canonical header and a nonempty parent (including REFUSED block calls, not just held blocks).
+Conditional paper argument: first prove that EVERY block in the canonical trace's `Occurs`
+has an observed canonical header and a nonempty parent (including REFUSED block calls,
+not just held blocks).
 For two such blocks, equal `dgOf` values are equal header hashes; absence of `HashCollision`
 gives equal headers. Apply `parentRoot_parentRef` to the nonempty parents and decode the
 equal `encodeInfo` values to recover all five fields required by `NoCollOn`. Proposer identity
 is irrelevant: that conclusion does not compare proposers. For genesis versus a non-genesis
 block, `GenesisFresh` excludes equal digests; two genesis entries are immediate.
-OPEN: this statement quantifies arbitrary `Simulates`, not only `simTrace`. The `covered`
-field locates cuts in an engine interval but alone does not identify their event or show
-that their node is honest; run cut laws are guarded by honesty, while `Occurs` has no such
-guard. A complete all-occurrences source argument from the current interface is not supplied.
+OPEN: prove all-occurrences provenance from the canonical construction, including refused
+block calls and calls at non-honest nodes. `Occurs` has no honesty guard. The target no longer
+quantifies arbitrary simulation witnesses, whose laws do not supply this provenance.
 Tagged freshness is proved by `genesisFresh`; it does not by itself prove occurrence coverage. -/
 theorem noCollTransport : NoCollTransport V S := by
   sorry
@@ -265,12 +265,10 @@ theorem final_accountable_of_noColl (hv : rho.ExecutionValid)
 
 variable (V) in
 /-- CLAIMS Refinement G1.5 (c), R.7: assemble simulation, collision transport, structural
-compatibility and held-chain evidence/count transport. Current raw-freshness interface only;
-the encoding repair is required to remove that extra premise from the Accepted route.
+compatibility and held-chain evidence/count transport.
 Paper reduction: choose the canonical simulation, obtain its `NoCollRun` using
-`noCollTransport` with the PROVIDED freshness premise, then use `final_accountable_of_noColl`
-at the two bounded cuts. OPEN transitively on collision transport; this reduction neither
-derives freshness nor removes it. -/
+`noCollTransport`, then use `final_accountable_of_noColl` at the two bounded cuts.
+OPEN transitively on canonical collision transport. No freshness premise remains. -/
 theorem finalizedAccountable : FinalizedAccountable V S := by
   sorry
 

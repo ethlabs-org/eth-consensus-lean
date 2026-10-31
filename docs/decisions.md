@@ -15,6 +15,15 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-10-31, coordinator (canonical collision transport, following #121).
+  Protect the canonical trace construction in `Statements/Refinement/Trace`; keep its proofs
+  in `Lemmas/Refinement/Trace`. Collision transport targets this constructed trace, not every
+  arbitrary simulation witness: simulation coverage alone does not identify all block calls
+  with engine objects. This deliberately narrows the transport target. Tagged genesis roots
+  make freshness unconditional, so neither transport nor finalized accountability assumes it.
+  All-occurrences provenance, including refused calls and non-honest nodes, remains OPEN;
+  this interface correction does not prove accountability or add an Accepted premise.
+
 - 2026-10-31, coordinator and spec read-back ([#118](https://github.com/fradamt-agent/consensus-lean/issues/118)).
   Separate finite observation coverage from labelled protocol-action coverage. `Trace.observationHorizon`
   defaults to `none` (legacy action-only horizon); `InHorizon` also admits a cut reaching a time covered
