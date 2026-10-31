@@ -29,7 +29,7 @@ walk (the viable voter block tree, the merged view, from its unlocked anchor) is
 * `stop_at_parent` (§3): at `Q` the voter's only eligible child is `P` (its slot is the current
   one; another slot-`s` block would be the honest proposer's second; no old child is eligible,
   `old_children_ineligible`, open), and the voter's walk stops at `P` (`P ∈` the voter's viable
-  voter block tree, `proposal_at_voter`, open).
+  voter block tree, `proposal_at_voter` in `Service/Suffix`).
 
 The assembly (`honest_votes_eq_proposal`) joins them with the walk lemmas of `Steps/Walk`
 (`ghost_visits`, `ghost_add`, `ghost_follow`, `ghost_stopped`, `ghost_fuel_stable`). The honest
@@ -104,24 +104,6 @@ theorem proposal_data {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set
     ht1.trans hts, by rw [hB]; rfl, by rw [hB]; rfl⟩
   rw [projAC_state h hp, hst1, show tr.time (j + 1) = t from ht1]
   exact hr
-
-/-- **`P` is in the voter's viable voter block tree** (workbench#12 §3: `P` extends every
-receiving `Σ.F`, so it is accepted by the joined voter before its vote, which waits for a ready
-proposal or `t_s + Δ`; it is viable, as an allowed witness above both floors; open). -/
-theorem proposal_at_voter {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) {y : Fin sp.n}
-    (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = s) :
-    P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) := by
-  sorry
 
 /-- **No old child of `Q` is eligible at the voter** (workbench#12 §3: at `Q` the proposal walk
 stopped, so no old child of `Q` is eligible at the proposer, and its score and the majority

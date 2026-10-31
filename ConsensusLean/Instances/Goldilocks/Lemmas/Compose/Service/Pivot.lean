@@ -170,7 +170,7 @@ private theorem OldOrigin.origin {s : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))
   · exact ⟨m, by omega, Origin.of_optimistic hx hO⟩
 
 /-- An honest block with the genesis root is below every honest block. -/
-private theorem genesis_root_anc (hrun : GoldilocksRun dg H tr)
+theorem honest_genesis_root_anc (hrun : GoldilocksRun dg H tr)
     (hU : Coherent (tr.HonestBlocks H)) {B C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ tr.HonestBlocks H) (hr : B.root = sp.genesisRoot) (hC : C ∈ tr.HonestBlocks H) :
     Anc (tr.HonestBlocks H) B C := by
@@ -913,7 +913,7 @@ private theorem proposal_anchor_old (hrun : GoldilocksRun dg H tr) (hnc : NoColl
 vote, with a source below an origin before the signing (`attestation_source`); a regular one of
 label `l` is written at `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most
 `s`, and not `s` (`no_optimistic_before_held_row`). -/
-private theorem vote_fcRoot_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem vote_fcRoot_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {s : Nat} (hs : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) :
@@ -977,7 +977,7 @@ private theorem vote_anchor_cases (hrun : GoldilocksRun dg H tr) (hnc : NoCollRu
     left
     rw [Set.mem_singleton_iff.1 haf]
     rcases vote_fcRoot_old hrun hnc hsl hs0 hy hcy hes with hg | ⟨O, hO, hfO⟩
-    · exact genesis_root_anc hrun hU (hΦU hΦ.fcRoot_mem) hg hDU
+    · exact honest_genesis_root_anc hrun hU (hΦU hΦ.fcRoot_mem) hg hDU
     · exact hfO.trans (hDold O hO)
   -- a live lock block: the viable ancestor of the block of a read-point lock
   obtain rfl : a = ℓy.frame.viableAncestor B :=
@@ -1053,7 +1053,7 @@ private theorem proposal_suffix_viable (hrun : GoldilocksRun dg H tr) (hnc : NoC
   have hfX : ℓp.frame.Anc ℓp.frame.fcRoot X := by
     refine SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem ?_ hXt
     rcases proposal_fcRoot_old hrun hnc hsl hp hc hcall hd hti with hg | ⟨O, hO, hfO⟩
-    · exact genesis_root_anc hrun hU (hΦU hΦ.fcRoot_mem) hg (hΦU hXt)
+    · exact honest_genesis_root_anc hrun hU (hΦU hΦ.fcRoot_mem) hg (hΦU hXt)
     · exact (hfO.trans (hDold O hO)).trans hDXU
   -- the sources of the proposer's honest rows are below old origins, below `D ⪯ X`
   have hsrc := proposal_rows_old hrun hnc hsl hp hc hcall hd hti
@@ -1152,7 +1152,7 @@ theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp
       (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
       (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
     rcases hDkind with hg | hO
-    · exact genesis_root_anc hrun hU (hΦpU hDt) hg (hΦU hht)
+    · exact honest_genesis_root_anc hrun hU (hΦpU hDt) hg (hΦU hht)
     obtain ⟨m, hm, hO⟩ := hO.origin
     obtain ⟨Hd, hHd, hHdr, hDHd⟩ :=
       hinv.vote_extends D m hO y hy j e ⟨ℓy, hcy.1, hcy.2⟩ (by omega)

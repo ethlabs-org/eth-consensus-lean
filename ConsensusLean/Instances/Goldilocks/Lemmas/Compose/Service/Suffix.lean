@@ -895,6 +895,50 @@ theorem suffix_agree {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set 
     (fun B hB => hB.1.1) hCy (fun B hB hBX => competitor_reflect hrun hnc hsl hp hP hPs hc hcall hd
       hti hPQ hviab hy hcy hes hDX hXQ hne hBX hB) hC
 
+/-- **`P` is in the voter's viable voter block tree** (workbench#12 §3: `P` extends every
+receiving `Σ.F`, so it is accepted by the joined voter before its vote, which waits for a ready
+proposal or `t_s + Δ`; it is viable, as an allowed witness above both floors). -/
+theorem proposal_at_voter {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    (hPs : P.slot = s) (_hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) {y : Fin sp.n}
+    (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
+    (hes : e.msg.slot = s) :
+    P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) := by
+  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hU : Coherent (tr.HonestBlocks H) := hr.coherent
+  obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hp hc
+  obtain ⟨hΦy, hΦyU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  have hQt : d.head ∈ ℓp.frame.tree := (acProposal_start_anc_head hΦp hd).2 |> fun h =>
+    mem_of_anc_left h (acProposal_start_anc_head hΦp hd).1
+  have hPU : P ∈ tr.HonestBlocks H := accepted_honest hrun hp (proposal_accepted hrun hnc hp hP)
+  have hQP : Anc (tr.HonestBlocks H) d.head P := .single ⟨hΦpU hQt, hPU, hPQ⟩
+  have hs0 : 0 < s := by
+    have := hU.2 d.head (hΦpU hQt) P hPU hPQ
+    omega
+  have hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O P := fun O hO =>
+    (proposal_walk_passes_old hrun hnc hsl hp hc hcall hd hti O hO).trans hQP
+  -- `fc_root` of the voter is genesis or below an old origin, so below `P`
+  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := by
+    rcases vote_fcRoot_old hrun hnc hsl hs0 hy hcy hes with hg | ⟨O, hO, hfO⟩
+    · exact honest_genesis_root_anc hrun hU (hΦyU hΦy.fcRoot_mem) hg hPU
+    · exact hfO.trans (hold O hO)
+  have hPt := voter_holds_proposal hrun hnc hsl hp hP hPs hs0 hy hcy hes
+    ((hΦy.F_anc_fcRoot.mono hΦyU).trans hfP)
+  have hfPy : ℓy.frame.Anc ℓy.frame.fcRoot P :=
+    SA.anc_tree_of_anc_U hU hΦy hΦyU hΦy.fcRoot_mem hfP hPt
+  refine ⟨⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, hfPy, P, ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, ?_,
+    .refl⟩
+  rw [frame_of_projAC hrun hy hcy.1] at hPt hfPy ⊢
+  exact ⟨hPt.1, hPt.2, Anc.mono (fun X hX => hX.1) hfPy,
+    vote_floor_le hrun hnc hsl hs0 hy hcy hes hPt.1 hold⟩
+
 end Consensus.Goldilocks.Compose
 
 end
