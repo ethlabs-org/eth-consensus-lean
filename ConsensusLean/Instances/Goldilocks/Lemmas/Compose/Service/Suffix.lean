@@ -258,31 +258,6 @@ private theorem relay_mem (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     ((ac_deadline_le_of_restarts hrs _).trans hdl) hF
   exact SA.mem_tree_of_acceptAt sp hr hz hAz hk' hcz hF
 
-/-- The anchor of a well-formed frame extends `fc_root`: it is `fc_root` or the deepest of a set
-holding `fc_root`, and a live lock block is viable (so above `fc_root`) or at or below it. -/
-private theorem fcRoot_anc_anchor {FGP : Type} {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ)
-    (A : SA.SAState sp.n) (t : Time) : Φ.Anc Φ.fcRoot (SA.getAnchor sp A Φ t) := by
-  have hS : SA.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
-    rintro X (hX | hX)
-    · exact hX.1
-    · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.fcRoot_mem
-  obtain ⟨D, hD⟩ := SA.exists_deepest hΦ hS ⟨Φ.fcRoot, Or.inr rfl⟩
-  have hA : SA.getAnchor sp A Φ t = D := by unfold SA.getAnchor; rw [hD]; rfl
-  rw [hA]
-  have hD' := SA.deepest_mem hD
-  have hcomp : Compatible Φ.tree Φ.fcRoot D := by
-    rcases hD'.1 with hL | hf
-    · rcases SA.liveLockBlock_candidate hΦ hL with h | h
-      · exact Or.inl h.2.1
-      · exact Or.inr h
-    · rw [Set.mem_singleton_iff.1 hf]
-      exact Or.inl .refl
-  refine hcomp.elim id fun hDf => ?_
-  by_cases hne : D = Φ.fcRoot
-  · exact hne ▸ .refl
-  · rcases hD'.2 _ (Or.inr rfl) (Ne.symm hne) with h | ⟨h, -⟩ <;>
-      have := SA.depth_lt_of_anc hΦ hDf hne hΦ.fcRoot_mem <;> omega
-
 /-- **The honest rows at a vote have old sources** (as `Pivot`'s `vote_fcRoot_old`): every
 honest row an honest slot-`s` voter holds was signed before the vote, with a source below an
 origin before the signing (`attestation_source`); a regular one of label `l` is written at
@@ -596,7 +571,7 @@ private theorem winner_voter_tree {X C : SA.Blk sp.n (List (FG.Att sp.n))}
   have hXC : Anc (tr.HonestBlocks H) X C := .single ⟨hΦpU (anc_mem hXQ hQt), hΦpU hCp, hCX⟩
   have hCP : Anc (tr.HonestBlocks H) C P := (hCQ.mono hΦpU).trans hQP
   have hfC : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot C :=
-    ((fcRoot_anc_anchor hΦy e.readPoint (tr.time j)).mono hΦyU).trans (hanc.trans hXC)
+    ((SA.fcRoot_anc_getAnchor hΦy e.readPoint (tr.time j)).mono hΦyU).trans (hanc.trans hXC)
   have hFC : Anc (tr.HonestBlocks H) ℓy.frame.F C := (hΦy.F_anc_fcRoot.mono hΦyU).trans hfC
   have hPt := voter_holds_proposal hrun hnc hsl hp hP hPs hs0 hy hcy hes (hFC.trans hCP)
   have hCt : C ∈ ℓy.frame.tree := SA.frame_mem_of_between sp hU hΦy hΦyU hPt hCP hFC
@@ -740,7 +715,7 @@ private theorem voter_holds {X : SA.Blk sp.n (List (FG.Att sp.n))} (hXQ : ℓp.f
     have := hU.2 d.head (hΦpU hQt) P hPU hPQ
     omega
   have hfX : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot X :=
-    ((fcRoot_anc_anchor hΦy e.readPoint (tr.time j)).mono hΦyU).trans hanc
+    ((SA.fcRoot_anc_getAnchor hΦy e.readPoint (tr.time j)).mono hΦyU).trans hanc
   exact voter_holds_proposal hrun hnc hsl hp hP hPs hs0 hy hcy hes
     (((hΦy.F_anc_fcRoot.mono hΦyU).trans hfX).trans ((hXQ.mono hΦpU).trans hQP))
 

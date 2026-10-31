@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeFrozen
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSuffix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 
@@ -20,9 +20,9 @@ slot-`s` vote that is not `P` (`votes_eq_of_pass`):
   anchor is below `d.start` passes `d.start` (`voter_reaches_start_unlocked` under (a)'s premises
   with #101's start premise, `voter_reaches_start_clean` under (b)'s; both open);
 * at every block of that path at or above the voter's anchor, the proposer's best child is the
-  voter's best child (`proposal_suffix`, open: the score comparison above both roots); at `Q`
-  the voter's only eligible child is `P` (`proposal_frozen_viable`, `AgreeFrozen`;
-  `proposal_only_child`, open), and the walk stops at `P` (`proposal_stop`).
+  voter's best child (`proposal_suffix`, `AgreeSuffix`); at `Q` the voter's only eligible child
+  is `P` (`proposal_frozen_viable`, `AgreeFrozen`; `proposal_only_child`, `AgreeSuffix`), and
+  the walk stops at `P` (`proposal_stop`).
 
 The frozen conjuncts of (a) follow from `P` being in the viable voter block tree
 (`frozen_of_viableTree`, `proposal_frozen_viable`). (b) takes HS.2 (`CleanLockDrain`) as a
@@ -273,48 +273,6 @@ theorem voter_reaches_start_clean {Gp : Time}
       ℓy.frame.Anc d.start (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
         (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
         (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
-  sorry
-
-/-- **The suffix** (`hs234-exact-interface.md` §4, "restrict score comparison to a branching
-vertex `A` on `P`'s parent path above both roots"; workbench#12 §3, as `Compose.suffix_agree`;
-open): at every block `X` from `D` (on the proposal walk) to `Q`, `Q` excluded, at or above the
-voter's anchor (so above both roots), the proposer's best child is the voter's best child: the
-votes admitted in the voter view are the carried proposer view up to cap alternatives (the
-payload carries the proposer's pool; the voter's pre-freeze votes and support heads relay to the
-proposer by `t_s`), and a competing child viable at the voter has a pre-freeze allowed witness,
-at the proposer too (aligned readers, HS.1). Only the winner is compared (a voter-eligible
-competitor need not be proposer-eligible in reachable runs, sa-fg-model 7f7e660). -/
-theorem proposal_suffix (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
-    {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsD : ℓp.frame.Anc d.start D)
-    (hDQ : ℓp.frame.Anc D d.head) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s) :
-    ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ≠ d.head →
-      Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X →
-      ∀ C, SA.IsBest sp (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
-          {B | B ∈ ℓp.frame.viableTree ℓp.frame.tree ∧ B.parent = some X.root ∧
-            SA.goldfishEligible sp ℓp.frame (tr.time iP) (SA.View.ofLists pay)
-              ((s : Int) - 1) B} C →
-        SA.IsBest sp (SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s)
-            ((s : Int) - 1))
-          {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
-            B.parent = some X.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
-              (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
-  sorry
-
-/-- **`P` is the voter's only eligible child of `Q`** (`hs234-exact-interface.md` §4, "`P` is the
-unique honest current-slot child"; workbench#12 §3; open): another child of `Q` in the viable
-voter block tree is of an earlier slot (one block per honest proposer and slot), so received
-before the freeze and relayed to the proposer by `t_s`, with a pre-freeze allowed witness there;
-its voter eligibility (no current-slot arm) would make it eligible at the proposer (the low-parent
-arm agrees by alignment; the majority arm by the carried view), whose walk stopped at `Q`. -/
-theorem proposal_only_child (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = s) :
-    ∀ B ∈ {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
-        B.parent = some d.head.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
-          (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B}, B = P := by
   sorry
 
 /-- **The stop at `P`** (`hs234-exact-interface.md` §4; workbench#12 §3): at `Q` the voter's only
