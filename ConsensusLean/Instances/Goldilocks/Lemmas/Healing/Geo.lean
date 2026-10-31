@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
@@ -9,7 +9,7 @@ public section
 /-! # Goldilocks Healing: settled-phase geometry (H.3 (c3), `h3-bridge.md` §5)
 
 `geo_of_settled` proves `Geo(P)` for an honest proposal whose proposal and slot-`p` votes lie in one
-settled effective phase `(m, c)`, from HS.1 (`viable_witness_retention`, an interface). Its pieces:
+settled effective phase `(m, c)`, from HS.1 (`viable_witness_retention_of`, `Retain`). Its pieces:
 
 * **Aligned readers** (`phase-service.md` §2, "service readers are aligned after settling";
   `viableHeads_iff`): at a cut of the phase, an honest node's head height floor is the phase floor
@@ -325,7 +325,7 @@ node's `Σ.h_max` is `m`; its `Σ.h_j` is `m − 1` exactly when the phase has a
 (`JMax`, with `Σ.F ⪯ J` from HS.1), its `Σ.J` is then the phase's `J` (HR.2 (a)), and its local
 contest test agrees with the phase case (the contest witness extends `Σ.F` by HS.1). -/
 theorem viableHeads_iff (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {z : Fin sp.n} (hz : z ∈ H) {k m : Nat}
+    (_hc : CatchRun tr H g (2 * sp.Δ)) {z : Fin sp.n} (hz : z ∈ H) {k m : Nat}
     {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} (hph : PhaseAt tr.projFG H k m c)
     (hev : HoldsEvidence (tr.state z k).fg m c) {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state z k).fg.tree) :
@@ -338,8 +338,8 @@ theorem viableHeads_iff (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g 
   have hF : ∀ W, EffAllowed (tr.state z k).fg m c W →
       (tr.state z k).fg.Anc (tr.state z k).fg.F W := fun W hW =>
     store_anc_of_honest_anc hrun hs.noColl hz
-      ((viable_witness_retention sp ro dg H tr g ΔF hrun hs hc k k m c
-        (fun k' h1 h2 => (le_antisymm h2 h1).symm ▸ hph) z hz W hW z hz k le_rfl le_rfl).1) hW.1
+      ((viable_witness_retention_of hrun hs
+        (fun k' h1 h2 => (le_antisymm h2 h1).symm ▸ hph) hz hW hz le_rfl le_rfl).1) hW.1
   obtain ⟨-, hJm, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, hge, -, -⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ hR
   have hjlt : (tr.state z k).fg.hj < (tr.state z k).fg.hmax :=
@@ -701,8 +701,8 @@ theorem geo_of_settled (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g �
     fun z hz k' h1 h2 X hX => viableHeads_iff hrun hs hc hz (hwin k' h1 h2) (hev z hz k' h1) hX
   have hHS : ∀ i, i₀ ≤ i → ∀ x ∈ H, ∀ W, EffAllowed (tr.state x i).fg m c W → ∀ z ∈ H, ∀ k',
       i ≤ k' → k' ≤ max k iv → Anc (tr.HonestBlocks H) (tr.state z k').fg.F W :=
-    fun i hi x hx W hW z hz k' h1 h2 => (viable_witness_retention sp ro dg H tr g ΔF hrun hs hc
-      i (max k iv) m c (fun k' h1 h2 => hwin k' (hi.trans h1) h2) x hx W hW z hz k' h1 h2).1
+    fun i hi x hx W hW z hz k' h1 h2 => (viable_witness_retention_of hrun hs
+      (fun k' h1 h2 => hwin k' (hi.trans h1) h2) hx hW hz h1 h2).1
   have hiv0 : i₀ ≤ iv := hle_i₀ iv (hwp.trans hvt)
   have hivK : iv ≤ max k iv := le_max_right _ _
   have hkK : k ≤ max k iv := le_max_left _ _

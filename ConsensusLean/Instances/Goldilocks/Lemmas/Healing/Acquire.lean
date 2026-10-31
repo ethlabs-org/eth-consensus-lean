@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 
 public section
 
@@ -20,11 +21,11 @@ receives a source `C ⪰ P` in `[t_s, t_s + 6Δ]` (`ready_sources`). If every su
 `P`'s height, `W = P`. Otherwise a source of height `m > ht(P) = m − 1` has a fresh optimistic
 origin of label `s + 1` that later proposal parents extend (`descendant_source_parents`); the
 ready proposal `Q` after `t_s + 14Δ` then has height `m`, and `W = Q`. Time: `t_a < w + 8Δ`,
-`r < w + (8k + 16)Δ`, `t_Q + 6Δ < w + (8k + 36)Δ + 2G_p`.
+`r < w + (8k + 16)Δ`, `t_Q + 6Δ < w + (8k + 36)Δ + 2G_p`. A ready proposal of the phase is
+allowed (`ready_allowed`) and every honest node receives a source above it (`ready_sources`):
+instances of `AcquireSources.proposal_allowed` and `AcquireSources.protected_sources`.
 
-Open (named contracts with the note's premises): `ready_allowed` (a ready proposal of the phase is
-allowed: the aligned reader of `Geo.viableHeads_iff`, which this file cannot import),
-`ready_sources` (the regular update at `t_s + 6Δ` and report tracing), and
+Open (a named contract with the note's premises):
 `descendant_source_parents` (stored-fast-origin provenance and HS.2's proposal-boundary
 transfer). -/
 
@@ -38,18 +39,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-! ## Time -/
-
-/-- `w + 4Δ ≤ t_a` (`DrainCommon.slotA_spec`; restated, `DrainCommon` is being edited). -/
-private theorem slotA_le (w : Time) : w + 4 * sp.Δ ≤ sp.ts (slotA sp w) := by
-  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  have hne : {s : Nat | w + 4 * sp.Δ ≤ sp.ts s}.Nonempty := by
-    refine ⟨(w + 4 * sp.Δ).toNat, ?_⟩
-    change w + 4 * sp.Δ ≤ 4 * sp.Δ * (((w + 4 * sp.Δ).toNat : Nat) : Int)
-    have h1 := Int.self_le_toNat (w + 4 * sp.Δ)
-    have h2 : (0 : Int) ≤ ((w + 4 * sp.Δ).toNat : Int) := Int.natCast_nonneg _
-    have h3 : (1 : Int) ≤ 4 * sp.Δ := by linarith
-    nlinarith [mul_le_mul_of_nonneg_right h3 h2]
-  exact Nat.sInf_mem hne
 
 /-- `t_a < w + 8Δ` for `w ≥ 0`: `a` is the least slot with `t_a ≥ w + 4Δ`. -/
 private theorem slotA_lt {w : Time} (hw : 0 ≤ w) : sp.ts (slotA sp w) < w + 8 * sp.Δ := by
@@ -74,42 +63,6 @@ private theorem rTime_eq (w : Time) :
 
 /-! ## Phase persistence -/
 
-/-- Every cut with a frontier has a phase case. -/
-private theorem phaseAt_some {i m : Nat} (hF : FrontierAt tr.projFG H i m) :
-    ∃ c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n))), PhaseAt tr.projFG H i m c := by
-  classical
-  by_cases hJ : ∃ J, JustifiedAt tr.projFG H i (m - 1) J
-  · obtain ⟨J, hJ⟩ := hJ
-    by_cases hC : ContestAt tr.projFG H i m J
-    · exact ⟨.contest J, hF, hJ, hC⟩
-    · exact ⟨.top J, hF, hJ, hC⟩
-  · exact ⟨.gap, hF, fun J h => hJ ⟨J, h⟩⟩
-
-/-- Two cases with the same rank and the first's top `J` kept are equal. -/
-private theorem case_eq {β : Type} {c c' : PhaseCase β} (h₁ : c.rank ≤ c'.rank)
-    (h₂ : c'.rank ≤ c.rank) (ht : ∀ J, c.topJ = some J → c'.topJ = some J) : c = c' := by
-  cases c <;> cases c' <;> simp only [PhaseCase.rank, PhaseCase.topJ] at h₁ h₂ ht
-  all_goals first
-    | rfl
-    | omega
-    | rw [Option.some.inj (ht _ rfl)]
-
-private theorem store_eq' (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    tr.projFG.store y i = (tr.state y i).fg := by
-  simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
-
-private theorem fg_run' (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF) :
-    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
-      Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
-  obtain ⟨-, -, hf⟩ := hs.healthy
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
-  have hn := sp.toParams.hn
-  exact ⟨Compose.fg_projection _ _ dg H _ tr hreq hs.genesisRoot hrun.toLocalRun hs.noColl,
-    by change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n; omega⟩
-
 /-- **The phase persists through an unchanged endpoint** (`hs234-exact-interface.md` §5, §4's
 sandwich; HR.2): if the phase at `j` is the phase at `i₀`, it is `(m, c)` at every cut of
 `[i₀, j]` (vacuous when `j < i₀`): the frontier is squeezed to `m` (`Σ.h_max` only grows), and
@@ -117,106 +70,15 @@ then the case rank is squeezed and the top `J` kept (`phaseAt_mono`). -/
 theorem phaseOn_of_not_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
     (hset : SettledIn tr H g w i₀ m c) {j : Nat} (hnc : ¬ PhaseChanged tr.projFG H i₀ j) :
     PhaseOn tr.projFG H i₀ j m c := by
-  obtain ⟨hfg, hq⟩ := fg_run' hrun hs
+  obtain ⟨hfg, hq⟩ := fg_run_of_hs hrun hs
   have h₀ := hset.2.2
-  have hj' : PhaseAt tr.projFG H j m c := by
-    by_contra hn
-    refine hnc fun m' c' h₁ h₂ => ?_
-    obtain ⟨rfl, rfl⟩ := phaseAt_eq hfg hq h₀ h₁
-    exact hn h₂
-  intro k h₁ h₂
-  obtain ⟨⟨y₀, hy₀, hm₀⟩, -⟩ := h₀.frontierAt
-  have hFj := hj'.frontierAt.2
-  have hF : FrontierAt tr.projFG H k m := by
-    refine ⟨⟨y₀, hy₀, le_antisymm ?_ ?_⟩, fun y hy => ?_⟩
-    · have := hFj y₀ hy₀
-      have := hmax_mono hrun.toLocalRun hy₀ h₂
-      simp only [store_eq' hrun hy₀] at *
-      omega
-    · have := hmax_mono hrun.toLocalRun hy₀ h₁
-      simp only [store_eq' hrun hy₀] at *
-      omega
-    · have := hFj y hy
-      have := hmax_mono hrun.toLocalRun hy h₂
-      simp only [store_eq' hrun hy] at *
-      omega
-  obtain ⟨c', hc'⟩ := phaseAt_some hF
-  obtain ⟨r₁, t₁⟩ := phaseAt_mono hfg hq h₁ h₀ hc'
-  obtain ⟨r₂, t₂⟩ := phaseAt_mono hfg hq h₂ hc' hj'
-  rwa [case_eq r₂ r₁ t₂] at hc'
+  refine phaseOn_squeeze hrun hs h₀ ?_
+  by_contra hn
+  refine hnc fun m' c' h₁ h₂ => ?_
+  obtain ⟨rfl, rfl⟩ := phaseAt_eq hfg hq h₀ h₁
+  exact hn h₂
 
 /-! ## Store facts -/
-
-/-- The block that `ac_to_fg` returns is in the frame of the call. -/
-private theorem toFG_mem_frame {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
-    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2.1 = some C) : C ∈ Φ.tree := by
-  unfold SA.acToFG at h
-  dsimp only at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (SA.deepest_mem hC').1.1.1
-
-/-- A source of an honest node is in its FG tree. -/
-private theorem toFG_mem (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hto : SA.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree :=
-  mem_tree_of_frame hrun hy hto.1 (toFG_mem_frame hto.2.2)
-
-/-- Allowedness moves between honest stores that hold the block (`Geo.effAllowed_transfer`). -/
-private theorem effAllowed_move (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i j : Nat} {X : SA.Blk sp.n (List (FG.Att sp.n))}
-    (h : EffAllowed (tr.state y i).fg m c X) (hX : X ∈ (tr.state z j).fg.tree) :
-    EffAllowed (tr.state z j).fg m c X :=
-  ⟨hX, by rw [σ_eq_honest hrun hnc hz hy hX h.1]; exact h.2.1, fun J hJ =>
-    store_anc_of_honest_anc hrun hnc hz ((h.2.2 J hJ).mono fun Z hZ => ⟨y, hy, i, hZ⟩) hX⟩
-
-/-- A held descendant of an allowed block is allowed (`Geo.effAllowed_of_anc`). -/
-private theorem effAllowed_desc {st : Store sp.toParams (Payload sp.n)}
-    {acp₀ : Payload sp.n} (hr : st.Reachable acp₀) {A W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (h : EffAllowed st m c A) (hW : W ∈ st.tree) (hAW : st.Anc A W) : EffAllowed st m c W :=
-  ⟨hW, h.2.1.trans (h_le_of_store_anc hr hAW), fun J hJ => (h.2.2 J hJ).trans hAW⟩
-
-/-- The own block of an honest proposal is accepted at its cut, so it is held after it. -/
-private theorem proposal_mem (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
-    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hW : tr.ProposesAt p k W) :
-    tr.CallAt p k (.fg (.block W true)) ∧ W ∈ (tr.state p (k + 1)).fg.tree := by
-  obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, -⟩ := hW
-  rcases Compose.blockCall_cases hrun.toLocalRun hp hc with hg |
-    ⟨j, x, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
-  · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
-  obtain ⟨hacc, -⟩ :=
-    own_block_accepted hrun.toLocalRun hreq hrun.genesis_root_ok hnc hp hg hpr hdp
-  have he := hc.2.symm.trans hacc.2
-  simp only [Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq] at he
-  obtain rfl := he.2
-  refine ⟨hc, ?_⟩
-  have hlaw := hrun.cutLaw p hp _ _ hc
-  rw [tr.state_succ_of_call hc, (Goldilocks.Store.tree_grows _ _ _ _
-    (Compose.fg_reachable hrun.toLocalRun hp _)).1 _ _ hlaw.2.1]
-  exact Set.mem_insert _ _
-
-/-- Heights at a cut of the phase are at most its frontier. -/
-private theorem h_le_frontier (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H)
-    {k j : Nat} (hkj : k ≤ j) (hph : PhaseAt tr.projFG H j m c)
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree) :
-    ((tr.state y k).fg.σ X.root).h ≤ m := by
-  have hX' := Compose.tree_mono hrun.toLocalRun hy hkj hX
-  have hR := Compose.fg_reachable hrun.toLocalRun hy j
-  have h1 := (Goldilocks.Store.cache_invariants _ _ _ _ hR).2.2.2.2.1 X hX'
-  have h2 := hph.frontierAt.2 y hy
-  rw [store_eq' hrun hy] at h2
-  rw [σ_eq_honest hrun hnc hy hy hX' hX] at h1
-  omega
 
 /-- Ancestry inside the honest blocks does not lower the state height, across honest stores. -/
 private theorem h_le_of_anc_run (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
@@ -260,7 +122,7 @@ theorem ready_protected (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g 
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hg8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hset.1.late
   have hgb0 := gbar_nonneg g
-  have ha := slotA_le (sp := sp) w
+  have ha := slotA_spec sp w
   have hrr := rTime_eq (sp := sp) w
   have hk0 : (0 : Time) ≤ (sp.k : Time) := Nat.cast_nonneg _
   have hkΔ : 0 ≤ (sp.k : Time) * sp.Δ := mul_nonneg hk0 hΔ.le
@@ -302,28 +164,18 @@ theorem ready_protected (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g 
 
 /-! ## The open contracts -/
 
-/-- **A ready proposal of the settled phase is allowed** (`hs234-exact-interface.md` §4 "The
-parent's full walk ends at an allowed head (`proposal_head_viable`); `P` is allowed by
-`effAllowed_of_anc`", §5 "`P` is retained and allowed by HS.1"): the proposer reads the
-effective geometry at `t_s ≥ w` (`Geo.viableHeads_iff`, it holds the phase's evidence from `w`
-on), its walk ends at a viable head of state height `≥ ℓ` that extends the top `J`, and `P`
-extends it. Open here only because `Geo` imports `Service` and so cannot be imported by it. -/
+/-- **A ready proposal of the settled phase is allowed** (`hs234-exact-interface.md` §4, §5;
+`AcquireSources.proposal_allowed` for the ready proposal). -/
 theorem ready_allowed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hset : SettledIn tr H g w i₀ m c) {p : Fin sp.n}
     {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H p kP s P)
     (hws : w ≤ sp.ts s) (hon : PhaseOn tr.projFG H i₀ kP m c) :
-    EffAllowed (tr.post kP).fg m c P := by
-  sorry
+    EffAllowed (tr.post kP).fg m c P :=
+  proposal_allowed hrun hs hc hset hP.1 hP.2.2.2.1 hP.2.2.2.2.1 hws hon
 
 /-- **Every honest node receives a current source above a protected ready proposal**
-(`hs234-exact-interface.md` §5 "acquisition", first two paragraphs): under `Γ`, let `P` be a
-ready proposal of slot `s` with `t_s ≥ r` on a protected branch, in the phase through
-`v₁ = t_s + 6Δ`. Every honest node's regular update at `v₁` has raw result and deepest fast
-selection `P` (all honest slot-`s` votes are `P`, faulty weight cannot support a deeper result,
-honest support is more than half), compatible with every live lock (HS.2's drain and transfer, so
-the write is not vetoed); the FG update at `v₁` returns a candidate extending `P`, or reporting
-is suppressed by a report record extending it, which traces back to an actual `ac_to_fg` return.
-A source extending the fresh `P` is returned at `t_s` or later. -/
+(`hs234-exact-interface.md` §5 "acquisition", first two paragraphs;
+`AcquireSources.protected_sources` for the ready proposal). -/
 theorem ready_sources (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kP : Nat}
@@ -341,8 +193,9 @@ theorem ready_sources (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g Δ
       sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr) :
     ∀ y ∈ H, ∃ k ℓ C, SA.ToFGAt tr.projAC y k ℓ C ∧ sp.ts s ≤ tr.time k ∧
-      tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C := by
-  sorry
+      tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C :=
+  protected_sources hrun hs hc hp hset hclean hP.2.2.2.1 hP.2.2.2.2.1 hP.1 hr hvotes hlater
+    hparents hon
 
 /-- **A higher source above a protected proposal is followed by later proposal parents**
 (`hs234-exact-interface.md` §5, "The only obstruction" and "The provenance bridge"): under `Γ`,
@@ -431,7 +284,7 @@ private theorem acquired_of_sources (hrun : GoldilocksRun dg H tr) (hs : HSShare
         ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr := by
   have hnc := hs.noColl
   obtain ⟨hpH, -, -, hprop, hWs, -⟩ := hW
-  obtain ⟨hcall, hWt⟩ := proposal_mem hrun hnc hpH hprop
+  obtain ⟨hcall, hWt, -⟩ := accept_of_proposesAt hrun hnc hpH hprop
   have hpost : tr.post kW = tr.state (sp.toParams.proposer s) (kW + 1) :=
     (tr.state_succ_of_call hcall).symm
   rw [hpost] at hall hsrc hhm
@@ -448,7 +301,7 @@ private theorem acquired_of_sources (hrun : GoldilocksRun dg H tr) (hs : HSShare
   · exact Store.one_le_h hR hWt
   · exact ⟨⟨hE, hETh'⟩, hEh, hEW⟩
   obtain ⟨k, ℓ, C, hto, hk₁, hk₂, hWC, hCh⟩ := hsrc y hy
-  have hCt := toFG_mem hrun hy hto
+  have hCt := toFG_mem_tree hrun hy hto
   have hRy := Compose.fg_reachable hrun.toLocalRun hy k
   have hEC : Anc (tr.HonestBlocks H) E C := (hEW.mono (hsub hpH _)).trans hWC
   have hEt := mem_of_honest_anc hrun hnc hy hEC hCt
@@ -456,7 +309,7 @@ private theorem acquired_of_sources (hrun : GoldilocksRun dg H tr) (hs : HSShare
   have hWCs := store_anc_of_honest_anc hrun hnc hy hWC hCt
   refine ⟨k, ℓ, C, hto, hk₁, hk₂, hWCs, ⟨⟨hEt, by rw [hσE, hETh']⟩, by rw [hσE, hEh],
     store_anc_of_honest_anc hrun hnc hy hEC hCt⟩, hCh, ?_⟩
-  exact effAllowed_desc hRy (effAllowed_move hrun hnc hpH hy hall
+  exact effAllowed_of_anc hRy (effAllowed_transfer hrun hnc hpH hy hall
     (mem_of_honest_anc hrun hnc hy hWC hCt)) hCt hWCs
 
 /-- **HS.4 (a)** (`hs234-exact-interface.md` §5 "actual acquisition", timing): under `Γ`, with
@@ -502,7 +355,7 @@ theorem acquired_or_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
   have hg8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hset.1.late
   have hgb0 := gbar_nonneg g
   have hw0 : 0 ≤ w := by linarith
-  have ha := slotA_le (sp := sp) w
+  have ha := slotA_spec sp w
   have ha' := slotA_lt (sp := sp) hw0
   have hrr := rTime_eq (sp := sp) w
   have hk0 : (0 : Time) ≤ (sp.k : Time) := Nat.cast_nonneg _
@@ -552,11 +405,11 @@ theorem acquired_or_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
     obtain ⟨hpH, -, -, hprop, hPs, -⟩ := id hP
     have hkP : tr.time kP = sp.ts s := by
       rw [hprop.2.2, hPs, sp.slotTime_eq]; rfl
-    obtain ⟨hcall, hPt⟩ := proposal_mem hrun hnc hpH hprop
+    obtain ⟨hcall, hPt, -⟩ := accept_of_proposesAt hrun hnc hpH hprop
     have hkD := hltD kP (by linarith)
     have hpost : tr.post kP = tr.state (sp.toParams.proposer s) (kP + 1) :=
       (tr.state_succ_of_call hcall).symm
-    refine ⟨hkP, hkD, hPt, hpost, by rw [hpost]; exact h_le_frontier hrun hnc hpH hkD hphD hPt,
+    refine ⟨hkP, hkD, hPt, hpost, by rw [hpost]; exact h_le_of_phaseAt hrun hnc hpH hkD hphD hPt,
       ready_allowed hrun hs hc hset hP (by linarith) (hbefore kP (by linarith)),
       ready_protected hrun hs hc hp hset hagree hP hr fun k hk => hbefore k ?_⟩
     have : sp.ts ((s : Int) + 1) = sp.ts s + 4 * sp.Δ := by simp only [SAParams.ts]; ring
@@ -576,9 +429,9 @@ theorem acquired_or_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
   · -- a higher source: the second proposal `Q` after `t_s + 14Δ` has height `m`
     obtain ⟨y₀, hy₀, k₀, ℓ₀, C₀, hto₀, hk₀, hk₀', hPC₀, hne₀⟩ := hob
     rw [hpostP] at hne₀
-    have hC₀t := toFG_mem hrun hy₀ hto₀
+    have hC₀t := toFG_mem_tree hrun hy₀ hto₀
     have hPC₀h := h_le_of_anc_run hrun hnc hy₀ hpH hPC₀ hC₀t hPt
-    have hC₀m := h_le_frontier hrun hnc hy₀ (hltD k₀ (by linarith)).le hphD hC₀t
+    have hC₀m := h_le_of_phaseAt hrun hnc hy₀ (hltD k₀ (by linarith)).le hphD hC₀t
     have hPt₀ := mem_of_honest_anc hrun hnc hy₀ hPC₀ hC₀t
     have hσP := σ_eq_honest hrun hnc hy₀ hpH hPt₀ hPt
     have hdesc := descendant_source_parents hrun hs hc hp hset hclean hP hs₁ honP hvP hlP hpP
@@ -610,9 +463,9 @@ theorem acquired_or_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
     refine acquired_of_sources hrun hs hQ hvQ hlQ hpQ hallQ (fun y hy => ?_) (Or.inr hQm')
       (by linarith) (by linarith) hQD (hafter _ hQD)
     obtain ⟨k, ℓ, C, hto, hk₁, hk₂, hQC⟩ := hsrcQ y hy
-    have hCt := toFG_mem hrun hy hto
+    have hCt := toFG_mem_tree hrun hy hto
     have h₁ := h_le_of_anc_run hrun hnc hy hpQH hQC hCt hQt
-    have h₂ := h_le_frontier hrun hnc hy (hltD k (by linarith)).le hphD hCt
+    have h₂ := h_le_of_phaseAt hrun hnc hy (hltD k (by linarith)).le hphD hCt
     rw [← hpostQ, hQm'] at h₁
     exact ⟨k, ℓ, C, hto, hk₁, hk₂, hQC, by omega⟩
   · -- every source has `P`'s height: `W = P`

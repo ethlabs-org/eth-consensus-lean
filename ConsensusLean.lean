@@ -134,6 +134,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Set
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Acquire
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeFrozen
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeVotes

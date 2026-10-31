@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 
 public section
@@ -230,23 +230,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF : Time}
 
-private theorem store_eq (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    tr.projFG.store y i = (tr.state y i).fg := by
-  simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
-
-/-- The FG projection under the HS shared premises, with `f < 2q − n`. -/
-private theorem fg_run (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF) :
-    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
-      Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
-  obtain ⟨-, -, hf⟩ := hs.healthy
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
-  have hn := sp.toParams.hn
-  exact ⟨Compose.fg_projection _ _ dg H _ tr hreq hs.genesisRoot hrun.toLocalRun hs.noColl,
-    by change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n; omega⟩
-
 /-- An honest node's record changes only at a cut where it signs, by `create_attestation`. -/
 private theorem record_step (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) :
@@ -343,7 +326,7 @@ theorem lock_free_or_entry (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg
     (hCh : ((tr.state y k).fg.σ C.root).h = h) (hfl : phaseFloor m c ≤ h)
     (hall : EffAllowed (tr.state y k).fg m c C) :
     (tr.state y k).record.lock h = none ∨ (tr.state y k).record.lock h = some E.root := by
-  obtain ⟨hfg, hq⟩ := fg_run hrun hs
+  obtain ⟨hfg, hq⟩ := fg_run_of_hs hrun hs
   have hr := Compose.fg_reachable hrun.toLocalRun hy k
   obtain ⟨⟨-, hETh⟩, hEh, hEC⟩ := hE
   have hCTh : ((tr.state y k).fg.σ C.root).Th = E.root := by
@@ -368,12 +351,12 @@ theorem lock_free_or_entry (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg
     have hge := (Goldilocks.Store.cache_invariants _ _ _ _ hr).2.2.2.2.1 B hB'
     have hjl := Store.hj_lt_h hr hB'
     have hmax := (hon k hk le_rfl).frontierAt.2 y hy
-    rw [store_eq hrun hy] at hmax
+    rw [projFG_store_eq hrun hy] at hmax
     have hBj' : ((tr.state y k).fg.σ B.root).hj = h := by rw [hσB]; exact hBj
     omega
-  have hJ : JustifiedAt tr.projFG H k h Z := ⟨y, hy, by rw [store_eq hrun hy]; exact hZ, B,
-    by rw [store_eq hrun hy]; exact hB', by rw [store_eq hrun hy, hσB, hBj],
-    by rw [store_eq hrun hy, hσB, hBJ, hZr]⟩
+  have hJ : JustifiedAt tr.projFG H k h Z := ⟨y, hy, by rw [projFG_store_eq hrun hy]; exact hZ,
+    B, by rw [projFG_store_eq hrun hy]; exact hB', by rw [projFG_store_eq hrun hy, hσB, hBj],
+    by rw [projFG_store_eq hrun hy, hσB, hBJ, hZr]⟩
   have hph := hon k hk le_rfl
   cases c with
   | gap =>

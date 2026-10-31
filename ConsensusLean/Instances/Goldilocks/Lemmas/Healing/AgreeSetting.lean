@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 
 public section
 
@@ -23,7 +24,7 @@ that do not compare walks:
   the own block is the tick's proposal, accepted at once, C0.3), so HS.2's proposal clause
   applies to it.
 * **The voter block tree of slot `s` has no block of a later slot** (`voterBlockTree_slot_le`,
-  from a private copy of `Geo.stamp_origin`: `Geo` imports `Service`, which imports this file).
+  from `Geo.stamp_origin`).
 * **The setting** `AgreeSetting`: HS.3 (a)'s premises with the proposal's `ac_proposal` call
   (`Compose.proposal_data`), its duty head `d` (`P.parent = d.head`) and payload `pay`
   (`agreeSetting_of`). -/
@@ -32,66 +33,12 @@ namespace Consensus.Goldilocks.Healing
 
 open SA (SAParams ReplayOrder Payload gbar)
 
-/-! ### Block stamps (as `Geo`'s, which imports `Service`) -/
+/-! ### Block stamps -/
 
 section Stamps
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (SA.Blk sp.n FGP)} {tr : SA.SATrace sp FGP ro}
-
-/-- **Where a block stamp comes from**: after an honest call, the stamp of a block of its frame is
-genesis's, or the time of an earlier call of the node whose frame holds the block. -/
-private theorem stamp_origin (h : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
-      X.root = sp.genesisRoot ∨ ∃ k ≤ i, ∃ ℓk : ACLabel (SA.goldilocksSA sp FGP ro),
-        tr.CallAt y k ℓk ∧ X ∈ ℓk.frame.tree ∧
-          (tr.post i).blockStamp X.root = SA.ETime.of (tr.time k) := by
-  intro i
-  induction i using Nat.strong_induction_on with
-  | _ i ih =>
-    intro ℓ hc X hX
-    have hexec := h.exec i ℓ hc.2 (hc.1 ▸ hy)
-    rw [hc.1] at hexec
-    have hpost : tr.post i =
-        ((SA.goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
-      rw [hexec]
-    obtain ⟨Φ, hok, hpre⟩ : ∃ Φ, (SA.goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call
-        ℓ.frame ∧ ∀ X ∈ Φ.tree, X.root = sp.genesisRoot ∨ ∃ k ≤ i,
-          ∃ ℓk : ACLabel (SA.goldilocksSA sp FGP ro), tr.CallAt y k ℓk ∧ X ∈ ℓk.frame.tree ∧
-            (tr.state y i).blockStamp X.root = SA.ETime.of (tr.time k) := by
-      rcases h.frameLaw y hy i ℓ hc with ⟨-, Φ₀, ⟨htree, hroot, -, -, -⟩, -, hok⟩ |
-        ⟨j, ℓ', hj, hc', hnb, hok⟩
-      · refine ⟨Φ₀, hok, fun X hX => Or.inl ?_⟩
-        rw [htree, Set.mem_singleton_iff] at hX
-        rw [hX, hroot]
-      · refine ⟨ℓ'.frame, hok, fun X hX => ?_⟩
-        rw [tr.state_of_lastCall hc' hj hnb]
-        exact (ih j hj ℓ' hc' X hX).imp_right fun ⟨k, hk, ℓk, h1, h2, h3⟩ =>
-          ⟨k, hk.trans hj.le, ℓk, h1, h2, h3⟩
-    obtain ⟨hblk, hrst, hoth⟩ := SA.step_blockStamp_eq ro y (tr.state y i) hok.1.1
-      (h.time_nonneg i) ℓ.call
-    rw [hpost]
-    generalize hcall : ℓ.call = c at hok hblk hrst hoth
-    cases c with
-    | block B =>
-      rw [hblk B rfl, Function.update_apply]
-      obtain ⟨hin, hs, -, -⟩ := hok
-      split_ifs with hXB
-      · exact Or.inr ⟨i, le_rfl, ℓ, hc, hX, rfl⟩
-      · rw [hs.tree_eq] at hX
-        rcases hX.1 with rfl | hX'
-        · exact absurd rfl hXB
-        · exact hpre X hX'
-    | restart =>
-      rw [hrst rfl X hX]
-      split_ifs with hg
-      · exact Or.inl hg
-      · exact Or.inr ⟨i, le_rfl, ℓ, hc, hX, rfl⟩
-    | tick => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2 ▸ hX)
-    | proposal => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2 ▸ hX)
-    | toFG => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2 ▸ hX)
-    | message m => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2.1 ▸ hX)
 
 private theorem admitVote_blockStamp (A : SA.SAState sp.n) (t : Time) (v : SA.Vote sp.n) :
     (SA.admitVote sp A t v).blockStamp = A.blockStamp := by
@@ -144,22 +91,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### The phase-interval sandwich -/
 
-private theorem store_eq (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) (k : Nat) :
-    tr.projFG.store y k = (tr.state y k).fg := by
-  simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy k]
-
-private theorem fg_run (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF) :
-    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
-      Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
-  obtain ⟨-, -, hf⟩ := hs.healthy
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
-  have hn := sp.toParams.hn
-  exact ⟨Compose.fg_projection _ _ dg H _ tr hreq hs.genesisRoot hrun.toLocalRun hs.noColl,
-    by change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n; omega⟩
-
 /-- Every cut with a frontier has a phase case. -/
 private theorem phaseAt_some {k m : Nat} (hF : FrontierAt tr.projFG H k m) :
     ∃ c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n))), PhaseAt tr.projFG H k m c := by
@@ -185,7 +116,7 @@ cuts `a ≤ b` is the phase at every cut between them. -/
 theorem phaseOn_squeeze (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF) {a b : Nat}
     (ha : PhaseAt tr.projFG H a m c) (hb : PhaseAt tr.projFG H b m c) :
     PhaseOn tr.projFG H a b m c := by
-  obtain ⟨hfg, hq⟩ := fg_run hrun hs
+  obtain ⟨hfg, hq⟩ := fg_run_of_hs hrun hs
   intro k h₁ h₂
   obtain ⟨⟨y₀, hy₀, hm₀⟩, -⟩ := ha.frontierAt
   have hFb := hb.frontierAt.2
@@ -193,14 +124,14 @@ theorem phaseOn_squeeze (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g 
     refine ⟨⟨y₀, hy₀, le_antisymm ?_ ?_⟩, fun y hy => ?_⟩
     · have := hFb y₀ hy₀
       have := hmax_mono hrun.toLocalRun hy₀ h₂
-      simp only [store_eq hrun hy₀] at *
+      simp only [projFG_store_eq hrun hy₀] at *
       omega
     · have := hmax_mono hrun.toLocalRun hy₀ h₁
-      simp only [store_eq hrun hy₀] at *
+      simp only [projFG_store_eq hrun hy₀] at *
       omega
     · have := hFb y hy
       have := hmax_mono hrun.toLocalRun hy h₂
-      simp only [store_eq hrun hy] at *
+      simp only [projFG_store_eq hrun hy] at *
       omega
   obtain ⟨c', hc'⟩ := phaseAt_some hF
   obtain ⟨r₁, t₁⟩ := phaseAt_mono hfg hq h₁ ha hc'

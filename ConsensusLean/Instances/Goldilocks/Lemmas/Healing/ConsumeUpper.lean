@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 
 public section
 
@@ -14,14 +14,12 @@ a matching row for `E` at `m` by `v` (`fixed_upper_rows_of`). No `ReadyProposal 
 
 The assembly (proved): `Y` is held by its proposer after its cut, and its entry `E` at `m` is the
 entry state of its own chain (`Store.entry_state_of_source`). Every honest node receives, in
-`[t_s, v]`, a source `C ⪰ Y` (`upper_sources`); at that cut (in the phase) `C` has height `m`
-(`≥ ht(Y) = m` along ancestry, `≤ m` the frontier), so its entry at `m` is `E` and it is allowed
-(`effAllowed_of_height`); the `fg_attest` of the same tick (`toFG_attest`, same FG state) and the
-client subclaim give the matching row, at the same time (no extra `Δ`).
+`[t_s, v]`, a source `C ⪰ Y` (`AcquireSources.protected_sources`); at that cut (in the phase)
+`C` has height `m` (`≥ ht(Y) = m` along ancestry, `≤ m` the frontier), so its entry at `m` is `E`
+and it is allowed (`effAllowed_of_height`); the `fg_attest` of the same tick (`toFG_attest`,
+same FG state) and the client subclaim give the matching row, at the same time (no extra `Δ`).
 
-Open (a named contract with the note's premises): `upper_sources`, §§2.1–2.3 (the exact
-unanimous regular and fast `Y`, the all-live-lock compatibility through HS.2's retrospective
-origin clauses, and the actual source or historical suppressing report). -/
+The sources (§§2.1–2.3) are `AcquireSources.protected_sources`, shared with HS.4. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -31,54 +29,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
-
-/-- `w + 4Δ ≤ r`: `r = t_{a + 2k + 2}` and `t_a ≥ w + 4Δ` (`a` is a member of the set it is the
-least of). -/
-theorem add_le_rTime (sp : SAParams) (w : Time) : w + 4 * sp.Δ ≤ rTime sp w := by
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hne : {s : Nat | w + 4 * sp.Δ ≤ sp.ts s}.Nonempty := by
-    refine ⟨(w + 4 * sp.Δ).toNat, ?_⟩
-    change w + 4 * sp.Δ ≤ 4 * sp.Δ * (((w + 4 * sp.Δ).toNat : Nat) : Int)
-    have h1 := Int.self_le_toNat (w + 4 * sp.Δ)
-    have h2 : (0 : Int) ≤ ((w + 4 * sp.Δ).toNat : Int) := Int.natCast_nonneg _
-    have h3 : (1 : Int) ≤ 4 * sp.Δ := by linarith
-    nlinarith [mul_le_mul_of_nonneg_right h3 h2]
-  have ha : w + 4 * sp.Δ ≤ sp.ts (slotA sp w) := Nat.sInf_mem hne
-  have hr : sp.ts (slotA sp w) ≤ rTime sp w := (SA.ts_le_iff sp).2 (by push_cast; omega)
-  linarith
-
-/-- **Every honest node receives a source above the fixed upper `Y` in `[t_s, v]`**
-(`hs5-exact-helpers.md` §§2.1–2.3; open): under `Γ` with HS.2 (`hclean`, its phase-local origin
-transfer), for an honest proposal `Y` of slot `s` with `t_s ≥ r` and state height `m` on a
-protected branch, in the phase through `v = t_s + 6Δ`. §2.1: every honest regular update at `v`
-has exact regular confirmation and fast selection `Y` (`n − f > n/2` honest non-equivocating
-votes are `Y`, a strict descendant has at most `f` supporters). §2.2: every live lock at those
-updates is compatible with `Y` (the original stored block `B` of each live image, `L ⪯ B ⪯ Y` by
-HS.2's retrospective origin clauses for labels `< s`, the unanimous batch for `s`, `hlater` for
-`s + 1`), so the write is not vetoed and `Y` is a live fast candidate of the following
-`ac_to_fg`. §2.3: that `ac_to_fg` returns the deepest candidate `C ⪰ Y`, or reporting is
-suppressed by a report record `Q ⪰ Y`, written by an actual earlier return, at a time `≥ t_s` by
-`Y`'s freshness. -/
-theorem upper_sources (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
-    (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kY : Nat}
-    {Y : SA.Blk sp.n (List (FG.Att sp.n))} (hY : tr.ProposesAt (sp.toParams.proposer s) kY Y)
-    (hYs : Y.slot = s) (hpH : sp.toParams.proposer s ∈ H)
-    (hYh : ((tr.post kY).fg.σ Y.root).h = m) (hr : rTime sp w ≤ sp.ts s)
-    (hvotes : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
-      e.msg.head = Y.root ∧
-      (Y ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
-        Anc (tr.HonestBlocks H) Y ℓ.frame.fcRoot))
-    (hlater : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
-      PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg Y)
-    (hparents : ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
-      P'.slot = s' → tr.ProposesAt (sp.toParams.proposer s') k' P' →
-      sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
-      ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) Y Pr)
-    (hon : ∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) :
-    ∀ y ∈ H, ∃ k ℓ C, SA.ToFGAt tr.projAC y k ℓ C ∧ sp.ts s ≤ tr.time k ∧
-      tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) Y C := by
-  sorry
 
 /-- **Rows at `m` for a fixed upper proposal** (`hs5-exact-helpers.md` §2; `Service`'s
 `fixed_upper_proposal_rows` with `ProtectedBranch`, `ClientProgress` and `RowsBy` spelled out,
@@ -112,7 +62,7 @@ theorem fixed_upper_rows_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
       ∀ y ∈ H, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ att.h = m ∧
         att.T = E.root := by
   have hnc := hs.noColl
-  have hsrc := upper_sources hrun hs hc hp hset hclean hY hYs hpH hYh hr hvotes hlater hparents
+  have hsrc := protected_sources hrun hs hc hp hset hclean hY hYs hpH hr hvotes hlater hparents
     hon
   obtain ⟨-, hYt, hpost⟩ := accept_of_proposesAt hrun hnc hpH hY
   rw [hpost] at hYh ⊢

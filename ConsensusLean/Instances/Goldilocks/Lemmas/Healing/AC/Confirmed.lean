@@ -20,7 +20,9 @@ The helpers of `proposal_confirmed` (healing-simple `h1-proposal-confirmed.md` �
   `t_p + 6Δ` on, before or after it, compares with `P` (labels `< p` by `LocksSettled` and the
   exact slot-`p` votes, labels `≥ p` by their origin's honest supporter,
   `origin_compatible_proposal`);
-* `first_update_record` (§4): the slot-`p` update at `t_p + 6Δ` has result `P`, not vetoed;
+* `first_update_post`, `first_update_record` (§4): the slot-`p` update at `t_p + 6Δ` has result
+  `P`, not vetoed, with `P` passing the fast test, so its own fast selection
+  (`fastSelect_eq_result`);
 * `record_step`, `record_extends` (§4): from that update on the record extends `P` (a candidate
   compares with `P`, and an ancestor candidate is refused);
 * `head_extends` (§5): the head extends `P` (the latest view is of a slot `≥ p + 1` whose honest
@@ -435,12 +437,12 @@ theorem liveLock_compatible (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.
 private theorem etime_lt_top (t : Time) : ETime.of t < ⊤ :=
   WithBot.coe_lt_coe.2 (WithTop.coe_lt_top t)
 
-/-- **The first update repairs the record** (h1 §4): at an honest node's tick at `t_p + 6Δ`, with
-every honest slot-`p` vote exactly `P` and every live lock comparing with `P`, the slot-`p`
-result is `P` (its honest batch is a strict majority, and every other passing block has only
-faulty supporters unless it is an ancestor of `P`) and is not vetoed, so the record after the
-tick extends `P`. -/
-theorem first_update_record (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n FGP}
+/-- **The first update** (h1 §4): at an honest node's tick at `t_p + 6Δ`, with every honest
+slot-`p` vote exactly `P` and every live lock comparing with `P`, the tick is the slot-`p` update,
+whose result is `P` (its honest batch is a strict majority, and every other passing block has only
+faulty supporters unless it is an ancestor of `P`), not vetoed, and `P` passes the fast test
+(the honest batch is half of the committee or more). -/
+theorem first_update_post (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n FGP}
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -448,7 +450,10 @@ theorem first_update_record (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n 
     (hPt : P ∈ ℓ.frame.tree)
     (hlocks : ∀ L ∈ liveLockBlocks sp (tr.state y k).locks ℓ.frame (tr.time k),
       Compatible U L P) :
-    ∃ R ∈ ℓ.frame.tree, R.root = (tr.post k).latestConfirmed ∧ ℓ.frame.Anc P R := by
+    getConfirmation sp (tr.state y k) ℓ.frame p = some P ∧
+      ¬ conflictsWithLock sp (tr.state y k).locks ℓ.frame (tr.time k) P ∧
+      FastTest sp (tr.state y k) ℓ.frame p P ∧
+      tr.post k = updateConfirmation sp (tr.state y k) ℓ.frame (tr.time k) p := by
   have hr := hS.run.localRun
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
@@ -504,23 +509,24 @@ theorem first_update_record (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n 
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
   have h2f := two_faulty_lt_honest hS
   have hHle := Set.ncard_le_ncard hHvot
+  -- the honest validators support `P`
+  have hscore : H.ncard ≤ confirmationScore sp A ℓ.frame p P := by
+    unfold confirmationScore
+    dsimp only
+    have hsub : H ⊆ supporters ℓ.frame ⟨{v | v ∈ A.pool p}, {v | v ∈ A.pool p ∧
+        resolutionTime A ℓ.frame v < ETime.of (sp.ts p + 2 * sp.Δ)}⟩ p P := by
+      intro u hu
+      obtain ⟨v, hv, hvu, hvh, hres, -⟩ := hhon u hu
+      refine ⟨honest_not_equivocator_pool hS hy k p hu, v, ⟨hv, hres⟩, hvu, ?_,
+        P, hPt, hvh.symm, Relation.ReflTransGen.refl⟩
+      exact_mod_cast state_pool_slot sp hr hy k p v hv
+    exact Set.ncard_le_ncard hsub
   -- the slot-`p` result is `P`
   have hconf : getConfirmation sp A ℓ.frame p = some P := by
     unfold getConfirmation
     have hPS : P ∈ {B | B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F B ∧
-        (voters {v | v ∈ A.pool p}).ncard < 2 * confirmationScore sp A ℓ.frame p B} := by
-      refine ⟨hPt, hΦ.rooted.2 P hPt, ?_⟩
-      unfold confirmationScore
-      dsimp only
-      have hsub : H ⊆ supporters ℓ.frame ⟨{v | v ∈ A.pool p}, {v | v ∈ A.pool p ∧
-          resolutionTime A ℓ.frame v < ETime.of (sp.ts p + 2 * sp.Δ)}⟩ p P := by
-        intro u hu
-        obtain ⟨v, hv, hvu, hvh, hres, -⟩ := hhon u hu
-        refine ⟨honest_not_equivocator_pool hS hy k p hu, v, ⟨hv, hres⟩, hvu, ?_,
-          P, hPt, hvh.symm, Relation.ReflTransGen.refl⟩
-        exact_mod_cast state_pool_slot sp hr hy k p v hv
-      have := Set.ncard_le_ncard hsub
-      omega
+        (voters {v | v ∈ A.pool p}).ncard < 2 * confirmationScore sp A ℓ.frame p B} :=
+      ⟨hPt, hΦ.rooted.2 P hPt, by omega⟩
     have hall : ∀ B ∈ {B | B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F B ∧
         (voters {v | v ∈ A.pool p}).ncard < 2 * confirmationScore sp A ℓ.frame p B},
         ℓ.frame.Anc B P := by
@@ -547,6 +553,39 @@ theorem first_update_record (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n 
     rcases hlocks L hL with h | h
     · exact Or.inr (anc_tree_of_anc_U hU hΦ hΦU hL.1 h hPt)
     · exact Or.inl (anc_tree_of_anc_U hU hΦ hΦU hPt h hL.1)
+  exact ⟨hconf, hnv, by unfold FastTest; omega, hpost⟩
+
+/-- **A result passing the fast test is its own fast selection**: the path of `P` holds only
+non-genesis ancestors of `P` (no strict descendant), `P` is in the selection set (not genesis,
+passing the fast test), and every other member is a strict ancestor, so shallower. -/
+theorem fastSelect_eq_result {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {p : Nat}
+    {P : Blk sp.n FGP} (hPt : P ∈ Φ.tree) (hPg : P.root ≠ sp.genesisRoot)
+    (hf : FastTest sp A Φ p P) : fastSelect sp A Φ p P = some P := by
+  have hS : {B | B ∈ confirmationPath sp Φ P ∧ FastTest sp A Φ p B} ⊆ Φ.tree :=
+    fun B hB => hB.1.1
+  have hPS : P ∈ {B | B ∈ confirmationPath sp Φ P ∧ FastTest sp A Φ p B} :=
+    ⟨⟨hPt, hPg, .refl⟩, hf⟩
+  obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨P, hPS⟩
+  have hDP := (deepest_mem hD).1.1.2.2
+  have hPD := anc_deepest hΦ hS (fun B hB C hC => anc_total hΦ.coherent hB.1.2.2 hC.1.2.2) hD P hPS
+  unfold fastSelect
+  rw [hD, Anc.antisymm hΦ.coherent hDP hPD]
+
+/-- **The first update repairs the record** (h1 §4): at an honest node's tick at `t_p + 6Δ`, with
+every honest slot-`p` vote exactly `P` and every live lock comparing with `P`, the slot-`p`
+result is `P` and is not vetoed (`first_update_post`), so the record after the tick extends
+`P`. -/
+theorem first_update_record (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n FGP}
+    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
+    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ)
+    (hPt : P ∈ ℓ.frame.tree)
+    (hlocks : ∀ L ∈ liveLockBlocks sp (tr.state y k).locks ℓ.frame (tr.time k),
+      Compatible U L P) :
+    ∃ R ∈ ℓ.frame.tree, R.root = (tr.post k).latestConfirmed ∧ ℓ.frame.Anc P R := by
+  obtain ⟨hconf, hnv, -, hpost⟩ :=
+    first_update_post hS hp4 hexact hy hc hcall htk hPt hlocks
   rw [hpost]
   unfold updateConfirmation
   dsimp only

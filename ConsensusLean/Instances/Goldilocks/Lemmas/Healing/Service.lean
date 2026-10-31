@@ -29,8 +29,8 @@ service"; `phase-service.md` §§2–5 and §7), and the interface through which
 HS.1 is proved (`Retain`). This is the paper orb's proposed contract, not yet certified.
 Interfaces: HS.2–HS.4 are open. `consume_continue`, `fixed_upper_proposal_rows` and
 `mature_progress_consumption` are assembled in `ConsumeContinue`, `ConsumeUpper` and
-`ConsumeMature` (`hs5-exact-helpers.md` §§2–4, with `ConsumeCrossing` for §3.1), open only
-through `upper_sources` (§§2.1–2.3, in `ConsumeUpper`). -/
+`ConsumeMature` (`hs5-exact-helpers.md` §§2–4, with `ConsumeCrossing` for §3.1, the sources of
+§§2.1–2.3 in `AcquireSources`), over HS.1–HS.3 as hypotheses. -/
 
 namespace Consensus.Goldilocks.Healing
 
