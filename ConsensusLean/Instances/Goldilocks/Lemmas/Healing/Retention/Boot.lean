@@ -354,6 +354,42 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
   change (tr.state y k).fg.headHeightFloor ≤ _
   omega
 
+/-- A high origin above the raw target supplies a frozen viable witness when a held
+ancestor of the origin already meets the receiver's height floor. No retention invariant
+or stored-origin assumption on the target or held ancestor is required. -/
+theorem raw_target_frozen_witness (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {r l k : Nat} {B O E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x r l O) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
+    (hFB : Anc (tr.HonestBlocks H) ell.frame.F B)
+    (hBO : Anc (tr.HonestBlocks H) B O) (_hE : E ∈ (tr.state y k).fg.tree)
+    (hEO : Anc (tr.HonestBlocks H) E O)
+    (hfloor : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h) :
+    ∃ D ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+      Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := highOrigin_mem hp ho
+  obtain ⟨u, hu⟩ := fastLock_counted_nonempty hflw
+  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hflw u hu
+  have hOHv : Anc (tr.HonestBlocks H) O Hv :=
+    (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hOD).trans hDHv
+  rcases hacc with hg | ⟨kw, hkw, hkwt⟩
+  · exact absurd hg (cutZ_lt_of_anc hp ho hz hHvz hOHv).2
+  have hkwg : g ≤ tr.projAC.time kw := by
+    have := (cutZ_lt_of_anc hp ho ho.1 (acceptAt_mem hp ho.1 hkw) hOHv).1
+    have := lt_cutZ sp g
+    have := le_gbar g
+    have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+    change g ≤ tr.time kw
+    linarith
+  have hHvT := relay_mem_voterBlockTree hr (sync_after hp (sp.ts l + 2 * sp.Δ)) ho.1 hkw hkwg
+    hkwt le_rfl hy hc hl (hFB.trans (hBO.trans hOHv))
+  have hHvy : Hv ∈ (tr.state y k).fg.tree := frame_tree_subset hp hy hc.1 hHvT.1
+  have hh := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k)
+    (anc_tree_of_anc hp hy (hEO.trans hOHv) hHvy)
+  exact ⟨Hv, hHvT, hBO.trans hOHv, hfloor.trans hh⟩
+
 /-- **(K2) at a vote, R5** (§5 Lemma R5; §11 item 1 for the votes through the ticks at `a_z`;
 §13 "Retaining the witnesses and the frame"; `t1-proof.md` §9 base case). At an honest vote of a
 slot `> j`, the voter block tree holds a viable descendant of the origin's block `B`, or
