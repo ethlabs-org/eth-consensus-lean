@@ -72,7 +72,13 @@ theorem accepted_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.hone
 
 /-- CLAIMS R.8/F.2 and Refinement G1.5: every held non-genesis block was accepted earlier;
 `accepted_in_view` retains the engine event index needed to put it in this reader's view.
-NO PAPER PROOF for this implementation bridge; F.2 supplies the node acceptance fact. -/
+
+Paper argument (implementation bridge, not a quotation): apply `tree_cases` at node cut
+`cutMap i`. Its genesis alternative contradicts `hg`; otherwise it gives acceptance at some
+`k < cutMap i`. Apply `accepted_in_view` with that strict inequality. That theorem locates an
+engine event `j` with `cutMap j ≤ k`; monotonicity forces `j < i`, so even simultaneous events
+cannot move evidence past the read. No collision or awake-at-read assumption is needed.
+Status: argument complete relative to the existing simulation/acceptance lemmas; Lean open. -/
 theorem held_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
     {i : Nat} {B : Blk (S.params (pubOf E) hn)}
     (hB : B ∈ ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree)
@@ -83,7 +89,14 @@ theorem held_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
 /-- CLAIMS G1.5 evidence binding: canonical block objects carry their payload attestations,
 and views are closed under carried objects. Genesis has no attestations. This applies to ANY
 held block, as required by R.7's two witness chains, not just finalized ancestors.
-NO PAPER PROOF for the engine-object encoding/view bridge. -/
+
+Paper argument: reachable-store coherence identifies any held block with genesis root as
+genesis itself, whose FG payload is empty. Membership of `a` excludes that case. By
+`held_in_view`, `blockObj B` is in the view. Its carried list is `payloadObjs B.fgPayload
+B.acPayload`, which includes `attObj a` by list-map membership. Compose this direct containment
+with the view's witnessing containment (`mem_viewIdx_iff`); views are transitively closed
+under carried objects. This uses every held block, not the false restriction that R.7's
+witness chains end at the finalized tips. Status: argument complete; Lean open. -/
 theorem held_att_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
     {i : Nat} {B : Blk (S.params (pubOf E) hn)}
     (hB : B ∈ ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.tree)
@@ -93,7 +106,14 @@ theorem held_att_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.hone
 variable (V) in
 /-- CLAIMS Refinement G1.5 (b): `mem_chainTo` places each read header in the held tree;
 encoding round-trip identifies its attestations, then `held_att_in_view` binds the evidence.
-NO PAPER PROOF for the engine read/view bridge. -/
+
+Paper argument: the quantified reader supplies `n ≥ 1`; use `simTrace_simulates` and
+`read_finalized`. Its tip is held by the reachable-store cache invariant. `mem_chainTo` makes
+the read header `headerOf B` for a held block B. `decodeInfo_encodeInfo` and injectivity of
+`some` identify the decoded list `atts` with `B.fgPayload`; apply `held_att_in_view` to `a`.
+If V is empty there is no reader, so no simulation with `n ≥ 1` is required. The bound
+`i ≤ events.length` is exactly the domain of simulation's state agreement.
+Status: argument complete relative to simulation; Lean open. -/
 theorem evidenceInView : EvidenceInView V S := by
   sorry
 
