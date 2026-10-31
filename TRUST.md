@@ -58,12 +58,18 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   kernel and, with `--paranoid`, by every external kernel bundled with Lean.
   The comparator is **not a Spec-drift check**: both sides read the same source tree.
 
-`scripts/check.sh` wires checks and fixtures. CI runs its fast mode (no replay, `lake check` or
-comparator; check-decls, axiom audit, snapshot diff and review pins included) on every pull request and push to main,
-and its full mode nightly, on demand and on milestone/release tags: a proof change merged after a green
-fast run is replayed by the kernel at the latest the next night. `lake check` and `lake comparator` run
-inside a bubblewrap sandbox wherever `bwrap` exists (CI full mode always; the shared box since
-2026-10-29); without it check.sh skips them and lists them as CI-only.
+`scripts/check.sh` wires checks and fixtures. **CI of record is `scripts/orb-ci.sh` on `ethlabs-box`, with
+results on [#63](https://github.com/fradamt-agent/consensus-lean/issues/63).** GitHub Actions is disabled
+by owner decision (2026-10-31, #50); its files remain, but agents must not dispatch workflows, create GitHub CI
+subscriptions or report the known billing failures. A green check means a passing box result for that commit.
+The watcher runs fast mode (no replay, `lake check` or comparator; check-decls, axiom audit, snapshot diff and
+review pins included) on observed main/non-draft PR heads, with docs-only changes in `--changed` mode, plus
+review-boundary and its self-test. Polling can coalesce heads; missing exact commits can be queued by the watcher owner.
+Full mode runs nightly, on demand, after `spec-approved` changes and on milestone/release tags, from a clean
+project build: a proof change merged after a green fast run is replayed by the kernel at the latest the next night.
+`lake check` and `lake comparator --paranoid` run inside bubblewrap on the box. Full CI rejects skipped steps
+and a dirty tree; without bubblewrap a standalone check skips these steps and lists them as CI-only, which is
+not a passing full CI result. No trust-check verdict is removed by disabling Actions.
 
 ## Checking tools and open trust notes
 

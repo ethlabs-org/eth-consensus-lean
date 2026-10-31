@@ -72,7 +72,9 @@ before proofs start. A PR that changes a statement and its proof together says s
 One upgrade owner, claude-ethlabs, runs toolchain and Mathlib bumps: `lean-toolchain`, the Mathlib `rev` in
 `lakefile.toml`, `lake-manifest.json`, `scripts/pins.toml` and the table in `TRUST.md`, in one PR. The toolchain
 and manifest are on the trusted surface, so a bump needs the tag. A bump runs the full
-tier (`gh workflow run full.yml --ref <branch>`: cold build, rebuild canary, replay, comparator) before merge.
+tier on the box before merge (cold build, rebuild canary, replay, `lake check`, paranoid comparator): ask the
+box watcher owner for an exact-commit run and verify its result on #63. GitHub Actions is disabled; do not
+dispatch `full.yml` or create a GitHub CI subscription (README "Verification").
 
 ## License
 

@@ -37,12 +37,18 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   lock (the remote branch `push-main-lock`), rebases and checks again; other landers wait for the lock instead of
   checking in vain (#50). Never create or delete that branch by hand except to clear a dead lock (it also expires). The pre-push hook
   `scripts/hooks/pre-push` refuses a push to `main` of a commit the script did not check; enable it once per clone
-  with `git config core.hooksPath scripts/hooks` (`.agents/setup` does it in orbs). No PR; every push to `main` runs the fast tier (`scripts/check.sh --fast`); a red `main` is reverted at once by whoever
-  pushed it, then fixed. While GitHub Actions cannot run jobs (#50), the CI of record is the orb watcher
-  `scripts/orb-ci.sh` (an `amp orb service`): it runs the same fast tier on every new head of `main` and of every
-  open PR into `main`, records results on #63, and comments failures on #17 (main) or the PR. Kernel replay, `lake check` and `lake comparator --paranoid` run nightly (`full.yml`)
-  or on demand in an orb with at least 8 GB (`CI=1 scripts/check.sh --full`); dispatching `full.yml` on a branch
-  costs about 45 billed Actions minutes, so keep it for toolchain and Mathlib bumps (#50). A PR is needed only for a trusted-surface change
+  with `git config core.hooksPath scripts/hooks` (`.agents/setup` does it in orbs). No PR; observed main heads run
+  the selected box CI tier; a red `main` is reverted at once by whoever
+  pushed it, then fixed. **GitHub Actions is disabled by owner decision (2026-10-31, #50)** because billing
+  prevents jobs from starting; workflow files remain for reference and reversible re-enablement. Do not create
+  GitHub CI subscriptions, dispatch Actions, or report the known billing failures. **Green CI means the box
+  result on [#63](https://github.com/fradamt-agent/consensus-lean/issues/63)**, not a GitHub check badge.
+  `scripts/orb-ci.sh` runs as systemd user services on `ethlabs-box`, with checks inside `job`: fast tier and
+  review-boundary for observed main/non-draft PR heads, docs-only `--changed`, and full tier nightly, on tags
+  and manually (kernel replay, `lake check`, `lake comparator --paranoid`). Polling can coalesce intermediate
+  heads: ask the box watcher owner to queue an exact SHA when its row is missing. Failures go to #17 or the PR.
+  Request full checks for milestones and toolchain/Mathlib bumps from the box watcher owner; see README
+  "Verification" for manual commands. A PR is needed only for a trusted-surface change
   (below). The commit message (or PR body) ends with a cost line
   (`Cost: <agent-h> agent-h, <models>, <CPU-h> CPU-h`) and states the reason if the change makes build or CI
   time worse.
@@ -54,7 +60,9 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   the `spec-approved` tag covers the PR's head, and it merges after the tag moves. The tag is an **agent
   approval** (owner rule, #2, 2026-10-30): an agent other than the change's author (claude-ethlabs, or the
   amp-orbs coordinator) moves it once the author has done a fidelity read-back (a subagent, in the author's own
-  session) and the fast check is green. The tag message names the PR, the protected files changed against the
+  session) and `check.sh --fast` passes. A boundary-only failure before approval is expected: use the box
+  log's passing fast-tier summary, not an aggregate green #63 row, then check review-boundary after the tag
+  moves and before merge. The tag message names the PR, the protected files changed against the
   previous tag, and the evidence (`docs/spec-review.md`). Nothing waits for the owner.
 - **Check infrastructure** (`scripts/**`, `.github/**`, the lakefile) is not tag-gated; its author is
   responsible for it: a change to what a trust check checks comes with fixtures that show the new verdicts and a

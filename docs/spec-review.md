@@ -606,8 +606,10 @@ mapfile -t protected < <(python3 -I -c 'import tomllib; print("\n".join(tomllib.
 GIT_LITERAL_PATHSPECS=1 git diff spec-approved origin/main -- "${protected[@]}"   # empty while main is covered
 ```
 
-The nightly `full.yml` run on main (`gh run list --workflow full.yml --branch main`) is the correctness
-evidence for the approved surface: kernel replay, `lake check` and `lake comparator --paranoid`.
+The box full-tier result on [#63](https://github.com/fradamt-agent/consensus-lean/issues/63), matched to the
+commit being reviewed, is the correctness evidence: kernel replay, `lake check` and
+`lake comparator --paranoid`. Ask the box watcher owner for an exact-commit run if needed. GitHub Actions
+is disabled (owner decision, 2026-10-31); historical Actions logs below remain historical evidence only.
 
 ## Later changes to the trusted surface
 
@@ -617,10 +619,12 @@ own diff (against its base: the PR's base commit, or the commit a push to main r
 passes, whatever the tag points at; it then warns if the trusted files differ from the tag. Without a usable base
 (a manual run, a force push), the whole trusted surface is compared. The author does a fidelity read-back (a subagent, in the author's own
 session: the Lean read back into prose against the reference, including the `spec-snapshot.txt` diff) and gets
-the fast check green; then an agent other than the author (claude-ethlabs, or the amp-orbs coordinator) checks
+`check.sh --fast` passing on the box. Obtain its passing summary from the watcher log for that PR/head;
+an aggregate #63 failure caused only by the expected pre-approval review boundary is not a fast-tier failure.
+Then an agent other than the author (claude-ethlabs, or the amp-orbs coordinator) checks
 the protected diff below, moves the tag to the PR head with a message naming the PR, the protected files changed
-and the evidence, checks the boundary on the PR's head in seconds (the review-boundary steps of CI's `check` job
-run the same script; re-running that job costs a whole fast-tier run, so do it only when the check log is needed),
+and the evidence, checks the boundary on the PR's head in seconds (the box watcher runs the same script;
+record this post-tag result alongside the fast-tier evidence rather than rerunning disabled Actions),
 and merges:
 
 ```sh
