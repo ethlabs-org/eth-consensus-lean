@@ -179,7 +179,7 @@ theorem outageWindow_prefix_only {Info : Type} [DecidableEq Info] [Countable Inf
   (h V).outageWindow T b₀ b₁ r hv ⟨hT, hs, hη, hc⟩
 
 /-- **P-NV-CONTINUATION.** The weak-continuation premise is inhabited, so the
-weak extras (`weakSafe`, `weakCrossNest`, `weakInclude`, `weakGrow`) are not
+weak extras (`weakSafe`, `weakInclude`, `weakGrow`) are not
 vacuous: the generic healthy witness (everyone awake, five validators) is
 healthy up to the heal point, has the recurrence of `k`, and is sleepy after
 the heal point. -/

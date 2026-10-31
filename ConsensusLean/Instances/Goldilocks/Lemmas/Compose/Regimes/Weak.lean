@@ -7,8 +7,8 @@ public section
 /-! # Goldilocks milestone Regimes: R.6 (weak continuation), assembled over R.3 cut at `T`
 
 `WeakStatements` (`Statements/Regimes/Weak`) from R.3's rows in the form that needs `Healthy` and
-the ready-proposer premise only up to the heal point `T`: the four named open steps
-`healed_safe_until`, `cross_nest_until`, `include_healed_until` and `grow_healed_until`, stated
+the ready-proposer premise only up to the heal point `T`: the three named open steps
+`healed_safe_until`, `include_healed_until` and `grow_healed_until`, stated
 over `WeakPremises` (the healing premises of R.3 cut at `T`, with `Sleepy` at `θ = ½` from `T`).
 This is the recorded gap of R.6 (Statements/Regimes/Weak, "Open proof items"): H.4 and R.3 are
 stated under `Healthy(g)` and `Prop⁺(G_p)` on the whole run, while `Weak` gives them only on
@@ -26,10 +26,10 @@ an entry on that chain or at or below the cut's `fc_root`. Part of the same unti
 ResetExistence's bound on `a` and H.2's drain, both stated under `Healthy(g)` on the whole run and
 used here only up to `T`.
 
-The four open steps keep R.3's conclusions; they differ from R.3 only in the premises (and, for
+The three open steps keep R.3's conclusions; they differ from R.3 only in the premises (and, for
 growth, the proposer recurrence from `T` instead of from `ḡ + 18Δ + 1`, as `WeakGrow`). R.6's rows
-follow: `WeakSafe` and `WeakCrossNest` are the first two; `WeakInclude` is the third for proposals
-at `τ ≥ T + 8Δ ≥ T`; `WeakGrow` is the fourth. -/
+follow: `WeakSafe` is the first; `WeakInclude` is the second for proposals
+at `τ ≥ T + 8Δ ≥ T`; `WeakGrow` is the third. -/
 
 namespace Consensus.Goldilocks.Regimes
 
@@ -43,17 +43,6 @@ theorem healed_safe_until : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.A
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
     GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T →
     ∀ t₁, ReadySafeOn tr H (catchUp sp) T t₁ := by
-  sorry
-
-/-- **R.3 `crossNest` with the premises cut at `T`** (open; the corrected form, #104). -/
-theorem cross_nest_until : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
-    GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T →
-    ∀ t t' x y i j, T ≤ t → t ≤ t' → ReadPoint tr i t → ReadPoint tr j t' → Boundary tr x i →
-      Boundary tr y j → ReadyAt tr H (catchUp sp) x t → ReadyAt tr H (catchUp sp) y t' →
-      (t' = t → Compatible (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t')) ∧
-      (t + sp.Δ ≤ t' → Anc (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t')) := by
   sorry
 
 /-- **R.3 `includeHealed` with the premises cut at `T`** (open): R.3's conclusion for every
@@ -93,9 +82,6 @@ theorem grow_healed_until : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.A
 /-- **R.6, `weakSafe`.** -/
 theorem weak_safe : WeakSafe := healed_safe_until
 
-/-- **R.6, `weakCrossNest`.** -/
-theorem weak_cross_nest : WeakCrossNest := cross_nest_until
-
 /-- **R.6, `weakInclude`**: R.3's inclusion cut at `T`, for proposals at `τ ≥ T + 8Δ`. -/
 theorem weak_include : WeakInclude := by
   intro sp ro dg H tr g ΔF Gp a Tb T hrun hw hu τ P hτ hP y t j ht hy hj
@@ -106,9 +92,9 @@ theorem weak_include : WeakInclude := by
 /-- **R.6, `weakGrow`.** -/
 theorem weak_grow : WeakGrow := grow_healed_until
 
-/-- **Milestone Regimes, the weak-continuation rows (R.6)**, over the four open steps above. -/
+/-- **Milestone Regimes, the weak-continuation rows (R.6)**, over the three open steps above. -/
 theorem weak_statements : WeakStatements :=
-  ⟨weak_safe, weak_cross_nest, weak_include, weak_grow⟩
+  ⟨weak_safe, weak_include, weak_grow⟩
 
 end Consensus.Goldilocks.Regimes
 

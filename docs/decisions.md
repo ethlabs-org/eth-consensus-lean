@@ -69,6 +69,14 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- 2026-10-31, Francesco ([#104](https://github.com/fradamt-agent/consensus-lean/issues/104), revised decision).
+  **Drop cross-node nesting rather than restate it.** Remove Baseline's `crossNest` and `weakCrossNest`,
+  R.3's `CrossNest` and R.6's `WeakCrossNest`, their bundle fields and the open `cross_nest_until` interface.
+  Cross-node compatibility follows from `HealedSafe`/`WeakSafe` plus R.8's `OutputsNested`: a finalized
+  read is below its node's confirmed read, which is compatible with the other ready confirmed read.
+  The same-instant ancestry is false (#104's carrier-delay replay); lagged ancestry is not stated.
+  This owner-approved target change supersedes the earlier decision to restate the Baseline fields in
+  #106's lagged form. It does not change R.4's cross-time growth or R.8's local nesting.
 - 2026-10-31, Francesco ([#107](https://github.com/fradamt-agent/consensus-lean/issues/107)).
   **Delivery-time relay in the generic engine; protocol delay `Δ_p = Δ_e + 1`.** The extra unit absorbs
   only the inclusive engine deadline versus the strict spec deadline (`≤` versus `<`), not relay latency.

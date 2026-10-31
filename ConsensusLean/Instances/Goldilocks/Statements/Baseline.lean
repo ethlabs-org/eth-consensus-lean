@@ -454,13 +454,6 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
       gProg pp .final gf (gReady gst r) ((Sys F V).pt r).horizon r)
     fun r => CrossGrowth r.2 (gc r) gConfirmed gFinalized (gHealFin pp gf gst r)
       (2 * pp.wW gf + 4 * (gf * pp.R))
-  /-- **A4 part / P-GST-CROSS-NEST.** Healthy from `gst` with the recurrence of
-  `k` on `[ready, heal]`: from the heal point, every ready finalized read
-  is a prefix of every ready confirmed read at the same time. -/
-  crossNest : ∀ (k : ℕ+) (gst : Time), (Sys F V).Holds
-    (fun r => (Sys F V).Healthy (goldilocksContract pp) gst r ∧
-      gProg pp .available k (gReady gst r) (gHeal pp k gst r) r)
-    fun r => ReadyNestedFrom r.2 (gc r) gFinalized gConfirmed (gHeal pp k gst r)
   /-- **A2 / P-OUT-AV-SLOW.** Outage times, synchronous for deadlines up to
   `b₀`, η-sleepy on the prefix `[0, b₀]` only, more than half ready at `b₀`,
   and **no** assumption after `b₀` (neither network nor participation:
@@ -480,11 +473,6 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
   safety of the confirmed output from the heal point. -/
   weakSafe : ∀ (k : ℕ+) (gst : Time), (Sys F V).Holds (WeakPremise pp gst k) fun r =>
     (chainTrace r.2).ReadySafe (gc r) gConfirmed (gHeal pp k gst r)
-  /-- **P-WEAK-AV-SAFE, nesting conjunct.** Under the weak-continuation
-  premise: from the heal point, every ready finalized read is a prefix of every
-  ready confirmed read at the same time (`F_x ⪯ S_y`). -/
-  weakCrossNest : ∀ (k : ℕ+) (gst : Time), (Sys F V).Holds (WeakPremise pp gst k) fun r =>
-    ReadyNestedFrom r.2 (gc r) gFinalized gConfirmed (gHeal pp k gst r)
   /-- **P-WEAK-AV-INCLUDE.** Under the weak-continuation premise: every honest
   proposal released at `τ ≥ heal + 2` slots (`8Δ`) by a key ready at `τ` is in
   every ready confirmed read at every `t ∈ [τ + 6Δ, horizon]`. -/

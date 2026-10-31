@@ -42,7 +42,7 @@ exist in `Index.lean`.
 * M17 eventual liveness: scope; every claim has a latency bound (`TxLive` deadline), so eventual-only liveness cannot be expressed; bounded latency implies it when the horizon passes the deadline.
 * M18 adaptive corruption: scope, static adversary.
 * M19 weights / committees: scope, equal weights (`Fintype V`, counts).
-* M20 cross-node nesting: sheet `crossNest`, `liveDC`.
+* M20 cross-node nesting: dropped by owner (#104); compatibility follows from safety and local nesting; sheet `liveDC` retains its cross-time growth claim.
 * M21 recovery fault bound: construction, `HealthyOn.faultsBelow` and `β ≤ α` (`Good.final_safe_healthy`; `m21_healthy_faults_below`, `m21_final_safe_healthy`); test `faulty_third_not_healthy`.
 * M22 instance vs FG-SA: obligations (1)–(12).
 * M23 cover / budget: sheet `budget_implies_V`; cover ½ vs `OutageE`: obligation (4).

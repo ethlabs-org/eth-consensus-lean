@@ -8,7 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 
 Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"L2: regime theorems
 (skeleton)" (main `5f3adb28`), row R.3 (`healedSafe`, `includeHealed`, `growHealed`,
-`crossNest`, `healthyLive` and `confirmed_txLive_healed` for the available output; uses R.1, R.2,
+`healthyLive` and `confirmed_txLive_healed` for the available output; uses R.1, R.2,
 C1.1, H.4; heal point D1), over the Goldilocks run.
 
 **The heal point is a parameter `T` with `T ≥ T_heal`** (H.4's bound, with H.3 (c)'s offset
@@ -30,9 +30,9 @@ catch-up, and `gProg` only on `[gReady, gHeal]` without readiness; bridges B1–
 **Open proof items** (obligations, not premises): the record transfer after the cut (`RecRet`,
 for `HealedSafe`); that a read after all events equals the read after the node's last AC call
 (for `IncludeHealed`, which reads after all events at `t`, while H.4 concludes after AC calls; see
-the mapping, "Reads between AC calls"); and `CrossNest`, which no H node gives (new R.3 work;
-its lagged clause needs the finality cache of `y` to advance on the relayed carrier, through
-`updateFinality`'s gates, consensus-lean#104).
+the mapping, "Reads between AC calls"). Cross-node nesting is dropped by the owner's decision
+(consensus-lean#104): compatibility follows from safety and R.8's local nesting; lagged ancestry
+is not stated.
 
 The transaction rows (`healthyLive`, `confirmed_txLive_healed`) are not stated over the run (no
 transactions there): the Refinement derives them from `IncludeHealed`.
@@ -131,28 +131,11 @@ def GrowHealed : Prop :=
             Anc (tr.HonestBlocks H) (readAfter tr x jx t)
               (readAfter tr y j (t + (4 * k + 6) * sp.Δ))
 
-/-- **R.3, `crossNest`** (heal point `T ≥ T_heal`; corrected, consensus-lean#104). Under the
-healing premises, from `T` on: (1) at one time, the finalized read of every ready node is
-compatible with the confirmed read of every ready node; (2) the finalized read of a node ready at
-`t` is an ancestor of the confirmed read of every node ready at every `t' ≥ t + Δ` (read points
-between the readers' events). Not at the same instant: an honest proposer can finalize by accepting
-its own block, which the others receive up to `Δ` later (#104, model run `crossnest-n10-s388`). -/
-def CrossNest : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
-    GoldilocksRun dg H tr → HealedPremises tr H dg g ΔF Gp a Tb T →
-    ∀ t t' x y i j, T ≤ t → t ≤ t' → ReadPoint tr i t → ReadPoint tr j t' → Boundary tr x i →
-      Boundary tr y j → ReadyAt tr H (catchUp sp) x t → ReadyAt tr H (catchUp sp) y t' →
-      (t' = t → Compatible (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t')) ∧
-      (t + sp.Δ ≤ t' → Anc (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t'))
-
 /-- The healed rows of milestone Regimes (R.3, at a heal point `T ≥ T_heal`). -/
 structure HealedStatements : Prop where
   healedSafe : HealedSafe
   includeHealed : IncludeHealed
   growHealed : GrowHealed
-  crossNest : CrossNest
 
 end Consensus.Goldilocks.Regimes
 

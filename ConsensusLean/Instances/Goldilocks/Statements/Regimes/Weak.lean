@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Healed
 /-! # Goldilocks milestone Regimes: the weak-continuation rows R.6 (statements)
 
 Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"L2: regime theorems
-(skeleton)" (main `5f3adb28`), row R.6 (`weakSafe`, `weakCrossNest`, `weakInclude`, `weakGrow`;
+(skeleton)" (main `5f3adb28`), row R.6 (`weakSafe`, `weakInclude`, `weakGrow`;
 uses R.1–R.3), with the premise `Weak` of the claims' premises table: healthy up to the heal point,
 sleepy after it (the target's `WeakPremise`, with no proposer recurrence after the heal point).
 
@@ -80,20 +80,6 @@ def WeakSafe : Prop :=
     GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T →
     ∀ t₁, ReadySafeOn tr H (catchUp sp) T t₁
 
-/-- **R.6, `weakCrossNest`** (corrected, consensus-lean#104, as R.3's `CrossNest`). Under
-`Weak`, from `T` on: (1) at one time, every ready finalized read is compatible with every ready
-confirmed read; (2) the finalized read of a node ready at `t` is an ancestor of the confirmed read
-of every node ready at every `t' ≥ t + Δ`. -/
-def WeakCrossNest : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
-    GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T →
-    ∀ t t' x y i j, T ≤ t → t ≤ t' → ReadPoint tr i t → ReadPoint tr j t' → Boundary tr x i →
-      Boundary tr y j → ReadyAt tr H (catchUp sp) x t → ReadyAt tr H (catchUp sp) y t' →
-      (t' = t → Compatible (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t')) ∧
-      (t + sp.Δ ≤ t' → Anc (tr.HonestBlocks H) (tr.state x i).fg.F (readAfter tr y j t'))
-
 /-- **R.6, `weakInclude`.** Under `Weak` and unanimity from `T` (H.4's open `(U_all)` form, as
 `IncludeHealed`): every honest proposal released at `τ ≥ T + 8Δ` by a
 proposer ready at `τ` is in the confirmed read of every node ready at `t`, for every
@@ -134,7 +120,6 @@ def WeakGrow : Prop :=
 /-- The weak-continuation rows of milestone Regimes (R.6, at a heal point `T ≥ T_heal`). -/
 structure WeakStatements : Prop where
   weakSafe : WeakSafe
-  weakCrossNest : WeakCrossNest
   weakInclude : WeakInclude
   weakGrow : WeakGrow
 
