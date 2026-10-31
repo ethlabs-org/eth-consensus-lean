@@ -6,9 +6,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Lemmas.Model.Protection
+
+set_option linter.style.longFile 2100
 
 public section
 
@@ -17,6 +21,84 @@ namespace Consensus.Goldilocks.Refinement
 open Blocks Shape Node
 
 variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+
+private theorem contained_parts_infix {n : Nat} {Role Item Body : Type}
+    {o q : Model.Obj n Role Item Body} (h : Model.Obj.Contains o q) :
+    ∃ pre post, o.parts = pre ++ q.parts ++ post := by
+  rcases h.cases with rfl | ⟨c, hc, hcq⟩
+  · exact ⟨[], [], by simp⟩
+  · obtain ⟨pre, post, hp⟩ := contained_parts_infix hcq
+    obtain ⟨before, after, he, _⟩ := List.eq_append_cons_of_mem hc
+    refine ⟨o :: (before.flatMap Model.Obj.parts ++ pre),
+      post ++ after.flatMap Model.Obj.parts, ?_⟩
+    rw [Model.Obj.parts_eq, he, List.flatMap_append, List.flatMap_cons, hp]
+    simp only [List.cons_append, List.append_assoc]
+termination_by sizeOf o
+decreasing_by exact lt_trans (List.sizeOf_lt_of_mem hc) (Model.Obj.carried_size_lt _)
+
+/-- Splitting recursive receipt processing preserves the actual intermediate cut,
+rather than replacing a processing occurrence by an arbitrary historical call. -/
+theorem deliverSeq_append_split {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {hs : List (Header Info × Nat)}
+    {y : Fin sp.n} {t : Time} (xs ys : List (Wire sp.n)) {j j' : Nat}
+    (h : DeliverSeq proposer tr dg hs y t (xs ++ ys) j j') :
+    ∃ m, DeliverSeq proposer tr dg hs y t xs j m ∧
+      DeliverSeq proposer tr dg hs y t ys m j' := by
+  induction xs generalizing j with
+  | nil => exact ⟨j, .nil j, h⟩
+  | cons x xs ih =>
+    cases h with
+    | event e he hg htail =>
+      obtain ⟨m, hl, hr⟩ := ih htail
+      exact ⟨m, .event e he hg hl, hr⟩
+    | drop he htail =>
+      obtain ⟨m, hl, hr⟩ := ih htail
+      exact ⟨m, .drop he hl, hr⟩
+    | noCut e he hz htail =>
+      obtain ⟨m, hl, hr⟩ := ih htail
+      exact ⟨m, .noCut e he hz hl, hr⟩
+
+/-- A forwarding envelope itself has no node handler. -/
+private theorem canonEvent_forward_none (hs : List (Header Info × Nat))
+    (x : Fin sp.n) (t : Time) (p : Option (Wire sp.n)) (B : Blk sp) :
+    canonEvent sp ro hs (forwardObj sp x t p B) = none := by
+  simp [canonEvent, forwardObj, decodeBlock, decodeVoteObj, decodeAttObj]
+
+/-- A forwarding chain processes the exact parent's entire subtree before the
+child's canonical block and payload; the split retains the actual cut boundary. -/
+theorem deliverSeq_forward_parent {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {hs : List (Header Info × Nat)}
+    {y x : Fin sp.n} {u t : Time} {parent : Wire sp.n} {B : Blk sp} {j j' : Nat}
+    (h : DeliverSeq proposer tr dg hs y u
+      (forwardObj sp x t (some parent) B).parts j j') :
+    ∃ m, DeliverSeq proposer tr dg hs y u parent.parts j m ∧
+      DeliverSeq proposer tr dg hs y u (blockObj sp B).parts m j' := by
+  rw [Model.Obj.parts_eq] at h
+  have hz := canonEvent_forward_none (ro := ro) hs x t (some parent) B
+  cases h with
+  | event e he _ _ => rw [hz] at he; cases he
+  | noCut e he _ _ => rw [hz] at he; cases he
+  | drop _ htail =>
+    have ht : DeliverSeq proposer tr dg hs y u
+        (parent.parts ++ (blockObj sp B).parts) j j' := by
+      simpa only [forwardObj, Model.Obj.carried, Option.toList_some, List.cons_append,
+        List.nil_append, List.flatMap_cons, List.flatMap_nil, List.append_nil] using htail
+    exact deliverSeq_append_split _ _ ht
+
+/-- The leaf wrapper processes its genesis-parent child at the same starting cut. -/
+private theorem deliverSeq_forward_genesis {proposer : Nat → Fin sp.n}
+    {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    {hs : List (Header Info × Nat)} {y x : Fin sp.n} {u t : Time} {B : Blk sp} {j j' : Nat}
+    (h : DeliverSeq proposer tr dg hs y u (forwardObj sp x t none B).parts j j') :
+    DeliverSeq proposer tr dg hs y u (blockObj sp B).parts j j' := by
+  rw [Model.Obj.parts_eq] at h
+  have hz := canonEvent_forward_none (ro := ro) hs x t none B
+  cases h with
+  | event e he _ _ => rw [hz] at he; cases he
+  | noCut e he _ _ => rw [hz] at he; cases he
+  | drop _ htail =>
+    simpa only [forwardObj, Model.Obj.carried, Option.toList_none, List.nil_append,
+      List.flatMap_cons, List.flatMap_nil, List.append_nil] using htail
 
 /-- On one coherent ancestor chain, an unheld child above the receiver's finalized
 tip can be attached to its held parent. No agreement between receivers is used. -/
@@ -40,6 +122,145 @@ private theorem receipt_ancestry {n : Nat} {FGP ACP : Type}
         subst Q
         exact Or.inr (((hlocal hFQ hP).mono (Set.subset_insert _ _)).tail
           ⟨Or.inr hP, Or.inl rfl, hparent.2.2⟩)
+
+/-- The observation's receiver guard bounds every earlier receipt cut. Once the
+parent is held, the child is already held or satisfies the receiver's ancestry guard. -/
+theorem receipt_held_or_ancestry {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {r j : Nat} (hrj : r ≤ j)
+    {A P B : Blk sp} (hAB : Anc (tr.HonestBlocks H) A B)
+    (hFB : Anc (tr.HonestBlocks H) (tr.state y j).fg.F B)
+    (hparent : ParentIn (tr.HonestBlocks H) P A)
+    (hP : P ∈ (tr.state y r).fg.tree) :
+    A ∈ (tr.state y r).fg.tree ∨
+      Anc (insert A (tr.state y r).fg.tree) (tr.state y r).fg.F A := by
+  have hF := (Store.cache_invariants sp.toParams (SA.Payload sp.n) _ _
+    (Compose.fg_reachable hrun.toLocalRun hy r)).1
+  exact receipt_ancestry (Compose.honest_blocks_coherent hrun.toLocalRun hnc) hF hAB
+    ((Healing.run_F_mono hrun.toLocalRun hy hrj).trans hFB) hparent hP
+    (fun h hY => Compose.honest_held_anc hrun hnc hy h hY)
+
+/-- The parent state needed by receiver transfer is independent of which honest
+holder supplies it, including holders on opposite sides of a restart. -/
+private theorem receipt_parent_state {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {r s : Nat} {P : Blk sp}
+    (hPy : P ∈ (tr.state y r).fg.tree) (hPx : P ∈ (tr.state x s).fg.tree) :
+    (tr.state y r).fg.σ P.root = (tr.state x s).fg.σ P.root := by
+  have hp (z : Fin sp.n) (hz : z ∈ H) (i : Nat) :
+      tr.projFG.store z i = (tr.state z i).fg := by
+    change (tr.projFG.state z i).1 = _
+    rw [Compose.projFG_state hrun.toLocalRun hz i]
+  rw [← hp y hy r] at hPy ⊢
+  rw [← hp x hx s] at hPx ⊢
+  exact Store.σ_eq_of_held (Compose.projFG_localRun hrun hnc) hy hx hPy hPx
+
+/-- Acceptance records its block in the honest tree at the following cut. -/
+private theorem accepted_mem_succ {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    (hrun : GoldilocksRun proposer dg H tr) {x : Fin sp.n} (hx : x ∈ H)
+    {k : Nat} {B : Blk sp} (ha : tr.AcceptAt x k B) :
+    B ∈ (tr.state x (k + 1)).fg.tree := by
+  rw [tr.state_succ_of_call ha,
+    (Store.tree_grows sp.toParams _ _ _ (Compose.fg_reachable hrun.toLocalRun hx k)).1
+      B _ (hrun.cutLaw x hx k _ ha).2.1]
+  exact Set.mem_insert _ _
+
+/-- A root occupied at an honest receiver is the exact already-accepted source
+block, not merely a wire-equivalent block, under run-wide collision freedom. -/
+private theorem received_root_absent {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {k r : Nat} {B : Blk sp}
+    (ha : tr.AcceptAt x k B) (hnot : B ∉ (tr.state y r).fg.tree) :
+    (tr.state y r).fg.blocks B.root = none := by
+  cases hb : (tr.state y r).fg.blocks B.root with
+  | none => rfl
+  | some C =>
+    have hroot := (Compose.fg_reachable hrun.toLocalRun hy r).blocks_root hb
+    have hC : C ∈ (tr.state y r).fg.tree := by
+      change (tr.state y r).fg.blocks C.root = some C
+      rwa [hroot]
+    have heq := Compose.tree_root_inj hrun.toLocalRun hnc hy hx hC
+      (accepted_mem_succ hrun hx ha) hroot
+    exact False.elim (hnot (heq ▸ hC))
+
+/-- The exact parent of an accepted block was held at its source acceptance cut. -/
+private theorem accepted_parent_held {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {x : Fin sp.n} (hx : x ∈ H) {k : Nat} {B P : Blk sp}
+    (ha : tr.AcceptAt x k B) (hp : B.parent = some P.root)
+    (hP : P ∈ tr.HonestBlocks H) : P ∈ (tr.state x k).fg.tree := by
+  obtain ⟨pr, _, hpr, _, hh, _⟩ := Store.onBlock_eq_some (hrun.cutLaw x hx k _ ha).2.1
+  have heq : pr = P.root := Option.some.inj (hpr.symm.trans hp)
+  obtain ⟨Q, hQ⟩ := Option.isSome_iff_exists.mp hh
+  have hroot := (Compose.fg_reachable hrun.toLocalRun hx k).blocks_root hQ
+  have hQt : Q ∈ (tr.state x k).fg.tree := by
+    change (tr.state x k).fg.blocks Q.root = some Q
+    rwa [hroot]
+  have hQP := (Compose.honest_blocks_coherent hrun.toLocalRun hnc).1
+    ⟨x, hx, k, hQt⟩ hP (hroot.trans heq)
+  exact hQP ▸ hQt
+
+/-- At an earlier receipt cut, a source-accepted ancestor with its parent held is
+already held or passes the receiver store's full acceptance guard. -/
+theorem receipt_held_or_transfer {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {k r j : Nat} (hrj : r ≤ j)
+    {A P B : Blk sp} (ha : tr.AcceptAt x k A)
+    (hAB : Anc (tr.HonestBlocks H) A B)
+    (hFB : Anc (tr.HonestBlocks H) (tr.state y j).fg.F B)
+    (hp : A.parent = some P.root) (hP : P ∈ (tr.state y r).fg.tree) :
+    A ∈ (tr.state y r).fg.tree ∨ ∃ dst', (tr.state y r).fg.onBlock A = some dst' := by
+  have hPu : P ∈ tr.HonestBlocks H := ⟨y, hy, r, hP⟩
+  have hAu : A ∈ tr.HonestBlocks H := ⟨x, hx, k + 1, accepted_mem_succ hrun hx ha⟩
+  rcases receipt_held_or_ancestry hrun hnc hy hrj hAB hFB ⟨hPu, hAu, hp⟩ hP with
+    hheld | hanc
+  · exact Or.inl hheld
+  · by_cases hheld : A ∈ (tr.state y r).fg.tree
+    · exact Or.inl hheld
+    · apply Or.inr
+      have hsrc := (hrun.cutLaw x hx k _ ha).2.1
+      have hstate := receipt_parent_state hrun hnc hx hy hP
+        (accepted_parent_held hrun hnc hx ha hp hPu)
+      exact Store.onBlock_transfer hsrc hp (received_root_absent hrun hnc hx hy ha hheld)
+        (Option.isSome_iff_exists.mpr ⟨P, hP⟩) hstate hanc
+
+/-- A successful store transfer at the exact canonical receipt position yields
+acceptance there; a future-slot empty handler is excluded explicitly. -/
+private theorem deliverSeq_block_accepts {proposer : Nat → Fin sp.n}
+    {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    {hs : List (Header Info × Nat)} {y : Fin sp.n} {u : Time} {B : Blk sp}
+    {os : List (Wire sp.n)} {r e : Nat}
+    (hd : decodeBlock sp hs (blockObj sp B) = some B)
+    (hseq : DeliverSeq proposer tr dg hs y u (blockObj sp B :: os) r e)
+    (ht : ¬ sp.toParams.slotOf u < B.slot)
+    (hon : ∃ dst', (tr.state y r).fg.onBlock B = some dst') :
+    tr.AcceptAt y r B ∧ r < e := by
+  have hc : canonEvent sp ro hs (blockObj sp B) = some (.block B) := by
+    simp only [canonEvent, hd]
+  obtain ⟨dst', hon⟩ := hon
+  cases hseq with
+  | drop h _ => rw [hc] at h; cases h
+  | noCut event h hz _ =>
+    have heq := Option.some.inj (h.symm.trans hc)
+    subst event
+    simp [exec, onBlock, ht, hon] at hz
+  | event event h hg htail =>
+    have heq := Option.some.inj (h.symm.trans hc)
+    subst event
+    have hlen : 0 < (exec proposer dg y (tr.state y r) u (.block B)).2.length := by
+      simp [exec, onBlock, ht, hon]
+    obtain ⟨hn, _, _, _, hl⟩ := hg.2.1 0 hlen
+    have hcall : tr.AcceptAt y r B := by
+      refine ⟨by simpa using hn, ?_⟩
+      simpa [exec, onBlock, ht, hon] using hl
+    have hbound := (deliverSeq_cover htail).1
+    exact ⟨hcall, by omega⟩
 
 /-- Decoding a forwarding envelope identifies its canonical child using the supplied
 digests and bounds the child's slot by the acceptance stamp. -/
@@ -101,6 +322,75 @@ theorem decodeForward_parent_cases {hs : List (Header Info × Nat)} {o : Wire sp
     · simp at h
   · simp at h
 
+/-- Parent-first receipt traversal admits a source-accepted wrapper chain whenever
+the final observation's receiver tip is below its child. Source provenance is kept
+for every nested wrapper, not inferred from a possibly refused receiver call. -/
+theorem forward_receipt_held {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
+    {hs : List (Header Info × Nat)} {u : Time} {j : Nat} {B : Blk sp}
+    (hFB : Anc (tr.HonestBlocks H) (tr.state y j).fg.F B) :
+    ∀ (A : Blk sp) (o : Wire sp.n) (t : Time) (p : Option (Wire sp.n)) (r e : Nat),
+      decodeForward sp hs o = some (x, t, p, A) →
+      DeliverSeq proposer tr dg hs y u o.parts r e → e ≤ j → t ≤ u →
+      Anc (tr.HonestBlocks H) A B →
+      (∀ q tq pq C, Model.Obj.Contains o q →
+        decodeForward sp hs q = some (x, tq, pq, C) → ∃ k, tr.AcceptAt x k C) →
+      A ∈ (tr.state y e).fg.tree := by
+  intro A
+  induction hslot : A.slot using Nat.strong_induction_on generalizing A with
+  | h n ih =>
+    intro o t p r e hd hseq hej htu hAB hsource
+    obtain ⟨k, ha⟩ := hsource o t p A (Model.Obj.Contains.refl _) hd
+    have hre := (deliverSeq_cover hseq).1
+    have child (m : Nat) (P : Blk sp) (hPe : P ∈ (tr.state y m).fg.tree)
+        (hp : A.parent = some P.root)
+        (hchild : DeliverSeq proposer tr dg hs y u (blockObj sp A).parts m e) :
+        A ∈ (tr.state y e).fg.tree := by
+      have hme := (deliverSeq_cover hchild).1
+      rcases receipt_held_or_transfer hrun hnc hx hy (hme.trans hej) ha hAB hFB hp hPe with
+        hheld | hon
+      · exact Compose.tree_mono hrun.toLocalRun hy hme hheld
+      · have htime := (decodeForward_child hd).2.trans htu
+        have hslot' : A.slot ≤ sp.toParams.slotOf u := by
+          apply Nat.le_findGreatest _ htime
+          have hcast := (le_slotTime sp.toParams A.slot).trans htime
+          exact (Int.le_toNat (le_trans (Int.natCast_nonneg _) hcast)).2 hcast
+        rw [Model.Obj.parts_eq] at hchild
+        obtain ⟨hacc, hlt⟩ := deliverSeq_block_accepts (decodeForward_child hd).1 hchild
+          (not_lt.mpr hslot') hon
+        exact Compose.tree_mono hrun.toLocalRun hy (Nat.succ_le_of_lt hlt)
+          (accepted_mem_succ hrun hy hacc)
+    rcases decodeForward_parent_cases hd with ⟨hp, hgen⟩ |
+      ⟨parent, pt, pp, P, hp, hdec, hpar, _, hlt, hpt⟩
+    · subst p
+      have ho := forwardObj_of_decodeForward hs o x t none A hd
+      rw [ho] at hseq
+      apply child r (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)
+      · exact (Store.accepted_tree sp.toParams _ _ _
+          (Compose.fg_reachable hrun.toLocalRun hy r)).2.2.1
+      · exact hgen
+      · exact deliverSeq_forward_genesis hseq
+    · subst p
+      have ho := forwardObj_of_decodeForward hs o x t (some parent) A hd
+      have hc : Model.Obj.Contains o parent := by
+        rw [ho]
+        exact Model.Obj.Contains.step (by simp [forwardObj, Model.Obj.carried])
+          (Model.Obj.Contains.refl _)
+      obtain ⟨kp, hpa⟩ := hsource parent pt pp P hc hdec
+      have hPu : P ∈ tr.HonestBlocks H := ⟨x, hx, kp + 1, accepted_mem_succ hrun hx hpa⟩
+      have hAu : A ∈ tr.HonestBlocks H := ⟨x, hx, k + 1, accepted_mem_succ hrun hx ha⟩
+      have hPB : Anc (tr.HonestBlocks H) P B :=
+        (Relation.ReflTransGen.single ⟨hPu, hAu, hpar⟩).trans hAB
+      rw [ho] at hseq
+      obtain ⟨m, hparent, hchild⟩ := deliverSeq_forward_parent hseq
+      have hme := (deliverSeq_cover hchild).1
+      have hheld := ih P.slot (by omega) P rfl parent pt pp r m hdec hparent
+        (hme.trans hej) (hpt.trans htu) hPB
+        (fun q tq pq C hq hqdec => hsource q tq pq C (hc.trans hq) hqdec)
+      exact child m P hheld hpar hchild
+
 /-- Decoding the same canonical block under two digest tables agrees when they agree
 on that block's header; this is the root-sensitive replacement for wire injectivity. -/
 theorem decodeBlock_transport {hs hs' : List (Header Info × Nat)} {o : Wire sp.n}
@@ -112,6 +402,62 @@ theorem decodeBlock_transport {hs hs' : List (Header Info × Nat)} {o : Wire sp.
   simp only [blockObj] at hd ⊢
   rw [hr]
   exact hd
+
+private theorem decodeForward_time_nonneg {hs : List (Header Info × Nat)} {o : Wire sp.n}
+    {x : Fin sp.n} {t : Time} {p : Option (Wire sp.n)} {B : Blk sp}
+    (h : decodeForward sp hs o = some (x, t, p, B)) : 0 ≤ t := by
+  unfold decodeForward at h
+  split at h
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, _, h⟩ := h
+    split at h
+    · rename_i hp
+      cases h
+      exact hp.2.2.1
+    · simp at h
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, _, ⟨⟨y, pt, pp, A⟩, _, h⟩⟩ := h
+    split at h
+    · rename_i hp
+      cases h
+      exact hp.2.2.2.2.2.2.1
+    · simp at h
+  · simp at h
+
+/-- Forwarding decode is unchanged when both digest tables agree on every
+canonical child carried by the envelope, including its recursive parent chain. -/
+theorem decodeForward_transport {hs hs' : List (Header Info × Nat)} :
+    ∀ (B : Blk sp) (o : Wire sp.n) (x : Fin sp.n) (t : Time) (p : Option (Wire sp.n)),
+      decodeForward sp hs o = some (x, t, p, B) →
+      (∀ C : Blk sp, Model.Obj.Contains o (blockObj sp C) →
+        rootOf hs' (headerOf sp C) = rootOf hs (headerOf sp C)) →
+      decodeForward sp hs' o = some (x, t, p, B) := by
+  intro B
+  induction hslot : B.slot using Nat.strong_induction_on generalizing B with
+  | h n ih =>
+    intro o x t p hd hr
+    have ho := forwardObj_of_decodeForward hs o x t p B hd
+    have hc : Model.Obj.Contains o (blockObj sp B) := by
+      rw [ho]
+      exact Model.Obj.Contains.step (List.mem_append_right _ (List.mem_singleton_self _))
+        (Model.Obj.Contains.refl _)
+    have hb := decodeBlock_transport (decodeForward_child hd).1 (hr B hc)
+    have ht := decodeForward_time_nonneg hd
+    have htime := (decodeForward_child hd).2
+    rcases decodeForward_parent_cases hd with ⟨hp, hg⟩ |
+      ⟨parent, pt, pp, A, hp, hpa, hpar, hng, hlt, hpt⟩
+    · subst p
+      rw [ho]
+      exact decodeForward_genesis hs' x t B hb hg ht htime
+    · subst p
+      have hcp : Model.Obj.Contains o parent := by
+        rw [ho]
+        exact Model.Obj.Contains.step (by simp [forwardObj, Model.Obj.carried])
+          (Model.Obj.Contains.refl _)
+      have hpa' := ih A.slot (by omega) A rfl parent x pt pp hpa
+        (fun C hC => hr C (hcp.trans hC))
+      rw [ho]
+      exact decodeForward_parent hs' x t pt B A parent pp hb hpa' hpar hng hlt hpt ht htime
 
 /-- A durable-map update retains an old wrapper or records this exact acceptance.
 This statement deliberately retains the accepted block, including its root; equality of
@@ -1443,6 +1789,98 @@ theorem simTrace_forwardOrigin (hv : rho.ExecutionValid) :
     · exact delivery_released_forward_acceptance S rho hn hv he ho hd'
   obtain ⟨k, hbound, ha, ht⟩ := hacc
   exact ⟨k, hk ▸ ha, ht, hbound, publication_forward_stamp S rho hn hv r hr hd⟩
+
+/-- Every authenticated wrapper in an actual receipt has a successful source cut
+before that receipt's event boundary, with the exact decoded block and stamp. -/
+theorem received_forward_source_acceptance (hv : rho.ExecutionValid) {i : Nat} {v : V}
+    {receipt o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t u : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (he : rho.events[i]? = some (.deliver v receipt u))
+    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∈ rho.honest)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B)) :
+    ∃ k < cutMap S rho hn i, (simTrace S rho hn).AcceptAt x k B ∧
+      (simTrace S rho hn).time k = t := by
+  have hsign : rho.signerOf o = some (rho.key x) := by
+    change o.signer?.map rho.key = some (rho.key x)
+    rw [decodeForward_signer hd]
+    rfl
+  obtain ⟨j, s, hj, hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hx hsign
+  have hkx : rho.ownKey (rho.key x) = x := rho.key.symm_apply_apply _
+  have hd' := hd
+  rw [← hkx] at hd'
+  have hacc : ∃ k < cutMap S rho hn (j + 1),
+      (simTrace S rho hn).AcceptAt (rho.ownKey (rho.key x)) k B ∧
+      (simTrace S rho hn).time k = t := by
+    rcases hs with hs | ⟨receipt', hs⟩
+    · exact tick_released_forward_acceptance S rho hn hv hs ho hd'
+    · exact delivery_released_forward_acceptance S rho hn hv hs ho hd'
+  obtain ⟨k, hk, ha, ht⟩ := hacc
+  exact ⟨k, hk.trans_le (cutMap_mono S rho hn (Nat.succ_le_of_lt hj)), hkx ▸ ha, ht⟩
+
+omit [DecidableEq V] in
+/-- A nested forwarding parse uses the same digest-backed roots whether decoded
+under its enclosing receipt's digests or its own recursively collected digests. -/
+theorem decodeForward_receipt_iff {receipt o : Wire (Fintype.card V)}
+    {x : Fin (Fintype.card V)} {t : Time} {p : Option (Wire (Fintype.card V))}
+    {B : Blk (S.params (Model.pubOf E) hn)} (hc : Model.Obj.Contains receipt o) :
+    decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash receipt) o =
+      some (x, t, p, B) ↔
+    decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B) := by
+  have roots (C : Blk (S.params (Model.pubOf E) hn))
+      (hC : Model.Obj.Contains o (blockObj _ C)) :
+      rootOf (Model.digests rho.hash o) (headerOf _ C) =
+        rootOf (Model.digests rho.hash receipt) (headerOf _ C) := by
+    rw [rootOf_digests_of_mem S rho o _ (List.mem_filterMap.mpr ⟨_, hC, rfl⟩),
+      rootOf_digests_of_mem S rho receipt _ (List.mem_filterMap.mpr ⟨_, hc.trans hC, rfl⟩)]
+  exact ⟨fun hd => decodeForward_transport B o x t p hd roots,
+    fun hd => decodeForward_transport B o x t p hd (fun C hC => (roots C hC).symm)⟩
+
+/-- An actual honest receiver's historical receipt gives acceptance before the
+observation whenever the observation's finalized tip is below the received block.
+This uses the actual parent-first traversal and source provenance, not a historical
+possibly refused `BlockCallAt`. Previously accepted blocks persist across restart. -/
+theorem received_forward_accepted (hv : rho.ExecutionValid)
+    (hrun : GoldilocksRun (runProposer S rho hn) (digestOf S rho)
+      (honestKeys S rho) (simTrace S rho hn))
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V)}
+    {x : Fin (Fintype.card V)} {u t : Time} {p : Option (Wire (Fintype.card V))}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (he : rho.events[i]? = some (.deliver v receipt u)) (hy : v ∈ rho.honest)
+    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∈ rho.honest)
+    (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B))
+    (hij : cutMap S rho hn (i + 1) ≤ j)
+    (hFB : Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
+      ((simTrace S rho hn).state (rho.ownKey v) j).fg.F B) :
+    ∃ k < j, (simTrace S rho hn).AcceptAt (rho.ownKey v) k B := by
+  have hy' : rho.ownKey v ∈ honestKeys S rho := by
+    change rho.key (rho.ownKey v) ∈ rho.honest
+    simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using hy
+  have hseq := simTrace_deliver S rho hn hv v hy i receipt u he
+  obtain ⟨pre, post, hparts⟩ := contained_parts_infix hc
+  change DeliverSeq (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)
+    _ _ _ _ _ _ receipt.parts _ _ at hseq
+  rw [hparts, List.append_assoc] at hseq
+  obtain ⟨r, _, htail⟩ := deliverSeq_append_split _ _ hseq
+  obtain ⟨e, hsub, hpost⟩ := deliverSeq_append_split _ _ htail
+  have hej := (deliverSeq_cover hpost).1.trans hij
+  have hd' := (decodeForward_receipt_iff S rho hn hc).mpr hd
+  have hsource : ∀ q tq pq C, Model.Obj.Contains o q →
+      decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash receipt) q =
+        some (x, tq, pq, C) → ∃ k, (simTrace S rho hn).AcceptAt x k C := by
+    intro q tq pq C hq hdec
+    obtain ⟨k, _, ha, _⟩ := received_forward_source_acceptance S rho hn hv he (hc.trans hq) hx
+      ((decodeForward_receipt_iff S rho hn (hc.trans hq)).mp hdec)
+    exact ⟨k, ha⟩
+  have hheld := forward_receipt_held hrun hnc hx hy' hFB B o t p r e hd' hsub hej
+    (received_forward_stamp_le S rho hn hv he hc hx hd) .refl hsource
+  rcases Compose.tree_cases hrun.toLocalRun hy' hheld with hgen | ⟨k, hk, ha⟩
+  · have hp := (decodeBlock_wire (decodeForward_child hd).1).2.1
+    exact False.elim (hp (hgen ▸ rfl))
+  · exact ⟨k, hk.trans_le hej, ha⟩
 
 /-- Prior authenticated holdings give a prior receipt call or an own acceptance.
 The receipt alternative deliberately retains refusal as a possibility. -/
