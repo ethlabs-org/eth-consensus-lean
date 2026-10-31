@@ -679,16 +679,14 @@ Modelling choices:
   they are `LiveDC`'s consequences). The finalized read after all events at `t'` is covered because C1.3 concludes at
   every honest call from its deadline and an awake honest node calls again after `t'` (its state between calls is
   that of the next call). The transaction rows are the Refinement's, from `FinalInclude`.
-- **Network model vs the spec's premises** (consensus-lean#92, architecture orb): the engine's delivery is `≤
-  max(a, g) + Δ` and relays an admitted object at the admitting node's next awake tick, where the spec's
-  `Sync`/`GST` ask for processing strictly before `max(τ, w_y) + Δ'` with admission as an instantaneous send. The
-  Refinement's transport from `PSync`/`SyncUntil` to `Sync`/`GST` must absorb the slack (a larger `Δ'`: `Δ` plus a
-  tick, non-strict to strict), or the spec's admission timing changes; the regime statements here keep the spec's
-  premises. Quantified in consensus-lean#107 (owner decision): `PSync g` gives `Sync` with deadlines `+1` time unit
-  for own sends (endpoint) and `+2` for admissions and acceptance relay (relay at the next tick), and no relay at all
-  by an admitter that sleeps from the next tick on (a semantic gap under `Sleepy`/`Outage`, none under `Healthy`
-  after `ḡ`). Recommended there: the protocol runs at `Δ_p ≥ Δ_e + 2` (spec statements unchanged) and a decision on
-  relay across sleep. Not stated as a theorem until then (false as `PSync ⇒ GSTRun` at `Δ_p = Δ_e`).
+- **Network model vs the spec's premises** (consensus-lean#92, #107): the owner chose delivery-time relay in
+  the generic engine and protocol delay `Δ_p = Δ_e + 1`. The engine's inclusive delivery bound (`≤`) becomes
+  the spec's strict processing deadline (`<`) with this one-unit slack; it absorbs only the endpoint, not
+  relay latency. The spec treats admission as an instantaneous send. The model's persistent-relay variants
+  still break R.1 when relay waits for an awake tick or is one unit late, so buffering across sleep or adding
+  relay slack is not the chosen repair. `SyncOn` and `SyncAC` stay unchanged. The Refinement transport from
+  `PSync`/`SyncUntil` to `GSTRun`/`SyncRun` remains to be proved with delivery-time relay and the chosen delay;
+  this decision does not establish `PSync ⇒ GSTRun` at `Δ_p = Δ_e`.
 - **Conflict** is incompatibility inside the honest blocks of the run (`tr.HonestBlocks H`), as in G1.4 and C1.1.
 - **`finalAccountable`** reads "conflicting honest reads convict from their own views" (G1.5: "among the attestations
   included on the chains held by the two readers, taken together") as: some block of each reader's tree at the cut
@@ -751,10 +749,12 @@ Modelling choices (`docs/decisions.md` §"Goldilocks instance", the Refinement e
   of queued bodies is the shape's own, through poll steps; the two leading polls make a proposal carry only
   released objects (the spec has no release step).
 - **Not stated: the network premises' transport.** The engine's `Delivers` bounds a receipt by `max(a, g) + Δ`
-  (`≤`) where the spec requires processing strictly before `max(τ, w_y) + Δ'`, and the spec reads an admission as
-  an instantaneous send (`SendOrAdmitAt`) where the engine relays at the admitting node's next awake tick
-  (`RelayedFrom`). The transport `PSync`/`SyncUntil` → `Sync`/`GST` is quantified in consensus-lean#107 (endpoint
-  `+1`, relay at the next tick `+1`, relay across sleep) and waits for the owner's decision there.
+  (`≤`) where the spec requires processing strictly before `max(τ, w_y) + Δ'`, and reads an admission as an
+  instantaneous send (`SendOrAdmitAt`). The owner decision in consensus-lean#107 is delivery-time relay in the
+  generic engine and `Δ_p = Δ_e + 1`: only the inclusive-to-strict endpoint consumes the extra unit, never
+  relay delay. The transport `PSync`/`SyncUntil` → `GSTRun`/`SyncRun` is still a proof obligation under that
+  choice; `SyncOn` and `SyncAC` are unchanged. The earlier next-tick `+1/+2` analysis is superseded, not a
+  transport theorem.
 - **The proposer selection is the schedule.** The generic skeleton's proposer selection is per slot
   (`proposerSel : Slot → SelSpec n`, consensus-lean#93); the Goldilocks skeleton sets it to the fixed singleton
   `{proposer s}` of the setup's schedule, so a valid run's proposer of a slot is the spec node's own `proposer`

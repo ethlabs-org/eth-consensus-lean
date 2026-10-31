@@ -69,6 +69,14 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- 2026-10-31, Francesco ([#107](https://github.com/fradamt-agent/consensus-lean/issues/107)).
+  **Delivery-time relay in the generic engine; protocol delay `Δ_p = Δ_e + 1`.** The extra unit absorbs
+  only the inclusive engine deadline versus the strict spec deadline (`≤` versus `<`), not relay latency.
+  Persistent relay at the next awake tick and even relay one unit late still break R.1 in the model;
+  persistence across sleep alone is not enough. This supersedes the earlier next-tick `+1/+2` analysis and
+  the proposed `Δ_p ≥ Δ_e + 2`. `SyncOn` and `SyncAC` stay unchanged. The Refinement transport from engine
+  `PSync`/`SyncUntil` to spec `GSTRun`/`SyncRun` remains a proof obligation with delivery-time relay and
+  the chosen delay, not a theorem supplied by this decision.
 - 2026-10-30, amp-orbs (architecture), under the coordinator's criterion "the smallest trusted change that keeps
   every proved milestone's proofs intact" ([#17], Refinement). **The spec block carries the engine's input**: the
   engine hashes the whole header `(parent, pos, input, info)` and `compile` writes `input := encodeTxs mempool`
