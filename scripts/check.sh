@@ -1329,6 +1329,7 @@ if ((no_build)); then build_label+=" (freshness only, --no-build)"; fi
 run_step "0 pins (toolchain + dependencies = scripts/pins.toml)" step_pins
 run_selftest "0 pins self-test (fixtures/pins-*)" selftest_pins
 run_selftest "0 landing cancellation self-test (local Git remotes)" python3 -I scripts/test_push_main.py
+run_selftest "0 box CI parity self-test (local Git remotes)" python3 -I scripts/test_orb_ci.py
 if [[ "$mode" == changed ]] && ((${#BUILD_TARGETS[@]} == 0)); then
   skip_step "1 build" "no Lean module changed"
 else

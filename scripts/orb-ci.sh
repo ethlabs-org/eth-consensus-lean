@@ -15,10 +15,12 @@
 # '--mem 16G --cpus 8 consensus-lean'; each check.sh run is then a box `job`, waited for; unset in an orb).
 # Mode as in ci.yml: docs-only change -> `check.sh --changed <base>`; otherwise `--fast`, with `--selftests` when
 # scripts/ or the build configuration changed and `--canary` when the build configuration changed; then
-# scripts/review-boundary.sh <base> and a clean-tree check. <base>: the previously checked main head (if an
+# scripts/review-boundary.sh --self-test, scripts/review-boundary.sh <base> and a clean-tree check.
+# <base>: the previously checked main head (if an
 # ancestor), or a PR's main.
 # Full tier (as full.yml, unsplit), one run and exit, in its own worktree $ORB_CI_HOME/wt-full, one at a time
-# (a lock): `check.sh --full` on main's head, which fails if a step is skipped or the tree is left dirty; a row
+# (a lock): `check.sh --full` with a cold project build and artifact restoration off, which fails if a step
+# is skipped or the tree is left dirty; a row
 # in the issue, and a #17 comment on failure. `--full nightly`: unless that head already passed a full run;
 # `--full poll` (cheap, every minute, no lock): appends the tag spec-approved's commit to $ORB_CI_HOME/tags-seen
 # when it changed, so a tag that moves twice between full runs is still seen. `--full tag`: one run per commit in
@@ -26,15 +28,38 @@
 # another commit) on the newest commit of main whose trusted files equal the tag's; pending until then
 # (full-tags-pending), dropped after a day; a row on the issue either way ("PASSED earlier" when that commit
 # already passed). `--full now`: main's head, always; `--full sha <commit> [<ref>]`: that commit.
+# Poll also queues milestone*/release* tags (annotated or lightweight) in release-tags-seen; --full tag
+# checks their exact commits, including off-main commits, once per tag/commit pair (full-release-tags).
+# Cold full successes use done-full-cold, so pre-parity warm runs cannot suppress a cold nightly run.
 # ORB_CI_FULL_ENV: extra environment for check.sh --full (e.g. 'REPLAY_JOBS=5').
 set -uo pipefail
 HOME_DIR="${ORB_CI_HOME:-$HOME/orb-ci}"
 if [[ "${1:-} ${2:-}" == "--full poll" ]]; then  # before the copy and gh: runs every minute
-  c="$(git -C "${ORB_CI_REPO:?}" ls-remote origin 'refs/tags/spec-approved^{}' | cut -f1)"
-  [[ -n "$c" ]] || c="$(git -C "$ORB_CI_REPO" ls-remote origin refs/tags/spec-approved | cut -f1)"  # not annotated
-  [[ -z "$c" ]] || [[ "$(tail -n 1 "$HOME_DIR/tags-seen" 2>/dev/null | cut -d' ' -f1)" == "$c" ]] ||
-    echo "$c $(date +%s)" >>"$HOME_DIR/tags-seen"
-  exit 0
+  mkdir -p "$HOME_DIR"
+  # One remote snapshot; peel annotated tags, retaining lightweight tags too.
+  tags="$(git -C "${ORB_CI_REPO:?}" ls-remote origin 'refs/tags/spec-approved*' 'refs/tags/milestone*' 'refs/tags/release*')" || exit 1
+  TAGS="$tags" python3 -I - "$HOME_DIR" <<'PY'
+import os, pathlib, sys, time
+home = pathlib.Path(sys.argv[1])
+tags = dict(line.split()[::-1] for line in os.environ['TAGS'].splitlines())
+for ref in sorted(tags):
+    if ref.endswith('^{}'):
+        continue
+    sha = tags.get(ref + '^{}', tags[ref])
+    if ref == 'refs/tags/spec-approved':
+        path = home / 'tags-seen'
+        lines = path.read_text().splitlines() if path.exists() else []
+        if not lines or lines[-1].split()[0] != sha:
+            with path.open('a') as f:
+                f.write(f'{sha} {int(time.time())}\n')
+    elif ref.startswith(('refs/tags/milestone', 'refs/tags/release')):
+        path = home / 'release-tags-seen'
+        seen = {tuple(line.split()[:2]) for line in path.read_text().splitlines()} if path.exists() else set()
+        if (ref, sha) not in seen:
+            with path.open('a') as f:
+                f.write(f'{ref} {sha} {int(time.time())}\n')
+PY
+  exit $?
 fi
 if [[ "${ORB_CI_COPY:-}" != 1 ]]; then  # run from a copy: the checkout may change under a running script
   mkdir -p "$HOME_DIR"
@@ -42,7 +67,7 @@ if [[ "${ORB_CI_COPY:-}" != 1 ]]; then  # run from a copy: the checkout may chan
   ORB_CI_REPO="${ORB_CI_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" ORB_CI_COPY=1 exec bash "$HOME_DIR/orb-ci.sh" "$@"
 fi
 REPO="$ORB_CI_REPO" WT="$HOME_DIR/wt" WT_PR="$HOME_DIR/wt-pr" LOGS="$HOME_DIR/logs" DONE="$HOME_DIR/done" ISSUE="${ORB_CI_ISSUE:-63}"
-INTERVAL="${ORB_CI_INTERVAL:-600}" FULL_DONE="$HOME_DIR/done-full"
+INTERVAL="${ORB_CI_INTERVAL:-600}" FULL_DONE="$HOME_DIR/done-full-cold"
 [[ "${1:-}" != --full ]] || WT="$HOME_DIR/wt-full"
 SLUG="$(gh repo view "$(git -C "$REPO" remote get-url origin)" --json nameWithOwner -q .nameWithOwner)"
 export PATH="$HOME/.elan/bin:$PATH"
@@ -137,8 +162,9 @@ check() {
       base="$(git rev-parse -q --verify HEAD^1 || true)"
   fi
   if [[ -n "$base" ]]; then
-    paths="$(git diff --no-renames --name-only "$base" HEAD --)"
-    if [[ -n "$paths" ]] && ! grep -qvE '(\.md$|^docs/)' <<<"$paths"; then mode=changed
+    paths="$(git diff --no-renames --ignore-submodules=none --name-only "$base" HEAD --)" || return 1
+    if ! grep -qE '(\.lean$|^scripts/|^\.github/|^lakefile\.toml$|^lake-manifest\.json$|^lean-toolchain$)' <<<"$paths" &&
+       ! grep -qvE '(\.md$|^docs/|^$)' <<<"$paths"; then mode=changed
     else
       grep -qE '^(scripts/|lakefile\.(toml|lean)$|lake-manifest\.json$|lean-toolchain$)' <<<"$paths" && flags+=(--selftests)
       grep -qE '^(lakefile\.(toml|lean)$|lake-manifest\.json$|lean-toolchain$)' <<<"$paths" && flags+=(--canary)
@@ -159,6 +185,9 @@ print("\n".join(tomllib.load(open("scripts/boundaries.toml", "rb"))["checks"]["t
     else
       in_ci scripts/check.sh --fast "${flags[@]}" || rc=1
     fi
+    grep -q "^check.sh: PASSED ($mode mode;" "$lg" || { echo "orb-ci FAIL: missing $mode success summary"; rc=1; }
+    echo "--- review boundary self-test ---"
+    scripts/review-boundary.sh --self-test || { echo "orb-ci FAIL: review boundary self-test"; rc=1; }
     echo "--- review boundary ---"; scripts/review-boundary.sh "$base" || { echo "orb-ci FAIL: review boundary"; rc=1; }
     [[ -z "$(git status --porcelain)" ]] || { echo "orb-ci FAIL: tree not clean"; git status --porcelain; rc=1; }
   } >>"$lg" 2>&1
@@ -238,12 +267,14 @@ full_check() {
   read -ra fenv <<<"${ORB_CI_FULL_ENV:-}"
   {
     echo "orb-ci: $ref at $head, mode full ${fenv[*]}"
-    prune_build
-    in_ci env "${fenv[@]}" scripts/check.sh --full || rc=1
+    # Match full.yml's clean project build, not shared Lake artifact restoration.
+    rm -rf .lake/build
+    in_ci env "${fenv[@]}" LAKE_ARTIFACT_CACHE=false LAKE_RESTORE_ARTIFACTS=false scripts/check.sh --full || rc=1
   } >>"$lg" 2>&1
   # as full.yml: nothing skipped (no sandbox step left out), tree clean
   skipped="$(grep -E 'skipped: no bwrap|^SKIP ' "$lg")"
-  { [[ -z "$skipped" ]] || { echo "orb-ci FAIL: steps skipped"; echo "$skipped"; rc=1; }
+  { grep -qx 'check.sh: ALL CHECKS PASSED' "$lg" || { echo "orb-ci FAIL: missing full success summary"; rc=1; }
+    [[ -z "$skipped" ]] || { echo "orb-ci FAIL: steps skipped"; echo "$skipped"; rc=1; }
     [[ -z "$(git status --porcelain)" ]] || { echo "orb-ci FAIL: tree not clean"; git status --porcelain; rc=1; }
   } >>"$lg" 2>&1
   local secs=$((SECONDS - t0))
@@ -297,6 +328,23 @@ full_pass() {  # full_pass nightly|tag|now|sha <commit> [<ref>]
       head="$(git -C "$REPO" rev-parse -q --verify "${2:-}^{commit}")" || { log "full: no commit '${2:-}'"; return 2; }
       full_check now "${3:-main (full, ${head:0:8})}" "$head" ;;
     tag)  # until a pass handles nothing: tags-seen grows while a run goes on
+      # Release/milestone tags check their exact commit, even when not on main.
+      # They are separate from spec-approved's trusted-surface mapping semantics.
+      touch "$HOME_DIR/release-tags-seen" "$HOME_DIR/full-release-tags"
+      local ref sha observed
+      while read -r ref sha observed; do
+        [[ -n "$ref" && -n "$sha" ]] || continue
+        grep -qxF "$ref $sha" "$HOME_DIR/full-release-tags" && continue
+        git -C "$REPO" cat-file -e "$sha^{commit}" 2>/dev/null ||
+          git -C "$REPO" fetch -q origin "$sha" || { log "full: $ref $sha unavailable; pending"; continue; }
+        if ! git -C "$REPO" cat-file -e "$sha^{commit}" 2>/dev/null; then
+          record "${ref#refs/tags/} (full)" "$sha" --full "**FAILED**: tag does not target a commit"
+          echo "$ref $sha" >>"$HOME_DIR/full-release-tags"
+          continue
+        fi
+        full_check tag "${ref#refs/tags/} (full)" "$sha" || continue
+        echo "$ref $sha" >>"$HOME_DIR/full-release-tags"
+      done <"$HOME_DIR/release-tags-seen"
       local t at tgt again=1
       while ((again)); do
         again=0; : >"$HOME_DIR/full-tags-pending"
