@@ -27,7 +27,7 @@ namespace Consensus.Goldilocks.SA
 
 /-- **H.1, AC healing standalone** (T1 §§2–6). -/
 theorem ac_healing_standalone (sp : SAParams) : ACHealingStandalone (sp := sp) :=
-  fun _ _ _ _ _ _ hrun hdr htriv hheal hcatch _ _ hpH hP hp =>
+  fun _ _ _ _ _ _ _ hrun hdr htriv hheal hcatch _ _ hpH hP hp =>
     ac_healing_standalone_of_parent ⟨⟨hrun, hdr, hheal, hcatch⟩, htriv⟩ hpH hP hp
 
 /-- **H.1 gives its corollary**: for `t ≥ ḡ + 2Θ + 8Δ`, `Prop(G_p)` gives a slot `p` with an
@@ -36,8 +36,8 @@ after `ḡ`), so `ac_proposal` returns a payload and `Driven (b)` gives the hone
 H.1 at `P` holds from `t_p + 6Δ ≤ t + G_p + 6Δ`. -/
 theorem corollary_of_standalone (sp : SAParams) (h : ACHealingStandalone (sp := sp)) :
     ACHealingStandaloneCorollary (sp := sp) := by
-  intro FGP ro H U tr g Gp hrun hdr htriv hheal hcatch hprop t ht
-  have hS : StandaloneRun tr H U g := ⟨⟨hrun, hdr, hheal, hcatch⟩, htriv⟩
+  intro FGP ro H U tr proposer g Gp hrun hdr htriv hheal hcatch hprop t ht
+  have hS : StandaloneRun tr H U proposer g := ⟨⟨hrun, hdr, hheal, hcatch⟩, htriv⟩
   have hΘ := Θ_nonneg sp
   have hΔ := sp.toParams.hΔ
   obtain ⟨p, hp1, htp, htpG, hpH⟩ := hprop t (by linarith [gbar_nonneg g])
@@ -50,13 +50,13 @@ theorem corollary_of_standalone (sp : SAParams) (h : ACHealingStandalone (sp := 
     (hS.awake hpH (by linarith)) (hS.joinedAt hpH hj)
   have hjs := hS.joined_state hpH k (by rw [htk]; exact hj)
   obtain ⟨d, pay, hdp⟩ : ∃ d pay,
-      (acProposal sp (tr.state (sp.toParams.proposer p) k) ℓ.frame (tr.time k)).2 =
+      (acProposal sp (tr.state (proposer p) k) ℓ.frame (tr.time k)).2 =
         some (d, pay) := by
     unfold acProposal
     simp only [hjs, not_true_eq_false, ↓reduceIte]
     exact ⟨_, _, rfl⟩
   obtain ⟨P, hP⟩ := himp ⟨pay, hc, hcall, d, hdp⟩
-  obtain ⟨-, hii⟩ := h FGP ro H U tr g hrun hdr htriv hheal hcatch p P hpH hP hgp
+  obtain ⟨-, hii⟩ := h FGP ro H U tr proposer g hrun hdr htriv hheal hcatch p P hpH hP hgp
   refine ⟨p, P, htp, htpG, hP, fun y hy j ℓ' hc' htj htick =>
     hii y hy j ℓ' hc' (by linarith) fun heq => htick (by linarith)⟩
 

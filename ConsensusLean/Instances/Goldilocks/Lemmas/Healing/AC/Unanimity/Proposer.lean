@@ -18,7 +18,7 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {p : Nat} {P : Blk sp.n FGP}
   {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)} {d : DutyHead sp.n FGP (Payload sp.n)}
-  {pay : Payload sp.n}
+  {pay : Payload sp.n} {schedule : Nat → Fin sp.n}
 
 /-- A nonempty set of blocks of the tree has a best block for any score. -/
 private theorem exists_isBest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set (Blk sp.n FGP)}
@@ -48,7 +48,7 @@ private theorem getAnchor_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SAStat
     · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.fcRoot_mem
 
 /-- **The canonical walk from the proposal's anchor ends at `P`**, through `d.head`. -/
-theorem proposal_walkEnd (hs : UnanimitySetting tr H U g p P k ℓp d pay) :
+theorem proposal_walkEnd (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
     WalkEnd (insert P (ℓp.frame.viableTree ℓp.frame.tree))
         (goldfishScore sp ℓp.frame (View.ofLists pay) ((p : Int) - 1))
         (goldfishEligible sp ℓp.frame (sp.ts p) (View.ofLists pay) ((p : Int) - 1)) d.start P ∧
@@ -65,7 +65,7 @@ theorem proposal_walkEnd (hs : UnanimitySetting tr H U g p P k ℓp d pay) :
   split_ifs at hpay
   simp only [Option.some.injEq, Prod.mk.injEq, hslot] at hpay
   obtain ⟨hd, rfl⟩ := hpay
-  set V := View.ofLists (voteViewList (tr.state (sp.toParams.proposer p) k) ℓp.frame
+  set V := View.ofLists (voteViewList (tr.state (schedule p) k) ℓp.frame
     ((p : Int) - 1) ⊤)
   set T := ℓp.frame.viableTree ℓp.frame.tree
   set sc := goldfishScore sp ℓp.frame V ((p : Int) - 1)

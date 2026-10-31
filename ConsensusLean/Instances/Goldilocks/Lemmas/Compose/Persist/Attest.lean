@@ -19,6 +19,7 @@ open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
   {H : Set (Fin sp.n)} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+  {proposer : Nat → Fin sp.n}
 
 /-! ### The attestation's target -/
 
@@ -40,13 +41,14 @@ theorem createAtt_T {Λ : FG.Record} {v : Fin sp.n} {σe : FG.ChainState sp.n} {
       exact hp.2.1.symm
 
 /-- An honest signing is at a public time (it is a cut of a tick, C0.5 (c)). -/
-theorem sign_public (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+theorem sign_public (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
     (hc : tr.CallAt y j (.fg (.attest C (some a)))) : sp.toParams.IsPublic (tr.time j) := by
   obtain ⟨j₀, e, k, hg, -, hk⟩ := call_in_group hrun.toLocalRun hy hc
-  have hm : Cut.fg (.attest C (some a)) ∈ (Node.exec dg y (tr.state y j₀) (tr.time j) e).2 :=
+  have hm : Cut.fg (.attest C (some a)) ∈
+      (Node.exec proposer dg y (tr.state y j₀) (tr.time j) e).2 :=
     List.mem_of_getElem? hk
-  obtain ⟨xt, he⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp ro) dg y
+  obtain ⟨xt, he⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp ro) proposer dg y
     (tr.state y j₀) (tr.time j) e C a hm
   subst he
   exact hrun.tick_public y hy j₀ (tr.time j) ⟨xt, hg⟩
@@ -56,7 +58,7 @@ variable {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat} {B : SA.Blk sp.n (List (FG
 
 /-- `f < n/2` under C1.1's premises: an honest vote of slot `s + 1` exists (half of the
 committee votes honestly) and `f < h_t` holds at its time. -/
-theorem faulty_lt_half (hrun : GoldilocksRun dg H tr)
+theorem faulty_lt_half (hrun : GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) : 2 * Hᶜ.ncard < sp.n := by
   have hn : 0 < sp.n := Fin.pos x
   have hhalf := hp.halfCommittee (s + 1) (by omega) hp.lt
@@ -67,7 +69,7 @@ theorem faulty_lt_half (hrun : GoldilocksRun dg H tr)
       Set.eq_empty_of_forall_notMem fun z ⟨hz, j, e', h, h'⟩ => hno ⟨z, hz, j, e', h, h'⟩
     rw [this, Set.ncard_empty] at hhalf
     omega
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hp.noColl).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl).localRun
   obtain ⟨ℓz, hcz, hez⟩ := hv
   have hle := (cast_head_fcRoot hr hz ⟨hcz, hez⟩).2
   have hts : sp.ts ez.msg.slot ≤ tr.time jz :=
@@ -110,7 +112,7 @@ theorem acOnTick_votes {FGP : Type} {ro' : ReplayOrder sp FGP} (self : Fin sp.n)
 /-- **An honest vote of slot `s + 1` before an `ac_to_fg` call after `t_{s+1} + Δ`, or a restart
 after `t_s`** (claims A1.9's case split, discharged by C0.4: a node that does not restart after
 `t_s` is awake and joined at `t_{s+1} + Δ`, ticks there and votes). -/
-theorem vote_or_restart (hrun : GoldilocksRun dg H tr)
+theorem vote_or_restart (hrun : GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hto : SA.ToFGAt tr.projAC y i ℓ C) (ht : sp.ts (s + 1 : Nat) + sp.Δ < tr.time i) :
@@ -119,7 +121,7 @@ theorem vote_or_restart (hrun : GoldilocksRun dg H tr)
   by_cases hres : ∃ k < i, tr.projAC.RestartAt y k ∧ sp.ts s < tr.time k
   · exact Or.inr hres
   left
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hp.noColl).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl).localRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hlocal := hrun.toLocalRun
   set u := sp.ts (s + 1 : Nat) + sp.Δ with hu
@@ -151,16 +153,16 @@ theorem vote_or_restart (hrun : GoldilocksRun dg H tr)
     ⟨4 * (s + 1 : Nat) + 1, by simp only [hu, SA.SAParams.ts]; ring⟩
   obtain ⟨j₀, xt, hj₀⟩ := hlocal.tick_of_awake y hy u hu0 hpub hawake
   obtain ⟨ℓt, pc, uc, hlt, hcs, -, -⟩ :=
-    @tick_order sp.toParams (goldilocksNode sp ro) dg y (tr.state y j₀) u xt
-  have hlen : 0 < (Node.exec dg y (tr.state y j₀) u (.tick xt)).2.length := by
-    change 0 < (Node.onTick dg y (tr.state y j₀) u xt).2.length
+    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y (tr.state y j₀) u xt
+  have hlen : 0 < (Node.exec proposer dg y (tr.state y j₀) u (.tick xt)).2.length := by
+    change 0 < (Node.onTick proposer dg y (tr.state y j₀) u xt).2.length
     rw [hcs]; simp
   obtain ⟨hn₀, ht₀, -, -, hl₀⟩ := hj₀.2.1 0 hlen
   have hct : tr.CallAt y j₀ (.ac ℓt) := by
     refine ⟨hn₀, ?_⟩
     simp only [Nat.add_zero] at hl₀
     rw [hl₀]
-    change some (Node.onTick dg y (tr.state y j₀) u xt).2[0] = _
+    change some (Node.onTick proposer dg y (tr.state y j₀) u xt).2[0] = _
     simp [hcs]
   simp only [Nat.add_zero] at ht₀
   have hj₀i : j₀ < i := by
@@ -202,7 +204,7 @@ theorem vote_or_restart (hrun : GoldilocksRun dg H tr)
     cases hkr
   have hjoined : SA.joined sp A u := by
     rw [hA, projAC_state hlocal hy]
-    exact ((joined_projection sp ro dg H tr hrun y hy u).2.1 j₀ ⟨_, hct⟩ hnr ht₀).mp hjr
+    exact ((joined_projection sp ro dg H tr proposer hrun y hy u).2.1 j₀ ⟨_, hct⟩ hnr ht₀).mp hjr
   have hexec := hr.exec j₀ ℓt hpt.2 (hpt.1 ▸ hy)
   rw [hpt.1, hlt] at hexec
   have hne := acOnTick_votes (ro' := ro) y A ℓt.frame hjoined (by rw [hslot]; exact hvs)
@@ -215,7 +217,7 @@ theorem vote_or_restart (hrun : GoldilocksRun dg H tr)
 
 /-- **C1.1's attestation step.** An honest attestation signed at a time in
 `(t_{s+1} + Δ, t_m + Δ]`, with the invariant at every earlier cut, names no excluded entry. -/
-theorem attest_not_excluded (hrun : GoldilocksRun dg H tr)
+theorem attest_not_excluded (hrun : GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) {v : Fin sp.n} (hv : v ∈ H) {j : Nat}
     {a : FG.Att sp.n} (hs : tr.SignAt v j a) (hT₀ : sp.ts (s + 1 : Nat) + sp.Δ < tr.time j)
     (hTm : tr.time j ≤ sp.ts m + sp.Δ)
@@ -224,7 +226,7 @@ theorem attest_not_excluded (hrun : GoldilocksRun dg H tr)
   obtain ⟨C, hcall⟩ := hs
   have hpub := sign_public hrun hv hcall
   obtain ⟨j', rfl, ℓ, hc', hto, htime, hC, hfgeq⟩ := attest_source hrun.toLocalRun hv hcall
-  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hp.noColl
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl
   have hr := hrun'.localRun
   have hU := hr.coherent
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
@@ -269,14 +271,14 @@ theorem attest_not_excluded (hrun : GoldilocksRun dg H tr)
     rw [hsl] at hts
     exact ⟨i, hi, ℓ', e, hce, hsl, hframe i hi.le ℓ' hce.1 (by linarith)⟩
   have hsync := syncAC_mono (sync_projection sp.toParams (goldilocksNode sp ro) dg H
-    (fun v => v.val) tr ΔF (sp.ts s) (sp.ts m + sp.Δ) hrun.toLocalRun hp.sync) le_rfl
+    (fun v => v.val) tr proposer ΔF (sp.ts s) (sp.ts m + sp.Δ) hrun.toLocalRun hp.sync) le_rfl
     (by linarith : sp.ts (s + 1 : Nat) + sp.Δ ≤ sp.ts m + sp.Δ)
   obtain ⟨ℓw, D, hcw, hflD, hBD⟩ := hp.fastLock
   have hΦwU : ℓw.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hr.frameLaw x hp.writer_honest i₀ ℓw hcw with
       ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
   have hCB : Compatible (tr.HonestBlocks H) C B :=
-    SA.source_compatible_stored sp _ ro H _ tr.projAC hrun' s m x v i₀ j' B D CV ℓ C
+    SA.source_compatible_stored sp _ ro proposer H _ tr.projAC hrun' s m x v i₀ j' B D CV ℓ C
       hp.writer_honest hflD (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hsync
       hp.carry (faulty_lt_half hrun hp) hv hToFG
       (htime ▸ hpub) hlo hhi

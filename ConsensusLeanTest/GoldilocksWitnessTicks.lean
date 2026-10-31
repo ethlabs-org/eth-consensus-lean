@@ -729,16 +729,20 @@ theorem good_frame {st : NodeState N1} {t : Nat} (h : Good st t) :
     ∃ f, ChainFrame (Node.frame st) f (jexp (tip t)) (tip t) := fgGood_frame h.fg
 
 theorem onTick_eq' (st : NodeState N1) (t : Time) (x : Nat) :
-    Node.onTick dg1 v0 st t x =
-      ((tickStep dg1 v0 (tickStep dg1 v0 (tickStep dg1 v0 st t x .acTick).1 t x .proposal).1 t x
+    Node.onTick (fun _ => v0) dg1 v0 st t x =
+      ((tickStep (fun _ => v0) dg1 v0 (tickStep (fun _ => v0) dg1 v0
+        (tickStep (fun _ => v0) dg1 v0 st t x .acTick).1 t x .proposal).1 t x
         .fgUpdate).1,
-       (tickStep dg1 v0 st t x .acTick).2 ++
-        (tickStep dg1 v0 (tickStep dg1 v0 st t x .acTick).1 t x .proposal).2 ++
-        (tickStep dg1 v0 (tickStep dg1 v0 (tickStep dg1 v0 st t x .acTick).1 t x .proposal).1 t x
+       (tickStep (fun _ => v0) dg1 v0 st t x .acTick).2 ++
+        (tickStep (fun _ => v0) dg1 v0
+          (tickStep (fun _ => v0) dg1 v0 st t x .acTick).1 t x .proposal).2 ++
+        (tickStep (fun _ => v0) dg1 v0 (tickStep (fun _ => v0) dg1 v0
+          (tickStep (fun _ => v0) dg1 v0 st t x .acTick).1 t x .proposal).1 t x
           .fgUpdate).2) := by
   simp [Node.onTick, runSteps, tickSteps]
 
-theorem proposes_iff (n : Nat) : Node.Proposes (v0 : Fin sp1.n) (n : Int) ↔ n % 4 = 0 ∧ 4 ≤ n := by
+theorem proposes_iff (n : Nat) :
+    Node.Proposes (fun _ => v0) (v0 : Fin sp1.n) (n : Int) ↔ n % 4 = 0 ∧ 4 ≤ n := by
   unfold Node.Proposes
   rw [show sp1.toParams.slotOf (n : Int) = n / 4 from slotOf_nat n]
   change 0 < n / 4 ∧ (n : Int) = 4 * ((n / 4 : Nat) : Int) ∧ _ ↔ _
@@ -747,12 +751,13 @@ theorem proposes_iff (n : Nat) : Node.Proposes (v0 : Fin sp1.n) (n : Int) ↔ n 
   · rintro ⟨h1, h2⟩; exact ⟨by omega, by omega, Subsingleton.elim _ _⟩
 
 theorem tickStep_proposal_no {st : NodeState N1} {n : Nat} (h : ¬ (n % 4 = 0 ∧ 4 ≤ n)) (x : Nat) :
-    tickStep dg1 v0 st (n : Int) x .proposal = (st, []) := by
+    tickStep (fun _ => v0) dg1 v0 st (n : Int) x .proposal = (st, []) := by
   simp only [tickStep]
   rw [ite_neg (fun hp => h ((proposes_iff n).1 hp))]
 
 theorem tickStep_fgUpdate_none {st : NodeState N1} {t : Nat} (hg : Good st t) (n : Nat) (x : Nat) :
-    tickStep dg1 v0 st (n : Int) x .fgUpdate = (st, [.ac ⟨.toFG, Node.frame st, []⟩]) := by
+    tickStep (fun _ => v0) dg1 v0 st (n : Int) x .fgUpdate =
+      (st, [.ac ⟨.toFG, Node.frame st, []⟩]) := by
   obtain ⟨f, hf⟩ := good_frame hg
   obtain ⟨h1, h2⟩ := acToFG_none hf hg.ac.reported (n : Int)
   simp only [tickStep, Node.acToFG]
@@ -781,7 +786,8 @@ theorem good_of_same {st st' : NodeState N1} {t : Nat} (h : Good st t) (hfg : st
 
 theorem tickStep_fgUpdate_none' {st : NodeState N1} {f j τ : Nat}
     (hf : ChainFrame (Node.frame st) f j τ) (hrep : st.ac.fgReported = (blk τ).root) (n x : Nat) :
-    tickStep dg1 v0 st (n : Int) x .fgUpdate = (st, [.ac ⟨.toFG, Node.frame st, []⟩]) := by
+    tickStep (fun _ => v0) dg1 v0 st (n : Int) x .fgUpdate =
+      (st, [.ac ⟨.toFG, Node.frame st, []⟩]) := by
   obtain ⟨h1, h2⟩ := acToFG_none hf hrep (n : Int)
   simp only [tickStep, Node.acToFG]
   split
@@ -791,7 +797,8 @@ theorem tickStep_fgUpdate_none' {st : NodeState N1} {f j τ : Nat}
     exact absurd (heq.symm.trans h2) (by simp)
 
 theorem tickStep_acTick (st : NodeState N1) (t : Time) (x : Nat) :
-    tickStep dg1 v0 st t x .acTick = ({ st with ac := (acOnTick sp1 v0 st.ac (Node.frame st) t).1 },
+    tickStep (fun _ => v0) dg1 v0 st t x .acTick =
+      ({ st with ac := (acOnTick sp1 v0 st.ac (Node.frame st) t).1 },
       [.ac ⟨.tick, Node.frame st, (acOnTick sp1 v0 st.ac (Node.frame st) t).2⟩]) := rfl
 
 theorem tip_of_mod1 {n : Nat} (h : n % 4 = 1) : tip n = n / 4 := by unfold tip; omega
@@ -799,7 +806,7 @@ theorem tip_of_mod1 {n : Nat} (h : n % 4 = 1) : tip n = n / 4 := by unfold tip; 
 /-- A tick with nothing to do. -/
 theorem tick_noop {st : NodeState N1} {n : Nat} (hg : Good st n) (h1 : n ≠ 1)
     (hA : ¬ (n % 4 = 0 ∧ 4 ≤ n)) (hC : ¬ (n % 4 = 2 ∧ 4 ≤ n)) :
-    Node.onTick dg1 v0 st (n : Int) 0 =
+    Node.onTick (fun _ => v0) dg1 v0 st (n : Int) 0 =
       (st, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩]) ∧ Good st (n + 1) := by
   obtain ⟨f, hf⟩ := good_frame hg
   have hstep : acOnTick sp1 v0 st.ac (Node.frame st) n = (st.ac, []) := by
@@ -817,7 +824,7 @@ theorem tick_noop {st : NodeState N1} {n : Nat} (hg : Good st n) (h1 : n ≠ 1)
 
 /-- The tick of `t_s + 2Δ`: the confirmation update of slot `s − 1`. -/
 theorem tick_C {st : NodeState N1} {n : Nat} (hg : Good st n) (hC : n % 4 = 2 ∧ 4 ≤ n) :
-    ∃ A', Node.onTick dg1 v0 st (n : Int) 0 =
+    ∃ A', Node.onTick (fun _ => v0) dg1 v0 st (n : Int) 0 =
       ({ st with ac := A' }, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩]) ∧
       Good { st with ac := A' } (n + 1) := by
   obtain ⟨f, hf⟩ := good_frame hg
@@ -847,7 +854,7 @@ theorem tick_C {st : NodeState N1} {n : Nat} (hg : Good st n) (hC : n % 4 = 2 �
 
 /-- The tick of time `1`: the vote of slot `0`. -/
 theorem tick_B0 {st : NodeState N1} (hg : Good st 1) :
-    ∃ A' e, Node.onTick dg1 v0 st ((1 : Nat) : Int) 0 =
+    ∃ A' e, Node.onTick (fun _ => v0) dg1 v0 st ((1 : Nat) : Int) 0 =
       ({ st with ac := A' }, [.ac ⟨.tick, Node.frame st, [e]⟩, .ac ⟨.toFG, Node.frame st, []⟩]) ∧
       e.msg = cv 0 ∧ e.readPoint.pool = st.ac.pool ∧ Good { st with ac := A' } 2 := by
   obtain ⟨f, hf⟩ := good_frame hg
@@ -909,7 +916,7 @@ theorem tip_A1 (k : Nat) : tip (4 * (k + 1) + 1) = k + 1 := by unfold tip; omega
 vote of slot `k + 1` with its fast lock, and the attestation of slot `k + 1`. -/
 theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
     ∃ fg' e st', st.fg.onBlock (blk (k + 1)) = some fg' ∧ FGGood fg' (k + 1) ∧
-      Node.onTick dg1 v0 st ((4 * (k + 1) : Nat) : Int) 0 =
+      Node.onTick (fun _ => v0) dg1 v0 st ((4 * (k + 1) : Nat) : Int) 0 =
         (st', [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.proposal, Node.frame st, []⟩,
           .fg (.block (blk (k + 1)) true), .ac ⟨.block (blk (k + 1)), fg'.toFrame, [e]⟩,
           .ac ⟨.toFG, fg'.toFrame, []⟩, .fg (.attest (blk (k + 1)) (some (att (k + 1)))),
@@ -949,9 +956,9 @@ theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
   have hmk := mkBlock_tick hfg hatts
   have hslot : ¬ sp1.toParams.slotOf ((t : Nat) : Int) < (blk (k + 1)).slot := by
     rw [slotOf_nat, blk_slot]; omega
-  have hP : Node.Proposes (v0 : Fin sp1.n) ((t : Nat) : Int) :=
+  have hP : Node.Proposes (fun _ => v0) (v0 : Fin sp1.n) ((t : Nat) : Int) :=
     (proposes_iff t).2 ⟨by omega, by omega⟩
-  have s2 : tickStep dg1 v0 st (t : Int) 0 .proposal = (⟨fg', A₃, st.record⟩,
+  have s2 : tickStep (fun _ => v0) dg1 v0 st (t : Int) 0 .proposal = (⟨fg', A₃, st.record⟩,
       [.ac ⟨.proposal, Node.frame st, []⟩, .fg (.block (blk (k + 1)) true),
         .ac ⟨.block (blk (k + 1)), fg'.toFrame, [e]⟩]) := by
     simp only [tickStep, ite_pos hP, Node.acProposal, Node.frame]
@@ -967,7 +974,7 @@ theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
     dsimp only at hblk
     dsimp only [ACInterface.step]
     rw [hblk]
-  have s3 : tickStep dg1 v0 ⟨fg', A₃, st.record⟩ (t : Int) 0 .fgUpdate =
+  have s3 : tickStep (fun _ => v0) dg1 v0 ⟨fg', A₃, st.record⟩ (t : Int) 0 .fgUpdate =
       (⟨fg'.onAttestation (att (k + 1)), { A₃ with fgReported := (blk (k + 1)).root }, Λ'⟩,
         [.ac ⟨.toFG, fg'.toFrame, []⟩, .fg (.attest (blk (k + 1)) (some (att (k + 1)))),
           .fg (.attestation (att (k + 1)))]) := by

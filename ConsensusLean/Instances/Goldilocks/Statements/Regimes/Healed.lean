@@ -51,34 +51,36 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **Unanimity from `T`** (the `(U_all)` form of H.4 (iii), used through H.4 (i)): every honest
 proposal of a slot `p` with `t_p ≥ T` has all honest votes of its slot. -/
-def UnanimousFrom (T : Time) : Prop :=
-  ∀ (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))), HonestProposalRun tr H p P → T ≤ sp.ts p →
+def UnanimousFrom (proposer : Nat → Fin sp.n) (T : Time) : Prop :=
+  ∀ (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
+    HonestProposalRun tr H proposer p P → T ≤ sp.ts p →
     Unanimous tr H p P
 
 /-- **Unanimity within `B` from `T`** (the `(U_B)` form of H.4 (ii), used through H.4 (i)): for
 every `t ≥ T` there is an honest proposal of a slot `p` with `t ≤ t_p ≤ t + B` that has all honest
 votes of its slot. -/
-def UnanimousWithin (T B : Time) : Prop :=
+def UnanimousWithin (proposer : Nat → Fin sp.n) (T B : Time) : Prop :=
   ∀ t, T ≤ t → ∃ (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))), t ≤ sp.ts p ∧
-    sp.ts p ≤ t + B ∧ HonestProposalRun tr H p P ∧ Unanimous tr H p P
+    sp.ts p ≤ t + B ∧ HonestProposalRun tr H proposer p P ∧ Unanimous tr H p P
 
 /-- The healing premises of R.3 with heal point `T`: H.4's premises (`HSShared`, `Catch(2Δ)`,
 `Prop⁺(G_p)`), the reset `a` (HR.1), H.3 (c)'s bridge for `a` and an offset `T_b ≥ 0` (a named
 hypothesis: open in the claims), and `T ≥ T_heal`. -/
-structure HealedPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp a Tb T : Time) :
+structure HealedPremises (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp a Tb T : Time) :
     Prop where
   /-- The HS shared premises, with `Healthy(g)`. -/
   shared : HSShared tr H dg g ΔF
   /-- `Catch(2Δ)`. -/
   catchPremise : CatchRun tr H g (2 * sp.Δ)
   /-- `Prop⁺(G_p)`. -/
-  prop : PropPlus tr H g Gp
+  prop : PropPlus tr H proposer g Gp
   /-- `a` is the reset `a_z`. -/
   reset : IsReset tr H g a
   /-- `T_b ≥ 0`. -/
   offset : 0 ≤ Tb
   /-- H.3 (c)'s bridge for the reset and `T_b` (named hypothesis). -/
-  bridge : BridgeAt tr H g a Tb
+  bridge : BridgeAt tr H proposer g a Tb
   /-- The heal point is at or after `T_heal`. -/
   late : T_heal sp g ΔF Gp Tb ≤ T
 
@@ -88,9 +90,10 @@ end Defs
 of the confirmed output at every read point from `T` on (catch-up `18Δ`). -/
 def HealedSafe : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
-    GoldilocksRun dg H tr → HealedPremises tr H dg g ΔF Gp a Tb T →
+    GoldilocksRun proposer dg H tr → HealedPremises tr H proposer dg g ΔF Gp a Tb T →
     ∀ t₁, ReadySafeOn tr H (catchUp sp) T t₁
 
 /-- **R.3, `includeHealed`** (heal point `T ≥ T_heal`). Under the healing premises and `(U_all)`
@@ -98,9 +101,11 @@ from `T`: every honest proposal released at `τ ≥ T` by a proposer ready at `�
 read of every node ready at `t`, for every `t ≥ τ + 6Δ`. -/
 def IncludeHealed : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
-    GoldilocksRun dg H tr → HealedPremises tr H dg g ΔF Gp a Tb T → UnanimousFrom tr H T →
+    GoldilocksRun proposer dg H tr → HealedPremises tr H proposer dg g ΔF Gp a Tb T →
+    UnanimousFrom tr H proposer T →
     ∀ τ P, T ≤ τ → ReadyProposalAt tr H (catchUp sp) τ P →
       ∀ y t j, τ + 6 * sp.Δ ≤ t → ReadyAt tr H (catchUp sp) y t → CutAfter tr j t →
         Anc (tr.HonestBlocks H) P (readAfter tr y j t)
@@ -113,12 +118,14 @@ released at `τ > t` by a proposer ready at `τ` is a new common confirmed entry
 every ready read at `t` (as `GrowSleepy`). -/
 def GrowHealed : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time) (k : Nat),
-    GoldilocksRun dg H tr → HealedPremises tr H dg g ΔF Gp a Tb T → 1 ≤ k →
-    UnanimousWithin tr H T (4 * k * sp.Δ) →
+    GoldilocksRun proposer dg H tr → HealedPremises tr H proposer dg g ΔF Gp a Tb T → 1 ≤ k →
+    UnanimousWithin tr H proposer T (4 * k * sp.Δ) →
     ∀ t, T ≤ t →
-      ProposerRecurrence tr H (catchUp sp) k (gbar g + catchUp sp + 1) (t + (4 * k + 6) * sp.Δ) →
+      ProposerRecurrence tr H proposer (catchUp sp) k
+        (gbar g + catchUp sp + 1) (t + (4 * k + 6) * sp.Δ) →
       (∃ v, ReadyAt tr H (catchUp sp) v (t + (4 * k + 6) * sp.Δ)) →
       ∃ τ P, t < τ ∧ ReadyProposalAt tr H (catchUp sp) τ P ∧
         (∀ y j, ReadyAt tr H (catchUp sp) y (t + (4 * k + 6) * sp.Δ) →

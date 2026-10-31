@@ -78,9 +78,10 @@ def OutageRun {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 resilience reader at every `t ≥ b₀` (after all events at `t`). -/
 def OutagePersists : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time) (eta : Nat) (T b₀ b₁ : Time),
-    GoldilocksRun dg H tr → Compose.NoCollRun dg tr → OutageRun tr H ΔF eta T b₀ b₁ →
+    GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → OutageRun tr H ΔF eta T b₀ b₁ →
     ∀ v jv, ReadyAt tr H (catchUp sp) v T → CutAfter tr jv T →
       ∀ w t j, b₀ ≤ t → ResilienceReader tr H (catchUp sp) b₀ b₁ w t → CutAfter tr j t →
         Anc (tr.HonestBlocks H) (readAfter tr v jv T) (readAfter tr w j t)
@@ -93,9 +94,10 @@ b₀ ≤ (4k − 2)Δ`, not (V): this interval row is the interval-only P1 of fg
 resilience reader at every `t ∈ [b₀, b₁ − 1]`. -/
 def OutageWindow : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time) (eta : Nat) (T b₀ b₁ : Time),
-    GoldilocksRun dg H tr → Compose.NoCollRun dg tr →
+    GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
     0 ≤ T → T + (4 * (sp.k : Time) - 4) * sp.Δ ≤ b₀ → b₀ ≤ b₁ →
     b₁ - b₀ ≤ (4 * (sp.k : Time) - 2) * sp.Δ → tr.SyncBefore H ΔF b₀ →
     (∀ t, 0 ≤ t → t ≤ b₀ → EtaSleepyAt tr H (catchUp sp) (eta * sp.Δ) t) →
@@ -109,9 +111,10 @@ as confirmed is compatible with the finalized read of every resilience reader at
 (after all events at `t`). -/
 def OutageFinalCompatible : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time) (eta : Nat) (T b₀ b₁ : Time),
-    GoldilocksRun dg H tr → Compose.NoCollRun dg tr → OutageRun tr H ΔF eta T b₀ b₁ →
+    GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → OutageRun tr H ΔF eta T b₀ b₁ →
     ∀ v jv, ReadyAt tr H (catchUp sp) v T → CutAfter tr jv T →
       ∀ w t j, b₀ ≤ t → ResilienceReader tr H (catchUp sp) b₀ b₁ w t → CutAfter tr j t →
         Compatible (tr.HonestBlocks H) (readAfter tr v jv T) (tr.state w j).fg.F

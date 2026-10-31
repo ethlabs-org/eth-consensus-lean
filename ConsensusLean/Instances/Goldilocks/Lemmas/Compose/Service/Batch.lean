@@ -57,7 +57,7 @@ end Deadline
 section Node
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro}
+  {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 private theorem etime_lt {t t' : Time} : SA.ETime.of t < SA.ETime.of t' ↔ t < t' := by
   simp [SA.ETime.of]
@@ -104,7 +104,7 @@ vote), so it is in the updater's pool with a stamp below `t_s + 2Δ`; its head `
 updater's `Φ.F` and of a slot at most `s`, was accepted by the voter before its vote (at or after
 `a₀`, or it is genesis) and relayed to the updater before `t_s + 2Δ`, so it is in the updater's
 frame and the vote is resolved before `t_s + 2Δ`. -/
-theorem honest_vote_at_update (hrun : SA.ACRun T H U) {a₀ : Time} {k₀ : Nat}
+theorem honest_vote_at_update (hrun : SA.ACRun proposer T H U) {a₀ : Time} {k₀ : Nat}
     (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a₀ (T.time k₀) T) {y : Fin sp.n} (hy : y ∈ H)
     {s : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hu : SA.UpdateAt T y k₀ s ℓ)
     (ha₀ : a₀ ≤ sp.ts s) {P : SA.Blk sp.n FGP} (hPU : P ∈ U) (hFP : Anc U ℓ.frame.F P)
@@ -213,14 +213,15 @@ theorem honest_vote_at_update (hrun : SA.ACRun T H U) {a₀ : Time} {k₀ : Nat}
 
 end Node
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
 
 /-- **The honest slot-`s` batch reaches the joined updater of slot `s`**, held and resolved
 before `t_s + 2Δ`, when every honest slot-`s` vote names the block `P` of the updater's frame
 (workbench#12 §4: each is cast by `t_s + Δ` and forwarded, and `P` is relayed, to the updater,
 awake and unrestarted since `t_s`). -/
 theorem honest_batch_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ℓ.frame.tree)
@@ -230,7 +231,7 @@ theorem honest_batch_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
         SA.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
           SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
   intro x hx j e hv hes
-  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hu.1
   have h0 : (0 : Time) ≤ sp.ts s := by

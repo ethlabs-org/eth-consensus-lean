@@ -20,7 +20,7 @@ Over a `StandaloneRun` (H.1's premises), with `r = r_AC(ḡ)` (a slot `j` is `�
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-! ## Helpers -/
 
@@ -105,7 +105,7 @@ private theorem lastWake_cases (y : Fin sp.n) : ∀ c, tr.lastWake y c = ⊥ ∨
 
 /-- Under `Healthy(g)`, the delivery deadline of an object of time `τ` at an honest node is at
 most `max(τ, ḡ) + Δ` (no restart after `ḡ`). -/
-theorem HealthyBase.deadline_le (hS : HealthyBase tr H U g) {y : Fin sp.n} (hy : y ∈ H)
+theorem HealthyBase.deadline_le (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     (c : Nat) (τ : Time) : tr.deadline y c τ ≤ max τ (gbar g) + sp.Δ := by
   unfold ACTrace.deadline
   rcases lastWake_cases (tr := tr) y c with h | ⟨k, -, hrk, h⟩
@@ -117,7 +117,7 @@ theorem HealthyBase.deadline_le (hS : HealthyBase tr H U g) {y : Fin sp.n} (hy :
     linarith [max_le_max_left τ (hS.restart_le hy hrk)]
 
 /-- Under trivial frames, `Φ.F` is the same block at every honest call. -/
-theorem trivial_F_eq (hS : StandaloneRun tr H U g) {y z : Fin sp.n} (hy : y ∈ H)
+theorem trivial_F_eq (hS : StandaloneRun tr H U proposer g) {y z : Fin sp.n} (hy : y ∈ H)
     (hz : z ∈ H) {i j : Nat} {ℓ ℓ' : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
     (hc' : tr.CallAt z j ℓ') : ℓ.frame.F = ℓ'.frame.F := by
   have hr := hS.run.localRun
@@ -141,7 +141,7 @@ private theorem ts_succ (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ :=
 
 /-- Under trivial frames, an ancestor (inside `U`) of a block of an honest node's frame is
 `Φ.F` (genesis) or a block the node accepted by then. -/
-theorem trivial_anc_mem (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H) {k : Nat}
+theorem trivial_anc_mem (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x k ℓ) {Hv X : Blk sp.n FGP}
     (hHv : Hv ∈ ℓ.frame.tree) (hX : Anc U X Hv) :
     X = ℓ.frame.F ∨ ∃ k' ≤ k, tr.AcceptAt x k' X := by
@@ -165,7 +165,7 @@ theorem trivial_anc_mem (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈
 /-- **Acceptance relay before a deadline** (`Healthy(g)` from `g` on, `Catch(2Δ)` before): a
 block an honest `z` accepted before `T ≥ ḡ + Δ`, extending `Φ.F`, is accepted by every honest
 `y` before `T + Δ`, read at any call of `y` from `T + Δ` on. -/
-theorem relay_accept (hS : StandaloneRun tr H U g) {z : Fin sp.n} (hz : z ∈ H) {k : Nat}
+theorem relay_accept (hS : StandaloneRun tr H U proposer g) {z : Fin sp.n} (hz : z ∈ H) {k : Nat}
     {X : Blk sp.n FGP} (hacc : tr.AcceptAt z k X) {T : Time} (hkT : tr.time k < T)
     (hT : gbar g + sp.Δ ≤ T) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) (hi : T + sp.Δ ≤ tr.time i)
@@ -183,7 +183,8 @@ theorem relay_accept (hS : StandaloneRun tr H U g) {z : Fin sp.n} (hz : z ∈ H)
 /-- **Block stamps under trivial frames**: the stamp of a root at an honest node before cut `i`
 is unset, or the root is genesis, or it is at least the time at which the node accepted a block
 of that root at an earlier cut (a restart's replay stamps only frame blocks, accepted before). -/
-theorem blockStamp_cases (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H) (r : Nat) :
+theorem blockStamp_cases (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n}
+    (hy : y ∈ H) (r : Nat) :
     ∀ i, (tr.state y i).blockStamp r = ⊤ ∨ r = sp.genesisRoot ∨
       ∃ k < i, ∃ X : Blk sp.n FGP, X.root = r ∧ tr.AcceptAt y k X ∧
         ETime.of (tr.time k) ≤ (tr.state y i).blockStamp r := by
@@ -255,7 +256,7 @@ theorem blockStamp_cases (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y �
 
 /-- A stamp before `T` at an honest node: the root is genesis, or the node accepted a block of
 that root before `T`. -/
-theorem accepted_of_blockStamp_lt (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H)
+theorem accepted_of_blockStamp_lt (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     {i r : Nat} {T : Time} (h : (tr.state y i).blockStamp r < ETime.of T) :
     r = sp.genesisRoot ∨ ∃ k < i, ∃ X : Blk sp.n FGP, X.root = r ∧ tr.AcceptAt y k X ∧
       tr.time k < T := by
@@ -267,7 +268,7 @@ theorem accepted_of_blockStamp_lt (hS : StandaloneRun tr H U g) {y : Fin sp.n} (
 /-- A vote an honest node holds at cut `a` is held at every later cut `b` with no restart in
 between, with a stamp before `T` when every cut before `a`, every own vote of its slot and every
 restart are before `T`. -/
-theorem stamp_lt_of_held (hS : HealthyBase tr H U g) {y : Fin sp.n} (hy : y ∈ H)
+theorem stamp_lt_of_held (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     {a b : Nat} (hab : a ≤ b) {w : Vote sp.n} (hw : w ∈ (tr.state y a).pool w.slot) {T : Time}
     (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T) (hgT : gbar g < T)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) :
@@ -328,7 +329,7 @@ private theorem heldBefore_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H
 /-- **`Carry` from early sends** (under trivial frames): slot-`s` votes (`s ≥ r`) that honest
 nodes sent or admitted in `[t_s, t_s + 2Δ)`, with heads that are genesis or blocks of the
 sender's frame before `t_s + 2Δ`, are carried by every honest slot-`(s+1)` vote. -/
-theorem carry_of_sent (hS : StandaloneRun tr H U g) {s : Nat}
+theorem carry_of_sent (hS : StandaloneRun tr H U proposer g) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) {CV : Set (Vote sp.n)}
     (hCV : ∀ v ∈ CV, v.slot = s ∧ ∃ x ∈ H, ∃ k, tr.SendOrAdmit x k v ∧ sp.ts s ≤ tr.time k ∧
       tr.time k < sp.ts s + 2 * sp.Δ ∧ ∃ Hv ∈ U, Hv.root = v.head ∧ (Hv.root = sp.genesisRoot ∨
@@ -406,7 +407,8 @@ theorem carry_of_sent (hS : StandaloneRun tr H U g) {s : Nat}
 /-- **Viability at a vote from acceptance before the freeze** (under trivial frames): a block of
 `U` that is genesis, or that an honest voter of slot `σ + 1` (`σ ≥ r`) accepted before the vote
 freeze `t_σ + 3Δ`, is in the viable tree of its voter block tree (or is `fc_root`). -/
-theorem viable_of_accepted (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+theorem viable_of_accepted (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     (hes : e.msg.slot = σ + 1) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
     (hBU : B ∈ U) (hB : AcceptedBefore tr y B (sp.ts σ + 3 * sp.Δ)) :
@@ -481,7 +483,7 @@ theorem viable_of_accepted (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y 
 `σ ≥ r` is in the viable voter block tree of every honest slot-`(σ+1)` vote, or is genesis
 (`Φ.fc_root`): the voter accepted it before the vote freeze `t_σ + 3Δ`, by acceptance relay or
 `Catch(2Δ)`. -/
-theorem trivial_viable (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+theorem trivial_viable (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     (hes : e.msg.slot = σ + 1) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
     (hB : ∃ z ∈ H, ∃ j e', VoteAt tr z j e' ∧ e'.msg.slot = σ ∧ VoteExtends U e'.msg B) :
@@ -557,7 +559,7 @@ theorem trivial_viable (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ 
 
 /-- A slot-`s` vote (`s ≥ r`) of an honest node's pool was admitted, not replayed by a restart,
 at a time in `[t_s, …)`, which is its stamp. -/
-private theorem admitted_of_pool (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+private theorem admitted_of_pool (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {s : Nat} (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) :
     ∀ c, ∀ v ∈ (tr.state x c).pool s, ∃ k < c, tr.SendOrAdmit x k v ∧
       sp.ts s ≤ tr.time k ∧ (tr.state x c).voteStamp v = ETime.of (tr.time k) := by
@@ -583,7 +585,7 @@ private theorem admitted_of_pool (hS : StandaloneRun tr H U g) {x : Fin sp.n} (h
 /-- **`Carry` for the counted votes of an update under trivial frames**: at an honest update of
 slot `s ≥ r`, the votes `fastCounted` counts for any block `X` (resolved before `t_s + 2Δ`,
 of validators with no second vote) are carried by every honest slot-`(s+1)` vote. -/
-theorem trivial_carry_update (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+theorem trivial_carry_update (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr x i₀ s ℓ)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (X : Blk sp.n FGP) :
     Carry tr H U s (fastCounted sp (tr.state x i₀) ℓ.frame s X) := by
@@ -618,7 +620,7 @@ honest slot-`(s+1)` vote carries `CV`: each counted vote was admitted by the wri
 `[t_s, t_s + 2Δ)` and its head (with its ancestors) accepted by then, so by `Healthy(g)` and
 `Catch(2Δ)` the voter holds it (or two other votes of its validator) and has accepted the head
 and its ancestors before `t_s + 3Δ`. -/
-theorem trivial_carry_fastLock (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+theorem trivial_carry_fastLock (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr x i₀ s B CV)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Carry tr H U s CV := by
   have hr := hS.run.localRun
@@ -660,7 +662,7 @@ theorem trivial_carry_fastLock (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx 
 A1.3's premise): every honest slot-`(m+1)` vote carries the honest slot-`m` votes, for
 `m ≥ r`. Each is cast in `[t_m, t_m + Δ]` on a head its voter accepted, so as for
 `trivial_carry_fastLock`. -/
-theorem trivial_carry_votes (hS : StandaloneRun tr H U g) {m : Nat}
+theorem trivial_carry_votes (hS : StandaloneRun tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) :
     Carry tr H U m {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} := by
   have hr := hS.run.localRun
@@ -682,7 +684,7 @@ theorem trivial_carry_votes (hS : StandaloneRun tr H U g) {m : Nat}
 /-- **Every honest node votes** in a slot `m ≥ r` (T1 §3, "the honest batch"): it is awake and
 joined at `t_m + Δ`, runs its tick there (`Driven`), and `try_vote` votes unless it voted in slot
 `m` already. -/
-theorem honest_votes_in_slot (hS : HealthyBase tr H U g) {m : Nat}
+theorem honest_votes_in_slot (hS : HealthyBase tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) : ∀ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m := by
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
@@ -716,7 +718,7 @@ theorem honest_votes_in_slot (hS : HealthyBase tr H U g) {m : Nat}
 `m ≥ r` every honest node votes (it is awake and joined at `t_m + Δ`, runs its tick there
 (`Driven`), and `try_vote` votes unless it voted in slot `m` already), so the honest voters of
 slot `m` are at least half of the committee. -/
-theorem honest_voters_half (hS : HealthyBase tr H U g) {m : Nat}
+theorem honest_voters_half (hS : HealthyBase tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) :
     sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard := by
   have hall := honest_votes_in_slot hS hm
@@ -730,7 +732,8 @@ theorem honest_voters_half (hS : HealthyBase tr H U g) {m : Nat}
 /-- A fast lock of an honest node is extended by an honest vote of its slot: the fast test
 counts at least `n/2` non-equivocating supporters, an optimistic confirmation `3n/4` voters,
 and `f < n/2`. -/
-theorem fastLock_honest_vote (hrun : ACRun tr H U) (hf : 2 * Hᶜ.ncard < sp.n) {x : Fin sp.n}
+theorem fastLock_honest_vote (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
+    {x : Fin sp.n}
     (hx : x ∈ H) {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hfl : FastLockAt tr x i₀ s B CV) :
     ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg B := by
@@ -761,7 +764,7 @@ theorem fastLock_honest_vote (hrun : ACRun tr H U) (hf : 2 * Hᶜ.ncard < sp.n) 
 
 /-- **T1 §3, continuation** ("Induction on slots proves permanent vote support"; A1.3): if every
 honest vote of a slot `m ≥ r` extends `B`, so does every honest vote of every later slot. -/
-theorem votes_continue (hS : StandaloneRun tr H U g) {m : Nat}
+theorem votes_continue (hS : StandaloneRun tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) {B : Blk sp.n FGP}
     (hB : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = m → VoteExtends U e.msg B) :
     VotesExtendAfter tr H U m B := by
@@ -796,7 +799,8 @@ theorem votes_continue (hS : StandaloneRun tr H U g) {m : Nat}
         rw [← hsl, hes, show ((m + (d + 1) : Nat) : Int) - 1 = ((m + d : Nat) : Int) by
           push_cast; ring]
         linarith
-      exact next_transfer sp FGP ro H U tr hrun (m + d) x j B ℓ e hx hca (by omega) ih hhalf
+      exact next_transfer sp FGP ro H U tr proposer hrun (m + d) x j B ℓ e hx hca (by omega)
+        ih hhalf
         (hcarry x hx j e ⟨ℓ, hc, he⟩ (by omega)) (hS.faultBound (hr.time_nonneg j) hT)
         (hS.syncAC (by linarith) _)
         (trivial_viable hS hx hca (by omega) hmd ⟨z, hz, jz, ez, hvz, hsz, ih z hz jz ez hvz hsz⟩)
@@ -805,7 +809,8 @@ theorem votes_continue (hS : StandaloneRun tr H U g) {m : Nat}
 /-- **T1 §3, a fast origin transfers to the votes** (A1.2/A1.4 at slot `s + 1`, the first bad
 vote by induction on cuts, then `votes_continue`): every honest vote of a slot after the label
 `s ≥ r` of an honest fast lock extends its block. -/
-theorem fast_origin_transfer_votes (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+theorem fast_origin_transfer_votes (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n}
+    (hx : x ∈ H)
     {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr x i₀ s B CV)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : VotesExtendAfter tr H U s B := by
   have hrun := hS.run
@@ -824,7 +829,7 @@ theorem fast_origin_transfer_votes (hS : StandaloneRun tr H U g) {x : Fin sp.n} 
       have hT : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) := by
         rw [← hsl, hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring]
         linarith
-      exact first_transfer sp FGP ro H U tr hrun s x y i₀ i B CV ℓ e hx hfl hy hca hes
+      exact first_transfer sp FGP ro H U tr proposer hrun s x y i₀ i B CV ℓ e hx hfl hy hca hes
         (hS.syncAC (by linarith) _) (hcarry y hy i e ⟨ℓ, hc, he⟩ hes)
         (hS.faultBound (hr.time_nonneg i) hT) (trivial_viable hS hy hca hes hs hvB)
         (fun z hz j hj e' hv' hs' => ih j hj z hz e' hv' hs')

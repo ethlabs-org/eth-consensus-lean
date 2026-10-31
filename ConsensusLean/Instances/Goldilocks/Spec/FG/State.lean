@@ -21,7 +21,7 @@ assertion makes the fold `none` (the block is refused). -/
 namespace Consensus.Goldilocks.FG
 
 /-- The FG parameters: `n ≥ 1` validators, the timeout delay `δt` in slots, the
-genesis root, and the slot proposer (the assertion `B.proposer = proposer(B.slot)`).
+genesis root. The proposer schedule is not runtime data.
 The FG window is `K_W = 2` (`KW`). -/
 structure FGParams where
   /-- The number of validators. -/
@@ -31,8 +31,6 @@ structure FGParams where
   δt : Nat
   /-- The root of genesis. -/
   genesis : Nat
-  /-- The proposer of each slot. -/
-  proposer : Nat → Fin n
 
 namespace FGParams
 
@@ -217,12 +215,13 @@ def heightEvents (σ : ChainState gp.n) : ChainState gp.n :=
   else if gp.timesOut σ₁ then ChainState.advance σ₁
   else σ₁
 
-/-- `state_transition`: the assertions (slot proposer, increasing slot, every
+/-- `state_transition`: the assertions (increasing slot, every
 attestation well formed and valid against the parent's state), then count the
 attestations in order, set the latest block, and run the height events. `none`:
-refused. -/
+refused. Proposer-role syntax is checked when decoding the wire block; membership
+in the run's selected proposer role is supplied by the execution's credentials. -/
 def stateTransition (σ : ChainState gp.n) (B : FGBlock gp.n) : Option (ChainState gp.n) :=
-  if B.proposer = gp.proposer B.slot ∧ σ.s < B.slot ∧
+  if σ.s < B.slot ∧
       ∀ a ∈ B.atts, a.WellFormed ∧ σ.validAtt a then
     some (gp.heightEvents
       { B.atts.foldl ChainState.processAtt { σ with s := B.slot } with L := B.root })

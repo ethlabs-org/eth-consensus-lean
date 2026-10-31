@@ -17,19 +17,19 @@ theorem compose_interface_statements : ComposeInterfaceStatements := fun _ _ A =
     dutyHeadsHeld := duty_heads_held A }
 
 /-- **Compose/AnyAC, the node.** -/
-theorem compose_node_statements : ComposeNodeStatements := fun _ _ dg self =>
-  { threeTips := three_tips dg self
-    finalizedMonotone := finalized_monotone dg self
+theorem compose_node_statements : ComposeNodeStatements := fun _ _ proposer dg self =>
+  { threeTips := three_tips proposer dg self
+    finalizedMonotone := finalized_monotone proposer dg self
     restartKeepsFG := restart_keeps_fg self
-    honestBlockAccepted := honest_block_accepted dg self
-    tickOrder := tick_order dg self
-    signedOnlyInTicks := signed_only_in_ticks dg self
-    execIsCutChain := exec_is_cut_chain dg self
-    acStatesReachable := ac_states_reachable dg self
-    fgStatesReachable := fg_states_reachable dg self
-    recordIsClientRun := record_is_client_run dg self
-    sourcesHeld := sources_held dg self
-    acSeesAcceptedBlocks := ac_sees_accepted_blocks dg self }
+    honestBlockAccepted := honest_block_accepted proposer dg self
+    tickOrder := tick_order proposer dg self
+    signedOnlyInTicks := signed_only_in_ticks proposer dg self
+    execIsCutChain := exec_is_cut_chain proposer dg self
+    acStatesReachable := ac_states_reachable proposer dg self
+    fgStatesReachable := fg_states_reachable proposer dg self
+    recordIsClientRun := record_is_client_run proposer dg self
+    sourcesHeld := sources_held proposer dg self
+    acSeesAcceptedBlocks := ac_sees_accepted_blocks proposer dg self }
 
 end Consensus.Goldilocks.Compose
 

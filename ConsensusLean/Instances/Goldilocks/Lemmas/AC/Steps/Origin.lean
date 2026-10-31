@@ -18,7 +18,7 @@ lock analysis reads both. -/
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-! ## The SA functions -/
 
@@ -175,7 +175,7 @@ theorem optimisticPoint_pool_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U 
 
 /-- The honest votes after the receipt of a message or a block at cut `j` were emitted before
 `j`. -/
-private theorem receipt_poolOK (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+private theorem receipt_poolOK (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {A : SAState sp.n}
     (h : (∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y j) (tr.time j) m) ∨
       ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y j) (tr.time j) B) :
@@ -194,7 +194,8 @@ private theorem receipt_poolOK (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ 
 /-- **The honest votes at an optimistic point.** A vote of an honest validator in a pool of a
 state at which an honest node runs the optimistic check at cut `j` has its pool's slot and was
 emitted at a cut no later than `j` (at `j`: the node's own vote). -/
-theorem optimisticPoint_pool_vote (hrun : ACRun tr H U) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
+theorem optimisticPoint_pool_vote (hrun : ACRun proposer tr H U)
+    {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {A : SAState sp.n} (hp : OptimisticPoint tr x j ℓ A)
     {σ : Nat} {v : Vote sp.n} (hv : v ∈ A.pool σ) (hvH : v.val ∈ H) :
     v.slot = σ ∧ ∃ j' ≤ j, ∃ e', VoteAt tr v.val j' e' ∧ e'.msg = v := by
@@ -272,7 +273,7 @@ private theorem good_optimistic (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Fra
 /-- **Lock origin at a vote.** A lock of slot `s − 1` or later at the read point of an honest
 slot-`s` vote sits below a block `D` that three quarters of the committee vote for in a pool
 whose honest votes were all emitted before the vote's cut. -/
-theorem lock_origin_readPoint (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+theorem lock_origin_readPoint (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     ∀ l ∈ e.readPoint.locks, (e.msg.slot : Int) - 1 ≤ l.slot →
       ∃ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ ∧ Φ.tree ⊆ U ∧

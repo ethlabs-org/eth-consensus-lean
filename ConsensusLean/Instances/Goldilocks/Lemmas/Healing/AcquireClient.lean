@@ -227,11 +227,12 @@ end Store
 /-! ## The client over a run -/
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF : Time}
 
 /-- An honest node's record changes only at a cut where it signs, by `create_attestation`. -/
-private theorem record_step (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+private theorem record_step (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) :
     (tr.state y (i + 1)).record = (tr.state y i).record ∨
       ∃ C a, tr.CallAt y i (.fg (.attest C (some a))) ∧
@@ -259,7 +260,7 @@ private theorem record_step (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : 
 /-- **The honest client record** (the record's only writer is `record_attestation`, durable over
 restarts): it tracks its sent contents, each sent content was signed at an earlier cut, and each
 lock entry `(h, r)` is the finality pair of an attestation signed at an earlier cut. -/
-theorem record_facts (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) : ∀ i,
+theorem record_facts (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) : ∀ i,
     Client.SentOK (tr.state y i).record ∧
     (∀ b ∈ (tr.state y i).record.sent, ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b) ∧
     ∀ h r, (tr.state y i).record.lock h = some r →
@@ -301,7 +302,7 @@ theorem record_facts (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H
 
 /-- **A finality pair `(h, X)` signed by an honest node is a justification it holds**: the node
 holds, from the signing on, a block whose state justifies `X` at `h`. -/
-theorem signed_fin_justified (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+theorem signed_fin_justified (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) {h X : Nat}
     (hfin : att.fin = some (h, X)) :
     ∃ B ∈ (tr.state y k).fg.tree, ((tr.state y k).fg.σ B.root).hj = h ∧
@@ -319,7 +320,7 @@ theorem signed_fin_justified (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy :
 /-- **No conflicting finality lock at an allowed source's height** (`hs234-exact-interface.md`
 §5): at an honest `fg_attest(C)` in the phase `(m, c)`, with `C` allowed, of state height
 `h ≥ ℓ` and entry `E`, the record's lock at `h` is free or `E`. -/
-theorem lock_free_or_entry (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem lock_free_or_entry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     {i₀ m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} (hk : i₀ ≤ k) (hon : PhaseOn tr.projFG H i₀ k m c)
     {C E : SA.Blk sp.n (List (FG.Att sp.n))} {h : Nat} (hE : EntryOf (tr.state y k).fg C E h)
@@ -378,7 +379,8 @@ theorem lock_free_or_entry (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg
 /-- **HS.4 (b), the client subclaim** (`hs234-exact-interface.md` §5, P1/P2 of workbench#6): at
 an honest `fg_attest(C)` in the phase, with `C` allowed, of state height `h ≥ ℓ` and entry `E`,
 the client signs a matching row for `E` at `h`, or signed one at an earlier cut. -/
-theorem client_progress (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF) {i₀ m : Nat}
+theorem client_progress (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF) {i₀ m : Nat}
     {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} :
     ∀ y ∈ H, ∀ k (C : SA.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
       tr.CallAt y k (.fg (.attest C signed)) → i₀ ≤ k → PhaseOn tr.projFG H i₀ k m c →

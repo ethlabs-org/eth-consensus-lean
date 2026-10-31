@@ -93,9 +93,10 @@ private def Cut.phase : Cut A → Nat
     | _ => 2
   | .fg _ => 2
 
-private theorem exec_head (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
+private theorem exec_head (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) :
-    ∀ c ∈ (exec dg y st t e).2.head?, Cut.phase c = e.phase := by
+    ∀ c ∈ (exec proposer dg y st t e).2.head?, Cut.phase c = e.phase := by
   cases e with
   | block B =>
     simp only [exec, onBlock]
@@ -106,20 +107,21 @@ private theorem exec_head (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P
       acCall, Cut.phase, Event.phase]
 
 variable {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {proposer : Nat → Fin P.n}
 
 /-! ### Groups -/
 
 /-- The first cut of a group is a call of its node at its time. -/
 theorem group_call {y : Fin P.n} {j : Nat} {t : Time} {e : Event A}
-    (hg : tr.GroupAt dg y j t e) : tr.IsCall y j ∧ tr.time j = t := by
+    (hg : tr.GroupAt proposer dg y j t e) : tr.IsCall y j ∧ tr.time j = t := by
   obtain ⟨hn, ht, -, -, hl⟩ := hg.2.1 0 (List.length_pos_iff.2 hg.1)
   simp only [Nat.add_zero] at hn ht hl
   exact ⟨⟨_, hn, hl⟩, ht⟩
 
 /-- Two groups of one node starting at one cut have events of one phase. -/
 theorem group_phase {y : Fin P.n} {j : Nat} {t t' : Time} {e e' : Event A}
-    (hg : tr.GroupAt dg y j t e) (hg' : tr.GroupAt dg y j t' e') : e.phase = e'.phase := by
+    (hg : tr.GroupAt proposer dg y j t e) (hg' : tr.GroupAt proposer dg y j t' e') :
+    e.phase = e'.phase := by
   have h₀ := (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.2
   have h₀' := (hg'.2.1 0 (List.length_pos_iff.2 hg'.1)).2.2.2.2
   have htt : t = t' := (group_call hg).2.symm.trans (group_call hg').2
@@ -129,20 +131,21 @@ theorem group_phase {y : Fin P.n} {j : Nat} {t t' : Time} {e e' : Event A}
     cases l
     · exact absurd rfl h
     · rfl
-  rw [← exec_head dg y (tr.state y j) t e _ (mem hg.1),
-    ← exec_head dg y (tr.state y j) t e' _ (mem hg'.1), Option.some.inj h₀]
+  rw [← exec_head proposer dg y (tr.state y j) t e _ (mem hg.1),
+    ← exec_head proposer dg y (tr.state y j) t e' _ (mem hg'.1), Option.some.inj h₀]
 
 /-- A group of `y` starts at no cut strictly inside another group. -/
 theorem group_start {y y' : Fin P.n} {j j' : Nat} {t t' : Time} {e e' : Event A}
-    (hg : tr.GroupAt dg y j t e) (hg' : tr.GroupAt dg y' j' t' e') (h₁ : j ≤ j')
-    (h₂ : j' < j + (exec dg y (tr.state y j) t e).2.length) : j' = j := by
+    (hg : tr.GroupAt proposer dg y j t e) (hg' : tr.GroupAt proposer dg y' j' t' e') (h₁ : j ≤ j')
+    (h₂ : j' < j + (exec proposer dg y (tr.state y j) t e).2.length) : j' = j := by
   have := (hg.2.1 (j' - j) (by omega)).2.2.1
   rw [Nat.add_sub_cancel' h₁] at this
   exact le_antisymm (hg'.2.2 j this.symm).1 h₁
 
 /-- A cut chain recorded at consecutive cuts of `y` from `j` ends, in the run, at its last
 state. -/
-theorem cutChain_run (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {t : Time}
+theorem cutChain_run (h : Node.LocalRun proposer dg H sg tr)
+    {y : Fin P.n} (hy : y ∈ H) {t : Time}
     {st st' : NodeState A} {cs : List (Cut A)} (hch : CutChain y t st cs st') :
     ∀ j, tr.state y j = st →
       (∀ k (hk : k < cs.length), tr.node (j + k) = y ∧ tr.time (j + k) = t ∧
@@ -165,12 +168,14 @@ theorem cutChain_run (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
       using this
 
 /-- The state after a group is the handler's result. -/
-private theorem group_post (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
-    {j : Nat} {t : Time} {e : Event A} (hg : tr.GroupAt dg y j t e) :
-    tr.state y (j + (exec dg y (tr.state y j) t e).2.length) = (exec dg y (tr.state y j) t e).1 ∧
-      tr.post (j + (exec dg y (tr.state y j) t e).2.length - 1) =
-        (exec dg y (tr.state y j) t e).1 := by
-  have hs := cutChain_run h hy (exec_is_cut_chain dg y (tr.state y j) t e) j rfl fun k hk =>
+private theorem group_post (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+    {j : Nat} {t : Time} {e : Event A} (hg : tr.GroupAt proposer dg y j t e) :
+    tr.state y (j + (exec proposer dg y (tr.state y j) t e).2.length) =
+        (exec proposer dg y (tr.state y j) t e).1 ∧
+      tr.post (j + (exec proposer dg y (tr.state y j) t e).2.length - 1) =
+        (exec proposer dg y (tr.state y j) t e).1 := by
+  have hs := cutChain_run h hy (exec_is_cut_chain proposer dg y (tr.state y j) t e)
+    j rfl fun k hk =>
     ⟨(hg.2.1 k hk).1, (hg.2.1 k hk).2.1, (hg.2.1 k hk).2.2.2.2⟩
   refine ⟨hs, ?_⟩
   obtain ⟨n, hn⟩ := Nat.exists_eq_succ_of_ne_zero (List.length_pos_iff.2 hg.1).ne'
@@ -185,17 +190,19 @@ private theorem group_post (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y 
 /-- `cfg` is a reachable configuration of `y` for the cut `j`: its state is `y`'s before `j`,
 its clock is at or after every earlier call of `y` and at or before cut `j`, and it is in phase
 `post` exactly when a group of `y` before `j` at its clock is not a restart. -/
-private structure GInv (dg : Digest (List (FG.Att P.n)) A.Payload) (tr : RunTrace A)
+private structure GInv (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (tr : RunTrace A)
     (y : Fin P.n) (j : Nat) (cfg : Config A) : Prop where
-  reach : Reachable dg y cfg
+  reach : Reachable proposer dg y cfg
   st : cfg.st = tr.state y j
   calls : ∀ k < j, tr.IsCall y k → tr.time k ≤ cfg.time
   time : cfg.time ≤ tr.time j
-  phase : cfg.phase = .post ↔ ∃ j₀ < j, ∃ e₀, tr.GroupAt dg y j₀ cfg.time e₀ ∧ 0 < e₀.phase
+  phase : cfg.phase = .post ↔
+    ∃ j₀ < j, ∃ e₀, tr.GroupAt proposer dg y j₀ cfg.time e₀ ∧ 0 < e₀.phase
 
-private theorem gInv_skip (h : Node.LocalRun dg H sg tr) {y : Fin P.n} {j : Nat}
-    {cfg : Config A} (hi : GInv dg tr y j cfg) (hn : ¬ tr.IsCall y j) :
-    GInv dg tr y (j + 1) cfg where
+private theorem gInv_skip (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} {j : Nat}
+    {cfg : Config A} (hi : GInv proposer dg tr y j cfg) (hn : ¬ tr.IsCall y j) :
+    GInv proposer dg tr y (j + 1) cfg where
   reach := hi.reach
   st := by rw [hi.st, tr.state_succ_of_not fun ℓ hc => hn ⟨ℓ, hc⟩]
   calls k hk hc := by
@@ -212,9 +219,10 @@ private theorem phaseAfter_eq {e : Event A} : e.phaseAfter = .post ↔ 0 < e.pha
   cases e <;> simp [Event.phaseAfter, Event.phase]
 
 /-- The event of a group may run from the configuration of its first cut. -/
-private theorem eventOK (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j : Nat}
-    {t : Time} {e : Event A} {cfg : Config A} (hi : GInv dg tr y j cfg)
-    (hg : tr.GroupAt dg y j t e) : EventOK t (Phase.at cfg.time t cfg.phase) e := by
+private theorem eventOK (h : Node.LocalRun proposer dg H sg tr)
+    {y : Fin P.n} (hy : y ∈ H) {j : Nat}
+    {t : Time} {e : Event A} {cfg : Config A} (hi : GInv proposer dg tr y j cfg)
+    (hg : tr.GroupAt proposer dg y j t e) : EventOK t (Phase.at cfg.time t cfg.phase) e := by
   obtain ⟨hc, ht⟩ := group_call hg
   have hle : cfg.time ≤ t := ht ▸ hi.time
   -- a tick or a restart: the earlier groups of `y` at `t` are restarts
@@ -247,8 +255,8 @@ private theorem eventOK (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈
     simp only [htc, Phase.at, lt_self_iff_false, ↓reduceIte]
     exact hi.phase.2 ⟨j₀, hj₀, .tick x₀, htc ▸ hg₀, by simp [Event.phase]⟩
 
-private theorem gInv_init (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) :
-    GInv dg tr y 0 (Config.init A) where
+private theorem gInv_init (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) :
+    GInv proposer dg tr y 0 (Config.init A) where
   reach := Relation.ReflTransGen.refl
   st := (h.init y hy).symm
   calls k hk := absurd hk (Nat.not_lt_zero k)
@@ -256,18 +264,20 @@ private theorem gInv_init (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y �
   phase := by simp [Config.init]
 
 /-- The event of a group is one `Node.Step` from the configuration of its first cut. -/
-private theorem gInv_nodeStep (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j : Nat}
-    {t : Time} {e : Event A} {cfg : Config A} (hi : GInv dg tr y j cfg)
-    (hg : tr.GroupAt dg y j t e) :
-    Node.Step dg y cfg e t ⟨(exec dg y (tr.state y j) t e).1, t, e.phaseAfter⟩ :=
+private theorem gInv_nodeStep (h : Node.LocalRun proposer dg H sg tr)
+    {y : Fin P.n} (hy : y ∈ H) {j : Nat}
+    {t : Time} {e : Event A} {cfg : Config A} (hi : GInv proposer dg tr y j cfg)
+    (hg : tr.GroupAt proposer dg y j t e) :
+    Node.Step proposer dg y cfg e t ⟨(exec proposer dg y (tr.state y j) t e).1, t, e.phaseAfter⟩ :=
   ⟨(group_call hg).2 ▸ hi.time, eventOK h hy hi hg, h.wire y hy j t e hg, by rw [hi.st], rfl, rfl⟩
 
 /-- The configuration after a group: one `Node.Step` by its event. -/
-private theorem gInv_step (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j : Nat}
-    {t : Time} {e : Event A} {cfg : Config A} (hi : GInv dg tr y j cfg)
-    (hg : tr.GroupAt dg y j t e) :
-    GInv dg tr y (j + (exec dg y (tr.state y j) t e).2.length)
-      ⟨(exec dg y (tr.state y j) t e).1, t, e.phaseAfter⟩ where
+private theorem gInv_step (h : Node.LocalRun proposer dg H sg tr)
+    {y : Fin P.n} (hy : y ∈ H) {j : Nat}
+    {t : Time} {e : Event A} {cfg : Config A} (hi : GInv proposer dg tr y j cfg)
+    (hg : tr.GroupAt proposer dg y j t e) :
+    GInv proposer dg tr y (j + (exec proposer dg y (tr.state y j) t e).2.length)
+      ⟨(exec proposer dg y (tr.state y j) t e).1, t, e.phaseAfter⟩ where
   reach := hi.reach.tail ⟨e, t, gInv_nodeStep h hy hi hg⟩
   st := (group_post h hy hg).1.symm
   calls k hk hc := by
@@ -289,10 +299,11 @@ private theorem gInv_step (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y �
       exact group_phase hg₀ hg ▸ hp₀
 
 /-- A cut that no group of `y` straddles has a configuration. -/
-private theorem gInv_exists (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) (j : Nat)
-    (hb : ∀ j' t e, tr.GroupAt dg y j' t e → j' < j →
-      j' + (exec dg y (tr.state y j') t e).2.length ≤ j) :
-    ∃ cfg, GInv dg tr y j cfg := by
+private theorem gInv_exists (h : Node.LocalRun proposer dg H sg tr)
+    {y : Fin P.n} (hy : y ∈ H) (j : Nat)
+    (hb : ∀ j' t e, tr.GroupAt proposer dg y j' t e → j' < j →
+      j' + (exec proposer dg y (tr.state y j') t e).2.length ≤ j) :
+    ∃ cfg, GInv proposer dg tr y j cfg := by
   induction j using Nat.strong_induction_on with
   | _ j ih =>
   rcases j with _ | i
@@ -304,7 +315,7 @@ private theorem gInv_exists (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y
       by_contra
       exact absurd (group_start hg'' hg hlt.le (by omega)) hlt.ne'
     have := hb j' _ e hg (by omega)
-    rw [show i + 1 = j' + (exec dg y (tr.state y j') (tr.time i) e).2.length by omega]
+    rw [show i + 1 = j' + (exec proposer dg y (tr.state y j') (tr.time i) e).2.length by omega]
     exact ⟨_, gInv_step h hy hcfg hg⟩
   · obtain ⟨cfg, hcfg⟩ := ih i (by omega) fun j' t e hg hlt => by
       have := hb j' t e hg (by omega)
@@ -316,10 +327,11 @@ private theorem gInv_exists (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y
 
 /-- **The event of an honest group is a step of the node** from a reachable configuration
 whose state is the state before the group. -/
-theorem group_step (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j : Nat}
-    {t : Time} {e : Event A} (hg : tr.GroupAt dg y j t e) :
-    ∃ cfg : Config A, Reachable dg y cfg ∧ cfg.st = tr.state y j ∧
-      Node.Step dg y cfg e t ⟨(exec dg y (tr.state y j) t e).1, t, e.phaseAfter⟩ := by
+theorem group_step (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j : Nat}
+    {t : Time} {e : Event A} (hg : tr.GroupAt proposer dg y j t e) :
+    ∃ cfg : Config A, Reachable proposer dg y cfg ∧ cfg.st = tr.state y j ∧
+      Node.Step proposer dg y cfg e t ⟨(exec proposer dg y (tr.state y j) t e).1,
+        t, e.phaseAfter⟩ := by
   obtain ⟨cfg, hcfg⟩ := gInv_exists h hy j fun j' t' e' hg' hlt => by
     by_contra
     exact absurd (group_start hg' hg hlt.le (by omega)) hlt.ne'
@@ -327,7 +339,7 @@ theorem group_step (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {
 
 /-- **The honest states of a run are reachable configurations.** -/
 theorem group_states_reachable : GroupStatesReachable := by
-  intro P A dg H sg tr h y hy j t e hg
+  intro P A proposer dg H sg tr h y hy j t e hg
   obtain ⟨cfg, hr, hst, hs⟩ := group_step h hy hg
   exact ⟨⟨cfg, hr, hst, hs.1⟩, _, hr.tail ⟨e, t, hs⟩, (group_post h hy hg).2.symm, rfl⟩
 

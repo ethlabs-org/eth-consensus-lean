@@ -35,7 +35,6 @@ abbrev P1 : Params where
   slotTime_zero := by simp
   slotTime_strictMono := fun a b h => by change 4 * (a : Int) < 4 * (b : Int); omega
   slotTime_public := fun _ => one_dvd _
-  proposer := fun _ => 0
   genesisRoot := 0
   δt := 0
 
@@ -172,7 +171,7 @@ theorem oneTick_state (y : Fin sp1.n) (i : Nat) : oneTick.state y i = SAState.in
 
 /-- (a) The one-tick trace satisfies the AC trace contract and the honest-object facts (the
 hypothesis `ACRun` of every ACSteps statement). -/
-theorem acRun_one_tick : ACRun oneTick Set.univ ({g} : Set (Blk sp1.n Unit)) where
+theorem acRun_one_tick : ACRun (fun _ => 0) oneTick Set.univ ({g} : Set (Blk sp1.n Unit)) where
   localRun := localRun_one_tick
   honest :=
     { pool_vote := fun y _ i σ v hv _ => by

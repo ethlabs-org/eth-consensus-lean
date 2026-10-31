@@ -25,7 +25,7 @@ votes after the origin extend `B`. -/
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-! ## At an honest proposal of slot `σ + 1`
 
@@ -33,7 +33,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- A vote that an honest node sent or admitted in `[t_σ, t_σ + 3Δ)` reaches the proposer:
 it holds it, or two other votes of its validator. -/
-theorem proposal_forward (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat}
+theorem proposal_forward (hS : StandaloneRun tr H U proposer g)
+    {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {z : Fin sp.n}
     (hz : z ∈ H) {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit z k v) (hvs : v.slot = σ)
@@ -51,7 +52,8 @@ theorem proposal_forward (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x �
 
 /-- A block (extending `Φ.F`) that an honest node accepted before `t_σ + 3Δ` is accepted by the
 proposer before its proposal, so it is in its tree. -/
-theorem proposal_accept (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat}
+theorem proposal_accept (hS : StandaloneRun tr H U proposer g)
+    {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {z : Fin sp.n}
     (hz : z ∈ H) {k : Nat} {X : Blk sp.n FGP} (hacc : tr.AcceptAt z k X)
@@ -81,7 +83,7 @@ private theorem head_mem_tree {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (B
   · exact (Anc.mem (C := getHead sp A Φ t T V σ) (anc_ghost hT _ ha) h).2
 
 /-- Under trivial frames, `Φ.F` is the same block at every honest call. -/
-private theorem frame_F_eq (hS : StandaloneRun tr H U g) {y z : Fin sp.n} (hy : y ∈ H)
+private theorem frame_F_eq (hS : StandaloneRun tr H U proposer g) {y z : Fin sp.n} (hy : y ∈ H)
     (hz : z ∈ H) {i j : Nat} {ℓ ℓ' : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
     (hc' : tr.CallAt z j ℓ') : ℓ.frame.F = ℓ'.frame.F := by
   have hr := hS.run.localRun
@@ -92,7 +94,8 @@ private theorem frame_F_eq (hS : StandaloneRun tr H U g) {y z : Fin sp.n} (hy : 
 
 /-- Under trivial frames, a block of `U` is in an honest node's tree when it is genesis or
 accepted by the node by then. -/
-theorem trivial_mem_tree (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+theorem trivial_mem_tree (hS : StandaloneRun tr H U proposer g)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) {X : Blk sp.n FGP} (hX : X ∈ U)
     (h : X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k X) : X ∈ ℓ.frame.tree := by
   have hr := hS.run.localRun
@@ -105,7 +108,8 @@ theorem trivial_mem_tree (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y �
 
 /-- An honest vote's head, and every ancestor `X` of it, extends `Φ.F` (at every honest call)
 and is genesis or a block the voter accepted by its vote. -/
-theorem vote_head_accepted (hS : StandaloneRun tr H U g) {z : Fin sp.n} (hz : z ∈ H) {j : Nat}
+theorem vote_head_accepted (hS : StandaloneRun tr H U proposer g)
+    {z : Fin sp.n} (hz : z ∈ H) {j : Nat}
     {e : Em sp FGP} (hv : VoteAt tr z j e) {X Hd : Blk sp.n FGP} (hHd : Hd ∈ U)
     (hHdr : Hd.root = e.msg.head) (hX : Anc U X Hd) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ' : ACLabel (goldilocksSA sp FGP ro)} (hc' : tr.CallAt y i ℓ') :
@@ -151,13 +155,14 @@ private theorem compat_down (hU : Coherent U) {B X Y : Blk sp.n FGP} (hXY : Anc 
   · exact anc_total hU hXY h
 
 /-- The restarts of an honest node are at or before `ḡ`, so before `t_σ` for `σ ≥ r`. -/
-private theorem restart_before (hS : StandaloneRun tr H U g) {z : Fin sp.n} (hz : z ∈ H)
+private theorem restart_before (hS : StandaloneRun tr H U proposer g) {z : Fin sp.n} (hz : z ∈ H)
     {σ : Nat} (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {k : Nat} (hrk : tr.RestartAt z k) :
     tr.time k < sp.ts σ :=
   lt_of_le_of_lt (hS.restart_le hz hrk) (by have := sp.toParams.hΔ; linarith)
 
 /-- (W) under `StandaloneRun`: `Sync` from `ḡ` and restarts at or before `ḡ`. -/
-private theorem trivial_writer_pool (hS : StandaloneRun tr H U g) {X : Fin sp.n} (hX : X ∈ H)
+private theorem trivial_writer_pool (hS : StandaloneRun tr H U proposer g)
+    {X : Fin sp.n} (hX : X ∈ H)
     {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ σ ℓX)
     (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     (ht : tr.time i = sp.ts (σ + 1 : Nat)) :
@@ -169,7 +174,7 @@ private theorem trivial_writer_pool (hS : StandaloneRun tr H U g) {X : Fin sp.n}
 
 /-- A block of an honest proposer's tree that is genesis or accepted before the proposal has a
 finite stamp there. -/
-private theorem trivial_stamp (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+private theorem trivial_stamp (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (hcall : ℓ.call = .proposal) {R : Blk sp.n FGP} (hR : R ∈ ℓ.frame.tree)
     (hacc : R.root = sp.genesisRoot ∨ ∃ k < i, tr.AcceptAt x k R) :
@@ -182,7 +187,7 @@ private theorem trivial_stamp (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx :
     (Or.inr (by rw [hcall]; exact fun h => by cases h))) (etime_finite _)
 
 /-- (V) under trivial frames: every block of the tree is viable. -/
-private theorem trivial_viable_at (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+private theorem trivial_viable_at (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) {B : Blk sp.n FGP}
     (hB : B ∈ ℓ.frame.tree) :
     B ∈ ℓ.frame.tree ∧ (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot) := by
@@ -193,7 +198,7 @@ private theorem trivial_viable_at (hS : StandaloneRun tr H U g) {x : Fin sp.n} (
 
 /-- An honest slot-`σ` vote (`σ ≥ r`) reaches an honest proposal of slot `σ + 1`, and its head
 and every ancestor of it in `U` are in the proposer's tree, accepted before the proposal. -/
-theorem honest_vote_at_proposal (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+theorem honest_vote_at_proposal (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {w : Fin sp.n}
     (hw : w ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr w j e) (hes : e.msg.slot = σ) :
@@ -227,7 +232,7 @@ theorem honest_vote_at_proposal (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx
 /-- A block that an honest node had in its tree at a call before `t_σ + 3Δ` (or genesis), and
 every ancestor of it, is in the tree of an honest proposal of slot `σ + 1`, genesis or accepted
 before it. -/
-theorem early_block_at_proposal (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+theorem early_block_at_proposal (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {R : Blk sp.n FGP}
     (hR : R ∈ U) (hRe : R.root = sp.genesisRoot ∨ ∃ z ∈ H, ∃ k₁ ℓ₁, tr.CallAt z k₁ ℓ₁ ∧
@@ -266,7 +271,7 @@ theorem early_block_at_proposal (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx
 update of slot `σ` counts for a block `E` (`fastCounted`, resolved before `t_σ + 2Δ`) is held by
 an honest proposer of slot `σ + 1`, whose view does not show its validator equivocating; its
 head extends `E` and is, with its ancestors, in the proposer's tree. -/
-theorem counted_at_proposal (hS : StandaloneRun tr H U g) {X : Fin sp.n} (hX : X ∈ H)
+theorem counted_at_proposal (hS : StandaloneRun tr H U proposer g) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ σ ℓX)
     (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
@@ -321,7 +326,7 @@ theorem counted_at_proposal (hS : StandaloneRun tr H U g) {X : Fin sp.n} (hX : X
 
 /-- An ancestor of an honest result of slot `σ` is in the tree of an honest proposal of slot
 `σ + 1` (below the head of a counted vote). -/
-theorem result_block_at_proposal (hS : StandaloneRun tr H U g) {X : Fin sp.n} (hX : X ∈ H)
+theorem result_block_at_proposal (hS : StandaloneRun tr H U proposer g) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ σ : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hres : ResultAt tr X i₀ σ C CV)
     (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
@@ -335,7 +340,8 @@ theorem result_block_at_proposal (hS : StandaloneRun tr H U g) {X : Fin sp.n} (h
   exact (hacc B (hBC.trans hCR)).1
 
 /-- (P) for the counted votes of an honest update of slot `σ ≥ r` under trivial frames. -/
-private theorem trivial_counted_held (hS : StandaloneRun tr H U g) {X : Fin sp.n} (hX : X ∈ H)
+private theorem trivial_counted_held (hS : StandaloneRun tr H U proposer g)
+    {X : Fin sp.n} (hX : X ∈ H)
     {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ σ ℓX)
     (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) (hcall : ℓ.call = .proposal)
@@ -349,7 +355,8 @@ private theorem trivial_counted_held (hS : StandaloneRun tr H U g) {X : Fin sp.n
 
 /-- (L-high) under `StandaloneRun`: a stored lock of slot `> σ` is optimistic over votes that
 extend `B`, and one of slot `σ` is compatible with `B` by `hsame`. -/
-private theorem trivial_high_locks (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+private theorem trivial_high_locks (hS : StandaloneRun tr H U proposer g)
+    {x : Fin sp.n} (hx : x ∈ H)
     {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) {B : Blk sp.n FGP}
     (hlater : VotesExtendAfter tr H U σ B)
     (hsame : ∀ k CV O, OptimisticLockAt tr x k σ O CV → Compatible U O B) :
@@ -367,7 +374,7 @@ private theorem trivial_high_locks (hS : StandaloneRun tr H U g) {x : Fin sp.n} 
 /-! ## The first and later proposals after a good origin under trivial frames -/
 
 /-- The honest batch (A1.3) at a proposal of slot `σ + 1`, `σ ≥ r`. -/
-private theorem trivial_batch_proposal (hS : StandaloneRun tr H U g) {σ : Nat}
+private theorem trivial_batch_proposal (hS : StandaloneRun tr H U proposer g) {σ : Nat}
     (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
     (hB : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ → VoteExtends U e.msg B)
     (hlater : VotesExtendAfter tr H U σ B) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -402,7 +409,7 @@ private theorem trivial_batch_proposal (hS : StandaloneRun tr H U g) {σ : Nat}
       optimisticLock_compatible hrun hS.two_faulty_lt hx hopt hB)
 
 /-- A fast update of slot `σ ≥ r` (A1.2) at the next proposal. -/
-private theorem trivial_update_first_proposal (hS : StandaloneRun tr H U g) {X : Fin sp.n}
+private theorem trivial_update_first_proposal (hS : StandaloneRun tr H U proposer g) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hfu : FastUpdateAt tr X i₀ σ D CV) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ)
     (hlater : VotesExtendAfter tr H U σ D) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -425,7 +432,8 @@ private theorem trivial_update_first_proposal (hS : StandaloneRun tr H U g) {X :
         (by linarith))
 
 /-- An optimistic confirmation of slot `σ ≥ r` (A1.4 (a)) at the next proposal. -/
-private theorem trivial_optimistic_first_proposal (hS : StandaloneRun tr H U g) {X : Fin sp.n}
+private theorem trivial_optimistic_first_proposal (hS : StandaloneRun tr H U proposer g)
+    {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt tr X i₀ σ D CV) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ)
     (hlater : VotesExtendAfter tr H U σ D) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -469,7 +477,7 @@ private theorem trivial_optimistic_first_proposal (hS : StandaloneRun tr H U g) 
 /-- A slow origin of slot `σ` whose window is `≥ r` (A1.8 for its block `D ⪯ C`, T1 §4) at the
 next proposal: every stored live lock there is compatible with `D` (T1 §2 against the writer's
 saved results, and the optimistic locks of later slots over votes extending `D`). -/
-private theorem trivial_slow_first_proposal (hS : StandaloneRun tr H U g) {X : Fin sp.n}
+private theorem trivial_slow_first_proposal (hS : StandaloneRun tr H U proposer g) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr X i₀ σ D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((σ : Int) - sp.k + 1))
     (hlater : VotesExtendAfter tr H U σ D) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -512,7 +520,8 @@ private theorem trivial_slow_first_proposal (hS : StandaloneRun tr H U g) {X : F
 honest vote of a slot after the label `j` of a good origin on `B` extends `B`, the head of every
 honest proposal of a slot after `j` extends `B`: the first one by the origin's argument, the
 later ones by the honest batch. -/
-theorem proposals_extend_of_origin (hS : StandaloneRun tr H U g) {B : Blk sp.n FGP} {j : Nat}
+theorem proposals_extend_of_origin (hS : StandaloneRun tr H U proposer g)
+    {B : Blk sp.n FGP} {j : Nat}
     (hB : GoodOrigin tr H g B j) (hvotes : VotesExtendAfter tr H U j B) :
     ProposalsExtendAfter tr H U j B := by
   have hk := sp.two_le_k

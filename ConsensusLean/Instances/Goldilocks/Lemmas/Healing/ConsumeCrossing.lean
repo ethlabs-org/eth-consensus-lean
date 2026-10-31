@@ -143,7 +143,7 @@ private theorem row_parent (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y
   rcases ((accepted_tree P ACP acp₀ _ (store_reachable hr hy i)).2.2.2 X hX).cases_tail with
     rfl | ⟨X', -, hX'⟩
   · exact absurd hx (by simp [Params.genesisBlock])
-  · obtain ⟨⟨-, -, hv⟩, -⟩ := P.fg.stateTransition_eq_some.1 (step_σ hr hy hX'.2.1 hX'.2.2)
+  · obtain ⟨⟨-, hv⟩, -⟩ := P.fg.stateTransition_eq_some.1 (step_σ hr hy hX'.2.1 hX'.2.2)
     refine ⟨X', hX', ?_⟩
     rcases (hv x hx).2 with ⟨h, -⟩ | ⟨-, -, -, -, h⟩
     · exact h.le
@@ -215,23 +215,25 @@ section Run
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {g ΔF : Time} {proposer : Nat → Fin sp.n}
 
-private theorem store_eq (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+private theorem store_eq (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     tr.projFG.store y i = (tr.state y i).fg := by
   simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
 
 /-- The FG projection under the HS shared premises. -/
-private theorem fg_run (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF) :
+private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG := by
   have hreq : (goldilocksNode sp ro).Requirements :=
     ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
       (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
       SA.proposal_payload_valid sp _ ro⟩
-  exact Compose.fg_projection _ _ dg H _ tr hreq hs.genesisRoot hrun.toLocalRun hs.noColl
+  exact Compose.fg_projection _ _ dg H _ tr proposer hreq hs.genesisRoot hrun.toLocalRun hs.noColl
 
 /-- An honest validator signs its own attestations. -/
-private theorem signAt_val (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+private theorem signAt_val (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {att : FG.Att sp.n} (hs : tr.SignAt y k att) : att.val = y := by
   obtain ⟨src, hc⟩ := hs
   have h := (hrun.cutLaw y hy k _ hc).1
@@ -275,7 +277,8 @@ private theorem mem_onBlock {st st' : Store sp.toParams (Payload sp.n)}
   exact h
 
 /-- **The pool of an honest node only grows.** -/
-private theorem atts_mono (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {i j : Nat}
+private theorem atts_mono (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i j : Nat}
     (hij : i ≤ j) {a : FG.Att sp.n} (ha : a ∈ (tr.state y i).fg.atts) :
     a ∈ (tr.state y j).fg.atts := by
   induction j, hij using Nat.le_induction with
@@ -289,7 +292,8 @@ private theorem atts_mono (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y 
       exact mem_onAttestation (Or.inl ha)
 
 /-- A processed attestation is in the pool after the cut. -/
-private theorem mem_atts_of_process (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+private theorem mem_atts_of_process (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {a : FG.Att sp.n} (h : tr.ProcessAttAt y k a) : a ∈ (tr.state y (k + 1)).fg.atts := by
   rcases h with hc | ⟨B, hc, ha⟩
   · rw [tr.state_succ_of_call hc, (hrun.cutLaw y hy k _ hc).1]
@@ -301,7 +305,7 @@ private theorem mem_atts_of_process (hrun : GoldilocksRun dg H tr) {y : Fin sp.n
 proposal `X` on the parent `Pr`, with `E ⪯ Pr` an entry of height `h` (held by an honest node),
 `Pr` of state height `h`, `E.slot + δ_t ≤ X.slot`, and a matching row of every honest validator
 processed by the proposer before its proposal cut: `X` has state height `≥ h + 1`. -/
-theorem crossing_of_rows (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem crossing_of_rows (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr E : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
     (hEPr : Anc (tr.HonestBlocks H) E Pr) {q₀ : Fin sp.n} (hq₀ : q₀ ∈ H) {k₀ h : Nat}

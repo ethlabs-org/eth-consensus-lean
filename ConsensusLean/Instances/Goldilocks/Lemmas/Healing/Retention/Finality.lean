@@ -77,6 +77,7 @@ end Store
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
+  {proposer : Nat → Fin sp.n}
 
 /-- **G1.2 over the run** (claims G1.2, G1.3, G0.5; `hr4-cut-scope.md` §3; the same statement as
 Boot's `finalized_anc_of_lt`). A block `F` finalized by the state of a held `X` in an honest
@@ -85,14 +86,14 @@ otherwise the finality quorum of `(h_F, F)` on `X`'s chain and the crossing quor
 `W`'s chain (whose roots do not contain `F`) share `2q − n > f` validators with an E1 pair
 (`FG.finalization_meets_crossing`), an honest one of which signed both attestations
 (unforgeability) in one client run (`Store.signed_run`), against client safety (G0.5). -/
-theorem finalized_anc_of_height_lt (hp : ResetPremises tr H dg g ΔF a) {y z : Fin sp.n}
+theorem finalized_anc_of_height_lt (hp : ResetPremises tr H proposer dg g ΔF a) {y z : Fin sp.n}
     (hy : y ∈ H) (hz : z ∈ H) {k m : Nat} {X F W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y k).fg.tree) (hF : F ∈ (tr.state y k).fg.tree)
     (hFr : F.root = ((tr.state y k).fg.σ X.root).F) (hW : W ∈ (tr.state z m).fg.tree)
     (hlt : ((tr.state y k).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h) :
     Anc (tr.HonestBlocks H) F W := by
   have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  have hfg := Compose.fg_projection _ _ dg H _ tr
+  have hfg := Compose.fg_projection _ _ dg H _ tr proposer
     ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
     hp.run.genesis_root_ok hp.run.toLocalRun hp.noColl
   have hst : ∀ {w : Fin sp.n}, w ∈ H → ∀ i, tr.projFG.store w i = (tr.state w i).fg :=
@@ -112,7 +113,7 @@ low finalized height `d ≤ H`, `B`'s accepted chain has height `> d`"; claims G
 node's `Σ.h_j ≤ H_z`, its `Σ.F ⪯ Σ.J` is genesis or finalized at a height
 `d = σ[Σ.F].h ≤ σ[Σ.J].h = Σ.h_j ≤ H_z < σ[B].h` (`fin_pair_entry`; a genesis `Σ.J` makes `Σ.F`
 genesis), so `Σ.F ⪯ B` by G1.2 (`finalized_anc_of_height_lt`). -/
-theorem low_finalized_below_origin (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n}
+theorem low_finalized_below_origin (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n}
     (hy : y ∈ H) (m : Nat) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
     {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := by

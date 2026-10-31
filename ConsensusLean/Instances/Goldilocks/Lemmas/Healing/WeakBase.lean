@@ -83,10 +83,12 @@ section Base
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp a Tb T : Time} {s₀ : Nat}
+  {proposer : Nat → Fin sp.n}
 
 /-- **(1) Old live locks** (open; acbase): a read-point lock of a slot `< s₀` is live at a vote
 of a slot `> s₀` only before `t_{s₀+k} ≤ T`, where `Healthy` and H.2's drain hold. -/
-theorem weak_base_locks (hrun : GoldilocksRun dg H tr) (hw : WeakPremises tr H dg g ΔF Gp a Tb T)
+theorem weak_base_locks (hrun : GoldilocksRun proposer dg H tr)
+    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T)
     (hs₀ : a + Tb ≤ sp.ts s₀) (hk : sp.ts (s₀ + sp.k : Nat) ≤ T) :
     ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → s₀ < e.msg.slot →
       ∀ L ∈ SA.liveLockBlocks sp {l ∈ e.readPoint.locks | l.slot < s₀} ℓ.frame (tr.time i),
@@ -94,13 +96,13 @@ theorem weak_base_locks (hrun : GoldilocksRun dg H tr) (hw : WeakPremises tr H d
   sorry
 
 /-- **(3b) Sources**: the two-slot age bound puts the supporting lock's origin after `s₀`. -/
-theorem weak_base_sources (hrun : GoldilocksRun dg H tr)
-    (hw : WeakPremises tr H dg g ΔF Gp a Tb T) (_hs₀ : a + Tb ≤ sp.ts s₀) :
+theorem weak_base_sources (hrun : GoldilocksRun proposer dg H tr)
+    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T) (_hs₀ : a + Tb ≤ sp.ts s₀) :
     ∀ y ∈ H, ∀ i ℓ C, SA.ToFGAt tr.projAC y i ℓ C → sp.ts (s₀ + 2 : Nat) ≤ tr.time i →
       (∃ C' l, Origin tr H C' l ∧ l < s₀ ∧ Anc (tr.HonestBlocks H) C C') →
         OnOriginChainFrom tr H C s₀ := by
   intro y hy i ℓ C hto hi _
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hw.noColl).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hw.noColl).localRun
   obtain ⟨hpc, -, hC⟩ := hto
   have hCand : C ∈ SA.toFGCandidates sp (tr.projAC.state y i) ℓ.frame (tr.time i) := by
     unfold SA.acToFG at hC
@@ -129,8 +131,8 @@ theorem weak_base_sources (hrun : GoldilocksRun dg H tr)
 
 /-- The reset is after `c_z`; post-`T` readiness supplies a cut after `c_z` without
 assuming full participation after `T`. -/
-private theorem weak_cutZ_lt_reset (hrun : GoldilocksRun dg H tr)
-    (hw : WeakPremises tr H dg g ΔF Gp a Tb T) : Healing.cutZ sp.toParams g < a := by
+private theorem weak_cutZ_lt_reset (hrun : GoldilocksRun proposer dg H tr)
+    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T) : Healing.cutZ sp.toParams g < a := by
   classical
   let t := max T (max 0 (Healing.cutZ sp.toParams g + 1))
   have ht0 : 0 ≤ t := (le_max_left _ _).trans (le_max_right _ _)
@@ -158,7 +160,8 @@ private theorem weak_cutZ_lt_reset (hrun : GoldilocksRun dg H tr)
 
 /-- **`Sync` and `f < h_t` from `t_{s₀}`** under `Weak`: full participation up to `T`,
 and the ready honest validators thereafter. -/
-theorem weak_sleepyFrom (hrun : GoldilocksRun dg H tr) (hw : WeakPremises tr H dg g ΔF Gp a Tb T)
+theorem weak_sleepyFrom (hrun : GoldilocksRun proposer dg H tr)
+    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T)
     (hs₀ : a + Tb ≤ sp.ts s₀) : SleepyFrom tr H ΔF s₀ := by
   have hΔ := sp.toParams.hΔ
   have hstart : gbar g + 8 * sp.Δ < sp.ts s₀ := by
@@ -187,7 +190,7 @@ theorem weak_sleepyFrom (hrun : GoldilocksRun dg H tr) (hw : WeakPremises tr H d
     · have hsub : H ⊆ {y | y ∈ H ∧ tr.awake y (sp.ts s + d) ∧
           tr.JoinedAt y (sp.ts s + d)} := by
         intro y hy
-        refine ⟨hy, ready_implies_joined sp ro dg H tr hrun y hy _ (8 * sp.Δ - 1)
+        refine ⟨hy, ready_implies_joined sp ro dg H tr proposer hrun y hy _ (8 * sp.Δ - 1)
           ht0 (by linarith) ?_⟩
         intro u hu hut
         exact hw.awake y hy u (by
@@ -205,13 +208,13 @@ theorem weak_sleepyFrom (hrun : GoldilocksRun dg H tr) (hw : WeakPremises tr H d
     · have hsub : {y | ReadyAt tr H (catchUp sp) y (sp.ts s + d)} ⊆
           {y | y ∈ H ∧ tr.awake y (sp.ts s + d) ∧ tr.JoinedAt y (sp.ts s + d)} := by
         intro y hy
-        exact ⟨hy.1, ready_implies_joined sp ro dg H tr hrun y hy.1 _ (catchUp sp)
+        exact ⟨hy.1, ready_implies_joined sp ro dg H tr proposer hrun y hy.1 _ (catchUp sp)
           ht0 (by simp only [catchUp]; linarith) hy.2⟩
       exact (hw.sleepyAfter _ (not_le.1 ht).le).trans_le (Set.ncard_le_ncard hsub)
 
 /-- **(6) Old blocks caught up**: `Catch(2Δ)` and `GST(g)`'s relay. -/
-theorem weak_base_old_blocks (hrun : GoldilocksRun dg H tr)
-    (hw : WeakPremises tr H dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀) :
+theorem weak_base_old_blocks (hrun : GoldilocksRun proposer dg H tr)
+    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀) :
     ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → ∀ s, e.msg.slot = s + 1 →
       s₀ ≤ s → ∀ x ∈ H, ∀ m B, tr.AcceptAt x m B → tr.time m < sp.ts s₀ →
         Anc (tr.HonestBlocks H) ℓ.frame.F B →
@@ -265,22 +268,22 @@ theorem weak_base_old_blocks (hrun : GoldilocksRun dg H tr)
       linarith⟩
 
 /-- **(2), (3a), (5), (5′) up to `T`** (open; the T3 orb's paper obligation). -/
-theorem weak_base_until (hrun : GoldilocksRun dg H tr)
-    (hw : WeakPremises tr H dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀)
+theorem weak_base_until (hrun : GoldilocksRun proposer dg H tr)
+    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀)
     (hT : sp.ts (s₀ + 2 : Nat) + 6 * sp.Δ ≤ T) :
     BaseFacts tr H s₀ (· ≤ T) := by
   sorry
 
 /-- **(2), (3a), (5), (5′) at every cut** from those up to `T` (open; amp-orbs service). -/
-theorem weak_base_extend (hrun : GoldilocksRun dg H tr)
-    (hw : WeakPremises tr H dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀)
+theorem weak_base_extend (hrun : GoldilocksRun proposer dg H tr)
+    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀)
     (hT : sp.ts (s₀ + 2 : Nat) + 6 * sp.Δ ≤ T) (hbase : BaseFacts tr H s₀ (· ≤ T)) :
     BaseFacts tr H s₀ fun _ => True := by
   sorry
 
 /-- **`SleepyBase` at `s₀` under `Weak`**, assembled. -/
-theorem weak_sleepyBase (hrun : GoldilocksRun dg H tr)
-    (hw : WeakPremises tr H dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀)
+theorem weak_sleepyBase (hrun : GoldilocksRun proposer dg H tr)
+    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀)
     (hk : sp.ts (s₀ + sp.k : Nat) ≤ T) (hT : sp.ts (s₀ + 2 : Nat) + 6 * sp.Δ ≤ T) :
     SleepyBase tr H s₀ := by
   have hb := weak_base_extend hrun hw hs₀ hT (weak_base_until hrun hw hs₀ hT)

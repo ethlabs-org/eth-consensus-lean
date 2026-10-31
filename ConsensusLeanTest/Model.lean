@@ -257,12 +257,12 @@ theorem later_duty_sees_recordOwn (rho : Run seqFamily env) (v : Fin 2)
   simp [hsel, releaseAll, releasable, protects, Obj.carried, protoOf, seqFamily, seqProto]
   rfl
 
-/-- `act`'s state is applied when the node is not selected: duty `false` is
-dropped, yet duty `true` signs `0 + 1 = 1`. -/
-theorem state_applied_unselected (rho : Run seqFamily env) (v : Fin 2)
+/-- An unselected duty leaves state unchanged: duty `false` is skipped,
+so duty `true` signs `0`, not `1`. -/
+theorem state_unchanged_unselected (rho : Run seqFamily env) (v : Fin 2)
     (hsel : rho.sel = fun r => cond r Finset.univ ∅) :
     (rho.runDuties v ⟨(0 : Nat), []⟩ [false, true]).2 =
-      [.mk (.signed (rho.ownKey v) true) (.data (1 : Nat)) []] := by
+      [.mk (.signed (rho.ownKey v) true) (.data (0 : Nat)) []] := by
   erw [Run.runDuties_cons, Run.runDuties_cons, Run.runDuties_nil]
   unfold Run.dutyStep Run.signedCandidate
   simp [hsel, releaseAll, releasable, protects, Obj.carried, protoOf, seqFamily, seqProto]

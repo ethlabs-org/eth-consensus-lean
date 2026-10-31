@@ -14,9 +14,9 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `Refinement
 (`Spec/Run`, `GoldilocksRun`).
 
 * **Simulation** (`Simulates`, `EngineSimulatesNode`). Every valid engine run (`ExecutionValid`)
-  of the family is simulated by a run of the spec's node (the skeleton's proposer selection is
-  the setup's schedule, `fixed {proposer s}` at every slot, so a valid run's proposer of a slot
-  is the spec node's own `proposer`): a `GoldilocksRun` at the engine's digest (`digestOf`)
+  of the family is simulated by a run of the spec's node. The skeleton selects one proposer
+  per slot; `runProposer` supplies that run-selected schedule to the node's execution laws,
+  independently of its runtime state types: a `GoldilocksRun` at the engine's digest (`digestOf`)
   for the honest keys, with a monotone cut map `ι` from engine cuts to node cuts. The node state
   inside the shape's state agrees with the trace at every engine cut; each engine event is one
   group of the node (C0.4 kept: a tick at a public time is the node's tick with the engine's
@@ -65,6 +65,12 @@ noncomputable def digestOf :
     Digest (List (FG.Att (Fintype.card V))) (Payload (Fintype.card V)) :=
   dgOf rho.hash S.genesisRoot
 
+/-- The run-selected proposer. A valid run selects exactly one key per slot;
+the fallback only totalizes this definition for invalid selections. -/
+noncomputable def runProposer (s : Nat) : Fin (Fintype.card V) :=
+  if h : (rho.sel (.proposer s)).Nonempty then (rho.sel (.proposer s)).min' h
+  else ⟨0, hn⟩
+
 /-- The shape's state of node `v` before engine cut `i`, at the parameters of the run. -/
 noncomputable def stateAt (v : V) (i : Nat) : State (S.params (pubOf E) hn) (S.ro _) :=
   (rho.stateBefore i v).st.1 hn
@@ -96,7 +102,7 @@ def RelayedFrom (v : V) (o : (Model.protoOf (compiled (family S)) E).Object) (τ
 structure Simulates (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (ι : Nat → Nat) :
     Prop where
   /-- The trace is a run of the Goldilocks protocol at the engine's digest, for the honest keys. -/
-  run : GoldilocksRun (digestOf S rho) (honestKeys S rho) tr
+  run : GoldilocksRun (runProposer S rho hn) (digestOf S rho) (honestKeys S rho) tr
   /-- The cut map starts at `0`. -/
   ι_zero : ι 0 = 0
   /-- The cut map is monotone. -/
@@ -112,9 +118,9 @@ structure Simulates (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (ι 
   input (the encoded mempool), one group. -/
   tick_public : ∀ v ∈ rho.honest, ∀ i t, rho.events[i]? = some (.tick v t) →
     (S.params (pubOf E) hn).toParams.IsPublic t →
-      tr.GroupAt (digestOf S rho) (rho.ownKey v) (ι i) t
+      tr.GroupAt (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (ι i) t
           (.tick (encodeTxs (Model.mempool rho.inbox v t))) ∧
-        ι (i + 1) = ι i + (Node.exec (digestOf S rho) (rho.ownKey v)
+        ι (i + 1) = ι i + (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
           (tr.state (rho.ownKey v) (ι i)) t
           (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length
   /-- An engine tick at a non-public time has no cut. -/
@@ -123,12 +129,13 @@ structure Simulates (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (ι 
   /-- An engine delivery to an honest node is the groups of the canonical objects it delivers,
   in order, with the digests the engine passes. -/
   deliver : ∀ v ∈ rho.honest, ∀ i o t, rho.events[i]? = some (.deliver v o t) →
-    DeliverSeq tr (digestOf S rho) (Model.digests rho.hash o) (rho.ownKey v) t
+    DeliverSeq (runProposer S rho hn) tr (digestOf S rho)
+      (Model.digests rho.hash o) (rho.ownKey v) t
       (delivered (S.params (pubOf E) hn) o) (ι i) (ι (i + 1))
   /-- An engine restart of an honest node is the node's restart group. -/
   restart : ∀ v ∈ rho.honest, ∀ i t, rho.events[i]? = some (.restart v t) →
-    tr.GroupAt (digestOf S rho) (rho.ownKey v) (ι i) t .restart ∧
-      ι (i + 1) = ι i + (Node.exec (digestOf S rho) (rho.ownKey v)
+    tr.GroupAt (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (ι i) t .restart ∧
+      ι (i + 1) = ι i + (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         (tr.state (rho.ownKey v) (ι i)) t .restart).2.length
   /-- An honest node awake in the trace is awake in the environment, within `[0, horizon]`. -/
   awake_of : ∀ y ∈ honestKeys S rho, ∀ t, tr.awake y t →

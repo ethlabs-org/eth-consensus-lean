@@ -8,18 +8,19 @@ public section
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {proposer : Nat → Fin sp.n}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
 
 /-- A reader extending the proposer anchor follows their shared suffix to the proposal. -/
-theorem h2_compare_reader (hS : HealthyBase tr H U g) {p k : Nat} (hp : 0 < p)
-    (hpH : sp.toParams.proposer p ∈ H) {P : Blk sp.n FGP}
-    (hP : HonestProposal tr (sp.toParams.proposer p) p P)
-    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (sp.toParams.proposer p) k ℓp)
+theorem h2_compare_reader (hS : HealthyBase tr H U proposer g) {p k : Nat} (hp : 0 < p)
+    (hpH : proposer p ∈ H) {P : Blk sp.n FGP}
+    (hP : HonestProposal tr (proposer p) p P)
+    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (proposer p) k ℓp)
     (hcall : ℓp.call = .proposal) (htk : tr.time k = sp.ts p)
-    (hlate : gbar g + 2 * sp.Δ ≤ sp.ts p) (hgeo : Geo tr H p P)
+    (hlate : gbar g + 2 * sp.Δ ≤ sp.ts p) (hgeo : Geo proposer tr H p P)
     (hPnot : P ∉ ℓp.frame.tree) (hPs : P.slot = p)
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
-    (hpay : (acProposal sp (tr.state (sp.toParams.proposer p) k) ℓp.frame (tr.time k)).2 =
+    (hpay : (acProposal sp (tr.state (proposer p) k) ℓp.frame (tr.time k)).2 =
       some (d, pay)) (hQP : P.parent = some d.head.root)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hes : e.msg.slot = p)

@@ -34,145 +34,6 @@ The remaining `sorry` theorems are the open obligations. -/
 
 namespace Consensus.Goldilocks.Refinement
 
-open Blocks Shape
-open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload)
-
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-
-/-! ## Shape-level preservation -/
-
-/-- `apply` keeps the key. -/
-theorem apply_self (st : State sp ro) r : (apply st r).self = st.self := rfl
-/-- `apply` keeps the clock. -/
-theorem apply_now (st : State sp ro) r : (apply st r).now = st.now := rfl
-/-- `apply` keeps the FG-due flag. -/
-theorem apply_fgDue (st : State sp ro) r : (apply st r).fgDue = st.fgDue := rfl
-/-- `apply` installs the node state of its handler result. -/
-theorem apply_node (st : State sp ro) r : (apply st r).node = r.1 := rfl
-
-/-- `relayIf` keeps the key. -/
-theorem relayIf_self (st : State sp ro) (c : Prop) [Decidable c] o :
-    (relayIf st c o).self = st.self := by unfold relayIf; split <;> rfl
-/-- `relayIf` keeps the clock. -/
-theorem relayIf_now (st : State sp ro) (c : Prop) [Decidable c] o :
-    (relayIf st c o).now = st.now := by unfold relayIf; split <;> rfl
-/-- `relayIf` keeps the FG-due flag. -/
-theorem relayIf_fgDue (st : State sp ro) (c : Prop) [Decidable c] o :
-    (relayIf st c o).fgDue = st.fgDue := by unfold relayIf; split <;> rfl
-/-- `relayIf` keeps the node state. -/
-theorem relayIf_node (st : State sp ro) (c : Prop) [Decidable c] o :
-    (relayIf st c o).node = st.node := by unfold relayIf; split <;> rfl
-
-/-- Processing one delivered object keeps the key. -/
-theorem processOne_self hs (st : State sp ro) o : (processOne hs st o).self = st.self := by
-  unfold processOne; split <;> simp [relayIf_self, apply_self]
-/-- Processing one delivered object keeps the clock. -/
-theorem processOne_now hs (st : State sp ro) o : (processOne hs st o).now = st.now := by
-  unfold processOne; split <;> simp [relayIf_now, apply_now]
-/-- Processing one delivered object keeps the FG-due flag. -/
-theorem processOne_fgDue hs (st : State sp ro) o : (processOne hs st o).fgDue = st.fgDue := by
-  unfold processOne; split <;> simp [relayIf_fgDue, apply_fgDue]
-
-/-- Processing a list of delivered objects keeps the key. -/
-theorem foldl_processOne_self hs (os : List (Wire sp.n)) (st : State sp ro) :
-    (os.foldl (processOne hs) st).self = st.self := by
-  induction os generalizing st with
-  | nil => rfl
-  | cons o os ih => simp [List.foldl_cons, ih, processOne_self]
-/-- Processing a list of delivered objects keeps the clock. -/
-theorem foldl_processOne_now hs (os : List (Wire sp.n)) (st : State sp ro) :
-    (os.foldl (processOne hs) st).now = st.now := by
-  induction os generalizing st with
-  | nil => rfl
-  | cons o os ih => simp [List.foldl_cons, ih, processOne_now]
-/-- Processing a list of delivered objects keeps the FG-due flag. -/
-theorem foldl_processOne_fgDue hs (os : List (Wire sp.n)) (st : State sp ro) :
-    (os.foldl (processOne hs) st).fgDue = st.fgDue := by
-  induction os generalizing st with
-  | nil => rfl
-  | cons o os ih => simp [List.foldl_cons, ih, processOne_fgDue]
-
-/-- A delivery keeps the key. -/
-theorem process_self (st : State sp ro) o hs : (process st o hs).self = st.self :=
-  foldl_processOne_self hs _ st
-/-- A delivery keeps the clock. -/
-theorem process_now (st : State sp ro) o hs : (process st o hs).now = st.now :=
-  foldl_processOne_now hs _ st
-/-- A delivery keeps the FG-due flag. -/
-theorem process_fgDue (st : State sp ro) o hs : (process st o hs).fgDue = st.fgDue :=
-  foldl_processOne_fgDue hs _ st
-
-/-- Recording an own object keeps the key. -/
-theorem recordOwn_self (st : State sp ro) o hs : (recordOwn st o hs).self = st.self := by
-  unfold recordOwn; split <;> (try split) <;> rfl
-/-- Recording an own object keeps the clock. -/
-theorem recordOwn_now (st : State sp ro) o hs : (recordOwn st o hs).now = st.now := by
-  unfold recordOwn; split <;> (try split) <;> rfl
-/-- Recording an own object keeps the FG-due flag. -/
-theorem recordOwn_fgDue (st : State sp ro) o hs : (recordOwn st o hs).fgDue = st.fgDue := by
-  unfold recordOwn; split <;> (try split) <;> rfl
-
-/-- The node's tick keeps the key. -/
-theorem nodeTick_self (st : State sp ro) : (nodeTick st).self = st.self := by
-  unfold nodeTick; split <;> rfl
-/-- The node's tick keeps the clock. -/
-theorem nodeTick_now (st : State sp ro) : (nodeTick st).now = st.now := by
-  unfold nodeTick; split <;> rfl
-
-/-- The slot proposal keeps the key. -/
-theorem propose_self (st : State sp ro) s : (propose st s).1.self = st.self := by
-  unfold propose; split
-  · simp only; split <;> rfl
-  · rfl
-/-- The slot proposal keeps the clock. -/
-theorem propose_now (st : State sp ro) s : (propose st s).1.now = st.now := by
-  unfold propose; split
-  · simp only; split <;> rfl
-  · rfl
-/-- The slot proposal keeps the FG-due flag. -/
-theorem propose_fgDue (st : State sp ro) s : (propose st s).1.fgDue = st.fgDue := by
-  unfold propose; split
-  · simp only; split <;> rfl
-  · rfl
-
-/-- The FG update keeps the key. -/
-theorem fgUpdate_self (st : State sp ro) : (fgUpdate st).self = st.self := by
-  unfold fgUpdate; simp only; split
-  · rfl
-  · split <;> rfl
-/-- The FG update keeps the clock. -/
-theorem fgUpdate_now (st : State sp ro) : (fgUpdate st).now = st.now := by
-  unfold fgUpdate; simp only; split
-  · rfl
-  · split <;> rfl
-/-- The FG update clears the FG-due flag. -/
-theorem fgUpdate_fgDue (st : State sp ro) : (fgUpdate st).fgDue = false := by
-  unfold fgUpdate; simp only; split
-  · rfl
-  · split <;> rfl
-
-/-- A poll step keeps the key. -/
-theorem poll_self (st : State sp ro) t : (poll st t).1.self = st.self := by
-  unfold poll; simp only; split <;> split <;> simp [fgUpdate_self]
-/-- A poll step keeps the clock. -/
-theorem poll_now (st : State sp ro) t : (poll st t).1.now = st.now := by
-  unfold poll; simp only; split <;> split <;> simp [fgUpdate_now]
-/-- After a poll step the FG update is not due: the step ran it if it was. -/
-theorem poll_fgDue (st : State sp ro) t : (poll st t).1.fgDue = false := by
-  unfold poll; simp only; split <;> split <;> simp_all [fgUpdate_fgDue]
-
-/-- A restore sets the key to the restored one. -/
-theorem restore_self (k : Fin sp.n) (d : State sp ro) t : (restore k d t).self = k := rfl
-/-- A restore sets the clock to the restart time. -/
-theorem restore_now (k : Fin sp.n) (d : State sp ro) t : (restore k d t).now = t := rfl
-/-- A restore clears the FG-due flag. -/
-theorem restore_fgDue (k : Fin sp.n) (d : State sp ro) t : (restore k d t).fgDue = false := rfl
-
-end Consensus.Goldilocks.Refinement
-
-namespace Consensus.Goldilocks.Refinement
-
 open Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload)
@@ -183,6 +44,14 @@ section Engine
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+
+/-- Valid selection includes every validator in the poll role. -/
+theorem poll_selected (hv : rho.ExecutionValid) (v : V) :
+    rho.ownKey v ∈ rho.sel .poll := by
+  have h := hv.selValid .poll
+  change rho.sel .poll = Finset.univ at h
+  rw [h]
+  exact Finset.mem_univ _
 
 /-- The shape's state at `hn` inside an engine node. -/
 abbrev shapeOf (nd : Model.Node (Model.protoOf (compiled (family S)) E)) :
@@ -250,6 +119,8 @@ theorem dutyStep_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
     (d : (Model.protoOf (compiled (family S)) E).Duty) (h : Q (shapeOf S hn nd)) :
     Q (shapeOf S hn (rho.dutyStep v nd d).1) := by
   unfold Model.Run.dutyStep
+  split
+  case isFalse => exact h
   apply releaseAll_pres S rho hn Q hrec
   cases d with
   | propose s hs =>
@@ -386,18 +257,22 @@ theorem signedCandidate_poll_recordOwn (v : V) (t : Nat)
 omit [DecidableEq V] in
 /-- The engine's poll duty step is the shape's `poll`: its released body is not recorded. -/
 theorem dutyStep_poll (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (t : Nat) :
+    (t : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     shapeOf S hn (rho.dutyStep v nd (.poll t)).1 = (poll (shapeOf S hn nd) t).1 := by
   unfold Model.Run.dutyStep
+  simp only [show (Model.protoOf (compiled (family S)) E).role (.poll t) = .poll from rfl,
+    hsel, ↓reduceIte]
   refine (releaseAll_shape_eq S rho hn _ _ _ ?_).trans (shapeOf_act_poll S hn nd.st t)
   exact signedCandidate_poll_recordOwn S rho hn v t _
 
 omit [DecidableEq V] in
 /-- The engine's `pollPropose` duty step is the shape's `nodeTick`: it releases nothing. -/
 theorem dutyStep_pollPropose (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (t : Nat) :
+    (t : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     shapeOf S hn (rho.dutyStep v nd (.pollPropose t)).1 = nodeTick (shapeOf S hn nd) := by
   unfold Model.Run.dutyStep
+  simp only [show (Model.protoOf (compiled (family S)) E).role (.pollPropose t) = .poll from rfl,
+    hsel, ↓reduceIte]
   have h2 : ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose t)).2 = none := by
     change Option.map _ ((family S (pubOf E)).pollPropose nd.st.1 t).2 = none
     simp only [family, dite_eq_left hn]; rfl
@@ -439,7 +314,7 @@ omit [DecidableEq V] in
 /-- The duties at a delivery at `t ≥ 0`: one poll step (`deliverOrder := [.poll]`). -/
 theorem deliverDuties_eq (t : Time) (ht : 0 ≤ t) :
     (Model.protoOf (compiled (family S)) E).deliverDuties t = [.poll t.toNat] := by
-  change (skeleton (pubOf E) S.proposer).deliverDuties t = _
+  change (skeleton (pubOf E)).deliverDuties t = _
   simp [Skeleton.deliverDuties, Skeleton.stepAt, skeleton, ht]
   rfl
 
@@ -447,7 +322,7 @@ omit [DecidableEq V] in
 /-- A delivery at a negative time has no duties. -/
 theorem deliverDuties_eq_nil (t : Time) (ht : t < 0) :
     (Model.protoOf (compiled (family S)) E).deliverDuties t = [] := by
-  change (skeleton (pubOf E) S.proposer).deliverDuties t = _
+  change (skeleton (pubOf E)).deliverDuties t = _
   simp [Skeleton.deliverDuties, Skeleton.stepAt, skeleton, not_le.2 ht]
   rfl
 
@@ -487,8 +362,14 @@ theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
     exact hrec st _ _ hs hq
   · rcases le_or_gt 0 t with ht | ht
     · rw [deliverDuties_eq S t ht]
-      erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll]
-      exact hpoll _ _ h
+      by_cases hsel : rho.ownKey v ∈ rho.sel .poll
+      · erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll _ _ _ _ _ _ hsel]
+        exact hpoll _ _ h
+      · erw [runDuties_fst_cons, runDuties_fst_nil]
+        simp only [Model.Run.dutyStep,
+          show (Model.protoOf (compiled (family S)) E).role (.poll t.toNat) = .poll from rfl,
+          hsel, ↓reduceIte]
+        exact h
     · rw [deliverDuties_eq_nil S t ht, runDuties_fst_nil]
       exact h
 
@@ -645,24 +526,24 @@ theorem now_eq_lastClock (_hv : rho.ExecutionValid) (v : V) :
 proposal if due, one poll step. -/
 abbrev dutiesInit (t : Time) : List (Model.protoOf (compiled (family S)) E).Duty :=
   [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++
-    (skeleton (pubOf E) S.proposer).proposeAt t ++ [.poll t.toNat]
+    (skeleton (pubOf E)).proposeAt t ++ [.poll t.toNat]
 
 omit [DecidableEq V] in
 /-- The duties of a tick at `t ≥ 0`: `dutiesInit` and one more poll step. -/
 theorem duties_eq (t : Time) (ht : 0 ≤ t) :
     (Model.protoOf (compiled (family S)) E).duties t = dutiesInit S t ++ [.poll t.toNat] := by
-  change (skeleton (pubOf E) S.proposer).duties t = _
+  change (skeleton (pubOf E)).duties t = _
   simp only [Skeleton.duties, Skeleton.stepAt, skeleton, ht, ite_true, List.flatMap_cons,
     List.flatMap_nil, List.append_nil, List.cons_append, List.nil_append, dutiesInit]
   exact congrArg (fun l => ShapeDuty.poll t.toNat :: .poll t.toNat :: .pollPropose t.toNat :: l)
-    (List.append_assoc ((skeleton (pubOf E) S.proposer).proposeAt t)
+    (List.append_assoc ((skeleton (pubOf E)).proposeAt t)
       [ShapeDuty.poll t.toNat] [ShapeDuty.poll t.toNat]).symm
 
 omit [DecidableEq V] in
 /-- A tick at a negative time has no duties. -/
 theorem duties_eq_nil (t : Time) (ht : t < 0) :
     (Model.protoOf (compiled (family S)) E).duties t = [] := by
-  change (skeleton (pubOf E) S.proposer).duties t = _
+  change (skeleton (pubOf E)).duties t = _
   simp [Skeleton.duties, Skeleton.stepAt, Skeleton.proposeAt, skeleton, TimeGrid.slotAt?,
     not_le.2 ht]
   rfl
@@ -687,7 +568,50 @@ theorem fgDue_eq_false (v : V) : ∀ i, (stateAt S rho hn v i).fgDue = false
             rcases le_or_gt 0 t with ht | ht
             · rw [duties_eq S t ht, runDuties_fst_append]
               change ((rho.dutyStep v' _ (.poll t.toNat)).1.st.1 hn).fgDue = false
+              by_cases hsel : rho.ownKey v' ∈ rho.sel .poll
+              case neg =>
+                have hpres : ∀ ds (nd : Model.Node (Model.protoOf (compiled (family S)) E)),
+                    (nd.st.1 hn).fgDue = false →
+                    ((rho.runDuties v' nd ds).1.st.1 hn).fgDue = false := by
+                  intro ds
+                  induction ds with
+                  | nil => intro nd hh; exact hh
+                  | cons d ds ih =>
+                    intro nd hh
+                    rw [runDuties_fst_cons]
+                    apply ih
+                    cases d with
+                    | act s k => exact k.elim
+                    | propose s hs =>
+                      unfold Model.Run.dutyStep
+                      split
+                      case isFalse => exact hh
+                      apply releaseAll_pres S rho hn (fun st => st.fgDue = false)
+                        (fun st o hs hh => (recordOwn_fgDue st o hs).trans hh)
+                      change (((Model.protoOf (compiled (family S)) E).act nd.st
+                        (.propose s hs)).1.1 hn).fgDue = false
+                      rw [shapeOf_act_propose]
+                      exact (propose_fgDue _ s).trans hh
+                    | poll t =>
+                      simp only [Model.Run.dutyStep,
+                        show (Model.protoOf (compiled (family S)) E).role (.poll t) =
+                          .poll from rfl,
+                        hsel, ↓reduceIte]
+                      exact hh
+                    | pollPropose t =>
+                      simp only [Model.Run.dutyStep,
+                        show (Model.protoOf (compiled (family S)) E).role (.pollPropose t) =
+                          .poll from rfl,
+                        hsel, ↓reduceIte]
+                      exact hh
+                simp only [Model.Run.dutyStep,
+                  show (Model.protoOf (compiled (family S)) E).role (.poll t.toNat) =
+                    .poll from rfl,
+                  hsel, ↓reduceIte]
+                exact hpres _ _ (fgDue_eq_false v' i)
               unfold Model.Run.dutyStep
+              simp only [show (Model.protoOf (compiled (family S)) E).role (.poll t.toNat) =
+                .poll from rfl, hsel, ↓reduceIte]
               apply releaseAll_pres S rho hn (fun st => st.fgDue = false)
                 (fun st o hs h => (recordOwn_fgDue st o hs).trans h)
               change (((Model.protoOf (compiled (family S)) E).act _
@@ -782,36 +706,40 @@ theorem lastClock_of_deliver (hv : rho.ExecutionValid) (v : V) {i : Nat}
 
 /-- The node state after a delivery of the objects `os` at time `t` from `st`: the handler of
 each canonical object in order, nothing for a dropped object (the state `deliverRecs` threads). -/
-noncomputable def deliverState (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+noncomputable def deliverState (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) :
     List (Wire sp.n) → NodeState (goldilocksNode sp ro) → NodeState (goldilocksNode sp ro)
   | [], st => st
   | o :: os, st =>
       match canonEvent sp ro hs o with
-      | some e => deliverState dg hs self t os (exec dg self st t e).1
-      | none => deliverState dg hs self t os st
+      | some e => deliverState proposer dg hs self t os (exec proposer dg self st t e).1
+      | none => deliverState proposer dg hs self t os st
 
 /-- `deliverState` of no objects is the state. -/
-theorem deliverState_nil (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem deliverState_nil (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time)
-    (st : NodeState (goldilocksNode sp ro)) : deliverState dg hs self t [] st = st := by
+    (st : NodeState (goldilocksNode sp ro)) : deliverState proposer dg hs self t [] st = st := by
   simp only [deliverState]
 
 /-- `deliverState` of a canonical object runs its handler first. -/
-theorem deliverState_cons_some (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem deliverState_cons_some (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (o : Wire sp.n)
     (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro))
     (e : Event (goldilocksNode sp ro)) (he : canonEvent sp ro hs o = some e) :
-    deliverState dg hs self t (o :: os) st =
-      deliverState dg hs self t os (exec dg self st t e).1 := by
+    deliverState proposer dg hs self t (o :: os) st =
+      deliverState proposer dg hs self t os (exec proposer dg self st t e).1 := by
   simp only [deliverState, he]
 
 /-- `deliverState` skips a dropped object. -/
-theorem deliverState_cons_none (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem deliverState_cons_none (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (o : Wire sp.n)
     (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro))
     (he : canonEvent sp ro hs o = none) :
-    deliverState dg hs self t (o :: os) st = deliverState dg hs self t os st := by
+    deliverState proposer dg hs self t (o :: os) st = deliverState proposer dg hs self t os st := by
   simp only [deliverState, he]
 
 /-- The canonical event of a wire object, if any, is a block, a message or an attestation. -/
@@ -824,23 +752,25 @@ theorem canonEvent_cases hs (o : Wire sp.n) :
 
 /-- Processing one delivered object runs the handler of its canonical event, nothing if it has none.
 -/
-theorem processOne_node (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) hs (st : State sp ro)
+theorem processOne_node (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) hs (st : State sp ro)
     o :
     (processOne hs st o).node =
       match canonEvent sp ro hs o with
-      | some e => (exec dg st.self st.node st.now e).1
+      | some e => (exec proposer dg st.self st.node st.now e).1
       | none => st.node := by
   rcases canonEvent_cases (ro := ro) hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
     simp [processOne, h, relayIf_node, apply_node, exec]
 
 /-- Processing a list of delivered objects runs `deliverState` on the node state. -/
-theorem foldl_processOne_node (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) hs
+theorem foldl_processOne_node (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) hs
     (os : List (Wire sp.n)) (st : State sp ro) :
-    (os.foldl (processOne hs) st).node = deliverState dg hs st.self st.now os st.node := by
+    (os.foldl (processOne hs) st).node = deliverState proposer dg hs st.self st.now os st.node := by
   induction os generalizing st with
   | nil => rfl
   | cons o os ih =>
-    rw [List.foldl_cons, ih, processOne_self, processOne_now, processOne_node dg]
+    rw [List.foldl_cons, ih, processOne_self, processOne_now, processOne_node proposer dg]
     rcases canonEvent_cases (ro := ro) hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
       simp only [deliverState, h]
 
@@ -851,7 +781,8 @@ theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.hone
     (o : (Model.protoOf (compiled (family S)) E).Object) (t : Time)
     (he : rho.events[i]? = some (.deliver v o t)) :
     (stateAt S rho hn v (i + 1)).node =
-      deliverState (digestOf S rho) (Model.digests rho.hash o) (rho.ownKey v) t
+      deliverState (runProposer S rho hn) (digestOf S rho)
+        (Model.digests rho.hash o) (rho.ownKey v) t
         (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node := by
   have hpre := (fgDue_eq_false S rho hn v i)
   rw [stateAt_deliver S rho hn v he]
@@ -863,7 +794,7 @@ theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.hone
       ⟨(recordOwn_none_node st _ _ hs).trans h.1, (recordOwn_fgDue st _ hs).trans h.2⟩)
     v _ o t ⟨rfl, (process_fgDue _ _ _).trans hpre⟩).1.trans ?_
   unfold process
-  refine (foldl_processOne_node (digestOf S rho) _ _ _).trans ?_
+  refine (foldl_processOne_node (runProposer S rho hn) (digestOf S rho) _ _ _).trans ?_
   rw [self_eq_ownKey, now_eq_lastClock S rho hn hv, lastClock_of_deliver S rho hv v he]
 
 /-- **`Simulates.restart`'s node step.** An engine restart of an honest node runs the node's restart
@@ -871,7 +802,8 @@ on the node state before it. -/
 theorem node_of_restart (_hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.honest) (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.restart v t)) :
     (stateAt S rho hn v (i + 1)).node =
-      (Node.exec (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t .restart).1 := by
+      (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+        (stateAt S rho hn v i).node t .restart).1 := by
   rw [stateAt_restart S rho hn v he]
   rfl
 
@@ -976,53 +908,53 @@ omit [DecidableEq V] in
 /-- The setup's slot start is the skeleton grid's slot start. -/
 theorem slotTime_eq (s : Nat) :
     (S.params (pubOf E) hn).toParams.slotTime s =
-      (skeleton (pubOf E) S.proposer).grid.slotTime s := by
-  simp only [Setup.params, skeleton, TimeGrid.slotTime, pubOf]
+      (skeleton (pubOf E)).grid.slotTime s := by
+  simp only [skeleton, TimeGrid.slotTime, pubOf]
   ring
 
 omit [DecidableEq V] in
 /-- At the start of slot `s > 0`, a key proposes exactly when it is the slot's proposer. -/
-theorem proposes_iff (self : Fin (Fintype.card V)) (s : Nat) (hs : 0 < s) :
-    Proposes (P := (S.params (pubOf E) hn).toParams) self
+theorem proposes_iff (proposer : Nat → Fin (Fintype.card V))
+    (self : Fin (Fintype.card V)) (s : Nat) (hs : 0 < s) :
+    Proposes (P := (S.params (pubOf E) hn).toParams) proposer self
         ((S.params (pubOf E) hn).toParams.slotTime s) ↔
-      (S.params (pubOf E) hn).toParams.proposer s = self := by
+      proposer s = self := by
   unfold Proposes
   rw [slotOf_slotTime]
   exact ⟨fun h => h.2.2, fun h => ⟨hs, rfl, h⟩⟩
 
 omit [DecidableEq V] in
 /-- A key proposes at no time that starts no positive slot. -/
-theorem not_proposes (self : Fin (Fintype.card V)) (t : Time)
+theorem not_proposes (proposer : Nat → Fin (Fintype.card V))
+    (self : Fin (Fintype.card V)) (t : Time)
     (h : ∀ s, 0 < s → t ≠ (S.params (pubOf E) hn).toParams.slotTime s) :
-    ¬ Proposes (P := (S.params (pubOf E) hn).toParams) self t :=
+    ¬ Proposes (P := (S.params (pubOf E) hn).toParams) proposer self t :=
   fun hp => h _ hp.1 hp.2.1
 
 
 /-! ## The selection of a valid run -/
 
 omit [DecidableEq V] in
-/-- The skeleton's proposer selection at slot `s` is the singleton of the setup's proposer. -/
+/-- The skeleton lets the run select one proposer per slot. -/
 theorem skeleton_proposerSel (s : Nat) :
-    (family S (pubOf E)).skel.proposerSel s =
-      .fixed {(S.params (pubOf E) hn).toParams.proposer s} := by
-  change Model.SelSpec.fixed _ = _
-  congr 1
-  ext k
-  constructor
-  · intro hk
-    exact Finset.mem_singleton.mpr (Fin.ext (Finset.mem_filter.mp hk).2)
-  · intro hk
-    exact Finset.mem_filter.mpr
-      ⟨Finset.mem_univ _, congrArg Fin.val (Finset.mem_singleton.mp hk)⟩
+    (family S (pubOf E)).skel.proposerSel s = .sized 1 := rfl
 
 omit [DecidableEq V] in
-/-- In an admitted run, the proposer role of slot `s` selects exactly the setup's proposer. -/
+/-- In an admitted run, the proposer role selects exactly `runProposer`. -/
 theorem selValid_proposer (hsel : rho.SelValid) (s : Nat) :
-    rho.sel (.proposer s) = {(S.params (pubOf E) hn).toParams.proposer s} := by
+    rho.sel (.proposer s) = {runProposer S rho hn s} := by
   have h := hsel (.proposer s)
-  change ((family S (pubOf E)).skel.proposerSel s).Admits _ at h
-  rw [skeleton_proposerSel S hn s] at h
-  exact h
+  change (rho.sel (.proposer s)).card = min 1 (Fintype.card V) at h
+  rw [min_eq_left hn] at h
+  obtain ⟨k, hk⟩ := Finset.card_eq_one.mp h
+  have hne : (rho.sel (.proposer s)).Nonempty := ⟨k, hk ▸ Finset.mem_singleton_self k⟩
+  unfold runProposer
+  rw [dite_eq_left hne]
+  exact Finset.eq_singleton_iff_unique_mem.mpr
+    ⟨Finset.min'_mem _ _, fun x hx => by
+      have hm := Finset.min'_mem (rho.sel (.proposer s)) hne
+      exact (Finset.mem_singleton.mp (hk ▸ hx)).trans
+        (Finset.mem_singleton.mp (Eq.mp (congrArg (fun a => _ ∈ a) hk) hm)).symm⟩
 
 /-! ## The proposal duty -/
 
@@ -1055,7 +987,6 @@ theorem blockOf_eq_mkBlock (k : Fin (Fintype.card V))
   subst hslot
   simp only [blockOf, mkBlock, digestOf, dgOf]
   rw [parentRoot_parentRef]
-  rfl
 
 omit [DecidableEq V] in
 /-- **The proposal duty is the node's proposal step.** At the start of slot `s` of which the node is
@@ -1063,25 +994,31 @@ the selected proposer, when the proposal carries only released objects, the engi
 step records the block the node's `tickStep .proposal` makes; otherwise both do nothing. -/
 theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
     (s : Slot) (hs : 0 < s)
-    (hsel : rho.sel (.proposer s) = {(S.params (pubOf E) hn).toParams.proposer s})
+    (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (hslot : (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s)
     (hst : (shapeOf S hn nd).now = (S.params (pubOf E) hn).toParams.slotTime s)
     (hrel : ∀ par info cs, (propose (shapeOf S hn nd) s).2 = some (par, info, cs) →
       ∀ o ∈ cs, o ∈ Model.closure nd.seen) :
     (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1).node =
-      (tickStep (digestOf S rho) (rho.ownKey v) (shapeOf S hn nd).node (shapeOf S hn nd).now
+      (tickStep (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+        (shapeOf S hn nd).node (shapeOf S hn nd).now
         (encodeTxs nd.st.2) .proposal).1 := by
   have hact2 := act_propose_snd S hn nd s hs
   have hact1 := shapeOf_act_propose S hn nd.st s hs
   unfold Model.Run.dutyStep
   generalize (Model.protoOf (compiled (family S)) E).act nd.st (.propose s hs) = a at hact1 hact2
-  have hP : Proposes (P := (S.params (pubOf E) hn).toParams) (rho.ownKey v)
+  have hP : Proposes (P := (S.params (pubOf E) hn).toParams) (runProposer S rho hn) (rho.ownKey v)
         (shapeOf S hn nd).now ↔
-      (S.params (pubOf E) hn).toParams.proposer s = (shapeOf S hn nd).self := by
-    rw [hst, proposes_iff S hn _ s hs, hself]
-  by_cases hp : (S.params (pubOf E) hn).toParams.proposer s = (shapeOf S hn nd).self
-  · simp only [propose, hp, ite_true] at hact1 hact2 hrel
+      runProposer S rho hn s = (shapeOf S hn nd).self := by
+    rw [hst, proposes_iff S hn (runProposer S rho hn) _ s hs, hself]
+  by_cases hp : runProposer S rho hn s = (shapeOf S hn nd).self
+  · have hmem : rho.ownKey v ∈ rho.sel (.proposer s) := by
+      rw [hsel]
+      exact Finset.mem_singleton.2 (hp.trans hself).symm
+    simp only [show (Model.protoOf (compiled (family S)) E).role (.propose s hs) =
+      .proposer s from rfl, hmem, ↓reduceIte]
+    simp only [propose] at hact1 hact2 hrel
     simp only [tickStep, hP.2 hp, ite_true]
     rcases hr : (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.2 with _ | ⟨d, p⟩
     · simp only [hr] at hact1 hact2
@@ -1114,11 +1051,13 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled 
       · exact protects_of_not_att S _ _ _ (fun k w h => by
           cases h)
       · exact dependencies_item _ _ _ _ _
-  · simp only [propose, hp, ite_false] at hact1 hact2
-    simp only [tickStep, hP.not.2 hp, ite_false]
-    rw [hact2]
-    change (a.1.1 hn).node = _
-    rw [hact1]
+  · simp only [tickStep, hP.not.2 hp, ite_false]
+    have hmem : rho.ownKey v ∉ rho.sel (.proposer s) := by
+      rw [hsel, Finset.mem_singleton]
+      intro heq
+      exact hp (heq.symm.trans hself.symm)
+    simp only [show (Model.protoOf (compiled (family S)) E).role (.propose s hs) =
+      .proposer s from rfl, hmem, ↓reduceIte]
 
 
 /-! ## The node state across a tick -/
@@ -1145,9 +1084,10 @@ theorem nodeTick_node_other (st : State sp ro) (h : ¬ sp.toParams.IsPublic st.n
 
 /-- The shape's FG update is the node's `tickStep .fgUpdate`, for any digests and mempool: neither
 reads them. -/
-theorem fgUpdate_node (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
+theorem fgUpdate_node (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
     (st : State sp ro) :
-    (fgUpdate st).node = (Node.tickStep dg st.self st.node st.now x .fgUpdate).1 := by
+    (fgUpdate st).node = (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).1 := by
   unfold fgUpdate Node.tickStep
   simp only
   rcases h : (Node.acToFG st.node st.now).2.2.1 with _ | C
@@ -1160,8 +1100,9 @@ omit [DecidableEq V] in
 /-- `fgUpdate_node` with the engine's digests. -/
 theorem fgUpdate_node_digestOf (st : State (S.params (pubOf E) hn) (S.ro _)) (x : Nat) :
     (fgUpdate st).node =
-      (Node.tickStep (digestOf S rho) st.self st.node st.now x .fgUpdate).1 :=
-  fgUpdate_node (digestOf S rho) x st
+      (Node.tickStep (runProposer S rho hn) (digestOf S rho)
+        st.self st.node st.now x .fgUpdate).1 :=
+  fgUpdate_node (runProposer S rho hn) (digestOf S rho) x st
 
 omit [DecidableEq V] in
 /-- A duty keeps the mempool. -/
@@ -1193,6 +1134,8 @@ theorem runDuties_mempool (v : V) :
   | d :: ds, nd => by
     rw [runDuties_fst_cons, runDuties_mempool v ds]
     unfold Model.Run.dutyStep
+    split
+    case isFalse => rfl
     rw [releaseAll_mempool]
     exact act_mempool S _ d
 
@@ -1264,32 +1207,36 @@ theorem atProposal_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (family 
 omit [DecidableEq V] in
 /-- The shape at the proposal duty: `nodeTick` of two poll steps of the clocked state. -/
 theorem atProposal_shape (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (t : Time) :
+    (t : Time) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     shapeOf S hn (atProposal S rho v nd t) =
       nodeTick (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1 := by
   change shapeOf S hn (rho.dutyStep v (rho.dutyStep v (rho.dutyStep v _ (.poll t.toNat)).1
     (.poll t.toNat)).1 (.pollPropose t.toNat)).1 = _
-  rw [dutyStep_pollPropose, dutyStep_poll, dutyStep_poll]
+  rw [dutyStep_pollPropose _ _ _ _ _ _ hsel, dutyStep_poll _ _ _ _ _ _ hsel,
+    dutyStep_poll _ _ _ _ _ _ hsel]
   rfl
 
 omit [DecidableEq V] in
 /-- The key at the proposal duty is the key before the tick. -/
 theorem atProposal_self (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (t : Time) : (shapeOf S hn (atProposal S rho v nd t)).self = (nd.st.1 hn).self := by
-  rw [atProposal_shape, nodeTick_self, poll_self, poll_self]
+    (t : Time) (hsel : rho.ownKey v ∈ rho.sel .poll) :
+    (shapeOf S hn (atProposal S rho v nd t)).self = (nd.st.1 hn).self := by
+  rw [atProposal_shape _ _ _ _ _ _ hsel, nodeTick_self, poll_self, poll_self]
 
 omit [DecidableEq V] in
 /-- The clock at the proposal duty is the tick time. -/
 theorem atProposal_now (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (t : Time) : (shapeOf S hn (atProposal S rho v nd t)).now = t := by
-  rw [atProposal_shape, nodeTick_now, poll_now, poll_now]
+    (t : Time) (hsel : rho.ownKey v ∈ rho.sel .poll) :
+    (shapeOf S hn (atProposal S rho v nd t)).now = t := by
+  rw [atProposal_shape _ _ _ _ _ _ hsel, nodeTick_now, poll_now, poll_now]
 
 omit [DecidableEq V] in
 /-- At a public time the FG update is due at the proposal duty: the node's tick set it. -/
 theorem atProposal_fgDue (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (t : Time) (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
+    (t : Time) (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
+    (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (atProposal S rho v nd t)).fgDue = true := by
-  rw [atProposal_shape]
+  rw [atProposal_shape _ _ _ _ _ _ hsel]
   unfold nodeTick
   rw [ite_eq_left (by rw [poll_now, poll_now]; exact hp)]
 
@@ -1305,10 +1252,11 @@ omit [DecidableEq V] in
 /-- With no FG update due before the tick, the node state at the proposal duty is `nodeTick` of the
 clocked state. -/
 theorem atProposal_node (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (t : Time) (hf : (nd.st.1 hn).fgDue = false) :
+    (t : Time) (hf : (nd.st.1 hn).fgDue = false)
+    (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (atProposal S rho v nd t)).node =
       (nodeTick { nd.st.1 hn with now := t }).node := by
-  rw [atProposal_shape]
+  rw [atProposal_shape _ _ _ _ _ _ hsel]
   have h1 : (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1.node =
       (nd.st.1 hn).node := by
     rw [poll_node_of_fgDue _ _ (poll_fgDue _ _),
@@ -1327,16 +1275,17 @@ omit [DecidableEq V] in
 /-- The node after the whole tick, in terms of the node at the proposal duty: the proposal if
 due, a poll step, a poll step, the gossip. -/
 theorem tick_node_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (t : Time) (ht : 0 ≤ t) (hw : E.awake v t = true) :
+    (t : Time) (ht : 0 ≤ t) (hw : E.awake v t = true)
+    (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (rho.tick nd v t).1).node =
       (poll (poll (shapeOf S hn (rho.runDuties v (atProposal S rho v nd t)
-          ((skeleton (pubOf E) S.proposer).proposeAt t)).1) t.toNat).1
+          ((skeleton (pubOf E)).proposeAt t)).1) t.toNat).1
         t.toNat).1.node := by
   rw [tick_of_awake S rho v nd t hw, gossip_node_eq, duties_eq S t ht, runDuties_fst_append]
-  erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll]
+  erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll _ _ _ _ _ _ hsel]
   unfold dutiesInit
   erw [runDuties_fst_append, runDuties_fst_append, runDuties_fst_cons, runDuties_fst_nil,
-    dutyStep_poll]
+    dutyStep_poll _ _ _ _ _ _ hsel]
   rfl
 
 /-- **`Simulates.tick`'s node step at a non-public time.** An engine tick at a non-public time
@@ -1348,18 +1297,19 @@ theorem node_of_tick_other (hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.h
     (stateAt S rho hn v (i + 1)).node = (stateAt S rho hn v i).node := by
   have hw := hv.tick_awake v t (List.mem_of_getElem? he)
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
-  rw [stateAt_tick S rho hn v he, tick_node_eq S rho hn v _ t ht hw]
-  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.proposer) t with
+  have hsel := poll_selected S rho hv v
+  rw [stateAt_tick S rho hn v he, tick_node_eq S rho hn v _ t ht hw hsel]
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
     ⟨hnil, _⟩ | ⟨s, hs, _, hts⟩
   · rw [hnil]
     erw [runDuties_fst_nil]
     have hf : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).fgDue = false := by
-      rw [atProposal_shape]
+      rw [atProposal_shape _ _ _ _ _ _ hsel]
       unfold nodeTick
       rw [ite_eq_right (by rw [poll_now, poll_now]; exact hp)]
       exact poll_fgDue _ _
     rw [poll_node_of_fgDue _ _ (poll_fgDue _ _), poll_node_of_fgDue _ _ hf,
-      atProposal_node S rho hn v _ t (fgDue_eq_false S rho hn v i), nodeTick_node_other _ hp]
+      atProposal_node S rho hn v _ t (fgDue_eq_false S rho hn v i) hsel, nodeTick_node_other _ hp]
     rfl
   · exfalso
     apply hp
@@ -1368,22 +1318,26 @@ theorem node_of_tick_other (hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.h
 
 /-- The node's `onTick` is its three tick steps in order: the AC's tick, the proposal, the FG
 update. -/
-theorem onTick_node (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+theorem onTick_node (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
-    (Node.onTick dg self st t x).1 =
-      (Node.tickStep dg self (Node.tickStep dg self (Node.tickStep dg self st t x .acTick).1 t x
-        .proposal).1 t x .fgUpdate).1 := rfl
+    (Node.onTick proposer dg self st t x).1 =
+      (Node.tickStep proposer dg self
+        (Node.tickStep proposer dg self (Node.tickStep proposer dg self st t x .acTick).1 t x
+          .proposal).1 t x .fgUpdate).1 := rfl
 
 /-- The AC-tick step is the AC's tick. -/
-theorem tickStep_acTick (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+theorem tickStep_acTick (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
-    (Node.tickStep dg self st t x .acTick).1 = (Node.acCall self st t .tick).1 := rfl
+    (Node.tickStep proposer dg self st t x .acTick).1 = (Node.acCall self st t .tick).1 := rfl
 
 /-- The proposal step of a key that does not propose at `t` keeps the node state. -/
-theorem tickStep_proposal_not (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+theorem tickStep_proposal_not (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
-    (h : ¬ Proposes (P := sp.toParams) self t) :
-    (Node.tickStep dg self st t x .proposal).1 = st := by
+    (h : ¬ Proposes (P := sp.toParams) proposer self t) :
+    (Node.tickStep proposer dg self st t x .proposal).1 = st := by
   unfold Node.tickStep
   simp only [h, ite_false]
 
@@ -1396,6 +1350,8 @@ theorem dutyStep_propose_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Pr
     (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
     (h : Q (shapeOf S hn nd)) : Q (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1) := by
   unfold Model.Run.dutyStep
+  split
+  case isFalse => exact h
   apply releaseAll_pres S rho hn Q hrec
   have := hprop _ s h
   rw [← shapeOf_act_propose S hn nd.st s hs] at this
@@ -1428,40 +1384,45 @@ theorem node_of_tick_public (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.h
     (t : Time) (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
     (stateAt S rho hn v (i + 1)).node =
-      (exec (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+      (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
         (.tick (encodeTxs (Model.mempool rho.inbox v t)))).1 := by
   have hw := hv.tick_awake v t (List.mem_of_getElem? he)
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
-  rw [stateAt_tick S rho hn v he, tick_node_eq S rho hn v _ t ht hw]
+  have hsel := poll_selected S rho hv v
+  rw [stateAt_tick S rho hn v he, tick_node_eq S rho hn v _ t ht hw hsel]
   have hPself : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).self =
       rho.ownKey v := by
-    rw [atProposal_self]; exact self_eq_ownKey S rho hn v i
+    rw [atProposal_self _ _ _ _ _ _ hsel]; exact self_eq_ownKey S rho hn v i
   have hPnow : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).now = t :=
-    atProposal_now S rho hn v _ t
+    atProposal_now S rho hn v _ t hsel
   have hPfg : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).fgDue = true :=
-    atProposal_fgDue S rho hn v _ t hp
+    atProposal_fgDue S rho hn v _ t hp hsel
   have hPnode : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node =
       (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).1 := by
-    rw [atProposal_node S rho hn v _ t (fgDue_eq_false S rho hn v i),
+    rw [atProposal_node S rho hn v _ t (fgDue_eq_false S rho hn v i) hsel,
       nodeTick_node_public _ (by exact hp)]
     exact congrArg (fun k => (Node.acCall k _ t _).1) (self_eq_ownKey S rho hn v i)
   have hPmem : (atProposal S rho v (rho.stateBefore i v) t).st.2 =
       Model.mempool rho.inbox v t := atProposal_mempool S rho v _ t
-  change _ = (Node.onTick _ _ _ _ _).1
-  erw [onTick_node (sp := S.params (pubOf E) hn) (digestOf S rho) (rho.ownKey v) _ t
+  change _ = (Node.onTick _ _ _ _ _ _).1
+  erw [onTick_node (sp := S.params (pubOf E) hn)
+    (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) _ t
     (encodeTxs (Model.mempool rho.inbox v t)),
-    tickStep_acTick (sp := S.params (pubOf E) hn) (digestOf S rho) (rho.ownKey v) _ t
+    tickStep_acTick (sp := S.params (pubOf E) hn)
+    (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) _ t
     (encodeTxs (Model.mempool rho.inbox v t))]
-  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.proposer) t with
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
     ⟨hnil, hno⟩ | ⟨s, hs, hone, hts⟩
   · rw [hnil]
     erw [runDuties_fst_nil]
     rw [poll_node_of_fgDue _ _ (poll_fgDue _ _), poll_node_of_fgDue_true _ _ hPfg,
       fgUpdate_node_digestOf S rho hn _ (encodeTxs (Model.mempool rho.inbox v t)),
       hPself, hPnow, hPnode]
-    have hnp : ¬ Proposes (P := (S.params (pubOf E) hn).toParams) (rho.ownKey v) t :=
-      not_proposes S hn _ t (fun s hs h => hno s hs (h.trans (slotTime_eq S hn s)))
-    erw [tickStep_proposal_not (sp := S.params (pubOf E) hn) (digestOf S rho) (rho.ownKey v) _ t
+    have hnp : ¬ Proposes (P := (S.params (pubOf E) hn).toParams)
+        (runProposer S rho hn) (rho.ownKey v) t :=
+      not_proposes S hn _ _ t (fun s hs h => hno s hs (h.trans (slotTime_eq S hn s)))
+    erw [tickStep_proposal_not (sp := S.params (pubOf E) hn)
+      (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) _ t
       (encodeTxs (Model.mempool rho.inbox v t)) hnp]
   · rw [hone]
     erw [runDuties_fst_cons, runDuties_fst_nil]

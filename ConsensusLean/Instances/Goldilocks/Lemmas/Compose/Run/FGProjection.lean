@@ -19,15 +19,16 @@ namespace Consensus.Goldilocks.Compose
 open Node
 
 variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
-  {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {proposer : Nat → Fin P.n} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
 
 /-- **An honest node accepts its own block in the tick that makes it**, after the tick's two
 AC cuts, at the FG state before the tick, and its attestations are the proposal attestations of
 that state. -/
 theorem own_accept (hq : A.Requirements) (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg)
-    (h : Node.LocalRun dg H sg tr) (hnc : NoCollRun dg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+    (h : Node.LocalRun proposer dg H sg tr) (hnc : NoCollRun dg tr)
+    {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {B : A.Blk} (hc : tr.CallAt y i (.fg (.block B true))) (hp : B.proposer = y) :
-    ∃ j, i = j + 2 ∧ tr.TickAt dg y j (tr.time i) ∧
+    ∃ j, i = j + 2 ∧ tr.TickAt proposer dg y j (tr.time i) ∧
       (∀ k, j ≤ k → k < i → ∃ ℓ : ACLabel A, tr.CallAt y k (.ac ℓ)) ∧
       (tr.state y i).fg = (tr.state y j).fg ∧
       ∃ H₀, B.fgPayload = (tr.state y j).fg.proposalAttestations H₀ := by
@@ -39,7 +40,8 @@ theorem own_accept (hq : A.Requirements) (hg₀ : (P.genesisBlock A.genesisPaylo
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   -- C0.3: the own block is accepted at its tick
   obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
-  have hC03 := honest_block_accepted dg y hq hg₀ cfg _ (tr.time (j + 2)) x hreach hstep hpr d p
+  have hC03 := honest_block_accepted proposer dg y hq hg₀ cfg _ (tr.time (j + 2)) x
+    hreach hstep hpr d p
     (by rw [hst]; exact hdp)
   simp only [hst] at hC03
   have key : NoCollOn dg (insert B (tr.state y j).fg.tree) →
@@ -67,7 +69,8 @@ theorem own_accept (hq : A.Requirements) (hg₀ : (P.genesisBlock A.genesisPaylo
 
 /-- **The FG projection executes the FG** at the honest nodes (no `NoColl`): the initial state
 and every FG call's step. -/
-theorem fg_exec (h : Node.LocalRun dg H sg tr) : Store.FGExec A.genesisPayload H tr.projFG := by
+theorem fg_exec (h : Node.LocalRun proposer dg H sg tr) :
+    Store.FGExec A.genesisPayload H tr.projFG := by
   refine ⟨fun y hy => by simp [RunTrace.projFG, h.init y hy, Node.init], fun i ℓ hl hH => ?_⟩
   have hH : tr.node i ∈ H := hH
   have hc : tr.CallAt (tr.node i) i (.fg ℓ) := projFG_callAt.1 ⟨rfl, hl⟩
@@ -92,7 +95,7 @@ theorem fg_exec (h : Node.LocalRun dg H sg tr) : Store.FGExec A.genesisPayload H
 
 /-- **C0.5 (c), the FG projection.** -/
 theorem fg_projection : FGProjection := by
-  intro P A dg H sg tr hq hg₀ h hnc
+  intro P A dg H sg tr proposer hq hg₀ h hnc
   refine
     { coherent := honest_blocks_coherent h hnc
       init := (fg_exec h).init

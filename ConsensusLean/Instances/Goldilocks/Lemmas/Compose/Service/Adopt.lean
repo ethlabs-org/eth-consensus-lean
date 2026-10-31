@@ -23,6 +23,7 @@ namespace Consensus.Goldilocks.Compose
 open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
 
 /-- **`P` is in the updater's tree, above its `Σ.F`** (workbench#12 §4): `Σ.F ⪯ P`
 (`updater_F_anc_proposal`), so the acceptance relay brings `P`, accepted by its proposer at `t_s`,
@@ -30,7 +31,7 @@ to the updater, joined (restarts at or before `t_s`), before `t_s + Δ ≤ t_s +
 (`relay_mem`). -/
 theorem proposal_held_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
@@ -38,7 +39,7 @@ theorem proposal_held_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
     P ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F P := by
   have h := hrun.toLocalRun
-  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -100,7 +101,7 @@ A0.8), so the honest slot-`s` voters support `P`; the other voters are faulty, a
 (`faults_lt_honest_voters`). -/
 theorem proposal_majority_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
@@ -108,7 +109,7 @@ theorem proposal_majority_at_update {dg : Digest (List (FG.Att sp.n)) (Payload s
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
     (SA.voters {v | v ∈ (tr.state y k₀).ac.pool s}).ncard <
       2 * SA.confirmationScore sp (tr.state y k₀).ac ℓ.frame s P := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   have hPt := (proposal_held_at_update hrun hnc hsl hp hP hPs hpj hy hu).1
   have hall := honest_votes_eq_proposal hrun hnc hsl hp hP hPs hpj
@@ -154,14 +155,14 @@ block is an ancestor of a stored lock block, which is on the origin chain (S1); 
 origin; blocks on the origin chain are compatible (S1), so the result is compatible with the live
 lock block. -/
 theorem result_not_vetoed {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
     {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hC : SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some C) :
     ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) C := by
   have hinv := sleepy_invariant hrun hnc hsl
-  have hcoh := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun.coherent
+  have hcoh := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
   have hfr : ℓ.frame = Node.frame (tr.state y k₀) := by
     obtain ⟨⟨hn, hl⟩, -⟩ := hu
     obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hl
@@ -223,7 +224,7 @@ private theorem confirmationScore_eq_zero {A : SA.SAState sp.n}
 majority is on one chain with it (A0.3), and no block above it has a resolved slot-`s` supporter;
 no result is vetoed (`result_not_vetoed`). -/
 theorem adopt_result {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
@@ -293,7 +294,7 @@ private theorem acOnTick_update_record (self : Fin sp.n) {A : SA.SAState sp.n}
 /-- **The update of slot `s` adopts the honest proposal of slot `s`**: after an honest node's
 joined update of slot `s`, its record names a block of the honest blocks that extends `P`. -/
 theorem update_adopts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}

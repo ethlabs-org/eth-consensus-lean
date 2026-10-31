@@ -24,7 +24,7 @@ update's side taken for any result. -/
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-- `u` has a slot-`s` vote whose head extends `D` inside `U`, which `X` sent or admitted at a
 time in `[t_s, t_s + 2Δ)`. -/
@@ -67,7 +67,7 @@ private theorem admitted_of_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U t
 /-- **The result side.** At an honest update of slot `s` with result `C`: its supporters `S`
 of `C` are more than half of its voters; each has a vote in its pool, extending `C`, and does
 not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`. -/
-private theorem result_side (hrun : ACRun tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
+private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
     {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hR : ResultAt tr Y c s C CV) :
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
@@ -103,7 +103,8 @@ private theorem result_side (hrun : ACRun tr H U) {Y : Fin sp.n} (hY : Y ∈ H) 
 /-- **The optimistic side.** At an honest optimistic confirmation of slot `s` on `D`, three
 quarters of the committee are optimistic voters of `D`, each with a vote extending `D` that the
 node admitted (or cast) in `[t_s, t_s + 2Δ)`. -/
-private theorem optimistic_side (hrun : ACRun tr H U) {X : Fin sp.n} (hX : X ∈ H) {k s : Nat}
+private theorem optimistic_side (hrun : ACRun proposer tr H U) {X : Fin sp.n}
+    (hX : X ∈ H) {k s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV) :
     ∃ ℓ A, OptimisticPoint tr X k ℓ A ∧ ℓ.frame.tree ⊆ U ∧
       3 * sp.n ≤ 4 * (optimisticVoters sp A ℓ.frame s D).ncard ∧
@@ -183,7 +184,8 @@ private theorem against_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
 /-- **T1 §2, two fast origins of one slot** (fast test or optimistic, in any combination; the
 optimistic/optimistic case of T1 §2): A1.9's same-slot lemma under `Sync[t_s, t_{s+1} + Δ]` and
 `f < n/2`. -/
-theorem fastLock_fastLock_compatible (hS : HealthyBase tr H U g) {s : Nat} {x x' : Fin sp.n}
+theorem fastLock_fastLock_compatible (hS : HealthyBase tr H U proposer g)
+    {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hfl : FastLockAt tr x i s B CV) (hx' : x' ∈ H) (hfl' : FastLockAt tr x' i' s B' CV')
     (hs : gbar g ≤ sp.ts s) : Compatible U B B' :=
@@ -191,7 +193,7 @@ theorem fastLock_fastLock_compatible (hS : HealthyBase tr H U g) {s : Nat} {x x'
 
 /-- **T1 §2, regular/regular**: two results (`get_confirmation`, vetoed or not) of one slot
 `s ≥ r` at honest nodes are compatible. -/
-theorem result_result_compatible (hS : HealthyBase tr H U g) {s : Nat} {x x' : Fin sp.n}
+theorem result_result_compatible (hS : HealthyBase tr H U proposer g) {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hR' : ResultAt tr x' i' s C' CV')
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Compatible U C C' := by
@@ -210,7 +212,8 @@ theorem result_result_compatible (hS : HealthyBase tr H U g) {s : Nat} {x x' : F
 
 /-- **T1 §2, regular/optimistic**: a result of slot `s ≥ r` at an honest node is compatible
 with an honest optimistic confirmation of slot `s`. -/
-theorem result_optimistic_compatible (hS : HealthyBase tr H U g) {s : Nat} {x x' : Fin sp.n}
+theorem result_optimistic_compatible (hS : HealthyBase tr H U proposer g)
+    {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {C B : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hO : OptimisticLockAt tr x' i' s B CV')
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Compatible U C B := by

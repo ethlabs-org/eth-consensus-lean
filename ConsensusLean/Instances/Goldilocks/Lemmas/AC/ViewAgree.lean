@@ -20,7 +20,7 @@ statements (`honest_votes_eq_proposal`). -/
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 private theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
@@ -75,11 +75,11 @@ private theorem genesis_mem (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y
     · exact ih j hj hc'
 
 /-- An honest proposer of a slot `σ > 0` has one block of slot `σ` in the honest frames. -/
-private theorem frameBlock_unique (hrun : ACRun tr H U) {σ : Nat} (hσ : σ ≠ 0)
-    (hp : sp.toParams.proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
+private theorem frameBlock_unique (hrun : ACRun proposer tr H U) {σ : Nat} (hσ : σ ≠ 0)
+    (hp : proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
     (hB' : HonestFrameBlock tr H B') (hs : B.slot = σ) (hs' : B'.slot = σ) : B = B' := by
   have hr := hrun.localRun
-  have hprop : ∀ X, HonestFrameBlock tr H X → X.slot = σ → X.proposer = sp.toParams.proposer σ := by
+  have hprop : ∀ X, HonestFrameBlock tr H X → X.slot = σ → X.proposer = proposer σ := by
     rintro X ⟨y, hy, i, ℓ, hc, hX⟩ hXs
     obtain ⟨G, hG, hGr, hGs⟩ := genesis_mem hr hy i hc
     refine hXs ▸ hrun.honest.proposer X ⟨y, hy, i, ℓ, hc, hX⟩ fun hXr => hσ ?_
@@ -168,9 +168,9 @@ private theorem ancR_transfer (hU : Coherent U) {Φ Ψ : Frm sp.n FGP} (hΦU : �
 
 /-- **The proposal's view and the merged view agree** (equivocators, voters, and supporters of
 every block of both trees). -/
-theorem view_agree (hrun : ACRun tr H U) {s : Nat} {p y : Fin sp.n} {i j : Nat}
+theorem view_agree (hrun : ACRun proposer tr H U) {s : Nat} {p y : Fin sp.n} {i j : Nat}
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
-    (hp : p ∈ H) (hy : y ∈ H) (hpp : p = sp.toParams.proposer (s + 1))
+    (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)

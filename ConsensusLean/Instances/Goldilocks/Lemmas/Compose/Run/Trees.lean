@@ -16,10 +16,10 @@ namespace Consensus.Goldilocks.Compose
 open Node
 
 variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
-  {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {proposer : Nat → Fin P.n} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
 
 /-- **The tree of an honest node only grows.** -/
-theorem tree_mono (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k i : Nat}
+theorem tree_mono (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k i : Nat}
     (hki : k ≤ i) : (tr.state y k).fg.tree ⊆ (tr.state y i).fg.tree := by
   induction i, hki using Nat.le_induction with
   | base => exact subset_rfl
@@ -32,7 +32,7 @@ theorem tree_mono (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k
     · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
 
 /-- **A block of an honest tree is genesis or was accepted by that node before.** -/
-theorem tree_cases (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+theorem tree_cases (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {X : A.Blk} (hX : X ∈ (tr.state y i).fg.tree) :
     X = P.genesisBlock A.genesisPayload ∨ ∃ k < i, tr.AcceptAt y k X := by
   induction i with
@@ -76,15 +76,18 @@ theorem tree_cases (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {
 
 /-- **An accepted block has its digest as root, its slot's proposer, and a root not held
 before** (so not the genesis root). -/
-theorem accept_facts (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k : Nat}
+theorem accept_facts (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k : Nat}
     {X : A.Blk} (hk : tr.AcceptAt y k X) :
-    X.RootOk dg ∧ X.proposer = P.proposer X.slot ∧ (tr.state y k).fg.blocks X.root = none ∧
+    X.RootOk dg ∧ X.proposer = proposer X.slot ∧ (tr.state y k).fg.blocks X.root = none ∧
       X.root ≠ P.genesisRoot := by
   obtain ⟨pr, σ', -, hnew, -, -, hσ, -⟩ := Store.onBlock_eq_some (h.cutLaw y hy k _ hk).2.1
-  refine ⟨?_, (P.fg.stateTransition_eq_some.1 hσ).1.1, hnew, fun hg => ?_⟩
+  refine ⟨?_, ?_, hnew, fun hg => ?_⟩
   · rcases blockCall_cases h hy hk with hg | ⟨j, x, -, -, -, d, p, -, rfl, -⟩
     · exact (h.wire y hy k _ _ hg).1
     · rfl
+  · rcases blockCall_cases h hy hk with hg | ⟨j, x, -, -, hp, d, p, -, rfl, -⟩
+    · exact h.proposerCredential y hy k _ _ hg
+    · exact hp.2.2.symm
   · have hG := (Store.accepted_tree P _ _ _ (fg_reachable h hy k)).2.2.1
     change (tr.state y k).fg.blocks P.genesisRoot = some _ at hG
     rw [← hg, hnew] at hG
@@ -95,12 +98,14 @@ theorem NoCollOn.mono {S S' : Set A.Blk} (h : NoCollOn dg S') (hS : S ⊆ S') : 
   fun B hB C hC => h B (hS hB) C (hS hC)
 
 /-- **The blocks of an honest tree are genesis or occur in the run.** -/
-theorem tree_subset_run (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
+theorem tree_subset_run (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+    (i : Nat) :
     (tr.state y i).fg.tree ⊆ insert (P.genesisBlock A.genesisPayload) {B | tr.Occurs B} :=
   fun _ hX => (tree_cases h hy hX).imp_right fun ⟨k, _, hk⟩ => ⟨y, k, true, hk⟩
 
 /-- **Under `NoColl`, blocks of honest trees with one root are one block.** -/
-theorem tree_root_inj (h : Node.LocalRun dg H sg tr) (hnc : NoCollRun dg tr) {y y' : Fin P.n}
+theorem tree_root_inj (h : Node.LocalRun proposer dg H sg tr) (hnc : NoCollRun dg tr)
+    {y y' : Fin P.n}
     (hy : y ∈ H) (hy' : y' ∈ H) {i i' : Nat} {X X' : A.Blk} (hX : X ∈ (tr.state y i).fg.tree)
     (hX' : X' ∈ (tr.state y' i').fg.tree) (hr : X.root = X'.root) : X = X' := by
   rcases tree_cases h hy hX with rfl | ⟨k, -, hk⟩ <;>
@@ -119,7 +124,7 @@ theorem tree_root_inj (h : Node.LocalRun dg H sg tr) (hnc : NoCollRun dg tr) {y 
   rw [hpr, hpr']
 
 /-- **The honest blocks of a run are coherent** under `NoColl`. -/
-theorem honest_blocks_coherent (h : Node.LocalRun dg H sg tr) (hnc : NoCollRun dg tr) :
+theorem honest_blocks_coherent (h : Node.LocalRun proposer dg H sg tr) (hnc : NoCollRun dg tr) :
     Coherent (tr.HonestBlocks H) := by
   refine ⟨fun X ⟨y, hy, i, hX⟩ X' ⟨y', hy', i', hX'⟩ hr => tree_root_inj h hnc hy hy' hX hX' hr,
     fun Y ⟨y', hy', i', hY⟩ X ⟨y, hy, i, hX⟩ hp => ?_⟩

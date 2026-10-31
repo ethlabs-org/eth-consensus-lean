@@ -34,9 +34,11 @@ open SA (SAParams ReplayOrder Payload gbar)
 /-- `Inv(t₀)` implies `Inv(t₀')` for `t₀ ≤ t₀'`: the protected blocks of `t₀'` are protected
 blocks of `t₀`. -/
 theorem _root_.Consensus.Goldilocks.SA.Inv.mono {sp : SAParams} {FGP : Type}
+    {proposer : Nat → Fin sp.n}
     {ro : ReplayOrder sp FGP} {tr : SA.SATrace sp FGP ro} {H : Set (Fin sp.n)}
-    {U : Set (SA.Blk sp.n FGP)} {t₀ t₀' : Time} (h : SA.Inv tr H U t₀) (ht : t₀ ≤ t₀') :
-    SA.Inv tr H U t₀' := by
+    {U : Set (SA.Blk sp.n FGP)} {t₀ t₀' : Time}
+    (h : SA.Inv proposer tr H U t₀) (ht : t₀ ≤ t₀') :
+    SA.Inv proposer tr H U t₀' := by
   refine fun B j hB => h B j ?_
   rcases hB with ⟨x, hx, i, CV, hj, hl, hs⟩ | ⟨x, hx, i, hj, hl, hs⟩ | ⟨hp, hP, hs, hv⟩
   · exact Or.inl ⟨x, hx, i, CV, hj, hl, by linarith⟩
@@ -48,11 +50,13 @@ theorem _root_.Consensus.Goldilocks.SA.Inv.mono {sp : SAParams} {FGP : Type}
 theorem reset_inv : ∃ Tb : Nat → Time → Time → Nat → Nat → Time,
     (∀ n Δ ΔF k δt, 0 ≤ Tb n Δ ΔF k δt) ∧
     ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+      (proposer : Nat → Fin sp.n)
       (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
       (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-      GoldilocksRun dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-      PropPlus tr H g Gp → ∀ a, IsReset tr H g a →
-        SA.Inv tr.projAC H (tr.HonestBlocks H) (a + Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt) := by
+      GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+      PropPlus tr H proposer g Gp → ∀ a, IsReset tr H g a →
+        SA.Inv proposer tr.projAC H (tr.HonestBlocks H)
+          (a + Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt) := by
   sorry
 
 /-- **H.3 (c3), `Geo` in a settled phase** (`h3-bridge.md` §5, from HS.1): for `T_b ≥ 8Δ`, every
@@ -60,38 +64,43 @@ honest proposal of a slot `p ≥ s_AC(a_z + T_b)` whose proposal and votes lie i
 effective phase has `Geo(P)` (`geo_of_settled`, which needs neither the reset nor the slot bound).
 -/
 theorem settled_geo {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun dg H tr)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (_hp : PropPlus tr H g Gp)
+    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
+    (_hp : PropPlus tr H proposer g Gp)
     {a Tb : Time} (_ha : IsReset tr H g a) (_hTb : 8 * sp.Δ ≤ Tb) (p : Nat)
-    (P : SA.Blk sp.n (List (FG.Att sp.n))) (hP : HonestProposalRun tr H p P)
+    (P : SA.Blk sp.n (List (FG.Att sp.n))) (hP : HonestProposalRun tr H proposer p P)
     (_htp : a + Tb + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p) (hph : InSettledPhase tr H g p) :
-    SA.Geo tr.projAC H p P :=
+    SA.Geo proposer tr.projAC H p P :=
   geo_of_settled hrun hs hc p P hP hph
 
 /-- **H.3 (c), the bridge**, from `reset_inv` and `settled_geo`. -/
 theorem bridge : ∃ Tb : Nat → Time → Time → Nat → Nat → Time, (∀ n Δ ΔF k δt, 0 ≤ Tb n Δ ΔF k δt) ∧
     ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+      (proposer : Nat → Fin sp.n)
       (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
       (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-      GoldilocksRun dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-      PropPlus tr H g Gp → ∀ a, IsReset tr H g a →
-        BridgeAt tr H g a (Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt) := by
+      GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+      PropPlus tr H proposer g Gp → ∀ a, IsReset tr H g a →
+        BridgeAt tr H proposer g a (Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt) := by
   obtain ⟨Tb, hTb, hinv⟩ := reset_inv
   refine ⟨fun n Δ ΔF k δt => max (Tb n Δ ΔF k δt) (8 * Δ), fun n Δ ΔF k δt =>
-    (hTb n Δ ΔF k δt).trans (le_max_left _ _), fun sp ro dg H tr g ΔF Gp hrun hs hc hp a ha =>
-    ⟨(hinv sp ro dg H tr g ΔF Gp hrun hs hc hp a ha).mono (add_le_add_right (le_max_left _ _) a),
+    (hTb n Δ ΔF k δt).trans (le_max_left _ _),
+    fun sp ro proposer dg H tr g ΔF Gp hrun hs hc hp a ha =>
+    ⟨(hinv sp ro proposer dg H tr g ΔF Gp hrun hs hc hp a ha).mono
+      (add_le_add_right (le_max_left _ _) a),
       fun p P hP htp hph => settled_geo hrun hs hc hp ha (le_max_right _ _) p P hP htp hph⟩⟩
 
 /-- **H.3, FG non-interference after the reset.** -/
 theorem non_interference : NonInterference := by
   obtain ⟨Tb, hTb, hb⟩ := bridge
-  refine ⟨Tb, hTb, fun sp ro dg H tr g ΔF Gp hrun hs hc hp => ?_⟩
-  have hr := reset_existence sp ro dg H tr g ΔF Gp hrun hs hc hp
+  refine ⟨Tb, hTb, fun sp ro proposer dg H tr g ΔF Gp hrun hs hc hp => ?_⟩
+  have hr := reset_existence sp ro proposer dg H tr g ΔF Gp hrun hs hc hp
   obtain ⟨a, ha⟩ := hr.2.2.1
   exact ⟨a, ha, (hr.2.2.2.1 a ha).trans hr.2.2.2.2.1,
-    height_scoped_retention sp ro dg H tr g ΔF hrun hs.healthy hs.noColl a ha,
-    hb sp ro dg H tr g ΔF Gp hrun hs hc hp a ha⟩
+    height_scoped_retention sp ro proposer dg H tr g ΔF hrun hs.healthy hs.noColl a ha,
+    hb sp ro proposer dg H tr g ΔF Gp hrun hs hc hp a ha⟩
 
 end Consensus.Goldilocks.Healing
 

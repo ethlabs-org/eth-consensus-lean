@@ -41,24 +41,25 @@ theorem sa_tips {sp : SAParams} {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm 
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- The frame of an honest node before a cut is well formed, and its tree is in the node's. -/
-private theorem frame_ok (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+private theorem frame_ok (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    (hy : y ∈ H) (i : Nat) :
     FrameOK (Node.frame (tr.state y i)) ∧
       (Node.frame (tr.state y i)).tree ⊆ (tr.state y i).fg.tree :=
   ⟨(Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1, fun _ hX => hX.1⟩
 
 /-- **R.8, `nested`.** -/
 theorem outputs_nested : OutputsNested := by
-  intro sp ro dg H tr hrun y hy i
+  intro sp ro dg H tr proposer hrun y hy i
   obtain ⟨hΦ, hsub⟩ := frame_ok hrun hy i
   obtain ⟨hC, hCH⟩ := sa_tips (A := (tr.state y i).ac) hΦ (tr.time i)
   exact ⟨Anc.mono hsub (hΦ.rooted.2 _ hC), Anc.mono hsub hCH⟩
 
 /-- **R.8, `finalMonotone`.** -/
 theorem finalized_monotone : FinalizedMonotone := by
-  intro sp ro dg H tr hrun y hy i j hij
+  intro sp ro dg H tr proposer hrun y hy i j hij
   induction j, hij using Nat.le_induction with
   | base => exact .refl
   | succ j _ ih =>
@@ -74,9 +75,10 @@ theorem finalized_monotone : FinalizedMonotone := by
       exact ih
 
 /-- Every block of an honest node's tree is a valid output. -/
-theorem validOutput_of_mem (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+theorem validOutput_of_mem (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat}
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree) :
-    ValidOutput tr dg y i X := by
+    ValidOutput tr proposer dg y i X := by
   have h := hrun.toLocalRun
   refine ⟨hX, fun Z hZX hZg => ?_⟩
   have hZ : Z ∈ (tr.state y i).fg.tree := by
@@ -99,7 +101,7 @@ theorem validOutput_of_mem (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y
 
 /-- **R.8, `outputValid`.** -/
 theorem outputs_valid : OutputsValid := by
-  intro sp ro dg H tr hrun y hy i
+  intro sp ro dg H tr proposer hrun y hy i
   obtain ⟨hΦ, hsub⟩ := frame_ok hrun hy i
   exact ⟨validOutput_of_mem hrun hy
       (Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1,

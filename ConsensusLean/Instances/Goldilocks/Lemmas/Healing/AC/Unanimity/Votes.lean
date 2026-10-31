@@ -23,10 +23,10 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {p : Nat} {P : Blk sp.n FGP}
   {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)} {d : DutyHead sp.n FGP (Payload sp.n)}
-  {pay : Payload sp.n}
+  {pay : Payload sp.n} {schedule : Nat → Fin sp.n}
 
 /-- **The head of an honest slot-`p` vote ends the canonical walk from its anchor.** -/
-private theorem vote_walkEnd (hs : UnanimitySetting tr H U g p P k ℓp d pay) {x : Fin sp.n}
+private theorem vote_walkEnd (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
     ∃ Hd ∈ U, Hd.root = e.msg.head ∧
@@ -64,7 +64,7 @@ private theorem vote_walkEnd (hs : UnanimitySetting tr H U g p P k ℓp d pay) {
   exact (IsBest.congr (hag Hd).1 (hag Hd).2).2 hC
 
 /-- **T1 §6, unanimity**, in its setting. -/
-theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U g p P k ℓp d pay) :
+theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
     ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by
   have hU : Coherent U := hs.standalone.run.localRun.coherent
   -- the canonical walk

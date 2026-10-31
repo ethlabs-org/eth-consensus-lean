@@ -42,9 +42,10 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **The premises of HR.4** for the reset `a`: a Goldilocks run under `Healthy(g)` and `NoColl`,
 and `a` is the reset `a_z`. -/
-structure ResetPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a : Time) :
+structure ResetPremises (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a : Time) :
     Prop where
-  run : GoldilocksRun dg H tr
+  run : GoldilocksRun proposer dg H tr
   healthy : tr.HealthyRun H ΔF g
   noColl : Compose.NoCollRun dg tr
   reset : IsReset tr H g a
@@ -69,6 +70,7 @@ def CacheInv (g a : Time) (k : Nat) : Prop :=
         (HZ tr H g + 1 ≤ (tr.post k).fg.hj → Compatible (tr.HonestBlocks H) (tr.post k).fg.J B)
 
 variable {tr H} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
+  {proposer : Nat → Fin sp.n}
 
 theorem voteInv_iff {g : Time} {k : Nat} : VoteInv tr H g k ↔
     ∀ x i j B, HighOrigin tr H g x i j B → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
@@ -88,7 +90,8 @@ theorem cacheInv_iff {g a : Time} {k : Nat} : CacheInv tr H g a k ↔
 /-- **No honest restart after `t_{slot(ḡ)+1}`** (`Healthy(g)`): a restart follows a time `u` at
 which the node was asleep with no call in `[u, restart)`; `u ≥ ḡ` contradicts `Healthy(g)`, and
 `u < ḡ` contradicts the tick at the public time `t_{slot(ḡ)+1} ≥ ḡ`, at which the node is awake. -/
-theorem restart_le (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+theorem restart_le (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     (hk : tr.RestartAt y k) : tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
   by_contra hlt
   obtain ⟨u, -, -, hu, hprev⟩ := hp.run.sleep_of_restart y hy k hk
@@ -113,7 +116,7 @@ theorem restart_le (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y �
 /-- **`f < h_t` after the cut** (`Healthy(g)`): from `c_z` on every honest validator is awake
 and joined (its restarts are at or before `t_{slot(ḡ)+1} < t_{slot(t) − 1}`, `restart_le`), and
 `3f ≤ n − 1`. -/
-theorem fault_bound_late (hp : ResetPremises tr H dg g ΔF a) {t : Time}
+theorem fault_bound_late (hp : ResetPremises tr H proposer dg g ΔF a) {t : Time}
     (ht : cutZ sp.toParams g ≤ t) : tr.FaultBound H t := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith

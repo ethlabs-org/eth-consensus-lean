@@ -26,6 +26,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
@@ -33,8 +34,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **Rows at `m` for a fixed upper proposal** (`hs5-exact-helpers.md` §2; `Service`'s
 `fixed_upper_proposal_rows` with `ProtectedBranch`, `ClientProgress` and `RowsBy` spelled out,
 and HS.2 as the hypothesis `hclean`). -/
-theorem fixed_upper_rows_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+theorem fixed_upper_rows_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain)
     (hcl : ∀ y ∈ H, ∀ k (C : SA.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
       tr.CallAt y k (.fg (.attest C signed)) → i₀ ≤ k → PhaseOn tr.projFG H i₀ k m c →
@@ -44,8 +45,8 @@ theorem fixed_upper_rows_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
         (∃ att, signed = some att ∧ att.h = h ∧ att.T = E.root) ∨
         ∃ k' < k, ∃ att, tr.SignAt y k' att ∧ att.h = h ∧ att.T = E.root)
     {s kY : Nat} {Y : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hY : tr.ProposesAt (sp.toParams.proposer s) kY Y)
-    (hYs : Y.slot = s) (hpH : sp.toParams.proposer s ∈ H)
+    (hY : tr.ProposesAt (proposer s) kY Y)
+    (hYs : Y.slot = s) (hpH : proposer s ∈ H)
     (hYh : ((tr.post kY).fg.σ Y.root).h = m) (hr : rTime sp w ≤ sp.ts s)
     (hvotes : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       e.msg.head = Y.root ∧
@@ -54,8 +55,8 @@ theorem fixed_upper_rows_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
     (hlater : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg Y)
     (hparents : ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
-      P'.slot = s' → tr.ProposesAt (sp.toParams.proposer s') k' P' →
-      sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
+      P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
+      proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) Y Pr)
     (hon : ∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) :
     ∃ E, EntryOf (tr.post kY).fg Y E m ∧

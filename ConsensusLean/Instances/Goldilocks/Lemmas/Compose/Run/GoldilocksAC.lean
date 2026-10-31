@@ -161,10 +161,11 @@ private theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att 
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- The frame of an honest AC call is inside the node's tree. -/
-private theorem frame_tree (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+private theorem frame_tree (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) :
     B ∈ (tr.state y i).fg.tree := by
@@ -178,14 +179,14 @@ private theorem emit_voteAt {x : Fin sp.n} {j : Nat} {v : Vote sp.n} (h : tr.Emi
   obtain ⟨ℓ, hc, e, he, rfl⟩ := h
   exact ⟨e, ⟨ℓ, projAC_callAt.2 hc, he⟩, rfl⟩
 
-private theorem message_vote (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+private theorem message_vote (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {v : Vote sp.n}
     (hc : tr.projAC.CallAt y i ℓ) (hm : ℓ.call = .message v) (hval : v.val ∈ H) :
     ∃ j < i, ∃ e, SA.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
   obtain ⟨j, hj, he⟩ := hrun.msg_unforgeable y hy i v ⟨ℓ, projAC_callAt.1 hc, hm⟩ hval
   exact ⟨j, hj, emit_voteAt he⟩
 
-private theorem carried_vote (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+private theorem carried_vote (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) {v : Vote sp.n}
     (hv : v ∈ blockVotes B) (hval : v.val ∈ H) :
@@ -195,7 +196,7 @@ private theorem carried_vote (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy :
   · obtain ⟨j, hj, he⟩ := hrun.carried_vote_unforgeable y hy k B ⟨true, hacc⟩ v hv hval
     exact ⟨j, hj.trans hk, emit_voteAt he⟩
 
-private theorem pool_vote (hrun : GoldilocksRun dg H tr)
+private theorem pool_vote (hrun : GoldilocksRun proposer dg H tr)
     (hloc : ACLocalRun (goldilocksNode sp ro) H (tr.HonestBlocks H) tr.projAC) {y : Fin sp.n}
     (hy : y ∈ H) (i σ : Nat) (v : Vote sp.n) (hv : v ∈ (tr.projAC.state y i).pool σ)
     (hval : v.val ∈ H) : ∃ j < i, ∃ e, SA.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
@@ -224,7 +225,7 @@ private theorem pool_vote (hrun : GoldilocksRun dg H tr)
     exact ⟨j, hj.trans hk, h⟩
 
 /-- A block of an honest frame is genesis or was accepted by an honest node. -/
-private theorem frame_block_cases (hrun : GoldilocksRun dg H tr)
+private theorem frame_block_cases (hrun : GoldilocksRun proposer dg H tr)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : SA.HonestFrameBlock tr.projAC H B) :
     B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∨
       ∃ y ∈ H, ∃ k, tr.AcceptAt y k B := by
@@ -235,9 +236,10 @@ private theorem frame_block_cases (hrun : GoldilocksRun dg H tr)
 
 /-- An accepted block of an honest proposer is its own proposal, at the third cut of its tick at
 the start of the block's slot, which is not slot `0`. -/
-private theorem own_tick (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+private theorem own_tick (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    (hy : y ∈ H) {k : Nat}
     {B : Blk sp.n (List (FG.Att sp.n))} (hk : tr.AcceptAt y k B) (hp : B.proposer ∈ H) :
-    ∃ j₀ acc, tr.TickAt dg B.proposer j₀ (tr.time (j₀ + 2)) ∧
+    ∃ j₀ acc, tr.TickAt proposer dg B.proposer j₀ (tr.time (j₀ + 2)) ∧
       tr.CallAt B.proposer (j₀ + 2) (.fg (.block B acc)) ∧ 0 < B.slot ∧
       tr.time (j₀ + 2) = sp.toParams.slotTime B.slot := by
   obtain ⟨j, -, ⟨acc, hc⟩, hpos⟩ := hrun.block_unforgeable y hy k B ⟨true, hk⟩ hp
@@ -246,7 +248,8 @@ private theorem own_tick (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y �
   · have hs : B.slot = sp.toParams.slotOf (tr.time (j₀ + 2)) := by rw [hB]; rfl
     exact ⟨j₀, acc, ⟨x, ht⟩, hc, hs ▸ hP.1, hs ▸ hP.2.1⟩
 
-private theorem one_block (hrun : GoldilocksRun dg H tr) {B B' : Blk sp.n (List (FG.Att sp.n))}
+private theorem one_block (hrun : GoldilocksRun proposer dg H tr)
+    {B B' : Blk sp.n (List (FG.Att sp.n))}
     (hB : SA.HonestFrameBlock tr.projAC H B) (hB' : SA.HonestFrameBlock tr.projAC H B')
     (hp : B.proposer ∈ H) (hpr : B.proposer = B'.proposer) (hs : B.slot = B'.slot) : B = B' := by
   have hp' : B'.proposer ∈ H := hpr ▸ hp
@@ -268,8 +271,8 @@ private theorem one_block (hrun : GoldilocksRun dg H tr) {B B' : Blk sp.n (List 
 
 /-- **The honest-object facts of the Goldilocks run's AC projection.** -/
 theorem goldilocks_ac_projection : GoldilocksACProjection := by
-  intro sp ro dg H tr hrun hnc
-  have hloc := ac_projection _ _ dg H _ tr (requirements sp ro) hrun.toLocalRun hnc
+  intro sp ro dg H tr proposer hrun hnc
+  have hloc := ac_projection _ _ dg H _ tr proposer (requirements sp ro) hrun.toLocalRun hnc
   refine ⟨hloc, fun y hy => pool_vote hrun hloc hy,
     fun y hy i ℓ v hc hm hval => message_vote hrun hy hc hm hval,
     fun y hy i ℓ hc B hB v hv hval => carried_vote hrun hy hc hB hv hval, fun B hB hr => ?_,

@@ -32,6 +32,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
@@ -65,7 +66,7 @@ private theorem rTime_eq (w : Time) :
 sandwich; HR.2): if the phase at `j` is the phase at `i₀`, it is `(m, c)` at every cut of
 `[i₀, j]` (vacuous when `j < i₀`): the frontier is squeezed to `m` (`Σ.h_max` only grows), and
 then the case rank is squeezed and the top `J` kept (`phaseAt_mono`). -/
-theorem phaseOn_of_not_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem phaseOn_of_not_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hset : SettledIn tr H g w i₀ m c) {j : Nat} (hnc : ¬ PhaseChanged tr.projFG H i₀ j) :
     PhaseOn tr.projFG H i₀ j m c := by
   obtain ⟨hfg, hq⟩ := fg_run_of_hs hrun hs
@@ -79,7 +80,8 @@ theorem phaseOn_of_not_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr 
 /-! ## Store facts -/
 
 /-- Ancestry inside the honest blocks does not lower the state height, across honest stores. -/
-private theorem h_le_of_anc_run (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+private theorem h_le_of_anc_run (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {k j : Nat}
     {X C : SA.Blk sp.n (List (FG.Att sp.n))} (hXC : Anc (tr.HonestBlocks H) X C)
     (hC : C ∈ (tr.state y k).fg.tree) (hX : X ∈ (tr.state z j).fg.tree) :
@@ -101,11 +103,11 @@ private theorem floor_cases {β : Type} (m : Nat) (c : PhaseCase β) :
 a protected branch. HS.3 is taken as the opaque hypothesis `hagree`: its premises at `i = i₀` are
 discharged here (`i₀ ≤ k_P`; the proposer ticks at `t_{s−1} ∈ [w, t_{s−1} + 3Δ]`, so
 `time i₀ ≤ t_{s−1} + 3Δ`; `ḡ ≤ t_{s−1} + 3Δ`), and only this proof reads HS.3's shape. -/
-theorem ready_protected (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hagree : FrozenTreeAgreement) {s kP : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H (sp.toParams.proposer s) kP s P) (hr : rTime sp w ≤ sp.ts s)
+    (hP : ReadyProposal tr H proposer (proposer s) kP s P) (hr : rTime sp w ≤ sp.ts s)
     (hon : ∀ k, tr.time k < sp.ts ((s : Int) + 1) → PhaseOn tr.projFG H i₀ k m c) :
     (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       e.msg.head = P.root ∧
@@ -114,7 +116,7 @@ theorem ready_protected (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g 
     (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg P) ∧
     ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' → P'.slot = s' →
-      tr.ProposesAt (sp.toParams.proposer s') k' P' → sp.toParams.proposer s' ∈ H →
+      tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
       PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
@@ -147,7 +149,7 @@ theorem ready_protected (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g 
       linarith
     have := hrun.time_mono hij
     linarith
-  have hacr := Compose.goldilocks_ac_projection sp ro dg H tr hrun hs.noColl
+  have hacr := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl
   have hvotes : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       PhaseOn tr.projFG H i₀ k m c := fun y hy k ℓ e hv he => by
     refine hon k (not_le.1 fun hle => ?_)
@@ -155,7 +157,8 @@ theorem ready_protected (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g 
     have h2 : e.msg.slot = sp.slot (tr.time k) := (SA.castAt_spec hacr.localRun hy hv).2.1
     rw [← h2, he] at this
     omega
-  obtain ⟨h₁, h₂, h₃⟩ := (hagree sp ro dg H tr g ΔF w i₀ i₀ m c hrun hs hc hset le_rfl _ kP s P
+  obtain ⟨h₁, h₂, h₃⟩ := (hagree sp ro proposer dg H tr g ΔF w i₀ i₀ m c
+    hrun hs hc hset le_rfl _ kP s P
     hP hi₀ htime (by linarith) hvotes).2 Gp hp hr
   exact ⟨fun y hy k ℓ e hv he => let ⟨a, b, _⟩ := h₁ y hy k ℓ e hv he;
     ⟨a, b.imp_left And.right⟩, h₂, h₃⟩
@@ -164,9 +167,9 @@ theorem ready_protected (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g 
 
 /-- **A ready proposal of the settled phase is allowed** (`hs234-exact-interface.md` §4, §5;
 `AcquireSources.proposal_allowed` for the ready proposal). -/
-theorem ready_allowed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem ready_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hset : SettledIn tr H g w i₀ m c) {p : Fin sp.n}
-    {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H p kP s P)
+    {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H proposer p kP s P)
     (hws : w ≤ sp.ts s) (hon : PhaseOn tr.projFG H i₀ kP m c) :
     EffAllowed (tr.post kP).fg m c P :=
   proposal_allowed hrun hs hc hset hP.1 hP.2.2.2.1 hP.2.2.2.2.1 hws hon
@@ -174,11 +177,11 @@ theorem ready_allowed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g Δ
 /-- **Every honest node receives a current source above a protected ready proposal**
 (`hs234-exact-interface.md` §5 "acquisition", first two paragraphs;
 `AcquireSources.protected_sources` for the ready proposal). -/
-theorem ready_sources (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+theorem ready_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kP : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H (sp.toParams.proposer s) kP s P) (hr : rTime sp w ≤ sp.ts s)
+    (hP : ReadyProposal tr H proposer (proposer s) kP s P) (hr : rTime sp w ≤ sp.ts s)
     (hon : ∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c)
     (hvotes : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       e.msg.head = P.root ∧
@@ -187,8 +190,8 @@ theorem ready_sources (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g Δ
     (hlater : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg P)
     (hparents : ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
-      P'.slot = s' → tr.ProposesAt (sp.toParams.proposer s') k' P' →
-      sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
+      P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
+      proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr) :
     ∀ y ∈ H, ∃ k ℓ C, SA.ToFGAt tr.projAC y k ℓ C ∧ sp.ts s ≤ tr.time k ∧
       tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C :=
@@ -222,10 +225,11 @@ below the stored block `O` of a fast-lock write of `y` of a clean label `j`
 an honest slot-`s'` vote, before which every honest vote of a slot `> s + 1` extends `O`,
 `clean_fast_extends`) gives `C ⪯ O ⪯ P'`; `C ≠ P'` (`C` is held before `t_{s'}`), so `C` is below
 `P'`'s parent. -/
-theorem descendant_source_parent (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) {s kP : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H (sp.toParams.proposer s) kP s P) (hr : rTime sp w ≤ sp.ts s)
+    (hP : ReadyProposal tr H proposer (proposer s) kP s P) (hr : rTime sp w ≤ sp.ts s)
     (hon : ∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c)
     (hvotes : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       e.msg.head = P.root ∧
@@ -236,7 +240,7 @@ theorem descendant_source_parent (hrun : GoldilocksRun dg H tr) (hs : HSShared t
     (hk : sp.ts s ≤ tr.time k) (hk' : tr.time k ≤ sp.ts s + 6 * sp.Δ)
     (hPC : Anc (tr.HonestBlocks H) P C)
     (hht : ((tr.state y k).fg.σ P.root).h < ((tr.state y k).fg.σ C.root).h)
-    {s' : Nat} {P' : SA.Blk sp.n (List (FG.Att sp.n))} (hP' : HonestProposalRun tr H s' P')
+    {s' : Nat} {P' : SA.Blk sp.n (List (FG.Att sp.n))} (hP' : HonestProposalRun tr H proposer s' P')
     (hs' : s + 2 ≤ s')
     (hvph : ∀ k', tr.time k' ≤ sp.ts s' + sp.Δ → PhaseOn tr.projFG H i₀ k' m c) :
     ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) C Pr := by
@@ -354,9 +358,10 @@ theorem descendant_source_parent (hrun : GoldilocksRun dg H tr) (hs : HSShared t
 protected ready proposal `W` of slot `s`, allowed, with `ht(W) ∈ {ℓ, m}`, whose height every
 honest node receives as a current source `C ⪰ W` in `[t_s, t_s + 6Δ]`: `C`'s entry at `ht(W)` is
 `W`'s (entry constancy), and `C` is allowed (it extends the allowed `W`). -/
-private theorem acquired_of_sources (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+private theorem acquired_of_sources (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF)
     {s kW : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hW : ReadyProposal tr H (sp.toParams.proposer s) kW s W)
+    (hW : ReadyProposal tr H proposer (proposer s) kW s W)
     (hvotes : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       e.msg.head = W.root ∧
       (W ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
@@ -364,8 +369,8 @@ private theorem acquired_of_sources (hrun : GoldilocksRun dg H tr) (hs : HSShare
     (hlater : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg W)
     (hparents : ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
-      P'.slot = s' → tr.ProposesAt (sp.toParams.proposer s') k' P' →
-      sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
+      P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
+      proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr)
     (hall : EffAllowed (tr.post kW).fg m c W)
     (hsrc : ∀ y ∈ H, ∃ k ℓ C, SA.ToFGAt tr.projAC y k ℓ C ∧ sp.ts s ≤ tr.time k ∧
@@ -376,7 +381,7 @@ private theorem acquired_of_sources (hrun : GoldilocksRun dg H tr) (hs : HSShare
     (hon : ∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) :
     ∃ (s h : Nat) (E W : SA.Blk sp.n (List (FG.Att sp.n))) (kW : Nat),
       (h = phaseFloor m c ∨ h = m) ∧ 1 ≤ h ∧
-      tr.ProposesAt (sp.toParams.proposer s) kW W ∧ W.slot = s ∧ sp.toParams.proposer s ∈ H ∧
+      tr.ProposesAt (proposer s) kW W ∧ W.slot = s ∧ proposer s ∈ H ∧
       EntryOf (tr.post kW).fg W E h ∧ ((tr.post kW).fg.σ W.root).h = h ∧
       w ≤ sp.ts s ∧ rTime sp w ≤ sp.ts s ∧ sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp ∧
       (∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) ∧
@@ -393,13 +398,13 @@ private theorem acquired_of_sources (hrun : GoldilocksRun dg H tr) (hs : HSShare
       (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
         PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg W) ∧
       ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' → P'.slot = s' →
-        tr.ProposesAt (sp.toParams.proposer s') k' P' → sp.toParams.proposer s' ∈ H →
+        tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
         PhaseOn tr.projFG H i₀ k' m c →
         ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr := by
   have hnc := hs.noColl
   obtain ⟨hpH, -, -, hprop, hWs, -⟩ := hW
   obtain ⟨hcall, hWt, -⟩ := accept_of_proposesAt hrun hnc hpH hprop
-  have hpost : tr.post kW = tr.state (sp.toParams.proposer s) (kW + 1) :=
+  have hpost : tr.post kW = tr.state (proposer s) (kW + 1) :=
     (tr.state_succ_of_call hcall).symm
   rw [hpost] at hall hsrc hhm
   have hR := Compose.fg_reachable hrun.toLocalRun hpH (kW + 1)
@@ -408,7 +413,7 @@ private theorem acquired_of_sources (hrun : GoldilocksRun dg H tr) (hs : HSShare
   have hETh' : ((tr.state _ (kW + 1)).fg.σ E.root).Th = E.root := hETh.trans hEr.symm
   have hsub : ∀ {y : Fin sp.n} (_ : y ∈ H) (i : Nat),
       (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun hy i X hX => ⟨_, hy, i, hX⟩
-  refine ⟨s, ((tr.state (sp.toParams.proposer s) (kW + 1)).fg.σ W.root).h, E, W, kW, ?_, ?_,
+  refine ⟨s, ((tr.state (proposer s) (kW + 1)).fg.σ W.root).h, E, W, kW, ?_, ?_,
     hprop, hWs, hpH, ?_, ?_, hws, hr, hD, hon, hvotes, fun y hy => Or.inl ?_, hlater,
     hparents⟩ <;> try rw [hpost]
   · exact hhm
@@ -429,14 +434,14 @@ private theorem acquired_of_sources (hrun : GoldilocksRun dg H tr) (hs : HSShare
 /-- **HS.4 (a)** (`hs234-exact-interface.md` §5 "actual acquisition", timing): under `Γ`, with
 HS.2 and HS.3 as opaque hypotheses, the phase has changed after all events at `w + D`, or the
 common path is acquired (HS.4 (a)'s second branch, with #88's current-source arm). -/
-theorem acquired_or_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain)
     (hagree : FrozenTreeAgreement) :
     (∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j') ∨
       ∃ (s h : Nat) (E W : SA.Blk sp.n (List (FG.Att sp.n))) (kW : Nat),
         (h = phaseFloor m c ∨ h = m) ∧ 1 ≤ h ∧
-        tr.ProposesAt (sp.toParams.proposer s) kW W ∧ W.slot = s ∧ sp.toParams.proposer s ∈ H ∧
+        tr.ProposesAt (proposer s) kW W ∧ W.slot = s ∧ proposer s ∈ H ∧
         EntryOf (tr.post kW).fg W E h ∧ ((tr.post kW).fg.σ W.root).h = h ∧
         w ≤ sp.ts s ∧ rTime sp w ≤ sp.ts s ∧ sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp ∧
         (∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) ∧
@@ -453,8 +458,8 @@ theorem acquired_or_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
         (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
           PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg W) ∧
         ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
-          P'.slot = s' → tr.ProposesAt (sp.toParams.proposer s') k' P' →
-          sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
+          P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
+          proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
           ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr := by
   classical
   by_cases hch : ∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j'
@@ -499,11 +504,11 @@ theorem acquired_or_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
   have hfl := floor_cases m c
   -- the facts of a ready proposal after `r` that ends before the endpoint
   have ready : ∀ {s kP : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))},
-      ReadyProposal tr H (sp.toParams.proposer s) kP s P → rTime sp w ≤ sp.ts s →
+      ReadyProposal tr H proposer (proposer s) kP s P → rTime sp w ≤ sp.ts s →
       sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp →
       tr.time kP = sp.ts s ∧ kP + 1 ≤ jD ∧
-      P ∈ (tr.state (sp.toParams.proposer s) (kP + 1)).fg.tree ∧
-      tr.post kP = tr.state (sp.toParams.proposer s) (kP + 1) ∧
+      P ∈ (tr.state (proposer s) (kP + 1)).fg.tree ∧
+      tr.post kP = tr.state (proposer s) (kP + 1) ∧
       ((tr.post kP).fg.σ P.root).h ≤ m ∧ EffAllowed (tr.post kP).fg m c P ∧
       ((∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
         e.msg.head = P.root ∧
@@ -512,8 +517,8 @@ theorem acquired_or_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
       (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
         PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg P) ∧
       ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
-        P'.slot = s' → tr.ProposesAt (sp.toParams.proposer s') k' P' →
-        sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
+        P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
+        proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
         ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr) := by
     intro s kP P hP hr hsD
     obtain ⟨hpH, -, -, hprop, hPs, -⟩ := id hP
@@ -521,7 +526,7 @@ theorem acquired_or_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
       rw [hprop.2.2, hPs, sp.slotTime_eq]; rfl
     obtain ⟨hcall, hPt, -⟩ := accept_of_proposesAt hrun hnc hpH hprop
     have hkD := hltD kP (by linarith)
-    have hpost : tr.post kP = tr.state (sp.toParams.proposer s) (kP + 1) :=
+    have hpost : tr.post kP = tr.state (proposer s) (kP + 1) :=
       (tr.state_succ_of_call hcall).symm
     refine ⟨hkP, hkD, hPt, hpost, by rw [hpost]; exact h_le_of_phaseAt hrun hnc hpH hkD hphD hPt,
       ready_allowed hrun hs hc hset hP (by linarith) (hbefore kP (by linarith)),
@@ -534,7 +539,7 @@ theorem acquired_or_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
   obtain ⟨hkP, hkPD, hPt, hpostP, hPm, hallP, hvP, hlP, hpP⟩ := ready hP hs₁ hsD
   have honP := hafter _ hsD
   have hsrc := ready_sources hrun hs hc hp hset hclean hP hs₁ honP hvP hlP hpP
-  have hpH : sp.toParams.proposer s ∈ H := hP.1
+  have hpH : proposer s ∈ H := hP.1
   have hPfl : phaseFloor m c ≤ ((tr.post kP).fg.σ P.root).h := hallP.2.1
   rw [hpostP] at hPm hPfl
   by_cases hob : ∃ y ∈ H, ∃ k ℓ C, SA.ToFGAt tr.projAC y k ℓ C ∧ sp.ts s ≤ tr.time k ∧
@@ -557,7 +562,7 @@ theorem acquired_or_changed (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
       nlinarith
     have hQD : sp.ts sQ + 6 * sp.Δ ≤ w + D_HS sp Gp := by rw [hD]; nlinarith
     obtain ⟨hkQ, hkQD, hQt, hpostQ, hQm, hallQ, hvQ, hlQ, hpQ⟩ := ready hQ (by linarith) hQD
-    have hpQH : sp.toParams.proposer sQ ∈ H := hQ.1
+    have hpQH : proposer sQ ∈ H := hQ.1
     obtain ⟨Pr, hpar, hC₀Pr⟩ := descendant_source_parent hrun hs hc hset hP hs₁ honP hvP hy₀
       hto₀ hk₀ hk₀' hPC₀ (by rw [hσP]; omega) (honestProposalRun_of_ready hrun hnc hQ) hsQ
       fun k' hk' => hbefore k' (by linarith)

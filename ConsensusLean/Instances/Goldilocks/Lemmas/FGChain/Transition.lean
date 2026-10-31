@@ -92,7 +92,7 @@ theorem chainState_induction {P : List (FGBlock gp.n) → ChainState gp.n → Pr
 
 theorem stateTransition_eq_some {σ σ' : ChainState gp.n} {B : FGBlock gp.n} :
     gp.stateTransition σ B = some σ' ↔
-      (B.proposer = gp.proposer B.slot ∧ σ.s < B.slot ∧
+      (σ.s < B.slot ∧
         ∀ a ∈ B.atts, a.WellFormed ∧ σ.validAtt a) ∧
       gp.heightEvents
         { B.atts.foldl ChainState.processAtt { σ with s := B.slot } with L := B.root } = σ' := by

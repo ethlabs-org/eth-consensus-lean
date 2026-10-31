@@ -15,6 +15,7 @@ winning children only on the shared ancestral suffix.
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {proposer : Nat → Fin sp.n}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
 
 /-- The unextended proposal walk stops at its returned parent head. -/
@@ -43,12 +44,12 @@ theorem h2_parent_walkEnd {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK 
 /-- A proposal anchor is the frame root, or every honest vote of the proposal's slot extends
 it. Settled older locks suffice; normalization and unlocking only move their blocks back. -/
 theorem h2_proposal_anchor (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {p k : Nat}
-    (hpH : sp.toParams.proposer p ∈ H) {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt (sp.toParams.proposer p) k ℓ) (ht : tr.time k = sp.ts p)
+    (hpH : proposer p ∈ H) {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hc : tr.CallAt (proposer p) k ℓ) (ht : tr.time k = sp.ts p)
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
-    (hpay : (acProposal sp (tr.state (sp.toParams.proposer p) k) ℓ.frame (tr.time k)).2 =
+    (hpay : (acProposal sp (tr.state (proposer p) k) ℓ.frame (tr.time k)).2 =
       some (d, pay))
-    (hbelow : ∀ l ∈ (tr.state (sp.toParams.proposer p) k).locks, l.slot < p)
+    (hbelow : ∀ l ∈ (tr.state (proposer p) k).locks, l.slot < p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) :
     d.start = ℓ.frame.fcRoot ∨
       ∀ x ∈ H, ∀ i e, VoteAt tr x i e → e.msg.slot = p → VoteExtends U e.msg d.start := by
@@ -61,7 +62,7 @@ theorem h2_proposal_anchor (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {p 
   simp only [Option.some.injEq, Prod.mk.injEq, hslot] at hpay
   obtain ⟨hd, -⟩ := hpay
   suffices h : ∀ (A : SAState sp.n) (V : View sp.n),
-      A.locks = unlock sp (tr.state (sp.toParams.proposer p) k).locks ℓ.frame (tr.time k)
+      A.locks = unlock sp (tr.state (proposer p) k).locks ℓ.frame (tr.time k)
         ((p : Int) - 1) V →
       getAnchor sp A ℓ.frame (tr.time k) = ℓ.frame.fcRoot ∨
         ∀ x ∈ H, ∀ i e, VoteAt tr x i e → e.msg.slot = p →
@@ -83,7 +84,7 @@ theorem h2_proposal_anchor (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {p 
       hΦ.coherent.1 hDt (mem_of_anc (anc_viableAncestor ℓ.frame B) hB) hDr.symm
     rw [hA] at hl
     obtain ⟨l₀, hl₀, hslots, -, B₀, hB₀, hB₀r, B', hB', hB'r, hBB₀⟩ :=
-      ((locks_move_back sp) FGP ℓ.frame (tr.state (sp.toParams.proposer p) k).locks
+      ((locks_move_back sp) FGP ℓ.frame (tr.state (proposer p) k).locks
         (tr.time k) hΦ).2.2 _ _ l hl
     obtain rfl : B' = B := hΦ.coherent.1 hB' hB (hB'r.trans hBr.symm)
     obtain ⟨hvotes, -⟩ := locksSettled_iff.1 hset _ hpH k (by rw [ht]; linarith)

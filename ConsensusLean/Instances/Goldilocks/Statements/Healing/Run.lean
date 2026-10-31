@@ -203,18 +203,19 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 proposal `B` of slot `s` at cut `k`, and every slot-`(s−1)` support reference of `B` is a block of
 slot `≤ s − 1` that every honest node holds before the vote deadline `t_s + Δ` (so `B` is ready
 at every honest voter: `vote_ready`'s condition). -/
-def ReadyProposal (p : Fin sp.n) (k s : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  p ∈ H ∧ p = sp.toParams.proposer s ∧ tr.JoinedAt p (sp.ts s) ∧ tr.ProposesAt p k B ∧
+def ReadyProposal (proposer : Nat → Fin sp.n)
+    (p : Fin sp.n) (k s : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+  p ∈ H ∧ p = proposer s ∧ tr.JoinedAt p (sp.ts s) ∧ tr.ProposesAt p k B ∧
     B.slot = s ∧
     ∀ x ∈ blockSupport B, x.slot + 1 = s → ∀ y ∈ H, ∀ j, tr.FirstCutFrom j (sp.ts s + sp.Δ) →
       ∃ R ∈ (tr.state y j).fg.tree, R.root = x.head ∧ R.slot + 1 ≤ s
 
 /-- **`Prop⁺(G_p)`** (the HS ready-proposer premise with `G = G_p`): for every trigger `τ ≥ ḡ`
 there is a slot `s ≥ 1` with `τ ≤ t_s ≤ τ + G_p` with a ready proposal (`ReadyProposal`). -/
-def PropPlus (g Gp : Time) : Prop :=
+def PropPlus (proposer : Nat → Fin sp.n) (g Gp : Time) : Prop :=
   ∀ τ, gbar g ≤ τ → ∃ (s : Nat) (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
     1 ≤ s ∧ τ ≤ sp.ts s ∧ sp.ts s ≤ τ + Gp ∧
-    ReadyProposal tr H (sp.toParams.proposer s) k s B
+    ReadyProposal tr H proposer (proposer s) k s B
 
 /-- **The HS shared premises** (claims §"Healing: phase service") other than the two regime
 premises (`CatchRun`, `PropPlus`, taken separately): `NoColl` with a genesis whose root is its
@@ -298,9 +299,10 @@ frontier is `≤ H_z + 1`, so every honest row signed at `a` has height `≤ H_z
 `T₀ = a − Δ`; and for every `T ≥ a` every honest row signed at `a` lies in `(T₀, T]`. -/
 def CutAndReset : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    GoldilocksRun dg H tr → tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
+    GoldilocksRun proposer dg H tr → tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
     cutZ sp.toParams g ≤ gbar g + 12 * sp.Δ ∧
     (∀ y ∈ H, ∀ k att, tr.SignAt y k att → tr.time k ≤ cutZ sp.toParams g →
       att.h ≤ HZ tr H g) ∧
@@ -355,10 +357,11 @@ count);
 `C_HS = (8k + 49 + 4δ_t)Δ + Δ_F + 3G_p`. -/
 def ResetExistence : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-    GoldilocksRun dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-    PropPlus tr H g Gp →
+    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+    PropPlus tr H proposer g Gp →
     (gbar g + 8 * sp.Δ < cutZ sp.toParams g ∧
       ∀ u, cutZ sp.toParams g ≤ u → ∀ j j', FirstCutAfter tr j u →
         tr.FirstCutFrom j' (u + sp.Δ) →
@@ -379,9 +382,10 @@ serialized honest clients) under `Healthy(g)` and `NoColl`, if the reset `a_z` e
 hold for it (`RetentionAt`). -/
 def HeightScopedRetention : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    GoldilocksRun dg H tr → tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
+    GoldilocksRun proposer dg H tr → tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
     ∀ a, IsReset tr H g a → RetentionAt tr H g a
 
 section Top
@@ -394,8 +398,9 @@ def Unanimous (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = p → e.msg.head = P.root
 
 /-- `P` is the honest proposal of slot `p` (its proposer is honest) over the AC projection. -/
-def HonestProposalRun (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  sp.toParams.proposer p ∈ H ∧ SA.HonestProposal tr.projAC (sp.toParams.proposer p) p P
+def HonestProposalRun (proposer : Nat → Fin sp.n)
+    (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+  proposer p ∈ H ∧ SA.HonestProposal tr.projAC (proposer p) p P
 
 /-- `P` is in the AC confirmed tip of every honest node at every time `t ≥ t₁` (at every call at
 a time `≥ t₁`, after it; at `t₁` itself from the node's tick there on). -/
@@ -420,10 +425,11 @@ def InSettledPhase (g : Time) (p : Nat) : Prop :=
 `Inv(a + T_b)`, and `Geo(P)` holds for every honest proposal `P` of a slot
 `p ≥ s_AC(a + T_b)` (`t_p ≥ a + T_b + 2Θ + 8Δ`) whose proposal and votes lie in one settled
 effective phase. -/
-def BridgeAt (g a Tb : Time) : Prop :=
-  SA.Inv tr.projAC H (tr.HonestBlocks H) (a + Tb) ∧
-    ∀ (p : Nat) P, HonestProposalRun tr H p P → a + Tb + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p →
-      InSettledPhase tr H g p → SA.Geo tr.projAC H p P
+def BridgeAt (proposer : Nat → Fin sp.n) (g a Tb : Time) : Prop :=
+  SA.Inv proposer tr.projAC H (tr.HonestBlocks H) (a + Tb) ∧
+    ∀ (p : Nat) P, HonestProposalRun tr H proposer p P →
+      a + Tb + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p →
+      InSettledPhase tr H g p → SA.Geo proposer tr.projAC H p P
 
 end Top
 
@@ -437,16 +443,18 @@ run; and H.2 holds for the run: for `t₀ ≥ ḡ` with `Inv(t₀)` on the proje
 unanimous slot `p` puts `P` in every honest node's AC confirmed tip from `t_p + 6Δ` on. -/
 def RunInclusion : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    GoldilocksRun dg H tr → Compose.NoCollRun dg tr →
+    GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
     (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg →
     tr.HealthyRun H ΔF g → CatchRun tr H g (2 * sp.Δ) →
-    (SA.Driven tr.projAC H ∧ SA.HealthyAC tr.projAC H (tr.HonestBlocks H) g ∧
+    (SA.Driven proposer tr.projAC H ∧ SA.HealthyAC tr.projAC H (tr.HonestBlocks H) g ∧
       SA.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ)) ∧
-    ∀ t₀, gbar g ≤ t₀ → SA.Inv tr.projAC H (tr.HonestBlocks H) t₀ →
-      ∀ (p : Nat) P, HonestProposalRun tr H p P → t₀ + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p →
-        (SA.Geo tr.projAC H p P → Unanimous tr H p P) ∧
+    ∀ t₀, gbar g ≤ t₀ → SA.Inv proposer tr.projAC H (tr.HonestBlocks H) t₀ →
+      ∀ (p : Nat) P, HonestProposalRun tr H proposer p P →
+        t₀ + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p →
+        (SA.Geo proposer tr.projAC H p P → Unanimous tr H p P) ∧
         (Unanimous tr H p P → IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P)
 
 /-- **H.3, FG non-interference after the reset.** Under the premises of HR.3 and HR.4
@@ -460,12 +468,13 @@ projection satisfies `Inv(a_z + T_b)` and `Geo(P)` holds for every honest propos
 def NonInterference : Prop :=
   ∃ Tb : Nat → Time → Time → Nat → Nat → Time, (∀ n Δ ΔF k δt, 0 ≤ Tb n Δ ΔF k δt) ∧
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-    GoldilocksRun dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-    PropPlus tr H g Gp →
+    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+    PropPlus tr H proposer g Gp →
     ∃ a, IsReset tr H g a ∧ a ≤ gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp ∧
-      RetentionAt tr H g a ∧ BridgeAt tr H g a (Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt)
+      RetentionAt tr H g a ∧ BridgeAt tr H proposer g a (Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt)
 
 /-- `T_heal = ḡ + 24Δ + 12C_HS + T_b + 2Θ + 8Δ` (claims H.4). -/
 def T_heal (sp : SAParams) (g ΔF Gp Tb : Time) : Time :=
@@ -483,26 +492,27 @@ tip from `t + B + 6Δ` on;
 proposal with `t_p ≥ T_heal` is in every honest confirmed tip from `t_p + 6Δ` on. -/
 def AvailableHealing : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-    GoldilocksRun dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-    PropPlus tr H g Gp →
-    ∀ a Tb, IsReset tr H g a → 0 ≤ Tb → BridgeAt tr H g a Tb →
+    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+    PropPlus tr H proposer g Gp →
+    ∀ a Tb, IsReset tr H g a → 0 ≤ Tb → BridgeAt tr H proposer g a Tb →
       T_heal sp g ΔF Gp Tb =
         gbar g + (104 * (sp.k : Time) + 628 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
           36 * Gp + Tb ∧
-      (∀ (p : Nat) P, HonestProposalRun tr H p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
+      (∀ (p : Nat) P, HonestProposalRun tr H proposer p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
         Unanimous tr H p P → IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P) ∧
       (∀ B : Time,
         (∀ t, T_heal sp g ΔF Gp Tb ≤ t →
           ∃ (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))), t ≤ sp.ts p ∧ sp.ts p ≤ t + B ∧
-            HonestProposalRun tr H p P ∧ Unanimous tr H p P) →
+            HonestProposalRun tr H proposer p P ∧ Unanimous tr H p P) →
         ∀ t, T_heal sp g ΔF Gp Tb ≤ t →
           ∃ (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))), t ≤ sp.ts p ∧ sp.ts p ≤ t + B ∧
-            HonestProposalRun tr H p P ∧ IncludedFrom tr H (t + B + 6 * sp.Δ) P) ∧
-      ((∀ (p : Nat) P, HonestProposalRun tr H p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
+            HonestProposalRun tr H proposer p P ∧ IncludedFrom tr H (t + B + 6 * sp.Δ) P) ∧
+      ((∀ (p : Nat) P, HonestProposalRun tr H proposer p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
           Unanimous tr H p P) →
-        ∀ (p : Nat) P, HonestProposalRun tr H p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
+        ∀ (p : Nat) P, HonestProposalRun tr H proposer p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
           IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P)
 
 /-- The run-level statements of milestone Healing (HR.1–HR.4, H.2 (run), H.3, H.4). -/

@@ -47,7 +47,7 @@ theorem accepted_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.hone
       intro hr0
       obtain ⟨_, _, _, h⟩ := eq_deliver_of_cut S rho hn he hmem (Or.inl ⟨hr0, _, hrl⟩)
       cases h
-    have hnf := Regimes.non_framing _ _ _ _ _ hrun _ (honest_ownKey (S := S) hv')
+    have hnf := Regimes.non_framing _ _ _ _ _ _ hrun _ (honest_ownKey (S := S) hv')
     have hrel := (tick_releases S rho hn hv hv' he hp hnf r hmem).1 B true hrl hr0
     exact rho.mem_viewIdx_iff.2 ⟨j, _, hji, Or.inl ⟨t, Or.inl he, hrel⟩, .refl _⟩
   | deliver w o t =>
@@ -55,7 +55,8 @@ theorem accepted_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.hone
     subst w
     rw [eventCuts_deliver S rho hn j v o t he] at hmem
     have hnow := (now_eq_lastClock S rho hn hv v j).trans (lastClock_deliver S rho hv he)
-    have hq := ((process_relay (digestOf S rho) (Model.digests rho.hash o) t j
+    have hq := ((process_relay (runProposer S rho hn)
+      (digestOf S rho) (Model.digests rho.hash o) t j
       (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v j) 0 hnow).2.2.2 r
       (by rw [stateAt_self]; exact hmem)).1 B hrl
     obtain ⟨cs, hx, hrel⟩ := deliver_relays S rho hn he hq
@@ -65,8 +66,8 @@ theorem accepted_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.hone
     exfalso
     rw [eventCuts_restart S rho hn j w t he] at hmem
     obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
-    obtain ⟨_, _, _, _, hlabk⟩ := getElem_groupRecs _ _ _ _ _ _ kk hk
-    have hcut := List.getElem_mem (lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _))
+    obtain ⟨_, _, _, _, hlabk⟩ := getElem_groupRecs _ _ _ _ _ _ _ kk hk
+    have hcut := List.getElem_mem (lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _ _))
     rw [← hlabk, hrl] at hcut
     simp [exec, Node.restart, acCall] at hcut
 

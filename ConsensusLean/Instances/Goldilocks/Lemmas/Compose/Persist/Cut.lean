@@ -24,6 +24,7 @@ open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
   {H : Set (Fin sp.n)} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+  {proposer : Nat → Fin sp.n}
 
 /-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9). -/
 private theorem node_requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
@@ -46,15 +47,17 @@ private theorem public_le {T : Time} (hT : sp.toParams.IsPublic T) {m : Nat}
 
 /-- An honest signing at the time of a cut of a delivery is at an earlier cut: the ticks of a
 time precede its deliveries (F.5 (run)). -/
-private theorem sign_before_delivery (hrun : GoldilocksRun dg H tr) {v y : Fin sp.n} (hv : v ∈ H)
+private theorem sign_before_delivery (hrun : GoldilocksRun proposer dg H tr)
+    {v y : Fin sp.n} (hv : v ∈ H)
     (hy : y ∈ H) {j' k j₀ : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
     (hs : tr.CallAt v j' (.fg (.attest C (some a)))) {e : Node.Event (goldilocksNode sp ro)}
-    (hg : tr.GroupAt dg y j₀ (tr.time k) e) (he : e.phase = 2) (hk : j₀ ≤ k)
+    (hg : tr.GroupAt proposer dg y j₀ (tr.time k) e) (he : e.phase = 2) (hk : j₀ ≤ k)
     (ht : tr.time j' = tr.time k) : j' < k := by
   obtain ⟨j₁, e₁, i₁, hg₁, rfl, hk₁⟩ := call_in_group hrun.toLocalRun hv hs
-  have hm : Cut.fg (.attest C (some a)) ∈ (Node.exec dg v (tr.state v j₁) (tr.time (j₁ + i₁))
+  have hm : Cut.fg (.attest C (some a)) ∈
+      (Node.exec proposer dg v (tr.state v j₁) (tr.time (j₁ + i₁))
       e₁).2 := List.mem_of_getElem? hk₁
-  obtain ⟨xt, he₁⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp ro) dg v
+  obtain ⟨xt, he₁⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp ro) proposer dg v
     (tr.state v j₁) (tr.time (j₁ + i₁)) e₁ C a hm
   subst he₁
   rw [ht] at hg₁
@@ -96,13 +99,13 @@ private theorem exists_cut_time {e : Node.Event (goldilocksNode sp ro)} (a : Tim
 
 /-- **The cut step**: G1.10 at the scope of C1.1 at the honest call of cut `k`, from the
 invariant at every earlier cut. -/
-theorem cut_inv_step (hrun : GoldilocksRun dg H tr)
+theorem cut_inv_step (hrun : GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) (k : Nat)
     (ih : ∀ j < k, VoteInv tr H s m B j ∧ CutInv tr H s m B j) : CutInv tr H s m B k := by
   rw [cutInv_iff]
   rintro y hy ⟨c, hc⟩ hk₀ hk₁
   have hlocal := hrun.toLocalRun
-  have hfg := fg_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr
+  have hfg := fg_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr proposer
     (node_requirements sp ro) hrun.genesis_root_ok hlocal hp.noColl
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hstore : ∀ z ∈ H, ∀ j, tr.projFG.store z j = (tr.state z j).fg := fun z hz j => by

@@ -25,7 +25,7 @@ assembly in `Steps.lean`; their statements are fixed (the assembly depends on th
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-- **T1 §4, a slow origin transfers to the votes** (A3/A5): for an honest slow lock of slot
 `s` on `D` with `s − k + 1 ≥ r`, every honest vote of a slot after `s` extends `D`. At a
@@ -33,7 +33,8 @@ slot-`(s+1)` vote, every live lock of a label `j < s` has `j ≥ s − k + 1 ≥
 result is compatible with the writer's saved result of label `j` (T1 §2), which extends `D`;
 labels `s`, `s + 1` as in §3; then A1.8 for the ancestor `D` of the result, and
 `votes_continue`. -/
-theorem slow_origin_transfer_votes (hS : StandaloneRun tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+theorem slow_origin_transfer_votes (hS : StandaloneRun tr H U proposer g)
+    {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) : VotesExtendAfter tr H U s D := by
   have hrun := hS.run
@@ -86,7 +87,8 @@ theorem slow_origin_transfer_votes (hS : StandaloneRun tr H U g) {x : Fin sp.n} 
 good lock from an older evidence slot has transferred"): the head of every honest proposal of a
 slot after the label of a good origin extends its block: its votes do (T1 §3, §4), then
 `proposals_extend_of_origin` (ProposalTransfer). -/
-theorem origin_transfer_proposals (hS : StandaloneRun tr H U g) {B : Blk sp.n FGP} {j : Nat}
+theorem origin_transfer_proposals (hS : StandaloneRun tr H U proposer g)
+    {B : Blk sp.n FGP} {j : Nat}
     (hB : GoodOrigin tr H g B j) : ProposalsExtendAfter tr H U j B := by
   refine proposals_extend_of_origin hS hB ?_
   rcases goodOrigin_iff.1 hB with ⟨x, hx, i, CV, hfl, hs⟩ | ⟨x, hx, i, hsl, hs⟩
@@ -97,8 +99,8 @@ theorem origin_transfer_proposals (hS : StandaloneRun tr H U g) {B : Blk sp.n FG
 its `ac_proposal`) at `t_p ≥ ḡ + 2Θ + 8Δ`, with the locks settled from `t_{p−1}`, every honest
 vote of slot `p` is `P`. Proved over the canonical walk in `Unanimity/Votes`
 (`proposal_votes_of_setting`; see that module's docstring). -/
-theorem proposal_votes (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : sp.toParams.proposer p ∈ H) (hP : HonestProposal tr (sp.toParams.proposer p) p P)
+theorem proposal_votes (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) :
     ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by

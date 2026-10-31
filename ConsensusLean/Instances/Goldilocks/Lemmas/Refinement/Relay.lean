@@ -165,17 +165,18 @@ theorem canonEvent_eq_some {hs : List (Header Info × Nat)} {o : Wire sp.n}
 /-! ## Wire checks, deliveries and handlers' first cuts -/
 
 /-- A delivery sequence covers its range of cuts by groups of canonical objects it delivers. -/
-theorem deliverSeq_cover {tr : GoldilocksTrace sp ro}
+theorem deliverSeq_cover {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {hs : List (Header Info × Nat)}
     {y : Fin sp.n} {t : Time} {os : List (Wire sp.n)} {j j' : Nat}
-    (h : DeliverSeq tr dg hs y t os j j') :
+    (h : DeliverSeq proposer tr dg hs y t os j j') :
     j ≤ j' ∧ ∀ k, j ≤ k → k < j' → ∃ j0 e o, o ∈ os ∧ canonEvent sp ro hs o = some e ∧
-      tr.GroupAt dg y j0 t e ∧ j0 ≤ k ∧ k < j0 + (Node.exec dg y (tr.state y j0) t e).2.length := by
+      tr.GroupAt proposer dg y j0 t e ∧ j0 ≤ k ∧
+        k < j0 + (Node.exec proposer dg y (tr.state y j0) t e).2.length := by
   induction h with
   | nil j => exact ⟨le_rfl, fun k h1 h2 => absurd h2 (by omega)⟩
   | @event o os j j' e he hg _ ih =>
     refine ⟨by omega, fun k h1 h2 => ?_⟩
-    by_cases hk : k < j + (Node.exec dg y (tr.state y j) t e).2.length
+    by_cases hk : k < j + (Node.exec proposer dg y (tr.state y j) t e).2.length
     · exact ⟨j, e, o, List.mem_cons_self .., he, hg, h1, hk⟩
     · obtain ⟨j0, e', o', ho, he', hg', h3, h4⟩ := ih.2 k (by omega) h2
       exact ⟨j0, e', o', List.mem_cons_of_mem _ ho, he', hg', h3, h4⟩
@@ -269,9 +270,10 @@ theorem cutStep_of_cutChain {self : Fin P.n} {t : Time} {st st' : NodeState A}
       exact ih m (by simpa using hm)
 
 /-- An FG first cut of a handler is a block's or an attestation's, of the handler's event. -/
-theorem exec_head_fg (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+theorem exec_head_fg (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) {ℓ : FGLabel P A.Payload} {cs : List (Cut A)}
-    (h : (exec dg self st t e).2 = .fg ℓ :: cs) :
+    (h : (exec proposer dg self st t e).2 = .fg ℓ :: cs) :
     (∃ B acc, e = .block B ∧ ℓ = .block B acc) ∨ ∃ a, e = .attestation a ∧ ℓ = .attestation a := by
   cases e with
   | tick x => simp [Node.exec, onTick, runSteps, tickSteps, Node.tickStep, acCall] at h
@@ -286,9 +288,11 @@ theorem exec_head_fg (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n
   | restart => simp [Node.exec, Node.restart, acCall] at h
 
 /-- The first cut of a block's handler is the FG's call on the block. -/
-theorem exec_block_head (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+theorem exec_block_head (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
     (st : NodeState A) (t : Time) (B : A.Blk) {c : Cut A} {cs : List (Cut A)}
-    (h : (exec dg self st t (.block B)).2 = c :: cs) : ∃ acc, c = .fg (.block B acc) := by
+    (h : (exec proposer dg self st t (.block B)).2 = c :: cs) :
+    ∃ acc, c = .fg (.block B acc) := by
   simp only [Node.exec, onBlock] at h
   split_ifs at h
   cases hfg : st.fg.onBlock B <;> simp only [hfg, List.cons.injEq] at h
@@ -300,12 +304,14 @@ end
 /-! ## Processing a delivery -/
 
 /-- A cut of a group: the handler's cut `k` and its post-state. -/
-private theorem mem_groupRecs_label {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+private theorem mem_groupRecs_label {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {self : Fin sp.n} {st : NodeState (goldilocksNode sp ro)} {t : Time} {id : Nat}
     {e : Event (goldilocksNode sp ro)} {r : CutRec sp ro}
-    (hr : r ∈ groupRecs dg self st t id e) :
-    ∃ k, ∃ hk : k < (exec dg self st t e).2.length, r.label = (exec dg self st t e).2[k] ∧
-      r.post = (cutPosts self t (exec dg self st t e).2 st)[k]'(by
+    (hr : r ∈ groupRecs proposer dg self st t id e) :
+    ∃ k, ∃ hk : k < (exec proposer dg self st t e).2.length,
+      r.label = (exec proposer dg self st t e).2[k] ∧
+      r.post = (cutPosts self t (exec proposer dg self st t e).2 st)[k]'(by
         rw [length_cutPosts]; exact hk) := by
   rw [groupRecs_eq] at hr
   obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
@@ -326,12 +332,14 @@ private theorem blocks_of_onBlock {st st' : Store sp.toParams (Payload sp.n)}
 
 /-- One delivered object: the node state its handler leaves (at the clock), its own index and
 clock kept, the relay queue extended by at most the object. -/
-theorem processOne_eq (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem processOne_eq (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (σ : State sp ro) (o : Wire sp.n) :
     ∃ L, (processOne hs σ o).relayBuf = σ.relayBuf ++ L ∧ (∀ x ∈ L, x = o) ∧
       (processOne hs σ o).now = σ.now ∧ (processOne hs σ o).self = σ.self ∧
       (processOne hs σ o).node =
-        ((canonEvent sp ro hs o).elim σ.node fun e => (exec dg σ.self σ.node σ.now e).1) := by
+        ((canonEvent sp ro hs o).elim σ.node fun e =>
+          (exec proposer dg σ.self σ.node σ.now e).1) := by
   unfold processOne
   cases he : canonEvent sp ro hs o with
   | none => exact ⟨[], by simp, by simp, rfl, rfl, rfl⟩
@@ -376,10 +384,11 @@ private theorem processOne_attestation {hs : List (Header Info × Nat)} {σ : St
 /-- The relay obligations of one group of a delivery: the canonical object `o` of the group's
 event is queued by `processOne` when the group has an accepted block cut, an AC message cut
 after which the pool holds the vote, or an attestation cut. -/
-private theorem group_relay (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+private theorem group_relay (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     {hs : List (Header Info × Nat)} {σ : State sp ro} {t : Time} (ht : σ.now = t) {id : Nat}
     {o : Wire sp.n} {e : Event (goldilocksNode sp ro)} (he : canonEvent sp ro hs o = some e)
-    {r : CutRec sp ro} (hr : r ∈ groupRecs dg σ.self σ.node t id e) :
+    {r : CutRec sp ro} (hr : r ∈ groupRecs proposer dg σ.self σ.node t id e) :
     (∀ B, r.label = .fg (.block B true) → blockObj sp B = o ∧ o ∈ (processOne hs σ o).relayBuf) ∧
     (∀ ℓ m, r.label = .ac ℓ → ℓ.call = .message m → m ∈ r.post.ac.pool m.slot →
       voteObj m = o ∧ o ∈ (processOne hs σ o).relayBuf) ∧
@@ -388,7 +397,7 @@ private theorem group_relay (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
   subst ht
   rcases canonEvent_eq_some he with ⟨B, rfl, rfl⟩ | ⟨v, rfl, rfl⟩ | ⟨a, rfl, rfl⟩
   · -- a block: `[fg_on_block(B) refused]` or `[fg_on_block(B) accepted, ac_on_block(B)]`
-    have hmem : r.label ∈ (exec dg σ.self σ.node σ.now (.block B)).2 :=
+    have hmem : r.label ∈ (exec proposer dg σ.self σ.node σ.now (.block B)).2 :=
       hlab ▸ List.getElem_mem hk
     simp only [exec, onBlock, acCall] at hmem
     split_ifs at hmem with hf
@@ -438,12 +447,13 @@ keeps the clock and the own index; the relay queue only grows, by objects of `os
 accepted block, every vote the pool holds after its `ac_on_message` call, and every attestation
 among the delivery's cuts (`deliverRecs` from the state's node) is queued as its canonical
 object. -/
-theorem process_relay (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem process_relay (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (t : Time) (i : Nat) :
     ∀ (os : List (Wire sp.n)) (σ : State sp ro) (sub : Nat), σ.now = t →
       (∃ L, (os.foldl (processOne hs) σ).relayBuf = σ.relayBuf ++ L ∧ ∀ x ∈ L, x ∈ os) ∧
       (os.foldl (processOne hs) σ).now = t ∧ (os.foldl (processOne hs) σ).self = σ.self ∧
-      ∀ r ∈ deliverRecs dg hs σ.self t i os σ.node sub,
+      ∀ r ∈ deliverRecs proposer dg hs σ.self t i os σ.node sub,
         (∀ B, r.label = .fg (.block B true) →
           blockObj sp B ∈ (os.foldl (processOne hs) σ).relayBuf) ∧
         (∀ ℓ m, r.label = .ac ℓ → ℓ.call = .message m → m ∈ r.post.ac.pool m.slot →
@@ -452,9 +462,9 @@ theorem process_relay (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
           attObj a ∈ (os.foldl (processOne hs) σ).relayBuf)
   | [], σ, sub, ht => ⟨⟨[], by simp, by simp⟩, ht, rfl, by simp [deliverRecs_nil]⟩
   | o :: os, σ, sub, ht => by
-    obtain ⟨L₁, hL₁, hL₁o, hnow₁, hself₁, hnode₁⟩ := processOne_eq dg hs σ o
+    obtain ⟨L₁, hL₁, hL₁o, hnow₁, hself₁, hnode₁⟩ := processOne_eq proposer dg hs σ o
     obtain ⟨⟨L, hL, hLos⟩, hnow, hself, hrec⟩ :=
-      process_relay dg hs t i os (processOne hs σ o) (sub + 1) (hnow₁.trans ht)
+      process_relay proposer dg hs t i os (processOne hs σ o) (sub + 1) (hnow₁.trans ht)
     rw [List.foldl_cons]
     have hkeep : ∀ x ∈ (processOne hs σ o).relayBuf,
         x ∈ (os.foldl (processOne hs) (processOne hs σ o)).relayBuf := fun x hx => by
@@ -467,14 +477,14 @@ theorem process_relay (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     rw [hself₁, hnode₁] at hrec
     cases he : canonEvent sp ro hs o with
     | none =>
-      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ he] at hr
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
       rw [he] at hrec
       exact hrec r hr
     | some e =>
-      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ e he] at hr
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he] at hr
       rw [he, Option.elim_some, ht] at hrec
       rcases List.mem_append.mp hr with hr | hr
-      · obtain ⟨h1, h2, h3⟩ := group_relay dg ht he hr
+      · obtain ⟨h1, h2, h3⟩ := group_relay proposer dg ht he hr
         refine ⟨fun B h => ?_, fun ℓ m h hc hp => ?_, fun a h => ?_⟩
         · obtain ⟨rfl, ho⟩ := h1 B h; exact hkeep _ ho
         · obtain ⟨rfl, ho⟩ := h2 ℓ m h hc hp; exact hkeep _ ho
@@ -545,10 +555,8 @@ theorem contains_of_mem_delivered {o x : Wire sp.n} (h : x ∈ delivered sp o) :
 theorem propose_keeps (st : State sp ro) (s : Slot) :
     (propose st s).1.relayBuf = st.relayBuf ∧ (propose st s).1.self = st.self := by
   unfold propose
-  split_ifs
-  · dsimp only
-    split <;> exact ⟨rfl, rfl⟩
-  · exact ⟨rfl, rfl⟩
+  dsimp only
+  split <;> exact ⟨rfl, rfl⟩
 
 /-- The node's tick keeps the relay queue and the own index. -/
 theorem nodeTick_keeps (st : State sp ro) :
@@ -623,7 +631,7 @@ theorem act_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
   cases d with
   | propose s h' =>
     simp only [Model.protoOf, compiled, compile, withMempool, family, hn, ↓reduceDIte]
-    exact hprop _ _ h
+    exact hprop _ (s : Nat) h
   | act s k => exact k.elim
   | pollPropose t =>
     simp only [Model.protoOf, compiled, compile, withMempool, family, hn, ↓reduceDIte]
@@ -738,7 +746,7 @@ theorem stateAt_self (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey v
           exact deliver_pres S rho hn (fun st => st.self = rho.ownKey w)
             (fun st t h => (poll_keeps st t).2.trans h)
             (fun st _ _ hs h => (recordOwn_keeps st _ hs).2.trans h) w _ o t
-            ((process_relay (digestOf S rho) _ _ i _ _ 0 rfl).2.2.1.trans ih)
+            ((process_relay (runProposer S rho hn) (digestOf S rho) _ _ i _ _ 0 rfl).2.2.1.trans ih)
         | restart w t =>
           simp only [Model.Event.node] at hne
           subst hne
@@ -754,7 +762,8 @@ theorem process_relay_seen {i : Nat} {v : V} (o : (Model.protoOf (compiled (fami
     (ih : ∀ x ∈ (stateAt S rho hn v i).relayBuf, x ∈ Model.closure (rho.stateBefore i v).seen) :
     ∀ x ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).relayBuf,
       x ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) := by
-  obtain ⟨⟨L, hL, hLos⟩, -⟩ := process_relay (digestOf S rho) (Model.digests rho.hash o)
+  obtain ⟨⟨L, hL, hLos⟩, -⟩ := process_relay (runProposer S rho hn)
+    (digestOf S rho) (Model.digests rho.hash o)
     _ i (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) 0 rfl
   intro x hx
   unfold process at hx
@@ -943,6 +952,8 @@ theorem runDuties_signed (v : V) :
     rw [rho.runDuties_cons] at ho
     rcases List.mem_append.mp ho with ho | ho
     · rw [rho.dutyStep_eq] at ho
+      split at ho
+      case isFalse => simp at ho
       obtain ⟨m, cs, -, -, rfl⟩ :=
         (rho.mem_signedCandidate).mp (Model.releaseAll_subset _ _ _ _ o ho)
       exact ⟨_, _, m, cs, rfl⟩
@@ -956,8 +967,10 @@ theorem runDuties_seen (v : V) :
       (rho.runDuties v nd ds).1.seen = nd.seen ++ (rho.runDuties v nd ds).2
   | [], nd => by simp [rho.runDuties_nil]
   | d :: ds, nd => by
-    rw [rho.runDuties_cons, runDuties_seen v ds, rho.dutyStep_eq, Model.releaseAll_seen]
-    simp
+    rw [rho.runDuties_cons, runDuties_seen v ds, rho.dutyStep_eq]
+    split
+    · rw [Model.releaseAll_seen]; simp
+    · simp
 
 /-- **The gossip relays the queue.** An awake tick of node `v` releases the unsigned relay
 wrapper of its relay queue, which carries everything queued before the tick. -/
@@ -1105,11 +1118,13 @@ theorem eq_deliver_of_cut {i : Nat}
     by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
     · rw [eventCuts_tick_public S rho hn i v t he hp] at hr
       obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
-      obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ k hk
+      obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ k hk
       obtain ⟨ℓ₀, pc, uc, hℓ₀, hcs, hpc, ⟨ℓ₁, hℓ₁, huc⟩⟩ :=
-        Compose.tick_order (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+        Compose.tick_order (runProposer S rho hn) (digestOf S rho)
+          (rho.ownKey v) (stateAt S rho hn v i).node t
           (encodeTxs (Model.mempool rho.inbox v t))
-      have hcs' : (exec (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+      have hcs' : (exec (runProposer S rho hn) (digestOf S rho)
+          (rho.ownKey v) (stateAt S rho hn v i).node t
           (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 = .ac ℓ₀ :: (pc ++ uc) := hcs
       rw [List.getElem_of_eq hcs'] at hlab
       rcases h with ⟨h0, ℓ, hl⟩ | ⟨ℓ, m, hl, hc⟩
@@ -1145,9 +1160,9 @@ theorem eq_deliver_of_cut {i : Nat}
     exfalso
     rw [eventCuts_restart S rho hn i v t he] at hr
     obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
-    obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ k hk
+    obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ k hk
     have hk1 : k = 0 :=
-      Nat.lt_one_iff.mp (lt_of_lt_of_eq hk ((length_groupRecs _ _ _ _ _ _).trans rfl))
+      Nat.lt_one_iff.mp (lt_of_lt_of_eq hk ((length_groupRecs _ _ _ _ _ _ _).trans rfl))
     subst hk1
     simp only [exec, Node.restart, acCall, List.getElem_cons_zero] at hlab
     rcases h with ⟨-, ℓ, hl⟩ | ⟨ℓ, m, hl, hc⟩
@@ -1200,10 +1215,11 @@ theorem emits_val (self : Fin sp.n) (s : (goldilocksNode sp ro).State)
       (fun _ _ => tryVote_val _ _ _ _) _ _ (by simp)
 
 /-- Every emission of an AC cut of a handler of `self` is a vote of `self`. -/
-theorem emits_val_of_mem_exec (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem emits_val_of_mem_exec (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
     (e : Event (goldilocksNode sp ro)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    (h : Cut.ac ℓ ∈ (exec dg self st t e).2) : ∀ m ∈ ℓ.emits, m.msg.val = self := by
+    (h : Cut.ac ℓ ∈ (exec proposer dg self st t e).2) : ∀ m ∈ ℓ.emits, m.msg.val = self := by
   have key : ∀ {st st' : NodeState (goldilocksNode sp ro)} {cs},
       CutChain self t st cs st' → Cut.ac ℓ ∈ cs → ∀ m ∈ ℓ.emits, m.msg.val = self := by
     intro st st' cs hc
@@ -1219,14 +1235,15 @@ theorem emits_val_of_mem_exec (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
           rw [he]; exact hm'
         exact emits_val (ro := ro) self st₀.ac ℓ.frame t ℓ.call m hm''
       · exact ih hm
-  exact key (Compose.exec_is_cut_chain (P := sp.toParams) (A := goldilocksNode sp ro) dg self
-    st t e) h
+  exact key (Compose.exec_is_cut_chain (P := sp.toParams) (A := goldilocksNode sp ro)
+    proposer dg self st t e) h
 
 /-- An FG block cut of a handler other than a tick's is its first cut. -/
-theorem pos_of_block_cut (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+theorem pos_of_block_cut (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) {e : Event (goldilocksNode sp ro)}
-    (hne : ∀ x, e ≠ .tick x) {k : Nat} (hk : k < (exec dg self st t e).2.length) {B acc}
-    (h : (exec dg self st t e).2[k] = .fg (.block B acc)) : k = 0 := by
+    (hne : ∀ x, e ≠ .tick x) {k : Nat} (hk : k < (exec proposer dg self st t e).2.length) {B acc}
+    (h : (exec proposer dg self st t e).2[k] = .fg (.block B acc)) : k = 0 := by
   cases e with
   | tick x => exact absurd rfl (hne x)
   | block B' =>
@@ -1254,26 +1271,27 @@ theorem pos_of_block_cut (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self
     simp at hk; subst hk; simp at h
 
 /-- A cut of a delivery is a cut of the handler of a canonical event, at its position. -/
-theorem mem_deliverRecs_exec (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem mem_deliverRecs_exec (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
     ∀ (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
-      {r : CutRec sp ro}, r ∈ deliverRecs dg hs self t i os st sub →
+      {r : CutRec sp ro}, r ∈ deliverRecs proposer dg hs self t i os st sub →
       ∃ o e st', canonEvent sp ro hs o = some e ∧
-        ∃ k, ∃ hk : k < (exec dg self st' t e).2.length,
-          r.label = (exec dg self st' t e).2[k] ∧ r.pos = k
+        ∃ k, ∃ hk : k < (exec proposer dg self st' t e).2.length,
+          r.label = (exec proposer dg self st' t e).2[k] ∧ r.pos = k
   | [], _, _, _, hr => by simp [deliverRecs_nil] at hr
   | o :: os, st, sub, r, hr => by
     cases he : canonEvent sp ro hs o with
     | none =>
-      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ he] at hr
-      exact mem_deliverRecs_exec dg hs self t i os st _ hr
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
+      exact mem_deliverRecs_exec proposer dg hs self t i os st _ hr
     | some e =>
-      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ e he] at hr
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he] at hr
       rcases List.mem_append.mp hr with hr | hr
       · obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
-        obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs dg self st t _ e k hk
+        obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs proposer dg self st t _ e k hk
         exact ⟨o, e, st, he, k, by rwa [length_groupRecs] at hk, hlab, hpos⟩
-      · exact mem_deliverRecs_exec dg hs self t i os _ _ hr
+      · exact mem_deliverRecs_exec proposer dg hs self t i os _ _ hr
 
 /-- A canonical event is not a tick. -/
 theorem canonEvent_ne_tick {hs : List (Header Info × Nat)} {o : Wire sp.n}
@@ -1283,10 +1301,12 @@ theorem canonEvent_ne_tick {hs : List (Header Info × Nat)} {o : Wire sp.n}
   rcases canonEvent_eq_some he with ⟨_, h, -⟩ | ⟨_, h, -⟩ | ⟨_, h, -⟩ <;> cases h
 
 /-- The outbox after one received object: its handler's emissions queued. -/
-theorem processOne_outbox_eq (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem processOne_outbox_eq (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (σ : State sp ro) (o : Wire sp.n) :
     (processOne hs σ o).outbox = σ.outbox ++
-      (canonEvent sp ro hs o).elim [] fun e => emitted (exec dg σ.self σ.node σ.now e).2 := by
+      (canonEvent sp ro hs o).elim [] fun e =>
+        emitted (exec proposer dg σ.self σ.node σ.now e).2 := by
   unfold processOne
   cases he : canonEvent sp ro hs o with
   | none => simp
@@ -1300,39 +1320,41 @@ theorem processOne_outbox_eq (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
 /-- **A delivery's outbox.** Processing the objects `os` from a shape state at clock `t` only
 grows the outbox, and queues the vote of every emission among the delivery's cuts, a vote of the
 state's own validator. -/
-theorem process_outbox (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem process_outbox (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (t : Time) (i : Nat) :
     ∀ (os : List (Wire sp.n)) (σ : State sp ro) (sub : Nat), σ.now = t →
       (∃ L, (os.foldl (processOne hs) σ).outbox = σ.outbox ++ L) ∧
-      ∀ r ∈ deliverRecs dg hs σ.self t i os σ.node sub, ∀ ℓ, r.label = .ac ℓ →
+      ∀ r ∈ deliverRecs proposer dg hs σ.self t i os σ.node sub, ∀ ℓ, r.label = .ac ℓ →
         ∀ m ∈ ℓ.emits, Body.vote (encodeVote m.msg) ∈ (os.foldl (processOne hs) σ).outbox ∧
           m.msg.val = σ.self
   | [], σ, sub, ht => ⟨⟨[], by simp⟩, by simp [deliverRecs_nil]⟩
   | o :: os, σ, sub, ht => by
-    obtain ⟨-, -, -, hnow₁, hself₁, hnode₁⟩ := processOne_eq dg hs σ o
+    obtain ⟨-, -, -, hnow₁, hself₁, hnode₁⟩ := processOne_eq proposer dg hs σ o
     obtain ⟨⟨L, hL⟩, hrec⟩ :=
-      process_outbox dg hs t i os (processOne hs σ o) (sub + 1) (hnow₁.trans ht)
+      process_outbox proposer dg hs t i os (processOne hs σ o) (sub + 1) (hnow₁.trans ht)
     rw [List.foldl_cons]
     have hkeep : ∀ x ∈ (processOne hs σ o).outbox,
         x ∈ (os.foldl (processOne hs) (processOne hs σ o)).outbox := fun x hx => by
       rw [hL]; exact List.mem_append_left _ hx
-    refine ⟨⟨_, by rw [hL, processOne_outbox_eq dg, List.append_assoc]⟩, fun r hr ℓ hl m hm => ?_⟩
+    refine ⟨⟨_, by rw [hL, processOne_outbox_eq proposer dg, List.append_assoc]⟩,
+      fun r hr ℓ hl m hm => ?_⟩
     rw [hself₁, hnode₁] at hrec
     cases he : canonEvent sp ro hs o with
     | none =>
-      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ he] at hr
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
       rw [he] at hrec
       simpa [hself₁] using hrec r hr ℓ hl m hm
     | some e =>
-      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ e he] at hr
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he] at hr
       rw [he, Option.elim_some, ht] at hrec
       rcases List.mem_append.mp hr with hr | hr
       · obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
-        obtain ⟨-, -, -, -, hlab⟩ := getElem_groupRecs dg σ.self σ.node t _ e k hk
-        have hmem : Cut.ac ℓ ∈ (exec dg σ.self σ.node t e).2 := by
+        obtain ⟨-, -, -, -, hlab⟩ := getElem_groupRecs proposer dg σ.self σ.node t _ e k hk
+        have hmem : Cut.ac ℓ ∈ (exec proposer dg σ.self σ.node t e).2 := by
           rw [← hl, hlab]; exact List.getElem_mem _
-        refine ⟨hkeep _ ?_, emits_val_of_mem_exec dg σ.self σ.node t e hmem m hm⟩
-        rw [processOne_outbox_eq dg, he, Option.elim_some, ht]
+        refine ⟨hkeep _ ?_, emits_val_of_mem_exec proposer dg σ.self σ.node t e hmem m hm⟩
+        rw [processOne_outbox_eq proposer dg, he, Option.elim_some, ht]
         exact List.mem_append_right _ (List.mem_flatMap.mpr ⟨_, hmem, by simpa using ⟨m, hm, rfl⟩⟩)
       · simpa [hself₁] using hrec r hr ℓ hl m hm
 

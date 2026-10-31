@@ -22,7 +22,7 @@ open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9). -/
 private theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
@@ -31,12 +31,13 @@ private theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att 
   ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
 
 /-- The honest blocks of a run are coherent. -/
-private theorem honest_coherent (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr) :
+private theorem honest_coherent (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
     Coherent (tr.HonestBlocks H) :=
-  (ac_projection _ _ dg H _ tr (requirements sp ro) hrun.toLocalRun hnc).coherent
+  (ac_projection _ _ dg H _ tr proposer (requirements sp ro) hrun.toLocalRun hnc).coherent
 
 /-- Genesis is an honest block below every honest block. -/
-theorem honest_genesis_anc (hrun : GoldilocksRun dg H tr) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem honest_genesis_anc (hrun : GoldilocksRun proposer dg H tr)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ tr.HonestBlocks H) :
     sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∈ tr.HonestBlocks H ∧
       Anc (tr.HonestBlocks H)
@@ -47,7 +48,8 @@ theorem honest_genesis_anc (hrun : GoldilocksRun dg H tr) {B : SA.Blk sp.n (List
   exact ⟨⟨y, hy, i, hg⟩, (hanc B hBt).mono fun X hX => ⟨y, hy, i, hX⟩⟩
 
 /-- An honest block with the genesis root is genesis. -/
-theorem honest_eq_genesis (hrun : GoldilocksRun dg H tr) (hU : Coherent (tr.HonestBlocks H))
+theorem honest_eq_genesis (hrun : GoldilocksRun proposer dg H tr)
+    (hU : Coherent (tr.HonestBlocks H))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
     (hr : B.root = sp.genesisRoot) :
     B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
@@ -64,7 +66,7 @@ private theorem anc_genesis {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- Blocks below tips that are pairwise compatible (`Q`, an origin predicate) or genesis are
 compatible. -/
-private theorem chain_compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem chain_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {Q : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
     (hcomp : ∀ C s C' s', Q C s → Q C' s' → Compatible (tr.HonestBlocks H) C C')
     {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
@@ -84,7 +86,7 @@ private theorem chain_compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun
   · exact Anc.total hU hBC (hBC'.trans hCC)
 
 /-- An ancestor of a block that is genesis or below a tip `Q` is genesis or below it. -/
-private theorem chain_of_anc (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem chain_of_anc (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {Q : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
     {A B : SA.Blk sp.n (List (FG.Att sp.n))} (hA : A ∈ tr.HonestBlocks H)
     (hAB : Anc (tr.HonestBlocks H) A B)
@@ -100,7 +102,7 @@ private theorem chain_of_anc (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg 
   · exact Or.inr ⟨C, s, hC, hAB.trans hBC⟩
 
 /-- **Blocks on the origin chain are compatible** when the origins are pairwise compatible. -/
-theorem OnOriginChain.compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem OnOriginChain.compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hcomp : ∀ C s C' s', Origin tr H C s → Origin tr H C' s' →
       Compatible (tr.HonestBlocks H) C C')
     {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
@@ -110,7 +112,8 @@ theorem OnOriginChain.compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun
 
 /-- **Blocks on the chain of the origins within `b` are compatible** when those origins are
 pairwise compatible. -/
-theorem OnOriginChainWithin.compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem OnOriginChainWithin.compatible (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr)
     {b : Time} (hcomp : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
       Compatible (tr.HonestBlocks H) C C')
     {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
@@ -120,13 +123,13 @@ theorem OnOriginChainWithin.compatible (hrun : GoldilocksRun dg H tr) (hnc : NoC
     (onOriginChainWithin_iff.1 h) (onOriginChainWithin_iff.1 h')
 
 /-- **An ancestor of a block on the origin chain is on it.** -/
-theorem OnOriginChain.of_anc (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem OnOriginChain.of_anc (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {A B : SA.Blk sp.n (List (FG.Att sp.n))} (hA : A ∈ tr.HonestBlocks H)
     (hAB : Anc (tr.HonestBlocks H) A B) (h : OnOriginChain tr H B) : OnOriginChain tr H A :=
   onOriginChain_iff.2 (chain_of_anc hrun hnc hA hAB (onOriginChain_iff.1 h))
 
 /-- **An ancestor of a block on the chain of the origins within `b` is on it.** -/
-theorem OnOriginChainWithin.of_anc (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem OnOriginChainWithin.of_anc (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {b : Time} {A B : SA.Blk sp.n (List (FG.Att sp.n))} (hA : A ∈ tr.HonestBlocks H)
     (hAB : Anc (tr.HonestBlocks H) A B) (h : OnOriginChainWithin tr H B b) :
     OnOriginChainWithin tr H A b :=
@@ -137,7 +140,7 @@ theorem OnOriginChainWithin.of_anc (hrun : GoldilocksRun dg H tr) (hnc : NoCollR
 /-- An honest confirmed read is an honest block on a chain `Ch` closed under ancestors that
 holds the record's block and `Σ.F`: it is an ancestor of the effective record (the record's
 block, or `Σ.F` when the record is not in the frame), whatever the head. -/
-private theorem confirmed_read_of (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem confirmed_read_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hanc : ∀ {A B}, A ∈ tr.HonestBlocks H → Anc (tr.HonestBlocks H) A B → Ch B → Ch A)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) (t : Time)
@@ -184,7 +187,8 @@ private theorem confirmed_read_of (hrun : GoldilocksRun dg H tr) (hnc : NoCollRu
 /-- An honest confirmed read, at the state before any cut and at any time, is an honest block on
 the origin chain: it is an ancestor of the effective record (the record's block, or `Σ.F` when
 the record is not in the frame), whatever the head. -/
-theorem confirmed_read_on_chain (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun dg H tr)
+theorem confirmed_read_on_chain (hinv : SleepyInvariant tr H)
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) (t : Time) :
     (goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) t ∈
         tr.HonestBlocks H ∧
@@ -198,7 +202,8 @@ theorem confirmed_read_on_chain (hinv : SleepyInvariant tr H) (hrun : Goldilocks
 /-- **An honest confirmed read at a cut within `b`**, at any time, is an honest block on the
 chain of the origins within `b`. -/
 theorem confirmed_read_on_chain_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     (hi : ∀ k < i, tr.time k ≤ b) (t : Time) :
     (goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) t ∈
         tr.HonestBlocks H ∧
@@ -212,7 +217,7 @@ theorem confirmed_read_on_chain_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H
 /-- **R.1 up to `b` from the invariant**: the confirmed reads of honest nodes at any two cuts
 within `b`, at any times, are compatible (inside the honest blocks). -/
 theorem SleepyInvariantUpTo.read_compatible {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr) {y y' : Fin sp.n} (hy : y ∈ H)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y y' : Fin sp.n} (hy : y ∈ H)
     (hy' : y' ∈ H) {i i' : Nat} (hi : ∀ k < i, tr.time k ≤ b) (hi' : ∀ k < i', tr.time k ≤ b)
     (t t' : Time) :
     Compatible (tr.HonestBlocks H)
@@ -225,7 +230,7 @@ theorem SleepyInvariantUpTo.read_compatible {b : Time} (hinv : SleepyInvariantUp
 /-- **R.1 from the invariant**: the confirmed outputs of honest nodes at any two cuts are
 compatible (inside the honest blocks). -/
 theorem SleepyInvariant.confirmed_compatible (hinv : SleepyInvariant tr H)
-    (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr) :
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
     ∀ y ∈ H, ∀ y' ∈ H, ∀ i i',
       Compatible (tr.HonestBlocks H) (tr.confirmedAt y i) (tr.confirmedAt y' i') := by
   intro y hy y' hy' i i'

@@ -14,7 +14,7 @@ honest vote's head is a block of the voter's frame, of a slot no later than the 
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 private theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
     (h : x ∈ A.pool σ) : x ∈ (admitVote sp A t v).pool σ := by
@@ -52,7 +52,7 @@ theorem getHead_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FG
 
 /-- A vote of an honest validator in an honest voter's merged view was emitted by its node at
 a cut no later than the voter's call. -/
-theorem honest_merged_vote (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+theorem honest_merged_vote (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     {v : Vote sp.n} (hv : v ∈ (mergedVoteView sp e.readPoint ℓ.frame σ).votes)
     (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v := by
@@ -71,7 +71,8 @@ theorem honest_merged_vote (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {
     exact ⟨j, hj.le, h⟩
 
 /-- An honest validator is not an equivocator in an honest voter's merged view. -/
-theorem honest_not_equivocator (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+theorem honest_not_equivocator (hrun : ACRun proposer tr H U)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     {w : Fin sp.n} (hw : w ∈ H) :
     w ∉ equivocators (mergedVoteView sp e.readPoint ℓ.frame σ).votes := by
@@ -103,7 +104,7 @@ theorem honest_head_frame (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x :
 
 /-- An honest vote's head is a block of its voter's frame, of a slot no later than the
 vote's. -/
-theorem honest_head (hrun : ACRun tr H U) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
+theorem honest_head (hrun : ACRun proposer tr H U) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
     {e : Em sp FGP} (hv : VoteAt tr x j e) :
     ∃ Hd ∈ U, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot := by
   obtain ⟨ℓ, hc, he⟩ := hv

@@ -61,18 +61,20 @@ across the honest nodes; (c) the cuts of a tick are its steps in C0.4's order, a
 indices; (d) every honest object that an honest node processes was made by its honest maker at
 an earlier cut (or, for a block, at or before: the maker processes its own block at the same
 cut), so the send precedes the receipt; (e) finitely many cuts in every bounded interval. -/
-structure RunOrder (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
+structure RunOrder (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
     (sg : A.Msg → Fin P.n) (tr : RunTrace A) : Prop where
   /-- (a) The cut index respects time. -/
   time_of_lt : ∀ i j, i ≤ j → tr.time i ≤ tr.time j
   /-- (b) At one time, the honest groups are in phase order. -/
-  phase : ∀ y ∈ H, ∀ y' ∈ H, ∀ j j' t e e', tr.GroupAt dg y j t e → tr.GroupAt dg y' j' t e' →
+  phase : ∀ y ∈ H, ∀ y' ∈ H, ∀ j j' t e e',
+    tr.GroupAt proposer dg y j t e → tr.GroupAt proposer dg y' j' t e' →
     j < j' → e.phase ≤ e'.phase
   /-- (c) The cuts of an honest tick at `t` with the input `x` from `j` are `on_tick`'s cuts, in
   C0.4's order, at `j, j + 1, …`. -/
-  tick_steps : ∀ y ∈ H, ∀ j t x, tr.GroupAt dg y j t (.tick x) →
-    ∀ k, (hk : k < (Node.onTick dg y (tr.state y j) t x).2.length) →
-      tr.label (j + k) = some (Node.onTick dg y (tr.state y j) t x).2[k]
+  tick_steps : ∀ y ∈ H, ∀ j t x, tr.GroupAt proposer dg y j t (.tick x) →
+    ∀ k, (hk : k < (Node.onTick proposer dg y (tr.state y j) t x).2.length) →
+      tr.label (j + k) = some (Node.onTick proposer dg y (tr.state y j) t x).2[k]
   /-- (d) A block of an honest proposer processed by an honest node was processed by its proposer
   at or before, inside a tick. -/
   block_before : ∀ y ∈ H, ∀ i B, tr.BlockCallAt y i B → B.proposer ∈ H →
@@ -91,8 +93,8 @@ order of the claims, well founded by (e), so an invariant of cuts that holds at 
 holds at every earlier cut holds everywhere (F.5 (schema), `WellFounded.induction` on `<`). -/
 def EventOrder : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
-    (sg : A.Msg → Fin P.n) (tr : RunTrace A),
-    Node.LocalRun dg H sg tr → RunOrder dg H sg tr
+    (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n),
+    Node.LocalRun proposer dg H sg tr → RunOrder proposer dg H sg tr
 
 /-- **F.4, Ready implies joined (D4).** In a Goldilocks run, an honest validator awake at every
 integer time of `[max(0, t − c − 1), t]` with `c + 1 ≥ 8Δ` is awake and joined at `t ≥ 0`: its
@@ -102,8 +104,8 @@ awake before `0`; consensus-lean#73). -/
 def ReadyImpliesJoined : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro),
-    GoldilocksRun dg H tr → ∀ y ∈ H, ∀ (t c : Time), 0 ≤ t → 8 * sp.Δ ≤ c + 1 →
+    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    GoldilocksRun proposer dg H tr → ∀ y ∈ H, ∀ (t c : Time), 0 ≤ t → 8 * sp.Δ ≤ c + 1 →
       (∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
       tr.awake y t ∧ tr.JoinedAt y t
 
@@ -115,8 +117,8 @@ payload), so it holds only because the AC's own proposal passes `ac_valid_payloa
 (consensus-lean#73). -/
 def ACProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
-    (sg : A.Msg → Fin P.n) (tr : RunTrace A),
-    A.Requirements → Node.LocalRun dg H sg tr → NoCollRun dg tr →
+    (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n),
+    A.Requirements → Node.LocalRun proposer dg H sg tr → NoCollRun dg tr →
       ACLocalRun A H (tr.HonestBlocks H) tr.projAC
 
 /-- **C0.5 (c), the FG projection of a run is an FG trace with the contract**, with the AC's
@@ -131,21 +133,22 @@ so the proof is C0.3 (a refused own block is otherwise refused for ever at its n
 being held). Its unforgeability is the run's. -/
 def FGProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
-    (sg : A.Msg → Fin P.n) (tr : RunTrace A),
+    (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n),
     A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →
-      Node.LocalRun dg H sg tr → NoCollRun dg tr →
+      Node.LocalRun proposer dg H sg tr → NoCollRun dg tr →
         FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG
 
 /-- **The honest-object facts hold of the Goldilocks run's AC projection** (claims §"Runs";
 the premises `SA.HonestObjects` of the AC step statements): with the AC contract, `SA.ACRun`.
-Every frame block's proposer is its slot's by `state_transition`'s assertion (frame blocks are
-accepted), one block per honest proposer and slot by the proposal schedule, honest votes by the
+Every non-genesis frame block's proposer is its slot's by the run's credential law,
+one block per honest proposer and slot by the proposal schedule, honest votes by the
 run's unforgeability. -/
 def GoldilocksACProjection : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro),
-    GoldilocksRun dg H tr → NoCollRun dg tr → SA.ACRun tr.projAC H (tr.HonestBlocks H)
+    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    GoldilocksRun proposer dg H tr → NoCollRun dg tr →
+      SA.ACRun proposer tr.projAC H (tr.HonestBlocks H)
 
 /-- **The honest states of a run are reachable configurations** (`Node.Reachable`, the
 over-approximation of `Spec/Node` that the Compose/AnyAC statements are stated over): the state
@@ -153,19 +156,22 @@ of an honest node at the start of each of its top-level events is the state of a
 configuration at a time at most the event's, and so is the state after the event. -/
 def GroupStatesReachable : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
-    (sg : A.Msg → Fin P.n) (tr : RunTrace A),
-    Node.LocalRun dg H sg tr → ∀ y ∈ H, ∀ j t e, tr.GroupAt dg y j t e →
-      (∃ cfg : Node.Config A, Node.Reachable dg y cfg ∧ cfg.st = tr.state y j ∧ cfg.time ≤ t) ∧
-      ∃ cfg' : Node.Config A, Node.Reachable dg y cfg' ∧
-        cfg'.st = tr.post (j + (Node.exec dg y (tr.state y j) t e).2.length - 1) ∧ cfg'.time = t
+    (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n),
+    Node.LocalRun proposer dg H sg tr → ∀ y ∈ H, ∀ j t e, tr.GroupAt proposer dg y j t e →
+      (∃ cfg : Node.Config A,
+        Node.Reachable proposer dg y cfg ∧ cfg.st = tr.state y j ∧ cfg.time ≤ t) ∧
+      ∃ cfg' : Node.Config A, Node.Reachable proposer dg y cfg' ∧
+        cfg'.st = tr.post (j + (Node.exec proposer dg y (tr.state y j) t e).2.length - 1) ∧
+        cfg'.time = t
 
 /-- **`Sync` projects**: `Sync[a, b]` over a run gives `SyncAC` over its AC projection, on the
 same window, inside the honest blocks of the run (the message clause and the acceptance relay;
 the run's block and attestation clauses have no AC counterpart). -/
 def SyncProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
-    (sg : A.Msg → Fin P.n) (tr : RunTrace A) (ΔF a b : Time),
-    Node.LocalRun dg H sg tr → tr.SyncRun H ΔF a b → SyncAC A H (tr.HonestBlocks H) a b tr.projAC
+    (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n) (ΔF a b : Time),
+    Node.LocalRun proposer dg H sg tr → tr.SyncRun H ΔF a b →
+      SyncAC A H (tr.HonestBlocks H) a b tr.projAC
 
 /-- **Joining and participation project**: in a Goldilocks run, an honest node is joined at `t`
 by the run's restarts (`RunTrace.JoinedAt`) exactly when the SA's joined test on its AC state
@@ -174,8 +180,8 @@ post-state), and the run's `h_t` and `f < h_t` are the AC projection's. -/
 def JoinedProjection : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro),
-    GoldilocksRun dg H tr → ∀ y ∈ H, ∀ t,
+    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    GoldilocksRun proposer dg H tr → ∀ y ∈ H, ∀ t,
       (tr.JoinedAt y t ↔ SA.JoinedAt tr.projAC y t) ∧
       (∀ i, tr.IsCall y i → ¬ tr.RestartAt y i → tr.time i = t →
         (tr.JoinedAt y t ↔ SA.joined sp (tr.state y i).ac t)) ∧

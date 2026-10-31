@@ -41,6 +41,7 @@ namespace Consensus.Goldilocks.Compose
 open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
 
 /-- The duty head of a proposal is the walk of the full viable tree from its start, with the
 payload's view of the previous slot's votes. -/
@@ -62,7 +63,7 @@ with the payload `pay`. An own block is processed inside a tick (position `≠ 0
 proposal step's (`blockCall_cases`), made by `Node.proposeBlock` from `ac_proposal`'s duty head and
 payload at the cut after the tick's `ac_on_tick`. -/
 theorem proposal_data {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun dg H tr)
+    {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun proposer dg H tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) :
     ∃ i ℓp d pay, tr.projAC.CallAt p i ℓp ∧ ℓp.call = .proposal ∧
@@ -74,14 +75,16 @@ theorem proposal_data {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   set t := tr.time (j + 2)
   set st := tr.state p j
-  set st1 := (Node.tickStep dg p st t x .acTick).1
-  have hcuts : (Node.exec dg p st t (.tick x)).2 = (Node.tickStep dg p st t x .acTick).2 ++
-      (Node.tickStep dg p st1 t x .proposal).2 ++
-      (Node.tickStep dg p (Node.tickStep dg p st1 t x .proposal).1 t x .fgUpdate).2 := by
+  set st1 := (Node.tickStep proposer dg p st t x .acTick).1
+  have hcuts : (Node.exec proposer dg p st t (.tick x)).2 =
+      (Node.tickStep proposer dg p st t x .acTick).2 ++
+      (Node.tickStep proposer dg p st1 t x .proposal).2 ++
+      (Node.tickStep proposer dg p (Node.tickStep proposer dg p st1 t x .proposal).1
+        t x .fgUpdate).2 := by
     simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, st1]
-  have h0 : (Node.exec dg p st t (.tick x)).2[0]? = some (Node.acCall p st t .tick).2 := by
+  have h0 : (Node.exec proposer dg p st t (.tick x)).2[0]? = some (Node.acCall p st t .tick).2 := by
     rw [hcuts]; simp [Node.tickStep]
-  have h1 : (Node.exec dg p st t (.tick x)).2[1]? = some (Node.acProposal st1 t).2.1 := by
+  have h1 : (Node.exec proposer dg p st t (.tick x)).2[1]? = some (Node.acProposal st1 t).2.1 := by
     rw [hcuts]
     simp only [Node.tickStep, hPr, ↓reduceIte]
     split <;> simp [Node.acProposal, Node.acCall]
@@ -110,7 +113,7 @@ stopped, so no old child of `Q` is eligible at the proposer, and its score and t
 denominator agree at the voter; `old_child_ineligible` in `Service/Suffix`, from `pivot`). -/
 theorem old_children_ineligible {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
@@ -135,7 +138,7 @@ the current slot; another block of slot `s` would be a second block of the hones
 an old child is ineligible, `old_children_ineligible`), and its walk has no best child at `P` (no
 block of the frame is of a later slot): `SA.stop_core` from the two leaves. -/
 theorem stop_at_parent {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
@@ -158,7 +161,7 @@ theorem stop_at_parent {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Se
       {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
         B.parent = some P.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hU := hrun'.localRun.coherent
   have hΦU := (SA.frameIn_of_callAt hrun'.localRun hy hcy.1).2
   have hng : ∀ B ∈ ℓy.frame.tree, B.parent ≠ none → B.root ≠ sp.genesisRoot := by
@@ -176,12 +179,13 @@ walk reaches a block `X` of the path from `D` to `P`; from `X` it is at `P`, or 
 follows the proposal walk to `Q` and steps to `P`, where it stops (`ghost_follow`); with its full
 fuel it has stopped (`ghost_stopped`), so it ends at `P`. -/
 theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) :
     ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s → e.msg.head = P.root := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   obtain ⟨i, ℓp, d, pay, hc, hcall, hd, hti, hPQ, -⟩ := proposal_data hrun hp hP hPs
   obtain ⟨D, hsD, hDQ, hviab, hvot⟩ := pivot hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ
   suffices main : ∀ j, (∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' →

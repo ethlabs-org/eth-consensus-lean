@@ -16,7 +16,7 @@ it for two other held votes of its validator (`writer_merged`, A1.8's condition 
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-! ## The SA functions -/
 
@@ -190,7 +190,7 @@ private theorem cast_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
       hne
 
 /-- **The writer's pool, for the voter's pool.** -/
-theorem writer_pool (hrun : ACRun tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+theorem writer_pool (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -259,7 +259,7 @@ theorem writer_pool (hrun : ACRun tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s 
     omega
 
 /-- **The writer-pool condition** (A1.8 (d)) from `Sync[t_s, τ]`. -/
-theorem writer_merged (hrun : ACRun tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+theorem writer_merged (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)

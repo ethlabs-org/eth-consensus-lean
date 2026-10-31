@@ -28,11 +28,11 @@ open Compose
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **Agreement of the honest confirmed reads under `Sleepy`**: any two confirmed reads of honest
 nodes, at any cuts and at any times, are compatible (inside the honest blocks). -/
-theorem sleepy_reads_compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem sleepy_reads_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) :
     ∀ y ∈ H, ∀ z ∈ H, ∀ i j t t',
       Compatible (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr z j t') := by
@@ -43,7 +43,7 @@ theorem sleepy_reads_compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun 
   exact OnOriginChain.compatible hrun hnc hinv.origins_compatible hB hB' hc hc'
 
 /-- **R.1, the agreement half of `ReadySafeOn`** under `Sleepy`, for every window and catch-up. -/
-theorem sleepy_ready_agree (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem sleepy_ready_agree (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) (c t₀ t₁ : Time) :
     ∀ y z i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i → Boundary tr z j →
       t₀ ≤ t → t ≤ t₁ → t₀ ≤ t' → t' ≤ t₁ → ReadyAt tr H c y t → ReadyAt tr H c z t' →
@@ -71,8 +71,8 @@ private theorem lookup_getD_of_not {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {r : 
 
 /-- The confirmed read is the effective record (the record's block when it is in the frame, else
 `Σ.F`) when it is one of the two (`ready_read_record`'s conclusion). -/
-private theorem read_effective_of (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
-    {j : Nat} {t : Time}
+private theorem read_effective_of (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {t : Time}
     (h : (∃ R ∈ (Node.frame (tr.state y j)).tree,
         R.root = (tr.state y j).ac.latestConfirmed ∧ readAfter tr y j t = R) ∨
       ((¬ ∃ R ∈ (Node.frame (tr.state y j)).tree,
@@ -89,7 +89,7 @@ private theorem read_effective_of (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} 
 
 /-- At a ready read point (between the reader's events), the confirmed read is the effective
 record: the record's block when it is in the frame, else `Σ.F`. -/
-theorem ready_read_effective (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem ready_read_effective (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} {j : Nat} {t : Time} (hrp : ReadPoint tr j t)
     (hb : Boundary tr y j) (hready : ReadyAt tr H (catchUp sp) y t) :
     readAfter tr y j t = (SA.lookup (Node.frame (tr.state y j))
@@ -98,7 +98,7 @@ theorem ready_read_effective (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg 
 
 /-- **R.1, the monotone half of `ReadySafeOn`** under `Sleepy`, for every window and catch-up
 `18Δ`. -/
-theorem sleepy_ready_mono (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem sleepy_ready_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) (t₀ t₁ : Time) :
     ∀ y i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i → Boundary tr y j →
       i ≤ j → t ≤ t' → t₀ ≤ t → t' ≤ t₁ → ReadyAt tr H (catchUp sp) y t →
@@ -109,14 +109,14 @@ theorem sleepy_ready_mono (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
   exact effective_record_mono hrun hnc hsl hy.1 hij
 
 /-- **R.1, `sleepySafe` / `confirmed_safe_sleepy`.** -/
-theorem sleepy_safe : SleepySafe := fun _ _ _ _ _ _ hrun hnc hsl t₁ =>
+theorem sleepy_safe : SleepySafe := fun _ _ _ _ _ _ _ hrun hnc hsl t₁ =>
   ⟨sleepy_ready_agree hrun hnc hsl _ 0 t₁, sleepy_ready_mono hrun hnc hsl 0 t₁⟩
 
 /-- **R.1, `confirmed_safe_sleepy_prefix`**: under `Sync[0, b − Δ]` and `f < h_t` at the slot
 points up to `b`, the read points of times in `[0, b]` have their earlier cuts within `b`; the
 agreement half is `read_compatible` and the monotone half is the effective record up to `b`. -/
 theorem sleepy_safe_prefix : SleepySafePrefix := by
-  intro sp ro dg H tr ΔF b hrun hnc hb hsync hfb
+  intro sp ro dg H tr proposer ΔF b hrun hnc hb hsync hfb
   have hpre : SleepyPrefix tr H ΔF b := sleepyPrefix_iff.2 ⟨hb, hsync, hfb⟩
   have hinv := sleepy_invariant_upTo hrun hnc hpre
   refine ⟨fun y z i j t t' hi hj _ _ _ htb _ htb' hy hz => ?_,

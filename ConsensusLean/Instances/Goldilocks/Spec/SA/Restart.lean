@@ -19,9 +19,14 @@ variable {FGP : Type} (sp : SAParams)
 
 /-- `l` lists the blocks of `Φ.tree` other than genesis once each, every parent (in the list)
 before its children. -/
-def ParentOrder (Φ : Frm sp.n FGP) (l : List (Blk sp.n FGP)) : Prop :=
-  l.Nodup ∧ (∀ B, B ∈ l ↔ B ∈ Φ.tree ∧ B.root ≠ sp.genesisRoot) ∧
+def ParentOrderAt {n : Nat} (genesisRoot : Nat) (Φ : Frm n FGP)
+    (l : List (Blk n FGP)) : Prop :=
+  l.Nodup ∧ (∀ B, B ∈ l ↔ B ∈ Φ.tree ∧ B.root ≠ genesisRoot) ∧
     ∀ i j (hi : i < l.length) (hj : j < l.length), l[i].parent = some l[j].root → j < i
+
+/-- Parent order at the genesis root of these protocol parameters. -/
+abbrev ParentOrder (Φ : Frm sp.n FGP) (l : List (Blk sp.n FGP)) : Prop :=
+  ParentOrderAt sp.genesisRoot Φ l
 
 /-- A replay order for restarts: for each restart time and frame, a list of the blocks to replay,
 which is a parent-order enumeration of the tree without genesis whenever one exists (at a
@@ -29,11 +34,16 @@ well-formed frame one does). The spec fixes only that parents come before their 
 order of siblings is free and matters (with three or more votes of one validator on sibling
 blocks it decides which two pass the two-vote cap, and the pool order), so the SA is
 parametric in the order and the statements quantify over every replay order. -/
-structure ReplayOrder (sp : SAParams) (FGP : Type) where
+structure ReplayOrderData (n genesisRoot : Nat) (FGP : Type) where
   /-- The blocks a restart at time `t` with frame `Φ` replays, in order. -/
-  order : Time → Frm sp.n FGP → List (Blk sp.n FGP)
+  order : Time → Frm n FGP → List (Blk n FGP)
   /-- The order is a parent-order enumeration whenever there is one. -/
-  parentOrder : ∀ t Φ, (∃ l, ParentOrder sp Φ l) → ParentOrder sp Φ (order t Φ)
+  parentOrder : ∀ t Φ, (∃ l, ParentOrderAt genesisRoot Φ l) →
+    ParentOrderAt genesisRoot Φ (order t Φ)
+
+/-- Replay order depends only on the validator count and genesis root, not on
+the proposer schedule used to describe a run. -/
+abbrev ReplayOrder (sp : SAParams) (FGP : Type) := ReplayOrderData sp.n sp.genesisRoot FGP
 
 open Classical in
 /-- One replay order: a chosen parent-order enumeration (`[]` if there is none). -/

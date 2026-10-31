@@ -37,13 +37,14 @@ private def cutPhase : Cut A → Nat
   | .fg _ => 2
 
 /-- A handler's first cut has the phase of its event. -/
-private theorem cutPhase_exec (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+private theorem cutPhase_exec (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) {c : Cut A} {cs : List (Cut A)}
-    (h : (exec dg self st t e).2 = c :: cs) : cutPhase c = e.phase := by
+    (h : (exec proposer dg self st t e).2 = c :: cs) : cutPhase c = e.phase := by
   cases e with
   | tick x =>
-    obtain ⟨ℓ, pc, uc, hℓ, hcs, -, -⟩ := Compose.tick_order dg self st t x
-    change (onTick dg self st t x).2 = _ at h
+    obtain ⟨ℓ, pc, uc, hℓ, hcs, -, -⟩ := Compose.tick_order proposer dg self st t x
+    change (onTick proposer dg self st t x).2 = _ at h
     rw [hcs] at h
     obtain ⟨rfl, -⟩ := List.cons.inj h
     simp [cutPhase, hℓ, Event.phase]
@@ -65,13 +66,15 @@ private theorem cutPhase_exec (dg : Digest (List (FG.Att P.n)) A.Payload) (self 
     rfl
 
 /-- Only a restart's handler makes an `ac_restart` cut. -/
-private theorem restart_of_mem_exec (dg : Digest (List (FG.Att P.n)) A.Payload)
+private theorem restart_of_mem_exec (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload)
     (self : Fin P.n) (st : NodeState A) (t : Time) (e : Event A) {ℓ : ACLabel A}
-    (h : Cut.ac ℓ ∈ (exec dg self st t e).2) (hℓ : ℓ.call = .restart) : e = .restart := by
+    (h : Cut.ac ℓ ∈ (exec proposer dg self st t e).2) (hℓ : ℓ.call = .restart) : e = .restart := by
   cases e with
   | tick x =>
-    obtain ⟨ℓ₀, pc, uc, hℓ₀, hcs, hpc, ⟨ℓ₁, hℓ₁, huc⟩⟩ := Compose.tick_order dg self st t x
-    change _ ∈ (onTick dg self st t x).2 at h
+    obtain ⟨ℓ₀, pc, uc, hℓ₀, hcs, hpc, ⟨ℓ₁, hℓ₁, huc⟩⟩ :=
+      Compose.tick_order proposer dg self st t x
+    change _ ∈ (onTick proposer dg self st t x).2 at h
     rw [hcs] at h
     exfalso
     rcases List.mem_cons.mp h with h | h
@@ -114,7 +117,7 @@ end
 section
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+  (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
 
 /-- One post-state per cut. -/
 theorem length_cutPosts (t : Time) (cs : List (Cut (goldilocksNode sp ro)))
@@ -126,63 +129,68 @@ theorem length_cutPosts (t : Time) (cs : List (Cut (goldilocksNode sp ro)))
 /-- A group has one cut per handler cut. -/
 theorem length_groupRecs (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
     (e : Event (goldilocksNode sp ro)) :
-    (groupRecs dg self st t id e).length = (exec dg self st t e).2.length := by
+    (groupRecs proposer dg self st t id e).length = (exec proposer dg self st t e).2.length := by
   simp [groupRecs_eq, length_cutPosts]
 
 /-- The cut at position `k` of a group: the node, time and event id of the group, position `k`,
 the handler's cut `k`. -/
 theorem getElem_groupRecs (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
-    (e : Event (goldilocksNode sp ro)) (k : Nat) (hk : k < (groupRecs dg self st t id e).length) :
-    (groupRecs dg self st t id e)[k].node = self ∧ (groupRecs dg self st t id e)[k].time = t ∧
-      (groupRecs dg self st t id e)[k].event = id ∧ (groupRecs dg self st t id e)[k].pos = k ∧
-      (groupRecs dg self st t id e)[k].label =
-        (exec dg self st t e).2[k]'(by rwa [length_groupRecs] at hk) := by
-  rw [List.getElem_of_eq (groupRecs_eq dg self st t id e) hk, List.getElem_mapIdx,
+    (e : Event (goldilocksNode sp ro)) (k : Nat)
+    (hk : k < (groupRecs proposer dg self st t id e).length) :
+    (groupRecs proposer dg self st t id e)[k].node = self ∧
+      (groupRecs proposer dg self st t id e)[k].time = t ∧
+      (groupRecs proposer dg self st t id e)[k].event = id ∧
+      (groupRecs proposer dg self st t id e)[k].pos = k ∧
+      (groupRecs proposer dg self st t id e)[k].label =
+        (exec proposer dg self st t e).2[k]'(by rwa [length_groupRecs] at hk) := by
+  rw [List.getElem_of_eq (groupRecs_eq proposer dg self st t id e) hk, List.getElem_mapIdx,
     List.getElem_zip]
   exact ⟨rfl, rfl, rfl, rfl, rfl⟩
 
 /-- A cut of a group is at the group's node, time and event id. -/
 theorem mem_groupRecs {st : NodeState (goldilocksNode sp ro)} {t : Time} {id : Nat}
-    {e : Event (goldilocksNode sp ro)} {r : CutRec sp ro} (hr : r ∈ groupRecs dg self st t id e) :
+    {e : Event (goldilocksNode sp ro)} {r : CutRec sp ro}
+    (hr : r ∈ groupRecs proposer dg self st t id e) :
     r.node = self ∧ r.time = t ∧ r.event = id := by
   obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
-  obtain ⟨h1, h2, h3, -⟩ := getElem_groupRecs dg self st t id e k hk
+  obtain ⟨h1, h2, h3, -⟩ := getElem_groupRecs proposer dg self st t id e k hk
   exact ⟨h1, h2, h3⟩
 
 /-- A cut at position `0` of a group is the group's first: its label is the handler's first
 cut. -/
 private theorem cutPhase_of_mem_groupRecs {st : NodeState (goldilocksNode sp ro)} {t : Time}
     {id : Nat} {e : Event (goldilocksNode sp ro)} {r : CutRec sp ro}
-    (hr : r ∈ groupRecs dg self st t id e) (h0 : r.pos = 0) : cutPhase r.label = e.phase := by
+    (hr : r ∈ groupRecs proposer dg self st t id e) (h0 : r.pos = 0) :
+    cutPhase r.label = e.phase := by
   obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
-  obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs dg self st t id e k hk
+  obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs proposer dg self st t id e k hk
   rw [h0] at hpos
   subst hpos
-  have hk' : 0 < (exec dg self st t e).2.length := by rwa [length_groupRecs] at hk
+  have hk' : 0 < (exec proposer dg self st t e).2.length := by rwa [length_groupRecs] at hk
   obtain ⟨c, cs, hcs⟩ := List.exists_cons_of_length_pos hk'
-  have hc : (exec dg self st t e).2[0]'hk' = c := by
+  have hc : (exec proposer dg self st t e).2[0]'hk' = c := by
     rw [List.getElem_of_eq hcs hk']; rfl
   rw [hlab, hc]
-  exact cutPhase_exec (P := sp.toParams) (A := goldilocksNode sp ro) dg self st t e hcs
+  exact cutPhase_exec (P := sp.toParams) (A := goldilocksNode sp ro) proposer dg self st t e hcs
 
 /-- A cut of a delivery's cuts is at the delivery's node and time, under the id of a sub-event
 from `sub` on. -/
 theorem mem_deliverRecs (hs : List (Header Info × Nat)) (t : Time) (i : Nat)
     {os : List (Wire sp.n)} {st : NodeState (goldilocksNode sp ro)} {sub : Nat}
-    {r : CutRec sp ro} (hr : r ∈ deliverRecs dg hs self t i os st sub) :
+    {r : CutRec sp ro} (hr : r ∈ deliverRecs proposer dg hs self t i os st sub) :
     r.node = self ∧ r.time = t ∧ ∃ s, sub ≤ s ∧ r.event = Nat.pair i s := by
   induction os generalizing st sub with
   | nil => simp [deliverRecs_nil] at hr
   | cons o os ih =>
     cases he : canonEvent sp ro hs o with
     | none =>
-      rw [deliverRecs_cons_none dg hs self t i o os st sub he] at hr
+      rw [deliverRecs_cons_none proposer dg hs self t i o os st sub he] at hr
       obtain ⟨h1, h2, s, hs', h3⟩ := ih hr
       exact ⟨h1, h2, s, by omega, h3⟩
     | some e =>
-      rw [deliverRecs_cons_some dg hs self t i o os st sub e he] at hr
+      rw [deliverRecs_cons_some proposer dg hs self t i o os st sub e he] at hr
       rcases List.mem_append.mp hr with hr | hr
-      · obtain ⟨h1, h2, h3⟩ := mem_groupRecs dg self hr
+      · obtain ⟨h1, h2, h3⟩ := mem_groupRecs proposer dg self hr
         exact ⟨h1, h2, sub, le_rfl, h3⟩
       · obtain ⟨h1, h2, s, hs', h3⟩ := ih hr
         exact ⟨h1, h2, s, by omega, h3⟩
@@ -194,24 +202,24 @@ private theorem phase_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n
 
 private theorem cutPhase_of_mem_deliverRecs (hs : List (Header Info × Nat)) (t : Time) (i : Nat)
     {os : List (Wire sp.n)} {st : NodeState (goldilocksNode sp ro)} {sub : Nat}
-    {r : CutRec sp ro} (hr : r ∈ deliverRecs dg hs self t i os st sub) (h0 : r.pos = 0) :
+    {r : CutRec sp ro} (hr : r ∈ deliverRecs proposer dg hs self t i os st sub) (h0 : r.pos = 0) :
     cutPhase r.label = 2 := by
   induction os generalizing st sub with
   | nil => simp [deliverRecs_nil] at hr
   | cons o os ih =>
     cases he : canonEvent sp ro hs o with
     | none =>
-      rw [deliverRecs_cons_none dg hs self t i o os st sub he] at hr
+      rw [deliverRecs_cons_none proposer dg hs self t i o os st sub he] at hr
       exact ih hr
     | some e =>
-      rw [deliverRecs_cons_some dg hs self t i o os st sub e he] at hr
+      rw [deliverRecs_cons_some proposer dg hs self t i o os st sub e he] at hr
       rcases List.mem_append.mp hr with hr | hr
-      · rw [cutPhase_of_mem_groupRecs dg self hr h0, phase_canonEvent he]
+      · rw [cutPhase_of_mem_groupRecs proposer dg self hr h0, phase_canonEvent he]
       · exact ih hr
 
 private theorem restart_of_mem_deliverRecs (hs : List (Header Info × Nat)) (t : Time) (i : Nat)
     {os : List (Wire sp.n)} {st : NodeState (goldilocksNode sp ro)} {sub : Nat}
-    {r : CutRec sp ro} (hr : r ∈ deliverRecs dg hs self t i os st sub)
+    {r : CutRec sp ro} (hr : r ∈ deliverRecs proposer dg hs self t i os st sub)
     {ℓ : ACLabel (goldilocksNode sp ro)} (hl : r.label = .ac ℓ) (hℓ : ℓ.call = .restart) :
     False := by
   induction os generalizing st sub with
@@ -219,15 +227,15 @@ private theorem restart_of_mem_deliverRecs (hs : List (Header Info × Nat)) (t :
   | cons o os ih =>
     cases he : canonEvent sp ro hs o with
     | none =>
-      rw [deliverRecs_cons_none dg hs self t i o os st sub he] at hr
+      rw [deliverRecs_cons_none proposer dg hs self t i o os st sub he] at hr
       exact ih hr
     | some e =>
-      rw [deliverRecs_cons_some dg hs self t i o os st sub e he] at hr
+      rw [deliverRecs_cons_some proposer dg hs self t i o os st sub e he] at hr
       rcases List.mem_append.mp hr with hr | hr
       · obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
-        obtain ⟨-, -, -, -, hlab⟩ := getElem_groupRecs dg self st t _ e k hk
+        obtain ⟨-, -, -, -, hlab⟩ := getElem_groupRecs proposer dg self st t _ e k hk
         rw [hlab] at hl
-        have := restart_of_mem_exec dg self st t e (hl ▸ List.getElem_mem _) hℓ
+        have := restart_of_mem_exec proposer dg self st t e (hl ▸ List.getElem_mem _) hℓ
         subst this
         exact absurd (phase_canonEvent he) (by simp [Event.phase])
       · exact ih hr
@@ -321,17 +329,17 @@ theorem mem_eventCuts {i : Nat} {ev : Model.Event V (Model.protoOf (compiled (fa
   | tick v t =>
     by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
     · rw [eventCuts_tick_public S rho hn i v t he hp] at hr
-      obtain ⟨h1, h2, h3⟩ := mem_groupRecs _ _ hr
+      obtain ⟨h1, h2, h3⟩ := mem_groupRecs _ _ _ hr
       exact ⟨h1, h2, 0, h3⟩
     · rw [eventCuts_tick_other S rho hn i v t he hp] at hr
       simp at hr
   | deliver v o t =>
     rw [eventCuts_deliver S rho hn i v o t he] at hr
-    obtain ⟨h1, h2, s, -, h3⟩ := mem_deliverRecs _ _ _ t i hr
+    obtain ⟨h1, h2, s, -, h3⟩ := mem_deliverRecs _ _ _ _ t i hr
     exact ⟨h1, h2, s, h3⟩
   | restart v t =>
     rw [eventCuts_restart S rho hn i v t he] at hr
-    obtain ⟨h1, h2, h3⟩ := mem_groupRecs _ _ hr
+    obtain ⟨h1, h2, h3⟩ := mem_groupRecs _ _ _ hr
     exact ⟨h1, h2, 0, h3⟩
 
 /-- A cut at position `0` of engine event `i` starts a group whose handler is of the engine
@@ -345,23 +353,24 @@ theorem phase_of_pos_zero {i : Nat}
     {y : Fin (Fintype.card V)} {st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
     {t : Time} {e : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
     {cs : List (Cut (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))}
-    (hcs : (exec dg y st t e).2 = r.label :: cs) : e.phase = ev.phase := by
+    {proposer : Nat → Fin (Fintype.card V)}
+    (hcs : (exec proposer dg y st t e).2 = r.label :: cs) : e.phase = ev.phase := by
   rw [← cutPhase_exec (P := (S.params (pubOf E) hn).toParams)
     (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (c := r.label) (cs := cs)
-    dg y st t e hcs]
+    proposer dg y st t e hcs]
   cases ev with
   | tick v t' =>
     by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t'
     · rw [eventCuts_tick_public S rho hn i v t' he hp] at hr
-      exact cutPhase_of_mem_groupRecs _ _ hr h0
+      exact cutPhase_of_mem_groupRecs _ _ _ hr h0
     · rw [eventCuts_tick_other S rho hn i v t' he hp] at hr
       simp at hr
   | deliver v o t' =>
     rw [eventCuts_deliver S rho hn i v o t' he] at hr
-    exact cutPhase_of_mem_deliverRecs _ _ _ t' i hr h0
+    exact cutPhase_of_mem_deliverRecs _ _ _ _ t' i hr h0
   | restart v t' =>
     rw [eventCuts_restart S rho hn i v t' he] at hr
-    exact cutPhase_of_mem_groupRecs _ _ hr h0
+    exact cutPhase_of_mem_groupRecs _ _ _ hr h0
 
 /-- An `ac_restart` cut is a cut of an engine restart. -/
 theorem restart_of_mem_eventCuts {i : Nat}
@@ -374,14 +383,14 @@ theorem restart_of_mem_eventCuts {i : Nat}
     by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t'
     · rw [eventCuts_tick_public S rho hn i v t' he hp] at hr
       obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
-      obtain ⟨-, -, -, -, hlab⟩ := getElem_groupRecs _ _ _ t' _ _ k hk
+      obtain ⟨-, -, -, -, hlab⟩ := getElem_groupRecs _ _ _ _ t' _ _ k hk
       rw [hlab] at hl
-      exact absurd (restart_of_mem_exec _ _ _ _ _ (hl ▸ List.getElem_mem _) hℓ) (by simp)
+      exact absurd (restart_of_mem_exec _ _ _ _ _ _ (hl ▸ List.getElem_mem _) hℓ) (by simp)
     · rw [eventCuts_tick_other S rho hn i v t' he hp] at hr
       simp at hr
   | deliver v o t' =>
     rw [eventCuts_deliver S rho hn i v o t' he] at hr
-    exact (restart_of_mem_deliverRecs _ _ _ t' i hr hl hℓ).elim
+    exact (restart_of_mem_deliverRecs _ _ _ _ t' i hr hl hℓ).elim
   | restart v t' => exact ⟨v, t', rfl⟩
 
 /-- The cuts of a group-shaped engine event (a tick at a public time, a restart) are at the
@@ -392,16 +401,16 @@ theorem pos_getElem_eventCuts_of_group {i : Nat} {v : V} {t : Time}
   rcases he with he | he
   · by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
     · simp only [eventCuts_tick_public S rho hn i v t he hp] at hm ⊢
-      exact (getElem_groupRecs _ _ _ _ _ _ m hm).2.2.2.1
+      exact (getElem_groupRecs _ _ _ _ _ _ _ m hm).2.2.2.1
     · simp [eventCuts_tick_other S rho hn i v t he hp] at hm
   · simp only [eventCuts_restart S rho hn i v t he] at hm ⊢
-    exact (getElem_groupRecs _ _ _ _ _ _ m hm).2.2.2.1
+    exact (getElem_groupRecs _ _ _ _ _ _ _ m hm).2.2.2.1
 
 /-- An engine restart has exactly one cut, the restart's `ac_restart`. -/
 theorem eventCuts_restart_length {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.restart v t)) : (eventCuts S rho hn i).length = 1 := by
   rw [eventCuts_restart S rho hn i v t he]
-  exact (length_groupRecs _ _ _ _ _ _).trans rfl
+  exact (length_groupRecs _ _ _ _ _ _ _).trans rfl
 
 /-- An engine restart's one cut, at `cutMap i`: at the restart's node and time, an `ac_restart`. -/
 theorem restart_getElem? {i : Nat} {v : V} {t : Time}
@@ -415,10 +424,11 @@ theorem restart_getElem? {i : Nat} {v : V} {t : Time}
   have h0 := allCuts_getElem?_add S rho hn i 0 hi (by rw [hlen]; exact Nat.one_pos)
   rw [Nat.add_zero] at h0
   refine ⟨by rw [h0]; exact List.getElem?_eq_getElem _, ?_⟩
-  have hm : 0 < (groupRecs (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+  have hm : 0 < (groupRecs (runProposer S rho hn) (digestOf S rho)
+      (rho.ownKey v) (stateAt S rho hn v i).node t
       (Nat.pair i 0) .restart).length := by
     rw [← eventCuts_restart S rho hn i v t he, hlen]; exact Nat.one_pos
-  obtain ⟨h1, h2, -, -, h5⟩ := getElem_groupRecs _ _ _ _ _ _ 0 hm
+  obtain ⟨h1, h2, -, -, h5⟩ := getElem_groupRecs _ _ _ _ _ _ _ 0 hm
   simp only [eventCuts_restart S rho hn i v t he]
   refine ⟨h1, h2, _, h5.trans rfl, rfl⟩
 

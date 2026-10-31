@@ -215,8 +215,10 @@ theorem runDuties_cons (v : V) (nd : Node (protoOf F E)) (d : (protoOf F E).Duty
 omit [DecidableEq V] in
 theorem dutyStep_eq (v : V) (nd : Node (protoOf F E)) (d : (protoOf F E).Duty) :
     rho.dutyStep v nd d =
-      releaseAll (protoOf F E) rho.hash (rho.ownKey v) ⟨((protoOf F E).act nd.st d).1, nd.seen⟩
-        (rho.signedCandidate v d ((protoOf F E).act nd.st d).2) := by
+      if rho.ownKey v ∈ rho.sel ((protoOf F E).role d) then
+        releaseAll (protoOf F E) rho.hash (rho.ownKey v) ⟨((protoOf F E).act nd.st d).1, nd.seen⟩
+          (rho.signedCandidate v d ((protoOf F E).act nd.st d).2)
+      else (nd, []) := by
   rfl
 
 omit [DecidableEq V] in
@@ -261,10 +263,14 @@ theorem runDuties_invariant (Q : (protoOf F E).State → Prop) (v : V)
   | nil => exact h
   | cons d ds ih =>
     rw [runDuties_cons] at hrec ⊢
-    exact ih _ (fun s d' hd' => hact s d' (List.mem_cons_of_mem _ hd'))
+    apply ih _ (fun s d' hd' => hact s d' (List.mem_cons_of_mem _ hd'))
       (fun s o hs ho => hrec s o hs (List.mem_append_right _ ho))
-      (releaseAll_invariant Q _ _ _ _ (fun s o hs ho => hrec s o hs (List.mem_append_left _ ho))
-        (hact _ d List.mem_cons_self h))
+    by_cases hk : rho.ownKey v ∈ rho.sel ((protoOf F E).role d)
+    · simp only [dutyStep, hk, ↓reduceIte] at hrec ⊢
+      exact releaseAll_invariant Q _ _ _ _
+        (fun s o hs ho => hrec s o hs (List.mem_append_left _ ho))
+        (hact _ d List.mem_cons_self h)
+    · simpa [dutyStep, hk] using h
 
 omit [DecidableEq V] in
 /-- A property of states that holds after the clock and is kept by the due
@@ -325,10 +331,15 @@ private theorem foldl_duties_flat (v : V) (ds dsAll : List (protoOf F E).Duty)
   induction ds generalizing nd rel with
   | nil => exact ⟨[], by simp, by simp [releaseAll], by simp [releaseAll], h⟩
   | cons d ds ih =>
+    by_cases hk : rho.ownKey v ∈ rho.sel ((protoOf F E).role d)
+    case neg =>
+      simpa only [List.foldl_cons, dutyStep, hk, ↓reduceIte, List.append_nil] using
+        ih (fun d hd => hds d (List.mem_cons_of_mem _ hd)) nd rel h
     simp only [List.foldl_cons]
     have hstep : rho.dutyStep v nd d = releaseAll (protoOf F E) rho.hash (rho.ownKey v)
         ⟨((protoOf F E).act nd.st d).1, nd.seen⟩
-        (rho.signedCandidate v d ((protoOf F E).act nd.st d).2) := rfl
+        (rho.signedCandidate v d ((protoOf F E).act nd.st d).2) := by
+      simp only [dutyStep, hk, ↓reduceIte]
     have hreach : TickReach (protoOf F E) dsAll st₁ (rho.dutyStep v nd d).1.st := by
       rw [hstep]
       exact releaseAll_reach _ _ _ _ (.act (hds d List.mem_cons_self) h)

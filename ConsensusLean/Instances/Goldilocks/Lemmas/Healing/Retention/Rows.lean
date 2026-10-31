@@ -21,6 +21,7 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
+  {proposer : Nat → Fin sp.n}
 
 /-! ## Store facts at the honest nodes -/
 
@@ -36,7 +37,8 @@ theorem h_le_of_store_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P
 
 /-- Ancestry inside the honest blocks below a block of an honest tree is ancestry in that tree
 (honest trees are parent-closed down to genesis). -/
-theorem store_anc_of_honest_anc (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem store_anc_of_honest_anc (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {A C : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocks H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
     (tr.state y k).fg.Anc A C := by
@@ -52,7 +54,7 @@ theorem store_anc_of_honest_anc (hrun : GoldilocksRun dg H tr) (hnc : Compose.No
     exact (ih hZ.1).tail hZ
 
 /-- A block below (inside the honest blocks) a block of an honest tree is in that tree. -/
-theorem mem_of_honest_anc (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem mem_of_honest_anc (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {A C : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocks H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
     A ∈ (tr.state y k).fg.tree := by
@@ -61,7 +63,7 @@ theorem mem_of_honest_anc (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRu
   · exact (Anc.mem (store_anc_of_honest_anc hrun hnc hy h hC) he).1
 
 /-- One state per block across the honest stores of a run. -/
-theorem σ_eq_honest (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem σ_eq_honest (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hBy : B ∈ (tr.state y i).fg.tree) (hBz : B ∈ (tr.state z j).fg.tree) :
     (tr.state y i).fg.σ B.root = (tr.state z j).fg.σ B.root :=
@@ -71,7 +73,8 @@ theorem σ_eq_honest (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg 
     (fun _ hX => ⟨z, hz, j, hX⟩) hBy hBz
 
 /-- The block of a frame of an honest call is in the node's FG tree. -/
-theorem mem_tree_of_frame (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+theorem mem_tree_of_frame (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) :
     B ∈ (tr.state y k).fg.tree := by
@@ -93,30 +96,31 @@ private theorem fastLockAt_frame_mem {x : Fin sp.n} {i s : Nat}
     exact (SA.deepest_mem hsel).1.1
 
 /-- The stored block of a fast-lock write is in the writer's FG tree, below its selection. -/
-theorem storedFastLock_mem (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem storedFastLock_mem (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (SA.Vote sp.n)} (h : Compose.StoredFastLockAt tr x i s B CV) :
     B ∈ (tr.state x i).fg.tree ∧ ∃ D, SA.FastLockAt tr.projAC x i s D CV ∧
       Anc (tr.HonestBlocks H) B D := by
   unfold Compose.StoredFastLockAt at h
   obtain ⟨ℓ, D, hc, hfl, rfl⟩ := h
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hx hc
   obtain ⟨hvt, hva⟩ := SA.viableAncestor_anc hΦ (fastLockAt_frame_mem hfl hc)
   exact ⟨mem_tree_of_frame hrun hx hc hvt, D, hfl, hva.mono hΦU⟩
 
 /-- **A fast-lock write is joined** (run level): `JoinedAt` at the write's time. -/
-theorem joinedAt_of_fastLockAt (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem joinedAt_of_fastLockAt (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (SA.Vote sp.n)} (h : SA.FastLockAt tr.projAC x i s D CV) :
     tr.JoinedAt x (tr.time i) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   obtain ⟨hj, ℓ, hc, hnr⟩ := joined_of_fastLockAt hr hx h
   have hnr' : ¬ tr.RestartAt x i := by
     rintro ⟨ℓk, hck, hkr⟩
     obtain rfl : ℓk = ℓ := Option.some.inj ((Compose.projAC_callAt.mpr hck).2.symm.trans hc.2)
     exact hnr hkr
-  refine ((Compose.joined_projection sp ro dg H tr hrun x hx (tr.time i)).2.1 i
+  refine ((Compose.joined_projection sp ro dg H tr proposer hrun x hx (tr.time i)).2.1 i
     ⟨_, Compose.projAC_callAt.mp hc⟩ hnr' rfl).mpr ?_
   rw [← Compose.projAC_state hrun.toLocalRun hx]
   exact hj
@@ -140,12 +144,12 @@ private theorem mem_toFGCandidates' {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.
 /-- **Temporal source provenance of a high row** (`hr4-cut-scope.md` §4). An honest row of height
 `≥ H_z + 1` signed at cut `d` names the entry `E` (at its height) of the chain of a high origin
 `(O, l)` written by the signer at a cut `r < d`: `E ⪯ Q ⪯ O` for the row's source `Q`. -/
-theorem high_row_source (hp : ResetPremises tr H dg g ΔF a) {v : Fin sp.n} (hv : v ∈ H)
+theorem high_row_source (hp : ResetPremises tr H proposer dg g ΔF a) {v : Fin sp.n} (hv : v ∈ H)
     {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h) :
     ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ ∃ E ∈ (tr.state v r).fg.tree,
       (tr.state v r).fg.Anc E O ∧ E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
       ((tr.state v r).fg.σ E.root).Th = E.root := by
-  have hacr := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hacr := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hr := hacr.localRun
   have hU := hr.coherent
   obtain ⟨C, hcall⟩ := hs

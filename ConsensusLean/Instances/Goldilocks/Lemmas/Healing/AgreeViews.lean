@@ -17,6 +17,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ i m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {p : Fin sp.n} {kP s : Nat}
@@ -24,7 +25,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
 
 /-- A block held at an honest call's cut that extends the call's `Σ.F` is in its frame. -/
-theorem mem_frame_of_held (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem mem_frame_of_held (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y k ℓ) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr.state y k).fg.tree) (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B) :
@@ -35,7 +36,8 @@ theorem mem_frame_of_held (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRu
 /-- **The relay into a frame** (`relay_held`): a block an honest `x` holds at a cut of time
 `τ` with `τ + Δ ≤ u` and `ḡ + 2Δ ≤ u` is in the frame of every honest call at a time `≥ u`
 whose `Σ.F` it extends. -/
-theorem mem_frame_of_relay (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+theorem mem_frame_of_relay
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H) {k₀ : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state x k₀).fg.tree) {u : Time}
     (hu : gbar g + 2 * sp.Δ ≤ u) (hk₀ : tr.time k₀ + sp.Δ ≤ u) {jz : Nat}
@@ -68,7 +70,8 @@ equivocators and voters, and the same supporters for every block of both trees
 accepted by then, so it reaches the proposer by `t_s` (`relay_held`); a support head of `P` is in
 the voter's ready frame at an early vote, and relayed from the proposer by `t_s + Δ` otherwise;
 `Sync` on `[t_{s−1}, t_s]` from `GST(g)`, `g ≤ ḡ ≤ t_{s−1}`). -/
-theorem proposal_views_agree (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+theorem proposal_views_agree
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) :
@@ -83,7 +86,7 @@ theorem proposal_views_agree (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP 
   have hrun := hS.run
   have hl := hrun.toLocalRun
   have hnc := hS.shared.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -120,7 +123,7 @@ theorem proposal_views_agree (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP 
   -- `Sync` on `[t_{s−1}, t_s]` from `GST(g)`
   have hga : g ≤ sp.ts (s' : Int) := by have := le_gbar g; linarith
   have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
-    tr ΔF (sp.ts (s' : Int)) (sp.ts ((s' + 1 : Nat) : Int)) hl
+    tr proposer ΔF (sp.ts (s' : Int)) (sp.ts ((s' + 1 : Nat) : Int)) hl
     (syncRun_of_gst hS.shared.healthy.1 hga)
   refine hcast ▸ SA.view_agree hac hpH hy hS.ready.2.1 ⟨hS.call, hS.call_proposal, d, hS.payload⟩
     hS.time hcy ⟨P, hPy, hPs, hpay⟩ hsync ?_ ?_

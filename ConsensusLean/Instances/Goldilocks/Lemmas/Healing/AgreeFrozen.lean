@@ -27,6 +27,7 @@ open SA (SAParams ReplayOrder Payload gbar)
 section Main
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ i m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {p : Fin sp.n} {kP s : Nat}
@@ -37,7 +38,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 cut `k` accepted it at an earlier cut, after its proposer's own block call (unforgeable blocks),
 which is the cut after the proposal's `ac_proposal` cut (one tick per node and time). -/
 private theorem proposal_before_holder
-    (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) (hs1 : 1 ≤ s)
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) (hs1 : 1 ≤ s)
     (hPprop : P.proposer = p) {z : Fin sp.n} (hz : z ∈ H) {k : Nat}
     (hPz : P ∈ (tr.state z k).fg.tree) : iP < k := by
   have hl := hS.run.toLocalRun
@@ -64,13 +65,14 @@ private theorem proposal_before_holder
 /-- **The slot-`s` block of an honest frame is `P`**: the honest proposer has one block per slot
 in the honest frames (`HonestObjects.one_block`), and a slot-`s` block (`s ≥ 1`) is not genesis,
 so it has the slot's proposer. -/
-theorem frame_slot_eq_proposal (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+theorem frame_slot_eq_proposal
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y j ℓy) : ∀ P' ∈ ℓy.frame.tree, P'.slot = s → P' = P := by
   have hrun := hS.run
   have hl := hrun.toLocalRun
   have hnc := hS.shared.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hpH : p ∈ H := hS.ready.1
@@ -97,7 +99,8 @@ theorem frame_slot_eq_proposal (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p k
 /-- **The frozen facts at a vote**: `P` is frozen-viable (`proposal_frozen_viable`, whose
 docstring has the argument), `Q` is a viable head of the proposer, and the phase and evidence
 hold from `i₀` through the vote. -/
-private theorem frozen_core (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+private theorem frozen_core
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) :
@@ -109,7 +112,7 @@ private theorem frozen_core (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s
   have hs := hS.shared
   have hl := hrun.toLocalRun
   have hnc := hs.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -237,7 +240,8 @@ relayed by `t_s + Δ` otherwise, `relay_held`), allowed (its parent is a viable 
 proposer, whose walk starts in the viable tree, `proposal_head_viable`, read with the aligned
 readers at the proposal cut, which precedes the vote), so a viable head of the voter (HS.1,
 `viableHead_of_allowed`), and in the voter block tree as the slot-`s` block. -/
-theorem proposal_frozen_viable (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+theorem proposal_frozen_viable
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) :
@@ -247,7 +251,8 @@ theorem proposal_frozen_viable (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p k
 /-- **`Q` is a viable head of the proposer** (`proposal_head_viable`: the proposal walk starts in
 the viable tree, `fc_root` being below the evidence block of height `m`, allowed and so a viable
 head, HS.1), read at the proposal cut, which precedes an honest slot-`s` vote. -/
-theorem proposal_head_viableHead (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+theorem proposal_head_viableHead
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) : d.head ∈ ℓp.frame.viableHeads :=
@@ -257,7 +262,8 @@ theorem proposal_head_viableHead (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p
 slot-`s` vote, the phase `(m, c)` holds from `i₀` through the vote, and every honest node holds
 the evidence from `i₀` on (the phase from the vote's `PhaseOn` and the sandwich; the proposal's
 cut precedes every holder of `P`). -/
-theorem phase_at_vote (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+theorem phase_at_vote
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) :

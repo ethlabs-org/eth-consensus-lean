@@ -233,12 +233,13 @@ section Deliver
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The votes a handler's cuts queue: its AC cut's emissions. -/
-private theorem handler_voteStep (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+private theorem handler_voteStep (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (ht : 0 ≤ t)
     (e : Event (goldilocksNode sp ro)) (hne : ∀ x, e ≠ .tick x) (hnr : e ≠ .restart) :
     ∃ (A' : SAState sp.n) (es : List (SA.Em sp (List (FG.Att sp.n)))),
-      VoteStep st.ac A' es t ∧ (exec dg self st t e).1.ac = A' ∧
-        emitted (exec dg self st t e).2 = es.map fun e => .vote (encodeVote e.msg) := by
+      VoteStep st.ac A' es t ∧ (exec proposer dg self st t e).1.ac = A' ∧
+        emitted (exec proposer dg self st t e).2 = es.map fun e => .vote (encodeVote e.msg) := by
   have hstep : ∀ (st' : NodeState (goldilocksNode sp ro)) (c : (goldilocksNode sp ro).Call),
       st'.ac = st.ac → c ≠ .restart →
       VoteStep st.ac ((goldilocksNode sp ro).step self st'.ac (frame st') t c).1
@@ -289,8 +290,8 @@ theorem OneVote.atMost {t : Time} {σ : State sp ro} (h : OneVote t σ) : AtMost
 theorem processOne_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) {t : Time} (ht : 0 ≤ t) (σ : State sp ro) (o : Wire sp.n)
     (hnow : σ.now = t) (h : OneVote t σ) : OneVote t (processOne hs σ o) := by
-  obtain ⟨-, -, -, -, -, hnode⟩ := processOne_eq dg hs σ o
-  have hout := processOne_outbox_eq dg hs σ o
+  obtain ⟨-, -, -, -, -, hnode⟩ := processOne_eq (fun _ => σ.self) dg hs σ o
+  have hout := processOne_outbox_eq (fun _ => σ.self) dg hs σ o
   cases he : canonEvent sp ro hs o with
   | none =>
     rw [he] at hnode hout
@@ -301,7 +302,8 @@ theorem processOne_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
   | some e =>
     rw [he] at hnode hout
     simp only [Option.elim_some] at hnode hout
-    obtain ⟨A', es, hvs, hac, hem⟩ := handler_voteStep dg σ.self σ.node σ.now (hnow ▸ ht) e
+    obtain ⟨A', es, hvs, hac, hem⟩ := handler_voteStep (fun _ => σ.self)
+      dg σ.self σ.node σ.now (hnow ▸ ht) e
       (canonEvent_ne_tick he) (by
         rintro rfl
         rcases canonEvent_eq_some he with ⟨_, h, -⟩ | ⟨_, h, -⟩ | ⟨_, h, -⟩ <;> cases h)
@@ -340,7 +342,7 @@ theorem process_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
   | [], _, _, h => h
   | o :: os, σ, hnow, h => by
     rw [List.foldl_cons]
-    obtain ⟨-, -, -, hnow₁, -, -⟩ := processOne_eq dg hs σ o
+    obtain ⟨-, -, -, hnow₁, -, -⟩ := processOne_eq (fun _ => σ.self) dg hs σ o
     exact process_oneVote dg hs ht os _ (hnow₁.trans hnow)
       (processOne_oneVote dg hs ht σ o hnow h)
 
@@ -426,7 +428,9 @@ theorem dutyStep_seen (v : V) (nd : Model.Node (Model.protoOf (compiled (family 
     (d : (Model.protoOf (compiled (family S)) E).Duty) :
     (rho.dutyStep v nd d).1.seen = nd.seen ++ (rho.dutyStep v nd d).2 := by
   unfold Model.Run.dutyStep
-  exact Model.releaseAll_seen _ _ _ _
+  split
+  · exact Model.releaseAll_seen _ _ _ _
+  · exact (List.append_nil _).symm
 
 omit [DecidableEq V] in
 /-- A duty step releases only objects whose carried objects the node has seen. -/
@@ -435,7 +439,7 @@ theorem dutyStep_carried (v : V) (nd : Model.Node (Model.protoOf (compiled (fami
     ∀ c ∈ (rho.dutyStep v nd d).2, ∀ x ∈ c.carried, x ∈ Model.closure nd.seen := by
   intro c hc x hx
   unfold Model.Run.dutyStep at hc
-  dsimp only at hc
+  split at hc <;> (try simp at hc)
   generalize hl : rho.signedCandidate v d ((Model.protoOf (compiled (family S)) E).act nd.st d).2
     = l at hc
   have hlen : l.length ≤ 1 := by
@@ -463,6 +467,7 @@ theorem dutyStep_poll_sub (v : V) (nd : Model.Node (Model.protoOf (compiled (fam
       ∃ b, (pollPre (shapeOf S hn nd)).outbox.head? = some b ∧ o = pollObj S rho v b := by
   intro o ho
   unfold Model.Run.dutyStep at ho
+  split at ho <;> (try simp at ho)
   obtain ⟨m, cs, hact, -, rfl⟩ :=
     (rho.mem_signedCandidate).mp (Model.releaseAll_subset _ _ _ _ o ho)
   rw [act_poll_snd S hn, (poll_outbox _ _).2] at hact
@@ -483,7 +488,8 @@ theorem dutyStep_poll_rel (v : V) (nd : Model.Node (Model.protoOf (compiled (fam
       (pollObj S rho v b) = true) :
     (rho.dutyStep v nd (.poll t)).2 = [pollObj S rho v b] := by
   unfold Model.Run.dutyStep
-  dsimp only
+  simp only [show (Model.protoOf (compiled (family S)) E).role (.poll t) = .poll from rfl,
+    hsel, ↓reduceIte]
   rw [act_poll_snd S hn, (poll_outbox _ _).2, hb]
   have hrole : (Model.protoOf (compiled (family S)) E).role (.poll t) = .poll := rfl
   simp only [Option.map_some, Model.Run.signedCandidate, hrole]
@@ -515,7 +521,7 @@ theorem dutyStep_pollPropose_snd (v : V)
     simp only [family, dite_eq_left hn]; rfl
   dsimp only
   rw [h2]
-  rfl
+  split <;> rfl
 
 omit [DecidableEq V] in
 /-- The gossip releases only unsigned objects. -/
@@ -559,14 +565,16 @@ theorem gossip_outbox (k : Fin (Fintype.card V))
 omit [DecidableEq V] in
 /-- The shape after the proposal duty: the proposal's, possibly with the own block recorded. -/
 theorem dutyStep_propose_shape (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s) :
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (hsel : rho.ownKey v ∈ rho.sel (.proposer s)) :
     shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1 = (propose (shapeOf S hn nd) s).1 ∨
       ∃ c hs', shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1 =
         recordOwn (propose (shapeOf S hn nd) s).1 c hs' := by
   have hact1 := shapeOf_act_propose S hn nd.st s hs
   unfold Model.Run.dutyStep
+  simp only [show (Model.protoOf (compiled (family S)) E).role (.propose s hs) =
+    .proposer s from rfl, hsel, ↓reduceIte]
   generalize (Model.protoOf (compiled (family S)) E).act nd.st (.propose s hs) = a at hact1
-  dsimp only
   cases hc : rho.signedCandidate v (.propose s hs) a.2 with
   | nil => exact Or.inl hact1
   | cons c cs =>
@@ -603,10 +611,8 @@ theorem propose_keeps' (st : State sp ro) (s : Slot) :
       (propose st s).1.now = st.now := by
   refine ⟨?_, propose_self _ _, propose_now _ _⟩
   unfold propose
-  split_ifs
-  · dsimp only
-    split <;> rfl
-  · rfl
+  dsimp only
+  split <;> rfl
 
 end Duties
 
@@ -620,7 +626,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 omit [DecidableEq V] in
 /-- The AC does not vote on its tick at a slot start: it votes on its tick only at `t_s + Δ`. -/
 theorem slotStart_ne_tickVote (t : Time) (s : Nat)
-    (hts : t = (skeleton (pubOf E) S.proposer).grid.slotTime s) :
+    (hts : t = (skeleton (pubOf E)).grid.slotTime s) :
     t ≠ (S.params (pubOf E) hn).ts ((S.params (pubOf E) hn).slot t) +
       (S.params (pubOf E) hn).Δ := by
   intro h
@@ -642,14 +648,16 @@ theorem slotStart_ne_tickVote (t : Time) (s : Nat)
 omit [DecidableEq V] in
 /-- The shape after the tick's first three duties: the node's tick after two poll steps of the
 clocked state. -/
-theorem pre_shape (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Time) :
+theorem pre_shape (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Time)
+    (hsel : rho.ownKey v ∈ rho.sel .poll) :
     shapeOf S hn (rho.runDuties v ⟨(Model.protoOf (compiled (family S)) E).clock nd.st t
       (Model.mempool rho.inbox v t), nd.seen⟩
       ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
         List (Model.protoOf (compiled (family S)) E).Duty)).1 =
       nodeTick (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1 := by
   erw [runDuties_fst_cons, runDuties_fst_cons, runDuties_fst_cons, runDuties_fst_nil]
-  rw [dutyStep_pollPropose, dutyStep_poll, dutyStep_poll]
+  rw [dutyStep_pollPropose _ _ _ _ _ _ hsel, dutyStep_poll _ _ _ _ _ _ hsel,
+    dutyStep_poll _ _ _ _ _ _ hsel]
   rfl
 
 omit [DecidableEq V] in
@@ -660,7 +668,7 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _)) (
     (N3 : Model.Node (Model.protoOf (compiled (family S)) E))
     (hN3 : shapeOf S hn N3 = nodeTick (poll (poll { σ with now := t } t.toNat).1 t.toNat).1) :
     (shapeOf S hn (rho.runDuties v N3
-      ((skeleton (pubOf E) S.proposer).proposeAt t)).1).outbox.length ≤ 1 := by
+      ((skeleton (pubOf E)).proposeAt t)).1).outbox.length ≤ 1 := by
   set σc : State (S.params (pubOf E) hn) (S.ro _) := { σ with now := t }
   have h2 : (poll (poll σc t.toNat).1 t.toNat).1.outbox = [] := by
     rw [(poll_outbox _ _).1]
@@ -685,30 +693,40 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _)) (
         List.flatMap_nil, List.append_nil, List.length_map]
       rw [h2s]
       constructor
-      · rcases step_voteStep (S.ro _) _ _ _ t ht .tick with ⟨h, -⟩ | ⟨-, -, h, -⟩
+      · rcases step_voteStep (sp := S.params (pubOf E) hn) (S.ro _) _ _ _ t ht .tick with
+          ⟨h, -⟩ | ⟨-, -, h, -⟩
         · cases h
         · exact h
       · intro hne
         exact acOnTick_emits (S.ro _) _ _ _ t (fun h => hne (by rw [h]; rfl))
     · rw [h2]; simp
   have hnow : (shapeOf S hn N3).now = t := by rw [hN3, nodeTick_now, h2s]
-  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.proposer) t with
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
     ⟨hnil, _⟩ | ⟨s, hs, hone, hts⟩
   · rw [hnil]; erw [runDuties_fst_nil]; exact h3.1
   · rw [hone]; erw [runDuties_fst_cons, runDuties_fst_nil]
+    change (shapeOf S hn (rho.dutyStep v N3 (.propose s hs)).1).outbox.length ≤ 1
+    by_cases hsel : rho.ownKey v ∉ rho.sel (.proposer s)
+    · unfold Model.Run.dutyStep
+      rw [ite_eq_right (show rho.ownKey v ∉ rho.sel
+        ((Model.protoOf (compiled (family S)) E).role (.propose s hs)) from hsel)]
+      exact h3.1
+    have hsel := Classical.not_not.mp hsel
     have h30 : (shapeOf S hn N3).outbox = [] := by
       by_contra hne
       exact slotStart_ne_tickVote S hn t s hts (h3.2 hne)
-    rcases dutyStep_propose_shape S rho hn v N3 s hs with h | ⟨c, hs', h⟩
+    rcases dutyStep_propose_shape S rho hn v N3 s hs hsel with h | ⟨c, hs', h⟩
     · refine (congrArg (fun st : State _ _ => st.outbox.length) h).trans_le ?_
       rw [(propose_keeps' _ _).1, h30]; simp
     · refine (congrArg (fun st : State _ _ => st.outbox.length) h).trans_le ?_
       rcases recordOwn_outbox (propose (shapeOf S hn N3) s).1 c hs' with h' | ⟨B, h'⟩
       · rw [h', (propose_keeps' _ _).1, h30]; simp
       · rw [h', (propose_keeps' _ _).1, h30, List.nil_append, (propose_keeps' _ _).2.2, hnow]
-        obtain ⟨A', es, hvs, -, hem⟩ := handler_voteStep (digestOf S rho) _ _ t ht (.block B)
+        obtain ⟨A', es, hvs, -, hem⟩ := handler_voteStep (runProposer S rho hn)
+          (digestOf S rho) _ _ t ht (.block B)
           (fun x h => by cases h) (fun h => by cases h)
-        change (emitted (exec (digestOf S rho) _ _ t (.block B)).2).length ≤ 1
+        change (emitted
+          (exec (runProposer S rho hn) (digestOf S rho) _ _ t (.block B)).2).length ≤ 1
         rw [hem, List.length_map]
         exact hvs.2.2.1
 
@@ -717,15 +735,15 @@ omit [DecidableEq V] in
 body queued is empty. -/
 theorem outbox_after_tick (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
     (t : Time) (ht : 0 ≤ t) (hw : E.awake v t = true) (hf : (shapeOf S hn nd).fgDue = false)
-    (hb : (shapeOf S hn nd).outbox.length ≤ 1) :
+    (hb : (shapeOf S hn nd).outbox.length ≤ 1) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (rho.tick nd v t).1).outbox = [] := by
   rw [tick_of_awake S rho v nd t hw, gossip_outbox, duties_eq S t ht, runDuties_fst_append]
-  erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll]
+  erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll _ _ _ _ _ _ hsel]
   unfold dutiesInit
   erw [runDuties_fst_append, runDuties_fst_append, runDuties_fst_cons, runDuties_fst_nil,
-    dutyStep_poll]
+    dutyStep_poll _ _ _ _ _ _ hsel]
   exact poll_poll_nil _ _ _
-    (outbox_after_pre S rho hn v (shapeOf S hn nd) t ht hf hb _ (pre_shape S rho hn v nd t))
+    (outbox_after_pre S rho hn v (shapeOf S hn nd) t ht hf hb _ (pre_shape S rho hn v nd t hsel))
 
 end TickOutbox
 
@@ -802,6 +820,7 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
           rw [stateAt_tick S rho hn w he]
           have h0 := outbox_after_tick S rho hn w (rho.stateBefore i w) t
             (hv.in_horizon _ hm).1 (hv.tick_awake w t hm) (fgDue_eq_false S rho hn w i) ih₁.2
+            (poll_selected S rho hv w)
           refine ⟨⟨fun b hb => ?_, by rw [h0]; exact Nat.zero_le _⟩,
             Or.inr ⟨fun b hb => ?_, Or.inl h0⟩⟩ <;>
             (rw [h0] at hb; exact absurd hb List.not_mem_nil)
@@ -979,7 +998,7 @@ private theorem outbox_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
   rw [stateAt_deliver S rho hn v he]
   unfold Model.Run.deliver
   rw [gossip_outbox, deliverDuties_eq S t ht]
-  erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll]
+  erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll _ _ _ _ _ _ (poll_selected S rho hv v)]
   change (poll (process (stateAt S rho hn v i) o (Model.digests rho.hash o)) t.toNat).1.outbox = []
   rw [(poll_outbox _ _).1, pollPre_eq, hf]
   simp only [Bool.false_eq_true, ite_false]
@@ -1006,6 +1025,7 @@ private theorem outbox_empty (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.
             (hv.in_horizon _ (List.mem_of_getElem? he)).1
             (hv.tick_awake v t (List.mem_of_getElem? he)) (fgDue_eq_false S rho hn v i)
             (by change (stateAt S rho hn v i).outbox.length ≤ 1; rw [ih]; simp)
+            (poll_selected S rho hv v)
         | deliver w o t =>
           simp only [Model.Event.node] at hnode
           subst w

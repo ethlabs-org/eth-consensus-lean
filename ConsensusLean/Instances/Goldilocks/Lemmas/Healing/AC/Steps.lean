@@ -25,13 +25,13 @@ This module has the rest: `good_origin_transfer` (T1 §§3–4), `drain` and `lo
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-! ## T1 §4: a slow origin whose window is `≥ r` transfers -/
 
 /-- **T1 §§3–4**: a good origin is carried by every honest vote and proposal head of a later
 slot. -/
-theorem good_origin_transfer (hS : StandaloneRun tr H U g) {B : Blk sp.n FGP} {j : Nat}
+theorem good_origin_transfer (hS : StandaloneRun tr H U proposer g) {B : Blk sp.n FGP} {j : Nat}
     (hB : GoodOrigin tr H g B j) :
     VotesExtendAfter tr H U j B ∧ ProposalsExtendAfter tr H U j B := by
   refine ⟨?_, origin_transfer_proposals hS hB⟩
@@ -45,7 +45,8 @@ theorem good_origin_transfer (hS : StandaloneRun tr H U g) {B : Blk sp.n FGP} {j
 `t_σ ≥ ḡ + 2Θ` (`σ ≤ j + k` for its label `j`), sits below a good origin of its label: its
 label is at least `σ − k`, so a fast one has `t_j ≥ ḡ + (4k + 8)Δ` and a slow one has
 `t_{j−k+1} ≥ ḡ + 12Δ`. -/
-theorem drain (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {l : Lock}
+theorem drain (hS : StandaloneRun tr H U proposer g)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {l : Lock}
     (hl : l ∈ (tr.state y i).locks) {σ : Nat} (hσ : σ ≤ l.slot + sp.k)
     (hT : gbar g + 2 * Θ sp ≤ sp.ts σ) :
     ∃ B, (∃ L ∈ U, L.root = l.block ∧ Anc U L B) ∧ GoodOrigin tr H g B l.slot := by
@@ -67,7 +68,7 @@ theorem drain (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H) {i : N
 
 /-- **T1 §§3–5, settled locks**: from `ḡ + 2Θ + 4Δ` on, every lock live at an honest node is
 carried by every later honest duty. -/
-theorem locks_settled (hS : StandaloneRun tr H U g) :
+theorem locks_settled (hS : StandaloneRun tr H U proposer g) :
     LocksSettled tr H U (gbar g + 2 * Θ sp + 4 * sp.Δ) := by
   have hr := hS.run.localRun
   rw [locksSettled_iff]
@@ -96,8 +97,8 @@ honest proposal `P` and the locks are settled, `P ⪯ ac_confirmed` at every hon
 `t_p + 6Δ` on (at `t_p + 6Δ`, from the tick there): the slot-`p` result is exactly `P` and is not
 vetoed (labels `p − 1`, `p`, `p + 1` as in the claims' proof shape), afterwards the record is
 replaced only by a block extending it or compatible with `P`, and the head extends `P`. -/
-theorem proposal_confirmed (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : sp.toParams.proposer p ∈ H) (hP : HonestProposal tr (sp.toParams.proposer p) p P)
+theorem proposal_confirmed (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P) :
@@ -140,9 +141,9 @@ theorem proposal_confirmed (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n
 
 /-- **H.1 for an honest proposal with its parent** (T1 §§2–6): H.1's conclusions (i) and (ii)
 for an honest proposal whose parent is the head of its `ac_proposal`. -/
-theorem ac_healing_standalone_of_parent (hS : StandaloneRun tr H U g) {p : Nat}
-    {P : Blk sp.n FGP} (hpH : sp.toParams.proposer p ∈ H)
-    (hP : HonestProposal tr (sp.toParams.proposer p) p P)
+theorem ac_healing_standalone_of_parent (hS : StandaloneRun tr H U proposer g) {p : Nat}
+    {P : Blk sp.n FGP} (hpH : proposer p ∈ H)
+    (hP : HonestProposal tr (proposer p) p P)
     (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p) :
     (∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
     (∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →

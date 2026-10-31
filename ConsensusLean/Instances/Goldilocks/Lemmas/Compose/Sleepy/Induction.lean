@@ -35,10 +35,10 @@ open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **Every finite frontier**: `P_s` and `V_s` for every `s`. -/
-theorem frontier (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem frontier (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) : ∀ s, OriginsBelow tr H s ∧ VotesBelow tr H s := by
   intro s
   induction s with
@@ -52,7 +52,7 @@ theorem frontier (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
 
 /-- **The Sleepy record invariant** (S1–S3) holds of every Goldilocks run under `Sleepy` and
 `NoColl`. -/
-theorem sleepy_invariant (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem sleepy_invariant (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) : SleepyInvariant tr H := by
   have hF := frontier hrun hnc hsl
   have hcomp : ∀ C s C' s', Origin tr H C s → Origin tr H C' s' →
@@ -69,7 +69,7 @@ theorem sleepy_invariant (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
 
 /-- **Every finite frontier up to `b`**: `P_s` and `V_s` up to `b` for every `s`, under the
 prefix premises up to `b`. -/
-theorem frontier_upTo {b : Time} (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem frontier_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) : ∀ s, OriginsBelowUpTo tr H s b ∧ VotesBelowUpTo tr H s b := by
   intro s
   induction s with
@@ -84,7 +84,8 @@ theorem frontier_upTo {b : Time} (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun
 /-- **The Sleepy record invariant up to `b`** (S1–S3 for the origins within `b`, the honest votes
 at times `≤ b` and the cuts within `b`) holds of every Goldilocks run under `NoColl` and the
 prefix premises of `SleepySafePrefix` up to `b`, whatever happens after `b`. -/
-theorem sleepy_invariant_upTo {b : Time} (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem sleepy_invariant_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) : SleepyInvariantUpTo tr H b := by
   have hF := frontier_upTo hrun hnc hpre
   have hcomp : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
@@ -106,7 +107,7 @@ theorem sleepy_invariant_upTo {b : Time} (hrun : GoldilocksRun dg H tr) (hnc : N
 `SleepyFrom` and the base facts. Both are vacuous up to `s = s₀` (no origin of a label in
 `[s₀, s₀)`, no vote of a slot in `(s₀, s₀]`); the first real steps are `P_{s₀+1}` (same label)
 and the votes of slot `s₀ + 1` (first transfer). -/
-theorem frontier_from {s₀ : Nat} (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem frontier_from {s₀ : Nat} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hfrom : SleepyFrom tr H ΔF s₀) (hbase : SleepyBase tr H s₀) :
     ∀ s, OriginsBelowFrom tr H s₀ s ∧ VotesBelowFrom tr H s₀ s := by
   intro s
@@ -122,7 +123,8 @@ theorem frontier_from {s₀ : Nat} (hrun : GoldilocksRun dg H tr) (hnc : NoCollR
 /-- **The Sleepy record invariant from a start label `s₀`** (S1–S3 over the origins of labels
 `≥ s₀`, at the cuts from `t_{s₀}`) holds of every Goldilocks run under `NoColl`, `SleepyFrom`
 (`Sync[t_{s₀}, ∞)`, `f < h_t` at the slot points from `t_{s₀}`) and the base facts at `s₀`. -/
-theorem sleepy_invariant_from {s₀ : Nat} (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem sleepy_invariant_from {s₀ : Nat} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr)
     (hfrom : SleepyFrom tr H ΔF s₀) (hbase : SleepyBase tr H s₀) : SleepyInvariantFrom tr H s₀ := by
   have hF := frontier_from hrun hnc hfrom hbase
   have hcomp : ∀ C s C' s', OriginFrom tr H C s s₀ → OriginFrom tr H C' s' s₀ →
@@ -160,7 +162,7 @@ theorem sleepy_invariant_from {s₀ : Nat} (hrun : GoldilocksRun dg H tr) (hnc :
 `< 0`, no acceptance before `t_0 = 0`, and the caches are on the origin chain
 (`caches_on_chain_upTo`). So `sleepy_invariant_from` at `s₀ = 0` runs the induction from
 genesis. -/
-theorem sleepyBase_zero (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem sleepyBase_zero (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hfrom : SleepyFrom tr H ΔF 0) : SleepyBase tr H 0 := by
   have chain0 : ∀ {B}, OnOriginChain tr H B → OnOriginChainFrom tr H B 0 := fun h =>
     onOriginChainFrom_iff.2
@@ -188,7 +190,7 @@ theorem sleepyBase_zero (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
 
 /-- **R.1's safety part under `Sleepy`**: the confirmed outputs of honest nodes at any two cuts
 are compatible (inside the honest blocks), whether or not the nodes are served. -/
-theorem sleepy_confirmed_compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem sleepy_confirmed_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) :
     ∀ y ∈ H, ∀ y' ∈ H, ∀ i i',
       Compatible (tr.HonestBlocks H) (tr.confirmedAt y i) (tr.confirmedAt y' i') :=

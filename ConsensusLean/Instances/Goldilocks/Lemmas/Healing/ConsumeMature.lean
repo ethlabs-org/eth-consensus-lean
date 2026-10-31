@@ -26,6 +26,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
@@ -56,16 +57,16 @@ theorem rows_delivered (hs : HSShared tr H dg g ΔF) {v : Time}
 /-- **Mature progress consumption in the phase** (`hs5-exact-helpers.md` §3; `Service`'s
 `mature_progress_consumption` with the phase `(m, c)` through `j_b`, `RowsBy` spelled out and
 HS.1 as the hypothesis `hret`). -/
-theorem mature_progress_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hret : ViableWitnessRetention) {s h kW : Nat}
     {E W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hW : tr.ProposesAt (sp.toParams.proposer s) kW W) (_hWs : W.slot = s)
-    (hpH : sp.toParams.proposer s ∈ H) (hE : EntryOf (tr.post kW).fg W E h)
+    (hW : tr.ProposesAt (proposer s) kW W) (_hWs : W.slot = s)
+    (hpH : proposer s ∈ H) (hE : EntryOf (tr.post kW).fg W E h)
     (hh : phaseFloor m c ≤ h) (hws : w ≤ sp.ts s)
     (hparents : ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
-      P'.slot = s' → tr.ProposesAt (sp.toParams.proposer s') k' P' →
-      sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
+      P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
+      proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr)
     (hrows : ∀ y ∈ H, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ att.h = h ∧
       att.T = E.root) {jb : Nat}
@@ -73,7 +74,7 @@ theorem mature_progress_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg
       (max (sp.ts s + 6 * sp.Δ + ΔF) (sp.ts (E.slot + sp.toParams.δt : Nat)) + Gp + sp.Δ))
     (hon : PhaseOn tr.projFG H i₀ jb m c) :
     ∃ (x kX : Nat) (X : SA.Blk sp.n (List (FG.Att sp.n))),
-      ReadyProposal tr H (sp.toParams.proposer x) kX x X ∧
+      ReadyProposal tr H proposer (proposer x) kX x X ∧
       max (sp.ts s + 6 * sp.Δ + ΔF) (sp.ts (E.slot + sp.toParams.δt : Nat)) ≤ sp.ts x ∧
       sp.ts x + sp.Δ ≤
         max (sp.ts s + 6 * sp.Δ + ΔF) (sp.ts (E.slot + sp.toParams.δt : Nat)) + Gp + sp.Δ ∧
@@ -122,7 +123,7 @@ theorem mature_progress_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg
     rcases hEPr'.lt_or_eq with hlt | heq
     · omega
     · have hdel : ∀ y ∈ H, ∃ k att, tr.SignAt y k att ∧ att.h = h ∧ att.T = E.root ∧
-          ∃ k' < kX, tr.ProcessAttAt (sp.toParams.proposer x) k' att := fun y hy => by
+          ∃ k' < kX, tr.ProcessAttAt (proposer x) k' att := fun y hy => by
         obtain ⟨k, att, hsig, hk, hah, haT⟩ := hrows y hy
         exact ⟨k, att, hsig, hah, haT, rows_delivered hs (by linarith) hpX hprop
           (by rw [hkX]; exact hX₁) hy hsig hk⟩
@@ -149,7 +150,7 @@ theorem mature_progress_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg
     have := hrun.time_mono (show j ≤ kX by omega)
     linarith
   have hjjb : j < jb := hjb.lt_of_time_le hrun.time_mono (by rw [ht]; linarith)
-  have hF := (hret sp ro dg H tr g ΔF hrun hs hc (kX + 1) jb m c
+  have hF := (hret sp ro proposer dg H tr g ΔF hrun hs hc (kX + 1) jb m c
     (fun k' h₁ h₂ => hon k' (by omega) h₂) _ hpX X hall y hy j hkj hjjb.le).1
   have hτg : max (tr.time kX) g = sp.ts x := by
     rw [hkX]; exact max_eq_left ((le_gbar g).trans hgx)

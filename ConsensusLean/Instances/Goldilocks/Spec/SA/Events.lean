@@ -115,7 +115,8 @@ def HonestFrameBlock (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (B : Blk sp.n
 
 /-- **Honest objects**: the run facts about honest signers over an AC trace (unforgeable vote
 and block signatures; FG acceptance of the slot proposer). -/
-structure HonestObjects (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop where
+structure HonestObjects (selectedProposer : Nat → Fin sp.n)
+    (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop where
   /-- A vote of an honest validator in an honest node's pool before cut `i` was emitted by that
   validator's node at an earlier cut. -/
   pool_vote : ∀ y ∈ H, ∀ i σ, ∀ v ∈ (tr.state y i).pool σ, v.val ∈ H →
@@ -130,17 +131,18 @@ structure HonestObjects (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop whe
     v.val ∈ H → ∃ j < i, ∃ e, VoteAt tr v.val j e ∧ e.msg = v
   /-- Every block of an honest frame other than genesis has its slot's proposer. -/
   proposer : ∀ B, HonestFrameBlock tr H B → B.root ≠ sp.genesisRoot →
-    B.proposer = sp.toParams.proposer B.slot
+    B.proposer = selectedProposer B.slot
   /-- An honest proposer has at most one block per slot in the honest frames. -/
   one_block : ∀ B B', HonestFrameBlock tr H B → HonestFrameBlock tr H B' → B.proposer ∈ H →
     B.proposer = B'.proposer → B.slot = B'.slot → B = B'
 
 /-- An AC trace of the SA with its contract and the honest-object facts. -/
-structure ACRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) : Prop where
+structure ACRun (selectedProposer : Nat → Fin sp.n)
+    (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) : Prop where
   /-- The AC trace contract. -/
   localRun : ACLocalRun (goldilocksSA sp FGP ro) H U tr
   /-- The honest-object facts. -/
-  honest : HonestObjects tr H
+  honest : HonestObjects selectedProposer tr H
 
 end Consensus.Goldilocks.SA
 

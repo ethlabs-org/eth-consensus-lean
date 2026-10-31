@@ -11,15 +11,16 @@ Only the winning child must transfer between frames, not the entire eligible-chi
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {proposer : Nat → Fin sp.n}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
 
 /-- Above both roots, a winning child on the proposal's parent path wins at the reader. -/
-theorem h2_suffix_best (hS : HealthyBase tr H U g) {p k : Nat} (hp : 0 < p)
-    (hpH : sp.toParams.proposer p ∈ H) {P Q : Blk sp.n FGP}
-    (hP : HonestProposal tr (sp.toParams.proposer p) p P)
-    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (sp.toParams.proposer p) k ℓp)
+theorem h2_suffix_best (hS : HealthyBase tr H U proposer g) {p k : Nat} (hp : 0 < p)
+    (hpH : proposer p ∈ H) {P Q : Blk sp.n FGP}
+    (hP : HonestProposal tr (proposer p) p P)
+    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (proposer p) k ℓp)
     (hcall : ℓp.call = .proposal) (htk : tr.time k = sp.ts p)
-    (hlate : gbar g + 2 * sp.Δ ≤ sp.ts p) (hgeo : Geo tr H p P)
+    (hlate : gbar g + 2 * sp.Δ ≤ sp.ts p) (hgeo : Geo proposer tr H p P)
     (hPnot : P ∉ ℓp.frame.tree) (hPs : P.slot = p)
     (hQP : P.parent = some Q.root) (hQv : Q ∈ ℓp.frame.viableTree ℓp.frame.tree)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -93,12 +94,12 @@ theorem h2_suffix_best (hS : HealthyBase tr H U g) {p k : Nat} (hp : 0 < p)
 /-- Once the reader reaches the proposal's parent, its next and final block is the proposal.
 The parent's viability aligns eligibility; any competing eligible child contradicts the
 proposer's stopping condition. -/
-theorem h2_suffix_end (hS : HealthyBase tr H U g) {p k : Nat} (hp : 0 < p)
-    (hpH : sp.toParams.proposer p ∈ H) {P Q : Blk sp.n FGP}
-    (hP : HonestProposal tr (sp.toParams.proposer p) p P)
-    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (sp.toParams.proposer p) k ℓp)
+theorem h2_suffix_end (hS : HealthyBase tr H U proposer g) {p k : Nat} (hp : 0 < p)
+    (hpH : proposer p ∈ H) {P Q : Blk sp.n FGP}
+    (hP : HonestProposal tr (proposer p) p P)
+    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (proposer p) k ℓp)
     (hcall : ℓp.call = .proposal) (htk : tr.time k = sp.ts p)
-    (hlate : gbar g + 2 * sp.Δ ≤ sp.ts p) (hgeo : Geo tr H p P)
+    (hlate : gbar g + 2 * sp.Δ ≤ sp.ts p) (hgeo : Geo proposer tr H p P)
     (hPnot : P ∉ ℓp.frame.tree) (hPs : P.slot = p)
     (hQP : P.parent = some Q.root) (hQv : Q ∈ ℓp.frame.viableTree ℓp.frame.tree)
     (hQhead : Q ∈ ℓp.frame.viableHeads)
@@ -157,15 +158,15 @@ theorem h2_suffix_end (hS : HealthyBase tr H U g) {p k : Nat} (hp : 0 < p)
     omega
 
 /-- Transfer the proposal walk from any shared suffix start through its final new block. -/
-theorem h2_suffix_walk (hS : HealthyBase tr H U g) {p k : Nat} (hp : 0 < p)
-    (hpH : sp.toParams.proposer p ∈ H) {P : Blk sp.n FGP}
-    (hP : HonestProposal tr (sp.toParams.proposer p) p P)
-    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (sp.toParams.proposer p) k ℓp)
+theorem h2_suffix_walk (hS : HealthyBase tr H U proposer g) {p k : Nat} (hp : 0 < p)
+    (hpH : proposer p ∈ H) {P : Blk sp.n FGP}
+    (hP : HonestProposal tr (proposer p) p P)
+    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (proposer p) k ℓp)
     (hcall : ℓp.call = .proposal) (htk : tr.time k = sp.ts p)
-    (hlate : gbar g + 2 * sp.Δ ≤ sp.ts p) (hgeo : Geo tr H p P)
+    (hlate : gbar g + 2 * sp.Δ ≤ sp.ts p) (hgeo : Geo proposer tr H p P)
     (hPnot : P ∉ ℓp.frame.tree) (hPs : P.slot = p)
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
-    (hpay : (acProposal sp (tr.state (sp.toParams.proposer p) k) ℓp.frame (tr.time k)).2 =
+    (hpay : (acProposal sp (tr.state (proposer p) k) ℓp.frame (tr.time k)).2 =
       some (d, pay)) (hQP : P.parent = some d.head.root)
     (hQv : d.head ∈ ℓp.frame.viableTree ℓp.frame.tree)
     (hQhead : d.head ∈ ℓp.frame.viableHeads)

@@ -19,11 +19,11 @@ namespace Consensus.Goldilocks.Compose
 open Node
 
 variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
-  {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {proposer : Nat → Fin P.n} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
 
 /-- **A quiet stretch keeps the reads**: when no cut of an honest `y` in `[k, j)` is an AC cut
 or an accepted block, its AC state and its frame before `j` are those before `k`. -/
-theorem state_quiet (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k j : Nat}
+theorem state_quiet (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k j : Nat}
     (hkj : k ≤ j)
     (hq : ∀ m, k ≤ m → m < j → ∀ c, tr.CallAt y m c →
       (∀ ℓ, c ≠ .ac ℓ) ∧ ∀ B, c ≠ .fg (.block B true)) :
@@ -68,7 +68,8 @@ theorem state_quiet (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) 
 and frame are those of its initial state, or its last AC call before `j` is at `k`, with label
 `ℓ`, and its AC state before `j` is the one that call leaves, and its frame is that call's frame
 `ℓ.frame`. -/
-theorem read_between_calls (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j : Nat}
+theorem read_between_calls (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n}
+    (hy : y ∈ H) {j : Nat}
     (hb : tr.IsCall y j → tr.pos j = 0) :
     ((∀ k < j, ∀ ℓ, ¬ tr.CallAt y k (.ac ℓ)) ∧ (tr.state y j).ac = (tr.state y 0).ac ∧
         frame (tr.state y j) = frame (tr.state y 0)) ∨

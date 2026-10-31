@@ -38,13 +38,13 @@ open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **The ready read is the effective record.** At a read point `(j, t)` between two events of an
 honest node `y` ready at `t`: when the frame holds the block `R` named by the record,
 `readAfter y j t = R`; otherwise it is `Σ.F`. (The proof does not use the boundary: the served
 head holds at every cut, also inside an event.) -/
-theorem ready_read_record (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem ready_read_record (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} {j : Nat} {t : Time}
     (hrp : Regimes.ReadPoint tr j t) (_hb : Regimes.Boundary tr y j)
     (hready : Regimes.ReadyAt tr H (Regimes.catchUp sp) y t) :
@@ -60,7 +60,7 @@ theorem ready_read_record (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
       R.root = (tr.state y j).ac.latestConfirmed
   · obtain ⟨R, hR, hRr⟩ := hin
     have hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t := fun ht0 =>
-      ready_implies_joined sp ro dg H tr hrun y hy t (Regimes.catchUp sp) ht0
+      ready_implies_joined sp ro dg H tr proposer hrun y hy t (Regimes.catchUp sp) ht0
         (by simp only [Regimes.catchUp]; linarith [sp.toParams.hΔ]) hready.2
     obtain ⟨hc, hs⟩ := read_head_support (sleepy_invariant hrun hnc hsl) hrun hnc hsl hy hrp.1
       hrp.2 hwj ⟨hR, hRr⟩
@@ -70,7 +70,8 @@ theorem ready_read_record (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
 /-- **The ready read up to `b` is the effective record.** Under the prefix premises up to `b`, at
 a read point `(j, t)` with `t ≤ b` of an honest node `y` ready at `t`: when the frame holds the
 block `R` named by the record, `readAfter y j t = R`; otherwise it is `Σ.F`. -/
-theorem ready_read_record_upTo {b : Time} (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem ready_read_record_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {y : Fin sp.n} {j : Nat} {t : Time}
     (hrp : Regimes.ReadPoint tr j t) (_hb : Regimes.Boundary tr y j)
     (hready : Regimes.ReadyAt tr H (Regimes.catchUp sp) y t) (htb : t ≤ b) :
@@ -86,7 +87,7 @@ theorem ready_read_record_upTo {b : Time} (hrun : GoldilocksRun dg H tr) (hnc : 
       R.root = (tr.state y j).ac.latestConfirmed
   · obtain ⟨R, hR, hRr⟩ := hin
     have hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t := fun ht0 =>
-      ready_implies_joined sp ro dg H tr hrun y hy t (Regimes.catchUp sp) ht0
+      ready_implies_joined sp ro dg H tr proposer hrun y hy t (Regimes.catchUp sp) ht0
         (by simp only [Regimes.catchUp]; linarith [sp.toParams.hΔ]) hready.2
     obtain ⟨hc, hs⟩ := read_head_support_upTo (sleepy_invariant_upTo hrun hnc hpre) hrun hnc
       hpre hy htb hrp.1 hrp.2 hwj ⟨hR, hRr⟩
@@ -98,7 +99,7 @@ theorem ready_read_record_upTo {b : Time} (hrun : GoldilocksRun dg H tr) (hnc : 
 not hold `C`, which is compatible with `Σ.F` on the chain of the origins within `b` and so below
 it). -/
 private theorem effective_record_spec {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H)
     {m : Nat} (hm : ∀ k < m, tr.time k ≤ b) :
     ∃ C ∈ tr.HonestBlocks H, C.root = (tr.state y m).ac.latestConfirmed ∧
       (((SA.lookup (Node.frame (tr.state y m)) (tr.state y m).ac.latestConfirmed).getD
@@ -106,7 +107,7 @@ private theorem effective_record_spec {b : Time} (hinv : SleepyInvariantUpTo tr 
         ((SA.lookup (Node.frame (tr.state y m)) (tr.state y m).ac.latestConfirmed).getD
           (Node.frame (tr.state y m)).F = (tr.state y m).fg.F ∧
           Anc (tr.HonestBlocks H) C (tr.state y m).fg.F)) := by
-  have hU := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun.coherent
+  have hU := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
   have hΦ : FrameOK (Node.frame (tr.state y m)) :=
     (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy m)).1
   have hΦU : (Node.frame (tr.state y m)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, m, hX.1⟩
@@ -136,7 +137,7 @@ private theorem effective_record_spec {b : Time} (hinv : SleepyInvariantUpTo tr 
 /-- **The effective record only extends up to `b`**: under the prefix premises up to `b`, the
 effective record of an honest node (the block of its record when its frame holds it, else its
 `Σ.F`) at a later cut within `b` extends the one at an earlier cut (inside the honest blocks). -/
-theorem effective_record_mono_upTo {b : Time} (hrun : GoldilocksRun dg H tr)
+theorem effective_record_mono_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hpre : SleepyPrefix tr H ΔF b) {y : Fin sp.n} (hy : y ∈ H)
     {i j : Nat} (hij : i ≤ j) (hj : ∀ k < j, tr.time k ≤ b) :
     Anc (tr.HonestBlocks H)
@@ -145,7 +146,7 @@ theorem effective_record_mono_upTo {b : Time} (hrun : GoldilocksRun dg H tr)
       ((SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed).getD
         (Node.frame (tr.state y j)).F) := by
   have hinv := sleepy_invariant_upTo hrun hnc hpre
-  have hU := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun.coherent
+  have hU := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
   induction j, hij using Nat.le_induction with
   | base => exact .refl
   | succ m _ ih =>
@@ -166,7 +167,7 @@ theorem effective_record_mono_upTo {b : Time} (hrun : GoldilocksRun dg H tr)
 /-- **The effective record only extends**: the effective record of an honest node (the block of
 its record when its frame holds it, else its `Σ.F`) at a later cut extends the one at an earlier
 cut (inside the honest blocks). -/
-theorem effective_record_mono (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem effective_record_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i ≤ j) :
     Anc (tr.HonestBlocks H)
       ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD

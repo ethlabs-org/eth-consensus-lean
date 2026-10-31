@@ -39,6 +39,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ i m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {p : Fin sp.n} {kP s : Nat}
@@ -65,13 +66,15 @@ private theorem acProposal_spec {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm 
 
 /-- **The proposal walk stops at `Q`**: the walk of the proposer's viable tree from `d.start`
 ends at `d.head`, and `d.start` is in the frame tree. -/
-private theorem proposal_walkEnd (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) :
+private theorem proposal_walkEnd
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) :
     d.start ∈ ℓp.frame.tree ∧
       SA.WalkEnd (sp := sp) (ℓp.frame.viableTree ℓp.frame.tree)
         (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
         (SA.goldfishEligible sp ℓp.frame (tr.time iP) (SA.View.ofLists pay) ((s : Int) - 1))
         d.start d.head := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hS.run hS.shared.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr
+    proposer hS.run hS.shared.noColl).localRun
   have hΦ := (SA.frameIn_of_callAt hr hS.ready.1 hS.call).1
   have hslot : sp.slot (tr.time iP) = s := by
     rw [hS.time]; exact SA.slot_of_mem sp s le_rfl ((SA.ts_lt_iff sp).2 (by push_cast; omega))
@@ -92,7 +95,7 @@ private theorem proposal_walkEnd (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p
 
 section Leaves
 
-variable (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+variable (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
   {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
   {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
 
@@ -131,7 +134,7 @@ private theorem suffix_reflect {X B : SA.Blk sp.n (List (FG.Att sp.n))}
   have hl := hrun.toLocalRun
   have hs := hS.shared
   have hnc := hs.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hpH : p ∈ H := hS.ready.1
@@ -207,7 +210,8 @@ payload carries the proposer's pool; the voter's pre-freeze votes and support he
 proposer by `t_s`), and a competing child viable at the voter has a pre-freeze allowed witness,
 at the proposer too (aligned readers, HS.1). Only the winner is compared (a voter-eligible
 competitor need not be proposer-eligible in reachable runs, sa-fg-model 7f7e660). -/
-theorem proposal_suffix (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+theorem proposal_suffix
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsD : ℓp.frame.Anc d.start D)
     (_hDQ : ℓp.frame.Anc D d.head) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -224,7 +228,8 @@ theorem proposal_suffix (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P i
             B.parent = some X.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
               (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
   intro X hDX hXQ hne hanc C hC
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hS.run hS.shared.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr
+    proposer hS.run hS.shared.noColl).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hS.ready.1 hS.call
   obtain ⟨hΦy, hΦyU⟩ := SA.frameIn_of_callAt hr hy hcy.1
@@ -299,14 +304,15 @@ block tree is of an earlier slot (one block per honest proposer and slot, `SA.st
 proposer's viable tree (`suffix_reflect`); its voter eligibility (no current-slot arm, `Q` a
 viable head of both frames, the same majorities) would make it eligible at the proposer, whose
 walk stopped at `Q`. -/
-theorem proposal_only_child (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+theorem proposal_only_child
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) :
     ∀ B ∈ {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
         B.parent = some d.head.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B}, B = P := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hS.run hS.shared.noColl
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hS.run hS.shared.noColl
   have hr := hac.localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hS.ready.1 hS.call

@@ -13,10 +13,11 @@ Acceptance relay and catch-up retain heads above the receiving frame's finalized
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {proposer : Nat → Fin sp.n}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
 
 /-- Relay a held block above the receiver's finalized root, including pre-GST acceptances. -/
-theorem h2_relay_held (hS : HealthyBase tr H U g) {z : Fin sp.n} (hz : z ∈ H)
+theorem h2_relay_held (hS : HealthyBase tr H U proposer g) {z : Fin sp.n} (hz : z ∈ H)
     {k : Nat} {ℓz : ACLabel (goldilocksSA sp FGP ro)} (hcz : tr.CallAt z k ℓz)
     {X : Blk sp.n FGP} (hX : X ∈ ℓz.frame.tree) {T : Time} (hk : tr.time k ≤ T)
     (hT : gbar g + sp.Δ ≤ T) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -48,7 +49,7 @@ theorem h2_relay_held (hS : HealthyBase tr H U g) {z : Fin sp.n} (hz : z ∈ H)
   exact mem_tree_of_acceptAt sp hr hy haccb hb hc hF
 
 /-- A pre-freeze block of the voter above the proposer's finalized root is retained there. -/
-theorem h2_frozen_mem (hS : HealthyBase tr H U g) {p k : Nat} {q y : Fin sp.n}
+theorem h2_frozen_mem (hS : HealthyBase tr H U proposer g) {p k : Nat} {q y : Fin sp.n}
     (hq : q ∈ H) (hy : y ∈ H) {ℓp ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hck : tr.CallAt q k ℓp) (htk : tr.time k = sp.ts p)
     (hp : gbar g + 2 * sp.Δ ≤ sp.ts p) {i : Nat} {e : Em sp FGP}
@@ -72,9 +73,9 @@ theorem h2_frozen_mem (hS : HealthyBase tr H U g) {p k : Nat} {q y : Fin sp.n}
   exact h2_relay_held hS hy hca hXa hat.le (by linarith) hq hck (by rw [htk]; linarith) hF
 
 /-- An honest proposal is the only block of its positive slot in honest frames. -/
-theorem h2_frame_slot_eq (hS : HealthyBase tr H U g) {p : Nat} (hp : 0 < p)
-    (hpH : sp.toParams.proposer p ∈ H) {P : Blk sp.n FGP}
-    (hP : HonestProposal tr (sp.toParams.proposer p) p P) {y : Fin sp.n} (hy : y ∈ H)
+theorem h2_frame_slot_eq (hS : HealthyBase tr H U proposer g) {p : Nat} (hp : 0 < p)
+    (hpH : proposer p ∈ H) {P : Blk sp.n FGP}
+    (hP : HonestProposal tr (proposer p) p P) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
     {X : Blk sp.n FGP} (hX : X ∈ ℓ.frame.tree) (hXs : X.slot = p) : X = P := by
   have hr := hS.run.localRun
@@ -87,10 +88,10 @@ theorem h2_frame_slot_eq (hS : HealthyBase tr H U g) {p : Nat} (hp : 0 < p)
     (by rw [hXp, hXs]; exact hpH) (by rw [hXp, hXs, hPp]) (hXs.trans hPs.symm)
 
 /-- Every carried support head above the voter's finalized root is retained at its read. -/
-theorem h2_support_mem (hS : HealthyBase tr H U g) {p k : Nat} (hp : 0 < p)
-    (hpH : sp.toParams.proposer p ∈ H) {P : Blk sp.n FGP}
-    (hP : HonestProposal tr (sp.toParams.proposer p) p P)
-    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (sp.toParams.proposer p) k ℓp)
+theorem h2_support_mem (hS : HealthyBase tr H U proposer g) {p k : Nat} (hp : 0 < p)
+    (hpH : proposer p ∈ H) {P : Blk sp.n FGP}
+    (hP : HonestProposal tr (proposer p) p P)
+    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (proposer p) k ℓp)
     (htk : tr.time k = sp.ts p) {pay : Payload sp.n} (hpay : P.acPayload = pay)
     (hlate : gbar g + sp.Δ ≤ sp.ts p) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -112,14 +113,14 @@ theorem h2_support_mem (hS : HealthyBase tr H U g) {p k : Nat} (hp : 0 < p)
 
 /-- The proposer and voter agree on participants, equivocators and support for common blocks,
 without equating their roots or their trees. -/
-theorem h2_views_agree (hS : HealthyBase tr H U g) {s k : Nat}
-    (hpH : sp.toParams.proposer (s + 1) ∈ H) {P : Blk sp.n FGP}
-    (hP : HonestProposal tr (sp.toParams.proposer (s + 1)) (s + 1) P)
+theorem h2_views_agree (hS : HealthyBase tr H U proposer g) {s k : Nat}
+    (hpH : proposer (s + 1) ∈ H) {P : Blk sp.n FGP}
+    (hP : HonestProposal tr (proposer (s + 1)) (s + 1) P)
     {ℓp : ACLabel (goldilocksSA sp FGP ro)}
-    (hck : tr.CallAt (sp.toParams.proposer (s + 1)) k ℓp) (hcall : ℓp.call = .proposal)
+    (hck : tr.CallAt (proposer (s + 1)) k ℓp) (hcall : ℓp.call = .proposal)
     (htk : tr.time k = sp.ts (s + 1 : Nat))
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
-    (hpay : (acProposal sp (tr.state (sp.toParams.proposer (s + 1)) k) ℓp.frame (tr.time k)).2 =
+    (hpay : (acProposal sp (tr.state (proposer (s + 1)) k) ℓp.frame (tr.time k)).2 =
       some (d, pay)) (hPpay : P.acPayload = pay) (hPs : P.slot = s + 1)
     (hlate : gbar g + 4 * sp.Δ ≤ sp.ts s) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -157,12 +158,12 @@ theorem h2_views_agree (hS : HealthyBase tr H U g) {s k : Nat}
 
 /-- Viable voter competitors above the proposer's root reflect into its viable tree, with the
 proposal itself added. The witness is frozen (and relayed), or lies on the proposal ancestry. -/
-theorem h2_competitor_reflect (hS : HealthyBase tr H U g) {p k : Nat} (hp : 0 < p)
-    (hpH : sp.toParams.proposer p ∈ H) {P Q : Blk sp.n FGP}
-    (hP : HonestProposal tr (sp.toParams.proposer p) p P)
-    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (sp.toParams.proposer p) k ℓp)
+theorem h2_competitor_reflect (hS : HealthyBase tr H U proposer g) {p k : Nat} (hp : 0 < p)
+    (hpH : proposer p ∈ H) {P Q : Blk sp.n FGP}
+    (hP : HonestProposal tr (proposer p) p P)
+    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (proposer p) k ℓp)
     (hcall : ℓp.call = .proposal) (htk : tr.time k = sp.ts p)
-    (hlate : gbar g + 2 * sp.Δ ≤ sp.ts p) (hgeo : Geo tr H p P)
+    (hlate : gbar g + 2 * sp.Δ ≤ sp.ts p) (hgeo : Geo proposer tr H p P)
     (hPnot : P ∉ ℓp.frame.tree)
     (hQP : P.parent = some Q.root) (hQv : Q ∈ ℓp.frame.viableTree ℓp.frame.tree)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -200,11 +201,11 @@ theorem h2_competitor_reflect (hS : HealthyBase tr H U g) {p k : Nat} (hp : 0 < 
 
 /-- Every viable witness of the voter extends the proposer's root: `Geo` transfers every
 witness other than the proposal into the proposer's viable heads. -/
-theorem h2_witness_above_root (hS : HealthyBase tr H U g) {p k : Nat}
-    (hpH : sp.toParams.proposer p ∈ H) {P : Blk sp.n FGP}
-    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (sp.toParams.proposer p) k ℓp)
+theorem h2_witness_above_root (hS : HealthyBase tr H U proposer g) {p k : Nat}
+    (hpH : proposer p ∈ H) {P : Blk sp.n FGP}
+    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (proposer p) k ℓp)
     (hcall : ℓp.call = .proposal) (htk : tr.time k = sp.ts p)
-    (hgeo : Geo tr H p P) (hroot : Anc U ℓp.frame.fcRoot P)
+    (hgeo : Geo proposer tr H p P) (hroot : Anc U ℓp.frame.fcRoot P)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hes : e.msg.slot = p)
     {W : Blk sp.n FGP} (hW : W ∈ voterBlockTree sp e.readPoint ℓ.frame p)
@@ -216,11 +217,11 @@ theorem h2_witness_above_root (hS : HealthyBase tr H U g) {p k : Nat}
   exact (hΦp.fcRoot_anc_viableHeads W hWp).mono hΦpU
 
 /-- A reader whose anchor is below the proposer's root reaches that root before branching. -/
-theorem h2_reader_reaches_root (hS : HealthyBase tr H U g) {p k : Nat}
-    (hpH : sp.toParams.proposer p ∈ H) {P : Blk sp.n FGP}
-    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (sp.toParams.proposer p) k ℓp)
+theorem h2_reader_reaches_root (hS : HealthyBase tr H U proposer g) {p k : Nat}
+    (hpH : proposer p ∈ H) {P : Blk sp.n FGP}
+    {ℓp : ACLabel (goldilocksSA sp FGP ro)} (hck : tr.CallAt (proposer p) k ℓp)
     (hcall : ℓp.call = .proposal) (htk : tr.time k = sp.ts p)
-    (hgeo : Geo tr H p P) (hroot : Anc U ℓp.frame.fcRoot P)
+    (hgeo : Geo proposer tr H p P) (hroot : Anc U ℓp.frame.fcRoot P)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hes : e.msg.slot = p)
     (hPs : P.slot = p)

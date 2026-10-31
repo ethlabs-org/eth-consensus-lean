@@ -37,12 +37,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The ready-proposer premise `Prop⁺(G_p)` on `[ḡ, T]`: for every trigger `τ ≥ ḡ` with
 `τ + G_p ≤ T`, a ready proposal at a slot start in `[τ, τ + G_p]`. -/
-def PropPlusUntil (g Gp T : Time) : Prop :=
+def PropPlusUntil (proposer : Nat → Fin sp.n) (g Gp T : Time) : Prop :=
   ∀ τ, gbar g ≤ τ → τ + Gp ≤ T → ∃ (s : Nat) (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
-    1 ≤ s ∧ τ ≤ sp.ts s ∧ sp.ts s ≤ τ + Gp ∧ ReadyProposal tr H (sp.toParams.proposer s) k s B
+    1 ≤ s ∧ τ ≤ sp.ts s ∧ sp.ts s ≤ τ + Gp ∧ ReadyProposal tr H proposer (proposer s) k s B
 
 /-- **`Weak`** with the healing premises cut at the heal point `T`. -/
-structure WeakPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp a Tb T : Time) :
+structure WeakPremises (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp a Tb T : Time) :
     Prop where
   /-- `GST(g)`. -/
   gst : tr.GSTRun H ΔF g
@@ -59,13 +60,13 @@ structure WeakPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF 
   /-- `Catch(2Δ)`. -/
   catchPremise : CatchRun tr H g (2 * sp.Δ)
   /-- The ready-proposer premise on `[ḡ, T]`. -/
-  prop : PropPlusUntil tr H g Gp T
+  prop : PropPlusUntil tr H proposer g Gp T
   /-- `a` is the reset `a_z`. -/
   reset : IsReset tr H g a
   /-- `T_b ≥ 0`. -/
   offset : 0 ≤ Tb
   /-- H.3 (c)'s bridge for the reset and `T_b` (named hypothesis). -/
-  bridge : BridgeAt tr H g a Tb
+  bridge : BridgeAt tr H proposer g a Tb
   /-- The heal point is at or after `T_heal`. -/
   late : T_heal sp g ΔF Gp Tb ≤ T
 
@@ -75,9 +76,10 @@ end Defs
 confirmed output at every read point from `T` on. -/
 def WeakSafe : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
-    GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T →
+    GoldilocksRun proposer dg H tr → WeakPremises tr H proposer dg g ΔF Gp a Tb T →
     ∀ t₁, ReadySafeOn tr H (catchUp sp) T t₁
 
 /-- **R.6, `weakInclude`.** Under `Weak` and unanimity from `T` (H.4's open `(U_all)` form, as
@@ -86,9 +88,11 @@ proposer ready at `τ` is in the confirmed read of every node ready at `t`, for 
 `t ≥ τ + 6Δ`. -/
 def WeakInclude : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
-    GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T → UnanimousFrom tr H T →
+    GoldilocksRun proposer dg H tr → WeakPremises tr H proposer dg g ΔF Gp a Tb T →
+    UnanimousFrom tr H proposer T →
     ∀ τ P, T + 8 * sp.Δ ≤ τ → ReadyProposalAt tr H (catchUp sp) τ P →
       ∀ y t j, τ + 6 * sp.Δ ≤ t → ReadyAt tr H (catchUp sp) y t → CutAfter tr j t →
         Anc (tr.HonestBlocks H) P (readAfter tr y j t)
@@ -100,11 +104,12 @@ slots from `T` up to the read time: for every `t ≥ T` with a node ready at `t 
 common confirmed entry at `t + D` above every ready read at `t` (as `GrowSleepy`). -/
 def WeakGrow : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time) (k : Nat),
-    GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T → 1 ≤ k →
-    UnanimousWithin tr H T (4 * k * sp.Δ) →
-    ∀ t, T ≤ t → ProposerRecurrence tr H (catchUp sp) k T (t + (4 * k + 6) * sp.Δ) →
+    GoldilocksRun proposer dg H tr → WeakPremises tr H proposer dg g ΔF Gp a Tb T → 1 ≤ k →
+    UnanimousWithin tr H proposer T (4 * k * sp.Δ) →
+    ∀ t, T ≤ t → ProposerRecurrence tr H proposer (catchUp sp) k T (t + (4 * k + 6) * sp.Δ) →
       (∃ v, ReadyAt tr H (catchUp sp) v (t + (4 * k + 6) * sp.Δ)) →
       ∃ τ P, t < τ ∧ ReadyProposalAt tr H (catchUp sp) τ P ∧
         (∀ y j, ReadyAt tr H (catchUp sp) y (t + (4 * k + 6) * sp.Δ) →

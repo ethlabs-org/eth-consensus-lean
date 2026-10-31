@@ -17,9 +17,8 @@ parameters `Params.fg` are derived from the shared parameters. -/
 
 namespace Consensus.Goldilocks
 
-/-- The FG parameters derived from the shared parameters: `n`, `δ_t`, the genesis root and the
-slot proposer. -/
-def Params.fg (P : Params) : FG.FGParams := ⟨P.n, P.hn, P.δt, P.genesisRoot, P.proposer⟩
+/-- The FG parameters derived from the shared parameters: `n`, `δ_t`, and genesis root. -/
+def Params.fg (P : Params) : FG.FGParams := ⟨P.n, P.hn, P.δt, P.genesisRoot⟩
 
 /-- A node block: its FG payload is the attestation list. -/
 abbrev NodeBlock (P : Params) (ACP : Type) := Block P.n (List (FG.Att P.n)) ACP
@@ -30,9 +29,10 @@ def Block.fgView {n : Nat} {ACP : Type} (B : Block n (List (FG.Att n)) ACP) : FG
   ⟨B.root, B.slot, B.proposer, B.fgPayload⟩
 
 /-- Genesis: the genesis root, no parent, slot `0`, input `0`, no attestations, the AC payload
-`acp₀`. (Its proposer, input and AC payload are never read.) -/
+`acp₀`. Its proposer is the fixed index zero, independent of leader selection.
+(Its proposer, input and AC payload are never read by the transition.) -/
 def Params.genesisBlock (P : Params) {ACP : Type} (acp₀ : ACP) : NodeBlock P ACP :=
-  ⟨P.genesisRoot, none, 0, P.proposer 0, 0, [], acp₀⟩
+  ⟨P.genesisRoot, none, 0, ⟨0, P.hn⟩, 0, [], acp₀⟩
 
 /-- The FG state `Σ`. -/
 structure Store (P : Params) (ACP : Type) where

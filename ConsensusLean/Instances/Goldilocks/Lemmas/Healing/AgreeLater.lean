@@ -36,6 +36,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
@@ -43,7 +44,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **The later votes extend `P`** (`hs234-exact-interface.md` §2.2, §4 (b)): under `Γ` (without
 `Prop⁺`), when every honest vote of a slot `s` with `t_{s−1} ≥ w + 4Δ` is exactly `P`, every
 in-phase honest vote of a later slot extends `P`. -/
-theorem later_votes_extend (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem later_votes_extend (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {s : Nat}
     (hs1 : 1 ≤ s) (hsw : w + 4 * sp.Δ ≤ sp.ts (s - 1 : Nat))
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPU : P ∈ tr.HonestBlocks H)
@@ -68,7 +69,7 @@ theorem later_votes_extend (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg
 /-- **The `ac_proposal` cut precedes the proposal's own block cut** (one tick per node and time:
 the own block call follows the tick's `ac_proposal`; as `DrainProposal`'s private
 `proposal_before_holder`). -/
-private theorem proposal_call_lt_own (hrun : GoldilocksRun dg H tr) {p : Fin sp.n}
+private theorem proposal_call_lt_own (hrun : GoldilocksRun proposer dg H tr) {p : Fin sp.n}
     (hpH : p ∈ H) {kP s : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     (hcP : tr.projAC.CallAt p kP ℓp) (hcall : ℓp.call = .proposal)
     (htP : tr.time kP = sp.ts s) {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = s)
@@ -91,17 +92,17 @@ private theorem proposal_call_lt_own (hrun : GoldilocksRun dg H tr) {p : Fin sp.
 cut precedes its own block cut (`proposal_call_lt_own`), so it is in the phase, and every honest
 vote of a slot `≥ s` before it extends `P` (`later_votes_extend`); `proposal_head_of_batch`, with
 the proposer's own slot-`s` vote as the witness. -/
-theorem later_parents_extend (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem later_parents_extend (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {s : Nat}
     (hs1 : 1 ≤ s) (hsw : w + 4 * sp.Δ ≤ sp.ts (s - 1 : Nat))
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPU : P ∈ tr.HonestBlocks H)
     (hexact : ∀ y ∈ H, ∀ k e, SA.VoteAt tr.projAC y k e → e.msg.slot = s → e.msg.head = P.root) :
     ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' → P'.slot = s' →
-      tr.ProposesAt (sp.toParams.proposer s') k' P' → sp.toParams.proposer s' ∈ H →
+      tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
       PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr := by
   intro s' P' k' hss' hP's hprop' hpH hk'
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hs.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl).localRun
   have hS := healthyBase_of_hs hrun hs hc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hw8 := gbar_add_le_of_settled hw
@@ -141,14 +142,14 @@ HS.3's setting with `t_s ≥ r`: with every honest slot-`s` vote exactly `P`
 theorem later_extend_of_setting {p : Fin sp.n} {kP s : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {i iP : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hr : rTime sp w ≤ sp.ts s)
     (hexact : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       e.msg.head = P.root) :
     (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg P) ∧
     ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' → P'.slot = s' →
-      tr.ProposesAt (sp.toParams.proposer s') k' P' → sp.toParams.proposer s' ∈ H →
+      tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
       PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr := by
   obtain ⟨hs1, hsw⟩ := clean_pred_of_rTime hr
@@ -171,7 +172,8 @@ variable {p : Fin sp.n} {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} {i i
 
 /-- **The proposal walk starts at the proposer's `fc_root` or at a live lock block** of its
 unlocked state (`get_anchor` after `unlock` at `ac_proposal`). -/
-theorem proposal_start_cases (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) :
+theorem proposal_start_cases
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) :
     d.start = ℓp.frame.fcRoot ∨
       d.start ∈ SA.liveLockBlocks sp (SA.unlock sp (tr.projAC.state p iP).locks ℓp.frame
         (tr.time iP) ((sp.slot (tr.time iP) : Int) - 1)
@@ -195,17 +197,17 @@ theorem proposal_start_cases (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP 
 label `≥ s` is at `t_s + 6Δ` or later, after the proposal; an optimistic one (of label `s`, at
 `t_s`) has an honest slot-`s` supporter, whose vote follows the proposal (`proposal_cut_lt`). -/
 theorem proposer_stored_lock_lt
-    (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) {l : SA.Lock}
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) {l : SA.Lock}
     (hl : l ∈ (tr.projAC.state p iP).locks) : l.slot < s := by
   have hrun := hS.run
   have hl' := hrun.toLocalRun
   have hs := hS.shared
   have hnc := hs.noColl
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr' := hrun'.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hpH : p ∈ H := hS.ready.1
-  have hps : p = sp.toParams.proposer s := hS.ready.2.1
+  have hps : p = proposer s := hS.ready.2.1
   have htP : tr.time iP = sp.ts s := hS.time
   by_contra hls
   -- a write of a label `≥ s` at the proposer before its proposal is impossible
@@ -257,7 +259,8 @@ sits below a stored live lock of the proposer (`unlock` moves locks back), of a 
 of an origin of its label written by the proposer (`stored_fast_lock_provenance`,
 `stored_slow_lock_provenance`), which every later in-phase honest vote extends (HS.2's extension,
 `clean_fast_extends`, `clean_slow_extends`). -/
-theorem proposer_lock_extends (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+theorem proposer_lock_extends
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hr : rTime sp w ≤ sp.ts s) {σ : Int} {V : SA.View sp.n}
     {B' : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB' : B' ∈ SA.liveLockBlocks sp (SA.unlock sp (tr.projAC.state p iP).locks ℓp.frame
@@ -269,7 +272,7 @@ theorem proposer_lock_extends (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP
   have hl := hrun.toLocalRun
   have hs := hS.shared
   have hnc := hs.noColl
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr' := hrun'.localRun
   have hU := hr'.coherent
   have hpH : p ∈ H := hS.ready.1
@@ -327,7 +330,7 @@ premise); a lock of a label `≥ s` sits below a block of three quarters of the 
 pool of earlier votes (`lock_origin_readPoint`), which has an honest supporter (`3f < n`), of
 slot `s` (no earlier vote is of a later slot), so `P`. -/
 theorem readPoint_lockBlocks_below
-    (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hlock : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
         ∀ L ∈ ℓ.frame.tree, L.root = l.block →
@@ -342,7 +345,7 @@ theorem readPoint_lockBlocks_below
   have hrun := hS.run
   have hl := hrun.toLocalRun
   have hnc := hS.shared.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
@@ -420,7 +423,7 @@ is relayed to the proposer by `t_s`, `mem_frame_of_relay`; otherwise it is below
 block `P`, so `P` or below `d.head`); so it is a viable head of the proposer (aligned readers at
 the proposal cut), which extends `R`. -/
 private theorem root_below_voterHeads
-    (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hRP : Anc (tr.HonestBlocks H) ℓp.frame.fcRoot P)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
@@ -431,7 +434,7 @@ private theorem root_below_voterHeads
   have hs := hS.shared
   have hl := hrun.toLocalRun
   have hnc := hs.noColl
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hpH : p ∈ H := hS.ready.1
@@ -503,7 +506,7 @@ viable child, since every viable head of the voter block tree extends `R`
 (`root_below_voterHeads`): `X` is no viable head (so `Cx` is eligible), and a competing viable
 child has a viable head witness extending `R`, so it is on `R`'s path. -/
 theorem voter_passes_proposer_root
-    (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hlock : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
         ∀ L ∈ ℓ.frame.tree, L.root = l.block →
@@ -520,7 +523,7 @@ theorem voter_passes_proposer_root
     SA.VoteExtends (tr.HonestBlocks H) e.msg ℓp.frame.fcRoot := by
   have hrun := hS.run
   have hnc := hS.shared.noColl
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hPv := proposal_frozen_viable hS hy hcy hes
@@ -638,14 +641,16 @@ private theorem anc_getAnchor_of_mem {FGP : Type} {Φ : SA.Frm sp.n FGP} (hΦ : 
   rcases hDd.2 X hX (Ne.symm he) with h' | h' <;> omega
 
 /-- The proposer's stored locks after its proposal are its `ac_proposal`'s unlocked locks. -/
-theorem proposal_post_locks (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) :
+theorem proposal_post_locks
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) :
     (tr.post iP).ac.locks = SA.unlock sp (tr.projAC.state p iP).locks ℓp.frame (tr.time iP)
       ((sp.slot (tr.time iP) : Int) - 1)
       (SA.View.ofLists (SA.voteViewList (tr.projAC.state p iP) ℓp.frame
         ((sp.slot (tr.time iP) : Int) - 1) ⊤)) := by
   have hrun := hS.run
   have hl := hrun.toLocalRun
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hS.shared.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr
+    proposer hrun hS.shared.noColl).localRun
   have hpH : p ∈ H := hS.ready.1
   have hx := hr.exec iP ℓp hS.call.2 (hS.call.1 ▸ hpH)
   rw [hS.call.1, hS.call_proposal] at hx
@@ -678,7 +683,7 @@ proposer's at an early vote) makes an opponent at the voter only. Moreover a pro
 label `s − 1` is not unlocked at the proposer, so the payload view gives no bound on its
 opponents. Both points need an argument beyond the view comparison. -/
 theorem voter_unlock_keeps_lock
-    (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) {l : SA.Lock}
@@ -700,7 +705,7 @@ or below a stored live lock of the voter, which the voter keeps through its unlo
 (`readPoint_lockBlocks_below`), as is the anchor, so it is at or below the anchor
 (`anc_getAnchor_of_mem`). -/
 theorem lock_start_below_anchor
-    (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hlock : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
         ∀ L ∈ ℓ.frame.tree, L.root = l.block →
@@ -725,7 +730,7 @@ theorem lock_start_below_anchor
     Anc (tr.HonestBlocks H) d.start (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) := by
   have hrun := hS.run
   have hnc := hS.shared.noColl
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   obtain ⟨hΦp, -⟩ := SA.frameIn_of_callAt hr hS.ready.1 hS.call

@@ -436,14 +436,14 @@ end Node
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- The window premises' `Sync[t_{s₀}, b − Δ]` on the AC projection, on any `[a, b']` inside. -/
-private theorem window_sync {b : Time} {s₀ : Nat} (hrun : GoldilocksRun dg H tr)
+private theorem window_sync {b : Time} {s₀ : Nat} (hrun : GoldilocksRun proposer dg H tr)
     (hwin : SleepyWindow tr H ΔF s₀ b) {a b' : Time} (ha : sp.ts s₀ ≤ a) (hb : b' ≤ b - sp.Δ) :
     SyncAC (SA.goldilocksSA sp (List (FG.Att sp.n)) ro) H (tr.HonestBlocks H) a b' tr.projAC :=
   have hs := (sleepyWindow_iff.1 hwin).2.1
-  sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr ΔF a b'
+  sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr proposer ΔF a b'
     hrun.toLocalRun
     { deltaF := hs.deltaF
       message := fun x hx i m h hw => hs.message x hx i m h ⟨ha.trans hw.1, hw.2.trans hb⟩
@@ -453,7 +453,7 @@ private theorem window_sync {b : Time} {s₀ : Nat} (hrun : GoldilocksRun dg H t
 
 /-- **A block that an honest writer accepted before `t_{s₀}` reaches `y` before `T`**, at the AC
 level, from the run-level form of `SleepyBase.old_blocks`. -/
-theorem acceptedBefore_of_old (hrun : GoldilocksRun dg H tr) {s₀ : Nat} {y : Fin sp.n}
+theorem acceptedBefore_of_old (hrun : GoldilocksRun proposer dg H tr) {s₀ : Nat} {y : Fin sp.n}
     {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {T : Time}
     (hold : ∀ x ∈ H, ∀ m B, tr.AcceptAt x m B → tr.time m < sp.ts s₀ →
       Anc (tr.HonestBlocks H) Φ.F B → SA.AcceptedBefore tr.projAC y B T)
@@ -465,11 +465,11 @@ theorem acceptedBefore_of_old (hrun : GoldilocksRun dg H tr) {s₀ : Nat} {y : F
   exact hold w hw k' B hc' (lt_of_eq_of_lt ht hk) hF
 
 /-- An honest slot-`(s+1)` vote is cast from `t_{s+1} = t_s + 4Δ` on. -/
-private theorem vote_time_ge (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem vote_time_ge (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1) : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   obtain ⟨-, hys, -, -⟩ := SA.castAt_spec hr hy hc
@@ -484,7 +484,7 @@ variable {s₀ : Nat}
 window premises from slot `s₀ ≤ s` to `b`, at a vote at a time `≤ b`, with the heads accepted
 before `t_{s₀}` caught up (`hold`, `SleepyBase.old_blocks`), when the voter's `Σ.F` is at or below
 the result. -/
-theorem result_carry_win {b : Time} (hrun : GoldilocksRun dg H tr)
+theorem result_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ s : Nat} (hs₀ : s₀ ≤ s) {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -494,7 +494,7 @@ theorem result_carry_win {b : Time} (hrun : GoldilocksRun dg H tr)
       Anc (tr.HonestBlocks H) ℓ.frame.F B → SA.AcceptedBefore tr.projAC y B (sp.ts s + 3 * sp.Δ))
     (hF : Anc (tr.HonestBlocks H) ℓ.frame.F C) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hW := result_writer hr hX hR
   have := vote_time_ge hrun hnc hy hc hs
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -507,7 +507,7 @@ theorem result_carry_win {b : Time} (hrun : GoldilocksRun dg H tr)
 
 /-- **A result's counted votes reach the next voters at times `≤ b`** (`Carry_y`), under the
 prefix premises up to `b`, when the voter's `Σ.F` is at or below the result. -/
-theorem result_carry_upTo {b : Time} (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem result_carry_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -521,7 +521,7 @@ theorem result_carry_upTo {b : Time} (hrun : GoldilocksRun dg H tr) (hnc : NoCol
 
 /-- **A result's counted votes reach the next voters** (`Carry_y`), when the voter's `Σ.F` is at
 or below the result. -/
-theorem result_carry (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem result_carry (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -534,7 +534,7 @@ theorem result_carry (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
 
 /-- **An optimistic selection's counted votes reach the next voters, on a window** (`Carry_y`), as
 `result_carry_win`. -/
-theorem optimistic_carry_win {b : Time} (hrun : GoldilocksRun dg H tr)
+theorem optimistic_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} (hs₀ : s₀ ≤ s) {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hO : SA.OptimisticLockAt tr.projAC x i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -544,7 +544,7 @@ theorem optimistic_carry_win {b : Time} (hrun : GoldilocksRun dg H tr)
       Anc (tr.HonestBlocks H) ℓ.frame.F B → SA.AcceptedBefore tr.projAC y B (sp.ts s + 3 * sp.Δ))
     (hF : Anc (tr.HonestBlocks H) ℓ.frame.F C) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hW := optimistic_writer_votes hr hx hO
   have := vote_time_ge hrun hnc hy hc hs
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -558,7 +558,8 @@ theorem optimistic_carry_win {b : Time} (hrun : GoldilocksRun dg H tr)
 /-- **An optimistic selection's counted votes reach the next voters at times `≤ b`**
 (`Carry_y`), under the prefix premises up to `b`, when the voter's `Σ.F` is at or below the
 selection. -/
-theorem optimistic_carry_upTo {b : Time} (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem optimistic_carry_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hO : SA.OptimisticLockAt tr.projAC x i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -572,7 +573,7 @@ theorem optimistic_carry_upTo {b : Time} (hrun : GoldilocksRun dg H tr) (hnc : N
 
 /-- **An optimistic selection's counted votes reach the next voters** (`Carry_y`), when the
 voter's `Σ.F` is at or below the selection. -/
-theorem optimistic_carry (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem optimistic_carry (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hO : SA.OptimisticLockAt tr.projAC x i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -584,7 +585,7 @@ theorem optimistic_carry (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (le_max_left _ _) hF
 
 /-- **A1.8 (d) on the window from slot `s₀ ≤ s` to `b`**, for a result within `b`. -/
-theorem result_writer_pool_win {b : Time} (hrun : GoldilocksRun dg H tr)
+theorem result_writer_pool_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ s : Nat} (hs₀ : s₀ ≤ s) {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
@@ -593,7 +594,7 @@ theorem result_writer_pool_win {b : Time} (hrun : GoldilocksRun dg H tr)
     ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.projAC.state X i₀).pool s ∨
         v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   obtain ⟨ℓX, hupd, -, -⟩ := hR
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hupd.2.2.1
@@ -610,7 +611,7 @@ theorem result_writer_pool_win {b : Time} (hrun : GoldilocksRun dg H tr)
 /-- **A1.8 (d) under the prefix premises up to `b`**, for a result within `b`: every slot-`s`
 vote of an honest slot-`(s+1)` voter's merged view is in the pool of the result's honest writer,
 or that pool holds two votes of its validator. -/
-theorem result_writer_pool_upTo {b : Time} (hrun : GoldilocksRun dg H tr)
+theorem result_writer_pool_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hpre : SleepyPrefix tr H ΔF b) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
@@ -624,7 +625,7 @@ theorem result_writer_pool_upTo {b : Time} (hrun : GoldilocksRun dg H tr)
 /-- **A1.8 (d) under `Sync`**: every slot-`s` vote of an honest slot-`(s+1)` voter's merged view is
 in the pool of an honest writer of a slot-`s` result, or that pool holds two votes of its
 validator. -/
-theorem result_writer_pool (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem result_writer_pool (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}

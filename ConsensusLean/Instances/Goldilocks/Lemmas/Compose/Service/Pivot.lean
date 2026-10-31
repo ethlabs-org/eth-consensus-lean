@@ -147,7 +147,7 @@ end Walk
 /-! ### Over a run -/
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **The old origins of slot `s`** (workbench#12 §2, the set whose deepest member is `D_s`): the
 regular origins of labels at most `s − 2` and the optimistic origins of labels at most `s − 1`,
@@ -170,7 +170,7 @@ private theorem OldOrigin.origin {s : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))
   · exact ⟨m, by omega, Origin.of_optimistic hx hO⟩
 
 /-- An honest block with the genesis root is below every honest block. -/
-theorem honest_genesis_root_anc (hrun : GoldilocksRun dg H tr)
+theorem honest_genesis_root_anc (hrun : GoldilocksRun proposer dg H tr)
     (hU : Coherent (tr.HonestBlocks H)) {B C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ tr.HonestBlocks H) (hr : B.root = sp.genesisRoot) (hC : C ∈ tr.HonestBlocks H) :
     Anc (tr.HonestBlocks H) B C := by
@@ -188,7 +188,7 @@ private theorem block_eq {X Y : SA.Blk sp.n (List (FG.Att sp.n))} (h0 : X.root =
 
 /-- **An honest block with the root of an honest proposal is that proposal** (`NoColl`): both
 roots are digests, of an occurring block, and the slot's proposer made both. -/
-private theorem eq_proposal (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem eq_proposal (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt p k P) {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : R ∈ tr.HonestBlocks H) (hr : R.root = P.root) : R = P := by
@@ -196,7 +196,7 @@ private theorem eq_proposal (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg t
   rcases blockCall_cases hrun.toLocalRun hp hcB with hg | ⟨j, x, rfl, -, hPr, d, pay, -, hB, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   have hok : P.RootOk dg := by rw [hB]; rfl
-  have hpr : P.proposer = sp.toParams.proposer P.slot := by
+  have hpr : P.proposer = proposer P.slot := by
     rw [hpp, hB]
     exact hPr.2.2.symm
   have hpar : P.parent ≠ none := by rw [hB]; simp [Node.mkBlock]
@@ -213,14 +213,14 @@ private theorem eq_proposal (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg t
 
 /-- The proposer's restarts up to its proposal are at or before `t_{s−1}`: `ac_proposal` runs
 joined, and keeps the restart time. -/
-theorem proposal_call_restarts (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem proposal_call_restarts (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay)) :
     ∀ c ≤ i, tr.projAC.RestartAt p c →
       tr.projAC.time c ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hx := hr.exec i ℓp hc.2 (hc.1 ▸ hp)
   rw [hc.1, hcall] at hx
   have hpost : tr.projAC.post i =
@@ -236,7 +236,7 @@ theorem proposal_call_restarts (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun d
 /-- **A block an honest node accepts before `t_{s−1} + 2Δ` reaches the proposer** of slot `s`
 (`Sync`, the proposer awake since its last restart at or before `t_{s−1}`): when the proposer's
 `Σ.F` is below it, it is in the proposal's frame, accepted before `t_{s−1} + 3Δ`. -/
-private theorem proposer_relay (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposer_relay (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -248,7 +248,7 @@ private theorem proposer_relay (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun d
       tr.projAC.time kx < sp.ts ((s : Int) - 1) + 2 * sp.Δ)
     (hFB : Anc (tr.HonestBlocks H) ℓp.frame.F B) :
     B ∈ ℓp.frame.tree ∧ SA.AcceptedBefore tr.projAC p B (sp.ts ((s : Int) - 1) + 3 * sp.Δ) := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hΔ := sp.toParams.hΔ
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hp hc
@@ -281,7 +281,8 @@ private theorem proposer_relay (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun d
 /-- **The head of an honest vote of a slot before `s` reaches the proposer** of slot `s`: its
 voter accepted it (or it is genesis) by `t_{s−1} + Δ` (`frame_anc_accepted`), and
 `proposer_relay`. -/
-private theorem proposer_accepts_head (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposer_accepts_head (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -293,7 +294,7 @@ private theorem proposer_accepts_head (hrun : GoldilocksRun dg H tr) (hnc : NoCo
     (hHdr : Hd.root = e.msg.head) (hFHd : Anc (tr.HonestBlocks H) ℓp.frame.F Hd) :
     Hd ∈ ℓp.frame.tree ∧ SA.AcceptedBefore tr.projAC p Hd (sp.ts ((s : Int) - 1) + 3 * sp.Δ) ∧
       Hd.slot ≤ e.msg.slot := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hΔ := sp.toParams.hΔ
   obtain ⟨ℓx, hcx, hex⟩ := hv
@@ -322,7 +323,7 @@ private theorem proposer_accepts_head (hrun : GoldilocksRun dg H tr) (hnc : NoCo
 old origin has an honest supporting vote of a slot before `s` (`honest_supporter`), whose head
 reaches the proposer when `Σ.F` is below the origin (`proposer_accepts_head`); otherwise `Σ.F`,
 on the origin chain, is compatible with it (S1) and above it. -/
-private theorem proposal_holds_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposal_holds_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -330,7 +331,7 @@ private theorem proposal_holds_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollR
     (hti : tr.time i = sp.ts s) :
     ∀ O, OldOrigin tr H s O → O ∈ ℓp.frame.tree ∨ Anc (tr.HonestBlocks H) O ℓp.frame.F := by
   intro O hO
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hinv := sleepy_invariant hrun hnc hsl
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hp hc
@@ -362,7 +363,8 @@ other voters are faulty (`faults_lt_honest_voters`, `SA.isBest_of_majority`). Fo
 origin of label `s − 1`, the at least `3n/4` votes it counted (`optimistic_writer_votes`) are
 relayed likewise, so each of its seats supports it or equivocates, and the equivocators and the
 voters outside are fewer (`2f < n`, `SA.isBest_of_cover`). -/
-private theorem proposal_best_toward_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposal_best_toward_old (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -375,7 +377,7 @@ private theorem proposal_best_toward_old (hrun : GoldilocksRun dg H tr) (hnc : N
           SA.goldfishEligible sp ℓp.frame (tr.time i) (SA.View.ofLists pay) ((s : Int) - 1) B}
         Cx := by
   intro O hO hOt X Cx hCx hpar hCxO
-  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hinv := sleepy_invariant hrun hnc hsl
@@ -555,7 +557,8 @@ private theorem proposal_best_toward_old (hrun : GoldilocksRun dg H tr) (hnc : N
 /-- An AC call with the proposal label is a cut of a tick. -/
 theorem acProposal_in_tick {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
     {t : Time} {e : Node.Event (goldilocksNode sp ro)} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (h : Cut.ac ℓ ∈ (Node.exec dg y st t e).2) (hm : ℓ.call = .proposal) : ∃ x, e = .tick x := by
+    (h : Cut.ac ℓ ∈ (Node.exec proposer dg y st t e).2) (hm : ℓ.call = .proposal) :
+    ∃ x, e = .tick x := by
   cases e with
   | tick x => exact ⟨x, rfl⟩
   | message m =>
@@ -579,15 +582,16 @@ theorem acProposal_in_tick {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)
 proposer `ac_proposal` second and its own block's `ac_on_block` later, and `ac_to_fg`. -/
 private theorem tick_ac_positions {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
     {t : Time} {x c : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (h : (Node.exec dg y st t (.tick x)).2[c]? = some (Cut.ac ℓ)) :
+    (h : (Node.exec proposer dg y st t (.tick x)).2[c]? = some (Cut.ac ℓ)) :
     (ℓ.call = .tick ∧ c = 0) ∨ ℓ.call = .toFG ∨
-      (Node.Proposes y t ∧ ((ℓ.call = .proposal ∧ c = 1) ∨ (ℓ.call ≠ .proposal ∧ 2 ≤ c))) := by
+      (Node.Proposes proposer y t ∧
+        ((ℓ.call = .proposal ∧ c = 1) ∨ (ℓ.call ≠ .proposal ∧ 2 ≤ c))) := by
   obtain ⟨ℓt, pc, uc, hlt, hcs, hpc, ℓu, hlu, huc⟩ :=
-    @tick_order sp.toParams (goldilocksNode sp ro) dg y st t x
+    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y st t x
   have huc' : ∀ ℓ', Cut.ac ℓ' ∈ uc → ℓ'.call = .toFG := by
     intro ℓ' hm
     rcases huc with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;> simp at hm <;> (rw [hm]; exact hlu)
-  change (Node.onTick dg y st t x).2[c]? = _ at h
+  change (Node.onTick proposer dg y st t x).2[c]? = _ at h
   rw [hcs] at h
   rcases c with _ | c
   · simp only [List.getElem?_cons_zero, Option.some.injEq, Cut.ac.injEq] at h
@@ -619,7 +623,8 @@ at a cut no later (`SA.optimisticPoint_pool_vote`), at `t_s`. A vote at `t_s` is
 whose group precedes the proposer's tick at `t_s` or is it (phase order), so in a tick, where only
 the slot's proposer's own block casts it (C0.4), after `ac_proposal`: in the proposer's tick
 (`tick_unique`), after cut `i`. -/
-private theorem proposal_no_optimistic (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposal_no_optimistic (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -627,7 +632,7 @@ private theorem proposal_no_optimistic (hrun : GoldilocksRun dg H tr) (hnc : NoC
     (hti : tr.time i = sp.ts s) :
     ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ SA.OptimisticLockAt tr.projAC x k' s C CV := by
   intro z hz c hci C CV hO
-  have hr' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hr' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hr'.localRun
   have hl := hrun.toLocalRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
@@ -635,7 +640,7 @@ private theorem proposal_no_optimistic (hrun : GoldilocksRun dg H tr) (hnc : NoC
   obtain ⟨gi, ei, ki, hgi, rfl, hki⟩ := call_in_group hl hp (projAC_callAt.1 hc)
   rw [hti] at hgi hki
   obtain ⟨xi, rfl⟩ := acProposal_in_tick (List.mem_of_getElem? hki) hcall
-  obtain ⟨hpr, hki1⟩ : Node.Proposes p (sp.ts s) ∧ ki = 1 := by
+  obtain ⟨hpr, hki1⟩ : Node.Proposes proposer p (sp.ts s) ∧ ki = 1 := by
     rcases tick_ac_positions hki with ⟨h, -⟩ | h | ⟨hpr, ⟨-, h⟩ | ⟨h, -⟩⟩
     · rw [hcall] at h; cases h
     · rw [hcall] at h; cases h
@@ -700,14 +705,14 @@ private theorem proposal_no_optimistic (hrun : GoldilocksRun dg H tr) (hnc : NoC
 of its slot before the proposal (`lock_origin`); a regular one of label at least `s` is written
 after `t_s`, an optimistic one has the slot of its time, at most `s`, and not `s`
 (`proposal_no_optimistic`). -/
-private theorem proposal_locks_slot (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposal_locks_slot (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) :
     ∀ l ∈ (tr.state p i).ac.locks, l.slot < s := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   intro l hl
   obtain ⟨-, -, -, O, hO, -⟩ := lock_origin hrun hnc hp i l hl
   have hii : tr.projAC.time i = tr.time i := rfl
@@ -731,7 +736,7 @@ private theorem proposal_locks_slot (hrun : GoldilocksRun dg H tr) (hnc : NoColl
 rows all have sources in a set `R` closed under ancestors, `Σ.J` is genesis (`h_j = 0`) or the
 entry of such a source (`justified_honest_source`, `honest_source_entry`), so in `R`, and `Σ.F` is
 below `Σ.J`. -/
-theorem fcRoot_of_rows (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem fcRoot_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {R : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hRc : ∀ A B, Anc (tr.HonestBlocks H) A B → R B → R A)
@@ -739,7 +744,7 @@ theorem fcRoot_of_rows (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
     (Node.frame (tr.state y j)).fcRoot.root = sp.genesisRoot ∨
       R (Node.frame (tr.state y j)).fcRoot := by
   have hU : Coherent (tr.HonestBlocks H) :=
-    (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun.coherent
+    (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
   have hR := fg_reachable hrun.toLocalRun hy j
   obtain ⟨hFt, hJt, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hR
   have hsU : (tr.state y j).fg.tree ⊆ tr.HonestBlocks H := fun Z hZ => ⟨y, hy, j, hZ⟩
@@ -764,7 +769,7 @@ theorem fcRoot_of_rows (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
   · exact Or.inr (hRc _ _ (Anc.mono hsU hFJ) hJR)
 
 /-- `fc_root` below the old origins, from the sources (`fcRoot_of_rows`). -/
-private theorem fcRoot_old_of_rows (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem fcRoot_old_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     (hsrc : HonestRowsSourced tr H
       (fun D => ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) y j) :
@@ -776,7 +781,7 @@ private theorem fcRoot_old_of_rows (hrun : GoldilocksRun dg H tr) (hnc : NoCollR
 row the proposer holds was signed before cut `i`, with a source below an origin before the
 signing (`attestation_source`); a regular one of label `l` is written at `t_l + 6Δ ≤ t_s`, so
 `l ≤ s − 2`; an optimistic one has label at most `s`, and not `s` (`proposal_no_optimistic`). -/
-private theorem proposal_rows_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposal_rows_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -784,7 +789,7 @@ private theorem proposal_rows_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRu
     (hti : tr.time i = sp.ts s) :
     HonestRowsSourced tr H
       (fun D => ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) p i := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hΔ := sp.toParams.hΔ
   refine honestRowsSourced_iff.2 fun X hX a ha hav => ?_
   obtain ⟨m, hmi, -, k', hkm, hsg⟩ := honest_row_signed_before hrun hnc hp hX ha hav
@@ -811,7 +816,7 @@ private theorem proposal_rows_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRu
 /-- **The proposer's `fc_root` is below an old origin, or genesis** (workbench#12 §2,
 `F ≤ fc_root ≤ D_s` at the proposal read), from the sources of its honest rows
 (`proposal_rows_old`, `fcRoot_old_of_rows`). -/
-private theorem proposal_fcRoot_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposal_fcRoot_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -824,14 +829,14 @@ private theorem proposal_fcRoot_old (hrun : GoldilocksRun dg H tr) (hnc : NoColl
 
 /-- A live lock block of the proposal's anchor sits below an origin, of the slot of a stored
 lock, before the proposal (`lock_origin`; unlocking and `live_locks` only move locks back). -/
-private theorem proposal_lock_below (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposal_lock_below (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {i : Nat} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
     (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ tr.HonestBlocks H) {t : Time} {σ : Int}
     {V : SA.View sp.n} {A₁ : SA.SAState sp.n}
     (hA₁ : A₁.locks = SA.unlock sp (tr.projAC.state p i).locks Φ t σ V) :
     ∀ L ∈ SA.liveLockBlocks sp A₁.locks Φ t, ∃ l ∈ (tr.state p i).ac.locks, ∃ O,
       OriginBefore tr H O l.slot i ∧ Anc (tr.HonestBlocks H) L O := by
-  have hU := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun.coherent
+  have hU := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
   rintro L ⟨hL, l', ⟨l, hl, B, hB, hBr, -, rfl⟩, hlL⟩
   obtain rfl : L = Φ.viableAncestor B :=
     hΦ.coherent.1 hL (SA.viableAncestor_anc hΦ hB).1 hlL.symm
@@ -849,7 +854,7 @@ private theorem proposal_lock_below (hrun : GoldilocksRun dg H tr) (hnc : NoColl
 proposer (or below its `Σ.F`, below the walk's start), so viable or at or below `fc_root`
 (`held_origin_viable`); the proposer's live locks sit below origins, compatible with it (S1);
 and the children towards it win (`SA.anc_getHead`). -/
-theorem proposal_walk_passes_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem proposal_walk_passes_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -857,7 +862,7 @@ theorem proposal_walk_passes_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun
     (hti : tr.time i = sp.ts s) :
     ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O d.head := by
   intro O hO
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hinv := sleepy_invariant hrun hnc hsl
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hp hc
@@ -889,7 +894,7 @@ theorem proposal_walk_passes_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun
 unlocked anchors are `≤ D_s`"): a live lock block sits below an origin before `t_s` of a slot
 below `s` (`proposal_locks_slot`), which is old (a regular origin of label `s − 1` is written at
 `t_s + 2Δ`); `fc_root` by `proposal_fcRoot_old`. -/
-private theorem proposal_anchor_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposal_anchor_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -897,7 +902,7 @@ private theorem proposal_anchor_old (hrun : GoldilocksRun dg H tr) (hnc : NoColl
     (hti : tr.time i = sp.ts s) :
     d.start.root = sp.genesisRoot ∨
       ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) d.start O := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hp hc
   obtain ⟨A₁, hA₁, hst, -⟩ := acProposal_walk hd
   rw [hst]
@@ -921,14 +926,14 @@ private theorem proposal_anchor_old (hrun : GoldilocksRun dg H tr) (hnc : NoColl
 vote, with a source below an origin before the signing (`attestation_source`); a regular one of
 label `l` is written at `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most
 `s`, and not `s` (`no_optimistic_before_held_row`). -/
-theorem vote_fcRoot_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem vote_fcRoot_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {s : Nat} (hs : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) :
     ℓ.frame.fcRoot.root = sp.genesisRoot ∨
       ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓ.frame.fcRoot O := by
   obtain ⟨s', rfl⟩ : ∃ s', s = s' + 1 := ⟨s - 1, by omega⟩
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hΔ := sp.toParams.hΔ
   have htj : tr.time j ≤ sp.ts ((s' + 1 : Nat) : Int) + sp.Δ :=
     hes ▸ (cast_head_fcRoot hr hy hc).2
@@ -955,7 +960,7 @@ theorem vote_fcRoot_old (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
 /-- **A voter's anchor is below `D`, or on `P`'s chain above `D`**: for a block `D` above every
 old origin and below `Q = P.parent`, at an honest slot-`s` vote whose earlier honest slot-`s`
 votes are `P`. -/
-private theorem vote_anchor_cases (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem vote_anchor_cases (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P Q D : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hs0 : 0 < s) (hPQ : P.parent = some Q.root) (hQU : Q ∈ tr.HonestBlocks H)
@@ -970,7 +975,7 @@ private theorem vote_anchor_cases (hrun : GoldilocksRun dg H tr) (hnc : NoCollRu
       (Anc (tr.HonestBlocks H) D (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) ∧
         Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) P ∧
         P ∈ tr.HonestBlocks H) := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
@@ -1043,7 +1048,8 @@ path), for `D` above every old origin. `fc_root` is genesis or below an old orig
 origins, hence below `D` and pairwise compatible (`proposal_rows_old`), so with no contest the
 floor is reached by `X`, or a crossing entry `E ⪰ X` of the floor's height is below its source,
 below `D ⪯ X`, and `E = X` (`floor_or_crossing`). -/
-private theorem proposal_suffix_viable (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposal_suffix_viable (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -1052,7 +1058,7 @@ private theorem proposal_suffix_viable (hrun : GoldilocksRun dg H tr) (hnc : NoC
     (hDold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O D) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads := by
   intro X hDX _
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hp hc
   have hXt : X ∈ ℓp.frame.tree := mem_of_anc_left hDX hDt
@@ -1086,7 +1092,7 @@ private theorem proposal_suffix_viable (hrun : GoldilocksRun dg H tr) (hnc : NoC
 assumed to be `P` (the caller's strong induction on the cut: a current-slot optimistic lock of the
 voter sits below one of them). -/
 theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (_hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
@@ -1104,7 +1110,7 @@ theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp
           ℓy.frame.Anc X (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
             (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
             (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hinv := sleepy_invariant hrun hnc hsl

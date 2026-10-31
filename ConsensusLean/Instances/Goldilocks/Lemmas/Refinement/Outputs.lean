@@ -41,7 +41,7 @@ theorem finalized_monotone (hs : Simulates S rho hn tr ι) :
   simp only [RunTrace.finalizedAt]
   rw [chainTo_mono hri (Compose.tree_mono hs.run.toLocalRun hy (hs.ι_mono hij))
     (Store.cache_invariants _ _ _ _ hri).1]
-  exact chainTo_prefix hrj (Regimes.finalized_monotone _ _ _ _ _ hs.run _ hy _ _
+  exact chainTo_prefix hrj (Regimes.finalized_monotone _ _ _ _ _ _ hs.run _ hy _ _
     (hs.ι_mono hij))
 
 /-- Nesting holds at the shape's actual clock; it need not equal the next node cut's time. -/

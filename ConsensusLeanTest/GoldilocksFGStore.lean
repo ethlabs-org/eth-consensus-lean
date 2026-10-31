@@ -31,7 +31,6 @@ def P₁ : Params where
   slotTime_zero := rfl
   slotTime_strictMono := fun _ _ h => Nat.cast_lt.mpr h
   slotTime_public := fun _ => one_dvd _
-  proposer _ := ⟨0, Nat.one_pos⟩
   genesisRoot := 0
   δt := 2
 
@@ -53,7 +52,7 @@ theorem accepts_b₁ :
   have hst : ∃ σ', P₁.fg.stateTransition ((Store.init (P := P₁) ()).σ 0) b₁.fgView = some σ' := by
     apply Option.isSome_iff_exists.mp
     simp only [FG.FGParams.stateTransition]
-    rw [ite_eq_left_of_eq_true _ _ (eq_true ⟨rfl,
+    rw [ite_eq_left_of_eq_true _ _ (eq_true ⟨
       by simp [Block.fgView, b₁, Store.init, FG.ChainState.init],
       fun a ha => by cases ha⟩)]
     rfl
@@ -130,7 +129,6 @@ def P₂ : Params where
   slotTime_zero := rfl
   slotTime_strictMono := fun _ _ h => Nat.cast_lt.mpr h
   slotTime_public := fun _ => one_dvd _
-  proposer _ := ⟨0, Nat.two_pos⟩
   genesisRoot := 0
   δt := 2
 

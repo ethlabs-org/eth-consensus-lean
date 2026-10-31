@@ -284,6 +284,131 @@ theorem forwardObj_of_decodeForward (hs : List (Header Info × Nat)) (o : Wire s
     rfl
   · simp at h
 
+/-! ## Shape-level preservation -/
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+/-- `apply` keeps the key. -/
+theorem apply_self (st : State sp ro) r : (apply st r).self = st.self := rfl
+/-- `apply` keeps the clock. -/
+theorem apply_now (st : State sp ro) r : (apply st r).now = st.now := rfl
+/-- `apply` keeps the FG-due flag. -/
+theorem apply_fgDue (st : State sp ro) r : (apply st r).fgDue = st.fgDue := rfl
+/-- `apply` installs the node state of its handler result. -/
+theorem apply_node (st : State sp ro) r : (apply st r).node = r.1 := rfl
+
+/-- `relayIf` keeps the key. -/
+theorem relayIf_self (st : State sp ro) (c : Prop) [Decidable c] o :
+    (relayIf st c o).self = st.self := by unfold relayIf; split <;> rfl
+/-- `relayIf` keeps the clock. -/
+theorem relayIf_now (st : State sp ro) (c : Prop) [Decidable c] o :
+    (relayIf st c o).now = st.now := by unfold relayIf; split <;> rfl
+/-- `relayIf` keeps the FG-due flag. -/
+theorem relayIf_fgDue (st : State sp ro) (c : Prop) [Decidable c] o :
+    (relayIf st c o).fgDue = st.fgDue := by unfold relayIf; split <;> rfl
+/-- `relayIf` keeps the node state. -/
+theorem relayIf_node (st : State sp ro) (c : Prop) [Decidable c] o :
+    (relayIf st c o).node = st.node := by unfold relayIf; split <;> rfl
+
+/-- Processing one delivered object keeps the key. -/
+theorem processOne_self hs (st : State sp ro) o : (processOne hs st o).self = st.self := by
+  unfold processOne; split <;> simp [relayIf_self, apply_self]
+/-- Processing one delivered object keeps the clock. -/
+theorem processOne_now hs (st : State sp ro) o : (processOne hs st o).now = st.now := by
+  unfold processOne; split <;> simp [relayIf_now, apply_now]
+/-- Processing one delivered object keeps the FG-due flag. -/
+theorem processOne_fgDue hs (st : State sp ro) o : (processOne hs st o).fgDue = st.fgDue := by
+  unfold processOne; split <;> simp [relayIf_fgDue, apply_fgDue]
+
+/-- Processing a list of delivered objects keeps the key. -/
+theorem foldl_processOne_self hs (os : List (Wire sp.n)) (st : State sp ro) :
+    (os.foldl (processOne hs) st).self = st.self := by
+  induction os generalizing st with
+  | nil => rfl
+  | cons o os ih => simp [List.foldl_cons, ih, processOne_self]
+/-- Processing a list of delivered objects keeps the clock. -/
+theorem foldl_processOne_now hs (os : List (Wire sp.n)) (st : State sp ro) :
+    (os.foldl (processOne hs) st).now = st.now := by
+  induction os generalizing st with
+  | nil => rfl
+  | cons o os ih => simp [List.foldl_cons, ih, processOne_now]
+/-- Processing a list of delivered objects keeps the FG-due flag. -/
+theorem foldl_processOne_fgDue hs (os : List (Wire sp.n)) (st : State sp ro) :
+    (os.foldl (processOne hs) st).fgDue = st.fgDue := by
+  induction os generalizing st with
+  | nil => rfl
+  | cons o os ih => simp [List.foldl_cons, ih, processOne_fgDue]
+
+/-- A delivery keeps the key. -/
+theorem process_self (st : State sp ro) o hs : (process st o hs).self = st.self :=
+  foldl_processOne_self hs _ st
+/-- A delivery keeps the clock. -/
+theorem process_now (st : State sp ro) o hs : (process st o hs).now = st.now :=
+  foldl_processOne_now hs _ st
+/-- A delivery keeps the FG-due flag. -/
+theorem process_fgDue (st : State sp ro) o hs : (process st o hs).fgDue = st.fgDue :=
+  foldl_processOne_fgDue hs _ st
+
+/-- Recording an own object keeps the key. -/
+theorem recordOwn_self (st : State sp ro) o hs : (recordOwn st o hs).self = st.self := by
+  unfold recordOwn; split <;> (try split) <;> rfl
+/-- Recording an own object keeps the clock. -/
+theorem recordOwn_now (st : State sp ro) o hs : (recordOwn st o hs).now = st.now := by
+  unfold recordOwn; split <;> (try split) <;> rfl
+/-- Recording an own object keeps the FG-due flag. -/
+theorem recordOwn_fgDue (st : State sp ro) o hs : (recordOwn st o hs).fgDue = st.fgDue := by
+  unfold recordOwn; split <;> (try split) <;> rfl
+
+/-- The node's tick keeps the key. -/
+theorem nodeTick_self (st : State sp ro) : (nodeTick st).self = st.self := by
+  unfold nodeTick; split <;> rfl
+/-- The node's tick keeps the clock. -/
+theorem nodeTick_now (st : State sp ro) : (nodeTick st).now = st.now := by
+  unfold nodeTick; split <;> rfl
+
+/-- The slot proposal keeps the key. -/
+theorem propose_self (st : State sp ro) s : (propose st s).1.self = st.self := by
+  unfold propose; dsimp only; split <;> rfl
+/-- The slot proposal keeps the clock. -/
+theorem propose_now (st : State sp ro) s : (propose st s).1.now = st.now := by
+  unfold propose; dsimp only; split <;> rfl
+/-- The slot proposal keeps the FG-due flag. -/
+theorem propose_fgDue (st : State sp ro) s : (propose st s).1.fgDue = st.fgDue := by
+  unfold propose; dsimp only; split <;> rfl
+
+/-- The FG update keeps the key. -/
+theorem fgUpdate_self (st : State sp ro) : (fgUpdate st).self = st.self := by
+  unfold fgUpdate; simp only; split
+  · rfl
+  · split <;> rfl
+/-- The FG update keeps the clock. -/
+theorem fgUpdate_now (st : State sp ro) : (fgUpdate st).now = st.now := by
+  unfold fgUpdate; simp only; split
+  · rfl
+  · split <;> rfl
+/-- The FG update clears the FG-due flag. -/
+theorem fgUpdate_fgDue (st : State sp ro) : (fgUpdate st).fgDue = false := by
+  unfold fgUpdate; simp only; split
+  · rfl
+  · split <;> rfl
+
+/-- A poll step keeps the key. -/
+theorem poll_self (st : State sp ro) t : (poll st t).1.self = st.self := by
+  unfold poll; simp only; split <;> split <;> simp [fgUpdate_self]
+/-- A poll step keeps the clock. -/
+theorem poll_now (st : State sp ro) t : (poll st t).1.now = st.now := by
+  unfold poll; simp only; split <;> split <;> simp [fgUpdate_now]
+/-- After a poll step the FG update is not due: the step ran it if it was. -/
+theorem poll_fgDue (st : State sp ro) t : (poll st t).1.fgDue = false := by
+  unfold poll; simp only; split <;> split <;> simp_all [fgUpdate_fgDue]
+
+/-- A restore sets the key to the restored one. -/
+theorem restore_self (k : Fin sp.n) (d : State sp ro) t : (restore k d t).self = k := rfl
+/-- A restore sets the clock to the restart time. -/
+theorem restore_now (k : Fin sp.n) (d : State sp ro) t : (restore k d t).now = t := rfl
+/-- A restore clears the FG-due flag. -/
+theorem restore_fgDue (k : Fin sp.n) (d : State sp ro) t : (restore k d t).fgDue = false := rfl
+
 end Consensus.Goldilocks.Refinement
 
 end

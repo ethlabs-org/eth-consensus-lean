@@ -59,12 +59,15 @@ theorem blockObjs_ac (ℓ : ACLabel (goldilocksNode sp ro)) : blockObjs [Cut.ac 
   simp [blockObjs]
 
 /-- The cuts of the node's tick: the AC's tick, the proposal step, the FG update. -/
-theorem onTick_cuts (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+theorem onTick_cuts (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
-    (Node.onTick dg self st t x).2 =
-      (Node.tickStep dg self st t x .acTick).2 ++
-        (Node.tickStep dg self (Node.tickStep dg self st t x .acTick).1 t x .proposal).2 ++
-          (Node.tickStep dg self (Node.tickStep dg self (Node.tickStep dg self st t x .acTick).1
+    (Node.onTick proposer dg self st t x).2 =
+      (Node.tickStep proposer dg self st t x .acTick).2 ++
+        (Node.tickStep proposer dg self
+          (Node.tickStep proposer dg self st t x .acTick).1 t x .proposal).2 ++
+          (Node.tickStep proposer dg self (Node.tickStep proposer dg self
+            (Node.tickStep proposer dg self st t x .acTick).1
             t x .proposal).1 t x .fgUpdate).2 := by
   simp [Node.onTick, Node.runSteps, Node.tickSteps]
 
@@ -79,13 +82,14 @@ private theorem createAtt_val {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : 
 
 /-- The FG update queues the attestation of the node's FG-update step's signing cut, and that
 step emits no vote and processes no block. -/
-theorem fgUpdate_outbox_eq (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
+theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
     (st : State sp ro) :
     (fgUpdate st).outbox =
-        st.outbox ++ attBodies (Node.tickStep dg st.self st.node st.now x .fgUpdate).2 ∧
-      emitted (Node.tickStep dg st.self st.node st.now x .fgUpdate).2 = [] ∧
-      blockObjs (Node.tickStep dg st.self st.node st.now x .fgUpdate).2 = [] ∧
-      ∀ C a, Cut.fg (.attest C (some a)) ∈ (Node.tickStep dg st.self st.node st.now x
+        st.outbox ++ attBodies (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 ∧
+      emitted (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 = [] ∧
+      blockObjs (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 = [] ∧
+      ∀ C a, Cut.fg (.attest C (some a)) ∈ (Node.tickStep proposer dg st.self st.node st.now x
         .fgUpdate).2 → a.val = st.self := by
   unfold fgUpdate Node.tickStep
   simp only
@@ -108,17 +112,19 @@ theorem fgUpdate_outbox_eq (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x 
       · simp at hm
 
 /-- The AC-tick step signs nothing and processes no block. -/
-theorem tickStep_acTick_cuts (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+theorem tickStep_acTick_cuts (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
-    (Node.tickStep dg self st t x .acTick).2 = [(Node.acCall self st t .tick).2] ∧
-      attBodies (Node.tickStep dg self st t x .acTick).2 = [] ∧
-      blockObjs (Node.tickStep dg self st t x .acTick).2 = [] := by
+    (Node.tickStep proposer dg self st t x .acTick).2 = [(Node.acCall self st t .tick).2] ∧
+      attBodies (Node.tickStep proposer dg self st t x .acTick).2 = [] ∧
+      blockObjs (Node.tickStep proposer dg self st t x .acTick).2 = [] := by
   refine ⟨rfl, ?_, ?_⟩ <;> simp [Node.tickStep, Node.acCall, attBodies, blockObjs]
 
 /-- The proposal step signs nothing. -/
-theorem tickStep_proposal_attBodies (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem tickStep_proposal_attBodies (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
-    attBodies (Node.tickStep dg self st t x .proposal).2 = [] := by
+    attBodies (Node.tickStep proposer dg self st t x .proposal).2 = [] := by
   simp only [Node.tickStep]
   split_ifs
   · split
@@ -144,28 +150,35 @@ omit [DecidableEq V] in
 objects of the blocks of the node's proposal step and queues that step's emissions. -/
 theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
     (s : Slot) (hs : 0 < s)
-    (hsel : rho.sel (.proposer s) = {(S.params (pubOf E) hn).toParams.proposer s})
+    (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (hslot : (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s)
     (hst : (shapeOf S hn nd).now = (S.params (pubOf E) hn).toParams.slotTime s)
     (hrel : ∀ par info cs, (propose (shapeOf S hn nd) s).2 = some (par, info, cs) →
       ∀ o ∈ cs, o ∈ Model.closure nd.seen) :
     (rho.dutyStep v nd (.propose s hs)).2 =
-        blockObjs (Node.tickStep (digestOf S rho) (rho.ownKey v) (shapeOf S hn nd).node
+        blockObjs (Node.tickStep (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+          (shapeOf S hn nd).node
           (shapeOf S hn nd).now (encodeTxs nd.st.2) .proposal).2 ∧
       (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1).outbox =
-        (shapeOf S hn nd).outbox ++ emitted (Node.tickStep (digestOf S rho) (rho.ownKey v)
+        (shapeOf S hn nd).outbox ++ emitted (Node.tickStep (runProposer S rho hn)
+          (digestOf S rho) (rho.ownKey v)
           (shapeOf S hn nd).node (shapeOf S hn nd).now (encodeTxs nd.st.2) .proposal).2 := by
   have hact2 := act_propose_snd S hn nd s hs
   have hact1 := shapeOf_act_propose S hn nd.st s hs
   unfold Model.Run.dutyStep
   generalize (Model.protoOf (compiled (family S)) E).act nd.st (.propose s hs) = a at hact1 hact2
-  have hP : Proposes (P := (S.params (pubOf E) hn).toParams) (rho.ownKey v)
+  have hP : Proposes (P := (S.params (pubOf E) hn).toParams) (runProposer S rho hn) (rho.ownKey v)
         (shapeOf S hn nd).now ↔
-      (S.params (pubOf E) hn).toParams.proposer s = (shapeOf S hn nd).self := by
-    rw [hst, proposes_iff S hn _ s hs, hself]
-  by_cases hp : (S.params (pubOf E) hn).toParams.proposer s = (shapeOf S hn nd).self
-  · simp only [propose, hp, ite_true] at hact1 hact2 hrel
+      runProposer S rho hn s = (shapeOf S hn nd).self := by
+    rw [hst, proposes_iff S hn (runProposer S rho hn) _ s hs, hself]
+  by_cases hp : runProposer S rho hn s = (shapeOf S hn nd).self
+  · have hmem : rho.ownKey v ∈ rho.sel (.proposer s) := by
+      rw [hsel]
+      exact Finset.mem_singleton.2 (hp.trans hself).symm
+    simp only [show (Model.protoOf (compiled (family S)) E).role (.propose s hs) =
+      .proposer s from rfl, hmem, ↓reduceIte]
+    simp only [propose] at hact1 hact2 hrel
     simp only [Node.tickStep, hP.2 hp, ite_true]
     rcases hr : (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.2 with _ | ⟨d, p⟩
     · simp only [hr] at hact1 hact2
@@ -218,7 +231,6 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
             (payloadObjs ((acProposal (shapeOf S hn nd).node
                 (shapeOf S hn nd).now).1.fg.proposalAttestations d.head) p) := by
         simp only [blockObj, mkBlock, headerOf, hslot]
-        rfl
       have hb : blockObjs ((acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.1 ::
           (Node.proposeBlock (digestOf S rho) (rho.ownKey v)
             (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1 (shapeOf S hn nd).now
@@ -247,13 +259,15 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
           rfl
       · rename_i h
         exact False.elim (h (Bool.and_eq_true_iff.2 ⟨hc, dependencies_item _ _ _ _ _⟩))
-  · simp only [propose, hp, ite_false] at hact1 hact2
-    simp only [Node.tickStep, hP.not.2 hp, ite_false]
-    rw [hact2]
-    refine ⟨by simp [Model.Run.signedCandidate, Model.releaseAll, blockObjs]; rfl, ?_⟩
-    change (a.1.1 hn).outbox = _
-    rw [hact1]
-    simp [emitted]
+  · simp only [Node.tickStep, hP.not.2 hp, ite_false]
+    have hmem : rho.ownKey v ∉ rho.sel (.proposer s) := by
+      rw [hsel, Finset.mem_singleton]
+      intro heq
+      exact hp (heq.symm.trans hself.symm)
+    simp only [show (Model.protoOf (compiled (family S)) E).role (.propose s hs) =
+      .proposer s from rfl, hmem, ↓reduceIte]
+    simp [blockObjs, emitted]
+    rfl
 
 end ProposeDuty
 
@@ -281,7 +295,8 @@ theorem dutyStep_poll_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (fami
     (rho.dutyStep v nd (.poll k)).2 =
       relHead S rho v nd.seen (pollPre (shapeOf S hn nd)).outbox.head? := by
   unfold Model.Run.dutyStep
-  dsimp only
+  simp only [show (Model.protoOf (compiled (family S)) E).role (.poll k) = .poll from rfl,
+    hsel, ↓reduceIte]
   rw [act_poll_snd S hn, (poll_outbox _ _).2]
   cases hh : (pollPre (shapeOf S hn nd)).outbox.head? with
   | none => rfl
@@ -320,7 +335,7 @@ omit [DecidableEq V] in
 /-- An awake tick at `t ≥ 0`, duty by duty, when no slot proposal is due. -/
 theorem tick_unroll_nil (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
     (t : Time) (ht : 0 ≤ t) (hw : E.awake v t = true)
-    (hnil : (skeleton (pubOf E) S.proposer).proposeAt t = []) :
+    (hnil : (skeleton (pubOf E)).proposeAt t = []) :
     ∃ N1 N3 N5 N6 : Model.Node (Model.protoOf (compiled (family S)) E),
       N1 = (rho.dutyStep v ⟨(Model.protoOf (compiled (family S)) E).clock nd.st t
           (Model.mempool rho.inbox v t), nd.seen⟩ (.poll t.toNat)).1 ∧
@@ -347,7 +362,7 @@ omit [DecidableEq V] in
 /-- An awake tick at the start of slot `s > 0`, duty by duty. -/
 theorem tick_unroll_propose (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
     (t : Time) (ht : 0 ≤ t) (hw : E.awake v t = true) (s : Slot) (hs : 0 < s)
-    (hone : (skeleton (pubOf E) S.proposer).proposeAt t = [.propose s hs]) :
+    (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs]) :
     ∃ N1 N3 N4 N5 N6 : Model.Node (Model.protoOf (compiled (family S)) E),
       N1 = (rho.dutyStep v ⟨(Model.protoOf (compiled (family S)) E).clock nd.st t
           (Model.mempool rho.inbox v t), nd.seen⟩ (.poll t.toNat)).1 ∧
@@ -407,7 +422,8 @@ theorem leading_polls (v : V) (nd : Model.Node (Model.protoOf (compiled (family 
   have hS0 : shapeOf S hn N0 = { shapeOf S hn nd with now := t } := rfl
   have hpre0 : pollPre (shapeOf S hn N0) = shapeOf S hn N0 := by
     rw [pollPre_eq]; rw [hS0]; simp [hf]
-  have hS1 : shapeOf S hn N1 = (poll (shapeOf S hn N0) t.toNat).1 := dutyStep_poll S rho hn v N0 _
+  have hS1 : shapeOf S hn N1 = (poll (shapeOf S hn N0) t.toNat).1 :=
+    dutyStep_poll S rho hn v N0 _ hsel
   have hpre1 : pollPre (shapeOf S hn N1) = shapeOf S hn N1 := by
     rw [pollPre_eq]; rw [hS1, poll_fgDue]; rfl
   have hout1 : (shapeOf S hn N1).outbox = [] := by
@@ -417,13 +433,14 @@ theorem leading_polls (v : V) (nd : Model.Node (Model.protoOf (compiled (family 
     | [] => rfl
     | [_] => rfl
     | _ :: _ :: _ => rw [hq] at hb; simp at hb
-  have hS2 : shapeOf S hn N2 = (poll (shapeOf S hn N1) t.toNat).1 := dutyStep_poll S rho hn v N1 _
+  have hS2 : shapeOf S hn N2 = (poll (shapeOf S hn N1) t.toNat).1 :=
+    dutyStep_poll S rho hn v N1 _ hsel
   have hR1 := dutyStep_poll_eq S rho hn v N0 t.toNat hsel
   rw [hpre0, hS0] at hR1
   have hR2 := dutyStep_poll_eq S rho hn v N1 t.toNat hsel
   rw [hpre1, hout1] at hR2
   have hR3 := dutyStep_pollPropose_snd S rho hn v N2 t.toNat
-  refine ⟨hR1, hR2, hR3, ?_, dutyStep_pollPropose S rho hn v N2 _, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨hR1, hR2, hR3, ?_, dutyStep_pollPropose S rho hn v N2 _ hsel, ?_, ?_, ?_, ?_, ?_⟩
   · have e3 := dutyStep_seen S rho v N2 (.pollPropose t.toNat)
     have e2 := dutyStep_seen S rho v N1 (.poll t.toNat)
     have e1 := dutyStep_seen S rho v N0 (.poll t.toNat)
@@ -468,7 +485,7 @@ theorem trailing_polls (v : V) (N4 : Model.Node (Model.protoOf (compiled (family
   intro N5
   have hpre4 : pollPre (shapeOf S hn N4) = fgUpdate (shapeOf S hn N4) := by
     rw [pollPre_eq]; rw [ite_eq_left hf]
-  have hS5 : shapeOf S hn N5 = (poll (shapeOf S hn N4) k).1 := dutyStep_poll S rho hn v N4 _
+  have hS5 : shapeOf S hn N5 = (poll (shapeOf S hn N4) k).1 := dutyStep_poll S rho hn v N4 _ hsel
   have hpre5 : pollPre (shapeOf S hn N5) = shapeOf S hn N5 := by
     rw [pollPre_eq]; rw [hS5, poll_fgDue]; rfl
   have hout5 : (shapeOf S hn N5).outbox = (fgUpdate (shapeOf S hn N4)).outbox.tail := by
@@ -480,15 +497,15 @@ theorem trailing_polls (v : V) (N4 : Model.Node (Model.protoOf (compiled (family
   have e5 := dutyStep_seen S rho v N4 (.poll k)
   rw [hR5] at e5
   refine ⟨hR5, e5, hR6, ?_⟩
-  have e6 := dutyStep_poll S rho hn v N5 k
+  have e6 := dutyStep_poll S rho hn v N5 k hsel
   rw [e6, (poll_outbox _ _).1, hpre5, hout5]
 
 /-- The proposal step of a key that does not propose at `t` makes no cut. -/
 theorem tickStep_proposal_not' {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
-    (h : ¬ Proposes (P := sp.toParams) self t) :
-    Node.tickStep dg self st t x .proposal = (st, []) := by
+    (h : ¬ Proposes (P := sp.toParams) proposer self t) :
+    Node.tickStep proposer dg self st t x .proposal = (st, []) := by
   simp [Node.tickStep, h]
 
 /-- The node of `v` after the first three duties of its tick at `t` from `nd`. -/
@@ -519,11 +536,14 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
         relHead S rho v (rho.stateBefore i v).seen (stateAt S rho hn v i).outbox.head? ++ R4 ∧
       N5.seen = N4.seen ++ relHead S rho v N4.seen Q.head? ∧
       (∀ o ∈ G, o.auth = .none) ∧ Q.length ≤ 2 ∧
-      Q = emitted (exec (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+      Q = emitted (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+          (stateAt S rho hn v i).node t
           (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 ++
-        attBodies (exec (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+        attBodies (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+          (stateAt S rho hn v i).node t
           (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 ∧
-      R4 = blockObjs (exec (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+      R4 = blockObjs (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+          (stateAt S rho hn v i).node t
           (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 ∧
       (∀ c ∈ R4, ∀ x ∈ c.carried, x ∈ Model.closure ((rho.stateBefore i v).seen ++
         relHead S rho v (rho.stateBefore i v).seen (stateAt S rho hn v i).outbox.head?)) := by
@@ -554,28 +574,32 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
   rw [hself2, hself0] at hs3
   rw [hnow2] at hw3
   -- the cuts of the node's tick
-  have hcuts : (exec dg (rho.ownKey v) (shapeOf S hn nd).node t (.tick X)).2 =
+  have hcuts : (exec (runProposer S rho hn) dg (rho.ownKey v)
+      (shapeOf S hn nd).node t (.tick X)).2 =
       [(Node.acCall (rho.ownKey v) (shapeOf S hn nd).node t .tick).2] ++
-        (Node.tickStep dg (rho.ownKey v) n1 t X .proposal).2 ++
-        (Node.tickStep dg (rho.ownKey v) (Node.tickStep dg (rho.ownKey v) n1 t X .proposal).1 t X
+        (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 t X .proposal).2 ++
+        (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v)
+          (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 t X .proposal).1 t X
           .fgUpdate).2 :=
-    onTick_cuts (sp := S.params (pubOf E) hn) (ro := S.ro _) dg (rho.ownKey v) _ t X
+    onTick_cuts (sp := S.params (pubOf E) hn) (ro := S.ro _)
+      (runProposer S rho hn) dg (rho.ownKey v) _ t X
   -- the third and fourth duties
   have hpre : preNode S rho v nd t = (rho.dutyStep v (rho.dutyStep v (rho.dutyStep v
       ⟨(Model.protoOf (compiled (family S)) E).clock nd.st t (Model.mempool rho.inbox v t),
         nd.seen⟩ (.poll t.toNat)).1 (.poll t.toNat)).1 (.pollPropose t.toNat)).1 := rfl
   have hpre_shape : shapeOf S hn (preNode S rho v nd t) =
       nodeTick (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1 :=
-    pre_shape S rho hn v nd t
+    pre_shape S rho hn v nd t hsel
   -- the final step, common to both cases
   have finish : ∀ (N4 : Model.Node (Model.protoOf (compiled (family S)) E))
       (R4 : List (Model.protoOf (compiled (family S)) E).Object) (c2 : List (Cut _)),
       (shapeOf S hn N4).fgDue = true → (shapeOf S hn N4).self = rho.ownKey v →
       (shapeOf S hn N4).now = t →
-      (shapeOf S hn N4).node = (Node.tickStep dg (rho.ownKey v) n1 t X .proposal).1 →
+      (shapeOf S hn N4).node =
+        (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 t X .proposal).1 →
       (shapeOf S hn N4).outbox = emitted [(Node.acCall (rho.ownKey v) (shapeOf S hn nd).node t
         .tick).2] ++ emitted c2 →
-      c2 = (Node.tickStep dg (rho.ownKey v) n1 t X .proposal).2 →
+      c2 = (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 t X .proposal).2 →
       R4 = blockObjs c2 →
       N4.seen = nd.seen ++ relHead S rho v nd.seen (shapeOf S hn nd).outbox.head? ++ R4 →
       (shapeOf S hn N4).outbox.length ≤ 1 →
@@ -596,14 +620,17 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
         N4.seen = nd.seen ++ relHead S rho v nd.seen (shapeOf S hn nd).outbox.head? ++ R4 ∧
         N5.seen = N4.seen ++ relHead S rho v N4.seen Q.head? ∧
         (∀ o ∈ G, o.auth = .none) ∧ Q.length ≤ 2 ∧
-        Q = emitted (exec dg (rho.ownKey v) (shapeOf S hn nd).node t (.tick X)).2 ++
-          attBodies (exec dg (rho.ownKey v) (shapeOf S hn nd).node t (.tick X)).2 ∧
-        R4 = blockObjs (exec dg (rho.ownKey v) (shapeOf S hn nd).node t (.tick X)).2 ∧
+        Q = emitted (exec (runProposer S rho hn) dg (rho.ownKey v)
+            (shapeOf S hn nd).node t (.tick X)).2 ++
+          attBodies (exec (runProposer S rho hn) dg (rho.ownKey v)
+            (shapeOf S hn nd).node t (.tick X)).2 ∧
+        R4 = blockObjs (exec (runProposer S rho hn) dg (rho.ownKey v)
+            (shapeOf S hn nd).node t (.tick X)).2 ∧
         (∀ c ∈ R4, ∀ x ∈ c.carried, x ∈ Model.closure (nd.seen ++
           relHead S rho v nd.seen (shapeOf S hn nd).outbox.head?)) := by
     intro N4 R4 c2 hf4 hs4 hw4 hn4 ho4 hc2 hR4 hseen4 hb4 hcar htick
     obtain ⟨hR5, hseen5, hR6, -⟩ := trailing_polls S rho hn v N4 t.toNat hsel hf4
-    obtain ⟨hQ, hem3, hbl3, -⟩ := fgUpdate_outbox_eq dg X (shapeOf S hn N4)
+    obtain ⟨hQ, hem3, hbl3, -⟩ := fgUpdate_outbox_eq (runProposer S rho hn) dg X (shapeOf S hn N4)
     rw [hs4, hn4, hw4] at hQ hem3 hbl3
     refine ⟨N4, (rho.dutyStep v N4 (.poll t.toNat)).1, (fgUpdate (shapeOf S hn N4)).outbox, R4,
       (Model.releaseAll (Model.protoOf (compiled (family S)) E) rho.hash (rho.ownKey v)
@@ -616,8 +643,8 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
       · rw [h]; omega
       · rw [h, List.length_append, List.length_singleton]; omega
     · rw [hQ, ho4, hcuts, hc2, emitted_append, emitted_append, attBodies_append, attBodies_append,
-        hem3, tickStep_proposal_attBodies (sp := S.params (pubOf E) hn) (ro := S.ro _) dg
-          (rho.ownKey v) n1 t X,
+        hem3, tickStep_proposal_attBodies (sp := S.params (pubOf E) hn) (ro := S.ro _)
+          (runProposer S rho hn) dg (rho.ownKey v) n1 t X,
         show attBodies [(Node.acCall (rho.ownKey v) (shapeOf S hn nd).node t .tick).2] = [] from
           attBodies_ac _]
       simp only [List.append_nil, List.nil_append, List.append_assoc]
@@ -627,13 +654,15 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
       simp only [List.append_nil, List.nil_append]
       rfl
   simp only [Model.Run.releasesAt, he]
-  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.proposer) t with
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
     ⟨hnil, hno⟩ | ⟨s, hs, hone, hts⟩
   · -- no slot proposal at `t`
     obtain ⟨N1, N3, N5, N6, rfl, rfl, rfl, rfl, heq⟩ := tick_unroll_nil S rho v nd t ht hw hnil
-    have hnp : ¬ Proposes (P := (S.params (pubOf E) hn).toParams) (rho.ownKey v) t :=
-      not_proposes S hn _ t (fun s hs h => hno s hs (h.trans (slotTime_eq S hn s)))
-    have hc2 := tickStep_proposal_not' dg (rho.ownKey v) n1 t X hnp
+    have hnp : ¬ Proposes (P := (S.params (pubOf E) hn).toParams)
+        (runProposer S rho hn) (rho.ownKey v) t :=
+      not_proposes S hn (runProposer S rho hn) _ t
+        (fun s hs h => hno s hs (h.trans (slotTime_eq S hn s)))
+    have hc2 := tickStep_proposal_not' (runProposer S rho hn) dg (rho.ownKey v) n1 t X hnp
     have hb3 := outbox_after_pre S rho hn v (shapeOf S hn nd) t ht hf hlen
       (preNode S rho v nd t) hpre_shape
     rw [hnil] at hb3
@@ -823,8 +852,8 @@ theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Tim
   rw [hσ] at hlen hf ⊢
   obtain ⟨hR1, hR2, hR3, -, hS3, hout2, -, -, hnow2, hfg2⟩ :=
     leading_polls S rho hn v nd t hsel hf hlen
-  have hnil : (skeleton (pubOf E) S.proposer).proposeAt t = [] := by
-    rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.proposer) t with
+  have hnil : (skeleton (pubOf E)).proposeAt t = [] := by
+    rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
       ⟨h, -⟩ | ⟨s, hs, -, hts⟩
     · exact h
     · exfalso; apply hnp
@@ -842,7 +871,7 @@ theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Tim
     (.pollPropose t.toNat)).1 t.toNat hsel
   rw [hpre3, hout2] at hR5
   have hS5 := dutyStep_poll S rho hn v (rho.dutyStep v (rho.dutyStep v N1 (.poll t.toNat)).1
-    (.pollPropose t.toNat)).1 t.toNat
+    (.pollPropose t.toNat)).1 t.toNat hsel
   have hpre5 : pollPre (shapeOf S hn (rho.dutyStep v (rho.dutyStep v
       (rho.dutyStep v N1 (.poll t.toNat)).1 (.pollPropose t.toNat)).1 (.poll t.toNat)).1) =
       shapeOf S hn (rho.dutyStep v (rho.dutyStep v
@@ -870,7 +899,7 @@ theorem att_released_inv (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
     (hv' : v ∈ rho.honest) (he : rho.events[j]? = some (.tick v t)) {b : FG.Att (Fintype.card V)}
     (hb : (attObj b : (Model.protoOf (compiled (family S)) E).Object) ∈ rho.releasesAt j) :
     (S.params (pubOf E) hn).toParams.IsPublic t ∧ ∃ C,
-      Cut.fg (.attest C (some b)) ∈ (exec (digestOf S rho) (rho.ownKey v)
+      Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
   obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v hv' j
   obtain ⟨hvote, -⟩ := (atMostOneVote_iff _).1 hamo
@@ -887,7 +916,8 @@ theorem att_released_inv (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
     rw [heq] at hb
     have hQmem : ∀ seen ob, ob ∈ [Q.head?, Q.tail.head?] →
         (attObj b : (Model.protoOf (compiled (family S)) E).Object) ∈ relHead S rho v seen ob →
-        ∃ C, Cut.fg (.attest C (some b)) ∈ (exec (digestOf S rho) (rho.ownKey v)
+        ∃ C, Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn)
+          (digestOf S rho) (rho.ownKey v)
           (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
       intro seen ob hob h
       obtain ⟨q, rfl, hqo⟩ := mem_relHead S rho h
@@ -955,10 +985,10 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- A signing cut of a handler of `self` signs an attestation of `self`. -/
 theorem attest_val_of_mem_exec {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (e : Event (goldilocksNode sp ro))
     {C : (goldilocksNode sp ro).Blk} {a : FG.Att sp.n}
-    (h : Cut.fg (.attest C (some a)) ∈ (exec dg self st t e).2) : a.val = self := by
+    (h : Cut.fg (.attest C (some a)) ∈ (exec proposer dg self st t e).2) : a.val = self := by
   have key : ∀ {st st' : NodeState (goldilocksNode sp ro)} {cs},
       CutChain self t st cs st' → Cut.fg (.attest C (some a)) ∈ cs → a.val = self := by
     intro st st' cs hc
@@ -971,8 +1001,8 @@ theorem attest_val_of_mem_exec {sp : SAParams} {ro : ReplayOrder sp (List (FG.At
         obtain ⟨he, -, -⟩ := hstep
         exact createAtt_val he
       · exact ih hm
-  exact key (Compose.exec_is_cut_chain (P := sp.toParams) (A := goldilocksNode sp ro) dg self
-    st t e) h
+  exact key (Compose.exec_is_cut_chain (P := sp.toParams) (A := goldilocksNode sp ro)
+    proposer dg self st t e) h
 
 omit [DecidableEq V] in
 /-- An object carrying nothing contains only itself. -/
@@ -996,7 +1026,7 @@ trace. -/
 theorem signAt_of_tick_cut {j : Nat} {v : V} {t : Time}
     (he : rho.events[j]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) {C} {b : FG.Att (Fintype.card V)}
-    (hc : Cut.fg (.attest C (some b)) ∈ (exec (digestOf S rho) (rho.ownKey v)
+    (hc : Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2) :
     ∃ k, (simTrace S rho hn).SignAt (rho.ownKey v) k b := by
   have hj : j < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
@@ -1004,24 +1034,27 @@ theorem signAt_of_tick_cut {j : Nat} {v : V} {t : Time}
   obtain ⟨m, hm, hcm⟩ := List.getElem_of_mem hc
   have hm' : m < (eventCuts S rho hn j).length := by
     rw [hEC]; exact lt_of_lt_of_eq hm
-      (length_groupRecs (sp := S.params (pubOf E) hn) (ro := S.ro _) _ _ _ _ _ _).symm
+      (length_groupRecs (sp := S.params (pubOf E) hn) (ro := S.ro _) _ _ _ _ _ _ _).symm
   have hk := allCuts_getElem?_add S rho hn j m hj hm'
   rw [List.getElem?_eq_getElem hm'] at hk
-  have hm'' : m < (groupRecs (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v j).node t
+  have hm'' : m < (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+      (stateAt S rho hn v j).node t
       (Nat.pair j 0) (.tick (encodeTxs (Model.mempool rho.inbox v t)))).length :=
     lt_of_lt_of_eq hm
-      (length_groupRecs (sp := S.params (pubOf E) hn) (ro := S.ro _) _ _ _ _ _ _).symm
-  obtain ⟨hnode, -, -, -, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ m hm''
+      (length_groupRecs (sp := S.params (pubOf E) hn) (ro := S.ro _) _ _ _ _ _ _ _).symm
+  obtain ⟨hnode, -, -, -, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm''
   refine ⟨cutMap S rho hn j + m, C, ?_, ?_⟩
   · rw [simTrace_node, hk]
     simp only [Option.elim_some]
-    rw [show (eventCuts S rho hn j)[m] = (groupRecs (digestOf S rho) (rho.ownKey v)
+    rw [show (eventCuts S rho hn j)[m] = (groupRecs (runProposer S rho hn)
+      (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v j).node t (Nat.pair j 0)
       (.tick (encodeTxs (Model.mempool rho.inbox v t))))[m] from by simp only [hEC]]
     exact hnode
   · rw [simTrace_label, hk]
     simp only [Option.map_some]
-    rw [show (eventCuts S rho hn j)[m] = (groupRecs (digestOf S rho) (rho.ownKey v)
+    rw [show (eventCuts S rho hn j)[m] = (groupRecs (runProposer S rho hn)
+      (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v j).node t (Nat.pair j 0)
       (.tick (encodeTxs (Model.mempool rho.inbox v t))))[m] from by simp only [hEC], hlab, hcm]
 
@@ -1049,11 +1082,12 @@ theorem tick_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
       (∀ C a, r.label = .fg (.attest C (some a)) → attObj a ∈ rho.releasesAt i) := by
   intro r hr
   have hEC := eventCuts_tick_public S rho hn i v t he hp
-  have hlab : r.label ∈ (exec (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+  have hlab : r.label ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+      (stateAt S rho hn v i).node t
       (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
     rw [hEC] at hr
     obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hr
-    obtain ⟨-, -, -, -, hl⟩ := getElem_groupRecs _ _ _ _ _ _ m hm
+    obtain ⟨-, -, -, -, hl⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
     rw [hl]; exact List.getElem_mem _
   obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v hv' i
   obtain ⟨hvote, -⟩ := (atMostOneVote_iff _).1 hamo
@@ -1169,7 +1203,7 @@ theorem tick_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
       (List.mem_append_right _ ?_)))
     rw [hR4]
     exact List.mem_flatMap.mpr ⟨_, hB ▸ hlab, List.mem_singleton_self _⟩
-  · have hval := emits_val_of_mem_exec _ _ _ _ _ (hℓ ▸ hlab) m hm
+  · have hval := emits_val_of_mem_exec _ _ _ _ _ _ (hℓ ▸ hlab) m hm
     have hq : Body.vote (encodeVote m.msg) ∈ Q := by
       rw [hQ]
       exact List.mem_append_left _ (List.mem_flatMap.mpr ⟨_, hℓ ▸ hlab,
@@ -1179,7 +1213,7 @@ theorem tick_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     exact (congrArg (· ∈ rho.releasesAt i) hobj).mpr (hrelQ _ hq
       (protects_of_not_att S _ _ _ (fun k w h => by cases h))
       (protects_of_not_att S _ _ _ (fun k w h => by cases h)))
-  · have hval := attest_val_of_mem_exec _ _ _ _ _ (ha ▸ hlab)
+  · have hval := attest_val_of_mem_exec _ _ _ _ _ _ (ha ▸ hlab)
     have hq : Body.att (encodeAtt a) ∈ Q := by
       rw [hQ]
       exact List.mem_append_right _ (List.mem_flatMap.mpr ⟨_, ha ▸ hlab,

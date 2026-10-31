@@ -20,7 +20,8 @@ variable (sp : SAParams)
 
 /-- **A1.3.** -/
 theorem next_transfer : NextTransfer sp := by
-  intro FGP ro H U tr hrun m y i B ℓ e hy hc hs hall hhalf hcarry hfault hsync hviab hearlier
+  intro FGP ro H U tr proposer hrun m y i B ℓ e hy hc hs hall hhalf hcarry hfault hsync hviab
+    hearlier
   have hr := hrun.localRun
   have hU := hr.coherent
   obtain ⟨-, -, -, hhead⟩ := castAt_spec hr hy hc
@@ -109,7 +110,8 @@ theorem next_transfer : NextTransfer sp := by
 `D` (the block the lock stores after moving back): every hypothesis and the conclusion are about
 `B`, with the counted votes `CV` of `D`. -/
 theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} (hrun : ACRun tr H U) {s : Nat}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    (hrun : ACRun proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hf : 2 * Hᶜ.ncard < sp.n)
@@ -196,14 +198,15 @@ theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : S
 
 /-- **A1.4 (a).** -/
 theorem optimistic_transfer : OptimisticTransfer sp :=
-  fun _ _ _ _ _ hrun _ _ _ _ _ _ _ _ _ hx hopt hf hy hc hs _ hcarry hviab hearlier =>
+  fun _ _ _ _ _ _ hrun _ _ _ _ _ _ _ _ _ hx hopt hf hy hc hs _ hcarry hviab hearlier =>
     optimistic_transfer_stored sp hrun hx hopt .refl hf hy hc hs hcarry hviab hearlier
 
 /-- **A1.2, for the stored block.** A1.2 for a block `B ⪯ D` of a fast lock on `D` (the block
 the lock stores after moving back): every hypothesis and the conclusion are about `B`, with the
 counted votes `CV` of `D`. -/
 theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} (hrun : ACRun tr H U) {s : Nat}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    (hrun : ACRun proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
@@ -296,7 +299,7 @@ theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (F
 
 /-- **A1.2.** -/
 theorem first_transfer : FirstTransfer sp :=
-  fun _ _ _ _ _ hrun _ _ _ _ _ _ _ _ _ hx hfl hy hc hs hsync hcarry hfault hviab hearlier =>
+  fun _ _ _ _ _ _ hrun _ _ _ _ _ _ _ _ _ hx hfl hy hc hs hsync hcarry hfault hviab hearlier =>
     first_transfer_stored sp hrun hx hfl .refl hy hc hs hsync hcarry hfault hviab hearlier
 
 /-- A block that `ac_to_fg` returns is a candidate. -/
@@ -314,7 +317,7 @@ private theorem mem_toFGCandidates {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.
 
 /-- **A1.5.** -/
 theorem source_age : SourceAge sp := by
-  intro FGP ro H U tr hrun τ x i ℓ C hx hto hslot
+  intro FGP ro H U tr proposer hrun τ x i ℓ C hx hto hslot
   obtain ⟨hc, -, hC⟩ := hto
   obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := mem_toFGCandidates sp hC
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
@@ -354,7 +357,7 @@ theorem source_age : SourceAge sp := by
 
 /-- **A1.8.** -/
 theorem result_transfer : ResultTransfer sp := by
-  intro FGP ro H U tr hrun s X y i₀ i C CV ℓ e hX hres hy hc hs hcarry hviab hlocks hd
+  intro FGP ro H U tr proposer hrun s X y i₀ i C CV ℓ e hX hres hy hc hs hcarry hviab hlocks hd
   obtain ⟨-, -, -, hhead⟩ := castAt_spec hrun.localRun hy hc
   have hU := hrun.localRun.coherent
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by

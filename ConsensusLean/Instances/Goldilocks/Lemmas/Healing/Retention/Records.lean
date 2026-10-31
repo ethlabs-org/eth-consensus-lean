@@ -153,6 +153,7 @@ theorem chain_pairs_entry {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
+  {proposer : Nat → Fin sp.n}
 
 private theorem tree_subset_honest {y : Fin sp.n} (hy : y ∈ H) {k : Nat} :
     (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun _ hX => ⟨y, hy, k, hX⟩
@@ -161,7 +162,8 @@ private theorem tree_subset_honest {y : Fin sp.n} (hy : y ∈ H) {k : Nat} :
 which only an `fg_attest` that signs changes): a target or timeout entry `r` at `h` was the height
 pair `(h, r)` of an attestation the node signed earlier, a lock entry `r` at `h` its finality
 pair `(h, r)`. -/
-theorem client_record_origin (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
+theorem client_record_origin (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H)
     (h r : Nat) : ∀ i,
     ((tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h →
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.h = h ∧ att.T = r) ∧
@@ -249,7 +251,8 @@ theorem client_record_origin (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n}
 (§16; G0.2 (h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry
 state at a bound entry, or one of its pending pairs) names the entry at height `h` of an
 ancestor-or-self `J` of the source's entry `E` (whose root is the signed `T`). -/
-theorem signed_fin_pair_entry (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
+theorem signed_fin_pair_entry (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) {h r : Nat}
     (hfin : att.fin = some (h, r)) :
     ∃ J ∈ (tr.state y k).fg.tree, ∃ E ∈ (tr.state y k).fg.tree, E.root = att.T ∧
@@ -289,7 +292,7 @@ theorem signed_fin_pair_entry (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n
 /-- **A high record entry names an entry of a high origin's chain** (§16): the target, timeout
 or lock entry `r` at `h ≥ H_z + 1` of an honest record is the root of a block `Z` below the
 block of a high origin, the entry at height `h` of its chain. -/
-theorem high_record_entry (hp : ResetPremises tr H dg g ΔF a)
+theorem high_record_entry (hp : ResetPremises tr H proposer dg g ΔF a)
     (hrows : ∀ y ∈ H, ∀ k att, tr.SignAt y k att → a ≤ tr.time k → HZ tr H g + 1 ≤ att.h →
       ∃ x i j B, HighOrigin tr H g x i j B ∧ ∃ E ∈ (tr.state x i).fg.tree,
         (tr.state x i).fg.Anc E B ∧ E.root = att.T ∧ ((tr.state x i).fg.σ E.root).h = att.h ∧
@@ -327,7 +330,8 @@ theorem high_record_entry (hp : ResetPremises tr H dg g ΔF a)
       (Anc.mono (tree_subset_honest ho.1) hE''B), hJr, y, hy, k, hJ, hJh, hJT⟩
 
 /-- **Two entries at one height below one held block are one block** (entry constancy). -/
-theorem entry_root_eq (hp : ResetPremises tr H dg g ΔF a) {z : Fin sp.n} (hz : z ∈ H) {m : Nat}
+theorem entry_root_eq (hp : ResetPremises tr H proposer dg g ΔF a)
+    {z : Fin sp.n} (hz : z ∈ H) {m : Nat}
     {C Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state z m).fg.tree)
     (h₁ : Anc (tr.HonestBlocks H) Z₁ C) (h₂ : Anc (tr.HonestBlocks H) Z₂ C)
     (hh : ((tr.state z m).fg.σ Z₁.root).h = ((tr.state z m).fg.σ Z₂.root).h)

@@ -101,22 +101,24 @@ def tickSteps : List TickStep := [.acTick, .proposal, .fgUpdate]
 
 /-- Whether validator `self` proposes at time `t`: `t = t_s` for a slot `s > 0` whose proposer
 is `self`. -/
-def Proposes (self : Fin P.n) (t : Time) : Prop :=
-  0 < P.slotOf t ∧ t = P.slotTime (P.slotOf t) ∧ P.proposer (P.slotOf t) = self
+def Proposes (proposer : Nat → Fin P.n) (self : Fin P.n) (t : Time) : Prop :=
+  0 < P.slotOf t ∧ t = P.slotTime (P.slotOf t) ∧ proposer (P.slotOf t) = self
 
-instance (self : Fin P.n) (t : Time) : Decidable (Proposes (P := P) self t) :=
+instance (proposer : Nat → Fin P.n) (self : Fin P.n) (t : Time) :
+    Decidable (Proposes (P := P) proposer self t) :=
   inferInstanceAs (Decidable (0 < P.slotOf t ∧ t = P.slotTime (P.slotOf t) ∧
-    P.proposer (P.slotOf t) = self))
+    proposer (P.slotOf t) = self))
 
 /-- One tick step at validator `self` and time `t`, with the tick's input `x` (the encoded
 transactions a proposal carries; only the proposal step reads it). -/
-noncomputable def tickStep (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+noncomputable def tickStep (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
     (st : NodeState A) (t : Time) (x : Nat) : TickStep → NodeState A × List (Cut A)
   | .acTick =>
       let r := acCall self st t .tick
       (r.1, [r.2])
   | .proposal =>
-      if Proposes self t then
+      if Proposes proposer self t then
         let r := acProposal st t
         match r.2.2 with
         | none => (r.1, [r.2.1])
@@ -134,17 +136,19 @@ noncomputable def tickStep (dg : Digest (List (FG.Att P.n)) A.Payload) (self : F
 
 /-- The tick steps `steps` in order from `st`: each reads the state the earlier ones left; the
 cuts are concatenated. -/
-noncomputable def runSteps (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+noncomputable def runSteps (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
     (st : NodeState A) (t : Time) (x : Nat) (steps : List TickStep) :
     NodeState A × List (Cut A) :=
   steps.foldl (fun acc step =>
-    let r := tickStep dg self acc.1 t x step
+    let r := tickStep proposer dg self acc.1 t x step
     (r.1, acc.2 ++ r.2)) (st, [])
 
 /-- `on_tick(t)` at validator `self` with the input `x`: `tickSteps` in order. -/
-noncomputable def onTick (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+noncomputable def onTick (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
     (st : NodeState A) (t : Time) (x : Nat) : NodeState A × List (Cut A) :=
-  runSteps dg self st t x tickSteps
+  runSteps proposer dg self st t x tickSteps
 
 /-- A top-level event of a node: a tick, a delivery (a block, an AC message, an attestation),
 a restart. -/
@@ -162,9 +166,10 @@ inductive Event (A : NodeAC P) where
   | restart
 
 /-- The handler of an event at validator `self` and time `t`. -/
-noncomputable def exec (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+noncomputable def exec (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
     (st : NodeState A) (t : Time) : Event A → NodeState A × List (Cut A)
-  | .tick x => onTick dg self st t x
+  | .tick x => onTick proposer dg self st t x
   | .block B => onBlock self st t B
   | .message m => onMessage self st t m
   | .attestation a => onAttestation st a

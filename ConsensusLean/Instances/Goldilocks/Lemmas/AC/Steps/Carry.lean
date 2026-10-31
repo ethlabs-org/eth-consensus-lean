@@ -20,7 +20,7 @@ For an update result `C` of an honest `X` in slot `s` with counted votes `CV`, a
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 private theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
     (h : x ∈ A.pool σ) : x ∈ (admitVote sp A t v).pool σ := by
@@ -182,7 +182,7 @@ block `C` of the voter's tree and was accepted by the voter before the freeze, a
 validator does not equivocate in the voter's merged view, makes that validator a supporter of
 `C` there (the head is still in the voter's tree, and the vote is resolved before the freeze:
 the voter is joined, so its restarts were before `t_s`). -/
-theorem carried_supporter (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+theorem carried_supporter (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
     (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {v : Vote sp.n}
     (hvs : v.slot = s) (hheld : HeldBefore e.readPoint v (sp.ts s + 3 * sp.Δ))
@@ -285,7 +285,7 @@ theorem carried_supporter (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i
 covers, whose head (of slot at most `s`) extends a block `C` of the voter's tree, is a supporter of
 `C` in the voter's merged view or an equivocator there (two other held votes of it, or a second
 vote beside the held one). -/
-theorem carried_cover (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+theorem carried_cover (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
     (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {CV : Set (Vote sp.n)}
     (hcarry : CarryAt tr U y i e s CV) {v : Vote sp.n} (hv : v ∈ CV) (hvs : v.slot = s)
@@ -314,7 +314,7 @@ theorem carried_cover (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : N
 `X`) are supporters of every `C ⪯ D` in an honest voter's merged view of the next slot, under
 `Carry_y` for the counted votes, `C` viable at the vote, and the writer-pool condition (A1.8 (a),
 (c), (d)). -/
-theorem counted_supporters (hrun : ACRun tr H U) {X y : Fin sp.n} (hX : X ∈ H) (hy : y ∈ H)
+theorem counted_supporters (hrun : ACRun proposer tr H U) {X y : Fin sp.n} (hX : X ∈ H) (hy : y ∈ H)
     {i₀ i s : Nat} {C D : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hcX : tr.CallAt X i₀ ℓX) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) (hCD : Anc U C D)
     (hcarry : CarryAt tr U y i e s (fastCounted sp (tr.state X i₀) ℓX.frame s D))

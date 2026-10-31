@@ -35,7 +35,7 @@ noncomputable abbrev Φ₀ : rootAC.Frm := Node.frame (Node.init rootAC)
 
 /-- The cuts of the tick of time `0` from the initial node state. -/
 noncomputable def tickCuts : List (Cut rootAC) :=
-  (Node.exec dg₁ v₀ (Node.init rootAC) 0 (.tick 0)).2
+  (Node.exec (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 0 (.tick 0)).2
 
 /-- The slot of time `0` is `0`. -/
 theorem slotOf_zero : P₁.slotOf 0 = 0 := by decide
@@ -45,7 +45,7 @@ frame and no emissions: the validator does not propose at `0` and `rootAC` retur
 `fg_confirmed = ⊥`. -/
 theorem tickCuts_eq :
     tickCuts = [.ac ⟨.tick, Φ₀, []⟩, .ac ⟨.toFG, Φ₀, []⟩] := by
-  have hnp : ¬ Node.Proposes (P := P₁) v₀ 0 := fun h => by
+  have hnp : ¬ Node.Proposes (P := P₁) (fun _ => v₀) v₀ 0 := fun h => by
     have := h.1; rw [slotOf_zero] at this; exact absurd this (lt_irrefl 0)
   simp only [tickCuts, Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep, hnp,
     Node.acCall, Node.acToFG, rootAC, ACInterface.step, List.foldl, ite_false]
@@ -94,8 +94,8 @@ theorem oneTickRun_label_lt {i : Nat} (h : oneTickRun.label i ≠ none) : i < 2 
 /-- The handler of a delivery makes no cut or starts with an FG cut. -/
 theorem exec_delivery_head (st : NodeState rootAC) (t : Time) (e : Node.Event rootAC)
     (he : ∀ x, e ≠ .tick x) (hr : e ≠ .restart) :
-    (Node.exec dg₁ v₀ st t e).2 = [] ∨
-      ∃ ℓ l, (Node.exec dg₁ v₀ st t e).2 = .fg ℓ :: l := by
+    (Node.exec (fun _ => v₀) dg₁ v₀ st t e).2 = [] ∨
+      ∃ ℓ l, (Node.exec (fun _ => v₀) dg₁ v₀ st t e).2 = .fg ℓ :: l := by
   cases e with
   | tick x => exact absurd rfl (he x)
   | restart => exact absurd rfl hr
@@ -111,10 +111,10 @@ theorem exec_delivery_head (st : NodeState rootAC) (t : Time) (e : Node.Event ro
 
 /-- A group of the one-tick run starts at cut `0`, at time `0`, and is a tick or a restart. -/
 theorem oneTickRun_groupAt {y : Fin P₁.n} {j : Nat} {t : Time} {e : Node.Event rootAC}
-    (h : oneTickRun.GroupAt dg₁ y j t e) :
+    (h : oneTickRun.GroupAt (fun _ => v₀) dg₁ y j t e) :
     j = 0 ∧ t = 0 ∧ ((∃ x, e = .tick x) ∨ e = .restart) := by
   obtain ⟨hne, hk, hev⟩ := h
-  have hlen : 0 < (Node.exec dg₁ y (oneTickRun.state y j) t e).2.length :=
+  have hlen : 0 < (Node.exec (fun _ => v₀) dg₁ y (oneTickRun.state y j) t e).2.length :=
     List.length_pos_of_ne_nil hne
   obtain ⟨-, ht, -, -, hl⟩ := hk 0 hlen
   have hj : j < 2 :=
@@ -135,17 +135,18 @@ theorem oneTickRun_groupAt {y : Fin P₁.n} {j : Nat} {t : Time} {e : Node.Event
   rcases exec_delivery_head (oneTickRun.state v₀ j) t e (fun x hx => hte ⟨x, hx⟩) hre with
     h0 | ⟨ℓ, l, hl'⟩
   · exact hne h0
-  · have h0 : (Node.exec dg₁ v₀ (oneTickRun.state v₀ j) t e).2[0] = .fg ℓ := by
+  · have h0 : (Node.exec (fun _ => v₀) dg₁ v₀ (oneTickRun.state v₀ j) t e).2[0] = .fg ℓ := by
       rw [List.getElem_of_eq hl' hlen]; rfl
     rw [Nat.add_zero, h0] at hl
     obtain ⟨ℓ', hℓ', -⟩ := oneTickRun_label_ac hl
     cases hℓ'
 
 /-- (a) The tick of time `0` is a group of the one-tick run, at cut `0`. -/
-theorem oneTickRun_tickAt (y : Fin P₁.n) : oneTickRun.TickAt dg₁ y 0 0 := by
+theorem oneTickRun_tickAt (y : Fin P₁.n) : oneTickRun.TickAt (fun _ => v₀) dg₁ y 0 0 := by
   have hy : y = v₀ := Fin.ext (Nat.lt_one_iff.mp y.isLt)
   subst hy
-  have hcs : (Node.exec dg₁ v₀ (oneTickRun.state v₀ 0) 0 (.tick 0)).2 = tickCuts := rfl
+  have hcs : (Node.exec (fun _ => v₀) dg₁ v₀ (oneTickRun.state v₀ 0) 0 (.tick 0)).2 =
+      tickCuts := rfl
   refine ⟨0, by rw [hcs, tickCuts_eq]; exact List.cons_ne_nil _ _, fun k hk => ?_, fun i hi => ?_⟩
   · have hk2 : k < 2 := by rw [hcs, tickCuts_eq] at hk; simpa using hk
     refine ⟨rfl, rfl, ?_, Nat.zero_add k, ?_⟩
@@ -162,7 +163,7 @@ theorem oneTickRun_tickAt (y : Fin P₁.n) : oneTickRun.TickAt dg₁ y 0 0 := by
 /-- (a) The one-tick run is a `Node.LocalRun` for the honest set `{0}` (every message signer
 map; `rootAC` has no messages). -/
 theorem oneTickRun_localRun (sg : rootAC.Msg → Fin P₁.n) :
-    Node.LocalRun dg₁ Set.univ sg oneTickRun where
+    Node.LocalRun (fun _ => v₀) dg₁ Set.univ sg oneTickRun where
   init _ _ := rfl
   grouped y _ i c hc := by
     have hy : y = v₀ := Fin.ext (Nat.lt_one_iff.mp y.isLt)
@@ -179,6 +180,7 @@ theorem oneTickRun_localRun (sg : rootAC.Msg → Fin P₁.n) :
     · exact ⟨rfl, rfl, rfl, rfl⟩
   wire y _ j t e h := by
     rcases (oneTickRun_groupAt h).2.2 with ⟨x, rfl⟩ | rfl <;> trivial
+  proposerCredential _ _ _ _ B _ := Fin.ext (Nat.lt_one_iff.mp B.proposer.isLt)
   time_nonneg _ := le_rfl
   time_mono _ _ _ := le_rfl
   finite _ := (Set.finite_Iio 2).subset fun i hi => oneTickRun_label_lt hi.1
@@ -238,7 +240,7 @@ noncomputable abbrev Φ₀' : idleAC.Frm := Node.frame (Node.init idleAC)
 
 /-- The cuts of the tick of time `t` from the initial node state of `idleAC`. -/
 noncomputable def idleTickCuts (t : Time) : List (Cut idleAC) :=
-  (Node.exec dg₁ v₀ (Node.init idleAC) t (.tick 0)).2
+  (Node.exec (fun _ => v₀) dg₁ v₀ (Node.init idleAC) t (.tick 0)).2
 
 /-- `slot(t) = t` for `t ≥ 0` in `P₁`. -/
 theorem P₁_slotOf {t : Time} (ht : 0 ≤ t) : P₁.slotOf t = t.toNat := by
@@ -249,7 +251,8 @@ theorem P₁_slotOf {t : Time} (ht : 0 ≤ t) : P₁.slotOf t = t.toNat := by
   rw [Int.toNat_of_nonneg ht]
 
 /-- The validator proposes at every `t ≥ 1` in `P₁`. -/
-theorem P₁_proposes {t : Time} (ht : 1 ≤ t) : Node.Proposes (P := P₁) v₀ t := by
+theorem P₁_proposes {t : Time} (ht : 1 ≤ t) :
+    Node.Proposes (P := P₁) (fun _ => v₀) v₀ t := by
   have h0 : 0 ≤ t := le_trans zero_le_one ht
   refine ⟨?_, ?_, rfl⟩
   · rw [P₁_slotOf h0]
@@ -259,7 +262,7 @@ theorem P₁_proposes {t : Time} (ht : 1 ≤ t) : Node.Proposes (P := P₁) v₀
 
 /-- The tick of time `0`: `ac_on_tick`, `ac_to_fg`. -/
 theorem idleTickCuts_zero : idleTickCuts 0 = [.ac ⟨.tick, Φ₀', []⟩, .ac ⟨.toFG, Φ₀', []⟩] := by
-  have hnp : ¬ Node.Proposes (P := P₁) v₀ 0 := fun h => by
+  have hnp : ¬ Node.Proposes (P := P₁) (fun _ => v₀) v₀ 0 := fun h => by
     have := h.1; rw [slotOf_zero] at this; exact absurd this (lt_irrefl 0)
   simp only [idleTickCuts, Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep,
     hnp, Node.acCall, Node.acToFG, idleAC, rootAC, ACInterface.step, List.foldl, ite_false]
@@ -369,9 +372,9 @@ theorem periodicRun_label_bound {i : Nat} (h : periodicRun.label i ≠ none) (h0
 
 /-- (a) The tick of time `t ≥ 0` is a group of the periodic run, at cut `3t`. -/
 theorem periodicRun_tickAt {t : Time} (ht : 0 ≤ t) :
-    periodicRun.TickAt dg₁ v₀ (3 * t.toNat) t := by
+    periodicRun.TickAt (fun _ => v₀) dg₁ v₀ (3 * t.toNat) t := by
   have htt : ((t.toNat : Nat) : Int) = t := Int.toNat_of_nonneg ht
-  have hcs : (Node.exec dg₁ v₀ (periodicRun.state v₀ (3 * t.toNat)) t (.tick 0)).2 =
+  have hcs : (Node.exec (fun _ => v₀) dg₁ v₀ (periodicRun.state v₀ (3 * t.toNat)) t (.tick 0)).2 =
       idleTickCuts t := by rw [periodicRun_state]; rfl
   have hlen : ∀ k, k < (idleTickCuts t).length → k < 3 ∧ (3 * t.toNat + k ≠ 2) := by
     intro k hk
@@ -413,10 +416,10 @@ theorem periodicRun_tickAt {t : Time} (ht : 0 ≤ t) :
 /-- A group of the periodic run starts at a cut `3t'`, at time `t'`, and is a tick or a
 restart (the only events whose handler can start with an AC cut). -/
 theorem periodicRun_groupAt {y : Fin P₁.n} {j : Nat} {t : Time} {e : Node.Event idleAC}
-    (h : periodicRun.GroupAt dg₁ y j t e) :
+    (h : periodicRun.GroupAt (fun _ => v₀) dg₁ y j t e) :
     j % 3 = 0 ∧ t = ((j / 3 : Nat) : Int) ∧ ((∃ x, e = .tick x) ∨ e = .restart) := by
   obtain ⟨hne, hk, hev⟩ := h
-  have hlen : 0 < (Node.exec dg₁ y (periodicRun.state y j) t e).2.length :=
+  have hlen : 0 < (Node.exec (fun _ => v₀) dg₁ y (periodicRun.state y j) t e).2.length :=
     List.length_pos_of_ne_nil hne
   obtain ⟨-, ht, -, -, hl⟩ := hk 0 hlen
   rw [Nat.add_zero] at hl ht
@@ -435,8 +438,8 @@ theorem periodicRun_groupAt {y : Fin P₁.n} {j : Nat} {t : Time} {e : Node.Even
   by_cases hre : e = .restart
   · exact Or.inr hre
   exfalso
-  have hdel : (Node.exec dg₁ v₀ (periodicRun.state v₀ j) t e).2 = [] ∨
-      ∃ ℓ l, (Node.exec dg₁ v₀ (periodicRun.state v₀ j) t e).2 = .fg ℓ :: l := by
+  have hdel : (Node.exec (fun _ => v₀) dg₁ v₀ (periodicRun.state v₀ j) t e).2 = [] ∨
+      ∃ ℓ l, (Node.exec (fun _ => v₀) dg₁ v₀ (periodicRun.state v₀ j) t e).2 = .fg ℓ :: l := by
     cases e with
     | tick x => exact absurd ⟨x, rfl⟩ hte
     | restart => exact absurd rfl hre
@@ -451,7 +454,7 @@ theorem periodicRun_groupAt {y : Fin P₁.n} {j : Nat} {t : Time} {e : Node.Even
         · exact Or.inr ⟨_, _, rfl⟩
   rcases hdel with h0 | ⟨ℓ, l, hl'⟩
   · exact hne h0
-  · have h0 : (Node.exec dg₁ v₀ (periodicRun.state v₀ j) t e).2[0] = .fg ℓ := by
+  · have h0 : (Node.exec (fun _ => v₀) dg₁ v₀ (periodicRun.state v₀ j) t e).2[0] = .fg ℓ := by
       rw [List.getElem_of_eq hl' hlen]; rfl
     rw [h0] at hl
     obtain ⟨ℓ', hℓ', -⟩ := (periodicRun_label hl).2
@@ -459,8 +462,8 @@ theorem periodicRun_groupAt {y : Fin P₁.n} {j : Nat} {t : Time} {e : Node.Even
 
 /-- Two groups of the periodic run at one time start at the same cut. -/
 theorem periodicRun_groupAt_unique {y y' : Fin P₁.n} {j j' : Nat} {t : Time}
-    {e e' : Node.Event idleAC} (h : periodicRun.GroupAt dg₁ y j t e)
-    (h' : periodicRun.GroupAt dg₁ y' j' t e') : j = j' := by
+    {e e' : Node.Event idleAC} (h : periodicRun.GroupAt (fun _ => v₀) dg₁ y j t e)
+    (h' : periodicRun.GroupAt (fun _ => v₀) dg₁ y' j' t e') : j = j' := by
   obtain ⟨hm, ht, -⟩ := periodicRun_groupAt h
   obtain ⟨hm', ht', -⟩ := periodicRun_groupAt h'
   have : j / 3 = j' / 3 := by rw [ht] at ht'; exact_mod_cast ht'
@@ -483,7 +486,7 @@ theorem periodicRun_no_fg (y : Fin P₁.n) (k : Nat) (ℓ : FGLabel P₁ idleAC.
 /-- (a) The periodic run is a `Node.LocalRun` for the honest set `{0}`: an infinite run, with a
 tick of the validator at every time `t ≥ 0`. -/
 theorem periodicRun_localRun (sg : idleAC.Msg → Fin P₁.n) :
-    Node.LocalRun dg₁ Set.univ sg periodicRun where
+    Node.LocalRun (fun _ => v₀) dg₁ Set.univ sg periodicRun where
   init _ _ := rfl
   grouped y _ i c hc := by
     have hy : y = v₀ := Fin.ext (Nat.lt_one_iff.mp y.isLt)
@@ -509,6 +512,7 @@ theorem periodicRun_localRun (sg : idleAC.Msg → Fin P₁.n) :
     rcases hcall with h | h | h <;> rw [h] <;> rfl
   wire y _ j t e h := by
     rcases (periodicRun_groupAt h).2.2 with ⟨x, rfl⟩ | rfl <;> trivial
+  proposerCredential _ _ _ _ B _ := Fin.ext (Nat.lt_one_iff.mp B.proposer.isLt)
   time_nonneg _ := Int.natCast_nonneg _
   time_mono _ _ h := Int.ofNat_le.mpr (Nat.div_le_div_right h)
   finite T := (Set.finite_Iio (3 * (T.toNat + 1))).subset fun i hi => by

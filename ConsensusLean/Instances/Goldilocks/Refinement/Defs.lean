@@ -232,17 +232,15 @@ def blockOf (d : Nat) (h : Header Info) (k : Fin sp.n) (atts : List (FG.Att sp.n
     (p : Payload sp.n) : Blk sp :=
   ⟨d, parentRoot sp.genesisRoot h.parent, h.pos, k, h.input, atts, p⟩
 
-/-- The skeleton at the proposer schedule `proposer` (an index reduced modulo `n`, as in
-`Setup`): slots of `4Δ`, the schedule's proposer at every slot (the key `proposer s % n`; no key
-when `n = 0`), everyone in the poll role, no committee kinds; two poll steps (the release of the
+/-- The skeleton lets the run select one proposer at every slot of `4Δ`, with
+everyone in the poll role and no committee kinds; two poll steps (the release of the
 bodies queued since the last tick), the node's tick as the poll proposal step, the slot proposal,
 then two poll steps (the FG update and the release of the tick's bodies); one poll step at every
 delivery (the release of the vote the delivery emitted, if any; the FG update is never due at a
 delivery). -/
-def skeleton (pub : Public) (proposer : Nat → Nat) : Skeleton pub.n where
+def skeleton (pub : Public) : Skeleton pub.n where
   grid := ⟨4 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
-  proposerSel := fun s => .fixed
-    (Finset.univ.filter fun k : Fin pub.n => k.val = proposer s % pub.n)
+  proposerSel := fun _ => .sized 1
   pollSel := .fixed Finset.univ
   Kind := Empty
   decKind := inferInstance
@@ -423,26 +421,30 @@ def dependencies (n : Nat) : Model.DependencyPolicy (Wire n) where
 digests `hs`, from cut `j` to cut `j'`: in order, one top-level event (`canonEvent`) per
 canonical object, its group at the next cut; nothing for a dropped object, nor for a canonical
 object whose handler makes no cut (a future-slot block, which `onBlock` refuses silently). -/
-inductive DeliverSeq (tr : GoldilocksTrace sp ro) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+inductive DeliverSeq (proposer : Nat → Fin sp.n) (tr : GoldilocksTrace sp ro)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (y : Fin sp.n) (t : Time) :
     List (Wire sp.n) → Nat → Nat → Prop
   /-- No object, no cut. -/
-  | nil (j : Nat) : DeliverSeq tr dg hs y t [] j j
+  | nil (j : Nat) : DeliverSeq proposer tr dg hs y t [] j j
   /-- A canonical object: its event's group starts at `j`, and the rest follow it. -/
   | event {o : Wire sp.n} {os : List (Wire sp.n)} {j j' : Nat}
       (e : Node.Event (goldilocksNode sp ro)) : canonEvent sp ro hs o = some e →
-      tr.GroupAt dg y j t e →
-      DeliverSeq tr dg hs y t os (j + (Node.exec dg y (tr.state y j) t e).2.length) j' →
-      DeliverSeq tr dg hs y t (o :: os) j j'
+      tr.GroupAt proposer dg y j t e →
+      DeliverSeq proposer tr dg hs y t os
+        (j + (Node.exec proposer dg y (tr.state y j) t e).2.length) j' →
+      DeliverSeq proposer tr dg hs y t (o :: os) j j'
   /-- A dropped object has no cut. -/
   | drop {o : Wire sp.n} {os : List (Wire sp.n)} {j j' : Nat} : canonEvent sp ro hs o = none →
-      DeliverSeq tr dg hs y t os j j' → DeliverSeq tr dg hs y t (o :: os) j j'
+      DeliverSeq proposer tr dg hs y t os j j' →
+      DeliverSeq proposer tr dg hs y t (o :: os) j j'
   /-- A canonical object whose handler makes no cut (a future-slot block) is not an event of the
   run (`GroupAt` needs a cut), so it has no cut either. -/
   | noCut {o : Wire sp.n} {os : List (Wire sp.n)} {j j' : Nat}
       (e : Node.Event (goldilocksNode sp ro)) : canonEvent sp ro hs o = some e →
-      (Node.exec dg y (tr.state y j) t e).2 = [] →
-      DeliverSeq tr dg hs y t os j j' → DeliverSeq tr dg hs y t (o :: os) j j'
+      (Node.exec proposer dg y (tr.state y j) t e).2 = [] →
+      DeliverSeq proposer tr dg hs y t os j j' →
+      DeliverSeq proposer tr dg hs y t (o :: os) j j'
 
 /-- Recording an own released object: the relay wrapper empties the relay queue; the own block
 (now with its digest) goes through the own `on_block`, as `propose_block` does; a released vote
@@ -469,18 +471,16 @@ noncomputable def nodeTick (st : State sp ro) : State sp ro :=
 /-- The slot proposal of the slot's proposer: `ac_proposal`; the header names the head and
 carries the proposal's attestations (`proposal_attestations`) and the AC payload. The engine
 writes the slot and the input and signs; the own `on_block` runs in `recordOwn`. -/
-noncomputable def propose (st : State sp ro) (s : Slot) :
+noncomputable def propose (st : State sp ro) (_s : Slot) :
     State sp ro × Option (ParentRef × Info × List (Wire sp.n)) :=
-  if sp.toParams.proposer s = st.self then
-    let r := Node.acProposal st.node st.now
-    let st' := { st with node := r.1 }
-    match r.2.2 with
-    | none => (st', none)
-    | some (d, p) =>
-        let atts := r.1.fg.proposalAttestations d.head
-        (st', some (parentRef sp.genesisRoot (some d.head.root), encodeInfo atts p,
-          payloadObjs atts p))
-  else (st, none)
+  let r := Node.acProposal st.node st.now
+  let st' := { st with node := r.1 }
+  match r.2.2 with
+  | none => (st', none)
+  | some (d, p) =>
+      let atts := r.1.fg.proposalAttestations d.head
+      (st', some (parentRef sp.genesisRoot (some d.head.root), encodeInfo atts p,
+        payloadObjs atts p))
 
 /-- The FG update: `ac_to_fg`, then `attest(C)` at the source `C` it returns (`fg_attest`; when
 it signs, the new record, the own `on_attestation` and the attestation queued), as
@@ -534,7 +534,7 @@ noncomputable def restore (k : Fin sp.n) (d : State sp ro) (t : Time) : State sp
 variable (sp ro) in
 /-- The Goldilocks node as a chain shape over its public parameters. -/
 noncomputable def goldilocksShape : ChainShape sp.pub Out Info where
-  skel := skeleton sp.pub fun s => (sp.toParams.proposer s).val
+  skel := skeleton sp.pub
   State := State sp ro
   Body := Body
   Durable := State sp ro
@@ -559,12 +559,10 @@ noncomputable def goldilocksShape : ChainShape sp.pub Out Info where
 
 /-! ## The family -/
 
-/-- The parameters of the Goldilocks node not fixed by the public parameters: the proposer
-schedule (reduced modulo `n`), the genesis root, the FG timeout `δ_t`, the lock window `k`, and
+/-- The parameters of the Goldilocks node not fixed by the public parameters:
+the genesis root, the FG timeout `δ_t`, the lock window `k`, and
 the restart replay order at every parameter set. -/
 structure Setup where
-  /-- The proposer of slot `s`, as an index reduced modulo `n`. -/
-  proposer : Nat → Nat
   /-- The genesis root. -/
   genesisRoot : Nat
   /-- The FG timeout parameter `δ_t`. -/
@@ -572,12 +570,13 @@ structure Setup where
   /-- The lock window `k ≥ 2`. -/
   k : Nat
   two_le_k : 2 ≤ k
-  /-- The restart replay order of the SA. -/
-  ro : (sp : SAParams) → ReplayOrder sp (List (FG.Att sp.n))
+  /-- The restart replay order depends on the validator count and fixed genesis root,
+  not on a proposer schedule or timing parameters. -/
+  ro : (n : Nat) → SA.ReplayOrderData n genesisRoot (List (FG.Att n))
 
-/-- The SA parameters at the public parameters `pub` (with `n ≥ 1`): slots of `4Δ`, the
-proposer schedule modulo `n`. -/
-def Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : SAParams where
+/-- The SA parameters at the public parameters `pub` (with `n ≥ 1`): slots of `4Δ`.
+The run's proposer selection is independent of these runtime parameters. -/
+abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : SAParams where
   toParams :=
     { n := pub.n
       hn := hn
@@ -588,7 +587,6 @@ def Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : SAParams where
       slotTime_strictMono := fun a b h =>
         mul_lt_mul_of_pos_left (by exact_mod_cast h) (by have := pub.Δ_pos; linarith)
       slotTime_public := fun s => ⟨4 * s, by ring⟩
-      proposer := fun s => ⟨S.proposer s % pub.n, Nat.mod_lt _ hn⟩
       genesisRoot := S.genesisRoot
       δt := S.δt }
   slotTime_eq := fun _ => rfl
@@ -608,7 +606,7 @@ def FamilyState (S : Setup) (pub : Public) : Type :=
 output chains) output it at some proof of `1 ≤ n` and nothing without one. -/
 noncomputable def family (S : Setup) : ShapeFamily schema Info := fun pub =>
   let G := fun hn : 1 ≤ pub.n => goldilocksShape (S.params pub hn) (S.ro _)
-  { skel := skeleton pub S.proposer
+  { skel := skeleton pub
     State := FamilyState S pub
     Body := Body
     Durable := FamilyState S pub

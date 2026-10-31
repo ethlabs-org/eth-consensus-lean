@@ -62,15 +62,16 @@ honest node within a further `Δ`; at an unbound entry, in both cases `E`
 is justified by then (its actual bound successor exists). -/
 def OutcomeService : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a : Time) (cF kF : Nat),
-    GoldilocksRun dg H tr → Healing.HSShared tr H dg g ΔF →
-    Healing.CatchRun tr H g (2 * sp.Δ) → Healing.PropPlus tr H g Gp →
+    GoldilocksRun proposer dg H tr → Healing.HSShared tr H dg g ΔF →
+    Healing.CatchRun tr H g (2 * sp.Δ) → Healing.PropPlus tr H proposer g Gp →
     4 * sp.Δ * ((cF : Time) - 1) < 6 * sp.Δ + ΔF → 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (cF : Time) →
     cF + kF ≤ sp.toParams.δt →
     Healing.IsReset tr H g a →
     ∀ (p : Fin sp.n) (k i : Nat) (T : SA.Blk sp.n (List (FG.Att sp.n))) (u : Nat),
-      Healing.ReadyProposal tr H p k u T →
+      Healing.ReadyProposal tr H proposer p k u T →
       RunEntry tr H p i T →
       sp.ts (sp.slot a + 2 * sp.k + 5 : Nat) ≤ sp.ts u →
       Healing.HZ tr H g + 1 ≤ ((tr.post i).fg.σ T.root).h →
@@ -78,7 +79,8 @@ def OutcomeService : Prop :=
         ((tr.post i).fg.σ T.root).hj + 1 = ((tr.post i).fg.σ T.root).h →
         Healing.HZ tr H g + 1 ≤ ((tr.post i).fg.σ T.root).hj) →
       (∃ (w : Fin sp.n) (kw : Nat) (W : SA.Blk sp.n (List (FG.Att sp.n))),
-        Healing.ReadyProposal tr H w kw W.slot W ∧ u + cF ≤ W.slot ∧ W.slot ≤ u + cF + kF ∧
+        Healing.ReadyProposal tr H proposer w kw W.slot W ∧
+        u + cF ≤ W.slot ∧ W.slot ≤ u + cF + kF ∧
         ∃ Pr, W.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) T Pr) →
       let h := ((tr.post i).fg.σ T.root).h
       let bound := decide ((tr.post i).fg.σ T.root).bound

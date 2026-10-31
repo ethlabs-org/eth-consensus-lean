@@ -39,11 +39,11 @@ at most `s`, then the proposal's view and `y`'s merged view give the same oppone
 slot-`s` votes) to every block of slot at most `s`. -/
 def ProposerVotersAgree : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACRun tr H U → ∀ (s : Nat) (p y : Fin sp.n) (i j : Nat)
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    ACRun proposer tr H U → ∀ (s : Nat) (p y : Fin sp.n) (i j : Nat)
       (ℓp ℓy : ACLabel (goldilocksSA sp FGP ro))
       (pay : Payload sp.n) (e : Em sp FGP),
-    p ∈ H → y ∈ H → p = sp.toParams.proposer (s + 1) →
+    p ∈ H → y ∈ H → p = proposer (s + 1) →
     ProposalAt tr p i ℓp pay → tr.time i = sp.ts (s + 1 : Nat) →
     CastAt tr y j ℓy e → e.msg.slot = s + 1 →
     (∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay) →
@@ -62,8 +62,8 @@ vote extends `B`. (The writer-pool condition A1.8 (d) follows from `Sync`, which
 admitted from a block's payload; goldilocks#32.) -/
 def FirstTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACRun tr H U → ∀ (s : Nat) (x y : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    ACRun proposer tr H U → ∀ (s : Nat) (x y : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
       (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
     x ∈ H → FastLockAt tr x i₀ s B CV →
     y ∈ H → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
@@ -80,8 +80,8 @@ least half of the committee, `Carry_y(m, S_m, B)` holds for the honest slot-`m` 
 extends `B`. -/
 def NextTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACRun tr H U → ∀ (m : Nat) (y : Fin sp.n) (i : Nat) (B : Blk sp.n FGP)
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    ACRun proposer tr H U → ∀ (m : Nat) (y : Fin sp.n) (i : Nat) (B : Blk sp.n FGP)
       (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
     y ∈ H → CastAt tr y i ℓ e → e.msg.slot = m + 1 →
     (∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B) →
@@ -99,8 +99,8 @@ casting its slot-`(s+1)` vote at cut `i` (time `τ`): under `Sync[t_s, τ]`, `Ca
 slot-`(s+1)` vote at an earlier cut extending `B`, the vote extends `B`. -/
 def OptimisticTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACRun tr H U → ∀ (s : Nat) (x y : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    ACRun proposer tr H U → ∀ (s : Nat) (x y : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
       (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
     x ∈ H → OptimisticLockAt tr x i₀ s B CV → 2 * Hᶜ.ncard < sp.n →
     y ∈ H → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
@@ -118,8 +118,8 @@ vote of slot `s + 1` extends `B` ((a)'s conclusion), then an honest `z` whose up
 test selects a block `D` that extends `B` (the write can still be vetoed or moved back). -/
 def OptimisticNextUpdate : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACRun tr H U → ∀ (s : Nat) (x z : Fin sp.n) (i₀ k : Nat) (B : Blk sp.n FGP)
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    ACRun proposer tr H U → ∀ (s : Nat) (x z : Fin sp.n) (i₀ k : Nat) (B : Blk sp.n FGP)
       (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)),
     x ∈ H → OptimisticLockAt tr x i₀ s B CV → 2 * Hᶜ.ncard < sp.n →
     SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr →
@@ -137,9 +137,9 @@ honest node is the block of a fast lock that node wrote after `τ`: at or below 
 fast lock of a slot `s'` with `slot(t) ≤ s' + 2`, written at a cut after `τ`. -/
 def SourceAge : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACRun tr H U → ∀ (τ : Time) (x : Fin sp.n) (i : Nat) (ℓ : ACLabel (goldilocksSA sp FGP ro))
-      (C : Blk sp.n FGP),
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    ACRun proposer tr H U → ∀ (τ : Time) (x : Fin sp.n) (i : Nat)
+      (ℓ : ACLabel (goldilocksSA sp FGP ro)) (C : Blk sp.n FGP),
     x ∈ H → ToFGAt tr x i ℓ C → sp.slot τ + 3 ≤ sp.slot (tr.time i) →
     ∃ j ≤ i, ∃ s' B' CV', FastLockAt tr x j s' B' CV' ∧ τ < tr.time j ∧
       sp.slot (tr.time i) ≤ s' + 2 ∧ Anc U C B'
@@ -155,8 +155,8 @@ after its unlocking is compatible with `C`; and every slot-`s` vote of its merge
 extends `C`. (No participation bound.) -/
 def ResultTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACRun tr H U → ∀ (s : Nat) (X y : Fin sp.n) (i₀ i : Nat) (C : Blk sp.n FGP)
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    ACRun proposer tr H U → ∀ (s : Nat) (X y : Fin sp.n) (i₀ i : Nat) (C : Blk sp.n FGP)
       (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
     X ∈ H → ResultAt tr X i₀ s C CV →
     y ∈ H → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
@@ -178,8 +178,8 @@ unlocking in slot `s + 1`: consensus-lean#66). Then the block `fg_confirmed ≠ 
 returns is compatible with `B`. -/
 def SourceCompatible : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACRun tr H U → ∀ (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    ACRun proposer tr H U → ∀ (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
       (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (C : Blk sp.n FGP),
     w ∈ H → FastLockAt tr w i₀ s B CV →
     SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr →

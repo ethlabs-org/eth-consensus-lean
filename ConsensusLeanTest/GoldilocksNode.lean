@@ -33,7 +33,6 @@ def P₁ : Params where
   slotTime_zero := rfl
   slotTime_strictMono := fun _ _ h => Nat.cast_lt.mpr h
   slotTime_public := fun _ => one_dvd _
-  proposer _ := ⟨0, Nat.one_pos⟩
   genesisRoot := 0
   δt := 2
 
@@ -113,7 +112,7 @@ theorem rootAC_requirements : rootAC.Requirements where
     trivial
 
 /-- (a) The initial configuration is reachable. -/
-theorem init_reachable : Node.Reachable dg₁ v₀ (Node.Config.init rootAC) :=
+theorem init_reachable : Node.Reachable (fun _ => v₀) dg₁ v₀ (Node.Config.init rootAC) :=
   Relation.ReflTransGen.refl
 
 /-- Time `0` is public. -/
@@ -121,34 +120,36 @@ theorem public_zero : P₁.IsPublic 0 := ⟨0, rfl⟩
 
 /-- (a) The tick of time `0` is a step from the initial configuration. -/
 theorem tick_at_zero :
-    Node.Step dg₁ v₀ (Node.Config.init rootAC) (.tick 0) 0
-      ⟨(Node.exec dg₁ v₀ (Node.init rootAC) 0 (.tick 0)).1, 0, .post⟩ :=
+    Node.Step (fun _ => v₀) dg₁ v₀ (Node.Config.init rootAC) (.tick 0) 0
+      ⟨(Node.exec (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 0 (.tick 0)).1, 0, .post⟩ :=
   ⟨le_rfl, ⟨public_zero, by simp [Node.Phase.at, Node.Config.init]⟩, trivial, rfl, rfl, rfl⟩
 
 /-- The slot of time `1` is `1`. -/
 theorem slotOf_one : P₁.slotOf 1 = 1 := by decide
 
 /-- (a) The validator proposes at time `1 = t_1`. -/
-theorem proposes_at_one : Node.Proposes (P := P₁) v₀ 1 := by
+theorem proposes_at_one : Node.Proposes (P := P₁) (fun _ => v₀) v₀ 1 := by
   refine ⟨by rw [slotOf_one]; exact Nat.one_pos, by rw [slotOf_one]; rfl, ?_⟩
-  rw [slotOf_one]; rfl
+  rfl
 
 /-- (a) The tick of time `1` is a step from the initial configuration, the validator proposes
 there, `ac_proposal` returns a proposal after the AC's tick step, and genesis's root is its
 digest: the hypotheses of `HonestBlockAccepted` hold together. -/
 theorem proposer_tick :
     (P₁.genesisBlock rootAC.genesisPayload).RootOk dg₁ ∧
-    Node.Step dg₁ v₀ (Node.Config.init rootAC) (.tick 0) 1
-      ⟨(Node.exec dg₁ v₀ (Node.init rootAC) 1 (.tick 0)).1, 1, .post⟩ ∧
-    Node.Proposes (P := P₁) v₀ 1 ∧
-    ∃ d p, (Node.acProposal (Node.tickStep dg₁ v₀ (Node.init rootAC) 1 0 .acTick).1 1).2.2 =
+    Node.Step (fun _ => v₀) dg₁ v₀ (Node.Config.init rootAC) (.tick 0) 1
+      ⟨(Node.exec (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 1 (.tick 0)).1, 1, .post⟩ ∧
+    Node.Proposes (P := P₁) (fun _ => v₀) v₀ 1 ∧
+    ∃ d p, (Node.acProposal
+      (Node.tickStep (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 1 0 .acTick).1 1).2.2 =
       some (d, p) := by
   refine ⟨rfl, ⟨by decide, ⟨one_dvd _, by simp [Node.Phase.at, Node.Config.init]⟩, trivial, rfl,
     rfl, rfl⟩, proposes_at_one, _, (), rfl⟩
 
 /-- (b) The configuration after the tick of time `1` is reachable. -/
 theorem reachable_after_tick :
-    Node.Reachable dg₁ v₀ ⟨(Node.exec dg₁ v₀ (Node.init rootAC) 1 (.tick 0)).1, 1, .post⟩ :=
+    Node.Reachable (fun _ => v₀) dg₁ v₀
+      ⟨(Node.exec (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 1 (.tick 0)).1, 1, .post⟩ :=
   Relation.ReflTransGen.single ⟨.tick 0, 1, proposer_tick.2.1⟩
 
 end Consensus.Goldilocks.Compose.Test

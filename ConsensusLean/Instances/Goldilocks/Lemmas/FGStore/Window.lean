@@ -80,7 +80,7 @@ private theorem step_shape {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B :
         σ'.target = (B.atts.foldl FG.ChainState.processAtt { σ with s := B.slot }).target ∧
         σ'.fin = (B.atts.foldl FG.ChainState.processAtt { σ with s := B.slot }).fin) ∨
       (σ'.h = σ.h + 1 ∧ σ'.Th = B.root ∧ σ'.ThSlot = B.slot)) := by
-  obtain ⟨⟨-, -, hv⟩, he⟩ := gp.stateTransition_eq_some.1 h
+  obtain ⟨⟨-, hv⟩, he⟩ := gp.stateTransition_eq_some.1 h
   refine ⟨fun a ha => ?_, ?_⟩
   · rcases (hv a ha).2 with ⟨h1, -⟩ | ⟨pr, -, -, -, h2⟩
     · exact h1.le

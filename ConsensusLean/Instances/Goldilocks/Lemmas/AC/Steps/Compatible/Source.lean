@@ -44,9 +44,10 @@ private theorem toFG_some {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t
 /-- **A1.9 for the stored block**: `SourceCompatible` for a fast lock on `D`, with every
 hypothesis and the conclusion about a block `B ⪯ D` (the block the lock stores,
 `Φ.viableAncestor D`). -/
-theorem source_compatible_stored : ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
+theorem source_compatible_stored : ∀ (FGP : Type) (ro : ReplayOrder sp FGP)
+    (proposer : Nat → Fin sp.n) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro),
-    ACRun tr H U → ∀ (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat) (B D : Blk sp.n FGP)
+    ACRun proposer tr H U → ∀ (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat) (B D : Blk sp.n FGP)
       (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (C : Blk sp.n FGP),
     w ∈ H → FastLockAt tr w i₀ s D CV → Anc U B D →
     SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr →
@@ -60,8 +61,8 @@ theorem source_compatible_stored : ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H
       (∃ k < i, tr.RestartAt x k ∧ sp.ts s < tr.time k)) →
     Compatible U ℓ.frame.F B → Compatible U ℓ.frame.fcRoot B →
     Compatible U C B := by
-  intro FGP ro H U tr hrun s m w x i₀ i B D CV ℓ C hw hfl hBD hsync hcarry hf hx hto _ hlo hhi
-    hvotes hcase _ _
+  intro FGP ro proposer H U tr hrun s m w x i₀ i B D CV ℓ C hw hfl hBD hsync hcarry hf hx hto
+    _ hlo hhi hvotes hcase _ _
   have hr := hrun.localRun
   have hU := hr.coherent
   obtain ⟨hc, hcall, hC⟩ := hto
@@ -135,8 +136,8 @@ theorem source_compatible_stored : ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H
 
 /-- **A1.9.** -/
 theorem source_compatible : SourceCompatible sp :=
-  fun FGP ro H U tr hrun s m w x i₀ i B CV ℓ C hw hfl =>
-    source_compatible_stored sp FGP ro H U tr hrun s m w x i₀ i B B CV ℓ C hw hfl
+  fun FGP ro H U tr proposer hrun s m w x i₀ i B CV ℓ C hw hfl =>
+    source_compatible_stored sp FGP ro proposer H U tr hrun s m w x i₀ i B B CV ℓ C hw hfl
       Relation.ReflTransGen.refl
 
 end Consensus.Goldilocks.SA

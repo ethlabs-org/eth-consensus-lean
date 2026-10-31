@@ -101,10 +101,11 @@ theorem foldl_cutPost_of_cutChain {self : Fin P.n} {t : Time} {st st' : NodeStat
   | cons hc _ ih => simp only [List.foldl_cons, cutPost_of_cutStep hc, ih]
 
 /-- The handler's result state is the fold of `cutPost` over its cuts (C0.5). -/
-theorem foldl_cutPost_exec (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+theorem foldl_cutPost_exec (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) :
-    (exec dg self st t e).2.foldl (cutPost self t) st = (exec dg self st t e).1 :=
-  foldl_cutPost_of_cutChain (Compose.exec_is_cut_chain dg self st t e)
+    (exec proposer dg self st t e).2.foldl (cutPost self t) st = (exec proposer dg self st t e).1 :=
+  foldl_cutPost_of_cutChain (Compose.exec_is_cut_chain proposer dg self st t e)
 
 end Node
 
@@ -135,26 +136,28 @@ structure CutRec (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) wher
 
 /-- The cuts of the top-level event `e` of `self` at time `t` on `st`, under the event id `id`:
 the handler's cuts at positions `0, 1, …` with their post-states. -/
-noncomputable def groupRecs (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+noncomputable def groupRecs (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
     (e : Event (goldilocksNode sp ro)) : List (CutRec sp ro) :=
-  let cs := (exec dg self st t e).2
+  let cs := (exec proposer dg self st t e).2
   (cs.zip (cutPosts self t cs st)).mapIdx fun k cp => ⟨self, t, id, k, cp.1, cp.2⟩
 
 /-- The cuts of a delivery of the objects `os` to `self` at time `t`, from the node state `st`,
 the sub-event index `sub` on: the group of each canonical object (`canonEvent`) under the event
 id `Nat.pair i sub` of the engine event `i`, the state threaded through the handlers; nothing for
 a dropped object. -/
-noncomputable def deliverRecs (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+noncomputable def deliverRecs (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
     List (Wire sp.n) → NodeState (goldilocksNode sp ro) → Nat → List (CutRec sp ro)
   | [], _, _ => []
   | o :: os, st, sub =>
       match canonEvent sp ro hs o with
       | some e =>
-          groupRecs dg self st t (Nat.pair i sub) e ++
-            deliverRecs dg hs self t i os (exec dg self st t e).1 (sub + 1)
-      | none => deliverRecs dg hs self t i os st (sub + 1)
+          groupRecs proposer dg self st t (Nat.pair i sub) e ++
+            deliverRecs proposer dg hs self t i os (exec proposer dg self st t e).1 (sub + 1)
+      | none => deliverRecs proposer dg hs self t i os st (sub + 1)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
@@ -168,14 +171,17 @@ noncomputable def eventCuts (i : Nat) : List (CutRec (S.params (pubOf E) hn) (S.
   match rho.events[i]? with
   | some (.tick v t) =>
       if (S.params (pubOf E) hn).toParams.IsPublic t then
-        groupRecs (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
+        groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+          (stateAt S rho hn v i).node t (Nat.pair i 0)
           (.tick (encodeTxs (Model.mempool rho.inbox v t)))
       else []
   | some (.deliver v o t) =>
-      deliverRecs (digestOf S rho) (Model.digests rho.hash o) (rho.ownKey v) t i
+      deliverRecs (runProposer S rho hn) (digestOf S rho)
+        (Model.digests rho.hash o) (rho.ownKey v) t i
         (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node 0
   | some (.restart v t) =>
-      groupRecs (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
+      groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+        (stateAt S rho hn v i).node t (Nat.pair i 0)
         .restart
   | none => []
 
@@ -314,36 +320,42 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- `groupRecs` unfolded: the handler's cuts zipped with their post-states, indexed by
 position. -/
-theorem groupRecs_eq (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
+theorem groupRecs_eq (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
     (e : Event (goldilocksNode sp ro)) :
-    groupRecs dg self st t id e =
-      ((exec dg self st t e).2.zip (cutPosts self t (exec dg self st t e).2 st)).mapIdx
+    groupRecs proposer dg self st t id e =
+      ((exec proposer dg self st t e).2.zip
+        (cutPosts self t (exec proposer dg self st t e).2 st)).mapIdx
         fun k cp => ⟨self, t, id, k, cp.1, cp.2⟩ := by rfl
 
 /-- `deliverRecs` of no object. -/
-theorem deliverRecs_nil (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem deliverRecs_nil (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (st : NodeState (goldilocksNode sp ro)) (sub : Nat) :
-    deliverRecs dg hs self t i [] st sub = [] := by rfl
+    deliverRecs proposer dg hs self t i [] st sub = [] := by rfl
 
 /-- `deliverRecs` of a canonical object and more: its group, then the rest from the handler's
 state. -/
-theorem deliverRecs_cons_some (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem deliverRecs_cons_some (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n)
     (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
     (e : Event (goldilocksNode sp ro)) (he : canonEvent sp ro hs o = some e) :
-    deliverRecs dg hs self t i (o :: os) st sub =
-      groupRecs dg self st t (Nat.pair i sub) e ++
-        deliverRecs dg hs self t i os (exec dg self st t e).1 (sub + 1) := by
+    deliverRecs proposer dg hs self t i (o :: os) st sub =
+      groupRecs proposer dg self st t (Nat.pair i sub) e ++
+        deliverRecs proposer dg hs self t i os (exec proposer dg self st t e).1 (sub + 1) := by
   simp only [deliverRecs, he]
 
 /-- `deliverRecs` of a dropped object and more: the rest, at the next sub-event index. -/
-theorem deliverRecs_cons_none (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+theorem deliverRecs_cons_none (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n)
     (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
     (he : canonEvent sp ro hs o = none) :
-    deliverRecs dg hs self t i (o :: os) st sub = deliverRecs dg hs self t i os st (sub + 1) := by
+    deliverRecs proposer dg hs self t i (o :: os) st sub =
+      deliverRecs proposer dg hs self t i os st (sub + 1) := by
   simp only [deliverRecs, he]
 
 end
@@ -355,7 +367,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 theorem eventCuts_tick_public (i : Nat) (v : V) (t : Time)
     (he : rho.events[i]? = some (.tick v t)) (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
     eventCuts S rho hn i =
-      groupRecs (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
+      groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+        (stateAt S rho hn v i).node t (Nat.pair i 0)
         (.tick (encodeTxs (Model.mempool rho.inbox v t))) := by
   simp only [eventCuts, he, hp, ↓reduceIte]
 
@@ -369,7 +382,8 @@ theorem eventCuts_tick_other (i : Nat) (v : V) (t : Time)
 theorem eventCuts_deliver (i : Nat) (v : V) (o : (Model.protoOf (compiled (family S)) E).Object)
     (t : Time) (he : rho.events[i]? = some (.deliver v o t)) :
     eventCuts S rho hn i =
-      deliverRecs (digestOf S rho) (Model.digests rho.hash o) (rho.ownKey v) t i
+      deliverRecs (runProposer S rho hn) (digestOf S rho)
+        (Model.digests rho.hash o) (rho.ownKey v) t i
         (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node 0 := by
   simp only [eventCuts, he]
 
@@ -377,7 +391,8 @@ theorem eventCuts_deliver (i : Nat) (v : V) (o : (Model.protoOf (compiled (famil
 theorem eventCuts_restart (i : Nat) (v : V) (t : Time)
     (he : rho.events[i]? = some (.restart v t)) :
     eventCuts S rho hn i =
-      groupRecs (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
+      groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+        (stateAt S rho hn v i).node t (Nat.pair i 0)
         .restart := by
   simp only [eventCuts, he]
 

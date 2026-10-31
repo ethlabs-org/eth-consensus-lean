@@ -39,13 +39,13 @@ open SA (SAParams ReplayOrder Payload gbar)
 /-- **HS.1, effective-phase viable-witness retention** (`phase-service.md` §2 "Why lower finality
 is benign", §7 HS.1; proved in `Retain`, `viable_witness_retention_of`). -/
 theorem viable_witness_retention : ViableWitnessRetention :=
-  fun _ _ _ _ _ _ _ hrun hs _ _ _ _ _ hon _ hy _ hW _ hz _ h1 h2 =>
+  fun _ _ _ _ _ _ _ _ hrun hs _ _ _ _ _ hon _ hy _ hW _ hz _ h1 h2 =>
     viable_witness_retention_of hrun hs hon hy hW hz h1 h2
 
 /-- **HS.2, clean-lock transfer and two-window drain** (`phase-service.md` §4 "Clean evidence and
 the two-window drain", §7 HS.2; `hs234-exact-interface.md` §3, assembled in `Drain`). -/
 theorem clean_lock_drain : CleanLockDrain := by
-  intro sp ro dg H tr g ΔF Gp w i₀ m c hrun hs hc hp hw
+  intro sp ro proposer dg H tr g ΔF Gp w i₀ m c hrun hs hc hp hw
   refine ⟨fun _ hx _ _ _ _ ho hj _ _ hy _ _ _ hv hjs hk => ⟨fun he =>
       clean_fast_next hrun hs hc hw hx ho hj hy hv he hk, fun _ =>
       clean_fast_later hrun hs hc hw hx ho hj hy hv hjs hk⟩,
@@ -59,7 +59,7 @@ theorem clean_lock_drain : CleanLockDrain := by
 /-- **HS.3, honest-proposal frozen-tree agreement** (`phase-service.md` §3 "Relay and the
 honest-proposal sandwich", §7 HS.3). -/
 theorem frozen_tree_agreement : FrozenTreeAgreement := by
-  intro sp ro dg H tr g ΔF w i₀ i m c hrun hs hc hw hi₀ p kP s P hP hikP hti hg hph
+  intro sp ro proposer dg H tr g ΔF w i₀ i m c hrun hs hc hw hi₀ p kP s P hP hikP hti hg hph
   obtain ⟨iP, ℓp, d, pay, hS⟩ := agreeSetting_of hrun hs hc hw hi₀ hP hikP hti hg hph
   exact ⟨fun hlock hstart => frozen_votes_unlocked hS hlock hstart,
     fun _ hp hr => frozen_votes_clean hS hp hr clean_lock_drain⟩
@@ -67,7 +67,7 @@ theorem frozen_tree_agreement : FrozenTreeAgreement := by
 /-- **HS.4, bounded common path and actual-report acquisition** (`phase-service.md` §5 "First
 proposal, actual reports, and the one extra wait", §7 HS.4). -/
 theorem common_path_acquisition : CommonPathAcquisition :=
-  fun _ _ _ _ _ _ _ _ _ _ _ _ hrun hs hc hp hset =>
+  fun _ _ _ _ _ _ _ _ _ _ _ _ _ hrun hs hc hp hset =>
     ⟨acquired_or_changed hrun hs hc hp hset clean_lock_drain frozen_tree_agreement,
       client_progress hrun hs⟩
 
@@ -82,11 +82,12 @@ after all events at `v`; every honest slot-`s` vote is exactly `W` (viable or at
 `fc_root`); by `v` every honest validator has received a source with entry `E` at `h` or signed a
 matching row; and until the phase end every later honest vote and honest proposal parent extends
 `W`. -/
-def AcquiredPath (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (Gp w : Time) (i₀ m : Nat)
+def AcquiredPath (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+    (proposer : Nat → Fin sp.n) (Gp w : Time) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) : Prop :=
   ∃ (s h : Nat) (E W : SA.Blk sp.n (List (FG.Att sp.n))) (kW : Nat),
     (h = phaseFloor m c ∨ h = m) ∧ 1 ≤ h ∧
-    tr.ProposesAt (sp.toParams.proposer s) kW W ∧ W.slot = s ∧ sp.toParams.proposer s ∈ H ∧
+    tr.ProposesAt (proposer s) kW W ∧ W.slot = s ∧ proposer s ∈ H ∧
     EntryOf (tr.post kW).fg W E h ∧ ((tr.post kW).fg.σ W.root).h = h ∧
     w ≤ sp.ts s ∧ rTime sp w ≤ sp.ts s ∧ sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp ∧
     (∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) ∧
@@ -103,16 +104,17 @@ def AcquiredPath (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (Gp w : Time)
     (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg W) ∧
     ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' → P'.slot = s' →
-      tr.ProposesAt (sp.toParams.proposer s') k' P' → sp.toParams.proposer s' ∈ H →
+      tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
       PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr
 
-theorem acquiredPath_iff (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (Gp w : Time)
+theorem acquiredPath_iff (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+    (proposer : Nat → Fin sp.n) (Gp w : Time)
     (i₀ m : Nat) (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) :
-    AcquiredPath tr H Gp w i₀ m c ↔
+    AcquiredPath tr H proposer Gp w i₀ m c ↔
       ∃ (s h : Nat) (E W : SA.Blk sp.n (List (FG.Att sp.n))) (kW : Nat),
         (h = phaseFloor m c ∨ h = m) ∧ 1 ≤ h ∧
-        tr.ProposesAt (sp.toParams.proposer s) kW W ∧ W.slot = s ∧ sp.toParams.proposer s ∈ H ∧
+        tr.ProposesAt (proposer s) kW W ∧ W.slot = s ∧ proposer s ∈ H ∧
         EntryOf (tr.post kW).fg W E h ∧ ((tr.post kW).fg.σ W.root).h = h ∧
         w ≤ sp.ts s ∧ rTime sp w ≤ sp.ts s ∧ sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp ∧
         (∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) ∧
@@ -129,8 +131,8 @@ theorem acquiredPath_iff (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (Gp w
         (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
           PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg W) ∧
         ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
-          P'.slot = s' → tr.ProposesAt (sp.toParams.proposer s') k' P' →
-          sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
+          P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
+          proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
           ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr :=
   Iff.rfl
 
@@ -164,7 +166,8 @@ theorem clientProgress_iff (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (i�
 /-- **The protected branch** of an honest proposal `W` of slot `s` (HS.4 (a), HS.3 (b)): every
 honest slot-`s` vote is exactly `W` (viable or at or below `fc_root`), and until the phase end
 every later honest vote and every honest proposal parent of a later slot extends `W`. -/
-def ProtectedBranch (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (i₀ m : Nat)
+def ProtectedBranch (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+    (proposer : Nat → Fin sp.n) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) (s : Nat)
     (W : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
@@ -174,14 +177,15 @@ def ProtectedBranch (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (i₀ m : 
   (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
     PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg W) ∧
   ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' → P'.slot = s' →
-    tr.ProposesAt (sp.toParams.proposer s') k' P' → sp.toParams.proposer s' ∈ H →
+    tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
     PhaseOn tr.projFG H i₀ k' m c →
     ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr
 
-theorem protectedBranch_iff (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (i₀ m : Nat)
+theorem protectedBranch_iff (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+    (proposer : Nat → Fin sp.n) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) (s : Nat)
     (W : SA.Blk sp.n (List (FG.Att sp.n))) :
-    ProtectedBranch tr H i₀ m c s W ↔
+    ProtectedBranch tr H proposer i₀ m c s W ↔
       (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
         e.msg.head = W.root ∧
         (W ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
@@ -189,8 +193,8 @@ theorem protectedBranch_iff (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (i
       (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
         PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg W) ∧
       ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
-        P'.slot = s' → tr.ProposesAt (sp.toParams.proposer s') k' P' →
-        sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
+        P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
+        proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
         ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr :=
   Iff.rfl
 
@@ -228,35 +232,38 @@ theorem rowsBy_iff (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (v : Time) 
 
 /-- **The acquired path without its acquisition clause**, for a fixed witness
 `(s, h, E, W, kW)`: the conjuncts of `AcquiredPath` other than the reports-or-rows clause. -/
-def PathAt (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (Gp w : Time) (i₀ m : Nat)
+def PathAt (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+    (proposer : Nat → Fin sp.n) (Gp w : Time) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) (s h : Nat)
     (E W : SA.Blk sp.n (List (FG.Att sp.n))) (kW : Nat) : Prop :=
   (h = phaseFloor m c ∨ h = m) ∧ 1 ≤ h ∧
-    tr.ProposesAt (sp.toParams.proposer s) kW W ∧ W.slot = s ∧ sp.toParams.proposer s ∈ H ∧
+    tr.ProposesAt (proposer s) kW W ∧ W.slot = s ∧ proposer s ∈ H ∧
     EntryOf (tr.post kW).fg W E h ∧ ((tr.post kW).fg.σ W.root).h = h ∧
     w ≤ sp.ts s ∧ rTime sp w ≤ sp.ts s ∧ sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp ∧
     (∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) ∧
-    ProtectedBranch tr H i₀ m c s W
+    ProtectedBranch tr H proposer i₀ m c s W
 
-theorem pathAt_iff (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (Gp w : Time) (i₀ m : Nat)
+theorem pathAt_iff (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+    (proposer : Nat → Fin sp.n) (Gp w : Time) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) (s h : Nat)
     (E W : SA.Blk sp.n (List (FG.Att sp.n))) (kW : Nat) :
-    PathAt tr H Gp w i₀ m c s h E W kW ↔
+    PathAt tr H proposer Gp w i₀ m c s h E W kW ↔
       (h = phaseFloor m c ∨ h = m) ∧ 1 ≤ h ∧
-        tr.ProposesAt (sp.toParams.proposer s) kW W ∧ W.slot = s ∧
-        sp.toParams.proposer s ∈ H ∧
+        tr.ProposesAt (proposer s) kW W ∧ W.slot = s ∧
+        proposer s ∈ H ∧
         EntryOf (tr.post kW).fg W E h ∧ ((tr.post kW).fg.σ W.root).h = h ∧
         w ≤ sp.ts s ∧ rTime sp w ≤ sp.ts s ∧ sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp ∧
         (∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) ∧
-        ProtectedBranch tr H i₀ m c s W :=
+        ProtectedBranch tr H proposer i₀ m c s W :=
   Iff.rfl
 
 /-- The acquired path is a witness with `PathAt` and its reports or rows by `v = t_s + 6Δ`. -/
-theorem acquiredPath_iff_exists (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (Gp w : Time)
+theorem acquiredPath_iff_exists (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+    (proposer : Nat → Fin sp.n) (Gp w : Time)
     (i₀ m : Nat) (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) :
-    AcquiredPath tr H Gp w i₀ m c ↔
+    AcquiredPath tr H proposer Gp w i₀ m c ↔
       ∃ (s h : Nat) (E W : SA.Blk sp.n (List (FG.Att sp.n))) (kW : Nat),
-        PathAt tr H Gp w i₀ m c s h E W kW ∧
+        PathAt tr H proposer Gp w i₀ m c s h E W kW ∧
           ReportsBy tr H (sp.ts s) (sp.ts s + 6 * sp.Δ) h m c E W := by
   constructor
   · rintro ⟨s, h, E, W, kW, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15⟩
@@ -265,17 +272,19 @@ theorem acquiredPath_iff_exists (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)
     exact ⟨s, h, E, W, kW, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15⟩
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+  {proposer : Nat → Fin sp.n}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- **HS.4 with the named branches**: settled at `w` in `(m, c)`, the phase has changed by
 `w + D_HS` or the common path is acquired (`AcquiredPath`), and the client subclaim holds. -/
-theorem common_path_acquisition' (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+theorem common_path_acquisition' (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) :
     ((∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j') ∨
-      AcquiredPath tr H Gp w i₀ m c) ∧ ClientProgress tr H i₀ m c :=
-  common_path_acquisition sp ro dg H tr g ΔF Gp w i₀ m c hrun hs hc hp hset
+      AcquiredPath tr H proposer Gp w i₀ m c) ∧ ClientProgress tr H i₀ m c :=
+  common_path_acquisition sp ro proposer dg H tr g ΔF Gp w i₀ m c hrun hs hc hp hset
 
 /-! ### HS.5's consumption, one level down (proposed contract)
 
@@ -292,11 +301,12 @@ the FG serves `E`", §6): for the acquired path's witness, every honest validato
 in the phase (HS.4's current-source arm, #88), has signed a matching row for `E` at `h` by `v`:
 the `ac_to_fg` return is followed at once by the `fg_attest` of the same tick, at which
 `ClientProgress` applies (the phase holds through `v`; `toFG_attest` for the transport). -/
-theorem historical_source_rows (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (_hc : CatchRun tr H g (2 * sp.Δ)) (_hp : PropPlus tr H g Gp)
+theorem historical_source_rows (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF)
+    (_hc : CatchRun tr H g (2 * sp.Δ)) (_hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hcl : ClientProgress tr H i₀ m c) {s h : Nat}
     {E W : SA.Blk sp.n (List (FG.Att sp.n))} {kW : Nat}
-    (hpath : PathAt tr H Gp w i₀ m c s h E W kW)
+    (hpath : PathAt tr H proposer Gp w i₀ m c s h E W kW)
     (hrep : ReportsBy tr H (sp.ts s) (sp.ts s + 6 * sp.Δ) h m c E W) :
     RowsBy tr H (sp.ts s + 6 * sp.Δ) h E := by
   classical
@@ -344,13 +354,14 @@ result and fresh fast lock (more than half the committee voted `Y`, no slot-`s` 
 strictly extends it, the write is not vetoed); a candidate extending `Y`, or an earlier reported
 descendant suppressing it, has height `m` (no frontier rise) and `Y`'s entry; P1/P2 sign the
 row. -/
-theorem fixed_upper_proposal_rows (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+theorem fixed_upper_proposal_rows (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hcl : ClientProgress tr H i₀ m c) {s kY : Nat}
-    {Y : SA.Blk sp.n (List (FG.Att sp.n))} (hY : tr.ProposesAt (sp.toParams.proposer s) kY Y)
-    (hYs : Y.slot = s) (hpH : sp.toParams.proposer s ∈ H)
+    {Y : SA.Blk sp.n (List (FG.Att sp.n))} (hY : tr.ProposesAt (proposer s) kY Y)
+    (hYs : Y.slot = s) (hpH : proposer s ∈ H)
     (hYh : ((tr.post kY).fg.σ Y.root).h = m) (hr : rTime sp w ≤ sp.ts s)
-    (hbr : ProtectedBranch tr H i₀ m c s Y)
+    (hbr : ProtectedBranch tr H proposer i₀ m c s Y)
     (hon : ∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) :
     ∃ E, EntryOf (tr.post kY).fg Y E m ∧ RowsBy tr H (sp.ts s + 6 * sp.Δ) m E :=
   fixed_upper_rows_of hrun hs hc hp hset clean_lock_drain hcl hY hYs hpH hYh hr hbr.1 hbr.2.1
@@ -367,18 +378,20 @@ crossed `h` already), extends `W`, and is accepted by every honest node before `
 reach the proposer's pool by `v + Δ_F` (GST delivery, old rows by the GST convention), honest
 inclusion proposals until the crossing keep `E` and its progress bits, and the timeout arm fires
 after `t_{E.slot + δ_t}` even when loose BJ blocks justification. -/
-theorem mature_progress_consumption (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+theorem mature_progress_consumption (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) {s h kW : Nat} {E W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hW : tr.ProposesAt (sp.toParams.proposer s) kW W) (hWs : W.slot = s)
-    (hpH : sp.toParams.proposer s ∈ H) (hE : EntryOf (tr.post kW).fg W E h)
-    (hh : phaseFloor m c ≤ h) (hws : w ≤ sp.ts s) (hbr : ProtectedBranch tr H i₀ m c s W)
+    (hW : tr.ProposesAt (proposer s) kW W) (hWs : W.slot = s)
+    (hpH : proposer s ∈ H) (hE : EntryOf (tr.post kW).fg W E h)
+    (hh : phaseFloor m c ≤ h) (hws : w ≤ sp.ts s)
+    (hbr : ProtectedBranch tr H proposer i₀ m c s W)
     (hrows : RowsBy tr H (sp.ts s + 6 * sp.Δ) h E) (jb : Nat)
     (hjb : FirstCutAfter tr jb
       (max (sp.ts s + 6 * sp.Δ + ΔF) (sp.ts (E.slot + sp.toParams.δt : Nat)) + Gp + sp.Δ)) :
     PhaseChanged tr.projFG H i₀ jb ∨
       ∃ (x kX : Nat) (X : SA.Blk sp.n (List (FG.Att sp.n))),
-        ReadyProposal tr H (sp.toParams.proposer x) kX x X ∧
+        ReadyProposal tr H proposer (proposer x) kX x X ∧
         max (sp.ts s + 6 * sp.Δ + ΔF) (sp.ts (E.slot + sp.toParams.δt : Nat)) ≤ sp.ts x ∧
         sp.ts x + sp.Δ ≤
           max (sp.ts s + 6 * sp.Δ + ΔF) (sp.ts (E.slot + sp.toParams.δt : Nat)) + Gp + sp.Δ ∧
@@ -405,13 +418,14 @@ after `t_X + 8Δ` (with HS.2's lock premise), `fixed_upper_proposal_rows` for `Y
 proposal of height `m + 1` accepted in the phase is a frontier rise; `ht(Y) = m`; `E.slot ≤ s`;
 HS.3's timing premises for `X` and `Y`; the time arithmetic, with index inclusion of first cuts)
 is proved in `ConsumeContinue` (`consume_continue_of`, `hs5-exact-helpers.md` §4). -/
-theorem consume_continue (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+theorem consume_continue (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hret : ViableWitnessRetention) (hclean : CleanLockDrain) (hagree : FrozenTreeAgreement)
-    (hset : SettledIn tr H g w i₀ m c) (hwit : AcquiredPath tr H Gp w i₀ m c)
+    (hset : SettledIn tr H g w i₀ m c) (hwit : AcquiredPath tr H proposer Gp w i₀ m c)
     (hcl : ClientProgress tr H i₀ m c) (jA : Nat) (hjA : FirstCutAfter tr jA (w + A_HS sp ΔF Gp)) :
     PhaseChanged tr.projFG H i₀ jA := by
-  obtain ⟨s, h, E, W, kW, hpath, hrep⟩ := (acquiredPath_iff_exists tr H Gp w i₀ m c).1 hwit
+  obtain ⟨s, h, E, W, kW, hpath, hrep⟩ :=
+    (acquiredPath_iff_exists tr H proposer Gp w i₀ m c).1 hwit
   have hrows := historical_source_rows hrun hs hc hp hset hcl hpath hrep
   obtain ⟨h1, -, hW, hWs, hpH, hE, -, hws, hr, hvD, -, hbr⟩ := hpath
   by_contra hnc

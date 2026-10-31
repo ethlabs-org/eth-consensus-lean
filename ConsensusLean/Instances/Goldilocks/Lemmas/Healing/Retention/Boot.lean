@@ -25,6 +25,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
@@ -34,10 +35,11 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 The writer accepted the counted heads, of state height `≥ H_z + 1`, before `t_j + 2Δ`; no honest
 node accepts such a block at or before `c_z` (the definition of `H_z`), so `t_j + 2Δ > c_z`, and
 `t_j ≥ c_z` since both are slot starts. -/
-theorem cutZ_le_ts_of_highOrigin (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+theorem cutZ_le_ts_of_highOrigin (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     cutZ sp.toParams g ≤ sp.ts j := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨ℓ, D, CV, hc, hfl, -, -, -, hBD, -⟩ := highOrigin_mem hp ho
   obtain ⟨v, hv⟩ := fastLock_counted_nonempty hfl
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHv⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hfl v hv
@@ -60,7 +62,7 @@ theorem cutZ_le_ts_of_highOrigin (hp : ResetPremises tr H dg g ΔF a) {x : Fin s
 whose earlier cuts are before `a`, every held block is justified at `≤ H_z`: otherwise it has state
 height `≥ H_z + 2` (`h_j < h`), so its chain carries an honest row of height `H_z + 1` (HR.1 (b)),
 signed before the state's cut, hence before `a`, against HR.1 (c). -/
-theorem hj_le_HZ_of_before (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
+theorem hj_le_HZ_of_before (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} (hk : ∀ k' < k, tr.time k' < a) {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y k).fg.tree) : ((tr.state y k).fg.σ X.root).hj ≤ HZ tr H g := by
   have hr := Compose.fg_reachable hp.run.toLocalRun hy k
@@ -86,7 +88,8 @@ theorem hj_le_HZ_of_before (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (
 `Σ.F`, of height `≤ H_z` (no chain has crossed `H_z + 1`, G0.2 (a)), is below every high origin:
 its finality quorum meets the crossing quorum on a counted head's chain at its height in an honest
 validator (G1.2, G0.5, `f < 2q − n`). -/
-theorem boot_caches (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+theorem boot_caches (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     (hk : ∀ k' < k, tr.time k' < a) :
     (tr.state y k).fg.hj ≤ HZ tr H g ∧
       ∀ x i j B, HighOrigin tr H g x i j B →
@@ -102,7 +105,7 @@ theorem boot_caches (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n} (hy : y 
   exact finalized_anc_of_height_lt hp hy ho.1 hY hFm hYF.symm hBx (by omega)
 
 /-- The label of a high origin starts at or after `g` (`t_j ≥ c_z > ḡ ≥ g`). -/
-private theorem g_le_ts (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+private theorem g_le_ts (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {m : Nat}
     (hm : j ≤ m) : g ≤ sp.ts m := by
   have h₁ := cutZ_le_ts_of_highOrigin hp ho
@@ -119,7 +122,7 @@ even when its write is later), every honest `Σ.F`, and every high honest `Σ.J`
 the origin's block: low finalized entries by G1.2, high ones through their row witnesses, whose
 sources are comparable with `B` by the label split (earlier labels by their votes, the same label
 by TSQ, later labels excluded by R4). -/
-theorem activation_caches (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+theorem activation_caches (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
     (hy : y ∈ H) {k₁ : Nat} (hk₁ : tr.FirstCutFrom k₁ (sp.ts (j + 1 : Nat)))
     (_ha : a < sp.ts (j + 1 : Nat))
@@ -171,7 +174,7 @@ theorem activation_caches (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i
 
 /-- The caches at a vote (the last-call/first-cut split of `vote_state_caches`, repeated here
 since the vote step's module imports this one). -/
-private theorem vote_caches (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
+private theorem vote_caches (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
     (hy : y ∈ H) (hk : sp.ts (j + 1 : Nat) ≤ tr.time k) :
@@ -202,14 +205,14 @@ private theorem vote_caches (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
 /-- **The receiver-root split** (`hr4-boot-carry.md` §4): at an honest vote of a slot `> j` at
 which `B` is not below `fc_root`, the voter's `Σ.F` is below `B` (the caches compare them, and
 `Σ.F ⪯ fc_root`). -/
-private theorem vote_F_anc (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
+private theorem vote_F_anc (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
     (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ℓ e) (hj : j < e.msg.slot)
     (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
     Anc (tr.HonestBlocks H) ℓ.frame.F B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
   have hts' : sp.ts e.msg.slot ≤ tr.time k :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(SA.castAt_spec hr hy hc).2.1])
@@ -222,9 +225,10 @@ private theorem vote_F_anc (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
     exact absurd (h.trans (Anc.mono hΦU hΦ.F_anc_fcRoot)) hroot
 
 /-- `Sync` on the AC projection from `g` on (`GST(g)`). -/
-private theorem sync_after (hp : ResetPremises tr H dg g ΔF a) (b : Time) :
+private theorem sync_after (hp : ResetPremises tr H proposer dg g ΔF a) (b : Time) :
     SyncAC (SA.goldilocksSA sp (List (FG.Att sp.n)) ro) H (tr.HonestBlocks H) g b tr.projAC :=
-  Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr ΔF g b
+  Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
+    tr proposer ΔF g b
     hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
 
 /-- **R5 above the floor** (`hr4-boot-carry.md` §7, "If floor > ht(B) ≥ H+1";
@@ -236,7 +240,7 @@ origins, both created before the vote), so the floor is `h_max − 1`, crossed b
 honest row at the floor whose reported source `Q` (temporal stored origin of label `≤ m − 1`) is
 comparable with `B` and, being higher, extends it; `Q`'s counted honest head was relayed to the
 voter before its freeze (`row_origin_label_lt`), and is the witness. -/
-theorem height_lead_above (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
+theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
     (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -245,7 +249,7 @@ theorem height_lead_above (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
     (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
     ∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
       Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hU := honest_coherent hp
   have hreach := Compose.fg_reachable hp.run.toLocalRun hy k
   have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, k, hX⟩
@@ -356,7 +360,7 @@ slot `> j`, the voter block tree holds a viable descendant of the origin's block
 `B ⪯ fc_root`: in the low-frontier regime `B` itself (height `H_z + 1`, relayed before the freeze);
 above it, the supporting head of an earlier comparable high source that crossed the floor (R4,
 R5). -/
-theorem vote_height_lead (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
+theorem vote_height_lead (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
     (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -372,7 +376,7 @@ theorem vote_height_lead (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
   swap
   · exact height_lead_above hp k ih ho hy hc hj hF (not_le.mp hfl)
   -- the floor is at most the height of `B`: a counted head of the origin, relayed in time
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨ℓw, D, CV, hcw, hflw, -, -, -, hBD, hBx⟩ := highOrigin_mem hp ho
   obtain ⟨v, hv⟩ := fastLock_counted_nonempty hflw
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hflw v hv
@@ -401,7 +405,7 @@ contest"; `t1-proof.md` §9, the geometric statement). When the voter's root is 
 (`h_max = h_j + 1 ≤ H_z + 1`, no contest) and its voter block tree holds a descendant `D` of the
 origin's block `B`, then `D` has state height `h_max` (`≥ σ[B].h ≥ H_z + 1`), so it extends `Σ.J`
 (no contest), and `Σ.J` is compatible with `B`. -/
-theorem low_root_compatible (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+theorem low_root_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ℓ e) (_hj : j < e.msg.slot)
@@ -424,7 +428,7 @@ theorem low_root_compatible (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} 
 below `fc_root` (so `Σ.F ⪯ B`), the voter holds the counted votes of the origin and has accepted
 their heads before `t_j + 3Δ`: the heads, of height `≥ H_z + 1`, were first accepted after `c_z`
 and before `t_j + 2Δ`, and extend `Σ.F`, so acceptance relay delivers them. -/
-theorem first_carry (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
+theorem first_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (ho : HighOrigin tr H g x i j B) (hfl : Compose.StoredFastLockAt tr x i j B CV)
@@ -432,7 +436,7 @@ theorem first_carry (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y k ℓ e)
     (hs : e.msg.slot = j + 1) (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hF := vote_F_anc hp k ih ho hy hc (by omega) hroot
   obtain ⟨ℓw, D, hcw, hflD, rfl⟩ := hfl
   obtain ⟨ℓ', hc', hD⟩ := fastLock_mem hflD
@@ -460,14 +464,14 @@ theorem first_carry (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
 witnesses and the frame"). At an honest vote of slot `m' + 1`, `m' > j`, at which `B` is not below
 `fc_root`, the voter holds the honest slot-`m'` votes and has accepted their heads (which extend
 `B`, by the earlier votes, hence `Σ.F`) before `t_{m'} + 3Δ`, by relay. -/
-theorem later_carry (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
+theorem later_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
     (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ℓ e) {m' : Nat} (hm' : e.msg.slot = m' + 1) (hjm : j < m')
     (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e m' (Compose.honestVotes tr H m') := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hU := hr.coherent
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hF := vote_F_anc hp k ih ho hy hc (by omega) hroot
@@ -511,7 +515,7 @@ theorem later_carry (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
 honest validator is awake and joined (no honest restart after `max(g, 0)`) and votes by
 `t_{s'} + Δ` (`tryVote`), and the honest validators are at least half of the committee
 (`3f ≤ n − 1`). -/
-theorem half_committee (hp : ResetPremises tr H dg g ΔF a) {s' : Nat}
+theorem half_committee (hp : ResetPremises tr H proposer dg g ΔF a) {s' : Nat}
     (hs : cutZ sp.toParams g ≤ sp.ts s') :
     sp.n ≤ 2 * {x' | x' ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'}.ncard := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
@@ -548,7 +552,7 @@ coordinates start empty; every later record write at `h ≥ H_z + 1` names the e
 writing source's chain, which lies on the chain of a high origin (R1, rows), and the high origins
 are pairwise comparable (R1), so two named entries at one height are equal (entry constancy on a
 chain). Induction over the serialized honest client calls. -/
-theorem high_records (hp : ResetPremises tr H dg g ΔF a)
+theorem high_records (hp : ResetPremises tr H proposer dg g ΔF a)
     (hcomp : ∀ x i j B x' i' j' B', HighOrigin tr H g x i j B → HighOrigin tr H g x' i' j' B' →
       Compatible (tr.HonestBlocks H) B B')
     (hrows : ∀ y ∈ H, ∀ k att, tr.SignAt y k att → a ≤ tr.time k → HZ tr H g + 1 ≤ att.h →

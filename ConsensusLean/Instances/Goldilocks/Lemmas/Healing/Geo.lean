@@ -269,14 +269,15 @@ section Runs
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {g ΔF : Time} {proposer : Nat → Fin sp.n}
 
-theorem projFG_store_eq (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+theorem projFG_store_eq (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     tr.projFG.store y i = (tr.state y i).fg := by
   simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
 
 /-- The FG projection of a run under the HS shared premises is an FG trace, with `f < 2q − n`. -/
-theorem fg_run_of_hs (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF) :
+theorem fg_run_of_hs (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
       Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
   obtain ⟨-, -, hf⟩ := hs.healthy
@@ -285,12 +286,12 @@ theorem fg_run_of_hs (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF
       (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
       SA.proposal_payload_valid sp _ ro⟩
   have hn := sp.toParams.hn
-  exact ⟨Compose.fg_projection _ _ dg H _ tr hreq hs.genesisRoot hrun.toLocalRun hs.noColl,
+  exact ⟨Compose.fg_projection _ _ dg H _ tr proposer hreq hs.genesisRoot hrun.toLocalRun hs.noColl,
     by change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n; omega⟩
 
 /-- The evidence of a phase, once held, stays held (stores keep their blocks and states, and
 ancestry of a held block does not change). -/
-theorem holdsEvidence_mono (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem holdsEvidence_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {z : Fin sp.n} (hz : z ∈ H) {a b m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hab : a ≤ b) (h : HoldsEvidence (tr.state z a).fg m c) :
     HoldsEvidence (tr.state z b).fg m c := by
@@ -324,7 +325,7 @@ floor is the phase floor and `fc_root` is `Σ.F`, or the phase's `J` in the top-
 node's `Σ.h_max` is `m`; its `Σ.h_j` is `m − 1` exactly when the phase has a justification there
 (`JMax`, with `Σ.F ⪯ J` from HS.1), its `Σ.J` is then the phase's `J` (HR.2 (a)), and its local
 contest test agrees with the phase case (the contest witness extends `Σ.F` by HS.1). -/
-theorem viableHeads_iff (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (_hc : CatchRun tr H g (2 * sp.Δ)) {z : Fin sp.n} (hz : z ∈ H) {k m : Nat}
     {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} (hph : PhaseAt tr.projFG H k m c)
     (hev : HoldsEvidence (tr.state z k).fg m c) {X : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -552,20 +553,21 @@ end SAFacts
 section RunCuts
 
 variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
-  {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A} {proposer : Nat → Fin P.n}
 
 /-- **An `ac_proposal` cut is the second cut of a tick** (C0.4): no other handler makes one, and
 in a tick it follows `ac_on_tick` at once. -/
-theorem proposal_call_tick (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+theorem proposal_call_tick (h : Node.LocalRun proposer dg H sg tr)
+    {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel A} (hc : tr.CallAt y i (.ac ℓ)) (hp : ℓ.call = .proposal) :
-    ∃ j, i = j + 1 ∧ tr.TickAt dg y j (tr.time i) := by
+    ∃ j, i = j + 1 ∧ tr.TickAt proposer dg y j (tr.time i) := by
   obtain ⟨j, e, q, hg, rfl, hq⟩ := Compose.call_in_group h hy hc
   have hm := List.mem_of_getElem? hq
   cases e with
   | tick x =>
     obtain ⟨ℓ0, pc, uc, h0, hcs, hpc, huc⟩ :=
-      Compose.tick_order dg y (tr.state y j) (tr.time (j + q)) x
-    change (Node.onTick dg y (tr.state y j) (tr.time (j + q)) x).2[q]? = some (.ac ℓ) at hq
+      Compose.tick_order proposer dg y (tr.state y j) (tr.time (j + q)) x
+    change (Node.onTick proposer dg y (tr.state y j) (tr.time (j + q)) x).2[q]? = some (.ac ℓ) at hq
     rw [hcs] at hq
     have hq1 : q = 1 := by
       obtain ⟨ℓu, hℓu, huc⟩ := huc
@@ -598,7 +600,7 @@ theorem proposal_call_tick (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y 
     cases hp
 
 /-- **One `ac_proposal` cut per node and time.** -/
-theorem proposal_call_unique (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+theorem proposal_call_unique (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
     {i i' : Nat} {ℓ ℓ' : ACLabel A} (hc : tr.CallAt y i (.ac ℓ)) (hc' : tr.CallAt y i' (.ac ℓ'))
     (hp : ℓ.call = .proposal) (hp' : ℓ'.call = .proposal) (ht : tr.time i = tr.time i') :
     i = i' := by
@@ -615,10 +617,10 @@ section Main
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {g ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- Allowedness in the effective geometry moves between honest stores that hold the block. -/
-theorem effAllowed_transfer (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem effAllowed_transfer (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i j m : Nat}
     {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : EffAllowed (tr.state y i).fg m c X) (hX : X ∈ (tr.state z j).fg.tree) :
@@ -642,17 +644,17 @@ of the voter block tree is held by the proposer at its proposal: an ancestor of 
 parent, and a block stamped before the freeze `t_p − Δ` was accepted then and is relayed by `t_p`
 (it extends the proposer's `Σ.F` when it is allowed, HS.1). An allowed block extends the `Σ.F` of
 every honest node of the phase (HS.1), so viable-head membership agrees at the two reads. -/
-theorem geo_of_settled (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem geo_of_settled (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n)))
-    (hP : HonestProposalRun tr H p P) (hph : InSettledPhase tr H g p) :
-    SA.Geo tr.projAC H p P := by
+    (hP : HonestProposalRun tr H proposer p P) (hph : InSettledPhase tr H g p) :
+    SA.Geo proposer tr.projAC H p P := by
   intro k ℓP hcP hcallP htk y hy iv ℓ e hce hslot
   obtain ⟨hpH, k₀, ℓ₀, d, pay, hc₀, hcall₀, hprop₀, ht₀, hpar, hPslot, hPprop, -, j, -, hacc,
     htj⟩ := hP
   obtain ⟨w, m, c, hset, hwp, hphase⟩ := hph
   have hl := hrun.toLocalRun
   have hnc := hs.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -700,22 +702,22 @@ theorem geo_of_settled (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g �
   have hivK : iv ≤ max k iv := le_max_right _ _
   have hkK : k ≤ max k iv := le_max_left _ _
   have hfrv : ℓ.frame = Node.frame (tr.state y iv) := Compose.frame_of_projAC hrun hy hce.1
-  have hfrp : ℓP.frame = Node.frame (tr.state (sp.toParams.proposer p) k) :=
+  have hfrp : ℓP.frame = Node.frame (tr.state (proposer p) k) :=
     Compose.frame_of_projAC hrun hpH hcP
-  have hfr₀ : ℓ₀.frame = Node.frame (tr.state (sp.toParams.proposer p) k) :=
+  have hfr₀ : ℓ₀.frame = Node.frame (tr.state (proposer p) k) :=
     Compose.frame_of_projAC hrun hpH hc₀
   have hfU : ℓ.frame.tree ⊆ tr.HonestBlocks H := (SA.frameIn_of_callAt hr hy hce.1).2
   -- the proposal's parent is a viable head of the proposer
   have hΦ₀ := (SA.frameIn_of_callAt hr hpH hc₀).1
   have hfc₀ : ℓ₀.frame.fcRoot ∈ ℓ₀.frame.viableTree ℓ₀.frame.tree := by
     have hevk := hev _ hpH k hi₀k
-    obtain ⟨Bm, hBm, hBmh⟩ : ∃ B ∈ (tr.state (sp.toParams.proposer p) k).fg.tree,
-        ((tr.state (sp.toParams.proposer p) k).fg.σ B.root).h = m := by
+    obtain ⟨Bm, hBm, hBmh⟩ : ∃ B ∈ (tr.state (proposer p) k).fg.tree,
+        ((tr.state (proposer p) k).fg.σ B.root).h = m := by
       cases c with
       | gap => exact hevk
       | top J => exact hevk.1
       | contest J => exact hevk.1
-    have hBe : EffAllowed (tr.state (sp.toParams.proposer p) k).fg m c Bm := by
+    have hBe : EffAllowed (tr.state (proposer p) k).fg m c Bm := by
       refine ⟨hBm, ?_, fun J hJ => ?_⟩
       · cases c <;> (simp only [phaseFloor]; omega)
       · subst hJ
@@ -731,7 +733,7 @@ theorem geo_of_settled (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g �
   have hPrv : d.head ∈ ℓ₀.frame.viableHeads := proposal_head_viable hr hpH hc₀ hcall₀ (σ := p)
     (by rw [sp.slotTime_eq, ht₀]; rfl) hprop₀ hfc₀
   rw [hfr₀] at hPrv
-  have hPrt : d.head ∈ (tr.state (sp.toParams.proposer p) k).fg.tree := hPrv.1
+  have hPrt : d.head ∈ (tr.state (proposer p) k).fg.tree := hPrv.1
   obtain ⟨-, hPrE⟩ := (hVH _ hpH k hi₀k hkK d.head hPrt).1 hPrv
   -- `P` is allowed wherever it is held
   have hPallow : ∀ z ∈ H, ∀ k', P ∈ (tr.state z k').fg.tree →
@@ -787,12 +789,12 @@ theorem geo_of_settled (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g �
   have hXy : X ∈ (tr.state y iv).fg.tree := mem_tree_of_frame hrun hy hce.1 hX.1
   rw [hfrv, hfrp, hVH y hy iv hiv0 hivK X hXy]
   have hgen : X = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload →
-      X ∈ (tr.state (sp.toParams.proposer p) k).fg.tree := fun hg =>
+      X ∈ (tr.state (proposer p) k).fg.tree := fun hg =>
     hg ▸ Store.genesis_mem (Compose.fg_reachable hl hpH k)
   constructor
   · rintro ⟨-, hXE⟩
     -- the proposer holds `X` at its proposal
-    have hXp : X ∈ (tr.state (sp.toParams.proposer p) k).fg.tree := by
+    have hXp : X ∈ (tr.state (proposer p) k).fg.tree := by
       rcases hX.2 with hst | ⟨P', hP', hP's, hXP'⟩
       · rw [SA.readPoint_blockStamp_eq hr hy hce] at hst
         rcases stamp_origin hr hy iv ℓ hce.1 X hX.1 with hg | ⟨k₁, -, ℓ₁, hc₁, hX₁, hst₁⟩
@@ -829,7 +831,7 @@ theorem geo_of_settled (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g �
     exact (hVH _ hpH k hi₀k hkK X hXp).2 ⟨store_anc_of_honest_anc hrun hnc hpH
       (hHS k hi₀k _ hpH X hXpE _ hpH k le_rfl hkK) hXp, hXpE⟩
   · intro hXv
-    have hXp : X ∈ (tr.state (sp.toParams.proposer p) k).fg.tree := hXv.1
+    have hXp : X ∈ (tr.state (proposer p) k).fg.tree := hXv.1
     obtain ⟨-, hXE⟩ := (hVH _ hpH k hi₀k hkK X hXp).1 hXv
     have hXyE := effAllowed_transfer hrun hnc hpH hy hXE hXy
     exact ⟨store_anc_of_honest_anc hrun hnc hy (hHS iv hiv0 y hy X hXyE y hy iv le_rfl hivK) hXy,

@@ -15,12 +15,14 @@ namespace Consensus.Goldilocks.Healing
 open Node
 
 variable {P : Params} {A : NodeAC P}
+variable (proposer : Nat → Fin P.n)
 
 /-- Only the FG update calls `ac_to_fg`: the AC's tick and the proposal step do not. -/
 private theorem toFG_not_mem (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (x : Nat) {ℓ : ACLabel A} (hc : ℓ.call = .toFG)
-    (h : Cut.ac ℓ ∈ (tickStep dg y st t x .acTick).2 ++
-      (tickStep dg y (tickStep dg y st t x .acTick).1 t x .proposal).2) : False := by
+    (h : Cut.ac ℓ ∈ (tickStep proposer dg y st t x .acTick).2 ++
+      (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).2) :
+    False := by
   rcases List.mem_append.1 h with h | h
   · simp only [tickStep, acCall, List.mem_singleton, Cut.ac.injEq] at h
     rw [h] at hc
@@ -55,10 +57,10 @@ private theorem toFG_not_mem (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fi
 the `ac_to_fg` cut is the FG update's first, at the state `st₁` its cuts start from. -/
 private theorem toFG_next (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) {k : Nat} {ℓ : ACLabel A}
-    (hk : (exec dg y st t e).2[k]? = some (.ac ℓ)) (hc : ℓ.call = .toFG) :
-    ∃ st₁, CutChain y t st ((exec dg y st t e).2.take k) st₁ ∧ ℓ.frame = frame st₁ ∧
+    (hk : (exec proposer dg y st t e).2[k]? = some (.ac ℓ)) (hc : ℓ.call = .toFG) :
+    ∃ st₁, CutChain y t st ((exec proposer dg y st t e).2.take k) st₁ ∧ ℓ.frame = frame st₁ ∧
       ∀ C, (A.toFG st₁.ac (frame st₁) t).2.1 = some C →
-        ∃ s, (exec dg y st t e).2[k + 1]? = some (.fg (.attest C s)) := by
+        ∃ s, (exec proposer dg y st t e).2[k + 1]? = some (.fg (.attest C s)) := by
   cases e with
   | block B =>
     have h := List.mem_of_getElem? hk
@@ -86,22 +88,24 @@ private theorem toFG_next (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P
     rw [h] at hc
     cases hc
   | tick x =>
-    have hcuts : (exec dg y st t (.tick x)).2 = (tickStep dg y st t x .acTick).2 ++
-        (tickStep dg y (tickStep dg y st t x .acTick).1 t x .proposal).2 ++
-        (tickStep dg y (tickStep dg y (tickStep dg y st t x .acTick).1 t x .proposal).1
+    have hcuts : (exec proposer dg y st t (.tick x)).2 =
+        (tickStep proposer dg y st t x .acTick).2 ++
+        (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).2 ++
+        (tickStep proposer dg y
+          (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).1
           t x .fgUpdate).2 := by
       simp [exec, onTick, runSteps, tickSteps]
     rw [hcuts] at hk ⊢
-    set l := (tickStep dg y st t x .acTick).2 ++
-      (tickStep dg y (tickStep dg y st t x .acTick).1 t x .proposal).2 with hl
-    set st₁ := (tickStep dg y (tickStep dg y st t x .acTick).1 t x .proposal).1
+    set l := (tickStep proposer dg y st t x .acTick).2 ++
+      (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).2 with hl
+    set st₁ := (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).1
     have hch : CutChain y t st l st₁ :=
-      Compose.chain_append y (Compose.tickStep_chain dg y st t x _)
-        (Compose.tickStep_chain dg y _ t x _)
+      Compose.chain_append y (Compose.tickStep_chain proposer dg y st t x _)
+        (Compose.tickStep_chain proposer dg y _ t x _)
     have hn : l.length ≤ k := by
       by_contra hlt
       rw [List.getElem?_append_left (by omega)] at hk
-      exact toFG_not_mem dg y st t x hc (List.mem_of_getElem? hk)
+      exact toFG_not_mem proposer dg y st t x hc (List.mem_of_getElem? hk)
     rw [List.getElem?_append_right hn] at hk
     rw [List.getElem?_append_right (by omega)]
     obtain ⟨m, rfl⟩ := Nat.exists_eq_add_of_le hn
@@ -127,18 +131,18 @@ private theorem toFG_next (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P
       simp only [attest]
       split <;> simp
 
-variable {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
+variable {proposer} {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A}
 
 /-- **An honest `ac_to_fg` cut that returns `C` is followed by `fg_attest(C)`**, at the same
 time, with the FG state unchanged. -/
-theorem toFG_attest (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k : Nat}
+theorem toFG_attest (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel A} {C : A.Blk} (hk : tr.CallAt y k (.ac ℓ)) (hc : ℓ.call = .toFG)
     (hC : (A.toFG (tr.state y k).ac ℓ.frame (tr.time k)).2.1 = some C) :
     ∃ s, tr.CallAt y (k + 1) (.fg (.attest C s)) ∧ tr.time (k + 1) = tr.time k ∧
       (tr.state y (k + 1)).fg = (tr.state y k).fg := by
   obtain ⟨j₀, e, k', hg, rfl, hk'⟩ := Compose.call_in_group h hy hk
-  obtain ⟨st₁, hch, hfr, hnext⟩ := toFG_next dg y _ _ e hk' hc
+  obtain ⟨st₁, hch, hfr, hnext⟩ := toFG_next proposer dg y _ _ e hk' hc
   have hlen := (List.getElem?_eq_some_iff.1 hk').1
   have hst : tr.state y (j₀ + k') = st₁ := by
     have := Compose.cutChain_run h hy hch j₀ rfl fun m hm => by

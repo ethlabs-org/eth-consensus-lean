@@ -16,6 +16,7 @@ compares with `P` (§7.2, `h2_locks_compare`); the record read by `ac_confirmed`
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {proposer : Nat → Fin sp.n}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time}
 
 /-- The reads of H.2 (ii): calls of honest nodes from `t_p + 6Δ` on (at `t_p + 6Δ` itself,
@@ -32,7 +33,7 @@ a clean raw origin (drain, §5), which an honest slot-`p` vote extends with `P` 
 `≥ p` sits below a fast origin's block or a slow origin's result, which an honest vote of its
 slot extends (the fast test or optimistic seats; the result's majority over all honest voters),
 and that vote extends `P` (§7.1). -/
-theorem h2_locks_compare (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp.n FGP}
+theorem h2_locks_compare (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
     (hp : t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P) :
     ∀ y ∈ H, ∀ i (T : Time), sp.ts p ≤ T → ∀ l ∈ (tr.state y i).locks,
@@ -194,8 +195,8 @@ latest confirmed block in the frame, else `Φ.F`) extends `P`: the first test at
 leaves a record extending `P` or `P ⪯ Φ.F` (its result is `P`, unvetoed by §7.2); every later
 call keeps it (its candidates compare with `P`, an ancestor candidate is refused), and so does
 every frame step (`Inv` for `P`). -/
-theorem h2_record_extends (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : sp.toParams.proposer p ∈ H) (hP : HonestProposal tr (sp.toParams.proposer p) p P)
+theorem h2_record_extends (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hunan : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
@@ -211,7 +212,7 @@ theorem h2_record_extends (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk s
   have hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p := by linarith
   have hts : sp.ts (p + 1 : Nat) = sp.ts p + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
-  have hprot : Protected tr H t₀ P p := Or.inr (Or.inr ⟨hpH, hP, hp, hunan⟩)
+  have hprot : Protected proposer tr H t₀ P p := Or.inr (Or.inr ⟨hpH, hP, hp, hunan⟩)
   rintro y hy j ℓ ⟨hc, ht, htick⟩
   -- in a frame from `t_{p+1}` on, `P ⪯ Φ.F` or `P` is in the tree
   have hcase : ∀ c (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y c ℓ →
@@ -289,8 +290,8 @@ theorem h2_record_extends (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk s
 /-- **§7.5, full heads**: at every late read, the head extends `P`: `P ⪯ fc_root`, below every
 head; or `P` is viable (`Inv`), every live lock compares with `P` (§7.2) and the latest view's
 honest votes, all extending `P`, give every child toward `P` a strict majority. -/
-theorem h2_head_extends (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : sp.toParams.proposer p ∈ H) (hP : HonestProposal tr (sp.toParams.proposer p) p P)
+theorem h2_head_extends (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hunan : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
@@ -316,7 +317,8 @@ theorem h2_head_extends (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp.
 
 /-- **The confirmed tip extends a block both of its inputs extend** (`ac_confirmed` is the
 deepest common ancestor of the record and the head in the frame's tree). -/
-theorem anc_acConfirmed (hI : InclusionRun tr H U g t₀) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+theorem anc_acConfirmed (hI : InclusionRun tr H U proposer g t₀)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {P : Blk sp.n FGP}
     (hC : Anc U P ((lookup ℓ.frame (tr.post j).latestConfirmed).getD ℓ.frame.F))
     (hH : Anc U P (acHead sp (tr.post j) ℓ.frame (tr.time j))) :
@@ -327,8 +329,8 @@ theorem anc_acConfirmed (hI : InclusionRun tr H U g t₀) {y : Fin sp.n} (hy : y
 /-- **H.2 (ii), §7**: for an honest proposal `P` of slot `p` at `t_p ≥ t₀ + 2Θ + 8Δ`, if every
 honest vote of slot `p` is `P`, then at every call of an honest node from `t_p + 6Δ` on (at
 `t_p + 6Δ` itself, from its tick there on), `P ⪯ ac_confirmed` after the call. -/
-theorem h2_proposal_confirmed (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : sp.toParams.proposer p ∈ H) (hP : HonestProposal tr (sp.toParams.proposer p) p P)
+theorem h2_proposal_confirmed (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hunan : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) :
     ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →

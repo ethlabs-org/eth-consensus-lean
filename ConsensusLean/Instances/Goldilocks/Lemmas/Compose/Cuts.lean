@@ -14,7 +14,8 @@ namespace Consensus.Goldilocks.Compose
 
 open Node
 
-variable {P : Params} {A : NodeAC P} (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+variable {P : Params} {A : NodeAC P} (proposer : Nat → Fin P.n)
+  (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
 
 /-- **C0.2, the restart half.** -/
 theorem restart_keeps_fg : RestartKeepsFG (A := A) self :=
@@ -23,7 +24,7 @@ theorem restart_keeps_fg : RestartKeepsFG (A := A) self :=
 /-! ### C0.4 -/
 
 private theorem proposal_cuts (st : NodeState A) (t : Time) (x : Nat) :
-    ProposalCuts self t (tickStep dg self st t x .proposal).2 := by
+    ProposalCuts proposer self t (tickStep proposer dg self st t x .proposal).2 := by
   simp only [tickStep]
   split_ifs with hp
   · refine Or.inr ⟨hp, ⟨.proposal, frame st, []⟩, rfl, ?_⟩
@@ -41,7 +42,7 @@ private theorem proposal_cuts (st : NodeState A) (t : Time) (x : Nat) :
   · exact Or.inl ⟨hp, rfl⟩
 
 private theorem update_cuts (st : NodeState A) (t : Time) (x : Nat) :
-    UpdateCuts (tickStep dg self st t x .fgUpdate).2 := by
+    UpdateCuts (tickStep proposer dg self st t x .fgUpdate).2 := by
   refine ⟨⟨.toFG, frame st, []⟩, rfl, ?_⟩
   simp only [tickStep]
   split
@@ -53,16 +54,16 @@ private theorem update_cuts (st : NodeState A) (t : Time) (x : Nat) :
     · exact Or.inr (Or.inr ⟨C, _, rfl⟩)
 
 /-- **C0.4.** -/
-theorem tick_order : TickOrder dg self := by
+theorem tick_order : TickOrder proposer dg self := by
   intro st t x
   simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil, List.nil_append]
-  exact ⟨⟨.tick, frame st, _⟩, _, _, rfl, rfl, proposal_cuts dg self _ t x,
-    update_cuts dg self _ t x⟩
+  exact ⟨⟨.tick, frame st, _⟩, _, _, rfl, rfl, proposal_cuts proposer dg self _ t x,
+    update_cuts proposer dg self _ t x⟩
 
 /-! ### C0.5 (c), signing -/
 
 /-- **C0.5 (c), signing.** -/
-theorem signed_only_in_ticks : SignedOnlyInTicks dg self := by
+theorem signed_only_in_ticks : SignedOnlyInTicks proposer dg self := by
   intro st t e C a h
   cases e with
   | tick x => exact ⟨x, rfl⟩
@@ -117,7 +118,8 @@ private theorem attest_chain (st : NodeState A) (t : Time) (C : A.Blk) :
 
 /-- The cuts of a tick step form a cut chain. -/
 theorem tickStep_chain (st : NodeState A) (t : Time) (x : Nat) (s : TickStep) :
-    CutChain self t st (tickStep dg self st t x s).2 (tickStep dg self st t x s).1 := by
+    CutChain self t st (tickStep proposer dg self st t x s).2
+      (tickStep proposer dg self st t x s).1 := by
   cases s with
   | acTick => exact acCall_chain self st t .tick
   | proposal =>
@@ -139,25 +141,26 @@ theorem tickStep_chain (st : NodeState A) (t : Time) (x : Nat) (s : TickStep) :
         (attest_chain self (Node.acToFG st t).1 t C)
 
 private theorem runSteps_chain (st : NodeState A) (t : Time) (x : Nat) (steps : List TickStep) :
-    CutChain self t st (runSteps dg self st t x steps).2 (runSteps dg self st t x steps).1 := by
+    CutChain self t st (runSteps proposer dg self st t x steps).2
+      (runSteps proposer dg self st t x steps).1 := by
   unfold runSteps
   suffices h : ∀ (acc : NodeState A × List (Cut A)), CutChain self t st acc.2 acc.1 →
       CutChain self t st (steps.foldl (fun acc step =>
-        let r := tickStep dg self acc.1 t x step; (r.1, acc.2 ++ r.2)) acc).2
+        let r := tickStep proposer dg self acc.1 t x step; (r.1, acc.2 ++ r.2)) acc).2
         (steps.foldl (fun acc step =>
-        let r := tickStep dg self acc.1 t x step; (r.1, acc.2 ++ r.2)) acc).1 from
+        let r := tickStep proposer dg self acc.1 t x step; (r.1, acc.2 ++ r.2)) acc).1 from
     h _ (.nil _)
   induction steps with
   | nil => exact fun _ h => h
   | cons s l ih =>
     intro acc h
-    exact ih _ (chain_append self h (tickStep_chain dg self _ t x s))
+    exact ih _ (chain_append self h (tickStep_chain proposer dg self _ t x s))
 
 /-- **C0.5, the cut law.** -/
-theorem exec_is_cut_chain : ExecIsCutChain dg self := by
+theorem exec_is_cut_chain : ExecIsCutChain proposer dg self := by
   intro st t e
   cases e with
-  | tick x => exact runSteps_chain dg self st t x _
+  | tick x => exact runSteps_chain proposer dg self st t x _
   | block B => exact onBlock_chain self st t B
   | message m => exact acCall_chain self st t _
   | attestation a => exact chain_single self ⟨rfl, rfl, rfl⟩

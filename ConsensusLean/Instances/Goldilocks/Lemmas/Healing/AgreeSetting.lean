@@ -85,6 +85,7 @@ theorem voterBlockTree_slot_le (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U 
 end Stamps
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ i m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
@@ -113,7 +114,8 @@ private theorem case_eq {β : Type} {c c' : PhaseCase β} (h₁ : c.rank ≤ c'.
 
 /-- **The phase-interval sandwich** (`hs234-exact-interface.md` §4): the phase `(m, c)` at two
 cuts `a ≤ b` is the phase at every cut between them. -/
-theorem phaseOn_squeeze (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF) {a b : Nat}
+theorem phaseOn_squeeze (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF) {a b : Nat}
     (ha : PhaseAt tr.projFG H a m c) (hb : PhaseAt tr.projFG H b m c) :
     PhaseOn tr.projFG H a b m c := by
   obtain ⟨hfg, hq⟩ := fg_run_of_hs hrun hs
@@ -147,7 +149,7 @@ theorem le_of_settledIn (hw : SettledIn tr H g w i₀ m c) {k : Nat} (hk : w ≤
 
 /-- **The phase from the settled cut** (`hs234-exact-interface.md` §4): with `i ≤ k` and the
 phase `(m, c)` on `[i, k]`, the phase is `(m, c)` on `[i₀, k]` (the sandwich on `[i₀, i]`). -/
-theorem phaseOn_voter (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem phaseOn_voter (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hw : SettledIn tr H g w i₀ m c) {k : Nat} (hik : i ≤ k)
     (hph : PhaseOn tr.projFG H i k m c) : PhaseOn tr.projFG H i₀ k m c := by
   intro k' h₁ h₂
@@ -157,11 +159,12 @@ theorem phaseOn_voter (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g Δ
 
 /-- **Every slot-`s` vote is after the start cut** `i` when `time i ≤ t_{s−1} + 3Δ`: the vote is
 cast at a time of slot `s`, at or after `t_s = t_{s−1} + 4Δ`. -/
-theorem start_le_voter (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr) {s : Nat}
+theorem start_le_voter (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {s : Nat}
     (hti : tr.time i ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : SA.CastAt tr.projAC y k ℓ e) (hes : e.msg.slot = s) : i ≤ k := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨-, hys, -, -⟩ := SA.castAt_spec hr hy hv
   have hvt : sp.ts s ≤ tr.time k :=
@@ -178,9 +181,10 @@ theorem start_le_voter (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun d
 
 /-- **A ready proposal is an honest proposal** of the AC projection: the own block `P` is made by
 the tick's `ac_proposal` cut and accepted at once (C0.3), at `t_s`. -/
-theorem honestProposalRun_of_ready (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem honestProposalRun_of_ready (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H p kP s P) : HonestProposalRun tr H s P := by
+    (hP : ReadyProposal tr H proposer p kP s P) : HonestProposalRun tr H proposer s P := by
   have h := hrun.toLocalRun
   obtain ⟨hp, rfl, -, ⟨⟨⟨acc, hc⟩, hpos⟩, -, htk⟩, hPs, -⟩ := hP
   refine ⟨hp, ?_⟩
@@ -197,8 +201,9 @@ theorem honestProposalRun_of_ready (hrun : GoldilocksRun dg H tr) (hnc : Compose
   have hts : tr.time (j + 2) = sp.ts s := by
     rw [htk, sp.slotTime_eq, hPs]; rfl
   subst hB
-  refine ⟨j + 1, ⟨.proposal, Node.frame (Node.tickStep dg _ (tr.state _ j) (tr.time (j + 2)) x
-    .acTick).1, []⟩, d, pay, Compose.projAC_callAt.2 hc1, rfl, ?_, ht1.trans hts, rfl, hPs, rfl,
+  refine ⟨j + 1, ⟨.proposal, Node.frame
+    (Node.tickStep proposer dg _ (tr.state _ j) (tr.time (j + 2)) x .acTick).1, []⟩,
+    d, pay, Compose.projAC_callAt.2 hc1, rfl, ?_, ht1.trans hts, rfl, hPs, rfl,
     rfl, j + 3, by omega, hacc3, ht3.trans (ht2.trans hts)⟩
   have ht1' : tr.projAC.time (j + 1) = tr.time (j + 2) := ht1
   rw [Compose.projAC_state h hp, hst1, ht1']
@@ -213,17 +218,18 @@ variable {p : Fin sp.n} {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
 /-- **The setting of HS.3 (a)**: its premises (with the settled premise of #95), and the
 proposal's `ac_proposal` call at cut `iP`, at `t_s`, with duty head `d` (`P.parent = d.head`)
 and payload `pay`. -/
-structure AgreeSetting (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
+structure AgreeSetting (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF w : Time) (i₀ i m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) (p : Fin sp.n) (kP s : Nat)
     (P : SA.Blk sp.n (List (FG.Att sp.n))) (iP : Nat) (ℓp : ACLabel (goldilocksNode sp ro))
     (d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)) (pay : Payload sp.n) : Prop where
-  run : GoldilocksRun dg H tr
+  run : GoldilocksRun proposer dg H tr
   shared : HSShared tr H dg g ΔF
   catchUp : CatchRun tr H g (2 * sp.Δ)
   settled : SettledIn tr H g w i₀ m c
   settled_le : i₀ ≤ i
-  ready : ReadyProposal tr H p kP s P
+  ready : ReadyProposal tr H proposer p kP s P
   start_le : i ≤ kP
   start_time : tr.time i ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ
   gbar_le : gbar g ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ
@@ -237,14 +243,14 @@ structure AgreeSetting (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Se
 
 /-- HS.3 (a)'s premises give the setting, with the proposal's `ac_proposal` call
 (`Compose.proposal_data`). -/
-theorem agreeSetting_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem agreeSetting_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) (hi₀ : i₀ ≤ i)
-    (hP : ReadyProposal tr H p kP s P) (hikP : i ≤ kP)
+    (hP : ReadyProposal tr H proposer p kP s P) (hikP : i ≤ kP)
     (hti : tr.time i ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ)
     (hg : gbar g ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ)
     (hph : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       PhaseOn tr.projFG H i k m c) :
-    ∃ iP ℓp d pay, AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay := by
+    ∃ iP ℓp d pay, AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay := by
   obtain ⟨iP, ℓp, d, pay, hcP, hcall, hd, ht, hpar, -⟩ :=
     Compose.proposal_data hrun hP.1 hP.2.2.2.1 hP.2.2.2.2.1
   exact ⟨iP, ℓp, d, pay, hrun, hs, hc, hw, hi₀, hP, hikP, hti, hg, hph, hcP, hcall, hd, ht, hpar⟩
@@ -252,7 +258,7 @@ theorem agreeSetting_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g 
 /-- The proposal's slot is positive: `t_s > t_{s−1} + 3Δ ≥ time(i) ≥ w ≥ ḡ + 8Δ > 0`. -/
 theorem AgreeSetting.one_le_slot {iP : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) : 1 ≤ s := by
+    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) : 1 ≤ s := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hwi : w ≤ tr.time i := hS.settled.2.1.1.trans (hS.run.toLocalRun.time_mono hS.settled_le)
   have hts : sp.ts ((s : Int) - 1) + 4 * sp.Δ = sp.ts s := by simp only [SAParams.ts]; ring

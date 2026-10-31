@@ -58,12 +58,13 @@ theorem hmax_le_HZ {y : Fin P.n} (hy : y ∈ H) {j : Nat} (hj : FirstCutAfter tr
 end Frontier
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF : Time}
 
 /-- Under `Healthy(g)` (an honest node awake from `ḡ` on, so the run goes on), some cut is the
 first cut after `c_z`. -/
-theorem exists_firstCutAfter (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H ΔF g)
+theorem exists_firstCutAfter (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
     {y : Fin sp.n} (hy : y ∈ H) : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g) := by
   classical
   have hle : gbar g ≤ cutZ sp.toParams g + 1 := by
@@ -82,7 +83,7 @@ theorem faulty_lt_q (hh : tr.HealthyRun H ΔF g) : Hᶜ.ncard < sp.toParams.fg.q
   omega
 
 /-- The height pair an honest node signs names a block it holds, of that height. -/
-theorem signAt_entry (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+theorem signAt_entry (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {att : FG.Att sp.n} (hs : tr.SignAt y k att) :
     ∃ E ∈ (tr.state y k).fg.tree, E.root = att.T ∧ ((tr.state y k).fg.σ E.root).h = att.h := by
   obtain ⟨src, hc⟩ := hs
@@ -90,7 +91,7 @@ theorem signAt_entry (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H
     (hrun.cutLaw y hy k _ hc).1
 
 /-- The height pair an honest node signs is at most its `Σ.h_max`. -/
-theorem signAt_h_le (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+theorem signAt_h_le (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {att : FG.Att sp.n} (hs : tr.SignAt y k att) : att.h ≤ (tr.state y k).fg.hmax := by
   obtain ⟨src, hc⟩ := hs
   exact Store.createAtt_h_le (Compose.fg_reachable hrun.toLocalRun hy k) (hrun.cutLaw y hy k _ hc).1
@@ -98,7 +99,8 @@ theorem signAt_h_le (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
 /-! ## HR.1 (a) -/
 
 /-- **HR.1 (a), first part.** An honest row signed at or before `c_z` has height `≤ H_z`. -/
-theorem signed_le_HZ (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H ΔF g) {y : Fin sp.n}
+theorem signed_le_HZ (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
+    {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att)
     (hk : tr.time k ≤ cutZ sp.toParams g) : att.h ≤ HZ tr H g := by
   obtain ⟨j, hj⟩ := exists_firstCutAfter hrun hh hy
@@ -125,7 +127,7 @@ private theorem mem_toFGCandidates {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.F
 /-- **HR.1 (a), second part (A1.5 with `τ = ḡ`).** From `c_z` on, a block `C` that `ac_to_fg`
 returns at an honest node is the block of one of its live fast locks, whose label has a fast-lock
 write at that node after `ḡ`, on a descendant of `C`. -/
-theorem toFG_fastLock (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} (hto : SA.ToFGAt tr.projAC x i ℓ C)
     (hi : cutZ sp.toParams g ≤ tr.time i) :
@@ -133,7 +135,7 @@ theorem toFG_fastLock (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg
       l.fast = true ∧ l.block = C.root ∧
       ∃ i' < i, ∃ B CV, SA.FastLockAt tr.projAC x i' l.slot B CV ∧ gbar g < tr.time i' ∧
         Anc (tr.HonestBlocks H) C B := by
-  have hacr := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hacr := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   obtain ⟨hc, -, hC⟩ := hto
   obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := mem_toFGCandidates hC
   have hst := Compose.projAC_state hrun.toLocalRun hx i
@@ -182,7 +184,7 @@ theorem toFG_fastLock (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg
 
 /-- **HR.1 (b) (G0.2 (f)).** The chain of an honest accepted block of state height `≥ H_z + 2`
 carries an honest row of height `H_z + 1`. -/
-theorem honest_row_of_height (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H ΔF g)
+theorem honest_row_of_height (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y i).fg.tree) (hXh : HZ tr H g + 2 ≤ ((tr.state y i).fg.σ X.root).h) :
     ∃ Y, (tr.state y i).fg.Anc Y X ∧ ∃ att ∈ Y.fgPayload, att.val ∈ H ∧ att.h = HZ tr H g + 1 :=
@@ -192,7 +194,7 @@ theorem honest_row_of_height (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun 
 /-! ## HR.1 (c) -/
 
 /-- **HR.1 (c), `a_z > c_z`.** -/
-theorem cutZ_lt_reset (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H ΔF g) {a : Time}
+theorem cutZ_lt_reset (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g) {a : Time}
     (hR : IsReset tr H g a) : cutZ sp.toParams g < a := by
   obtain ⟨⟨y, hy, k, att, hs, hatt, rfl⟩, -⟩ := hR
   by_contra hc
@@ -202,7 +204,7 @@ theorem cutZ_lt_reset (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H ΔF g
 /-- An honest row on a block that a node holds at its `fg_attest` cut was signed before the
 reset when that cut is at or before the reset (it was signed before that cut's time), so its
 height is at most `H_z`. -/
-private theorem held_row_lt (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H ΔF g)
+private theorem held_row_lt (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
     {a : Time} (hR : IsReset tr H g a) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Option (FG.Att sp.n)}
     (hc : tr.CallAt y k (.fg (.attest C s))) (hk : tr.time k ≤ a)
@@ -220,7 +222,8 @@ private theorem held_row_lt (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H
   linarith
 
 /-- **HR.1 (c), no honest high row before the reset.** -/
-theorem reset_le_of_high (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H ΔF g) {a : Time}
+theorem reset_le_of_high (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
+    {a : Time}
     (hR : IsReset tr H g a) {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt y k att) (hatt : HZ tr H g + 1 ≤ att.h) : a ≤ tr.time k := by
   rcases hatt.lt_or_eq with hatt | hatt
@@ -232,7 +235,8 @@ theorem reset_le_of_high (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H Δ
   · exact hR.2 y hy k att hs hatt.symm
 
 /-- **HR.1 (c), the frontier at the ticks at the reset is `≤ H_z + 1`.** -/
-theorem hmax_le_at_reset (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H ΔF g) {a : Time}
+theorem hmax_le_at_reset (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
+    {a : Time}
     (hR : IsReset tr H g a) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {src : SA.Blk sp.n (List (FG.Att sp.n))} {signed : Option (FG.Att sp.n)}
     (hc : tr.CallAt y k (.fg (.attest src signed))) (hk : tr.time k = a) :
@@ -243,7 +247,7 @@ theorem hmax_le_at_reset (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H Δ
   omega
 
 /-- **HR.1 (c), the rows signed at the reset have height `≤ H_z + 1`.** -/
-theorem signed_le_at_reset (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H ΔF g)
+theorem signed_le_at_reset (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
     {a : Time} (hR : IsReset tr H g a) {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt y k att) (hk : tr.time k = a) : att.h ≤ HZ tr H g + 1 := by
   obtain ⟨src, hc⟩ := hs
@@ -251,7 +255,8 @@ theorem signed_le_at_reset (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H 
 
 /-- An entry of a high honest chain has, at the honest node that holds it, a state of height
 `≥ H_z + 1`. -/
-private theorem highEntry_h {E : SA.Blk sp.n (List (FG.Att sp.n))} (hrun : GoldilocksRun dg H tr)
+private theorem highEntry_h {E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hrun : GoldilocksRun proposer dg H tr)
     (hE : E ∈ HighEntries tr H (HZ tr H g)) :
     ∃ y ∈ H, ∃ i, E ∈ (tr.state y i).fg.tree ∧ HZ tr H g + 1 ≤ ((tr.state y i).fg.σ E.root).h := by
   obtain ⟨y, hy, i, hE, B, hB, hBh, hBT⟩ := hE
@@ -268,12 +273,13 @@ private theorem highEntry_h {E : SA.Blk sp.n (List (FG.Att sp.n))} (hrun : Goldi
 /-- **HR.1 (c), the first clause of (K1_𝓔) of G1.10 with `T₀ = a_z − Δ`.** The namers of a high
 entry by `a_z − Δ` are the faulty validators: an honest one would have signed a row of height
 `≥ H_z + 1` (the entry's state is the same at every honest node) before `a_z`. -/
-theorem namers_lt_q (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H ΔF g)
+theorem namers_lt_q (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
     (hnc : Compose.NoCollRun dg tr) {a : Time} (hR : IsReset tr H g a)
     {E : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ HighEntries tr H (HZ tr H g)) :
     (Store.namers sp.toParams (Payload sp.n) H tr.projFG (a - sp.Δ) E).ncard <
       sp.toParams.fg.q := by
-  have hinj := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun.coherent.1
+  have hinj :=
+    (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent.1
   obtain ⟨y, hy, i, hEy, hEh⟩ := highEntry_h hrun hE
   refine lt_of_le_of_lt (Set.ncard_le_ncard (fun v hv => ?_) (Set.toFinite _)) (faulty_lt_q hh)
   rcases hv with hv | ⟨j, att, hs, hj, hT⟩
@@ -292,7 +298,7 @@ theorem namers_lt_q (hrun : GoldilocksRun dg H tr) (hh : tr.HealthyRun H ΔF g)
 
 /-- **HR.1, cut and reset.** -/
 theorem cut_and_reset : CutAndReset := by
-  intro sp ro dg H tr g ΔF hrun hh hnc
+  intro sp ro proposer dg H tr g ΔF hrun hh hnc
   refine ⟨cutZ_le sp g, fun y hy k att hs hk => signed_le_HZ hrun hh hy hs hk,
     fun x hx i ℓ C hto hi => toFG_fastLock hrun hnc hx hto hi,
     fun y hy i X hX hXh => honest_row_of_height hrun hh hy i hX hXh, fun a hR => ?_⟩

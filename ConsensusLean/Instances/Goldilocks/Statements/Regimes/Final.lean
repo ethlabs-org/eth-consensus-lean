@@ -57,12 +57,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The premises of R.4 with heal point `T`: R.3's healing premises at `T`, the premises of node
 O.1 and C1.3 (`UPat(W, M)` with `M ≥ M*`), and `T ≥ ḡ + T_rec`. -/
-structure FinalPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp a Tb T : Time)
+structure FinalPremises (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp a Tb T : Time)
     (W M cF kF : Nat) : Prop where
   /-- R.3's healing premises, with `T ≥ T_heal`. -/
-  healed : HealedPremises tr H dg g ΔF Gp a Tb T
+  healed : HealedPremises tr H proposer dg g ΔF Gp a Tb T
   /-- C1.2's premises and `UPat(W, M)` with `M ≥ M*`. -/
-  pattern : PatternPremises tr H dg g ΔF Gp W M cF kF
+  pattern : PatternPremises tr H proposer dg g ΔF Gp W M cF kF
   /-- The heal point is at or after `ḡ + T_rec`. -/
   recovered : gbar g + T_rec sp ΔF Gp W M ≤ T
 
@@ -76,9 +77,10 @@ then, in none of the confirmed reads at `t` of the nodes ready then, and each of
 ancestor of each ready finalized read at `t + D_fin`. -/
 def LiveDC : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time) (W M cF kF : Nat),
-    GoldilocksRun dg H tr → FinalPremises tr H dg g ΔF Gp a Tb T W M cF kF →
+    GoldilocksRun proposer dg H tr → FinalPremises tr H proposer dg g ΔF Gp a Tb T W M cF kF →
     ∀ t, T ≤ t → ∃ τ P, t < τ ∧ ReadyProposalAt tr H (catchUp sp) τ P ∧
       (∀ y j, ReadyAt tr H (catchUp sp) y (t + D_fin sp W M) → CutAfter tr j (t + D_fin sp W M) →
         Anc (tr.HonestBlocks H) P (tr.state y j).fg.F) ∧
@@ -94,9 +96,10 @@ with heal point `T`: for every `t ≥ T`, some honest proposal `P` released at
 node ready at `t'`, for every `t' ≥ t + D_fin`. -/
 def FinalInclude : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time) (W M cF kF : Nat),
-    GoldilocksRun dg H tr → FinalPremises tr H dg g ΔF Gp a Tb T W M cF kF →
+    GoldilocksRun proposer dg H tr → FinalPremises tr H proposer dg g ΔF Gp a Tb T W M cF kF →
     ∀ t, T ≤ t → ∃ τ P, t + sp.Δ ≤ τ ∧ τ ≤ t + sp.Δ + 4 * sp.Δ * ((W : Time) + 1 + M) ∧
       ReadyProposalAt tr H (catchUp sp) τ P ∧
       ∀ y t' j, t + D_fin sp W M ≤ t' → ReadyAt tr H (catchUp sp) y t' → CutAfter tr j t' →

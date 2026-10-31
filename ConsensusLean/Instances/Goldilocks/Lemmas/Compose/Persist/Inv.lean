@@ -70,6 +70,7 @@ theorem cutInv_iff {s m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {k : Nat} 
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {ΔF : Time} {x : Fin sp.n}
   {i₀ s m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+  {proposer : Nat → Fin sp.n}
 
 /-- The state of `y` before cut `k` is its state before cut `j ≤ k`, or the state after a call of
 `y` at a cut in `[j, k)`. -/
@@ -88,7 +89,7 @@ theorem state_of_le {y : Fin sp.n} {j k : Nat} (h : j ≤ k) :
 /-- **The caches of a state**: at a cut `k` at or after `t_s` whose earlier cuts are in the
 window, the caches of an honest node's state are those after its last call (`CutInv`) or, when
 that call is before `t_s`, those at `t_s` ((K0)). -/
-theorem state_caches (hrun : GoldilocksRun dg H tr)
+theorem state_caches (hrun : GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) (k : Nat)
     (hcut : ∀ j < k, CutInv tr H s m B j) (y : Fin sp.n) (hy : y ∈ H) (hk : sp.ts s ≤ tr.time k)
     (hle : ∀ j < k, tr.time j < sp.ts m + 2 * sp.Δ) :

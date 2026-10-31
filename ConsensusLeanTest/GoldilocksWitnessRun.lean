@@ -34,10 +34,12 @@ open SA Node ChainFrame
 /-! ## The ticks of the run -/
 
 theorem tickState_succ (t : Nat) :
-    tickState N1 dg1 (t + 1) = (Node.onTick dg1 v0 (tickState N1 dg1 t) (t : Int) 0).1 := rfl
+    tickState N1 dg1 (t + 1) =
+      (Node.onTick (fun _ => v0) dg1 v0 (tickState N1 dg1 t) (t : Int) 0).1 := rfl
 
 theorem tickCuts_eq (t : Nat) :
-    tickCuts N1 dg1 t = (Node.onTick dg1 v0 (tickState N1 dg1 t) (t : Int) 0).2 := rfl
+    tickCuts N1 dg1 t =
+      (Node.onTick (fun _ => v0) dg1 v0 (tickState N1 dg1 t) (t : Int) 0).2 := rfl
 
 theorem tick_cases (t : Nat) : t = 1 ∨ (∃ k, t = 4 * (k + 1)) ∨ (t % 4 = 2 ∧ 4 ≤ t) ∨
     (t ≠ 1 ∧ ¬ (t % 4 = 0 ∧ 4 ≤ t) ∧ ¬ (t % 4 = 2 ∧ 4 ≤ t)) := by
@@ -435,7 +437,8 @@ theorem update_pool {x : Fin sp1.n} {i s : Nat} {ℓ : ACLabel N1}
 
 /-- **Every protected block of slot `j` is a chain block of slot `≤ j`.** -/
 theorem protected_le {t₀ : Time} {B : N1.Blk} {j : Nat}
-    (h : Protected (tickRun N1 dg1).projAC Set.univ t₀ B j) : ∃ m ≤ j, B = blk m := by
+    (h : Protected (fun _ => v0) (tickRun N1 dg1).projAC Set.univ t₀ B j) :
+    ∃ m ≤ j, B = blk m := by
   rcases h with ⟨x, -, i, CV, -, hfl, -⟩ | ⟨x, -, i, -, ⟨ℓ, C, hu, hC, -, hB, -⟩, -⟩ |
       ⟨-, ⟨k, ℓ, d, pay, -, -, -, -, -, hBs, -, -, i', -, ⟨ℓ', hc', hcall⟩, hti⟩, -, -⟩
   · rcases hfl with ⟨ℓ, C, hu, hC, -, hB, -⟩ | ⟨ℓ, A, hp, hs, hsel, -⟩
@@ -470,7 +473,8 @@ theorem tip_ge {j i : Nat} (h : 4 * (j + 1) ≤ i / 8) : j ≤ tip (i / 8) := by
 
 /-- **`Inv(t₀)` holds on the AC projection of the tick run, for every `t₀`.** -/
 theorem tickRun_inv (t₀ : Time) :
-    Inv (tickRun N1 dg1).projAC Set.univ ((tickRun N1 dg1).HonestBlocks Set.univ) t₀ := by
+    Inv (fun _ => v0) (tickRun N1 dg1).projAC Set.univ
+      ((tickRun N1 dg1).HonestBlocks Set.univ) t₀ := by
   intro B j hP y _ i ℓ hc ht
   obtain ⟨m, hm, rfl⟩ := protected_le hP
   obtain ⟨-, hfr, hl⟩ := projAC_call hc
@@ -532,7 +536,7 @@ theorem not_inSettledPhase (g : Time) {p : Nat} (hp : 2 ≤ p) :
 with `a + T_b ≥ 0`: `Inv` holds from every time, and `Geo` is required of no proposal, since no
 proposal and its votes lie in one settled effective phase (`not_inSettledPhase`). -/
 theorem tickRun_bridgeAt (g a Tb : Time) (h : 0 ≤ a + Tb) :
-    Healing.BridgeAt (tickRun N1 dg1) Set.univ g a Tb := by
+    Healing.BridgeAt (tickRun N1 dg1) Set.univ (fun _ => v0) g a Tb := by
   refine ⟨tickRun_inv _, fun p P _ hts hset => absurd hset (not_inSettledPhase g ?_)⟩
   rw [ts_nat] at hts
   have hts' : a + Tb + 2 * (4 * ((2 : Nat) + 1 : Int) * 1) + 8 * 1 ≤ 4 * (p : Int) := hts
@@ -611,7 +615,7 @@ theorem aZ_nonneg (g : Time) : 0 ≤ aZ g := by unfold aZ; positivity
 
 /-- The ready proposal of slot `s ≥ 1` is the chain block of slot `s`. -/
 theorem readyProposal_blk (s : Nat) (hs : 1 ≤ s) :
-    ∃ k, Healing.ReadyProposal (tickRun N1 dg1) Set.univ (sp1.toParams.proposer s) k s (blk s) := by
+    ∃ k, Healing.ReadyProposal (tickRun N1 dg1) Set.univ (fun _ => v0) v0 k s (blk s) := by
   obtain ⟨k, B, hR, -⟩ := tickRun_readyProposal s hs
   obtain ⟨⟨acc, -, hl⟩, -⟩ := hR.2.2.2.1.1
   obtain ⟨s', -, -, rfl, -⟩ := blockCall_eq hl
@@ -622,7 +626,8 @@ theorem readyProposal_blk (s : Nat) (hs : 1 ≤ s) :
 /-- **`UPat(1, M)` holds on the tick run** for every `M` (with `c_F = 2`, `k_F = 0`): every slot
 `≥ 1` has a ready proposal, its chain block, and the chain block of two slots later is a ready
 proposal whose parent extends it. -/
-theorem tickRun_upat (g : Time) (M : Nat) : Healing.UPat (tickRun N1 dg1) Set.univ g 1 M 2 0 := by
+theorem tickRun_upat (g : Time) (M : Nat) :
+    Healing.UPat (tickRun N1 dg1) Set.univ (fun _ => v0) g 1 M 2 0 := by
   intro τ hτ
   have h0 : 0 ≤ τ := le_trans (le_max_right g 0) hτ
   set v := sp1.slot τ + 1 with hv
@@ -639,7 +644,7 @@ theorem tickRun_upat (g : Time) (M : Nat) : Healing.UPat (tickRun N1 dg1) Set.un
     linarith
   · obtain ⟨k, hk⟩ := readyProposal_blk s (by omega)
     obtain ⟨k2, hk2⟩ := readyProposal_blk (s + 2) (by omega)
-    refine ⟨k, blk s, hk, fun _ _ _ => ⟨sp1.toParams.proposer (s + 2), k2, blk (s + 2), ?_,
+    refine ⟨k, blk s, hk, fun _ _ _ => ⟨v0, k2, blk (s + 2), ?_,
       by rw [blk_slot], by rw [blk_slot], blk (s + 1), blk_parent_succ (s + 1),
       anc_honest (by omega)⟩⟩
     rw [blk_slot]; exact hk2
@@ -651,7 +656,7 @@ field of `HealedPremises` with the reset `a_z = t_{slot(ḡ)+4}` (`tickRun_isRes
 `G_p ≥ 4Δ`, `T_b ≥ 0` and `T ≥ T_heal`. -/
 theorem healedPremises_tickRun (g Gp Tb T : Time) (hGp : 4 ≤ Gp) (hTb : 0 ≤ Tb)
     (hT : Healing.T_heal sp1 g 1 Gp Tb ≤ T) :
-    Regimes.HealedPremises (tickRun N1 dg1) Set.univ dg1 g 1 Gp (aZ g) Tb T :=
+    Regimes.HealedPremises (tickRun N1 dg1) Set.univ (fun _ => v0) dg1 g 1 Gp (aZ g) Tb T :=
   tickRun_healedPremises g Gp (aZ g) Tb T hGp (tickRun_isReset g) hTb
     (tickRun_bridgeAt g (aZ g) Tb (add_nonneg (aZ_nonneg g) hTb)) hT
 
@@ -659,7 +664,7 @@ theorem healedPremises_tickRun (g Gp Tb T : Time) (hGp : 4 ≤ Gp) (hTb : 0 ≤ 
 `W = 1`, `G_p ≥ 4Δ` and any `M ≥ M*`. -/
 theorem patternPremises_tickRun (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
     (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M) :
-    Healing.PatternPremises (tickRun N1 dg1) Set.univ dg1 g 1 Gp 1 M 2 0 :=
+    Healing.PatternPremises (tickRun N1 dg1) Set.univ (fun _ => v0) dg1 g 1 Gp 1 M 2 0 :=
   tickRun_patternPremises g Gp M hGp (tickRun_upat g M) hM
 
 /-- **Non-vacuity of R.4's premises**, with the parameters of `healedPremises_tickRun` and
@@ -667,7 +672,7 @@ theorem patternPremises_tickRun (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
 theorem finalPremises_tickRun (g Gp Tb T : Time) (M : Nat) (hGp : 4 ≤ Gp) (hTb : 0 ≤ Tb)
     (hT : Healing.T_heal sp1 g 1 Gp Tb ≤ T) (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M)
     (hrec : SA.gbar g + Healing.T_rec sp1 1 Gp 1 M ≤ T) :
-    Regimes.FinalPremises (tickRun N1 dg1) Set.univ dg1 g 1 Gp (aZ g) Tb T 1 M 2 0 :=
+    Regimes.FinalPremises (tickRun N1 dg1) Set.univ (fun _ => v0) dg1 g 1 Gp (aZ g) Tb T 1 M 2 0 :=
   tickRun_finalPremises g Gp (aZ g) Tb T M hGp (tickRun_isReset g) hTb
     (tickRun_bridgeAt g (aZ g) Tb (add_nonneg (aZ_nonneg g) hTb)) hT (tickRun_upat g M) hM hrec
 

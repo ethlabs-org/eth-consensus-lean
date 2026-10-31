@@ -20,9 +20,9 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 /-- **H.2's premises** over an AC trace of the SA: the trace contract with the honest-object
 facts, a driven trace, `Healthy(g)`, `Catch(2Δ)`, and `Inv(t₀)` for some `t₀ ≥ ḡ`. -/
 structure InclusionRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (g t₀ : Time) : Prop extends HealthyBase tr H U g where
+    (proposer : Nat → Fin sp.n) (g t₀ : Time) : Prop extends HealthyBase tr H U proposer g where
   le : gbar g ≤ t₀
-  inv : Inv tr H U t₀
+  inv : Inv proposer tr H U t₀
 
 /-- **A clean raw origin** of label `j` on `B` (`h2-open-items.md` §6.1, the P1/P2 pairs of
 `𝒫(t₀)`): an honest fast lock write of slot `j` with `t_j ≥ t₀ + 4Δ` on the block it selects,
@@ -42,8 +42,8 @@ theorem cleanOrigin_iff {B : Blk sp.n FGP} {j : Nat} : CleanOrigin tr H t₀ B j
       t₀ + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1))) := Iff.rfl
 
 /-- A clean raw origin is protected (kinds P1 and P2 of `𝒫(t₀)`). -/
-theorem CleanOrigin.protected {B : Blk sp.n FGP} {j : Nat} (h : CleanOrigin tr H t₀ B j) :
-    Protected tr H t₀ B j := by
+theorem CleanOrigin.protected {proposer : Nat → Fin sp.n} {B : Blk sp.n FGP} {j : Nat}
+    (h : CleanOrigin tr H t₀ B j) : Protected proposer tr H t₀ B j := by
   rcases h with h | h
   exacts [Or.inl h, Or.inr (Or.inl h)]
 

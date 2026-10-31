@@ -232,7 +232,8 @@ theorem VotesBelow.upTo {s : Nat} (h : VotesBelow tr H s) (b : Time) :
 
 /-- Every cut is within a horizon `b ≥ 0`. -/
 theorem exists_horizon {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    (hrun : GoldilocksRun dg H tr) (i : Nat) : ∃ b, 0 ≤ b ∧ ∀ k < i, tr.time k ≤ b :=
+    {proposer : Nat → Fin sp.n} (hrun : GoldilocksRun proposer dg H tr) (i : Nat) :
+    ∃ b, 0 ≤ b ∧ ∀ k < i, tr.time k ≤ b :=
   ⟨max 0 (tr.time (i - 1)), le_max_left _ _,
     fun _ hk => (hrun.time_mono (by omega)).trans (le_max_right _ _)⟩
 

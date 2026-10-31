@@ -31,6 +31,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
@@ -41,7 +42,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 holder accepted the block after its proposer's own block call (unforgeable blocks), which is the
 cut after the `ac_proposal` cut (one tick per node and time). HS.3's private
 `proposal_before_holder` (`AgreeFrozen`), over the proposal's data. -/
-private theorem proposal_before_holder (hrun : GoldilocksRun dg H tr) {p : Fin sp.n}
+private theorem proposal_before_holder (hrun : GoldilocksRun proposer dg H tr) {p : Fin sp.n}
     (hpH : p ∈ H) {kP s : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     (hcP : tr.projAC.CallAt p kP ℓp) (hcall : ℓp.call = .proposal)
     (htP : tr.time kP = sp.ts s) (hs1 : 1 ≤ s) {P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -68,15 +69,15 @@ private theorem proposal_before_holder (hrun : GoldilocksRun dg H tr) {p : Fin s
 /-- **The proposal's cut precedes every honest vote of its slot**: a vote after `t_s` is at a
 later cut; an early vote holds a slot-`s` block (`cast_ready`), of the slot's proposer
 (`HonestObjects.proposer`), so it is after the proposal (`proposal_before_holder`). -/
-theorem proposal_cut_lt (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem proposal_cut_lt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {kP s : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
-    (hpH : sp.toParams.proposer s ∈ H) (hcP : tr.projAC.CallAt (sp.toParams.proposer s) kP ℓp)
+    (hpH : proposer s ∈ H) (hcP : tr.projAC.CallAt (proposer s) kP ℓp)
     (hcall : ℓp.call = .proposal) (htP : tr.time kP = sp.ts s) (hs1 : 1 ≤ s) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e)
     (he : e.msg.slot = s) : kP < k := by
   have hl := hrun.toLocalRun
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -112,7 +113,7 @@ variable {FGP : Type} {ro' : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)}
 `B ⪯ D`, under (V) and (L-high) for `B`, (P) for the counted votes and `f < n/2`, the head of an
 honest proposal of slot `σ + 1` extends `B`: the `3n/4` optimistic voters of `D` reach the
 proposer, each as a supporter of `D`, hence of `B`, or an equivocator. -/
-theorem optimistic_first_proposal_anc (hrun : ACRun T H U) (hf : 2 * Hᶜ.ncard < sp.n)
+theorem optimistic_first_proposal_anc (hrun : ACRun proposer T H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {D B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt T X i₀ σ D CV) (hBD : Anc U B D) {x : Fin sp.n} (hx : x ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro')} (hc : T.CallAt x i ℓ)
@@ -180,7 +181,8 @@ end General
 of a label `≥ σ` is optimistic (a result of such a label is written after `t_{σ+1}`), over honest
 votes before the proposal; one of a label `> j` is compatible with `B` by the earlier votes, one
 of label `j` by `hsame`. -/
-private theorem proposer_high_locks (hS : SA.HealthyBase tr.projAC H (tr.HonestBlocks H) g)
+private theorem proposer_high_locks
+    (hS : SA.HealthyBase tr.projAC H (tr.HonestBlocks H) proposer g)
     {p : Fin sp.n} (hpH : p ∈ H) {kP σ : Nat} (htP : tr.time kP = sp.ts (σ + 1 : Nat)) {k : Nat}
     (hkPk : kP < k) {j : Nat} (hjσ : j ≤ σ) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hprior : ∀ z ∈ H, ∀ k' < k, ∀ e', SA.VoteAt tr.projAC z k' e' → j < e'.msg.slot →
@@ -229,27 +231,28 @@ proposal boundary): under `Γ` (without `Prop⁺`), let an honest vote of a clea
 that vote (`proposal_cut_lt`); if its head extends `B` whenever (V) holds for `B` there and
 `Σ.F ⪯ B` (`hcore`), then `P` extends `B`: when `B ⪯ Σ.F` the head extends `Σ.F`; otherwise `B`
 is viable in the proposer's full tree (`clean_vote_frame`, at `t_s ≥ t_j + 4Δ`). -/
-private theorem proposal_follows (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+private theorem proposal_follows (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
     (hz : z ∈ H) {kz : Nat} {e' : SA.Em sp (List (FG.Att sp.n))}
     (hvz : SA.VoteAt tr.projAC z kz e') {j : Nat} (hj : w + 4 * sp.Δ ≤ sp.ts j)
     (hes : e'.msg.slot = j) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hext : SA.VoteExtends (tr.HonestBlocks H) e'.msg B) {s : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : HonestProposalRun tr H s P) (hjs : j < s)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : HonestProposalRun tr H proposer s P) (hjs : j < s)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e)
     (he : e.msg.slot = s) (hk : PhaseOn tr.projFG H i₀ k m c)
     (hcore : ∀ {kP : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
       {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n},
-      tr.projAC.CallAt (sp.toParams.proposer s) kP ℓp → ℓp.call = .proposal →
-      (SA.acProposal sp (tr.projAC.state (sp.toParams.proposer s) kP) ℓp.frame
+      tr.projAC.CallAt (proposer s) kP ℓp → ℓp.call = .proposal →
+      (SA.acProposal sp (tr.projAC.state (proposer s) kP) ℓp.frame
         (tr.time kP)).2 = some (d, pay) →
       tr.time kP = sp.ts s → kP < k →
       B ∈ ℓp.frame.tree ∧
         (B ∈ ℓp.frame.viableTree ℓp.frame.tree ∨ ℓp.frame.Anc B ℓp.frame.fcRoot) →
       Anc (tr.HonestBlocks H) ℓp.frame.F B → Anc (tr.HonestBlocks H) B d.head) :
     Anc (tr.HonestBlocks H) B P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hs.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl).localRun
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hpH, kP, ℓp, d, pay, hcP, hcall, hprop, htP, hpar, -, -, -, jA, -, hacc, -⟩ := hP
@@ -290,7 +293,7 @@ extends `B`: unless `B ⪯ Σ.F`, `B` is viable in the proposer's full tree (`cl
 the honest slot-`σ` votes reach it (`late_vote_held_of_frame`), its locks of a label `≥ σ` are
 optimistic over earlier honest votes (a result of such a label is written after `t_{σ+1}`), and
 `batch_proposal` applies. -/
-theorem proposal_head_of_batch (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
     (hz : z ∈ H) {kz : Nat} {e' : SA.Em sp (List (FG.Att sp.n))}
     (hvz : SA.VoteAt tr.projAC z kz e') {jw : Nat} (hjw : w + 4 * sp.Δ ≤ sp.ts jw)
@@ -392,13 +395,15 @@ vote of a clean slot `j` extend `B`, and let every honest vote of a slot `> j` b
 honest slot-`s` vote extend `B`. Then the honest slot-`s` proposal `P` extends `B`: its
 `ac_proposal` cut precedes the vote (`proposal_follows`), so `proposal_head_of_batch` applies at
 it. -/
-theorem proposal_extends_of_batch (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem proposal_extends_of_batch (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
     (hz : z ∈ H) {kz : Nat} {e' : SA.Em sp (List (FG.Att sp.n))}
     (hvz : SA.VoteAt tr.projAC z kz e') {j : Nat} (hj : w + 4 * sp.Δ ≤ sp.ts j)
     (hes : e'.msg.slot = j) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hext : SA.VoteExtends (tr.HonestBlocks H) e'.msg B) {s : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : HonestProposalRun tr H s P) (hjs : j + 2 ≤ s)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : HonestProposalRun tr H proposer s P)
+    (hjs : j + 2 ≤ s)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e)
     (he : e.msg.slot = s) (hk : PhaseOn tr.projFG H i₀ k m c)
@@ -420,13 +425,13 @@ extends `B` (`proposal_follows`): the counted votes and their heads reach the pr
 after `ḡ`, `Catch(2Δ)` before; `heldAtProposal_of_writer`), its locks of label `j` compare with
 `D` by TSQ (`fastLock_fastLock_compatible`), hence with `B`, those of label `j + 1` by the
 earlier votes (`proposer_high_locks`): `optimistic_first_proposal_anc`. -/
-theorem proposal_extends_of_optimistic (hrun : GoldilocksRun dg H tr)
+theorem proposal_extends_of_optimistic (hrun : GoldilocksRun proposer dg H tr)
     (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
     (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
     {D B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (hopt : SA.OptimisticLockAt tr.projAC x i j D CV) (hBD : Anc (tr.HonestBlocks H) B D)
     (hj : w + 4 * sp.Δ ≤ sp.ts j) {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : HonestProposalRun tr H (j + 1) P) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    (hP : HonestProposalRun tr H proposer (j + 1) P) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : SA.CastAt tr.projAC y k ℓ e) (he : e.msg.slot = j + 1)
     (hk : PhaseOn tr.projFG H i₀ k m c)
@@ -448,7 +453,7 @@ theorem proposal_extends_of_optimistic (hrun : GoldilocksRun dg H tr)
   have hj1 : sp.ts (j + 1 : Nat) = sp.ts j + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   -- (P): the counted votes reach the proposer
-  have hPv : ∀ v ∈ CV, SA.HeldAtProposal (tr.projAC.state (sp.toParams.proposer (j + 1)) kP)
+  have hPv : ∀ v ∈ CV, SA.HeldAtProposal (tr.projAC.state (proposer (j + 1)) kP)
       ℓp.frame j v := by
     intro v hv'
     obtain ⟨h₁, h₂, Hv, hHv, hHvr, hDHv, h₃⟩ := fastLock_writer hr hx (Or.inr hopt) v hv'
@@ -461,7 +466,7 @@ theorem proposal_extends_of_optimistic (hrun : GoldilocksRun dg H tr)
     by_cases hkg : gbar g ≤ tr.time kw
     · exact Or.inr (Or.inl ⟨kw, hkw, hkg, hkwt⟩)
     · obtain ⟨k', hk', hacc', hk't⟩ := hS.catchUp x hx kw Hv hkw (not_le.1 hkg)
-        (sp.toParams.proposer (j + 1)) hpH kP ℓp hcP
+        (proposer (j + 1)) hpH kP ℓp hcP
         (by change _ ≤ tr.time kP; rw [htP', hj1]; linarith) hFHv
       exact Or.inr (Or.inr ⟨k', hk', hacc', by change tr.time k' < _ at hk't ⊢; linarith⟩)
   exact optimistic_first_proposal_anc hS.run hS.two_faulty_lt hx hopt hBD hpH hcP
@@ -474,12 +479,13 @@ theorem proposal_extends_of_optimistic (hrun : GoldilocksRun dg H tr)
 
 /-- A regular write of label `j` (at `t_j + 6Δ`) before an honest vote of slot `s` (cast by
 `t_s + Δ`) has `s ≥ j + 2`. -/
-private theorem two_le_of_update (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+private theorem two_le_of_update (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} {i j : Nat} {ℓx : ACLabel (goldilocksNode sp ro)}
     (hupd : SA.UpdateAt tr.projAC x i j ℓx) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : SA.CastAt tr.projAC y k ℓ e) (hik : i < k) : j + 2 ≤ e.msg.slot := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have h1 := hr.time_mono hik.le
   have h2 := (Compose.cast_head_fcRoot hr hy hv).2
@@ -500,11 +506,11 @@ paragraph, §3 last paragraph): under `Γ` (without `Prop⁺`), let `x` write a 
 before which every honest vote of a slot `> j` extends `B`. Then the honest slot-`s` proposal
 extends `B`: the write is at `t_j + 6Δ`, so `s ≥ j + 2`, and an honest supporter of the update's
 result `C ⪰ B` (`result_extended`) gives `proposal_extends_of_batch`. -/
-theorem clean_slow_proposal (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_slow_proposal (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n}
     (hx : x ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : StoredSlowLockAt tr x i j B) (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1))
-    {s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : HonestProposalRun tr H s P)
+    {s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : HonestProposalRun tr H proposer s P)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e)
     (he : e.msg.slot = s) (hk : PhaseOn tr.projFG H i₀ k m c) (hik : i < k)
@@ -534,11 +540,11 @@ honest vote of a slot `> j` extends `B`. Then the honest slot-`s` proposal exten
 counted vote extends the selection `D ⪰ B` (`fastLock_honest_vote`); for `s ≥ j + 2` the honest
 batch (`proposal_extends_of_batch`); for `s = j + 1` the write is optimistic (a regular write is
 at `t_j + 6Δ`, after the vote), and `proposal_extends_of_optimistic` applies. -/
-theorem clean_fast_proposal (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem clean_fast_proposal (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n}
     (hx : x ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (ho : Compose.StoredFastLockAt tr x i j B CV) (hj : w + 4 * sp.Δ ≤ sp.ts j) {s : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : HonestProposalRun tr H s P) (hjs : j < s)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : HonestProposalRun tr H proposer s P) (hjs : j < s)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e)
     (he : e.msg.slot = s) (hk : PhaseOn tr.projFG H i₀ k m c) (hik : i < k)

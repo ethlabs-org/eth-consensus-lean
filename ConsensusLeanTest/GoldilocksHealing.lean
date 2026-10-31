@@ -84,7 +84,7 @@ theorem idle_phaseAt (i : Nat) :
 block and has no restart (its cuts are `ac_on_tick` and `ac_to_fg`). -/
 theorem oneTickRun_catch_noRestart (sg : Compose.Test.rootAC.Msg → Fin Compose.Test.P₁.n)
     (g κ t : Time) :
-    Node.LocalRun Compose.Test.dg₁ Set.univ sg Compose.Test.oneTickRun ∧
+    Node.LocalRun (fun _ => Compose.Test.v₀) Compose.Test.dg₁ Set.univ sg Compose.Test.oneTickRun ∧
       CatchRun Compose.Test.oneTickRun Set.univ g κ ∧
       NoRestartAfter Compose.Test.oneTickRun Set.univ t := by
   refine ⟨Compose.Test.oneTickRun_localRun sg, ?_, ?_⟩
@@ -114,7 +114,7 @@ ticking at every time) satisfies `Healthy(0)` (with `Δ_F = 1`), `CatchRun` (for
 Goldilocks SA: a follow-up. -/
 theorem periodicRun_healthy_catch_noRestart
     (sg : Compose.Test.idleAC.Msg → Fin Compose.Test.P₁.n) (κ t : Time) :
-    Node.LocalRun Compose.Test.dg₁ Set.univ sg Compose.Test.periodicRun ∧
+    Node.LocalRun (fun _ => Compose.Test.v₀) Compose.Test.dg₁ Set.univ sg Compose.Test.periodicRun ∧
       Compose.Test.periodicRun.HealthyRun Set.univ 1 0 ∧
       CatchRun Compose.Test.periodicRun Set.univ 0 κ ∧
       NoRestartAfter Compose.Test.periodicRun Set.univ t := by

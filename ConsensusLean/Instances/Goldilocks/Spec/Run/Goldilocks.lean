@@ -44,9 +44,10 @@ variable {sp} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **A run of the Goldilocks protocol** (claims §"Runs"): a run of the node with the SA, the
 vote's validator as the signer of a message, carried-vote unforgeability, and the genesis
 block's root the digest of its content. -/
-structure GoldilocksRun (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
+structure GoldilocksRun (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) : Prop
-    extends Node.LocalRun dg H (fun v : Vote sp.n => v.val) tr where
+    extends Node.LocalRun proposer dg H (fun v : Vote sp.n => v.val) tr where
   /-- The genesis block's root is the digest of its content: the premise `FGProjection` and
   C0.3 take over any AC (the Lean genesis root is a parameter). -/
   genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg

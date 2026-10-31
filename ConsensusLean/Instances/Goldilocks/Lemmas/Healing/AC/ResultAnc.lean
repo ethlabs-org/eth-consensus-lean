@@ -15,7 +15,8 @@ variable (sp : SAParams)
 
 /-- **A1.8 for a block `D ⪯ C` of the result `C`.** -/
 theorem result_transfer_anc {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} (hrun : ACRun tr H U) {s : Nat}
+    {proposer : Nat → Fin sp.n} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (hrun : ACRun proposer tr H U) {s : Nat}
     {X y : Fin sp.n} {i₀ i : Nat} {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hX : X ∈ H)
     (hres : ResultAt tr X i₀ s C CV) (hDC : Anc U D C) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)

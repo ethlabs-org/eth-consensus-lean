@@ -22,20 +22,23 @@ namespace Consensus.Goldilocks.Compose
 open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
 
 /-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
 private theorem tick_cuts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} (y : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
-    (Node.exec dg y st t (.tick x)).2 = (Node.tickStep dg y st t x .acTick).2 ++
-      (Node.tickStep dg y (Node.tickStep dg y st t x .acTick).1 t x .proposal).2 ++
-      (Node.tickStep dg y (Node.tickStep dg y (Node.tickStep dg y st t x .acTick).1 t x
+    (Node.exec proposer dg y st t (.tick x)).2 = (Node.tickStep proposer dg y st t x .acTick).2 ++
+      (Node.tickStep proposer dg y
+        (Node.tickStep proposer dg y st t x .acTick).1 t x .proposal).2 ++
+      (Node.tickStep proposer dg y (Node.tickStep proposer dg y
+        (Node.tickStep proposer dg y st t x .acTick).1 t x
         .proposal).1 t x .fgUpdate).2 := by
   simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps]
 
 /-- **An honest validator awake and joined at `t_s + 6Δ` runs the update of slot `s`** there: its
 tick at that public time starts with `ac_on_tick`, joined. -/
 private theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun dg H tr)
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun proposer dg H tr)
     {x : Fin sp.n} (hx : x ∈ H) {s : Nat} (hw : tr.awake x (sp.ts s + 6 * sp.Δ))
     (hj : tr.JoinedAt x (sp.ts s + 6 * sp.Δ)) :
     ∃ k ℓ, SA.UpdateAt tr.projAC x k s ℓ := by
@@ -47,10 +50,11 @@ private theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payloa
     (show sp.toParams.IsPublic _ from Dvd.intro (4 * (s : Int) + 6)
       (by simp only [SAParams.ts]; ring)) hw
   obtain ⟨-, hk, -⟩ := hj'
-  have hlen : 0 < (Node.exec dg x (tr.state x j) (sp.ts s + 6 * sp.Δ) (.tick c)).2.length := by
+  have hlen :
+      0 < (Node.exec proposer dg x (tr.state x j) (sp.ts s + 6 * sp.Δ) (.tick c)).2.length := by
     rw [tick_cuts]; simp [Node.tickStep]
   obtain ⟨hn0, ht0, -, -, hl0⟩ := hk 0 hlen
-  have hget : (Node.exec dg x (tr.state x j) (sp.ts s + 6 * sp.Δ) (.tick c)).2[0]'hlen =
+  have hget : (Node.exec proposer dg x (tr.state x j) (sp.ts s + 6 * sp.Δ) (.tick c)).2[0]'hlen =
       (Node.acCall x (tr.state x j) (sp.ts s + 6 * sp.Δ) .tick).2 := by
     simp only [tick_cuts]; rfl
   rw [hget] at hl0
@@ -67,7 +71,7 @@ private theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payloa
   have htj : tr.projAC.time j = sp.ts s + 6 * sp.Δ := ht0
   refine ⟨j, ℓ, ⟨hn0, by simp [RunTrace.projAC, hl, RunTrace.acLabel]⟩, hcall, htj, ?_⟩
   rw [projAC_state hrun.toLocalRun hx j, htj]
-  exact ((joined_projection sp ro dg H tr hrun x hx _).2.1 j ⟨_, hn0, hl⟩ hnr ht0).1 hj
+  exact ((joined_projection sp ro dg H tr proposer hrun x hx _).2.1 j ⟨_, hn0, hl⟩ hnr ht0).1 hj
 
 open Classical in
 /-- The record after a joined tick at `t_s + 6Δ` whose update of slot `s` has a result `C` that
@@ -104,7 +108,8 @@ slot-`s'` vote's head is above `Σ.F`, so it is held and resolved at the update
 voters support it, the rest are faulty), the deepest majority block above `Σ.F` extends it, is not
 vetoed (`result_not_vetoed`), and the record moves to it or keeps a deeper one. -/
 theorem later_update_adopts_gt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
@@ -112,7 +117,7 @@ theorem later_update_adopts_gt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) :
     ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y (k₀ + 1)).fg.F) := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   have hU := hr.coherent
   have hinv := sleepy_invariant hrun hnc hsl
@@ -260,7 +265,8 @@ theorem later_update_adopts_gt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 /-- **An update of a slot `s' ≥ s` adopts the honest proposal of slot `s`**: the record names a
 block extending `P`, or `Σ.F` extends `P`. -/
 theorem later_update_adopts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
+    (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}

@@ -62,6 +62,7 @@ private theorem frame_root_or_accepted {sp : SAParams} {FGP : Type} {ro : Replay
         (ih j hj hc' B hB).imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans hj.le, h⟩
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF : Time}
 
@@ -76,7 +77,8 @@ private theorem deadline_succ {y : Fin sp.n} {k : Nat} (hn : ¬ tr.RestartAt y (
   simp only [RunTrace.deadline, lastWake_succ hn]
 
 /-- The finalized tip of the frame of an honest AC cut is the node's `Σ.F`. -/
-private theorem frame_F (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+private theorem frame_F (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ℓ) :
     ℓ.frame.F = (tr.state y j).fg.F := by
   rw [(hrun.cutLaw y hy j _ (Compose.projAC_callAt.1 hc)).1]; rfl
@@ -84,14 +86,14 @@ private theorem frame_F (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y �
 /-- **The proposal of an honest proposer's tick is its honest proposal** in the AC projection:
 the `ac_proposal` cut after the tick's `ac_on_tick` returns the payload, and the own block is
 accepted at once (C0.3), at `t_s`. -/
-private theorem honest_proposal_of_tick (hrun : GoldilocksRun dg H tr)
+private theorem honest_proposal_of_tick (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr)
     (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
     {p : Fin sp.n} (hp : p ∈ H) {j : Nat} {t : Time} {x : Nat}
-    (hg : tr.GroupAt dg p j t (.tick x))
-    (hP : Node.Proposes p t) {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    (hg : tr.GroupAt proposer dg p j t (.tick x))
+    (hP : Node.Proposes proposer p t) {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n}
-    (hr : (Node.acProposal (Node.tickStep dg p (tr.state p j) t x .acTick).1 t).2.2 =
+    (hr : (Node.acProposal (Node.tickStep proposer dg p (tr.state p j) t x .acTick).1 t).2.2 =
       some (d, pay)) :
     SA.HonestProposal tr.projAC p (sp.slot t)
       (Node.mkBlock dg p (tr.state p j).fg t x d.head pay) := by
@@ -100,7 +102,8 @@ private theorem honest_proposal_of_tick (hrun : GoldilocksRun dg H tr)
   obtain ⟨hacc, ht2⟩ := own_block_accepted h node_requirements hroot hnc hp hg hP hr
   obtain ⟨hacc3, ht3, -⟩ := ac_block_after h hp hacc
   have hts : t = sp.ts (sp.slot t) := hP.2.1.trans (sp.slotTime_eq _)
-  refine ⟨j + 1, ⟨.proposal, Node.frame (Node.tickStep dg p (tr.state p j) t x .acTick).1, []⟩,
+  refine ⟨j + 1,
+    ⟨.proposal, Node.frame (Node.tickStep proposer dg p (tr.state p j) t x .acTick).1, []⟩,
     d, pay, Compose.projAC_callAt.2 hc1, rfl, ?_, ht1.trans hts, rfl, rfl, rfl, rfl, j + 3,
     by omega, hacc3, ht3.trans (ht2.trans hts)⟩
   have ht1' : tr.projAC.time (j + 1) = t := ht1
@@ -109,14 +112,14 @@ private theorem honest_proposal_of_tick (hrun : GoldilocksRun dg H tr)
 
 /-- The AC projection of a Goldilocks run is driven (H.2 (run): clause (a) from the FG's
 acceptance tests, clause (b) from C0.4). -/
-theorem projection_driven (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem projection_driven (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
-    (_hh : tr.HealthyRun H ΔF g) : SA.Driven tr.projAC H := by
+    (_hh : tr.HealthyRun H ΔF g) : SA.Driven proposer tr.projAC H := by
   have h := hrun.toLocalRun
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.localRun
   have blocks : ∀ y ∈ H, ∀ i B, tr.projAC.AcceptAt y i B → B.root ≠ sp.genesisRoot →
-      B.proposer = sp.toParams.proposer B.slot ∧ B.slot ≤ sp.slot (tr.projAC.time i) ∧
+      B.proposer = proposer B.slot ∧ B.slot ≤ sp.slot (tr.projAC.time i) ∧
       ∃ Pb : SA.Blk sp.n (List (FG.Att sp.n)), B.parent = some Pb.root ∧ Pb.slot < B.slot ∧
         (Pb.root = sp.genesisRoot ∨ ∃ k < i, tr.projAC.AcceptAt y k Pb) := by
     intro y hy i B ha hB
@@ -152,8 +155,8 @@ theorem projection_driven (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRu
     have hp : p ∈ H := hpB ▸ hprop ▸ hpH
     rcases Compose.blockCall_cases h hp ho with hd | ⟨j, x, rfl, hg, hP, d, pay, hr', rfl, -⟩
     · exact absurd (by simpa using (hd.2.1 0 (List.length_pos_iff.2 hd.1)).2.2.2.1) hpos
-    have hps : sp.toParams.proposer (sp.slot (tr.time (j + 2))) = p := hP.2.2
-    change SA.HonestProposal tr.projAC (sp.toParams.proposer (sp.slot (tr.time (j + 2))))
+    have hps : proposer (sp.slot (tr.time (j + 2))) = p := hP.2.2
+    change SA.HonestProposal tr.projAC (proposer (sp.slot (tr.time (j + 2))))
       (sp.slot (tr.time (j + 2))) _
     rw [hps]
     exact honest_proposal_of_tick hrun hnc hroot hp hg hP hr'
@@ -170,10 +173,10 @@ theorem projection_driven (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRu
     obtain ⟨j, x, hg⟩ := h.tick_of_awake p hp _ hts0 hpub haw
     have hslot : sp.toParams.slotOf (sp.ts s) = s :=
       SA.slot_of_mem sp s le_rfl ((SA.ts_lt_iff sp).2 (by omega))
-    have hP : Node.Proposes p (sp.ts s) :=
+    have hP : Node.Proposes proposer p (sp.ts s) :=
       ⟨by rw [hslot]; exact hs, by rw [hslot, sp.slotTime_eq]; rfl, by rw [hslot, hps]⟩
     obtain ⟨hc1, ht1, hst1⟩ := tick_proposal_call h hp hg hP
-    refine ⟨j + 1, ⟨.proposal, Node.frame (Node.tickStep dg p (tr.state p j) (sp.ts s)
+    refine ⟨j + 1, ⟨.proposal, Node.frame (Node.tickStep proposer dg p (tr.state p j) (sp.ts s)
       x .acTick).1, []⟩, Compose.projAC_callAt.2 hc1, rfl, ht1, ?_⟩
     rintro ⟨pay, -, -, d, hd⟩
     have ht1' : tr.projAC.time (j + 1) = sp.ts s := ht1
@@ -212,7 +215,8 @@ theorem projection_driven (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRu
     obtain ⟨jj, ej, qj, hgj, rfl, hqj⟩ := Compose.call_in_group h hy (Compose.projAC_callAt.1 hcj)
     obtain ⟨x, rfl⟩ := exec_ac_proposal _ _ _ _ (List.mem_of_getElem? hqj) hprop
     have hqj1 : qj = 1 := (onTick_ac_index _ _ _ _
-      (show (Node.onTick dg y (tr.state y jj) (tr.time (jj + qj)) x).2[qj]? = _ from hqj)).1 hprop
+      (show (Node.onTick proposer dg y (tr.state y jj)
+        (tr.time (jj + qj)) x).2[qj]? = _ from hqj)).1 hprop
     have htime' : tr.time (ji + qi) = tr.time (jj + qj) := htime
     rw [htime'] at hgi hqi
     -- a delivery's group at that time starts after the tick's
@@ -238,7 +242,8 @@ theorem projection_driven (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRu
       have hji : ji = jj := h.tick_unique y hy ji jj _ ⟨x', hgi⟩ ⟨x, hgj⟩
       subst hji
       have hidx := (onTick_ac_index _ _ _ _
-        (show (Node.onTick dg y (tr.state y ji) (tr.time (ji + qj)) x').2[qi]? = _ from hqi)).2
+        (show (Node.onTick proposer dg y (tr.state y ji)
+          (tr.time (ji + qj)) x').2[qi]? = _ from hqi)).2
       rcases hobj with ⟨m, hm⟩ | ⟨B, hB⟩
       · exact absurd ((exec_ac_call _ _ _ _ (List.mem_of_getElem? hqi)).2 m hm) (by simp)
       · have : ¬ qi ≤ 1 := fun hle => hidx hle B hB
@@ -258,7 +263,7 @@ theorem projection_driven (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRu
       · cases hB
 
 /-- `Healthy(g)` over a run gives `Healthy(g)` on its AC projection. -/
-theorem projection_healthy (hrun : GoldilocksRun dg H tr) (_hnc : Compose.NoCollRun dg tr)
+theorem projection_healthy (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compose.NoCollRun dg tr)
     (hh : tr.HealthyRun H ΔF g) : SA.HealthyAC tr.projAC H (tr.HonestBlocks H) g := by
   have h := hrun.toLocalRun
   obtain ⟨hgst, hawake, hf⟩ := hh
@@ -293,7 +298,7 @@ theorem projection_healthy (hrun : GoldilocksRun dg H tr) (_hnc : Compose.NoColl
     exact hkt
 
 /-- `Catch(κ)` over a run gives `Catch(κ)` on its AC projection (`Φ.F` is `Σ.F`). -/
-theorem projection_catch (hrun : GoldilocksRun dg H tr) (_hnc : Compose.NoCollRun dg tr)
+theorem projection_catch (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compose.NoCollRun dg tr)
     (_hh : tr.HealthyRun H ΔF g) (hc : CatchRun tr H g (2 * sp.Δ)) :
     SA.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ) := by
   classical
@@ -315,13 +320,14 @@ theorem projection_catch (hrun : GoldilocksRun dg H tr) (_hnc : Compose.NoCollRu
 
 /-- **H.2 (run), AC inclusion in runs.** -/
 theorem run_inclusion : RunInclusion := by
-  intro sp ro dg H tr g ΔF hrun hnc hroot hh hc
+  intro sp ro proposer dg H tr g ΔF hrun hnc hroot hh hc
   have hd := projection_driven hrun hnc hroot hh
   have hhe := projection_healthy hrun hnc hh
   have hca := projection_catch hrun hnc hh hc
   refine ⟨⟨hd, hhe, hca⟩, fun t₀ ht₀ hinv p P hP htp => ?_⟩
-  have := SA.ac_inclusion sp _ ro H _ tr.projAC g t₀
-    (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc) hd hhe hca ht₀ hinv p P hP.1 hP.2 htp
+  have := SA.ac_inclusion sp _ ro H _ tr.projAC proposer g t₀
+    (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
+    hd hhe hca ht₀ hinv p P hP.1 hP.2 htp
   exact ⟨this.1, fun hu y hy j ℓ hj ht hk => this.2 hu y hy j ℓ hj ht hk⟩
 
 end Consensus.Goldilocks.Healing

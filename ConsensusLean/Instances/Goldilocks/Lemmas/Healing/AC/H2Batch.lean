@@ -17,7 +17,7 @@ voter at an honest update (`honest_voter_at_update`), so a result has an honest 
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time} {proposer : Nat → Fin sp.n}
 
 
 /-- `Carry_y` for a set of votes is `Carry_y` for each of them (the fields are per vote), at a
@@ -50,8 +50,8 @@ theorem mem_tree_of_between {Φ : Frm sp.n FGP} (hU : Coherent U) (hΦ : FrameOK
 /-- **`Inv` at a vote not covered by `Φ.F`**: for a protected `(B, j)` and an honest vote at a
 time `≥ t_{j+1}` whose frame's `Φ.F` does not extend `B`, `B` is viable at the vote and
 `Φ.F ⪯ B`. -/
-theorem inv_at_vote (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j : Nat}
-    (hB : Protected tr H t₀ B j) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+theorem inv_at_vote (hI : InclusionRun tr H U proposer g t₀) {B : Blk sp.n FGP} {j : Nat}
+    (hB : Protected proposer tr H t₀ B j) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y k ℓ e)
     (ht : sp.ts (j + 1 : Nat) ≤ tr.time k) (hBF : ¬ Anc U B ℓ.frame.F) :
     ViableAtVote ℓ e e.msg.slot B ∧ Anc U ℓ.frame.F B := by
@@ -73,7 +73,7 @@ theorem inv_at_vote (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j : Na
 honest vote of slot `m + 1` with `Φ.F ⪯ B`, where `t_m ≥ ḡ + 4Δ` and every honest vote of slot `m`
 extends `B`, `Carry_y` holds for the honest slot-`m` votes (each sent by its voter by
 `t_m + Δ`, its head in the voter's frame, accepted after `ḡ` or caught up by `Catch(2Δ)`). -/
-theorem h2_carry_votes (hI : InclusionRun tr H U g t₀) {m : Nat}
+theorem h2_carry_votes (hI : InclusionRun tr H U proposer g t₀) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) {B : Blk sp.n FGP}
     (hvB : ∀ x ∈ H, ∀ k e, VoteAt tr x k e → e.msg.slot = m → VoteExtends U e.msg B)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -124,7 +124,7 @@ private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time
 /-- **An honest node is a voter at every honest update** of a slot `l` with `t_l ≥ ḡ + 4Δ`: its
 slot-`l` vote (or a pair of its slot-`l` votes) is in the writer's pool at the update, or it
 equivocates there. -/
-theorem honest_voter_at_update (hI : InclusionRun tr H U g t₀) {X : Fin sp.n} (hX : X ∈ H)
+theorem honest_voter_at_update (hI : InclusionRun tr H U proposer g t₀) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ l : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ l ℓX)
     (hl : gbar g + 4 * sp.Δ ≤ sp.ts l) {z : Fin sp.n} (hz : z ∈ H) :
     z ∈ voters {v | v ∈ (tr.state X i₀).pool l} := by
@@ -167,7 +167,7 @@ theorem honest_voter_at_update (hI : InclusionRun tr H U g t₀) {X : Fin sp.n} 
 /-- **A result of a slot `l` with `t_l ≥ ḡ + 4Δ` has an honest supporter**: an honest slot-`l`
 vote whose head extends it (its counted validators are a strict majority of the writer's
 voters, which include every honest node, and `f < n/2`). -/
-theorem result_honest_supporter (hI : InclusionRun tr H U g t₀) {X : Fin sp.n} (hX : X ∈ H)
+theorem result_honest_supporter (hI : InclusionRun tr H U proposer g t₀) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ l : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hR : ResultAt tr X i₀ l C CV)
     (hl : gbar g + 4 * sp.Δ ≤ sp.ts l) :
     ∃ x ∈ H, ∃ j e, VoteAt tr x j e ∧ e.msg.slot = l ∧ VoteExtends U e.msg C := by

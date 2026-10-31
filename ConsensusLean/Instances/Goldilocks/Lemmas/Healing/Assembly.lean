@@ -26,16 +26,18 @@ theorem IncludedFrom.mono {t₁ t₂ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n
 
 /-- **H.4, healing of the available chain, assembled.** -/
 theorem available_healing : AvailableHealing := by
-  intro sp ro dg H tr g ΔF Gp hrun hs hc hp a Tb ha hTb hb
-  have hr := reset_existence sp ro dg H tr g ΔF Gp hrun hs hc hp
+  intro sp ro proposer dg H tr g ΔF Gp hrun hs hc hp a Tb ha hTb hb
+  have hr := reset_existence sp ro proposer dg H tr g ΔF Gp hrun hs hc hp
   have haz : cutZ sp.toParams g < a :=
-    (cut_and_reset sp ro dg H tr g ΔF hrun hs.healthy hs.noColl).2.2.2.2 a ha |>.1
+    (cut_and_reset sp ro proposer dg H tr g ΔF hrun hs.healthy hs.noColl).2.2.2.2 a ha |>.1
   have hle : a ≤ gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp :=
     (hr.2.2.2.1 a ha).trans hr.2.2.2.2.1
   have hg : gbar g ≤ a + Tb := by linarith [lt_cutZ sp g, sp.toParams.hΔ]
-  have hincl := (run_inclusion sp ro dg H tr g ΔF hrun hs.noColl hs.genesisRoot hs.healthy hc).2
+  have hincl := (run_inclusion sp ro proposer dg H tr g ΔF
+    hrun hs.noColl hs.genesisRoot hs.healthy hc).2
     (a + Tb) hg hb.1
-  have hi : ∀ (p : Nat) P, HonestProposalRun tr H p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
+  have hi : ∀ (p : Nat) P, HonestProposalRun tr H proposer p P →
+      T_heal sp g ΔF Gp Tb ≤ sp.ts p →
       Unanimous tr H p P → IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P := fun p P hP htp hu =>
     (hincl p P hP (by simp only [T_heal] at htp; linarith)).2 hu
   refine ⟨T_heal_eq sp g ΔF Gp Tb, hi, fun B hB t ht => ?_, fun hU p P hP htp => hi p P hP htp

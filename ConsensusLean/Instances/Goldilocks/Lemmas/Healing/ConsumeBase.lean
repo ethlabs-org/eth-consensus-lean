@@ -50,11 +50,11 @@ theorem FirstCutAfter.le_of_le {N S L : Type} {tr : Trace N S L} {j₁ j₂ : Na
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {g ΔF : Time}
+  {tr : GoldilocksTrace sp ro} {g ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- Under `Healthy(g)` (an honest node awake from `ḡ` on, so a cut after every time), the first
 cut after any time `T` exists. -/
-theorem exists_firstCutAfter_of_healthy (hrun : GoldilocksRun dg H tr)
+theorem exists_firstCutAfter_of_healthy (hrun : GoldilocksRun proposer dg H tr)
     (hs : HSShared tr H dg g ΔF) {y : Fin sp.n} (hy : y ∈ H) (T : Time) :
     ∃ j, FirstCutAfter tr j T := by
   classical
@@ -66,7 +66,7 @@ theorem exists_firstCutAfter_of_healthy (hrun : GoldilocksRun dg H tr)
 /-! ## Blocks -/
 
 /-- **An honest proposal is accepted by its proposer at its cut**, so it is held after it. -/
-theorem accept_of_proposesAt (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem accept_of_proposesAt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : tr.ProposesAt p k W) :
     tr.AcceptAt p k W ∧ W ∈ (tr.state p (k + 1)).fg.tree ∧ tr.post k = tr.state p (k + 1) := by
@@ -111,13 +111,14 @@ theorem slot_le_of_anc {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hS : Cohere
   | refl => exact le_rfl
   | tail _ hst ih => exact ih.trans (hS.2 _ hst.1 _ hst.2.1 hst.2.2).le
 
-private theorem store_eq (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+private theorem store_eq (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     tr.projFG.store y i = (tr.state y i).fg := by
   simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
 
 /-- **Heights at a cut of the phase are at most its frontier** (a held block at a cut `k ≤ j`,
 with the phase at `j`). -/
-theorem h_le_of_phaseAt (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem h_le_of_phaseAt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     {k j : Nat} (hkj : k ≤ j) (hph : PhaseAt tr.projFG H j m c)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree) :
@@ -133,7 +134,7 @@ theorem h_le_of_phaseAt (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun 
 /-- **A block of state height `m` is allowed** in the geometry of the phase `(m, c)` at a cut of
 the phase: its height is at least the floor, and in the top-`J` case it extends `J` (otherwise it
 would be a contest against `J`). -/
-theorem effAllowed_of_height (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+theorem effAllowed_of_height (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     {m k : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hph : PhaseAt tr.projFG H k m c) {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y k).fg.tree) (hXh : ((tr.state y k).fg.σ X.root).h = m) :
@@ -148,7 +149,8 @@ theorem effAllowed_of_height (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy :
 
 /-- **A block above the floor is allowed** at a cut of the phase `(m, c)`: its height is at most
 the frontier `m`, so in the top-`J` case (floor `m − 1`) it is `m` (`effAllowed_of_height`). -/
-theorem effAllowed_of_floor_lt (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem effAllowed_of_floor_lt (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {m k : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
     (hph : PhaseAt tr.projFG H k m c) {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y k).fg.tree) (hlt : phaseFloor m c < ((tr.state y k).fg.σ X.root).h) :
@@ -186,19 +188,19 @@ private theorem toFG_mem_frame {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm s
     exact (SA.deepest_mem hC').1.1.1
 
 /-- A source of an honest node is in its FG tree. -/
-theorem toFG_mem_tree (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+theorem toFG_mem_tree (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hto : SA.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree :=
   mem_tree_of_frame hrun hy hto.1 (toFG_mem_frame hto.2.2)
 
 /-- **An honest vote of slot `z` is cast by `t_z + Δ`** (the vote guard;
 `Compose.cast_head_fcRoot`). -/
-theorem cast_time_le_slot (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem cast_time_le_slot (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC y k ℓ e) :
     tr.time k ≤ sp.ts e.msg.slot + sp.Δ :=
-  (Compose.cast_head_fcRoot (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
-    hy hv).2
+  (Compose.cast_head_fcRoot
+    (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun hy hv).2
 
 end Consensus.Goldilocks.Healing
 

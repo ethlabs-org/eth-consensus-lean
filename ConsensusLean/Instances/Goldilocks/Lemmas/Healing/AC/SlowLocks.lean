@@ -21,6 +21,7 @@ namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
+  {proposer : Nat → Fin sp.n}
 
 /-- A deepest block of a set is the one `deepest` returns. -/
 private theorem deepest_eq_of_isDeepest {Φ : Frm sp.n FGP} {S : Set (Blk sp.n FGP)}
@@ -98,7 +99,7 @@ theorem lock_below_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
 whose window is `≥ r`, at any cut of an honest node in a slot after `s`, every stored lock of slot
 at most `s` that is live there is compatible with `D`: its slot is in the window, so its origin is
 compatible with the writer's saved result of that slot (T1 §2), which extends `D`. -/
-theorem slow_stored_locks (hS : HealthyBase tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+theorem slow_stored_locks (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} (hi : s + 1 ≤ sp.slot (tr.time i)) :
@@ -118,7 +119,7 @@ theorem slow_stored_locks (hS : HealthyBase tr H U g) {x : Fin sp.n} (hx : x ∈
   exact compat_of_below hU hLO hDR hcomp
 
 /-- **T1 §4, the live locks at a vote after a slow origin.** -/
-theorem slow_live_locks (hS : HealthyBase tr H U g) {x : Fin sp.n} (hx : x ∈ H)
+theorem slow_live_locks (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)

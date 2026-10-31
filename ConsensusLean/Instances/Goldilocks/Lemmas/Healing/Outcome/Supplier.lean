@@ -53,6 +53,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload Vote)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
 
 /-- The first clean evidence label `b = slot(a) + 3` after the reset `a`. -/
 def cleanLabel (sp : SAParams) (a : Time) : Nat := sp.slot a + 3
@@ -71,7 +72,7 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
 /-- **RN, stored ancestry is irreversible** (§22): a lock that an honest node stores before cut
 `b` sits below a stored lock of its slot before an earlier cut `a'`, or below the block of a
 fresh fast write (an optimistic selection) or an update of its slot at a cut in `[a', b)`. -/
-theorem stored_lock_below (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem stored_lock_below (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ H) {a' b : Nat} (hab : a' ≤ b) :
     ∀ l ∈ (tr.projAC.state x b).locks,
       (∃ l' ∈ (tr.projAC.state x a').locks, l'.slot = l.slot ∧
@@ -81,7 +82,7 @@ theorem stored_lock_below (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRu
         ((∃ CV, SA.OptimisticLockAt tr.projAC x j l.slot B CV) ∨
           ∃ ℓ, SA.UpdateAt tr.projAC x j l.slot ℓ) ∧
         ∃ L ∈ tr.HonestBlocks H, L.root = l.block ∧ Anc (tr.HonestBlocks H) L B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   exact SA.lock_provenance_from hr hx hab
 
 /-- **The drain** (§23, HS.2 (3)): at a time `t ≥ R`, every live lock of an honest node has a
@@ -101,7 +102,7 @@ theorem drain_live_locks {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {L : Set SA.Loc
 /-! ### The clean fast transfer -/
 
 /-- `f < n/2` under `Healthy(g)`. -/
-private theorem faulty_lt_half (hp : ResetPremises tr H dg g ΔF a) (x : Fin sp.n) :
+private theorem faulty_lt_half (hp : ResetPremises tr H proposer dg g ΔF a) (x : Fin sp.n) :
     2 * Hᶜ.ncard < sp.n := by
   have := hp.healthy.2.2
   have := Fin.pos x
@@ -110,10 +111,10 @@ private theorem faulty_lt_half (hp : ResetPremises tr H dg g ΔF a) (x : Fin sp.
 
 /-- A fast lock of label `s` is written at or after `t_s` (the update of `s` runs at `t_s + 6Δ`,
 an optimistic confirmation of `s` in slot `s`). -/
-private theorem ts_le_of_fastLock (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n}
+private theorem ts_le_of_fastLock (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
     {i s : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC x i s D CV) : sp.ts s ≤ tr.time i := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hΔ := sp.toParams.hΔ
   rcases hfl with ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ℓ, A, -, hsl, -⟩
   · have ht' : tr.time i = sp.ts s + 6 * sp.Δ := ht
@@ -126,9 +127,9 @@ private theorem ts_le_of_fastLock (hp : ResetPremises tr H dg g ΔF a) {x : Fin 
 row of height `H_z + 1` is signed at `a` (`IsReset`); its source is below a high origin written
 by the signer before the row (`high_row_source`), and a fast lock written by `a` has a label
 `≤ slot(a)`. -/
-private theorem reset_seed (hp : ResetPremises tr H dg g ΔF a) :
+private theorem reset_seed (hp : ResetPremises tr H proposer dg g ΔF a) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ l ≤ sp.slot a := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨⟨y, hy, k, att, hs, hh, rfl⟩, -⟩ := hp.reset
   obtain ⟨r, hrk, l, O, ho, -⟩ := high_row_source hp hy hs hh.ge
   obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_mem hp ho
@@ -157,7 +158,7 @@ honest node joined at its write stores (after the move back) on `B` is extended 
 vote of a slot after `j`, and at that vote `B` is in the voter's viable voter block tree or at or
 below its `fc_root` (inside the honest blocks). (A high `B` is an HR.4 high origin, (R3); a low
 `B` can be an ancestor of a high seed, and then inherits the seed's transfer and witness.) -/
-theorem clean_fast_transfer (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+theorem clean_fast_transfer (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hx : x ∈ H)
     (hj : tr.JoinedAt x (tr.time i)) (hw : Compose.StoredFastLockAt tr x i j B CV)
     (hb : cleanLabel sp a ≤ j) :
@@ -165,10 +166,11 @@ theorem clean_fast_transfer (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} 
       SA.VoteExtends (tr.HonestBlocks H) e.msg B ∧
       (B ∈ ℓ'.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ'.frame e.msg.slot) ∨
         Anc (tr.HonestBlocks H) B ℓ'.frame.fcRoot) := by
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hr := hrun'.localRun
   have hU := hr.coherent
-  have hret := height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a hp.reset
+  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
+    hp.run hp.healthy hp.noColl a hp.reset
   obtain ⟨hBt, D, hfl, hBD⟩ := storedFastLock_mem hp.run hp.noColl hx hw
   -- a high `B` is a high origin: (R3)
   by_cases hhigh : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h
@@ -209,7 +211,8 @@ theorem clean_fast_transfer (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} 
 /-- **Clean regular-result transfer to the next slot** (open; the T3 paper orb's target): under the
 reset premises, every honest vote of slot `j + 1` extends the result `R` of an honest joined update
 of a clean label `j ≥ b` (fast, sub-fast or vetoed). -/
-theorem clean_result_next_votes (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+theorem clean_result_next_votes (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x : Fin sp.n} {i j : Nat}
     {R : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hx : x ∈ H)
     (hR : SA.ResultAt tr.projAC x i j R CV) (hb : cleanLabel sp a ≤ j) :
     ∀ y ∈ H, ∀ k e, SA.VoteAt tr.projAC y k e → e.msg.slot = j + 1 →
@@ -233,10 +236,11 @@ private theorem deepest_eq_of_isDeepest {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
       rcases h'.2 D h.1 (Ne.symm hne') with h₃ | ⟨h₃, h₄⟩ <;> omega
 
 /-- An honest validator is not an equivocator in an honest node's pool of a slot. -/
-private theorem honest_not_equivocator_pool (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n}
+private theorem honest_not_equivocator_pool (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n}
     (hy : y ∈ H) (c s : Nat) {u : Fin sp.n} (hu : u ∈ H) :
     u ∉ SA.equivocators {v | v ∈ (tr.projAC.state y c).pool s} := by
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hr := hrun.localRun
   rintro ⟨v, hv, w, hw, hvw, rfl, hwv⟩
   obtain ⟨jv, -, ev, hev, rfl⟩ := hrun.honest.pool_vote y hy c s _ hv hu
@@ -255,10 +259,10 @@ relayed with the vote to `x` under `GST(g)`: at `x`'s update the vote is held, r
 `t_j + 2Δ`, and its validator is no equivocator. So `S` has the honest validators (at least half
 of the committee) as supporters and passes the fast test, and the fast test selects it: the lock
 is fast. -/
-private theorem clean_slowLock_false (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n}
+private theorem clean_slowLock_false (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
     {i j : Nat} {S : SA.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H)
     (hS : SA.SlowLockAt tr.projAC x i j S) (hb : cleanLabel sp a + sp.k ≤ j + 1) : False := by
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hr := hrun'.localRun
   have hU := hr.coherent
   have hk := sp.two_le_k
@@ -287,10 +291,12 @@ private theorem clean_slowLock_false (hp : ResetPremises tr H dg g ΔF a) {x : F
     ⟨⟨hD.1.1, ?_⟩, fun X hX hne => hD.2 X ⟨hX.1, Or.inl hX.2⟩ hne⟩)
   -- every honest validator with a slot-`j` vote supports `S`
   obtain ⟨v₀, r₀, l₀, O, ho, hl₀⟩ := reset_seed hp
-  have hret := height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a hp.reset
+  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
+    hp.run hp.healthy hp.noColl a hp.reset
   have hsync : SyncAC (SA.goldilocksSA sp (List (FG.Att sp.n)) ro) H (tr.HonestBlocks H) g
       (tr.projAC.time i) tr.projAC :=
-    Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr ΔF g _
+    Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
+      tr proposer ΔF g _
       hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
   refine (half_committee hp (by linarith)).trans
     (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_ (Set.toFinite _)))
@@ -315,7 +321,7 @@ write at cut `i` a slow lock of label `j` on the raw selected block `S` (`SA.Slo
 the move back), with a clean slow window (`b + k − 1 ≤ j`). Then every honest vote of a slot after
 `j` extends `S`, and at that vote `S` is in the voter's viable voter block tree or at or below its
 `fc_root` (inside the honest blocks). Every stored image of the lock is an ancestor of `S` (RN). -/
-theorem clean_slow_transfer (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+theorem clean_slow_transfer (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
     {S : SA.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H) (hS : SA.SlowLockAt tr.projAC x i j S)
     (hb : cleanLabel sp a + sp.k ≤ j + 1) :
     ∀ y ∈ H, ∀ k ℓ' e, SA.CastAt tr.projAC y k ℓ' e → j < e.msg.slot →
@@ -327,9 +333,9 @@ theorem clean_slow_transfer (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n} 
 /-- **The joined duty, unanimity** (§23; phase-service §10, "Join with RN/RU"): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
 `t_u ≥ R` is `P`. -/
-theorem ready_unanimous (hp : ResetPremises tr H dg g ΔF a)
+theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H p k u P)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H proposer p k u P)
     (hR : drainTime sp a ≤ sp.ts u) : Unanimous tr H u P := by
   sorry
 
@@ -341,9 +347,9 @@ fast test selects `P`, and every FG source `z` returns at a cut at or after the 
 time, extends `P`; or some honest node has an actual `ac_to_fg` report `C` by then that extends
 `P` with a greater state height than `P` in the reporter's state (a higher source; `P` need not
 be an entry). -/
-theorem ready_update (hp : ResetPremises tr H dg g ΔF a)
+theorem ready_update (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H p k u P)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H proposer p k u P)
     (hR : drainTime sp a ≤ sp.ts u) {z : Fin sp.n} (hz : z ∈ H) {kz : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC z kz u ℓ) :
     (SA.getConfirmation sp (tr.projAC.state z kz) ℓ.frame u = some P ∧
@@ -363,9 +369,9 @@ report that suppresses a later one counts at its own cut), or some honest node h
 report `C` extending `P` of a greater state height than `P` (a higher source). (`ready_update`'s
 returned-source clause is vacuous when nothing is returned; this supplier quantifies over every
 honest node's actual reports.) -/
-theorem report_cover (hp : ResetPremises tr H dg g ΔF a)
+theorem report_cover (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H p k u P)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H proposer p k u P)
     (hR : drainTime sp a ≤ sp.ts u) :
     (∀ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
       Anc (tr.HonestBlocks H) P C) ∨

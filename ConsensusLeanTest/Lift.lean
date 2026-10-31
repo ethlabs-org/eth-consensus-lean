@@ -135,8 +135,15 @@ private theorem runDuties_rehash (rho : Run F E) (hash' : (protoOf F E).Item →
   | cons d ds ih =>
     rw [runDuties_cons] at ha
     rw [runDuties_cons, runDuties_cons]
-    have hstep : ({rho with hash := hash'} : Run F E).dutyStep v nd d = rho.dutyStep v nd d :=
-      releaseAll_eq_of_digests rho.hash hash' _ _ _ fun o ho => ha o (List.mem_append_left _ ho)
+    have hstep : ({rho with hash := hash'} : Run F E).dutyStep v nd d = rho.dutyStep v nd d := by
+      by_cases hs : rho.ownKey v ∈ rho.sel ((protoOf F E).role d)
+      · simp only [dutyStep, ownKey] at hs ⊢
+        simp only [hs, ↓reduceIte]
+        exact releaseAll_eq_of_digests rho.hash hash' _ _ _ fun o ho =>
+          ha o (List.mem_append_left _ (by
+            simpa [dutyStep, ownKey, hs, signedCandidate] using ho))
+      · simp only [dutyStep, ownKey] at hs ⊢
+        simp only [hs, ↓reduceIte]
     rw [hstep, ih _ (fun o ho => ha o (List.mem_append_right _ ho))]
 
 omit [DecidableEq V] in

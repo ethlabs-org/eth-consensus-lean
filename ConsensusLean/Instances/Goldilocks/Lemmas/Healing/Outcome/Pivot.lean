@@ -25,44 +25,36 @@ public section
 
 /-! # Goldilocks Healing: the pivot of an honest ready proposal after the drain (interface)
 
-The post-reset analogue of `Compose.pivot` (A1.7, workbench#12 §2), for `ready_unanimous`
-(contract by the healing orb): for an honest ready proposal `P` of slot `u` with `t_u ≥ R`, made
-from `ac_proposal`'s duty head `Q = P.parent`, under the reset premises, `Catch(2Δ)` and the
-clean regular-result transfer (`clean_result_next_votes`, taken as a hypothesis so that the
-dependency is explicit), a block `D` of the proposal walk (between its start and `Q`) whose path
-to `Q` is through viable heads of the proposal's frame, such that every honest slot-`u` voter
-whose earlier honest slot-`u` votes are `P` walks from its anchor through a block `X` that is `P`
-or on the path from `D` to `Q`. The voters need not reach the proposal walk's start (the
-proposer's own locks).
+Post-reset `Compose.pivot` (A1.7, workbench#12 §2) for `ready_unanimous`: an honest ready
+proposal `P` at `t_u ≥ R` has duty head `Q = P.parent`. Under reset premises, `Catch(2Δ)`
+and the explicit hypothesis `clean_result_next_votes`, its walk contains `D` with a viable
+path to `Q`. Each honest slot-`u` voter whose earlier honest slot-`u` votes are `P` walks
+through `P` or that path. Voters need not reach the proposer's own unlocked anchor.
 
-**The reduction.** The proof follows `Compose.pivot` with the Sleepy old origins replaced by the
-*old sources* `OldSrc u`: the HR.4 high origins written before `t_u`. Proved here:
+The proof replaces Sleepy old origins with `OldSrc u`, HR.4 high origins before `t_u`:
+* HR.4 (R3) puts every old source below every honest slot-`u` vote;
+* clean transfer excludes slow locks of other slots, and fast-lock provenance places those
+  locks below an old source or the reset seed;
+* an earlier honest supporter puts slot-`u` locks below `P`;
+* `D` is deepest among the walk's start and the old sources on the walk.
 
-* every honest slot-`u` vote extends every old source (HR.4 (R3));
-* a live lock of another slot at a cut in `[t_u, t_u + Δ]` sits below an old source: clean
-  regular-result transfer excludes slow locks; fast-lock provenance gives a write before `t_u`,
-  high or below the reset seed;
-* a voter's live lock of slot `u` sits below `P` (an honest supporter among the earlier votes);
-* the assembly (`D` the deepest of the walk's start and the old sources on the walk).
-
-The walk passes the old sources by their held viability. Both fork-choice roots are genesis
-or below an old source: high `J` uses an actual crossing row; low `J` uses the relayed reset
-seed and the absence of a top-height contest. No universal low-row premise is needed. -/
+Held viability lets the walk pass old sources. Fork-choice roots are genesis or below an old
+source: high `J` uses a crossing row; low `J` uses the relayed reset seed and no top-height contest.
+No universal low-row premise is needed. -/
 
 namespace Consensus.Goldilocks.Healing
 
 open SA (SAParams ReplayOrder Payload Vote)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
 /-! ### Blocks and walks (private copies of `Compose/Service/Pivot`) -/
 
 section Walk
-
 variable {FGP : Type}
-
 /-- A descendant inside the tree of a block of the tree is in the tree. -/
 private theorem mem_of_anc_left {Φ : SA.Frm sp.n FGP} {A B : SA.Blk sp.n FGP} (h : Φ.Anc A B)
     (hA : A ∈ Φ.tree) : B ∈ Φ.tree := by
@@ -145,7 +137,7 @@ end Walk
 /-! ### Run facts (private copies of `Compose/Service/Pivot` and `Outcome/Supplier`) -/
 
 /-- `f < n/2` under `Healthy(g)`. -/
-private theorem faulty_lt_half (hp : ResetPremises tr H dg g ΔF a) (x : Fin sp.n) :
+private theorem faulty_lt_half (hp : ResetPremises tr H proposer dg g ΔF a) (x : Fin sp.n) :
     2 * Hᶜ.ncard < sp.n := by
   have := hp.healthy.2.2
   have := Fin.pos x
@@ -162,7 +154,7 @@ private theorem block_eq {X Y : SA.Blk sp.n (List (FG.Att sp.n))} (h0 : X.root =
   simp_all
 
 /-- An honest block with the root of an honest proposal is that proposal (`NoColl`). -/
-private theorem eq_proposal (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+private theorem eq_proposal (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt p k P) {R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : R ∈ tr.HonestBlocks H) (hr : R.root = P.root) : R = P := by
@@ -171,7 +163,7 @@ private theorem eq_proposal (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoColl
     hg | ⟨j, x, rfl, -, hPr, d, pay, -, hB, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   have hok : P.RootOk dg := by rw [hB]; rfl
-  have hpr : P.proposer = sp.toParams.proposer P.slot := by
+  have hpr : P.proposer = proposer P.slot := by
     rw [hpp, hB]
     exact hPr.2.2.symm
   have hpar : P.parent ≠ none := by rw [hB]; simp [Node.mkBlock]
@@ -187,10 +179,10 @@ private theorem eq_proposal (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoColl
   exact block_eq hr h1 h2 (by rw [hRpr, hpr, h2]) h3 h4 h5
 
 /-- A fast lock of label `s` is written at or after `t_s`. -/
-private theorem ts_le_of_fastLock (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n}
+private theorem ts_le_of_fastLock (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
     {i s : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC x i s D CV) : sp.ts s ≤ tr.time i := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hΔ := sp.toParams.hΔ
   rcases hfl with ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ℓ, A, -, hsl, -⟩
   · have ht' : tr.time i = sp.ts s + 6 * sp.Δ := ht
@@ -201,11 +193,11 @@ private theorem ts_le_of_fastLock (hp : ResetPremises tr H dg g ΔF a) {x : Fin 
 
 /-- A fast lock of a label `m < u` written by `t_u + Δ` is written before `t_u` (an update of
 `m` runs at `t_m + 6Δ`, so `m ≤ u − 2`; an optimistic check of `m` runs in slot `m`). -/
-private theorem fastLock_time_lt (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n}
+private theorem fastLock_time_lt (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
     {r m u : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC x r m D CV) (hmu : m < u)
     (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hΔ := sp.toParams.hΔ
   rcases hfl with ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ℓ, A, -, hsl, -⟩
   · have ht' : tr.time r = sp.ts m + 6 * sp.Δ := ht
@@ -224,9 +216,9 @@ private theorem fastLock_time_lt (hp : ResetPremises tr H dg g ΔF a) {x : Fin s
 
 /-- **The reset seed**: a high origin of a label `≤ slot(a)` written by `a` (as `Supplier`'s
 `reset_seed`, keeping the write time). -/
-private theorem reset_seed (hp : ResetPremises tr H dg g ΔF a) :
+private theorem reset_seed (hp : ResetPremises tr H proposer dg g ΔF a) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ l ≤ sp.slot a ∧ tr.time r ≤ a := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨⟨y, hy, k, att, hs, hh, rfl⟩, -⟩ := hp.reset
   obtain ⟨r, hrk, l, O, ho, -⟩ := high_row_source hp hy hs hh.ge
   obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_mem hp ho
@@ -236,7 +228,7 @@ private theorem reset_seed (hp : ResetPremises tr H dg g ΔF a) :
     by exact_mod_cast (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) l).1 h₁, h₀⟩
 
 /-- The reset precedes every slot start after the drain. -/
-private theorem reset_lt_ts (hp : ResetPremises tr H dg g ΔF a) {u : Nat}
+private theorem reset_lt_ts (hp : ResetPremises tr H proposer dg g ΔF a) {u : Nat}
     (hR : drainTime sp a ≤ sp.ts u) : a < sp.ts u := by
   have hΔ := sp.toParams.hΔ
   have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
@@ -269,10 +261,11 @@ private theorem deepest_eq_of_isDeepest {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
       rcases h'.2 D h.1 (Ne.symm hne') with h₃ | ⟨h₃, h₄⟩ <;> omega
 
 /-- An honest validator is not an equivocator in an honest node's pool of a slot. -/
-private theorem honest_not_equivocator_pool (hp : ResetPremises tr H dg g ΔF a) {y : Fin sp.n}
+private theorem honest_not_equivocator_pool (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n}
     (hy : y ∈ H) (c s : Nat) {u : Fin sp.n} (hu : u ∈ H) :
     u ∉ SA.equivocators {v | v ∈ (tr.projAC.state y c).pool s} := by
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hr := hrun.localRun
   rintro ⟨v, hv, w, hw, hvw, rfl, hwv⟩
   obtain ⟨jv, -, ev, hev, rfl⟩ := hrun.honest.pool_vote y hy c s _ hv hu
@@ -292,11 +285,11 @@ private def CleanResultNext (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (a
       SA.VoteExtends (tr.HonestBlocks H) e.msg R
 
 /-- **A clean slow lock is impossible** (`Supplier`'s `clean_slowLock_false`, over `hcr`). -/
-private theorem clean_slowLock_false (hp : ResetPremises tr H dg g ΔF a)
+private theorem clean_slowLock_false (hp : ResetPremises tr H proposer dg g ΔF a)
     (hcr : CleanResultNext tr H a) {x : Fin sp.n}
     {i j : Nat} {S : SA.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H)
     (hS : SA.SlowLockAt tr.projAC x i j S) (hb : cleanLabel sp a + sp.k ≤ j + 1) : False := by
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hr := hrun'.localRun
   have hU := hr.coherent
   have hk := sp.two_le_k
@@ -321,10 +314,12 @@ private theorem clean_slowLock_false (hp : ResetPremises tr H dg g ΔF a)
   refine hneq (deepest_eq_of_isDeepest
     ⟨⟨hD.1.1, ?_⟩, fun X hX hne => hD.2 X ⟨hX.1, Or.inl hX.2⟩ hne⟩)
   obtain ⟨v₀, r₀, l₀, O, ho, hl₀, -⟩ := reset_seed hp
-  have hret := height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a hp.reset
+  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
+    hp.run hp.healthy hp.noColl a hp.reset
   have hsync : SyncAC (SA.goldilocksSA sp (List (FG.Att sp.n)) ro) H (tr.HonestBlocks H) g
       (tr.projAC.time i) tr.projAC :=
-    Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr ΔF g _
+    Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
+      tr proposer ΔF g _
       hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
   refine (half_committee hp (by linarith)).trans
     (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_ (Set.toFinite _)))
@@ -349,15 +344,16 @@ private theorem clean_slowLock_false (hp : ResetPremises tr H dg g ΔF a)
 /-- The AC cuts of a tick by position (C0.4). -/
 private theorem tick_ac_positions {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
     {t : Time} {x c : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (h : (Node.exec dg y st t (.tick x)).2[c]? = some (Cut.ac ℓ)) :
+    (h : (Node.exec proposer dg y st t (.tick x)).2[c]? = some (Cut.ac ℓ)) :
     (ℓ.call = .tick ∧ c = 0) ∨ ℓ.call = .toFG ∨
-      (Node.Proposes y t ∧ ((ℓ.call = .proposal ∧ c = 1) ∨ (ℓ.call ≠ .proposal ∧ 2 ≤ c))) := by
+      (Node.Proposes proposer y t ∧
+        ((ℓ.call = .proposal ∧ c = 1) ∨ (ℓ.call ≠ .proposal ∧ 2 ≤ c))) := by
   obtain ⟨ℓt, pc, uc, hlt, hcs, hpc, ℓu, hlu, huc⟩ :=
-    @Compose.tick_order sp.toParams (goldilocksNode sp ro) dg y st t x
+    @Compose.tick_order sp.toParams (goldilocksNode sp ro) proposer dg y st t x
   have huc' : ∀ ℓ', Cut.ac ℓ' ∈ uc → ℓ'.call = .toFG := by
     intro ℓ' hm
     rcases huc with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;> simp at hm <;> (rw [hm]; exact hlu)
-  change (Node.onTick dg y st t x).2[c]? = _ at h
+  change (Node.onTick proposer dg y st t x).2[c]? = _ at h
   rw [hcs] at h
   rcases c with _ | c
   · simp only [List.getElem?_cons_zero, Option.some.injEq, Cut.ac.injEq] at h
@@ -385,7 +381,7 @@ private theorem tick_ac_positions {y : Fin sp.n} {st : NodeState (goldilocksNode
 
 /-- **No honest optimistic check of slot `s` selects a block before the proposal**
 (`Compose.proposal_no_optimistic` with `Healthy(g)`'s `2f < n`). -/
-private theorem proposal_no_optimistic (hp : ResetPremises tr H dg g ΔF a) {p : Fin sp.n}
+private theorem proposal_no_optimistic (hp : ResetPremises tr H proposer dg g ΔF a) {p : Fin sp.n}
     (hpH : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal)
@@ -394,14 +390,14 @@ private theorem proposal_no_optimistic (hp : ResetPremises tr H dg g ΔF a) {p :
   intro z hz c hci C CV hO
   have hrun := hp.run
   have hnc := hp.noColl
-  have hr' := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hr' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hr'.localRun
   have hl := hrun.toLocalRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨gi, ei, ki, hgi, rfl, hki⟩ := Compose.call_in_group hl hpH (Compose.projAC_callAt.1 hc)
   rw [hti] at hgi hki
   obtain ⟨xi, rfl⟩ := Compose.acProposal_in_tick (List.mem_of_getElem? hki) hcall
-  obtain ⟨hpr, hki1⟩ : Node.Proposes p (sp.ts s) ∧ ki = 1 := by
+  obtain ⟨hpr, hki1⟩ : Node.Proposes proposer p (sp.ts s) ∧ ki = 1 := by
     rcases tick_ac_positions hki with ⟨h, -⟩ | h | ⟨hpr, ⟨-, h⟩ | ⟨h, -⟩⟩
     · rw [hcall] at h; cases h
     · rw [hcall] at h; cases h
@@ -470,7 +466,7 @@ private def OldSrc (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time) 
 
 /-- R2 also compares a pre-call finalized cache with an origin written later: compare at a
 future honest tick, then use monotonicity of `F` backwards. -/
-private theorem finalized_compatible_high_origin (hp : ResetPremises tr H dg g ΔF a)
+private theorem finalized_compatible_high_origin (hp : ResetPremises tr H proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hac : a ≤ tr.time c)
     {x : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j O) :
@@ -497,7 +493,7 @@ private theorem finalized_compatible_high_origin (hp : ResetPremises tr H dg g �
   have hik : i ≤ k := le_of_not_gt fun h => by
     have := hp.run.time_mono h.le
     linarith
-  have hcmp := ((height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a
+  have hcmp := ((height_scoped_retention sp ro proposer dg H tr g ΔF hp.run hp.healthy hp.noColl a
     hp.reset).caches z hz k ⟨_, hcall⟩ (by linarith) x i j O ho hik).1
   have hmono : Anc (tr.HonestBlocks H) (tr.state z c).fg.F (tr.post k).fg.F := by
     rw [← tr.state_succ_of_call hcall]
@@ -508,7 +504,7 @@ private theorem finalized_compatible_high_origin (hp : ResetPremises tr H dg g �
 
 /-- A high supporting head accepted by an honest voter before the previous slot's relay
 deadline is held in the proposal frame. Its height rules out pre-GST acceptance. -/
-private theorem proposal_relay_high (hp : ResetPremises tr H dg g ΔF a)
+private theorem proposal_relay_high (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -520,7 +516,7 @@ private theorem proposal_relay_high (hp : ResetPremises tr H dg g ΔF a)
     (hct : tr.time c < sp.ts ((u : Int) - 1) + 2 * sp.Δ)
     (hFB : Anc (tr.HonestBlocks H) ℓp.frame.F B) :
     B ∈ ℓp.frame.tree ∧ SA.AcceptedBefore tr.projAC p B (sp.ts ((u : Int) - 1) + 3 * sp.Δ) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hΔ := sp.toParams.hΔ
   have hgc : g ≤ tr.time c := by
     have := (cutZ_lt_of_anc hp ho hz (acceptAt_mem hp hz hacc) hOB).1
@@ -542,14 +538,15 @@ private theorem proposal_relay_high (hp : ResetPremises tr H dg g ΔF a)
     change _ ≤ max (tr.time c) (sp.ts ((u : Int) - 1)) + sp.Δ at hd
     linarith
   have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
-    tr ΔF g (tr.time c) hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
+    tr proposer ΔF g (tr.time c) hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
   obtain ⟨k, hki, hak, hkt⟩ := hsync.2 z hz c B hacc hgc le_rfl p hpH i ℓp hci
     (by have := hdl i le_rfl; change _ ≤ tr.time i; linarith) hFB
   exact ⟨SA.mem_tree_of_acceptAt sp hr hpH hak hki hci hFB,
     Or.inr ⟨k, hak, lt_of_lt_of_le hkt (hdl k hki)⟩⟩
 
 /-- The label of an old source is below `u`. -/
-private theorem label_lt_of_old (hp : ResetPremises tr H dg g ΔF a) {u : Nat} {x : Fin sp.n}
+private theorem label_lt_of_old (hp : ResetPremises tr H proposer dg g ΔF a)
+    {u : Nat} {x : Fin sp.n}
     {i j : Nat}
     {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j O)
     (ht : tr.time i < sp.ts u) : j < u := by
@@ -560,7 +557,7 @@ private theorem label_lt_of_old (hp : ResetPremises tr H dg g ΔF a) {u : Nat} {
 
 /-- An old source is held by the proposer, or below its finalized cache. Relay starts at an
 honest supporting vote head, not at the possibly later write of the origin. -/
-private theorem proposal_holds_old (hp : ResetPremises tr H dg g ΔF a)
+private theorem proposal_holds_old (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hai : a ≤ tr.time i)
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -569,7 +566,7 @@ private theorem proposal_holds_old (hp : ResetPremises tr H dg g ΔF a)
     (hO : OldSrc tr H g u O) :
     O ∈ ℓp.frame.tree ∨ Anc (tr.HonestBlocks H) O ℓp.frame.F := by
   obtain ⟨x, r, l, ho, hrt⟩ := hO
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hr := hrun.localRun
   have hΔ := sp.toParams.hΔ
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hpH hci
@@ -612,14 +609,14 @@ slot (`stored_fast_lock_provenance`), joined, of a label at most `u` and, unless
 optimistic check of slot `u` (excluded by `hne`), below `u` and before `t_u`; a high `O` is an old
 source, a low `O` is below the reset seed (the honest votes the write counts extend the seed, HR.4
 (R3), as in `clean_fast_transfer`). -/
-private theorem stored_lock_old (hp : ResetPremises tr H dg g ΔF a)
+private theorem stored_lock_old (hp : ResetPremises tr H proposer dg g ΔF a)
     (hcr : CleanResultNext tr H a) {u : Nat} (hR : drainTime sp a ≤ sp.ts u) {x : Fin sp.n}
     (hx : x ∈ H) {c : Nat} (htc : tr.time c ≤ sp.ts u + sp.Δ) {l : SA.Lock}
     (hl : l ∈ (tr.projAC.state x c).locks) (hb : cleanLabel sp a + sp.k + 2 ≤ l.slot)
     (hne : l.slot ≠ u ∨ ∀ r < c, ∀ D CV, ¬ SA.OptimisticLockAt tr.projAC x r u D CV)
     {L : SA.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ tr.HonestBlocks H) (hLr : L.root = l.block) :
     ∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) L O := by
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hr := hrun'.localRun
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
@@ -654,7 +651,8 @@ private theorem stored_lock_old (hp : ResetPremises tr H dg g ΔF a)
   by_cases hhigh : HZ tr H g + 1 ≤ ((tr.state x r).fg.σ (ℓ.frame.viableAncestor D).root).h
   · exact ⟨_, ⟨x, r, l.slot, ⟨hx, hj, ⟨CV, hw⟩, hhigh⟩, hrt⟩, hL'O⟩
   -- a low stored block is below the reset seed
-  have hret := height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a hp.reset
+  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
+    hp.run hp.healthy hp.noColl a hp.reset
   obtain ⟨hBt, D', hfl', hBD⟩ := storedFastLock_mem hp.run hp.noColl hx hw
   obtain ⟨v, r₀, l₀, O, ho, hl₀, hr₀⟩ := reset_seed hp
   rw [cleanLabel_eq] at hb
@@ -676,7 +674,7 @@ private theorem stored_lock_old (hp : ResetPremises tr H dg g ΔF a)
 
 /-- A high row signed before the proposal has an old high origin. The write cannot be an
 optimistic check of the proposal's slot, and a regular write in that slot is later. -/
-private theorem proposal_high_row (hp : ResetPremises tr H dg g ΔF a)
+private theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hti : tr.time i = sp.ts u) {v : Fin sp.n} (hv : v ∈ H) {k : Nat}
@@ -705,13 +703,14 @@ private theorem proposal_high_row (hp : ResetPremises tr H dg g ΔF a)
   exact fastLock_time_lt hp hfl hlu (by have := sp.toParams.hΔ; linarith)
 
 /-- Global high-origin comparability excludes contests at high justification heights. -/
-private theorem no_high_contest (hp : ResetPremises tr H dg g ΔF a)
+private theorem no_high_contest (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) (i : Nat) :
     ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax) := by
   have hU := honest_coherent hp
   have hreach := Compose.fg_reachable hp.run.toLocalRun hpH i
   have hsub : (tr.state p i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨p, hpH, i, hX⟩
-  have hret := height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a hp.reset
+  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
+    hp.run hp.healthy hp.noColl a hp.reset
   have hupper : ∀ {v₁ v₂ : Fin sp.n} {r₁ l₁ r₂ l₂ : Nat}
       {O₁ O₂ : SA.Blk sp.n (List (FG.Att sp.n))}, HighOrigin tr H g v₁ r₁ l₁ O₁ →
       HighOrigin tr H g v₂ r₂ l₂ O₂ → ∃ z ∈ H, ∃ m C, C ∈ (tr.state z m).fg.tree ∧
@@ -751,7 +750,7 @@ private theorem no_high_contest (hp : ResetPremises tr H dg g ΔF a)
   exact hnc
 
 /-- A held high origin is below the root or in the full viable tree at an active cut. -/
-private theorem held_high_origin_viable (hp : ResetPremises tr H dg g ΔF a)
+private theorem held_high_origin_viable (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {c : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p c ℓ)
     {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -764,10 +763,11 @@ private theorem held_high_origin_viable (hp : ResetPremises tr H dg g ΔF a)
   have hfr := Compose.frame_of_projAC hp.run hpH hc
   have hBf : B ∈ (Node.frame (tr.state p c)).tree := hfr ▸ hBt
   have hBh := high_of_anc hp ho hpH hBf.1 .refl
-  have hret := height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a hp.reset
+  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
+    hp.run hp.healthy hp.noColl a hp.reset
   have hcache := vote_state_caches hp c (fun k _ => retention_inv hp k) ho hpH ht
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt
-    (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun hpH hc
+    (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun hpH hc
   have hroot : Compatible (tr.HonestBlocks H) ℓ.frame.fcRoot B := by
     rw [hfr]
     change Compatible _ (tr.state p c).fg.fcRoot B
@@ -829,7 +829,7 @@ private theorem held_high_origin_viable (hp : ResetPremises tr H dg g ΔF a)
 
 /-- A block above every old source reaches the proposal's floor. Only high crossing
 quorums matter: the reset seed already makes the block high. -/
-private theorem proposal_floor_above_old (hp : ResetPremises tr H dg g ΔF a)
+private theorem proposal_floor_above_old (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ℓp : ACLabel (goldilocksNode sp ro)} (hci : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal) (hti : tr.time i = sp.ts u)
@@ -876,10 +876,10 @@ private theorem proposal_floor_above_old (hp : ResetPremises tr H dg g ΔF a)
 /-- Every old source is below the proposal's duty head. Relay and high-origin viability put
 the source on the walk; earlier-label votes or the same-label optimistic quorum favor its
 chain. -/
-private theorem reset_proposal_passes (hp : ResetPremises tr H dg g ΔF a)
+private theorem reset_proposal_passes (hp : ResetPremises tr H proposer dg g ΔF a)
     (_hc : CatchRun tr H g (2 * sp.Δ)) (hcr : CleanResultNext tr H a)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
@@ -887,11 +887,12 @@ private theorem reset_proposal_passes (hp : ResetPremises tr H dg g ΔF a)
     ∀ O, OldSrc tr H g u O → Anc (tr.HonestBlocks H) O d.head := by
   intro O hO
   have hpH := hP.1
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hr := hrun.localRun
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
-  have hret := height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a hp.reset
+  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
+    hp.run hp.healthy hp.noColl a hp.reset
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨x, r, l, ho, hrt⟩ := hO
   have hlu := label_lt_of_old hp ho hrt
@@ -935,7 +936,7 @@ private theorem reset_proposal_passes (hp : ResetPremises tr H dg g ΔF a)
       exact (SA.ts_lt_iff sp).2 (by omega)
     exact lt_of_le_of_lt this (htlt.trans_le hcut)
   have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
-    tr ΔF g (sp.ts s + 2 * sp.Δ) hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
+    tr proposer ΔF g (sp.ts s + 2 * sp.Δ) hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
   have hheld : ∀ z ∈ H, ∀ v : SA.Vote sp.n, v.slot = s →
       (∃ k, tr.projAC.SendOrAdmit z k v ∧ sp.ts s ≤ tr.projAC.time k ∧
         tr.projAC.time k < sp.ts s + 2 * sp.Δ) →
@@ -992,10 +993,10 @@ private theorem reset_proposal_passes (hp : ResetPremises tr H dg g ΔF a)
 
 /-- The proposal root is genesis or below an old source. High `J` has a crossing row signed
 before the proposal. Low `J` is below the held reset seed by the root's no-contest condition. -/
-private theorem reset_proposal_fcRoot (hp : ResetPremises tr H dg g ΔF a)
+private theorem reset_proposal_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
     (_hc : CatchRun tr H g (2 * sp.Δ)) (_hcr : CleanResultNext tr H a)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
@@ -1081,10 +1082,10 @@ private theorem reset_proposal_fcRoot (hp : ResetPremises tr H dg g ΔF a)
 /-- Above every old source, the proposal walk consists of viable heads. The reset seed makes
 the suffix high; a higher floor would produce a high crossing below an old source, contradicting
 its height. Together with `fc_root ⪯ start ⪯ D`, this proves viability. -/
-private theorem reset_suffix_viable (hp : ResetPremises tr H dg g ΔF a)
+private theorem reset_suffix_viable (hp : ResetPremises tr H proposer dg g ΔF a)
     (_hc : CatchRun tr H g (2 * sp.Δ)) (_hcr : CleanResultNext tr H a)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
@@ -1093,7 +1094,7 @@ private theorem reset_suffix_viable (hp : ResetPremises tr H dg g ΔF a)
     (hsD : ℓp.frame.Anc d.start D) (hDold : ∀ O, OldSrc tr H g u O → Anc (tr.HonestBlocks H) O D) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads := by
   intro X hDX _
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hU := hr.coherent
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hP.1 hci
   have hXt : X ∈ ℓp.frame.tree := mem_of_anc_left hDX hDt
@@ -1109,13 +1110,13 @@ private theorem reset_suffix_viable (hp : ResetPremises tr H dg g ΔF a)
     (fun O hO => (hDold O hO).trans hDXU)
 
 /-- A reset seed above the reader's finalized cache has reached every post-drain call. -/
-private theorem seed_held (hp : ResetPremises tr H dg g ΔF a)
+private theorem seed_held (hp : ResetPremises tr H proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y c ℓ) (ht : a + sp.Δ < tr.time c)
     {v : Fin sp.n} {r l : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g v r l O) (hrt : tr.time r ≤ a)
     (hFO : Anc (tr.HonestBlocks H) ℓ.frame.F O) : O ∈ ℓ.frame.tree := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨-, -, -, -, -, -, -, -, -, hOr⟩ := highOrigin_mem hp ho
   rcases tree_accepted hp.run.toLocalRun ho.1 hOr with hg | ⟨k, hkr, hak⟩
   · exact False.elim ((cutZ_lt_of_anc hp ho ho.1 hOr .refl).2 (congrArg (·.root) hg))
@@ -1148,7 +1149,7 @@ private theorem seed_held (hp : ResetPremises tr H dg g ΔF a)
     change tr.time j ≤ tr.time k
     linarith
   have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
-    tr ΔF g (tr.time k) hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
+    tr proposer ΔF g (tr.time k) hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
   obtain ⟨j, hjc, haj, -⟩ := hsync.2 v ho.1 (k + 1) O hkA
     (by change g ≤ tr.time (k + 1); rw [hsame]
         linarith [lt_cutZ sp g, le_gbar g, sp.toParams.hΔ])
@@ -1166,10 +1167,10 @@ private theorem seed_held (hp : ResetPremises tr H dg g ΔF a)
 /-- The vote root is genesis or below an old source (hence satisfies the original disjunction).
 An actual crossing row's origin label is strictly below the vote's label
 (`row_origin_label_lt`); the low-`J` case relays the reset seed. -/
-private theorem reset_vote_fcRoot (hp : ResetPremises tr H dg g ΔF a)
+private theorem reset_vote_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
     (_hc : CatchRun tr H g (2 * sp.Δ)) (_hcr : CleanResultNext tr H a)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hP : ReadyProposal tr H p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    (_hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = u)
@@ -1179,7 +1180,7 @@ private theorem reset_vote_fcRoot (hp : ResetPremises tr H dg g ΔF a)
       (∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) ℓy.frame.fcRoot O) ∨
       Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := by
   have hU := honest_coherent hp
-  have hrun := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hrun := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hr := Compose.fg_reachable hp.run.toLocalRun hy j
   have hsub : (tr.state y j).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, j, hX⟩
   have hfr := Compose.frame_of_projAC hp.run hy hcy.1
@@ -1267,17 +1268,17 @@ private theorem reset_vote_fcRoot (hp : ResetPremises tr H dg g ΔF a)
 proposal's unlocking) sits below a stored lock of a clean label (the drain) of the proposer, not of
 slot `u` (`proposal_no_optimistic`), below an old source (`stored_lock_old`); `fc_root` by
 `reset_proposal_fcRoot`. -/
-private theorem reset_proposal_anchor (hp : ResetPremises tr H dg g ΔF a)
+private theorem reset_proposal_anchor (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hcr : CleanResultNext tr H a)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root) :
     d.start.root = sp.genesisRoot ∨
       ∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) d.start O := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hpH : p ∈ H := hP.1
   have hΔ := sp.toParams.hΔ
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hpH hci
@@ -1312,10 +1313,10 @@ votes are `P`. A live lock of slot `u` sits below an optimistic selection with a
 supporter among the earlier votes, so below `P`; one of another slot below a stored lock of a
 clean label (the drain), below an old source (`stored_lock_old`); `fc_root` by
 `reset_vote_fcRoot`. -/
-private theorem reset_vote_anchor (hp : ResetPremises tr H dg g ΔF a)
+private theorem reset_vote_anchor (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hcr : CleanResultNext tr H a)
     {p : Fin sp.n} {k u : Nat} {P Q D : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
     (hPQ : P.parent = some Q.root) (hQU : Q ∈ tr.HonestBlocks H)
     (hDQ : Anc (tr.HonestBlocks H) D Q) (hDU : D ∈ tr.HonestBlocks H)
     (hDold : ∀ O, OldSrc tr H g u O → Anc (tr.HonestBlocks H) O D)
@@ -1330,7 +1331,7 @@ private theorem reset_vote_anchor (hp : ResetPremises tr H dg g ΔF a)
         P ∈ tr.HonestBlocks H) := by
   have hrun := hp.run
   have hnc := hp.noColl
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hΔ := sp.toParams.hΔ
@@ -1401,13 +1402,13 @@ private theorem reset_vote_anchor (hp : ResetPremises tr H dg g ΔF a)
     exact (haB.trans (Anc.mono hΦU hB'B₁)).trans (hB₁O.trans (hDold O hO))
 
 /-- **The pivot after the drain** (open: through the four residual steps above). -/
-theorem reset_pivot (hp : ResetPremises tr H dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     (hcr : ∀ x ∈ H, ∀ i j (R : SA.Blk sp.n (List (FG.Att sp.n))) (CV : Set (Vote sp.n)),
       SA.ResultAt tr.projAC x i j R CV → cleanLabel sp a ≤ j →
       ∀ y ∈ H, ∀ k e, SA.VoteAt tr.projAC y k e → e.msg.slot = j + 1 →
         SA.VoteExtends (tr.HonestBlocks H) e.msg R)
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
@@ -1423,10 +1424,11 @@ theorem reset_pivot (hp : ResetPremises tr H dg g ΔF a) (hc : CatchRun tr H g (
             (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
             (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
   have hrun := hp.run
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hrun hp.noColl
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl
   have hr := hrun'.localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
-  have hret := height_scoped_retention sp ro dg H tr g ΔF hp.run hp.healthy hp.noColl a hp.reset
+  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
+    hp.run hp.healthy hp.noColl a hp.reset
   have hpH : p ∈ H := hP.1
   obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hpH hci
   -- the proposal walk, from its start to `Q`

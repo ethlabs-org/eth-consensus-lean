@@ -195,12 +195,14 @@ def signedCandidate (v : V) (d : (protoOf F E).Duty) :
     else []
   | none => []
 
-/-- One duty of node `v`: `act`'s state is applied, then its candidate (if any)
-is released. -/
+/-- One selected duty of node `v`: `act`'s state is applied, then its candidate (if any)
+is released. An unselected duty does not execute or mutate state. -/
 def dutyStep (v : V) (nd : Node (protoOf F E)) (d : (protoOf F E).Duty) :
     Node (protoOf F E) × List (protoOf F E).Object :=
-  let a := (protoOf F E).act nd.st d
-  releaseAll (protoOf F E) rho.hash (rho.ownKey v) ⟨a.1, nd.seen⟩ (rho.signedCandidate v d a.2)
+  if rho.ownKey v ∈ rho.sel ((protoOf F E).role d) then
+    let a := (protoOf F E).act nd.st d
+    releaseAll (protoOf F E) rho.hash (rho.ownKey v) ⟨a.1, nd.seen⟩ (rho.signedCandidate v d a.2)
+  else (nd, [])
 
 /-- The duties `ds` of node `v`, one after the other, in order, from node
 `nd`: the final node and what the duties released, in order. -/

@@ -18,7 +18,7 @@ and the fast locks written after the vote are of slot `s` or later: every lock o
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 private theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
@@ -48,7 +48,8 @@ private theorem updateLatestConfirmed_locks (A : SAState sp.n) (Φ : Frm sp.n FG
 /-- The counted votes of an honest fast lock of slot `s` on `B`: their validators are at least
 half of the committee, and each is a slot-`s` vote whose head, of slot at most `s`, extends `B`
 inside `U`. -/
-private theorem fastLock_counted (hrun : ACRun tr H U) {w : Fin sp.n} (hw : w ∈ H) {i₀ s : Nat}
+private theorem fastLock_counted (hrun : ACRun proposer tr H U)
+    {w : Fin sp.n} (hw : w ∈ H) {i₀ s : Nat}
     {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr w i₀ s B CV) :
     sp.n ≤ 2 * {u | ∃ v ∈ CV, v.val = u}.ncard ∧
       ∀ v ∈ CV, v.slot = s ∧ ∃ R ∈ U, R.root = v.head ∧ R.slot ≤ s ∧ Anc U B R := by
@@ -92,7 +93,7 @@ private theorem fastLock_counted (hrun : ACRun tr H U) {w : Fin sp.n} (hw : w �
 
 /-- **The locks after the unlocking of slot `s + 1`**, for a fast lock on `D` and any `B ⪯ D`
 (the block the lock stores). -/
-theorem locks_after_unlock (hrun : ACRun tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j b : Nat}
+theorem locks_after_unlock (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j b : Nat}
     {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s D CV)
     (hBD : Anc U B D) (hcarry : Carry tr H U s CV) (hx : x ∈ H)
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr x j ℓ e)

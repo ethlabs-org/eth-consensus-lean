@@ -170,23 +170,27 @@ noncomputable def headAt (y : Fin P.n) (i : Nat) : A.Blk :=
 /-- The cuts of the top-level event `e` of `y` at time `t` start at cut `j`: the handler's cuts
 (`Node.exec` on the state before `j`), non-empty, at `j, j + 1, …`, with one `event` id, the
 positions `0, 1, …`, the node `y`, the time `t`, and nothing else under that id. -/
-def GroupAt (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n) (j : Nat) (t : Time)
+def GroupAt (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n) (j : Nat) (t : Time)
     (e : Node.Event A) : Prop :=
-  let cs := (Node.exec dg y (tr.state y j) t e).2
+  let cs := (Node.exec proposer dg y (tr.state y j) t e).2
   cs ≠ [] ∧
     (∀ k, (hk : k < cs.length) → tr.node (j + k) = y ∧ tr.time (j + k) = t ∧
       tr.event (j + k) = tr.event j ∧ tr.pos (j + k) = k ∧ tr.label (j + k) = some cs[k]) ∧
     ∀ i, tr.event i = tr.event j → j ≤ i ∧ i < j + cs.length
 
 /-- Cut `i` lies in the group of the event `e` of `y` at time `t` that starts at `j`. -/
-def InGroup (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n) (j i : Nat) (t : Time)
+def InGroup (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n) (j i : Nat) (t : Time)
     (e : Node.Event A) : Prop :=
-  tr.GroupAt dg y j t e ∧ j ≤ i ∧ i < j + (Node.exec dg y (tr.state y j) t e).2.length
+  tr.GroupAt proposer dg y j t e ∧ j ≤ i ∧
+    i < j + (Node.exec proposer dg y (tr.state y j) t e).2.length
 
 /-- The tick of `y` at time `t` starts at cut `j` (with some input). -/
-def TickAt (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n) (j : Nat) (t : Time) :
+def TickAt (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n) (j : Nat) (t : Time) :
     Prop :=
-  ∃ x, tr.GroupAt dg y j t (.tick x)
+  ∃ x, tr.GroupAt proposer dg y j t (.tick x)
 
 end RunTrace
 
@@ -201,17 +205,24 @@ def Event.phase {A : NodeAC P} : Event A → Nat
 
 /-- **A run of the node** (claims §"Runs"; decomposition §2 D, `Node.LocalRun`), for the honest
 validators `H`, the digest `dg` and the AC message signer map `sg`. -/
-structure LocalRun {A : NodeAC P} (dg : Digest (List (FG.Att P.n)) A.Payload)
+structure LocalRun {A : NodeAC P} (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload)
     (H : Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A) : Prop where
   /-- Each honest node starts from the initial node state. -/
   init : ∀ y ∈ H, tr.init y = Node.init A
   /-- Every labelled cut of an honest node lies in the group of a top-level event. -/
-  grouped : ∀ y ∈ H, ∀ i c, tr.CallAt y i c → ∃ j e, tr.InGroup dg y j i (tr.time i) e
+  grouped : ∀ y ∈ H, ∀ i c, tr.CallAt y i c →
+    ∃ j e, tr.InGroup proposer dg y j i (tr.time i) e
   /-- Every labelled cut of an honest node obeys the cut law: an AC cut executes the AC with the
   frame `fg_to_ac(Σ)` and changes only `𝒜`, an FG cut executes its FG call. -/
   cutLaw : ∀ y ∈ H, ∀ i c, tr.CallAt y i c → CutStep y (tr.time i) (tr.state y i) c (tr.post i)
   /-- A delivery to an honest node passes the wire checks. -/
-  wire : ∀ y ∈ H, ∀ j t e, tr.GroupAt dg y j t e → WireOK dg e
+  wire : ∀ y ∈ H, ∀ j t e, tr.GroupAt proposer dg y j t e → WireOK dg e
+  /-- The ideal proposer credential functionality authenticates a delivered block's
+  signer for its slot. In an engine simulation `proposer` is the run-selected key;
+  this is supplied by Credentials, not a receiver comparison with a fixed schedule. -/
+  proposerCredential : ∀ y ∈ H, ∀ j t B, tr.GroupAt proposer dg y j t (.block B) →
+    B.proposer = proposer B.slot
   /-- Cuts are at times from `0` on. -/
   time_nonneg : ∀ i, 0 ≤ tr.time i
   /-- The cut order is by time. -/
@@ -220,14 +231,16 @@ structure LocalRun {A : NodeAC P} (dg : Digest (List (FG.Att P.n)) A.Payload)
   finite : ∀ T : Time, {i | tr.label i ≠ none ∧ tr.time i ≤ T}.Finite
   /-- At one time, across the honest nodes, restarts come before ticks and ticks before
   deliveries: the groups of one time are in phase order. -/
-  phase_order : ∀ y ∈ H, ∀ y' ∈ H, ∀ j j' t e e', tr.GroupAt dg y j t e →
-    tr.GroupAt dg y' j' t e' → j < j' → e.phase ≤ e'.phase
+  phase_order : ∀ y ∈ H, ∀ y' ∈ H, ∀ j j' t e e', tr.GroupAt proposer dg y j t e →
+    tr.GroupAt proposer dg y' j' t e' → j < j' → e.phase ≤ e'.phase
   /-- A tick is at a public time. -/
-  tick_public : ∀ y ∈ H, ∀ j t, tr.TickAt dg y j t → P.IsPublic t
+  tick_public : ∀ y ∈ H, ∀ j t, tr.TickAt proposer dg y j t → P.IsPublic t
   /-- One tick per node and time. -/
-  tick_unique : ∀ y ∈ H, ∀ j j' t, tr.TickAt dg y j t → tr.TickAt dg y j' t → j = j'
+  tick_unique : ∀ y ∈ H, ∀ j j' t,
+    tr.TickAt proposer dg y j t → tr.TickAt proposer dg y j' t → j = j'
   /-- An honest node awake at a public time (from `0` on) ticks there. -/
-  tick_of_awake : ∀ y ∈ H, ∀ t, 0 ≤ t → P.IsPublic t → tr.awake y t → ∃ j, tr.TickAt dg y j t
+  tick_of_awake : ∀ y ∈ H, ∀ t, 0 ≤ t → P.IsPublic t → tr.awake y t →
+    ∃ j, tr.TickAt proposer dg y j t
   /-- An honest node is awake only within the run's horizon. -/
   awake_in_horizon : ∀ y ∈ H, ∀ t, tr.awake y t → tr.InHorizon t
   /-- An honest node is called only while awake. -/

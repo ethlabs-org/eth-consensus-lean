@@ -18,20 +18,21 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
 /-- **The setting of T1 §6** for the honest proposal `P` of slot `p`, made from the
 `ac_proposal` call at cut `k` with label `ℓp`, duty head `d` and payload `pay`. -/
 structure UnanimitySetting (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (g : Time) (p : Nat) (P : Blk sp.n FGP) (k : Nat) (ℓp : ACLabel (goldilocksSA sp FGP ro))
+    (schedule : Nat → Fin sp.n) (g : Time) (p : Nat) (P : Blk sp.n FGP) (k : Nat)
+    (ℓp : ACLabel (goldilocksSA sp FGP ro))
     (d : DutyHead sp.n FGP (Payload sp.n)) (pay : Payload sp.n) : Prop where
-  standalone : StandaloneRun tr H U g
-  proposer_mem : sp.toParams.proposer p ∈ H
-  call : tr.CallAt (sp.toParams.proposer p) k ℓp
+  standalone : StandaloneRun tr H U schedule g
+  proposer_mem : schedule p ∈ H
+  call : tr.CallAt (schedule p) k ℓp
   call_proposal : ℓp.call = .proposal
-  payload : (acProposal sp (tr.state (sp.toParams.proposer p) k) ℓp.frame (tr.time k)).2 =
+  payload : (acProposal sp (tr.state (schedule p) k) ℓp.frame (tr.time k)).2 =
     some (d, pay)
   time : tr.time k = sp.ts p
   parent : P.parent = some d.head.root
   slot : P.slot = p
-  proposer : P.proposer = sp.toParams.proposer p
+  proposer : P.proposer = schedule p
   acPayload : P.acPayload = pay
-  accepted : ∃ j, k < j ∧ tr.AcceptAt (sp.toParams.proposer p) j P ∧ tr.time j = sp.ts p
+  accepted : ∃ j, k < j ∧ tr.AcceptAt (schedule p) j P ∧ tr.time j = sp.ts p
   late : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p
   settled : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)
 

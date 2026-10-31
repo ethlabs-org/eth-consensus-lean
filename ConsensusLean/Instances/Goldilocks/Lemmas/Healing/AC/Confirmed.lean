@@ -33,7 +33,7 @@ The helpers of `proposal_confirmed` (healing-simple `h1-proposal-confirmed.md` �
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 private theorem ts_succ' (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
   simp only [SAParams.ts]; push_cast; ring
@@ -41,7 +41,7 @@ private theorem ts_succ' (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ :
 /-- **A late honest vote is held** (h1 §2): for a slot `s ≥ r` and an honest call at a time
 `≥ t_s + 2Δ`, every honest slot-`s` vote is held, with a stamp before `t_s + 2Δ`, before and after
 the call. -/
-theorem late_vote_pool (hS : HealthyBase tr H U g) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+theorem late_vote_pool (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {e : Em sp FGP} (hv : VoteAt tr x i e) (hes : e.msg.slot = s) :
@@ -99,7 +99,7 @@ theorem late_vote_pool (hS : HealthyBase tr H U g) {y : Fin sp.n} (hy : y ∈ H)
 `≥ t_s + 2Δ` whose `Φ.F` the vote's head extends, every honest slot-`s` vote is held, with its
 head in the call's frame (of slot at most `s`), and both its stamp and its head's are before
 `t_s + 2Δ`, before and after the call. -/
-theorem late_vote_held_of_frame (hS : HealthyBase tr H U g) {y : Fin sp.n} (hy : y ∈ H)
+theorem late_vote_held_of_frame (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {e : Em sp FGP} (hv : VoteAt tr x i e) (hes : e.msg.slot = s)
@@ -189,7 +189,7 @@ theorem late_vote_held_of_frame (hS : HealthyBase tr H U g) {y : Fin sp.n} (hy :
 
 /-- `late_vote_held_of_frame` under trivial frames: every frame has the same `Φ.F`, which the
 voter's head extends. -/
-theorem late_vote_held (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+theorem late_vote_held (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {e : Em sp FGP} (hv : VoteAt tr x i e) (hes : e.msg.slot = s) :
@@ -227,8 +227,8 @@ theorem resolutionTime_lt_of {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
 
 /-- **The proposal is relayed**: an honest proposal `P` of slot `p` (with `ḡ ≤ t_p`) is in the
 frame of every honest call from `t_p + Δ` on, accepted before `t_p + Δ`. -/
-theorem proposal_mem_tree (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : sp.toParams.proposer p ∈ H) (hP : HonestProposal tr (sp.toParams.proposer p) p P)
+theorem proposal_mem_tree (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hpg : gbar g ≤ sp.ts p) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ)
     (ht : sp.ts p + sp.Δ ≤ tr.time j) :
@@ -253,7 +253,8 @@ theorem proposal_mem_tree (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n 
 /-! ## Honest votes and comparison with `P` -/
 
 /-- An honest validator is not an equivocator in an honest node's pool of a slot. -/
-theorem honest_not_equivocator_pool (hS : HealthyBase tr H U g) {y : Fin sp.n} (hy : y ∈ H)
+theorem honest_not_equivocator_pool (hS : HealthyBase tr H U proposer g)
+    {y : Fin sp.n} (hy : y ∈ H)
     (c s : Nat) {u : Fin sp.n} (hu : u ∈ H) :
     u ∉ equivocators {v | v ∈ (tr.state y c).pool s} := by
   have hr := hS.run.localRun
@@ -277,7 +278,7 @@ theorem compatible_of_vote {p : Nat} {P : Blk sp.n FGP} (hU : Coherent U)
   exact anc_total hU hBHd hPHd'
 
 /-- The honest validators are more than twice the faulty ones. -/
-theorem two_faulty_lt_honest (hS : HealthyBase tr H U g) : 2 * Hᶜ.ncard < H.ncard := by
+theorem two_faulty_lt_honest (hS : HealthyBase tr H U proposer g) : 2 * Hᶜ.ncard < H.ncard := by
   have := hS.healthy.2.2.2
   have hn : H.ncard + Hᶜ.ncard = sp.n := by
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
@@ -288,7 +289,7 @@ theorem two_faulty_lt_honest (hS : HealthyBase tr H U g) : 2 * Hᶜ.ncard < H.nc
 /-- **A late result has an honest supporter**: the result `C` of an honest update of a slot
 `s ≥ r` (read at a time `≥ t_s + 2Δ`) is extended by an honest vote of slot `s`: its supporters
 are a strict majority of the voters, which include all honest validators (h1 §3). -/
-theorem result_extended (hS : HealthyBase tr H U g) {s : Nat}
+theorem result_extended (hS : HealthyBase tr H U proposer g) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x c ℓ)
     (ht : sp.ts s + 2 * sp.Δ ≤ tr.time c) {C : Blk sp.n FGP}
@@ -319,7 +320,8 @@ theorem result_extended (hS : HealthyBase tr H U g) {s : Nat}
 /-- **A lock origin of a slot `≥ p` compares with `P`** (h1 §3, `l ≥ p`): an honest fast lock
 through an honest counted vote; an honest slow lock through an honest supporter of its update's
 result (not its fast test). -/
-theorem origin_compatible_proposal (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FGP}
+theorem origin_compatible_proposal (hS : StandaloneRun tr H U proposer g)
+    {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
     {x : Fin sp.n} (hx : x ∈ H) {j s : Nat} {B : Blk sp.n FGP} (hps : p ≤ s)
@@ -348,7 +350,7 @@ private theorem compatible_down {B L P : Blk sp.n FGP} (hU : Coherent U) (hLB : 
 time `t ≥ t_{p−1}` (`hset`) and, for a call at `t ≥ t_p + 6Δ`, also after it, for the locks live
 at `t`: of a label `< p` by `hset` and the exact slot-`p` votes (a lock written by the call has a
 label `≥ p`); of a label `≥ p` by its origin. -/
-theorem lock_compatible (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FGP}
+theorem lock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
@@ -413,7 +415,7 @@ theorem lock_compatible (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FG
 
 /-- **Every live lock block compares with `P`** at the state before (for a call at `t ≥ t_{p−1}`)
 or after (for a call at `t ≥ t_p + 6Δ`) an honest call, read at that call's frame and time. -/
-theorem liveLock_compatible (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FGP}
+theorem liveLock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
@@ -442,7 +444,7 @@ slot-`p` vote exactly `P` and every live lock comparing with `P`, the tick is th
 whose result is `P` (its honest batch is a strict majority, and every other passing block has only
 faulty supporters unless it is an ancestor of `P`), not vetoed, and `P` passes the fast test
 (the honest batch is half of the committee or more). -/
-theorem first_update_post (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n FGP}
+theorem first_update_post (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -575,7 +577,7 @@ theorem fastSelect_eq_result {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
 every honest slot-`p` vote exactly `P` and every live lock comparing with `P`, the slot-`p`
 result is `P` and is not vetoed (`first_update_post`), so the record after the tick extends
 `P`. -/
-theorem first_update_record (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n FGP}
+theorem first_update_record (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -720,7 +722,8 @@ private theorem RecP.ofUpdate {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {A : SAStat
 from a state whose pools the call keeps, the block an optimistic check selects has three
 quarters of the committee as voters, one of them honest, whose vote (of a slot `> p`) extends
 `P`. -/
-theorem optimisticSelect_compatible (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n FGP}
+theorem optimisticSelect_compatible (hS : HealthyBase tr H U proposer g)
+    {p : Nat} {P : Blk sp.n FGP}
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
     {y : Fin sp.n} (hy : y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt y c ℓ) (htc : sp.ts p + 6 * sp.Δ ≤ tr.time c) (hPt : P ∈ ℓ.frame.tree)
@@ -756,7 +759,7 @@ theorem optimisticSelect_compatible (hS : HealthyBase tr H U g) {p : Nat} {P : B
 /-- **The record step** (h1 §4): an honest call at `t ≥ t_p + 6Δ` keeps the record extending `P`:
 every candidate it writes (an optimistic selection, or the result of an update of a slot `≥ p`)
 compares with `P`, and a restart keeps the record. -/
-theorem record_step (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n FGP}
+theorem record_step (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
     {y : Fin sp.n} (hy : y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -861,7 +864,7 @@ theorem record_step (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n FGP}
       (ht ▸ hr.time_nonneg c)).2.2.1 hR
 
 /-- Under trivial frames the tree of an honest node only grows. -/
-theorem trivial_tree_mono (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H)
+theorem trivial_tree_mono (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     {c c' : Nat} {ℓ ℓ' : ACLabel (goldilocksSA sp FGP ro)} (hc' : tr.CallAt y c' ℓ')
     (hc : tr.CallAt y c ℓ) (hcc : c' ≤ c) : ℓ'.frame.tree ⊆ ℓ.frame.tree := by
   intro X hX
@@ -875,8 +878,8 @@ theorem trivial_tree_mono (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y �
 /-- **The record after the first update** (h1 §4): from an honest node's tick at `t_p + 6Δ` on,
 at every later call of the node, the record after the call names a block of the call's frame
 that extends `P`. -/
-theorem record_extends (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : sp.toParams.proposer p ∈ H) (hP : HonestProposal tr (sp.toParams.proposer p) p P)
+theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
@@ -919,7 +922,7 @@ theorem record_extends (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FGP
 `P` in its viable tree, the head after the call extends `P`: the latest view is of a slot
 `m ≥ p + 1` whose honest votes are all held and resolved and extend `P` (`n − f > n/2` supporters
 along `P`), and every live lock compares with `P`. -/
-theorem head_extends_of_frame (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.n FGP}
+theorem head_extends_of_frame (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -1013,7 +1016,7 @@ theorem head_extends_of_frame (hS : HealthyBase tr H U g) {p : Nat} {P : Blk sp.
       (Set.subset_univ _) h3 hCx hpx hCxP
 
 /-- `head_extends_of_frame` under trivial frames, where every tree block is viable. -/
-theorem head_extends (hS : StandaloneRun tr H U g) {p : Nat} {P : Blk sp.n FGP}
+theorem head_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}

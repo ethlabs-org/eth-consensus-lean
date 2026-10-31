@@ -59,7 +59,6 @@ abbrev P1 : Params where
   slotTime_zero := by simp
   slotTime_strictMono := fun a b h => by change 4 * (a : Int) < 4 * (b : Int); omega
   slotTime_public := fun _ => one_dvd _
-  proposer := fun _ => 0
   genesisRoot := 0
   δt := 2
 
@@ -215,7 +214,7 @@ theorem tickRun_votes :
 
 /-- **The one-validator tick run is a Goldilocks run.** -/
 theorem tickRun_goldilocksRun :
-    GoldilocksRun (sp := sp1) (ro := ro1) dg1 Set.univ (tickRun N1 dg1) where
+    GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) where
   toLocalRun := tickRun_localRun rfl rfl _
   genesis_root_ok := dg1_genesis
   carried_vote_unforgeable y _ i B hB v hv _ := by
@@ -461,7 +460,7 @@ theorem tree_slot_le {j : Nat} {X : SA.Blk sp1.n (List (FG.Att sp1.n))}
 /-- **A ready proposal at every slot `s ≥ 1`**: the own block of the tick of `t_s`, at cut
 `8·t_s + 2`. -/
 theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
-    ∃ k B, Healing.ReadyProposal (tickRun N1 dg1) Set.univ (sp1.toParams.proposer s) k s B ∧
+    ∃ k B, Healing.ReadyProposal (tickRun N1 dg1) Set.univ (fun _ => v0) v0 k s B ∧
       k = 8 * (4 * s) + 2 := by
   have hrun := tickRun_goldilocksRun
   have hnc := dg1_noColl (tickRun N1 dg1)
@@ -469,18 +468,20 @@ theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
   have hg := tickRun_groupAt (A := N1) (dg := dg1) rfl t
   have hts : ((t : Nat) : Int) = sp1.ts s := (ts_eq s).symm
   have hslot : sp1.toParams.slotOf ((t : Nat) : Int) = s := by rw [hts]; exact slotOf_ts s
-  have hP : Node.Proposes (v0 : Fin sp1.n) ((t : Nat) : Int) :=
-    ⟨by rw [hslot]; exact hs, by rw [hslot, hts]; rfl, by rw [hslot]; rfl⟩
+  have hP : Node.Proposes (fun _ => v0) (v0 : Fin sp1.n) ((t : Nat) : Int) :=
+    ⟨by rw [hslot]; exact hs, by rw [hslot, hts]; rfl, rfl⟩
   -- `ac_proposal` returns a payload: the validator is joined
-  have hjoin : SA.joined sp1 (Node.tickStep dg1 v0 ((tickRun N1 dg1).state v0 (8 * t))
+  have hjoin : SA.joined sp1 (Node.tickStep (fun _ => v0) dg1 v0
+      ((tickRun N1 dg1).state v0 (8 * t))
       ((t : Nat) : Int) 0 .acTick).1.ac ((t : Nat) : Int) := by
     unfold SA.joined
-    have : (Node.tickStep dg1 v0 ((tickRun N1 dg1).state v0 (8 * t)) ((t : Nat) : Int) 0
+    have : (Node.tickStep (fun _ => v0) dg1 v0
+        ((tickRun N1 dg1).state v0 (8 * t)) ((t : Nat) : Int) 0
         .acTick).1.ac.restartTime = ⊥ := by
       change ((N1).step v0 _ _ _ .tick).1.restartTime = ⊥
       rw [SA.step_restartTime v0 _ _ _ _ (by intro h; cases h), tickRun_restartTime]
     rw [this]; exact bot_le
-  obtain ⟨d, pay, hr⟩ : ∃ d pay, (Node.acProposal (Node.tickStep dg1 v0
+  obtain ⟨d, pay, hr⟩ : ∃ d pay, (Node.acProposal (Node.tickStep (fun _ => v0) dg1 v0
       ((tickRun N1 dg1).state v0 (8 * t)) ((t : Nat) : Int) 0 .acTick).1
       ((t : Nat) : Int)).2.2 = some (d, pay) := by
     change ∃ d pay, (SA.acProposal sp1 _ _ _).2 = some (d, pay)
@@ -489,7 +490,7 @@ theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
     exact ⟨_, _, rfl⟩
   obtain ⟨hacc, htk⟩ := Healing.own_block_accepted hrun.toLocalRun n1_requirements dg1_genesis
     hnc (Set.mem_univ v0) hg hP hr
-  set B := Node.mkBlock dg1 v0 (Node.acProposal (Node.tickStep dg1 v0
+  set B := Node.mkBlock dg1 v0 (Node.acProposal (Node.tickStep (fun _ => v0) dg1 v0
     ((tickRun N1 dg1).state v0 (8 * t)) ((t : Nat) : Int) 0 .acTick).1 ((t : Nat) : Int)).1.fg
     ((t : Nat) : Int) 0 d.head pay with hB
   have hBslot : B.slot = s := hslot
@@ -500,7 +501,8 @@ theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
   · intro x hx hxs y _ j' hj'
     have hpool := acProposal_support _ _ hr x hx
     obtain ⟨σ, hσ⟩ := hpool
-    have hmid : (Node.tickStep dg1 v0 ((tickRun N1 dg1).state v0 (8 * t)) ((t : Nat) : Int) 0
+    have hmid : (Node.tickStep (fun _ => v0) dg1 v0
+        ((tickRun N1 dg1).state v0 (8 * t)) ((t : Nat) : Int) 0
         .acTick).1 = (tickRun N1 dg1).state v0 (8 * t + 1) := by
       rw [tickRun_state_tick rfl v0 t, tickRun_state rfl v0 (8 * t + 1),
         show (8 * t + 1) / 8 = t by omega, show (8 * t + 1) % 8 = 1 by omega, tickMid_one]
@@ -508,8 +510,8 @@ theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
     rw [hmid] at hσ
     obtain ⟨jx, hjx, ℓ, hcall, e, he, hem⟩ := tickRun_votes (8 * t + 1) σ x hσ
     have hcAC : (tickRun N1 dg1).projAC.CallAt v0 jx ℓ := Compose.projAC_callAt.2 hcall
-    have hrAC := (Compose.goldilocks_ac_projection sp1 ro1 dg1 Set.univ (tickRun N1 dg1) hrun
-      hnc).localRun
+    have hrAC := (Compose.goldilocks_ac_projection sp1 ro1 dg1 Set.univ
+      (tickRun N1 dg1) (fun _ => v0) hrun hnc).localRun
     obtain ⟨⟨Hd, hHdt, hHdr, -⟩, hjxt⟩ := Compose.cast_head_fcRoot hrAC (Set.mem_univ v0)
       ⟨hcAC, he⟩
     rw [Compose.frame_of_projAC hrun (Set.mem_univ v0) hcAC] at hHdt
@@ -541,7 +543,7 @@ theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
 /-- (a) **`Prop⁺(G_p)` holds on the tick run** for every `G_p ≥ 4Δ`: the next slot start after a
 trigger has a ready proposal. -/
 theorem tickRun_propPlus (g Gp : Time) (hGp : 4 ≤ Gp) :
-    Healing.PropPlus (tickRun N1 dg1) Set.univ g Gp := by
+    Healing.PropPlus (tickRun N1 dg1) Set.univ (fun _ => v0) g Gp := by
   intro τ hτ
   have h0 : 0 ≤ τ := le_trans (le_max_right g 0) hτ
   set s := sp1.slot τ + 1 with hs
@@ -587,9 +589,9 @@ genesis root, `Healthy(g)`, no restart, the `δ_t` bound), `Catch(2Δ)`, `Prop�
 `n = 1` and `f = 0` this shows the premises consistent, not met with faults. -/
 theorem tickRun_healedPremises (g Gp a Tb T : Time) (hGp : 4 ≤ Gp)
     (hreset : Healing.IsReset (tickRun N1 dg1) Set.univ g a) (hTb : 0 ≤ Tb)
-    (hbridge : Healing.BridgeAt (tickRun N1 dg1) Set.univ g a Tb)
+    (hbridge : Healing.BridgeAt (tickRun N1 dg1) Set.univ (fun _ => v0) g a Tb)
     (hT : Healing.T_heal sp1 g 1 Gp Tb ≤ T) :
-    Regimes.HealedPremises (tickRun N1 dg1) Set.univ dg1 g 1 Gp a Tb T :=
+    Regimes.HealedPremises (tickRun N1 dg1) Set.univ (fun _ => v0) dg1 g 1 Gp a Tb T :=
   ⟨tickRun_hsShared g, tickRun_catch g _ (by decide), tickRun_propPlus g Gp hGp, hreset, hTb,
     hbridge, hT⟩
 
@@ -600,9 +602,9 @@ window parameters and `W ≥ 1` hold outright; `UPat(1, M)` (a ready proposal at
 `tickRun_readyProposal`, with C1.2's retained inclusion) is a hypothesis here (W3). With `n = 1`
 and `f = 0` this shows the premises consistent, not met with faults. -/
 theorem tickRun_patternPremises (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
-    (hpat : Healing.UPat (tickRun N1 dg1) Set.univ g 1 M 2 0)
+    (hpat : Healing.UPat (tickRun N1 dg1) Set.univ (fun _ => v0) g 1 M 2 0)
     (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M) :
-    Healing.PatternPremises (tickRun N1 dg1) Set.univ dg1 g 1 Gp 1 M 2 0 where
+    Healing.PatternPremises (tickRun N1 dg1) Set.univ (fun _ => v0) dg1 g 1 Gp 1 M 2 0 where
   shared := tickRun_hsShared g
   catchPremise := tickRun_catch g _ (by decide)
   prop := tickRun_propPlus g Gp hGp
@@ -617,11 +619,11 @@ theorem tickRun_patternPremises (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
 `tickRun_patternPremises` (with `T ≥ ḡ + T_rec`, arithmetic). -/
 theorem tickRun_finalPremises (g Gp a Tb T : Time) (M : Nat) (hGp : 4 ≤ Gp)
     (hreset : Healing.IsReset (tickRun N1 dg1) Set.univ g a) (hTb : 0 ≤ Tb)
-    (hbridge : Healing.BridgeAt (tickRun N1 dg1) Set.univ g a Tb)
+    (hbridge : Healing.BridgeAt (tickRun N1 dg1) Set.univ (fun _ => v0) g a Tb)
     (hT : Healing.T_heal sp1 g 1 Gp Tb ≤ T)
-    (hpat : Healing.UPat (tickRun N1 dg1) Set.univ g 1 M 2 0)
+    (hpat : Healing.UPat (tickRun N1 dg1) Set.univ (fun _ => v0) g 1 M 2 0)
     (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M) (hrec : SA.gbar g + Healing.T_rec sp1 1 Gp 1 M ≤ T) :
-    Regimes.FinalPremises (tickRun N1 dg1) Set.univ dg1 g 1 Gp a Tb T 1 M 2 0 :=
+    Regimes.FinalPremises (tickRun N1 dg1) Set.univ (fun _ => v0) dg1 g 1 Gp a Tb T 1 M 2 0 :=
   ⟨tickRun_healedPremises g Gp a Tb T hGp hreset hTb hbridge hT,
     tickRun_patternPremises g Gp M hGp hpat hM, hrec⟩
 

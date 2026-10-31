@@ -23,7 +23,8 @@ namespace Consensus.Goldilocks.Healing
 open Node
 
 variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
-  {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A} {y : Fin P.n}
+  {proposer : Nat → Fin P.n} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
+  {tr : RunTrace A} {y : Fin P.n}
 
 /-! ## Traces -/
 
@@ -41,7 +42,7 @@ private theorem cutStep_fg_ac {t : Time} {st st' : NodeState A} {ℓ : FGLabel P
 
 /-- One cut of an honest node: its FG state stays, accepts a block, or processes an
 attestation. -/
-theorem fg_step (h : LocalRun dg H sg tr) (hy : y ∈ H) (m : Nat) :
+theorem fg_step (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) (m : Nat) :
     (tr.state y (m + 1)).fg = (tr.state y m).fg ∨
       (∃ B, tr.AcceptAt y m B ∧ (tr.state y m).fg.onBlock B = some (tr.state y (m + 1)).fg) ∨
       ∃ a, tr.AttCallAt y m a ∧
@@ -61,7 +62,7 @@ theorem fg_step (h : LocalRun dg H sg tr) (hy : y ∈ H) (m : Nat) :
     exact Or.inl rfl
 
 /-- `Σ.h_max` of an honest node only grows. -/
-theorem hmax_mono (h : LocalRun dg H sg tr) (hy : y ∈ H) :
+theorem hmax_mono (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) :
     Monotone fun m => (tr.state y m).fg.hmax := by
   refine monotone_nat_of_le_succ fun m => ?_
   rcases fg_step h hy m with he | ⟨B, -, hB⟩ | ⟨a, -, he⟩
@@ -76,7 +77,7 @@ theorem hmax_mono (h : LocalRun dg H sg tr) (hy : y ∈ H) :
     rw [he, ha]
 
 /-- A block of an honest node's FG state is genesis or was accepted by it at an earlier cut. -/
-theorem tree_accepted (h : LocalRun dg H sg tr) (hy : y ∈ H) {m : Nat} {B : A.Blk}
+theorem tree_accepted (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) {m : Nat} {B : A.Blk}
     (hB : B ∈ (tr.state y m).fg.tree) :
     B = P.genesisBlock A.genesisPayload ∨ ∃ k < m, tr.AcceptAt y k B := by
   induction m with
@@ -107,7 +108,7 @@ theorem tree_accepted (h : LocalRun dg H sg tr) (hy : y ∈ H) {m : Nat} {B : A.
       exact hB
 
 /-- An attestation in the pool of an honest node was processed by it at an earlier cut. -/
-theorem pool_processed (h : LocalRun dg H sg tr) (hy : y ∈ H) {m : Nat} {a : FG.Att P.n}
+theorem pool_processed (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) {m : Nat} {a : FG.Att P.n}
     (ha : a ∈ (tr.state y m).fg.atts) : ∃ k < m, tr.ProcessAttAt y k a := by
   induction m with
   | zero =>
@@ -144,7 +145,7 @@ theorem signAt_of_projFG {v : Fin P.n} {j : Nat} {a : FG.Att P.n} (hs : tr.projF
 
 /-- Only a tick makes an `fg_attest` cut. -/
 theorem eq_tick_of_attest_mem {st : NodeState A} {t : Time} {e : Event A} {C : A.Blk}
-    {s : Option (FG.Att P.n)} (h : Cut.fg (.attest C s) ∈ (exec dg y st t e).2) :
+    {s : Option (FG.Att P.n)} (h : Cut.fg (.attest C s) ∈ (exec proposer dg y st t e).2) :
     ∃ x, e = .tick x := by
   cases e with
   | tick x => exact ⟨x, rfl⟩
@@ -168,7 +169,8 @@ private theorem onBlock_cuts {st : NodeState A} {t : Time} {B B' : A.Blk} {acc :
 /-- The only block a tick processes is the own proposal, whose attestations come from the pool
 at the start of the tick. -/
 theorem tick_block_payload {st : NodeState A} {t : Time} {x : Nat} {B : A.Blk} {acc : Bool}
-    (h : Cut.fg (.block B acc) ∈ (onTick dg y st t x).2) : ∀ a ∈ B.fgPayload, a ∈ st.fg.atts := by
+    (h : Cut.fg (.block B acc) ∈ (onTick proposer dg y st t x).2) :
+    ∀ a ∈ B.fgPayload, a ∈ st.fg.atts := by
   simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil, List.nil_append,
     List.mem_append] at h
   rcases h with (h | h) | h
@@ -189,13 +191,13 @@ theorem tick_block_payload {st : NodeState A} {t : Time} {x : Nat} {B : A.Blk} {
       split at h <;> simp [Node.onAttestation] at h
 
 /-- An `fg_attest` cut lies in a tick, after the earlier cuts of that tick. -/
-theorem tick_of_attest (h : LocalRun dg H sg tr) (hy : y ∈ H) {k : Nat} {C : A.Blk}
+theorem tick_of_attest (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) {k : Nat} {C : A.Blk}
     {s : Option (FG.Att P.n)} (hc : tr.CallAt y k (.fg (.attest C s))) :
-    ∃ j₀ ≤ k, ∃ x, tr.GroupAt dg y j₀ (tr.time k) (.tick x) ∧ ∀ i, j₀ ≤ i → i ≤ k →
-      ∃ c ∈ (onTick dg y (tr.state y j₀) (tr.time k) x).2, tr.label i = some c := by
+    ∃ j₀ ≤ k, ∃ x, tr.GroupAt proposer dg y j₀ (tr.time k) (.tick x) ∧ ∀ i, j₀ ≤ i → i ≤ k →
+      ∃ c ∈ (onTick proposer dg y (tr.state y j₀) (tr.time k) x).2, tr.label i = some c := by
   obtain ⟨j₀, e, hg, hjk, hkj⟩ := h.grouped y hy k _ hc
   have hl : ∀ i, j₀ ≤ i → i ≤ k →
-      ∃ c ∈ (exec dg y (tr.state y j₀) (tr.time k) e).2, tr.label i = some c := by
+      ∃ c ∈ (exec proposer dg y (tr.state y j₀) (tr.time k) e).2, tr.label i = some c := by
     intro i hi hik
     have hk := (hg.2.1 (i - j₀) (by omega)).2.2.2.2
     rw [Nat.add_sub_cancel' hi] at hk
@@ -208,7 +210,7 @@ theorem tick_of_attest (h : LocalRun dg H sg tr) (hy : y ∈ H) {k : Nat} {C : A
 
 /-- **The honest attestations on a block held at an `fg_attest` cut were signed before its
 time.** -/
-theorem signed_before_attest (h : LocalRun dg H sg tr) (hy : y ∈ H) {k : Nat} {C : A.Blk}
+theorem signed_before_attest (h : LocalRun proposer dg H sg tr) (hy : y ∈ H) {k : Nat} {C : A.Blk}
     {s : Option (FG.Att P.n)} (hc : tr.CallAt y k (.fg (.attest C s))) {Y : A.Blk}
     (hY : Y ∈ (tr.state y k).fg.tree) {a : FG.Att P.n} (ha : a ∈ Y.fgPayload) (haH : a.val ∈ H) :
     ∃ j, tr.SignAt a.val j a ∧ tr.time j < tr.time k := by

@@ -18,10 +18,10 @@ frame is of a later slot than the vote, `frame_slot_le`). Shared by A1.7 (`stop_
 namespace Consensus.Goldilocks.SA
 
 variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- **The stop at `Q`, from its two leaves.** -/
-theorem stop_core (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+theorem stop_core (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y j ℓ e) {s : Nat}
     (hes : e.msg.slot = s) {Q P : Blk sp.n FGP} (hPs : P.slot = s)
     (hPQ : P.parent = some Q.root) (hpH : P.proposer ∈ H)
@@ -49,14 +49,14 @@ theorem stop_core (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
   have hslot := frame_slot_le sp hr hy hc.1
   have hPt : P ∈ ℓ.frame.tree := hPv.1.1
   have hfb : ∀ B ∈ ℓ.frame.tree, HonestFrameBlock tr H B := fun B hB => ⟨y, hy, j, ℓ, hc.1, hB⟩
-  have hpp : P.proposer = sp.toParams.proposer s :=
+  have hpp : P.proposer = proposer s :=
     hPs ▸ hrun.honest.proposer P (hfb P hPt) (hng P hPt (by rw [hPQ]; simp))
   refine ⟨⟨⟨hPv, hPQ, Or.inr (Or.inl (hPs.trans hsj.symm))⟩, fun B ⟨hBv, hBQ, hBe⟩ => ?_⟩, ?_⟩
   · have hBt : B ∈ ℓ.frame.tree := hBv.1.1
     rcases Nat.lt_or_ge B.slot s with hlt | hge
     · exact absurd hBe (hold B hBv hBQ hlt)
     have hBs : B.slot = s := le_antisymm (hsj ▸ hslot B hBt) hge
-    have hBp : B.proposer = sp.toParams.proposer s :=
+    have hBp : B.proposer = proposer s :=
       hBs ▸ hrun.honest.proposer B (hfb B hBt) (hng B hBt (by rw [hBQ]; simp))
     exact (hrun.honest.one_block P B (hfb P hPt) (hfb B hBt) hpH (hpp.trans hBp.symm)
       (hPs.trans hBs.symm)).symm

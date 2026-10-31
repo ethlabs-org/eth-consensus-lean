@@ -39,6 +39,7 @@ open SA (SAParams ReplayOrder Payload)
 open Compose
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time}
 
@@ -50,7 +51,7 @@ record of `y` after all events at `t`, or its `Σ.F`, extends `P`: `y` ran the u
 `slot(t) − 2` or `slot(t) − 1` (a slot `≥ slot(P)`) with no restart since, and that update adopts
 `P` (`later_update_adopts`), and the record and `Σ.F` only extend (`record_step`,
 `run_F_mono`). -/
-theorem ready_record_extends (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+theorem ready_record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposalAt tr H (catchUp sp) τ P) {y : Fin sp.n} {t : Time} {j : Nat}
     (ht : τ + 6 * sp.Δ ≤ t) (hy : ReadyAt tr H (catchUp sp) y t) (hj : CutAfter tr j t) :
@@ -66,9 +67,10 @@ theorem ready_record_extends (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg 
   have hτ : τ = sp.ts s := by rw [← hkP, hPa.2.2, sp.slotTime_eq]; rfl
   have hτ0 : 0 ≤ τ := hkP ▸ hrun.time_nonneg kP
   have hpj : SA.joined sp (tr.state p kP).ac (tr.time kP) := by
-    have hJ := (ready_implies_joined sp ro dg H tr hrun p hp τ (catchUp sp) hτ0 hc hpr.2).2
+    have hJ := (ready_implies_joined sp ro dg H tr proposer hrun
+      p hp τ (catchUp sp) hτ0 hc hpr.2).2
     obtain ⟨⟨acc, hcall⟩, -⟩ := hPa.1
-    refine ((joined_projection sp ro dg H tr hrun p hp _).2.1 kP ⟨_, hcall⟩ ?_ rfl).1
+    refine ((joined_projection sp ro dg H tr proposer hrun p hp _).2.1 kP ⟨_, hcall⟩ ?_ rfl).1
       (hkP ▸ hJ)
     rintro ⟨ℓ, hc', hr⟩
     cases Option.some.inj (hcall.2.symm.trans hc'.2)
@@ -94,10 +96,10 @@ theorem ready_record_extends (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg 
   have hyu := hwin u (max_le hu0 (by linarith)) le_rfl
   obtain ⟨j₁, x, hg⟩ := hrun.tick_of_awake y hy' u hu0 hpub hyu
   obtain ⟨hc₁, ht₁⟩ := Healing.tick_first_cut hg
-  have hJ := (ready_implies_joined sp ro dg H tr hrun y hy' u (14 * sp.Δ - 1) hu0
+  have hJ := (ready_implies_joined sp ro dg H tr proposer hrun y hy' u (14 * sp.Δ - 1) hu0
     (by linarith) hwin).2
   have hj₁ : SA.joined sp (tr.state y j₁).ac u :=
-    ((joined_projection sp ro dg H tr hrun y hy' u).2.1 j₁ ⟨_, hc₁⟩
+    ((joined_projection sp ro dg H tr proposer hrun y hy' u).2.1 j₁ ⟨_, hc₁⟩
       (fun ⟨ℓ, hc', hr⟩ => by
         have := Option.some.inj (hc₁.2.symm.trans hc'.2)
         simp only [Node.acCall, Cut.ac.injEq] at this
@@ -131,32 +133,32 @@ theorem ready_record_extends (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg 
 /-- **A proposer ready at its slot start proposes** (node-level: its tick at `t_s` runs
 the proposal step, `ac_proposal` returns a proposal since it is joined, and C0.3 accepts the own
 block). -/
-theorem ready_proposer_proposes (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
-    {s : Nat} (hs : 0 < s) (hready : ReadyAt tr H (catchUp sp) (sp.toParams.proposer s) (sp.ts s)) :
-    ∃ k P, tr.ProposesAt (sp.toParams.proposer s) k P ∧ tr.time k = sp.ts s := by
+theorem ready_proposer_proposes (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {s : Nat} (hs : 0 < s) (hready : ReadyAt tr H (catchUp sp) (proposer s) (sp.ts s)) :
+    ∃ k P, tr.ProposesAt (proposer s) k P ∧ tr.time k = sp.ts s := by
   have hΔ := sp.toParams.hΔ
-  set p := sp.toParams.proposer s
+  set p := proposer s
   have hp := hready.1
   have ht0 : 0 ≤ sp.ts s := by simp only [SAParams.ts]; positivity
   have hslot : sp.toParams.slotOf (sp.ts s) = s :=
     SA.slot_of_mem sp s le_rfl (by simp only [SAParams.ts]; push_cast; linarith)
   have hpub : sp.toParams.IsPublic (sp.ts s) := ⟨4 * s, by simp only [SAParams.ts]; ring⟩
   have hc : (8 : Time) * sp.Δ ≤ catchUp sp + 1 := by simp only [catchUp]; linarith
-  have hJ := ready_implies_joined sp ro dg H tr hrun p hp _ (catchUp sp) ht0 hc hready.2
+  have hJ := ready_implies_joined sp ro dg H tr proposer hrun p hp _ (catchUp sp) ht0 hc hready.2
   obtain ⟨j, x, hg⟩ := hrun.tick_of_awake p hp _ ht0 hpub hJ.1
-  have hP : Node.Proposes p (sp.ts s) :=
+  have hP : Node.Proposes proposer p (sp.ts s) :=
     ⟨by rw [hslot]; exact hs, by rw [hslot, sp.slotTime_eq]; simp only [SAParams.ts],
       by rw [hslot]⟩
   obtain ⟨hc₀, ht₀⟩ := Healing.tick_first_cut hg
   have hj : SA.joined sp (tr.state p j).ac (sp.ts s) :=
-    ((joined_projection sp ro dg H tr hrun p hp _).2.1 j ⟨_, hc₀⟩
+    ((joined_projection sp ro dg H tr proposer hrun p hp _).2.1 j ⟨_, hc₀⟩
       (fun ⟨ℓ, hc', hr⟩ => by
         have := Option.some.inj (hc₀.2.symm.trans hc'.2)
         simp only [Node.acCall, Cut.ac.injEq] at this
         rw [← this] at hr
         cases hr) ht₀).1 hJ.2
   -- `ac_proposal` after the tick's `ac_on_tick` returns a proposal: the tick keeps `restart_time`
-  have hj' : SA.joined sp (Node.tickStep dg p (tr.state p j) (sp.ts s) x .acTick).1.ac
+  have hj' : SA.joined sp (Node.tickStep proposer dg p (tr.state p j) (sp.ts s) x .acTick).1.ac
       (sp.ts s) := by
     change SA.joined sp ((goldilocksNode sp ro).step p (tr.state p j).ac
       (Node.frame (tr.state p j)) (sp.ts s) .tick).1 (sp.ts s)
@@ -164,9 +166,9 @@ theorem ready_proposer_proposes (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun 
     rw [SA.step_restartTime p _ _ _ .tick (by simp)]
     exact hj
   obtain ⟨d, pay, hr⟩ : ∃ d pay,
-      (Node.acProposal (Node.tickStep dg p (tr.state p j) (sp.ts s) x .acTick).1
+      (Node.acProposal (Node.tickStep proposer dg p (tr.state p j) (sp.ts s) x .acTick).1
         (sp.ts s)).2.2 = some (d, pay) := by
-    cases hpr : (Node.acProposal (Node.tickStep dg p (tr.state p j) (sp.ts s) x .acTick).1
+    cases hpr : (Node.acProposal (Node.tickStep proposer dg p (tr.state p j) (sp.ts s) x .acTick).1
         (sp.ts s)).2.2 with
     | none =>
       exfalso
@@ -178,9 +180,9 @@ theorem ready_proposer_proposes (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun 
     (goldilocksNode_requirements sp ro) hrun.genesis_root_ok hnc hp hg hP hr
   refine ⟨j + 2, _, ⟨⟨⟨true, hacc⟩, ?_⟩, rfl, ?_⟩, ht₂⟩
   · -- the own block is the third cut of the tick, so not the first of a group
-    have hlen : 2 < (Node.exec dg p (tr.state p j) (sp.ts s) (.tick x)).2.length := by
-      have h1 : (Node.tickStep dg p (tr.state p j) (sp.ts s) x .acTick).2.length = 1 := rfl
-      change 2 < (Node.onTick dg p (tr.state p j) (sp.ts s) x).2.length
+    have hlen : 2 < (Node.exec proposer dg p (tr.state p j) (sp.ts s) (.tick x)).2.length := by
+      have h1 : (Node.tickStep proposer dg p (tr.state p j) (sp.ts s) x .acTick).2.length = 1 := rfl
+      change 2 < (Node.onTick proposer dg p (tr.state p j) (sp.ts s) x).2.length
       rw [Healing.onTick_eq, Healing.proposal_cuts_some hP hr]
       simp only [List.length_append, List.length_cons, Node.onBlock, Node.mkBlock, lt_irrefl,
         ↓reduceIte]
@@ -202,7 +204,8 @@ theorem ready_proposer_proposes (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun 
 /-! ## Reads after all events -/
 
 /-- The point after all events at `t` is between two events of every node. -/
-theorem cutAfter_boundary (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+theorem cutAfter_boundary (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {t : Time} (hj : CutAfter tr j t) : Boundary tr y j := by
   rintro ⟨c, hc⟩
   obtain ⟨j₀, e, k, hg, rfl, -⟩ := call_in_group hrun.toLocalRun hy hc
@@ -217,7 +220,8 @@ theorem cutAfter_boundary (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y 
 /-- The read after all events at `t` extends `P` when the record or `Σ.F` does (as in A1.7's
 proof: the read is the record's block, above `Σ.F`, or `Σ.F`, which the record's block is below
 then). -/
-private theorem read_extends_of_record (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem read_extends_of_record (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {t : Time}
     (hj : CutAfter tr j t) (hready : ReadyAt tr H (catchUp sp) y t)
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -262,13 +266,13 @@ private theorem read_extends_of_record (hrun : GoldilocksRun dg H tr) (hnc : NoC
 
 /-- **R.2, `includeSleepy`.** -/
 theorem include_sleepy : IncludeSleepy := by
-  intro sp ro dg H tr ΔF hrun hnc hsl τ P hP y t j ht hy hj
+  intro sp ro dg H tr proposer ΔF hrun hnc hsl τ P hP y t j ht hy hj
   exact read_extends_of_record hrun hnc hsl hy.1 hj hy
     (ready_record_extends hrun hnc hsl hP ht hy hj)
 
 /-- A block of an honest node's tree before a cut whose earlier cuts are at times `≤ t` has a
 slot at most `slot(t)`. -/
-private theorem tree_slot_le (hrun : GoldilocksRun dg H tr) {x : Fin sp.n} (hx : x ∈ H)
+private theorem tree_slot_le (hrun : GoldilocksRun proposer dg H tr) {x : Fin sp.n} (hx : x ∈ H)
     {j : Nat} {t : Time} (hj : ∀ k < j, tr.time k ≤ t)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state x j).fg.tree) :
     X.slot ≤ sp.slot t := by
@@ -279,7 +283,7 @@ private theorem tree_slot_le (hrun : GoldilocksRun dg H tr) {x : Fin sp.n} (hx :
 
 /-- **R.2, `growSleepy`.** -/
 theorem grow_sleepy : GrowSleepy := by
-  intro sp ro dg H tr ΔF k hrun hnc hsl hk t ht hrec _
+  intro sp ro dg H tr proposer ΔF k hrun hnc hsl hk t ht hrec _
   have hΔ := sp.toParams.hΔ
   have hcoh := honest_blocks_coherent hrun.toLocalRun hnc
   set D := (4 * (k : Time) + 6) * sp.Δ
@@ -317,7 +321,7 @@ theorem grow_sleepy : GrowSleepy := by
   have hRP : ReadyProposalAt tr H (catchUp sp) (sp.ts s) P := ⟨_, kP, hready, hP, hkP⟩
   have hinc : ∀ y j, ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
       Anc (tr.HonestBlocks H) P (readAfter tr y j (t + D)) := fun y j hy hj =>
-    include_sleepy sp ro dg H tr ΔF hrun hnc hsl _ P hRP y _ j htsD hy hj
+    include_sleepy sp ro dg H tr proposer ΔF hrun hnc hsl _ P hRP y _ j htsD hy hj
   -- `P` is newer than every block of a read at `t`
   have hnot : ∀ x jx, ReadyAt tr H (catchUp sp) x t → CutAfter tr jx t →
       ¬ Anc (tr.HonestBlocks H) P (readAfter tr x jx t) := by

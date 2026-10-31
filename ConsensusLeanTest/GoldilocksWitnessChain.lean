@@ -215,13 +215,13 @@ height `m + 1` with the block. -/
 theorem trans_gen {m : Nat} (hm : 2 ≤ m) (σ : FG.ChainState gp.n) (B : FG.FGBlock gp.n) (R J : Nat)
     (v : Fin gp.n) (hs : σ.s = m) (hh : σ.h = m) (hTh : σ.Th = R) (htg : σ.target = ∅)
     (hpg : σ.prog = ∅) (hpd : σ.pending = [(m - 1, J)]) (hhj : σ.hj = m - 1)
-    (hprop : B.proposer = gp.proposer B.slot) (hsl : B.slot = m + 1)
+    (hsl : B.slot = m + 1)
     (hatts : B.atts = [⟨v, m, R, false, some (m - 1, J)⟩]) :
     ∃ σ', gp.stateTransition σ B = some σ' ∧ σ'.L = B.root ∧ σ'.s = m + 1 ∧ σ'.h = m + 1 ∧
       σ'.Th = B.root ∧ σ'.ThSlot = m + 1 ∧ σ'.target = ∅ ∧ σ'.prog = ∅ ∧
       σ'.pending = [(m, R)] ∧ σ'.J = R ∧ σ'.hj = m ∧ σ'.F = J ∧ σ'.hF = m - 1 := by
   unfold FG.FGParams.stateTransition
-  rw [ite_pos ⟨hprop, by rw [hs, hsl]; omega, by
+  rw [ite_pos ⟨by rw [hs, hsl]; omega, by
     rw [hatts]; intro a ha
     rw [List.mem_singleton] at ha; subst ha
     exact ⟨by simp [FG.Att.WellFormed]; omega, Or.inl ⟨hh.symm, hTh.symm⟩⟩⟩]
@@ -234,10 +234,10 @@ include hq in
 /-- The transition of the slot-`1` block on genesis, with no attestation. -/
 theorem trans_zero (σ : FG.ChainState gp.n) (B : FG.FGBlock gp.n) (hs : σ.s = 0)
     (hpg : σ.prog = ∅) (htg : σ.target = ∅) (hpd : σ.pending = [])
-    (hprop : B.proposer = gp.proposer B.slot) (hsl : B.slot = 1) (hatts : B.atts = []) :
+    (hsl : B.slot = 1) (hatts : B.atts = []) :
     gp.stateTransition σ B = some { σ with s := 1, L := B.root } := by
   unfold FG.FGParams.stateTransition
-  rw [ite_pos ⟨hprop, by rw [hs, hsl]; omega, by simp [hatts]⟩]
+  rw [ite_pos ⟨by rw [hs, hsl]; omega, by simp [hatts]⟩]
   simp [hatts, FG.FGParams.heightEvents, FG.FGParams.finalizePrune, FG.FGParams.bestFinal,
     FG.FGParams.justifies, FG.FGParams.timesOut, hq, htg, hpg, hpd, hsl]
 
@@ -247,13 +247,13 @@ justifies genesis and enters height `2` with the block. -/
 theorem trans_one (σ : FG.ChainState gp.n) (B : FG.FGBlock gp.n) (v : Fin gp.n) (hs : σ.s = 1)
     (hh : σ.h = 1) (hTh : σ.Th = 0) (htg : σ.target = ∅) (hpg : σ.prog = ∅)
     (hpd : σ.pending = []) (hhj : σ.hj = 0) (hF : σ.F = 0) (hhF : σ.hF = 0)
-    (hprop : B.proposer = gp.proposer B.slot) (hsl : B.slot = 2)
+    (hsl : B.slot = 2)
     (hatts : B.atts = [⟨v, 1, 0, false, none⟩]) :
     ∃ σ', gp.stateTransition σ B = some σ' ∧ σ'.L = B.root ∧ σ'.s = 2 ∧ σ'.h = 2 ∧
       σ'.Th = B.root ∧ σ'.ThSlot = 2 ∧ σ'.target = ∅ ∧ σ'.prog = ∅ ∧
       σ'.pending = [(1, 0)] ∧ σ'.J = 0 ∧ σ'.hj = 1 ∧ σ'.F = 0 ∧ σ'.hF = 0 := by
   unfold FG.FGParams.stateTransition
-  rw [ite_pos ⟨hprop, by rw [hs, hsl]; omega, by
+  rw [ite_pos ⟨by rw [hs, hsl]; omega, by
     rw [hatts]; intro a ha
     rw [List.mem_singleton] at ha; subst ha
     exact ⟨by simp [FG.Att.WellFormed], Or.inl ⟨hh.symm, hTh.symm⟩⟩⟩]
@@ -301,19 +301,19 @@ theorem shape_trans {m : Nat} {σ : FG.ChainState sp1.n} (hS : Shape m σ) :
     ∃ σ', sp1.toParams.fg.stateTransition σ (blk (m + 1)).fgView = some σ' ∧ Shape (m + 1) σ' := by
   rcases m with _ | _ | m
   · refine ⟨_, trans_zero sp1.toParams.fg rfl σ (blk 1).fgView hS.s hS.prog hS.target hS.pending
-      rfl rfl rfl, ?_⟩
+      rfl rfl, ?_⟩
     exact ⟨rfl, rfl, hS.h, hS.Th, hS.ThSlot, hS.target, hS.prog, hS.pending, hS.J, hS.hj, hS.F,
       hS.hF⟩
   · obtain ⟨σ', hσ', hL, hs, hh, hTh, hThS, htg, hpg, hpd, hJ, hhj, hF, hhF⟩ :=
       trans_one sp1.toParams.fg rfl σ (blk 2).fgView w0 hS.s hS.h hS.Th hS.target hS.prog hS.pending
         hS.hj
-        hS.F hS.hF rfl rfl rfl
+        hS.F hS.hF rfl rfl
     exact ⟨σ', hσ', hL, hs, hh, hTh, hThS, htg, hpg, hpd, hJ, hhj, hF, hhF⟩
   · obtain ⟨σ', hσ', hL, hs, hh, hTh, hThS, htg, hpg, hpd, hJ, hhj, hF, hhF⟩ :=
       trans_gen sp1.toParams.fg rfl (m := m + 2) (by omega) σ (blk (m + 3)).fgView
         (blk (m + 2)).root
         (blk (jexp (m + 2))).root w0 hS.s (by rw [hS.h]; simp [hexp]) (by rw [hS.Th]; simp [ent])
-        hS.target hS.prog (by rw [hS.pending]; simp) hS.hj rfl rfl
+        hS.target hS.prog (by rw [hS.pending]; simp) hS.hj rfl
         (by
           change (blk (m + 3)).fgPayload = _
           rw [blk_fgPayload, ite_neg (by omega), att_eq (by omega), eroot_pred (by omega)]; rfl)

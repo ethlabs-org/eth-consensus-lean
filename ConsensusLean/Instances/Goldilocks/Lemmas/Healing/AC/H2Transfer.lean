@@ -26,13 +26,13 @@ workbench `h2-open-items.md`:
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time} {proposer : Nat → Fin sp.n}
 
 /-- **§5, `Carry` for a fast origin at a read not covered by `Φ.F`** (the counted heads accepted
 or resolved before `t_j + 2Δ` relay before `t_j + 3Δ`, pre-recovery heads by `Catch`; rooted
 retention keeps them until the read, as `B` is above `Φ.F`): at every honest vote of slot
 `j + 1` whose frame's `Φ.F` does not extend `B`, `Carry_y(j, CV, B)`. -/
-theorem h2_carry_fastLock (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (hx : x ∈ H)
+theorem h2_carry_fastLock (hI : InclusionRun tr H U proposer g t₀) {x : Fin sp.n} (hx : x ∈ H)
     {i j : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hjx : JoinedAt tr x (tr.time i))
     (hfl : FastLockAt tr x i j B CV) (hj : t₀ + 4 * sp.Δ ≤ sp.ts j) :
     ∀ y ∈ H, ∀ k ℓ e, CastAt tr y k ℓ e → e.msg.slot = j + 1 → ¬ Anc U B ℓ.frame.F →
@@ -41,7 +41,7 @@ theorem h2_carry_fastLock (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (hx :
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
   have hg := hI.le
-  have hP1 : Protected tr H t₀ B j := Or.inl ⟨x, hx, i, CV, hjx, hfl, hj⟩
+  have hP1 : Protected proposer tr H t₀ B j := Or.inl ⟨x, hx, i, CV, hjx, hfl, hj⟩
   intro y hy k ℓ e hc hs hBF
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc.1
   obtain ⟨-, hsl, -, -⟩ := castAt_spec hr hy hc
@@ -73,7 +73,7 @@ theorem h2_carry_fastLock (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (hx :
 cuts: the viability from `Inv` (the pair is P1), `Carry` from §5 at a read above `Φ.F`; a read
 with `B ⪯ Φ.F` is root-covered, its head extends `Φ.F`): every honest vote of slot `j + 1`
 extends the selected block `B`. -/
-theorem raw_fast_first_votes (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (hx : x ∈ H)
+theorem raw_fast_first_votes (hI : InclusionRun tr H U proposer g t₀) {x : Fin sp.n} (hx : x ∈ H)
     {i j : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hjx : JoinedAt tr x (tr.time i))
     (hfl : FastLockAt tr x i j B CV) (hj : t₀ + 4 * sp.Δ ≤ sp.ts j) :
     ∀ y ∈ H, ∀ k e, VoteAt tr y k e → e.msg.slot = j + 1 → VoteExtends U e.msg B := by
@@ -82,7 +82,7 @@ theorem raw_fast_first_votes (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (h
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
   have hg := hI.le
-  have hP1 : Protected tr H t₀ B j := Or.inl ⟨x, hx, i, CV, hjx, hfl, hj⟩
+  have hP1 : Protected proposer tr H t₀ B j := Or.inl ⟨x, hx, i, CV, hjx, hfl, hj⟩
   have hcarry := h2_carry_fastLock hI hx hjx hfl hj
   suffices h : ∀ k, ∀ y ∈ H, ∀ e, VoteAt tr y k e → e.msg.slot = j + 1 → VoteExtends U e.msg B
     from fun y hy k e hv hs => h k y hy e hv hs
@@ -113,14 +113,14 @@ theorem raw_fast_first_votes (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (h
     have hT : gbar g ≤ sp.ts ((sp.slot (tr.time k) : Int) - 1) := by
       rw [← hsl, hes, show ((j + 1 : Nat) : Int) - 1 = (j : Int) by push_cast; ring]
       linarith
-    exact first_transfer sp FGP ro H U tr hrun j x y i k B CV ℓ e hx hfl hy hca hes
+    exact first_transfer sp FGP ro H U tr proposer hrun j x y i k B CV ℓ e hx hfl hy hca hes
       (hI.syncAC (by linarith) _) (hcarry y hy k ℓ e hca hes hBF) (hI.faultBound ht0 hT)
       hviab (fun z hz k' hk' e' hv' hs' => ih k' hk' z hz e' hv' hs')
 
 /-- **§6.1, first transfer of a slow target** (the writer's saved regular results `C_l ⪰ B` of
 the window compare every live older lock by RR/RO; the current result gives §2's participant
 majority for `B`): every honest vote of slot `j + 1` extends `B`. -/
-theorem raw_slow_first_votes (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (hx : x ∈ H)
+theorem raw_slow_first_votes (hI : InclusionRun tr H U proposer g t₀) {x : Fin sp.n} (hx : x ∈ H)
     {i j : Nat} {B : Blk sp.n FGP} (hjx : JoinedAt tr x (tr.time i))
     (hsl : SlowLockAt tr x i j B) (hj : t₀ + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1)) :
     ∀ y ∈ H, ∀ k e, VoteAt tr y k e → e.msg.slot = j + 1 → VoteExtends U e.msg B := by
@@ -130,7 +130,7 @@ theorem raw_slow_first_votes (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (h
   have hΔ := sp.toParams.hΔ
   have hg := hI.le
   have hk := sp.two_le_k
-  have hP2 : Protected tr H t₀ B j := Or.inr (Or.inl ⟨x, hx, i, hjx, hsl, hj⟩)
+  have hP2 : Protected proposer tr H t₀ B j := Or.inr (Or.inl ⟨x, hx, i, hjx, hsl, hj⟩)
   obtain ⟨ℓX, C, hupd, hconf, -, hdeep, -⟩ := id hsl
   have hΦXU := (frameIn_of_callAt hr hx hupd.1).2
   have hDC : Anc U B C := Anc.mono hΦXU (deepest_mem hdeep).1.1.2.2
@@ -244,8 +244,9 @@ theorem heldAtProposal_of_writer (hr : ACLocalRun (goldilocksSA sp FGP ro) H U t
 
 /-- At a proposal of slot `σ + 1` with `t_σ ≥ ḡ + 4Δ`, under `Inv` for a protected `(B, j)` with
 `j ≤ σ` and `B ⋠ Φ.F`, `B` is viable or below `fc_root` in the proposer's tree, above `Φ.F`. -/
-private theorem viable_at_proposal (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j : Nat}
-    (hB : Protected tr H t₀ B j) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
+private theorem viable_at_proposal (hI : InclusionRun tr H U proposer g t₀)
+    {B : Blk sp.n FGP} {j : Nat}
+    (hB : Protected proposer tr H t₀ B j) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (ht : sp.ts (j + 1 : Nat) ≤ tr.time i) (hBF : ¬ Anc U B ℓ.frame.F) :
     (B ∈ ℓ.frame.tree ∧ (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot)) ∧
@@ -261,7 +262,7 @@ private theorem viable_at_proposal (hI : InclusionRun tr H U g t₀) {B : Blk sp
 
 /-- (L-high) at a proposal of slot `σ + 1`: a stored lock of slot `> σ` is optimistic over votes
 that extend `B`; one of slot `σ` is compatible with `B` by `hsame`. -/
-private theorem high_locks (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (hx : x ∈ H)
+private theorem high_locks (hI : InclusionRun tr H U proposer g t₀) {x : Fin sp.n} (hx : x ∈ H)
     {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) {B : Blk sp.n FGP}
     (hlater : ∀ z ∈ H, ∀ k e, VoteAt tr z k e → σ < e.msg.slot → VoteExtends U e.msg B)
     (hsame : ∀ k CV O, OptimisticLockAt tr x k σ O CV → Compatible U O B) :
@@ -284,8 +285,8 @@ private theorem high_locks (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} (hx 
 `m ≥ j` with `t_m ≥ t₀ + 4Δ` extends `B`, so does every honest vote of a later slot (the
 preceding honest batch's `n − f` retained seats release older conflicting locks and dominate
 the walk; a label-`(m)` lock has an honest supporter; root-covered reads per §5). -/
-theorem h2_votes_continue (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j m : Nat}
-    (hB : Protected tr H t₀ B j) (hjm : j ≤ m) (hm : t₀ + 4 * sp.Δ ≤ sp.ts m)
+theorem h2_votes_continue (hI : InclusionRun tr H U proposer g t₀) {B : Blk sp.n FGP} {j m : Nat}
+    (hB : Protected proposer tr H t₀ B j) (hjm : j ≤ m) (hm : t₀ + 4 * sp.Δ ≤ sp.ts m)
     (hv : ∀ x ∈ H, ∀ k e, VoteAt tr x k e → e.msg.slot = m → VoteExtends U e.msg B) :
     VotesExtendAfter tr H U m B := by
   have hrun := hI.run
@@ -324,7 +325,8 @@ theorem h2_votes_continue (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {
         rw [← hsl, hes, show ((m + (d + 1) : Nat) : Int) - 1 = ((m + d : Nat) : Int) by
           push_cast; ring]
         linarith
-      exact next_transfer sp FGP ro H U tr hrun (m + d) y k B ℓ e hy hca (by omega) ih hhalf
+      exact next_transfer sp FGP ro H U tr proposer hrun (m + d) y k B ℓ e hy hca
+        (by omega) ih hhalf
         (h2_carry_votes hI hmd ih hy hca (by omega) hFB) (hI.faultBound ht0 hT)
         (hI.syncAC (by linarith) _) (hes ▸ hviab)
         (fun z hz k' hk' e' hv' hs' => ihk k' hk' z hz e' hv' (by omega))
@@ -332,8 +334,9 @@ theorem h2_votes_continue (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {
 /-- **§6.1, later labels (proposals)**: for a protected `(B, j)`, if every honest vote of a slot
 `m ≥ j` with `t_m ≥ t₀ + 4Δ` extends `B`, the head of every honest `ac_proposal` at `t_{m+1}`
 extends `B`. -/
-theorem h2_proposals_continue (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j m : Nat}
-    (hB : Protected tr H t₀ B j) (hjm : j ≤ m) (hm : t₀ + 4 * sp.Δ ≤ sp.ts m)
+theorem h2_proposals_continue (hI : InclusionRun tr H U proposer g t₀)
+    {B : Blk sp.n FGP} {j m : Nat}
+    (hB : Protected proposer tr H t₀ B j) (hjm : j ≤ m) (hm : t₀ + 4 * sp.Δ ≤ sp.ts m)
     (hv : ∀ x ∈ H, ∀ k e, VoteAt tr x k e → e.msg.slot = m → VoteExtends U e.msg B) :
     ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) d pay, tr.CallAt x i ℓ →
       ℓ.call = .proposal → tr.time i = sp.ts (m + 1 : Nat) →
@@ -371,7 +374,7 @@ theorem h2_proposals_continue (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FG
 
 /-- **§6.1, raw-origin transfer (votes)**: a clean raw origin `(B, j)` is carried by every honest
 vote of a slot after `j`. -/
-theorem raw_origin_votes (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j : Nat}
+theorem raw_origin_votes (hI : InclusionRun tr H U proposer g t₀) {B : Blk sp.n FGP} {j : Nat}
     (hB : CleanOrigin tr H t₀ B j) : VotesExtendAfter tr H U j B := by
   have hk := sp.two_le_k
   obtain ⟨hfirst, hj1⟩ : (∀ y ∈ H, ∀ k e, VoteAt tr y k e → e.msg.slot = j + 1 →
@@ -390,7 +393,7 @@ extends a clean raw origin `(B, j)`: root-covered when `B ⪯ Φ.F`; otherwise `
 the writer's counted votes reach the proposer ((P), Sync and `Catch`), and ProposalCore's
 fast-update (A1.2), optimistic (A1.4 (a)) or result (A1.8, with the slow window's
 `slow_stored_locks`) transfer applies. -/
-theorem raw_first_proposals (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j : Nat}
+theorem raw_first_proposals (hI : InclusionRun tr H U proposer g t₀) {B : Blk sp.n FGP} {j : Nat}
     (hB : CleanOrigin tr H t₀ B j) :
     ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) d pay, tr.CallAt x i ℓ →
       ℓ.call = .proposal → tr.time i = sp.ts (j + 1 : Nat) →
@@ -478,7 +481,7 @@ theorem raw_first_proposals (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP}
 
 /-- **§6.1, raw-origin transfer**: a clean raw origin `(B, j)` is carried by every honest vote
 and every honest proposal head of a slot after `j`. -/
-theorem raw_origin_transfer (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP} {j : Nat}
+theorem raw_origin_transfer (hI : InclusionRun tr H U proposer g t₀) {B : Blk sp.n FGP} {j : Nat}
     (hB : CleanOrigin tr H t₀ B j) :
     VotesExtendAfter tr H U j B ∧ ProposalsExtendAfter tr H U j B := by
   have hΔ := sp.toParams.hΔ
@@ -499,7 +502,7 @@ theorem raw_origin_transfer (hI : InclusionRun tr H U g t₀) {B : Blk sp.n FGP}
     exact raw_first_proposals hI hB x hx i ℓ d pay hc hcall ht hd
 
 /-- A node is joined at a time `T ≥ t_s` when `t_s ≥ ḡ + 4Δ`. -/
-private theorem joined_of_ge (hI : InclusionRun tr H U g t₀) {y : Fin sp.n} (hy : y ∈ H)
+private theorem joined_of_ge (hI : InclusionRun tr H U proposer g t₀) {y : Fin sp.n} (hy : y ∈ H)
     {T : Time} (hT0 : 0 ≤ T) {s : Nat} (hsT : sp.ts s ≤ T) (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) :
     JoinedAt tr y T := by
   refine hI.joinedAt hy ?_
@@ -509,7 +512,7 @@ private theorem joined_of_ge (hI : InclusionRun tr H U g t₀) {y : Fin sp.n} (h
   linarith
 
 /-- The time of a fast lock write of slot `s` is at least `t_s`. -/
-private theorem fastLock_time (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} {i s : Nat}
+private theorem fastLock_time (hI : InclusionRun tr H U proposer g t₀) {x : Fin sp.n} {i s : Nat}
     {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr x i s B CV) :
     sp.ts s ≤ tr.time i := by
   have hΔ := sp.toParams.hΔ
@@ -519,7 +522,7 @@ private theorem fastLock_time (hI : InclusionRun tr H U g t₀) {x : Fin sp.n} {
 
 /-- **§5, drain**: a lock stored at an honest node and live at a slot `σ` with `t_σ ≥ t₀ + 2Θ`
 (`σ ≤ j + k` for its label `j`) sits below a clean raw origin of its label. -/
-theorem h2_drain (hI : InclusionRun tr H U g t₀) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+theorem h2_drain (hI : InclusionRun tr H U proposer g t₀) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {l : Lock} (hl : l ∈ (tr.state y i).locks) {σ : Nat} (hσ : σ ≤ l.slot + sp.k)
     (hT : t₀ + 2 * Θ sp ≤ sp.ts σ) :
     ∃ B, (∃ L ∈ U, L.root = l.block ∧ Anc U L B) ∧ CleanOrigin tr H t₀ B l.slot := by
@@ -550,7 +553,7 @@ theorem h2_drain (hI : InclusionRun tr H U g t₀) {y : Fin sp.n} (hy : y ∈ H)
 
 /-- **Settled locks**: from `t₀ + 2Θ + 4Δ` on, every lock live at an honest node is carried by
 every later honest duty. -/
-theorem h2_locks_settled (hI : InclusionRun tr H U g t₀) :
+theorem h2_locks_settled (hI : InclusionRun tr H U proposer g t₀) :
     LocksSettled tr H U (t₀ + 2 * Θ sp + 4 * sp.Δ) := by
   have hr := hI.run.localRun
   rw [locksSettled_iff]

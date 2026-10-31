@@ -31,16 +31,18 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable {tr H}
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {ΔF : Time} {x : Fin sp.n}
   {i₀ s m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+  {proposer : Nat → Fin sp.n}
 
 /-- **The vote step**: (i) and (ii) at the honest votes of cut `k`, from the invariant at every
 earlier cut: the caches at the vote (`state_caches`) and (K2) give (i) (`vote_viable`), and (i)
 with the earlier votes gives (ii) (`vote_extends`). -/
-theorem vote_step (hrun : GoldilocksRun dg H tr) (hp : PersistPremises tr H dg ΔF x i₀ s m B CV)
+theorem vote_step (hrun : GoldilocksRun proposer dg H tr)
+    (hp : PersistPremises tr H dg ΔF x i₀ s m B CV)
     (k : Nat) (ih : ∀ j < k, VoteInv tr H s m B j ∧ CutInv tr H s m B j) :
     VoteInv tr H s m B k := by
   rw [voteInv_iff]
   intro y hy ℓ e hc hs hsm
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hp.noColl).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl).localRun
   obtain ⟨-, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hr.frameLaw y hy k ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
   have hle : tr.time k ≤ sp.ts e.msg.slot + sp.Δ := (cast_head_fcRoot hr hy hc).2
@@ -63,13 +65,14 @@ theorem vote_step (hrun : GoldilocksRun dg H tr) (hp : PersistPremises tr H dg �
 /-- **The cut step**: G1.10 at the scope of C1.1 at the honest call of cut `k`, from the
 invariant at every earlier cut. The honest rows it needs are signed at
 earlier cuts, with sources compatible with `B` by A1.9 (its stored-block form, #75). -/
-theorem cut_step (hrun : GoldilocksRun dg H tr) (hp : PersistPremises tr H dg ΔF x i₀ s m B CV)
+theorem cut_step (hrun : GoldilocksRun proposer dg H tr)
+    (hp : PersistPremises tr H dg ΔF x i₀ s m B CV)
     (k : Nat) (ih : ∀ j < k, VoteInv tr H s m B j ∧ CutInv tr H s m B j) :
     CutInv tr H s m B k :=
   cut_inv_step hrun hp k ih
 
 /-- **The join**: the invariant holds at every cut (strong induction on the cut index, F.5). -/
-theorem persist_inv (hrun : GoldilocksRun dg H tr)
+theorem persist_inv (hrun : GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) :
     ∀ k, VoteInv tr H s m B k ∧ CutInv tr H s m B k := by
   intro k
@@ -95,7 +98,7 @@ theorem not_proposesAt_mid {y : Fin sp.n} {k : Nat} {X : SA.Blk sp.n (List (FG.A
 
 /-- **C1.1, honest fast confirmations persist.** -/
 theorem honest_fast_confirmations_persist : HonestFastConfirmationsPersist := by
-  intro sp ro dg H tr ΔF x i₀ s m B CV hrun hp s' hs hsm
+  intro sp ro dg H tr ΔF x i₀ s m B CV proposer hrun hp s' hs hsm
   have hinv := persist_inv hrun hp
   have hts : sp.ts s' ≤ sp.ts m := (SA.ts_le_iff sp).mpr (by exact_mod_cast hsm)
   have hts₀ : sp.ts s ≤ sp.ts s' := (SA.ts_le_iff sp).mpr (by exact_mod_cast hs.le)
@@ -118,8 +121,9 @@ theorem honest_fast_confirmations_persist : HonestFastConfirmationsPersist := by
 
 /-- **C1.1's corollary, recent source, next vote**: C1.1 (ii) at slot `m + 1`. -/
 theorem recent_source_next_vote : RecentSourceNextVote := by
-  intro sp ro dg H tr ΔF x i₀ i j m ℓ B CV hrun hp _ _ hjm _ y hy k e hv hsl
-  exact (honest_fast_confirmations_persist sp ro dg H tr ΔF x i₀ j (m + 1) B CV hrun hp (m + 1)
+  intro sp ro dg H tr ΔF x i₀ i j m ℓ B CV proposer hrun hp _ _ hjm _ y hy k e hv hsl
+  exact (honest_fast_confirmations_persist sp ro dg H tr ΔF
+    x i₀ j (m + 1) B CV proposer hrun hp (m + 1)
     (by omega) le_rfl).extends_ y hy k e hv hsl
 
 end Consensus.Goldilocks.Compose

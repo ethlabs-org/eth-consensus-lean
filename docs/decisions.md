@@ -15,6 +15,41 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-10-31, Francesco (contract assumptions versus guarantees). Loose numbers
+  are acceptable for latency, healing time and catch-up guarantees, not as a reason
+  to strengthen assumptions. Choose progress recurrence as weak as the proofs allow:
+  no consecutive honest proposers. Final recurrence is a good window every X slots:
+  two honest ready proposers separated within a bounded internal span, represented
+  by a generic `.recur` pattern with gap X. X is arbitrary; δt may depend on the
+  internal span, never on X. This supersedes both fixed gap 2 and the maximal
+  single-proposer gap derived from δt≥a+c+g−1. Exact window offsets and service
+  obligations await the healing owner's revised note.
+  The family PR may leave final recurrence parameterized while that research
+  continues, with δt ≥ c_F + a + k_F plus slack for fixed local service bounds;
+  none of these local parameters may silently depend on outer X.
+  Apply the same premise-minimization rule to the other family contract assumptions.
+- 2026-10-31, coordinator-directed selected-duty repair (runtime boundary).
+  Remove the proposer schedule from runtime `Params` and `FGParams`, rather than
+  reindexing `Store`, `NodeState` and `ACInterface` separately. After receiver
+  credential checking is assigned to execution validity, these runtime structures
+  have no need to know the selected identity. Pass the schedule separately to
+  node tick/proposal semantics and the statements that refer to the slot proposer;
+  the simulation supplies it from the run's selection. Genesis uses a fixed
+  validator index, not the slot-zero proposer. This requires propagating the
+  schedule through node execution/grouping laws, but avoids repeated state
+  transports and an arbitrary schedule hidden in runtime data. This is the chosen
+  architecture. The migration builds with warnings treated as errors and its tests
+  elaborate; trusted fidelity review and landing remain pending. The engine's
+  `dutyStep` gates both state mutation and release on selection. Delivered-block
+  proposer correspondence is an explicit `LocalRun.proposerCredential` obligation,
+  including faulty signers; the canonical simulation supplier remains OPEN.
+- 2026-10-31, coordinator-directed selected-duty repair. Restart replay order depends
+  only on validator count and genesis root: its data enumerates a frame's non-genesis
+  blocks in parent order. It has no proposer or timing dependence. Indexing that data
+  by these two values, and supplying it from `Setup` by validator count, preserves the
+  actual sibling order when simulation parameters use the run's proposer selection.
+  `ReplayOrder sp` remains notation for this proposer-independent type; no state transport
+  or freshly chosen replay order is needed for a different proposer schedule.
 - 2026-10-31, Francesco (coordinator-directed dependency repair). A single monotone
   holdings policy governs release and delivery. The engine releases a candidate only
   when its dependencies are already held, and valid receipts satisfy the same policy.

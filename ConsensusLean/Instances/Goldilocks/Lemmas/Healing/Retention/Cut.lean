@@ -28,13 +28,14 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
 /-! ### Run facts -/
 
 /-- The label of a high origin starts at or after `g` (`t_j ≥ c_z > ḡ ≥ g`). -/
-private theorem g_le_ts_of_highOrigin (hp : ResetPremises tr H dg g ΔF a) {x : Fin sp.n}
+private theorem g_le_ts_of_highOrigin (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
     {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     g ≤ sp.ts j := by
   have h₁ := cutZ_le_ts_of_highOrigin hp ho
@@ -44,7 +45,7 @@ private theorem g_le_ts_of_highOrigin (hp : ResetPremises tr H dg g ΔF a) {x : 
   linarith
 
 /-- `f < n/2` under `Healthy(g)`. -/
-private theorem faulty_lt_half' (hp : ResetPremises tr H dg g ΔF a) (x : Fin sp.n) :
+private theorem faulty_lt_half' (hp : ResetPremises tr H proposer dg g ΔF a) (x : Fin sp.n) :
     2 * Hᶜ.ncard < sp.n := by
   have := hp.healthy.2.2
   have := Fin.pos x
@@ -68,13 +69,13 @@ counted by `B`'s write extend `O` (they are cast by `k`: before the write, or, f
 write, in slot `j < t_{j+1}`); for `j < l` the honest slot-`l` votes counted by `O`'s write extend
 `B`; for `l = j` the raw selections are compatible by TSQ (`Sync` from `GST(g)`, `t_j ≥ g`). The
 stored blocks are ancestors of the raw selections. -/
-theorem origins_compatible_prefix (hp : ResetPremises tr H dg g ΔF a) {k : Nat}
+theorem origins_compatible_prefix (hp : ResetPremises tr H proposer dg g ΔF a) {k : Nat}
     (hvk : ∀ k' ≤ k, VoteInv tr H g k') {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (hact : i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) {x' : Fin sp.n} {r l : Nat}
     {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho' : HighOrigin tr H g x' r l O) (hrk : r ≤ k) :
     Compatible (tr.HonestBlocks H) B O := by
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hp.run hp.noColl
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hrl := hrun'.localRun
   have hU := hrl.coherent
   have hf := faulty_lt_half' hp x
@@ -107,7 +108,7 @@ theorem origins_compatible_prefix (hp : ResetPremises tr H dg g ΔF a) {k : Nat}
     exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
   · -- the same label: TSQ
     have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
-      (fun v => v.val) tr ΔF (sp.ts l) (sp.ts (l + 1 : Nat) + sp.Δ) hp.run.toLocalRun
+      (fun v => v.val) tr proposer ΔF (sp.ts l) (sp.ts (l + 1 : Nat) + sp.Δ) hp.run.toLocalRun
       (syncRun_of_gst hp.healthy.1 (g_le_ts_of_highOrigin hp ho))
     rcases SA.fastLock_same_slot hrun' ho.1 hfl ho'.1 hfl' hsync hf with h | h
     · exact SA.anc_total hU (hBD.trans h) hOD'
@@ -122,7 +123,7 @@ theorem origins_compatible_prefix (hp : ResetPremises tr H dg g ΔF a) {k : Nat}
 /-- **The rows signed by cut `k` name entries comparable with an active origin**
 (`hr4-cut-scope.md` §4): the row's entry lies below a high origin written before the signing
 (`high_row_source`), which is comparable with `B` (`origins_compatible_prefix`). -/
-theorem row_compatible (hp : ResetPremises tr H dg g ΔF a) {k : Nat}
+theorem row_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {k : Nat}
     (hvk : ∀ k' ≤ k, VoteInv tr H g k') {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (hact : i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) {v : Fin sp.n} (hv : v ∈ H) {d : Nat}
@@ -151,7 +152,7 @@ compatible with `B`, and so is `Σ.F ⪯ Σ.J`; when `Σ.J` is low, `Σ.F` is be
 (`low_finalized_below_origin`). No (K0) is used: `Store.cut_scope` (C1.1's scope) does not apply,
 since it assumes (K0) for `Σ.J` and (K1) for every conflicting entry above an honest `Σ.F` at `Ts`,
 low ones included, which fail at `a_z`. -/
-theorem retention_cut_step (hp : ResetPremises tr H dg g ΔF a) (k : Nat)
+theorem retention_cut_step (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') (hv : VoteInv tr H g k) :
     CacheInv tr H g a k := by
   refine cacheInv_iff.2 fun y hy hc _ x i j B ho hact => ?_
@@ -199,7 +200,7 @@ is at or below the stored block `B` of a fast-lock write of the signer before th
 (`stored_fast_lock_provenance`); the row's height pair is `C`'s height and entry, so `B` has state
 height `≥ σ[C].h ≥ H_z + 1` (a high origin), and the named entry is the entry at that height on
 `B`'s chain in the writer's tree (`high_row_source`). -/
-theorem high_rows (hp : ResetPremises tr H dg g ΔF a) :
+theorem high_rows (hp : ResetPremises tr H proposer dg g ΔF a) :
     ∀ y ∈ H, ∀ k att, tr.SignAt y k att → a ≤ tr.time k → HZ tr H g + 1 ≤ att.h →
       ∃ x i j B, HighOrigin tr H g x i j B ∧ ∃ E ∈ (tr.state x i).fg.tree,
         (tr.state x i).fg.Anc E B ∧ E.root = att.T ∧ ((tr.state x i).fg.σ E.root).h = att.h ∧

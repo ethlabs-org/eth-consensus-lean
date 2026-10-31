@@ -47,7 +47,7 @@ processing is the run's; an `ac_on_block(B)` follows the FG acceptance of `B` at
 relay is an acceptance of `B`, followed at once by the AC call of `B` (not a restart, so with the
 same deadline). -/
 theorem sync_projection : SyncProjection := by
-  intro P A dg H sg tr ΔF a b h hs
+  intro P A dg H sg tr proposer ΔF a b h hs
   refine ⟨fun x hx i m hsa hai hib y hy j ℓ hc hdl => ?_,
     fun x hx i B hacc hai hib y hy j ℓ hc hdl hanc => ?_⟩
   · obtain ⟨ℓ₀, hc₀, hm⟩ := hsa
@@ -87,6 +87,7 @@ section
 open SA
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
 
 private theorem joined_iff {τ t : Time} (hτ : 0 ≤ τ) :
     (0 < sp.toParams.slotOf t ∧ τ ≤ sp.toParams.slotTime (sp.toParams.slotOf t - 1)) ↔
@@ -113,7 +114,8 @@ private theorem lastBefore_succ (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i :
       if tr.RestartAt y i then (tr.time i : WithBot Time) else lastBefore tr y i := by
   cases i <;> rfl
 
-private theorem lastBefore_le {dg} {H} {tr : GoldilocksTrace sp ro} (h : GoldilocksRun dg H tr)
+private theorem lastBefore_le {dg} {H} {tr : GoldilocksTrace sp ro}
+    (h : GoldilocksRun proposer dg H tr)
     (y : Fin sp.n) (x : Time) :
     ∀ i, lastBefore tr y i ≤ x ↔ ∀ k < i, tr.RestartAt y k → tr.time k ≤ x := by
   intro i
@@ -129,7 +131,8 @@ private theorem lastBefore_le {dg} {H} {tr : GoldilocksTrace sp ro} (h : Goldilo
       rcases Nat.lt_succ_iff_lt_or_eq.1 hk with hk | rfl
       exacts [hall k hk hk', absurd hk' hr]
 
-private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp ro} (h : GoldilocksRun dg H tr)
+private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp ro}
+    (h : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) : ∀ i, (tr.state y i).ac.restartTime = lastBefore tr y i := by
   intro i
   induction i with
@@ -181,7 +184,7 @@ the AC state's `restart_time` at a call is the time of the latest restart before
 sets it, every other call keeps it), and the restarts at or before the time of a call other than
 a restart are the ones before it (restarts come first at a time). -/
 theorem joined_projection : JoinedProjection := by
-  intro sp ro dg H tr h y hy t
+  intro sp ro dg H tr proposer h y hy t
   have hpt : ∀ z, (tr.JoinedAt z t ↔ SA.JoinedAt tr.projAC z t) := fun z => by
     unfold RunTrace.JoinedAt SA.JoinedAt
     refine forall_congr' fun k => ?_

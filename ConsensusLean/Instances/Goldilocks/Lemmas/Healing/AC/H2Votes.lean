@@ -18,6 +18,7 @@ low-parent eligibility arm, and the persist/reflect comparison (§4) makes the v
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {proposer : Nat → Fin sp.n}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time}
 
 /-- A stored lock of an honest node has a slot at most the current one: it was written by an
@@ -38,10 +39,10 @@ one not on `P`, the anchor of the voter's walk after its unlocking is an ancesto
 `fc_root` is below the viable head `P` (`Geo`); a lock of a slot below `p` is settled, so the
 proposal head `parent(P)` extends it; a slot-`p` lock is optimistic, with an honest supporter
 of an earlier cut, whose head is `P`. -/
-theorem h2_duty_anchor (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : sp.toParams.proposer p ∈ H) (hP : HonestProposal tr (sp.toParams.proposer p) p P)
+theorem h2_duty_anchor (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) (hgeo : Geo tr H p P) :
+    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) (hgeo : Geo proposer tr H p P) :
     ∀ x ∈ H, ∀ i ℓ e, CastAt tr x i ℓ e → e.msg.slot = p → (∀ y ∈ H, ∀ j e', VoteAt tr y j e' →
       e'.msg.slot = p → j < i → e'.msg.head = P.root) →
       Anc U (getAnchor sp e.readPoint ℓ.frame (tr.time i)) P := by
@@ -116,11 +117,11 @@ theorem h2_duty_anchor (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp.n
 proposer runs its tick, then `ac_proposal`, then the objects received): every stored lock of the
 honest proposer of slot `p` at its `ac_proposal` at `t_p` has a slot below `p`: a slot-`p` lock
 needs an optimistic check at an object call at a time `≥ t_p`, after the proposal. -/
-theorem h2_proposal_locks_below (hI : InclusionRun tr H U g t₀) {p : Nat}
-    (hpH : sp.toParams.proposer p ∈ H) {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)}
-    (hck : tr.CallAt (sp.toParams.proposer p) k ℓp) (hcall : ℓp.call = .proposal)
+theorem h2_proposal_locks_below (hI : InclusionRun tr H U proposer g t₀) {p : Nat}
+    (hpH : proposer p ∈ H) {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)}
+    (hck : tr.CallAt (proposer p) k ℓp) (hcall : ℓp.call = .proposal)
     (htk : tr.time k = sp.ts p) :
-    ∀ l ∈ (tr.state (sp.toParams.proposer p) k).locks, l.slot < p := by
+    ∀ l ∈ (tr.state (proposer p) k).locks, l.slot < p := by
   have hr := hI.run.localRun
   have hΔ := sp.toParams.hΔ
   intro l hl
@@ -141,8 +142,8 @@ theorem h2_proposal_locks_below (hI : InclusionRun tr H U g t₀) {p : Nat}
       · exact Or.inr ⟨B, hB⟩
       have hexec := hr.exec j ℓ hc.2 (hc.1 ▸ hpH)
       rw [hc.1] at hexec
-      have hem : e ∈ ((goldilocksSA sp FGP ro).step (sp.toParams.proposer p)
-          (tr.state (sp.toParams.proposer p) j) ℓ.frame
+      have hem : e ∈ ((goldilocksSA sp FGP ro).step (proposer p)
+          (tr.state (proposer p) j) ℓ.frame
           (tr.time j) ℓ.call).2 := by rw [hexec]; exact he
       cases hcl : ℓ.call with
       | message m => exact Or.inl ⟨m, rfl⟩
@@ -172,10 +173,10 @@ the first vote not on `P`, `Geo(P)` makes every honest vote of slot `p` the prop
 reader's walk reaches the proposer's path, §6; on it the retained heads give equal scores and
 majority eligibility, §1; `Geo` aligns the low-parent arm; persistence and reflection along the
 path, §4). -/
-theorem h2_votes_of_duty (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : sp.toParams.proposer p ∈ H) (hP : HonestProposal tr (sp.toParams.proposer p) p P)
+theorem h2_votes_of_duty (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) (hgeo : Geo tr H p P)
+    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) (hgeo : Geo proposer tr H p P)
     (hduty : ∀ x ∈ H, ∀ i ℓ e, CastAt tr x i ℓ e → e.msg.slot = p →
       (∀ y ∈ H, ∀ j e', VoteAt tr y j e' → e'.msg.slot = p → j < i → e'.msg.head = P.root) →
       Anc U (getAnchor sp e.readPoint ℓ.frame (tr.time i)) P) :
@@ -251,10 +252,10 @@ theorem h2_votes_of_duty (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp
 /-- **H.2 (i), §§1, 4, 6**: for an honest proposal `P` of slot `p` at `t_p ≥ t₀ + 2Θ + 8Δ` with
 the locks settled from `t_{p−1}`, `Geo(P)` makes every honest vote of slot `p` the proposal (by
 induction on the cut of the first vote not on `P`). -/
-theorem h2_proposal_votes (hI : InclusionRun tr H U g t₀) {p : Nat} {P : Blk sp.n FGP}
-    (hpH : sp.toParams.proposer p ∈ H) (hP : HonestProposal tr (sp.toParams.proposer p) p P)
+theorem h2_proposal_votes (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) (hgeo : Geo tr H p P) :
+    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) (hgeo : Geo proposer tr H p P) :
     ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by
   have hstep := h2_votes_of_duty hI hpH hP hp hset hgeo (h2_duty_anchor hI hpH hP hp hset hgeo)
   suffices h : ∀ j, ∀ x ∈ H, ∀ e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root from

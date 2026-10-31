@@ -89,21 +89,22 @@ runs its tick there; the honest proposer of a slot `s > 0` awake and joined at `
 `ac_proposal` after its tick and, when it returns a payload, passes its block (on the returned
 head) to its own
 `ac_on_block` at once, before any object received at `t_s`. -/
-structure Driven (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop where
+structure Driven (proposer : Nat → Fin sp.n)
+    (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop where
   /-- (a) Blocks have their slot's proposer, a slot not in the future, and an earlier parent. -/
   blocks : ∀ y ∈ H, ∀ i B, tr.AcceptAt y i B → B.root ≠ sp.genesisRoot →
-    B.proposer = sp.toParams.proposer B.slot ∧ B.slot ≤ sp.slot (tr.time i) ∧
+    B.proposer = proposer B.slot ∧ B.slot ≤ sp.slot (tr.time i) ∧
     ∃ Pb : Blk sp.n FGP, B.parent = some Pb.root ∧ Pb.slot < B.slot ∧
       (Pb.root = sp.genesisRoot ∨ ∃ k < i, tr.AcceptAt y k Pb)
   /-- (a) A block of an honest proposer's slot is that proposer's proposal. -/
   honest_slot : ∀ y ∈ H, ∀ i B, tr.AcceptAt y i B → B.root ≠ sp.genesisRoot →
-    sp.toParams.proposer B.slot ∈ H → HonestProposal tr (sp.toParams.proposer B.slot) B.slot B
+    proposer B.slot ∈ H → HonestProposal tr (proposer B.slot) B.slot B
   /-- (b) Every honest node awake at a public time runs its tick there. -/
   tick : ∀ y ∈ H, ∀ t, 0 ≤ t → sp.toParams.IsPublic t → tr.awake y t →
     ∃ i ℓ, tr.CallAt y i ℓ ∧ ℓ.call = .tick ∧ tr.time i = t
   /-- (b) The honest joined proposer of slot `s > 0` runs `ac_proposal` at `t_s`, after its
   tick; when it returns a payload, it passes its block to its own `ac_on_block` at once. -/
-  proposal : ∀ s, 0 < s → ∀ p ∈ H, p = sp.toParams.proposer s → tr.awake p (sp.ts s) →
+  proposal : ∀ s, 0 < s → ∀ p ∈ H, p = proposer s → tr.awake p (sp.ts s) →
     JoinedAt tr p (sp.ts s) →
     ∃ k ℓ, tr.CallAt p k ℓ ∧ ℓ.call = .proposal ∧ tr.time k = sp.ts s ∧
       ((∃ pay, ProposalAt tr p k ℓ pay) → ∃ P, HonestProposal tr p s P)
@@ -126,11 +127,11 @@ call of an honest node at a time `t ≥ t_p + 6Δ` (at `t_p + 6Δ` itself, from 
 `P` at `t_p + 6Δ`.) -/
 def ACHealingStandalone : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (g : Time),
-    ACRun tr H U → Driven tr H → TrivialFrames tr H → HealthyAC tr H U g →
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g : Time),
+    ACRun proposer tr H U → Driven proposer tr H → TrivialFrames tr H → HealthyAC tr H U g →
     CatchAC tr H U g (2 * sp.Δ) →
-    ∀ (p : Nat) (P : Blk sp.n FGP), sp.toParams.proposer p ∈ H →
-      HonestProposal tr (sp.toParams.proposer p) p P →
+    ∀ (p : Nat) (P : Blk sp.n FGP), proposer p ∈ H →
+      HonestProposal tr (proposer p) p P →
       gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p →
       (∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
       (∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
@@ -140,9 +141,9 @@ def ACHealingStandalone : Prop :=
 
 /-- **`Prop(G_p)` over an AC trace**: for every `t ≥ ḡ` there is a slot `p ≥ 1` with
 `t ≤ t_p ≤ t + G_p` whose proposer is honest. -/
-def PropAC (H : Set (Fin sp.n)) (g Gp : Time) : Prop :=
+def PropAC (proposer : Nat → Fin sp.n) (H : Set (Fin sp.n)) (g Gp : Time) : Prop :=
   ∀ t, gbar g ≤ t → ∃ p : Nat, 1 ≤ p ∧ t ≤ sp.ts p ∧ sp.ts p ≤ t + Gp ∧
-    sp.toParams.proposer p ∈ H
+    proposer p ∈ H
 
 /-- **H.1, corollary.** Under H.1's premises and `Prop(G_p)`: for every
 `t ≥ ḡ + 2Θ + 8Δ` there is an honest proposal `P` released in `[t, t + G_p]` (when its proposer
@@ -150,12 +151,12 @@ is joined there) that is in every honest node's confirmed tip from `t + G_p + 6�
 `t + G_p + 6Δ` itself, from its tick there on). -/
 def ACHealingStandaloneCorollary : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (g Gp : Time),
-    ACRun tr H U → Driven tr H → TrivialFrames tr H → HealthyAC tr H U g →
-    CatchAC tr H U g (2 * sp.Δ) → PropAC H g Gp →
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g Gp : Time),
+    ACRun proposer tr H U → Driven proposer tr H → TrivialFrames tr H → HealthyAC tr H U g →
+    CatchAC tr H U g (2 * sp.Δ) → PropAC proposer H g Gp →
     ∀ t, gbar g + 2 * Θ sp + 8 * sp.Δ ≤ t →
       ∃ (p : Nat) (P : Blk sp.n FGP), t ≤ sp.ts p ∧ sp.ts p ≤ t + Gp ∧
-        HonestProposal tr (sp.toParams.proposer p) p P ∧
+        HonestProposal tr (proposer p) p P ∧
         ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → t + Gp + 6 * sp.Δ ≤ tr.time j →
           (tr.time j = t + Gp + 6 * sp.Δ →
             ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
@@ -184,13 +185,14 @@ fast, of slot `j` with `j − k + 1 ≥ r_AC(t₀)`; or (P3) `B` is an honest pr
 `j ≥ s_AC(t₀)` and every honest vote of slot `j` is `B`. A slot `j` is `≥ r_AC(t₀)` (the least
 slot with `t_r ≥ t₀ + 4Δ`) exactly when `t_j ≥ t₀ + 4Δ`, and `≥ s_AC(t₀)` (the least slot with
 `t_s ≥ t₀ + 2Θ + 8Δ`) exactly when `t_j ≥ t₀ + 2Θ + 8Δ`. -/
-def Protected (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (t₀ : Time) (B : Blk sp.n FGP)
+def Protected (proposer : Nat → Fin sp.n)
+    (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (t₀ : Time) (B : Blk sp.n FGP)
     (j : Nat) : Prop :=
   (∃ x ∈ H, ∃ i CV, JoinedAt tr x (tr.time i) ∧ FastLockAt tr x i j B CV ∧
     t₀ + 4 * sp.Δ ≤ sp.ts j) ∨
   (∃ x ∈ H, ∃ i, JoinedAt tr x (tr.time i) ∧ SlowLockAt tr x i j B ∧
     t₀ + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1)) ∨
-  (sp.toParams.proposer j ∈ H ∧ HonestProposal tr (sp.toParams.proposer j) j B ∧
+  (proposer j ∈ H ∧ HonestProposal tr (proposer j) j B ∧
     t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts j ∧
     ∀ x ∈ H, ∀ k e, VoteAt tr x k e → e.msg.slot = j → e.msg.head = B.root)
 
@@ -200,9 +202,10 @@ tree of `Φ.tree` (`filtered(Φ, Φ.tree)`); at a vote, moreover, `B ⪯ Φ.fc_r
 viable tree of the voter block tree. `B ⪯ Φ.fc_root` is the block order inside `U` (the coherent
 set of frame blocks), not ancestry inside `Φ.tree`: once `Φ.F` passes `B`, `B` is no longer in the
 tree. -/
-def Inv (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (t₀ : Time) :
-    Prop :=
-  ∀ B j, Protected tr H t₀ B j → ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ → sp.ts (j + 1 : Nat) ≤ tr.time i →
+def Inv (proposer : Nat → Fin sp.n) (tr : SATrace sp FGP ro)
+    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (t₀ : Time) : Prop :=
+  ∀ B j, Protected proposer tr H t₀ B j → ∀ y ∈ H, ∀ i ℓ,
+    tr.CallAt y i ℓ → sp.ts (j + 1 : Nat) ≤ tr.time i →
     (Anc U B ℓ.frame.fcRoot ∨ B ∈ ℓ.frame.viableTree ℓ.frame.tree) ∧
     ∀ e ∈ ℓ.emits, B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
       Anc U B ℓ.frame.fcRoot
@@ -211,8 +214,9 @@ def Inv (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (
 of the proposer at `t_p` (frame `Φ_P`) and every vote of slot `p` of an honest voter `y` (frame
 `Φ_y`), `P` is a viable head of `Φ_y` (`Φ_y.allowed`), and every other block of `y`'s voter block
 tree is a viable head of `Φ_y` exactly when it is one of `Φ_P`. -/
-def Geo (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (p : Nat) (P : Blk sp.n FGP) : Prop :=
-  ∀ k ℓP, tr.CallAt (sp.toParams.proposer p) k ℓP → ℓP.call = .proposal → tr.time k = sp.ts p →
+def Geo (proposer : Nat → Fin sp.n)
+    (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (p : Nat) (P : Blk sp.n FGP) : Prop :=
+  ∀ k ℓP, tr.CallAt (proposer p) k ℓP → ℓP.call = .proposal → tr.time k = sp.ts p →
     ∀ y ∈ H, ∀ i ℓ e, CastAt tr y i ℓ e → e.msg.slot = p →
       P ∈ ℓ.frame.viableHeads ∧
       ∀ X ∈ voterBlockTree sp e.readPoint ℓ.frame p, X ≠ P →
@@ -227,13 +231,15 @@ call of an honest node at a time `t ≥ t_p + 6Δ` (at `t_p + 6Δ` itself, from 
 `P ⪯ ac_confirmed` after the call. H.1 is the case of trivial frames and `t₀ = ḡ`. -/
 def ACInclusion : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (g t₀ : Time),
-    ACRun tr H U → Driven tr H → HealthyAC tr H U g → CatchAC tr H U g (2 * sp.Δ) →
-    gbar g ≤ t₀ → Inv tr H U t₀ →
-    ∀ (p : Nat) (P : Blk sp.n FGP), sp.toParams.proposer p ∈ H →
-      HonestProposal tr (sp.toParams.proposer p) p P →
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g t₀ : Time),
+    ACRun proposer tr H U → Driven proposer tr H → HealthyAC tr H U g →
+    CatchAC tr H U g (2 * sp.Δ) →
+    gbar g ≤ t₀ → Inv proposer tr H U t₀ →
+    ∀ (p : Nat) (P : Blk sp.n FGP), proposer p ∈ H →
+      HonestProposal tr (proposer p) p P →
       t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p →
-      (Geo tr H p P → ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
+      (Geo proposer tr H p P →
+        ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
       ((∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) →
         ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
           (tr.time j = sp.ts p + 6 * sp.Δ →

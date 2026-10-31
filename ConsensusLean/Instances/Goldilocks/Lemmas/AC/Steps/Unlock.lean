@@ -61,7 +61,7 @@ theorem unlock_compatible {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n}
   · exact absurd hlt h
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-  {tr : SATrace sp FGP ro}
+  {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- **An optimistic origin is compatible.** A block `D` of a frame inside `U` with three quarters
 of the committee as optimistic voters in a pool whose honest votes extend `B` is compatible with
@@ -83,7 +83,7 @@ equivocate there, `f < n/2`, every honest slot-`(m+1)` vote at an earlier cut ex
 every optimistic origin of slot `m` (a block with `3n/4` optimistic voters in a pool whose honest
 votes were cast before the vote) is compatible with `B`, then every live lock block at the vote's
 read point is compatible with `B`. -/
-theorem locks_compatible (hrun : ACRun tr H U) {y : Fin sp.n} (hy : y ∈ H) {i m : Nat}
+theorem locks_compatible (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i m : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = m + 1) {B : Blk sp.n FGP} (hB : B ∈ ℓ.frame.tree) {S : Set (Fin sp.n)}
     (hS : ∀ w ∈ S, w ∈ equivocators (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ∨

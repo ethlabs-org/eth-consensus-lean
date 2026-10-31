@@ -67,20 +67,23 @@ def Event.phaseAfter : Event A → Phase
 /-- One event `e` at time `t'` from `cfg`, with the digest `dg` at validator `self`: the time
 does not decrease; the event is allowed in the phase at `t'` and a delivery passes the wire
 checks; the handler runs. -/
-def Step (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n) (cfg : Config A)
+def Step (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n) (cfg : Config A)
     (e : Event A) (t' : Time) (cfg' : Config A) : Prop :=
   cfg.time ≤ t' ∧ EventOK t' (Phase.at cfg.time t' cfg.phase) e ∧ WireOK dg e ∧
-    cfg'.st = (exec dg self cfg.st t' e).1 ∧ cfg'.time = t' ∧ cfg'.phase = e.phaseAfter
+    cfg'.st = (exec proposer dg self cfg.st t' e).1 ∧ cfg'.time = t' ∧ cfg'.phase = e.phaseAfter
 
 /-- `cfg'` is reached from `cfg` by events. -/
-def Reaches (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n) :
+def Reaches (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n) :
     Config A → Config A → Prop :=
-  Relation.ReflTransGen (fun cfg cfg' => ∃ e t', Step dg self cfg e t' cfg')
+  Relation.ReflTransGen (fun cfg cfg' => ∃ e t', Step proposer dg self cfg e t' cfg')
 
 /-- A reachable configuration of validator `self`: reached from the initial one. -/
-def Reachable (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n) (cfg : Config A) :
+def Reachable (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n) (cfg : Config A) :
     Prop :=
-  Reaches dg self (Config.init A) cfg
+  Reaches proposer dg self (Config.init A) cfg
 
 /-- The law of one cut at validator `self` and time `t`, from `st` to `st'`: an AC cut
 executes the AC on `𝒜` with the frame `fg_to_ac(Σ)` and changes only `𝒜`; an FG cut executes

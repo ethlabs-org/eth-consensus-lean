@@ -108,11 +108,11 @@ end SA
 /-! ### Honest votes in a run -/
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
-  {H : Set (Fin sp.n)}
+  {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
 
 /-- The frame of an honest AC cut of a run is `fg_to_ac(Σ)` of the node's state. -/
 theorem frame_of_projAC {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
     ℓ.frame = Node.frame (tr.state y k) :=
   (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).1
@@ -128,7 +128,7 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
 /-- **C1.1 (i) at a vote**: when the voter's caches are compatible with `B` and (K2) holds at the
 vote, `B` is in the viable voter block tree or at or below `fc_root` (in the honest blocks). -/
-theorem vote_viable (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n}
+theorem vote_viable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ℓ e) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hcache : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B ∧
@@ -138,7 +138,7 @@ theorem vote_viable (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr) {y : 
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU := hr.coherent
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hr.frameLaw y hy k ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
@@ -168,7 +168,8 @@ theorem vote_viable (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr) {y : 
 honest vote of a slot in `(s, m]` at an earlier cut extends `B`, the vote extends `B`: below
 `fc_root` by requirement 1, otherwise by A1.2 for `σ = s + 1` (its stored-block form, #75) and by
 A1.3 after (every slot-`(σ − 1)` vote is at an earlier cut). -/
-theorem vote_extends (hrun : GoldilocksRun dg H tr) {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat}
+theorem vote_extends (hrun : GoldilocksRun proposer dg H tr)
+    {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -178,7 +179,7 @@ theorem vote_extends (hrun : GoldilocksRun dg H tr) {ΔF : Time} {x : Fin sp.n} 
     (hprior : ∀ z ∈ H, ∀ j < k, ∀ e', SA.VoteAt tr.projAC z j e' → s < e'.msg.slot →
       e'.msg.slot ≤ m → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr hrun hp.noColl
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl
   have hr := hrun'.localRun
   obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, hle⟩ := cast_head_fcRoot hr hy hc
   obtain ⟨-, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
@@ -198,12 +199,13 @@ theorem vote_extends (hrun : GoldilocksRun dg H tr) {ΔF : Time} {x : Fin sp.n} 
   have hsk : sp.ts s < tr.time k := by
     have := (SA.ts_lt_iff sp).mpr (Int.ofNat_lt.mpr hs)
     linarith
-  have hsync0 := sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr ΔF
+  have hsync0 := sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
+    tr proposer ΔF
     (sp.ts s) (sp.ts m + sp.Δ) hrun.toLocalRun hp.sync
   have hfault : SA.FaultBound tr.projAC H (tr.time k) := by
     have h := hp.faultBound y hy k e ⟨ℓ, hc.1, hc.2⟩ hsk htm
     unfold SA.FaultBound
-    rw [← (joined_projection sp ro dg H tr hrun y hy (tr.time k)).2.2]
+    rw [← (joined_projection sp ro dg H tr proposer hrun y hy (tr.time k)).2.2]
     exact h
   have hearlier : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) k e.msg.slot B :=
     fun z hz j hj e' hv hsl => hprior z hz j hj e' hv (hsl ▸ hs) (hsl ▸ hsm)
@@ -219,7 +221,7 @@ theorem vote_extends (hrun : GoldilocksRun dg H tr) {ΔF : Time} {x : Fin sp.n} 
     · rw [← h1]; exact hearlier
   · obtain ⟨m', hm'⟩ : ∃ m', e.msg.slot = m' + 1 := ⟨e.msg.slot - 1, by omega⟩
     have hsm' : s < m' := by omega
-    refine SA.next_transfer sp _ ro H _ tr.projAC hrun' m' y k B ℓ e hy hc hm' ?_
+    refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' m' y k B ℓ e hy hc hm' ?_
       (hp.halfCommittee m' hsm' (by omega))
       (hp.carryLater m' hsm' (by omega) y hy k e ⟨ℓ, hc.1, hc.2⟩ hm') hfault
       (syncAC_mono hsync0 ((SA.ts_le_iff sp).mpr (Int.ofNat_le.mpr hsm'.le)) htm) ?_ ?_

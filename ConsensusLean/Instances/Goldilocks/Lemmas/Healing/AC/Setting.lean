@@ -25,22 +25,22 @@ It also holds the vocabulary of H.1's steps (`GoodOrigin`, `VotesExtendAfter`,
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-- **The healthy premises shared by H.1 and H.2** over an AC trace of the SA: the trace
 contract with the honest-object facts, a driven trace, `Healthy(g)` and `Catch(2Δ)` (no
 assumption on the frames). -/
 structure HealthyBase (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (g : Time) : Prop where
-  run : ACRun tr H U
-  driven : Driven tr H
+    (proposer : Nat → Fin sp.n) (g : Time) : Prop where
+  run : ACRun proposer tr H U
+  driven : Driven proposer tr H
   healthy : HealthyAC tr H U g
   catchUp : CatchAC tr H U g (2 * sp.Δ)
 
 /-- **H.1's premises** over an AC trace of the SA: the healthy premises (`HealthyBase`) and
 trivial frames. -/
 structure StandaloneRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (g : Time) : Prop extends HealthyBase tr H U g where
+    (proposer : Nat → Fin sp.n) (g : Time) : Prop extends HealthyBase tr H U proposer g where
   trivial : TrivialFrames tr H
 
 theorem le_gbar (g : Time) : g ≤ gbar g := le_max_left g 0
@@ -304,7 +304,7 @@ end VotedSlot
 
 namespace HealthyBase
 
-variable (hS : HealthyBase tr H U g)
+variable (hS : HealthyBase tr H U proposer g)
 include hS
 
 /-- An honest node is awake from `ḡ` on. -/

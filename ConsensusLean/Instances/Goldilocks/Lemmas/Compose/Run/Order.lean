@@ -16,7 +16,7 @@ open SA
 
 /-- **F.5 (run).** -/
 theorem event_order : EventOrder := by
-  intro P A dg H sg tr h
+  intro P A proposer dg H sg tr h
   refine ⟨fun i j hij => h.time_mono hij, h.phase_order, fun y hy j t x ht k hk => ?_,
     h.block_unforgeable, fun y hy i a ha haH => ?_, h.msg_unforgeable, h.finite⟩
   · exact (ht.2.1 k hk).2.2.2.2
@@ -27,7 +27,7 @@ theorem event_order : EventOrder := by
 
 /-- **F.4.** -/
 theorem ready_implies_joined : ReadyImpliesJoined := by
-  intro sp ro dg H tr hrun y hy t c ht hc hawake
+  intro sp ro proposer dg H tr hrun y hy t c ht hc hawake
   have h := hrun.toLocalRun
   have hΔ := sp.toParams.hΔ
   have hm : max 0 (t - c - 1) ≤ t := max_le ht (by linarith)

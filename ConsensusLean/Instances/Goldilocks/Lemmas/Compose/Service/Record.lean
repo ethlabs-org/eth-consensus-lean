@@ -22,7 +22,8 @@ open SA (SAParams ReplayOrder Payload)
 /-- The frame of an honest node before every cut is well formed. -/
 theorem frameOK_state {P : Params} {A : NodeAC P}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
-    {tr : RunTrace A} (hrun : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
+    {tr : RunTrace A} {proposer : Nat → Fin P.n}
+    (hrun : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
     FrameOK (Node.frame (tr.state y i)) :=
   (Store.frame_realization P A.Payload _ _ (fg_reachable hrun hy i)).1
 
@@ -30,7 +31,8 @@ theorem frameOK_state {P : Params} {A : NodeAC P}
 the head extends the record's block `R` when `R` has `HeadSupport`, and `ac_confirmed` is `R`. -/
 theorem head_confirmed_of_support {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : RecordAt tr y i R)
     (hs : HeadSupport tr y i R) :
     (Node.frame (tr.state y i)).Anc R (tr.headAt y i) ∧ tr.confirmedAt y i = R := by
@@ -46,11 +48,12 @@ theorem goldilocksNode_requirements (sp : SAParams) (ro : ReplayOrder sp (List (
 
 /-- **A1.6, head extends the record under synchrony.** -/
 theorem head_extends_record : HeadExtendsRecord := by
-  intro sp ro dg H tr ΔF hrun hnc hsl y hy i hs R hR
+  intro sp ro proposer dg H tr ΔF hrun hnc hsl y hy i hs R hR
   refine ⟨head_confirmed_of_support hrun hy hR ((sleepy_served_facts hrun hnc hsl hy hs).head R hR),
     fun i' hii' hserv R' hR' => ?_⟩
   have hcoh :=
-    (ac_projection _ _ dg H _ tr (goldilocksNode_requirements sp ro) hrun.toLocalRun hnc).coherent
+    (ac_projection _ _ dg H _ tr proposer
+      (goldilocksNode_requirements sp ro) hrun.toLocalRun hnc).coherent
   -- the record's block moves forward along the window
   have key : ∀ m, i ≤ m → m ≤ i' → ∃ E ∈ tr.HonestBlocks H,
       E.root = (tr.state y m).ac.latestConfirmed ∧ Anc (tr.HonestBlocks H) R E := by

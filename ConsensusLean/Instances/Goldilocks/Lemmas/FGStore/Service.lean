@@ -158,7 +158,7 @@ private theorem row_parent (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y
   rcases ((accepted_tree P ACP acp₀ _ (store_reachable hr hy i)).2.2.2 X hX).cases_tail with
     rfl | ⟨X', -, hX'⟩
   · exact absurd hx (by simp [Params.genesisBlock])
-  · obtain ⟨⟨-, -, hv⟩, -⟩ := P.fg.stateTransition_eq_some.1 (step_σ hr hy hX'.2.1 hX'.2.2)
+  · obtain ⟨⟨-, hv⟩, -⟩ := P.fg.stateTransition_eq_some.1 (step_σ hr hy hX'.2.1 hX'.2.2)
     refine ⟨X', hX', ?_⟩
     rcases (hv x hx).2 with ⟨h, -⟩ | ⟨-, -, -, -, h⟩
     · exact h.le

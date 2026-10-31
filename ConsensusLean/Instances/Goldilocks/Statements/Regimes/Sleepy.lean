@@ -76,9 +76,9 @@ def ReadyProposalAt (c τ : Time) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop 
 
 /-- One honest proposer ready at its slot start in every window of `k` consecutive slots whose
 starts lie in `(a, b]` (the target's windows `(t, t + 4kΔ]`). -/
-def ProposerRecurrence (c : Time) (k : Nat) (a b : Time) : Prop :=
+def ProposerRecurrence (proposer : Nat → Fin sp.n) (c : Time) (k : Nat) (a b : Time) : Prop :=
   ∀ s₀ : Nat, a < sp.ts s₀ → sp.ts (s₀ + k - 1 : Nat) ≤ b →
-    ∃ s, s₀ ≤ s ∧ s < s₀ + k ∧ ReadyAt tr H c (sp.toParams.proposer s) (sp.ts s)
+    ∃ s, s₀ ≤ s ∧ s < s₀ + k ∧ ReadyAt tr H c (proposer s) (sp.ts s)
 
 /-- Ready-reader safety of the confirmed output at the read points of times in `[t₀, t₁]` between
 the reader's events (`Boundary`):
@@ -99,8 +99,8 @@ confirmed output at every read point (catch-up `18Δ`; every bound `t₁`, i.e. 
 def SleepySafe : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (ΔF : Time),
-    GoldilocksRun dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF →
+    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
+    GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF →
     ∀ t₁, ReadySafeOn tr H (catchUp sp) 0 t₁
 
 /-- **R.1, `confirmed_safe_sleepy_prefix`.** Synchronous for the sends with deadline `≤ b`
@@ -110,8 +110,9 @@ ready-reader safety of the confirmed output at the read points up to `b`, whatev
 def SleepySafePrefix : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (ΔF b : Time),
-    GoldilocksRun dg H tr → Compose.NoCollRun dg tr → 0 ≤ b → tr.SyncRun H ΔF 0 (b - sp.Δ) →
+    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF b : Time),
+    GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
+    0 ≤ b → tr.SyncRun H ΔF 0 (b - sp.Δ) →
     (∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d)) →
     ReadySafeOn tr H (catchUp sp) 0 b
@@ -121,8 +122,8 @@ ready at `τ` is in the confirmed read of every node ready at `t`, for every `t 
 def IncludeSleepy : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (ΔF : Time),
-    GoldilocksRun dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF →
+    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
+    GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF →
     ∀ τ P, ReadyProposalAt tr H (catchUp sp) τ P →
       ∀ y t j, τ + 6 * sp.Δ ≤ t → ReadyAt tr H (catchUp sp) y t → CutAfter tr j t →
         Anc (tr.HonestBlocks H) P (readAfter tr y j t)
@@ -136,9 +137,9 @@ nodes ready then, and each of those reads is an ancestor of each ready read at `
 def GrowSleepy : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (ΔF : Time) (k : Nat),
-    GoldilocksRun dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF → 1 ≤ k →
-    ∀ t, 0 ≤ t → ProposerRecurrence tr H (catchUp sp) k 0 (t + (4 * k + 6) * sp.Δ) →
+    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time) (k : Nat),
+    GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF → 1 ≤ k →
+    ∀ t, 0 ≤ t → ProposerRecurrence tr H proposer (catchUp sp) k 0 (t + (4 * k + 6) * sp.Δ) →
       (∃ v, ReadyAt tr H (catchUp sp) v (t + (4 * k + 6) * sp.Δ)) →
       ∃ τ P, t < τ ∧ ReadyProposalAt tr H (catchUp sp) τ P ∧
         (∀ y j, ReadyAt tr H (catchUp sp) y (t + (4 * k + 6) * sp.Δ) →

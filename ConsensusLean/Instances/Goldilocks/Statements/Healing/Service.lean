@@ -114,9 +114,10 @@ at or below `fc_root` (a frozen viability witness; not every later disclosed wit
 be in that domain). -/
 def ViableWitnessRetention : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    GoldilocksRun dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
     ∀ (i k m : Nat) (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
       PhaseOn tr.projFG H i k m c →
       ∀ y ∈ H, ∀ W, EffAllowed (tr.state y i).fg m c W →
@@ -155,11 +156,12 @@ All conclusions hold through lower advances of `Σ.F`, with the original `a` and
 does not read `Σ.F`). -/
 def CleanLockDrain : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp w : Time) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
-    GoldilocksRun dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-    PropPlus tr H g Gp → SettledIn tr H g w i₀ m c →
+    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+    PropPlus tr H proposer g Gp → SettledIn tr H g w i₀ m c →
     (∀ x ∈ H, ∀ i j B CV, Compose.StoredFastLockAt tr x i j B CV → w + 4 * sp.Δ ≤ sp.ts j →
       PhaseOn tr.projFG H i₀ i m c →
       ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
@@ -182,7 +184,7 @@ def CleanLockDrain : Prop :=
       ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k),
         (l.fast = true → w + 4 * sp.Δ ≤ sp.ts l.slot) ∧
         (l.fast = false → w + 4 * sp.Δ ≤ sp.ts ((l.slot : Int) - sp.k + 1))) ∧
-    ∀ (s : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))), HonestProposalRun tr H s P →
+    ∀ (s : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))), HonestProposalRun tr H proposer s P →
       rTime sp w ≤ sp.ts s →
       ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
         PhaseOn tr.projFG H i₀ k m c →
@@ -211,13 +213,15 @@ proposal of a slot `> s` until the phase end has a parent that extends `P` (if `
 crossed its ancestry is still retained; no claim that the entry stays current). -/
 def FrozenTreeAgreement : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF w : Time) (i₀ i m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
-    GoldilocksRun dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
     SettledIn tr H g w i₀ m c → i₀ ≤ i →
     ∀ (p : Fin sp.n) (kP s : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
-      ReadyProposal tr H p kP s P → i ≤ kP → tr.time i ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ →
+      ReadyProposal tr H proposer p kP s P → i ≤ kP →
+      tr.time i ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ →
       gbar g ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ →
       (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
         PhaseOn tr.projFG H i k m c) →
@@ -240,7 +244,7 @@ def FrozenTreeAgreement : Prop :=
           ∀ X, Anc (tr.HonestBlocks H) X P →
             X ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
             Anc (tr.HonestBlocks H) X ℓ.frame.fcRoot) ∧
-      ∀ Gp : Time, PropPlus tr H g Gp →
+      ∀ Gp : Time, PropPlus tr H proposer g Gp →
         rTime sp w ≤ sp.ts s →
         (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
           e.msg.head = P.root ∧
@@ -253,7 +257,7 @@ def FrozenTreeAgreement : Prop :=
         (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
           PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg P) ∧
         ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' → P'.slot = s' →
-          tr.ProposesAt (sp.toParams.proposer s') k' P' → sp.toParams.proposer s' ∈ H →
+          tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
           PhaseOn tr.projFG H i₀ k' m c →
           ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr
 
@@ -276,15 +280,16 @@ signs a matching row for `E` (target or timeout), or has signed one at an earlie
 record holds it). -/
 def CommonPathAcquisition : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp w : Time) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
-    GoldilocksRun dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-    PropPlus tr H g Gp → SettledIn tr H g w i₀ m c →
+    GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+    PropPlus tr H proposer g Gp → SettledIn tr H g w i₀ m c →
     ((∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j') ∨
       ∃ (s h : Nat) (E W : SA.Blk sp.n (List (FG.Att sp.n))) (kW : Nat),
         (h = phaseFloor m c ∨ h = m) ∧ 1 ≤ h ∧
-        tr.ProposesAt (sp.toParams.proposer s) kW W ∧ W.slot = s ∧ sp.toParams.proposer s ∈ H ∧
+        tr.ProposesAt (proposer s) kW W ∧ W.slot = s ∧ proposer s ∈ H ∧
         EntryOf (tr.post kW).fg W E h ∧ ((tr.post kW).fg.σ W.root).h = h ∧
         w ≤ sp.ts s ∧ rTime sp w ≤ sp.ts s ∧ sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp ∧
         (∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) ∧
@@ -301,7 +306,7 @@ def CommonPathAcquisition : Prop :=
         (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
           PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg W) ∧
         ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' → P'.slot = s' →
-          tr.ProposesAt (sp.toParams.proposer s') k' P' → sp.toParams.proposer s' ∈ H →
+          tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
           PhaseOn tr.projFG H i₀ k' m c →
           ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr) ∧
     ∀ y ∈ H, ∀ k (C : SA.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),

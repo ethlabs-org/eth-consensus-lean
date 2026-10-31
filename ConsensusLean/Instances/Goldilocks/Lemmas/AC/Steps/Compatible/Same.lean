@@ -21,7 +21,7 @@ optimistic confirmation before `t_s + 2Δ`) are on compatible blocks, under
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- `u` has a slot-`s` vote whose head extends `D` inside `U`, which `X` sent or admitted at a
 time in `[t_s, t_s + 2Δ)`. -/
@@ -99,7 +99,7 @@ private theorem rt_onTick (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) 
 node's restarts were at or before `t_s`; its supporters `S` of `D` are at least half of the
 committee and more than half of its voters; each has a vote in its pool, extending `D`, and
 does not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`. -/
-private theorem update_side (hrun : ACRun tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
+private theorem update_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastUpdateAt tr Y c s D CV) :
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
@@ -156,7 +156,8 @@ private theorem update_side (hrun : ACRun tr H U) {Y : Fin sp.n} (hY : Y ∈ H) 
 /-- **The optimistic side.** At an honest optimistic confirmation of slot `s` on `D`, three
 quarters of the committee are optimistic voters of `D`, each with a vote extending `D` that the
 node admitted (or cast) in `[t_s, t_s + 2Δ)`. -/
-private theorem optimistic_side (hrun : ACRun tr H U) {X : Fin sp.n} (hX : X ∈ H) {k s : Nat}
+private theorem optimistic_side (hrun : ACRun proposer tr H U)
+    {X : Fin sp.n} (hX : X ∈ H) {k s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV) :
     ∃ ℓ A, OptimisticPoint tr X k ℓ A ∧ ℓ.frame.tree ⊆ U ∧
       3 * sp.n ≤ 4 * (optimisticVoters sp A ℓ.frame s D).ncard ∧
@@ -231,7 +232,7 @@ private theorem against_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     exact ⟨v, hv, rfl⟩
 
 /-- **Fast locks of one slot are compatible.** -/
-theorem fastLock_same_slot (hrun : ACRun tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j : Nat}
+theorem fastLock_same_slot (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j : Nat}
     {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H) (hfl' : FastLockAt tr x j s B' CV')
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)

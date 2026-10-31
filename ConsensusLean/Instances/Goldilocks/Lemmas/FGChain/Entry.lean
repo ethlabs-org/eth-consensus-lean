@@ -55,7 +55,7 @@ private theorem stateTransition_fields {σ σ' : ChainState gp.n} {B : FGBlock g
     σ.s < B.slot ∧ ∃ σ₀ : ChainState gp.n, σ₀.L = B.root ∧ σ₀.s = B.slot ∧ σ₀.h = σ.h ∧
       σ₀.Th = σ.Th ∧ σ₀.J = σ.J ∧ σ₀.F = σ.F ∧ σ₀.pending = σ.pending ∧
       gp.heightEvents σ₀ = σ' := by
-  obtain ⟨⟨-, hs, -⟩, he⟩ := gp.stateTransition_eq_some.1 h
+  obtain ⟨⟨hs, -⟩, he⟩ := gp.stateTransition_eq_some.1 h
   obtain ⟨f, p, t, hf⟩ := ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
   rw [hf] at he
   exact ⟨hs, { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }, rfl, rfl, rfl,

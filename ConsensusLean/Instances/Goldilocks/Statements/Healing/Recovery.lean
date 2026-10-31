@@ -98,26 +98,28 @@ structure Rec (t₀ : Time) : Prop where
 `v, …, v + M − 1` has an honest joined ready proposal (`ReadyProposal`), and C1.2's retained ready
 inclusion holds, in its window `I(E, 0, k_F)`, for every entry whose entry block is one of those
 proposals (not merely for entries that happen to be served). -/
-def UPat (g : Time) (W M cF kF : Nat) : Prop :=
+def UPat (proposer : Nat → Fin sp.n) (g : Time) (W M cF kF : Nat) : Prop :=
   ∀ τ, gbar g ≤ τ → ∃ v : Nat, τ ≤ sp.ts v ∧ sp.ts v ≤ τ + 4 * sp.Δ * ((W : Time) + 1) ∧
     ∀ s, v ≤ s → s < v + M →
       ∃ (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
-        ReadyProposal tr H (sp.toParams.proposer s) k s B ∧
+        ReadyProposal tr H proposer (proposer s) k s B ∧
         ∀ y i, Compose.RunEntry tr H y i B →
           ∃ (w : Fin sp.n) (kw : Nat) (W' : SA.Blk sp.n (List (FG.Att sp.n))),
-            ReadyProposal tr H w kw W'.slot W' ∧ s + cF ≤ W'.slot ∧ W'.slot ≤ s + cF + kF ∧
+            ReadyProposal tr H proposer w kw W'.slot W' ∧
+            s + cF ≤ W'.slot ∧ W'.slot ≤ s + cF + kF ∧
             ∃ Pr, W'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) B Pr
 
 /-- The premises of C1.2 (the HS shared premises, `Catch(2Δ)`, `Prop⁺(G_p)`, the window
 parameters `c_F = ⌈(6Δ + Δ_F)/(4Δ)⌉` and `c_F + k_F ≤ δ_t`) and `UPat(W, M)` with `M ≥ M*`. -/
-structure PatternPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp : Time)
+structure PatternPremises (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp : Time)
     (W M cF kF : Nat) : Prop where
   /-- The HS shared premises, with `Healthy(g)`. -/
   shared : HSShared tr H dg g ΔF
   /-- `Catch(2Δ)`. -/
   catchPremise : CatchRun tr H g (2 * sp.Δ)
   /-- `Prop⁺(G_p)`. -/
-  prop : PropPlus tr H g Gp
+  prop : PropPlus tr H proposer g Gp
   /-- `c_F > ⌈(6Δ + Δ_F)/(4Δ)⌉ − 1`. -/
   cF_lower : 4 * sp.Δ * ((cF : Time) - 1) < 6 * sp.Δ + ΔF
   /-- `c_F ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉`. -/
@@ -127,7 +129,7 @@ structure PatternPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g �
   /-- `W ≥ 1`. -/
   one_le_W : 1 ≤ W
   /-- The uniform pattern. -/
-  pattern : UPat tr H g W M cF kF
+  pattern : UPat tr H proposer g W M cF kF
   /-- `M ≥ M*`. -/
   long : Mstar sp ΔF Gp cF kF ≤ M
 
@@ -139,9 +141,10 @@ end Defs
 docstring.) -/
 def PatternRecovery : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time) (W M cF kF : Nat),
-    GoldilocksRun dg H tr → PatternPremises tr H dg g ΔF Gp W M cF kF →
+    GoldilocksRun proposer dg H tr → PatternPremises tr H proposer dg g ΔF Gp W M cF kF →
     Rec tr H (gbar g + T_rec sp ΔF Gp W M) ∧
     ∀ y ∈ H, ∀ k, tr.IsCall y k → gbar g + T_rec sp ΔF Gp W M - 12 * sp.Δ ≤ tr.time k →
       HZ tr H g + 1 ≤ ((tr.state y k).fg.σ (tr.state y k).fg.F.root).h
@@ -155,9 +158,10 @@ coverage goes through the current entry of `P`, crossed on `P`'s retained chain,
 entry `U ⪰ P` and its actual successor `V`.) -/
 def FinalizingCoverage : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time) (W M cF kF : Nat),
-    GoldilocksRun dg H tr → PatternPremises tr H dg g ΔF Gp W M cF kF →
+    GoldilocksRun proposer dg H tr → PatternPremises tr H proposer dg g ΔF Gp W M cF kF →
     ∀ t, Rstar sp g ΔF Gp ≤ t →
       ∃ (q : Fin sp.n) (kP : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
         q ∈ H ∧ tr.ProposesAt q kP P ∧ t ≤ sp.ts P.slot ∧
@@ -174,9 +178,10 @@ under `Healthy(g)` and `NoColl`, with the reset `a_z`: at an honest node's accep
 that `fg_on_block` call. -/
 def CacheAcceptanceAfterReset : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF : Time),
-    GoldilocksRun dg H tr → tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
+    GoldilocksRun proposer dg H tr → tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
     ∀ a, IsReset tr H g a →
       ∀ y ∈ H, ∀ k B, tr.AcceptAt y k B → a ≤ tr.time k →
         ∀ Fs ∈ (tr.post k).fg.tree, Fs.root = ((tr.post k).fg.σ B.root).F →

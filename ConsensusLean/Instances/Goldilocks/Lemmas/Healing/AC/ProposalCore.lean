@@ -33,7 +33,7 @@ Conclusions: `batch_proposal` (A1.3), `update_first_proposal` (A1.2), `optimisti
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-! ## The proposal duty -/
 
@@ -186,7 +186,7 @@ theorem proposalView_equivocator (hr : ACLocalRun (goldilocksSA sp FGP ro) H U t
   equivocators_mono (fun v hv => (mem_proposalView_votes hr hx i σ Φ v).1 hv) h
 
 /-- An honest validator does not equivocate in an honest node's pool. -/
-theorem honest_pool_not_equivocator (hrun : ACRun tr H U) {x : Fin sp.n} (hx : x ∈ H)
+theorem honest_pool_not_equivocator (hrun : ACRun proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
     (i σ : Nat) {w : Fin sp.n} (hw : w ∈ H) :
     w ∉ equivocators {v | v ∈ (tr.state x i).pool σ} := by
   rintro ⟨a, ha, b, hb, hab, rfl, hbw⟩
@@ -200,7 +200,7 @@ theorem honest_pool_not_equivocator (hrun : ACRun tr H U) {x : Fin sp.n} (hx : x
   exact hab rfl
 
 /-- An honest validator does not equivocate in the view of an honest proposal. -/
-theorem honest_not_equivocator_proposal (hrun : ACRun tr H U) {x : Fin sp.n} (hx : x ∈ H)
+theorem honest_not_equivocator_proposal (hrun : ACRun proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
     (i σ : Nat) (Φ : Frm sp.n FGP) {w : Fin sp.n} (hw : w ∈ H) :
     w ∉ equivocators (View.ofLists (voteViewList (tr.state x i) Φ σ ⊤)).votes := fun h =>
   honest_pool_not_equivocator hrun hx i σ hw (proposalView_equivocator hrun.localRun hx i σ Φ h)
@@ -261,7 +261,7 @@ theorem proposal_walk (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin
 
 /-- An honest optimistic lock is compatible with `B` when every honest vote of its slot extends
 `B` (`f < n/2`). -/
-theorem optimisticLock_compatible (hrun : ACRun tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
+theorem optimisticLock_compatible (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {z : Fin sp.n} (hz : z ∈ H) {k s : Nat} {O : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt tr z k s O CV) {B : Blk sp.n FGP}
     (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B) :
@@ -333,7 +333,7 @@ private theorem proposal_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
 batch ... releases older conflicting locks"): when the honest voters of slot `σ` are half of the
 committee and every honest slot-`σ` vote extends `B` and reaches the proposer (P), the head of an
 honest proposal of slot `σ + 1` extends `B`, under (V) and (L-high). -/
-theorem batch_proposal (hrun : ACRun tr H U) (hf : 2 * Hᶜ.ncard < sp.n) {σ : Nat}
+theorem batch_proposal (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n) {σ : Nat}
     {B : Blk sp.n FGP}
     (hhalf : sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = σ}.ncard)
     (hB : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ → VoteExtends U e.msg B)
@@ -539,7 +539,8 @@ theorem result_best_at_proposal (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
 /-- **A result transfers to the next proposal** (A1.8 for an ancestor `D ⪯ C` of an honest result
 `C` of slot `σ`, at the proposal duty): under (V) for `D`, (P) for the counted votes, (W),
 (L-high) and (L-low), the head of an honest proposal of slot `σ + 1` extends `D`. -/
-theorem result_first_proposal (hrun : ACRun tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
+theorem result_first_proposal (hrun : ACRun proposer tr H U)
+    {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
     {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hres : ResultAt tr X i₀ σ C CV)
     (hDC : Anc U D C) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
@@ -563,7 +564,8 @@ fast lock of slot `σ` on `D` written by the fast test of an update, under (V) f
 the votes counted for `D`, (W) and (L-high), the head of an honest proposal of slot `σ + 1`
 extends `D`: the counted validators of `D` are half of the committee and support `D` (they
 release the older locks), and the result's majority leads the walk to `D`. -/
-theorem update_first_proposal (hrun : ACRun tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
+theorem update_first_proposal (hrun : ACRun proposer tr H U)
+    {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfu : FastUpdateAt tr X i₀ σ D CV)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt x i ℓ) (hslot : sp.slot (tr.time i) = σ + 1)
@@ -602,7 +604,7 @@ theorem update_first_proposal (hrun : ACRun tr H U) {X : Fin sp.n} (hX : X ∈ H
 duty): for an honest optimistic lock of slot `σ` on `D`, under (V) for `D`, (P) for its counted
 votes, (L-high) and `f < n/2`, the head of an honest proposal of slot `σ + 1` extends `D`: its
 `3n/4` optimistic voters reach the proposer, each as a supporter of `D` or an equivocator. -/
-theorem optimistic_first_proposal (hrun : ACRun tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
+theorem optimistic_first_proposal (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt tr X i₀ σ D CV) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)

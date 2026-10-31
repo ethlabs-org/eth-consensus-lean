@@ -537,6 +537,9 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
       Function.update_self]
     rw [rho.tick_of_awake _ v _ rfl, hL]
     erw [rho.runDuties_cons]
+    have hseld : rho.ownKey v ∈
+        rho.sel ((protoOf (compiled (familyC false)) env).role (.propose s hspos)) := hsel
+    simp only [Model.Run.dutyStep, hseld, ↓reduceIte]
     refine ⟨List.mem_append_left _ (List.mem_append_left _ hrel.1), ?_⟩
     refine Model.releaseAll_invariant
       (fun s : (protoOf (compiled (familyC false)) env).State => h ∈ rec s.1) _ _ _ _

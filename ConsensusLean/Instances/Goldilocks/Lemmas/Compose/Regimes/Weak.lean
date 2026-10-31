@@ -39,18 +39,21 @@ open SA (SAParams ReplayOrder Payload gbar)
 
 /-- **R.3 `healedSafe` with the premises cut at `T`** (open). -/
 theorem healed_safe_until : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
-    GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T →
+    GoldilocksRun proposer dg H tr → WeakPremises tr H proposer dg g ΔF Gp a Tb T →
     ∀ t₁, ReadySafeOn tr H (catchUp sp) T t₁ := by
   sorry
 
 /-- **R.3 `includeHealed` with the premises cut at `T`** (open): R.3's conclusion for every
 honest ready proposal at `τ ≥ T`, under `(U_all)` from `T`. -/
 theorem include_healed_until : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time),
-    GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T → UnanimousFrom tr H T →
+    GoldilocksRun proposer dg H tr → WeakPremises tr H proposer dg g ΔF Gp a Tb T →
+    UnanimousFrom tr H proposer T →
     ∀ τ P, T ≤ τ → ReadyProposalAt tr H (catchUp sp) τ P →
       ∀ y t j, τ + 6 * sp.Δ ≤ t → ReadyAt tr H (catchUp sp) y t → CutAfter tr j t →
         Anc (tr.HonestBlocks H) P (readAfter tr y j t) := by
@@ -59,11 +62,12 @@ theorem include_healed_until : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (F
 /-- **R.3 `growHealed` with the premises cut at `T`** (open), with the proposer recurrence from
 `T`. -/
 theorem grow_healed_until : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp a Tb T : Time) (k : Nat),
-    GoldilocksRun dg H tr → WeakPremises tr H dg g ΔF Gp a Tb T → 1 ≤ k →
-    UnanimousWithin tr H T (4 * k * sp.Δ) →
-    ∀ t, T ≤ t → ProposerRecurrence tr H (catchUp sp) k T (t + (4 * k + 6) * sp.Δ) →
+    GoldilocksRun proposer dg H tr → WeakPremises tr H proposer dg g ΔF Gp a Tb T → 1 ≤ k →
+    UnanimousWithin tr H proposer T (4 * k * sp.Δ) →
+    ∀ t, T ≤ t → ProposerRecurrence tr H proposer (catchUp sp) k T (t + (4 * k + 6) * sp.Δ) →
       (∃ v, ReadyAt tr H (catchUp sp) v (t + (4 * k + 6) * sp.Δ)) →
       ∃ τ P, t < τ ∧ ReadyProposalAt tr H (catchUp sp) τ P ∧
         (∀ y j, ReadyAt tr H (catchUp sp) y (t + (4 * k + 6) * sp.Δ) →
@@ -84,10 +88,10 @@ theorem weak_safe : WeakSafe := healed_safe_until
 
 /-- **R.6, `weakInclude`**: R.3's inclusion cut at `T`, for proposals at `τ ≥ T + 8Δ`. -/
 theorem weak_include : WeakInclude := by
-  intro sp ro dg H tr g ΔF Gp a Tb T hrun hw hu τ P hτ hP y t j ht hy hj
+  intro sp ro proposer dg H tr g ΔF Gp a Tb T hrun hw hu τ P hτ hP y t j ht hy hj
   have hΔ := sp.toParams.hΔ
-  exact include_healed_until sp ro dg H tr g ΔF Gp a Tb T hrun hw hu τ P (by linarith) hP y t j ht
-    hy hj
+  exact include_healed_until sp ro proposer dg H tr g ΔF Gp a Tb T hrun hw hu τ P
+    (by linarith) hP y t j ht hy hj
 
 /-- **R.6, `weakGrow`.** -/
 theorem weak_grow : WeakGrow := grow_healed_until

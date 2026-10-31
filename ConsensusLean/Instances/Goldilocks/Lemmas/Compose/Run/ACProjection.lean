@@ -20,10 +20,10 @@ namespace Consensus.Goldilocks.Compose
 open Node
 
 variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
-  {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {proposer : Nat → Fin P.n} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
 
 /-- The frame of every honest state is a frame inside the honest blocks. -/
-private theorem frameIn_state (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+private theorem frameIn_state (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
     (k : Nat) : A.FrameIn (tr.HonestBlocks H) (frame (tr.state y k)) :=
   ⟨(Store.frame_realization P _ _ _ (fg_reachable h hy k)).1, fun _ hX => ⟨y, hy, k, hX.1⟩⟩
 
@@ -33,7 +33,8 @@ private theorem callAt_unique {y : Fin P.n} {i : Nat} {c c' : Cut A} (hc : tr.Ca
 
 /-- Without AC calls of `y` in `[a, b)`, its frame at `b` is the frame at `a`, or the cut before
 `b` accepts a block, at the frame of `a`. -/
-private theorem frame_flat (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {a b : Nat}
+private theorem frame_flat (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n}
+    (hy : y ∈ H) {a b : Nat}
     (hab : a ≤ b) (hno : ∀ k, a ≤ k → k < b → ∀ ℓ : ACLabel A, ¬ tr.CallAt y k (.ac ℓ)) :
     frame (tr.state y b) = frame (tr.state y a) ∨ ∃ b', b = b' + 1 ∧ a ≤ b' ∧
       (∃ B, tr.CallAt y b' (.fg (.block B true))) ∧
@@ -74,7 +75,8 @@ private theorem frame_flat (h : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y 
 
 /-- The call law for an AC call of `y` at `i` after the frame of `a`, without AC calls of `y`
 in `[a, i)` and without an accepting cut of `y` just before `a`. -/
-private theorem callOK_from (hq : A.Requirements) (h : Node.LocalRun dg H sg tr) {y : Fin P.n}
+private theorem callOK_from (hq : A.Requirements) (h : Node.LocalRun proposer dg H sg tr)
+    {y : Fin P.n}
     (hy : y ∈ H) {a i : Nat} {ℓ : ACLabel A} (hc : tr.CallAt y i (.ac ℓ)) (hai : a ≤ i)
     (hno : ∀ k, a ≤ k → k < i → ∀ ℓ' : ACLabel A, ¬ tr.CallAt y k (.ac ℓ'))
     (ha : ∀ k B, k + 1 = a → ¬ tr.CallAt y k (.fg (.block B true))) :
@@ -109,8 +111,8 @@ private theorem callOK_from (hq : A.Requirements) (h : Node.LocalRun dg H sg tr)
     rcases blockCall_cases h hy hacc with hg | ⟨j, x, -, hg, hp, d, p, hdp, rfl, -⟩
     · exact (h.wire y hy i' _ _ hg).2.2
     obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
-    obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable dg y hq cfg hreach
-    have hfg := fg_states_reachable dg y cfg hreach
+    obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable proposer dg y hq cfg hreach
+    have hfg := fg_states_reachable proposer dg y cfg hreach
     have hR' := ACInterface.ReachableAt.step .tick hR (ht₀.trans hstep.1)
       ⟨⟨(Store.frame_realization P _ _ _ hfg).1, fun _ hX => hX.1⟩, rfl⟩
     rw [← hst] at hdp
@@ -125,7 +127,7 @@ private theorem callOK_from (hq : A.Requirements) (h : Node.LocalRun dg H sg tr)
 
 /-- **C0.5, the AC projection.** -/
 theorem ac_projection : ACProjection := by
-  intro P A dg H sg tr hq h hnc
+  intro P A dg H sg tr proposer hq h hnc
   classical
   refine
     { coherent := honest_blocks_coherent h hnc

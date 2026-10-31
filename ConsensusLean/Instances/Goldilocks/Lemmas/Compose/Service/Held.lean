@@ -27,11 +27,12 @@ namespace Consensus.Goldilocks.Compose
 open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time}
 
 /-- The honest proposal is an honest block. -/
-private theorem proposal_honest (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem proposal_honest (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt p k P) : P ∈ tr.HonestBlocks H := by
   have h := hrun.toLocalRun
@@ -43,14 +44,14 @@ private theorem proposal_honest (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun 
 
 /-- **An origin of a label at most `s` is below `P`**: an honest slot-`s` vote, which is `P`,
 extends it (S2 for a label below `s`; its honest supporter for the label `s`). -/
-private theorem origin_anc_proposal (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem origin_anc_proposal (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k))
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat} (hC : Origin tr H C j) (hj : j ≤ s) :
     Anc (tr.HonestBlocks H) C P := by
   have hinv := sleepy_invariant hrun hnc hsl
-  have hU := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun.coherent
+  have hU := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
   have hall := honest_votes_eq_proposal hrun hnc hsl hp hP hPs hpj
   have hPU := proposal_honest hrun hnc hp hP
   rcases hj.lt_or_eq with hlt | rfl
@@ -62,7 +63,7 @@ private theorem origin_anc_proposal (hrun : GoldilocksRun dg H tr) (hnc : NoColl
 
 /-- **Every honest slot-`(s+1)` vote extends `P`** (the later transfer for the protected block `P`,
 by induction on the vote's cut). -/
-private theorem votes_succ_extend (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem votes_succ_extend (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) :
@@ -84,13 +85,13 @@ private theorem votes_succ_extend (hrun : GoldilocksRun dg H tr) (hnc : NoCollRu
 
 /-- **The rows the updater holds have sources compatible with `P`**: signed before `t_s + 6Δ`,
 with a source below an origin before the signing, of a label at most `s + 1`. -/
-private theorem rows_compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem rows_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ : Nat} (ht : tr.time k₀ = sp.ts s + 6 * sp.Δ) :
     HonestRowsSourced tr H (fun D => Compatible (tr.HonestBlocks H) D P) y k₀ := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hPU := proposal_honest hrun hnc hp hP
@@ -135,14 +136,14 @@ private theorem rows_compatible (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun 
     exact Anc.total hU (hDC.trans hCH) hPH
 
 /-- **The updater's `Σ.F` is at or below `P`** (workbench#12 §4). -/
-theorem updater_F_anc_proposal (hrun : GoldilocksRun dg H tr)
+theorem updater_F_anc_proposal (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
     Anc (tr.HonestBlocks H) (tr.state y k₀).fg.F P := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   have hPU := proposal_honest hrun hnc hp hP
   have hR := fg_reachable hrun.toLocalRun hy k₀

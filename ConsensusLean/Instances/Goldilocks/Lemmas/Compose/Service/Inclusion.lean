@@ -24,17 +24,18 @@ namespace Consensus.Goldilocks.Compose
 open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro}
 
 /-- The first cut of a tick is the AC's tick. -/
 private theorem onTick_head (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
-    (x : Nat) : (Node.onTick dg y st t x).2[0]? = some (Node.acCall y st t .tick).2 := by
+    (x : Nat) : (Node.onTick proposer dg y st t x).2[0]? = some (Node.acCall y st t .tick).2 := by
   simp [Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep]
 
 /-- Along cuts with no restart from `t_s + 6Δ` on, a node awake and joined at `t_s + 6Δ` and at a
 later call has run, before that call, the update of `slot(t) − 2` or `slot(t) − 1`. -/
-private theorem update_recent (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+private theorem update_recent (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     {s i : Nat} (hyw : tr.awake y (tr.time i))
     (hyj₀ : tr.JoinedAt y (sp.ts s + 6 * sp.Δ))
     (hnr : ∀ k', tr.RestartAt y k' → sp.ts s + 6 * sp.Δ < tr.time k' → tr.time k' ≤ tr.time i →
@@ -72,7 +73,7 @@ private theorem update_recent (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy 
   have hne := hg.1
   obtain ⟨hn, htj, -, -, hl⟩ := hg.2.1 0 (List.length_pos_iff.2 hne)
   simp only [Nat.add_zero] at hn htj hl
-  have h0 : (Node.exec dg y (tr.state y j) τ (.tick x)).2[0]'(List.length_pos_iff.2 hne) =
+  have h0 : (Node.exec proposer dg y (tr.state y j) τ (.tick x)).2[0]'(List.length_pos_iff.2 hne) =
       (Node.acCall y (tr.state y j) τ .tick).2 :=
     Option.some.inj ((List.getElem?_eq_getElem _).symm.trans (onTick_head y _ τ x))
   rw [h0] at hl
@@ -110,7 +111,7 @@ private theorem update_recent (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy 
       exact h.trans this
     · exact (hnr k hk (lt_of_not_ge hks) (hkτ.trans (by linarith))).elim
   have hjoin : SA.joined sp (tr.state y j).ac τ :=
-    ((joined_projection sp ro dg H tr hrun y hy τ).2.1 j ⟨_, hn, hl'⟩ hnrj htj).1 hjτ
+    ((joined_projection sp ro dg H tr proposer hrun y hy τ).2.1 j ⟨_, hn, hl'⟩ hnrj htj).1 hjτ
   have hji : j < i := by
     by_contra h
     have := hrun.time_mono (Nat.le_of_not_lt h)
@@ -124,7 +125,7 @@ private theorem update_recent (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy 
 
 /-- The record's block after the update moves forward to cut `i` (the record step at every honest
 cut). -/
-private theorem record_extends (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
+private theorem record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hinv : SleepyInvariant tr H) {y : Fin sp.n} (hy : y ∈ H)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {k₀ : Nat}
     (h₀ : ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
@@ -141,10 +142,12 @@ private theorem record_extends (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun d
 
 /-- **A1.7, inclusion.** -/
 theorem inclusion_sleepy : Inclusion := by
-  intro sp ro dg H tr ΔF hrun hnc hsl hg p hp k P s hP hPs hpj y hy i hc ht hyw hyj hyw₀ hyj₀ hnr hu
+  intro sp ro proposer dg H tr ΔF hrun hnc hsl hg p hp k P s hP hPs hpj y hy i hc ht hyw hyj
+    hyw₀ hyj₀ hnr hu
   have hinv := sleepy_invariant hrun hnc hsl
   have hcoh :=
-    (ac_projection _ _ dg H _ tr (goldilocksNode_requirements sp ro) hrun.toLocalRun hnc).coherent
+    (ac_projection _ _ dg H _ tr proposer
+      (goldilocksNode_requirements sp ro) hrun.toLocalRun hnc).coherent
   obtain ⟨k₀, hk₀, ℓ₀, hupd, -⟩ := id hu
   obtain ⟨E, hE, hEr, hPE⟩ := record_extends hrun hnc hinv hy
     (update_adopts hrun hnc hsl hp hP hPs hpj hy hupd) i hk₀

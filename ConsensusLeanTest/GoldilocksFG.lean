@@ -22,8 +22,8 @@ On the pure FG of `Instances/Goldilocks/Spec/FG`, labelled by kind (CONTRIBUTING
 
 namespace Consensus.Goldilocks.FG.Test
 
-/-- One validator, `δt = 2`, genesis root `0`, every slot proposed by validator `0`. -/
-def gp1 : FGParams := ⟨1, le_rfl, 2, 0, fun _ => 0⟩
+/-- One validator, `δt = 2`, genesis root `0`. -/
+def gp1 : FGParams := ⟨1, le_rfl, 2, 0⟩
 
 /-- A target vote of validator `0` at height `h` for root `T`, with finality pair `f`. -/
 def tv (h T : Nat) (f : Option (Nat × Nat)) : Att 1 := ⟨0, h, T, false, f⟩

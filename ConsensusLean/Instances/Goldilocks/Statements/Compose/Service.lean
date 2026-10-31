@@ -57,9 +57,10 @@ every cut of the node from now to a later cut), the record then extends the reco
 the honest blocks). -/
 def HeadExtendsRecord : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time),
-    GoldilocksRun dg H tr → NoCollRun dg tr → tr.SleepyRun H ΔF →
+    GoldilocksRun proposer dg H tr → NoCollRun dg tr → tr.SleepyRun H ΔF →
     ∀ y ∈ H, ∀ i, ServedAt tr y i → ∀ R, RecordAt tr y i R →
       ((Node.frame (tr.state y i)).Anc R (tr.headAt y i) ∧ tr.confirmedAt y i = R) ∧
       ∀ i', i ≤ i' → (∀ k, i ≤ k → k ≤ i' → tr.IsCall y k → ServedAt tr y k) →
@@ -79,9 +80,10 @@ needed as in C0.3: an honest proposal whose root is `P.genesisRoot` is refused b
 it is in no honest tree (consensus-lean#73). -/
 def Inclusion : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time),
-    GoldilocksRun dg H tr → NoCollRun dg tr → tr.SleepyRun H ΔF →
+    GoldilocksRun proposer dg H tr → NoCollRun dg tr → tr.SleepyRun H ΔF →
     (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg →
     ∀ p ∈ H, ∀ k (P : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat),
       tr.ProposesAt p k P → P.slot = s → SA.joined sp (tr.state p k).ac (tr.time k) →

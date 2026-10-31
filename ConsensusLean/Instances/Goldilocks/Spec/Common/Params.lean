@@ -8,7 +8,7 @@ public import ConsensusLean.Spec.Problem.Basic
 The parameters both components read (composition.tex §"Model"; decomposition §1.1): `n ≥ 1`
 validators `Fin n` of weight `1` and the quorum `q = ⌈2n/3⌉`; the delivery parameter `Δ > 0`;
 the slot start times `t_s` (public times, `t_0 = 0`, strictly increasing; the AC fixes them);
-the slot proposer; the genesis root; and the FG timeout delay `δ_t` in slots (fg.tex: the AC
+the genesis root; and the FG timeout delay `δ_t` in slots (fg.tex: the AC
 sets it). Time is integer (`Consensus.Time`). The FG's own parameter bundle `FG.FGParams` is
 derived from these where both are in scope (the FG store), not declared twice. -/
 
@@ -28,8 +28,6 @@ structure Params where
   slotTime_strictMono : StrictMono slotTime
   /-- Every slot starts at a public time. -/
   slotTime_public : ∀ s, Δ ∣ slotTime s
-  /-- The proposer of each slot. -/
-  proposer : Nat → Fin n
   /-- The root of genesis. -/
   genesisRoot : Nat
   /-- The FG timeout delay `δ_t`, in slots. -/

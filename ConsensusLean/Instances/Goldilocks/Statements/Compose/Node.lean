@@ -22,7 +22,8 @@ namespace Consensus.Goldilocks.Compose
 
 open Node
 
-variable {P : Params} {A : NodeAC P} (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+variable {P : Params} {A : NodeAC P} (proposer : Nat → Fin P.n)
+  (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
 
 /-- The digest is collision free on the contents of the blocks of `S` (the hypothesis
 `NoColl` of claims F.3, C0.3): equal digests of two blocks of `S` mean equal contents. -/
@@ -37,7 +38,7 @@ def NoCollOn (S : Set A.Blk) : Prop :=
 any time not before its clock, with `Φ = fg_to_ac(Σ)`: `ac_confirmed` and `ac_head` are blocks
 of `Φ.tree` and `Σ.F ⪯ ac_confirmed ⪯ ac_head` inside `Φ.tree` (so inside `Σ.T`). -/
 def ThreeTips : Prop :=
-  A.Requirements → ∀ cfg : Config A, Reachable dg self cfg → ∀ t, cfg.time ≤ t →
+  A.Requirements → ∀ cfg : Config A, Reachable proposer dg self cfg → ∀ t, cfg.time ≤ t →
     A.confirmed cfg.st.ac (frame cfg.st) t ∈ (frame cfg.st).tree ∧
     A.head cfg.st.ac (frame cfg.st) t ∈ (frame cfg.st).tree ∧
     (frame cfg.st).Anc cfg.st.fg.F (A.confirmed cfg.st.ac (frame cfg.st) t) ∧
@@ -47,7 +48,7 @@ def ThreeTips : Prop :=
 across restarts, `Σ.F` moves only to a descendant: the later `Σ.F` extends the earlier one
 inside the later tree. -/
 def FinalizedMonotone : Prop :=
-  ∀ cfg cfg' : Config A, Reachable dg self cfg → Reaches dg self cfg cfg' →
+  ∀ cfg cfg' : Config A, Reachable proposer dg self cfg → Reaches proposer dg self cfg cfg' →
     cfg'.st.fg.Anc cfg.st.fg.F cfg'.st.fg.F
 
 /-- **C0.2, the restart half.** A restart keeps `Σ` and `Λ` (composition.tex §"State"); only
@@ -71,9 +72,9 @@ the digest is collision free on the tree with `B`, no held block has it; and
 `fg_on_block(Σ, B)` accepts `B`. -/
 def HonestBlockAccepted : Prop :=
   A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →
-    ∀ (cfg cfg' : Config A) (t : Time) (x : Nat), Reachable dg self cfg →
-      Step dg self cfg (.tick x) t cfg' → Proposes self t →
-      let st₁ := (tickStep dg self cfg.st t x .acTick).1
+    ∀ (cfg cfg' : Config A) (t : Time) (x : Nat), Reachable proposer dg self cfg →
+      Step proposer dg self cfg (.tick x) t cfg' → Proposes proposer self t →
+      let st₁ := (tickStep proposer dg self cfg.st t x .acTick).1
       let r := acProposal st₁ t
       ∀ d p, r.2.2 = some (d, p) →
         let B := mkBlock dg self r.1.fg t x d.head p
@@ -87,8 +88,8 @@ def HonestBlockAccepted : Prop :=
 propose at `t`; else `ac_proposal`, then nothing (`⊥`), or the own block `B` of slot `slot(t)`
 and proposer `self`, refused by the FG, or accepted and then given to `ac_on_block`. -/
 def ProposalCuts (t : Time) (pc : List (Cut A)) : Prop :=
-  (¬ Proposes self t ∧ pc = []) ∨
-  (Proposes self t ∧ ∃ ℓ : ACLabel A, ℓ.call = .proposal ∧
+  (¬ Proposes proposer self t ∧ pc = []) ∨
+  (Proposes proposer self t ∧ ∃ ℓ : ACLabel A, ℓ.call = .proposal ∧
     (pc = [.ac ℓ] ∨
       ∃ B : A.Blk, B.slot = P.slotOf t ∧ B.proposer = self ∧
         (pc = [.ac ℓ, .fg (.block B false)] ∨
@@ -105,7 +106,7 @@ def UpdateCuts (uc : List (Cut A)) : Prop :=
 cuts, in this order. -/
 def TickShape (t : Time) (cs : List (Cut A)) : Prop :=
   ∃ (ℓ : ACLabel A) (pc uc : List (Cut A)),
-    ℓ.call = .tick ∧ cs = .ac ℓ :: (pc ++ uc) ∧ ProposalCuts self t pc ∧ UpdateCuts uc
+    ℓ.call = .tick ∧ cs = .ac ℓ :: (pc ++ uc) ∧ ProposalCuts proposer self t pc ∧ UpdateCuts uc
 
 /-- **C0.4, tick order.** The cuts of `on_tick(t)` at every state have the shape `TickShape`:
 the AC's tick; at `t = t_s` with `s > 0`, for the slot's proposer, `ac_proposal` and then,
@@ -114,13 +115,14 @@ when it returns a proposal, the own block, processed at once (`fg_on_block`, the
 processed at once). That a restart precedes the tick and the tick precedes the objects
 received at its time is `Node.Step` (`EventOK`). -/
 def TickOrder : Prop :=
-  ∀ (st : NodeState A) (t : Time) (x : Nat), TickShape self t (onTick dg self st t x).2
+  ∀ (st : NodeState A) (t : Time) (x : Nat),
+    TickShape proposer self t (onTick proposer dg self st t x).2
 
 /-- **C0.5 (c), honest attestations are signed only in ticks.** An `fg_attest` cut that signs
 appears only in the cuts of a tick (so, by `Node.Step`, at a public time). -/
 def SignedOnlyInTicks : Prop :=
   ∀ (st : NodeState A) (t : Time) (e : Event A) (C : A.Blk) (a : FG.Att P.n),
-    Cut.fg (.attest C (some a)) ∈ (exec dg self st t e).2 → ∃ x, e = .tick x
+    Cut.fg (.attest C (some a)) ∈ (exec proposer dg self st t e).2 → ∃ x, e = .tick x
 
 /-- **C0.5 (b), the AC sees only blocks the FG accepted** (claims C0.5 (b), goldilocks#36). In
 the cuts of every event at every state, an AC cut with the call `ac_on_block(B)` comes right
@@ -131,9 +133,9 @@ its parent is of a smaller slot: the assertions of `state_transition`). A restar
 block: its replay runs inside `ac_restart`, over the frame's tree. -/
 def ACSeesAcceptedBlocks : Prop :=
   ∀ (st : NodeState A) (t : Time) (e : Event A) (ℓ : ACLabel A) (B : A.Blk),
-    Cut.ac ℓ ∈ (exec dg self st t e).2 → ℓ.call = .block B →
+    Cut.ac ℓ ∈ (exec proposer dg self st t e).2 → ℓ.call = .block B →
       ∃ (cs₁ cs₂ : List (Cut A)) (st₁ : NodeState A),
-        (exec dg self st t e).2 = cs₁ ++ Cut.fg (.block B true) :: Cut.ac ℓ :: cs₂ ∧
+        (exec proposer dg self st t e).2 = cs₁ ++ Cut.fg (.block B true) :: Cut.ac ℓ :: cs₂ ∧
         CutChain self t st cs₁ st₁ ∧
         B.slot ≤ P.slotOf t ∧ (st₁.fg.onBlock B).isSome ∧
         st₁.fg.blocks B.root = none ∧
@@ -146,7 +148,7 @@ form a `CutChain` from the state before to the state after: each AC cut executes
 the frame `fg_to_ac(Σ)` at that cut and changes only `𝒜`; each FG cut executes its FG call. -/
 def ExecIsCutChain : Prop :=
   ∀ (st : NodeState A) (t : Time) (e : Event A),
-    CutChain self t st (exec dg self st t e).2 (exec dg self st t e).1
+    CutChain self t st (exec proposer dg self st t e).2 (exec proposer dg self st t e).1
 
 /-- **C0.5 (a), (b), the AC's states are reachable.** At a reachable configuration of an
 honest node, the accepted tree is coherent and the AC state is reachable inside it
@@ -156,7 +158,7 @@ the call law (`CallOK`: well-formed frames in `Σ.T`, equal frames between calls
 current `fg_to_ac(Σ)` and its time at most the clock. Requirement 5 supplies the own block's
 payload check. -/
 def ACStatesReachable : Prop :=
-  A.Requirements → ∀ cfg : Config A, Reachable dg self cfg →
+  A.Requirements → ∀ cfg : Config A, Reachable proposer dg self cfg →
     Coherent cfg.st.fg.tree ∧
       ∃ t₀, t₀ ≤ cfg.time ∧ A.ReachableAt self cfg.st.fg.tree cfg.st.ac (frame cfg.st) t₀
 
@@ -164,14 +166,14 @@ def ACStatesReachable : Prop :=
 node, the FG state is reachable by the FG handlers (`Store.Reachable`) from the initial state
 with the AC's genesis payload. -/
 def FGStatesReachable : Prop :=
-  ∀ cfg : Config A, Reachable dg self cfg → cfg.st.fg.Reachable A.genesisPayload
+  ∀ cfg : Config A, Reachable proposer dg self cfg → cfg.st.fg.Reachable A.genesisPayload
 
 /-- **C0.5 (c), the record is a client run.** At a reachable configuration of an honest node,
 the record is the record of the client run (`FG.Record.run`) over the entry states of the
 sources given to `fg_attest`, in order, and every attestation that run signed is in the
 pool. -/
 def RecordIsClientRun : Prop :=
-  ∀ cfg : Config A, Reachable dg self cfg →
+  ∀ cfg : Config A, Reachable proposer dg self cfg →
     ∃ σes : List (FG.ChainState P.n),
       cfg.st.record = (FG.Record.run self FG.Record.empty σes).1 ∧
         ∀ a ∈ (FG.Record.run self FG.Record.empty σes).2, a ∈ cfg.st.fg.atts
@@ -180,30 +182,31 @@ def RecordIsClientRun : Prop :=
 configuration, the source `C` given to `fg_attest` is a block of the tree of the frame after
 the tick that extends `Σ.F` (the FG input contract: `Σ.σ[C]` is the state of a held block). -/
 def SourcesHeld : Prop :=
-  A.Requirements → ∀ (cfg cfg' : Config A) (t : Time) (x : Nat), Reachable dg self cfg →
-    Step dg self cfg (.tick x) t cfg' → ∀ (C : A.Blk) (s : Option (FG.Att P.n)),
-      Cut.fg (.attest C s) ∈ (exec dg self cfg.st t (.tick x)).2 →
+  A.Requirements → ∀ (cfg cfg' : Config A) (t : Time) (x : Nat),
+    Reachable proposer dg self cfg →
+    Step proposer dg self cfg (.tick x) t cfg' → ∀ (C : A.Blk) (s : Option (FG.Att P.n)),
+      Cut.fg (.attest C s) ∈ (exec proposer dg self cfg.st t (.tick x)).2 →
         C ∈ cfg'.st.fg.tree ∧ cfg'.st.fg.Anc cfg'.st.fg.F C
 
 /-- The Compose/AnyAC node statements, for one node (one AC, digest and validator). -/
 structure NodeStatements : Prop where
-  threeTips : ThreeTips dg self
-  finalizedMonotone : FinalizedMonotone dg self
+  threeTips : ThreeTips proposer dg self
+  finalizedMonotone : FinalizedMonotone proposer dg self
   restartKeepsFG : RestartKeepsFG (A := A) self
-  honestBlockAccepted : HonestBlockAccepted dg self
-  tickOrder : TickOrder dg self
-  signedOnlyInTicks : SignedOnlyInTicks dg self
-  acSeesAcceptedBlocks : ACSeesAcceptedBlocks dg self
-  execIsCutChain : ExecIsCutChain dg self
-  acStatesReachable : ACStatesReachable dg self
-  fgStatesReachable : FGStatesReachable dg self
-  recordIsClientRun : RecordIsClientRun dg self
-  sourcesHeld : SourcesHeld dg self
+  honestBlockAccepted : HonestBlockAccepted proposer dg self
+  tickOrder : TickOrder proposer dg self
+  signedOnlyInTicks : SignedOnlyInTicks proposer dg self
+  acSeesAcceptedBlocks : ACSeesAcceptedBlocks proposer dg self
+  execIsCutChain : ExecIsCutChain proposer dg self
+  acStatesReachable : ACStatesReachable proposer dg self
+  fgStatesReachable : FGStatesReachable proposer dg self
+  recordIsClientRun : RecordIsClientRun proposer dg self
+  sourcesHeld : SourcesHeld proposer dg self
 
 /-- The Compose/AnyAC node statements, for every parameter set, AC, digest and validator. -/
 def ComposeNodeStatements : Prop :=
-  ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n),
-    NodeStatements dg self
+  ∀ (P : Params) (A : NodeAC P) (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n), NodeStatements proposer dg self
 
 end Consensus.Goldilocks.Compose
 

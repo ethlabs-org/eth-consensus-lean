@@ -31,23 +31,25 @@ open Compose
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- The FG projection of a Goldilocks run under `NoColl` is an FG trace with its contract. -/
-private theorem fg_run (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr) :
+private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
   have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  fg_projection _ _ dg H _ tr ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
+  fg_projection _ _ dg H _ tr proposer
+    ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
     hrun.genesis_root_ok hrun.toLocalRun hnc
 
-private theorem store_eq (hrun : GoldilocksRun dg H tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+private theorem store_eq (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    (hy : y ∈ H) (i : Nat) :
     tr.projFG.store y i = (tr.state y i).fg := by
   change (tr.projFG.state y i).1 = _
   rw [projFG_state hrun.toLocalRun hy i]
 
 /-- **R.7, `finalAccountable`.** -/
 theorem final_accountable : FinalAccountable := by
-  intro sp ro dg H tr hrun hnc y hy z hz i j hne
+  intro sp ro dg H tr proposer hrun hnc y hy z hz i j hne
   have hr := fg_run hrun hnc
   obtain ⟨c₁, σ₁, h₁, hF₁, hU₁, hc₁, -, X₁, hX₁, hb₁⟩ := Store.finalized_chain hr hy i
   obtain ⟨c₂, σ₂, h₂, hF₂, hU₂, hc₂, -, X₂, hX₂, hb₂⟩ := Store.finalized_chain hr hz j
@@ -69,7 +71,7 @@ theorem final_accountable : FinalAccountable := by
 
 /-- **R.7, `nonFraming`.** -/
 theorem non_framing : NonFraming := by
-  intro sp ro dg H tr hrun v hv k k' a b ha hb
+  intro sp ro dg H tr proposer hrun v hv k k' a b ha hb
   obtain ⟨inputs, hin, hsign⟩ := Store.signed_run_of_exec (fg_exec hrun.toLocalRun) hv
     (max k k' + 1)
   have conv : ∀ m c, tr.SignAt v m c → tr.projFG.SignAt v m c := fun m c ⟨src, hs⟩ =>
@@ -79,7 +81,7 @@ theorem non_framing : NonFraming := by
 
 /-- **R.7, `finalized_safe_below_third`.** -/
 theorem finalized_safe : FinalizedSafe := by
-  intro sp ro dg H tr hrun hnc hf y hy z hz i j
+  intro sp ro dg H tr proposer hrun hnc hf y hy z hz i j
   have h := Store.finalized_safety sp.toParams _ _ H _ tr.projFG (fg_run hrun hnc) hf y hy z hz i j
   rwa [store_eq hrun hy, store_eq hrun hz] at h
 

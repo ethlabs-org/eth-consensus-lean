@@ -30,12 +30,14 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload gbar)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- The slot of an entry is at most the slot of the block it is the entry of. -/
-private theorem entry_slot_le (hrun : GoldilocksRun dg H tr) (hnc : Compose.NoCollRun dg tr)
+private theorem entry_slot_le (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W E : SA.Blk sp.n (List (FG.Att sp.n))} {h : Nat}
     (hpost : tr.post k = tr.state p (k + 1)) (hE : EntryOf (tr.post k).fg W E h) :
     E.slot ≤ W.slot :=
@@ -54,8 +56,9 @@ private theorem ts_entry_le {e s : Nat} (h : e ≤ s) :
 /-- **HS.5's consumption and continuation in the phase** (`hs5-exact-helpers.md` §4;
 `Service`'s `consume_continue` with the acquired path destructured, its rows from
 `historical_source_rows`, and the phase `(m, c)` through `j_A`): a contradiction. -/
-theorem consume_continue_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hret : ViableWitnessRetention) (hclean : CleanLockDrain) (hagree : FrozenTreeAgreement)
     (hset : SettledIn tr H g w i₀ m c)
     (hcl : ∀ y ∈ H, ∀ k (C : SA.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
@@ -66,13 +69,13 @@ theorem consume_continue_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
         (∃ att, signed = some att ∧ att.h = h ∧ att.T = E.root) ∨
         ∃ k' < k, ∃ att, tr.SignAt y k' att ∧ att.h = h ∧ att.T = E.root)
     {s h kW : Nat} {E W : SA.Blk sp.n (List (FG.Att sp.n))} (h1 : h = phaseFloor m c ∨ h = m)
-    (hW : tr.ProposesAt (sp.toParams.proposer s) kW W) (hWs : W.slot = s)
-    (hpH : sp.toParams.proposer s ∈ H) (hE : EntryOf (tr.post kW).fg W E h)
+    (hW : tr.ProposesAt (proposer s) kW W) (hWs : W.slot = s)
+    (hpH : proposer s ∈ H) (hE : EntryOf (tr.post kW).fg W E h)
     (hws : w ≤ sp.ts s) (hr : rTime sp w ≤ sp.ts s)
     (hvD : sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp)
     (hparents : ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
-      P'.slot = s' → tr.ProposesAt (sp.toParams.proposer s') k' P' →
-      sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
+      P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
+      proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr)
     (hrows : ∀ y ∈ H, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ att.h = h ∧
       att.T = E.root)
@@ -133,7 +136,7 @@ theorem consume_continue_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
     rwa [htime hW hWs] at this
   -- HS.3 (b) at a ready proposal of a slot `z > s` whose votes are before `w + A`
   have hprot : ∀ {z kZ : Nat} {Z : SA.Blk sp.n (List (FG.Att sp.n))},
-      ReadyProposal tr H (sp.toParams.proposer z) kZ z Z → s < z →
+      ReadyProposal tr H proposer (proposer z) kZ z Z → s < z →
       sp.ts z + sp.Δ ≤ w + A_HS sp ΔF Gp →
       (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = z →
         e.msg.head = Z.root ∧
@@ -142,15 +145,16 @@ theorem consume_continue_of (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H d
       (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → z < e.msg.slot →
         PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg Z) ∧
       ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), z < s' →
-        P'.slot = s' → tr.ProposesAt (sp.toParams.proposer s') k' P' →
-        sp.toParams.proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
+        P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
+        proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
         ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) Z Pr := by
     intro z kZ Z hZ hsz hzA
     obtain ⟨-, -, -, hpropZ, hZs, -⟩ := id hZ
     have hkZ := htime hpropZ hZs
     have h₁ := hsucc hsz
     have h₂ := hpred z
-    obtain ⟨hv, hl, hpa⟩ := (hagree sp ro dg H tr g ΔF w i₀ i₀ m c hrun hs hc hset le_rfl _ kZ z Z
+    obtain ⟨hv, hl, hpa⟩ := (hagree sp ro proposer dg H tr g ΔF w i₀ i₀ m c
+      hrun hs hc hset le_rfl _ kZ z Z
       hZ (hi₀ kZ (by linarith)) (by linarith) (by linarith [gbar_nonneg g])
       (fun y hy k ℓ e hv he => hphase k (by
         have := cast_time_le_slot hrun hnc hy hv

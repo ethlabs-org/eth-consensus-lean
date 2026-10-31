@@ -177,8 +177,8 @@ def HonestFastConfirmationsPersist : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time) (x : Fin sp.n) (i₀ s m : Nat)
-    (B : SA.Blk sp.n (List (FG.Att sp.n))) (CV : Set (Vote sp.n)),
-    GoldilocksRun dg H tr → PersistPremises tr H dg ΔF x i₀ s m B CV →
+    (B : SA.Blk sp.n (List (FG.Att sp.n))) (CV : Set (Vote sp.n)) (proposer : Nat → Fin sp.n),
+    GoldilocksRun proposer dg H tr → PersistPremises tr H dg ΔF x i₀ s m B CV →
     ∀ s', s < s' → s' ≤ m → PersistAt tr H B s s'
 
 /-- **C1.1's corollary, recent source, next vote.** When `ac_to_fg` returns `B` at an honest
@@ -189,8 +189,8 @@ def RecentSourceNextVote : Prop :=
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time) (x : Fin sp.n) (i₀ i j m : Nat)
     (ℓ : ACLabel (goldilocksNode sp ro)) (B : SA.Blk sp.n (List (FG.Att sp.n)))
-    (CV : Set (Vote sp.n)),
-    GoldilocksRun dg H tr → PersistPremises tr H dg ΔF x i₀ j (m + 1) B CV →
+    (CV : Set (Vote sp.n)) (proposer : Nat → Fin sp.n),
+    GoldilocksRun proposer dg H tr → PersistPremises tr H dg ΔF x i₀ j (m + 1) B CV →
     SA.ToFGAt tr.projAC x i ℓ B → sp.slot (tr.time i) = m → j ≤ m → m ≤ j + 2 →
     ∀ y ∈ H, ∀ k e, SA.VoteAt tr.projAC y k e → e.msg.slot = m + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg B

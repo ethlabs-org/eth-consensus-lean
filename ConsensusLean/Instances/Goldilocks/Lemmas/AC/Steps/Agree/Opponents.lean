@@ -22,7 +22,7 @@ proposer. -/
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 private theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
@@ -77,11 +77,11 @@ private theorem genesis_mem (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y
     · exact ih j hj hc'
 
 /-- An honest proposer of a slot `σ > 0` has one block of slot `σ` in the honest frames. -/
-private theorem frameBlock_unique (hrun : ACRun tr H U) {σ : Nat} (hσ : σ ≠ 0)
-    (hp : sp.toParams.proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
+private theorem frameBlock_unique (hrun : ACRun proposer tr H U) {σ : Nat} (hσ : σ ≠ 0)
+    (hp : proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
     (hB' : HonestFrameBlock tr H B') (hs : B.slot = σ) (hs' : B'.slot = σ) : B = B' := by
   have hr := hrun.localRun
-  have hprop : ∀ X, HonestFrameBlock tr H X → X.slot = σ → X.proposer = sp.toParams.proposer σ := by
+  have hprop : ∀ X, HonestFrameBlock tr H X → X.slot = σ → X.proposer = proposer σ := by
     rintro X ⟨y, hy, i, ℓ, hc, hX⟩ hXs
     obtain ⟨G, hG, hGr, hGs⟩ := genesis_mem hr hy i hc
     refine hXs ▸ hrun.honest.proposer X ⟨y, hy, i, ℓ, hc, hX⟩ fun hXr => hσ ?_
@@ -170,8 +170,8 @@ private theorem proposal_payload {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Tim
 variable (sp) in
 /-- **A1.1.** -/
 theorem proposer_voters_agree : ProposerVotersAgree sp := by
-  intro FGP ro H U tr hrun s p y i j ℓp ℓy pay e hp hy hpp hprop hti hc hs hPy hsync heq B hB
-    hBs
+  intro FGP ro H U tr proposer hrun s p y i j ℓp ℓy pay e hp hy hpp hprop hti hc hs
+    hPy hsync heq B hB hBs
   have hr := hrun.localRun
   obtain ⟨hcp, hcall, d, hpay⟩ := hprop
   obtain ⟨hΦp, hΦpU⟩ := frameIn_of_call hr hp hcp

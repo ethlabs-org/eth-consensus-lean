@@ -20,11 +20,12 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {p : Nat} {P : Blk sp.n FGP}
   {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)} {d : DutyHead sp.n FGP (Payload sp.n)}
-  {pay : Payload sp.n}
+  {pay : Payload sp.n} {schedule : Nat → Fin sp.n}
 
 /-- Under trivial frames, the anchor of a walk at an honest call is in the frame tree, and it is
 `Φ.F` or the block of a stored live lock (its own viable ancestor). -/
-private theorem anchor_cases (hS : StandaloneRun tr H U g) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+private theorem anchor_cases (hS : StandaloneRun tr H U schedule g)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) (A : SAState sp.n) (t : Time) :
     getAnchor sp A ℓ.frame t ∈ ℓ.frame.tree ∧ (getAnchor sp A ℓ.frame t = ℓ.frame.F ∨
       ∃ l ∈ A.locks, sp.slot t ≤ l.slot + sp.k ∧ (getAnchor sp A ℓ.frame t).root = l.block) := by
@@ -60,7 +61,8 @@ private theorem stored_lock_slot_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H 
     omega
 
 /-- The proposal head and every honest vote extend `Φ.F` (genesis) of an honest call. -/
-private theorem genesis_extended (hs : UnanimitySetting tr H U g p P k ℓp d pay) {y : Fin sp.n}
+private theorem genesis_extended (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay)
+    {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     Anc U ℓ.frame.F d.head ∧ ∀ z ∈ H, ∀ j e, VoteAt tr z j e → VoteExtends U e.msg ℓ.frame.F := by
   have hS := hs.standalone
@@ -82,7 +84,7 @@ private theorem genesis_extended (hs : UnanimitySetting tr H U g p P k ℓp d pa
 
 /-- **The anchor of an honest slot-`p` vote**: a block of `U` that every honest vote of slot
 `p` and the proposal head extend, or extended by an honest slot-`p` vote of an earlier cut. -/
-theorem vote_anchor_cases (hs : UnanimitySetting tr H U g p P k ℓp d pay) {x : Fin sp.n}
+theorem vote_anchor_cases (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
     getAnchor sp e.readPoint ℓ.frame (tr.time j) ∈ U ∧
@@ -145,7 +147,7 @@ theorem vote_anchor_cases (hs : UnanimitySetting tr H U g p P k ℓp d pay) {x :
 
 /-- **The anchor of the proposal**: a block of `U` that every honest vote of slot `p` extends,
 or extended by some honest slot-`p` vote. -/
-theorem proposal_anchor_cases (hs : UnanimitySetting tr H U g p P k ℓp d pay) :
+theorem proposal_anchor_cases (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
     d.start ∈ U ∧
       ((∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = p → VoteExtends U e.msg d.start) ∨
         ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = p ∧ VoteExtends U e.msg d.start) := by
@@ -165,7 +167,7 @@ theorem proposal_anchor_cases (hs : UnanimitySetting tr H U g p P k ℓp d pay) 
   simp only [Option.some.injEq, Prod.mk.injEq, hslot] at hpay
   obtain ⟨hd, -⟩ := hpay
   suffices h : ∀ (A : SAState sp.n) (V : View sp.n),
-      A.locks = unlock sp (tr.state (sp.toParams.proposer p) k).locks ℓp.frame (tr.time k)
+      A.locks = unlock sp (tr.state (schedule p) k).locks ℓp.frame (tr.time k)
         ((p : Int) - 1) V →
       getAnchor sp A ℓp.frame (tr.time k) ∈ U ∧
         ((∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = p →

@@ -55,8 +55,9 @@ open SA (SAParams ReplayOrder Payload gbar)
 /-- **HS.0, bounded settling** (`Settle(Δ)`, with `κ = 2Δ`): from `u ≥ ḡ + 8Δ`, by `u + Δ`
 the effective phase after all events at `u` has changed or the run is settled at `u + Δ`. -/
 theorem settle {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF : Time} (hrun : GoldilocksRun dg H tr)
+    {tr : GoldilocksTrace sp ro} {g ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (u : Time)
     (hu : gbar g + 8 * sp.Δ ≤ u) (j j' : Nat) (hj : FirstCutAfter tr j u)
     (hj' : tr.FirstCutFrom j' (u + sp.Δ)) :
@@ -66,7 +67,8 @@ theorem settle {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
       (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
       SA.proposal_payload_valid sp _ ro⟩
-  have hfg := Compose.fg_projection _ _ dg H _ tr hreq hs.genesisRoot hrun.toLocalRun hs.noColl
+  have hfg := Compose.fg_projection _ _ dg H _ tr proposer hreq hs.genesisRoot
+    hrun.toLocalRun hs.noColl
   have hq : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
     change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n
     have := sp.toParams.hn
@@ -125,7 +127,8 @@ private theorem after_le_after {j j' : Nat} {t t' : Time} (h : FirstCutAfter tr 
 /-- In a run where an honest node is awake from `t₀` on, every time has a first cut after it
 and a first cut from it (`awake_in_horizon`). -/
 private theorem exists_cuts {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-    {sg : A.Msg → Fin P.n} (hrun : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+    {proposer : Nat → Fin P.n} {sg : A.Msg → Fin P.n}
+    (hrun : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
     {t₀ : Time} (hawake : ∀ t, t₀ ≤ t → tr.awake y t) (t : Time) :
     (∃ j, FirstCutAfter tr j t) ∧ ∃ j, tr.FirstCutFrom j t := by
   classical
@@ -137,7 +140,8 @@ private theorem exists_cuts {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set
     Nat.find hle, Nat.find_spec hle, fun k hk => not_le.1 (Nat.find_min hle hk)⟩
 
 private theorem projFG_store {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-    {sg : A.Msg → Fin P.n} (hrun : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+    {proposer : Nat → Fin P.n} {sg : A.Msg → Fin P.n}
+    (hrun : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
     (i : Nat) : tr.projFG.store y i = (tr.state y i).fg := by
   simp only [FGTrace.store, Compose.projFG_state hrun hy i]
 
@@ -245,9 +249,10 @@ end Potential
 `f < 2q − n` (from `3f ≤ n − 1`), some honest validator, and `0 ≤ D_HS ≤ A_HS` (`Δ_F ≥ Δ > 0`,
 and `G_p ≥ 0` from `Prop⁺(G_p)` at `ḡ`). -/
 private theorem hs_setup {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun dg H tr)
-    (hs : HSShared tr H dg g ΔF) (hp : PropPlus tr H g Gp) :
+    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF) (hp : PropPlus tr H proposer g Gp) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
       Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n ∧ H.Nonempty ∧
       0 ≤ D_HS sp Gp ∧ D_HS sp Gp ≤ A_HS sp ΔF Gp := by
@@ -257,7 +262,8 @@ private theorem hs_setup {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n
       (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
       SA.proposal_payload_valid sp _ ro⟩
   have hn := sp.toParams.hn
-  refine ⟨Compose.fg_projection _ _ dg H _ tr hreq hs.genesisRoot hrun.toLocalRun hs.noColl,
+  refine ⟨Compose.fg_projection _ _ dg H _ tr proposer hreq hs.genesisRoot
+    hrun.toLocalRun hs.noColl,
     by change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n; omega, ?_, ?_⟩
   · by_contra h
     rw [Set.not_nonempty_iff_eq_empty] at h
@@ -281,9 +287,11 @@ state at `w` (cut `j`), HS.4 gives a phase change by `w + D_HS` (which persists 
 `D_HS ≤ A_HS`) or the acquired common path, which HS.5's consumption step (`consume_continue`,
 with HS.1–HS.3) turns into a phase change by `w + A_HS`. -/
 theorem producer {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun dg H tr)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp)
+    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : PropPlus tr H proposer g Gp)
     (w : Time) (hw : SettledAt tr H g (2 * sp.Δ) w) (j j' : Nat) (hj : tr.FirstCutFrom j w)
     (hj' : FirstCutAfter tr j' (w + A_HS sp ΔF Gp)) : PhaseChanged tr.projFG H j j' := by
   obtain ⟨hfg, hq, ⟨y₀, hy₀⟩, hD, hDA⟩ := hs_setup hrun hs hp
@@ -299,9 +307,11 @@ theorem producer {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **The reset count** (HR.3 (c)): the reset exists by `c_z + 6(Δ + A_HS)`. -/
 theorem reset_count {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun dg H tr)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H g Gp) :
+    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hp : PropPlus tr H proposer g Gp) :
     ∃ a, IsReset tr H g a ∧ a ≤ cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) := by
   classical
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -367,7 +377,8 @@ theorem reset_count {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   obtain ⟨-, -, -, -, -, ⟨X, hX, hXh⟩, -⟩ := Store.cache_invariants _ _ _ _
     (Store.store_reachable hfg hy (fa (u 6)))
   rw [projFG_store hrun.toLocalRun hy] at hX hXh hym
-  obtain ⟨-, -, -, hrow, -⟩ := cut_and_reset sp ro dg H tr g ΔF hrun hs.healthy hs.noColl
+  obtain ⟨-, -, -, hrow, -⟩ :=
+    cut_and_reset sp ro proposer dg H tr g ΔF hrun hs.healthy hs.noColl
   obtain ⟨Y, hYX, att, hatt, hval, hh⟩ := hrow y hy _ X hX (by omega)
   -- HR.1 (b)'s row was signed before that cut, by unforgeability
   have hY : Y ∈ (tr.projFG.store y (fa (u 6))).tree := by
@@ -402,7 +413,7 @@ theorem IsReset.eq {P : Params} {A : NodeAC P} {tr : RunTrace A} {H : Set (Fin P
 
 /-- **HR.3, reset existence.** -/
 theorem reset_existence : ResetExistence := by
-  intro sp ro dg H tr g ΔF Gp hrun hs hc hp
+  intro sp ro proposer dg H tr g ΔF Gp hrun hs hc hp
   obtain ⟨a, ha, hle⟩ := reset_count hrun hs hc hp
   refine ⟨⟨lt_cutZ sp g, fun u hu j j' hj hj' =>
       settle hrun hs hc u (by linarith [lt_cutZ sp g]) j j' hj hj'⟩,
