@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Later
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Read
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Reads
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 
@@ -9,15 +11,13 @@ public section
 
 /-! # Goldilocks milestone Regimes: R.2 (inclusion and growth under `Sleepy`)
 
-`IncludeSleepy` and `GrowSleepy` (`Statements/Regimes/Sleepy`) over the run, assembled over two
-named open steps:
+`IncludeSleepy` and `GrowSleepy` (`Statements/Regimes/Sleepy`) over the run, from
 
-* `later_update_adopts` (the Service orb's, a generalisation of `update_adopts`): the record after
-  an honest update of any slot `≥ s` extends an honest proposal `P` of slot `s` by a joined
-  proposer;
-* `ready_read_record_c` (the Sleepy box's `ready_read_record`, A1.6 at a ready read point, private
-  copy until it lands): the read of a ready node between its events is the record's block, or
-  `Σ.F` when the record is not in the frame.
+* `later_update_adopts` (`Service/Later`, a generalisation of `update_adopts`): after an honest
+  update of any slot `≥ s`, the record or `Σ.F` extends an honest proposal `P` of slot `s` by a
+  joined proposer;
+* `ready_read_record` (`Sleepy/Read`, A1.6 at a ready read point): the read of a ready node between
+  its events is the record's block, or `Σ.F` when the record is not in the frame.
 
 A1.7 (`Compose.inclusion`) is not enough by itself: its reader was awake and joined at
 `t_s + 6Δ`, while a ready reader at a later `t` may have slept then and missed the update of slot
@@ -43,33 +43,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {ΔF : Time}
 
 /-! ## Open steps -/
-
-/-- **A later update adopts `P`** (Service orb; `update_adopts` for the update of slot `s`
-itself): under `Sleepy`, after an honest update of a slot `s' ≥ s`, the record or `Σ.F` extends an
-honest proposal `P` of slot `s` by a proposer joined at its proposal (`Σ.F` may have passed `P`,
-and then the update may have no result above it, leaving an older record). -/
-theorem later_update_adopts (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
-    (hy : y ∈ H) {k₀ s' : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hss : s ≤ s')
-    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) :
-    ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
-      (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y (k₀ + 1)).fg.F) := by
-  sorry
-
-/-- A1.6 at a ready read point (the Sleepy box's `ready_read_record`; private copy until it
-lands). -/
-private theorem ready_read_record_c (hrun : GoldilocksRun dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} {j : Nat} {t : Time}
-    (hrp : ReadPoint tr j t) (hb : Boundary tr y j)
-    (hready : ReadyAt tr H (catchUp sp) y t) :
-    (∃ R ∈ (Node.frame (tr.state y j)).tree,
-        R.root = (tr.state y j).ac.latestConfirmed ∧ readAfter tr y j t = R) ∨
-      ((¬ ∃ R ∈ (Node.frame (tr.state y j)).tree,
-          R.root = (tr.state y j).ac.latestConfirmed) ∧
-        readAfter tr y j t = (tr.state y j).fg.F) := by
-  sorry
 
 /-- **A ready reader's record extends a ready proposal**: under `Sleepy`, for an honest
 proposal `P` released at `τ` by a proposer ready at `τ`, and `y` ready at `t ≥ τ + 6Δ`, the
@@ -254,7 +227,7 @@ private theorem read_extends_of_record (hrun : GoldilocksRun dg H tr) (hnc : NoC
   have hinv := sleepy_invariant hrun hnc hsl
   have hcoh := honest_blocks_coherent hrun.toLocalRun hnc
   obtain ⟨E, hE, hEr, hPE⟩ := hE
-  rcases ready_read_record_c hrun hnc hsl ⟨fun k hk => hj.1 k hk, hj.2.le⟩
+  rcases ready_read_record hrun hnc hsl ⟨fun k hk => hj.1 k hk, hj.2.le⟩
       (cutAfter_boundary hrun hy hj) hready with ⟨R, hR, hRr, hread⟩ | ⟨hin, hread⟩
   · rw [hread]
     obtain rfl : R = E := hcoh.1 ⟨y, hy, j, hR.1⟩ hE (hRr.trans hEr.symm)
