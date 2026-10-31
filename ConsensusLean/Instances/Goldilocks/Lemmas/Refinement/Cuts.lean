@@ -116,7 +116,8 @@ section
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
 
-private theorem length_cutPosts (t : Time) (cs : List (Cut (goldilocksNode sp ro)))
+/-- One post-state per cut. -/
+theorem length_cutPosts (t : Time) (cs : List (Cut (goldilocksNode sp ro)))
     (st : NodeState (goldilocksNode sp ro)) : (cutPosts self t cs st).length = cs.length := by
   induction cs generalizing st with
   | nil => simp only [cutPosts_nil, List.length_nil]
