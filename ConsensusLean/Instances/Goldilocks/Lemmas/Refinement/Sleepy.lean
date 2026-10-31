@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 public import ConsensusLean.Spec.Shape.Run
 
@@ -341,7 +343,7 @@ theorem sleepy_proposal (hv : rho.ExecutionValid) {τ : Time}
     rw [htime] at hrel
     exact hrel
 
-/-- OPEN inclusion-to-chain consumer (owner: Refinement). Parent-closed coherent stores
+/-- Inclusion-to-chain consumer. Parent-closed coherent stores
 turn node ancestry into membership of the encoded non-genesis header. `sleepy_read_cut`
 supplies the end-of-time cut and exact output clock. Keep readiness, producer provenance,
 collision freedom and the finite observation bound; ancestry alone is not engine inclusion.
@@ -359,7 +361,38 @@ theorem sleepy_inBy (hv : rho.ExecutionValid)
         (Regimes.readAfter (simTrace S rho hn) y j t)) :
     InBy rho (Regimes.catchUp (S.params (pubOf E) hn)) .confirmed
       (headerOf (S.params (pubOf E) hn) P) t := by
-  sorry
+  have hs := simTrace_simulates S rho hn hv
+  have hroot : P.root ≠ (S.params (pubOf E) hn).genesisRoot := by
+    obtain ⟨p, k, hp, hprop, _⟩ := hP
+    obtain ⟨⟨acc, hc⟩, hpos⟩ := hprop.1
+    rcases Compose.blockCall_cases hs.run.toLocalRun hp.1 hc with hg | hg
+    · have := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
+      exact False.elim (hpos (by simpa using this))
+    · obtain ⟨j, x, _, _, _, d, p', _, hB, _⟩ := hg
+      rw [hB]
+      exact taggedRoot_ne _ _
+  intro v hr
+  let i := (chainTrace rho).endCut t
+  let j := cutMap S rho hn i
+  have hi : i ≤ rho.events.length := Nat.findGreatest_le _
+  have hy := honest_ownKey (S := S) hr.1
+  have hreach := Compose.fg_reachable hs.run.toLocalRun hy j
+  have hframe := (Store.frame_realization _ _ _ _ hreach).1
+  have htip := (Regimes.sa_tips
+    (A := ((simTrace S rho hn).state (rho.ownKey v) j).ac) hframe t).1.1
+  have hcut := sleepy_read_cut S rho hn hv (hτ.trans hτt) hth hr
+  have ha := hinc _ j (sleepy_ready S rho hn hv (hτ.trans hτt) hth hr) hcut.1
+  have hanc := anc_in_store hreach (Compose.honest_blocks_coherent hs.run.toLocalRun hnc)
+    (fun _ h => ⟨_, hy, j, h⟩) ha htip
+  have hprefix := chainTo_prefix hreach hanc
+  have hmem : headerOf (S.params (pubOf E) hn) P ∈
+      chainTo ((simTrace S rho hn).state (rho.ownKey v) j).fg.blocks (P.slot + 1) P := by
+    simp only [chainTo, ite_eq_right hroot]
+    split <;> simp
+  have hout := hprefix.subset hmem
+  change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .confirmed v i
+  rw [readIsOut V S E rho hn, outOf, hs.state v hr.1 i hi, hcut.2.2]
+  exact hout
 
 /-- OPEN arbitrary-cut safety consumer (owner: Refinement). R.1 bounds node reads; the
 engine exposes every event cut, not only end-of-time reads. Relate each ready reader's
