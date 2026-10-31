@@ -7,20 +7,21 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 
 public section
 
-/-! # R.7/R.8 engine transport skeleton
+/-! # R.7/R.8 engine transport
 
 Paper references are CLAIMS `goldilocks-claims.tex` R.7, R.8, F.2/F.3 and G1.5,
 and SPEC `shared/composition.tex` §Blocks/§Model, pinned in
-`docs/goldilocks-mapping.md` §Refinement. Open leaves below separate structural chains,
-observed objects, evidence binding and validator counts. They are not completed proofs.
+`docs/goldilocks-mapping.md` §Refinement. The proofs separate structural chains,
+observed objects, evidence binding and validator counts.
 
 The cited paper establishes the node-level source theorems. The docstrings below supply
-separate mathematical arguments for the engine bridges, not quotations or completed Lean
-proofs. An argument marked OPEN still lacks an identified premise or encoding repair.
+separate mathematical arguments for the engine bridges, not quotations.
 
 `NoCollTransport` targets the canonical trace. `GenesisFresh` is proved by tagged roots,
-not assumed by accountability. Canonical occurrence coverage remains OPEN;
-tagging alone does not discharge collision transport. -/
+not assumed by accountability. Canonical occurrence coverage includes refused deliveries;
+tagging and observed-header injectivity discharge collision transport.
+The accountability closure still depends on the open engine run/provenance suppliers;
+these local proofs do not certify that transitive closure as sorry-free. -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -117,9 +118,9 @@ theorem engine_finalMonotone (hv : rho.ExecutionValid) :
 variable (V) in
 /-- CLAIMS F.3/§Premises, SPEC §Blocks: each occurring block's header is observed; equal
 non-genesis digests reduce to equal observed headers and the encoding is injective. Genesis
-is handled separately. This is the CURRENT interface, pending canonical occurrence coverage.
+is handled separately.
 
-Conditional paper argument: first prove that EVERY block in the canonical trace's `Occurs`
+Paper argument: `occurring_in_view` proves that EVERY block in the canonical trace's `Occurs`
 has an observed canonical header and a nonempty parent (including REFUSED block calls,
 not just held blocks).
 For two such blocks, equal `dgOf` values are equal header hashes; absence of `HashCollision`
@@ -127,19 +128,54 @@ gives equal headers. Apply `parentRoot_parentRef` to the nonempty parents and de
 equal `encodeInfo` values to recover all five fields required by `NoCollOn`. Proposer identity
 is irrelevant: that conclusion does not compare proposers. For genesis versus a non-genesis
 block, `GenesisFresh` excludes equal digests; two genesis entries are immediate.
-OPEN: prove all-occurrences provenance from the canonical construction, including refused
-block calls. `Occurs` has no honesty guard, but `simTrace_cut` identifies its engine event;
+`Occurs` has no honesty guard, but `simTrace_cut` identifies its engine event;
 `ExecutionValid.honest_only` then proves that its node is honest. No separate non-honest
-canonical call case remains in a valid run. Tick provenance can use `tick_releases` for
-either acceptance flag. For deliveries, `accepted_in_view` and `process_relay` cover only
-accepted calls; the missing join must instead retain the decoded object's membership in
-the delivered list through `deliverRecs`, including refused calls, and transport that object
-to the final engine view. `mem_deliverRecs_exec` currently forgets that membership.
+canonical call case remains in a valid run. Tick provenance uses `tick_releases` for
+either acceptance flag. For deliveries, `mem_deliverRecs_exec` retains decoded-object
+membership in the delivered list, including refused calls. The received object's containment
+then places the canonical block object in the final engine view without acceptance or relay.
 The target no longer quantifies arbitrary simulation witnesses, whose laws do not supply
 this provenance.
 Tagged freshness is proved by `genesisFresh`; it does not by itself prove occurrence coverage. -/
 theorem noCollTransport : NoCollTransport V S := by
-  sorry
+  intro E rho hn hv hnc
+  have hocc (B : Blk (S.params (pubOf E) hn)) (hB : (simTrace S rho hn).Occurs B) :
+      B.parent ≠ none ∧ rho.ObservedItem (headerOf (S.params (pubOf E) hn) B) := by
+    obtain ⟨hp, v, hv', hb⟩ := occurring_in_view S rho hn hv hB
+    exact ⟨hp, blockObj _ B, ⟨v, hv', hb⟩, rfl⟩
+  intro B hB C hC heq
+  rcases hB with rfl | hB <;> rcases hC with rfl | hC
+  · exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+  · obtain ⟨hp, _⟩ := hocc C hC
+    cases hc : C.parent with
+    | none => exact False.elim (hp hc)
+    | some p =>
+      exact False.elim (taggedRoot_ne _ _
+        (by simpa [digestOf, dgOf, hc, Params.genesisBlock] using heq.symm))
+  · obtain ⟨hp, _⟩ := hocc B hB
+    cases hb : B.parent with
+    | none => exact False.elim (hp hb)
+    | some p =>
+      exact False.elim (taggedRoot_ne _ _
+        (by simpa [digestOf, dgOf, hb, Params.genesisBlock] using heq))
+  · obtain ⟨hpB, hoB⟩ := hocc B hB
+    obtain ⟨hpC, hoC⟩ := hocc C hC
+    obtain ⟨pb, hpb⟩ := Option.ne_none_iff_exists'.mp hpB
+    obtain ⟨pc, hpc⟩ := Option.ne_none_iff_exists'.mp hpC
+    have hh : rho.hash (headerOf (S.params (pubOf E) hn) B) =
+        rho.hash (headerOf (S.params (pubOf E) hn) C) := by
+      have h := congrArg (rawRoot S.genesisRoot) heq
+      simpa [digestOf, dgOf, hpb, hpc, headerOf, rawRoot_taggedRoot] using h
+    have he : headerOf (S.params (pubOf E) hn) B = headerOf (S.params (pubOf E) hn) C := by
+      by_contra h
+      exact hnc ⟨_, _, h, hoB, hoC, hh⟩
+    have hpar := congrArg (fun h => parentRoot S.genesisRoot h.parent) he
+    have hslot := congrArg Header.pos he
+    have hin := congrArg Header.input he
+    have hinfo := congrArg (fun h => decodeInfo (Fintype.card V) h.info) he
+    simp only [headerOf, hpb, hpc, parentRoot_parentRef] at hpar
+    simp only [headerOf, decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hinfo
+    exact ⟨by simpa [hpb, hpc] using hpar, hslot, hin, hinfo.1, hinfo.2⟩
 
 /-- CLAIMS R.7/G1.3–G1.5: compatibility of honest node tips gives structural compatibility
 of their header chains. Parent closure and coherent honest blocks identify the ancestor walk
@@ -152,7 +188,7 @@ agree. If tip A is an ancestor of tip B in the honest union, follow B's local pa
 coherence identifies every union-path predecessor, so A and its chain occur as a prefix
 there. Compare with A's reader using the shared-tip result. Handle either ancestry direction
 and use `read_finalized` at the bounded cuts. Status: argument complete relative to coherent
-honest blocks; the cross-store parent-walk lemma is still an open Lean dependency. -/
+honest blocks; the cross-store parent-walk lemma is proved. -/
 theorem compatible_reads (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
     {u v : V} (hu : u ∈ rho.honest) (hv' : v ∈ rho.honest) {i j : Nat}
@@ -275,7 +311,7 @@ variable (V) in
 compatibility and held-chain evidence/count transport.
 Paper reduction: choose the canonical simulation, obtain its `NoCollRun` using
 `noCollTransport`, then use `final_accountable_of_noColl` at the two bounded cuts.
-OPEN transitively on canonical collision transport. No freshness premise remains. -/
+Canonical collision transport is proved. No freshness premise remains. -/
 theorem finalizedAccountable : FinalizedAccountable V S := by
   intro E rho hn hv hnc u hu v hv' i hi j hj
   exact final_accountable_of_noColl S rho hn hv (noCollTransport V S E rho hn hv hnc)
@@ -328,14 +364,13 @@ theorem shape_finalMonotone : ∀ g, schema.output .final = some g →
 /-- R.7/G1.1/G1.5, exact fourth `ShapeClaimsAt` field for any contract with `α ≤ 1/3`.
 Paper reduction for the engine bridge: `q = ceil(2n/3)` gives `n/3 ≤ 2q−n`, and key
 equivalence preserves conviction counts. Only this field permits the collision escape.
-OPEN: canonical collision transport still requires all-occurrences provenance.
+Canonical collision transport includes all-occurrences provenance.
 This endpoint intentionally has no freshness premise, including for the empty validator set.
 After a freshness-free collision transport is available, split on `HashCollision`; return
 that excuse when present. Otherwise obtain the natural-number accountability bound for each
 pair of honest reads. Write n=3m+r with r=0,1,2: `2q−n` is respectively m,m+1,m+2, so its
 rational cast is at least n/3. Since n≥0 and α≤1/3, nα≤n/3, which gives the exact field.
-Empty V has no honest reader and is vacuous. The assembly and arithmetic are proved;
-the conclusion remains transitively OPEN on `noCollTransport`'s occurrence provenance. -/
+Empty V has no honest reader and is vacuous. The assembly and arithmetic are proved. -/
 theorem shape_finalAccountable (K : Contract ProgressReq) (hα : K.params.α ≤ 1 / 3) :
     ∀ g, schema.output .final = some g → (Sys (family S) V).Holds (fun _ => True)
       (fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0) := by

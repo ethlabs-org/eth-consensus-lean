@@ -18,6 +18,76 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
 
+/-- Every called block, accepted or refused, has its canonical object in the final view
+of the honest engine node responsible for the call. -/
+theorem occurring_in_view (hv : rho.ExecutionValid) {B : Blk (S.params (pubOf E) hn)}
+    (hB : (simTrace S rho hn).Occurs B) :
+    B.parent ≠ none ∧ ∃ v ∈ rho.honest, blockObj (S.params (pubOf E) hn) B ∈
+      rho.ViewIdx v rho.events.length := by
+  obtain ⟨y, k, acc, hnode, hlab⟩ := hB
+  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
+  obtain ⟨r, i, ev, _, he, _, _, hidx, hn', _, hpk, hlab'⟩ := simTrace_cut S rho hn hl
+  have hrl : r.label = .fg (.block B acc) := Option.some.inj (hlab'.symm.trans hlab)
+  have hmem := List.mem_of_getElem? hidx
+  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
+  have hhon := hv.honest_only ev (List.mem_of_getElem? he)
+  cases ev with
+  | tick v t =>
+    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
+      by_contra hp
+      rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
+      simp at hmem
+    have hr0 : r.pos ≠ 0 := by
+      intro hr0
+      obtain ⟨_, _, _, h⟩ := eq_deliver_of_cut S rho hn he hmem (Or.inl ⟨hr0, _, hrl⟩)
+      cases h
+    have hnf := Regimes.non_framing _ _ _ _ _ _ (simTrace_goldilocksRun S rho hn hv)
+      _ (honest_ownKey (S := S) hhon)
+    have hrel := (tick_releases S rho hn hv hhon he hp hnf r hmem).1 B acc hrl hr0
+    refine ⟨?_, v, hhon, rho.mem_viewIdx_iff.mpr
+      ⟨i, _, hi, Or.inl ⟨t, Or.inl he, hrel⟩, .refl _⟩⟩
+    have hy : y ∈ honestKeys S rho := by
+      have : rho.ownKey v = y := hn'.symm.trans hnode
+      rw [← this]
+      exact honest_ownKey (S := S) hhon
+    rcases Compose.blockCall_cases (simTrace_goldilocksRun S rho hn hv).toLocalRun hy
+      ⟨hnode, hlab⟩ with hg | ⟨j, x, _, _, _, d, p, _, hB', _⟩
+    · have hpos := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
+      exact False.elim (hr0 (hpk.symm.trans (by simpa using hpos)))
+    · rw [hB']; simp [mkBlock]
+  | deliver v o t =>
+    rw [eventCuts_deliver S rho hn i v o t he] at hmem
+    obtain ⟨o', e, st', ho, hce, kk, hk, hlk, _⟩ :=
+      mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
+    have hcut := hlk.symm.trans hrl
+    have hzero := pos_of_block_cut _ _ _ _ _ (canonEvent_ne_tick hce) hk hcut
+    subst kk
+    have heq : e = .block B := by
+      cases e with
+      | tick x => exact False.elim (canonEvent_ne_tick hce x rfl)
+      | block B' =>
+        have hm := List.getElem_mem hk
+        rw [hcut] at hm
+        simp only [exec, onBlock] at hm
+        split_ifs at hm
+        · simp at hm
+        · split at hm <;> simp [acCall] at hm <;> simp_all
+      | message m => simp [exec, onMessage, acCall] at hcut
+      | attestation a => simp [exec, onAttestation] at hcut
+      | restart => simp [exec, Node.restart, acCall] at hcut
+    subst e
+    have ho' := eq_blockObj_of_decodeBlock (decodeBlock_of_canonEvent hce)
+    rw [ho'] at ho
+    exact ⟨(decodeBlock_wire (decodeBlock_of_canonEvent hce)).2.1, v, hhon,
+      rho.mem_viewIdx_iff.mpr ⟨i, o, hi, Or.inr ⟨t, he⟩, contains_of_mem_delivered ho⟩⟩
+  | restart v t =>
+    rw [eventCuts_restart S rho hn i v t he] at hmem
+    obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
+    obtain ⟨_, _, _, _, hlk⟩ := getElem_groupRecs _ _ _ _ _ _ _ kk hk
+    have hcut := List.getElem_mem (lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _ _))
+    rw [← hlk, hrl] at hcut
+    simp [exec, Node.restart, acCall] at hcut
+
 /-- An accepted block is in its reader's engine view at every subsequent mapped cut. -/
 theorem accepted_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
     {k i : Nat} {B : Blk (S.params (pubOf E) hn)}

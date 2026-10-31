@@ -1275,7 +1275,7 @@ theorem mem_deliverRecs_exec (proposer : Nat → Fin sp.n)
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
     ∀ (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
       {r : CutRec sp ro}, r ∈ deliverRecs proposer dg hs self t i os st sub →
-      ∃ o e st', canonEvent sp ro hs o = some e ∧
+      ∃ o e st', o ∈ os ∧ canonEvent sp ro hs o = some e ∧
         ∃ k, ∃ hk : k < (exec proposer dg self st' t e).2.length,
           r.label = (exec proposer dg self st' t e).2[k] ∧ r.pos = k
   | [], _, _, _, hr => by simp [deliverRecs_nil] at hr
@@ -1283,14 +1283,17 @@ theorem mem_deliverRecs_exec (proposer : Nat → Fin sp.n)
     cases he : canonEvent sp ro hs o with
     | none =>
       rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
-      exact mem_deliverRecs_exec proposer dg hs self t i os st _ hr
+      obtain ⟨o', e, st', ho, h⟩ := mem_deliverRecs_exec proposer dg hs self t i os st _ hr
+      exact ⟨o', e, st', List.mem_cons_of_mem _ ho, h⟩
     | some e =>
       rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he] at hr
       rcases List.mem_append.mp hr with hr | hr
       · obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
         obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs proposer dg self st t _ e k hk
-        exact ⟨o, e, st, he, k, by rwa [length_groupRecs] at hk, hlab, hpos⟩
-      · exact mem_deliverRecs_exec proposer dg hs self t i os _ _ hr
+        exact ⟨o, e, st, List.mem_cons_self, he, k,
+          by rwa [length_groupRecs] at hk, hlab, hpos⟩
+      · obtain ⟨o', e', st', ho, h⟩ := mem_deliverRecs_exec proposer dg hs self t i os _ _ hr
+        exact ⟨o', e', st', List.mem_cons_of_mem _ ho, h⟩
 
 /-- A canonical event is not a tick. -/
 theorem canonEvent_ne_tick {hs : List (Header Info × Nat)} {o : Wire sp.n}

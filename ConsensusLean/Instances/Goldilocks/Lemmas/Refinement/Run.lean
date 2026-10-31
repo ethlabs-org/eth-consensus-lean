@@ -1085,7 +1085,7 @@ theorem simTrace_block_released (hv : rho.ExecutionValid)
   | deliver v o t =>
     exfalso
     rw [eventCuts_deliver S rho hn i v o t he] at hmem
-    obtain ⟨o', e, st', hce, kk, hk, hlabk, hposk⟩ :=
+    obtain ⟨o', e, st', _, hce, kk, hk, hlabk, hposk⟩ :=
       mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
     exact hpos' (hposk.trans
       (pos_of_block_cut _ _ _ _ _ (canonEvent_ne_tick hce) hk (hlabk.symm.trans hrl)))
@@ -1172,7 +1172,7 @@ theorem simTrace_att_released (hv : rho.ExecutionValid)
   | deliver v o t =>
     exfalso
     rw [eventCuts_deliver S rho hn i v o t he] at hmem
-    obtain ⟨o', e, st', hce, kk, hk, hlabk, -⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
+    obtain ⟨o', e, st', _, hce, kk, hk, hlabk, -⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
     have hcut := List.getElem_mem hk
     rw [← hlabk, hrl] at hcut
     obtain ⟨x, rfl⟩ := Compose.signed_only_in_ticks _ _ _ st' t e src a hcut
