@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
 public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
 import ConsensusLean.Lemmas.Model.Objects
+import ConsensusLean.Lemmas.Model.Protection
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
@@ -13,7 +14,7 @@ public section
 Implementation-refinement history for the Accepted skeleton. These declarations use
 actual engine duty prefixes, never `eventCuts`, `simTrace`, or `GoldilocksRun`. A poll's FG update
 is the only signing operation; all other operations preserve the client history, including
-restart. The inverse from seen attestations to actual signings remains open.
+restart. Queue provenance and unforgeability give the inverse from seen attestations to signings.
 
 The paper's G0.5 supplies client safety, not the correspondence between engine execution and
 client inputs. The latter and the release provenance obligations below have NO PAPER PROOF.
@@ -743,18 +744,590 @@ theorem engine_signings_nonFraming (hv : rho.ExecutionValid) {v : V}
   exact FG.client_safety _ _ inputs hi a (hs i p a (by omega) ha)
     b (hs j q b (by omega) hb)
 
-/-- **NO PAPER PROOF — implementation release inverse.** An honest attestation in the
-closure of `seen` at an actual duty boundary has an earlier actual signing. Credentials gives
-role membership; Unforgeable gives earlier honest releases. Inspect poll candidates for their
-queued FG signing. Within the same event use the duty-prefix order, not strict event order.
+private theorem emitted_no_att {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (cs : List (Cut (goldilocksNode sp ro))) (a : WireAtt) :
+    Body.att a ∉ emitted cs := by
+  simp only [emitted, List.mem_flatMap]
+  rintro ⟨c, _, hc⟩
+  cases c <;> simp_all
+
+private theorem apply_att {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (r) (a : WireAtt) :
+    Body.att a ∈ (apply st r).outbox ↔ Body.att a ∈ st.outbox := by
+  simp only [apply, List.mem_append, emitted_no_att, or_false]
+
+private theorem processOne_att {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (hs) (st : State sp ro) (o) (a : WireAtt) :
+    Body.att a ∈ (processOne hs st o).outbox ↔ Body.att a ∈ st.outbox := by
+  unfold processOne
+  split
+  · simp only [relayIf]
+    split <;> exact apply_att _ _ _
+  · simp only [relayIf]
+    split <;> exact apply_att _ _ _
+  · exact apply_att _ _ _
+  · rfl
+
+private theorem recordOwn_att {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (o) (hs) (a : WireAtt) :
+    Body.att a ∈ (recordOwn st o hs).outbox ↔ Body.att a ∈ st.outbox := by
+  unfold recordOwn
+  split
+  · rfl
+  · split
+    · exact apply_att _ _ _
+    · rfl
+  · rfl
+
+private theorem process_att {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (o) (hs) (a : WireAtt) :
+    Body.att a ∈ (process st o hs).outbox ↔ Body.att a ∈ st.outbox := by
+  unfold process
+  generalize delivered sp o = os
+  induction os generalizing st with
+  | nil => rfl
+  | cons x xs ih => rw [List.foldl_cons, ih, processOne_att]
+
+private theorem propose_att {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (s) (a : WireAtt) :
+    Body.att a ∈ (propose st s).1.outbox ↔ Body.att a ∈ st.outbox := by
+  unfold propose
+  dsimp only
+  split <;> rfl
+
+private theorem nodeTick_att {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (a : WireAtt) :
+    Body.att a ∈ (nodeTick st).outbox ↔ Body.att a ∈ st.outbox := by
+  unfold nodeTick
+  split
+  · exact apply_att _ _ _
+  · rfl
+
+private theorem restore_att {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (k t) (a : WireAtt) :
+    Body.att a ∈ (restore k st t).outbox ↔ Body.att a ∈ st.outbox := by
+  exact apply_att _ _ _
+
+private theorem createAtt_val {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σ : FG.ChainState n}
+    {a : FG.Att n} (h : Λ.createAtt v σ = some (a, Λ')) : a.val = v := by
+  unfold FG.Record.createAtt at h
+  split at h
+  · cases h
+  · split_ifs at h
+    cases h
+    rfl
+
+private def Queued {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (st : State sp ro) (signed : FG.Att sp.n → Prop) : Prop :=
+  ∀ w, Body.att w ∈ st.outbox → ∃ a, w = encodeAtt a ∧ a.val = st.self ∧ signed a
+
+private theorem poll_queued {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time)
+    {signed : FG.Att sp.n → Prop} (h : Queued st signed) :
+    let p := fun a => signed a ∨ st.fgDue = true ∧ ∃ C Λ',
+      (Node.acToFG st.node st.now).2.2.1 = some C ∧
+      (Node.acToFG st.node st.now).1.fg.attest
+        (Node.acToFG st.node st.now).1.record st.self C = some (a, Λ')
+    Queued (poll st t).1 p ∧ ∀ w cs, (poll st t).2 = some (.att w, cs) →
+      ∃ a, w = encodeAtt a ∧ a.val = st.self ∧ p a := by
+  dsimp only
+  let p := fun a => signed a ∨ st.fgDue = true ∧ ∃ C Λ',
+    (Node.acToFG st.node st.now).2.2.1 = some C ∧
+    (Node.acToFG st.node st.now).1.fg.attest
+      (Node.acToFG st.node st.now).1.record st.self C = some (a, Λ')
+  have hpre : Queued (if st.fgDue then fgUpdate st else st) p := by
+    split
+    · rename_i hd
+      simp only [fgUpdate]
+      split
+      · intro w hw
+        obtain ⟨a, hw, hv, hs⟩ := h w hw
+        exact ⟨a, hw, hv, Or.inl hs⟩
+      · rename_i C hC
+        split
+        · intro w hw
+          obtain ⟨a, hw, hv, hs⟩ := h w hw
+          exact ⟨a, hw, hv, Or.inl hs⟩
+        · rename_i a Λ' ha
+          intro w hw
+          rcases List.mem_append.mp hw with hw | hw
+          · obtain ⟨b, hw, hv, hs⟩ := h w hw
+            exact ⟨b, hw, hv, Or.inl hs⟩
+          · have hw' : w = encodeAtt a := Body.att.inj (List.mem_singleton.mp hw)
+            exact ⟨a, hw', createAtt_val ha, Or.inr ⟨hd, C, Λ', hC, ha⟩⟩
+    · intro w hw
+      obtain ⟨a, hw, hv, hs⟩ := h w hw
+      exact ⟨a, hw, hv, Or.inl hs⟩
+  have hself : (if st.fgDue then fgUpdate st else st).self = st.self := by
+    split
+    · exact fgUpdate_self st
+    · rfl
+  simp only [poll]
+  split
+  · exact ⟨hpre, by intro w cs he; cases he⟩
+  · rename_i b rest he
+    constructor
+    · intro w hw
+      exact hpre w (by rw [he]; exact List.mem_cons_of_mem b hw)
+    · intro w cs hp
+      cases hp
+      obtain ⟨a, hw, hv, hs⟩ := hpre w (by rw [he]; exact List.mem_cons_self)
+      exact ⟨a, hw, hv.trans hself, hs⟩
+
+private theorem queued_mono {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {st : State sp ro}
+    {p q : FG.Att sp.n → Prop} (h : Queued st p) (hp : ∀ a, p a → q a) : Queued st q := by
+  intro w hw
+  obtain ⟨a, he, hv, ha⟩ := h w hw
+  exact ⟨a, he, hv, hp a ha⟩
+
+omit [DecidableEq V] in
+private theorem queued_release (key : Fin (Fintype.card V))
+    {signed : FG.Att (Fintype.card V) → Prop} :
+    ∀ (nd : Model.Node (Model.protoOf (compiled (family S)) E)) cs,
+      Queued (nd.st.1 hn) signed →
+      Queued ((Model.releaseAll (Model.protoOf (compiled (family S)) E)
+        rho.hash key nd cs).1.st.1 hn) signed
+  | nd, [], h => h
+  | nd, c :: cs, h => by
+    unfold Model.releaseAll
+    split
+    · apply queued_release key _ cs
+      intro w hw
+      obtain ⟨a, he, hv, ha⟩ := h w ((recordOwn_att _ _ _ _).mp hw)
+      exact ⟨a, he, hv.trans (recordOwn_self _ _ _).symm, ha⟩
+    · exact queued_release key nd cs h
+
+omit [DecidableEq V] in
+private theorem queued_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (d)
+    (h : Queued (nd.st.1 hn) signed) :
+    Queued ((rho.dutyStep v nd d).1.st.1 hn)
+      (fun a => signed a ∨ Signs S rho hn v nd d a) := by
+  unfold Model.Run.dutyStep
+  split
+  · rename_i hsel
+    apply queued_release
+    cases d with
+    | act s k => exact k.elim
+    | propose s hs =>
+      change Queued (((family S (pubOf E)).propose nd.st.1 s).1 hn) _
+      simp only [family, dite_eq_left hn]
+      intro w hw
+      obtain ⟨a, he, hv, ha⟩ := h w ((propose_att _ s _).mp hw)
+      exact ⟨a, he, hv.trans (propose_self _ s).symm, Or.inl ha⟩
+    | pollPropose t =>
+      change Queued (((family S (pubOf E)).pollPropose nd.st.1 t).1 hn) _
+      simp only [family, dite_eq_left hn]
+      intro w hw
+      obtain ⟨a, he, hv, ha⟩ := h w ((nodeTick_att _ _).mp hw)
+      exact ⟨a, he, hv.trans (nodeTick_self _).symm, Or.inl ha⟩
+    | poll t =>
+      change Queued (((family S (pubOf E)).poll nd.st.1 t).1 hn) _
+      simp only [family, dite_eq_left hn]
+      apply queued_mono (poll_queued (nd.st.1 hn) t h).1
+      intro a ha
+      rcases ha with ha | ⟨hd, C, Λ', hC, ha⟩
+      · exact Or.inl ha
+      · exact Or.inr ⟨t, rfl, hsel, hd, C, Λ', hC, ha⟩
+  · exact queued_mono h (fun _ ha => Or.inl ha)
+
+omit [DecidableEq V] in
+private theorem queued_duties {v : V} {signed : FG.Att (Fintype.card V) → Prop}
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (ds)
+    (h : Queued (nd.st.1 hn) signed) :
+    Queued ((rho.runDuties v nd ds).1.st.1 hn)
+      (fun a => signed a ∨ ∃ q d, ds[q]? = some d ∧
+        Signs S rho hn v (rho.runDuties v nd (ds.take q)).1 d a) := by
+  induction ds using List.reverseRecOn with
+  | nil => exact queued_mono h (fun _ ha => Or.inl ha)
+  | append_singleton ds d ih =>
+    rw [duties_append]
+    change Queued ((rho.dutyStep v (rho.runDuties v nd ds).1 d).1.st.1 hn) _
+    apply queued_mono (queued_duty S rho hn _ d ih)
+    intro a ha
+    rcases ha with (ha | ⟨q, d', hq, hs⟩) | hs
+    · exact Or.inl ha
+    · have hlt : q < ds.length := List.getElem?_eq_some_iff.mp hq |>.1
+      refine Or.inr ⟨q, d', ?_, ?_⟩
+      · simpa [List.getElem?_append, hlt] using hq
+      · simpa only [List.take_append_of_le_length (Nat.le_of_lt hlt)] using hs
+    · exact Or.inr ⟨ds.length, d, by simp, by simpa using hs⟩
+
+private theorem signs_of_tick {v : V} {i q : Nat} {t : Time} {d} {a}
+    (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
+    (hd : ((Model.protoOf (compiled (family S)) E).duties t)[q]? = some d)
+    (hs : Signs S rho hn v (rho.runDuties v
+      ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
+      (((Model.protoOf (compiled (family S)) E).duties t).take q)).1 d a) :
+    EngineSignsAt S rho hn v i q a := by
+  obtain ⟨k, rfl, hsel, hdue, C, Λ', hC, ha⟩ := hs
+  exact ⟨_, .tick he hw (Nat.le_of_lt (List.getElem?_eq_some_iff.mp hd).1),
+    k, Or.inl ⟨t, he, hw, hd⟩, hsel, hdue, C, Λ', hC, ha⟩
+
+private theorem signs_of_deliver {v : V} {i q : Nat} {t : Time} {o d a}
+    (he : rho.events[i]? = some (.deliver v o t))
+    (hd : ((Model.protoOf (compiled (family S)) E).deliverDuties t)[q]? = some d)
+    (hs : Signs S rho hn v (rho.runDuties v
+      ⟨(Model.protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
+        (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
+      (((Model.protoOf (compiled (family S)) E).deliverDuties t).take q)).1 d a) :
+    EngineSignsAt S rho hn v i q a := by
+  obtain ⟨k, rfl, hsel, hdue, C, Λ', hC, ha⟩ := hs
+  exact ⟨_, .deliver he (Nat.le_of_lt (List.getElem?_eq_some_iff.mp hd).1),
+    k, Or.inr ⟨t, o, he, hd⟩, hsel, hdue, C, Λ', hC, ha⟩
+
+private theorem queued_before (v : V) (i : Nat) :
+    Queued ((rho.stateBefore i v).st.1 hn)
+      (fun a => ∃ j q, j < i ∧ EngineSignsAt S rho hn v j q a) := by
+  induction i with
+  | zero => intro w hw; cases hw
+  | succ i ih =>
+    have hold : ∀ a, (∃ j q, j < i ∧ EngineSignsAt S rho hn v j q a) →
+        ∃ j q, j < i + 1 ∧ EngineSignsAt S rho hn v j q a := by
+      rintro a ⟨j, q, hj, hs⟩
+      exact ⟨j, q, by omega, hs⟩
+    cases he : rho.events[i]? with
+    | none =>
+      have hst : rho.stateBefore (i + 1) = rho.stateBefore i := by
+        simp only [Model.Run.stateBefore, List.take_add_one, he, Option.toList_none,
+          List.append_nil]
+      rw [hst]
+      exact queued_mono ih hold
+    | some e =>
+      rw [rho.stateBefore_succ he]
+      cases e with
+      | tick u t =>
+        by_cases hu : v = u
+        · subst u
+          simp only [Model.Run.step, Function.update_self, Model.Run.tick]
+          split
+          · rename_i hw
+            apply queued_release
+            apply queued_mono (queued_duties S rho hn
+              ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+                (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _ ih)
+            rintro a (ha | ⟨q, d, hd, hs⟩)
+            · exact hold a ha
+            · exact ⟨i, q, by omega, signs_of_tick S rho hn he hw hd hs⟩
+          · exact queued_mono ih hold
+        · simpa only [Model.Run.step, Function.update_of_ne hu] using queued_mono ih hold
+      | deliver u o t =>
+        by_cases hu : v = u
+        · subst u
+          simp only [Model.Run.step, Function.update_self, Model.Run.deliver]
+          apply queued_release
+          have hprocess : Queued
+              (process ((rho.stateBefore i v).st.1 hn) o (Model.digests rho.hash o))
+              (fun a => ∃ j q, j < i ∧ EngineSignsAt S rho hn v j q a) := by
+            intro w hw
+            obtain ⟨a, he, hv, ha⟩ := ih w ((process_att _ _ _ _).mp hw)
+            exact ⟨a, he, hv.trans (process_self _ _ _).symm, ha⟩
+          apply queued_mono (queued_duties S rho hn
+            ⟨(Model.protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
+              (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _ hprocess)
+          rintro a (ha | ⟨q, d, hd, hs⟩)
+          · exact hold a ha
+          · exact ⟨i, q, by omega, signs_of_deliver S rho hn he hd hs⟩
+        · simpa only [Model.Run.step, Function.update_of_ne hu] using queued_mono ih hold
+      | restart u t =>
+        by_cases hu : v = u
+        · subst u
+          simp only [Model.Run.step, Function.update_self]
+          intro w hw
+          obtain ⟨a, he', hv, ha⟩ := ih w ((restore_att _ _ _ _).mp hw)
+          exact ⟨a, he', hv.trans (history_events S rho hn v i).1, hold a ha⟩
+        · simpa only [Model.Run.step, Function.update_of_ne hu] using queued_mono ih hold
+
+omit [DecidableEq V] in
+private theorem duty_released_att {v : V} {signed : FG.Att (Fintype.card V) → Prop}
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (d)
+    (h : Queued (nd.st.1 hn) signed)
+    {a : FG.Att (Fintype.card V)} (ha : attObj a ∈ (rho.dutyStep v nd d).2) :
+    signed a ∨ Signs S rho hn v nd d a := by
+  unfold Model.Run.dutyStep at ha
+  split at ha
+  · rename_i hsel
+    have hc := Model.releaseAll_subset _ _ _ _ _ ha
+    obtain ⟨m, cs, hm, _, he⟩ := rho.mem_signedCandidate.mp hc
+    have he' := he
+    change (Model.Obj.mk (.signed a.val (ShapeRole.poll : ShapeRole Empty))
+      (.data (Body.att (encodeAtt a))) [] : Wire (Fintype.card V)) = _ at he'
+    injection he' with hauth hmsg hcs
+    subst m cs
+    cases d with
+    | act s k => exact k.elim
+    | propose s hs =>
+      have hh : (ShapeRole.poll : ShapeRole Empty) = .proposer s := by
+        injection hauth
+      cases hh
+    | pollPropose t =>
+      change _ ∈ (Option.map _ ((family S (pubOf E)).pollPropose nd.st.1 t).2).toList at hm
+      simp only [family, dite_eq_left hn] at hm
+      cases hm
+    | poll t =>
+      have hp : (poll (nd.st.1 hn) t).2 = some (.att (encodeAtt a), []) := by
+        change _ ∈ (((family S (pubOf E)).poll nd.st.1 t).2.toList.map
+          (fun (b, cs) => (Model.Msg.data b, cs))) at hm
+        simp only [family, dite_eq_left hn] at hm
+        change _ ∈ ((poll (nd.st.1 hn) t).2.toList.map
+          (fun (b, cs) => (Model.Msg.data b, cs))) at hm
+        obtain ⟨⟨b, cs⟩, hb, heq⟩ := List.mem_map.mp hm
+        have hp := Prod.mk.inj heq
+        have hb' := Model.Msg.data.inj hp.1
+        have hcs' := hp.2
+        subst b cs
+        exact Option.mem_toList.mp hb
+      obtain ⟨b, hb, _, hs⟩ := (poll_queued (nd.st.1 hn) t h).2 _ _ hp
+      have hab : a = b := by
+        have hh := congrArg (decodeAtt (Fintype.card V)) hb
+        simpa only [decodeAtt_encodeAtt, Option.some.injEq] using hh
+      subst b
+      rcases hs with hs | ⟨hd, C, Λ', hC, hs⟩
+      · exact Or.inl hs
+      · exact Or.inr ⟨t, rfl, hsel, hd, C, Λ', hC, hs⟩
+  · cases ha
+
+omit [DecidableEq V] in
+private theorem duties_pair_append (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (ds ds') :
+    rho.runDuties v nd (ds ++ ds') =
+      let r := rho.runDuties v nd ds
+      let r' := rho.runDuties v r.1 ds'
+      (r'.1, r.2 ++ r'.2) := by
+  unfold Model.Run.runDuties
+  rw [List.foldl_append]
+  generalize ds.foldl _ _ = acc
+  induction ds' generalizing acc with
+  | nil => simp
+  | cons d ds' ih =>
+    dsimp only
+    rw [List.foldl_cons, List.foldl_cons, ih]
+    conv_rhs => rw [ih]
+    simp only [List.append_assoc, List.nil_append]
+
+omit [DecidableEq V] in
+private theorem duties_released_att {v : V} {signed : FG.Att (Fintype.card V) → Prop}
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (ds)
+    (h : Queued (nd.st.1 hn) signed) {a : FG.Att (Fintype.card V)}
+    (ha : attObj a ∈ (rho.runDuties v nd ds).2) :
+    signed a ∨ ∃ q d, ds[q]? = some d ∧
+      Signs S rho hn v (rho.runDuties v nd (ds.take q)).1 d a := by
+  induction ds using List.reverseRecOn with
+  | nil => cases ha
+  | append_singleton ds d ih =>
+    rw [duties_pair_append] at ha
+    rcases List.mem_append.mp ha with ha | ha
+    · rcases ih ha with ha | ⟨q, d', hq, hs⟩
+      · exact Or.inl ha
+      · have hlt := (List.getElem?_eq_some_iff.mp hq).1
+        refine Or.inr ⟨q, d', ?_, ?_⟩
+        · simpa [List.getElem?_append, hlt] using hq
+        · simpa only [List.take_append_of_le_length (Nat.le_of_lt hlt)] using hs
+    · have hq := queued_duties S rho hn (v := v) nd ds h
+      have hr := duty_released_att S rho hn _ d hq ha
+      rcases hr with (ha | ⟨q, d', hqd, hs⟩) | hs
+      · exact Or.inl ha
+      · have hlt := (List.getElem?_eq_some_iff.mp hqd).1
+        refine Or.inr ⟨q, d', ?_, ?_⟩
+        · simpa [List.getElem?_append, hlt] using hqd
+        · simpa only [List.take_append_of_le_length (Nat.le_of_lt hlt)] using hs
+      · exact Or.inr ⟨ds.length, d, by simp, by simpa using hs⟩
+
+omit [DecidableEq V] in
+private theorem gossip_not_att (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (k : Fin (Fintype.card V)) (t : Time) (a : FG.Att (Fintype.card V)) :
+    attObj a ∉ (Model.releaseAll (Model.protoOf (compiled (family S)) E) rho.hash k nd
+      (Model.gossipCandidates (Model.protoOf (compiled (family S)) E) nd.st t)).2 := by
+  intro ha
+  obtain ⟨mc, _, he⟩ := Model.mem_gossipCandidates.mp
+    (Model.releaseAll_subset _ _ _ _ _ ha)
+  have hh := congrArg Model.Obj.auth he
+  cases hh
+
+private theorem released_att_signed {v : V} {i : Nat} {t : Time}
+    (hs : rho.SendsAt v i t) {a : FG.Att (Fintype.card V)}
+    (ha : attObj a ∈ rho.releasesAt i) :
+    ∃ j q, j ≤ i ∧ EngineSignsAt S rho hn v j q a := by
+  rcases hs with he | ⟨o, he⟩
+  · simp only [Model.Run.releasesAt, he] at ha
+    unfold Model.Run.tick at ha
+    split at ha
+    · rename_i hw
+      rcases List.mem_append.mp ha with ha | ha
+      · have h := duties_released_att S rho hn
+          ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+            (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
+          (queued_before S rho hn v i) ha
+        rcases h with ⟨j, q, hj, hs⟩ | ⟨q, d, hd, hs⟩
+        · exact ⟨j, q, Nat.le_of_lt hj, hs⟩
+        · exact ⟨i, q, Nat.le_refl _, signs_of_tick S rho hn he hw hd hs⟩
+      · exact False.elim (gossip_not_att S rho _ _ t a ha)
+    · cases ha
+  · simp only [Model.Run.releasesAt, he, Model.Run.deliver] at ha
+    rcases List.mem_append.mp ha with ha | ha
+    · have hprocess : Queued
+          (process ((rho.stateBefore i v).st.1 hn) o (Model.digests rho.hash o))
+          (fun a => ∃ j q, j < i ∧ EngineSignsAt S rho hn v j q a) := by
+        intro w hw
+        obtain ⟨a, he, hv, ha⟩ := queued_before S rho hn v i w ((process_att _ _ _ _).mp hw)
+        exact ⟨a, he, hv.trans (process_self _ _ _).symm, ha⟩
+      have h := duties_released_att S rho hn
+        ⟨(Model.protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
+          (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _ hprocess ha
+      rcases h with ⟨j, q, hj, hs⟩ | ⟨q, d, hd, hs⟩
+      · exact ⟨j, q, Nat.le_of_lt hj, hs⟩
+      · exact ⟨i, q, Nat.le_refl _, signs_of_deliver S rho hn he hd hs⟩
+    · exact False.elim (gossip_not_att S rho _ _ t a ha)
+
+omit [DecidableEq V] in
+private theorem duties_closure (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (ds)
+    (a : FG.Att (Fintype.card V))
+    (ha : attObj a ∈ Model.closure (rho.runDuties v nd ds).1.seen) :
+    attObj a ∈ Model.closure nd.seen ∨ attObj a ∈ (rho.runDuties v nd ds).2 := by
+  induction ds using List.reverseRecOn with
+  | nil => exact Or.inl ha
+  | append_singleton ds d ih =>
+    rw [duties_pair_append] at ha ⊢
+    change _ ∨ attObj a ∈ _ ++ (rho.dutyStep v (rho.runDuties v nd ds).1 d).2
+    change attObj a ∈ Model.closure (rho.dutyStep v (rho.runDuties v nd ds).1 d).1.seen at ha
+    unfold Model.Run.dutyStep at ha ⊢
+    split at ha
+    · rename_i hsel
+      simp only [hsel, ↓reduceIte]
+      let Q := fun o => o = attObj a →
+        attObj a ∈ Model.closure (rho.runDuties v nd ds).1.seen ∨
+          attObj a ∈ (Model.releaseAll (Model.protoOf (compiled (family S)) E)
+            rho.hash (rho.ownKey v)
+            ⟨((Model.protoOf (compiled (family S)) E).act (rho.runDuties v nd ds).1.st d).1,
+              (rho.runDuties v nd ds).1.seen⟩
+            (rho.signedCandidate v d
+              ((Model.protoOf (compiled (family S)) E).act (rho.runDuties v nd ds).1.st d).2)).2
+      have hp := Model.releaseAll_preserves rho.hash (rho.ownKey v) Q
+        ⟨((Model.protoOf (compiled (family S)) E).act (rho.runDuties v nd ds).1.st d).1,
+          (rho.runDuties v nd ds).1.seen⟩
+        (rho.signedCandidate v d
+          ((Model.protoOf (compiled (family S)) E).act (rho.runDuties v nd ds).1.st d).2)
+        (fun o ho b hb he => Or.inl (he ▸ (Model.mem_closure_iff _ _).mpr ⟨o, ho, hb⟩))
+        (fun o ho he => Or.inr (he ▸ ho))
+      obtain ⟨o, ho, hc⟩ := (Model.mem_closure_iff _ _).mp ha
+      rcases hp.1 o ho _ hc rfl with hh | hh
+      · rcases ih hh with hh | hh
+        · exact Or.inl hh
+        · exact Or.inr (List.mem_append_left _ hh)
+      · exact Or.inr (List.mem_append_right _ hh)
+    · rename_i hsel
+      simp only [hsel, ↓reduceIte, List.append_nil]
+      exact ih ha
+
+private theorem cut_self {v : V} {i p : Nat} {nd}
+    (hc : EngineDutyCut S rho v i p nd) : (nd.st.1 hn).self = rho.ownKey v := by
+  have h := history_events S rho hn v i
+  cases hc with
+  | tick he hw hp =>
+    rename_i t
+    exact (history_duties S rho hn
+      ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _ h).1
+  | deliver he hp =>
+    rename_i t o
+    have hh : HasHistory (rho.ownKey v)
+        (process ((rho.stateBefore i v).st.1 hn) o (Model.digests rho.hash o))
+        (fun a => ∃ j q, j < i ∧ EngineSignsAt S rho hn v j q a) := by
+      obtain ⟨hk, hr, ins, hi, he', hout⟩ := h
+      exact ⟨(process_self _ _ _).trans hk, process_reachable _ _ _ hr,
+        ins, hi, (process_record _ _ _).trans he', hout⟩
+    exact (history_duties S rho hn
+      ⟨(Model.protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
+        (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _ hh).1
+
+private theorem signing_val {v : V} {i p : Nat} {a}
+    (hs : EngineSignsAt S rho hn v i p a) : a.val = rho.ownKey v := by
+  obtain ⟨nd, hc, k, _, _, _, C, Λ', _, ha⟩ := hs
+  exact (createAtt_val ha).trans (cut_self S rho hn hc)
+
+/-- **Implementation release inverse.** An honest attestation in the
+closure of `seen` at an actual duty boundary has an earlier actual signing. Unforgeability gives
+earlier honest releases; queue provenance identifies their FG signings. Within the same event
+the bound uses duty-prefix order, not strict event order.
 Carried attestations use recursive containment, including unsigned wrappers. -/
 theorem engine_seen_att_signed (hv : rho.ExecutionValid) {v u : V}
-    (hv' : v ∈ rho.honest) (hu : u ∈ rho.honest) {i p : Nat}
+    (_hv' : v ∈ rho.honest) (hu : u ∈ rho.honest) {i p : Nat}
     {nd : Model.Node (Model.protoOf (compiled (family S)) E)}
     (hc : EngineDutyCut S rho v i p nd) {a : FG.Att (Fintype.card V)}
     (ha : a.val = rho.ownKey u) (hm : attObj a ∈ Model.closure nd.seen) :
     ∃ j q, (j < i ∨ j = i ∧ u = v ∧ q < p) ∧ EngineSignsAt S rho hn u j q a := by
-  sorry
+  have hsigner : rho.signerOf (attObj a) = some u := by
+    change Option.map rho.key (some a.val) = some u
+    simp [ha, Model.Run.ownKey]
+  have hbefore (hm : attObj a ∈ Model.closure (rho.stateBefore i v).seen) :
+      ∃ j q, (j < i ∨ j = i ∧ u = v ∧ q < p) ∧ EngineSignsAt S rho hn u j q a := by
+    obtain ⟨j, hj, t, hs, hr⟩ := rho.signed_seen_released hv hm hu hsigner
+    obtain ⟨k, q, hk, ha⟩ := released_att_signed S rho hn hs hr
+    exact ⟨k, q, Or.inl (by omega), ha⟩
+  cases hc with
+  | tick he hw hp =>
+    rename_i t
+    rcases duties_closure S rho v _ _ a hm with hm | hm
+    · exact hbefore hm
+    · have hh := duties_released_att S rho hn
+        ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+          (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
+        (queued_before S rho hn v i) hm
+      rcases hh with ⟨j, q, hj, hs⟩ | ⟨q, d, hd, hs⟩
+      · have huv : u = v := rho.key.symm.injective (ha.symm.trans (signing_val S rho hn hs))
+        subst u
+        exact ⟨j, q, Or.inl hj, hs⟩
+      · have hq : q < p := by
+          have hb := (List.getElem?_eq_some_iff.mp hd).1
+          simp only [List.length_take] at hb
+          omega
+        have hd' := hd
+        simp only [List.getElem?_take, ite_eq_left hq] at hd'
+        have hs' := signs_of_tick S rho hn he hw hd'
+          (by simpa only [List.take_take, Nat.min_eq_left (Nat.le_of_lt hq)] using hs)
+        have huv : u = v := rho.key.symm.injective (ha.symm.trans (signing_val S rho hn hs'))
+        subst u
+        exact ⟨i, q, Or.inr ⟨rfl, rfl, hq⟩, hs'⟩
+  | deliver he hp =>
+    rename_i t o
+    rcases duties_closure S rho v _ _ a hm with hm | hm
+    · rw [Model.closure_append] at hm
+      rcases List.mem_append.mp hm with hm | hm
+      · exact hbefore hm
+      · have hcontains : Model.Obj.Contains o (attObj a) := by
+          simp only [Model.closure, List.flatMap_singleton] at hm
+          exact hm
+        obtain ⟨j, t', hj, hs, hr⟩ := hv.unforgeable i v o t he _ hcontains u hu hsigner
+        obtain ⟨k, q, hk, hs'⟩ := released_att_signed S rho hn hs hr
+        exact ⟨k, q, Or.inl (by omega), hs'⟩
+    · have hprocess : Queued
+          (process ((rho.stateBefore i v).st.1 hn) o (Model.digests rho.hash o))
+          (fun a => ∃ j q, j < i ∧ EngineSignsAt S rho hn v j q a) := by
+        intro w hw
+        obtain ⟨a, he, hv, ha⟩ := queued_before S rho hn v i w ((process_att _ _ _ _).mp hw)
+        exact ⟨a, he, hv.trans (process_self _ _ _).symm, ha⟩
+      have hh := duties_released_att S rho hn
+        ⟨(Model.protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
+          (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _ hprocess hm
+      rcases hh with ⟨j, q, hj, hs⟩ | ⟨q, d, hd, hs⟩
+      · have huv : u = v := rho.key.symm.injective (ha.symm.trans (signing_val S rho hn hs))
+        subst u
+        exact ⟨j, q, Or.inl hj, hs⟩
+      · have hq : q < p := by
+          have hb := (List.getElem?_eq_some_iff.mp hd).1
+          simp only [List.length_take] at hb
+          omega
+        have hd' := hd
+        simp only [List.getElem?_take, ite_eq_left hq] at hd'
+        have hs' := signs_of_deliver S rho hn he hd'
+          (by simpa only [List.take_take, Nat.min_eq_left (Nat.le_of_lt hq)] using hs)
+        have huv : u = v := rho.key.symm.injective (ha.symm.trans (signing_val S rho hn hs'))
+        subst u
+        exact ⟨i, q, Or.inr ⟨rfl, rfl, hq⟩, hs'⟩
 
 /-- **G0.5 plus implementation provenance; NO independent PAPER PROOF of the engine guard.**
 A freshly generated attestation passes the candidate/seen protection boundary: self-conflict
