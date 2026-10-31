@@ -153,17 +153,17 @@ theorem stored_slow_lock_provenance (hrun : GoldilocksRun dg H tr) (hnc : Compos
 /-! ### Extension by induction on the cut of the vote -/
 
 /-- `f < h_t` at an honest vote of a slot after a clean label, on the AC projection. -/
-private theorem faultBound_proj (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+theorem faultBound_proj (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : cutZ sp.toParams g ≤ tr.time k) :
     SA.FaultBound tr.projAC H (tr.time k) := by
   unfold SA.FaultBound
   rw [← (Compose.joined_projection sp ro dg H tr hrun y hy (tr.time k)).2.2]
   exact faultBound_of_healthy hrun hs hk
 
-/-- **Extension of an origin's block** (§3's event induction): given the first transfer and the
-frozen viability at every in-phase honest vote of a slot `> j` (from the earlier votes), every
-such vote extends `B`. -/
-private theorem origin_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
+/-- **Extension of an origin's block** (§3's event induction): given the first transfer (at the
+slot-`(j+1)` votes, from the earlier votes) and the frozen viability at every in-phase honest vote
+of a slot `> j + 1`, every in-phase honest vote of a slot `> j` extends `B`. -/
+theorem origin_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hj : w + 4 * sp.Δ ≤ sp.ts j)
@@ -172,7 +172,7 @@ private theorem origin_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr 
       (∀ z ∈ H, ∀ k' < k, ∀ e', SA.VoteAt tr.projAC z k' e' → j < e'.msg.slot →
         SA.VoteExtends (tr.HonestBlocks H) e'.msg B) →
       SA.VoteExtends (tr.HonestBlocks H) e.msg B)
-    (hviab : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
+    (hviab : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → j + 1 < e.msg.slot →
       PhaseOn tr.projFG H i₀ k m c →
       B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
         Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
@@ -219,11 +219,11 @@ private theorem origin_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr 
   refine SA.next_transfer sp _ ro H _ tr.projAC hrun' m' y k B ℓ e hy hv hm' hall
     (half_committee_of_healthy hrun hs (cutZ_le_of_clean hw (hj.trans hjm)))
     (honest_batch_carry hrun hs hc hw (hj.trans hjm) hall hy hv hm'
-      (hviab y hy k ℓ e hv hjs hk) hBf)
+      (hviab y hy k ℓ e hv (by omega) hk) hBf)
     (faultBound_proj hrun hs hy ((cutZ_le_of_clean hw hj).trans (hjm.trans hmk)))
     (Compose.syncAC_mono hsync0 le_rfl hle) ?_ ?_
   · rw [← hm']
-    exact Or.inl ((hviab y hy k ℓ e hv hjs hk).resolve_right hBf)
+    exact Or.inl ((hviab y hy k ℓ e hv (by omega) hk).resolve_right hBf)
   · rw [← hm']
     exact fun z hz j' hj' e' hv' hsl' => hprior z hz j' hj' e' hv' (hsl' ▸ hjs)
 
@@ -239,7 +239,7 @@ theorem clean_fast_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg
   have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr hrun hs.noColl
   have hr := hrun'.localRun
   refine origin_extends hrun hs hc hw hj (fun y hy k ℓ e hv h1 hk hBf hprior => ?_)
-    (fun _ hy _ _ _ hv hjs hk => clean_fast_viable hrun hs hc hw hx ho hj hy hv hjs hk)
+    (fun _ hy _ _ _ hv hjs hk => clean_fast_viable hrun hs hc hw hx ho hj hy hv (by omega) hk)
   have hviab := (clean_fast_viable hrun hs hc hw hx ho hj hy hv (by omega) hk).resolve_right hBf
   obtain ⟨-, hle⟩ := Compose.cast_head_fcRoot hr hy hv
   have h0 := hr.time_nonneg k
@@ -281,7 +281,7 @@ theorem clean_slow_extends (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg
       clean_slow_first_extends hrun hs hc hw hx ho hj hy hv h1 hprior
         (fun _ _ hC => clean_slow_carry hrun hs hc hw hx ho hj hy hv h1 hk hC hBf)
         ((clean_slow_viable hrun hs hc hw hx ho hj hy hv (by omega) hk).resolve_right hBf))
-    (fun _ hy _ _ _ hv hjs hk => clean_slow_viable hrun hs hc hw hx ho hj hy hv hjs hk)
+    (fun _ hy _ _ _ hv hjs hk => clean_slow_viable hrun hs hc hw hx ho hj hy hv (by omega) hk)
 
 /-! ### HS.2 (1), (2) -/
 

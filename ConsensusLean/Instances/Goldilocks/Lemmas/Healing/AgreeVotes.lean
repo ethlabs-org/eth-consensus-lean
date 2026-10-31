@@ -19,7 +19,8 @@ slot-`s` vote that is not `P` (`votes_eq_of_pass`):
   anchor is below `P` (`voter_anchor_below`: the lock premise for the earlier labels, an honest
   earlier slot-`s` supporter of a slot-`s` optimistic lock, `fc_root ⪯ P`), and a voter whose
   anchor is below `d.start` passes `d.start` (`voter_reaches_start_unlocked` under (a)'s premises
-  with #101's start premise, `voter_reaches_start_clean` under (b)'s; both open);
+  with #101's start premise, modulo `voter_unlock_keeps_lock`; `voter_reaches_start_clean` under
+  (b)'s);
 * at every block of that path at or above the voter's anchor, the proposer's best child is the
   voter's best child (`proposal_suffix`, `AgreeSuffix`); at `Q` the voter's only eligible child
   is `P` (`proposal_frozen_viable`, `AgreeFrozen`; `proposal_only_child`, `AgreeSuffix`), and
@@ -123,78 +124,11 @@ theorem voter_anchor_below (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s 
     (hIH : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = s →
       e'.msg.head = P.root) :
     Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) P := by
-  have hrun := hS.run
-  have hl := hrun.toLocalRun
-  have hnc := hS.shared.noColl
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
-  have hr := hac.localRun
-  have hU := Compose.honest_blocks_coherent hl hnc
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
-  have hs1 := hS.one_le_slot
-  obtain ⟨-, hys, -, -⟩ := SA.castAt_spec hr hy hcy
-  have hsj : sp.slot (tr.time j) = s := by rw [← hes]; exact hys.symm
-  have hPv := proposal_frozen_viable hS hy hcy hes
-  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := hPv.2.1.mono hΦU
-  have hPU : P ∈ tr.HonestBlocks H := hΦU hPv.1.1
-  -- the honest validators are fewer than a quarter of three quarters of the committee
-  have hHc := hS.shared.healthy.2.2
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  -- every live lock block of the read point is below `P`
-  have hlk : ∀ B ∈ SA.liveLockBlocks sp e.readPoint.locks ℓy.frame (tr.time j),
-      Anc (tr.HonestBlocks H) B P := by
-    intro B' hB'
-    obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩ := SA.mem_liveLockBlocks hΦ hB'
-    have hva := SA.viableAncestor_spec hΦ hB₀
-    have hvaU : Anc (tr.HonestBlocks H) (ℓy.frame.viableAncestor B₀) B₀ := hva.1.mono hΦU
-    rcases lt_or_ge l₀.slot s with hlt | hge
-    · -- a lock of an earlier slot sits below a stored live lock: the lock premise
-      obtain ⟨l, hlm, hsl, B, hB, hBr, B'', hB'', hB''r, hB''B⟩ :=
-        SA.readPoint_locks_below_stored hr hy hcy (by omega) l₀ hl₀ (by omega)
-      obtain rfl : B'' = B₀ := hΦ.coherent.1 hB'' hB₀ (hB''r.trans hB₀r.symm)
-      have hlv : (⟨(ℓy.frame.viableAncestor B).root, l.slot, l.fast⟩ : SA.Lock) ∈
-          SA.liveLocks sp (tr.state y j).ac.locks ℓy.frame (tr.time j) := by
-        refine ⟨l, ?_, B, hB, hBr, hsl ▸ hlive, rfl⟩
-        rw [← Compose.projAC_state hl hy]
-        exact hlm
-      have hvaB := SA.viableAncestor_spec hΦ hB
-      have hle : ℓy.frame.Anc (ℓy.frame.viableAncestor B'') (ℓy.frame.viableAncestor B) :=
-        hvaB.2.2 _ (hva.1.trans hB''B) hva.2.1
-      rcases hlock y hy j ℓy e hcy hes _ hlv (by rw [← hsl]; exact hlt) _
-          (SA.viableAncestor_anc hΦ hB).1 rfl with h | h
-      · exact (hle.mono hΦU).trans h
-      · exact (hle.mono hΦU).trans (h.trans hfP)
-    · -- a lock of slot `≥ s` sits below a block of three quarters of the committee: an honest
-      -- supporter voted before, for `P`
-      obtain ⟨Φ, A, D, -, hΦ'U, -, hcnt, hpool, -, L, hL, hLr, hLD⟩ :=
-        SA.lock_origin_readPoint hac hy hcy l₀ hl₀ (by rw [hes]; omega)
-      obtain rfl : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
-      obtain ⟨z, ⟨x, hx, rfl, R, hR, hRr, hDR⟩, hzH⟩ : ∃ z ∈ SA.optimisticVoters sp A Φ l₀.slot D,
-          z ∈ H := by
-        by_contra hno
-        push Not at hno
-        have hsub : SA.optimisticVoters sp A Φ l₀.slot D ⊆ Hᶜ := fun z hz => hno z hz
-        have h1 : (SA.optimisticVoters sp A Φ l₀.slot D).ncard ≤ Hᶜ.ncard :=
-          Set.ncard_le_ncard hsub (Set.toFinite _)
-        have h2 : 3 * Hᶜ.ncard ≤ sp.n - 1 := hHc
-        have h3 : 3 * sp.n ≤ 4 * (SA.optimisticVoters sp A Φ l₀.slot D).ncard := hcnt
-        have h4 := Nat.mul_le_mul_left 4 h1
-        have h5 : 0 < sp.n := sp.toParams.hn
-        omega
-      obtain ⟨-, j', hj', e', hv', he'⟩ := hpool x hx hzH
-      obtain ⟨ℓ', hc', hem'⟩ := hv'
-      obtain ⟨-, hys', -, -⟩ := SA.castAt_spec hr hzH ⟨hc', hem'⟩
-      have hys'' : e'.msg.slot = sp.slot (tr.time j') := hys'
-      have hle : sp.slot (tr.time j') ≤ s :=
-        hsj ▸ SA.slot_mono sp (hl.time_nonneg j') (hl.time_mono hj'.le)
-      have hxs : x.slot = s := by
-        have := (hpool x hx hzH).1
-        rw [← he'] at this ⊢
-        omega
-      have hhead := hIH _ hzH j' hj' e' ⟨ℓ', hc', hem'⟩ (by rw [he']; exact hxs)
-      rw [he'] at hhead
-      obtain rfl : R = P := hU.1 (hΦ'U hR) hPU (hRr.trans hhead)
-      exact hvaU.trans (hLD.trans (hDR.mono hΦ'U))
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr hS.run hS.shared.noColl).localRun
+  obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P :=
+    (proposal_frozen_viable hS hy hcy hes).2.1.mono hΦU
+  have hlk := readPoint_lockBlocks_below hS hlock hy hcy hes hIH
   -- the anchor is a live lock block or `fc_root`
   unfold SA.getAnchor
   rcases hD : SA.deepest ℓy.frame
@@ -205,24 +139,65 @@ theorem voter_anchor_below (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s 
     · exact hlk D h
     · exact (Set.mem_singleton_iff.1 h) ▸ hfP
 
+/-- The proposal walk's start is below `P` (`d.start ⪯ d.head`, the parent of `P`). -/
+private theorem start_anc_proposal
+    (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
+    (hes : e.msg.slot = s) : Anc (tr.HonestBlocks H) d.start P := by
+  have hr' := (Compose.goldilocks_ac_projection sp ro dg H tr hS.run hS.shared.noColl).localRun
+  obtain ⟨-, hdt, hsd⟩ := proposal_walk hS
+  obtain ⟨-, hΦpU⟩ := SA.frameIn_of_callAt hr' hS.ready.1 hS.call
+  obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr' hy hcy.1
+  have hPU : P ∈ tr.HonestBlocks H := hΦU (proposal_frozen_viable hS hy hcy hes).1.1
+  exact (Anc.mono hΦpU hsd).tail ⟨hΦpU hdt, hPU, hS.parent⟩
+
+/-- A vote extending the proposal walk's start, whose anchor is below `P` and not above the
+start, passes the start: the anchor is strictly below it (both are below `P`), and the start is
+between the frame's `Σ.F` and the head. -/
+private theorem walk_passes_start
+    (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
+    (hes : e.msg.slot = s) (hext : SA.VoteExtends (tr.HonestBlocks H) e.msg d.start)
+    (hbelow : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) P)
+    (hlow : ¬ Anc (tr.HonestBlocks H) d.start (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j))) :
+    ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) d.start ∧
+      ℓy.frame.Anc d.start (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
+        (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
+        (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
+  have hrun := hS.run
+  have hnc := hS.shared.noColl
+  have hr' := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
+  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr' hy hcy.1
+  have hsP := start_anc_proposal hS hy hcy hes
+  obtain ⟨Hd, hHd, hHdr, hsH⟩ := hext
+  have hGt : SA.getHead sp e.readPoint ℓy.frame (tr.time j)
+      (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
+      (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) ∈ ℓy.frame.tree :=
+    SA.getHead_mem hΦ (fun _ hB => hB.1.1) _ _ _ _
+  have hhead := (SA.castAt_spec hr' hy hcy).2.2.2
+  rw [hes] at hhead
+  obtain rfl := hU.1 hHd (hΦU hGt) (hHdr.trans hhead)
+  -- `d.start ⪯ P`, so the anchor is below `d.start`
+  have hat := getAnchor_mem hΦ e.readPoint (tr.time j)
+  have haS := (SA.anc_total hU hbelow hsP).resolve_right hlow
+  obtain ⟨hst, hsG⟩ :=
+    mem_of_between hU hΦ hΦU (((hΦ.rooted.2 _ hat).mono hΦU).trans haS) hsH hGt
+  exact ⟨SA.anc_tree_of_anc_U hU hΦ hΦU hat haS hst, hsG⟩
+
 /-- **A voter below the proposal walk's start reaches it, under HS.3 (a)'s premises**
 (`hs234-exact-interface.md` §4, "the unequal-root prefix", "induction on child comparisons reaches
-`P`"; #100/#101; open). At an honest slot-`s` vote whose anchor is below `P` and strictly below
-the proposal walk's start `d.start`, the voter's walk passes `d.start`. `d.start` is the deepest
-of the proposer's `fc_root` `R` and its live lock blocks after `unlock` (at its `ac_proposal`):
+`P`"; #100/#101). At an honest slot-`s` vote whose anchor is below `P` and not above the proposal
+walk's start `d.start`, the voter's walk passes `d.start`. `d.start` is the deepest of the
+proposer's `fc_root` `R` and its live lock blocks after `unlock` (`proposal_start_cases`):
 
-* a lock block `L` of a label `< s` is, by the start premise (#101), at or below the voter's
-  `fc_root` (then `d.start ⪯` the voter's anchor and the claim is vacuous) or at or below a
-  stored live lock block of the voter; the voter's `unlock` against its merged view keeps that
-  lock at or above `L` (`L`'s opponents in the merged view are those in the proposer's payload
-  view, up to cap alternatives: the view comparison of `proposal_suffix`), so again
-  `d.start ⪯` the voter's anchor;
-* a proposer lock of label `s` at `t_s` would need an honest slot-`s` vote before the proposal
-  (three quarters of the committee), which is not ready before `P` exists;
-* `d.start = R` with the voter's `fc_root` strictly below `R` (gap or contest, `R = Σ.F` of the
-  proposer): every block strictly below `R` is below the floor, so not a viable head, and the
-  child towards `R` is eligible; a competing child has no allowed witness (HS.1: an allowed
-  block extends `R`), so it is not in the viable tree; the walk reaches `R`. -/
+* `d.start = R`: the vote extends `R` (`voter_passes_proposer_root`: every viable head of the
+  voter block tree extends `R`, so below `R` the child towards `R` is the only eligible viable
+  child);
+* a lock block: it is at or below the voter's anchor (`lock_start_below_anchor`, through the
+  start premise and `voter_unlock_keeps_lock`, open), against the premise. -/
 theorem voter_reaches_start_unlocked
     (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hlock : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
@@ -247,18 +222,22 @@ theorem voter_reaches_start_unlocked
       ℓy.frame.Anc d.start (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
         (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
         (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
-  sorry
+  have hsP := start_anc_proposal hS hy hcy hes
+  refine walk_passes_start hS hy hcy hes ?_ hbelow hlow
+  rcases proposal_start_cases hS with h | h
+  · rw [h] at hlow hsP ⊢
+    exact voter_passes_proposer_root hS hlock hy hcy hes hIH hsP hbelow hlow
+  · exact absurd (lock_start_below_anchor hS hlock hstart hy hcy hes hIH hbelow h) hlow
 
 /-- **A voter below the proposal walk's start reaches it, under HS.3 (b)'s premises**
-(`hs234-exact-interface.md` §3 "the proposal-boundary helper", §4 (b); open): as
-`voter_reaches_start_unlocked`, with `Prop⁺(G_p)`, `t_s ≥ r` and HS.2. `d.start` is the
-proposer's `fc_root` `R` (a strict ancestor of `R` is below the floor, so the child towards `R`
-is eligible, and no competing child below `R` has an allowed witness) or a live lock block of
-the proposer, clean (HS.2 (3)), whose origin every honest slot-`(s−1)` vote extends (HS.2 (1),
-(2)): the child towards it has every honest supporter, more than half the voters. -/
+(`hs234-exact-interface.md` §3 "the proposal-boundary helper", §4 (b)): as
+`voter_reaches_start_unlocked`, with `t_s ≥ r` in place of the start premise. `d.start` is the
+proposer's `fc_root` `R` (`voter_passes_proposer_root`) or a live lock block of the proposer,
+clean (HS.2 (3)), whose origin every later in-phase honest vote extends
+(`proposer_lock_extends`). -/
 theorem voter_reaches_start_clean {Gp : Time}
     (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
-    (hp : PropPlus tr H g Gp) (hr : rTime sp w ≤ sp.ts s) (hdrain : CleanLockDrain)
+    (_hp : PropPlus tr H g Gp) (hr : rTime sp w ≤ sp.ts s) (_hdrain : CleanLockDrain)
     (hlock : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
         ∀ L ∈ ℓ.frame.tree, L.root = l.block →
@@ -274,36 +253,12 @@ theorem voter_reaches_start_clean {Gp : Time}
       ℓy.frame.Anc d.start (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
         (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
         (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
-  have hrun := hS.run
-  have hnc := hS.shared.noColl
-  have hr' := (Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc).localRun
-  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr' hy hcy.1
-  -- the proposal walk's start is below the vote (a clean lock of the proposer, or its root)
-  have hext : SA.VoteExtends (tr.HonestBlocks H) e.msg d.start := by
-    rcases proposal_start_cases hS with h | h
-    · rw [h] at hlow ⊢
-      exact voter_passes_proposer_root hS hp hr hdrain hlock hy hcy hes hIH hbelow hlow
-    · exact proposer_lock_extends hS hr h hy hcy hes
-  obtain ⟨Hd, hHd, hHdr, hsH⟩ := hext
-  have hGt : SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-      (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
-      (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) ∈ ℓy.frame.tree :=
-    SA.getHead_mem hΦ (fun _ hB => hB.1.1) _ _ _ _
-  have hhead := (SA.castAt_spec hr' hy hcy).2.2.2
-  rw [hes] at hhead
-  obtain rfl := hU.1 hHd (hΦU hGt) (hHdr.trans hhead)
-  -- `d.start ⪯ P`, so the anchor is below `d.start`
-  have hat := getAnchor_mem hΦ e.readPoint (tr.time j)
-  obtain ⟨-, hdt, hsd⟩ := proposal_walk hS
-  obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr' hS.ready.1 hS.call
-  have hPU : P ∈ tr.HonestBlocks H := hΦU (proposal_frozen_viable hS hy hcy hes).1.1
-  have hsP : Anc (tr.HonestBlocks H) d.start P :=
-    (Anc.mono hΦpU hsd).tail ⟨hΦpU hdt, hPU, hS.parent⟩
-  have haS := (SA.anc_total hU hbelow hsP).resolve_right hlow
-  obtain ⟨hst, hsG⟩ :=
-    mem_of_between hU hΦ hΦU (((hΦ.rooted.2 _ hat).mono hΦU).trans haS) hsH hGt
-  exact ⟨SA.anc_tree_of_anc_U hU hΦ hΦU hat haS hst, hsG⟩
+  have hsP := start_anc_proposal hS hy hcy hes
+  refine walk_passes_start hS hy hcy hes ?_ hbelow hlow
+  rcases proposal_start_cases hS with h | h
+  · rw [h] at hlow hsP ⊢
+    exact voter_passes_proposer_root hS hlock hy hcy hes hIH hsP hbelow hlow
+  · exact proposer_lock_extends hS hr h hy hcy hes
 
 /-- **The stop at `P`** (`hs234-exact-interface.md` §4; workbench#12 §3): at `Q` the voter's only
 eligible child is `P` (`proposal_frozen_viable`, eligible as of the current slot;

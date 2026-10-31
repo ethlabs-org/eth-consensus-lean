@@ -632,13 +632,6 @@ theorem effAllowed_of_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P
     (h : EffAllowed st m c A) (hW : W ∈ st.tree) (hAW : st.Anc A W) : EffAllowed st m c W :=
   ⟨hW, h.2.1.trans (h_le_of_store_anc hr hAW), fun J hJ => (h.2.2 J hJ).trans hAW⟩
 
-private theorem exists_firstCutFrom' {t : Time} {j : Nat} (hj : t ≤ tr.time j) :
-    ∃ j₁, tr.FirstCutFrom j₁ t ∧ j₁ ≤ j := by
-  classical
-  have hex : ∃ k, t ≤ tr.time k := ⟨j, hj⟩
-  exact ⟨Nat.find hex, ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩,
-    Nat.find_min' hex hj⟩
-
 /-- **H.3 (c3), `Geo` in a settled phase** (`h3-bridge.md` §5). Let `P` be the honest proposal of
 slot `p` whose proposal and slot-`p` votes lie in one settled effective phase `(m, c)`. Every
 honest node there reads the effective geometry (`viableHeads_iff`). The proposal's parent is a
@@ -679,7 +672,7 @@ theorem geo_of_settled (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g �
   have hw2 : gbar g + 2 * sp.Δ ≤ w := (le_max_left _ _).trans hset.late
   have hw8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hset.late
   have hg0 := gbar_nonneg g
-  obtain ⟨i₀, hi₀, hi₀k⟩ := exists_firstCutFrom' (tr := tr) (t := w) (j := k)
+  obtain ⟨i₀, hi₀, hi₀k⟩ := exists_firstCutFrom_le (tr := tr) (t := w) (j := k)
     (by rw [ht₀']; exact hwp)
   have hle_i₀ : ∀ a, w ≤ tr.time a → i₀ ≤ a := fun a ha => by
     by_contra hn
@@ -778,7 +771,7 @@ theorem geo_of_settled (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g �
       obtain ⟨kf, rfl, hkf, hkft⟩ := fg_accept_before hl hpH ⟨jℓ, hcj, hcallj⟩
       have htj' : tr.time (kf + 1) = sp.ts p := htj
       have hPk := mem_tree_of_frame hrun hpH hcj hPj
-      obtain ⟨jv, hjv, hjviv⟩ := exists_firstCutFrom' (tr := tr) hearly
+      obtain ⟨jv, hjv, hjviv⟩ := exists_firstCutFrom_le (tr := tr) hearly
       have hj0 : i₀ ≤ kf + 1 := hle_i₀ _ (by rw [htj']; exact hwp)
       have hjjv : kf + 1 ≤ jv := by
         by_contra hn
@@ -821,7 +814,8 @@ theorem geo_of_settled (hrun : GoldilocksRun dg H tr) (hs : HSShared tr H dg g �
           Compose.tree_mono hl hy (le_max_right _ _) hX₁t
         have hF := hHS (max i₀ k₁) (le_max_left _ _) y hy X
           (effAllowed_transfer hrun hnc hy hy hXE hXi) _ hpH k (max_le hi₀k hk₁k) hkK
-        obtain ⟨jw, hjw, hjwk⟩ := exists_firstCutFrom' (tr := tr) (j := k) (le_of_eq ht₀'.symm)
+        obtain ⟨jw, hjw, hjwk⟩ :=
+          exists_firstCutFrom_le (tr := tr) (j := k) (le_of_eq ht₀'.symm)
         have hm₁t := hl.time_mono hm₁.le
         exact Compose.tree_mono hl hpH hjwk (relay_held hl hs.healthy hs.noRestart hc hy hpH
           hacc₁ (by linarith) (by linarith) hjw ((run_F_mono hl hpH hjwk).trans hF))

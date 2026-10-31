@@ -18,7 +18,7 @@ after its proposer's own block call, the tick of the proposal), so the phase hol
 The aligned-reader facts are `Geo`'s (`viableHeads_iff`, `proposal_head_viable`,
 `proposal_call_tick`, `effAllowed_transfer`, `effAllowed_of_anc`) and `SA.cast_ready`. The same
 proof gives that `Q` is a viable head of the proposer (`proposal_head_viableHead`) and the phase
-facts at a vote (`phase_at_vote`); `exists_firstCutFrom_le` is the first cut from a time. -/
+facts at a vote (`phase_at_vote`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -32,14 +32,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {p : Fin sp.n} {kP s : Nat}
   {P : SA.Blk sp.n (List (FG.Att sp.n))} {iP : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-
-/-- A cut at or after `t` gives a first cut from `t`, at or before it. -/
-theorem exists_firstCutFrom_le {t : Time} {j : Nat} (hj : t ≤ tr.time j) :
-    ∃ j₁, tr.FirstCutFrom j₁ t ∧ j₁ ≤ j := by
-  classical
-  have hex : ∃ k, t ≤ tr.time k := ⟨j, hj⟩
-  exact ⟨Nat.find hex, ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩,
-    Nat.find_min' hex hj⟩
 
 /-- **The proposal's cut precedes every honest holder of `P`**: an honest node holding `P` at a
 cut `k` accepted it at an earlier cut, after its proposer's own block call (unforgeable blocks),
@@ -68,6 +60,39 @@ private theorem proposal_before_holder
     rw [hS.time, hpr.2.1, ← hslot, hPs, sp.slotTime_eq]; rfl
   have := hl.tick_unique p hpH j₀ j'' _ h₀ (by rw [← ht]; exact ⟨x, hg⟩)
   omega
+
+/-- **The slot-`s` block of an honest frame is `P`**: the honest proposer has one block per slot
+in the honest frames (`HonestObjects.one_block`), and a slot-`s` block (`s ≥ 1`) is not genesis,
+so it has the slot's proposer. -/
+theorem frame_slot_eq_proposal (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y j ℓy) : ∀ P' ∈ ℓy.frame.tree, P'.slot = s → P' = P := by
+  have hrun := hS.run
+  have hl := hrun.toLocalRun
+  have hnc := hS.shared.noColl
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr hrun hnc
+  have hr := hac.localRun
+  have hU := Compose.honest_blocks_coherent hl hnc
+  have hpH : p ∈ H := hS.ready.1
+  have hPs : P.slot = s := hS.ready.2.2.2.2.1
+  have hs1 := hS.one_le_slot
+  obtain ⟨-, -, -, -, -, -, -, -, -, -, -, hPprop, -, ja, -, hacc, -⟩ :=
+    honestProposalRun_of_ready hrun hnc hS.ready
+  rw [← hS.ready.2.1] at hPprop hacc
+  obtain ⟨jℓ, hcj, hcallj⟩ := hacc
+  have hPj : P ∈ jℓ.frame.tree := (SA.accept_new sp hr hpH ⟨jℓ, hcj, hcallj⟩).1 jℓ hcj
+  have hfU : ℓy.frame.tree ⊆ tr.HonestBlocks H := (SA.frameIn_of_callAt hr hy hc).2
+  intro P' hP' hP's
+  have hfb : SA.HonestFrameBlock tr.projAC H P' := ⟨y, hy, j, ℓy, hc, hP'⟩
+  have hroot : P'.root ≠ sp.genesisRoot := by
+    intro hg
+    have hG := Store.genesis_mem (Compose.fg_reachable hl hy j)
+    obtain rfl := hU.1 (hfU hP') ⟨y, hy, j, hG⟩ hg
+    simp [Params.genesisBlock] at hP's
+    omega
+  exact (hac.honest.one_block P P' ⟨_, hpH, ja, jℓ, hcj, hPj⟩ hfb (hPprop ▸ hpH)
+    (by rw [hPprop, hac.honest.proposer P' hfb hroot, hP's, hS.ready.2.1])
+    (by rw [hPs, hP's])).symm
 
 /-- **The frozen facts at a vote**: `P` is frozen-viable (`proposal_frozen_viable`, whose
 docstring has the argument), `Q` is a viable head of the proposer, and the phase and evidence
@@ -113,19 +138,7 @@ private theorem frozen_core (hS : AgreeSetting dg H tr g ΔF w i₀ i m c p kP s
   -- the slot-`s` block of the voter's frame is `P`
   obtain ⟨jℓ, hcj, hcallj⟩ := hacc
   have hPj : P ∈ jℓ.frame.tree := (SA.accept_new sp hr hpH ⟨jℓ, hcj, hcallj⟩).1 jℓ hcj
-  have hfU : ℓy.frame.tree ⊆ tr.HonestBlocks H := (SA.frameIn_of_callAt hr hy hcy.1).2
-  have hslotP : ∀ P' ∈ ℓy.frame.tree, P'.slot = s → P' = P := by
-    intro P' hP' hP's
-    have hfb : SA.HonestFrameBlock tr.projAC H P' := ⟨y, hy, j, ℓy, hcy.1, hP'⟩
-    have hroot : P'.root ≠ sp.genesisRoot := by
-      intro hg
-      have hG := Store.genesis_mem (Compose.fg_reachable hl hy j)
-      obtain rfl := hU.1 (hfU hP') ⟨y, hy, j, hG⟩ hg
-      simp [Params.genesisBlock] at hP's
-      omega
-    exact (hac.honest.one_block P P' ⟨_, hpH, ja, jℓ, hcj, hPj⟩ hfb (hPprop ▸ hpH)
-      (by rw [hPprop, hac.honest.proposer P' hfb hroot, hP's, hS.ready.2.1])
-      (by rw [hPs, hP's])).symm
+  have hslotP := frame_slot_eq_proposal hS hy hcy.1
   -- an early voter holds `P`; the proposal's cut precedes the vote
   have hiPj : iP < j := by
     by_cases hlate : tr.time iP < tr.time j

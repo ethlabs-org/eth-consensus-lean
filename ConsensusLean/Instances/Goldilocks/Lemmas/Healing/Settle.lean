@@ -277,7 +277,7 @@ private theorem accept_mem (hrun : Node.LocalRun dg H sg tr) {y : Fin P.n} (hy :
   exact Set.mem_insert _ _
 
 /-- A cut at or after `t` gives a first cut from `t`, at or before it. -/
-private theorem exists_firstCutFrom {t : Time} {j : Nat} (hj : t ≤ tr.time j) :
+theorem exists_firstCutFrom_le {t : Time} {j : Nat} (hj : t ≤ tr.time j) :
     ∃ j₁, tr.FirstCutFrom j₁ t ∧ j₁ ≤ j := by
   classical
   have hex : ∃ k, t ≤ tr.time k := ⟨j, hj⟩
@@ -292,7 +292,7 @@ theorem catchRun_at {g κ : Time} (hc : CatchRun tr H g κ) (hrun : Node.LocalRu
       ∀ y ∈ H, ∀ j, tr.FirstCutFrom j w → Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
         ∃ k < j, tr.AcceptAt y k B := by
   intro x hx i B hacc hi y hy j hj hF
-  obtain ⟨j₁, hj₁, hle⟩ := exists_firstCutFrom (hw.trans hj.1)
+  obtain ⟨j₁, hj₁, hle⟩ := exists_firstCutFrom_le (hw.trans hj.1)
   obtain ⟨k, hk, hacc'⟩ := hc x hx i B hacc hi y hy j₁ hj₁ ((run_F_mono hrun hy hle).trans hF)
   exact ⟨k, by omega, hacc'⟩
 
