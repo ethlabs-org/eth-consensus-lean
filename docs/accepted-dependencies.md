@@ -21,9 +21,54 @@ the downstream theorem compiles with `sorry`.
 
 Current status: **NOT MET**. The proposer-free family is committed on
 `work/amp/family-wip`; its frozen core passed the fast gate after snapshot refresh.
-Provenance and finite sleepy interfaces are integrated, but their proofs remain OPEN.
+Provenance is proved; finite sleepy interfaces are integrated with three remaining
+direct consumer leaves. The Accepted numeric and liveness/healing adapters remain OPEN.
 Healing supplier types remain a separate draft outside the library. This is a partial
 inventory, not evidence that the Accepted skeleton is complete.
+
+## Per-field axiom audit at 259d0330
+
+Audited main at `259d0330ace0464632c03344568c6fe518f33b98` with `#print axioms`
+for every `accepted*` declaration and the nonframing/receipt/Sleepy bridges.
+`lake exe spec-surface dependencies --from ... --modules ...` supplied the compiled
+dependency graph; traversing it identifies the following exact direct `sorryAx` owners.
+Names in this section have prefix `Consensus.Goldilocks.Refinement.`.
+`C` abbreviates the set `{accepted_catchUp, accepted_heal, accepted_latency}`.
+`F` abbreviates `{final_window_extract, final_inherited_progress, final_row_supply,
+final_cache_acceptance}`. These are named sets of leaves, not extra assumptions.
+
+| Audited root | Reachable direct sorry owners |
+|---|---|
+| accepted_catchUp | accepted_catchUp |
+| accepted_heal | accepted_heal |
+| accepted_latency | accepted_latency |
+| accepted_coefficients, accepted_coefficients_catchUp | C |
+| accepted_outputValid | none |
+| accepted_nested | none |
+| accepted_finalMonotone | none |
+| accepted_finalAccountable | C (contract/type dependencies, not encoding/transport gaps) |
+| accepted_healthyLive_final | C ∪ F |
+| accepted_healthyLive | C ∪ F ∪ {accepted_healthyLive} |
+| accepted_sleepySafe | C ∪ {accepted_sleepySafe} |
+| accepted_sleepyLive | C ∪ {accepted_sleepyLive} |
+| accepted_healedSafe | C ∪ {accepted_healedSafe} |
+| accepted_persists | C ∪ {accepted_persists} |
+| accepted_progressFits, accepted_progressTolerant, accepted_admissible | C |
+| accepted_claims, accepted | C ∪ F ∪ {accepted_healthyLive, accepted_sleepySafe, accepted_sleepyLive, accepted_healedSafe, accepted_persists} |
+| engine_signings_nonFraming, engine_att_protected | none |
+| simTrace_forwardOrigin, simTrace_forwardHeldProcessed | none |
+| sleepy_ready, sleepy_faultBound, sleepy_read_cut, sleepy_proposal, sleepy_inBy | none |
+| sleepy_safe_finite | sleepy_safe_finite |
+| sleepy_include_finite | sleepy_include_finite |
+| sleepy_grow_finite | sleepy_safe_finite, sleepy_include_finite |
+| sleepy_safe_engine | sleepy_safe_engine |
+
+Nonframing is not a separate `Accepted` field: the audited signing/protection
+theorems provide it. Roots marked `none` use only the standard axioms
+`propext`, `Classical.choice`, `Quot.sound`. A direct sorry in an adapter does not
+reference its intended future suppliers, so this graph is not the remaining-work
+plan: in particular the open Accepted Sleepy fields do not yet reach the Sleepy
+consumer leaves. All Run unforgeability suppliers are proved, as recorded below.
 
 ## Mechanical report contract
 
@@ -75,10 +120,10 @@ Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbe
 | `Consensus.Goldilocks.Refinement.accepted_catchUp` | OPEN: finite positive uniform catch-up; canonical timing adapter required. Spec orb. |
 | `Consensus.Goldilocks.Refinement.accepted_heal` | OPEN: finite healing at each gap, joint with bounded preparation/preservation; no whole-run progress. Spec orb. |
 | `Consensus.Goldilocks.Refinement.accepted_latency` | OPEN: finite latency at every gap; final local-pattern service and cache acceptance unresolved. Spec orb. |
-| `Consensus.Goldilocks.Refinement.accepted_outputValid` | Reduction to shape_outputValid; its supplier remains OPEN. |
+| `Consensus.Goldilocks.Refinement.accepted_outputValid` | Proved through shape_outputValid; compiled closure has no sorryAx. |
 | `Consensus.Goldilocks.Refinement.accepted_nested` | Reduction to shape_nested; exact generic field, no collision escape. |
 | `Consensus.Goldilocks.Refinement.accepted_finalMonotone` | Reduction to shape_finalMonotone; exact generic field. |
-| `Consensus.Goldilocks.Refinement.accepted_finalAccountable` | Reduction to shape_finalAccountable at fixed 1/3; encoding/transport OPEN. |
+| `Consensus.Goldilocks.Refinement.accepted_finalAccountable` | Body closed through shape_finalAccountable at fixed 1/3; only the three coefficient leaves are reachable through the contract type. Encoding/transport is proved. |
 | `Consensus.Goldilocks.Refinement.accepted_healthyLive` | Available/stable branches OPEN; final branch references accepted_healthyLive_final and its explicit supplier route below. |
 | `Consensus.Goldilocks.Refinement.final_window_extract` | OPEN: actual ready four-anchor proposals/cuts on the canonical finite trace, surviving ancestry and carrier processing by query + latency(.final,i)·Δe. Joint accepted_latency synthesis must supply transport slack, not just A3≤deadline. |
 | `Consensus.Goldilocks.Refinement.final_inherited_progress` | OPEN: inherited post-A0 entry has no birth lower bound; if uncrossed through A1's parent, distinct credited/pool current-entry progress reaches quorum. |
@@ -119,10 +164,10 @@ their assigned Lean modules, not this table concurrently.
 | Area | Owner | Placement/status |
 |---|---|---|
 | Family, finite adapters, integration | Spec orb | family-repair worktree; OPEN |
-| Finite sleepy transport | Healing box | Lemmas/Refinement/Sleepy; nine OPEN leaves, two supplier definitions |
+| Finite sleepy transport | Healing box | Lemmas/Refinement/Sleepy; three direct OPEN consumers, two supplier definitions |
 | Healing/R.3/R.4/R.5 | Healing paper orb and T3 | exact supplier declarations pending finite adapters |
 | Always fields | Healing box | Lemmas/Refinement/Evidence and Transport |
-| Simulation/provenance, scheduled proposal | R.6 box | Provenance and Steps; remaining Run unforgeability leaves owned by Healing box |
+| Simulation/provenance, scheduled proposal | R.6 box | Provenance, Steps and all Run suppliers proved; no remaining Run unforgeability leaves |
 | Network/publication | Engine thread | new Lemmas/Refinement/Forwarding and NetworkTransport |
 
 Replay order uses only validator count and genesis root. The local family repair
@@ -168,29 +213,29 @@ does not mean its dependencies are proved.
 | `Consensus.Goldilocks.Refinement.engine_nested` | ExecutionValid ⇒ finalized nested in confirmed; simulation, outputs_nested | R.8/C0.1 at actual shape clock; empty validator type vacuous. Argument supplied. |
 | `Consensus.Goldilocks.Refinement.engine_finalMonotone` | ExecutionValid ⇒ finalized monotone; simulation, finalized_monotone | R.8/C0.2: ordered mapped cuts and preserved store ancestry give prefix. Argument supplied. |
 | `Consensus.Goldilocks.Refinement.noCollTransport` | ExecutionValid and no observed collision ⇒ NoCollRun on canonical simTrace | Proved (38cfe5f): all-occurrences provenance, including refused calls, observed header injectivity and tagged genesis separation; no provided freshness premise. |
-| `Consensus.Goldilocks.Refinement.compatible_reads` | Canonical NoCollRun, honest bounded reads and compatible node tips ⇒ compatible engine chains | R.7/F.3: coherent union identifies cross-store parent walks. Argument supplied; walk lemma unformalized. |
+| `Consensus.Goldilocks.Refinement.compatible_reads` | Canonical NoCollRun, honest bounded reads and compatible node tips ⇒ compatible engine chains | Proved: R.7/F.3 coherent union identifies cross-store parent walks. |
 | `Consensus.Goldilocks.Refinement.convicted_count` | Finite key set with slashable canonical witnesses in A ⇒ cardinality ≤ convicted(A) | G1.5: injective rho.key image is contained in convicted. No honesty/collision premise. Argument supplied. |
 | `Consensus.Goldilocks.Refinement.final_accountable_of_noColl` | Canonical NoCollRun and valid honest bounded reads ⇒ compatible or ≥2q−n convicted | R.7/G1.3–G1.5: node witnesses, held payload evidence, inject keys. Argument supplied relative to bridges. |
-| `Consensus.Goldilocks.Refinement.finalizedAccountable` | FinalizedAccountable, retaining provided freshness/no-collision | Compose canonical simulation, collision transport, prior row. OPEN transitively; does not derive freshness. |
+| `Consensus.Goldilocks.Refinement.finalizedAccountable` | FinalizedAccountable, retaining provided freshness/no-collision | Proved through canonical simulation and collision transport; no sorryAx. |
 | `Consensus.Goldilocks.Refinement.shape_outputValid` | HoldsAlways output validity for every schema lookup | R.8: unfold valid runs and apply engine_outputValid. Argument supplied. |
 | `Consensus.Goldilocks.Refinement.shape_nested` | Increasing schema ranks ⇒ HoldsAlways Nested | R.8: finalized/confirmed bridge or confirmed reflexivity. Argument supplied. |
 | `Consensus.Goldilocks.Refinement.shape_finalMonotone` | Final schema lookup ⇒ HoldsAlways monotonicity | R.8: lookup identifies finalized. Argument supplied. |
-| `Consensus.Goldilocks.Refinement.shape_finalAccountable` | Contract α≤1/3 ⇒ accountable safety, NO freshness premise | R.7: collision escape or convicted bound; 2q−n≥n/3. OPEN freshness-free encoding and source transport, not arithmetic. |
+| `Consensus.Goldilocks.Refinement.shape_finalAccountable` | Contract α≤1/3 ⇒ accountable safety, NO freshness premise | Proved: collision escape or convicted bound; 2q−n≥n/3, with freshness-free encoding and source transport. |
 
 ## Provenance leaves
 
-Owner: R.6 box. Exact statements integrated in Provenance and Steps; all remain sorries.
+Owner: R.6 box. Exact statements integrated and proved in Provenance and Steps.
 Names have the same refinement prefix. No simTrace signing correspondence may
 be used upstream of selected-duty/node agreement.
 
 | Declaration | Dependencies / argument | Paper argument/status |
 |---|---|---|
-| `Consensus.Goldilocks.Refinement.engine_event_signing_history` | Actual store reachability, entry bounds, selected poll transitions, restart record; joint event/duty induction | OPEN implementation proof |
-| `Consensus.Goldilocks.Refinement.engine_signing_history` | Event history and duty-prefix history | OPEN implementation proof |
-| `Consensus.Goldilocks.Refinement.engine_restart_record` | Durable and restore definitions | OPEN implementation proof |
-| `Consensus.Goldilocks.Refinement.engine_signings_nonFraming` | Signing history, G0.5/FG.client_safety | Argument route supplied; upstream OPEN |
-| `Consensus.Goldilocks.Refinement.engine_seen_att_signed` | Credentials, actual poll release→queued-sign inverse, same-event prefixes | OPEN implementation proof |
-| `Consensus.Goldilocks.Refinement.engine_att_protected` | Nonframing, seen inverse, conflicts encoding; G0.5 corollary | Upstream implementation bridge OPEN |
+| `Consensus.Goldilocks.Refinement.engine_event_signing_history` | Actual store reachability, entry bounds, selected poll transitions, restart record; joint event/duty induction | Proved |
+| `Consensus.Goldilocks.Refinement.engine_signing_history` | Event history and duty-prefix history | Proved |
+| `Consensus.Goldilocks.Refinement.engine_restart_record` | Durable and restore definitions | Proved |
+| `Consensus.Goldilocks.Refinement.engine_signings_nonFraming` | Signing history, G0.5/FG.client_safety | Proved; compiled closure has no sorryAx |
+| `Consensus.Goldilocks.Refinement.engine_seen_att_signed` | Credentials, actual poll release→queued-sign inverse, same-event prefixes | Proved |
+| `Consensus.Goldilocks.Refinement.engine_att_protected` | Nonframing, seen inverse, conflicts encoding; G0.5 corollary | Proved; compiled closure has no sorryAx |
 | `Consensus.Goldilocks.Refinement.scheduled_proposal_releasable` | Actual EngineProposalAt, selected slot-start, pool/att provenance, drain/guard | Proved (f614a12) from actual engine inventory |
 
 ## Finite sleepy transport leaves
@@ -198,21 +243,23 @@ be used upstream of selected-duty/node agreement.
 Owner: Healing box, integrated by the spec orb. Exact declarations are in
 `Lemmas/Refinement/Sleepy.lean`, namespace `Consensus.Goldilocks.Refinement`.
 All use canonical `simTrace` and, where needed, `runProposer S rho hn`.
-There are nine OPEN theorem leaves and two supplier definitions, not proved suppliers.
+Three direct theorem leaves remain OPEN: sleepy_safe_finite, sleepy_include_finite and
+sleepy_safe_engine. sleepy_grow_finite has a closed body but reaches the first two.
+The two supplier definitions remain contracts, not proved suppliers.
 Here Δp is the node parameter, c = catchUp = 18Δp, and b≤horizon.
 
 | Declaration | Contract and dependencies | Paper argument/status |
 |---|---|---|
-| `Consensus.Goldilocks.Refinement.sleepy_ready` | Valid run, 0≤t≤horizon and engine Ready c at t ⇒ node ReadyAt; canonical awake/key equivalence | OPEN implementation bridge |
-| `Consensus.Goldilocks.Refinement.sleepy_faultBound` | SleepyOn(1/2,c,0,b) ⇒ node FaultBound at ts(s)+d≤b for d∈{0,Δp,2Δp}; ready-implies-joined and key counts | OPEN implementation bridge |
+| `Consensus.Goldilocks.Refinement.sleepy_ready` | Valid run, 0≤t≤horizon and engine Ready c at t ⇒ node ReadyAt; canonical awake/key equivalence | Proved; ready_transport supports the engine's existing cDur |
+| `Consensus.Goldilocks.Refinement.sleepy_faultBound` | SleepyOn(1/2,c,0,b) ⇒ node FaultBound at ts(s)+d≤b for d∈{0,Δp,2Δp}; ready-implies-joined and key counts | Proved |
 | `Consensus.Goldilocks.Refinement.SleepyServiceSupplier` | SyncUntil b ⇒ node SyncBefore H Δp b on valid runs with 0≤b≤horizon | Definition only; strict deadline slack and acceptance relay OPEN; repaired window may differ |
-| `Consensus.Goldilocks.Refinement.sleepy_read_cut` | Ready reader at 0≤t≤horizon ⇒ CutAfter and Boundary at cutMap(endCut t), with output clock t; terminal filler included | OPEN event/clock bridge |
+| `Consensus.Goldilocks.Refinement.sleepy_read_cut` | Ready reader at 0≤t≤horizon ⇒ CutAfter and Boundary at cutMap(endCut t), with output clock t; terminal filler included | Proved; ready_read_cut takes arbitrary nonnegative cDur |
 | `Consensus.Goldilocks.Refinement.sleepy_safe_finite` | Valid run, canonical NoCollRun, SyncBefore through b and bounded slot quorum ⇒ ReadySafeOn 0 b | OPEN finite R.1 localization |
 | `Consensus.Goldilocks.Refinement.sleepy_include_finite` | Same finite premises, ready proposal at 0≤τ≤b, τ+6Δp≤t≤b, ready reader and CutAfter at t ⇒ proposal ancestry of read | OPEN finite R.2 localization |
-| `Consensus.Goldilocks.Refinement.sleepy_grow_finite` | Same service/quorum/noColl, t≥0, k≥1, b=t+(4k+6)Δp, selected-schedule recurrence and ready reader at b ⇒ fresh proposal after t included in ready b reads, excluded from ready t reads, with read extension | OPEN finite R.2; depends on inclusion/safety |
+| `Consensus.Goldilocks.Refinement.sleepy_grow_finite` | Same service/quorum/noColl, t≥0, k≥1, b=t+(4k+6)Δp, selected-schedule recurrence and ready reader at b ⇒ fresh proposal after t included in ready b reads, excluded from ready t reads, with read extension | Body closed; transitive OPEN leaves sleepy_include_finite and sleepy_safe_finite |
 | `Consensus.Goldilocks.Refinement.SleepyRecurrenceSupplier` | Engine single-pattern recurrence on family grid ⇒ node recurrence for runProposer, same c and [0,b] | Definition only; grid/duration adapter OPEN |
-| `Consensus.Goldilocks.Refinement.sleepy_proposal` | Valid run and ready node proposal at 0≤τ≤horizon ⇒ ready key and engine HonestProposal of encoded header | OPEN canonical release/key bridge |
-| `Consensus.Goldilocks.Refinement.sleepy_inBy` | Valid run, NoCollRun, ready proposal and node inclusion at all ready CutAfter t reads, 0≤τ≤t≤horizon ⇒ engine InBy confirmed | OPEN structural consumer; read_cut and chain transport |
+| `Consensus.Goldilocks.Refinement.sleepy_proposal` | Valid run and ready node proposal at 0≤τ≤horizon ⇒ ready key and engine HonestProposal of encoded header | Proved through simTrace_block_released; ready_proposal supports arbitrary cDur |
+| `Consensus.Goldilocks.Refinement.sleepy_inBy` | Valid run, NoCollRun, ready proposal and node inclusion at all ready CutAfter t reads, 0≤τ≤t≤horizon ⇒ engine InBy confirmed | Proved through confirmed_inBy; finalized_inBy supplies the final-output analogue |
 | `Consensus.Goldilocks.Refinement.sleepy_safe_engine` | Valid run, NoCollRun, SyncBefore/quorum through horizon ⇒ engine ReadySafe confirmed | OPEN arbitrary-cut clock/compatibility transport; endCut alone insufficient |
 
 R.1/R.2 motivate these reductions, but do not prove the engine bridges. Existing
@@ -237,14 +284,15 @@ they do not discharge total successful publication or the remaining network supp
 | `apply_forward_origin` | Proved: a queue member is old or comes from an actual successful cut at st.now. |
 | `PSyncFGRowTransport` | Named OPEN proposition: PSync plus actual attestation send/admission supplies bounded processing, with ΔF=sp.Δ. |
 
-Remaining publication/network targets (not discharged by the preceding helper proofs):
+Publication/network targets and their current status (proved rows are distinguished
+from the remaining planned targets):
 
-| Planned declaration | Required statement |
+| Declaration or planned target | Required statement/status |
 |---|---|
-| `forwarding_origin` | OPEN, R.6: actual successful honest-origin wrapper release ⇒ actual acceptance at claimed stamp before release prefix |
+| `simTrace_forwardOrigin` | Proved, R.6: actual successful honest-origin wrapper release ⇒ actual acceptance at claimed stamp; delivery and own-tick branches. Compiled closure has no sorryAx. |
 | `forwarding_at_acceptance` | Actual honest acceptance ⇒ successful matching wrapper release in same event |
 | `forwarding_parent_earlier` | Child release ⇒ exact same-origin parent release earlier in actual release order and strictly earlier parent acceptance cut |
-| `forwarding_held_processed` | OPEN, R.6: pre-delivery held wrapper ⇒ earlier canonical processing at time≥stamp, or receiver's own actual acceptance |
+| `simTrace_forwardHeldProcessed` | Proved, R.6: pre-delivery held wrapper ⇒ earlier canonical processing at time≥stamp, or receiver's own actual acceptance. Compiled closure has no sorryAx. |
 | `psync_block_processed` | PSync service to actual processing, explicit horizon/call bounds |
 | `syncBefore_block_processed` | Deadline-cut service to actual processing; not whole-run Sync |
 | `parent_wrapper_processing_before_child` | Parent-first prior recursive payload processing from held dependency and provenance |
