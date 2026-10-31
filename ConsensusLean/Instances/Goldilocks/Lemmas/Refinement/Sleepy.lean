@@ -246,11 +246,10 @@ theorem sleepy_read_cut (hv : rho.ExecutionValid) {v : V} {t : Time}
     have := (S.params (pubOf E) hn).toParams.hΔ
     linarith) ht hth hr
 
-/-- OPEN finite R.1 consumer (owner: Regimes/Refinement). Localize the R.1 induction to
-cuts observed through `b`; all network invocations must have recipient deadlines ≤ b.
-Depends on the finite quorum supplier and `SyncBefore`, NOT a claimed conversion to
-`SyncRun 0 (b-Δ)` or infinite `SleepyRun`. Prove this locality before using the consumer
-in Accepted. Canonical execution uses `runProposer S rho hn`, selected by `rho.sel`. -/
+set_option linter.unusedVariables false in
+/-- Finite R.1 from recipient-deadline service and the in-horizon quorum bounds.
+Canonical execution uses `runProposer S rho hn`, selected by `rho.sel`.
+The unused horizon premise is retained to preserve the existing named-argument interface. -/
 theorem sleepy_safe_finite (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn)) {b : Time}
     (hb0 : 0 ≤ b) (hbh : b ≤ rho.horizon)
@@ -260,7 +259,7 @@ theorem sleepy_safe_finite (hv : rho.ExecutionValid)
       (simTrace S rho hn).FaultBound (honestKeys S rho) ((S.params (pubOf E) hn).ts s + d)) :
     Regimes.ReadySafeOn (simTrace S rho hn) (honestKeys S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) 0 b := by
-  sorry
+  exact Regimes.sleepy_safe_before (simTrace_goldilocksRun S rho hn hv) hnc hb0 hsync hf
 
 /-- OPEN finite R.2 inclusion consumer (owner: Regimes/Refinement). Re-run A1.7/F.4 only
 through the observation `t ≤ b`: the producer at `τ` is in the horizon, and its full `6Δ`

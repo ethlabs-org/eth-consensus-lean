@@ -128,6 +128,24 @@ theorem sleepy_safe_prefix : SleepySafePrefix := by
       read_effective_of hrun hy'.1 (ready_read_record_upTo hrun hnc hpre hj hbj hy' htb)]
     exact effective_record_mono_upTo hrun hnc hpre hy.1 hij fun k hk => (hj.1 k hk).trans htb
 
+/-- R.1 localized to recipient deadlines within the observation horizon. -/
+theorem sleepy_safe_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBound H (sp.ts s + d)) : ReadySafeOn tr H (catchUp sp) 0 b := by
+  have hinv := sleepy_invariant_before hrun hnc hb hsync hfb
+  have hac := syncBefore_projection hrun.toLocalRun hsync
+  have hpop := fun s hs => hfb s sp.Δ (by simp) hs
+  refine ⟨fun y z i j t t' hi hj _ _ _ htb _ htb' hy hz => ?_,
+    fun y i j t t' hi hj hbi hbj hij htt _ htb hy hy' => ?_⟩
+  · exact hinv.read_compatible hrun hnc hy.1 hz.1 (fun k hk => (hi.1 k hk).trans htb)
+      (fun k hk => (hj.1 k hk).trans htb') t t'
+  · rw [read_effective_of hrun hy.1 (ready_read_record_before hrun hnc hinv hac hpop hi hbi hy
+        (htt.trans htb)),
+      read_effective_of hrun hy'.1 (ready_read_record_before hrun hnc hinv hac hpop hj hbj hy' htb)]
+    exact effective_record_mono_of_invariant hrun hnc hinv hy.1 hij
+      fun k hk => (hj.1 k hk).trans htb
+
 end Consensus.Goldilocks.Regimes
 
 end
