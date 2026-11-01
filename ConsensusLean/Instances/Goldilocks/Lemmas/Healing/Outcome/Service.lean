@@ -1067,6 +1067,30 @@ theorem ResetPremisesUpTo.sign_of_report {b : Time}
     · obtain ⟨k, hk, att, hsk, rfl⟩ := sent_origin hp.run hz (r + 1) hc
       exact ⟨k, att, hsk, (hp.run.time_mono hk.le).trans hts.le, by assumption⟩
 
+/-- A bounded same-height report supplies the exact entry row, with historical
+finality permission checked at the actual signing cut. -/
+theorem ResetPremisesUpTo.row_of_report {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {z : Fin sp.n} (hz : z ∈ H)
+    {r : Nat} {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
+    {T : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
+    {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
+    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → HZ tr H g + 1 ≤ σT.hj)
+    (hTC : Anc (tr.HonestBlocks H) T C)
+    (hCh : ((tr.state z r).fg.σ C.root).h = σT.h) :
+    ∃ j att, tr.SignAt z j att ∧ tr.time j ≤ tr.time r ∧ att.val = z ∧
+      att.h = σT.h ∧ att.T = T.root ∧ att.timeout = false ∧
+      (σT.bound → att.fin = some (σT.hj, σT.J)) := by
+  obtain ⟨io, _, jo, O, _, _, ho, hiob, _, hCO, _⟩ := hp.high_report_origin hz hrep hrb
+    (by rw [hCh]; exact hhT)
+  have hTO := hTC.trans hCO
+  obtain ⟨j, att, hs, ht, hh⟩ := hp.sign_of_report hz hrep hrb hy hT hσ hTe hhT hTC hCh ho hiob hTO
+  obtain ⟨hv, hroot, htimeout, hfin⟩ :=
+    hp.row_of_sign hz hs (ht.trans hrb) hy hT hσ hTe hhT hhj ho hiob hTO hh
+  exact ⟨j, att, hs, ht, hv, hh, hroot, htimeout, hfin⟩
+
 /-- **A higher report gives the retained crossing** (workbench#30 §5): the reported `C ⪰ T`,
 accepted by `t_u + 6Δ`, has slot `≤ u + 1 < u + δ_t`; the first `X` leaving `T`'s height on the
 chain justifies `T` (`crossing_walk`), and `X ⪯ C ⪯ B`, `B` the report's origin. -/
