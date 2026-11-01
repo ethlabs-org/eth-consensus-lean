@@ -850,7 +850,33 @@ theorem healthy_current_sources_compatible (D : HealthyRepairSchedule S A V Q)
           (by simpa only [D.cleanLabel_eq] using hs)
           (by simpa only [D.cleanLabel_eq] using ht) hrb hqb)
 
-/-- OPEN actual candidate comparison on the original directed cut interval. -/
+omit h0 hb hp W states in
+/-- Every actual call after an engine cut is at or after that cut's public time. -/
+theorem healthy_call_after_cut_time {i q : Nat} {y : Fin Q.params.n}
+    (hiq : cutMap S Q.run.2 Q.hn i ≤ q) (hq : Q.trace.IsCall y q) :
+    Q.run.2.cutTime i ≤ Q.trace.time q := by
+  obtain ⟨ell, _, hlabel⟩ := hq
+  obtain ⟨_, p, e, _, he, _, hqp, _, _, htime, _⟩ :=
+    simTrace_cut S Q.run.2 Q.hn (by rw [hlabel]; simp)
+  have hip : i ≤ p := by
+    by_contra h
+    have := cutMap_mono S Q.run.2 Q.hn (show p + 1 ≤ i by omega)
+    omega
+  rw [htime]
+  cases i with
+  | zero => exact (Q.valid.in_horizon e (List.mem_of_getElem? he)).1
+  | succ i =>
+    have hplen := (List.getElem?_eq_some_iff.mp he).1
+    have hil : i < Q.run.2.events.length := by omega
+    have hei : Q.run.2.events[i]? = some Q.run.2.events[i] := List.getElem?_eq_getElem hil
+    simp only [Model.Run.cutTime, hei]
+    rcases keyLe_of_index_lt S Q.run.2 Q.valid hei he (by omega) with ht | ht
+    · exact ht.le
+    · exact ht.1.le
+
+set_option linter.unusedVariables false in
+/-- Actual interval candidates compare with the named current-record cover.
+The repair reserve makes every candidate label clean enough for raw comparison. -/
 theorem healthy_current_record_candidates (D : HealthyRepairSchedule S A V Q)
     (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
     {v : V} {i j : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
@@ -864,9 +890,46 @@ theorem healthy_current_record_candidates (D : HealthyRepairSchedule S A V Q)
         ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
           (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
             (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) B := by
-  sorry
+  have hcover := healthy_current_record_sources S A V Q h0 hb hp W states D O hrepair hi hv
+  have hy := honest_ownKey (S := S) hv.1
+  intro q hiq hqj B s CV hB
+  have hqb := healthy_cut_prefix_time S A V Q hj.1 q hqj
+  have hcall : Q.trace.IsCall (Q.run.2.ownKey v) q := by
+    rcases hB with ⟨ell, hu, _⟩ | ⟨ell, A, ho, _⟩
+    · exact ⟨_, Compose.projAC_callAt.mp hu.1⟩
+    · exact ⟨_, Compose.projAC_callAt.mp ho.1⟩
+  have ht : Q.heal ≤ Q.trace.time q :=
+    hi.2.trans (healthy_call_after_cut_time S A V Q hiq hcall)
+  have hbudget : Q.params.ts D.oldLabel + 6 * Q.params.Δ < Q.trace.time q := by
+    have hlo : Q.params.ts D.oldLabel ≤ D.query :=
+      (le_max_of_le_right (le_max_of_le_right (le_max_left _ _))).trans D.lower
+    have := D.reserve
+    have := Q.params.toParams.hΔ
+    have : (0 : Int) ≤ (Q.index : Time) := Int.natCast_nonneg _
+    nlinarith
+  have hs : D.cleanLabel + 2 * Q.params.k + 1 ≤ s := by
+    apply D.old_bound.trans
+    rcases hB with ⟨ell, hu, _⟩ | ⟨ell, A, ho, hslot, _⟩
+    · have htime : Q.trace.time q = Q.params.ts s + 6 * Q.params.Δ := hu.2.2.1
+      have hlt := (SA.ts_lt_iff Q.params).mp (show Q.params.ts D.oldLabel < Q.params.ts s by
+        linarith)
+      omega
+    · have hh := (SA.ts_le_iff_le_slot Q.params (D.reset.run.time_nonneg q) D.oldLabel).mp
+        (show Q.params.ts D.oldLabel ≤ Q.trace.time q by linarith [Q.params.toParams.hΔ])
+      change Q.params.slot (Q.trace.time q) = s at hslot
+      omega
+  rcases hcover with hF | ⟨x, hx, r, t, E, DV, _, hrb, hts, hE, hRE⟩
+  · rw [hF]
+    exact D.reset.finalized_compatible_clean_source (healthy_repair_catch S A V Q) hy hy hB
+      (by simpa only [D.cleanLabel_eq] using hs) hqb (healthy_cut_prefix_time S A V Q hi.1)
+  · exact tips_comparable_of_origin_witnesses S A V Q hRE .refl
+      (D.reset.clean_sources_compatible (healthy_repair_catch S A V Q) hx hy hE hB
+        (by simpa only [D.cleanLabel_eq] using hts)
+        (by simpa only [D.cleanLabel_eq] using hs) hrb hqb)
 
-/-- OPEN next-floor comparison, independently of candidate comparison. -/
+set_option linter.unusedVariables false in
+/-- Next-floor comparison from the named current-record cover producer,
+independently of candidate comparison and current viability. -/
 theorem healthy_current_record_next_floor (D : HealthyRepairSchedule S A V Q)
     (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
     {v : V} {i j : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
@@ -879,7 +942,24 @@ theorem healthy_current_record_next_floor (D : HealthyRepairSchedule S A V Q)
         ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
           (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
             (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) := by
-  sorry
+  have hcover := healthy_current_record_sources S A V Q h0 hb hp W states D O hrepair hi hv
+  have hy := honest_ownKey (S := S) hv.1
+  intro q hiq hqj
+  have hqb : ∀ p < q + 1, Q.trace.time p ≤ Q.run.2.horizon :=
+    fun p hpq => healthy_cut_prefix_time S A V Q hj.1 p (by omega)
+  rcases hcover with hF | ⟨x, hx, r, s, B, CV, _, hrb, hs, hB, hRB⟩
+  · rw [hF]
+    have hf := D.reset.faults
+    have hn := Q.hn
+    have hf' : (honestKeys S Q.run.2)ᶜ.ncard < 2 * Q.params.toParams.q - Q.params.n := by
+      change (honestKeys S Q.run.2)ᶜ.ncard <
+        2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
+      change 3 * (honestKeys S Q.run.2)ᶜ.ncard ≤ Fintype.card V - 1 at hf
+      omega
+    exact Regimes.finalized_safe _ _ _ _ _ _ D.reset.run D.reset.noColl hf' _ hy _ hy _ _
+  · exact tips_comparable_of_origin_witnesses S A V Q .refl hRB
+      (D.reset.finalized_compatible_clean_source (healthy_repair_catch S A V Q) hx hy hB
+        (by simpa only [D.cleanLabel_eq] using hs) hrb hqb)
 
 /-- Candidate and next-floor inputs produce the original directed cut interval. -/
 theorem healthy_current_record_interval (D : HealthyRepairSchedule S A V Q)
