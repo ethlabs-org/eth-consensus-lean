@@ -15,6 +15,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 
 public section
 
@@ -534,6 +535,24 @@ private theorem final_pool_row (Q : FinalQuery S A V) (W : FinalWindowData S A V
     rw [hpay]
     exact List.mem_filter.mpr ⟨hr, by simpa only [decide_eq_true_eq, hσ] using And.intro hv hon⟩
 
+/-- Assemble independently produced finite anchors and carrier processing.
+Every budget and actual event remains explicit; eligible duties alone do not suffice. -/
+theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
+    (block : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))) (cut : Fin 4 → Nat)
+    (slots : ∀ a, (block a).slot = start + (![0, S.δt - 1, S.δt + 1, S.δt + 3] a))
+    (proposals : ∀ a, Q.trace.ProposesAt (block a).proposer (cut a) (block a))
+    (accepted : ∀ a, Q.trace.AcceptAt (block a).proposer (cut a) (block a))
+    (ready : ∀ a, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+      ((Sys (family S) V).cDur (K S A) Q.run) (block a).proposer (Q.trace.time (cut a)))
+    (fresh : Q.query < Q.trace.time (cut 0)) (ordered : StrictMono cut)
+    (bounded : ∀ a, Q.trace.time (cut a) ≤ Q.deadline)
+    (chain : ∀ a b, a ≤ b → Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) (block a) (block b))
+    (carrier : ∀ y, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+      ((Sys (family S) V).cDur (K S A) Q.run) y Q.deadline →
+      ∃ j, Q.trace.BlockCallAt y j (block 3) ∧ Q.trace.time j ≤ Q.deadline) :
+    Nonempty (FinalWindowData S A V Q) :=
+  ⟨⟨start, block, cut, slots, proposals, accepted, ready, fresh, ordered, bounded, chain, carrier⟩⟩
+
 /-- OPEN extraction and endpoint budget; four-anchor-window.md / fixed-timeout-synthesis.md
 at workbench b3ca078. Synthesizing accepted_latency must leave enough time for actual carrier
 processing by the exact engine-scaled endpoint. No numeric output delay is invented. -/
@@ -1013,6 +1032,28 @@ theorem final_bounded_crossings (Q : FinalQuery S A V) (W : FinalWindowData S A 
   exact ⟨B, C, hB, ⟨C, hC, hBC, hCs, hCJ, hCj⟩, hCE, hBC, hCJ, hbound,
     hClo, hCs, hprotected,
     final_coverage_of_height S A V Q W hB.1 (hBC.trans hC) (W.chain 3 3 (by decide)) hfinal⟩
+
+/-- Transport an acceptance-or-coverage certificate from its actual historical
+cut to the reader endpoint. The acceptance branch must already transfer immutable
+carrier finality to the recipient cache; a BlockCallAt or compatibility is insufficient. -/
+theorem final_cache_coverage_of_prior_cache (Q : FinalQuery S A V)
+    (W : FinalWindowData S A V Q)
+    (coverage : ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧
+      W.Extends (W.block 0) F)
+    (producer : ∀ F, W.store.blocks (W.state (W.block 3)).F = some F →
+      ∀ y t j, Q.deadline ≤ t → t ≤ Q.run.2.horizon →
+      Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+        ((Sys (family S) V).cDur (K S A) Q.run) y t → Regimes.CutAfter Q.trace j t →
+      ∃ k ≤ j, W.Extends F (Q.trace.state y k).fg.F ∨
+        W.Extends (W.block 0) (Q.trace.state y k).fg.F) : W.CacheCoverage := by
+  obtain ⟨F, hF, hAF⟩ := coverage
+  intro y t j hdt hth hy hj
+  obtain ⟨k, hkj, hk⟩ := producer F hF y t j hdt hth hy hj
+  have hmono := (Compose.fg_grows
+    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid) hy.1 hkj).2
+  rcases hk with h | h
+  · exact (hAF.trans h).trans hmono
+  · exact h.trans hmono
 
 /-- OPEN acceptance, not receipt. Paper workbench b3ca078, four-anchor-window.md /
 fixed-timeout-synthesis.md. The latency budget and cache timing are jointly OPEN. -/
