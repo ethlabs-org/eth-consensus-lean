@@ -106,6 +106,23 @@ theorem cross_of_progress {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
   · rw [he'] at he; subst he; rfl
   · exact absurd ⟨hq, hage⟩ hto
 
+/-- **An unbound entry justifies with a target quorum (r14 s3, window tables).** A block whose
+counted state has a target quorum, at an unbound height, justifies the entry: the loose-BJ gate
+does not apply. -/
+theorem justify_of_target_unbound {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
+    (h : gp.stateTransition σ B = some σ')
+    (hq : gp.q ≤ (B.atts.foldl ChainState.processAtt { σ with s := B.slot }).target.card)
+    (hnb : ¬ σ.bound) : σ'.hj = σ.h ∧ σ'.J = σ.Th := by
+  obtain ⟨-, he⟩ := gp.stateTransition_eq_some.1 h
+  obtain ⟨f, p, t, hf⟩ := ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [hf] at he hq
+  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
+    { σ with s := B.slot, fin := f, prog := p, target := t, L := B.root }
+  rcases hcase with ⟨-, he'⟩ | ⟨hn, -, -⟩ | ⟨hn, -, -⟩
+  · rw [he'] at he; subst he; exact ⟨rfl, rfl⟩
+  · exact absurd ⟨hq, Or.inl (by simpa [ChainState.bound] using hnb)⟩ hn
+  · exact absurd ⟨hq, Or.inl (by simpa [ChainState.bound] using hnb)⟩ hn
+
 end FGParams
 
 namespace Record
