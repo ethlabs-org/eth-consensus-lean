@@ -524,6 +524,39 @@ theorem healthy_own_call_time_le_now {v : V} {i q : Nat}
 theorem healthy_repair_schedule : Nonempty (HealthyRepairSchedule S A V Q) := by
   sorry
 
+omit h0 hp W states in
+/-- Any bounded operational opening repairs the post-update source cover. No
+current-read geometry or prior repair invariant is used. -/
+theorem healthy_receiver_repair_of_opening (D : HealthyRepairSchedule S A V Q)
+    (O : HealthyRepairOpening S A V Q D)
+    (hc : Healing.CatchRun Q.trace (honestKeys S Q.run.2) Q.gst (2 * Q.params.Δ)) :
+    HealthyReceiverRepair S A V Q D O := by
+  have hd := Q.params.toParams.hΔ
+  have hTb : Q.params.ts O.slot + 6 * Q.params.Δ ≤ Q.run.2.horizon := by
+    nlinarith [O.bounded, D.reserve]
+  have hR : Healing.drainTime Q.params D.resetTime ≤ Q.params.ts O.slot := by
+    have := (le_max_left _ _).trans ((le_max_right _ _).trans D.lower)
+    exact this.trans O.fresh.le
+  have hgu : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts O.slot := by
+    have := (le_max_left _ _).trans ((le_max_right _ _).trans
+      ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower)))
+    exact this.trans O.fresh.le
+  have hjoin : Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤ Q.params.ts O.slot := by
+    have hbase := (SA.ts_le_iff_le_slot Q.params (SA.gbar_nonneg Q.gst)
+      (Q.params.slot (SA.gbar Q.gst))).mpr le_rfl
+    simp only [SA.SAParams.ts] at hbase hgu ⊢
+    push_cast at hbase hgu ⊢
+    linarith
+  intro y hy _
+  obtain ⟨j, ell, _, hu, _⟩ := D.reset.update_toFG_calls hy hjoin hTb
+  have ht : Q.trace.time j = Q.params.ts O.slot + 6 * Q.params.Δ := hu.2.2.1
+  refine ⟨j, ell, hu, ht, ht ▸ hTb, ?_⟩
+  intro R hlookup
+  obtain ⟨x, hx, q, s, CV, hqj, hqt, hs, hsource⟩ :=
+    UpTo.operational_update_recent_source D.reset hc O.ready.1 rfl O.proposes O.label
+      hR hgu hTb hy hu hlookup
+  exact ⟨x, hx, q, s, R, CV, hqj, hqt, O.old_lt.le.trans hs, hsource, .refl⟩
+
 /-- OPEN existence of a bounded operational opening that repairs every ready receiver.
 Proof route: opening → operational unanimity → held-only selection → receiver repair.
 Unanimity and live-lock comparison are not inferred from operational opening data alone;
