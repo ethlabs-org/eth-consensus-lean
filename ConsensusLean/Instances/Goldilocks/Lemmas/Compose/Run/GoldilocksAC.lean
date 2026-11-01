@@ -172,6 +172,17 @@ private theorem adds_step {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SASta
       (fun _ h => Or.inr (Or.inr h))
   | restart => exact absurd rfl hc
 
+/-- A fresh non-restart pool insertion is a message, block-payload vote or own emission.
+This is the exact candidate set used by the forwarding queue. -/
+theorem step_pool_insertion_source {ro : ReplayOrder sp FGP} (self : Fin sp.n)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (c : (goldilocksSA sp FGP ro).Call) (hc : c ≠ .restart) (m : Vote sp.n)
+    (hold : m ∉ A.pool m.slot)
+    (hnew : m ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).1.pool m.slot) :
+    c = .message m ∨ (∃ B, c = .block B ∧ m ∈ blockVotes B) ∨
+      ∃ e ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).2, e.msg = m :=
+  (adds_step self A Φ t c hc m.slot m hnew).resolve_left hold
+
 end Adds
 
 /-! ### In the run -/

@@ -26,6 +26,85 @@ private def VoteQueueStamped {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (F
     (t : Time) (st : State sp ro) : Prop :=
   st.now = t ∧ ∀ q ∈ st.voteForwards, q.1 = t
 
+/-- Every fresh block-handler insertion passes the forwarding candidate filter. -/
+theorem onBlock_pool_insertion_queued {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro)
+    (B : Blk sp) (m : SA.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
+    (hnew : m ∈ (Node.onBlock st.self st.node st.now B).1.ac.pool m.slot) :
+    (st.now, m) ∈ (apply st (Node.onBlock st.self st.node st.now B)).voteForwards := by
+  unfold Node.onBlock at hnew ⊢
+  split_ifs at hnew ⊢ with ht
+  · exact False.elim (hold hnew)
+  · cases hf : st.node.fg.onBlock B with
+    | none => simp only [hf] at hnew; exact False.elim (hold hnew)
+    | some fg =>
+      simp only [hf] at hnew ⊢
+      refine apply_voteForward_of_admission st _ m
+        ⟨.block B, Node.frame { st.node with fg := fg },
+          ((goldilocksNode sp ro).step st.self st.node.ac
+            (Node.frame { st.node with fg := fg }) st.now (.block B)).2⟩
+        (by simp [Node.acCall]) ?_ hold hnew
+      · exact Compose.step_pool_insertion_source st.self st.node.ac
+          (Node.frame { st.node with fg := fg }) st.now (.block B) (by simp) m hold hnew
+
+/-- Every fresh message-handler insertion passes the forwarding candidate filter. -/
+theorem onMessage_pool_insertion_queued {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro)
+    (v m : SA.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
+    (hnew : m ∈ (Node.onMessage st.self st.node st.now v).1.ac.pool m.slot) :
+    (st.now, m) ∈ (apply st (Node.onMessage st.self st.node st.now v)).voteForwards := by
+  refine apply_voteForward_of_admission st _ m ⟨.message v, Node.frame st.node,
+    ((goldilocksNode sp ro).step st.self st.node.ac (Node.frame st.node) st.now (.message v)).2⟩
+    (by simp [Node.onMessage, Node.acCall]) ?_ hold hnew
+  · exact Compose.step_pool_insertion_source st.self st.node.ac (Node.frame st.node)
+      st.now (.message v) (by simp) m hold hnew
+
+/-- Processing any canonical object queues every newly inserted pool vote. -/
+theorem processOne_pool_insertion_queued {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} hs (st : State sp ro) o
+    (m : SA.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
+    (hnew : m ∈ (processOne hs st o).node.ac.pool m.slot) :
+    (st.now, m) ∈ (processOne hs st o).voteForwards := by
+  rcases canonEvent_cases (ro := ro) hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩
+  · simp only [processOne, h] at hnew
+    exact False.elim (hold hnew)
+  · simp only [processOne, h] at hnew ⊢
+    unfold relayIf at hnew ⊢
+    split_ifs at hnew ⊢ <;> exact onBlock_pool_insertion_queued st B m hold hnew
+  · simp only [processOne, h] at hnew ⊢
+    exact onMessage_pool_insertion_queued st v m hold hnew
+  · simp only [processOne, h, relayIf, ↓reduceIte] at hnew
+    exact False.elim (hold hnew)
+
+/-- Recursive delivery processing cannot insert a vote without queueing its envelope. -/
+theorem foldl_processOne_pool_insertion_queued {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} hs (os : List (Wire sp.n))
+    (st : State sp ro) (m : SA.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
+    (hnew : m ∈ (os.foldl (processOne hs) st).node.ac.pool m.slot) :
+    (st.now, m) ∈ (os.foldl (processOne hs) st).voteForwards := by
+  induction os generalizing st with
+  | nil => exact False.elim (hold hnew)
+  | cons o os ih =>
+    by_cases hm : m ∈ (processOne hs st o).node.ac.pool m.slot
+    · exact foldl_processOne_voteForwards_subset hs os _
+        (processOne_pool_insertion_queued hs st o m hold hm)
+    · have hq := ih (processOne hs st o) hm hnew
+      rwa [processOne_now] at hq
+
+/-- Recording an own block queues every fresh pool insertion as well. -/
+theorem recordOwn_pool_insertion_queued {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) o hs
+    (m : SA.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
+    (hnew : m ∈ (recordOwn st o hs).node.ac.pool m.slot) :
+    (st.now, m) ∈ (recordOwn st o hs).voteForwards := by
+  unfold recordOwn at hnew ⊢
+  split at hnew
+  · exact False.elim (hold hnew)
+  · split at hnew
+    · exact onBlock_pool_insertion_queued st _ m hold hnew
+    · exact False.elim (hold hnew)
+  · exact False.elim (hold hnew)
+
 private theorem voteStamped_apply {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro) r
     (h : VoteQueueStamped t st) : VoteQueueStamped t (apply st r) := by
@@ -662,6 +741,32 @@ theorem delivery_voteForward_released (hv : rho.ExecutionValid) {v : V}
   apply List.mem_append_left
   erw [Model.Run.runDuties_cons]
   exact List.mem_append_left _ hout
+
+/-- A delivery's aggregate pool difference suffices for same-event forwarding,
+without identifying which nested message or block handler made the insertion. -/
+theorem delivery_pool_insertion_released (hv : rho.ExecutionValid) {v : V}
+    {i : Nat} {o : (Model.protoOf (compiled (family S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t)) (m : SA.Vote (Fintype.card V))
+    (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
+    (hnew : m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot) :
+    Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.releasesAt i := by
+  have hnow : (stateAt S rho hn v i).now = t :=
+    (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
+  have hnode : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node =
+      (stateAt S rho hn v (i + 1)).node := by
+    rw [node_of_deliver S rho hn hv v (hv.honest_only _ (List.mem_of_getElem? he)) i o t he]
+    unfold process
+    erw [foldl_processOne_node (sp := S.params (pubOf E) hn) (ro := S.ro _)
+      (runProposer S rho hn) (digestOf S rho)]
+    rw [stateAt_self, hnow]
+  apply delivery_voteForward_released S rho hn hv he (t, m)
+  rw [← hnow]
+  unfold process
+  exact foldl_processOne_pool_insertion_queued (sp := S.params (pubOf E) hn)
+    (ro := S.ro _) (Model.digests rho.hash o) _ (stateAt S rho hn v i) m hold
+    (show m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool m.slot
+      from hnode.symm ▸ hnew)
 
 /-- A fresh wire admission anywhere in the actual delivery traversal publishes its exact
 admission-time envelope in the same event. Prefix-state identification is explicit here. -/
