@@ -27,7 +27,7 @@ joint supplier has been decomposed into its eventual proof obligations.
 
 ## Master status: every Accepted field, grouped by leaf owner
 
-Baseline audited: main `e6a8ab76e0dbf5f43e4fabc654a44f17a9d20a3b`.
+Current audit: main `5d33450a51ac2b4188fb33f1f8a13cec753b4a66`.
 The post-wiring audit uses `spec-surface dependencies --from
 Consensus.Goldilocks.Refinement.accepted --modules
 ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted`, including type
@@ -45,7 +45,6 @@ an assembly depending on them is not an additional leaf.
 | S | Spec orb, with engine service/population and recurrence owners | `confirmed_duration_supply`, `sleepy_query_sync`, `sleepy_query_population`, `sleepy_query_slot`, `confirmed_slot_event` |
 | R | Spec orb safety-input production | `sleepy_safety_inputs` |
 | I | Healing box finite Sleepy | `sleepy_include_finite` |
-| E | Healing box arbitrary-cut Sleepy transport | `sleepy_safe_engine` |
 
 | Accepted field / branch | Reachable OPEN leaves by owner set | Direct adapter sorry? |
 |---|---|---|
@@ -55,15 +54,15 @@ an assembly depending on them is not an additional leaf.
 | finalAccountable | C (contract/type dependencies) | no |
 | healthyLive, final | C ∪ F | no |
 | healthyLive, available/stable | C ∪ N | no |
-| sleepySafe, available/stable | C ∪ R ∪ E | no |
+| sleepySafe, available/stable | C ∪ R | no |
 | sleepyLive, available/stable | C ∪ S ∪ I | no |
 | healedSafe, available/stable | C ∪ H | no |
 | persists | C ∪ O | no |
 | progressFits, progressTolerant, admissible | C | no |
 | serves | none (schema provides final output) | no |
-| claims and complete accepted | C ∪ F ∪ H ∪ N ∪ O ∪ S ∪ R ∪ I ∪ E | no |
+| claims and complete accepted | C ∪ F ∪ H ∪ N ∪ O ∪ S ∪ R ∪ I | no |
 
-This closure has **24 direct sorry owners**. At baseline the two nonfinal
+This closure has **23 direct sorry owners**. At the pre-wiring baseline the two nonfinal
 healthyLive branches and sleepySafe/sleepyLive were direct adapter holes; all
 four now have assembly bodies. Capability budgets remain distinct even though
 available and stable both project to confirmed output. Collision escapes,
@@ -72,16 +71,27 @@ are unchanged. No Main/Solution certification is claimed.
 
 OPEN but **not currently reachable from accepted**: `healthy_old_row_realize`,
 `healthy_vote_row_replacement` (Healing paper/T3, first-arrival/self-entry and
-label-bounded replacement), and `sleepy_safe_finite` (Healing box finite R.1).
+label-bounded replacement). `sleepy_safe_finite` (Healing box finite R.1) is
+**proved and unreached**, via `Regimes.sleepy_safe_before` at c3f8f4d.
 Their absence from the closure means the current joint leaves do not yet call
-them, not that they are proved or unnecessary. Likewise imported implementation
+them; reachability alone says nothing about proof status. Likewise imported implementation
 modules are not automatically proof dependencies. The older draft inventories
 below describe planned internal decompositions, not extra leaves in this closure.
+
+The approved safety-duration change landed at 5d33450: `sleepy_safe_engine`
+is proved at node catchUp + 1, and `sleepy_safety_inputs` now requires
+`Regimes.catchUp nodeParams + 1 ≤ engine cDur`. The Accepted endpoint is unchanged.
+The joint `accepted_catchUp` synthesis remains OPEN; no fixed coefficient is chosen. Since
+engine Δe ≥ 1, increasing an engine-scale coefficient C by one adds Δe:
+`(C + 1) * Δe = C * Δe + Δe ≥ C * Δe + 1`. Do not identify literal +1
+with Δe or Δp. The bridge proof uses unit clock lag, an initial or last complete
+local-event ReadPoint, effective-record equality and ordered-record monotonicity.
+It does not prove the remaining safety-input supplier or unconditional Accepted safety.
 
 | Declaration | Paper argument/status |
 |---|---|
 | `Consensus.Goldilocks.Refinement.healthy_confirmed_supply` | OPEN, Healing paper/T3 with Spec orb integration: finite Healthy preparation, exact-cDur-ready actual producer selection and its budget, frozen service and deadline coverage remain inside this joint existential. Only the selected accepted proposal is covered; no new endpoint assumption. |
-| `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | OPEN, Spec orb with engine/Healing box: joint duration, finite-horizon canonical SyncBefore and population production with no progress, query or ready-reader existence premise. Existing sleepy_safe_engine retains arbitrary-cut transport. |
+| `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | OPEN, Spec orb with engine/Healing box: catchUp+1≤cDur, finite-horizon canonical SyncBefore and population production with no progress, query or ready-reader existence premise. Arbitrary-cut transport is proved by sleepy_safe_engine. |
 | `Consensus.Goldilocks.Refinement.confirmed_duration_supply` | OPEN, Spec orb: joint coefficient bound, not positivity or readiness upgrade. |
 | `Consensus.Goldilocks.Refinement.sleepy_query_sync` | OPEN, engine/Spec orb: canonical service through exact deadline. |
 | `Consensus.Goldilocks.Refinement.sleepy_query_population` | OPEN, Spec orb: finite slot-point population transport. |
@@ -313,8 +323,9 @@ be used upstream of selected-duty/node agreement.
 Owner: Healing box, integrated by the spec orb. Exact declarations are in
 `Lemmas/Refinement/Sleepy.lean`, namespace `Consensus.Goldilocks.Refinement`.
 All use canonical `simTrace` and, where needed, `runProposer S rho hn`.
-Three direct theorem leaves remain OPEN: sleepy_safe_finite, sleepy_include_finite and
-sleepy_safe_engine. sleepy_grow_finite has a closed body but reaches the first two.
+Only sleepy_include_finite remains a direct OPEN theorem in this module.
+sleepy_safe_engine is proved at catchUp+1; sleepy_safe_finite is proved via Regimes.sleepy_safe_before;
+sleepy_grow_finite has a closed body but still reaches sleepy_include_finite.
 The two supplier definitions remain contracts, not proved suppliers.
 Here Δp is the node parameter, c = catchUp = 18Δp, and b≤horizon.
 
@@ -324,13 +335,13 @@ Here Δp is the node parameter, c = catchUp = 18Δp, and b≤horizon.
 | `Consensus.Goldilocks.Refinement.sleepy_faultBound` | SleepyOn(1/2,c,0,b) ⇒ node FaultBound at ts(s)+d≤b for d∈{0,Δp,2Δp}; ready-implies-joined and key counts | Proved |
 | `Consensus.Goldilocks.Refinement.SleepyServiceSupplier` | SyncUntil b ⇒ node SyncBefore H Δp b on valid runs with 0≤b≤horizon | Definition only; strict deadline slack and acceptance relay OPEN; repaired window may differ |
 | `Consensus.Goldilocks.Refinement.sleepy_read_cut` | Ready reader at 0≤t≤horizon ⇒ CutAfter and Boundary at cutMap(endCut t), with output clock t; terminal filler included | Proved; ready_read_cut takes arbitrary nonnegative cDur |
-| `Consensus.Goldilocks.Refinement.sleepy_safe_finite` | Valid run, canonical NoCollRun, SyncBefore through b and bounded slot quorum ⇒ ReadySafeOn 0 b | OPEN finite R.1 localization |
+| `Consensus.Goldilocks.Refinement.sleepy_safe_finite` | Valid run, canonical NoCollRun, SyncBefore through b and bounded slot quorum ⇒ ReadySafeOn 0 b | Proved at c3f8f4d via Regimes.sleepy_safe_before; not reached by Accepted |
 | `Consensus.Goldilocks.Refinement.sleepy_include_finite` | Same finite premises, ready proposal at 0≤τ≤b, τ+6Δp≤t≤b, ready reader and CutAfter at t ⇒ proposal ancestry of read | OPEN finite R.2 localization |
-| `Consensus.Goldilocks.Refinement.sleepy_grow_finite` | Same service/quorum/noColl, t≥0, k≥1, b=t+(4k+6)Δp, selected-schedule recurrence and ready reader at b ⇒ fresh proposal after t included in ready b reads, excluded from ready t reads, with read extension | Body closed; transitive OPEN leaves sleepy_include_finite and sleepy_safe_finite |
+| `Consensus.Goldilocks.Refinement.sleepy_grow_finite` | Same service/quorum/noColl, t≥0, k≥1, b=t+(4k+6)Δp, selected-schedule recurrence and ready reader at b ⇒ fresh proposal after t included in ready b reads, excluded from ready t reads, with read extension | Body closed; transitive OPEN leaf sleepy_include_finite |
 | `Consensus.Goldilocks.Refinement.SleepyRecurrenceSupplier` | Engine single-pattern recurrence on family grid ⇒ node recurrence for runProposer, same c and [0,b] | Definition only; grid/duration adapter OPEN |
 | `Consensus.Goldilocks.Refinement.sleepy_proposal` | Valid run and ready node proposal at 0≤τ≤horizon ⇒ ready key and engine HonestProposal of encoded header | Proved through simTrace_block_released; ready_proposal supports arbitrary cDur |
 | `Consensus.Goldilocks.Refinement.sleepy_inBy` | Valid run, NoCollRun, ready proposal and node inclusion at all ready CutAfter t reads, 0≤τ≤t≤horizon ⇒ engine InBy confirmed | Proved through confirmed_inBy; finalized_inBy supplies the final-output analogue |
-| `Consensus.Goldilocks.Refinement.sleepy_safe_engine` | Valid run, NoCollRun, SyncBefore/quorum through horizon ⇒ engine ReadySafe confirmed | OPEN arbitrary-cut clock/compatibility transport; endCut alone insufficient |
+| `Consensus.Goldilocks.Refinement.sleepy_safe_engine` | Valid run, NoCollRun, SyncBefore/quorum through horizon ⇒ engine ReadySafe (node catchUp+1) confirmed | Proved at 5d33450: arbitrary cuts via unit clock lag and last complete local event; standard axioms only |
 
 R.1/R.2 motivate these reductions, but do not prove the engine bridges. Existing
 SleepySafePrefix requires SyncRun with receiver obligations beyond b; IncludeSleepy
