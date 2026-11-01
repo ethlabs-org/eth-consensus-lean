@@ -181,6 +181,21 @@ theorem decoded_acceptance_enqueue {V : Type} [Fintype V] {E : Env V}
     (fun parent pt pp A hp hd => hheld.parent_slot_lt hreach B fg' hfg root hr
       parent pt pp A hp hd)
 
+/-- Transfer the queue decoder invariant to the full accepting handler state. -/
+theorem WrappersDecoded.accept {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tables : Wire sp.n → List (Header Info × Nat)} (st : State sp ro) (B : Blk sp)
+    (h : WrappersDecoded tables (queueAccepted st B))
+    (hcover : WrappersCover st)
+    (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
+    WrappersDecoded tables (apply st (Node.onBlock st.self st.node st.now B)) := by
+  obtain ⟨root, p, hr, hp, hm, hq⟩ := onBlock_queues_acceptance_parent st B hcover ha
+  have hs : (queueAccepted st B).self = st.self := by simp [queueAccepted, hr, hp]
+  exact h.mono ((apply_self _ _).trans hs.symm)
+    (hm.trans (queueAccepted_of_parent st B root p hr hp).1.symm)
+    (hq.trans (queueAccepted_of_parent st B root p hr hp).2.symm)
+    (by rw [apply_now, queueAccepted_now])
+
 /-- A canonical child decoded during a receipt also decodes under its own digest table.
 This discharges child wire validity for delivery acceptances without any payload premise. -/
 theorem received_child_decodes {V : Type} [Fintype V] {E : Env V}
