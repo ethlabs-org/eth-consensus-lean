@@ -382,14 +382,14 @@ theorem relay_mem_voterBlockTree (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
 
 /-- A counted head reaches the actual voter freeze through either window service or
 catch-up of an old acceptance. Only recipient observations through `b` are used. -/
-theorem relay_mem_voterBlockTree_window_before
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
-    (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
+private theorem relay_mem_voterBlockTree_window_aux
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
+    (hsync : SyncACWindowBefore H U a b T)
     {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : SA.Blk sp.n FGP}
     (hkw : T.AcceptAt w kw W) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
     {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
-    (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
+    (hcatch : T.time kw < a → ∃ ky ≤ i, T.AcceptAt y ky W ∧ T.time ky < SA.freeze sp e.msg.slot)
     (hF : Anc U ℓ.frame.F W) : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -422,11 +422,7 @@ theorem relay_mem_voterBlockTree_window_before
       have := hdl ky hky
       unfold SA.freeze
       linarith
-    · obtain ⟨ky, hky, hacc, hkyt⟩ := hcatch.relay w hw kw W hkw (lt_of_not_ge ha)
-        y hy i ℓ hc.1 (by linarith) hi hF
-      refine ⟨ky, hky, hacc, ?_⟩
-      unfold SA.freeze
-      linarith
+    · exact hcatch (lt_of_not_ge ha)
   obtain ⟨ky, hky, hacc, hkyt⟩ := haccepted
   have hfz : SA.freeze sp e.msg.slot ≤ T.time i := by unfold SA.freeze; linarith
   have hWt := SA.mem_tree_of_acceptAt sp hr hy hacc hky hc.1 hF
@@ -443,6 +439,41 @@ theorem relay_mem_voterBlockTree_window_before
     linarith
   rw [← readPoint_blockStamp hr hy hc hne] at hbs
   exact ⟨hWt, Or.inl hbs⟩
+
+/-- Post-start acceptance relay needs no catch-up premise. -/
+theorem relay_mem_voterBlockTree_window_after
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
+    (hsync : SyncACWindowBefore H U a b T)
+    {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : SA.Blk sp.n FGP}
+    (hkw : T.AcceptAt w kw W) (ha : a ≤ T.time kw) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
+    {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
+    (hF : Anc U ℓ.frame.F W) : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot :=
+  relay_mem_voterBlockTree_window_aux hr hsync hw hy hkw ht hc hs hi
+    (fun h => False.elim (not_lt_of_ge ha h)) hF
+
+/-- Old acceptances use catch-up; post-start acceptances use window relay. -/
+theorem relay_mem_voterBlockTree_window_before
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
+    (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
+    {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : SA.Blk sp.n FGP}
+    (hkw : T.AcceptAt w kw W) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
+    {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
+    (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
+    (hF : Anc U ℓ.frame.F W) : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
+  apply relay_mem_voterBlockTree_window_aux hr hsync hw hy hkw ht hc hs hi ?_ hF
+  intro ha
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hti : sp.ts e.msg.slot ≤ T.time i :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [(SA.castAt_spec hr hy hc).2.1])
+  have hm : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
+    simp only [SAParams.ts]; ring
+  obtain ⟨ky, hky, hacc, hkyt⟩ := hcatch.relay w hw kw W hkw ha y hy i ℓ hc.1
+    (by linarith) hi hF
+  refine ⟨ky, hky, hacc, ?_⟩
+  unfold SA.freeze
+  linarith
 
 /-- **What the writer of a fast lock did with its counted votes** (main's Sleepy
 `result_writer` and `optimistic_writer`, for the selected block): each was admitted (or sent) by

@@ -537,6 +537,84 @@ theorem low_root_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {x : F
     exact hroot.2 ⟨hroot.1, D, hD'.1, hD'.2, by omega, hn⟩
   exact SA.anc_total (honest_coherent hp) (Anc.mono (fun X hX => ⟨y, hy, k, hX⟩) hJD) hBD
 
+/-- Low justification gives complete root compatibility using only post-cut relay. -/
+theorem high_origin_low_J_root_before
+    (hp : ResetPremises tr H proposer dg g ΔF a) {Q : Time}
+    (hsync : SyncACWindowBefore H (tr.HonestBlocks H) (cutZ sp.toParams g) Q tr.projAC)
+    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot) (hk : tr.time k ≤ Q)
+    (hlow : (tr.state y k).fg.hj ≤ HZ tr H g) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
+  have hF := low_finalized_below_origin hp hy k hlow ho
+  have hframe := Compose.frame_of_projAC hp.run hy hc.1
+  have hFF : ell.frame.F = (tr.state y k).fg.F := by rw [hframe]; rfl
+  have hroot : ell.frame.fcRoot = (tr.state y k).fg.fcRoot := by rw [hframe]; rfl
+  rw [hroot]
+  unfold Store.fcRoot
+  split_ifs with hJ
+  · have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+    obtain ⟨CV, hst⟩ := ho.2.2.1
+    obtain ⟨_, C, hfl, hBC⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
+    obtain ⟨v, _, D, hDU, _, hBD, hacc⟩ := raw_writer_relay_source hr ho.1 (Or.inr hfl) hBC
+    rcases hacc with hg | ⟨q, hq, hqt⟩
+    · obtain ⟨z, hz, m, hDm⟩ := hDU
+      exact False.elim ((cutZ_lt_of_anc hp ho hz hDm hBD).2 hg)
+    · have hD := acceptAt_mem hp ho.1 hq
+      have hstart := (cutZ_lt_of_anc hp ho ho.1 hD hBD).1.le
+      have htree := relay_mem_voterBlockTree_window_after hr hsync ho.1 hy hq hstart hqt hc
+        (by omega) hk (by rw [hFF]; exact hF.trans hBD)
+      exact low_root_compatible hp ho hy hc hj hJ hlow htree hBD
+  · exact Or.inl hF
+
+/-- All held honest rows justify root compatibility from bounded origin comparisons. -/
+theorem high_J_root_of_origins_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e)
+    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
+    (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocks H) B O) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
+  have hU := honest_coherent hp
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hy k
+  have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, k, hX⟩
+  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
+  have hgB := ((Store.accepted_tree _ _ _ _
+    (Compose.fg_reachable hp.run.toLocalRun ho.1 i)).2.2.2 B hBx).mono
+      (fun X hX => (⟨x, ho.1, i, hX⟩ : X ∈ tr.HonestBlocks H))
+  have hrow : ∀ E ∈ (tr.state y k).fg.tree,
+      HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h →
+      ((tr.state y k).fg.σ E.root).Th = E.root → ¬ Compatible (tr.HonestBlocks H) E B →
+      ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload, att.T = E.root → att.val ∉ H := by
+    intro E hE hEh _ hnc W hW att ha haT haH
+    rcases tree_accepted hp.run.toLocalRun hy hW with rfl | ⟨i', hi', hA⟩
+    · cases ha
+    obtain ⟨d, hdi, hsd⟩ :=
+      hp.run.att_unforgeable y hy i' att (Or.inr ⟨W, ⟨true, hA⟩, ha⟩) haH
+    obtain ⟨E', hE', hE'r, hE'h⟩ := signAt_entry hp.run haH hsd
+    obtain rfl : E' = E := hU.1 ⟨_, haH, d, hE'⟩ (hsub hE) (hE'r.trans haT)
+    obtain ⟨r, hrd, l, O, hoO, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
+      high_row_source hp haH hsd (by rw [← hE'h, σ_eq_run hp haH hy hE' hE]; exact hEh)
+    obtain rfl : E₀ = E' := hU.1 ⟨_, haH, r, hE₀⟩ (hsub hE) (hE₀r.trans haT)
+    have hEO : Anc (tr.HonestBlocks H) E₀ O := hE₀O.mono fun X hX => ⟨_, haH, r, hX⟩
+    rcases hcompare _ r l O (by omega) hoO with hBO | hOB
+    · exact hnc (SA.anc_total hU hEO hBO)
+    · exact hnc (Or.inl (hEO.trans hOB))
+  have hJ := Store.J_compatible_of_rows hreach (faulty_lt_q hp.healthy) hU hsub hgB hrow hhigh
+  have hF : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B := by
+    obtain ⟨-, -, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hreach
+    rcases hJ with hJB | hBJ
+    · exact Or.inl ((hFJ.mono hsub).trans hJB)
+    · exact SA.anc_total hU (hFJ.mono hsub) hBJ
+  rw [Compose.frame_of_projAC hp.run hy hc.1]
+  change Compatible (tr.HonestBlocks H) (tr.state y k).fg.fcRoot B
+  unfold Store.fcRoot
+  split_ifs <;> assumption
+
 /-- **`Carry` at a first-transfer vote** (§11 "Historical finality and acceptance", §13
 "Retaining the witnesses and the frame"). At an honest vote of slot `j + 1` at which `B` is not
 below `fc_root` (so `Σ.F ⪯ B`), the voter holds the counted votes of the origin and has accepted
