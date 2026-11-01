@@ -795,6 +795,56 @@ theorem readySafeOn_of_high_covers_interval
   obtain ⟨x', r', b', B', ho', hOB'⟩ := hcover z j t' hj hbj ht' ht₁' hz
   exact covered_outputs_compatible hp ho ho' hOB hOB'
 
+/-- Actual AC calls, including restart, supply guarded record transitions. A high cover
+discharges strictly later candidates; equal/earlier labels and unserved raw windows remain
+explicit compatibility obligations. Activated cache retention supplies the new floor. -/
+theorem effectiveRecordInterval_of_high_cover
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {r b i j : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : Healing.HighOrigin tr H g x r b B) (hOB : Anc (tr.HonestBlocks H) O B)
+    (hy : y ∈ H)
+    (hcandidates : ∀ q, i ≤ q → q < j → ∀ D s CV,
+      SA.ResultAt tr.projAC y q s D CV ∨ SA.OptimisticLockAt tr.projAC y q s D CV →
+      Compatible (tr.HonestBlocks H) O D ∨
+        (b < s ∧ (SA.ResultAt tr.projAC y q s D CV →
+          SA.gbar g + 4 * sp.Δ ≤ sp.ts s ∧ Healing.CatchRun tr H g (2 * sp.Δ))))
+    (hframes : ∀ q, i ≤ q → q < j →
+      Compatible (tr.HonestBlocks H) (tr.state y (q + 1)).fg.F O ∨
+        (tr.IsCall y q ∧ a ≤ tr.time q ∧ (r ≤ q ∨ sp.ts (b + 1 : Nat) ≤ tr.time q))) :
+    EffectiveRecordInterval tr H y i j O := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hst := Compose.projAC_state hp.run.toLocalRun hy
+  refine ⟨fun q hiq hqj => Or.inl ?_⟩
+  refine ⟨(fun D => ∃ s CV, SA.ResultAt tr.projAC y q s D CV ∨
+    SA.OptimisticLockAt tr.projAC y q s D CV), ?_, ?_, ?_⟩
+  · by_cases hcall : ∃ ell, tr.projAC.CallAt y q ell
+    · obtain ⟨ell, hcall⟩ := hcall
+      have hw := Compose.call_writes hac.localRun hy hcall
+      rw [← tr.projAC.state_succ_of_call hcall, hst, hst,
+        Compose.frame_of_projAC hp.run hy hcall] at hw
+      exact hw
+    · have he : (tr.state y (q + 1)).ac.latestConfirmed = (tr.state y q).ac.latestConfirmed := by
+        rw [← hst, tr.projAC.state_succ_of_not (fun ell h => hcall ⟨ell, h⟩), hst]
+      rw [he]
+      exact Compose.writes_iff.mpr .refl
+  · rintro D ⟨s, CV, hD⟩
+    rcases hcandidates q hiq hqj D s CV hD with h | ⟨hbs, hlate⟩
+    · exact h
+    apply Or.symm
+    apply covered_candidates_compatible hp ho hOB hy hbs
+    rcases hD with h | h
+    · exact Or.inl ⟨h, hlate h⟩
+    · exact Or.inr h
+  · rcases hframes q hiq hqj with h | ⟨hcall, ha, hact⟩
+    · exact h
+    have hFB := (Healing.cacheInv_iff.mp (Healing.retention_inv hp q).2)
+      y hy hcall ha x r b B ho hact |>.1
+    obtain ⟨call, hcall⟩ := hcall
+    rw [← tr.state_succ_of_call hcall] at hFB
+    rcases hFB with h | h
+    · exact SA.anc_total hac.localRun.coherent h hOB
+    · exact Or.inr (hOB.trans h)
+
 end CoveredEndpoint
 
 end Consensus.Goldilocks.Refinement
