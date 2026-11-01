@@ -240,6 +240,44 @@ private theorem attest_prev (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin
   rw [List.getElem?_append_right le_rfl, Nat.sub_self]
   exact h0
 
+/-- Signing is immediately followed by processing the identical own attestation. -/
+theorem exec_attest_next (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
+    (st : NodeState A) (t : Time) (e : Event A) {k : Nat} {C : A.Blk} {a : FG.Att P.n}
+    (hk : (exec proposer dg y st t e).2[k]? = some (.fg (.attest C (some a)))) :
+    (exec proposer dg y st t e).2[k + 1]? = some (.fg (.attestation a)) := by
+  obtain ⟨x, rfl⟩ := signed_only_in_ticks proposer dg y st t e C a
+    (List.mem_of_getElem? hk)
+  rw [tick_cuts] at hk ⊢
+  set l := (tickStep proposer dg y st t x .acTick).2 ++
+    (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).2
+  have hn : l.length ≤ k := by
+    by_contra hlt
+    rw [List.getElem?_append_left (by omega)] at hk
+    rcases List.mem_append.mp (List.mem_of_getElem? hk) with hm | hm
+    · simp [tickStep, acCall] at hm
+    · exact proposal_no_attest proposer dg y _ t x C _ hm
+  rw [List.getElem?_append_right hn] at hk
+  rw [List.getElem?_append_right (show l.length ≤ k + 1 by omega)]
+  have hm := (update_attest proposer dg y _ t x hk).1
+  have he : k + 1 - l.length = 2 := by omega
+  rw [he]
+  rw [hm] at hk
+  suffices ∀ s : NodeState A,
+      (tickStep proposer dg y s t x .fgUpdate).2[1]? = some (.fg (.attest C (some a))) →
+      (tickStep proposer dg y s t x .fgUpdate).2[2]? = some (.fg (.attestation a)) from
+    this _ hk
+  intro s hs
+  simp only [tickStep, acToFG] at hs ⊢
+  split at hs
+  · simp at hs
+  simp only [attest] at hs ⊢
+  split at hs
+  · simp at hs
+  simp only [onAttestation] at hs ⊢
+  simp at hs
+  obtain ⟨rfl, rfl⟩ := hs
+  rfl
+
 /-- The FG cut of `on_block` is its first cut, of its block. -/
 private theorem onBlock_block {y : Fin P.n} {st : NodeState A} {t : Time} {B' B : A.Blk}
     {acc : Bool} {k : Nat} (hk : (onBlock y st t B').2[k]? = some (.fg (.block B acc))) :
@@ -538,6 +576,15 @@ private theorem group_cut {y : Fin P.n} {j : Nat} {t : Time} {e : Event A}
   obtain ⟨hk', hc⟩ := List.getElem?_eq_some_iff.1 hk
   obtain ⟨hn, ht, -, -, hl⟩ := hg.2.1 k hk'
   exact ⟨⟨hn, hl.trans (congrArg some hc)⟩, ht⟩
+
+/-- An honest signing call processes its own attestation at the next cut, at the same time. -/
+theorem sign_next (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+    {i : Nat} {C : A.Blk} {a : FG.Att P.n}
+    (hc : tr.CallAt y i (.fg (.attest C (some a)))) :
+    tr.CallAt y (i + 1) (.fg (.attestation a)) ∧ tr.time (i + 1) = tr.time i := by
+  obtain ⟨j, e, k, hg, rfl, hk⟩ := call_in_group h hy hc
+  have hk' := exec_attest_next proposer dg y _ _ e hk
+  simpa only [Nat.add_assoc] using group_cut hg hk'
 
 /-- **An accepted block's FG cut is followed by the AC cut of that block.** -/
 theorem accept_next (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}

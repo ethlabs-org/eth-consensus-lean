@@ -47,19 +47,17 @@ after the latter's cutoff. The concrete adapter must discharge the same four ser
 def SyncRunTransport : Prop :=
   rho.log.PSync rho.point 0 → ∀ a b, 0 ≤ a → tr.SyncRun H ΔF a b
 
-/-- OPEN concrete supplier: actual signed/admitted FG rows receive the protocol delay,
-not an independent setup coefficient. This services an existing attestation; it never
-produces a row. Source emission/admission must supply an actual released canonical object;
-engine service supplies holdings by Δe, provenance and recursive processing supply the call
-after its source time, and the installed Δp = Δe + 1 gives the strict endpoint. The adapter
-must still identify keys, cuts, awake intervals and horizon. This is not an extra Healthy
-premise; source availability and usable-row obligations remain separate. -/
+/-- OPEN concrete supplier: signed FG rows are processed before the protocol deadline at
+recipient calls within the engine horizon. An earlier processing of the identical attestation
+is sufficient; no processing after the source signing is required. This services an existing
+signed row and does not produce one. The trusted `AttDeliveredBy` contract is unchanged. -/
 def PSyncFGRowTransport : Prop :=
   ∀ g, rho.log.PSync rho.point g →
-    ∀ x ∈ H, ∀ i a, tr.SendOrAdmitAttAt x i a →
-      ∀ y ∈ H, ∀ j, tr.IsCall y j →
+    ∀ x ∈ H, ∀ i a, tr.SignAt x i a →
+      ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ rho.horizon →
         tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
-        tr.AttDeliveredBy y j (tr.time i) (max (tr.time i) g) sp.Δ a
+        ∃ k ≤ j, tr.ProcessAttAt y k a ∧
+          tr.time k < tr.deadline y k (max (tr.time i) g) sp.Δ
 
 /-- Pure endpoint arithmetic, independent of the unimplemented adapter. Service at the engine
 endpoint is strictly before the protocol endpoint, including equality at the engine bound.
@@ -687,6 +685,19 @@ theorem block_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid
     (simTrace_time_nonneg S rho hn hv i) htime (p := p)
     (by simpa only [horg] using hdecode) hy hj (hd.trans hb) hd
 
+/-- Honest signatures produce well-formed attestations from reachable chain entry states. -/
+theorem signed_att_wellFormed (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {i : Nat}
+    {a : FG.Att (Fintype.card V)} (hs : (simTrace S rho hn).SignAt y i a) :
+    a.WellFormed := by
+  obtain ⟨C, hc⟩ := hs
+  have run := (simTrace_goldilocksRun S rho hn hv).toLocalRun
+  have hsign := (run.cutLaw y hy i _ hc).1
+  have hr := Compose.fg_reachable run hy i
+  obtain ⟨h1, h2, h3⟩ := Store.entry_input hr
+    (((simTrace S rho hn).state y i).fg.σ C.root).Th
+  exact Compose.createAtt_wellFormed h1 h2 h3 hsign
+
 /-- Every well-formed attestation contained in an actual receipt gets a real processing
 call at receipt time, including duplicate attestations already present in the pool. -/
 theorem received_att_processAt (hn : 1 ≤ Fintype.card V)
@@ -744,5 +755,104 @@ theorem received_att_processAt (hn : 1 ≤ Fintype.card V)
   · simp only [simTrace_node, hk, Option.elim_some, hn']
   · simp only [simTrace_label, hk, Option.map_some, hl]
   · simp only [simTrace_time, hk, Option.elim_some, ht]
+
+/-- An honest canonical attestation release includes own processing in that tick. -/
+theorem released_att_processAt (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    {v : V} (hv' : v ∈ rho.honest) {a : FG.Att (Fintype.card V)} {t : Time}
+    (hs : rho.releases v (attObj a) t) :
+    ∃ k, (simTrace S rho hn).ProcessAttAt (rho.ownKey v) k a ∧
+      (simTrace S rho hn).time k = t := by
+  obtain ⟨i, he, ho⟩ := hs
+  rcases he with he | ⟨o, he⟩
+  · obtain ⟨hp, C, hc⟩ := att_released_inv S rho hn hv hv' he ho
+    obtain ⟨m, hm, hcm⟩ := List.getElem_of_mem hc
+    have hnxt := Compose.exec_attest_next
+      (A := goldilocksNode (S.params (Model.pubOf E) hn) (S.ro _))
+      (runProposer S rho hn) (digestOf S rho)
+      (rho.ownKey v) (stateAt S rho hn v i).node t
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)))
+      (k := m) (C := C) (a := a) (List.getElem?_eq_some_iff.mpr ⟨hm, hcm⟩)
+    have hlen := (List.getElem?_eq_some_iff.mp hnxt).1
+    have hEC := eventCuts_tick_public S rho hn i v t he hp
+    have hm' : m + 1 < (eventCuts S rho hn i).length := by
+      rw [hEC, length_groupRecs]
+      exact hlen
+    have hk := allCuts_getElem?_add S rho hn i (m + 1)
+      (List.getElem?_eq_some_iff.mp he).1 hm'
+    rw [hEC] at hk
+    have hlen' : m + 1 < (groupRecs (runProposer S rho hn) (digestOf S rho)
+        (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).length := by
+      rw [length_groupRecs]; exact hlen
+    rw [List.getElem?_eq_getElem hlen'] at hk
+    obtain ⟨hnode, htime, _, _, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ (m + 1) hlen'
+    have hl := (List.getElem?_eq_some_iff.mp hnxt).2
+    refine ⟨cutMap S rho hn i + (m + 1), Or.inl ⟨?_, ?_⟩, ?_⟩
+    · simpa only [simTrace_node, hk, Option.elim_some] using hnode
+    · simp only [simTrace_label, hk, Option.map_some, hlab, hl]
+    · simpa only [simTrace_time, hk, Option.elim_some] using htime
+  · exact (deliver_not_att S rho hn hv he a ho).elim
+
+/-- Holdings suffice for processing before an observation deadline, even for an old receipt. -/
+theorem held_att_processed_before (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
+    {a : FG.Att (Fintype.card V)} (hwf : a.WellFormed) {j : Nat} {d D : Time}
+    (hh : rho.log.Held rho.point (rho.key y) (attObj a) d)
+    (hd : d < D) (hj : D ≤ (simTrace S rho hn).time j) :
+    ∃ k ≤ j, (simTrace S rho hn).ProcessAttAt y k a ∧ (simTrace S rho hn).time k < D := by
+  obtain ⟨u, hud, hs, _⟩ := hh
+  have huD := hud.trans_lt hd
+  have hp : ∃ k, (simTrace S rho hn).ProcessAttAt (rho.ownKey (rho.key y)) k a ∧
+      (simTrace S rho hn).time k = u := by
+    rcases hs with hs | ⟨i, hi⟩
+    · exact released_att_processAt S rho hn hv hy hs
+    · obtain ⟨k, _, hk, ht⟩ := received_att_processAt S rho hn hi hwf (.refl _)
+      exact ⟨k, hk, ht⟩
+  obtain ⟨k, hk, ht⟩ := hp
+  have hlt : (simTrace S rho hn).time k < D := ht ▸ huD
+  refine ⟨k, ?_, ?_, hlt⟩
+  · by_contra h
+    exact (not_lt_of_ge (hj.trans (simTrace_time_mono S rho hn hv (by omega)))) hlt
+  · have he : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
+    exact he ▸ hk
+
+/-- Partial synchrony services signed rows at bounded recipient calls. An identical earlier
+processing is enough, and descent supplies the processing cut's own strict deadline. -/
+theorem signed_row_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
+    PSyncFGRowTransport S rho (simTrace S rho hn) (honestKeys S rho) := by
+  intro g hnet x hx i a hsign y hy j hj hb hd
+  have run := simTrace_goldilocksRun S rho hn hv
+  have hwf := signed_att_wellFormed S rho hn hv hx hsign
+  have hrel := simTrace_att_released S rho hn hv run x hx i a hsign
+  have hτ := simTrace_time_nonneg S rho hn hv i
+  induction j using Nat.strong_induction_on with
+  | h j ih =>
+    obtain ⟨w, hw, heq, haw⟩ := deadline_awake_interval S rho hn hv hy hj
+      (hτ.trans (le_max_left _ g))
+    have hgw : max w g = w := max_eq_left ((le_max_right _ g).trans hw)
+    have slack : w + E.Δ < w + (S.params (Model.pubOf E) hn).Δ := by
+      change w + E.Δ < w + (E.Δ + 1)
+      linarith
+    have hbound : w + E.Δ ≤ (simTrace S rho hn).time j :=
+      slack.le.trans (heq ▸ hd)
+    have held := hnet.msgs (rho.key x) hx (attObj a) _ hrel (rho.key y) hy w
+      ((le_max_left _ g).trans hw) (by rw [hgw]; exact hbound.trans hb)
+      (by rw [hgw]; exact hbound.trans hb)
+      (by rw [hgw]; exact fun t hwt htd => haw t hwt (htd.trans hbound))
+    rw [hgw] at held
+    obtain ⟨k, hkj, hp, ht⟩ := held_att_processed_before S rho hn hv hy hwf held
+      (heq ▸ slack) hd
+    by_cases hk : (simTrace S rho hn).time k <
+        (simTrace S rho hn).deadline y k (max ((simTrace S rho hn).time i) g)
+          (S.params (Model.pubOf E) hn).Δ
+    · exact ⟨k, hkj, hp, hk⟩
+    · have hkj' : k < j := lt_of_le_of_ne hkj (by intro he; subst k; exact hk ht)
+      have hc : (simTrace S rho hn).IsCall y k := by
+        rcases hp with hp | ⟨B, hp, _⟩
+        · exact ⟨_, hp⟩
+        · exact ⟨_, hp⟩
+      obtain ⟨l, hl, hp', ht'⟩ := ih k hkj' hc
+        ((simTrace_time_mono S rho hn hv hkj).trans hb) (le_of_not_gt hk)
+      exact ⟨l, hl.trans hkj, hp', ht'⟩
 
 end Consensus.Goldilocks.Refinement

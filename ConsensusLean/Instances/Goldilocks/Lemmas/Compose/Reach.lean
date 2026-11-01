@@ -197,7 +197,7 @@ private theorem foldl_pair_mem {Q : Nat × Nat → Prop} :
 
 /-- `create_attestation` at an entry state with the chain invariants (`1 ≤ h`, `h_j < h`, the
 pending pairs below `h`) signs a well-formed attestation. -/
-private theorem createAtt_wellFormed {Λ Λ' : FG.Record} {v : Fin P.n} {σe : FG.ChainState P.n}
+theorem createAtt_wellFormed {Λ Λ' : FG.Record} {v : Fin P.n} {σe : FG.ChainState P.n}
     {a : FG.Att P.n} (h1 : 1 ≤ σe.h) (h2 : σe.hj < σe.h) (h3 : ∀ p ∈ σe.pending, p.1 < σe.h)
     (h : Λ.createAtt v σe = some (a, Λ')) : a.WellFormed := by
   unfold FG.Record.createAtt at h
