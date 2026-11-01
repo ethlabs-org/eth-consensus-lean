@@ -736,6 +736,80 @@ theorem result_prefix_vote_domain_before
       · exact SA.anc_total hr.coherent hBC (hOD.trans h)
     · exact target_compatible_later_origin_before hp ho hri hm hprior
 
+/-- Finite raw-prefix domain from actual bounded source and cast witnesses. -/
+theorem ResetPremisesUpTo.result_prefix_vote_domain_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {r s i : Nat}
+    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
+    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcast : SA.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
+    (hprior : ∀ z ∈ H, ∀ q < i, ∀ e', SA.VoteAt tr.projAC z q e' →
+      s < e'.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
+    Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨
+      B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
+  have hS := healthy_base_of_reset_catch_before hp hc
+  have hr := hS.run.localRun
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨v, d, m, S, hseed, hdb, hm⟩ := hp.reset_seed
+  have hms : m < s := by rw [cleanLabel_eq] at hs; omega
+  have hts : cutZ sp.toParams g ≤ sp.ts s :=
+    (hp.cutZ_le_ts_of_highOrigin hseed).trans ((SA.ts_le_iff sp).mpr (by omega))
+  have hgs : SA.gbar g ≤ sp.ts s := by have := lt_cutZ sp g; linarith
+  obtain ⟨z, hz, q, hqr, ev, hv, _, hvs, hVB⟩ :=
+    hp.result_supporter hc hx hres hBC hrb hts
+  have hqb := (hp.run.time_mono hqr.le).trans hrb
+  obtain ⟨ellX, hupd, hconf, -⟩ := hres
+  have hCx := hp.frame_tree_subset hx hupd.1 (SA.deepest_mem hconf).1.1
+  have hBx := hp.mem_tree_of_anc hx hBC hCx
+  have hreset : ∀ w ∈ H, ∀ c, tr.time c ≤ b → tr.projAC.RestartAt w c →
+      tr.time c ≤ sp.ts s := by
+    intro w hw c hcb hrestart
+    apply (restart_le_before hp hw (Compose.projAC_restartAt.mp hrestart) hcb).trans
+    have hh := (SA.ts_le_iff sp).mp ((cutZ_eq sp g) ▸ hts)
+    exact (SA.ts_le_iff sp).mpr (by omega)
+  apply hp.held_target_vote_domain_before hx hy hBx hcast ?_ hseed (by omega)
+    (hp.target_compatible_older_origin hseed hdb hz hv hqb hvs hms hVB) ?_ ?_ ?_
+  · intro hF
+    exact raw_writer_voterBlockTree_window_before hr hS.sync hS.catchUp hx hy
+      (Or.inl ⟨ellX, hupd, hconf, rfl⟩) hBC hcast (by omega) hib
+      (by
+        have := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)
+        linarith) hF
+  · intro w c n O hci ho
+    have hcb := (hp.run.time_mono hci.le).trans hib
+    rcases lt_trichotomy n s with hn | rfl | hn
+    · exact hp.target_compatible_older_origin ho hcb hz hv hqb hvs hn hVB
+    · obtain ⟨CV', hst⟩ := ho.2.2.1
+      obtain ⟨_, D, hfl, hOD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
+      have hcomp : Compatible (tr.HonestBlocks H) C D := by
+        rcases hfl with ⟨ellD, R, huD, hR, _, hfast, _⟩ | hop
+        · have hDR := ((SA.deepest_mem hfast).1.1.2.2).mono
+            (SA.frameIn_of_callAt hr ho.1 huD.1).2
+          have hRR := SA.result_result_compatible_window_before hS.run hS.sync hgs
+            hx ho.1 ⟨ellX, hupd, hconf, rfl⟩ ⟨ellD, huD, hR, rfl⟩ hrb hcb
+            (fun w hw c' hle hrest => hreset w hw c'
+              ((hp.run.time_mono hle).trans (by
+                rcases le_total r c with h | h
+                · simpa only [max_eq_right h] using hcb
+                · simpa only [max_eq_left h] using hrb)) hrest)
+          rcases hRR with h | h
+          · exact SA.anc_total hr.coherent h hDR
+          · exact Or.inr (hDR.trans h)
+        · exact SA.result_optimistic_compatible_window_before hS.run hS.sync hgs
+            hx ho.1 ⟨ellX, hupd, hconf, rfl⟩ hop hrb hcb
+            (fun c' hle hrest => hreset x hx c' ((hp.run.time_mono hle).trans hrb) hrest)
+      rcases hcomp with h | h
+      · exact SA.anc_total hr.coherent (hBC.trans h) hOD
+      · exact SA.anc_total hr.coherent hBC (hOD.trans h)
+    · exact hp.target_compatible_later_origin_before ho hci hn hprior
+  · intro w c n O hci ho
+    exact hp.origins_compatible hseed hdb ho ((hp.run.time_mono hci.le).trans hib)
+  · intro w c n O hci ho w' c' n' O' hci' ho'
+    exact hp.origins_compatible ho ((hp.run.time_mono hci.le).trans hib)
+      ho' ((hp.run.time_mono hci'.le).trans hib)
+
 /-- At the first slot after a late raw result, every still-live older stored lock is
 compatible with each prefix of that result. The late bound drains pre-clean sources. -/
 theorem result_prefix_stored_locks
