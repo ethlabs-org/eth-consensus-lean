@@ -204,6 +204,105 @@ theorem lock_floor_global_slot (hrun : GoldilocksRun proposer dg H tr) (hnc : No
     (Or.inl (by rw [htk]; omega)) hl'
   exact ⟨C, Or.inl hC, hB0C⟩
 
+/-- The early-read premise of `lock_floor_global` from cut `i₀`: every honest cast before `i₀`
+of a slot at least `slot(t_{i₀}) − 1` reads a live lock block or `fc_root` above `B₀`. -/
+abbrev EarlyReads (H : Set (Fin sp.n)) (tr : GoldilocksTrace sp ro) (i₀ : Nat)
+    (B₀ : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+  ∀ x ∈ H, ∀ k < i₀, sp.slot (tr.time i₀) ≤ sp.slot (tr.time k) + 1 →
+    ∀ (ℓ' : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)) e,
+    SA.CastAt tr.projAC x k ℓ' e →
+    ∃ C ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ'.frame (tr.time k) ∪ {ℓ'.frame.fcRoot},
+      ℓ'.frame.Anc B₀ C
+
+/-- **The early reads move forward.** If the early reads hold from `i₀`, and at every cut
+`k ∈ [i₀, i₁)` each honest `x` has the floor for `B₀` with some slot `j'`, no expiry
+(`slot(t_k) ≤ j' + k`), `B₀` in the frame's tree, a frame regime keeping it and `unlock` keeping
+it, then the early reads hold from `i₁ ≥ i₀`. A cast before `i₀` is the old premise; a cast in
+`[i₀, i₁)` reads its own floor lock (`SA.exists_readPoint_liveLockBlocks_floor`). -/
+theorem floor_early_step (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {B₀ : SA.Blk sp.n (List (FG.Att sp.n))} {i₀ i₁ : Nat} (h01 : i₀ ≤ i₁)
+    (hearly : EarlyReads H tr i₀ B₀)
+    (hmid : ∀ x ∈ H, ∀ k, i₀ ≤ k → k < i₁ → ∃ j', FloorAt tr x k B₀ j' ∧
+      sp.slot (tr.time k) ≤ j' + sp.k ∧ B₀ ∈ (tr.state x k).fg.toFrame.tree ∧
+      FrameKeeps tr x k B₀ ∧ UnlockKeeps tr x k B₀) :
+    EarlyReads H tr i₁ B₀ := by
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  intro x hx k hk hsk ℓ' e hc
+  by_cases hki : k < i₀
+  · refine hearly x hx k hki ?_ ℓ' e hc
+    have := SA.slot_mono sp (hrun.time_nonneg i₀) (hrun.time_mono h01)
+    omega
+  obtain ⟨j', hl, hkk, hBk, hcK, hu⟩ := hmid x hx k (by omega) hk
+  have hcall : tr.CallAt x k (.ac ℓ') := projAC_callAt.1 hc.1
+  have hfr : ℓ'.frame = Node.frame (tr.state x k) := (hrun.cutLaw _ hx k _ hcall).1
+  have hva : ℓ'.frame.viableAncestor B₀ = B₀ := by
+    rw [hfr]
+    exact viableAncestor_eq_self_run hrun hx k hBk hcK
+  have hu' := hu ℓ' hcall
+  rw [← hfr] at hu'
+  replace hBk : B₀ ∈ ℓ'.frame.tree := by
+    rw [hfr]
+    exact hBk
+  have hl' : ∃ l ∈ (tr.projAC.state x k).locks, l.slot = j' ∧
+      ∃ B ∈ ℓ'.frame.tree, B.root = l.block ∧ ℓ'.frame.Anc B₀ B := by
+    rw [hfr, projAC_state hrun.toLocalRun hx]
+    exact hl
+  rw [← projAC_state hrun.toLocalRun hx] at hu'
+  obtain ⟨C, hC, hB0C⟩ := SA.exists_readPoint_liveLockBlocks_floor hr hx hc hBk hva hkk
+    (Or.inr hu') hl'
+  exact ⟨C, Or.inl hC, hB0C⟩
+
+/-- **The floor over chained segments.** Segments `m < M` cover the cut intervals
+`[i m, i (m+1)]` (`i` nondecreasing). Premises: `2|Hᶜ| < n`; at the first cut `i m` of each
+segment each honest `x` has a fresh floor for `B₀` with slot `js m x` (`hbase`); at every cut
+`j ∈ [i m, i (m+1))` of every honest `x`, `slot(t_j) ≤ js m x + k`, `B₀` is in the frame's tree
+and a frame regime keeps it; `B₀` is in the frame's tree at each `i (m+1)`; the early reads hold
+from `i 0` only. The early reads of segment `m + 1` come from the floor of segment `m`
+(`floor_early_step`), so no slot bound on the fresh lock is needed. Conclusion: at every cut
+`j ∈ [i 0, i M]` each honest `x` has the floor for `B₀` with slot `js m x` of a segment `m` with
+`i m ≤ j ≤ i (m+1)`, and `unlock` keeps `B₀` for `j < i (m+1)`. -/
+theorem lock_floor_chain (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) {B₀ : SA.Blk sp.n (List (FG.Att sp.n))} (M : Nat) (hM : 0 < M)
+    (i : Nat → Nat) (hi : ∀ m < M, i m ≤ i (m + 1)) (js : Nat → Fin sp.n → Nat)
+    (hbase : ∀ m < M, ∀ x ∈ H, FloorAt tr x (i m) B₀ (js m x))
+    (hcut : ∀ m < M, ∀ x ∈ H, ∀ j, i m ≤ j → j < i (m + 1) →
+      sp.slot (tr.time j) ≤ js m x + sp.k ∧ B₀ ∈ (tr.state x j).fg.toFrame.tree ∧
+      FrameKeeps tr x j B₀)
+    (hN : ∀ m < M, ∀ x ∈ H, B₀ ∈ (tr.state x (i (m + 1))).fg.toFrame.tree)
+    (hearly : EarlyReads H tr (i 0) B₀) :
+    ∀ j, i 0 ≤ j → j ≤ i M → ∀ x ∈ H, ∃ m < M, i m ≤ j ∧ j ≤ i (m + 1) ∧
+      FloorAt tr x j B₀ (js m x) ∧ (j < i (m + 1) → UnlockKeeps tr x j B₀) := by
+  have hseg : ∀ m < M, EarlyReads H tr (i m) B₀ → ∀ j, i m ≤ j → j ≤ i (m + 1) → ∀ x ∈ H,
+      FloorAt tr x j B₀ (js m x) ∧ (j < i (m + 1) → UnlockKeeps tr x j B₀) :=
+    fun m hm he => lock_floor_global (i₀ := i m) (N := i (m + 1)) hrun hnc hf (js m)
+      (hbase m hm) (hcut m hm) (hN m hm) he
+  have hall : ∀ m < M, EarlyReads H tr (i m) B₀ := by
+    intro m
+    induction m with
+    | zero => exact fun _ => hearly
+    | succ m ih =>
+      intro hm
+      have he := ih (by omega)
+      refine floor_early_step hrun hnc (hi m (by omega)) he fun x hx k hk hkN => ?_
+      obtain ⟨hl, hu⟩ := hseg m (by omega) he k hk hkN.le x hx
+      obtain ⟨hkk, hB, hc⟩ := hcut m (by omega) x hx k hk hkN
+      exact ⟨js m x, hl, hkk, hB, hc, hu hkN⟩
+  intro j h0 hjM x hx
+  have hex : ∃ m, j ≤ i (m + 1) := ⟨M - 1, by rw [Nat.sub_add_cancel hM]; exact hjM⟩
+  classical
+  let m := Nat.find hex
+  have hm : j ≤ i (m + 1) := Nat.find_spec hex
+  have hmM : m < M := by
+    have := Nat.find_min' hex (m := M - 1) (by rw [Nat.sub_add_cancel hM]; exact hjM)
+    omega
+  have hlo : i m ≤ j := by
+    rcases Nat.eq_zero_or_pos m with h | h
+    · rw [h]; exact h0
+    · have := Nat.find_min hex (m := m - 1) (by omega)
+      rw [Nat.sub_add_cancel h] at this
+      omega
+  exact ⟨m, hmM, hlo, hm, hseg m hmM (hall m hmM) j hlo hm x hx⟩
+
 end Consensus.Goldilocks.Compose
 
 end
