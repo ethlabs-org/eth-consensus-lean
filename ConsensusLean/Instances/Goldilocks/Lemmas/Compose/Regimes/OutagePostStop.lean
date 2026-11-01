@@ -1,7 +1,11 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 
 public section
 
@@ -62,5 +66,75 @@ theorem merged_voters_recently_awake (hrun : GoldilocksRun proposer dg H tr)
     · exact max_le (hr.localRun.time_nonneg j) (by linarith)
     · exact hr.localRun.awake_of_call v.val hx j ℓ' hc'.1
   · exact Or.inr (Or.inr hx)
+
+/-- Consumer interface for post-stop delivery of the preceding honest batch. No producer
+of this service is assumed proved here. -/
+def PostStopBatchCarry (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (s₁ : Nat) : Prop :=
+  ∀ s : Nat, s₁ ≤ s → ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → e.msg.slot = s + 1 →
+    ∀ B : SA.Blk sp.n (List (FG.Att sp.n)), Anc (tr.HonestBlocks H) ℓ.frame.F B →
+    (∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' → e'.msg.slot = s →
+      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) →
+    SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s
+      {v | ∃ x ∈ H, ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg = v ∧ v.slot = s}
+
+/-- The post-stop batch service, fault bound, live-lock duty and frozen viability propagate
+an all-honest base batch. The lock and viability producers remain explicit hypotheses. -/
+theorem post_stop_honest_extend (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {s₁ : Nat}
+    (hcarry : PostStopBatchCarry tr H s₁)
+    (hfb : ∀ s : Nat, s₁ ≤ s → tr.FaultBound H (sp.ts s + sp.Δ))
+    (hbase : ∀ x ∈ H, ∀ k e, SA.VoteAt tr.projAC x k e → e.msg.slot = s₁ →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B)
+    (hlocks : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → s₁ < e.msg.slot →
+      SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i e.msg.slot B →
+      (∀ s, s₁ ≤ s → s < e.msg.slot → ∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' →
+        e'.msg.slot = s → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) →
+      ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
+        Compatible (tr.HonestBlocks H) L B)
+    (hFV : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → s₁ < e.msg.slot →
+      (∀ s, s₁ ≤ s → s < e.msg.slot → ∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' →
+        e'.msg.slot = s → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) →
+      SA.ViableAtVote ℓ e e.msg.slot B) :
+    ∀ s, s₁ ≤ s → ∀ x ∈ H, ∀ k e, SA.VoteAt tr.projAC x k e → e.msg.slot = s →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
+  have hr := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  intro s
+  induction s using Nat.strong_induction_on with
+  | _ s ih =>
+    intro hge
+    by_cases heq : s = s₁
+    · exact heq ▸ hbase
+    obtain ⟨q, rfl⟩ := Nat.exists_eq_succ_of_ne_zero (show s ≠ 0 by omega)
+    have hq : s₁ ≤ q := by omega
+    have hall := ih q (by omega) hq
+    intro x hx k
+    induction k using Nat.strong_induction_on generalizing x with
+    | _ k ikh =>
+      rintro e ⟨ℓ, hc⟩ hs
+      have hlower : ∀ s, s₁ ≤ s → s < e.msg.slot → ∀ x ∈ H, ∀ j e',
+          SA.VoteAt tr.projAC x j e' → e'.msg.slot = s →
+          SA.VoteExtends (tr.HonestBlocks H) e'.msg B := by
+        intro s hs₁ hs₂
+        exact ih s (by omega) hs₁
+      have hearly : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) k e.msg.slot B := by
+        intro y hy j hj e' hv hes
+        exact ikh j hj y hy e' hv (hes.trans hs)
+      have hviab := hFV x hx k ℓ e hc (by omega) hlower
+      obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr.localRun hx hc.1
+      rcases hviab with hv | hf
+      · have hcount : Hᶜ.ncard <
+            {y | y ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC y j e' ∧ e'.msg.slot = q}.ncard := by
+          refine lt_of_lt_of_le (hfb q hq) (Set.ncard_le_ncard ?_)
+          rintro y ⟨hy, hw, hj⟩
+          obtain ⟨j, e', hv', hs', -⟩ := vote_of_awake_joined hrun hnc hy hw hj
+          exact ⟨hy, j, e', hv', hs'⟩
+        have hviab : SA.ViableAtVote ℓ e (q + 1) B := by
+          apply Or.inl
+          simpa only [hs] using hv
+        exact vote_extends_of_batch hr hx hc hs hviab hall hcount
+          (hcarry q hq x hx k ℓ e hc hs B (Anc.mono hΦU (hΦ.rooted.2 B hv.1.1)) hall)
+          (hlocks x hx k ℓ e hc (by omega) hearly hlower)
+      · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot hr.localRun hx hc
+        exact ⟨Hd, hΦU hHd, hHdr, (Anc.mono hΦU hf).trans (Anc.mono hΦU hfHd)⟩
 
 end Consensus.Goldilocks.Compose
