@@ -123,6 +123,49 @@ theorem justify_of_target_unbound {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
   · exact absurd ⟨hq, Or.inl (by simpa [ChainState.bound] using hnb)⟩ hn
   · exact absurd ⟨hq, Or.inl (by simpa [ChainState.bound] using hnb)⟩ hn
 
+/-- **An early crossing justifies (r14 s5, L5.4 step 4).** A block that enters the next height
+at a slot before `ThSlot + δt` justifies the old height (it is no timeout, lemma T), and at a
+bound height it has finalized the predecessor (the loose-BJ gate). -/
+theorem early_cross_justifies {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
+    (h : gp.stateTransition σ B = some σ') (hh : σ'.h = σ.h + 1)
+    (hs : B.slot < σ.ThSlot + gp.δt) : σ'.hj = σ.h ∧ (σ.bound → σ'.hF = σ.hj) := by
+  have hj : σ'.hj = σ.h := by
+    by_contra hne
+    exact absurd (gp.timeout_step_slot h hh hne) (Nat.not_le.2 hs)
+  exact ⟨hj, fun hb => gp.bound_justify_finalizes h hb hj⟩
+
+/-- **A bound entry justifies with a target and a finality quorum (r14 s5, Lemma 3′, bound
+case).** On a chain, if the predecessor pair `(h_j, J)` is pending, a block
+whose counted state has a target quorum and a finality quorum at `h_j` finalizes `h_j` and
+justifies the entry: the finality step picks `h_j` (no pending pair is higher), so the gate
+holds, and the justification arm runs before the timeout arm. -/
+theorem justify_of_target_bound {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
+    {B : FGBlock gp.n} (hc : gp.chainState c = some σ) (h : gp.stateTransition σ B = some σ')
+    (hp : (σ.hj, σ.J) ∈ σ.pending)
+    (hq : gp.q ≤ (B.atts.foldl ChainState.processAtt { σ with s := B.slot }).target.card)
+    (hf : gp.q ≤ ((B.atts.foldl ChainState.processAtt { σ with s := B.slot }).fin σ.hj).card) :
+    σ'.hj = σ.h ∧ σ'.J = σ.Th ∧ σ'.hF = σ.hj := by
+  obtain ⟨-, -, -, -, -, -, -, hmem, -, -⟩ := chain_invariants gp c σ hc
+  obtain ⟨-, he⟩ := gp.stateTransition_eq_some.1 h
+  obtain ⟨f, p, t, hfl⟩ := ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [hfl] at he hq hf
+  subst he
+  cases hbf : gp.bestFinal
+      { σ with s := B.slot, fin := f, prog := p, target := t, L := B.root } with
+  | none =>
+    exact absurd hf (Nat.not_le.2 (gp.bestFinal_eq_none hbf _ hp))
+  | some r =>
+    obtain ⟨hr, -, hmax⟩ := gp.bestFinal_eq_some hbf
+    have h1 := hmax _ hp hf
+    have h2 := (hmem r hr).2
+    have hr1 : r.1 = σ.hj := le_antisymm h2 h1
+    unfold heightEvents finalizePrune
+    rw [hbf]
+    dsimp only
+    split_ifs with hj1
+    · simp [ChainState.advance, hr1]
+    all_goals exact absurd ⟨hq, Or.inr hr1⟩ hj1
+
 end FGParams
 
 namespace Record
