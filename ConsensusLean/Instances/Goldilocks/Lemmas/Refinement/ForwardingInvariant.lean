@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 
 public section
 
@@ -958,5 +959,57 @@ theorem dutyStep_propose_acceptance_pending {V : Type} [Fintype V] {E : Env V}
   rw [shapeOf_act_propose S hn]
   simpa only [propose_self, propose_now] using
     recordOwn_acceptance_pending (propose (shapeOf S hn nd) s).1 _ o B hd hc ha
+
+/-- A successful proposal-step block cut releases its canonical block in that duty.
+The carried-object premise is the existing proposal release contract. -/
+theorem dutyStep_propose_accepted_release {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
+    (hself : (shapeOf S hn nd).self = rho.ownKey v)
+    (hslot : (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s)
+    (hst : (shapeOf S hn nd).now = (S.params (pubOf E) hn).toParams.slotTime s)
+    (hrel : rho.ownKey v ∈ rho.sel (.proposer s) →
+      ∀ par info cs, (propose (shapeOf S hn nd) s).2 = some (par, info, cs) →
+      ∀ o ∈ cs, o ∈ Model.closure nd.seen)
+    (B : Blk (S.params (pubOf E) hn))
+    (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
+      (rho.ownKey v) (shapeOf S hn nd).node (shapeOf S hn nd).now
+      (encodeTxs nd.st.2) .proposal).2) :
+    blockObj (S.params (pubOf E) hn) B ∈ (rho.dutyStep v nd (.propose s hs)).2 := by
+  rw [(dutyStep_propose_full S rho hn v nd s hs hsel hself hslot hst hrel).1]
+  exact mem_blockObjs.mpr ⟨B, true, ha, rfl⟩
+
+/-- A proposal duty that releases a given object had exactly that singleton candidate.
+This rules out confusing its release with a rejected duplicate at another index. -/
+theorem dutyStep_propose_candidate_eq {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (v : V)
+    (nd : Model.Node (protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (o : (protoOf (compiled (family S)) E).Object)
+    (ho : o ∈ (rho.dutyStep v nd (.propose s hs)).2) :
+    rho.ownKey v ∈ rho.sel (.proposer s) ∧
+      rho.signedCandidate v (.propose s hs)
+        ((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).2 = [o] := by
+  have hl := act_candidates_length S nd.st (.propose s hs) (fun _ h => by cases h)
+  unfold Model.Run.dutyStep at ho
+  split at ho
+  · rename_i hsel
+    refine ⟨hsel, ?_⟩
+    have hm := Model.releaseAll_subset _ _ _ _ o ho
+    have hlen : (rho.signedCandidate v (.propose s hs)
+        ((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).2).length ≤ 1 := by
+      simp only [Model.Run.signedCandidate]
+      split
+      · simpa only [List.length_map] using hl
+      · simpa only [List.length_map] using hl
+    generalize rho.signedCandidate v (.propose s hs)
+      ((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).2 = cs at hm hlen ⊢
+    cases cs with
+    | nil => exact False.elim (List.not_mem_nil hm)
+    | cons a as =>
+      have hz : as = [] := List.length_eq_zero_iff.mp (by simpa using hlen)
+      subst as
+      exact congrArg (fun x => [x]) (List.mem_singleton.mp hm).symm
+  · exact False.elim (List.not_mem_nil ho)
 
 end Consensus.Goldilocks.Refinement
