@@ -354,8 +354,8 @@ private theorem clean_source_timing (hp : ResetPremises tr H proposer dg g ΔF a
     rw [he] at hle
     linarith
 
-/-- Current raw-target keep/root/floor step. The slow branch uses the landed domain
-reduction; the raw-fast branch remains OPEN. Earlier support is strictly cut-bounded. -/
+/-- Current raw-target keep/root/floor step. Actual source heldness and honest counted
+support feed the domain reduction; earlier support is strictly cut-bounded. -/
 private theorem clean_source_vote_domain_step
     (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     (Q : Time) {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
@@ -371,8 +371,65 @@ private theorem clean_source_vote_domain_step
         Anc (tr.HonestBlocks H) B W ∧ (tr.state y i).fg.IsViable W) ∨
         Anc (tr.HonestBlocks H) B ell.frame.fcRoot) := by
   rcases horig with hfast | hslow
-  · -- OPEN: arbitrary raw-fast target root/floor domain, not fast transfer.
-    sorry
+  · obtain ⟨CV, hfast⟩ := hfast
+    have hS := healthy_base_of_reset_catch hp hc
+    have hr := hS.run.localRun
+    have hf := faulty_lt_half hp x
+    have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+    have hgs : SA.gbar g ≤ sp.ts s := by
+      have := (clean_source_timing hp hs).1
+      have := lt_cutZ sp g
+      linarith
+    have evidence : B ∈ (tr.state x r).fg.tree ∧
+        ∃ z ∈ H, ∃ q e', SA.VoteAt tr.projAC z q e' ∧ e'.msg.slot = s ∧
+          SA.VoteExtends (tr.HonestBlocks H) e'.msg B := by
+      rcases hfast with ⟨ellX, C, ⟨hcall, -⟩, -, -, hD, -⟩ |
+          ⟨ellX, A, hpt, hslot, hsel, -⟩
+      · have hΦU := (SA.frameIn_of_callAt hr hx hcall).2
+        refine ⟨frame_tree_subset hp hx hcall (SA.deepest_mem hD).1.1.1, ?_⟩
+        have htest := (SA.deepest_mem hD).1.2
+        unfold SA.FastTest SA.confirmationScore at htest
+        dsimp only at htest
+        have hlt := Nat.lt_of_mul_lt_mul_left (lt_of_lt_of_le hf htest)
+        obtain ⟨z, ⟨-, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hBR⟩, hz⟩ :=
+          Set.exists_mem_notMem_of_ncard_lt_ncard hlt
+        obtain ⟨q, _, e', hv, rfl⟩ := hS.run.honest.pool_vote x hx r s _ hvp (not_not.mp hz)
+        exact ⟨_, not_not.mp hz, q, e', hv, SA.state_pool_slot sp hr hx r s _ hvp,
+          R, hΦU hR, hRr, hBR.mono hΦU⟩
+      · have hΦU := (SA.frameIn_of_callAt hr hx hpt.1).2
+        unfold SA.optimisticSelect at hsel
+        dsimp only at hsel
+        split_ifs at hsel
+        refine ⟨frame_tree_subset hp hx hpt.1 (SA.deepest_mem hsel).1.1, ?_⟩
+        have h34 := (SA.deepest_mem hsel).1.2.1
+        obtain ⟨z, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hz⟩ :=
+          Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
+            (t := SA.optimisticVoters sp A ellX.frame (sp.slot (tr.projAC.time r)) B) (by omega)
+        obtain ⟨hvs, q, _, e', he, rfl⟩ :=
+          SA.optimisticPoint_pool_vote hS.run hx hpt hv (not_not.mp hz)
+        exact ⟨_, not_not.mp hz, q, e', he, hvs.trans hslot,
+          R, hΦU hR, hRr, hBR.mono hΦU⟩
+    obtain ⟨hBx, z, hz, q, e', hv, hvs, hVB⟩ := evidence
+    refine held_target_vote_domain_before hp hx hy hBx hcast ?_ ?_ ?_
+    · intro hF
+      exact raw_writer_voterBlockTree_window_before hr (reset_raw_sync_window_before hp Q)
+        (catch_window_of_reset_catch hp hc Q) hx hy (Or.inr hfast) .refl hcast (by omega) hiQ
+        (by
+          have hm := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)
+          linarith) hF
+    · obtain ⟨v, r₀, m, S, hS, hm⟩ := reset_seed hp
+      have hms : m < s := by rw [cleanLabel_eq] at hs; omega
+      exact ⟨v, r₀, m, S, hS, by omega,
+        target_compatible_older_origin hp hS hz hv hvs hms hVB⟩
+    · intro v r₀ m O hri ho
+      rcases lt_trichotomy m s with hm | rfl | hm
+      · exact target_compatible_older_origin hp ho hz hv hvs hm hVB
+      · obtain ⟨CV', hst⟩ := ho.2.2.1
+        obtain ⟨_, D, hfl, hOD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
+        rcases SA.fastLock_fastLock_compatible hS hx hfast ho.1 hfl hgs with h | h
+        · exact SA.anc_total hr.coherent h hOD
+        · exact Or.inr (hOD.trans h)
+      · exact target_compatible_later_origin_before hp ho hri hm hprior
   have hS := healthy_base_of_reset_catch hp hc
   have hr := hS.run.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -436,7 +493,7 @@ private theorem clean_source_vote_domain_step
     · exact SA.anc_total hr.coherent hBC (hOD.trans h)
 
 /-- Prospective clean-source support: strong induction is on the receiving cut, never
-on the source gate. Transfer and service are proved; only the current domain step is open. -/
+on the source gate. Current domain, transfer and service use only strictly earlier support. -/
 theorem clean_source_votes_before
     (hp : ResetPremises tr H proposer dg g ΔF a) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (Q : Time) {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}

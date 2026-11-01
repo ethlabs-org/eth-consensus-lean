@@ -1155,8 +1155,7 @@ theorem proposal_start_supported_of_source_votes
     (hLD.trans (extend D (hsources r l₁.slot D hri horig hlo hlt)))
 
 include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
-/-- The proposal start is supported through clean raw-source vote induction.
-Its remaining open dependency is the current raw-target domain step. -/
+/-- The proposal start is supported through clean raw-source vote induction. -/
 theorem proposal_start_supported :
     Anc (tr.HonestBlocks H) d.start
       (SA.getHead sp e.readPoint ℓy.frame (tr.time j)

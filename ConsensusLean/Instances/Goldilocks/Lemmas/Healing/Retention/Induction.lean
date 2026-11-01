@@ -539,17 +539,13 @@ theorem historical_activation_before (hp : ResetPremises tr H proposer dg g ΔF 
 /-- Conditional §75 domain reduction. The explicit producer hypotheses are the open
 joint-induction boundary, not consequences asserted of reset premises. Frozen target
 membership must be produced before its receiver height is read. -/
-theorem slow_target_vote_domain_before
+theorem held_target_vote_domain_before
     (hp : ResetPremises tr H proposer dg g ΔF a)
-    (_hc : CatchRun tr H g (2 * sp.Δ)) (Q : Time)
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
-    {r l i : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hsl : SA.SlowLockAt tr.projAC x r l B)
-    (_hjoined : SA.JoinedAt tr.projAC x (tr.time r))
-    (_hclean : sp.ts (sp.slot a + 3 : Nat) ≤ sp.ts ((l : Int) - sp.k + 1))
-    (_hrQ : tr.time r ≤ Q)
+    {r i : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hBx : B ∈ (tr.state x r).fg.tree)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcast : SA.CastAt tr.projAC y i ell e) (_hl : l < e.msg.slot) (_hiQ : tr.time i ≤ Q)
+    (hcast : SA.CastAt tr.projAC y i ell e)
     (hheld : Anc (tr.HonestBlocks H) ell.frame.F B →
       B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
     (hseed : ∃ v r₀ m S, HighOrigin tr H g v r₀ m S ∧ m < e.msg.slot ∧
@@ -561,9 +557,6 @@ theorem slow_target_vote_domain_before
         Anc (tr.HonestBlocks H) B W ∧ (tr.state y i).fg.IsViable W) ∨
         Anc (tr.HonestBlocks H) B ell.frame.fcRoot) := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  have hBx : B ∈ (tr.state x r).fg.tree := by
-    obtain ⟨ellX, C, hupd, _, _, hdeep, _⟩ := hsl
-    exact frame_tree_subset hp hx hupd.1 (SA.deepest_mem hdeep).1.1.1
   have hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
     by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
     · obtain ⟨v, q, m, S, hS, hm, hBS⟩ := hseed
@@ -626,6 +619,32 @@ theorem slow_target_vote_domain_before
         hScmp (lt_of_not_ge hSf)
     exact Or.inl (raw_target_frozen_witness hp ho hy hcast hn hFB
       (orient ho hE hEO hEf (hcompare z q n O hq ho)) hE hEO hEf)
+
+/-- Slow-target specialization; the domain core needs actual heldness, not a slow tag. -/
+theorem slow_target_vote_domain_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    (_hc : CatchRun tr H g (2 * sp.Δ)) (Q : Time)
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
+    {r l i : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hsl : SA.SlowLockAt tr.projAC x r l B)
+    (_hjoined : SA.JoinedAt tr.projAC x (tr.time r))
+    (_hclean : sp.ts (sp.slot a + 3 : Nat) ≤ sp.ts ((l : Int) - sp.k + 1))
+    (_hrQ : tr.time r ≤ Q)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcast : SA.CastAt tr.projAC y i ell e) (_hl : l < e.msg.slot) (_hiQ : tr.time i ≤ Q)
+    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B →
+      B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
+    (hseed : ∃ v r₀ m S, HighOrigin tr H g v r₀ m S ∧ m < e.msg.slot ∧
+      Compatible (tr.HonestBlocks H) B S)
+    (hcompare : ∀ v r₀ m O, r₀ < i → HighOrigin tr H g v r₀ m O →
+      Compatible (tr.HonestBlocks H) B O) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B ∧
+      ((∃ W ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+        Anc (tr.HonestBlocks H) B W ∧ (tr.state y i).fg.IsViable W) ∨
+        Anc (tr.HonestBlocks H) B ell.frame.fcRoot) := by
+  obtain ⟨ellX, C, hupd, _, _, hdeep, _⟩ := hsl
+  exact held_target_vote_domain_before hp hx hy
+    (frame_tree_subset hp hx hupd.1 (SA.deepest_mem hdeep).1.1.1) hcast hheld hseed hcompare
 
 /-- A later controlling high source compares with a prospective target from strictly
 earlier head support. The target need not be a high origin or have been written yet. -/
