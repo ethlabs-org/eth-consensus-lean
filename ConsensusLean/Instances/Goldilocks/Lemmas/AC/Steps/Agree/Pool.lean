@@ -266,6 +266,131 @@ theorem pool_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.
     · rw [state_succ_of_not hn]
       exact hv
 
+/-- Retained service carries actual pool evidence, not merely a network receipt.
+Both witnesses of an equivocation retain the requested slot and validator. -/
+def PoolEvidenceBefore (A : SAState sp.n) (v : Vote sp.n) (T : Time) : Prop :=
+  HeldBefore A v T ∨ ∃ a b : Vote sp.n, a ≠ b ∧
+    a.val = v.val ∧ b.val = v.val ∧ a.slot = v.slot ∧ b.slot = v.slot ∧
+    HeldBefore A a T ∧ HeldBefore A b T
+
+/-- Characterization for consumers without exposing the definition body. -/
+theorem poolEvidenceBefore_iff (A : SAState sp.n) (v : Vote sp.n) (T : Time) :
+    PoolEvidenceBefore A v T ↔ HeldBefore A v T ∨ ∃ a b : Vote sp.n, a ≠ b ∧
+      a.val = v.val ∧ b.val = v.val ∧ a.slot = v.slot ∧ b.slot = v.slot ∧
+      HeldBefore A a T ∧ HeldBefore A b T := by rfl
+
+/-- Message service may reuse earlier admission, but must certify actual timestamped
+pool evidence and exclude any intervening restart through the observation cut. -/
+def RetainedBefore (tr : SATrace sp FGP ro) (y : Fin sp.n) (j : Nat)
+    (v : Vote sp.n) (T : Time) : Prop :=
+  ∃ q ≤ j, PoolEvidenceBefore (tr.state y q) v T ∧
+    ∀ r, q ≤ r → r < j → ¬ tr.RestartAt y r
+
+/-- Exact retained-service witnesses, including the restart-free interval. -/
+theorem retainedBefore_iff (y : Fin sp.n) (j : Nat) (v : Vote sp.n) (T : Time) :
+    RetainedBefore tr y j v T ↔ ∃ q ≤ j, PoolEvidenceBefore (tr.state y q) v T ∧
+      ∀ r, q ≤ r → r < j → ¬ tr.RestartAt y r := by rfl
+
+/-- Fresh processing keeps the original lower bound. Retention instead carries stamped
+pool evidence; neither a raw receipt nor an unstamped membership satisfies that branch. -/
+def MessageServedBefore (tr : SATrace sp FGP ro) (y : Fin sp.n) (j : Nat)
+    (τ : Time) (v : Vote sp.n) : Prop :=
+  (∃ k ≤ j, τ ≤ tr.time k ∧ tr.ProcessAt y k v ∧ tr.time k < tr.deadline y k τ) ∨
+    RetainedBefore tr y j v (tr.deadline y j τ)
+
+/-- The two independent service routes. -/
+theorem messageServedBefore_iff (y : Fin sp.n) (j : Nat) (τ : Time) (v : Vote sp.n) :
+    MessageServedBefore tr y j τ v ↔
+      (∃ k ≤ j, τ ≤ tr.time k ∧ tr.ProcessAt y k v ∧ tr.time k < tr.deadline y k τ) ∨
+        RetainedBefore tr y j v (tr.deadline y j τ) := by rfl
+
+/-- Finite SA service allows retained vote evidence but still requires actual acceptance
+relay. The source window and recipient cutoff remain independent. -/
+structure ServiceWindowBefore (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+    (a b : Time) (tr : SATrace sp FGP ro) : Prop where
+  message : ∀ x ∈ H, ∀ i v, tr.SendOrAdmit x i v → a ≤ tr.time i →
+    ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → tr.deadline y j (tr.time i) ≤ b →
+      tr.deadline y j (tr.time i) ≤ tr.time j → MessageServedBefore tr y j (tr.time i) v
+  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → a ≤ tr.time i →
+    ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → tr.deadline y j (tr.time i) ≤ b →
+      tr.deadline y j (tr.time i) ≤ tr.time j → Anc U ℓ.frame.F B →
+      ∃ k ≤ j, tr.AcceptAt y k B ∧ tr.time k < tr.deadline y k (tr.time i)
+
+/-- The Sleepy service window starts at time zero. -/
+abbrev ServiceBefore (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+    (b : Time) (tr : SATrace sp FGP ro) : Prop := ServiceWindowBefore H U 0 b tr
+
+/-- Existing fresh-processing service remains a sufficient input. -/
+theorem serviceWindowBefore_of_sync {a b : Time} (h : SyncACWindowBefore H U a b tr) :
+    ServiceWindowBefore H U a b tr := by
+  refine ⟨?_, h.relay⟩
+  intro x hx i v hi hai y hy j ℓ hj hdb hdj
+  exact (messageServedBefore_iff _ _ _ _).mpr
+    (Or.inl (h.message x hx i v hi hai y hy j ℓ hj hdb hdj))
+
+/-- Legacy finite synchrony embeds without changing its trusted meaning. -/
+theorem serviceBefore_of_sync {b : Time} (h : SyncACBefore H U b tr) :
+    ServiceBefore H U b tr :=
+  serviceWindowBefore_of_sync ((syncACWindowBefore_zero_iff _ _ _ _).mpr h)
+
+/-- A held vote keeps its admission stamp between restarts. -/
+theorem heldBefore_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
+    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) {v : Vote sp.n} {T : Time}
+    (hv : HeldBefore (tr.state y a) v T) : HeldBefore (tr.state y b) v T := by
+  induction b, hab using Nat.le_induction with
+  | base => exact hv
+  | succ b hab ih =>
+    have hv' := ih (fun k hk hkb => hnr k hk (hkb.trans (Nat.lt_succ_self b)))
+    by_cases hn : tr.node b = y ∧ tr.label b ≠ none
+    · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hn.2
+      have hc : tr.CallAt y b ℓ := ⟨hn.1, hℓ⟩
+      have hg := grow_call hr hy hc
+        (fun h => hnr b hab (Nat.lt_succ_self b) ⟨ℓ, hc, h⟩)
+      rw [state_succ_of_call hc]
+      exact ⟨hg.1 _ hv'.1, ((hg.2 v).1 hv'.1) ▸ hv'.2⟩
+    · rw [state_succ_of_not hn]
+      exact hv'
+
+/-- Actual retained evidence survives a restart-free interval with its original stamps. -/
+theorem poolEvidenceBefore_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
+    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) {v : Vote sp.n} {T : Time}
+    (hv : PoolEvidenceBefore (tr.state y a) v T) :
+    PoolEvidenceBefore (tr.state y b) v T := by
+  apply (poolEvidenceBefore_iff _ _ _).mpr
+  rcases (poolEvidenceBefore_iff _ _ _).mp hv with hv | ⟨u, w, huw, huv, hwv, hus, hws, hu, hw⟩
+  · exact Or.inl (heldBefore_mono hr hy hab hnr hv)
+  · exact Or.inr ⟨u, w, huw, huv, hwv, hus, hws,
+      heldBefore_mono hr hy hab hnr hu, heldBefore_mono hr hy hab hnr hw⟩
+
+/-- An explicit deadline-to-freeze bound transports both witness timestamps. -/
+theorem PoolEvidenceBefore.weaken {A : SAState sp.n} {v : Vote sp.n} {T F : Time}
+    (h : PoolEvidenceBefore A v T) (hTF : T ≤ F) : PoolEvidenceBefore A v F := by
+  have lift (u : Vote sp.n) (hu : HeldBefore A u T) : HeldBefore A u F :=
+    ⟨hu.1, hu.2.trans_le (WithBot.coe_le_coe.mpr (WithTop.coe_le_coe.mpr hTF))⟩
+  apply (poolEvidenceBefore_iff _ _ _).mpr
+  rcases (poolEvidenceBefore_iff _ _ _).mp h with h | ⟨a, b, hab, hav, hbv, has, hbs, ha, hb⟩
+  · exact Or.inl (lift v h)
+  · exact Or.inr ⟨a, b, hab, hav, hbv, has, hbs, lift a ha, lift b hb⟩
+
+/-- The observation really holds the retained vote or both equivocation witnesses. -/
+theorem RetainedBefore.evidence (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {v : Vote sp.n} {T : Time}
+    (hv : RetainedBefore tr y j v T) : PoolEvidenceBefore (tr.state y j) v T := by
+  obtain ⟨q, hq, hp, hnr⟩ := (retainedBefore_iff _ _ _ _).mp hv
+  exact poolEvidenceBefore_mono hr hy hq hnr hp
+
+/-- Earlier admission is a valid service route: no new processing after the source time
+is required when the evidence and its original stamp survive to the observation. -/
+theorem messageServedBefore_of_retained (y : Fin sp.n) {q j : Nat} (hqj : q ≤ j)
+    {τ : Time} {v : Vote sp.n} (hv : HeldBefore (tr.state y q) v (tr.deadline y j τ))
+    (hnr : ∀ r, q ≤ r → r < j → ¬ tr.RestartAt y r) :
+    MessageServedBefore tr y j τ v := by
+  apply (messageServedBefore_iff _ _ _ _).mpr
+  exact Or.inr ((retainedBefore_iff _ _ _ _).mpr
+    ⟨q, hqj, (poolEvidenceBefore_iff _ _ _).mpr (Or.inl hv), hnr⟩)
+
 /-- **An honest node holds a vote it processed.** When an honest node processes a vote (receives
 it, or emits it) at a time of the vote's slot or the next, the node holds it after that cut, or
 two other votes of its validator. -/
@@ -340,6 +465,25 @@ private theorem held_of_deadline_processing
   rcases held_of_processAt hr hX hproc h₁ h₂ with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
   · exact Or.inl (hmono h)
   · exact Or.inr ⟨a, hmono ha, b, hmono hb, hab, hav, hbv⟩
+
+/-- Both processing and retained evidence establish the writer's pool comparison.
+The retained route needs no artificial lower bound on the original admission time. -/
+theorem held_of_deadline_service
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {X : Fin sp.n}
+    {k : Nat} {v : Vote sp.n} (hX : X ∈ H) {i : Nat}
+    (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
+    (hdl : tr.time k + sp.Δ ≤ tr.time i)
+    (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
+      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t)
+    (hp : MessageServedBefore tr X i (tr.time k) v) :
+    v ∈ (tr.state X i).pool v.slot ∨
+      v.val ∈ equivocators {w | w ∈ (tr.state X i).pool v.slot} := by
+  rcases (messageServedBefore_iff _ _ _ _).mp hp with hp | hp
+  · exact held_of_deadline_processing hr hX hrs hdl hslot hp
+  · rcases (poolEvidenceBefore_iff _ _ _).mp (hp.evidence hr hX) with hv |
+      ⟨a, b, hab, hav, hbv, has, hbs, ha, hb⟩
+    · exact Or.inl hv.1
+    · exact Or.inr ⟨a, has ▸ ha.1, b, hbs ▸ hb.1, hab, hav, hbv⟩
 
 /-- **Forwarding under `Sync`.** A vote that an honest `y` sends or admits at a cut `k` inside
 the window of `Sync` is held, at a later call of an honest `X` at least `Δ` after it, by `X`, or

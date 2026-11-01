@@ -20,6 +20,26 @@ namespace Consensus.Goldilocks.Compose
 
 open SA (SAParams ReplayOrder Vote Payload)
 
+/-- The finite Sleepy consumers need SA evidence and actual block acceptance relay,
+not fresh processing of every repeated vote or attestation admission. -/
+structure SleepyServiceBefore {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (ΔF b : Time) : Prop where
+  deltaF : sp.Δ ≤ ΔF
+  ac : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC
+  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → 0 ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) sp.Δ ≤ b →
+      tr.deadline y j (tr.time i) sp.Δ ≤ tr.time j →
+      Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
+      tr.BlockAcceptedBy y j (tr.time i) B
+
+/-- Existing node synchrony is sufficient for the specialized Sleepy service. -/
+theorem sleepyServiceBefore_of_sync {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {ΔF b : Time}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    (hr : Node.LocalRun proposer dg H SA.Vote.val tr) (hs : tr.SyncBefore H ΔF b) :
+    SleepyServiceBefore tr H ΔF b :=
+  ⟨hs.deltaF, SA.serviceBefore_of_sync (syncBefore_projection hr hs), hs.relay⟩
+
 /-! ### Deadlines -/
 
 section Deadline
@@ -209,7 +229,7 @@ private theorem carryAt_of_writer_service
     {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
     (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a b T ∨
-      SyncACWindowBefore H U a (T.time i) T)
+      SA.ServiceWindowBefore H U a (T.time i) T)
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
       ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
@@ -272,8 +292,33 @@ private theorem carryAt_of_writer_service
     have hdi : T.deadline y i (T.time k) ≤ T.time i := by
       linarith [hdl i le_rfl _ hk2]
     have delivered := hsync.elim
-      (fun h => h.1 w hw k v hsend (ha.trans hk1) (by linarith) y hy i ℓ hc.1 hdi)
+      (fun h => (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
+        (h.1 w hw k v hsend (ha.trans hk1) (by linarith) y hy i ℓ hc.1 hdi)))
       (fun h => h.message w hw k v hsend (ha.trans hk1) y hy i ℓ hc.1 hdi hdi)
+    rcases (SA.messageServedBefore_iff _ _ _ _).mp delivered with delivered | retained
+    swap
+    · have evidence := (retained.evidence hr hy).weaken (hdl i le_rfl _ hk2).le
+      have hheld (u : Vote sp.n) (hus : u.slot = s)
+          (hu : SA.HeldBefore (T.state y i) u (sp.ts s + 3 * sp.Δ)) :
+          SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
+        have hp := SA.heldBefore_mono hr hy (Nat.le_succ i)
+          (fun r hr₁ hr₂ hrr => by
+            have heq : r = i := by omega
+            subst r
+            have := hrsy i le_rfl hrr
+            linarith) hu
+        obtain ⟨hpool, hstamp⟩ := readPoint_slot hr hy hc (σ := s) (by omega)
+        exact ⟨by rw [hus, ← hpool]; simpa only [hus] using hp.1,
+          by rw [← hstamp u hus]; exact hp.2⟩
+      rcases (SA.poolEvidenceBefore_iff _ _ _).mp evidence with hv' |
+        ⟨u, w, huw, huv, hwv, hus, hws, hu, hw⟩
+      · exact Or.inl (hheld v hvs hv')
+      · by_cases huv' : u = v
+        · subst u; exact Or.inl (hheld v hvs hu)
+        by_cases hwv' : w = v
+        · subst w; exact Or.inl (hheld v hvs hw)
+        exact Or.inr ⟨u, w, huw, huv', hwv', huv, hwv, hus.trans hvs, hws.trans hvs,
+          hheld u (hus.trans hvs) hu, hheld w (hws.trans hvs) hw⟩
     obtain ⟨k', hk'i, hkk', hp, hk'dl⟩ := delivered
     have hk'lt : T.time k' < sp.ts s + 3 * sp.Δ := hk'dl.trans (hdl k' hk'i _ hk2)
     obtain ⟨ℓ', hc', -⟩ := id hp
@@ -357,7 +402,7 @@ theorem carryAt_of_writer_window_before (hr : ACLocalRun (SA.goldilocksSA sp FGP
     relay := fun x hx k B hB h0 z hz j ℓ hc hd ht hanc =>
       hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans hi) ht hanc }
   refine carryAt_of_writer_service hr (b := sp.ts s + 2 * sp.Δ) ha le_rfl
-    hw hy hc hs (Or.inr restricted) hW ?_
+    hw hy hc hs (Or.inr (SA.serviceWindowBefore_of_sync restricted)) hW ?_
   intro k B hk hka hanc
   have hslot := (SA.castAt_spec hr hy hc).2.1
   have hstart : sp.ts (s + 1 : Nat) ≤ T.time i :=

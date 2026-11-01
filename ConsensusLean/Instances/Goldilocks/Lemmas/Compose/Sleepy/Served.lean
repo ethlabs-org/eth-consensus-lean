@@ -748,7 +748,7 @@ private abbrev ReadInv (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
 private abbrev ReadService (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (t : Time) :=
   SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) 0 (t - sp.Δ) tr.projAC ∨
-    SyncACBefore H (tr.HonestBlocks H) t tr.projAC
+    SA.ServiceBefore H (tr.HonestBlocks H) t tr.projAC
 
 private theorem ReadInv.service {Ch O y i t} (h : ReadInv tr H Ch O y i t) :
     ReadInvWith tr H Ch O y i t (ReadService tr H t) :=
@@ -816,7 +816,8 @@ private theorem ReadInvWith.of_before {b : Time} (hinv : SleepyInvariantUpTo tr 
       hinv.vote_extends C s hO x hx k e hv (hi k hk) hs
     sync := Or.inr {
       message := fun x hx k m hm h0 z hz j ℓ hc hd hj =>
-        hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans ht) hj
+        (SA.messageServedBefore_iff _ _ _ _).mpr
+          (Or.inl (hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans ht) hj))
       relay := fun x hx k B hB h0 z hz j ℓ hc hd hj ha =>
         hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans ht) hj ha }
     awake := hfb }
@@ -1174,11 +1175,36 @@ private theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc 
       (by rw [max_eq_left hk0])
   have hdj : tr.projAC.deadline y jc (tr.projAC.time k) ≤ tr.projAC.time jc := by
     have := hdl jc le_rfl; change _ ≤ tr.time jc; rw [htj]; linarith
-  obtain ⟨k', hk'j, hkk', hp, hk'dl⟩ := hsync.elim
-    (fun h => h.1 x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
-      (by have hk' : tr.time k ≤ sp.ts L + sp.Δ := hk; linarith) y hy jc ℓj hcj hdj)
+  have served := hsync.elim
+    (fun h => (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
+      (h.1 x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
+      (by have hk' : tr.time k ≤ sp.ts L + sp.Δ := hk; linarith) y hy jc ℓj hcj hdj)))
     (fun h => h.message x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
       y hy jc ℓj hcj (hdj.trans (hjct jc le_rfl)) hdj)
+  rcases (SA.messageServedBefore_iff _ _ _ _).mp served with served | retained
+  swap
+  · have evidence := retained.evidence hr hy
+    have hmono := SA.pool_mono hr hy hjci (fun r hrj hri hrr => by
+      obtain ⟨ℓr, hcr, hrr'⟩ := hrr
+      obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr'
+      by_cases heq : r = jc
+      · subst r
+        have hbound := hres' jc ⟨ℓr, hcr, hrr'⟩ (hrd.before jc hri)
+        change tr.time jc ≤ _ at hbound
+        rw [htj] at hbound
+        linarith
+      · have h₁ := hprev jc (by omega) ℓj hcj
+        have h₂ := hres' r ⟨ℓr, hcr, hrr'⟩ (hrd.before r hri)
+        change tr.time jc < _ at h₁
+        rw [htj] at h₁
+        linarith) L
+    rcases (SA.poolEvidenceBefore_iff _ _ _).mp evidence with hv |
+      ⟨a, _, _, hav, _, has, _, ha, _⟩
+    · exact ⟨e.msg, mem_latest_votes hrun hnc hy hL
+        (hmono (by simpa only [hes] using hv.1)), hval⟩
+    · exact ⟨a, mem_latest_votes hrun hnc hy hL
+        (hmono (by simpa only [has, hes] using ha.1)), hav.trans hval⟩
+  obtain ⟨k', hk'j, hkk', hp, hk'dl⟩ := served
   have hk'dl' : tr.projAC.time k' < sp.ts L + 2 * sp.Δ := by
     have := hdl k' hk'j; linarith
   have hk'i : k' < i :=
