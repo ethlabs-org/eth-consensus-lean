@@ -2155,7 +2155,8 @@ private theorem proposal_stored_locks_compatible_old
 
 /-- A non-current read-point lock sits below a raw source of the receiver. Its source
 precedes the receiving cast, not necessarily the proposal. -/
-theorem vote_old_lock_source_before (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
@@ -2202,7 +2203,12 @@ theorem vote_old_lock_source_before (hp : ResetPremises tr H proposer dg g ΔF a
   have hle : l₀.slot ≤ u := by
     have ht : sp.ts l₀.slot ≤ tr.time r := by
       rcases hraw with ⟨CV, hf⟩ | ⟨ellX, C, hupd, _⟩
-      · exact ts_le_of_fastLock hp hf
+      · rcases hf with ⟨ellX, C, hupd, _⟩ | ⟨ellX, A, _, hsl, _⟩
+        · have ht : tr.time r = sp.ts l₀.slot + 6 * sp.Δ := hupd.2.2.1
+          have := sp.toParams.hΔ
+          linarith
+        · change sp.slot (tr.time r) = l₀.slot at hsl
+          exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) l₀.slot).mpr (by omega)
       · have ht : tr.time r = sp.ts l₀.slot + 6 * sp.Δ := hupd.2.2.1
         have hΔ : 0 < sp.Δ := sp.toParams.hΔ
         linarith
@@ -2212,6 +2218,68 @@ theorem vote_old_lock_source_before (hp : ResetPremises tr H proposer dg g ΔF a
     omega
   refine ⟨r, D, hrj, hclean, by omega, hs ▸ hraw, ?_⟩
   exact (Anc.mono hPhiU ((SA.anc_viableAncestor ell.frame L').trans hLB)).trans hXD
+
+/-- Whole-run specialization of actual read-point lock provenance. -/
+theorem vote_old_lock_source_before (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
+    (hR : drainTime sp a ≤ sp.ts u)
+    {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
+    (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)
+    {L : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hL : L ∈ ell.frame.tree) (hLr : L.root = l.block) :
+    ∃ r D, r < j ∧ cleanLabel sp a + sp.k + 2 ≤ l.slot ∧ l.slot < u ∧
+      ((∃ CV, SA.FastLockAt tr.projAC y r l.slot D CV) ∨
+        SA.SlowLockAt tr.projAC y r l.slot D) ∧
+      Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) D :=
+  (hp.toUpTo tr H (le_refl a)).vote_old_lock_source_before hy hc hes hR hl hne hlive hL hLr
+
+/-- A finite noncurrent voter lock lies below the actual proposal parent. -/
+theorem ResetPremisesUpTo.vote_old_live_lock_below_parent {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {elly : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
+    {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
+    (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)
+    {L : SA.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ elly.frame.tree) (hLr : L.root = l.block) :
+    Anc (tr.HonestBlocks H) (elly.frame.viableAncestor L) d.head := by
+  obtain ⟨r, D, hrj, hclean, hlu, hsource, hLD⟩ :=
+    hp.vote_old_lock_source_before hy hcy hes hR hl hne hlive hL hLr
+  have hrb := (hp.run.time_mono hrj.le).trans hjb
+  apply hLD.trans
+  by_cases hgap : l.slot + 2 ≤ u
+  · exact hp.clean_source_proposal_parent_before hc hy hpH hsource hclean hgap hrb hR
+      hci hcall hd hti hib
+  have he : u = l.slot + 1 := by omega
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have htj := (Compose.cast_head_fcRoot hr hy hcy).2
+  rw [hes, he] at htj
+  have hrt := hp.run.time_mono hrj.le
+  have hts : sp.ts (l.slot + 1 : Nat) = sp.ts l.slot + 4 * sp.Δ := by
+    simp only [SA.SAParams.ts]; push_cast; ring
+  have hΔ := sp.toParams.hΔ
+  rcases hsource with ⟨CV, hfast⟩ | ⟨ellX, C, hupd, _⟩
+  · rcases hfast with ⟨ellX, C, hupd, _⟩ | hop
+    · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
+      rw [hts] at htj
+      change tr.time j ≤ _ at htj
+      exfalso
+      linarith
+    · exact hp.clean_optimistic_proposal_parent hc hy hpH hop hclean hrb (he ▸ hR)
+        hci hcall hd (he ▸ hti) hib
+  · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
+    rw [hts] at htj
+    change tr.time j ≤ _ at htj
+    exfalso
+    linarith
 
 section Support
 
@@ -2494,6 +2562,80 @@ private theorem reset_proposal_fcRoot (hp : ResetPremises tr H proposer dg g ΔF
         omega
     rw [hfr] at hOt
     have hOh := high_of_anc hp ho hpH hOt.1 .refl
+    have hOm := hmax O hOt.1
+    have hJO : (tr.state p i).fg.Anc (tr.state p i).fg.J O := by
+      by_contra hn
+      exact hchoose.2 ⟨hchoose.1, O, hOt.1, hOt.2, by omega, hn⟩
+    exact hJO.mono hsub
+  · exact hFO
+
+/-- The finite proposal root is genesis or below a bounded pre-slot high origin. -/
+theorem ResetPremisesUpTo.reset_proposal_root_source {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) :
+    ell.frame.fcRoot.root = sp.genesisRoot ∨
+      ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
+        Anc (tr.HonestBlocks H) ell.frame.fcRoot O := by
+  have hU := hp.honest_coherent
+  have hr := Compose.fg_reachable hp.run.toLocalRun hpH i
+  have hsub : (tr.state p i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨p, hpH, i, hX⟩
+  have hfr := Compose.frame_of_projAC hp.run hpH hci
+  obtain ⟨hFm, hJm, hFJ, ⟨B, hBm, hBJ, hBhj⟩, hmax, _⟩ :=
+    Store.cache_invariants _ _ _ _ hr
+  obtain ⟨E, hEm, hEr, hEB, hcase⟩ := Store.J_entry_of_reachable hr hBm
+  obtain rfl : E = (tr.state p i).fg.J := hU.1 (hsub hEm) (hsub hJm) (hEr.trans hBJ)
+  have hroot : (tr.state p i).fg.fcRoot = (tr.state p i).fg.J ∨
+      (tr.state p i).fg.fcRoot = (tr.state p i).fg.F := by
+    unfold Store.fcRoot
+    split_ifs <;> simp
+  rcases hcase with hg | ⟨hJh, hJT⟩
+  · left
+    rw [hfr]
+    rcases hroot with h | h
+    · exact congrArg (·.root) (h.trans hg)
+    · have hJF := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
+      rw [← hg] at hJF
+      have he := Anc.antisymm hU (hFJ.mono hsub) (hJF.mono hsub)
+      exact congrArg (·.root) (h.trans (he.trans hg))
+  right
+  by_cases hh : HZ tr H g + 1 ≤ (tr.state p i).fg.hj
+  · obtain ⟨_, _, _, _, v, _, k', hki, _, _, r, hrk, l, O, ho, hJO⟩ :=
+      hp.left_entry_origin hpH hJm hJT (by omega) hEB
+        (by have := Store.hj_lt_h hr hBm; omega)
+    have hlu := hp.origin_label_lt_at_proposal hpH hci hcall hti (by omega : r < i) ho
+    obtain ⟨_, D, CV, _, hfl, _⟩ := hp.highOrigin_mem ho
+    have hrt : tr.time r < sp.ts u := hp.fastLock_time_lt hfl hlu (by
+      have := hp.run.time_mono (by omega : r ≤ i)
+      rw [hti] at this
+      have := sp.toParams.hΔ
+      linarith)
+    refine ⟨v, r, l, O, ho, hrt, (hp.run.time_mono (by omega)).trans hib, ?_⟩
+    rw [hfr]
+    change Anc _ (tr.state p i).fg.fcRoot O
+    rcases hroot with h | h
+    · rw [h]; exact hJO
+    · rw [h]; exact (hFJ.mono hsub).trans hJO
+  obtain ⟨v, r, l, O, ho, hrb, _, hrt⟩ := hp.reset_seed_before_slot hR
+  have hFO := hp.low_finalized_below_origin hpH i (by omega) ho
+  refine ⟨v, r, l, O, ho, hrt, hrb, ?_⟩
+  rw [hfr]
+  change Anc _ (tr.state p i).fg.fcRoot O
+  unfold Store.fcRoot
+  split_ifs with hchoose
+  · have hOt : O ∈ ell.frame.tree := by
+      rcases hp.proposal_holds_old hpH hci hcall hd hti hib ho hrt with h | h
+      · exact h
+      · rw [hfr] at h
+        have := hp.high_of_anc ho hpH hJm (h.trans (hFJ.mono hsub))
+        rw [hJh, hBhj] at this
+        omega
+    rw [hfr] at hOt
+    have hOh := hp.high_of_anc ho hpH hOt.1 .refl
     have hOm := hmax O hOt.1
     have hJO : (tr.state p i).fg.Anc (tr.state p i).fg.J O := by
       by_contra hn
