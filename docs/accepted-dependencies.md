@@ -1,9 +1,9 @@
 # Accepted proof dependencies
 
-This is the integration ledger for the complete Goldilocks `Accepted` skeleton.
-It is **incomplete**: a row describing a planned contract is not an elaborated Lean
-statement. No proof work should start on an OPEN architecture join merely because
-the downstream theorem compiles with `sorry`.
+This is the integration ledger for the Goldilocks `Accepted` skeleton.
+The master status view records the complete compiled endpoint leaf inventory;
+mathematical proof completion remains **OPEN**. Historical/planned sections below
+are not elaborated evidence merely because a downstream theorem uses `sorry`.
 
 ## Completion gate
 
@@ -19,14 +19,84 @@ the downstream theorem compiles with `sorry`.
 5. Snapshot, import boundaries and trusted-surface review pass before landing.
    The incomplete skeleton stays outside Main/Solution's sorry-free closure.
 
-Current status: **NOT MET**. The proposer-free family is committed on
-`work/amp/family-wip`; its frozen core passed the fast gate after snapshot refresh.
-Provenance is proved; finite sleepy interfaces are integrated with three remaining
-direct consumer leaves. The Accepted numeric and liveness/healing adapters remain OPEN.
-Healing supplier types remain a separate draft outside the library. This is a partial
-inventory, not evidence that the Accepted skeleton is complete.
+Current status: **endpoint skeleton wired; mathematical proofs OPEN**. Every
+Accepted field now assembles named suppliers rather than containing a direct
+adapter sorry. Numeric witnesses remain three direct OPEN leaves. The master
+view below is compiled reachability, not proof closure or evidence that every
+joint supplier has been decomposed into its eventual proof obligations.
 
-## Per-field axiom audit at 259d0330
+## Master status: every Accepted field, grouped by leaf owner
+
+Baseline audited: main `e6a8ab76e0dbf5f43e4fabc654a44f17a9d20a3b`.
+The post-wiring audit uses `spec-surface dependencies --from
+Consensus.Goldilocks.Refinement.accepted --modules
+ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted`, including type
+and body edges and cycle-safe transitive traversal. Names below have prefix
+`Consensus.Goldilocks.Refinement.`. Each set enumerates **direct sorry owners**;
+an assembly depending on them is not an additional leaf.
+
+| Set | Owner | Complete direct leaf list |
+|---|---|---|
+| C | Spec orb, joint coefficient synthesis | `accepted_catchUp`, `accepted_heal`, `accepted_latency` |
+| F | Four-anchor/final service owner | `final_window_extract`, `final_inherited_progress`, `final_row_supply`, `final_cache_acceptance` |
+| H | Healing paper/T3; Spec orb integration | `healthy_old_inventory_initialize`, `healthy_prepare`, `healthy_preserve`, `healthy_cut_agreement`, `healthy_cut_monotone` |
+| N | Healing paper/T3; Spec orb integration | `healthy_confirmed_supply` |
+| O | Healing/outage owner; Spec orb integration | `outage_pre_service`, `outage_arm`, `outage_repair` |
+| S | Spec orb, with engine service/population and recurrence owners | `confirmed_duration_supply`, `sleepy_query_sync`, `sleepy_query_population`, `sleepy_query_slot`, `confirmed_slot_event` |
+| R | Spec orb safety-input production | `sleepy_safety_inputs` |
+| I | Healing box finite Sleepy | `sleepy_include_finite` |
+| E | Healing box arbitrary-cut Sleepy transport | `sleepy_safe_engine` |
+
+| Accepted field / branch | Reachable OPEN leaves by owner set | Direct adapter sorry? |
+|---|---|---|
+| outputValid | none | no |
+| nested | none | no |
+| finalMonotone | none | no |
+| finalAccountable | C (contract/type dependencies) | no |
+| healthyLive, final | C ∪ F | no |
+| healthyLive, available/stable | C ∪ N | no |
+| sleepySafe, available/stable | C ∪ R ∪ E | no |
+| sleepyLive, available/stable | C ∪ S ∪ I | no |
+| healedSafe, available/stable | C ∪ H | no |
+| persists | C ∪ O | no |
+| progressFits, progressTolerant, admissible | C | no |
+| serves | none (schema provides final output) | no |
+| claims and complete accepted | C ∪ F ∪ H ∪ N ∪ O ∪ S ∪ R ∪ I ∪ E | no |
+
+This closure has **24 direct sorry owners**. At baseline the two nonfinal
+healthyLive branches and sleepySafe/sleepyLive were direct adapter holes; all
+four now have assembly bodies. Capability budgets remain distinct even though
+available and stable both project to confirmed output. Collision escapes,
+empty-validator handling, exact cDur, deadline scaling and endpoint premises
+are unchanged. No Main/Solution certification is claimed.
+
+OPEN but **not currently reachable from accepted**: `healthy_old_row_realize`,
+`healthy_vote_row_replacement` (Healing paper/T3, first-arrival/self-entry and
+label-bounded replacement), and `sleepy_safe_finite` (Healing box finite R.1).
+Their absence from the closure means the current joint leaves do not yet call
+them, not that they are proved or unnecessary. Likewise imported implementation
+modules are not automatically proof dependencies. The older draft inventories
+below describe planned internal decompositions, not extra leaves in this closure.
+
+| Declaration | Paper argument/status |
+|---|---|
+| `Consensus.Goldilocks.Refinement.healthy_confirmed_supply` | OPEN, Healing paper/T3 with Spec orb integration: finite Healthy preparation, exact-cDur-ready actual producer selection and its budget, frozen service and deadline coverage remain inside this joint existential. Only the selected accepted proposal is covered; no new endpoint assumption. |
+| `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | OPEN, Spec orb with engine/Healing box: joint duration, finite-horizon canonical SyncBefore and population production with no progress, query or ready-reader existence premise. Existing sleepy_safe_engine retains arbitrary-cut transport. |
+| `Consensus.Goldilocks.Refinement.confirmed_duration_supply` | OPEN, Spec orb: joint coefficient bound, not positivity or readiness upgrade. |
+| `Consensus.Goldilocks.Refinement.sleepy_query_sync` | OPEN, engine/Spec orb: canonical service through exact deadline. |
+| `Consensus.Goldilocks.Refinement.sleepy_query_population` | OPEN, Spec orb: finite slot-point population transport. |
+| `Consensus.Goldilocks.Refinement.sleepy_query_slot` | OPEN, recurrence/Spec orb: exact-cDur readiness, strict freshness and 6Δp service margin. |
+| `Consensus.Goldilocks.Refinement.confirmed_slot_event` | OPEN, Spec orb: joined/eligible state and actual scheduled event; eligible slot is not an event. |
+| `Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize` | OPEN, Healing paper/T3: global old signed-entry inventory including unseen future arrivals, §§27/28. |
+| `Consensus.Goldilocks.Refinement.healthy_prepare` | OPEN, Healing paper/T3: finite ready→heal record/cache/stored-lock preparation consuming inventory. |
+| `Consensus.Goldilocks.Refinement.healthy_preserve` | OPEN, Healing paper/T3: all later canonical cuts, health only, no later progress. |
+| `Consensus.Goldilocks.Refinement.healthy_cut_agreement` | OPEN, Spec orb/Healing: arbitrary-cut agreement, including pre-endCut equality-time transport. |
+| `Consensus.Goldilocks.Refinement.healthy_cut_monotone` | OPEN, Spec orb/Healing: ordered-cut extension with both readiness tests and equality-time transport. |
+| `Consensus.Goldilocks.Refinement.outage_pre_service` | OPEN, engine/outage: recipient-deadline service bounded by outage start. |
+| `Consensus.Goldilocks.Refinement.outage_arm` | OPEN, outage: effective-record lookup or F fallback with original read prefix. |
+| `Consensus.Goldilocks.Refinement.outage_repair` | OPEN, outage: lifetime, repair, old output compatibility and exact reader windows. |
+
+## Historical per-field axiom audit at 259d0330 (superseded above)
 
 Audited main at `259d0330ace0464632c03344568c6fe518f33b98` with `#print axioms`
 for every `accepted*` declaration and the nonframing/receipt/Sleepy bridges.
@@ -105,7 +175,7 @@ is min(η,4k−6), corrected in f416034 to imply the unchanged node time window 
 Only catch-up (positive Nat), heal and latency (Nat-valued functions at each gap)
 are existential. They are independent of validator set, execution and horizon.
 Every positive outer gap X is an index; tolerance uses X=span+2. Timeout has no X.
-The three numeric leaves must be solved jointly with the five remaining adapters;
+The three numeric leaves must be solved jointly with the named endpoint suppliers;
 their arbitrary separate instantiation would not prove the endpoint. Local-pattern
 sufficiency remains OPEN, not supplied by the timeout inequality alone.
 The one-Δ model maps Δ_F:=Δ_p, hence c_F=2; this deliberately excludes the
@@ -124,7 +194,7 @@ Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbe
 | `Consensus.Goldilocks.Refinement.accepted_nested` | Reduction to shape_nested; exact generic field, no collision escape. |
 | `Consensus.Goldilocks.Refinement.accepted_finalMonotone` | Reduction to shape_finalMonotone; exact generic field. |
 | `Consensus.Goldilocks.Refinement.accepted_finalAccountable` | Body closed through shape_finalAccountable at fixed 1/3; only the three coefficient leaves are reachable through the contract type. Encoding/transport is proved. |
-| `Consensus.Goldilocks.Refinement.accepted_healthyLive` | Available/stable branches OPEN; final branch references accepted_healthyLive_final and its explicit supplier route below. |
+| `Consensus.Goldilocks.Refinement.accepted_healthyLive` | Assembly: available/stable use healthy_confirmed_supply and proved payload projection; final uses accepted_healthyLive_final. Named suppliers remain OPEN. |
 | `Consensus.Goldilocks.Refinement.final_window_extract` | OPEN: actual ready four-anchor proposals/cuts on the canonical finite trace, surviving ancestry and carrier processing by query + latency(.final,i)·Δe. Joint accepted_latency synthesis must supply transport slack, not just A3≤deadline. |
 | `Consensus.Goldilocks.Refinement.final_inherited_progress` | OPEN: inherited post-A0 entry has no birth lower bound; if uncrossed through A1's parent, distinct credited/pool current-entry progress reaches quorum. |
 | `Consensus.Goldilocks.Refinement.final_first_crossing` | Body closed conditional on InheritedProgress: birth-s entry OR first post-A0 crossing by s+d−1 (justify OR timeout); only the latter has exposure age≤d−2. Canonical store coherence, actual mandatory inclusion and dedup are derived, not extra premises. |
@@ -133,10 +203,10 @@ Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbe
 | `Consensus.Goldilocks.Refinement.final_cache_acceptance` | OPEN, consumes only A3 chain-finalized coverage of A0, projected from bounded crossings by the assembly: actual cache ancestry at the exact engine-scaled query endpoint and later horizon-bounded ready CutAfter reads. Not arbitrary-delay acceptance or receipt alone. |
 | `Consensus.Goldilocks.Refinement.final_payload_projection` | Body closed conditional on window extraction and CacheCoverage: raw own-block release via simTrace_block_released and final-output chain membership at engine endCut. Preserves existing cDur, reader condition, latency scaling and collision escape; no forwarding-envelope origin assumption. |
 | `Consensus.Goldilocks.Refinement.accepted_healthyLive_final` | Assembly explicitly references extraction, inherited progress, first crossing, row supply, bounded crossings, cache acceptance and payload projection. First crossing, bounded crossings and payload projection are conditionally body closed; the other four suppliers remain sorry leaves. The three closed bodies' only transitive sorry owners are accepted_catchUp/heal/latency through their types, not canonical transport or supplier proofs. No new public Healthy premises; accepted coefficients remain OPEN. |
-| `Consensus.Goldilocks.Refinement.accepted_sleepySafe` | OPEN: finite R.1 localization and engine service/read bridges; Sleepy suppliers above. |
-| `Consensus.Goldilocks.Refinement.accepted_sleepyLive` | OPEN: finite R.2 recurrence, inclusion and deadline transport; Sleepy suppliers above. |
-| `Consensus.Goldilocks.Refinement.accepted_healedSafe` | OPEN: finite preparation plus progress-free preservation, RecRet/base closure. |
-| `Consensus.Goldilocks.Refinement.accepted_persists` | OPEN: R.5 finite pre-outage service and actual repair; no late-wake SyncRun inference. |
+| `Consensus.Goldilocks.Refinement.accepted_sleepySafe` | Assembly over sleepy_safety_inputs and sleepy_safe_engine, with directional readiness and empty-V handling; both suppliers OPEN. |
+| `Consensus.Goldilocks.Refinement.accepted_sleepyLive` | Assembly over selected serviced Sleepy proposal, finite inclusion and proved payload projection; suppliers OPEN. |
+| `Consensus.Goldilocks.Refinement.accepted_healedSafe` | Assembly over finite preparation, progress-free preservation and arbitrary-cut adapters; suppliers OPEN. |
+| `Consensus.Goldilocks.Refinement.accepted_persists` | Assembly over pre-service, effective-record arming and actual repair; suppliers OPEN, no late-wake SyncRun inference. |
 | `Consensus.Goldilocks.Refinement.proposal_releasable` | Proved (f614a12): scheduled proposal dependencies are in the actual engine closure; Steps wrapper of scheduled_proposal_releasable. |
 | `Consensus.Goldilocks.Refinement.simTrace_att_unforgeable` | Proved (c52d387): actual canonical attestation origin/authentication history. |
 | `Consensus.Goldilocks.Refinement.simTrace_block_unforgeable` | Proved (f9963e2): valid canonical calls carrying an honest proposer's block have an earlier own-block cut. |
@@ -469,8 +539,8 @@ F≤source and per-counted-vote writer evidence; they cannot assume these consum
 ## Approved conditional Sleepy supplier skeleton
 
 `Lemmas/Refinement/NonfinalSuppliers.lean` contains the lead-reviewed Sleepy
-signature slices. It imports Accepted for its existing coefficients; it does not
-yet replace the endpoint adapters or enter Main/Solution. All names below are in
+signature slices. It imports AcceptanceDefs for its existing coefficients and
+now feeds the Sleepy liveness endpoint; it does not enter Main/Solution. All names below are in
 `Consensus.Goldilocks.Refinement`. No Healthy premise or endpoint duration changes.
 
 | Named obligation | Status and exact remaining work |
@@ -489,8 +559,8 @@ These six named supplier obligations contain **five direct sorries**, because
 service record; `sleepy_serviced_proposal_coverage` applies finite inclusion only to
 that serviced proposal. Their bodies are not no-sorry proofs. Actual acceptance uses
 `Compose.proposal_accepted`. The directional readiness proof preserves exact cDur.
-Healthy preparation/preservation, arbitrary-cut safety, outage and endpoint assembly
-are excluded from this landing and remain OPEN.
+Healthy preparation/preservation, arbitrary-cut safety and outage were separate
+landings; their proof gaps remain OPEN as listed in the master view.
 
 ## Approved OPEN Healthy/base supplier skeleton
 
@@ -546,8 +616,10 @@ Existing Healthy leaves and coefficient witnesses remain transitive gaps.
 Full proof completion, frozen-service/source/vote joins and other Accepted
 adapters remain OPEN; none are supplied by successful elaboration of this wiring.
 
-## Still missing from this inventory
+## What the master inventory does not certify
 
-Remaining finite adapter types, deeper outage/final leaves, and completed paper
-arguments for every reachable sorry.
-The ledger is not a completion certificate until those are present and the gate runs.
+The complete compiled leaf list does not discharge any OPEN supplier or promise
+that joint leaves already expose every internal mathematical step. Healthy frozen
+service, producer budgets, old-entry production and outage repair still need proofs
+and may require further named subleaves. Signature approval and mapped reachability
+are not proof completion or a Main/Solution certificate.
