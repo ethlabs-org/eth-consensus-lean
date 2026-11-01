@@ -60,6 +60,16 @@ def PSyncFGRowTransport : Prop :=
         ∃ k ≤ j, tr.ProcessAttAt y k a ∧
           tr.time k < tr.deadline y k (max (tr.time i) g) sp.Δ
 
+/-- The signed-row service contract, without exposing its definition to consumers. -/
+theorem psyncFGRowTransport_iff : PSyncFGRowTransport S rho tr H ↔
+    ∀ g, rho.log.PSync rho.point g →
+      ∀ x ∈ H, ∀ i a, tr.SignAt x i a →
+        ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ rho.horizon →
+          tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
+          ∃ k ≤ j, tr.ProcessAttAt y k a ∧
+            tr.time k < tr.deadline y k (max (tr.time i) g) sp.Δ := by
+  rfl
+
 /-- Pure endpoint arithmetic, independent of the unimplemented adapter. Service at the engine
 endpoint is strictly before the protocol endpoint, including equality at the engine bound.
 This buys no forwarding delay and is paid once, not once per ancestor. -/

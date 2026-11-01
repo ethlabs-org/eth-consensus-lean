@@ -19,8 +19,12 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing
 
 public section
+
+-- Keep the finite finality supplier contracts and their endpoint assembly together.
+set_option linter.style.longFile 1700
 
 /-! # Acceptance assembly with finite guarantee witnesses
 
@@ -634,13 +638,139 @@ theorem final_first_crossing (Q : FinalQuery S A V) (W : FinalWindowData S A V Q
       omega
   · omega
 
-/-- OPEN exact-entry rows, including coherent prior reports and dedup; paper workbench b3ca078,
-four-anchor-window.md / fixed-timeout-synthesis.md. Only designated protected entries qualify.
-Deriving normalization and prior-report history from Healthy and the finite canonical simulation
-remains OPEN; these conclusions are not assumed in the window context. -/
+section FinalRows
+
+variable (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
+  {B P : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {e : Nat} {a : Fin 4}
+  (hprotected : W.Protected B e)
+  (hanchor : e + 2 = (W.block a).slot ∨ (B = W.block 0 ∧ a = 1))
+  (hparent : (W.block a).parent = some P.root) (hBP : W.Extends B P)
+  (hstable : ∀ D, W.Extends B D → W.Extends D P →
+    (W.state D).h = (W.state B).h ∨ W.JustifiedBy B D.slot)
+  (hnjust : ¬ W.JustifiedBy B P.slot)
+
+include hprotected hanchor hparent hBP hstable hnjust
+
+omit hanchor in
+/-- The non-justified parent still names the protected entry. -/
+theorem final_row_normalized :
+    (W.state P).h = (W.state B).h ∧ (W.state P).Th = B.root := by
+  have hh := (hstable P hBP .refl).resolve_right hnjust
+  have hentry : W.Entry B := by
+    rcases hprotected with ⟨h, _⟩ | ⟨D, _, h, _⟩
+    · exact h.1
+    · exact h
+  have hP : W.OnChain P := by
+    have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+    have hBU : B ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
+      refine ⟨_, (W.ready 3).1, W.cut 3 + 1, ?_⟩
+      rw [← final_anchor_post S A V Q W 3]
+      exact final_chain_held S A V Q W hentry.1
+    have hPU : P ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
+      cases hBP with
+      | refl => exact hBU
+      | tail _ hYP => exact hYP.2.1
+    have hAU : W.block a ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
+      exact ⟨_, (W.ready a).1, W.cut a + 1, by
+        rw [← final_anchor_post S A V Q W a]
+        have h := (run.cutLaw _ (W.ready a).1 _ _ (W.accepted a)).2.1
+        rw [(Store.tree_grows _ _ _ _ (Compose.fg_reachable run.toLocalRun
+          (W.ready a).1 _)).1 _ _ h]
+        exact Set.mem_insert _ _⟩
+    exact (Relation.ReflTransGen.single ⟨hPU, hAU, hparent⟩).trans (W.chain a 3 (by omega))
+  exact ⟨hh, ((final_chain_height S A V Q W hBP hP).2 hh).trans hentry.2.1⟩
+
+/-- OPEN semantic producer: an identity quorum of actual exact-entry reports, including
+the exact finality pair for bound entries. A finite set counts each signer only once. -/
+theorem final_row_signers :
+    ∃ ids : Finset (Fin Q.params.n), Q.params.toParams.fg.q ≤ ids.card ∧
+      ∀ x ∈ ids, x ∈ honestKeys S Q.run.2 ∧ ∃ row j,
+        Q.trace.SignAt x j row ∧ row.val = x ∧ row.h = (W.state B).h ∧
+        row.T = B.root ∧ row.timeout = false ∧
+        Q.trace.time j ≤ Q.params.ts e + 6 * Q.params.Δ ∧
+        ((W.state B).bound → row.fin = some ((W.state B).hj, (W.state B).J)) := by
+  sorry
+
+/-- OPEN continuous post-GST awake/service geometry. Every earlier processing cut has
+deadline at most the service endpoint; readiness only at the serving anchor is insufficient. -/
+theorem final_row_service_geometry {j : Nat}
+    (ht : Q.trace.time j ≤ Q.params.ts e + 6 * Q.params.Δ) :
+    Q.params.ts e + 7 * Q.params.Δ ≤ Q.deadline ∧
+      Q.params.ts e + 7 * Q.params.Δ < Q.trace.time (W.cut a) ∧
+      ∀ k ≤ W.cut a, Q.trace.deadline (W.block a).proposer k
+        (max (Q.trace.time j) Q.gst) Q.params.Δ ≤ Q.params.ts e + 7 * Q.params.Δ := by
+  sorry
+
+/-- Signed-row engine service transported to the anchor's strict processing endpoint. -/
+theorem final_row_processed {x : Fin Q.params.n} {row : FG.Att Q.params.n} {j : Nat}
+    (hx : x ∈ honestKeys S Q.run.2) (hsign : Q.trace.SignAt x j row)
+    (ht : Q.trace.time j ≤ Q.params.ts e + 6 * Q.params.Δ) :
+    Q.params.ts e + 7 * Q.params.Δ ≤ Q.deadline ∧
+      ∃ k, Q.trace.ProcessAttAt (W.block a).proposer k row ∧ k < W.cut a ∧
+        Q.trace.time k < Q.params.ts e + 7 * Q.params.Δ := by
+  obtain ⟨hbudget, hcut, hgeom⟩ :=
+    final_row_service_geometry S A V Q W hprotected hanchor hparent hBP hstable hnjust ht
+  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst := by
+    constructor
+    · intro v hv o s hs w hw b hsb hc hh haw
+      have h := Q.healthy.1.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw b hsb hc hh haw
+      rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
+      · obtain ⟨o', he, hs'⟩ := hsent
+        cases he
+        exact ⟨u, hu, Or.inl hs', hnowake⟩
+      · obtain ⟨o', he, hr'⟩ := hrecv
+        cases he
+        exact ⟨u, hu, Or.inr hr', hnowake⟩
+    · exact Q.healthy.1.txs
+  have service := signed_row_service_psync S Q.run.2 Q.hn Q.valid
+  rw [psyncFGRowTransport_iff] at service
+  obtain ⟨k, hk, hp, ht'⟩ := service Q.gst hnet
+    x hx j row hsign _ (W.ready a).1 (W.cut a) ⟨_, W.accepted a⟩
+    ((W.bounded a).trans Q.bounded) ((hgeom _ le_rfl).trans hcut.le)
+  have htime := ht'.trans_le (hgeom k hk)
+  refine ⟨hbudget, k, hp, ?_, htime⟩
+  exact lt_of_le_of_ne hk (by intro he; subst k; exact (not_lt_of_ge hcut.le) htime)
+
+/-- OPEN structural pending-pair retention along the protected stable chain. -/
+theorem final_row_pending_or_finalized (hb : (W.state B).bound) :
+    ((W.state B).hj, (W.state B).J) ∈ (W.state P).pending ∨
+      (W.state B).hj ≤ (W.state P).hF := by
+  sorry
+
+omit hanchor in
+/-- Honest exact-entry rows are well formed and valid against the normalized parent. -/
+theorem final_row_valid {x : Fin Q.params.n} {row : FG.Att Q.params.n} {j : Nat}
+    (hx : x ∈ honestKeys S Q.run.2) (hsign : Q.trace.SignAt x j row)
+    (hh : row.h = (W.state B).h) (hT : row.T = B.root) :
+    row.WellFormed ∧ (W.state P).validAtt row := by
+  have hn := final_row_normalized S A V Q W hprotected hparent hBP hstable hnjust
+  exact ⟨signed_att_wellFormed S Q.run.2 Q.hn Q.valid hx hsign,
+    Or.inl ⟨hh.trans hn.1.symm, hT.trans hn.2.symm⟩⟩
+
+end FinalRows
+
+/-- Top-down row assembly. Semantic signing, service geometry and pending-pair retention
+remain named obligations; durable pool retention and identity counting add no premises. -/
 theorem final_row_supply (Q : FinalQuery S A V) (W : FinalWindowData S A V Q) :
     W.RowSupply := by
-  sorry
+  intro B e hp a ha P hpar hBP hstable
+  by_cases hj : W.JustifiedBy B P.slot
+  · exact Or.inl hj
+  right
+  obtain ⟨hh, hT⟩ := final_row_normalized S A V Q W hp hpar hBP hstable hj
+  obtain ⟨ids, hq, hids⟩ := final_row_signers S A V Q W hp ha hpar hBP hstable hj
+  refine ⟨hh, hT, ids, hq, ?_⟩
+  intro x hx
+  obtain ⟨hhon, row, j, hs, hv, hrh, hrT, hnt, ht, hfin⟩ := hids x hx
+  obtain ⟨hwf, hvalid⟩ := final_row_valid S A V Q W hp hpar hBP hstable hj hhon hs hrh hrT
+  obtain ⟨hdeadline, k, hproc, hk, htime⟩ :=
+    final_row_processed S A V Q W hp ha hpar hBP hstable hj hhon hs ht
+  refine ⟨hhon, row, j, hs, hv, hrh, hrT, hnt, hwf, hvalid, ht, hdeadline,
+    Or.inr ⟨?_, k, hproc, hk, htime⟩, ?_⟩
+  · exact Healing.processed_att_retained
+      (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid) (W.ready a).1 hproc hk
+  · intro hb
+    exact ⟨hfin hb, final_row_pending_or_finalized S A V Q W hp ha hpar hBP hstable hj hb⟩
 
 private theorem final_chain_final_height (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
     {B C : SA.Blk Q.params.n (List (FG.Att Q.params.n))}

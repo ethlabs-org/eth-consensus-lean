@@ -301,6 +301,12 @@ private theorem mem_atts_of_process (hrun : GoldilocksRun proposer dg H tr)
   · rw [tr.state_succ_of_call hc]
     exact mem_onBlock (hrun.cutLaw y hy k _ hc).2.1 (Or.inr ha)
 
+/-- Processed rows persist in the honest node's durable attestation pool. -/
+theorem processed_att_retained (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {k j : Nat} {a : FG.Att sp.n}
+    (h : tr.ProcessAttAt y k a) (hkj : k < j) : a ∈ (tr.state y j).fg.atts := by
+  exact atts_mono hrun hy (by omega) (mem_atts_of_process hrun hy h)
+
 /-- **The mature crossing at an honest proposal** (`hs5-exact-helpers.md` §3.1): an honest
 proposal `X` on the parent `Pr`, with `E ⪯ Pr` an entry of height `h` (held by an honest node),
 `Pr` of state height `h`, `E.slot + δ_t ≤ X.slot`, and a matching row of every honest validator
