@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -217,6 +218,68 @@ theorem effective_record_call_of_compatible
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc
   exact effective_record_writes_of_compatible hr.coherent hΦ hΦU (Compose.call_writes hr hy hc)
     (fun D ⟨s, CV, h⟩ => hnew D s CV h) hO
+
+/-- Writing a held candidate leaves that candidate or a strictly later descendant.
+The guard can retain a record only above the candidate, never an older fork. -/
+theorem effective_record_update_slot_growth
+    {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {A : SA.SAState sp.n}
+    {P : SA.Blk sp.n FGP} (hP : P ∈ Φ.tree) :
+    let C := (SA.lookup Φ (SA.updateLatestConfirmed sp A Φ P).latestConfirmed).getD Φ.F
+    Φ.Anc P C ∧ (C = P ∨ P.slot < C.slot) := by
+  classical
+  dsimp only
+  have lookup_self : ∀ D ∈ Φ.tree, SA.lookup Φ D.root = some D := by
+    intro D hD
+    cases he : SA.lookup Φ D.root with
+    | none => exact False.elim (SA.lookup_eq_none he ⟨D, hD, rfl⟩)
+    | some C =>
+      obtain ⟨hC, hr⟩ := SA.lookup_eq_some he
+      exact congrArg some (hΦ.coherent.1 hC hD hr)
+  have hanc : Φ.Anc P
+      ((SA.lookup Φ (SA.updateLatestConfirmed sp A Φ P).latestConfirmed).getD Φ.F) := by
+    unfold SA.updateLatestConfirmed
+    split_ifs with hg
+    · obtain ⟨C, hC, hr, hPC⟩ := hg
+      rw [← hr, lookup_self C hC]
+      exact hPC
+    · change Φ.Anc P ((SA.lookup Φ P.root).getD Φ.F)
+      rw [lookup_self P hP]
+      exact .refl
+  refine ⟨hanc, ?_⟩
+  by_cases he : (SA.lookup Φ (SA.updateLatestConfirmed sp A Φ P).latestConfirmed).getD Φ.F = P
+  · exact Or.inl he
+  · exact Or.inr ((hanc.slot_le hΦ.coherent).2 (Ne.symm he))
+
+/-- The conditional ready update flushes every non-descendant record. The post-state
+is read in the actual call frame; frame evolution is handled by the separate adapter. -/
+theorem ready_update_effective_record
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+    {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a : Time}
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : Healing.ReadyProposal tr H proposer p k u P)
+    (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hu : SA.UpdateAt tr.projAC y j u ell) (hPt : P ∈ ell.frame.tree)
+    (hnext : ∀ r < j, ∀ B CV, SA.OptimisticLockAt tr.projAC y r (u + 1) B CV →
+      Compatible (tr.HonestBlocks H) B P) :
+    Anc (tr.HonestBlocks H) P
+      ((SA.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F) ∧
+      SA.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hS.run.localRun hy hu.1
+  obtain ⟨-, -, hfast⟩ := Healing.ready_update_selection hp hc hP hR hgu hy hu hPt hnext
+  obtain ⟨hconf, hnv, -, hpost⟩ := SA.first_update_post hS hgu
+    (Healing.ready_unanimous hp hc hP hR) hy hu.1 hu.2.1 hu.2.2.1 hPt
+    (Healing.ready_update_locks_compatible hp hc hP hR hgu hy hu hnext)
+  refine ⟨?_, hfast⟩
+  rw [hpost]
+  unfold SA.updateConfirmation
+  simp only [hconf]
+  rw [ite_eq_right hnv]
+  exact (effective_record_update_slot_growth (sp := sp) hΦ hPt).1.mono hΦU
 
 end Consensus.Goldilocks.Refinement
 end
