@@ -1773,18 +1773,13 @@ private theorem seed_held (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- The vote root is genesis or below an old source (hence satisfies the original disjunction).
 An actual crossing row's origin label is strictly below the vote's label
 (`row_origin_label_lt`); the low-`J` case relays the reset seed. -/
-private theorem reset_vote_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
-    (_hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+private theorem reset_vote_root_source (hp : ResetPremises tr H proposer dg g ΔF a)
+    {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = u)
-    (_hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
-      e'.msg.head = P.root) :
+    (hes : e.msg.slot = u) :
     ℓy.frame.fcRoot.root = sp.genesisRoot ∨
-      (∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) ℓy.frame.fcRoot O) ∨
-      Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := by
+      (∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) ℓy.frame.fcRoot O) := by
   have hU := honest_coherent hp
   have hrun := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hr := Compose.fg_reachable hp.run.toLocalRun hy j
@@ -1815,7 +1810,7 @@ private theorem reset_vote_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
       rw [← hg] at hJF
       have he := Anc.antisymm hU (hFJ.mono hsub) (hJF.mono hsub)
       exact congrArg (·.root) (h.trans (he.trans hg))
-  right; left
+  right
   by_cases hh : HZ tr H g + 1 ≤ (tr.state y j).fg.hj
   · obtain ⟨W, hW, att, ha, v, hv, d, hdj, hs, haT, r, hrd, l, O, ho, hJO⟩ :=
       left_entry_origin hp hy hJm hJT (by omega) hEB
@@ -1867,6 +1862,35 @@ private theorem reset_vote_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
       exact hchoose.2 ⟨hchoose.1, O, hOt.1, hOt.2, by omega, hn⟩
     exact hJO.mono hsub
   · exact hFO
+
+/-- Any bound on all pre-slot high origins also bounds the post-drain voter root. -/
+theorem reset_vote_root_below_bound (hp : ResetPremises tr H proposer dg g ΔF a)
+    {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocks H)
+    (hbound : ∀ x r b B, HighOrigin tr H g x r b B → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) B P)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
+    (hs : e.msg.slot = u) : Anc (tr.HonestBlocks H) ell.frame.fcRoot P := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  rcases reset_vote_root_source hp hR hy hc hs with hg | ⟨B, ⟨x, r, b, ho, ht⟩, hroot⟩
+  · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
+    exact Compose.honest_genesis_root_anc hp.run hr.coherent (hPhiU hPhi.fcRoot_mem) hg hP
+  · exact hroot.trans (hbound x r b B ho ht)
+
+private theorem reset_vote_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
+    (_hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (_hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
+    (hs : e.msg.slot = u)
+    (_hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
+      e'.msg.head = P.root) :
+    ell.frame.fcRoot.root = sp.genesisRoot ∨
+      (∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) ell.frame.fcRoot O) ∨
+      Anc (tr.HonestBlocks H) ell.frame.fcRoot P :=
+  (reset_vote_root_source hp hR hy hc hs).imp_right Or.inl
 
 /-! ### The anchors -/
 

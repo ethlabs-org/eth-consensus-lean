@@ -845,6 +845,151 @@ theorem effectiveRecordInterval_of_high_cover
     · exact SA.anc_total hac.localRun.coherent h hOB
     · exact Or.inr (hOB.trans h)
 
+/-- An origin written during a unanimous slot is below its unanimous head. Older-label
+origins use retention at an actual vote, even when that vote precedes the origin write. -/
+theorem high_origin_in_unanimous_slot_below
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hun : Healing.Unanimous tr H u P)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {x : Fin sp.n} {r b : Nat} (ho : Healing.HighOrigin tr H g x r b B)
+    (hlo : sp.ts u ≤ tr.time r) (hhi : tr.time r < sp.ts (u + 1 : Nat)) :
+    Anc (tr.HonestBlocks H) B P := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  obtain ⟨ell, D, CV, hcall, hfl, _, _, _, hBD, _⟩ := Healing.highOrigin_mem hp ho
+  have hPhi := (SA.frameIn_of_callAt hS.run.localRun ho.1 hcall).2
+  have hbu : b ≤ u := by
+    rcases hfl with ⟨ell, C, hu, _⟩ | ⟨ell, A, _, hs, _⟩
+    · have ht : tr.time r = sp.ts b + 6 * sp.Δ := hu.2.2.1
+      have hΔ := sp.toParams.hΔ
+      simp only [SA.SAParams.ts] at hhi ht
+      push_cast at hhi
+      by_contra hn
+      have hb : (u : Int) + 1 ≤ b := by omega
+      nlinarith
+    · have hs' : sp.slot (tr.time r) = b := hs
+      rw [SA.slot_of_mem sp u hlo hhi] at hs'
+      omega
+  by_cases hbu' : b < u
+  · obtain ⟨q, e, hv, hs⟩ := SA.honest_votes_in_slot hS hgu x ho.1
+    obtain ⟨ellv, hcast⟩ := hv
+    obtain ⟨Hd, hHd, he, hBH⟩ :=
+      (covered_vote_suffix hp ho (.refl) ho.1 hcast (by omega)).2.2.1
+    have heq : Hd = P := hS.run.localRun.coherent.1 hHd hP
+      (he.trans (hun x ho.1 q e ⟨ellv, hcast⟩ hs))
+    exact heq ▸ hBH
+  have heq : b = u := by omega
+  subst b
+  have hf : 2 * Hᶜ.ncard < sp.n := by
+    have := hp.healthy.2.2
+    have := Fin.pos x
+    have hn : sp.n = sp.toParams.n := rfl
+    omega
+  obtain ⟨z, hz, q, e, hv, hs, Hd, hHd, he, hDH⟩ :=
+    SA.fastLock_honest_vote hS.run hf ho.1 hfl
+  have heq : Hd = P := hS.run.localRun.coherent.1 hHd hP (he.trans (hun z hz q e hv hs))
+  exact (hBD.mono hPhi).trans (heq ▸ hDH)
+
+/-- Extend the old-origin cutoff through the fresh unanimous slot. -/
+theorem high_origins_before_next_slot_below
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hun : Healing.Unanimous tr H u P)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hold : ∀ x r b B, Healing.HighOrigin tr H g x r b B → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) B P) :
+    ∀ x r b B, Healing.HighOrigin tr H g x r b B → tr.time r < sp.ts (u + 1 : Nat) →
+      Anc (tr.HonestBlocks H) B P := by
+  intro x r b B ho ht
+  by_cases hbefore : tr.time r < sp.ts u
+  · exact hold x r b B ho hbefore
+  · exact high_origin_in_unanimous_slot_below hp hc hP hun hgu ho (le_of_not_gt hbefore) ht
+
+/-- Unanimity and the pre-slot origin bound admit the previous proposal to the next
+vote's frozen viable tree. The receiver's own previous vote supplies strict acceptance. -/
+theorem unanimous_next_vote_viable
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : Healing.Unanimous tr H u P) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hold : ∀ x r b B, Healing.HighOrigin tr H g x r b B → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) B P)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcast : SA.CastAt tr.projAC y j ell e)
+    (hs : e.msg.slot = u + 1) :
+    Anc (tr.HonestBlocks H) ell.frame.F P ∧
+      P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (u + 1)) := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  have hbound := high_origins_before_next_slot_below hp hc hP hun hgu hold
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hS.run.localRun hy hcast.1
+  have hroot := Healing.reset_vote_root_below_bound hp hR hP hbound hy hcast hs
+  have hFP := (hPhi.F_anc_fcRoot.mono hPhiU).trans hroot
+  obtain ⟨q, v, hvote, hvs⟩ := SA.honest_votes_in_slot hS hgu y hy
+  obtain ⟨ellv, hv⟩ := hvote
+  obtain ⟨⟨Hd, hHd, he, _⟩, ht⟩ := Compose.cast_head_fcRoot hS.run.localRun hy hv
+  have hPsiU := (SA.frameIn_of_callAt hS.run.localRun hy hv.1).2
+  have heq : Hd = P := hS.run.localRun.coherent.1 (hPsiU hHd) hP
+    (he.trans (hun y hy q v ⟨ellv, hv⟩ hvs))
+  subst Hd
+  have hacc : SA.AcceptedBefore tr.projAC y P (sp.ts u + 3 * sp.Δ) := by
+    rcases SA.frame_genesis_or_accepted sp hS.run.localRun hy hv.1 P hHd with hz | ⟨k, hk, ha⟩
+    · omega
+    · refine Or.inr ⟨k, ha, ?_⟩
+      have htime := hp.run.time_mono hk
+      rw [hvs] at ht
+      change tr.time q ≤ sp.ts u + sp.Δ at ht
+      change tr.time k < _
+      linarith [sp.toParams.hΔ]
+  have hPt := Compose.accepted_voter_tree hp.run hp.noColl hy hcast hs hP hacc hFP
+  have hstore : P ∈ (tr.state y j).fg.tree := by
+    have hm := hPt.1
+    rw [Compose.frame_of_projAC hp.run hy hcast.1] at hm
+    exact hm.1
+  have hfloor := Healing.reset_vote_floor_above_old hp hy hR hcast hs hstore hbound
+  have hroot' := SA.anc_tree_of_anc_U hS.run.localRun.coherent hPhi hPhiU
+    hPhi.fcRoot_mem hroot hPt.1
+  refine ⟨hFP, hPt, hroot', P, hPt, ?_, .refl⟩
+  have hm := hPt.1
+  rw [Compose.frame_of_projAC hp.run hy hcast.1] at hm hroot' ⊢
+  exact ⟨hm.1, hm.2, hroot'.mono (fun X hX => hX.1), hfloor⟩
+
+/-- The ready proposal's actual parent walk supplies the old bound, so admission at
+next-slot casts needs no new high-cover or higher-report hypothesis. -/
+theorem ready_next_vote_viable
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : Healing.ReadyProposal tr H proposer p k u P)
+    (hPU : P ∈ tr.HonestBlocks H) (hu : 0 < u)
+    (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {i : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (SA.Payload sp.n)} {pay : SA.Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcast : SA.CastAt tr.projAC y j ell e)
+    (hs : e.msg.slot = u + 1) :
+    Anc (tr.HonestBlocks H) ell.frame.F P ∧
+      P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (u + 1)) := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hS.run.localRun hP.1 hci
+  obtain ⟨hst, hsh⟩ := Compose.acProposal_start_anc_head hPhi hd
+  have hhead : d.head ∈ ellp.frame.tree := by
+    rcases eq_or_ne d.start d.head with he | he
+    · exact he ▸ hst
+    · exact (Anc.mem hsh he).2
+  apply unanimous_next_vote_viable hp hc hPU hP.2.2.2.2.1 hu
+    (Healing.ready_unanimous hp hc hP hR) hgu
+    (hR.trans ((SA.ts_le_iff sp).2 (by omega))) ?_ hy hcast hs
+  intro x r b B ho ht
+  exact (Healing.crossing_below_proposal_parent hp hc hP hR hci hcall hd hti hPQ ho ht
+    (.refl)).trans (.single ⟨hPhiU hhead, hPU, hPQ⟩)
+
 end CoveredEndpoint
 
 end Consensus.Goldilocks.Refinement
