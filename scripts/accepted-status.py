@@ -5,6 +5,7 @@ Run after building ConsensusLean and spec-surface. Historical source scans selec
 former sorry declarations; compiled dependency edges determine their current status.
 """
 import datetime
+import base64
 import json
 from pathlib import Path
 import re
@@ -116,6 +117,40 @@ def closure(seeds, edges):
     return seen
 
 
+def ingest_cards(document):
+    """Pinned owner-reviewed cards; shared audits are links, not synthetic leaves."""
+    sources = [
+        ('fb40eb4c7dfb235493d97837533f2fc402026675',
+         'accepted_catchUp accepted_catchUp_ge_sleepy accepted_heal accepted_latency accepted_latency_ge_sleepy final_cache_acceptance final_inherited_progress final_row_supply final_window_extract ready_update report_cover sleepy_query_sync sleepy_safety_inputs update_window_kept vote_old_live_lock_below_parent'),
+        ('013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5',
+         'clean_result_next_votes healthy_confirmed_supply healthy_cut_tips_ancestor healthy_cut_tips_comparable healthy_old_inventory_initialize healthy_old_row_realize healthy_prepare ready_unanimous reset_inv voter_unlock_keeps_lock weak_base_extend weak_base_locks weak_base_until'),
+        ('af61e7b436f950709d0046a552a25ac1f3123134', 'outage_pre_service outage_repair'),
+    ]
+    directory = 'repos/goldilocks/notes/derisk/'
+    for commit, names in sources:
+        for name in names.split():
+            locator = directory + name + '.md'
+            response = json.loads(run('gh', 'api',
+                f'repos/fradamt-agent/workbench/contents/{locator}?ref={commit}'))
+            card = base64.b64decode(response['content']).decode()
+            if not re.search(r'\bresearch\b', card, re.I):
+                raise ValueError(f'Expected reviewed research verdict in {locator}')
+            adversarial = bool(re.search(r'adversarial', card, re.I))
+            for row in document['rows']:
+                if row['name'].rsplit('.', 1)[-1] == name:
+                    row.update({'card-path': locator, 'card-commit': commit,
+                                'derisk-verdict': 'research',
+                                'adversarial-pass-done': 'y' if adversarial else 'n',
+                                'last-changed': datetime.date.today().isoformat()})
+    document['research-cores'] = {
+        'path': directory + 'research-cores.md', 'commit': sources[0][0],
+        'note': 'Overlapping producer-gap groups; counts must not be added as leaves.'}
+    document['shared-cards'] = [
+        {'path': directory + 'joint-envelope.md', 'commit': sources[0][0]},
+        {'path': directory + 'postReset_families.md', 'commit': sources[1][0]},
+        {'path': directory + 'outage_tips.md', 'commit': sources[2][0]}]
+
+
 def main():
     root = 'Consensus.Goldilocks.Refinement.accepted'
     scope = 'ConsensusLean/Instances/Goldilocks/Lemmas'
@@ -123,6 +158,10 @@ def main():
     head = run('git', 'rev-parse', 'HEAD').strip()
     path = Path('docs/accepted-status.json')
     previous = json.loads(path.read_text()) if path.exists() else {'rows': []}
+    if '--ingest-cards' in sys.argv:
+        ingest_cards(previous)
+        path.write_text(json.dumps(previous, indent=2) + '\n')
+        return
     if '--metadata-only' in sys.argv:
         for row in previous['rows']:
             row.setdefault('card-path', None)
@@ -222,7 +261,7 @@ def main : IO Unit := do
                'lean-status': 'proved' if proved else 'direct-sorry' if name in owners else 'sorry-dependent',
                'status-source': 'compiled dependency audit' if proved else prior.get('status-source'),
                'last-changed': today}
-        for key in ('evidence', 'obstruction'):
+        for key in ('evidence', 'obstruction', 'card-commit'):
             if key in prior:
                 row[key] = prior[key]
         for key, default in (('card-path', None), ('derisk-verdict', 'none yet'),
@@ -248,6 +287,9 @@ def main : IO Unit := do
               'fields': {n: sorted(closure([n], edges) & owners) for n in sorted(accepted)
                          if n.startswith('Consensus.Goldilocks.Refinement.accepted_')},
               'rows': rows}
+    for key in ('research-cores', 'shared-cards'):
+        if key in previous:
+            result[key] = previous[key]
     path.write_text(json.dumps(result, indent=2) + '\n')
     print(f'{len(accepted & owners)} Accepted leaves; {len(owners - accepted)} outside leaves; {len(rows)} rows')
 
