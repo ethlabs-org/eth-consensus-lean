@@ -580,18 +580,6 @@ theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
       Goldilocks.Compatible (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree X R := by
   sorry
 
-/-- OPEN pairwise compatibility of normalized current live locks. -/
-theorem healthy_current_live_chain (D : HealthyRepairSchedule S A V Q)
-    {v : V} {i : Nat} (C : HealthyReadContext S A V Q D v i) :
-    ∀ X ∈ SA.liveLockBlocks Q.params (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.locks
-        (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
-        (stateAt S Q.run.2 Q.hn v i).now,
-      ∀ Y ∈ SA.liveLockBlocks Q.params (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.locks
-        (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
-        (stateAt S Q.run.2 Q.hn v i).now,
-      Goldilocks.Compatible (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree X Y := by
-  sorry
-
 /-- OPEN actual anchor coverage or a mature raw witness; a young optimistic origin
 does not satisfy the raw arm merely because it was produced before this read. -/
 theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
@@ -733,6 +721,47 @@ theorem healthy_current_read_context (D : HealthyRepairSchedule S A V Q)
              (healthy_repair_catch S A V Q) htb
            fault := Healing.fault_bound_late_before D.reset (by linarith) (hLt.trans htb) }⟩
 
+omit h0 hb hp W states in
+/-- Normalized current live locks compare using their protected source provenance.
+The endpoint supplies honesty from its ready-reader hypothesis. -/
+theorem healthy_current_live_chain (D : HealthyRepairSchedule S A V Q)
+    {v : V} {i : Nat} (hv : v ∈ Q.run.2.honest) (C : HealthyReadContext S A V Q D v i) :
+    ∀ X ∈ SA.liveLockBlocks Q.params (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.locks
+        (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
+        (stateAt S Q.run.2 Q.hn v i).now,
+      ∀ Y ∈ SA.liveLockBlocks Q.params (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.locks
+        (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
+        (stateAt S Q.run.2 Q.hn v i).now,
+      Goldilocks.Compatible (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree X Y := by
+  have hy := honest_ownKey (S := S) hv
+  have hU := Compose.honest_blocks_coherent D.reset.run.toLocalRun D.reset.noColl
+  have hPhi := (Store.frame_realization _ _ _ _
+    (Compose.fg_reachable D.reset.run.toLocalRun hy C.cut)).1
+  have hsub : (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree ⊆
+      Q.trace.HonestBlocks (honestKeys S Q.run.2) := fun X hX => ⟨_, hy, _, hX.1⟩
+  have hquery : D.query ≤ (stateAt S Q.run.2 Q.hn v i).now := by
+    have := C.repaired
+    have := Q.params.toParams.hΔ
+    have : (0 : Int) ≤ (Q.index : Time) := Int.natCast_nonneg _
+    nlinarith
+  have hdrain : Healing.drainTime Q.params D.resetTime ≤
+      (stateAt S Q.run.2 Q.hn v i).now :=
+    ((le_max_of_le_right (le_max_left _ _)).trans D.lower).trans hquery
+  intro X hX Y hY
+  obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := SA.mem_liveLockBlocks hPhi hX
+  obtain ⟨m, hm, E, hE, hEr, hmive, rfl⟩ := SA.mem_liveLockBlocks hPhi hY
+  rw [← Compose.projAC_state D.reset.run.toLocalRun hy C.cut] at hl hm
+  have hBE := D.reset.clean_stored_locks_compatible (healthy_repair_catch S A V Q) hy
+    (fun q hq => (C.readPoint.1 q hq).trans C.time_bound) hl hm
+    (Healing.drain_stored_lock_label hdrain hlive)
+    (Healing.drain_stored_lock_label hdrain hmive) (hsub hB) hBr (hsub hE) hEr
+  have hXB := (SA.viableAncestor_anc hPhi hB).2.mono hsub
+  have hYE := (SA.viableAncestor_anc hPhi hE).2.mono hsub
+  have hXY := tips_comparable_of_origin_witnesses S A V Q hXB hYE hBE
+  rcases hXY with h | h
+  · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi hsub hX.1 h hY.1)
+  · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hsub hY.1 h hX.1)
+
 /-- Assemble the current whole-record certificate through the landed scoped adapters. -/
 theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
     (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
@@ -756,7 +785,7 @@ theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
       (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).fcRoot
   · exact Or.inl (hfc.trans ((SA.anc_getAnchor
       (Compose.frameOK_state D.reset.run.toLocalRun (honest_ownKey (S := S) hv.1) C.cut)
-      (healthy_current_live_chain S A V Q h0 hb hp W states D C)).2 _ (Or.inr rfl)))
+      (healthy_current_live_chain S A V Q D hv.1 C)).2 _ (Or.inr rfl)))
   rcases healthy_current_mature_or_anchor S A V Q h0 hb hp W states D O hrepair C hR with
     ha | ⟨x, hx, r, s, B, CV, hr, hRB, hrb, hs, hlate, hL⟩
   · exact Or.inl ha

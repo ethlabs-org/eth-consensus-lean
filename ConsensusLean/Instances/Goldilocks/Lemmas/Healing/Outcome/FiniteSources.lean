@@ -582,6 +582,71 @@ theorem ResetPremisesUpTo.finalized_compatible_clean_source
     · exact SA.anc_total hU hFD h
     · exact Or.inl (hFD.trans h)
 
+/-- Protected stored locks compare at the clean-transfer threshold, without the
+stronger threshold required to retain an arbitrary raw result. Only source cuts
+strictly before the observation are bounded. -/
+theorem ResetPremisesUpTo.clean_stored_locks_compatible
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hib : ∀ q < i, tr.time q ≤ b)
+    {l m : SA.Lock} (hl : l ∈ (tr.projAC.state y i).locks)
+    (hm : m ∈ (tr.projAC.state y i).locks)
+    (hls : cleanLabel sp a + sp.k + 2 ≤ l.slot)
+    (hms : cleanLabel sp a + sp.k + 2 ≤ m.slot)
+    {B C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB : B ∈ tr.HonestBlocks H) (hBr : B.root = l.block)
+    (hC : C ∈ tr.HonestBlocks H) (hCr : C.root = m.block) :
+    Compatible (tr.HonestBlocks H) B C := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have ordered : ∀ {l m : SA.Lock} {B C : SA.Blk sp.n (List (FG.Att sp.n))},
+      l ∈ (tr.projAC.state y i).locks → m ∈ (tr.projAC.state y i).locks →
+      cleanLabel sp a + sp.k + 2 ≤ l.slot → l.slot < m.slot →
+      B ∈ tr.HonestBlocks H → B.root = l.block →
+      C ∈ tr.HonestBlocks H → C.root = m.block → Compatible (tr.HonestBlocks H) B C := by
+    intro l m B C hl hm hls hlm hB hBr hC hCr
+    obtain ⟨q, hqi, D, hD, L, hL, hLr, hLD⟩ : ∃ q < i, ∃ D,
+        ((∃ CV, SA.FastLockAt tr.projAC y q l.slot D CV) ∨
+          SA.SlowLockAt tr.projAC y q l.slot D) ∧
+        ∃ L ∈ tr.HonestBlocks H, L.root = l.block ∧ Anc (tr.HonestBlocks H) L D := by
+      cases hf : l.fast
+      · obtain ⟨q, hqi, D, hD, hL⟩ := SA.slow_lock_provenance hr hy i l hl hf
+        exact ⟨q, hqi, D, Or.inr hD, hL⟩
+      · obtain ⟨q, hqi, D, CV, hD, hL⟩ := SA.fast_lock_provenance hr hy i l hl hf
+        exact ⟨q, hqi, D, Or.inl ⟨CV, hD⟩, hL⟩
+    obtain rfl : B = L := hr.coherent.1 hB hL (hBr.trans hLr.symm)
+    obtain ⟨M, hM, hMr, E, hME, r, hri, CV, hE⟩ := SA.lock_below_origin hr hy i m hm
+    obtain rfl : C = M := hr.coherent.1 hC hM (hCr.trans hMr.symm)
+    have hts := hp.clean_window_timing (show cleanLabel sp a + sp.k + 2 ≤ m.slot by omega)
+      m.slot (by have := sp.two_le_k; omega)
+    obtain ⟨z, hz, j, hjr, e, ⟨ell, he⟩, hes, Hd, hHd, heHd, hEHd⟩ :
+        ∃ z ∈ H, ∃ j ≤ r, ∃ e, SA.VoteAt tr.projAC z j e ∧ e.msg.slot = m.slot ∧
+          SA.VoteExtends (tr.HonestBlocks H) e.msg E := by
+      rcases hE with hE | hE
+      · obtain ⟨z, hz, j, hjr, e, he, _, hes, hEHd⟩ :=
+          hp.result_supporter hc hy hE .refl (hib r hri) hts
+        exact ⟨z, hz, j, hjr.le, e, he, hes, hEHd⟩
+      · exact (hp.optimistic_supporter hy hE).2
+    have hv : SA.VoteExtends (tr.HonestBlocks H) e.msg D := by
+      rcases hD with ⟨CV, hD⟩ | hD
+      · exact hp.fast_source_votes_before hc hy hD hls (hib q hqi) j
+          ((hp.run.time_mono hjr).trans (hib r hri)) z hz ell e he (by omega)
+      · exact hp.slow_source_votes_before hc hy hD hls (hib q hqi) j
+          ((hp.run.time_mono hjr).trans (hib r hri)) z hz ell e he (by omega)
+    obtain ⟨Hd', hHd', heHd', hDHd⟩ := hv
+    obtain rfl : Hd' = Hd := hr.coherent.1 hHd' hHd (heHd'.trans heHd.symm)
+    exact SA.anc_total hr.coherent (hLD.trans hDHd) (hME.trans hEHd)
+  rcases lt_trichotomy l.slot m.slot with h | h | h
+  · exact ordered hl hm hls h hB hBr hC hCr
+  · obtain ⟨L, hL, hLr, D, hLD, q, hqi, CV, hD⟩ := SA.lock_below_origin hr hy i l hl
+    obtain ⟨M, hM, hMr, E, hME, r, hri, DV, hE⟩ := SA.lock_below_origin hr hy i m hm
+    obtain rfl : B = L := hr.coherent.1 hB hL (hBr.trans hLr.symm)
+    obtain rfl : C = M := hr.coherent.1 hC hM (hCr.trans hMr.symm)
+    have hcomp := hp.sources_same_label_compatible hc hy hy hD (h ▸ hE)
+      (hib q hqi) (hib r hri) (hp.clean_window_timing hls l.slot (by have := sp.two_le_k; omega))
+    rcases hcomp with hDE | hED
+    · exact SA.anc_total hr.coherent (hLD.trans hDE) hME
+    · exact SA.anc_total hr.coherent hLD (hME.trans hED)
+  · exact (ordered hm hl hms h hC hCr hB hBr).symm
+
 end Consensus.Goldilocks.Healing
 
 end
