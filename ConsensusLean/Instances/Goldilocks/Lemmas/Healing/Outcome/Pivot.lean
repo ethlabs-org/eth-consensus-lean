@@ -575,6 +575,49 @@ theorem proposal_high_row_source_before (hp : ResetPremises tr H proposer dg g �
     Compose.isHonestSource_iff.2 ⟨v, hv, r, hE, hET.trans hEr⟩,
     hEO.mono (fun X hX => ⟨v, hv, r, hX⟩)⟩
 
+/-- An origin already preceding an honest signature before a proposal has an older label.
+This bound does not require the origin to precede a later receiving cast. -/
+theorem origin_label_lt_at_proposal (hp : ResetPremises tr H proposer dg g ΔF a)
+    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hti : tr.time i = sp.ts u) {v : Fin sp.n} {r l : Nat}
+    {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hri : r < i) (ho : HighOrigin tr H g v r l O) : l < u := by
+  obtain ⟨-, D, CV, -, hf, -⟩ := highOrigin_mem hp ho
+  have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono hri.le
+  have hle : l ≤ u := by
+    exact_mod_cast (SA.ts_le_iff sp).mp ((ts_le_of_fastLock hp hf).trans hrt)
+  by_contra hn
+  have hlu : l = u := by omega
+  rw [hlu] at hf
+  rcases hf with ⟨ell', C, ⟨-, -, ht, -⟩, -⟩ | hop
+  · have ht' : tr.time r = sp.ts u + 6 * sp.Δ := ht
+    have := sp.toParams.hΔ
+    linarith
+  · exact proposal_no_optimistic hp hpH hci hcall hti v ho.1 r hri D CV hop
+
+/-- Floor crossing at a proposal uses the full held tree and the actual proposal cut. -/
+theorem high_floor_source_at_proposal
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x p : Fin sp.n} {r l i u : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x r l B) (hpH : p ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hti : tr.time i = sp.ts u)
+    (hpair : ∀ v r l O, r < i → HighOrigin tr H g v r l O →
+      ∀ v' r' l' O', r' < i → HighOrigin tr H g v' r' l' O' →
+      Compatible (tr.HonestBlocks H) O O')
+    (hcomp : ∀ v r l O, r < i → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocks H) B O)
+    (hfloor : ((tr.state x r).fg.σ B.root).h < (tr.state p i).fg.headHeightFloor) :
+    ∃ v r l O E, r < i ∧ HighOrigin tr H g v r l O ∧ l < u ∧
+      E ∈ (tr.state p i).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
+      Anc (tr.HonestBlocks H) B O ∧
+      (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ E.root).h := by
+  apply high_floor_source_of_row_bound hp ho hpH (u := u) ?_ hpair hcomp hfloor
+  intro W hW att ha v hv d hs hdi r l O hrd hO
+  exact origin_label_lt_at_proposal hp hpH hci hcall hti (by omega) hO
+
 /-- The packed old-source interface of the proposal row ordering lemma. -/
 private theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
