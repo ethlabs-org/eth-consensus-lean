@@ -1438,6 +1438,42 @@ private theorem reset_proposal_passes (hp : ResetPremises tr H proposer dg g ΔF
     exact hheld x ho.1 v hvs hsend ⟨B, hB, hBr,
       (hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2).trans hDB, hacc⟩
 
+/-- A crossing below an origin written before a serving proposal is below its duty parent.
+The explicit timestamp preserves the provenance needed by bounded report consumers. -/
+theorem crossing_below_proposal_parent
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
+    {x : Fin sp.n} {r l : Nat} {X O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x r l O) (hrt : tr.time r < sp.ts u)
+    (hXO : Anc (tr.HonestBlocks H) X O) : Anc (tr.HonestBlocks H) X d.head :=
+  hXO.trans (reset_proposal_passes hp hc hP hR hci hcall hd hti hPQ O ⟨x, r, l, ho, hrt⟩)
+
+/-- The `6Δ` report cutoff precedes the serving slot at least two labels later. -/
+theorem crossing_below_serving_parent
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u e : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
+    {x : Fin sp.n} {r l q : Nat} {X O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x r l O) (hrq : tr.time r ≤ tr.time q)
+    (hq : tr.time q ≤ sp.ts e + 6 * sp.Δ) (heu : e + 2 ≤ u)
+    (hXO : Anc (tr.HonestBlocks H) X O) : Anc (tr.HonestBlocks H) X d.head := by
+  apply crossing_below_proposal_parent hp hc hP hR hci hcall hd hti hPQ ho ?_ hXO
+  have hslots := (SA.ts_le_iff sp).mpr (show (e : Int) + 2 ≤ u by omega)
+  have hΔ := sp.toParams.hΔ
+  simp only [SA.SAParams.ts] at hslots hq ⊢
+  nlinarith
+
 /-- The proposal root is genesis or below an old source. High `J` has a crossing row signed
 before the proposal. Low `J` is below the held reset seed by the root's no-contest condition. -/
 private theorem reset_proposal_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
