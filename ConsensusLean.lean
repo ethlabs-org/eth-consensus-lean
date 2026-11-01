@@ -202,6 +202,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Evidence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalEndpoints

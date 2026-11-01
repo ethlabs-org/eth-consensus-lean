@@ -66,9 +66,13 @@ variable {FGP : Type} {sp : SAParams}
 /-- The record moves from `r` to `r'` by a sequence of `update_latest_confirmed` writes with
 candidates `C ∈ Φ.tree` satisfying `New`: each keeps the record when `C ⪯` it in the tree and
 moves it to `C` otherwise. -/
-private def Writes (Φ : SA.Frm sp.n FGP) (New : SA.Blk sp.n FGP → Prop) : Nat → Nat → Prop :=
+def Writes (Φ : SA.Frm sp.n FGP) (New : SA.Blk sp.n FGP → Prop) : Nat → Nat → Prop :=
   Relation.ReflTransGen fun r r' => ∃ C ∈ Φ.tree, New C ∧
     ((SA.AncR Φ C r ∧ r' = r) ∨ (¬ SA.AncR Φ C r ∧ r' = C.root))
+
+theorem writes_iff {Φ : SA.Frm sp.n FGP} {New : SA.Blk sp.n FGP → Prop} {r r' : Nat} :
+    Writes Φ New r r' ↔ Relation.ReflTransGen (fun r r' => ∃ C ∈ Φ.tree, New C ∧
+      ((SA.AncR Φ C r ∧ r' = r) ∨ (¬ SA.AncR Φ C r ∧ r' = C.root))) r r' := Iff.rfl
 
 private theorem Writes.mono {Φ : SA.Frm sp.n FGP} {New New' : SA.Blk sp.n FGP → Prop}
     {r r' : Nat} (h : Writes Φ New r r') (hN : ∀ C, New C → New' C) : Writes Φ New' r r' := by
@@ -194,7 +198,7 @@ variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FG
 
 /-- **The record writes of a call**: every candidate is the result of the call's update or the
 selection of one of its optimistic checks. -/
-private theorem call_writes (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem call_writes (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     Writes ℓ.frame (fun C => ∃ s CV, SA.ResultAt tr x i s C CV ∨ SA.OptimisticLockAt tr x i s C CV)
       (tr.state x i).latestConfirmed (tr.post i).latestConfirmed := by
