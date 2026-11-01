@@ -207,6 +207,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifies
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
