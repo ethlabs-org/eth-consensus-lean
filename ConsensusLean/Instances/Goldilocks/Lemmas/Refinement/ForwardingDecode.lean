@@ -348,4 +348,38 @@ theorem decoded_held_onBlock {V : Type} [Fintype V] {E : Env V}
       · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
       · simp_all [Node.acCall]
 
+/-- Processing a child carried by a receipt preserves decoding and held correspondence.
+The decoder guard supplies the child's wire validity in the block branch. -/
+theorem decoded_held_processOne {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (st : State (S.params (pubOf E) hn) (S.ro _))
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (hh : WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (hc : WrappersCover st)
+    (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
+    (receipt o : Wire (Fintype.card V)) (ho : Obj.Contains receipt o) (ht : 0 ≤ st.now) :
+    let st' := processOne (digests rho.hash receipt) st o
+    WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st' ∧
+    WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash) st' := by
+  unfold processOne
+  split
+  · rename_i B he
+    have h := decoded_held_onBlock S rho hn st hd hh hc hr B
+      (fun _ => received_child_decodes S rho hn receipt o B ho (decodeBlock_of_canonEvent he)) ht
+    unfold relayIf
+    dsimp only
+    split
+    · exact ⟨h.1.mono rfl rfl rfl le_rfl, h.2.preserve rfl rfl rfl⟩
+    · exact h
+  · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
+  · rename_i a _
+    obtain ⟨atts, he⟩ := Store.onAttestation_eq st.node.fg a
+    unfold relayIf
+    split
+    · refine ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl ?_⟩
+      simpa only [apply, Node.onAttestation] using congrArg Store.blocks he
+    · refine ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl ?_⟩
+      simpa only [apply, Node.onAttestation] using congrArg Store.blocks he
+  · exact ⟨hd, hh⟩
+
 end Consensus.Goldilocks.Refinement
