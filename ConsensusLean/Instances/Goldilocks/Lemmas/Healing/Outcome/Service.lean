@@ -9,7 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 
 -- Keep the finite reset service adapter with the outcome-service assembly it supplies.
-set_option linter.style.longFile 1600
+set_option linter.style.longFile 1800
 
 public section
 
@@ -562,6 +562,43 @@ theorem high_report_origin (hp : ResetPremises tr H proposer dg g ΔF a)
     unfold HighOrigin Compose.StoredFastLockAt
     exact ⟨hz, joinedAt_of_fastLockAt hp.run hp.noColl hz hfl, ⟨CV, ℓw, D, hcw, hfl, rfl⟩, hOh⟩
   exact ⟨io, hio, l₀.slot, O, hoO, hCO⟩
+
+/-- Bounded report provenance retains the raw fast-lock source, as well as
+its stored viable image. Both cover the actual report. -/
+theorem ResetPremisesUpTo.high_report_origin {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {z : Fin sp.n} (hz : z ∈ H)
+    {r : Nat} {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
+    (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h) :
+    ∃ io < r, ∃ jo O D CV, HighOrigin tr H g z io jo O ∧ tr.time io ≤ b ∧
+      SA.FastLockAt tr.projAC z io jo D CV ∧ Anc (tr.HonestBlocks H) C O ∧
+      Anc (tr.HonestBlocks H) O D := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hpc, _, hC'⟩ := hrep
+  obtain ⟨hCv, l, hl, hlb, hlf, _⟩ := mem_toFGCandidates hC'
+  obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, _, rfl⟩ := hl
+  obtain ⟨io, hio, CV, ellw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
+    stored_fast_lock_provenance hr hz r l₀ hl₀ hlf
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hz hpc
+  obtain ⟨hPhiw, hPhiwU⟩ := SA.frameIn_of_callAt hr hz hcw
+  obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hPhi hB₀
+  obtain rfl : C = ell.frame.viableAncestor B₀ :=
+    hr.coherent.1 (hPhiU hCv.1) (hPhiU hvat) hlb.symm
+  obtain rfl : L = B₀ := hr.coherent.1 hL (hPhiU hB₀) (hLr.trans hB₀r.symm)
+  let O := ellw.frame.viableAncestor D
+  have hCO : Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) O :=
+    (hva.mono hPhiU).trans hLO
+  have hOD := SA.viableAncestor_anc hPhiw (fastLockAt_frame_mem hfl hcw)
+  have hOt : O ∈ (tr.state z io).fg.tree := mem_tree_of_frame hp.run hz hcw hOD.1
+  have hOr := Compose.tree_mono hp.run.toLocalRun hz hio.le hOt
+  have hOh : HZ tr H g + 1 ≤ ((tr.state z io).fg.σ O.root).h := by
+    rw [← σ_eq_honest hp.run hp.noColl hz hz hOr hOt]
+    exact hhC.trans (h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hz r)
+      (store_anc_of_honest_anc hp.run hp.noColl hz hCO hOr))
+  refine ⟨io, hio, l₀.slot, O, D, CV, ?_, (hp.run.time_mono hio.le).trans hrb,
+    hfl, hCO, hOD.2.mono hPhiwU⟩
+  exact ⟨hz, joinedAt_of_fastLockAt hp.run hp.noColl hz hfl, ⟨CV, ellw, D, hcw, hfl, rfl⟩, hOh⟩
 
 /-! ## High entries and the honest records (workbench#30 §4) -/
 
