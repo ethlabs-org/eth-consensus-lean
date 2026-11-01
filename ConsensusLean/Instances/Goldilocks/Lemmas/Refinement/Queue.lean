@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 
 public section
 
@@ -335,6 +336,48 @@ private def Pending (st : State sp ro) (o : Wire sp.n) : Prop :=
 
 private def Available (seen : List (Wire sp.n)) (st : State sp ro) (o : Wire sp.n) : Prop :=
   o ∈ seen.flatMap Model.Obj.parts ∨ Pending st o
+
+/-- Every pending admission envelope still has its vote in the stored pool. -/
+private def QueuedInPool (st : State sp ro) : Prop :=
+  ∀ tv ∈ st.voteForwards, tv.2 ∈ st.node.ac.pool tv.2.slot
+
+private theorem apply_queuedInPool (st : State sp ro) r (h : QueuedInPool st)
+    (hg : ∀ σ, st.node.ac.pool σ ⊆ r.1.ac.pool σ) : QueuedInPool (apply st r) := by
+  intro tv htv
+  by_cases hold : tv ∈ st.voteForwards
+  · exact hg _ (h tv hold)
+  · exact (apply_voteForward_fresh st r tv.1 tv.2 htv hold).2.2
+
+private theorem block_queuedInPool (st : State sp ro) (B : Blk sp) (h : QueuedInPool st) :
+    QueuedInPool (apply st (Node.onBlock st.self st.node st.now B)) := by
+  apply apply_queuedInPool st _ h
+  unfold Node.onBlock
+  split_ifs
+  · exact fun _ => List.Subset.refl _
+  · split
+    · exact fun _ => List.Subset.refl _
+    · exact SA.step_pool_subset st.self st.node.ac _ st.now (.block B) (by simp)
+
+private theorem processOne_queuedInPool hs (st : State sp ro) o (h : QueuedInPool st) :
+    QueuedInPool (processOne hs st o) := by
+  unfold processOne
+  split
+  · dsimp only
+    unfold relayIf
+    split <;> exact block_queuedInPool st _ h
+  · apply apply_queuedInPool st _ h
+    exact SA.step_pool_subset st.self st.node.ac _ st.now (.message _) (by simp)
+  · unfold relayIf
+    split <;> apply apply_queuedInPool st _ h <;> exact fun _ => List.Subset.refl _
+  · exact h
+
+private theorem process_queuedInPool (st : State sp ro) o hs (h : QueuedInPool st) :
+    QueuedInPool (process st o hs) := by
+  unfold process
+  generalize delivered sp o = os
+  induction os generalizing st with
+  | nil => exact h
+  | cons o os ih => exact ih _ (processOne_queuedInPool hs st o h)
 
 private theorem parts_append {n : Nat} (a b : List (Wire n)) :
     a.flatMap Model.Obj.parts ⊆ (a ++ b).flatMap Model.Obj.parts := by
@@ -1035,6 +1078,19 @@ private theorem event_inventory (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ r
           exact restore_inventory _ _ _ _ ih
         · simpa only [Model.Run.step, Function.update_of_ne hu] using ih
 
+/-- Delivery processing keeps every queued admission's vote in the final pool. The actual
+event-boundary queue is empty, and none of the delivery handlers restarts the AC. -/
+theorem delivery_voteForward_in_pool (hv : rho.ExecutionValid) (v : V) (i : Nat)
+    (o : (Model.protoOf (compiled (family S)) E).Object)
+    (tv : Time × Vote (Fintype.card V))
+    (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
+    tv.2 ∈ (process (stateAt S rho hn v i) o
+      (Model.digests rho.hash o)).node.ac.pool tv.2.slot := by
+  apply process_queuedInPool (stateAt S rho hn v i) o (Model.digests rho.hash o) ?_ tv htv
+  intro q hq
+  rw [voteForwards_empty S rho hn hv v i] at hq
+  cases hq
+
 /-- After processing a delivery, every stored vote is either actually held (including in
 the delivered object's closure) or queued as a canonical own vote in the ordinary outbox. -/
 theorem delivery_pool_available (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
@@ -1096,6 +1152,18 @@ theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
     cases bs with
     | nil => exact congrArg some (List.mem_singleton.mp hq).symm
     | cons c cs => simp at hlen
+
+/-- Every envelope queued by an actual delivery has its canonical dependency held or at
+the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/
+theorem delivery_voteForward_held_or_head (hv : rho.ExecutionValid) {v : V}
+    {i : Nat} {o : (Model.protoOf (compiled (family S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t)) (tv : Time × Vote (Fintype.card V))
+    (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
+    voteObj tv.2 ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
+      (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
+        some (.vote (encodeVote tv.2)) :=
+  delivery_pool_held_or_head S rho hn hv he tv.2.slot tv.2
+    (delivery_voteForward_in_pool S rho hn hv v i o tv htv)
 
 /-- Proposal payloads of actual scheduled honest duties were already released or received.
 The proof uses engine-event inventory and the empty queue at the slot-start proposal. -/

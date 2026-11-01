@@ -135,6 +135,14 @@ private theorem grow_step {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SASta
     exact ((grow_blockReceipt _ _ _).trans (grow_optimistic _ _ _)).trans (grow_tryVote _ _ _ _)
   | restart => exact absurd rfl hc
 
+/-- A single non-restart call preserves every stored vote, without reachability or a
+coherent-universe premise. -/
+theorem step_pool_subset {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call)
+    (hc : c ≠ .restart) (σ : Nat) :
+    A.pool σ ⊆ ((goldilocksSA sp FGP ro).step self A Φ t c).1.pool σ :=
+  (grow_step self A Φ t c hc).1 σ
+
 /-- Admitting a vote of the slot of `t` or the previous one leaves it in its pool, or two other
 votes of its validator there. -/
 private theorem admitVote_held (A : SAState sp.n) {t : Time} {v : Vote sp.n}
