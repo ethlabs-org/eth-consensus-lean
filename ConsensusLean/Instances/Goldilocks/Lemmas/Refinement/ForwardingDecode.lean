@@ -860,4 +860,73 @@ theorem stateAt_decoded_held {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
           rwa [self_eq_ownKey S rho hn v i] at h
       · rw [state_of_other S rho hn v i ev he hvn]; exact ih
 
+/-- A queued canonical wrapper decodes to its exact child, parent and acceptance stamp.
+The child decoder fixes identity without any root-injectivity assumption. -/
+theorem pending_forward_decodes {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (st : State (S.params (pubOf E) hn) (S.ro _))
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (t : Time) (p : Option (Wire (Fintype.card V))) (B : Blk (S.params (pubOf E) hn))
+    (hp : forwardObj _ st.self t p B ∈ pendingWrappers st)
+    (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      (blockObj _ B) = some B) :
+    decodeForward (S.params (pubOf E) hn)
+      (digests rho.hash (forwardObj _ st.self t p B)) (forwardObj _ st.self t p B) =
+        some (st.self, t, p, B) := by
+  obtain ⟨u, q, C, hc, _⟩ := hd.pending _ hp
+  have hcontains : Obj.Contains (forwardObj (S.params (pubOf E) hn) st.self t p B)
+      (blockObj _ B) :=
+    Obj.Contains.step (List.mem_append_right _ (List.mem_singleton_self _)) (Obj.Contains.refl _)
+  have hb' := decodeBlock_transport hb (show
+      rootOf (digests rho.hash (forwardObj (S.params (pubOf E) hn) st.self t p B))
+        (headerOf _ B) = rootOf (digests rho.hash (blockObj _ B)) (headerOf _ B) by
+    rw [rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, hcontains, rfl⟩),
+      rootOf_digests_blockObj])
+  have he := decoded_forward_fields _ st.self t p B hb' hc
+  cases he
+  exact hc
+
+/-- Receipt acceptances publish a wrapper that decodes, not merely a candidate with the
+right syntactic shape. The queue and decoder witnesses use the same processed state. -/
+theorem delivery_acceptance_decoded_publication {V : Type} [Fintype V] [DecidableEq V]
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (family S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) {v : V} (hhon : v ∈ rho.honest)
+    {i : Nat} {o : (protoOf (compiled (family S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t))
+    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
+    (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
+    (hchild : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      (blockObj _ B) = some B) :
+    ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
+      q.origin = rho.ownKey v ∧
+      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∧
+      decodeForward (S.params (pubOf E) hn) (digests rho.hash q.object) q.object =
+        some (rho.ownKey v, t, p, B) := by
+  have ht : (stateAt S rho hn v i).now = t :=
+    (now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he)
+  rw [eventCuts_deliver S rho hn i v o t he] at hr
+  have hr' : r ∈ deliverRecs (runProposer S rho hn) (digestOf S rho)
+      (digests rho.hash o) (stateAt S rho hn v i).self (stateAt S rho hn v i).now i
+      (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node 0 := by
+    simpa only [self_eq_ownKey, ht] using hr
+  obtain ⟨p, hp⟩ := deliverRecs_acceptance_pending (runProposer S rho hn) (digestOf S rho)
+    (digests rho.hash o) i _ _ 0 (stateAt_wrappersCover S rho hn v i) r B hr' hb
+  have hself : (process (stateAt S rho hn v i) o (digests rho.hash o)).self =
+      rho.ownKey v := (process_self _ _ _).trans (self_eq_ownKey S rho hn v i)
+  have hc : forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∈
+      pendingWrappers (process (stateAt S rho hn v i) o (digests rho.hash o)) := by
+    rw [pendingWrappers_eq]
+    refine List.mem_map.mpr ⟨_, hp, ?_⟩
+    simp only [ht, forwardObj]
+    rw [hself]
+  have hstate := stateAt_decoded_held S rho hn hv v hhon i
+  have hprocessed := decoded_held_process S rho hn _ hstate.1 hstate.2
+    (stateAt_wrappersCover S rho hn v i) (stateAt_fg_reachable S rho hn v i) o
+    (stateAt_clock_bounds S rho hn hv v i).1
+  have hd := pending_forward_decodes S rho hn _ hprocessed.1 t p B
+    (hself.symm ▸ hc) hchild
+  rw [hself] at hd
+  obtain ⟨q, hq, hi, hx, ho⟩ := delivery_pending_publication S rho hn hv he _ hc
+  exact ⟨p, q, hq, hi, hx, ho, ho.symm ▸ hd⟩
+
 end Consensus.Goldilocks.Refinement
