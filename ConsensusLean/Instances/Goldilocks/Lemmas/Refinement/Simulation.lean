@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 
 public section
 
@@ -89,6 +90,22 @@ theorem simTrace_emission_not_restart (hv : rho.ExecutionValid)
   have hempty : ℓ.emits = [] := hemits.symm
   rw [hempty] at he
   exact List.not_mem_nil he
+
+/-- An upcoming honest emission is absent from every honest engine pool at an earlier
+event boundary, including boundaries after restart replay. No collision premise is needed. -/
+theorem stateAt_emission_slot_fresh (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
+    {v : V} (hv' : v ∈ rho.honest) {k i : Nat} (hi : i ≤ rho.events.length)
+    (hik : cutMap S rho hn i ≤ k) {m w : SA.Vote (Fintype.card V)}
+    (hem : (simTrace S rho hn).EmitAt y k m) (hw : w.val = y) (hs : w.slot = m.slot)
+    (σ : Nat) : w ∉ (stateAt S rho hn v i).node.ac.pool σ := by
+  have hrun := simTrace_goldilocksRun S rho hn hv
+  have hx : rho.ownKey v ∈ honestKeys S rho := by
+    simpa [honestKeys, Model.Run.ownKey] using hv'
+  have hf := Compose.emitted_slot_not_pooled hrun hy hx hik hem hw hs σ
+  rw [Compose.projAC_state hrun.toLocalRun hx] at hf
+  rw [simTrace_state S rho hn hv v hv' i hi]
+  exact hf
 
 /-- Every non-restart AC cut lies in a sending engine event of the same node and time.
 This is interval transport only; it does not assume the publication supplier. -/
