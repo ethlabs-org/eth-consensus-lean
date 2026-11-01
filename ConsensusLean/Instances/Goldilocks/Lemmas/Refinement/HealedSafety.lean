@@ -10,6 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CoefficientAdapters
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -807,7 +808,10 @@ theorem healthy_cut_prefix_time {i : Nat} (hi : i ≤ Q.run.2.events.length) :
   rw [simTrace_label, List.getElem?_eq_getElem hlen]
   simp
 
-/-- OPEN M5 mixed-source pairwise compatibility at the two actual cuts. -/
+set_option linter.unusedSectionVars false in
+set_option linter.unusedVariables false in
+/-- Mixed-source compatibility uses only completed-prefix bounds at each observation.
+The existing endpoint signature is retained. -/
 theorem healthy_current_sources_compatible (D : HealthyRepairSchedule S A V Q)
     {u v : V} {i j : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
     (hj : (chainTrace Q.run.2).InCuts Q.heal j)
@@ -820,7 +824,31 @@ theorem healthy_current_sources_compatible (D : HealthyRepairSchedule S A V Q)
     (hR' : HealthyRecordCover S A V Q D.cleanLabel (Q.run.2.ownKey v)
       (cutMap S Q.run.2 Q.hn j) R') :
     Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R R' := by
-  sorry
+  have hc := healthy_repair_catch S A V Q
+  have hu' := honest_ownKey (S := S) hu
+  have hv' := honest_ownKey (S := S) hv
+  rcases hR with rfl | ⟨x, hx, r, s, B, CV, _, hrb, hs, hB, hRB⟩
+  · rcases hR' with rfl | ⟨y, hy, q, t, E, DV, _, hqb, ht, hE, hRE⟩
+    · have hf := D.reset.faults
+      have hn := Q.hn
+      have hf' : (honestKeys S Q.run.2)ᶜ.ncard < 2 * Q.params.toParams.q - Q.params.n := by
+        change (honestKeys S Q.run.2)ᶜ.ncard <
+          2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
+        change 3 * (honestKeys S Q.run.2)ᶜ.ncard ≤ Fintype.card V - 1 at hf
+        omega
+      exact Regimes.finalized_safe _ _ _ _ _ _ D.reset.run D.reset.noColl hf'
+        _ hu' _ hv' _ _
+    · exact tips_comparable_of_origin_witnesses S A V Q .refl hRE
+        (D.reset.finalized_compatible_clean_source hc hy hu' hE
+          (by simpa only [D.cleanLabel_eq] using ht) hqb hbi)
+  · rcases hR' with rfl | ⟨y, hy, q, t, E, DV, _, hqb, ht, hE, hRE⟩
+    · exact (tips_comparable_of_origin_witnesses S A V Q .refl hRB
+        (D.reset.finalized_compatible_clean_source hc hx hv' hB
+          (by simpa only [D.cleanLabel_eq] using hs) hrb hbj)).symm
+    · exact tips_comparable_of_origin_witnesses S A V Q hRB hRE
+        (D.reset.clean_sources_compatible hc hx hy hB hE
+          (by simpa only [D.cleanLabel_eq] using hs)
+          (by simpa only [D.cleanLabel_eq] using ht) hrb hqb)
 
 /-- OPEN actual candidate comparison on the original directed cut interval. -/
 theorem healthy_current_record_candidates (D : HealthyRepairSchedule S A V Q)
