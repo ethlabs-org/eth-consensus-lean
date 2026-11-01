@@ -12,6 +12,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 
+-- Whole-run consumers and their finite-horizon counterparts share this endpoint layer.
+set_option linter.style.longFile 1700
+
 public section
 namespace Consensus.Goldilocks.Refinement
 
@@ -1491,6 +1494,83 @@ theorem report_cover_of_ready_floor_duty
     apply hduty z hz j ell hupd
     rw [Compose.frame_of_projAC hp.run hz hupd.1]
     exact hF
+
+namespace UpTo
+
+/-- Reset and drain timing put every bounded honest restart before the preceding
+slot's join threshold; no last-wake bound at GST is assumed. -/
+theorem restart_before_unanimous_slot {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {u : Nat} (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    {y : Fin sp.n} (hy : y ∈ H) {r : Nat} (hr : tr.RestartAt y r)
+    (hrb : tr.time r ≤ b) : tr.time r ≤ sp.ts ((u : Int) - 1) := by
+  have hca := Healing.cutZ_lt_reset_of_snapshot hp.run
+    (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
+  have ha0 : 0 ≤ a := by
+    have := Healing.lt_cutZ sp g
+    have := SA.gbar_nonneg g
+    linarith [sp.toParams.hΔ]
+  rw [Healing.cutZ_eq] at hca
+  have hqa := (SA.ts_le_iff_le_slot sp ha0 _).1 hca.le
+  rw [Healing.drainTime_eq] at hR
+  have hAu := (SA.ts_le_iff sp).1 hR
+  apply (Healing.restart_le_before hp hy hr hrb).trans
+  apply (SA.ts_le_iff sp).2
+  push_cast at hqa hAu ⊢
+  omega
+
+/-- Finite reset service supplies actual votes from every honest validator by the
+slot deadline. These witnesses also seed the old-origin ancestry argument. -/
+theorem honest_votes_in_slot {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hub : sp.ts u + sp.Δ ≤ b) :
+    ∀ y ∈ H, ∃ j e, SA.VoteAt tr.projAC y j e ∧ e.msg.slot = u ∧
+      tr.time j ≤ sp.ts u + sp.Δ := by
+  apply SA.honest_votes_in_slot_before (Healing.healthy_base_of_reset_catch_before hp hc)
+    hgu hub
+  intro y hy r hr hrs
+  exact restart_before_unanimous_slot hp hR hy
+    (Compose.projAC_restartAt.mp hrs) (hr.trans hub)
+
+/-- An actual unanimous vote bounds every pre-slot high origin, by finite retention.
+The origin need not precede the vote in cut order. -/
+theorem old_origin_below_unanimous {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hub : sp.ts u + sp.Δ ≤ b)
+    {x : Fin sp.n} {r m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : Healing.HighOrigin tr H g x r m B) (ht : tr.time r < sp.ts u) :
+    Anc (tr.HonestBlocks H) B P := by
+  have hmu : m < u := by
+    obtain ⟨_, _, _, _, hfl, _⟩ := hp.highOrigin_mem ho
+    rcases hfl with ⟨ell, C, hu, _⟩ | ⟨ell, A, _, hs, _⟩
+    · have htime : tr.time r = sp.ts m + 6 * sp.Δ := hu.2.2.1
+      have hts : sp.ts m < sp.ts u := by linarith [sp.toParams.hΔ]
+      have := (SA.ts_lt_iff sp).1 hts
+      omega
+    · have hs' : sp.slot (tr.time r) = m := hs
+      have hlt := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) (u : Int)).not.mp
+        (not_le.mpr ht)
+      omega
+  obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot hp hc hgu hR hub x ho.1
+  obtain ⟨ell, hcast⟩ := hv
+  have hrb : tr.time r ≤ b := by linarith [sp.toParams.hΔ]
+  obtain ⟨Hd, hHd, he, hBH⟩ :=
+    hp.high_origin_votes_before q (hq.trans hub) x r m B ho hrb x ho.1 ell e hcast (by omega)
+  have heq : Hd = P := hp.honest_coherent.1 hHd hP
+    (he.trans (hun x ho.1 q e ⟨ell, hcast⟩ (hq.trans hub) hs))
+  exact heq ▸ hBH
+
+end UpTo
 
 end CoveredEndpoint
 
