@@ -21,6 +21,201 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
+/-- Leaving a self-entry strictly above the target witnesses an actual earlier higher
+report. This is the strict-root arm, independent of high-origin or service assumptions. -/
+theorem ResetPremisesUpTo.higher_report_of_left_entry {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {P E W : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hE : E ∈ (tr.state y i).fg.tree)
+    (hET : ((tr.state y i).fg.σ E.root).Th = E.root)
+    (hEW : (tr.state y i).fg.Anc E W)
+    (hleft : ((tr.state y i).fg.σ E.root).h < ((tr.state y i).fg.σ W.root).h)
+    (hPE : Anc (tr.HonestBlocks H) P E) (hne : P ≠ E) :
+    ∃ z ∈ H, ∃ r ell C, r < i ∧ SA.ToFGAt tr.projAC z r ell C ∧
+      Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
+  have hr := Compose.fg_reachable hp.run.toLocalRun hy i
+  have hP := hp.mem_tree_of_anc hy hPE hE
+  have hPE' := hp.anc_tree_of_anc hy hPE hE
+  have hlt : ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ E.root).h := by
+    apply lt_of_le_of_ne (σ_h_le_of_anc hr hPE')
+    intro heq
+    have hentry := (Th_eq_of_anc hr hPE' heq.symm).symm.trans hET
+    obtain ⟨⟨E₀, hE₀, hE₀r, hE₀P, _, _⟩, _⟩ :=
+      Goldilocks.Store.entry_state_of_source _ _ _ _ hr P hP
+    obtain rfl : E₀ = E := hp.honest_coherent.1 ⟨y, hy, i, hE₀⟩ ⟨y, hy, i, hE⟩
+      (hE₀r.trans hentry)
+    exact hne (hPE'.antisymm ((Goldilocks.Store.accepted_tree _ _ _ _ hr).2.1) hE₀P)
+  have hq : Hᶜ.ncard < sp.toParams.fg.q := by
+    have hf := hp.faults
+    have hn : 0 < sp.n := sp.toParams.hn
+    change Hᶜ.ncard < (2 * sp.n + 2) / 3
+    omega
+  obtain ⟨Z, hZ, att, ha, hT, hz⟩ := honest_att_of_left hr hq hET hEW hleft
+  obtain ⟨m, hmi, _, d, hdm, hs⟩ :=
+    Compose.honest_row_signed_before hp.run hp.noColl hy hZ ha hz
+  obtain ⟨r, ell, C, hri, hto, hPC, hh⟩ :=
+    hp.higher_report_of_signed_entry hy hz hP hE hs (by omega) hT hPE hlt
+  exact ⟨att.val, hz, r, ell, C, hri, hto, hPC, hh⟩
+
+/-- A high floor yields an actual earlier report, retaining the signed entry witness
+from the finite floor producer. Only causal origin comparisons remain inputs. -/
+theorem ResetPremisesUpTo.held_target_high_floor_report_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y v : Fin sp.n} (hy : y ∈ H) {i q m : Nat}
+    {P S : SA.Blk sp.n (List (FG.Att sp.n))} (hPy : P ∈ (tr.state y i).fg.tree)
+    (hseed : HighOrigin tr H g v q m S) (hSP : Anc (tr.HonestBlocks H) S P)
+    (hpair : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
+      ∀ x' r' l' B', r' < i → HighOrigin tr H g x' r' l' B' →
+        Compatible (tr.HonestBlocks H) B B')
+    (hseedcomp : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
+      Compatible (tr.HonestBlocks H) S B)
+    (hcompare : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
+      Compatible (tr.HonestBlocks H) P B)
+    (hfloor : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.headHeightFloor) :
+    ∃ x ∈ H, ∃ r ell C, r < i ∧ SA.ToFGAt tr.projAC x r ell C ∧
+      Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
+  have hSy := hp.mem_tree_of_anc hy hSP hPy
+  have hr := Compose.fg_reachable hp.run.toLocalRun hy i
+  obtain ⟨-, -, -, -, -, -, -, -, -, hSs⟩ := hp.highOrigin_mem hseed
+  have hSh := σ_h_le_of_anc hr (hp.anc_tree_of_anc hy hSP hPy)
+  have hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.headHeightFloor := by
+    rw [hp.σ_eq_run hseed.1 hy hSs hSy]
+    omega
+  obtain ⟨x, r, l, B, E, hri, ho, -, hE, hEB, -, hEf, d, att, hrd, hdi, hs, hT⟩ :=
+    hp.high_floor_signed_source_of_row_bound hseed hy (u := sp.slot (tr.time i) + 1)
+      (fun W hW att ha z hz d hd hdi r' l O hrd ho => by
+        obtain ⟨-, D, CV, -, hfl, -⟩ := hp.highOrigin_mem ho
+        have ht : sp.ts l ≤ tr.time r' := by
+          rcases hfl with ⟨ell, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
+          · change tr.time r' = sp.ts l + 6 * sp.Δ at ht
+            linarith [sp.toParams.hΔ]
+          · change sp.slot (tr.time r') = l at hsl
+            exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r') l).2 (by omega)
+        have hlabel := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg i) l).1
+          (ht.trans (hp.run.time_mono (by omega)))
+        omega) hpair hseedcomp hSf
+  have hPE : Anc (tr.HonestBlocks H) P E := by
+    have hcomp : Compatible (tr.HonestBlocks H) P E := by
+      rcases hcompare x r l B hri ho with h | h
+      · exact SA.anc_total hp.honest_coherent h hEB
+      · exact Or.inr (hEB.trans h)
+    rcases hcomp with h | h
+    · exact h
+    · have := σ_h_le_of_anc hr (hp.anc_tree_of_anc hy h hPy)
+      omega
+  obtain ⟨j, ell, C, hji, hto, hPC, hh⟩ :=
+    hp.higher_report_of_signed_entry hy ho.1 hPy hE hs hdi hT hPE (by omega)
+  exact ⟨x, ho.1, j, ell, C, hji, hto, hPC, hh⟩
+
+/-- Held-only finite update selection from actual early-resolved honest pool votes.
+The receipt/unanimity and normalized-lock comparison obligations are explicit; neither
+full viability nor whole-run health is used. The post-state records the actual raw write. -/
+theorem ResetPremisesUpTo.ready_update_selection_of_pool {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hu : SA.UpdateAt tr.projAC y j u ell) (hPt : P ∈ ell.frame.tree)
+    (hPg : P.root ≠ sp.genesisRoot)
+    (hpool : ∀ v ∈ H, ∃ vote ∈ (tr.projAC.state y j).pool u,
+      vote.val = v ∧ vote.head = P.root ∧
+      SA.resolutionTime (tr.projAC.state y j) ell.frame vote < SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
+      ∀ vote' ∈ (tr.projAC.state y j).pool u, vote'.val = v → vote' = vote)
+    (hlocks : ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
+      Compatible (tr.HonestBlocks H) L P) :
+    SA.getConfirmation sp (tr.projAC.state y j) ell.frame u = some P ∧
+      ¬ SA.conflictsWithLock sp (tr.projAC.state y j).locks ell.frame (tr.time j) P ∧
+      SA.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P ∧
+      tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
+      (tr.projAC.post j).latestConfirmed =
+        (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hu.1
+  let A := tr.projAC.state y j
+  have hHvot : H ⊆ SA.voters {v | v ∈ A.pool u} := fun v hv => by
+    obtain ⟨vote, hm, he, -⟩ := hpool v hv
+    exact ⟨vote, hm, he⟩
+  have hvle : (SA.voters {v | v ∈ A.pool u}).ncard ≤ sp.n := by
+    have := Set.ncard_le_ncard (Set.subset_univ (SA.voters {v | v ∈ A.pool u}))
+    rwa [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at this
+  have hHn : H.ncard + Hᶜ.ncard = sp.n := by
+    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+  have hHle := Set.ncard_le_ncard hHvot
+  have hf := hp.faults
+  have hn : 0 < sp.n := sp.toParams.hn
+  have hscore : H.ncard ≤ SA.confirmationScore sp A ell.frame u P := by
+    unfold SA.confirmationScore
+    apply Set.ncard_le_ncard (ht := Set.toFinite _)
+    intro v hv
+    obtain ⟨vote, hm, he, hh, hres, huniq⟩ := hpool v hv
+    refine ⟨?_, vote, ⟨hm, hres⟩, he, ?_, P, hPt, hh.symm, .refl⟩
+    · rintro ⟨x, hx, z, hz, hne, hxv, hzv⟩
+      exact hne ((huniq x hx hxv).trans (huniq z hz hzv).symm)
+    · exact_mod_cast SA.state_pool_slot sp hr hy j u vote hm
+  have hconf : SA.getConfirmation sp A ell.frame u = some P := by
+    unfold SA.getConfirmation
+    have hPS : P ∈ {B | B ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.F B ∧
+        (SA.voters {v | v ∈ A.pool u}).ncard < 2 * SA.confirmationScore sp A ell.frame u B} :=
+      ⟨hPt, hPhi.rooted.2 P hPt, by omega⟩
+    have hall : ∀ B ∈ {B | B ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.F B ∧
+        (SA.voters {v | v ∈ A.pool u}).ncard < 2 * SA.confirmationScore sp A ell.frame u B},
+        ell.frame.Anc B P := by
+      rintro B ⟨hBt, -, hmaj⟩
+      by_contra hBP
+      unfold SA.confirmationScore at hmaj
+      dsimp only at hmaj
+      refine absurd hmaj (not_lt.2 (le_trans (Nat.mul_le_mul_left 2
+        (Set.ncard_le_ncard (t := Hᶜ) ?_)) (by omega)))
+      rintro v ⟨-, x, ⟨hx, -⟩, rfl, -, R, hR, hRr, hBR⟩ hv
+      obtain ⟨vote, -, -, hh, -, huniq⟩ := hpool _ hv
+      obtain rfl := huniq x hx rfl
+      obtain rfl : R = P := hPhi.coherent.1 hR hPt (hRr.trans hh)
+      exact hBP hBR
+    obtain ⟨D, hD⟩ := SA.exists_deepest hPhi (fun B hB => hB.1) ⟨P, hPS⟩
+    have hDP := hall D (SA.deepest_mem hD).1
+    have hPD := SA.anc_deepest hPhi (fun B hB => hB.1)
+      (fun B hB C hC => SA.anc_total hPhi.coherent (hall B hB) (hall C hC)) hD P hPS
+    rw [hD, Anc.antisymm hPhi.coherent hDP hPD]
+  have hnv : ¬ SA.conflictsWithLock sp A.locks ell.frame (tr.time j) P := by
+    rintro ⟨L, hL, hnc⟩
+    apply hnc
+    rcases hlocks L hL with h | h
+    · exact Or.inr (SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hL.1 h hPt)
+    · exact Or.inl (SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPt h hL.1)
+  have hfast : SA.fastSelect sp A ell.frame u P = some P :=
+    SA.fastSelect_eq_result hPhi hPt hPg (by unfold SA.FastTest; omega)
+  have ht : tr.time j = sp.ts u + 6 * sp.Δ := hu.2.2.1
+  have hslot : sp.slot (tr.time j) = u + 1 := by
+    rw [ht]
+    exact SA.slot_of_mem sp (u + 1)
+      (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+      (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+  have hpost : tr.projAC.post j = SA.updateConfirmation sp A ell.frame (tr.time j) u := by
+    have he := hr.exec j ell hu.1.2 (hu.1.1 ▸ hy)
+    rw [hu.1.1, hu.2.1] at he
+    have h1 : tr.projAC.post j = (SA.acOnTick sp y A ell.frame (tr.time j)).1 :=
+      (congrArg Prod.fst he).symm
+    rw [h1]
+    unfold SA.acOnTick
+    dsimp only
+    have hn1 : ¬ tr.time j = sp.ts (u + 1 : Nat) + sp.Δ := by
+      rw [ht]; simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+    have h2 : tr.time j = sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
+      rw [ht]; simp only [SAParams.ts]; push_cast; ring
+    have hj : SA.joined sp A (tr.time j) := hu.2.2.2
+    have hc2 : (tr.time j = sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧ 0 < u + 1) = True :=
+      eq_true ⟨h2, Nat.succ_pos u⟩
+    rw [hslot]
+    simp only [hj, not_true_eq_false, hn1, hc2, ↓reduceIte, Nat.add_sub_cancel]
+  refine ⟨hconf, hnv, hfast, hpost, ?_⟩
+  rw [hpost]
+  unfold SA.updateConfirmation
+  simp only [hconf, hnv, ↓reduceIte]
+  unfold SA.updateLatestConfirmed
+  split <;> rfl
+
 /-- Actual honest proposals are unique in honest frames at their positive slot.
 This uses no payload-support clause of `ReadyProposal`. -/
 theorem reset_proposal_frame_unique
