@@ -668,6 +668,12 @@ private theorem history_events (v : V) (i : Nat) :
         cases Option.some.inj (he'.symm.trans he)
         exact hv hv'
 
+/-- The FG store at every engine event boundary is reachable, independently of wire validity. -/
+theorem stateAt_fg_reachable (v : V) (i : Nat) :
+    (stateAt S rho hn v i).node.fg.Reachable
+      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload :=
+  (history_events S rho hn v i).2.1
+
 /-- **Implementation event-boundary history.** This is the pre-event
 version of the duty-prefix invariant. Initial state has the empty record; clock, processing,
 gossip and releases preserve it, and each actual selected poll's FG update appends its entry
