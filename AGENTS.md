@@ -74,8 +74,8 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   and manually (kernel replay, `lake check`, `lake comparator --paranoid`). Polling can coalesce intermediate
   heads: ask the box watcher owner to queue an exact SHA when its row is missing. Failures go to #17 or the PR.
   Request full checks for milestones and toolchain/Mathlib bumps from the box watcher owner; see README
-  "Verification" for manual commands. No PR is needed, also for a trusted-surface change
-  (below). The commit message (or PR body) ends with a cost line
+  "Verification" for manual commands. A PR is optional (for collaborators who cannot run the checks:
+  `CONTRIBUTING.md` "Working together"), also for a trusted-surface change (below). The commit message (or PR body) ends with a cost line
   (`Cost: <agent-h> agent-h, <models>, <CPU-h> CPU-h`) and states the reason if the change makes build or CI
   time worse.
 - **Trusted surface** (`ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` as `X.lean` and `X/**`,

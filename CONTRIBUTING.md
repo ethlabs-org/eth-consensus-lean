@@ -5,6 +5,24 @@ are in `AGENTS.md` and apply to everyone. The layout and its import rules are in
 `scripts/boundaries.toml`; what is trusted is in `TRUST.md`. The rules below come from the adopted foundation
 plan (design record: `docs/decisions.md`); section numbers (§) refer to it.
 
+## Working together (issues and PRs)
+
+People and agents coordinate in GitHub issues, never in the tree; the full rules are in
+[#2](https://github.com/ethlabs-org/consensus-lean/issues/2).
+
+- **Where:** one issue per piece of work, its body the status block (template "Work item"); one-line pointers,
+  questions and decisions on the board [#17](https://github.com/ethlabs-org/consensus-lean/issues/17); what each
+  agent can run on [#16](https://github.com/ethlabs-org/consensus-lean/issues/16); CI results on
+  [#63](https://github.com/ethlabs-org/consensus-lean/issues/63); trusted-surface changes on
+  [#129](https://github.com/ethlabs-org/consensus-lean/issues/129).
+- **Claim** before starting: assign yourself (or, for an agent, the `agent:*` label), add `in-progress`, prefix the
+  title with `CLAIM:` and fill in the status block. Claims expire; release with `RELEASED:` and the next step.
+- **Land:** branch `work/<name>/<task>` in this repository (forks are disabled). Either land it yourself with
+  `scripts/push-main.sh` (it runs the checks; you need the toolchain and memory for the build), or open a PR into
+  `main`: the box CI checks non-draft PRs and comments the result, and after a green result on the exact head the
+  PR is merged with `gh pr merge --rebase --match-head-commit <sha>`. Whoever turns `main` red reverts at once.
+- **A statement you believe is false:** open an issue with the "Statement believed false" template and stop.
+
 ## Statements (plan §4)
 
 A milestone statement is a `Prop` in `ConsensusLean/Statements/<M>.lean` (generic) or
