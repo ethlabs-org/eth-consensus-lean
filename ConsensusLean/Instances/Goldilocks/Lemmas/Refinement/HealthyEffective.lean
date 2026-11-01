@@ -2093,6 +2093,68 @@ theorem operational_update_effective_record {b : Time}
   rw [hrecord]
   exact (effective_record_update_slot_growth (sp := sp) hPhi hPt).1.mono hPhiU
 
+/-- Selection repairs source recency even if it retains a strict descendant of
+the proposal. The source precedes the actual update's post-state. -/
+theorem operational_update_recent_source {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
+    (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hup : SA.UpdateAt tr.projAC y j u ell)
+    {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hlookup : SA.lookup (Node.frame (tr.state y (j + 1)))
+      (tr.state y (j + 1)).ac.latestConfirmed = some R) :
+    ∃ x ∈ H, ∃ q s CV, q ≤ j ∧ tr.time q ≤ tr.time j ∧ u ≤ s ∧
+      (SA.ResultAt tr.projAC x q s R CV ∨ SA.OptimisticLockAt tr.projAC x q s R CV) := by
+  obtain ⟨hPt, hconf, _, _, _, hrecord⟩ :=
+    operational_update_selection hp hc hpH hdesignated hactual hPs hR hgu hTb hy hup
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hc' := Compose.projAC_callAt.mp hup.1
+  have hlaw := hp.run.toLocalRun.cutLaw y hy j _ hc'
+  have hframe : Node.frame (tr.state y (j + 1)) = ell.frame := by
+    rw [tr.state_succ_of_call hc', hlaw.1]
+    exact congrArg Store.toFrame hlaw.2.2.1
+  have hstate := Compose.projAC_state hp.run.toLocalRun hy (j + 1)
+  rw [tr.projAC.state_succ_of_call hup.1] at hstate
+  have hgrowth := (effective_record_update_slot_growth (sp := sp) (A := tr.projAC.state y j)
+    (SA.frameIn_of_callAt hr hy hup.1).1 hPt).2
+  rw [← hrecord, hstate, ← hframe, hlookup] at hgrowth
+  simp only [Option.getD_some] at hgrowth
+  rcases hgrowth with rfl | hlt
+  · exact ⟨y, hy, j, u, _, le_rfl, le_rfl, le_rfl, Or.inl ⟨ell, hup, hconf, rfl⟩⟩
+  obtain ⟨C, hC, hCr, hsource⟩ := Compose.record_origin_before hp.run hp.noColl hy (j + 1)
+  obtain ⟨hRm, hRr⟩ := SA.lookup_eq_some hlookup
+  have heq : C = R := hp.honest_coherent.1 ⟨y, hy, j + 1, hC⟩
+    ⟨y, hy, j + 1, hRm.1⟩ (hCr.trans hRr.symm)
+  subst C
+  rcases hsource with hz | ⟨s, hs⟩
+  · have he := Compose.honest_eq_genesis hp.run hp.honest_coherent
+      (show R ∈ tr.HonestBlocks H from ⟨y, hy, j + 1, hC⟩) hz
+    rw [he] at hlt
+    exact False.elim (Nat.not_lt_zero _ hlt)
+  obtain ⟨x, hx, q, hq, CV, hsrc⟩ := Compose.originBefore_iff.mp hs
+  refine ⟨x, hx, q, s, CV, by omega, hp.run.time_mono (by omega), ?_, hsrc⟩
+  rw [hPs] at hlt
+  rcases hsrc with ⟨e, hu, hsel, _⟩ | ⟨e, A, ho, hslot, hsel, _⟩
+  · have hRs := SA.frame_slot_le sp hr hx hu.1 R (SA.deepest_mem hsel).1.1
+    have hsl : sp.slot (tr.projAC.time q) = s + 1 := by
+      rw [hu.2.2.1]
+      apply SA.slot_of_mem sp (s + 1) <;>
+        simp only [SA.SAParams.ts] <;> push_cast <;> linarith [sp.toParams.hΔ]
+    rw [hsl] at hRs
+    omega
+  · have hm : R ∈ e.frame.tree := by
+      unfold SA.optimisticSelect at hsel
+      dsimp only at hsel
+      split_ifs at hsel
+      exact (SA.deepest_mem hsel).1.1
+    have hRs := SA.frame_slot_le sp hr hx ho.1 R hm
+    change sp.slot (tr.projAC.time q) = s at hslot
+    omega
+
 /-- At a bounded call holding a target above a bounded high seed, compatible
 causal origins give full viability or an actual earlier strictly higher report. -/
 theorem held_target_viable_or_higher_report {b : Time}
