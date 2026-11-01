@@ -22,6 +22,19 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-! ## The SA functions -/
 
+/-- Before an honest vote, no honest receiver already pools any vote of that signer and
+slot. Otherwise unforgeability supplies an earlier vote, contradicting one vote per slot. -/
+theorem vote_slot_absent_before (hrun : ACRun proposer tr H U)
+    {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {i : Nat} {e : Em sp FGP}
+    (he : VoteAt tr y i e) {m : Vote sp.n} (hm : m.val = y)
+    (hs : m.slot = e.msg.slot) (σ : Nat) : m ∉ (tr.state x i).pool σ := by
+  intro hp
+  obtain ⟨j, hj, e', hv, hmsg⟩ := hrun.honest.pool_vote x hx i σ m hp (hm ▸ hy)
+  rw [hm] at hv
+  have hslots : e'.msg.slot = e.msg.slot := by rw [hmsg, hs]
+  have hij := (one_vote_per_slot sp FGP ro H U tr hrun.localRun y hy j i e' e hv he hslots).1
+  exact (Nat.ne_of_lt hj) hij
+
 private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).pool = A.pool := by
   unfold optimisticConfirmation updateLatestConfirmed
@@ -190,6 +203,60 @@ private theorem receipt_poolOK (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy
     · exact hrun.honest.pool_vote y hy j σ v hv hvH
     · exact hrun.honest.carried_vote y hy j ℓ hc B
         ((accept_new sp hrun.localRun hy ⟨ℓ, hc, hB⟩).1 ℓ hc) v hv hvH
+
+/-- The input of the actual `tryVote` contains no vote of the emitting signer and slot,
+even when this call first admits a wire message or block payload. -/
+theorem tryVote_input_fresh (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) :
+    ∃ A, e ∈ (tryVote sp y A ℓ.frame (tr.time i)).2 ∧
+      ∀ σ m, m.val = y → m.slot = e.msg.slot → m ∉ A.pool σ := by
+  obtain ⟨A, he, hA⟩ := emits_tryVote hrun.localRun hy hc
+  refine ⟨A, he, ?_⟩
+  intro σ m hm hs hp
+  rcases hA with rfl | ⟨R, hR, rfl, _⟩
+  · exact vote_slot_absent_before hrun hy hy ⟨ℓ, hc⟩ hm hs σ hp
+  · rw [optimistic_pool] at hp
+    obtain ⟨_, j, hj, e', hv, hmsg⟩ := receipt_poolOK hrun hy hc.1 hR σ m hp (hm ▸ hy)
+    rw [hm] at hv
+    have hij := (one_vote_per_slot sp FGP ro H U tr hrun.localRun y hy j i e' e
+      hv ⟨ℓ, hc⟩ (by rw [hmsg, hs])).1
+    exact (Nat.ne_of_lt hj) hij
+
+/-- Every reachable honest emission is a fresh pool insertion, including after incoming
+message/payload handling; the two-vote cap cannot refuse its own vote. -/
+theorem emitted_vote_fresh (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) :
+    e.msg ∉ (tr.state y i).pool e.msg.slot ∧
+      e.msg ∈ (tr.post i).pool e.msg.slot := by
+  have hv := (castAt_spec hrun.localRun hy hc).1
+  refine ⟨vote_slot_absent_before hrun hy hy ⟨ℓ, hc⟩ hv rfl _, ?_⟩
+  obtain ⟨A, he, hf⟩ := tryVote_input_fresh hrun hy hc
+  have hpool : e.readPoint.pool = A.pool := by
+    unfold tryVote at he
+    dsimp only at he
+    split_ifs at he <;> simp only [List.mem_singleton, List.not_mem_nil] at he
+    all_goals subst e; rfl
+  have hn : e.msg ∉ e.readPoint.pool e.msg.slot := by
+    rw [hpool]; exact hf _ _ hv rfl
+  have hfilter : (e.readPoint.pool e.msg.slot).filter (fun m => m.val = e.msg.val) = [] := by
+    apply List.filter_eq_nil_iff.mpr
+    intro m hm
+    simp only [decide_eq_true_eq]
+    intro hmval
+    have hs := state_pool_slot sp hrun.localRun hy (i + 1) _ m
+      (readPoint_pool hrun.localRun hy hc hm).1
+    exact hf _ m (hmval.trans hv) hs (hpool ▸ hm)
+  rw [post_of_castAt hrun.localRun hy hc, optimistic_pool]
+  have hs := (castAt_spec hrun.localRun hy hc).2.1
+  have hbad : ¬ ((e.msg.slot : Int) < (sp.slot (tr.time i) : Int) - 1 ∨
+      sp.slot (tr.time i) < e.msg.slot ∨ e.msg ∈ e.readPoint.pool e.msg.slot) := by
+    rintro (h | h | h)
+    · omega
+    · omega
+    · exact hn h
+  simp [admitVote, hbad, hfilter]
 
 /-- **The honest votes at an optimistic point.** A vote of an honest validator in a pool of a
 state at which an honest node runs the optimistic check at cut `j` has its pool's slot and was
