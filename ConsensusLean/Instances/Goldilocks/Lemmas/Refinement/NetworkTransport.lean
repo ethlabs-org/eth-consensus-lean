@@ -399,4 +399,93 @@ theorem acceptance_relay_syncUntil (hn : 1 ≤ Fintype.card V)
   apply publication_acceptedBy_syncUntil S rho hn hv hnc hbh hnet r hr
     (horg ▸ hx) ht htime (p := p) (by simpa only [horg] using hdecode) hy hj hb hd hF
 
+/-- After GST, an actual publication is held before every qualifying finite deadline.
+The recipient may wake after the publication; the call supplies its awake interval. -/
+theorem publication_held_before_deadline_psync (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ) (hg : g ≤ τ)
+    (ht : (publisherExecution S rho).eventTime r.event = τ)
+    (hb : (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ ≤ rho.horizon)
+    (hd : (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ ≤
+      (simTrace S rho hn).time j) :
+    ∃ d, rho.log.Held rho.point (rho.key y) r.object d ∧
+      d < (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ := by
+  obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval S rho hn hv hy hj hτ
+  rw [heq] at hb hd ⊢
+  have hga : max a g = a := max_eq_left (hg.trans ha)
+  have hslack : a + E.Δ < a + (S.params (Model.pubOf E) hn).Δ := by
+    change a + E.Δ < a + (E.Δ + 1)
+    linarith
+  have hheld := (publication_held_psync S rho hn hnet r hr hx hy (ht ▸ ha)
+    (by rw [hga]; exact hslack.le.trans hb)
+    (by rw [hga]; exact fun u hau hud => hw u hau (hud.trans (hslack.le.trans hd)))).1
+  rw [hga] at hheld
+  exact ⟨a + E.Δ, hheld, hslack⟩
+
+/-- Post-GST acceptance service through a finite recipient deadline. Earlier acceptance
+cuts inherit the horizon bound, so descent does not assume infinite execution service. -/
+theorem publication_acceptedBy_psync (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {g : Time} (hnet : rho.log.PSync rho.point g)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    {τ : Time} (hτ : 0 ≤ τ) (hg : g ≤ τ)
+    (ht : (publisherExecution S rho).eventTime r.event = τ)
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (hdecode : decodeForward (S.params (Model.pubOf E) hn)
+      (Model.digests rho.hash r.object) r.object = some (r.origin, τ, p, B))
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j)
+    (hb : (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ ≤ rho.horizon)
+    (hd : (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ ≤
+      (simTrace S rho hn).time j)
+    (hF : Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
+      ((simTrace S rho hn).state y j).fg.F B) :
+    (simTrace S rho hn).BlockAcceptedBy y j τ B := by
+  induction j using Nat.strong_induction_on with
+  | h j ih =>
+    obtain ⟨d, hheld, hlt⟩ := publication_held_before_deadline_psync S rho hn hv hnet
+      r hr hx hy hj hτ hg ht hb hd
+    obtain ⟨k, hkj, hacc, htime⟩ := held_forward_accepted_before S rho hn hv hnc
+      hy hx hheld hdecode hlt hd hF
+    by_cases hk : (simTrace S rho hn).time k <
+        (simTrace S rho hn).deadline y k τ (S.params (Model.pubOf E) hn).Δ
+    · exact ⟨k, hkj, hacc, hk⟩
+    · have hkj' : k < j := lt_of_le_of_ne hkj (by
+        intro heq
+        subst k
+        exact hk htime)
+      have hmono := deadline_mono_cut S rho hn hv y τ (S.params (Model.pubOf E) hn).Δ hkj
+      obtain ⟨l, hl, ha, ht'⟩ := ih k hkj' ⟨_, hacc⟩ (hmono.trans hb)
+        (le_of_not_gt hk)
+        ((Healing.run_F_mono (simTrace_goldilocksRun S rho hn hv).toLocalRun hy hkj).trans hF)
+      exact ⟨l, hl.trans hkj, ha, ht'⟩
+
+/-- The bounded GST acceptance-relay field, with all forwarding obligations discharged.
+A recipient call bounded by the horizon supplies the required deadline bound. -/
+theorem acceptance_relay_psync (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {g : Time} (hnet : rho.log.PSync rho.point g)
+    {x : Fin (Fintype.card V)} (hx : x ∈ honestKeys S rho) {i : Nat}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (hi : (simTrace S rho hn).AcceptAt x i B) (ht : 0 ≤ (simTrace S rho hn).time i)
+    (hg : g ≤ (simTrace S rho hn).time i)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j)
+    (hb : (simTrace S rho hn).time j ≤ rho.horizon)
+    (hd : (simTrace S rho hn).deadline y j ((simTrace S rho hn).time i)
+      (S.params (Model.pubOf E) hn).Δ ≤ (simTrace S rho hn).time j)
+    (hF : Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
+      ((simTrace S rho hn).state y j).fg.F B) :
+    (simTrace S rho hn).BlockAcceptedBy y j ((simTrace S rho hn).time i) B := by
+  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
+    (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B hi
+  exact publication_acceptedBy_psync S rho hn hv hnc hnet r hr (horg ▸ hx)
+    ht hg htime (p := p) (by simpa only [horg] using hdecode) hy hj (hd.trans hb) hd hF
+
 end Consensus.Goldilocks.Refinement
