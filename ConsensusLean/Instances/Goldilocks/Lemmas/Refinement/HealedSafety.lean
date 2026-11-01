@@ -503,6 +503,23 @@ variable (Q : HealthyPreparationQuery S A V)
 
 include h0 hb hp W states
 
+omit h0 hb hp W states in
+/-- Every completed own call is no later than the reader's stored clock, even
+when its simulation cut is not ordered against a chosen read representative. -/
+theorem healthy_own_call_time_le_now {v : V} {i q : Nat}
+    (hqi : q < cutMap S Q.run.2 Q.hn i) (hq : Q.trace.IsCall (Q.run.2.ownKey v) q) :
+    Q.trace.time q ≤ (stateAt S Q.run.2 Q.hn v i).now := by
+  obtain ⟨ell, hnode, hlabel⟩ := hq
+  obtain ⟨_, p, e, _, he, hpq, _, _, hnode', htime, _⟩ :=
+    simTrace_cut S Q.run.2 Q.hn (by rw [hlabel]; simp)
+  have hpi : p < i := by
+    by_contra h
+    have := cutMap_mono S Q.run.2 Q.hn (show i ≤ p by omega)
+    omega
+  have hev : e.node = v := Q.run.2.key.symm.injective (hnode'.symm.trans hnode)
+  rw [htime, ← now_after_local_event S Q.run.2 Q.hn Q.valid he hev]
+  exact now_mono S Q.run.2 Q.hn Q.valid v (by omega)
+
 /-- OPEN reset/snapshot, old threshold and joint coefficient/window producer. -/
 theorem healthy_repair_schedule : Nonempty (HealthyRepairSchedule S A V Q) := by
   sorry
@@ -516,16 +533,22 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
   sorry
 
 set_option linter.unusedSectionVars false in
-/-- Immediate receiver repair transports to the current record, independently of read geometry. -/
-theorem healthy_current_record_sources (D : HealthyRepairSchedule S A V Q)
+/-- Repair cover retains the actual source-time bound at the stored clock. -/
+theorem healthy_current_record_sources_before_now (D : HealthyRepairSchedule S A V Q)
     (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
     {v : V} {i : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
     (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
       ((chainTrace Q.run.2).cutTime i)) :
-    HealthyRecordCover S A V Q D.cleanLabel (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)
-      ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
+    let R := ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
         (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
-          (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) := by
+          (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F)
+    R = (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F ∨
+      ∃ x ∈ honestKeys S Q.run.2, ∃ q s B CV,
+        q < cutMap S Q.run.2 Q.hn i ∧
+        Q.trace.time q ≤ (stateAt S Q.run.2 Q.hn v i).now ∧
+        D.cleanLabel + 2 * Q.params.k + 1 ≤ s ∧
+        (SA.ResultAt Q.trace.projAC x q s B CV ∨ SA.OptimisticLockAt Q.trace.projAC x q s B CV) ∧
+        Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R B := by
   let y := Q.run.2.ownKey v
   let n := cutMap S Q.run.2 Q.hn i
   let T := Q.params.ts O.slot + 6 * Q.params.Δ
@@ -579,10 +602,11 @@ theorem healthy_current_record_sources (D : HealthyRepairSchedule S A V Q)
       linarith
     exact lt_of_lt_of_le hap (cutMap_mono S Q.run.2 Q.hn (by omega))
   have hU := Compose.honest_blocks_coherent D.reset.run.toLocalRun D.reset.noColl
+  have hatnow := healthy_own_call_time_le_now S A V Q han ⟨_, Compose.projAC_callAt.mp ha.1⟩
   have hind : ∀ k, a + 1 ≤ k → k ≤ n → ∀ R,
       SA.lookup (Node.frame (Q.trace.state y k)) (Q.trace.state y k).ac.latestConfirmed = some R →
       ∃ x ∈ honestKeys S Q.run.2, ∃ q s C CV,
-        q < k ∧ Q.trace.time q ≤ Q.run.2.horizon ∧ D.oldLabel ≤ s ∧
+        q < k ∧ Q.trace.time q ≤ (stateAt S Q.run.2 Q.hn v i).now ∧ D.oldLabel ≤ s ∧
         (SA.ResultAt Q.trace.projAC x q s C CV ∨ SA.OptimisticLockAt Q.trace.projAC x q s C CV) ∧
         Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R C := by
     intro k hk
@@ -590,7 +614,7 @@ theorem healthy_current_record_sources (D : HealthyRepairSchedule S A V Q)
     | base =>
       intro _ R hR
       obtain ⟨x, hx, q, s, C, CV, hqa, hqt, hs, hC, hRC⟩ := hcover R hR
-      exact ⟨x, hx, q, s, C, CV, by omega, hqt.trans hab, hs, hC, hRC⟩
+      exact ⟨x, hx, q, s, C, CV, by omega, hqt.trans hatnow, hs, hC, hRC⟩
     | succ k hak ih =>
       intro hkn R hR
       rcases Compose.record_step_origin D.reset.run hy k with heq | ⟨C, hC, hCr, s, CV, hs⟩
@@ -618,8 +642,8 @@ theorem healthy_current_record_sources (D : HealthyRepairSchedule S A V Q)
               change Q.params.slot (Q.trace.time k) = s at hslot
               omega
           exact O.old_lt.le.trans hus
-        have hkb : Q.trace.time k ≤ Q.run.2.horizon := by
-          apply healthy_query_call_time_le S A V Q
+        have hkb : Q.trace.time k ≤ (stateAt S Q.run.2 Q.hn v i).now := by
+          apply healthy_own_call_time_le_now S A V Q (show k < cutMap S Q.run.2 Q.hn i by omega)
           rcases hs with ⟨ell, hu, _⟩ | ⟨ell, A, ho, _⟩
           · exact ⟨_, Compose.projAC_callAt.mp hu.1⟩
           · exact ⟨_, Compose.projAC_callAt.mp ho.1⟩
@@ -630,6 +654,27 @@ theorem healthy_current_record_sources (D : HealthyRepairSchedule S A V Q)
     obtain ⟨x, hx, q, s, C, CV, hqn, hqb, hs, hC, hRC⟩ := hind n (by omega) le_rfl R hl
     exact Or.inr ⟨x, hx, q, s, C, CV, hqn, hqb, D.old_bound.trans hs, hC,
       by simpa only [hl, Option.getD_some] using hRC⟩
+
+set_option linter.unusedSectionVars false in
+/-- Immediate receiver repair transports to the current record, independently of read geometry. -/
+theorem healthy_current_record_sources (D : HealthyRepairSchedule S A V Q)
+    (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
+    {v : V} {i : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
+    (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
+      ((chainTrace Q.run.2).cutTime i)) :
+    HealthyRecordCover S A V Q D.cleanLabel (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)
+      ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
+        (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
+          (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) := by
+  rcases healthy_current_record_sources_before_now S A V Q h0 hb hp W states D O hrepair hi hv with
+    hF | ⟨x, hx, q, s, B, CV, hq, ht, hs, hB, hRB⟩
+  · exact Or.inl hF
+  · have hbound : Q.trace.time q ≤ Q.run.2.horizon := by
+      apply healthy_query_call_time_le S A V Q
+      rcases hB with ⟨ell, hu, _⟩ | ⟨ell, A, ho, _⟩
+      · exact ⟨_, Compose.projAC_callAt.mp hu.1⟩
+      · exact ⟨_, Compose.projAC_callAt.mp ho.1⟩
+    exact Or.inr ⟨x, hx, q, s, B, CV, hq, hbound, hs, hB, hRB⟩
 
 omit h0 hb hp W states in
 /-- The representative of a healthy stored-clock read is after the repair deadline,
