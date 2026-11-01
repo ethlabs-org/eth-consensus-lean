@@ -769,6 +769,36 @@ structure EffectiveRecordInterval (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.
       ((SA.lookup (Node.frame (tr.state y (q + 1)))
         (tr.state y (q + 1)).ac.latestConfirmed).getD (tr.state y (q + 1)).fg.F)
 
+/-- Finite actual-source comparison supplies the interval without manufacturing later
+votes. Candidate and floor comparisons remain local producer obligations. -/
+theorem effectiveRecordInterval_of_candidates_before {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H)
+    (hcandidates : ∀ q, i ≤ q → q < j → ∀ D s CV,
+      SA.ResultAt tr.projAC y q s D CV ∨ SA.OptimisticLockAt tr.projAC y q s D CV →
+      Compatible (tr.HonestBlocks H) O D)
+    (hframes : ∀ q, i ≤ q → q < j →
+      Compatible (tr.HonestBlocks H) (tr.state y (q + 1)).fg.F O) :
+    EffectiveRecordInterval tr H y i j O := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hst := Compose.projAC_state hp.run.toLocalRun hy
+  refine ⟨fun q hiq hqj => Or.inl ?_⟩
+  refine ⟨(fun D => ∃ s CV, SA.ResultAt tr.projAC y q s D CV ∨
+    SA.OptimisticLockAt tr.projAC y q s D CV), ?_, ?_, hframes q hiq hqj⟩
+  · by_cases hcall : ∃ ell, tr.projAC.CallAt y q ell
+    · obtain ⟨ell, hcall⟩ := hcall
+      have hw := Compose.call_writes hac.localRun hy hcall
+      rw [← tr.projAC.state_succ_of_call hcall, hst, hst,
+        Compose.frame_of_projAC hp.run hy hcall] at hw
+      exact hw
+    · have he : (tr.state y (q + 1)).ac.latestConfirmed = (tr.state y q).ac.latestConfirmed := by
+        rw [← hst, tr.projAC.state_succ_of_not (fun ell h => hcall ⟨ell, h⟩), hst]
+      rw [he]
+      exact Compose.writes_iff.mpr .refl
+  · rintro D ⟨s, CV, hD⟩
+    exact hcandidates q hiq hqj D s CV hD
+
 /-- The interval contract preserves the effective record across every intervening cut. -/
 theorem effective_record_of_interval
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
