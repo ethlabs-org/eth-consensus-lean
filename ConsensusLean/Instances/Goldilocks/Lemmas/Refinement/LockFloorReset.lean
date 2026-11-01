@@ -122,6 +122,68 @@ theorem lock_floor_unanimous_le_reset (hp : Healing.ResetPremises tr H proposer 
       Healing.unanimous_next_votes_extend_healthy hS hP hu hgu hviab y hy j e hv hs
     exact ⟨Hd, hHd, he, hBP.trans hPH⟩
 
+/-- **High origins below a unanimous slot (the hold of N7).** Under the reset, a unanimous
+honest block `P` of slot `u` (after `ḡ + 4Δ`, before the drain) is above the block of every high
+origin written before `t_{u+1}`. No old-origin bound is assumed: the bounded form
+`UpTo.high_origins_before_next_slot_below` derives it, here at the horizon
+`b = max (max a t_r) (t_u + Δ)`. -/
+theorem high_origins_below_unanimous (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hun : Healing.Unanimous tr H u P)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    {x : Fin sp.n} {r b : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : Healing.HighOrigin tr H g x r b B) (ht : tr.time r < sp.ts (u + 1 : Nat)) :
+    Anc (tr.HonestBlocks H) B P := by
+  have hup := hp.toUpTo tr H (le_max_left a (tr.time r) |>.trans
+    (le_max_left _ (sp.ts u + sp.Δ)))
+  exact UpTo.high_origins_before_next_slot_below hup hc hP
+    (fun y hy j e hv _ hs => hun y hy j e hv hs) hgu hR (le_max_right _ _) ho ht
+    ((le_max_right a (tr.time r)).trans (le_max_left _ _))
+
+/-- **N7 with the hold discharged.** `lock_floor_unanimous_le_reset` without the old-origin
+bound `hold` in `hexact`: it follows at each segment from `high_origins_below_unanimous`. -/
+theorem lock_floor_unanimous_le_reset_held (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {B₀ : SA.Blk sp.n (List (FG.Att sp.n))}
+    {z : Fin sp.n} {mz : Nat} (hz : z ∈ H) (hBz : B₀ ∈ (tr.state z mz).fg.tree)
+    (hBh : Healing.HZ tr H g + 1 ≤ ((tr.state z mz).fg.σ B₀.root).h)
+    {v₀ : Fin sp.n} {r₀ l₀ : Nat} {O₀ : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho₀ : Healing.HighOrigin tr H g v₀ r₀ l₀ O₀) (hB₀O : Anc (tr.HonestBlocks H) B₀ O₀)
+    (M : Nat) (hM : 0 < M) (i : Nat → Nat)
+    (hi : ∀ m < M, i m ≤ i (m + 1)) (p : Nat → Nat) (Ps : Nat → SA.Blk sp.n (List (FG.Att sp.n)))
+    (hsp : ∀ m < M, p (m + 1) ≤ p m + sp.k)
+    (htime : ∀ m < M, ∀ c < i (m + 1), tr.time c ≤ sp.ts (p (m + 1)) + 6 * sp.Δ)
+    (hbase0 : ∀ x ∈ H, Compose.FloorAt tr x (i 0) B₀ (p 0))
+    (hp4 : ∀ m, m + 1 < M → SA.gbar g + 4 * sp.Δ ≤ sp.ts (p (m + 1)))
+    (hun : ∀ m, m + 1 < M → Healing.Unanimous tr H (p (m + 1)) (Ps (m + 1)))
+    (hPg : ∀ m, m + 1 < M → (Ps (m + 1)).root ≠ sp.genesisRoot)
+    (htick : ∀ m, m + 1 < M → ∀ x ∈ H, ∃ k, ∃ ℓ : ACLabel (goldilocksNode sp ro),
+      tr.projAC.CallAt x k ℓ ∧ ℓ.call = .tick ∧ tr.time k = sp.ts (p (m + 1)) + 6 * sp.Δ ∧
+      i m ≤ k + 1 ∧ k + 1 ≤ i (m + 1) ∧ Ps (m + 1) ∈ ℓ.frame.tree ∧
+      ℓ.frame.viableAncestor (Ps (m + 1)) = Ps (m + 1) ∧
+      (∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state x k).locks ℓ.frame (tr.time k),
+        Compatible (tr.HonestBlocks H) L (Ps (m + 1))) ∧ ℓ.frame.Anc B₀ (Ps (m + 1)))
+    (hB0 : ∀ x ∈ H, B₀ ∈ (tr.state x (i 0)).fg.tree)
+    (hF : ∀ x ∈ H, ∀ j, i 0 ≤ j → j ≤ i M → (tr.state x j).fg.Anc (tr.state x j).fg.F B₀)
+    (hexact : ∀ m < M, p (m + 1) = p m + sp.k →
+      Ps (m + 1) ∈ tr.HonestBlocks H ∧ (Ps (m + 1)).slot = p (m + 1) ∧
+      Healing.Unanimous tr H (p (m + 1)) (Ps (m + 1)) ∧
+      SA.gbar g + 4 * sp.Δ ≤ sp.ts (p (m + 1)) ∧
+      Healing.drainTime sp a ≤ sp.ts (p (m + 1) + 1 : Nat) ∧
+      Anc (tr.HonestBlocks H) B₀ (Ps (m + 1)))
+    (hearly : Compose.EarlyVotes H tr (i 0) B₀) :
+    (∀ m < M, ∀ x ∈ H, Compose.FloorAt tr x (i m) B₀ (p m)) ∧
+    ∀ j, i 0 ≤ j → j < i M → ∀ x ∈ H, ∃ m < M, i m ≤ j ∧ j < i (m + 1) ∧
+      (sp.slot (tr.time j) ≤ p m + sp.k → Compose.FloorAt tr x j B₀ (p m)) ∧
+      Compose.UnlockKeeps tr x j B₀ := by
+  refine lock_floor_unanimous_le_reset hp hc hz hBz hBh ho₀ hB₀O M hM i hi p Ps hsp htime hbase0
+    hp4 hun hPg htick hB0 hF (fun m hm hk => ?_) hearly
+  obtain ⟨hP, hslot, hu, hgu, hR, hBP⟩ := hexact m hm hk
+  refine ⟨hP, hslot, hu, hgu, hR, hBP, fun x r b B ho ht => ?_⟩
+  have hlt : sp.ts (p (m + 1)) < sp.ts (p (m + 1) + 1 : Nat) := (SA.ts_lt_iff sp).2 (by omega)
+  exact high_origins_below_unanimous hp hc hP hu hgu hR ho (ht.trans hlt)
+
 end Consensus.Goldilocks.Refinement
 
 end
