@@ -135,6 +135,21 @@ theorem WrappersHeld.accept {sp : SA.SAParams}
       · exact hb
       · exact hd
 
+/-- Accepted children cannot be stamped before their slot starts. -/
+theorem accepted_slotTime_le {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp)
+    (ht : 0 ≤ st.now)
+    (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
+    sp.toParams.slotTime B.slot ≤ st.now := by
+  have hs : B.slot ≤ sp.toParams.slotOf st.now := by
+    unfold Node.onBlock at ha
+    split at ha
+    · simp at ha
+    · exact Nat.le_of_not_lt ‹¬ _›
+  exact (sp.toParams.slotTime_strictMono.monotone hs).trans
+    (Nat.findGreatest_spec (P := fun s => sp.toParams.slotTime s ≤ st.now)
+      (Nat.zero_le _) (by rw [sp.toParams.slotTime_zero]; exact ht))
+
 /-- An accepting block handler queues a decoded wrapper from the actual held parent.
 Only child wire validity and time bounds remain local inputs; parent slot order follows
 from the reachable FG store and durable-map correspondence. -/
@@ -149,7 +164,7 @@ theorem decoded_acceptance_enqueue {V : Type} [Fintype V] {E : Env V}
     (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2)
     (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B)
-    (ht : 0 ≤ st.now) (hs : (S.params (pubOf E) hn).toParams.slotTime B.slot ≤ st.now) :
+    (ht : 0 ≤ st.now) :
     WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash)
       (queueAccepted st B) := by
   obtain ⟨root, p, hr, hp, _, _⟩ := onBlock_queues_acceptance_parent st B hcover ha
@@ -161,7 +176,8 @@ theorem decoded_acceptance_enqueue {V : Type} [Fintype V] {E : Env V}
       · simp at ha
       · exact ⟨_, ‹st.node.fg.onBlock B = some _›⟩
   obtain ⟨fg', hfg⟩ := hfg
-  exact hdec.engine_enqueue S rho hn st B root p hr hp hb ht hs
+  exact hdec.engine_enqueue S rho hn st B root p hr hp hb ht
+    (accepted_slotTime_le st B ht ha)
     (fun parent pt pp A hp hd => hheld.parent_slot_lt hreach B fg' hfg root hr
       parent pt pp A hp hd)
 
