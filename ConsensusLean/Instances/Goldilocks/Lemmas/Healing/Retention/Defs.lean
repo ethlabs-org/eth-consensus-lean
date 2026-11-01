@@ -50,6 +50,65 @@ structure ResetPremises (proposer : Nat → Fin sp.n)
   noColl : Compose.NoCollRun dg tr
   reset : IsReset tr H g a
 
+/-- GST service at actual receiver calls through `b`. Effective send times and strict
+delivery deadlines agree with `GSTRun`; no service after the observation horizon is required. -/
+structure GSTRunUpTo (g ΔF b : Time) : Prop where
+  deltaF : sp.Δ ≤ ΔF
+  message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ b →
+      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
+      tr.MsgDeliveredBy y j (tr.time i) (max (tr.time i) g) m
+  block : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B ∨ tr.OwnBlockAt x i B →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ b →
+      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
+      tr.BlockDeliveredBy y j (tr.time i) (max (tr.time i) g) B
+  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → g ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ b →
+      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
+      Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
+      tr.BlockAcceptedBy y j (max (tr.time i) g) B
+  attestation : ∀ x ∈ H, ∀ i att, tr.SendOrAdmitAttAt x i att →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ b →
+      tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
+      tr.AttDeliveredBy y j (tr.time i) (max (tr.time i) g) ΔF att
+
+/-- Finite reset premises. Reset existence and its cutoff are inputs, not consequences of
+bounded health. Progress and Catch are separate premises of the consumers that need them. -/
+structure ResetPremisesUpTo (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a b : Time) : Prop where
+  run : GoldilocksRun proposer dg H tr
+  noColl : Compose.NoCollRun dg tr
+  sync : GSTRunUpTo tr H g ΔF b
+  awake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t
+  faults : 3 * Hᶜ.ncard ≤ sp.n - 1
+  reset : IsReset tr H g a
+  reset_le : a ≤ b
+  snapshot : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ b
+
+/-- Whole-run premises restrict to any horizon containing the actual reset. -/
+theorem ResetPremises.toUpTo {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a b : Time}
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hab : a ≤ b) :
+    ResetPremisesUpTo tr H proposer dg g ΔF a b := by
+  classical
+  have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
+  obtain ⟨⟨y, hy, k, att, hs, hh, hka⟩, _⟩ := hp.reset
+  change tr.time k = a at hka
+  have hck : cutZ sp.toParams g < tr.time k := hka ▸ hca
+  have hex : ∃ k, cutZ sp.toParams g < tr.time k := ⟨k, hck⟩
+  have hfirst : FirstCutAfter tr (Nat.find hex) (cutZ sp.toParams g) :=
+    ⟨fun q hq => not_lt.1 (Nat.find_min hex hq), Nat.find_spec hex⟩
+  have hkb : tr.time (Nat.find hex) ≤ b :=
+    (hp.run.time_mono (Nat.find_min' hex hck)).trans (hka ▸ hab)
+  refine ⟨hp.run, hp.noColl, ?_, fun y hy t ht _ => hp.healthy.2.1 y hy t ht,
+    hp.healthy.2.2, hp.reset, hab, Nat.find hex, hfirst, hkb⟩
+  exact ⟨hp.healthy.1.deltaF,
+    fun x hx i m hs y hy j hj _ hd => hp.healthy.1.message x hx i m hs trivial y hy j hj hd,
+    fun x hx i B hs y hy j hj _ hd => hp.healthy.1.block x hx i B hs trivial y hy j hj hd,
+    fun x hx i B hs hi y hy j hj _ hd hF => hp.healthy.1.relay x hx i B hs hi y hy j hj hd hF,
+    fun x hx i att hs y hy j hj _ hd =>
+      hp.healthy.1.attestation x hx i att hs trivial y hy j hj hd⟩
+
 /-- (R3) at the honest votes cast at cut `k`, for every high origin `(B, j)` of the run: a vote
 of a slot `> j` extends `B`, and at that vote `B` is in the viable voter block tree or
 `B ⪯ fc_root` (in the honest blocks). -/
