@@ -399,8 +399,9 @@ theorem high_origin_height_at_vote (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- The floor crossing supplies an earlier high origin above `B` and a held entry at the
 receiver's floor. Heights of `B` are read at its source, where it is held. Pairwise comparison
 of earlier origins rules out a high contest; comparison with `B` orients the crossing.
-Neither a vote/cache invariant nor pivot service is assumed. -/
-theorem high_floor_source_of_row_bound
+Neither a vote/cache invariant nor pivot service is assumed. The signed row witnessing
+the crossing is retained for consumers that need an actual earlier report. -/
+theorem high_floor_signed_source_of_row_bound
     (hp : ResetPremises tr H proposer dg g ΔF a)
     {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
@@ -417,7 +418,8 @@ theorem high_floor_source_of_row_bound
     ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < u ∧
       E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
       Anc (tr.HonestBlocks H) B O ∧
-      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h := by
+      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h ∧
+      ∃ d att, r < d ∧ d < k ∧ tr.SignAt v d att ∧ att.T = E.root := by
   have hU := honest_coherent hp
   have hreach := Compose.fg_reachable hp.run.toLocalRun hy k
   have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, k, hX⟩
@@ -471,7 +473,7 @@ theorem high_floor_source_of_row_bound
   obtain ⟨-, -, -, -, -, ⟨C, hC, hCh⟩, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
   obtain ⟨E, hE, hEC, hEh, hET⟩ :=
     entry_at_height hreach hC (h := (tr.state y k).fg.hmax - 1) (by omega) (by omega)
-  obtain ⟨W, hW, att, ha, v, hv, d₁, hd₁, hsd, -, r, hrd, l, O, hoO, hEO⟩ :=
+  obtain ⟨W, hW, att, ha, v, hv, d₁, hd₁, hsd, haT, r, hrd, l, O, hoO, hEO⟩ :=
     left_entry_origin hp hy hE hET (by omega) hEC (by omega)
   have hBO : Anc (tr.HonestBlocks H) B O := by
     rcases hcomp v r l O (by omega) hoO with h | h
@@ -484,7 +486,31 @@ theorem high_floor_source_of_row_bound
       rw [σ_eq_run hp ho.1 hy hEx hE] at hle
       omega
   exact ⟨v, r, l, O, E, by omega, hoO,
-    hrow W hW att ha v hv d₁ hsd hd₁ r l O hrd hoO, hE, hEO, hBO, by omega⟩
+    hrow W hW att ha v hv d₁ hsd hd₁ r l O hrd hoO, hE, hEO, hBO, by omega,
+    d₁, att, hrd, hd₁, hsd, haT⟩
+
+/-- The floor crossing supplies an earlier high origin and a held floor entry. -/
+theorem high_floor_source_of_row_bound
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
+    {u : Nat}
+    (hrow : ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload,
+      ∀ v ∈ H, ∀ d, tr.SignAt v d att → d < k → ∀ r l O,
+        r < d → HighOrigin tr H g v r l O → l < u)
+    (hpair : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      ∀ v' r' l' O', r' < k → HighOrigin tr H g v' r' l' O' →
+      Compatible (tr.HonestBlocks H) O O')
+    (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocks H) B O)
+    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
+    ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < u ∧
+      E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
+      Anc (tr.HonestBlocks H) B O ∧
+      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h := by
+  obtain ⟨v, r, l, O, E, hr, ho, hl, hE, hEO, hBO, hfloor, -⟩ :=
+    high_floor_signed_source_of_row_bound hp ho hy hrow hpair hcomp hfloor
+  exact ⟨v, r, l, O, E, hr, ho, hl, hE, hEO, hBO, hfloor⟩
 
 /-- Vote specialization of the duty-independent floor crossing. -/
 theorem high_floor_source_core

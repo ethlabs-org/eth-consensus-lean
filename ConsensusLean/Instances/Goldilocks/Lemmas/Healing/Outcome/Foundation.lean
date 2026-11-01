@@ -965,6 +965,58 @@ theorem held_target_candidate_or_high_origin_before
   · have := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy (hEB.trans h) hPy)
     omega
 
+/-- A floor above a held target above a high seed has an actual earlier honest report
+extending the target with strictly greater height at the reporter's cut. -/
+theorem held_target_high_floor_report_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y v : Fin sp.n} (hy : y ∈ H) {i q m : Nat}
+    {P S : SA.Blk sp.n (List (FG.Att sp.n))} (hPy : P ∈ (tr.state y i).fg.tree)
+    (hseed : HighOrigin tr H g v q m S) (hSP : Anc (tr.HonestBlocks H) S P)
+    (hcompare : ∀ x r b B, r < i → HighOrigin tr H g x r b B →
+      Compatible (tr.HonestBlocks H) P B)
+    (hfloor : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.headHeightFloor) :
+    ∃ x ∈ H, ∃ r ell C, r < i ∧ SA.ToFGAt tr.projAC x r ell C ∧
+      Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
+  have hU := honest_coherent hp
+  have hSy := mem_tree_of_anc hp hy hSP hPy
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hy i
+  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
+    hp.run hp.healthy hp.noColl a hp.reset
+  obtain ⟨-, -, -, -, -, -, -, -, -, hSs⟩ := highOrigin_mem hp hseed
+  have hSh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy hSP hPy)
+  have hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.headHeightFloor := by
+    rw [σ_eq_run hp hseed.1 hy hSs hSy]
+    omega
+  obtain ⟨x, r, b, B, E, hri, ho, -, hE, hEB, -, hEf, d, att, hrd, hdi, hsign, haT⟩ :=
+    high_floor_signed_source_of_row_bound hp hseed hy (u := sp.slot (tr.time i) + 1)
+      (fun W hW att ha z hz d hd hdi r' l O hrd ho => by
+        obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_mem hp ho
+        have ht : sp.ts l ≤ tr.time i :=
+          (ts_le_of_fastLock hp hfl).trans (hp.run.time_mono (by omega))
+        have hlabel : (l : Int) ≤ sp.slot (tr.time i) :=
+          (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg i) l).mp ht
+        omega)
+      (fun x r b B _ ho x' r' b' B' _ ho' => hret.comparable x r b B x' r' b' B' ho ho')
+      (fun x r b B _ ho => hret.comparable v q m S x r b B hseed ho) hSf
+  have hPE : Anc (tr.HonestBlocks H) P E := by
+    have hcomp : Compatible (tr.HonestBlocks H) P E := by
+      rcases hcompare x r b B hri ho with h | h
+      · exact SA.anc_total hU h hEB
+      · exact Or.inr (hEB.trans h)
+    rcases hcomp with h | h
+    · exact h
+    · have := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy h hPy)
+      omega
+  obtain ⟨j, hdj, -, ell, C, E', hreport, hC, hE', hEr, hEC, -, -, hEh, -⟩ :=
+    signAt_report_entry hp.run ho.1 hsign
+  obtain rfl : E' = E := hU.1 ⟨x, ho.1, j, hE'⟩ ⟨y, hy, i, hE⟩ (hEr.trans haT)
+  have hPC := hPE.trans (hEC.mono (fun X hX => ⟨x, ho.1, j, hX⟩))
+  have hPx := mem_tree_of_anc hp ho.1 hPC hC
+  refine ⟨x, ho.1, j, ell, C, by omega, hreport, hPC, ?_⟩
+  rw [← hEh, σ_eq_run hp ho.1 hy hPx hPy, σ_eq_run hp ho.1 hy hE' hE]
+  omega
+
 end Consensus.Goldilocks.Healing
 
 end
