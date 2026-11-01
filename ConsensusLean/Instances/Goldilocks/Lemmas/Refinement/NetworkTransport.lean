@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
 
 public section
 
@@ -375,13 +376,11 @@ theorem publication_acceptedBy_syncUntil (hn : 1 ≤ Fintype.card V)
         ((Healing.run_F_mono (simTrace_goldilocksRun S rho hn hv).toLocalRun hy hkj).trans hF)
       exact ⟨l, hl.trans hkj, ha, ht'⟩
 
-/-- The finite acceptance-relay field, conditional only on same-event forwarding
-completeness. Parent-first receipt processing is supplied by the concrete acceptance API. -/
+/-- The finite acceptance-relay field. Valid executions supply same-event forwarding
+and exact decoding; callers supply only network service and collision freedom. -/
 theorem acceptance_relay_syncUntil (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
-    (hforward : ForwardAtAcceptance S rho hn (simTrace S rho hn)
-      (cutMap S rho hn) (publisherExecution S rho))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     {x : Fin (Fintype.card V)} (hx : x ∈ honestKeys S rho) {i : Nat}
     {B : Blk (S.params (Model.pubOf E) hn)}
@@ -396,7 +395,7 @@ theorem acceptance_relay_syncUntil (hn : 1 ≤ Fintype.card V)
       ((simTrace S rho hn).state y j).fg.F B) :
     (simTrace S rho hn).BlockAcceptedBy y j ((simTrace S rho hn).time i) B := by
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
-    (forwardAtAcceptance_iff S rho hn _ _ _).mp hforward x hx i B hi
+    (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B hi
   apply publication_acceptedBy_syncUntil S rho hn hv hnc hbh hnet r hr
     (horg ▸ hx) ht htime (p := p) (by simpa only [horg] using hdecode) hy hj hb hd hF
 
