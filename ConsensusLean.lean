@@ -256,6 +256,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageRead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposalWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Queue
