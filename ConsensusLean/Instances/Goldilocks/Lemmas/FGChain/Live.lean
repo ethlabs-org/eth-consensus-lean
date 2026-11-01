@@ -89,6 +89,23 @@ theorem unbound_step_slot {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n} {
   obtain ⟨-, hiff, -⟩ := hbd hh
   exact gp.timeout_step_slot h hh (fun e => hnb (hiff.2 e))
 
+/-- **Crossing by progress (r14 s3 L3.3a; the window tables).** A block whose counted state has a
+progress quorum, at a slot at least `δt` after the entry, enters the next height: it justifies
+or times out. -/
+theorem cross_of_progress {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
+    (h : gp.stateTransition σ B = some σ')
+    (hq : gp.q ≤ (B.atts.foldl ChainState.processAtt { σ with s := B.slot }).prog.card)
+    (hage : σ.ThSlot + gp.δt ≤ B.slot) : σ'.h = σ.h + 1 := by
+  obtain ⟨-, he⟩ := gp.stateTransition_eq_some.1 h
+  obtain ⟨f, p, t, hf⟩ := ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [hf] at he hq
+  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
+    { σ with s := B.slot, fin := f, prog := p, target := t, L := B.root }
+  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, hto, -⟩
+  · rw [he'] at he; subst he; rfl
+  · rw [he'] at he; subst he; rfl
+  · exact absurd ⟨hq, hage⟩ hto
+
 end FGParams
 
 namespace Record
