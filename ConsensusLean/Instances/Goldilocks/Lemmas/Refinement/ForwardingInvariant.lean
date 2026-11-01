@@ -532,4 +532,67 @@ theorem publication_of_batch_release {V : Type} [Fintype V] [DecidableEq V] {E :
   have hk : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
   exact ⟨hb, t, by rwa [hk]⟩
 
+/-- Inverting duty releases retains the successful batch output, not just candidate
+membership, so rejected duplicate candidates cannot become publication witnesses. -/
+theorem runDuties_released_batch {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (v : V) :
+    ∀ ds (nd : Model.Node (protoOf (compiled (family S)) E)) o,
+    o ∈ (rho.runDuties v nd ds).2 →
+    ∃ b ∈ dutyBatches rho v nd ds,
+      o ∈ (Model.releaseAll (protoOf (compiled (family S)) E)
+        rho.hash (rho.ownKey v) b.before b.candidates).2 := by
+  intro ds
+  induction ds with
+  | nil =>
+    intro nd o ho
+    rw [rho.runDuties_nil] at ho
+    exact False.elim (List.not_mem_nil ho)
+  | cons d ds ih =>
+    intro nd o ho
+    rw [rho.runDuties_cons] at ho
+    rcases List.mem_append.mp ho with ho | ho
+    · rw [dutyBatches_cons]
+      unfold Model.Run.dutyStep at ho
+      split at ho
+      · rename_i hsel
+        refine ⟨_, List.mem_cons_self, ?_⟩
+        simp only [hsel, ↓reduceIte]
+        exact ho
+      · exact False.elim (List.not_mem_nil ho)
+    · obtain ⟨b, hb, ho⟩ := ih _ o ho
+      rw [dutyBatches_cons]
+      exact ⟨b, List.mem_cons_of_mem _ hb, ho⟩
+
+/-- Every event release has an actual publication occurrence in that event. -/
+theorem publication_of_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) {v : V} {i : Nat} {t : Time}
+    (he : rho.SendsAt v i t) (o : (protoOf (compiled (family S)) E).Object)
+    (ho : o ∈ rho.releasesAt i) :
+    ∃ r, (publisherExecution S rho).actual r ∧ r.event = i ∧
+      r.origin = rho.ownKey v ∧ r.object = o := by
+  have hb : ∃ b ∈ eventBatches rho i,
+      o ∈ (Model.releaseAll (protoOf (compiled (family S)) E)
+        rho.hash (rho.ownKey v) b.before b.candidates).2 := by
+    rcases he with he | ⟨receipt, he⟩
+    · rw [eventBatches_eq, he]
+      simp only [Model.Run.releasesAt, he, Model.Run.tick] at ho
+      split at ho
+      · rename_i hw
+        simp only [hw, ↓reduceIte]
+        rcases List.mem_append.mp ho with ho | ho
+        · obtain ⟨b, hb, ho⟩ := runDuties_released_batch S rho v _ _ o ho
+          exact ⟨b, List.mem_append_left _ hb, ho⟩
+        · exact ⟨_, List.mem_append_right _ List.mem_cons_self, ho⟩
+      · exact False.elim (List.not_mem_nil ho)
+    · rw [eventBatches_eq, he]
+      simp only [Model.Run.releasesAt, he, Model.Run.deliver] at ho
+      rcases List.mem_append.mp ho with ho | ho
+      · obtain ⟨b, hb, ho⟩ := runDuties_released_batch S rho v _ _ o ho
+        exact ⟨b, List.mem_append_left _ hb, ho⟩
+      · exact ⟨_, List.mem_append_right _ List.mem_cons_self, ho⟩
+  obtain ⟨b, hb, ho⟩ := hb
+  obtain ⟨j, hj⟩ := List.mem_iff_getElem?.mp hb
+  obtain ⟨r, hr, hi, _, hx, ho⟩ := publication_of_batch_release S rho v i j t he b hj o ho
+  exact ⟨r, hr, hi, hx, ho⟩
+
 end Consensus.Goldilocks.Refinement
