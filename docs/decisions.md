@@ -6,12 +6,12 @@ since the move to this repository) and the earlier [layers plan][layers] (iterat
 definition). Coordination decisions are in this repository's issues. Each line gives the date, the decision and
 where it is recorded; "Francesco" marks the owner's decisions.
 
-[index]: https://github.com/fradamt-agent/workbench/blob/main/repos/goldilocks/notes/generic-interface/consensus-lean/README.md
-[layers]: https://github.com/fradamt-agent/workbench/blob/main/repos/goldilocks/notes/generic-interface/layers-plan.md
-[plan]: https://github.com/fradamt-agent/workbench/blob/main/repos/goldilocks/notes/generic-interface/consensus-lean/plans/foundation-plan.md
-[validation]: https://github.com/fradamt-agent/workbench/blob/main/repos/goldilocks/notes/generic-interface/consensus-lean/research/foundation-validation.md
-[rebuild]: https://github.com/fradamt-agent/workbench/blob/main/repos/goldilocks/notes/generic-interface/consensus-lean/experiments/module-system-rebuild.md
-[checkers]: https://github.com/fradamt-agent/workbench/blob/main/repos/goldilocks/notes/generic-interface/consensus-lean/research/reuse-checkers.md
+[index]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/consensus-lean/README.md
+[layers]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/layers-plan.md
+[plan]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/consensus-lean/plans/foundation-plan.md
+[validation]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/consensus-lean/research/foundation-validation.md
+[rebuild]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/consensus-lean/experiments/module-system-rebuild.md
+[checkers]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/consensus-lean/research/reuse-checkers.md
 
 ## What a good protocol is
 
@@ -45,7 +45,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   All-occurrences provenance, including refused calls and non-honest nodes, remains OPEN;
   this interface correction does not prove accountability or add an Accepted premise.
 
-- 2026-10-31, coordinator and spec read-back ([#118](https://github.com/fradamt-agent/consensus-lean/issues/118)).
+- 2026-10-31, coordinator and spec read-back ([#118](https://github.com/ethlabs-org/consensus-lean/issues/118)).
   Separate finite observation coverage from labelled protocol-action coverage. `Trace.observationHorizon`
   defaults to `none` (legacy action-only horizon); `InHorizon` also admits a cut reaching a time covered
   by explicit finite metadata. Canonical traces set the engine horizon, clamp wakefulness to `[0,horizon]`,
@@ -212,7 +212,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
-- 2026-10-31, coordinator-authorized R.5/OC repair ([#107](https://github.com/fradamt-agent/consensus-lean/issues/107)).
+- 2026-10-31, coordinator-authorized R.5/OC repair ([#107](https://github.com/ethlabs-org/consensus-lean/issues/107)).
   **Pre-outage synchrony cuts off recipient deadlines, not send times.** `SyncBefore` requires
   service only when the recipient's protocol deadline, including its latest wake, is at most
   `b₀`. `OutageRun` and `OutageWindow` use it instead of `SyncRun 0 (b₀ − Δ)`; the latter still
@@ -226,7 +226,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   an explicit obligation: receipt alone cannot invent acceptance of a discarded missing-parent
   block. No ancestry, Catch, R.3 or R.4 decision is encoded, and no transport proof is claimed.
 - 2026-10-31, amp-orbs (architecture), transport repair under
-  [#107](https://github.com/fradamt-agent/consensus-lean/issues/107).
+  [#107](https://github.com/ethlabs-org/consensus-lean/issues/107).
   **Process received payload objects in preorder.** A delivery now traverses the entire object
   closure, processing a canonical block before its carried votes and attestations. Wrappers have
   no canonical node event; nested wrappers no longer hide their contents. The existing node
@@ -238,7 +238,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   applies to arbitrary same-time object lists, so one delivery poll still drains the emitted vote.
   This slice does not repair own-proposal payload processing, repeated-forwarding freshness under
   `Held`, or the finite-window transport. It does not weaken `SyncRun` or claim that transport is proved.
-- 2026-10-31, Francesco ([#104](https://github.com/fradamt-agent/consensus-lean/issues/104), revised decision).
+- 2026-10-31, Francesco ([#104](https://github.com/ethlabs-org/consensus-lean/issues/104), revised decision).
   **Drop cross-node nesting rather than restate it.** Remove Baseline's `crossNest` and `weakCrossNest`,
   R.3's `CrossNest` and R.6's `WeakCrossNest`, their bundle fields and the open `cross_nest_until` interface.
   Cross-node compatibility follows from `HealedSafe`/`WeakSafe` plus R.8's `OutputsNested`: a finalized
@@ -246,7 +246,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   The same-instant ancestry is false (#104's carrier-delay replay); lagged ancestry is not stated.
   This owner-approved target change supersedes the earlier decision to restate the Baseline fields in
   #106's lagged form. It does not change R.4's cross-time growth or R.8's local nesting.
-- 2026-10-31, Francesco ([#107](https://github.com/fradamt-agent/consensus-lean/issues/107)).
+- 2026-10-31, Francesco ([#107](https://github.com/ethlabs-org/consensus-lean/issues/107)).
   **Delivery-time relay in the generic engine; protocol delay `Δ_p = Δ_e + 1`.** The extra unit absorbs
   only the inclusive engine deadline versus the strict spec deadline (`≤` versus `<`), not relay latency.
   Persistent relay at the next awake tick and even relay one unit late still break R.1 in the model;
@@ -386,18 +386,18 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 - A branch ruleset enforcing owner review ([#21], option 2).
 
-[#2]: https://github.com/fradamt-agent/consensus-lean/issues/2
-[#50]: https://github.com/fradamt-agent/consensus-lean/issues/50
-[#41]: https://github.com/fradamt-agent/consensus-lean/issues/41
-[#4]: https://github.com/fradamt-agent/consensus-lean/issues/4
-[#5]: https://github.com/fradamt-agent/consensus-lean/issues/5
-[#6]: https://github.com/fradamt-agent/consensus-lean/issues/6
-[#7]: https://github.com/fradamt-agent/consensus-lean/issues/7
-[#8]: https://github.com/fradamt-agent/consensus-lean/issues/8
-[#10]: https://github.com/fradamt-agent/consensus-lean/issues/10
-[#11]: https://github.com/fradamt-agent/consensus-lean/issues/11
-[#93]: https://github.com/fradamt-agent/consensus-lean/issues/93
-[#107]: https://github.com/fradamt-agent/consensus-lean/issues/107
-[#17]: https://github.com/fradamt-agent/consensus-lean/issues/17
-[#21]: https://github.com/fradamt-agent/consensus-lean/issues/21
-[#38]: https://github.com/fradamt-agent/consensus-lean/issues/38
+[#2]: https://github.com/ethlabs-org/consensus-lean/issues/2
+[#50]: https://github.com/ethlabs-org/consensus-lean/issues/50
+[#41]: https://github.com/ethlabs-org/consensus-lean/issues/41
+[#4]: https://github.com/ethlabs-org/consensus-lean/issues/4
+[#5]: https://github.com/ethlabs-org/consensus-lean/issues/5
+[#6]: https://github.com/ethlabs-org/consensus-lean/issues/6
+[#7]: https://github.com/ethlabs-org/consensus-lean/issues/7
+[#8]: https://github.com/ethlabs-org/consensus-lean/issues/8
+[#10]: https://github.com/ethlabs-org/consensus-lean/issues/10
+[#11]: https://github.com/ethlabs-org/consensus-lean/issues/11
+[#93]: https://github.com/ethlabs-org/consensus-lean/issues/93
+[#107]: https://github.com/ethlabs-org/consensus-lean/issues/107
+[#17]: https://github.com/ethlabs-org/consensus-lean/issues/17
+[#21]: https://github.com/ethlabs-org/consensus-lean/issues/21
+[#38]: https://github.com/ethlabs-org/consensus-lean/issues/38

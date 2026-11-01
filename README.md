@@ -820,7 +820,7 @@ by-construction rows: `ConsensusLeanTest/Gaps.lean`.
 ## Verification
 
 **CI of record is the box watcher on `ethlabs-box`; results are on
-[#63](https://github.com/fradamt-agent/consensus-lean/issues/63).** GitHub Actions `check`, `full` and `notify`
+[#63](https://github.com/ethlabs-org/consensus-lean/issues/63).** GitHub Actions `check`, `full` and `notify`
 are disabled by owner decision (2026-10-31, #50): billing prevents jobs from starting. Their YAML files remain
 as reference; disabling them changes no check. Do not create GitHub CI subscriptions, dispatch workflows,
 or report the known billing failures. A green CI result means a passing box row for the relevant commit,

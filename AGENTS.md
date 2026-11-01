@@ -68,7 +68,7 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   pushed it, then fixed. **GitHub Actions is disabled by owner decision (2026-10-31, #50)** because billing
   prevents jobs from starting; workflow files remain for reference and reversible re-enablement. Do not create
   GitHub CI subscriptions, dispatch Actions, or report the known billing failures. **Green CI means the box
-  result on [#63](https://github.com/fradamt-agent/consensus-lean/issues/63)**, not a GitHub check badge.
+  result on [#63](https://github.com/ethlabs-org/consensus-lean/issues/63)**, not a GitHub check badge.
   `scripts/orb-ci.sh` runs as systemd user services on `ethlabs-box`, with checks inside `job`: fast tier and
   review-boundary for observed main/non-draft PR heads, docs-only `--changed`, and full tier nightly, on tags
   and manually (kernel replay, `lake check`, `lake comparator --paranoid`). Polling can coalesce intermediate

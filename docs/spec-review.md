@@ -276,8 +276,8 @@ they use a different format and are not a tagged git baseline.
 
 ### v4.35 internal terms: existing audit evidence
 
-Read [/srv/runs/fradamt/consensus-lean/reorg2/expected-diffs.md](/srv/runs/fradamt/consensus-lean/reorg2/expected-diffs.md)
-and [/srv/runs/fradamt/consensus-lean/reorg2/dep-audit.md](/srv/runs/fradamt/consensus-lean/reorg2/dep-audit.md).
+Read `/srv/runs/fradamt/consensus-lean/reorg2/expected-diffs.md` (on ethlabs-box)
+and `/srv/runs/fradamt/consensus-lean/reorg2/dep-audit.md`.
 These are shared-box run artefacts, not tracked repository files.
 Their reported kernel probes were read for this guide, not rerun.
 
@@ -606,7 +606,7 @@ mapfile -t protected < <(python3 -I -c 'import tomllib; print("\n".join(tomllib.
 GIT_LITERAL_PATHSPECS=1 git diff spec-approved origin/main -- "${protected[@]}"   # empty while main is covered
 ```
 
-The box full-tier result on [#63](https://github.com/fradamt-agent/consensus-lean/issues/63), matched to the
+The box full-tier result on [#63](https://github.com/ethlabs-org/consensus-lean/issues/63), matched to the
 commit being reviewed, is the correctness evidence: kernel replay, `lake check` and
 `lake comparator --paranoid`. Ask the box watcher owner for an exact-commit run if needed. GitHub Actions
 is disabled (owner decision, 2026-10-31); historical Actions logs below remain historical evidence only.

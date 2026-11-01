@@ -59,7 +59,7 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   The comparator is **not a Spec-drift check**: both sides read the same source tree.
 
 `scripts/check.sh` wires checks and fixtures. **CI of record is `scripts/orb-ci.sh` on `ethlabs-box`, with
-results on [#63](https://github.com/fradamt-agent/consensus-lean/issues/63).** GitHub Actions is disabled
+results on [#63](https://github.com/ethlabs-org/consensus-lean/issues/63).** GitHub Actions is disabled
 by owner decision (2026-10-31, #50); its files remain, but agents must not dispatch workflows, create GitHub CI
 subscriptions or report the known billing failures. A green check means a passing box result for that commit.
 The watcher runs fast mode (no replay, `lake check` or comparator; check-decls, axiom audit, snapshot diff and

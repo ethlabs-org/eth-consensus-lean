@@ -12,7 +12,7 @@ that did not write it (`CONTRIBUTING.md` "Statements").
 
 ## References
 
-All in fradamt-agent/goldilocks, `spec/`:
+All in the Goldilocks repository (`fradamt-agent/goldilocks`, archived for the team at `ethlabs-org/goldilocks-archive`), `spec/`:
 
 | Id | Document | Role |
 |---|---|---|

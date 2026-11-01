@@ -11,7 +11,7 @@ import re
 import subprocess
 
 
-SLUG = "fradamt-agent/consensus-lean"
+SLUG = "ethlabs-org/consensus-lean"
 UNIT = "consensus-lean-orb-ci.service"
 GRACE = 1800
 

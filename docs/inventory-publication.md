@@ -10,7 +10,7 @@ Actions artifacts, a public endpoint, or expiring host run folders.
 Fetch discovery server-side using authenticated `gh api`:
 
 ```
-repos/fradamt-agent/consensus-lean/contents/latest.json?ref=ci-inventory
+repos/ethlabs-org/consensus-lean/contents/latest.json?ref=ci-inventory
 ```
 
 Decode the response's base64 `content`. Example discovery (placeholders):
@@ -24,7 +24,7 @@ Decode the response's base64 `content`. Example discovery (placeholders):
   "availability": "available",
   "inventory_status": "incomplete",
   "payload_path": "commits/<source SHA>.json",
-  "payload_api": "repos/fradamt-agent/consensus-lean/git/blobs/<immutable Git blob SHA>",
+  "payload_api": "repos/ethlabs-org/consensus-lean/git/blobs/<immutable Git blob SHA>",
   "payload_sha256": "<SHA-256 of decoded payload bytes>"
 }
 ```
