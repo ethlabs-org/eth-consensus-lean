@@ -782,23 +782,22 @@ theorem high_origin_low_J_root_before
 
 /-- A low root compares with any held target comparable with a high seed. The target's
 transport is needed only in the seed-below-target branch, after finalization is oriented. -/
-theorem low_root_of_seed_before (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem low_root_of_held_seed_at_call (hp : ResetPremises tr H proposer dg g ΔF a)
     {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H) (hBx : B ∈ (tr.state x r).fg.tree) (hy : y ∈ H)
     (hS : HighOrigin tr H g v q m S)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ell e) (hm : m < e.msg.slot)
+    {ell : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y i ell) (hSy : S ∈ (tr.state y i).fg.tree)
     (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
     (hBS : Compatible (tr.HonestBlocks H) B S)
     (hheld : Anc (tr.HonestBlocks H) ell.frame.F B →
-      B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) :
+      B ∈ ell.frame.tree) :
     Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
   have hreach := Compose.fg_reachable hp.run.toLocalRun hy i
-  have hfr := Compose.frame_of_projAC hp.run hy hc.1
+  have hfr := Compose.frame_of_projAC hp.run hy hc
   have hFF : ell.frame.F = (tr.state y i).fg.F := by rw [hfr]; rfl
   have hroot : ell.frame.fcRoot = (tr.state y i).fg.fcRoot := by rw [hfr]; rfl
   have hFS := low_finalized_below_origin hp hy i hlow hS
-  have hSy := high_origin_held_at_vote hp hS hy hc hm (by rw [hFF]; exact hFS)
   have hSh := high_of_anc hp hS hy hSy .refl
   have hJ : ∀ D ∈ (tr.state y i).fg.tree,
       (tr.state y i).fg.Anc (tr.state y i).fg.F D →
@@ -820,12 +819,31 @@ theorem low_root_of_seed_before (hp : ResetPremises tr H proposer dg g ΔF a)
     · have hBh := high_of_anc hp hS hx hBx hSB
       have hFB := low_finalized_below_high_block hp hy hx hBx hBh hlow
       have hBt := hheld (by rw [hFF]; exact hFB)
-      have hBy := frame_tree_subset hp hy hc.1 hBt.1
+      have hBy := frame_tree_subset hp hy hc hBt
       have hBhy := high_of_anc hp hS hy hBy hSB
       exact Or.inl (hJ B hBy (anc_tree_of_anc hp hy hFB hBy) hBhy hactive.1 hactive.2)
   · rcases hBS with hBS | hSB
     · exact SA.anc_total (honest_coherent hp) hFS hBS
     · exact Or.inl (hFS.trans hSB)
+
+/-- Vote specialization supplying the seed by counted-head relay. -/
+theorem low_root_of_seed_before (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hx : x ∈ H) (hBx : B ∈ (tr.state x r).fg.tree) (hy : y ∈ H)
+    (hS : HighOrigin tr H g v q m S)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hm : m < e.msg.slot)
+    (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
+    (hBS : Compatible (tr.HonestBlocks H) B S)
+    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B →
+      B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
+  have hFS := low_finalized_below_origin hp hy i hlow hS
+  have hFF : ell.frame.F = (tr.state y i).fg.F := by
+    rw [Compose.frame_of_projAC hp.run hy hc.1]; rfl
+  have hSy := high_origin_held_at_vote hp hS hy hc hm (by rw [hFF]; exact hFS)
+  exact low_root_of_held_seed_at_call hp hx hBx hy hS hc.1 hSy hlow hBS
+    (fun hFB => (hheld hFB).1)
 
 /-- All held honest rows justify root compatibility from bounded origin comparisons. -/
 theorem high_J_root_of_held_at_call_before

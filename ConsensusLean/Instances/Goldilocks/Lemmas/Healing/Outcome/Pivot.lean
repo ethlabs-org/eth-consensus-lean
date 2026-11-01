@@ -542,6 +542,53 @@ private theorem proposal_holds_old (hp : ResetPremises tr H proposer dg g ΔF a)
     exact mem_between hr.coherent hΦ hΦU hΦ.rooted.1 hBt hFO hOB
   · exact Or.inr hOF
 
+/-- Conditional seed receipt at a proposal, including the finalized-equality case. -/
+private theorem proposal_holds_high_of_finalized
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hai : a ≤ tr.time i)
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) {x : Fin sp.n} {r l : Nat}
+    {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x r l O)
+    (hrt : tr.time r < sp.ts u) (hFO : Anc (tr.HonestBlocks H) ell.frame.F O) :
+    O ∈ ell.frame.tree := by
+  rcases proposal_holds_old hp hpH hai hci hcall hd hti ⟨x, r, l, ho, hrt⟩ with hO | hOF
+  · exact hO
+  · have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+    obtain ⟨hPhi, -⟩ := SA.frameIn_of_callAt hr hpH hci
+    have he := Anc.antisymm hr.coherent hOF hFO
+    rw [he]
+    exact hPhi.rooted.1
+
+/-- Root comparison for an actual proposal duty and an arbitrary held target. -/
+theorem held_target_proposal_root_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r i u : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
+    (hai : a ≤ tr.time i) {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u)
+    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B → B ∈ ell.frame.tree)
+    (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
+      Compatible (tr.HonestBlocks H) B S)
+    (hcompare : ∀ v q m O, q < i → HighOrigin tr H g v q m O →
+      Compatible (tr.HonestBlocks H) B O) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
+  by_cases hlow : (tr.state p i).fg.hj ≤ HZ tr H g
+  · obtain ⟨v, q, m, S, hS, hm, hBS⟩ := hseed
+    have hFS := low_finalized_below_origin hp hpH i hlow hS
+    have hFF : ell.frame.F = (tr.state p i).fg.F := by
+      rw [Compose.frame_of_projAC hp.run hpH hci]; rfl
+    have hSt := proposal_holds_high_of_finalized hp hpH hai hci hcall hd hti hS hm
+      (by rw [hFF]; exact hFS)
+    exact low_root_of_held_seed_at_call hp hx hBx hpH hS hci
+      (frame_tree_subset hp hpH hci hSt) hlow hBS hheld
+  · exact high_J_root_of_held_at_call_before hp hx hBx hpH hci (by omega) hcompare
+
 /-! ### Sources of the proposer's rows -/
 
 /-- A high row signed before a proposal has a strictly earlier source cut and label.
