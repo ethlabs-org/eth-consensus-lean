@@ -379,6 +379,39 @@ private theorem process_queuedInPool (st : State sp ro) o hs (h : QueuedInPool s
   | nil => exact h
   | cons o os ih => exact ih _ (processOne_queuedInPool hs st o h)
 
+private theorem record_queuedInPool (st : State sp ro) o hs (h : QueuedInPool st) :
+    QueuedInPool (recordOwn st o hs) := by
+  unfold recordOwn
+  split
+  · exact h
+  · split
+    · exact block_queuedInPool st _ h
+    · exact h
+  · exact h
+
+private theorem propose_queuedInPool (st : State sp ro) s (h : QueuedInPool st) :
+    QueuedInPool (propose st s).1 := by
+  have hp : (Node.acProposal st.node st.now).1.ac.pool = st.node.ac.pool := by
+    change (SA.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
+    unfold SA.acProposal
+    split_ifs <;> rfl
+  unfold propose
+  dsimp only
+  split <;> intro tv htv <;> rw [hp] <;> exact h tv htv
+
+private theorem nodeTick_queuedInPool (st : State sp ro) (h : QueuedInPool st) :
+    QueuedInPool (nodeTick st) := by
+  unfold nodeTick
+  split
+  · apply apply_queuedInPool st _ h
+    exact SA.step_pool_subset st.self st.node.ac _ st.now .tick (by simp)
+  · exact h
+
+private theorem poll_queuedInPool (st : State sp ro) t : QueuedInPool (poll st t).1 := by
+  intro tv htv
+  rw [poll_voteForwards] at htv
+  cases htv
+
 private theorem parts_append {n : Nat} (a b : List (Wire n)) :
     a.flatMap Model.Obj.parts ⊆ (a ++ b).flatMap Model.Obj.parts := by
   rw [List.flatMap_append]
@@ -738,6 +771,19 @@ section EngineInventory
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+
+omit [DecidableEq V] in
+/-- Every duty prefix preserves the fact that queued vote envelopes name stored
+votes. In particular this applies to the polls of a tick, not only deliveries. -/
+theorem runDuties_voteForward_in_pool (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (ds : List (Model.protoOf (compiled (family S)) E).Duty)
+    (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
+      tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
+    ∀ tv ∈ (shapeOf S hn (rho.runDuties v nd ds).1).voteForwards,
+      tv.2 ∈ (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool tv.2.slot := by
+  exact runDuties_pres S rho hn QueuedInPool record_queuedInPool propose_queuedInPool
+    nodeTick_queuedInPool (fun st t _ => poll_queuedInPool st t) v nd ds h
 
 omit [DecidableEq V] in
 private theorem release_owned (k : Fin (Fintype.card V))
