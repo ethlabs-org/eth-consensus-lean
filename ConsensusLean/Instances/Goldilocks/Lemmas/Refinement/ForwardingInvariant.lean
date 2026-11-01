@@ -1453,4 +1453,33 @@ theorem WrappersDecoded.engine_enqueue {V : Type} [Fintype V] {E : Env V}
       (hr.trans (congrArg some hroot.symm)) (hroot ▸ hg)
       (hslot parent pt pp A hparent hd) htime ht hs
 
+/-- Draining pending traffic preserves durable decoding; retained candidates inherit their
+old witnesses. This applies to a poll's queue clear without assuming a publication occurred. -/
+theorem WrappersDecoded.drain {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tables : Wire sp.n → List (Header Info × Nat)}
+    {st st' : State sp ro} (h : WrappersDecoded tables st)
+    (hself : st'.self = st.self) (hmap : st'.wrappers = st.wrappers)
+    (hqueue : pendingWrappers st' ⊆ pendingWrappers st) (ht : st.now ≤ st'.now) :
+    WrappersDecoded tables st' := by
+  constructor
+  · intro root o ho
+    rw [hmap] at ho
+    obtain ⟨t, p, B, hd, hr, htime⟩ := h.stored root o ho
+    exact ⟨t, p, B, hself ▸ hd, hr, htime.trans ht⟩
+  · intro o ho
+    obtain ⟨t, p, B, hd, htime⟩ := h.pending o (hqueue ho)
+    exact ⟨t, p, B, hself ▸ hd, htime.trans ht⟩
+
+/-- The AC proposal transition leaves both wrapper inventories and their clock unchanged.
+Recording its released block is handled separately by `engine_enqueue`. -/
+theorem WrappersDecoded.propose {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tables : Wire sp.n → List (Header Info × Nat)}
+    {st : State sp ro} (h : WrappersDecoded tables st) (s : Slot) :
+    WrappersDecoded tables (Refinement.propose st s).1 := by
+  unfold Refinement.propose
+  dsimp only
+  split <;> exact h.mono rfl rfl rfl le_rfl
+
 end Consensus.Goldilocks.Refinement
