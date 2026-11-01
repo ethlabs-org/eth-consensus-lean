@@ -417,4 +417,38 @@ theorem decoded_held_process {V : Type} [Fintype V] {E : Env V}
         ((processOne_now (digests rho.hash receipt) st o).symm ▸ ht)
   exact fold _ (fun _ ho => ho) st hd hh hc hr ht
 
+/-- FG attestation work changes neither decoded wrapper inventory nor held blocks. -/
+theorem decoded_held_fgUpdate {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tables : Wire sp.n → List (Header Info × Nat)} (st : State sp ro)
+    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
+    WrappersDecoded tables (fgUpdate st) ∧ WrappersHeld tables (fgUpdate st) := by
+  unfold fgUpdate
+  dsimp only
+  split
+  · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
+  · split
+    · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
+    · rename_i a record _
+      obtain ⟨atts, he⟩ := Store.onAttestation_eq st.node.fg a
+      refine ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl ?_⟩
+      simpa only [Node.acToFG, Node.onAttestation] using congrArg Store.blocks he
+
+/-- Polling drains pending wrappers without losing durable decoding or held correspondence. -/
+theorem decoded_held_poll {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tables : Wire sp.n → List (Header Info × Nat)} (st : State sp ro) (t : Time)
+    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
+    WrappersDecoded tables (poll st t).1 ∧ WrappersHeld tables (poll st t).1 := by
+  have clear (s : State sp ro) (h : WrappersDecoded tables s) (g : WrappersHeld tables s)
+      (outbox : List Body) :
+      WrappersDecoded tables { s with outbox := outbox, forwards := [], voteForwards := [] } ∧
+      WrappersHeld tables { s with outbox := outbox, forwards := [], voteForwards := [] } :=
+    ⟨h.drain rfl rfl (by simp [pendingWrappers_eq]) le_rfl, g.preserve rfl rfl rfl⟩
+  unfold poll
+  split <;> dsimp only <;> split
+  all_goals first
+    | exact clear _ hd hh _
+    | exact clear _ (decoded_held_fgUpdate st hd hh).1 (decoded_held_fgUpdate st hd hh).2 _
+
 end Consensus.Goldilocks.Refinement
