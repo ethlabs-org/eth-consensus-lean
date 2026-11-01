@@ -256,26 +256,34 @@ theorem update_adopts_origin_before {dg : Digest (List (FG.Att sp.n)) (Payload s
 
 /-- An honest proposal becomes a regular origin at its slot's update; the bounded
 origin-adoption theorem then handles every strictly later update. -/
-theorem later_update_adopts_gt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+theorem later_update_adopts_gt_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
     (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time),
+      sp.ts s + d ≤ b → tr.FaultBound H (sp.ts s + d))
+    (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ s' : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hss : s < s')
-    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b) :
     ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y (k₀ + 1)).fg.F) := by
   have hΔ := sp.toParams.hΔ
-  have hfb := (hsl.2 (s + 1)).2.2
-  have hT : sp.toParams.slotTime (s + 1) + 2 * sp.toParams.Δ =
+  have hsb : sp.ts s + 6 * sp.Δ ≤ b := by
+    have := (SA.ts_le_iff sp).2 (show (s : Int) ≤ s' by exact_mod_cast hss.le)
+    have ht : tr.time k₀ = sp.ts s' + 6 * sp.Δ := hu.2.2.1
+    linarith
+  have hT : sp.ts (s + 1 : Nat) + 2 * sp.Δ =
       sp.ts s + 6 * sp.Δ := by
-    rw [sp.slotTime_eq]; simp only [SAParams.ts]; push_cast; ring
-  unfold RunTrace.FaultBound RunTrace.honestAwakeJoined at hfb
-  rw [hT] at hfb
-  obtain ⟨x, hx, hw, hj⟩ := Set.nonempty_of_ncard_ne_zero (Nat.zero_lt_of_lt hfb).ne'
+    simp only [SAParams.ts]; push_cast; ring
+  have hf := hfb (s + 1) (2 * sp.Δ) (by simp) (by rw [hT]; exact hsb)
+  unfold RunTrace.FaultBound RunTrace.honestAwakeJoined at hf
+  rw [hT] at hf
+  obtain ⟨x, hx, hw, hj⟩ := Set.nonempty_of_ncard_ne_zero (Nat.zero_lt_of_lt hf).ne'
   obtain ⟨kx, ℓx, hux⟩ := update_of_awake_joined hrun hx hw hj
-  obtain ⟨hC, -⟩ := adopt_result hrun hnc hsl hp hP hPs hpj hx hux
+  obtain ⟨hC, -⟩ := adopt_result_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hx hux
+    (by have ht : tr.time kx = sp.ts s + 6 * sp.Δ := hux.2.2.1; linarith)
   have hfx : ℓx.frame = Node.frame (tr.state x kx) := by
     obtain ⟨⟨hn, hl⟩, -⟩ := hux
     obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hl
@@ -291,19 +299,56 @@ theorem later_update_adopts_gt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     have hu' : tr.time k₀ = sp.ts s' + 6 * sp.Δ := hu.2.2.1
     have hle : sp.ts s ≤ sp.ts s' := (SA.ts_le_iff sp).2 (by exact_mod_cast hss.le)
     linarith
-  have hPo : OriginWithin tr H P s (tr.time k₀) := originWithin_iff.2
-    ⟨x, hx, kx, _, hxb, Or.inl ⟨ℓx, hux,
+  have hPo : OriginWithin tr H P s b := originWithin_iff.2
+    ⟨x, hx, kx, _, hxb.trans hb, Or.inl ⟨ℓx, hux,
       by rw [projAC_state hrun.toLocalRun hx]; exact hC, rfl⟩⟩
+  exact update_adopts_origin_before hrun hnc hinv
+    (syncBefore_projection hrun.toLocalRun hsync) hPo ⟨x, hx, kx, hPt.1⟩ hy hss hu hb
+    (hfb s' sp.Δ (by simp) (by
+      have ht : tr.time k₀ = sp.ts s' + 6 * sp.Δ := hu.2.2.1
+      linarith))
+
+/-- Whole-run wrapper for strictly later adoption. -/
+theorem later_update_adopts_gt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
+    (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
+    (hy : y ∈ H) {k₀ s' : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hss : s < s')
+    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) :
+    ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
+      (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y (k₀ + 1)).fg.F) := by
   have hs : tr.SyncBefore H ΔF (tr.time k₀) :=
     ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
       hsl.1.message x hx i m hm h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact update_adopts_origin_before hrun hnc
+  exact later_update_adopts_gt_before hrun hnc (hrun.time_nonneg k₀) hs
+    (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀)))
-    (syncBefore_projection hrun.toLocalRun hs) hPo ⟨x, hx, kx, hPt.1⟩ hy hss hu le_rfl
-    (by simpa only [sp.slotTime_eq, SAParams.ts] using (hsl.2 s').2.1)
+    hp hP hPs hpj hy hss hu le_rfl
+
+/-- An update inside the horizon adopts an honest proposal of any earlier slot. -/
+theorem later_update_adopts_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time),
+      sp.ts s + d ≤ b → tr.FaultBound H (sp.ts s + d))
+    (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
+    (hy : y ∈ H) {k₀ s' : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hss : s ≤ s')
+    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b) :
+    ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
+      (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y (k₀ + 1)).fg.F) := by
+  rcases hss.lt_or_eq with hlt | rfl
+  · exact later_update_adopts_gt_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hy hlt hu hb
+  · obtain ⟨E, hE, hEr, hPE⟩ := update_adopts_before hrun hnc hb0 hsync hfb hinv
+      hp hP hPs hpj hy hu hb
+    exact ⟨E, hE, hEr, Or.inl hPE⟩
 
 /-- **An update of a slot `s' ≥ s` adopts the honest proposal of slot `s`**: the record names a
 block extending `P`, or `Σ.F` extends `P`. -/

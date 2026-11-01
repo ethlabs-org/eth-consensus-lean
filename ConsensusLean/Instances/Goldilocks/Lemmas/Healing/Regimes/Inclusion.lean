@@ -51,10 +51,14 @@ record of `y` after all events at `t`, or its `Σ.F`, extends `P`: `y` ran the u
 `slot(t) − 2` or `slot(t) − 1` (a slot `≥ slot(P)`) with no restart since, and that update adopts
 `P` (`later_update_adopts`), and the record and `Σ.F` only extend (`record_step`,
 `run_F_mono`). -/
-theorem ready_record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem ready_record_extends_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time),
+      sp.ts s + d ≤ b → tr.FaultBound H (sp.ts s + d))
+    (hinv : SleepyInvariantUpTo tr H b) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposalAt tr H (catchUp sp) τ P) {y : Fin sp.n} {t : Time} {j : Nat}
-    (ht : τ + 6 * sp.Δ ≤ t) (hy : ReadyAt tr H (catchUp sp) y t) (hj : CutAfter tr j t) :
+    (ht : τ + 6 * sp.Δ ≤ t) (hy : ReadyAt tr H (catchUp sp) y t) (hj : CutAfter tr j t)
+    (htb : t ≤ b) :
     ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y j).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y j).fg.F) := by
   have hΔ := sp.toParams.hΔ
@@ -110,25 +114,44 @@ theorem ready_record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
     change SA.joined sp (tr.projAC.state y j₁) (tr.time j₁)
     rw [projAC_state hrun.toLocalRun hy' j₁, ht₁]
     exact hj₁
-  obtain ⟨E, hE, hEr, hPE⟩ := later_update_adopts hrun hnc hsl hp hPa rfl hpj hy' hms hupd
+  obtain ⟨E, hE, hEr, hPE⟩ := later_update_adopts_before hrun hnc hb0 hsync hfb hinv
+    hp hPa rfl hpj hy' hms hupd (by rw [ht₁]; dsimp [u]; linarith)
   -- the record only extends from the update to `j`
   have hj₁j : j₁ + 1 ≤ j := by
     by_contra hh
     have := hrun.time_mono (show j ≤ j₁ by omega)
     linarith [hj.2]
-  have hinv := sleepy_invariant hrun hnc hsl
-  have key : ∀ i, j₁ + 1 ≤ i → ∃ E ∈ tr.HonestBlocks H,
+  have key : ∀ i, j₁ + 1 ≤ i → i ≤ j → ∃ E ∈ tr.HonestBlocks H,
       E.root = (tr.state y i).ac.latestConfirmed ∧
         (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y i).fg.F) := by
     intro i hi
     induction i, hi using Nat.le_induction with
-    | base => exact ⟨E, hE, hEr, hPE⟩
+    | base => exact fun _ => ⟨E, hE, hEr, hPE⟩
     | succ i _ ih =>
-      obtain ⟨E₁, hE₁, hE₁r, hPE₁⟩ := ih
-      obtain ⟨E', hE', hE'r, hEE'⟩ := record_step hinv hrun hnc hy' i E₁ hE₁ hE₁r
+      intro hij
+      obtain ⟨E₁, hE₁, hE₁r, hPE₁⟩ := ih (by omega)
+      obtain ⟨E', hE', hE'r, hEE'⟩ := record_step_upTo hinv hrun hnc hy'
+        (fun k hk => (hj.1 k (by omega)).trans htb) E₁ hE₁ hE₁r
       refine ⟨E', hE', hE'r, hPE₁.imp (·.trans hEE') fun h => h.trans ?_⟩
       exact Healing.run_F_mono hrun.toLocalRun hy' (Nat.le_succ i)
-  exact key j hj₁j
+  exact key j hj₁j le_rfl
+
+/-- Whole-run wrapper for ready-record extension. -/
+theorem ready_record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposalAt tr H (catchUp sp) τ P) {y : Fin sp.n} {t : Time} {j : Nat}
+    (ht : τ + 6 * sp.Δ ≤ t) (hy : ReadyAt tr H (catchUp sp) y t) (hj : CutAfter tr j t) :
+    ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y j).ac.latestConfirmed ∧
+      (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y j).fg.F) := by
+  have hb0 := le_max_right t 0
+  have hs : tr.SyncBefore H ΔF (max t 0) :=
+    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
+      hsl.1.message x hx i m hm h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
+      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
+  exact ready_record_extends_before hrun hnc hb0 hs (sleepyPrefix_iff.1 (hsl.prefix hb0)).2.2
+    (sleepy_invariant_upTo hrun hnc (hsl.prefix hb0)) hP ht hy hj (le_max_left t 0)
 
 /-- **A proposer ready at its slot start proposes** (node-level: its tick at `t_s` runs
 the proposal step, `ac_proposal` returns a proposal since it is joined, and C0.3 accepts the own

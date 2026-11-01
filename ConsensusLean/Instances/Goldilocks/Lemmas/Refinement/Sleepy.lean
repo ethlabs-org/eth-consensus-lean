@@ -261,7 +261,8 @@ theorem sleepy_safe_finite (hv : rho.ExecutionValid)
       (Regimes.catchUp (S.params (pubOf E) hn)) 0 b := by
   exact Regimes.sleepy_safe_before (simTrace_goldilocksRun S rho hn hv) hnc hb0 hsync hf
 
-/-- OPEN finite R.2 inclusion consumer (owner: Regimes/Refinement). Re-run A1.7/F.4 only
+set_option linter.unusedVariables false in
+/-- Finite R.2 inclusion consumer (owner: Regimes/Refinement). Re-run A1.7/F.4 only
 through the observation `t ≤ b`: the producer at `τ` is in the horizon, and its full `6Δ`
 margin ends before the observation. Every service dependency must fit `SyncBefore b`.
 `IncludeSleepy` is the paper source, not an applicable finite theorem. No future participation
@@ -284,7 +285,12 @@ theorem sleepy_include_finite (hv : rho.ExecutionValid)
     (hj : Regimes.CutAfter (simTrace S rho hn) j t) :
     Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho)) P
       (Regimes.readAfter (simTrace S rho hn) y j t) := by
-  sorry
+  have hrun := simTrace_goldilocksRun S rho hn hv
+  have hinv := Compose.sleepy_invariant_before hrun hnc hb0 hsync hf
+  exact Regimes.read_extends_of_record_before hrun hnc hinv
+    (Compose.syncBefore_projection hrun.toLocalRun hsync)
+    (fun s hs => hf s _ (by simp) hs) hy.1 hj hy htb
+    (Regimes.ready_record_extends_before hrun hnc hb0 hsync hf hinv hP hmargin hy hj htb)
 
 /-- Finite R.2 growth consumer (owner: Regimes/Refinement). Select a ready scheduled
 producer in `(t, t+4kΔ]`, leaving `6Δ` before `b = t+(4k+6)Δ`. Apply finite inclusion and
