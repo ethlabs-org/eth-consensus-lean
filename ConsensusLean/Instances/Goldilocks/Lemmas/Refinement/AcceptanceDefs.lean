@@ -13,6 +13,15 @@ First-descendant row service, inherited progress and cache joins remain OPEN. -/
 def finalWindow (S : Setup) : Pattern :=
   ⟨[0, S.δt - 1, S.δt + 1, S.δt + 3], by simp⟩
 
+theorem finalWindow_offsets (S : Setup) :
+    (finalWindow S).offsets = [0, S.δt - 1, S.δt + 1, S.δt + 3] := by rfl
+
+theorem finalWindow_span (S : Setup) : (finalWindow S).span = S.δt + 3 := by
+  unfold Pattern.span
+  rw [finalWindow_offsets]
+  simp only [List.foldr_cons, List.foldr_nil]
+  omega
+
 /-- Fixed timeout and outage assumptions. The pattern is determined by Setup,
 not chosen by a caller; outer gaps never enter the timeout bound. -/
 structure AcceptanceAssumptions (S : Setup) where
