@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 
 -- Whole-run consumers and their finite-horizon counterparts share this endpoint layer.
 set_option linter.style.longFile 1900
@@ -1762,6 +1763,123 @@ theorem unanimous_next_votes_extend {b : Time}
       · exact ⟨P, hP, (hun z hz q e' hv hqb hsl).symm, .refl⟩
       · exact ih q hq hqb z hz e' hv hsl
   exact fun y hy j e hv hjb hs => all j hjb y hy e hv hs
+
+/-- A bounded next-slot optimistic source compares with P through an actual honest
+supporter, whose cast is no later than the source. -/
+theorem unanimous_next_optimistic_compatible {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hub : sp.ts u + sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (SA.Vote sp.n)} (hopt : SA.OptimisticLockAt tr.projAC y j (u + 1) D CV)
+    (hjb : tr.time j ≤ b) : Compatible (tr.HonestBlocks H) D P := by
+  obtain ⟨_, z, hz, q, hq, e, hv, hs, Hd, hHd, he, hDH⟩ := hp.optimistic_supporter hy hopt
+  obtain ⟨Hd', hHd', he', hPH⟩ := unanimous_next_votes_extend hp hc hP hslot hu hun hgu hR hub
+    z hz q e hv ((hp.run.time_mono hq).trans hjb) hs
+  obtain rfl : Hd' = Hd := hp.honest_coherent.1 hHd' hHd (he'.trans he.symm)
+  exact SA.anc_total hp.honest_coherent hDH hPH
+
+/-- Every high origin written through the update deadline compares with P. The
+next-slot optimistic arm uses finite vote extension; later raw writes cannot occur. -/
+theorem high_origin_compatible_before_update {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hTb : sp.ts u + 6 * sp.Δ ≤ b)
+    {x : Fin sp.n} {r m : Nat} (ho : Healing.HighOrigin tr H g x r m B)
+    (ht : tr.time r ≤ sp.ts u + 6 * sp.Δ) : Compatible (tr.HonestBlocks H) B P := by
+  have hr := (Healing.healthy_base_of_reset_catch_before hp hc).run.localRun
+  have hub : sp.ts u + sp.Δ ≤ b := by linarith [sp.toParams.hΔ]
+  have hrb := ht.trans hTb
+  obtain ⟨ell, D, CV, hcall, hfl, _, _, _, hBD, _⟩ := hp.highOrigin_mem ho
+  have hBDU := hBD.mono (SA.frameIn_of_callAt hr ho.1 hcall).2
+  by_cases hmu : m < u
+  · obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot hp hc hgu hR hub x ho.1
+    obtain ⟨Hd, hHd, he, hBH⟩ := hp.high_origin_votes_before q (hq.trans hub)
+      x r m B ho hrb x ho.1 ellv e hv (by omega)
+    have heq : Hd = P := hr.coherent.1 hHd hP
+      (he.trans (hun x ho.1 q e ⟨ellv, hv⟩ (hq.trans hub) hs))
+    exact Or.inl (heq ▸ hBH)
+  by_cases heq : m = u
+  · subst m
+    exact Or.inl (hBDU.trans (hp.same_slot_source_below_unanimous hc ho.1
+      (Or.inl ⟨CV, hfl⟩) hrb (hp.cutZ_le_ts_of_highOrigin ho) hP hun))
+  have hgt : u < m := by omega
+  have hDP : Compatible (tr.HonestBlocks H) D P := by
+    rcases hfl with ⟨ellr, C, hupd, _⟩ | hop
+    · have ht' : tr.time r = sp.ts m + 6 * sp.Δ := hupd.2.2.1
+      have := (SA.ts_lt_iff sp).2 (show (u : Int) < m by omega)
+      exfalso; linarith
+    · have hs : sp.slot (tr.time r) = m := hop.choose_spec.choose_spec.2.1
+      have hdeadline : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
+        SA.slot_of_mem sp (u + 1)
+          (by simp only [SA.SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+          (by simp only [SA.SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+      have hm := SA.slot_mono sp (hp.run.time_nonneg r) ht
+      rw [hs, hdeadline] at hm
+      have heq : m = u + 1 := by omega
+      exact unanimous_next_optimistic_compatible hp hc hP hslot hu hun hgu hR hub
+        ho.1 (heq ▸ hop) hrb
+  rcases hDP with h | h
+  · exact Or.inl (hBDU.trans h)
+  · exact SA.anc_total hr.coherent hBDU h
+
+/-- Finite finality compatibility through the update deadline, derived from actual
+unanimous votes rather than an update-selection or high-origin compatibility duty. -/
+theorem finalized_compatible_before_update {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hTb : sp.ts u + 6 * sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (ha : a ≤ tr.time k)
+    (ht : tr.time k ≤ sp.ts u + 6 * sp.Δ) :
+    Compatible (tr.HonestBlocks H) (tr.state y k).fg.F P := by
+  obtain ⟨x, r, m, B, ho, hrk, _, hFB⟩ := hp.finalized_below_high_origin hy ha
+    (fun q hq => (hp.run.time_mono hq.le).trans (ht.trans hTb))
+  rcases high_origin_compatible_before_update hp hc hP hslot hu hun hgu hR hTb ho
+      (hrk.trans ht) with h | h
+  · exact Or.inl (hFB.trans h)
+  · exact SA.anc_total hp.honest_coherent hFB h
+
+/-- Finite deadline alternative: finality is below P, or an actual earlier report
+extends P with strictly greater height at that reporter's own cut. -/
+theorem finality_alternative_before_update {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hTb : sp.ts u + 6 * sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (ha : a ≤ tr.time k)
+    (ht : tr.time k ≤ sp.ts u + 6 * sp.Δ) :
+    Anc (tr.HonestBlocks H) (tr.state y k).fg.F P ∨
+      ∃ z ∈ H, ∃ r ell C, r < k ∧ SA.ToFGAt tr.projAC z r ell C ∧
+        tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C ∧
+        ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
+  rcases hp.finality_below_or_higher_report hy
+      (finalized_compatible_before_update hp hc hP hslot hu hun hgu hR hTb hy ha ht) with
+    h | ⟨z, hz, r, ell, C, hrk, hto, hPC, hlt⟩
+  · exact Or.inl h
+  · exact Or.inr ⟨z, hz, r, ell, C, hrk, hto, (hp.run.time_mono hrk.le).trans ht, hPC, hlt⟩
 
 end UpTo
 
