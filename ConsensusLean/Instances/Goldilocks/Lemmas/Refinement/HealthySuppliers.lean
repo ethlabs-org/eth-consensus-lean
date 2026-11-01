@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
@@ -36,6 +37,40 @@ noncomputable abbrev ready (Q : HealthyPreparationQuery S A V) :=
 noncomputable abbrev cut (Q : HealthyPreparationQuery S A V) :=
   cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal)
 end HealthyPreparationQuery
+
+/-- The finite engine query supplies run validity, collision freedom, awake participation
+and the fault bound. Service, actual reset existence and its snapshot remain explicit. -/
+theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
+    {ΔF a : Time}
+    (hsync : Q.trace.GSTRun (honestKeys S Q.run.2) ΔF Q.gst)
+    (hreset : Healing.IsReset Q.trace (honestKeys S Q.run.2) Q.gst a)
+    (ha : a ≤ Q.run.2.horizon)
+    (hsnapshot : ∃ k, Healing.FirstCutAfter Q.trace k
+      (Healing.cutZ Q.params.toParams Q.gst) ∧ Q.trace.time k ≤ Q.run.2.horizon) :
+    Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
+      (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon := by
+  refine ⟨simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid,
+    noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision,
+    hsync, ?_, ?_, hreset, ha, hsnapshot⟩
+  · intro y hy t ht htb
+    rw [simTrace_awake_iff, awakeAt_iff]
+    exact ⟨Q.healthy.2.2 (Q.run.2.key y) hy t ht htb,
+      (le_max_right Q.gst 0).trans ht, htb⟩
+  · have hpop := Q.healthy.2.1
+    change (Q.run.2.point.faulty.card : ℚ) < (K S A).params.β * Fintype.card V at hpop
+    rw [acceptanceContract_params_eq] at hpop
+    change (Q.run.2.point.faulty.card : ℚ) < 1 / 3 * Fintype.card V at hpop
+    have hfault : (honestKeys S Q.run.2)ᶜ.ncard = Q.run.2.point.faulty.card := by
+      have heq : (honestKeys S Q.run.2)ᶜ = Q.run.2.key ⁻¹' (↑Q.run.2.point.faulty : Set V) := by
+        ext k
+        simp [honestKeys, EnvPoint.faulty, Model.Run.point]
+      rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
+        (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
+    rw [hfault]
+    have hnat : 3 * Q.run.2.point.faulty.card < Fintype.card V := by
+      exact_mod_cast (show (3 : ℚ) * Q.run.2.point.faulty.card < Fintype.card V by linarith)
+    change 3 * Q.run.2.point.faulty.card ≤ Fintype.card V - 1
+    omega
 
 /-- Global inventory obligation, exactly the initialization required by
 oldHonest_inventory_preserved. OldHonest includes signed entries not yet held by
