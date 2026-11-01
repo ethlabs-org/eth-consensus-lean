@@ -733,4 +733,42 @@ theorem decoded_held_scheduled_proposal {V : Type} [Fintype V] [DecidableEq V] {
       show (protoOf (compiled (family S)) E).role (.propose s hs) = .proposer s from rfl,
       hsel, ↓reduceIte] using And.intro hd hh
 
+/-- The engine clock is nonnegative and never exceeds the next event's time. -/
+theorem stateAt_clock_bounds {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (v : V) (i : Nat) :
+    0 ≤ (stateAt S rho hn v i).now ∧
+      ∀ j e, i ≤ j → rho.events[j]? = some e → (stateAt S rho hn v i).now ≤ e.time := by
+  rw [now_eq_lastClock S rho hn hv]
+  induction i with
+  | zero =>
+    exact ⟨le_rfl, fun _ e _ he => (hv.in_horizon e (List.mem_of_getElem? he)).1⟩
+  | succ i ih =>
+    have old : 0 ≤ lastClock S rho v i ∧
+        ∀ j e, i + 1 ≤ j → rho.events[j]? = some e → lastClock S rho v i ≤ e.time :=
+      ⟨ih.1, fun j e hij he => ih.2 j e (by omega) he⟩
+    cases he : rho.events[i]? with
+    | none => rw [lastClock_succ_none S rho v he]; exact old
+    | some e =>
+      have current : 0 ≤ e.time ∧
+          ∀ j f, i + 1 ≤ j → rho.events[j]? = some f → e.time ≤ f.time := by
+        refine ⟨(hv.in_horizon e (List.mem_of_getElem? he)).1, ?_⟩
+        intro j f hij hf
+        rcases keyLe_of_index_lt S rho hv he hf (by omega) with h | h
+        · exact h.le
+        · exact h.1.le
+      cases e with
+      | tick w t =>
+        by_cases hw : w = v
+        · subst w; rw [lastClock_succ_tick S rho v he]; exact current
+        · rw [lastClock_succ_other S rho v he hw]; exact old
+      | restart w t =>
+        by_cases hw : w = v
+        · subst w; rw [lastClock_succ_restart S rho v he]; exact current
+        · rw [lastClock_succ_other S rho v he hw]; exact old
+      | deliver w o t =>
+        by_cases hw : w = v
+        · subst w; rw [lastClock_succ_deliver S rho v he]; exact old
+        · rw [lastClock_succ_other S rho v he hw]; exact old
+
 end Consensus.Goldilocks.Refinement
