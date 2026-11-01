@@ -197,6 +197,39 @@ theorem onBlock_queues_acceptance {sp : SA.SAParams}
       change (queueAccepted st B).forwards = _
       exact (queueAccepted_of_parent st B root p hr hp).2
 
+/-- Retain the exact parent lookup together with the appended queue and updated map.
+This lets a provenance invariant follow the selected parent, rather than merely knowing
+that some wrapper was appended. -/
+theorem onBlock_queues_acceptance_parent {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp)
+    (hcover : WrappersCover st)
+    (hacc : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
+    ∃ root p, B.parent = some root ∧
+      (if root = sp.genesisRoot then some none else (st.wrappers root).map some) = some p ∧
+      (apply st (Node.onBlock st.self st.node st.now B)).wrappers =
+        Function.update st.wrappers B.root (some (forwardObj sp st.self st.now p B)) ∧
+      (apply st (Node.onBlock st.self st.node st.now B)).forwards =
+        st.forwards ++ [(st.now, p.toList ++ [blockObj sp B])] := by
+  unfold Node.onBlock at hacc ⊢
+  split at hacc
+  · simp at hacc
+  · rename_i htime
+    simp only [htime, ↓reduceIte]
+    split at hacc
+    · simp at hacc
+    · rename_i fg' hfg
+      rw [hfg]
+      obtain ⟨root, _, hr, _, hheld, _, _, _⟩ := Store.onBlock_eq_some hfg
+      have hp : ∃ p : Option (Wire sp.n),
+          (if root = sp.genesisRoot then some none else (st.wrappers root).map some) =
+            some p := by
+        by_cases hg : root = sp.genesisRoot
+        · exact ⟨none, ite_eq_left hg⟩
+        · obtain ⟨p, hp⟩ := Option.isSome_iff_exists.mp (hcover root hg hheld)
+          exact ⟨some p, by simp only [hg, ↓reduceIte, hp, Option.map_some]⟩
+      obtain ⟨p, hp⟩ := hp
+      exact ⟨root, p, hr, hp, queueAccepted_of_parent st B root p hr hp⟩
+
 /-- A successful block call grows the held-block map and wrapper map at the same root.
 All other roots keep their existing wrappers; refusal leaves both maps unchanged. -/
 theorem wrappersCover_onBlock {sp : SA.SAParams}
@@ -673,6 +706,17 @@ def ForwardAtAcceptance : Prop :=
       decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
         some (x, tr.time k, p, B)
 
+/-- Characterize acceptance completeness without exposing its definition body. -/
+theorem forwardAtAcceptance_iff : ForwardAtAcceptance S rho hn tr cutMap pubExec ↔
+    ∀ x ∈ honestKeys S rho, ∀ k B, tr.AcceptAt x k B →
+      ∃ r p, pubExec.actual r ∧ r.origin = x ∧
+        cutMap r.event ≤ k ∧ k < cutMap (r.event + 1) ∧
+        pubExec.eventTime r.event = tr.time k ∧
+        r.object = forwardObj (S.params (pubOf E) hn) x (tr.time k) p B ∧
+        decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
+          some (x, tr.time k, p, B) := by
+  rfl
+
 /-- OPEN: parent references are taken from the origin's previously released wrappers;
 same-event publication order is candidate order, not strict timestamp order. -/
 def ForwardParentEarlier : Prop :=
@@ -685,6 +729,19 @@ def ForwardParentEarlier : Prop :=
         some (r.origin, pt, pp, A) ∧
       B.parent = some A.root ∧ tr.AcceptAt r.origin ka A ∧ tr.AcceptAt r.origin kb B ∧
       ka < kb ∧ tr.time ka = pt ∧ tr.time kb = t
+
+/-- Characterize parent publication order without exposing its definition body. -/
+theorem forwardParentEarlier_iff : ForwardParentEarlier S rho hn tr pubExec ↔
+    ∀ r, pubExec.actual r → rho.key r.origin ∈ rho.honest → ∀ t p B,
+      decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
+        some (r.origin, t, some p, B) →
+      ∃ q A pt pp ka kb, pubExec.actual q ∧ Publication.Before q r ∧ q.origin = r.origin ∧
+        q.object = p ∧ p = forwardObj (S.params (pubOf E) hn) r.origin pt pp A ∧
+        decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash p) p =
+          some (r.origin, pt, pp, A) ∧
+        B.parent = some A.root ∧ tr.AcceptAt r.origin ka A ∧ tr.AcceptAt r.origin kb B ∧
+        ka < kb ∧ tr.time ka = pt ∧ tr.time kb = t := by
+  rfl
 
 /-- OPEN: recursive receipt processing turns prior authenticated holdings into prior calls;
 own publications instead use actual acceptance. Refused calls do not establish acceptance. -/
