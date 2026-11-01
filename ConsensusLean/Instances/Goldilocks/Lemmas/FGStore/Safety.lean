@@ -77,6 +77,70 @@ theorem finalized_chain {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P
     obtain ⟨X, hXc, rfl⟩ := List.mem_map.1 hX
     exact ⟨X, hc X hXc, hanc X (List.mem_cons_of_mem _ hXc), haX⟩
 
+/-- The replay-finalized target of an honest held carrier is compatible with any honest
+cache. The two signature prefixes end at the given cuts; no future event is required. -/
+theorem replay_finalized_safety {P : Params} {ACP : Type} {acp₀ : ACP}
+    {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)} {tr : FGTrace P ACP}
+    (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.fg.q - P.n)
+    {x y : Fin P.n} (hx : x ∈ H) (hy : y ∈ H) {i j : Nat} {B X : NodeBlock P ACP}
+    (hB : B ∈ (tr.store x i).tree) (hX : X ∈ (tr.store x i).tree)
+    (hXr : X.root = ((tr.store x i).σ B.root).F) :
+    Compatible U X (tr.store y j).F := by
+  have hR := store_reachable hr hx i
+  have hsub := hr.tree_subset x hx i
+  obtain ⟨c, hc, hl, hlast, hσ⟩ := chain_state_of_chain P ACP acp₀ _ hR B hB
+  obtain ⟨_, hcoh, hg, _⟩ := accepted_tree P ACP acp₀ _ hR
+  obtain ⟨_, ⟨X', hX', hX'r, hXB⟩, _⟩ := entry_state_of_source P ACP acp₀ _ hR B hB
+  have he : X' = X := hr.coherent.1 (hsub hX') (hsub hX) (hX'r.trans hXr.symm)
+  rw [he] at hXB
+  have hanc := anc_of_linked c _ hg hc hl B (by
+    rcases hlast with ⟨rfl, rfl⟩ | h
+    · rfl
+    · simp [List.getLast?_cons, h])
+  have hcompat : ∀ Z ∈ U, Z.root ∈ P.fg.roots (c.map Block.fgView) → Compatible U Z X := by
+    intro Z hZU hZ
+    obtain ⟨W, hW, hWZ⟩ : ∃ W ∈ P.genesisBlock acp₀ :: c, W.root = Z.root := by
+      simpa [FG.FGParams.roots, Block.fgView, Params.fg, Params.genesisBlock, eq_comm] using hZ
+    have hWt : W ∈ (tr.store x i).tree := by
+      rcases List.mem_cons.mp hW with rfl | h
+      exacts [hg, hc _ h]
+    rw [← hr.coherent.1 (hsub hWt) hZU hWZ]
+    exact (Goldilocks.Anc.total hcoh (hanc W hW) hXB).imp (Anc.mono hsub) (Anc.mono hsub)
+  have hsig : ∀ a ∈ P.fg.chainAtts (c.map Block.fgView), a.val ∈ H →
+      ∃ k < i, tr.SignAt a.val k a := by
+    intro a ha hav
+    obtain ⟨_, hW, haW⟩ := List.mem_flatMap.mp ha
+    obtain ⟨W, hWc, rfl⟩ := List.mem_map.mp hW
+    rcases tree_accepted hr hx (hc W hWc) with rfl | ⟨k, hk, hacc⟩
+    · cases haW
+    · obtain ⟨l, hl, hs⟩ := hr.unforgeable x hx k a ⟨_, hacc, haW⟩ hav
+      exact ⟨l, by omega, hs⟩
+  by_contra hne
+  obtain ⟨c₂, σ₂, h₂, hF₂, hU₂, hc₂, ha₂, _⟩ := finalized_chain hr hy j
+  obtain ⟨S, hS, hSv⟩ := FG.accountable_safety P.fg _ _ _ _ hσ h₂
+    (fun h => hne (hc₂ _ (hsub hX) (hXr ▸ h)))
+    (fun h => hne (hcompat _ hU₂ (hF₂ ▸ h)).symm)
+  obtain ⟨v, hvS, hv⟩ : ∃ v ∈ S, v ∈ H := by
+    by_contra! hS'
+    have := Set.ncard_le_ncard (s := (S : Set (Fin P.fg.n))) (t := Hᶜ) hS'
+    rw [Set.ncard_coe_finset] at this
+    have : (Hᶜ : Set (Fin P.fg.n)).ncard = (Hᶜ : Set (Fin P.n)).ncard := rfl
+    have : P.fg.n = P.n := rfl
+    omega
+  obtain ⟨a, ha, b, hb, rfl, hab⟩ := hSv v hvS
+  have signs : ∀ z ∈ P.fg.chainAtts (c.map Block.fgView) ++ P.fg.chainAtts c₂,
+      z.val = a.val → ∃ k < max i j, tr.SignAt a.val k z := by
+    intro z hz hzv
+    rcases List.mem_append.mp hz with hz | hz
+    · obtain ⟨k, hk, hs⟩ := hsig z hz (hzv ▸ hv)
+      exact ⟨k, hk.trans_le (le_max_left _ _), hzv ▸ hs⟩
+    · obtain ⟨k, hk, hs⟩ := ha₂ z hz (hzv ▸ hv)
+      exact ⟨k, hk.trans_le (le_max_right _ _), hzv ▸ hs⟩
+  obtain ⟨inputs, hin, hrun⟩ := signed_run hr hv (max i j)
+  obtain ⟨k, hk, hka⟩ := signs a ha rfl
+  obtain ⟨l, hl, hlb⟩ := signs b hb hab.1.symm
+  exact FG.client_safety P.fg a.val inputs hin a (hrun k hk a hka) b (hrun l hl b hlb) hab
+
 variable (P : Params) (ACP : Type)
 
 /-- **G1.4.** -/
