@@ -1,5 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDefs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
+import ConsensusLean.Lemmas.Model.Laws
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
 public import ConsensusLean.Spec.Shape.Accepted
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
@@ -1139,7 +1142,31 @@ theorem accepted_healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) �
             ((Sys (family S) V).heal (K S A) cap i gst r) r)
         fun r => (chainTrace r.2).ReadySafe ((Sys (family S) V).cDur (K S A) r)
           g ((Sys (family S) V).heal (K S A) cap i gst r) := by
-  sorry
+  intro cap g hcap hg idx gst r hv ⟨hh, hp⟩
+  have hg' : g = Out.confirmed := by
+    rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
+  subst g
+  by_cases hcollision : r.2.HashCollision
+  · exact Or.inr hcollision
+  left
+  have htime : ∀ k, k ≤ (chainTrace r.2).cuts →
+      (chainTrace r.2).cutTime k ≤ r.2.horizon :=
+    (Model.sysOf_laws schema (compiled (family S)) V).trace r hv |>.cutTime_le_horizon
+  let heal := (Sys (family S) V).heal (K S A) cap idx gst r
+  by_cases hb : heal ≤ r.2.horizon
+  · by_cases hn : 1 ≤ Fintype.card V
+    · let Q : HealthyPreparationQuery S A V := ⟨r, hn, cap, hcap, idx, gst, hv,
+        hcollision, hh⟩
+      have h0 : 0 ≤ Q.heal :=
+        add_nonneg (le_max_right gst 0)
+          (mul_nonneg (Int.natCast_nonneg _) r.1.Δ_pos.le)
+      exact healthy_ready_safety S A V Q h0 hb hp
+    · have hempty : IsEmpty V := Fintype.card_eq_zero_iff.mp (by omega)
+      exact ⟨fun u => (hempty.false u).elim, fun v => (hempty.false v).elim⟩
+  · have hnone : ∀ k, ¬ (chainTrace r.2).InCuts heal k :=
+      fun k hk => hb (hk.2.trans (htime k hk.1))
+    exact ⟨fun _ _ i _ hi => (hnone i hi).elim,
+      fun _ i _ hi => (hnone i hi).elim⟩
 
 /-- R5 OC1–OC4: NO PAPER PROOF for composed-node outage continuation.
 Blocked by lifetime (4k−1 versus 4k−2) and finite pre-outage network scope:
@@ -1149,7 +1176,16 @@ theorem accepted_persists : ∀ g, schema.output .stable = some g → ∀ T b₀
     (Sys (family S) V).Holds ((Sys (family S) V).Outage (K S A) T b₀ b₁)
       fun r => (chainTrace r.2).ProtectedThrough
         ((Sys (family S) V).cDur (K S A) r) g (resilienceTarget schema g) T b₀ b₁ := by
-  sorry
+  intro g hg T b₀ b₁ r hv ho
+  have hg' : g = Out.confirmed := Option.some.inj hg.symm
+  subst g
+  by_cases hcollision : r.2.HashCollision
+  · exact Or.inr hcollision
+  left
+  intro v hvr t ht hth w hw hr
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
+  let Q : OutageQuery S A V := ⟨r, hn, T, b₀, b₁, hv, hcollision, ho⟩
+  exact outage_protected S A V Q v hvr t ht hth w hw hr
 
 /-- Exact nine-field assembly; the named gaps above are not a blanket claims assumption. -/
 theorem accepted_claims : ShapeClaims (family S) (K S A) := by

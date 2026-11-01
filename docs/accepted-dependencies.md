@@ -520,6 +520,32 @@ assembly. The five leaves do not discharge these joins. No ReadySafe-as-base or
 new Healthy premise is introduced. `held_row_causal_source` remains external
 provenance evidence only; it does not initialize or renew old-entry coverage.
 
+## Healed safety and outage endpoints now assemble named OPEN suppliers
+
+`accepted_healedSafe` and `accepted_persists` no longer contain direct sorries.
+Their endpoint types and collision escapes are unchanged. This is skeleton
+wiring, not closure of either proof. The common coefficient definitions moved
+unchanged to `AcceptanceDefs.lean` to avoid a supplier/Accepted import cycle.
+
+| Named leaf | OPEN obligation |
+|---|---|
+| `healthy_cut_agreement` | Actual engine-cut agreement from Healthy state facts, including equality-time cuts before endCut(heal). Receives h0/hb and actual finite ready→heal progress; post-endCut facts alone are not that transport. |
+| `healthy_cut_monotone` | Temporal prefix extension at arbitrary ordered engine cuts with both exact-cDur readiness tests; same-time/pre-endCut transport remains owed. |
+| `outage_pre_service` | Canonical service through recipient deadlines ≤ outage start, not unrestricted late-wake service. |
+| `outage_arm` | Effective-record arming at original endCut(T), including inherited records and lookup-none/frame.F fallback; frame membership and original read-prefix witness. |
+| `outage_repair` | R.5 continuation, lifetime, old output/record compatibility, first arrivals and actual repair for the exact two resilience-reader windows. |
+
+`healthy_ready_safety` consumes initialization→preparation→preservation and the
+two cut adapters. Its Accepted wrapper handles an empty validator type and heal
+beyond the horizon without strengthening premises or shrinking InCuts.
+`outage_reader_windows` is only the definitional split of ResilienceReader,
+retaining exact engine cDur; it does not establish node readiness or service.
+`outage_protected` assembles finite pre-service, arming and repair with unchanged
+ProtectedThrough quantifiers. The five leaf signatures were approved as OPEN.
+Existing Healthy leaves and coefficient witnesses remain transitive gaps.
+Full proof completion, frozen-service/source/vote joins and other Accepted
+adapters remain OPEN; none are supplied by successful elaboration of this wiring.
+
 ## Still missing from this inventory
 
 Remaining finite adapter types, deeper outage/final leaves, and completed paper
