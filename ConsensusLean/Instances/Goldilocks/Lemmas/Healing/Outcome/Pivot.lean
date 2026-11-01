@@ -802,6 +802,85 @@ theorem clean_source_proposal_domain_before
   · intro v q m O _ ho
     exact clean_source_compatible_high_origin hp hc hx hsource hs ho
 
+/-- The completed predecessor batch makes a proposal extend every clean raw source
+whose label is at least two slots earlier. -/
+theorem clean_source_proposal_parent_before
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r s i u : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
+    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hsu : s + 2 ≤ u)
+    (hR : drainTime sp a ≤ sp.ts u) {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) : Anc (tr.HonestBlocks H) B d.head := by
+  have hS := healthy_base_of_reset_catch hp hc
+  have hr := hS.run.localRun
+  have hU := hr.coherent
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  rcases clean_source_proposal_domain_before hp hc hx hpH hsource hs (by omega) hR
+      hci hcall hd hti with hBF | hV
+  · obtain ⟨_, hhead⟩ := Compose.acProposal_start_anc_head hPhi hd
+    obtain ⟨A₁, _, hstart, _⟩ := acProposal_walk hd
+    rw [hstart] at hhead
+    exact hBF.trans (Anc.mono hPhiU ((SA.fcRoot_anc_getAnchor hPhi A₁ (tr.time i)).trans hhead))
+  have hFB := (hPhi.rooted.2 B hV.1).mono hPhiU
+  obtain ⟨σ, rfl⟩ : ∃ σ, u = σ + 1 := ⟨u - 1, by omega⟩
+  have hσ : sp.ts (σ + 1 : Nat) = sp.ts σ + 4 * sp.Δ := by
+    simp only [SA.SAParams.ts]; push_cast; ring
+  have votes : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → s < e.msg.slot →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
+    rintro z hz q e ⟨ell', hc'⟩ hslot
+    exact clean_source_votes_before hp hc (max (tr.time r) (tr.time q)) hx hsource hs
+      (le_max_left _ _) q (le_max_right _ _) z hz ell' e hc' hslot
+  have hσg : SA.gbar g + 4 * sp.Δ ≤ sp.ts σ := by
+    obtain ⟨v, q, m, S, hseed, hm, -⟩ := reset_seed hp
+    have ht := cutZ_le_ts_of_highOrigin hp hseed
+    have hz := lt_cutZ sp g
+    have hle : sp.ts m ≤ sp.ts σ := (SA.ts_le_iff sp).mpr
+      (by rw [cleanLabel_eq] at hs; omega)
+    linarith
+  have hhigh : SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
+      (tr.time i) σ B := by
+    refine SA.highLocksCompatible_iff.2 fun l hl _ hlσ X hX hXr => ?_
+    obtain ⟨L, hL, hLr, O, hLO, q, hqi, CV, hO⟩ := SA.lock_below_origin hr hpH i l hl
+    obtain rfl : X = L := hU.1 hX hL (hXr.trans hLr.symm)
+    have hcomp : Compatible (tr.HonestBlocks H) O B := by
+      rcases hO with ⟨ell', ⟨-, -, ht, -⟩, -⟩ | ⟨ellO, A, hpt, hsl, hsel, -⟩
+      · have htime := hr.time_mono hqi.le
+        have hle := (SA.ts_le_iff sp).mpr (show (σ : Int) ≤ l.slot by omega)
+        change tr.time q ≤ tr.time i at htime
+        change tr.time q = sp.ts l.slot + 6 * sp.Δ at ht
+        rw [hti, hσ] at htime
+        exfalso
+        linarith
+      · have hΦU := (SA.frameIn_of_callAt hr hpH hpt.1).2
+        unfold SA.optimisticSelect at hsel
+        dsimp only at hsel
+        split_ifs at hsel
+        have h34 := (SA.deepest_mem hsel).1.2.1
+        rw [hsl] at h34
+        refine SA.origin_compatible hU hΦU h34 hS.two_faulty_lt fun v hv hvH => ?_
+        obtain ⟨hvs, q', _, e', hv', rfl⟩ := SA.optimisticPoint_pool_vote hS.run hpH hpt hv hvH
+        exact votes _ hvH q' e' hv' (by rw [hvs]; omega)
+    rcases hcomp with h | h
+    · exact Or.inl (hLO.trans h)
+    · exact SA.anc_total hU hLO h
+  refine SA.batch_proposal hS.run hS.two_faulty_lt (SA.honest_voters_half hS hσg)
+    (fun z hz q e hv he => votes z hz q e hv (by omega)) hpH hci
+    (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh
+  intro z hz q e hv he
+  obtain ⟨H', hH', hHr', hBH⟩ := votes z hz q e hv (by omega)
+  obtain ⟨Hd, hHd, hHdr, -, hh⟩ := SA.late_vote_held_of_frame hS hpH hci hσg
+    (by change _ ≤ tr.time i; rw [hti, hσ]; linarith) hz hv he fun Hd hHd hHdr => by
+      rw [hU.1 hHd hH' (hHdr.trans hHr'.symm)]
+      exact hFB.trans hBH
+  obtain ⟨hmem, -, hbs⟩ := hh i (Or.inl rfl)
+  exact SA.heldAtProposal_iff.2 ⟨Or.inl hmem, Hd, hHd, hHdr,
+    (hHdr ▸ hbs).trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))⟩
+
 /-- The packed old-source interface of the proposal row ordering lemma. -/
 private theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
