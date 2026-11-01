@@ -83,17 +83,23 @@ before `k` or whose slot-`j` votes all precede `k`, and a high origin `(O, l)` w
 are comparable: for `l < j` the honest slot-`j` votes counted by `B`'s write extend `O`; for
 `j < l` those counted by `O`'s write extend `B`; for `l = j` the raw selections are compatible by
 TSQ (`Sync` from `GST(g)`, `t_j ≥ g`). -/
-theorem origins_compatible_before (hp : ResetPremises tr H proposer dg g ΔF a) {k : Nat}
-    (hvk : ∀ k' < k, VoteInv tr H g k') {x : Fin sp.n} {i j : Nat}
+theorem ResetPremisesUpTo.origins_compatible_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {k : Nat}
+    (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
+      HighOrigin tr H g x₀ i₀ j₀ B₀ → tr.time i₀ ≤ b →
+      ∀ z ∈ H, ∀ c < k, tr.time c ≤ b → ∀ e, SA.VoteAt tr.projAC z c e →
+        j₀ < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀)
+    {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) (hg : g ≤ sp.ts j)
     (hact : i < k ∨ ∀ c, tr.time c < sp.ts (j + 1 : Nat) → c < k) {x' : Fin sp.n} {r l : Nat}
-    {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho' : HighOrigin tr H g x' r l O) (hrk : r < k) :
+    {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho' : HighOrigin tr H g x' r l O) (hrk : r < k)
+    (hib : tr.time i ≤ b) (hrb : tr.time r ≤ b) :
     Compatible (tr.HonestBlocks H) B O := by
   have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hrl := hrun'.localRun
   have hU := hrl.coherent
   have hf : 2 * Hᶜ.ncard < sp.n := by
-    have := hp.healthy.2.2
+    have := hp.faults
     have := Fin.pos x
     have hn : sp.n = sp.toParams.n := rfl
     omega
@@ -101,11 +107,6 @@ theorem origins_compatible_before (hp : ResetPremises tr H proposer dg g ΔF a) 
   obtain ⟨CV', hst'⟩ := ho'.2.2.1
   obtain ⟨-, D, hfl, hBD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
   obtain ⟨-, D', hfl', hOD'⟩ := storedFastLock_mem hp.run hp.noColl ho'.1 hst'
-  have hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
-      HighOrigin tr H g x₀ i₀ j₀ B₀ → ∀ z ∈ H, ∀ c < k, ∀ e, SA.VoteAt tr.projAC z c e →
-        j₀ < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀ :=
-    fun ho₀ z hz c hc e ⟨ℓ, hcl, he⟩ hsl =>
-      ((voteInv_iff.1 (hvk c hc)) _ _ _ _ ho₀ z hz ℓ e ⟨hcl, he⟩ hsl).1
   rcases lt_trichotomy l j with hlt | rfl | hgt
   · have hcut : ∀ z ∈ H, ∀ c < i + 1, ∀ e, SA.VoteAt tr.projAC z c e → e.msg.slot = j →
         c < k := by
@@ -118,20 +119,34 @@ theorem origins_compatible_before (hp : ResetPremises tr H proposer dg g ΔF a) 
       omega
     have hDO : Compatible (tr.HonestBlocks H) D O :=
       SA.fastLock_compatible_of_votes hrun' ho.1 (Nat.lt_succ_self i) hfl hf
-        fun z hz c hc e hve hsl => hvote ho' z hz c (hcut z hz c hc e hve hsl) e hve (by omega)
+        fun z hz c hc e hve hsl => hvote ho' hrb z hz c (hcut z hz c hc e hve hsl)
+          ((hp.run.time_mono (by omega)).trans hib) e hve (by omega)
     by_contra hn
     exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
-  · have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
-      (fun v => v.val) tr proposer ΔF (sp.ts l) (sp.ts (l + 1 : Nat) + sp.Δ) hp.run.toLocalRun
-      (syncRun_of_gst hp.healthy.1 hg)
+  · have hsync := hp.sync.syncAC hp.run (hi := sp.ts (l + 1 : Nat) + sp.Δ) hg
     rcases SA.fastLock_same_slot hrun' ho.1 hfl ho'.1 hfl' hsync hf with h | h
     · exact SA.anc_total hU (hBD.trans h) hOD'
     · exact SA.anc_total hU hBD (hOD'.trans h)
   · have hD'B : Compatible (tr.HonestBlocks H) D' B :=
       SA.fastLock_compatible_of_votes hrun' ho'.1 (Nat.lt_succ_self r) hfl' hf
-        fun z hz c hc e hve hsl => hvote ho z hz c (by omega) e hve (by omega)
+        fun z hz c hc e hve hsl => hvote ho hib z hz c (by omega)
+          ((hp.run.time_mono (by omega)).trans hrb) e hve (by omega)
     by_contra hn
     exact SA.not_compatible_of_anc hU hOD' hn hD'B.symm
+
+/-- Whole-run specialization of prefix origin comparison. -/
+theorem origins_compatible_before (hp : ResetPremises tr H proposer dg g ΔF a) {k : Nat}
+    (hvk : ∀ k' < k, VoteInv tr H g k') {x : Fin sp.n} {i j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) (hg : g ≤ sp.ts j)
+    (hact : i < k ∨ ∀ c, tr.time c < sp.ts (j + 1 : Nat) → c < k) {x' : Fin sp.n} {r l : Nat}
+    {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho' : HighOrigin tr H g x' r l O) (hrk : r < k) :
+    Compatible (tr.HonestBlocks H) B O := by
+  apply (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time r)))).origins_compatible_before
+    (fun ho₀ _ z hz c hc _ e ⟨ℓ, hcl, he⟩ hsl =>
+      ((voteInv_iff.1 (hvk c hc)) _ _ _ _ ho₀ z hz ℓ e ⟨hcl, he⟩ hsl).1)
+    ho hg hact ho' hrk
+  · exact (le_max_left _ _).trans (le_max_right _ _)
+  · exact (le_max_right _ _).trans (le_max_right _ _)
 
 /-- **The source of a left high entry** (`hr4-boot-carry.md` §7): a high entry `E` of an honest
 store before cut `k` that a held chain has left is named by an honest attestation on a block of
