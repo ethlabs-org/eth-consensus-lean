@@ -327,7 +327,7 @@ theorem rawCompareAt_iff (P : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop)
 /-- Bounded decreasing-cut assembly. Service, participant counts, cache geometry,
 floor extraction and the local transfer steps are caller obligations, never obtained
 from a globally assumed activation invariant. -/
-theorem raw_vote_activation_before (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem raw_vote_activation_before_core (hp : ResetPremises tr H proposer dg g ΔF a)
     (P : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (Q : Time)
     (hcompare : ∀ k, tr.time k ≤ Q →
       (∀ q < k, RawVoteAt (tr := tr) (H := H) P Q q) →
@@ -339,7 +339,8 @@ theorem raw_vote_activation_before (hp : ResetPremises tr H proposer dg g ΔF a)
       j < e.msg.slot → tr.time k ≤ Q → Anc (tr.HonestBlocks H) ℓ.frame.F B →
       (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ B.root).h →
       B ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)
-    (hhigh : ∀ k, RawCompareAt (tr := tr) (H := H) P g k →
+    (hhigh : ∀ k, (∀ q < k, RawVoteAt (tr := tr) (H := H) P Q q) →
+      RawCompareAt (tr := tr) (H := H) P g k →
       ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
         j < e.msg.slot → tr.time k ≤ Q → Anc (tr.HonestBlocks H) ℓ.frame.F B →
         ((tr.state y k).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor →
@@ -373,10 +374,131 @@ theorem raw_vote_activation_before (hp : ResetPremises tr H proposer dg g ΔF a)
         Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D := by
       by_cases hf : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ B.root).h
       · exact ⟨B, hlow k B j hP y hy ℓ e hc hj htime hFB hf, .refl, hf⟩
-      · exact hhigh k hcomp B j hP y hy ℓ e hc hj htime hFB (not_le.mp hf)
+      · exact hhigh k hprior hcomp B j hP y hy ℓ e hc hj htime hFB (not_le.mp hf)
     have hvi := (vote_viable_of_root hp.run hp.noColl hy hc hroot' (Or.inl hK2)).resolve_right
       hcovered
     exact ⟨htransfer k hprior B j hP y hy ℓ e hc hj htime (Or.inl hvi), Or.inl hvi⟩
+
+/-- Compatibility wrapper for callers whose floor producer does not need prior votes. -/
+theorem raw_vote_activation_before (hp : ResetPremises tr H proposer dg g ΔF a)
+    (P : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (Q : Time)
+    (hcompare : ∀ k, tr.time k ≤ Q →
+      (∀ q < k, RawVoteAt (tr := tr) (H := H) P Q q) →
+      RawCompareAt (tr := tr) (H := H) P g k)
+    (hroot : ∀ k, RawCompareAt (tr := tr) (H := H) P g k →
+      ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+        j < e.msg.slot → tr.time k ≤ Q → Compatible (tr.HonestBlocks H) ℓ.frame.fcRoot B)
+    (hlow : ∀ k B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+      j < e.msg.slot → tr.time k ≤ Q → Anc (tr.HonestBlocks H) ℓ.frame.F B →
+      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ B.root).h →
+      B ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)
+    (hhigh : ∀ k, RawCompareAt (tr := tr) (H := H) P g k →
+      ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+        j < e.msg.slot → tr.time k ≤ Q → Anc (tr.HonestBlocks H) ℓ.frame.F B →
+        ((tr.state y k).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor →
+        ∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
+          Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D)
+    (htransfer : ∀ k, (∀ q < k, RawVoteAt (tr := tr) (H := H) P Q q) →
+      ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+        j < e.msg.slot → tr.time k ≤ Q → SA.ViableAtVote ℓ e e.msg.slot B →
+        SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
+    ∀ k, tr.time k ≤ Q → RawCompareAt (tr := tr) (H := H) P g k ∧
+      RawVoteAt (tr := tr) (H := H) P Q k :=
+  raw_vote_activation_before_core hp P Q hcompare hroot hlow (fun k _ => hhigh k) htransfer
+
+/-- All high origins, including writes pending at the observing cut. -/
+def HistoricalTargets (B : SA.Blk sp.n (List (FG.Att sp.n))) (j : Nat) : Prop :=
+  ∃ x i, HighOrigin tr H g x i j B
+
+theorem historicalTargets_iff (B : SA.Blk sp.n (List (FG.Att sp.n))) (j : Nat) :
+    HistoricalTargets (tr := tr) (H := H) (g := g) B j ↔
+      ∃ x i, HighOrigin tr H g x i j B := by rfl
+
+/-- Bounded activation for all high origins. `cutZ` starts the service window; `a` remains
+the actual reset time. No cache invariant, Catch, or global activation theorem is used. -/
+theorem historical_activation_cutZ_before
+    (hp : ResetPremises tr H proposer dg g ΔF a) (Q : Time)
+    (hsync : SyncACWindowBefore H (tr.HonestBlocks H) (cutZ sp.toParams g) Q tr.projAC) :
+    ∀ k, tr.time k ≤ Q →
+      RawCompareAt (tr := tr) (H := H) (HistoricalTargets (tr := tr) (H := H) (g := g)) g k ∧
+      RawVoteAt (tr := tr) (H := H) (HistoricalTargets (tr := tr) (H := H) (g := g)) Q k := by
+  let P := HistoricalTargets (tr := tr) (H := H) (g := g)
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have htime : ∀ {y k ell e j}, y ∈ H → SA.CastAt tr.projAC y k ell e → j < e.msg.slot →
+      sp.ts (j + 1 : Nat) ≤ tr.time k := by
+    intro y k ell e j hy hc hj
+    have ht := (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) e.msg.slot).mpr
+      (by rw [(SA.castAt_spec hr hy hc).2.1])
+    exact ((SA.ts_le_iff sp).mpr (by omega)).trans ht
+  have hprior : ∀ k, tr.time k ≤ Q → (∀ q < k, RawVoteAt (tr := tr) (H := H) P Q q) →
+      ∀ x i j B, HighOrigin tr H g x i j B → ∀ z ∈ H, ∀ q < k, ∀ e,
+        SA.VoteAt tr.projAC z q e → j < e.msg.slot →
+        SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
+    rintro k hk hv x i j B ho z hz q hq e ⟨ell, hc, he⟩ hj
+    exact ((rawVoteAt_iff P Q q).mp (hv q hq) B j
+      ((historicalTargets_iff B j).mpr ⟨x, i, ho⟩) z hz ell e ⟨hc, he⟩ hj
+      ((hp.run.time_mono hq.le).trans hk)).1
+  refine raw_vote_activation_before_core hp P Q ?_ ?_ ?_ ?_ ?_
+  · intro k hk hv
+    apply (rawCompareAt_iff P g k).mpr
+    intro B j hB ht v r l O h rO
+    obtain ⟨x, i, ho⟩ := (historicalTargets_iff B j).mp hB
+    exact activated_origin_compatible_before hp (hprior k hk hv) ho ht rO h
+  · intro k hcomp B j hB y hy ell e hc hj hk
+    obtain ⟨x, i, ho⟩ := (historicalTargets_iff B j).mp hB
+    by_cases hlow : (tr.state y k).fg.hj ≤ HZ tr H g
+    · exact high_origin_low_J_root_before hp hsync ho hy hc hj hk hlow
+    · exact high_J_root_of_origins_before hp ho hy hc (by omega)
+        ((rawCompareAt_iff P g k).mp hcomp B j hB (htime hy hc hj))
+  · intro k B j hB y hy ell e hc hj hk hF _
+    obtain ⟨x, i, ho⟩ := (historicalTargets_iff B j).mp hB
+    obtain ⟨CV, hst⟩ := ho.2.2.1
+    obtain ⟨_, C, hfl, hBC⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
+    obtain ⟨v, _, D, hDU, _, hBD, hacc⟩ := raw_writer_relay_source hr ho.1 (Or.inr hfl) hBC
+    rcases hacc with hg | ⟨q, hq, hqt⟩
+    · obtain ⟨z, hz, m, hDm⟩ := hDU
+      exact False.elim ((cutZ_lt_of_anc hp ho hz hDm hBD).2 hg)
+    · have hstart := (cutZ_lt_of_anc hp ho ho.1 (acceptAt_mem hp ho.1 hq) hBD).1.le
+      have hD := relay_mem_voterBlockTree_window_after hr hsync ho.1 hy hq hstart hqt hc
+        (by omega) hk (hF.trans hBD)
+      obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
+      have hBt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hD.1 hBD hF
+      exact SA.voterBlockTree_anc hr hy hc D hD B
+        (SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hBt hBD hD.1)
+  · intro k hv hcomp B j hB y hy ell e hc hj hk hF hf
+    obtain ⟨x, i, ho⟩ := (historicalTargets_iff B j).mp hB
+    have hhist : HistoricalVoteExtensionBefore (tr := tr) (H := H) (g := g) k :=
+      (historicalVoteExtensionBefore_iff k).mpr fun x i j B ho _ => hprior k hk hv x i j B ho
+    obtain ⟨v, r, l, O, E, _, hO, hl, hE, hEO, hBO, hfloor⟩ :=
+      high_floor_source_before hp ho hy hc hj
+        (fun _ _ _ _ hr ho _ _ _ _ hr' ho' =>
+          historical_origins_compatible_before hp hhist ho hr ho' hr')
+        ((rawCompareAt_iff P g k).mp hcomp B j hB (htime hy hc hj)) hF
+        ((high_origin_height_at_vote hp ho hy hc hj hF).trans_lt hf)
+    exact raw_target_frozen_witness hp hO hy hc hl hF hBO hE hEO hfloor
+  · intro k hv B j hB y hy ell e hc hj hk hvi
+    obtain ⟨x, i, ho⟩ := (historicalTargets_iff B j).mp hB
+    obtain ⟨CV, hfl⟩ := ho.2.2.1
+    obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
+    have hvi' : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) ∨
+        Anc (tr.HonestBlocks H) B ell.frame.fcRoot :=
+      hvi.imp id (Anc.mono hPhiU)
+    have hF : ¬ Anc (tr.HonestBlocks H) B ell.frame.fcRoot →
+        Anc (tr.HonestBlocks H) ell.frame.F B := by
+      intro hn
+      have hb := hvi'.resolve_right hn
+      exact (Anc.mono hPhiU hPhi.F_anc_fcRoot).trans (Anc.mono hPhiU hb.2.1)
+    have hlate : ∀ m : Nat, j ≤ m → cutZ sp.toParams g ≤ sp.ts m := fun m hm =>
+      (cutZ_le_ts_of_highOrigin hp ho).trans ((SA.ts_le_iff sp).mpr (by exact_mod_cast hm))
+    have hts : sp.ts e.msg.slot ≤ tr.time k :=
+      (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(SA.castAt_spec hr hy hc).2.1])
+    exact high_vote_extends hp.run hp.noColl ho.1 hfl hy hc hj
+      (syncRun_of_gst hp.healthy.1 (le_ts_of_highOrigin hp ho))
+      (fun hs hn => first_carry_of_finalized_anc hp k ho hfl hy hc hs (hF hn))
+      (fun m hm hjm hn => later_carry_of_finalized_anc hp k ho hy hc hm hjm (hF hn)
+        (fun z hz q hq e' he hs => hprior k hk hv x i j B ho z hz q hq e' he (by omega)))
+      (fun m _ hjm => half_committee hp (hlate m hjm.le))
+      (fault_bound_late hp ((hlate _ hj.le).trans hts)) hvi' (hprior k hk hv x i j B ho)
 
 end Consensus.Goldilocks.Healing
 
