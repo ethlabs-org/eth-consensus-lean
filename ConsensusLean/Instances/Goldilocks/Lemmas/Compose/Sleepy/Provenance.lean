@@ -349,6 +349,83 @@ private theorem ac_of_fg (hrun : GoldilocksRun proposer dg H tr)
     · rw [hlaw.2]
     · exact hlaw.2.2
 
+/-- A changed record is an actual selection at this cut, not merely an
+origin somewhere in the run. Restarts and FG calls retain the record. -/
+theorem record_step_origin (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+    (tr.state y (i + 1)).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed ∨
+      ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
+        ∃ s CV, SA.ResultAt tr.projAC y i s C CV ∨
+          SA.OptimisticLockAt tr.projAC y i s C CV := by
+  let R := fun r => r = (tr.state y i).ac.latestConfirmed ∨
+    ∃ C ∈ (tr.state y i).fg.tree, C.root = r ∧
+      ∃ s CV, SA.ResultAt tr.projAC y i s C CV ∨ SA.OptimisticLockAt tr.projAC y i s C CV
+  by_cases hc : ∃ c, tr.CallAt y i c
+  · obtain ⟨c, hc⟩ := hc
+    rw [tr.state_succ_of_call hc]
+    cases c with
+    | fg ℓ => exact Or.inl (congrArg SA.SAState.latestConfirmed (ac_of_fg hrun hy hc))
+    | ac ℓ =>
+      obtain ⟨hfr, hstep, _, _⟩ := hrun.cutLaw y hy i _ hc
+      have hΦ : FrameOK ℓ.frame :=
+        hfr ▸ (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
+      have hΦT : ℓ.frame.tree ⊆ (tr.state y i).fg.tree := by
+        rw [hfr]; exact fun _ h => h.1
+      have hpc : tr.projAC.CallAt y i ℓ := ⟨hc.1, by simp [RunTrace.projAC, hc.2, RunTrace.acLabel]⟩
+      have hps := projAC_state hrun.toLocalRun hy i
+      have h : Good R (fun _ => True) (tr.state y i).ac := ⟨Or.inl rfl, fun _ _ => trivial⟩
+      have hD : Down ℓ.frame (fun _ => True) := fun _ _ _ _ _ _ _ _ _ _ _ => trivial
+      have opt : ∀ A₀, SA.OptimisticPoint tr.projAC y i ℓ A₀ → ∀ B,
+          SA.optimisticSelect sp A₀ ℓ.frame (tr.time i) = some B →
+          R B.root ∧ True := by
+        intro A₀ hpt B hsel
+        have hB : B ∈ ℓ.frame.tree := by
+          unfold SA.optimisticSelect at hsel
+          dsimp only at hsel
+          split_ifs at hsel
+          exact (SA.deepest_mem hsel).1.1
+        exact ⟨Or.inr ⟨B, hΦT hB, rfl, _, _, Or.inr ⟨ℓ, A₀, hpt, rfl, hsel, rfl⟩⟩, trivial⟩
+      have emit : ∀ e ∈ ℓ.emits, ∀ B, SA.optimisticSelect sp
+          (SA.admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame (tr.time i) = some B →
+          R B.root ∧ True := fun e he => opt _ ⟨hpc, Or.inr (Or.inr ⟨e, he, rfl⟩)⟩
+      have hpost := congrArg Prod.fst hstep
+      have hem := congrArg Prod.snd hstep
+      dsimp only at hpost hem
+      change R (tr.post i).ac.latestConfirmed
+      rw [← hpost]
+      cases hcall : ℓ.call with
+      | tick =>
+        rw [hcall] at hem
+        apply (good_onTick hΦ hD y h (fun e he => emit e (hem ▸ he)) ?_).1
+        intro ht hs0 hj C hC hconf
+        have hu : SA.UpdateAt tr.projAC y i (sp.slot (tr.time i) - 1) ℓ := by
+          refine ⟨hpc, hcall, ?_, hps ▸ hj⟩
+          change tr.time i = _
+          conv_lhs => rw [ht]
+          simp only [SAParams.ts]
+          push_cast [Nat.cast_sub hs0]
+          ring
+        exact ⟨Or.inr ⟨C, hΦT (SA.deepest_mem hC).1.1, rfl, _, _,
+          Or.inl ⟨ℓ, hu, hps ▸ hC, rfl⟩⟩, fun _ _ _ _ => trivial⟩
+      | proposal => exact (good_proposal hΦ hD h _).1
+      | toFG => exact (good_toFG h _).1
+      | message m =>
+        rw [hcall] at hem
+        exact (good_tryVote hΦ hD y (good_optimistic hΦ hD (good_admitVote h _ _)
+          (opt _ ⟨hpc, Or.inl ⟨m, hcall, by rw [hps]; rfl⟩⟩))
+          (fun e he => emit e (hem ▸ he))).1
+      | block B =>
+        rw [hcall] at hem
+        exact (good_tryVote hΦ hD y (good_optimistic hΦ hD (good_blockReceipt h _ _)
+          (opt _ ⟨hpc, Or.inr (Or.inl ⟨B, hcall, by rw [hps]; rfl⟩)⟩))
+          (fun e he => emit e (hem ▸ he))).1
+      | restart =>
+        change R (SA.acRestart sp ro y (tr.state y i).ac ℓ.frame (tr.time i)).1.latestConfirmed
+        rw [(SA.restart_state sp _ ro y _ ℓ.frame (tr.time i) hΦ (hrun.time_nonneg i)).2.2.1]
+        exact Or.inl rfl
+  · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
+    exact Or.inl rfl
+
 /-- The tree of an honest node only grows across a cut. -/
 private theorem tree_succ (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
@@ -503,7 +580,7 @@ private theorem named (gp : FG.FGParams) {c : List (FG.FGBlock gp.n)} {σ : FG.C
 
 /-- In an honest store, `Σ.J` and `Σ.F` are genesis or named by a quorum of attestations that
 blocks of the tree carry. -/
-private theorem cache_quorum {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+theorem cache_quorum {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     (hr : st.Reachable acp₀) :
     ∀ X ∈ ({st.J, st.F} : Set (NodeBlock P ACP)), X.root = P.genesisRoot ∨
       ∃ Q : Finset (Fin P.n), P.fg.q ≤ Q.card ∧ ∀ v ∈ Q,
