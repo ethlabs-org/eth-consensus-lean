@@ -786,6 +786,34 @@ theorem report_of_deepest_candidate
     unfold SA.acToFG
     simp only [hjoin, not_true_eq_false, ↓reduceIte, hC, hrep]
 
+/-- A live report candidate compatible with every other candidate supplies an actual report
+extending it. An earlier report suppressing this call is included in the conclusion. -/
+theorem report_of_compatible_candidate
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
+    (hjoin : SA.joined sp (tr.projAC.state y j) (tr.time j))
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
+    (hPc : P ∈ SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j))
+    (hcompat : ∀ C ∈ SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j),
+      Compatible (tr.HonestBlocks H) C P) :
+    ∃ r ell' R, SA.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
+      Anc (tr.HonestBlocks H) P R := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
+  have hsub : SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j) ⊆
+      ell.frame.tree := fun _ h => h.1.1
+  obtain ⟨C, hC⟩ := SA.exists_deepest hPhi hsub ⟨P, hPc⟩
+  obtain ⟨hCc, hmax⟩ := SA.deepest_mem hC
+  apply report_of_deepest_candidate hp hy hc hcall hjoin hPg hC
+  rcases hcompat C hCc with hCP | hPC
+  · by_cases he : P = C
+    · exact he ▸ .refl
+    have hCPf := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU (hsub hCc) hCP (hsub hPc)
+    have hlt := SA.depth_lt_of_anc hPhi hCPf (Ne.symm he) (hsub hPc)
+    rcases hmax P hPc he with h | ⟨h, _⟩ <;> omega
+  · exact SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU (hsub hPc) hPC (hsub hCc)
+
 /-- Every sufficiently clean older fast or slow source is below the unanimous proposal.
 The source need not precede the chosen vote cut: clean-source transfer budgets both times. -/
 theorem clean_source_below_ready
