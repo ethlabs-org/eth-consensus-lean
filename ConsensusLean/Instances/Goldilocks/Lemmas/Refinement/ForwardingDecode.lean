@@ -472,4 +472,38 @@ theorem decoded_held_propose {sp : SA.SAParams}
   dsimp only
   split <;> exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
 
+/-- Restart at a later clock preserves wrappers for the same node identity. -/
+theorem decoded_held_restore {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tables : Wire sp.n → List (Header Info × Nat)} (st : State sp ro) (t : Time)
+    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) (ht : st.now ≤ t) :
+    WrappersDecoded tables (restore st.self st t) ∧
+    WrappersHeld tables (restore st.self st t) := by
+  exact ⟨hd.mono rfl rfl rfl ht, hh.preserve rfl rfl rfl⟩
+
+/-- The entire engine delivery, including its poll drain and gossip, preserves the joint
+wrapper invariant. This does not assume that a refused candidate was published. -/
+theorem decoded_held_deliver {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E))
+    (hd : WrappersDecoded (digests rho.hash) (shapeOf S hn nd))
+    (hh : WrappersHeld (digests rho.hash) (shapeOf S hn nd))
+    (hc : WrappersCover (shapeOf S hn nd))
+    (hr : (shapeOf S hn nd).node.fg.Reachable
+      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
+    (o : Wire (Fintype.card V)) (t : Time) (ht : 0 ≤ (shapeOf S hn nd).now) :
+    let st' := shapeOf S hn (rho.deliver nd v o t).1
+    WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
+  apply deliver_pres S rho hn
+    (fun st => WrappersDecoded (digests rho.hash) st ∧ WrappersHeld (digests rho.hash) st)
+  · exact fun st t h => decoded_held_poll st t h.1 h.2
+  · intro st m cs hs h
+    unfold recordOwn
+    split
+    · exact ⟨h.1.mono rfl rfl rfl le_rfl, h.2.preserve rfl rfl rfl⟩
+    · rename_i k s header carried heq
+      cases heq
+    · exact h
+  · exact decoded_held_process S rho hn (shapeOf S hn nd) hd hh hc hr o ht
+
 end Consensus.Goldilocks.Refinement
