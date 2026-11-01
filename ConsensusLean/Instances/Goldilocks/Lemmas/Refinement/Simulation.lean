@@ -21,6 +21,182 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
 
+private def VoteQueueStamped {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (t : Time) (st : State sp ro) : Prop :=
+  st.now = t ∧ ∀ q ∈ st.voteForwards, q.1 = t
+
+private theorem voteStamped_apply {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro) r
+    (h : VoteQueueStamped t st) : VoteQueueStamped t (apply st r) := by
+  refine ⟨h.1, ?_⟩
+  intro q hq
+  by_cases hold : q ∈ st.voteForwards
+  · exact h.2 q hold
+  · exact ((apply_voteForward_fresh st r q.1 q.2 hq hold).1).trans h.1
+
+private theorem voteStamped_recordOwn {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro) o hs
+    (h : VoteQueueStamped t st) : VoteQueueStamped t (recordOwn st o hs) := by
+  unfold recordOwn
+  split
+  · exact h
+  · split
+    · exact voteStamped_apply t st _ h
+    · exact h
+  · exact h
+
+private theorem voteStamped_propose {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro) s
+    (h : VoteQueueStamped t st) : VoteQueueStamped t (propose st s).1 := by
+  unfold propose
+  dsimp only
+  split <;> exact h
+
+private theorem voteStamped_nodeTick {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro)
+    (h : VoteQueueStamped t st) : VoteQueueStamped t (nodeTick st) := by
+  unfold nodeTick
+  split
+  · exact voteStamped_apply t st _ h
+  · exact h
+
+private theorem voteStamped_poll {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro) u
+    (h : VoteQueueStamped t st) : VoteQueueStamped t (poll st u).1 := by
+  refine ⟨(poll_now st u).trans h.1, ?_⟩
+  intro q hq
+  rw [poll_voteForwards] at hq
+  cases hq
+
+private theorem voteStamped_process {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro) o hs
+    (h : VoteQueueStamped t st) : VoteQueueStamped t (process st o hs) := by
+  refine ⟨(process_now st o hs).trans h.1, ?_⟩
+  intro q hq
+  rcases foldl_processOne_voteForward_stamp hs (delivered sp o) st q.1 q.2 hq with hq | ht
+  · exact h.2 q hq
+  · exact ht.trans h.1
+
+omit [DecidableEq V] in
+private theorem poll_candidate_vote_stamp (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (u : Nat)
+    {t : Time} {m : SA.Vote (Fintype.card V)}
+    (ho : Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.signedCandidate v (.poll u)
+        ((Model.protoOf (compiled (family S)) E).act nd.st (.poll u)).2) :
+    ∃ q ∈ (shapeOf S hn nd).voteForwards, q.1 = t := by
+  obtain ⟨body, cs, hm, _, he⟩ := rho.mem_signedCandidate.mp ho
+  have hmsg := congrArg Model.Obj.msg he
+  have hcar := congrArg Model.Obj.carried he
+  rw [act_poll_snd S hn, (poll_outbox _ _).2] at hm
+  rcases List.mem_append.mp hm with hpre | hvote
+  · rcases List.mem_append.mp hpre with hbody | hblock
+    · cases hh : (pollPre (shapeOf S hn nd)).outbox.head? with
+      | none =>
+        rw [hh] at hbody
+        exact False.elim (List.not_mem_nil hbody)
+      | some b =>
+        rw [hh] at hbody
+        have heq : (body, cs) = (.data b, []) := List.mem_singleton.mp hbody
+        cases heq
+        cases hcar
+    · obtain ⟨q, _, hq⟩ := List.mem_map.mp hblock
+      cases hq
+      cases hmsg
+  · obtain ⟨q, hq, heq⟩ := List.mem_map.mp hvote
+    cases heq
+    exact ⟨q, hq, (Body.voteForward.inj (Model.Msg.data.inj hmsg)).1.symm⟩
+
+omit [DecidableEq V] in
+private theorem duty_vote_stamp (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (d : (Model.protoOf (compiled (family S)) E).Duty) (u : Time)
+    (hs : VoteQueueStamped u (shapeOf S hn nd)) {t : Time} {m : SA.Vote (Fintype.card V)}
+    (ho : Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈
+        rho.signedCandidate v d ((Model.protoOf (compiled (family S)) E).act nd.st d).2) :
+    t = u := by
+  cases d with
+  | poll n =>
+    obtain ⟨q, hq, ht⟩ := poll_candidate_vote_stamp S rho hn v nd n ho
+    exact ht.symm.trans (hs.2 q hq)
+  | act s k => exact k.elim
+  | propose s hpos =>
+    obtain ⟨body, cs, _, _, he⟩ := rho.mem_signedCandidate.mp ho
+    have ha := congrArg Model.Obj.auth he
+    cases ha
+  | pollPropose n =>
+    have hempty : ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose n)).2 = [] := by
+      simp only [Model.protoOf, compiled, compile, family, dite_eq_left hn, goldilocksShape]
+      rfl
+    obtain ⟨body, cs, hm, _, _⟩ := rho.mem_signedCandidate.mp ho
+    rw [hempty] at hm
+    cases hm
+
+private theorem dutyBatches_vote_stamp (v : V) (u : Time) :
+    ∀ (ds : List (Model.protoOf (compiled (family S)) E).Duty)
+      (nd : Model.Node (Model.protoOf (compiled (family S)) E)),
+    VoteQueueStamped u (shapeOf S hn nd) →
+    ∀ b ∈ dutyBatches rho v nd ds, ∀ t (m : SA.Vote (Fintype.card V)),
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ b.candidates → t = u := by
+  intro ds
+  induction ds with
+  | nil => intro nd hs b hb; rw [dutyBatches_nil] at hb; cases hb
+  | cons d ds ih =>
+    intro nd hs b hb t m ho
+    rw [dutyBatches_cons] at hb
+    rcases List.mem_cons.mp hb with rfl | hb
+    · split at ho
+      · exact duty_vote_stamp S rho hn v nd d u hs ho
+      · cases ho
+    · exact ih _ (dutyStep_pres S rho hn (VoteQueueStamped u)
+        (voteStamped_recordOwn u) (voteStamped_propose u) (voteStamped_nodeTick u)
+        (voteStamped_poll u) v nd d hs) b hb t m ho
+
+include hn in
+/-- Every released vote envelope carries the actual sending event's time, including
+ticks and recursively processed deliveries. No first-release premise is used. -/
+theorem released_voteForward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {u t : Time}
+    (he : rho.SendsAt v i u) (m : SA.Vote (Fintype.card V))
+    (ho : Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.releasesAt i) : t = u := by
+  obtain ⟨b, hb, ho⟩ := released_candidate_batch S rho he ho
+  have hg : ∀ nd, Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∉
+        Model.gossipCandidates (Model.protoOf (compiled (family S)) E) nd u := by
+    intro nd h
+    obtain ⟨mc, _, heq⟩ := Model.mem_gossipCandidates.mp h
+    have ha := congrArg Model.Obj.auth heq
+    cases ha
+  rcases he with he | ⟨receipt, he⟩
+  · rw [eventBatches_eq, he] at hb
+    simp only at hb
+    split at hb
+    · rcases List.mem_append.mp hb with hb | hb
+      · apply dutyBatches_vote_stamp S rho hn v u _ _ ?_ b hb t m ho
+        change VoteQueueStamped u { stateAt S rho hn v i with now := u }
+        refine ⟨rfl, ?_⟩
+        intro q hq
+        change q ∈ (stateAt S rho hn v i).voteForwards at hq
+        rw [voteForwards_empty S rho hn hv v i] at hq
+        cases hq
+      · obtain rfl := List.mem_singleton.mp hb
+        exact False.elim (hg _ ho)
+    · cases hb
+  · rw [eventBatches_eq, he] at hb
+    rcases List.mem_append.mp hb with hb | hb
+    · apply dutyBatches_vote_stamp S rho hn v u _ _ ?_ b hb t m ho
+      change VoteQueueStamped u
+        (process (stateAt S rho hn v i) receipt (Model.digests rho.hash receipt))
+      apply voteStamped_process
+      refine ⟨(now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he), ?_⟩
+      intro q hq
+      rw [voteForwards_empty S rho hn hv v i] at hq
+      cases hq
+    · obtain rfl := List.mem_singleton.mp hb
+      exact False.elim (hg _ ho)
+
 omit [DecidableEq V] in
 /-- Vote envelopes drain after the actual ordinary/block release prefix when their canonical
 votes are held there. No success assumption is imposed on the prefix candidates themselves. -/
