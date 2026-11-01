@@ -126,6 +126,27 @@ theorem justified_unique {c₁ c₂ : List (FGBlock gp.n)} {σ₁ σ₂ : ChainS
   rw [haT, hbT]
   exact hne
 
+/-- The attestations of a prefix of a chain are attestations of the chain. -/
+theorem chainAtts_subset_of_prefix {c' c : List (FGBlock gp.n)} (hp : c' <+: c) :
+    ∀ a ∈ gp.chainAtts c', a ∈ gp.chainAtts c := by
+  obtain ⟨d, rfl⟩ := hp
+  intro a ha
+  simp only [chainAtts, List.flatMap_append, List.mem_append] at ha ⊢
+  exact Or.inl ha
+
+/-- **One justified block per height, also for past justifications (r14 s4 L4.2b).** If prefixes
+of two chains justify one height `j ≥ 1` with different blocks, `2q − n` validators have an E2
+pair among the attestations of the two chains. -/
+theorem justified_unique_prefix {c₁ c₂ c₁' c₂' : List (FGBlock gp.n)} {τ₁ τ₂ : ChainState gp.n}
+    (hp₁ : c₁' <+: c₁) (hp₂ : c₂' <+: c₂)
+    (h₁ : gp.chainState c₁' = some τ₁) (h₂ : gp.chainState c₂' = some τ₂) (hj : 1 ≤ τ₁.hj)
+    (heq : τ₁.hj = τ₂.hj) (hne : τ₁.J ≠ τ₂.J) :
+    ∃ S : Finset (Fin gp.n), 2 * gp.q - gp.n ≤ S.card ∧
+      ∀ v ∈ S, ∃ a ∈ gp.chainAtts c₁, ∃ b ∈ gp.chainAtts c₂, a.val = v ∧ slashable a b := by
+  obtain ⟨S, hS, hv⟩ := gp.justified_unique h₁ h₂ hj heq hne
+  exact ⟨S, hS, fun v hvS => let ⟨a, ha, b, hb, h⟩ := hv v hvS
+    ⟨a, gp.chainAtts_subset_of_prefix hp₁ a ha, b, gp.chainAtts_subset_of_prefix hp₂ b hb, h⟩⟩
+
 end FGParams
 
 end Consensus.Goldilocks.FG
