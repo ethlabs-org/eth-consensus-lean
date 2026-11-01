@@ -399,6 +399,30 @@ theorem messageServedBefore_of_retained (y : Fin sp.n) {q j : Nat} (hqj : q ≤ 
   exact Or.inr ((retainedBefore_iff _ _ _ _).mpr
     ⟨q, hqj, (poolEvidenceBefore_iff _ _ _).mpr (Or.inl hv), hnr⟩)
 
+/-- A fresh local admission serves its own later observation without a new message
+call, provided no restart has discarded the admitted pool evidence. -/
+theorem messageServedBefore_of_admission
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H)
+    {i j : Nat} {v : Vote sp.n} (hij : i < j)
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
+    (hnr : ℓ.call ≠ .restart) (hold : v ∉ (tr.state y i).pool v.slot)
+    (hnew : v ∈ (tr.post i).pool v.slot)
+    (hfree : ∀ r, i < r → r < j → ¬ tr.RestartAt y r) :
+    MessageServedBefore tr y j (tr.time i) v := by
+  have hstamp := ((grow_call hr hy hc hnr).2 v).2 hnew hold
+  have hlt : tr.time i < tr.deadline y j (tr.time i) := by
+    unfold ACTrace.deadline
+    cases tr.lastWake y j with
+    | bot => exact lt_add_of_pos_right _ sp.toParams.hΔ
+    | coe w =>
+      change tr.time i < max (tr.time i) w + sp.Δ
+      exact lt_of_le_of_lt (le_max_left _ _) (lt_add_of_pos_right _ sp.toParams.hΔ)
+  apply messageServedBefore_of_retained y (Nat.succ_le_of_lt hij)
+  · rw [state_succ_of_call hc]
+    exact ⟨hnew, hstamp.1 ▸ WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr hlt)⟩
+  · intro r hir hrj
+    exact hfree r (Nat.lt_of_succ_le hir) hrj
+
 /-- **An honest node holds a vote it processed.** When an honest node processes a vote (receives
 it, or emits it) at a time of the vote's slot or the next, the node holds it after that cut, or
 two other votes of its validator. -/
