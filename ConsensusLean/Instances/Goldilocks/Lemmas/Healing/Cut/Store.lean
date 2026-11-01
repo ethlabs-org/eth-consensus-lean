@@ -201,6 +201,22 @@ theorem createAtt_eq {Λ Λ' : FG.Record} {v : Fin P.n} {σe : ChainState P.n} {
     obtain ⟨rfl, -⟩ := h
     exact heightPair_eq hp
 
+/-- A report from a held source preserves its entry ancestor, self-entry and
+source-height witnesses, not only the height pair that is signed. -/
+theorem entry_of_createAtt (hr : st.Reachable acp₀) {Λ Λ' : FG.Record} {v : Fin P.n}
+    {src : NodeBlock P ACP} {a : Att P.n} (hsrc : src ∈ st.tree)
+    (h : Λ.createAtt v (st.σ (st.σ src.root).Th) = some (a, Λ')) :
+    ∃ E ∈ st.tree, E.root = a.T ∧ st.Anc E src ∧
+      (st.σ src.root).Th = E.root ∧ (st.σ E.root).Th = E.root ∧
+      (st.σ E.root).h = (st.σ src.root).h ∧ (st.σ src.root).h = a.h := by
+  obtain ⟨hh, hT⟩ := createAtt_eq h
+  obtain ⟨⟨E, hE, hEr, hEC, hEh, hET⟩, _⟩ :=
+    Goldilocks.Store.entry_state_of_source P ACP acp₀ st hr src hsrc
+  refine ⟨E, hE, ?_, hEC, hEr.symm, hET.trans hEr.symm, hEh, ?_⟩
+  · rw [hT, ← hEr, hET]
+    exact hEr
+  · rw [hh, ← hEr, hEh]
+
 /-- **The height pair that `fg_attest` signs names a held block**: its root is the pair's
 `T` and its state has the pair's height. -/
 theorem exists_entry_of_createAtt (hr : st.Reachable acp₀) {Λ Λ' : FG.Record} {v : Fin P.n}

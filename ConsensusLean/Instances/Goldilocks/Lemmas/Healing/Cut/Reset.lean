@@ -4,6 +4,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 
 public section
 
@@ -89,6 +92,109 @@ theorem signAt_entry (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy 
   obtain ⟨src, hc⟩ := hs
   exact Store.exists_entry_of_createAtt (Compose.fg_reachable hrun.toLocalRun hy k)
     (hrun.cutLaw y hy k _ hc).1
+
+/-- An honest signed row comes from an actual earlier report, with its full
+entry/source witnesses. The report and signing have the same time and FG store. -/
+theorem signAt_report_entry (hrun : GoldilocksRun proposer dg H tr) {v : Fin sp.n}
+    (hv : v ∈ H) {k : Nat} {a : FG.Att sp.n} (hs : tr.SignAt v k a) :
+    ∃ j, k = j + 1 ∧ tr.time j = tr.time k ∧
+      ∃ ℓ C E, SA.ToFGAt tr.projAC v j ℓ C ∧
+        C ∈ (tr.state v j).fg.tree ∧ E ∈ (tr.state v j).fg.tree ∧
+        E.root = a.T ∧ (tr.state v j).fg.Anc E C ∧
+        ((tr.state v j).fg.σ C.root).Th = E.root ∧
+        ((tr.state v j).fg.σ E.root).Th = E.root ∧
+        ((tr.state v j).fg.σ E.root).h = ((tr.state v j).fg.σ C.root).h ∧
+        ((tr.state v j).fg.σ C.root).h = a.h := by
+  obtain ⟨C, hc⟩ := hs
+  obtain ⟨j, rfl, ℓ, hj, hcall, ht, hret, hfg⟩ := Compose.attest_source hrun.toLocalRun hv hc
+  have hpc : tr.projAC.CallAt v j ℓ := Compose.projAC_callAt.2 hj
+  have hC : C ∈ ℓ.frame.tree := by
+    change (SA.acToFG sp _ _ _).2.1 = some C at hret
+    unfold SA.acToFG at hret
+    dsimp only at hret
+    split_ifs at hret
+    split at hret
+    · cases hret
+    · rename_i C' hC'
+      split_ifs at hret
+      cases hret
+      exact (SA.deepest_mem hC').1.1.1
+  have hCt : C ∈ (tr.state v j).fg.tree := by
+    rw [(hrun.cutLaw v hv j _ hj).1] at hC
+    exact hC.1
+  have hsigned := (hrun.cutLaw v hv (j + 1) _ hc).1
+  rw [hfg] at hsigned
+  obtain ⟨E, hE, hEr, hEC, hTh, hET, hEh, hCa⟩ :=
+    Store.entry_of_createAtt (Compose.fg_reachable hrun.toLocalRun hv j) hCt hsigned
+  refine ⟨j, rfl, ht, ℓ, C, E, ⟨hpc, hcall, ?_⟩, hCt, hE, hEr, hEC, hTh, hET, hEh, hCa⟩
+  rw [Compose.projAC_state hrun.toLocalRun hv j]
+  exact hret
+
+/-- A cache strictly ahead of a held target is backed by an actual earlier
+honest report at a strictly higher height. No report at the reader is invented. -/
+theorem cache_ahead_report (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < sp.toParams.fg.q)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {P X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hX : X = (tr.state y i).fg.F ∨ X = (tr.state y i).fg.J)
+    (hP : P ∈ (tr.state y i).fg.tree)
+    (hPX : Anc (tr.HonestBlocks H) P X) (hne : P ≠ X) :
+    ∃ v ∈ H, ∃ j < i, ∃ k < i, ∃ a : FG.Att sp.n, ∃ ℓ C,
+      tr.SignAt v k a ∧ k = j + 1 ∧ tr.time j = tr.time k ∧ tr.time j ≤ tr.time i ∧
+      SA.ToFGAt tr.projAC v j ℓ C ∧ a.T = X.root ∧
+      X ∈ (tr.state v j).fg.tree ∧ Anc (tr.HonestBlocks H) X C ∧
+      ((tr.state v j).fg.σ C.root).Th = X.root ∧
+      ((tr.state v j).fg.σ C.root).h = ((tr.state y i).fg.σ X.root).h ∧
+      ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ X.root).h := by
+  have hr := Compose.fg_reachable hrun.toLocalRun hy i
+  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
+  have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun _ h => ⟨y, hy, i, h⟩
+  have hXt : X ∈ (tr.state y i).fg.tree := by
+    rcases hX with rfl | rfl
+    · exact (Goldilocks.Store.cache_invariants _ _ _ _ hr).1
+    · exact (Goldilocks.Store.cache_invariants _ _ _ _ hr).2.1
+  rcases Compose.cache_quorum hr X (hX.elim Or.inr Or.inl) with hg | ⟨q, hq, hrows⟩
+  · have he := Compose.honest_eq_genesis hrun hU (hsub hXt) hg
+    rw [he] at hPX
+    rcases Relation.ReflTransGen.cases_tail hPX with heq | ⟨Y, _, hY⟩
+    · exact False.elim (hne (heq.symm.trans he.symm))
+    · exact absurd hY.2.2 (by simp [Params.genesisBlock])
+  have hex : ∃ v ∈ q, v ∈ H := by
+    by_contra h
+    have hsubq : (↑q : Set (Fin sp.n)) ⊆ Hᶜ := fun v hv hvH => h ⟨v, hv, hvH⟩
+    have hn := Set.ncard_le_ncard hsubq (Set.toFinite _)
+    rw [Set.ncard_coe_finset] at hn
+    exact (not_lt_of_ge (hq.trans hn)) hf
+  obtain ⟨v, hvq, hv⟩ := hex
+  obtain ⟨B, hB, a, ha, hav, haX⟩ := hrows v hvq
+  have haH : a.val ∈ H := hav ▸ hv
+  obtain ⟨m, hmi, _, k, hkm, hs⟩ := Compose.honest_row_signed_before hrun hnc hy hB ha haH
+  obtain ⟨j, hkj, ht, ℓ, C, E, hto, hC, hE, hEr, hEC, hTh, hET, hEh, _⟩ :=
+    signAt_report_entry hrun haH hs
+  have hsubv : (tr.state a.val j).fg.tree ⊆ tr.HonestBlocks H := fun _ h => ⟨a.val, haH, j, h⟩
+  have he : E = X := hU.1 (hsubv hE) (hsub hXt) (hEr.trans haX)
+  subst E
+  have hrv := Compose.fg_reachable hrun.toLocalRun haH j
+  have hσ := Store.σ_eq_of_mem hr hrv hU.1 hsub hsubv hXt hE
+  have hPX' := Compose.honest_held_anc hrun hnc haH hPX hE
+  have hPv : P ∈ (tr.state a.val j).fg.tree := (Anc.mem hPX' hne).1
+  have hσP := Store.σ_eq_of_mem hr hrv hU.1 hsub hsubv hP hPv
+  have hlt : ((tr.state a.val j).fg.σ P.root).h < ((tr.state a.val j).fg.σ X.root).h := by
+    obtain ⟨hle, heq⟩ := Compose.honest_held_height hrun hnc haH hPX'
+    apply lt_of_le_of_ne hle
+    intro hh
+    have hentry := (heq hh.symm).symm.trans hET
+    obtain ⟨⟨E, hE', hEr', hEP, _, _⟩, _⟩ :=
+      Goldilocks.Store.entry_state_of_source _ _ _ _ hrv P hPv
+    have he : E = X := hU.1 (hsubv hE') (hsubv hE) (hEr'.trans hentry)
+    subst E
+    exact hne (hPX'.antisymm (hU.mono hsubv) hEP)
+  refine ⟨a.val, haH, j, by omega, k, by omega, a, ℓ, C, hs, hkj, ht,
+    hrun.time_mono (by omega), hto, haX, hE, hEC.mono hsubv, hTh, ?_, ?_⟩
+  · rw [hσ]
+    exact hEh.symm
+  · rw [hσP, hσ]
+    exact hlt
 
 /-- The height pair an honest node signs is at most its `Σ.h_max`. -/
 theorem signAt_h_le (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
