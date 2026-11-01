@@ -6,6 +6,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 
+-- Keep the finite and whole-run duty suppliers together for signature comparison.
+set_option linter.style.longFile 1700
+
 public section
 
 /-! # Goldilocks Healing: post-reset duty suppliers
@@ -71,6 +74,72 @@ theorem ResetPremisesUpTo.same_slot_source_below_unanimous {b : Time}
       ⟨ell, hupd, hC, rfl⟩ ((SA.deepest_mem hD).1.1.2.2.mono
         (SA.frameIn_of_callAt hr hx hupd.1).2) hrb hts
     exact below z hz q hqr.le e hv hes he
+
+/-- Through the update deadline, normalized live locks compare with the operational
+head. Older and same-label source ancestry are derived from actual bounded votes. -/
+theorem ResetPremisesUpTo.call_locks_compatible_of_unanimous {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPU : P ∈ tr.HonestBlocks H)
+    (hts : cutZ sp.toParams g ≤ sp.ts u)
+    (hun : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hvote : ∃ z ∈ H, ∃ q ell e, SA.CastAt tr.projAC z q ell e ∧
+      tr.time q ≤ b ∧ e.msg.slot = u)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hcall : tr.projAC.CallAt y j ell) (hjb : tr.time j ≤ b)
+    (hafter : drainTime sp a ≤ tr.time j) (hbefore : tr.time j ≤ sp.ts u + 6 * sp.Δ)
+    (hnext : ∀ r < j, ∀ B CV, SA.OptimisticLockAt tr.projAC y r (u + 1) B CV →
+      Compatible (tr.HonestBlocks H) B P) :
+    ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
+      Compatible (tr.HonestBlocks H) L P := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
+  have hDelta := sp.toParams.hΔ
+  rintro L ⟨hLt, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hLr⟩
+  obtain rfl : L = ell.frame.viableAncestor B := hPhi.coherent.1 hLt
+    (SA.viableAncestor_anc hPhi hB).1 hLr.symm
+  obtain ⟨r, hrj, D, horig, X, hX, hXr, hXD⟩ : ∃ r < j, ∃ D,
+      ((∃ CV, SA.FastLockAt tr.projAC y r l.slot D CV) ∨ SA.SlowLockAt tr.projAC y r l.slot D) ∧
+      ∃ X ∈ tr.HonestBlocks H, X.root = l.block ∧ Anc (tr.HonestBlocks H) X D := by
+    cases hf : l.fast with
+    | false =>
+      obtain ⟨r, hrj, D, hs, hX⟩ := SA.slow_lock_provenance hr hy j l hl hf
+      exact ⟨r, hrj, D, Or.inr hs, hX⟩
+    | true =>
+      obtain ⟨r, hrj, D, CV, hf, hX⟩ := SA.fast_lock_provenance hr hy j l hl hf
+      exact ⟨r, hrj, D, Or.inl ⟨CV, hf⟩, hX⟩
+  have hXB : X = B := hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)
+  rw [hXB] at hXD
+  have hLD := ((SA.anc_viableAncestor ell.frame B).mono hPhiU).trans hXD
+  have hrb := (hp.run.time_mono hrj.le).trans hjb
+  have hrt := (hp.run.time_mono hrj.le).trans hbefore
+  have hDP : Compatible (tr.HonestBlocks H) D P := by
+    by_cases hlu : l.slot < u
+    · have hs := drain_live_locks hafter _ ⟨l, hl, B, hB, hBr, hlive, rfl⟩
+      obtain ⟨z, hz, q, ellq, e, hcast, hqb, hes⟩ := hvote
+      exact Or.inl (hp.clean_source_below_cast hc hy hz horig hs hrb hcast hqb
+        (hes ▸ hlu) hPU (hun z hz q e ⟨ellq, hcast⟩ hqb hes))
+    by_cases heq : l.slot = u
+    · exact Or.inl (hp.same_slot_source_below_unanimous hc hy (heq ▸ horig) hrb hts hPU hun)
+    have hgt : u < l.slot := by omega
+    rcases horig with ⟨CV, ⟨ellr, C, hupd, _⟩ | hop⟩ | ⟨ellr, C, hupd, _⟩
+    · have htr : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
+      have hlt := (SA.ts_lt_iff sp).2 (show (u : Int) < l.slot by omega)
+      exfalso; linarith
+    · have hsl : sp.slot (tr.time r) = l.slot := hop.choose_spec.choose_spec.2.1
+      have hmono := SA.slot_mono sp (hr.time_nonneg r) hrt
+      change sp.slot (tr.time r) ≤ sp.slot (sp.ts u + 6 * sp.Δ) at hmono
+      have hs : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
+        SA.slot_of_mem sp (u + 1) (by simp only [SAParams.ts]; push_cast; linarith)
+          (by simp only [SAParams.ts]; push_cast; linarith)
+      rw [hsl, hs] at hmono
+      exact hnext r hrj D CV (show l.slot = u + 1 by omega ▸ hop)
+    · have htr : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
+      have hlt := (SA.ts_lt_iff sp).2 (show (u : Int) < l.slot by omega)
+      exfalso; linarith
+  rcases hDP with hDP | hPD
+  · exact Or.inl (hLD.trans hDP)
+  · exact SA.anc_total hr.coherent hLD hPD
 
 /-- Leaving a self-entry strictly above the target witnesses an actual earlier higher
 report. This is the strict-root arm, independent of high-origin or service assumptions. -/
