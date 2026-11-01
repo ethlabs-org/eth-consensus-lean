@@ -524,4 +524,24 @@ theorem decoded_held_atProposal {V : Type} [Fintype V] {E : Env V}
   have h2 := decoded_held_poll _ t.toNat h1.1 h1.2
   exact decoded_held_nodeTick _ h2.1 h2.2
 
+/-- Recording a valid canonical own block preserves the joint wrapper invariant. -/
+theorem decoded_held_recordOwn_block {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (st : State (S.params (pubOf E) hn) (S.ro _))
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (hh : WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (hc : WrappersCover st)
+    (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
+    (B : Blk (S.params (pubOf E) hn)) (hpar : B.parent ≠ none)
+    (hroot : B.RootOk (digestOf S rho))
+    (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      (blockObj _ B) = some B) (ht : 0 ≤ st.now) :
+    let st' := recordOwn st (blockObj (S.params (pubOf E) hn) B)
+      (digests rho.hash (blockObj _ B))
+    WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st' ∧
+    WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash) st' := by
+  dsimp only
+  rw [recordOwn_canonical_block S rho hn st B hpar hroot]
+  exact decoded_held_onBlock S rho hn st hd hh hc hr B (fun _ => hb) ht
+
 end Consensus.Goldilocks.Refinement
