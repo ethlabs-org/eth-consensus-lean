@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -470,6 +471,76 @@ theorem high_cover_of_report
     (Healing.anc_tree_of_anc hp hy hOR (Healing.toFG_mem_tree hp.run hy hrep)))
   obtain ⟨r, hr, l, B, ho, hRB⟩ := Healing.high_report_origin hp hy hrep hhR
   exact ⟨r, hr, l, B, ho, hOR.trans hRB⟩
+
+/-- A prefix with fewer than half opponents lies below the unlock target. -/
+theorem anc_unlockTarget_of_opponents
+    {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {O B : SA.Blk sp.n FGP}
+    (hO : O ∈ Φ.tree) (_hB : B ∈ Φ.tree) (hOB : Φ.Anc O B)
+    (V : SA.View sp.n) (s : Int)
+    (hopp : 2 * (SA.opponents sp Φ V s O).ncard < sp.n) :
+    Φ.Anc O (SA.unlockTarget sp Φ V s B) := by
+  obtain ⟨D, hD⟩ := SA.exists_deepest hΦ
+    (S := {X | X ∈ Φ.tree ∧ Φ.Anc X B ∧ 2 * (SA.opponents sp Φ V s X).ncard < sp.n})
+    (fun X h => h.1) ⟨O, hO, hOB, hopp⟩
+  unfold SA.unlockTarget
+  rw [hD]
+  exact SA.anc_deepest hΦ (fun X h => h.1)
+    (fun X hX Y hY => SA.anc_total hΦ.coherent hX.2.1 hY.2.1) hD O ⟨hO, hOB, hopp⟩
+
+/-- Unlock preserves a prefix of an already-live normalized lock when its label is
+not challenged, or the prefix has fewer than half opponents. -/
+theorem unlock_preserves_prefix
+    {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set SA.Lock} {t : Time}
+    {V : SA.View sp.n} {s : Int} {l : SA.Lock} {O B : SA.Blk sp.n FGP}
+    (hl : l ∈ SA.liveLocks sp L Φ t) (hB : B ∈ Φ.tree) (hr : B.root = l.block)
+    (hO : O ∈ Φ.tree) (hOB : Φ.Anc O B)
+    (hguard : s ≤ (l.slot : Int) ∨ 2 * (SA.opponents sp Φ V s O).ncard < sp.n) :
+    ∃ l' ∈ SA.unlock sp L Φ t s V, ∃ B' ∈ Φ.tree,
+      B'.root = l'.block ∧ Φ.Anc O B' ∧ l'.slot = l.slot ∧ l'.fast = l.fast := by
+  classical
+  by_cases hs : (l.slot : Int) < s
+  · have hopp := hguard.resolve_left (not_le.mpr hs)
+    obtain ⟨hT, -⟩ := SA.unlockTarget_anc sp hΦ V s hB
+    refine ⟨⟨(SA.unlockTarget sp Φ V s B).root, l.slot, l.fast⟩,
+      ⟨l, hl, B, hB, hr, by simp only [hs, ↓reduceIte]⟩,
+      SA.unlockTarget sp Φ V s B, hT, rfl, ?_, rfl, rfl⟩
+    exact anc_unlockTarget_of_opponents hΦ hO hB hOB V s hopp
+  · exact ⟨l, ⟨l, hl, B, hB, hr, by simp only [hs, ↓reduceIte]⟩,
+      B, hB, hr, hOB, rfl, rfl⟩
+
+/-- A head certificate is checked at the actual read clock. Floor coverage also
+allows the prefix to lie outside the current frame. -/
+theorem anc_acHead_of_current_certificate
+    {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+    {A : SA.SAState sp.n} {O : SA.Blk sp.n FGP} {t : Time}
+    (hhead : Anc U O Φ.F ∨ (O ∈ Φ.tree ∧
+      Compatible Φ.tree (SA.getAnchor sp A Φ t) O ∧
+      (Φ.Anc O (SA.getAnchor sp A Φ t) ∨ (O ∈ Φ.viableTree Φ.tree ∧
+        (SA.voters (SA.latestView sp A Φ t).1.votes).ncard <
+          2 * (SA.supporters Φ (SA.latestView sp A Φ t).1
+            (SA.latestView sp A Φ t).2 O).ncard)))) :
+    Anc U O (SA.acHead sp A Φ t) := by
+  rcases hhead with hF | ⟨hO, hcomp, hsup⟩
+  · have hH : SA.acHead sp A Φ t ∈ Φ.tree :=
+      SA.getHead_mem' hΦ (T := Φ.viableTree Φ.tree) (fun _ h => h.1) _ _ _ _
+    exact hF.trans ((hΦ.rooted.2 _ hH).mono hΦU)
+  · exact (SA.anc_acHead hΦ hO hcomp hsup).mono hΦU
+
+/-- Fixed-record reads preserve the prefix with a fresh head certificate, even if
+the old lock expired. This supplies no certificate from an earlier view or clock. -/
+theorem exposed_prefix_preserved_at_clock (hU : Coherent U)
+    {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+    {A : SA.SAState sp.n} {O : SA.Blk sp.n FGP} {t : Time}
+    (hE : Anc U O ((SA.lookup Φ A.latestConfirmed).getD Φ.F))
+    (hhead : Anc U O Φ.F ∨ (O ∈ Φ.tree ∧
+      Compatible Φ.tree (SA.getAnchor sp A Φ t) O ∧
+      (Φ.Anc O (SA.getAnchor sp A Φ t) ∨ (O ∈ Φ.viableTree Φ.tree ∧
+        (SA.voters (SA.latestView sp A Φ t).1.votes).ncard <
+          2 * (SA.supporters Φ (SA.latestView sp A Φ t).1
+            (SA.latestView sp A Φ t).2 O).ncard)))) :
+    Anc U O (SA.acConfirmed sp A Φ t) :=
+  (exposed_prefix_preserved_of_record_head hU hΦ hΦU).mpr
+    ⟨hE, anc_acHead_of_current_certificate hΦ hΦU hhead⟩
 
 end Consensus.Goldilocks.Refinement
 end
