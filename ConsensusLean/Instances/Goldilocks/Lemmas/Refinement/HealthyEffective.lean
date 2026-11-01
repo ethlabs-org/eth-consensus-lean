@@ -1975,6 +1975,29 @@ theorem held_target_viable_or_higher_report {b : Time}
       rw [← hσ, hCh]
       exact hPh⟩
 
+/-- Full viability makes the newly selected fast lock an exact toFG candidate,
+including the second normalization by liveLocks at the adjacent call. -/
+theorem candidate_after_fast_update {A : SA.SAState sp.n} {Phi : SA.Frm sp.n FGP}
+    (hPhi : FrameOK Phi) {t : Time} {u : Nat} {P : SA.Blk sp.n FGP}
+    (hPv : P ∈ Phi.viableTree Phi.tree)
+    (hconf : SA.getConfirmation sp A Phi u = some P)
+    (hnv : ¬ SA.conflictsWithLock sp A.locks Phi t P)
+    (hfast : SA.fastSelect sp A Phi u P = some P)
+    (hlive : sp.slot t ≤ u + sp.k) (hage : sp.slot t ≤ u + 2) :
+    P ∈ SA.toFGCandidates sp (SA.updateConfirmation sp A Phi t u) Phi t := by
+  have hself : Phi.viableAncestor P = P := SA.viableAncestor_self hPhi hPv.1 (Or.inl hPv)
+  have hlock : (⟨P.root, u, true⟩ : SA.Lock) ∈
+      (SA.updateConfirmation sp A Phi t u).locks := by
+    unfold SA.updateConfirmation
+    simp only [hconf]
+    rw [ite_eq_right hnv]
+    change _ ∈ SA.addLocks sp _ Phi t u _
+    refine ⟨⟨P.root, u, true⟩, Or.inr ?_, P, hPv.1, rfl, hlive, ?_⟩
+    · exact ⟨(P.root, true), Or.inl ⟨P, hfast, rfl⟩, rfl⟩
+    · rw [hself]
+  refine ⟨hPv, ⟨P.root, u, true⟩, ?_, rfl, rfl, hage⟩
+  exact ⟨⟨P.root, u, true⟩, hlock, P, hPv.1, rfl, hlive, by rw [hself]⟩
+
 end UpTo
 
 end CoveredEndpoint
