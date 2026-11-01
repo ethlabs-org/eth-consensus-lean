@@ -138,6 +138,25 @@ private theorem reset_seed (hp : ResetPremises tr H proposer dg g ΔF a) :
   have h₁ : sp.ts l ≤ tr.time k := (ts_le_of_fastLock hp hfl).trans (hr.time_mono hrk.le)
   exact ⟨y, r, l, O, ho, by exact_mod_cast (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) l).1 h₁⟩
 
+/-- The reset supplies an actual bounded high-origin seed, not merely an eventual origin. -/
+theorem ResetPremisesUpTo.reset_seed {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
+    ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧ l ≤ sp.slot a := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨⟨y, hy, k, att, hs, hh, hka⟩, -⟩ := hp.reset
+  obtain ⟨r, hrk, l, O, ho, -⟩ := hp.high_row_source hy hs hh.ge
+  obtain ⟨-, D, CV, -, hfl, -⟩ := hp.highOrigin_mem ho
+  have htime : sp.ts l ≤ tr.time r := by
+    have hΔ := sp.toParams.hΔ
+    rcases hfl with ⟨ell, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
+    · have ht' : tr.time r = sp.ts l + 6 * sp.Δ := ht
+      rw [ht']; linarith
+    · exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) l).mpr (by omega)
+  have hra : tr.time r ≤ a := (hr.time_mono hrk.le).trans hka.le
+  refine ⟨y, r, l, O, ho, hra.trans hp.reset_le, ?_⟩
+  have ha0 : 0 ≤ a := hka ▸ hr.time_nonneg k
+  exact_mod_cast (SA.ts_le_iff_le_slot sp ha0 l).mp (htime.trans hra)
+
 /-- In a coherent `U` containing the frame tree, a block `B` between a tree block `X` and a tree
 block `O` above it (`X ⪯ B ⪯ O` in `U`, `X ⪯ O` in the tree) is below `O` in the tree. -/
 private theorem frame_anc_of_between {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
