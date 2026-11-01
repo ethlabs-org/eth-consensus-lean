@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
@@ -20,6 +21,56 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+
+/-- A bounded clean source is below the head of an actual later-label honest cast.
+The cast's agreement with the operational proposal is supplied explicitly. -/
+theorem ResetPremisesUpTo.clean_source_below_cast {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {r s i : Nat}
+    {B P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (horig : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
+    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcast : SA.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
+    (hsi : s < e.msg.slot) (hPU : P ∈ tr.HonestBlocks H) (heP : e.msg.head = P.root) :
+    Anc (tr.HonestBlocks H) B P := by
+  have hext : SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
+    rcases horig with ⟨CV, hf⟩ | hslo
+    · exact hp.fast_source_votes_before hc hx hf hs hrb i hib y hy ell e hcast hsi
+    · exact hp.slow_source_votes_before hc hx hslo hs hrb i hib y hy ell e hcast hsi
+  obtain ⟨D, hD, hDr, hBD⟩ := hext
+  obtain rfl : D = P := hp.honest_coherent.1 hD hPU (hDr.trans heP)
+  exact hBD
+
+/-- Same-label raw sources lie below the unanimous operational head via an actual
+honest supporter, not via an assumed later successful update. -/
+theorem ResetPremisesUpTo.same_slot_source_below_unanimous {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x : Fin sp.n} (hx : x ∈ H) {r u : Nat}
+    {B P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (horig : (∃ CV, SA.FastLockAt tr.projAC x r u B CV) ∨ SA.SlowLockAt tr.projAC x r u B)
+    (hrb : tr.time r ≤ b) (hts : cutZ sp.toParams g ≤ sp.ts u)
+    (hPU : P ∈ tr.HonestBlocks H)
+    (hun : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
+      e.msg.slot = u → e.msg.head = P.root) : Anc (tr.HonestBlocks H) B P := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have below : ∀ z ∈ H, ∀ q ≤ r, ∀ e, SA.VoteAt tr.projAC z q e → e.msg.slot = u →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B → Anc (tr.HonestBlocks H) B P := by
+    rintro z hz q hqr e hv hes ⟨D, hD, hDr, hBD⟩
+    obtain rfl : D = P := hr.coherent.1 hD hPU
+      (hDr.trans (hun z hz q e hv ((hp.run.time_mono hqr).trans hrb) hes))
+    exact hBD
+  rcases horig with ⟨CV, ⟨ell, C, hupd, hC, _, hD, _⟩ | hop⟩ | ⟨ell, C, hupd, hC, _, hD, _⟩
+  · obtain ⟨z, hz, q, hqr, e, hv, _, hes, he⟩ := hp.result_supporter hc hx
+      ⟨ell, hupd, hC, rfl⟩ ((SA.deepest_mem hD).1.1.2.2.mono
+        (SA.frameIn_of_callAt hr hx hupd.1).2) hrb hts
+    exact below z hz q hqr.le e hv hes he
+  · obtain ⟨_, z, hz, q, hqr, e, hv, hes, he⟩ := hp.optimistic_supporter hx hop
+    exact below z hz q hqr e hv hes he
+  · obtain ⟨z, hz, q, hqr, e, hv, _, hes, he⟩ := hp.result_supporter hc hx
+      ⟨ell, hupd, hC, rfl⟩ ((SA.deepest_mem hD).1.1.2.2.mono
+        (SA.frameIn_of_callAt hr hx hupd.1).2) hrb hts
+    exact below z hz q hqr.le e hv hes he
 
 /-- Leaving a self-entry strictly above the target witnesses an actual earlier higher
 report. This is the strict-root arm, independent of high-origin or service assumptions. -/
