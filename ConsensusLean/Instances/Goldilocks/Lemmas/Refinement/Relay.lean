@@ -344,6 +344,7 @@ theorem processOne_eq (proposer : Nat → Fin sp.n)
   | none => exact ⟨[], by simp, by simp, rfl, rfl, rfl⟩
   | some e =>
     rcases canonEvent_eq_some he with ⟨B, rfl, -⟩ | ⟨v, rfl, -⟩ | ⟨a, rfl, -⟩
+    case inr.inl => exact ⟨[], by simp [apply], by simp, rfl, rfl, rfl⟩
     all_goals
       dsimp only
       refine ⟨_, by rw [relayIf_eq]; rfl, fun x hx => ?_, by rw [relayIf_eq]; rfl,
@@ -354,16 +355,6 @@ theorem processOne_eq (proposer : Nat → Fin sp.n)
 private theorem processOne_block {hs : List (Header Info × Nat)} {σ : State sp ro}
     {o : Wire sp.n} {B : Blk sp} (he : canonEvent sp ro hs o = some (.block B))
     (h : (Node.onBlock σ.self σ.node σ.now B).1.fg.blocks B.root = some B) :
-    o ∈ (processOne hs σ o).relayBuf := by
-  unfold processOne
-  rw [he]
-  dsimp only
-  rw [relayIf_eq]
-  simp [h]
-
-private theorem processOne_message {hs : List (Header Info × Nat)} {σ : State sp ro}
-    {o : Wire sp.n} {v : Vote sp.n} (he : canonEvent sp ro hs o = some (.message v))
-    (h : v ∈ (Node.onMessage σ.self σ.node σ.now v).1.ac.pool v.slot) :
     o ∈ (processOne hs σ o).relayBuf := by
   unfold processOne
   rw [he]
@@ -390,7 +381,7 @@ private theorem group_relay (proposer : Nat → Fin sp.n)
     {r : CutRec sp ro} (hr : r ∈ groupRecs proposer dg σ.self σ.node t id e) :
     (∀ B, r.label = .fg (.block B true) → blockObj sp B = o ∧ o ∈ (processOne hs σ o).relayBuf) ∧
     (∀ ℓ m, r.label = .ac ℓ → ℓ.call = .message m → m ∈ r.post.ac.pool m.slot →
-      voteObj m = o ∧ o ∈ (processOne hs σ o).relayBuf) ∧
+      voteObj m = o) ∧
     (∀ a, r.label = .fg (.attestation a) → attObj a = o ∧ o ∈ (processOne hs σ o).relayBuf) := by
   obtain ⟨k, hk, hlab, hpost⟩ := mem_groupRecs_label hr
   subst ht
@@ -418,16 +409,12 @@ private theorem group_relay (proposer : Nat → Fin sp.n)
   · -- a vote: `[ac_on_message(v)]`
     have hk0 : k = 0 := by simp [exec, onMessage] at hk; omega
     subst hk0
-    refine ⟨fun B h => ?_, fun ℓ m h hc hp => ⟨?_, processOne_message he ?_⟩, fun a h => ?_⟩
+    refine ⟨fun B h => ?_, fun ℓ m h hc _ => ?_, fun a h => ?_⟩
     · simp [hlab, exec, onMessage, acCall] at h
     · simp only [hlab, exec, onMessage, acCall, List.getElem_cons_zero, Cut.ac.injEq] at h
       subst h
       cases hc
       rfl
-    · simp only [hlab, exec, onMessage, acCall, List.getElem_cons_zero, Cut.ac.injEq] at h
-      subst h
-      cases hc
-      simpa [hpost, exec, onMessage, acCall, cutPosts_cons, cutPost_ac] using hp
     · simp [hlab, exec, onMessage, acCall] at h
   · -- an attestation: `[fg_on_attestation(a)]`
     have hk0 : k = 0 := by simp [exec, onAttestation] at hk; omega
@@ -456,7 +443,7 @@ theorem process_relay (proposer : Nat → Fin sp.n)
         (∀ B, r.label = .fg (.block B true) →
           blockObj sp B ∈ (os.foldl (processOne hs) σ).relayBuf) ∧
         (∀ ℓ m, r.label = .ac ℓ → ℓ.call = .message m → m ∈ r.post.ac.pool m.slot →
-          voteObj m ∈ (os.foldl (processOne hs) σ).relayBuf) ∧
+          voteObj m ∈ os) ∧
         (∀ a, r.label = .fg (.attestation a) →
           attObj a ∈ (os.foldl (processOne hs) σ).relayBuf)
   | [], σ, sub, ht => ⟨⟨[], by simp, by simp⟩, ht, rfl, by simp [deliverRecs_nil]⟩
@@ -478,7 +465,8 @@ theorem process_relay (proposer : Nat → Fin sp.n)
     | none =>
       rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
       rw [he] at hrec
-      exact hrec r hr
+      obtain ⟨h1, h2, h3⟩ := hrec r hr
+      exact ⟨h1, fun ℓ m h hc hp => List.mem_cons_of_mem _ (h2 ℓ m h hc hp), h3⟩
     | some e =>
       rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he] at hr
       rw [he, Option.elim_some, ht] at hrec
@@ -486,9 +474,10 @@ theorem process_relay (proposer : Nat → Fin sp.n)
       · obtain ⟨h1, h2, h3⟩ := group_relay proposer dg ht he hr
         refine ⟨fun B h => ?_, fun ℓ m h hc hp => ?_, fun a h => ?_⟩
         · obtain ⟨rfl, ho⟩ := h1 B h; exact hkeep _ ho
-        · obtain ⟨rfl, ho⟩ := h2 ℓ m h hc hp; exact hkeep _ ho
+        · rw [h2 ℓ m h hc hp]; exact List.mem_cons_self
         · obtain ⟨rfl, ho⟩ := h3 a h; exact hkeep _ ho
-      · exact hrec r hr
+      · obtain ⟨h1, h2, h3⟩ := hrec r hr
+        exact ⟨h1, fun ℓ m h hc hp => List.mem_cons_of_mem _ (h2 ℓ m h hc hp), h3⟩
 
 
 end
@@ -1316,7 +1305,7 @@ theorem processOne_outbox_eq (proposer : Nat → Fin sp.n)
     rcases canonEvent_eq_some he with ⟨B, rfl, -⟩ | ⟨v, rfl, -⟩ | ⟨a, rfl, -⟩
     all_goals
       dsimp only
-      rw [relayIf_eq]
+      try rw [relayIf_eq]
       rfl
 
 /-- Every body pending after delivery was already queued or emitted by one of its cuts. -/

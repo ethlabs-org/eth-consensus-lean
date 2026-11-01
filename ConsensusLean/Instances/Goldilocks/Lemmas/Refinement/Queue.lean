@@ -418,8 +418,7 @@ private theorem processOne_owned hs (st : State sp ro) o (h : VoteOwned st) :
     unfold relayIf
     split <;> exact block_owned st _ h
   · dsimp only
-    unfold relayIf
-    split <;> exact call_owned st _ h
+    exact call_owned st _ h
   · unfold relayIf
     split <;> simpa only [VoteOwned, apply, Node.onAttestation, emitted,
       List.flatMap_cons, List.flatMap_nil, List.nil_append, List.append_nil] using h
@@ -579,10 +578,8 @@ private theorem processOne_inventory (seen : List (Wire sp.n)) (st : State sp ro
       · cases he
       · cases he; exact ho
       · cases he
-    unfold relayIf
     dsimp only
-    split_ifs <;>
-      apply apply_inventory seen st (Node.onMessage st.self st.node st.now v) ?_ h
+    apply apply_inventory seen st (Node.onMessage st.self st.node st.now v) ?_ h
     all_goals
       intro P h hseen he
       apply inventory_call h st.self st.now (.message v) ?_ ?_

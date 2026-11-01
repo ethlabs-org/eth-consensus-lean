@@ -425,12 +425,14 @@ omit [DecidableEq V] in
 theorem act_poll_snd (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Nat) :
     ((Model.protoOf (compiled (family S)) E).act nd.st (.poll t)).2 =
       ((poll (shapeOf S hn nd) t).2.map (fun bc => (.data bc.1, bc.2))).toList ++
-        (shapeOf S hn nd).forwards.map (fun p => (.data (.forward p.1), p.2)) := by
+        (shapeOf S hn nd).forwards.map (fun p => (.data (.forward p.1), p.2)) ++
+        (shapeOf S hn nd).voteForwards.map
+          (fun p => (.data (.voteForward p.1 (encodeVote p.2)), [voteObj p.2])) := by
   change (((family S (pubOf E)).pollBatch nd.st.1 t).2.map _) = _
   simp only [family, dite_eq_left hn]
   change List.map _ ((poll (nd.st.1 hn) t).2.toList ++
-    (nd.st.1 hn).forwards.map _) = _
-  erw [List.map_append, List.map_map, Option.toList_map]
+    (nd.st.1 hn).forwards.map _ ++ (nd.st.1 hn).voteForwards.map _) = _
+  erw [List.map_append, List.map_append, List.map_map, List.map_map, Option.toList_map]
   rfl
 
 omit [DecidableEq V] in
@@ -490,18 +492,25 @@ omit [DecidableEq V] in
 theorem dutyStep_poll_sub (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
     (t : Nat) : ∀ o ∈ (rho.dutyStep v nd (.poll t)).2,
       (∃ b, (pollPre (shapeOf S hn nd)).outbox.head? = some b ∧ o = pollObj S rho v b) ∨
-      ∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs := by
+      (∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs) ∨
+      ∃ τ m, o = .mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward τ (encodeVote m))) [voteObj m] := by
   intro o ho
   unfold Model.Run.dutyStep at ho
   split at ho <;> (try simp at ho)
   obtain ⟨m, cs, hact, -, rfl⟩ :=
     (rho.mem_signedCandidate).mp (Model.releaseAll_subset _ _ _ _ o ho)
   rw [act_poll_snd S hn, (poll_outbox _ _).2] at hact
+  erw [List.append_assoc] at hact
   rcases List.mem_append.mp hact with hact | hact
   swap
-  · obtain ⟨⟨τ, cs'⟩, _, he⟩ := List.mem_map.mp hact
-    cases he
-    exact Or.inr ⟨τ, cs', rfl⟩
+  · rcases List.mem_append.mp hact with hact | hact
+    · obtain ⟨⟨τ, cs'⟩, _, he⟩ := List.mem_map.mp hact
+      cases he
+      exact Or.inr (Or.inl ⟨τ, cs', rfl⟩)
+    · obtain ⟨⟨τ, m⟩, _, he⟩ := List.mem_map.mp hact
+      cases he
+      exact Or.inr (Or.inr ⟨τ, m, rfl⟩)
   apply Or.inl
   cases hh : (pollPre (shapeOf S hn nd)).outbox.head? with
   | none =>
@@ -526,6 +535,7 @@ theorem dutyStep_poll_rel (v : V) (nd : Model.Node (Model.protoOf (compiled (fam
   simp only [show (Model.protoOf (compiled (family S)) E).role (.poll t) = .poll from rfl,
     hsel, ↓reduceIte]
   rw [act_poll_snd S hn, (poll_outbox _ _).2, hb]
+  erw [List.append_assoc]
   have hrole : (Model.protoOf (compiled (family S)) E).role (.poll t) = .poll := rfl
   simp only [Option.map_some, Option.toList_some, Model.Run.signedCandidate, hrole]
   rw [ite_eq_left hsel]
@@ -952,10 +962,15 @@ theorem deliver_not_att (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
   · rw [deliverDuties_eq S t ht] at h
     erw [Model.Run.runDuties_cons, Model.Run.runDuties_nil] at h
     simp only [List.append_nil] at h
-    rcases dutyStep_poll_sub S rho hn v _ _ _ h with ⟨b, hb, heq⟩ | ⟨τ, cs, heq⟩
-    swap
-    · have hmsg := congrArg Model.Obj.msg heq
+    rcases dutyStep_poll_sub S rho hn v _ _ _ h with ⟨b, hb, heq⟩ | ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
+    case inr.inl =>
+      have hmsg := congrArg Model.Obj.msg heq
       change Model.Msg.data (Body.att (encodeAtt a)) = Model.Msg.data (Body.forward τ) at hmsg
+      cases hmsg
+    case inr.inr =>
+      have hmsg := congrArg Model.Obj.msg heq
+      change Model.Msg.data (Body.att (encodeAtt a)) =
+        Model.Msg.data (Body.voteForward τ (encodeVote m)) at hmsg
       cases hmsg
     have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
       (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)

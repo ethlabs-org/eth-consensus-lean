@@ -539,7 +539,8 @@ private theorem released_block_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {
     · rw [deliverDuties_eq S t ht] at hb
       erw [Model.Run.runDuties_cons, Model.Run.runDuties_nil] at hb
       simp only [List.append_nil] at hb
-      rcases dutyStep_poll_sub S rho hn v _ _ _ hb with ⟨b, _, heq⟩ | ⟨τ, cs, heq⟩
+      rcases dutyStep_poll_sub S rho hn v _ _ _ hb with
+        ⟨b, _, heq⟩ | ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
       all_goals have hh := congrArg Model.Obj.msg heq; cases hh
     · have hh := gossip_unsigned S rho _ _ _ _ hb
       cases hh
@@ -782,7 +783,8 @@ private theorem released_vote_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t
     · rw [deliverDuties_eq S t ht0] at hb
       erw [Model.Run.runDuties_cons, Model.Run.runDuties_nil] at hb
       simp only [List.append_nil] at hb
-      rcases dutyStep_poll_sub S rho hn v _ _ _ hb with ⟨b, hb, heq⟩ | ⟨τ, cs, heq⟩
+      rcases dutyStep_poll_sub S rho hn v _ _ _ hb with
+        ⟨b, hb, heq⟩ | ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
       · have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
           (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
         change (pollPre (process (stateAt S rho hn v i) o
@@ -801,6 +803,7 @@ private theorem released_vote_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t
           apply emit_of_record S rho hn he (r := r) ?_ hl hem
           rw [eventCuts_deliver S rho hn i v o t he, ← stateAt_self S rho hn v i]
           exact hr
+      · have hh := congrArg Model.Obj.msg heq; cases hh
       · have hh := congrArg Model.Obj.msg heq; cases hh
     · have hh := gossip_unsigned S rho _ _ _ _ hb; cases hh
 

@@ -606,7 +606,7 @@ noncomputable def goldilocksShape : ChainShape sp.pub Out Info where
   Body := Body
   Durable := State sp ro
   decBody := inferInstance
-  init k := ⟨k, Node.init (goldilocksNode sp ro), 0, [], [], false, fun _ => none, []⟩
+  init k := ⟨k, Node.init (goldilocksNode sp ro), 0, [], [], false, fun _ => none, [], []⟩
   clock st t := { st with now := t }
   propose := propose
   act := fun _ _ k => k.elim

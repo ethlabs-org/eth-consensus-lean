@@ -204,6 +204,33 @@ theorem protects_voteObj {V : Type} [Fintype V] {E : Env V} (S : Setup)
     Model.protects (Model.protoOf (compiled (family S)) E) k seen (voteObj v) = true :=
   protects_of_not_att S k seen _ (fun _ _ h => by cases h)
 
+/-- Vote-forward envelopes never conflict with attestations, irrespective of the vote author. -/
+theorem protects_voteForward {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (k x : Fin (Fintype.card V)) (seen : List (Model.protoOf (compiled (family S)) E).Object)
+    (t : Time) (v : Vote (Fintype.card V)) :
+    Model.protects (Model.protoOf (compiled (family S)) E) k seen
+      (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v]) = true :=
+  protects_of_not_att S k seen _ (fun _ _ h => by cases h)
+
+/-- A vote-forward envelope has no parent dependency, including in its carried canonical vote. -/
+theorem dependencies_voteForward {n : Nat} (held : List (Wire n))
+    (x : Fin n) (t : Time) (v : Vote n) :
+    (dependencies n).ready held
+      (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v]) = true := by
+  simp [dependencies, Model.Obj.parts, Model.Obj.parts.partsList, forwardParent?, voteObj]
+
+/-- The only release-holdings obligation is the canonical carried vote at the actual prefix. -/
+theorem releasable_voteForward {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (x : Fin (Fintype.card V)) (seen : List (Model.protoOf (compiled (family S)) E).Object)
+    (t : Time) (v : Vote (Fintype.card V)) (hv : voteObj v ∈ Model.closure seen) :
+    Model.releasable (P := Model.protoOf (compiled (family S)) E) seen
+      (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v]) = true := by
+  classical
+  simp only [Model.releasable, Model.Obj.carried, List.all_eq_true, decide_eq_true_eq]
+  intro o ho
+  obtain rfl := List.mem_singleton.mp ho
+  exact hv
+
 /-- A raw block with canonical vote/attestation payload has no forwarding dependencies. -/
 theorem dependencies_item {n : Nat} (held : List (Wire n))
     (auth : Model.Auth n (ShapeRole Empty)) (h : Header Info)
@@ -345,6 +372,21 @@ theorem apply_now (st : State sp ro) r : (apply st r).now = st.now := rfl
 theorem apply_fgDue (st : State sp ro) r : (apply st r).fgDue = st.fgDue := rfl
 /-- `apply` installs the node state of its handler result. -/
 theorem apply_node (st : State sp ro) r : (apply st r).node = r.1 := rfl
+
+/-- A newly queued envelope has the handler's clock and an actual fresh pool insertion.
+This is local queue provenance, not a release or service theorem. -/
+theorem apply_voteForward_fresh (st : State sp ro) r (t : Time) (v : Vote sp.n)
+    (h : (t, v) ∈ (apply st r).voteForwards)
+    (hold : (t, v) ∉ st.voteForwards) :
+    t = st.now ∧ v ∉ st.node.ac.pool v.slot ∧ v ∈ r.1.ac.pool v.slot := by
+  classical
+  simp only [apply, List.mem_append] at h
+  obtain h | h := h
+  · exact False.elim (hold h)
+  obtain ⟨w, hw, he⟩ := List.mem_map.mp h
+  cases he
+  have hw := (List.mem_filter.mp hw).2
+  exact ⟨rfl, of_decide_eq_true hw⟩
 
 /-- `relayIf` keeps the key. -/
 theorem relayIf_self (st : State sp ro) (c : Prop) [Decidable c] o :

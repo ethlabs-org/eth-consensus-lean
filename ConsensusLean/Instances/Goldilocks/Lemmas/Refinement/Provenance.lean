@@ -54,8 +54,7 @@ private theorem processOne_record {sp : SA.SAParams} {ro : SA.ReplayOrder sp (Li
   split
   · simp only [relayIf, apply]
     split <;> exact onBlock_record _ _ _ _
-  · simp only [relayIf, apply]
-    split <;> rfl
+  · rfl
   · rfl
   · rfl
 
@@ -79,8 +78,7 @@ private theorem processOne_reachable {sp : SA.SAParams}
   split
   · simp only [relayIf, apply]
     split <;> exact onBlock_reachable _ _ _ _ h
-  · simp only [relayIf, apply]
-    split <;> exact h
+  · exact h
   · exact h.tail (Or.inr ⟨_, rfl⟩)
   · exact h
 
@@ -777,8 +775,7 @@ private theorem processOne_att {sp : SA.SAParams}
   split
   · simp only [relayIf]
     split <;> exact apply_att _ _ _
-  · simp only [relayIf]
-    split <;> exact apply_att _ _ _
+  · exact apply_att _ _ _
   · exact apply_att _ _ _
   · rfl
 
@@ -1093,10 +1090,12 @@ private theorem duty_released_att {v : V} {signed : FG.Att (Fintype.card V) → 
         have hcs' := hp.2
         subst b cs
         simp only [pollBatch, List.mem_append] at hb
-        rcases hb with hb | hb
+        rcases hb with (hb | hb) | hb
         · exact Option.mem_toList.mp hb
-        obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
-        cases heq
+        · obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
+          cases heq
+        · obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
+          cases heq
       obtain ⟨b, hb, _, hs⟩ := (poll_queued (nd.st.1 hn) t h).2 _ _ hp
       have hab : a = b := by
         have hh := congrArg (decodeAtt (Fintype.card V)) hb
