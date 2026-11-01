@@ -188,6 +188,44 @@ theorem lock_keep_global_slot (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
   exact ⟨B, Or.inl (SA.mem_readPoint_liveLockBlocks_of_keep hr hx hc hl hk hBk (hBr x hx) hva
     (Or.inl (by rw [htk]; omega))), Relation.ReflTransGen.refl⟩
 
+/-- **Chained locks over segments.** Segments `m < M` cover the cut intervals `[i m, i (m+1)]`;
+in segment `m` every honest `x` holds the fresh lock `lk m x` on the common block `Bs m`, with the
+premises of `lock_keep_global_slot` for `i₀ := i m`, `N := i (m+1)`. The no-expiry part of
+`hcut` (`slot(t_j) ≤ (lk m x).slot + k` for `j < i (m+1)`, with `(lk m x).slot + 1 ≥
+slot(t_{i m})` by `hlslot`) is the segment condition: segment `m` can only cover slots up to
+`(lk m x).slot + k`. One block per segment is needed: `unlock` keeps a lock against the honest
+votes that read a live lock *above its own block*, so locks of different nodes on incomparable
+blocks are not kept. Conclusion: at every cut `j ∈ [i 0, i M]` each honest `x` holds the lock
+`lk m x` on `Bs m` of some segment `m` with `i m ≤ j ≤ i (m+1)`. -/
+theorem lock_keep_chain (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) (M : Nat) (hM : 0 < M) (i : Nat → Nat)
+    (Bs : Nat → SA.Blk sp.n (List (FG.Att sp.n))) (lk : Nat → Fin sp.n → SA.Lock)
+    (hBr : ∀ m < M, ∀ x ∈ H, (Bs m).root = (lk m x).block)
+    (hlslot : ∀ m < M, ∀ x ∈ H, sp.slot (tr.time (i m)) ≤ (lk m x).slot + 1)
+    (hhold : ∀ m < M, ∀ x ∈ H, ∀ k ≤ i m, sp.slot (tr.time (i m)) ≤ sp.slot (tr.time k) + 1 →
+      lk m x ∈ (tr.state x k).ac.locks)
+    (hcut : ∀ m < M, ∀ x ∈ H, ∀ j, sp.slot (tr.time (i m)) ≤ sp.slot (tr.time j) + 1 →
+      j < i (m + 1) → sp.slot (tr.time j) ≤ (lk m x).slot + sp.k ∧
+      Bs m ∈ (tr.state x j).fg.toFrame.tree ∧ FrameKeeps tr x j (Bs m)) :
+    ∀ j, i 0 ≤ j → j ≤ i M → ∀ x ∈ H, ∃ m < M, i m ≤ j ∧ j ≤ i (m + 1) ∧
+      lk m x ∈ (tr.state x j).ac.locks ∧ (Bs m).root = (lk m x).block := by
+  intro j h0 hjM x hx
+  have hex : ∃ m, j ≤ i (m + 1) := ⟨M - 1, by rw [Nat.sub_add_cancel hM]; exact hjM⟩
+  classical
+  let m := Nat.find hex
+  have hm : j ≤ i (m + 1) := Nat.find_spec hex
+  have hmM : m < M := by
+    have := Nat.find_min' hex (m := M - 1) (by rw [Nat.sub_add_cancel hM]; exact hjM)
+    omega
+  have hlo : i m ≤ j := by
+    rcases Nat.eq_zero_or_pos m with h | h
+    · rw [h]; exact h0
+    · have := Nat.find_min hex (m := m - 1) (by omega)
+      rw [Nat.sub_add_cancel h] at this
+      omega
+  exact ⟨m, hmM, hlo, hm, (lock_keep_global_slot hrun hnc hf (lk m) (hBr m hmM) (hlslot m hmM)
+    (hhold m hmM) (hcut m hmM) j hlo hm x hx).1, hBr m hmM x hx⟩
+
 end Consensus.Goldilocks.Compose
 
 end
