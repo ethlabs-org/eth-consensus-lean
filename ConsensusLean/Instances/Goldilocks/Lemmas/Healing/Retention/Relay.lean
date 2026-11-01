@@ -21,6 +21,55 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Vote Payload)
 open Compose
 
+/-- Reset service projects to AC synchrony on any source window after GST. Only
+message and relay service are used; signed-row processing times play no role. -/
+theorem ResetService.syncAC {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF b lo hi : Time}
+    (hs : ResetService tr H g ΔF b) (hrun : GoldilocksRun proposer dg H tr)
+    (hg : g ≤ lo) : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) lo hi tr.projAC := by
+  have h := hrun.toLocalRun
+  constructor
+  · intro x hx i m hsa hai _ y hy j ℓ hc hdl
+    obtain ⟨ℓ₀, hc₀, hm⟩ := hsa
+    have hsa' : tr.SendOrAdmitAt x i m := ⟨ℓ₀, projAC_callAt.1 hc₀, by
+      rw [projAC_state h hx] at hm
+      exact hm⟩
+    have he : max (tr.time i) g = tr.time i := max_eq_left (hg.trans hai)
+    obtain ⟨k, hkj, htk, hp, hlt⟩ := hs.message x hx i m hsa' y hy j
+      ⟨_, projAC_callAt.1 hc⟩ (by rw [he, ← projAC_deadline]; exact hdl)
+    refine ⟨k, hkj, htk, ?_, ?_⟩
+    · rcases hp with ⟨ℓ', hc', hm'⟩ | ⟨ℓ', hc', hm'⟩
+      exacts [⟨ℓ', projAC_callAt.2 hc', Or.inl hm'⟩, ⟨ℓ', projAC_callAt.2 hc', Or.inr hm'⟩]
+    · rw [projAC_deadline]
+      change tr.time k < tr.deadline y k (tr.time i) sp.Δ
+      simpa only [he] using hlt
+  · intro x hx i B hacc hai _ y hy j ℓ hc hdl hanc
+    obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
+    have hc := projAC_callAt.1 hc
+    obtain ⟨i', rfl, hi', hti⟩ := acBlock_prev h hx (projAC_callAt.1 hc₀) hb
+    have hfr : ℓ.frame.F = (tr.state y j).fg.F := by
+      rw [(h.cutLaw y hy j _ hc).1]
+      rfl
+    have hgi : g ≤ tr.time i' := hti ▸ hg.trans hai
+    have he : max (tr.time i') g = tr.time i' := max_eq_left hgi
+    obtain ⟨k, hkj, hk, hlt⟩ := hs.relay x hx i' B hi' hgi y hy j ⟨_, hc⟩
+      (by rw [he, hti, ← projAC_deadline]; exact hdl) (hfr ▸ hanc)
+    obtain ⟨ℓ', hc', hb', htk⟩ := accept_next h hy hk
+    have hkj' : k + 1 ≤ j := by
+      rcases Nat.lt_or_eq_of_le hkj with hlt' | rfl
+      · omega
+      · cases Option.some.inj (hk.2.symm.trans hc.2)
+    have hnr : ¬ tr.RestartAt y (k + 1) := fun ⟨ℓr, hcr, hr⟩ => by
+      cases Option.some.inj (hc'.2.symm.trans hcr.2)
+      rw [hb'] at hr
+      cases hr
+    refine ⟨k + 1, hkj', ⟨ℓ', projAC_callAt.2 hc', hb'⟩, ?_⟩
+    change tr.time (k + 1) < tr.projAC.deadline y (k + 1) (tr.time (i' + 1))
+    rw [projAC_deadline, htk, ← hti]
+    rw [he] at hlt
+    simpa only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] using hlt
+
 /-! ### Deadlines -/
 
 section Deadline
