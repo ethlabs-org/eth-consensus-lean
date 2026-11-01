@@ -239,7 +239,7 @@ theorem reset_winner_voter_tree
     exact SA.voterBlockTree_anc hr hy hc P hP.1 C hCP'
   exact ⟨hCs, hfC', W, hW, hWv, hCP'.trans hPW⟩
 
-/-- A voter competitor below a strict predecessor of the proposal parent reflects into the
+/-- A voter competitor other than the proposal, below a predecessor of its parent, reflects into the
 proposer's viable tree. Frozen candidates use guarded relay; current-slot candidates use the
 actual proposal's uniqueness. -/
 theorem reset_competitor_reflect
@@ -253,7 +253,7 @@ theorem reset_competitor_reflect
     (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
     {Q X B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hQt : Q ∈ ellp.frame.tree) (hPQ : P.parent = some Q.root)
-    (hXQ : ellp.frame.Anc X Q) (hne : X ≠ Q)
+    (hXQ : ellp.frame.Anc X Q) (hBP : B ≠ P)
     (hXv : X ∈ ellp.frame.viableHeads)
     (hBX : B.parent = some X.root)
     (hB : B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1))) :
@@ -268,10 +268,6 @@ theorem reset_competitor_reflect
     rcases hB.1.2 with hfz | ⟨P', hP't, hP's, hBP'⟩
     · exact reset_frozen_frame hp hc hP.1 hy hci hti hcy hg hB.1.1 hfz hFB
     · obtain rfl := reset_proposal_frame_unique hp hP (by omega) hy hcy.1 hP't hP's
-      have hBP : B ≠ P' := by
-        rintro rfl
-        exact hne (hr.coherent.1 (hPhiU hXt) (hPhiU hQt)
-          (Option.some_injective _ (hBX.symm.trans hPQ)))
       have hBQ : Anc (tr.HonestBlocks H) B Q := by
         rcases Relation.ReflTransGen.cases_tail (hBP'.mono hPsiU) with heq | ⟨Y, hBY, hY⟩
         · exact absurd heq.symm hBP
@@ -342,7 +338,79 @@ theorem reset_suffix_best
   · intro B hBp hBy
     simp only [SA.goldfishScore, heq, hsup B hBp hBy]
   · intro B hB hBX
-    exact reset_competitor_reflect hp hc hP hci hti hy hcy hgi hQt hPQ hXQ hne hXv hBX hB
+    have hBP : B ≠ P := by
+      rintro rfl
+      exact hne (hr.coherent.1 (hPhiU (SA.mem_of_anc hXQ hQt)) (hPhiU hQt)
+        (Option.some_injective _ (hBX.symm.trans hPQ)))
+    exact reset_competitor_reflect hp hc hP hci hti hy hcy hgi hQt hPQ hXQ hBP hXv hBX hB
+
+/-- Once the proposal parent is viable in both frames, an old child cannot become eligible
+at the voter: guarded view agreement preserves its lack of a strict majority. -/
+theorem reset_old_child_ineligible
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k (s + 1) P)
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hpay : P.acPayload = pay)
+    (hPQ : P.parent = some d.head.root)
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
+    (hPy : P ∈ elly.frame.tree) (hg : SA.gbar g ≤ sp.ts s)
+    (hgi : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
+    (hgj : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hQt : d.head ∈ ellp.frame.tree) (hQv : d.head ∈ ellp.frame.viableHeads)
+    (hQvy : d.head ∈ elly.frame.viableHeads)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB : B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)))
+    (hBQ : B.parent = some d.head.root) (hBs : B.slot < s + 1) :
+    ¬ SA.goldfishEligible sp elly.frame (tr.time j)
+      (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B := by
+  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  have hPhi := (SA.frameIn_of_callAt hr hP.1 hci).1
+  have hBP : B ≠ P := by
+    have hPs := hP.2.2.2.2.1
+    rintro rfl
+    omega
+  have hBv := reset_competitor_reflect hp hc hP hci hti hy hcy hgi hQt hPQ
+    .refl hBP hQv hBQ hB
+  have hslot : sp.slot (tr.time i) = s + 1 := by
+    rw [hti]
+    simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
+  have hcast : ((s + 1 : Nat) : Int) - 1 = s := by omega
+  set T := ellp.frame.viableTree ellp.frame.tree
+  have hT : T ⊆ ellp.frame.tree := fun _ h => h.1
+  have hhead : d.head = SA.ghost sp T
+      (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
+      (SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
+      ellp.frame.tree.ncard d.start := by
+    unfold SA.acProposal at hd
+    split_ifs at hd
+    simp only [Option.some.injEq, Prod.mk.injEq] at hd
+    obtain ⟨rfl, rfl⟩ := hd
+    simp only [hslot, hcast]
+    rfl
+  have hstop := SA.ghost_stopped hPhi.coherent hT (hPhi.finite.subset hT)
+    (sc := SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
+    (el := SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
+    (Set.ncard_le_ncard hT hPhi.finite) d.start
+  rw [← hhead] at hstop
+  obtain ⟨heq, hvot, hsup⟩ := reset_views_agree hp hc hP hci hcall hd hti hpay hy hcy hes
+    hPy hg hgi hgj
+  have hsj : sp.slot (tr.time j) = s + 1 :=
+    ((SA.castAt_spec hr hy hcy).2.1).symm.trans hes
+  rintro (h | h | h)
+  · exact h ⟨d.head, hQvy, hBQ⟩
+  · omega
+  · have hmaj : (SA.voters (SA.View.ofLists pay).votes).ncard <
+        2 * SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s B := by
+      simpa only [SA.goldfishScore, hvot, heq, hsup B hBv.1 hB.1.1] using h
+    exact hstop (SA.exists_isBest hPhi
+      (S := {X | X ∈ T ∧ X.parent = some d.head.root ∧
+        SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s X})
+      (fun X hX => hT hX.1) ⟨B, hBv, hBQ, Or.inr (Or.inr hmaj)⟩ _)
 
 /-- **The joined duty, unanimity** (§23; phase-service §10, "Join with RN/RU"): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
