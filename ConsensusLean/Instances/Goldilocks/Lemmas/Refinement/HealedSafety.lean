@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CoefficientAdapters
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -574,10 +575,25 @@ theorem healthy_current_stored_locks (D : HealthyRepairSchedule S A V Q)
           Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) Y R := by
   sorry
 
-/-- OPEN finite catch service, independently of record geometry. -/
-theorem healthy_repair_catch (D : HealthyRepairSchedule S A V Q) :
+omit h0 hb hp W states in
+/-- Finite catch service follows directly from the healthy engine's PSync and awake interval. -/
+theorem healthy_repair_catch :
     Healing.CatchRun Q.trace (honestKeys S Q.run.2) Q.gst (2 * Q.params.Δ) := by
-  sorry
+  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst := by
+    constructor
+    · intro v hv o s hs w hw a hsa hc hh haw
+      have h := Q.healthy.1.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw a hsa hc hh haw
+      rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
+      · obtain ⟨o', he, hs'⟩ := hsent
+        cases he
+        exact ⟨u, hu, Or.inl hs', hnowake⟩
+      · obtain ⟨o', he, hr'⟩ := hrecv
+        cases he
+        exact ⟨u, hu, Or.inr hr', hnowake⟩
+    · exact Q.healthy.1.txs
+  exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
+    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    hnet Q.healthy.2.2
 
 /-- Assemble the current whole-record certificate through the landed scoped adapters. -/
 theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
@@ -591,7 +607,7 @@ theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
         (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
           (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F := by
   obtain ⟨C⟩ := healthy_current_read_context S A V Q h0 hb hp W states D O hrepair hi hv
-  have hc := healthy_repair_catch S A V Q h0 hb hp W states D
+  have hc := healthy_repair_catch S A V Q
   have heq := read_eq_record_of_current_votes D.reset.run D.reset.noColl
     (honest_ownKey (S := S) hv.1) C.time_nonneg C.readPoint C.awake C.joined
     C.sync C.catchup C.latest C.reset_le (fun R hR => ⟨
