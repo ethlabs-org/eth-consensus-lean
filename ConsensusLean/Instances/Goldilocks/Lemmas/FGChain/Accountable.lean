@@ -172,6 +172,13 @@ private theorem evidence {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
       by simp [ChainState.init], by simp [ChainState.init]⟩)
     (fun c σ B σ' hc ih hB _ => gp.evidence_step hc (ih hc) hB) h h
 
+/-- A positive finalized height has a quorum of signed finality pairs on its chain. -/
+theorem finalized_quorum {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
+    (h : gp.chainState c = some σ) (hF : 1 ≤ σ.hF) :
+    ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q,
+      ∃ a ∈ gp.chainAtts c, a.val = v ∧ a.fin = some (σ.hF, σ.F) :=
+  (gp.evidence h).witnessed.2 hF
+
 /-- **G1.2.** A finalization at `j ≥ 1` on one chain meets the crossing of `j` on a chain
 without the finalized block in `2q − n` validators with an E1 pair. -/
 theorem finalization_meets_crossing {c₁ c₂ : List (FGBlock gp.n)}

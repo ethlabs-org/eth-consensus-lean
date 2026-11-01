@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 
 public section
 
@@ -288,6 +289,92 @@ theorem signed_fin_pair_entry (hp : ResetPremises tr H proposer dg g ΔF a)
     · cases h'
     · obtain ⟨Z, hZ, hZE, hZr, hZh, hZT⟩ := hpend _ (List.mem_filter.1 h').1
       exact ⟨Z, hZ, E, hE, hET.symm.trans hT.symm, hZE, hZr, hZh, hZT⟩
+
+/-- Finalizing a strict descendant is witnessed by an actual earlier honest report.
+The height comparison is in the reporter's store at the report cut. -/
+theorem finalized_descendant_report (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {W X P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hW : W ∈ (tr.state y k).fg.tree) (hX : X ∈ (tr.state y k).fg.tree)
+    (hXr : X.root = ((tr.state y k).fg.σ W.root).F)
+    (hPX : Anc (tr.HonestBlocks H) P X) (hne : P ≠ X) :
+    ∃ z ∈ H, ∃ r ℓ C, r < k ∧ SA.ToFGAt tr.projAC z r ℓ C ∧
+      Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
+  have hr := Compose.fg_reachable hp.run.toLocalRun hy k
+  have hU := honest_coherent hp
+  have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := tree_subset_honest hy
+  obtain ⟨c, hc, -, -, hcs⟩ := Store.chain_state_of_chain _ _ _ _ hr W hW
+  have hpos : 1 ≤ ((tr.state y k).fg.σ W.root).hF := by
+    by_contra hn
+    have hg := (FG.chain_invariants _ _ _ hcs).2.2.2.2.1 (by omega)
+    have he := Compose.honest_eq_genesis hp.run hU (hsub hX) (hXr.trans hg)
+    rw [he] at hPX
+    rcases Relation.ReflTransGen.cases_tail hPX with heq | ⟨Y, _, hY⟩
+    · exact hne (heq.symm.trans he.symm)
+    · exact absurd hY.2.2 (by simp [Params.genesisBlock])
+  obtain ⟨Q, hQ, hrows⟩ := FG.FGParams.finalized_quorum _ hcs hpos
+  change Finset (Fin sp.n) at Q
+  have hex : ∃ v ∈ Q, v ∈ H := by
+    by_contra hn
+    have hqsub : (↑Q : Set (Fin sp.n)) ⊆ Hᶜ := fun v hv hvH => hn ⟨v, hv, hvH⟩
+    have hh := Set.ncard_le_ncard hqsub (Set.toFinite _)
+    rw [Set.ncard_coe_finset] at hh
+    exact (not_lt_of_ge (hQ.trans hh)) (faulty_lt_q hp.healthy)
+  obtain ⟨v, hvQ, hv⟩ := hex
+  obtain ⟨att, hatt, hav, hfin⟩ := hrows v hvQ
+  simp only [FG.FGParams.chainAtts, List.mem_flatMap] at hatt
+  obtain ⟨Z', hZ', hatt⟩ := hatt
+  obtain ⟨Z, hZ, rfl⟩ := List.mem_map.1 hZ'
+  have haH : att.val ∈ H := hav ▸ hv
+  obtain ⟨m, hmk, _, s, hsm, hs⟩ :=
+    Compose.honest_row_signed_before hp.run hp.noColl hy (hc Z hZ) hatt haH
+  obtain ⟨J, hJ, E, hE, hEr, hJE, hJr, hJh, hJT⟩ :=
+    signed_fin_pair_entry hp haH hs hfin
+  have hsubs : (tr.state att.val s).fg.tree ⊆ tr.HonestBlocks H := tree_subset_honest haH
+  obtain rfl : J = X := hU.1 (hsubs hJ) (hsub hX) (hJr.trans hXr.symm)
+  obtain ⟨r, hsr, ht, ℓ, C, E', hto, hC, hE', hE'r, hEC, hTh, hET, hEh, _⟩ :=
+    signAt_report_entry hp.run haH hs
+  have hsubr : (tr.state att.val r).fg.tree ⊆ tr.HonestBlocks H := tree_subset_honest haH
+  have he : E' = E := hU.1 (hsubr hE') (hsubs hE) (hE'r.trans hEr.symm)
+  subst E'
+  have hXE := hJE.mono hsubs
+  have hPC := hPX.trans (hXE.trans (hEC.mono hsubr))
+  have hXEr := anc_tree_of_anc hp haH hXE hE'
+  have hXr' := mem_tree_of_anc hp haH hXE hE'
+  have hPXr := anc_tree_of_anc hp haH hPX hXr'
+  have hrr := Compose.fg_reachable hp.run.toLocalRun haH r
+  have hPE := hPXr.trans hXEr
+  have hle := σ_h_le_of_anc hrr hPE
+  have hlt : ((tr.state att.val r).fg.σ P.root).h <
+      ((tr.state att.val r).fg.σ E.root).h := by
+    apply lt_of_le_of_ne hle
+    intro heq
+    have hentry := (Th_eq_of_anc hrr hPE heq.symm).symm.trans hET
+    have hP := mem_tree_of_anc hp haH hPC hC
+    obtain ⟨⟨E₀, hE₀, hE₀r, hE₀P, _, _⟩, _⟩ :=
+      Goldilocks.Store.entry_state_of_source _ _ _ _ hrr P hP
+    obtain rfl : E₀ = E := hU.1 (hsubr hE₀) (hsubr hE') (hE₀r.trans hentry)
+    exact hne (hPXr.antisymm (hU.mono hsubr) (hXEr.trans hE₀P))
+  exact ⟨att.val, haH, r, ℓ, C, by omega, hto, hPC, hlt.trans_eq hEh⟩
+
+/-- The remaining finality-loss obligation is compatibility: a comparable finality
+cache either stays below `P` or already witnesses a strictly higher actual report. -/
+theorem finality_below_or_higher_report (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hcompat : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F P) :
+    Anc (tr.HonestBlocks H) (tr.state y k).fg.F P ∨
+      ∃ z ∈ H, ∃ r ℓ C, r < k ∧ SA.ToFGAt tr.projAC z r ℓ C ∧
+        Anc (tr.HonestBlocks H) P C ∧
+        ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
+  rcases hcompat with h | h
+  · exact Or.inl h
+  by_cases he : P = (tr.state y k).fg.F
+  · exact Or.inl (he ▸ Relation.ReflTransGen.refl)
+  have hr := Compose.fg_reachable hp.run.toLocalRun hy k
+  obtain ⟨hF, -, -, -, -, -, W, hW, hWF⟩ :=
+    Goldilocks.Store.cache_invariants _ _ _ _ hr
+  exact Or.inr (finalized_descendant_report hp hy hW hF hWF.symm h he)
 
 /-- **A high record entry names an entry of a high origin's chain** (§16): the target, timeout
 or lock entry `r` at `h ≥ H_z + 1` of an honest record is the root of a block `Z` below the
