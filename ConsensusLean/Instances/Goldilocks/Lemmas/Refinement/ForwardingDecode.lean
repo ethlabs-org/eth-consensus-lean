@@ -607,4 +607,50 @@ theorem proposal_candidate_block {V : Type} [Fintype V] {E : Env V}
   simp only [blockObj, Node.mkBlock, headerOf, hslot]
   rfl
 
+/-- A scheduled honest proposal's actual pre-record state supplies canonical child validity. -/
+theorem scheduled_proposal_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (v : V) (hh : v ∈ rho.honest) (i : Nat) (t : Time)
+    (he : rho.events[i]? = some (.tick v t))
+    (hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams)
+      (runProposer S rho hn) (rho.ownKey v) t) :
+    let nd := atProposal S rho v (rho.stateBefore i v) t
+    let r := Node.acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now
+    ∀ d p, r.2.2 = some (d, p) →
+      let B := Node.mkBlock (digestOf S rho) (rho.ownKey v) r.1.fg
+        (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p
+      decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+        (blockObj _ B) = some B := by
+  dsimp only
+  intro d p hdp
+  have run := simTrace_goldilocksRun S rho hn hv
+  have hhon : rho.ownKey v ∈ honestKeys S rho := by
+    change rho.key (rho.ownKey v) ∈ rho.honest
+    have hk : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
+    rwa [hk]
+  have hpub := (S.params (pubOf E) hn).toParams.slotTime_public
+    ((S.params (pubOf E) hn).toParams.slotOf t)
+  rw [← hp.2.1] at hpub
+  have hg := (simTrace_tick_public_group S rho hn hv v hh i t he hpub).1
+  obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run.toLocalRun hhon hg
+  have hstate := simTrace_state S rho hn hv v hh i
+    (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1)
+  have hsel := poll_selected S rho hv v
+  have hnode := atProposal_node S rho hn v (rho.stateBefore i v) t
+    (fgDue_eq_false S rho hn v i) hsel
+  rw [nodeTick_node_public { (rho.stateBefore i v).st.1 hn with now := t } hpub] at hnode
+  have hself := self_eq_ownKey S rho hn v i
+  change ((rho.stateBefore i v).st.1 hn).self = rho.ownKey v at hself
+  have hnow := atProposal_now S rho hn v (rho.stateBefore i v) t hsel
+  have req := SA.interface_requirements (S.params (pubOf E) hn)
+    (List (FG.Att (Fintype.card V))) (S.ro _)
+  have hdecode := own_proposal_decodes S rho hn (runProposer S rho hn) (rho.ownKey v)
+    cfg _ t (encodeTxs (mempool rho.inbox v t))
+    ⟨req.1, req.2.1, req.2.2.1, req.2.2.2, SA.proposal_payload_valid _ _ _⟩
+    run.genesis_root_ok hr hs hp d p (by
+      rw [hst, ← hstate]
+      simpa only [hnode, hnow, Node.tickStep, stateAt, hself] using hdp)
+  simpa only [hnode, hnow, atProposal_mempool, hst, ← hstate, Node.tickStep, stateAt, hself]
+    using hdecode
+
 end Consensus.Goldilocks.Refinement
