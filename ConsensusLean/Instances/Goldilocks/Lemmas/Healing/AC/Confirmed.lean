@@ -99,6 +99,65 @@ theorem late_vote_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g
       linarith)
   rwa [hes] at hst
 
+/-- Guarded finite acceptance service resolves the head of an actual honest vote before
+the same strict deadline as its message. The output is at the observing pre-state. -/
+theorem late_vote_held_of_frame_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g b)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
+    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
+    (hjb : tr.time j ≤ b)
+    (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ t + sp.Δ)
+    (hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ gbar g)
+    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {e : Em sp FGP}
+    (hv : VoteAt tr x i e) (hes : e.msg.slot = s)
+    (hF : ∀ B ∈ U, B.root = e.msg.head → Anc U ell.frame.F B) :
+    ∃ B ∈ ell.frame.tree, B.root = e.msg.head ∧ B.slot ≤ s ∧
+      e.msg ∈ (tr.state y j).pool s ∧
+      (tr.state y j).voteStamp e.msg < ETime.of (sp.ts s + 2 * sp.Δ) ∧
+      (tr.state y j).blockStamp e.msg.head < ETime.of (sp.ts s + 2 * sp.Δ) := by
+  have hpool := late_vote_pool_before hS hy hc hs ht hjb hdeadline hrestart hx hv hes j (Or.inl rfl)
+  have hr := hS.run.localRun
+  have hDelta := sp.toParams.hΔ
+  obtain ⟨hPhi, hPhiU⟩ := frameIn_of_callAt hr hy hc
+  obtain ⟨ellx, hcx, hex⟩ := hv
+  obtain ⟨-, hslx, -, hhead⟩ := castAt_spec hr hx ⟨hcx, hex⟩
+  have hti : tr.time i ≤ sp.ts s + sp.Δ := by
+    have hh := vote_time_le hr hx ⟨ellx, hcx, hex⟩
+    rwa [← hslx, hes] at hh
+  obtain ⟨hPhix, hPhixU⟩ := frameIn_of_callAt hr hx hcx
+  obtain ⟨B, hB, hBr⟩ : ∃ B ∈ ellx.frame.tree, B.root = e.msg.head :=
+    ⟨_, getHead_mem' hPhix (fun _ h => h.1.1) e.readPoint (tr.time i)
+      (mergedVoteView sp e.readPoint ellx.frame e.msg.slot) ((e.msg.slot : Int) - 1)
+      (T := ellx.frame.viableTree (voterBlockTree sp e.readPoint ellx.frame e.msg.slot)),
+      hhead.symm⟩
+  have hBs : B.slot ≤ s := by
+    have hh := frame_slot_le sp hr hx hcx B hB
+    rwa [← hslx, hes] at hh
+  have hFB := hF B (hPhixU hB) hBr
+  obtain ⟨hBy, hAB⟩ : B ∈ ell.frame.tree ∧ AcceptedBefore tr y B (sp.ts s + 2 * sp.Δ) := by
+    rcases Compose.frame_anc_accepted hr hx i ellx hcx B hB B .refl with
+      hg | ⟨q, hqi, hacc⟩
+    · refine ⟨?_, Or.inl hg⟩
+      obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hr hy j ell hc
+      obtain rfl : B = G := hr.coherent.1 (hPhixU hB) hGU (hg.trans hGr.symm)
+      rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFB with he | ⟨C, -, hpar⟩
+      · exact he ▸ hPhi.rooted.1
+      · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
+    have hqtime := (hr.time_mono hqi).trans hti
+    obtain ⟨r, hrj, har, hrt⟩ : ∃ r ≤ j, tr.AcceptAt y r B ∧ tr.time r < sp.ts s + 2 * sp.Δ := by
+      by_cases hgq : gbar g ≤ tr.time q
+      · have hdl := hdeadline j le_rfl (tr.time q) hgq
+        obtain ⟨r, hrj, har, hrt⟩ := hS.sync.relay x hx q B hacc hgq y hy j ell hc
+          (by linarith) (by linarith) hFB
+        exact ⟨r, hrj, har, by have := hdeadline r hrj (tr.time q) hgq; linarith⟩
+      · obtain ⟨r, hrj, har, hrt⟩ := hS.catchUp.relay x hx q B hacc (lt_of_not_ge hgq)
+          y hy j ell hc (by linarith) hjb hFB
+        exact ⟨r, hrj, har, by linarith⟩
+    exact ⟨mem_tree_of_acceptAt sp hr hy har hrj hc hFB, Or.inr ⟨r, har, hrt⟩⟩
+  have hstamp := blockStamp_lt_of_acceptedBefore sp hr hy hc hBy hAB
+    (fun k hk hrs => lt_of_le_of_lt (hrestart k (by omega) hrs) (by linarith)) (Or.inl ht)
+  exact ⟨B, hBy, hBr, hBs, hpool.1, hpool.2, hBr ▸ hstamp⟩
+
 /-- **A late honest vote is held** (h1 §2): for a slot `s ≥ r` and an honest call at a time
 `≥ t_s + 2Δ`, every honest slot-`s` vote is held, with a stamp before `t_s + 2Δ`, before and after
 the call. -/
