@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 
 public section
 
@@ -51,6 +52,26 @@ theorem viableHead_of_contest (h : st.Contest) {B : NodeBlock P ACP} (hB : B ∈
   · change st.headHeightFloor ≤ (st.σ B.root).h
     rw [st.headHeightFloor_of_contest h]
     exact hh
+
+/-- **A contest stays (r14 s2, L2.3.2, one block).** Adding a block that no accepted block names
+as its parent, with `Σ.F`, `Σ.J`, `h_j`, `h_max` and the old state heights unchanged, keeps a
+contest. -/
+theorem contest_insert {st st' : Store P ACP} {X : NodeBlock P ACP}
+    (htree : st'.tree = insert X st.tree) (hX : ∀ V ∈ st.tree, V.parent ≠ some X.root)
+    (hF : st'.F = st.F) (hJ : st'.J = st.J) (hhj : st'.hj = st.hj) (hhm : st'.hmax = st.hmax)
+    (hσ : ∀ B ∈ st.tree, st'.σ B.root = st.σ B.root) (hc : st.Contest) : st'.Contest := by
+  obtain ⟨hm, B, hB, hFB, hh, hJB⟩ := hc
+  refine ⟨by rw [hhm, hhj]; exact hm, B, by rw [htree]; exact Set.mem_insert_of_mem _ hB,
+    ?_, ?_, ?_⟩
+  · change Goldilocks.Anc st'.tree st'.F B
+    rw [hF, htree]
+    exact Anc.mono (Set.subset_insert _ _) hFB
+  · rw [hσ B hB, hhm]
+    exact hh
+  · intro h
+    change Goldilocks.Anc st'.tree st'.J B at h
+    rw [hJ, htree] at h
+    exact hJB (Anc.of_insert h hB hX)
 
 end Consensus.Goldilocks.Store
 
