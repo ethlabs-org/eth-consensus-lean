@@ -7,7 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 
 -- Keep the finite and whole-run duty suppliers together for signature comparison.
-set_option linter.style.longFile 1900
+set_option linter.style.longFile 2000
 
 public section
 
@@ -850,6 +850,74 @@ theorem reset_competitor_reflect
   exact ⟨hBt.1, hBt.2, hXv.2.2.1.trans hXBs,
     le_trans hXv.2.2.2 (Compose.honest_held_height hp.run hp.noColl hP.1 hXBs).1⟩
 
+/-- Finite winner transport along the viable proposal chain. -/
+theorem ResetPremisesUpTo.reset_winner_voter_tree {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
+    (hes : e.msg.slot = u)
+    {P C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
+    (hCP : Anc (tr.HonestBlocks H) C P)
+    (haC : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) C) :
+    C ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  have hfC := ((SA.fcRoot_anc_getAnchor hPhi e.readPoint (tr.time j)).mono hPhiU).trans haC
+  have hFC := (hPhi.F_anc_fcRoot.mono hPhiU).trans hfC
+  have hCt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hP.1.1 hCP hFC
+  have hCP' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hCt hCP hP.1.1
+  have hfC' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfC hCt
+  obtain ⟨W, hW, hWv, hPW⟩ := hP.2.2
+  have hCs : C ∈ SA.voterBlockTree sp e.readPoint ell.frame u := by
+    rw [← hes] at hP ⊢
+    exact SA.voterBlockTree_anc hr hy hc P hP.1 C hCP'
+  exact ⟨hCs, hfC', W, hW, hWv, hCP'.trans hPW⟩
+
+/-- Finite competitor reflection uses only guarded frozen transport and actual uniqueness. -/
+theorem ResetPremisesUpTo.reset_competitor_reflect {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer (s + 1)) (hactual : tr.ProposesAt p k P)
+    (hPs : P.slot = s + 1)
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    (hci : tr.projAC.CallAt p i ellp) (hti : tr.time i = sp.ts (s + 1 : Nat))
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hib : tr.time i ≤ b)
+    (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
+    (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time i)
+    {Q X B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hQt : Q ∈ ellp.frame.tree) (hPQ : P.parent = some Q.root)
+    (hXQ : ellp.frame.Anc X Q) (hBP : B ≠ P)
+    (hXv : X ∈ ellp.frame.viableHeads) (hBX : B.parent = some X.root)
+    (hB : B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1))) :
+    B ∈ ellp.frame.viableTree ellp.frame.tree := by
+  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  obtain ⟨_, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  have hXt : X ∈ ellp.frame.tree := SA.mem_of_anc hXQ hQt
+  have hXB : Anc (tr.HonestBlocks H) X B := .single ⟨hPhiU hXt, hPsiU hB.1.1, hBX⟩
+  have hFB := ((hPhi.rooted.2 X hXt).mono hPhiU).trans hXB
+  have hBt : B ∈ ellp.frame.tree := by
+    rcases hB.1.2 with hfz | ⟨P', hP't, hP's, hBP'⟩
+    · exact hp.reset_frozen_frame hc hpH hy hci hti hcy hib hg hjoin hB.1.1 hfz hFB
+    · obtain rfl := hp.reset_proposal_frame_unique hpH hdesignated hactual hPs
+        (by omega) hy hcy.1 hP't hP's
+      have hBQ : Anc (tr.HonestBlocks H) B Q := by
+        rcases Relation.ReflTransGen.cases_tail (hBP'.mono hPsiU) with heq | ⟨Y, hBY, hY⟩
+        · exact absurd heq.symm hBP
+        obtain rfl : Y = Q := hr.coherent.1 hY.1 (hPhiU hQt)
+          (Option.some_injective _ (hY.2.2.symm.trans hPQ))
+        exact hBY
+      exact SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hQt hBQ hFB
+  have hfB := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem
+    (((hPhi.fcRoot_anc_viableHeads X hXv).mono hPhiU).trans hXB) hBt
+  refine ⟨hBt, hfB, B, hBt, ?_, .refl⟩
+  rw [Compose.frame_of_projAC hp.run hpH hci] at hXv hBt ⊢
+  have hXBs := Compose.honest_held_anc hp.run hp.noColl hpH hXB hBt.1
+  exact ⟨hBt.1, hBt.2, hXv.2.2.1.trans hXBs,
+    le_trans hXv.2.2.2 (Compose.honest_held_height hp.run hp.noColl hpH hXBs).1⟩
+
 /-- A best child on the proposal-parent path stays best at the voter. The winner is
 transported through the viable proposal, while competitors reflect through guarded relay. -/
 theorem reset_suffix_best
@@ -911,6 +979,70 @@ theorem reset_suffix_best
         (Option.some_injective _ (hBX.symm.trans hPQ)))
     exact reset_competitor_reflect hp hc hP hci hti hy hcy hgi hQt hPQ hXQ hBP hXv hBX hB
 
+/-- Finite best-child transfer along the proposal-parent suffix. -/
+theorem ResetPremisesUpTo.reset_suffix_best {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer (s + 1)) (hactual : tr.ProposesAt p k P)
+    (hPs : P.slot = s + 1)
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hpay : P.acPayload = pay)
+    (hPQ : P.parent = some d.head.root)
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
+    (hPv : P ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)))
+    (hg : SA.gbar g ≤ sp.ts s)
+    (hgi : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
+    (hgj : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hjoi : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time i)
+    (hjoj : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
+    {X C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hQt : d.head ∈ ellp.frame.tree) (hXQ : ellp.frame.Anc X d.head)
+    (hne : X ≠ d.head) (hXv : X ∈ ellp.frame.viableHeads)
+    (hCQ : ellp.frame.Anc C d.head)
+    (haX : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) X)
+    (hC : SA.IsBest sp (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
+      {B | B ∈ ellp.frame.viableTree ellp.frame.tree ∧ B.parent = some X.root ∧
+        SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s B} C) :
+    SA.IsBest sp (SA.goldfishScore sp elly.frame
+      (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
+      {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
+        B.parent = some X.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
+          (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} C := by
+  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  obtain ⟨_, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  obtain ⟨heq, hvot, hsup⟩ := hp.reset_views_agree hc hpH hdesignated hactual hPs
+    hci hcall hd hti hpay hy hcy hes hib hjb hPv.1.1 hg hgi hgj hjoi hjoj
+  have hQP : Anc (tr.HonestBlocks H) d.head P :=
+    .single ⟨hPhiU hQt, hPsiU hPv.1.1, hPQ⟩
+  have hXC : Anc (tr.HonestBlocks H) X C :=
+    .single ⟨hPhiU (SA.mem_of_anc hXQ hQt), hPhiU hC.1.1.1, hC.1.2.1⟩
+  have hCy := hp.reset_winner_voter_tree hy hcy hes hPv
+    ((hCQ.mono hPhiU).trans hQP) (haX.trans hXC)
+  have hCs : C.slot < s + 1 := by
+    have h1 := (Anc.slot_le hPhi.coherent hCQ).1
+    have h2 := hr.coherent.2 d.head (hPhiU hQt) P (hPsiU hPv.1.1) hPQ
+    omega
+  have hslot : sp.slot (tr.time i) = s + 1 := by
+    rw [hti]
+    simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
+  apply SA.isBest_transfer hXv (by omega) hvot ?_ (fun B hB => hB.1)
+    (fun B hB => hB.1.1) hCy ?_ hC
+  · intro B hBp hBy
+    simp only [SA.goldfishScore, heq, hsup B hBp hBy]
+  · intro B hB hBX
+    have hBP : B ≠ P := by
+      rintro rfl
+      exact hne (hr.coherent.1 (hPhiU (SA.mem_of_anc hXQ hQt)) (hPhiU hQt)
+        (Option.some_injective _ (hBX.symm.trans hPQ)))
+    exact hp.reset_competitor_reflect hc hpH hdesignated hactual hPs hci hti hy hcy
+      hib hgi hjoi hQt hPQ hXQ hBP hXv hBX hB
+
 /-- Once the proposal parent is viable in both frames, an old child cannot become eligible
 at the voter: guarded view agreement preserves its lack of a strict majority. -/
 theorem reset_old_child_ineligible
@@ -966,6 +1098,74 @@ theorem reset_old_child_ineligible
   rw [← hhead] at hstop
   obtain ⟨heq, hvot, hsup⟩ := reset_views_agree hp hc hP hci hcall hd hti hpay hy hcy hes
     hPy hg hgi hgj
+  have hsj : sp.slot (tr.time j) = s + 1 :=
+    ((SA.castAt_spec hr hy hcy).2.1).symm.trans hes
+  rintro (h | h | h)
+  · exact h ⟨d.head, hQvy, hBQ⟩
+  · omega
+  · have hmaj : (SA.voters (SA.View.ofLists pay).votes).ncard <
+        2 * SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s B := by
+      simpa only [SA.goldfishScore, hvot, heq, hsup B hBv.1 hB.1.1] using h
+    exact hstop (SA.exists_isBest hPhi
+      (S := {X | X ∈ T ∧ X.parent = some d.head.root ∧
+        SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s X})
+      (fun X hX => hT hX.1) ⟨B, hBv, hBQ, Or.inr (Or.inr hmaj)⟩ _)
+
+/-- Finite old-child exclusion preserves the proposal call's strict-majority test. -/
+theorem ResetPremisesUpTo.reset_old_child_ineligible {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer (s + 1)) (hactual : tr.ProposesAt p k P)
+    (hPs : P.slot = s + 1)
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hpay : P.acPayload = pay)
+    (hPQ : P.parent = some d.head.root)
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
+    (hPy : P ∈ elly.frame.tree) (hg : SA.gbar g ≤ sp.ts s)
+    (hgi : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
+    (hgj : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hjoi : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time i)
+    (hjoj : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
+    (hQt : d.head ∈ ellp.frame.tree) (hQv : d.head ∈ ellp.frame.viableHeads)
+    (hQvy : d.head ∈ elly.frame.viableHeads)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB : B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)))
+    (hBQ : B.parent = some d.head.root) (hBs : B.slot < s + 1) :
+    ¬ SA.goldfishEligible sp elly.frame (tr.time j)
+      (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B := by
+  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  have hPhi := (SA.frameIn_of_callAt hr hpH hci).1
+  have hBP : B ≠ P := by rintro rfl; omega
+  have hBv := hp.reset_competitor_reflect hc hpH hdesignated hactual hPs hci hti hy hcy
+    hib hgi hjoi hQt hPQ .refl hBP hQv hBQ hB
+  have hslot : sp.slot (tr.time i) = s + 1 := by
+    rw [hti]
+    simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
+  have hcast : ((s + 1 : Nat) : Int) - 1 = s := by omega
+  set T := ellp.frame.viableTree ellp.frame.tree
+  have hT : T ⊆ ellp.frame.tree := fun _ h => h.1
+  have hhead : d.head = SA.ghost sp T
+      (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
+      (SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
+      ellp.frame.tree.ncard d.start := by
+    unfold SA.acProposal at hd
+    split_ifs at hd
+    simp only [Option.some.injEq, Prod.mk.injEq] at hd
+    obtain ⟨rfl, rfl⟩ := hd
+    simp only [hslot, hcast]
+    rfl
+  have hstop := SA.ghost_stopped hPhi.coherent hT (hPhi.finite.subset hT)
+    (sc := SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
+    (el := SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
+    (Set.ncard_le_ncard hT hPhi.finite) d.start
+  rw [← hhead] at hstop
+  obtain ⟨heq, hvot, hsup⟩ := hp.reset_views_agree hc hpH hdesignated hactual hPs
+    hci hcall hd hti hpay hy hcy hes hib hjb hPy hg hgi hgj hjoi hjoj
   have hsj : sp.slot (tr.time j) = s + 1 :=
     ((SA.castAt_spec hr hy hcy).2.1).symm.trans hes
   rintro (h | h | h)
