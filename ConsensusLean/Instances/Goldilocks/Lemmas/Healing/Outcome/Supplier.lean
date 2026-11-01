@@ -453,6 +453,68 @@ theorem reset_parent_viable_of_children
   exact ⟨hQt.1, hQt.2, hfQ'.mono (fun X hX => hX.1),
     reset_vote_floor_above_old hp hy hR hc hes hQt.1 hQold⟩
 
+/-- At the proposal parent, the actual proposal is the only eligible child and its own
+children are ineligible. Parent viability is derived separately for each old competitor. -/
+theorem reset_stop_at_parent
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k (s + 1) P)
+    (hR : drainTime sp a ≤ sp.ts (s + 1 : Nat))
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hpay : P.acPayload = pay)
+    (hPQ : P.parent = some d.head.root)
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
+    (hPv : P ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)))
+    (hg : SA.gbar g ≤ sp.ts s)
+    (hgi : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
+    (hgj : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hQt : d.head ∈ ellp.frame.tree) (hQv : d.head ∈ ellp.frame.viableHeads) :
+    (P ∈ {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
+        B.parent = some d.head.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
+          (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} ∧
+      ∀ B ∈ {B | B ∈ elly.frame.viableTree
+          (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
+        B.parent = some d.head.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
+          (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B}, B = P) ∧
+    ¬ ∃ C, SA.IsBest sp (SA.goldfishScore sp elly.frame
+      (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
+      {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
+        B.parent = some P.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
+          (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} C := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hr := hac.localRun
+  have hPhiU := (SA.frameIn_of_callAt hr hP.1 hci).2
+  have hPsiU := (SA.frameIn_of_callAt hr hy hcy.1).2
+  have hng : ∀ B ∈ elly.frame.tree, B.parent ≠ none → B.root ≠ sp.genesisRoot := by
+    intro B hB hpar hgen
+    have hG := Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hy j)
+    have he := hr.coherent.1 (hPsiU hB) ⟨y, hy, j, hG⟩ hgen
+    rw [he] at hpar
+    exact hpar (by simp [Params.genesisBlock])
+  have hprop : P.proposer ∈ H := by
+    obtain ⟨-, -, -, -, -, -, -, -, -, -, -, hprop, -⟩ :=
+      honestProposalRun_of_ready hp.run hp.noColl hP
+    rw [hprop, ← hP.2.1]
+    exact hP.1
+  have hcast : ((s + 1 : Nat) : Int) - 1 = s := by omega
+  rw [← hcast]
+  apply SA.stop_core hac hy hcy hes hP.2.2.2.2.1 hPQ hprop hng hPv
+  intro B hB hBQ hBs
+  have hBP : B ≠ P := by
+    have hPs := hP.2.2.2.2.1
+    rintro rfl
+    omega
+  have hQvy := reset_parent_viable_of_children hp hy hR hcy hes (hPhiU hQt) hPQ hBQ hBP
+    hPv hB (fun x r l O ho ht => crossing_below_proposal_parent hp hc hP hR hci hcall hd
+      hti hPQ ho ht .refl)
+  rw [hcast]
+  exact reset_old_child_ineligible hp hc hP hci hcall hd hti hpay hPQ hy hcy hes hPv.1.1
+    hg hgi hgj hQt hQv hQvy hB hBQ hBs
+
 /-- **The joined duty, unanimity** (§23; phase-service §10, "Join with RN/RU"): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
 `t_u ≥ R` is `P`. -/
