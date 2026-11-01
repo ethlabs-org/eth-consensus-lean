@@ -466,6 +466,59 @@ private theorem held_of_deadline_processing
   · exact Or.inl (hmono h)
   · exact Or.inr ⟨a, hmono ha, b, hmono hb, hab, hav, hbv⟩
 
+/-- Processing strictly before a deadline gives stamped pool evidence. Existing
+duplicates and saturated identities retain their earlier admission stamps. -/
+theorem poolEvidenceBefore_of_processAt
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {k : Nat} {v : Vote sp.n} (hp : tr.ProcessAt y k v)
+    (h₁ : (sp.slot (tr.time k) : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot (tr.time k))
+    {T : Time} (hkT : tr.time k < T) : PoolEvidenceBefore (tr.state y (k + 1)) v T := by
+  have stamped : ∀ w, w ∈ (tr.state y (k + 1)).pool w.slot →
+      HeldBefore (tr.state y (k + 1)) w T := by
+    intro w hw
+    refine ⟨hw, ?_⟩
+    rcases pool_origin hr hy (k + 1) w hw with ⟨q, hq, -, hs, -⟩ |
+        ⟨q, hq, ell, -, -, hs, -⟩ <;>
+      rw [hs] <;> exact WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr
+        ((hr.time_mono (Nat.lt_succ_iff.mp hq)).trans_lt hkT))
+  apply (poolEvidenceBefore_iff _ _ _).mpr
+  rcases held_of_processAt hr hy hp h₁ h₂ with hv | ⟨a, ha, b, hb, hab, hav, hbv⟩
+  · exact Or.inl (stamped v hv)
+  · have has := state_pool_slot sp hr hy (k + 1) v.slot a ha
+    have hbs := state_pool_slot sp hr hy (k + 1) v.slot b hb
+    exact Or.inr ⟨a, b, hab, hav, hbv, has, hbs,
+      stamped a (has.symm ▸ ha), stamped b (hbs.symm ▸ hb)⟩
+
+/-- Deadline service preserves strict stamps, for both fresh and retained evidence,
+under exactly the hypotheses of `held_of_deadline_service`. -/
+theorem poolEvidenceBefore_of_deadline_service
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {X : Fin sp.n}
+    {k : Nat} {v : Vote sp.n} (hX : X ∈ H) {i : Nat}
+    (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
+    (hdl : tr.time k + sp.Δ ≤ tr.time i)
+    (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
+      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t)
+    (hp : MessageServedBefore tr X i (tr.time k) v) :
+    PoolEvidenceBefore (tr.state X i) v (tr.time k + sp.Δ) := by
+  rcases (messageServedBefore_iff _ _ _ _).mp hp with hp | hp
+  · obtain ⟨k', hk'i, hkk', hproc, hk'dl⟩ := hp
+    have hd : tr.deadline X k' (tr.time k) = tr.time k + sp.Δ :=
+      deadline_eq fun k'' hk'' hr' => hrs k'' (hk''.trans hk'i) hr'
+    rw [hd] at hk'dl
+    have hk'lt : k' < i := lt_of_le_of_ne hk'i (by rintro rfl; linarith)
+    obtain ⟨h₁, h₂⟩ := hslot _ hkk' hk'dl
+    apply poolEvidenceBefore_mono hr hX (Nat.succ_le_of_lt hk'lt) ?_
+      (poolEvidenceBefore_of_processAt hr hX hproc h₁ h₂ hk'dl)
+    intro k'' hk'' hk''i hrk''
+    obtain ⟨ell, hc, hcall⟩ := hrk''
+    obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart X hX k'' ell hc hcall
+    obtain ⟨ell', hc', -⟩ := hproc
+    have := hprev k' (by omega) ell' hc'
+    have := hrs k'' hk''i.le ⟨ell, hc, hcall⟩
+    linarith
+  · have he := hp.evidence hr hX
+    rwa [deadline_eq hrs] at he
+
 /-- Both processing and retained evidence establish the writer's pool comparison.
 The retained route needs no artificial lower bound on the original admission time. -/
 theorem held_of_deadline_service

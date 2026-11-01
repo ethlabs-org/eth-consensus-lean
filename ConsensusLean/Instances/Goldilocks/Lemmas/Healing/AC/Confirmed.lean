@@ -225,6 +225,22 @@ theorem resolutionTime_lt_of {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
   · omega
   · exact max_lt h1 h2
 
+/-- Strict vote evidence and an accepted head resolve strictly before the same cutoff.
+Restarts and a possible same-cut block receipt remain explicit. -/
+theorem resolutionTime_lt_of_held_accepted
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ell)
+    {v : Vote sp.n} {Hd : Blk sp.n FGP} {F : Time}
+    (hv : HeldBefore (tr.state y i) v F) (hHd : Hd ∈ ell.frame.tree)
+    (hroot : Hd.root = v.head) (hslot : Hd.slot ≤ v.slot)
+    (hacc : AcceptedBefore tr y Hd F)
+    (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < F)
+    (hi : F ≤ tr.time i ∨ ell.call ≠ .block Hd) :
+    resolutionTime (tr.state y i) ell.frame v < ETime.of F := by
+  have hb := blockStamp_lt_of_acceptedBefore sp hr hy hc hHd hacc hrs hi
+  rw [hroot] at hb
+  exact resolutionTime_lt_of (frameIn_of_callAt hr hy hc).1 hHd hroot hslot hv.2 hb
+
 /-- **The proposal is relayed**: an honest proposal `P` of slot `p` (with `ḡ ≤ t_p`) is in the
 frame of every honest call from `t_p + Δ` on, accepted before `t_p + Δ`. -/
 theorem proposal_mem_tree (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
