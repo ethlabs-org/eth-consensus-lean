@@ -1423,6 +1423,61 @@ theorem read_majority_of_target_votes
       ⟨ht0, hle, hti, fun q hq => not_lt.1 fun hiq => hT ⟨q, hiq.le, hq⟩, hw, hj⟩
       hsync hcatch hL ha hR (fun z hz q hq => hvotes z hz q (hle q hq)) hfault
 
+/-- Post-GST head support for the actual record. Only the current view's votes and
+participation are needed; historical record recency and anchor compatibility are supplied
+separately. The live-lock arm requires no majority or service before GST. -/
+theorem anchor_compatible_of_live_candidates
+    {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ)
+    {t : Time} {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hcomp : ∀ X ∈ SA.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}, Compatible Φ.tree X R) :
+    Compatible Φ.tree (SA.getAnchor sp A Φ t) R := by
+  have hsub : SA.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
+    rintro X (hX | hX)
+    · exact hX.1
+    · exact (Set.mem_singleton_iff.mp hX) ▸ hΦ.fcRoot_mem
+  obtain ⟨D, hD⟩ := SA.exists_deepest hΦ hsub ⟨Φ.fcRoot, Or.inr rfl⟩
+  have ha : SA.getAnchor sp A Φ t = D := by simp only [SA.getAnchor, hD, Option.getD_some]
+  rw [ha]
+  exact hcomp D (SA.deepest_mem hD).1
+
+/-- Scoped service and current-label votes complete the head certificate, after the
+record has been classified against its actual-clock anchor. -/
+theorem read_head_support_of_target_votes
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time} (ht0 : 0 ≤ t)
+    (hle : ∀ q < i, tr.time q ≤ t) (hti : t ≤ tr.time i)
+    (hw : tr.awake y t) (hj : tr.JoinedAt y t)
+    {a : Time} (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC)
+    (hcatch : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a (2 * sp.Δ) t)
+    {L : Nat} (hL : (L : Int) =
+      (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+    (ha : a ≤ sp.ts L) {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hR : R ∈ (Node.frame (tr.state y i)).tree)
+    (hanchor : Compatible (Node.frame (tr.state y i)).tree
+      (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R)
+    (hsource : (Node.frame (tr.state y i)).Anc R
+        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+      (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
+        ∀ z ∈ H, ∀ q, tr.time q ≤ t → ∀ e, SA.VoteAt tr.projAC z q e →
+          e.msg.slot = L → SA.VoteExtends (tr.HonestBlocks H) e.msg R))
+    (hfault : Hᶜ.ncard <
+      {x | x ∈ H ∧ tr.awake x (sp.ts L + sp.Δ) ∧ tr.JoinedAt x (sp.ts L + sp.Δ)}.ncard) :
+    Compatible (Node.frame (tr.state y i)).tree
+      (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
+      ((Node.frame (tr.state y i)).Anc R
+        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+      (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
+        (SA.voters (SA.latestView sp (tr.state y i).ac
+          (Node.frame (tr.state y i)) t).1.votes).ncard <
+          2 * (SA.supporters (Node.frame (tr.state y i))
+            (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+            (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R).ncard)) := by
+  refine ⟨hanchor, ?_⟩
+  rcases hsource with h | ⟨hv, hvotes⟩
+  · exact Or.inl h
+  · exact Or.inr ⟨hv, read_majority_of_target_votes hrun hnc hy ht0 hle hti hw hj
+      hsync hcatch hL ha hR hvotes hfault⟩
+
 /-- **The supporter majority of an older origin** (workbench#11 §2.4, §5): at a read at `t`, an
 origin `R` of the frame whose label is below the latest view's slot `l` is supported by a strict
 majority of the latest view's voters: the honest voters support it, the more than `f` validators

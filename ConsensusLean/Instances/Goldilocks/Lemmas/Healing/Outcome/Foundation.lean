@@ -87,6 +87,20 @@ theorem drain_live_locks {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {L : Set SA.Loc
   simp only [cleanLabel]
   omega
 
+/-- A stored lock that is live by time after the drain has a clean label. This requires
+neither normalized `liveLocks` membership nor a later `addLocks` call. -/
+theorem drain_stored_lock_label {l : SA.Lock} {t : Time}
+    (ht : drainTime sp a ≤ t) (hlive : sp.slot t ≤ l.slot + sp.k) :
+    cleanLabel sp a + sp.k + 2 ≤ l.slot := by
+  have h0 : 0 ≤ t := le_trans (by
+    rw [drainTime_eq]
+    simp only [SAParams.ts]
+    exact mul_nonneg (by linarith [sp.toParams.hΔ]) (Int.natCast_nonneg _)) ht
+  rw [drainTime_eq] at ht
+  have hs := (SA.ts_le_iff_le_slot sp h0 _).1 ht
+  rw [cleanLabel_eq]
+  omega
+
 /-! ### The clean fast transfer -/
 
 /-- `f < n/2` under `Healthy(g)`. -/
