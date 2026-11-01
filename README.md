@@ -840,14 +840,17 @@ Only an unsplit `--full` ends with `check.sh: ALL CHECKS PASSED`; a `--split` pa
 
 ### Local workflow
 
-On the shared box every build and check runs in a job (replace `<name>` and `<worktree>`):
+On the shared box agent builds and checks use the opt-in FIFO wrapper from their worktree:
+`scripts/agent-job.py <name> -- <command...>`. It preserves cwd and arguments, admits at most two
+agent jobs per user, delegates to `job --mem 16G --cpus 8 consensus-lean`, and waits for completion.
+Landings and CI continue to use `job` directly, outside the agent queue.
 
 1. Iterate on one file with `lake env lean <file>` (after building its imports), or on one declaration with
    `turbo-lean check <file> --decl <name>` (a single declaration only; `lake build` stays the gate).
    `lake build` builds `ConsensusLean` by default; `lake test` builds `ConsensusLeanTest`.
 2. Before committing, check what changed:
    ```sh
-   job --mem 16G --cpus 8 consensus-lean <name> -- bash -lc "cd <worktree> && LAKE_RESTORE_ARTIFACTS=true scripts/check-changed.sh"
+   scripts/agent-job.py <name> -- bash -lc 'LAKE_RESTORE_ARTIFACTS=true scripts/check-changed.sh'
    ```
 3. Commit, rebase on `origin/main` and land with `scripts/push-main.sh` (it reruns step 2 against `origin/main`
    and pushes only if it passes; a trusted-surface change needs a `Trusted-surface:` line in each commit). The box watcher

@@ -27,9 +27,11 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   No `git checkout <path>`, `git restore`, `git stash` or `git reset` that discards or hides work (plan §7):
   commit first, or ask.
 - **Every build in a job** (shared memory pool; OOM kills hit everyone):
-  `job --mem 16G --cpus 8 consensus-lean <unique-name> -- bash -lc "cd <worktree> && LAKE_RESTORE_ARTIFACTS=true <cmd>"`,
-  then wait for it (`/srv/status/<user>.<unit>.json`, `journalctl --user -u <unit>`). One build at a time;
-  reviewers never build.
+  from your worktree, agent builds and checks use
+  `scripts/agent-job.py <unique-name> -- bash -lc 'LAKE_RESTORE_ARTIFACTS=true <cmd>'`.
+  It waits through the per-user FIFO (two agent slots), delegates to `job --mem 16G --cpus 8
+  consensus-lean`, and returns the job's exit status. Landings and CI stay on `job`, outside this queue.
+  One build at a time per agent; reviewers never build.
 - **Iterate locally:** `lake env lean <file>` for one file (its imports built), or
   `turbo-lean check <file> --decl <name>` for a single declaration only. `lake build` stays the gate.
   `lake build` builds only `ConsensusLean` by default; `lake test` builds `ConsensusLeanTest`
