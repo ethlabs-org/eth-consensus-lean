@@ -249,6 +249,43 @@ theorem stateAt_emission_slot_fresh (hv : rho.ExecutionValid)
   rw [simTrace_state S rho hn hv v hv' i hi]
   exact hf
 
+/-- A trace restart is produced by an actual engine restart, never by tick or
+recursive delivery processing. The interval identifies its exact engine event. -/
+theorem simTrace_restart_event {y : Fin (Fintype.card V)} {k : Nat}
+    (hr : (simTrace S rho hn).RestartAt y k) :
+    ∃ i, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
+      rho.events[i]? = some (.restart (rho.key y) ((simTrace S rho hn).time k)) := by
+  obtain ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ := hr
+  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
+  obtain ⟨r, i, ev, -, he, hlo, hhi, hidx, hn', ht, -, hlab'⟩ :=
+    simTrace_cut S rho hn hl
+  have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
+  obtain ⟨v, t, rfl⟩ :=
+    restart_of_mem_eventCuts S rho hn he (List.mem_of_getElem? hidx) hrl hcall
+  have hkey : v = rho.key y := by
+    have hk := congrArg rho.key (hn'.symm.trans hnode)
+    exact (rho.key.apply_symm_apply v).symm.trans hk
+  exact ⟨i, hlo, hhi, by simpa only [hkey, ht, Model.Event.time] using he⟩
+
+/-- An engine interval without this node's restarts contains no restart cuts for
+that node. This supplies the cut-level premise needed for pool monotonicity. -/
+theorem simTrace_noRestart_between {y : Fin (Fintype.card V)} {a b k : Nat}
+    (hnr : ∀ i, a ≤ i → i < b → ∀ t,
+      rho.events[i]? ≠ some (.restart (rho.key y) t))
+    (ha : cutMap S rho hn a ≤ k) (hb : k < cutMap S rho hn b) :
+    ¬ (simTrace S rho hn).RestartAt y k := by
+  intro hr
+  obtain ⟨i, hlo, hhi, he⟩ := simTrace_restart_event S rho hn hr
+  have hai : a ≤ i := by
+    by_contra h
+    have hm := cutMap_mono S rho hn (show i + 1 ≤ a by omega)
+    omega
+  have hib : i < b := by
+    by_contra h
+    have hm := cutMap_mono S rho hn (show b ≤ i by omega)
+    omega
+  exact hnr i hai hib _ he
+
 /-- Every non-restart AC cut lies in a sending engine event of the same node and time.
 This is interval transport only; it does not assume the publication supplier. -/
 theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}
