@@ -210,4 +210,32 @@ theorem received_child_decodes {V : Type} [Fintype V] {E : Env V}
   rw [rootOf_digests_blockObj,
     rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, hc, rfl⟩)]
 
+/-- Own proposals obtain wire validity from reachable node execution, rather than from
+a receipt guard (which own-block recording does not run). -/
+theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (proposer : Nat → Fin (Fintype.card V)) (self : Fin (Fintype.card V))
+    (cfg cfg' : Node.Config (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))
+    (t : Time) (x : Nat)
+    (hq : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).Requirements)
+    (hg : ((S.params (pubOf E) hn).toParams.genesisBlock
+      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload).RootOk (digestOf S rho))
+    (hr : Node.Reachable proposer (digestOf S rho) self cfg)
+    (hs : Node.Step proposer (digestOf S rho) self cfg (.tick x) t cfg')
+    (hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams) proposer self t) :
+    let r := Node.acProposal
+      (Node.tickStep proposer (digestOf S rho) self cfg.st t x .acTick).1 t
+    ∀ d p, r.2.2 = some (d, p) →
+      let B := Node.mkBlock (digestOf S rho) self r.1.fg t x d.head p
+      decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+        (blockObj _ B) = some B := by
+  dsimp only
+  intro d p hdp
+  have h := Compose.honest_block_accepted
+    (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) proposer (digestOf S rho) self
+    hq hg cfg cfg' t x hr hs hp d p hdp
+  exact canonical_block_decodes S rho hn _ (by simp only [Node.mkBlock, ne_eq,
+      reduceCtorEq, not_false_eq_true]) h.2.2.2.2.2.1
+    (fun a ha => (h.2.2.2.1 a ha).1) h.2.2.2.2.1
+
 end Consensus.Goldilocks.Refinement
