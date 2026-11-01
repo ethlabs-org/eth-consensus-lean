@@ -215,8 +215,18 @@ class Admission(unittest.TestCase):
         try:
             import select
             self.assertTrue(select.select([ready_r], [], [], 3)[0])
-            b = self.enqueue('enqueue-while-probing')
-            self.assertEqual(self.queue.tick(b, cancel=True)[0], 'cancelled')
+            code = '''
+import importlib.util, sys
+sys.dont_write_bytecode = True
+spec = importlib.util.spec_from_file_location('agent', sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+q = m.Queue(sys.argv[2], None)
+b = q.enqueue('enqueue-while-probing', ['true'])
+assert q.tick(b, cancel=True)[0] == 'cancelled'
+'''
+            subprocess.run([sys.executable, '-I', '-c', code,
+                            str(Path(__file__).with_name('agent-job.py').resolve()),
+                            str(self.queue.directory)], check=True, timeout=3)
         finally:
             os.write(release_w, b'1')
             _, status = os.waitpid(pid, 0)
