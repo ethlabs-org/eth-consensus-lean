@@ -529,4 +529,33 @@ theorem catchRun_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
   subst k
   exact (not_lt_of_ge hdeadline) hkt
 
+/-- GST holdings for an arbitrary publication, including pre-GST sources. The effective
+time controls the deadline while the publication retains its original source time. -/
+theorem publication_held_before_gst_deadline (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ)
+    (ht : (publisherExecution S rho).eventTime r.event = τ)
+    (hb : (simTrace S rho hn).deadline y j (max τ g)
+      (S.params (Model.pubOf E) hn).Δ ≤ rho.horizon)
+    (hd : (simTrace S rho hn).deadline y j (max τ g)
+      (S.params (Model.pubOf E) hn).Δ ≤ (simTrace S rho hn).time j) :
+    ∃ d, rho.log.Held rho.point (rho.key y) r.object d ∧
+      d < (simTrace S rho hn).deadline y j (max τ g) (S.params (Model.pubOf E) hn).Δ := by
+  obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval S rho hn hv hy hj
+    (hτ.trans (le_max_left τ g))
+  rw [heq] at hb hd ⊢
+  have hga : max a g = a := max_eq_left ((le_max_right τ g).trans ha)
+  have hslack : a + E.Δ < a + (S.params (Model.pubOf E) hn).Δ := by
+    change a + E.Δ < a + (E.Δ + 1)
+    linarith
+  have hheld := (publication_held_psync S rho hn hnet r hr hx hy
+    (ht ▸ (le_max_left τ g).trans ha)
+    (by rw [hga]; exact hslack.le.trans hb)
+    (by rw [hga]; exact fun u hau hud => hw u hau (hud.trans (hslack.le.trans hd)))).1
+  rw [hga] at hheld
+  exact ⟨a + E.Δ, hheld, hslack⟩
+
 end Consensus.Goldilocks.Refinement
