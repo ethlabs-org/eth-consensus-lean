@@ -17,6 +17,36 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### The vote step -/
 
+/-- At a bounded observation after activation, earlier bounded vote extension
+already supplies both cache comparisons; cache hypotheses need not be assumed separately. -/
+theorem ResetPremisesUpTo.vote_state_caches {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {k : Nat}
+    (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
+      HighOrigin tr H g x₀ i₀ j₀ B₀ → tr.time i₀ ≤ b →
+      ∀ z ∈ H, ∀ c < k, tr.time c ≤ b → ∀ e, SA.VoteAt tr.projAC z c e →
+        j₀ < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀)
+    (hkb : tr.time k ≤ b) {x : Fin sp.n} {i j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
+    (hib : tr.time i ≤ b) {y : Fin sp.n} (hy : y ∈ H)
+    (hk : sp.ts (j + 1 : Nat) ≤ tr.time k) :
+    Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B ∧
+      (HZ tr H g + 1 ≤ (tr.state y k).fg.hj →
+        Compatible (tr.HonestBlocks H) (tr.state y k).fg.J B) := by
+  classical
+  have hex : ∃ k', sp.ts (j + 1 : Nat) ≤ tr.time k' := ⟨k, hk⟩
+  have hk₁ : Nat.find hex ≤ k := Nat.find_min' hex hk
+  have hfirst : tr.FirstCutFrom (Nat.find hex) (sp.ts (j + 1 : Nat)) :=
+    ⟨Nat.find_spec hex, fun k' hk' => not_le.mp (Nat.find_min hex hk')⟩
+  rcases Compose.state_of_le (tr := tr) (y := y) hk₁ with h | ⟨k', hk', hk'k, hc, h⟩
+  · rw [h]
+    exact hp.activation_caches ho hy hfirst hib ((hp.run.time_mono hk₁).trans hkb)
+      (fun ho₀ hi₀ z hz c hc => hvote ho₀ hi₀ z hz c (lt_of_lt_of_le hc hk₁))
+  · rw [h]
+    exact hp.retention_cut_step
+      (fun ho₀ hi₀ z hz c hc => hvote ho₀ hi₀ z hz c (lt_of_le_of_lt hc hk'k))
+      ((hp.run.time_mono hk'k.le).trans hkb) hy hc ho hib
+      (Or.inr (hfirst.1.trans (hp.run.time_mono hk')))
+
 /-- The label of a high origin starts at or after `g` (`t_j ≥ c_z > ḡ ≥ g`). -/
 theorem le_ts_of_highOrigin (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) : g ≤ sp.ts j := by

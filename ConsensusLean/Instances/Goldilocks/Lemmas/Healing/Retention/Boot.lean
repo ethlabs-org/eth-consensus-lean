@@ -280,22 +280,31 @@ even when its write is later), every honest `Σ.F`, and every high honest `Σ.J`
 the origin's block: low finalized entries by G1.2, high ones through their row witnesses, whose
 sources are comparable with `B` by the label split (earlier labels by their votes, the same label
 by TSQ, later labels excluded by R4). -/
-theorem activation_caches (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+theorem ResetPremisesUpTo.activation_caches {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
     (hy : y ∈ H) {k₁ : Nat} (hk₁ : tr.FirstCutFrom k₁ (sp.ts (j + 1 : Nat)))
-    (_ha : a < sp.ts (j + 1 : Nat))
-    (ih : ∀ k' < k₁, VoteInv tr H g k' ∧ CacheInv tr H g a k') :
+    (hib : tr.time i ≤ b) (hkb : tr.time k₁ ≤ b)
+    (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
+      HighOrigin tr H g x₀ i₀ j₀ B₀ → tr.time i₀ ≤ b →
+      ∀ z ∈ H, ∀ c < k₁, tr.time c ≤ b → ∀ e, SA.VoteAt tr.projAC z c e →
+        j₀ < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀) :
     Compatible (tr.HonestBlocks H) (tr.state y k₁).fg.F B ∧
       (HZ tr H g + 1 ≤ (tr.state y k₁).fg.hj →
         Compatible (tr.HonestBlocks H) (tr.state y k₁).fg.J B) := by
-  have hU := honest_coherent hp
+  have hU := hp.honest_coherent
   have hreach := Compose.fg_reachable hp.run.toLocalRun hy k₁
   have hsub : (tr.state y k₁).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, k₁, hX⟩
-  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
+  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := hp.highOrigin_mem ho
   have hgB := ((Goldilocks.Store.accepted_tree _ _ _ _
     (Compose.fg_reachable hp.run.toLocalRun ho.1 i)).2.2.2 B hBx).mono
       (fun X hX => (⟨x, ho.1, i, hX⟩ : X ∈ tr.HonestBlocks H))
-  have hvk : ∀ k' < k₁, VoteInv tr H g k' := fun k' hk' => (ih k' hk').1
+  have hg : g ≤ sp.ts j := by
+    have h₁ := hp.cutZ_le_ts_of_highOrigin ho
+    have h₂ := lt_cutZ sp g
+    have h₃ := le_gbar g
+    have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+    linarith
   have hact : i < k₁ ∨ ∀ c, tr.time c < sp.ts (j + 1 : Nat) → c < k₁ :=
     Or.inr fun c hc => not_le.mp fun hle => absurd (hk₁.1.trans (hp.run.time_mono hle))
       (not_le.mpr hc)
@@ -312,23 +321,46 @@ theorem activation_caches (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin
     obtain ⟨E', hE', hE'r, hE'h⟩ := signAt_entry hp.run haH hsd
     obtain rfl : E' = E := hU.1 ⟨_, haH, d, hE'⟩ (hsub hE) (hE'r.trans haT)
     obtain ⟨r, hrd, l, O, hoO, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
-      high_row_source hp haH hsd (by rw [← hE'h, σ_eq_run hp haH hy hE' hE]; exact hEh)
+      hp.high_row_source haH hsd (by rw [← hE'h, hp.σ_eq_run haH hy hE' hE]; exact hEh)
     obtain rfl : E₀ = E' := hU.1 ⟨_, haH, r, hE₀⟩ (hsub hE) (hE₀r.trans haT)
     have hEO : Anc (tr.HonestBlocks H) E₀ O := hE₀O.mono fun X hX => ⟨_, haH, r, hX⟩
-    rcases origins_compatible_before hp hvk ho (g_le_ts hp ho le_rfl) hact hoO (by omega) with
+    rcases hp.origins_compatible_before hvote ho hg hact hoO (by omega) hib
+      ((hp.run.time_mono (by omega)).trans hkb) with
       hBO | hOB
     · exact hnc (SA.anc_total hU hEO hBO)
     · exact hnc (Or.inl (hEO.trans hOB))
+  have hq : Hᶜ.ncard < sp.toParams.fg.q := by
+    have hf := hp.faults
+    have hn := sp.toParams.hn
+    change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at hf
+    change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
+    omega
   have hJ : HZ tr H g + 1 ≤ (tr.state y k₁).fg.hj →
       Compatible (tr.HonestBlocks H) (tr.state y k₁).fg.J B :=
-    Store.J_compatible_of_rows hreach (faulty_lt_q hp.healthy) hU hsub hgB hrow
+    Store.J_compatible_of_rows hreach hq hU hsub hgB hrow
   refine ⟨?_, hJ⟩
   obtain ⟨-, -, hFJ, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
   by_cases hlow : (tr.state y k₁).fg.hj ≤ HZ tr H g
-  · exact Or.inl (low_finalized_below_origin hp hy k₁ hlow ho)
+  · exact Or.inl (low_finalized_below_high_block_of_run hp.run hp.noColl hp.faults
+      hy ho.1 hBx ho.2.2.2 hlow)
   · rcases hJ (by omega) with hJB | hBJ
     · exact Or.inl ((hFJ.mono hsub).trans hJB)
     · exact SA.anc_total hU (hFJ.mono hsub) hBJ
+
+/-- Whole-run specialization of activation cache comparison. -/
+theorem activation_caches (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
+    (hy : y ∈ H) {k₁ : Nat} (hk₁ : tr.FirstCutFrom k₁ (sp.ts (j + 1 : Nat)))
+    (_ha : a < sp.ts (j + 1 : Nat))
+    (ih : ∀ k' < k₁, VoteInv tr H g k' ∧ CacheInv tr H g a k') :
+    Compatible (tr.HonestBlocks H) (tr.state y k₁).fg.F B ∧
+      (HZ tr H g + 1 ≤ (tr.state y k₁).fg.hj →
+        Compatible (tr.HonestBlocks H) (tr.state y k₁).fg.J B) := by
+  exact (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time k₁)))).activation_caches
+    ho hy hk₁ ((le_max_left _ _).trans (le_max_right _ _))
+    ((le_max_right _ _).trans (le_max_right _ _))
+    (fun ho₀ _ z hz c hc _ e ⟨ℓ, hcl, he⟩ hsl =>
+      ((voteInv_iff.1 (ih c hc).1) _ _ _ _ ho₀ z hz ℓ e ⟨hcl, he⟩ hsl).1)
 
 /-- The caches at a vote (the last-call/first-cut split of `vote_state_caches`, repeated here
 since the vote step's module imports this one). -/
