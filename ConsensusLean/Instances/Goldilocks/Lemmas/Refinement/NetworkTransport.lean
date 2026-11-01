@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationPr
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 
 public section
 
@@ -14,7 +16,8 @@ The trace parameters remain independent here. `Setup.params` now gives protocol 
 Δp = Δe + 1; this endpoint slack does not instantiate any supplier below. For FG row service,
 ΔF := sp.Δ is the protocol bound, not the engine delay.
 All three suppliers include message, block, acceptance-relay and attestation service. Receipt
-alone proves none of the acceptance-relay fields. No supplier is claimed implemented here.
+alone proves none of the acceptance-relay fields. The finite `ResetService` assembly below
+uses the concrete message, block, relay and signed-row services; full GST remains separate.
 -/
 
 namespace Consensus.Goldilocks.Refinement
@@ -894,5 +897,283 @@ theorem publication_held_ready_tail (hn : 1 ≤ Fintype.card V) {g : Time}
     (by rw [hga]; exact hlt.le.trans ht) (by rw [hga]; exact hw)).1
   rw [hga] at hh
   exact ⟨a + E.Δ, hh, hlt⟩
+
+/-- Votes in an actual own-proposal payload were already pooled before its AC block cut. -/
+theorem own_proposal_payload_pooled (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat} {t : Time} {x : Nat}
+    (hg : (simTrace S rho hn).GroupAt (runProposer S rho hn) (digestOf S rho) y j t (.tick x))
+    {d : DutyHead (Fintype.card V) (List (FG.Att (Fintype.card V)))
+      (SA.Payload (Fintype.card V))} {p : SA.Payload (Fintype.card V)}
+    (hd : (Node.acProposal
+      (Node.tickStep (runProposer S rho hn) (digestOf S rho) y
+        ((simTrace S rho hn).state y j) t x .acTick).1 t).2.2 = some (d, p))
+    (hprop : ∃ ℓp, (simTrace S rho hn).CallAt y (j + 1) (.ac ℓp) ∧ ℓp.call = .proposal)
+    (hfg : ∃ B, (simTrace S rho hn).CallAt y (j + 2) (.fg (.block B true)))
+    {m : SA.Vote (Fintype.card V)} (hm : m ∈ p.1) :
+    m ∈ ((simTrace S rho hn).state y (j + 3)).ac.pool m.slot := by
+  have hr := simTrace_goldilocksRun S rho hn hv
+  have htick := hg.2.1 0 (by simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps,
+    Node.tickStep, Node.acCall])
+  have hct : (simTrace S rho hn).CallAt y j
+      (Node.acCall y ((simTrace S rho hn).state y j) t .tick).2 := by
+    exact ⟨by simpa using htick.1, by
+      simpa [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep,
+        Node.acCall] using htick.2.2.2.2⟩
+  have hstate : ((simTrace S rho hn).state y (j + 1)).ac =
+      (Node.tickStep (runProposer S rho hn) (digestOf S rho) y
+        ((simTrace S rho hn).state y j) t x .acTick).1.ac := by
+    rw [(simTrace S rho hn).state_succ_of_call hct]
+    have hl := hr.cutLaw y hy j _ hct
+    have ht : (simTrace S rho hn).time j = t := by simpa using htick.2.1
+    rw [ht] at hl
+    exact (congrArg Prod.fst hl.2.1).symm
+  have hp : ∃ σ, m ∈ ((simTrace S rho hn).state y (j + 1)).ac.pool σ := by
+    rw [hstate]
+    change (SA.acProposal (S.params (Model.pubOf E) hn) _ _ t).2 = some (d, p) at hd
+    unfold SA.acProposal at hd
+    split_ifs at hd
+    obtain ⟨_, rfl⟩ := Prod.mk.inj (Option.some.inj hd)
+    simp only [SA.voteViewList, List.mem_filter] at hm
+    unfold SA.SAState.poolAt at hm
+    split_ifs at hm
+    · simp at hm
+    · exact ⟨_, hm.1⟩
+  obtain ⟨σ, hm⟩ := hp
+  have hslot := (Compose.state_pool_cap hr hy (j + 1) σ).1 m
+    (by simpa only [Compose.projAC_state hr.toLocalRun hy] using hm)
+  obtain ⟨ℓp, hcp, hpc⟩ := hprop
+  obtain ⟨B, hcb⟩ := hfg
+  have hp := (hr.cutLaw y hy (j + 1) _ hcp).2.1
+  rw [hpc] at hp
+  have hpools : ((simTrace S rho hn).state y (j + 2)).ac.pool =
+      ((simTrace S rho hn).state y (j + 1)).ac.pool := by
+    have he := congrArg Prod.fst hp
+    dsimp only [Prod.fst] at he
+    rw [show j + 2 = (j + 1) + 1 by omega, (simTrace S rho hn).state_succ_of_call hcp, ← he]
+    change (SA.acProposal _ _ _ _).1.pool = _
+    unfold SA.acProposal
+    split_ifs <;> rfl
+  rw [show j + 3 = (j + 2) + 1 by omega, (simTrace S rho hn).state_succ_of_call hcb,
+    (hr.cutLaw y hy (j + 2) _ hcb).2.2.1, hpools, hslot]
+  exact hm
+
+/-- A sending or freshly admitting source processes its vote at that same time.
+Recursive delivery processing may occur later in the event, never at a later time. -/
+theorem sendOrAdmit_process_same_time (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {i : Nat}
+    {m : SA.Vote (Fintype.card V)} (hsource : (simTrace S rho hn).SendOrAdmitAt y i m) :
+    ∃ k, (simTrace S rho hn).projAC.ProcessAt y k m ∧
+      (simTrace S rho hn).time k = (simTrace S rho hn).time i := by
+  have hr := simTrace_goldilocksRun S rho hn hv
+  have hproj : (simTrace S rho hn).projAC.SendOrAdmit y i m := by
+    obtain ⟨ℓ, hc, hs⟩ := hsource
+    refine ⟨ℓ, Compose.projAC_callAt.mpr hc, ?_⟩
+    rw [Compose.projAC_state hr.toLocalRun hy]
+    exact hs
+  rcases Compose.sendOrAdmit_forward_source hr hy hproj with hem | ⟨hc, hf, _⟩
+  · obtain ⟨ℓ, hc, he⟩ := hem
+    exact ⟨i, ⟨ℓ, Compose.projAC_callAt.mpr hc, Or.inr he⟩, rfl⟩
+  rcases hc with ⟨ℓ, hc, hm⟩ | ⟨ℓ, B, hc, hb, hm⟩
+  · exact ⟨i, ⟨ℓ, Compose.projAC_callAt.mpr hc, Or.inl hm⟩, rfl⟩
+  have hl : (simTrace S rho hn).label i ≠ none := by rw [hc.2]; simp
+  obtain ⟨r, n, ev, _, he, hlo, hhi, hidx, hnode, ht, _, hlabel⟩ :=
+    simTrace_cut S rho hn hl
+  have hrlabel : r.label = .ac ℓ := Option.some.inj (hlabel.symm.trans hc.2)
+  have hkey : rho.ownKey ev.node = y := hnode.symm.trans hc.1
+  cases ev with
+  | deliver v o t =>
+    obtain ⟨k, _, _, hp, hkt⟩ := delivery_block_payload_processAt S rho hn he
+      (List.mem_of_getElem? hidx) hrlabel hb hm
+    exact ⟨k, hkey ▸ hp, hkt.trans ht.symm⟩
+  | restart v t =>
+    have hm := List.mem_of_getElem? hidx
+    rw [eventCuts_restart S rho hn n v t he] at hm
+    obtain ⟨q, hq, rfl⟩ := List.getElem_of_mem hm
+    have hq' := hq
+    rw [length_groupRecs] at hq'
+    have hq0 : q = 0 := by
+      simpa only [Node.exec, Node.restart, List.length_singleton, Nat.lt_one_iff] using hq'
+    subst q
+    have hrlabel' := (getElem_groupRecs _ _ _ _ _ _ _ 0 hq).2.2.2.2
+    rw [hrlabel'] at hrlabel
+    have hcall := congrArg (fun c => match c with | .ac l => l.call | _ => .restart) hrlabel
+    simp only [Node.exec, Node.restart, Node.acCall] at hcall
+    rw [← hcall] at hb
+    cases hb
+  | tick v t =>
+    change rho.ownKey v = y at hkey
+    have hpublic : (S.params (Model.pubOf E) hn).toParams.IsPublic t := by
+      by_contra h
+      rw [eventCuts_tick_other S rho hn n v t he h] at hidx
+      simp at hidx
+    have hvhon : v ∈ rho.honest := by
+      have : rho.key y = v := by rw [← hkey]; exact rho.key.apply_symm_apply v
+      exact this ▸ hy
+    obtain ⟨hengine, hlen⟩ := simTrace_tick_public_group S rho hn hv v hvhon n t he hpublic
+    rw [hkey] at hengine hlen
+    obtain ⟨i', hi, hacc, htime⟩ := Compose.acBlock_prev hr.toLocalRun hy hc hb
+    rcases Compose.blockCall_cases hr.toLocalRun hy hacc with hg |
+        ⟨j, x, hij, hg, hproposes, d, p, hd, hB, _, htick, hproposal, hfg⟩
+    · have hib : i' < cutMap S rho hn n +
+          (Node.exec (runProposer S rho hn) (digestOf S rho) y
+            ((simTrace S rho hn).state y (cutMap S rho hn n)) t
+            (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length := by omega
+      have hstart : i' = cutMap S rho hn n := by
+        by_cases hle : cutMap S rho hn n ≤ i'
+        · exact Compose.group_start hengine hg hle hib
+        · obtain ⟨l, heq, _⟩ := Compose.before_tick hr.toLocalRun hy ⟨_, hengine⟩ hacc
+            (by omega) (htime.trans ht)
+          cases heq
+      subst i'
+      have hf := Compose.group_phase hengine hg
+      cases hf
+    · have hcp : ∃ ℓp, (simTrace S rho hn).CallAt y (j + 1) (.ac ℓp) ∧
+          ℓp.call = .proposal := by
+        have hd' := hd
+        simp only [Node.tickStep, Node.acCall] at hd'
+        have hlen : 1 < (Node.exec (runProposer S rho hn) (digestOf S rho) y
+            ((simTrace S rho hn).state y j) ((simTrace S rho hn).time i') (.tick x)).2.length := by
+          simp only [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, List.foldl_cons,
+            List.foldl_nil, Node.tickStep, Node.acCall, hproposes, ↓reduceIte, hd']
+          simp
+        obtain ⟨hnode, _, _, _, hl⟩ := hg.2.1 1 hlen
+        simp only [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, List.foldl_cons,
+          List.foldl_nil, Node.tickStep, Node.acCall, hproposes, ↓reduceIte, hd'] at hl
+        simp only [List.nil_append,
+          List.cons_append, List.getElem_cons_succ, List.getElem_cons_zero] at hl
+        exact ⟨_, ⟨hnode, hl⟩, rfl⟩
+      have him : i = j + 3 := by omega
+      apply False.elim
+      apply hf
+      rw [him]
+      apply own_proposal_payload_pooled S rho hn hv hy hg hd hcp
+        ⟨B, by simpa only [hij] using hacc⟩
+      simpa only [hB, Node.mkBlock, SA.blockVotes] using hm
+
+/-- A first-release vote envelope reaches a different honest node under PSync.
+The release time is the lower bound; GST changes only the service deadline. -/
+theorem vote_message_service_psync_other (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
+    {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : SA.Vote (Fintype.card V)}
+    (hx : x ∈ honestKeys S rho) (hy : y ∈ honestKeys S rho) (hne : y ≠ x)
+    (hτ : 0 ≤ τ) (hs : rho.SendsAt (rho.key x) source τ)
+    (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∈
+      rho.releasesAt source)
+    (hfirst : ∀ i < source,
+      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
+        rho.releasesAt i)
+    {j : Nat} (hj : (simTrace S rho hn).IsCall y j)
+    (hb : (simTrace S rho hn).time j ≤ rho.horizon)
+    (hd : (simTrace S rho hn).projAC.deadline y j (max τ g) ≤ (simTrace S rho hn).time j) :
+    ∃ k ≤ j, τ ≤ (simTrace S rho hn).time k ∧
+      (simTrace S rho hn).projAC.ProcessAt y k m ∧
+      (simTrace S rho hn).time k < (simTrace S rho hn).projAC.deadline y k (max τ g) := by
+  induction j using Nat.strong_induction_on with
+  | h j ih =>
+    obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval S rho hn hv hy hj
+      (hτ.trans (le_max_left _ g))
+    have heq' : (simTrace S rho hn).projAC.deadline y j (max τ g) =
+        a + (S.params (Model.pubOf E) hn).Δ := by
+      rw [Compose.projAC_deadline]
+      exact heq
+    have hslack : a + E.Δ < a + (S.params (Model.pubOf E) hn).Δ := by
+      change a + E.Δ < a + (E.Δ + 1)
+      simp only [Time]; omega
+    have hbound := hslack.le.trans (heq' ▸ hd)
+    have hag : max a g = a := max_eq_left ((le_max_right _ _).trans ha)
+    have hheld := hnet.msgs (rho.key x) hx _ τ ⟨source, hs, hrel⟩ (rho.key y) hy
+      a ((le_max_left _ _).trans ha) (by rw [hag]; exact hbound.trans hb)
+      (by rw [hag]; exact hbound.trans hb)
+      (by rw [hag]; exact fun u hau hud => hw u hau (hud.trans hbound))
+    rcases held_voteForward_source_or_process S rho hn hv hx hs hfirst hheld with
+      h | ⟨k, hp, hlo, hhi⟩
+    · exact False.elim (hne h)
+    rw [hag] at hhi
+    have htime : (simTrace S rho hn).time k < (simTrace S rho hn).projAC.deadline y j
+        (max τ g) := by rw [heq']; exact hhi.trans_lt hslack
+    have hkj : k < j := by
+      by_contra h
+      have := simTrace_time_mono S rho hn hv (Nat.le_of_not_gt h)
+      linarith
+    by_cases hk : (simTrace S rho hn).time k <
+        (simTrace S rho hn).projAC.deadline y k (max τ g)
+    · exact ⟨k, hkj.le, hlo, hp, hk⟩
+    · obtain ⟨l, hl, hlo', hp', hlt⟩ := ih k hkj
+        ⟨_, Compose.projAC_callAt.mp hp.choose_spec.1⟩
+        ((simTrace_time_mono S rho hn hv hkj.le).trans hb) (le_of_not_gt hk)
+      exact ⟨l, hl.trans hkj.le, hlo', hp', hlt⟩
+
+/-- Honest SA sends and fresh admissions are processed within the PSync deadline.
+The sender processes at the source time; other nodes use the first-release envelope. -/
+theorem message_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    {g : Time} (hnet : rho.log.PSync rho.point g)
+    {x : Fin (Fintype.card V)} (hx : x ∈ honestKeys S rho) {i : Nat}
+    {m : SA.Vote (Fintype.card V)} (hi : (simTrace S rho hn).SendOrAdmitAt x i m)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j) (hb : (simTrace S rho hn).time j ≤ rho.horizon)
+    (hd : (simTrace S rho hn).deadline y j (max ((simTrace S rho hn).time i) g)
+      (S.params (Model.pubOf E) hn).Δ ≤ (simTrace S rho hn).time j) :
+    (simTrace S rho hn).MsgDeliveredBy y j ((simTrace S rho hn).time i)
+      (max ((simTrace S rho hn).time i) g) m := by
+  have hr := simTrace_goldilocksRun S rho hn hv
+  by_cases heq : y = x
+  · subst y
+    obtain ⟨k, hp, ht⟩ := sendOrAdmit_process_same_time S rho hn hv hx hi
+    have hlt (l : Nat) : (simTrace S rho hn).time i <
+        (simTrace S rho hn).deadline x l (max ((simTrace S rho hn).time i) g)
+          (S.params (Model.pubOf E) hn).Δ := by
+      unfold RunTrace.deadline
+      change _ < Option.elim _ _ _ + (E.Δ + 1)
+      have := E.Δ_pos
+      cases (simTrace S rho hn).lastWake x l with
+      | bot => change _ < max _ g + (E.Δ + 1); simp only [Time] at *; omega
+      | coe w => change _ < max (max _ g) w + (E.Δ + 1); simp only [Time] at *; omega
+    refine ⟨k, ?_, ht.ge, ?_, ht ▸ hlt k⟩
+    · by_contra h
+      have := simTrace_time_mono S rho hn hv (Nat.le_of_not_ge h)
+      have := hlt j
+      linarith
+    · obtain ⟨l, hc, hm⟩ := hp
+      exact hm.elim (fun h => Or.inl ⟨l, Compose.projAC_callAt.mp hc, h⟩)
+        (fun h => Or.inr ⟨l, Compose.projAC_callAt.mp hc, h⟩)
+  · have hproj : (simTrace S rho hn).projAC.SendOrAdmit x i m := by
+      obtain ⟨l, hc, hs⟩ := hi
+      refine ⟨l, Compose.projAC_callAt.mpr hc, ?_⟩
+      rw [Compose.projAC_state hr.toLocalRun hx]
+      exact hs
+    obtain ⟨source, _, _, hs, hrel, hfirst⟩ := simTrace_vote_forwarded S rho hn hv x hx i m
+      (Compose.sendOrAdmit_forward_source hr hx hproj)
+    obtain ⟨k, hkj, hlo, hp, hlt⟩ := vote_message_service_psync_other S rho hn hv hnet hx hy
+      heq (simTrace_time_nonneg S rho hn hv i) hs hrel hfirst hj hb
+      (by rw [Compose.projAC_deadline]; exact hd)
+    refine ⟨k, hkj, hlo, ?_, ?_⟩
+    · obtain ⟨l, hc, hm⟩ := hp
+      exact hm.elim (fun h => Or.inl ⟨l, Compose.projAC_callAt.mp hc, h⟩)
+        (fun h => Or.inr ⟨l, Compose.projAC_callAt.mp hc, h⟩)
+    · rw [Compose.projAC_deadline] at hlt
+      exact hlt
+
+/-- The finite valid engine run supplies every reset-service field at protocol delay.
+Actual receiver calls lie within the engine horizon, including the unguarded AC fields. -/
+theorem resetService_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {g : Time} (hnet : rho.log.PSync rho.point g) :
+    Healing.ResetService (simTrace S rho hn) (honestKeys S rho) g
+      (S.params (Model.pubOf E) hn).Δ rho.horizon := by
+  have bound {y j} (hj : (simTrace S rho hn).IsCall y j) :
+      (simTrace S rho hn).time j ≤ rho.horizon := by
+    obtain ⟨l, _, hl⟩ := hj
+    exact simTrace_labelled_time_le S rho hn hv (by rw [hl]; simp)
+  refine ⟨le_rfl, ?_, ?_, ?_, ?_⟩
+  · intro x hx i m hi y hy j hj hd
+    exact message_service_psync S rho hn hv hnet hx hi hy hj (bound hj) hd
+  · intro x hx i B hi y hy j hj hd
+    exact block_service_psync S rho hn hv hnc hnet hx hi hy hj (bound hj) hd
+  · intro x hx i B hi hg y hy j hj hd hF
+    rw [max_eq_left hg] at hd ⊢
+    exact acceptance_relay_psync S rho hn hv hnc hnet hx hi
+      (simTrace_time_nonneg S rho hn hv i) hg hy hj (bound hj) hd hF
+  · exact (psyncFGRowTransport_iff S rho _ _).mp
+      (signed_row_service_psync S rho hn hv) g hnet
 
 end Consensus.Goldilocks.Refinement
