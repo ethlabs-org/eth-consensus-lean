@@ -833,37 +833,6 @@ theorem late_result_prefix_votes_before
       rw [← hm]
       exact Or.inl hv
 
-/-- The finite healthy interval contains the predecessor votes used by transfer. -/
-theorem ResetPremisesUpTo.half_committee {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {m : Nat}
-    (hm : cutZ sp.toParams g ≤ sp.ts m) (hmb : sp.ts m + sp.Δ ≤ b) :
-    sp.n ≤ 2 * {z | z ∈ H ∧ ∃ q e, SA.VoteAt tr.projAC z q e ∧ e.msg.slot = m}.ncard := by
-  have hΔ := sp.toParams.hΔ
-  have hgt : SA.gbar g ≤ sp.ts m + sp.Δ := by have := lt_cutZ sp g; linarith
-  have ht0 : 0 ≤ sp.ts m + sp.Δ := (SA.gbar_nonneg g).trans hgt
-  have hsl : sp.slot (sp.ts m + sp.Δ) = m :=
-    SA.slot_of_mem sp m (by linarith) (by simp only [SAParams.ts]; push_cast; linarith)
-  have hm3 : sp.slot (SA.gbar g) + 3 ≤ m := by
-    have h := (SA.ts_le_iff sp).mp ((cutZ_eq sp g) ▸ hm)
-    exact_mod_cast h
-  have hsub : H ⊆ {z | z ∈ H ∧ ∃ q e, SA.VoteAt tr.projAC z q e ∧ e.msg.slot = m} := by
-    intro y hy
-    have hj : tr.JoinedAt y (sp.ts m + sp.Δ) := fun k hk hkt => by
-      change 0 < sp.slot (sp.ts m + sp.Δ) ∧
-        tr.time k ≤ sp.toParams.slotTime (sp.slot (sp.ts m + sp.Δ) - 1)
-      rw [hsl, sp.slotTime_eq]
-      exact ⟨by omega, (restart_le_before hp hy hk (hkt.trans hmb)).trans
-        ((SA.ts_le_iff sp).mpr (by exact_mod_cast (show sp.slot (SA.gbar g) + 1 ≤ m - 1 by omega)))⟩
-    obtain ⟨q, e, hv, he, -⟩ := Compose.vote_of_awake_joined hp.run hp.noColl hy
-      (hp.awake y hy _ hgt hmb) hj
-    exact ⟨hy, q, e, hv, he⟩
-  have hle := Set.ncard_le_ncard hsub
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have hf := hp.faults
-  have hn' : sp.n = sp.toParams.n := rfl
-  omega
-
 /-- Finite recent-result induction. Current vote domains and first-successor stored-lock
 comparisons are the explicit M4/M5 inputs, rather than whole-history invariants. -/
 theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
