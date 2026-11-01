@@ -500,6 +500,42 @@ theorem historical_activation_cutZ_before
       (fun m _ hjm => half_committee hp (hlate m hjm.le))
       (fault_bound_late hp ((hlate _ hj.le).trans hts)) hvi' (hprior k hk hv x i j B ho)
 
+/-- Node-level GST supplies cutZ-windowed service. A recipient deadline bounded by `Q`
+bounds the source time too; no nonempty-window assumption is required. -/
+theorem reset_sync_window_before (hp : ResetPremises tr H proposer dg g ΔF a) (Q : Time) :
+    SyncACWindowBefore H (tr.HonestBlocks H) (cutZ sp.toParams g) Q tr.projAC := by
+  have hg : g ≤ cutZ sp.toParams g := by
+    have := le_gbar g
+    have := lt_cutZ sp g
+    have := sp.toParams.hΔ
+    linarith
+  have hs := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
+    tr proposer ΔF (cutZ sp.toParams g) Q hp.run.toLocalRun
+    (syncRun_of_gst hp.healthy.1 hg)
+  have hsource : ∀ y j (t : Time), t ≤ tr.projAC.deadline y j t := by
+    intro y j t
+    unfold ACTrace.deadline
+    have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+    cases tr.projAC.lastWake y j with
+    | bot => change t ≤ t + sp.Δ; linarith
+    | coe w =>
+      change t ≤ max t w + sp.Δ
+      have := le_max_left t w
+      linarith
+  constructor
+  · intro x hx i m hm hi y hy j ell hc hQ hd
+    exact hs.1 x hx i m hm hi ((hsource y j _).trans hQ) y hy j ell hc hd
+  · intro x hx i B hB hi y hy j ell hc hQ hd hF
+    exact hs.2 x hx i B hB hi ((hsource y j _).trans hQ) y hy j ell hc hd hF
+
+/-- Historical activation under the existing node reset premises. This does not supply
+the engine-to-node Healthy/GST transport required to establish those premises. -/
+theorem historical_activation_before (hp : ResetPremises tr H proposer dg g ΔF a) (Q : Time) :
+    ∀ k, tr.time k ≤ Q →
+      RawCompareAt (tr := tr) (H := H) (HistoricalTargets (tr := tr) (H := H) (g := g)) g k ∧
+      RawVoteAt (tr := tr) (H := H) (HistoricalTargets (tr := tr) (H := H) (g := g)) Q k :=
+  historical_activation_cutZ_before hp Q (reset_sync_window_before hp Q)
+
 end Consensus.Goldilocks.Healing
 
 end
