@@ -602,6 +602,32 @@ theorem ResetPremisesUpTo.high_report_origin {b : Time}
 
 /-! ## High entries and the honest records (workbench#30 §4) -/
 
+/-- Historical self-entries under bounded high origins agree at equal height. -/
+theorem ResetPremisesUpTo.high_entry_eq {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x x' : Fin sp.n}
+    {i j i' j' : Nat} {B B' Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
+    (ho' : HighOrigin tr H g x' i' j' B') (hi'b : tr.time i' ≤ b)
+    (h₁ : Anc (tr.HonestBlocks H) Z₁ B) (h₂ : Anc (tr.HonestBlocks H) Z₂ B')
+    {y₁ y₂ : Fin sp.n} (hy₁ : y₁ ∈ H) (hy₂ : y₂ ∈ H) {m₁ m₂ : Nat}
+    (hZ₁ : Z₁ ∈ (tr.state y₁ m₁).fg.tree) (hZ₂ : Z₂ ∈ (tr.state y₂ m₂).fg.tree)
+    (hh : ((tr.state y₁ m₁).fg.σ Z₁.root).h = ((tr.state y₂ m₂).fg.σ Z₂.root).h)
+    (hT₁ : ((tr.state y₁ m₁).fg.σ Z₁.root).Th = Z₁.root)
+    (hT₂ : ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root) : Z₁.root = Z₂.root := by
+  have key : ∀ {w : Fin sp.n} {k : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}, w ∈ H →
+      D ∈ (tr.state w k).fg.tree → Anc (tr.HonestBlocks H) Z₁ D →
+      Anc (tr.HonestBlocks H) Z₂ D → Z₁.root = Z₂.root := by
+    intro w k D hw hD hZ₁D hZ₂D
+    have e₁ := σ_eq_honest hp.run hp.noColl hy₁ hw hZ₁ (hp.mem_tree_of_anc hw hZ₁D hD)
+    have e₂ := σ_eq_honest hp.run hp.noColl hy₂ hw hZ₂ (hp.mem_tree_of_anc hw hZ₂D hD)
+    exact hp.entry_root_eq hw hD hZ₁D hZ₂D (by rw [← e₁, ← e₂, hh])
+      (by rw [← e₁, hT₁]) (by rw [← e₂, hT₂])
+  obtain ⟨CV, hs⟩ := ho.2.2.1
+  obtain ⟨CV', hs'⟩ := ho'.2.2.1
+  rcases hp.origins_compatible ho hib ho' hi'b with hBB' | hB'B
+  · exact key ho'.1 (storedFastLock_mem hp.run hp.noColl ho'.1 hs').1 (h₁.trans hBB') h₂
+  · exact key ho.1 (storedFastLock_mem hp.run hp.noColl ho.1 hs).1 h₁ (h₂.trans hB'B)
+
 /-- **Two high-chain entries of one height are one block**: below two high origins, comparable
 (R1), they sit below the larger, held by its writer, where `entry_root_eq` applies. -/
 private theorem high_entry_eq (hp : ResetPremises tr H proposer dg g ΔF a) {x x' : Fin sp.n}
