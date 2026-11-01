@@ -427,4 +427,55 @@ theorem first_step_batch (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
   · intro x hx
     exact Or.inr (hK x hx)
 
+/-- The counted first batch and explicit post-stop duties propagate the prefix to every
+honest vote from the next slot onward. -/
+theorem post_stop_chain (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {q : Nat} (hq : 0 < q) {c : Time} (hc : 8 * sp.Δ ≤ c + 1) (hΔ : 2 ≤ sp.Δ)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (h₁ : Regimes.EtaSleepyAt tr H c (sp.Δ - 1) (sp.ts q + (sp.Δ - 1)))
+    (h₂ : Regimes.EtaSleepyAt tr H c (sp.Δ - 1) (sp.ts q + sp.Δ))
+    (hrelay : (∃ x ∈ H, ∃ i ℓ, tr.projAC.CallAt x i ℓ ∧ tr.time i = sp.ts q ∧
+        SA.voteReady sp ℓ.frame q) →
+      ∀ y, Regimes.ReadyAt tr H c y (sp.ts q + (sp.Δ - 1)) →
+        ∃ i ℓ, tr.projAC.CallAt y i ℓ ∧
+          ((∃ m, ℓ.call = .message m) ∨ ∃ B, ℓ.call = .block B) ∧
+          sp.ts q ≤ tr.time i ∧ tr.time i ≤ sp.ts q + (sp.Δ - 1) ∧
+          SA.voteReady sp ℓ.frame q)
+    (hB1 : ∀ x, (Regimes.ReadyAt tr H c x (sp.ts q + (sp.Δ - 1)) ∨
+        Regimes.ReadyAt tr H c x (sp.ts q + sp.Δ)) →
+      ∀ k e, SA.VoteAt tr.projAC x k e → e.msg.slot = q →
+        SA.VoteExtends (tr.HonestBlocks H) e.msg B)
+    (hcarry₀ : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → e.msg.slot = q + 1 →
+      Anc (tr.HonestBlocks H) ℓ.frame.F B →
+      SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e q
+        {v | ∃ x ∈ ({x | Regimes.ReadyAt tr H c x (sp.ts q + sp.Δ)} ∪
+          ({x | Regimes.ReadyAt tr H c x (sp.ts q + (sp.Δ - 1))} ∩
+            {x | x ∉ H ∨ ∃ k e, SA.VoteAt tr.projAC x k e ∧ e.msg.slot = q})),
+          ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg = v ∧ v.slot = q})
+    (hlocks₀ : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → e.msg.slot = q + 1 →
+      SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (q + 1) B →
+      ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
+        Compatible (tr.HonestBlocks H) L B)
+    (hFV₀ : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → e.msg.slot = q + 1 →
+      SA.ViableAtVote ℓ e (q + 1) B)
+    (hcarry : PostStopBatchCarry tr H (q + 1))
+    (hfb : ∀ s : Nat, q + 1 ≤ s → tr.FaultBound H (sp.ts s + sp.Δ))
+    (hlocks : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → q + 1 < e.msg.slot →
+      SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i e.msg.slot B →
+      (∀ s, q + 1 ≤ s → s < e.msg.slot → ∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' →
+        e'.msg.slot = s → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) →
+      ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
+        Compatible (tr.HonestBlocks H) L B)
+    (hFV : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → q + 1 < e.msg.slot →
+      (∀ s, q + 1 ≤ s → s < e.msg.slot → ∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' →
+        e'.msg.slot = s → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) →
+      SA.ViableAtVote ℓ e e.msg.slot B) :
+    ∀ s, q + 1 ≤ s → ∀ x ∈ H, ∀ k e, SA.VoteAt tr.projAC x k e → e.msg.slot = s →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
+  obtain ⟨hSXH, hSXv, hall, hWH, hWF, hcount⟩ :=
+    first_step_batch hrun hnc hq hc hΔ h₁ h₂ hrelay hB1
+  exact post_stop_honest_extend hrun hnc hcarry hfb
+    (post_stop_first_honest hrun hnc hSXH hSXv hall hWH hWF hcount hcarry₀ hlocks₀ hFV₀)
+    hlocks hFV
+
 end Consensus.Goldilocks.Compose
