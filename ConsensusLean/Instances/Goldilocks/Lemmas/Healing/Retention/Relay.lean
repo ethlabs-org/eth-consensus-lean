@@ -552,6 +552,81 @@ theorem fastLock_counted_nonempty {x : Fin sp.n} {i₀ s : Nat} {D : SA.Blk sp.n
     obtain ⟨v, hv, -, hvD⟩ := hi
     exact ⟨v, hsl ▸ hv, hvD⟩
 
+/-- A raw writer supplies a counted head above the target, accepted before the slot freeze. -/
+theorem raw_writer_relay_source
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+    {x : Fin sp.n} (hx : x ∈ H) {i s : Nat}
+    {B C : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    (hwriter : SA.ResultAt T x i s C CV ∨ SA.FastLockAt T x i s C CV)
+    (hBC : Anc U B C) :
+    ∃ v ∈ CV, ∃ D ∈ U, D.root = v.head ∧ Anc U B D ∧
+      (D.root = sp.genesisRoot ∨
+        ∃ q, T.AcceptAt x q D ∧ T.time q < sp.ts s + 2 * sp.Δ) := by
+  have hne : CV.Nonempty := by
+    rcases hwriter with hR | hF
+    · have hm := SA.result_majority hR
+      obtain ⟨w, v, hv, _⟩ := Set.nonempty_of_ncard_ne_zero
+        (s := {w | ∃ v ∈ CV, v.val = w}) (by omega)
+      exact ⟨v, hv⟩
+    · exact fastLock_counted_nonempty hF
+  obtain ⟨v, hv⟩ := hne
+  have hw := hwriter.elim (fun hR => result_writer hr hx hR v hv)
+    (fun hF => fastLock_writer hr hx hF v hv)
+  obtain ⟨D, hD, hDr, hCD, hacc⟩ := hw.2.2
+  exact ⟨v, hv, D, hD, hDr, hBC.trans hCD, hacc⟩
+
+/-- A raw writer's ancestor is available in a later voter's frozen block tree. -/
+theorem raw_writer_voterBlockTree_window_before
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
+    (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {j i s : Nat}
+    {B C : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    (hwriter : SA.ResultAt T x j s C CV ∨ SA.FastLockAt T x j s C CV)
+    (hBC : Anc U B C) {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
+    (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
+    (hF : Anc U ℓ.frame.F B) : B ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
+  obtain ⟨v, _, D, hDU, _, hBD, hgen | ⟨q, hq, hqt⟩⟩ :=
+    raw_writer_relay_source hr hx hwriter hBC
+  all_goals obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  · have hFD := hF.trans hBD
+    obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy _ _ hc.1
+    have hDG : D = G := hr.coherent.1 hDU hGU (hgen.trans hGr.symm)
+    subst D
+    have hDt : G ∈ ℓ.frame.tree := by
+      obtain heq | ⟨c, _, hp⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFD
+      · exact heq ▸ hΦ.rooted.1
+      · exact absurd (hp.2.2.symm.trans hGp) (Option.some_ne_none _)
+    have hΔ := sp.toParams.hΔ
+    obtain ⟨_, hys, hyj, _⟩ := SA.castAt_spec hr hy hc
+    have hti : sp.ts e.msg.slot ≤ T.time i :=
+      (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [hys])
+    have hfz : SA.freeze sp e.msg.slot < T.time i := by
+      unfold SA.freeze SAParams.ts at *
+      linarith
+    have hrs : ∀ k ≤ i, T.RestartAt y k → T.time k < SA.freeze sp e.msg.slot := by
+      have hj' : SA.joined sp (T.post i) (T.time i) := by
+        unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc]; exact hyj
+      intro k hk hrk
+      have ht := ((SA.joined_awake sp) FGP ro H U T hr y hy i ℓ hc.1 hj').2 k hk hrk
+      rw [← hys] at ht
+      unfold SA.freeze
+      linarith
+    have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hDt (Or.inl hGr)
+      hrs (Or.inl hfz.le)
+    have hne : ∀ X, ℓ.call = .block X → G.root ≠ X.root := by
+      intro X hcall heq
+      exact SA.accept_ne_genesis sp hr hy ⟨ℓ, hc.1, hcall⟩ (heq.symm.trans hGr)
+    rw [← readPoint_blockStamp hr hy hc hne] at hbs
+    have hBt := SA.frame_mem_of_between sp hr.coherent hΦ hΦU hDt hBD hF
+    exact SA.voterBlockTree_anc hr hy hc G ⟨hDt, Or.inl hbs⟩ B
+      (SA.anc_tree_of_anc_U hr.coherent hΦ hΦU hBt hBD hDt)
+  · have hDt := relay_mem_voterBlockTree_window_before hr hsync hcatch hx hy hq hqt
+      hc hs hi hcatchTime (hF.trans hBD)
+    have hBt := SA.frame_mem_of_between sp hr.coherent hΦ hΦU hDt.1 hBD hF
+    exact SA.voterBlockTree_anc hr hy hc D hDt B
+      (SA.anc_tree_of_anc_U hr.coherent hΦ hΦU hBt hBD hDt.1)
+
 end Node
 
 end Consensus.Goldilocks.Healing
