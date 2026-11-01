@@ -238,6 +238,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDec
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingInvariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingState
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Healed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC4
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppliers
