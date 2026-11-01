@@ -544,4 +544,46 @@ theorem decoded_held_recordOwn_block {V : Type} [Fintype V] {E : Env V}
   rw [recordOwn_canonical_block S rho hn st B hpar hroot]
   exact decoded_held_onBlock S rho hn st hd hh hc hr B (fun _ => hb) ht
 
+/-- A selected proposal with a canonical singleton candidate preserves both invariants,
+whether the engine releases it or rejects it. -/
+theorem decoded_held_proposal_candidate {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (hd : WrappersDecoded (digests rho.hash) (shapeOf S hn nd))
+    (hh : WrappersHeld (digests rho.hash) (shapeOf S hn nd))
+    (hc : WrappersCover (propose (shapeOf S hn nd) s).1)
+    (hr : (propose (shapeOf S hn nd) s).1.node.fg.Reachable
+      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
+    (B : Blk (S.params (pubOf E) hn)) (hpar : B.parent ≠ none)
+    (hroot : B.RootOk (digestOf S rho))
+    (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      (blockObj _ B) = some B) (ht : 0 ≤ (shapeOf S hn nd).now)
+    (hsel : rho.ownKey v ∈ rho.sel (.proposer s))
+    (hcs : rho.signedCandidate v (.propose s hs)
+      ((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).2 = [blockObj _ B]) :
+    let st' := shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1
+    WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
+  have hp := decoded_held_propose (shapeOf S hn nd) s hd hh
+  dsimp only
+  simp only [Model.Run.dutyStep,
+    show (protoOf (compiled (family S)) E).role (.propose s hs) = .proposer s from rfl,
+    hsel, ↓reduceIte, hcs]
+  erw [Model.releaseAll]
+  split
+  · change WrappersDecoded (digests rho.hash) (recordOwn
+        (((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn)
+        (blockObj _ B) (digests rho.hash (blockObj _ B))) ∧
+      WrappersHeld (digests rho.hash) (recordOwn
+        (((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn)
+        (blockObj _ B) (digests rho.hash (blockObj _ B)))
+    rw [shapeOf_act_propose S hn]
+    exact decoded_held_recordOwn_block S rho hn _ hp.1 hp.2 hc hr B hpar hroot hb
+      ((propose_now (shapeOf S hn nd) s).symm ▸ ht)
+  · change WrappersDecoded (digests rho.hash)
+      (((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn) ∧
+      WrappersHeld (digests rho.hash)
+      (((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn)
+    rw [shapeOf_act_propose S hn]
+    exact hp
+
 end Consensus.Goldilocks.Refinement
