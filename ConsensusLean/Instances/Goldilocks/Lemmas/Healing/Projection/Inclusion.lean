@@ -112,9 +112,10 @@ private theorem honest_proposal_of_tick (hrun : GoldilocksRun proposer dg H tr)
 
 /-- The AC projection of a Goldilocks run is driven (H.2 (run): clause (a) from the FG's
 acceptance tests, clause (b) from C0.4). -/
-theorem projection_driven (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
-    (_hh : tr.HealthyRun H ΔF g) : SA.Driven proposer tr.projAC H := by
+theorem projection_driven_of_run (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr)
+    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg) :
+    SA.Driven proposer tr.projAC H := by
   have h := hrun.toLocalRun
   have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.localRun
@@ -262,6 +263,13 @@ theorem projection_driven (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose
       · cases hm
       · cases hB
 
+/-- Compatibility wrapper; driven duties require actual awake witnesses, not
+an unbounded health premise. -/
+theorem projection_driven (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
+    (_hh : tr.HealthyRun H ΔF g) : SA.Driven proposer tr.projAC H :=
+  projection_driven_of_run hrun hnc hroot
+
 /-- `Healthy(g)` over a run gives `Healthy(g)` on its AC projection. -/
 theorem projection_healthy (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compose.NoCollRun dg tr)
     (hh : tr.HealthyRun H ΔF g) : SA.HealthyAC tr.projAC H (tr.HonestBlocks H) g := by
@@ -298,8 +306,8 @@ theorem projection_healthy (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compo
     exact hkt
 
 /-- `Catch(κ)` over a run gives `Catch(κ)` on its AC projection (`Φ.F` is `Σ.F`). -/
-theorem projection_catch (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compose.NoCollRun dg tr)
-    (_hh : tr.HealthyRun H ΔF g) (hc : CatchRun tr H g (2 * sp.Δ)) :
+theorem projection_catch_of_run (hrun : GoldilocksRun proposer dg H tr)
+    (hc : CatchRun tr H g (2 * sp.Δ)) :
     SA.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ) := by
   classical
   have h := hrun.toLocalRun
@@ -317,6 +325,12 @@ theorem projection_catch (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compose
   refine ⟨k + 1, by omega, hak', ?_⟩
   rw [htk']
   exact hj₀.2 k hk
+
+/-- Compatibility wrapper; Catch projection uses actual calls only. -/
+theorem projection_catch (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compose.NoCollRun dg tr)
+    (_hh : tr.HealthyRun H ΔF g) (hc : CatchRun tr H g (2 * sp.Δ)) :
+    SA.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ) :=
+  projection_catch_of_run hrun hc
 
 /-- **H.2 (run), AC inclusion in runs.** -/
 theorem run_inclusion : RunInclusion := by
