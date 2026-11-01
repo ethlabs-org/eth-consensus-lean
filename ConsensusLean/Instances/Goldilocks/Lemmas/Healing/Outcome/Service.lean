@@ -656,6 +656,50 @@ private theorem high_entry_eq (hp : ResetPremises tr H proposer dg g ΔF a) {x x
 
 /-- **A high record entry is the high-chain entry of its height**: an honest record's target,
 timeout or lock entry at `h ≥ H_z + 1` is the root of every entry at `h` below a high origin. -/
+theorem ResetPremisesUpTo.record_entry_eq {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y : Fin sp.n} (hy : y ∈ H) {i h r : Nat} (hib : tr.time i ≤ b)
+    (hh : HZ tr H g + 1 ≤ h)
+    (hr : (tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h ∨
+      (tr.state y i).record.lock h = some r)
+    {xo : Fin sp.n} {io jo : Nat} {B E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
+    (hEB : Anc (tr.HonestBlocks H) E B) {z : Fin sp.n}
+    (hz : z ∈ H) {m : Nat} (hE : E ∈ (tr.state z m).fg.tree)
+    (hEh : ((tr.state z m).fg.σ E.root).h = h)
+    (hET : ((tr.state z m).fg.σ E.root).Th = E.root) : r = E.root := by
+  have target : ∀ k < i, ∀ att, tr.SignAt y k att → att.h = h → att.T = r → r = E.root := by
+    intro k hki att hs hah har
+    obtain ⟨q, hqk, l, O, hO, X, hX, hXO, hXr, hXh, hXT⟩ :=
+      hp.high_row_source hy hs (hah ▸ hh)
+    exact har.symm.trans (hXr.symm.trans (hp.high_entry_eq hO
+      ((hp.run.time_mono (hqk.le.trans hki.le)).trans hib) ho hiob
+      (hXO.mono fun D hD => ⟨y, hy, q, hD⟩) hEB hy hz hX hE
+      (hXh.trans (hah.trans hEh.symm)) hXT hET))
+  rcases hr with ht | ht | hl
+  · obtain ⟨k, hki, att, hs, hah, har⟩ :=
+      (client_record_origin_of_run hp.run hy h r i).1 (Or.inl ht)
+    exact target k hki att hs hah har
+  · obtain ⟨k, hki, att, hs, hah, har⟩ :=
+      (client_record_origin_of_run hp.run hy h r i).1 (Or.inr ht)
+    exact target k hki att hs hah har
+  · obtain ⟨k, hki, att, hs, hfin⟩ := (client_record_origin_of_run hp.run hy h r i).2 hl
+    obtain ⟨J, hJ, X, hX, hXr, hJX, hJr, hJh, hJT⟩ := signed_fin_pair_entry_of_run hp.run hy hs hfin
+    obtain ⟨X', hX', hX'r, hX'h⟩ := signAt_entry hp.run hy hs
+    obtain rfl : X' = X := hp.honest_coherent.1 ⟨y, hy, k, hX'⟩ ⟨y, hy, k, hX⟩
+      (hX'r.trans hXr.symm)
+    have hle := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k) hJX
+    obtain ⟨q, hqk, l, O, hO, X'', hX'', hXO, hX''r, _, _⟩ := hp.high_row_source hy hs (by omega)
+    obtain rfl : X'' = X' := hp.honest_coherent.1 ⟨y, hy, q, hX''⟩ ⟨y, hy, k, hX⟩
+      (hX''r.trans hX'r.symm)
+    have hJO : Anc (tr.HonestBlocks H) J O :=
+      (hJX.mono (show (tr.state y k).fg.tree ⊆ tr.HonestBlocks H from
+        fun D hD => ⟨y, hy, k, hD⟩)).trans
+        (hXO.mono fun D hD => ⟨y, hy, q, hD⟩)
+    exact hJr.symm.trans (hp.high_entry_eq hO
+      ((hp.run.time_mono (hqk.le.trans hki.le)).trans hib) ho hiob
+      hJO hEB hy hz hJ hE (hJh.trans hEh.symm) hJT hET)
+
 private theorem record_entry_eq (hp : ResetPremises tr H proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H)
     {i h r : Nat} (hh : HZ tr H g + 1 ≤ h)
@@ -752,6 +796,71 @@ private theorem timeout_empty (hp : ResetPremises tr H proposer dg g ΔF a)
 
 /-- The target and timeout fields of a high entry's row do not require its
 predecessor to be high. -/
+private theorem sign_target_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
+    (hs : tr.SignAt y k att) (hkb : tr.time k ≤ b) (hh : HZ tr H g + 1 ≤ att.h)
+    (he : (tr.state y k).record.timeout att.h = ∅) : att.timeout = false := by
+  obtain ⟨src, hc⟩ := hs
+  have hcl := (hp.run.cutLaw y hy k _ hc).1
+  change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
+    ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
+  obtain ⟨_, hah, haT, _, _, hτ⟩ := createAtt_spec hcl
+  rw [← Bool.not_eq_true]
+  intro hto
+  rw [← hah, ← haT] at hτ
+  rcases hτ hto with h' | ⟨T', hT', hne⟩
+  · exact h' he
+  · obtain ⟨q, hqk, l, O, hO, E, hE, hEO, hEr, hEh, hET⟩ := hp.high_row_source hy ⟨src, hc⟩ hh
+    exact hne ((hp.record_entry_eq hy hkb hh (Or.inl hT') hO
+      ((hp.run.time_mono hqk.le).trans hkb) (hEO.mono fun X hX => ⟨y, hy, q, hX⟩)
+      hy hE hEh hET).trans hEr)
+
+private theorem timeout_empty_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y : Fin sp.n} (hy : y ∈ H) :
+    ∀ i, tr.time i ≤ b → ∀ h, HZ tr H g + 1 ≤ h → (tr.state y i).record.timeout h = ∅
+  | 0, _, h, _ => by rw [Trace.state, hp.run.init y hy]; rfl
+  | i + 1, hib, h, hh => by
+    have hib' := (hp.run.time_mono (Nat.le_succ i)).trans hib
+    rcases record_step hp.run hy i with he | ⟨att, hs, he⟩ <;> rw [he]
+    · exact timeout_empty_before hp hy i hib' h hh
+    · simp only [FG.Record.recordAtt]
+      split_ifs with hto
+      · rw [Function.update_apply]
+        split_ifs with hha
+        · subst hha
+          have := sign_target_before hp hy hs hib' hh (timeout_empty_before hp hy i hib' _ hh)
+          simp_all
+        · exact timeout_empty_before hp hy i hib' h hh
+      · exact timeout_empty_before hp hy i hib' h hh
+
+/-- Finite normalization of a high signature's target and timeout fields. -/
+theorem ResetPremisesUpTo.row_target_of_sign {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {z : Fin sp.n} (hz : z ∈ H)
+    {j : Nat} {att : FG.Att sp.n} (hs : tr.SignAt z j att) (hjb : tr.time j ≤ b)
+    {T : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
+    {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
+    (hhT : HZ tr H g + 1 ≤ σT.h)
+    {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
+    (hTB : Anc (tr.HonestBlocks H) T B) (hatt : att.h = σT.h) :
+    att.val = z ∧ att.T = T.root ∧ att.timeout = false := by
+  subst hσ
+  have hh : HZ tr H g + 1 ≤ att.h := hatt ▸ hhT
+  obtain ⟨src, hc⟩ := hs
+  have hcl := (hp.run.cutLaw z hz j _ hc).1
+  change (tr.state z j).record.createAtt z ((tr.state z j).fg.σ
+    ((tr.state z j).fg.σ src.root).Th) = some (att, _) at hcl
+  obtain ⟨hv, _, _, _, _, _⟩ := createAtt_spec hcl
+  obtain ⟨q, hqj, l, O, hO, E, hE, hEO, hEr, hEh, hET⟩ := hp.high_row_source hz ⟨src, hc⟩ hh
+  have hTr : att.T = T.root := hEr.symm.trans (hp.high_entry_eq hO
+    ((hp.run.time_mono hqj.le).trans hjb) ho hiob
+    (hEO.mono fun X hX => ⟨z, hz, q, hX⟩) hTB hz hy hE hT (hEh.trans hatt) hET hTe)
+  exact ⟨hv, hTr, sign_target_before hp hz ⟨src, hc⟩ hjb hh (timeout_empty_before hp hz j hjb _ hh)⟩
+
 theorem row_target_of_sign (hp : ResetPremises tr H proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H)
     {j : Nat} {att : FG.Att sp.n} (hs : tr.SignAt z j att) {T : SA.Blk sp.n (List (FG.Att sp.n))}
