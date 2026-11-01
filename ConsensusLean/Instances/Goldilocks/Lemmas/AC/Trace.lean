@@ -871,6 +871,19 @@ private theorem vote_slot_ne (htime : ∀ i, 0 ≤ tr.time i) (hmono : Monotone 
       (ts_lt_iff sp).mpr (by omega)
     exact absurd (lt_of_lt_of_le h₂ (h₁.trans (hkw.trans hj'))) (lt_irrefl _)
 
+/-- One vote per slot needs only chronological execution and well-formed individual
+frames, not a globally coherent block universe or collision freedom. -/
+theorem vote_slot_ne_of_exec (htime : ∀ i, 0 ≤ tr.time i) (hmono : Monotone tr.time)
+    (hexec : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
+      (goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call =
+        (tr.post i, ℓ.emits))
+    (hframes : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ → FrameOK ℓ.frame)
+    {y : Fin sp.n} (hy : y ∈ H) {k i : Nat} (hki : k < i)
+    {e e' : Em sp FGP} (hv : VoteAt tr y k e) (hv' : VoteAt tr y i e') :
+    e.msg.slot ≠ e'.msg.slot := by
+  apply vote_slot_ne htime hmono (fun y hy i ℓ hc => ?_) hy hki hv hv'
+  exact step_voteStep y (hframes y hy i ℓ hc) (htime i) ℓ.call (hexec y hy i ℓ hc)
+
 /-- A call that is not a restart keeps `restart_time`. -/
 theorem step_restartTime {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call) (hc : c ≠ .restart) :

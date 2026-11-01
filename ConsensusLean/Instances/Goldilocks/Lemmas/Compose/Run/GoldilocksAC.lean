@@ -179,6 +179,35 @@ private theorem emit_voteAt {x : Fin sp.n} {j : Nat} {v : Vote sp.n} (h : tr.Emi
   obtain ⟨ℓ, hc, e, he, rfl⟩ := h
   exact ⟨e, ⟨ℓ, projAC_callAt.2 hc, he⟩, rfl⟩
 
+/-- Honest emissions at different cuts have different slots without assuming `NoCollRun`.
+Individual FG stores supply well-formed frames; no global block-root injection is needed. -/
+theorem emitted_vote_slots_ne (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i < j) {v w : Vote sp.n}
+    (hv : tr.EmitAt y i v) (hw : tr.EmitAt y j w) : v.slot ≠ w.slot := by
+  obtain ⟨e, he, rfl⟩ := emit_voteAt hv
+  obtain ⟨e', he', rfl⟩ := emit_voteAt hw
+  apply SA.vote_slot_ne_of_exec hrun.time_nonneg hrun.time_mono ?_ ?_ hy hij he he'
+  · intro x hx k ℓ hc
+    rw [projAC_state hrun.toLocalRun hx]
+    exact (hrun.cutLaw x hx k _ (projAC_callAt.mp hc)).2.1
+  · intro x hx k ℓ hc
+    have hf := (hrun.cutLaw x hx k _ (projAC_callAt.mp hc)).1
+    exact hf ▸ (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hx k)).1
+
+/-- Before an honest emission, neither a wire message nor a block payload processed by an
+honest node can contain a vote of that signer and slot. This includes the emitting cut. -/
+theorem emitted_slot_not_received (hrun : GoldilocksRun proposer dg H tr)
+    {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {i k : Nat} (hki : k ≤ i)
+    {v m : Vote sp.n} (hv : tr.EmitAt y i v) (hm : m.val = y) (hs : m.slot = v.slot) :
+    ¬ (tr.MsgCallAt x k m ∨ ∃ B, tr.BlockCallAt x k B ∧ m ∈ blockVotes B) := by
+  intro hc
+  have he : ∃ j < k, tr.EmitAt y j m := by
+    rcases hc with hc | ⟨B, hc, hmem⟩
+    · simpa only [hm] using hrun.msg_unforgeable x hx k m hc (hm ▸ hy)
+    · simpa only [hm] using hrun.carried_vote_unforgeable x hx k B hc m hmem (hm ▸ hy)
+  obtain ⟨j, hj, he⟩ := he
+  exact emitted_vote_slots_ne hrun hy (hj.trans_le hki) he hv hs
+
 private theorem message_vote (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {v : Vote sp.n}
     (hc : tr.projAC.CallAt y i ℓ) (hm : ℓ.call = .message v) (hval : v.val ∈ H) :
