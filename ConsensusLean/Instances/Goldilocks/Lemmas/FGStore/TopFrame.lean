@@ -89,6 +89,47 @@ theorem mem_viableHeads_of_not_contest (hm : st.hmax = st.hj + 1) (h : ¬ st.Con
     rw [hr]
     exact hJB
 
+/-- An advance of `Σ.F` along `Σ.J`, with the tree, state heights, `Σ.J`, `h_j` and `h_max`
+unchanged, starts no contest: a contest after it was a contest before it. -/
+theorem contest_of_F_advance {st st' : Store P ACP} (htree : st'.tree = st.tree)
+    (hσ : st'.σ = st.σ) (hJ : st'.J = st.J) (hhj : st'.hj = st.hj) (hhm : st'.hmax = st.hmax)
+    (hFF : st.Anc st.F st'.F) (hc : st'.Contest) : st.Contest := by
+  obtain ⟨hm, B, hB, hFB, hh, hJB⟩ := hc
+  refine ⟨by rw [← hhm, ← hhj]; exact hm, B, by rw [← htree]; exact hB, ?_, ?_, ?_⟩
+  · have h' : st.Anc st'.F B := by
+      change Goldilocks.Anc st.tree st'.F B
+      rw [← htree]; exact hFB
+    exact Relation.ReflTransGen.trans hFF h'
+  · rw [← hσ, ← hhm]; exact hh
+  · intro h'
+    apply hJB
+    change Goldilocks.Anc st'.tree st'.J B
+    rw [htree, hJ]; exact h'
+
+/-- **An advance of `Σ.F` along `Σ.J` moves the fork-choice root forward along `Σ.J` (r14 s2 NF
+route, FM).** With `Σ.F ⪯ F' ⪯ Σ.J` and everything else unchanged, the new fork-choice root is
+between the old one and `Σ.J`. -/
+theorem fcRoot_forward_of_F_advance {st st' : Store P ACP} (htree : st'.tree = st.tree)
+    (hσ : st'.σ = st.σ) (hJ : st'.J = st.J) (hhj : st'.hj = st.hj) (hhm : st'.hmax = st.hmax)
+    (hFF : st.Anc st.F st'.F) (hFJ' : st.Anc st'.F st.J) (hFJ : st.Anc st.F st.J) :
+    st.Anc st.fcRoot st'.fcRoot ∧ st.Anc st'.fcRoot st.J := by
+  by_cases hc' : st'.Contest
+  · have hc := contest_of_F_advance htree hσ hJ hhj hhm hFF hc'
+    rw [st.fcRoot_of_contest hc, st'.fcRoot_of_contest hc']
+    exact ⟨hFF, hFJ'⟩
+  · by_cases hm : st.hmax = st.hj + 1
+    · have hm' : st'.hmax = st'.hj + 1 := by rw [hhm, hhj]; exact hm
+      rw [st'.fcRoot_of_not_contest hm' hc', hJ]
+      refine ⟨?_, Relation.ReflTransGen.refl⟩
+      by_cases hc : st.Contest
+      · rw [st.fcRoot_of_contest hc]; exact hFJ
+      · rw [st.fcRoot_of_not_contest hm hc]
+        exact Relation.ReflTransGen.refl
+    · have e : st.fcRoot = st.F := by simp [fcRoot, hm]
+      have e' : st'.fcRoot = st'.F := by simp [fcRoot, hhm, hhj, hm]
+      rw [e, e']
+      exact ⟨hFF, hFJ'⟩
+
 end Consensus.Goldilocks.Store
 
 end
