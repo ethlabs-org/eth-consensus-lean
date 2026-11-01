@@ -344,6 +344,33 @@ theorem effective_record_after_update
   rw [ite_eq_right hnv]
   exact (effective_record_update_slot_growth (sp := sp) hΦ (SA.deepest_mem hC).1.1).1
 
+/-- Fixed-call-frame ancestry after an AC call is ancestry in the actual next
+state: AC execution changes neither FG nor its frame. -/
+theorem effective_record_after_ac_call
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+    {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {j : Nat} {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : Anc (tr.HonestBlocks H) P
+      ((SA.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F)) :
+    Anc (tr.HonestBlocks H) P
+      ((SA.lookup (Node.frame (tr.state y (j + 1)))
+        (tr.state y (j + 1)).ac.latestConfirmed).getD (tr.state y (j + 1)).fg.F) := by
+  have hc' := Compose.projAC_callAt.mp hc
+  have hlaw := hrun.toLocalRun.cutLaw y hy j _ hc'
+  have hframe : Node.frame (tr.state y (j + 1)) = ell.frame := by
+    rw [tr.state_succ_of_call hc', hlaw.1]
+    exact congrArg Store.toFrame hlaw.2.2.1
+  have hstate := Compose.projAC_state hrun.toLocalRun hy (j + 1)
+  rw [tr.projAC.state_succ_of_call hc] at hstate
+  change Anc (tr.HonestBlocks H) P
+    ((SA.lookup (Node.frame (tr.state y (j + 1)))
+      (tr.state y (j + 1)).ac.latestConfirmed).getD (Node.frame (tr.state y (j + 1))).F)
+  rw [hframe, ← hstate]
+  exact hP
+
 /-- The conditional ready update flushes every non-descendant record. The post-state
 is read in the actual call frame; frame evolution is handled by the separate adapter. -/
 theorem ready_update_effective_record
