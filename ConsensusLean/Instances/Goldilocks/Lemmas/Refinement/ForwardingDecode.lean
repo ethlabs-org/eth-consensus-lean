@@ -653,4 +653,84 @@ theorem scheduled_proposal_child_decodes {V : Type} [Fintype V] [DecidableEq V] 
   simpa only [hnode, hnow, atProposal_mempool, hst, ← hstate, Node.tickStep, stateAt, hself]
     using hdecode
 
+/-- At a scheduled honest tick, the proposal duty preserves the joint invariant without
+assuming child decoding: reachable proposal execution supplies it. -/
+theorem decoded_held_scheduled_proposal {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (v : V) (hhon : v ∈ rho.honest) (i : Nat) (t : Time)
+    (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
+    (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
+    (hd : WrappersDecoded (digests rho.hash)
+      (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)))
+    (hh : WrappersHeld (digests rho.hash)
+      (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t))) :
+    let nd := atProposal S rho v (rho.stateBefore i v) t
+    let st' := shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1
+    WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
+  let nd := atProposal S rho v (rho.stateBefore i v) t
+  have hpoll := poll_selected S rho hv v
+  have hnow : (shapeOf S hn nd).now = t := atProposal_now S rho hn v _ t hpoll
+  have hslot : (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s := by
+    rw [hnow, ht]; exact slotOf_slotTime _ s
+  have hc : WrappersCover (propose (shapeOf S hn nd) s).1 := by
+    have h := tick_duty_prefix_wrappersCover S rho hn v i t
+      ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
+        List (protoOf (compiled (family S)) E).Duty)
+    rw [← atProposal_eq S rho v (rho.stateBefore i v) t] at h
+    unfold propose
+    dsimp only
+    split <;> simpa only [wrappersCover_iff, Node.acProposal] using h
+  have hr : (propose (shapeOf S hn nd) s).1.node.fg.Reachable
+      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload := by
+    have hnode := atProposal_node S rho hn v (rho.stateBefore i v) t
+      (fgDue_eq_false S rho hn v i) hpoll
+    have hpub : (S.params (pubOf E) hn).toParams.IsPublic t :=
+      ht ▸ (S.params (pubOf E) hn).toParams.slotTime_public s
+    have hfg : (shapeOf S hn nd).node.fg = (stateAt S rho hn v i).node.fg := by
+      rw [hnode, nodeTick_node_public { (rho.stateBefore i v).st.1 hn with now := t } hpub]
+      rfl
+    have hr := stateAt_fg_reachable S rho hn v i
+    rw [← hfg] at hr
+    unfold propose; dsimp only; split <;> exact hr
+  by_cases hsel : rho.ownKey v ∈ rho.sel (.proposer s)
+  · have hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams)
+        (runProposer S rho hn) (rho.ownKey v) t := by
+      rw [ht, proposes_iff S hn _ _ s hs]
+      rw [selValid_proposer S rho hn hv.selValid s] at hsel
+      exact (Finset.mem_singleton.mp hsel).symm
+    cases hdp : (Node.acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.2 with
+    | none =>
+      have hempty : ((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).2 = [] := by
+        rw [act_propose_snd S hn nd s hs]
+        simp only [propose, hdp, Option.map_none, Option.toList_none]
+        rfl
+      have hpre := decoded_held_propose (shapeOf S hn nd) s hd hh
+      change WrappersDecoded (digests rho.hash)
+          (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1) ∧
+        WrappersHeld (digests rho.hash) (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1)
+      simp only [Model.Run.dutyStep,
+        show (protoOf (compiled (family S)) E).role (.propose s hs) = .proposer s from rfl,
+        hsel, ↓reduceIte, hempty, Model.Run.signedCandidate, List.map_nil,
+        Model.releaseAll]
+      change WrappersDecoded (digests rho.hash)
+          (((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn) ∧
+        WrappersHeld (digests rho.hash)
+          (((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn)
+      rw [shapeOf_act_propose S hn]
+      exact hpre
+    | some result =>
+      obtain ⟨d, p⟩ := result
+      exact decoded_held_proposal_candidate S rho hn v nd s hs hd hh hc hr
+        (Node.mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+          (digestOf S rho) (rho.ownKey v)
+          (Node.acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
+          (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p)
+        (by simp only [Node.mkBlock, ne_eq, reduceCtorEq, not_false_eq_true]) rfl
+        (scheduled_proposal_child_decodes S rho hn hv v hhon i t he hp d p hdp)
+        (hnow.symm ▸ (hv.in_horizon _ (List.mem_of_getElem? he)).1) hsel
+        (proposal_candidate_block S rho hn v nd s hs hsel hslot d p hdp)
+  · simpa only [Model.Run.dutyStep,
+      show (protoOf (compiled (family S)) E).role (.propose s hs) = .proposer s from rfl,
+      hsel, ↓reduceIte] using And.intro hd hh
+
 end Consensus.Goldilocks.Refinement
