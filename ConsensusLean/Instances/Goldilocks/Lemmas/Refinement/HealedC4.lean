@@ -343,6 +343,20 @@ theorem healed_of_reset_c4_full (hp : Healing.ResetPremises tr H proposer dg g �
     Healed tr H proposer g tH h₀ E :=
   healed_of_reset hp hrh hE hc3 (c4_of_reset_full hp hc hR)
 
+/-- **Healed from the reset and C3, canonical form** (`healed_of_reset_canonical` with
+`c4_of_reset_full`): the high entries are `Healing.canonicalEntry`, so there is no `hE`. -/
+theorem healed_of_reset_canonical_c4 (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ)) {tH : Time} {h₀ : Nat}
+    (hrh : Healing.HZ tr H g + 1 ≤ h₀) (Z₀ : SA.Blk sp.n (List (FG.Att sp.n)))
+    (hc3 : ∀ y ∈ H, ∀ k ℓ, tr.projAC.CallAt y k ℓ → tH ≤ tr.time k →
+      ∀ l ∈ SA.liveLocks sp (tr.projAC.state y k).locks ℓ.frame (tr.time k), l.fast = true →
+      ∀ X ∈ ℓ.frame.tree, X.root = l.block →
+      ∀ s P, Healing.HonestProposalRun tr H proposer s P → tr.time k + sp.Δ ≤ sp.ts s →
+        ∃ Pr ∈ tr.HonestBlocks H, P.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) X Pr)
+    (hR : Healing.drainTime sp a ≤ sp.ts (sp.slot tH + 1)) :
+    Healed tr H proposer g tH h₀ (Healing.canonicalEntry tr H g Z₀) :=
+  healed_of_reset_canonical hp hrh Z₀ hc3 (c4_of_reset_full hp hc hR)
+
 end Consensus.Goldilocks.Refinement
 
 end
