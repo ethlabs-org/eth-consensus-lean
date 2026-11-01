@@ -166,6 +166,51 @@ theorem justify_of_target_bound {c : List (FGBlock gp.n)} {σ σ' : ChainState g
     · simp [ChainState.advance, hr1]
     all_goals exact absurd ⟨hq, Or.inr hr1⟩ hj1
 
+/-- **A finalized predecessor justifies with a target quorum (r14 s5, Lemma 3′, W2 finalized
+case).** On a chain, if `h_F = h_j`, no pair is pending (pending heights are in `(h_F, h_j]`),
+so the finality step keeps `h_F`, and the loose-BJ gate holds: a block whose counted state has a
+target quorum justifies the entry, with no finality quorum, and keeps `h_F = h_j`. -/
+theorem justify_of_target_finalized {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
+    {B : FGBlock gp.n} (hc : gp.chainState c = some σ) (h : gp.stateTransition σ B = some σ')
+    (hfe : σ.hF = σ.hj)
+    (hq : gp.q ≤ (B.atts.foldl ChainState.processAtt { σ with s := B.slot }).target.card) :
+    σ'.hj = σ.h ∧ σ'.J = σ.Th ∧ σ'.hF = σ.hj := by
+  obtain ⟨-, -, -, -, -, -, -, hmem, -, -⟩ := chain_invariants gp c σ hc
+  have hnil : σ.pending = [] :=
+    List.eq_nil_iff_forall_not_mem.2 fun p hp => by have := hmem p hp; omega
+  obtain ⟨-, he⟩ := gp.stateTransition_eq_some.1 h
+  obtain ⟨f, p, t, hf⟩ := ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [hf] at he hq
+  obtain ⟨F, hF, σ₁, rfl, hfin, hcase⟩ := gp.heightEvents_cases
+    { σ with s := B.slot, fin := f, prog := p, target := t, L := B.root }
+  have hF0 : hF = σ.hF := by
+    rcases hfin with ⟨-, e⟩ | ⟨hm, -⟩
+    · exact e
+    · exact absurd hm (by simp [hnil])
+  subst hF0
+  rcases hcase with ⟨-, he'⟩ | ⟨hn, -, -⟩ | ⟨hn, -, -⟩
+  · rw [he'] at he; subst he; exact ⟨rfl, rfl, by simp [ChainState.advance, hfe]⟩
+  · exact absurd ⟨hq, Or.inr hfe⟩ hn
+  · exact absurd ⟨hq, Or.inr hfe⟩ hn
+
+/-- **Lemma 3′ at one chain step, by W2 (r14 s5).** On a chain, a block whose counted state has
+a target quorum, and a finality quorum at `h_j` when the height is bound and `(h_j, J)` is
+pending, justifies the entry, and at a bound height it has `h_F = h_j`. -/
+theorem justify_of_target_chain {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
+    {B : FGBlock gp.n} (hc : gp.chainState c = some σ) (h : gp.stateTransition σ B = some σ')
+    (hq : gp.q ≤ (B.atts.foldl ChainState.processAtt { σ with s := B.slot }).target.card)
+    (hf : σ.bound → (σ.hj, σ.J) ∈ σ.pending →
+      gp.q ≤ ((B.atts.foldl ChainState.processAtt { σ with s := B.slot }).fin σ.hj).card) :
+    σ'.hj = σ.h ∧ σ'.J = σ.Th ∧ (σ.bound → σ'.hF = σ.hj) := by
+  by_cases hb : σ.bound
+  · rcases gp.pred_pending_or_finalized hc with hp | hfe
+    · obtain ⟨h1, h2, h3⟩ := gp.justify_of_target_bound hc h hp hq (hf hb hp)
+      exact ⟨h1, h2, fun _ => h3⟩
+    · obtain ⟨h1, h2, h3⟩ := gp.justify_of_target_finalized hc h hfe hq
+      exact ⟨h1, h2, fun _ => h3⟩
+  · obtain ⟨h1, h2⟩ := gp.justify_of_target_unbound h hq hb
+    exact ⟨h1, h2, fun e => absurd e hb⟩
+
 end FGParams
 
 namespace Record

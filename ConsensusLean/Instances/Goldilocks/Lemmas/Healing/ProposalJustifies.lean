@@ -33,21 +33,21 @@ open _root_.Consensus.Goldilocks.Store
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)}
   {tr : FGTrace P ACP}
 
-/-- **Lemma 3′ at one block** (s5 §4, steps 4–6): a held block `X` on the held parent `Pr`, with
-`(h_j, J)` pending at `Pr` when `Pr`'s state is bound, and a set `S` of weight `≥ q` of
-validators, each with a target row for `Pr`'s entry in `X`'s payload or on `Pr`'s chain (with the
-finality pair `(h_j, J)` at a bound height): `X`'s state justifies `Pr`'s entry, and at a bound
-height it finalizes `h_j`. -/
-theorem justify_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+/-- **Lemma 3′ at one block** (s5 §4, steps 4–6): a held block `X` on the held parent `Pr`, and
+a set `S` of weight `≥ q` of validators, each with a target row for `Pr`'s entry in `X`'s payload
+or on `Pr`'s chain (with the finality pair `(h_j, J)` when `Pr`'s state is bound and the pair is
+pending): `X`'s state justifies `Pr`'s entry, and at a bound height it has `h_F = h_j`. By W2
+(`FGParams.justify_of_target_chain`) a bound height has `(h_j, J)` pending or `h_F = h_j`; in the
+second case the target quorum alone passes the loose-BJ gate. -/
+theorem justify_step' (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {X Pr : NodeBlock P ACP} (hX : X ∈ (tr.store y i).tree) (hPr : Pr ∈ (tr.store y i).tree)
     (hpar : X.parent = some Pr.root)
-    (hpend : ((tr.store y i).σ Pr.root).bound →
-      (((tr.store y i).σ Pr.root).hj, ((tr.store y i).σ Pr.root).J) ∈
-        ((tr.store y i).σ Pr.root).pending)
     (S : Finset (Fin P.n)) (hS : P.fg.q ≤ S.card)
     (hrow : ∀ v ∈ S, ∃ a : FG.Att P.n, a.val = v ∧ a.h = ((tr.store y i).σ Pr.root).h ∧
       a.T = ((tr.store y i).σ Pr.root).Th ∧ a.timeout = false ∧
       (((tr.store y i).σ Pr.root).bound →
+        (((tr.store y i).σ Pr.root).hj, ((tr.store y i).σ Pr.root).J) ∈
+          ((tr.store y i).σ Pr.root).pending →
         a.fin = some (((tr.store y i).σ Pr.root).hj, ((tr.store y i).σ Pr.root).J)) ∧
       (a ∈ X.fgPayload ∨ (tr.store y i).OnChain Pr a)) :
     ((tr.store y i).σ X.root).hj = ((tr.store y i).σ Pr.root).h ∧
@@ -60,28 +60,41 @@ theorem justify_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H
   obtain ⟨bf, bt, brow⟩ := foldl_bits { σ with s := X.slot } X.fgPayload
   have credit : ∀ v ∈ S,
       v ∈ (X.fgPayload.foldl FG.ChainState.processAtt { σ with s := X.slot }).target ∧
-      (σ.bound → v ∈ (X.fgPayload.foldl FG.ChainState.processAtt { σ with s := X.slot }).fin
-        σ.hj) := by
+      (σ.bound → (σ.hj, σ.J) ∈ σ.pending →
+        v ∈ (X.fgPayload.foldl FG.ChainState.processAtt { σ with s := X.slot }).fin σ.hj) := by
     intro v hv
     obtain ⟨a, rfl, hah, haT, hto, hfin, hin | ⟨Z, -, hZ, haZ⟩⟩ := hrow v hv
     · obtain ⟨h1, h2⟩ := brow a hin hah haT
-      exact ⟨h1 hto, fun hb => h2 _ (hfin hb) (hpend hb)⟩
+      exact ⟨h1 hto, fun hb hp => h2 _ (hfin hb hp) hp⟩
     · obtain ⟨h1, h2⟩ := (rows_counted hr hy i hPr Z hZ a haZ).2 hah haT
-      exact ⟨bt (h1 hto), fun hb => bf _ (h2 _ (hfin hb) (hpend hb))⟩
-  have hq : P.fg.q ≤
-      (X.fgView.atts.foldl FG.ChainState.processAtt { σ with s := X.fgView.slot }).target.card :=
-    hS.trans (Finset.card_le_card fun v hv => (credit v hv).1)
-  by_cases hb : σ.bound
-  · have hf : P.fg.q ≤
-        ((X.fgView.atts.foldl FG.ChainState.processAtt { σ with s := X.fgView.slot }).fin
-          σ.hj).card :=
-      hS.trans (Finset.card_le_card fun v hv => (credit v hv).2 hb)
-    obtain ⟨c, -, -, -, hc⟩ :=
-      chain_state_of_chain P ACP acp₀ _ (store_reachable hr hy i) Pr hPr
-    obtain ⟨h1, h2, h3⟩ := P.fg.justify_of_target_bound hc hstep (hpend hb) hq hf
-    exact ⟨h1, h2, fun _ => h3⟩
-  · obtain ⟨h1, h2⟩ := P.fg.justify_of_target_unbound hstep hq hb
-    exact ⟨h1, h2, fun h => absurd h hb⟩
+      exact ⟨bt (h1 hto), fun hb hp => bf _ (h2 _ (hfin hb hp) hp)⟩
+  obtain ⟨c, -, -, -, hc⟩ :=
+    chain_state_of_chain P ACP acp₀ _ (store_reachable hr hy i) Pr hPr
+  exact P.fg.justify_of_target_chain hc hstep
+    (hS.trans (Finset.card_le_card fun v hv => (credit v hv).1))
+    fun hb hp => hS.trans (Finset.card_le_card fun v hv => (credit v hv).2 hb hp)
+
+/-- `justify_step'` with the earlier premises: `(h_j, J)` pending at a bound height (now
+redundant, by W2) and the finality pair at every bound height. -/
+theorem justify_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+    {X Pr : NodeBlock P ACP} (hX : X ∈ (tr.store y i).tree) (hPr : Pr ∈ (tr.store y i).tree)
+    (hpar : X.parent = some Pr.root)
+    (_hpend : ((tr.store y i).σ Pr.root).bound →
+      (((tr.store y i).σ Pr.root).hj, ((tr.store y i).σ Pr.root).J) ∈
+        ((tr.store y i).σ Pr.root).pending)
+    (S : Finset (Fin P.n)) (hS : P.fg.q ≤ S.card)
+    (hrow : ∀ v ∈ S, ∃ a : FG.Att P.n, a.val = v ∧ a.h = ((tr.store y i).σ Pr.root).h ∧
+      a.T = ((tr.store y i).σ Pr.root).Th ∧ a.timeout = false ∧
+      (((tr.store y i).σ Pr.root).bound →
+        a.fin = some (((tr.store y i).σ Pr.root).hj, ((tr.store y i).σ Pr.root).J)) ∧
+      (a ∈ X.fgPayload ∨ (tr.store y i).OnChain Pr a)) :
+    ((tr.store y i).σ X.root).hj = ((tr.store y i).σ Pr.root).h ∧
+      ((tr.store y i).σ X.root).J = ((tr.store y i).σ Pr.root).Th ∧
+      (((tr.store y i).σ Pr.root).bound →
+        ((tr.store y i).σ X.root).hF = ((tr.store y i).σ Pr.root).hj) :=
+  justify_step' hr hy hX hPr hpar S hS fun v hv => by
+    obtain ⟨a, h1, h2, h3, h4, h5, h6⟩ := hrow v hv
+    exact ⟨a, h1, h2, h3, h4, fun hb _ => h5 hb, h6⟩
 
 end Chain
 
@@ -120,22 +133,21 @@ private theorem signAt_val (hrun : GoldilocksRun proposer dg H tr)
     rfl
 
 /-- **Lemma 3′ at an honest proposal** (s5 §4): an honest proposal `X` at the cut `kX` on the
-parent `Pr` of the proposer's tree, with parent state `σ = σ[Pr]` (the proposer's, at `kX`), with
-`(h_j, J)` pending at `σ` when `σ` is bound, and a set `S ⊆ H` of weight `≥ q` of honest
-validators, each of which signed a target row for `(σ.h, σ.T_h)` (with the finality pair
-`(σ.h_j, σ.J)` at a bound height) that the proposer processed before `kX` (delivery): `X`'s state
-justifies `(σ.h, σ.T_h)`, and at a bound height it finalizes `σ.h_j`. -/
-theorem justify_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+parent `Pr` of the proposer's tree, with parent state `σ = σ[Pr]` (the proposer's, at `kX`), and
+a set `S ⊆ H` of weight `≥ q` of honest validators, each of which signed a target row for
+`(σ.h, σ.T_h)` (with the finality pair `(σ.h_j, σ.J)` at a bound height where it is pending)
+that the proposer processed before `kX` (delivery): `X`'s state justifies `(σ.h, σ.T_h)`, and
+at a bound height it has `h_F = σ.h_j`. -/
+theorem justify_of_rows' (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
     (hPr : Pr ∈ (tr.state p kX).fg.tree)
-    (hpend : ((tr.state p kX).fg.σ Pr.root).bound →
-      (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J) ∈
-        ((tr.state p kX).fg.σ Pr.root).pending)
     (S : Finset (Fin sp.n)) (hSH : ∀ v ∈ S, v ∈ H) (hS : sp.toParams.fg.q ≤ S.card)
     (hdel : ∀ v ∈ S, ∃ k att, tr.SignAt v k att ∧ att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
       att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
       (((tr.state p kX).fg.σ Pr.root).bound →
+        (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J) ∈
+          ((tr.state p kX).fg.σ Pr.root).pending →
         att.fin = some (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J)) ∧
       ∃ k' < kX, tr.ProcessAttAt p k' att) :
     ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h ∧
@@ -172,7 +184,10 @@ theorem justify_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.N
   have hrow : ∀ v ∈ S, ∃ a : FG.Att sp.n, a.val = v ∧
       a.h = ((tr.projFG.store p (kX + 1)).σ Pr.root).h ∧
       a.T = ((tr.projFG.store p (kX + 1)).σ Pr.root).Th ∧ a.timeout = false ∧
-      (((tr.projFG.store p (kX + 1)).σ Pr.root).bound → a.fin =
+      (((tr.projFG.store p (kX + 1)).σ Pr.root).bound →
+        (((tr.projFG.store p (kX + 1)).σ Pr.root).hj,
+          ((tr.projFG.store p (kX + 1)).σ Pr.root).J) ∈
+          ((tr.projFG.store p (kX + 1)).σ Pr.root).pending → a.fin =
         some (((tr.projFG.store p (kX + 1)).σ Pr.root).hj,
           ((tr.projFG.store p (kX + 1)).σ Pr.root).J)) ∧
       (a ∈ X.fgPayload ∨ (tr.projFG.store p (kX + 1)).OnChain Pr a) := by
@@ -192,10 +207,33 @@ theorem justify_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.N
       refine List.mem_filter.2 ⟨hpool, decide_eq_true ⟨Or.inl ⟨?_, ?_⟩, hon⟩⟩
       · rw [hdroot, hah]
       · rw [hdroot, haT]
-  have := justify_step hfg hp (i := kX + 1) (by rw [hst]; exact hXt)
-    (by rw [hst]; exact hmono hPr) hpar (by rw [hst, ← hσPr]; exact hpend) S hS hrow
+  have := justify_step' hfg hp (i := kX + 1) (by rw [hst]; exact hXt)
+    (by rw [hst]; exact hmono hPr) hpar S hS hrow
   rw [hst, ← hσPr] at this
   exact this
+
+/-- `justify_of_rows'` with the earlier premises: `(h_j, J)` pending at a bound height (now
+redundant, by W2) and the finality pair at every bound height. -/
+theorem justify_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
+    (hPr : Pr ∈ (tr.state p kX).fg.tree)
+    (_hpend : ((tr.state p kX).fg.σ Pr.root).bound →
+      (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J) ∈
+        ((tr.state p kX).fg.σ Pr.root).pending)
+    (S : Finset (Fin sp.n)) (hSH : ∀ v ∈ S, v ∈ H) (hS : sp.toParams.fg.q ≤ S.card)
+    (hdel : ∀ v ∈ S, ∃ k att, tr.SignAt v k att ∧ att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
+      att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
+      (((tr.state p kX).fg.σ Pr.root).bound →
+        att.fin = some (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J)) ∧
+      ∃ k' < kX, tr.ProcessAttAt p k' att) :
+    ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h ∧
+      ((tr.post kX).fg.σ X.root).J = ((tr.state p kX).fg.σ Pr.root).Th ∧
+      (((tr.state p kX).fg.σ Pr.root).bound →
+        ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) :=
+  justify_of_rows' hrun hnc hp hX hpar hPr S hSH hS fun v hv => by
+    obtain ⟨k, att, h1, h2, h3, h4, h5, h6⟩ := hdel v hv
+    exact ⟨k, att, h1, h2, h3, h4, fun hb _ => h5 hb, h6⟩
 
 end Run
 
