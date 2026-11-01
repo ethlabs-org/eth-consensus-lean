@@ -174,13 +174,21 @@ theorem low_finalized_below_high_block (hp : ResetPremises tr H proposer dg g Δ
   low_finalized_below_high_block_of_run hp.run hp.noColl hp.healthy.2.2 hy hx hBt hhigh hlow
 
 /-- The origin-specialized form of strict-height finalized ancestry. -/
-theorem low_finalized_below_origin (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n}
+theorem ResetPremisesUpTo.low_finalized_below_origin {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {y : Fin sp.n}
     (hy : y ∈ H) (m : Nat) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
     {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := by
   obtain ⟨CV, hst⟩ := ho.2.2.1
-  exact low_finalized_below_high_block hp hy ho.1
+  exact low_finalized_below_high_block_of_run hp.run hp.noColl hp.faults hy ho.1
     (storedFastLock_mem hp.run hp.noColl ho.1 hst).1 ho.2.2.2 hlow
+
+/-- Whole-run specialization of low finalization below a high origin. -/
+theorem low_finalized_below_origin (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n}
+    (hy : y ∈ H) (m : Nat) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
+    {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
+    Anc (tr.HonestBlocks H) (tr.state y m).fg.F B :=
+  (hp.toUpTo tr H (le_refl a)).low_finalized_below_origin hy m hlow ho
 
 end Consensus.Goldilocks.Healing
 
