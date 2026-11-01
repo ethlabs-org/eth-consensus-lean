@@ -286,7 +286,7 @@ origin before the signing (`attestation_source`); a regular one of label `l` is 
 `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most `s`, and not `s`
 (`no_optimistic_before_held_row`). -/
 private theorem vote_rows_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) :
     HonestRowsSourced tr H
@@ -314,53 +314,58 @@ private theorem vote_rows_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
     rcases Nat.lt_or_ge l (s' + 1) with h | h
     · omega
     obtain rfl : l = s' + 1 := by omega
-    exact (no_optimistic_before_held_row hrun hnc hsl hy hc hes hm hmj hav hkm hsg hz hck hOp).elim
+    exact (no_optimistic_before_held_row_of hrun hnc hf hy hc hes hm hmj hav
+      hkm hsg hz hck hOp).elim
 
 /-- **The head height floor at an honest vote is at most the height of a held block above every
 old origin** (workbench#12 §2,
 `floor ≤ ht(D_s)` at the vote reads): the sources of the voter's honest rows are below old
 origins (`vote_rows_old`), so below the block; so there is no contest, and the carrier of `h_max`
 crossed `h_max − 1` with such a source, whose entry, below the block, has height `h_max − 1`. -/
-private theorem vote_floor_le (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+private theorem vote_floor_le_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr.state y j).fg.tree)
     (hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O B) :
     (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
-  have hsrc := vote_rows_old hrun hnc hsl hs0 hy hc hes
+  have hsrc := vote_rows_old hrun hnc hf hs0 hy hc hes
   have hU := (projFG_localRun hrun hnc).coherent
   have hGB : ∀ D, (∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) →
       Anc (tr.HonestBlocks H) D B := fun D ⟨O, hO, hDO⟩ => hDO.trans (hold O hO)
-  have hfl : (tr.state y j).fg.headHeightFloor = (tr.state y j).fg.hmax - 1 := by
-    unfold Store.headHeightFloor
-    split_ifs with h
-    · exact absurd h (frame_no_contest hrun hnc hsl hy hsrc fun D D' hD hD' =>
-        Anc.total hU (hGB D hD) (hGB D' hD'))
-    · rfl
-  by_contra hlt
-  obtain ⟨-, -, -, -, -, ⟨X, hX, hXh⟩, -⟩ :=
-    Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hy j)
-  have hB1 := (honest_held_chain hrun hy hB).1
-  obtain ⟨E, hE, -, hEh, -, D, hD, hDs⟩ :=
-    frame_crossing_source hrun hnc hsl hy hsrc hX (j := (tr.state y j).fg.hmax - 1) (by omega)
-      (by omega)
+  rcases floor_or_crossing_scoped hrun hnc hf hy
+      (fun X hX a ha hav _ => honestRowsSourced_iff.1 hsrc X hX a ha hav)
+      (fun D D' hD hD' => Anc.total hU (hGB D hD) (hGB D' hD'))
+      (fun D hD => Or.inl (hGB D hD)) hB with hle | ⟨D, E, -, hD, hDs, hE, -, hEh, -⟩
+  · exact hle
   obtain ⟨x, hx, k, -, -, hED, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, j, hE⟩ rfl
   have hEB :=
     honest_held_anc hrun hnc hy ((hED.mono (fg_tree_subset_honest hx k)).trans (hGB D hD)) hB
   have := (honest_held_height hrun hnc hy hEB).1
   omega
 
+private theorem vote_floor_le (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB : B ∈ (tr.state y j).fg.tree)
+    (hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O B) :
+    (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h :=
+  vote_floor_le_of hrun hnc (two_faults_lt_of_sleepy hsl) hs0 hy hc hes hB hold
+
 /-- **The voter holds the proposal**: an early vote is ready, with a block of slot `s` in its
 frame (`SA.cast_ready`), which is `P` (`eq_of_slot`); a vote at `t_s + Δ` follows the relay of
 `P`, accepted by its proposer at `t_s`, to the voter (restarted at or before `t_{s−1}`), when `P`
 extends the voter's `Σ.F`. -/
-private theorem voter_holds_proposal (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+private theorem voter_holds_proposal_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time}
+    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
+    (hb : tr.time j ≤ b)
     (hFP : Anc (tr.HonestBlocks H) ℓy.frame.F P) : P ∈ ℓy.frame.tree := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
@@ -375,7 +380,7 @@ private theorem voter_holds_proposal (hrun : GoldilocksRun proposer dg H tr) (hn
   have hts : sp.ts ((s' + 1 : Nat) : Int) = sp.ts (s' : Int) + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hΔ := sp.toParams.hΔ
-  refine relay_mem hrun hnc hsl hp hy (accepted_honest hrun hp hacc) hcy.1
+  refine relay_mem_before hrun hnc hsync hp hy (accepted_honest hrun hp hacc) hcy.1 hb
     (honest_vote_restarts hrun hnc hy hcy hes).1
     (Or.inr ⟨k + 1, ⟨ℓ, projAC_callAt.2 hcl, hbl⟩, ?_⟩) hFP
   change max (tr.time (k + 1)) (sp.ts (s' : Int)) + sp.Δ ≤ tr.time j
@@ -383,6 +388,22 @@ private theorem voter_holds_proposal (hrun : GoldilocksRun proposer dg H tr) (hn
   have ht' : sp.ts ((s' + 1 : Nat) : Int) + sp.Δ ≤ tr.time j := not_lt.1 ht
   rw [htl, htk, max_eq_left (by rw [hts]; linarith)]
   exact ht'
+
+private theorem voter_holds_proposal (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    (hPs : P.slot = s) (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
+    (hFP : Anc (tr.HonestBlocks H) ℓy.frame.F P) : P ∈ ℓy.frame.tree := by
+  have hs : tr.SyncBefore H ΔF (tr.time j) :=
+    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
+      hsl.1.message x hx i m hm h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
+      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
+  exact voter_holds_proposal_before hrun hnc (syncBefore_projection hrun.toLocalRun hs)
+    hp hP hPs hs0 hy hcy hes le_rfl hFP
 
 end Run
 
