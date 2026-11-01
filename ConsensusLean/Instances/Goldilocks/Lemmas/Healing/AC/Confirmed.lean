@@ -1215,6 +1215,39 @@ theorem anc_acConfirmed_of_record (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : F
   rw [hlk, Option.getD_some]
   exact hPR.mono hΦU
 
+/-- Finite stamped honest batch from actual unanimous casts. The actual-vote existence
+input is separate from agreement; no ready-proposal support clause is needed. -/
+theorem unanimous_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g b)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
+    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
+    (hjb : tr.time j ≤ b)
+    (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ t + sp.Δ)
+    (hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ gbar g)
+    {P : Blk sp.n FGP} (hPt : P ∈ ell.frame.tree)
+    (hvotes : ∀ x ∈ H, ∃ i e, VoteAt tr x i e ∧ e.msg.slot = s ∧ e.msg.head = P.root) :
+    ∀ x ∈ H, ∃ v ∈ (tr.state y j).pool s, v.val = x ∧ v.head = P.root ∧
+      resolutionTime (tr.state y j) ell.frame v < ETime.of (sp.ts s + 2 * sp.Δ) ∧
+      ∀ v' ∈ (tr.state y j).pool s, v'.val = x → v' = v := by
+  have hr := hS.run.localRun
+  obtain ⟨hPhi, hPhiU⟩ := frameIn_of_callAt hr hy hc
+  intro x hx
+  obtain ⟨i, e, hv, hes, heP⟩ := hvotes x hx
+  obtain ⟨B, hB, hBr, hBs, hmem, hvs, hbs⟩ :=
+    late_vote_held_of_frame_before hS hy hc hs ht hjb hdeadline hrestart hx hv hes
+      (fun B hBU hBr => by
+        rw [hr.coherent.1 hBU (hPhiU hPt) (hBr.trans heP)]
+        exact (hPhi.rooted.2 P hPt).mono hPhiU)
+  obtain ⟨hval, -⟩ := castAt_spec hr hx ⟨hv.choose_spec.1, hv.choose_spec.2⟩
+  refine ⟨e.msg, hmem, hval, heP,
+    resolutionTime_lt_of hPhi hB hBr (hes ▸ hBs) hvs hbs, ?_⟩
+  intro v' hv' hv'x
+  obtain ⟨q, -, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j s v' hv' (hv'x ▸ hx)
+  rw [hv'x] at he'
+  obtain ⟨-, rfl⟩ := (one_vote_per_slot sp) FGP ro H U tr hr x hx q i e' e he' hv
+    ((state_pool_slot sp hr hy j s _ hv').trans hes.symm)
+  rfl
+
 end Consensus.Goldilocks.SA
 
 end
