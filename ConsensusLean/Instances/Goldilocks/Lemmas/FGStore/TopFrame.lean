@@ -73,6 +73,22 @@ theorem contest_insert {st st' : Store P ACP} {X : NodeBlock P ACP}
     rw [hJ, htree] at h
     exact hJB (Anc.of_insert h hB hX)
 
+/-- **Viable heads without a contest (r14 s2, L2.3.4).** At `h_max = h_j + 1` without a contest,
+and with `Σ.F ⪯ Σ.J`, the viable heads are the viable accepted blocks above `Σ.J`; they do not
+depend on `Σ.F`, so an advance of `Σ.F` below `Σ.J` alone does not change them. -/
+theorem mem_viableHeads_of_not_contest (hm : st.hmax = st.hj + 1) (h : ¬ st.Contest)
+    (hFJ : st.Anc st.F st.J) {B : NodeBlock P ACP} :
+    B ∈ st.toFrame.viableHeads ↔ B ∈ st.tree ∧ st.Anc st.J B ∧ st.IsViable B := by
+  have hr := st.fcRoot_of_not_contest hm h
+  constructor
+  · rintro ⟨hB, -, hJB, hv⟩
+    rw [hr] at hJB
+    exact ⟨hB, hJB, hv⟩
+  · rintro ⟨hB, hJB, hv⟩
+    refine ⟨hB, Relation.ReflTransGen.trans hFJ hJB, ?_, hv⟩
+    rw [hr]
+    exact hJB
+
 end Consensus.Goldilocks.Store
 
 end
