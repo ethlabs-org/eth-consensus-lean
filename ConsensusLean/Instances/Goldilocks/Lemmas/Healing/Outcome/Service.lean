@@ -6,6 +6,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Outcome
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
+
+-- Keep the finite reset service adapter with the outcome-service assembly it supplies.
+set_option linter.style.longFile 1600
 
 public section
 
@@ -1479,6 +1483,56 @@ theorem outcome_service : Compose.OutcomeService := by
   have hR : drainTime sp a ≤ sp.ts u := by rw [drainTime_eq]; exact hu
   exact outcome_of_rows hrun hsh hc hpp hcF₁ hcF₂ hδ ha hP hE hR hW
     (entry_rows hrun hsh hc hcF₂ hδ ha hP hE hR hh hhj)
+
+/-- Catch before GST and acceptance relay after GST give Catch at the actual reset,
+without awake or service obligations beyond the finite observation horizon. -/
+theorem catch_window_at_reset_of_reset_catch_before {b t : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (htb : t ≤ b) :
+    CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a (2 * sp.Δ) t := by
+  have hca := cutZ_lt_reset_of_snapshot hp.run
+    (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
+  have hga : SA.gbar g < a := by linarith [lt_cutZ sp g, sp.toParams.hΔ]
+  have hra : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ a := by
+    apply le_trans _ hca.le
+    rw [cutZ_eq]
+    exact (SA.ts_le_iff sp).mpr (by omega)
+  constructor
+  intro x hx i B ha hi y hy j ell hj ht hjt hF
+  change a + 2 * sp.Δ ≤ tr.time j at ht
+  change tr.time j ≤ t at hjt
+  by_cases hgi : tr.projAC.time i < SA.gbar g
+  · obtain ⟨k, hk, hak, hkt⟩ := projection_catch_of_run hp.run hc x hx i B ha hgi
+      y hy j ell hj (by change SA.gbar g + 2 * sp.Δ ≤ tr.time j; linarith) hF
+    exact ⟨k, hk, hak, by linarith⟩
+  · obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before hp.run.toLocalRun hx ha
+    change tr.time (i' + 1) < a at hi
+    change ¬ tr.time (i' + 1) < SA.gbar g at hgi
+    have hia : tr.time i' < a := by simpa only [hti] using hi
+    have hgg : g ≤ tr.time i' := (SA.le_gbar g).trans (by
+      simpa only [hti] using le_of_not_gt hgi)
+    have hmax : max (tr.time i') g = tr.time i' := max_eq_left hgg
+    have hdeadline : ∀ k ≤ j, tr.deadline y k (tr.time i') sp.Δ ≤ a + sp.Δ := by
+      intro k hkj
+      apply le_trans (Compose.deadline_le_of_restarts (a := a) (fun r hr hrest =>
+        (restart_le_before hp hy hrest
+          ((hp.run.time_mono (hr.trans hkj)).trans (hjt.trans htb))).trans hra) _ _)
+      rw [max_eq_right hia.le]
+    obtain ⟨k, hk, hak, hkt⟩ := hp.sync.relay x hx i' B ha' hgg y hy j
+      ⟨_, Compose.projAC_callAt.mp hj⟩ (by
+        rw [hmax]
+        exact (hdeadline j le_rfl).trans (by linarith [sp.toParams.hΔ]))
+      (by rwa [Compose.frame_of_projAC hp.run hy hj] at hF)
+    obtain ⟨hak', htk, -⟩ := ac_block_after hp.run.toLocalRun hy hak
+    have hkj : k < j := by
+      rcases hk.lt_or_eq with hk | rfl
+      · exact hk
+      · exact absurd (hak.2.symm.trans (Compose.projAC_callAt.mp hj).2) (by simp)
+    refine ⟨k + 1, hkj, hak', ?_⟩
+    change tr.time (k + 1) < a + 2 * sp.Δ
+    rw [htk]
+    rw [hmax] at hkt
+    exact lt_of_lt_of_le hkt ((hdeadline k hk).trans (by linarith [sp.toParams.hΔ]))
 
 end Consensus.Goldilocks.Healing
 
