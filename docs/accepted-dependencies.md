@@ -27,7 +27,14 @@ joint supplier has been decomposed into its eventual proof obligations.
 
 ## Master status: every Accepted field, grouped by leaf owner
 
-Current audit: main `7547caee`.
+Current compiled audit: main `fe43d480` (including the 14f5ce06 service migration
+and 103bfbd cut-tip extraction). Later reported landings are not silently folded
+into this pinned dependency graph.
+Machine-readable rows and per-field edges are in `docs/accepted-status.json`.
+Regenerate with `python3 scripts/accepted-status.py` after building `ConsensusLean`
+and `spec-surface`, on every ledger update. Historical former sorry declarations
+since fd7f498 remain in the inventory; body closure alone is not `lean-proved`.
+Paper status is `unknown` unless an authoritative owner supplies a classification.
 The post-wiring audit uses `spec-surface dependencies --from
 Consensus.Goldilocks.Refinement.accepted --modules
 ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted`, including type
@@ -39,12 +46,12 @@ an assembly depending on them is not an additional leaf.
 |---|---|---|
 | C | Spec orb, joint coefficient synthesis | `accepted_catchUp`, `accepted_heal`, `accepted_latency` |
 | F | Four-anchor/final service owner | `final_window_extract`, `final_inherited_progress`, `final_row_supply`, `final_cache_acceptance` |
-| H | Healing paper/T3; Spec orb integration | `healthy_old_inventory_initialize`, `healthy_prepare`, `healthy_preserve`, `healthy_cut_agreement`, `healthy_cut_monotone` |
+| H | Healing paper/T3; Spec orb integration | `healthy_old_inventory_initialize`, `healthy_prepare`, `healthy_preserve`, `healthy_cut_tips_comparable`, `healthy_cut_tips_ancestor` |
 | N | Healing paper/T3; Spec orb integration | `healthy_confirmed_supply` |
-| O | Healing/outage owner; Spec orb integration | `outage_pre_service`, `outage_arm`, `outage_repair` |
+| O | Healing/outage owner; Spec orb integration | `outage_pre_service`, `outage_repair` |
 | B | Spec orb joint coefficient synthesis | `accepted_catchUp_ge_sleepy`, `accepted_latency_ge_sleepy` |
 | S | Engine finite service | `sleepy_query_sync` |
-| R | Spec orb safety-input production | `sleepy_safety_inputs` |
+| R | Engine finite service (Healing box) | `sleepy_safety_inputs` |
 
 | Accepted field / branch | Reachable OPEN leaves by owner set | Direct adapter sorry? |
 |---|---|---|
@@ -62,7 +69,9 @@ an assembly depending on them is not an additional leaf.
 | serves | none (schema provides final output) | no |
 | claims and complete accepted | C ∪ F ∪ H ∪ N ∪ O ∪ B ∪ S ∪ R | no |
 
-This closure has **20 direct sorry owners**. At the pre-wiring baseline the two nonfinal
+The rerun finds **19 direct sorry owners**: `outage_arm` is proved at 649f0286;
+103bfbd moves the two cut adapters' holes into actual-tip comparability/ancestry,
+without reducing their count. At the pre-wiring baseline the two nonfinal
 healthyLive branches and sleepySafe/sleepyLive were direct adapter holes; all
 four now have assembly bodies. Capability budgets remain distinct even though
 available and stable both project to confirmed output. Collision escapes,
@@ -98,7 +107,7 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 
 | Owner / namespace | Proved declarations and landing | Exact scope / remaining join |
 |---|---|---|
-| Healing source-service / `Healing` | `proposal_stored_locks_compatible_old`, `optimistic_prefix_compatible_old` (2d53602) | Actual stored provenance and proposal timing; strict labels use historical activation, equal labels use same-slot fast/optimistic compatibility. `proposal_start_supported` and `vote_old_live_lock_below_parent` remain OPEN. |
+| Healing source-service / `Healing` | `proposal_stored_locks_compatible_old`, `optimistic_prefix_compatible_old` (2d53602); `proposal_start_supported` (c37143b, standard axioms) | Actual stored provenance and proposal timing; proposal start support now follows clean source votes. `vote_old_live_lock_below_parent` remains OPEN: head/stamp held-at-proposal and proposal-domain joins (healing §81). |
 | Healing source-service / `Healing` | `historical_activation_cutZ_before` (e73ed60), `reset_sync_window_before`, `historical_activation_before` (79be99e) | Bounded comparison/vote activation through Q from ResetPremises; cutZ-windowed service is derived from node reset premises. Engine Healthy→reset/service transport remains separate; no new Catch premise. |
 | Healing transfer / `SA` | `result_prefix_vote_extends_of_stored`, `next_vote_extends_before` (daf14e2) | Current-cut stored compatibility, carry, viability and merged-view inputs remain explicit. Later transfer uses only earlier predecessor/current-label votes; these primitives do not produce their service/viability inputs. |
 | Healing retention / `Healing` | `high_floor_source_before` (f65e35a) | Source-state height extracts an earlier high origin; earlier-origin pairwise and target compatibility remain hypotheses. No read of an unheld receiver root supplies the height. |
@@ -112,19 +121,21 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 | `Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy` | OPEN, Spec orb joint synthesis: 37≤accepted_catchUp is a minimum Sleepy constraint, not a selected shared witness. Covers 18(Δe+1)+1≤37Δe for Δe≥1. Reached by Sleepy safety and liveness. |
 | `Consensus.Goldilocks.Refinement.accepted_latency_ge_sleepy` | OPEN, Spec orb joint synthesis: available/stable latency≥8idx+12, covering (4idx+6)(Δe+1)≤(8idx+12)Δe. Other regimes may raise it; not a final joint value or new endpoint premise. Reached by Sleepy liveness slot selection. |
 | `Consensus.Goldilocks.Refinement.healthy_confirmed_supply` | OPEN, Healing paper/T3 with Spec orb integration: finite Healthy preparation, exact-cDur-ready actual producer selection and its budget, frozen service and deadline coverage remain inside this joint existential. Only the selected accepted proposal is covered; no new endpoint assumption. |
-| `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | One direct sorry remains for finite-horizon SyncBefore. Duration catchUp+1≤cDur and population are derived from the OPEN catch-up bound at 7547caee; no progress/query/reader-existence premise. |
+| `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | One direct sorry remains for finite fresh-or-retained SleepyServiceBefore after 14f5ce06. Statement-obstructed under #128 pending protocol/service repair; duration catchUp+1≤cDur and population are derived from the OPEN catch-up bound. No progress/query/reader-existence premise. |
 | `Consensus.Goldilocks.Refinement.confirmed_duration_supply` | Body closed at 7547caee using accepted_catchUp_ge_sleepy and exact scale arithmetic; still transitively sorry-dependent, not a selected coefficient or positivity argument. |
-| `Consensus.Goldilocks.Refinement.sleepy_query_sync` | OPEN, engine/Spec orb: canonical service through exact deadline. |
+| `Consensus.Goldilocks.Refinement.sleepy_query_sync` | PAPER-PARTIAL, engine: fresh-or-retained canonical service through exact deadline. Engine transport and applicability under the full progress/latency query remain unresolved; #128's short run does not instantiate these premises. |
 | `Consensus.Goldilocks.Refinement.sleepy_query_population` | Body closed via duration monotonicity and sleepy_faultBound; retains the joint catch-up bound dependency. |
 | `Consensus.Goldilocks.Refinement.sleepy_query_slot` | Body closed at 7547caee: actual recurrence/grid selection at exact cDur with strict freshness and 6Δp margin; retains named joint lower-bound/witness dependencies. |
 | `Consensus.Goldilocks.Refinement.confirmed_slot_event` | Body closed via scheduled actual event and joined readiness transport; retains confirmed_duration_supply dependency, not eligibility-as-event by definition. |
 | `Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize` | OPEN, Healing paper/T3: global old signed-entry inventory including unseen future arrivals, §§27/28. |
 | `Consensus.Goldilocks.Refinement.healthy_prepare` | OPEN, Healing paper/T3: finite ready→heal record/cache/stored-lock preparation consuming inventory. |
-| `Consensus.Goldilocks.Refinement.healthy_preserve` | OPEN, Healing paper/T3: all later canonical cuts, health only, no later progress. |
-| `Consensus.Goldilocks.Refinement.healthy_cut_agreement` | OPEN, Spec orb/Healing: arbitrary-cut agreement, including pre-endCut equality-time transport. |
-| `Consensus.Goldilocks.Refinement.healthy_cut_monotone` | OPEN, Spec orb/Healing: ordered-cut extension with both readiness tests and equality-time transport. |
-| `Consensus.Goldilocks.Refinement.outage_pre_service` | OPEN, engine/outage: recipient-deadline service bounded by outage start. |
-| `Consensus.Goldilocks.Refinement.outage_arm` | OPEN, outage: effective-record lookup or F fallback with original read prefix. |
+| `Consensus.Goldilocks.Refinement.healthy_preserve` | PAPER-PROVED awaiting Lean at this audit pin, §83 e8fc89c4: J quorum/inventory contradiction, F≤J, archival records and recent locks. Subsequent ed329627 reports body closure; regenerate before counting that landing. |
+| `Consensus.Goldilocks.Refinement.healthy_cut_agreement` | Body closed at 103bfbd using actual-tip comparability and confirmed_prefix_of_anc; equality-time gap remains in healthy_cut_tips_comparable. |
+| `Consensus.Goldilocks.Refinement.healthy_cut_monotone` | Body closed at 103bfbd using directed tip ancestry and confirmed_prefix_of_anc; temporal/equality-time gap remains in healthy_cut_tips_ancestor. |
+| `Consensus.Goldilocks.Refinement.healthy_cut_tips_comparable` | PAPER-PARTIAL: actual stored-clock read tips at arbitrary InCuts, including pre-endCut heal-time cuts, still require comparability. |
+| `Consensus.Goldilocks.Refinement.healthy_cut_tips_ancestor` | PAPER-PARTIAL: directed ancestry of actual stored-clock read tips, with original ordered-cut/readiness domain. |
+| `Consensus.Goldilocks.Refinement.outage_pre_service` | PAPER-PARTIAL, engine/outage: migrated to SleepyServiceBefore at 4d69fdd3. The old #127 duplicate-fresh signature obstruction is historical; replacement finite engine service remains unproved. #128 applicability to the exact Outage premises is not established. |
+| `Consensus.Goldilocks.Refinement.outage_arm` | PROVED at 649f0286, unchanged signature: exact endCut(T), lookup success or F fallback, and actual engine read prefix via DCA ancestry. No recency assumption; unused service argument retained. Arming does not prove protection/repair. |
 | `Consensus.Goldilocks.Refinement.outage_repair` | OPEN, outage: lifetime, repair, old output compatibility and exact reader windows. |
 
 ## Historical per-field axiom audit at 259d0330 (superseded above)
@@ -549,7 +560,7 @@ bound dirty entries or prove finality progress. No final latency coefficient is 
 
 ## Healing pivot compatibility suppliers
 
-The remaining named leaves in `Healing/Outcome/Pivot.lean` are **OPEN**, owned by
+The remaining named leaf in `Healing/Outcome/Pivot.lean` is **OPEN**, owned by
 the healing source-service work (OpenAI pivot prover, coordinated by the healing lead).
 All retain `ResetPremises`, `Catch(2Δ)`, the ready proposal, and the existing drain.
 They are proof obligations, not additional protocol premises.
@@ -557,8 +568,8 @@ They are proof obligations, not additional protocol premises.
 | Declaration (`Consensus.Goldilocks.Healing.` prefix) | Consumer obligation | Dependencies / proof status |
 |---|---|---|
 | `proposal_stored_locks_compatible_old` | Proposal stored high locks compatible with each `OldSrc` | PROVED: stored provenance and proposal timing reduce to label u−1 optimism; `optimistic_prefix_compatible_old` uses historical votes for strict labels and explicit same-label fast/optimistic compatibility |
-| `proposal_start_supported` | Proposal start below the actual honest vote head, under earlier-votes=P | OPEN source HEAD support; first slow HEAD uses proved `SA.slow_first_votes_before` with explicit carry, merged, frame and stored producers |
-| `vote_old_live_lock_below_parent` | Viable ancestor of each non-current live read-point lock below the proposal parent | OPEN source proposal support from label l+2, bounded retention and move-back provenance |
+| `proposal_start_supported` | Proposal start below the actual honest vote head, under earlier-votes=P | PROVED at c37143b, standard axioms; clean source votes discharge the source-vote adapter |
+| `vote_old_live_lock_below_parent` | Viable ancestor of each non-current live read-point lock below the proposal parent | OPEN: two joins remain, head/stamp held-at-proposal and proposal domain; paper-ported in healing §81, not yet a Lean proof |
 
 The deepest set remains `{start} ∪ OldSrc`; floor/root and same-slot optimistic
 arguments are unchanged. The unused `hnoSlow`, `late_slow_lock_votes`,
@@ -569,6 +580,14 @@ retain bounded `SA.Inv`, global `Anc U B fcRoot`, exact window cutoffs, receiver
 F≤source and per-counted-vote writer evidence; they cannot assume these consumers.
 
 ## Approved conditional Sleepy supplier skeleton
+
+The #127 migration landed at 14f5ce06: finite service consumers use
+`Compose.SleepyServiceBefore` (fresh processing or retained stamped pool evidence),
+and whole-run signatures remain wrappers. Seven Service modules and the combined
+chain compiled; changed/landing gates passed with 22 skips and boundary passed.
+#127 closed with a retained-pool concrete-instance check and compiled reduced-facts
+regression, not a full engine replay; full tier was not run. Both engine service
+suppliers remain OPEN. The subsequent #128 obstruction is not resolved by this migration.
 
 `Lemmas/Refinement/NonfinalSuppliers.lean` contains the lead-reviewed Sleepy
 signature slices. It imports AcceptanceDefs for its existing coefficients and
