@@ -155,7 +155,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/clean_result_next_votes.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Healing.proposal_start_supported",
@@ -171,7 +172,8 @@
       "last-changed": "2026-11-01",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Healing.ready_unanimous",
@@ -189,7 +191,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/ready_unanimous.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Healing.ready_update",
@@ -207,7 +210,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/ready_update.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Healing.report_cover",
@@ -225,7 +229,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/report_cover.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Healing.reset_inv",
@@ -243,7 +248,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/reset_inv.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Healing.vote_old_live_lock_below_parent",
@@ -261,7 +267,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/vote_old_live_lock_below_parent.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Healing.voter_unlock_keeps_lock",
@@ -279,7 +286,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/voter_unlock_keeps_lock.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_catchUp",
@@ -297,7 +305,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/accepted_catchUp.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy",
@@ -317,7 +326,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/accepted_catchUp_ge_sleepy.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_heal",
@@ -335,7 +345,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/accepted_heal.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_latency",
@@ -353,7 +364,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/accepted_latency.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_latency_ge_sleepy",
@@ -373,7 +385,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/accepted_latency_ge_sleepy.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.confirmed_duration_supply",
@@ -394,7 +407,8 @@
       "last-changed": "2026-11-01",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Refinement.confirmed_slot_event",
@@ -415,7 +429,8 @@
       "last-changed": "2026-11-01",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_cache_acceptance",
@@ -437,7 +452,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/final_cache_acceptance.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_inherited_progress",
@@ -459,7 +475,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/final_inherited_progress.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_row_supply",
@@ -481,7 +498,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/final_row_supply.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_window_extract",
@@ -503,7 +521,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/final_window_extract.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_confirmed_supply",
@@ -525,7 +544,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_confirmed_supply.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_cut_agreement",
@@ -547,7 +567,8 @@
       "evidence": "Whole-statement audit 6d6af170 \u00a7\u00a717.2,25\u201328: old-row realization/replacement, origin comparability and actual engine read transport; heal-time cuts can precede endCut-heal.",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_cut_monotone",
@@ -569,7 +590,8 @@
       "evidence": "Whole-statement audit 6d6af170 \u00a7\u00a717.2\u20133: temporal DCA lower bound and equality-time/readiness transport; common-chain membership does not prevent backwards reads.",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_cut_tips_ancestor",
@@ -591,7 +613,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_cut_tips_ancestor.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_cut_tips_comparable",
@@ -613,7 +636,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_cut_tips_comparable.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize",
@@ -635,7 +659,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_old_inventory_initialize.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_old_row_realize",
@@ -657,7 +682,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_old_row_realize.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_prepare",
@@ -679,7 +705,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_prepare.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_preserve",
@@ -700,7 +727,8 @@
       "evidence": "Body proved at ed329627 from the existing base; J-specific target membership avoids healthy_old_row_realize. Shared coefficient type dependencies remain, not a direct sorry.",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_vote_row_replacement",
@@ -721,7 +749,8 @@
       "evidence": "Outside audit 649f0286: realization/inventory give eventual coverage but still need l\u2264s; OldEntryCovered has no label upper bound.",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Refinement.outage_arm",
@@ -742,7 +771,8 @@
       "evidence": "Body proved at 649f0286; shared coefficient type dependencies remain. Exact endCut(T), both lookup alternatives and actual read prefix; arming is not protection.",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Refinement.outage_pre_service",
@@ -764,7 +794,8 @@
       "card-commit": "af61e7b436f950709d0046a552a25ac1f3123134",
       "card-path": "repos/goldilocks/notes/derisk/outage_pre_service.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.outage_repair",
@@ -786,7 +817,8 @@
       "card-commit": "af61e7b436f950709d0046a552a25ac1f3123134",
       "card-path": "repos/goldilocks/notes/derisk/outage_repair.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_include_finite",
@@ -802,7 +834,8 @@
       "last-changed": "2026-11-01",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_population",
@@ -823,7 +856,8 @@
       "last-changed": "2026-11-01",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_slot",
@@ -844,7 +878,8 @@
       "last-changed": "2026-11-01",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_sync",
@@ -866,7 +901,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/sleepy_query_sync.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_safe_engine",
@@ -882,7 +918,8 @@
       "last-changed": "2026-11-01",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_safety_inputs",
@@ -906,7 +943,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/sleepy_safety_inputs.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Regimes.grow_healed_until",
@@ -923,7 +961,8 @@
       "evidence": "Outside audit 649f0286: fresh actual ready proposal plus inclusion and temporal safety joins remain.",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Regimes.healed_safe_until",
@@ -940,7 +979,8 @@
       "evidence": "Outside audit 649f0286: weak-base production/preservation and actual ReadySafeOn reads remain; no extra progress premise.",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Regimes.include_healed_until",
@@ -957,7 +997,8 @@
       "evidence": "Outside audit 649f0286: given unanimity, covering nonvetoed update and preserved records at exact post-T Sleepy reads remain.",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Regimes.outage_statements",
@@ -974,7 +1015,8 @@
       "evidence": "Outside audit 649f0286 \u00a7\u00a710,17\u201319,82: full arming/lifetime/source compatibility and covering repair for both reader classes remain.",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "Consensus.Goldilocks.Regimes.weak_base_extend",
@@ -992,7 +1034,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/weak_base_extend.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Regimes.weak_base_locks",
@@ -1010,7 +1053,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/weak_base_locks.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "Consensus.Goldilocks.Regimes.weak_base_until",
@@ -1028,7 +1072,8 @@
       "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/weak_base_until.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot.0.Consensus.Goldilocks.Healing.proposal_stored_locks_compatible_old",
@@ -1044,7 +1089,8 @@
       "last-changed": "2026-11-01",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service.0.Consensus.Goldilocks.Healing.higher_report_window_origin",
@@ -1063,7 +1109,8 @@
       "evidence": "Four outside audits 649f0286: reset_origin_below and same-store high_of_anc establish high C, then high_report_origin; no unheld receiver height. entry-rows-exact \u00a73.",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service.0.Consensus.Goldilocks.Healing.update_window_kept",
@@ -1081,7 +1128,8 @@
       "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/update_window_kept.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
+      "adversarial-pass-done": "y",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier.0.Consensus.Goldilocks.Healing.clean_source_vote_domain_step",
@@ -1097,26 +1145,31 @@
       "last-changed": "2026-11-01",
       "card-path": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "adversarial-pass-done": "n",
+      "card-repo": null
     }
   ],
   "research-cores": {
     "path": "repos/goldilocks/notes/derisk/research-cores.md",
     "commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
-    "note": "Overlapping producer-gap groups; counts must not be added as leaves."
+    "note": "Overlapping producer-gap groups; counts must not be added as leaves.",
+    "card-repo": "fradamt-agent/workbench"
   },
   "shared-cards": [
     {
       "path": "repos/goldilocks/notes/derisk/joint-envelope.md",
-      "commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "path": "repos/goldilocks/notes/derisk/postReset_families.md",
-      "commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
+      "card-repo": "fradamt-agent/workbench"
     },
     {
       "path": "repos/goldilocks/notes/derisk/outage_tips.md",
-      "commit": "af61e7b436f950709d0046a552a25ac1f3123134"
+      "commit": "af61e7b436f950709d0046a552a25ac1f3123134",
+      "card-repo": "fradamt-agent/workbench"
     }
   ]
 }

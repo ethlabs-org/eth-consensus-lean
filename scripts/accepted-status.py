@@ -4,6 +4,7 @@
 Run after building ConsensusLean and spec-surface. Historical source scans select
 former sorry declarations; compiled dependency edges determine their current status.
 """
+import argparse
 import datetime
 import base64
 import json
@@ -117,7 +118,18 @@ def closure(seeds, edges):
     return seen
 
 
-def ingest_cards(document):
+def card_repositories(document):
+    """Make legacy archive locators explicit without repointing existing pins."""
+    for row in document['rows']:
+        row.setdefault('card-repo', 'fradamt-agent/workbench' if row.get('card-path') else None)
+    cards = document.get('shared-cards', [])
+    if 'research-cores' in document:
+        cards = [*cards, document['research-cores']]
+    for card in cards:
+        card.setdefault('card-repo', 'fradamt-agent/workbench')
+
+
+def ingest_cards(document, repository):
     """Pinned owner-reviewed cards; shared audits are links, not synthetic leaves."""
     sources = [
         ('fb40eb4c7dfb235493d97837533f2fc402026675',
@@ -131,7 +143,7 @@ def ingest_cards(document):
         for name in names.split():
             locator = directory + name + '.md'
             response = json.loads(run('gh', 'api',
-                f'repos/fradamt-agent/workbench/contents/{locator}?ref={commit}'))
+                f'repos/{repository}/contents/{locator}?ref={commit}'))
             card = base64.b64decode(response['content']).decode()
             if not re.search(r'\bresearch\b', card, re.I):
                 raise ValueError(f'Expected reviewed research verdict in {locator}')
@@ -139,30 +151,39 @@ def ingest_cards(document):
             for row in document['rows']:
                 if row['name'].rsplit('.', 1)[-1] == name:
                     row.update({'card-path': locator, 'card-commit': commit,
+                                'card-repo': repository,
                                 'derisk-verdict': 'research',
                                 'adversarial-pass-done': 'y' if adversarial else 'n',
                                 'last-changed': datetime.date.today().isoformat()})
     document['research-cores'] = {
+        'card-repo': repository,
         'path': directory + 'research-cores.md', 'commit': sources[0][0],
         'note': 'Overlapping producer-gap groups; counts must not be added as leaves.'}
     document['shared-cards'] = [
-        {'path': directory + 'joint-envelope.md', 'commit': sources[0][0]},
-        {'path': directory + 'postReset_families.md', 'commit': sources[1][0]},
-        {'path': directory + 'outage_tips.md', 'commit': sources[2][0]}]
+        {'card-repo': repository, 'path': directory + 'joint-envelope.md', 'commit': sources[0][0]},
+        {'card-repo': repository, 'path': directory + 'postReset_families.md', 'commit': sources[1][0]},
+        {'card-repo': repository, 'path': directory + 'outage_tips.md', 'commit': sources[2][0]}]
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--ingest-cards', action='store_true')
+    parser.add_argument('--metadata-only', action='store_true')
+    parser.add_argument('--card-repo', default='fradamt-agent/workbench',
+                        help='owner/repo containing the reviewed ingestion source commits')
+    args = parser.parse_args()
     root = 'Consensus.Goldilocks.Refinement.accepted'
     scope = 'ConsensusLean/Instances/Goldilocks/Lemmas'
     baseline = run('git', 'rev-parse', 'fd7f498').strip()
     head = run('git', 'rev-parse', 'HEAD').strip()
     path = Path('docs/accepted-status.json')
     previous = json.loads(path.read_text()) if path.exists() else {'rows': []}
-    if '--ingest-cards' in sys.argv:
-        ingest_cards(previous)
+    card_repositories(previous)
+    if args.ingest_cards:
+        ingest_cards(previous, args.card_repo)
         path.write_text(json.dumps(previous, indent=2) + '\n')
         return
-    if '--metadata-only' in sys.argv:
+    if args.metadata_only:
         for row in previous['rows']:
             row.setdefault('card-path', None)
             row.setdefault('derisk-verdict', 'none yet')
@@ -264,7 +285,7 @@ def main : IO Unit := do
         for key in ('evidence', 'obstruction', 'card-commit'):
             if key in prior:
                 row[key] = prior[key]
-        for key, default in (('card-path', None), ('derisk-verdict', 'none yet'),
+        for key, default in (('card-path', None), ('card-repo', None), ('derisk-verdict', 'none yet'),
                              ('adversarial-pass-done', 'n')):
             row[key] = prior.get(key, default)
         if short in ('outage_arm', 'healthy_preserve') and name not in owners:
