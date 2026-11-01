@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 
 public section
 
@@ -487,5 +488,45 @@ theorem acceptance_relay_psync (hn : 1 ≤ Fintype.card V)
     (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B hi
   exact publication_acceptedBy_psync S rho hn hv hnc hnet r hr (horg ▸ hx)
     ht hg htime (p := p) (by simpa only [horg] using hdecode) hy hj (hd.trans hb) hd hF
+
+/-- Old honest acceptances catch up before the first two-delay snapshot after GST.
+The snapshot itself supplies the finite service horizon; no infinite health is assumed. -/
+theorem catchRun_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {g : Time} (hnet : rho.log.PSync rho.point g)
+    (hawake : ∀ v ∈ rho.honest, rho.point.AwakeOnClosed v (max g 0) rho.horizon) :
+    Healing.CatchRun (simTrace S rho hn) (honestKeys S rho) g
+      (2 * (S.params (Model.pubOf E) hn).Δ) := by
+  intro x hx i B hi hbefore y hy j hfirst hF
+  have hstart := hfirst.1
+  change max g 0 + 2 * (E.Δ + 1) ≤ (simTrace S rho hn).time j at hstart
+  have hbound : (simTrace S rho hn).time j ≤ rho.horizon + 1 := by
+    cases hj : (allCuts S rho hn)[j]? with
+    | none => rw [(simTrace_of_getElem?_none S rho hn hj).2]
+    | some r =>
+      have hl : (simTrace S rho hn).label j ≠ none := by rw [simTrace_label, hj]; simp
+      have hh := simTrace_labelled_time_le S rho hn hv hl
+      linarith
+  have hservice : max g 0 + E.Δ ≤ rho.horizon := by linarith [E.Δ_pos]
+  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
+    (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B hi
+  have hmax : max (max g 0) g = max g 0 := max_eq_left (le_max_left _ _)
+  obtain ⟨hheld, hslack⟩ := publication_held_psync S rho hn hnet r hr (horg ▸ hx) hy
+    (a := max g 0) (by rw [htime]; exact hbefore.le)
+    (by rw [hmax]; exact hservice)
+    (by
+      rw [hmax]
+      exact fun u hlo hhi => hawake (rho.key y) hy u hlo (hhi.trans hservice))
+  rw [hmax] at hheld hslack
+  have hdeadline : max g 0 + (S.params (Model.pubOf E) hn).Δ ≤
+      (simTrace S rho hn).time j := by
+    change max g 0 + (E.Δ + 1) ≤ _
+    linarith [E.Δ_pos]
+  obtain ⟨k, hkj, hk, hkt⟩ := held_forward_accepted_before S rho hn hv hnc hy hx hheld
+    hdecode hslack hdeadline hF
+  refine ⟨k, lt_of_le_of_ne hkj ?_, hk⟩
+  intro heq
+  subst k
+  exact (not_lt_of_ge hdeadline) hkt
 
 end Consensus.Goldilocks.Refinement
