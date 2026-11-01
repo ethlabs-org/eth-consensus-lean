@@ -445,6 +445,27 @@ eventual cache acceptance. Selection alone is not P4. The revised good-window
 productivity and preservation obligations remain to be stated; C alone does not
 bound dirty entries or prove finality progress. No final latency coefficient is selected.
 
+## Healing pivot compatibility suppliers
+
+The following named leaves in `Healing/Outcome/Pivot.lean` are **OPEN**, owned by
+the healing source-service work (OpenAI pivot prover, coordinated by the healing lead).
+All retain `ResetPremises`, `Catch(2Δ)`, the ready proposal, and the existing drain.
+They are proof obligations, not additional protocol premises.
+
+| Declaration (`Consensus.Goldilocks.Healing.` prefix) | Consumer obligation | Dependencies / proof status |
+|---|---|---|
+| `proposal_stored_locks_compatible_old` | Proposal stored high locks compatible with each `OldSrc` | OPEN fast/actual-slow source proposal support and frozen-domain viability |
+| `proposal_start_supported` | Proposal start below the actual honest vote head, under earlier-votes=P | OPEN source HEAD support; first slow HEAD uses proved `SA.slow_first_votes_before` with explicit carry, merged, frame and stored producers |
+| `vote_old_live_lock_below_parent` | Viable ancestor of each non-current live read-point lock below the proposal parent | OPEN source proposal support from label l+2, bounded retention and move-back provenance |
+
+The deepest set remains `{start} ∪ OldSrc`; floor/root and same-slot optimistic
+arguments are unchanged. The unused `hnoSlow`, `late_slow_lock_votes`,
+`clean_slowLock_false`, and vacuous `clean_slow_transfer` route is retired.
+The §67 raw-boundary/slow-exclusion plan is superseded, not a proof dependency.
+No threshold/drain change or new upper bound on k is made. Source producers must
+retain bounded `SA.Inv`, global `Anc U B fcRoot`, exact window cutoffs, receiver
+F≤source and per-counted-vote writer evidence; they cannot assume these consumers.
+
 ## Approved conditional Sleepy supplier skeleton
 
 `Lemmas/Refinement/NonfinalSuppliers.lean` contains the lead-reviewed Sleepy
