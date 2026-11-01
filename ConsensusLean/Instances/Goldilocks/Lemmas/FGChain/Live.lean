@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Client
 
 public section
 
@@ -12,7 +13,9 @@ Two facts of one accepted block that the liveness argument uses (workbench
 * a block that justifies a bound height has finalized its predecessor: the loose-BJ gate reads
   the finalization of the same block;
 * at a bound height the predecessor is pending or finalized (s5 W2), and a step that enters an
-  unbound height is a timeout, so its slot is at least `δt` after the old entry. -/
+  unbound height is a timeout, so its slot is at least `δt` after the old entry;
+* a client whose record is clean at the entry's height sends a target for that entry, not a
+  timeout (s5 C). -/
 
 namespace Consensus.Goldilocks.FG
 
@@ -87,6 +90,29 @@ theorem unbound_step_slot {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n} {
   exact gp.timeout_step_slot h hh (fun e => hnb (hiff.2 e))
 
 end FGParams
+
+namespace Record
+
+/-- **A clean record sends a target (r14 s5, C).** If the record has no lock, no timeout
+and no target at the entry's height that name another block, and has sent nothing at that
+height, then `create_attestation` sends a target (not a timeout) for the entry. -/
+theorem createAtt_target {n : Nat} {Λ : Record} {v : Fin n} {σe : ChainState n}
+    (hl : Λ.lock σe.h = none ∨ Λ.lock σe.h = some σe.Th) (ht : Λ.timeout σe.h = ∅)
+    (htg : Λ.target σe.h = none ∨ Λ.target σe.h = some σe.Th)
+    (hs : ∀ b ∈ Λ.sent, b.1 ≠ σe.h) :
+    Λ.createAtt v σe = some (⟨v, σe.h, σe.Th, false, Λ.finalityPair σe⟩,
+      Λ.recordAtt ⟨v, σe.h, σe.Th, false, Λ.finalityPair σe⟩) := by
+  have hp : Λ.heightPair σe.h σe.Th = some (σe.h, σe.Th, false) := by
+    rcases hl with h1 | h1 <;> rcases htg with h2 | h2 <;> simp [heightPair, h1, h2, ht]
+  unfold createAtt
+  rw [hp]
+  dsimp only
+  split_ifs with hc
+  · obtain ⟨b, hb, he⟩ := List.any_eq_true.1 hc
+    exact absurd (of_decide_eq_true he).1 (hs b hb)
+  · rfl
+
+end Record
 
 end Consensus.Goldilocks.FG
 
