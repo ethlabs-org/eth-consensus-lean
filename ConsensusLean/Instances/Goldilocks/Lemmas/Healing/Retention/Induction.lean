@@ -656,6 +656,98 @@ theorem ResetPremisesUpTo.held_target_vote_domain_before {b : Time}
       exact hp.raw_target_frozen_witness ho hy hcast hn hFB hBO hE hEO hEf
   exact (vote_viable_of_root hp.run hp.noColl hy hcast hroot (Or.inl hkeep)).symm
 
+/-- High origins written within the finite horizon retain every later-label honest
+vote through that horizon. The origin write need not precede the receiving vote. -/
+theorem ResetPremisesUpTo.high_origin_votes_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
+    ∀ k, tr.time k ≤ b → ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
+      ∀ y ∈ H, ∀ ell e, SA.CastAt tr.projAC y k ell e → j < e.msg.slot →
+        SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hg : ∀ {x i j B}, HighOrigin tr H g x i j B → g ≤ sp.ts j := by
+    intro x i j B ho
+    have := hp.cutZ_le_ts_of_highOrigin ho
+    have := lt_cutZ sp g
+    have := le_gbar g
+    have := sp.toParams.hΔ
+    linarith
+  intro k
+  induction k using Nat.strong_induction_on with
+  | _ k ih =>
+    intro hkb x i j B ho hib y hy ell e hc hj
+    have prior : ∀ {x₀ i₀ j₀ B₀}, HighOrigin tr H g x₀ i₀ j₀ B₀ → tr.time i₀ ≤ b →
+        ∀ z ∈ H, ∀ c < k, tr.time c ≤ b → ∀ e', SA.VoteAt tr.projAC z c e' →
+          j₀ < e'.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e'.msg B₀ := by
+      rintro x₀ i₀ j₀ B₀ ho₀ hi₀ z hz c hck hcb e' ⟨ell', hc'⟩ hj'
+      exact ih c hck hcb x₀ i₀ j₀ B₀ ho₀ hi₀ z hz ell' e' hc' hj'
+    have hts : sp.ts e.msg.slot ≤ tr.time k :=
+      (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr
+        (by rw [(SA.castAt_spec hr hy hc).2.1])
+    have hact : sp.ts (j + 1 : Nat) ≤ tr.time k :=
+      ((SA.ts_le_iff sp).mpr (by omega)).trans hts
+    have compare : ∀ z d n O, d < k → HighOrigin tr H g z d n O →
+        Compatible (tr.HonestBlocks H) B O := by
+      intro z d n O hd hO
+      exact hp.origins_compatible_before prior ho (hg ho)
+        (Or.inr fun c hct => not_le.mp fun hkc =>
+          (not_lt_of_ge (hact.trans (hp.run.time_mono hkc))) hct)
+        hO hd hib ((hp.run.time_mono hd.le).trans hkb)
+    have pair : ∀ z d n O, d < k → HighOrigin tr H g z d n O →
+        ∀ z' d' n' O', d' < k → HighOrigin tr H g z' d' n' O' →
+        Compatible (tr.HonestBlocks H) O O' := by
+      intro z d n O hd hO z' d' n' O' hd' hO'
+      exact hp.origins_compatible_before prior hO (hg hO) (Or.inl hd) hO' hd'
+        ((hp.run.time_mono hd.le).trans hkb) ((hp.run.time_mono hd'.le).trans hkb)
+    obtain ⟨CV, hfl⟩ := ho.2.2.1
+    obtain ⟨hBx, C, hraw, hBC⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hfl
+    have held : Anc (tr.HonestBlocks H) ell.frame.F B →
+        B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
+      intro hFB
+      obtain ⟨v, _, D, hDU, _, hBD, hacc⟩ := raw_writer_relay_source hr ho.1 (Or.inr hraw) hBC
+      rcases hacc with hgen | ⟨q, hq, hqt⟩
+      · obtain ⟨z, hz, d, hD⟩ := hDU
+        exact False.elim ((hp.cutZ_lt_of_anc ho hz hD hBD).2 hgen)
+      · have hqg : g ≤ tr.projAC.time q := by
+          have := (hp.cutZ_lt_of_anc ho ho.1 (hp.acceptAt_mem ho.1 hq) hBD).1
+          have := lt_cutZ sp g
+          have := le_gbar g
+          have := sp.toParams.hΔ
+          change g ≤ tr.time q
+          linarith
+        have hDt := relay_mem_voterBlockTree hr (hp.sync.syncAC hp.run le_rfl)
+          ho.1 hq hqg hqt le_rfl hy hc hj (hFB.trans hBD)
+        obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
+        have hBt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt.1 hBD hFB
+        exact SA.voterBlockTree_anc hr hy hc D hDt B
+          (SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hBt hBD hDt.1)
+    have hvi := hp.held_target_vote_domain_before ho.1 hy hBx hc held ho hj
+      (Or.inl .refl) compare compare pair
+    have hF : ¬ Anc (tr.HonestBlocks H) B ell.frame.fcRoot →
+        Anc (tr.HonestBlocks H) ell.frame.F B := by
+      intro hn
+      obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
+      exact (hPhi.rooted.2 B (hvi.resolve_left hn).1.1).mono hPhiU
+    apply high_vote_extends_of_syncAC hp.run hp.noColl ho.1 hfl hy hc hj
+      (hp.sync.syncAC hp.run (hg ho))
+      (fun hs hn => hp.first_carry_of_finalized_anc k ho hfl hy hc hs (hF hn))
+      (fun m hm hjm hn => hp.later_carry_of_finalized_anc k ho hy hc hm hjm (hF hn)
+        (fun z hz q hq e' hv hs => prior ho hib z hz q hq
+          ((hp.run.time_mono hq.le).trans hkb) e' hv (by omega)))
+      ?_ (fault_bound_late_before hp
+        ((hp.cutZ_le_ts_of_highOrigin ho).trans
+          (((SA.ts_le_iff sp).mpr (show (j : Int) ≤ e.msg.slot by omega)).trans hts)) hkb)
+      hvi.symm ?_
+    · intro m hm hjm
+      apply hp.half_committee
+        ((hp.cutZ_le_ts_of_highOrigin ho).trans ((SA.ts_le_iff sp).mpr (by omega)))
+      have hnext : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
+        simp only [SAParams.ts]; push_cast; ring
+      rw [hm, hnext] at hts
+      have := sp.toParams.hΔ
+      linarith
+    · intro z hz q hq e' hv hs
+      exact prior ho hib z hz q hq ((hp.run.time_mono hq.le).trans hkb) e' hv hs
+
 /-- Conditional §75 domain reduction. The explicit producer hypotheses are the open
 joint-induction boundary, not consequences asserted of reset premises. Frozen target
 membership must be produced before its receiver height is read. -/
