@@ -789,16 +789,15 @@ theorem high_J_root_of_origins_before
 below `fc_root` (so `Σ.F ⪯ B`), the voter holds the counted votes of the origin and has accepted
 their heads before `t_j + 3Δ`: the heads, of height `≥ H_z + 1`, were first accepted after `c_z`
 and before `t_j + 2Δ`, and extend `Σ.F`, so acceptance relay delivers them. -/
-theorem first_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
-    (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
+theorem first_carry_of_finalized_anc (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
+    {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (ho : HighOrigin tr H g x i j B) (hfl : Compose.StoredFastLockAt tr x i j B CV)
     {y : Fin sp.n} (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y k ℓ e)
-    (hs : e.msg.slot = j + 1) (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
+    (hs : e.msg.slot = j + 1) (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  have hF := vote_F_anc hp k ih ho hy hc (by omega) hroot
   obtain ⟨ℓw, D, hcw, hflD, rfl⟩ := hfl
   obtain ⟨ℓ', hc', hD⟩ := fastLock_mem hflD
   obtain rfl : ℓw = ℓ' := Option.some.inj (hcw.2.symm.trans hc'.2)
@@ -821,21 +820,34 @@ theorem first_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
   change g ≤ tr.time kw
   linarith
 
+/-- The invariant-based first-transfer interface derives current finalization ancestry. -/
+theorem first_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
+    (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (ho : HighOrigin tr H g x i j B) (hfl : Compose.StoredFastLockAt tr x i j B CV)
+    {y : Fin sp.n} (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y k ℓ e)
+    (hs : e.msg.slot = j + 1) (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
+    SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV :=
+  first_carry_of_finalized_anc hp k ho hfl hy hc hs
+    (vote_F_anc hp k ih ho hy hc (by omega) hroot)
+
 /-- **`Carry` at a later vote** (§11 "First-violating-vote induction", §13 "Retaining the
 witnesses and the frame"). At an honest vote of slot `m' + 1`, `m' > j`, at which `B` is not below
 `fc_root`, the voter holds the honest slot-`m'` votes and has accepted their heads (which extend
 `B`, by the earlier votes, hence `Σ.F`) before `t_{m'} + 3Δ`, by relay. -/
-theorem later_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
-    (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
+theorem later_carry_of_finalized_anc (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
+    {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
     (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ℓ e) {m' : Nat} (hm' : e.msg.slot = m' + 1) (hjm : j < m')
-    (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
+    (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B)
+    (hprior : ∀ z ∈ H, ∀ q < k, ∀ e', SA.VoteAt tr.projAC z q e' →
+      e'.msg.slot = m' → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e m' (Compose.honestVotes tr H m') := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hU := hr.coherent
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  have hF := vote_F_anc hp k ih ho hy hc (by omega) hroot
   have hone : ∀ v ∈ Compose.honestVotes tr H m',
       SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e m' {v} := by
     rintro v ⟨z, hz, k', e', ⟨ℓk, hck, he'⟩, rfl, hvs⟩
@@ -846,8 +858,7 @@ theorem later_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
       have h₂ := (SA.castAt_spec hr hy hc).2.1
       change e'.msg.slot = m' at hvs
       omega
-    obtain ⟨Hv, hHv, hHvr, hBHv⟩ := ((voteInv_iff.1 (ih k' hk'k).1) x i j B ho z hz ℓk e'
-      ⟨hck, he'⟩ (by rw [hvs]; exact hjm)).1
+    obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz k' hk'k e' ⟨ℓk, hck, he'⟩ hvs
     obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := Compose.cast_head_fcRoot hr hz ⟨hck, he'⟩
     obtain rfl : Hd = Hv :=
       hU.1 ((SA.frameIn_of_callAt hr hz hck).2 hHd) hHv (hHdr.trans hHvr.symm)
@@ -871,6 +882,21 @@ theorem later_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     linarith
   exact ⟨hr.awake_of_call y hy k ℓ hc.1, (SA.castAt_spec hr hy hc).2.2.1,
     fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
+
+/-- The invariant-based later-transfer interface supplies only the predecessor batch's
+extension and current finalization ancestry to the local service producer. -/
+theorem later_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
+    (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
+    (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ℓ e) {m' : Nat} (hm' : e.msg.slot = m' + 1) (hjm : j < m')
+    (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
+    SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e m' (Compose.honestVotes tr H m') := by
+  refine later_carry_of_finalized_anc hp k ho hy hc hm' hjm
+    (vote_F_anc hp k ih ho hy hc (by omega) hroot) ?_
+  rintro z hz q hq e' ⟨ell, hcall, hcast⟩ hslot
+  exact ((voteInv_iff.1 (ih q hq).1) x i j B ho z hz ell e' ⟨hcall, hcast⟩
+    (by rw [hslot]; exact hjm)).1
 
 /-- **Half of the committee votes** (`Healthy(g)`): in a slot `s'` with `t_{s'} ≥ c_z`, every
 honest validator is awake and joined (no honest restart after `max(g, 0)`) and votes by
