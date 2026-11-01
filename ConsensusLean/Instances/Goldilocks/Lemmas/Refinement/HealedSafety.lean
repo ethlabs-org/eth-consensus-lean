@@ -16,6 +16,36 @@ public section
 namespace Consensus.Goldilocks.Refinement
 open Blocks Shape
 
+/-- An unchanged record cannot reenter the filtered frame after its finalized floor advances. -/
+theorem record_lookup_of_later
+    {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i ≤ j)
+    (heq : (tr.state y j).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed)
+    {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hR : SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed = some R) :
+    SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed = some R := by
+  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
+  obtain ⟨hRm, hroot⟩ := SA.lookup_eq_some hR
+  obtain ⟨L, hL, hLroot, _⟩ := Compose.record_origin hrun hnc hy i
+  have hLR : L = R := hU.1 ⟨y, hy, i, hL⟩ ⟨y, hy, j, hRm.1⟩
+    (hLroot.trans (heq.symm.trans hroot.symm))
+  subst L
+  have hFR : Anc (tr.HonestBlocks H) (tr.state y i).fg.F R :=
+    (Anc.mono (Compose.fg_tree_subset_honest hy j)
+      (Regimes.finalized_monotone sp ro dg H tr proposer hrun y hy i j hij)).trans
+      (Anc.mono (Compose.fg_tree_subset_honest hy j) hRm.2)
+  have hm : R ∈ (Node.frame (tr.state y i)).tree :=
+    ⟨hL, Compose.honest_held_anc hrun hnc hy hFR hL⟩
+  cases hk : SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed with
+  | none => exact False.elim (SA.lookup_eq_none hk ⟨R, hm, hLroot⟩)
+  | some B =>
+    obtain ⟨hB, hrB⟩ := SA.lookup_eq_some hk
+    congr 1
+    exact hU.1 ⟨y, hy, i, hB.1⟩ ⟨y, hy, i, hL⟩ (hrB.trans hLroot.symm)
+
 /-- An actual stored time-live lock gives the anchor arm only when its normalized
 block still covers the record and the current live blocks form a chain. -/
 theorem record_below_anchor_of_stored_live_lock
@@ -463,8 +493,8 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
     ∃ O : HealthyRepairOpening S A V Q D, HealthyReceiverRepair S A V Q D O := by
   sorry
 
-/-- OPEN canonical transport and renewal for the CURRENT record. The actual read
-clock must be strictly after the opening update; old overwritten records are not covered. -/
+set_option linter.unusedSectionVars false in
+/-- Immediate receiver repair transports to the current record, independently of read geometry. -/
 theorem healthy_current_record_sources (D : HealthyRepairSchedule S A V Q)
     (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
     {v : V} {i : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
@@ -474,7 +504,110 @@ theorem healthy_current_record_sources (D : HealthyRepairSchedule S A V Q)
       ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
         (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
           (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) := by
-  sorry
+  let y := Q.run.2.ownKey v
+  let n := cutMap S Q.run.2 Q.hn i
+  let T := Q.params.ts O.slot + 6 * Q.params.Δ
+  have hy := honest_ownKey (S := S) hv.1
+  have hd := Q.params.toParams.hΔ
+  have hready : Q.ready < T := by
+    have : Q.ready ≤ D.query := (le_max_left _ _).trans D.lower
+    dsimp [T]
+    linarith [O.fresh]
+  have hTcut : T < Q.run.2.cutTime i := by
+    have hh : Q.heal ≤ Q.run.2.cutTime i := hi.2
+    dsimp [T]
+    nlinarith [O.bounded, D.reserve]
+  have hTb : T ≤ Q.run.2.horizon := by
+    dsimp [T]
+    nlinarith [O.bounded, D.reserve]
+  have hT0 : 0 ≤ T := by
+    have : 0 ≤ Q.ready := by
+      change 0 ≤ max Q.gst 0 + (Sys (family S) V).cDur (K S A) Q.run + 1
+      have := D.duration_bound
+      have := le_max_right Q.gst 0
+      linarith
+    exact this.trans hready.le
+  have hr : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v T := by
+    refine ⟨hv.1, fun t ht htt => Q.healthy.2.2 v hv.1 t ?_ (htt.trans hTb)⟩
+    change max Q.gst 0 + (Sys (family S) V).cDur (K S A) Q.run + 1 < T at hready
+    have := (le_max_right _ _).trans ht
+    linarith
+  obtain ⟨a, ell, ha, hat, hab, hcover⟩ := hrepair y hy
+    (ready_transport S Q.run.2 Q.hn Q.valid hT0 hTb hr)
+  have han : a < n := by
+    obtain ⟨_, p, e, _, he, _, hap, _, _, htime, _⟩ :=
+      simTrace_cut S Q.run.2 Q.hn
+        (by have hh := (Compose.projAC_callAt.mp ha.1).2; rw [hh]; simp)
+    have hpi : p < i := by
+      by_contra h
+      have hip : i ≤ p := by omega
+      have ht : Q.run.2.cutTime i ≤ Q.trace.time a := by
+        rw [htime]
+        cases i with
+        | zero => exact (Q.valid.in_horizon e (List.mem_of_getElem? he)).1
+        | succ i =>
+          have hplen := (List.getElem?_eq_some_iff.mp he).1
+          have hil : i < Q.run.2.events.length := by omega
+          have hei : Q.run.2.events[i]? = some Q.run.2.events[i] := List.getElem?_eq_getElem hil
+          simp only [Model.Run.cutTime, hei]
+          rcases keyLe_of_index_lt S Q.run.2 Q.valid hei he (by omega) with ht | ht
+          · exact ht.le
+          · exact ht.1.le
+      change Q.trace.time a = T at hat
+      linarith
+    exact lt_of_lt_of_le hap (cutMap_mono S Q.run.2 Q.hn (by omega))
+  have hU := Compose.honest_blocks_coherent D.reset.run.toLocalRun D.reset.noColl
+  have hind : ∀ k, a + 1 ≤ k → k ≤ n → ∀ R,
+      SA.lookup (Node.frame (Q.trace.state y k)) (Q.trace.state y k).ac.latestConfirmed = some R →
+      ∃ x ∈ honestKeys S Q.run.2, ∃ q s C CV,
+        q < k ∧ Q.trace.time q ≤ Q.run.2.horizon ∧ D.oldLabel ≤ s ∧
+        (SA.ResultAt Q.trace.projAC x q s C CV ∨ SA.OptimisticLockAt Q.trace.projAC x q s C CV) ∧
+        Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R C := by
+    intro k hk
+    induction k, hk using Nat.le_induction with
+    | base =>
+      intro _ R hR
+      obtain ⟨x, hx, q, s, C, CV, hqa, hqt, hs, hC, hRC⟩ := hcover R hR
+      exact ⟨x, hx, q, s, C, CV, by omega, hqt.trans hab, hs, hC, hRC⟩
+    | succ k hak ih =>
+      intro hkn R hR
+      rcases Compose.record_step_origin D.reset.run hy k with heq | ⟨C, hC, hCr, s, CV, hs⟩
+      · obtain ⟨x, hx, q, s, B, DV, hqk, hqb, hsl, hB, hRB⟩ :=
+          ih (by omega) R (record_lookup_of_later D.reset.run D.reset.noColl hy
+            (Nat.le_succ k) heq hR)
+        exact ⟨x, hx, q, s, B, DV, by omega, hqb, hsl, hB, hRB⟩
+      · obtain ⟨hRm, hRr⟩ := SA.lookup_eq_some hR
+        have hRC : R = C := hU.1 ⟨y, hy, k + 1, hRm.1⟩ ⟨y, hy, k, hC⟩
+          (hRr.trans hCr.symm)
+        have htk : T ≤ Q.trace.time k := by
+          dsimp [T]
+          rw [← hat]
+          exact D.reset.run.time_mono (by omega)
+        have hsl : D.oldLabel ≤ s := by
+          have hus : O.slot ≤ s := by
+            rcases hs with ⟨ell, hu, _⟩ | ⟨ell, A, ho, hslot, _⟩
+            · have ht : Q.trace.time k = Q.params.ts s + 6 * Q.params.Δ := hu.2.2.1
+              dsimp [T] at htk
+              have hh := (SA.ts_le_iff Q.params).mp
+                (show Q.params.ts O.slot ≤ Q.params.ts s by linarith)
+              omega
+            · have hh := (SA.ts_le_iff_le_slot Q.params (D.reset.run.time_nonneg k) O.slot).mp
+                (show Q.params.ts O.slot ≤ Q.trace.time k by dsimp [T] at htk; linarith)
+              change Q.params.slot (Q.trace.time k) = s at hslot
+              omega
+          exact O.old_lt.le.trans hus
+        have hkb : Q.trace.time k ≤ Q.run.2.horizon := by
+          apply healthy_query_call_time_le S A V Q
+          rcases hs with ⟨ell, hu, _⟩ | ⟨ell, A, ho, _⟩
+          · exact ⟨_, Compose.projAC_callAt.mp hu.1⟩
+          · exact ⟨_, Compose.projAC_callAt.mp ho.1⟩
+        exact ⟨y, hy, k, s, C, CV, Nat.lt_succ_self _, hkb, hsl, hs, by rw [hRC]; exact .refl⟩
+  cases hl : SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed with
+  | none => exact Or.inl (by simp only [Option.getD_none])
+  | some R =>
+    obtain ⟨x, hx, q, s, C, CV, hqn, hqb, hs, hC, hRC⟩ := hind n (by omega) le_rfl R hl
+    exact Or.inr ⟨x, hx, q, s, C, CV, hqn, hqb, D.old_bound.trans hs, hC,
+      by simpa only [hl, Option.getD_some] using hRC⟩
 
 omit h0 hb hp W states in
 /-- The representative of a healthy stored-clock read is after the repair deadline,
