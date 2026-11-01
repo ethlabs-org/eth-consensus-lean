@@ -784,6 +784,23 @@ theorem late_result_prefix_votes
   exact late_result_prefix_votes_before hp hc (max (tr.time r) (tr.time i)) hx hres hBC hs
     (le_max_left _ _) i (le_max_right _ _) y hy ell e hcast hsi
 
+/-- Compare using an already-cast honest vote within `Q`, rather than manufacturing a
+future vote. Whole-run reset premises remain in the transfer dependencies. -/
+theorem clean_source_compatible_high_origin_of_vote_before
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    (Q : Time) {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
+    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrQ : tr.time r ≤ Q)
+    {v : Fin sp.n} {q m : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g v q m O)
+    {z : Fin sp.n} (hz : z ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC z j ell e)
+    (hjQ : tr.time j ≤ Q) (hsl : s < e.msg.slot) (hml : m < e.msg.slot) :
+    Compatible (tr.HonestBlocks H) B O := by
+  have hB := clean_source_votes_before hp hc Q hx hsource hs hrQ j hjQ z hz ell e hv hsl
+  exact target_compatible_older_origin hp ho hz ⟨ell, hv⟩ rfl hml hB
+
 /-- A clean raw source and any high origin share a later honest vote head. This uses
 the already proved clean-source transfer, rather than assuming support at a source gate. -/
 theorem clean_source_compatible_high_origin
