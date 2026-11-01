@@ -990,6 +990,42 @@ theorem ready_next_vote_viable
   exact (Healing.crossing_below_proposal_parent hp hc hP hR hci hcall hd hti hPQ ho ht
     (.refl)).trans (.single ⟨hPhiU hhead, hPU, hPQ⟩)
 
+/-- A strict post-update start excludes the equal-label update even at a later cut
+with the same timestamp. The separate `10Δ` bound supplies the raw service window. -/
+theorem effectiveRecordInterval_after_cover_update
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {x y : Fin sp.n} {r b i j : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : Healing.HighOrigin tr H g x r b B) (hOB : Anc (tr.HonestBlocks H) O B)
+    (hy : y ∈ H) (hstart : sp.ts b + 6 * sp.Δ < tr.time i)
+    (hlate : SA.gbar g + 10 * sp.Δ ≤ tr.time i)
+    (hframes : ∀ q, i ≤ q → q < j →
+      Compatible (tr.HonestBlocks H) (tr.state y (q + 1)).fg.F O ∨
+        (tr.IsCall y q ∧ a ≤ tr.time q ∧ (r ≤ q ∨ sp.ts (b + 1 : Nat) ≤ tr.time q))) :
+    EffectiveRecordInterval tr H y i j O := by
+  apply effectiveRecordInterval_of_high_cover hp ho hOB hy ?_ hframes
+  intro q hiq _ D s CV hD
+  have htime := hp.run.time_mono hiq
+  have hΔ := sp.toParams.hΔ
+  have rawtime : SA.ResultAt tr.projAC y q s D CV → tr.time q = sp.ts s + 6 * sp.Δ := by
+    rintro ⟨ell, hu, _⟩
+    exact hu.2.2.1
+  refine Or.inr ⟨?_, fun h => ⟨?_, hc⟩⟩
+  · rcases hD with h | ⟨ell, A, _, hs, _⟩
+    · have ht := rawtime h
+      have hbs : sp.ts b < sp.ts s := by linarith
+      have := (SA.ts_lt_iff sp).1 hbs
+      omega
+    · have hs' : sp.slot (tr.time q) = s := hs
+      have ht : sp.ts (b + 1 : Nat) ≤ tr.time q := by
+        simp only [SA.SAParams.ts] at hstart ⊢
+        push_cast
+        linarith
+      have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q) (↑(b + 1 : Nat))).1 ht
+      omega
+  · have ht := rawtime h
+    linarith
+
 end CoveredEndpoint
 
 end Consensus.Goldilocks.Refinement
