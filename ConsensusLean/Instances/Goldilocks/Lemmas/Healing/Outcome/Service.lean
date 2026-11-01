@@ -9,7 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 
 -- Keep the finite reset service adapter with the outcome-service assembly it supplies.
-set_option linter.style.longFile 1800
+set_option linter.style.longFile 2000
 
 public section
 
@@ -1017,6 +1017,55 @@ theorem sign_of_report (hp : ResetPremises tr H proposer dg g ΔF a)
       exact ⟨k, att, hsk, (hp.run.time_mono hk.le).trans hts.le, hb1⟩
 
 /-! ## A higher report: the same first crossing and its origin (workbench#30 §5) -/
+
+/-- A bounded same-height report supplies an actual signature by its timestamp,
+including the case where a previously signed content suppresses the new call. -/
+theorem ResetPremisesUpTo.sign_of_report {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {z : Fin sp.n} (hz : z ∈ H)
+    {r : Nat} {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
+    {T : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
+    {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
+    (hhT : HZ tr H g + 1 ≤ σT.h) (hTC : Anc (tr.HonestBlocks H) T C)
+    (hCh : ((tr.state z r).fg.σ C.root).h = σT.h)
+    {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
+    (hTB : Anc (tr.HonestBlocks H) T B) :
+    ∃ j att, tr.SignAt z j att ∧ tr.time j ≤ tr.time r ∧ att.h = σT.h := by
+  subst hσ
+  have hCt := report_mem hp.run hz hrep
+  obtain ⟨hpc, hcall, hC⟩ := hrep
+  have hTt := hp.mem_tree_of_anc hz hTC hCt
+  have hσT := σ_eq_honest hp.run hp.noColl hz hy hTt hT
+  have hCTh : ((tr.state z r).fg.σ C.root).Th = T.root := by
+    rw [Th_eq_of_anc (Compose.fg_reachable hp.run.toLocalRun hz r)
+      (store_anc_of_honest_anc hp.run hp.noColl hz hTC hCt)
+      (by rw [hCh, hσT]), hσT, hTe]
+  rw [Compose.projAC_state hp.run.toLocalRun hz] at hC
+  obtain ⟨s, hs, hts, hfg⟩ :=
+    toFG_attest hp.run.toLocalRun hz (Compose.projAC_callAt.1 hpc) hcall hC
+  have hσe : (tr.state z (r + 1)).fg.σ ((tr.state z (r + 1)).fg.σ C.root).Th =
+      (tr.state y m).fg.σ T.root := by rw [hfg, hCTh, hσT]
+  cases s with
+  | some att =>
+    have hcl := (hp.run.cutLaw z hz _ _ hs).1
+    change (tr.state z (r + 1)).record.createAtt z ((tr.state z (r + 1)).fg.σ
+      ((tr.state z (r + 1)).fg.σ C.root).Th) = some (att, _) at hcl
+    exact ⟨r + 1, att, ⟨C, hs⟩, hts.le, by rw [(createAtt_spec hcl).2.1, hσe]⟩
+  | none =>
+    have hcl := (hp.run.cutLaw z hz _ _ hs).1
+    change (tr.state z (r + 1)).record.createAtt z ((tr.state z (r + 1)).fg.σ
+      ((tr.state z (r + 1)).fg.σ C.root).Th) = none at hcl
+    rw [hσe] at hcl
+    rcases createAtt_none hcl with ⟨hl, hl'⟩ | ⟨c, hc, _⟩
+    · obtain ⟨r', hr'⟩ := Option.ne_none_iff_exists'.1 hl
+      have := hp.record_entry_eq hz (hts.le.trans hrb) hhT (Or.inr (Or.inr hr'))
+        ho hiob hTB hy hT rfl hTe
+      exact absurd (by rw [hr', this, hTe]) hl'
+    · obtain ⟨k, hk, att, hsk, rfl⟩ := sent_origin hp.run hz (r + 1) hc
+      exact ⟨k, att, hsk, (hp.run.time_mono hk.le).trans hts.le, by assumption⟩
 
 /-- **A higher report gives the retained crossing** (workbench#30 §5): the reported `C ⪰ T`,
 accepted by `t_u + 6Δ`, has slot `≤ u + 1 < u + δ_t`; the first `X` leaving `T`'s height on the
