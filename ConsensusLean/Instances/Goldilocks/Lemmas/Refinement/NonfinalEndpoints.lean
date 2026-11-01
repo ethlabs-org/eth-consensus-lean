@@ -58,7 +58,7 @@ structure SleepySafetyQuery where
   noCollision : ¬ run.2.HashCollision
   sleepy : (Sys (family S) V).Sleepy (K S A) run
 
-/-- OPEN finite safety service, population and joint duration production.
+/-- Finite safety service, population and joint duration production.
 No recurrence is needed or assumed. Arbitrary-cut output transport remains the
 existing sleepy_safe_engine leaf, not an endCut-only assertion. -/
 theorem sleepy_safety_inputs (Q : SleepySafetyQuery S A V) :
@@ -80,8 +80,9 @@ theorem sleepy_safety_inputs (Q : SleepySafetyQuery S A V) :
     change 18 * (Q.run.1.Δ + 1) + 1 ≤ (accepted_catchUp S A : Nat) * Q.run.1.Δ
     nlinarith
   refine ⟨hduration, ?_, ?_⟩
-  · -- Canonical finite service remains OPEN; receipt alone does not supply it.
-    sorry
+  · exact sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
+      (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) le_rfl
+      (sleepy_raw_syncUntil S A V Q.run Q.valid Q.sleepy Q.run.2.horizon)
   · apply sleepy_faultBound S Q.run.2 Q.hn Q.valid le_rfl
     intro t ht hth
     exact half_ready_of_duration V Q.run.2.point (by linarith) (Q.sleepy.2 t ht hth)

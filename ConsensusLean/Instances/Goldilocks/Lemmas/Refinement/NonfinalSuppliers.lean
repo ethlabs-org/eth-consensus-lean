@@ -66,6 +66,52 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
         (hm.trans hb) (le_of_not_gt hk)
       exact ⟨l, hl.trans hkj.le, hlo', hp', hlt⟩
 
+/-- Finite canonical service needs only raw synchrony through its deadline bound.
+Self-service uses fresh processing at the source time, never retention across a restart. -/
+theorem sleepyServiceBefore_of_syncUntil {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b) :
+    Compose.SleepyServiceBefore (simTrace S rho hn) (honestKeys S rho)
+      (S.params (Model.pubOf E) hn).Δ b := by
+  have hr := simTrace_goldilocksRun S rho hn hv
+  apply Compose.sleepyServiceBefore_of_message_relay hr.toLocalRun
+  · intro x hx i m hsrc h0 y hy j ℓ hj hb hd
+    rw [SA.messageServedBefore_iff]
+    apply Or.inl
+    by_cases hxy : y = x
+    · subst y
+      have hsource : (simTrace S rho hn).SendOrAdmitAt x i m := by
+        obtain ⟨l, hl, hm⟩ := hsrc
+        refine ⟨l, Compose.projAC_callAt.mp hl, ?_⟩
+        rw [Compose.projAC_state hr.toLocalRun hx] at hm
+        exact hm
+      obtain ⟨k, hp, ht⟩ := sendOrAdmit_process_same_time S rho hn hv hx hsource
+      have hlt : ∀ q, (simTrace S rho hn).time i <
+          (simTrace S rho hn).projAC.deadline x q ((simTrace S rho hn).time i) := by
+        intro q
+        unfold ACTrace.deadline
+        cases (simTrace S rho hn).projAC.lastWake x q with
+        | bot => exact lt_add_of_pos_right _ (S.params (Model.pubOf E) hn).toParams.hΔ
+        | coe w =>
+          exact lt_of_le_of_lt (le_max_left _ _)
+            (lt_add_of_pos_right _ (S.params (Model.pubOf E) hn).toParams.hΔ)
+      refine ⟨k, ?_, ht.ge, hp, ?_⟩
+      · by_contra h
+        have hm := simTrace_time_mono S rho hn hv (Nat.le_of_lt (Nat.lt_of_not_ge h))
+        have := hlt j
+        linarith
+      · change (simTrace S rho hn).time k < _
+        rw [ht]
+        exact hlt k
+    · obtain ⟨r, -, -, hs, hrel, hf⟩ := simTrace_vote_forwarded S rho hn hv x hx i m
+        (Compose.sendOrAdmit_forward_source hr hx hsrc)
+      exact vote_message_service_other S rho hn hv hbh hnet hx hy hxy h0 hs hrel hf
+        ⟨_, Compose.projAC_callAt.mp hj⟩ hb hd
+  · intro x hx i B hi h0 y hy j hj hb hd hF
+    exact acceptance_relay_syncUntil S rho hn hv hnc hbh hnet hx hi h0 hy hj hb hd hF
+
 variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
 
@@ -191,11 +237,13 @@ theorem sleepy_query_sync_of_horizon (Q : ConfirmedQuery S A V)
   · intro x hx i B hi h0 y hy j hj hdb hdj hFB
     exact service.relay x hx i B hi h0 y hy j hj (hdb.trans Q.bounded) hdj hFB
 
-/-- OPEN canonical recipient service through the actual query deadline. -/
+/-- Canonical recipient service through the actual query deadline. -/
 theorem sleepy_query_sync (Q : ConfirmedQuery S A V)
     (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run) :
     Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.deadline := by
-  sorry
+  exact sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
+    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) Q.bounded
+    (sleepy_raw_syncUntil S A V Q.run Q.valid hsleepy Q.deadline)
 
 /-- Shortening the readiness duration preserves a strict half-ready population. -/
 theorem half_ready_of_duration (p : EnvPoint V) {c d t : Time} (hd : c ≤ d)
