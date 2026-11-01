@@ -16,7 +16,7 @@ an explicit open supplier below; simulation inherits that obligation. -/
 
 namespace Consensus.Goldilocks.Refinement
 
-open Shape
+open Shape Blocks
 open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
@@ -735,6 +735,33 @@ theorem simTrace_emission_not_restart (hv : rho.ExecutionValid)
   rw [hempty] at he
   exact List.not_mem_nil he
 
+/-- The first trace cut of a public tick is its actual AC-tick call. -/
+theorem tick_boundary_call (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i : Nat} {t : Time}
+    (he : rho.events[i]? = some (.tick v t))
+    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
+    (simTrace S rho hn).CallAt (rho.ownKey v) (cutMap S rho hn i)
+      (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).2 ∧
+      (simTrace S rho hn).time (cutMap S rho hn i) = t := by
+  have hg := (simTrace_tick_public_group S rho hn hv v hv' i t he hp).1
+  have hstate := simTrace_state S rho hn hv v hv' i
+    (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1)
+  have hlen : 0 < (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+      ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length := by
+    exact List.length_pos_iff.mpr hg.1
+  obtain ⟨hnode, htime, -, -, hlabel⟩ := hg.2.1 0 hlen
+  have hget : (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+      ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2[0]'hlen =
+      (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).2 := by
+    change (Node.acCall (rho.ownKey v)
+      ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t .tick).2 = _
+    rw [hstate]
+  rw [hget] at hlabel
+  exact ⟨⟨by simpa only [Nat.add_zero] using hnode,
+    by simpa only [Nat.add_zero] using hlabel⟩, by simpa only [Nat.add_zero] using htime⟩
+
 /-- An upcoming honest emission is absent from every honest engine pool at an earlier
 event boundary, including boundaries after restart replay. No collision premise is needed. -/
 theorem stateAt_emission_slot_fresh (hv : rho.ExecutionValid)
@@ -750,6 +777,46 @@ theorem stateAt_emission_slot_fresh (hv : rho.ExecutionValid)
   rw [Compose.projAC_state hrun.toLocalRun hx] at hf
   rw [simTrace_state S rho hn hv v hv' i hi]
   exact hf
+
+/-- An actual AC-tick emission supplies its own freshness and post-pool insertion;
+its forwarding envelope is released in that tick without extra supplier premises. -/
+theorem tick_emission_voteForward_released (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i : Nat} {t : Time}
+    (he : rho.events[i]? = some (.tick v t))
+    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) (m : SA.Vote (Fintype.card V))
+    (hem : ∃ e ∈ ((goldilocksNode (S.params (pubOf E) hn) (S.ro _)).step
+      (rho.ownKey v) (stateAt S rho hn v i).node.ac
+      (Node.frame (stateAt S rho hn v i).node) t .tick).2, e.msg = m) :
+    Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.releasesAt i := by
+  have hr := simTrace_goldilocksRun S rho hn hv
+  have hy : rho.ownKey v ∈ honestKeys S rho := by
+    simpa [honestKeys, Model.Run.ownKey] using hv'
+  obtain ⟨hc, ht⟩ := tick_boundary_call S rho hn hv hv' he hp
+  have hstate := simTrace_state S rho hn hv v hv' i
+    (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1)
+  have hem' : (simTrace S rho hn).EmitAt (rho.ownKey v) (cutMap S rho hn i) m := by
+    obtain ⟨e, he, hm⟩ := hem
+    exact ⟨_, hc, e, he, hm⟩
+  have hΦ : FrameOK (Node.frame (stateAt S rho hn v i).node) := by
+    rw [hstate]
+    exact (Store.frame_realization _ _ _ _ (Compose.fg_reachable hr.toLocalRun hy _)).1
+  have hsign : m.val = rho.ownKey v := by
+    obtain ⟨e, he', rfl⟩ := hem
+    exact SA.step_emission_signer _ _ _ _ _ hΦ
+      (by rw [← ht]; exact hr.time_nonneg _) he'
+  apply tick_ac_emission_voteForward_released S rho hn hv hv' he hp m hem
+  · exact stateAt_emission_slot_fresh S rho hn hv hy hv'
+      (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1) le_rfl hem' hsign rfl m.slot
+  · have hpool := Compose.emitted_vote_mem_post hr hy hem'
+    have hstep := (hr.cutLaw _ hy _ _ hc).2.1
+    rw [ht, ← hstate] at hstep
+    have hac := congrArg (fun r => r.1) hstep
+    change m ∈ ((goldilocksNode (S.params (pubOf E) hn) (S.ro _)).step
+      (rho.ownKey v) (stateAt S rho hn v i).node.ac
+      (Node.frame (stateAt S rho hn v i).node) t .tick).1.pool m.slot
+    rw [hac]
+    exact hpool
 
 /-- A trace restart is produced by an actual engine restart, never by tick or
 recursive delivery processing. The interval identifies its exact engine event. -/
