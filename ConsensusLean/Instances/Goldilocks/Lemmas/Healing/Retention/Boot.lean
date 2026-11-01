@@ -757,11 +757,58 @@ theorem high_origin_low_J_root_before
       exact low_root_compatible hp ho hy hc hj hJ hlow htree hBD
   · exact Or.inl hF
 
+/-- A low root compares with any held target comparable with a high seed. The target's
+transport is needed only in the seed-below-target branch, after finalization is oriented. -/
+theorem low_root_of_seed_before (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hx : x ∈ H) (hBx : B ∈ (tr.state x r).fg.tree) (hy : y ∈ H)
+    (hS : HighOrigin tr H g v q m S)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hm : m < e.msg.slot)
+    (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
+    (hBS : Compatible (tr.HonestBlocks H) B S)
+    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B →
+      B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hy i
+  have hfr := Compose.frame_of_projAC hp.run hy hc.1
+  have hFF : ell.frame.F = (tr.state y i).fg.F := by rw [hfr]; rfl
+  have hroot : ell.frame.fcRoot = (tr.state y i).fg.fcRoot := by rw [hfr]; rfl
+  have hFS := low_finalized_below_origin hp hy i hlow hS
+  have hSy := high_origin_held_at_vote hp hS hy hc hm (by rw [hFF]; exact hFS)
+  have hSh := high_of_anc hp hS hy hSy .refl
+  have hJ : ∀ D ∈ (tr.state y i).fg.tree,
+      (tr.state y i).fg.Anc (tr.state y i).fg.F D →
+      HZ tr H g + 1 ≤ ((tr.state y i).fg.σ D.root).h →
+      (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
+      ¬ (tr.state y i).fg.Contest → Anc (tr.HonestBlocks H) (tr.state y i).fg.J D := by
+    intro D hD hFD hDh he hn
+    have hle := (Store.cache_invariants _ _ _ _ hreach).2.2.2.2.1 D hD
+    have hJD : (tr.state y i).fg.Anc (tr.state y i).fg.J D := by
+      by_contra h
+      exact hn ⟨he, D, hD, hFD, by omega, h⟩
+    exact hJD.mono fun X hX => ⟨y, hy, i, hX⟩
+  rw [hroot]
+  unfold Store.fcRoot
+  split_ifs with hactive
+  · rcases hBS with hBS | hSB
+    · exact SA.anc_total (honest_coherent hp)
+        (hJ S hSy (anc_tree_of_anc hp hy hFS hSy) hSh hactive.1 hactive.2) hBS
+    · have hBh := high_of_anc hp hS hx hBx hSB
+      have hFB := low_finalized_below_high_block hp hy hx hBx hBh hlow
+      have hBt := hheld (by rw [hFF]; exact hFB)
+      have hBy := frame_tree_subset hp hy hc.1 hBt.1
+      have hBhy := high_of_anc hp hS hy hBy hSB
+      exact Or.inl (hJ B hBy (anc_tree_of_anc hp hy hFB hBy) hBhy hactive.1 hactive.2)
+  · rcases hBS with hBS | hSB
+    · exact SA.anc_total (honest_coherent hp) hFS hBS
+    · exact Or.inl (hFS.trans hSB)
+
 /-- All held honest rows justify root compatibility from bounded origin comparisons. -/
-theorem high_J_root_of_origins_before
+theorem high_J_root_of_held_before
     (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
+    {x y : Fin sp.n} {i k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hx : x ∈ H) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ell e)
     (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
@@ -771,10 +818,9 @@ theorem high_J_root_of_origins_before
   have hU := honest_coherent hp
   have hreach := Compose.fg_reachable hp.run.toLocalRun hy k
   have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, k, hX⟩
-  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
   have hgB := ((Store.accepted_tree _ _ _ _
-    (Compose.fg_reachable hp.run.toLocalRun ho.1 i)).2.2.2 B hBx).mono
-      (fun X hX => (⟨x, ho.1, i, hX⟩ : X ∈ tr.HonestBlocks H))
+    (Compose.fg_reachable hp.run.toLocalRun hx i)).2.2.2 B hBx).mono
+      (fun X hX => (⟨x, hx, i, hX⟩ : X ∈ tr.HonestBlocks H))
   have hrow : ∀ E ∈ (tr.state y k).fg.tree,
       HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h →
       ((tr.state y k).fg.σ E.root).Th = E.root → ¬ Compatible (tr.HonestBlocks H) E B →
@@ -803,6 +849,20 @@ theorem high_J_root_of_origins_before
   change Compatible (tr.HonestBlocks H) (tr.state y k).fg.fcRoot B
   unfold Store.fcRoot
   split_ifs <;> assumption
+
+/-- High-origin specialization of the arbitrary held-target root comparison. -/
+theorem high_J_root_of_origins_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e)
+    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
+    (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocks H) B O) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
+  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
+  exact high_J_root_of_held_before hp ho.1 hBx hy hc hhigh hcompare
 
 /-- **`Carry` at a first-transfer vote** (§11 "Historical finality and acceptance", §13
 "Retaining the witnesses and the frame"). At an honest vote of slot `j + 1` at which `B` is not

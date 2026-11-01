@@ -542,15 +542,14 @@ membership must be produced before its receiver height is read. -/
 theorem slow_target_vote_domain_before
     (hp : ResetPremises tr H proposer dg g ΔF a)
     (_hc : CatchRun tr H g (2 * sp.Δ)) (Q : Time)
-    {x y : Fin sp.n} (_hx : x ∈ H) (hy : y ∈ H)
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
     {r l i : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hsl : SA.SlowLockAt tr.projAC x r l B)
+    (hsl : SA.SlowLockAt tr.projAC x r l B)
     (_hjoined : SA.JoinedAt tr.projAC x (tr.time r))
     (_hclean : sp.ts (sp.slot a + 3 : Nat) ≤ sp.ts ((l : Int) - sp.k + 1))
     (_hrQ : tr.time r ≤ Q)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcast : SA.CastAt tr.projAC y i ell e) (_hl : l < e.msg.slot) (_hiQ : tr.time i ≤ Q)
-    (hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot B)
     (hheld : Anc (tr.HonestBlocks H) ell.frame.F B →
       B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
     (hseed : ∃ v r₀ m S, HighOrigin tr H g v r₀ m S ∧ m < e.msg.slot ∧
@@ -561,10 +560,18 @@ theorem slow_target_vote_domain_before
       ((∃ W ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
         Anc (tr.HonestBlocks H) B W ∧ (tr.state y i).fg.IsViable W) ∨
         Anc (tr.HonestBlocks H) B ell.frame.fcRoot) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hBx : B ∈ (tr.state x r).fg.tree := by
+    obtain ⟨ellX, C, hupd, _, _, hdeep, _⟩ := hsl
+    exact frame_tree_subset hp hx hupd.1 (SA.deepest_mem hdeep).1.1.1
+  have hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
+    by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
+    · obtain ⟨v, q, m, S, hS, hm, hBS⟩ := hseed
+      exact low_root_of_seed_before hp hx hBx hy hS hcast hm hlow hBS hheld
+    · exact high_J_root_of_held_before hp hx hBx hy hcast (by omega) hcompare
   refine ⟨hroot, ?_⟩
   by_cases hcovered : Anc (tr.HonestBlocks H) B ell.frame.fcRoot
   · exact Or.inr hcovered
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcast.1
   have hFB := (Anc.mono hPhiU hPhi.F_anc_fcRoot).trans (hroot.resolve_right hcovered)
   have hBt := hheld hFB
@@ -619,6 +626,86 @@ theorem slow_target_vote_domain_before
         hScmp (lt_of_not_ge hSf)
     exact Or.inl (raw_target_frozen_witness hp ho hy hcast hn hFB
       (orient ho hE hEO hEf (hcompare z q n O hq ho)) hE hEO hEf)
+
+/-- A later controlling high source compares with a prospective target from strictly
+earlier head support. The target need not be a high origin or have been written yet. -/
+theorem target_compatible_later_origin_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x : Fin sp.n} {r m i l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x r m O) (hri : r < i) (hlm : l < m)
+    (hsupport : ∀ z ∈ H, ∀ q < i, ∀ e, SA.VoteAt tr.projAC z q e →
+      l < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
+    Compatible (tr.HonestBlocks H) B O := by
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hf : 2 * Hᶜ.ncard < sp.n := by
+    have := hp.healthy.2.2
+    have := Fin.pos x
+    have hn : sp.n = sp.toParams.n := rfl
+    omega
+  obtain ⟨CV, hst⟩ := ho.2.2.1
+  obtain ⟨_, D, hfl, hOD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
+  have hcomp := SA.fastLock_compatible_of_votes hrun ho.1 hri hfl hf
+    (fun z hz q hq e hv hs => hsupport z hz q hq e hv (by omega))
+  rcases hcomp with hDB | hBD
+  · exact Or.inr (hOD.trans hDB)
+  · exact SA.anc_total hrun.localRun.coherent hBD hOD
+
+/-- An actual honest target supporter compares the target with every strictly older
+high origin. The participant-count adapter is responsible for supplying this vote. -/
+theorem target_compatible_older_origin
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x z : Fin sp.n} {r m q l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    {e : SA.Em sp (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x r m O) (hz : z ∈ H) (hv : SA.VoteAt tr.projAC z q e)
+    (hs : e.msg.slot = l) (hml : m < l)
+    (hB : SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
+    Compatible (tr.HonestBlocks H) B O := by
+  obtain ⟨ell, hc, he⟩ := hv
+  have hO := ((rawVoteAt_iff _ _ _).mp
+    (historical_activation_before hp (tr.time q) q le_rfl).2 O m
+    ((historicalTargets_iff O m).mpr ⟨x, r, ho⟩) z hz ell e ⟨hc, he⟩ (by omega) le_rfl).1
+  obtain ⟨HB, hHB, hBr, hBB⟩ := hB
+  obtain ⟨HO, hHO, hOr, hOO⟩ := hO
+  obtain rfl : HO = HB := (honest_coherent hp).1 hHO hHB (hOr.trans hBr.symm)
+  exact SA.anc_total (honest_coherent hp) hBB hOO
+
+/-- §76 join: the remaining inputs are actual frozen service, an honest counted
+supporter, a seed witness, same-label comparison, and prospective prior-cut support. -/
+theorem slow_target_vote_domain_of_support_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (Q : Time)
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
+    {r l i : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hsl : SA.SlowLockAt tr.projAC x r l B)
+    (hjoined : SA.JoinedAt tr.projAC x (tr.time r))
+    (hclean : sp.ts (sp.slot a + 3 : Nat) ≤ sp.ts ((l : Int) - sp.k + 1))
+    (hrQ : tr.time r ≤ Q)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hl : l < e.msg.slot) (hiQ : tr.time i ≤ Q)
+    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B →
+      B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
+    (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ m < l)
+    (hcounted : ∃ z ∈ H, ∃ q e', SA.VoteAt tr.projAC z q e' ∧ e'.msg.slot = l ∧
+      SA.VoteExtends (tr.HonestBlocks H) e'.msg B)
+    (hsame : ∀ v q O, q < i → HighOrigin tr H g v q l O →
+      Compatible (tr.HonestBlocks H) B O)
+    (hsupport : ∀ z ∈ H, ∀ q < i, ∀ e', SA.VoteAt tr.projAC z q e' →
+      l < e'.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B ∧
+      ((∃ W ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+        Anc (tr.HonestBlocks H) B W ∧ (tr.state y i).fg.IsViable W) ∨
+        Anc (tr.HonestBlocks H) B ell.frame.fcRoot) := by
+  obtain ⟨z, hz, q, e', hv, hs, hB⟩ := hcounted
+  refine slow_target_vote_domain_before hp hcatch Q hx hy hsl hjoined hclean hrQ
+    hc hl hiQ hheld ?_ ?_
+  · obtain ⟨v, r₀, m, S, hS, hm⟩ := hseed
+    exact ⟨v, r₀, m, S, hS, by omega,
+      target_compatible_older_origin hp hS hz hv hs hm hB⟩
+  · intro v r₀ m O hri ho
+    rcases lt_trichotomy m l with hm | rfl | hm
+    · exact target_compatible_older_origin hp ho hz hv hs hm hB
+    · exact hsame v r₀ O hri ho
+    · exact target_compatible_later_origin_before hp ho hri hm hsupport
 
 end Consensus.Goldilocks.Healing
 
