@@ -608,8 +608,8 @@ theorem high_floor_source_of_row_bound
   exact ⟨v, r, l, O, E, hr, ho, hl, hE, hEO, hBO, hfloor⟩
 
 /-- Vote specialization of the duty-independent floor crossing. -/
-theorem high_floor_source_core
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ResetPremisesUpTo.high_floor_source_core {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -624,9 +624,30 @@ theorem high_floor_source_core
       E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
       Anc (tr.HonestBlocks H) B O ∧
       (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h := by
-  apply high_floor_source_of_row_bound hp ho hy (u := e.msg.slot) ?_ hpair hcomp hfloor
-  intro W hW att ha v hv d hs hdk r l O hrd hO
-  exact row_origin_label_lt hp hy hc hW ha hv hs hdk hrd hO
+  obtain ⟨v, r, l, O, E, hr, hO, hl, hE, hEO, hBO, hf, -⟩ :=
+    hp.high_floor_signed_source_of_row_bound ho hy (u := e.msg.slot)
+      (fun W hW att ha v hv d hs hdk r l O hrd hO =>
+        hp.row_origin_label_lt hy hc hW ha hv hs hdk hrd hO) hpair hcomp hfloor
+  exact ⟨v, r, l, O, E, hr, hO, hl, hE, hEO, hBO, hf⟩
+
+/-- Whole-run specialization of the vote-time floor crossing. -/
+theorem high_floor_source_core
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot)
+    (hpair : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      ∀ v' r' l' O', r' < k → HighOrigin tr H g v' r' l' O' →
+      Compatible (tr.HonestBlocks H) O O')
+    (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocks H) B O)
+    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
+    ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < e.msg.slot ∧
+      E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
+      Anc (tr.HonestBlocks H) B O ∧
+      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h :=
+  (hp.toUpTo tr H (le_refl a)).high_floor_source_core ho hy hc hj hpair hcomp hfloor
 
 /-- Compatibility interface retaining the receiver-finalization argument. The crossing
 itself does not need that argument, as exposed by `high_floor_source_core`. -/
