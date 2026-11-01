@@ -884,30 +884,30 @@ theorem ready_old_lock_below
   exact ((SA.anc_viableAncestor ell.frame L).mono hPhiU).trans
     (hXB.trans (clean_source_below_ready hp hc hP hR hgu hy horig hs hlu))
 
-/-- At the deadline, only next-slot optimistic sources remain beyond the proved old and
-same-slot cases. Their compatibility is an explicit obligation, not inferred from unanimity. -/
-theorem ready_update_locks_compatible
+/-- At any honest call after the drain and through the deadline, old and same-slot locks
+are below the ready proposal. Next-slot optimistic compatibility remains explicit. -/
+theorem ready_call_locks_compatible
     (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
     (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y j u ell)
+    (hcall : tr.projAC.CallAt y j ell)
+    (hafter : drainTime sp a ≤ tr.time j) (hbefore : tr.time j ≤ sp.ts u + 6 * sp.Δ)
     (hnext : ∀ r < j, ∀ B CV, SA.OptimisticLockAt tr.projAC y r (u + 1) B CV →
       Compatible (tr.HonestBlocks H) B P) :
     ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
       Compatible (tr.HonestBlocks H) L P := by
   have hr := (healthy_base_of_reset_catch hp hc).run.localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hu.1
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
   have hDelta := sp.toParams.hΔ
-  have ht : tr.time j = sp.ts u + 6 * sp.Δ := hu.2.2.1
   rintro L ⟨hLt, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hLr⟩
   have he : L = ell.frame.viableAncestor B := hPhi.coherent.1 hLt
     (SA.viableAncestor_anc hPhi hB).1 hLr.symm
   rw [he]
   by_cases hlu : l.slot < u
-  · exact Or.inl (ready_old_lock_below hp hc hP hR hgu hy hu.1
-      (by rw [ht]; linarith) hl hlu hlive hB hBr)
+  · exact Or.inl (ready_old_lock_below hp hc hP hR hgu hy hcall
+      hafter hl hlu hlive hB hBr)
   obtain ⟨r, hrj, D, horig, X, hX, hXr, hXD⟩ : ∃ r < j, ∃ D,
       ((∃ CV, SA.FastLockAt tr.projAC y r l.slot D CV) ∨ SA.SlowLockAt tr.projAC y r l.slot D) ∧
       ∃ X ∈ tr.HonestBlocks H, X.root = l.block ∧ Anc (tr.HonestBlocks H) X D := by
@@ -921,7 +921,7 @@ theorem ready_update_locks_compatible
   have hXB : X = B := hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)
   rw [hXB] at hXD
   have hLD := ((SA.anc_viableAncestor ell.frame B).mono hPhiU).trans hXD
-  have hrt : tr.time r ≤ sp.ts u + 6 * sp.Δ := ht ▸ hp.run.time_mono hrj.le
+  have hrt : tr.time r ≤ sp.ts u + 6 * sp.Δ := (hp.run.time_mono hrj.le).trans hbefore
   have hDP : Compatible (tr.HonestBlocks H) D P := by
     by_cases heq : l.slot = u
     · exact Or.inl (same_slot_source_below_ready hp hc hP hR hgu hy (heq ▸ horig))
@@ -946,6 +946,22 @@ theorem ready_update_locks_compatible
   rcases hDP with hDP | hPD
   · exact Or.inl (hLD.trans hDP)
   · exact SA.anc_total hr.coherent hLD hPD
+
+/-- The update is a deadline call, so the general live-lock comparison applies. -/
+theorem ready_update_locks_compatible
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hu : SA.UpdateAt tr.projAC y j u ell)
+    (hnext : ∀ r < j, ∀ B CV, SA.OptimisticLockAt tr.projAC y r (u + 1) B CV →
+      Compatible (tr.HonestBlocks H) B P) :
+    ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
+      Compatible (tr.HonestBlocks H) L P := by
+  have ht : tr.time j = sp.ts u + 6 * sp.Δ := hu.2.2.1
+  exact ready_call_locks_compatible hp hc hP hR hgu hy hu.1
+    (by rw [ht]; linarith [sp.toParams.hΔ]) (by rw [ht]) hnext
 
 /-- With the frame and next-slot optimism obligations discharged, the actual update confirms
 the ready proposal without veto and selects that exact block for its fast lock. -/
