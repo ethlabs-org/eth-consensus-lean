@@ -656,6 +656,27 @@ theorem reset_accept_frame
       y hy j ell hcall hg hF
     exact SA.mem_tree_of_acceptAt sp hr hy hak hkj hcall hF
 
+/-- A frame-held block reaches a later frame only under that receiver's finalization guard. -/
+theorem reset_frame_relay
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
+    {ellx elly : ACLabel (goldilocksNode sp ro)}
+    (hcx : tr.projAC.CallAt x q ellx) (hcy : tr.projAC.CallAt y j elly)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ellx.frame.tree)
+    (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hq : tr.time q + sp.Δ ≤ tr.time j)
+    (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
+  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  rcases Compose.frame_anc_accepted hr hx q ellx hcx B hB B .refl with hgen | ⟨k, hk, ha⟩
+  · obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy j elly hcy
+    obtain rfl : B = G := hr.coherent.1 ((SA.frameIn_of_callAt hr hx hcx).2 hB)
+      hGU (hgen.trans hGr.symm)
+    rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩
+    · exact he ▸ (SA.frameIn_of_callAt hr hy hcy).1.rooted.1
+    · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
+  · exact reset_accept_frame hp hc hx hy ha hcy hg
+      (by have := hp.run.time_mono hk; change tr.time k ≤ tr.time q at this; linarith) hF
+
 end Consensus.Goldilocks.Healing
 
 end
