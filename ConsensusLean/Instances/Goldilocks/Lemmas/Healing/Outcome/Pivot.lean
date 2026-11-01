@@ -22,7 +22,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
-set_option linter.style.longFile 1800
+set_option linter.style.longFile 2000
 
 public section
 
@@ -750,6 +750,57 @@ theorem held_target_proposal_domain_before
   have hrootC := hrootB'.trans hBC'
   rw [hfr] at hrootC ⊢
   exact ⟨hCf.1, hCf.2, Anc.mono (fun _ h => h.1) hrootC, hCv⟩
+
+/-- Clean raw sources have the actual proposal domain, without a source-before-proposal
+cut assumption. Writer service is driven by the source label, including old acceptances. -/
+theorem clean_source_proposal_domain_before
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r s i u : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
+    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hsu : s < u)
+    (hR : drainTime sp a ≤ sp.ts u) {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) :
+    Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have evidence : ∃ C CV, (SA.ResultAt tr.projAC x r s C CV ∨ SA.FastLockAt tr.projAC x r s C CV) ∧
+      Anc (tr.HonestBlocks H) B C ∧ B ∈ (tr.state x r).fg.tree := by
+    rcases hsource with ⟨CV, hf⟩ | hsl
+    · refine ⟨B, CV, Or.inr hf, .refl, ?_⟩
+      rcases hf with ⟨ellX, C, hupd, _, _, hdeep, _⟩ | ⟨ellX, A, hpt, _, hsel, _⟩
+      · exact frame_tree_subset hp hx hupd.1 (SA.deepest_mem hdeep).1.1.1
+      · unfold SA.optimisticSelect at hsel
+        dsimp only at hsel
+        split_ifs at hsel
+        exact frame_tree_subset hp hx hpt.1 (SA.deepest_mem hsel).1.1
+    · obtain ⟨ellX, C, hupd, hconf, _, hdeep, _⟩ := hsl
+      have hB := (SA.deepest_mem hdeep).1.1
+      exact ⟨C, _, Or.inl ⟨ellX, hupd, hconf, rfl⟩,
+        hB.2.2.mono (SA.frameIn_of_callAt hr hx hupd.1).2,
+        frame_tree_subset hp hx hupd.1 hB.1⟩
+  obtain ⟨C, CV, hw, hBC, hBx⟩ := evidence
+  obtain ⟨v, q, m, S, hS, hm, hqt⟩ := reset_seed hp
+  have hat : a < sp.ts u := reset_lt_ts hp hR
+  have htiming : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
+    have ht := cutZ_le_ts_of_highOrigin hp hS
+    have hz := lt_cutZ sp g
+    have hsm : sp.ts (m + 1 : Nat) ≤ sp.ts s := (SA.ts_le_iff sp).mpr
+      (by rw [cleanLabel_eq] at hs; omega)
+    have he : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
+      simp only [SA.SAParams.ts]; push_cast; ring
+    rw [he] at hsm
+    have := sp.toParams.hΔ
+    linarith
+  refine held_target_proposal_domain_before hp hx hpH hBx (by rw [hti]; exact hat.le)
+    hci hcall hd hti ?_ ?_ ?_
+  · exact raw_writer_held_at_slot_start hp hc hx hpH hw hBC htiming hsu hci hti
+  · exact ⟨v, q, m, S, hS, hqt.trans_lt hat,
+      clean_source_compatible_high_origin hp hc hx hsource hs hS⟩
+  · intro v q m O _ ho
+    exact clean_source_compatible_high_origin hp hc hx hsource hs ho
 
 /-- The packed old-source interface of the proposal row ordering lemma. -/
 private theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)

@@ -636,6 +636,59 @@ theorem clean_source_compatible_high_origin
   exact target_compatible_older_origin hp ho hx ⟨ell, hcast⟩ hes
     (by dsimp [n]; omega) hB
 
+/-- A raw writer's target is frame-held at a later slot start once finalization is below it.
+Old acceptances use Catch; fresh acceptances use Sync and the healthy restart bound. -/
+theorem raw_writer_held_at_slot_start
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r s i u : Nat}
+    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (hwriter : SA.ResultAt tr.projAC x r s C CV ∨ SA.FastLockAt tr.projAC x r s C CV)
+    (hBC : Anc (tr.HonestBlocks H) B C) (hs : SA.gbar g + 4 * sp.Δ ≤ sp.ts s)
+    (hsu : s < u) {ell : ACLabel (goldilocksNode sp ro)}
+    (hci : tr.projAC.CallAt p i ell) (hti : tr.time i = sp.ts u)
+    (hFB : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ ell.frame.tree := by
+  have hS := healthy_base_of_reset_catch hp hc
+  have hr := hS.run.localRun
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hstep : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
+    rw [hti]
+    have ht := (SA.ts_le_iff sp).mpr (show (s : Int) + 1 ≤ u by omega)
+    simp only [SA.SAParams.ts] at ht ⊢
+    nlinarith
+  obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
+    raw_writer_relay_source hr hx hwriter hBC
+  all_goals obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  · obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hpH _ _ hci
+    have hDG : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)
+    subst D
+    have hGD : G ∈ ell.frame.tree := by
+      rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp (hFB.trans hBD) with he | ⟨c, _, hpar⟩
+      · exact he ▸ hPhi.rooted.1
+      · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
+    exact SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hGD hBD hFB
+  · have hFD := hFB.trans hBD
+    have hDt : D ∈ ell.frame.tree := by
+      by_cases hg : SA.gbar g ≤ tr.time q
+      · have hdl : ∀ k ≤ i, tr.projAC.deadline p k (tr.time q) < sp.ts s + 3 * sp.Δ := by
+          intro k hk
+          have hd := deadline_le_restarts
+            (T := tr.projAC) (c := k) (fun k' _ hr' => hS.restart_le hpH hr') (tr.time q)
+          have ht : max (tr.time q) (SA.gbar g) < sp.ts s + 2 * sp.Δ := by
+            apply max_lt hqt
+            linarith
+          change _ ≤ max (tr.time q) (SA.gbar g) + sp.Δ at hd
+          linarith
+        obtain ⟨k, hki, hak, _⟩ := (hS.syncAC le_rfl (tr.time q)).2 x hx q D hq hg le_rfl
+          p hpH i ell hci (by
+            have := hdl i le_rfl
+            change tr.projAC.deadline p i (tr.time q) ≤ tr.time i
+            linarith) hFD
+        exact SA.mem_tree_of_acceptAt sp hr hpH hak hki hci hFD
+      · obtain ⟨k, hki, hak, _⟩ := hS.catchUp x hx q D hq (not_le.mp hg) p hpH i ell hci
+          (by change _ ≤ tr.time i; linarith) hFD
+        exact SA.mem_tree_of_acceptAt sp hr hpH hak hki hci hFD
+    exact SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt hBD hFB
+
 end Consensus.Goldilocks.Healing
 
 end
