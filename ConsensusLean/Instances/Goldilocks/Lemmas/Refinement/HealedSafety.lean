@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CoefficientAdapters
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -653,20 +654,6 @@ theorem healthy_current_vote_domain (D : HealthyRepairSchedule S A V Q)
   exact D.reset.result_prefix_vote_domain_before hc hx hz hr hRB
     (by simpa only [D.cleanLabel_eq] using hs) hrb he hse hqb hprior
 
-/-- OPEN comparison against actually stored time-live locks at the first successor. -/
-theorem healthy_current_stored_locks (D : HealthyRepairSchedule S A V Q)
-    {R B : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {x r s CV}
-    (hx : x ∈ honestKeys S Q.run.2) (hr : SA.ResultAt Q.trace.projAC x r s B CV)
-    (hRB : Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R B)
-    (hrb : Q.trace.time r ≤ Q.run.2.horizon)
-    (hs : D.cleanLabel + 2 * Q.params.k + 1 ≤ s) :
-    ∀ z ∈ honestKeys S Q.run.2, ∀ q ell e, SA.CastAt Q.trace.projAC z q ell e →
-      Q.trace.time q ≤ Q.run.2.horizon → e.msg.slot = s + 1 →
-      ∀ l ∈ (Q.trace.projAC.state z q).locks, Q.params.slot (Q.trace.time q) ≤ l.slot + Q.params.k →
-        l.slot ≤ s → ∀ Y ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2), Y.root = l.block →
-          Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) Y R := by
-  sorry
-
 omit h0 hb hp W states in
 /-- Finite catch service follows directly from the healthy engine's PSync and awake interval. -/
 theorem healthy_repair_catch :
@@ -686,6 +673,30 @@ theorem healthy_repair_catch :
   exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
     (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
     hnet Q.healthy.2.2
+
+-- Preserve the producer's existing section hypotheses although the finite adapter needs fewer.
+set_option linter.unusedSectionVars false in
+/-- Comparison against actually stored time-live locks at the first successor. -/
+theorem healthy_current_stored_locks (D : HealthyRepairSchedule S A V Q)
+    {R B : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {x r s CV}
+    (hx : x ∈ honestKeys S Q.run.2) (hr : SA.ResultAt Q.trace.projAC x r s B CV)
+    (hRB : Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R B)
+    (hrb : Q.trace.time r ≤ Q.run.2.horizon)
+    (hs : D.cleanLabel + 2 * Q.params.k + 1 ≤ s) :
+    ∀ z ∈ honestKeys S Q.run.2, ∀ q ell e, SA.CastAt Q.trace.projAC z q ell e →
+      Q.trace.time q ≤ Q.run.2.horizon → e.msg.slot = s + 1 →
+      ∀ l ∈ (Q.trace.projAC.state z q).locks, Q.params.slot (Q.trace.time q) ≤ l.slot + Q.params.k →
+        l.slot ≤ s → ∀ Y ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2), Y.root = l.block →
+          Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) Y R := by
+  intro z hz q ell e he hqb hes
+  have hrun := (Compose.goldilocks_ac_projection _ _ _ _ _ _
+    D.reset.run D.reset.noColl).localRun
+  have hslot := (SA.castAt_spec hrun hz he).2.1
+  exact D.reset.result_prefix_stored_locks (healthy_repair_catch S A V Q) hx hz hr hRB
+    (by simpa only [D.cleanLabel_eq] using hs) hrb hqb (by
+      change s + 1 ≤ Q.params.slot (Q.trace.time q)
+      change e.msg.slot = Q.params.slot (Q.trace.time q) at hslot
+      omega)
 
 /-- Assemble the current whole-record certificate through the landed scoped adapters. -/
 theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
