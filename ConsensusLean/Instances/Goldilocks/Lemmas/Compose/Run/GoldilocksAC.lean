@@ -163,6 +163,31 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
+/-- Every projected send/admission has precisely one of the forwarding supplier's
+sources: an emission, or a fresh message/payload insertion. Restart replay is excluded. -/
+theorem sendOrAdmit_forward_source (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {m : Vote sp.n}
+    (h : tr.projAC.SendOrAdmit y k m) :
+    tr.EmitAt y k m ∨
+      ((tr.MsgCallAt y k m ∨ ∃ ℓ B, tr.CallAt y k (.ac ℓ) ∧ ℓ.call = .block B ∧
+          m ∈ blockVotes B) ∧
+        m ∉ (tr.state y k).ac.pool m.slot ∧ m ∈ (tr.post k).ac.pool m.slot) := by
+  obtain ⟨ℓ, hc, he | ⟨hnr, hold, hnew⟩⟩ := h
+  · exact Or.inl ⟨ℓ, projAC_callAt.mp hc, he⟩
+  · have hex := (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).2.1
+    rw [← projAC_state hrun.toLocalRun hy] at hex
+    have ha := adds_step (ro := ro) y (tr.projAC.state y k) ℓ.frame (tr.time k) ℓ.call hnr
+    rw [hex] at ha
+    have hold' : m ∉ (tr.projAC.state y k).pool m.slot := hold
+    have hnew' : m ∈ (tr.post k).ac.pool m.slot := hnew
+    rcases ha m.slot m hnew' with hm | hm | ⟨B, hb, hm⟩ | ⟨e, he, hm⟩
+    · exact False.elim (hold' hm)
+    · exact Or.inr ⟨Or.inl ⟨ℓ, projAC_callAt.mp hc, hm⟩,
+        by rwa [projAC_state hrun.toLocalRun hy] at hold', hnew'⟩
+    · exact Or.inr ⟨Or.inr ⟨ℓ, B, projAC_callAt.mp hc, hb, hm⟩,
+        by rwa [projAC_state hrun.toLocalRun hy] at hold', hnew'⟩
+    · exact Or.inl ⟨ℓ, projAC_callAt.mp hc, e, he, hm⟩
+
 /-- The frame of an honest AC call is inside the node's tree. -/
 private theorem frame_tree (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat}

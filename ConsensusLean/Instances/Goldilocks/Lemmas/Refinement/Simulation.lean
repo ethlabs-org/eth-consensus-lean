@@ -348,6 +348,40 @@ theorem received_voteForward_processAt (hv : rho.ExecutionValid)
     (hc.trans (Model.Obj.Contains.step (List.mem_singleton_self _) (.refl _)))
   exact ⟨k, hlo, hhi, hp, ht, htime⟩
 
+/-- Holdings of a first-release vote envelope either belong to its source or give
+an actual recipient processing cut between source time and the holding time.
+The source alternative is not itself a fresh-processing claim. -/
+theorem held_voteForward_source_or_process (hv : rho.ExecutionValid)
+    {source : Nat} {x y : Fin (Fintype.card V)} {τ d : Time}
+    {m : SA.Vote (Fintype.card V)}
+    (hx : rho.key x ∈ rho.honest) (hs : rho.SendsAt (rho.key x) source τ)
+    (hfirst : ∀ j < source,
+      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
+        rho.releasesAt j)
+    (hh : rho.log.Held rho.point (rho.key y)
+      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m]) d) :
+    y = x ∨ ∃ k, (simTrace S rho hn).projAC.ProcessAt y k m ∧
+      τ ≤ (simTrace S rho hn).time k ∧ (simTrace S rho hn).time k ≤ d := by
+  obtain ⟨u, hud, hsend | hrecv, _⟩ := hh
+  · obtain ⟨i, hi, hrel⟩ := hsend
+    have hxy : x = rho.ownKey (rho.key y) := by
+      rcases hi with he | ⟨o, he⟩
+      · simp only [Model.Run.releasesAt, he] at hrel
+        rcases rho.tick_auth _ _ _ hrel with h | ⟨r, h, _⟩
+        · cases h
+        · exact (Model.Auth.signed.inj h).1
+      · simp only [Model.Run.releasesAt, he] at hrel
+        rcases rho.deliver_auth _ _ _ _ hrel with h | ⟨r, h, _⟩
+        · cases h
+        · exact (Model.Auth.signed.inj h).1
+    exact Or.inl (hxy.trans (rho.key.symm_apply_apply y)).symm
+  · obtain ⟨i, hi⟩ := hrecv
+    obtain ⟨k, _, _, hp, ht, hτ⟩ := received_voteForward_processAt S rho hn hv hx hs
+      hfirst hi (.refl _)
+    have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
+    rw [hkey] at hp
+    exact Or.inr ⟨k, hp, ht ▸ hτ, ht ▸ hud⟩
+
 /-- Option C's outstanding publication supplier: actual same-event release and first release,
 not merely candidate construction or pool membership. -/
 theorem simTrace_vote_forwarded (hv : rho.ExecutionValid) :
