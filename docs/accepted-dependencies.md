@@ -528,14 +528,14 @@ bound dirty entries or prove finality progress. No final latency coefficient is 
 
 ## Healing pivot compatibility suppliers
 
-The following named leaves in `Healing/Outcome/Pivot.lean` are **OPEN**, owned by
+The remaining named leaves in `Healing/Outcome/Pivot.lean` are **OPEN**, owned by
 the healing source-service work (OpenAI pivot prover, coordinated by the healing lead).
 All retain `ResetPremises`, `Catch(2Δ)`, the ready proposal, and the existing drain.
 They are proof obligations, not additional protocol premises.
 
 | Declaration (`Consensus.Goldilocks.Healing.` prefix) | Consumer obligation | Dependencies / proof status |
 |---|---|---|
-| `proposal_stored_locks_compatible_old` | Proposal stored high locks compatible with each `OldSrc` | OPEN fast/actual-slow source proposal support and frozen-domain viability |
+| `proposal_stored_locks_compatible_old` | Proposal stored high locks compatible with each `OldSrc` | PROVED: stored provenance and proposal timing reduce to label u−1 optimism; `optimistic_prefix_compatible_old` uses historical votes for strict labels and explicit same-label fast/optimistic compatibility |
 | `proposal_start_supported` | Proposal start below the actual honest vote head, under earlier-votes=P | OPEN source HEAD support; first slow HEAD uses proved `SA.slow_first_votes_before` with explicit carry, merged, frame and stored producers |
 | `vote_old_live_lock_below_parent` | Viable ancestor of each non-current live read-point lock below the proposal parent | OPEN source proposal support from label l+2, bounded retention and move-back provenance |
 

@@ -743,19 +743,82 @@ private theorem proposal_floor_above_old (hp : ResetPremises tr H proposer dg g 
 
 /-! ### The proposal walk and fork-choice roots -/
 
-/-- OPEN: stored proposal locks are compatible with each old source. -/
+/-- An optimistic prefix compares with an old high origin. Strictly earlier origin
+labels use historical vote extension; equal labels use fast/optimistic compatibility. -/
+theorem optimistic_prefix_compatible_old
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {p : Fin sp.n} (hpH : p ∈ H) {r u : Nat}
+    {D L O : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (hop : SA.OptimisticLockAt tr.projAC p r (u - 1) D CV)
+    (_hLu : L ∈ tr.HonestBlocks H) (hLD : Anc (tr.HonestBlocks H) L D)
+    {x : Fin sp.n} {i j : Nat} (ho : HighOrigin tr H g x i j O)
+    (_hOld : tr.time i < sp.ts u) (hj : j ≤ u - 1) :
+    Compatible (tr.HonestBlocks H) L O := by
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hDO : Compatible (tr.HonestBlocks H) D O := by
+    rcases hj.lt_or_eq with hj | rfl
+    · apply SA.optimisticLock_compatible hrun (faulty_lt_half hp p) hpH hop
+      intro z hz q e hv hs
+      obtain ⟨ell, hc, he⟩ := hv
+      have hvotes := (historical_activation_before hp (tr.time q) q le_rfl).2
+      exact ((rawVoteAt_iff _ _ _).mp hvotes O j
+        ((historicalTargets_iff O j).mpr ⟨x, i, ho⟩) z hz ell e ⟨hc, he⟩
+        (by omega) le_rfl).1
+    · obtain ⟨CV', hst⟩ := ho.2.2.1
+      obtain ⟨_, C, hfl, hOC⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
+      have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
+        (fun v => v.val) tr proposer ΔF (sp.ts (u - 1 : Nat)) (sp.ts (u - 1 + 1 : Nat) + sp.Δ)
+        hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 (le_ts_of_highOrigin hp ho))
+      rcases SA.fastLock_same_slot hrun hpH (Or.inr hop) ho.1 hfl hsync
+        (faulty_lt_half hp p) with hDC | hCD
+      · exact SA.anc_total hrun.localRun.coherent hDC hOC
+      · exact Or.inr (hOC.trans hCD)
+  rcases hDO with hDO | hOD
+  · exact Or.inl (hLD.trans hDO)
+  · exact SA.anc_total hrun.localRun.coherent hLD hOD
+
+/-- At proposal time, stored high locks can only come from an optimistic write of the
+previous label. Regular updates are too late and current-label optimism is excluded. -/
 private theorem proposal_stored_locks_compatible_old
     (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ))
+    (_hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    (hP : ReadyProposal tr H proposer p k u P) (_hR : drainTime sp a ≤ sp.ts u)
     {i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hti : tr.time i = sp.ts u) :
     ∀ O, OldSrc tr H g u O →
       SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
         (tr.time i) (u - 1) O := by
-  sorry
+  intro O hO
+  obtain ⟨x, q, j, ho, hOld⟩ := hO
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hr := hrun.localRun
+  have hΔ := sp.toParams.hΔ
+  rw [SA.highLocksCompatible_iff]
+  intro l hl _ hlabel L hL hLr
+  obtain ⟨r, hri, D, hwrite, L', hL', hL'r, hLD⟩ := SA.lock_provenance hr hP.1 i l hl
+  obtain rfl : L' = L := hr.coherent.1 hL' hL (hL'r.trans hLr.symm)
+  have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono hri.le
+  rcases hwrite with ⟨CV, hop⟩ | ⟨ell, hupd⟩
+  · have hle : l.slot ≤ u := by
+      have ht := ts_le_of_fastLock hp (Or.inr hop)
+      have := (SA.ts_le_iff sp).mp (ht.trans hrt)
+      exact_mod_cast this
+    have hne : l.slot ≠ u := by
+      intro heq
+      exact proposal_no_optimistic hp hP.1 hci hcall hti p hP.1 r hri D CV (heq ▸ hop)
+    have heq : l.slot = u - 1 := by omega
+    rw [heq] at hop
+    exact optimistic_prefix_compatible_old hp hP.1 hop hL hLD ho hOld
+      (by have := label_lt_of_old hp ho hOld; omega)
+  · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
+    have hslots : sp.ts u ≤ sp.ts (l.slot + 1 : Nat) :=
+      (SA.ts_le_iff sp).mpr (by omega)
+    have hsucc : sp.ts (l.slot + 1 : Nat) = sp.ts l.slot + 4 * sp.Δ := by
+      simp only [SA.SAParams.ts]; push_cast; ring
+    rw [hsucc] at hslots
+    linarith
 
 section Support
 
