@@ -40,6 +40,21 @@ noncomputable def accepted_latency (S : Setup) (A : AcceptanceAssumptions S) :
     Capability → ℕ+ → Nat := by
   sorry
 
+/-- OPEN joint-synthesis constraint, not a value selected for the shared witness.
+For engine Δe ≥ 1, 37Δe covers 18(Δe+1)+1, including safety's literal +1.
+Other regimes may require a larger catch-up coefficient. -/
+theorem accepted_catchUp_ge_sleepy (S : Setup) (A : AcceptanceAssumptions S) :
+    37 ≤ (accepted_catchUp S A : Nat) := by
+  sorry
+
+/-- OPEN minimum Sleepy latency constraint on the same joint witness.
+For Δe ≥ 1, (8idx+12)Δe covers (4idx+6)(Δe+1). This is not a final
+joint value and imposes no new premise on any Accepted endpoint. -/
+theorem accepted_latency_ge_sleepy (S : Setup) (A : AcceptanceAssumptions S)
+    (cap : Capability) (idx : ℕ+) (hcap : cap = .available ∨ cap = .stable) :
+    8 * (idx : Nat) + 12 ≤ accepted_latency S A cap idx := by
+  sorry
+
 /-- The same three witnesses are used by every adapter. -/
 noncomputable def accepted_coefficients (S : Setup) (A : AcceptanceAssumptions S) :
     AcceptanceCoefficients :=

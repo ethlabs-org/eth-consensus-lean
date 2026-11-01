@@ -109,6 +109,8 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 
 | Declaration | Paper argument/status |
 |---|---|
+| `Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy` | OPEN, Spec orb joint synthesis: 37≤accepted_catchUp is a minimum Sleepy constraint, not a selected shared witness. Covers 18(Δe+1)+1≤37Δe for Δe≥1. Not yet consumed by Accepted. |
+| `Consensus.Goldilocks.Refinement.accepted_latency_ge_sleepy` | OPEN, Spec orb joint synthesis: available/stable latency≥8idx+12, covering (4idx+6)(Δe+1)≤(8idx+12)Δe. Other regimes may raise it; not a final joint value or new endpoint premise. Not yet consumed by Accepted. |
 | `Consensus.Goldilocks.Refinement.healthy_confirmed_supply` | OPEN, Healing paper/T3 with Spec orb integration: finite Healthy preparation, exact-cDur-ready actual producer selection and its budget, frozen service and deadline coverage remain inside this joint existential. Only the selected accepted proposal is covered; no new endpoint assumption. |
 | `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | OPEN, Spec orb with engine/Healing box: catchUp+1≤cDur, finite-horizon canonical SyncBefore and population production with no progress, query or ready-reader existence premise. Arbitrary-cut transport is proved by sleepy_safe_engine. |
 | `Consensus.Goldilocks.Refinement.confirmed_duration_supply` | OPEN, Spec orb: joint coefficient bound, not positivity or readiness upgrade. |
