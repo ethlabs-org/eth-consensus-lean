@@ -6,10 +6,26 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 
 public section
 namespace Consensus.Goldilocks.Refinement
 open Blocks Shape
+
+/-- An actual stored time-live lock gives the anchor arm only when its normalized
+block still covers the record and the current live blocks form a chain. -/
+theorem record_below_anchor_of_stored_live_lock
+    {sp : SA.SAParams} {FGP : Type} {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ)
+    {A : SA.SAState sp.n} {t : Time} {R B : SA.Blk sp.n FGP} {l : SA.Lock}
+    (hl : l ∈ A.locks) (hB : B ∈ Φ.tree) (hroot : B.root = l.block)
+    (ht : sp.slot t ≤ l.slot + sp.k) (hcover : Φ.Anc R (Φ.viableAncestor B))
+    (hchain : ∀ X ∈ SA.liveLockBlocks sp A.locks Φ t,
+      ∀ Y ∈ SA.liveLockBlocks sp A.locks Φ t, Goldilocks.Compatible Φ.tree X Y) :
+    Φ.Anc R (SA.getAnchor sp A Φ t) := by
+  have hmem : Φ.viableAncestor B ∈ SA.liveLockBlocks sp A.locks Φ t :=
+    ⟨(SA.viableAncestor_anc hΦ hB).1,
+      ⟨⟨(Φ.viableAncestor B).root, l.slot, l.fast⟩, ⟨l, hl, B, hB, hroot, ht, rfl⟩, rfl⟩⟩
+  exact hcover.trans ((SA.anc_getAnchor hΦ hchain).2 _ (Or.inl hmem))
 
 /-- Whole-record equality at the actual clock. Current source classification, viability
 and live-candidate compatibility remain explicit, with no pre-repair invariant. -/
