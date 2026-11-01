@@ -771,4 +771,55 @@ theorem stateAt_clock_bounds {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
         · subst w; rw [lastClock_succ_deliver S rho v he]; exact old
         · rw [lastClock_succ_other S rho v he hw]; exact old
 
+/-- Every actual honest tick preserves the joint invariant, including its own proposal. -/
+theorem decoded_held_tick {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (v : V) (hhon : v ∈ rho.honest) (i : Nat) (t : Time)
+    (he : rho.events[i]? = some (.tick v t))
+    (hd : WrappersDecoded (digests rho.hash) (stateAt S rho hn v i))
+    (hh : WrappersHeld (digests rho.hash) (stateAt S rho hn v i)) :
+    let st' := shapeOf S hn (rho.tick (rho.stateBefore i v) v t).1
+    WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
+  have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
+  have hw := hv.tick_awake v t (List.mem_of_getElem? he)
+  have hsel := poll_selected S rho hv v
+  have hp := decoded_held_atProposal S rho hn v (rho.stateBefore i v) t hd hh
+    ((stateAt_clock_bounds S rho hn hv v i).2 i _ le_rfl he) hsel
+  have hprop :
+      WrappersDecoded (digests rho.hash) (shapeOf S hn
+        (rho.runDuties v (atProposal S rho v (rho.stateBefore i v) t)
+          ((skeleton (pubOf E)).proposeAt t)).1) ∧
+      WrappersHeld (digests rho.hash) (shapeOf S hn
+        (rho.runDuties v (atProposal S rho v (rho.stateBefore i v) t)
+          ((skeleton (pubOf E)).proposeAt t)).1) := by
+    rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
+      ⟨hnil, _⟩ | ⟨s, hs, hone, htime⟩
+    · rw [hnil]; erw [runDuties_fst_nil]; exact hp
+    · rw [hone]; erw [runDuties_fst_cons, runDuties_fst_nil]
+      exact decoded_held_scheduled_proposal S rho hn hv v hhon i t he s hs
+        (htime.trans (slotTime_eq S hn s).symm) hp.1 hp.2
+  dsimp only
+  rw [tick_of_awake S rho v _ t hw]
+  apply releaseAll_pres_mem S rho hn
+    (fun st => WrappersDecoded (digests rho.hash) st ∧ WrappersHeld (digests rho.hash) st)
+  · intro c hc st hs h
+    obtain ⟨mc, _, rfl⟩ := Model.mem_gossipCandidates.mp hc
+    have unsigned (m : Msg (Header Info) Body) (cs : List (Wire (Fintype.card V))) :
+        WrappersDecoded (digests rho.hash) (recordOwn st (.mk .none m cs) hs) ∧
+        WrappersHeld (digests rho.hash) (recordOwn st (.mk .none m cs) hs) := by
+      unfold recordOwn
+      split
+      · exact ⟨h.1.mono rfl rfl rfl le_rfl, h.2.preserve rfl rfl rfl⟩
+      · rename_i k s header carried heq; cases heq
+      · exact h
+    exact unsigned mc.1 mc.2
+  · rw [duties_eq S t ht, runDuties_fst_append]
+    erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll _ _ _ _ _ _ hsel]
+    unfold dutiesInit
+    erw [runDuties_fst_append, runDuties_fst_append, runDuties_fst_cons,
+      runDuties_fst_nil, dutyStep_poll _ _ _ _ _ _ hsel]
+    erw [← atProposal_eq S rho v (rho.stateBefore i v) t]
+    exact decoded_held_poll _ _ (decoded_held_poll _ _ hprop.1 hprop.2).1
+      (decoded_held_poll _ _ hprop.1 hprop.2).2
+
 end Consensus.Goldilocks.Refinement
