@@ -493,6 +493,44 @@ theorem simTrace_noRestart_between {y : Fin (Fintype.card V)} {a b k : Nat}
     omega
   exact hnr i hai hib _ he
 
+/-- Restarts precede all sending events at a fixed time, so none can intervene
+between two such events, even for a different node. -/
+theorem noRestart_between_same_time_sends (hv : rho.ExecutionValid)
+    {v : V} {a b : Nat} {t : Time} (ha : rho.SendsAt v a t) (hb : rho.SendsAt v b t)
+    {j : Nat} (haj : a ≤ j) (hjb : j < b) (w : V) (u : Time) :
+    rho.events[j]? ≠ some (.restart w u) := by
+  intro hr
+  have haj' : a < j := by
+    rcases haj.lt_or_eq with h | rfl
+    · exact h
+    · rcases ha with ha | ⟨o, ha⟩ <;> rw [hr] at ha <;> cases ha
+  have hle : u ≤ t := by
+    rcases hb with hb | ⟨o, hb⟩ <;>
+      rcases keyLe_of_index_lt S rho hv hr hb hjb with h | h
+    all_goals first | exact h.le | exact h.1.le
+  rcases ha with ha | ⟨o, ha⟩ <;>
+    rcases keyLe_of_index_lt S rho hv ha hr haj' with h | h
+  all_goals first
+    | exact (not_lt_of_ge hle) h
+    | simpa only [Model.Event.phase, Nat.reduceLeDiff] using h.2
+
+/-- Votes survive every cut between the boundaries of two same-time sending
+events. This uses event ordering, not a collision-free block universe. -/
+theorem pool_mono_between_same_time_sends (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
+    {a b : Nat} {t : Time} (ha : rho.SendsAt (rho.key y) a t)
+    (hb : rho.SendsAt (rho.key y) b t) {k l : Nat}
+    (hak : cutMap S rho hn a ≤ k) (hkl : k ≤ l) (hlb : l ≤ cutMap S rho hn b)
+    (σ : Nat) :
+    ((simTrace S rho hn).state y k).ac.pool σ ⊆
+      ((simTrace S rho hn).state y l).ac.pool σ := by
+  have hr := simTrace_goldilocksRun S rho hn hv
+  have hm := Compose.pool_mono hr hy hkl (fun j hkj hjl =>
+    simTrace_noRestart_between S rho hn
+      (fun i hai hib u => noRestart_between_same_time_sends S rho hv ha hb hai hib _ u)
+      (hak.trans hkj) (hjl.trans_le hlb)) σ
+  simpa only [Compose.projAC_state hr.toLocalRun hy] using hm
+
 /-- Every non-restart AC cut lies in a sending engine event of the same node and time.
 This is interval transport only; it does not assume the publication supplier. -/
 theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}

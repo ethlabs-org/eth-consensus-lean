@@ -335,6 +335,30 @@ theorem state_pool_cap (hrun : GoldilocksRun proposer dg H tr)
       rw [hex] at h
       exact h
 
+/-- Non-restart pool retention uses the local step law only, not a coherent
+global block universe. The restart-free interval is explicit. -/
+theorem pool_mono (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
+    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) (σ : Nat) :
+    (tr.projAC.state y a).pool σ ⊆ (tr.projAC.state y b).pool σ := by
+  induction b, hab using Nat.le_induction with
+  | base => exact List.Subset.refl _
+  | succ b hab ih =>
+    intro v hv
+    have hp := ih (fun k hk hkb => hnr k hk (hkb.trans (Nat.lt_succ_self b))) hv
+    by_cases hn : tr.projAC.node b = y ∧ tr.projAC.label b ≠ none
+    · obtain ⟨ℓ, hl⟩ := Option.ne_none_iff_exists'.mp hn.2
+      have hc : tr.projAC.CallAt y b ℓ := ⟨hn.1, hl⟩
+      rw [tr.projAC.state_succ_of_call hc]
+      have hex := (hrun.cutLaw y hy b _ (projAC_callAt.mp hc)).2.1
+      rw [← projAC_state hrun.toLocalRun hy] at hex
+      have hg := SA.step_pool_subset y (tr.projAC.state y b) ℓ.frame (tr.time b)
+        ℓ.call (fun hr => hnr b hab (Nat.lt_succ_self b) ⟨ℓ, projAC_callAt.mp hc, hr⟩) σ hp
+      rw [hex] at hg
+      exact hg
+    · rw [tr.projAC.state_succ_of_not (fun ℓ hc => hn ⟨hc.1, by simp [hc.2]⟩)]
+      exact hp
+
 /-- Before an honest emission, no honest stored pool contains a vote of its signer and slot,
 even if a restart has replayed previously accepted blocks. -/
 theorem emitted_slot_not_pooled (hrun : GoldilocksRun proposer dg H tr)
