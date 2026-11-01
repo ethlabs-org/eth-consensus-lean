@@ -247,6 +247,36 @@ theorem healthy_base_of_reset_catch (hp : ResetPremises tr H proposer dg g ΔF a
     projection_healthy hp.run hp.noColl hp.healthy,
     projection_catch hp.run hp.noColl hp.healthy hc⟩
 
+/-- Finite reset health supplies the AC base without extending awake obligations
+past the horizon. Synchrony and Catch retain their actual deadline semantics. -/
+theorem healthy_base_of_reset_catch_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : CatchRun tr H g (2 * sp.Δ)) :
+    SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b := by
+  refine ⟨Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl,
+    projection_driven_of_run hp.run hp.noColl hp.run.genesis_root_ok, ?_,
+    ⟨fun x hx i B ha hi y hy j ell hj ht _ hF =>
+      projection_catch_of_run hp.run hc x hx i B ha hi y hy j ell hj ht hF⟩,
+    hp.awake, hp.faults⟩
+  have hs := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
+    tr proposer ΔF (SA.gbar g) b hp.run.toLocalRun
+    (syncRun_of_gst hp.sync (SA.le_gbar g))
+  have hsource : ∀ y j (t : Time), t ≤ tr.projAC.deadline y j t := by
+    intro y j t
+    unfold ACTrace.deadline
+    have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+    cases tr.projAC.lastWake y j with
+    | bot => change t ≤ t + sp.Δ; linarith
+    | coe w =>
+      change t ≤ max t w + sp.Δ
+      have := le_max_left t w
+      linarith
+  constructor
+  · intro x hx i m hm hi y hy j ell hj hQ hd
+    exact hs.1 x hx i m hm hi ((hsource y j _).trans hQ) y hy j ell hj hd
+  · intro x hx i B hB hi y hy j ell hj hQ hd hF
+    exact hs.2 x hx i B hB hi ((hsource y j _).trans hQ) y hy j ell hj hd hF
+
 /-- Catch uses its actual source boundary `gbar g`, not the later high-origin cut. -/
 theorem catch_window_of_reset_catch (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) (Q : Time) :

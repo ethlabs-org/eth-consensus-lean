@@ -37,6 +37,17 @@ structure HealthyBase (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Bl
   healthy : HealthyAC tr H U g
   catchUp : CatchAC tr H U g (2 * sp.Δ)
 
+/-- Finite health with deadline-bounded service. Driven duties remain conditional
+on actual awake witnesses, so they assert no activity beyond the horizon. -/
+structure HealthyBaseUpTo (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+    (proposer : Nat → Fin sp.n) (g b : Time) : Prop where
+  run : ACRun proposer tr H U
+  driven : Driven proposer tr H
+  sync : SyncACWindowBefore H U (gbar g) b tr
+  catchUp : CatchACWindowBefore tr H U (gbar g) (2 * sp.Δ) b
+  awake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t
+  faults : 3 * Hᶜ.ncard ≤ sp.n - 1
+
 /-- **H.1's premises** over an AC trace of the SA: the healthy premises (`HealthyBase`) and
 trivial frames. -/
 structure StandaloneRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
