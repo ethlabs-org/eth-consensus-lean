@@ -123,6 +123,40 @@ theorem healed_records_of_reset (hp : ResetPremises tr H proposer dg g ΔF a) {h
   locks _ hy i _ hh := hp.high_lock_entry hy i (hrh.trans hh) (hE _ hh)
   r0 _ hy i := hp.permits_high_entry hy i hrh (hE h₀ le_rfl)
 
+/-- **A high entry from an honest row (WI-17).** Under the reset, an honest row at a height
+`h ≥ H_z + 1` names a high entry at `h`: the entry of the row's source chain, below the high
+origin of an earlier fast lock of the signer (`high_row_source`) and held by the signer. -/
+theorem ResetPremises.highEntry_of_row (hp : ResetPremises tr H proposer dg g ΔF a)
+    {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att)
+    (hh : HZ tr H g + 1 ≤ att.h) :
+    ∃ E, HighEntry tr H g att.h E ∧ E.root = att.T := by
+  obtain ⟨r, -, l, O, hO, E, hE, hEO, hEr, hEh, hET⟩ := high_row_source hp hv hs hh
+  exact ⟨E, ⟨⟨v, r, l, O, hO, hEO.mono fun D hD => ⟨v, hv, r, hD⟩⟩, ⟨v, hv, r, hE, hEh, hET⟩⟩,
+    hEr⟩
+
+/-- **The record half of the Healed bundle from honest rows (WI-17).** Under the reset, with RH
+(`H_z + 1 ≤ h₀`) and an honest row at every height `h ≥ h₀`, the entries that these rows name
+are a family `E` of high entries (`highEntry_of_row`), and `HealedRecords` holds for `E`. The
+row at each height is the only premise left of `HighEntry`; in the paper it is the output of
+the justification at that height (s5). -/
+theorem healed_records_of_rows (hp : ResetPremises tr H proposer dg g ΔF a) {h₀ : Nat}
+    (hrh : HZ tr H g + 1 ≤ h₀)
+    (hrow : ∀ h, h₀ ≤ h → ∃ v ∈ H, ∃ d att, tr.SignAt v d att ∧ att.h = h) :
+    ∃ E : Nat → SA.Blk sp.n (List (FG.Att sp.n)),
+      (∀ h, h₀ ≤ h → HighEntry tr H g h (E h)) ∧ HealedRecords tr H g h₀ E := by
+  have hex : ∀ h, h₀ ≤ h → ∃ E, HighEntry tr H g h E := by
+    intro h hh
+    obtain ⟨v, hv, d, att, hs, rfl⟩ := hrow h hh
+    obtain ⟨E, hE, -⟩ := hp.highEntry_of_row hv hs (hrh.trans hh)
+    exact ⟨E, hE⟩
+  classical
+  let E : Nat → SA.Blk sp.n (List (FG.Att sp.n)) := fun h =>
+    if hh : h₀ ≤ h then Classical.choose (hex h hh) else Classical.choose (hex h₀ le_rfl)
+  have hE : ∀ h, h₀ ≤ h → HighEntry tr H g h (E h) := fun h hh => by
+    have hc := Classical.choose_spec (hex h hh)
+    simpa only [E, hh, ↓reduceDIte] using hc
+  exact ⟨E, hE, healed_records_of_reset hp hrh hE⟩
+
 end Consensus.Goldilocks.Healing
 
 end
