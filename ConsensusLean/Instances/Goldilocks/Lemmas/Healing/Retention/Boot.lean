@@ -134,7 +134,8 @@ theorem hj_le_HZ_of_before (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fi
 `Σ.F`, of height `≤ H_z` (no chain has crossed `H_z + 1`, G0.2 (a)), is below every high origin:
 its finality quorum meets the crossing quorum on a counted head's chain at its height in an honest
 validator (G1.2, G0.5, `f < 2q − n`). -/
-theorem boot_caches (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ResetPremisesUpTo.boot_caches {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     (hk : ∀ k' < k, tr.time k' < a) :
     (tr.state y k).fg.hj ≤ HZ tr H g ∧
@@ -142,13 +143,23 @@ theorem boot_caches (hp : ResetPremises tr H proposer dg g ΔF a)
         Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B := by
   have hr := Compose.fg_reachable hp.run.toLocalRun hy k
   obtain ⟨hFm, -, -, ⟨X, hX, -, hXj⟩, -, -, ⟨Y, hY, hYF⟩⟩ := Store.cache_invariants _ _ _ _ hr
-  refine ⟨by rw [← hXj]; exact hj_le_HZ_of_before hp hy hk hX, fun x i j B ho => Or.inl ?_⟩
+  refine ⟨by rw [← hXj]; exact hp.hj_le_HZ_of_before hy hk hX, fun x i j B ho => Or.inl ?_⟩
   obtain ⟨c, -, -, -, hc⟩ := Store.chain_state_of_chain _ _ _ _ hr Y hY
   obtain ⟨-, hFj, -⟩ := FG.chain_invariants _ _ _ hc
-  have := hj_le_HZ_of_before hp hy hk hY
+  have := hp.hj_le_HZ_of_before hy hk hY
   have := ho.2.2.2
-  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
-  exact finalized_anc_of_height_lt hp hy ho.1 hY hFm hYF.symm hBx (by omega)
+  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := hp.highOrigin_mem ho
+  exact finalized_anc_of_height_lt_of_run hp.run hp.noColl hp.faults
+    hy ho.1 hY hFm hYF.symm hBx (by omega)
+
+/-- Whole-run specialization of the pre-reset cache bounds. -/
+theorem boot_caches (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    (hk : ∀ k' < k, tr.time k' < a) :
+    (tr.state y k).fg.hj ≤ HZ tr H g ∧
+      ∀ x i j B, HighOrigin tr H g x i j B →
+        Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B :=
+  (hp.toUpTo tr H (le_refl a)).boot_caches hy hk
 
 /-- The label of a high origin starts at or after `g` (`t_j ≥ c_z > ḡ ≥ g`). -/
 private theorem g_le_ts (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
