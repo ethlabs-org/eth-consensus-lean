@@ -545,12 +545,270 @@ theorem sleepy_inBy (hv : rho.ExecutionValid)
     have := (S.params (pubOf E) hn).toParams.hΔ
     linarith) hτ hτt hth hP hinc
 
-/-- OPEN arbitrary-cut safety consumer (owner: Refinement). R.1 bounds node reads; the
-engine exposes every event cut, not only end-of-time reads. Relate each ready reader's
-stored clock/output to a node boundary at the engine cut time before applying finite R.1.
-`sleepy_read_cut` alone is insufficient because it only handles end-of-time cuts. This
-leaf records that separate clock obligation; no future node time is used as observation.
-Depends on finite R.1 and structural chain compatibility/monotonicity transport. -/
+/-- The mapped post-event cut is a nonstrict read point at the event time.
+Other nodes may still have events at the same time. -/
+theorem readPoint_after_event (hv : rho.ExecutionValid) {i : Nat}
+    {e : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
+    (he : rho.events[i]? = some e) :
+    Regimes.ReadPoint (simTrace S rho hn) (cutMap S rho hn (i + 1)) e.time := by
+  have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
+  constructor
+  · intro k hk
+    have hlen : k < (allCuts S rho hn).length := by
+      rw [length_allCuts]
+      exact hk.trans_le (cutMap_mono S rho hn (by omega))
+    have hl : (simTrace S rho hn).label k ≠ none := by
+      rw [simTrace_label, List.getElem?_eq_getElem hlen]
+      simp
+    obtain ⟨_, j, f, _, hf, hj, _, _, _, ht, _⟩ := simTrace_cut S rho hn hl
+    have hji : j ≤ i := by
+      by_contra h
+      have := cutMap_mono S rho hn (show i + 1 ≤ j by omega)
+      omega
+    rw [ht]
+    rcases hji.lt_or_eq with h | rfl
+    · rcases keyLe_of_lt S rho hv hf he h with h | ⟨h, _⟩
+      · exact h.le
+      · exact h.le
+    · rw [he] at hf
+      exact (Option.some.inj hf) ▸ le_rfl
+  · cases hr : (allCuts S rho hn)[cutMap S rho hn (i + 1)]? with
+    | none =>
+      rw [(simTrace_of_getElem?_none S rho hn hr).2]
+      have := (hv.in_horizon e (List.mem_of_getElem? he)).2
+      linarith
+    | some r =>
+      have hl : (simTrace S rho hn).label (cutMap S rho hn (i + 1)) ≠ none := by
+        rw [simTrace_label, hr]; simp
+      obtain ⟨_, j, f, _, hf, _, hj, _, _, ht, _⟩ := simTrace_cut S rho hn hl
+      have hij : i < j := by
+        by_contra h
+        have := cutMap_mono S rho hn (show j + 1 ≤ i + 1 by omega)
+        omega
+      rw [ht]
+      rcases keyLe_of_lt S rho hv he hf hij with h | ⟨h, _⟩
+      · exact h.le
+      · exact h.le
+
+/-- A completed local event leaves the stored clock at that event's time, including
+deliveries (whose preceding tick is forced by execution validity). -/
+theorem now_after_local_event (hv : rho.ExecutionValid) {v : V} {i : Nat}
+    {e : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
+    (he : rho.events[i]? = some e) (hev : e.node = v) :
+    (stateAt S rho hn v (i + 1)).now = e.time := by
+  rw [now_eq_lastClock S rho hn hv]
+  cases e with
+  | tick w t =>
+    simp only [Model.Event.node] at hev
+    subst v
+    exact lastClock_succ_tick S rho w he
+  | restart w t =>
+    simp only [Model.Event.node] at hev
+    subst v
+    exact lastClock_succ_restart S rho w he
+  | deliver w o t =>
+    simp only [Model.Event.node] at hev
+    subst v
+    rw [lastClock_succ_deliver S rho w he]
+    exact lastClock_of_deliver S rho hv w he
+
+/-- At any cut the reader is still initial, or its state is the post-state of a
+complete local event. Other nodes' later events do not move this reader's clock. -/
+theorem stateAt_last_local_event (hv : rho.ExecutionValid) (v : V) : ∀ i,
+    stateAt S rho hn v i = stateAt S rho hn v 0 ∨
+      ∃ j < i, ∃ e, rho.events[j]? = some e ∧ e.node = v ∧
+        stateAt S rho hn v i = stateAt S rho hn v (j + 1) ∧
+        (stateAt S rho hn v i).now = e.time
+  | 0 => Or.inl rfl
+  | i + 1 => by
+    cases he : rho.events[i]? with
+    | none =>
+      rw [stateAt_succ_none S rho hn v he]
+      rcases stateAt_last_local_event hv v i with h | ⟨j, hj, e, he, hev, hs, ht⟩
+      · exact Or.inl h
+      · exact Or.inr ⟨j, by omega, e, he, hev, hs, ht⟩
+    | some e =>
+      by_cases hev : e.node = v
+      · exact Or.inr ⟨i, Nat.lt_succ_self i, e, he, hev, rfl,
+          now_after_local_event S rho hn hv he hev⟩
+      · rw [state_of_other S rho hn v i e he hev]
+        rcases stateAt_last_local_event hv v i with h | ⟨j, hj, e, he, hev, hs, ht⟩
+        · exact Or.inl h
+        · exact Or.inr ⟨j, by omega, e, he, hev, hs, ht⟩
+
+/-- A stored clock cannot be ahead of the next engine event. -/
+theorem now_le_event (hv : rho.ExecutionValid) (v : V) {i : Nat}
+    {e : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
+    (he : rho.events[i]? = some e) : (stateAt S rho hn v i).now ≤ e.time := by
+  rcases stateAt_last_local_event S rho hn hv v i with h | ⟨j, hj, f, hf, _, _, ht⟩
+  · rw [h]
+    exact (hv.in_horizon e (List.mem_of_getElem? he)).1
+  · rw [ht]
+    rcases keyLe_of_lt S rho hv hf he hj with h | ⟨h, _⟩
+    · exact h.le
+    · exact h.le
+
+/-- Restarts, ticks and deliveries never decrease the stored clock. -/
+theorem now_mono (hv : rho.ExecutionValid) (v : V) :
+    Monotone (fun i => (stateAt S rho hn v i).now) := by
+  apply monotone_nat_of_le_succ
+  intro i
+  cases he : rho.events[i]? with
+  | none => rw [stateAt_succ_none S rho hn v he]
+  | some e =>
+    by_cases hev : e.node = v
+    · rw [now_after_local_event S rho hn hv he hev]
+      exact now_le_event S rho hn hv v he
+    · rw [state_of_other S rho hn v i e he hev]
+
+/-- At a valid event cut the stored clock is between zero and the cut time. -/
+theorem now_bounds_cut (hv : rho.ExecutionValid) (v : V) {i : Nat}
+    (hi : i ≤ rho.events.length) :
+    0 ≤ (stateAt S rho hn v i).now ∧ (stateAt S rho hn v i).now ≤ rho.cutTime i := by
+  refine ⟨now_mono S rho hn hv v (Nat.zero_le i), ?_⟩
+  cases i with
+  | zero => exact le_rfl
+  | succ i =>
+    have hi' : i < rho.events.length := by omega
+    let e := rho.events[i]
+    have he : rho.events[i]? = some e := List.getElem?_eq_getElem hi'
+    simp only [Model.Run.cutTime, he]
+    by_cases hev : e.node = v
+    · exact (now_after_local_event S rho hn hv he hev).le
+    · rw [state_of_other S rho hn v i e he hev]
+      exact now_le_event S rho hn hv v he
+
+/-- Unit-time ticks bound a ready reader's clock lag, even before its tick at
+the current cut time. The extra unit of catch-up pays for this lag. -/
+theorem ready_at_stored_now (hv : rho.ExecutionValid) {v : V} {i : Nat}
+    (hi : i ≤ rho.events.length) {c : Time} (hc : 0 ≤ c)
+    (hr : rho.point.Ready (c + 1) v (rho.cutTime i)) :
+    rho.point.Ready c v (stateAt S rho hn v i).now := by
+  obtain ⟨hn0, hnT⟩ := now_bounds_cut S rho hn hv v hi
+  have hlag : rho.cutTime i - 1 ≤ (stateAt S rho hn v i).now := by
+    by_cases ht : 0 ≤ rho.cutTime i - 1
+    · have hth : rho.cutTime i - 1 ≤ rho.horizon := by
+        cases i with
+        | zero => simp [Model.Run.cutTime] at ht
+        | succ i =>
+          have hi' : i < rho.events.length := by omega
+          have he := List.getElem?_eq_getElem hi'
+          have := (hv.in_horizon _ (List.mem_of_getElem? he)).2
+          simp only [Model.Run.cutTime, he]
+          linarith
+      have hw : E.awake v (rho.cutTime i - 1) = true := hr.2 _
+        (max_le ht (by linarith)) (by linarith)
+      obtain ⟨j, hj⟩ := List.mem_iff_getElem?.mp
+        (hv.tick_total v hr.1 _ ht hth hw)
+      have hji : j < i := by
+        cases i with
+        | zero => simp [Model.Run.cutTime] at ht
+        | succ k =>
+          have hk : k < rho.events.length := by omega
+          have he := List.getElem?_eq_getElem hk
+          have htime : rho.cutTime (k + 1) = (rho.events[k]).time := by
+            simp [Model.Run.cutTime, he]
+          by_contra h
+          have hkj : k < j := by omega
+          have horder := keyLe_of_lt S rho hv he hj hkj
+          change (rho.events[k]).time < rho.cutTime (k + 1) - 1 ∨
+            (rho.events[k]).time = rho.cutTime (k + 1) - 1 ∧ _ at horder
+          rw [htime] at horder
+          rcases horder with horder | ⟨horder, _⟩ <;> linarith
+      have hclock := now_after_local_event S rho hn hv (v := v) hj rfl
+      have hm := now_mono S rho hn hv v (show j + 1 ≤ i by omega)
+      dsimp only at hm
+      rw [hclock] at hm
+      exact hm
+    · linarith
+  refine ⟨hr.1, fun τ hlo hhi => hr.2 τ ?_ (hhi.trans hnT)⟩
+  apply max_le
+  · exact (le_max_left _ _).trans hlo
+  · have := (le_max_right _ _).trans hlo
+    linarith
+
+/-- At a ready read point, confirmed output is the stored effective record.
+This uses the head-support theorem directly: no call-boundary premise is needed. -/
+private theorem read_eq_effective_record (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    (hinv : Compose.SleepyInvariantUpTo (simTrace S rho hn) (honestKeys S rho) rho.horizon)
+    (hsync : (simTrace S rho hn).SyncBefore (honestKeys S rho)
+      (S.params (pubOf E) hn).Δ rho.horizon)
+    (hf : ∀ s : Nat, (S.params (pubOf E) hn).ts s + (S.params (pubOf E) hn).Δ ≤ rho.horizon →
+      (simTrace S rho hn).FaultBound (honestKeys S rho)
+        ((S.params (pubOf E) hn).ts s + (S.params (pubOf E) hn).Δ))
+    {y : Fin (Fintype.card V)} {j : Nat} {t : Time}
+    (hrp : Regimes.ReadPoint (simTrace S rho hn) j t)
+    (hr : Regimes.ReadyAt (simTrace S rho hn) (honestKeys S rho)
+      (Regimes.catchUp (S.params (pubOf E) hn)) y t) (ht : t ≤ rho.horizon) :
+    Regimes.readAfter (simTrace S rho hn) y j t =
+      (SA.lookup (Node.frame ((simTrace S rho hn).state y j))
+        ((simTrace S rho hn).state y j).ac.latestConfirmed).getD
+          ((simTrace S rho hn).state y j).fg.F := by
+  let hrun := simTrace_goldilocksRun S rho hn hv
+  have hΦ := Compose.frameOK_state hrun.toLocalRun hr.1 j
+  cases hl : SA.lookup (Node.frame ((simTrace S rho hn).state y j))
+      ((simTrace S rho hn).state y j).ac.latestConfirmed with
+  | none =>
+    exact SA.acConfirmed_eq_F hΦ (SA.lookup_eq_none hl)
+  | some R =>
+    obtain ⟨hR, hRr⟩ := SA.lookup_eq_some hl
+    have hwj : 0 ≤ t → (simTrace S rho hn).awake y t ∧
+        (simTrace S rho hn).JoinedAt y t := fun ht0 =>
+      Compose.ready_implies_joined _ _ _ _ _ _ hrun y hr.1 t _ ht0
+        (by unfold Regimes.catchUp; linarith [(S.params (pubOf E) hn).toParams.hΔ]) hr.2
+    obtain ⟨hc, hs⟩ := Compose.read_head_support_before hinv hrun hnc
+      (Compose.syncBefore_projection hrun.toLocalRun hsync) hr.1 ht
+      (fun s hs => hf s (hs.trans ht)) hrp.1 hrp.2 hwj ⟨hR, hRr⟩
+    exact SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)
+
+/-- Move a ready engine read to a complete local-event cut, evaluate the record
+there, then transport back through the unchanged local state. -/
+private theorem stored_read_eq_record (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    (hinv : Compose.SleepyInvariantUpTo (simTrace S rho hn) (honestKeys S rho) rho.horizon)
+    (hsync : (simTrace S rho hn).SyncBefore (honestKeys S rho)
+      (S.params (pubOf E) hn).Δ rho.horizon)
+    (hf : ∀ s : Nat, (S.params (pubOf E) hn).ts s + (S.params (pubOf E) hn).Δ ≤ rho.horizon →
+      (simTrace S rho hn).FaultBound (honestKeys S rho)
+        ((S.params (pubOf E) hn).ts s + (S.params (pubOf E) hn).Δ))
+    {v : V} {i : Nat} (hi : i ≤ rho.events.length)
+    (hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf E) hn) + 1) v (rho.cutTime i)) :
+    Regimes.readAfter (simTrace S rho hn) (rho.ownKey v) (cutMap S rho hn i)
+        (stateAt S rho hn v i).now =
+      (SA.lookup (Node.frame ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)))
+        ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).ac.latestConfirmed).getD
+          ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.F := by
+  have hready := ready_at_stored_now S rho hn hv hi (by
+    unfold Regimes.catchUp
+    linarith [(S.params (pubOf E) hn).toParams.hΔ]) hr
+  obtain ⟨q, hq, hs, hrp, hth⟩ : ∃ q ≤ rho.events.length,
+      stateAt S rho hn v i = stateAt S rho hn v q ∧
+      Regimes.ReadPoint (simTrace S rho hn) (cutMap S rho hn q) (stateAt S rho hn v i).now ∧
+      (stateAt S rho hn v i).now ≤ rho.horizon := by
+    rcases stateAt_last_local_event S rho hn hv v i with hs | ⟨j, hj, e, he, hev, hs, ht⟩
+    · refine ⟨0, Nat.zero_le _, hs, ?_, ?_⟩
+      · rw [hs, cutMap_zero]
+        exact ⟨fun k hk => by omega, (simTrace_goldilocksRun S rho hn hv).time_nonneg 0⟩
+      · rw [hs]
+        exact hv.horizon_nonneg
+    · refine ⟨j + 1, by omega, hs, ?_, ?_⟩
+      · rw [ht]
+        exact readPoint_after_event S rho hn hv he
+      · rw [ht]
+        exact (hv.in_horizon e (List.mem_of_getElem? he)).2
+  have hn0 := (now_bounds_cut S rho hn hv v hi).1
+  have hnready := ready_transport S rho hn hv hn0 hth hready
+  have heq := read_eq_effective_record S rho hn hv hnc hinv hsync hf hrp hnready hth
+  have hstate : (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i) =
+      (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn q) := by
+    rw [← simTrace_state S rho hn hv v hr.1 i hi, ← simTrace_state S rho hn hv v hr.1 q hq, hs]
+  simpa only [Regimes.readAfter, hstate] using heq
+
+/-- Finite safety at arbitrary engine cuts. Compatibility holds at arbitrary stored
+clocks. For monotonicity, one extra unit of readiness absorbs the clock lag; the last
+complete local event identifies the output with the effective record. Records extend
+at the original ordered cuts, and coherent stores preserve their emitted chains. -/
 theorem sleepy_safe_engine (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
     (hsync : (simTrace S rho hn).SyncBefore (honestKeys S rho)
@@ -559,8 +817,73 @@ theorem sleepy_safe_engine (hv : rho.ExecutionValid)
       2 * (S.params (pubOf E) hn).Δ} : Set Time),
       (S.params (pubOf E) hn).ts s + d ≤ rho.horizon →
       (simTrace S rho hn).FaultBound (honestKeys S rho) ((S.params (pubOf E) hn).ts s + d)) :
-    (chainTrace rho).ReadySafe (Regimes.catchUp (S.params (pubOf E) hn)) .confirmed 0 := by
-  sorry
+    (chainTrace rho).ReadySafe (Regimes.catchUp (S.params (pubOf E) hn) + 1) .confirmed 0 := by
+  let tr := simTrace S rho hn
+  let H := honestKeys S rho
+  have hrun := simTrace_goldilocksRun S rho hn hv
+  have hinv := Compose.sleepy_invariant_before hrun hnc hv.horizon_nonneg hsync hf
+  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
+  have hcut : ∀ i ≤ rho.events.length, ∀ k < cutMap S rho hn i, tr.time k ≤ rho.horizon := by
+    intro i hi k hk
+    apply simTrace_labelled_time_le S rho hn hv
+    have hlen : k < (allCuts S rho hn).length := by
+      rw [length_allCuts]
+      exact hk.trans_le (cutMap_mono S rho hn hi)
+    rw [simTrace_label, List.getElem?_eq_getElem hlen]
+    simp
+  let C := fun v i => Regimes.readAfter tr (rho.ownKey v) (cutMap S rho hn i)
+    (stateAt S rho hn v i).now
+  have hC : ∀ v ∈ rho.honest, ∀ i,
+      C v i ∈ (tr.state (rho.ownKey v) (cutMap S rho hn i)).fg.tree := by
+    intro v hv' i
+    exact (Regimes.sa_tips (A := (tr.state (rho.ownKey v) (cutMap S rho hn i)).ac)
+      (Compose.frameOK_state hrun.toLocalRun (honest_ownKey (S := S) hv') _) _).1.1
+  have hread : ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length,
+      (chainTrace rho).read .confirmed v i =
+        chainTo (tr.state (rho.ownKey v) (cutMap S rho hn i)).fg.blocks
+          ((C v i).slot + 1) (C v i) := by
+    intro v hv' i hi
+    rw [readIsOut V S E rho hn, outOf, simTrace_state S rho hn hv v hv' i hi]
+    rfl
+  have hprefix : ∀ u v i j, u ∈ rho.honest → v ∈ rho.honest →
+      i ≤ rho.events.length → j ≤ rho.events.length →
+      Anc (tr.HonestBlocks H) (C u i) (C v j) →
+      (chainTrace rho).read .confirmed u i <+: (chainTrace rho).read .confirmed v j := by
+    intro u v i j hu hv' hi hj ha
+    have hu' := honest_ownKey (S := S) hu
+    have hv'' := honest_ownKey (S := S) hv'
+    have hri := Compose.fg_reachable hrun.toLocalRun hu' (cutMap S rho hn i)
+    have hrj := Compose.fg_reachable hrun.toLocalRun hv'' (cutMap S rho hn j)
+    have hsi : (tr.state (rho.ownKey u) (cutMap S rho hn i)).fg.tree ⊆ tr.HonestBlocks H :=
+      fun _ h => ⟨_, hu', _, h⟩
+    have hsj : (tr.state (rho.ownKey v) (cutMap S rho hn j)).fg.tree ⊆ tr.HonestBlocks H :=
+      fun _ h => ⟨_, hv'', _, h⟩
+    have ha' := anc_in_store hrj hU hsj ha (hC v hv' j)
+    have hm : C u i ∈ (tr.state (rho.ownKey v) (cutMap S rho hn j)).fg.tree := by
+      by_cases he : C u i = C v j
+      · exact he ▸ hC v hv' j
+      · exact (Anc.mem ha' he).1
+    rw [hread u hu i hi, hread v hv' j hj,
+      chainTo_agree hri hrj hU hsi hsj (hC u hu i) hm]
+    exact chainTo_prefix hrj ha'
+  constructor
+  · intro u v i j hi hj hu hv'
+    have hc := hinv.read_compatible hrun hnc (honest_ownKey (S := S) hu.1)
+      (honest_ownKey (S := S) hv'.1) (hcut i hi.1) (hcut j hj.1)
+      (stateAt S rho hn u i).now (stateAt S rho hn v j).now
+    rcases hc with hc | hc
+    · exact Or.inl (hprefix u v i j hu.1 hv'.1 hi.1 hj.1 hc)
+    · exact Or.inr (hprefix v u j i hv'.1 hu.1 hj.1 hi.1 hc)
+  · intro v i j hi hij hj hvi hvj
+    apply hprefix v v i j hvi.1 hvj.1 hi.1 hj.1
+    have hfi := stored_read_eq_record S rho hn hv hnc hinv hsync
+      (fun s hs => hf s _ (by simp) hs) hi.1 hvi
+    have hfj := stored_read_eq_record S rho hn hv hnc hinv hsync
+      (fun s hs => hf s _ (by simp) hs) hj.1 hvj
+    dsimp only [C]
+    rw [hfi, hfj]
+    exact Compose.effective_record_mono_of_invariant hrun hnc hinv
+      (honest_ownKey (S := S) hvi.1) (cutMap_mono S rho hn hij) (hcut j hj.1)
 
 end Consensus.Goldilocks.Refinement
 

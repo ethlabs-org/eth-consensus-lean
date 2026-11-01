@@ -1146,7 +1146,7 @@ theorem accepted_sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) �
     have safe := sleepy_safe_engine S r.2 hn hv
       (noCollTransport V S r.1 r.2 hn hv hc) hsync hf
     have ready : ∀ v t, r.2.point.Ready ((Sys (family S) V).cDur (K S A) r) v t →
-        r.2.point.Ready (Regimes.catchUp (S.params (Model.pubOf r.1) hn)) v t := by
+        r.2.point.Ready (Regimes.catchUp (S.params (Model.pubOf r.1) hn) + 1) v t := by
       intro v t h
       refine ⟨h.1, fun τ hlo hhi => h.2 τ ?_ hhi⟩
       exact (max_le_max_left 0 (sub_le_sub_right (sub_le_sub_left hd t) 1)).trans hlo

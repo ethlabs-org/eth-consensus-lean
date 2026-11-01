@@ -62,7 +62,7 @@ structure SleepySafetyQuery where
 No recurrence is needed or assumed. Arbitrary-cut output transport remains the
 existing sleepy_safe_engine leaf, not an endCut-only assertion. -/
 theorem sleepy_safety_inputs (Q : SleepySafetyQuery S A V) :
-    Regimes.catchUp (S.params (Model.pubOf Q.run.1) Q.hn) ≤
+    Regimes.catchUp (S.params (Model.pubOf Q.run.1) Q.hn) + 1 ≤
       (Sys (family S) V).cDur (K S A) Q.run ∧
     (simTrace S Q.run.2 Q.hn).SyncBefore (honestKeys S Q.run.2)
       (S.params (Model.pubOf Q.run.1) Q.hn).Δ Q.run.2.horizon ∧
