@@ -51,6 +51,18 @@ theorem Th_eq_of_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     · rw [hT]; exact ih (by omega)
     · omega
 
+/-- Two self-entries at the same height below one held carrier are the same block. -/
+theorem self_entries_eq {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+    (hr : st.Reachable acp₀) {X J Y : NodeBlock P ACP}
+    (hX : X ∈ st.tree) (hJ : J ∈ st.tree) (hXY : st.Anc X Y) (hJY : st.Anc J Y)
+    (hh : (st.σ X.root).h = (st.σ J.root).h)
+    (hXT : (st.σ X.root).Th = X.root) (hJT : (st.σ J.root).Th = J.root) : X = J := by
+  have hcoh := (Goldilocks.Store.accepted_tree P ACP acp₀ st hr).2.1
+  apply hcoh.1 hX hJ
+  rcases Anc.total hcoh hXY hJY with h | h
+  · exact hXT.symm.trans ((Th_eq_of_anc hr h hh.symm).symm.trans hJT)
+  · exact hXT.symm.trans ((Th_eq_of_anc hr h hh).trans hJT)
+
 /-- `create_attestation`'s new record is the old one with the attestation recorded. -/
 private theorem createAtt_record {n : Nat} {Λ Λ' : FG.Record} {v : Fin n}
     {σe : FG.ChainState n} {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) :

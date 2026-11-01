@@ -1,6 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Crossing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 
 public section
 
@@ -72,7 +75,192 @@ theorem fin_pair_entry (hr : st.Reachable acp₀) {X : NodeBlock P ACP} (hX : X 
       Goldilocks.Store.entry_state_of_source P ACP acp₀ _ hr _ hYW.1
     exact step_pairs ht Q ih.1 ih.2 (Or.inr ⟨E, hE, hEr, hEh⟩)
 
+/-- A non-genesis finalized target retains its self-entry witness, not only its height. -/
+theorem fin_pair_self_entry (hr : st.Reachable acp₀) {X : NodeBlock P ACP}
+    (hX : X ∈ st.tree) :
+    (st.σ X.root).F = P.genesisRoot ∨ ∃ W ∈ st.tree,
+      W.root = (st.σ X.root).F ∧ (st.σ W.root).h = (st.σ X.root).hF ∧
+      (st.σ W.root).Th = W.root := by
+  let Q : Nat × Nat → Prop := fun p =>
+    p.2 = P.genesisRoot ∨ ∃ W ∈ st.tree,
+      W.root = p.2 ∧ (st.σ W.root).h = p.1 ∧ (st.σ W.root).Th = W.root
+  suffices key : (∀ p ∈ (st.σ X.root).pending, Q p) ∧ Q ((st.σ X.root).hF, (st.σ X.root).F) from
+    key.2
+  have hA := (Goldilocks.Store.accepted_tree P ACP acp₀ _ hr).2.2.2 X hX
+  clear hX
+  induction hA with
+  | refl =>
+    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis hr]
+    exact ⟨fun p hp => by simp [FG.ChainState.init] at hp, Or.inl rfl⟩
+  | tail _ hYW ih =>
+    obtain ⟨_, _, _, ht⟩ := step_σ hr hYW.2.1 hYW.2.2
+    obtain ⟨⟨E, hE, hEr, _, hEh, hET⟩, _⟩ :=
+      Goldilocks.Store.entry_state_of_source P ACP acp₀ _ hr _ hYW.1
+    exact step_pairs ht Q ih.1 ih.2 (Or.inr ⟨E, hE, hEr, hEh, hET.trans hEr.symm⟩)
+
 end Store
+
+/-- A retained justification at least as high as a replay-finalized target covers that
+target. At equal height the retained carrier supplies the common descendant and self-entries. -/
+theorem replay_finalized_below_justification {P : Params} {ACP : Type} {acp₀ : ACP}
+    {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)} {tr : FGTrace P ACP}
+    (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.fg.q - P.n)
+    {x y : Fin P.n} (hx : x ∈ H) (hy : y ∈ H) {i j : Nat} {B X Y J : NodeBlock P ACP}
+    (hB : B ∈ (tr.store x i).tree) (hX : X ∈ (tr.store x i).tree)
+    (hXr : X.root = ((tr.store x i).σ B.root).F)
+    (hY : Y ∈ (tr.store y j).tree) (hJ : J ∈ (tr.store y j).tree)
+    (hJr : J.root = ((tr.store y j).σ Y.root).J)
+    (hh : ((tr.store x i).σ B.root).hF ≤ ((tr.store y j).σ Y.root).hj) :
+    Anc U X J := by
+  have hrx := Goldilocks.Store.store_reachable hr hx i
+  have hry := Goldilocks.Store.store_reachable hr hy j
+  have subx := hr.tree_subset x hx i
+  have suby := hr.tree_subset y hy j
+  rcases Store.fin_pair_self_entry hrx hB with hg | ⟨X', hX', hX'r, hXh, hXT⟩
+  · have he : X = P.genesisBlock acp₀ := hr.coherent.1 (subx hX)
+      (subx (Store.genesis_mem hrx)) (hXr.trans hg)
+    rw [he]
+    exact ((Goldilocks.Store.accepted_tree P ACP acp₀ _ hry).2.2.2 J hJ).mono suby
+  have he : X' = X := hr.coherent.1 (subx hX') (subx hX) (hX'r.trans hXr.symm)
+  subst X'
+  obtain ⟨J', hJ', hJ'r, hJY, hcase⟩ := Store.J_entry_of_reachable hry hY
+  have he : J' = J := hr.coherent.1 (suby hJ') (suby hJ) (hJ'r.trans hJr.symm)
+  subst J'
+  have hYh := Store.hj_lt_h hry hY
+  have hXY := finalized_anc_of_lt_fg hr hH hx hy hB hX hXr hY (hh.trans_lt hYh)
+  have hXY' := Goldilocks.Store.anc_of_U hr hy hXY hY
+  have hXt : X ∈ (tr.store y j).tree := by
+    by_cases he : X = Y
+    · exact he ▸ hY
+    · exact (Anc.mem hXY' he).1
+  have hσ := Goldilocks.Store.σ_eq_of_held hr hx hy hX hXt
+  have hJh := Store.J_height_le hry hY hJ hJr
+  have hJT : ((tr.store y j).σ J.root).Th = J.root := by
+    rcases hcase with rfl | hcase
+    · rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, Store.σ_genesis hry]
+      rfl
+    · exact hcase.2
+  by_cases hlt : ((tr.store x i).σ B.root).hF < ((tr.store y j).σ J.root).h
+  · exact finalized_anc_of_lt_fg hr hH hx hy hB hX hXr hJ hlt
+  · have he : X = J := self_entries_eq hry hXt hJ hXY' hJY
+      (by rw [← hσ, hXh]; omega) (by rw [← hσ]; exact hXT) hJT
+    rw [he]
+    exact .refl
+
+/-- Successful acceptance transfers replay finality into the actual cache when the old
+cache is below the target. The inserted store is used only through its actual post-state. -/
+theorem accepted_replay_finalized_cached {P : Params} {ACP : Type} {acp₀ : ACP}
+    {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)} {tr : FGTrace P ACP}
+    (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.fg.q - P.n)
+    {y : Fin P.n} (hy : y ∈ H) {k : Nat} {B X : NodeBlock P ACP}
+    (ha : tr.AcceptAt y k B) (hX : X ∈ (tr.store y (k + 1)).tree)
+    (hXr : X.root = ((tr.store y (k + 1)).σ B.root).F)
+    (hFX : Anc U (tr.store y k).F X) : Anc U X (tr.store y (k + 1)).F := by
+  classical
+  let pre := tr.store y k
+  let post := tr.store y (k + 1)
+  have hpre := Goldilocks.Store.store_reachable hr hy k
+  have hpost := Goldilocks.Store.store_reachable hr hy (k + 1)
+  have hab := Goldilocks.Store.accept_onBlock hr hy ha
+  obtain ⟨pr, σ, _, _, _, _, _, hp⟩ := Goldilocks.Store.onBlock_eq_some hab
+  let ins : Goldilocks.Store P ACP :=
+    { pre with blocks := Function.update pre.blocks B.root (some B),
+               σ := Function.update pre.σ B.root σ }
+  have hp' : post = (ins.updateFinality σ).addAtts B.fgPayload := hp
+  obtain ⟨atts, hatts⟩ := Goldilocks.Store.addAtts_eq (ins.updateFinality σ) B.fgPayload
+  have heq : post = { ins.updateFinality σ with atts := atts } := hp'.trans hatts
+  have hb : post.blocks = ins.blocks := by
+    rw [heq]; exact (Goldilocks.Store.updateFinality_spec ins σ).1
+  have hs : post.σ = ins.σ := by
+    rw [heq]; exact (Goldilocks.Store.updateFinality_spec ins σ).2.1
+  have ht : post.tree = ins.tree := by unfold Goldilocks.Store.tree; rw [hb]
+  have hB : B ∈ post.tree := by
+    change post.blocks B.root = some B
+    rw [hb]; simp [ins]
+  have hσ : post.σ B.root = σ := by rw [hs]; simp [ins]
+  have sub := hr.tree_subset y hy (k + 1)
+  have hFX' : post.Anc pre.F X := Goldilocks.Store.anc_of_U hr hy hFX hX
+  by_cases he : pre.F = X
+  · rw [← he]
+    exact ((Goldilocks.Store.finalized_monotone P ACP acp₀ _ hpre).1 B _ hab).mono sub
+  have hXF : ins.blocks (ins.σ B.root).F = some X := by
+    rw [← hs, ← hb, ← hXr]
+    exact hX
+  have hXB : post.Anc X B := by
+    obtain ⟨_, ⟨X', hX', hX'r, hX'B⟩, _⟩ :=
+      Goldilocks.Store.entry_state_of_source P ACP acp₀ _ hpost B hB
+    have h := hr.coherent.1 (sub hX') (sub hX) (hX'r.trans hXr.symm)
+    exact h ▸ hX'B
+  have hlimits := Goldilocks.Store.entry_input hpost B.root
+  have hfin : (post.σ B.root).hF ≤ (post.σ B.root).hj := by
+    obtain ⟨c, _, _, _, hc⟩ := Goldilocks.Store.chain_state_of_chain P ACP acp₀ _ hpost B hB
+    exact (FG.chain_invariants P.fg _ _ hc).2.1
+  obtain ⟨J, hJ, hJr, _⟩ :=
+    (Goldilocks.Store.entry_state_of_source P ACP acp₀ _ hpost B hB).2.2
+  have hXJ : post.Anc X J := Goldilocks.Store.anc_of_U hr hy
+    (replay_finalized_below_justification hr hH hy hy hB hX hXr hB hJ hJr hfin) hJ
+  have hafter : (Goldilocks.Store.afterJustification P ACP ins (ins.σ B.root)).Anc X
+      (Goldilocks.Store.afterJustification P ACP ins (ins.σ B.root)).J := by
+    have hlookup : ins.blocks (ins.σ B.root).J = some J := by
+      rw [← hs, ← hb, ← hJr]; exact hJ
+    have hFJ : ins.Anc ins.F J := by
+      change Anc ins.tree pre.F J
+      rw [← ht]; exact hFX'.trans hXJ
+    unfold Goldilocks.Store.afterJustification
+    simp only [hlookup]
+    split_ifs with htake
+    · change Anc ins.tree X J
+      rw [← ht]; exact hXJ
+    · have hn : ¬ Goldilocks.Store.LexLt (pre.hj, pre.J.root) ((post.σ B.root).hj,
+          (post.σ B.root).J) := by
+        intro hn
+        apply htake
+        exact ⟨hFJ, by simpa only [hs] using hn⟩
+      have hh : (post.σ B.root).hj ≤ pre.hj := by
+        by_contra h
+        exact hn (Or.inl (by omega))
+      obtain ⟨_, hJpre, _, ⟨Y, hY, hYJ, hYh⟩, _⟩ :=
+        Goldilocks.Store.cache_invariants P ACP acp₀ _ hpre
+      have hxj := replay_finalized_below_justification hr hH hy hy hB hX hXr
+        hY hJpre hYJ.symm (hfin.trans (hh.trans hYh.symm.le))
+      have hJpost := (Goldilocks.Store.held_mono hr hy (Nat.le_succ k) hJpre).1
+      change Anc ins.tree X pre.J
+      rw [← ht]
+      exact Goldilocks.Store.anc_of_U hr hy hxj hJpost
+  have hv : ({ ins with hmax := max ins.hmax (ins.σ B.root).h } :
+      Goldilocks.Store P ACP).HasViableDescendant X := by
+    obtain ⟨_, _, _, _, _, ⟨M, hM, hMh⟩, _⟩ :=
+      Goldilocks.Store.cache_invariants P ACP acp₀ _ hpre
+    have hMpost := (Goldilocks.Store.held_mono hr hy (Nat.le_succ k) hM).1
+    have hMs := Goldilocks.Store.σ_eq_of_held hr hy hy hM hMpost
+    have hmax : ∃ W ∈ post.tree, (post.σ W.root).h = max pre.hmax (post.σ B.root).h := by
+      by_cases h : pre.hmax ≤ (post.σ B.root).h
+      · exact ⟨B, hB, (max_eq_right h).symm⟩
+      · exact ⟨M, hMpost, by rw [← hMs, hMh, max_eq_left (le_of_not_ge h)]⟩
+    obtain ⟨W, hW, hWh⟩ := hmax
+    have hXW := finalized_anc_of_lt_fg hr hH hy hy hB hX hXr hW
+      ((hfin.trans_lt hlimits.2.1).trans_le (hWh ▸ le_max_right _ _))
+    refine ⟨W, ?_, ?_, ?_⟩
+    · change W ∈ ins.tree; rw [← ht]; exact hW
+    · change Anc ins.tree X W; rw [← ht]
+      exact Goldilocks.Store.anc_of_U hr hy hXW hW
+    · change _ ≤ (ins.σ W.root).h
+      rw [← hs]
+      have hm : ins.hmax = pre.hmax := rfl
+      unfold Goldilocks.Store.headHeightFloor
+      split_ifs <;> change _ ≤ (post.σ W.root).h <;> simp only [hm] <;> omega
+  have hc := Goldilocks.Store.cache_acceptance P ACP ins B X
+    (ht ▸ hB) (by rw [← hs]; exact hlimits.2.1) hXF
+    (by change Anc ins.tree X B; rw [← ht]; exact hXB)
+    (by change Anc ins.tree pre.F X; rw [← ht]; exact hFX') he hafter hv
+  rw [show ins.σ B.root = σ by simp [ins]] at hc
+  have hF : post.F = (ins.updateFinality σ).F := by rw [heq]
+  have htree : (ins.updateFinality σ).tree = post.tree := by
+    unfold Goldilocks.Store.tree
+    rw [(Goldilocks.Store.updateFinality_spec ins σ).1, ← hb]
+  change Anc (ins.updateFinality σ).tree X (ins.updateFinality σ).F at hc
+  rw [htree, ← hF] at hc
+  exact hc.mono sub
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}

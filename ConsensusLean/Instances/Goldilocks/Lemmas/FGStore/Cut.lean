@@ -132,7 +132,7 @@ private theorem parent_held (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : 
   · exact ⟨Y, hY⟩
 
 /-- `U`-ancestry below a held block is ancestry in the tree. -/
-private theorem anc_of_U (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+theorem anc_of_U (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {A C : NodeBlock P ACP} (h : Goldilocks.Anc U A C) (hC : C ∈ (tr.store y i).tree) :
     (tr.store y i).Anc A C := by
   induction h with

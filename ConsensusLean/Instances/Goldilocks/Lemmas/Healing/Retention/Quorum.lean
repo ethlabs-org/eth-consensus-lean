@@ -65,6 +65,27 @@ theorem J_entry_of_reachable (hr : st.Reachable acp₀) {W : NodeBlock P ACP} (h
         Goldilocks.Store.entry_state_of_source P ACP acp₀ _ hr _ hYW.1
       exact ⟨E, hE, h1.trans hJ.symm, hEY.tail hYW, Or.inr ⟨h2.trans hj.symm, h3.trans h1.symm⟩⟩
 
+/-- The block named by a justification has at least its recorded height, including genesis. -/
+theorem J_height_le (hr : st.Reachable acp₀) {W J : NodeBlock P ACP}
+    (hW : W ∈ st.tree) (hJ : J ∈ st.tree) (hJr : J.root = (st.σ W.root).J) :
+    (st.σ W.root).hj ≤ (st.σ J.root).h := by
+  have hA := (Goldilocks.Store.accepted_tree P ACP acp₀ _ hr).2.2.2 W hW
+  clear hW
+  induction hA generalizing J with
+  | refl =>
+    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis hr]
+    exact Nat.zero_le _
+  | tail _ hYW ih =>
+    obtain ⟨_, _, _, ht⟩ := step_σ hr hYW.2.1 hYW.2.2
+    rcases (step_fields' ht).2 with ⟨hroot, hh⟩ | ⟨hroot, hh⟩
+    · rw [hh]
+      exact ih hJ (hJr.trans hroot)
+    · obtain ⟨⟨E, hE, hEr, _, hEh, _⟩, _⟩ :=
+        Goldilocks.Store.entry_state_of_source P ACP acp₀ _ hr _ hYW.1
+      have he : J = E := (Goldilocks.Store.accepted_tree P ACP acp₀ _ hr).2.1.1
+        hJ hE ((hJr.trans hroot).trans hEr.symm)
+      rw [he, hEh, hh]
+
 /-- **The prefix-local quorum-free core** (`hr4-cut-scope.md` §2; the counting of
 `Store.quorum_free_entries` at one store). If no honest signer has an attestation naming `E` on a
 block of the store and the faulty validators are fewer than `q`, then every block above an
