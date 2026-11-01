@@ -13,6 +13,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Final
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
@@ -691,15 +692,93 @@ theorem final_row_signers :
         ((W.state B).bound → row.fin = some ((W.state B).hj, (W.state B).J)) := by
   sorry
 
-/-- OPEN continuous post-GST awake/service geometry. Every earlier processing cut has
-deadline at most the service endpoint; readiness only at the serving anchor is insufficient. -/
+-- Keep the existing supplier contract; only protection and anchor geometry are needed here.
+set_option linter.unusedSectionVars false in
+/-- Continuous post-GST awake/service geometry, including every earlier processing cut. -/
 theorem final_row_service_geometry {j : Nat}
     (ht : Q.trace.time j ≤ Q.params.ts e + 6 * Q.params.Δ) :
     Q.params.ts e + 7 * Q.params.Δ ≤ Q.deadline ∧
       Q.params.ts e + 7 * Q.params.Δ < Q.trace.time (W.cut a) ∧
       ∀ k ≤ W.cut a, Q.trace.deadline (W.block a).proposer k
         (max (Q.trace.time j) Q.gst) Q.params.Δ ≤ Q.params.ts e + 7 * Q.params.Δ := by
-  sorry
+  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have coh := Compose.honest_blocks_coherent run.toLocalRun
+    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+  have hd : 0 < Q.params.Δ := Q.params.toParams.hΔ
+  have htime (i : Fin 4) : Q.trace.time (W.cut i) = Q.params.ts (W.block i).slot :=
+    (W.proposals i).2.2
+  have hstart : max Q.gst 0 < Q.params.ts W.start := by
+    have hm := Q.mature
+    have hpos : (0 : Time) ≤ ((K S A).params.heal .final Q.index : Time) * Q.run.1.Δ :=
+      mul_nonneg (Nat.cast_nonneg _) Q.run.1.Δ_pos.le
+    change max Q.gst 0 + _ ≤ Q.query at hm
+    change max Q.gst 0 + ((K S A).params.heal .final Q.index : Time) * Q.run.1.Δ ≤ Q.query at hm
+    have hf := W.fresh
+    rw [htime, W.slots] at hf
+    simp only [Matrix.cons_val_zero, add_zero] at hf
+    linarith
+  have hexpose : W.start ≤ e := by
+    rcases hprotected with ⟨_, he⟩ | ⟨_, _, _, _, _, _, _, he⟩ <;>
+      split_ifs at he <;> omega
+  have hegst : max Q.gst 0 < Q.params.ts e :=
+    hstart.trans_le ((SA.ts_le_iff Q.params).mpr (Nat.cast_le.mpr hexpose))
+  have hstrict : Q.params.ts e + 7 * Q.params.Δ < Q.trace.time (W.cut a) := by
+    rw [htime]
+    rcases hanchor with ha | ⟨rfl, rfl⟩
+    · rw [← ha]
+      simp only [SA.SAParams.ts, Nat.cast_add, Nat.cast_ofNat]
+      nlinarith
+    · have he : e = W.start := by
+        rcases hprotected with ⟨_, he⟩ | ⟨C, hC, hB, hCB, hJ, hb, _, _⟩
+        · simpa only [ite_true] using he
+        · have hCeq := hC.2.1.antisymm coh hCB
+          subst C
+          have hheld := final_chain_held S A V Q W hB.1
+          have hr := final_store_reachable S A V Q W
+          obtain ⟨E, hE, hEr, _, hcase⟩ := Healing.Store.J_entry_of_reachable hr hheld
+          have hEq : E = W.block 0 := (Store.accepted_tree _ _ _ _ hr).2.1.1 hE hheld
+            (hEr.trans hJ)
+          subst E
+          rcases hcase with hg | ⟨hh, _⟩
+          · have hσ := Healing.Store.σ_genesis hr
+            rw [hg] at hb
+            change 0 < (W.store.σ Q.params.genesisRoot).hj ∧ _ at hb
+            rw [hσ] at hb
+            exact False.elim (by simpa [FG.ChainState.init] using hb.1)
+          · have hlt := Healing.Store.hj_lt_h hr hheld
+            change (W.state (W.block 0)).hj < (W.state (W.block 0)).h at hlt
+            change (W.state (W.block 0)).h = (W.state (W.block 0)).hj at hh
+            omega
+      rw [he, W.slots]
+      simp only [Matrix.cons_val_one, Matrix.cons_val_zero, SA.SAParams.ts,
+        Nat.cast_add, Nat.cast_sub (by have := A.timeout; omega : 1 ≤ S.δt), Nat.cast_one]
+      have ht : (4 : Time) ≤ S.δt := by exact_mod_cast A.timeout
+      nlinarith
+  refine ⟨hstrict.le.trans (W.bounded a), hstrict, ?_⟩
+  intro k hk
+  have hrestart : ∀ r ≤ k, Q.trace.RestartAt (W.block a).proposer r →
+      Q.trace.time r ≤ max Q.gst 0 := by
+    intro r hr hrest
+    obtain ⟨i, _, _, he⟩ := simTrace_restart_event S Q.run.2 Q.hn hrest
+    have hw := Q.valid.restart_at_wake _ _ (List.mem_of_getElem? he)
+    have hbound := (run.time_mono (hr.trans hk)).trans ((W.bounded a).trans Q.bounded)
+    change Q.trace.time r ≤ Q.run.2.horizon at hbound
+    by_contra h
+    change ¬ Q.trace.time r ≤ max Q.gst 0 at h
+    have hon : Q.run.2.key (W.block a).proposer ∈ Q.run.2.honest := (W.ready a).1
+    have hlo : max Q.gst 0 ≤ Q.trace.time r - 1 := Int.le_sub_one_of_lt (lt_of_not_ge h)
+    have hhi : Q.trace.time r - 1 ≤ Q.run.2.horizon :=
+      (sub_le_self _ (by decide : (0 : Time) ≤ 1)).trans hbound
+    have haw := Q.healthy.2.2 _ hon (Q.trace.time r - 1) hlo hhi
+    exact Bool.false_ne_true (hw.2.2.symm.trans haw)
+  apply le_trans (Compose.deadline_le_of_restarts hrestart _ _)
+  have hg : Q.gst ≤ Q.params.ts e + 6 * Q.params.Δ := by
+    have := le_max_left Q.gst 0
+    linarith
+  have hmax : max (Q.trace.time j) Q.gst ≤ Q.params.ts e + 6 * Q.params.Δ :=
+    max_le ht hg
+  have hm := max_le hmax (show max Q.gst 0 ≤ Q.params.ts e + 6 * Q.params.Δ by linarith)
+  linarith
 
 /-- Signed-row engine service transported to the anchor's strict processing endpoint. -/
 theorem final_row_processed {x : Fin Q.params.n} {row : FG.Att Q.params.n} {j : Nat}
