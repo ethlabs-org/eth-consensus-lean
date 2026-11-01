@@ -1030,8 +1030,8 @@ theorem low_root_of_seed_before (hp : ResetPremises tr H proposer dg g ΔF a)
   (hp.toUpTo tr H (le_refl a)).low_root_of_seed_before hx hBx hy hS hc hm hlow hBS hheld
 
 /-- All held honest rows justify root compatibility from bounded origin comparisons. -/
-theorem high_J_root_of_held_at_call_before
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ResetPremisesUpTo.high_J_root_of_held_at_call_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x y : Fin sp.n} {i k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H)
     {ell : ACLabel (goldilocksNode sp ro)}
@@ -1040,7 +1040,7 @@ theorem high_J_root_of_held_at_call_before
     (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
       Compatible (tr.HonestBlocks H) B O) :
     Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
-  have hU := honest_coherent hp
+  have hU := hp.honest_coherent
   have hreach := Compose.fg_reachable hp.run.toLocalRun hy k
   have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, k, hX⟩
   have hgB := ((Store.accepted_tree _ _ _ _
@@ -1058,13 +1058,19 @@ theorem high_J_root_of_held_at_call_before
     obtain ⟨E', hE', hE'r, hE'h⟩ := signAt_entry hp.run haH hsd
     obtain rfl : E' = E := hU.1 ⟨_, haH, d, hE'⟩ (hsub hE) (hE'r.trans haT)
     obtain ⟨r, hrd, l, O, hoO, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
-      high_row_source hp haH hsd (by rw [← hE'h, σ_eq_run hp haH hy hE' hE]; exact hEh)
+      hp.high_row_source haH hsd (by rw [← hE'h, hp.σ_eq_run haH hy hE' hE]; exact hEh)
     obtain rfl : E₀ = E' := hU.1 ⟨_, haH, r, hE₀⟩ (hsub hE) (hE₀r.trans haT)
     have hEO : Anc (tr.HonestBlocks H) E₀ O := hE₀O.mono fun X hX => ⟨_, haH, r, hX⟩
     rcases hcompare _ r l O (by omega) hoO with hBO | hOB
     · exact hnc (SA.anc_total hU hEO hBO)
     · exact hnc (Or.inl (hEO.trans hOB))
-  have hJ := Store.J_compatible_of_rows hreach (faulty_lt_q hp.healthy) hU hsub hgB hrow hhigh
+  have hq : Hᶜ.ncard < sp.toParams.fg.q := by
+    have hf := hp.faults
+    have hn := sp.toParams.hn
+    change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at hf
+    change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
+    omega
+  have hJ := Store.J_compatible_of_rows hreach hq hU hsub hgB hrow hhigh
   have hF : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B := by
     obtain ⟨-, -, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hreach
     rcases hJ with hJB | hBJ
@@ -1074,6 +1080,18 @@ theorem high_J_root_of_held_at_call_before
   change Compatible (tr.HonestBlocks H) (tr.state y k).fg.fcRoot B
   unfold Store.fcRoot
   split_ifs <;> assumption
+
+/-- Whole-run specialization of held-target high-root compatibility. -/
+theorem high_J_root_of_held_at_call_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hx : x ∈ H) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ell)
+    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
+    (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocks H) B O) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B :=
+  (hp.toUpTo tr H (le_refl a)).high_J_root_of_held_at_call_before hx hBx hy hc hhigh hcompare
 
 /-- Vote specialization of the call-level root comparison. -/
 theorem high_J_root_of_held_before
