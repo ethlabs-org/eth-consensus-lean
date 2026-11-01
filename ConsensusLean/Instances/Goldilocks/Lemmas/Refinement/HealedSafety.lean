@@ -474,6 +474,98 @@ theorem healthy_current_record_sources (D : HealthyRepairSchedule S A V Q)
           (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) := by
   sorry
 
+omit h0 hb hp W states in
+/-- The representative of a healthy stored-clock read is after the repair deadline,
+including observations at heal before the reader's same-time tick. -/
+theorem healthy_read_representative (D : HealthyRepairSchedule S A V Q)
+    {v : V} {i : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
+    (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
+      ((chainTrace Q.run.2).cutTime i)) :
+    ∃ q ≤ Q.run.2.events.length,
+      Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i) =
+        Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn q) ∧
+      Regimes.ReadPoint Q.trace (cutMap S Q.run.2 Q.hn q) (stateAt S Q.run.2 Q.hn v i).now ∧
+      0 ≤ (stateAt S Q.run.2 Q.hn v i).now ∧
+      (stateAt S Q.run.2 Q.hn v i).now ≤ Q.run.2.horizon ∧
+      D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ <
+        (stateAt S Q.run.2 Q.hn v i).now ∧
+      Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+        ((Sys (family S) V).cDur (K S A) Q.run - 1) (Q.run.2.ownKey v)
+        (stateAt S Q.run.2 Q.hn v i).now := by
+  have hi' : i ≤ Q.run.2.events.length := hi.1
+  have hc : 0 ≤ (Sys (family S) V).cDur (K S A) Q.run - 1 := by
+    have hd := D.duration_bound
+    have hΔ := Q.params.toParams.hΔ
+    change 0 < Q.params.Δ at hΔ
+    have hΔ1 : 1 ≤ Q.params.Δ := hΔ
+    linarith
+  have hr : Q.run.2.point.Ready (((Sys (family S) V).cDur (K S A) Q.run - 1) + 1)
+      v (Q.run.2.cutTime i) := by simpa only [sub_add_cancel, chainTrace] using hv
+  have hlag := stored_now_ge_cutTime_sub_one S Q.run.2 Q.hn Q.valid hi.1 hc hr
+  have hfloor : D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ <
+      (stateAt S Q.run.2 Q.hn v i).now := by
+    have hh : Q.heal ≤ Q.run.2.cutTime i := hi.2
+    linarith [D.reserve]
+  have ht0 := (now_bounds_cut S Q.run.2 Q.hn Q.valid v hi.1).1
+  obtain ⟨q, hq, hs, hrp, hth⟩ : ∃ q ≤ Q.run.2.events.length,
+      stateAt S Q.run.2 Q.hn v i = stateAt S Q.run.2 Q.hn v q ∧
+      Regimes.ReadPoint Q.trace (cutMap S Q.run.2 Q.hn q)
+        (stateAt S Q.run.2 Q.hn v i).now ∧
+      (stateAt S Q.run.2 Q.hn v i).now ≤ Q.run.2.horizon := by
+    rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with hs | ⟨j, hj, e, he, hev, hs, ht⟩
+    · refine ⟨0, Nat.zero_le _, hs, ?_, ?_⟩
+      · rw [hs, cutMap_zero]
+        exact ⟨fun k hk => by omega, D.reset.run.time_nonneg 0⟩
+      · rw [hs]
+        exact Q.valid.horizon_nonneg
+    · refine ⟨j + 1, by omega, hs, ?_, ?_⟩
+      · rw [ht]
+        exact readPoint_after_event S Q.run.2 Q.hn Q.valid he
+      · rw [ht]
+        exact (Q.valid.in_horizon e (List.mem_of_getElem? he)).2
+  refine ⟨q, hq, ?_, hrp, ht0, hth, hfloor, ?_⟩
+  · rw [← simTrace_state S Q.run.2 Q.hn Q.valid v hv.1 i hi.1,
+      ← simTrace_state S Q.run.2 Q.hn Q.valid v hv.1 q hq, hs]
+  · exact ready_transport S Q.run.2 Q.hn Q.valid ht0 hth
+      (ready_at_stored_now S Q.run.2 Q.hn Q.valid hi.1 hc hr)
+
+omit h0 hb hp W states in
+/-- After drain, the latest view is a natural label beyond the reset, and its
+voting time is no later than the read. -/
+theorem healthy_read_label (D : HealthyRepairSchedule S A V Q)
+    (ac : SA.SAState Q.params.n) (frame : SA.Frm Q.params.n (List (FG.Att Q.params.n)))
+    {t : Time} (ht0 : 0 ≤ t)
+    (ht : Healing.drainTime Q.params D.resetTime ≤ t) :
+    ∃ L : Nat, (L : Int) = (SA.latestView Q.params ac frame t).2 ∧
+      D.resetTime ≤ Q.params.ts L ∧ Q.params.ts L + Q.params.Δ ≤ t := by
+  have hΔ : 0 < Q.params.Δ := Q.params.toParams.hΔ
+  have hslot : (Q.params.slot D.resetTime + 2 * Q.params.k + 5 : Nat) ≤ Q.params.slot t := by
+    rw [Healing.drainTime_eq] at ht
+    exact_mod_cast (SA.ts_le_iff_le_slot Q.params ht0 _).mp ht
+  have hpos : 0 < Q.params.slot t := by omega
+  have ha0 : 0 ≤ D.resetTime := by
+    obtain ⟨⟨y, hy, k, att, hk, _, he⟩, _⟩ := D.reset.reset
+    exact he ▸ D.reset.run.time_nonneg k
+  have ha : D.resetTime < Q.params.ts (Q.params.slot D.resetTime + 1 : Nat) := by
+    have hh := Int.lt_ediv_add_one_mul_self D.resetTime (by linarith : 0 < 4 * Q.params.Δ)
+    rw [← SA.slot_eq Q.params ha0] at hh
+    simpa only [SA.SAParams.ts, Nat.cast_add, Nat.cast_one, mul_comm] using hh
+  have htlo := (SA.ts_le_iff_le_slot Q.params ht0 (Q.params.slot t)).mpr le_rfl
+  by_cases hphase : Q.params.ts (Q.params.slot t) + 2 * Q.params.Δ ≤ t
+  · refine ⟨Q.params.slot t, ?_, ?_, by linarith⟩
+    · simp only [SA.latestView, ite_eq_left hphase]
+    · exact ha.le.trans ((SA.ts_le_iff Q.params).mpr (by exact_mod_cast (by omega :
+        Q.params.slot D.resetTime + 1 ≤ Q.params.slot t)))
+  · refine ⟨Q.params.slot t - 1, ?_, ?_, ?_⟩
+    · simp only [SA.latestView, ite_eq_right hphase]
+      omega
+    · exact ha.le.trans ((SA.ts_le_iff Q.params).mpr (by exact_mod_cast (by omega :
+        Q.params.slot D.resetTime + 1 ≤ Q.params.slot t - 1)))
+    · have hs : ((Q.params.slot t - 1 : Nat) : Int) = (Q.params.slot t : Int) - 1 := by omega
+      simp only [SA.SAParams.ts] at htlo ⊢
+      rw [hs]
+      nlinarith
+
 /-- OPEN stored-clock representative, repair floor and finite service producer. -/
 theorem healthy_current_read_context (D : HealthyRepairSchedule S A V Q)
     (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)

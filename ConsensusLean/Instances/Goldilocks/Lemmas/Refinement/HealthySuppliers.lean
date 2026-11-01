@@ -38,8 +38,20 @@ noncomputable abbrev cut (Q : HealthyPreparationQuery S A V) :=
   cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal)
 end HealthyPreparationQuery
 
+/-- ResetService's message/block/relay fields quantify actual receiver calls, not
+arbitrary observation cuts. On the finite engine trace all such calls are within
+the horizon; the terminal filler at horizon+1 has no call label. This does not
+justify restricting service to a smaller bound while retaining later calls. -/
+theorem healthy_query_call_time_le (Q : HealthyPreparationQuery S A V)
+    {y : Fin Q.params.n} {j : Nat} (hj : Q.trace.IsCall y j) :
+    Q.trace.time j ≤ Q.run.2.horizon := by
+  obtain ⟨ell, _, hlabel⟩ := hj
+  exact simTrace_labelled_time_le S Q.run.2 Q.hn Q.valid (by rw [hlabel]; simp)
+
 /-- The finite engine query supplies run validity, collision freedom, awake participation
-and the fault bound. Service, actual reset existence and its snapshot remain explicit. -/
+and the fault bound. Service, actual reset existence and its snapshot remain explicit.
+The service horizon is the full engine horizon, so `healthy_query_call_time_le`
+supplies the receiver bound for the unguarded AC service fields. -/
 theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
     {ΔF a : Time}
     (hsync : Healing.ResetService Q.trace (honestKeys S Q.run.2)
