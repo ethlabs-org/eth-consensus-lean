@@ -146,25 +146,27 @@ private theorem writes_tryVote (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm
 
 private theorem writes_updateConfirmation (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time)
     (s : Nat) :
-    Writes Φ (fun C => SA.getConfirmation sp A Φ s = some C) A.latestConfirmed
+    Writes Φ (fun C => SA.getConfirmation sp A Φ s = some C ∧
+      ¬ SA.conflictsWithLock sp A.locks Φ t C) A.latestConfirmed
       (SA.updateConfirmation sp A Φ t s).latestConfirmed := by
   unfold SA.updateConfirmation
   dsimp only
   rcases hC : SA.getConfirmation sp A Φ s with _ | C
   · exact .refl
   · dsimp only
-    split_ifs
+    split_ifs with hveto
     · exact .refl
     · refine writes_update { A with saved := Function.update A.saved s ((some C).map Block.root) }
         Φ (SA.deepest_mem hC).1.1 ?_ rfl rfl
-      rfl
+      exact ⟨rfl, hveto⟩
 
 private theorem writes_onTick (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
     (t : Time) :
     Writes Φ (fun C => (∃ e ∈ (SA.acOnTick sp x A Φ t).2,
         SA.optimisticSelect sp (SA.admitVote sp e.readPoint t e.msg) Φ t = some C) ∨
         (t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t ∧ SA.joined sp A t ∧
-          SA.getConfirmation sp A Φ (sp.slot t - 1) = some C))
+          SA.getConfirmation sp A Φ (sp.slot t - 1) = some C ∧
+          ¬ SA.conflictsWithLock sp A.locks Φ t C))
       A.latestConfirmed (SA.acOnTick sp x A Φ t).1.latestConfirmed := by
   unfold SA.acOnTick
   dsimp only
@@ -198,13 +200,18 @@ variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FG
 
 /-- **The record writes of a call**: every candidate is the result of the call's update or the
 selection of one of its optimistic checks. -/
-theorem call_writes (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem call_writes_guarded (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
-    Writes ℓ.frame (fun C => ∃ s CV, SA.ResultAt tr x i s C CV ∨ SA.OptimisticLockAt tr x i s C CV)
+    Writes ℓ.frame (fun C => ∃ s CV,
+      (SA.ResultAt tr x i s C CV ∧
+        ¬ SA.conflictsWithLock sp (tr.state x i).locks ℓ.frame (tr.time i) C) ∨
+      SA.OptimisticLockAt tr x i s C CV)
       (tr.state x i).latestConfirmed (tr.post i).latestConfirmed := by
   obtain ⟨hΦ, -⟩ := SA.frameIn_of_callAt hr hx hc
   have opt : ∀ C, (∃ CV, SA.OptimisticLockAt tr x i (sp.slot (tr.time i)) C CV) →
-      ∃ s CV, SA.ResultAt tr x i s C CV ∨ SA.OptimisticLockAt tr x i s C CV :=
+      ∃ s CV, (SA.ResultAt tr x i s C CV ∧
+        ¬ SA.conflictsWithLock sp (tr.state x i).locks ℓ.frame (tr.time i) C) ∨
+        SA.OptimisticLockAt tr x i s C CV :=
     fun C ⟨CV, h⟩ => ⟨_, CV, Or.inr h⟩
   have he := hr.exec i ℓ hc.2 (hc.1 ▸ hx)
   rw [hc.1] at he
@@ -213,11 +220,12 @@ theorem call_writes (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fi
   simp only at hpost hemits
   rw [← hpost]
   generalize hA : tr.state x i = A at hpost hemits
+  rw [hA] at opt
   cases hcall : ℓ.call with
   | tick =>
     rw [hcall] at hemits
     refine (writes_onTick x A ℓ.frame _).mono fun C h => ?_
-    rcases h with ⟨e, he', hsel⟩ | ⟨ht, hs0, hj, hC⟩
+    rcases h with ⟨e, he', hsel⟩ | ⟨ht, hs0, hj, hC, hnv⟩
     · exact opt C ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inr ⟨e, hemits ▸ he', rfl⟩)⟩, rfl, hsel, rfl⟩
     · have hu : SA.UpdateAt tr x i (sp.slot (tr.time i) - 1) ℓ := by
         refine ⟨hc, hcall, ?_, hA ▸ hj⟩
@@ -225,7 +233,7 @@ theorem call_writes (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fi
         simp only [SAParams.ts]
         push_cast [Nat.cast_sub hs0]
         ring
-      exact ⟨_, _, Or.inl ⟨ℓ, hu, hA ▸ hC, rfl⟩⟩
+      exact ⟨_, _, Or.inl ⟨⟨ℓ, hu, hA ▸ hC, rfl⟩, hA ▸ hnv⟩⟩
   | proposal => exact .of_eq (proposal_latestConfirmed A _ _)
   | toFG => exact .of_eq (toFG_latestConfirmed A _ _)
   | message m =>
@@ -248,6 +256,15 @@ theorem call_writes (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fi
     exact .of_eq ((SA.restart_state sp) FGP ro x A ℓ.frame (tr.time i) hΦ
       (hr.time_nonneg i)).2.2.1
 
+/-- Forgetting the regular update's non-veto guard gives the original write interface. -/
+theorem call_writes (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    Writes ℓ.frame (fun C => ∃ s CV, SA.ResultAt tr x i s C CV ∨ SA.OptimisticLockAt tr x i s C CV)
+      (tr.state x i).latestConfirmed (tr.post i).latestConfirmed := by
+  refine (call_writes_guarded hr hx hc).mono ?_
+  rintro C ⟨s, CV, h | h⟩
+  · exact ⟨s, CV, Or.inl h.1⟩
+  · exact ⟨s, CV, Or.inr h⟩
 
 /-! ### The record and its fast lock inside one call -/
 

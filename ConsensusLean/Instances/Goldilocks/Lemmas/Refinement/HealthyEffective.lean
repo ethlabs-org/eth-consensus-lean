@@ -227,6 +227,30 @@ theorem effective_record_call_of_compatible
   exact effective_record_writes_of_compatible hr.coherent hΦ hΦU (Compose.call_writes hr hy hc)
     (fun D ⟨s, CV, h⟩ => hnew D s CV h) hO
 
+/-- A covering live lock protects the prefix from regular writes through the actual
+non-veto guard. Optimistic checks retain their separate compatibility obligation. -/
+theorem effective_record_call_of_covering_live_lock
+    {ro : SA.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SA.SATrace sp FGP ro}
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (SA.goldilocksSA sp FGP ro)}
+    (hc : tr.CallAt y k ell) {O L : SA.Blk sp.n FGP}
+    (hO : Anc U O ((SA.lookup ell.frame (tr.state y k).latestConfirmed).getD ell.frame.F))
+    (hL : L ∈ SA.liveLockBlocks sp (tr.state y k).locks ell.frame (tr.time k))
+    (hOL : Anc U O L)
+    (hopt : ∀ D s CV, SA.OptimisticLockAt tr y k s D CV → Compatible U O D) :
+    Anc U O ((SA.lookup ell.frame (tr.post k).latestConfirmed).getD ell.frame.F) := by
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc
+  apply effective_record_writes_of_compatible hr.coherent hΦ hΦU
+    (Compose.call_writes_guarded hr hy hc) _ hO
+  rintro D ⟨s, CV, ⟨_, hnv⟩ | hop⟩
+  · have hDL : Compatible ell.frame.tree D L := by
+      by_contra hn
+      exact hnv ⟨L, hL, hn⟩
+    rcases hDL with h | h
+    · exact SA.anc_total hr.coherent hOL (h.mono hΦU)
+    · exact Or.inl (hOL.trans (h.mono hΦU))
+  · exact hopt D s CV hop
+
 /-- Writing a held candidate leaves that candidate or a strictly later descendant.
 The guard can retain a record only above the candidate, never an older fork. -/
 theorem effective_record_update_slot_growth
