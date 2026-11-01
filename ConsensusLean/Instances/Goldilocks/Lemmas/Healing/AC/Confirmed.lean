@@ -38,6 +38,67 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 private theorem ts_succ' (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
   simp only [SAParams.ts]; push_cast; ring
 
+/-- Finite message service retains an actual honest vote with its strict early stamp.
+Only deadlines and restarts through the receiving call are used. -/
+theorem late_vote_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g b)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
+    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
+    (hjb : tr.time j ≤ b)
+    (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ t + sp.Δ)
+    (hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ gbar g)
+    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {e : Em sp FGP}
+    (hv : VoteAt tr x i e) (hes : e.msg.slot = s) :
+    ∀ c, (c = j ∨ c = j + 1) → e.msg ∈ (tr.state y c).pool s ∧
+      (tr.state y c).voteStamp e.msg < ETime.of (sp.ts s + 2 * sp.Δ) := by
+  have hr := hS.run.localRun
+  have hDelta := sp.toParams.hΔ
+  obtain ⟨ellx, hcx, hex⟩ := hv
+  obtain ⟨hval, hslot, -, -⟩ := castAt_spec hr hx ⟨hcx, hex⟩
+  have hti : tr.time i ≤ sp.ts s + sp.Δ := by
+    have hh := vote_time_le hr hx ⟨ellx, hcx, hex⟩
+    rwa [← hslot, hes] at hh
+  have hti0 : sp.ts s ≤ tr.time i :=
+    (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [← hslot, hes])
+  have hgi : gbar g ≤ tr.time i := by linarith
+  have hdl := hdeadline j le_rfl (tr.time i) hgi
+  obtain ⟨q, hqj, hiq, hproc, hqt⟩ := hS.sync.message x hx i e.msg
+    ⟨ellx, hcx, Or.inl ⟨e, hex, rfl⟩⟩ hgi y hy j ell hc
+    (by linarith) (by linarith)
+  have hqT : tr.time q < sp.ts s + 2 * sp.Δ := by
+    have := hdeadline q hqj (tr.time i) hgi
+    linarith
+  have hqj' : q < j := lt_of_le_of_ne hqj (by rintro rfl; linarith)
+  have hqs : sp.slot (tr.time q) = s :=
+    slot_of_mem sp s (by linarith) (by rw [ts_succ']; linarith)
+  have hxH : e.msg.val ∈ H := hval ▸ hx
+  have hheld : e.msg ∈ (tr.state y (q + 1)).pool s := by
+    rcases held_of_processAt hr hy hproc (by rw [hqs, hes]; omega) (by rw [hqs, hes]) with
+      h | ⟨v, hv, w, hw, hne, hvval, hwval⟩
+    · rwa [hes] at h
+    · exfalso
+      rw [hes] at hv hw
+      obtain ⟨iv, -, ev, hev, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) s _ hv (hvval ▸ hxH)
+      obtain ⟨iw, -, ew, hew, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) s _ hw (hwval ▸ hxH)
+      have hsv := state_pool_slot sp hr hy (q + 1) s _ hv
+      have hsw := state_pool_slot sp hr hy (q + 1) s _ hw
+      rw [hvval] at hev
+      rw [hwval] at hew
+      obtain ⟨-, rfl⟩ := (one_vote_per_slot sp) FGP ro H U tr hr _ hxH iv iw ev ew hev hew
+        (hsv.trans hsw.symm)
+      exact hne rfl
+  intro c hcj
+  have hst := stamp_lt_of_held_of_run hr hy (a := q + 1) (b := c) (by omega)
+    (w := e.msg) (by rw [hes]; exact hheld) (T := sp.ts s + 2 * sp.Δ)
+    (fun k hk => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk)) hqT)
+    (by rw [hes]; linarith)
+    (fun k hk hrs => lt_of_le_of_lt (hrestart k (by omega) hrs) (by linarith))
+    (fun k hqk hkc hrs => by
+      have := hrestart k (by omega) hrs
+      have := hr.time_mono (show q ≤ k by omega)
+      linarith)
+  rwa [hes] at hst
+
 /-- **A late honest vote is held** (h1 §2): for a slot `s ≥ r` and an honest call at a time
 `≥ t_s + 2Δ`, every honest slot-`s` vote is held, with a stamp before `t_s + 2Δ`, before and after
 the call. -/
