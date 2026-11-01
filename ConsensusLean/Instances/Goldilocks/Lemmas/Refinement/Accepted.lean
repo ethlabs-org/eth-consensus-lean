@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalEndpoints
 import ConsensusLean.Lemmas.Model.Laws
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
 public import ConsensusLean.Spec.Shape.Accepted
@@ -20,8 +21,9 @@ public section
 /-! # Acceptance assembly with finite guarantee witnesses
 
 The assumptions are fixed before choosing guarantees. The three named coefficient
-holes and five direct adapter holes are joint obligations, not independent arbitrary
-choices. They do not prove acceptance. Do not import into Main/Solution.
+holes and named supplier leaves are joint obligations, not independent arbitrary
+choices. Every endpoint adapter is assembled; this does not prove acceptance.
+Do not import into Main/Solution.
 The local pattern is a fixed function of Setup's timeout; no legacy consecutive-run
 formula or dependence of timeout on the outer gap is imposed here.
 -/
@@ -1103,11 +1105,26 @@ theorem accepted_healthyLive : ∀ cap g, schema.output cap = some g →
           ((Sys (family S) V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys (family S) V).cDur (K S A) r)
         g ((Sys (family S) V).heal (K S A) cap i gst r) ((K S A).params.latency cap i) := by
-  intro cap
-  cases cap with
-  | final => exact accepted_healthyLive_final S A V
-  | available => sorry
-  | stable => sorry
+  intro cap g hg idx gst r hv ⟨hh, hp⟩
+  by_cases hf : cap = .final
+  · subst cap
+    exact accepted_healthyLive_final S A V g hg idx gst r hv ⟨hh, hp⟩
+  have hcap : cap = .available ∨ cap = .stable := by cases cap <;> simp_all
+  have hg' : g = Out.confirmed := by
+    rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
+  subst g
+  by_cases hc : r.2.HashCollision
+  · exact Or.inr hc
+  left
+  intro t ht hb hr
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
+  let Q : ConfirmedQuery S A V := ⟨r, hn, cap, hcap, idx, gst, t, hv, hc,
+    Or.inr ⟨hh, hp, ht⟩, hb, hr⟩
+  obtain ⟨P, cover⟩ := healthy_confirmed_supply S A V Q hh hp ht
+  have h0 : 0 ≤ t :=
+    (add_nonneg (le_max_right gst 0)
+      (mul_nonneg (Int.natCast_nonneg _) r.1.Δ_pos.le)).trans ht
+  exact confirmed_payload_projection S A V Q h0 P cover
 
 /-- R1, sleepy-record-invariant.md §§2–5.1 and sleepy-proposal-adoption.md
 §§2–4 (conditional S1–S4 package). NO PAPER PROOF for engine network,
@@ -1116,7 +1133,27 @@ theorem accepted_sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) �
     schema.output cap = some g → (Sys (family S) V).Holds
       ((Sys (family S) V).Sleepy (K S A)) fun r =>
         (chainTrace r.2).ReadySafe ((Sys (family S) V).cDur (K S A) r) g 0 := by
-  sorry
+  intro cap g hcap hg r hv hs
+  have hg' : g = Out.confirmed := by
+    rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
+  subst g
+  by_cases hc : r.2.HashCollision
+  · exact Or.inr hc
+  left
+  by_cases hn : 1 ≤ Fintype.card V
+  · let Q : SleepySafetyQuery S A V := ⟨r, hn, hv, hc, hs⟩
+    obtain ⟨hd, hsync, hf⟩ := sleepy_safety_inputs S A V Q
+    have safe := sleepy_safe_engine S r.2 hn hv
+      (noCollTransport V S r.1 r.2 hn hv hc) hsync hf
+    have ready : ∀ v t, r.2.point.Ready ((Sys (family S) V).cDur (K S A) r) v t →
+        r.2.point.Ready (Regimes.catchUp (S.params (Model.pubOf r.1) hn)) v t := by
+      intro v t h
+      refine ⟨h.1, fun τ hlo hhi => h.2 τ ?_ hhi⟩
+      exact (max_le_max_left 0 (sub_le_sub_right (sub_le_sub_left hd t) 1)).trans hlo
+    exact ⟨fun u v i j hi hj hu hv => safe.1 u v i j hi hj (ready _ _ hu) (ready _ _ hv),
+      fun v i j hi hij hj hvi hvj => safe.2 v i j hi hij hj (ready _ _ hvi) (ready _ _ hvj)⟩
+  · have hempty : IsEmpty V := Fintype.card_eq_zero_iff.mp (by omega)
+    exact ⟨fun u => (hempty.false u).elim, fun v => (hempty.false v).elim⟩
 
 /-- R2 inclusion/growth, node sleepy_statements. NO PAPER PROOF yet pinned
 for the exact recurrence/readiness/deadline transport; keep this gap explicit. -/
@@ -1128,7 +1165,20 @@ theorem accepted_sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) �
             0 ((Sys (family S) V).pt r).horizon r)
         fun r => ProposalLiveReady r.2 ((Sys (family S) V).cDur (K S A) r)
           g 0 ((K S A).params.latency cap i) := by
-  sorry
+  intro cap g hcap hg idx r hv ⟨hs, hp⟩
+  have hg' : g = Out.confirmed := by
+    rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
+  subst g
+  by_cases hc : r.2.HashCollision
+  · exact Or.inr hc
+  left
+  intro t ht hb hr
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
+  let Q : ConfirmedQuery S A V := ⟨r, hn, cap, hcap, idx, 0, t, hv, hc,
+    Or.inl ⟨hs, hp, ht⟩, hb, hr⟩
+  obtain ⟨P, service⟩ := sleepy_serviced_proposal_supply S A V Q hs hp ht
+  exact confirmed_payload_projection S A V Q ht P
+    (sleepy_serviced_proposal_coverage S A V Q P service)
 
 /-- R3 healed safety. NO PAPER PROOF for bounded [ready,heal] recurrence
 to current whole-run HealedPremises or the target gHeal bound. RecRet also
