@@ -83,10 +83,16 @@ theorem confirmed_ready_mono (Q : ConfirmedQuery S A V) {c d : Time}
   refine ⟨h.1, fun τ hlo hhi => h.2 τ ?_ hhi⟩
   exact (max_le_max_left 0 (sub_le_sub_right (sub_le_sub_left hcd t) 1)).trans hlo
 
-/-- OPEN joint coefficient obligation, not equality of engine and node durations. -/
+/-- The named joint coefficient bound covers the node duration; no equality of scales. -/
 theorem confirmed_duration_supply (Q : ConfirmedQuery S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
-  sorry
+  have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+    exact_mod_cast accepted_catchUp_ge_sleepy S A
+  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  simp only [ConfirmedQuery.duration, System.cDur,
+    Params.standard, accepted_coefficients_catchUp]
+  change 18 * (Q.run.1.Δ + 1) ≤ (accepted_catchUp S A : Nat) * Q.run.1.Δ
+  nlinarith
 
 /-- OPEN canonical recipient service through the actual query deadline. -/
 theorem sleepy_query_sync (Q : ConfirmedQuery S A V)
@@ -94,35 +100,31 @@ theorem sleepy_query_sync (Q : ConfirmedQuery S A V)
     Q.trace.SyncBefore (honestKeys S Q.run.2) Q.params.Δ Q.deadline := by
   sorry
 
-/-- Population transport at finite slot points, conditional on the joint duration supplier. -/
-theorem sleepy_query_population (Q : ConfirmedQuery S A V)
-    (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run) :
-    ∀ s : Nat, ∀ d ∈ ({0, Q.params.Δ, 2 * Q.params.Δ} : Set Time),
-      Q.params.ts s + d ≤ Q.deadline →
-        Q.trace.FaultBound (honestKeys S Q.run.2) (Q.params.ts s + d) := by
+/-- Shortening the readiness duration preserves a strict half-ready population. -/
+theorem half_ready_of_duration (p : EnvPoint V) {c d t : Time} (hd : c ≤ d)
+    (hh : p.ReadyAbove (1 / 2) d t) : p.ReadyAbove (1 / 2) c t := by
   classical
-  apply sleepy_faultBound S Q.run.2 Q.hn Q.valid Q.bounded
-  intro t ht htb
-  have hh := hsleepy.2 t ht (htb.trans Q.bounded)
-  change (1 / 2 : ℚ) * (_ + _) < _ at hh
-  have hd := confirmed_duration_supply S A V Q
-  have hsub : Q.run.2.point.readyAt Q.duration t ⊆
-      Q.run.2.point.readyAt (Regimes.catchUp Q.params) t := by
+  have hsub : p.readyAt d t ⊆ p.readyAt c t := by
     intro v hv
     obtain ⟨hhon, hr⟩ := Finset.mem_filter.mp hv
     refine Finset.mem_filter.mpr ⟨hhon, hr.1, ?_⟩
     intro u hu hut
     exact hr.2 u ((max_le_max_left 0 (by linarith)).trans hu) hut
   have hc := Finset.card_le_card hsub
-  unfold EnvPoint.ReadyAbove
-  have hc' : ((Q.run.2.point.readyAt Q.duration t).card : ℚ) ≤
-      (Q.run.2.point.readyAt (Regimes.catchUp Q.params) t).card := by exact_mod_cast hc
-  change (1 / 2 : ℚ) * (((Q.run.2.point.readyAt Q.duration t).card : ℚ) +
-    Q.run.2.point.faulty.card) <
-    (Q.run.2.point.readyAt Q.duration t).card at hh
-  change (1 / 2 : ℚ) * (((Q.run.2.point.readyAt (Regimes.catchUp Q.params) t).card : ℚ) +
-    Q.run.2.point.faulty.card) < (Q.run.2.point.readyAt (Regimes.catchUp Q.params) t).card
+  unfold EnvPoint.ReadyAbove at hh ⊢
+  have hc' : ((p.readyAt d t).card : ℚ) ≤ (p.readyAt c t).card := by exact_mod_cast hc
   linarith
+
+/-- Population transport at finite slot points, conditional on the joint duration supplier. -/
+theorem sleepy_query_population (Q : ConfirmedQuery S A V)
+    (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run) :
+    ∀ s : Nat, ∀ d ∈ ({0, Q.params.Δ, 2 * Q.params.Δ} : Set Time),
+      Q.params.ts s + d ≤ Q.deadline →
+        Q.trace.FaultBound (honestKeys S Q.run.2) (Q.params.ts s + d) := by
+  apply sleepy_faultBound S Q.run.2 Q.hn Q.valid Q.bounded
+  intro t ht htb
+  exact half_ready_of_duration V Q.run.2.point (confirmed_duration_supply S A V Q)
+    (hsleepy.2 t ht (htb.trans Q.bounded))
 
 /-- The recurrence/grid supplier selects readiness at exact endpoint cDur directly.
 Readiness merely at 18Δp cannot be upgraded to this field by monotonicity. -/
@@ -134,13 +136,66 @@ structure ConfirmedProducerSlot (Q : ConfirmedQuery S A V) where
   ready : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration
     (runProposer S Q.run.2 Q.hn slot) (Q.params.ts slot)
 
-/-- OPEN recurrence/grid selection with stronger exact-cDur readiness. -/
+set_option linter.unusedVariables false in
+/-- Recurrence/grid selection at exact cDur, using the joint latency lower bound. -/
 theorem sleepy_query_slot (Q : ConfirmedQuery S A V)
     (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run)
     (hprogress : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A)
       Q.cap Q.index 0 Q.run.2.horizon Q.run)
     (hquery : 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlot S A V Q) := by
-  sorry
+  classical
+  have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
+  have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
+      (fun s => Q.run.2.sel (.proposer s)) (family S (Model.pubOf Q.run.1)).skel.grid
+      ⟨Pattern.single, Q.index⟩ Q.duration 0 Q.run.2.horizon := by
+    simpa only [System.prog, shapeProgress, shapeHolds, acceptanceContract, ite_eq_right hcap,
+      Model.sysExternal, ConfirmedQuery.duration, System.cDur, System.pt, Sys,
+      Model.sysOf, Model.Run.point]
+      using hprogress
+  have hlat : (8 * (Q.index : Time) + 12) ≤ accepted_latency S A Q.cap Q.index := by
+    exact_mod_cast accepted_latency_ge_sleepy S A Q.cap Q.index Q.nonfinal
+  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hi : (0 : Time) ≤ Q.index := by positivity
+  have hbudget : (4 * (Q.index : Time) + 6) * Q.params.Δ ≤
+      ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.Δ := by
+    rw [show (K S A).params.latency Q.cap Q.index = accepted_latency S A Q.cap Q.index from
+      congrFun (congrFun (accepted_coefficients_latency S A) Q.cap) Q.index]
+    change (4 * (Q.index : Time) + 6) * (Q.run.1.Δ + 1) ≤ _
+    nlinarith
+  have hwin : Q.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.run.2.horizon := by
+    have hb := Q.bounded
+    have hp := Q.params.toParams.hΔ
+    change Q.query + _ ≤ _ at hb
+    linarith
+  obtain ⟨s, hlo, hhi, hr⟩ := hrec Q.query (by simpa using hquery)
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton] using hwin)
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton,
+      Model.Run.point] using hwin)
+  have htime : (family S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
+    change (s : Time) * (4 * (Q.run.1.Δ + 1)) = 4 * (Q.run.1.Δ + 1) * s
+    ring
+  rw [htime] at hlo hhi
+  have hmargin : Q.params.ts s + 6 * Q.params.Δ ≤ Q.deadline := by
+    change Q.params.ts s ≤ Q.query + (Q.index : Time) * (4 * Q.params.Δ) at hhi
+    change _ ≤ Q.query + _
+    linarith
+  have hready := hr 0 (by simp [Pattern.single])
+  simp only [Nat.add_zero] at hready
+  have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
+    simp only [runProposer, dite_eq_left hready.1]
+    exact Finset.min'_mem _ _
+  have hR := hready.2 _ hmem
+  rw [htime] at hR
+  have hnode := ready_transport S Q.run.2 Q.hn Q.valid (hquery.trans hlo.le)
+    ((le_add_of_nonneg_right (by positivity : 0 ≤ 6 * Q.params.Δ)).trans
+      (hmargin.trans Q.bounded)) hR
+  rw [show Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn s)) =
+    runProposer S Q.run.2 Q.hn s from Q.run.2.key.symm_apply_apply _] at hnode
+  refine ⟨⟨s, ?_, hlo, hmargin, hnode⟩⟩
+  change 1 ≤ s
+  cases s with
+  | zero => simp [SA.SAParams.ts] at hlo; linarith
+  | succ s => exact Nat.succ_pos s
 
 /-- Selected eligible slot to actual canonical proposal event. Acceptance is
 not assumed here: the existing own-proposal acceptance theorem supplies it.
