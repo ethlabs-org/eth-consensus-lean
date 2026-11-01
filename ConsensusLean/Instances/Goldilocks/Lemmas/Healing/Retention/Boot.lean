@@ -357,6 +357,45 @@ private theorem sync_after (hp : ResetPremises tr H proposer dg g ΔF a) (b : Ti
     tr proposer ΔF g b
     hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
 
+/-- The counted head of a high origin is relayed before a later vote's freeze. This
+establishes receiver heldness without any height-floor or retention-invariant premise. -/
+theorem high_origin_held_at_vote (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot)
+    (hF : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ (tr.state y k).fg.tree := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hBD, -⟩ := highOrigin_mem hp ho
+  obtain ⟨v, hv⟩ := fastLock_counted_nonempty hflw
+  obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hflw v hv
+  have hBHv : Anc (tr.HonestBlocks H) B Hv :=
+    (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hBD).trans hDHv
+  rcases hacc with hg | ⟨kw, hkw, hkwt⟩
+  · exact absurd hg (cutZ_lt_of_anc hp ho hz hHvz hBHv).2
+  have hkwg : g ≤ tr.projAC.time kw := by
+    have := (cutZ_lt_of_anc hp ho ho.1 (acceptAt_mem hp ho.1 hkw) hBHv).1
+    have := lt_cutZ sp g
+    have := le_gbar g
+    have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+    change g ≤ tr.time kw
+    linarith
+  have hHvT := relay_mem_voterBlockTree hr (sync_after hp (sp.ts j + 2 * sp.Δ)) ho.1 hkw hkwg
+    hkwt le_rfl hy hc hj (hF.trans hBHv)
+  exact mem_tree_of_anc hp hy hBHv (frame_tree_subset hp hy hc.1 hHvT.1)
+
+/-- Receiver and source heights agree after the counted-head relay, not merely because
+the receiver's finalization is below the high origin. -/
+theorem high_origin_height_at_vote (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot)
+    (hF : Anc (tr.HonestBlocks H) ell.frame.F B) :
+    ((tr.state x i).fg.σ B.root).h = ((tr.state y k).fg.σ B.root).h := by
+  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
+  rw [σ_eq_run hp ho.1 hy hBx (high_origin_held_at_vote hp ho hy hc hj hF)]
+
 /-- The floor crossing supplies an earlier high origin above `B` and a held entry at the
 receiver's floor. Heights of `B` are read at its source, where it is held. Pairwise comparison
 of earlier origins rules out a high contest; comparison with `B` orients the crossing.
