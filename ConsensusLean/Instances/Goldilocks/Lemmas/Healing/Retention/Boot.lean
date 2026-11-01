@@ -60,19 +60,20 @@ theorem raw_result_low_floor_witness (hrun : GoldilocksRun proposer dg H tr)
 The writer accepted the counted heads, of state height `≥ H_z + 1`, before `t_j + 2Δ`; no honest
 node accepts such a block at or before `c_z` (the definition of `H_z`), so `t_j + 2Δ > c_z`, and
 `t_j ≥ c_z` since both are slot starts. -/
-theorem cutZ_le_ts_of_highOrigin (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     cutZ sp.toParams g ≤ sp.ts j := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  obtain ⟨ℓ, D, CV, hc, hfl, -, -, -, hBD, -⟩ := highOrigin_mem hp ho
+  obtain ⟨ℓ, D, CV, hc, hfl, -, -, -, hBD, -⟩ := hp.highOrigin_mem ho
   obtain ⟨v, hv⟩ := fastLock_counted_nonempty hfl
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHv⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hfl v hv
   have hBHv : Anc (tr.HonestBlocks H) B Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hc).2 hBD).trans hDHv
   rcases hacc with hg | ⟨k, hk, hkt⟩
-  · exact absurd hg (cutZ_lt_of_anc hp ho hz hHv hBHv).2
-  have hck := (cutZ_lt_of_anc hp ho ho.1 (acceptAt_mem hp ho.1 hk) hBHv).1
+  · exact absurd hg (hp.cutZ_lt_of_anc ho hz hHv hBHv).2
+  have hck := (hp.cutZ_lt_of_anc ho ho.1 (hp.acceptAt_mem ho.1 hk) hBHv).1
   have hkt' : tr.time k < sp.ts j + 2 * sp.Δ := hkt
   rw [cutZ_eq sp g] at hck ⊢
   refine (SA.ts_le_iff sp).2 ?_
@@ -83,19 +84,33 @@ theorem cutZ_le_ts_of_highOrigin (hp : ResetPremises tr H proposer dg g ΔF a)
   simp only [SAParams.ts] at h₂ hck hkt'
   nlinarith
 
+/-- Whole-run specialization of the origin label lower bound. -/
+theorem cutZ_le_ts_of_highOrigin (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x : Fin sp.n} {i j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
+    cutZ sp.toParams g ≤ sp.ts j :=
+  (hp.toUpTo tr H (le_refl a)).cutZ_le_ts_of_highOrigin ho
+
 /-- **No high justification before the reset** (`hr4-boot-carry.md` §2): at a state all of
 whose earlier cuts are before `a`, every held block is justified at `≤ H_z`: otherwise it has state
 height `≥ H_z + 2` (`h_j < h`), so its chain carries an honest row of height `H_z + 1` (HR.1 (b)),
 signed before the state's cut, hence before `a`, against HR.1 (c). -/
-theorem hj_le_HZ_of_before (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
+theorem ResetPremisesUpTo.hj_le_HZ_of_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} (hk : ∀ k' < k, tr.time k' < a) {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y k).fg.tree) : ((tr.state y k).fg.σ X.root).hj ≤ HZ tr H g := by
   have hr := Compose.fg_reachable hp.run.toLocalRun hy k
   obtain ⟨c, -, -, -, hc⟩ := Store.chain_state_of_chain _ _ _ _ hr X hX
   obtain ⟨-, -, hjh, -⟩ := FG.chain_invariants _ _ _ hc
   by_contra hlt
+  have hq : Hᶜ.ncard < sp.toParams.fg.q := by
+    have h3 := hp.faults
+    have hn := sp.toParams.hn
+    change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at h3
+    change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
+    omega
   obtain ⟨Y, hYX, att, hatt, hattH, hatth⟩ :=
-    honest_row_of_height hp.run hp.healthy hy k hX (by omega)
+    Store.exists_honest_att_of_lt hr hq hX (HZ tr H g + 1) (by omega) (by omega)
   have hY : Y ∈ (tr.state y k).fg.tree := by
     by_cases he : Y = X
     · exact he ▸ hX
@@ -103,9 +118,15 @@ theorem hj_le_HZ_of_before (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fi
   rcases tree_accepted hp.run.toLocalRun hy hY with rfl | ⟨i, hik, hA⟩
   · cases hatt
   obtain ⟨j, hji, hj⟩ := hp.run.att_unforgeable y hy i att (Or.inr ⟨Y, ⟨true, hA⟩, hatt⟩) hattH
-  have := reset_le_of_high hp.run hp.healthy hp.reset hattH hj (by omega)
+  have := hp.reset.2 _ hattH j att hj hatth
   have := hk j (by omega)
   linarith
+
+/-- Whole-run specialization of the pre-reset justification bound. -/
+theorem hj_le_HZ_of_before (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} (hk : ∀ k' < k, tr.time k' < a) {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hX : X ∈ (tr.state y k).fg.tree) : ((tr.state y k).fg.σ X.root).hj ≤ HZ tr H g :=
+  (hp.toUpTo tr H (le_refl a)).hj_le_HZ_of_before hy hk hX
 
 /-- **HBoot, the caches before the reset** (§11 "Historical finality and acceptance";
 `t1-proof.md` §9). At a state all of whose earlier cuts are before `a`: no honest `Σ.J` is high
