@@ -1086,6 +1086,101 @@ theorem unanimous_next_optimistic_compatible
   exact SA.optimisticLock_compatible hS.run hS.two_faulty_lt hy hopt
     (unanimous_next_votes_extend hp hc hP hslot hu hun hgu hR hold)
 
+/-- Every high origin written by the update deadline is comparable with the unanimous
+proposal. The next-slot optimistic case uses the actual next-vote transfer theorem. -/
+theorem high_origin_compatible_before_update
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : Healing.Unanimous tr H u P) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hold : ∀ x r b B, Healing.HighOrigin tr H g x r b B → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) B P)
+    {x : Fin sp.n} {r b : Nat} (ho : Healing.HighOrigin tr H g x r b B)
+    (ht : tr.time r ≤ sp.ts u + 6 * sp.Δ) : Compatible (tr.HonestBlocks H) B P := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  obtain ⟨ell, D, CV, hcall, hfl, _, _, _, hBD, _⟩ := Healing.highOrigin_mem hp ho
+  have hBDU := hBD.mono (SA.frameIn_of_callAt hS.run.localRun ho.1 hcall).2
+  by_cases hbu : b < u
+  · obtain ⟨q, e, hv, hs⟩ := SA.honest_votes_in_slot hS hgu x ho.1
+    obtain ⟨ellv, hcast⟩ := hv
+    obtain ⟨Hd, hHd, he, hBH⟩ :=
+      (covered_vote_suffix hp ho (.refl) ho.1 hcast (by omega)).2.2.1
+    have heq : Hd = P := hS.run.localRun.coherent.1 hHd hP
+      (he.trans (hun x ho.1 q e ⟨ellv, hcast⟩ hs))
+    exact Or.inl (heq ▸ hBH)
+  by_cases heq : b = u
+  · subst b
+    obtain ⟨z, hz, q, e, hv, hs, Hd, hHd, he, hDH⟩ :=
+      SA.fastLock_honest_vote hS.run hS.two_faulty_lt ho.1 hfl
+    have heq : Hd = P := hS.run.localRun.coherent.1 hHd hP
+      (he.trans (hun z hz q e hv hs))
+    exact Or.inl (hBDU.trans (heq ▸ hDH))
+  have hgt : u < b := by omega
+  have hDP : Compatible (tr.HonestBlocks H) D P := by
+    rcases hfl with ⟨ellr, C, hupd, _⟩ | hop
+    · have ht' : tr.time r = sp.ts b + 6 * sp.Δ := hupd.2.2.1
+      have hs := (SA.ts_lt_iff sp).2 (show (u : Int) < b by omega)
+      exfalso; linarith
+    · have hs : sp.slot (tr.time r) = b := hop.choose_spec.choose_spec.2.1
+      have hb : b ≤ u + 1 := by
+        have hm := SA.slot_mono sp (hp.run.time_nonneg r) ht
+        have hdeadline : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
+          SA.slot_of_mem sp (u + 1)
+            (by simp only [SA.SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+            (by simp only [SA.SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+        rw [hs, hdeadline] at hm
+        exact hm
+      have hb' : b = u + 1 := by omega
+      exact unanimous_next_optimistic_compatible hp hc hP hslot hu hun hgu hR hold
+        ho.1 (hb' ▸ hop)
+  rcases hDP with h | h
+  · exact Or.inl (hBDU.trans h)
+  · exact SA.anc_total hS.run.localRun.coherent hBDU h
+
+/-- Through the update deadline, finality is compatible with the unanimous proposal. -/
+theorem finalized_compatible_before_update
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : Healing.Unanimous tr H u P) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hold : ∀ x r b B, Healing.HighOrigin tr H g x r b B → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) B P)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (ha : a ≤ tr.time k)
+    (ht : tr.time k ≤ sp.ts u + 6 * sp.Δ) :
+    Compatible (tr.HonestBlocks H) (tr.state y k).fg.F P := by
+  obtain ⟨x, r, b, B, ho, hrk, hFB⟩ := Healing.finalized_below_high_origin hp hy ha
+  rcases high_origin_compatible_before_update hp hc hP hslot hu hun hgu hR hold ho
+      (hrk.trans ht) with h | h
+  · exact Or.inl (hFB.trans h)
+  · exact SA.anc_total (Healing.honest_coherent hp) hFB h
+
+/-- The deadline finality alternative, with compatibility derived rather than assumed.
+The report is actual and its strict height comparison is at its own cut. -/
+theorem finality_alternative_before_update
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : Healing.Unanimous tr H u P) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hold : ∀ x r b B, Healing.HighOrigin tr H g x r b B → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) B P)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (ha : a ≤ tr.time k)
+    (ht : tr.time k ≤ sp.ts u + 6 * sp.Δ) :
+    Anc (tr.HonestBlocks H) (tr.state y k).fg.F P ∨
+      ∃ z ∈ H, ∃ r ℓ C, r < k ∧ SA.ToFGAt tr.projAC z r ℓ C ∧
+        tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C ∧
+        ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
+  rcases Healing.finality_below_or_higher_report hp hy
+      (finalized_compatible_before_update hp hc hP hslot hu hun hgu hR hold hy ha ht) with
+    h | ⟨z, hz, r, ℓ, C, hrk, hto, hPC, hlt⟩
+  · exact Or.inl h
+  · exact Or.inr ⟨z, hz, r, ℓ, C, hrk, hto, (hp.run.time_mono hrk.le).trans ht, hPC, hlt⟩
+
 /-- At an actual update, the only additional admission obligation is its floor bound.
 The receiver's prior unanimous vote supplies acceptance; next-slot optimism is derived. -/
 theorem ready_update_of_floor_bound

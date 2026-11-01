@@ -405,7 +405,7 @@ private def OldSrc (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time) 
 
 /-- R2 also compares a pre-call finalized cache with an origin written later: compare at a
 future honest tick, then use monotonicity of `F` backwards. -/
-private theorem finalized_compatible_high_origin (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem finalized_compatible_high_origin (hp : ResetPremises tr H proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hac : a ≤ tr.time c)
     {x : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j O) :
@@ -440,6 +440,47 @@ private theorem finalized_compatible_high_origin (hp : ResetPremises tr H propos
   rcases hcmp with h | h
   · exact Or.inl (hmono.trans h)
   · exact Anc.total (honest_coherent hp) hmono h
+
+/-- A post-reset finalized cache is below an earlier high origin, or below the reset seed.
+Unlike vote-root provenance this needs neither a cast nor a slot clock. -/
+theorem finalized_below_high_origin (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (ha : a ≤ tr.time k) :
+    ∃ x r b B, HighOrigin tr H g x r b B ∧ tr.time r ≤ tr.time k ∧
+      Anc (tr.HonestBlocks H) (tr.state y k).fg.F B := by
+  have hr := Compose.fg_reachable hp.run.toLocalRun hy k
+  have hU := honest_coherent hp
+  have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun _ h => ⟨y, hy, k, h⟩
+  obtain ⟨hFm, hJm, hFJ, ⟨C, hC, hCJ, hChj⟩, -⟩ :=
+    Store.cache_invariants _ _ _ _ hr
+  obtain ⟨E, hE, hEr, hEC, hcase⟩ := Store.J_entry_of_reachable hr hC
+  obtain rfl : E = (tr.state y k).fg.J := hU.1 (hsub hE) (hsub hJm) (hEr.trans hCJ)
+  by_cases hh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj
+  · rcases hcase with hg | ⟨hJh, hJT⟩
+    · obtain ⟨v, r, b, B, ho, _, ht⟩ := reset_seed hp
+      have hFG := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
+      rw [← hg] at hFG
+      have he := (hFJ.mono hsub).antisymm hU (hFG.mono hsub)
+      obtain ⟨_, _, _, _, _, _, _, _, _, hB⟩ := highOrigin_mem hp ho
+      exact ⟨v, r, b, B, ho, ht.trans ha,
+        Compose.honest_genesis_root_anc hp.run hU (hsub hFm)
+          (congrArg (·.root) (he.trans hg)) ⟨v, ho.1, r, hB⟩⟩
+    · obtain ⟨W, _, att, _, v, _, d, hdk, _, _, r, hrd, b, B, ho, hJB⟩ :=
+        left_entry_origin hp hy hJm hJT (by omega) hEC
+          (by have := Store.hj_lt_h hr hC; omega)
+      exact ⟨v, r, b, B, ho, hp.run.time_mono (by omega), (hFJ.mono hsub).trans hJB⟩
+  obtain ⟨v, r, b, B, ho, _, ht⟩ := reset_seed hp
+  refine ⟨v, r, b, B, ho, ht.trans ha, ?_⟩
+  rcases finalized_compatible_high_origin hp hy ha ho with h | h
+  · exact h
+  have hhigh := high_of_anc hp ho hy hJm (h.trans (hFJ.mono hsub))
+  rcases hcase with hg | ⟨hJh, _⟩
+  · have hFG := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
+    rw [← hg] at hFG
+    have he := (hFJ.mono hsub).antisymm hU (hFG.mono hsub)
+    obtain ⟨_, _, _, _, _, _, _, _, _, hB⟩ := highOrigin_mem hp ho
+    exact Compose.honest_genesis_root_anc hp.run hU (hsub hFm)
+      (congrArg (·.root) (he.trans hg)) ⟨v, ho.1, r, hB⟩
+  · omega
 
 /-- A high supporting head accepted by an honest voter before the previous slot's relay
 deadline is held in the proposal frame. Its height rules out pre-GST acceptance. -/
