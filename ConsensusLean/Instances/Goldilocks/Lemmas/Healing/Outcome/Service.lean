@@ -36,11 +36,11 @@ Both are `carrier_below_origin`: a carrier below a high origin is held or above 
 (`window_carrier_below`) `W` lies below one by `window_origin`: the update of slot `W.slot`
 (`ready_update`) writes a fast lock stored on `W`, high because `W` is above the reset's origin
 (`reset_origin_below`, (R3) and `ready_unanimous`), or an actual higher report above `W` lies
-below a high origin (`higher_report_window_origin`, open, through `high_report_origin`).
+below a high origin (`higher_report_window_origin`, through `high_report_origin`).
 
-Interface: `entry_rows` uses the open `report_cover`; `outcome_of_rows` the open private steps
+Interface: `entry_rows` uses the open `report_cover`; `outcome_of_rows` the open private step
 `update_window_kept` (at that update `W` stays a viable-ancestor candidate, or a higher source
-intervened, below a high origin above `W`) and `higher_report_window_origin`. -/
+intervened, below a high origin above `W`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -1222,10 +1222,30 @@ private theorem update_window_kept (hp : ResetPremises tr H proposer dg g ΔF a)
       ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ Anc (tr.HonestBlocks H) W B := by
   sorry
 
+/-- A higher report above the window's proposal has a high origin at the same
+reporter, strictly before the report. Retain its cut and time for bounded consumers. -/
+theorem higher_report_window_origin_before (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hsh : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
+    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hWP : ReadyProposal tr H proposer w kw W.slot W)
+    (hRW : drainTime sp a ≤ sp.ts W.slot) (hga : SA.gbar g + 8 * sp.Δ < a)
+    (haW : a < sp.ts W.slot) {z : Fin sp.n} (hz : z ∈ H) {r : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hrep : SA.ToFGAt tr.projAC z r ℓ C) (hWC : Anc (tr.HonestBlocks H) W C)
+    (hhC : ((tr.state z r).fg.σ W.root).h < ((tr.state z r).fg.σ C.root).h) :
+    ∃ io < r, ∃ jo B, HighOrigin tr H g z io jo B ∧ tr.time io ≤ tr.time r ∧
+      Anc (tr.HonestBlocks H) C B ∧ Anc (tr.HonestBlocks H) W B := by
+  have hCt := report_mem hp.run hz hrep
+  have hWt := mem_of_honest_anc hp.run hp.noColl hz hWC hCt
+  obtain ⟨x, k, l, O, hO, hOW⟩ :=
+    reset_origin_below hp hsh hc hWP hRW hga haW ⟨z, hz, r, hWt⟩
+  have hWh := high_of_anc hp hO hz hWt hOW
+  obtain ⟨io, hio, jo, B, hB, hCB⟩ := high_report_origin hp hz hrep (by omega)
+  exact ⟨io, hio, jo, B, hB, hp.run.time_mono hio.le, hCB, hWC.trans hCB⟩
+
 /-- **A higher report above the window's proposal lies below a high origin above `W`**
 (`ready_update`'s second case): `W` is high (`reset_origin_below`), so the report `C ⪰ W`, higher
 than `W` in the reporter's state, is high; its stored origin (`high_report_origin`) is above `C`,
-hence above `W` (open). -/
+hence above `W`. -/
 private theorem higher_report_window_origin (hp : ResetPremises tr H proposer dg g ΔF a)
     (hsh : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
     {W : SA.Blk sp.n (List (FG.Att sp.n))} (hWP : ReadyProposal tr H proposer w kw W.slot W)
@@ -1235,7 +1255,9 @@ private theorem higher_report_window_origin (hp : ResetPremises tr H proposer dg
     (hrep : SA.ToFGAt tr.projAC z' r ℓ' C) (hWC : Anc (tr.HonestBlocks H) W C)
     (hhC : ((tr.state z' r).fg.σ W.root).h < ((tr.state z' r).fg.σ C.root).h) :
     ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ Anc (tr.HonestBlocks H) W B := by
-  sorry
+  obtain ⟨io, _, jo, B, hB, _, _, hWB⟩ :=
+    higher_report_window_origin_before hp hsh hc hWP hRW hga haW hz' hrep hWC hhC
+  exact ⟨z', io, jo, B, hB, hWB⟩
 
 /-- **A high origin above the window's carrier** (the T3 paper orb's route): the proposer's
 update of slot `W.slot` at `t_{W.slot} + 6Δ` (`ready_update`) writes a fast lock on `W`, stored on
