@@ -542,6 +542,37 @@ theorem processOne_voteForwards_subset hs (st : State sp ro) o :
     split <;> exact List.subset_append_left _ _
   · exact List.Subset.refl _
 
+/-- A delivery handler either preserves an old queue entry or stamps a new one
+with its actual clock. This does not assume first release or pool freshness. -/
+theorem processOne_voteForward_stamp hs (st : State sp ro) o (t : Time) (m : Vote sp.n)
+    (h : (t, m) ∈ (processOne hs st o).voteForwards) :
+    (t, m) ∈ st.voteForwards ∨ t = st.now := by
+  by_cases hold : (t, m) ∈ st.voteForwards
+  · exact Or.inl hold
+  right
+  unfold processOne at h
+  split at h
+  · dsimp only at h
+    unfold relayIf at h
+    split at h <;> exact (apply_voteForward_fresh st _ t m h hold).1
+  · exact (apply_voteForward_fresh st _ t m h hold).1
+  · unfold relayIf at h
+    split at h <;> exact (apply_voteForward_fresh st _ t m h hold).1
+  · exact False.elim (hold h)
+
+/-- Recursive receipt processing cannot introduce a vote stamp from a different
+clock, including when several objects admit votes during the same delivery. -/
+theorem foldl_processOne_voteForward_stamp hs (os : List (Wire sp.n))
+    (st : State sp ro) (t : Time) (m : Vote sp.n)
+    (h : (t, m) ∈ (os.foldl (processOne hs) st).voteForwards) :
+    (t, m) ∈ st.voteForwards ∨ t = st.now := by
+  induction os generalizing st with
+  | nil => exact Or.inl h
+  | cons o os ih =>
+    rcases ih _ h with h | h
+    · exact processOne_voteForward_stamp hs st o t m h
+    · exact Or.inr (h.trans (processOne_now hs st o))
+
 /-- Later objects in a delivery cannot remove an already queued admission envelope. -/
 theorem foldl_processOne_voteForwards_subset hs (os : List (Wire sp.n)) (st : State sp ro) :
     st.voteForwards ⊆ (os.foldl (processOne hs) st).voteForwards := by

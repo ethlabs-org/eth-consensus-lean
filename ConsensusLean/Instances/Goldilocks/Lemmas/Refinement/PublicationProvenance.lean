@@ -1951,6 +1951,22 @@ theorem simTrace_forwardHeldProcessed (hv : rho.ExecutionValid) :
     · exact Or.inl (hy ▸ hc)
     · exact Or.inr ⟨(hxy.trans hy).symm, hy ▸ ha⟩
 
+/-- Every vote envelope queued by an actual delivery bears that delivery's time.
+The event-boundary queue is empty even following restart; processing every nested
+object preserves the clock. No first-release premise is used. -/
+theorem delivery_voteForward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V}
+    {receipt : Wire (Fintype.card V)} {u t : Time} {m : SA.Vote (Fintype.card V)}
+    (he : rho.events[i]? = some (.deliver v receipt u))
+    (hq : (t, m) ∈ (process (stateAt S rho hn v i) receipt
+      (Model.digests rho.hash receipt)).voteForwards) : t = u := by
+  unfold process at hq
+  rcases foldl_processOne_voteForward_stamp (Model.digests rho.hash receipt)
+      (delivered (S.params (Model.pubOf E) hn) receipt) (stateAt S rho hn v i) t m hq with h | h
+  · rw [voteForwards_empty S rho hn hv v i] at h
+    exact False.elim (List.not_mem_nil h)
+  · exact h.trans ((now_eq_lastClock S rho hn hv v i).trans
+      (lastClock_deliver S rho hv he))
+
 /-- A top-level signed vote envelope can only be released by its signer. Other nodes may
 carry it in unsigned gossip, but cannot account for an earlier top-level release of it. -/
 theorem voteForward_release_sender {i : Nat} {x : Fin (Fintype.card V)} {t : Time}
