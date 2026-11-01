@@ -1034,6 +1034,23 @@ theorem held_target_high_floor_report_before
   rw [← hEh, σ_eq_run hp ho.1 hy hPx hPy, σ_eq_run hp ho.1 hy hE' hE]
   omega
 
+/-- An actual honest vote within the service horizon compares a late result prefix
+with an older-labelled origin, without manufacturing a later vote. -/
+theorem late_result_prefix_compatible_high_origin_of_vote_before
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    (Q : Time) {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
+    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
+    (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrQ : tr.time r ≤ Q)
+    {v : Fin sp.n} {q m : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g v q m O)
+    {z : Fin sp.n} (hz : z ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC z j ell e)
+    (hjQ : tr.time j ≤ Q) (hsl : s < e.msg.slot) (hml : m < e.msg.slot) :
+    Compatible (tr.HonestBlocks H) B O := by
+  have hB := late_result_prefix_votes_before hp hc Q hx hres hBC hs hrQ j hjQ z hz ell e hv hsl
+  exact target_compatible_older_origin hp ho hz ⟨ell, hv⟩ rfl hml hB
+
 /-- A late raw-result prefix and any high origin share a later honest vote head. -/
 theorem late_result_prefix_compatible_high_origin
     (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))

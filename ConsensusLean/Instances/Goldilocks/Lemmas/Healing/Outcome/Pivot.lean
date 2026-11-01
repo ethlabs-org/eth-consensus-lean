@@ -403,45 +403,48 @@ private def OldSrc (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time) 
     (O : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ (x : Fin sp.n) (i j : Nat), HighOrigin tr H g x i j O ∧ tr.time i < sp.ts u
 
-/-- R2 also compares a pre-call finalized cache with an origin written later: compare at a
-future honest tick, then use monotonicity of `F` backwards. -/
+/-- Compare the actual cache and origin within a fixed horizon using only held
+chains and prior signed-row origins. No later tick is required. -/
+theorem finalized_compatible_high_origin_before
+    (hp : ResetPremises tr H proposer dg g ΔF a) (Q : Time)
+    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (_hcQ : tr.time c ≤ Q)
+    {x : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j O) (_hiQ : tr.time i ≤ Q) :
+    Compatible (tr.HonestBlocks H) (tr.state z c).fg.F O := by
+  have hr := Compose.fg_reachable hp.run.toLocalRun hz c
+  have hU := honest_coherent hp
+  have hsub : (tr.state z c).fg.tree ⊆ tr.HonestBlocks H := fun _ h => ⟨z, hz, c, h⟩
+  by_cases hh : HZ tr H g + 1 ≤ (tr.state z c).fg.hj
+  · obtain ⟨_, hJm, hFJ, ⟨C, hC, hCJ, _⟩, -⟩ := Store.cache_invariants _ _ _ _ hr
+    obtain ⟨E, hE, hEr, hEC, hcase⟩ := Store.J_entry_of_reachable hr hC
+    obtain rfl : E = (tr.state z c).fg.J := hU.1 (hsub hE) (hsub hJm) (hEr.trans hCJ)
+    rcases hcase with hg | ⟨hJh, hJT⟩
+    · obtain ⟨_, _, _, _, _, _, _, _, _, hO⟩ := highOrigin_mem hp ho
+      exact Or.inl ((hFJ.mono hsub).trans
+        (Compose.honest_genesis_root_anc hp.run hU (hsub hJm)
+          (congrArg (·.root) hg) ⟨x, ho.1, i, hO⟩))
+    · obtain ⟨W, _, att, _, v, _, d, _, _, _, r, _, b, B, hB, hJB⟩ :=
+        left_entry_origin hp hz hJm hJT (by omega) hEC
+          (by have := Store.hj_lt_h hr hC; omega)
+      have hFB := (hFJ.mono hsub).trans hJB
+      have hcmp := (height_scoped_retention sp ro proposer dg H tr g ΔF
+        hp.run hp.healthy hp.noColl a hp.reset).comparable v r b B x i j O hB ho
+      rcases hcmp with h | h
+      · exact Or.inl (hFB.trans h)
+      · exact Anc.total hU hFB h
+  · obtain ⟨_, _, _, _, _, _, _, _, _, hO⟩ := highOrigin_mem hp ho
+    exact Or.inl (low_finalized_below_high_block hp hz ho.1 hO
+      (high_of_anc hp ho ho.1 hO .refl) (by omega))
+
+/-- The causal cache comparison also permits an origin written after the receiver cut. -/
 theorem finalized_compatible_high_origin_at_any_cut
     (hp : ResetPremises tr H proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H) {c : Nat}
     {x : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j O) :
     Compatible (tr.HonestBlocks H) (tr.state z c).fg.F O := by
-  have hΔ := sp.toParams.hΔ
-  have hga : SA.gbar g < a := by
-    have := cutZ_lt_reset hp.run hp.healthy hp.reset
-    have := lt_cutZ sp g
-    linarith
-  set τ := max a (max (tr.time c) (tr.time i))
-  have haτ : a ≤ τ := le_max_left _ _
-  have hcτ : tr.time c ≤ τ := (le_max_left _ _).trans (le_max_right _ _)
-  have hiτ : tr.time i ≤ τ := (le_max_right _ _).trans (le_max_right _ _)
-  have hτ0 : 0 ≤ τ := (hp.run.time_nonneg c).trans hcτ
-  have hτT : τ < sp.ts ((sp.slot τ : Int) + 1) := not_le.1 fun h => by
-    have := (SA.ts_le_iff_le_slot sp hτ0 _).1 h
-    omega
-  obtain ⟨k, q, hg⟩ := hp.run.tick_of_awake z hz _ (by linarith)
-    ⟨4 * ((sp.slot τ : Int) + 1), by simp only [SA.SAParams.ts]; ring⟩
-    (hp.healthy.2.1 z hz _ (by change SA.gbar g ≤ _; linarith))
-  obtain ⟨hcall, ht⟩ := tick_first_cut hg
-  have hck : c ≤ k := le_of_not_gt fun h => by
-    have := hp.run.time_mono h.le
-    linarith
-  have hik : i ≤ k := le_of_not_gt fun h => by
-    have := hp.run.time_mono h.le
-    linarith
-  have hcmp := ((height_scoped_retention sp ro proposer dg H tr g ΔF hp.run hp.healthy hp.noColl a
-    hp.reset).caches z hz k ⟨_, hcall⟩ (by linarith) x i j O ho hik).1
-  have hmono : Anc (tr.HonestBlocks H) (tr.state z c).fg.F (tr.post k).fg.F := by
-    rw [← tr.state_succ_of_call hcall]
-    exact run_F_mono hp.run.toLocalRun hz (by omega)
-  rcases hcmp with h | h
-  · exact Or.inl (hmono.trans h)
-  · exact Anc.total (honest_coherent hp) hmono h
+  exact finalized_compatible_high_origin_before hp (max (tr.time c) (tr.time i)) hz
+    (le_max_left _ _) ho (le_max_right _ _)
 
 /-- Post-reset specialization retained for callers with an explicit reset cut bound. -/
 theorem finalized_compatible_high_origin (hp : ResetPremises tr H proposer dg g ΔF a)

@@ -1039,68 +1039,36 @@ private theorem reset_lt (hrun : GoldilocksRun proposer dg H tr) (hsh : HSShared
     le_trans ((SA.ts_le_iff sp).2 (by push_cast; omega)) (drainTime_eq (sp := sp) a ▸ hR)
   exact ⟨by linarith, by linarith⟩
 
-/-- **A carrier below a high origin is held or above every honest `Σ.F`** (the T3 paper orb's
-high origin): at the state at a time `t ≥ a`, every honest node holds a block `X` that lies below
-the block `B` of a high origin, or has its `Σ.F` below `X`. By HR.4 (R2), read at a tick of the
-node after both that state and the origin's write (`Σ.F` only grows), its `Σ.F` is compatible
-with `B`, so with `X` (two ancestors of `B`); if `X ⪯ Σ.F`, `X` is held. -/
+/-- A carrier below an actual high origin is held or above the receiver's
+finalized cache, using only witnesses within the given horizon. -/
+theorem carrier_below_origin_before
+    (hp : ResetPremises tr H proposer dg g ΔF a) (Q : Time)
+    {z : Fin sp.n} (hz : z ∈ H) {j : Nat} (hjQ : tr.time j ≤ Q)
+    {x : Fin sp.n} {i s : Nat} {X O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i s O) (hiQ : tr.time i ≤ Q)
+    (hXO : Anc (tr.HonestBlocks H) X O) :
+    X ∈ (tr.state z j).fg.tree ∨ Anc (tr.HonestBlocks H) (tr.state z j).fg.F X := by
+  have hcmp := finalized_compatible_high_origin_before hp Q hz hjQ ho hiQ
+  have hFX : Compatible (tr.HonestBlocks H) (tr.state z j).fg.F X := by
+    rcases hcmp with h | h
+    · exact Anc.total (honest_coherent hp) h hXO
+    · exact Or.inr (hXO.trans h)
+  rcases hFX with h | h
+  · exact Or.inr h
+  · exact Or.inl (mem_tree_of_anc hp hz h
+      (Store.cache_invariants _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hz j)).1)
+
+/-- A carrier below a high origin is held or above every honest finalized cache. -/
 private theorem carrier_below_origin (hrun : GoldilocksRun proposer dg H tr)
     (hsh : HSShared tr H dg g ΔF) (ha : IsReset tr H g a) {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hXo : ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ Anc (tr.HonestBlocks H) X B) {t : Time}
-    (hat : a ≤ t) :
+    (_hat : a ≤ t) :
     ∀ z ∈ H, ∀ j, tr.FirstCutFrom j t →
       X ∈ (tr.state z j).fg.tree ∨ Anc (tr.HonestBlocks H) (tr.state z j).fg.F X := by
-  intro z hz j hj
+  intro z hz j _hj
   obtain ⟨xo, io, jo, B, hO, hXB⟩ := hXo
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hga : SA.gbar g < a := by
-    have := cutZ_lt_reset hrun hsh.healthy ha
-    have := lt_cutZ sp g
-    linarith
-  have hfg := fg_run hrun hsh
-  -- a tick of `z` after `j` and after the origin's cut, at the next slot start
-  have hjτ := le_max_left (tr.time j) (tr.time io)
-  have hioτ := le_max_right (tr.time j) (tr.time io)
-  set τ := max (tr.time j) (tr.time io)
-  have hτ0 : 0 ≤ τ := (hrun.time_nonneg j).trans hjτ
-  have hτT : τ < sp.ts ((sp.slot τ : Int) + 1) := not_le.1 fun h => by
-    have := (SA.ts_le_iff_le_slot sp hτ0 _).1 h
-    omega
-  obtain ⟨k', x', hg'⟩ := hrun.tick_of_awake z hz _ (by linarith)
-    ⟨4 * ((sp.slot τ : Int) + 1), by simp only [SA.SAParams.ts]; ring⟩
-    (hsh.healthy.2.1 z hz _ (by change SA.gbar g ≤ _; linarith [hj.1]))
-  obtain ⟨hc', ht'⟩ := tick_first_cut hg'
-  have hjk : j ≤ k' := le_of_not_gt fun h => by
-    have := hrun.time_mono h.le
-    linarith
-  have hiok : io ≤ k' := le_of_not_gt fun h => by
-    have := hrun.time_mono h.le
-    linarith
-  -- (R2) after that call, and `Σ.F` at `j` below `Σ.F` there
-  have hcmp := ((height_scoped_retention sp ro proposer dg H tr g ΔF hrun hsh.healthy hsh.noColl a
-    ha).caches z hz k' ⟨_, hc'⟩ (by linarith [hj.1]) xo io jo B hO hiok).1
-  have hmono : Anc (tr.HonestBlocks H) (tr.state z j).fg.F (tr.post k').fg.F := by
-    rw [← tr.state_succ_of_call hc']
-    exact run_F_mono hrun.toLocalRun hz (by omega)
-  have hFB : Compatible (tr.HonestBlocks H) (tr.state z j).fg.F B := by
-    rcases hcmp with h | h
-    · exact Or.inl (hmono.trans h)
-    · exact Anc.total hfg.coherent hmono h
-  have hFX : Anc (tr.HonestBlocks H) (tr.state z j).fg.F X ∨
-      Anc (tr.HonestBlocks H) X (tr.state z j).fg.F := by
-    rcases hFB with h | h
-    · exact Anc.total hfg.coherent h hXB
-    · exact Or.inr (hXB.trans h)
-  rcases hFX with h | h
-  · exact Or.inr h
-  · left
-    have hs : tr.projFG.store z j = (tr.state z j).fg := by
-      simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hz j]
-    have hFt : (tr.state z j).fg.F ∈ (tr.projFG.store z j).tree := by
-      rw [hs]
-      exact (Store.cache_invariants _ _ _ _ (Compose.fg_reachable hrun.toLocalRun hz j)).1
-    have := mem_of_anc (store_anc hfg hz h hFt) hFt
-    rwa [hs] at this
+  exact carrier_below_origin_before ⟨hrun, hsh.healthy, hsh.noColl, ha⟩
+    (max (tr.time j) (tr.time io)) hz (le_max_left _ _) hO (le_max_right _ _) hXB
 
 /-- **The early carrier is held or above every honest `Σ.F`** (§26 branch (ii), with the T3 paper
 orb's high origin): at the state at `t_u + 7Δ` every honest node holds the retained crossing `X`
