@@ -687,4 +687,62 @@ theorem block_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid
     (simTrace_time_nonneg S rho hn hv i) htime (p := p)
     (by simpa only [horg] using hdecode) hy hj (hd.trans hb) hd
 
+/-- Every well-formed attestation contained in an actual receipt gets a real processing
+call at receipt time, including duplicate attestations already present in the pool. -/
+theorem received_att_processAt (hn : 1 ≤ Fintype.card V)
+    {i : Nat} {v : V} {receipt : Wire (Fintype.card V)} {t : Time}
+    (he : rho.events[i]? = some (.deliver v receipt t)) {a : FG.Att (Fintype.card V)}
+    (hwf : a.WellFormed) (hc : Model.Obj.Contains receipt (attObj a)) :
+    ∃ k < cutMap S rho hn (i + 1),
+      (simTrace S rho hn).ProcessAttAt (rho.ownKey v) k a ∧
+      (simTrace S rho hn).time k = t := by
+  let proposer := runProposer S rho hn
+  let dg := digestOf S rho
+  let hs : List (Header Info × Nat) := Model.digests rho.hash receipt
+  have find : ∀ (os : List (Wire (Fintype.card V)))
+      (st : NodeState (goldilocksNode (S.params (Model.pubOf E) hn) (S.ro _))) (sub : Nat),
+      attObj a ∈ os → ∃ r ∈ deliverRecs proposer dg hs (rho.ownKey v) t i os st sub,
+        r.label = .fg (.attestation a) := by
+    intro os
+    induction os with
+    | nil => intro st sub h; simp at h
+    | cons o os ih =>
+      intro st sub hm
+      rcases List.mem_cons.mp hm with rfl | hm
+      · rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _
+          (canonEvent_attObj (sp := S.params (Model.pubOf E) hn) (ro := S.ro _) hs a hwf)]
+        have hlen : 0 < (groupRecs proposer dg (rho.ownKey v) st t
+            (Nat.pair i sub) (.attestation a)).length := by
+          simp [length_groupRecs, Node.exec, Node.onAttestation]
+        refine ⟨_, List.mem_append_left _ (List.getElem_mem hlen), ?_⟩
+        rw [(getElem_groupRecs proposer dg (rho.ownKey v) st t
+          (Nat.pair i sub) (.attestation a) 0 hlen).2.2.2.2]
+        rfl
+      · cases ho : canonEvent (S.params (Model.pubOf E) hn) (S.ro _) hs o with
+        | none =>
+          rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ ho]
+          exact ih st (sub + 1) hm
+        | some e =>
+          rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ ho]
+          obtain ⟨r, hr, hl⟩ := ih (Node.exec proposer dg (rho.ownKey v) st t e).1
+            (sub + 1) hm
+          exact ⟨r, List.mem_append_right _ hr, hl⟩
+  have hmem : attObj a ∈ delivered (S.params (Model.pubOf E) hn) receipt := hc
+  obtain ⟨r, hr, hl⟩ := find (delivered (S.params (Model.pubOf E) hn) receipt)
+    (stateAt S rho hn v i).node 0 hmem
+  obtain ⟨hn', ht, _⟩ := mem_deliverRecs (sp := S.params (Model.pubOf E) hn)
+    (ro := S.ro _) proposer dg (rho.ownKey v) hs t i hr
+  have hr' : r ∈ eventCuts S rho hn i := by
+    rw [eventCuts_deliver S rho hn i v receipt t he]
+    exact hr
+  obtain ⟨j, hj, heq⟩ := List.getElem_of_mem hr'
+  have hk : (allCuts S rho hn)[cutMap S rho hn i + j]? = some r := by
+    rw [allCuts_getElem?_add S rho hn i j (List.getElem?_eq_some_iff.mp he).1 hj,
+      List.getElem?_eq_getElem hj, heq]
+  refine ⟨cutMap S rho hn i + j, ?_, Or.inl ⟨?_, ?_⟩, ?_⟩
+  · rw [cutMap_succ]; omega
+  · simp only [simTrace_node, hk, Option.elim_some, hn']
+  · simp only [simTrace_label, hk, Option.map_some, hl]
+  · simp only [simTrace_time, hk, Option.elim_some, ht]
+
 end Consensus.Goldilocks.Refinement
