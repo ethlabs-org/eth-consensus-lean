@@ -14,7 +14,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 
 -- Whole-run consumers and their finite-horizon counterparts share this endpoint layer.
-set_option linter.style.longFile 2200
+set_option linter.style.longFile 2400
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -2110,6 +2110,106 @@ theorem unanimous_viable_or_higher_report {b : Time}
     hv | ⟨x, hx, r, e, C, hrj, hto, hPC, hh⟩
   · exact Or.inl hv
   · exact Or.inr ⟨x, hx, r, e, C, hrj, hto, (hp.run.time_mono hrj.le).trans ht.le, hPC, hh⟩
+
+/-- Finite report duty from actual unanimity: each honest node reports above P
+by the update deadline, unless an honest strict-higher report already exists. -/
+theorem report_cover_of_unanimous {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hPg : P.root ≠ sp.genesisRoot)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hTb : sp.ts u + 6 * sp.Δ ≤ b) :
+    (∀ y ∈ H, ∃ r e R, SA.ToFGAt tr.projAC y r e R ∧
+      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P R) ∨
+    (∃ x ∈ H, ∃ r e C, SA.ToFGAt tr.projAC x r e C ∧
+      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h) := by
+  classical
+  by_cases hescape : ∃ x ∈ H, ∃ r e C, SA.ToFGAt tr.projAC x r e C ∧
+      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h
+  · exact Or.inr hescape
+  left
+  intro y hy
+  have hd := sp.toParams.hΔ
+  have hub : sp.ts u + sp.Δ ≤ b := by linarith
+  have hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u := by
+    have hbase := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g) (sp.slot (SA.gbar g))).2 (by rfl)
+    simp only [SA.SAParams.ts] at hbase ⊢
+    simp only [SA.SAParams.ts] at hgu
+    push_cast at *
+    linarith
+  obtain ⟨j, ell, ell', hup, hto, htoeq, hnexttime, hframe, hjoined⟩ :=
+    hp.update_toFG_calls hy hjoin hTb
+  have hjtime : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
+  have hjb : tr.time j ≤ b := hjtime ▸ hTb
+  have hnextb : tr.time (j + 1) ≤ b := hnexttime ▸ hTb
+  have hRT : Healing.drainTime sp a ≤ sp.ts u + 6 * sp.Δ := by
+    simp only [SA.SAParams.ts] at hR ⊢
+    push_cast at *
+    linarith
+  have hca := Healing.cutZ_lt_reset_of_snapshot hp.run
+    (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
+  have ha0 : 0 ≤ a := by
+    have := Healing.lt_cutZ sp g
+    have := SA.gbar_nonneg g
+    linarith
+  have haT : a ≤ sp.ts u + 6 * sp.Δ := by
+    have hanext : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
+      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+      omega
+    have hle : sp.ts ((sp.slot a : Int) + 1) ≤ Healing.drainTime sp a := by
+      rw [Healing.drainTime_eq]
+      exact (SA.ts_le_iff sp).2 (by push_cast; omega)
+    exact (hanext.le.trans hle).trans hRT
+  have hFP : Anc (tr.HonestBlocks H) (tr.state y j).fg.F P := by
+    rcases finality_alternative_before_update hp hc hP hslot hu hun hgu hR hTb hy
+        (hjtime ▸ haT) hjtime.le with h | ⟨x, hx, r, e, C, _, hto, ht, hPC, hh⟩
+    · exact h
+    · exact False.elim (hescape ⟨x, hx, r, e, C, hto, ht, hPC, hh⟩)
+  have hPv : P ∈ ell.frame.viableTree ell.frame.tree := by
+    rcases unanimous_viable_or_higher_report hp hc hP hslot hu hun hgu hR hTb hy
+        hup.1 hjtime hFP with h | ⟨x, hx, r, e, C, _, hto, ht, hPC, hh⟩
+    · exact h
+    · exact False.elim (hescape ⟨x, hx, r, e, C, hto, ht, hPC, hh⟩)
+  have hpool := unanimous_pool hp hc hun hgu hR hy hup.1
+    (by rw [hjtime]; linarith) hjb hPv.1
+  have hts : Healing.cutZ sp.toParams g ≤ sp.ts u := by
+    have hk := sp.two_le_k
+    apply hp.clean_window_timing (s := u) ?_ u (by omega)
+    rw [Healing.cleanLabel_eq]
+    rw [Healing.drainTime_eq] at hR
+    have := (SA.ts_le_iff sp).1 hR
+    push_cast at this
+    omega
+  obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot hp hc hgu hR hub y hy
+  have hvote : ∃ z ∈ H, ∃ q ell e, SA.CastAt tr.projAC z q ell e ∧
+      tr.time q ≤ b ∧ e.msg.slot = u := ⟨y, hy, q, ellv, e, hv, hq.trans hub, hs⟩
+  have hlocks := hp.call_locks_compatible_of_unanimous hc hP hts hun hvote hy hup.1 hjb
+    (hjtime ▸ hRT) hjtime.le (fun r hr B CV ho =>
+      unanimous_next_optimistic_compatible hp hc hP hslot hu hun hgu hR hub hy ho
+        ((hp.run.time_mono hr.le).trans hjb))
+  have hnextlocks := hp.call_locks_compatible_of_unanimous hc hP hts hun hvote hy hto hnextb
+    (hnexttime ▸ hRT) hnexttime.le (fun r hr B CV ho =>
+      unanimous_next_optimistic_compatible hp hc hP hslot hu hun hgu hR hub hy ho
+        ((hp.run.time_mono hr.le).trans hnextb))
+  have hsl : sp.slot (tr.time j) = u + 1 := by
+    rw [hjtime]
+    apply SA.slot_of_mem sp (u + 1)
+    · simp only [SA.SAParams.ts]; push_cast; linarith
+    · simp only [SA.SAParams.ts]; push_cast; linarith
+  obtain ⟨r, e, R, hr, ht, hPR⟩ := report_of_viable_unanimous_pool hp hy hup hto htoeq
+    hframe (hnexttime.trans hjtime.symm) hjoined hPg hPv hpool hlocks
+    (fun C hC => by
+      obtain ⟨hCv, l, hl, he, _⟩ := hC
+      exact hnextlocks C ⟨hCv.1, l, hl, he⟩)
+    (by rw [hsl]; have := sp.two_le_k; omega) (by rw [hsl]; omega)
+  exact ⟨r, e, R, hr, ht.trans hnexttime.le, hPR⟩
 
 end UpTo
 
