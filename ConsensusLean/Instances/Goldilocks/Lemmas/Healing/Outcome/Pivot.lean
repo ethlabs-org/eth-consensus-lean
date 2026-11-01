@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
@@ -24,7 +25,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
 -- Keep the operational proposal prerequisites with their pivot consumers.
-set_option linter.style.longFile 3600
+set_option linter.style.longFile 3800
 
 public section
 
@@ -2153,6 +2154,52 @@ private theorem proposal_stored_locks_compatible_old
     rw [hsucc] at hslots
     linarith
 
+/-- Stored proposal high locks compare with every high origin in the finite horizon. -/
+theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {ell : ACLabel (goldilocksNode sp ro)} (hci : tr.projAC.CallAt p i ell)
+    (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
+    {x : Fin sp.n} {q j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x q j O) (hqb : tr.time q ≤ b) :
+    SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
+      (tr.time i) (u - 1) O := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos p; omega
+  rw [SA.highLocksCompatible_iff]
+  intro l hl _ hlabel L hL hLr
+  obtain ⟨r, hri, D, hwrite, L', hL', hL'r, hLD⟩ := SA.lock_provenance hr hpH i l hl
+  obtain rfl : L' = L := hr.coherent.1 hL' hL (hL'r.trans hLr.symm)
+  have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono hri.le
+  rcases hwrite with ⟨CV, hop⟩ | ⟨ell', hupd⟩
+  · have hle : l.slot ≤ u := by
+      obtain ⟨_, _, _, hsl, _⟩ := id hop
+      have ht : sp.ts l.slot ≤ tr.time r :=
+        (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) l.slot).mpr (by omega)
+      exact_mod_cast (SA.ts_le_iff sp).mp (ht.trans hrt)
+    have hne : l.slot ≠ u := fun he =>
+      proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti
+        p hpH r hri D CV (he ▸ hop)
+    have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
+      change u - 1 ≤ l.slot at hlabel
+      rw [drainTime_eq] at hR
+      have := (SA.ts_le_iff sp).mp hR
+      have := sp.two_le_k
+      rw [cleanLabel_eq]
+      omega
+    rcases hp.protected_source_compatible_high_origin hc hpH (Or.inl ⟨CV, Or.inr hop⟩)
+        hclean ((hp.run.time_mono hri.le).trans hib) ho hqb with h | h
+    · exact Or.inl (hLD.trans h)
+    · exact SA.anc_total hr.coherent hLD h
+  · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
+    have hslots : sp.ts u ≤ sp.ts (l.slot + 1 : Nat) :=
+      (SA.ts_le_iff sp).mpr (by omega)
+    have hsucc : sp.ts (l.slot + 1 : Nat) = sp.ts l.slot + 4 * sp.Δ := by
+      simp only [SA.SAParams.ts]; push_cast; ring
+    rw [hsucc] at hslots
+    have := sp.toParams.hΔ
+    linarith
+
 /-- A non-current read-point lock sits below a raw source of the receiver. Its source
 precedes the receiving cast, not necessarily the proposal. -/
 theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
@@ -2444,6 +2491,129 @@ private theorem reset_proposal_passes (hp : ResetPremises tr H proposer dg g ΔF
     obtain ⟨hvs, hsend, B, hB, hBr, hDB, hacc⟩ := fastLock_writer hr ho.1 (Or.inr hop) v hv
     exact hheld x ho.1 v hvs hsend ⟨B, hB, hBr,
       (hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2).trans hDB, hacc⟩
+
+/-- Every pre-slot high origin lies below the bounded operational proposal's parent. -/
+theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) :
+    ∀ O, (∃ x r l, HighOrigin tr H g x r l O ∧ tr.time r < sp.ts u) →
+      Anc (tr.HonestBlocks H) O d.head := by
+  rintro O ⟨x, r, l, ho, hrt⟩
+  have hS := healthy_base_of_reset_catch_before hp hc
+  have hr := hS.run.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos p; omega
+  have hri : r < i := by
+    by_contra hn
+    have ht := hp.run.time_mono (Nat.le_of_not_gt hn)
+    rw [hti] at ht
+    exact (not_lt_of_ge ht) hrt
+  have hrb := (hp.run.time_mono hri.le).trans hib
+  have hlu := hp.origin_label_lt_at_proposal hpH hci hcall hti hri ho
+  obtain ⟨s, rfl⟩ : ∃ s, u = s + 1 := ⟨u - 1, by omega⟩
+  have hsucc : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SA.SAParams.ts]; push_cast; ring
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  have below : Anc (tr.HonestBlocks H) O ell.frame.fcRoot →
+      Anc (tr.HonestBlocks H) O d.head := by
+    intro hOF
+    obtain ⟨_, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
+    obtain ⟨A, _, hstart, _⟩ := acProposal_walk hd
+    rw [hstart] at hsQ
+    exact hOF.trans (Anc.mono hPhiU ((SA.fcRoot_anc_getAnchor hPhi A (tr.time i)).trans hsQ))
+  rcases hp.proposal_holds_old hpH hci hcall hd hti hib ho hrt with hOt | hOF
+  swap
+  · obtain ⟨hstart, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
+    exact hOF.trans (Anc.mono hPhiU ((hPhi.rooted.2 _ hstart).trans hsQ))
+  rcases hp.held_high_origin_viable hpH hci hib ho hrb
+      (by rw [hti]; exact (SA.ts_le_iff sp).mpr (by omega)) hOt with hV | hOF
+  swap
+  · exact below (hOF.mono hPhiU)
+  have hFO := (hPhi.rooted.2 O hOt).mono hPhiU
+  have hhigh := hp.proposal_stored_locks_compatible_old hc hpH hR hci hcall hti hib ho hrb
+  have hhigh' : SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
+      (tr.projAC.time i) s O := by
+    change SA.HighLocksCompatible _ _ (tr.time i) s O
+    simpa only [Nat.add_sub_cancel] using hhigh
+  have hcut : cutZ sp.toParams g ≤ sp.ts s :=
+    (hp.cutZ_le_ts_of_highOrigin ho).trans ((SA.ts_le_iff sp).mpr (by omega))
+  have hsg : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
+    have := lt_cutZ sp g
+    linarith
+  have hsb : sp.ts s + sp.Δ ≤ b := by rw [hti, hsucc] at hib; linarith
+  have hrestart : ∀ z ∈ H, ∀ q, tr.time q ≤ b → tr.projAC.RestartAt z q →
+      tr.time q ≤ sp.ts ((s : Int) - 1) := by
+    intro z hz q hqb hrest
+    apply (restart_le_before hp hz (Compose.projAC_restartAt.mp hrest) hqb).trans
+    rw [cutZ_eq] at hcut
+    have := (SA.ts_le_iff sp).mp hcut
+    exact (SA.ts_le_iff sp).mpr (by omega)
+  have hrs : ∀ q ≤ i, tr.projAC.RestartAt p q → tr.time q < sp.ts s := by
+    intro q hqi hrest
+    exact (hrestart p hpH q ((hp.run.time_mono hqi).trans hib) hrest).trans_lt
+      ((SA.ts_lt_iff sp).mpr (by omega))
+  by_cases hls : l < s
+  · have votes : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → e.msg.slot = s →
+        SA.VoteExtends (tr.HonestBlocks H) e.msg O := by
+      rintro z hz q e ⟨ell', hcast⟩ hes
+      have hqb : tr.time q ≤ b := by
+        have ht := SA.vote_time_le hr hz ⟨ell', hcast⟩
+        have hsl := (SA.castAt_spec hr hz hcast).2.1
+        rw [← hsl, hes] at ht
+        exact ht.trans hsb
+      exact hp.high_origin_votes_before q hqb x r l O ho hrb z hz ell' e hcast (by omega)
+    have hhalf := SA.honest_voters_half_before hS hsg hsb
+      (fun z hz q hqt hrest => hrestart z hz q (hqt.trans hsb) hrest)
+    have hhalf' : sp.n ≤ 2 *
+        {z | z ∈ H ∧ ∃ q e, SA.VoteAt tr.projAC z q e ∧ e.msg.slot = s}.ncard := by
+      change sp.n ≤ 2 * {z | z ∈ H ∧ ∃ q e, SA.VoteAt tr.projAC z q e ∧
+        e.msg.slot = s ∧ tr.time q ≤ sp.ts s + sp.Δ}.ncard at hhalf
+      have hle := Set.ncard_le_ncard (s := {z | z ∈ H ∧ ∃ q e,
+        SA.VoteAt tr.projAC z q e ∧ e.msg.slot = s ∧ tr.time q ≤ sp.ts s + sp.Δ})
+        (t := {z | z ∈ H ∧ ∃ q e, SA.VoteAt tr.projAC z q e ∧ e.msg.slot = s})
+        (by rintro z ⟨hz, q, e, hv, hs, _⟩; exact ⟨hz, q, e, hv, hs⟩)
+      omega
+    refine SA.batch_proposal hS.run hf hhalf' votes hpH hci
+      (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh'
+    intro z hz q e hv hes
+    obtain ⟨H', hH', hHr', hOH⟩ := votes z hz q e hv hes
+    obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hpH hci hsg
+      (by change _ ≤ tr.time i; rw [hti, hsucc]; linarith) hib
+      (fun k hki t _ => deadline_le_restarts
+        (fun k' hk' hr' => (hrs k' (hk'.trans hki) hr').le) t) hrs hz hv hes
+      (fun Hd hHd hHdr => by
+        rw [hU.1 hHd hH' (hHdr.trans hHr'.symm)]
+        exact hFO.trans hOH)
+    exact SA.heldAtProposal_iff.2 ⟨Or.inl hmem, Hd, hHd, hHdr,
+      (hHdr ▸ hbs).trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))⟩
+  · have hls : l = s := by omega
+    obtain ⟨ellx, D, CV, hcx, hfl, _, _, _, hOD, _⟩ := hp.highOrigin_mem ho
+    rw [hls] at hfl
+    rcases hfl with ⟨ell', C, ⟨_, _, ht, _⟩, _⟩ | hop
+    · have ht' : tr.time r = sp.ts s + 6 * sp.Δ := ht
+      rw [hsucc] at hrt
+      linarith
+    have hODU := hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2
+    refine optimistic_first_proposal_anc hS.run hf ho.1 hop hODU hpH hci
+      (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh'
+    intro v hv
+    obtain ⟨hvs, hsend, B, hB, hBr, hDB, hacc⟩ := fastLock_writer hr ho.1 (Or.inr hop) v hv
+    have hFB := hFO.trans (hODU.trans hDB)
+    refine SA.heldAtProposal_of_writer hr (hp.sync.syncAC hp.run (le_gbar g))
+      (by linarith) le_rfl ho.1 hpH hci hti hrs hvs hsend ⟨B, hB, hBr, hFB, ?_⟩
+    rcases hacc with hg | ⟨q, hq, hqt⟩
+    · exact Or.inl hg
+    by_cases hg : SA.gbar g ≤ tr.time q
+    · exact Or.inr (Or.inl ⟨q, hq, hg, hqt⟩)
+    · obtain ⟨k, hki, hak, hkt⟩ := hS.catchUp.relay x ho.1 q B hq (not_le.mp hg) p hpH i ell hci
+        (by change _ ≤ tr.time i; rw [hti, hsucc]; linarith) hib hFB
+      exact Or.inr (Or.inr ⟨k, hki, hak, by change tr.time k < _ at hkt ⊢; linarith⟩)
 
 /-- A crossing below an origin written before a serving proposal is below its duty parent.
 The explicit timestamp preserves the provenance needed by bounded report consumers. -/
