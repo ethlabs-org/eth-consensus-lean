@@ -671,5 +671,131 @@ theorem readySafeOn_of_read_producers
       (Compose.frameOK_state hrun.toLocalRun hy'.1 j) (hsub y hy'.1 j)).mpr
         (hmono y i j t t' hi hj hbi hbj hij htt ht ht₁ hy hy')
 
+section CoveredEndpoint
+
+variable {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+  {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+  {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a : Time}
+
+/-- Covered outputs agree directly; their effective records and heads need not agree. -/
+theorem covered_outputs_compatible (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    {O O' B B' : SA.Blk sp.n (List (FG.Att sp.n))} {x x' : Fin sp.n} {r r' b b' : Nat}
+    (ho : Healing.HighOrigin tr H g x r b B) (ho' : Healing.HighOrigin tr H g x' r' b' B')
+    (hOB : Anc (tr.HonestBlocks H) O B) (hOB' : Anc (tr.HonestBlocks H) O' B') :
+    Compatible (tr.HonestBlocks H) O O' := by
+  have hU :=
+    (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun.coherent
+  have hBB : Compatible (tr.HonestBlocks H) B B' := by
+    rcases le_total b b' with h | h
+    · exact Healing.origins_compatible hp ho ho' h fun k _ => (Healing.retention_inv hp k).1
+    · exact (Healing.origins_compatible hp ho' ho h
+        fun k _ => (Healing.retention_inv hp k).1).symm
+  rcases hBB with h | h
+  · exact SA.anc_total hU (hOB.trans h) hOB'
+  · exact SA.anc_total hU hOB (hOB'.trans h)
+
+/-- Explicit interval producer contract for one earlier output. Each transition either
+decomposes into guarded writes in the old frame followed by a compatible floor change,
+or supplies a replacement effective record extending the prefix (including restarts).
+The write predicate must include every actual write; qualifying high-cover candidates
+can discharge its compatibility using `covered_candidates_compatible`. No such provenance,
+restart preservation, or floor compatibility is inferred from a lock at one read. -/
+structure EffectiveRecordInterval (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+    (y : Fin sp.n) (i j : Nat) (O : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
+  step : ∀ q, i ≤ q → q < j →
+    (∃ New : SA.Blk sp.n (List (FG.Att sp.n)) → Prop,
+      Compose.Writes (Node.frame (tr.state y q)) New
+        (tr.state y q).ac.latestConfirmed (tr.state y (q + 1)).ac.latestConfirmed ∧
+      (∀ D, New D → Compatible (tr.HonestBlocks H) O D) ∧
+      Compatible (tr.HonestBlocks H) (tr.state y (q + 1)).fg.F O) ∨
+    Anc (tr.HonestBlocks H) O
+      ((SA.lookup (Node.frame (tr.state y (q + 1)))
+        (tr.state y (q + 1)).ac.latestConfirmed).getD (tr.state y (q + 1)).fg.F)
+
+/-- The interval contract preserves the effective record across every intervening cut. -/
+theorem effective_record_of_interval
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i ≤ j)
+    {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hint : EffectiveRecordInterval tr H y i j O)
+    (hO : Anc (tr.HonestBlocks H) O ((SA.lookup (Node.frame (tr.state y i))
+      (tr.state y i).ac.latestConfirmed).getD (tr.state y i).fg.F)) :
+    Anc (tr.HonestBlocks H) O ((SA.lookup (Node.frame (tr.state y j))
+      (tr.state y j).ac.latestConfirmed).getD (tr.state y j).fg.F) := by
+  have hU := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
+  have step : ∀ q, i ≤ q → q ≤ j → Anc (tr.HonestBlocks H) O
+      ((SA.lookup (Node.frame (tr.state y q)) (tr.state y q).ac.latestConfirmed).getD
+        (tr.state y q).fg.F) := by
+    intro q hiq
+    induction q, hiq using Nat.le_induction with
+    | base => exact fun _ => hO
+    | succ q hiq ih =>
+      intro hqj
+      rcases hint.step q hiq (by omega) with ⟨New, hw, hnew, hF⟩ | hreset
+      · have hwritten := effective_record_writes_of_compatible hU
+          (Compose.frameOK_state hrun.toLocalRun hy q)
+          (fun X hX => ⟨y, hy, q, hX.1⟩) hw hnew (ih (by omega))
+        exact effective_record_frame_of_run hrun hnc hy (Nat.le_succ q) hF hwritten
+      · exact hreset
+  exact step j hij le_rfl
+
+/-- Endpoint variant with direct output agreement and an explicit interval producer.
+Head certificates are required at the actual later clock, not inherited from an old vote. -/
+theorem readySafeOn_of_output_agreement_interval
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (c t₀ t₁ : Time)
+    (hagree : ∀ y z i j t t',
+      Regimes.ReadPoint tr i t → Regimes.ReadPoint tr j t' →
+      Regimes.Boundary tr y i → Regimes.Boundary tr z j →
+      t₀ ≤ t → t ≤ t₁ → t₀ ≤ t' → t' ≤ t₁ →
+      Regimes.ReadyAt tr H c y t → Regimes.ReadyAt tr H c z t' →
+      Compatible (tr.HonestBlocks H) (Regimes.readAfter tr y i t) (Regimes.readAfter tr z j t'))
+    (hpreserve : ∀ y i j t t',
+      Regimes.ReadPoint tr i t → Regimes.ReadPoint tr j t' →
+      Regimes.Boundary tr y i → Regimes.Boundary tr y j →
+      i ≤ j → t ≤ t' → t₀ ≤ t → t' ≤ t₁ →
+      Regimes.ReadyAt tr H c y t → Regimes.ReadyAt tr H c y t' →
+      EffectiveRecordInterval tr H y i j (Regimes.readAfter tr y i t) ∧
+      Anc (tr.HonestBlocks H) (Regimes.readAfter tr y i t)
+        (SA.acHead sp (tr.state y j).ac (Node.frame (tr.state y j)) t')) :
+    Regimes.ReadySafeOn tr H c t₀ t₁ := by
+  refine ⟨hagree, ?_⟩
+  intro y i j t t' hi hj hbi hbj hij htt ht ht₁ hy hy'
+  obtain ⟨hint, hhead⟩ := hpreserve y i j t t' hi hj hbi hbj hij htt ht ht₁ hy hy'
+  have hU := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
+  have hsub : ∀ q, (Node.frame (tr.state y q)).tree ⊆ tr.HonestBlocks H :=
+    fun q _ hX => ⟨y, hy.1, q, hX.1⟩
+  have hstart := (exposed_prefix_preserved_of_record_head hU
+    (Compose.frameOK_state hrun.toLocalRun hy.1 i) (hsub i)
+    (O := Regimes.readAfter tr y i t) (A := (tr.state y i).ac) (t := t)).mp .refl
+  exact (exposed_prefix_preserved_of_record_head hU
+    (Compose.frameOK_state hrun.toLocalRun hy'.1 j) (hsub j)).mpr
+      ⟨effective_record_of_interval hrun hnc hy.1 hij hint hstart.1, hhead⟩
+
+/-- Actual high covers discharge agreement; the interval and read-head producers remain
+explicit. Stored fast locks may supply each cover via `high_cover_of_stored_fast_lock`. -/
+theorem readySafeOn_of_high_covers_interval
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a) (c t₀ t₁ : Time)
+    (hcover : ∀ y i t, Regimes.ReadPoint tr i t → Regimes.Boundary tr y i →
+      t₀ ≤ t → t ≤ t₁ → Regimes.ReadyAt tr H c y t →
+      ∃ x r b B, Healing.HighOrigin tr H g x r b B ∧
+        Anc (tr.HonestBlocks H) (Regimes.readAfter tr y i t) B)
+    (hpreserve : ∀ y i j t t',
+      Regimes.ReadPoint tr i t → Regimes.ReadPoint tr j t' →
+      Regimes.Boundary tr y i → Regimes.Boundary tr y j →
+      i ≤ j → t ≤ t' → t₀ ≤ t → t' ≤ t₁ →
+      Regimes.ReadyAt tr H c y t → Regimes.ReadyAt tr H c y t' →
+      EffectiveRecordInterval tr H y i j (Regimes.readAfter tr y i t) ∧
+      Anc (tr.HonestBlocks H) (Regimes.readAfter tr y i t)
+        (SA.acHead sp (tr.state y j).ac (Node.frame (tr.state y j)) t')) :
+    Regimes.ReadySafeOn tr H c t₀ t₁ := by
+  refine readySafeOn_of_output_agreement_interval hp.run hp.noColl c t₀ t₁ ?_ hpreserve
+  intro y z i j t t' hi hj hbi hbj ht ht₁ ht' ht₁' hy hz
+  obtain ⟨x, r, b, B, ho, hOB⟩ := hcover y i t hi hbi ht ht₁ hy
+  obtain ⟨x', r', b', B', ho', hOB'⟩ := hcover z j t' hj hbj ht' ht₁' hz
+  exact covered_outputs_compatible hp ho ho' hOB hOB'
+
+end CoveredEndpoint
+
 end Consensus.Goldilocks.Refinement
 end
