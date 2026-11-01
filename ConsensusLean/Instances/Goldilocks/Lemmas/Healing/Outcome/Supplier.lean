@@ -412,6 +412,47 @@ theorem reset_old_child_ineligible
         SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s X})
       (fun X hX => hT hX.1) ⟨B, hBv, hBQ, Or.inr (Or.inr hmaj)⟩ _)
 
+/-- Two distinct viable children force the voter's root below their parent. If that parent
+extends every pre-slot high origin, it also reaches the voter's height floor. -/
+theorem reset_parent_viable_of_children
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
+    {Q P B : SA.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocks H)
+    (hPQ : P.parent = some Q.root) (hBQ : B.parent = some Q.root) (hBP : B ≠ P)
+    (hPv : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
+    (hBv : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
+    (hQold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) O Q) : Q ∈ ell.frame.viableHeads := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  have hQP : Anc (tr.HonestBlocks H) Q P := .single ⟨hQU, hPhiU hPv.1.1, hPQ⟩
+  have hnBP : ¬ Anc (tr.HonestBlocks H) B P := by
+    intro h
+    rcases Relation.ReflTransGen.cases_tail h with heq | ⟨Y, hBY, hY⟩
+    · exact hBP heq.symm
+    obtain rfl : Y = Q := hr.coherent.1 hY.1 hQU
+      (Option.some_injective _ (hY.2.2.symm.trans hPQ))
+    have h1 := (Anc.slot_le hr.coherent hBY).1
+    have h2 := hr.coherent.2 Y hQU B (hPhiU hBv.1.1) hBQ
+    omega
+  have below : ∀ X, Anc (tr.HonestBlocks H) X B → Anc (tr.HonestBlocks H) X P →
+      Anc (tr.HonestBlocks H) X Q := by
+    intro X hXB hXP
+    rcases Relation.ReflTransGen.cases_tail hXB with heq | ⟨Y, hXY, hY⟩
+    · exact False.elim (hnBP (heq ▸ hXP))
+    obtain rfl : Y = Q := hr.coherent.1 hY.1 hQU
+      (Option.some_injective _ (hY.2.2.symm.trans hBQ))
+    exact hXY
+  have hfQ := below _ (hBv.2.1.mono hPhiU) (hPv.2.1.mono hPhiU)
+  have hQt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hPv.1.1 hQP
+    ((hPhi.F_anc_fcRoot.mono hPhiU).trans hfQ)
+  have hfQ' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfQ hQt
+  rw [Compose.frame_of_projAC hp.run hy hc.1] at hQt hfQ' ⊢
+  exact ⟨hQt.1, hQt.2, hfQ'.mono (fun X hX => hX.1),
+    reset_vote_floor_above_old hp hy hR hc hes hQt.1 hQold⟩
+
 /-- **The joined duty, unanimity** (§23; phase-service §10, "Join with RN/RU"): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
 `t_u ≥ R` is `P`. -/
