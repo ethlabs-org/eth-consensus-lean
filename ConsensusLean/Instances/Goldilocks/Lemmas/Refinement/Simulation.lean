@@ -519,6 +519,20 @@ theorem tick_trailing_voteForward_poll (hv : rho.ExecutionValid) {v : V}
   · rw [outbox_empty S rho hn hv v hv' i]; simp
   · exact pre_shape S rho hn v (rho.stateBefore i v) t (poll_selected S rho hv v)
 
+omit [DecidableEq V] in
+/-- The optional proposal duty preserves every envelope queued by the node tick. -/
+theorem proposal_duties_voteForwards_subset (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Time) :
+    (shapeOf S hn nd).voteForwards ⊆
+      (shapeOf S hn (rho.runDuties v nd ((skeleton (pubOf E)).proposeAt t)).1).voteForwards := by
+  intro q hq
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with ⟨h, -⟩ | ⟨s, hs, h, -⟩
+  · rw [h]; erw [runDuties_fst_nil]; exact hq
+  · rw [h]; erw [runDuties_fst_cons, runDuties_fst_nil]
+    apply dutyStep_propose_pres S rho hn (fun st => q ∈ st.voteForwards)
+      (fun st o hs hq => recordOwn_voteForwards_subset st o hs hq)
+      (fun st s hq => by rw [propose_voteForwards]; exact hq) v nd s hs hq
+
 /-- Envelopes queued before the tick's trailing polls are released by that tick. -/
 theorem tick_voteForward_released (hv : rho.ExecutionValid) {v : V}
     (hv' : v ∈ rho.honest) {i : Nat} {t : Time}
@@ -543,6 +557,54 @@ theorem tick_voteForward_released (hv : rho.ExecutionValid) {v : V}
     exact List.append_assoc _ _ _
   rw [hd]
   exact duty_release_in_runDuties S rho v _ pre _ _ _ hrel
+
+/-- An envelope queued by the node tick survives the optional proposal and is released. -/
+theorem tick_nodeTick_voteForward_released (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i : Nat} {t : Time}
+    (he : rho.events[i]? = some (.tick v t)) (q : Time × SA.Vote (Fintype.card V))
+    (hq : q ∈ (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).voteForwards) :
+    Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward q.1 (encodeVote q.2))) [voteObj q.2] ∈ rho.releasesAt i := by
+  apply tick_voteForward_released S rho hn hv hv' he q
+  erw [runDuties_fst_append]
+  apply proposal_duties_voteForwards_subset S rho hn v _ t
+  rw [atProposal_eq] at hq
+  exact hq
+
+/-- An own emission of the tick's AC call is released once its actual fresh
+pool insertion is identified. The two leading polls preserve that call's node state. -/
+theorem tick_ac_emission_voteForward_released (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i : Nat} {t : Time}
+    (he : rho.events[i]? = some (.tick v t))
+    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) (m : SA.Vote (Fintype.card V))
+    (hem : ∃ e ∈ ((goldilocksNode (S.params (pubOf E) hn) (S.ro _)).step
+      (rho.ownKey v) (stateAt S rho hn v i).node.ac
+      (Node.frame (stateAt S rho hn v i).node) t .tick).2,
+      e.msg = m)
+    (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
+    (hnew : m ∈ (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).1.ac.pool
+      m.slot) :
+    Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.releasesAt i := by
+  apply tick_nodeTick_voteForward_released S rho hn hv hv' he (t, m)
+  rw [atProposal_shape S rho hn v _ t (poll_selected S rho hv v)]
+  let st := (poll (poll { stateAt S rho hn v i with now := t } t.toNat).1 t.toNat).1
+  have hnode : st.node = (stateAt S rho hn v i).node := by
+    dsimp only [st]
+    rw [poll_node_of_fgDue _ _ (poll_fgDue _ _)]
+    exact poll_node_of_fgDue { stateAt S rho hn v i with now := t } _
+      (fgDue_eq_false S rho hn v i)
+  have hself : st.self = rho.ownKey v := by
+    dsimp only [st]
+    rw [poll_self, poll_self]
+    exact stateAt_self S rho hn v i
+  have hnow : st.now = t := by dsimp only [st]; rw [poll_now, poll_now]
+  change (t, m) ∈ (nodeTick st).voteForwards
+  rw [← hnow]
+  apply nodeTick_voteForward_of_emission st (hnow ▸ hp) m
+  · simpa only [hself, hnode, hnow] using hem
+  · rwa [hnode]
+  · simpa only [hself, hnode, hnow] using hnew
 
 /-- Every envelope actually queued during delivery is released in that same engine event.
 Canonical dependencies are derived from reachable inventory and the actual ordinary prefix. -/
