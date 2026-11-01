@@ -558,4 +558,132 @@ theorem publication_held_before_gst_deadline (hn : 1 ≤ Fintype.card V)
   rw [hga] at hheld
   exact ⟨a + E.Δ, hheld, hslack⟩
 
+/-- Holdings of an honest decoded wrapper give a block call after its source stamp.
+Local publication uses the actual acceptance; receipt uses recursive block processing. -/
+theorem held_forward_blockCall_before (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    {y x : Fin (Fintype.card V)} (hx : x ∈ honestKeys S rho)
+    {j : Nat} {o : Wire (Fintype.card V)} {t d D : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (hheld : rho.log.Held rho.point (rho.key y) o d)
+    (hdecode : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B))
+    (hd : d < D) (hj : D ≤ (simTrace S rho hn).time j) :
+    ∃ k ≤ j, t ≤ (simTrace S rho hn).time k ∧
+      (simTrace S rho hn).BlockCallAt y k B ∧ (simTrace S rho hn).time k < D := by
+  obtain ⟨u, hud, hsource, _⟩ := hheld
+  have huD : u < D := hud.trans_lt hd
+  have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply _
+  have before {k : Nat} (hk : (simTrace S rho hn).time k < D) : k ≤ j := by
+    by_contra h
+    have htime := simTrace_time_mono S rho hn hv (show j ≤ k by omega)
+    exact (not_lt_of_ge (hj.trans htime)) hk
+  rcases hsource with hs | hr
+  · obtain ⟨i, hi, ho⟩ := hs
+    have hxy := released_forward_signer S rho hn hi ho hdecode
+    rw [hxy] at hdecode
+    have hstamp : t = u := released_forward_stamp S rho hn hv hi ho hdecode
+    have hacc : ∃ k < cutMap S rho hn (i + 1),
+        (simTrace S rho hn).AcceptAt (rho.ownKey (rho.key y)) k B ∧
+        (simTrace S rho hn).time k = t := by
+      rcases hi with he | ⟨receipt, he⟩
+      · exact tick_released_forward_acceptance S rho hn hv he ho hdecode
+      · exact delivery_released_forward_acceptance S rho hn hv he ho hdecode
+    obtain ⟨k, _, ha, ht⟩ := hacc
+    have hk : (simTrace S rho hn).time k < D := ht ▸ hstamp ▸ huD
+    exact ⟨k, before hk, ht.ge, ⟨true, hkey ▸ ha⟩, hk⟩
+  · obtain ⟨i, hi⟩ := hr
+    have htu := received_forward_stamp_le S rho hn hv hi (.refl o) hx hdecode
+    obtain ⟨k, _, hc, ht⟩ := received_forward_blockCall S rho hn hi (.refl o) hdecode htu
+    have hk : (simTrace S rho hn).time k < D := ht ▸ huD
+    exact ⟨k, before hk, ht ▸ htu, hkey ▸ hc, hk⟩
+
+/-- A decoded publication receives block service at the processing cut's GST deadline,
+including publications before GST. This does not require acceptance at the receiver. -/
+theorem publication_blockDeliveredBy_psync (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    {τ : Time} (hτ : 0 ≤ τ) (ht : (publisherExecution S rho).eventTime r.event = τ)
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (hdecode : decodeForward (S.params (Model.pubOf E) hn)
+      (Model.digests rho.hash r.object) r.object = some (r.origin, τ, p, B))
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j)
+    (hb : (simTrace S rho hn).deadline y j (max τ g)
+      (S.params (Model.pubOf E) hn).Δ ≤ rho.horizon)
+    (hd : (simTrace S rho hn).deadline y j (max τ g)
+      (S.params (Model.pubOf E) hn).Δ ≤ (simTrace S rho hn).time j) :
+    (simTrace S rho hn).BlockDeliveredBy y j τ (max τ g) B := by
+  induction j using Nat.strong_induction_on with
+  | h j ih =>
+    obtain ⟨d, hheld, hlt⟩ := publication_held_before_gst_deadline S rho hn hv hnet
+      r hr hx hy hj hτ ht hb hd
+    obtain ⟨k, hkj, hlo, hcall, htime⟩ := held_forward_blockCall_before S rho hn hv
+      hx hheld hdecode hlt hd
+    by_cases hk : (simTrace S rho hn).time k <
+        (simTrace S rho hn).deadline y k (max τ g) (S.params (Model.pubOf E) hn).Δ
+    · exact ⟨k, hkj, hlo, hcall, hk⟩
+    · have hkj' : k < j := lt_of_le_of_ne hkj (by
+        intro heq
+        subst k
+        exact hk htime)
+      have hmono := deadline_mono_cut S rho hn hv y (max τ g)
+        (S.params (Model.pubOf E) hn).Δ hkj
+      obtain ⟨acc, hc⟩ := hcall
+      obtain ⟨l, hl, hlo', hc', ht'⟩ := ih k hkj' ⟨_, hc⟩ (hmono.trans hb) (le_of_not_gt hk)
+      exact ⟨l, hl.trans hkj, hlo', hc', ht'⟩
+
+/-- An honest own-block call is an acceptance under collision freedom. -/
+theorem ownBlockAt_accept (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {i : Nat}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (hown : (simTrace S rho hn).OwnBlockAt y i B) :
+    (simTrace S rho hn).AcceptAt y i B := by
+  obtain ⟨⟨acc, hc⟩, hpos⟩ := hown
+  have run := simTrace_goldilocksRun S rho hn hv
+  rcases Compose.blockCall_cases run.toLocalRun hy hc with hg |
+    ⟨j, x, rfl, hg, hp, d, p, hdp, hB, hacc, _, _, _⟩
+  · exact False.elim (hpos (by
+      simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1))
+  · obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run.toLocalRun hy hg
+    have req := SA.interface_requirements (S.params (Model.pubOf E) hn)
+      (List (FG.Att (Fintype.card V))) (S.ro _)
+    have h := Compose.honest_block_accepted
+      (A := goldilocksNode (S.params (Model.pubOf E) hn) (S.ro _))
+      (runProposer S rho hn) (digestOf S rho) y
+      ⟨req.1, req.2.1, req.2.2.1, req.2.2.2, SA.proposal_payload_valid _ _ _⟩
+      run.genesis_root_ok cfg _ _ x hr hs hp d p (by rw [hst]; exact hdp)
+    simp only [hst] at h
+    have key : Compose.NoCollOn (digestOf S rho) (insert B ((simTrace S rho hn).state y j).fg.tree) →
+        ∃ fg', ((simTrace S rho hn).state y j).fg.onBlock B = some fg' := by
+      rw [hB]
+      exact fun hnc => (h.2.2.2.2.2.2 hnc).2
+    have hon := key (hnc.mono (Set.insert_subset_iff.2
+      ⟨Or.inr ⟨y, j + 2, acc, hc⟩, Compose.tree_subset_run run.toLocalRun hy j⟩))
+    have he := hacc.mpr hon
+    subst acc
+    exact hc
+
+/-- Full finite GST block service for accepted and own blocks, retaining the original
+source-time lower bound and the effective max(source,GST) processing deadline. -/
+theorem block_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {g : Time} (hnet : rho.log.PSync rho.point g)
+    {x : Fin (Fintype.card V)} (hx : x ∈ honestKeys S rho) {i : Nat}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (hi : (simTrace S rho hn).AcceptAt x i B ∨ (simTrace S rho hn).OwnBlockAt x i B)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j) (hb : (simTrace S rho hn).time j ≤ rho.horizon)
+    (hd : (simTrace S rho hn).deadline y j (max ((simTrace S rho hn).time i) g)
+      (S.params (Model.pubOf E) hn).Δ ≤ (simTrace S rho hn).time j) :
+    (simTrace S rho hn).BlockDeliveredBy y j ((simTrace S rho hn).time i)
+      (max ((simTrace S rho hn).time i) g) B := by
+  have ha := hi.elim id (ownBlockAt_accept S rho hn hv hnc hx)
+  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
+    (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B ha
+  exact publication_blockDeliveredBy_psync S rho hn hv hnet r hr (horg ▸ hx)
+    (simTrace_time_nonneg S rho hn hv i) htime (p := p)
+    (by simpa only [horg] using hdecode) hy hj (hd.trans hb) hd
+
 end Consensus.Goldilocks.Refinement
