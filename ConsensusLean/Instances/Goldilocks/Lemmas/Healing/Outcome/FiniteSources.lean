@@ -694,6 +694,42 @@ theorem ResetPremisesUpTo.clean_source_stored_lock_compatible
     obtain rfl : Hd' = Hd := hr.coherent.1 hHd' hHd (heHd'.trans heHd.symm)
     exact SA.anc_total hr.coherent hBHd (hLD.trans hDHd)
 
+/-- Finite receipts resolve all honest votes at a bounded call when their heads
+extend its finalized floor. Heads need not be identical. -/
+theorem ResetPremisesUpTo.extending_votes_resolved_before
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y j ell)
+    (hu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
+    (hjb : tr.time j ≤ b)
+    (hdeadline : ∀ k ≤ j, ∀ t, SA.gbar g ≤ t → tr.projAC.deadline y k t ≤ max t (sp.ts u) + sp.Δ)
+    (hrestart : ∀ k ≤ j, tr.projAC.RestartAt y k → tr.time k < sp.ts u)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hFB : Anc (tr.HonestBlocks H) ell.frame.F B)
+    (hext : ∀ x ∈ H, ∀ q e, SA.VoteAt tr.projAC x q e → e.msg.slot = u →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
+    (∀ x ∈ H, ∀ q e, SA.VoteAt tr.projAC x q e → e.msg.slot = u →
+      e.msg ∈ (tr.projAC.state y j).pool u) ∧
+    (∀ v ∈ (tr.projAC.state y j).pool u, v.val ∈ H →
+      SA.resolutionTime (tr.projAC.state y j) ell.frame v < SA.ETime.of (sp.ts u + 2 * sp.Δ)) := by
+  have hS := healthy_base_of_reset_catch_before hp hc
+  have hr := hS.run.localRun
+  have hPhi := (SA.frameIn_of_callAt hr hy hcall).1
+  have receipt : ∀ x ∈ H, ∀ q e, SA.VoteAt tr.projAC x q e → e.msg.slot = u →
+      e.msg ∈ (tr.projAC.state y j).pool u ∧
+      SA.resolutionTime (tr.projAC.state y j) ell.frame e.msg <
+        SA.ETime.of (sp.ts u + 2 * sp.Δ) := by
+    intro x hx q e hv hes
+    obtain ⟨D, hD, hDr, hBD⟩ := hext x hx q e hv hes
+    obtain ⟨E, hE, hEr, hEu, hm, hvs, hbs⟩ := SA.late_vote_held_of_frame_before hS
+      hy hcall hu ht hjb hdeadline hrestart hx hv hes (fun E hEU hEr => by
+        rw [hr.coherent.1 hEU hD (hEr.trans hDr.symm)]
+        exact hFB.trans hBD)
+    exact ⟨hm, SA.resolutionTime_lt_of hPhi hE hEr (hes ▸ hEu) hvs hbs⟩
+  refine ⟨fun x hx q e hv hes => (receipt x hx q e hv hes).1, ?_⟩
+  intro v hv hvH
+  obtain ⟨q, _, e, he, rfl⟩ := hS.run.honest.pool_vote y hy j u v hv hvH
+  exact (receipt _ hvH q e he (SA.state_pool_slot sp hr hy j u _ hv)).2
+
 end Consensus.Goldilocks.Healing
 
 end

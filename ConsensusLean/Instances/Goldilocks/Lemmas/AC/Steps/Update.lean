@@ -49,11 +49,22 @@ private theorem anc_of_isDeepest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set
   · have := depth_lt_of_anc hΦ hDX hne hXt
     rcases hD.2 X hX (Ne.symm hne) with h | h <;> omega
 
-variable (sp)
-
-/-- **A1.4 (b).** -/
-theorem optimistic_next_update : OptimisticNextUpdate sp := by
-  intro FGP ro H U tr proposer hrun s x z i₀ k B CV ℓ _ _ hf _ hext hz hup hh hres
+/-- An actual update with an early-resolved honest majority extending a target
+selects a result extending it. Source provenance and service only produce these inputs. -/
+theorem update_extends_of_resolved_votes
+    {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
+    {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    (hrun : ACRun proposer tr H U) {s : Nat} {z : Fin sp.n} {k : Nat}
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hf : 2 * Hᶜ.ncard < sp.n)
+    (hext : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = s + 1 → VoteExtends U e.msg B)
+    (hz : z ∈ H) (hup : UpdateAt tr z k (s + 1) ℓ)
+    (hh : sp.n ≤ 2 * {v | v ∈ H ∧ ∃ x ∈ (tr.state z k).pool (s + 1), x.val = v}.ncard)
+    (hres : ∀ x ∈ (tr.state z k).pool (s + 1), x.val ∈ H →
+      resolutionTime (tr.state z k) ℓ.frame x < ETime.of (sp.ts (s + 1 : Nat) + 2 * sp.Δ)) :
+    ∃ C, getConfirmation sp (tr.state z k) ℓ.frame (s + 1) = some C ∧ Anc U B C ∧
+      (B.root ≠ sp.genesisRoot →
+        ∃ D, fastSelect sp (tr.state z k) ℓ.frame (s + 1) C = some D ∧ Anc U B D) := by
   have hr := hrun.localRun
   have hU := hr.coherent
   obtain ⟨hc, -, -, -⟩ := hup
@@ -130,6 +141,13 @@ theorem optimistic_next_update : OptimisticNextUpdate sp := by
   have hDd := deepest_mem hD
   exact ⟨D, hD, hBBs.trans ((anc_of_isDeepest hΦ hDd hBsP hBsΦ
     (anc_total hΦ.coherent hBsC hDd.1.1.2.2)).mono hΦU)⟩
+
+variable (sp)
+
+/-- **A1.4 (b).** -/
+theorem optimistic_next_update : OptimisticNextUpdate sp := by
+  intro FGP ro H U tr proposer hrun s x z i₀ k B CV ℓ _ _ hf _ hext hz hup hh hres
+  exact update_extends_of_resolved_votes hrun hf hext hz hup hh hres
 
 end Consensus.Goldilocks.SA
 
