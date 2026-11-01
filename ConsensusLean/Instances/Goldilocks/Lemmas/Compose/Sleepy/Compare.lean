@@ -340,11 +340,13 @@ private theorem relayed_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
     fun t ht₁ ht₂ => by rw [slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]; omega
   rwa [hvs] at this
 
-/-- Relay delivery to an update uses no recipient deadline beyond that update. -/
+/-- Relay delivery to an update uses recipient deadlines only through `t_s + 3Δ`,
+not through the later update time. -/
 private theorem relayed_held_before (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     {s : Nat} {b : Time} (hsync : ServiceBefore H U b tr)
     {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hb : tr.time c ≤ b)
+    (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
+    (hb : sp.ts s + 3 * sp.Δ ≤ b)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D : Blk sp.n FGP} {u : Fin sp.n}
     (hu : Relayed tr U X s D u) :
     ∃ v : Vote sp.n, v.val = u ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
@@ -929,6 +931,26 @@ private theorem same_label_compatible_win (hrun : GoldilocksRun proposer dg H tr
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦU' hR') (hRr.trans hR'r.symm)
     exact hnc' (SA.anc_total hU (Anc.mono hΦU hBR) (Anc.mono hΦU' hBR'))
 
+/-- A result and an optimistic selection of one label compare once the label's relayed
+votes have deadlines within `b`, whatever the time of the result's update. -/
+theorem result_optimistic_compatible_label_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
+    {s : Nat} (hs : sp.ts s + 3 * sp.Δ ≤ b) {X x : Fin sp.n} (hX : X ∈ H) (hx : x ∈ H)
+    {i i' : Nat} {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {CV CV' : Set (Vote sp.n)}
+    (hR : SA.ResultAt tr.projAC X i s C CV) (hO : SA.OptimisticLockAt tr.projAC x i' s C' CV') :
+    Compatible (tr.HonestBlocks H) C C' := by
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  by_contra hnc'
+  obtain ⟨ℓ, S, hc, ht, hrs, hmaj, -, hS⟩ := SA.result_side hrun' hX hR
+  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := SA.optimistic_seats hrun' hx hO
+  have := SA.relayed_against_of_held hrun'.localRun
+    (SA.relayed_held_before hrun'.localRun hsync.ac hx hX hc ht hs hrs) hS hT
+    fun h => hnc' (Or.symm h)
+  have := (Set.ncard_le_ncard
+    (Set.subset_univ (SA.voters {v | v ∈ (tr.projAC.state X i).pool s}))).trans
+    (by rw [Set.ncard_univ, Nat.card_fin])
+  omega
+
 /-- Origins of one label compare using recipient deadlines only up to `b`. -/
 theorem same_label_compatible_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
@@ -944,24 +966,25 @@ theorem same_label_compatible_before (hrun : GoldilocksRun proposer dg H tr)
       SA.ResultAt tr.projAC X i s D CV → SA.OptimisticLockAt tr.projAC x i' s D' CV' →
       Compatible (tr.HonestBlocks H) D D' := by
     intro X x i i' D D' CV CV' hX hx hi hR hO
-    by_contra hnc'
-    obtain ⟨ℓ, S, hc, ht, hrs, hmaj, -, hS⟩ := SA.result_side hrun' hX hR
-    obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := SA.optimistic_seats hrun' hx hO
-    have := SA.relayed_against_of_held hrun'.localRun
-      (SA.relayed_held_before hrun'.localRun hs hx hX hc ht hi hrs) hS hT
-      fun h => hnc' (Or.symm h)
-    have := hle (SA.voters {v | v ∈ (tr.projAC.state X i).pool s})
-    omega
+    have ht : tr.time i = sp.ts s + 6 * sp.Δ := by
+      obtain ⟨_, hu, _⟩ := hR
+      exact hu.2.2.1
+    exact result_optimistic_compatible_label_before hrun hnc hsync
+      (by have := sp.toParams.hΔ; linarith) hX hx hR hO
   obtain ⟨X, hX, i, CV, hi, hR | hO⟩ := originWithin_iff.1 hC <;>
     obtain ⟨X', hX', i', CV', hi', hR' | hO'⟩ := originWithin_iff.1 hC'
   · by_contra hnc'
     obtain ⟨ℓ, S, hc, ht, hrs, hmaj, hSF, hS⟩ := SA.result_side hrun' hX hR
     obtain ⟨ℓ', S', hc', ht', hrs', hmaj', hSF', hS'⟩ := SA.result_side hrun' hX' hR'
+    have ht : tr.time i = sp.ts s + 6 * sp.Δ := ht
+    have ht' : tr.time i' = sp.ts s + 6 * sp.Δ := ht'
     have h1 := SA.relayed_against_of_held hrun'.localRun
-      (SA.relayed_held_before hrun'.localRun hs hX' hX hc ht hi hrs) hS hSF'
+      (SA.relayed_held_before hrun'.localRun hs hX' hX hc ht
+        (by have := sp.toParams.hΔ; linarith) hrs) hS hSF'
       fun h => hnc' (Or.symm h)
     have h2 := SA.relayed_against_of_held hrun'.localRun
-      (SA.relayed_held_before hrun'.localRun hs hX hX' hc' ht' hi' hrs') hS' hSF hnc'
+      (SA.relayed_held_before hrun'.localRun hs hX hX' hc' ht'
+        (by have := sp.toParams.hΔ; linarith) hrs') hS' hSF hnc'
     omega
   · exact hro hX hX' hi hR hO'
   · exact Or.symm (hro hX' hX hi' hR' hO)
