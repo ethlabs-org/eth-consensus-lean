@@ -579,6 +579,38 @@ theorem covered_candidates_compatible
     exact SA.optimisticLock_compatible
       (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl) hf hy hopt hvotes
 
+/-- Same-label candidates compare with an actual high cover using healthy same-slot
+compatibility. Regular results require the stronger late-label bound. -/
+theorem covered_equal_candidates_compatible
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {x : Fin sp.n} {r b : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : Healing.HighOrigin tr H g x r b B) (hOB : Anc (tr.HonestBlocks H) O B)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (SA.Vote sp.n)}
+    (hD : (SA.ResultAt tr.projAC y k b D CV ∧ SA.gbar g + 4 * sp.Δ ≤ sp.ts b) ∨
+      (SA.OptimisticLockAt tr.projAC y k b D CV ∧ SA.gbar g ≤ sp.ts b)) :
+    Compatible (tr.HonestBlocks H) O D := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  have hU := hS.run.localRun.coherent
+  obtain ⟨ell, D₀, CV₀, hcall, hfl, _, _, _, hBD, _⟩ := Healing.highOrigin_mem hp ho
+  have hOD := hOB.trans (hBD.mono (SA.frameIn_of_callAt hS.run.localRun ho.1 hcall).2)
+  rcases hD with ⟨hres, hlate⟩ | ⟨hopt, hlate⟩
+  · rcases hfl with ⟨ell₀, C, hupd, hconf, _, hsel, _⟩ | hopt
+    · have hDC := (SA.deepest_mem hsel).1.1.2.2
+      have hOC := hOD.trans (hDC.mono (SA.frameIn_of_callAt hS.run.localRun ho.1 hupd.1).2)
+      have hcmp := SA.result_result_compatible hS hy hres ho.1
+        (show SA.ResultAt tr.projAC x r b C _ from ⟨ell₀, hupd, hconf, rfl⟩) hlate
+      rcases hcmp with h | h
+      · exact SA.anc_total hU hOC h
+      · exact Or.inl (hOC.trans h)
+    · rcases SA.result_optimistic_compatible hS hy hres ho.1 hopt hlate with h | h
+      · exact SA.anc_total hU hOD h
+      · exact Or.inl (hOD.trans h)
+  · rcases SA.fastLock_fastLock_compatible hS ho.1 hfl hy (Or.inr hopt) hlate with h | h
+    · exact Or.inl (hOD.trans h)
+    · exact SA.anc_total hU hOD h
+
 /-- A stored fast lock covering a high exposed prefix supplies both historic vote geometry
 and later candidate compatibility. Only labels are ordered: the queried cast may precede
 the cut at which the stored lock is observed. Liveness of that lock is not required. -/
@@ -844,6 +876,37 @@ theorem effectiveRecordInterval_of_high_cover
     rw [← tr.state_succ_of_call hcall] at hFB
     rcases hFB with h | h
     · exact SA.anc_total hac.localRun.coherent h hOB
+    · exact Or.inr (hOB.trans h)
+
+/-- Covered intervals admit equal-label candidates and need no frame activation premise.
+Earlier-label candidates still require independent compatibility. -/
+theorem effectiveRecordInterval_of_healthy_high_cover
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {x y : Fin sp.n} {r b i j : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : Healing.HighOrigin tr H g x r b B) (hOB : Anc (tr.HonestBlocks H) O B)
+    (hy : y ∈ H) (hb : SA.gbar g ≤ sp.ts b)
+    (hcandidates : ∀ q, i ≤ q → q < j → ∀ D s CV,
+      SA.ResultAt tr.projAC y q s D CV ∨ SA.OptimisticLockAt tr.projAC y q s D CV →
+      Compatible (tr.HonestBlocks H) O D ∨
+        (b ≤ s ∧ (SA.ResultAt tr.projAC y q s D CV →
+          SA.gbar g + 4 * sp.Δ ≤ sp.ts s))) :
+    EffectiveRecordInterval tr H y i j O := by
+  apply effectiveRecordInterval_of_high_cover hp ho hOB hy
+  · intro q hiq hqj D s CV hD
+    rcases hcandidates q hiq hqj D s CV hD with h | ⟨hbs, hlate⟩
+    · exact Or.inl h
+    rcases lt_or_eq_of_le hbs with hlt | rfl
+    · exact Or.inr ⟨hlt, fun hr => ⟨hlate hr, hc⟩⟩
+    apply Or.inl
+    apply covered_equal_candidates_compatible hp hc ho hOB hy
+    rcases hD with h | h
+    · exact Or.inl ⟨h, hlate h⟩
+    · exact Or.inr ⟨h, hb⟩
+  · intro q _ _
+    apply Or.inl
+    rcases Healing.finalized_compatible_high_origin_at_any_cut hp hy (c := q + 1) ho with h | h
+    · exact SA.anc_total (Healing.honest_coherent hp) h hOB
     · exact Or.inr (hOB.trans h)
 
 /-- An origin written during a unanimous slot is below its unanimous head. Older-label
