@@ -250,28 +250,28 @@ private theorem honest_not_equivocator_pool (hp : ResetPremises tr H proposer dg
     ((SA.state_pool_slot sp hr hy c s _ hv).trans (SA.state_pool_slot sp hr hy c s _ hw).symm)
   exact hvw rfl
 
-/-- **A clean slow lock is impossible** (the T3 paper orb): let `x` write a slow lock of label
-`j` on `S` with `b + k − 1 ≤ j`. The result of slot `j − 1` at `x` extends `S`
-(`SA.slow_window_results`; `j − 1 ≥ b` as `k ≥ 2`), so every honest slot-`j` vote extends `S`
-(`clean_result_next_votes`). Every honest validator votes in slot `j` (`half_committee`); its
-vote's head extends the reset seed, so it is high and was first accepted after `c_z > g`, and is
-relayed with the vote to `x` under `GST(g)`: at `x`'s update the vote is held, resolved before
-`t_j + 2Δ`, and its validator is no equivocator. So `S` has the honest validators (at least half
-of the committee) as supporters and passes the fast test, and the fast test selects it: the lock
-is fast. -/
+/-- Late/post-drain slow-lock votes; the remaining paper supplier. -/
+theorem late_slow_lock_votes (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x : Fin sp.n} {i l : Nat} {S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hx : x ∈ H) (hS : SA.SlowLockAt tr.projAC x i l S)
+    (hl : cleanLabel sp a + sp.k + 2 ≤ l) :
+    ∀ y ∈ H, ∀ q e, SA.VoteAt tr.projAC y q e → e.msg.slot = l →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg S := by
+  sorry
+
+/-- A late/post-drain slow lock is impossible once its same-label votes extend it.
+The honest committee's heads extend the reset seed and relay to the update, so the fast
+test already selects the slow candidate. -/
 private theorem clean_slowLock_false (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
     {i j : Nat} {S : SA.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H)
-    (hS : SA.SlowLockAt tr.projAC x i j S) (hb : cleanLabel sp a + sp.k ≤ j + 1) : False := by
+    (hS : SA.SlowLockAt tr.projAC x i j S) (hb : cleanLabel sp a + sp.k + 2 ≤ j) : False := by
   have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hr := hrun'.localRun
   have hU := hr.coherent
   have hk := sp.two_le_k
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+  have hvotes := late_slow_lock_votes hp hx hS hb
   rw [cleanLabel_eq] at hb
-  -- the result of slot `j − 1` extends `S`, and every honest slot-`j` vote extends it
-  obtain ⟨k₁, R, CV, hR, hSR⟩ := SA.slow_window_results hr hx hS (j - 1) (by omega) (by omega)
-  have hvotes := clean_result_next_votes hp hx hR (by rw [cleanLabel_eq]; omega)
-  rw [Nat.sub_add_cancel (by omega : 1 ≤ j)] at hvotes
   -- `g ≤ ḡ < c_z < a < t_{slot(a)+1} ≤ t_j`
   have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
   have hlt := lt_cutZ sp g
@@ -305,7 +305,7 @@ private theorem clean_slowLock_false (hp : ResetPremises tr H proposer dg g ΔF 
     (hret.votes v₀ r₀ l₀ O ho z hz kz ℓz e ⟨hcz, hez⟩ (by omega)).1
   obtain ⟨Hd', hHd', hHd'r, hRHd'⟩ := hvotes z hz kz e ⟨ℓz, hcz, hez⟩ hes
   obtain rfl : Hd = Hd' := hU.1 hHd hHd' (hHdr.trans hHd'r.symm)
-  have hSHd := hSR.trans hRHd'
+  have hSHd := hRHd'
   obtain ⟨hHdt, hpool, hres⟩ := Compose.honest_vote_at_update hrun' hsync hx hupd
     (by linarith) hHd ((Anc.mono hΦU (hΦ.rooted.2 S hSt)).trans hSHd) hz ⟨ℓz, hcz, hez⟩ hes
     hHdr.symm fun kx hkx => by
@@ -316,14 +316,14 @@ private theorem clean_slowLock_false (hp : ResetPremises tr H proposer dg g ΔF 
     (SA.castAt_spec hr hz ⟨hcz, hez⟩).1, by rw [hes], Hd, hHdt, hHdr,
     SA.anc_tree_of_anc_U hU hΦ hΦU hSt hSHd hHdt⟩
 
-/-- **Clean slow transfer** (phase-service §10, HS.2 (2), across phases): let an honest node `x`
+/-- **Late/post-drain slow-lock transfer**: let an honest node `x`
 write at cut `i` a slow lock of label `j` on the raw selected block `S` (`SA.SlowLockAt`, before
-the move back), with a clean slow window (`b + k − 1 ≤ j`). Then every honest vote of a slot after
+the move back), with `cleanLabel + k + 2 ≤ j`. Then every honest vote of a slot after
 `j` extends `S`, and at that vote `S` is in the voter's viable voter block tree or at or below its
 `fc_root` (inside the honest blocks). Every stored image of the lock is an ancestor of `S` (RN). -/
 theorem clean_slow_transfer (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
     {S : SA.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H) (hS : SA.SlowLockAt tr.projAC x i j S)
-    (hb : cleanLabel sp a + sp.k ≤ j + 1) :
+    (hb : cleanLabel sp a + sp.k + 2 ≤ j) :
     ∀ y ∈ H, ∀ k ℓ' e, SA.CastAt tr.projAC y k ℓ' e → j < e.msg.slot →
       SA.VoteExtends (tr.HonestBlocks H) e.msg S ∧
       (S ∈ ℓ'.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ'.frame e.msg.slot) ∨
