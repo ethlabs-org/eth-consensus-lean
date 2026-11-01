@@ -59,6 +59,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.ContestLocksRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorGlobal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorSegments
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepGlobal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepInterval
@@ -186,6 +187,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Drain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainCommon
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProvenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorSegments
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome
