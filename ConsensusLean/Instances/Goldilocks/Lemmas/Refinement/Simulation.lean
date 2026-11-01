@@ -929,9 +929,26 @@ theorem simTrace_vote_forwarded (hv : rho.ExecutionValid) :
       · exact simTrace_call_sending_event S rho hn hc (by rw [hm]; simp)
       · exact simTrace_call_sending_event S rho hn hc (by rw [hb]; simp)
   obtain ⟨i, hlo, hhi, hs⟩ := hevent
-  refine ⟨i, hlo, hhi, hs, ?_⟩
-  -- Remaining: fresh handler queueing, actual prefix holdings, and global first release.
-  sorry
+  refine ⟨i, hlo, hhi, hs, ?_, ?_⟩
+  · -- Remaining: same-event release completeness and cut/handler identification.
+    sorry
+  · apply admission_voteForward_first S rho hn hv hy hs hlo hhi
+    rcases hsource with hem | ⟨-, hf, -⟩
+    · have hr := simTrace_goldilocksRun S rho hn hv
+      obtain ⟨ℓ, hc, e, he, hev⟩ := hem
+      have hΦ : FrameOK ℓ.frame :=
+        (hr.cutLaw y hy k _ hc).1 ▸
+          (Store.frame_realization _ _ _ _ (Compose.fg_reachable hr.toLocalRun hy k)).1
+      have hsign := SA.step_emission_signer y _ ℓ.frame _ ℓ.call
+        hΦ
+        (hr.time_nonneg k) (by
+          rw [(hr.cutLaw y hy k _ hc).2.1]
+          exact he)
+      have hm : m.val = y := hev ▸ hsign
+      have hf := Compose.emitted_slot_not_pooled hr hy hy (Nat.le_refl k)
+        ⟨ℓ, hc, e, he, hev⟩ hm rfl m.slot
+      simpa only [Compose.projAC_state hr.toLocalRun hy] using hf
+    · exact hf
 
 /-- The simulating trace and cut map of a valid engine run simulate it. -/
 theorem simTrace_simulates (hv : rho.ExecutionValid) :
