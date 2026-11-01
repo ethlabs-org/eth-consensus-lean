@@ -921,7 +921,7 @@ private theorem deadline_le {y : Fin sp.n} {c : Nat} {a : Time}
     linarith [max_le_max (le_refl τ) h']
 
 /-- A vote of the slot-`L` pool of an honest node is a vote of its latest view, of slot `L`. -/
-private theorem mem_latest_votes (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+theorem mem_latest_votes (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i L : Nat} {t : Time}
     (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
     {u : Vote sp.n} (hu : u ∈ (tr.projAC.state y i).pool L) :

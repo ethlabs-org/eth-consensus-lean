@@ -291,6 +291,36 @@ theorem effective_record_update_slot_growth
   · exact Or.inl he
   · exact Or.inr ((hanc.slot_le hΦ.coherent).2 (Ne.symm he))
 
+/-- An update tick runs exactly the preceding slot's update, without a vote attempt. -/
+theorem post_of_update
+    {ro : SA.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SA.SATrace sp FGP ro}
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {c s : Nat}
+    {ell : ACLabel (SA.goldilocksSA sp FGP ro)} (hu : SA.UpdateAt tr y c s ell) :
+    tr.post c = SA.updateConfirmation sp (tr.state y c) ell.frame (tr.time c) s := by
+  have hΔ := sp.toParams.hΔ
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SA.SAParams.ts]; push_cast; ring
+  have hslot : sp.slot (tr.time c) = s + 1 := SA.slot_of_mem sp (s + 1)
+    (by rw [hu.2.2.1, hts]; linarith)
+    (by rw [hu.2.2.1, show sp.ts (s + 1 + 1 : Nat) =
+      sp.ts (s + 1 : Nat) + 4 * sp.Δ by simp only [SA.SAParams.ts]; push_cast; ring, hts]; linarith)
+  have he := hr.exec c ell hu.1.2 (hu.1.1 ▸ hy)
+  rw [hu.1.1, hu.2.1] at he
+  have hpost : tr.post c = (SA.acOnTick sp y (tr.state y c) ell.frame (tr.time c)).1 :=
+    (congrArg Prod.fst he).symm
+  rw [hpost]
+  unfold SA.acOnTick
+  dsimp only
+  rw [hslot]
+  have ht1 : ¬ tr.time c = sp.ts (s + 1 : Nat) + sp.Δ := by
+    rw [hu.2.2.1, hts]; linarith
+  have ht2 : tr.time c = sp.ts (s + 1 : Nat) + 2 * sp.Δ := by
+    rw [hu.2.2.1, hts]; ring
+  rw [ite_eq_right (not_not.mpr hu.2.2.2), ite_eq_right ht1,
+    ite_eq_left ⟨ht2, Nat.succ_pos s⟩]
+  simp only [Nat.add_sub_cancel]
+
 /-- A non-vetoed update covers its result in the effective post-call record. -/
 theorem effective_record_after_update
     {ro : SA.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SA.SATrace sp FGP ro}
@@ -304,31 +334,7 @@ theorem effective_record_after_update
   obtain ⟨ell', hu', hC, -⟩ := hR
   have heq : ell' = ell := Option.some.inj (hu'.1.2.symm.trans hu.1.2)
   subst ell'
-  have hΔ := sp.toParams.hΔ
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SA.SAParams.ts]; push_cast; ring
-  have hslot : sp.slot (tr.time c) = s + 1 := SA.slot_of_mem sp (s + 1)
-    (by rw [hu.2.2.1, hts]; linarith)
-    (by rw [hu.2.2.1, show sp.ts (s + 1 + 1 : Nat) =
-      sp.ts (s + 1 : Nat) + 4 * sp.Δ by simp only [SA.SAParams.ts]; push_cast; ring, hts]; linarith)
-  have he := hr.exec c ell hu.1.2 (hu.1.1 ▸ hy)
-  rw [hu.1.1, hu.2.1] at he
-  have hpost := (congrArg Prod.fst he).symm
-  dsimp only at hpost
-  rw [hpost]
-  change ell.frame.Anc C ((SA.lookup ell.frame
-    (SA.acOnTick sp y (tr.state y c) ell.frame (tr.time c)).1.latestConfirmed).getD ell.frame.F)
-  unfold SA.acOnTick
-  dsimp only
-  rw [hslot]
-  have ht1 : ¬ tr.time c = sp.ts (s + 1 : Nat) + sp.Δ := by
-    rw [hu.2.2.1, hts]; linarith
-  have ht2 : tr.time c = sp.ts (s + 1 : Nat) + 2 * sp.Δ := by
-    rw [hu.2.2.1, hts]; ring
-  rw [ite_eq_right (not_not.mpr hu.2.2.2), ite_eq_right ht1,
-    ite_eq_left ⟨ht2, Nat.succ_pos s⟩]
-  dsimp only
-  rw [Nat.add_sub_cancel]
+  rw [post_of_update hr hy hu]
   unfold SA.updateConfirmation
   simp only [hC]
   rw [ite_eq_right hnv]
