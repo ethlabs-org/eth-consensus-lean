@@ -323,4 +323,29 @@ theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
   obtain ⟨rfl, rfl, rfl⟩ := Prod.mk.inj (decoded_forward_fields _ _ _ _ _ hb' hdec)
   exact hh.accept B root p hpar hp ha hdec
 
+/-- Block handling preserves the joint invariant even when the block is refused.
+Only the accepting branch needs a valid child wire. -/
+theorem decoded_held_onBlock {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (st : State (S.params (pubOf E) hn) (S.ro _))
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (hh : WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (hc : WrappersCover st)
+    (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
+    (B : Blk (S.params (pubOf E) hn))
+    (hb : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2 →
+      decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+        (blockObj _ B) = some B) (ht : 0 ≤ st.now) :
+    let st' := apply st (Node.onBlock st.self st.node st.now B)
+    WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st' ∧
+    WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash) st' := by
+  by_cases ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2
+  · exact decoded_held_accept S rho hn st hd hh hc hr B ha (hb ha) ht
+  · unfold Node.onBlock at ha ⊢
+    split
+    · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
+    · split
+      · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
+      · simp_all [Node.acCall]
+
 end Consensus.Goldilocks.Refinement
