@@ -407,6 +407,20 @@ theorem apply_voteForward_of_admission (st : State sp ro) r (v : Vote sp.n)
   · exact List.mem_append_left _ (by simpa only [hb] using hv)
   · exact List.mem_append_right _ (List.mem_map.mpr ⟨e, he, hv⟩)
 
+/-- An own vote emitted by the public tick is queued once its fresh pool insertion
+is established. The emitted vote is already admitted before the later poll. -/
+theorem nodeTick_voteForward_of_emission (st : State sp ro)
+    (hp : sp.toParams.IsPublic st.now) (v : Vote sp.n)
+    (he : ∃ e ∈ ((goldilocksNode sp ro).step st.self st.node.ac
+      (Node.frame st.node) st.now .tick).2, e.msg = v)
+    (hold : v ∉ st.node.ac.pool v.slot)
+    (hnew : v ∈ (Node.acCall st.self st.node st.now .tick).1.ac.pool v.slot) :
+    (st.now, v) ∈ (nodeTick st).voteForwards := by
+  unfold nodeTick
+  rw [ite_eq_left hp]
+  exact apply_voteForward_of_admission st _ v _ (List.mem_singleton_self _)
+    (Or.inr (Or.inr he)) hold hnew
+
 /-- A new queued vote comes from a real message/payload candidate or own emission in this
 handler's cuts. This is not yet authenticated source provenance for an arbitrary received wire. -/
 theorem apply_voteForward_source (st : State sp ro) r (t : Time) (v : Vote sp.n)
@@ -669,6 +683,17 @@ theorem recordOwn_now (st : State sp ro) o hs : (recordOwn st o hs).now = st.now
 theorem recordOwn_fgDue (st : State sp ro) o hs : (recordOwn st o hs).fgDue = st.fgDue := by
   unfold recordOwn; split <;> (try split) <;> rfl
 
+/-- Own-object callbacks do not drain queued vote envelopes. -/
+theorem recordOwn_voteForwards_subset (st : State sp ro) o hs :
+    st.voteForwards ⊆ (recordOwn st o hs).voteForwards := by
+  unfold recordOwn
+  split
+  · exact List.Subset.refl _
+  · split
+    · exact List.subset_append_left _ _
+    · exact List.Subset.refl _
+  · exact List.Subset.refl _
+
 /-- The node's tick keeps the key. -/
 theorem nodeTick_self (st : State sp ro) : (nodeTick st).self = st.self := by
   unfold nodeTick; split <;> rfl
@@ -684,6 +709,11 @@ theorem propose_now (st : State sp ro) s : (propose st s).1.now = st.now := by
   unfold propose; dsimp only; split <;> rfl
 /-- The slot proposal keeps the FG-due flag. -/
 theorem propose_fgDue (st : State sp ro) s : (propose st s).1.fgDue = st.fgDue := by
+  unfold propose; dsimp only; split <;> rfl
+
+/-- Proposing does not drain the queue made by the preceding node tick. -/
+theorem propose_voteForwards (st : State sp ro) s :
+    (propose st s).1.voteForwards = st.voteForwards := by
   unfold propose; dsimp only; split <;> rfl
 
 /-- The FG update keeps the key. -/

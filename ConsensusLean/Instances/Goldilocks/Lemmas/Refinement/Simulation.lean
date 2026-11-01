@@ -410,6 +410,53 @@ theorem dutyStep_poll_voteForward_of_own_vote (v : V)
   · erw [Model.releaseAll_seen]
     exact Model.closure_mono (fun _ h => List.mem_append_left _ h) he
 
+/-- A poll with at most one ordinary pending body releases its vote queue when
+each dependency is held or pending. The FG update appends only an attestation. -/
+theorem dutyStep_poll_voteForward_of_available (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i p : Nat}
+    {nd : Model.Node (Model.protoOf (compiled (family S)) E)}
+    (hc : EngineDutyCut S rho v i p nd) (t : Nat)
+    (hlen : (shapeOf S hn nd).outbox.length ≤ 1)
+    (hav : ∀ q ∈ (shapeOf S hn nd).voteForwards,
+      voteObj q.2 ∈ Model.closure nd.seen ∨
+        Body.vote (encodeVote q.2) ∈ (shapeOf S hn nd).outbox) :
+    ∀ q ∈ (shapeOf S hn nd).voteForwards,
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward q.1 (encodeVote q.2))) [voteObj q.2] ∈
+          (rho.dutyStep v nd (.poll t)).2 := by
+  have hself := cut_self S rho hn hc
+  by_cases hh : ∀ q ∈ (shapeOf S hn nd).voteForwards,
+      voteObj q.2 ∈ Model.closure nd.seen
+  · exact dutyStep_poll_voteForward S rho hn v nd t (poll_selected S rho hv v) hself hh
+  · push Not at hh
+    obtain ⟨q, hq, hnot⟩ := hh
+    have hmem := (hav q hq).resolve_left hnot
+    have hlist : (shapeOf S hn nd).outbox = [.vote (encodeVote q.2)] := by
+      cases ho : (shapeOf S hn nd).outbox with
+      | nil => simp [ho] at hmem
+      | cons b bs =>
+        have hb : bs = [] := by
+          apply List.length_eq_zero_iff.mp
+          simp only [ho, List.length_cons] at hlen
+          omega
+        subst bs
+        have hb := List.mem_singleton.mp (ho ▸ hmem)
+        exact congrArg (fun b => [b]) hb.symm
+    have hhead : (pollPre (shapeOf S hn nd)).outbox.head? = some (.vote (encodeVote q.2)) := by
+      rw [pollPre_eq]
+      split
+      · rcases fgUpdate_outbox (shapeOf S hn nd) with h | ⟨a, h⟩ <;> rw [h, hlist] <;> rfl
+      · rw [hlist]; rfl
+    apply dutyStep_poll_voteForward_of_own_vote S rho hn v nd t
+      (poll_selected S rho hv v) hself q.2
+      (duty_cut_vote_signer S rho hn hv hv' hc q.2 hmem) hhead
+    intro r hr
+    rcases hav r hr with h | h
+    · exact Or.inr h
+    · rw [hlist, List.mem_singleton] at h
+      have hd := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj h)
+      exact Or.inl (by simpa only [decodeVote_encodeVote, Option.some.injEq] using hd)
+
 /-- Every envelope actually queued during delivery is released in that same engine event.
 Canonical dependencies are derived from reachable inventory and the actual ordinary prefix. -/
 theorem delivery_voteForward_released (hv : rho.ExecutionValid) {v : V}

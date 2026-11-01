@@ -949,6 +949,13 @@ private theorem cut_owned (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.hon
     apply duties_owned
     exact process_owned _ _ _ hbase
 
+/-- Pending canonical votes at actual duty boundaries belong to the local signer. -/
+theorem duty_cut_vote_signer (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
+    {i p : Nat} {nd} (hc : EngineDutyCut S rho v i p nd) (m : Vote (Fintype.card V))
+    (hm : Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox) :
+    m.val = rho.ownKey v :=
+  (cut_owned S rho hn hv hv' hc m hm).trans (cut_self S rho hn hc)
+
 omit [DecidableEq V] in
 private theorem duty_seen (v : V)
     (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (d) :
@@ -1221,6 +1228,37 @@ private theorem event_inventory (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ r
           simp only [Model.Run.step, Function.update_self]
           exact restore_inventory _ _ _ _ ih
         · simpa only [Model.Run.step, Function.update_of_ne hu] using ih
+
+/-- At a tick duty prefix, every pooled vote is already held or pending in the
+ordinary outbox. This retains the actual prefix state needed by release guards. -/
+theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i p : Nat} {t : Time}
+    (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
+    (hp : p ≤ ((Model.protoOf (compiled (family S)) E).duties t).length)
+    (σ : Nat) (m : Vote (Fintype.card V)) :
+    let nd := (rho.runDuties v
+      ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
+      (((Model.protoOf (compiled (family S)) E).duties t).take p)).1
+    m ∈ (shapeOf S hn nd).node.ac.pool σ →
+      voteObj m ∈ Model.closure nd.seen ∨
+        Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox := by
+  intro nd hm
+  have hi := prefix_inventory S rho hn hv hv' i
+    ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+      (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
+    (fun q hq => .tick he hw hq) (fun q k hk => Or.inl ⟨t, he, hw, hk⟩)
+    (event_inventory S rho hn hv v hv' i) p hp
+  rcases hi.votes σ m hm with h | ⟨w, heq, hw⟩ | ⟨a, heq, _⟩
+  · exact Or.inl h
+  · have henc := congrArg Model.Obj.msg heq
+    simp only [voteObj, Model.Obj.msg] at henc
+    have hdec := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj (Model.Msg.data.inj henc))
+    simp only [decodeVote_encodeVote, Option.some.injEq] at hdec
+    exact Or.inr (hdec ▸ hw)
+  · have hbad := congrArg Model.Obj.msg heq
+    simp only [voteObj, attObj, Model.Obj.msg, Model.Msg.data.injEq] at hbad
+    cases hbad
 
 /-- Delivery processing keeps every queued admission's vote in the final pool. The actual
 event-boundary queue is empty, and none of the delivery handlers restarts the AC. -/
