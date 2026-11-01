@@ -22,7 +22,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
-set_option linter.style.longFile 2200
+-- Keep the operational proposal prerequisites with their pivot consumers.
+set_option linter.style.longFile 2400
 
 public section
 
@@ -318,17 +319,16 @@ private theorem tick_ac_positions {y : Fin sp.n} {st : NodeState (goldilocksNode
   · exact Or.inr (Or.inr ⟨hpr, Or.inr ⟨hrest ℓ hm, by omega⟩⟩)
   · exact Or.inr (Or.inl (huc' ℓ hm))
 
-/-- **No honest optimistic check of slot `s` selects a block before the proposal**
-(`Compose.proposal_no_optimistic` with `Healthy(g)`'s `2f < n`). -/
-private theorem proposal_no_optimistic (hp : ResetPremises tr H proposer dg g ΔF a) {p : Fin sp.n}
+/-- No honest optimistic check selects a block of the proposal's slot before its actual call. -/
+theorem proposal_no_optimistic_of_run
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) {p : Fin sp.n}
     (hpH : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal)
     (hti : tr.time i = sp.ts s) :
     ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ SA.OptimisticLockAt tr.projAC x k' s C CV := by
   intro z hz c hci C CV hO
-  have hrun := hp.run
-  have hnc := hp.noColl
   have hr' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hr'.localRun
   have hl := hrun.toLocalRun
@@ -391,9 +391,16 @@ private theorem proposal_no_optimistic (hp : ResetPremises tr H proposer dg g Δ
       simp only [Node.exec, Node.restart, Node.acCall, List.mem_singleton, Cut.ac.injEq] at hmem
       exact hnr (by rw [hmem])
     | _ => simp [Node.Event.phase] at hph
-  have hf := faulty_lt_half hp p
   have := Set.ncard_le_ncard hnoH (Set.toFinite _)
   omega
+
+/-- Whole-run specialization of operational proposal ordering. -/
+private theorem proposal_no_optimistic (hp : ResetPremises tr H proposer dg g ΔF a) {p : Fin sp.n}
+    (hpH : p ∈ H) {s i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓp)
+    (hcall : ℓp.call = .proposal) (hti : tr.time i = sp.ts s) :
+    ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ SA.OptimisticLockAt tr.projAC x k' s C CV :=
+  proposal_no_optimistic_of_run hp.run hp.noColl (faulty_lt_half hp p) hpH hc hcall hti
 
 /-! ### Old sources -/
 
