@@ -175,7 +175,7 @@ private theorem tree_subset_honest {y : Fin sp.n} (hy : y ∈ H) {k : Nat} :
 which only an `fg_attest` that signs changes): a target or timeout entry `r` at `h` was the height
 pair `(h, r)` of an attestation the node signed earlier, a lock entry `r` at `h` its finality
 pair `(h, r)`. -/
-theorem client_record_origin (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem client_record_origin_of_run (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H)
     (h r : Nat) : ∀ i,
     ((tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h →
@@ -183,11 +183,11 @@ theorem client_record_origin (hp : ResetPremises tr H proposer dg g ΔF a)
     ((tr.state y i).record.lock h = some r →
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r))
   | 0 => by
-    rw [Trace.state, hp.run.init y hy]
+    rw [Trace.state, hrun.init y hy]
     refine ⟨fun hx => ?_, fun hx => ?_⟩ <;>
       simp [Node.init, FG.Record.empty] at hx
   | i + 1 => by
-    obtain ⟨ih₁, ih₂⟩ := client_record_origin hp hy h r i
+    obtain ⟨ih₁, ih₂⟩ := client_record_origin_of_run hrun hy h r i
     have old : (tr.state y (i + 1)).record = (tr.state y i).record →
         ((tr.state y (i + 1)).record.target h = some r ∨
             r ∈ (tr.state y (i + 1)).record.timeout h →
@@ -199,7 +199,7 @@ theorem client_record_origin (hp : ResetPremises tr H proposer dg g ΔF a)
         fun hx => let ⟨k, hk, att, h'⟩ := ih₂ hx; ⟨k, by omega, att, h'⟩⟩
     by_cases hc : ∃ c, tr.CallAt y i c
     · obtain ⟨c, hc⟩ := hc
-      have hlaw := hp.run.cutLaw y hy i c hc
+      have hlaw := hrun.cutLaw y hy i c hc
       have hsucc := tr.state_succ_of_call hc
       cases c with
       | ac ℓ => exact old (by rw [hsucc]; exact hlaw.2.2.2)
@@ -259,6 +259,15 @@ theorem client_record_origin (hp : ResetPremises tr H proposer dg g ΔF a)
                 · obtain ⟨k, hk, att, h'⟩ := ih₂ hx
                   exact ⟨k, by omega, att, h'⟩
     · exact old (by rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩])
+
+/-- Whole-run reset specialization of actual record provenance. -/
+theorem client_record_origin (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) (h r i : Nat) :
+    ((tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h →
+      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.h = h ∧ att.T = r) ∧
+    ((tr.state y i).record.lock h = some r →
+      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r)) :=
+  client_record_origin_of_run hp.run hy h r i
 
 /-- **The finality pair of an honest attestation names an entry of its source's chain**
 (§16; G0.2 (h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry
