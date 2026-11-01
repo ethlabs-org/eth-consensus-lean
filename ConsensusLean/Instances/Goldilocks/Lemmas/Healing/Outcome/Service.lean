@@ -526,7 +526,7 @@ private theorem report_mem (hrun : GoldilocksRun proposer dg H tr)
 /-- **An actual high report has a stored high origin written before it** (workbench#30 §3, the
 prefix of `high_row_source`): `C` is the viable image of a live fast lock, below the stored block
 `B` of an earlier fast-lock write (`stored_fast_lock_provenance`); `B` is high as `C ⪯ B` is. -/
-private theorem high_report_origin (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem high_report_origin (hp : ResetPremises tr H proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H)
     {r : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hrep : SA.ToFGAt tr.projAC z r ℓ C)

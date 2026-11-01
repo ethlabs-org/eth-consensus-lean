@@ -3,7 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -405,6 +407,69 @@ theorem covered_target_frozen_witness
     rw [Compose.frame_of_projAC hp.run hy hc.1] at hvD
     exact Or.inl ⟨D, hD, hCD.mono hΦU, hvD.2.2.2⟩
   · exact Or.inr hf
+
+/-- Normalizing a held lock preserves any ancestor that remains a candidate. -/
+theorem anc_viableAncestor_of_candidate {n : Nat} {FGP : Type} {Φ : SA.Frm n FGP}
+    (hΦ : FrameOK Φ) {O B : SA.Blk n FGP} (hB : B ∈ Φ.tree)
+    (hOB : Φ.Anc O B) (hO : Φ.AncestorCandidate O) :
+    Φ.Anc O (Φ.viableAncestor B) :=
+  (SA.viableAncestor_spec hΦ hB).2.2 O hOB hO
+
+/-- An actual stored fast lock covering a high held prefix supplies an earlier high
+origin. The source label is exactly the stored lock's label; no liveness is needed. -/
+theorem high_cover_of_stored_fast_lock
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+    {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a : Time}
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {l : SA.Lock}
+    (hl : l ∈ (tr.state y k).ac.locks) (hf : l.fast = true)
+    {O L : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hL : L ∈ (tr.state y k).fg.tree)
+    (hrL : L.root = l.block) (hOL : Anc (tr.HonestBlocks H) O L)
+    (hh : Healing.HZ tr H g + 1 ≤ ((tr.state y k).fg.σ O.root).h) :
+    ∃ r < k, ∃ B, Healing.HighOrigin tr H g y r l.slot B ∧
+      Anc (tr.HonestBlocks H) O B := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hl' : l ∈ (tr.projAC.state y k).locks := by
+    rw [Compose.projAC_state hp.run.toLocalRun hy]; exact hl
+  obtain ⟨r, hrk, CV, ell, D, hc, hfl, L', hL', hrL', hLB⟩ :=
+    Healing.stored_fast_lock_provenance hr hy k l hl' hf
+  obtain rfl : L' = L := hr.coherent.1 hL' ⟨y, hy, k, hL⟩ (hrL'.trans hrL.symm)
+  obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hfl
+  have he : ell' = ell := Option.some.inj (hc'.2.symm.trans hc.2)
+  rw [he] at hD
+  have hBt := (SA.viableAncestor_anc (SA.frameIn_of_callAt hr hy hc).1 hD).1
+  have hBr := Healing.frame_tree_subset hp hy hc hBt
+  have hBk := Compose.tree_mono hp.run.toLocalRun hy hrk.le hBr
+  have hOB := hOL.trans hLB
+  have hhB := Healing.σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k)
+    (Healing.anc_tree_of_anc hp hy hOB hBk)
+  have hhBr : Healing.HZ tr H g + 1 ≤
+      ((tr.state y r).fg.σ (ell.frame.viableAncestor D).root).h := by
+    rw [← Healing.σ_eq_run hp hy hy hBk hBr]
+    exact hh.trans hhB
+  exact ⟨r, hrk, ell.frame.viableAncestor D, ⟨hy,
+    Healing.joinedAt_of_fastLockAt hp.run hp.noColl hy hfl,
+    ⟨CV, ell, D, hc, hfl, rfl⟩, hhBr⟩, hOB⟩
+
+/-- A real high report supplies an earlier high cover of every prefix below it.
+The report's existence is a premise, not a consequence of heldness. -/
+theorem high_cover_of_report
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+    {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a : Time}
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {O R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hrep : SA.ToFGAt tr.projAC y k ell R)
+    (hOR : Anc (tr.HonestBlocks H) O R)
+    (hh : Healing.HZ tr H g + 1 ≤ ((tr.state y k).fg.σ O.root).h) :
+    ∃ r < k, ∃ l B, Healing.HighOrigin tr H g y r l B ∧ Anc (tr.HonestBlocks H) O B := by
+  have hhR := hh.trans (Healing.σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k)
+    (Healing.anc_tree_of_anc hp hy hOR (Healing.toFG_mem_tree hp.run hy hrep)))
+  obtain ⟨r, hr, l, B, ho, hRB⟩ := Healing.high_report_origin hp hy hrep hhR
+  exact ⟨r, hr, l, B, ho, hOR.trans hRB⟩
 
 end Consensus.Goldilocks.Refinement
 end
