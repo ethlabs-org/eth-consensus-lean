@@ -157,7 +157,8 @@ theorem healthyRecordSource_iff (Q : HealthyPreparationQuery S A V) (cleanLabel 
 
 section ConditionalSafety
 variable (Q : HealthyPreparationQuery S A V) {c t₀ ΔF a : Time}
-  (hsync : Q.trace.GSTRun (honestKeys S Q.run.2) ΔF Q.gst)
+  (hsync : Healing.ResetService Q.trace (honestKeys S Q.run.2)
+    Q.gst ΔF Q.run.2.horizon)
   (hreset : Healing.IsReset Q.trace (honestKeys S Q.run.2) Q.gst a)
   (ha : a ≤ Q.run.2.horizon)
   (hsnapshot : ∃ k, Healing.FirstCutAfter Q.trace k

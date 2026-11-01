@@ -42,7 +42,8 @@ end HealthyPreparationQuery
 and the fault bound. Service, actual reset existence and its snapshot remain explicit. -/
 theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
     {ΔF a : Time}
-    (hsync : Q.trace.GSTRun (honestKeys S Q.run.2) ΔF Q.gst)
+    (hsync : Healing.ResetService Q.trace (honestKeys S Q.run.2)
+      Q.gst ΔF Q.run.2.horizon)
     (hreset : Healing.IsReset Q.trace (honestKeys S Q.run.2) Q.gst a)
     (ha : a ≤ Q.run.2.horizon)
     (hsnapshot : ∃ k, Healing.FirstCutAfter Q.trace k
@@ -51,7 +52,7 @@ theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon := by
   refine ⟨simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid,
     noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision,
-    Healing.ResetService.of_gst _ _ hsync, ?_, ?_, hreset, ha, hsnapshot⟩
+    hsync, ?_, ?_, hreset, ha, hsnapshot⟩
   · intro y hy t ht htb
     rw [simTrace_awake_iff, awakeAt_iff]
     exact ⟨Q.healthy.2.2 (Q.run.2.key y) hy t ht htb,

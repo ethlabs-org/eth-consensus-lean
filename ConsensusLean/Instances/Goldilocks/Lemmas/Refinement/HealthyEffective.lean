@@ -634,6 +634,44 @@ variable {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp 
   {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a : Time}
 
+/-- Whole-record equality at the actual clock, using only current live candidates and
+current-label votes. The source classification, viability and clean compatibility are
+explicit producer obligations; no invariant is required at pre-repair cuts. -/
+theorem read_eq_record_of_current_votes
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time} (ht0 : 0 ≤ t)
+    (hrp : Regimes.ReadPoint tr i t) (hw : tr.awake y t) (hj : tr.JoinedAt y t)
+    (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC)
+    (hcatch : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a (2 * sp.Δ) t)
+    {L : Nat} (hL : (L : Int) =
+      (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+    (ha : a ≤ sp.ts L)
+    (hrecord : ∀ R, SA.lookup (Node.frame (tr.state y i))
+        (tr.state y i).ac.latestConfirmed = some R →
+      (∀ X ∈ SA.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t ∪
+          {(Node.frame (tr.state y i)).fcRoot},
+        Compatible (Node.frame (tr.state y i)).tree X R) ∧
+      ((Node.frame (tr.state y i)).Anc R
+          (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+        (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
+          ∀ z ∈ H, ∀ q, tr.time q ≤ t → ∀ e, SA.VoteAt tr.projAC z q e →
+            e.msg.slot = L → SA.VoteExtends (tr.HonestBlocks H) e.msg R)))
+    (hfault : Hᶜ.ncard <
+      {x | x ∈ H ∧ tr.awake x (sp.ts L + sp.Δ) ∧ tr.JoinedAt x (sp.ts L + sp.Δ)}.ncard) :
+    Regimes.readAfter tr y i t =
+      (SA.lookup (Node.frame (tr.state y i))
+        (tr.state y i).ac.latestConfirmed).getD (tr.state y i).fg.F := by
+  have hΦ := Compose.frameOK_state hrun.toLocalRun hy i
+  cases hl : SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed with
+  | none => exact SA.acConfirmed_eq_F hΦ (SA.lookup_eq_none hl)
+  | some R =>
+    obtain ⟨hR, hRr⟩ := SA.lookup_eq_some hl
+    obtain ⟨hcomp, hsource⟩ := hrecord R hl
+    have hanchor := Compose.anchor_compatible_of_live_candidates hΦ hcomp
+    obtain ⟨hc, hs⟩ := Compose.read_head_support_of_target_votes hrun hnc hy ht0
+      hrp.1 hrp.2 hw hj hsync hcatch hL ha hR hanchor hsource hfault
+    exact SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)
+
 /-- An actual earlier-label high cover makes later raw and optimistic candidates comparable
 with the exposed prefix. This gives compatibility, not a direction or a read-head certificate. -/
 theorem covered_candidates_compatible
