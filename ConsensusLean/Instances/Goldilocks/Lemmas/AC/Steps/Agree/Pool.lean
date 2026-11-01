@@ -423,6 +423,23 @@ theorem messageServedBefore_of_admission
   · intro r hir hrj
     exact hfree r (Nat.lt_of_succ_le hir) hrj
 
+/-- A source serves itself: emissions already count as processing, while fresh
+admissions retain their stamps until a restart. -/
+theorem messageServedBefore_self
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H)
+    {i j : Nat} {v : Vote sp.n} (hij : i < j) (hs : tr.SendOrAdmit y i v)
+    (hfree : ∀ r, i < r → r < j → ¬ tr.RestartAt y r) :
+    MessageServedBefore tr y j (tr.time i) v := by
+  obtain ⟨ℓ, hc, hem | ⟨hnr, hold, hnew⟩⟩ := hs
+  · apply (messageServedBefore_iff _ _ _ _).mpr
+    refine Or.inl ⟨i, hij.le, le_rfl, ⟨ℓ, hc, Or.inr hem⟩, ?_⟩
+    unfold ACTrace.deadline
+    cases tr.lastWake y i with
+    | bot => exact lt_add_of_pos_right _ sp.toParams.hΔ
+    | coe w =>
+      exact lt_of_le_of_lt (le_max_left _ _) (lt_add_of_pos_right _ sp.toParams.hΔ)
+  · exact messageServedBefore_of_admission hr hy hij hc hnr hold hnew hfree
+
 /-- **An honest node holds a vote it processed.** When an honest node processes a vote (receives
 it, or emits it) at a time of the vote's slot or the next, the node holds it after that cut, or
 two other votes of its validator. -/
