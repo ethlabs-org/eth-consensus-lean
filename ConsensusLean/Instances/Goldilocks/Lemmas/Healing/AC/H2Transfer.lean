@@ -575,6 +575,53 @@ theorem h2_locks_settled (hI : InclusionRun tr H U proposer g t₀) :
   obtain ⟨Hd, hHd, hHdr, hBHd⟩ := votesExtendAfter_iff.1 hv x hx j e he hs
   exact ⟨Hd, hHd, hHdr, hLB.trans hBHd⟩
 
+/-- Current-cut result-prefix transfer. Service and viability are current inputs;
+stored older locks and earlier same-label votes account for the live read-point locks. -/
+theorem result_prefix_vote_extends_of_stored (hrun : ACRun proposer tr H U)
+    (hf : 2 * Hᶜ.ncard < sp.n) {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
+    {r s i : Nat} {B C : Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    (hres : ResultAt tr x r s C CV) (hBC : Anc U B C)
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
+    (hcarry : CarryAt tr U y i e s CV) (hviab : ViableAtVote ℓ e (s + 1) B)
+    (hstored : ∀ l ∈ (tr.state y i).locks,
+      sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
+      ∀ Y ∈ U, Y.root = l.block → Compatible U Y B)
+    (hE : EarlierVotesExtend tr H U i (s + 1) B)
+    (hmerged : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
+      v ∈ (tr.state x r).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state x r).pool s}) :
+    VoteExtends U e.msg B :=
+  result_transfer_anc sp hrun hx hres hBC hy hc hs hcarry hviab
+    (live_locks_of_stored_before hrun hf hy hc hs hstored hE) hmerged
+
+/-- Later transfer needs extension only at earlier cuts, for the predecessor and
+current labels. Slot monotonicity places every predecessor vote before this cast. -/
+theorem next_vote_extends_before (hrun : ACRun proposer tr H U)
+    {m i : Nat} {y : Fin sp.n} {B : Blk sp.n FGP}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
+    (hprior : ∀ z ∈ H, ∀ q < i, ∀ e', VoteAt tr z q e' →
+      (e'.msg.slot = m ∨ e'.msg.slot = m + 1) → VoteExtends U e'.msg B)
+    (hhalf : sp.n ≤ 2 * {z | z ∈ H ∧ ∃ q e', VoteAt tr z q e' ∧ e'.msg.slot = m}.ncard)
+    (hcarry : CarryAt tr U y i e m
+      {v | ∃ z ∈ H, ∃ q e', VoteAt tr z q e' ∧ e'.msg = v ∧ v.slot = m})
+    (hfault : FaultBound tr H (tr.time i))
+    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts m) (tr.time i) tr)
+    (hviab : ViableAtVote ℓ e (m + 1) B) : VoteExtends U e.msg B := by
+  refine next_transfer sp FGP ro H U tr proposer hrun m y i B ℓ e hy hc hs ?_
+    hhalf hcarry hfault hsync hviab (fun z hz q hq e' hv he =>
+      hprior z hz q hq e' hv (Or.inr he))
+  intro z hz q e' hv he
+  have hqi : q < i := by
+    by_contra hn
+    obtain ⟨ell, hcast⟩ := hv
+    have hq := (castAt_spec hrun.localRun hz hcast).2.1
+    have hi := (castAt_spec hrun.localRun hy hc).2.1
+    have hmono := slot_mono sp (hrun.localRun.time_nonneg i)
+      (hrun.localRun.time_mono (Nat.le_of_not_gt hn))
+    omega
+  exact hprior z hz q hqi e' hv (Or.inl he)
+
 /-- Conditional P2 first-vote induction on a finite prefix. The carry and pool
 arguments are the consumer interfaces of windowed service, with sender lower
 bound `a` and both observation horizons explicit. Stored-lock comparison and
@@ -629,9 +676,9 @@ theorem slow_first_votes_before (hrun : ACRun proposer tr H U)
       intro v hv
       obtain ⟨hs, hw, Hv, hHv, hroot, hCH, hacc⟩ := Compose.result_writer hr hx hres v hv
       exact ⟨hs, hw, Hv, hHv, hroot, hFB.trans (hBC.trans hCH), hacc⟩
-    exact result_transfer_anc sp hrun hx hres hBC hy hca hes hCy hviab
-      (live_locks_of_stored_before hrun hf hy hca hes (hstored hy hca hes hi)
-        fun z hz k hk e' hv' hs' => ih k hk z hz e' hv' hs' ((hr.time_mono hk.le).trans hi))
+    exact result_prefix_vote_extends_of_stored hrun hf hx hy hres hBC hca hes hCy hviab
+      (hstored hy hca hes hi)
+      (fun z hz k hk e' hv' hs' => ih k hk z hz e' hv' hs' ((hr.time_mono hk.le).trans hi))
       (hmerged hupd hi₀ ha hy hca hes)
 
 end Consensus.Goldilocks.SA
