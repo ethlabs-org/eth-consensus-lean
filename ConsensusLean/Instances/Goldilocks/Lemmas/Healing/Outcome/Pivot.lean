@@ -1786,7 +1786,7 @@ private theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)
   exact ⟨E, O, hE, ⟨v, r, l, ho, ht⟩, hEO⟩
 
 /-- Global high-origin comparability excludes contests at high justification heights. -/
-private theorem no_high_contest (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem no_high_contest (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) (i : Nat) :
     ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax) := by
   have hU := honest_coherent hp

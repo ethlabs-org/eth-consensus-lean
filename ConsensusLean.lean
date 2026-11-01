@@ -194,6 +194,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorSegmentsGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Cover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
