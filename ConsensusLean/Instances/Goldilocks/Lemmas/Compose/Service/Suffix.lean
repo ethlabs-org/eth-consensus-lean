@@ -767,12 +767,14 @@ private theorem voter_holds {X : SA.Blk sp.n (List (FG.Att sp.n))} (hXQ : ℓp.f
   exact voter_holds_proposal hrun hnc hsl hp hP hPs hs0 hy hcy hes
     (((hΦy.F_anc_fcRoot.mono hΦyU).trans hfX).trans ((hXQ.mono hΦpU).trans hQP))
 
-omit hpj hsD hDQ hviab in
+omit hsl hpj hsD hDQ hviab in
 /-- **The views agree**: the proposal's view and the voter's merged view have the same
 equivocators and voters, and the same supporters for every block of both trees (`SA.view_agree`,
 with the Sleepy relay: a block the voter stamped before the vote freeze reaches the proposer by
 `t_s`, and `P`'s support heads reach the voter by its vote, ready or relayed). -/
-private theorem views_agree (hPy : P ∈ ℓy.frame.tree) :
+private theorem views_agree_before {b : Time}
+    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hPy : P ∈ ℓy.frame.tree) :
     SA.equivocators (SA.View.ofLists pay).votes =
         SA.equivocators (SA.mergedVoteView sp e.readPoint ℓy.frame s).votes ∧
       SA.voters (SA.View.ofLists pay).votes =
@@ -808,14 +810,12 @@ private theorem views_agree (hPy : P ∈ ℓy.frame.tree) :
   have hready : tr.time j < sp.ts ((s' + 1 : Nat) : Int) + sp.Δ →
       SA.voteReady sp ℓy.frame (s' + 1) := fun h =>
     hes ▸ SA.cast_ready hr hy hcy (by rw [hes]; exact h)
-  refine hcast ▸ SA.view_agree hrun' hp hy hpp ⟨hc, hcall, d, hd⟩ hti hcy
-    ⟨P, hPy, hPs, hpay⟩ (syncAC_of_sleepy hrun hsl ?_) ?_ ?_
-  · simp only [SAParams.ts]
-    exact mul_nonneg (by linarith) (Int.natCast_nonneg s')
+  refine hcast ▸ SA.view_agree_before hrun' hp hy hpp ⟨hc, hcall, d, hd⟩ hti hcy
+    ⟨P, hPy, hPs, hpay⟩ hsync hib ?_ ?_
   · -- a voter block stamped before the freeze reaches the proposer by `t_s`
     intro Hd hHd hHds hst hFHd
     have hHdU := hΦyU hHd
-    refine relay_mem hrun hnc hsl hy hp hHdU hc hrsp ?_ hFHd
+    refine relay_mem_before hrun hnc hsync hy hp hHdU hc hib hrsp ?_ hFHd
     rcases frame_anc_accepted hr hy j ℓy hcy.1 Hd hHd Hd .refl with hg | ⟨kx, hkx, hA⟩
     · exact Or.inl hg
     by_cases hg : Hd.root = sp.genesisRoot
@@ -844,7 +844,7 @@ private theorem views_agree (hPy : P ∈ ℓy.frame.tree) :
         rw [SA.state_pool_slot sp hr hp i s' x hx.1]
       obtain ⟨H', hH't, hH'r, -⟩ := hsup x (by rw [SA.blockSupport, hpay]; exact hx) hxs
       rwa [hU.1 (hΦpU hHd) (hΦyU hH't) (hHdr.trans hH'r.symm)]
-    · refine relay_mem hrun hnc hsl hp hy (hΦpU hHd) hcy.1 hrsy ?_ hFHd
+    · refine relay_mem_before hrun hnc hsync hp hy (hΦpU hHd) hcy.1 hjb hrsy ?_ hFHd
       rcases frame_anc_accepted hr hp i ℓp hc Hd hHd Hd .refl with hg | ⟨kx, hkx, hA⟩
       · exact Or.inl hg
       right
@@ -856,6 +856,25 @@ private theorem views_agree (hPy : P ∈ ℓy.frame.tree) :
       rw [hjj]
       linarith [not_lt.1 hE]
 
+omit hpj hsD hDQ hviab in
+private theorem views_agree (hPy : P ∈ ℓy.frame.tree) :
+    SA.equivocators (SA.View.ofLists pay).votes =
+        SA.equivocators (SA.mergedVoteView sp e.readPoint ℓy.frame s).votes ∧
+      SA.voters (SA.View.ofLists pay).votes =
+        SA.voters (SA.mergedVoteView sp e.readPoint ℓy.frame s).votes ∧
+      ∀ X ∈ ℓp.frame.tree, X ∈ ℓy.frame.tree →
+        SA.supporters ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1) X =
+          SA.supporters ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)
+            X := by
+  let b := max (tr.time i) (tr.time j)
+  have hs : tr.SyncBefore H ΔF b :=
+    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
+      hsl.1.message x hx i m hm h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
+      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
+  exact views_agree_before hrun hnc hp hP hPs hc hcall hd hti hPQ hy hcy hes
+    (syncBefore_projection hrun.toLocalRun hs) (le_max_left _ _) (le_max_right _ _) hPy
 
 omit hpj hsD in
 /-- **No old child of `Q` is eligible at the voter** (workbench#12 §3, the `X = Q` case of the
