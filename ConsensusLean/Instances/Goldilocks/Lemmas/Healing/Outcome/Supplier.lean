@@ -818,6 +818,38 @@ theorem clean_source_below_ready
     (hHdr.trans hhead)
   exact hDP ▸ hBH
 
+/-- A fast or slow lock source of the proposal's own label is below the unanimous proposal.
+This uses an actual counted honest vote, not the fast lock sought at a later update. -/
+theorem same_slot_source_below_ready
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {x : Fin sp.n} (hx : x ∈ H) {r : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (horig : (∃ CV, SA.FastLockAt tr.projAC x r u B CV) ∨ SA.SlowLockAt tr.projAC x r u B) :
+    Anc (tr.HonestBlocks H) B P := by
+  have hS := healthy_base_of_reset_catch hp hc
+  have hU := hS.run.localRun.coherent
+  obtain ⟨-, -, _, _, _, _, _, _, _, _, _, _, _, ja, _, hacc, _⟩ :=
+    honestProposalRun_of_ready hp.run hp.noColl hP
+  rw [← hP.2.1] at hacc
+  obtain ⟨ellp, hcp, hblock⟩ := hacc
+  have hPm := (SA.accept_new sp hS.run.localRun hP.1 ⟨ellp, hcp, hblock⟩).1 ellp hcp
+  have hPU := (SA.frameIn_of_callAt hS.run.localRun hP.1 hcp).2 hPm
+  have below : ∀ z ∈ H, ∀ j e, SA.VoteAt tr.projAC z j e → e.msg.slot = u →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B → Anc (tr.HonestBlocks H) B P := by
+    rintro z hz j e hv hes ⟨Hd, hHd, hHdr, hBH⟩
+    have he := hU.1 hHd hPU (hHdr.trans (ready_unanimous hp hc hP hR z hz j e hv hes))
+    exact he ▸ hBH
+  rcases horig with ⟨CV, hf⟩ | ⟨ell, C, hupd, hC, _, hD, _⟩
+  · obtain ⟨z, hz, j, e, hv, hes, hB⟩ := SA.fastLock_honest_vote hS.run hS.two_faulty_lt hx hf
+    exact below z hz j e hv hes hB
+  · obtain ⟨z, hz, j, e, hv, hes, Hd, hHd, hHdr, hCH⟩ := SA.result_extended hS hgu hx
+      hupd.1 (by rw [hupd.2.2.1]; linarith [sp.toParams.hΔ]) hC
+    have hPhiU := (SA.frameIn_of_callAt hS.run.localRun hx hupd.1).2
+    exact below z hz j e hv hes
+      ⟨Hd, hHd, hHdr, ((SA.deepest_mem hD).1.1.2.2.mono hPhiU).trans hCH⟩
+
 /-- At any post-drain call, the viable image of a stored live lock of an older label lies
 below the ready proposal. This covers both slow locks and fast locks. -/
 theorem ready_old_lock_below
