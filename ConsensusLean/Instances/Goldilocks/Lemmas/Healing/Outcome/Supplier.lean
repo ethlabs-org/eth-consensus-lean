@@ -947,6 +947,38 @@ theorem ready_update_locks_compatible
   · exact Or.inl (hLD.trans hDP)
   · exact SA.anc_total hr.coherent hLD hPD
 
+/-- With the frame and next-slot optimism obligations discharged, the actual update confirms
+the ready proposal without veto and selects that exact block for its fast lock. -/
+theorem ready_update_selection
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hu : SA.UpdateAt tr.projAC y j u ell) (hPt : P ∈ ell.frame.tree)
+    (hnext : ∀ r < j, ∀ B CV, SA.OptimisticLockAt tr.projAC y r (u + 1) B CV →
+      Compatible (tr.HonestBlocks H) B P) :
+    SA.getConfirmation sp (tr.projAC.state y j) ell.frame u = some P ∧
+      ¬ SA.conflictsWithLock sp (tr.projAC.state y j).locks ell.frame (tr.time j) P ∧
+      SA.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P := by
+  have hS := healthy_base_of_reset_catch hp hc
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hS.run.localRun hy hu.1
+  have hPg : P.root ≠ sp.genesisRoot := by
+    intro hgen
+    have hG := Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hy j)
+    have he := hS.run.localRun.coherent.1 (hPhiU hPt) ⟨y, hy, j, hG⟩ hgen
+    have hPs := hP.2.2.2.2.1
+    rw [he] at hPs
+    simp only [Params.genesisBlock] at hPs
+    have hDelta := sp.toParams.hΔ
+    have hg0 := SA.gbar_nonneg g
+    have hts : sp.ts u = 0 := by rw [← hPs]; simp [SAParams.ts]
+    linarith
+  obtain ⟨hconf, hnv, hfast, -⟩ := SA.first_update_post hS hgu
+    (ready_unanimous hp hc hP hR) hy hu.1 hu.2.1 hu.2.2.1 hPt
+    (ready_update_locks_compatible hp hc hP hR hgu hy hu hnext)
+  exact ⟨hconf, hnv, SA.fastSelect_eq_result hPhi hPt hPg hfast⟩
+
 /-- **The joined duty at the update** (§23, §17 "Exact remaining premise"; phase-service §10;
 restated with the healing orb, workbench#30-style): under the reset premises and `Catch(2Δ)`, for
 an honest ready proposal `P` of slot `u` with `t_u ≥ R` and every honest node `z` running its
