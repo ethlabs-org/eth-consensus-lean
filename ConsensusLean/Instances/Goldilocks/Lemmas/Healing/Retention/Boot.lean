@@ -357,15 +357,97 @@ private theorem sync_after (hp : ResetPremises tr H proposer dg g ΔF a) (b : Ti
     tr proposer ΔF g b
     hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
 
-/-- **R5 above the floor** (`hr4-boot-carry.md` §7, "If floor > ht(B) ≥ H+1";
-`producer-reset-continuation.md` §5 Lemma R5, §13 "Retaining the witnesses and the frame"). At an
-honest vote of a slot `> j` whose `Σ.F` is below `B` and whose head height floor exceeds the state
-height of `B`: no high contest (a top justification and a maximal crossing at `h_max − 1` have
-honest rows whose sources are comparable, by the earlier votes: prefix source comparison of the two
-origins, both created before the vote), so the floor is `h_max − 1`, crossed by a chain with an
-honest row at the floor whose reported source `Q` (temporal stored origin of label `≤ m − 1`) is
-comparable with `B` and, being higher, extends it; `Q`'s counted honest head was relayed to the
-voter before its freeze (`row_origin_label_lt`), and is the witness. -/
+/-- The floor crossing supplies an earlier high origin above `B` and a held entry at the
+receiver's floor. Heights of `B` are read at its source, where it is held. Pairwise comparison
+of earlier origins rules out a high contest; comparison with `B` orients the crossing.
+Neither a vote/cache invariant nor pivot service is assumed. -/
+theorem high_floor_source_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e) (_hj : j < e.msg.slot)
+    (hpair : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      ∀ v' r' l' O', r' < k → HighOrigin tr H g v' r' l' O' →
+      Compatible (tr.HonestBlocks H) O O')
+    (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocks H) B O)
+    (_hF : Anc (tr.HonestBlocks H) ell.frame.F B)
+    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
+    ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < e.msg.slot ∧
+      E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
+      Anc (tr.HonestBlocks H) B O ∧
+      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h := by
+  have hU := honest_coherent hp
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hy k
+  have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, k, hX⟩
+  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
+  have hBh := ho.2.2.2
+  have hupper : ∀ {v₁ v₂ : Fin sp.n} {r₁ l₁ r₂ l₂ : Nat}
+      {O₁ O₂ : SA.Blk sp.n (List (FG.Att sp.n))}, HighOrigin tr H g v₁ r₁ l₁ O₁ → r₁ < k →
+      HighOrigin tr H g v₂ r₂ l₂ O₂ → r₂ < k → ∃ z ∈ H, ∃ m C, C ∈ (tr.state z m).fg.tree ∧
+        Anc (tr.HonestBlocks H) O₁ C ∧ Anc (tr.HonestBlocks H) O₂ C := by
+    intro v₁ v₂ r₁ l₁ r₂ l₂ O₁ O₂ ho₁ hr₁ ho₂ hr₂
+    obtain ⟨-, -, -, -, -, -, -, -, -, hO₁⟩ := highOrigin_mem hp ho₁
+    obtain ⟨-, -, -, -, -, -, -, -, -, hO₂⟩ := highOrigin_mem hp ho₂
+    rcases hpair v₁ r₁ l₁ O₁ hr₁ ho₁ v₂ r₂ l₂ O₂ hr₂ ho₂ with h | h
+    · exact ⟨v₂, ho₂.1, r₂, O₂, hO₂, h, .refl⟩
+    · exact ⟨v₁, ho₁.1, r₁, O₁, hO₁, .refl, h⟩
+  have hnc : ¬ ((tr.state y k).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state y k).fg.hmax) := by
+    rintro ⟨⟨hmj, C, hC, -, hCh, hJC⟩, hmax⟩
+    obtain ⟨-, hJm, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -⟩ :=
+      Goldilocks.Store.cache_invariants _ _ _ _ hreach
+    obtain ⟨EJ, hEJ, hEJr, hEJB, hcase⟩ := Store.J_entry_of_reachable hreach hBj
+    obtain rfl : EJ = (tr.state y k).fg.J := hU.1 (hsub hEJ) (hsub hJm) (hEJr.trans hBjJ)
+    rcases hcase with hg | ⟨hJh, hJT⟩
+    · exact hJC (hg ▸ (Goldilocks.Store.accepted_tree _ _ _ _ hreach).2.2.2 C hC)
+    have hJlt := Store.hj_lt_h hreach hBj
+    obtain ⟨W₂, -, att₂, -, v₂, -, d₂, hd₂, -, -, r₂, hr₂, l₂, O₂, ho₂, hJO⟩ :=
+      left_entry_origin hp hy hJm hJT (by omega) hEJB (by omega)
+    obtain ⟨EC, hEC, hECC, hECh, hECT⟩ :=
+      entry_at_height hreach hC (h := (tr.state y k).fg.hj) (by omega) (by omega)
+    obtain ⟨W₁, -, att₁, -, v₁, -, d₁, hd₁, -, -, r₁, hr₁, l₁, O₁, ho₁, hECO⟩ :=
+      left_entry_origin hp hy hEC hECT (by omega) hECC (by omega)
+    obtain ⟨z, hz, m', C', hC', hO₁C, hO₂C⟩ := hupper ho₁ (by omega) ho₂ (by omega)
+    have h₁ := hECO.trans hO₁C
+    have h₂ := hJO.trans hO₂C
+    have hEC' := mem_tree_of_anc hp hz h₁ hC'
+    have hJ' := mem_tree_of_anc hp hz h₂ hC'
+    have hσ₁ := σ_eq_run hp hy hz hEC hEC'
+    have hσ₂ := σ_eq_run hp hy hz hJm hJ'
+    have he := entry_root_eq hp hz hC' h₁ h₂
+      (by rw [← hσ₁, ← hσ₂, hECh, hJh, hBjhj]) (by rw [← hσ₁]; exact hECT)
+      (by rw [← hσ₂]; exact hJT)
+    obtain rfl : EC = (tr.state y k).fg.J := hU.1 (hsub hEC) (hsub hJm) he
+    exact hJC hECC
+  have hcon : ¬ (tr.state y k).fg.Contest := fun hcon => by
+    unfold Store.headHeightFloor at hfloor
+    simp only [hcon, ↓reduceIte] at hfloor
+    exact hnc ⟨hcon, by omega⟩
+  have hfl : (tr.state y k).fg.headHeightFloor = (tr.state y k).fg.hmax - 1 := by
+    unfold Store.headHeightFloor
+    simp only [hcon, ↓reduceIte]
+  rw [hfl] at hfloor
+  obtain ⟨-, -, -, -, -, ⟨C, hC, hCh⟩, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
+  obtain ⟨E, hE, hEC, hEh, hET⟩ :=
+    entry_at_height hreach hC (h := (tr.state y k).fg.hmax - 1) (by omega) (by omega)
+  obtain ⟨W, hW, att, ha, v, hv, d₁, hd₁, hsd, -, r, hrd, l, O, hoO, hEO⟩ :=
+    left_entry_origin hp hy hE hET (by omega) hEC (by omega)
+  have hBO : Anc (tr.HonestBlocks H) B O := by
+    rcases hcomp v r l O (by omega) hoO with h | h
+    · exact h
+    · exfalso
+      have hEB := hEO.trans h
+      have hEx := mem_tree_of_anc hp ho.1 hEB hBx
+      have hle := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun ho.1 i)
+        (anc_tree_of_anc hp ho.1 hEB hBx)
+      rw [σ_eq_run hp ho.1 hy hEx hE] at hle
+      omega
+  exact ⟨v, r, l, O, E, by omega, hoO,
+    row_origin_label_lt hp hy hc hW ha hv hsd hd₁ hrd hoO, hE, hEO, hBO, by omega⟩
+
+/-- **R5 above the floor** (`hr4-boot-carry.md` §7): the crossing origin's counted honest
+head is relayed before the voter's freeze and supplies a viable witness above `B`. -/
 theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
