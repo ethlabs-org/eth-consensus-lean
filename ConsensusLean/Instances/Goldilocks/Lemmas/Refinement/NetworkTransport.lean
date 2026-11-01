@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 
 public section
 
@@ -854,5 +855,34 @@ theorem signed_row_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
       obtain ⟨l, hl, hp', ht'⟩ := ih k hkj' hc
         ((simTrace_time_mono S rho hn hv hkj).trans hb) (le_of_not_gt hk)
       exact ⟨l, hl.trans hkj, hp', ht'⟩
+
+/-- One protocol-delay publication tail supplies holdings strictly before a ready read. -/
+theorem publication_held_ready_tail (hn : 1 ≤ Fintype.card V) {g : Time}
+    (hnet : rho.log.PSync rho.point g)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    {y : Fin (Fintype.card V)} {t c : Time}
+    (hy : Regimes.ReadyAt (simTrace S rho hn) (honestKeys S rho) c y t)
+    (ht : t ≤ rho.horizon)
+    (hbudget : max (max ((publisherExecution S rho).eventTime r.event) g) 0 +
+      (S.params (Model.pubOf E) hn).Δ ≤ t)
+    (hc : (S.params (Model.pubOf E) hn).Δ ≤ c + 1) :
+    ∃ d, rho.log.Held rho.point (rho.key y) r.object d ∧ d < t := by
+  let a := max (max (max ((publisherExecution S rho).eventTime r.event) g) 0) (t - c - 1)
+  have hga : max a g = a := max_eq_left (by dsimp [a, Time]; omega)
+  have hlt : a + E.Δ < t := by
+    change max (max ((publisherExecution S rho).eventTime r.event) g) 0 + (E.Δ + 1) ≤ t
+      at hbudget
+    change E.Δ + 1 ≤ c + 1 at hc
+    dsimp [a, Time] at *; omega
+  have hw : rho.point.AwakeOnClosed (rho.key y) a (a + E.Δ) := by
+    intro u hau hud
+    have h := hy.2 u (by dsimp [a, Time] at *; omega) (hud.trans hlt.le)
+    exact ((awakeAt_iff S rho hn y u).mp ((simTrace_awake_iff S rho hn y u).mp h)).1
+  have hh := (publication_held_psync S rho hn hnet r hr hx hy.1
+    (show (publisherExecution S rho).eventTime r.event ≤ a by dsimp [a, Time]; omega)
+    (by rw [hga]; exact hlt.le.trans ht) (by rw [hga]; exact hw)).1
+  rw [hga] at hh
+  exact ⟨a + E.Δ, hh, hlt⟩
 
 end Consensus.Goldilocks.Refinement

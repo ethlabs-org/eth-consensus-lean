@@ -16,6 +16,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
 
 public section
 
@@ -556,7 +559,8 @@ theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
 /-- OPEN extraction and endpoint budget; four-anchor-window.md / fixed-timeout-synthesis.md
 at workbench b3ca078. Synthesizing accepted_latency must leave enough time for actual carrier
 processing by the exact engine-scaled endpoint. No numeric output delay is invented. -/
-theorem final_window_extract (Q : FinalQuery S A V) : Nonempty (FinalWindowData S A V Q) := by
+theorem final_window_extract (Q : FinalQuery S A V) :
+    ∃ W : FinalWindowData S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline := by
   sorry
 
 /-- OPEN inherited progress, with no lower bound on inherited birth. Paper: workbench b3ca078,
@@ -1055,19 +1059,134 @@ theorem final_cache_coverage_of_prior_cache (Q : FinalQuery S A V)
   · exact (hAF.trans h).trans hmono
   · exact h.trans hmono
 
-/-- OPEN acceptance, not receipt. Paper workbench b3ca078, four-anchor-window.md /
-fixed-timeout-synthesis.md. The latency budget and cache timing are jointly OPEN. -/
-theorem final_cache_acceptance (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
+/-- The last anchor's actual forwarding publication has one protocol-delay tail before
+the original deadline, and that tail fits every reader's catch-up interval. -/
+def FinalPublicationTail (Q : FinalQuery S A V) (W : FinalWindowData S A V Q) : Prop :=
+  max (max (Q.trace.time (W.cut 3)) Q.gst) 0 + Q.params.Δ ≤ Q.deadline ∧
+    Q.params.Δ ≤ (Sys (family S) V).cDur (K S A) Q.run + 1
+
+/-- Conditional endpoint assembly. The only additional timing premise is the named
+publication tail; receipt, historical acceptance and cache transfer are proved. -/
+theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
+    (W : FinalWindowData S A V Q) (tail : FinalPublicationTail S A V Q W)
     (coverage : ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧
       W.Extends (W.block 0) F) : W.CacheCoverage := by
-  sorry
+  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have fg := final_fg_run S A V Q
+  have hnc := noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision
+  have hst : ∀ z, z ∈ honestKeys S Q.run.2 → ∀ k,
+      Q.trace.projFG.store z k = (Q.trace.state z k).fg := by
+    intro z hz k
+    simp only [FGTrace.store, Compose.projFG_state run.toLocalRun hz k]
+  have hsource : W.store = Q.trace.projFG.store (W.block 3).proposer (W.cut 3 + 1) := by
+    rw [hst _ (W.ready 3).1]
+    exact congrArg NodeState.fg (final_anchor_post S A V Q W 3)
+  have hf : (honestKeys S Q.run.2)ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n := by
+    have hpop := Q.healthy.2.1
+    change (Q.run.2.point.faulty.card : ℚ) < (K S A).params.β * Fintype.card V at hpop
+    rw [acceptanceContract_params_eq] at hpop
+    change (Q.run.2.point.faulty.card : ℚ) < 1 / 3 * Fintype.card V at hpop
+    have hfault : (honestKeys S Q.run.2)ᶜ.ncard = Q.run.2.point.faulty.card := by
+      have heq : (honestKeys S Q.run.2)ᶜ = Q.run.2.key ⁻¹' (↑Q.run.2.point.faulty : Set V) := by
+        ext k; simp [honestKeys, EnvPoint.faulty, Model.Run.point]
+      rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
+        (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
+    rw [hfault]
+    have hn : 3 * Q.run.2.point.faulty.card < Fintype.card V := by
+      exact_mod_cast (show (3 : ℚ) * Q.run.2.point.faulty.card < Fintype.card V by linarith)
+    change Q.run.2.point.faulty.card < 2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
+    omega
+  obtain ⟨X, hX, hAX⟩ := coverage
+  have hXR := (final_store_reachable S A V Q W).blocks_root hX
+  have hXt : X ∈ W.store.tree := by change W.store.blocks X.root = some X; rwa [hXR]
+  have hB := final_anchor_held S A V Q W
+  have hXB : W.Extends X (W.block 3) := by
+    obtain ⟨_, ⟨X', hX', hX'r, hanc⟩, _⟩ :=
+      Store.entry_state_of_source _ _ _ _ (final_store_reachable S A V Q W) _ hB
+    have he : X' = X := (Store.accepted_tree _ _ _ _
+      (final_store_reachable S A V Q W)).2.1.1 hX' hXt (hX'r.trans hXR.symm)
+    subst X'
+    exact hanc.mono (by rw [hsource]; exact fg.tree_subset _ (W.ready 3).1 _)
+  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
+    (forwardAtAcceptance_iff S Q.run.2 Q.hn _ _ _).mp
+      (forwardAtAcceptance S Q.run.2 Q.hn Q.valid) _ (W.ready 3).1 _ _ (W.accepted 3)
+  intro y t j hdt hth hy hj
+  have hsafe := Store.replay_finalized_safety fg hf (W.ready 3).1 hy.1
+    (hsource ▸ hB) (hsource ▸ hXt) (show X.root = _ by rw [← hsource]; exact hXR)
+    (j := j)
+  rw [hst _ hy.1] at hsafe
+  rcases hsafe with hXF | hFX
+  · exact hAX.trans hXF
+  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst := by
+    constructor
+    · intro v hv o s hs w hw a hsa hc hh haw
+      have h := Q.healthy.1.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw a hsa hc hh haw
+      rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
+      · obtain ⟨o', he, hs'⟩ := hsent
+        cases he
+        exact ⟨u, hu, Or.inl hs', hnowake⟩
+      · obtain ⟨o', he, hr'⟩ := hrecv
+        cases he
+        exact ⟨u, hu, Or.inr hr', hnowake⟩
+    · exact Q.healthy.1.txs
+  obtain ⟨d, hheld, hdt'⟩ := publication_held_ready_tail S Q.run.2 Q.hn hnet r hr
+    (horg ▸ (W.ready 3).1) hy hth (by rw [htime]; exact tail.1.trans hdt) tail.2
+  obtain ⟨k, hkj, hacc, hkt⟩ := held_forward_accepted_before S Q.run.2 Q.hn Q.valid hnc
+    hy.1 (W.ready 3).1 hheld hdecode hdt' hj.2.le (hFX.trans hXB)
+  have hkj' : k + 1 ≤ j := by
+    have : k ≠ j := by intro he; subst k; exact (not_lt_of_ge hj.2.le) hkt
+    omega
+  have hac : Q.trace.projFG.AcceptAt y k (W.block 3) := Compose.projFG_callAt.mpr hacc
+  have hpostB : W.block 3 ∈ (Q.trace.projFG.store y (k + 1)).tree := by
+    have h := Store.accept_onBlock fg hy.1 hac
+    rw [(Store.tree_grows _ _ _ _ (Store.store_reachable fg hy.1 k)).1 _ _ h]
+    exact Set.mem_insert _ _
+  have hpostXB := Store.anc_of_U fg hy.1 hXB hpostB
+  have hpostX : X ∈ (Q.trace.projFG.store y (k + 1)).tree := by
+    by_cases he : X = W.block 3
+    · exact he ▸ hpostB
+    · exact (Anc.mem hpostXB he).1
+  have hσ := Store.σ_eq_of_held fg (W.ready 3).1 hy.1 (hsource ▸ hB) hpostB
+  have hkFX : Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2))
+      (Q.trace.projFG.store y k).F X := by
+    rw [hst _ hy.1]
+    exact ((Compose.fg_grows run hy.1 hkj).2).trans hFX
+  have hcache := Healing.accepted_replay_finalized_cached fg hf hy.1 hac hpostX
+    (by rw [← hσ, ← hsource]; exact hXR) hkFX
+  rw [hst _ hy.1] at hcache
+  exact hAX.trans (hcache.trans (Compose.fg_grows run hy.1 hkj').2)
+
+/-- Acceptance from the selected window's publication slack. Catch-up duration and
+the source's position after GST follow from the existing query and window premises. -/
+theorem final_cache_acceptance (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
+    (hslack : Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline)
+    (coverage : ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧
+      W.Extends (W.block 0) F) : W.CacheCoverage := by
+  apply final_cache_acceptance_of_publication_tail S A V Q W ?_ coverage
+  have hd := Q.run.1.Δ_pos
+  have hq : max Q.gst 0 ≤ Q.query := by
+    exact (le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) hd.le)).trans Q.mature
+  have hs : max Q.gst 0 ≤ Q.trace.time (W.cut 3) :=
+    (hq.trans W.fresh.le).trans
+      (simTrace_time_mono S Q.run.2 Q.hn Q.valid (W.ordered.monotone (by decide)))
+  constructor
+  · simpa only [max_eq_left ((le_max_left _ _).trans hs),
+      max_eq_left ((le_max_right _ _).trans hs)] using hslack
+  · have hc : (1 : Time) ≤ ((K S A).params.catchUp : Time) := by
+      rw [acceptanceContract_params_eq]
+      change (1 : Time) ≤ ((accepted_coefficients S A).catchUp : Nat)
+      exact_mod_cast (accepted_coefficients S A).catchUp.pos
+    change Q.run.1.Δ + 1 ≤ ((K S A).params.catchUp : Time) * Q.run.1.Δ + 1
+    nlinarith
 
 /-- Conditional payload/read projection of the finite supplier package. Uses the engine's
 existing catch-up duration, raw own-block release, and final cache membership at endCut.
 Window extraction and CacheCoverage remain explicit inputs; no coefficient is synthesized. -/
 theorem final_payload_projection
-    (windows : ∀ Q : FinalQuery S A V, Nonempty (FinalWindowData S A V Q))
-    (coverage : ∀ (Q : FinalQuery S A V) (W : FinalWindowData S A V Q), W.CacheCoverage) :
+    (windows : ∀ Q : FinalQuery S A V,
+      ∃ W : FinalWindowData S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline)
+    (coverage : ∀ (Q : FinalQuery S A V) (W : FinalWindowData S A V Q),
+      Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline → W.CacheCoverage) :
     ∀ g, schema.output .final = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (family S) V).Holds
       (fun r => (Sys (family S) V).Healthy (K S A) gst r ∧
@@ -1086,7 +1205,7 @@ theorem final_payload_projection
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
   let Q : FinalQuery S A V := ⟨r, hn, i, gst, t, hv, hcollision, hhealthy,
     hprog, hm, hb, v, hvr⟩
-  obtain ⟨W⟩ := windows Q
+  obtain ⟨W, hslack⟩ := windows Q
   have ht : 0 ≤ t := by
     have hd := r.1.Δ_pos
     have hg0 : (0 : Time) ≤ max gst 0 := le_max_right _ _
@@ -1115,7 +1234,7 @@ theorem final_payload_projection
       exact taggedRoot_ne _ _
   exact finalized_inBy S r.2 hn hv
     (noCollTransport V S r.1 r.2 hn hv hcollision) hc hdeadline hb hroot
-    (fun y j hy hj => coverage Q W y Q.deadline j le_rfl hb hy hj)
+    (fun y j hy hj => coverage Q W hslack y Q.deadline j le_rfl hb hy hj)
 
 /-- Statement-only assembly of the OPEN four-anchor suppliers; not a completed liveness proof.
 Paper: workbench b3ca078, four-anchor-window.md and fixed-timeout-synthesis.md. -/
@@ -1127,12 +1246,12 @@ theorem accepted_healthyLive_final : ∀ g, schema.output .final = some g →
       fun r => ProposalLiveReady r.2 ((Sys (family S) V).cDur (K S A) r)
         g ((Sys (family S) V).heal (K S A) .final i gst r) ((K S A).params.latency .final i) := by
   apply final_payload_projection S A V (final_window_extract S A V)
-  intro Q W
+  intro Q W hslack
   have crossings := final_bounded_crossings S A V Q W
       (final_first_crossing S A V Q W (final_inherited_progress S A V Q W))
       (final_row_supply S A V Q W)
   obtain ⟨B, C, hB, _, _, _, _, _, _, _, _, F, hF, hBF⟩ := crossings
-  exact final_cache_acceptance S A V Q W ⟨F, hF, hB.2.1.trans hBF⟩
+  exact final_cache_acceptance S A V Q W hslack ⟨F, hF, hB.2.1.trans hBF⟩
 
 /-- R3 available/stable inclusion; R4 FinalInclude for final.
 NO PAPER PROOF for exact contract gHeal, bounded recurrence→node progress,
