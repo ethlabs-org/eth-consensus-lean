@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_commit": "d408b23f3c049daeb5161d656d8be326d2675804",
+  "audit_commit": "d3e0244f083b14cb2dc93d11b0e3562b3cf9c03f",
   "baseline_commit": "fd7f498a15bf9e9e694102ffaeb8de6b33067052",
   "generated_on": "2026-11-01",
   "notes": [
@@ -237,7 +237,7 @@
       "lean-status": "direct-sorry",
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
-      "evidence": "Four outside audits 649f0286: actual acToFG report existence under fgReported suppression, candidate survival/normalization and higher source remains; entry-rows-exact \u00a7\u00a72,6.",
+      "evidence": "d3e0244 proves finalized_descendant_report from ResetPremises and held finality witnesses: a finalized strict descendant supplies an actual earlier honest ToFG report, with heights compared in the reporter store. finality_below_or_higher_report retains explicit finality/P compatibility. This resolves that conditional report-extraction branch, not general report_cover: compatibility, candidate survival/normalization and fgReported suppression remain. No compiled leaf closes.",
       "card-commit": "3ac591839cc2af6a286a235142ecbe7e27d4770d",
       "card-path": "repos/goldilocks/notes/derisk/report_cover.md",
       "card-repo": "ethlabs-org/workbench",
@@ -846,11 +846,12 @@
       "lean-status": "direct-sorry",
       "status-source": null,
       "last-changed": "2026-11-01",
-      "evidence": "34b2d47 proves simTrace_call_sending_event and fresh wire/payload cut-to-handler queueing. The enclosing event, time and half-open cut interval are discharged; actual release and no earlier release remain one explicit sorry. Reachable own-emission freshness and canonical vote holdings in the actual release prefix remain. Newly visible Accepted-closure leaf; no dedicated reviewed card yet.",
-      "card-path": null,
-      "card-repo": null,
-      "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
+      "evidence": "34b2d47 proves event/time/cut bounds and fresh wire/payload cut-to-handler queueing. Actual release and no earlier release remain one explicit sorry. Reviewed card at d3e0244 rates the reachable own-emission freshness, actual-prefix canonical holdings and global provenance join as research. Independent source review found no blocking corrections; no executable counterexample or full closure proof claimed. Paper status remains unknown, separate from derisk readiness.",
+      "card-path": "repos/goldilocks/notes/derisk/simTrace_vote_forwarded.md",
+      "card-commit": "71e40c913fd8e2d9fa9318a6dc817ae14f381747",
+      "card-repo": "ethlabs-org/workbench",
+      "derisk-verdict": "research",
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_include_finite",
@@ -971,7 +972,7 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "C signed vote-forward envelopes are installed. At 34b2d47, fresh cut-to-handler queueing and enclosing event/time/interval are proved; actual release/first-release remains explicitly sorry. d408b23 supplies block acceptance publication; decoding, strict parent order, recipient fresh/retained/equivocation evidence and full service assembly remain. Duration/population do not prove service. The pinned card's old unsigned-service obstruction is historical, not a counterexample to installed C.",
-      "obstruction": "Historical #128 unsigned-service obstruction; installed C proof obligations remain, not an established counterexample to the revised service.",
+      "obstruction": "#128: protocol/service repair pending (source-reduced evidence)",
       "card-commit": "3ac591839cc2af6a286a235142ecbe7e27d4770d",
       "card-path": "repos/goldilocks/notes/derisk/sleepy_safety_inputs.md",
       "card-repo": "ethlabs-org/workbench",
