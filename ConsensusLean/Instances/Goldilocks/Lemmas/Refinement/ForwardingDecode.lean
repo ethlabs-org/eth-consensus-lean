@@ -506,4 +506,22 @@ theorem decoded_held_deliver {V : Type} [Fintype V] {E : Env V}
     · exact h
   · exact decoded_held_process S rho hn (shapeOf S hn nd) hd hh hc hr o ht
 
+/-- The actual tick prefix up to proposal preserves the joint wrapper invariant. -/
+theorem decoded_held_atProposal {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (t : Time)
+    (hd : WrappersDecoded (digests rho.hash) (shapeOf S hn nd))
+    (hh : WrappersHeld (digests rho.hash) (shapeOf S hn nd))
+    (ht : (shapeOf S hn nd).now ≤ t) (hsel : rho.ownKey v ∈ rho.sel .poll) :
+    let st' := shapeOf S hn (atProposal S rho v nd t)
+    WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
+  dsimp only
+  rw [atProposal_shape S rho hn v nd t hsel]
+  have hc : WrappersDecoded (digests rho.hash) { shapeOf S hn nd with now := t } ∧
+      WrappersHeld (digests rho.hash) { shapeOf S hn nd with now := t } :=
+    ⟨hd.mono rfl rfl rfl ht, hh.preserve rfl rfl rfl⟩
+  have h1 := decoded_held_poll _ t.toNat hc.1 hc.2
+  have h2 := decoded_held_poll _ t.toNat h1.1 h1.2
+  exact decoded_held_nodeTick _ h2.1 h2.2
+
 end Consensus.Goldilocks.Refinement
