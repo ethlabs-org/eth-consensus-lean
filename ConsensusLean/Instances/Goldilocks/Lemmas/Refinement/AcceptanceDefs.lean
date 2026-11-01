@@ -35,34 +35,47 @@ structure AcceptanceCoefficients where
   heal : Capability → ℕ+ → Nat
   latency : Capability → ℕ+ → Nat
 
-/-- OPEN numeric witness, chosen jointly with the adapter proofs below. -/
-noncomputable def accepted_catchUp (S : Setup) (A : AcceptanceAssumptions S) : ℕ+ := by
-  sorry
+/-- Catch-up covers the Sleepy margin and the outage history window. -/
+def accepted_catchUp (S : Setup) (_A : AcceptanceAssumptions S) : ℕ+ :=
+  ⟨max 37 (8 * S.k + 4), lt_of_lt_of_le (by decide) (Nat.le_max_left _ _)⟩
+
+theorem accepted_catchUp_val (S : Setup) (A : AcceptanceAssumptions S) :
+    (accepted_catchUp S A : Nat) = max 37 (8 * S.k + 4) := by rfl
 
 /-- OPEN finite healing witness; no whole-run progress premise may be added. -/
 noncomputable def accepted_heal (S : Setup) (A : AcceptanceAssumptions S) :
     Capability → ℕ+ → Nat := by
   sorry
 
-/-- OPEN finite latency witness, at every outer gap, independent of timeout. -/
-noncomputable def accepted_latency (S : Setup) (A : AcceptanceAssumptions S) :
-    Capability → ℕ+ → Nat := by
-  sorry
+/-- Latency pays for the selected window and the final publication reserve. -/
+def accepted_latency (S : Setup) (_A : AcceptanceAssumptions S) :
+    Capability → ℕ+ → Nat
+  | .available, X => 8 * (X : Nat) + 12
+  | .stable, X => 8 * (X : Nat) + 12
+  | .final, X => 8 * ((X : Nat) + S.δt + 3) + 2
 
-/-- OPEN joint-synthesis constraint, not a value selected for the shared witness.
-For engine Δe ≥ 1, 37Δe covers 18(Δe+1)+1, including safety's literal +1.
-Other regimes may require a larger catch-up coefficient. -/
+theorem accepted_latency_available (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
+    accepted_latency S A .available X = 8 * (X : Nat) + 12 := by rfl
+
+theorem accepted_latency_stable (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
+    accepted_latency S A .stable X = 8 * (X : Nat) + 12 := by rfl
+
+theorem accepted_latency_final (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
+    accepted_latency S A .final X = 8 * ((X : Nat) + S.δt + 3) + 2 := by rfl
+
+/-- For engine Δe ≥ 1, 37Δe covers 18(Δe+1)+1, including safety's literal +1. -/
 theorem accepted_catchUp_ge_sleepy (S : Setup) (A : AcceptanceAssumptions S) :
     37 ≤ (accepted_catchUp S A : Nat) := by
-  sorry
+  rw [accepted_catchUp_val]
+  exact Nat.le_max_left _ _
 
-/-- OPEN minimum Sleepy latency constraint on the same joint witness.
-For Δe ≥ 1, (8idx+12)Δe covers (4idx+6)(Δe+1). This is not a final
-joint value and imposes no new premise on any Accepted endpoint. -/
+/-- For Δe ≥ 1, the nonfinal latency covers (4idx+6)(Δe+1). -/
 theorem accepted_latency_ge_sleepy (S : Setup) (A : AcceptanceAssumptions S)
     (cap : Capability) (idx : ℕ+) (hcap : cap = .available ∨ cap = .stable) :
     8 * (idx : Nat) + 12 ≤ accepted_latency S A cap idx := by
-  sorry
+  rcases hcap with rfl | rfl
+  · rw [accepted_latency_available]
+  · rw [accepted_latency_stable]
 
 /-- The same three witnesses are used by every adapter. -/
 noncomputable def accepted_coefficients (S : Setup) (A : AcceptanceAssumptions S) :
