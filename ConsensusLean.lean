@@ -57,6 +57,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.ContestLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.ContestLocksRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.FrameKeepsCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorGlobal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorSegments
