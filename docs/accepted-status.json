@@ -972,7 +972,7 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "C signed vote-forward envelopes are installed. At 34b2d47, fresh cut-to-handler queueing and enclosing event/time/interval are proved; actual release/first-release remains explicitly sorry. d408b23 supplies block acceptance publication; decoding, strict parent order, recipient fresh/retained/equivocation evidence and full service assembly remain. Duration/population do not prove service. The pinned card's old unsigned-service obstruction is historical, not a counterexample to installed C.",
-      "obstruction": "#128: protocol/service repair pending (source-reduced evidence)",
+      "obstruction": "Historical #128 unsigned-service obstruction; installed C proof obligations remain, not an established counterexample to the revised service.",
       "card-commit": "3ac591839cc2af6a286a235142ecbe7e27d4770d",
       "card-path": "repos/goldilocks/notes/derisk/sleepy_safety_inputs.md",
       "card-repo": "ethlabs-org/workbench",
