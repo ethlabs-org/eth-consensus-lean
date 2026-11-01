@@ -107,7 +107,7 @@ frame and the vote is resolved before `t_s + 2Δ`. -/
 private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
     {a₀ : Time} {k₀ : Nat}
     (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a₀ (T.time k₀) T ∨
-      SyncACBefore H U (T.time k₀) T) {y : Fin sp.n} (hy : y ∈ H)
+      SA.ServiceBefore H U (T.time k₀) T) {y : Fin sp.n} (hy : y ∈ H)
     {s : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hu : SA.UpdateAt T y k₀ s ℓ)
     (ha₀ : a₀ ≤ sp.ts s) {P : SA.Blk sp.n FGP} (hPU : P ∈ U) (hFP : Anc U ℓ.frame.F P)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : SA.Em sp FGP} (hv : SA.VoteAt T x j e)
@@ -136,48 +136,50 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
   rw [hes] at htj
   have hsj : sp.ts s ≤ T.time j := (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) s).2 (by omega)
   -- the vote is processed by the updater before `t_s + 2Δ`
-  have hdelivery : ∃ k' ≤ k₀, T.time j ≤ T.time k' ∧ T.ProcessAt y k' e.msg ∧
-      T.time k' < T.deadline y k' (T.time j) := by
+  have hservice : SA.MessageServedBefore T y k₀ (T.time j) e.msg := by
     have hd : T.deadline y k₀ (T.time j) ≤ T.time k₀ := by
       rw [htk₀]; linarith [hdl k₀ le_rfl _ htj]
     rcases hsync with hs | hs
-    · exact hs.1 x hx j e.msg ⟨ℓv, hcv, Or.inl ⟨e, hev, rfl⟩⟩
-        (ha₀.trans hsj) (by rw [htk₀]; linarith) y hy k₀ ℓ hcy hd
+    · apply (SA.messageServedBefore_iff _ _ _ _).mpr
+      exact Or.inl (hs.1 x hx j e.msg ⟨ℓv, hcv, Or.inl ⟨e, hev, rfl⟩⟩
+        (ha₀.trans hsj) (by rw [htk₀]; linarith) y hy k₀ ℓ hcy hd)
     · exact hs.message x hx j e.msg ⟨ℓv, hcv, Or.inl ⟨e, hev, rfl⟩⟩
         (hr.time_nonneg j) y hy k₀ ℓ hcy hd hd
-  obtain ⟨k', hk'k₀, hjk', hp, hk'dl⟩ := hdelivery
-  have hk'lt : T.time k' < sp.ts s + 2 * sp.Δ := hk'dl.trans_le (hdl k' hk'k₀ _ htj)
-  have hk'k₀' : k' < k₀ := lt_of_le_of_ne hk'k₀ (by rintro rfl; rw [htk₀] at hk'lt; linarith)
-  have hsk' : sp.slot (T.time k') = s :=
-    SA.slot_of_mem sp s (hsj.trans hjk') (by rw [hts]; linarith)
-  -- no restart of the updater after `k'` up to its update
-  have hnr : ∀ r, k' + 1 ≤ r → r < k₀ + 1 → ¬ T.RestartAt y r := by
-    rintro r hr1 hr2 ⟨ℓr, hcr, hrr⟩
-    obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr
-    obtain ⟨ℓ', hc', -⟩ := hp
-    have h₁ := hprev k' (by omega) ℓ' hc'
-    have h₂ := hrsy r (by omega) ⟨ℓr, hcr, hrr⟩
-    linarith
-  -- admitted: an honest validator has one slot-`s` vote, so the two-vote cap does not refuse it
-  have hpk' : e.msg ∈ (T.state y (k' + 1)).pool s := by
-    rcases SA.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
-      h | ⟨a, ha, b, hb, hab, hav, hbv⟩
-    · rwa [hes] at h
-    · rw [hes] at ha hb
-      obtain ⟨ja, -, ea, hea, hea'⟩ :=
-        hrun.honest.pool_vote y hy _ s a ha (by rw [hav, hxv]; exact hx)
-      obtain ⟨jb, -, eb, heb, heb'⟩ :=
-        hrun.honest.pool_vote y hy _ s b hb (by rw [hbv, hxv]; exact hx)
-      rw [hav, hxv] at hea
-      rw [hbv, hxv] at heb
-      obtain ⟨-, rfl⟩ := SA.one_vote_per_slot sp FGP ro H U T hr x hx ja jb ea eb hea heb
-        (by rw [hea', heb', SA.state_pool_slot sp hr hy _ s a ha,
-          SA.state_pool_slot sp hr hy _ s b hb])
-      exact absurd (hea'.symm.trans heb') hab
-  have hpool : e.msg ∈ (T.state y k₀).pool s :=
-    SA.pool_mono hr hy (show k' + 1 ≤ k₀ by omega) (fun r h₁ h₂ => hnr r h₁ (by omega)) s hpk'
-  -- its stamp: its admission, at or before `k'`, or the updater's own vote, or a restart
-  have hvst : (T.state y k₀).voteStamp e.msg < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
+  have fresh : (∃ k' ≤ k₀, T.time j ≤ T.time k' ∧ T.ProcessAt y k' e.msg ∧
+      T.time k' < T.deadline y k' (T.time j)) →
+      e.msg ∈ (T.state y k₀).pool s ∧
+        (T.state y k₀).voteStamp e.msg < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
+    intro hdelivery
+    obtain ⟨k', hk'k₀, hjk', hp, hk'dl⟩ := hdelivery
+    have hk'lt : T.time k' < sp.ts s + 2 * sp.Δ := hk'dl.trans_le (hdl k' hk'k₀ _ htj)
+    have hk'k₀' : k' < k₀ := lt_of_le_of_ne hk'k₀ (by rintro rfl; rw [htk₀] at hk'lt; linarith)
+    have hsk' : sp.slot (T.time k') = s :=
+      SA.slot_of_mem sp s (hsj.trans hjk') (by rw [hts]; linarith)
+    have hnr : ∀ r, k' + 1 ≤ r → r < k₀ + 1 → ¬ T.RestartAt y r := by
+      rintro r hr1 hr2 ⟨ℓr, hcr, hrr⟩
+      obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr
+      obtain ⟨ℓ', hc', -⟩ := hp
+      have h₁ := hprev k' (by omega) ℓ' hc'
+      have h₂ := hrsy r (by omega) ⟨ℓr, hcr, hrr⟩
+      linarith
+    have hpk' : e.msg ∈ (T.state y (k' + 1)).pool s := by
+      rcases SA.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
+        h | ⟨a, ha, b, hb, hab, hav, hbv⟩
+      · rwa [hes] at h
+      · rw [hes] at ha hb
+        obtain ⟨ja, -, ea, hea, hea'⟩ :=
+          hrun.honest.pool_vote y hy _ s a ha (by rw [hav, hxv]; exact hx)
+        obtain ⟨jb, -, eb, heb, heb'⟩ :=
+          hrun.honest.pool_vote y hy _ s b hb (by rw [hbv, hxv]; exact hx)
+        rw [hav, hxv] at hea
+        rw [hbv, hxv] at heb
+        obtain ⟨-, rfl⟩ := SA.one_vote_per_slot sp FGP ro H U T hr x hx ja jb ea eb hea heb
+          (by rw [hea', heb', SA.state_pool_slot sp hr hy _ s a ha,
+            SA.state_pool_slot sp hr hy _ s b hb])
+        exact absurd (hea'.symm.trans heb') hab
+    have hpool : e.msg ∈ (T.state y k₀).pool s :=
+      SA.pool_mono hr hy (show k' + 1 ≤ k₀ by omega) (fun r h₁ h₂ => hnr r h₁ (by omega)) s hpk'
+    refine ⟨hpool, ?_⟩
     rcases SA.pool_origin hr hy k₀ e.msg (by rw [hes]; exact hpool) with
       ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
     · rw [hst₁, etime_lt]
@@ -191,6 +193,24 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
             (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hes]; exact hpk')) hn₁
     · rw [hst₁, etime_lt]
       linarith [hrsy k₁ hk₁.le ⟨ℓ₁, hc₁, hr₁⟩]
+  have held : e.msg ∈ (T.state y k₀).pool s ∧
+      (T.state y k₀).voteStamp e.msg < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
+    rcases (SA.messageServedBefore_iff _ _ _ _).mp hservice with hfresh | hretained
+    · exact fresh hfresh
+    have hevidence := (hretained.evidence hr hy).weaken (hdl k₀ le_rfl _ htj)
+    rcases (SA.poolEvidenceBefore_iff _ _ _).mp hevidence with
+      hv | ⟨a, b, hab, hav, hbv, has, hbs, ha, hb⟩
+    · exact ⟨hes ▸ hv.1, hv.2⟩
+    · obtain ⟨ja, -, ea, hea, hea'⟩ :=
+        hrun.honest.pool_vote y hy _ a.slot a ha.1 (by rw [hav, hxv]; exact hx)
+      obtain ⟨jb, -, eb, heb, heb'⟩ :=
+        hrun.honest.pool_vote y hy _ b.slot b hb.1 (by rw [hbv, hxv]; exact hx)
+      rw [hav, hxv] at hea
+      rw [hbv, hxv] at heb
+      obtain ⟨-, rfl⟩ := SA.one_vote_per_slot sp FGP ro H U T hr x hx ja jb ea eb hea heb
+        (by rw [hea', heb', has, hbs])
+      exact (hab (hea'.symm.trans heb')).elim
+  obtain ⟨hpool, hvst⟩ := held
   -- the head: accepted by the voter before its vote, relayed to the updater before `t_s + 2Δ`
   have hHdP : Hd = P := hU.1 ((SA.frameIn_of_callAt hr hx hcv).2 hHd) hPU (hHdr.trans hhead)
   have hacc : SA.AcceptedBefore T y P (sp.ts s + 2 * sp.Δ) ∧ P ∈ ℓ.frame.tree := by
@@ -228,7 +248,7 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
 
 /-- Honest votes reach a joined updater using service through the update's time. -/
 theorem honest_vote_at_update_before (hrun : SA.ACRun proposer T H U) {b : Time} {k₀ : Nat}
-    (hsync : SyncACBefore H U b T) (hb : T.time k₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
+    (hsync : SA.ServiceBefore H U b T) (hb : T.time k₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
     {s : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hu : SA.UpdateAt T y k₀ s ℓ)
     {P : SA.Blk sp.n FGP} (hPU : P ∈ U) (hFP : Anc U ℓ.frame.F P)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : SA.Em sp FGP} (hv : SA.VoteAt T x j e)
@@ -265,7 +285,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : 
 theorem honest_batch_at_update_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {b : Time}
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
     (hb : tr.time k₀ ≤ b) {P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -302,7 +322,8 @@ theorem honest_batch_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact honest_batch_at_update_before hrun hnc (syncBefore_projection hrun.toLocalRun hs)
+  exact honest_batch_at_update_before hrun hnc
+    (SA.serviceBefore_of_sync (syncBefore_projection hrun.toLocalRun hs))
     hy hu le_rfl hPt hall
 
 end Consensus.Goldilocks.Compose

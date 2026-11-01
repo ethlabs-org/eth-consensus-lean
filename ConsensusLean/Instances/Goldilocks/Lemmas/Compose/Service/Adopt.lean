@@ -32,7 +32,7 @@ to the updater, joined (restarts at or before `t_s`), before `t_s + Δ ≤ t_s +
 theorem proposal_held_at_update_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -90,7 +90,7 @@ theorem proposal_held_at_update_before {dg : Digest (List (FG.Att sp.n)) (Payloa
     have := ((SA.joined_awake sp) _ ro H _ tr.projAC hr y hy k₀ ℓ hc hpost).2 c hck hrc
     rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
   have hPt : P ∈ ℓ.frame.tree := by
-    refine relay_mem_before hrun hnc (syncBefore_projection hrun.toLocalRun hsync)
+    refine relay_mem_before hrun hnc hsync.ac
       hp hy hPU hu.1 hb hrs (Or.inr ⟨k + 1,
       ⟨ℓ', projAC_callAt.2 hc', hcall'⟩, ?_⟩) hF
     have htk₀ : tr.projAC.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
@@ -114,7 +114,8 @@ theorem proposal_held_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposal_held_at_update_before hrun hnc (hrun.time_nonneg k₀) hs
+  exact proposal_held_at_update_before hrun hnc (hrun.time_nonneg k₀)
+    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀))) hp hP hPs hpj hy hu le_rfl
 
@@ -126,7 +127,7 @@ A0.8), so the honest slot-`s` voters support `P`; the other voters are faulty, a
 theorem proposal_majority_at_update_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -143,7 +144,7 @@ theorem proposal_majority_at_update_before {dg : Digest (List (FG.Att sp.n)) (Pa
   have hall := honest_votes_eq_proposal_at_update_before hrun hnc hb0 hsync hfb hinv
     hp hP hPs hpj (hu.2.2.1 ▸ hb)
   have hbatch := honest_batch_at_update_before hrun hnc
-    (syncBefore_projection hrun.toLocalRun hsync) hy hu hb hPt hall
+    hsync.ac hy hu hb hPt hall
   rw [← projAC_state hrun.toLocalRun hy]
   set A := tr.projAC.state y k₀
   set Hv := {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg.slot = s}
@@ -202,7 +203,8 @@ theorem proposal_majority_at_update {dg : Digest (List (FG.Att sp.n)) (Payload s
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposal_majority_at_update_before hrun hnc (hrun.time_nonneg k₀) hs
+  exact proposal_majority_at_update_before hrun hnc (hrun.time_nonneg k₀)
+    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀))) hp hP hPs hpj hy hu le_rfl
 
@@ -296,7 +298,7 @@ majority is on one chain with it (A0.3), and no block above it has a resolved sl
 no result is vetoed (`result_not_vetoed`). -/
 theorem adopt_result_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -358,7 +360,8 @@ theorem adopt_result {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set 
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact adopt_result_before hrun hnc (hrun.time_nonneg k₀) hs
+  exact adopt_result_before hrun hnc (hrun.time_nonneg k₀)
+    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀))) hp hP hPs hpj hy hu le_rfl
 
@@ -391,7 +394,7 @@ private theorem acOnTick_update_record (self : Fin sp.n) {A : SA.SAState sp.n}
 joined update of slot `s`, its record names a block of the honest blocks that extends `P`. -/
 theorem update_adopts_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -443,7 +446,8 @@ theorem update_adopts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact update_adopts_before hrun hnc (hrun.time_nonneg k₀) hs
+  exact update_adopts_before hrun hnc (hrun.time_nonneg k₀)
+    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀))) hp hP hPs hpj hy hu le_rfl
 

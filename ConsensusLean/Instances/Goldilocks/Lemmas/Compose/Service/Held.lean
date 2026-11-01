@@ -44,7 +44,7 @@ private theorem proposal_honest (hrun : GoldilocksRun proposer dg H tr) (hnc : N
 
 /-- Finite origin comparison, using only votes available by the horizon. -/
 private theorem origin_anc_proposal_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
@@ -68,7 +68,7 @@ private theorem origin_anc_proposal_before (hrun : GoldilocksRun proposer dg H t
 
 /-- Finite successor-vote transfer through the observation horizon. -/
 private theorem votes_succ_extend_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
@@ -92,7 +92,7 @@ private theorem votes_succ_extend_before (hrun : GoldilocksRun proposer dg H tr)
 /-- **The rows the updater holds have sources compatible with `P`**: signed before `t_s + 6Δ`,
 with a source below an origin before the signing, of a label at most `s + 1`. -/
 private theorem rows_compatible_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
@@ -161,7 +161,8 @@ private theorem rows_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : N
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact rows_compatible_before hrun hnc (hrun.time_nonneg k₀) hs
+  exact rows_compatible_before hrun hnc (hrun.time_nonneg k₀)
+    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀)))
     (proposal_honest hrun hnc hp hP) (honest_votes_eq_proposal hrun hnc hsl hp hP hPs hpj)
@@ -233,7 +234,7 @@ private theorem updater_F_anc_of_rows (hrun : GoldilocksRun proposer dg H tr)
 
 /-- By the update horizon every slot-`s` vote is in the finite agreement window. -/
 theorem honest_votes_eq_proposal_at_update_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -261,7 +262,7 @@ theorem honest_votes_eq_proposal_at_update_before (hrun : GoldilocksRun proposer
 
 /-- Finite finalized-tip bound at the joined update. -/
 theorem updater_F_anc_proposal_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}

@@ -15,6 +15,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-11-01, Francesco ([#17]): final liveness uses four anchors; the two-proposer route is parked.
+
 - 2026-10-31, coordinator (outage coefficient correctness audit after #125).
   Accepted's engine-unit arming lag is `8k−8`, and its budget is `min(η,4k−6)`.
   The former `4k−4` lag fails already at Δ_e=1, Δ_p=2. The former `4k−5`

@@ -139,7 +139,7 @@ an old child is ineligible, `old_children_ineligible`), and its walk has no best
 block of the frame is of a later slot): `SA.stop_core` from the two leaves. -/
 theorem stop_at_parent_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -185,7 +185,7 @@ theorem stop_at_parent_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} 
     (proposal_at_voter_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hc hcall hd hti hPQ
       hy hcy hes hib hjb)
     (fun B hB hBQ hBs => old_child_ineligible_before hrun hnc hp hP hPs hc hcall hd hti hPQ
-      hDQ hviab hy hcy hes (syncBefore_projection hrun.toLocalRun hsync) hib hjb hf
+      hDQ hviab hy hcy hes hsync.ac hib hjb hf
       (proposal_walk_passes_old_before hrun hnc hb0 hsync hfb hinv hp hc hcall hd hti hib)
       hB hBQ hBs)
 
@@ -198,7 +198,7 @@ fuel it has stopped (`ghost_stopped`), so it ends at `P`. -/
 theorem honest_votes_eq_proposal_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
     (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -346,7 +346,8 @@ theorem honest_votes_eq_proposal {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact honest_votes_eq_proposal_before hrun hnc hb hs (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
+  exact honest_votes_eq_proposal_before hrun hnc hb (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
+    (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix hb)) hp hP hPs hpj (le_max_left _ _)
     x hx j e hv hes (le_max_right _ _)
 
@@ -383,7 +384,8 @@ theorem stop_at_parent {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Se
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact stop_at_parent_before hrun hnc hb hs (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
+  exact stop_at_parent_before hrun hnc hb (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
+    (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix hb)) hp hP hPs hpj hc hcall hd hti hPQ
     hy hcy hes (le_max_left _ _) (le_max_right _ _)
 

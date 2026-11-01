@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
@@ -261,7 +262,7 @@ theorem proposal_call_restarts (hrun : GoldilocksRun proposer dg H tr) (hnc : No
 `Σ.F` is below it, it is in the proposal's frame, accepted before `t_{s−1} + 3Δ`. -/
 private theorem proposer_relay_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
-    {b : Time} (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    {b : Time} (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -323,7 +324,8 @@ private theorem proposer_relay (hrun : GoldilocksRun proposer dg H tr) (hnc : No
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposer_relay_before hrun hnc (syncBefore_projection hrun.toLocalRun hs)
+  exact proposer_relay_before hrun hnc
+    (SA.serviceBefore_of_sync (syncBefore_projection hrun.toLocalRun hs))
     hp hc hcall hd hti le_rfl hx hB hacc hFB
 
 /-- **The head of an honest vote of a slot before `s` reaches the proposer** of slot `s`: its
@@ -331,7 +333,7 @@ voter accepted it (or it is genesis) by `t_{s−1} + Δ` (`frame_anc_accepted`),
 `proposer_relay`. -/
 private theorem proposer_accepts_head_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
-    {b : Time} (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    {b : Time} (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -387,7 +389,8 @@ private theorem proposer_accepts_head (hrun : GoldilocksRun proposer dg H tr)
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposer_accepts_head_before hrun hnc (syncBefore_projection hrun.toLocalRun hs)
+  exact proposer_accepts_head_before hrun hnc
+    (SA.serviceBefore_of_sync (syncBefore_projection hrun.toLocalRun hs))
     hp hc hcall hd hti le_rfl hx hv hes hHd hHdr hFHd
 
 /-- **The proposer holds every old origin, or it is below its `Σ.F`** (workbench#12 §2.1): an
@@ -395,7 +398,7 @@ old origin has an honest supporting vote of a slot before `s` (`honest_supporter
 reaches the proposer when `Σ.F` is below the origin (`proposer_accepts_head`); otherwise `Σ.F`,
 on the origin chain, is compatible with it (S1) and above it. -/
 theorem proposal_holds_old_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
@@ -423,7 +426,7 @@ theorem proposal_holds_old_before (hrun : GoldilocksRun proposer dg H tr) (hnc :
       (onOriginChainWithin_iff.2 (Or.inr ⟨O, m, hOm, .refl⟩)) with hFO | hOF
   · left
     have hHdt := (proposer_accepts_head_before hrun hnc
-      (syncBefore_projection hrun.toLocalRun hsync) hp hc hcall hd hti hb hx hv
+      hsync.ac hp hc hcall hd hti hb hx hv
       (by omega) hHd hHdr (hFO.trans hOHd)).1
     exact mem_between hU hΦ hΦU hΦ.rooted.1 hHdt hFO hOHd
   · exact Or.inr hOF
@@ -442,7 +445,7 @@ private theorem proposal_holds_old (hrun : GoldilocksRun proposer dg H tr) (hnc 
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposal_holds_old_before hrun hnc hb hs
+  exact proposal_holds_old_before hrun hnc hb (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix hb)) hp hc hcall hd hti le_rfl
 
@@ -459,7 +462,7 @@ relayed likewise, so each of its seats supports it or equivocates, and the equiv
 voters outside are fewer (`2f < n`, `SA.isBest_of_cover`). -/
 private theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
-    {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
@@ -542,7 +545,7 @@ private theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer d
   -- the proposer's restarts, and the relay window
   have hrs := proposal_call_restarts hrun hnc hp hc hcall hd
   rw [hsi, hσ] at hrs
-  have hac := syncBefore_projection hrun.toLocalRun hsync
+  have hac := hsync.ac
   -- a vote sent or admitted by an honest node in `[t_{s−1}, t_{s−1} + 2Δ)` is in the pool
   have hfwd : ∀ x ∈ H, ∀ kx v, tr.projAC.SendOrAdmit x kx v → v.slot = s' →
       sp.ts (s' : Int) ≤ tr.projAC.time kx → tr.projAC.time kx < sp.ts (s' : Int) + 2 * sp.Δ →
@@ -705,7 +708,8 @@ private theorem proposal_best_toward_old (hrun : GoldilocksRun proposer dg H tr)
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposal_best_toward_old_before hrun hnc hb hs
+  exact proposal_best_toward_old_before hrun hnc hb
+    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix hb)) hp hc hcall hd hti le_rfl
 
@@ -1062,7 +1066,7 @@ proposer (or below its `Σ.F`, below the walk's start), so viable or at or below
 (`held_origin_viable`); the proposer's live locks sit below origins, compatible with it (S1);
 and the children towards it win (`SA.anc_getHead`). -/
 theorem proposal_walk_passes_old_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
@@ -1127,7 +1131,8 @@ theorem proposal_walk_passes_old (hrun : GoldilocksRun proposer dg H tr) (hnc : 
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposal_walk_passes_old_before hrun hnc hb hs
+  exact proposal_walk_passes_old_before hrun hnc hb
+    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix hb)) hp hc hcall hd hti le_rfl
 
@@ -1348,7 +1353,7 @@ assumed to be `P` (the caller's strong induction on the cut: a current-slot opti
 voter sits below one of them). -/
 theorem pivot_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -1478,7 +1483,8 @@ theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  obtain ⟨D, hsD, hDQ, hv, hD⟩ := pivot_before hrun hnc hb hs
+  obtain ⟨D, hsD, hDQ, hv, hD⟩ := pivot_before hrun hnc hb
+    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix hb)) hp hP hPs hpj hc hcall hd hti hPQ hib
   refine ⟨D, hsD, hDQ, hv, fun y hy j ℓy e hcy hes => hD y hy j ℓy e hcy ?_ hes⟩

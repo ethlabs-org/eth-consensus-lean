@@ -111,7 +111,7 @@ theorem update_adopts_origin_before {dg : Digest (List (FG.Att sp.n)) (Payload s
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {b : Time}
     (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hinv : SleepyInvariantUpTo tr H b)
-    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPo : OriginWithin tr H P s b)
     (hPU : P ∈ tr.HonestBlocks H) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ s' : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hss : s < s')
@@ -259,7 +259,7 @@ origin-adoption theorem then handles every strictly later update. -/
 theorem later_update_adopts_gt_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
     (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time),
       sp.ts s + d ≤ b → tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
@@ -303,7 +303,7 @@ theorem later_update_adopts_gt_before {dg : Digest (List (FG.Att sp.n)) (Payload
     ⟨x, hx, kx, _, hxb.trans hb, Or.inl ⟨ℓx, hux,
       by rw [projAC_state hrun.toLocalRun hx]; exact hC, rfl⟩⟩
   exact update_adopts_origin_before hrun hnc hinv
-    (syncBefore_projection hrun.toLocalRun hsync) hPo ⟨x, hx, kx, hPt.1⟩ hy hss hu hb
+    hsync.ac hPo ⟨x, hx, kx, hPt.1⟩ hy hss hu hb
     (hfb s' sp.Δ (by simp) (by
       have ht : tr.time k₀ = sp.ts s' + 6 * sp.Δ := hu.2.2.1
       linarith))
@@ -325,7 +325,8 @@ theorem later_update_adopts_gt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact later_update_adopts_gt_before hrun hnc (hrun.time_nonneg k₀) hs
+  exact later_update_adopts_gt_before hrun hnc (hrun.time_nonneg k₀)
+    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀)))
     hp hP hPs hpj hy hss hu le_rfl
@@ -334,7 +335,7 @@ theorem later_update_adopts_gt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 theorem later_update_adopts_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time),
       sp.ts s + d ≤ b → tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
