@@ -1012,4 +1012,39 @@ theorem dutyStep_propose_candidate_eq {V : Type} [Fintype V] {E : Env V}
       exact congrArg (fun x => [x]) (List.mem_singleton.mp hm).symm
   · exact False.elim (List.not_mem_nil ho)
 
+/-- An accepting proposal cut is the own block handler run after `acProposal`.
+The proposal duty itself does not change the handler's clock or validator. -/
+theorem proposal_acceptance_recording_handler {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (s : Slot)
+    (hself : (shapeOf S hn nd).self = rho.ownKey v)
+    (B : Blk (S.params (pubOf E) hn))
+    (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
+      (rho.ownKey v) (shapeOf S hn nd).node (shapeOf S hn nd).now
+      (encodeTxs nd.st.2) .proposal).2) :
+    .fg (.block B true) ∈
+      (Node.onBlock (propose (shapeOf S hn nd) s).1.self
+        (propose (shapeOf S hn nd) s).1.node (propose (shapeOf S hn nd) s).1.now B).2 := by
+  simp only [Node.tickStep] at ha
+  split at ha
+  · rcases hr : (Node.acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).2.2
+        with _ | ⟨d, p⟩
+    · erw [hr] at ha
+      simp only [Node.acProposal, List.mem_singleton, reduceCtorEq] at ha
+    · erw [hr] at ha
+      simp only [List.mem_cons, Node.acProposal, reduceCtorEq, false_or,
+        Node.proposeBlock] at ha
+      have heq : Node.mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+          (digestOf S rho) (rho.ownKey v)
+          (Node.acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
+          (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p = B := by
+        unfold Node.onBlock at ha
+        split at ha
+        · simp at ha
+        · split at ha <;> simp_all [Node.acCall, Node.acProposal]
+      simp only [Node.acProposal] at heq
+      simp only [Node.acProposal] at hr
+      simpa only [propose, hr, hself, Node.acProposal, heq] using ha
+  · exact False.elim (List.not_mem_nil ha)
+
 end Consensus.Goldilocks.Refinement
