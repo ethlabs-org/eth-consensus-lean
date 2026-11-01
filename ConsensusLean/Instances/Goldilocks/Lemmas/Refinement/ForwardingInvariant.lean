@@ -595,4 +595,99 @@ theorem publication_of_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V
   obtain ⟨r, hr, hi, _, hx, ho⟩ := publication_of_batch_release S rho v i j t he b hj o ho
   exact ⟨r, hr, hi, hx, ho⟩
 
+/-- Receipt-queued wrappers have concrete same-event publication witnesses. -/
+theorem delivery_pending_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {v : V} {i : Nat}
+    {o : (protoOf (compiled (family S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t))
+    (c : (protoOf (compiled (family S)) E).Object)
+    (hc : c ∈ pendingWrappers
+      (process (stateAt S rho hn v i) o (digests rho.hash o))) :
+    ∃ r, (publisherExecution S rho).actual r ∧ r.event = i ∧
+      r.origin = rho.ownKey v ∧ r.object = c := by
+  exact publication_of_release S rho (Or.inr ⟨o, he⟩) c
+    (delivery_pending_released S rho hn hv he c hc)
+
+/-- Enqueuing a new acceptance never removes an earlier pending block wrapper. -/
+theorem queueAccepted_forwards_mono {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp) :
+    st.forwards ⊆ (queueAccepted st B).forwards := by
+  unfold queueAccepted
+  split
+  · exact List.Subset.refl _
+  · rename_i root _
+    cases hp : (if root = sp.genesisRoot then some none else
+        (st.wrappers root).map some) with
+    | none => exact List.Subset.refl _
+    | some p => exact fun _ h => List.mem_append_left _ h
+
+/-- Handler folds retain pending block wrappers even when later calls refuse input. -/
+theorem apply_forwards_mono {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) r :
+    st.forwards ⊆ (apply st r).forwards := by
+  have hf : ∀ cs : List (Cut (goldilocksNode sp ro)), ∀ s : State sp ro,
+      s.forwards ⊆ (cs.foldl (fun s c => match c with
+        | .fg (.block B true) => queueAccepted s B | _ => s) s).forwards := by
+    intro cs
+    induction cs with
+    | nil => exact fun _ => List.Subset.refl _
+    | cons c cs ih =>
+      intro s
+      simp only [List.foldl_cons]
+      cases c with
+      | ac _ => exact ih s
+      | fg c =>
+        cases c with
+        | attest _ _ => exact ih s
+        | attestation _ => exact ih s
+        | block B b =>
+          cases b
+          · exact ih s
+          · exact fun q h => ih _ (queueAccepted_forwards_mono s B h)
+  exact hf r.2 st
+
+/-- Recursive receipt calls retain every wrapper already queued in this event. -/
+theorem processOne_forwards_mono {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) hs o :
+    st.forwards ⊆ (processOne hs st o).forwards := by
+  unfold processOne
+  split
+  · unfold relayIf
+    dsimp only
+    split <;> exact apply_forwards_mono st _
+  · exact apply_forwards_mono st _
+  · unfold relayIf
+    simp only [↓reduceIte]
+    exact apply_forwards_mono st _
+  · exact List.Subset.refl _
+
+/-- A wrapper queued at an intermediate receipt cut survives the remaining traversal. -/
+theorem process_fold_forwards_mono {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (hs : List (Header Info × Nat))
+    (xs : List (Wire sp.n)) (st : State sp ro) :
+    st.forwards ⊆ (xs.foldl (processOne hs) st).forwards := by
+  induction xs generalizing st with
+  | nil => exact List.Subset.refl _
+  | cons o os ih => exact fun q h => ih _ (processOne_forwards_mono st hs o h)
+
+/-- A successful block call in a receipt leaves its exact stamped child in the final
+queue, even when subsequent calls are refused or queue further children. -/
+theorem processOne_acceptance_pending {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) hs o (B : Blk sp)
+    (tail : List (Wire sp.n)) (hcover : WrappersCover st)
+    (he : canonEvent sp ro hs o = some (.block B))
+    (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
+    ∃ p : Option (Wire sp.n), (st.now, p.toList ++ [blockObj sp B]) ∈
+      (tail.foldl (processOne hs) (processOne hs st o)).forwards := by
+  obtain ⟨p, hp⟩ := onBlock_queues_acceptance st B hcover ha
+  refine ⟨p, process_fold_forwards_mono hs tail _ ?_⟩
+  have hm : (st.now, p.toList ++ [blockObj sp B]) ∈
+      (apply st (Node.onBlock st.self st.node st.now B)).forwards := by
+    rw [hp]
+    exact List.mem_append_right _ (List.mem_singleton_self _)
+  simp only [processOne, he]
+  unfold relayIf
+  split <;> exact hm
+
 end Consensus.Goldilocks.Refinement
