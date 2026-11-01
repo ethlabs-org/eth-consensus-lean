@@ -77,13 +77,18 @@ theorem frameKeeps_of_cover (hrun : GoldilocksRun proposer dg H tr) {x : Fin sp.
   Store.frameKeeps_of_cover _
     (Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hx j)).2.2.1 hB hY hroot hBY hh
 
+/-- `FrameKeeps` or the R0 case `B ⪯ fcRoot` in the frame: the premise of the lock keep lemmas
+that need only `viableAncestor B = B` (`viableAncestor_eq_self_of_keeps_or_root`). -/
+abbrev FrameKeepsOrRoot (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (j : Nat)
+    (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+  FrameKeeps tr y j B ∨ (tr.state y j).fg.toFrame.Anc B (tr.state y j).fg.toFrame.fcRoot
+
 /-- **`B` is its own viable ancestor, with the R0 case.** `viableAncestor_eq_self_run` with the
 case `B ⪯ fcRoot` (`SA.viableAncestor_self`, right disjunct) added beside `FrameKeeps`. -/
 theorem viableAncestor_eq_self_of_keeps_or_root (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr.state y i).fg.toFrame.tree)
-    (h : FrameKeeps tr y i B ∨
-      (tr.state y i).fg.toFrame.Anc B (tr.state y i).fg.toFrame.fcRoot) :
+    (h : FrameKeepsOrRoot tr y i B) :
     (tr.state y i).fg.toFrame.viableAncestor B = B := by
   rcases h with h | h
   · exact viableAncestor_eq_self_run hrun hy i hB h

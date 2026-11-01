@@ -92,7 +92,7 @@ theorem lock_floor_unanimous_le (hrun : GoldilocksRun proposer dg H tr)
       (∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state x k).locks ℓ.frame (tr.time k),
         Compatible (tr.HonestBlocks H) L (Ps (m + 1))) ∧ ℓ.frame.Anc B₀ (Ps (m + 1)))
     (hcut : ∀ m < M, ∀ x ∈ H, ∀ j, i m ≤ j → j < i (m + 1) →
-      B₀ ∈ (tr.state x j).fg.toFrame.tree ∧ Compose.FrameKeeps tr x j B₀)
+      B₀ ∈ (tr.state x j).fg.toFrame.tree ∧ Compose.FrameKeepsOrRoot tr x j B₀)
     (hN : ∀ m < M, ∀ x ∈ H, B₀ ∈ (tr.state x (i (m + 1))).fg.toFrame.tree)
     (hnext : ∀ m < M, p (m + 1) = p m + sp.k → ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e →
       e.msg.slot = p (m + 1) + 1 → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀)

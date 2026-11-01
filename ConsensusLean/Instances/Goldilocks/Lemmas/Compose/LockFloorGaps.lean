@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorSegments
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.FrameKeepsCover
 
 public section
 
@@ -62,7 +63,7 @@ theorem lock_floor_global_gaps (hrun : GoldilocksRun proposer dg H tr) (hnc : No
     (hf : 2 * Hᶜ.ncard < sp.n) {B₀ : SA.Blk sp.n (List (FG.Att sp.n))} {i₀ N : Nat}
     (js : Fin sp.n → Nat) (hbase : ∀ x ∈ H, FloorAt tr x i₀ B₀ (js x))
     (hcut : ∀ x ∈ H, ∀ j, i₀ ≤ j → j < N →
-      B₀ ∈ (tr.state x j).fg.toFrame.tree ∧ FrameKeeps tr x j B₀)
+      B₀ ∈ (tr.state x j).fg.toFrame.tree ∧ FrameKeepsOrRoot tr x j B₀)
     (hN : ∀ x ∈ H, B₀ ∈ (tr.state x N).fg.toFrame.tree)
     (hgap : ∀ x ∈ H, ∀ k, i₀ ≤ k → k < N → js x + sp.k < sp.slot (tr.time k) →
       ∀ e, SA.VoteAt tr.projAC x k e → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀)
@@ -90,7 +91,8 @@ theorem lock_floor_global_gaps (hrun : GoldilocksRun proposer dg H tr) (hnc : No
         exact hN y hy
       · exact (hcut y hy (j' + 1) (by omega) h).1
     exact floor_run_view hrun hy j' (hl hk) hk hB hB'
-      (viableAncestor_eq_self_run hrun hy j' hB hc) fun ℓ hℓ => Or.inr (hu (by omega) ℓ hℓ)
+      (viableAncestor_eq_self_of_keeps_or_root hrun hy j' hB hc)
+      fun ℓ hℓ => Or.inr (hu (by omega) ℓ hℓ)
   obtain ⟨hB, -⟩ := hcut y hy j hij hjN'
   refine unlockKeeps_of_reads_or_compat hrun hnc hy hB hf fun v _ hvH hs => ?_
   classical
@@ -126,7 +128,7 @@ theorem lock_floor_global_gaps (hrun : GoldilocksRun proposer dg H tr) (hnc : No
     (hrun.cutLaw _ hvH k _ hcall).1
   have hva : ℓ'.frame.viableAncestor B₀ = B₀ := by
     rw [hfr]
-    exact viableAncestor_eq_self_run hrun hvH k hBk hcK
+    exact viableAncestor_eq_self_of_keeps_or_root hrun hvH k hBk hcK
   have hu' := hu (by omega) ℓ' hcall
   rw [← hfr] at hu'
   replace hBk : B₀ ∈ ℓ'.frame.tree := by
@@ -149,7 +151,7 @@ theorem floor_early_step_gaps (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
     (hearly : EarlyVotesExt H tr i₀ B₀)
     (hmid : ∀ x ∈ H, ∀ k, i₀ ≤ k → k < i₁ → (∃ j', FloorAt tr x k B₀ j' ∧
       sp.slot (tr.time k) ≤ j' + sp.k ∧ B₀ ∈ (tr.state x k).fg.toFrame.tree ∧
-      FrameKeeps tr x k B₀ ∧ UnlockKeeps tr x k B₀) ∨
+      FrameKeepsOrRoot tr x k B₀ ∧ UnlockKeeps tr x k B₀) ∨
       ∀ e, SA.VoteAt tr.projAC x k e → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀) :
     EarlyVotesExt H tr i₁ B₀ := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
@@ -168,7 +170,7 @@ theorem floor_early_step_gaps (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
   have hfr : ℓ'.frame = Node.frame (tr.state x k) := (hrun.cutLaw _ hx k _ hcall).1
   have hva : ℓ'.frame.viableAncestor B₀ = B₀ := by
     rw [hfr]
-    exact viableAncestor_eq_self_run hrun hx k hBk hcK
+    exact viableAncestor_eq_self_of_keeps_or_root hrun hx k hBk hcK
   have hu' := hu ℓ' hcall
   rw [← hfr] at hu'
   replace hBk : B₀ ∈ ℓ'.frame.tree := by
@@ -183,6 +185,31 @@ theorem floor_early_step_gaps (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
     (Or.inr hu') hl'
   exact ⟨C, Or.inl hC, hB0C⟩
 
+/-- `floor_carry` with `FrameKeepsOrRoot` (the R0 case added) at the cuts of `[a, b)`. -/
+theorem floor_carry_root (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {B₀ : SA.Blk sp.n (List (FG.Att sp.n))} {j a b : Nat} (hab : a ≤ b)
+    (hfl : FloorAt tr y a B₀ j)
+    (hmid : ∀ c, a ≤ c → c < b → sp.slot (tr.time c) ≤ j + sp.k ∧
+      B₀ ∈ (tr.state y c).fg.toFrame.tree ∧ FrameKeepsOrRoot tr y c B₀ ∧ UnlockKeeps tr y c B₀)
+    (hb : B₀ ∈ (tr.state y b).fg.toFrame.tree) : FloorAt tr y b B₀ j := by
+  have key : ∀ d, a + d ≤ b → FloorAt tr y (a + d) B₀ j := by
+    intro d
+    induction d with
+    | zero => intro _; exact hfl
+    | succ d ih =>
+      intro hd
+      obtain ⟨hk, hB, hc, hu⟩ := hmid (a + d) (by omega) (by omega)
+      have hB' : B₀ ∈ (tr.state y (a + d + 1)).fg.toFrame.tree := by
+        rcases Nat.lt_or_ge (a + d + 1) b with h | h
+        · exact (hmid _ (by omega) h).2.1
+        · have he : a + d + 1 = b := by omega
+          rw [he]
+          exact hb
+      exact floor_run_view hrun hy (a + d) (ih (by omega)) hk hB hB'
+        (viableAncestor_eq_self_of_keeps_or_root hrun hy _ hB hc) fun ℓ hℓ => Or.inr (hu ℓ hℓ)
+  have h := key (b - a) (by omega)
+  rwa [Nat.add_sub_cancel' hab] at h
+
 /-- **The floor over chained segments with expiry gaps.** As `lock_floor_chain_carry` without
 the no-expiry premise on the segments: a vote cast by `x` in segment `m` after the lock of slot
 `js m x` expired extends `B₀` (`hgap`). Conclusion: the floor of slot `js m x` at the first cut
@@ -196,7 +223,7 @@ theorem lock_floor_chain_gaps (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
       FloorAt tr x a B₀ (js (m + 1) x) ∧
       ∀ c, a ≤ c → c < i (m + 1) → sp.slot (tr.time c) ≤ js (m + 1) x + sp.k)
     (hcut : ∀ m < M, ∀ x ∈ H, ∀ j, i m ≤ j → j < i (m + 1) →
-      B₀ ∈ (tr.state x j).fg.toFrame.tree ∧ FrameKeeps tr x j B₀)
+      B₀ ∈ (tr.state x j).fg.toFrame.tree ∧ FrameKeepsOrRoot tr x j B₀)
     (hN : ∀ m < M, ∀ x ∈ H, B₀ ∈ (tr.state x (i (m + 1))).fg.toFrame.tree)
     (hgap : ∀ m < M, ∀ x ∈ H, ∀ k, i m ≤ k → k < i (m + 1) →
       js m x + sp.k < sp.slot (tr.time k) →
@@ -224,7 +251,7 @@ theorem lock_floor_chain_gaps (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
       refine ⟨fun x hx => ?_,
         floor_early_step_gaps hrun hnc (hi m (by omega)) he fun x hx k hk hkN => ?_⟩
       · obtain ⟨a, hma, hai, hfl, hk⟩ := hfresh m hm x hx
-        refine floor_carry hrun hx hai hfl (fun c hac hc => ?_) (hN m (by omega) x hx)
+        refine floor_carry_root hrun hx hai hfl (fun c hac hc => ?_) (hN m (by omega) x hx)
         obtain ⟨hB, hcK⟩ := hcut m (by omega) x hx c (by omega) hc
         exact ⟨hk c hac hc, hB, hcK, (hs c (by omega) hc.le x hx).2 hc⟩
       · by_cases hkk : sp.slot (tr.time k) ≤ js m x + sp.k
