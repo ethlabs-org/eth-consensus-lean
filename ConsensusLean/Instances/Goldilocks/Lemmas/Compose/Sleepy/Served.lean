@@ -1091,20 +1091,21 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
   have h4 : tr.time jc ≤ tr.time r := hr.time_mono h1
   linarith
 
-/-- **The honest voters of the latest view support an older origin** (S2 and the relay): at a
-read at `t`, an honest voter of the latest view, whose slot `l` is above the label of an origin
-`R` of the frame, is a supporter of `R` there: its vote (emitted by it, its only one of slot `l`)
-extends `R` by S2, and its head, accepted by the voter, is relayed to the node before the read,
-since it extends `Σ.F ⪯ R`, so the vote is resolved. -/
-private theorem latest_honest_supporter (hrun : GoldilocksRun proposer dg H tr)
+/-- Honest latest-view voters support a held target when their votes extend it and their
+heads are relayed with finite stamps. The target-vote and relay premises are independent of
+the invariant and service window used to establish them. -/
+theorem latest_honest_supporter_of_target_votes (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
-    {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
-    (hI : ReadInvWith tr H Ch O y i t (ReadService tr H t))
-    (hrd : ReadAt proposer dg tr y i t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : R ∈ (Node.frame (tr.state y i)).tree) {j : Nat} (hO : O R j)
-    (hjl : (j : Int) < (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) :
+    {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hR : R ∈ (Node.frame (tr.state y i)).tree) {L : Nat}
+    (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+    (hvotes : ∀ z ∈ H, ∀ q < i, ∀ e, SA.VoteAt tr.projAC z q e → e.msg.slot = L →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg R)
+    (hrelay : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → e.msg.slot = L →
+      ∀ Hd ∈ tr.HonestBlocks H, Hd.root = e.msg.head →
+        Anc (tr.HonestBlocks H) (tr.state y i).fg.F Hd →
+        Hd ∈ (Node.frame (tr.state y i)).tree ∧ (tr.projAC.state y i).blockStamp Hd.root < ⊤) :
     ∀ w ∈ SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
         t).1.votes, w ∈ H →
       w ∈ SA.supporters (Node.frame (tr.state y i))
@@ -1118,9 +1119,6 @@ private theorem latest_honest_supporter (hrun : GoldilocksRun proposer dg H tr)
   have hΦ : FrameOK (Node.frame (tr.state y i)) :=
     (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
   have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX.1⟩
-  obtain ⟨L, hL⟩ : ∃ L : Nat, (L : Int) =
-      (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 :=
-    ⟨_, Int.toNat_of_nonneg (by omega)⟩
   have hst := projAC_state hrun.toLocalRun hy i
   have hpool : ∀ u ∈ (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
       t).1.votes, u ∈ (tr.projAC.state y i).pool L ∧ u.slot = L := fun u hu => by
@@ -1130,12 +1128,10 @@ private theorem latest_honest_supporter (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨hvp, hvs⟩ := hpool v hvV
   -- the vote is `v.val`'s own, of slot `L`, and extends `R` (S2)
   obtain ⟨j', hj', e, hve, hev⟩ := hrun'.honest.pool_vote y hy i L v hvp hwH
-  obtain ⟨Hd, hHdU, hHdr, hRHd⟩ := hI.vote_extends R j hO v.val hwH j' hj' e hve
-    (by rw [hev, hvs]; omega)
+  obtain ⟨Hd, hHdU, hHdr, hRHd⟩ := hvotes v.val hwH j' hj' e hve (by rw [hev, hvs])
   have hF : Anc (tr.HonestBlocks H) (tr.state y i).fg.F Hd :=
     ((hΦ.rooted.2 R hR).mono hΦU).trans hRHd
-  obtain ⟨hHdΦ, hbst⟩ := head_in_frame hrun hnc hI.sync hy hrd hL hwH hve (by rw [hev, hvs])
-    hHdU hHdr hF
+  obtain ⟨hHdΦ, hbst⟩ := hrelay v.val hwH j' e hve (by rw [hev, hvs]) Hd hHdU hHdr hF
   obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ := SA.honest_head hrun' hwH hve
   obtain rfl : Hd = Hd₂ := hU.1 hHdU hHd₂ (hHdr.trans hHd₂r.symm)
   rw [hev] at hHdr hHd₂s
@@ -1163,6 +1159,28 @@ private theorem latest_honest_supporter (hrun : GoldilocksRun proposer dg H tr)
     exact hab (hea'.symm.trans heb')
   refine ⟨hne, v, (latestView_mem hL v).2.2 ⟨(latestView_mem hL v).1.1 hvV, hres⟩, rfl,
     by rw [hvs]; exact hL, Hd, hHdΦ, hHdr, SA.anc_tree_of_anc_U hU hΦ hΦU hR hRHd hHdΦ⟩
+
+private theorem latest_honest_supporter (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
+    {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
+    (hI : ReadInvWith tr H Ch O y i t (ReadService tr H t))
+    (hrd : ReadAt proposer dg tr y i t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hR : R ∈ (Node.frame (tr.state y i)).tree) {j : Nat} (hO : O R j)
+    (hjl : (j : Int) < (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) :
+    ∀ w ∈ SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes,
+      w ∈ H → w ∈ SA.supporters (Node.frame (tr.state y i))
+        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R := by
+  obtain ⟨L, hL⟩ : ∃ L : Nat, (L : Int) =
+      (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 :=
+    ⟨_, Int.toNat_of_nonneg (by omega)⟩
+  apply latest_honest_supporter_of_target_votes hrun hnc hy hR hL
+  · intro z hz q hq e hv hs
+    exact hI.vote_extends R j hO z hz q hq e hv (by rw [hs]; omega)
+  · intro z hz q e hv hs Hd hHd hHdr hF
+    exact head_in_frame hrun hnc hI.sync hy hrd hL hz hv hs hHd hHdr hF
 
 /-- **The awake validators vote in the latest view** (Sync): at a read at `t`, an honest
 validator awake and joined at `t_l + Δ`, with `l` the latest view's slot, votes in slot `l` by
