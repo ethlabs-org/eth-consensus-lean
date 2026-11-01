@@ -179,14 +179,16 @@ theorem start_le_voter (hrun : GoldilocksRun proposer dg H tr)
 
 /-! ### The ready proposal is an honest proposal -/
 
-/-- **A ready proposal is an honest proposal** of the AC projection: the own block `P` is made by
-the tick's `ac_proposal` cut and accepted at once (C0.3), at `t_s`. -/
-theorem honestProposalRun_of_ready (hrun : GoldilocksRun proposer dg H tr)
+/-- An actual honest proposal is made by the tick's `ac_proposal` call and accepted at once.
+No global support-heldness or healing premise is needed. -/
+theorem honestProposalRun_of_proposesAt (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p kP s P) : HonestProposalRun tr H proposer s P := by
+    (hp : p ∈ H) (hpp : p = proposer s) (hP : tr.ProposesAt p kP P)
+    (hPs : P.slot = s) : HonestProposalRun tr H proposer s P := by
   have h := hrun.toLocalRun
-  obtain ⟨hp, rfl, -, ⟨⟨⟨acc, hc⟩, hpos⟩, -, htk⟩, hPs, -⟩ := hP
+  subst p
+  obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, htk⟩ := hP
   refine ⟨hp, ?_⟩
   rcases Compose.blockCall_cases h hp hc with hg |
     ⟨j, x, rfl, hg, hpr, d, pay, hdp, hB, -, -, -, -⟩
@@ -208,6 +210,14 @@ theorem honestProposalRun_of_ready (hrun : GoldilocksRun proposer dg H tr)
   have ht1' : tr.projAC.time (j + 1) = tr.time (j + 2) := ht1
   rw [Compose.projAC_state h hp, hst1, ht1']
   exact hdp
+
+/-- **A ready proposal is an honest proposal** of the AC projection. The support and joined
+conjuncts are unnecessary for this operational extraction. -/
+theorem honestProposalRun_of_ready (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr)
+    {p : Fin sp.n} {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p kP s P) : HonestProposalRun tr H proposer s P :=
+  honestProposalRun_of_proposesAt hrun hnc hP.1 hP.2.1 hP.2.2.2.1 hP.2.2.2.2.1
 
 /-! ### The setting -/
 
