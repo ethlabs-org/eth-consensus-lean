@@ -1035,6 +1035,68 @@ private theorem event_inventory (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ r
           exact restore_inventory _ _ _ _ ih
         · simpa only [Model.Run.step, Function.update_of_ne hu] using ih
 
+/-- After processing a delivery, every stored vote is either actually held (including in
+the delivered object's closure) or queued as a canonical own vote in the ordinary outbox. -/
+theorem delivery_pool_available (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
+    (i : Nat) (o : (Model.protoOf (compiled (family S)) E).Object)
+    (σ : Nat) (m : Vote (Fintype.card V))
+    (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
+    voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
+      Body.vote (encodeVote m) ∈
+        (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox := by
+  have hi := event_inventory S rho hn hv v hv' i
+  have hp : Inventory (Available ((rho.stateBefore i v).seen ++ [o])
+      (process (stateAt S rho hn v i) o (Model.digests rho.hash o)))
+      (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node := by
+    apply process_inventory
+    · exact inventory_mono hi (fun _ => available_mono (parts_append _ _) (fun _ h => h))
+    · intro x hx
+      exact List.mem_flatMap.mpr ⟨o, List.mem_append_right _ (List.mem_singleton_self _), hx⟩
+  rcases hp.votes σ m hm with h | ⟨w, he, hw⟩ | ⟨a, he, _⟩
+  · exact Or.inl h
+  · have henc := congrArg Model.Obj.msg he
+    simp only [voteObj, Model.Obj.msg] at henc
+    have hdec := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj (Model.Msg.data.inj henc))
+    simp only [decodeVote_encodeVote, Option.some.injEq] at hdec
+    exact Or.inr (hdec ▸ hw)
+  · have hbad := congrArg Model.Obj.msg he
+    simp only [voteObj, attObj, Model.Obj.msg, Model.Msg.data.injEq] at hbad
+    cases hbad
+
+/-- At an actual delivery, the only not-yet-held stored vote is the ordinary outbox head:
+the reachable one-vote invariant rules out a later queued vote. -/
+theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
+    {i : Nat} {o : (Model.protoOf (compiled (family S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t)) (σ : Nat) (m : Vote (Fintype.card V))
+    (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
+    voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
+      (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
+        some (.vote (encodeVote m)) := by
+  have hv' := hv.honest_only _ (List.mem_of_getElem? he)
+  rcases delivery_pool_available S rho hn hv hv' i o σ m hm with hh | hq
+  · exact Or.inl hh
+  right
+  have hnow : (stateAt S rho hn v i).now = t :=
+    (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
+  have hpre : OneVote t (stateAt S rho hn v i) := by
+    rcases (outbox_inv S rho hn hv v hv' i).2 with h | h
+    · exact absurd h (not_lastRestart_deliver S rho hv he)
+    · rwa [hnow] at h
+  have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o)
+    (hv.in_horizon _ (List.mem_of_getElem? he)).1
+    (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i) hnow hpre
+  have hlen := ((atMostOneVote_iff _).mp hproc.atMost).2
+  change Body.vote (encodeVote m) ∈
+    (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox at hq
+  change (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.length ≤ 1 at hlen
+  generalize (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox = q at hq hlen ⊢
+  cases q with
+  | nil => cases hq
+  | cons b bs =>
+    cases bs with
+    | nil => exact congrArg some (List.mem_singleton.mp hq).symm
+    | cons c cs => simp at hlen
+
 /-- Proposal payloads of actual scheduled honest duties were already released or received.
 The proof uses engine-event inventory and the empty queue at the slot-start proposal. -/
 theorem scheduled_proposal_releasable (hv : rho.ExecutionValid) {v : V}
