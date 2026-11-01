@@ -107,6 +107,131 @@ theorem queueAccepted_of_parent {sp : SA.SAParams}
     (queueAccepted st B).forwards = st.forwards ++ [(st.now, p.toList ++ [blockObj sp B])] := by
   simp [queueAccepted, hr, hp]
 
+/-- The immutable signed forwarding queue, before a poll clears its returned state. -/
+def pendingWrappers {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (st : State sp ro) : List (Wire sp.n) :=
+  st.forwards.map fun q => .mk (.signed st.self .poll) (.data (.forward q.1)) q.2
+
+/-- The signed queue preserves the order of the runtime's pending payloads. -/
+theorem pendingWrappers_eq {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (st : State sp ro) : pendingWrappers st =
+      st.forwards.map (fun q => .mk (.signed st.self .poll) (.data (.forward q.1)) q.2) := by
+  rfl
+
+/-- Every durable entry has either an earlier publication witness (`prior`) or an exact
+pending envelope. Parent-before-child ordering and child holdings are separate obligations. -/
+def WrappersAccounted {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (prior : Wire sp.n → Prop) (st : State sp ro) : Prop :=
+  ∀ root o, st.wrappers root = some o → prior o ∨ o ∈ pendingWrappers st
+
+/-- Characterize the map/queue invariant without exporting its definition body. -/
+theorem wrappersAccounted_iff {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
+    (st : State sp ro) : WrappersAccounted prior st ↔
+      ∀ root o, st.wrappers root = some o → prior o ∨ o ∈ pendingWrappers st := by
+  rfl
+
+/-- Enqueue preserves exact durable-entry provenance, retaining the new envelope as
+pending rather than prematurely counting it as published. -/
+theorem wrappersAccounted_queueAccepted {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
+    (st : State sp ro) (B : Blk sp) (h : WrappersAccounted prior st) :
+    WrappersAccounted prior (queueAccepted st B) := by
+  rw [wrappersAccounted_iff] at h ⊢
+  unfold queueAccepted
+  split
+  · exact h
+  · rename_i root hr
+    cases hp : (if root = sp.genesisRoot then some none else
+        (st.wrappers root).map some) with
+    | none => simpa only [hp] using h
+    | some p =>
+      intro r o ho
+      change Function.update st.wrappers B.root
+        (some (forwardObj sp st.self st.now p B)) r = some o at ho
+      by_cases he : r = B.root
+      · subst r
+        rw [Function.update_self] at ho
+        cases ho
+        right
+        simp only [pendingWrappers_eq, List.map_append, List.map_cons, List.map_nil,
+          List.mem_append, List.mem_cons, List.not_mem_nil, or_false]
+        exact Or.inr rfl
+      · rw [Function.update_of_ne he] at ho
+        rcases h r o ho with ho | ho
+        · exact Or.inl ho
+        · right
+          simp only [pendingWrappers_eq, List.map_append]
+          rw [pendingWrappers_eq] at ho
+          exact List.mem_append_left _ ho
+
+/-- The exact selected non-genesis parent is already published or in the old queue;
+it is never justified by the newly appended child's envelope. -/
+theorem wrappersAccounted_parent {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
+    (st : State sp ro) (h : WrappersAccounted prior st) (root : Nat) (p : Wire sp.n)
+    (hp : (if root = sp.genesisRoot then some none else
+      (st.wrappers root).map some) = some (some p)) :
+    prior p ∨ p ∈ pendingWrappers st := by
+  by_cases hg : root = sp.genesisRoot
+  · simp only [hg, ↓reduceIte, Option.some.injEq] at hp
+    cases hp
+  · simp only [hg, ↓reduceIte, Option.map_eq_some_iff] at hp
+    obtain ⟨q, hq, he⟩ := hp
+    cases he
+    exact (wrappersAccounted_iff prior st).mp h root p hq
+
+/-- Handler cut folds preserve exact map/queue accounting. -/
+theorem wrappersAccounted_apply {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
+    (st : State sp ro)
+    (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro)))
+    (h : WrappersAccounted prior st) : WrappersAccounted prior (apply st r) := by
+  let step := fun (s : State sp ro) (c : Cut (goldilocksNode sp ro)) => match c with
+    | .fg (.block B true) => queueAccepted s B
+    | _ => s
+  have hstep (s : State sp ro) (c : Cut (goldilocksNode sp ro))
+      (hs : WrappersAccounted prior s) :
+      WrappersAccounted prior (step s c) ∧ (step s c).self = s.self := by
+    cases c with
+    | ac l => exact ⟨hs, rfl⟩
+    | fg l =>
+      cases l with
+      | attest C a => exact ⟨hs, rfl⟩
+      | attestation a => exact ⟨hs, rfl⟩
+      | block B accepted =>
+        cases accepted with
+        | false => exact ⟨hs, rfl⟩
+        | true =>
+          refine ⟨wrappersAccounted_queueAccepted prior s B hs, ?_⟩
+          change (queueAccepted s B).self = s.self
+          unfold queueAccepted
+          cases B.parent with
+          | none => rfl
+          | some root =>
+            dsimp only
+            cases (if root = sp.genesisRoot then some none else
+              (s.wrappers root).map some) <;> rfl
+  have hfold (cs : List (Cut (goldilocksNode sp ro))) : ∀ s,
+      WrappersAccounted prior s →
+      WrappersAccounted prior (cs.foldl step s) ∧ (cs.foldl step s).self = s.self := by
+    induction cs with
+    | nil => intro s hs; exact ⟨hs, rfl⟩
+    | cons c cs ih =>
+      intro s hs
+      have hc := hstep s c hs
+      have ht := ih (step s c) hc.1
+      exact ⟨ht.1, ht.2.trans hc.2⟩
+  obtain ⟨hi, he⟩ := hfold r.2 st h
+  rw [wrappersAccounted_iff] at hi ⊢
+  intro root o ho
+  rcases hi root o ho with hp | hp
+  · exact Or.inl hp
+  · right
+    rw [pendingWrappers_eq] at hp ⊢
+    rw [he] at hp
+    exact hp
+
 /-- Every fresh pending wrapper in a handler result has a successful block-acceptance cut
 in that very result, with the handler's clock. Fold induction preserves the original
 clock and retains list membership, including multiple accepts within one event. -/
@@ -569,6 +694,32 @@ theorem pollBatch_forward_index {sp : SA.SAParams}
   simp only [pollBatch]
   rw [List.getElem?_append_right (by omega)]
   simp only [Nat.add_sub_cancel_left, List.getElem?_map, hi, Option.map_some]
+
+/-- A batch drains completely when its guards hold against the immutable candidate
+prefix. Earlier candidates become actual holdings by induction, not by assumption. -/
+theorem releaseAll_of_prefix_guards {pub : Public} {O : Type} (P : Protocol pub O)
+    (hash : P.Item → Nat) (x : Key pub) (nd : Model.Node P) (cs : List P.Object)
+    (hready : ∀ i o, cs[i]? = some o →
+      Model.releasable (P := P) (nd.seen ++ cs.take i) o = true ∧
+      Model.protects P x (nd.seen ++ cs.take i) o = true ∧
+      P.dependencies.ready (Model.closure (nd.seen ++ cs.take i)) o = true) :
+    (Model.releaseAll P hash x nd cs).2 = cs ∧
+      (Model.releaseAll P hash x nd cs).1.seen = nd.seen ++ cs := by
+  induction cs generalizing nd with
+  | nil => exact ⟨rfl, (List.append_nil _).symm⟩
+  | cons o cs ih =>
+    have hg := hready 0 o (by simp)
+    simp only [List.take_zero, List.append_nil] at hg
+    simp only [Model.releaseAll, hg.1, hg.2.1, hg.2.2, Bool.and_self, ↓reduceIte]
+    have ht := ih
+      (nd := ⟨P.recordOwn nd.st o (Model.digests hash o), nd.seen ++ [o]⟩)
+      (by
+        intro i c hc
+        have hC := hready (i + 1) c
+          (by simpa only [List.getElem?_cons_succ] using hc)
+        simpa only [List.take_succ_cons, List.append_assoc, List.singleton_append] using hC)
+    exact ⟨congrArg (List.cons _) ht.1,
+      ht.2.trans (by simp only [List.append_assoc, List.singleton_append])⟩
 
 /-- Each enumerated duty batch releases only objects released by the actual duty list.
 The induction threads the same intermediate node as `runDuties`, including unselected
