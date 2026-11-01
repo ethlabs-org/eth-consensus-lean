@@ -1912,6 +1912,69 @@ theorem unanimous_pool {b : Time}
     obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot hp hc hgu hR hub x hx
     exact ⟨q, e, hv, hs, hun x hx q e hv (hq.trans hub) hs⟩
 
+/-- At a bounded call holding a target above a bounded high seed, compatible
+causal origins give full viability or an actual earlier strictly higher report. -/
+theorem held_target_viable_or_higher_report {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y v : Fin sp.n} (hy : y ∈ H) {i q m : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
+    (hib : tr.time i ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hPt : P ∈ ell.frame.tree) (hseed : Healing.HighOrigin tr H g v q m S)
+    (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocks H) S P)
+    (hcompare : ∀ x r l B, r < i → Healing.HighOrigin tr H g x r l B →
+      Compatible (tr.HonestBlocks H) P B) :
+    P ∈ ell.frame.viableTree ell.frame.tree ∨
+      ∃ x ∈ H, ∃ r ell' C, r < i ∧ SA.ToFGAt tr.projAC x r ell' C ∧
+        Anc (tr.HonestBlocks H) P C ∧
+        ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
+  have hPy := hp.frame_tree_subset hy hcall hPt
+  have hfr := Compose.frame_of_projAC hp.run hy hcall
+  have hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot P := by
+    by_cases hlow : (tr.state y i).fg.hj ≤ Healing.HZ tr H g
+    · exact hp.low_root_of_held_seed_at_call hy hPy hy hseed hcall
+        (hp.mem_tree_of_anc hy hSP hPy) hlow (Or.inr hSP) (fun _ => hPt)
+    · exact hp.high_J_root_of_held_at_call_before hy hPy hy hcall (by omega) hcompare
+  by_cases hrootP : Anc (tr.HonestBlocks H) ell.frame.fcRoot P
+  · by_cases hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ P.root).h
+    · have hrootf := SA.anc_tree_of_anc_U hp.honest_coherent hPhi hPhiU
+        hPhi.fcRoot_mem hrootP hPt
+      refine Or.inl ⟨hPt, hrootf, P, hPt, ?_, .refl⟩
+      have hPt' := hPt
+      rw [hfr] at hPt' hrootf ⊢
+      exact ⟨hPy, hPt'.2, hrootf.mono (fun X hX => hX.1), hfloor⟩
+    · exact Or.inr (hp.held_target_high_floor_report_before hy hPy hseed hSP
+        (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible ho
+          ((hp.run.time_mono hri.le).trans hib) ho' ((hp.run.time_mono hr'i.le).trans hib))
+        (fun x r l B hri ho => hp.origins_compatible hseed hqb ho
+          ((hp.run.time_mono hri.le).trans hib)) hcompare (lt_of_not_ge hfloor))
+  · have hPR := hroot.resolve_left hrootP
+    have hne : P ≠ ell.frame.fcRoot := fun he => hrootP (he ▸ .refl)
+    have hJ : ell.frame.fcRoot = (tr.state y i).fg.J := by
+      have hFP := (hPhi.rooted.2 P hPt).mono hPhiU
+      rw [hfr] at hrootP hFP ⊢
+      change ¬ Anc (tr.HonestBlocks H) (tr.state y i).fg.fcRoot P at hrootP
+      change Anc (tr.HonestBlocks H) (tr.state y i).fg.F P at hFP
+      change (tr.state y i).fg.fcRoot = _
+      unfold Store.fcRoot at hrootP ⊢
+      split_ifs at hrootP ⊢ with hactive
+      · rfl
+      · exact False.elim (hrootP hFP)
+    have hf : Hᶜ.ncard < sp.toParams.fg.q := by
+      have hf := hp.faults
+      have hn : 0 < sp.n := sp.toParams.hn
+      change 3 * Hᶜ.ncard ≤ sp.n - 1 at hf
+      change Hᶜ.ncard < (2 * sp.n + 2) / 3
+      omega
+    obtain ⟨x, hx, r, hri, d, _, att, ell', C, _, _, _, _, hto, _, hJx, hJC, _, hCh, hPh⟩ :=
+      Healing.cache_ahead_report hp.run hp.noColl hf hy (Or.inr hJ) hPy hPR hne
+    have hPx := hp.mem_tree_of_anc hx hPR hJx
+    have hσ := hp.σ_eq_run hy hx hPy hPx
+    exact Or.inr ⟨x, hx, r, ell', C, hri, hto, hPR.trans hJC, by
+      rw [← hσ, hCh]
+      exact hPh⟩
+
 end UpTo
 
 end CoveredEndpoint
