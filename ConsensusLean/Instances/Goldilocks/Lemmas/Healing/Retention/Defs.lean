@@ -149,20 +149,21 @@ theorem cacheInv_iff {g a : Time} {k : Nat} : CacheInv tr H g a k ↔
 /-- **No honest restart after `t_{slot(ḡ)+1}`** (`Healthy(g)`): a restart follows a time `u` at
 which the node was asleep with no call in `[u, restart)`; `u ≥ ḡ` contradicts `Healthy(g)`, and
 `u < ḡ` contradicts the tick at the public time `t_{slot(ḡ)+1} ≥ ḡ`, at which the node is awake. -/
-theorem restart_le (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem restart_le_before {b : Time} (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    (hk : tr.RestartAt y k) : tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
+    (hk : tr.RestartAt y k) (hkb : tr.time k ≤ b) :
+    tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
   by_contra hlt
-  obtain ⟨u, -, -, hu, hprev⟩ := hp.run.sleep_of_restart y hy k hk
+  obtain ⟨u, -, huk, hu, hprev⟩ := hp.run.sleep_of_restart y hy k hk
   have hp₀ : gbar g ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
     have h := (SA.ts_le_iff_le_slot sp (gbar_nonneg g) ((sp.slot (gbar g) + 1 : Nat) : Int)).not.mpr
       (by push_cast; omega)
     exact (not_le.mp h).le
   by_cases hgu : gbar g ≤ u
-  · exact hu (hp.healthy.2.1 y hy u hgu)
+  · exact hu (hp.awake y hy u hgu (huk.le.trans hkb))
   · obtain ⟨j, _x, hne, hcs, -⟩ := hp.run.tick_of_awake y hy _ ((gbar_nonneg g).trans hp₀)
       ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [SAParams.ts]; ring⟩
-      (hp.healthy.2.1 y hy _ hp₀)
+      (hp.awake y hy _ hp₀ ((lt_of_not_ge hlt).le.trans hkb))
     obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
     simp only [Nat.add_zero] at hn ht hl
     have hjk : j < k := by
@@ -172,11 +173,18 @@ theorem restart_le (hp : ResetPremises tr H proposer dg g ΔF a)
     have := hprev j hjk ⟨_, hn, hl⟩
     exact hgu (by linarith)
 
+/-- Whole-run specialization of the causal restart bound. -/
+theorem restart_le (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    (hk : tr.RestartAt y k) : tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) :=
+  restart_le_before (hp.toUpTo tr H (le_max_left a (tr.time k))) hy hk (le_max_right _ _)
+
 /-- **`f < h_t` after the cut** (`Healthy(g)`): from `c_z` on every honest validator is awake
 and joined (its restarts are at or before `t_{slot(ḡ)+1} < t_{slot(t) − 1}`, `restart_le`), and
 `3f ≤ n − 1`. -/
-theorem fault_bound_late (hp : ResetPremises tr H proposer dg g ΔF a) {t : Time}
-    (ht : cutZ sp.toParams g ≤ t) : tr.FaultBound H t := by
+theorem fault_bound_late_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {t : Time}
+    (ht : cutZ sp.toParams g ≤ t) (htb : t ≤ b) : tr.FaultBound H t := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
   have ht0 : 0 ≤ t := (gbar_nonneg g).trans hgt
@@ -185,21 +193,26 @@ theorem fault_bound_late (hp : ResetPremises tr H proposer dg g ΔF a) {t : Time
       ((cutZ_eq sp g) ▸ ht)
     exact_mod_cast h
   have hsub : H ⊆ {y | y ∈ H ∧ tr.awake y t ∧ tr.JoinedAt y t} := by
-    refine fun y hy => ⟨hy, hp.healthy.2.1 y hy t hgt, fun k hk _ => ?_⟩
+    refine fun y hy => ⟨hy, hp.awake y hy t hgt htb, fun k hk hkt => ?_⟩
     change 0 < sp.slot t ∧ tr.time k ≤ sp.toParams.slotTime (sp.slot t - 1)
     have he : sp.toParams.slotTime (sp.slot t - 1) = sp.ts ((sp.slot t - 1 : Nat) : Int) :=
       sp.slotTime_eq _
-    refine ⟨by omega, (restart_le hp hy hk).trans ?_⟩
+    refine ⟨by omega, (restart_le_before hp hy hk (hkt.trans htb)).trans ?_⟩
     rw [he]
     exact (SA.ts_le_iff sp).mpr (by omega)
   have hle : H.ncard ≤ tr.honestAwakeJoined H t := Set.ncard_le_ncard hsub
   have hn : H.ncard + Hᶜ.ncard = sp.n := by
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have h3 := hp.healthy.2.2
+  have h3 := hp.faults
   have hn' : sp.n = sp.toParams.n := rfl
   have hpos := sp.toParams.hn
   unfold RunTrace.FaultBound
   omega
+
+/-- Whole-run specialization of the finite late fault bound. -/
+theorem fault_bound_late (hp : ResetPremises tr H proposer dg g ΔF a) {t : Time}
+    (ht : cutZ sp.toParams g ≤ t) : tr.FaultBound H t :=
+  fault_bound_late_before (hp.toUpTo tr H (le_max_left a t)) ht (le_max_right _ _)
 
 end Consensus.Goldilocks.Healing
 
