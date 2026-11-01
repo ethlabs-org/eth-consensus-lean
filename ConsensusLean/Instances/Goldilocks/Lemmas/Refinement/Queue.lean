@@ -1153,6 +1153,20 @@ theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
     | nil => exact congrArg some (List.mem_singleton.mp hq).symm
     | cons c cs => simp at hlen
 
+/-- Any ordinary vote left by delivery processing is signed by the receiving node. -/
+theorem delivery_outbox_vote_signer (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) (i : Nat)
+    (o : (Model.protoOf (compiled (family S)) E).Object) (m : Vote (Fintype.card V))
+    (hm : Body.vote (encodeVote m) ∈
+      (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox) :
+    m.val = rho.ownKey v := by
+  have hb : VoteOwned (stateAt S rho hn v i) := by
+    intro w hw
+    rw [outbox_empty S rho hn hv v hv' i] at hw
+    cases hw
+  have hs := process_owned (stateAt S rho hn v i) o (Model.digests rho.hash o) hb m hm
+  exact hs.trans ((process_self _ _ _).trans (stateAt_self S rho hn v i))
+
 /-- Every envelope queued by an actual delivery has its canonical dependency held or at
 the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/
 theorem delivery_voteForward_held_or_head (hv : rho.ExecutionValid) {v : V}

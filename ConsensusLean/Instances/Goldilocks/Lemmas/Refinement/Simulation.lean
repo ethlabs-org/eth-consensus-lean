@@ -134,6 +134,63 @@ theorem dutyStep_poll_voteForward_of_own_vote (v : V)
   · erw [Model.releaseAll_seen]
     exact Model.closure_mono (fun _ h => List.mem_append_left _ h) he
 
+/-- Every envelope actually queued during delivery is released in that same engine event.
+Canonical dependencies are derived from reachable inventory and the actual ordinary prefix. -/
+theorem delivery_voteForward_released (hv : rho.ExecutionValid) {v : V}
+    {i : Nat} {o : (Model.protoOf (compiled (family S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t))
+    (tv : Time × SA.Vote (Fintype.card V))
+    (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
+    Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward tv.1 (encodeVote tv.2))) [voteObj tv.2] ∈ rho.releasesAt i := by
+  have hv' := hv.honest_only _ (List.mem_of_getElem? he)
+  have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
+  let nd : Model.Node (Model.protoOf (compiled (family S)) E) :=
+    ⟨(Model.protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
+      (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
+  have hshape : shapeOf S hn nd =
+      process (stateAt S rho hn v i) o (Model.digests rho.hash o) := rfl
+  have hself : (shapeOf S hn nd).self = rho.ownKey v := by
+    rw [hshape]
+    exact (process_self _ _ _).trans (stateAt_self S rho hn v i)
+  have hfg : (shapeOf S hn nd).fgDue = false := by
+    rw [hshape]
+    exact (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
+  have hpre : pollPre (shapeOf S hn nd) = shapeOf S hn nd := by
+    rw [pollPre_eq, hfg]; rfl
+  have hav : ∀ q ∈ (shapeOf S hn nd).voteForwards,
+      voteObj q.2 ∈ Model.closure nd.seen ∨
+        (shapeOf S hn nd).outbox.head? = some (.vote (encodeVote q.2)) := by
+    intro q hq
+    exact delivery_voteForward_held_or_head S rho hn hv he q (hshape ▸ hq)
+  have hrel : ∀ q ∈ (shapeOf S hn nd).voteForwards,
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward q.1 (encodeVote q.2))) [voteObj q.2] ∈
+          (rho.dutyStep v nd (.poll t.toNat)).2 := by
+    by_cases hh : ∀ q ∈ (shapeOf S hn nd).voteForwards, voteObj q.2 ∈ Model.closure nd.seen
+    · exact dutyStep_poll_voteForward S rho hn v nd t.toNat (poll_selected S rho hv v) hself hh
+    · push Not at hh
+      obtain ⟨q, hq, hnot⟩ := hh
+      have hhead := (hav q hq).resolve_left hnot
+      have hsign := delivery_outbox_vote_signer S rho hn hv hv' i o q.2
+        (List.mem_of_mem_head? (Option.mem_def.mpr (hshape ▸ hhead)))
+      apply dutyStep_poll_voteForward_of_own_vote S rho hn v nd t.toNat
+        (poll_selected S rho hv v) hself q.2 hsign (by rw [hpre]; exact hhead)
+      intro r hr
+      rcases hav r hr with h | h
+      · exact Or.inr h
+      · left
+        have heq := Body.vote.inj (Option.some.inj (h.symm.trans hhead))
+        have hd := congrArg (decodeVote (Fintype.card V)) heq
+        simpa only [decodeVote_encodeVote, Option.some.injEq] using hd
+  have hout := hrel tv (hshape ▸ htv)
+  simp only [Model.Run.releasesAt, he]
+  unfold Model.Run.deliver
+  rw [deliverDuties_eq S t ht]
+  apply List.mem_append_left
+  erw [Model.Run.runDuties_cons]
+  exact List.mem_append_left _ hout
+
 /-- An honest emission cut cannot be a restart, even though `EmitAt` permits that call
 syntactically. This uses the actual cut law and the run's nonnegative clock. -/
 theorem simTrace_emission_not_restart (hv : rho.ExecutionValid)
