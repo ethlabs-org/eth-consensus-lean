@@ -322,6 +322,53 @@ theorem LockInv.step_emits {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : Loc
     rw [((restart_state sp) FGP ro x A Φ t hΦ ht).1] at he
     simp at he
 
+private theorem LockInv.tryVote_readPoint {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
+    (t : Time) : ∀ e ∈ (SA.tryVote sp x A Φ t).2, LockInv U e.readPoint Φ := by
+  unfold SA.tryVote
+  dsimp only
+  split_ifs
+  · simp
+  · simp
+  · intro e he
+    rw [List.mem_singleton] at he
+    subst he
+    exact (h.unlock hU hΦ hΦU _ _ _).of_eq rfl rfl
+  · intro e he
+    rw [List.mem_singleton] at he
+    subst he
+    exact h.of_eq rfl rfl
+
+/-- **The read point of an emission keeps the lock invariant.** Every vote that a call emits from
+a state with the lock invariant at the call's frame reads a state with the invariant: the
+read point is the input of `try_vote`, after the optimistic check of a receipt and the
+unlocking, with the same record. -/
+theorem LockInv.step_readPoint {ro : ReplayOrder sp FGP} {A : SAState sp.n}
+    (h : LockInv U A Φ) (x : Fin sp.n) (t : Time) (ht : 0 ≤ t)
+    (c : (goldilocksSA sp FGP ro).Call) :
+    ∀ e ∈ ((goldilocksSA sp FGP ro).step x A Φ t c).2, LockInv U e.readPoint Φ := by
+  cases c with
+  | tick =>
+    change ∀ e ∈ (acOnTick sp x A Φ t).2, LockInv U e.readPoint Φ
+    unfold acOnTick
+    dsimp only
+    split_ifs
+    all_goals first
+      | exact h.tryVote_readPoint hU hΦ hΦU x t
+      | simp
+  | proposal => simp [ACInterface.step]
+  | toFG => simp [ACInterface.step]
+  | message m =>
+    exact LockInv.tryVote_readPoint hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
+      (h.of_eq (admitVote_keeps _ _ _).1 (admitVote_keeps _ _ _).2) _) _ _
+  | block B =>
+    exact LockInv.tryVote_readPoint hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
+      (h.of_eq (blockReceipt_keeps _ _ _).1 (blockReceipt_keeps _ _ _).2) _) _ _
+  | restart =>
+    intro e he
+    change e ∈ (acRestart sp ro x A Φ t).2 at he
+    rw [((restart_state sp) FGP ro x A Φ t hΦ ht).1] at he
+    simp at he
+
 omit hU hΦ hΦU
 
 /-- The lock invariant passes to the frame of a lawful next call. -/

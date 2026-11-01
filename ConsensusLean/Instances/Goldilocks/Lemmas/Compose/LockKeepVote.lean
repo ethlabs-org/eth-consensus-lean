@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPointLocks
 
 public section
 
@@ -122,6 +123,21 @@ theorem lock_keep_interval_cases_locked (hrun : GoldilocksRun proposer dg H tr)
       (fun x hx x' hx' hxH hval hs => heldVotes_honest_unique hrun hnc hy hcall hx hx' hxH hval hs)
       (fun x hx hxH hs => heldVote_compatible_of_cast hrun hnc hy hcall hB hx hxH
         (hread x hx hxH hs)) hf
+
+/-- **The read-point premise from a read live lock.** `ReadsLockAbove tr x B` holds for an
+honest `x` when every casting of `x` reads a live lock block or `fc_root` that extends `B`: the
+compatibility with every live lock block of the read point is `SA.castAt_compatible_of_live`. -/
+theorem readsLockAbove_of_live (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {x : Vote sp.n} (hxH : x.val ∈ H) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hlive : ∀ k (ℓ' : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)) e,
+      SA.CastAt tr.projAC x.val k ℓ' e → e.msg = x →
+      ∃ C ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ'.frame (tr.time k) ∪ {ℓ'.frame.fcRoot},
+        ℓ'.frame.Anc B C) :
+    ReadsLockAbove tr x B := by
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  intro k ℓ' e hc hm
+  obtain ⟨C, hC, hBC⟩ := hlive k ℓ' e hc hm
+  exact ⟨C, hC, SA.castAt_compatible_of_live hr hxH hc hC, hBC⟩
 
 end Consensus.Goldilocks.Compose
 
