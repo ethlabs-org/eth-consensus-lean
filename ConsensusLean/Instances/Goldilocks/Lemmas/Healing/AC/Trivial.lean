@@ -230,15 +230,16 @@ theorem accepted_of_blockStamp_lt (hS : StandaloneRun tr H U proposer g) {y : Fi
 /-- A vote an honest node holds at cut `a` is held at every later cut `b` with no restart in
 between, with a stamp before `T` when every cut before `a`, every own vote of its slot and every
 restart are before `T`. -/
-theorem stamp_lt_of_held (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
+theorem stamp_lt_of_held_of_run (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H)
     {a b : Nat} (hab : a ≤ b) {w : Vote sp.n} (hw : w ∈ (tr.state y a).pool w.slot) {T : Time}
-    (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T) (hgT : gbar g < T)
+    (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T)
+    (hrestart : ∀ k < b, tr.RestartAt y k → tr.time k < T)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) :
     w ∈ (tr.state y b).pool w.slot ∧ (tr.state y b).voteStamp w < ETime.of T := by
-  have hr := hS.run.localRun
   have hmem := pool_mono hr hy hab hnr w.slot hw
   refine ⟨hmem, ?_⟩
-  rcases pool_origin hr hy b w hmem with ⟨k, hk, hsend, hst, -⟩ | ⟨k, -, ℓ, hc, hcall, hst, -⟩
+  rcases pool_origin hr hy b w hmem with ⟨k, hk, hsend, hst, -⟩ | ⟨k, hk, ℓ, hc, hcall, hst, -⟩
   · rw [hst, etime_lt]
     by_cases hka : k < a
     · exact hta k hka
@@ -250,7 +251,16 @@ theorem stamp_lt_of_held (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy
     · exact absurd (pool_mono hr hy (not_lt.1 hka) (fun k' h1 h2 => hnr k' h1 (h2.trans hk))
         _ hw) hnh
   · rw [hst, etime_lt]
-    linarith [hS.restart_le hy ⟨ℓ, hc, hcall⟩]
+    exact hrestart k hk ⟨ℓ, hc, hcall⟩
+
+/-- Whole-run specialization of bounded-cut stamp retention. -/
+theorem stamp_lt_of_held (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
+    {a b : Nat} (hab : a ≤ b) {w : Vote sp.n} (hw : w ∈ (tr.state y a).pool w.slot) {T : Time}
+    (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T) (hgT : gbar g < T)
+    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) :
+    w ∈ (tr.state y b).pool w.slot ∧ (tr.state y b).voteStamp w < ETime.of T :=
+  stamp_lt_of_held_of_run hS.run.localRun hy hab hw hta hwT
+    (fun _ _ hk => (hS.restart_le hy hk).trans_lt hgT) hnr
 
 private theorem admitVote_pool_ne {A : SAState sp.n} {t : Time} {v : Vote sp.n} {σ : Nat}
     (h : v.slot ≠ σ) : (admitVote sp A t v).pool σ = A.pool σ := by
