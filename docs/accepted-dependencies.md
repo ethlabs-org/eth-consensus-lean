@@ -27,7 +27,7 @@ joint supplier has been decomposed into its eventual proof obligations.
 
 ## Master status: every Accepted field, grouped by leaf owner
 
-Current audit: main `5d33450a51ac2b4188fb33f1f8a13cec753b4a66`.
+Current audit: main `15985354bf3ddbc586c96c91e02daf0b57c0c2b8`.
 The post-wiring audit uses `spec-surface dependencies --from
 Consensus.Goldilocks.Refinement.accepted --modules
 ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted`, including type
@@ -87,6 +87,25 @@ engine Δe ≥ 1, increasing an engine-scale coefficient C by one adds Δe:
 with Δe or Δp. The bridge proof uses unit clock lag, an initial or last complete
 local-event ReadPoint, effective-record equality and ordered-record monotonicity.
 It does not prove the remaining safety-input supplier or unconditional Accepted safety.
+
+### Proved internal suppliers from today's landings
+
+The following proofs advance the internal routes without closing the joint
+Accepted leaves. The grouped owner sets above remain unchanged: a proof outside
+the current dependency closure does not remove a reachable sorry merely because
+it is intended to implement that supplier. Original public wrappers remain available.
+Names use the namespace stated in each row (under `Consensus.Goldilocks`).
+
+| Owner / namespace | Proved declarations and landing | Exact scope / remaining join |
+|---|---|---|
+| Healing source-service / `Healing` | `proposal_stored_locks_compatible_old`, `optimistic_prefix_compatible_old` (2d53602) | Actual stored provenance and proposal timing; strict labels use historical activation, equal labels use same-slot fast/optimistic compatibility. `proposal_start_supported` and `vote_old_live_lock_below_parent` remain OPEN. |
+| Healing source-service / `Healing` | `historical_activation_cutZ_before` (e73ed60), `reset_sync_window_before`, `historical_activation_before` (79be99e) | Bounded comparison/vote activation through Q from ResetPremises; cutZ-windowed service is derived from node reset premises. Engine Healthy→reset/service transport remains separate; no new Catch premise. |
+| Healing transfer / `SA` | `result_prefix_vote_extends_of_stored`, `next_vote_extends_before` (daf14e2) | Current-cut stored compatibility, carry, viability and merged-view inputs remain explicit. Later transfer uses only earlier predecessor/current-label votes; these primitives do not produce their service/viability inputs. |
+| Healing retention / `Healing` | `high_floor_source_before` (f65e35a) | Source-state height extracts an earlier high origin; earlier-origin pairwise and target compatibility remain hypotheses. No read of an unheld receiver root supplies the height. |
+| Healing retention / `Healing` | `high_origin_held_at_vote`, `high_origin_height_at_vote` (47c97a0) | Counted-head relay gives receiver heldness and height agreement from HighOrigin, an honest later-label cast and current F ancestry; no floor-viability induction hypothesis. |
+| Healing retention / `Healing` | `first_carry_of_finalized_anc`, `later_carry_of_finalized_anc` (0e96018) | Explicit current global F ancestry and HighOrigin retained; first carry also consumes stored fast-lock provenance, later carry earlier predecessor-batch VoteExtends. Existing first_carry/later_carry are wrappers. |
+| Healing box / `Compose` | `honest_votes_eq_proposal_at_update_before`, `updater_F_anc_proposal_before`, `proposal_held_at_update_before`, `proposal_majority_at_update_before`, `adopt_result_before`, `update_adopts_before` (7271f79) | Held→Adopt chain is finite through update time≤b, using SyncBefore, bounded slot-point fault bounds and SleepyInvariantUpTo. No whole-run agreement premise; finite end-to-end inclusion remains `sleepy_include_finite`, OPEN. |
+| Healing box / `Refinement` | `sleepy_safe_engine` (5d33450), `sleepy_safe_finite` (c3f8f4d) | Both proved. Engine safety uses node catchUp+1; Accepted still owes safety-input production and joint coefficients. Finite node safety remains outside the Accepted closure. |
 
 | Declaration | Paper argument/status |
 |---|---|
