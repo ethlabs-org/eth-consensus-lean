@@ -1570,6 +1570,48 @@ theorem old_origin_below_unanimous {b : Time}
     (he.trans (hun x ho.1 q e ⟨ell, hcast⟩ (hq.trans hub) hs))
   exact heq ▸ hBH
 
+/-- Finite writer service carries the previous honest vote batch to a bounded
+next-slot cast. Only actual previous votes, bounded by this cast, are consulted. -/
+theorem unanimous_carry_votes {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcast : SA.CastAt tr.projAC y i ell e)
+    (hs : e.msg.slot = u + 1) (hib : tr.time i ≤ b)
+    (hFP : Anc (tr.HonestBlocks H) ell.frame.F P) :
+    SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e u (Compose.honestVotes tr H u) := by
+  have hS := Healing.healthy_base_of_reset_catch_before hp hc
+  have hr := hS.run.localRun
+  have hDelta := sp.toParams.hΔ
+  apply SA.carryAt_of_each (hr.awake_of_call y hy i ell hcast.1)
+    (SA.castAt_spec hr hy hcast).2.2.1
+  rintro v ⟨z, hz, q, e', ⟨ell', hc'⟩, rfl, hsl⟩
+  have hqi : q < i := by
+    by_contra hn
+    have := SA.slot_mono sp (hr.time_nonneg i) (hr.time_mono (Nat.le_of_not_gt hn))
+    have := (SA.castAt_spec hr hz hc').2.1
+    have := (SA.castAt_spec hr hy hcast).2.1
+    omega
+  obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot hr hz hc'
+  have hHdP : Hd = P := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hc'.1).2 hHd) hP
+    (hHdr.trans (hun z hz q e' ⟨ell', hc'⟩ ((hp.run.time_mono hqi.le).trans hib) hsl))
+  subst Hd
+  apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
+    (by linarith : SA.gbar g ≤ sp.ts u) hS.catchUp (by linarith) hz hy hcast hs hib
+  rintro v rfl
+  have ht : tr.projAC.time q < sp.ts u + 2 * sp.Δ := by rw [hsl] at hqt; linarith
+  refine ⟨hsl, ⟨q, ⟨ell', hc'.1, Or.inl ⟨e', hc'.2, rfl⟩⟩,
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg q) u).mpr
+      (by rw [← (SA.castAt_spec hr hz hc').2.1, hsl]), ht⟩, P, hP, hHdr, hFP, ?_⟩
+  rcases Compose.frame_anc_accepted hr hz q ell' hc'.1 P hHd P .refl with hg | ⟨k, hk, ha⟩
+  · exact Or.inl hg
+  · exact Or.inr ⟨k, ha, (hr.time_mono hk).trans_lt ht⟩
+
 end UpTo
 
 end CoveredEndpoint
