@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 
 public section
@@ -750,6 +751,40 @@ theorem reset_update_toFG_calls
     Compose.frame_of_projAC hp.run hy hcjAC, tr.state_succ_of_call hcj]
   unfold Node.frame
   rw [(hp.run.cutLaw y hy j _ hcj).2.2.1]
+
+/-- A deepest candidate extending a non-genesis block gives an actual report by this call's
+time, including the historical report that suppresses a new return. -/
+theorem report_of_deepest_candidate
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
+    (hjoin : SA.joined sp (tr.projAC.state y j) (tr.time j))
+    {P C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hPg : P.root ≠ sp.genesisRoot)
+    (hC : SA.deepest ell.frame (SA.toFGCandidates sp (tr.projAC.state y j)
+      ell.frame (tr.time j)) = some C) (hPC : ell.frame.Anc P C) :
+    ∃ r ell' R, SA.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
+      Anc (tr.HonestBlocks H) P R := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
+  by_cases hrep : SA.AncR ell.frame C (tr.projAC.state y j).fgReported
+  · obtain ⟨R, hRt, hRr, hCR⟩ := hrep
+    have hPR : ell.frame.Anc P R := hPC.trans hCR
+    rcases fgReported_origin hr hy j with hgen | ⟨r, hrj, ell', R', hto, hR'r⟩
+    · have hG := Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hy j)
+      have he := hr.coherent.1 (hPhiU hRt) ⟨y, hy, j, hG⟩ (hRr.trans hgen)
+      rw [he] at hPR
+      rcases Relation.ReflTransGen.cases_tail hPR with heq | ⟨Y, _, hY⟩
+      · exact False.elim (hPg (by rw [← heq]; rfl))
+      · exact False.elim (Option.some_ne_none _ (hY.2.2.symm.trans rfl))
+    have hR't := toFG_mem_tree hp.run hy hto
+    obtain rfl : R' = R := hr.coherent.1 ⟨y, hy, r, hR't⟩ (hPhiU hRt)
+      (hR'r.trans hRr.symm)
+    exact ⟨r, ell', R', hto, hp.run.time_mono hrj.le, hPR.mono hPhiU⟩
+  · refine ⟨j, ell, C, ⟨hc, hcall, ?_⟩, le_rfl, hPC.mono hPhiU⟩
+    change (SA.acToFG sp (tr.projAC.state y j) ell.frame (tr.time j)).2.1 = some C
+    unfold SA.acToFG
+    simp only [hjoin, not_true_eq_false, ↓reduceIte, hC, hrep]
 
 /-- **The joined duty at the update** (§23, §17 "Exact remaining premise"; phase-service §10;
 restated with the healing orb, workbench#30-style): under the reset premises and `Catch(2Δ)`, for
