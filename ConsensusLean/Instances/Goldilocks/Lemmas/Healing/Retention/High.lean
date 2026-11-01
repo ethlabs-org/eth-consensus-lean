@@ -31,6 +31,82 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n}
 
+namespace ResetPremisesUpTo
+
+variable {b : Time} (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+include hp
+
+/-- Coherence uses the valid run and collision freedom, not future awake times. -/
+theorem honest_coherent : Coherent (tr.HonestBlocks H) :=
+  Compose.honest_blocks_coherent hp.run.toLocalRun hp.noColl
+
+/-- Honest held trees are ancestor-closed under finite health. -/
+theorem anc_tree_of_anc {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {A C : SA.Blk sp.n (List (FG.Att sp.n))} (h : Anc (tr.HonestBlocks H) A C)
+    (hC : C ∈ (tr.state y k).fg.tree) : (tr.state y k).fg.Anc A C := by
+  have hr := Compose.fg_reachable hp.run.toLocalRun hy k
+  induction h with
+  | refl => exact .refl
+  | tail _ hYC ih =>
+    rcases ((Store.accepted_tree _ _ _ _ hr).2.2.2 _ hC).cases_tail with hg | ⟨Z, -, hZ⟩
+    · exact absurd hYC.2.2 (by rw [hg]; simp [Params.genesisBlock])
+    obtain rfl : Z = _ := hp.honest_coherent.1 ⟨y, hy, k, hZ.1⟩ hYC.1
+      (Option.some.inj (hZ.2.2.symm.trans hYC.2.2))
+    exact (ih hZ.1).tail hZ
+
+/-- An ancestor of a held block is held. -/
+theorem mem_tree_of_anc {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {A C : SA.Blk sp.n (List (FG.Att sp.n))} (h : Anc (tr.HonestBlocks H) A C)
+    (hC : C ∈ (tr.state y k).fg.tree) : A ∈ (tr.state y k).fg.tree := by
+  by_cases he : A = C
+  · exact he ▸ hC
+  · exact (Anc.mem (hp.anc_tree_of_anc hy h hC) he).1
+
+/-- The state attached to an honest block is independent of its holder. -/
+theorem σ_eq_run {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)
+    {k j : Nat} {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree)
+    (hX' : X ∈ (tr.state z j).fg.tree) :
+    (tr.state y k).fg.σ X.root = (tr.state z j).fg.σ X.root :=
+  Store.σ_eq_of_mem (Compose.fg_reachable hp.run.toLocalRun hy k)
+    (Compose.fg_reachable hp.run.toLocalRun hz j) hp.honest_coherent.1
+    (fun _ hB => ⟨y, hy, k, hB⟩) (fun _ hB => ⟨z, hz, j, hB⟩) hX hX'
+
+/-- The supplied actual cutZ snapshot bounds all its held heights. -/
+theorem h_le_HZ_of_firstCut {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    (hj : FirstCutAfter tr j (cutZ sp.toParams g))
+    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y j).fg.tree) :
+    ((tr.state y j).fg.σ X.root).h ≤ HZ tr H g :=
+  ((Store.cache_invariants _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hy j)).2.2.2.2.1 X
+    hX).trans (hmax_le_HZ hy hj)
+
+/-- A high held block lies after cutZ, using the actual snapshot rather than a future tick. -/
+theorem cutZ_lt_of_high {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree)
+    (hXh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ X.root).h) :
+    cutZ sp.toParams g < tr.time k := by
+  by_contra hk
+  obtain ⟨j, hj, -⟩ := hp.snapshot
+  have hkj : k ≤ j := by
+    by_contra hjk
+    have := hp.run.time_mono (le_of_not_ge hjk)
+    linarith [hj.2]
+  have hXj := Compose.tree_mono hp.run.toLocalRun hy hkj hX
+  have := hp.h_le_HZ_of_firstCut hy hj hXj
+  rw [hp.σ_eq_run hy hy hX hXj] at hXh
+  omega
+
+/-- Genesis is low at every cut; its height is certified by the actual snapshot. -/
+theorem genesis_not_high {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree)
+    (hg : X.root = sp.genesisRoot) : ((tr.state y k).fg.σ X.root).h ≤ HZ tr H g := by
+  obtain ⟨j, hj, -⟩ := hp.snapshot
+  have hG := Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hy j)
+  obtain rfl : X = _ := hp.honest_coherent.1 ⟨y, hy, k, hX⟩ ⟨y, hy, j, hG⟩ hg
+  rw [hp.σ_eq_run hy hy hX hG]
+  exact hp.h_le_HZ_of_firstCut hy hj hG
+
+end ResetPremisesUpTo
+
 /-- The honest blocks of the run are coherent. -/
 theorem honest_coherent (hp : ResetPremises tr H proposer dg g ΔF a) :
     Coherent (tr.HonestBlocks H) :=
@@ -166,6 +242,65 @@ theorem cutZ_lt_of_anc (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp
     have := genesis_not_high hp hz hW hg
     have := high_of_anc hp ho hz hW hBW
     omega⟩
+
+namespace ResetPremisesUpTo
+
+variable {b : Time} (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+include hp
+
+/-- An actual AC frame is contained in its node's held tree. -/
+theorem frame_tree_subset {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
+    ℓ.frame.tree ⊆ (tr.state y k).fg.tree := by
+  rw [Compose.frame_of_projAC hp.run hy hc]
+  exact fun B hB => hB.1
+
+/-- An actual AC acceptance follows the corresponding FG acceptance. -/
+theorem acceptAt_mem {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hk : tr.projAC.AcceptAt y k W) :
+    W ∈ (tr.state y k).fg.tree := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨ℓ, hc, hcall⟩ := hk
+  exact hp.frame_tree_subset hy hc ((SA.accept_new sp hr hy ⟨ℓ, hc, hcall⟩).1 ℓ hc)
+
+/-- High-origin provenance is witnessed at its actual write. -/
+theorem highOrigin_mem {x : Fin sp.n} {i j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
+    ∃ ℓ D CV, tr.projAC.CallAt x i ℓ ∧ SA.FastLockAt tr.projAC x i j D CV ∧
+      B = ℓ.frame.viableAncestor D ∧ D ∈ ℓ.frame.tree ∧ B ∈ ℓ.frame.tree ∧
+      ℓ.frame.Anc B D ∧ B ∈ (tr.state x i).fg.tree := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨CV, ℓ, D, hc, hfl, rfl⟩ := ho.2.2.1
+  obtain ⟨ℓ', hc', hD⟩ := fastLock_mem hfl
+  obtain rfl : ℓ = ℓ' := Option.some.inj (hc.2.symm.trans hc'.2)
+  obtain ⟨hB, hBD⟩ := SA.viableAncestor_anc (SA.frameIn_of_callAt hr ho.1 hc).1 hD
+  exact ⟨ℓ, D, CV, hc, hfl, rfl, hD, hB, hBD, hp.frame_tree_subset ho.1 hc hB⟩
+
+/-- A held descendant of a high origin has high state height. -/
+theorem high_of_anc {x : Fin sp.n} {i j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {z : Fin sp.n}
+    (hz : z ∈ H) {k : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hW : W ∈ (tr.state z k).fg.tree) (hBW : Anc (tr.HonestBlocks H) B W) :
+    HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h := by
+  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := hp.highOrigin_mem ho
+  have hBz := hp.mem_tree_of_anc hz hBW hW
+  have h₁ := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hz k)
+    (hp.anc_tree_of_anc hz hBW hW)
+  rw [← hp.σ_eq_run ho.1 hz hBx hBz] at h₁
+  exact ho.2.2.2.trans h₁
+
+/-- A high descendant was held after cutZ and cannot be genesis. -/
+theorem cutZ_lt_of_anc {x : Fin sp.n} {i j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {z : Fin sp.n}
+    (hz : z ∈ H) {k : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hW : W ∈ (tr.state z k).fg.tree) (hBW : Anc (tr.HonestBlocks H) B W) :
+    cutZ sp.toParams g < tr.time k ∧ W.root ≠ sp.genesisRoot :=
+  ⟨hp.cutZ_lt_of_high hz hW (hp.high_of_anc ho hz hW hBW), fun hg => by
+    have := hp.genesis_not_high hz hW hg
+    have := hp.high_of_anc ho hz hW hBW
+    omega⟩
+
+end ResetPremisesUpTo
 
 end Consensus.Goldilocks.Healing
 
