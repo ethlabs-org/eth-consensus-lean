@@ -388,6 +388,48 @@ theorem apply_voteForward_fresh (st : State sp ro) r (t : Time) (v : Vote sp.n)
   have hw := (List.mem_filter.mp hw).2
   exact ⟨rfl, of_decide_eq_true hw⟩
 
+/-- Wire, block-payload and own-emission candidates surviving a fresh handler insertion
+are queued at that handler's clock. Completeness of these candidates is a separate obligation. -/
+theorem apply_voteForward_of_admission (st : State sp ro) r (v : Vote sp.n)
+    (ℓ : ACLabel (goldilocksNode sp ro)) (hℓ : .ac ℓ ∈ r.2)
+    (hsource : ℓ.call = .message v ∨
+      (∃ B, ℓ.call = .block B ∧ v ∈ SA.blockVotes B) ∨ ∃ e ∈ ℓ.emits, e.msg = v)
+    (hold : v ∉ st.node.ac.pool v.slot) (hnew : v ∈ r.1.ac.pool v.slot) :
+    (st.now, v) ∈ (apply st r).voteForwards := by
+  classical
+  apply List.mem_append_right
+  apply List.mem_map.mpr
+  refine ⟨v, List.mem_filter.mpr ⟨List.mem_dedup.mpr ?_, by simp [hold, hnew]⟩, rfl⟩
+  apply List.mem_flatMap.mpr
+  refine ⟨.ac ℓ, hℓ, ?_⟩
+  rcases hsource with hm | ⟨B, hb, hv⟩ | ⟨e, he, hv⟩
+  · simp [hm]
+  · exact List.mem_append_left _ (by simpa only [hb] using hv)
+  · exact List.mem_append_right _ (List.mem_map.mpr ⟨e, he, hv⟩)
+
+/-- A new queued vote comes from a real message/payload candidate or own emission in this
+handler's cuts. This is not yet authenticated source provenance for an arbitrary received wire. -/
+theorem apply_voteForward_source (st : State sp ro) r (t : Time) (v : Vote sp.n)
+    (h : (t, v) ∈ (apply st r).voteForwards) (hold : (t, v) ∉ st.voteForwards) :
+    ∃ ℓ : ACLabel (goldilocksNode sp ro), .ac ℓ ∈ r.2 ∧
+      (ℓ.call = .message v ∨ (∃ B, ℓ.call = .block B ∧ v ∈ SA.blockVotes B) ∨
+        ∃ e ∈ ℓ.emits, e.msg = v) := by
+  classical
+  simp only [apply, List.mem_append] at h
+  obtain h | h := h
+  · exact False.elim (hold h)
+  obtain ⟨w, hw, he⟩ := List.mem_map.mp h
+  cases he
+  have hw := List.mem_dedup.mp (List.mem_filter.mp hw).1
+  obtain ⟨c, hc, hv⟩ := List.mem_flatMap.mp hw
+  cases c with
+  | fg l => simp at hv
+  | ac ℓ =>
+    refine ⟨ℓ, hc, ?_⟩
+    rcases List.mem_append.mp hv with hv | hv
+    · cases hcall : ℓ.call <;> simp_all
+    · exact Or.inr (Or.inr (List.mem_map.mp hv))
+
 /-- `relayIf` keeps the key. -/
 theorem relayIf_self (st : State sp ro) (c : Prop) [Decidable c] o :
     (relayIf st c o).self = st.self := by unfold relayIf; split <;> rfl
