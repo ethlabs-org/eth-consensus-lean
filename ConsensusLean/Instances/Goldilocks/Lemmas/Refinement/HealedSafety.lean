@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 
@@ -91,6 +93,141 @@ theorem tips_comparable_of_origin_chain (Q : HealthyPreparationQuery S A V)
   · rw [Compose.honest_eq_genesis hr hU hR' hg]
     exact Or.inr (Compose.honest_genesis_anc hr hR).2
   exact tips_comparable_of_origin_witnesses S A V Q hRC hRC' (hcomp C p C' p' hp hp')
+
+/-- A read-support producer at genuine read points suffices at stored engine clocks.
+The representative is the last local event, not the original global cut. -/
+theorem healthy_stored_read_eq_record (Q : HealthyPreparationQuery S A V)
+    {c t₀ : Time} (hc : 0 ≤ c)
+    (hread : ∀ y k t, (∃ q ≤ Q.run.2.events.length, k = cutMap S Q.run.2 Q.hn q) →
+      Regimes.ReadPoint Q.trace k t →
+      Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) c y t → t₀ ≤ t → t ≤ Q.run.2.horizon →
+      Regimes.readAfter Q.trace y k t =
+        (SA.lookup (Node.frame (Q.trace.state y k))
+          (Q.trace.state y k).ac.latestConfirmed).getD (Q.trace.state y k).fg.F)
+    {v : V} {i : Nat} (hi : i ≤ Q.run.2.events.length)
+    (hfloor : t₀ ≤ (stateAt S Q.run.2 Q.hn v i).now)
+    (hr : Q.run.2.point.Ready (c + 1) v (Q.run.2.cutTime i)) :
+    Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)
+        (stateAt S Q.run.2 Q.hn v i).now =
+      (SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
+        (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
+          (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F := by
+  have hready := ready_at_stored_now S Q.run.2 Q.hn Q.valid hi hc hr
+  obtain ⟨q, hq, hs, hrp, hth⟩ : ∃ q ≤ Q.run.2.events.length,
+      stateAt S Q.run.2 Q.hn v i = stateAt S Q.run.2 Q.hn v q ∧
+      Regimes.ReadPoint Q.trace (cutMap S Q.run.2 Q.hn q)
+        (stateAt S Q.run.2 Q.hn v i).now ∧
+      (stateAt S Q.run.2 Q.hn v i).now ≤ Q.run.2.horizon := by
+    rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with hs | ⟨j, hj, e, he, hev, hs, ht⟩
+    · refine ⟨0, Nat.zero_le _, hs, ?_, ?_⟩
+      · rw [hs, cutMap_zero]
+        exact ⟨fun k hk => by omega,
+          (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid).time_nonneg 0⟩
+      · rw [hs]
+        exact Q.valid.horizon_nonneg
+    · refine ⟨j + 1, by omega, hs, ?_, ?_⟩
+      · rw [ht]
+        exact readPoint_after_event S Q.run.2 Q.hn Q.valid he
+      · rw [ht]
+        exact (Q.valid.in_horizon e (List.mem_of_getElem? he)).2
+  have hnready := ready_transport S Q.run.2 Q.hn Q.valid
+    (now_bounds_cut S Q.run.2 Q.hn Q.valid v hi).1 hth hready
+  have heq := hread _ _ _ ⟨q, hq, rfl⟩ hrp hnready hfloor hth
+  have hstate : Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i) =
+      Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn q) := by
+    rw [← simTrace_state S Q.run.2 Q.hn Q.valid v hr.1 i hi,
+      ← simTrace_state S Q.run.2 Q.hn Q.valid v hr.1 q hq, hs]
+  simpa only [Regimes.readAfter, hstate] using heq
+
+/-- A finite record source is either the current finalized block or an actual late raw
+write before this cut. It does not require a future fast-lock cover. -/
+def HealthyRecordSource (Q : HealthyPreparationQuery S A V) (cleanLabel : Nat)
+    (y : Fin Q.params.n) (n : Nat) (R : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
+  R = (Q.trace.state y n).fg.F ∨ ∃ q s CV, q < n ∧ Q.trace.time q ≤ Q.run.2.horizon ∧
+    cleanLabel + 2 * Q.params.k + 1 ≤ s ∧
+    (SA.ResultAt Q.trace.projAC y q s R CV ∨ SA.OptimisticLockAt Q.trace.projAC y q s R CV)
+
+theorem healthyRecordSource_iff (Q : HealthyPreparationQuery S A V) (cleanLabel : Nat)
+    (y : Fin Q.params.n) (n : Nat) (R : SA.Blk Q.params.n (List (FG.Att Q.params.n))) :
+    HealthyRecordSource S A V Q cleanLabel y n R ↔
+      R = (Q.trace.state y n).fg.F ∨ ∃ q s CV, q < n ∧ Q.trace.time q ≤ Q.run.2.horizon ∧
+        cleanLabel + 2 * Q.params.k + 1 ≤ s ∧
+        (SA.ResultAt Q.trace.projAC y q s R CV ∨ SA.OptimisticLockAt Q.trace.projAC y q s R CV) :=
+  Iff.rfl
+
+section ConditionalSafety
+variable (Q : HealthyPreparationQuery S A V) {c t₀ ΔF a : Time}
+  (hsync : Q.trace.GSTRun (honestKeys S Q.run.2) ΔF Q.gst)
+  (hreset : Healing.IsReset Q.trace (honestKeys S Q.run.2) Q.gst a)
+  (ha : a ≤ Q.run.2.horizon)
+  (hsnapshot : ∃ k, Healing.FirstCutAfter Q.trace k
+    (Healing.cutZ Q.params.toParams Q.gst) ∧ Q.trace.time k ≤ Q.run.2.horizon)
+  (hc : 0 ≤ c)
+  (hread : ∀ y k t, (∃ q ≤ Q.run.2.events.length, k = cutMap S Q.run.2 Q.hn q) →
+    Regimes.ReadPoint Q.trace k t →
+    Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) c y t → t₀ ≤ t → t ≤ Q.run.2.horizon →
+    Regimes.readAfter Q.trace y k t =
+      (SA.lookup (Node.frame (Q.trace.state y k))
+        (Q.trace.state y k).ac.latestConfirmed).getD (Q.trace.state y k).fg.F)
+
+include hsync hreset ha hsnapshot hc hread
+
+/-- Directed record preservation is transported at the original ordered engine cuts;
+only read support is evaluated at the last local event. -/
+theorem healthy_cut_tips_ancestor_of_interval
+    {v : V} {i j : Nat} (hi : i ≤ Q.run.2.events.length)
+    (hj : j ≤ Q.run.2.events.length) (hij : i ≤ j)
+    (hfloori : t₀ ≤ (stateAt S Q.run.2 Q.hn v i).now)
+    (hfloorj : t₀ ≤ (stateAt S Q.run.2 Q.hn v j).now)
+    (hvi : Q.run.2.point.Ready (c + 1) v (Q.run.2.cutTime i))
+    (hvj : Q.run.2.point.Ready (c + 1) v (Q.run.2.cutTime j))
+    (hinterval : EffectiveRecordInterval Q.trace (honestKeys S Q.run.2) (Q.run.2.ownKey v)
+      (cutMap S Q.run.2 Q.hn i) (cutMap S Q.run.2 Q.hn j)
+      (Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)
+        (stateAt S Q.run.2 Q.hn v i).now)) :
+    Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2))
+      (Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)
+        (stateAt S Q.run.2 Q.hn v i).now)
+      (Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn j)
+        (stateAt S Q.run.2 Q.hn v j).now) := by
+  have hp := reset_premises_of_healthy_query S A V Q hsync hreset ha hsnapshot
+  have hri := healthy_stored_read_eq_record S A V Q hc hread hi hfloori hvi
+  have hrj := healthy_stored_read_eq_record S A V Q hc hread hj hfloorj hvj
+  rw [hrj]
+  exact effective_record_of_interval hp.run hp.noColl
+    (honest_ownKey (S := S) hvi.1) (cutMap_mono S Q.run.2 Q.hn hij) hinterval
+      (by rw [hri]; exact .refl)
+
+omit hsync hreset ha hsnapshot in
+/-- Actual raw record sources admit frontier reads without a future origin cover. -/
+theorem healthy_cut_tips_comparable_of_sources
+    (cleanLabel : Nat)
+    {u v : V} {i j : Nat} (hi : i ≤ Q.run.2.events.length)
+    (hj : j ≤ Q.run.2.events.length)
+    (hfloori : t₀ ≤ (stateAt S Q.run.2 Q.hn u i).now)
+    (hfloorj : t₀ ≤ (stateAt S Q.run.2 Q.hn v j).now)
+    (hu : Q.run.2.point.Ready (c + 1) u (Q.run.2.cutTime i))
+    (hv : Q.run.2.point.Ready (c + 1) v (Q.run.2.cutTime j))
+    (hcover : ∀ w k, (w = u ∧ k = i) ∨ (w = v ∧ k = j) →
+      HealthyRecordSource S A V Q cleanLabel (Q.run.2.ownKey w) (cutMap S Q.run.2 Q.hn k)
+          ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey w) (cutMap S Q.run.2 Q.hn k)))
+            (Q.trace.state (Q.run.2.ownKey w) (cutMap S Q.run.2 Q.hn k)).ac.latestConfirmed).getD
+              (Q.trace.state (Q.run.2.ownKey w) (cutMap S Q.run.2 Q.hn k)).fg.F))
+    (hcompare : ∀ B B',
+      HealthyRecordSource S A V Q cleanLabel (Q.run.2.ownKey u) (cutMap S Q.run.2 Q.hn i) B →
+      HealthyRecordSource S A V Q cleanLabel (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn j) B' →
+      Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) B B') :
+    Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2))
+      (Regimes.readAfter Q.trace (Q.run.2.ownKey u) (cutMap S Q.run.2 Q.hn i)
+        (stateAt S Q.run.2 Q.hn u i).now)
+      (Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn j)
+        (stateAt S Q.run.2 Q.hn v j).now) := by
+  rw [healthy_stored_read_eq_record S A V Q hc hread hi hfloori hu,
+    healthy_stored_read_eq_record S A V Q hc hread hj hfloorj hv]
+  exact hcompare _ _ (hcover u i (Or.inl ⟨rfl, rfl⟩))
+    (hcover v j (Or.inr ⟨rfl, rfl⟩))
+
+end ConditionalSafety
 
 /-- OPEN comparability of actual stored-clock tips. Old-row realization,
 label replacement and head/lock/frame comparability remain obligations. InCuts
