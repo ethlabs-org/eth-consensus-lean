@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDef
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 
 public section
 
@@ -93,13 +94,35 @@ theorem sleepy_query_sync (Q : ConfirmedQuery S A V)
     Q.trace.SyncBefore (honestKeys S Q.run.2) Q.params.Δ Q.deadline := by
   sorry
 
-/-- OPEN population transport only at the finite consumer's slot points. -/
+/-- Population transport at finite slot points, conditional on the joint duration supplier. -/
 theorem sleepy_query_population (Q : ConfirmedQuery S A V)
     (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run) :
     ∀ s : Nat, ∀ d ∈ ({0, Q.params.Δ, 2 * Q.params.Δ} : Set Time),
       Q.params.ts s + d ≤ Q.deadline →
         Q.trace.FaultBound (honestKeys S Q.run.2) (Q.params.ts s + d) := by
-  sorry
+  classical
+  apply sleepy_faultBound S Q.run.2 Q.hn Q.valid Q.bounded
+  intro t ht htb
+  have hh := hsleepy.2 t ht (htb.trans Q.bounded)
+  change (1 / 2 : ℚ) * (_ + _) < _ at hh
+  have hd := confirmed_duration_supply S A V Q
+  have hsub : Q.run.2.point.readyAt Q.duration t ⊆
+      Q.run.2.point.readyAt (Regimes.catchUp Q.params) t := by
+    intro v hv
+    obtain ⟨hhon, hr⟩ := Finset.mem_filter.mp hv
+    refine Finset.mem_filter.mpr ⟨hhon, hr.1, ?_⟩
+    intro u hu hut
+    exact hr.2 u ((max_le_max_left 0 (by linarith)).trans hu) hut
+  have hc := Finset.card_le_card hsub
+  unfold EnvPoint.ReadyAbove
+  have hc' : ((Q.run.2.point.readyAt Q.duration t).card : ℚ) ≤
+      (Q.run.2.point.readyAt (Regimes.catchUp Q.params) t).card := by exact_mod_cast hc
+  change (1 / 2 : ℚ) * (((Q.run.2.point.readyAt Q.duration t).card : ℚ) +
+    Q.run.2.point.faulty.card) <
+    (Q.run.2.point.readyAt Q.duration t).card at hh
+  change (1 / 2 : ℚ) * (((Q.run.2.point.readyAt (Regimes.catchUp Q.params) t).card : ℚ) +
+    Q.run.2.point.faulty.card) < (Q.run.2.point.readyAt (Regimes.catchUp Q.params) t).card
+  linarith
 
 /-- The recurrence/grid supplier selects readiness at exact endpoint cDur directly.
 Readiness merely at 18Δp cannot be upgraded to this field by monotonicity. -/
@@ -119,7 +142,7 @@ theorem sleepy_query_slot (Q : ConfirmedQuery S A V)
     (hquery : 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlot S A V Q) := by
   sorry
 
-/-- OPEN selected eligible slot to actual canonical proposal event. Acceptance is
+/-- Selected eligible slot to actual canonical proposal event. Acceptance is
 not assumed here: the existing own-proposal acceptance theorem supplies it.
 The proof must establish joined/eligible state and an actual scheduled engine
 event. Slot eligibility is not event existence. W.margin and Q.bounded bound
@@ -130,7 +153,11 @@ theorem confirmed_slot_event (Q : ConfirmedQuery S A V)
     ∃ (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (k : Nat),
       B.proposer = runProposer S Q.run.2 Q.hn W.slot ∧
       Q.trace.ProposesAt B.proposer k B ∧ Q.trace.time k = Q.params.ts W.slot := by
-  sorry
+  obtain ⟨k, B, hp, ht⟩ := Regimes.ready_proposer_proposes
+    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid)
+    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    W.positive (confirmed_ready_mono S A V Q (confirmed_duration_supply S A V Q) W.ready)
+  exact ⟨B, k, hp.2.1, hp.2.1 ▸ hp, ht⟩
 
 /-- Actual production assembled from selected slot, canonical event and proved
 own acceptance, preserving the exact-cDur readiness selected by recurrence. -/
