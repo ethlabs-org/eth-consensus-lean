@@ -215,6 +215,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppli
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalEndpoints
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalSuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OperationalPersistence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageRead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
