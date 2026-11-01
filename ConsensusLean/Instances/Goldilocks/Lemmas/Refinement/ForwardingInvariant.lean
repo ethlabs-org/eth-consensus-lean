@@ -1329,4 +1329,85 @@ theorem canonical_block_decodes {V : Type} [Fintype V] {E : Env V}
   apply decodeBlock_blockObj _ B hpar (hhash ▸ taggedRoot_ne _ _) _ hwf hval
   rw [rootOf_digests_blockObj, hhash, rawRoot_taggedRoot]
 
+/-- Decoder invariant for the durable map and the pending queue. Each stored root names
+the decoded child of a same-origin wrapper, whose stamp does not exceed the local clock.
+Recursive decoding certifies parent identity, strict parent slot order and nondecreasing
+parent timestamps. Reachability and correspondence with the held-block map remain separate. -/
+structure WrappersDecoded {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (tables : Wire sp.n → List (Header Info × Nat)) (st : State sp ro) : Prop where
+  stored : ∀ root o, st.wrappers root = some o →
+    ∃ t p B, decodeForward sp (tables o) o = some (st.self, t, p, B) ∧
+      B.root = root ∧ t ≤ st.now
+  pending : ∀ o ∈ pendingWrappers st,
+    ∃ t p B, decodeForward sp (tables o) o = some (st.self, t, p, B) ∧ t ≤ st.now
+
+/-- Changes outside the durable map and queue, and forward clock movement, preserve decoding.
+This covers state-only handler work without treating it as a new publication. -/
+theorem WrappersDecoded.mono {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tables : Wire sp.n → List (Header Info × Nat)}
+    {st st' : State sp ro} (h : WrappersDecoded tables st)
+    (hself : st'.self = st.self) (hmap : st'.wrappers = st.wrappers)
+    (hqueue : st'.forwards = st.forwards) (ht : st.now ≤ st'.now) :
+    WrappersDecoded tables st' := by
+  constructor
+  · intro root o ho
+    rw [hmap] at ho
+    obtain ⟨t, p, B, hd, hr, htime⟩ := h.stored root o ho
+    exact ⟨t, p, B, hself ▸ hd, hr, htime.trans ht⟩
+  · intro o ho
+    rw [pendingWrappers_eq, hqueue, hself, ← pendingWrappers_eq] at ho
+    obtain ⟨t, p, B, hd, htime⟩ := h.pending o ho
+    exact ⟨t, p, B, hself ▸ hd, htime.trans ht⟩
+
+/-- Empty runtime maps and queues satisfy the decoder invariant without wire premises. -/
+theorem wrappersDecoded_empty {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (tables : Wire sp.n → List (Header Info × Nat))
+    (st : State sp ro) (hm : ∀ root, st.wrappers root = none) (hq : st.forwards = []) :
+    WrappersDecoded tables st := by
+  constructor
+  · intro root o ho
+    rw [hm root] at ho
+    cases ho
+  · intro o ho
+    simp only [pendingWrappers_eq, hq, List.map_nil, List.not_mem_nil] at ho
+
+/-- Enqueuing a decoded child preserves both decoder inventories. The new child's
+decoding must be established from its accepted payload and the selected parent's facts. -/
+theorem WrappersDecoded.enqueue {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tables : Wire sp.n → List (Header Info × Nat)}
+    {st : State sp ro} (h : WrappersDecoded tables st) (B : Blk sp)
+    (root : Nat) (p : Option (Wire sp.n)) (hr : B.parent = some root)
+    (hp : (if root = sp.genesisRoot then some none else
+      (st.wrappers root).map some) = some p)
+    (hd : decodeForward sp (tables (forwardObj sp st.self st.now p B))
+      (forwardObj sp st.self st.now p B) = some (st.self, st.now, p, B)) :
+    WrappersDecoded tables (queueAccepted st B) := by
+  have hm := (queueAccepted_of_parent st B root p hr hp).1
+  have hq := (queueAccepted_of_parent st B root p hr hp).2
+  have hs : (queueAccepted st B).self = st.self := by simp [queueAccepted, hr, hp]
+  have ht := queueAccepted_now st B
+  constructor
+  · intro r o ho
+    rw [hm] at ho
+    by_cases he : r = B.root
+    · subst r
+      simp only [Function.update_self, Option.some.injEq] at ho
+      subst o
+      exact ⟨st.now, p, B, hs ▸ hd, rfl, ht ▸ le_rfl⟩
+    · rw [Function.update_of_ne he] at ho
+      obtain ⟨t, p', A, hdec, hroot, htime⟩ := h.stored r o ho
+      exact ⟨t, p', A, hs ▸ hdec, hroot, ht ▸ htime⟩
+  · intro o ho
+    rw [pendingWrappers_eq, hq, List.map_append, hs] at ho
+    rcases List.mem_append.mp ho with ho | ho
+    · obtain ⟨t, p', A, hdec, htime⟩ := h.pending o ((pendingWrappers_eq st).symm ▸ ho)
+      exact ⟨t, p', A, hs ▸ hdec, ht ▸ htime⟩
+    · simp only [List.map_cons, List.map_nil, List.mem_singleton] at ho
+      subst o
+      exact ⟨st.now, p, B, hs ▸ hd, ht ▸ le_rfl⟩
+
 end Consensus.Goldilocks.Refinement
