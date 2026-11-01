@@ -475,8 +475,8 @@ receiver's floor. Heights of `B` are read at its source, where it is held. Pairw
 of earlier origins rules out a high contest; comparison with `B` orients the crossing.
 Neither a vote/cache invariant nor pivot service is assumed. The signed row witnessing
 the crossing is retained for consumers that need an actual earlier report. -/
-theorem high_floor_signed_source_of_row_bound
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ResetPremisesUpTo.high_floor_signed_source_of_row_bound {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
     {u : Nat}
@@ -494,18 +494,18 @@ theorem high_floor_signed_source_of_row_bound
       Anc (tr.HonestBlocks H) B O ∧
       (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h ∧
       ∃ d att, r < d ∧ d < k ∧ tr.SignAt v d att ∧ att.T = E.root := by
-  have hU := honest_coherent hp
+  have hU := hp.honest_coherent
   have hreach := Compose.fg_reachable hp.run.toLocalRun hy k
   have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, k, hX⟩
-  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
+  obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := hp.highOrigin_mem ho
   have hBh := ho.2.2.2
   have hupper : ∀ {v₁ v₂ : Fin sp.n} {r₁ l₁ r₂ l₂ : Nat}
       {O₁ O₂ : SA.Blk sp.n (List (FG.Att sp.n))}, HighOrigin tr H g v₁ r₁ l₁ O₁ → r₁ < k →
       HighOrigin tr H g v₂ r₂ l₂ O₂ → r₂ < k → ∃ z ∈ H, ∃ m C, C ∈ (tr.state z m).fg.tree ∧
         Anc (tr.HonestBlocks H) O₁ C ∧ Anc (tr.HonestBlocks H) O₂ C := by
     intro v₁ v₂ r₁ l₁ r₂ l₂ O₁ O₂ ho₁ hr₁ ho₂ hr₂
-    obtain ⟨-, -, -, -, -, -, -, -, -, hO₁⟩ := highOrigin_mem hp ho₁
-    obtain ⟨-, -, -, -, -, -, -, -, -, hO₂⟩ := highOrigin_mem hp ho₂
+    obtain ⟨-, -, -, -, -, -, -, -, -, hO₁⟩ := hp.highOrigin_mem ho₁
+    obtain ⟨-, -, -, -, -, -, -, -, -, hO₂⟩ := hp.highOrigin_mem ho₂
     rcases hpair v₁ r₁ l₁ O₁ hr₁ ho₁ v₂ r₂ l₂ O₂ hr₂ ho₂ with h | h
     · exact ⟨v₂, ho₂.1, r₂, O₂, hO₂, h, .refl⟩
     · exact ⟨v₁, ho₁.1, r₁, O₁, hO₁, .refl, h⟩
@@ -519,19 +519,19 @@ theorem high_floor_signed_source_of_row_bound
     · exact hJC (hg ▸ (Goldilocks.Store.accepted_tree _ _ _ _ hreach).2.2.2 C hC)
     have hJlt := Store.hj_lt_h hreach hBj
     obtain ⟨W₂, -, att₂, -, v₂, -, d₂, hd₂, -, -, r₂, hr₂, l₂, O₂, ho₂, hJO⟩ :=
-      left_entry_origin hp hy hJm hJT (by omega) hEJB (by omega)
+      hp.left_entry_origin hy hJm hJT (by omega) hEJB (by omega)
     obtain ⟨EC, hEC, hECC, hECh, hECT⟩ :=
       entry_at_height hreach hC (h := (tr.state y k).fg.hj) (by omega) (by omega)
     obtain ⟨W₁, -, att₁, -, v₁, -, d₁, hd₁, -, -, r₁, hr₁, l₁, O₁, ho₁, hECO⟩ :=
-      left_entry_origin hp hy hEC hECT (by omega) hECC (by omega)
+      hp.left_entry_origin hy hEC hECT (by omega) hECC (by omega)
     obtain ⟨z, hz, m', C', hC', hO₁C, hO₂C⟩ := hupper ho₁ (by omega) ho₂ (by omega)
     have h₁ := hECO.trans hO₁C
     have h₂ := hJO.trans hO₂C
-    have hEC' := mem_tree_of_anc hp hz h₁ hC'
-    have hJ' := mem_tree_of_anc hp hz h₂ hC'
-    have hσ₁ := σ_eq_run hp hy hz hEC hEC'
-    have hσ₂ := σ_eq_run hp hy hz hJm hJ'
-    have he := entry_root_eq hp hz hC' h₁ h₂
+    have hEC' := hp.mem_tree_of_anc hz h₁ hC'
+    have hJ' := hp.mem_tree_of_anc hz h₂ hC'
+    have hσ₁ := hp.σ_eq_run hy hz hEC hEC'
+    have hσ₂ := hp.σ_eq_run hy hz hJm hJ'
+    have he := hp.entry_root_eq hz hC' h₁ h₂
       (by rw [← hσ₁, ← hσ₂, hECh, hJh, hBjhj]) (by rw [← hσ₁]; exact hECT)
       (by rw [← hσ₂]; exact hJT)
     obtain rfl : EC = (tr.state y k).fg.J := hU.1 (hsub hEC) (hsub hJm) he
@@ -548,20 +548,41 @@ theorem high_floor_signed_source_of_row_bound
   obtain ⟨E, hE, hEC, hEh, hET⟩ :=
     entry_at_height hreach hC (h := (tr.state y k).fg.hmax - 1) (by omega) (by omega)
   obtain ⟨W, hW, att, ha, v, hv, d₁, hd₁, hsd, haT, r, hrd, l, O, hoO, hEO⟩ :=
-    left_entry_origin hp hy hE hET (by omega) hEC (by omega)
+    hp.left_entry_origin hy hE hET (by omega) hEC (by omega)
   have hBO : Anc (tr.HonestBlocks H) B O := by
     rcases hcomp v r l O (by omega) hoO with h | h
     · exact h
     · exfalso
       have hEB := hEO.trans h
-      have hEx := mem_tree_of_anc hp ho.1 hEB hBx
+      have hEx := hp.mem_tree_of_anc ho.1 hEB hBx
       have hle := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun ho.1 i)
-        (anc_tree_of_anc hp ho.1 hEB hBx)
-      rw [σ_eq_run hp ho.1 hy hEx hE] at hle
+        (hp.anc_tree_of_anc ho.1 hEB hBx)
+      rw [hp.σ_eq_run ho.1 hy hEx hE] at hle
       omega
   exact ⟨v, r, l, O, E, by omega, hoO,
     hrow W hW att ha v hv d₁ hsd hd₁ r l O hrd hoO, hE, hEO, hBO, by omega,
     d₁, att, hrd, hd₁, hsd, haT⟩
+
+/-- Whole-run specialization of the signed floor-crossing source. -/
+theorem high_floor_signed_source_of_row_bound
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H) {u : Nat}
+    (hrow : ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload,
+      ∀ v ∈ H, ∀ d, tr.SignAt v d att → d < k → ∀ r l O,
+        r < d → HighOrigin tr H g v r l O → l < u)
+    (hpair : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      ∀ v' r' l' O', r' < k → HighOrigin tr H g v' r' l' O' →
+      Compatible (tr.HonestBlocks H) O O')
+    (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocks H) B O)
+    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
+    ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < u ∧
+      E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
+      Anc (tr.HonestBlocks H) B O ∧
+      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h ∧
+      ∃ d att, r < d ∧ d < k ∧ tr.SignAt v d att ∧ att.T = E.root :=
+  (hp.toUpTo tr H (le_refl a)).high_floor_signed_source_of_row_bound ho hy hrow hpair hcomp hfloor
 
 /-- The floor crossing supplies an earlier high origin and a held floor entry. -/
 theorem high_floor_source_of_row_bound
@@ -747,7 +768,8 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
 /-- A high origin above the raw target supplies a frozen viable witness when a held
 ancestor of the origin already meets the receiver's height floor. No retention invariant
 or stored-origin assumption on the target or held ancestor is required. -/
-theorem raw_target_frozen_witness (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ResetPremisesUpTo.raw_target_frozen_witness {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x y : Fin sp.n} {r l k : Nat} {B O E : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hy : y ∈ H)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -759,26 +781,40 @@ theorem raw_target_frozen_witness (hp : ResetPremises tr H proposer dg g ΔF a)
     ∃ D ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := highOrigin_mem hp ho
+  obtain ⟨ellw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := hp.highOrigin_mem ho
   obtain ⟨u, hu⟩ := fastLock_counted_nonempty hflw
   obtain ⟨-, -, Hv, ⟨z, hz, k₀, hHvz⟩, -, hDHv, hacc⟩ := fastLock_writer hr ho.1 hflw u hu
   have hOHv : Anc (tr.HonestBlocks H) O Hv :=
     (Anc.mono (SA.frameIn_of_callAt hr ho.1 hcw).2 hOD).trans hDHv
   rcases hacc with hg | ⟨kw, hkw, hkwt⟩
-  · exact absurd hg (cutZ_lt_of_anc hp ho hz hHvz hOHv).2
+  · exact absurd hg (hp.cutZ_lt_of_anc ho hz hHvz hOHv).2
   have hkwg : g ≤ tr.projAC.time kw := by
-    have := (cutZ_lt_of_anc hp ho ho.1 (acceptAt_mem hp ho.1 hkw) hOHv).1
+    have := (hp.cutZ_lt_of_anc ho ho.1 (hp.acceptAt_mem ho.1 hkw) hOHv).1
     have := lt_cutZ sp g
     have := le_gbar g
     have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
     change g ≤ tr.time kw
     linarith
-  have hHvT := relay_mem_voterBlockTree hr (sync_after hp (sp.ts l + 2 * sp.Δ)) ho.1 hkw hkwg
+  have hHvT := relay_mem_voterBlockTree hr (hp.sync.syncAC hp.run le_rfl) ho.1 hkw hkwg
     hkwt le_rfl hy hc hl (hFB.trans (hBO.trans hOHv))
-  have hHvy : Hv ∈ (tr.state y k).fg.tree := frame_tree_subset hp hy hc.1 hHvT.1
+  have hHvy : Hv ∈ (tr.state y k).fg.tree := hp.frame_tree_subset hy hc.1 hHvT.1
   have hh := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k)
-    (anc_tree_of_anc hp hy (hEO.trans hOHv) hHvy)
+    (hp.anc_tree_of_anc hy (hEO.trans hOHv) hHvy)
   exact ⟨Hv, hHvT, hBO.trans hOHv, hfloor.trans hh⟩
+
+/-- Whole-run specialization of the frozen viable witness. -/
+theorem raw_target_frozen_witness (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {r l k : Nat} {B O E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x r l O) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
+    (hFB : Anc (tr.HonestBlocks H) ell.frame.F B)
+    (hBO : Anc (tr.HonestBlocks H) B O) (hE : E ∈ (tr.state y k).fg.tree)
+    (hEO : Anc (tr.HonestBlocks H) E O)
+    (hfloor : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h) :
+    ∃ D ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+      Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D :=
+  (hp.toUpTo tr H (le_refl a)).raw_target_frozen_witness ho hy hc hl hFB hBO hE hEO hfloor
 
 /-- **(K2) at a vote, R5** (§5 Lemma R5; §11 item 1 for the votes through the ticks at `a_z`;
 §13 "Retaining the witnesses and the frame"; `t1-proof.md` §9 base case). At an honest vote of a

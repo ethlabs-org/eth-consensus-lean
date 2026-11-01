@@ -478,7 +478,8 @@ theorem high_record_entry (hp : ResetPremises tr H proposer dg g ΔF a)
       (Anc.mono (tree_subset_honest ho.1) hE''B), hJr, y, hy, k, hJ, hJh, hJT⟩
 
 /-- **Two entries at one height below one held block are one block** (entry constancy). -/
-theorem entry_root_eq (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ResetPremisesUpTo.entry_root_eq {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {z : Fin sp.n} (hz : z ∈ H) {m : Nat}
     {C Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state z m).fg.tree)
     (h₁ : Anc (tr.HonestBlocks H) Z₁ C) (h₂ : Anc (tr.HonestBlocks H) Z₂ C)
@@ -486,11 +487,21 @@ theorem entry_root_eq (hp : ResetPremises tr H proposer dg g ΔF a)
     (hT₁ : ((tr.state z m).fg.σ Z₁.root).Th = Z₁.root)
     (hT₂ : ((tr.state z m).fg.σ Z₂.root).Th = Z₂.root) : Z₁.root = Z₂.root := by
   have hr := Compose.fg_reachable hp.run.toLocalRun hz m
-  rcases SA.anc_total (honest_coherent hp) h₁ h₂ with h | h
-  · have := Th_eq_of_anc hr (anc_tree_of_anc hp hz h (mem_tree_of_anc hp hz h₂ hC)) hh.symm
+  rcases SA.anc_total hp.honest_coherent h₁ h₂ with h | h
+  · have := Th_eq_of_anc hr (hp.anc_tree_of_anc hz h (hp.mem_tree_of_anc hz h₂ hC)) hh.symm
     rw [← hT₁, ← hT₂, this]
-  · have := Th_eq_of_anc hr (anc_tree_of_anc hp hz h (mem_tree_of_anc hp hz h₁ hC)) hh
+  · have := Th_eq_of_anc hr (hp.anc_tree_of_anc hz h (hp.mem_tree_of_anc hz h₁ hC)) hh
     rw [← hT₁, ← hT₂, this]
+
+/-- Whole-run specialization of entry constancy. -/
+theorem entry_root_eq (hp : ResetPremises tr H proposer dg g ΔF a)
+    {z : Fin sp.n} (hz : z ∈ H) {m : Nat}
+    {C Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state z m).fg.tree)
+    (h₁ : Anc (tr.HonestBlocks H) Z₁ C) (h₂ : Anc (tr.HonestBlocks H) Z₂ C)
+    (hh : ((tr.state z m).fg.σ Z₁.root).h = ((tr.state z m).fg.σ Z₂.root).h)
+    (hT₁ : ((tr.state z m).fg.σ Z₁.root).Th = Z₁.root)
+    (hT₂ : ((tr.state z m).fg.σ Z₂.root).Th = Z₂.root) : Z₁.root = Z₂.root :=
+  (hp.toUpTo tr H (le_refl a)).entry_root_eq hz hC h₁ h₂ hh hT₁ hT₂
 
 end Consensus.Goldilocks.Healing
 
