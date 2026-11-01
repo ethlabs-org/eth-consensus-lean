@@ -655,7 +655,8 @@ theorem ownBlockAt_accept (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
       ⟨req.1, req.2.1, req.2.2.1, req.2.2.2, SA.proposal_payload_valid _ _ _⟩
       run.genesis_root_ok cfg _ _ x hr hs hp d p (by rw [hst]; exact hdp)
     simp only [hst] at h
-    have key : Compose.NoCollOn (digestOf S rho) (insert B ((simTrace S rho hn).state y j).fg.tree) →
+    have key : Compose.NoCollOn (digestOf S rho)
+        (insert B ((simTrace S rho hn).state y j).fg.tree) →
         ∃ fg', ((simTrace S rho hn).state y j).fg.onBlock B = some fg' := by
       rw [hB]
       exact fun hnc => (h.2.2.2.2.2.2 hnc).2
