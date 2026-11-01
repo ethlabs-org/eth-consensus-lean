@@ -222,21 +222,6 @@ theorem confirmed_duration_supply (Q : ConfirmedQuery S A V) :
   change 18 * (Q.run.1.Δ + 1) ≤ (accepted_catchUp S A : Nat) * Q.run.1.Δ
   nlinarith
 
-/-- Restrict the missing full-horizon service producer to the original query
-deadline. Both SA service and block relay are restricted; no regime disjunct,
-recurrence, or extra processing event is inferred. -/
-theorem sleepy_query_sync_of_horizon (Q : ConfirmedQuery S A V)
-    (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2)
-      Q.params.Δ Q.run.2.horizon) :
-    Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.deadline := by
-  refine ⟨service.deltaF, ⟨?_, ?_⟩, ?_⟩
-  · intro x hx i v hi h0 y hy j ℓ hj hdb hdj
-    exact service.ac.message x hx i v hi h0 y hy j ℓ hj (hdb.trans Q.bounded) hdj
-  · intro x hx i B hi h0 y hy j ℓ hj hdb hdj hFB
-    exact service.ac.relay x hx i B hi h0 y hy j ℓ hj (hdb.trans Q.bounded) hdj hFB
-  · intro x hx i B hi h0 y hy j hj hdb hdj hFB
-    exact service.relay x hx i B hi h0 y hy j hj (hdb.trans Q.bounded) hdj hFB
-
 /-- Canonical recipient service through the actual query deadline. -/
 theorem sleepy_query_sync (Q : ConfirmedQuery S A V)
     (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run) :
