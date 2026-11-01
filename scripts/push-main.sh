@@ -17,6 +17,8 @@
 # Usage: scripts/push-main.sh   (in a job on the shared box; RUN_DIR is set if missing).
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+started=$SECONDS
+timing() { echo "push-main: timing $1=$((SECONDS - $2))s"; }
 die() { echo "push-main: REFUSED: $*" >&2; release; exit 1; }
 remote=origin lock_ref=refs/heads/push-main-lock ttl="${PUSH_MAIN_LOCK_TTL:-1800}" held=""
 lock_info() {  # prints "<sha> <unix time> <owner...>" of the remote lock, or nothing
@@ -54,7 +56,7 @@ release() {
 }
 # Cancellation must stop the landing, not merely release its lock and resume.
 # EXIT performs cleanup for both normal completion and signal-triggered exits.
-trap release EXIT
+trap 'rc=$?; release; timing total "$started"; echo "push-main: exit=$rc"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
@@ -63,6 +65,7 @@ git fetch -q --tags --force "$remote" main || die "cannot fetch $remote main"
   { git status --short >&2; die "uncommitted or untracked files (commit them, or remove them): the check would include them"; }
 tries="${PUSH_MAIN_TRIES:-6}"
 while :; do
+  [[ -z "$(git status --porcelain)" ]] || die "tree changed before checking"
   base="$(git rev-parse "$remote/main")" head="$(git rev-parse HEAD)"
   [[ "$base" != "$head" ]] || die "HEAD is $remote/main: nothing to push"
   git merge-base --is-ancestor "$base" HEAD ||
@@ -70,19 +73,27 @@ while :; do
   log="$(mktemp)"
   export RUN_DIR="${RUN_DIR:-$(mktemp -d)}"
   echo "push-main: checking ${head:0:8} against $remote/main ${base:0:8} (scripts/check.sh --changed)${held:+, holding the lock}"
+  phase=$SECONDS
   rc=0
   scripts/check.sh --changed "$base" 2>&1 | tee "$log" || rc=$?
+  timing check "$phase"
   result="$(grep '^check.sh: ' "$log" | tail -1)"
   ((rc == 0)) && [[ "$result" == "check.sh: PASSED"* ]] || die "${result:-check.sh did not finish} (log: $log)"
+  phase=$SECONDS
   scripts/review-boundary.sh "$base" || die "review boundary: a trusted-surface change needs spec-approved (a PR; docs/spec-review.md)"
+  timing review-boundary "$phase"
   git fetch -q --tags --force "$remote" main
   if [[ "$(git rev-parse "$remote/main")" == "$base" ]]; then
     # Without the lock, don't overtake a lander that holds it (it checked against this same main).
     info="$([[ -n "$held" ]] || lock_info)"
     if [[ -z "$info" ]]; then
+      [[ "$(git rev-parse HEAD)" == "$head" && -z "$(git status --porcelain)" ]] ||
+        die "HEAD or tree changed during checks"
       echo "$head" >>"$(git rev-parse --git-common-dir)/push-main-verified"
-      if git push --force-with-lease="refs/heads/main:$base" "$remote" HEAD:main; then
+      phase=$SECONDS
+      if git push --force-with-lease="refs/heads/main:$base" "$remote" "$head:refs/heads/main"; then
         release
+        timing delivery "$phase"
         echo "push-main: pushed ${head:0:8} to main after: $result"
         exit 0
       fi
@@ -92,8 +103,16 @@ while :; do
   # main moved (or someone holds the lock): take the lock, rebase (only if clean) and check again.
   tries=$((tries - 1))
   ((tries > 0)) || die "$remote/main kept moving (PUSH_MAIN_TRIES rounds); run this again"
-  [[ -n "$held" ]] || acquire
+  if [[ -z "$held" ]]; then
+    phase=$SECONDS
+    acquire
+    timing lock-acquire "$phase"
+  fi
+  [[ "$(git rev-parse HEAD)" == "$head" && -z "$(git status --porcelain)" ]] ||
+    die "HEAD or tree changed before rebase"
+  phase=$SECONDS
   git fetch -q --tags --force "$remote" main
   git rebase -q "$remote/main" || { git rebase --abort; die "$remote/main moved and the rebase conflicts: resolve, then run this again"; }
+  timing fetch-rebase "$phase"
   echo "push-main: rebased onto $(git rev-parse --short "$remote/main"); checking again under the lock"
 done
