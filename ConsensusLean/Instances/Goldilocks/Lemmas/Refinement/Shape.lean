@@ -458,6 +458,54 @@ theorem onBlock_voteForward (st : State sp ro) (B : Blk sp) (m : Vote sp.n)
   · exact hold
   · exact hnew
 
+/-- A message handler's sole AC cut transports fresh incoming or emitted votes directly
+to the aggregate admission filter. Freshness remains an explicit reachability obligation. -/
+theorem onMessage_voteForward_of_cut (st : State sp ro) (m : Vote sp.n)
+    (ℓ : ACLabel (goldilocksNode sp ro))
+    (hc : .ac ℓ ∈ (Node.onMessage st.self st.node st.now m).2) (v : Vote sp.n)
+    (hsource : v = m ∨ ∃ e ∈ ℓ.emits, e.msg = v)
+    (hold : v ∉ st.node.ac.pool v.slot)
+    (hnew : v ∈ ((goldilocksNode sp ro).step st.self st.node.ac ℓ.frame
+      st.now ℓ.call).1.pool v.slot) :
+    (st.now, v) ∈ (apply st (Node.onMessage st.self st.node st.now m)).voteForwards := by
+  have hc' := hc
+  simp only [Node.onMessage, Node.acCall, List.mem_singleton, Cut.ac.injEq] at hc'
+  subst ℓ
+  apply apply_voteForward_of_admission st _ v _ hc
+  · rcases hsource with rfl | he
+    · exact Or.inl rfl
+    · exact Or.inr (Or.inr he)
+  · exact hold
+  · exact hnew
+
+/-- The AC cut of a block handler has exactly the handler's old and new AC states:
+the preceding FG cut changes neither pool. Thus a fresh cut admission or emission
+passes `apply`'s aggregate filter, without a collision or frame-coherence premise. -/
+theorem onBlock_voteForward_of_cut (st : State sp ro) (B : Blk sp)
+    (ℓ : ACLabel (goldilocksNode sp ro))
+    (hc : .ac ℓ ∈ (Node.onBlock st.self st.node st.now B).2) (v : Vote sp.n)
+    (hsource : v ∈ SA.blockVotes B ∨ ∃ e ∈ ℓ.emits, e.msg = v)
+    (hold : v ∉ st.node.ac.pool v.slot)
+    (hnew : v ∈ ((goldilocksNode sp ro).step st.self st.node.ac ℓ.frame
+      st.now ℓ.call).1.pool v.slot) :
+    (st.now, v) ∈ (apply st (Node.onBlock st.self st.node st.now B)).voteForwards := by
+  have hc' := hc
+  simp only [Node.onBlock] at hc'
+  split_ifs at hc' with ht
+  · simp at hc'
+  · cases hfg : st.node.fg.onBlock B with
+    | none => simp [hfg] at hc'
+    | some fg' =>
+      simp only [hfg, Node.acCall, List.mem_cons, List.not_mem_nil, or_false,
+        reduceCtorEq, false_or, Cut.ac.injEq] at hc'
+      subst ℓ
+      apply apply_voteForward_of_admission st _ v _ hc
+      · rcases hsource with hv | he
+        · exact Or.inr (Or.inl ⟨B, rfl, hv⟩)
+        · exact Or.inr (Or.inr he)
+      · exact hold
+      · simpa only [Node.onBlock, ht, ↓reduceIte, hfg, Node.acCall] using hnew
+
 /-- `relayIf` keeps the key. -/
 theorem relayIf_self (st : State sp ro) (c : Prop) [Decidable c] o :
     (relayIf st c o).self = st.self := by unfold relayIf; split <;> rfl

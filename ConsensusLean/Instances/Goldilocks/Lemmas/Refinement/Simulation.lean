@@ -45,6 +45,31 @@ theorem releaseAll_voteForward_suffix (hash : Blocks.Header Info → Nat)
     protects_voteForward S x x _ tv.1 tv.2, dependencies_voteForward _ x tv.1 tv.2⟩
   exact Model.closure_mono (fun _ h => List.mem_append_left _ h) (hheld tv htv)
 
+omit [DecidableEq V] in
+/-- A selected poll publishes every queued envelope whose canonical vote is already held.
+The intervening ordinary/block candidates preserve these holdings even if their guards fail. -/
+theorem dutyStep_poll_voteForward (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Nat)
+    (hsel : rho.ownKey v ∈ rho.sel .poll)
+    (hself : (shapeOf S hn nd).self = rho.ownKey v)
+    (hheld : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
+      voteObj tv.2 ∈ Model.closure nd.seen) :
+    ∀ tv ∈ (shapeOf S hn nd).voteForwards,
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward tv.1 (encodeVote tv.2))) [voteObj tv.2] ∈
+          (rho.dutyStep v nd (.poll t)).2 := by
+  intro tv htv
+  unfold Model.Run.dutyStep
+  simp only [show (Model.protoOf (compiled (family S)) E).role (.poll t) = .poll from rfl,
+    hsel, ↓reduceIte]
+  rw [signedCandidate_poll_eq S rho hn v nd t hsel hself]
+  erw [releaseAll_voteForward_suffix S rho.hash (rho.ownKey v)
+    ⟨((Model.protoOf (compiled (family S)) E).act nd.st (.poll t)).1, nd.seen⟩
+    _ _ (fun q hq => ?_)]
+  · exact List.mem_append_right _ (List.mem_map.mpr ⟨tv, htv, rfl⟩)
+  · erw [Model.releaseAll_seen]
+    exact Model.closure_mono (fun _ h => List.mem_append_left _ h) (hheld q hq)
+
 /-- An honest emission cut cannot be a restart, even though `EmitAt` permits that call
 syntactically. This uses the actual cut law and the run's nonnegative clock. -/
 theorem simTrace_emission_not_restart (hv : rho.ExecutionValid)
@@ -65,6 +90,39 @@ theorem simTrace_emission_not_restart (hv : rho.ExecutionValid)
   rw [hempty] at he
   exact List.not_mem_nil he
 
+/-- Every non-restart AC cut lies in a sending engine event of the same node and time.
+This is interval transport only; it does not assume the publication supplier. -/
+theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}
+    {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
+    (hc : (simTrace S rho hn).CallAt y k (.ac ℓ)) (hnr : ℓ.call ≠ .restart) :
+    ∃ i, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
+      rho.SendsAt (rho.key y) i ((simTrace S rho hn).time k) := by
+  have hl : (simTrace S rho hn).label k ≠ none := by rw [hc.2]; simp
+  obtain ⟨r, i, ev, -, he, hlo, hhi, hidx, hnode, ht, -, hlabel⟩ :=
+    simTrace_cut S rho hn hl
+  have hkey : rho.key y = ev.node := by
+    rw [← hc.1, hnode]
+    exact rho.key.apply_symm_apply ev.node
+  refine ⟨i, hlo, hhi, ?_⟩
+  rw [hkey, ht]
+  cases ev with
+  | tick v t => exact Or.inl he
+  | deliver v o t => exact Or.inr ⟨o, he⟩
+  | restart v t =>
+    have hr := List.mem_of_getElem? hidx
+    rw [eventCuts_restart S rho hn i v t he] at hr
+    obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hr
+    have hj' := hj
+    rw [length_groupRecs] at hj'
+    have hj0 : j = 0 := by
+      simpa only [Node.exec, Node.restart, List.length_singleton, Nat.lt_one_iff] using hj'
+    subst j
+    have hrl := (getElem_groupRecs _ _ _ _ _ _ _ 0 hj).2.2.2.2
+    have heq := Option.some.inj (hlabel.symm.trans hc.2)
+    rw [hrl] at heq
+    have hcall := congrArg (fun c => match c with | .ac l => l.call | _ => .restart) heq
+    exact False.elim (hnr hcall.symm)
+
 /-- Option C's outstanding publication supplier: actual same-event release and first release,
 not merely candidate construction or pool membership. -/
 theorem simTrace_vote_forwarded (hv : rho.ExecutionValid) :
@@ -79,6 +137,20 @@ theorem simTrace_vote_forwarded (hv : rho.ExecutionValid) :
     ∃ i, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
       rho.SendsAt (rho.key y) i (tr.time k) ∧ envelope ∈ rho.releasesAt i ∧
       ∀ j < i, envelope ∉ rho.releasesAt j := by
+  intro y hy k m
+  dsimp only
+  intro hsource
+  have hevent : ∃ i, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
+      rho.SendsAt (rho.key y) i ((simTrace S rho hn).time k) := by
+    rcases hsource with ⟨ℓ, hc, e, he, -⟩ | ⟨hc, -, -⟩
+    · exact simTrace_call_sending_event S rho hn hc
+        (simTrace_emission_not_restart S rho hn hv hy hc he)
+    · rcases hc with ⟨ℓ, hc, hm⟩ | ⟨ℓ, B, hc, hb, -⟩
+      · exact simTrace_call_sending_event S rho hn hc (by rw [hm]; simp)
+      · exact simTrace_call_sending_event S rho hn hc (by rw [hb]; simp)
+  obtain ⟨i, hlo, hhi, hs⟩ := hevent
+  refine ⟨i, hlo, hhi, hs, ?_⟩
+  -- Remaining: fresh handler queueing, actual prefix holdings, and global first release.
   sorry
 
 /-- The simulating trace and cut map of a valid engine run simulate it. -/
