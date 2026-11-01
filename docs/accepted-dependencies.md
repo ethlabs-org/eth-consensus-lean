@@ -471,6 +471,34 @@ that serviced proposal. Their bodies are not no-sorry proofs. Actual acceptance 
 Healthy preparation/preservation, arbitrary-cut safety, outage and endpoint assembly
 are excluded from this landing and remain OPEN.
 
+## Approved OPEN Healthy/base supplier skeleton
+
+`Lemmas/Refinement/HealthySuppliers.lean` states the five lead-reviewed OPEN
+obligations below, in `Consensus.Goldilocks.Refinement`. Signature approval is
+not proof completion. The module preserves endpoint premises and separates
+finite `[ready, heal]` preparation from health-only preservation.
+
+| Named leaf | Remaining obligation |
+|---|---|
+| `healthy_old_inventory_initialize` | OPEN OldHonest initialization (healing §§27/28): selects explicit record/cache/expiry/service timing and establishes coverage-or-below-hj for the global signed-entry inventory, including entries arriving later. |
+| `healthy_old_row_realize` | OPEN first-arrival/self-entry join: the exact old-source antecedent identifies E with root a.T and the receiver's replay height; E is not the source D, and no extra ToFGAt D is assumed. |
+| `healthy_prepare` | OPEN record/cache/stored-lock preparation at cutMap(endCut heal), consuming inventory initialization and progress only on `[ready, heal]`. |
+| `healthy_preserve` | OPEN preservation at every later canonical cut through engine end, including same-time intermediate states, under health without later progress. No timestamp bound on the boundary cut is asserted. |
+| `healthy_vote_row_replacement` | OPEN eventual-coverage-to-label-bounded replacement matching BaseFacts: replacement label ≤ predecessor slot, not OriginBefore or a newly assumed causal source. |
+
+`healthy_old_inventory_preserve` delegates to the proved
+`Healing.oldHonest_inventory_preserved` from 9f5d6e7. Monotone hj preserves
+initialization; it does not produce it. Inventory and state facts deliberately
+use eventual whole-run origins, **not finite-prefix preparation certificates**.
+Timing exposes ready≤ts(s₀), record/cache service and old-lock expiry margins≤heal.
+
+Remaining consumer adapters stay OPEN: arbitrary-cut read safety and temporal
+monotonicity, old read-point lock compatibility/slow-boundary production, event
+sources and vote extension, frozen viability and finite service, and endpoint
+assembly. The five leaves do not discharge these joins. No ReadySafe-as-base or
+new Healthy premise is introduced. `held_row_causal_source` remains external
+provenance evidence only; it does not initialize or renew old-entry coverage.
+
 ## Still missing from this inventory
 
 Remaining finite adapter types, deeper outage/final leaves, and completed paper
