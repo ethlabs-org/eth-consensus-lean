@@ -1,0 +1,94 @@
+module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.ContestLocksRun
+
+public section
+
+/-! # Goldilocks: a lock kept over an interval of cuts
+
+`lock_keep_interval`: the interval induction of `lock_keep_run` (consensus-lean#135, WI-15/16).
+If an honest node `y` holds a lock `l` on `B` at cut `i`, and at every cut `j ∈ [i, k)` the
+premises of `lock_keep_run` hold (no expiry, `B` in the frame's tree and its own viable ancestor,
+`unlock` does not move it), then `y` holds `l` at cut `k`.
+
+`viableAncestor_eq_self_run` discharges the viable-ancestor premise by one of three of the
+contest-lock lemmas (contest; no contest with `hmax = hj + 1`; `hmax ≠ hj + 1`), and
+`lock_keep_interval_cases` is the interval induction with that disjunction per cut.
+`viableAncestor_of_F_advance_run` reads an earlier store and is not in the disjunction. -/
+
+namespace Consensus.Goldilocks.Compose
+
+open SA (SAParams ReplayOrder Payload)
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+
+/-- **A lock kept over `[i, k]`.** -/
+theorem lock_keep_interval (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {i k : Nat} (hik : i ≤ k) {l : SA.Lock} (hl : l ∈ (tr.state y i).ac.locks)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBr : B.root = l.block)
+    (hstep : ∀ j, i ≤ j → j < k → sp.slot (tr.time j) ≤ l.slot + sp.k ∧
+      B ∈ (Node.frame (tr.state y j)).tree ∧
+      (Node.frame (tr.state y j)).viableAncestor B = B ∧
+      ((sp.slot (tr.time j) : Int) - 1 ≤ l.slot ∨ ∀ V, SA.unlockTarget sp
+        (Node.frame (tr.state y j)) V ((sp.slot (tr.time j) : Int) - 1) B = B)) :
+    l ∈ (tr.state y k).ac.locks := by
+  induction k, hik using Nat.le_induction with
+  | base => exact hl
+  | succ k hik ih =>
+    obtain ⟨hk, hB, hva, hu⟩ := hstep k hik (Nat.lt_succ_self k)
+    exact lock_keep_run hrun hy k (ih fun j h1 h2 => hstep j h1 (by omega)) hk hB hBr hva hu
+
+/-- `B` is its own viable ancestor at the frame of an honest node `y` at cut `i` by one of
+`viableAncestor_of_contest_run`, `viableAncestor_of_not_contest_run` and
+`viableAncestor_of_hmax_ne_run`. -/
+theorem viableAncestor_eq_self_run (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    (hy : y ∈ H) (i : Nat) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB : B ∈ (tr.state y i).fg.toFrame.tree)
+    (hcases :
+      ((tr.state y i).fg.Contest ∧ ∃ Y ∈ (tr.state y i).fg.tree,
+        (tr.state y i).fg.Anc (tr.state y i).fg.F Y ∧
+        (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ Y.root).h ∧
+        (tr.state y i).fg.toFrame.Anc B Y) ∨
+      ((tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧ ¬ (tr.state y i).fg.Contest ∧
+        (tr.state y i).fg.Anc (tr.state y i).fg.F (tr.state y i).fg.J ∧
+        (tr.state y i).fg.Anc (tr.state y i).fg.J B ∧ ∃ Y ∈ (tr.state y i).fg.tree,
+        (tr.state y i).fg.Anc (tr.state y i).fg.J Y ∧ (tr.state y i).fg.IsViable Y ∧
+        (tr.state y i).fg.toFrame.Anc B Y) ∨
+      ((tr.state y i).fg.hmax ≠ (tr.state y i).fg.hj + 1 ∧
+        ∃ Y ∈ (tr.state y i).fg.toFrame.viableHeads, (tr.state y i).fg.toFrame.Anc B Y)) :
+    (tr.state y i).fg.toFrame.viableAncestor B = B := by
+  rcases hcases with ⟨hc, Y, hY, hFY, hh, hBY⟩ | ⟨hm, hc, hFJ, hJB, Y, hY, hJY, hv, hBY⟩ |
+      ⟨hm, Y, hW, hBY⟩
+  · exact viableAncestor_of_contest_run hrun hy i hc hB hY hFY hh hBY
+  · exact viableAncestor_of_not_contest_run hrun hy i hm hc hFJ hB hJB hY hJY hv hBY
+  · exact viableAncestor_of_hmax_ne_run hrun hy i hm hB hW hBY
+
+/-- `lock_keep_interval` with the viable-ancestor premise at each cut given by the case
+disjunction of `viableAncestor_eq_self_run`. -/
+theorem lock_keep_interval_cases (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i k : Nat} (hik : i ≤ k) {l : SA.Lock} (hl : l ∈ (tr.state y i).ac.locks)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBr : B.root = l.block)
+    (hstep : ∀ j, i ≤ j → j < k → sp.slot (tr.time j) ≤ l.slot + sp.k ∧
+      B ∈ (tr.state y j).fg.toFrame.tree ∧
+      (((tr.state y j).fg.Contest ∧ ∃ Y ∈ (tr.state y j).fg.tree,
+        (tr.state y j).fg.Anc (tr.state y j).fg.F Y ∧
+        (tr.state y j).fg.hmax ≤ ((tr.state y j).fg.σ Y.root).h ∧
+        (tr.state y j).fg.toFrame.Anc B Y) ∨
+      ((tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 ∧ ¬ (tr.state y j).fg.Contest ∧
+        (tr.state y j).fg.Anc (tr.state y j).fg.F (tr.state y j).fg.J ∧
+        (tr.state y j).fg.Anc (tr.state y j).fg.J B ∧ ∃ Y ∈ (tr.state y j).fg.tree,
+        (tr.state y j).fg.Anc (tr.state y j).fg.J Y ∧ (tr.state y j).fg.IsViable Y ∧
+        (tr.state y j).fg.toFrame.Anc B Y) ∨
+      ((tr.state y j).fg.hmax ≠ (tr.state y j).fg.hj + 1 ∧
+        ∃ Y ∈ (tr.state y j).fg.toFrame.viableHeads, (tr.state y j).fg.toFrame.Anc B Y)) ∧
+      ((sp.slot (tr.time j) : Int) - 1 ≤ l.slot ∨ ∀ V, SA.unlockTarget sp
+        (Node.frame (tr.state y j)) V ((sp.slot (tr.time j) : Int) - 1) B = B)) :
+    l ∈ (tr.state y k).ac.locks :=
+  lock_keep_interval hrun hy hik hl hBr fun j h1 h2 => by
+    obtain ⟨hk, hB, hc, hu⟩ := hstep j h1 h2
+    exact ⟨hk, hB, viableAncestor_eq_self_run hrun hy j hB hc, hu⟩
+
+end Consensus.Goldilocks.Compose
+
+end
