@@ -193,6 +193,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Chains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts

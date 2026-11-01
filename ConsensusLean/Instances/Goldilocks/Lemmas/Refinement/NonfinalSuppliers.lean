@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDefs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 
