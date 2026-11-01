@@ -140,6 +140,59 @@ private theorem g_le_ts (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin s
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   linarith
 
+/-- Vote extension for origins and votes strictly before a cut, without cache invariants. -/
+def HistoricalVoteExtensionBefore (k : Nat) : Prop :=
+  ∀ x i j B, HighOrigin tr H g x i j B → i < k →
+    ∀ z ∈ H, ∀ q < k, ∀ e, SA.VoteAt tr.projAC z q e →
+      j < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B
+
+/-- Public characterization for constructing and applying historical vote extension. -/
+theorem historicalVoteExtensionBefore_iff (k : Nat) :
+    HistoricalVoteExtensionBefore (tr := tr) (H := H) (g := g) k ↔
+      ∀ x i j B, HighOrigin tr H g x i j B → i < k →
+        ∀ z ∈ H, ∀ q < k, ∀ e, SA.VoteAt tr.projAC z q e →
+          j < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
+  rfl
+
+/-- Two written historical origins are compatible using only historical vote extension.
+The label split is the vote-extension fragment of `origins_compatible_before`. -/
+theorem historical_origins_compatible_before
+    (hp : ResetPremises tr H proposer dg g ΔF a) {k : Nat}
+    (hv : HistoricalVoteExtensionBefore (tr := tr) (H := H) (g := g) k)
+    {x x' : Fin sp.n} {i j r l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB : HighOrigin tr H g x i j B) (hi : i < k)
+    (hO : HighOrigin tr H g x' r l O) (hr : r < k) :
+    Compatible (tr.HonestBlocks H) B O := by
+  rw [historicalVoteExtensionBefore_iff] at hv
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hU := hrun.localRun.coherent
+  have hf : 2 * Hᶜ.ncard < sp.n := by
+    have := hp.healthy.2.2
+    have := Fin.pos x
+    have hn : sp.n = sp.toParams.n := rfl
+    omega
+  obtain ⟨CV, hst⟩ := hB.2.2.1
+  obtain ⟨CV', hst'⟩ := hO.2.2.1
+  obtain ⟨-, D, hfl, hBD⟩ := storedFastLock_mem hp.run hp.noColl hB.1 hst
+  obtain ⟨-, D', hfl', hOD'⟩ := storedFastLock_mem hp.run hp.noColl hO.1 hst'
+  rcases lt_trichotomy l j with hlt | rfl | hgt
+  · have hDO : Compatible (tr.HonestBlocks H) D O :=
+      SA.fastLock_compatible_of_votes hrun hB.1 (Nat.lt_succ_self i) hfl hf
+        fun z hz q hq e he hs => hv x' r l O hO hr z hz q (by omega) e he (by omega)
+    by_contra hn
+    exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
+  · have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
+      (fun v => v.val) tr proposer ΔF (sp.ts l) (sp.ts (l + 1 : Nat) + sp.Δ) hp.run.toLocalRun
+      (syncRun_of_gst hp.healthy.1 (g_le_ts hp hB le_rfl))
+    rcases SA.fastLock_same_slot hrun hB.1 hfl hO.1 hfl' hsync hf with h | h
+    · exact SA.anc_total hU (hBD.trans h) hOD'
+    · exact SA.anc_total hU hBD (hOD'.trans h)
+  · have hDB : Compatible (tr.HonestBlocks H) D' B :=
+      SA.fastLock_compatible_of_votes hrun hO.1 (Nat.lt_succ_self r) hfl' hf
+        fun z hz q hq e he hs => hv x i j B hB hi z hz q (by omega) e he (by omega)
+    by_contra hn
+    exact SA.not_compatible_of_anc hU hOD' hn hDB.symm
+
 /-- **Activation of a high origin** (§13 "Activation uses earlier labels, not D's own transfer",
 "Retaining the witnesses and the frame"; §12, the pending boundary case). At the state at
 `t_{j+1}` after the reset (immediately before the first-transfer votes of the origin's label `j`,
