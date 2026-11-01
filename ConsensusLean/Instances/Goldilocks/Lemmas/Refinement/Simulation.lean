@@ -315,6 +315,39 @@ theorem received_vote_processAt {i : Nat} {v : V}
     · simp [simTrace_label, hk, hl]
   · simpa only [simTrace_time, hk, Option.elim_some] using ht'
 
+/-- An authenticated vote envelope received after its globally first release yields
+processing no earlier than that release. The first-release premise is essential:
+the wire timestamp alone does not authenticate a fresh source occurrence. -/
+theorem received_voteForward_processAt (hv : rho.ExecutionValid)
+    {source i : Nat} {x : Fin (Fintype.card V)} {v : V} {τ u : Time}
+    {receipt : Wire (Fintype.card V)} {m : SA.Vote (Fintype.card V)}
+    (hx : rho.key x ∈ rho.honest) (hs : rho.SendsAt (rho.key x) source τ)
+    (hfirst : ∀ j < source,
+      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
+        rho.releasesAt j)
+    (he : rho.events[i]? = some (.deliver v receipt u))
+    (hc : Model.Obj.Contains receipt
+      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m])) :
+    ∃ k, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
+      (simTrace S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
+      (simTrace S rho hn).time k = u ∧ τ ≤ u := by
+  obtain ⟨j, s, hji, hsend, hrel⟩ := hv.unforgeable i v receipt u he _ hc
+    (rho.key x) hx rfl
+  have hsj : source ≤ j := by
+    by_contra h
+    exact hfirst j (Nat.lt_of_not_ge h) hrel
+  have hsi : source < i := hsj.trans_lt hji
+  have htime : τ ≤ u := by
+    rcases hs with hs | ⟨o, hs⟩ <;>
+      rcases keyLe_of_lt S rho hv hs he hsi with h | ⟨h, _⟩
+    · exact h.le
+    · exact h.le
+    · exact h.le
+    · exact h.le
+  obtain ⟨k, hlo, hhi, hp, ht⟩ := received_vote_processAt S rho hn he
+    (hc.trans (Model.Obj.Contains.step (List.mem_singleton_self _) (.refl _)))
+  exact ⟨k, hlo, hhi, hp, ht, htime⟩
+
 /-- Option C's outstanding publication supplier: actual same-event release and first release,
 not merely candidate construction or pool membership. -/
 theorem simTrace_vote_forwarded (hv : rho.ExecutionValid) :
