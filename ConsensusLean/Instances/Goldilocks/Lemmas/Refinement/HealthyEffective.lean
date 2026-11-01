@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -280,6 +281,82 @@ theorem ready_update_effective_record
   simp only [hconf]
   rw [ite_eq_right hnv]
   exact (effective_record_update_slot_growth (sp := sp) hΦ hPt).1.mono hΦU
+
+/-- A raw result lies below a unanimous head when its pool has enough participants.
+No fast test or absence of veto is required. -/
+theorem raw_result_below_unanimous
+    {ro : SA.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SA.SATrace sp FGP ro}
+    {proposer : Nat → Fin sp.n} (hr : SA.ACRun proposer tr H U)
+    {x : Fin sp.n} (hx : x ∈ H) {r l : Nat} {C P : SA.Blk sp.n FGP}
+    {CV : Set (SA.Vote sp.n)} (hres : SA.ResultAt tr x r l C CV)
+    (hparticipants : 2 * Hᶜ.ncard ≤ (SA.voters {v | v ∈ (tr.state x r).pool l}).ncard)
+    (hP : P ∈ U)
+    (hvotes : ∀ z ∈ H, ∀ q e, SA.VoteAt tr z q e → e.msg.slot = l → e.msg.head = P.root) :
+    Anc U C P := by
+  obtain ⟨z, hz, q, -, e, hv, -, hs, Hd, hHd, he, hCH⟩ :=
+    SA.result_honest_supporter_of_participants sp hr hx hres (B := C) .refl hparticipants
+  have : Hd = P := hr.localRun.coherent.1 hHd hP (he.trans (hvotes z hz q e hv hs))
+  exact this ▸ hCH
+
+/-- Conditional later-label transfer compares the raw result with the prefix extended
+by that same honest counted vote. It does not orient the result below the prefix. -/
+theorem raw_result_compatible_of_votes
+    {ro : SA.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SA.SATrace sp FGP ro}
+    {proposer : Nat → Fin sp.n} (hr : SA.ACRun proposer tr H U)
+    {x : Fin sp.n} (hx : x ∈ H) {r l : Nat} {C P : SA.Blk sp.n FGP}
+    {CV : Set (SA.Vote sp.n)} (hres : SA.ResultAt tr x r l C CV)
+    (hparticipants : 2 * Hᶜ.ncard ≤ (SA.voters {v | v ∈ (tr.state x r).pool l}).ncard)
+    (hvotes : ∀ z ∈ H, ∀ q e, SA.VoteAt tr z q e → e.msg.slot = l → SA.VoteExtends U e.msg P) :
+    Compatible U C P := by
+  obtain ⟨z, hz, q, -, e, hv, -, hs, Hd, hHd, he, hCH⟩ :=
+    SA.result_honest_supporter_of_participants sp hr hx hres (B := C) .refl hparticipants
+  obtain ⟨Hp, hHp, hep, hPH⟩ := hvotes z hz q e hv hs
+  obtain rfl : Hp = Hd := hr.localRun.coherent.1 hHp hHd (hep.trans he.symm)
+  exact SA.anc_total hr.localRun.coherent hCH hPH
+
+/-- Healthy late updates need no separately supplied participant bound. -/
+theorem raw_result_compatible_of_healthy_votes
+    {ro : SA.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SA.SATrace sp FGP ro}
+    {proposer : Nat → Fin sp.n} {g : Time} (hS : SA.HealthyBase tr H U proposer g)
+    {x : Fin sp.n} (hx : x ∈ H) {r l : Nat} {C P : SA.Blk sp.n FGP}
+    {CV : Set (SA.Vote sp.n)} (hres : SA.ResultAt tr x r l C CV)
+    (hgl : SA.gbar g + 4 * sp.Δ ≤ sp.ts l)
+    (hvotes : ∀ z ∈ H, ∀ q e, SA.VoteAt tr z q e → e.msg.slot = l → SA.VoteExtends U e.msg P) :
+    Compatible U C P := by
+  obtain ⟨ell, hu, hC, -⟩ := hres
+  obtain ⟨z, hz, q, e, hv, hs, Hd, hHd, he, hCH⟩ := SA.result_extended hS hgl hx hu.1
+    (by rw [hu.2.2.1]; linarith [sp.toParams.hΔ]) hC
+  obtain ⟨Hp, hHp, hep, hPH⟩ := hvotes z hz q e hv hs
+  obtain rfl : Hp = Hd := hS.run.localRun.coherent.1 hHp hHd (hep.trans he.symm)
+  exact SA.anc_total hS.run.localRun.coherent hCH hPH
+
+/-- A raw result of the ready proposal's own label is below that proposal, including
+vetoed or sub-fast results. Later labels require their own vote-extension premise. -/
+theorem raw_result_below_ready
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+    {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a : Time}
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : Healing.ReadyProposal tr H proposer p k u P)
+    (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {x : Fin sp.n} (hx : x ∈ H) {r : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (SA.Vote sp.n)} (hres : SA.ResultAt tr.projAC x r u C CV) :
+    Anc (tr.HonestBlocks H) C P := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  obtain ⟨ell, hu, hC, -⟩ := hres
+  obtain ⟨z, hz, q, e, hv, hs, Hd, hHd, he, hCH⟩ := SA.result_extended hS hgu hx hu.1
+    (by rw [hu.2.2.1]; linarith [sp.toParams.hΔ]) hC
+  obtain ⟨-, -, _, _, _, _, _, _, _, _, _, _, _, ja, _, hacc, _⟩ :=
+    Healing.honestProposalRun_of_ready hp.run hp.noColl hP
+  rw [← hP.2.1] at hacc
+  obtain ⟨ellp, hcp, hblock⟩ := hacc
+  have hPm := (SA.accept_new sp hS.run.localRun hP.1 ⟨ellp, hcp, hblock⟩).1 ellp hcp
+  have hPU := (SA.frameIn_of_callAt hS.run.localRun hP.1 hcp).2 hPm
+  have : Hd = P := hS.run.localRun.coherent.1 hHd hPU
+    (he.trans (Healing.ready_unanimous hp hc hP hR z hz q e hv hs))
+  exact this ▸ hCH
 
 end Consensus.Goldilocks.Refinement
 end
