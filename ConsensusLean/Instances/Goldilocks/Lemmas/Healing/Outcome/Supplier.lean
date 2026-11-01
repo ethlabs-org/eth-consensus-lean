@@ -214,6 +214,31 @@ theorem reset_proposal_viable
   rw [Compose.frame_of_projAC hp.run hy hcy.1] at hPy hroot' ⊢
   exact ⟨hPy.1, hPy.2, hroot'.mono (fun X hX => hX.1), hfloor⟩
 
+/-- Any ancestor of a viable current proposal above the voter's anchor is in its viable tree.
+This is the winner-domain transport used by suffix comparison. -/
+theorem reset_winner_voter_tree
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
+    (hes : e.msg.slot = u)
+    {P C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
+    (hCP : Anc (tr.HonestBlocks H) C P)
+    (haC : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) C) :
+    C ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  have hfC := ((SA.fcRoot_anc_getAnchor hPhi e.readPoint (tr.time j)).mono hPhiU).trans haC
+  have hFC := (hPhi.F_anc_fcRoot.mono hPhiU).trans hfC
+  have hCt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hP.1.1 hCP hFC
+  have hCP' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hCt hCP hP.1.1
+  have hfC' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfC hCt
+  obtain ⟨W, hW, hWv, hPW⟩ := hP.2.2
+  have hCs : C ∈ SA.voterBlockTree sp e.readPoint ell.frame u := by
+    rw [← hes] at hP ⊢
+    exact SA.voterBlockTree_anc hr hy hc P hP.1 C hCP'
+  exact ⟨hCs, hfC', W, hW, hWv, hCP'.trans hPW⟩
+
 /-- **The joined duty, unanimity** (§23; phase-service §10, "Join with RN/RU"): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
 `t_u ≥ R` is `P`. -/
