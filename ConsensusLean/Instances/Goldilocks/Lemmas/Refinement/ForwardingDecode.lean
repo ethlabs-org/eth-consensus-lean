@@ -262,4 +262,65 @@ theorem accepted_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V
       run.genesis_root_ok hr hs hp d p (by rw [hst]; exact hdp)
     simpa only [hst, Node.acProposal, Node.tickStep, Node.acCall, hB] using hd
 
+/-- A successful decode of a constructed wrapper preserves its explicit stamp and parent
+when the canonical child has already been decoded in that table. -/
+theorem decoded_forward_fields {sp : SA.SAParams} (hs : List (Header Info × Nat))
+    (x : Fin sp.n) (t : Time) (p : Option (Wire sp.n)) (B : Blk sp)
+    (hb : decodeBlock sp hs (blockObj sp B) = some B)
+    {u : Time} {q : Option (Wire sp.n)} {C : Blk sp}
+    (hd : decodeForward sp hs (forwardObj sp x t p B) = some (x, u, q, C)) :
+    (u, q, C) = (t, p, B) := by
+  cases p with
+  | none =>
+    simp only [forwardObj, Option.toList_none, List.nil_append, decodeForward, hb,
+      Option.bind_eq_bind, Option.bind_some] at hd
+    split at hd
+    · cases hd; rfl
+    · cases hd
+  | some parent =>
+    simp only [forwardObj, Option.toList_some, List.cons_append, List.nil_append,
+      decodeForward, hb, Option.bind_eq_bind, Option.bind_some] at hd
+    cases hp : decodeForward sp hs parent with
+    | none => simp [hp] at hd
+    | some result =>
+      obtain ⟨origin, stamp, pp, A⟩ := result
+      simp only [hp, Option.bind_some] at hd
+      split at hd
+      · cases hd; rfl
+      · cases hd
+
+/-- Acceptance preserves both decoder inventory and held-block correspondence together. -/
+theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (st : State (S.params (pubOf E) hn) (S.ro _))
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (hh : WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (hc : WrappersCover st)
+    (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
+    (B : Blk (S.params (pubOf E) hn))
+    (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2)
+    (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      (blockObj _ B) = some B) (ht : 0 ≤ st.now) :
+    let st' := apply st (Node.onBlock st.self st.node st.now B)
+    WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st' ∧
+    WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash) st' := by
+  have hq := decoded_acceptance_enqueue S rho hn st hd hh hc hr B ha hb ht
+  refine ⟨hq.accept st B hc ha, ?_⟩
+  obtain ⟨root, p, hpar, hp, _, _⟩ := onBlock_queues_acceptance_parent st B hc ha
+  have hm := (queueAccepted_of_parent st B root p hpar hp).1
+  obtain ⟨u, q, C, hdec, _, _⟩ := hq.stored B.root
+    (forwardObj _ st.self st.now p B) (by rw [hm]; simp)
+  have hs : (queueAccepted st B).self = st.self := by simp [queueAccepted, hpar, hp]
+  rw [hs] at hdec
+  have contains : Obj.Contains (forwardObj (S.params (pubOf E) hn) st.self st.now p B)
+      (blockObj _ B) :=
+    Obj.Contains.step (List.mem_append_right _ (List.mem_singleton_self _)) (Obj.Contains.refl _)
+  have hb' := decodeBlock_transport hb (show
+      rootOf (digests rho.hash (forwardObj (S.params (pubOf E) hn) st.self st.now p B))
+        (headerOf _ B) = rootOf (digests rho.hash (blockObj _ B)) (headerOf _ B) by
+    rw [rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, contains, rfl⟩),
+      rootOf_digests_blockObj])
+  obtain ⟨rfl, rfl, rfl⟩ := Prod.mk.inj (decoded_forward_fields _ _ _ _ _ hb' hdec)
+  exact hh.accept B root p hpar hp ha hdec
+
 end Consensus.Goldilocks.Refinement
