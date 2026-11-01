@@ -1311,4 +1311,22 @@ theorem acceptance_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V
     exact htime.symm
   · simpa only [hxev, ← htime] using hqo
 
+/-- A valid non-genesis block with the engine's root decodes from its own canonical object.
+This separates the payload checks from the digest bookkeeping needed by forwarding. -/
+theorem canonical_block_decodes {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (B : Blk (S.params (pubOf E) hn)) (hpar : B.parent ≠ none)
+    (hroot : B.RootOk (digestOf S rho))
+    (hwf : ∀ a ∈ B.fgPayload, a.WellFormed) (hval : SA.validPayload B) :
+    decodeBlock (S.params (pubOf E) hn)
+      (digests rho.hash (blockObj (S.params (pubOf E) hn) B))
+      (blockObj (S.params (pubOf E) hn) B) = some B := by
+  obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.mp hpar
+  have hhash : B.root = taggedRoot (S.params (pubOf E) hn).genesisRoot
+      (rho.hash (headerOf (S.params (pubOf E) hn) B)) := by
+    change B.root = digestOf S rho B.parent B.slot B.input B.fgPayload B.acPayload at hroot
+    simpa only [digestOf, dgOf, hr, headerOf] using hroot
+  apply decodeBlock_blockObj _ B hpar (hhash ▸ taggedRoot_ne _ _) _ hwf hval
+  rw [rootOf_digests_blockObj, hhash, rawRoot_taggedRoot]
+
 end Consensus.Goldilocks.Refinement
