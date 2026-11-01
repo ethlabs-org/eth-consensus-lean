@@ -358,5 +358,53 @@ theorem raw_result_below_ready
     (he.trans (Healing.ready_unanimous hp hc hP hR z hz q e hv hs))
   exact this ▸ hCH
 
+/-- When the floor has passed a covering high origin, its crossing supplies a frozen
+viable descendant of the target. Mere high state height is not an origin premise. -/
+theorem covered_target_frozen_witness_of_high_floor
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+    {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a : Time}
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i j k : Nat} {B C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : Healing.HighOrigin tr H g x i j B) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot)
+    (hCB : Anc (tr.HonestBlocks H) C B)
+    (hFC : Anc (tr.HonestBlocks H) ell.frame.F C)
+    (hpair : ∀ v r l O, r < k → Healing.HighOrigin tr H g v r l O →
+      ∀ v' r' l' O', r' < k → Healing.HighOrigin tr H g v' r' l' O' →
+      Compatible (tr.HonestBlocks H) O O')
+    (hcomp : ∀ v r l O, r < k → Healing.HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocks H) B O)
+    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
+    ∃ D ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+      Anc (tr.HonestBlocks H) C D ∧ (tr.state y k).fg.IsViable D := by
+  obtain ⟨v, r, l, O, E, -, hO, hl, hE, hEO, hBO, hf⟩ :=
+    Healing.high_floor_source_core hp ho hy hc hj hpair hcomp hfloor
+  exact Healing.raw_target_frozen_witness hp hO hy hc hl hFC (hCB.trans hBO) hE hEO hf
+
+/-- An actual earlier-label high cover gives a floor-reaching frozen witness or
+root coverage. No claim is made for a merely high-height held block. -/
+theorem covered_target_frozen_witness
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+    {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a : Time}
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i j k : Nat} {B C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : Healing.HighOrigin tr H g x i j B) (hCB : Anc (tr.HonestBlocks H) C B)
+    (hy : y ∈ H) {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y k ell e)
+    (hj : j < e.msg.slot) :
+    (∃ D ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+      Anc (tr.HonestBlocks H) C D ∧ (tr.state y k).fg.IsViable D) ∨
+      Anc (tr.HonestBlocks H) C ell.frame.fcRoot := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hΦU := (SA.frameIn_of_callAt hr hy hc.1).2
+  rcases (covered_vote_suffix hp ho hCB hy hc hj).2.2.2 with hv | hf
+  · obtain ⟨D, hD, hvD, hCD⟩ := hv.2.2
+    rw [Compose.frame_of_projAC hp.run hy hc.1] at hvD
+    exact Or.inl ⟨D, hD, hCD.mono hΦU, hvD.2.2.2⟩
+  · exact Or.inr hf
+
 end Consensus.Goldilocks.Refinement
 end
