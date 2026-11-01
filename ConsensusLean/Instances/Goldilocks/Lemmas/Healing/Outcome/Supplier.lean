@@ -530,6 +530,45 @@ theorem reset_proposal_viable
   rw [Compose.frame_of_projAC hp.run hy hcy.1] at hPy hroot' ⊢
   exact ⟨hPy.1, hPy.2, hroot'.mono (fun X hX => hX.1), hfloor⟩
 
+/-- A held actual proposal is viable at a bounded post-drain cast. -/
+theorem ResetPremisesUpTo.reset_proposal_viable {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} (hpH : p ∈ H) {k i j u : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u)
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) (hPQ : P.parent = some d.head.root)
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
+    (hPy : P ∈ elly.frame.tree) :
+    P ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u) := by
+  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  have hroot := hp.reset_vote_root_below_proposal hc hpH hactual hR hci hcall hd hti hib hPQ
+    hy hcy hes hjb
+  have hroot' := SA.anc_tree_of_anc_U hr.coherent hPsi hPsiU hPsi.fcRoot_mem hroot hPy
+  have hPt : P ∈ SA.voterBlockTree sp e.readPoint elly.frame u :=
+    ⟨hPy, Or.inr ⟨P, hPy, hPs, .refl⟩⟩
+  have hPyStore : P ∈ (tr.state y j).fg.tree := by
+    rw [Compose.frame_of_projAC hp.run hy hcy.1] at hPy
+    exact hPy.1
+  have hfloor := hp.reset_vote_floor_above_old hy hR hcy hes hjb hPyStore
+    (fun x r l O ho ht _ => by
+      have hOQ := hp.reset_proposal_passes hc hpH hR hci hcall hd hti hib O ⟨x, r, l, ho, ht⟩
+      obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
+      have hQt : d.head ∈ ellp.frame.tree := by
+        rcases eq_or_ne d.start d.head with he | he
+        · exact he ▸ hst
+        · exact (Anc.mem hsQ he).2
+      exact hOQ.trans (.single ⟨hPhiU hQt, hPsiU hPy, hPQ⟩))
+  refine ⟨hPt, hroot', P, hPt, ?_, .refl⟩
+  rw [Compose.frame_of_projAC hp.run hy hcy.1] at hPy hroot' ⊢
+  exact ⟨hPy.1, hPy.2, hroot'.mono (fun X hX => hX.1), hfloor⟩
+
 /-- Any ancestor of a viable current proposal above the voter's anchor is in its viable tree.
 This is the winner-domain transport used by suffix comparison. -/
 theorem reset_winner_voter_tree

@@ -25,7 +25,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
 -- Keep the operational proposal prerequisites with their pivot consumers.
-set_option linter.style.longFile 3800
+set_option linter.style.longFile 4000
 
 public section
 
@@ -3112,6 +3112,35 @@ private theorem reset_suffix_viable (hp : ResetPremises tr H proposer dg g ΔF a
   exact proposal_floor_above_old hp hP.1 hR hci hcall hti hXs
     (fun O hO => (hDold O hO).trans hDXU)
 
+/-- The finite proposal suffix above all old origins consists of viable heads. -/
+theorem ResetPremisesUpTo.reset_suffix_viable {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
+    (D : SA.Blk sp.n (List (FG.Att sp.n))) (hDt : D ∈ ell.frame.tree)
+    (hsD : ell.frame.Anc d.start D)
+    (hDold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
+      Anc (tr.HonestBlocks H) O D) :
+    ∀ X, ell.frame.Anc D X → ell.frame.Anc X d.head → X ∈ ell.frame.viableHeads := by
+  intro X hDX _
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  have hXt : X ∈ ell.frame.tree := mem_of_anc_left hDX hDt
+  have hDXU := hDX.mono hPhiU
+  obtain ⟨A, _, hstart, _⟩ := acProposal_walk hd
+  have hfX : ell.frame.Anc ell.frame.fcRoot X := by
+    rw [hstart] at hsD
+    exact ((SA.fcRoot_anc_getAnchor hPhi A (tr.time i)).trans hsD).trans hDX
+  rw [Compose.frame_of_projAC hp.run hpH hci] at hXt hfX ⊢
+  obtain ⟨hXs, hFX⟩ := hXt
+  refine ⟨hXs, hFX, hfX.mono (fun _ h => h.1), ?_⟩
+  exact hp.proposal_floor_above_old hpH hR hci hcall hti hib hXs
+    (fun x r l O ho hrt hrb => (hDold x r l O ho hrt hrb).trans hDXU)
+
 /-- A reset seed above the reader's finalized cache has reached every post-drain call. -/
 private theorem seed_held (hp : ResetPremises tr H proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
@@ -3473,6 +3502,66 @@ private theorem reset_vote_anchor (hp : ResetPremises tr H proposer dg g ΔF a)
         exact Set.mem_insert _ _
       exact Or.inr ⟨h, haQ.trans (Relation.ReflTransGen.single ⟨hQU, hPU, hPQ⟩), hPU⟩
 
+/-- Finite voter anchors lie below the old-source bound or on the proposal chain. -/
+theorem ResetPremisesUpTo.reset_vote_anchor {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {u : Nat} {P Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hPU : P ∈ tr.HonestBlocks H) (hR : drainTime sp a ≤ sp.ts u)
+    (hPQ : P.parent = some Q.root) (hQU : Q ∈ tr.HonestBlocks H)
+    (hDQ : Anc (tr.HonestBlocks H) D Q) (hDU : D ∈ tr.HonestBlocks H)
+    (hDold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
+      Anc (tr.HonestBlocks H) O D)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ell e)
+    (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
+    (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
+      e'.msg.head = P.root)
+    (hlocks : ∀ l ∈ e.readPoint.locks, l.slot ≠ u →
+      sp.slot (tr.time j) ≤ l.slot + sp.k →
+      ∀ L ∈ ell.frame.tree, L.root = l.block →
+        Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) Q) :
+    Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) D ∨
+      (Anc (tr.HonestBlocks H) D (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) ∧
+        Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) P) := by
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  have hDP : Anc (tr.HonestBlocks H) D P := hDQ.trans (.single ⟨hQU, hPU, hPQ⟩)
+  have hat := anchor_tree hPhi e.readPoint (tr.time j)
+  have haS := anchor_mem ell.frame e.readPoint (tr.time j)
+  generalize SA.getAnchor sp e.readPoint ell.frame (tr.time j) = an at hat haS ⊢
+  rcases haS with ⟨_, l', hl', hl'r⟩ | haf
+  swap
+  · rw [Set.mem_singleton_iff.1 haf]
+    exact Or.inl (hp.reset_vote_root_below_bound hR hDU hDold hy hcy hes hjb)
+  obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := hl'
+  obtain rfl : an = ell.frame.viableAncestor B :=
+    hPhi.coherent.1 hat (SA.viableAncestor_anc hPhi hB).1 hl'r.symm
+  have haB : Anc (tr.HonestBlocks H) (ell.frame.viableAncestor B) B :=
+    Anc.mono hPhiU (SA.anc_viableAncestor _ B)
+  by_cases hls : l.slot = u
+  · obtain ⟨Phi', A', D', _, hPhi'U, _, h34, hpool, _, L, hLU, hLr, hLD'⟩ :=
+      SA.lock_origin_readPoint hrun hy hcy l hl (by rw [hes, hls]; omega)
+    obtain rfl : L = B := hU.1 hLU (hPhiU hB) (hLr.trans hBr.symm)
+    have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos y; omega
+    obtain ⟨x, ⟨v, hv, rfl, R, hRt, hRr, hDR⟩, hxH⟩ :=
+      Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
+        (t := SA.optimisticVoters sp A' Phi' l.slot D') (by omega)
+    have hvH : v.val ∈ H := not_not.1 hxH
+    obtain ⟨hvs, j', hj', e', hv', rfl⟩ := hpool v hv hvH
+    have hRP : R = P := hU.1 (hPhi'U hRt) hPU
+      (hRr.trans (hE _ hvH j' hj' e' hv' (hvs.trans hls)))
+    rw [hRP] at hDR
+    have haP := haB.trans (hLD'.trans (Anc.mono hPhi'U hDR))
+    rcases Anc.total hU haP hDP with h | h
+    · exact Or.inl h
+    · exact Or.inr ⟨h, haP⟩
+  · have haQ := hlocks l hl hls hlive B hB hBr
+    rcases Anc.total hU haQ hDQ with h | h
+    · exact Or.inl h
+    · exact Or.inr ⟨h, haQ.trans (.single ⟨hQU, hPU, hPQ⟩)⟩
+
 /-- A held block extending every pre-slot origin reaches the voter's height floor. -/
 theorem reset_vote_floor_above_old
     (hp : ResetPremises tr H proposer dg g ΔF a)
@@ -3583,6 +3672,35 @@ theorem reset_vote_root_below_proposal
       (.single ⟨hQU, hPU, hPQ⟩))
   · exact hroot
 
+/-- Actual bounded proposal and cast evidence bound the voter root by the proposal. -/
+theorem ResetPremisesUpTo.reset_vote_root_below_proposal {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} (hpH : p ∈ H) {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hactual : tr.ProposesAt p k P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) (hPQ : P.parent = some d.head.root)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {elly : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j elly e)
+    (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
+    Anc (tr.HonestBlocks H) elly.frame.fcRoot P := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
+  have hQU := hPhiU (mem_of_anc_left hsQ hst)
+  have hacc := Compose.proposal_accepted hp.run hp.noColl hpH hactual
+  have hPU : P ∈ tr.HonestBlocks H := by
+    refine ⟨p, hpH, k + 1, ?_⟩
+    rw [tr.state_succ_of_call hacc,
+      (Store.tree_grows _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hpH _)).1 P _
+        (hp.run.toLocalRun.cutLaw p hpH _ _ hacc).2.1]
+    exact Set.mem_insert _ _
+  apply hp.reset_vote_root_below_bound hR hPU (fun x r l O ho hrt _ => ?_) hy hcy hes hjb
+  exact (hp.reset_proposal_passes hc hpH hR hci hcall hd hti hib O ⟨x, r, l, ho, hrt⟩).trans
+    (.single ⟨hQU, hPU, hPQ⟩)
+
 /-- **The pivot after the drain** (open: through the four residual steps above). -/
 theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -3663,6 +3781,96 @@ theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun
   have hat' := mem_between hU hΦp hΦpU hDt hQt hDa haQ
   exact ⟨_, Or.inr ⟨SA.anc_tree_of_anc_U hU hΦp hΦpU hDt hDa hat',
     SA.anc_tree_of_anc_U hU hΦp hΦpU hat' haQ hQt⟩, .refl, hah⟩
+
+/-- The finite operational pivot after the drain, before the first disagreeing cast. -/
+theorem ResetPremisesUpTo.reset_pivot {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} (hpH : p ∈ H) {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hactual : tr.ProposesAt p k P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) (hPQ : P.parent = some d.head.root) :
+    ∃ D, ellp.frame.Anc d.start D ∧ ellp.frame.Anc D d.head ∧
+      (∀ X, ellp.frame.Anc D X → ellp.frame.Anc X d.head → X ∈ ellp.frame.viableHeads) ∧
+      ∀ y ∈ H, ∀ j elly e, SA.CastAt tr.projAC y j elly e → e.msg.slot = u → tr.time j ≤ b →
+        (∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
+          e'.msg.head = P.root) →
+        ∃ X, (X = P ∨ (ellp.frame.Anc D X ∧ ellp.frame.Anc X d.head)) ∧
+          elly.frame.Anc (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) X ∧
+          elly.frame.Anc X (SA.getHead sp e.readPoint elly.frame (tr.time j)
+            (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u))
+            (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hU := hr.coherent
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  obtain ⟨hstart, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
+  have hQt : d.head ∈ ellp.frame.tree := mem_of_anc_left hsQ hstart
+  have hacc := Compose.proposal_accepted hp.run hp.noColl hpH hactual
+  have hPU : P ∈ tr.HonestBlocks H := by
+    refine ⟨p, hpH, k + 1, ?_⟩
+    rw [tr.state_succ_of_call hacc,
+      (Store.tree_grows _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hpH _)).1 P _
+        (hp.run.toLocalRun.cutLaw p hpH _ _ hacc).2.1]
+    exact Set.mem_insert _ _
+  have hpass := hp.reset_proposal_passes hc hpH hR hci hcall hd hti hib
+  obtain ⟨D, hD⟩ := SA.exists_deepest hPhi (S := {X | X ∈ ellp.frame.tree ∧
+      ellp.frame.Anc d.start X ∧ ellp.frame.Anc X d.head ∧ (X = d.start ∨ OldSrc tr H g u X)})
+    (fun X hX => hX.1) ⟨d.start, hstart, .refl, hsQ, Or.inl rfl⟩
+  obtain ⟨hDt, hsD, hDQ, hDk⟩ := (SA.deepest_mem hD).1
+  have hmax := SA.anc_deepest hPhi (fun X hX => hX.1)
+    (fun X hX Y hY => Anc.total hPhi.coherent hX.2.2.1 hY.2.2.1) hD
+  have hDold : ∀ O, OldSrc tr H g u O → Anc (tr.HonestBlocks H) O D := by
+    intro O hO
+    have hOQ := hpass O hO
+    rcases Anc.total hU hOQ (Anc.mono hPhiU hsQ) with h | h
+    · exact h.trans (Anc.mono hPhiU hsD)
+    have hOt := mem_between hU hPhi hPhiU hstart hQt h hOQ
+    exact Anc.mono hPhiU (hmax O ⟨hOt, SA.anc_tree_of_anc_U hU hPhi hPhiU hstart h hOt,
+      SA.anc_tree_of_anc_U hU hPhi hPhiU hOt hOQ hQt, Or.inr hO⟩)
+  have hDold' : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
+      Anc (tr.HonestBlocks H) O D := fun x r l O ho hrt _ => hDold O ⟨x, r, l, ho, hrt⟩
+  refine ⟨D, hsD, hDQ,
+    hp.reset_suffix_viable hpH hR hci hcall hd hti hib D hDt hsD hDold',
+    fun y hy j elly e hcy hes hjb hE => ?_⟩
+  obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  have hhead := (SA.castAt_spec hr hy hcy).2.2.2
+  rw [hes] at hhead
+  have hat := anchor_tree hPsi e.readPoint (tr.time j)
+  have hah : elly.frame.Anc (SA.getAnchor sp e.readPoint elly.frame (tr.time j))
+      (SA.getHead sp e.readPoint elly.frame (tr.time j)
+        (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u))
+        (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) :=
+    SA.anc_ghost (fun B hB => hB.1.1) _ hat
+  have hht := mem_of_anc_left hah hat
+  have hDh : Anc (tr.HonestBlocks H) D (SA.getHead sp e.readPoint elly.frame (tr.time j)
+      (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u))
+      (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
+    rcases hDk with rfl | ⟨x, r, l, ho, hrt⟩
+    · exact hp.proposal_start_supported hc hpH hR hci hcall hd hti hib hy hcy hes hjb
+    have hri : r < i := by
+      by_contra hn
+      have ht := hp.run.time_mono (Nat.le_of_not_gt hn)
+      rw [hti] at ht
+      exact (not_lt_of_ge ht) hrt
+    have hlu := hp.origin_label_lt_at_proposal hpH hci hcall hti hri ho
+    obtain ⟨Hd, hHd, hHdr, hDHd⟩ := hp.high_origin_votes_before j hjb x r l D ho
+      ((hp.run.time_mono hri.le).trans hib) y hy elly e hcy (by omega)
+    rwa [hU.1 hHd (hPsiU hht) (hHdr.trans hhead)] at hDHd
+  rcases hp.reset_vote_anchor hPU hR hPQ (hPhiU hQt) (Anc.mono hPhiU hDQ) (hPhiU hDt)
+      hDold' hy hcy hes hjb hE (fun l hl hne hlive L hL hLr =>
+        hp.vote_old_live_lock_below_parent hc hpH hR hci hcall hd hti hib hy hcy hes hjb
+          hl hne hlive hL hLr) with haD | ⟨hDa, haP⟩
+  · have hDt' := mem_between hU hPsi hPsiU hat hht haD hDh
+    exact ⟨D, Or.inr ⟨.refl, hDQ⟩, SA.anc_tree_of_anc_U hU hPsi hPsiU hat haD hDt',
+      SA.anc_tree_of_anc_U hU hPsi hPsiU hDt' hDh hht⟩
+  by_cases haPe : SA.getAnchor sp e.readPoint elly.frame (tr.time j) = P
+  · exact ⟨P, Or.inl rfl, haPe ▸ .refl, haPe ▸ hah⟩
+  have haQ := anc_parent hU haP haPe hPQ (hPhiU hQt)
+  have hat' := mem_between hU hPhi hPhiU hDt hQt hDa haQ
+  exact ⟨_, Or.inr ⟨SA.anc_tree_of_anc_U hU hPhi hPhiU hDt hDa hat',
+    SA.anc_tree_of_anc_U hU hPhi hPhiU hat' haQ hQt⟩, .refl, hah⟩
 
 end Consensus.Goldilocks.Healing
 
