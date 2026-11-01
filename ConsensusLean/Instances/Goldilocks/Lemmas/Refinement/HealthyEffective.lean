@@ -16,7 +16,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 
 -- Whole-run consumers and their finite-horizon counterparts share this endpoint layer.
-set_option linter.style.longFile 2400
+-- Operational selection and report coverage reuse its bounded pool, next-slot and finality
+-- chain; keep these endpoints together while their downstream adoption consumers are assembled.
+set_option linter.style.longFile 2600
 
 public section
 namespace Consensus.Goldilocks.Refinement
