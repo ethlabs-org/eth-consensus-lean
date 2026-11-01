@@ -47,6 +47,33 @@ theorem releaseAll_voteForward_suffix (hash : Blocks.Header Info → Nat)
   exact Model.closure_mono (fun _ h => List.mem_append_left _ h) (hheld tv htv)
 
 omit [DecidableEq V] in
+/-- The actual poll releases its vote envelopes when their canonical votes are held after
+the ordinary/block prefix. This permits an own vote first released by this very poll. -/
+theorem dutyStep_poll_voteForward_of_prefix (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Nat)
+    (hsel : rho.ownKey v ∈ rho.sel .poll)
+    (hself : (shapeOf S hn nd).self = rho.ownKey v)
+    (hheld : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
+      voteObj tv.2 ∈ Model.closure
+        (Model.releaseAll (Model.protoOf (compiled (family S)) E) rho.hash (rho.ownKey v)
+          ⟨((Model.protoOf (compiled (family S)) E).act nd.st (.poll t)).1, nd.seen⟩
+          (((poll (shapeOf S hn nd) t).2.toList.map fun q =>
+            Model.Obj.mk (.signed (rho.ownKey v) .poll) (.data q.1) q.2) ++
+            pendingWrappers (shapeOf S hn nd))).1.seen) :
+    ∀ tv ∈ (shapeOf S hn nd).voteForwards,
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward tv.1 (encodeVote tv.2))) [voteObj tv.2] ∈
+          (rho.dutyStep v nd (.poll t)).2 := by
+  intro tv htv
+  unfold Model.Run.dutyStep
+  simp only [show (Model.protoOf (compiled (family S)) E).role (.poll t) = .poll from rfl,
+    hsel, ↓reduceIte]
+  rw [signedCandidate_poll_eq S rho hn v nd t hsel hself]
+  erw [releaseAll_voteForward_suffix S rho.hash (rho.ownKey v)
+    ⟨((Model.protoOf (compiled (family S)) E).act nd.st (.poll t)).1, nd.seen⟩ _ _ hheld]
+  exact List.mem_append_right _ (List.mem_map.mpr ⟨tv, htv, rfl⟩)
+
+omit [DecidableEq V] in
 /-- A selected poll publishes every queued envelope whose canonical vote is already held.
 The intervening ordinary/block candidates preserve these holdings even if their guards fail. -/
 theorem dutyStep_poll_voteForward (v : V)
@@ -59,17 +86,53 @@ theorem dutyStep_poll_voteForward (v : V)
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
         (.data (.voteForward tv.1 (encodeVote tv.2))) [voteObj tv.2] ∈
           (rho.dutyStep v nd (.poll t)).2 := by
+  apply dutyStep_poll_voteForward_of_prefix S rho hn v nd t hsel hself
+  intro q hq
+  erw [Model.releaseAll_seen]
+  exact Model.closure_mono (fun _ h => List.mem_append_left _ h) (hheld q hq)
+
+omit [DecidableEq V] in
+/-- A canonical vote at the head of the actual ordinary poll output supplies its own
+envelope's dependency. Other queued votes need only be held already; block guards may fail. -/
+theorem dutyStep_poll_voteForward_of_own_vote (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Nat)
+    (hsel : rho.ownKey v ∈ rho.sel .poll)
+    (hself : (shapeOf S hn nd).self = rho.ownKey v)
+    (m : SA.Vote (Fintype.card V)) (hm : m.val = rho.ownKey v)
+    (hout : (pollPre (shapeOf S hn nd)).outbox.head? = some (.vote (encodeVote m)))
+    (hheld : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
+      tv.2 = m ∨ voteObj tv.2 ∈ Model.closure nd.seen) :
+    ∀ tv ∈ (shapeOf S hn nd).voteForwards,
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward tv.1 (encodeVote tv.2))) [voteObj tv.2] ∈
+          (rho.dutyStep v nd (.poll t)).2 := by
+  apply dutyStep_poll_voteForward_of_prefix S rho hn v nd t hsel hself
   intro tv htv
-  unfold Model.Run.dutyStep
-  simp only [show (Model.protoOf (compiled (family S)) E).role (.poll t) = .poll from rfl,
-    hsel, ↓reduceIte]
-  rw [signedCandidate_poll_eq S rho hn v nd t hsel hself]
-  erw [releaseAll_voteForward_suffix S rho.hash (rho.ownKey v)
-    ⟨((Model.protoOf (compiled (family S)) E).act nd.st (.poll t)).1, nd.seen⟩
-    _ _ (fun q hq => ?_)]
-  · exact List.mem_append_right _ (List.mem_map.mpr ⟨tv, htv, rfl⟩)
+  rcases hheld tv htv with he | he
+  · rw [he]
+    erw [Model.releaseAll_seen]
+    apply Model.mem_closure_of_mem
+    apply List.mem_append_right
+    rw [(poll_outbox _ _).2, hout]
+    simp only [Option.map_some, Option.toList_some, List.map_singleton, List.singleton_append]
+    have heq : Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.vote (encodeVote m))) [] = voteObj m := by
+      simp only [voteObj, hm]
+    rw [heq]
+    erw [Model.releaseAll.eq_def]
+    dsimp only
+    split
+    · exact List.mem_cons_self
+    · rename_i h
+      exfalso
+      apply h
+      apply Bool.and_eq_true_iff.mpr
+      refine ⟨Bool.and_eq_true_iff.mpr ⟨?_, ?_⟩, ?_⟩
+      · rfl
+      · exact protects_of_not_att S _ _ _ (fun k w h => by cases h)
+      · rfl
   · erw [Model.releaseAll_seen]
-    exact Model.closure_mono (fun _ h => List.mem_append_left _ h) (hheld q hq)
+    exact Model.closure_mono (fun _ h => List.mem_append_left _ h) he
 
 /-- An honest emission cut cannot be a restart, even though `EmitAt` permits that call
 syntactically. This uses the actual cut law and the run's nonnegative clock. -/
