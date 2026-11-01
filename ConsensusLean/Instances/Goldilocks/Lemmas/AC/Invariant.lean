@@ -168,6 +168,15 @@ private theorem acOnMessage_fields (self : Fin sp.n) (A : SAState sp.n) (Φ : Fr
   rw [(optimistic_fields _ _ _).1]
   exact admitVote_poolOK h _ _
 
+/-- Message and block receipt preserve the slot of every pooled vote. -/
+theorem receipt_pool_slot (A : SAState sp.n) (t : Time)
+    (h : ∀ σ, (∀ m ∈ A.pool σ, m.slot = σ) ∧
+      ∀ x : Fin sp.n, ((A.pool σ).filter (fun m => m.val = x)).dedup.length ≤ 2) :
+    (∀ v σ m, m ∈ (admitVote sp A t v).pool σ → m.slot = σ) ∧
+      (∀ (B : Blk sp.n FGP) σ m, m ∈ (blockReceipt sp A t B).pool σ → m.slot = σ) := by
+  exact ⟨fun v σ => (admitVote_poolOK h t v σ).1,
+    fun B σ => ((blockReceipt_fields A t B).1 h σ).1⟩
+
 /-- The replay of a restart keeps the pool invariant, from the empty pools. -/
 private theorem acRestart_poolOK (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) : PoolOK (acRestart sp ro self A Φ t).1.pool := by
@@ -183,6 +192,23 @@ private theorem acRestart_poolOK (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A 
     intro acc h
     simp only [List.foldl_cons]
     exact ih _ ((acOnBlock_fields _ _ _ _ _).1 h)
+
+/-- Pool form and capacity are preserved locally, independently of frame coherence.
+A restart establishes them from its empty pools. -/
+theorem step_pool_cap (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call)
+    (h : ∀ σ, (∀ m ∈ A.pool σ, m.slot = σ) ∧
+      ∀ x : Fin sp.n, ((A.pool σ).filter (fun m => m.val = x)).dedup.length ≤ 2) :
+    ∀ σ, (∀ m ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).1.pool σ, m.slot = σ) ∧
+      ∀ x : Fin sp.n, ((((goldilocksSA sp FGP ro).step self A Φ t c).1.pool σ).filter
+        (fun m => m.val = x)).dedup.length ≤ 2 := by
+  cases c with
+  | tick => exact (acOnTick_fields self A Φ t).1 h
+  | proposal => exact (acProposal_fields A Φ t).1 h
+  | toFG => exact (acToFG_fields A Φ t).1 h
+  | message m => exact (acOnMessage_fields self A Φ t m).1 h
+  | block B => exact (acOnBlock_fields self A Φ t B).1 h
+  | restart => exact acRestart_poolOK ro self A Φ t
 
 /-- The replay of a restart at `t` stamps `t` on every block it receives (and keeps the stamps
 `t` it finds). -/
