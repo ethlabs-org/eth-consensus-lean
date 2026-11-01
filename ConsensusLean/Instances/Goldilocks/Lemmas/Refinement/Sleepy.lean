@@ -647,6 +647,37 @@ theorem stateAt_last_local_event (hv : rho.ExecutionValid) (v : V) : ∀ i,
         · exact Or.inl h
         · exact Or.inr ⟨j, by omega, e, he, hev, hs, ht⟩
 
+/-- A positive own tick no later than the stored clock has completed, provided
+the reader did not restart at that tick's time. Equality uses event phase order. -/
+theorem tick_before_stored_clock (hv : rho.ExecutionValid) {v : V} {p i : Nat} {t : Time}
+    (he : rho.events[p]? = some (.tick v t)) (ht : 0 < t)
+    (hti : t ≤ (stateAt S rho hn v i).now)
+    (hnr : ∀ q < i, rho.events[q]? ≠ some (.restart v t)) : p < i := by
+  by_contra hpi
+  have hip : i ≤ p := by omega
+  rcases stateAt_last_local_event S rho hn hv v i with h | ⟨q, hqi, e, hq, hnode, _, htime⟩
+  · rw [h] at hti
+    change t ≤ 0 at hti
+    linarith
+  · have hqp : q < p := by omega
+    have horder := keyLe_of_index_lt S rho hv hq he hqp
+    have hte : t ≤ e.time := hti.trans_eq htime
+    rcases horder with horder | ⟨heq, hphase⟩
+    · exact (not_lt_of_ge hte) horder
+    · cases e with
+      | tick w u =>
+        simp only [Model.Event.node] at hnode
+        simp only [Model.Event.time] at heq
+        subst w; subst u
+        have := index_eq_of_events S rho hv hq he
+        omega
+      | restart w u =>
+        simp only [Model.Event.node] at hnode
+        simp only [Model.Event.time] at heq
+        subst w; subst u
+        exact hnr q hqi hq
+      | deliver w o u => simp only [Model.Event.phase] at hphase; omega
+
 /-- A stored clock cannot be ahead of the next engine event. -/
 theorem now_le_event (hv : rho.ExecutionValid) (v : V) {i : Nat}
     {e : Model.Event V (Model.protoOf (compiled (family S)) E).Object}

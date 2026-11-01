@@ -1975,6 +1975,94 @@ theorem held_target_viable_or_higher_report {b : Time}
       rw [← hσ, hCh]
       exact hPh⟩
 
+/-- Bounded nonunanimous next-update selection: the finalized-floor guard is
+explicit, while actual votes, their pool membership and resolution are produced. -/
+theorem optimistic_next_result_of_floor {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {r s j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (hop : SA.OptimisticLockAt tr.projAC x r s B CV)
+    (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b)
+    {ell : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y j (s + 1) ell)
+    (hjb : tr.time j ≤ b) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts (s + 1 : Nat))
+    (hR : Healing.drainTime sp a ≤ sp.ts (s + 1 + 1 : Nat))
+    (hFB : Anc (tr.HonestBlocks H) ell.frame.F B) :
+    ∃ D DV, SA.ResultAt tr.projAC y j (s + 1) D DV ∧ Anc (tr.HonestBlocks H) B D := by
+  have hS := Healing.healthy_base_of_reset_catch_before hp hc
+  have hr := hS.run.localRun
+  have htime : tr.time j = sp.ts (s + 1 : Nat) + 6 * sp.Δ := hu.2.2.1
+  have hd := sp.toParams.hΔ
+  have hrs : ∀ k ≤ j, tr.projAC.RestartAt y k → tr.time k < sp.ts (s + 1 : Nat) := by
+    intro k hkj hk
+    have hh := restart_before_unanimous_slot hp hR hy (Compose.projAC_restartAt.mp hk)
+      ((hp.run.time_mono hkj).trans hjb)
+    have hlt := (SA.ts_lt_iff sp).mpr (show ((s + 1 : Nat) : Int) - 1 < (s + 1 : Nat) by omega)
+    exact hh.trans_lt hlt
+  have hext : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → e.msg.slot = s + 1 →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
+    intro z hz q e hv hes
+    have hqb : tr.time q ≤ b := by
+      have ht := SA.vote_time_le hr hz hv
+      obtain ⟨ellq, hcast⟩ := hv
+      rw [← (SA.castAt_spec hr hz hcast).2.1, hes] at ht
+      exact ht.trans (by linarith)
+    obtain ⟨ellq, hcast⟩ := hv
+    exact hp.fast_source_votes_before hc hx (Or.inr hop)
+      (by have := sp.two_le_k; omega) hrb q hqb z hz ellq e hcast (by omega)
+  obtain ⟨hpool, hres⟩ := hp.extending_votes_resolved_before hc hy hu.1 hgu
+    (by linarith) hjb
+    (fun k hkj t _ => Healing.deadline_le_restarts
+      (fun k' hk' hk => (hrs k' (hk'.trans hkj) hk).le) t) hrs hFB hext
+  have hall := honest_votes_in_slot hp hc hgu hR (show sp.ts (s + 1 : Nat) + sp.Δ ≤ b by linarith)
+  have hH : H ⊆ {v | v ∈ H ∧ ∃ vote ∈ (tr.projAC.state y j).pool (s + 1), vote.val = v} := by
+    intro z hz
+    obtain ⟨q, e, hv, hes, _⟩ := hall z hz
+    obtain ⟨ellq, hcast⟩ := hv
+    exact ⟨hz, e.msg, hpool z hz q e ⟨ellq, hcast⟩ hes, (SA.castAt_spec hr hz hcast).1⟩
+  have hcount := Set.ncard_le_ncard hH
+  have hsum : H.ncard + Hᶜ.ncard = sp.n := by
+    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+  have hf := hp.faults
+  have hn : 0 < sp.n := sp.toParams.hn
+  obtain ⟨D, hconf, hBD, _⟩ := SA.update_extends_of_resolved_votes hS.run
+    (by omega) hext hy hu (by omega) hres
+  exact ⟨D, _, ⟨ell, hu, hconf, rfl⟩, hBD⟩
+
+/-- The actual next update either has already finalized the optimistic source,
+or produces a result extending it. The first arm retains its actual cut. -/
+theorem optimistic_next_result_or_finalized {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {r s : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (hop : SA.OptimisticLockAt tr.projAC x r s B CV)
+    (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b)
+    (hub : sp.ts (s + 1 : Nat) + 6 * sp.Δ ≤ b)
+    (hR : Healing.drainTime sp a ≤ sp.ts (s + 1 + 1 : Nat)) :
+    ∃ j ell, SA.UpdateAt tr.projAC y j (s + 1) ell ∧ tr.time j ≤ b ∧
+      (Anc (tr.HonestBlocks H) B (tr.state y j).fg.F ∨
+        ∃ D DV, SA.ResultAt tr.projAC y j (s + 1) D DV ∧ Anc (tr.HonestBlocks H) B D) := by
+  have hcut := hp.clean_window_timing
+    (show Healing.cleanLabel sp a + sp.k + 2 ≤ s by have := sp.two_le_k; omega)
+    (s + 1) (by omega)
+  have hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts (s + 1 : Nat) := by
+    have := Healing.lt_cutZ sp g
+    linarith [sp.toParams.hΔ]
+  have hslot : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts (s + 1 : Nat) := by
+    rw [Healing.cutZ_eq] at hcut
+    exact ((SA.ts_le_iff sp).mpr (by push_cast; omega)).trans hcut
+  obtain ⟨j, ell, _, hu, _⟩ := hp.update_toFG_calls hy hslot hub
+  have hjb : tr.time j ≤ b := hu.2.2.1 ▸ hub
+  refine ⟨j, ell, hu, hjb, ?_⟩
+  rcases hp.finalized_compatible_clean_source hc hx hy (Or.inr hop) hs hrb
+      (fun q hq => (hp.run.time_mono hq.le).trans hjb) with hFB | hBF
+  · right
+    apply optimistic_next_result_of_floor hp hc hx hy hop hs hrb hu hjb hgu hR
+    rw [Compose.frame_of_projAC hp.run hy hu.1]
+    exact hFB
+  · exact Or.inl hBF
+
 /-- Full viability makes the newly selected fast lock an exact toFG candidate,
 including the second normalization by liveLocks at the adjacent call. -/
 theorem candidate_after_fast_update {A : SA.SAState sp.n} {Phi : SA.Frm sp.n FGP}
