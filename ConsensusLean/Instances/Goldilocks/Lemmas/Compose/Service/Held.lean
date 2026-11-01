@@ -42,59 +42,69 @@ private theorem proposal_honest (hrun : GoldilocksRun proposer dg H tr) (hnc : N
     (Store.tree_grows _ _ _ _ (fg_reachable h hp _)).1 P _ (h.cutLaw p hp _ _ hacc).2.1]
   exact Set.mem_insert _ _
 
-/-- **An origin of a label at most `s` is below `P`**: an honest slot-`s` vote, which is `P`,
-extends it (S2 for a label below `s`; its honest supporter for the label `s`). -/
-private theorem origin_anc_proposal (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k))
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat} (hC : Origin tr H C j) (hj : j ≤ s) :
-    Anc (tr.HonestBlocks H) C P := by
-  have hinv := sleepy_invariant hrun hnc hsl
+/-- Finite origin comparison, using only votes available by the horizon. -/
+private theorem origin_anc_proposal_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBound H (sp.ts s + d))
+    (hinv : SleepyInvariantUpTo tr H b) {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hPU : P ∈ tr.HonestBlocks H) (hsb : sp.ts s + sp.Δ ≤ b)
+    (hall : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s →
+      tr.time j ≤ b → e.msg.head = P.root)
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
+    (hC : OriginWithin tr H C j b) (hj : j ≤ s) : Anc (tr.HonestBlocks H) C P := by
   have hU := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
-  have hall := honest_votes_eq_proposal hrun hnc hsl hp hP hPs hpj
-  have hPU := proposal_honest hrun hnc hp hP
   rcases hj.lt_or_eq with hlt | rfl
-  · obtain ⟨x, hx, k', e, hv, hes⟩ := honest_vote_exists hrun hnc hsl s
-    obtain ⟨Hd, hHd, hHdr, hCH⟩ := hinv.vote_extends C j hC x hx k' e hv (by omega)
-    rwa [hU.1 hHd hPU (hHdr.trans (hall x hx k' e hv hes))] at hCH
-  · obtain ⟨x, hx, k', e, hv, hes, Hd, hHd, hHdr, hCH⟩ := honest_supporter hrun hnc hsl hC
-    rwa [hU.1 hHd hPU (hHdr.trans (hall x hx k' e hv hes))] at hCH
+  · have hcount := hfb s sp.Δ (by simp) hsb
+    obtain ⟨x, hx, hw, hj⟩ := Set.nonempty_of_ncard_ne_zero
+      (Nat.zero_lt_of_lt hcount).ne'
+    obtain ⟨k, e, hv, hes, hkt⟩ := vote_of_awake_joined hrun hnc hx hw hj
+    have hkb : tr.time k ≤ b := hkt.trans hsb
+    obtain ⟨Hd, hHd, hHdr, hCH⟩ := hinv.vote_extends C j hC x hx k e hv hkb (by omega)
+    rwa [hU.1 hHd hPU (hHdr.trans (hall x hx k e hv hes hkb))] at hCH
+  · obtain ⟨x, hx, k, e, hv, hkb, hes, Hd, hHd, hHdr, hCH⟩ :=
+      honest_supporter_before hrun hnc hb0 hsync hfb hC
+    rwa [hU.1 hHd hPU (hHdr.trans (hall x hx k e hv hes hkb))] at hCH
 
-/-- **Every honest slot-`(s+1)` vote extends `P`** (the later transfer for the protected block `P`,
-by induction on the vote's cut). -/
-private theorem votes_succ_extend (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) :
-    ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s + 1 →
+/-- Finite successor-vote transfer through the observation horizon. -/
+private theorem votes_succ_extend_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBound H (sp.ts s + d))
+    (hinv : SleepyInvariantUpTo tr H b) {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hPU : P ∈ tr.HonestBlocks H) (hsb : sp.ts s + sp.Δ ≤ b)
+    (hall : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s → e.msg.head = P.root) :
+    ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s + 1 → tr.time j ≤ b →
       SA.VoteExtends (tr.HonestBlocks H) e.msg P := by
-  have hinv := sleepy_invariant hrun hnc hsl
-  have hall := honest_votes_eq_proposal hrun hnc hsl hp hP hPs hpj
-  have hPU := proposal_honest hrun hnc hp hP
-  have hPb : OriginsBelow tr H (s + 1) := originsBelow_iff.2
+  have hPb : OriginsBelowUpTo tr H (s + 1) b := originsBelowUpTo_iff.2
     fun C j C' j' _ _ hC hC' => hinv.origins_compatible C j C' j' hC hC'
   intro x hx j
   induction j using Nat.strong_induction_on generalizing x with
   | _ j ih =>
-    intro e ⟨ℓ, hc, he⟩ hes
-    exact later_transfer_step hrun hnc hsl hPb hx ⟨hc, he⟩ hes hPU
-      (fun C j hC hj => Or.inr (origin_anc_proposal hrun hnc hsl hp hP hPs hpj hC hj))
+    intro e ⟨ℓ, hc, he⟩ hes hjb
+    exact later_transfer_step_before hrun hnc hb0 hsync hfb hPb hx ⟨hc, he⟩ hes hjb hPU
+      (fun C j hC hj => Or.inr (origin_anc_proposal_before hrun hnc hb0 hsync hfb hinv
+        hPU hsb (fun x hx k e hv hs _ => hall x hx k e hv hs) hC hj))
       (fun x hx k e' hv hs => ⟨P, hPU, (hall x hx k e' hv hs).symm, .refl⟩)
-      (fun z hz j' hj' e' hv hs => ih j' hj' z hz e' hv hs)
+      (fun z hz j' hj' e' hv hs => ih j' hj' z hz e' hv hs
+        ((hrun.time_mono hj'.le).trans hjb))
 
 /-- **The rows the updater holds have sources compatible with `P`**: signed before `t_s + 6Δ`,
 with a source below an origin before the signing, of a label at most `s + 1`. -/
-private theorem rows_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
-    (hy : y ∈ H) {k₀ : Nat} (ht : tr.time k₀ = sp.ts s + 6 * sp.Δ) :
+private theorem rows_compatible_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBound H (sp.ts s + d))
+    (hinv : SleepyInvariantUpTo tr H b) {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hPU : P ∈ tr.HonestBlocks H)
+    (hall : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s → e.msg.head = P.root)
+    {y : Fin sp.n} (hy : y ∈ H) {k₀ : Nat} (ht : tr.time k₀ = sp.ts s + 6 * sp.Δ)
+    (hb : tr.time k₀ ≤ b) :
     HonestRowsSourced tr H (fun D => Compatible (tr.HonestBlocks H) D P) y k₀ := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hPU := proposal_honest hrun hnc hp hP
+  have hsb : sp.ts s + sp.Δ ≤ b := by linarith
   have hsl₀ : sp.slot (tr.time k₀) = s + 1 := by
     have h6 : sp.ts s + 6 * sp.Δ = sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ :=
       (SA.slot_arithmetic sp s).2.2
@@ -104,6 +114,8 @@ private theorem rows_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : N
   obtain ⟨m, hm, -, ks, hksm, hsg⟩ := honest_row_signed_before hrun hnc hy hX ha hav
   obtain ⟨D, -, hDs, C, l, hCo, hDC⟩ := attestation_source hrun hnc hav hsg
   refine ⟨D, ?_, hDs⟩
+  have hCb := hCo.within (fun k hk =>
+    (hrun.time_mono (show k ≤ k₀ by omega)).trans hb)
   obtain ⟨x, hx, k', hk', CV, hR | hO⟩ := originBefore_iff.1 hCo
   · -- a regular origin, written at `t_l + 6Δ ≤ t_s + 6Δ`
     have hk'₀ : k' < k₀ := by omega
@@ -114,10 +126,10 @@ private theorem rows_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : N
       have : sp.ts (l : Int) ≤ sp.ts (s : Int) := by linarith
       exact_mod_cast (SA.ts_le_iff sp).1 this
     exact Or.inl (hDC.trans
-      (origin_anc_proposal hrun hnc hsl hp hP hPs hpj (Origin.of_result hx hR) hl))
+      (origin_anc_proposal_before hrun hnc hb0 hsync hfb hinv hPU hsb
+        (fun x hx k e hv hs _ => hall x hx k e hv hs) hCb hl))
   · -- an optimistic origin, of the slot of its time
     have hk'₀ : k' < k₀ := by omega
-    have hOo := Origin.of_optimistic hx hO
     obtain ⟨-, -, -, hslk, -⟩ := hO
     have hl : l ≤ s + 1 := by
       have := SA.slot_mono sp (hr.time_nonneg k') (hrun.time_mono hk'₀.le)
@@ -127,31 +139,50 @@ private theorem rows_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : N
       exact this
     rcases Nat.lt_or_ge l (s + 1) with hls | hls
     · exact Or.inl (hDC.trans
-        (origin_anc_proposal hrun hnc hsl hp hP hPs hpj hOo (by omega)))
+        (origin_anc_proposal_before hrun hnc hb0 hsync hfb hinv hPU hsb
+          (fun x hx k e hv hs _ => hall x hx k e hv hs) hCb (by omega)))
     obtain rfl : l = s + 1 := le_antisymm hl hls
-    obtain ⟨z, hz, j, e, hv, hes, Hd, hHd, hHdr, hCH⟩ := honest_supporter hrun hnc hsl hOo
+    obtain ⟨z, hz, j, e, hv, hjb, hes, Hd, hHd, hHdr, hCH⟩ :=
+      honest_supporter_before hrun hnc hb0 hsync hfb hCb
     obtain ⟨Hd', hHd', hHd'r, hPH⟩ :=
-      votes_succ_extend hrun hnc hsl hp hP hPs hpj z hz j e hv hes
+      votes_succ_extend_before hrun hnc hb0 hsync hfb hinv hPU hsb hall z hz j e hv hes hjb
     obtain rfl : Hd' = Hd := hU.1 hHd' hHd (hHd'r.trans hHdr.symm)
     exact Anc.total hU (hDC.trans hCH) hPH
 
-/-- **The updater's `Σ.F` is at or below `P`** (workbench#12 §4). -/
-theorem updater_F_anc_proposal (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+private theorem rows_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
+    (hy : y ∈ H) {k₀ : Nat} (ht : tr.time k₀ = sp.ts s + 6 * sp.Δ) :
+    HonestRowsSourced tr H (fun D => Compatible (tr.HonestBlocks H) D P) y k₀ := by
+  have hs : tr.SyncBefore H ΔF (tr.time k₀) :=
+    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
+      hsl.1.message x hx i m hm h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
+      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
+  exact rows_compatible_before hrun hnc (hrun.time_nonneg k₀) hs
+    (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
+    (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀)))
+    (proposal_honest hrun hnc hp hP) (honest_votes_eq_proposal hrun hnc hsl hp hP hPs hpj)
+    hy ht le_rfl
+
+/-- **The updater's `Σ.F` is at or below `P`** (workbench#12 §4). -/
+private theorem updater_F_anc_of_rows (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPU : P ∈ tr.HonestBlocks H)
+    (hPs : P.slot = s) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
+    (hsrc : HonestRowsSourced tr H (fun D => Compatible (tr.HonestBlocks H) D P) y k₀) :
     Anc (tr.HonestBlocks H) (tr.state y k₀).fg.F P := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
-  have hPU := proposal_honest hrun hnc hp hP
   have hR := fg_reachable hrun.toLocalRun hy k₀
   obtain ⟨hFt, hJt, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hR
   have hcoh := (Store.accepted_tree _ _ _ _ hR).2.1
   have hsU : (tr.state y k₀).fg.tree ⊆ tr.HonestBlocks H := fun Z hZ => ⟨y, hy, k₀, hZ⟩
   have ht : tr.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-  have hsrc := rows_compatible hrun hnc hsl hp hP hPs hpj hy ht
   set R : SA.Blk sp.n (List (FG.Att sp.n)) → Prop := fun D => Compatible (tr.HonestBlocks H) D P
   have hRc : ∀ A B, Anc (tr.HonestBlocks H) A B → R B → R A := by
     rintro A B hAB (hBP | hPB)
@@ -163,7 +194,7 @@ theorem updater_F_anc_proposal (hrun : GoldilocksRun proposer dg H tr)
     · left
       rw [justified_genesis hrun h0 hy]
       rfl
-    obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source hrun hnc hsl hy hsrc (by omega)
+    obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source_before hrun hnc hf hy hsrc (by omega)
     obtain ⟨x, hx, k', -, -, hJD, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, k₀, hJt⟩ rfl
     exact Or.inr (hRc _ _ (Anc.mono (T := tr.HonestBlocks H) (fun Z hZ => ⟨x, hx, k', hZ⟩) hJD) hD)
   have hJR : R (tr.state y k₀).fg.J := by
@@ -199,6 +230,18 @@ theorem updater_F_anc_proposal (hrun : GoldilocksRun proposer dg H tr)
   · exact hPFe ▸ .refl
   have := (Anc.slot_le hU hPF).2 hPFe
   omega
+
+/-- The whole-run interface supplies the finite row comparison at the update. -/
+theorem updater_F_anc_proposal (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
+    (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
+    Anc (tr.HonestBlocks H) (tr.state y k₀).fg.F P :=
+  updater_F_anc_of_rows hrun hnc (two_faults_lt_of_sleepy hsl)
+    (proposal_honest hrun hnc hp hP) hPs hy hu
+    (rows_compatible hrun hnc hsl hp hP hPs hpj hy hu.2.2.1)
 
 end Consensus.Goldilocks.Compose
 
