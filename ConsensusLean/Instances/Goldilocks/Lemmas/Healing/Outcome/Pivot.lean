@@ -840,15 +840,6 @@ variable (hp : ResetPremises tr H proposer dg g ΔF a)
     e'.msg.slot = u → e'.msg.head = P.root)
 
 include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
-/-- OPEN: the proposal start has direct support at the actual vote head. -/
-theorem proposal_start_supported :
-    Anc (tr.HonestBlocks H) d.start
-      (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-        (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
-        (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
-  sorry
-
-include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
 /-- OPEN: non-current live locks move back below the proposal parent. -/
 theorem vote_old_live_lock_below_parent
     {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
@@ -1162,6 +1153,20 @@ theorem proposal_start_supported_of_source_votes
       exact_mod_cast (SA.ts_lt_iff sp).mp ht'
   exact (Anc.mono hΦU ((SA.anc_viableAncestor ℓp.frame B').trans hBB₁)).trans
     (hLD.trans (extend D (hsources r l₁.slot D hri horig hlo hlt)))
+
+include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
+/-- The proposal start is supported through clean raw-source vote induction.
+Its remaining open dependency is the current raw-target domain step. -/
+theorem proposal_start_supported :
+    Anc (tr.HonestBlocks H) d.start
+      (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
+        (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
+        (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
+  apply proposal_start_supported_of_source_votes hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE
+  intro r l B hri horig hclean hlu
+  exact clean_source_votes_before hp hc (max (tr.time i) (tr.time j)) hP.1 horig hclean
+    ((hp.run.time_mono hri.le).trans (le_max_left _ _)) j (le_max_right _ _)
+    y hy ℓy e hcy (by rw [hes]; exact hlu)
 
 end SourceVotes
 
