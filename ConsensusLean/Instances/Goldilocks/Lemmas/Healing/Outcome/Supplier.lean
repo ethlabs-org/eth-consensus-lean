@@ -1002,6 +1002,35 @@ theorem ready_update (hp : ResetPremises tr H proposer dg g ΔF a)
       ((tr.state z' r).fg.σ P.root).h < ((tr.state z' r).fg.σ C.root).h := by
   sorry
 
+/-- Conditional report coverage at actual cuts bounded by the update deadline.
+Compatibility discharges the strict-descendant branch using an earlier actual report;
+the below-floor branch still needs an actual-report producer (selection alone is not one).
+The cuts may be updates or first-loss post-states; no lower bound on report time is imposed. -/
+theorem report_cover_of_compatible_floors
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hcuts : ∀ z ∈ H, ∃ j, tr.time j ≤ sp.ts u + 6 * sp.Δ ∧
+      Compatible (tr.HonestBlocks H) (tr.state z j).fg.F P ∧
+      (Anc (tr.HonestBlocks H) (tr.state z j).fg.F P →
+        ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+          Anc (tr.HonestBlocks H) P C)) :
+    (∀ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+      Anc (tr.HonestBlocks H) P C) ∨
+    ∃ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+      Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
+  by_cases hall : ∀ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧
+      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C
+  · exact Or.inl hall
+  push Not at hall
+  obtain ⟨z, hz, hn⟩ := hall
+  obtain ⟨j, hj, hcompat, hbelow⟩ := hcuts z hz
+  rcases finality_below_or_higher_report hp hz hcompat with
+    hF | ⟨v, hv, r, ℓ, C, hrj, hto, hPC, hlt⟩
+  · obtain ⟨r, ℓ, C, hto, ht, hPC⟩ := hbelow hF
+    exact False.elim (hn r ℓ C hto ht hPC)
+  · exact Or.inr ⟨v, hv, r, ℓ, C, hto, (hp.run.time_mono hrj.le).trans hj, hPC, hlt⟩
+
 /-- **Report coverage** (workbench#30 `entry-rows-exact.md` §2, the exact acquisition supplier
 of `entry_rows`): for an honest ready proposal `P` of slot `u` with `t_u ≥ R`, by
 `d = t_u + 6Δ` either every honest node has an actual `ac_to_fg` report `C` extending `P` (a
