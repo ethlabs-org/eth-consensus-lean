@@ -566,6 +566,69 @@ theorem historical_activation_before (hp : ResetPremises tr H proposer dg g ΔF 
       RawVoteAt (tr := tr) (H := H) (HistoricalTargets (tr := tr) (H := H) (g := g)) Q k :=
   historical_activation_cutZ_before hp Q (reset_sync_window_before hp Q)
 
+/-- Finite domain reduction with the earlier-origin comparisons left explicit.
+The seed need only be comparable with the target, not cover it. -/
+theorem ResetPremisesUpTo.held_target_vote_domain_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {x y v : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
+    {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hBx : B ∈ (tr.state x r).fg.tree)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcast : SA.CastAt tr.projAC y i ell e)
+    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B →
+      B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
+    (hS : HighOrigin tr H g v q m S) (hm : m < e.msg.slot)
+    (hBS : Compatible (tr.HonestBlocks H) B S)
+    (hcompare : ∀ z d n O, d < i → HighOrigin tr H g z d n O →
+      Compatible (tr.HonestBlocks H) B O)
+    (hseedCompare : ∀ z d n O, d < i → HighOrigin tr H g z d n O →
+      Compatible (tr.HonestBlocks H) S O)
+    (hpair : ∀ z d n O, d < i → HighOrigin tr H g z d n O →
+      ∀ z' d' n' O', d' < i → HighOrigin tr H g z' d' n' O' →
+      Compatible (tr.HonestBlocks H) O O') :
+    Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨
+      B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
+    by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
+    · exact hp.low_root_of_seed_before hx hBx hy hS hcast hm hlow hBS hheld
+    · exact hp.high_J_root_of_held_at_call_before hx hBx hy hcast.1 (by omega) hcompare
+  by_cases hcovered : Anc (tr.HonestBlocks H) B ell.frame.fcRoot
+  · exact Or.inl hcovered
+  have hkeep : ∃ W ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+      Anc (tr.HonestBlocks H) B W ∧ (tr.state y i).fg.IsViable W := by
+    obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcast.1
+    have hFB := (Anc.mono hPhiU hPhi.F_anc_fcRoot).trans (hroot.resolve_right hcovered)
+    have hBt := hheld hFB
+    have hBy := hp.frame_tree_subset hy hcast.1 hBt.1
+    have hreach := Compose.fg_reachable hp.run.toLocalRun hy i
+    by_cases hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h
+    · exact ⟨B, hBt, .refl, hfloor⟩
+    have hBfloor := lt_of_not_ge hfloor
+    obtain ⟨-, -, -, -, -, -, -, -, -, hSsrc⟩ := hp.highOrigin_mem hS
+    by_cases hSf : (tr.state y i).fg.headHeightFloor ≤ ((tr.state v q).fg.σ S.root).h
+    · have hBS' : Anc (tr.HonestBlocks H) B S := by
+        rcases hBS with h | h
+        · exact h
+        · have hSy := hp.mem_tree_of_anc hy h hBy
+          have hh := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hy h hBy)
+          rw [← hp.σ_eq_run hS.1 hy hSsrc hSy] at hh
+          omega
+      have hSy := hp.high_origin_held_at_vote hS hy hcast hm (hFB.trans hBS')
+      have hSf' : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ S.root).h := by
+        rw [← hp.σ_eq_run hS.1 hy hSsrc hSy]
+        exact hSf
+      exact hp.raw_target_frozen_witness hS hy hcast hm hFB hBS' hSy .refl hSf'
+    · obtain ⟨z, d, n, O, E, hd, ho, hn, hE, hEO, _, hEf⟩ :=
+        hp.high_floor_source_core hS hy hcast hm hpair hseedCompare (lt_of_not_ge hSf)
+      have hBO : Anc (tr.HonestBlocks H) B O := by
+        rcases hcompare z d n O hd ho with h | h
+        · exact h
+        · have hh := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hy (hEO.trans h) hBy)
+          omega
+      exact hp.raw_target_frozen_witness ho hy hcast hn hFB hBO hE hEO hEf
+  exact (vote_viable_of_root hp.run hp.noColl hy hcast hroot (Or.inl hkeep)).symm
+
 /-- Conditional §75 domain reduction. The explicit producer hypotheses are the open
 joint-induction boundary, not consequences asserted of reset premises. Frozen target
 membership must be produced before its receiver height is read. -/
@@ -678,8 +741,8 @@ theorem slow_target_vote_domain_before
 
 /-- A later controlling high source compares with a prospective target from strictly
 earlier head support. The target need not be a high origin or have been written yet. -/
-theorem target_compatible_later_origin_before
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ResetPremisesUpTo.target_compatible_later_origin_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x : Fin sp.n} {r m i l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r m O) (hri : r < i) (hlm : l < m)
     (hsupport : ∀ z ∈ H, ∀ q < i, ∀ e, SA.VoteAt tr.projAC z q e →
@@ -687,7 +750,7 @@ theorem target_compatible_later_origin_before
     Compatible (tr.HonestBlocks H) B O := by
   have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hf : 2 * Hᶜ.ncard < sp.n := by
-    have := hp.healthy.2.2
+    have := hp.faults
     have := Fin.pos x
     have hn : sp.n = sp.toParams.n := rfl
     omega
@@ -698,6 +761,16 @@ theorem target_compatible_later_origin_before
   rcases hcomp with hDB | hBD
   · exact Or.inr (hOD.trans hDB)
   · exact SA.anc_total hrun.localRun.coherent hBD hOD
+
+/-- Whole-run specialization of the prior-support comparison. -/
+theorem target_compatible_later_origin_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x : Fin sp.n} {r m i l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x r m O) (hri : r < i) (hlm : l < m)
+    (hsupport : ∀ z ∈ H, ∀ q < i, ∀ e, SA.VoteAt tr.projAC z q e →
+      l < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
+    Compatible (tr.HonestBlocks H) B O :=
+  (hp.toUpTo tr H (le_refl a)).target_compatible_later_origin_before ho hri hlm hsupport
 
 /-- An actual honest target supporter compares the target with every strictly older
 high origin. The participant-count adapter is responsible for supplying this vote. -/
