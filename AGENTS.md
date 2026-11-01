@@ -74,7 +74,7 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   and manually (kernel replay, `lake check`, `lake comparator --paranoid`). Polling can coalesce intermediate
   heads: ask the box watcher owner to queue an exact SHA when its row is missing. Failures go to #17 or the PR.
   Request full checks for milestones and toolchain/Mathlib bumps from the box watcher owner; see README
-  "Verification" for manual commands. A PR is needed only for a trusted-surface change
+  "Verification" for manual commands. No PR is needed, also for a trusted-surface change
   (below). The commit message (or PR body) ends with a cost line
   (`Cost: <agent-h> agent-h, <models>, <CPU-h> CPU-h`) and states the reason if the change makes build or CI
   time worse.
@@ -82,15 +82,14 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
   `ConsensusLeanTest/Review{Axioms,Guard}.lean`, and since #38 the instance files
   `Instances/<P>/{Spec,Statements}` and `Instances/<P>/Refinement/Defs.lean`, and `Lemmas/Problem/Derived.lean`): the list is `trusted_paths` in `scripts/boundaries.toml`,
-  and CI also checks the list at the tag. Such a change goes through a PR: CI's `review-boundary` fails until
-  the `spec-approved` tag covers the PR's head, and it merges after the tag moves. The tag is an **agent
-  approval** (owner rule, #2, 2026-10-30): an agent other than the change's author (claude-ethlabs, or the
-  amp-orbs coordinator) moves it once the author has done a fidelity read-back (a subagent, in the author's own
-  session) and `check.sh --fast` passes. A boundary-only failure before approval is expected: use the box
-  log's passing fast-tier summary, not an aggregate green #63 row, then check review-boundary after the tag
-  moves and before merge. The tag message names the PR, the protected files changed against the
-  previous tag, and the evidence (`docs/spec-review.md`). Nothing waits for the owner.
-- **Check infrastructure** (`scripts/**`, `.github/**`, the lakefile) is not tag-gated; its author is
+  (united with the list at the base). Such a change is **recorded, not gated** (owner, 2026-11-01: the
+  `spec-approved` tag is retired while the work is active): it lands through `scripts/push-main.sh` like any
+  other change; every commit that touches a trusted path carries a line `Trusted-surface: <what changes and
+  why>` in its message (`scripts/review-boundary.sh` fails without it), and push-main comments the landing on
+  [#129](https://github.com/ethlabs-org/consensus-lean/issues/129). For a statement change, do a fidelity
+  read-back (a subagent, in your own session) before landing and say so in the commit; the spec snapshot
+  (step 4) still has to be regenerated and committed. Nothing waits for anyone.
+- **Check infrastructure** (`scripts/**`, `.github/**`, the lakefile) is not on the trusted surface; its author is
   responsible for it: a change to what a trust check checks comes with fixtures that show the new verdicts and a
   pointer on #17; a pure speedup shows that every check's verdict is unchanged (same pass/fail on the
   fixtures) (`TRUST.md`).
@@ -121,10 +120,10 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
 
 ## Statements first, then proofs
 
-- **Two phases** (plan §4, §7). Milestone statements are written at full strength, read back, and approved through
-  the tag (an agent approval, above) before proofs start. Never weaken a statement to make it provable and never drop
-  a rejection test. A proof PR does not edit statements, except a correction approved through the tag
-  (`CONTRIBUTING.md` "Statements").
+- **Two phases** (plan §4, §7). Milestone statements are written at full strength and read back before proofs
+  start. Never weaken a statement to make it provable and never drop a rejection test. A proof change does not
+  edit statements, except a correction landed as a labelled trusted-surface commit (above; `CONTRIBUTING.md`
+  "Statements").
 - **A statement you believe is false:** open an issue with a counterexample (a named theorem proving the
   negation, or a concrete instance) and stop; do not change the statement.
 - **A lemma you need from another agent's area** becomes a `sorry` lemma in your own file (under `Lemmas/` or
@@ -136,8 +135,8 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
 
 - **Nothing blocks on the owner, and there are no review gates between agents** (owner, #2, 2026-10-30). He
   gives input and asks questions; agents own every decision and record it where the work is (PR body, issue).
-  The only approval is the tag move above. The author owns the change. A subagent pass (the fidelity read-back
-  the tag needs, a skeptical read of a tricky trust-check change) is a tool used inside the author's own
+  There is no approval step. The author owns the change. A subagent pass (the fidelity read-back of a statement
+  change, a skeptical read of a tricky trust-check change) is a tool used inside the author's own
   session, not a waiting step.
 - **Handoffs, commit messages and PR bodies** name the declarations added or changed, their assumptions, every open `sorry`, and
   the commands actually run with their result. Never claim a check you did not run.

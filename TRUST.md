@@ -30,7 +30,8 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
 ## Roles of the checks
 
 - **Spec drift:** snapshot every Spec-owned constant (readable text plus structural hashes), diff
-  against `scripts/spec-snapshot.txt`, then an agent approval of every change (`spec-approved`, moved by an agent other than its author).
+  against `scripts/spec-snapshot.txt`; the regenerated snapshot diff is committed with every change, and the change is
+  recorded (a `Trusted-surface:` commit line, issue #129; the `spec-approved` approval tag is retired, 2026-11-01).
   Proof values are omitted by proof irrelevance; non-proof auxiliary constants are included.
 - **Dependency drift:** exact pins; the upgrade above additionally used the dependency audit.
 - **Unfinished proofs** (foundation plan §5, the FLT/Carleson model): `sorry` may stay only in the
@@ -65,7 +66,7 @@ subscriptions or report the known billing failures. A green check means a passin
 The watcher runs fast mode (no replay, `lake check` or comparator; check-decls, axiom audit, snapshot diff and
 review pins included) on observed main/non-draft PR heads, with docs-only changes in `--changed` mode, plus
 review-boundary and its self-test. Polling can coalesce heads; missing exact commits can be queued by the watcher owner.
-Full mode runs nightly, on demand, after `spec-approved` changes and on milestone/release tags, from a clean
+Full mode runs nightly, on demand and on milestone/release tags, from a clean
 project build: a proof change merged after a green fast run is replayed by the kernel at the latest the next night.
 `lake check` and `lake comparator --paranoid` run inside bubblewrap on the box. Full CI rejects skipped steps
 and a dirty tree; without bubblewrap a standalone check skips these steps and lists them as CI-only, which is
@@ -138,22 +139,23 @@ The trusted surface is `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (ea
 `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusLeanTest/ReviewAxioms.lean` and `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
 as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every instance `P`). The instance paths are
-tag-protected but are not trusted layers: their imports are not restricted to trusted layers (the Goldilocks
+on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Goldilocks
 `Baseline` modules and the Bft, Streamlet and Tendermint Specs import the generic `Main` through a reviewed
 exception). The definitions the Goldilocks sheet reads from there, `Lemmas/Problem/Derived.lean`, are in the list
-too; the tag freezes their text, not everything they import. `scripts/boundaries.toml`
+too; the record covers their text, not everything they import. `scripts/boundaries.toml`
 (`[checks] trusted_paths`) lists it, and check-boundaries.py requires it to cover every file of a trusted or
 `protected` layer;
 CI's review-boundary steps (`scripts/review-boundary.sh`, self-tested on throwaway repositories) passes a change whose own
-diff touches none of those paths (literal; the lists at the PR head, its base and the tag united) and otherwise
-requires the trusted files at the PR head to equal those at `spec-approved`.
+diff touches none of those paths (literal; the lists at HEAD and at its base united) and otherwise
+requires every non-merge commit that touches them to carry a `Trusted-surface: <what and why>` line;
+`scripts/push-main.sh` then comments the landing on #129. It records changes; it does not approve them.
 `ConsensusLean/Statements/Review.lean` must hold statements only: every non-proof constant needs a
 review pair (`ConsensusLeanTest/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers
 are exempt). `ConsensusLeanTest/ReviewAxioms.lean` compiles alpha-equality/binder-kind and axiom pins.
 Primary: `Consensus.Review.AcceptedGood`; secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
-`spec-approved` is an agent approval (owner rule, 2026-10-30; nothing blocks on the owner): an agent other than
-the change's author (claude-ethlabs, or the amp-orbs coordinator) moves it after the author's fidelity read-back
-and a green fast check; the tag message names the PR, the protected files changed and the evidence.
+The `spec-approved` tag (an agent approval, 2026-10-30 to 2026-11-01) is retired by the owner while the work is
+active: trusted changes are recorded, not gated. The tag stays at its last commit as a historical marker;
+`docs/spec-review.md` keeps the approvals made under it.
 
 ## Assumed, not proved; per-instance bindings
 

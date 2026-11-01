@@ -20,7 +20,7 @@ Each statement comes with:
    list it in `ConsensusLeanTest/Index.lean` (``` example := ``Name ```): check.sh step 12 checks every
    `Consensus.`-prefixed token of the file, prose or code, so a rename fails the build. Only declarations can be
    cited this way: name a namespace without the prefix (the `Shape` namespace).
-2. **A fidelity read-back** (needed before the tag moves): the Lean read back into prose (a subagent that did not write the
+2. **A fidelity read-back** (before the statement lands): the Lean read back into prose (a subagent that did not write the
    statement does this well) and compared with the reference. Check quantifier order, strict versus non-strict bounds, and empty inputs
    (no validators, empty windows, zero thresholds).
 3. **Witnesses** in `ConsensusLeanTest/`, each labelled by kind: (a) the hypotheses are jointly satisfiable;
@@ -31,8 +31,8 @@ Each statement comes with:
    messages, history, scheduler) and what is checked (bounded safety, reachability or bounded liveness), checked
    by exhaustive `decide`. Random testing (Plausible) is not a model check.
 
-Statements are approved through the `spec-approved` tag (an agent approval: `AGENTS.md`, "Trusted surface")
-before proofs start. A PR that changes a statement and its proof together says so in its description.
+Statements land as labelled trusted-surface commits (a `Trusted-surface:` line; `AGENTS.md`, "Trusted surface"),
+recorded on #129, before proofs start. A commit that changes a statement and its proof together says so.
 
 ## Proofs (plan §4, §5)
 
@@ -71,7 +71,7 @@ before proofs start. A PR that changes a statement and its proof together says s
 
 One upgrade owner, claude-ethlabs, runs toolchain and Mathlib bumps: `lean-toolchain`, the Mathlib `rev` in
 `lakefile.toml`, `lake-manifest.json`, `scripts/pins.toml` and the table in `TRUST.md`, in one PR. The toolchain
-and manifest are on the trusted surface, so a bump needs the tag. A bump runs the full
+and manifest are on the trusted surface, so a bump's commits carry a `Trusted-surface:` line. A bump runs the full
 tier on the box before merge (cold build, rebuild canary, replay, `lake check`, paranoid comparator): ask the
 box watcher owner for an exact-commit run and verify its result on #63. GitHub Actions is disabled; do not
 dispatch `full.yml` or create a GitHub CI subscription (README "Verification").

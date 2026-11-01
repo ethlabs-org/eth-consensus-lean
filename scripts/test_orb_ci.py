@@ -304,8 +304,8 @@ class OrbCI(unittest.TestCase):
         return path.read_text().splitlines() if path.exists() else []
 
     def test_release_poll_and_exact_off_main_commits(self):
-        # A trusted-identical off-main commit must NOT be replaced by main, as
-        # spec-approved may be. Two refs on one commit must each get a row.
+        # An off-main commit is checked itself, not replaced by main. Two refs on
+        # one commit must each get a row.
         self.git("checkout", "-b", "side")
         self.write(self.repo / "side.txt", "off main\n")
         side = self.commit("off main")
@@ -346,7 +346,7 @@ class OrbCI(unittest.TestCase):
         self.assertIn("release-annotated", self.rows()[0])
         self.assertIn(f"`{self.base[:8]}`", self.rows()[0])
 
-    def test_unavailable_release_does_not_block_later_release_or_spec(self):
+    def test_unavailable_release_does_not_block_later_release(self):
         missing = "0123456789abcdef0123456789abcdef01234567"
         self.tag("release-valid", self.base)
         self.tag("spec-approved", self.base, annotated=True)
@@ -356,12 +356,10 @@ class OrbCI(unittest.TestCase):
         self.invoke("--full", "tag")
         self.assertEqual(self.lines("full-release-tags"),
                          [f"refs/tags/release-valid {self.base}"])
-        self.assertEqual(self.lines("full-tags"), [self.base])
         self.assertIn(f"refs/tags/release-missing {missing} 1", self.lines("release-tags-seen"))
         rows = self.rows()
-        self.assertEqual(len(rows), 2, rows)
+        self.assertEqual(len(rows), 1, rows)
         self.assertTrue(any("release-valid" in row for row in rows), rows)
-        self.assertTrue(any("main (full, tag" in row for row in rows), rows)
         self.assertTrue(all("PASSED" in row for row in rows), rows)
         self.assertEqual([call["sha"] for call in self.calls()], [self.base])
         # Repeated failure to fetch must remain pending, without duplicate rows.
@@ -411,19 +409,15 @@ class OrbCI(unittest.TestCase):
                          [f"refs/tags/release-locked {self.base}"])
         self.assertEqual(len(self.calls()), 1)
 
-    def test_spec_approved_path_retained(self):
+    def test_retired_spec_approved_tag_runs_nothing(self):
+        # The spec-approved tag is retired (2026-11-01): moving it queues and runs nothing.
         self.tag("spec-approved", self.base, annotated=True)
         self.invoke("--full", "poll")
-        self.invoke("--full", "poll")
-        seen = self.lines("tags-seen")
-        self.assertEqual(len(seen), 1, seen)
-        self.assertEqual(seen[0].split()[0], self.base)
         self.invoke("--full", "tag")
-        self.verdict(self.base, True, "full")
-        self.assertEqual(self.lines("full-tags"), [self.base])
-        before = (self.rows(), self.calls())
-        self.invoke("--full", "tag")
-        self.assertEqual((self.rows(), self.calls()), before)
+        self.assertFalse(self.lines("tags-seen"))
+        self.assertFalse(self.lines("release-tags-seen"))
+        self.assertFalse(self.calls(), "the retired tag ran a check")
+        self.assertFalse(self.rows(), "the retired tag recorded a row")
 
 
 if __name__ == "__main__":

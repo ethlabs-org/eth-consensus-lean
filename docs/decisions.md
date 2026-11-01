@@ -377,6 +377,10 @@ where it is recorded; "Francesco" marks the owner's decisions.
   the amp-orbs coordinator) moves it after the author's fidelity read-back and a green fast check; the tag
   message names the PR, the protected files changed and the evidence. This replaces the owner's authorization
   in the entry on `spec-approved` above. First application: #49 (`f98ed97`), moved by amp-orbs.
+- 2026-11-01, Francesco ([#129]). **The `spec-approved` tag is retired while the work is active**: trusted-surface
+  changes are recorded, not gated. They land through `scripts/push-main.sh` like any change; each commit touching a
+  trusted path carries a `Trusted-surface: <what and why>` line (`scripts/review-boundary.sh` checks it), and
+  push-main comments each landing on [#129]. This replaces the tag entries above; no PR and no second agent.
 - 2026-10-30, amp-orbs (process), under that rule ([#50]). Trunk-based: after the local checks
   (`scripts/check-changed.sh`; `--fast --selftests` for `scripts/` or build-configuration changes), rebase on
   `origin/main` and push to `main`. CI runs on every push to `main`, and whoever made it red reverts at once. A PR
@@ -386,6 +390,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 - A branch ruleset enforcing owner review ([#21], option 2).
 
+[#129]: https://github.com/ethlabs-org/consensus-lean/issues/129
 [#2]: https://github.com/ethlabs-org/consensus-lean/issues/2
 [#50]: https://github.com/ethlabs-org/consensus-lean/issues/50
 [#41]: https://github.com/ethlabs-org/consensus-lean/issues/41

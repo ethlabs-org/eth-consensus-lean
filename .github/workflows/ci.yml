@@ -7,7 +7,7 @@
 # Docs-only PRs use --changed <base>: cheap global checks, without Mathlib/project build caches.
 # Kernel replay, `lake check` and `lake comparator --paranoid` run in full.yml (nightly, manual, tags).
 # Pushes to work/* branches without a PR run nothing here: iterate locally (scripts/check-changed.sh).
-# Plus the review boundary (trusted surface vs the tag `spec-approved`). Action SHAs as in
+# Plus the review boundary (every trusted-surface commit carries a `Trusted-surface:` line). Action SHAs as in
 # verified-consensus verify.yml.
 name: check
 
@@ -195,20 +195,18 @@ jobs:
           path: ${{ runner.temp }}/check.log
           retention-days: 30
 
-      # Review boundary: the trusted surface (`trusted_paths` in scripts/boundaries.toml; docs/spec-review.md) against
-      # the commit tagged `spec-approved` (scripts/review-boundary.sh): a change of the trusted surface that the tag does
-      # not cover fails; a change that touches no trusted path passes (without the tag, a warning only). The tag is an
-      # agent approval: an agent other than the change's author moves it after the author's fidelity read-back of the
-      # diff printed here and a green fast check (docs/spec-review.md). Check infrastructure (scripts/, .github/,
-      # lakefile.toml) is not covered by the tag; agents maintain it (TRUST.md). These are steps of this job, not a
-      # job of their own: every job is billed at least one minute (#50). They run even when check.sh failed.
+      # Review boundary: a record of changes to the trusted surface (`trusted_paths` in scripts/boundaries.toml), not an
+      # approval (the `spec-approved` tag is retired, 2026-11-01; scripts/review-boundary.sh): it prints the trusted
+      # files a change touches and fails if a commit touching them lacks a `Trusted-surface: <what and why>` line.
+      # Check infrastructure (scripts/, .github/, lakefile.toml) is not on the trusted surface; agents maintain it
+      # (TRUST.md). These are steps of this job, not a job of their own: every job is billed at least one minute (#50).
+      # They run even when check.sh failed.
       - name: Review-boundary self-test (verdicts on throwaway repositories)
         if: ${{ !cancelled() }}
         run: scripts/review-boundary.sh --self-test
 
-      # A change that touches no trusted path passes (so a tag moved to a PR head just before its merge does not
-      # turn unrelated changes red); otherwise the trusted files must equal the tag's. scripts/review-boundary.sh.
-      - name: Review boundary (trusted surface covered by spec-approved)
+      # A change that touches no trusted path passes; otherwise each commit touching it must be labelled.
+      - name: Review boundary (trusted-surface commits labelled)
         if: ${{ !cancelled() }}
         env:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}

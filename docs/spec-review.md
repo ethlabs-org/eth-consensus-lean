@@ -2,7 +2,12 @@
 
 ## Approval
 
-**Current rule (owner, #2, 2026-10-30): nothing blocks on the owner.** The tag is an agent approval: an agent
+**Current rule (owner, 2026-11-01, #129): the tag is retired while the work is active.** Trusted-surface changes
+are recorded, not approved: each commit touching a trusted path carries a `Trusted-surface: <what and why>` line
+(`scripts/review-boundary.sh`), and `scripts/push-main.sh` comments each landing on #129. This file keeps the record
+of the approvals made under the tag; the tag stays at its last commit.
+
+**Previous rule (owner, #2, 2026-10-30 to 2026-11-01): nothing blocks on the owner.** The tag was an agent approval: an agent
 other than the change's author (claude-ethlabs, or the amp-orbs coordinator) moves it once the author has done a
 fidelity read-back (a subagent, in the author's own session) and CI's fast check is green. The tag message names
 the PR, the protected files changed against the previous tag, and the evidence. Before 2026-10-30 the owner

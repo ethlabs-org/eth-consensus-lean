@@ -22,14 +22,10 @@
 # (a lock): `check.sh --full` with a cold project build and artifact restoration off, which fails if a step
 # is skipped or the tree is left dirty; a row
 # in the issue, and a #17 comment on failure. `--full nightly`: unless that head already passed a full run;
-# `--full poll` (cheap, every minute, no lock): appends the tag spec-approved's commit to $ORB_CI_HOME/tags-seen
-# when it changed, so a tag that moves twice between full runs is still seen. `--full tag`: one run per commit in
-# tags-seen not yet in full-tags (handled): on that commit itself once it is on main, else (a PR head merged as
-# another commit) on the newest commit of main whose trusted files equal the tag's; pending until then
-# (full-tags-pending), dropped after a day; a row on the issue either way ("PASSED earlier" when that commit
-# already passed). `--full now`: main's head, always; `--full sha <commit> [<ref>]`: that commit.
-# Poll also queues milestone*/release* tags (annotated or lightweight) in release-tags-seen; --full tag
-# checks their exact commits, including off-main commits, once per tag/commit pair (full-release-tags).
+# `--full now`: main's head, always; `--full sha <commit> [<ref>]`: that commit.
+# `--full poll` (cheap, every minute, no lock) queues milestone*/release* tags (annotated or lightweight) in
+# release-tags-seen; `--full tag` checks their exact commits, including off-main commits, once per tag/commit pair
+# (full-release-tags). (The spec-approved tag is retired, 2026-11-01: trusted changes are covered by the nightly run.)
 # Cold full successes use done-full-cold, so pre-parity warm runs cannot suppress a cold nightly run.
 # ORB_CI_FULL_ENV: extra environment for check.sh --full (e.g. 'REPLAY_JOBS=5').
 set -uo pipefail
@@ -37,7 +33,7 @@ HOME_DIR="${ORB_CI_HOME:-$HOME/orb-ci}"
 if [[ "${1:-} ${2:-}" == "--full poll" ]]; then  # before the copy and gh: runs every minute
   mkdir -p "$HOME_DIR"
   # One remote snapshot; peel annotated tags, retaining lightweight tags too.
-  tags="$(git -C "${ORB_CI_REPO:?}" ls-remote origin 'refs/tags/spec-approved*' 'refs/tags/milestone*' 'refs/tags/release*')" || exit 1
+  tags="$(git -C "${ORB_CI_REPO:?}" ls-remote origin 'refs/tags/milestone*' 'refs/tags/release*')" || exit 1
   TAGS="$tags" python3 -I - "$HOME_DIR" <<'PY'
 import os, pathlib, sys, time
 home = pathlib.Path(sys.argv[1])
@@ -46,13 +42,7 @@ for ref in sorted(tags):
     if ref.endswith('^{}'):
         continue
     sha = tags.get(ref + '^{}', tags[ref])
-    if ref == 'refs/tags/spec-approved':
-        path = home / 'tags-seen'
-        lines = path.read_text().splitlines() if path.exists() else []
-        if not lines or lines[-1].split()[0] != sha:
-            with path.open('a') as f:
-                f.write(f'{sha} {int(time.time())}\n')
-    elif ref.startswith(('refs/tags/milestone', 'refs/tags/release')):
+    if ref.startswith(('refs/tags/milestone', 'refs/tags/release')):
         path = home / 'release-tags-seen'
         seen = {tuple(line.split()[:2]) for line in path.read_text().splitlines()} if path.exists() else set()
         if (ref, sha) not in seen:
@@ -226,7 +216,7 @@ $SIGN"
 }
 
 pass() {
-  # --tags --force: spec-approved moves (review-boundary compares against it)
+  # --tags --force: milestone/release tags may move
   git -C "$REPO" fetch -q --tags --force origin main || { log "fetch failed"; return; }
   { setup_worktree "$WT" && setup_worktree "$WT_PR"; } || { log "worktree setup failed"; return; }
   local head q
@@ -304,26 +294,10 @@ $SIGN"
   log "full $kind ${head:0:8}: rc=$rc ${secs}s"
 }
 
-trusted_same() {  # trusted_same <a> <b>: the trusted files (the lists at both commits, united) are equal at a and b
-  local p=()
-  mapfile -t p < <(for r in "$1" "$2"; do git -C "$REPO" show "$r:scripts/boundaries.toml" 2>/dev/null |
-    python3 -I -c 'import sys, tomllib
-print("\n".join(tomllib.loads(sys.stdin.read()).get("checks", {}).get("trusted_paths", [])))' 2>/dev/null; done | sort -u)
-  ((${#p[@]})) && GIT_LITERAL_PATHSPECS=1 git -C "$REPO" diff --quiet "$1" "$2" -- "${p[@]}"
-}
-
-tag_target() {  # tag_target <tag commit>: the commit of main to check for it; nothing while main does not hold it
-  local c
-  if git -C "$REPO" merge-base --is-ancestor "$1" origin/main 2>/dev/null; then echo "$1"; return; fi
-  for c in $(git -C "$REPO" rev-list --first-parent -n 100 origin/main); do  # newest first
-    trusted_same "$1" "$c" && { echo "$c"; return; }
-  done
-}
-
 full_pass() {  # full_pass nightly|tag|now|sha <commit> [<ref>]
   exec 9>"$HOME_DIR/full.lock"
   if [[ "$1" == tag ]]; then flock -n 9 || return 0; else flock 9; fi  # one full run at a time
-  touch "$FULL_DONE" "$HOME_DIR/full-tags" "$HOME_DIR/tags-seen"
+  touch "$FULL_DONE"
   git -C "$REPO" fetch -q --tags --force origin main || { log "fetch failed"; return 1; }
   setup_worktree "$WT" || { log "worktree setup failed"; return 1; }
   local head tag
@@ -336,9 +310,7 @@ full_pass() {  # full_pass nightly|tag|now|sha <commit> [<ref>]
     sha)
       head="$(git -C "$REPO" rev-parse -q --verify "${2:-}^{commit}")" || { log "full: no commit '${2:-}'"; return 2; }
       full_check now "${3:-main (full, ${head:0:8})}" "$head" ;;
-    tag)  # until a pass handles nothing: tags-seen grows while a run goes on
-      # Release/milestone tags check their exact commit, even when not on main.
-      # They are separate from spec-approved's trusted-surface mapping semantics.
+    tag)  # release/milestone tags: their exact commit, even when not on main
       touch "$HOME_DIR/release-tags-seen" "$HOME_DIR/full-release-tags"
       local ref sha observed
       while read -r ref sha observed; do
@@ -353,27 +325,7 @@ full_pass() {  # full_pass nightly|tag|now|sha <commit> [<ref>]
         fi
         full_check tag "${ref#refs/tags/} (full)" "$sha" || continue
         echo "$ref $sha" >>"$HOME_DIR/full-release-tags"
-      done <"$HOME_DIR/release-tags-seen"
-      local t at tgt again=1
-      while ((again)); do
-        again=0; : >"$HOME_DIR/full-tags-pending"
-        git -C "$REPO" fetch -q --tags --force origin main || { log "fetch failed"; return 1; }
-        while read -r t at; do
-          [[ -n "$t" ]] && ! grep -qx "$t" "$HOME_DIR/full-tags" || continue
-          git -C "$REPO" cat-file -e "$t^{commit}" 2>/dev/null || git -C "$REPO" fetch -q origin "$t" 2>/dev/null
-          tgt="$(tag_target "$t")"
-          if [[ -z "$tgt" ]]; then
-            if (($(date +%s) - ${at:-0} > 86400)); then log "full: spec-approved ${t:0:8} never reached main; dropped"
-              echo "$t" >>"$HOME_DIR/full-tags"
-            else echo "$t $at" >>"$HOME_DIR/full-tags-pending"; fi
-            continue
-          fi
-          if grep -q "^$tgt [a-z]* 0 " "$FULL_DONE"; then
-            record "main (full, tag ${t:0:8})" "$tgt" "--full" "PASSED earlier on this commit"
-          else full_check tag "main (full, tag ${t:0:8})" "$tgt" || continue; fi
-          echo "$t" >>"$HOME_DIR/full-tags"; again=1
-        done <"$HOME_DIR/tags-seen"
-      done ;;
+      done <"$HOME_DIR/release-tags-seen" ;;
     *) log "usage: orb-ci.sh --full nightly|tag|now|poll|sha <commit> [<ref>]"; return 2 ;;
   esac
 }

@@ -4,9 +4,12 @@
 #   - HEAD contains origin/main (rebase first),
 #   - `scripts/check.sh --changed origin/main` passes (the downstream cone of the change; a change to scripts/ or the
 #     build configuration runs the whole fast mode, with self-tests for scripts/),
-#   - `scripts/review-boundary.sh origin/main` passes (a trusted-surface change needs the tag: go through a PR);
+#   - `scripts/review-boundary.sh origin/main` passes (every commit that touches the trusted surface carries a
+#     `Trusted-surface: <what and why>` line);
 # then it records HEAD as verified (for the pre-push hook scripts/hooks/pre-push), pushes HEAD to main as a
-# fast-forward of the commit it checked against, and prints the check's result line.
+# fast-forward of the commit it checked against, and prints the check's result line. A landing that touches the
+# trusted surface is then recorded on issue PUSH_MAIN_TRUSTED_ISSUE (default 129) with `gh` (best effort: a failure
+# only warns; the commit lines are the durable record).
 #
 # Contention (#50). The first round runs without a lock. If main moved meanwhile, the next rounds hold the landing
 # lock, the branch `push-main-lock` on the remote: one lander at a time rebases, checks and pushes, so its round cannot
@@ -54,6 +57,22 @@ release() {
   git push -q --force-with-lease="$lock_ref:$held" "$remote" ":$lock_ref" 2>/dev/null || true
   held=""
 }
+record_trusted() {  # record_trusted <base> <head>: comment on the log issue if <base>..<head> touches the trusted surface
+  local p=() body
+  mapfile -t p < <(for r in "$1" "$2"; do git show "$r:scripts/boundaries.toml" 2>/dev/null | python3 -I -c 'import sys, tomllib
+print("\n".join(tomllib.loads(sys.stdin.read()).get("checks", {}).get("trusted_paths", [])))' 2>/dev/null; done | awk NF | sort -u)
+  ((${#p[@]})) && ! GIT_LITERAL_PATHSPECS=1 git diff --quiet "$1" "$2" -- "${p[@]}" || return 0
+  body="**Trusted-surface change** landed on main: \`${1:0:8}..${2:0:8}\`
+
+$(GIT_LITERAL_PATHSPECS=1 git log --no-merges --full-history --format='- %h %s%n%(trailers:key=Trusted-surface,separator=%x20)' "$1..$2" -- "${p[@]}" | sed 's/^Trusted-surface:/  Trusted-surface:/')
+
+\`\`\`
+$(GIT_LITERAL_PATHSPECS=1 git diff --stat "$1" "$2" -- "${p[@]}")
+\`\`\`"
+  gh issue comment "${PUSH_MAIN_TRUSTED_ISSUE:-129}" -R "$(git remote get-url "$remote" | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##')" \
+    --body "$body" >/dev/null 2>&1 && echo "push-main: recorded the trusted-surface change on issue #${PUSH_MAIN_TRUSTED_ISSUE:-129}" ||
+    echo "push-main: WARNING: could not record the trusted-surface change on issue #${PUSH_MAIN_TRUSTED_ISSUE:-129}; post it by hand"
+}
 # Cancellation must stop the landing, not merely release its lock and resume.
 # EXIT performs cleanup for both normal completion and signal-triggered exits.
 trap 'rc=$?; release; timing total "$started"; echo "push-main: exit=$rc"' EXIT
@@ -80,7 +99,7 @@ while :; do
   result="$(grep '^check.sh: ' "$log" | tail -1)"
   ((rc == 0)) && [[ "$result" == "check.sh: PASSED"* ]] || die "${result:-check.sh did not finish} (log: $log)"
   phase=$SECONDS
-  scripts/review-boundary.sh "$base" || die "review boundary: a trusted-surface change needs spec-approved (a PR; docs/spec-review.md)"
+  scripts/review-boundary.sh "$base" || die "review boundary: label each commit that touches the trusted surface with a Trusted-surface: line"
   timing review-boundary "$phase"
   git fetch -q --tags --force "$remote" main
   if [[ "$(git rev-parse "$remote/main")" == "$base" ]]; then
@@ -95,6 +114,7 @@ while :; do
         release
         timing delivery "$phase"
         echo "push-main: pushed ${head:0:8} to main after: $result"
+        record_trusted "$base" "$head"
         exit 0
       fi
       echo "push-main: the push was rejected (main moved at the last moment)"

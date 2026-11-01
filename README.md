@@ -87,7 +87,7 @@ In CI, `lake comparator --config comparator.json` compares `Challenge.lean`
 (the Spec statements with placeholder proofs) with `Solution.lean`:
 matching statements, permitted axioms, sandboxed kernel replay, and identical reachable constants
 in both exports to resist build-time tampering. This checks the proofs against Spec built alone;
-Spec drift is checked by the snapshot diff and the approval of each change (`spec-approved`).
+Spec drift is checked by the snapshot diff, committed and recorded with each change (#129).
 
 `Accepted.good` combines three theorems. `refinement` gives `Behaviour`;
 its bridges are `ledgerTrace` (reads are `ledgerOf` of the output chains)
@@ -530,11 +530,11 @@ Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 14. **Rebuild canary (report; `--full`, or `--canary`, which CI passes when the build configuration changed):** a fixed proof-only edit of one module (`canary_*` in `scripts/boundaries.toml`) must leave its `.olean.hash` unchanged and every default target up to date; a regression is reported (a CI warning). Its control, a statement edit, must make the default targets stale, else the step fails.
 
 Checks with fixtures exercise the same code paths on positive and negative controls.
-Spec drift is guarded by the snapshot diff plus the approval of each change (`spec-approved`);
+Spec drift is guarded by the snapshot diff, committed and recorded with each change (#129);
 dependency drift by pins; proof validity by replay, check-decls and the CI comparator.
 
 Proof support outside that surface: `ConsensusLean/Lemmas/Problem/Derived.lean` defines
-`Agree`, `Safe`, `ReadySafeUpTo` and `FaultsBelow` with their characterising lemmas (tag-protected, because the
+`Agree`, `Safe`, `ReadySafeUpTo` and `FaultsBelow` with their characterising lemmas (on the trusted surface, because the
 Goldilocks sheet reads them), and `ConsensusLean/Lemmas/Problem/DerivedFacts.lean` defines `SendsFromZero` and
 `Trace.map` with theirs (not protected); `Good` reads none of them. `ConsensusLean/Lemmas/Problem/Facts/` holds the derived `Good.*`
 lemmas, including `Good.served`; `ConsensusLean/Lemmas/Blocks/Facts.lean` holds the block lemmas.
@@ -832,7 +832,7 @@ if its row is missing. The watcher comments failures on #17 (main/full) or the P
 | Mode | Runs | Where |
 |---|---|---|
 | `--fast` (default) | steps 0–4, 6–9, 12, 13: pins, build (`--wfail`), imports, check-decls, axiom audit, Spec surface + snapshot diff, review pins, grep, vendored hashes, comparator config, docs, metrics; self-tests only with `--selftests`, step 4's `reach` report only with `--reach`, the rebuild canary (14) only with `--canary` | Box watcher on observed main and non-draft PR heads (PR merged into main first), with `--selftests` when `scripts/` or the build configuration changed, `--reach` when the trusted surface or `scripts/` changed, `--canary` when the build configuration changed; review-boundary and its self-test also run |
-| `--full` | everything: the fast steps, every self-test, leanchecker replay (5), `lake check` (10), `lake comparator --paranoid` (11), the rebuild canary (14) | Box nightly at 03:17 UTC, on demand, after `spec-approved` changes and on `milestone*`/`release*` tags; clean project build, unsplit, with no skipped steps |
+| `--full` | everything: the fast steps, every self-test, leanchecker replay (5), `lake check` (10), `lake comparator --paranoid` (11), the rebuild canary (14) | Box nightly at 03:17 UTC, on demand and on `milestone*`/`release*` tags; clean project build, unsplit, with no skipped steps |
 | `--changed [<base>]` | the fast steps restricted to what changed since `<base>` (default: merge-base with `origin/main`, uncommitted and untracked files included): build of the changed modules' downstream cone, check-decls on the affected libraries, the axiom audit's gates only if the closure of `Solution` (or a test module) changed and its report only if `ConsensusLean` did, Spec surface and comparator config only if a Spec module (or the challenge, `comparator.json`, the solution's imports) changed (otherwise only noconst of step 4), grep on the changed files; pins, imports, review pins, vendored hashes, docs and metrics in full (cheap). A change of `scripts/` or of the build configuration falls back to `--fast` (with self-tests for `scripts/`); with `--selftests` it runs `--fast --selftests` | locally, `scripts/check-changed.sh [<base>]` |
 
 Only an unsplit `--full` ends with `check.sh: ALL CHECKS PASSED`; a `--split` part ends with `check.sh: PART PASSED (split <part>; ...)`, the other modes with `check.sh: PASSED (<mode> mode; ...)`.
@@ -849,7 +849,7 @@ On the shared box every build and check runs in a job (replace `<name>` and `<wo
    job --mem 16G --cpus 8 consensus-lean <name> -- bash -lc "cd <worktree> && LAKE_RESTORE_ARTIFACTS=true scripts/check-changed.sh"
    ```
 3. Commit, rebase on `origin/main` and land with `scripts/push-main.sh` (it reruns step 2 against `origin/main`
-   and pushes only if it passes; a trusted-surface change goes through a PR instead, for the tag). The box watcher
+   and pushes only if it passes; a trusted-surface change needs a `Trusted-surface:` line in each commit). The box watcher
    checks main and PR heads; verify the corresponding result on #63. Docs-only changes use `--changed <base>`.
    Before a milestone or toolchain/Mathlib bump, request a full run on the exact commit from the box watcher owner.
    On the box, `systemctl --user start --no-block consensus-lean-orb-ci-full@now` checks current main;
@@ -884,29 +884,25 @@ comparator 1, setup 2). Fast tier (measured on PR #15, with self-tests because i
 17 minutes cold, 17 minutes with the build cache warm (setup 1.6, build 0.2, check-decls 4–7.5, Spec surface
 3, self-tests 4); without self-tests, the usual PR, about 10–13 minutes. check-decls is now the largest step.
 
-The approval boundary is separate from correctness. The **trusted surface** is
+The review boundary is separate from correctness. The **trusted surface** is
 `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and `X/**`), `Challenge.lean`,
 `comparator.json`, `lean-toolchain`, `lake-manifest.json`, `ConsensusLeanTest/ReviewAxioms.lean` and
 `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
 as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every instance `P`). The instance paths are
-tag-protected but are not trusted layers: their imports are not restricted to trusted layers (the Goldilocks
+on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Goldilocks
 `Baseline` modules and the Bft, Streamlet and Tendermint Specs import the generic `Main` through a reviewed
 exception). The definitions the Goldilocks sheet reads from there, `Lemmas/Problem/Derived.lean`, are in the list
-too; the tag freezes their text, not everything they import. The list lives in `scripts/boundaries.toml`
-(`[checks] trusted_paths`, plain paths that must cover every spec-group file); CI reads it as literal
-paths at the PR head and at the tag. The annotated git tag
-`spec-approved` marks the last approved commit (history in `docs/spec-review.md`). Since 2026-10-30 it is an
-agent approval: an agent other than the change's author (claude-ethlabs, or the amp-orbs coordinator) moves it
-after the author's fidelity read-back and passing `check.sh --fast` evidence from the box log. The aggregate
-#63 row may still fail only review-boundary before the tag moves; that expected failure does not prevent
-approval. After moving the tag, check the boundary before merging (`docs/spec-review.md`). Nothing waits for
-the owner. The box watcher's review-boundary check (`scripts/review-boundary.sh`, with
-fixtures) fails on a change that touches the trusted surface while the trusted files differ from that tag (it
-would only warn if the tag did not exist), so a PR changing it is approved by moving the tag to the PR's head
-before merge; a change that touches no trusted path passes, with a warning if the tag and the tree differ. The check infrastructure (`scripts/**`, `.github/**`, `lakefile.toml`,
-`lakefile.lean`, which must not exist) is not covered by the tag: agents maintain it (`TRUST.md`).
-Reviewing the snapshot diff is part of approving a Spec change; the comparator cannot replace that
-review. `docs/spec-review.md` records what was approved and what changed since 2852f717.
+too; the record covers their text, not everything they import. The list lives in `scripts/boundaries.toml`
+(`[checks] trusted_paths`, plain paths that must cover every spec-group file), read as literal paths at HEAD and
+at the base. A trusted-surface change is **recorded, not gated** (owner, 2026-11-01): it lands through
+`scripts/push-main.sh` like any change; every commit touching a trusted path carries a `Trusted-surface: <what and
+why>` line (`scripts/review-boundary.sh`, with fixtures, fails without it), so `git log --grep='^Trusted-surface:'`
+lists them, and push-main comments each landing on [#129](https://github.com/ethlabs-org/consensus-lean/issues/129).
+The annotated tag `spec-approved` (an agent approval from 2026-10-30) is retired and stays at its last commit; the
+approvals made under it are in `docs/spec-review.md`. The check infrastructure (`scripts/**`, `.github/**`,
+`lakefile.toml`, `lakefile.lean`, which must not exist) is not on the trusted surface: agents maintain it (`TRUST.md`).
+Reading the snapshot diff is part of making a Spec change; the comparator cannot replace that
+reading. `docs/spec-review.md` records what was approved and what changed since 2852f717.
 
 Design and history: `docs/decisions.md` summarises the design decisions; the full record is in the workbench:
 the index of this repository's decisions, plans and research is
