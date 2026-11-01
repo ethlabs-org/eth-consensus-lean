@@ -7,7 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 
 -- Keep the finite and whole-run duty suppliers together for signature comparison.
-set_option linter.style.longFile 2000
+set_option linter.style.longFile 2200
 
 public section
 
@@ -1220,6 +1220,46 @@ theorem reset_parent_viable_of_children
   exact ⟨hQt.1, hQt.2, hfQ'.mono (fun X hX => hX.1),
     reset_vote_floor_above_old hp hy hR hc hes hQt.1 hQold⟩
 
+/-- Finite sibling viability places their parent above the voter's root and height floor. -/
+theorem ResetPremisesUpTo.reset_parent_viable_of_children {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
+    {Q P B : SA.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocks H)
+    (hPQ : P.parent = some Q.root) (hBQ : B.parent = some Q.root) (hBP : B ≠ P)
+    (hPv : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
+    (hBv : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
+    (hQold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
+      Anc (tr.HonestBlocks H) O Q) : Q ∈ ell.frame.viableHeads := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  have hQP : Anc (tr.HonestBlocks H) Q P := .single ⟨hQU, hPhiU hPv.1.1, hPQ⟩
+  have hnBP : ¬ Anc (tr.HonestBlocks H) B P := by
+    intro h
+    rcases Relation.ReflTransGen.cases_tail h with heq | ⟨Y, hBY, hY⟩
+    · exact hBP heq.symm
+    obtain rfl : Y = Q := hr.coherent.1 hY.1 hQU
+      (Option.some_injective _ (hY.2.2.symm.trans hPQ))
+    have h1 := (Anc.slot_le hr.coherent hBY).1
+    have h2 := hr.coherent.2 Y hQU B (hPhiU hBv.1.1) hBQ
+    omega
+  have below : ∀ X, Anc (tr.HonestBlocks H) X B → Anc (tr.HonestBlocks H) X P →
+      Anc (tr.HonestBlocks H) X Q := by
+    intro X hXB hXP
+    rcases Relation.ReflTransGen.cases_tail hXB with heq | ⟨Y, hXY, hY⟩
+    · exact False.elim (hnBP (heq ▸ hXP))
+    obtain rfl : Y = Q := hr.coherent.1 hY.1 hQU
+      (Option.some_injective _ (hY.2.2.symm.trans hBQ))
+    exact hXY
+  have hfQ := below _ (hBv.2.1.mono hPhiU) (hPv.2.1.mono hPhiU)
+  have hQt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hPv.1.1 hQP
+    ((hPhi.F_anc_fcRoot.mono hPhiU).trans hfQ)
+  have hfQ' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfQ hQt
+  rw [Compose.frame_of_projAC hp.run hy hc.1] at hQt hfQ' ⊢
+  exact ⟨hQt.1, hQt.2, hfQ'.mono (fun X hX => hX.1),
+    hp.reset_vote_floor_above_old hy hR hc hes hjb hQt.1 hQold⟩
+
 /-- At the proposal parent, the actual proposal is the only eligible child and its own
 children are ineligible. Parent viability is derived separately for each old competitor. -/
 theorem reset_stop_at_parent
@@ -1281,6 +1321,67 @@ theorem reset_stop_at_parent
   rw [hcast]
   exact reset_old_child_ineligible hp hc hP hci hcall hd hti hpay hPQ hy hcy hes hPv.1.1
     hg hgi hgj hQt hQv hQvy hB hBQ hBs
+
+/-- Finite stopping at the actual proposal after excluding every old sibling. -/
+theorem ResetPremisesUpTo.reset_stop_at_parent {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer (s + 1)) (hactual : tr.ProposesAt p k P)
+    (hPs : P.slot = s + 1) (hR : drainTime sp a ≤ sp.ts (s + 1 : Nat))
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hpay : P.acPayload = pay)
+    (hPQ : P.parent = some d.head.root)
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
+    (hPv : P ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)))
+    (hg : SA.gbar g ≤ sp.ts s)
+    (hgi : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
+    (hgj : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hjoi : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time i)
+    (hjoj : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
+    (hQt : d.head ∈ ellp.frame.tree) (hQv : d.head ∈ ellp.frame.viableHeads) :
+    (P ∈ {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
+        B.parent = some d.head.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
+          (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} ∧
+      ∀ B ∈ {B | B ∈ elly.frame.viableTree
+          (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
+        B.parent = some d.head.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
+          (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B}, B = P) ∧
+    ¬ ∃ C, SA.IsBest sp (SA.goldfishScore sp elly.frame
+      (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
+      {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
+        B.parent = some P.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
+          (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} C := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hr := hac.localRun
+  have hPhiU := (SA.frameIn_of_callAt hr hpH hci).2
+  have hPsiU := (SA.frameIn_of_callAt hr hy hcy.1).2
+  have hng : ∀ B ∈ elly.frame.tree, B.parent ≠ none → B.root ≠ sp.genesisRoot := by
+    intro B hB hpar hgen
+    have hG := Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hy j)
+    have he := hr.coherent.1 (hPsiU hB) ⟨y, hy, j, hG⟩ hgen
+    rw [he] at hpar
+    exact hpar (by simp [Params.genesisBlock])
+  have hprop : P.proposer ∈ H := by
+    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, hprop, _⟩ :=
+      honestProposalRun_of_proposesAt hp.run hp.noColl hpH hdesignated hactual hPs
+    rw [hprop, ← hdesignated]
+    exact hpH
+  have hcast : ((s + 1 : Nat) : Int) - 1 = s := by omega
+  rw [← hcast]
+  apply SA.stop_core hac hy hcy hes hPs hPQ hprop hng hPv
+  intro B hB hBQ hBs
+  have hBP : B ≠ P := by rintro rfl; omega
+  have hQvy := hp.reset_parent_viable_of_children hy hR hcy hes hjb (hPhiU hQt) hPQ hBQ
+    hBP hPv hB (fun x r l O ho ht _ => hp.reset_proposal_passes hc hpH hR hci hcall hd
+      hti hib O ⟨x, r, l, ho, ht⟩)
+  rw [hcast]
+  exact hp.reset_old_child_ineligible hc hpH hdesignated hactual hPs hci hcall hd hti
+    hpay hPQ hy hcy hes hib hjb hPv.1.1 hg hgi hgj hjoi hjoj hQt hQv hQvy hB hBQ hBs
 
 /-- **The joined duty, unanimity** (§23; phase-service §10, "Join with RN/RU"): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
