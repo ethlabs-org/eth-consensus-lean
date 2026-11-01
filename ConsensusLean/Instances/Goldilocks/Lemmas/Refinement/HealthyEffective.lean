@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induct
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
@@ -541,6 +542,68 @@ theorem exposed_prefix_preserved_at_clock (hU : Coherent U)
     Anc U O (SA.acConfirmed sp A Φ t) :=
   (exposed_prefix_preserved_of_record_head hU hΦ hΦU).mpr
     ⟨hE, anc_acHead_of_current_certificate hΦ hΦU hhead⟩
+
+section CoveredPrefix
+
+variable {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+  {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+  {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a : Time}
+
+/-- An actual earlier-label high cover makes later raw and optimistic candidates comparable
+with the exposed prefix. This gives compatibility, not a direction or a read-head certificate. -/
+theorem covered_candidates_compatible
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    {x : Fin sp.n} {r b : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : Healing.HighOrigin tr H g x r b B) (hOB : Anc (tr.HonestBlocks H) O B)
+    {y : Fin sp.n} (hy : y ∈ H) {k s : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (SA.Vote sp.n)} (hbs : b < s)
+    (hD : (SA.ResultAt tr.projAC y k s D CV ∧ SA.gbar g + 4 * sp.Δ ≤ sp.ts s ∧
+        Healing.CatchRun tr H g (2 * sp.Δ)) ∨ SA.OptimisticLockAt tr.projAC y k s D CV) :
+    Compatible (tr.HonestBlocks H) D O := by
+  have hvotes : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → e.msg.slot = s →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg O := by
+    intro z hz q e hv hs
+    obtain ⟨ell, hcast⟩ := hv
+    exact (covered_vote_suffix hp ho hOB hz hcast (hs ▸ hbs)).2.2.1
+  rcases hD with ⟨hres, hlate, hc⟩ | hopt
+  · exact raw_result_compatible_of_healthy_votes
+      (Healing.healthy_base_of_reset_catch hp hc) hy hres hlate hvotes
+  · have hf : 2 * Hᶜ.ncard < sp.n := by
+      have := hp.healthy.2.2
+      have := Fin.pos y
+      have hn : sp.n = sp.toParams.n := rfl
+      omega
+    exact SA.optimisticLock_compatible
+      (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl) hf hy hopt hvotes
+
+/-- A stored fast lock covering a high exposed prefix supplies both historic vote geometry
+and later candidate compatibility. Only labels are ordered: the queried cast may precede
+the cut at which the stored lock is observed. Liveness of that lock is not required. -/
+theorem stored_fast_lock_covers_exposed_prefix
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    {x : Fin sp.n} (hx : x ∈ H) {k : Nat} {lock : SA.Lock}
+    (hl : lock ∈ (tr.state x k).ac.locks) (hf : lock.fast = true)
+    {O L : SA.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ (tr.state x k).fg.tree)
+    (hrL : L.root = lock.block) (hOL : Anc (tr.HonestBlocks H) O L)
+    (hh : Healing.HZ tr H g + 1 ≤ ((tr.state x k).fg.σ O.root).h) :
+    (∀ y ∈ H, ∀ q ell v, SA.CastAt tr.projAC y q ell v → lock.slot < v.msg.slot →
+      Compatible (tr.HonestBlocks H) ell.frame.F O ∧
+      Compatible (tr.HonestBlocks H) ell.frame.fcRoot O ∧
+      SA.VoteExtends (tr.HonestBlocks H) v.msg O ∧
+      (O ∈ ell.frame.viableTree (SA.voterBlockTree sp v.readPoint ell.frame v.msg.slot) ∨
+        Anc (tr.HonestBlocks H) O ell.frame.fcRoot)) ∧
+    (∀ y ∈ H, ∀ q s D CV, lock.slot < s →
+      ((SA.ResultAt tr.projAC y q s D CV ∧ SA.gbar g + 4 * sp.Δ ≤ sp.ts s ∧
+        Healing.CatchRun tr H g (2 * sp.Δ)) ∨ SA.OptimisticLockAt tr.projAC y q s D CV) →
+      Compatible (tr.HonestBlocks H) D O) := by
+  obtain ⟨r, -, B, ho, hOB⟩ := high_cover_of_stored_fast_lock hp hx hl hf hL hrL hOL hh
+  constructor
+  · intro y hy q ell v hv hs
+    exact covered_vote_suffix hp ho hOB hy hv hs
+  · intro y hy q s D CV hs hD
+    exact covered_candidates_compatible hp ho hOB hy hs hD
+
+end CoveredPrefix
 
 end Consensus.Goldilocks.Refinement
 end
