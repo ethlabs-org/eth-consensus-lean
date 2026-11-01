@@ -220,19 +220,21 @@ theorem cutAfter_boundary (hrun : GoldilocksRun proposer dg H tr)
 /-- The read after all events at `t` extends `P` when the record or `Σ.F` does (as in A1.7's
 proof: the read is the record's block, above `Σ.F`, or `Σ.F`, which the record's block is below
 then). -/
-private theorem read_extends_of_record (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {t : Time}
-    (hj : CutAfter tr j t) (hready : ReadyAt tr H (catchUp sp) y t)
+theorem read_extends_of_record_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hinv : SleepyInvariantUpTo tr H b)
+    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → tr.FaultBound H (sp.ts s + sp.Δ))
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {t : Time}
+    (hj : CutAfter tr j t) (hready : ReadyAt tr H (catchUp sp) y t) (htb : t ≤ b)
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hE : ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y j).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y j).fg.F)) :
     Anc (tr.HonestBlocks H) P (readAfter tr y j t) := by
-  have hinv := sleepy_invariant hrun hnc hsl
   have hcoh := honest_blocks_coherent hrun.toLocalRun hnc
+  have hjb : ∀ k < j, tr.time k ≤ b := fun k hk => (hj.1 k hk).trans htb
   obtain ⟨E, hE, hEr, hPE⟩ := hE
-  rcases ready_read_record hrun hnc hsl ⟨fun k hk => hj.1 k hk, hj.2.le⟩
-      (cutAfter_boundary hrun hy hj) hready with ⟨R, hR, hRr, hread⟩ | ⟨hin, hread⟩
+  rcases ready_read_record_before hrun hnc hinv hsync hfb ⟨fun k hk => hj.1 k hk, hj.2.le⟩
+      (cutAfter_boundary hrun hy hj) hready htb with ⟨R, hR, hRr, hread⟩ | ⟨hin, hread⟩
   · rw [hread]
     obtain rfl : R = E := hcoh.1 ⟨y, hy, j, hR.1⟩ hE (hRr.trans hEr.symm)
     rcases hPE with h | h
@@ -243,13 +245,14 @@ private theorem read_extends_of_record (hrun : GoldilocksRun proposer dg H tr)
     swap
     · exact h
     have hΦ := frameOK_state hrun.toLocalRun hy j
-    obtain ⟨C, hC, hCr, hCo⟩ := hinv.record y hy j
+    obtain ⟨C, hC, hCr, hCo⟩ := hinv.record y hy j hjb
     obtain rfl : C = E := hcoh.1 ⟨y, hy, j, hC⟩ hE (hCr.trans hEr.symm)
     have hF : (tr.state y j).fg.F ∈ (tr.state y j).fg.tree := hΦ.rooted.1.1
-    have hEc : OnOriginChain tr H C := onOriginChain_iff.2 (hCo.elim Or.inl fun ⟨s, ho⟩ =>
+    have hEc : OnOriginChainWithin tr H C b :=
+      onOriginChainWithin_iff.2 (hCo.elim Or.inl fun ⟨s, ho⟩ =>
       Or.inr ⟨C, s, ho, Relation.ReflTransGen.refl⟩)
-    rcases OnOriginChain.compatible hrun hnc hinv.origins_compatible hE ⟨y, hy, j, hF⟩ hEc
-      (hinv.caches y hy j).1 with h | h
+    rcases OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible hE
+      ⟨y, hy, j, hF⟩ hEc (hinv.caches y hy j hjb).1 with h | h
     · exact hPE.trans h
     -- `Σ.F ⪯ C` inside the honest blocks would put `C` in the frame
     obtain ⟨hfin, htc, hgm, hgen⟩ := Store.accepted_tree sp.toParams (Payload sp.n) _ _
@@ -267,7 +270,17 @@ private theorem read_extends_of_record (hrun : GoldilocksRun proposer dg H tr)
 /-- **R.2, `includeSleepy`.** -/
 theorem include_sleepy : IncludeSleepy := by
   intro sp ro dg H tr proposer ΔF hrun hnc hsl τ P hP y t j ht hy hj
-  exact read_extends_of_record hrun hnc hsl hy.1 hj hy
+  have hs : tr.SyncBefore H ΔF (max t 0) :=
+    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
+      hsl.1.message x hx i m hm h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
+      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
+  exact read_extends_of_record_before hrun hnc
+    (sleepy_invariant_upTo hrun hnc (hsl.prefix (le_max_right t 0)))
+    (syncBefore_projection hrun.toLocalRun hs)
+    (fun s _ => by simpa only [sp.slotTime_eq, SA.SAParams.ts] using (hsl.2 s).2.1)
+    hy.1 hj hy (le_max_left t 0)
     (ready_record_extends hrun hnc hsl hP ht hy hj)
 
 /-- A block of an honest node's tree before a cut whose earlier cuts are at times `≤ t` has a
