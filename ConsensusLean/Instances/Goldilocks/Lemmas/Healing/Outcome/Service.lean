@@ -1200,27 +1200,31 @@ private theorem reset_origin_below (hp : ResetPremises tr H proposer dg g ΔF a)
   obtain rfl : Hd = W := (honest_coherent hp).1 hHd hWU (hHdr.trans hhead)
   exact ⟨y, r, l, O, hO, hOHd⟩
 
-/-- **The update of the window's slot keeps its write on `W`** (open; phase-service §10, "At
-`d = t_u + 6Δ` …", and §11 "If no higher descendant source intervenes, `P` is still viable and the
-fresh write survives"): at an honest update of slot `W.slot` whose result and fast selection are
-`W`, not vetoed, and whose returned sources extend `W` (`ready_update`'s first case), `W` is a
-candidate of `viable_ancestor` in the update's frame (in its viable tree, or at or below
-`fc_root`), so the fast lock is stored on `W` itself; or a higher descendant source intervened
-(extending `W`), and the stored block of its fast-lock write (A1.5,
-`stored_fast_lock_provenance`), above the source, is a high origin above `W`. -/
+/-- **The update keeps its write or has a covering source** (phase-service §10–§11):
+the ready proposal is a `viable_ancestor` candidate at its update, or an actual high origin
+extends it. The raw result and unanimity suffice; the existing no-veto, fast-selection and
+returned-source premises are retained for callers. -/
 private theorem update_window_kept (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
     {W : SA.Blk sp.n (List (FG.Att sp.n))} (hWP : ReadyProposal tr H proposer w kw W.slot W)
     (hRW : drainTime sp a ≤ sp.ts W.slot) {z : Fin sp.n} (hz : z ∈ H) {kz : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC z kz W.slot ℓ)
     (hconf : SA.getConfirmation sp (tr.projAC.state z kz) ℓ.frame W.slot = some W)
-    (hnv : ¬ SA.conflictsWithLock sp (tr.projAC.state z kz).locks ℓ.frame (tr.time kz) W)
-    (hfs : SA.fastSelect sp (tr.projAC.state z kz) ℓ.frame W.slot W = some W)
-    (hsrc : ∀ k' ℓ' C, kz ≤ k' → SA.ToFGAt tr.projAC z k' ℓ' C → tr.time k' = tr.time kz →
+    (_hnv : ¬ SA.conflictsWithLock sp (tr.projAC.state z kz).locks ℓ.frame (tr.time kz) W)
+    (_hfs : SA.fastSelect sp (tr.projAC.state z kz) ℓ.frame W.slot W = some W)
+    (_hsrc : ∀ k' ℓ' C, kz ≤ k' → SA.ToFGAt tr.projAC z k' ℓ' C → tr.time k' = tr.time kz →
       Anc (tr.HonestBlocks H) W C) :
     (W ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc W ℓ.frame.fcRoot) ∨
       ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ Anc (tr.HonestBlocks H) W B := by
-  sorry
+  have hlate : cleanLabel sp a + 2 * sp.k + 1 ≤ W.slot := by
+    rw [drainTime_eq] at hRW
+    have := (SA.ts_le_iff sp).mp hRW
+    rw [cleanLabel_eq]; omega
+  rcases unanimous_result_candidate_or_high_origin hp hc hz hu hconf hlate
+    (ready_unanimous hp hc hWP hRW)
+    with hcand | ⟨x, r, b, B, _, ho, hWB⟩
+  · exact Or.inl hcand.symm
+  · exact Or.inr ⟨x, r, b, B, ho, hWB⟩
 
 /-- A higher report above the window's proposal has a high origin at the same
 reporter, strictly before the report. Retain its cut and time for bounded consumers. -/

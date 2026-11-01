@@ -1017,6 +1017,66 @@ theorem held_target_high_floor_report_before
   rw [← hEh, σ_eq_run hp ho.1 hy hPx hPy, σ_eq_run hp ho.1 hy hE' hE]
   omega
 
+/-- A late raw-result prefix and any high origin share a later honest vote head. -/
+theorem late_result_prefix_compatible_high_origin
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
+    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
+    (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s)
+    {v : Fin sp.n} {q m : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g v q m O) : Compatible (tr.HonestBlocks H) B O := by
+  have hS := healthy_base_of_reset_catch hp hc
+  let n := max s m + 1
+  have htime : SA.gbar g + 4 * sp.Δ ≤ sp.ts n := by
+    have ht := (clean_source_timing hp (show cleanLabel sp a + sp.k + 2 ≤ s by
+      have := sp.two_le_k; omega)).2
+    exact ht.trans ((SA.ts_le_iff sp).mpr (by dsimp [n]; omega))
+  obtain ⟨j, e, ⟨ell, hcast⟩, hes⟩ := SA.honest_votes_in_slot hS htime x hx
+  have hB := late_result_prefix_votes hp hc hx hres hBC hs x hx j ell e hcast
+    (by dsimp [n] at hes; omega)
+  exact target_compatible_older_origin hp ho hx ⟨ell, hcast⟩ hes
+    (by dsimp [n]; omega) hB
+
+/-- A unanimous late vote head extends a high reset seed. -/
+theorem high_seed_below_unanimous
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x : Fin sp.n} (hx : x ∈ H) {s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hs : cleanLabel sp a + sp.k + 2 ≤ s)
+    (hun : ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s → e.msg.head = P.root) :
+    ∃ v q m S, HighOrigin tr H g v q m S ∧ Anc (tr.HonestBlocks H) S P := by
+  have hS := healthy_base_of_reset_catch hp hc
+  obtain ⟨v, q, m, S, ho, hm⟩ := reset_seed hp
+  have hms : m < s := by rw [cleanLabel_eq] at hs; omega
+  have htime : SA.gbar g + 4 * sp.Δ ≤ sp.ts s :=
+    (clean_source_timing hp hs).2.trans ((SA.ts_le_iff sp).mpr (by have := sp.two_le_k; omega))
+  obtain ⟨i, e, ⟨ell, hcast⟩, hes⟩ := SA.honest_votes_in_slot hS htime x hx
+  obtain ⟨⟨D, hD, hDr, hSD⟩, -⟩ := (height_scoped_retention sp ro proposer dg H tr g ΔF
+    hp.run hp.healthy hp.noColl a hp.reset).votes v q m S ho x hx i ell e hcast (by omega)
+  obtain rfl : D = P := hS.run.localRun.coherent.1 hD hP
+    (hDr.trans (hun x hx i e ⟨ell, hcast⟩ hes))
+  exact ⟨v, q, m, S, ho, hSD⟩
+
+/-- A late unanimous result is a candidate at its own update or has a covering high origin. -/
+theorem unanimous_result_candidate_or_high_origin
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hu : SA.UpdateAt tr.projAC x i s ell)
+    (hconf : SA.getConfirmation sp (tr.projAC.state x i) ell.frame s = some P)
+    (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → e.msg.slot = s → e.msg.head = P.root) :
+    ell.frame.AncestorCandidate P ∨
+      ∃ v q m S, q < i ∧ HighOrigin tr H g v q m S ∧ Anc (tr.HonestBlocks H) P S := by
+  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  have hPt : P ∈ ell.frame.tree := (SA.deepest_mem hconf).1.1
+  have hPU := (SA.frameIn_of_callAt hr hx hu.1).2 hPt
+  have hres : SA.ResultAt tr.projAC x i s P
+      (SA.fastCounted sp (tr.projAC.state x i) ell.frame s P) := ⟨ell, hu, hconf, rfl⟩
+  obtain ⟨v, q, m, S, ho, hSP⟩ := high_seed_below_unanimous hp hc hx hPU
+    (by have := sp.two_le_k; omega) hun
+  exact held_target_candidate_or_high_origin_before hp hx hu.1 hPt ho hSP
+    (fun v q m S _ ho => late_result_prefix_compatible_high_origin hp hc hx hres .refl hs ho)
+
 end Consensus.Goldilocks.Healing
 
 end
