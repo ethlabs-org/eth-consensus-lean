@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
@@ -106,6 +107,29 @@ structure HealthyBaseTiming (Q : HealthyPreparationQuery S A V) where
   expiry : Q.params.ts (slot + Q.params.k : Nat) ≤ Q.heal
   service : Q.params.ts (slot + 2 : Nat) + 6 * Q.params.Δ ≤ Q.heal
 
+/-- Initialization chooses a base with enough time for an actual reset seed and
+bounded repairing opening. The activation floor names that seed, not a free time.
+Existence of this certificate remains part of initialization's proof obligation. -/
+structure HealthyPreparationSchedule (Q : HealthyPreparationQuery S A V)
+    (W : HealthyBaseTiming S A V Q) where
+  resetTime : Time
+  deltaF : Time
+  reset : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
+    (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst deltaF resetTime Q.run.2.horizon
+  seedNode : Fin Q.params.n
+  seedCut : Nat
+  seedLabel : Nat
+  seed : SA.Blk Q.params.n (List (FG.Att Q.params.n))
+  seed_origin : Healing.HighOrigin Q.trace (honestKeys S Q.run.2) Q.gst
+    seedNode seedCut seedLabel seed
+  seed_time : Q.trace.time seedCut ≤ resetTime
+  seed_label : seedLabel ≤ Q.params.slot resetTime
+  query : Time
+  lower : max Q.ready (max (Healing.drainTime Q.params resetTime)
+    (max (Q.params.ts W.slot) (max (SA.gbar Q.gst + 4 * Q.params.Δ)
+      (max 0 (Q.params.ts (seedLabel + 1 : Nat)))))) ≤ query
+  reserve : query + (4 * (Q.index : Time) + 6) * Q.params.Δ < Q.heal - 1
+
 /-- Compatibility with an actual fresh origin covers an old entry. The slot
 cap is a separate producer; coverage adds no causal or upper label bound. -/
 theorem old_entry_covered_of_fresh_origin (Q : HealthyPreparationQuery S A V)
@@ -151,7 +175,8 @@ theorem healthy_old_inventory_initialize (Q : HealthyPreparationQuery S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.run.2.horizon)
     (hp : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    ∃ W : HealthyBaseTiming S A V Q, HealthyOldInventory S A V Q W.slot Q.cut := by
+    ∃ W : HealthyBaseTiming S A V Q, HealthyOldInventory S A V Q W.slot Q.cut ∧
+      Nonempty (HealthyPreparationSchedule S A V Q W) := by
   sorry
 
 /-- Existing proven preservation consumes exactly the OPEN initialization.
@@ -283,7 +308,8 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
     (hp : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (W : HealthyBaseTiming S A V Q)
-    (base : HealthyOldInventory S A V Q W.slot Q.cut) :
+    (base : HealthyOldInventory S A V Q W.slot Q.cut)
+    (D : HealthyPreparationSchedule S A V Q W) :
     HealthyStateFacts S A V Q W.slot Q.cut := by
   sorry
 

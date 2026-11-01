@@ -911,8 +911,8 @@ theorem healthy_ready_safety (Q : HealthyPreparationQuery S A V)
       Q.ready Q.heal Q.run) :
     (chainTrace Q.run.2).ReadySafe ((Sys (family S) V).cDur (K S A) Q.run)
       .confirmed Q.heal := by
-  obtain ⟨W, inv⟩ := healthy_old_inventory_initialize S A V Q h0 hb hp
-  have base := healthy_prepare S A V Q h0 hb hp W inv
+  obtain ⟨W, inv, ⟨D⟩⟩ := healthy_old_inventory_initialize S A V Q h0 hb hp
+  have base := healthy_prepare S A V Q h0 hb hp W inv D
   have states := healthy_preserve S A V Q h0 hb W base
   exact ⟨healthy_cut_agreement S A V Q h0 hb hp W states,
     healthy_cut_monotone S A V Q h0 hb hp W states⟩
