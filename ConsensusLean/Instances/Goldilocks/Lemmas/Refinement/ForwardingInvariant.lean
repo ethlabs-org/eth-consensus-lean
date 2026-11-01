@@ -873,4 +873,36 @@ theorem tick_pending_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env
   exact duty_release_in_runDuties S rho v _ pre post _ c
     (tick_duty_prefix_poll_released S rho hn hv v i t pre c hc)
 
+/-- Recording a successfully decoded own canonical block runs precisely its block handler. -/
+theorem recordOwn_decoded_block {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro)
+    (hs : List (Header Info × Nat)) (o : Wire sp.n) (B : Blk sp)
+    (hd : decodeBlock sp hs o = some B) :
+    recordOwn st o hs = apply st (Node.onBlock st.self st.node st.now B) := by
+  unfold decodeBlock at hd
+  split at hd <;> try { cases hd }
+  split at hd <;> try { cases hd }
+  dsimp only at hd
+  split_ifs at hd
+  all_goals
+    simp_all only [Option.some.injEq]
+    subst B
+    simp_all [recordOwn]
+
+/-- A released own canonical block that the node accepts queues its exact wrapper.
+This local bridge keeps acceptance distinct from mere release of a refused block. -/
+theorem recordOwn_acceptance_pending {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro)
+    (hs : List (Header Info × Nat)) (o : Wire sp.n) (B : Blk sp)
+    (hd : decodeBlock sp hs o = some B) (hcover : WrappersCover st)
+    (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
+    ∃ p : Option (Wire sp.n),
+      forwardObj sp st.self st.now p B ∈ pendingWrappers (recordOwn st o hs) := by
+  rw [recordOwn_decoded_block st hs o B hd]
+  obtain ⟨p, hp⟩ := onBlock_queues_acceptance st B hcover ha
+  refine ⟨p, ?_⟩
+  rw [pendingWrappers_eq, hp]
+  refine List.mem_map.mpr ⟨_, List.mem_append_right _ (List.mem_singleton_self _), ?_⟩
+  simp only [apply_self, forwardObj]
+
 end Consensus.Goldilocks.Refinement
