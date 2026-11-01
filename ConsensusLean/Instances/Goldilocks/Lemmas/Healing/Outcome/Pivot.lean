@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
@@ -23,7 +24,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
 -- Keep the operational proposal prerequisites with their pivot consumers.
-set_option linter.style.longFile 2600
+set_option linter.style.longFile 2800
 
 public section
 
@@ -1105,6 +1106,121 @@ theorem ResetPremisesUpTo.held_target_proposal_domain_before {b : Time}
   rw [hfr] at hrootC ⊢
   exact ⟨hCf.1, hCf.2, Anc.mono (fun _ h => h.1) hrootC, hCv⟩
 
+/-- Finite receipt of a raw writer's ancestor at a later slot start. -/
+theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r s i u : Nat}
+    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (hwriter : SA.ResultAt tr.projAC x r s C CV ∨ SA.FastLockAt tr.projAC x r s C CV)
+    (hBC : Anc (tr.HonestBlocks H) B C) (hs : SA.gbar g + 4 * sp.Δ ≤ sp.ts s)
+    (hsu : s < u) {ell : ACLabel (goldilocksNode sp ro)}
+    (hci : tr.projAC.CallAt p i ell) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
+    (hFB : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ ell.frame.tree := by
+  have hS := healthy_base_of_reset_catch_before hp hc
+  have hr := hS.run.localRun
+  have hΔ := sp.toParams.hΔ
+  have hstep : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
+    rw [hti]
+    have ht := (SA.ts_le_iff sp).mpr (show (s : Int) + 1 ≤ u by omega)
+    simp only [SA.SAParams.ts] at ht ⊢
+    nlinarith
+  obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
+    raw_writer_relay_source hr hx hwriter hBC
+  all_goals obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  · obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hpH _ _ hci
+    have hDG : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)
+    subst D
+    have hGD : G ∈ ell.frame.tree := by
+      rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp (hFB.trans hBD) with he | ⟨c, _, hpar⟩
+      · exact he ▸ hPhi.rooted.1
+      · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
+    exact SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hGD hBD hFB
+  · have hFD := hFB.trans hBD
+    have hDt : D ∈ ell.frame.tree := by
+      by_cases hg : SA.gbar g ≤ tr.time q
+      · have hd := deadline_le_restarts (T := tr.projAC) (c := i)
+          (fun k hki hr' => restart_le_before hp hpH (Compose.projAC_restartAt.mp hr')
+            ((hp.run.time_mono hki).trans hib)) (tr.time q)
+        have hdl : tr.projAC.deadline p i (tr.time q) ≤ tr.time i := by
+          have ht : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts s := by
+            have hbase := (SA.ts_le_iff_le_slot sp (gbar_nonneg g)
+              (sp.slot (SA.gbar g))).mpr (by omega)
+            simp only [SAParams.ts] at hbase hs ⊢
+            push_cast at *
+            linarith
+          change _ ≤ max (tr.time q) (sp.ts (sp.slot (SA.gbar g) + 1 : Nat)) + sp.Δ at hd
+          have hm : max (tr.time q) (sp.ts (sp.slot (SA.gbar g) + 1 : Nat)) ≤
+              sp.ts s + 2 * sp.Δ := max_le hqt.le (by linarith)
+          linarith
+        obtain ⟨k, hki, hak, _⟩ := hS.sync.relay x hx q D hq hg p hpH i ell hci
+          (hdl.trans hib) hdl hFD
+        exact SA.mem_tree_of_acceptAt sp hr hpH hak hki hci hFD
+      · obtain ⟨k, hki, hak, _⟩ := hS.catchUp.relay x hx q D hq (not_le.mp hg)
+          p hpH i ell hci (by change _ ≤ tr.time i; linarith) hib hFD
+        exact SA.mem_tree_of_acceptAt sp hr hpH hak hki hci hFD
+    exact SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt hBD hFB
+
+/-- A clean protected source compares with every high origin inside the horizon. -/
+theorem ResetPremisesUpTo.protected_source_compatible_high_origin {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x : Fin sp.n} (hx : x ∈ H) {r s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
+    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
+    {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
+    Compatible (tr.HonestBlocks H) B D := by
+  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hr := hrun.localRun
+  have hts := hp.clean_window_timing hs s (by have := sp.two_le_k; omega)
+  have evidence : ∃ C CV,
+      (SA.ResultAt tr.projAC x r s C CV ∨ SA.OptimisticLockAt tr.projAC x r s C CV) ∧
+      Anc (tr.HonestBlocks H) B C := by
+    rcases hsource with ⟨CV, ⟨ell, C, hu, hR, _, hfast, _⟩ | hop⟩ | ⟨ell, C, hu, hR, _, hslow, _⟩
+    · exact ⟨C, _, Or.inl ⟨ell, hu, hR, rfl⟩,
+        ((SA.deepest_mem hfast).1.1.2.2).mono (SA.frameIn_of_callAt hr hx hu.1).2⟩
+    · exact ⟨B, CV, Or.inr hop, .refl⟩
+    · exact ⟨C, _, Or.inl ⟨ell, hu, hR, rfl⟩,
+        ((SA.deepest_mem hslow).1.1.2.2).mono (SA.frameIn_of_callAt hr hx hu.1).2⟩
+  obtain ⟨C, CV, hC, hBC⟩ := evidence
+  rcases lt_trichotomy t s with h | rfl | h
+  · have supporter : ∃ z ∈ H, ∃ j ≤ r, ∃ e, SA.VoteAt tr.projAC z j e ∧
+        e.msg.slot = s ∧ SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
+      rcases hC with hC | hC
+      · obtain ⟨z, hz, j, hjr, e, hv, _, hes, hCH⟩ :=
+          hp.result_supporter hc hx hC (.refl : Anc (tr.HonestBlocks H) C C) hrb hts
+        exact ⟨z, hz, j, hjr.le, e, hv, hes, hCH⟩
+      · exact (hp.optimistic_supporter hx hC).2
+    obtain ⟨z, hz, j, hjr, e, hv, hes, W, hW, hWr, hCW⟩ := supporter
+    exact hp.target_compatible_older_origin ho hqb hz hv
+      ((hp.run.time_mono hjr).trans hrb) hes h ⟨W, hW, hWr, hBC.trans hCW⟩
+  · obtain ⟨DV, hst⟩ := ho.2.2.1
+    obtain ⟨_, E, hfl, hDE⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
+    have hcomp : Compatible (tr.HonestBlocks H) C E := by
+      rcases hfl with ⟨ell, R, hu, hR, _, hfast, _⟩ | hop
+      · have hER := ((SA.deepest_mem hfast).1.1.2.2).mono
+          (SA.frameIn_of_callAt hr ho.1 hu.1).2
+        rcases hp.result_source_compatible hc ho.1 hx
+          ⟨ell, hu, hR, rfl⟩ hC hqb hrb hts with h | h
+        · exact Or.inr (hER.trans h)
+        · exact SA.anc_total hr.coherent h hER
+      · exact hp.sources_same_label_compatible hc hx ho.1 hC (Or.inr hop) hrb hqb hts
+    rcases hcomp with h | h
+    · exact SA.anc_total hr.coherent (hBC.trans h) hDE
+    · exact SA.anc_total hr.coherent hBC (hDE.trans h)
+  · obtain ⟨DV, hst⟩ := ho.2.2.1
+    obtain ⟨_, E, hfl, hDE⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
+    have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos x; omega
+    have hEB : Compatible (tr.HonestBlocks H) E B :=
+      SA.fastLock_compatible_of_votes hrun ho.1 (Nat.lt_succ_self q) hfl hf (by
+        intro z hz j hj e ⟨ell, hcast⟩ hes
+        have hjb := (hp.run.time_mono (Nat.lt_succ_iff.mp hj)).trans hqb
+        rcases hsource with ⟨CV, hfast⟩ | hslow
+        · exact hp.fast_source_votes_before hc hx hfast hs hrb j hjb z hz ell e hcast (by omega)
+        · exact hp.slow_source_votes_before hc hx hslow hs hrb j hjb z hz ell e hcast (by omega))
+    rcases hEB with h | h
+    · exact Or.inr (hDE.trans h)
+    · exact SA.anc_total hr.coherent h hDE
+
 /-- Clean raw sources have the actual proposal domain, without a source-before-proposal
 cut assumption. Writer service is driven by the source label, including old acceptances. -/
 theorem clean_source_proposal_domain_before
@@ -1155,6 +1271,71 @@ theorem clean_source_proposal_domain_before
       clean_source_compatible_high_origin hp hc hx hsource hs hS⟩
   · intro v q m O _ ho
     exact clean_source_compatible_high_origin hp hc hx hsource hs ho
+
+/-- A clean protected source has the actual finite proposal domain, without cut ordering. -/
+theorem ResetPremisesUpTo.clean_source_proposal_domain_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r s i u : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
+    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hsu : s < u) (hrb : tr.time r ≤ b)
+    (hR : drainTime sp a ≤ sp.ts u) {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) :
+    Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have evidence : ∃ C CV, (SA.ResultAt tr.projAC x r s C CV ∨ SA.FastLockAt tr.projAC x r s C CV) ∧
+      Anc (tr.HonestBlocks H) B C ∧ B ∈ (tr.state x r).fg.tree := by
+    rcases hsource with ⟨CV, hf⟩ | hsl
+    · refine ⟨B, CV, Or.inr hf, .refl, ?_⟩
+      rcases hf with ⟨ellX, C, hupd, _, _, hdeep, _⟩ | ⟨ellX, A, hpt, _, hsel, _⟩
+      · exact hp.frame_tree_subset hx hupd.1 (SA.deepest_mem hdeep).1.1.1
+      · unfold SA.optimisticSelect at hsel
+        dsimp only at hsel
+        split_ifs at hsel
+        exact hp.frame_tree_subset hx hpt.1 (SA.deepest_mem hsel).1.1
+    · obtain ⟨ellX, C, hupd, hconf, _, hdeep, _⟩ := hsl
+      have hB := (SA.deepest_mem hdeep).1.1
+      exact ⟨C, _, Or.inl ⟨ellX, hupd, hconf, rfl⟩,
+        hB.2.2.mono (SA.frameIn_of_callAt hr hx hupd.1).2,
+        hp.frame_tree_subset hx hupd.1 hB.1⟩
+  obtain ⟨C, CV, hw, hBC, hBx⟩ := evidence
+  obtain ⟨v, q, m, S, hS, hqb, hm⟩ := hp.reset_seed
+  have htiming : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
+    have ht := hp.cutZ_le_ts_of_highOrigin hS
+    have hz := lt_cutZ sp g
+    have hsm : sp.ts (m + 1 : Nat) ≤ sp.ts s := (SA.ts_le_iff sp).mpr
+      (by rw [cleanLabel_eq] at hs; omega)
+    have he : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
+      simp only [SA.SAParams.ts]; push_cast; ring
+    rw [he] at hsm
+    have := sp.toParams.hΔ
+    linarith
+  have hqt : tr.time q < sp.ts u := by
+    obtain ⟨_, D, DV, _, hf, _⟩ := hp.highOrigin_mem hS
+    have hmu : m + 2 ≤ u := by
+      rw [drainTime_eq] at hR
+      have := (SA.ts_le_iff sp).mp hR
+      omega
+    rcases hf with ⟨ellX, R, ⟨_, _, ht, _⟩, _⟩ | ⟨ellX, A, _, hsl, _⟩
+    · have ht' : tr.time q = sp.ts m + 6 * sp.Δ := ht
+      have htu := (SA.ts_le_iff sp).mpr (show (m : Int) + 2 ≤ u by omega)
+      simp only [SAParams.ts] at ht' htu ⊢
+      have := sp.toParams.hΔ
+      nlinarith
+    · by_contra h
+      have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q) u).mp (not_lt.mp h)
+      change sp.slot (tr.time q) = m at hsl
+      omega
+  refine hp.held_target_proposal_domain_before hx hpH hBx hci hcall hd hti hib ?_ ?_ ?_
+  · exact hp.raw_writer_held_at_slot_start hc hx hpH hw hBC htiming hsu hci hti hib
+  · exact ⟨v, q, m, S, hS, hqt,
+      hp.protected_source_compatible_high_origin hc hx hsource hs hrb hS hqb⟩
+  · intro v q m O hqi ho
+    exact hp.protected_source_compatible_high_origin hc hx hsource hs hrb ho
+      ((hp.run.time_mono hqi.le).trans hib)
 
 /-- The completed predecessor batch makes a proposal extend every clean raw source
 whose label is at least two slots earlier. -/
