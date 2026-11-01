@@ -693,6 +693,64 @@ theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
     rw [← hW₂] at hmax₁ hmax₂
     rw [← hmax₁, hmax₂, hP₂]
 
+/-- Every honest node executes the joined update and immediately following joined to-FG call
+at the coverage deadline. This supplies calls, not a nonempty returned report. -/
+theorem reset_update_toFG_calls
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {y : Fin sp.n} (hy : y ∈ H) {u : Nat} (hu : SA.gbar g ≤ sp.ts u) :
+    ∃ j ell ell', SA.UpdateAt tr.projAC y j u ell ∧
+      tr.projAC.CallAt y (j + 1) ell' ∧ ell'.call = .toFG ∧
+      tr.time (j + 1) = sp.ts u + 6 * sp.Δ ∧
+      ell'.frame = ell.frame ∧
+      SA.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)) := by
+  have hS := healthy_base_of_reset_catch hp hc
+  have hDelta := sp.toParams.hΔ
+  have hg0 := SA.gbar_nonneg g
+  obtain ⟨j, x, hg⟩ := hp.run.tick_of_awake y hy (sp.ts u + 6 * sp.Δ)
+    (by linarith) ⟨4 * (u : Int) + 6, by simp only [SAParams.ts]; ring⟩
+    (hp.healthy.2.1 y hy _ (by change SA.gbar g ≤ _; linarith))
+  have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
+    SA.slot_of_mem sp (u + 1) (by simp only [SAParams.ts]; push_cast; linarith)
+      (by simp only [SAParams.ts]; push_cast; linarith)
+  have hnP : ¬ Node.Proposes proposer y (sp.ts u + 6 * sp.Δ) := by
+    rintro ⟨-, h, -⟩
+    rw [show sp.toParams.slotOf (sp.ts u + 6 * sp.Δ) = u + 1 from hslot,
+      sp.slotTime_eq] at h
+    simp only [SAParams.ts] at h
+    push_cast at h
+    linarith
+  obtain ⟨hcj, htj⟩ := tick_first_cut hg
+  have h1 : (Node.exec proposer dg y (tr.state y j) (sp.ts u + 6 * sp.Δ) (.tick x)).2[1]? =
+      some (Node.acToFG
+        (Node.tickStep proposer dg y (tr.state y j) (sp.ts u + 6 * sp.Δ) x .acTick).1
+        (sp.ts u + 6 * sp.Δ)).2.1 := by
+    change (Node.onTick proposer dg y (tr.state y j) (sp.ts u + 6 * sp.Δ) x).2[1]? = _
+    rw [onTick_eq]
+    simp only [Node.tickStep, hnP, ↓reduceIte]
+    split <;> simp [Node.acToFG, Node.acCall]
+  obtain ⟨hk', hlabel⟩ := List.getElem?_eq_some_iff.1 h1
+  obtain ⟨hn, ht, -, -, hl⟩ := hg.2.1 1 hk'
+  obtain ⟨ell', hcj1, hcall', htj1⟩ : ∃ ell' : ACLabel (goldilocksNode sp ro),
+      tr.CallAt y (j + 1) (.ac ell') ∧ ell'.call = .toFG ∧
+      tr.time (j + 1) = sp.ts u + 6 * sp.Δ :=
+    ⟨_, ⟨hn, hl.trans (congrArg some hlabel)⟩, rfl, ht⟩
+  obtain ⟨ell, hcjAC, hcall⟩ : ∃ ell : ACLabel (goldilocksNode sp ro),
+      tr.projAC.CallAt y j ell ∧ ell.call = .tick :=
+    ⟨_, Compose.projAC_callAt.2 hcj, rfl⟩
+  have hjoin : ∀ i, tr.time i = sp.ts u + 6 * sp.Δ →
+      SA.joined sp (tr.projAC.state y i) (tr.time i) := by
+    intro i hi
+    apply hS.joined_state hy i
+    change SA.gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
+    rw [hi, hslot]
+    simpa using hu
+  refine ⟨j, ell, ell', ⟨hcjAC, hcall, htj, hjoin j htj⟩,
+    Compose.projAC_callAt.2 hcj1, hcall', htj1, ?_, hjoin (j + 1) htj1⟩
+  rw [(hp.run.cutLaw y hy (j + 1) _ hcj1).1,
+    Compose.frame_of_projAC hp.run hy hcjAC, tr.state_succ_of_call hcj]
+  unfold Node.frame
+  rw [(hp.run.cutLaw y hy j _ hcj).2.2.1]
+
 /-- **The joined duty at the update** (§23, §17 "Exact remaining premise"; phase-service §10;
 restated with the healing orb, workbench#30-style): under the reset premises and `Catch(2Δ)`, for
 an honest ready proposal `P` of slot `u` with `t_u ≥ R` and every honest node `z` running its
