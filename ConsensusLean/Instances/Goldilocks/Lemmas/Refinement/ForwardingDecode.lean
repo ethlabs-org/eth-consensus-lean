@@ -929,4 +929,144 @@ theorem delivery_acceptance_decoded_publication {V : Type} [Fintype V] [Decidabl
   obtain ⟨q, hq, hi, hx, ho⟩ := delivery_pending_publication S rho hn hv he _ hc
   exact ⟨p, q, hq, hi, hx, ho, ho.symm ▸ hd⟩
 
+/-- Scheduled proposal acceptance publishes its exact decoded wrapper in the same tick. -/
+theorem tick_proposal_acceptance_decoded_publication {V : Type} [Fintype V] [DecidableEq V]
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (family S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (v : V) (hh : v ∈ rho.honest)
+    (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
+    (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
+    (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
+    (B : Blk (S.params (pubOf E) hn))
+    (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
+      (rho.ownKey v) (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node
+      t (encodeTxs (mempool rho.inbox v t)) .proposal).2)
+    (hchild : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      (blockObj _ B) = some B) :
+    ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
+      q.origin = rho.ownKey v ∧
+      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∧
+      decodeForward (S.params (pubOf E) hn) (digests rho.hash q.object) q.object =
+        some (rho.ownKey v, t, p, B) := by
+  obtain ⟨p, hp⟩ := tick_proposal_acceptance_queued S rho hn hv v hh i t he s hs hone ht B ha
+  have hstate := stateAt_decoded_held S rho hn hv v hh i
+  have hprefix := decoded_held_atProposal S rho hn v (rho.stateBefore i v) t
+    hstate.1 hstate.2 ((stateAt_clock_bounds S rho hn hv v i).2 i _ le_rfl he)
+    (poll_selected S rho hv v)
+  have hprop := decoded_held_scheduled_proposal S rho hn hv v hh i t he s hs ht
+    hprefix.1 hprefix.2
+  have hself : (shapeOf S hn (rho.dutyStep v
+      (atProposal S rho v (rho.stateBefore i v) t) (.propose s hs)).1).self =
+      rho.ownKey v := by
+    apply dutyStep_pres S rho hn (fun st => st.self = rho.ownKey v)
+      (fun st o hs h => (recordOwn_self st o hs).trans h)
+      (fun st s h => (propose_self st s).trans h)
+      (fun st h => (nodeTick_self st).trans h)
+      (fun st t h => (poll_self st t).trans h)
+    exact (atProposal_self S rho hn v _ t (poll_selected S rho hv v)).trans
+      (self_eq_ownKey S rho hn v i)
+  have hd := pending_forward_decodes S rho hn _ hprop.1 t p B
+    (hself.symm ▸ hp) hchild
+  rw [hself] at hd
+  have hpub : ∃ q, (publisherExecution S rho).actual q ∧ q.event = i ∧
+      q.origin = rho.ownKey v ∧
+      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B := by
+    apply tick_pending_publication S rho hn hv he
+      ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ [.propose s hs])
+      [.poll t.toNat]
+    · rw [duties_eq S t (hv.in_horizon _ (List.mem_of_getElem? he)).1]
+      simp only [dutiesInit, hone]
+      rfl
+    · erw [runDuties_fst_append, runDuties_fst_cons, runDuties_fst_nil]
+      rwa [atProposal_eq] at hp
+  obtain ⟨q, hq, hi, hx, ho⟩ := hpub
+  exact ⟨p, q, hq, hi, hx, ho, ho.symm ▸ hd⟩
+
+/-- Every accepting cut of an honest tick has a successfully decoded publication. -/
+theorem tick_acceptance_decoded_publication {V : Type} [Fintype V] [DecidableEq V]
+    {E : Env V} (S : Setup) (rho : Model.Run (compiled (family S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (v : V) (hh : v ∈ rho.honest)
+    (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t))
+    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
+    (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
+    (hchild : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      (blockObj _ B) = some B) :
+    ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
+      q.origin = rho.ownKey v ∧
+      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∧
+      decodeForward (S.params (pubOf E) hn) (digests rho.hash q.object) q.object =
+        some (rho.ownKey v, t, p, B) := by
+  have hpub : (S.params (pubOf E) hn).toParams.IsPublic t := by
+    by_contra h
+    rw [eventCuts_tick_other S rho hn i v t he h] at hr
+    exact List.not_mem_nil hr
+  rw [eventCuts_tick_public S rho hn i v t he hpub] at hr
+  obtain ⟨k, hk, hkr⟩ := List.getElem_of_mem hr
+  have hl := (getElem_groupRecs (runProposer S rho hn) (digestOf S rho)
+    (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
+    (.tick (encodeTxs (mempool rho.inbox v t))) k hk).2.2.2.2
+  rw [hkr, hb] at hl
+  have ha := tick_acceptance_proposal (runProposer S rho hn) (digestOf S rho)
+    (rho.ownKey v) (stateAt S rho hn v i).node t (encodeTxs (mempool rho.inbox v t)) B
+    (hl.symm ▸ List.getElem_mem _)
+  have hsel := poll_selected S rho hv v
+  have hnode : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node =
+      (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).1 := by
+    rw [atProposal_node S rho hn v _ t (fgDue_eq_false S rho hn v i) hsel,
+      nodeTick_node_public _ hpub]
+    exact congrArg (fun key => (Node.acCall key _ t .tick).1) (self_eq_ownKey S rho hn v i)
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
+    ⟨hnil, hno⟩ | ⟨s, hs, hone, htime⟩
+  · have hnp := not_proposes S hn (runProposer S rho hn) (rho.ownKey v) t
+      (fun s hs h => hno s hs (h.trans (slotTime_eq S hn s)))
+    simp only [Node.tickStep, hnp, ↓reduceIte, List.not_mem_nil] at ha
+  · apply tick_proposal_acceptance_decoded_publication S rho hn hv v hh i t he s hs hone
+      (htime.trans (slotTime_eq S hn s).symm) B _ hchild
+    rwa [hnode]
+
+/-- Every honest acceptance has an actual, exactly decoded same-event publication.
+All decoding premises follow from execution validity and reachable state invariants. -/
+theorem forwardAtAcceptance {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) :
+    ForwardAtAcceptance S rho hn (simTrace S rho hn) (cutMap S rho hn)
+      (publisherExecution S rho) := by
+  rw [forwardAtAcceptance_iff]
+  intro x hx k B ha
+  have hchild := accepted_child_decodes S rho hn hv x hx k B ha
+  obtain ⟨hxk, hlab⟩ := ha
+  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
+  obtain ⟨r, i, ev, _, he, hlo, hhi, hidx, hnode, htime, _, hlabel⟩ :=
+    simTrace_cut S rho hn hl
+  have hb : r.label = .fg (.block B true) := Option.some.inj (hlabel.symm.trans hlab)
+  have hr := List.mem_of_getElem? hidx
+  have hxev : rho.ownKey ev.node = x := hnode.symm.trans hxk
+  have hhon : ev.node ∈ rho.honest := by
+    have hi : rho.key (rho.ownKey ev.node) = ev.node := rho.key.apply_symm_apply _
+    change rho.key x ∈ rho.honest at hx
+    rwa [← hxev, hi] at hx
+  have hp : ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
+      q.origin = rho.ownKey ev.node ∧
+      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey ev.node) ev.time p B ∧
+      decodeForward (S.params (pubOf E) hn) (digests rho.hash q.object) q.object =
+        some (rho.ownKey ev.node, ev.time, p, B) := by
+    cases ev with
+    | tick v t =>
+      exact tick_acceptance_decoded_publication S rho hn hv v hhon i t he r B hr hb hchild
+    | deliver v o t =>
+      exact delivery_acceptance_decoded_publication S rho hn hv hhon he r B hr hb hchild
+    | restart v t =>
+      rw [eventCuts_restart S rho hn i v t he] at hr
+      obtain ⟨j, hj, hjr⟩ := List.getElem_of_mem hr
+      have hc := (getElem_groupRecs (runProposer S rho hn) (digestOf S rho)
+        (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0) .restart j hj).2.2.2.2
+      rw [hjr, hb] at hc
+      have hm := hc.symm ▸ List.getElem_mem (by simpa only [length_groupRecs] using hj)
+      simp [Node.exec, Node.restart, Node.acCall] at hm
+  obtain ⟨p, q, hq, hqi, hqx, hqo, hd⟩ := hp
+  refine ⟨q, p, hq, hqx.trans hxev, hqi ▸ hlo, hqi ▸ hhi, ?_, ?_, ?_⟩
+  · rw [hqi, publisherExecution_eventTime_eq, he]
+    exact htime.symm
+  · simpa only [hxev, ← htime] using hqo
+  · simpa only [hxev, ← htime] using hd
+
 end Consensus.Goldilocks.Refinement
