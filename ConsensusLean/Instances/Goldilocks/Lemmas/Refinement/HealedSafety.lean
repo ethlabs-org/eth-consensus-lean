@@ -567,14 +567,6 @@ theorem healthy_read_label (D : HealthyRepairSchedule S A V Q)
       rw [hs]
       nlinarith
 
-/-- OPEN stored-clock representative, repair floor and finite service producer. -/
-theorem healthy_current_read_context (D : HealthyRepairSchedule S A V Q)
-    (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
-    {v : V} {i : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
-    (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
-      ((chainTrace Q.run.2).cutTime i)) : Nonempty (HealthyReadContext S A V Q D v i) := by
-  sorry
-
 /-- OPEN current anchor candidates are compatible with the current looked-up record. -/
 theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
     {v : V} {i : Nat} (C : HealthyReadContext S A V Q D v i)
@@ -697,6 +689,49 @@ theorem healthy_current_stored_locks (D : HealthyRepairSchedule S A V Q)
       change s + 1 ≤ Q.params.slot (Q.trace.time q)
       change e.msg.slot = Q.params.slot (Q.trace.time q) at hslot
       omega)
+
+set_option linter.unusedSectionVars false in
+set_option linter.unusedVariables false in
+/-- Stored-clock representative, repair floor and finite service producer.
+The existing endpoint signature is retained; record repair is not needed for service. -/
+theorem healthy_current_read_context (D : HealthyRepairSchedule S A V Q)
+    (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
+    {v : V} {i : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
+    (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
+      ((chainTrace Q.run.2).cutTime i)) : Nonempty (HealthyReadContext S A V Q D v i) := by
+  obtain ⟨q, hq, heq, hread, ht0, htb, hrepairTime, hready⟩ :=
+    healthy_read_representative S A V Q D hi hv
+  have hΔ := Q.params.toParams.hΔ
+  have hquery : D.query ≤ (stateAt S Q.run.2 Q.hn v i).now := by
+    have hindex : (0 : Int) ≤ (Q.index : Time) := Int.natCast_nonneg _
+    nlinarith
+  have hdrain := (le_max_of_le_right (le_max_left _ _)).trans D.lower
+  obtain ⟨L, hL, haL, hLt⟩ := healthy_read_label S A V Q D
+    (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn q)).ac
+    (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn q)))
+    ht0 (hdrain.trans hquery)
+  have haw := Compose.ready_implies_joined Q.params _ _ _ _ _ D.reset.run
+    (Q.run.2.ownKey v) (honest_ownKey (S := S) hv.1) _
+    ((Sys (family S) V).cDur (K S A) Q.run - 1) ht0
+    (by have := D.duration_bound; linarith) hready.2
+  have hza : Healing.cutZ Q.params.toParams Q.gst < D.resetTime :=
+    Healing.cutZ_lt_reset_of_snapshot D.reset.run
+      (by obtain ⟨k, hk, _⟩ := D.reset.snapshot; exact ⟨k, hk⟩) D.reset.reset
+  exact ⟨{ cut := cutMap S Q.run.2 Q.hn q
+           state_eq := heq
+           label := L
+           time_nonneg := ht0
+           time_bound := htb
+           repaired := hrepairTime
+           readPoint := hread
+           awake := haw.1
+           joined := haw.2
+           latest := hL
+           reset_le := haL
+           sync := Healing.sync_window_at_reset_of_reset_before D.reset htb
+           catchup := Healing.catch_window_at_reset_of_reset_catch_before D.reset
+             (healthy_repair_catch S A V Q) htb
+           fault := Healing.fault_bound_late_before D.reset (by linarith) (hLt.trans htb) }⟩
 
 /-- Assemble the current whole-record certificate through the landed scoped adapters. -/
 theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
