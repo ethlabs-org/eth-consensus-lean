@@ -1,9 +1,10 @@
 module
 public import ConsensusLeanTest.GoldilocksRefinement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalEndpoints
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 @[expose] public section
 
-/-! # Witnesses: the Sleepy leaves' hypotheses are jointly satisfiable
+/-! # Witnesses: the Sleepy leaves' and vote forwarding's hypotheses are satisfiable
 
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"), for the hypotheses of
 `sleepy_safety_inputs` (`SleepySafetyQuery`) and of `sleepy_query_sync` (`ConfirmedQuery`,
@@ -17,7 +18,10 @@ abbreviation.
   with any horizon `H ≥ 0`.
 * `sleepyQuery_fields`: the same run with Sleepy progress at `.available`, index 1, on
   `[0, H]`, query time 0, the latency deadline inside the horizon, and a ready reader at the
-  deadline, for every `H ≥ latency`. -/
+  deadline, for every `H ≥ latency`.
+* `vote_emitted_forwarded`: on that run (horizon `H ≥ 2`), validator `0` emits a slot-0 vote
+  (`EmitAt` on `simTrace`), the premise of `simTrace_vote_forwarded`, which then yields a
+  released forwarding envelope. -/
 
 namespace Consensus.Goldilocks.Refinement.Test.SleepyWitness
 
@@ -123,5 +127,45 @@ theorem sleepyQuery_fields (A : AcceptanceAssumptions S) (C : AcceptanceCoeffici
     exact hH
   · rw [hp]
     exact point_ready H _ _ _
+
+/-- (b) The premise of `simTrace_vote_forwarded` is satisfiable on an engine run: on the
+two-validator run with horizon `H ≥ 2`, validator `0` emits a slot-0 vote by its first vote
+deadline `t₀ + Δp = 2`, and the theorem's conclusion then gives its first released forwarding
+envelope. -/
+theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
+    ∃ rho : Model.Run (compiled (family S)) (point H).env, rho.ExecutionValid ∧
+      ∃ y ∈ honestKeys S rho, ∃ (k : Nat) (m : SA.Vote (Fintype.card (Fin 2))),
+        (simTrace S rho one_le_card).EmitAt y k m ∧ m.slot = 0 ∧
+        (simTrace S rho one_le_card).time k ≤ 2 ∧
+        ∃ i, rho.SendsAt (rho.key y) i ((simTrace S rho one_le_card).time k) ∧
+          .mk (.signed y .poll) (.data (.voteForward ((simTrace S rho one_le_card).time k)
+            (encodeVote m))) [voteObj m] ∈ rho.releasesAt i := by
+  obtain ⟨rho, hp, -, -, hv, hc, -, -⟩ := Shape.coverage (family S) (point H)
+    (le_trans (by decide) hH)
+    (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
+  have hn := one_le_card
+  have hhon : rho.honest = Finset.univ := congrArg EnvPoint.honest hp
+  have hhor : rho.horizon = H := congrArg EnvPoint.horizon hp
+  have hrun := simTrace_goldilocksRun S rho hn hv
+  have hnc := noCollTransport (Fin 2) S _ rho hn hv hc
+  let y : Fin (Fintype.card (Fin 2)) := ⟨0, hn⟩
+  have hy : y ∈ honestKeys S rho := by
+    change rho.key y ∈ rho.honest
+    rw [hhon]
+    exact Finset.mem_univ _
+  let sp := S.params (pubOf (point H).env) hn
+  have ht : sp.ts 0 + sp.Δ = 2 := by rfl
+  have hawake : ∀ u : Time, 0 ≤ u → u ≤ 2 → (simTrace S rho hn).awake y u := fun u h0 h2 =>
+    (awakeAt_iff S rho hn y u).mpr ⟨rfl, h0, by rw [hhor]; exact h2.trans hH⟩
+  have h0 : (0 : Time) ≤ sp.ts 0 + sp.Δ := by rw [ht]; decide
+  have hc8 : 8 * sp.Δ ≤ 8 * sp.Δ + 1 := Int.le_add_one le_rfl
+  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined sp _ _ _ _ _ hrun y hy (sp.ts 0 + sp.Δ)
+    (8 * sp.Δ) h0 hc8 (fun u hu hu' =>
+      hawake u ((le_max_left _ _).trans hu) (hu'.trans ht.le))
+  obtain ⟨k, e, ⟨ℓ, hcall, he⟩, hslot, htime⟩ :=
+    Compose.vote_of_awake_joined hrun hnc hy (s := 0) hw hj
+  have hem : (simTrace S rho hn).EmitAt y k e.msg := ⟨ℓ, Compose.projAC_callAt.mp hcall, e, he, rfl⟩
+  obtain ⟨i, -, -, hsend, hrel, -⟩ := simTrace_vote_forwarded S rho hn hv y hy k e.msg (Or.inl hem)
+  exact ⟨rho, hv, y, hy, k, e.msg, hem, hslot, htime.trans ht.le, i, hsend, hrel⟩
 
 end Consensus.Goldilocks.Refinement.Test.SleepyWitness
