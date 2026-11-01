@@ -786,6 +786,72 @@ theorem report_of_deepest_candidate
     unfold SA.acToFG
     simp only [hjoin, not_true_eq_false, ↓reduceIte, hC, hrep]
 
+/-- Every sufficiently clean older fast or slow source is below the unanimous proposal.
+The source need not precede the chosen vote cut: clean-source transfer budgets both times. -/
+theorem clean_source_below_ready
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {x : Fin sp.n} (hx : x ∈ H) {r s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (horig : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
+    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hsu : s < u) :
+    Anc (tr.HonestBlocks H) B P := by
+  have hS := healthy_base_of_reset_catch hp hc
+  obtain ⟨j, e, hv, hes⟩ := SA.honest_votes_in_slot hS hgu p hP.1
+  obtain ⟨ell, hcast⟩ := hv
+  obtain ⟨Hd, hHd, hHdr, hBH⟩ := clean_source_votes_before hp hc
+    (max (tr.time r) (tr.time j)) hx horig hs (le_max_left _ _) j (le_max_right _ _)
+    p hP.1 ell e hcast (hes ▸ hsu)
+  have hhead := ready_unanimous hp hc hP hR p hP.1 j e ⟨ell, hcast⟩ hes
+  have hPU := (SA.frameIn_of_callAt hS.run.localRun hP.1 hcast.1).2
+  obtain ⟨X, hXt, hXr, -⟩ := (Compose.cast_head_fcRoot hS.run.localRun hP.1 hcast).1
+  have hXP : X = P := by
+    obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, -, ja, -, hacc, -⟩ :=
+      honestProposalRun_of_ready hp.run hp.noColl hP
+    rw [← hP.2.1] at hacc
+    obtain ⟨ellp, hcp, hblock⟩ := hacc
+    have hPm := (SA.accept_new sp hS.run.localRun hP.1 ⟨ellp, hcp, hblock⟩).1 ellp hcp
+    exact hS.run.localRun.coherent.1 (hPU hXt)
+      ((SA.frameIn_of_callAt hS.run.localRun hP.1 hcp).2 hPm) (hXr.trans hhead)
+  have hDP : Hd = P := hS.run.localRun.coherent.1 hHd (hXP ▸ hPU hXt)
+    (hHdr.trans hhead)
+  exact hDP ▸ hBH
+
+/-- At any post-drain call, the viable image of a stored live lock of an older label lies
+below the ready proposal. This covers both slow locks and fast locks. -/
+theorem ready_old_lock_below
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hcall : tr.projAC.CallAt y j ell) (ht : drainTime sp a ≤ tr.time j)
+    {l : SA.Lock} (hl : l ∈ (tr.projAC.state y j).locks) (hlu : l.slot < u)
+    (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)
+    {L : SA.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ ell.frame.tree)
+    (hLr : L.root = l.block) :
+    Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) P := by
+  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
+  have hs := drain_live_locks ht _
+    ⟨l, hl, L, hL, hLr, hlive, rfl⟩
+  change cleanLabel sp a + sp.k + 2 ≤ l.slot at hs
+  obtain ⟨r, _, B, horig, X, hX, hXr, hXB⟩ : ∃ r < j, ∃ B,
+      ((∃ CV, SA.FastLockAt tr.projAC y r l.slot B CV) ∨ SA.SlowLockAt tr.projAC y r l.slot B) ∧
+      ∃ X ∈ tr.HonestBlocks H, X.root = l.block ∧ Anc (tr.HonestBlocks H) X B := by
+    cases hf : l.fast with
+    | false =>
+      obtain ⟨r, hrj, B, hslow, hX⟩ := SA.slow_lock_provenance hr hy j l hl hf
+      exact ⟨r, hrj, B, Or.inr hslow, hX⟩
+    | true =>
+      obtain ⟨r, hrj, B, CV, hfast, hX⟩ := SA.fast_lock_provenance hr hy j l hl hf
+      exact ⟨r, hrj, B, Or.inl ⟨CV, hfast⟩, hX⟩
+  have hXL : X = L := hr.coherent.1 hX (hPhiU hL) (hXr.trans hLr.symm)
+  rw [hXL] at hXB
+  exact ((SA.anc_viableAncestor ell.frame L).mono hPhiU).trans
+    (hXB.trans (clean_source_below_ready hp hc hP hR hgu hy horig hs hlu))
+
 /-- **The joined duty at the update** (§23, §17 "Exact remaining premise"; phase-service §10;
 restated with the healing orb, workbench#30-style): under the reset premises and `Catch(2Δ)`, for
 an honest ready proposal `P` of slot `u` with `t_u ≥ R` and every honest node `z` running its
