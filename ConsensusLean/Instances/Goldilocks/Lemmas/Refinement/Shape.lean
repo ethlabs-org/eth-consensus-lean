@@ -430,6 +430,34 @@ theorem apply_voteForward_source (st : State sp ro) r (t : Time) (v : Vote sp.n)
     · cases hcall : ℓ.call <;> simp_all
     · exact Or.inr (Or.inr (List.mem_map.mp hv))
 
+/-- A fresh wire admission is queued by its single-cut message handler. -/
+theorem onMessage_voteForward (st : State sp ro) (m : Vote sp.n)
+    (hold : m ∉ st.node.ac.pool m.slot)
+    (hnew : m ∈ (Node.onMessage st.self st.node st.now m).1.ac.pool m.slot) :
+    (st.now, m) ∈ (apply st (Node.onMessage st.self st.node st.now m)).voteForwards := by
+  apply apply_voteForward_of_admission st _ m
+    ⟨.message m, Node.frame st.node, _⟩
+  · exact List.mem_singleton_self _
+  · exact Or.inl rfl
+  · exact hold
+  · exact hnew
+
+/-- A successful block handler has exactly one AC cut: the preceding FG acceptance does
+not change the old AC pool, and the handler result is the AC cut's result. -/
+theorem onBlock_voteForward (st : State sp ro) (B : Blk sp) (m : Vote sp.n)
+    (hm : m ∈ SA.blockVotes B) (ht : ¬ sp.slot st.now < B.slot)
+    (fg' : Store sp.toParams (Payload sp.n)) (hfg : st.node.fg.onBlock B = some fg')
+    (hold : m ∉ st.node.ac.pool m.slot)
+    (hnew : m ∈ (Node.onBlock st.self st.node st.now B).1.ac.pool m.slot) :
+    (st.now, m) ∈ (apply st (Node.onBlock st.self st.node st.now B)).voteForwards := by
+  apply apply_voteForward_of_admission st _ m
+    ⟨.block B, Node.frame { st.node with fg := fg' }, _⟩
+  · simp only [Node.onBlock, ht, ↓reduceIte, hfg]
+    exact List.mem_cons_of_mem _ (List.mem_singleton_self _)
+  · exact Or.inr (Or.inl ⟨B, rfl, hm⟩)
+  · exact hold
+  · exact hnew
+
 /-- `relayIf` keeps the key. -/
 theorem relayIf_self (st : State sp ro) (c : Prop) [Decidable c] o :
     (relayIf st c o).self = st.self := by unfold relayIf; split <;> rfl

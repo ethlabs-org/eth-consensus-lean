@@ -1951,6 +1951,38 @@ theorem simTrace_forwardHeldProcessed (hv : rho.ExecutionValid) :
     · exact Or.inl (hy ▸ hc)
     · exact Or.inr ⟨(hxy.trans hy).symm, hy ▸ ha⟩
 
+/-- A top-level signed vote envelope can only be released by its signer. Other nodes may
+carry it in unsigned gossip, but cannot account for an earlier top-level release of it. -/
+theorem voteForward_release_sender {i : Nat} {x : Fin (Fintype.card V)} {t : Time}
+    {m : SA.Vote (Fintype.card V)}
+    (h : Model.Obj.mk (.signed x .poll) (.data (.voteForward t (encodeVote m))) [voteObj m] ∈
+      rho.releasesAt i) : ∃ u, rho.SendsAt (rho.key x) i u := by
+  cases he : rho.events[i]? with
+  | none =>
+    simp only [Model.Run.releasesAt, he] at h
+    exact False.elim (List.not_mem_nil h)
+  | some ev =>
+    cases ev with
+    | restart v u =>
+      simp only [Model.Run.releasesAt, he] at h
+      exact False.elim (List.not_mem_nil h)
+    | tick v u =>
+      simp only [Model.Run.releasesAt, he] at h
+      rcases rho.tick_auth _ _ _ h with ha | ⟨r, ha, _⟩
+      · cases ha
+      · have hx : x = rho.ownKey v := (Model.Auth.signed.inj ha).1
+        subst x
+        have hk : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
+        exact ⟨u, Or.inl (by rw [hk]; exact he)⟩
+    | deliver v o u =>
+      simp only [Model.Run.releasesAt, he] at h
+      rcases rho.deliver_auth _ _ _ _ h with ha | ⟨r, ha, _⟩
+      · cases ha
+      · have hx : x = rho.ownKey v := (Model.Auth.signed.inj ha).1
+        subst x
+        have hk : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
+        exact ⟨u, Or.inr ⟨o, by rw [hk]; exact he⟩⟩
+
 end Trace
 
 end Consensus.Goldilocks.Refinement
