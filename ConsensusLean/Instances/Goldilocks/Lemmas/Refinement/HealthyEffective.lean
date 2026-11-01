@@ -12,6 +12,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 
 -- Whole-run consumers and their finite-horizon counterparts share this endpoint layer.
 set_option linter.style.longFile 2400
@@ -1938,6 +1940,136 @@ theorem unanimous_pool {b : Time}
     have hub : sp.ts u + sp.Δ ≤ b := by linarith [sp.toParams.hΔ]
     obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot hp hc hgu hR hub x hx
     exact ⟨q, e, hv, hs, hun x hx q e hv (hq.trans hub) hs⟩
+
+/-- At an exact update, strict finalization turns compatibility into ancestry below
+the unanimous proposal: a strict finalizer can have slot at most `u + 1`. -/
+theorem finalized_below_unanimous_at_update {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hPU : P ∈ tr.HonestBlocks H) (hPs : P.slot = u) (hu : 0 < u)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hTb : sp.ts u + 6 * sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hup : SA.UpdateAt tr.projAC y j u ell) (ha : a ≤ tr.time j) :
+    Anc (tr.HonestBlocks H) ell.frame.F P := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
+  have hFR := finalized_compatible_before_update hp hc hPU hPs hu hun hgu hR hTb hy ha ht.le
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hy j
+  have hFt := (Store.cache_invariants _ _ _ _ hreach).1
+  rw [Compose.frame_of_projAC hp.run hy hup.1]
+  change Anc (tr.HonestBlocks H) (tr.state y j).fg.F P
+  by_cases hg : (tr.state y j).fg.F =
+      sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload
+  · exact Compose.honest_genesis_root_anc hp.run hr.coherent ⟨y, hy, j, hFt⟩
+      (by rw [hg]; rfl) hPU
+  obtain ⟨B, hBt, _, hFB, hne⟩ := Store.F_lt_finalizer hreach hg
+  have hBf : B ∈ ell.frame.tree := by
+    rw [Compose.frame_of_projAC hp.run hy hup.1]
+    exact ⟨hBt, hFB⟩
+  have hsl : sp.slot (tr.projAC.time j) = u + 1 := by
+    change sp.slot (tr.time j) = u + 1
+    rw [ht, (SA.slot_arithmetic sp u).2.2]
+    simpa using (SA.slot_arithmetic sp (u + 1)).1 2 (by omega)
+  have hBs : B.slot ≤ u + 1 := hsl ▸ SA.frame_slot_le sp hr hy hup.1 B hBf
+  have hFs : (tr.state y j).fg.F.slot < B.slot :=
+    (Anc.slot_le hr.coherent (hFB.mono (fun X hX => ⟨y, hy, j, hX⟩))).2 hne
+  rcases hFR with h | hPF
+  · exact h
+  by_cases he : P = (tr.state y j).fg.F
+  · exact he ▸ .refl
+  have := (Anc.slot_le hr.coherent hPF).2 he
+  omega
+
+/-- An actual post-drain honest proposal is selected at every bounded honest update.
+Current-frame heldness and live-lock compatibility are conclusions of the assembly. -/
+theorem operational_update_selection {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
+    (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hup : SA.UpdateAt tr.projAC y j u ell) :
+    P ∈ ell.frame.tree ∧
+      SA.getConfirmation sp (tr.projAC.state y j) ell.frame u = some P ∧
+      ¬ SA.conflictsWithLock sp (tr.projAC.state y j).locks ell.frame (tr.time j) P ∧
+      SA.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P ∧
+      tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
+      (tr.projAC.post j).latestConfirmed =
+        (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
+  have hDelta := sp.toParams.hΔ
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
+  have hjb : tr.time j ≤ b := ht ▸ hTb
+  have hub : sp.ts u + sp.Δ ≤ b := by linarith
+  have hun : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
+      e.msg.slot = u → e.msg.head = P.root := fun z hz q e hv hqb hs =>
+    hp.operational_unanimous hc hpH hdesignated hactual hPs hR (by linarith)
+      z hz q e hv hs hqb
+  have hRnext := hR.trans ((SA.ts_le_iff sp).2 (show (u : Int) ≤ (u + 1 : Nat) by omega))
+  have hu : 0 < u := by
+    rw [Healing.drainTime_eq] at hR
+    have := (SA.ts_le_iff sp).1 hR
+    push_cast at this
+    omega
+  have hacc := Compose.proposal_accepted hp.run hp.noColl hpH hactual
+  have hPU : P ∈ tr.HonestBlocks H := by
+    refine ⟨p, hpH, k + 1, ?_⟩
+    rw [tr.state_succ_of_call hacc,
+      (Store.tree_grows _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hpH _)).1 P _
+        (hp.run.toLocalRun.cutLaw p hpH _ _ hacc).2.1]
+    exact Set.mem_insert _ _
+  have hca := Healing.cutZ_lt_reset_of_snapshot hp.run
+    (by obtain ⟨q, hq, _⟩ := hp.snapshot; exact ⟨q, hq⟩) hp.reset
+  have ha0 : 0 ≤ a := by
+    have := Healing.lt_cutZ sp g
+    have := SA.gbar_nonneg g
+    linarith
+  have haR : a ≤ Healing.drainTime sp a := by
+    have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
+      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+      omega
+    apply ha'.le.trans
+    rw [Healing.drainTime_eq]
+    exact (SA.ts_le_iff sp).2 (by push_cast; omega)
+  have hFP := finalized_below_unanimous_at_update hp hc hPU hPs hu hun hgu hRnext hTb hy hup
+    (by rw [ht]; linarith [haR.trans hR])
+  obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot hp hc hgu hRnext hub y hy
+  obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hr hy hv
+  have hPsiU := (SA.frameIn_of_callAt hr hy hv.1).2
+  have heq : Hd = P := hr.coherent.1 (hPsiU hHd) hPU
+    (he.trans (hun y hy q e ⟨ellv, hv⟩ (hq.trans hub) hs))
+  subst Hd
+  obtain ⟨ka, hka, haccept⟩ := (SA.frame_genesis_or_accepted sp hr hy hv.1 P hHd).resolve_left
+    (by omega)
+  have hqj : q ≤ j := by
+    by_contra hn
+    have hm := hp.run.time_mono (Nat.le_of_not_ge hn)
+    rw [ht] at hm
+    linarith
+  have hPt := SA.mem_tree_of_acceptAt sp hr hy haccept (hka.trans hqj) hup.1 hFP
+  have hPg : P.root ≠ sp.genesisRoot := by
+    intro he
+    have hG := Healing.Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hpH k)
+    have heq := hr.coherent.1 hPU ⟨p, hpH, k, hG⟩ he
+    have hz : P.slot = 0 := by rw [heq]; rfl
+    omega
+  have hpool := unanimous_pool hp hc hun hgu hRnext hy hup.1
+    (by rw [ht]; linarith) hjb hPt
+  have hts : Healing.cutZ sp.toParams g ≤ sp.ts u := hca.le.trans (haR.trans hR)
+  have hvote : ∃ z ∈ H, ∃ q ell e, SA.CastAt tr.projAC z q ell e ∧
+      tr.time q ≤ b ∧ e.msg.slot = u := ⟨y, hy, q, ellv, e, hv, hq.trans hub, hs⟩
+  have hlocks := hp.call_locks_compatible_of_unanimous hc hPU hts hun hvote hy hup.1 hjb
+    (by rw [ht]; linarith) ht.le (fun r hr B CV ho =>
+      unanimous_next_optimistic_compatible hp hc hPU hPs hu hun hgu hRnext hub hy ho
+        ((hp.run.time_mono hr.le).trans hjb))
+  exact ⟨hPt, hp.ready_update_selection_of_pool hy hup hPt hPg hpool hlocks⟩
 
 /-- At a bounded call holding a target above a bounded high seed, compatible
 causal origins give full viability or an actual earlier strictly higher report. -/
