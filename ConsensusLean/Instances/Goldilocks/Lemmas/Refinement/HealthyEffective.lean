@@ -18,7 +18,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 -- Whole-run consumers and their finite-horizon counterparts share this endpoint layer.
 -- Operational selection and report coverage reuse its bounded pool, next-slot and finality
 -- chain; keep these endpoints together while their downstream adoption consumers are assembled.
-set_option linter.style.longFile 2600
+-- Local-entry candidate geometry is shared by the report and read-adoption endpoints.
+set_option linter.style.longFile 2800
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -2154,6 +2155,81 @@ theorem operational_update_recent_source {b : Time}
     have hRs := SA.frame_slot_le sp hr hx ho.1 R hm
     change sp.slot (tr.projAC.time q) = s at hslot
     omega
+
+/-- Retaining the local entry at the height floor gives a candidate, without a
+remote-report alternative, at a bounded call above a compatible high seed. -/
+theorem held_target_ancestor_candidate {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y v : Fin sp.n} (hy : y ∈ H) {i q m : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
+    (hib : tr.time i ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hPt : P ∈ ell.frame.tree) (hseed : Healing.HighOrigin tr H g v q m S)
+    (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocks H) S P)
+    (hcompare : ∀ x r l B, r < i → Healing.HighOrigin tr H g x r l B →
+      Compatible (tr.HonestBlocks H) P B) : ell.frame.AncestorCandidate P := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
+  have hPy := hp.frame_tree_subset hy hcall hPt
+  have hSy := hp.mem_tree_of_anc hy hSP hPy
+  have hfr := Compose.frame_of_projAC hp.run hy hcall
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hy i
+  have hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot P := by
+    by_cases hlow : (tr.state y i).fg.hj ≤ Healing.HZ tr H g
+    · exact hp.low_root_of_held_seed_at_call hy hPy hy hseed hcall hSy hlow
+        (Or.inr hSP) (fun _ => hPt)
+    · exact hp.high_J_root_of_held_at_call_before hy hPy hy hcall (by omega) hcompare
+  rcases hroot with hroot | hroot
+  swap
+  · exact Or.inl (SA.anc_tree_of_anc_U hp.honest_coherent hPhi hPhiU hPt hroot hPhi.fcRoot_mem)
+  have hrootf := SA.anc_tree_of_anc_U hp.honest_coherent hPhi hPhiU
+    hPhi.fcRoot_mem hroot hPt
+  have witness : ∃ E ∈ (tr.state y i).fg.tree,
+      Anc (tr.HonestBlocks H) P E ∧
+      (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ E.root).h := by
+    by_cases hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ P.root).h
+    · exact ⟨P, hPy, .refl, hfloor⟩
+    obtain ⟨-, -, -, -, -, -, -, -, -, hSs⟩ := hp.highOrigin_mem hseed
+    have hSh := Healing.σ_h_le_of_anc hreach (hp.anc_tree_of_anc hy hSP hPy)
+    have hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.headHeightFloor := by
+      rw [hp.σ_eq_run hseed.1 hy hSs hSy]
+      omega
+    obtain ⟨x, r, l, B, E, hri, ho, -, hE, hEB, -, hEf, -⟩ :=
+      hp.high_floor_signed_source_of_row_bound hseed hy (u := sp.slot (tr.time i) + 1)
+        (fun W hW att ha z hz d hd hdi r' l O hrd ho => by
+          obtain ⟨-, D, CV, -, hfl, -⟩ := hp.highOrigin_mem ho
+          have ht : sp.ts l ≤ tr.time r' := by
+            rcases hfl with ⟨ell, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
+            · change tr.time r' = sp.ts l + 6 * sp.Δ at ht
+              linarith [sp.toParams.hΔ]
+            · change sp.slot (tr.time r') = l at hsl
+              exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r') l).2 (by omega)
+          have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg i) l).1
+            (ht.trans (hp.run.time_mono (by omega)))
+          omega)
+        (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible ho
+          ((hp.run.time_mono hri.le).trans hib) ho' ((hp.run.time_mono hr'i.le).trans hib))
+        (fun x r l B hri ho => hp.origins_compatible hseed hqb ho
+          ((hp.run.time_mono hri.le).trans hib)) hSf
+    have hPE : Compatible (tr.HonestBlocks H) P E := by
+      rcases hcompare x r l B hri ho with h | h
+      · exact SA.anc_total hp.honest_coherent h hEB
+      · exact Or.inr (hEB.trans h)
+    rcases hPE with hPE | hEP
+    · exact ⟨E, hE, hPE, hEf⟩
+    · have := Healing.σ_h_le_of_anc hreach (hp.anc_tree_of_anc hy hEP hPy)
+      omega
+  obtain ⟨E, hE, hPE, hEf⟩ := witness
+  have hPEs := hp.anc_tree_of_anc hy hPE hE
+  have hPt' := hPt
+  rw [hfr] at hPt'
+  have hEt : E ∈ ell.frame.tree := by
+    rw [hfr]
+    exact ⟨hE, hPt'.2.trans hPEs⟩
+  have hPEf := SA.anc_tree_of_anc_U hp.honest_coherent hPhi hPhiU hPt hPE hEt
+  refine Or.inr ⟨hPt, hrootf, E, hEt, ?_, hPEf⟩
+  have hRE := hrootf.trans hPEf
+  rw [hfr] at hRE ⊢
+  exact ⟨hE, hPt'.2.trans hPEs, Anc.mono (fun _ h => h.1) hRE, hEf⟩
 
 /-- At a bounded call holding a target above a bounded high seed, compatible
 causal origins give full viability or an actual earlier strictly higher report. -/
