@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Saved
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
 
 public section
 
@@ -37,6 +38,16 @@ theorem exists_unpolluted_label (sp : SA.SAParams) {start stop : Time}
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+
+/-- Shortening the recent-awake window preserves sleepy participation. -/
+theorem etaSleepyAt_mono {c η η' t : Time} (hη : η' ≤ η)
+    (h : Regimes.EtaSleepyAt tr H c η t) : Regimes.EtaSleepyAt tr H c η' t := by
+  apply lt_of_le_of_lt (Set.ncard_le_ncard ?_) h
+  rintro x (hr | ⟨hx, τ, hτ, hτt, haw⟩ | hf)
+  · exact Or.inl hr
+  · exact Or.inr (Or.inl ⟨hx, τ,
+      (max_le_max_left 0 (sub_le_sub_left hη t)).trans hτ, hτt, haw⟩)
+  · exact Or.inr (Or.inr hf)
 
 /-- Every honest voter in a successor vote's merged view was awake during the preceding
 slot's voting window. The lookback bound is an explicit hypothesis. -/
@@ -282,5 +293,138 @@ theorem first_step_count {q : Nat} {c : Time} (hΔ : 2 ≤ sp.Δ)
     rw [Set.ncard_union_eq hdis] at hle₁ hle₂
     have hsplit := Set.ncard_inter_add_ncard_sdiff_eq_ncard R V
     omega
+
+/-- The first-step dichotomy separates ready receipt forwarding from vote extension. -/
+theorem first_step_hcase (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {q : Nat} (hq : 0 < q) {c : Time} (hc : 8 * sp.Δ ≤ c + 1) (hΔ : 2 ≤ sp.Δ)
+    (hrelay : (∃ x ∈ H, ∃ i ℓ, tr.projAC.CallAt x i ℓ ∧ tr.time i = sp.ts q ∧
+        SA.voteReady sp ℓ.frame q) →
+      ∀ y, Regimes.ReadyAt tr H c y (sp.ts q + (sp.Δ - 1)) →
+        ∃ i ℓ, tr.projAC.CallAt y i ℓ ∧
+          ((∃ m, ℓ.call = .message m) ∨ ∃ B, ℓ.call = .block B) ∧
+          sp.ts q ≤ tr.time i ∧ tr.time i ≤ sp.ts q + (sp.Δ - 1) ∧
+          SA.voteReady sp ℓ.frame q) :
+    (∀ x, Regimes.ReadyAt tr H c x (sp.ts q + (sp.Δ - 1)) →
+        x ∈ {x | x ∉ H ∨ ∃ k e, SA.VoteAt tr.projAC x k e ∧ e.msg.slot = q}) ∨
+      (∀ x ∈ {x | x ∉ H ∨ ∃ k e, SA.VoteAt tr.projAC x k e ∧ e.msg.slot = q}, x ∈ H →
+        Regimes.ReadyAt tr H c x (sp.ts q + sp.Δ) ∨
+          Regimes.RecentlyAwake tr H (sp.Δ - 1) x (sp.ts q + sp.Δ)) := by
+  classical
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have ht : 0 ≤ sp.ts q := by simp only [SA.SAParams.ts]; positivity
+  have hnext : sp.ts q + sp.Δ < sp.ts (q + 1 : Nat) := by
+    simp only [SA.SAParams.ts]; push_cast; nlinarith
+  by_cases hsome : ∃ x ∈ H, ∃ i ℓ, tr.projAC.CallAt x i ℓ ∧ tr.time i = sp.ts q ∧
+      SA.voteReady sp ℓ.frame q
+  · left
+    intro x hx
+    obtain ⟨i, ℓ, hi, hkind, hlo, hhi, hready⟩ := hrelay hsome x hx
+    have hslot := SA.slot_of_mem sp q hlo (by linarith : tr.time i < sp.ts (q + 1 : Nat))
+    have hslot₁ := SA.slot_of_mem sp q (by linarith : sp.ts q ≤ sp.ts q + (sp.Δ - 1))
+      (by linarith : sp.ts q + (sp.Δ - 1) < sp.ts (q + 1 : Nat))
+    have hj := (ready_implies_joined sp ro dg H tr proposer hrun x hx.1
+      (sp.ts q + (sp.Δ - 1)) c (by linarith) hc hx.2).2
+    have hjoin : tr.JoinedAt x (tr.time i) := by
+      intro k hk hkt
+      have hh := hj k hk (hkt.trans hhi)
+      change 0 < sp.slot (tr.time i) ∧
+        tr.time k ≤ sp.toParams.slotTime (sp.slot (tr.time i) - 1)
+      change 0 < sp.slot (sp.ts q + (sp.Δ - 1)) ∧
+        tr.time k ≤ sp.toParams.slotTime (sp.slot (sp.ts q + (sp.Δ - 1)) - 1) at hh
+      simpa only [hslot, hslot₁] using hh
+    obtain ⟨k, -, e, he, hs, -⟩ := vote_of_ready_receipt hrun hnc hx.1 hq hi hkind
+      hslot (by linarith) hjoin hready
+    exact Or.inr ⟨k, e, he, hs⟩
+  · right
+    intro x hx hxH
+    obtain ⟨k, e, ⟨ℓ, hcast⟩, hs⟩ := hx.resolve_left (not_not.mpr hxH)
+    have hspec := SA.castAt_spec hr hxH hcast
+    have hlo := (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) (q : Int)).2
+      (by rw [← hspec.2.1, hs])
+    have hhi := SA.vote_time_le hr hxH ⟨ℓ, hcast⟩
+    rw [← hspec.2.1, hs] at hhi
+    change sp.ts q ≤ tr.time k at hlo
+    change tr.time k ≤ sp.ts q + sp.Δ at hhi
+    have hne : tr.time k ≠ sp.ts q := by
+      intro heq
+      exact hsome ⟨x, hxH, k, ℓ, hcast.1, heq,
+        hs ▸ SA.cast_ready hr hxH hcast (by
+          rw [hs]; change tr.time k < sp.ts q + sp.Δ; linarith)⟩
+    have hstrict : sp.ts q < tr.time k := lt_of_le_of_ne hlo (Ne.symm hne)
+    have hstep : sp.ts q + 1 ≤ tr.time k := by
+      exact Int.add_one_le_iff.mpr hstrict
+    exact Or.inr ⟨hxH, tr.time k, max_le (by linarith) (by linarith), hhi,
+      hr.awake_of_call x hxH k ℓ hcast.1⟩
+
+/-- Handler facts assemble the counted batch; relay and extension remain explicit producers. -/
+theorem first_step_batch (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {q : Nat} (hq : 0 < q) {c : Time} (hc : 8 * sp.Δ ≤ c + 1) (hΔ : 2 ≤ sp.Δ)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (h₁ : Regimes.EtaSleepyAt tr H c (sp.Δ - 1) (sp.ts q + (sp.Δ - 1)))
+    (h₂ : Regimes.EtaSleepyAt tr H c (sp.Δ - 1) (sp.ts q + sp.Δ))
+    (hrelay : (∃ x ∈ H, ∃ i ℓ, tr.projAC.CallAt x i ℓ ∧ tr.time i = sp.ts q ∧
+        SA.voteReady sp ℓ.frame q) →
+      ∀ y, Regimes.ReadyAt tr H c y (sp.ts q + (sp.Δ - 1)) →
+        ∃ i ℓ, tr.projAC.CallAt y i ℓ ∧
+          ((∃ m, ℓ.call = .message m) ∨ ∃ B, ℓ.call = .block B) ∧
+          sp.ts q ≤ tr.time i ∧ tr.time i ≤ sp.ts q + (sp.Δ - 1) ∧
+          SA.voteReady sp ℓ.frame q)
+    (hB1 : ∀ x, (Regimes.ReadyAt tr H c x (sp.ts q + (sp.Δ - 1)) ∨
+        Regimes.ReadyAt tr H c x (sp.ts q + sp.Δ)) →
+      ∀ k e, SA.VoteAt tr.projAC x k e → e.msg.slot = q →
+        SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
+    let V := {x | x ∉ H ∨ ∃ k e, SA.VoteAt tr.projAC x k e ∧ e.msg.slot = q}
+    let S := {x | Regimes.ReadyAt tr H c x (sp.ts q + sp.Δ)} ∪
+      ({x | Regimes.ReadyAt tr H c x (sp.ts q + (sp.Δ - 1))} ∩ V)
+    S ⊆ H ∧ (∀ x ∈ S, ∃ k e, SA.VoteAt tr.projAC x k e ∧ e.msg.slot = q) ∧
+      (∀ x ∈ S, ∀ k e, SA.VoteAt tr.projAC x k e → e.msg.slot = q →
+        SA.VoteExtends (tr.HonestBlocks H) e.msg B) ∧
+      (∀ x ∈ H, ∀ k e, SA.VoteAt tr.projAC x k e → e.msg.slot = q → x ∈ V) ∧
+      Hᶜ ⊆ V ∧ V.ncard < 2 * S.ncard := by
+  dsimp only
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have ht : 0 ≤ sp.ts q := by simp only [SA.SAParams.ts]; positivity
+  have hK : ∀ x, Regimes.ReadyAt tr H c x (sp.ts q + sp.Δ) →
+      ∃ k e, SA.VoteAt tr.projAC x k e ∧ e.msg.slot = q := by
+    intro x hx
+    obtain ⟨hw, hj⟩ := ready_implies_joined sp ro dg H tr proposer hrun x hx.1
+      (sp.ts q + sp.Δ) c (by linarith) hc hx.2
+    obtain ⟨k, e, he, hs, -⟩ := vote_of_awake_joined hrun hnc hx.1 hw hj
+    exact ⟨k, e, he, hs⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, first_step_count hΔ h₁ h₂ ?_ ?_
+    (first_step_hcase hrun hnc hq hc hΔ hrelay)⟩
+  · rintro x (hx | ⟨hx, -⟩) <;> exact hx.1
+  · rintro x (hx | ⟨hx, hv⟩)
+    · exact hK x hx
+    · exact hv.resolve_left (not_not.mpr hx.1)
+  · intro x hx
+    apply hB1 x
+    rcases hx with hx | ⟨hx, -⟩
+    · exact Or.inr hx
+    · exact Or.inl hx
+  · intro x _ k e he hs
+    exact Or.inr ⟨k, e, he, hs⟩
+  · intro x hx
+    exact Or.inl hx
+  · intro x hx
+    rcases hx with hx | ⟨k, e, ⟨ℓ, hcast⟩, hs⟩
+    · exact Or.inl hx
+    by_cases hxH : x ∈ H
+    · right
+      obtain ⟨-, hslot, hjoin, -⟩ := SA.castAt_spec hr hxH hcast
+      have hjp : SA.joined sp (tr.projAC.post k) (tr.projAC.time k) := by
+        unfold SA.joined
+        rw [SA.restartTime_of_castAt hr hxH hcast]
+        exact hjoin
+      have hw := (SA.joined_awake sp _ ro H _ tr.projAC hr x hxH k ℓ hcast.1 hjp).1
+      have hlo := (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) (q : Int)).2
+        (by rw [← hslot, hs])
+      apply hw (sp.ts q) (max_le ht ?_) hlo
+      rw [← hslot, hs]
+      simp only [SA.SAParams.ts]
+      nlinarith [sp.toParams.hΔ]
+    · exact Or.inl hxH
+  · intro x hx
+    exact Or.inr (hK x hx)
 
 end Consensus.Goldilocks.Compose

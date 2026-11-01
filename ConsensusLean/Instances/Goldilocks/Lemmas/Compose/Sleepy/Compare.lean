@@ -202,6 +202,23 @@ private theorem acOnTick_votes (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp
   · linarith [h₂.1]
   all_goals exact Or.inr ⟨_, List.mem_singleton_self _, rfl⟩
 
+private theorem receipt_tryVote_votes (self : Fin sp.n) (A : SAState sp.n)
+    (Φ : Frm sp.n FGP) {t : Time} (hj : joined sp A t) (hs : 0 < sp.slot t)
+    (hlt : t < sp.ts (sp.slot t) + sp.Δ) (hready : voteReady sp Φ (sp.slot t)) :
+    A.votedSlot = sp.slot t ∨ ∃ e ∈ (tryVote sp self A Φ t).2,
+      e.msg.slot = sp.slot t := by
+  unfold tryVote
+  dsimp only
+  split_ifs with h₁ h₂
+  · rcases h₁ with h | h | h
+    · exact absurd hj h
+    · exact Or.inl h
+    · linarith
+  · rcases h₂.2 with hzero | hn
+    · omega
+    · exact False.elim (hn hready)
+  all_goals exact Or.inr ⟨_, List.mem_singleton_self _, rfl⟩
+
 private theorem ts_succ_add (s : Nat) (a : Time) :
     sp.ts (s + 1 : Nat) + a = sp.ts s + 4 * sp.Δ + a := by
   simp only [SAParams.ts]; push_cast; ring
@@ -579,6 +596,66 @@ theorem vote_of_awake_joined (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
       omega
   · refine ⟨j, e, ⟨ℓ, hc, hemit ▸ he'⟩, ?_, htj.le⟩
     rwa [htj, hslot] at hes
+
+/-- A ready message or block receipt before the slot's vote tick has cast a vote by that call. -/
+theorem vote_of_ready_receipt (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {s : Nat} (hs : 0 < s) {i : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
+    (hkind : (∃ m, ℓ.call = .message m) ∨ ∃ B, ℓ.call = .block B)
+    (hslot : sp.slot (tr.time i) = s) (hlt : tr.time i < sp.ts s + sp.Δ)
+    (hj : tr.JoinedAt y (tr.time i)) (hready : SA.voteReady sp ℓ.frame s) :
+    ∃ k ≤ i, ∃ e, SA.VoteAt tr.projAC y k e ∧ e.msg.slot = s ∧
+      tr.projAC.time k ≤ tr.time i := by
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hnr : ¬ tr.RestartAt y i := by
+    rintro ⟨ℓ', hc', hrest⟩
+    have heq : ℓ' = ℓ := by
+      have h := hc'.2.symm.trans (projAC_callAt.mp hc).2
+      injection h with h
+      exact Cut.ac.inj h
+    subst ℓ'
+    rcases hkind with ⟨m, hm⟩ | ⟨B, hB⟩ <;> simp_all
+  have hjo : SA.joined sp (tr.projAC.state y i) (tr.time i) := by
+    rw [projAC_state hrun.toLocalRun hy i]
+    exact ((joined_projection sp ro dg H tr proposer hrun y hy _).2.1 i
+      ⟨_, projAC_callAt.mp hc⟩ hnr rfl).1 hj
+  have prior : (tr.projAC.state y i).votedSlot = s →
+      ∃ k ≤ i, ∃ e, SA.VoteAt tr.projAC y k e ∧ e.msg.slot = s ∧
+        tr.projAC.time k ≤ tr.time i := by
+    intro hv
+    rcases SA.votedSlot_cast hr hy i with h | ⟨k, hk, e, he, hes⟩
+    · omega
+    · exact ⟨k, hk.le, e, he, by omega, hr.time_mono hk.le⟩
+  have he := congrArg Prod.snd (hr.exec i ℓ hc.2 (hc.1 ▸ hy))
+  rw [hc.1] at he
+  have receipt : ∀ A : SA.SAState sp.n,
+      A.votedSlot = (tr.projAC.state y i).votedSlot →
+      A.restartTime = (tr.projAC.state y i).restartTime →
+      (SA.tryVote sp y A ℓ.frame (tr.time i)).2 = ℓ.emits →
+      ∃ k ≤ i, ∃ e, SA.VoteAt tr.projAC y k e ∧ e.msg.slot = s ∧
+        tr.projAC.time k ≤ tr.time i := by
+    intro A hv hrst hem
+    have hjA : SA.joined sp A (tr.time i) := by
+      simpa only [SA.joined, hrst] using hjo
+    rcases SA.receipt_tryVote_votes y A ℓ.frame hjA (by omega)
+        (by simpa only [hslot] using hlt) (by simpa only [hslot] using hready) with h | ⟨e, he, hes⟩
+    · exact prior (by simpa only [hv, hslot] using h)
+    · exact ⟨i, le_rfl, e, ⟨ℓ, hc, hem ▸ he⟩, by simpa only [hslot] using hes, le_rfl⟩
+  rcases hkind with ⟨m, hm⟩ | ⟨B, hB⟩
+  · rw [hm] at he
+    change (SA.acOnMessage sp y (tr.projAC.state y i) ℓ.frame (tr.time i) m).2 = ℓ.emits at he
+    apply receipt (SA.optimisticConfirmation sp (SA.admitVote sp (tr.projAC.state y i)
+      (tr.time i) m) ℓ.frame (tr.time i))
+    · rw [(SA.optimistic_keeps _ _ _).1, (SA.admitVote_keeps _ _ _).1]
+    · rw [(SA.optimistic_keeps _ _ _).2, (SA.admitVote_keeps _ _ _).2]
+    · exact he
+  · rw [hB] at he
+    change (SA.acOnBlock sp y (tr.projAC.state y i) ℓ.frame (tr.time i) B).2 = ℓ.emits at he
+    apply receipt (SA.optimisticConfirmation sp (SA.blockReceipt sp (tr.projAC.state y i)
+      (tr.time i) B) ℓ.frame (tr.time i))
+    · rw [(SA.optimistic_keeps _ _ _).1, (SA.blockReceipt_keeps _ _ _).1]
+    · rw [(SA.optimistic_keeps _ _ _).2, (SA.blockReceipt_keeps _ _ _).2]
+    · exact he
 
 /-- **The honest validators awake and joined at `t_s + Δ` are participants** of an honest update
 of slot `s`: their slot-`s` votes reach the writer, whose restarts are at or before `t_s`. -/
