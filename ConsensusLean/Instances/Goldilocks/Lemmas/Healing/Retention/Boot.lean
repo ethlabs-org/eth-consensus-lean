@@ -805,12 +805,12 @@ theorem low_root_of_seed_before (hp : ResetPremises tr H proposer dg g ΔF a)
     · exact Or.inl (hFS.trans hSB)
 
 /-- All held honest rows justify root compatibility from bounded origin comparisons. -/
-theorem high_J_root_of_held_before
+theorem high_J_root_of_held_at_call_before
     (hp : ResetPremises tr H proposer dg g ΔF a)
     {x y : Fin sp.n} {i k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e)
+    {ell : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ell)
     (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
     (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
       Compatible (tr.HonestBlocks H) B O) :
@@ -845,10 +845,23 @@ theorem high_J_root_of_held_before
     rcases hJ with hJB | hBJ
     · exact Or.inl ((hFJ.mono hsub).trans hJB)
     · exact SA.anc_total hU (hFJ.mono hsub) hBJ
-  rw [Compose.frame_of_projAC hp.run hy hc.1]
+  rw [Compose.frame_of_projAC hp.run hy hc]
   change Compatible (tr.HonestBlocks H) (tr.state y k).fg.fcRoot B
   unfold Store.fcRoot
   split_ifs <;> assumption
+
+/-- Vote specialization of the call-level root comparison. -/
+theorem high_J_root_of_held_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hx : x ∈ H) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e)
+    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
+    (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocks H) B O) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B :=
+  high_J_root_of_held_at_call_before hp hx hBx hy hc.1 hhigh hcompare
 
 /-- High-origin specialization of the arbitrary held-target root comparison. -/
 theorem high_J_root_of_origins_before

@@ -22,7 +22,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
-set_option linter.style.longFile 1600
+set_option linter.style.longFile 1800
 
 public section
 
@@ -835,6 +835,66 @@ private theorem proposal_stored_locks_compatible_old
       simp only [SA.SAParams.ts]; push_cast; ring
     rw [hsucc] at hslots
     linarith
+
+/-- A non-current read-point lock sits below a raw source of the receiver. Its source
+precedes the receiving cast, not necessarily the proposal. -/
+theorem vote_old_lock_source_before (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
+    (hR : drainTime sp a ≤ sp.ts u)
+    {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
+    (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)
+    {L : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hL : L ∈ ell.frame.tree) (hLr : L.root = l.block) :
+    ∃ r D, r < j ∧ cleanLabel sp a + sp.k + 2 ≤ l.slot ∧ l.slot < u ∧
+      ((∃ CV, SA.FastLockAt tr.projAC y r l.slot D CV) ∨
+        SA.SlowLockAt tr.projAC y r l.slot D) ∧
+      Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) D := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  have hslot : sp.slot (tr.time j) = u := ((SA.castAt_spec hr hy hc).2.1).symm.trans hes
+  have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
+    rw [drainTime_eq] at hR
+    have := (SA.ts_le_iff sp).mp hR
+    rw [hslot] at hlive
+    rw [cleanLabel_eq]
+    omega
+  have hu : 0 < u := by
+    rw [drainTime_eq] at hR
+    have := (SA.ts_le_iff sp).mp hR
+    omega
+  obtain ⟨l₀, hl₀, hs, B, hB, hBr, L', hL', hL'r, hLB⟩ :=
+    SA.readPoint_locks_below_stored hr hy hc
+      (by change 0 < sp.slot (tr.time j); rw [hslot]; exact hu) l hl
+      (by change l.slot ≠ sp.slot (tr.time j); simpa only [hslot] using hne)
+  obtain rfl : L' = L := hPhi.coherent.1 hL' hL (hL'r.trans hLr.symm)
+  obtain ⟨r, hrj, D, hraw, X, hX, hXr, hXD⟩ :
+      ∃ r < j, ∃ D,
+        ((∃ CV, SA.FastLockAt tr.projAC y r l₀.slot D CV) ∨
+          SA.SlowLockAt tr.projAC y r l₀.slot D) ∧
+        ∃ X ∈ tr.HonestBlocks H, X.root = l₀.block ∧ Anc (tr.HonestBlocks H) X D := by
+    cases hf : l₀.fast with
+    | false =>
+      obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance hr hy j l₀ hl₀ hf
+      exact ⟨r, hrj, D, Or.inr hslow, hX⟩
+    | true =>
+      obtain ⟨r, hrj, D, CV, hfast, hX⟩ := SA.fast_lock_provenance hr hy j l₀ hl₀ hf
+      exact ⟨r, hrj, D, Or.inl ⟨CV, hfast⟩, hX⟩
+  obtain rfl : X = B := hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)
+  have hle : l₀.slot ≤ u := by
+    have ht : sp.ts l₀.slot ≤ tr.time r := by
+      rcases hraw with ⟨CV, hf⟩ | ⟨ellX, C, hupd, _⟩
+      · exact ts_le_of_fastLock hp hf
+      · have ht : tr.time r = sp.ts l₀.slot + 6 * sp.Δ := hupd.2.2.1
+        have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+        linarith
+    have htj : l₀.slot ≤ sp.slot (tr.time j) := by
+      exact_mod_cast (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg j) l₀.slot).mp
+        (ht.trans (hp.run.time_mono hrj.le))
+    omega
+  refine ⟨r, D, hrj, hclean, by omega, hs ▸ hraw, ?_⟩
+  exact (Anc.mono hPhiU ((SA.anc_viableAncestor ell.frame L').trans hLB)).trans hXD
 
 section Support
 
