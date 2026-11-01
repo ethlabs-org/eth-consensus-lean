@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 
 public section
 
@@ -10,7 +10,9 @@ Two facts of one accepted block that the liveness argument uses (workbench
 * a block that enters a new height without justifying the old one (a timeout) has a slot at
   least `δt` after the entry of the old height;
 * a block that justifies a bound height has finalized its predecessor: the loose-BJ gate reads
-  the finalization of the same block. -/
+  the finalization of the same block;
+* at a bound height the predecessor is pending or finalized (s5 W2), and a step that enters an
+  unbound height is a timeout, so its slot is at least `δt` after the old entry. -/
 
 namespace Consensus.Goldilocks.FG
 
@@ -65,6 +67,24 @@ theorem bound_justify_finalizes {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
   · rw [he] at hj
     simp at hj
     omega
+
+/-- **Predecessor pending or finalized (r14 s5, W2).** On a chain, at a bound height the
+predecessor pair `(h_j, J)` is pending, or `h_j` is finalized. -/
+theorem pred_pending_or_finalized {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
+    (hc : gp.chainState c = some σ) : (σ.hj, σ.J) ∈ σ.pending ∨ σ.hF = σ.hj := by
+  obtain ⟨-, hle, -, -, -, -, -, -, hlast, -⟩ := chain_invariants gp c σ hc
+  rcases Nat.lt_or_ge σ.hF σ.hj with hlt | hge
+  · exact Or.inl (List.mem_of_getLast? (hlast hlt))
+  · exact Or.inr (le_antisymm hle hge)
+
+/-- **An unbound entry is a timeout (r14 s5, X with T).** On a chain, a block that enters the
+next height and leaves it unbound has a slot at least `δt` after the old entry. -/
+theorem unbound_step_slot {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
+    (hc : gp.chainState c = some σ) (h : gp.stateTransition σ B = some σ')
+    (hh : σ'.h = σ.h + 1) (hnb : ¬ σ'.bound) : σ.ThSlot + gp.δt ≤ B.slot := by
+  obtain ⟨-, -, -, -, hbd⟩ := height_step gp c σ σ' B hc h
+  obtain ⟨-, hiff, -⟩ := hbd hh
+  exact gp.timeout_step_slot h hh (fun e => hnb (hiff.2 e))
 
 end FGParams
 
