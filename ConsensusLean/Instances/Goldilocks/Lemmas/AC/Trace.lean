@@ -790,19 +790,25 @@ private theorem call_voteStep (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
 
 /-- A vote of an honest node at cut `k` is of slot `slot(time k)`, from a joined state with
 `voted_slot ≠ slot(time k)`, after which `voted_slot = slot(time k)`. -/
-private theorem voteAt_spec (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {k : Nat} {e : Em sp FGP} (hv : VoteAt tr y k e) :
+private theorem voteAt_spec
+    (hcalls : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
+      (ℓ.emits = [] ∧ (tr.post i).restartTime = (tr.time i : WithBot Time)) ∨
+        VoteStep (tr.state y i) (tr.post i) ℓ.emits (tr.time i))
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {e : Em sp FGP} (hv : VoteAt tr y k e) :
     e.msg.slot = sp.slot (tr.time k) ∧ joined sp (tr.state y k) (tr.time k) ∧
       (tr.state y k).votedSlot ≠ sp.slot (tr.time k) ∧
       (tr.post k).votedSlot = sp.slot (tr.time k) := by
   obtain ⟨ℓ, hc, he⟩ := hv
-  rcases call_voteStep h hy hc with ⟨hn, -⟩ | hs
+  rcases hcalls y hy k ℓ hc with ⟨hn, -⟩ | hs
   · rw [hn] at he; exact absurd he List.not_mem_nil
   · exact hs.2.2.2 e he
 
 /-- After an honest vote of slot `σ` at cut `k < i`, the state of the node before cut `i` still
 has `voted_slot = σ`, or cut `i` is of a later slot, or the node restarted at or after the vote. -/
-private theorem after_vote (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+private theorem after_vote (htime : ∀ i, 0 ≤ tr.time i) (hmono : Monotone tr.time)
+    (hcalls : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
+      (ℓ.emits = [] ∧ (tr.post i).restartTime = (tr.time i : WithBot Time)) ∨
+        VoteStep (tr.state y i) (tr.post i) ℓ.emits (tr.time i)) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) : ∀ k < i, ∀ e, VoteAt tr y k e →
       (tr.state y i).votedSlot = e.msg.slot ∨ e.msg.slot < sp.slot (tr.time i) ∨
         ∃ w : Time, (tr.state y i).restartTime = (w : WithBot Time) ∧ tr.time k ≤ w := by
@@ -810,9 +816,9 @@ private theorem after_vote (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
   | zero => intro k hk; omega
   | succ i ih =>
     intro k hk e hv
-    have hmono : sp.slot (tr.time i) ≤ sp.slot (tr.time (i + 1)) :=
-      slot_mono sp (h.time_nonneg i) (h.time_mono (Nat.le_succ i))
-    have hslot := (voteAt_spec h hy hv).1
+    have hslotmono : sp.slot (tr.time i) ≤ sp.slot (tr.time (i + 1)) :=
+      slot_mono sp (htime i) (hmono (Nat.le_succ i))
+    have hslot := (voteAt_spec hcalls hy hv).1
     by_cases hcall : tr.node i = y ∧ tr.label i ≠ none
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.mp hcall.2
       have hc : tr.CallAt y i ℓ := ⟨hcall.1, hℓ⟩
@@ -820,44 +826,47 @@ private theorem after_vote (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
         simp only [Trace.state]; exact ite_eq_left hcall
       rw [hst]
       rcases Nat.lt_succ_iff_lt_or_eq.mp hk with hk | rfl
-      · have hki := h.time_mono (Nat.le_of_lt hk)
-        rcases call_voteStep h hy hc with ⟨-, hr⟩ | ⟨hr, hv', -, -⟩
+      · have hki := hmono (Nat.le_of_lt hk)
+        rcases hcalls y hy i ℓ hc with ⟨-, hr⟩ | ⟨hr, hv', -, -⟩
         · exact Or.inr (Or.inr ⟨_, hr, hki⟩)
         · rcases ih k hk e hv with h₁ | h₂ | ⟨w, hw, hkw⟩
           · rcases hv' with hv' | hv'
             · exact Or.inl (hv'.trans h₁)
-            · have := slot_mono sp (h.time_nonneg k) hki
+            · have := slot_mono sp (htime k) hki
               rcases Nat.lt_or_eq_of_le (hslot ▸ this) with hlt | heq
-              · exact Or.inr (Or.inl (lt_of_lt_of_le hlt hmono))
+              · exact Or.inr (Or.inl (lt_of_lt_of_le hlt hslotmono))
               · exact Or.inl (by rw [hv', heq])
-          · exact Or.inr (Or.inl (lt_of_lt_of_le h₂ hmono))
+          · exact Or.inr (Or.inl (lt_of_lt_of_le h₂ hslotmono))
           · exact Or.inr (Or.inr ⟨w, hr.trans hw, hkw⟩)
-      · exact Or.inl (by rw [(voteAt_spec h hy hv).2.2.2, hslot])
+      · exact Or.inl (by rw [(voteAt_spec hcalls hy hv).2.2.2, hslot])
     · have hst : tr.state y (i + 1) = tr.state y i := by
         simp only [Trace.state]; exact ite_eq_right hcall
       rw [hst]
       rcases Nat.lt_succ_iff_lt_or_eq.mp hk with hk | rfl
       · rcases ih k hk e hv with h₁ | h₂ | h₃
         · exact Or.inl h₁
-        · exact Or.inr (Or.inl (lt_of_lt_of_le h₂ hmono))
+        · exact Or.inr (Or.inl (lt_of_lt_of_le h₂ hslotmono))
         · exact Or.inr (Or.inr h₃)
       · obtain ⟨ℓ, hc, -⟩ := hv
         exact absurd ⟨hc.1, by rw [hc.2]; exact Option.some_ne_none _⟩ hcall
 
 /-- Two votes of an honest node at cuts `k < i` are of different slots. -/
-private theorem vote_slot_ne (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+private theorem vote_slot_ne (htime : ∀ i, 0 ≤ tr.time i) (hmono : Monotone tr.time)
+    (hcalls : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
+      (ℓ.emits = [] ∧ (tr.post i).restartTime = (tr.time i : WithBot Time)) ∨
+        VoteStep (tr.state y i) (tr.post i) ℓ.emits (tr.time i)) {y : Fin sp.n}
     (hy : y ∈ H) {k i : Nat} (hki : k < i) {e e' : Em sp FGP} (hv : VoteAt tr y k e)
     (hv' : VoteAt tr y i e') : e.msg.slot ≠ e'.msg.slot := by
   intro hσ
-  obtain ⟨hs', hj', hne', -⟩ := voteAt_spec h hy hv'
-  have hs := (voteAt_spec h hy hv).1
-  rcases after_vote h hy i k hki e hv with h₁ | h₂ | ⟨w, hw, hkw⟩
+  obtain ⟨hs', hj', hne', -⟩ := voteAt_spec hcalls hy hv'
+  have hs := (voteAt_spec hcalls hy hv).1
+  rcases after_vote htime hmono hcalls hy i k hki e hv with h₁ | h₂ | ⟨w, hw, hkw⟩
   · exact hne' (by rw [h₁, hσ, hs'])
   · omega
   · unfold joined at hj'
     rw [hw, WithBot.coe_le_coe] at hj'
     have h₁ : sp.ts (sp.slot (tr.time k)) ≤ tr.time k :=
-      (ts_le_iff_le_slot sp (h.time_nonneg k) _).mpr le_rfl
+      (ts_le_iff_le_slot sp (htime k) _).mpr le_rfl
     have h₂ : sp.ts ((sp.slot (tr.time i) : Int) - 1) < sp.ts (sp.slot (tr.time k)) :=
       (ts_lt_iff sp).mpr (by omega)
     exact absurd (lt_of_lt_of_le h₂ (h₁.trans (hkw.trans hj'))) (lt_irrefl _)
@@ -1040,8 +1049,9 @@ theorem joined_awake : JoinedAwake sp := by
 /-- **A0.8.** -/
 theorem one_vote_per_slot : OneVotePerSlot sp := by
   intro FGP ro H U tr h y hy i j e e' hv hv' hσ
+  have hcalls := fun y hy i ℓ hc => @call_voteStep sp FGP ro H U tr h y hy i ℓ hc
   rcases lt_trichotomy i j with hij | rfl | hji
-  · exact absurd hσ (vote_slot_ne h hy hij hv hv')
+  · exact absurd hσ (vote_slot_ne h.time_nonneg h.time_mono hcalls hy hij hv hv')
   · refine ⟨rfl, ?_⟩
     obtain ⟨ℓ, hc, he⟩ := hv
     obtain ⟨ℓ', hc', he'⟩ := hv'
@@ -1053,7 +1063,7 @@ theorem one_vote_per_slot : OneVotePerSlot sp := by
       · rw [hm] at he; exact absurd he List.not_mem_nil
       · rw [hm, List.mem_singleton] at he he'; exact he.trans he'.symm
       · rw [hm] at hl; simp at hl
-  · exact absurd hσ.symm (vote_slot_ne h hy hji hv' hv)
+  · exact absurd hσ.symm (vote_slot_ne h.time_nonneg h.time_mono hcalls hy hji hv' hv)
 
 end Consensus.Goldilocks.SA
 
