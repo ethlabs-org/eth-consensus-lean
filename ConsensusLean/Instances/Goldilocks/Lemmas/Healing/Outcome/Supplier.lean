@@ -613,6 +613,29 @@ theorem clean_source_votes_before
       rw [← hm]
       exact Or.inl hv
 
+/-- A clean raw source and any high origin share a later honest vote head. This uses
+the already proved clean-source transfer, rather than assuming support at a source gate. -/
+theorem clean_source_compatible_high_origin
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
+    (hs : cleanLabel sp a + sp.k + 2 ≤ s)
+    {v : Fin sp.n} {q m : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g v q m O) : Compatible (tr.HonestBlocks H) B O := by
+  have hS := healthy_base_of_reset_catch hp hc
+  have hr := hS.run.localRun
+  let n := max s m + 1
+  have htime : SA.gbar g + 4 * sp.Δ ≤ sp.ts n := by
+    have ht := (clean_source_timing hp hs).2
+    exact ht.trans ((SA.ts_le_iff sp).mpr (by dsimp [n]; omega))
+  obtain ⟨j, e, hv, hes⟩ := SA.honest_votes_in_slot hS htime x hx
+  obtain ⟨ell, hcast⟩ := hv
+  have hB := clean_source_votes_before hp hc (max (tr.time r) (tr.time j)) hx hsource hs
+    (le_max_left _ _) j (le_max_right _ _) x hx ell e hcast (by dsimp [n] at hes; omega)
+  exact target_compatible_older_origin hp ho hx ⟨ell, hcast⟩ hes
+    (by dsimp [n]; omega) hB
+
 end Consensus.Goldilocks.Healing
 
 end
