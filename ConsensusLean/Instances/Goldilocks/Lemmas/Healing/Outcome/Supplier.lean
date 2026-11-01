@@ -48,6 +48,26 @@ theorem reset_proposal_frame_unique
     (by rw [hPprop, hac.honest.proposer Q hQf hroot, hQu, hP.2.1])
     (by rw [hP.2.2.2.2.1, hQu])).symm
 
+/-- The actual proposal reaches a voter's frame above its finalization root. -/
+theorem reset_proposal_frame
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k j u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hu : 0 < u)
+    (hy : y ∈ H) {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
+    (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hF : Anc (tr.HonestBlocks H) ell.frame.F P) : P ∈ ell.frame.tree := by
+  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  by_cases hearly : tr.time j < sp.ts u + sp.Δ
+  · obtain ⟨Q, hQ, hQs, -⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)
+    rw [hes] at hQs
+    exact (reset_proposal_frame_unique hp hP hu hy hcy.1 hQ hQs) ▸ hQ
+  · obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, -, ja, -, hacc, hta⟩ :=
+      honestProposalRun_of_ready hp.run hp.noColl hP
+    rw [← hP.2.1] at hacc
+    exact reset_accept_frame hp hc hP.1 hy hacc hcy.1 hg
+      (by change tr.time ja = sp.ts u at hta; rw [hta]; exact not_lt.mp hearly) hF
+
 /-- Payload support is transported only above the receiver's `F`. Early votes use their
 actual readiness witness; deadline votes use guarded relay, not ready-proposal support. -/
 theorem reset_support_frame
