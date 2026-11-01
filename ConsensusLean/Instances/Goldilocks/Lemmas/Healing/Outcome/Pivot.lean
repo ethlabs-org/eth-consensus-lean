@@ -22,6 +22,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
+set_option linter.style.longFile 1600
+
 public section
 
 /-! # Goldilocks Healing: the pivot of an honest ready proposal after the drain (interface)
@@ -1052,6 +1054,116 @@ private theorem reset_proposal_fcRoot (hp : ResetPremises tr H proposer dg g ΔF
       exact hchoose.2 ⟨hchoose.1, O, hOt.1, hOt.2, by omega, hn⟩
     exact hJO.mono hsub
   · exact hFO
+
+section SourceVotes
+
+variable (hp : ResetPremises tr H proposer dg g ΔF a)
+  (hc : CatchRun tr H g (2 * sp.Δ))
+  {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+  (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+  {i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
+  {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+  (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+  (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+  (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
+  {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+  {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+  (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = u)
+  (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' →
+    e'.msg.slot = u → e'.msg.head = P.root)
+
+set_option linter.unusedSectionVars false in
+include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
+/-- The proposal anchor is supported when the receiving vote extends its actual raw
+lock sources. Unlocking only moves the anchor back; the source writer remains the proposer.
+The unused `hE` binder is retained to match `proposal_start_supported` exactly. -/
+theorem proposal_start_supported_of_source_votes
+    (hsources : ∀ r l B, r < i →
+      ((∃ CV, SA.FastLockAt tr.projAC p r l B CV) ∨ SA.SlowLockAt tr.projAC p r l B) →
+      cleanLabel sp a + sp.k + 2 ≤ l → l < u →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
+    Anc (tr.HonestBlocks H) d.start
+      (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
+        (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
+        (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hP.1 hci
+  obtain ⟨hΨ, hΨU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  have hhead := SA.getHead_mem hΨ
+    (T := ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
+    (fun _ h => h.1.1) e.readPoint (tr.time j)
+    (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)
+  have hheadr := (SA.castAt_spec hr hy hcy).2.2.2
+  rw [hes] at hheadr
+  have extend : ∀ B, SA.VoteExtends (tr.HonestBlocks H) e.msg B →
+      Anc (tr.HonestBlocks H) B
+        (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
+          (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
+          (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
+    rintro B ⟨W, hW, hWr, hBW⟩
+    obtain rfl := hr.coherent.1 hW (hΨU hhead) (hWr.trans hheadr)
+    exact hBW
+  obtain ⟨A₁, hA₁, hstart, -⟩ := acProposal_walk hd
+  rw [hstart]
+  rcases anchor_mem ℓp.frame A₁ (tr.time i) with hlock | hroot
+  swap
+  · rw [Set.mem_singleton_iff.1 hroot]
+    rcases reset_proposal_fcRoot hp hc hP hR hci hcall hd hti hPQ with hg | ⟨O, hO, hfO⟩
+    · exact Compose.honest_genesis_root_anc hp.run hr.coherent (hΦU hΦ.fcRoot_mem) hg
+        (hΨU hhead)
+    · obtain ⟨x, r, l, ho, hOld⟩ := hO
+      apply hfO.trans (extend O ?_)
+      exact ((rawVoteAt_iff _ _ _).mp
+        (historical_activation_before hp (tr.time j) j le_rfl).2 O l
+        ((historicalTargets_iff O l).mpr ⟨x, r, ho⟩) y hy ℓy e hcy
+        (by rw [hes]; exact label_lt_of_old hp ho hOld) le_rfl).1
+  obtain ⟨hL, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hlL⟩ := hlock
+  have heq := hΦ.coherent.1 hL (SA.viableAncestor_anc hΦ hB).1 hlL.symm
+  rw [heq]
+  rw [hA₁] at hl
+  obtain ⟨l₁, hl₁, hs, _, B₁, hB₁, hB₁r, B', hB', hB'r, hBB₁⟩ :=
+    ((SA.locks_move_back sp) _ ℓp.frame _ (tr.time i) hΦ).2.2 _ _ l hl
+  obtain rfl : B' = B := hΦ.coherent.1 hB' hB (hB'r.trans hBr.symm)
+  have hlo : cleanLabel sp a + sp.k + 2 ≤ l₁.slot := by
+    rw [drainTime_eq] at hR
+    have h := (SA.ts_le_iff sp).mp hR
+    have hslot : sp.slot (tr.time i) = u := by
+      rw [hti]
+      exact SA.slot_of_mem sp u le_rfl (by
+        have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+        simp only [SA.SAParams.ts]; push_cast; linarith)
+    rw [hslot] at hlive
+    rw [cleanLabel_eq]
+    omega
+  obtain ⟨r, hri, D, horig, L, hLU, hLr, hLD⟩ :
+      ∃ r < i, ∃ D,
+        ((∃ CV, SA.FastLockAt tr.projAC p r l₁.slot D CV) ∨
+          SA.SlowLockAt tr.projAC p r l₁.slot D) ∧
+        ∃ L ∈ tr.HonestBlocks H, L.root = l₁.block ∧ Anc (tr.HonestBlocks H) L D := by
+    cases hf : l₁.fast with
+    | false =>
+      obtain ⟨r, hri, D, hsl, hL⟩ := SA.slow_lock_provenance hr hP.1 i l₁ hl₁ hf
+      exact ⟨r, hri, D, Or.inr hsl, hL⟩
+    | true =>
+      obtain ⟨r, hri, D, CV, hfl, hL⟩ := SA.fast_lock_provenance hr hP.1 i l₁ hl₁ hf
+      exact ⟨r, hri, D, Or.inl ⟨CV, hfl⟩, hL⟩
+  obtain rfl : L = B₁ := hr.coherent.1 hLU (hΦU hB₁) (hLr.trans hB₁r.symm)
+  have hlt : l₁.slot < u := by
+    obtain ⟨r', hri', D', hw, _⟩ := SA.lock_provenance hr hP.1 i l₁ hl₁
+    have hrt : tr.time r' ≤ sp.ts u := hti ▸ hp.run.time_mono hri'.le
+    rcases hw with ⟨CV, hop⟩ | ⟨ell, hupd⟩
+    · have hle := (SA.ts_le_iff sp).mp ((ts_le_of_fastLock hp (Or.inr hop)).trans hrt)
+      have hne : l₁.slot ≠ u := fun he =>
+        proposal_no_optimistic hp hP.1 hci hcall hti p hP.1 r' hri' D' CV (he ▸ hop)
+      omega
+    · have ht : tr.time r' = sp.ts l₁.slot + 6 * sp.Δ := hupd.2.2.1
+      have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+      have ht' : sp.ts l₁.slot < sp.ts u := by linarith
+      exact_mod_cast (SA.ts_lt_iff sp).mp ht'
+  exact (Anc.mono hΦU ((SA.anc_viableAncestor ℓp.frame B').trans hBB₁)).trans
+    (hLD.trans (extend D (hsources r l₁.slot D hri horig hlo hlt)))
+
+end SourceVotes
 
 /-- Above every old source, the proposal walk consists of viable heads. The reset seed makes
 the suffix high; a higher floor would produce a high crossing below an old source, contradicting
