@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induct
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
@@ -604,6 +606,70 @@ theorem stored_fast_lock_covers_exposed_prefix
     exact covered_candidates_compatible hp ho hOB hy hs hD
 
 end CoveredPrefix
+
+/-- The literal ready-reader endpoint, conditional only on cross-read input compatibility
+and preservation of the earlier output in both inputs of each later read. The producer
+scopes match `ReadySafeOn`, including boundary cuts and the actual read clocks. -/
+theorem readySafeOn_of_read_producers
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+    {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (c t₀ t₁ : Time)
+    (hagree : ∀ y z i j t t',
+      Regimes.ReadPoint tr i t → Regimes.ReadPoint tr j t' →
+      Regimes.Boundary tr y i → Regimes.Boundary tr z j →
+      t₀ ≤ t → t ≤ t₁ → t₀ ≤ t' → t' ≤ t₁ →
+      Regimes.ReadyAt tr H c y t → Regimes.ReadyAt tr H c z t' →
+      let Φ := Node.frame (tr.state y i)
+      let Ψ := Node.frame (tr.state z j)
+      let E := (SA.lookup Φ (tr.state y i).ac.latestConfirmed).getD Φ.F
+      let E' := (SA.lookup Ψ (tr.state z j).ac.latestConfirmed).getD Ψ.F
+      let head := SA.acHead sp (tr.state y i).ac Φ t
+      let head' := SA.acHead sp (tr.state z j).ac Ψ t'
+      ∃ X Y, (X = E ∨ X = head) ∧ (Y = E' ∨ Y = head') ∧
+        Compatible (tr.HonestBlocks H) X Y)
+    (hmono : ∀ y i j t t',
+      Regimes.ReadPoint tr i t → Regimes.ReadPoint tr j t' →
+      Regimes.Boundary tr y i → Regimes.Boundary tr y j →
+      i ≤ j → t ≤ t' → t₀ ≤ t → t' ≤ t₁ →
+      Regimes.ReadyAt tr H c y t → Regimes.ReadyAt tr H c y t' →
+      let Ψ := Node.frame (tr.state y j)
+      Anc (tr.HonestBlocks H) (Regimes.readAfter tr y i t)
+        ((SA.lookup Ψ (tr.state y j).ac.latestConfirmed).getD Ψ.F) ∧
+      Anc (tr.HonestBlocks H) (Regimes.readAfter tr y i t)
+        (SA.acHead sp (tr.state y j).ac Ψ t')) :
+    Regimes.ReadySafeOn tr H c t₀ t₁ := by
+  have hU := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
+  have hsub : ∀ y ∈ H, ∀ i, (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H :=
+    fun y hy i _ hX => ⟨y, hy, i, hX.1⟩
+  have hinputs : ∀ y ∈ H, ∀ i t,
+      Anc (tr.HonestBlocks H) (Regimes.readAfter tr y i t)
+        ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
+          (Node.frame (tr.state y i)).F) ∧
+      Anc (tr.HonestBlocks H) (Regimes.readAfter tr y i t)
+        (SA.acHead sp (tr.state y i).ac (Node.frame (tr.state y i)) t) := by
+    intro y hy i t
+    exact (exposed_prefix_preserved_of_record_head hU
+      (Compose.frameOK_state hrun.toLocalRun hy i) (hsub y hy i)).mp .refl
+  constructor
+  · intro y z i j t t' hi hj hbi hbj ht ht₁ ht' ht₁' hy hz
+    obtain ⟨X, Y, hX, hY, hXY⟩ := hagree y z i j t t' hi hj hbi hbj ht ht₁ ht' ht₁' hy hz
+    have hOX : Anc (tr.HonestBlocks H) (Regimes.readAfter tr y i t) X := by
+      rcases hX with rfl | rfl
+      · exact (hinputs y hy.1 i t).1
+      · exact (hinputs y hy.1 i t).2
+    have hOY : Anc (tr.HonestBlocks H) (Regimes.readAfter tr z j t') Y := by
+      rcases hY with rfl | rfl
+      · exact (hinputs z hz.1 j t').1
+      · exact (hinputs z hz.1 j t').2
+    rcases hXY with h | h
+    · exact SA.anc_total hU (hOX.trans h) hOY
+    · exact SA.anc_total hU hOX (hOY.trans h)
+  · intro y i j t t' hi hj hbi hbj hij htt ht ht₁ hy hy'
+    exact (exposed_prefix_preserved_of_record_head hU
+      (Compose.frameOK_state hrun.toLocalRun hy'.1 j) (hsub y hy'.1 j)).mpr
+        (hmono y i j t t' hi hj hbi hbj hij htt ht ht₁ hy hy')
 
 end Consensus.Goldilocks.Refinement
 end
