@@ -22,7 +22,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
-set_option linter.style.longFile 2000
+set_option linter.style.longFile 2200
 
 public section
 
@@ -881,6 +881,78 @@ theorem clean_source_proposal_parent_before
   exact SA.heldAtProposal_iff.2 ⟨Or.inl hmem, Hd, hHd, hHdr,
     (hHdr ▸ hbs).trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))⟩
 
+/-- The immediately preceding optimistic source reaches and constrains the proposal. -/
+theorem clean_optimistic_proposal_parent
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r s i : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (hop : SA.OptimisticLockAt tr.projAC x r s B CV)
+    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hR : drainTime sp a ≤ sp.ts (s + 1 : Nat))
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts (s + 1 : Nat)) : Anc (tr.HonestBlocks H) B d.head := by
+  have hS := healthy_base_of_reset_catch hp hc
+  have hr := hS.run.localRun
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SA.SAParams.ts]; push_cast; ring
+  have hsg : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
+    obtain ⟨v, q, m, S, hseed, hm, -⟩ := reset_seed hp
+    have ht := cutZ_le_ts_of_highOrigin hp hseed
+    have hz := lt_cutZ sp g
+    have hle : sp.ts m ≤ sp.ts s := (SA.ts_le_iff sp).mpr
+      (by rw [cleanLabel_eq] at hs; omega)
+    linarith
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  rcases clean_source_proposal_domain_before hp hc hx hpH (Or.inl ⟨CV, Or.inr hop⟩) hs
+      (by omega) hR hci hcall hd hti with hBF | hV
+  · obtain ⟨_, hhead⟩ := Compose.acProposal_start_anc_head hPhi hd
+    obtain ⟨A₁, _, hstart, _⟩ := acProposal_walk hd
+    rw [hstart] at hhead
+    exact hBF.trans (Anc.mono hPhiU ((SA.fcRoot_anc_getAnchor hPhi A₁ (tr.time i)).trans hhead))
+  have hFB := (hPhi.rooted.2 B hV.1).mono hPhiU
+  have hhigh : SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
+      (tr.time i) s B := by
+    refine SA.highLocksCompatible_iff.2 fun l hl _ hls X hX hXr => ?_
+    obtain ⟨q, hqi, D, hw, L, hL, hLr, hLD⟩ := SA.lock_provenance hr hpH i l hl
+    obtain rfl : L = X := hr.coherent.1 hL hX (hLr.trans hXr.symm)
+    have hqt : tr.time q ≤ sp.ts (s + 1 : Nat) := hti ▸ hp.run.time_mono hqi.le
+    rcases hw with ⟨CV', hop'⟩ | ⟨ell', hupd⟩
+    · have hle : l.slot ≤ s + 1 := by
+        exact_mod_cast (SA.ts_le_iff sp).mp ((ts_le_of_fastLock hp (Or.inr hop')).trans hqt)
+      have hne : l.slot ≠ s + 1 := by
+        intro he
+        exact proposal_no_optimistic hp hpH hci hcall hti p hpH q hqi D CV' (he ▸ hop')
+      have he : l.slot = s := by omega
+      rw [he] at hop'
+      rcases SA.fastLock_fastLock_compatible hS hpH (Or.inr hop') hx (Or.inr hop)
+          (by linarith) with h | h
+      · exact Or.inl (hLD.trans h)
+      · exact SA.anc_total hr.coherent hLD h
+    · have ht : tr.time q = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
+      have hle := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ l.slot by omega)
+      rw [hts] at hqt
+      exfalso
+      linarith
+  refine optimistic_first_proposal_anc hS.run hS.two_faulty_lt hx hop .refl hpH hci
+    (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh
+  intro v hv
+  obtain ⟨hvs, hsend, D, hD, hDr, hBD, hacc⟩ := fastLock_writer hr hx (Or.inr hop) v hv
+  have hFD := hFB.trans hBD
+  refine SA.heldAtProposal_of_writer hr (hS.syncAC le_rfl (sp.ts s + 2 * sp.Δ))
+    (by linarith) le_rfl hx hpH hci hti
+    (fun k _ hk => lt_of_le_of_lt (hS.restart_le hpH hk) (by linarith)) hvs hsend
+    ⟨D, hD, hDr, hFD, ?_⟩
+  rcases hacc with hg | ⟨q, hq, hqt⟩
+  · exact Or.inl hg
+  by_cases hg : SA.gbar g ≤ tr.time q
+  · exact Or.inr (Or.inl ⟨q, hq, hg, hqt⟩)
+  · obtain ⟨k, hki, hak, hkt⟩ := hS.catchUp x hx q D hq (not_le.mp hg) p hpH i ell hci
+      (by change _ ≤ tr.time i; rw [hti, hts]; linarith) hFD
+    exact Or.inr (Or.inr ⟨k, hki, hak, by change tr.time k < _ at hkt ⊢; linarith⟩)
+
 /-- The packed old-source interface of the proposal row ordering lemma. -/
 private theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
@@ -1220,14 +1292,42 @@ variable (hp : ResetPremises tr H proposer dg g ΔF a)
     e'.msg.slot = u → e'.msg.head = P.root)
 
 include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
-/-- OPEN: non-current live locks move back below the proposal parent. -/
+set_option linter.unusedSectionVars false in
+/-- Non-current live locks move back below the proposal parent. -/
 theorem vote_old_live_lock_below_parent
     {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
     (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)
     {L : SA.Blk sp.n (List (FG.Att sp.n))}
     (hL : L ∈ ℓy.frame.tree) (hLr : L.root = l.block) :
     Anc (tr.HonestBlocks H) (ℓy.frame.viableAncestor L) d.head := by
-  sorry
+  obtain ⟨r, D, hrj, hclean, hlu, hsource, hLD⟩ :=
+    vote_old_lock_source_before hp hy hcy hes hR hl hne hlive hL hLr
+  apply hLD.trans
+  by_cases hgap : l.slot + 2 ≤ u
+  · exact clean_source_proposal_parent_before hp hc hy hP.1 hsource hclean hgap hR
+      hci hcall hd hti
+  have he : u = l.slot + 1 := by omega
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have htj := (Compose.cast_head_fcRoot hr hy hcy).2
+  rw [hes, he] at htj
+  have hrt := hp.run.time_mono hrj.le
+  have hts : sp.ts (l.slot + 1 : Nat) = sp.ts l.slot + 4 * sp.Δ := by
+    simp only [SA.SAParams.ts]; push_cast; ring
+  have hΔ := sp.toParams.hΔ
+  rcases hsource with ⟨CV, hfast⟩ | ⟨ellX, C, hupd, _⟩
+  · rcases hfast with ⟨ellX, C, hupd, _⟩ | hop
+    · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
+      rw [hts] at htj
+      change tr.time j ≤ _ at htj
+      exfalso
+      linarith
+    · exact clean_optimistic_proposal_parent hp hc hy hP.1 hop hclean (he ▸ hR)
+        hci hcall hd (he ▸ hti)
+  · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
+    rw [hts] at htj
+    change tr.time j ≤ _ at htj
+    exfalso
+    linarith
 
 end Support
 
