@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
 
 public section
 
@@ -1099,5 +1100,113 @@ theorem dutyStep_propose_accepted_pending {V : Type} [Fintype V] {E : Env V}
   rw [pendingWrappers_eq, hp]
   refine List.mem_map.mpr ⟨_, List.mem_append_right _ (List.mem_singleton_self _), ?_⟩
   simp only [apply_self, propose_self, propose_now, forwardObj]
+
+/-- Proposal cuts carry the digest and parent of the block just constructed by the node. -/
+theorem proposal_acceptance_block_fields {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
+    (B : Blk sp)
+    (ha : .fg (.block B true) ∈ (Node.tickStep proposer dg self st t x .proposal).2) :
+    B.RootOk dg ∧ B.parent ≠ none := by
+  simp only [Node.tickStep] at ha
+  split at ha
+  · split at ha
+    · simp [Node.acProposal] at ha
+    · simp only [Node.proposeBlock, Node.onBlock] at ha
+      split at ha
+      · simp [Node.acProposal] at ha
+      · split at ha <;> simp [Node.acCall, Node.acProposal] at ha
+        obtain ⟨rfl, _⟩ := ha
+        exact ⟨rfl, by simp [Node.mkBlock]⟩
+  · exact False.elim (List.not_mem_nil ha)
+
+/-- With the existing proposal release contract, acceptance queues the exact canonical
+wrapper. Its root, parent, release, and recording acceptance are derived, not assumed. -/
+theorem dutyStep_propose_acceptance_queued {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
+    (hself : (shapeOf S hn nd).self = rho.ownKey v)
+    (hslot : (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s)
+    (hst : (shapeOf S hn nd).now = (S.params (pubOf E) hn).toParams.slotTime s)
+    (hrel : rho.ownKey v ∈ rho.sel (.proposer s) →
+      ∀ par info cs, (propose (shapeOf S hn nd) s).2 = some (par, info, cs) →
+      ∀ o ∈ cs, o ∈ Model.closure nd.seen)
+    (hc : WrappersCover (propose (shapeOf S hn nd) s).1)
+    (B : Blk (S.params (pubOf E) hn))
+    (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
+      (rho.ownKey v) (shapeOf S hn nd).node (shapeOf S hn nd).now
+      (encodeTxs nd.st.2) .proposal).2) :
+    ∃ p, forwardObj (S.params (pubOf E) hn) (shapeOf S hn nd).self
+      (shapeOf S hn nd).now p B ∈
+        pendingWrappers (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1) := by
+  obtain ⟨hroot, hpar⟩ := proposal_acceptance_block_fields _ _ _ _ _ _ B ha
+  exact dutyStep_propose_accepted_pending S rho hn v nd s hs hself B hpar hroot
+    (dutyStep_propose_accepted_release S rho hn v nd s hs hsel hself hslot hst hrel B ha)
+    hc ha
+
+/-- At an honest scheduled tick, an accepting proposal cut queues its exact wrapper.
+Coverage and carried-object readiness come from the reachable engine prefix. -/
+theorem tick_proposal_acceptance_queued {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (v : V) (hh : v ∈ rho.honest) (i : Nat) (t : Time)
+    (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
+    (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
+    (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
+    (B : Blk (S.params (pubOf E) hn))
+    (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
+      (rho.ownKey v) (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node
+      t (encodeTxs (mempool rho.inbox v t)) .proposal).2) :
+    ∃ p, forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∈
+      pendingWrappers (shapeOf S hn
+        (rho.dutyStep v (atProposal S rho v (rho.stateBefore i v) t) (.propose s hs)).1) := by
+  have hsel := poll_selected S rho hv v
+  have hself : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).self =
+      rho.ownKey v := by
+    rw [atProposal_self S rho hn v _ t hsel]
+    exact self_eq_ownKey S rho hn v i
+  have hnow := atProposal_now S rho hn v (rho.stateBefore i v) t hsel
+  have hcover : WrappersCover
+      (propose (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) s).1 := by
+    have hc : WrappersCover (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) := by
+      rw [atProposal_eq]
+      exact tick_duty_prefix_wrappersCover S rho hn v i t _
+    unfold propose
+    dsimp only
+    split <;> simpa only [wrappersCover_iff, Node.acProposal] using hc
+  obtain ⟨p, hp⟩ := dutyStep_propose_acceptance_queued S rho hn v _ s hs
+    (selValid_proposer S rho hn hv.selValid s) hself
+    (by rw [hnow, ht]; exact slotOf_slotTime _ s) (hnow.trans ht)
+    (fun hselected par info cs hprop =>
+      proposal_releasable S rho hn hv v hh i t he s par info cs hs hone hselected hprop)
+    hcover B (by simpa only [hnow, atProposal_mempool] using ha)
+  exact ⟨p, by simpa only [hself, hnow] using hp⟩
+
+/-- An accepted scheduled proposal has an actual wrapper publication in that same tick.
+The witness is a successful publisher candidate, not just a queue entry. -/
+theorem tick_proposal_acceptance_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (v : V) (hh : v ∈ rho.honest) (i : Nat) (t : Time)
+    (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
+    (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
+    (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
+    (B : Blk (S.params (pubOf E) hn))
+    (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
+      (rho.ownKey v) (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node
+      t (encodeTxs (mempool rho.inbox v t)) .proposal).2) :
+    ∃ p r, (publisherExecution S rho).actual r ∧ r.event = i ∧
+      r.origin = rho.ownKey v ∧
+      r.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B := by
+  obtain ⟨p, hp⟩ := tick_proposal_acceptance_queued S rho hn hv v hh i t he s hs hone ht B ha
+  refine ⟨p, ?_⟩
+  apply tick_pending_publication S rho hn hv he
+    ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ [.propose s hs])
+    [.poll t.toNat]
+  · rw [duties_eq S t (hv.in_horizon _ (List.mem_of_getElem? he)).1]
+    simp only [dutiesInit, hone]
+    rfl
+  · erw [runDuties_fst_append, runDuties_fst_cons, runDuties_fst_nil]
+    rwa [atProposal_eq] at hp
 
 end Consensus.Goldilocks.Refinement
