@@ -1209,4 +1209,64 @@ theorem tick_proposal_acceptance_publication {V : Type} [Fintype V] [DecidableEq
   · erw [runDuties_fst_append, runDuties_fst_cons, runDuties_fst_nil]
     rwa [atProposal_eq] at hp
 
+/-- A block acceptance in a tick belongs to the proposal step, not the AC tick or FG update. -/
+theorem tick_acceptance_proposal {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
+    (B : Blk sp)
+    (ha : .fg (.block B true) ∈ (Node.exec proposer dg self st t (.tick x)).2) :
+    .fg (.block B true) ∈
+      (Node.tickStep proposer dg self (Node.acCall self st t .tick).1 t x .proposal).2 := by
+  change _ ∈ (Node.onTick _ _ _ _ _ _).2 at ha
+  rw [onTick_cuts] at ha
+  rcases List.mem_append.mp ha with ha | ha
+  · rcases List.mem_append.mp ha with ha | ha
+    · simp [Node.tickStep, Node.acCall] at ha
+    · simpa only [tickStep_acTick] using ha
+  · simp only [Node.tickStep] at ha
+    split at ha
+    · simp [Node.acToFG] at ha
+    · simp only [Node.attest, List.mem_cons, Node.acToFG, reduceCtorEq, false_or] at ha
+      split at ha <;> simp [Node.onAttestation] at ha
+
+/-- A real tick's accepting event cut has an actual same-event wrapper publication.
+The slot schedule and proposal-step location are recovered from the cut. -/
+theorem tick_acceptance_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (v : V) (hh : v ∈ rho.honest) (i : Nat) (t : Time)
+    (he : rho.events[i]? = some (.tick v t))
+    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
+    (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true)) :
+    ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
+      q.origin = rho.ownKey v ∧
+      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B := by
+  have hpub : (S.params (pubOf E) hn).toParams.IsPublic t := by
+    by_contra h
+    rw [eventCuts_tick_other S rho hn i v t he h] at hr
+    exact List.not_mem_nil hr
+  rw [eventCuts_tick_public S rho hn i v t he hpub] at hr
+  obtain ⟨k, hk, hkr⟩ := List.getElem_of_mem hr
+  have hl := (getElem_groupRecs (runProposer S rho hn) (digestOf S rho)
+    (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
+    (.tick (encodeTxs (mempool rho.inbox v t))) k hk).2.2.2.2
+  rw [hkr, hb] at hl
+  have ha := tick_acceptance_proposal (runProposer S rho hn) (digestOf S rho)
+    (rho.ownKey v) (stateAt S rho hn v i).node t (encodeTxs (mempool rho.inbox v t)) B
+    (hl.symm ▸ List.getElem_mem _)
+  have hsel := poll_selected S rho hv v
+  have hnode : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node =
+      (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).1 := by
+    rw [atProposal_node S rho hn v _ t (fgDue_eq_false S rho hn v i) hsel,
+      nodeTick_node_public _ hpub]
+    exact congrArg (fun key => (Node.acCall key _ t .tick).1) (self_eq_ownKey S rho hn v i)
+  rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
+    ⟨hnil, hno⟩ | ⟨s, hs, hone, htime⟩
+  · have hnp := not_proposes S hn (runProposer S rho hn) (rho.ownKey v) t
+      (fun s hs h => hno s hs (h.trans (slotTime_eq S hn s)))
+    simp only [Node.tickStep, hnp, ↓reduceIte, List.not_mem_nil] at ha
+  · apply tick_proposal_acceptance_publication S rho hn hv v hh i t he s hs hone
+      (htime.trans (slotTime_eq S hn s).symm) B
+    rwa [hnode]
+
 end Consensus.Goldilocks.Refinement
