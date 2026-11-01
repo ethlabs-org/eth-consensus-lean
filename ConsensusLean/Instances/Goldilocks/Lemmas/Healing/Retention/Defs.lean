@@ -73,12 +73,13 @@ structure GSTRunUpTo (g ΔF b : Time) : Prop where
       tr.AttDeliveredBy y j (tr.time i) (max (tr.time i) g) ΔF att
 
 /-- Finite reset premises. Reset existence and its cutoff are inputs, not consequences of
-bounded health. Progress and Catch are separate premises of the consumers that need them. -/
+bounded health. GST quantifies actual receiver calls, so remains finite-satisfiable.
+Progress and Catch are separate premises of the consumers that need them. -/
 structure ResetPremisesUpTo (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a b : Time) : Prop where
   run : GoldilocksRun proposer dg H tr
   noColl : Compose.NoCollRun dg tr
-  sync : GSTRunUpTo tr H g ΔF b
+  sync : tr.GSTRun H ΔF g
   awake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t
   faults : 3 * Hᶜ.ncard ≤ sp.n - 1
   reset : IsReset tr H g a
@@ -102,12 +103,7 @@ theorem ResetPremises.toUpTo {proposer : Nat → Fin sp.n}
     (hp.run.time_mono (Nat.find_min' hex hck)).trans (hka ▸ hab)
   refine ⟨hp.run, hp.noColl, ?_, fun y hy t ht _ => hp.healthy.2.1 y hy t ht,
     hp.healthy.2.2, hp.reset, hab, Nat.find hex, hfirst, hkb⟩
-  exact ⟨hp.healthy.1.deltaF,
-    fun x hx i m hs y hy j hj _ hd => hp.healthy.1.message x hx i m hs trivial y hy j hj hd,
-    fun x hx i B hs y hy j hj _ hd => hp.healthy.1.block x hx i B hs trivial y hy j hj hd,
-    fun x hx i B hs hi y hy j hj _ hd hF => hp.healthy.1.relay x hx i B hs hi y hy j hj hd hF,
-    fun x hx i att hs y hy j hj _ hd =>
-      hp.healthy.1.attestation x hx i att hs trivial y hy j hj hd⟩
+  exact hp.healthy.1
 
 /-- (R3) at the honest votes cast at cut `k`, for every high origin `(B, j)` of the run: a vote
 of a slot `> j` extends `B`, and at that vote `B` is in the viable voter block tree or
