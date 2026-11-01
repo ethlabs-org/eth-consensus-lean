@@ -329,6 +329,46 @@ theorem healthy_base_of_reset_catch_before {b : Time}
     rw [Compose.projAC_deadline, htk', ← hmax]
     simpa only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] using hkt
 
+/-- An actual result within the healthy horizon has an actual earlier honest supporter. -/
+theorem ResetPremisesUpTo.result_supporter {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
+    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
+    (hrb : tr.time r ≤ b) (hts : cutZ sp.toParams g ≤ sp.ts s) :
+    ∃ z ∈ H, ∃ q < r, ∃ e, SA.VoteAt tr.projAC z q e ∧ e.msg ∈ CV ∧
+      e.msg.slot = s ∧ SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
+  have hS := healthy_base_of_reset_catch_before hp hc
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨ell, hu, hconf, hCV⟩ := hres
+  have ht : tr.time r = sp.ts s + 6 * sp.Δ := hu.2.2.1
+  have hsb : sp.ts s + sp.Δ ≤ b := by linarith
+  have hgs : SA.gbar g ≤ sp.ts s := by have := lt_cutZ sp g; linarith
+  have hsl : sp.slot (sp.ts s + sp.Δ) = s :=
+    SA.slot_of_mem sp s (by linarith) (by simp only [SAParams.ts]; push_cast; linarith)
+  have hs3 : sp.slot (SA.gbar g) + 3 ≤ s := by
+    have h := (SA.ts_le_iff sp).mp ((cutZ_eq sp g) ▸ hts)
+    exact_mod_cast h
+  have hready : ∀ y ∈ H, tr.awake y (sp.ts s + sp.Δ) ∧
+      tr.JoinedAt y (sp.ts s + sp.Δ) := by
+    intro y hy
+    refine ⟨hp.awake y hy _ (by linarith) hsb, fun k hk hkt => ?_⟩
+    change 0 < sp.slot (sp.ts s + sp.Δ) ∧
+      tr.time k ≤ sp.toParams.slotTime (sp.slot (sp.ts s + sp.Δ) - 1)
+    rw [hsl, sp.slotTime_eq]
+    exact ⟨by omega, (restart_le_before hp hy hk (hkt.trans hsb)).trans
+      ((SA.ts_le_iff sp).mpr (by
+        exact_mod_cast (show sp.slot (SA.gbar g) + 1 ≤ s - 1 by omega)))⟩
+  have hf : 3 * Hᶜ.ncard < sp.n := by
+    have := hp.faults
+    have := Fin.pos x
+    have hn : sp.n = sp.toParams.n := rfl
+    omega
+  have hparts := Compose.honest_participants_window_before hp.run hp.noColl
+    (SA.serviceWindowBefore_of_sync hS.sync) hgs hx hu hrb hready hf
+  exact SA.result_honest_supporter_of_participants sp hS.run hx ⟨ell, hu, hconf, hCV⟩
+    hBC hparts.le
+
 /-- Catch uses its actual source boundary `gbar g`, not the later high-origin cut. -/
 theorem catch_window_of_reset_catch (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) (Q : Time) :
