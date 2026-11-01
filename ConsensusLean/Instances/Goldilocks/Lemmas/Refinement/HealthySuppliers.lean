@@ -58,6 +58,43 @@ structure HealthyBaseTiming (Q : HealthyPreparationQuery S A V) where
   expiry : Q.params.ts (slot + Q.params.k : Nat) ≤ Q.heal
   service : Q.params.ts (slot + 2 : Nat) + 6 * Q.params.Δ ≤ Q.heal
 
+/-- Compatibility with an actual fresh origin covers an old entry. The slot
+cap is a separate producer; coverage adds no causal or upper label bound. -/
+theorem old_entry_covered_of_fresh_origin (Q : HealthyPreparationQuery S A V)
+    {s₀ p : Nat} {E P : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
+    (hP : Compose.OriginFrom Q.trace (honestKeys S Q.run.2) P p s₀)
+    (hPs : s₀ ≤ P.slot) (hEs : E.slot < s₀)
+    (hcomp : Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) E P) :
+    Healing.OldEntryCovered Q.trace (honestKeys S Q.run.2) s₀ E := by
+  apply (Healing.oldEntryCovered_iff s₀ E).2
+  refine ⟨P, p, hP, ?_⟩
+  rcases hcomp with hEP | hPE
+  · exact hEP
+  · have hU := Compose.honest_blocks_coherent
+      (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid).toLocalRun
+      (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    have := (Goldilocks.Anc.slot_le hU hPE).1
+    omega
+
+/-- Conditional initialization at any cut, including equality of the entry
+and cache heights. The missing comparison ranges over all authentic old entries,
+not just entries held or signed before the cut. -/
+theorem healthy_old_inventory_of_fresh_origin (Q : HealthyPreparationQuery S A V)
+    {s₀ p i : Nat} {P : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
+    (hP : Compose.OriginFrom Q.trace (honestKeys S Q.run.2) P p s₀)
+    (hPs : s₀ ≤ P.slot)
+    (hcap : ∀ E h, Healing.OldHonest Q.trace (honestKeys S Q.run.2) s₀ E h → E.slot < s₀)
+    (hcomp : ∀ y ∈ honestKeys S Q.run.2, ∀ E h,
+      Healing.OldHonest Q.trace (honestKeys S Q.run.2) s₀ E h →
+      (Q.trace.state y i).fg.hj ≤ h →
+      Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) E P) :
+    HealthyOldInventory S A V Q s₀ i := by
+  intro y hy E h hold
+  by_cases hh : h < (Q.trace.state y i).fg.hj
+  · exact Or.inr hh
+  · exact Or.inl (old_entry_covered_of_fresh_origin S A V Q hP hPs
+      (hcap E h hold) (hcomp y hy E h hold (by omega)))
+
 /-- OPEN base production (healing §§27/28, OldHonest initialization). No argument
 from monotone hj establishes this leaf. It selects timing and initializes the
 all-honest global inventory, including later first arrivals. No new Healthy
