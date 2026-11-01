@@ -451,4 +451,25 @@ theorem decoded_held_poll {sp : SA.SAParams}
     | exact clear _ hd hh _
     | exact clear _ (decoded_held_fgUpdate st hd hh).1 (decoded_held_fgUpdate st hd hh).2 _
 
+/-- AC tick preparation preserves both wrapper invariants. -/
+theorem decoded_held_nodeTick {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tables : Wire sp.n → List (Header Info × Nat)} (st : State sp ro)
+    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
+    WrappersDecoded tables (nodeTick st) ∧ WrappersHeld tables (nodeTick st) := by
+  unfold nodeTick
+  split
+  · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
+  · exact ⟨hd, hh⟩
+
+/-- Proposal preparation changes AC state, not wrapper or held-block correspondence. -/
+theorem decoded_held_propose {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tables : Wire sp.n → List (Header Info × Nat)} (st : State sp ro) (s : Slot)
+    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
+    WrappersDecoded tables (propose st s).1 ∧ WrappersHeld tables (propose st s).1 := by
+  unfold propose
+  dsimp only
+  split <;> exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
+
 end Consensus.Goldilocks.Refinement
