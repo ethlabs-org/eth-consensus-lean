@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 
 public section
@@ -495,6 +496,33 @@ theorem held_voteForward_source_or_process (hv : rho.ExecutionValid)
     have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
     rw [hkey] at hp
     exact Or.inr ⟨k, hp, ht ▸ hτ, ht ▸ hud⟩
+
+/-- No envelope carrying an upcoming honest own vote can have been released at an
+earlier engine event. Authentication of the carried vote rules out an earlier emission,
+even when the envelope's forwarding signer differs from the vote's signer. -/
+theorem emission_voteForward_first (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {k i : Nat}
+    {m : SA.Vote (Fintype.card V)} (hem : (simTrace S rho hn).EmitAt y k m)
+    (hval : m.val = y) (hlo : cutMap S rho hn i ≤ k)
+    (x : Fin (Fintype.card V)) (t : Time) :
+    ∀ j < i, Model.Obj.mk (.signed x .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∉ rho.releasesAt j := by
+  intro j hji hrel
+  obtain ⟨u, hs⟩ := voteForward_release_sender S rho hrel
+  have hseen := rho.releasesAt_seen hs hrel
+  have hm : voteObj m ∈ Model.closure (rho.stateBefore (j + 1) (rho.key x)).seen :=
+    (Model.mem_closure_iff _ _).mpr ⟨_, hseen,
+      Model.Obj.Contains.step (List.mem_singleton_self _) (.refl _)⟩
+  obtain ⟨a, haj, u, hsend, hraw⟩ := rho.signed_seen_released hv hm hy
+    (show rho.signerOf (voteObj m) = some (rho.key y) by
+      change some (rho.key m.val) = some (rho.key y)
+      rw [hval])
+  obtain ⟨q, hq, hem'⟩ := released_vote_cut S rho hn hv hsend hy hraw
+  have hqk : q < k := lt_of_lt_of_le hq
+    ((cutMap_mono S rho hn (by omega : a + 1 ≤ i)).trans hlo)
+  have hem' : (simTrace S rho hn).EmitAt y q m := by
+    simpa only [Model.Run.ownKey, Equiv.symm_apply_apply] using hem'
+  exact Compose.emitted_vote_slots_ne (simTrace_goldilocksRun S rho hn hv) hy hqk hem' hem rfl
 
 /-- Option C's outstanding publication supplier: actual same-event release and first release,
 not merely candidate construction or pool membership. -/

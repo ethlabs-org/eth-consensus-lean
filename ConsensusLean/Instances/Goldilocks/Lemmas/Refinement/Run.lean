@@ -730,7 +730,8 @@ private theorem emit_of_tick_body {i : Nat} {v : V} {t : Time}
   · rw [eventCuts_tick_public S rho hn i v t he hp]; exact List.getElem_mem hq'
   · exact (getElem_groupRecs _ _ _ _ _ _ _ q hq').2.2.2.2.trans hcq
 
-private theorem released_vote_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+/-- A released canonical own vote comes from an emission before the event's end cut. -/
+theorem released_vote_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     (hs : rho.SendsAt v i t) (hv' : v ∈ rho.honest) {m : Vote (Fintype.card V)}
     (hb : voteObj m ∈ rho.releasesAt i) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m := by
