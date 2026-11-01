@@ -165,6 +165,11 @@ theorem Grows.trans {A B C : SAState sp.n} (h₁ : Grows A B) (h₂ : Grows B C)
 theorem Grows.of_pool_eq {A A' : SAState sp.n} (h : A'.pool = A.pool) : Grows A A' :=
   fun _ _ hx => h ▸ hx
 
+/-- Membership form of `Grows`, for other modules. -/
+theorem Grows.mem {A A' : SAState sp.n} (h : Grows A A') {σ : Nat} {x : Vote sp.n}
+    (hx : x ∈ A.pool σ) : x ∈ A'.pool σ :=
+  h σ x hx
+
 theorem grows_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
     Grows A (admitVote sp A t v) := by
   intro σ x hx

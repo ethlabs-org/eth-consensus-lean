@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.ContestLocksRun
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UnlockViewOpponents
 
 public section
 
@@ -178,6 +179,52 @@ theorem lock_keep_interval_cases_view (hrun : GoldilocksRun proposer dg H tr) {y
   lock_keep_interval_view hrun hy hik hl hBr fun j h1 h2 => by
     obtain ⟨hk, hB, hc, hu⟩ := hstep j h1 h2
     exact ⟨hk, hB, viableAncestor_eq_self_run hrun hy j hB hc, hu⟩
+
+/-! ## The O-form of the unlock premise
+
+`lock_keep_interval_cases_held`: `lock_keep_interval_cases_view` with the unlock premise at each
+cut `j` stated on the votes that `y` holds (`SA.heldVotes`: the pools of `y` at `j` and at
+`j + 1` and the votes and support entries of the blocks of its frame's tree at `j`). The pools at
+`j` matter only for a restart at `j` (no other call removes a vote from a pool). -/
+
+/-- **A lock kept over `[i, k]`, O-form.** If at every cut `j ∈ [i, k)` the lock does not
+expire, `B` is in the tree with one of the cases of `viableAncestor_eq_self_run`, and either the
+lock's slot is at least `slot(t_j) − 1` or the opponents of `B` against the slot-
+`(slot(t_j) − 1)` votes among the votes held by `y` across the cut lie in a set `O` with
+`2 · |O| < n`, then `y` holds `l` at cut `k`. -/
+theorem lock_keep_interval_cases_held (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i k : Nat} (hik : i ≤ k) {l : SA.Lock} (hl : l ∈ (tr.state y i).ac.locks)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBr : B.root = l.block) {O : Set (Fin sp.n)}
+    (hOn : 2 * O.ncard < sp.n)
+    (hstep : ∀ j, i ≤ j → j < k → sp.slot (tr.time j) ≤ l.slot + sp.k ∧
+      B ∈ (tr.state y j).fg.toFrame.tree ∧
+      (((tr.state y j).fg.Contest ∧ ∃ Y ∈ (tr.state y j).fg.tree,
+        (tr.state y j).fg.Anc (tr.state y j).fg.F Y ∧
+        (tr.state y j).fg.hmax ≤ ((tr.state y j).fg.σ Y.root).h ∧
+        (tr.state y j).fg.toFrame.Anc B Y) ∨
+      ((tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 ∧ ¬ (tr.state y j).fg.Contest ∧
+        (tr.state y j).fg.Anc (tr.state y j).fg.F (tr.state y j).fg.J ∧
+        (tr.state y j).fg.Anc (tr.state y j).fg.J B ∧ ∃ Y ∈ (tr.state y j).fg.tree,
+        (tr.state y j).fg.Anc (tr.state y j).fg.J Y ∧ (tr.state y j).fg.IsViable Y ∧
+        (tr.state y j).fg.toFrame.Anc B Y) ∨
+      ((tr.state y j).fg.hmax ≠ (tr.state y j).fg.hj + 1 ∧
+        ∃ Y ∈ (tr.state y j).fg.toFrame.viableHeads, (tr.state y j).fg.toFrame.Anc B Y)) ∧
+      ((sp.slot (tr.time j) : Int) - 1 ≤ l.slot ∨
+        SA.opponents sp (Node.frame (tr.state y j))
+          ⟨SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (Node.frame (tr.state y j)),
+            SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (Node.frame (tr.state y j))⟩
+          ((sp.slot (tr.time j) : Int) - 1) B ⊆ O)) :
+    l ∈ (tr.state y k).ac.locks :=
+  lock_keep_interval_cases_view hrun hy hik hl hBr fun j h1 h2 => by
+    obtain ⟨hk, hB, hc, hu⟩ := hstep j h1 h2
+    refine ⟨hk, hB, hc, fun ℓ hcall => hu.imp_right fun hO => ?_⟩
+    obtain ⟨hfr, hst, -, -⟩ := hrun.cutLaw y hy j _ hcall
+    rw [hfr] at hst
+    have hA' : ((SA.goldilocksSA sp (List (FG.Att sp.n)) ro).step y (tr.state y j).ac
+        (Node.frame (tr.state y j)) (tr.time j) ℓ.call).1 = (tr.state y (j + 1)).ac := by
+      rw [tr.state_succ_of_call hcall, hst]
+    exact SA.unlockTarget_unlockView_held y ℓ.call hA' (frameOK_state hrun.toLocalRun hy j) _
+      hB hO hOn
 
 end Consensus.Goldilocks.Compose
 

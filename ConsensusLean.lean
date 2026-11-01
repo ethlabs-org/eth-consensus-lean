@@ -43,6 +43,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.StopCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UnlockTargetSelf
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UnlockViewOpponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd

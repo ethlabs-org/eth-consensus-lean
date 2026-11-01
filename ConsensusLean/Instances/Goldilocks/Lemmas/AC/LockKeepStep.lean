@@ -297,6 +297,14 @@ theorem unlockView_block (C : Blk sp.n FGP) : unlockView (ro := ro) A Φ t (.blo
     mergedVoteView sp (optimisticConfirmation sp (blockReceipt sp A t C) Φ t) Φ (sp.slot t) := by
   unfold unlockView; rfl
 
+theorem unlockView_toFG :
+    unlockView (ro := ro) A Φ t .toFG = mergedVoteView sp A Φ (sp.slot t) := by
+  unfold unlockView; rfl
+
+theorem unlockView_restart :
+    unlockView (ro := ro) A Φ t .restart = mergedVoteView sp A Φ (sp.slot t) := by
+  unfold unlockView; rfl
+
 end unlockView
 
 /-- **The keep lemma of an AC call, with the view of the call.** `mem_step_locks_of_keep` with
