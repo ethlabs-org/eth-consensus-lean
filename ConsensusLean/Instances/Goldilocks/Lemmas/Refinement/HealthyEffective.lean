@@ -2157,27 +2157,28 @@ theorem operational_update_recent_source {b : Time}
     omega
 
 /-- Retaining the local entry at the height floor gives a candidate, without a
-remote-report alternative, at a bounded call above a compatible high seed. -/
-theorem held_target_ancestor_candidate {b : Time}
+remote-report alternative, at a state with a bounded completed prefix. -/
+theorem held_target_ancestor_candidate_at_state {b : Time}
     (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y v : Fin sp.n} (hy : y ∈ H) {i q m : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
-    (hib : tr.time i ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hPt : P ∈ ell.frame.tree) (hseed : Healing.HighOrigin tr H g v q m S)
+    (hib : ∀ r < i, tr.time r ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hPt : P ∈ (Node.frame (tr.state y i)).tree)
+    (hseed : Healing.HighOrigin tr H g v q m S)
     (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocks H) S P)
     (hcompare : ∀ x r l B, r < i → Healing.HighOrigin tr H g x r l B →
-      Compatible (tr.HonestBlocks H) P B) : ell.frame.AncestorCandidate P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
-  have hPy := hp.frame_tree_subset hy hcall hPt
-  have hSy := hp.mem_tree_of_anc hy hSP hPy
-  have hfr := Compose.frame_of_projAC hp.run hy hcall
+      Compatible (tr.HonestBlocks H) P B) :
+    (Node.frame (tr.state y i)).AncestorCandidate P := by
   have hreach := Compose.fg_reachable hp.run.toLocalRun hy i
-  have hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot P := by
+  have hPhi := (Store.frame_realization _ _ _ _ hreach).1
+  have hPhiU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H :=
+    fun X hX => ⟨y, hy, i, hX.1⟩
+  have hPy := hPt.1
+  have hSy := hp.mem_tree_of_anc hy hSP hPy
+  have hroot : Compatible (tr.HonestBlocks H) (Node.frame (tr.state y i)).fcRoot P := by
     by_cases hlow : (tr.state y i).fg.hj ≤ Healing.HZ tr H g
-    · exact hp.low_root_of_held_seed_at_call hy hPy hy hseed hcall hSy hlow
-        (Or.inr hSP) (fun _ => hPt)
-    · exact hp.high_J_root_of_held_at_call_before hy hPy hy hcall (by omega) hcompare
+    · exact hp.low_root_of_held_seed_at_state hy hPy hy hseed hSy hlow
+        (Or.inr hSP) (fun _ => hPy)
+    · exact hp.high_J_root_of_held_at_state_before hy hPy hy (by omega) hcompare
   rcases hroot with hroot | hroot
   swap
   · exact Or.inl (SA.anc_tree_of_anc_U hp.honest_coherent hPhi hPhiU hPt hroot hPhi.fcRoot_mem)
@@ -2207,9 +2208,9 @@ theorem held_target_ancestor_candidate {b : Time}
             (ht.trans (hp.run.time_mono (by omega)))
           omega)
         (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible ho
-          ((hp.run.time_mono hri.le).trans hib) ho' ((hp.run.time_mono hr'i.le).trans hib))
+          (hib r hri) ho' (hib r' hr'i))
         (fun x r l B hri ho => hp.origins_compatible hseed hqb ho
-          ((hp.run.time_mono hri.le).trans hib)) hSf
+          (hib r hri)) hSf
     have hPE : Compatible (tr.HonestBlocks H) P E := by
       rcases hcompare x r l B hri ho with h | h
       · exact SA.anc_total hp.honest_coherent h hEB
@@ -2220,16 +2221,25 @@ theorem held_target_ancestor_candidate {b : Time}
       omega
   obtain ⟨E, hE, hPE, hEf⟩ := witness
   have hPEs := hp.anc_tree_of_anc hy hPE hE
-  have hPt' := hPt
-  rw [hfr] at hPt'
-  have hEt : E ∈ ell.frame.tree := by
-    rw [hfr]
-    exact ⟨hE, hPt'.2.trans hPEs⟩
+  have hEt : E ∈ (Node.frame (tr.state y i)).tree := ⟨hE, hPt.2.trans hPEs⟩
   have hPEf := SA.anc_tree_of_anc_U hp.honest_coherent hPhi hPhiU hPt hPE hEt
   refine Or.inr ⟨hPt, hrootf, E, hEt, ?_, hPEf⟩
   have hRE := hrootf.trans hPEf
-  rw [hfr] at hRE ⊢
-  exact ⟨hE, hPt'.2.trans hPEs, Anc.mono (fun _ h => h.1) hRE, hEf⟩
+  exact ⟨hE, hPt.2.trans hPEs, Anc.mono (fun _ h => h.1) hRE, hEf⟩
+
+/-- Call-frame specialization of the completed-prefix candidate theorem. -/
+theorem held_target_ancestor_candidate {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y v : Fin sp.n} (hy : y ∈ H) {i q m : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
+    (hib : tr.time i ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hPt : P ∈ ell.frame.tree) (hseed : Healing.HighOrigin tr H g v q m S)
+    (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocks H) S P)
+    (hcompare : ∀ x r l B, r < i → Healing.HighOrigin tr H g x r l B →
+      Compatible (tr.HonestBlocks H) P B) : ell.frame.AncestorCandidate P := by
+  rw [Compose.frame_of_projAC hp.run hy hcall] at hPt ⊢
+  exact held_target_ancestor_candidate_at_state hp hy
+    (fun r hri => (hp.run.time_mono hri.le).trans hib) hPt hseed hqb hSP hcompare
 
 /-- At a bounded call holding a target above a bounded high seed, compatible
 causal origins give full viability or an actual earlier strictly higher report. -/
