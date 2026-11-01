@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
 public import ConsensusLean.Lemmas.Model.Candidates
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingState
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
@@ -21,48 +22,6 @@ namespace Consensus.Goldilocks.Refinement
 
 open Shape Blocks
 open Consensus.Model
-
-/-- Abstract publisher state, separate from the installed runtime state. The map
-survives restarts; pending wrappers are drained in acceptance order before the event ends.
-OPEN implementation: connecting this state to `State`, actual duties and own proposals. -/
-structure ForwardingState (n : Nat) where
-  wrappers : Nat → Option (Wire n)
-  pending : List (Wire n)
-
-/-- Revised publication transition: remember the exact wrapper and append it to the same-event
-drain. Resolve the parent from the durable map, never from a raw parent object. A missing
-non-genesis parent fails explicitly; proving this cannot occur on actual acceptance is OPEN.
-Callers must establish canonical acceptance first. This is not an installed engine handler. -/
-def ForwardingState.enqueue {sp : SA.SAParams} (st : ForwardingState sp.n)
-    (origin : Fin sp.n) (t : Time) (B : Blk sp) :
-    Option (ForwardingState sp.n) := do
-  let root ← B.parent
-  let parent ← if root = sp.genesisRoot then some none
-    else (st.wrappers root).map some
-  let o := forwardObj sp origin t parent B
-  return ⟨Function.update st.wrappers B.root (some o), st.pending ++ [o]⟩
-
-/-- Drain the entire event queue in one ordered engine release batch, retaining the durable
-map and clearing only the queue. Parent wrappers queued earlier become available to later
-guards through `releaseAll`'s seen update. Integration as an executed signed batch is OPEN. -/
-noncomputable def ForwardingState.drain {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (family S)) E)
-    (st : ForwardingState (Fintype.card V)) (origin : Fin (Fintype.card V))
-    (nd : Model.Node (protoOf (compiled (family S)) E)) :
-    ForwardingState (Fintype.card V) ×
-      (Model.Node (protoOf (compiled (family S)) E) × List (Wire (Fintype.card V))) :=
-  (⟨st.wrappers, []⟩,
-    Model.releaseAll (protoOf (compiled (family S)) E) rho.hash origin nd st.pending)
-
-/-- A drain clears pending traffic but keeps the canonical wrapper map. This is a local
-producer-state fact, not a release guarantee or a theorem about engine restarts. -/
-theorem ForwardingState.drain_persistent {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (family S)) E)
-    (st : ForwardingState (Fintype.card V)) (origin : Fin (Fintype.card V))
-    (nd : Model.Node (protoOf (compiled (family S)) E)) :
-    (st.drain S rho origin nd).1.wrappers = st.wrappers ∧
-      (st.drain S rho origin nd).1.pending = [] := by
-  exact ⟨rfl, rfl⟩
 
 /-- A newly queued candidate comes from this acceptance, at the current clock, using
 either genesis or the exact parent wrapper already in the durable map. Missing parents
@@ -666,6 +625,12 @@ def WrappersCover {sp : SA.SAParams}
   ∀ root, root ≠ sp.genesisRoot → (st.node.fg.blocks root).isSome →
     (st.wrappers root).isSome
 
+/-- Coverage depends only on held roots and the durable wrapper map. -/
+theorem wrappersCover_iff {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) :
+    WrappersCover st ↔ ∀ root, root ≠ sp.genesisRoot →
+      (st.node.fg.blocks root).isSome → (st.wrappers root).isSome := by rfl
+
 /-- An actual successful block call cannot miss its parent wrapper when the map covers
 held roots. The store's acceptance guard supplies a held parent; genesis needs no wrapper.
 The node handler emits the acceptance before its AC cut, which cannot enqueue a block. -/
@@ -827,6 +792,16 @@ private theorem wrappersCover_nodeTick {sp : SA.SAParams}
     (h : WrappersCover st) : WrappersCover (nodeTick st) := by
   unfold nodeTick
   split <;> exact h
+
+/-- Every actual duty prefix preserves coverage, including an own block's recording. -/
+theorem runDuties_wrappersCover {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E))
+    (ds : List (protoOf (compiled (family S)) E).Duty)
+    (h : WrappersCover (shapeOf S hn nd)) :
+    WrappersCover (shapeOf S hn (rho.runDuties v nd ds).1) := by
+  exact runDuties_pres S rho hn WrappersCover wrappersCover_recordOwn wrappersCover_propose
+    wrappersCover_nodeTick wrappersCover_poll v nd ds h
 
 /-- The actual runtime's durable map covers every held non-genesis root at every event
 boundary. Initially only genesis is held. Block acceptance updates both maps together;

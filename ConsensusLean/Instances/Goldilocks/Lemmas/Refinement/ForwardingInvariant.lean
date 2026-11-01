@@ -905,4 +905,58 @@ theorem recordOwn_acceptance_pending {sp : SA.SAParams}
   refine List.mem_map.mpr ⟨_, List.mem_append_right _ (List.mem_singleton_self _), ?_⟩
   simp only [apply_self, forwardObj]
 
+/-- A successful singleton batch really records its sole candidate. -/
+theorem releaseAll_singleton_recorded {pub : Public} {O : Type} (P : Protocol pub O)
+    (hash : P.Item → Nat) (x : Key pub) (nd : Model.Node P) (o : P.Object)
+    (ho : o ∈ (Model.releaseAll P hash x nd [o]).2) :
+    (Model.releaseAll P hash x nd [o]).1 =
+      ⟨P.recordOwn nd.st o (digests hash o), nd.seen ++ [o]⟩ := by
+  unfold Model.releaseAll at ho ⊢
+  split
+  · rfl
+  · rename_i h
+    simp only [h, Bool.false_eq_true, ↓reduceIte, Model.releaseAll, List.not_mem_nil] at ho
+
+/-- Coverage is available after every tick-duty prefix, including immediately before
+the own proposal is recorded. It is derived from reachable state, not an endpoint premise. -/
+theorem tick_duty_prefix_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (i : Nat) (t : Time)
+    (ds : List (protoOf (compiled (family S)) E).Duty) :
+    WrappersCover (shapeOf S hn (rho.runDuties v
+      ⟨(protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ ds).1) := by
+  apply runDuties_wrappersCover S rho hn
+  simpa only [wrappersCover_iff, shapeOf, shapeOf_clock S hn, stateAt] using
+    stateAt_wrappersCover S rho hn v i
+
+/-- A released singleton proposal that its actual recording handler accepts queues a
+wrapper before the following poll. This uses the post-propose, pre-record state. -/
+theorem dutyStep_propose_acceptance_pending {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (o : (protoOf (compiled (family S)) E).Object) (B : Blk (S.params (pubOf E) hn))
+    (hsel : rho.ownKey v ∈ rho.sel (.proposer s))
+    (hcs : rho.signedCandidate v (.propose s hs)
+      ((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).2 = [o])
+    (ho : o ∈ (rho.dutyStep v nd (.propose s hs)).2)
+    (hd : decodeBlock (S.params (pubOf E) hn) (digests rho.hash o) o = some B)
+    (hc : WrappersCover (propose (shapeOf S hn nd) s).1)
+    (ha : .fg (.block B true) ∈
+      (Node.onBlock (propose (shapeOf S hn nd) s).1.self
+        (propose (shapeOf S hn nd) s).1.node (propose (shapeOf S hn nd) s).1.now B).2) :
+    ∃ p, forwardObj (S.params (pubOf E) hn) (shapeOf S hn nd).self
+      (shapeOf S hn nd).now p B ∈
+        pendingWrappers (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1) := by
+  have hrole : (protoOf (compiled (family S)) E).role (.propose s hs) = .proposer s := rfl
+  simp only [Model.Run.dutyStep, hrole, hsel, ↓reduceIte, hcs] at ho ⊢
+  rw [releaseAll_singleton_recorded _ _ _ _ _ ho]
+  change ∃ p, forwardObj (S.params (pubOf E) hn) (shapeOf S hn nd).self
+    (shapeOf S hn nd).now p B ∈ pendingWrappers
+      (recordOwn (((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn)
+        o (digests rho.hash o))
+  rw [shapeOf_act_propose S hn]
+  simpa only [propose_self, propose_now] using
+    recordOwn_acceptance_pending (propose (shapeOf S hn nd) s).1 _ o B hd hc ha
+
 end Consensus.Goldilocks.Refinement
