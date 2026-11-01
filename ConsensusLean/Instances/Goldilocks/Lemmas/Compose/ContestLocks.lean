@@ -69,6 +69,19 @@ theorem viableAncestor_of_F_advance {st st' : Store P (SA.Payload P.n)}
     exact viableAncestor_of_not_contest hΦ hm' hc hFJ hB (by rw [hJ]; exact tr _ _ hJB) hY'
       hJY' hv hBY
 
+/-- **Locks off the J-route (r14 fm-forward, step (a), `h_max ≠ h_j + 1`).** When
+`h_max ≠ h_j + 1`, the fork-choice root is `Σ.F`, so every frame block below a viable head is its
+own viable ancestor. -/
+theorem viableAncestor_of_hmax_ne {st : Store P (SA.Payload P.n)} (hΦ : FrameOK st.toFrame)
+    (hm : st.hmax ≠ st.hj + 1) {B Y : NodeBlock P (SA.Payload P.n)} (hB : B ∈ st.toFrame.tree)
+    (hW : Y ∈ st.toFrame.viableHeads) (hBY : st.toFrame.Anc B Y) :
+    st.toFrame.viableAncestor B = B := by
+  refine SA.viableAncestor_of_anc_viableHead hΦ hB ?_ ⟨hW.1, hW.2.1⟩ hW hBY
+  have e : st.fcRoot = st.F := by simp [fcRoot, hm]
+  change Goldilocks.Anc {X | X ∈ st.tree ∧ st.Anc st.F X} st.fcRoot B
+  rw [e]
+  exact Anc.restrict Relation.ReflTransGen.refl hB.2
+
 end Consensus.Goldilocks.Store
 
 end
