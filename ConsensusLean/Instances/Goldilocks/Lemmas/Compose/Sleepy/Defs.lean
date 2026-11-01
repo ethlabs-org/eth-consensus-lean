@@ -42,6 +42,49 @@ structure SleepyServiceBefore {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att
       Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
       tr.BlockAcceptedBy y j (tr.time i) B
 
+/-- Assemble finite Sleepy service from SA message evidence and node acceptance relay.
+The latter also supplies AC acceptance relay via the following AC block cut. -/
+theorem sleepyServiceBefore_of_message_relay
+    {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {b : Time}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    (hr : Node.LocalRun proposer dg H SA.Vote.val tr)
+    (message : ∀ x ∈ H, ∀ i v, tr.projAC.SendOrAdmit x i v → 0 ≤ tr.time i →
+      ∀ y ∈ H, ∀ j ℓ, tr.projAC.CallAt y j ℓ → tr.projAC.deadline y j (tr.time i) ≤ b →
+        tr.projAC.deadline y j (tr.time i) ≤ tr.time j →
+          SA.MessageServedBefore tr.projAC y j (tr.time i) v)
+    (relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → 0 ≤ tr.time i →
+      ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) sp.Δ ≤ b →
+        tr.deadline y j (tr.time i) sp.Δ ≤ tr.time j →
+        Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
+        tr.BlockAcceptedBy y j (tr.time i) B) :
+    SleepyServiceBefore tr H sp.Δ b := by
+  refine ⟨le_rfl, ⟨message, ?_⟩, relay⟩
+  intro x hx i B hacc hai y hy j ℓ hc hdb hdl hanc
+  obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
+  have hc := projAC_callAt.mp hc
+  obtain ⟨i', rfl, hi', hti⟩ := acBlock_prev hr hx (projAC_callAt.mp hc₀) hb
+  have hfr : ℓ.frame.F = (tr.state y j).fg.F := by
+    rw [(hr.cutLaw y hy j _ hc).1]
+    rfl
+  obtain ⟨k, hkj, hk, hlt⟩ := relay x hx i' B hi' (hti ▸ hai) y hy j ⟨_, hc⟩
+    (by rw [hti, ← projAC_deadline]; exact hdb)
+    (by rw [hti, ← projAC_deadline]; exact hdl) (hfr ▸ hanc)
+  obtain ⟨ℓ', hc', hb', htk⟩ := accept_next hr hy hk
+  have hkj' : k + 1 ≤ j := by
+    rcases Nat.lt_or_eq_of_le hkj with hlt' | rfl
+    · omega
+    · cases Option.some.inj (hk.2.symm.trans hc.2)
+  have hnr : ¬ tr.RestartAt y (k + 1) := fun ⟨ℓr, hcr, hrestart⟩ => by
+    cases Option.some.inj (hc'.2.symm.trans hcr.2)
+    rw [hb'] at hrestart
+    cases hrestart
+  refine ⟨k + 1, hkj', ⟨ℓ', projAC_callAt.mpr hc', hb'⟩, ?_⟩
+  change tr.time (k + 1) < tr.projAC.deadline y (k + 1) (tr.time (i' + 1))
+  rw [projAC_deadline, htk, ← hti]
+  simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
+  exact hlt
+
 /-- Existing node synchrony is sufficient for the specialized Sleepy service. -/
 theorem sleepyServiceBefore_of_sync {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {ΔF b : Time}
