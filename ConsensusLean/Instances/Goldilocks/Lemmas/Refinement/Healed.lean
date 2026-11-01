@@ -59,6 +59,23 @@ theorem healed_of_reset (hp : Healing.ResetPremises tr H proposer dg g ΔF a) {t
     Healed tr H proposer g tH h₀ E :=
   { Healing.healed_records_of_reset hp hrh hE with c3 := hc3, c4 := hc4 }
 
+/-- **Healed from the reset and C3, C4, canonical form.** The record half from `ResetPremises`
+and RH alone, for the canonical entries (`Healing.healed_records_of_reset_canonical`); C3 and
+C4 are the explicit premises `hc3`, `hc4`. -/
+theorem healed_of_reset_canonical (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    {tH : Time} {h₀ : Nat} (hrh : Healing.HZ tr H g + 1 ≤ h₀)
+    (Z₀ : SA.Blk sp.n (List (FG.Att sp.n)))
+    (hc3 : ∀ y ∈ H, ∀ k ℓ, tr.projAC.CallAt y k ℓ → tH ≤ tr.time k →
+      ∀ l ∈ SA.liveLocks sp (tr.projAC.state y k).locks ℓ.frame (tr.time k), l.fast = true →
+      ∀ X ∈ ℓ.frame.tree, X.root = l.block →
+      ∀ s P, Healing.HonestProposalRun tr H proposer s P → tr.time k + sp.Δ ≤ sp.ts s →
+        ∃ Pr ∈ tr.HonestBlocks H, P.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) X Pr)
+    (hc4 : ∀ s P s' P', Healing.HonestProposalRun tr H proposer s P →
+      Healing.HonestProposalRun tr H proposer s' P' → sp.slot tH < s → s < s' →
+        Anc (tr.HonestBlocks H) P P') :
+    Healed tr H proposer g tH h₀ (Healing.canonicalEntry tr H g Z₀) :=
+  { Healing.healed_records_of_reset_canonical hp hrh Z₀ with c3 := hc3, c4 := hc4 }
+
 end Consensus.Goldilocks.Refinement
 
 end
