@@ -907,6 +907,64 @@ theorem reset_frame_relay
   · exact reset_accept_frame hp hc hx hy ha hcy hg
       (by have := hp.run.time_mono hk; change tr.time k ≤ tr.time q at this; linarith) hF
 
+/-- A held target above a high seed is either a candidate at the actual call or
+covered by a strictly earlier high origin. No frozen-tree transport is required. -/
+theorem held_target_candidate_or_high_origin_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y v : Fin sp.n} (hy : y ∈ H) {i q m : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
+    {P S : SA.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ell.frame.tree)
+    (hseed : HighOrigin tr H g v q m S) (hSP : Anc (tr.HonestBlocks H) S P)
+    (hcompare : ∀ x r b B, r < i → HighOrigin tr H g x r b B →
+      Compatible (tr.HonestBlocks H) P B) :
+    ell.frame.AncestorCandidate P ∨
+      ∃ x r b B, r < i ∧ HighOrigin tr H g x r b B ∧ Anc (tr.HonestBlocks H) P B := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hU := hr.coherent
+  have hPy := frame_tree_subset hp hy hcall hPt
+  have hSy := mem_tree_of_anc hp hy hSP hPy
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hy i
+  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
+    hp.run hp.healthy hp.noColl a hp.reset
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
+  have hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot P := by
+    by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
+    · exact low_root_of_held_seed_at_call hp hy hPy hy hseed hcall hSy hlow
+        (Or.inr hSP) (fun _ => hPt)
+    · exact high_J_root_of_held_at_call_before hp hy hPy hy hcall (by omega) hcompare
+  by_cases hPF : Anc (tr.HonestBlocks H) P ell.frame.fcRoot
+  · exact Or.inl (Or.inl (SA.anc_tree_of_anc_U hU hPhi hPhiU hPt hPF hPhi.fcRoot_mem))
+  have hFP := hroot.resolve_right hPF
+  have hFPf := SA.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hFP hPt
+  by_cases hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ P.root).h
+  · have hPv : P ∈ ell.frame.viableHeads := by
+      have hfr := Compose.frame_of_projAC hp.run hy hcall
+      have hPt' := hPt
+      rw [hfr] at hPt' hFPf ⊢
+      exact ⟨hPy, hPt'.2, hFPf.mono (fun X hX => hX.1), hfloor⟩
+    exact Or.inl (Or.inr ⟨hPt, hFPf, P, hPt, hPv, .refl⟩)
+  obtain ⟨-, -, -, -, -, -, -, -, -, hSs⟩ := highOrigin_mem hp hseed
+  have hSh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy hSP hPy)
+  have hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.headHeightFloor := by
+    rw [σ_eq_run hp hseed.1 hy hSs hSy]
+    omega
+  obtain ⟨x, r, b, B, E, hri, ho, -, hE, hEB, -, hEf⟩ :=
+    high_floor_source_of_row_bound hp hseed hy (u := sp.slot (tr.time i) + 1)
+      (fun W hW att ha z hz d hd hdi r' l O hrd ho => by
+        obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_mem hp ho
+        have ht : sp.ts l ≤ tr.time i :=
+          (ts_le_of_fastLock hp hfl).trans (hp.run.time_mono (by omega))
+        have hlabel : (l : Int) ≤ sp.slot (tr.time i) :=
+          (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg i) l).mp ht
+        omega)
+      (fun x r b B _ ho x' r' b' B' _ ho' => hret.comparable x r b B x' r' b' B' ho ho')
+      (fun x r b B _ ho => hret.comparable v q m S x r b B hseed ho) hSf
+  refine Or.inr ⟨x, r, b, B, hri, ho, ?_⟩
+  rcases hcompare x r b B hri ho with h | h
+  · exact h
+  · have := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy (hEB.trans h) hPy)
+    omega
+
 end Consensus.Goldilocks.Healing
 
 end
