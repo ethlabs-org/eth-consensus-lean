@@ -151,6 +151,46 @@ theorem post_of_castAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fi
       (tr.time i) :=
   (cast_emits hr hy hc).2
 
+private theorem tryVote_time {x : Fin sp.n} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    {e : Em sp FGP} (he : e ∈ (tryVote sp x A Φ t).2) : t ≤ sp.ts (sp.slot t) + sp.Δ := by
+  unfold tryVote at he
+  dsimp only at he
+  split_ifs at he with h1 h2
+  · simp at he
+  · simp at he
+  all_goals exact not_lt.1 (not_or.1 (not_or.1 h1).2).2
+
+/-- An honest vote is cast by `t_s + Δ` of its slot `s`. -/
+theorem vote_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr x j e) :
+    tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ := by
+  obtain ⟨ℓ, hc, he⟩ := hv
+  have hΦ : FrameOK ℓ.frame := by
+    rcases hr.frameLaw x hx j ℓ hc with ⟨-, _, -, -, hok⟩ | ⟨_, _, -, -, -, hok⟩ <;>
+      exact hok.1.1
+  have hx' := hr.exec j ℓ hc.2 (hc.1 ▸ hx)
+  rw [hc.1] at hx'
+  have he' : e ∈ ((goldilocksSA sp FGP ro).step x (tr.state x j) ℓ.frame (tr.time j)
+      ℓ.call).2 := by
+    rw [hx']; exact he
+  clear hx' he
+  cases hcall : ℓ.call with
+  | tick =>
+    rw [hcall] at he'
+    change e ∈ (acOnTick sp x _ ℓ.frame _).2 at he'
+    unfold acOnTick at he'
+    dsimp only at he'
+    split_ifs at he' <;> first | exact le_of_eq ‹_› | simp at he'
+  | proposal => rw [hcall] at he'; simp [ACInterface.step] at he'
+  | toFG => rw [hcall] at he'; simp [ACInterface.step] at he'
+  | message m => rw [hcall] at he'; exact tryVote_time he'
+  | block B => rw [hcall] at he'; exact tryVote_time he'
+  | restart =>
+    rw [hcall] at he'
+    change e ∈ (acRestart sp ro x _ ℓ.frame (tr.time j)).2 at he'
+    rw [((restart_state sp) FGP ro x _ ℓ.frame (tr.time j) hΦ (hr.time_nonneg j)).1] at he'
+    simp at he'
+
 end Consensus.Goldilocks.SA
 
 end

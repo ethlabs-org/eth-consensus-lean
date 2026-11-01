@@ -55,6 +55,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outage
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutagePostStop
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Weak

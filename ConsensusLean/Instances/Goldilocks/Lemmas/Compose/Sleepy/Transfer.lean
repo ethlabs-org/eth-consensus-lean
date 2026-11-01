@@ -134,21 +134,21 @@ private theorem readPoint_locks_stored (hr : ACLocalRun (SA.goldilocksSA sp FGP 
     subst hp
     exact absurd (hs₁.trans hs₂) hne
 
-/-- **The later-batch walk** (A1.3 with the strict honest majority of §2.4 in place of the
-half-committee bound): at an honest slot-`(s+1)` vote, if every honest slot-`s` vote extends `B`,
-the honest slot-`s` voters outnumber the faulty validators, the voter holds every honest slot-`s`
-vote and accepted its head before `t_s + 3Δ` (`Carry_y`), `B` is in the viable voter block tree
-or at or below `fc_root`, and every live lock block is compatible with `B`, the vote extends
-`B`: only faulty seats oppose or equivocate, so `B`'s children towards the vote win the walk. -/
-theorem vote_extends_of_batch (hrun : SA.ACRun proposer tr H U)
+/-- The later-batch walk for a selected honest slot-`s` batch: its votes extend `B`, are
+carried at the read point, and outnumber half of a set covering all merged voters.
+Viability and compatibility of all live locks then make the successor vote extend `B`. -/
+theorem vote_extends_of_counted_batch (hrun : SA.ACRun proposer tr H U)
     {s : Nat} {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {B : SA.Blk sp.n FGP}
     (hviab : SA.ViableAtVote ℓ e (s + 1) B)
-    (hall : ∀ x ∈ H, ∀ j e', SA.VoteAt tr x j e' → e'.msg.slot = s → SA.VoteExtends U e'.msg B)
-    (hcount : Hᶜ.ncard < {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg.slot = s}.ncard)
+    {SX W : Set (Fin sp.n)} (hSXH : SX ⊆ H)
+    (hSXv : ∀ x ∈ SX, ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg.slot = s)
+    (hall : ∀ x ∈ SX, ∀ j e', SA.VoteAt tr x j e' → e'.msg.slot = s → SA.VoteExtends U e'.msg B)
+    (hW : SA.voters (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes ⊆ W)
+    (hcount : W.ncard < 2 * SX.ncard)
     (hcarry : SA.CarryAt tr U y i e s
-      {v | ∃ x ∈ H, ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = s})
+      {v | ∃ x ∈ SX, ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = s})
     (hlocks : ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L B) :
     SA.VoteExtends U e.msg B := by
   have hr := hrun.localRun
@@ -163,15 +163,16 @@ theorem vote_extends_of_batch (hrun : SA.ACRun proposer tr H U)
     rcases hviab with h | h
     · exact h.1.1
     · exact SA.mem_of_anc h hΦ.fcRoot_mem
-  -- the honest voters of slot `s` are supporters of `B` at `y`
-  set SX : Set (Fin sp.n) := {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg.slot = s}
+  -- The selected honest batch supplies supporters of `B` at `y`.
   have hsupp : SX ⊆
       SA.supporters ℓ.frame (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s B := by
-    rintro w ⟨hw, j, e', hv, hvs⟩
+    intro w hwSX
+    have hw := hSXH hwSX
+    obtain ⟨j, e', hv, hvs⟩ := hSXv w hwSX
     obtain ⟨ℓw, hcw⟩ := id hv
     have hvw : e'.msg.val = w := (SA.castAt_spec hr hw hcw).1
-    have hmem : e'.msg ∈ {v | ∃ x ∈ H, ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = s} :=
-      ⟨w, hw, j, e', hv, rfl, hvs⟩
+    have hmem : e'.msg ∈ {v | ∃ x ∈ SX, ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = s} :=
+      ⟨w, hwSX, j, e', hv, rfl, hvs⟩
     -- `y` holds `e'.msg` itself (an honest validator has one slot-`s` vote)
     have hheld : SA.HeldBefore e.readPoint e'.msg (sp.ts s + 3 * sp.Δ) := by
       rcases hcarry.holds _ hmem with h | ⟨v₁, v₂, h12, h1, h2, hv₁, hv₂, hs₁, hs₂, hh₁, hh₂⟩
@@ -192,35 +193,60 @@ theorem vote_extends_of_batch (hrun : SA.ACRun proposer tr H U)
         exact h1 (he₁ ▸ this.2 ▸ rfl)
     obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads _ hmem
     obtain ⟨Hd, hHd, hHdr, hHds⟩ := SA.honest_head hrun hw hv
-    obtain ⟨Hd', hHd', hHd'r, hBHd'⟩ := hall w hw j e' hv hvs
+    obtain ⟨Hd', hHd', hHd'r, hBHd'⟩ := hall w hwSX j e' hv hvs
     have h1 : Hd = Hv := hU.1 hHd hHv (hHdr.trans hHvr.symm)
     have h2 : Hd' = Hv := hU.1 hHd' hHv (hHd'r.trans hHvr.symm)
     have := SA.carried_supporter hrun hy hc hs hBt hvs hheld
       ⟨Hv, hHv, hHvr, h1 ▸ hvs ▸ hHds, h2 ▸ hBHd', hacc Hv Relation.ReflTransGen.refl⟩
       (SA.honest_not_equivocator hrun hy hc (hvw ▸ hw))
     exact hvw ▸ this
-  -- counting: the voters at `y` are honest slot-`s` voters or faulty, and `f < |SX|`
-  have hvoters : SA.voters (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes ⊆
-      SX ∪ Hᶜ := by
-    rintro w ⟨v, hv, rfl⟩
-    by_cases hw : v.val ∈ H
-    · obtain ⟨j, -, e', hv', he'⟩ := SA.honest_merged_vote hrun hy hc hv hw
-      exact Or.inl ⟨hw, j, e', hv', by rw [he']; exact SA.merged_vote_slot hr hy hc v hv⟩
-    · exact Or.inr hw
-  have h3 : (SX ∪ Hᶜ).ncard < 2 * SX.ncard := by
-    have := Set.ncard_union_le SX Hᶜ
-    omega
   have hcore := SA.anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
     (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => hB.1) hdomA hviab
     hlocks fun X' Cx hCx hp hCxC =>
       SA.isBest_of_majority hΦ (SA.merged_support_subset hr hy hc (s + 1)) (fun B hB => hB.1.1)
-        hsupp hvoters h3 hCx hp hCxC
+        hsupp hW hcount hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = SA.getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
+
+/-- The full honest batch is a counted batch when it outnumbers the faulty seats. -/
+theorem vote_extends_of_batch (hrun : SA.ACRun proposer tr H U)
+    {s : Nat} {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {B : SA.Blk sp.n FGP}
+    (hviab : SA.ViableAtVote ℓ e (s + 1) B)
+    (hall : ∀ x ∈ H, ∀ j e', SA.VoteAt tr x j e' → e'.msg.slot = s → SA.VoteExtends U e'.msg B)
+    (hcount : Hᶜ.ncard < {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg.slot = s}.ncard)
+    (hcarry : SA.CarryAt tr U y i e s
+      {v | ∃ x ∈ H, ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = s})
+    (hlocks : ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L B) :
+    SA.VoteExtends U e.msg B := by
+  let SX : Set (Fin sp.n) := {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg.slot = s}
+  have hW : SA.voters (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes ⊆ SX ∪ Hᶜ := by
+    rintro w ⟨v, hv, rfl⟩
+    by_cases hw : v.val ∈ H
+    · obtain ⟨j, -, e', hv', he'⟩ := SA.honest_merged_vote hrun hy hc hv hw
+      exact Or.inl ⟨hw, j, e', hv', by
+        rw [he']; exact SA.merged_vote_slot hrun.localRun hy hc v hv⟩
+    · exact Or.inr hw
+  have hcount' : (SX ∪ Hᶜ).ncard < 2 * SX.ncard := by
+    have := Set.ncard_union_le SX Hᶜ
+    change Hᶜ.ncard < SX.ncard at hcount
+    omega
+  have hset : {v | ∃ x ∈ H, ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = s} =
+      {v | ∃ x ∈ SX, ∃ j e', SA.VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = s} := by
+    ext v
+    constructor
+    · rintro ⟨x, hx, j, e', hv, rfl, hs'⟩
+      exact ⟨x, ⟨hx, j, e', hv, hs'⟩, j, e', hv, rfl, hs'⟩
+    · rintro ⟨x, hx, j, e', hv, he, hs'⟩
+      exact ⟨x, hx.1, j, e', hv, he, hs'⟩
+  rw [hset] at hcarry
+  exact vote_extends_of_counted_batch hrun hy hc hs hviab (fun _ hx => hx.1)
+    (fun _ hx => hx.2) (fun x hx => hall x hx.1) hW hcount' hcarry hlocks
 
 end SA
 
