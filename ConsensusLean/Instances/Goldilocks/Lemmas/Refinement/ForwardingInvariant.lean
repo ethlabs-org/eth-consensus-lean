@@ -1047,4 +1047,57 @@ theorem proposal_acceptance_recording_handler {V : Type} [Fintype V] {E : Env V}
       simpa only [propose, hr, hself, Node.acProposal, heq] using ha
   · exact False.elim (List.not_mem_nil ha)
 
+/-- Own recording reconstructs a non-genesis canonical block with the engine digest.
+Unlike receipt decoding, own recording has no payload-validation guard. -/
+theorem recordOwn_canonical_block {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (st : State (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
+    (hpar : B.parent ≠ none) (hroot : B.RootOk (digestOf S rho)) :
+    recordOwn st (blockObj (S.params (pubOf E) hn) B)
+        (digests rho.hash (blockObj (S.params (pubOf E) hn) B)) =
+      apply st (Node.onBlock st.self st.node st.now B) := by
+  have hb : blockOf (S.params (pubOf E) hn)
+      (rho.hash (headerOf (S.params (pubOf E) hn) B))
+      (headerOf (S.params (pubOf E) hn) B) B.proposer B.fgPayload B.acPayload = B := by
+    obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.mp hpar
+    change B.root = digestOf S rho B.parent B.slot B.input B.fgPayload B.acPayload at hroot
+    simp only [digestOf, dgOf] at hroot
+    cases B
+    simp_all only [blockOf, headerOf, parentRoot_parentRef]
+  simp only [blockObj, recordOwn, headerOf, decodeInfo_encodeInfo]
+  erw [rootOf_digests_item]
+  exact congrArg (fun b => apply st (Node.onBlock st.self st.node st.now b)) hb
+
+/-- A released canonical proposal accepted by its actual proposal step enters the
+forward queue. Receipt-decoder validity is not a premise of this own-recording bridge. -/
+theorem dutyStep_propose_accepted_pending {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (hself : (shapeOf S hn nd).self = rho.ownKey v)
+    (B : Blk (S.params (pubOf E) hn))
+    (hpar : B.parent ≠ none) (hroot : B.RootOk (digestOf S rho))
+    (ho : blockObj (S.params (pubOf E) hn) B ∈ (rho.dutyStep v nd (.propose s hs)).2)
+    (hc : WrappersCover (propose (shapeOf S hn nd) s).1)
+    (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
+      (rho.ownKey v) (shapeOf S hn nd).node (shapeOf S hn nd).now
+      (encodeTxs nd.st.2) .proposal).2) :
+    ∃ p, forwardObj (S.params (pubOf E) hn) (shapeOf S hn nd).self
+      (shapeOf S hn nd).now p B ∈
+        pendingWrappers (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1) := by
+  obtain ⟨hsel, hcs⟩ := dutyStep_propose_candidate_eq S rho v nd s hs _ ho
+  have hrole : (protoOf (compiled (family S)) E).role (.propose s hs) = .proposer s := rfl
+  simp only [Model.Run.dutyStep, hrole, hsel, ↓reduceIte, hcs] at ho ⊢
+  rw [releaseAll_singleton_recorded _ _ _ _ _ ho]
+  change ∃ p, forwardObj (S.params (pubOf E) hn) (shapeOf S hn nd).self
+    (shapeOf S hn nd).now p B ∈ pendingWrappers
+      (recordOwn (((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn)
+        (blockObj _ B) (digests rho.hash (blockObj _ B)))
+  rw [shapeOf_act_propose S hn, recordOwn_canonical_block S rho hn _ B hpar hroot]
+  have hh := proposal_acceptance_recording_handler S rho hn v nd s hself B ha
+  obtain ⟨p, hp⟩ := onBlock_queues_acceptance _ B hc hh
+  refine ⟨p, ?_⟩
+  rw [pendingWrappers_eq, hp]
+  refine List.mem_map.mpr ⟨_, List.mem_append_right _ (List.mem_singleton_self _), ?_⟩
+  simp only [apply_self, propose_self, propose_now, forwardObj]
+
 end Consensus.Goldilocks.Refinement
