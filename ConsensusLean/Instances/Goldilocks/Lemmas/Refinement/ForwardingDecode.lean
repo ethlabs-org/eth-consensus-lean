@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingInvariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Provenance
 
 public section
 
@@ -381,5 +382,39 @@ theorem decoded_held_processOne {V : Type} [Fintype V] {E : Env V}
     · refine ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl ?_⟩
       simpa only [apply, Node.onAttestation] using congrArg Store.blocks he
   · exact ⟨hd, hh⟩
+
+/-- A complete parent-first receipt traversal preserves both wrapper invariants. -/
+theorem decoded_held_process {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (st : State (S.params (pubOf E) hn) (S.ro _))
+    (hd : WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (hh : WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (hc : WrappersCover st)
+    (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
+    (receipt : Wire (Fintype.card V)) (ht : 0 ≤ st.now) :
+    let st' := process st receipt (digests rho.hash receipt)
+    WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st' ∧
+    WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash) st' := by
+  have fold : ∀ (os : List (Wire (Fintype.card V))),
+      (∀ o ∈ os, Obj.Contains receipt o) → ∀ st,
+      WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st →
+      WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash) st →
+      WrappersCover st → st.node.fg.Reachable
+        (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload → 0 ≤ st.now →
+      WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash)
+        (os.foldl (processOne (digests rho.hash receipt)) st) ∧
+      WrappersHeld (digests (P := protoOf (compiled (family S)) E) rho.hash)
+        (os.foldl (processOne (digests rho.hash receipt)) st) := by
+    intro os
+    induction os with
+    | nil => exact fun _ _ hd hh _ _ _ => ⟨hd, hh⟩
+    | cons o os ih =>
+      intro ho st hd hh hc hr ht
+      have h := decoded_held_processOne S rho hn st hd hh hc hr receipt o
+        (ho o (List.mem_cons_self)) ht
+      exact ih (fun q hq => ho q (List.mem_cons_of_mem _ hq)) _ h.1 h.2
+        (wrappersCover_processOne _ _ _ hc) (processOne_reachable _ _ _ hr)
+        ((processOne_now (digests rho.hash receipt) st o).symm ▸ ht)
+  exact fold _ (fun _ ho => ho) st hd hh hc hr ht
 
 end Consensus.Goldilocks.Refinement

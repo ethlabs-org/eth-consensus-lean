@@ -69,7 +69,8 @@ private theorem recordOwn_record {sp : SA.SAParams} {ro : SA.ReplayOrder sp (Lis
     · rfl
   · rfl
 
-private theorem processOne_reachable {sp : SA.SAParams}
+/-- Every canonical receipt handler preserves FG-store reachability. -/
+theorem processOne_reachable {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     (hs : List (Header Info × Nat)) (st : State sp ro) (o : Wire sp.n)
     (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
