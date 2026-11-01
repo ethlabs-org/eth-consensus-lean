@@ -84,7 +84,7 @@ private theorem poll_candidate_vote_stamp (v : V)
     (ho : Model.Obj.mk (.signed (rho.ownKey v) .poll)
       (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.signedCandidate v (.poll u)
         ((Model.protoOf (compiled (family S)) E).act nd.st (.poll u)).2) :
-    ∃ q ∈ (shapeOf S hn nd).voteForwards, q.1 = t := by
+    ∃ q ∈ (shapeOf S hn nd).voteForwards, q.1 = t ∧ q.2 = m := by
   obtain ⟨body, cs, hm, _, he⟩ := rho.mem_signedCandidate.mp ho
   have hmsg := congrArg Model.Obj.msg he
   have hcar := congrArg Model.Obj.carried he
@@ -105,7 +105,10 @@ private theorem poll_candidate_vote_stamp (v : V)
       cases hmsg
   · obtain ⟨q, hq, heq⟩ := List.mem_map.mp hvote
     cases heq
-    exact ⟨q, hq, (Body.voteForward.inj (Model.Msg.data.inj hmsg)).1.symm⟩
+    have heq := Body.voteForward.inj (Model.Msg.data.inj hmsg)
+    have hm := congrArg (decodeVote (Fintype.card V)) heq.2
+    simp only [decodeVote_encodeVote] at hm
+    exact ⟨q, hq, heq.1.symm, Option.some.inj hm.symm⟩
 
 omit [DecidableEq V] in
 private theorem duty_vote_stamp (v : V)
@@ -118,8 +121,36 @@ private theorem duty_vote_stamp (v : V)
     t = u := by
   cases d with
   | poll n =>
-    obtain ⟨q, hq, ht⟩ := poll_candidate_vote_stamp S rho hn v nd n ho
+    obtain ⟨q, hq, ht, -⟩ := poll_candidate_vote_stamp S rho hn v nd n ho
     exact ht.symm.trans (hs.2 q hq)
+  | act s k => exact k.elim
+  | propose s hpos =>
+    obtain ⟨body, cs, _, _, he⟩ := rho.mem_signedCandidate.mp ho
+    have ha := congrArg Model.Obj.auth he
+    cases ha
+  | pollPropose n =>
+    have hempty : ((Model.protoOf (compiled (family S)) E).act nd.st (.pollPropose n)).2 = [] := by
+      simp only [Model.protoOf, compiled, compile, family, dite_eq_left hn, goldilocksShape]
+      rfl
+    obtain ⟨body, cs, hm, _, _⟩ := rho.mem_signedCandidate.mp ho
+    rw [hempty] at hm
+    cases hm
+
+omit [DecidableEq V] in
+private theorem duty_vote_pool (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (d : (Model.protoOf (compiled (family S)) E).Duty)
+    (hp : ∀ q ∈ (shapeOf S hn nd).voteForwards,
+      q.2 ∈ (shapeOf S hn nd).node.ac.pool q.2.slot)
+    {t : Time} {m : SA.Vote (Fintype.card V)}
+    (ho : Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈
+        rho.signedCandidate v d ((Model.protoOf (compiled (family S)) E).act nd.st d).2) :
+    m ∈ (shapeOf S hn nd).node.ac.pool m.slot := by
+  cases d with
+  | poll n =>
+    obtain ⟨q, hq, -, hqm⟩ := poll_candidate_vote_stamp S rho hn v nd n ho
+    exact hqm ▸ hp q hq
   | act s k => exact k.elim
   | propose s hpos =>
     obtain ⟨body, cs, _, _, he⟩ := rho.mem_signedCandidate.mp ho
@@ -153,6 +184,31 @@ private theorem dutyBatches_vote_stamp (v : V) (u : Time) :
     · exact ih _ (dutyStep_pres S rho hn (VoteQueueStamped u)
         (voteStamped_recordOwn u) (voteStamped_propose u) (voteStamped_nodeTick u)
         (voteStamped_poll u) v nd d hs) b hb t m ho
+
+private theorem dutyBatches_vote_pool (v : V) :
+    ∀ (ds : List (Model.protoOf (compiled (family S)) E).Duty)
+      (nd : Model.Node (Model.protoOf (compiled (family S)) E)),
+    (∀ q ∈ (shapeOf S hn nd).voteForwards,
+      q.2 ∈ (shapeOf S hn nd).node.ac.pool q.2.slot) →
+    ∀ b ∈ dutyBatches rho v nd ds, ∀ t (m : SA.Vote (Fintype.card V)),
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ b.candidates →
+      m ∈ (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool m.slot := by
+  intro ds
+  induction ds with
+  | nil => intro nd hp b hb; rw [dutyBatches_nil] at hb; cases hb
+  | cons d ds ih =>
+    intro nd hp b hb t m ho
+    rw [dutyBatches_cons] at hb
+    rw [rho.runDuties_cons]
+    rcases List.mem_cons.mp hb with rfl | hb
+    · have hm : m ∈ (shapeOf S hn nd).node.ac.pool m.slot := by
+        split at ho
+        · exact duty_vote_pool S rho hn v nd d hp ho
+        · cases ho
+      exact runDuties_pool_subset S rho hn v _ ds m.slot
+        (dutyStep_pool_subset S rho hn v nd d m.slot hm)
+    · exact ih _ (dutyStep_voteForward_in_pool S rho hn v nd d hp) b hb t m ho
 
 include hn in
 /-- Every released vote envelope carries the actual sending event's time, including
@@ -194,6 +250,49 @@ theorem released_voteForward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {
       intro q hq
       rw [voteForwards_empty S rho hn hv v i] at hq
       cases hq
+    · obtain rfl := List.mem_singleton.mp hb
+      exact False.elim (hg _ ho)
+
+include hn in
+/-- Every released vote envelope is backed by its sender's pool at the end of
+the sending event, for ticks as well as recursive deliveries. -/
+theorem released_voteForward_pool (hv : rho.ExecutionValid) {i : Nat} {v : V} {u t : Time}
+    (he : rho.SendsAt v i u) (m : SA.Vote (Fintype.card V))
+    (ho : Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.releasesAt i) :
+    m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot := by
+  obtain ⟨b, hb, ho⟩ := released_candidate_batch S rho he ho
+  have hg : ∀ nd, Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∉
+        Model.gossipCandidates (Model.protoOf (compiled (family S)) E) nd u := by
+    intro nd h
+    obtain ⟨mc, _, heq⟩ := Model.mem_gossipCandidates.mp h
+    have ha := congrArg Model.Obj.auth heq
+    cases ha
+  rcases he with he | ⟨receipt, he⟩
+  · rw [eventBatches_eq, he] at hb
+    simp only at hb
+    split at hb
+    · rename_i hawake
+      rcases List.mem_append.mp hb with hb | hb
+      · rw [stateAt_tick S rho hn v he]
+        simp only [Model.Run.tick, hawake, ↓reduceIte]
+        rw [gossip_node_eq]
+        apply dutyBatches_vote_pool S rho hn v _ _ ?_ b hb t m ho
+        intro q hq
+        change q ∈ (stateAt S rho hn v i).voteForwards at hq
+        rw [voteForwards_empty S rho hn hv v i] at hq
+        cases hq
+      · obtain rfl := List.mem_singleton.mp hb
+        exact False.elim (hg _ ho)
+    · cases hb
+  · rw [eventBatches_eq, he] at hb
+    rcases List.mem_append.mp hb with hb | hb
+    · rw [stateAt_deliver S rho hn v he]
+      simp only [Model.Run.deliver]
+      rw [gossip_node_eq]
+      apply dutyBatches_vote_pool S rho hn v _ _ ?_ b hb t m ho
+      exact delivery_voteForward_in_pool S rho hn hv v i receipt
     · obtain rfl := List.mem_singleton.mp hb
       exact False.elim (hg _ ho)
 
@@ -575,6 +674,27 @@ theorem admission_voteForward_first_of_release_pool (hv : rho.ExecutionValid)
   obtain ⟨c, hjc, hcj, hm⟩ := hpool j hji hj
   have hck := hcj.trans ((cutMap_mono S rho hn (Nat.succ_le_of_lt hji)).trans hlo)
   exact hf (pool_mono_through_same_time_send S rho hn hv hy hsend hs hjc hck hhi.le m.slot hm)
+
+/-- A fresh admission's exact signed envelope has no earlier release, even when
+the original vote signer is faulty. Event pool provenance discharges the supplier. -/
+theorem admission_voteForward_first (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
+    {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
+    (hs : rho.SendsAt (rho.key y) i t)
+    (hlo : cutMap S rho hn i ≤ k) (hhi : k < cutMap S rho hn (i + 1))
+    (hf : m ∉ ((simTrace S rho hn).state y k).ac.pool m.slot) :
+    ∀ j < i, Model.Obj.mk (.signed y .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∉ rho.releasesAt j := by
+  apply admission_voteForward_first_of_release_pool S rho hn hv hy hs hlo hhi hf
+  intro j _ hj
+  obtain ⟨u, hsend⟩ := voteForward_release_sender S rho hj
+  have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
+  have hm := released_voteForward_pool S rho hn hv hsend m (by simpa only [hkey] using hj)
+  have hjlen : j + 1 ≤ rho.events.length := by
+    rcases hsend with he | ⟨o, he⟩ <;>
+      exact Nat.succ_le_of_lt (List.getElem?_eq_some_iff.mp he).1
+  rw [simTrace_state S rho hn hv (rho.key y) hy (j + 1) hjlen, hkey] at hm
+  exact ⟨cutMap S rho hn (j + 1), cutMap_mono S rho hn (Nat.le_succ j), le_rfl, hm⟩
 
 /-- Every non-restart AC cut lies in a sending engine event of the same node and time.
 This is interval transport only; it does not assume the publication supplier. -/

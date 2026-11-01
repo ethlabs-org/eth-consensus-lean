@@ -449,7 +449,8 @@ private theorem nodeTick_pool_subset (st : State sp ro) (σ : Nat) :
   · exact SA.step_pool_subset st.self st.node.ac _ st.now .tick (by simp) σ
   · exact List.Subset.refl _
 
-private theorem poll_pool_eq (st : State sp ro) t :
+/-- Polling, including the due FG update, leaves vote pools unchanged. -/
+theorem poll_pool_eq (st : State sp ro) t :
     (poll st t).1.node.ac.pool = st.node.ac.pool := by
   have hp : (Node.acToFG st.node st.now).1.ac.pool = st.node.ac.pool := by
     change (SA.acToFG sp st.node.ac (frame st.node) st.now).1.pool = _
@@ -841,6 +842,32 @@ theorem runDuties_voteForward_in_pool (v : V)
       tv.2 ∈ (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool tv.2.slot := by
   exact runDuties_pres S rho hn QueuedInPool record_queuedInPool propose_queuedInPool
     nodeTick_queuedInPool (fun st t _ => poll_queuedInPool st t) v nd ds h
+
+omit [DecidableEq V] in
+/-- A single duty preserves queue backing, including its own released blocks. -/
+theorem dutyStep_voteForward_in_pool (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (d : (Model.protoOf (compiled (family S)) E).Duty)
+    (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
+      tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
+    ∀ tv ∈ (shapeOf S hn (rho.dutyStep v nd d).1).voteForwards,
+      tv.2 ∈ (shapeOf S hn (rho.dutyStep v nd d).1).node.ac.pool tv.2.slot := by
+  exact dutyStep_pres S rho hn QueuedInPool record_queuedInPool propose_queuedInPool
+    nodeTick_queuedInPool (fun st t _ => poll_queuedInPool st t) v nd d h
+
+omit [DecidableEq V] in
+/-- A single duty retains stored votes through its own-object release callbacks. -/
+theorem dutyStep_pool_subset (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (d : (Model.protoOf (compiled (family S)) E).Duty) (σ : Nat) :
+    (shapeOf S hn nd).node.ac.pool σ ⊆
+      (shapeOf S hn (rho.dutyStep v nd d).1).node.ac.pool σ := by
+  intro m hm
+  exact dutyStep_pres S rho hn (fun st => m ∈ st.node.ac.pool σ)
+    (fun st o hs h => record_pool_subset st o hs σ h)
+    (fun st s h => by rw [propose_pool_eq]; exact h)
+    (fun st h => nodeTick_pool_subset st σ h)
+    (fun st t h => by rw [poll_pool_eq]; exact h) v nd d hm
 
 omit [DecidableEq V] in
 /-- Duty execution never removes a stored vote; only restart replay can do so. -/
