@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 
 public section
 
@@ -16,6 +17,78 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+
+/-- Actual honest proposals are unique in honest frames at their positive slot.
+This uses no payload-support clause of `ReadyProposal`. -/
+theorem reset_proposal_frame_unique
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hu : 0 < u)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hcall : tr.projAC.CallAt y j ell) {Q : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hQ : Q ∈ ell.frame.tree) (hQu : Q.slot = u) : Q = P := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hr := hac.localRun
+  obtain ⟨-, -, -, -, -, -, -, -, -, -, -, hPprop, -, ja, -, hacc, -⟩ :=
+    honestProposalRun_of_ready hp.run hp.noColl hP
+  rw [← hP.2.1] at hPprop hacc
+  obtain ⟨ellp, hcp, hblock⟩ := hacc
+  have hPm := (SA.accept_new sp hr hP.1 ⟨ellp, hcp, hblock⟩).1 ellp hcp
+  have hQf : SA.HonestFrameBlock tr.projAC H Q := ⟨y, hy, j, ell, hcall, hQ⟩
+  have hroot : Q.root ≠ sp.genesisRoot := by
+    intro hg
+    have hG := Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hy j)
+    obtain rfl := hr.coherent.1 ((SA.frameIn_of_callAt hr hy hcall).2 hQ)
+      ⟨y, hy, j, hG⟩ hg
+    simp [Params.genesisBlock] at hQu
+    omega
+  exact (hac.honest.one_block P Q ⟨p, hP.1, ja, ellp, hcp, hPm⟩ hQf (hPprop ▸ hP.1)
+    (by rw [hPprop, hac.honest.proposer Q hQf hroot, hQu, hP.2.1])
+    (by rw [hP.2.2.2.2.1, hQu])).symm
+
+/-- Payload support is transported only above the receiver's `F`. Early votes use their
+actual readiness witness; deadline votes use guarded relay, not ready-proposal support. -/
+theorem reset_support_frame
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k (s + 1) P)
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hpay : P.acPayload = pay)
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
+    (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    {v : SA.Vote sp.n} (hv : v ∈ pay.2) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB : B ∈ ellp.frame.tree) (hBr : B.root = v.head)
+    (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
+  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
+  · obtain ⟨Q, hQ, hQs, hsup⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)
+    rw [hes] at hQs hsup
+    obtain rfl := reset_proposal_frame_unique hp hP (by omega) hy hcy.1 hQ hQs
+    have hslot : sp.slot (tr.time i) = s + 1 := by
+      rw [hti]; exact SA.slot_of_mem sp _ le_rfl ((SA.ts_lt_iff sp).mpr (by omega))
+    have hpay' : pay = SA.voteViewList (tr.projAC.state p i) ellp.frame (s : Int) ⊤ := by
+      unfold SA.acProposal at hd
+      split_ifs at hd
+      simp only [Option.some.injEq, Prod.mk.injEq] at hd
+      rw [← hd.2, hslot]
+      congr 1
+      push_cast
+      ring
+    have hvs : v.slot + 1 = s + 1 := by
+      rw [hpay'] at hv
+      simp only [SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
+        List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
+        Bool.and_eq_true, decide_eq_true_eq] at hv
+      rw [SA.state_pool_slot sp hr hP.1 i s v hv.1]
+    obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
+    rwa [hr.coherent.1 ((SA.frameIn_of_callAt hr hP.1 hci).2 hB)
+      ((SA.frameIn_of_callAt hr hy hcy.1).2 hB') (hBr.trans hBr'.symm)]
+  · exact reset_frame_relay hp hc hP.1 hy hci hcy.1 hB hg
+      (by rw [hti]; exact not_lt.mp hearly) hF
 
 /-- **The joined duty, unanimity** (§23; phase-service §10, "Join with RN/RU"): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
