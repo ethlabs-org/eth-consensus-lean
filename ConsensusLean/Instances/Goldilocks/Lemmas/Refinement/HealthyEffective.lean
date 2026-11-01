@@ -2326,6 +2326,28 @@ theorem report_cover_of_unanimous {b : Time}
     (by rw [hsl]; have := sp.two_le_k; omega) (by rw [hsl]; omega)
   exact ⟨r, e, R, hr, ht.trans hnexttime.le, hPR⟩
 
+/-- Operational C2 discharges the unanimous-vote input of finite report coverage. -/
+theorem report_cover_of_proposal {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hPg : P.root ≠ sp.genesisRoot)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts u)
+    (hTb : sp.ts u + 6 * sp.Δ ≤ b) :
+    (∀ y ∈ H, ∃ r e R, SA.ToFGAt tr.projAC y r e R ∧
+      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P R) ∨
+    (∃ x ∈ H, ∃ r e C, SA.ToFGAt tr.projAC x r e C ∧
+      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h) := by
+  have hun := hp.operational_unanimous hc hpH hdesignated hactual hslot hR
+    (show sp.ts u ≤ b by linarith [sp.toParams.hΔ])
+  exact report_cover_of_unanimous hp hc hP hslot hu hPg
+    (fun y hy j e hv hjb hs => hun y hy j e hv hs hjb) hgu
+    (hR.trans ((SA.ts_le_iff sp).2 (by push_cast; omega))) hTb
+
 end UpTo
 
 end CoveredEndpoint
