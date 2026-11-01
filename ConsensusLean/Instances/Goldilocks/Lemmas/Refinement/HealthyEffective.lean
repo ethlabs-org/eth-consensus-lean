@@ -1342,6 +1342,68 @@ theorem ready_update_of_proposal_floor_bound
   exact (Healing.crossing_below_proposal_parent hp hc hP hR hci hcall hd hti hPQ ho ht
     (.refl)).trans (.single ⟨hPhiU hhead, hPU, hPQ⟩)
 
+/-- Ready report coverage with only the below-floor report duty left explicit.
+The actual proposal supplies old-origin domination; healthy service supplies every
+reader's deadline update, and finality compatibility is derived at that cut. -/
+theorem report_cover_of_ready_floor_duty
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : Healing.ReadyProposal tr H proposer p k u P)
+    (hPU : P ∈ tr.HonestBlocks H) (hu : 0 < u)
+    (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {i : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (SA.Payload sp.n)} {pay : SA.Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
+    (hduty : ∀ z ∈ H, ∀ j ell, SA.UpdateAt tr.projAC z j u ell →
+      Anc (tr.HonestBlocks H) ell.frame.F P →
+        ∃ r ell' C, SA.ToFGAt tr.projAC z r ell' C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+          Anc (tr.HonestBlocks H) P C) :
+    (∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧
+      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C) ∨
+    ∃ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧
+      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hS.run.localRun hP.1 hci
+  obtain ⟨hst, hsh⟩ := Compose.acProposal_start_anc_head hPhi hd
+  have hhead : d.head ∈ ellp.frame.tree := by
+    rcases eq_or_ne d.start d.head with he | he
+    · exact he ▸ hst
+    · exact (Anc.mem hsh he).2
+  have hold : ∀ x r b B, Healing.HighOrigin tr H g x r b B → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) B P := by
+    intro x r b B ho ht
+    exact (Healing.crossing_below_proposal_parent hp hc hP hR hci hcall hd hti hPQ ho ht
+      (.refl)).trans (.single ⟨hPhiU hhead, hPU, hPQ⟩)
+  have hau : a ≤ sp.ts u := by
+    have ha0 : 0 ≤ a := by
+      linarith [Healing.cutZ_lt_reset hp.run hp.healthy hp.reset,
+        Healing.lt_cutZ sp g, SA.gbar_nonneg g, sp.toParams.hΔ]
+    have hnext : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
+      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+      omega
+    have hnextR : sp.ts ((sp.slot a : Int) + 1) ≤ Healing.drainTime sp a := by
+      rw [Healing.drainTime_eq]
+      exact (SA.ts_le_iff sp).2 (by push_cast; omega)
+    exact hnext.le.trans (hnextR.trans hR)
+  apply Healing.report_cover_of_compatible_floors hp
+  intro z hz
+  obtain ⟨j, ell, ell', hupd, _, _, _, _, _⟩ :=
+    Healing.reset_update_toFG_calls hp hc hz (u := u) (by linarith [sp.toParams.hΔ])
+  have ht : tr.time j = sp.ts u + 6 * sp.Δ := hupd.2.2.1
+  refine ⟨j, ht.le, ?_, ?_⟩
+  · exact finalized_compatible_before_update hp hc hPU hP.2.2.2.2.1 hu
+      (Healing.ready_unanimous hp hc hP hR) hgu
+      (hR.trans ((SA.ts_le_iff sp).2 (by omega))) hold hz
+      (by rw [ht]; linarith [sp.toParams.hΔ]) ht.le
+  · intro hF
+    apply hduty z hz j ell hupd
+    rw [Compose.frame_of_projAC hp.run hz hupd.1]
+    exact hF
+
 end CoveredEndpoint
 
 end Consensus.Goldilocks.Refinement
