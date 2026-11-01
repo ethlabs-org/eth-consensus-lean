@@ -148,6 +148,46 @@ theorem lock_keep_global (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
   exact ⟨B, Or.inl (SA.mem_readPoint_liveLockBlocks_of_keep hr hxH hc hl hk hBk (hBr _ hxH) hva
     (Or.inr hu')), Relation.ReflTransGen.refl⟩
 
+/-- **Locks on `B` from slot `s₀ − 1` on: no early-read premise.** As `lock_keep_global` from
+`i₀`, with `hearly` replaced by premises on the cuts `k ≤ i₀` with
+`slot(t_{i₀}) ≤ slot(t_k) + 1`: each honest `x` holds `lk x` there and, for `k < N`, the
+per-cut premises of `hcut` hold; the lock is of slot at least `slot(t_{i₀}) − 1`
+(`hlslot`), so `unlock` at the casts before `i₀` (of slot `≤ slot(t_{i₀})`) cannot drop it. -/
+theorem lock_keep_global_slot (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) {B : SA.Blk sp.n (List (FG.Att sp.n))} {i₀ N : Nat}
+    (lk : Fin sp.n → SA.Lock) (hBr : ∀ x ∈ H, B.root = (lk x).block)
+    (hlslot : ∀ x ∈ H, sp.slot (tr.time i₀) ≤ (lk x).slot + 1)
+    (hhold : ∀ x ∈ H, ∀ k ≤ i₀, sp.slot (tr.time i₀) ≤ sp.slot (tr.time k) + 1 →
+      lk x ∈ (tr.state x k).ac.locks)
+    (hcut : ∀ x ∈ H, ∀ j, sp.slot (tr.time i₀) ≤ sp.slot (tr.time j) + 1 → j < N →
+      sp.slot (tr.time j) ≤ (lk x).slot + sp.k ∧
+      B ∈ (tr.state x j).fg.toFrame.tree ∧ FrameKeeps tr x j B) :
+    ∀ j, i₀ ≤ j → j ≤ N → ∀ x ∈ H,
+      lk x ∈ (tr.state x j).ac.locks ∧ (j < N → UnlockKeeps tr x j B) := by
+  intro j hij hjN
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hmono : ∀ {a b}, a ≤ b → sp.slot (tr.time a) ≤ sp.slot (tr.time b) := fun h =>
+    SA.slot_mono sp (hrun.time_nonneg _) (hrun.time_mono h)
+  refine lock_keep_global hrun hnc hf lk (fun x hx => hhold x hx i₀ le_rfl (by omega)) hBr
+    (fun x hx j hj hjN => hcut x hx j (by have := hmono hj; omega) hjN) ?_ j hij hjN
+  intro x hx k hki hsk ℓ' e hc
+  have hsk' := hmono hki.le
+  obtain ⟨hk, hBk, hcK⟩ := hcut x hx k hsk (by omega)
+  have hl := hhold x hx k hki.le hsk
+  have hcall : tr.CallAt x k (.ac ℓ') := projAC_callAt.1 hc.1
+  have hfr : ℓ'.frame = Node.frame (tr.state x k) := (hrun.cutLaw _ hx k _ hcall).1
+  have hva : ℓ'.frame.viableAncestor B = B := by
+    rw [hfr]
+    exact viableAncestor_eq_self_run hrun hx k hBk hcK
+  replace hBk : B ∈ ℓ'.frame.tree := by
+    rw [hfr]
+    exact hBk
+  rw [← projAC_state hrun.toLocalRun hx] at hl
+  have hls := hlslot x hx
+  have htk : (tr.projAC).time k = tr.time k := rfl
+  exact ⟨B, Or.inl (SA.mem_readPoint_liveLockBlocks_of_keep hr hx hc hl hk hBk (hBr x hx) hva
+    (Or.inl (by rw [htk]; omega))), Relation.ReflTransGen.refl⟩
+
 end Consensus.Goldilocks.Compose
 
 end
