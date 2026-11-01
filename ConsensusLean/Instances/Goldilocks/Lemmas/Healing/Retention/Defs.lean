@@ -105,6 +105,41 @@ theorem ResetPremises.toUpTo {proposer : Nat → Fin sp.n}
     hp.healthy.2.2, hp.reset, hab, Nat.find hex, hfirst, hkb⟩
   exact hp.healthy.1
 
+/-- Bounded wakefulness supplies an actual frontier snapshot by `b` when the tick
+at `c_z + Δ` fits. No continuation or calls beyond `b` are assumed. -/
+theorem cutZ_snapshot_of_awake_before {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g b : Time}
+    (hrun : GoldilocksRun proposer dg H tr)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hfaults : 3 * Hᶜ.ncard ≤ sp.n - 1)
+    (hbudget : cutZ sp.toParams g + sp.Δ ≤ b) :
+    ∃ k, FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ b := by
+  classical
+  have hH : H.Nonempty := by
+    by_contra h
+    rw [Set.not_nonempty_iff_eq_empty] at h
+    rw [h, Set.compl_empty, Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hfaults
+    have hn : 0 < sp.n := sp.toParams.hn
+    change 3 * sp.n ≤ sp.n - 1 at hfaults
+    omega
+  obtain ⟨y, hy⟩ := hH
+  have hΔ := sp.toParams.hΔ
+  have hgt : gbar g ≤ cutZ sp.toParams g + sp.Δ := by
+    have := lt_cutZ sp g
+    linarith
+  obtain ⟨j, _, hne, hcs, _⟩ := hrun.tick_of_awake y hy
+    (cutZ sp.toParams g + sp.Δ) ((gbar_nonneg g).trans hgt)
+    ⟨4 * ((sp.slot (gbar g) + 3 : Nat) : Int) + 1, by
+      rw [cutZ_eq]; simp only [SAParams.ts]; ring⟩
+    (hawake y hy _ hgt hbudget)
+  obtain ⟨_, ht, _, _, _⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
+  simp only [Nat.add_zero] at ht
+  have hj : cutZ sp.toParams g < tr.time j := by linarith
+  have hex : ∃ k, cutZ sp.toParams g < tr.time k := ⟨j, hj⟩
+  exact ⟨Nat.find hex,
+    ⟨fun k hk => not_lt.1 (Nat.find_min hex hk), Nat.find_spec hex⟩,
+    (hrun.time_mono (Nat.find_min' hex hj)).trans (ht ▸ hbudget)⟩
+
 /-- (R3) at the honest votes cast at cut `k`, for every high origin `(B, j)` of the run: a vote
 of a slot `> j` extends `B`, and at that vote `B` is in the viable voter block tree or
 `B ⪯ fc_root` (in the honest blocks). -/
