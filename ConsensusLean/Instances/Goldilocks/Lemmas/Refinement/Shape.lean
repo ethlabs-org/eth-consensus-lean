@@ -616,6 +616,32 @@ theorem foldl_processOne_now hs (os : List (Wire sp.n)) (st : State sp ro) :
   induction os generalizing st with
   | nil => rfl
   | cons o os ih => simp [List.foldl_cons, ih, processOne_now]
+
+/-- A fresh block-payload admission at a delivery prefix remains queued after all
+later objects, whether or not the accepted block itself needs unsigned relay. -/
+theorem process_block_voteForward (st : State sp ro) (o c : Wire sp.n) hs
+    (pre post : List (Wire sp.n)) (B : Blk sp) (m : Vote sp.n)
+    (hparts : delivered sp o = pre ++ c :: post)
+    (hcanon : canonEvent sp ro hs c = some (.block B))
+    (hm : m ∈ SA.blockVotes B) (ht : ¬ sp.slot st.now < B.slot)
+    (fg' : Store sp.toParams (Payload sp.n))
+    (hfg : (pre.foldl (processOne hs) st).node.fg.onBlock B = some fg')
+    (hold : m ∉ (pre.foldl (processOne hs) st).node.ac.pool m.slot)
+    (hnew : m ∈ (Node.onBlock (pre.foldl (processOne hs) st).self
+      (pre.foldl (processOne hs) st).node st.now B).1.ac.pool m.slot) :
+    (st.now, m) ∈ (process st o hs).voteForwards := by
+  have hnow := foldl_processOne_now hs pre st
+  have hq := onBlock_voteForward (pre.foldl (processOne hs) st) B m hm
+    (by simpa only [hnow] using ht) fg' hfg hold
+    (by simpa only [hnow] using hnew)
+  rw [hnow] at hq
+  unfold process
+  rw [hparts, List.foldl_append, List.foldl_cons]
+  apply foldl_processOne_voteForwards_subset hs post _
+  simp only [processOne, hcanon]
+  unfold relayIf
+  split <;> simpa only [hnow] using hq
+
 /-- Processing a list of delivered objects keeps the FG-due flag. -/
 theorem foldl_processOne_fgDue hs (os : List (Wire sp.n)) (st : State sp ro) :
     (os.foldl (processOne hs) st).fgDue = st.fgDue := by

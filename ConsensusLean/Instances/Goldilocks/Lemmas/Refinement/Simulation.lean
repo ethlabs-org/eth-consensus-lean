@@ -213,6 +213,36 @@ theorem delivery_message_admission_released (hv : rho.ExecutionValid) {v : V}
     (Model.digests rho.hash o) pre post m hparts hold (by simpa only [hnow] using hnew)
   simpa only [hnow] using hq
 
+/-- A freshly admitted block-payload vote is released during that delivery, not just
+queued. The canonical block and the actual handler prefix remain explicit. -/
+theorem delivery_block_admission_released (hv : rho.ExecutionValid) {v : V}
+    {i : Nat} {o : (Model.protoOf (compiled (family S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t))
+    (c : Wire (Fintype.card V)) (pre post : List (Wire (Fintype.card V)))
+    (B : Blk (S.params (pubOf E) hn)) (m : SA.Vote (Fintype.card V))
+    (hparts : delivered (S.params (pubOf E) hn) o = pre ++ c :: post)
+    (hcanon : canonEvent (S.params (pubOf E) hn) (S.ro _) (Model.digests rho.hash o) c =
+      some (.block B))
+    (hm : m ∈ SA.blockVotes B) (ht : ¬ (S.params (pubOf E) hn).slot t < B.slot)
+    (fg' : Store (S.params (pubOf E) hn).toParams (SA.Payload (Fintype.card V)))
+    (hfg : (pre.foldl (processOne (Model.digests rho.hash o))
+      (stateAt S rho hn v i)).node.fg.onBlock B = some fg')
+    (hold : m ∉ (pre.foldl (processOne (Model.digests rho.hash o))
+      (stateAt S rho hn v i)).node.ac.pool m.slot)
+    (hnew : m ∈ (Node.onBlock
+      (pre.foldl (processOne (Model.digests rho.hash o)) (stateAt S rho hn v i)).self
+      (pre.foldl (processOne (Model.digests rho.hash o)) (stateAt S rho hn v i)).node
+      t B).1.ac.pool m.slot) :
+    Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.releasesAt i := by
+  have hnow : (stateAt S rho hn v i).now = t :=
+    (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
+  apply delivery_voteForward_released S rho hn hv he (t, m)
+  have hq := process_block_voteForward (stateAt S rho hn v i) o c
+    (Model.digests rho.hash o) pre post B m hparts hcanon hm
+    (by simpa only [hnow] using ht) fg' hfg hold (by simpa only [hnow] using hnew)
+  simpa only [hnow] using hq
+
 /-- An honest emission cut cannot be a restart, even though `EmitAt` permits that call
 syntactically. This uses the actual cut law and the run's nonnegative clock. -/
 theorem simTrace_emission_not_restart (hv : rho.ExecutionValid)
