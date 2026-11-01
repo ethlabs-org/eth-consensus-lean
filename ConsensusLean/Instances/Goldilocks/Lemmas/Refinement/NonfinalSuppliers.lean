@@ -151,18 +151,18 @@ structure ConfirmedProducerSlot (Q : ConfirmedQuery S A V) where
   ready : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration
     (runProposer S Q.run.2 Q.hn slot) (Q.params.ts slot)
 
-set_option linter.unusedVariables false in
-/-- Recurrence/grid selection at exact cDur, using the joint latency lower bound. -/
-theorem sleepy_query_slot (Q : ConfirmedQuery S A V)
-    (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run)
+/-- Recurrence/grid selection after an explicit readiness start, at exact cDur.
+No healthy or sleepy run premise is needed; the joint latency lower bound remains a dependency. -/
+theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
     (hprogress : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A)
-      Q.cap Q.index 0 Q.run.2.horizon Q.run)
-    (hquery : 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlot S A V Q) := by
+      Q.cap Q.index ready Q.run.2.horizon Q.run)
+    (hquery : max ready 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlot S A V Q) := by
   classical
+  have hquery0 : 0 ≤ Q.query := (le_max_right ready 0).trans hquery
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) (family S (Model.pubOf Q.run.1)).skel.grid
-      ⟨Pattern.single, Q.index⟩ Q.duration 0 Q.run.2.horizon := by
+      ⟨Pattern.single, Q.index⟩ Q.duration ready Q.run.2.horizon := by
     simpa only [System.prog, shapeProgress, shapeHolds, acceptanceContract, ite_eq_right hcap,
       Model.sysExternal, ConfirmedQuery.duration, System.cDur, System.pt, Sys,
       Model.sysOf, Model.Run.point]
@@ -201,7 +201,7 @@ theorem sleepy_query_slot (Q : ConfirmedQuery S A V)
     exact Finset.min'_mem _ _
   have hR := hready.2 _ hmem
   rw [htime] at hR
-  have hnode := ready_transport S Q.run.2 Q.hn Q.valid (hquery.trans hlo.le)
+  have hnode := ready_transport S Q.run.2 Q.hn Q.valid (hquery0.trans hlo.le)
     ((le_add_of_nonneg_right (by positivity : 0 ≤ 6 * Q.params.Δ)).trans
       (hmargin.trans Q.bounded)) hR
   rw [show Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn s)) =
@@ -211,6 +211,15 @@ theorem sleepy_query_slot (Q : ConfirmedQuery S A V)
   cases s with
   | zero => simp [SA.SAParams.ts] at hlo; linarith
   | succ s => exact Nat.succ_pos s
+
+set_option linter.unusedVariables false in
+/-- Recurrence/grid selection at exact cDur, using the joint latency lower bound. -/
+theorem sleepy_query_slot (Q : ConfirmedQuery S A V)
+    (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run)
+    (hprogress : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A)
+      Q.cap Q.index 0 Q.run.2.horizon Q.run)
+    (hquery : 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlot S A V Q) :=
+  healthy_query_slot S A V Q hprogress (by simpa using hquery)
 
 /-- Selected eligible slot to actual canonical proposal event. Acceptance is
 not assumed here: the existing own-proposal acceptance theorem supplies it.
