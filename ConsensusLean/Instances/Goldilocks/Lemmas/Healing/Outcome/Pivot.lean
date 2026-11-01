@@ -1968,6 +1968,45 @@ private theorem reset_vote_anchor (hp : ResetPremises tr H proposer dg g ΔF a)
         exact Set.mem_insert _ _
       exact Or.inr ⟨h, haQ.trans (Relation.ReflTransGen.single ⟨hQU, hPU, hPQ⟩), hPU⟩
 
+/-- A held block extending every pre-slot origin reaches the voter's height floor. -/
+theorem reset_vote_floor_above_old
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.tree)
+    (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) O B) :
+    (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hy j
+  obtain ⟨v₀, r₀, l₀, O₀, ho₀, -, hr₀⟩ := reset_seed hp
+  have hBh := high_of_anc hp ho₀ hy hB
+    (hBold v₀ r₀ l₀ O₀ ho₀ (hr₀.trans_lt (reset_lt_ts hp hR)))
+  have hnc := no_high_contest hp hy j
+  by_contra hle
+  have hfloor := lt_of_not_ge hle
+  have hcon : ¬ (tr.state y j).fg.Contest := fun hcon => by
+    unfold Store.headHeightFloor at hfloor
+    simp only [hcon, ↓reduceIte] at hfloor
+    exact hnc ⟨hcon, by omega⟩
+  have hfl : (tr.state y j).fg.headHeightFloor = (tr.state y j).fg.hmax - 1 := by
+    unfold Store.headHeightFloor
+    simp only [hcon, ↓reduceIte]
+  rw [hfl] at hfloor
+  obtain ⟨-, -, -, -, -, ⟨C, hC, hCh⟩, -⟩ := Store.cache_invariants _ _ _ _ hreach
+  obtain ⟨E, hE, hEC, hEh, hET⟩ :=
+    entry_at_height hreach hC (h := (tr.state y j).fg.hmax - 1) (by omega) (by omega)
+  obtain ⟨W, hW, att, ha, v, hv, d, hdj, hs, -, r, hrd, l, O, ho, hEO⟩ :=
+    left_entry_origin hp hy hE hET (by omega) hEC (by omega)
+  have hlu : l < u := hes ▸ row_origin_label_lt hp hy hc hW ha hv hs hdj hrd ho
+  obtain ⟨-, D, CV, -, hf, -⟩ := highOrigin_mem hp ho
+  have hrt : tr.time r < sp.ts u := fastLock_time_lt hp hf hlu
+    ((hp.run.time_mono (by omega)).trans (hes ▸ (Compose.cast_head_fcRoot hr hy hc).2))
+  have hEB := hEO.trans (hBold v r l O ho hrt)
+  have := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy hEB hB)
+  omega
+
 /-- Before the first disagreeing vote, the voter root is below the actual proposal. -/
 theorem reset_vote_root_below_proposal
     (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
