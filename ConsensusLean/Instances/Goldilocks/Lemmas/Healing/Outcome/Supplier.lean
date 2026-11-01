@@ -364,6 +364,84 @@ theorem reset_proposal_frame_unique
     (by rw [hPprop, hac.honest.proposer Q hQf hroot, hQu, hP.2.1])
     (by rw [hP.2.2.2.2.1, hQu])).symm
 
+/-- Actual proposal uniqueness in a bounded run needs no readiness/support predicate. -/
+theorem ResetPremisesUpTo.reset_proposal_frame_unique {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
+    (hPs : P.slot = u) (hu : 0 < u)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hcall : tr.projAC.CallAt y j ell) {Q : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hQ : Q ∈ ell.frame.tree) (hQu : Q.slot = u) : Q = P := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  have hr := hac.localRun
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, hPprop, _, ja, _, hacc, _⟩ :=
+    honestProposalRun_of_proposesAt hp.run hp.noColl hpH hdesignated hactual hPs
+  rw [← hdesignated] at hPprop hacc
+  obtain ⟨ellp, hcp, hblock⟩ := hacc
+  have hPm := (SA.accept_new sp hr hpH ⟨ellp, hcp, hblock⟩).1 ellp hcp
+  have hQf : SA.HonestFrameBlock tr.projAC H Q := ⟨y, hy, j, ell, hcall, hQ⟩
+  have hroot : Q.root ≠ sp.genesisRoot := by
+    intro hg
+    have hG := Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hy j)
+    obtain rfl := hr.coherent.1 ((SA.frameIn_of_callAt hr hy hcall).2 hQ)
+      ⟨y, hy, j, hG⟩ hg
+    simp [Params.genesisBlock] at hQu
+    omega
+  exact (hac.honest.one_block P Q ⟨p, hpH, ja, ellp, hcp, hPm⟩ hQf (hPprop ▸ hpH)
+    (by rw [hPprop, hac.honest.proposer Q hQf hroot, hQu, hdesignated])
+    (by rw [hPs, hQu])).symm
+
+/-- Finite guarded acceptance transport uses the causal reset restart bound. -/
+theorem ResetPremisesUpTo.reset_accept_frame {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ha : tr.projAC.AcceptAt x q B)
+    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y j ell)
+    (hjb : tr.time j ≤ b) (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
+    (hq : tr.time q + sp.Δ ≤ tr.time j)
+    (hF : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ ell.frame.tree := by
+  have hS := healthy_base_of_reset_catch_before hp hc
+  have hr := hS.run.localRun
+  by_cases hnew : SA.gbar g ≤ tr.time q
+  · have hd := deadline_le_restarts (T := tr.projAC) (c := j)
+      (fun k hkj hk => restart_le_before hp hy (Compose.projAC_restartAt.mp hk)
+        ((hp.run.time_mono hkj).trans hjb)) (tr.time q)
+    have hdl : tr.projAC.deadline y j (tr.time q) ≤ tr.time j := by
+      apply hd.trans
+      change max (tr.time q) (sp.ts (sp.slot (SA.gbar g) + 1 : Nat)) + sp.Δ ≤ tr.time j
+      rw [← max_add_add_right]
+      exact max_le hq hjoin
+    obtain ⟨k, hkj, hak, _⟩ := hS.sync.relay
+      x hx q B ha hnew y hy j ell hcall (hdl.trans hjb) hdl hF
+    exact SA.mem_tree_of_acceptAt sp hr hy hak hkj hcall hF
+  · obtain ⟨k, hkj, hak, _⟩ := hS.catchUp.relay x hx q B ha (not_le.mp hnew)
+      y hy j ell hcall hg hjb hF
+    exact SA.mem_tree_of_acceptAt sp hr hy hak hkj hcall hF
+
+/-- Finite relay of held blocks retains the receiver's finalization guard. -/
+theorem ResetPremisesUpTo.reset_frame_relay {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
+    {ellx elly : ACLabel (goldilocksNode sp ro)}
+    (hcx : tr.projAC.CallAt x q ellx) (hcy : tr.projAC.CallAt y j elly)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ellx.frame.tree)
+    (hjb : tr.time j ≤ b) (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
+    (hq : tr.time q + sp.Δ ≤ tr.time j)
+    (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
+  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  rcases Compose.frame_anc_accepted hr hx q ellx hcx B hB B .refl with hgen | ⟨k, hk, ha⟩
+  · obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy j elly hcy
+    obtain rfl : B = G := hr.coherent.1 ((SA.frameIn_of_callAt hr hx hcx).2 hB)
+      hGU (hgen.trans hGr.symm)
+    rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩
+    · exact he ▸ (SA.frameIn_of_callAt hr hy hcy).1.rooted.1
+    · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
+  · exact hp.reset_accept_frame hc hx hy ha hcy hjb hg hjoin
+      (by have := hp.run.time_mono hk; change tr.time k ≤ tr.time q at this; linarith) hF
+
 /-- The actual proposal reaches a voter's frame above its finalization root. -/
 theorem reset_proposal_frame
     (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
@@ -382,6 +460,28 @@ theorem reset_proposal_frame
       honestProposalRun_of_ready hp.run hp.noColl hP
     rw [← hP.2.1] at hacc
     exact reset_accept_frame hp hc hP.1 hy hacc hcy.1 hg
+      (by change tr.time ja = sp.ts u at hta; rw [hta]; exact not_lt.mp hearly) hF
+
+/-- Bounded actual casts hold the operational proposal above their finalized root. -/
+theorem ResetPremisesUpTo.reset_proposal_frame {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k j u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
+    (hPs : P.slot = u) (hu : 0 < u)
+    (hy : y ∈ H) {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
+    (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
+    (hF : Anc (tr.HonestBlocks H) ell.frame.F P) : P ∈ ell.frame.tree := by
+  have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
+  by_cases hearly : tr.time j < sp.ts u + sp.Δ
+  · obtain ⟨Q, hQ, hQs, _⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)
+    rw [hes] at hQs
+    exact (hp.reset_proposal_frame_unique hpH hdesignated hactual hPs hu hy hcy.1 hQ hQs) ▸ hQ
+  · obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, ja, _, hacc, hta⟩ :=
+      honestProposalRun_of_proposesAt hp.run hp.noColl hpH hdesignated hactual hPs
+    rw [← hdesignated] at hacc
+    exact hp.reset_accept_frame hc hpH hy hacc hcy.1 hjb hg hjoin
       (by change tr.time ja = sp.ts u at hta; rw [hta]; exact not_lt.mp hearly) hF
 
 /-- Payload support is transported only above the receiver's `F`. Early votes use their
