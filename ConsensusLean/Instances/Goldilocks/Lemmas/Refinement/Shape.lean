@@ -250,6 +250,52 @@ theorem forwardParent_forwardObj (origin : Fin sp.n) (t : Time)
     forwardParent? (forwardObj sp origin t parent B) = parent := by
   cases parent <;> rfl
 
+/-- A forwarding wrapper passes the dependency guard once its exact carried objects
+are held. Nested dependencies are already contained in those held objects. -/
+theorem dependencies_forwardObj (seen : List (Wire sp.n)) (origin : Fin sp.n) (t : Time)
+    (parent : Option (Wire sp.n)) (B : Blk sp)
+    (h : ∀ c ∈ parent.toList ++ [blockObj sp B], c ∈ seen.flatMap Model.Obj.parts) :
+    (dependencies sp.n).ready (seen.flatMap Model.Obj.parts)
+      (forwardObj sp origin t parent B) = true := by
+  classical
+  have htail := dependencies_relay seen (parent.toList ++ [blockObj sp B]) h
+  simp only [dependencies, Model.Obj.parts, List.all_cons,
+    Model.Obj.partsList_eq] at htail
+  simp only [show forwardParent? (.mk .none (.data .relay)
+    (parent.toList ++ [blockObj sp B])) = none from rfl, Bool.true_and] at htail
+  have hparts : (forwardObj sp origin t parent B).parts =
+      forwardObj sp origin t parent B ::
+        (parent.toList ++ [blockObj sp B]).flatMap Model.Obj.parts := by
+    simp only [forwardObj, Model.Obj.parts, Model.Obj.partsList_eq]
+  simp only [dependencies, hparts, List.all_cons, forwardParent_forwardObj, Bool.and_eq_true]
+  constructor
+  · cases parent with
+    | none => rfl
+    | some p => exact decide_eq_true (h p (by simp))
+  · exact htail
+
+/-- Exact held parent and child suffice for all three forwarding release guards.
+The remaining completeness obligation is to establish these holdings at each actual prefix. -/
+theorem forwardObj_release_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (hn : 1 ≤ Fintype.card V) (seen : List (Wire (Fintype.card V)))
+    (x : Fin (Fintype.card V)) (t : Time) (p : Option (Wire (Fintype.card V)))
+    (B : Blk (S.params (Model.pubOf E) hn))
+    (h : ∀ c ∈ p.toList ++ [blockObj _ B], c ∈ seen.flatMap Model.Obj.parts) :
+    Model.releasable (P := Model.protoOf (compiled (family S)) E) seen
+        (forwardObj _ x t p B) = true ∧
+      Model.protects (Model.protoOf (compiled (family S)) E) x seen
+        (forwardObj _ x t p B) = true ∧
+      (Model.protoOf (compiled (family S)) E).dependencies.ready (Model.closure seen)
+        (forwardObj _ x t p B) = true := by
+  classical
+  refine ⟨?_, protects_of_not_att S x seen _ (fun _ _ he => by cases he), ?_⟩
+  · change (p.toList ++ [blockObj _ B]).all _ = true
+    apply List.all_eq_true.mpr
+    intro c hc
+    simp only [decide_eq_true_eq]
+    exact h c hc
+  · exact dependencies_forwardObj seen x t p B h
+
 /-- A genesis-parent forwarding wrapper decodes under the explicit wire checks. -/
 theorem decodeForward_genesis (hs : List (Header Info × Nat)) (origin : Fin sp.n)
     (t : Time) (B : Blk sp) (hb : decodeBlock sp hs (blockObj sp B) = some B)
