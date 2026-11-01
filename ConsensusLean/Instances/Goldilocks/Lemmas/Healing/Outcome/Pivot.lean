@@ -24,7 +24,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
 -- Keep the operational proposal prerequisites with their pivot consumers.
-set_option linter.style.longFile 2800
+set_option linter.style.longFile 3000
 
 public section
 
@@ -1633,6 +1633,45 @@ private theorem no_high_contest (hp : ResetPremises tr H proposer dg g ΔF a)
     exact hJC hECC
   exact hnc
 
+/-- Earlier bounded origins rule out a high contest at a completed-prefix observation. -/
+theorem ResetPremisesUpTo.no_high_contest {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {p : Fin sp.n} (hpH : p ∈ H) (i : Nat) (hib : ∀ q < i, tr.time q ≤ b) :
+    ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax) := by
+  have hU := hp.honest_coherent
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hpH i
+  have hsub : (tr.state p i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨p, hpH, i, hX⟩
+  rintro ⟨⟨hmj, C, hC, _, hCh, hJC⟩, hmax⟩
+  obtain ⟨_, hJm, _, ⟨Bj, hBj, hBjJ, hBjhj⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
+  obtain ⟨EJ, hEJ, hEJr, hEJB, hcase⟩ := Store.J_entry_of_reachable hreach hBj
+  obtain rfl : EJ = (tr.state p i).fg.J := hU.1 (hsub hEJ) (hsub hJm) (hEJr.trans hBjJ)
+  rcases hcase with hg | ⟨hJh, hJT⟩
+  · exact hJC (hg ▸ (Store.accepted_tree _ _ _ _ hreach).2.2.2 C hC)
+  have hJlt := Store.hj_lt_h hreach hBj
+  obtain ⟨_, _, _, _, v₂, _, d₂, hd₂, _, _, r₂, hr₂, l₂, O₂, ho₂, hJO⟩ :=
+    hp.left_entry_origin hpH hJm hJT (by omega) hEJB (by omega)
+  obtain ⟨EC, hEC, hECC, hECh, hECT⟩ :=
+    entry_at_height hreach hC (h := (tr.state p i).fg.hj) (by omega) (by omega)
+  obtain ⟨_, _, _, _, v₁, _, d₁, hd₁, _, _, r₁, hr₁, l₁, O₁, ho₁, hECO⟩ :=
+    hp.left_entry_origin hpH hEC hECT (by omega) hECC (by omega)
+  have upper : ∃ z ∈ H, ∃ m W, W ∈ (tr.state z m).fg.tree ∧
+      Anc (tr.HonestBlocks H) O₁ W ∧ Anc (tr.HonestBlocks H) O₂ W := by
+    obtain ⟨_, _, _, _, _, _, _, _, _, hO₁⟩ := hp.highOrigin_mem ho₁
+    obtain ⟨_, _, _, _, _, _, _, _, _, hO₂⟩ := hp.highOrigin_mem ho₂
+    rcases hp.origins_compatible ho₁ (hib r₁ (by omega)) ho₂ (hib r₂ (by omega)) with h | h
+    · exact ⟨v₂, ho₂.1, r₂, O₂, hO₂, h, .refl⟩
+    · exact ⟨v₁, ho₁.1, r₁, O₁, hO₁, .refl, h⟩
+  obtain ⟨z, hz, m, W, hW, hO₁W, hO₂W⟩ := upper
+  have h₁ := hECO.trans hO₁W
+  have h₂ := hJO.trans hO₂W
+  have hσ₁ := hp.σ_eq_run hpH hz hEC (hp.mem_tree_of_anc hz h₁ hW)
+  have hσ₂ := hp.σ_eq_run hpH hz hJm (hp.mem_tree_of_anc hz h₂ hW)
+  have he := hp.entry_root_eq hz hW h₁ h₂
+    (by rw [← hσ₁, ← hσ₂, hECh, hJh, hBjhj]) (by rw [← hσ₁]; exact hECT)
+    (by rw [← hσ₂]; exact hJT)
+  obtain rfl : EC = (tr.state p i).fg.J := hU.1 (hsub hEC) (hsub hJm) he
+  exact hJC hECC
+
 /-- A held high origin is below the root or in the full viable tree at an active cut. -/
 private theorem held_high_origin_viable (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {c : Nat}
@@ -1710,6 +1749,88 @@ private theorem held_high_origin_viable (hp : ResetPremises tr H proposer dg g �
     exact ⟨hC, hCf.2, hfBs.trans hBC, hvC⟩
   exact Or.inl ⟨hBt, hfB', C, hCt, hCv,
     SA.anc_tree_of_anc_U hU hΦ hΦU hBt (hBC.mono hsub) hCt⟩
+
+/-- A bounded held high origin lies below the root or in the actual viable tree. -/
+theorem ResetPremisesUpTo.held_high_origin_viable {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {p : Fin sp.n} (hpH : p ∈ H) {c : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p c ell) (hcb : tr.time c ≤ b)
+    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
+    (ht : sp.ts (j + 1 : Nat) ≤ tr.time c) (hBt : B ∈ ell.frame.tree) :
+    B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.fcRoot := by
+  have hU := hp.honest_coherent
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hpH c
+  have hsub : (tr.state p c).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨p, hpH, c, hX⟩
+  have hfr := Compose.frame_of_projAC hp.run hpH hc
+  have hBf : B ∈ (Node.frame (tr.state p c)).tree := hfr ▸ hBt
+  have hBh := hp.high_of_anc ho hpH hBf.1 .refl
+  have hcache := hp.vote_state_caches
+    (fun ho₀ hi₀ z hz q _ hqb e ⟨ell, hv⟩ hs =>
+      hp.high_origin_votes_before q hqb _ _ _ _ ho₀ hi₀ z hz ell e hv hs)
+    hcb ho hib hpH ht
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt
+    (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun hpH hc
+  have hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
+    rw [hfr]
+    change Compatible _ (tr.state p c).fg.fcRoot B
+    unfold Store.fcRoot
+    split_ifs with hchoose
+    · by_cases hhigh : HZ tr H g + 1 ≤ (tr.state p c).fg.hj
+      · exact hcache.2 hhigh
+      · have hmax := (Store.cache_invariants _ _ _ _ hreach).2.2.2.2.1 B hBf.1
+        have hJB : (tr.state p c).fg.Anc (tr.state p c).fg.J B := by
+          by_contra hn
+          exact hchoose.2 ⟨hchoose.1, B, hBf.1, hBf.2, by omega, hn⟩
+        exact Or.inl (hJB.mono hsub)
+    · exact hcache.1
+  rcases hroot with hfB | hBfroot
+  swap
+  · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hPhiU hBt hBfroot hPhi.fcRoot_mem)
+  have hfB' := SA.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hfB hBt
+  have hfBs : (tr.state p c).fg.Anc (tr.state p c).fg.fcRoot B := by
+    rw [hfr] at hfB'
+    exact hfB'.mono (fun _ h => h.1)
+  have hdesc : ∃ C ∈ (tr.state p c).fg.tree, (tr.state p c).fg.Anc B C ∧
+      (tr.state p c).fg.IsViable C := by
+    by_cases hle : (tr.state p c).fg.headHeightFloor ≤ ((tr.state p c).fg.σ B.root).h
+    · exact ⟨B, hBf.1, .refl, hle⟩
+    have hfloor := lt_of_not_ge hle
+    have hcon : ¬ (tr.state p c).fg.Contest := fun h => by
+      unfold Store.headHeightFloor at hfloor
+      simp only [h, ↓reduceIte] at hfloor
+      exact hp.no_high_contest hpH c
+        (fun q hqc => (hp.run.time_mono hqc.le).trans hcb) ⟨h, by omega⟩
+    have hfl : (tr.state p c).fg.headHeightFloor = (tr.state p c).fg.hmax - 1 := by
+      unfold Store.headHeightFloor
+      simp only [hcon, ↓reduceIte]
+    rw [hfl] at hfloor
+    obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
+    obtain ⟨E, hE, hEC, hEh, hET⟩ :=
+      entry_at_height hreach hC (h := (tr.state p c).fg.hmax - 1) (by omega) (by omega)
+    obtain ⟨_, _, _, _, v, _, d, hdc, _, _, r, hrd, l, O, hoO, hEO⟩ :=
+      hp.left_entry_origin hpH hE hET (by omega) hEC (by omega)
+    have hcmp : Compatible (tr.HonestBlocks H) E B := by
+      rcases hp.origins_compatible hoO ((hp.run.time_mono (by omega : r ≤ c)).trans hcb)
+          ho hib with h | h
+      · exact Or.inl (hEO.trans h)
+      · exact Anc.total hU hEO h
+    have hBE : Anc (tr.HonestBlocks H) B E := by
+      rcases hcmp with h | h
+      · have := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hpH h hBf.1)
+        omega
+      · exact h
+    refine ⟨C, hC, (hp.anc_tree_of_anc hpH hBE hE).trans hEC, ?_⟩
+    change (tr.state p c).fg.headHeightFloor ≤ _
+    omega
+  obtain ⟨C, hC, hBC, hvC⟩ := hdesc
+  have hCf : C ∈ (Node.frame (tr.state p c)).tree := ⟨hC, hBf.2.trans hBC⟩
+  have hCt : C ∈ ell.frame.tree := hfr ▸ hCf
+  have hCv : C ∈ ell.frame.viableHeads := by
+    rw [hfr]
+    exact ⟨hC, hCf.2, hfBs.trans hBC, hvC⟩
+  exact Or.inl ⟨hBt, hfB', C, hCt, hCv,
+    SA.anc_tree_of_anc_U hU hPhi hPhiU hBt (hBC.mono hsub) hCt⟩
 
 /-- A block above every old source reaches the proposal's floor. Only high crossing
 quorums matter: the reset seed already makes the block high. -/
