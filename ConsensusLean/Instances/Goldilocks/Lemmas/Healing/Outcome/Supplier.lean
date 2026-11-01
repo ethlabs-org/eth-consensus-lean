@@ -754,8 +754,8 @@ theorem reset_update_toFG_calls
 
 /-- A deepest candidate extending a non-genesis block gives an actual report by this call's
 time, including the historical report that suppresses a new return. -/
-theorem report_of_deepest_candidate
-    (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem report_of_deepest_candidate_of_run
+    (hrun : GoldilocksRun proposer dg H tr) (hnoColl : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
     (hjoin : SA.joined sp (tr.projAC.state y j) (tr.time j))
@@ -765,22 +765,22 @@ theorem report_of_deepest_candidate
       ell.frame (tr.time j)) = some C) (hPC : ell.frame.Anc P C) :
     ∃ r ell' R, SA.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
       Anc (tr.HonestBlocks H) P R := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnoColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
   by_cases hrep : SA.AncR ell.frame C (tr.projAC.state y j).fgReported
   · obtain ⟨R, hRt, hRr, hCR⟩ := hrep
     have hPR : ell.frame.Anc P R := hPC.trans hCR
     rcases fgReported_origin hr hy j with hgen | ⟨r, hrj, ell', R', hto, hR'r⟩
-    · have hG := Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hy j)
+    · have hG := Store.genesis_mem (Compose.fg_reachable hrun.toLocalRun hy j)
       have he := hr.coherent.1 (hPhiU hRt) ⟨y, hy, j, hG⟩ (hRr.trans hgen)
       rw [he] at hPR
       rcases Relation.ReflTransGen.cases_tail hPR with heq | ⟨Y, _, hY⟩
       · exact False.elim (hPg (by rw [← heq]; rfl))
       · exact False.elim (Option.some_ne_none _ (hY.2.2.symm.trans rfl))
-    have hR't := toFG_mem_tree hp.run hy hto
+    have hR't := toFG_mem_tree hrun hy hto
     obtain rfl : R' = R := hr.coherent.1 ⟨y, hy, r, hR't⟩ (hPhiU hRt)
       (hR'r.trans hRr.symm)
-    exact ⟨r, ell', R', hto, hp.run.time_mono hrj.le, hPR.mono hPhiU⟩
+    exact ⟨r, ell', R', hto, hrun.time_mono hrj.le, hPR.mono hPhiU⟩
   · refine ⟨j, ell, C, ⟨hc, hcall, ?_⟩, le_rfl, hPC.mono hPhiU⟩
     change (SA.acToFG sp (tr.projAC.state y j) ell.frame (tr.time j)).2.1 = some C
     unfold SA.acToFG
@@ -788,6 +788,46 @@ theorem report_of_deepest_candidate
 
 /-- A live report candidate compatible with every other candidate supplies an actual report
 extending it. An earlier report suppressing this call is included in the conclusion. -/
+theorem report_of_compatible_candidate_of_run
+    (hrun : GoldilocksRun proposer dg H tr) (hnoColl : Compose.NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
+    (hjoin : SA.joined sp (tr.projAC.state y j) (tr.time j))
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
+    (hPc : P ∈ SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j))
+    (hcompat : ∀ C ∈ SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j),
+      Compatible (tr.HonestBlocks H) C P) :
+    ∃ r ell' R, SA.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
+      Anc (tr.HonestBlocks H) P R := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnoColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
+  have hsub : SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j) ⊆
+      ell.frame.tree := fun _ h => h.1.1
+  obtain ⟨C, hC⟩ := SA.exists_deepest hPhi hsub ⟨P, hPc⟩
+  obtain ⟨hCc, hmax⟩ := SA.deepest_mem hC
+  apply report_of_deepest_candidate_of_run hrun hnoColl hy hc hcall hjoin hPg hC
+  rcases hcompat C hCc with hCP | hPC
+  · by_cases he : P = C
+    · exact he ▸ .refl
+    have hCPf := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU (hsub hCc) hCP (hsub hPc)
+    have hlt := SA.depth_lt_of_anc hPhi hCPf (Ne.symm he) (hsub hPc)
+    rcases hmax P hPc he with h | ⟨h, _⟩ <;> omega
+  · exact SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU (hsub hPc) hPC (hsub hCc)
+
+/-- Whole-run specialization of actual report production from a deepest candidate. -/
+theorem report_of_deepest_candidate
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
+    (hjoin : SA.joined sp (tr.projAC.state y j) (tr.time j))
+    {P C : SA.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
+    (hC : SA.deepest ell.frame (SA.toFGCandidates sp (tr.projAC.state y j)
+      ell.frame (tr.time j)) = some C) (hPC : ell.frame.Anc P C) :
+    ∃ r ell' R, SA.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
+      Anc (tr.HonestBlocks H) P R :=
+  report_of_deepest_candidate_of_run hp.run hp.noColl hy hc hcall hjoin hPg hC hPC
+
+/-- Whole-run specialization; the actual-report step itself needs no health hypothesis. -/
 theorem report_of_compatible_candidate
     (hp : ResetPremises tr H proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
@@ -798,21 +838,8 @@ theorem report_of_compatible_candidate
     (hcompat : ∀ C ∈ SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j),
       Compatible (tr.HonestBlocks H) C P) :
     ∃ r ell' R, SA.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
-      Anc (tr.HonestBlocks H) P R := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
-  have hsub : SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j) ⊆
-      ell.frame.tree := fun _ h => h.1.1
-  obtain ⟨C, hC⟩ := SA.exists_deepest hPhi hsub ⟨P, hPc⟩
-  obtain ⟨hCc, hmax⟩ := SA.deepest_mem hC
-  apply report_of_deepest_candidate hp hy hc hcall hjoin hPg hC
-  rcases hcompat C hCc with hCP | hPC
-  · by_cases he : P = C
-    · exact he ▸ .refl
-    have hCPf := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU (hsub hCc) hCP (hsub hPc)
-    have hlt := SA.depth_lt_of_anc hPhi hCPf (Ne.symm he) (hsub hPc)
-    rcases hmax P hPc he with h | ⟨h, _⟩ <;> omega
-  · exact SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU (hsub hPc) hPC (hsub hCc)
+      Anc (tr.HonestBlocks H) P R :=
+  report_of_compatible_candidate_of_run hp.run hp.noColl hy hc hcall hjoin hPg hPc hcompat
 
 /-- Every sufficiently clean older fast or slow source is below the unanimous proposal.
 The source need not precede the chosen vote cut: clean-source transfer budgets both times. -/
@@ -1045,6 +1072,63 @@ theorem ready_update (hp : ResetPremises tr H proposer dg g ΔF a)
       Anc (tr.HonestBlocks H) P C ∧
       ((tr.state z' r).fg.σ P.root).h < ((tr.state z' r).fg.σ C.root).h := by
   sorry
+
+/-- Finite report coverage. The unproduced duties are explicit: a deadline cut with
+compatible finality for each reader, and a below-finality actual-report producer.
+Neither duty assumes wakefulness after `b`; historical reports have no lower time bound. -/
+theorem ResetPremisesUpTo.report_cover_of_compatible_floors {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hcuts : ∀ z ∈ H, ∃ j, tr.time j ≤ sp.ts u + 6 * sp.Δ ∧
+      Compatible (tr.HonestBlocks H) (tr.state z j).fg.F P ∧
+      (Anc (tr.HonestBlocks H) (tr.state z j).fg.F P →
+        ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+          Anc (tr.HonestBlocks H) P C)) :
+    (∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+      Anc (tr.HonestBlocks H) P C) ∨
+    ∃ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+      Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
+  by_cases hall : ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧
+      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C
+  · exact Or.inl hall
+  push Not at hall
+  obtain ⟨z, hz, hn⟩ := hall
+  obtain ⟨j, hj, hcompat, hbelow⟩ := hcuts z hz
+  rcases hp.finality_below_or_higher_report hz hcompat with
+    hF | ⟨v, hv, r, ell, C, hrj, hto, hPC, hlt⟩
+  · obtain ⟨r, ell, C, hto, ht, hPC⟩ := hbelow hF
+    exact False.elim (hn r ell C hto ht hPC)
+  · exact Or.inr ⟨v, hv, r, ell, C, hto, (hp.run.time_mono hrj.le).trans hj, hPC, hlt⟩
+
+/-- Actual report production discharges the below-finality duty from a compatible
+candidate at an actual joined `toFG` call. Candidate membership and compatibility at that
+call remain explicit: an update selecting `P` alone is not a report-existence proof. -/
+theorem ResetPremisesUpTo.report_cover_of_candidate_duty {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
+    (hcuts : ∀ z ∈ H, ∃ j, tr.time j ≤ sp.ts u + 6 * sp.Δ ∧
+      Compatible (tr.HonestBlocks H) (tr.state z j).fg.F P ∧
+      (Anc (tr.HonestBlocks H) (tr.state z j).fg.F P →
+        ∃ i ell, tr.projAC.CallAt z i ell ∧ ell.call = .toFG ∧
+          tr.time i ≤ sp.ts u + 6 * sp.Δ ∧
+          SA.joined sp (tr.projAC.state z i) (tr.time i) ∧
+          P ∈ SA.toFGCandidates sp (tr.projAC.state z i) ell.frame (tr.time i) ∧
+          ∀ C ∈ SA.toFGCandidates sp (tr.projAC.state z i) ell.frame (tr.time i),
+            Compatible (tr.HonestBlocks H) C P)) :
+    (∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+      Anc (tr.HonestBlocks H) P C) ∨
+    ∃ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+      Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
+  apply hp.report_cover_of_compatible_floors
+  intro z hz
+  obtain ⟨j, hj, hcompat, hduty⟩ := hcuts z hz
+  refine ⟨j, hj, hcompat, fun hF => ?_⟩
+  obtain ⟨i, ell, hcall, htoFG, hi, hjoin, hPc, hcomp⟩ := hduty hF
+  obtain ⟨r, ell', C, hto, hr, hPC⟩ :=
+    report_of_compatible_candidate_of_run hp.run hp.noColl hz hcall htoFG hjoin hPg hPc hcomp
+  exact ⟨r, ell', C, hto, hr.trans hi, hPC⟩
 
 /-- Conditional report coverage at actual cuts bounded by the update deadline.
 Compatibility discharges the strict-descendant branch using an earlier actual report;

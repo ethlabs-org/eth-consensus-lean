@@ -252,7 +252,7 @@ theorem client_record_origin (hp : ResetPremises tr H proposer dg g ΔF a)
 (§16; G0.2 (h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry
 state at a bound entry, or one of its pending pairs) names the entry at height `h` of an
 ancestor-or-self `J` of the source's entry `E` (whose root is the signed `T`). -/
-theorem signed_fin_pair_entry (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem signed_fin_pair_entry_of_run (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) {h r : Nat}
     (hfin : att.fin = some (h, r)) :
@@ -260,8 +260,8 @@ theorem signed_fin_pair_entry (hp : ResetPremises tr H proposer dg g ΔF a)
       (tr.state y k).fg.Anc J E ∧ J.root = r ∧ ((tr.state y k).fg.σ J.root).h = h ∧
       ((tr.state y k).fg.σ J.root).Th = J.root := by
   obtain ⟨src, hc⟩ := hs
-  have hcl := (hp.run.cutLaw y hy k _ hc).1
-  have hr := Compose.fg_reachable hp.run.toLocalRun hy k
+  have hcl := (hrun.cutLaw y hy k _ hc).1
+  have hr := Compose.fg_reachable hrun.toLocalRun hy k
   change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
     ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
   have hT := (Store.createAtt_eq hcl).2
@@ -290,9 +290,20 @@ theorem signed_fin_pair_entry (hp : ResetPremises tr H proposer dg g ΔF a)
     · obtain ⟨Z, hZ, hZE, hZr, hZh, hZT⟩ := hpend _ (List.mem_filter.1 h').1
       exact ⟨Z, hZ, E, hE, hET.symm.trans hT.symm, hZE, hZr, hZh, hZT⟩
 
+/-- Reset-premise specialization of the run-only signed finality-pair provenance. -/
+theorem signed_fin_pair_entry (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) {h r : Nat}
+    (hfin : att.fin = some (h, r)) :
+    ∃ J ∈ (tr.state y k).fg.tree, ∃ E ∈ (tr.state y k).fg.tree, E.root = att.T ∧
+      (tr.state y k).fg.Anc J E ∧ J.root = r ∧ ((tr.state y k).fg.σ J.root).h = h ∧
+      ((tr.state y k).fg.σ J.root).Th = J.root :=
+  signed_fin_pair_entry_of_run hp.run hy hs hfin
+
 /-- Finalizing a strict descendant is witnessed by an actual earlier honest report.
 The height comparison is in the reporter's store at the report cut. -/
-theorem finalized_descendant_report (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ResetPremisesUpTo.finalized_descendant_report {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {W X P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) (hX : X ∈ (tr.state y k).fg.tree)
@@ -302,7 +313,7 @@ theorem finalized_descendant_report (hp : ResetPremises tr H proposer dg g ΔF a
       Anc (tr.HonestBlocks H) P C ∧
       ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   have hr := Compose.fg_reachable hp.run.toLocalRun hy k
-  have hU := honest_coherent hp
+  have hU := hp.honest_coherent
   have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := tree_subset_honest hy
   obtain ⟨c, hc, -, -, hcs⟩ := Store.chain_state_of_chain _ _ _ _ hr W hW
   have hpos : 1 ≤ ((tr.state y k).fg.σ W.root).hF := by
@@ -320,7 +331,10 @@ theorem finalized_descendant_report (hp : ResetPremises tr H proposer dg g ΔF a
     have hqsub : (↑Q : Set (Fin sp.n)) ⊆ Hᶜ := fun v hv hvH => hn ⟨v, hv, hvH⟩
     have hh := Set.ncard_le_ncard hqsub (Set.toFinite _)
     rw [Set.ncard_coe_finset] at hh
-    exact (not_lt_of_ge (hQ.trans hh)) (faulty_lt_q hp.healthy)
+    have hf := hp.faults
+    have hn : 0 < sp.n := sp.toParams.hn
+    change (2 * sp.n + 2) / 3 ≤ Q.card at hQ
+    omega
   obtain ⟨v, hvQ, hv⟩ := hex
   obtain ⟨att, hatt, hav, hfin⟩ := hrows v hvQ
   simp only [FG.FGParams.chainAtts, List.mem_flatMap] at hatt
@@ -330,7 +344,7 @@ theorem finalized_descendant_report (hp : ResetPremises tr H proposer dg g ΔF a
   obtain ⟨m, hmk, _, s, hsm, hs⟩ :=
     Compose.honest_row_signed_before hp.run hp.noColl hy (hc Z hZ) hatt haH
   obtain ⟨J, hJ, E, hE, hEr, hJE, hJr, hJh, hJT⟩ :=
-    signed_fin_pair_entry hp haH hs hfin
+    signed_fin_pair_entry_of_run hp.run haH hs hfin
   have hsubs : (tr.state att.val s).fg.tree ⊆ tr.HonestBlocks H := tree_subset_honest haH
   obtain rfl : J = X := hU.1 (hsubs hJ) (hsub hX) (hJr.trans hXr.symm)
   obtain ⟨r, hsr, ht, ℓ, C, E', hto, hC, hE', hE'r, hEC, hTh, hET, hEh, _⟩ :=
@@ -340,9 +354,9 @@ theorem finalized_descendant_report (hp : ResetPremises tr H proposer dg g ΔF a
   subst E'
   have hXE := hJE.mono hsubs
   have hPC := hPX.trans (hXE.trans (hEC.mono hsubr))
-  have hXEr := anc_tree_of_anc hp haH hXE hE'
-  have hXr' := mem_tree_of_anc hp haH hXE hE'
-  have hPXr := anc_tree_of_anc hp haH hPX hXr'
+  have hXEr := hp.anc_tree_of_anc haH hXE hE'
+  have hXr' := hp.mem_tree_of_anc haH hXE hE'
+  have hPXr := hp.anc_tree_of_anc haH hPX hXr'
   have hrr := Compose.fg_reachable hp.run.toLocalRun haH r
   have hPE := hPXr.trans hXEr
   have hle := σ_h_le_of_anc hrr hPE
@@ -351,7 +365,7 @@ theorem finalized_descendant_report (hp : ResetPremises tr H proposer dg g ΔF a
     apply lt_of_le_of_ne hle
     intro heq
     have hentry := (Th_eq_of_anc hrr hPE heq.symm).symm.trans hET
-    have hP := mem_tree_of_anc hp haH hPC hC
+    have hP := hp.mem_tree_of_anc haH hPC hC
     obtain ⟨⟨E₀, hE₀, hE₀r, hE₀P, _, _⟩, _⟩ :=
       Goldilocks.Store.entry_state_of_source _ _ _ _ hrr P hP
     obtain rfl : E₀ = E := hU.1 (hsubr hE₀) (hsubr hE') (hE₀r.trans hentry)
@@ -360,7 +374,8 @@ theorem finalized_descendant_report (hp : ResetPremises tr H proposer dg g ΔF a
 
 /-- The remaining finality-loss obligation is compatibility: a comparable finality
 cache either stays below `P` or already witnesses a strictly higher actual report. -/
-theorem finality_below_or_higher_report (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem ResetPremisesUpTo.finality_below_or_higher_report {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hcompat : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F P) :
     Anc (tr.HonestBlocks H) (tr.state y k).fg.F P ∨
@@ -374,7 +389,53 @@ theorem finality_below_or_higher_report (hp : ResetPremises tr H proposer dg g �
   have hr := Compose.fg_reachable hp.run.toLocalRun hy k
   obtain ⟨hF, -, -, -, -, -, W, hW, hWF⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ hr
-  exact Or.inr (finalized_descendant_report hp hy hW hF hWF.symm h he)
+  exact Or.inr (hp.finalized_descendant_report hy hW hF hWF.symm h he)
+
+/-- A signed row naming a held entry above the target produces an actual earlier
+higher report. The signing witness is retained explicitly; a covering origin alone
+does not supply this fact. Heights are compared at the resulting reporter's cut. -/
+theorem ResetPremisesUpTo.higher_report_of_signed_entry {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i d : Nat}
+    {P E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
+    {att : FG.Att sp.n} (hs : tr.SignAt z d att) (hdi : d < i)
+    (hT : att.T = E.root) (hPE : Anc (tr.HonestBlocks H) P E)
+    (hlt : ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ E.root).h) :
+    ∃ r ell C, r < i ∧ SA.ToFGAt tr.projAC z r ell C ∧
+      Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
+  obtain ⟨r, hrd, -, ell, C, E', hto, hC, hE', hEr, hEC, -, -, hEh, -⟩ :=
+    signAt_report_entry hp.run hz hs
+  obtain rfl : E' = E := hp.honest_coherent.1 ⟨z, hz, r, hE'⟩ ⟨y, hy, i, hE⟩
+    (hEr.trans hT)
+  have hPC := hPE.trans (hEC.mono (tree_subset_honest hz))
+  have hPr := hp.mem_tree_of_anc hz hPC hC
+  refine ⟨r, ell, C, by omega, hto, hPC, ?_⟩
+  rw [← hEh, hp.σ_eq_run hz hy hPr hP, hp.σ_eq_run hz hy hE' hE]
+  exact hlt
+
+/-- Whole-run specialization; finality provenance needs no future wakefulness. -/
+theorem finalized_descendant_report (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {W X P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hW : W ∈ (tr.state y k).fg.tree) (hX : X ∈ (tr.state y k).fg.tree)
+    (hXr : X.root = ((tr.state y k).fg.σ W.root).F)
+    (hPX : Anc (tr.HonestBlocks H) P X) (hne : P ≠ X) :
+    ∃ z ∈ H, ∃ r ℓ C, r < k ∧ SA.ToFGAt tr.projAC z r ℓ C ∧
+      Anc (tr.HonestBlocks H) P C ∧
+      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h :=
+  (ResetPremises.toUpTo tr H hp le_rfl).finalized_descendant_report hy hW hX hXr hPX hne
+
+/-- Whole-run specialization of the finite finality/report alternative. -/
+theorem finality_below_or_higher_report (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hcompat : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F P) :
+    Anc (tr.HonestBlocks H) (tr.state y k).fg.F P ∨
+      ∃ z ∈ H, ∃ r ℓ C, r < k ∧ SA.ToFGAt tr.projAC z r ℓ C ∧
+        Anc (tr.HonestBlocks H) P C ∧
+        ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h :=
+  (ResetPremises.toUpTo tr H hp le_rfl).finality_below_or_higher_report hy hcompat
 
 /-- **A high record entry names an entry of a high origin's chain** (§16): the target, timeout
 or lock entry `r` at `h ≥ H_z + 1` of an honest record is the root of a block `Z` below the
