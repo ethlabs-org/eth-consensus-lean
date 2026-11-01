@@ -748,6 +748,55 @@ theorem ResetPremisesUpTo.high_origin_votes_before {b : Time}
     · intro z hz q hq e' hv hs
       exact prior ho hib z hz q hq ((hp.run.time_mono hq.le).trans hkb) e' hv hs
 
+/-- Any two actual high-origin writes within the horizon are compatible. -/
+theorem ResetPremisesUpTo.origins_compatible {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {x z : Fin sp.n} {i j r l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
+    (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) :
+    Compatible (tr.HonestBlocks H) B O := by
+  have hgj : g ≤ sp.ts j := by
+    have := hp.cutZ_le_ts_of_highOrigin ho
+    have := lt_cutZ sp g
+    have := le_gbar g
+    have := sp.toParams.hΔ
+    linarith
+  apply hp.origins_compatible_before (k := max i r + 1) ?_ ho hgj
+    (Or.inl (by omega)) hO (by omega) hib hrb
+  rintro x₀ i₀ j₀ B₀ ho₀ hi₀ y hy c _ hcb e ⟨ell, hc⟩ hj
+  exact hp.high_origin_votes_before c hcb x₀ i₀ j₀ B₀ ho₀ hi₀ y hy ell e hc hj
+
+/-- An actual bounded honest supporter compares its target with an older bounded origin. -/
+theorem ResetPremisesUpTo.target_compatible_older_origin {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {x z : Fin sp.n} {r m q l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    {e : SA.Em sp (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x r m O) (hrb : tr.time r ≤ b)
+    (hz : z ∈ H) (hv : SA.VoteAt tr.projAC z q e) (hqb : tr.time q ≤ b)
+    (hs : e.msg.slot = l) (hml : m < l)
+    (hB : SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
+    Compatible (tr.HonestBlocks H) B O := by
+  obtain ⟨ell, hc⟩ := hv
+  obtain ⟨HO, hHO, hOr, hOO⟩ :=
+    hp.high_origin_votes_before q hqb x r m O ho hrb z hz ell e hc (by omega)
+  obtain ⟨HB, hHB, hBr, hBB⟩ := hB
+  obtain rfl : HO = HB := hp.honest_coherent.1 hHO hHB (hOr.trans hBr.symm)
+  exact SA.anc_total hp.honest_coherent hBB hOO
+
+/-- Bounded high-origin cache comparison after either write or slot activation. -/
+theorem ResetPremisesUpTo.activated_caches {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b) (hy : y ∈ H)
+    (hc : tr.IsCall y k) (hkb : tr.time k ≤ b)
+    (hact : i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) :
+    Compatible (tr.HonestBlocks H) (tr.post k).fg.F B ∧
+      (HZ tr H g + 1 ≤ (tr.post k).fg.hj →
+        Compatible (tr.HonestBlocks H) (tr.post k).fg.J B) := by
+  apply hp.retention_cut_step ?_ hkb hy hc ho hib hact
+  rintro x₀ i₀ j₀ B₀ ho₀ hi₀ z hz c _ hcb e ⟨ell, he⟩ hj
+  exact hp.high_origin_votes_before c hcb x₀ i₀ j₀ B₀ ho₀ hi₀ z hz ell e he hj
+
 /-- Conditional §75 domain reduction. The explicit producer hypotheses are the open
 joint-induction boundary, not consequences asserted of reset premises. Frozen target
 membership must be produced before its receiver height is read. -/
