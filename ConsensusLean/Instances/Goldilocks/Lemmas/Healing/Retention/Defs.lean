@@ -72,6 +72,38 @@ structure GSTRunUpTo (g ΔF b : Time) : Prop where
       tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
       tr.AttDeliveredBy y j (tr.time i) (max (tr.time i) g) ΔF att
 
+/-- Reset service keeps the AC message/block/relay contracts, but requests only
+signed-row delivery by the deadline, without a row processing lower bound. -/
+structure ResetService (g ΔF b : Time) : Prop where
+  deltaF : sp.Δ ≤ ΔF
+  message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j →
+      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
+      tr.MsgDeliveredBy y j (tr.time i) (max (tr.time i) g) m
+  block : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B ∨ tr.OwnBlockAt x i B →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j →
+      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
+      tr.BlockDeliveredBy y j (tr.time i) (max (tr.time i) g) B
+  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → g ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j →
+      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
+      Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
+      tr.BlockAcceptedBy y j (max (tr.time i) g) B
+  signedRow : ∀ x ∈ H, ∀ i att, tr.SignAt x i att →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ b →
+      tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
+      ∃ k ≤ j, tr.ProcessAttAt y k att ∧
+        tr.time k < tr.deadline y k (max (tr.time i) g) ΔF
+
+/-- Full GST supplies the weaker signed-row service. -/
+theorem ResetService.of_gst {g ΔF b : Time} (h : tr.GSTRun H ΔF g) :
+    ResetService tr H g ΔF b := by
+  refine ⟨h.deltaF, fun x hx i m hs => h.message x hx i m hs trivial,
+    fun x hx i B hs => h.block x hx i B hs trivial, h.relay, ?_⟩
+  intro x hx i att hs y hy j hj _ hd
+  obtain ⟨k, hk, -, hp, ht⟩ := h.attestation x hx i att (Or.inl hs) trivial y hy j hj hd
+  exact ⟨k, hk, hp, ht⟩
+
 /-- Finite reset premises. Reset existence and its cutoff are inputs, not consequences of
 bounded health. GST quantifies actual receiver calls, so remains finite-satisfiable.
 Progress and Catch are separate premises of the consumers that need them. -/
@@ -79,7 +111,7 @@ structure ResetPremisesUpTo (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a b : Time) : Prop where
   run : GoldilocksRun proposer dg H tr
   noColl : Compose.NoCollRun dg tr
-  sync : tr.GSTRun H ΔF g
+  sync : ResetService tr H g ΔF b
   awake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t
   faults : 3 * Hᶜ.ncard ≤ sp.n - 1
   reset : IsReset tr H g a
@@ -103,7 +135,7 @@ theorem ResetPremises.toUpTo {proposer : Nat → Fin sp.n}
     (hp.run.time_mono (Nat.find_min' hex hck)).trans (hka ▸ hab)
   refine ⟨hp.run, hp.noColl, ?_, fun y hy t ht _ => hp.healthy.2.1 y hy t ht,
     hp.healthy.2.2, hp.reset, hab, Nat.find hex, hfirst, hkb⟩
-  exact hp.healthy.1
+  exact ResetService.of_gst tr H hp.healthy.1
 
 /-- Bounded wakefulness supplies an actual frontier snapshot by `b` when the tick
 at `c_z + Δ` fits. No continuation or calls beyond `b` are assumed. -/

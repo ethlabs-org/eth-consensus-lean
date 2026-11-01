@@ -258,24 +258,43 @@ theorem healthy_base_of_reset_catch_before {b : Time}
     ⟨fun x hx i B ha hi y hy j ell hj ht _ hF =>
       projection_catch_of_run hp.run hc x hx i B ha hi y hy j ell hj ht hF⟩,
     hp.awake, hp.faults⟩
-  have hs := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
-    tr proposer ΔF (SA.gbar g) b hp.run.toLocalRun
-    (syncRun_of_gst hp.sync (SA.le_gbar g))
-  have hsource : ∀ y j (t : Time), t ≤ tr.projAC.deadline y j t := by
-    intro y j t
-    unfold ACTrace.deadline
-    have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-    cases tr.projAC.lastWake y j with
-    | bot => change t ≤ t + sp.Δ; linarith
-    | coe w =>
-      change t ≤ max t w + sp.Δ
-      have := le_max_left t w
-      linarith
+  have h := hp.run.toLocalRun
   constructor
-  · intro x hx i m hm hi y hy j ell hj hQ hd
-    exact hs.1 x hx i m hm hi ((hsource y j _).trans hQ) y hy j ell hj hd
-  · intro x hx i B hB hi y hy j ell hj hQ hd hF
-    exact hs.2 x hx i B hB hi ((hsource y j _).trans hQ) y hy j ell hj hd hF
+  · intro x hx i m hsa hi y hy j ℓ hcj _ hdl
+    have hsa' : tr.SendOrAdmitAt x i m := by
+      obtain ⟨ℓ, hc, hm⟩ := hsa
+      refine ⟨ℓ, Compose.projAC_callAt.1 hc, ?_⟩
+      rwa [Compose.projAC_state h hx] at hm
+    have he : max (tr.time i) g = tr.time i := max_eq_left ((SA.le_gbar g).trans hi)
+    rw [Compose.projAC_deadline] at hdl
+    obtain ⟨k, hk, h1, h2, h3⟩ := hp.sync.message x hx i m hsa' y hy j
+      ⟨_, Compose.projAC_callAt.1 hcj⟩ (by rw [he]; exact hdl)
+    refine ⟨k, hk, h1, ?_, ?_⟩
+    · rcases h2 with ⟨ℓ', hc', hm'⟩ | ⟨ℓ', hc', e, he', hem⟩
+      · exact ⟨ℓ', Compose.projAC_callAt.2 hc', Or.inl hm'⟩
+      · exact ⟨ℓ', Compose.projAC_callAt.2 hc', Or.inr ⟨e, he', hem⟩⟩
+    · rw [Compose.projAC_deadline]
+      change tr.time k < tr.deadline y k (tr.time i) sp.Δ
+      simpa only [he] using h3
+  · intro x hx i B ha hi y hy j ℓ hcj _ hdl hanc
+    obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before h hx ha
+    have hmax : max (tr.time i') g = tr.projAC.time (i' + 1) := by
+      rw [show tr.projAC.time (i' + 1) = tr.time (i' + 1) from rfl, hti]
+      exact max_eq_left ((SA.le_gbar g).trans hi)
+    rw [Compose.projAC_deadline] at hdl
+    obtain ⟨k, hk, hak, hkt⟩ := hp.sync.relay x hx i' B ha'
+      (by rw [hti]; exact (SA.le_gbar g).trans hi) y hy j
+      ⟨_, Compose.projAC_callAt.1 hcj⟩ (by rw [hmax]; exact hdl)
+      (by rwa [Compose.frame_of_projAC hp.run hy hcj] at hanc)
+    obtain ⟨hak', htk, hnr⟩ := ac_block_after h hy hak
+    have hkj : k < j := by
+      rcases hk.lt_or_eq with hk | rfl
+      · exact hk
+      · exact absurd (hak.2.symm.trans (Compose.projAC_callAt.1 hcj).2) (by simp)
+    refine ⟨k + 1, hkj, hak', ?_⟩
+    have htk' : tr.projAC.time (k + 1) = tr.time k := htk
+    rw [Compose.projAC_deadline, htk', ← hmax]
+    simpa only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] using hkt
 
 /-- Catch uses its actual source boundary `gbar g`, not the later high-origin cut. -/
 theorem catch_window_of_reset_catch (hp : ResetPremises tr H proposer dg g ΔF a)
