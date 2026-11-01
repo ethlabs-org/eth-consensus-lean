@@ -226,6 +226,112 @@ theorem lock_keep_chain (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun
   exact ⟨m, hmM, hlo, hm, (lock_keep_global_slot hrun hnc hf (lk m) (hBr m hmM) (hlslot m hmM)
     (hhold m hmM) (hcut m hmM) j hlo hm x hx).1, hBr m hmM x hx⟩
 
+/-- **The common block `B` is a read live lock block of every honest cast in the segment.** Under
+the premises of `lock_keep_global_slot`, an honest cast at cut `k` of a vote of slot
+`slot(t_j) − 1` for `j ∈ [i₀, N)` is at a cut `k < j` with `slot(t_{i₀}) ≤ slot(t_k) + 1`, its
+frame is the node's frame at `k`, and `B` is a live lock block of its read point. -/
+theorem cast_reads_common (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) {B : SA.Blk sp.n (List (FG.Att sp.n))} {i₀ N : Nat}
+    (lk : Fin sp.n → SA.Lock) (hBr : ∀ x ∈ H, B.root = (lk x).block)
+    (hlslot : ∀ x ∈ H, sp.slot (tr.time i₀) ≤ (lk x).slot + 1)
+    (hhold : ∀ x ∈ H, ∀ k ≤ i₀, sp.slot (tr.time i₀) ≤ sp.slot (tr.time k) + 1 →
+      lk x ∈ (tr.state x k).ac.locks)
+    (hcut : ∀ x ∈ H, ∀ j, sp.slot (tr.time i₀) ≤ sp.slot (tr.time j) + 1 → j < N →
+      sp.slot (tr.time j) ≤ (lk x).slot + sp.k ∧
+      B ∈ (tr.state x j).fg.toFrame.tree ∧ FrameKeeps tr x j B)
+    {j : Nat} (hij : i₀ ≤ j) (hjN : j < N) {x : Fin sp.n} (hxH : x ∈ H) {k : Nat}
+    {ℓ' : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)} {e}
+    (hc : SA.CastAt tr.projAC x k ℓ' e)
+    (hs : (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1) :
+    k < j ∧ sp.slot (tr.time i₀) ≤ sp.slot (tr.time k) + 1 ∧
+      ℓ'.frame = Node.frame (tr.state x k) ∧
+      B ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ'.frame (tr.time k) := by
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hmono : ∀ {a b}, a ≤ b → sp.slot (tr.time a) ≤ sp.slot (tr.time b) := fun h =>
+    SA.slot_mono sp (hrun.time_nonneg _) (hrun.time_mono h)
+  have hkj : k < j := cast_lt_of_slot hrun hnc hxH hc hs
+  have hsk : e.msg.slot = sp.slot (tr.time k) := (SA.castAt_spec hr hxH hc).2.1
+  have hsl : sp.slot (tr.time i₀) ≤ sp.slot (tr.time k) + 1 := by
+    have := hmono hij
+    omega
+  obtain ⟨hk, hBk, hcK⟩ := hcut x hxH k hsl (by omega)
+  have hcall : tr.CallAt x k (.ac ℓ') := projAC_callAt.1 hc.1
+  have hfr : ℓ'.frame = Node.frame (tr.state x k) := (hrun.cutLaw _ hxH k _ hcall).1
+  have hva : ℓ'.frame.viableAncestor B = B := by
+    rw [hfr]
+    exact viableAncestor_eq_self_run hrun hxH k hBk hcK
+  have hBk' : B ∈ ℓ'.frame.tree := by
+    rw [hfr]
+    exact hBk
+  refine ⟨hkj, hsl, hfr, ?_⟩
+  by_cases hki : k < i₀
+  · have hl := hhold x hxH k hki.le hsl
+    rw [← projAC_state hrun.toLocalRun hxH] at hl
+    have hls := hlslot x hxH
+    have hsk' := hmono hki.le
+    have htk : (tr.projAC).time k = tr.time k := rfl
+    exact SA.mem_readPoint_liveLockBlocks_of_keep hr hxH hc hl hk hBk' (hBr x hxH) hva
+      (Or.inl (by rw [htk]; omega))
+  · obtain ⟨hl, hu⟩ := lock_keep_global_slot hrun hnc hf lk hBr hlslot hhold hcut k
+      (by omega) (by omega) x hxH
+    have hu' := hu (by omega) ℓ' hcall
+    rw [← hfr] at hu'
+    rw [← projAC_state hrun.toLocalRun hxH] at hl hu'
+    exact SA.mem_readPoint_liveLockBlocks_of_keep hr hxH hc hl hk hBk' (hBr x hxH) hva
+      (Or.inr hu')
+
+/-- **Locks on blocks below a common lock block are kept.** Premises of `lock_keep_global_slot`
+for the common block `B` (every honest `x` holds `lk x` on `B`), and, for each honest `y`, a
+further lock `lkD y` on a block `D y` held at `i₀`, with: at every cut `j ∈ [i₀, N)` of `y`,
+`lkD y` does not expire, `D y` is in the frame's tree and a frame regime keeps it; and
+`D y ⪯ B` in the frame of every honest node at every cut `k < N` with
+`slot(t_{i₀}) ≤ slot(t_k) + 1` (the casting frames of the votes `unlock` reads). Conclusion: at
+every cut `j ∈ [i₀, N]` each honest `y` holds `lkD y`, and for `j < N` `unlock` does not move
+`D y`. The locks of one chain are kept when every honest node also locks its top `B`: a vote
+that reads `C ⪰ B ⪰ D y` has heads compatible with `D y`. Without the common top the keep step
+fails: an honest vote that reads only `C ≺ D y` may have a head on a branch off `C` that
+conflicts with `D y`, and a majority of such votes moves `D y` back (`unlock`). -/
+theorem lock_keep_below (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) {B : SA.Blk sp.n (List (FG.Att sp.n))} {i₀ N : Nat}
+    (lk : Fin sp.n → SA.Lock) (hBr : ∀ x ∈ H, B.root = (lk x).block)
+    (hlslot : ∀ x ∈ H, sp.slot (tr.time i₀) ≤ (lk x).slot + 1)
+    (hhold : ∀ x ∈ H, ∀ k ≤ i₀, sp.slot (tr.time i₀) ≤ sp.slot (tr.time k) + 1 →
+      lk x ∈ (tr.state x k).ac.locks)
+    (hcut : ∀ x ∈ H, ∀ j, sp.slot (tr.time i₀) ≤ sp.slot (tr.time j) + 1 → j < N →
+      sp.slot (tr.time j) ≤ (lk x).slot + sp.k ∧
+      B ∈ (tr.state x j).fg.toFrame.tree ∧ FrameKeeps tr x j B)
+    (D : Fin sp.n → SA.Blk sp.n (List (FG.Att sp.n))) (lkD : Fin sp.n → SA.Lock)
+    (hDr : ∀ y ∈ H, (D y).root = (lkD y).block)
+    (hbaseD : ∀ y ∈ H, lkD y ∈ (tr.state y i₀).ac.locks)
+    (hcutD : ∀ y ∈ H, ∀ j, i₀ ≤ j → j < N → sp.slot (tr.time j) ≤ (lkD y).slot + sp.k ∧
+      D y ∈ (tr.state y j).fg.toFrame.tree ∧ FrameKeeps tr y j (D y))
+    (hDB : ∀ y ∈ H, ∀ z ∈ H, ∀ k, sp.slot (tr.time i₀) ≤ sp.slot (tr.time k) + 1 → k < N →
+      (Node.frame (tr.state z k)).Anc (D y) B) :
+    ∀ j, i₀ ≤ j → j ≤ N → ∀ y ∈ H,
+      lkD y ∈ (tr.state y j).ac.locks ∧ (j < N → UnlockKeeps tr y j (D y)) := by
+  have hkeep : ∀ j, i₀ ≤ j → j < N → ∀ y ∈ H, UnlockKeeps tr y j (D y) := by
+    intro j hij hjN y hy
+    obtain ⟨-, hD, -⟩ := hcutD y hy j hij hjN
+    refine unlockKeeps_of_reads hrun hnc hy hD hf fun x _ hxH hs => ?_
+    refine readsLockAbove_of_live hrun hnc hxH fun k ℓ' e hc hm => ?_
+    subst hm
+    obtain ⟨hkj, hsl, hfr, hBl⟩ :=
+      cast_reads_common hrun hnc hf lk hBr hlslot hhold hcut hij hjN hxH hc hs
+    refine ⟨B, Or.inl hBl, ?_⟩
+    rw [hfr]
+    exact hDB y hy _ hxH k hsl (by omega)
+  intro j hij hjN
+  induction j, hij using Nat.le_induction with
+  | base => exact fun y hy => ⟨hbaseD y hy, fun h => hkeep i₀ le_rfl h y hy⟩
+  | succ j hij ih =>
+    intro y hy
+    obtain ⟨hl, -⟩ := ih (by omega) y hy
+    obtain ⟨hk, hD, hc⟩ := hcutD y hy j hij (by omega)
+    refine ⟨lock_keep_run_view hrun hy j hl hk hD (hDr y hy)
+      (viableAncestor_eq_self_run hrun hy j hD hc)
+      fun ℓ hℓ => Or.inr (hkeep j hij (by omega) y hy ℓ hℓ), fun h => ?_⟩
+    exact hkeep (j + 1) (by omega) h y hy
+
 end Consensus.Goldilocks.Compose
 
 end
