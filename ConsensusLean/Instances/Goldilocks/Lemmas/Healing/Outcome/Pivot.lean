@@ -1968,6 +1968,39 @@ private theorem reset_vote_anchor (hp : ResetPremises tr H proposer dg g ΔF a)
         exact Set.mem_insert _ _
       exact Or.inr ⟨h, haQ.trans (Relation.ReflTransGen.single ⟨hQU, hPU, hPQ⟩), hPU⟩
 
+/-- Before the first disagreeing vote, the voter root is below the actual proposal. -/
+theorem reset_vote_root_below_proposal
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {elly : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j elly e)
+    (hes : e.msg.slot = u)
+    (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
+      e'.msg.head = P.root) : Anc (tr.HonestBlocks H) elly.frame.fcRoot P := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hP.1 hci
+  obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
+  have hQU := hPhiU (mem_of_anc_left hsQ hst)
+  have hacc := Compose.proposal_accepted hp.run hp.noColl hP.1 hP.2.2.2.1
+  have hPU : P ∈ tr.HonestBlocks H := by
+    refine ⟨p, hP.1, k + 1, ?_⟩
+    rw [tr.state_succ_of_call hacc,
+      (Store.tree_grows _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hP.1 _)).1 P _
+        (hp.run.toLocalRun.cutLaw p hP.1 _ _ hacc).2.1]
+    exact Set.mem_insert _ _
+  rcases reset_vote_fcRoot hp hc hP hR hy hcy hes hE with hg | ⟨O, hO, hroot⟩ | hroot
+  · exact Compose.honest_genesis_root_anc hp.run hr.coherent (hPsiU hPsi.fcRoot_mem) hg hPU
+  · exact hroot.trans ((reset_proposal_passes hp hc hP hR hci hcall hd hti hPQ O hO).trans
+      (.single ⟨hQU, hPU, hPQ⟩))
+  · exact hroot
+
 /-- **The pivot after the drain** (open: through the four residual steps above). -/
 theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
