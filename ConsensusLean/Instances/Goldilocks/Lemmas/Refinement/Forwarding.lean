@@ -2,7 +2,9 @@ module
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
 public import ConsensusLean.Lemmas.Model.Candidates
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
-import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 
 public section
 
@@ -181,6 +183,141 @@ theorem wrappersAccounted_parent {sp : SA.SAParams}
     cases he
     exact (wrappersAccounted_iff prior st).mp h root p hq
 
+/-- At enqueue, the selected parent and canonical child are available before the fresh
+envelope: the parent is held or belongs to the old queue, while child holdings are supplied
+by the actual block receipt or own-block release. No publication is inferred from storage. -/
+theorem wrappersAccounted_carried {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
+    (st : State sp ro) (B : Blk sp) (root : Nat) (p : Option (Wire sp.n))
+    (h : WrappersAccounted (fun o => o ∈ seen.flatMap Obj.parts) st)
+    (hp : (if root = sp.genesisRoot then some none else
+      (st.wrappers root).map some) = some p)
+    (hB : blockObj sp B ∈ seen.flatMap Obj.parts) :
+    ∀ c ∈ p.toList ++ [blockObj sp B],
+      c ∈ (seen ++ pendingWrappers st).flatMap Obj.parts := by
+  intro c hc
+  rw [List.flatMap_append, List.mem_append]
+  rcases List.mem_append.mp hc with hc | hc
+  · cases p with
+    | none => simp at hc
+    | some parent =>
+      have he : c = parent := by simpa only [Option.toList_some, List.mem_singleton] using hc
+      subst c
+      rcases wrappersAccounted_parent _ st h root parent hp with hh | hh
+      · exact Or.inl hh
+      · exact Or.inr (List.mem_flatMap.mpr ⟨parent, hh, Obj.Contains.refl parent⟩)
+  · have he := List.mem_singleton.mp hc
+    exact Or.inl (he ▸ hB)
+
+/-- Each pending envelope carries only objects held before its own queue position. -/
+def PendingReady {n : Nat} (seen cs : List (Wire n)) : Prop :=
+  ∀ i o, cs[i]? = some o → ∀ c ∈ o.carried,
+    c ∈ (seen ++ cs.take i).flatMap Obj.parts
+
+/-- Characterize ordered readiness without exporting its body. -/
+theorem pendingReady_iff {n : Nat} (seen cs : List (Wire n)) : PendingReady seen cs ↔
+    ∀ i o, cs[i]? = some o → ∀ c ∈ o.carried,
+      c ∈ (seen ++ cs.take i).flatMap Obj.parts := by
+  rfl
+
+/-- Appending a child keeps all old prefix obligations unchanged; its own carried
+objects may use the complete old queue, but not the child itself. -/
+theorem pendingReady_append {n : Nat} (seen cs : List (Wire n)) (o : Wire n)
+    (h : PendingReady seen cs)
+    (ho : ∀ c ∈ o.carried, c ∈ (seen ++ cs).flatMap Obj.parts) :
+    PendingReady seen (cs ++ [o]) := by
+  rw [pendingReady_iff] at h ⊢
+  intro i q hi c hc
+  by_cases hil : i < cs.length
+  · rw [List.getElem?_append_left hil] at hi
+    simpa only [List.take_append_of_le_length (Nat.le_of_lt hil)] using h i q hi c hc
+  · have hle : cs.length ≤ i := Nat.le_of_not_gt hil
+    rw [List.getElem?_append_right hle] at hi
+    have he : i = cs.length := by
+      have hb := (List.getElem?_eq_some_iff.mp hi).1
+      simp only [List.length_singleton] at hb
+      omega
+    subst i
+    simp only [Nat.sub_self, List.getElem?_cons_zero, Option.some.injEq] at hi
+    subst q
+    simpa only [List.take_left] using ho c hc
+
+/-- Acceptance appends a ready envelope when the canonical child is actually held.
+The selected parent is justified by the old durable-map/queue invariant. -/
+theorem pendingReady_queueAccepted {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
+    (st : State sp ro) (B : Blk sp)
+    (ha : WrappersAccounted (fun o => o ∈ seen.flatMap Obj.parts) st)
+    (hr : PendingReady seen (pendingWrappers st))
+    (hb : blockObj sp B ∈ seen.flatMap Obj.parts) :
+    PendingReady seen (pendingWrappers (queueAccepted st B)) := by
+  unfold queueAccepted
+  cases hpar : B.parent with
+  | none => exact hr
+  | some root =>
+    dsimp only
+    cases hp : (if root = sp.genesisRoot then some none else
+      (st.wrappers root).map some) with
+    | none => exact hr
+    | some p =>
+      rw [pendingWrappers_eq]
+      simp only [List.map_append, List.map_cons, List.map_nil]
+      change PendingReady seen (pendingWrappers st ++ [forwardObj sp st.self st.now p B])
+      apply pendingReady_append _ _ _ hr
+      exact wrappersAccounted_carried seen st B root p ha hp hb
+
+/-- Actual block handling preserves readiness, including refusal. Child holdings must
+come from the engine receipt or own release, rather than the store's acceptance result. -/
+theorem pendingReady_onBlock {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
+    (st : State sp ro) (B : Blk sp)
+    (ha : WrappersAccounted (fun o => o ∈ seen.flatMap Obj.parts) st)
+    (hr : PendingReady seen (pendingWrappers st))
+    (hb : blockObj sp B ∈ seen.flatMap Obj.parts) :
+    PendingReady seen (pendingWrappers (apply st (Node.onBlock st.self st.node st.now B))) := by
+  unfold Node.onBlock
+  split
+  · exact hr
+  · split
+    · exact hr
+    · have hs : (queueAccepted st B).self = st.self := by
+        unfold queueAccepted
+        cases B.parent with
+        | none => rfl
+        | some root =>
+          dsimp only
+          cases (if root = sp.genesisRoot then some none else
+            (st.wrappers root).map some) <;> rfl
+      have hq := pendingReady_queueAccepted seen st B ha hr hb
+      rw [pendingWrappers_eq, hs] at hq
+      rw [pendingWrappers_eq]
+      exact hq
+
+/-- After a complete drain, every durable entry is held: old entries were held already
+and every previously pending envelope is now in the actual release output. -/
+theorem wrappersAccounted_drained {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen released : List (Wire sp.n))
+    (st : State sp ro)
+    (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
+    (hrel : ∀ o ∈ pendingWrappers st, o ∈ released) :
+    ∀ root o, st.wrappers root = some o →
+      o ∈ (seen ++ released).flatMap Obj.parts := by
+  intro root o ho
+  rw [List.flatMap_append, List.mem_append]
+  rcases (wrappersAccounted_iff _ st).mp ha root o ho with hh | hh
+  · exact Or.inl hh
+  · exact Or.inr (List.mem_flatMap.mpr ⟨o, hrel o hh, Obj.Contains.refl o⟩)
+
+/-- Enlarging actual holdings preserves ordered queue readiness. -/
+theorem pendingReady_mono {n : Nat} {seen seen' cs : List (Wire n)}
+    (hseen : ∀ o ∈ seen.flatMap Obj.parts, o ∈ seen'.flatMap Obj.parts)
+    (h : PendingReady seen cs) : PendingReady seen' cs := by
+  rw [pendingReady_iff] at h ⊢
+  intro i o hi c hc
+  have hh := h i o hi c hc
+  rw [List.flatMap_append, List.mem_append] at hh ⊢
+  exact hh.elim (fun hh => Or.inl (hseen c hh)) Or.inr
+
 /-- Handler cut folds preserve exact map/queue accounting. -/
 theorem wrappersAccounted_apply {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
@@ -231,6 +368,103 @@ theorem wrappersAccounted_apply {sp : SA.SAParams}
     rw [pendingWrappers_eq] at hp ⊢
     rw [he] at hp
     exact hp
+
+/-- A receipt's canonical child is held independently of whether its handler accepts it. -/
+theorem pendingReady_processOne {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
+    (st : State sp ro) (hs : List (Header Info × Nat)) (o : Wire sp.n)
+    (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
+    (hr : PendingReady seen (pendingWrappers st)) (ho : o ∈ seen.flatMap Obj.parts) :
+    PendingReady seen (pendingWrappers (processOne hs st o)) := by
+  unfold processOne
+  split
+  · rename_i B hB
+    have he : o = blockObj sp B := by
+      rcases canonEvent_eq_some hB with ⟨C, he, ho⟩ | ⟨v, he, _⟩ | ⟨a, he, _⟩
+      · cases he; exact ho
+      · cases he
+      · cases he
+    have h := pendingReady_onBlock seen st B ha hr (he ▸ ho)
+    unfold relayIf
+    dsimp only
+    split <;> exact h
+  · unfold Node.onMessage Node.acCall apply
+    dsimp only
+    exact hr
+  · unfold relayIf Node.onAttestation apply
+    simp only [↓reduceIte]
+    exact hr
+  · exact hr
+
+/-- Receipt handlers retain exact map accounting; relay-buffer updates do not affect it. -/
+theorem wrappersAccounted_processOne {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
+    (st : State sp ro) (hs : List (Header Info × Nat)) (o : Wire sp.n)
+    (ha : WrappersAccounted prior st) : WrappersAccounted prior (processOne hs st o) := by
+  unfold processOne
+  split
+  · rename_i B hB
+    have h := wrappersAccounted_apply prior st (Node.onBlock st.self st.node st.now B) ha
+    unfold relayIf
+    dsimp only
+    split <;> exact h
+  · rename_i v hv
+    have h := wrappersAccounted_apply prior st (Node.onMessage st.self st.node st.now v) ha
+    exact h
+  · rename_i a ha'
+    have h := wrappersAccounted_apply prior st (Node.onAttestation st.node a) ha
+    unfold relayIf
+    simp only [↓reduceIte]
+    exact h
+  · exact ha
+
+/-- Recursive receipt processing preserves accounting and ordered readiness together.
+All children are held by the enclosing engine receipt before any handler is executed. -/
+theorem pendingReady_process {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
+    (st : State sp ro) (hs : List (Header Info × Nat)) (o : Wire sp.n)
+    (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
+    (hr : PendingReady seen (pendingWrappers st))
+    (ho : ∀ c ∈ o.parts, c ∈ seen.flatMap Obj.parts) :
+    WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) (process st o hs) ∧
+      PendingReady seen (pendingWrappers (process st o hs)) := by
+  have hf (xs : List (Wire sp.n)) : ∀ st : State sp ro,
+      WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st →
+      PendingReady seen (pendingWrappers st) →
+      (∀ c ∈ xs, c ∈ seen.flatMap Obj.parts) →
+      WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts)
+          (xs.foldl (processOne hs) st) ∧
+        PendingReady seen (pendingWrappers (xs.foldl (processOne hs) st)) := by
+    induction xs with
+    | nil => intro st ha hr _; exact ⟨ha, hr⟩
+    | cons c cs ih =>
+      intro st ha hr hh
+      exact ih _ (wrappersAccounted_processOne _ st hs c ha)
+        (pendingReady_processOne seen st hs c ha hr (hh c List.mem_cons_self))
+        (fun d hd => hh d (List.mem_cons_of_mem c hd))
+  exact hf o.parts st ha hr ho
+
+/-- Own recording preserves readiness provided the actual decoded own block is held.
+The caller must identify the generated canonical block; arbitrary signed headers do not
+justify this premise merely by having been released. -/
+theorem pendingReady_recordOwn {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n))
+    (st : State sp ro) (o : Wire sp.n) (hs : List (Header Info × Nat))
+    (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
+    (hr : PendingReady seen (pendingWrappers st))
+    (hb : ∀ k s hd cs, o = .mk (.signed k (.proposer s)) (.item hd) cs →
+      ∀ atts p d, decodeInfo sp.n hd.info = some (atts, p) → rootOf hs hd = some d →
+        blockObj sp (blockOf sp d hd k atts p) ∈ seen.flatMap Obj.parts) :
+    PendingReady seen (pendingWrappers (recordOwn st o hs)) := by
+  unfold recordOwn
+  split
+  · exact hr
+  · rename_i original k s hd cs
+    split
+    · rename_i atts p d hdec hroot
+      exact pendingReady_onBlock seen st _ ha hr (hb k s hd cs rfl atts p d hdec hroot)
+    · exact hr
+  · exact hr
 
 /-- Every fresh pending wrapper in a handler result has a successful block-acceptance cut
 in that very result, with the handler's clock. Fold induction preserves the original
@@ -412,9 +646,7 @@ private theorem wrappersCover_processOne {sp : SA.SAParams}
   · unfold relayIf
     dsimp only
     split <;> exact wrappersCover_onBlock _ _ h
-  · unfold relayIf
-    dsimp only
-    split <;> exact h
+  · exact h
   · rename_i a _
     obtain ⟨atts, he⟩ := Store.onAttestation_eq st.node.fg a
     simpa [relayIf, apply, Node.onAttestation, he, WrappersCover] using h
@@ -691,7 +923,9 @@ theorem pollBatch_forward_index {sp : SA.SAParams}
     (i : Nat) (q : Time × List (Wire sp.n)) (hi : st.forwards[i]? = some q) :
     (pollBatch st t).2[(poll st t).2.toList.length + i]? =
       some (.forward q.1, q.2) := by
+  have hi' := (List.getElem?_eq_some_iff.mp hi).1
   simp only [pollBatch]
+  rw [List.getElem?_append_left (by simp only [List.length_append, List.length_map]; omega)]
   rw [List.getElem?_append_right (by omega)]
   simp only [Nat.add_sub_cancel_left, List.getElem?_map, hi, Option.map_some]
 
@@ -720,6 +954,132 @@ theorem releaseAll_of_prefix_guards {pub : Public} {O : Type} (P : Protocol pub 
         simpa only [List.take_succ_cons, List.append_assoc, List.singleton_append] using hC)
     exact ⟨congrArg (List.cons _) ht.1,
       ht.2.trans (by simp only [List.append_assoc, List.singleton_append])⟩
+
+/-- Ordered readiness discharges every guard for a batch of canonical block envelopes. -/
+theorem forward_batch_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (hn : 1 ≤ Fintype.card V) (x : Fin (Fintype.card V))
+    (seen cs : List (Wire (Fintype.card V))) (hr : PendingReady seen cs)
+    (hshape : ∀ o ∈ cs, ∃ t p B, o = forwardObj (S.params (pubOf E) hn) x t p B) :
+    ∀ i o, cs[i]? = some o →
+      Model.releasable (P := protoOf (compiled (family S)) E) (seen ++ cs.take i) o = true ∧
+      Model.protects (protoOf (compiled (family S)) E) x (seen ++ cs.take i) o = true ∧
+      (protoOf (compiled (family S)) E).dependencies.ready
+        (Model.closure (seen ++ cs.take i)) o = true := by
+  intro i o hi
+  obtain ⟨t, p, B, he⟩ := hshape o (List.mem_of_getElem? hi)
+  have hh := (pendingReady_iff seen cs).mp hr i o hi
+  subst o
+  exact forwardObj_release_guards S hn (seen ++ cs.take i) x t p B hh
+
+/-- A ready canonical forwarding suffix is released completely from its actual
+post-prefix node. This allows an ordinary poll emission to precede the block queue. -/
+theorem releaseAll_forward_batch {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (hn : 1 ≤ Fintype.card V) (hash : Header Info → Nat) (x : Fin (Fintype.card V))
+    (nd : Model.Node (protoOf (compiled (family S)) E))
+    (cs : List (protoOf (compiled (family S)) E).Object)
+    (hr : PendingReady nd.seen cs)
+    (hshape : ∀ o ∈ cs, ∃ t p B, o = forwardObj (S.params (pubOf E) hn) x t p B) :
+    (Model.releaseAll (protoOf (compiled (family S)) E) hash x nd cs).2 = cs ∧
+      (Model.releaseAll (protoOf (compiled (family S)) E) hash x nd cs).1.seen =
+        nd.seen ++ cs := by
+  apply releaseAll_of_prefix_guards
+  exact forward_batch_guards S hn x nd.seen cs hr hshape
+
+/-- Ordinary poll candidates may succeed or fail: either way they preserve holdings,
+so a ready block-envelope suffix drains completely after their actual release prefix. -/
+theorem releaseAll_forward_suffix {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (hn : 1 ≤ Fintype.card V) (hash : Header Info → Nat) (x : Fin (Fintype.card V))
+    (nd : Model.Node (protoOf (compiled (family S)) E))
+    (pre cs : List (protoOf (compiled (family S)) E).Object)
+    (hr : PendingReady nd.seen cs)
+    (hshape : ∀ o ∈ cs, ∃ t p B, o = forwardObj (S.params (pubOf E) hn) x t p B) :
+    (Model.releaseAll (protoOf (compiled (family S)) E) hash x nd (pre ++ cs)).2 =
+      (Model.releaseAll (protoOf (compiled (family S)) E) hash x nd pre).2 ++ cs := by
+  rw [Model.releaseAll_append (P := protoOf (compiled (family S)) E) hash x nd pre cs]
+  have hseen := Model.releaseAll_seen (P := protoOf (compiled (family S)) E)
+    hash x nd pre
+  have hr' : PendingReady
+      (Model.releaseAll (protoOf (compiled (family S)) E) hash x nd pre).1.seen cs := by
+    rw [hseen]
+    apply pendingReady_mono (h := hr)
+    intro o ho
+    obtain ⟨c, hc, ho⟩ := List.mem_flatMap.mp ho
+    exact List.mem_flatMap.mpr ⟨c, List.mem_append_left _ hc, ho⟩
+  rw [(releaseAll_forward_batch S hn hash x _ cs hr' hshape).1]
+
+/-- The immutable pre-poll block queue follows the ordinary emission and precedes votes. -/
+theorem pollBatch_signed_eq {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time) :
+    ((pollBatch st t).2.map fun q =>
+      Obj.mk (.signed st.self .poll) (.data q.1) q.2) =
+      ((poll st t).2.toList.map fun q =>
+        Obj.mk (.signed st.self .poll) (.data q.1) q.2) ++ pendingWrappers st ++
+      (st.voteForwards.map fun q =>
+        Obj.mk (.signed st.self .poll) (.data (.voteForward q.1 (encodeVote q.2)))
+          [voteObj q.2]) := by
+  rw [pendingWrappers_eq]
+  simp only [pollBatch, List.map_append, List.map_map, Function.comp_def]
+
+/-- Actual selected poll candidates retain the old signed block queue after the ordinary
+emission. The self-key premise is the runtime identity, not a new service assumption. -/
+theorem signedCandidate_poll_eq {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (t : Nat)
+    (hsel : rho.ownKey v ∈ rho.sel .poll)
+    (hself : (shapeOf S hn nd).self = rho.ownKey v) :
+    rho.signedCandidate v (.poll t) ((protoOf (compiled (family S)) E).act nd.st (.poll t)).2 =
+      ((poll (shapeOf S hn nd) t).2.toList.map fun q =>
+        Obj.mk (.signed (rho.ownKey v) .poll) (.data q.1) q.2) ++
+        pendingWrappers (shapeOf S hn nd) ++
+      ((shapeOf S hn nd).voteForwards.map fun q =>
+        Obj.mk (.signed (rho.ownKey v) .poll) (.data (.voteForward q.1 (encodeVote q.2)))
+          [voteObj q.2]) := by
+  rw [act_poll_snd S hn]
+  simp only [Model.Run.signedCandidate,
+    show (protoOf (compiled (family S)) E).role (.poll t) = .poll from rfl,
+    hsel, ↓reduceIte, Option.toList_map, pendingWrappers_eq, hself]
+  erw [List.map_append, List.map_append, List.map_map, List.map_map, List.map_map]
+  rfl
+
+/-- A selected actual poll releases every ready canonical pending block wrapper. The ordinary
+emission may fail; later vote envelopes cannot undo releases from the block prefix. -/
+theorem dutyStep_poll_pending {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (t : Nat)
+    (hsel : rho.ownKey v ∈ rho.sel .poll)
+    (hself : (shapeOf S hn nd).self = rho.ownKey v)
+    (hr : PendingReady nd.seen (pendingWrappers (shapeOf S hn nd)))
+    (hshape : ∀ o ∈ pendingWrappers (shapeOf S hn nd), ∃ τ p B,
+      o = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) τ p B) :
+    ∀ o ∈ pendingWrappers (shapeOf S hn nd), o ∈ (rho.dutyStep v nd (.poll t)).2 := by
+  intro o ho
+  unfold Model.Run.dutyStep
+  simp only [show (protoOf (compiled (family S)) E).role (.poll t) = .poll from rfl,
+    hsel, ↓reduceIte]
+  rw [signedCandidate_poll_eq S rho hn v nd t hsel hself]
+  erw [Model.releaseAll_append (P := protoOf (compiled (family S)) E)]
+  apply List.mem_append_left
+  erw [releaseAll_forward_suffix S hn rho.hash (rho.ownKey v)
+    ⟨((protoOf (compiled (family S)) E).act nd.st (.poll t)).1, nd.seen⟩ _ _ hr hshape]
+  exact List.mem_append_right _ ho
+
+/-- Poll's block map is durable while the pending queue is cleared. -/
+theorem poll_wrappers {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time) :
+    (poll st t).1.wrappers = st.wrappers ∧ (poll st t).1.forwards = [] := by
+  unfold poll
+  have hf : (fgUpdate st).wrappers = st.wrappers := by
+    unfold fgUpdate
+    dsimp only
+    split
+    · rfl
+    · split <;> rfl
+  dsimp only
+  split <;> constructor
+  · dsimp only; split <;> first | exact hf | rfl
+  · rfl
+  · dsimp only; split <;> first | exact hf | rfl
+  · rfl
 
 /-- Each enumerated duty batch releases only objects released by the actual duty list.
 The induction threads the same intermediate node as `runDuties`, including unselected

@@ -866,6 +866,13 @@ theorem poll_candidate_forward_queue (v : V)
   obtain ⟨m, cs, hm, _, rfl⟩ := rho.mem_signedCandidate.mp ho
   rw [act_poll_snd S hn, (poll_outbox _ _).2] at hm
   rcases List.mem_append.mp hm with hm | hm
+  swap
+  · obtain ⟨⟨stamp, vote⟩, _, he⟩ := List.mem_map.mp hm
+    cases he
+    have heq := forwardObj_of_decodeForward _ _ _ _ _ _ hd
+    have hmsg := congrArg Model.Obj.msg heq
+    cases hmsg
+  rcases List.mem_append.mp hm with hm | hm
   · cases hh : (pollPre (shapeOf S hn nd)).outbox.head? with
     | none =>
       simp only [hh, Option.map_none, Option.toList_none] at hm
