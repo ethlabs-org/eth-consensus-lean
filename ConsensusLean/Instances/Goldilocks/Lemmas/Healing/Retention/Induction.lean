@@ -160,12 +160,14 @@ theorem vote_viable_of_root (hrun : GoldilocksRun proposer dg H tr) (hnc : Compo
 whose `Clean` need not hold): when (i) holds at an honest vote of a slot `σ > j` and every honest
 vote of a slot `> j` at an earlier cut extends `B`, the vote extends `B`: below `fc_root` by
 requirement 1, otherwise by A1.2 for `σ = j + 1` (its stored-block form) and by A1.3 after. -/
-theorem high_vote_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+theorem high_vote_extends_of_syncAC
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (hx : x ∈ H) (hfl : Compose.StoredFastLockAt tr x i j B CV) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ℓ e) (hs : j < e.msg.slot)
-    (hsync : tr.SyncRun H ΔF (sp.ts j) (sp.ts e.msg.slot + sp.Δ))
+    (hsync0 : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H)
+      (sp.ts j) (tr.time k) tr.projAC)
     (hcarry : e.msg.slot = j + 1 → ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot →
       SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV)
     (hcarryLater : ∀ m', e.msg.slot = m' + 1 → j < m' →
@@ -188,8 +190,6 @@ theorem high_vote_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose
   · exact ⟨Hd, hΦU hHd, hHdr, hBf.trans (Anc.mono hΦU hfHd)⟩
   have hv := hviab.resolve_right hBf
   have h0 := hr.time_nonneg k
-  have hsync0 := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr
-    proposer ΔF (sp.ts j) (sp.ts e.msg.slot + sp.Δ) hrun.toLocalRun hsync
   have hfault' : SA.FaultBound tr.projAC H (tr.time k) := by
     unfold SA.FaultBound
     rw [← (Compose.joined_projection sp ro dg H tr proposer hrun y hy (tr.time k)).2.2]
@@ -202,14 +202,14 @@ theorem high_vote_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose
       rcases hr.frameLaw x hx i ℓw hcw with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
     refine SA.first_transfer_stored sp hrun' hx hflD
       (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hy hc h1
-      (Compose.syncAC_mono hsync0 le_rfl hle) (hcarry h1 hBf) hfault' ?_ ?_
+      hsync0 (hcarry h1 hBf) hfault' ?_ ?_
     · rw [← h1]; exact Or.inl hv
     · rw [← h1]; exact hearlier
   · obtain ⟨m', hm'⟩ : ∃ m', e.msg.slot = m' + 1 := ⟨e.msg.slot - 1, by omega⟩
     have hsm' : j < m' := by omega
     refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' m' y k B ℓ e hy hc hm' ?_
       (hhalf m' hm' hsm') (hcarryLater m' hm' hsm' hBf) hfault'
-      (Compose.syncAC_mono hsync0 ((SA.ts_le_iff sp).mpr (Int.ofNat_le.mpr hsm'.le)) hle) ?_ ?_
+      (Compose.syncAC_mono hsync0 ((SA.ts_le_iff sp).mpr (Int.ofNat_le.mpr hsm'.le)) le_rfl) ?_ ?_
     · intro z hz j' e' hv' hsl
       have hjk : j' < k := by
         by_contra hjk
@@ -221,6 +221,33 @@ theorem high_vote_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose
       exact hprior z hz j' hjk e' hv' (by omega)
     · rw [← hm']; exact Or.inl hv
     · rw [← hm']; exact hearlier
+
+/-- Node synchrony specialization of high-origin vote transfer. -/
+theorem high_vote_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (hx : x ∈ H) (hfl : Compose.StoredFastLockAt tr x i j B CV) {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ℓ e) (hs : j < e.msg.slot)
+    (hsync : tr.SyncRun H ΔF (sp.ts j) (sp.ts e.msg.slot + sp.Δ))
+    (hcarry : e.msg.slot = j + 1 → ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot →
+      SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV)
+    (hcarryLater : ∀ m', e.msg.slot = m' + 1 → j < m' →
+      ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot →
+      SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e m' (Compose.honestVotes tr H m'))
+    (hhalf : ∀ m', e.msg.slot = m' + 1 → j < m' →
+      sp.n ≤ 2 * {x' | x' ∈ H ∧ ∃ j' e', SA.VoteAt tr.projAC x' j' e' ∧ e'.msg.slot = m'}.ncard)
+    (hfault : tr.FaultBound H (tr.time k))
+    (hviab : B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
+      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
+    (hprior : ∀ z ∈ H, ∀ j' < k, ∀ e', SA.VoteAt tr.projAC z j' e' → j < e'.msg.slot →
+      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
+    SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hsync0 := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr
+    proposer ΔF (sp.ts j) (sp.ts e.msg.slot + sp.Δ) hrun.toLocalRun hsync
+  exact high_vote_extends_of_syncAC hrun hnc hx hfl hy hc hs
+    (Compose.syncAC_mono hsync0 le_rfl (Compose.cast_head_fcRoot hr hy hc).2)
+    hcarry hcarryLater hhalf hfault hviab hprior
 
 /-- **The vote step** (§13 "Closing the first-violating-event induction"; §11 item 2 for the
 votes through the ticks at `a_z`): (R3) at the honest votes of cut `k`, from the invariant at every
