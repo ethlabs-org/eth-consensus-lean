@@ -466,6 +466,148 @@ theorem pendingReady_recordOwn {sp : SA.SAParams}
     · exact hr
   · exact hr
 
+/-- A generated proposal's decoded block has exactly the signed object just released.
+This is an encoding identity, independent of payload validity and the release digest. -/
+theorem proposal_blockObj {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (s : Slot)
+    (par : ParentRef) (info : Info) (cs : List (Wire sp.n))
+    (hp : (propose st s).2 = some (par, info, cs))
+    (k : Fin sp.n) (x d : Nat) (atts : List (FG.Att sp.n)) (p : SA.Payload sp.n)
+    (hd : decodeInfo sp.n info = some (atts, p)) :
+    blockObj sp (blockOf sp d ⟨par, s, x, info⟩ k atts p) =
+      .mk (.signed k (.proposer s)) (.item ⟨par, s, x, info⟩) cs := by
+  unfold propose at hp
+  dsimp only at hp
+  split at hp
+  · cases hp
+  · cases hp
+    rw [decodeInfo_encodeInfo] at hd
+    cases hd
+    simp only [blockObj, blockOf, headerOf, parentRoot_parentRef]
+
+/-- The engine's proposal candidate supplies the canonical-child premise used by own
+recording. It is identified from the actual duty, not inferred from an arbitrary header. -/
+theorem signedCandidate_propose_canonical {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (o : (protoOf (compiled (family S)) E).Object)
+    (ho : o ∈ rho.signedCandidate v (.propose s hs)
+      ((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).2) :
+    ∀ k s' hd cs, o = .mk (.signed k (.proposer s')) (.item hd) cs →
+      ∀ atts p d, decodeInfo (Fintype.card V) hd.info = some (atts, p) →
+        blockObj (S.params (pubOf E) hn)
+          (blockOf (S.params (pubOf E) hn) d hd k atts p) = o := by
+  obtain ⟨m, cs, hm, _, rfl⟩ := rho.mem_signedCandidate.mp ho
+  rw [act_propose_snd S hn] at hm
+  obtain ⟨q, hq, he⟩ := Option.mem_map.mp (Option.mem_toList.mp hm)
+  cases he
+  intro k s' hd cs' he atts p d hdec
+  cases he
+  exact proposal_blockObj (shapeOf S hn nd) s q.1 q.2.1 q.2.2 hq
+    (rho.ownKey v) (encodeTxs nd.st.2) d atts p hdec
+
+/-- Own recording preserves durable map provenance, including a new accepted block. -/
+theorem wrappersAccounted_recordOwn {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n → Prop)
+    (st : State sp ro) (o : Wire sp.n) (hs : List (Header Info × Nat))
+    (ha : WrappersAccounted prior st) : WrappersAccounted prior (recordOwn st o hs) := by
+  unfold recordOwn
+  split
+  · exact ha
+  · split
+    · exact wrappersAccounted_apply prior st _ ha
+    · exact ha
+  · exact ha
+
+/-- A successful canonical own release supplies its child holding at the actual updated
+seen prefix; map accounting and ordered readiness survive its `recordOwn` call together. -/
+theorem pendingReady_own_release {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    (seen : List (Wire sp.n)) (st : State sp ro) (o : Wire sp.n)
+    (hs : List (Header Info × Nat))
+    (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
+    (hr : PendingReady seen (pendingWrappers st))
+    (hc : ∀ k s hd cs, o = .mk (.signed k (.proposer s)) (.item hd) cs →
+      ∀ atts p d, decodeInfo sp.n hd.info = some (atts, p) →
+        blockObj sp (blockOf sp d hd k atts p) = o) :
+    WrappersAccounted (fun c => c ∈ (seen ++ [o]).flatMap Obj.parts) (recordOwn st o hs) ∧
+      PendingReady (seen ++ [o]) (pendingWrappers (recordOwn st o hs)) := by
+  have hmono : ∀ c ∈ seen.flatMap Obj.parts, c ∈ (seen ++ [o]).flatMap Obj.parts := by
+    intro c hc
+    obtain ⟨a, ha, hc⟩ := List.mem_flatMap.mp hc
+    exact List.mem_flatMap.mpr ⟨a, List.mem_append_left _ ha, hc⟩
+  have ha' : WrappersAccounted (fun c => c ∈ (seen ++ [o]).flatMap Obj.parts) st := by
+    rw [wrappersAccounted_iff] at ha ⊢
+    intro root c hw
+    exact (ha root c hw).imp (hmono c) id
+  refine ⟨wrappersAccounted_recordOwn _ st o hs ha', ?_⟩
+  apply pendingReady_recordOwn (seen ++ [o]) st o hs ha' (pendingReady_mono hmono hr)
+  intro k s hd cs he atts p d hdec _
+  rw [hc k s hd cs he atts p d hdec]
+  exact List.mem_flatMap.mpr ⟨o, List.mem_append_right _ (List.mem_singleton_self o),
+    Obj.Contains.refl o⟩
+
+/-- Release induction uses actual successful prefixes. Rejected candidates leave both
+invariants unchanged; each successful canonical candidate extends seen before recording. -/
+theorem releaseAll_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (hn : 1 ≤ Fintype.card V) (hash : Header Info → Nat) (origin : Fin (Fintype.card V))
+    (nd : Model.Node (protoOf (compiled (family S)) E))
+    (cs : List (protoOf (compiled (family S)) E).Object)
+    (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
+      (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
+    (hr : PendingReady nd.seen (pendingWrappers (shapeOf S hn nd)))
+    (hc : ∀ o ∈ cs, ∀ k s hd children,
+      o = .mk (.signed k (.proposer s)) (.item hd) children →
+      ∀ atts p d, decodeInfo (Fintype.card V) hd.info = some (atts, p) →
+        blockObj (S.params (pubOf E) hn)
+          (blockOf (S.params (pubOf E) hn) d hd k atts p) = o) :
+    let result := (Model.releaseAll (protoOf (compiled (family S)) E) hash origin nd cs).1
+    WrappersAccounted (sp := S.params (pubOf E) hn)
+      (fun c => c ∈ result.seen.flatMap Obj.parts) (shapeOf S hn result) ∧
+      PendingReady result.seen (pendingWrappers (shapeOf S hn result)) := by
+  induction cs generalizing nd with
+  | nil => exact ⟨ha, hr⟩
+  | cons o cs ih =>
+    simp only [Model.releaseAll]
+    split
+    · have hh := pendingReady_own_release (sp := S.params (pubOf E) hn)
+        (nd.seen : List (Wire (Fintype.card V))) (shapeOf S hn nd) o
+        (Model.digests (P := protoOf (compiled (family S)) E) hash o)
+        ha hr (hc o List.mem_cons_self)
+      exact ih _ hh.1 hh.2 (fun c h => hc c (List.mem_cons_of_mem o h))
+    · exact ih nd ha hr (fun c h => hc c (List.mem_cons_of_mem o h))
+
+/-- Actual proposal duties preserve both invariants from their input state,
+without an extra canonical-child assumption on their caller. -/
+theorem dutyStep_propose_pendingReady {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
+      (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
+    (hr : PendingReady nd.seen (pendingWrappers (shapeOf S hn nd))) :
+    let result := (rho.dutyStep v nd (.propose s hs)).1
+    WrappersAccounted (sp := S.params (pubOf E) hn)
+      (fun c => c ∈ result.seen.flatMap Obj.parts) (shapeOf S hn result) ∧
+      PendingReady result.seen (pendingWrappers (shapeOf S hn result)) := by
+  unfold Model.Run.dutyStep
+  split
+  swap
+  · exact ⟨ha, hr⟩
+  apply releaseAll_pendingReady S hn rho.hash (rho.ownKey v)
+  · change WrappersAccounted _ (((protoOf (compiled (family S)) E).act nd.st
+      (.propose s hs)).1.1 hn)
+    rw [shapeOf_act_propose S hn]
+    unfold propose
+    dsimp only
+    split <;> exact ha
+  · change PendingReady _ (pendingWrappers (((protoOf (compiled (family S)) E).act nd.st
+      (.propose s hs)).1.1 hn))
+    rw [shapeOf_act_propose S hn]
+    unfold propose
+    dsimp only
+    split <;> exact hr
+  · exact fun o ho => signedCandidate_propose_canonical S rho hn v nd s hs o ho
+
 /-- Every fresh pending wrapper in a handler result has a successful block-acceptance cut
 in that very result, with the handler's clock. Fold induction preserves the original
 clock and retains list membership, including multiple accepts within one event. -/
@@ -1080,6 +1222,31 @@ theorem poll_wrappers {sp : SA.SAParams}
   · rfl
   · dsimp only; split <;> first | exact hf | rfl
   · rfl
+
+/-- After the real poll, every durable wrapper is held, not merely pending. -/
+theorem dutyStep_poll_wrappers_held {V : Type} [Fintype V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (t : Nat)
+    (hsel : rho.ownKey v ∈ rho.sel .poll) (hself : (shapeOf S hn nd).self = rho.ownKey v)
+    (ha : WrappersAccounted (sp := S.params (pubOf E) hn)
+      (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd))
+    (hr : PendingReady nd.seen (pendingWrappers (shapeOf S hn nd)))
+    (hc : ∀ o ∈ pendingWrappers (shapeOf S hn nd), ∃ τ p B,
+      o = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) τ p B) :
+    ∀ root o, (shapeOf S hn (rho.dutyStep v nd (.poll t)).1).wrappers root = some o →
+      o ∈ (rho.dutyStep v nd (.poll t)).1.seen.flatMap Obj.parts := by
+  intro root o hw
+  rw [dutyStep_poll S rho hn v nd t hsel, (poll_wrappers _ _).1] at hw
+  have hh := wrappersAccounted_drained (sp := S.params (pubOf E) hn)
+    (nd.seen : List (Wire (Fintype.card V))) (rho.dutyStep v nd (.poll t)).2
+    (shapeOf S hn nd) ha (dutyStep_poll_pending S rho hn v nd t hsel hself hr hc) root o hw
+  have he : (rho.dutyStep v nd (.poll t)).1.seen = nd.seen ++ (rho.dutyStep v nd (.poll t)).2 := by
+    unfold Model.Run.dutyStep
+    simp only [show (protoOf (compiled (family S)) E).role (.poll t) = .poll from rfl,
+      hsel, ↓reduceIte]
+    exact Model.releaseAll_seen _ _ _ _
+  rw [he]
+  exact hh
 
 /-- Each enumerated duty batch releases only objects released by the actual duty list.
 The induction threads the same intermediate node as `runDuties`, including unselected
