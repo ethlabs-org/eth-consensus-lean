@@ -691,10 +691,10 @@ theorem now_bounds_cut (hv : rho.ExecutionValid) (v : V) {i : Nat}
 
 /-- Unit-time ticks bound a ready reader's clock lag, even before its tick at
 the current cut time. The extra unit of catch-up pays for this lag. -/
-theorem ready_at_stored_now (hv : rho.ExecutionValid) {v : V} {i : Nat}
+theorem stored_now_ge_cutTime_sub_one (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) {c : Time} (hc : 0 ≤ c)
     (hr : rho.point.Ready (c + 1) v (rho.cutTime i)) :
-    rho.point.Ready c v (stateAt S rho hn v i).now := by
+    rho.cutTime i - 1 ≤ (stateAt S rho hn v i).now := by
   obtain ⟨hn0, hnT⟩ := now_bounds_cut S rho hn hv v hi
   have hlag : rho.cutTime i - 1 ≤ (stateAt S rho hn v i).now := by
     by_cases ht : 0 ≤ rho.cutTime i - 1
@@ -732,6 +732,15 @@ theorem ready_at_stored_now (hv : rho.ExecutionValid) {v : V} {i : Nat}
       rw [hclock] at hm
       exact hm
     · linarith
+  exact hlag
+
+/-- The extra unit of ready history pays for the stored clock's one-unit lag. -/
+theorem ready_at_stored_now (hv : rho.ExecutionValid) {v : V} {i : Nat}
+    (hi : i ≤ rho.events.length) {c : Time} (hc : 0 ≤ c)
+    (hr : rho.point.Ready (c + 1) v (rho.cutTime i)) :
+    rho.point.Ready c v (stateAt S rho hn v i).now := by
+  obtain ⟨hn0, hnT⟩ := now_bounds_cut S rho hn hv v hi
+  have hlag := stored_now_ge_cutTime_sub_one S rho hn hv hi hc hr
   refine ⟨hr.1, fun τ hlo hhi => hr.2 τ ?_ (hhi.trans hnT)⟩
   apply max_le
   · exact (le_max_left _ _).trans hlo

@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CoefficientAdapters
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -232,6 +233,71 @@ theorem healthy_stored_read_eq_record (Q : HealthyPreparationQuery S A V)
     rw [← simTrace_state S Q.run.2 Q.hn Q.valid v hr.1 i hi,
       ← simTrace_state S Q.run.2 Q.hn Q.valid v hr.1 q hq, hs]
   simpa only [Regimes.readAfter, hstate] using heq
+
+/-- A semantic repair completed within `B` from ready is strictly before the stored
+clock, even at a cut exactly at heal and before the reader's same-time tick. `K` shares
+the coefficient envelope; no repair budget is inferred from reset or drain alone. -/
+theorem healthy_repair_floor_at_stored_now (Q : HealthyPreparationQuery S A V)
+    {c d C h B K r τ : Time} (hc : 0 ≤ c) (hd : 1 ≤ d) (hB : 0 ≤ B) (hr : 0 ≤ r)
+    (hready : Q.ready = max Q.gst 0 + C * d + 1)
+    (hheal : Q.heal = max Q.gst 0 + h * d)
+    (hbudget : C + 2 * max B K + r + 3 ≤ h)
+    (hrepair : τ ≤ Q.ready + (B * (d + 1) + r))
+    {v : V} {i : Nat} (hi : i ≤ Q.run.2.events.length)
+    (hcut : Q.heal ≤ Q.run.2.cutTime i)
+    (hv : Q.run.2.point.Ready (c + 1) v (Q.run.2.cutTime i)) :
+    τ + 1 ≤ (stateAt S Q.run.2 Q.hn v i).now := by
+  have hstrict : τ < Q.heal - 1 := by
+    rw [hheal]
+    apply repair_lt_heal_sub_one hd hB hr hbudget
+    rwa [hready] at hrepair
+  have hlag := stored_now_ge_cutTime_sub_one S Q.run.2 Q.hn Q.valid hi hc hv
+  exact Int.add_one_le_iff.mpr (hstrict.trans_le ((sub_le_sub_right hcut 1).trans hlag))
+
+/-- Once established at the original starting cut, the repair floor persists forward
+through the original interval. No ordering of last-local-event representatives is used. -/
+theorem healthy_repair_floor_interval (Q : HealthyPreparationQuery S A V)
+    {v : V} {i : Nat} {τ : Time}
+    (hfloor : τ + 1 ≤ (stateAt S Q.run.2 Q.hn v i).now) :
+    ∀ j, i ≤ j → τ + 1 ≤ (stateAt S Q.run.2 Q.hn v j).now := by
+  intro j hij
+  exact hfloor.trans (now_mono S Q.run.2 Q.hn Q.valid v hij)
+
+/-- The finite reset consumer starts strictly after actual repair completion, not at
+the endCut-heal state. The semantic completion bound and post-repair read producer are
+separate hypotheses; scoped service remains in the supplied reset premises. -/
+theorem healthy_stored_read_eq_record_after_repair (Q : HealthyPreparationQuery S A V)
+    {c d C h B K r τ ΔF a : Time}
+    (hp : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
+      (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon)
+    (hc : 0 ≤ c) (hd : 1 ≤ d) (hB : 0 ≤ B) (hr : 0 ≤ r)
+    (hready : Q.ready = max Q.gst 0 + C * d + 1)
+    (hheal : Q.heal = max Q.gst 0 + h * d)
+    (hbudget : C + 2 * max B K + r + 3 ≤ h)
+    (hrepair : τ ≤ Q.ready + (B * (d + 1) + r))
+    (hread : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
+        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon →
+      ∀ y k t, (∃ q ≤ Q.run.2.events.length, k = cutMap S Q.run.2 Q.hn q) →
+        Regimes.ReadPoint Q.trace k t →
+        Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) c y t →
+        τ < t → t ≤ Q.run.2.horizon →
+        Regimes.readAfter Q.trace y k t =
+          (SA.lookup (Node.frame (Q.trace.state y k))
+            (Q.trace.state y k).ac.latestConfirmed).getD (Q.trace.state y k).fg.F)
+    {v : V} {i : Nat} (hi : i ≤ Q.run.2.events.length)
+    (hcut : Q.heal ≤ Q.run.2.cutTime i)
+    (hv : Q.run.2.point.Ready (c + 1) v (Q.run.2.cutTime i)) :
+    Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)
+        (stateAt S Q.run.2 Q.hn v i).now =
+      (SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
+        (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
+          (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F := by
+  apply healthy_stored_read_eq_record S A V Q hc
+    (t₀ := τ + 1) (fun y k t hk hpoint hready ht htb =>
+      hread hp y k t hk hpoint hready (Int.add_one_le_iff.mp ht) htb) hi
+  · exact healthy_repair_floor_at_stored_now S A V Q hc hd hB hr
+      hready hheal hbudget hrepair hi hcut hv
+  · exact hv
 
 /-- A finite record source is either the current finalized block or an actual late raw
 write before this cut. It does not require a future fast-lock cover. -/

@@ -33,6 +33,20 @@ theorem ready_tail_le_heal {g d c h B r : Time} (hd : 1 ≤ d)
   have := node_tail_le_engine hd hB hr
   nlinarith
 
+/-- Strict pre-read reserve, including the worst one-unit stored-clock lag.
+`B` is the semantic repair budget; `K` is an independent budget sharing the envelope.
+The extra two units over completion-at-heal are literal integer units. -/
+theorem repair_lt_heal_sub_one {g d c h B K r τ : Time} (hd : 1 ≤ d)
+    (hB : 0 ≤ B) (hr : 0 ≤ r) (hh : c + 2 * max B K + r + 3 ≤ h)
+    (hrepair : τ ≤ max g 0 + c * d + 1 + (B * (d + 1) + r)) :
+    τ < max g 0 + h * d - 1 := by
+  have hbudget : c + 2 * B + (r + 2) + 1 ≤ h := by
+    have := le_max_left B K
+    linarith
+  have htail := ready_tail_le_heal (g := g) hd hB
+    (show 0 ≤ r + 2 by linarith) hbudget
+  linarith
+
 /-- The four-anchor recurrence and an independently supplied semantic tail fit in `L`. -/
 theorem final_recurrence_tail_le_latency (S : Setup) (X : ℕ+)
     {d B r L : Time} (hd : 1 ≤ d) (hB : 0 ≤ B) (hr : 0 ≤ r)
