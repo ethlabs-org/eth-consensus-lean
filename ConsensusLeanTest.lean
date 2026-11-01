@@ -15,6 +15,7 @@ public import ConsensusLeanTest.GoldilocksHealing
 public import ConsensusLeanTest.GoldilocksNode
 public import ConsensusLeanTest.GoldilocksRefinement
 public import ConsensusLeanTest.GoldilocksRun
+public import ConsensusLeanTest.GoldilocksSleepyWitness
 public import ConsensusLeanTest.GoldilocksTickRun
 public import ConsensusLeanTest.GoldilocksWitness
 public import ConsensusLeanTest.GoldilocksWitnessChain
