@@ -231,6 +231,59 @@ private theorem updater_F_anc_of_rows (hrun : GoldilocksRun proposer dg H tr)
   have := (Anc.slot_le hU hPF).2 hPFe
   omega
 
+/-- By the update horizon every slot-`s` vote is in the finite agreement window. -/
+theorem honest_votes_eq_proposal_at_update_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBound H (sp.ts s + d))
+    (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k))
+    (hsb : sp.ts s + 6 * sp.Δ ≤ b) :
+    ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s → e.msg.head = P.root := by
+  have hΔ := sp.toParams.hΔ
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  intro x hx j e hv hes
+  apply honest_votes_eq_proposal_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj
+    (by linarith) x hx j e hv hes
+  obtain ⟨ℓ, hc⟩ := hv
+  have hslot : sp.slot (tr.time j) = s := (SA.castAt_spec hr hx hc).2.1.symm.trans hes
+  have hlt : tr.time j < sp.ts (s + 1 : Nat) := by
+    by_contra h
+    have hle := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j) (s + 1 : Nat)).1 (not_lt.1 h)
+    rw [hslot] at hle
+    have hbad : s + 1 ≤ s := by exact_mod_cast hle
+    omega
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  rw [hts] at hlt
+  linarith
+
+/-- Finite finalized-tip bound at the joined update. -/
+theorem updater_F_anc_proposal_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBound H (sp.ts s + d))
+    (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
+    (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
+    Anc (tr.HonestBlocks H) (tr.state y k₀).fg.F P := by
+  have hf : 2 * Hᶜ.ncard < sp.n := by
+    have h := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb0)
+    change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts 0 + 0) at h
+    have hle : tr.honestAwakeJoined H (sp.ts 0 + 0) ≤ H.ncard :=
+      Set.ncard_le_ncard fun x hx => hx.1
+    have hn : H.ncard + Hᶜ.ncard = sp.n := by
+      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+    omega
+  have hPU := proposal_honest hrun hnc hp hP
+  have hall := honest_votes_eq_proposal_at_update_before hrun hnc hb0 hsync hfb hinv
+    hp hP hPs hpj (hu.2.2.1 ▸ hb)
+  exact updater_F_anc_of_rows hrun hnc hf hPU hPs hy hu
+    (rows_compatible_before hrun hnc hb0 hsync hfb hinv hPU hall hy hu.2.2.1 hb)
+
 /-- The whole-run interface supplies the finite row comparison at the update. -/
 theorem updater_F_anc_proposal (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
