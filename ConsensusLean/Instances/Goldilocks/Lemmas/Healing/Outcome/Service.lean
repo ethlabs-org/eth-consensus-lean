@@ -1534,6 +1534,36 @@ theorem catch_window_at_reset_of_reset_catch_before {b t : Time}
     rw [hmax] at hkt
     exact lt_of_lt_of_le hkt ((hdeadline k hk).trans (by linarith [sp.toParams.hΔ]))
 
+/-- Finite reset service supplies AC synchrony from the actual reset, retaining the
+recipient deadline cutoff and strict processing deadlines. -/
+theorem sync_window_at_reset_of_reset_before {b t : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (htb : t ≤ b) :
+    SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC := by
+  have hca := cutZ_lt_reset_of_snapshot hp.run
+    (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
+  have hga : g ≤ a := by
+    have := SA.le_gbar g
+    have := lt_cutZ sp g
+    linarith [sp.toParams.hΔ]
+  have hs := hp.sync.syncAC (hi := b) hp.run hga
+  have hsource : ∀ y j (u : Time), u ≤ tr.projAC.deadline y j u := by
+    intro y j u
+    unfold ACTrace.deadline
+    have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+    cases tr.projAC.lastWake y j with
+    | bot => change u ≤ u + sp.Δ; linarith
+    | coe w =>
+      change u ≤ max u w + sp.Δ
+      have := le_max_left u w
+      linarith
+  constructor
+  · intro x hx i m hm hi y hy j ell hj ht hd
+    exact hs.1 x hx i m hm hi ((hsource y j _).trans (ht.trans htb))
+      y hy j ell hj hd
+  · intro x hx i B hB hi y hy j ell hj ht hd hF
+    exact hs.2 x hx i B hB hi ((hsource y j _).trans (ht.trans htb))
+      y hy j ell hj hd hF
+
 end Consensus.Goldilocks.Healing
 
 end
