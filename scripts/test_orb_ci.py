@@ -7,7 +7,6 @@ and review-boundary scripts and gh are replaced; orb-ci itself is executed as-is
 Verdicts are read from the issue #63 body, not inferred from the watcher's exit.
 """
 import json
-import shutil
 import os
 from pathlib import Path
 import subprocess
@@ -113,7 +112,7 @@ class OrbCI(unittest.TestCase):
                     "HOME": str(self.root), "TMPDIR": str(self.root),
                     "FIXTURE_ROOT": str(self.root), "ORB_CI_REPO": str(self.repo),
                     "ORB_CI_HOME": str(self.home), "ORB_CI_ISSUE": "63",
-                    "ORB_CI_JOB": "", "ORB_CI_FULL_ENV": "", "ORB_CI_COPY": "", "ORB_CI_SANDBOX": "0",
+                    "ORB_CI_JOB": "", "ORB_CI_FULL_ENV": "", "ORB_CI_COPY": "",
                     "LAKE_ARTIFACT_CACHE": "true", "LAKE_RESTORE_ARTIFACTS": "true",
                     "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
 
@@ -225,7 +224,6 @@ class OrbCI(unittest.TestCase):
     def test_cached_pair_refresh_preserves_pair_on_invalid_update(self):
         self.write(self.repo / "scripts/orb-ci.sh", "#!/bin/bash\necho fixture\n")
         self.write(self.repo / "scripts/publish-inventory.py", "print('fixture')\n")
-        self.write(self.repo / "scripts/ci-sandbox.sh", "#!/bin/bash\necho sandbox\n")
         self.commit("valid pair")
         self.git("push", "origin", "main")
         refresh = SCRIPT.with_name("orb-ci-refresh.sh")
@@ -233,44 +231,14 @@ class OrbCI(unittest.TestCase):
             return subprocess.run(["bash", str(refresh)], env=self.env, cwd=self.repo,
                                   capture_output=True, text=True, timeout=20)
         self.assertEqual(invoke().returncode, 0)
-        cached = ("orb-ci.sh", "publish-inventory.py", "ci-sandbox.sh")
-        before = [(self.home / f).read_bytes() for f in cached]
+        before = [(self.home / f).read_bytes() for f in ("orb-ci.sh", "publish-inventory.py")]
         self.write(self.repo / "scripts/orb-ci.sh", "#!/bin/bash\necho changed\n")
         self.write(self.repo / "scripts/publish-inventory.py", "invalid python (\n")
         self.commit("invalid pair")
         self.git("push", "origin", "main")
         self.assertNotEqual(invoke().returncode, 0)
-        self.assertEqual([(self.home / f).read_bytes() for f in cached], before)
+        self.assertEqual([(self.home / f).read_bytes() for f in ("orb-ci.sh", "publish-inventory.py")], before)
         self.assertFalse([p for p in self.home.glob("refresh.*") if p.is_dir()])
-
-    @unittest.skipUnless(shutil.which("bwrap"), "needs bwrap")
-    def test_head_code_runs_sandboxed(self):
-        # The head's check.sh and review boundary see no watcher state, issue, credentials or network, and cannot
-        # write the shared packages; the row passes only if every probe held.
-        probe = f'''#!/bin/bash
-leak=""
-cat "{self.root}/issue" 2>/dev/null && leak+=" issue"
-cat "{self.home}/done" 2>/dev/null && leak+=" watcher-state"
-[[ -n "${{GH_TOKEN:-}}${{FIXTURE_ROOT:-}}" ]] && leak+=" env"
-echo bad 2>/dev/null >.lake/packages/dep.olean && leak+=" packages"
-python3 -c 'import socket; socket.create_connection(("1.1.1.1", 53), 3)' 2>/dev/null && leak+=" network"
-[[ -z "$leak" ]] || {{ echo "FAIL  1 leak:$leak"; exit 1; }}
-echo "sandboxed probes held"
-[[ "${{1:-}}" == --self-test || "$0" == *review-boundary.sh ]] || echo "check.sh: PASSED (${{1#--}} mode; fixture)"
-'''
-        self.write(self.repo / "scripts/check.sh", probe, executable=True)
-        self.write(self.repo / "scripts/review-boundary.sh", probe, executable=True)
-        self.write(self.repo / ".lake/packages/dep.olean", "shared\n")
-        sha = self.change()
-        self.git("push", "origin", "main")
-        self.env["ORB_CI_SANDBOX"] = "1"
-        self.env["GH_TOKEN"] = "fixture-secret"
-        out = self.invoke("--once")
-        rows = self.rows()
-        self.assertTrue(rows and f"`{sha[:8]}`" in rows[0] and "PASSED" in rows[0], (rows, out))
-        logs = "".join(p.read_text() for p in (self.home / "logs").glob(f"{sha}.*"))
-        self.assertEqual(logs.count("sandboxed probes held"), 3, logs)
-        self.assertEqual((self.repo / ".lake/packages/dep.olean").read_text(), "shared\n")
 
     def test_review_boundary_self_test_failure_fails_docs(self):
         sha = self.change("docs/guide.md")

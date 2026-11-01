@@ -34,8 +34,6 @@ def capture(home, sha, kind, run, checked_at, ci_result):
         files = list(run.glob("check.*/sorry-inventory.json"))
         if len(files) == 1:
             try:
-                if not files[0].resolve().is_relative_to(run.resolve()):  # a link planted by the checked head
-                    raise ValueError("inventory resolves outside the job's run folder")
                 if files[0].stat().st_size > MAX_BYTES:
                     raise ValueError("inventory exceeds 4 MiB limit; not truncated")
                 inventory = json.loads(files[0].read_text())

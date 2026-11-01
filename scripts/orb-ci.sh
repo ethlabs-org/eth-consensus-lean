@@ -16,8 +16,6 @@
 # Mode as in ci.yml: docs-only change -> `check.sh --changed <base>`; otherwise `--fast`, with `--selftests` when
 # scripts/ or the build configuration changed and `--canary` when the build configuration changed; then
 # scripts/review-boundary.sh --self-test, scripts/review-boundary.sh <base> and a clean-tree check.
-# Both check.sh and the review boundary run in the sandbox scripts/ci-sandbox.sh (the watcher's copy, not the
-# head's): the head's code gets no network, no credentials and no watcher state; a missing bwrap fails the check.
 # <base>: the previously checked main head (if an
 # ancestor), or a PR's main.
 # Full tier (as full.yml, unsplit), one run and exit, in its own worktree $ORB_CI_HOME/wt-full, one at a time
@@ -57,7 +55,6 @@ if [[ "${ORB_CI_COPY:-}" != 1 ]]; then  # run from a copy: the checkout may chan
   mkdir -p "$HOME_DIR"
   cp "${BASH_SOURCE[0]}" "$HOME_DIR/orb-ci.sh"
   cp "$(dirname "${BASH_SOURCE[0]}")/publish-inventory.py" "$HOME_DIR/publish-inventory.py"
-  cp "$(dirname "${BASH_SOURCE[0]}")/ci-sandbox.sh" "$HOME_DIR/ci-sandbox.sh"
   ORB_CI_REPO="${ORB_CI_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" ORB_CI_COPY=1 exec bash "$HOME_DIR/orb-ci.sh" "$@"
 fi
 REPO="$ORB_CI_REPO" WT="$HOME_DIR/wt" WT_PR="$HOME_DIR/wt-pr" LOGS="$HOME_DIR/logs" DONE="$HOME_DIR/done" ISSUE="${ORB_CI_ISSUE:-63}"
@@ -68,14 +65,6 @@ export PATH="$HOME/.elan/bin:$PATH"
 mkdir -p "$LOGS"; touch "$DONE"
 log() { echo "$(date -u +%FT%TZ) $*"; }
 SIGN="${ORB_CI_SIGN:-— amp-orbs (process, orb-ci)}"
-# Heads of main and of PRs run in a sandbox (the watcher's own copy of ci-sandbox.sh: no network, credentials or
-# watcher state); ORB_CI_SANDBOX=0 turns it off for the fixtures only. The full tier (commits of main, release tags)
-# is not sandboxed: steps 10 and 11 start their own bwrap.
-SBX=()
-[[ "${ORB_CI_SANDBOX:-1}" == 0 ]] || SBX=(bash "$HOME_DIR/ci-sandbox.sh")
-in_sbx() {  # in_sbx <cmd...>: run the command from the current worktree in the sandbox (RUN_DIR from the caller)
-  if ((${#SBX[@]})); then "${SBX[@]}" "$PWD" -- "$@"; else "$@"; fi
-}
 
 in_ci() {  # in_ci <cmd...>: run the command with CI set; with ORB_CI_JOB, in a box `job` (which sets RUN_DIR)
   CI_RUN=""
@@ -94,8 +83,7 @@ in_ci() {  # in_ci <cmd...>: run the command with CI set; with ORB_CI_JOB, in a 
 print(s.get("run_dir") or "-", s.get("exit", 1))' "$st" 2>/dev/null) || { echo "orb-ci: no status $st"; return 1; }
   [[ "$run" == - ]] || CI_RUN="$run"
   echo "orb-ci: job $unit, run folder $run, exit $rc"
-  # out.log is in the job's run folder, which the sandboxed head can write: never follow a link it planted
-  if [[ -f "$run/out.log" && ! -L "$run/out.log" ]]; then cat "$run/out.log"; else echo "orb-ci: out.log missing or a link"; return 1; fi
+  cat "$run/out.log"
   return "$rc"
 }
 
@@ -109,8 +97,8 @@ setup_worktree() {  # setup_worktree <dir>
 # In the checked-out tree: remove the build outputs (.lake/build/lib/lean/X.*, .lake/build/ir/X.*) of every module X
 # whose source X.lean is in none of the lakefile's source dirs, i.e. a module of a ref checked here before. A kept
 # .lake/build would otherwise let steps read its stale .oleans, and step 5 refuse a leaf with orphan descendants.
-prune_build() {  # in the sandbox: .lake/build persists between heads, so a head may have planted symlinks there
-  in_sbx python3 -I -c 'import glob, os, tomllib
+prune_build() {
+  python3 -I -c 'import glob, os, tomllib
 try:
     lake = tomllib.load(open("lakefile.toml", "rb"))
 except OSError:
@@ -187,15 +175,14 @@ print("\n".join(tomllib.load(open("scripts/boundaries.toml", "rb"))["checks"]["t
     echo "orb-ci: $kind $id at $head (base ${base:-none}), mode $mode ${flags[*]}"
     prune_build
     if [[ "$mode" == changed ]]; then
-      in_ci "${SBX[@]}" ${SBX:+"$PWD" --} scripts/check.sh --changed "$base" || rc=1
+      in_ci scripts/check.sh --changed "$base" || rc=1
     else
-      in_ci "${SBX[@]}" ${SBX:+"$PWD" --} scripts/check.sh --fast "${flags[@]}" || rc=1
+      in_ci scripts/check.sh --fast "${flags[@]}" || rc=1
     fi
     grep -q "^check.sh: PASSED ($mode mode;" "$lg" || { echo "orb-ci FAIL: missing $mode success summary"; rc=1; }
     echo "--- review boundary self-test ---"
-    RUN_DIR= in_sbx scripts/review-boundary.sh --self-test || { echo "orb-ci FAIL: review boundary self-test"; rc=1; }
-    echo "--- review boundary ---"
-    RUN_DIR= in_sbx scripts/review-boundary.sh "$base" || { echo "orb-ci FAIL: review boundary"; rc=1; }
+    scripts/review-boundary.sh --self-test || { echo "orb-ci FAIL: review boundary self-test"; rc=1; }
+    echo "--- review boundary ---"; scripts/review-boundary.sh "$base" || { echo "orb-ci FAIL: review boundary"; rc=1; }
     [[ -z "$(git status --porcelain)" ]] || { echo "orb-ci FAIL: tree not clean"; git status --porcelain; rc=1; }
   } >>"$lg" 2>&1
   local secs=$((SECONDS - t0))

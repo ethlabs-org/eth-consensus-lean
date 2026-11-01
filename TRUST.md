@@ -65,7 +65,7 @@ by owner decision (2026-10-31, #50); its files remain, but agents must not dispa
 subscriptions or report the known billing failures. A green check means a passing box result for that commit.
 The watcher runs fast mode (no replay, `lake check` or comparator; check-decls, axiom audit, snapshot diff and
 review pins included) on observed main/non-draft PR heads, with docs-only changes in `--changed` mode, plus
-review-boundary and its self-test, all inside a bubblewrap sandbox (`scripts/ci-sandbox.sh`, the watcher's own copy: no network, credentials or watcher state; read-only packages; no unsandboxed fallback), since a head's scripts are code a collaborator wrote. Polling can coalesce heads; missing exact commits can be queued by the watcher owner.
+review-boundary and its self-test. Polling can coalesce heads; missing exact commits can be queued by the watcher owner.
 Full mode runs nightly, on demand and on milestone/release tags, from a clean
 project build: a proof change merged after a green fast run is replayed by the kernel at the latest the next night.
 `lake check` and `lake comparator --paranoid` run inside bubblewrap on the box. Full CI rejects skipped steps
