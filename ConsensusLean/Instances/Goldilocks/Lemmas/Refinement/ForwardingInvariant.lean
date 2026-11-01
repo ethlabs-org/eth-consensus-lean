@@ -479,4 +479,57 @@ theorem delivery_pending_released {V : Type} [Fintype V] [DecidableEq V] {E : En
   apply List.mem_append_left
   exact hp
 
+/-- A real batch release has a successful candidate occurrence at its actual prefix.
+The index counts rejected candidates too, so it is suitable for publication order. -/
+theorem releaseAll_successful_index {pub : Public} {O : Type} (P : Protocol pub O)
+    (hash : P.Item → Nat) (x : Key pub) (nd : Model.Node P) (cs : List P.Object)
+    (o : P.Object) (ho : o ∈ (Model.releaseAll P hash x nd cs).2) :
+    ∃ i, cs[i]? = some o ∧
+      let pre := (Model.releaseAll P hash x nd (cs.take i)).1
+      Model.releasable pre.seen o = true ∧ Model.protects P x pre.seen o = true ∧
+        P.dependencies.ready (Model.closure pre.seen) o = true := by
+  induction cs generalizing nd with
+  | nil => simp [Model.releaseAll] at ho
+  | cons c cs ih =>
+    simp only [Model.releaseAll] at ho
+    split at ho
+    next hg =>
+      rcases List.mem_cons.mp ho with he | ho
+      · subst o
+        refine ⟨0, rfl, ?_⟩
+        simpa only [List.take_zero, Model.releaseAll, Bool.and_eq_true,
+          and_assoc] using hg
+      · obtain ⟨i, hi, hs⟩ := ih _ ho
+        refine ⟨i + 1, hi, ?_⟩
+        simpa only [List.take_succ_cons, Model.releaseAll, hg, ↓reduceIte] using hs
+    next hg =>
+      obtain ⟨i, hi, hs⟩ := ih _ ho
+      refine ⟨i + 1, hi, ?_⟩
+      simpa only [List.take_succ_cons, Model.releaseAll, hg, Bool.false_eq_true,
+        ↓reduceIte] using hs
+
+/-- A release from an indexed actual batch gives a concrete publication occurrence,
+including its successful candidate prefix. No abstract publication premise is needed. -/
+theorem publication_of_batch_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (v : V) (i j : Nat)
+    (t : Time) (he : rho.SendsAt v i t)
+    (b : ReleaseBatch (protoOf (compiled (family S)) E))
+    (hb : (eventBatches rho i)[j]? = some b)
+    (o : (protoOf (compiled (family S)) E).Object)
+    (ho : o ∈ (Model.releaseAll (protoOf (compiled (family S)) E)
+      rho.hash (rho.ownKey v) b.before b.candidates).2) :
+    ∃ r, (publisherExecution S rho).actual r ∧ r.event = i ∧ r.batch = j ∧
+      r.origin = rho.ownKey v ∧ r.object = o := by
+  obtain ⟨k, hk, hg⟩ := releaseAll_successful_index _ _ _ _ _ _ ho
+  let r : Publication (protoOf (compiled (family S)) E) :=
+    ⟨i, j, k, rho.ownKey v, b.before, b.candidates, o, hk⟩
+  refine ⟨r, ?_, rfl, rfl, rfl, rfl⟩
+  rw [publisherExecution_actual_iff]
+  refine ⟨?_, hg⟩
+  rw [executedPublication_iff]
+  change (eventBatches rho i)[j]? = some ⟨b.before, b.candidates⟩ ∧
+    ∃ u, rho.SendsAt (rho.key (rho.ownKey v)) i u
+  have hk : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
+  exact ⟨hb, t, by rwa [hk]⟩
+
 end Consensus.Goldilocks.Refinement

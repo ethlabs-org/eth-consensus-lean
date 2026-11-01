@@ -996,6 +996,14 @@ def ExecutedPublication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   (eventBatches rho r.event)[r.batch]? = some ⟨r.before, r.candidates⟩ ∧
   ∃ t, rho.SendsAt (rho.key r.origin) r.event t
 
+/-- Characterize the actual batch and sending event without exposing the definition. -/
+theorem executedPublication_iff {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E)
+    (r : Publication (protoOf (compiled (family S)) E)) :
+    ExecutedPublication S rho r ↔
+      (eventBatches rho r.event)[r.batch]? = some ⟨r.before, r.candidates⟩ ∧
+        ∃ t, rho.SendsAt (rho.key r.origin) r.event t := by rfl
+
 /-- A successful candidate at its actual prefix occurs in the batch output. Rejected
 earlier candidates still count towards the index; induction follows the engine's guard,
 so the prefix state includes exactly the successful earlier releases. -/
