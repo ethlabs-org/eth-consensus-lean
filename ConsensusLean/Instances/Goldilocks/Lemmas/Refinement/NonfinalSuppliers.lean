@@ -69,6 +69,32 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
 variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
 
+/-- Sleepy network service survives removal of the system's environment tags.
+Validity supplies nonnegative send times before converting PSync at zero. -/
+theorem sleepy_raw_syncUntil (r : (Sys (family S) V).Run)
+    (hv : (Sys (family S) V).Valid r)
+    (hsleepy : (Sys (family S) V).Sleepy (K S A) r) (b : Time) :
+    r.2.log.SyncUntil r.2.point b := by
+  have hp : r.2.log.PSync r.2.point 0 := by
+    constructor
+    · intro x hx m t hs y hy a hta hcut hhor haw
+      have hh := hsleepy.1.msgs x hx ⟨r.1, m⟩ t ⟨m, rfl, hs⟩
+        y hy a hta hcut hhor haw
+      obtain ⟨u, hu, hsent | hrecv, hnw⟩ := hh
+      · obtain ⟨o, he, ho⟩ := hsent
+        cases he
+        exact ⟨u, hu, Or.inl ho, hnw⟩
+      · obtain ⟨o, he, ho⟩ := hrecv
+        cases he
+        exact ⟨u, hu, Or.inr ho, hnw⟩
+    · exact hsleepy.1.txs
+  apply hp.syncUntil_zero ?_ b
+  rw [CommLog.sendsFromZero_iff]
+  intro x hx m t hs
+  obtain ⟨i, he | ⟨o, he⟩, -⟩ := hs
+  · exact (hv.in_horizon _ (List.mem_of_getElem? he)).1
+  · exact (hv.in_horizon _ (List.mem_of_getElem? he)).1
+
 /-- Draft: the two non-final liveness routes keep their distinct capability budgets.
 The endpoint readiness duration is unchanged; this is not protocol catchUp. -/
 structure ConfirmedQuery where
