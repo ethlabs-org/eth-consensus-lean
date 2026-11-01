@@ -142,4 +142,262 @@ theorem publication_received_blockCall (hn : 1 ≤ Fintype.card V)
   · rw [htime]
     exact delivery_endpoint_slack base u E.Δ (S.params (Model.pubOf E) hn).Δ rfl hu
 
+/-- A recipient is awake from its effective send/wake start through its call.
+This supplies the closed interval required by engine delivery, not merely wakefulness
+at the observation cut. -/
+theorem deadline_awake_interval (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ) :
+    ∃ a, τ ≤ a ∧
+      (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ =
+        a + (S.params (Model.pubOf E) hn).Δ ∧
+      rho.point.AwakeOnClosed (rho.key y) a ((simTrace S rho hn).time j) := by
+  let tr := simTrace S rho hn
+  have hr := simTrace_goldilocksRun S rho hn hv
+  let a := Option.elim (tr.lastWake y j) τ (fun w => max τ w)
+  have hτa : τ ≤ a := by
+    dsimp [a]
+    cases tr.lastWake y j with
+    | bot => exact le_rfl
+    | coe w => exact le_max_left _ _
+  have hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ a := by
+    have hmax : ∀ c, ∀ k ≤ c, tr.RestartAt y k →
+        (tr.time k : WithBot Time) ≤ tr.lastWake y c := by
+      intro c
+      induction c with
+      | zero =>
+        intro k hk hk'
+        obtain rfl : k = 0 := by omega
+        simp [RunTrace.lastWake, hk']
+      | succ c ih =>
+        intro k hk hk'
+        by_cases hc : tr.RestartAt y (c + 1)
+        · simp only [RunTrace.lastWake, hc, ite_true]
+          exact WithBot.coe_le_coe.mpr (hr.time_mono hk)
+        · have hk0 : k ≤ c := by
+            by_contra h
+            obtain rfl : k = c + 1 := by omega
+            exact hc hk'
+          simpa only [RunTrace.lastWake, hc, ite_false] using ih k hk0 hk'
+    intro k hk hk'
+    have hm := hmax j k hk hk'
+    dsimp [a]
+    cases hw : tr.lastWake y j with
+    | bot => rw [hw] at hm; exact (WithBot.not_coe_le_bot _ hm).elim
+    | coe w =>
+      rw [hw] at hm
+      exact (WithBot.coe_le_coe.mp hm).trans (le_max_right _ _)
+  refine ⟨a, hτa, rfl, ?_⟩
+  intro u hau huj
+  have hu0 : 0 ≤ u := hτ.trans (hτa.trans hau)
+  have hwu : tr.awake y u := by
+    by_contra hsleep
+    have hwj := hr.awake_of_call y hy j hj
+    have huj' : u < tr.time j := lt_of_le_of_ne huj (by
+      intro heq
+      exact hsleep (heq ▸ hwj))
+    obtain ⟨k, hk, huk, hkj⟩ := hr.restart_at_wake y hy u (tr.time j) hu0 huj' hsleep hwj
+    have hkidx : k ≤ j := by
+      by_contra h
+      obtain ⟨v, _, hvk, _, hvprev⟩ := hr.sleep_of_restart y hy k hk
+      have := hvprev j (by omega) hj
+      linarith
+    have := hrestart k hkidx hk
+    linarith
+  exact (simTrace_awake_of S rho hn hv y hy u hwu).1
+
+/-- Later observation cuts can only increase a recipient's deadline. -/
+theorem deadline_mono_cut (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    (y : Fin (Fintype.card V)) (τ Δ : Time) :
+    Monotone (fun j => (simTrace S rho hn).deadline y j τ Δ) := by
+  let tr := simTrace S rho hn
+  have hr := simTrace_goldilocksRun S rho hn hv
+  have hw : ∀ c (w : Time), tr.lastWake y c = (w : WithBot Time) → w ≤ tr.time c := by
+    intro c
+    induction c with
+    | zero =>
+      intro w h
+      unfold RunTrace.lastWake at h
+      split at h
+      · exact (WithBot.coe_injective h).ge
+      · cases h
+    | succ c ih =>
+      intro w h
+      unfold RunTrace.lastWake at h
+      split at h
+      · exact (WithBot.coe_injective h).ge
+      · exact (ih w h).trans (hr.time_mono (Nat.le_succ c))
+  apply monotone_nat_of_le_succ
+  intro c
+  change tr.deadline y c τ Δ ≤ tr.deadline y (c + 1) τ Δ
+  unfold RunTrace.deadline
+  rw [RunTrace.lastWake]
+  split
+  · cases heq : tr.lastWake y c with
+    | bot =>
+      change τ + Δ ≤ max τ (tr.time (c + 1)) + Δ
+      have := le_max_left τ (tr.time (c + 1))
+      dsimp [Time] at *
+      omega
+    | coe w =>
+      change max τ w + Δ ≤ max τ (tr.time (c + 1)) + Δ
+      have hle : w ≤ tr.time (c + 1) :=
+        (hw c w heq).trans (hr.time_mono (Nat.le_succ c))
+      simp only [Time] at hle ⊢
+      omega
+  · exact le_rfl
+
+/-- A real honest publication is held strictly before a qualifying node deadline.
+The wake interval and horizon obligations follow from the recipient call and cutoff. -/
+theorem publication_held_before_deadline (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {b : Time} (hbh : b ≤ rho.horizon)
+    (hnet : rho.log.SyncUntil rho.point b)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ)
+    (ht : (publisherExecution S rho).eventTime r.event = τ)
+    (hb : (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ ≤ b)
+    (hd : (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ ≤
+      (simTrace S rho hn).time j) :
+    ∃ d, rho.log.Held rho.point (rho.key y) r.object d ∧
+      d < (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ := by
+  obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval S rho hn hv hy hj hτ
+  rw [heq] at hb hd ⊢
+  have hslack : a + E.Δ < a + (S.params (Model.pubOf E) hn).Δ := by
+    change a + E.Δ < a + (E.Δ + 1)
+    linarith
+  obtain ⟨hheld, _⟩ := publication_held_syncUntil S rho hn hnet r hr hx hy
+    (ht ▸ ha) hb ((hslack.le.trans hb).trans hbh)
+    (fun u hau hud => hw u hau (hud.trans (hslack.le.trans hd)))
+  exact ⟨a + E.Δ, hheld, hslack⟩
+
+/-- Network holdings of an authenticated forwarding envelope yield an acceptance
+before the observation deadline. The sent case uses actual local acceptance, while
+the received case uses recursive forwarding acceptance above the reader's `F`. -/
+theorem held_forward_accepted_before (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {y x : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) (hx : x ∈ honestKeys S rho)
+    {j : Nat} {o : Wire (Fintype.card V)} {t d D : Time}
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (hheld : rho.log.Held rho.point (rho.key y) o d)
+    (hdecode : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
+      some (x, t, p, B))
+    (hd : d < D) (hj : D ≤ (simTrace S rho hn).time j)
+    (hF : Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
+      ((simTrace S rho hn).state y j).fg.F B) :
+    ∃ k ≤ j, (simTrace S rho hn).AcceptAt y k B ∧ (simTrace S rho hn).time k < D := by
+  have hrun := simTrace_goldilocksRun S rho hn hv
+  obtain ⟨u, hud, hsource, _⟩ := hheld
+  have huD : u < D := hud.trans_lt hd
+  have event_before {i : Nat} {ev : Model.Event V (Wire (Fintype.card V))}
+      (he : rho.events[i]? = some ev) (hu : ev.time = u) : cutMap S rho hn (i + 1) ≤ j := by
+    by_contra h
+    have hj' : j < cutMap S rho hn (i + 1) := by omega
+    have hlen : j < (allCuts S rho hn).length := by
+      rw [length_allCuts]
+      exact hj'.trans_le (cutMap_mono S rho hn (List.getElem?_eq_some_iff.mp he).1)
+    have hl : (simTrace S rho hn).label j ≠ none := by
+      rw [simTrace_label, List.getElem?_eq_getElem hlen]
+      simp
+    obtain ⟨_, q, e, _, hq, hstart, _, _, _, htime, _⟩ := simTrace_cut S rho hn hl
+    have hqi : q ≤ i := by
+      by_contra hq'
+      have := cutMap_mono S rho hn (show i + 1 ≤ q by omega)
+      omega
+    have hle : e.time ≤ ev.time := by
+      rcases hqi.lt_or_eq with hlt | rfl
+      · rcases keyLe_of_lt S rho hv hq he hlt with h | ⟨h, _⟩
+        · exact h.le
+        · exact h.le
+      · rw [he] at hq
+        cases hq
+        rfl
+    rw [hu, ← htime] at hle
+    linarith
+  have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply _
+  rcases hsource with hs | hr
+  · obtain ⟨i, hi, ho⟩ := hs
+    have hxy := released_forward_signer S rho hn hi ho hdecode
+    rw [hxy] at hdecode
+    have hstamp : t = u := released_forward_stamp S rho hn hv hi ho hdecode
+    have hacc : ∃ k < cutMap S rho hn (i + 1),
+        (simTrace S rho hn).AcceptAt (rho.ownKey (rho.key y)) k B ∧
+        (simTrace S rho hn).time k = t := by
+      rcases hi with he | ⟨receipt, he⟩
+      · exact tick_released_forward_acceptance S rho hn hv he ho hdecode
+      · exact delivery_released_forward_acceptance S rho hn hv he ho hdecode
+    obtain ⟨k, hk, ha, ht⟩ := hacc
+    have hcut : cutMap S rho hn (i + 1) ≤ j := by
+      rcases hi with he | ⟨receipt, he⟩ <;> exact event_before he rfl
+    exact ⟨k, (hk.trans_le hcut).le, hkey ▸ ha, ht ▸ hstamp ▸ huD⟩
+  · obtain ⟨i, hi⟩ := hr
+    obtain ⟨k, hk, ha, _, ht⟩ := received_forward_accepted_before S rho hn hv hrun hnc
+      hi hy (.refl o) hx hdecode (event_before hi rfl) (by simpa only [hkey] using hF) huD
+    exact ⟨k, (hk.trans_le (event_before hi rfl)).le, hkey ▸ ha, ht⟩
+
+/-- Acceptance service is measured at the processing cut, even when later restarts
+enlarge the observation deadline. Descent on cuts removes that apparent slack. -/
+theorem publication_acceptedBy_syncUntil (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    {τ : Time} (hτ : 0 ≤ τ) (ht : (publisherExecution S rho).eventTime r.event = τ)
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (hdecode : decodeForward (S.params (Model.pubOf E) hn)
+      (Model.digests rho.hash r.object) r.object = some (r.origin, τ, p, B))
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j)
+    (hb : (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ ≤ b)
+    (hd : (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ ≤
+      (simTrace S rho hn).time j)
+    (hF : Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
+      ((simTrace S rho hn).state y j).fg.F B) :
+    (simTrace S rho hn).BlockAcceptedBy y j τ B := by
+  induction j using Nat.strong_induction_on with
+  | h j ih =>
+    obtain ⟨d, hheld, hlt⟩ := publication_held_before_deadline S rho hn hv hbh hnet
+      r hr hx hy hj hτ ht hb hd
+    obtain ⟨k, hkj, hacc, htime⟩ := held_forward_accepted_before S rho hn hv hnc
+      hy hx hheld hdecode hlt hd hF
+    by_cases hk : (simTrace S rho hn).time k <
+        (simTrace S rho hn).deadline y k τ (S.params (Model.pubOf E) hn).Δ
+    · exact ⟨k, hkj, hacc, hk⟩
+    · have hkj' : k < j := lt_of_le_of_ne hkj (by
+        intro heq
+        subst k
+        exact hk htime)
+      have hmono := deadline_mono_cut S rho hn hv y τ (S.params (Model.pubOf E) hn).Δ hkj
+      obtain ⟨l, hl, ha, ht'⟩ := ih k hkj' ⟨_, hacc⟩ (hmono.trans hb)
+        (le_of_not_gt hk)
+        ((Healing.run_F_mono (simTrace_goldilocksRun S rho hn hv).toLocalRun hy hkj).trans hF)
+      exact ⟨l, hl.trans hkj, ha, ht'⟩
+
+/-- The finite acceptance-relay field, conditional only on same-event forwarding
+completeness. Parent-first receipt processing is supplied by the concrete acceptance API. -/
+theorem acceptance_relay_syncUntil (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    (hforward : ForwardAtAcceptance S rho hn (simTrace S rho hn)
+      (cutMap S rho hn) (publisherExecution S rho))
+    {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
+    {x : Fin (Fintype.card V)} (hx : x ∈ honestKeys S rho) {i : Nat}
+    {B : Blk (S.params (Model.pubOf E) hn)}
+    (hi : (simTrace S rho hn).AcceptAt x i B) (ht : 0 ≤ (simTrace S rho hn).time i)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j)
+    (hb : (simTrace S rho hn).deadline y j ((simTrace S rho hn).time i)
+      (S.params (Model.pubOf E) hn).Δ ≤ b)
+    (hd : (simTrace S rho hn).deadline y j ((simTrace S rho hn).time i)
+      (S.params (Model.pubOf E) hn).Δ ≤ (simTrace S rho hn).time j)
+    (hF : Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
+      ((simTrace S rho hn).state y j).fg.F B) :
+    (simTrace S rho hn).BlockAcceptedBy y j ((simTrace S rho hn).time i) B := by
+  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
+    (forwardAtAcceptance_iff S rho hn _ _ _).mp hforward x hx i B hi
+  apply publication_acceptedBy_syncUntil S rho hn hv hnc hbh hnet r hr
+    (horg ▸ hx) ht htime (p := p) (by simpa only [horg] using hdecode) hy hj hb hd hF
+
 end Consensus.Goldilocks.Refinement
