@@ -1058,9 +1058,13 @@ theorem suffix_agree {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set 
 /-- **`P` is in the voter's viable voter block tree** (workbench#12 §3: `P` extends every
 receiving `Σ.F`, so it is accepted by the joined voter before its vote, which waits for a ready
 proposal or `t_s + Δ`; it is viable, as an allowed witness above both floors). -/
-theorem proposal_at_voter {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+theorem proposal_at_voter_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBound H (sp.ts s + d))
+    (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (_hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
@@ -1069,10 +1073,18 @@ theorem proposal_at_voter {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H :
     (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) {y : Fin sp.n}
     (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = s) :
+    (hes : e.msg.slot = s) (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) :
     P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
+  have hf : 2 * Hᶜ.ncard < sp.n := by
+    have hzero := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb0)
+    change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts 0 + 0) at hzero
+    have hle : tr.honestAwakeJoined H (sp.ts 0 + 0) ≤ H.ncard :=
+      Set.ncard_le_ncard fun x hx => hx.1
+    have hn : H.ncard + Hᶜ.ncard = sp.n := by
+      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+    omega
   obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hp hc
   obtain ⟨hΦy, hΦyU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hQt : d.head ∈ ℓp.frame.tree := (acProposal_start_anc_head hΦp hd).2 |> fun h =>
@@ -1083,13 +1095,15 @@ theorem proposal_at_voter {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H :
     have := hU.2 d.head (hΦpU hQt) P hPU hPQ
     omega
   have hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O P := fun O hO =>
-    (proposal_walk_passes_old hrun hnc hsl hp hc hcall hd hti O hO).trans hQP
+    (proposal_walk_passes_old_before hrun hnc hb0 hsync hfb hinv
+      hp hc hcall hd hti hib O hO).trans hQP
   -- `fc_root` of the voter is genesis or below an old origin, so below `P`
   have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := by
-    rcases vote_fcRoot_old hrun hnc hsl hs0 hy hcy hes with hg | ⟨O, hO, hfO⟩
+    rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes with hg | ⟨O, hO, hfO⟩
     · exact honest_genesis_root_anc hrun hU (hΦyU hΦy.fcRoot_mem) hg hPU
     · exact hfO.trans (hold O hO)
-  have hPt := voter_holds_proposal hrun hnc hsl hp hP hPs hs0 hy hcy hes
+  have hPt := voter_holds_proposal_before hrun hnc (syncBefore_projection hrun.toLocalRun hsync)
+    hp hP hPs hs0 hy hcy hes hjb
     ((hΦy.F_anc_fcRoot.mono hΦyU).trans hfP)
   have hfPy : ℓy.frame.Anc ℓy.frame.fcRoot P :=
     SA.anc_tree_of_anc_U hU hΦy hΦyU hΦy.fcRoot_mem hfP hPt
@@ -1097,7 +1111,33 @@ theorem proposal_at_voter {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H :
     .refl⟩
   rw [frame_of_projAC hrun hy hcy.1] at hPt hfPy ⊢
   exact ⟨hPt.1, hPt.2, Anc.mono (fun X hX => hX.1) hfPy,
-    vote_floor_le hrun hnc hsl hs0 hy hcy hes hPt.1 hold⟩
+    vote_floor_le_of hrun hnc hf hs0 hy hcy hes hPt.1 hold⟩
+
+/-- Whole-run specialization of bounded proposal viability at a voter. -/
+theorem proposal_at_voter {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) {y : Fin sp.n}
+    (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
+    (hes : e.msg.slot = s) :
+    P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) := by
+  let b := max (tr.time i) (tr.time j)
+  have hb : 0 ≤ b := (hrun.time_nonneg i).trans (le_max_left _ _)
+  have hs : tr.SyncBefore H ΔF b :=
+    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
+      hsl.1.message x hx i m hm h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
+      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
+      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
+  exact proposal_at_voter_before hrun hnc hb hs (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
+    (sleepy_invariant_upTo hrun hnc (hsl.prefix hb)) hp hP hPs hpj hc hcall hd hti hPQ
+    hy hcy hes (le_max_left _ _) (le_max_right _ _)
 
 end Consensus.Goldilocks.Compose
 
