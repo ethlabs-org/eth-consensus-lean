@@ -34,9 +34,11 @@ theorem outage_reader_windows (Q : OutageQuery S A V) (w : V) (t : Time)
         Q.run.2.point.AwakeOnClosed w (t - Q.duration - 1) t) := hr
 
 /-- OPEN pre-outage service only for recipient deadlines through start.
+Fresh processing or retained stamped SA evidence replaces duplicate-processing synchrony.
+Engine holdings alone do not establish this supplier; admission/retention remains OPEN.
 No late-wake unrestricted SyncRun is inferred. -/
 theorem outage_pre_service (Q : OutageQuery S A V) :
-    Q.trace.SyncBefore (honestKeys S Q.run.2) Q.params.Δ Q.start := by
+    Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start := by
   sorry
 
 /-- Concrete source read and record witness at the exact end-of-time T cut.
@@ -58,7 +60,7 @@ structure OutageArmedRead (Q : OutageQuery S A V) (v : V) where
 
 /-- OPEN old output/record arming using finite pre-outage service. -/
 theorem outage_arm (Q : OutageQuery S A V)
-    (service : Q.trace.SyncBefore (honestKeys S Q.run.2) Q.params.Δ Q.start)
+    (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start)
     (v : V) (hv : Q.run.2.point.Ready Q.duration v Q.T) :
     Nonempty (OutageArmedRead S A V Q v) := by
   sorry
@@ -68,7 +70,7 @@ This join still owes lifetime, old-record compatibility, first-arrival and
 actual repair production; an armed record alone is not a proof of protection.
 No all-node or continuously-awake-only replacement of ResilienceReader. -/
 theorem outage_repair (Q : OutageQuery S A V)
-    (service : Q.trace.SyncBefore (honestKeys S Q.run.2) Q.params.Δ Q.start)
+    (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start)
     (v : V) (hv : Q.run.2.point.Ready Q.duration v Q.T)
     (armed : OutageArmedRead S A V Q v)
     (t : Time) (ht : Q.start ≤ t) (hth : t ≤ Q.run.2.horizon)
