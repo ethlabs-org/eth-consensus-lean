@@ -1091,6 +1091,41 @@ theorem ResetPremisesUpTo.row_of_report {b : Time}
     hp.row_of_sign hz hs (ht.trans hrb) hy hT hσ hTe hhT hhj ho hiob hTO hh
   exact ⟨j, att, hs, ht, hv, hh, hroot, htimeout, hfin⟩
 
+/-- Same-height reports from every honest node yield an identity quorum of exact
+entry signatures. Historical reports count without any freshness assumption. -/
+theorem ResetPremisesUpTo.row_signers_of_reports {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {T : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
+    {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
+    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → HZ tr H g + 1 ≤ σT.hj)
+    {d : Time} (hdb : d ≤ b)
+    (hreports : ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ d ∧
+      Anc (tr.HonestBlocks H) T C ∧ ((tr.state z r).fg.σ C.root).h = σT.h) :
+    ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
+      ∀ z ∈ ids, z ∈ H ∧ ∃ att j, tr.SignAt z j att ∧ att.val = z ∧
+        att.h = σT.h ∧ att.T = T.root ∧ att.timeout = false ∧ tr.time j ≤ d ∧
+        (σT.bound → att.fin = some (σT.hj, σT.J)) := by
+  classical
+  refine ⟨Finset.univ.filter (· ∈ H), ?_, ?_⟩
+  · have hcard : (Finset.univ.filter (· ∈ H)).card = H.ncard := by
+      rw [← Set.ncard_coe_finset]
+      congr 1
+      ext z
+      simp
+    rw [hcard]
+    have hn : H.ncard + Hᶜ.ncard = sp.n := by
+      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+    have hf := hp.faults
+    change (2 * sp.n + 2) / 3 ≤ _
+    omega
+  · intro z hz
+    have hzH := (Finset.mem_filter.1 hz).2
+    obtain ⟨r, ell, C, hr, hrd, hTC, hh⟩ := hreports z hzH
+    obtain ⟨j, att, hs, ht, hv, hah, hroot, htimeout, hfin⟩ :=
+      hp.row_of_report hzH hr (hrd.trans hdb) hy hT hσ hTe hhT hhj hTC hh
+    exact ⟨hzH, att, j, hs, hv, hah, hroot, htimeout, ht.trans hrd, hfin⟩
+
 /-- **A higher report gives the retained crossing** (workbench#30 §5): the reported `C ⪰ T`,
 accepted by `t_u + 6Δ`, has slot `≤ u + 1 < u + δ_t`; the first `X` leaving `T`'s height on the
 chain justifies `T` (`crossing_walk`), and `X ⪯ C ⪯ B`, `B` the report's origin. -/
