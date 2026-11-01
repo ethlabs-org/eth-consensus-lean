@@ -630,6 +630,32 @@ theorem raw_writer_held_at_slot_start
         exact SA.mem_tree_of_acceptAt sp hr hpH hak hki hci hFD
     exact SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt hBD hFB
 
+/-- Guarded receipt of an actual acceptance: old sources use Catch, newer ones use Sync.
+The receiver's finalization bound is required; archival heldness alone is not frame membership. -/
+theorem reset_accept_frame
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ha : tr.projAC.AcceptAt x q B)
+    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y j ell)
+    (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hq : tr.time q + sp.Δ ≤ tr.time j)
+    (hF : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ ell.frame.tree := by
+  have hS := healthy_base_of_reset_catch hp hc
+  have hr := hS.run.localRun
+  by_cases hnew : SA.gbar g ≤ tr.time q
+  · have hd := deadline_le_restarts
+      (T := tr.projAC) (c := j) (fun k _ hk => hS.restart_le hy hk) (tr.time q)
+    have hdl : tr.projAC.deadline y j (tr.time q) ≤ tr.time j := by
+      change _ ≤ max (tr.time q) (SA.gbar g) + sp.Δ at hd
+      rw [max_eq_left hnew] at hd
+      exact hd.trans hq
+    obtain ⟨k, hkj, hak, _⟩ := (hS.syncAC le_rfl (tr.time q)).2 x hx q B ha hnew le_rfl
+      y hy j ell hcall hdl hF
+    exact SA.mem_tree_of_acceptAt sp hr hy hak hkj hcall hF
+  · obtain ⟨k, hkj, hak, _⟩ := hS.catchUp x hx q B ha (not_le.mp hnew)
+      y hy j ell hcall hg hF
+    exact SA.mem_tree_of_acceptAt sp hr hy hak hkj hcall hF
+
 end Consensus.Goldilocks.Healing
 
 end
