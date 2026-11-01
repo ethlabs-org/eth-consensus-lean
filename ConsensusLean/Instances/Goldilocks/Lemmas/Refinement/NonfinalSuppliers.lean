@@ -4,11 +4,67 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 
 public section
 
 namespace Consensus.Goldilocks.Refinement
 open Blocks Shape
+
+/-- A different honest recipient processes a first-release vote envelope before its
+processing-cut deadline. Network holdings alone do not cover source self-service. -/
+theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {b : Time} (hbh : b ≤ rho.horizon)
+    (hnet : rho.log.SyncUntil rho.point b)
+    {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : SA.Vote (Fintype.card V)}
+    (hx : x ∈ honestKeys S rho) (hy : y ∈ honestKeys S rho) (hne : y ≠ x)
+    (hτ : 0 ≤ τ) (hs : rho.SendsAt (rho.key x) source τ)
+    (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∈
+      rho.releasesAt source)
+    (hfirst : ∀ i < source,
+      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
+        rho.releasesAt i)
+    {j : Nat} (hj : (simTrace S rho hn).IsCall y j)
+    (hb : (simTrace S rho hn).projAC.deadline y j τ ≤ b)
+    (hd : (simTrace S rho hn).projAC.deadline y j τ ≤ (simTrace S rho hn).time j) :
+    ∃ k ≤ j, τ ≤ (simTrace S rho hn).time k ∧
+      (simTrace S rho hn).projAC.ProcessAt y k m ∧
+      (simTrace S rho hn).time k < (simTrace S rho hn).projAC.deadline y k τ := by
+  induction j using Nat.strong_induction_on with
+  | h j ih =>
+    obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval S rho hn hv hy hj hτ
+    have heq' : (simTrace S rho hn).projAC.deadline y j τ =
+        a + (S.params (Model.pubOf E) hn).Δ := by
+      rw [Compose.projAC_deadline]
+      exact heq
+    have hslack : a + E.Δ < a + (S.params (Model.pubOf E) hn).Δ := by
+      change a + E.Δ < a + (E.Δ + 1)
+      linarith
+    have hbound : a + E.Δ ≤ b := hslack.le.trans (heq' ▸ hb)
+    have hheld := hnet.msgs (rho.key x) hx _ τ ⟨source, hs, hrel⟩ (rho.key y) hy
+      a ha hbound (hbound.trans hbh)
+      (fun u hau hud => hw u hau (hud.trans (hslack.le.trans (heq' ▸ hd))))
+    rcases held_voteForward_source_or_process S rho hn hv hx hs hfirst hheld with
+      h | ⟨k, hp, hlo, hhi⟩
+    · exact False.elim (hne h)
+    have htime : (simTrace S rho hn).time k < (simTrace S rho hn).projAC.deadline y j τ := by
+      rw [heq']
+      exact hhi.trans_lt hslack
+    have hkj : k < j := by
+      by_contra h
+      have := simTrace_time_mono S rho hn hv (Nat.le_of_not_gt h)
+      linarith
+    by_cases hk : (simTrace S rho hn).time k < (simTrace S rho hn).projAC.deadline y k τ
+    · exact ⟨k, hkj.le, hlo, hp, hk⟩
+    · have hm : (simTrace S rho hn).projAC.deadline y k τ ≤
+          (simTrace S rho hn).projAC.deadline y j τ := by
+        rw [Compose.projAC_deadline, Compose.projAC_deadline]
+        exact deadline_mono_cut S rho hn hv y τ (S.params (Model.pubOf E) hn).Δ hkj.le
+      obtain ⟨l, hl, hlo', hp', hlt⟩ := ih k hkj ⟨_, Compose.projAC_callAt.mp hp.choose_spec.1⟩
+        (hm.trans hb) (le_of_not_gt hk)
+      exact ⟨l, hl.trans hkj.le, hlo', hp', hlt⟩
 
 variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
