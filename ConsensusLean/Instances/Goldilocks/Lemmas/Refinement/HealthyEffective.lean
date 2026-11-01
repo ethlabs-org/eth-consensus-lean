@@ -14,7 +14,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 
 -- Whole-run consumers and their finite-horizon counterparts share this endpoint layer.
-set_option linter.style.longFile 1900
+set_option linter.style.longFile 2100
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -1880,6 +1880,37 @@ theorem finality_alternative_before_update {b : Time}
     h | ⟨z, hz, r, ell, C, hrk, hto, hPC, hlt⟩
   · exact Or.inl h
   · exact Or.inr ⟨z, hz, r, ell, C, hrk, hto, (hp.run.time_mono hrk.le).trans ht, hPC, hlt⟩
+
+/-- Every honest unanimous vote is uniquely present and early-resolved in a
+bounded post-service call holding P. Restart and deadline duties are derived. -/
+theorem unanimous_pool {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hcall : tr.projAC.CallAt y j ell) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
+    (hjb : tr.time j ≤ b) (hPt : P ∈ ell.frame.tree) :
+    ∀ x ∈ H, ∃ v ∈ (tr.projAC.state y j).pool u, v.val = x ∧ v.head = P.root ∧
+      SA.resolutionTime (tr.projAC.state y j) ell.frame v < SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
+      ∀ v' ∈ (tr.projAC.state y j).pool u, v'.val = x → v' = v := by
+  have hS := Healing.healthy_base_of_reset_catch_before hp hc
+  have hrestart : ∀ k ≤ j, tr.projAC.RestartAt y k → tr.projAC.time k < sp.ts u := by
+    intro k hkj hk
+    have h := restart_before_unanimous_slot hp hR hy (Compose.projAC_restartAt.mp hk)
+      ((hp.run.time_mono hkj).trans hjb)
+    exact h.trans_lt ((SA.ts_lt_iff sp).2 (by omega))
+  refine SA.unanimous_pool_before hS hy hcall hgu ht hjb ?_ hrestart hPt ?_
+  · intro k hkj t _
+    exact Compose.ac_deadline_le_of_restarts
+      (fun r hr hrs => (hrestart r (hr.trans hkj) hrs).le) t
+  · intro x hx
+    have hub : sp.ts u + sp.Δ ≤ b := by linarith [sp.toParams.hΔ]
+    obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot hp hc hgu hR hub x hx
+    exact ⟨q, e, hv, hs, hun x hx q e hv (hq.trans hub) hs⟩
 
 end UpTo
 
