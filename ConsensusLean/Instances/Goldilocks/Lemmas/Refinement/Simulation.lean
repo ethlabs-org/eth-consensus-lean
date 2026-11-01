@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingInvariant
 
 public section
 
@@ -456,6 +457,92 @@ theorem dutyStep_poll_voteForward_of_available (hv : rho.ExecutionValid) {v : V}
     · rw [hlist, List.mem_singleton] at h
       have hd := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj h)
       exact Or.inl (by simpa only [decodeVote_encodeVote, Option.some.injEq] using hd)
+
+/-- At an actual tick prefix with at most one pending ordinary body, a poll
+releases every queued vote envelope. Holdings are supplied by reachable inventory. -/
+theorem tick_prefix_voteForward_poll (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i p : Nat} {t : Time}
+    (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
+    (hp : p ≤ ((Model.protoOf (compiled (family S)) E).duties t).length) :
+    let nd := (rho.runDuties v
+      ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
+      (((Model.protoOf (compiled (family S)) E).duties t).take p)).1
+    (shapeOf S hn nd).outbox.length ≤ 1 →
+    ∀ q ∈ (shapeOf S hn nd).voteForwards,
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward q.1 (encodeVote q.2))) [voteObj q.2] ∈
+          (rho.dutyStep v nd (.poll t.toNat)).2 := by
+  intro nd hlen
+  apply dutyStep_poll_voteForward_of_available S rho hn hv hv' (.tick he hw hp) t.toNat hlen
+  intro q hq
+  apply tick_prefix_pool_available S rho hn hv hv' he hw hp q.2.slot q.2
+  apply runDuties_voteForward_in_pool S rho hn v _ _ ?_ q hq
+  intro r hr
+  change r ∈ (stateAt S rho hn v i).voteForwards at hr
+  rw [voteForwards_empty S rho hn hv v i] at hr
+  cases hr
+
+/-- The tick's first trailing poll has the required one-body bound and releases
+all vote envelopes queued by the node tick and the optional own proposal. -/
+theorem tick_trailing_voteForward_poll (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i : Nat} {t : Time}
+    (he : rho.events[i]? = some (.tick v t)) :
+    let pre : List (Model.protoOf (compiled (family S)) E).Duty :=
+      [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ (skeleton (pubOf E)).proposeAt t
+    let nd := (rho.runDuties v
+      ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ pre).1
+    ∀ q ∈ (shapeOf S hn nd).voteForwards,
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward q.1 (encodeVote q.2))) [voteObj q.2] ∈
+          (rho.dutyStep v nd (.poll t.toNat)).2 := by
+  intro pre nd
+  have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
+  have hw := hv.tick_awake v t (List.mem_of_getElem? he)
+  have hd : (Model.protoOf (compiled (family S)) E).duties t =
+      pre ++ [.poll t.toNat, .poll t.toNat] := by
+    rw [duties_eq S t ht]
+    exact List.append_assoc _ _ _
+  have htake : ((Model.protoOf (compiled (family S)) E).duties t).take pre.length = pre := by
+    rw [hd, List.take_left]
+  have hlen : pre.length ≤ ((Model.protoOf (compiled (family S)) E).duties t).length := by
+    rw [hd, List.length_append]
+    omega
+  have h := tick_prefix_voteForward_poll S rho hn hv hv' he hw hlen
+  rw [htake] at h
+  apply h
+  dsimp only [nd, pre]
+  erw [runDuties_fst_append]
+  apply outbox_after_pre S rho hn v (stateAt S rho hn v i) t ht
+    (fgDue_eq_false S rho hn v i)
+  · rw [outbox_empty S rho hn hv v hv' i]; simp
+  · exact pre_shape S rho hn v (rho.stateBefore i v) t (poll_selected S rho hv v)
+
+/-- Envelopes queued before the tick's trailing polls are released by that tick. -/
+theorem tick_voteForward_released (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∈ rho.honest) {i : Nat} {t : Time}
+    (he : rho.events[i]? = some (.tick v t)) :
+    let pre : List (Model.protoOf (compiled (family S)) E).Duty :=
+      [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ (skeleton (pubOf E)).proposeAt t
+    let nd := (rho.runDuties v
+      ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ pre).1
+    ∀ q ∈ (shapeOf S hn nd).voteForwards,
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward q.1 (encodeVote q.2))) [voteObj q.2] ∈ rho.releasesAt i := by
+  intro pre nd q hq
+  have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
+  have hrel := tick_trailing_voteForward_poll S rho hn hv hv' he q hq
+  simp only [Model.Run.releasesAt, he]
+  rw [rho.tick_of_awake _ _ _ (hv.tick_awake v t (List.mem_of_getElem? he))]
+  apply List.mem_append_left
+  have hd : (Model.protoOf (compiled (family S)) E).duties t =
+      pre ++ .poll t.toNat :: [.poll t.toNat] := by
+    rw [duties_eq S t ht]
+    exact List.append_assoc _ _ _
+  rw [hd]
+  exact duty_release_in_runDuties S rho v _ pre _ _ _ hrel
 
 /-- Every envelope actually queued during delivery is released in that same engine event.
 Canonical dependencies are derived from reachable inventory and the actual ordinary prefix. -/
