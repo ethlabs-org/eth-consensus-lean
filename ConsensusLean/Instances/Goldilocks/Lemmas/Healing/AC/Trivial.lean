@@ -653,6 +653,63 @@ theorem trivial_carry_votes (hS : StandaloneRun tr H U proposer g) {m : Nat}
   exact ⟨hvs, x, hx, j, ⟨ℓ, hc, Or.inl ⟨e', he, rfl⟩⟩, htj', by linarith, _, hΦU hG, hhead.symm,
     Or.inr ⟨j, ℓ, hc, by linarith, hG⟩⟩
 
+/-- Every honest node has an actual vote by the bounded slot deadline. Restart bounds
+are required only before that deadline, at the join threshold for this slot. -/
+theorem honest_votes_in_slot_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g b)
+    {m : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) (hmb : sp.ts m + sp.Δ ≤ b)
+    (hrestart : ∀ x ∈ H, ∀ r, tr.time r ≤ sp.ts m + sp.Δ → tr.RestartAt x r →
+      tr.time r ≤ sp.ts ((m : Int) - 1)) :
+    ∀ x ∈ H, ∃ j e, VoteAt tr x j e ∧ e.msg.slot = m ∧ tr.time j ≤ sp.ts m + sp.Δ := by
+  have hr := hS.run.localRun
+  have hDelta := sp.toParams.hΔ
+  have hg0 := gbar_nonneg g
+  intro x hx
+  have hslot : sp.slot (sp.ts m + sp.Δ) = m := by
+    apply slot_of_mem sp m (by linarith)
+    simp only [SAParams.ts]; push_cast; linarith
+  obtain ⟨c, ell, hc, hcall, htc⟩ := hS.driven.tick x hx (sp.ts m + sp.Δ) (by linarith)
+    ⟨4 * m + 1, by simp only [SAParams.ts]; ring⟩ (hS.awake x hx _ (by linarith) hmb)
+  have hj : joined sp (tr.state x c) (tr.time c) := by
+    unfold joined
+    rcases restartTime_state hr hx c with h | ⟨r, hrc, hrs, h⟩
+    · rw [h]; exact bot_le
+    · rw [h]
+      apply WithBot.coe_le_coe.mpr
+      rw [htc, hslot]
+      exact hrestart x hx r ((hr.time_mono hrc.le).trans htc.le) hrs
+  by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
+  · obtain ⟨j, hjc, e, he, hes⟩ := vote_of_votedSlot hr hx c _ hv
+    exact ⟨j, e, he, by rw [hes, htc, hslot], (hr.time_mono hjc.le).trans htc.le⟩
+  · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]
+    obtain ⟨e, hem, hes⟩ := tryVote_votes x ell.frame hj hv hT
+    have he := hr.exec c ell hc.2 (hc.1 ▸ hx)
+    rw [hc.1, hcall] at he
+    have h2 : (acOnTick sp x (tr.state x c) ell.frame (tr.time c)).2 = ell.emits :=
+      congrArg Prod.snd he
+    have h3 : (acOnTick sp x (tr.state x c) ell.frame (tr.time c)).2 =
+        (tryVote sp x (tr.state x c) ell.frame (tr.time c)).2 := by
+      unfold acOnTick
+      dsimp only
+      split_ifs
+      all_goals first | rfl | exact absurd hj ‹_›
+    exact ⟨c, e, ⟨ell, hc, h2 ▸ h3 ▸ hem⟩, by rw [hes, htc, hslot], htc.le⟩
+
+/-- The bounded actual honest vote batch occupies at least half the committee. -/
+theorem honest_voters_half_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g b)
+    {m : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) (hmb : sp.ts m + sp.Δ ≤ b)
+    (hrestart : ∀ x ∈ H, ∀ r, tr.time r ≤ sp.ts m + sp.Δ → tr.RestartAt x r →
+      tr.time r ≤ sp.ts ((m : Int) - 1)) :
+    sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e, VoteAt tr x j e ∧ e.msg.slot = m ∧
+      tr.time j ≤ sp.ts m + sp.Δ}.ncard := by
+  have hall := honest_votes_in_slot_before hS hm hmb hrestart
+  have hle := Set.ncard_le_ncard (s := H)
+    (t := {x | x ∈ H ∧ ∃ j e, VoteAt tr x j e ∧ e.msg.slot = m ∧
+      tr.time j ≤ sp.ts m + sp.Δ}) fun x hx => ⟨hx, hall x hx⟩
+  have hn : H.ncard + Hᶜ.ncard = sp.n := by
+    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+  have := hS.faults
+  omega
+
 /-- **Every honest node votes** in a slot `m ≥ r` (T1 §3, "the honest batch"): it is awake and
 joined at `t_m + Δ`, runs its tick there (`Driven`), and `try_vote` votes unless it voted in slot
 `m` already. -/

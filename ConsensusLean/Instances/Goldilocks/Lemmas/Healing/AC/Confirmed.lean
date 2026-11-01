@@ -45,8 +45,8 @@ theorem late_vote_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g
     {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
-    (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ t + sp.Δ)
-    (hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ gbar g)
+    (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
+    (hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k < sp.ts s)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {e : Em sp FGP}
     (hv : VoteAt tr x i e) (hes : e.msg.slot = s) :
     ∀ c, (c = j ∨ c = j + 1) → e.msg ∈ (tr.state y c).pool s ∧
@@ -62,11 +62,13 @@ theorem late_vote_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g
     (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [← hslot, hes])
   have hgi : gbar g ≤ tr.time i := by linarith
   have hdl := hdeadline j le_rfl (tr.time i) hgi
+  rw [max_eq_left hti0] at hdl
   obtain ⟨q, hqj, hiq, hproc, hqt⟩ := hS.sync.message x hx i e.msg
     ⟨ellx, hcx, Or.inl ⟨e, hex, rfl⟩⟩ hgi y hy j ell hc
     (by linarith) (by linarith)
   have hqT : tr.time q < sp.ts s + 2 * sp.Δ := by
-    have := hdeadline q hqj (tr.time i) hgi
+    have hqdl := hdeadline q hqj (tr.time i) hgi
+    rw [max_eq_left hti0] at hqdl
     linarith
   have hqj' : q < j := lt_of_le_of_ne hqj (by rintro rfl; linarith)
   have hqs : sp.slot (tr.time q) = s :=
@@ -92,7 +94,7 @@ theorem late_vote_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g
     (w := e.msg) (by rw [hes]; exact hheld) (T := sp.ts s + 2 * sp.Δ)
     (fun k hk => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk)) hqT)
     (by rw [hes]; linarith)
-    (fun k hk hrs => lt_of_le_of_lt (hrestart k (by omega) hrs) (by linarith))
+    (fun k hk hrs => lt_trans (hrestart k (by omega) hrs) (by linarith))
     (fun k hqk hkc hrs => by
       have := hrestart k (by omega) hrs
       have := hr.time_mono (show q ≤ k by omega)
@@ -106,8 +108,8 @@ theorem late_vote_held_of_frame_before {b : Time} (hS : HealthyBaseUpTo tr H U p
     {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
-    (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ t + sp.Δ)
-    (hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ gbar g)
+    (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
+    (hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k < sp.ts s)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {e : Em sp FGP}
     (hv : VoteAt tr x i e) (hes : e.msg.slot = s)
     (hF : ∀ B ∈ U, B.root = e.msg.head → Anc U ell.frame.F B) :
@@ -144,6 +146,7 @@ theorem late_vote_held_of_frame_before {b : Time} (hS : HealthyBaseUpTo tr H U p
       · exact he ▸ hPhi.rooted.1
       · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
     have hqtime := (hr.time_mono hqi).trans hti
+    have hmax : max (tr.time q) (sp.ts s) ≤ sp.ts s + sp.Δ := max_le hqtime (by linarith)
     obtain ⟨r, hrj, har, hrt⟩ : ∃ r ≤ j, tr.AcceptAt y r B ∧ tr.time r < sp.ts s + 2 * sp.Δ := by
       by_cases hgq : gbar g ≤ tr.time q
       · have hdl := hdeadline j le_rfl (tr.time q) hgq
@@ -155,7 +158,7 @@ theorem late_vote_held_of_frame_before {b : Time} (hS : HealthyBaseUpTo tr H U p
         exact ⟨r, hrj, har, by linarith⟩
     exact ⟨mem_tree_of_acceptAt sp hr hy har hrj hc hFB, Or.inr ⟨r, har, hrt⟩⟩
   have hstamp := blockStamp_lt_of_acceptedBefore sp hr hy hc hBy hAB
-    (fun k hk hrs => lt_of_le_of_lt (hrestart k (by omega) hrs) (by linarith)) (Or.inl ht)
+    (fun k hk hrs => lt_trans (hrestart k (by omega) hrs) (by linarith)) (Or.inl ht)
   exact ⟨B, hBy, hBr, hBs, hpool.1, hpool.2, hBr ▸ hstamp⟩
 
 /-- **A late honest vote is held** (h1 §2): for a slot `s ≥ r` and an honest call at a time
@@ -1222,8 +1225,8 @@ theorem unanimous_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g
     {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
-    (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ t + sp.Δ)
-    (hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ gbar g)
+    (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
+    (hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k < sp.ts s)
     {P : Blk sp.n FGP} (hPt : P ∈ ell.frame.tree)
     (hvotes : ∀ x ∈ H, ∃ i e, VoteAt tr x i e ∧ e.msg.slot = s ∧ e.msg.head = P.root) :
     ∀ x ∈ H, ∃ v ∈ (tr.state y j).pool s, v.val = x ∧ v.head = P.root ∧
