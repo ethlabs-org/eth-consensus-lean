@@ -776,4 +776,101 @@ theorem delivery_acceptance_publication {V : Type} [Fintype V] [DecidableEq V] {
   obtain ⟨q, hq, hi, hx, ho⟩ := delivery_pending_publication S rho hn hv he _ hc
   exact ⟨p, q, hq, hi, hx, ho⟩
 
+/-- Every intermediate duty prefix of a tick inherits the reachable forwarding inventory.
+No release-success premise is supplied by the caller. -/
+theorem tick_duty_prefix_inventory {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (i : Nat) (t : Time)
+    (ds : List (protoOf (compiled (family S)) E).Duty) :
+    let nd := (rho.runDuties v
+      ⟨(protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ ds).1
+    WrappersAccounted (sp := S.params (pubOf E) hn)
+      (fun c => c ∈ nd.seen.flatMap Obj.parts) (shapeOf S hn nd) ∧
+      PendingReady nd.seen (pendingWrappers (shapeOf S hn nd)) := by
+  obtain ⟨ha, hr⟩ := stateBefore_forwardInventory S rho hn v i
+  apply runDuties_forwardInventory S rho hn
+  · exact self_eq_ownKey S rho hn v i
+  · simpa only [wrappersAccounted_iff, pendingWrappers_eq, shapeOf,
+      shapeOf_clock S hn, stateAt] using ha
+  · simpa only [pendingWrappers_eq, shapeOf, shapeOf_clock S hn, stateAt] using hr
+  · exact stateAt_forwardQueueCanonical S rho hn v i
+
+/-- A poll following any actual tick-duty prefix releases all its queued block wrappers.
+Neither the ordinary emission nor the later vote suffix adds a caller guard premise. -/
+theorem tick_duty_prefix_poll_released {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (v : V) (i : Nat) (t : Time)
+    (ds : List (protoOf (compiled (family S)) E).Duty) :
+    let nd := (rho.runDuties v
+      ⟨(protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ ds).1
+    ∀ c ∈ pendingWrappers (shapeOf S hn nd),
+      c ∈ (rho.dutyStep v nd (.poll t.toNat)).2 := by
+  let start : Model.Node (protoOf (compiled (family S)) E) :=
+    ⟨(protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+      (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
+  have hself : (shapeOf S hn (rho.runDuties v start ds).1).self = rho.ownKey v := by
+    apply runDuties_pres S rho hn (fun st => st.self = rho.ownKey v)
+      (fun st o hs h => (recordOwn_self st o hs).trans h)
+      (fun st s h => (propose_self st s).trans h)
+      (fun st h => (nodeTick_self st).trans h)
+      (fun st t h => (poll_self st t).trans h)
+    exact self_eq_ownKey S rho hn v i
+  have hc : ForwardQueueCanonical (shapeOf S hn (rho.runDuties v start ds).1) := by
+    apply runDuties_pres S rho hn ForwardQueueCanonical canonical_recordOwn
+      (fun st s h => by unfold propose; dsimp only; split <;> exact h)
+      (fun st h => by
+        unfold nodeTick
+        split
+        · exact forwardQueueCanonical_apply st _ h
+        · exact h)
+      (fun st t _ => canonical_poll st t)
+    exact stateAt_forwardQueueCanonical S rho hn v i
+  have hs := forwardQueueCanonical_pending _ hc
+  rw [hself] at hs
+  exact dutyStep_poll_pending S rho hn v _ _ (poll_selected S rho hv v) hself
+    (tick_duty_prefix_inventory S rho hn v i t ds).2 hs
+
+/-- A release in a duty after a prefix is retained by the enclosing duty run. -/
+theorem duty_release_in_runDuties {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (v : V)
+    (nd : Model.Node (protoOf (compiled (family S)) E))
+    (pre post : List (protoOf (compiled (family S)) E).Duty)
+    (d : (protoOf (compiled (family S)) E).Duty)
+    (c : (protoOf (compiled (family S)) E).Object)
+    (hc : c ∈ (rho.dutyStep v (rho.runDuties v nd pre).1 d).2) :
+    c ∈ (rho.runDuties v nd (pre ++ d :: post)).2 := by
+  induction pre generalizing nd with
+  | nil =>
+    rw [List.nil_append, rho.runDuties_cons]
+    exact List.mem_append_left _ hc
+  | cons a pre ih =>
+    rw [List.cons_append, rho.runDuties_cons]
+    apply List.mem_append_right
+    apply ih
+    simpa only [rho.runDuties_cons] using hc
+
+/-- A queued wrapper at any poll position of a real tick has a same-event publication.
+This discharges publication existence once acceptance has been located before that poll. -/
+theorem tick_pending_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {v : V} {i : Nat} {t : Time}
+    (he : rho.events[i]? = some (.tick v t))
+    (pre post : List (protoOf (compiled (family S)) E).Duty)
+    (hd : (protoOf (compiled (family S)) E).duties t = pre ++ .poll t.toNat :: post)
+    (c : (protoOf (compiled (family S)) E).Object)
+    (hc : c ∈ pendingWrappers (shapeOf S hn (rho.runDuties v
+      ⟨(protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
+        (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ pre).1)) :
+    ∃ r, (publisherExecution S rho).actual r ∧ r.event = i ∧
+      r.origin = rho.ownKey v ∧ r.object = c := by
+  apply publication_of_release S rho (Or.inl he) c
+  simp only [Model.Run.releasesAt, he]
+  rw [rho.tick_of_awake _ _ _ (hv.tick_awake v t (List.mem_of_getElem? he))]
+  apply List.mem_append_left
+  rw [hd]
+  exact duty_release_in_runDuties S rho v _ pre post _ c
+    (tick_duty_prefix_poll_released S rho hn hv v i t pre c hc)
+
 end Consensus.Goldilocks.Refinement
