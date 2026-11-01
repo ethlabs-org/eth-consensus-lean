@@ -412,6 +412,63 @@ private theorem poll_queuedInPool (st : State sp ro) t : QueuedInPool (poll st t
   rw [poll_voteForwards] at htv
   cases htv
 
+private theorem block_pool_subset (st : State sp ro) (B : Blk sp) (σ : Nat) :
+    st.node.ac.pool σ ⊆ (apply st (Node.onBlock st.self st.node st.now B)).node.ac.pool σ := by
+  unfold apply Node.onBlock
+  dsimp only
+  split_ifs
+  · exact List.Subset.refl _
+  · split
+    · exact List.Subset.refl _
+    · exact SA.step_pool_subset st.self st.node.ac _ st.now (.block B) (by simp) σ
+
+private theorem record_pool_subset (st : State sp ro) o hs (σ : Nat) :
+    st.node.ac.pool σ ⊆ (recordOwn st o hs).node.ac.pool σ := by
+  unfold recordOwn
+  split
+  · exact List.Subset.refl _
+  · split
+    · exact block_pool_subset st _ σ
+    · exact List.Subset.refl _
+  · exact List.Subset.refl _
+
+private theorem propose_pool_eq (st : State sp ro) s :
+    (propose st s).1.node.ac.pool = st.node.ac.pool := by
+  have hp : (Node.acProposal st.node st.now).1.ac.pool = st.node.ac.pool := by
+    change (SA.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
+    unfold SA.acProposal
+    split_ifs <;> rfl
+  unfold propose
+  dsimp only
+  split <;> exact hp
+
+private theorem nodeTick_pool_subset (st : State sp ro) (σ : Nat) :
+    st.node.ac.pool σ ⊆ (nodeTick st).node.ac.pool σ := by
+  unfold nodeTick
+  split
+  · exact SA.step_pool_subset st.self st.node.ac _ st.now .tick (by simp) σ
+  · exact List.Subset.refl _
+
+private theorem poll_pool_eq (st : State sp ro) t :
+    (poll st t).1.node.ac.pool = st.node.ac.pool := by
+  have hp : (Node.acToFG st.node st.now).1.ac.pool = st.node.ac.pool := by
+    change (SA.acToFG sp st.node.ac (frame st.node) st.now).1.pool = _
+    unfold SA.acToFG
+    dsimp only
+    split_ifs
+    · split
+      · rfl
+      · split_ifs <;> rfl
+    · rfl
+  have hg : (fgUpdate st).node.ac.pool = st.node.ac.pool := by
+    unfold fgUpdate
+    dsimp only
+    split
+    · exact hp
+    · split <;> exact hp
+  unfold poll
+  split_ifs <;> dsimp only <;> split <;> first | exact hg | rfl
+
 private theorem parts_append {n : Nat} (a b : List (Wire n)) :
     a.flatMap Model.Obj.parts ⊆ (a ++ b).flatMap Model.Obj.parts := by
   rw [List.flatMap_append]
@@ -784,6 +841,20 @@ theorem runDuties_voteForward_in_pool (v : V)
       tv.2 ∈ (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool tv.2.slot := by
   exact runDuties_pres S rho hn QueuedInPool record_queuedInPool propose_queuedInPool
     nodeTick_queuedInPool (fun st t _ => poll_queuedInPool st t) v nd ds h
+
+omit [DecidableEq V] in
+/-- Duty execution never removes a stored vote; only restart replay can do so. -/
+theorem runDuties_pool_subset (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E))
+    (ds : List (Model.protoOf (compiled (family S)) E).Duty) (σ : Nat) :
+    (shapeOf S hn nd).node.ac.pool σ ⊆
+      (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool σ := by
+  intro m hm
+  exact runDuties_pres S rho hn (fun st => m ∈ st.node.ac.pool σ)
+    (fun st o hs h => record_pool_subset st o hs σ h)
+    (fun st s h => by rw [propose_pool_eq]; exact h)
+    (fun st h => nodeTick_pool_subset st σ h)
+    (fun st t h => by rw [poll_pool_eq]; exact h) v nd ds hm
 
 omit [DecidableEq V] in
 private theorem release_owned (k : Fin (Fintype.card V))
