@@ -2071,6 +2071,26 @@ theorem operational_update_selection {b : Time}
         ((hp.run.time_mono hr.le).trans hjb))
   exact ⟨hPt, hp.ready_update_selection_of_pool hy hup hPt hPg hpool hlocks⟩
 
+/-- The effective post-update record extends the actual operational proposal in
+the update's frame, including when the raw record keeps a later optimistic source. -/
+theorem operational_update_effective_record {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
+    (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hup : SA.UpdateAt tr.projAC y j u ell) :
+    Anc (tr.HonestBlocks H) P
+      ((SA.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F) := by
+  obtain ⟨hPt, _, _, _, _, hrecord⟩ :=
+    operational_update_selection hp hc hpH hdesignated hactual hPs hR hgu hTb hy hup
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hup.1
+  rw [hrecord]
+  exact (effective_record_update_slot_growth (sp := sp) hPhi hPt).1.mono hPhiU
+
 /-- At a bounded call holding a target above a bounded high seed, compatible
 causal origins give full viability or an actual earlier strictly higher report. -/
 theorem held_target_viable_or_higher_report {b : Time}
