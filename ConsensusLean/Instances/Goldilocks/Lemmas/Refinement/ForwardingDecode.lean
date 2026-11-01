@@ -822,4 +822,42 @@ theorem decoded_held_tick {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     exact decoded_held_poll _ _ (decoded_held_poll _ _ hprop.1 hprop.2).1
       (decoded_held_poll _ _ hprop.1 hprop.2).2
 
+/-- Every reachable honest engine state has decoded wrappers corresponding to held blocks.
+No decoder, parent-slot, payload-validity or clock premise is assumed. -/
+theorem stateAt_decoded_held {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (v : V) (hh : v ∈ rho.honest) (i : Nat) :
+    WrappersDecoded (digests rho.hash) (stateAt S rho hn v i) ∧
+    WrappersHeld (digests rho.hash) (stateAt S rho hn v i) := by
+  induction i with
+  | zero =>
+    exact ⟨wrappersDecoded_empty _ _ (fun _ => rfl) rfl,
+      wrappersHeld_empty _ _ (fun _ => rfl)⟩
+  | succ i ih =>
+    cases he : rho.events[i]? with
+    | none => rw [stateAt_succ_none S rho hn v he]; exact ih
+    | some ev =>
+      by_cases hvn : ev.node = v
+      · cases ev with
+        | tick w t =>
+          simp only [Model.Event.node] at hvn
+          subst w
+          rw [stateAt_tick S rho hn v he]
+          exact decoded_held_tick S rho hn hv v hh i t he ih.1 ih.2
+        | deliver w o t =>
+          simp only [Model.Event.node] at hvn
+          subst w
+          rw [stateAt_deliver S rho hn v he]
+          exact decoded_held_deliver S rho hn v _ ih.1 ih.2
+            (stateAt_wrappersCover S rho hn v i) (stateAt_fg_reachable S rho hn v i)
+            o t (stateAt_clock_bounds S rho hn hv v i).1
+        | restart w t =>
+          simp only [Model.Event.node] at hvn
+          subst w
+          rw [stateAt_restart S rho hn v he]
+          have h := decoded_held_restore (stateAt S rho hn v i) t ih.1 ih.2
+            ((stateAt_clock_bounds S rho hn hv v i).2 i _ le_rfl he)
+          rwa [self_eq_ownKey S rho hn v i] at h
+      · rw [state_of_other S rho hn v i ev he hvn]; exact ih
+
 end Consensus.Goldilocks.Refinement
