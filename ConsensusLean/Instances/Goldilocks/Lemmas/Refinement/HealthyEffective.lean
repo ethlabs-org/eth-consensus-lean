@@ -17,6 +17,15 @@ namespace Consensus.Goldilocks.Refinement
 
 variable {sp : SA.SAParams} {FGP : Type} {U : Set (SA.Blk sp.n FGP)}
 
+/-- A conflicting candidate above a prefix can only be vetoed by a compatible lock
+that covers that prefix. -/
+theorem cover_of_veto {U : Set (SA.Blk sp.n FGP)} (_hU : Coherent U)
+    {B C L : SA.Blk sp.n FGP} (hBC : Anc U B C) (hLB : Compatible U L B)
+    (hLC : ¬ Compatible U C L) : Anc U B L := by
+  rcases hLB with hLB | hBL
+  · exact False.elim (hLC (Or.inr (hLB.trans hBC)))
+  · exact hBL
+
 /-- An exposed prefix survives exactly when both inputs to the new LCA extend it. -/
 theorem exposed_prefix_preserved_of_record_head (hU : Coherent U)
     {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
@@ -281,6 +290,49 @@ theorem effective_record_update_slot_growth
   by_cases he : (SA.lookup Φ (SA.updateLatestConfirmed sp A Φ P).latestConfirmed).getD Φ.F = P
   · exact Or.inl he
   · exact Or.inr ((hanc.slot_le hΦ.coherent).2 (Ne.symm he))
+
+/-- A non-vetoed update covers its result in the effective post-call record. -/
+theorem effective_record_after_update
+    {ro : SA.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SA.SATrace sp FGP ro}
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {c s : Nat}
+    {ell : ACLabel (SA.goldilocksSA sp FGP ro)} (hu : SA.UpdateAt tr y c s ell)
+    {C : SA.Blk sp.n FGP} {CV : Set (SA.Vote sp.n)} (hR : SA.ResultAt tr y c s C CV)
+    (hnv : ¬ SA.conflictsWithLock sp (tr.state y c).locks ell.frame (tr.time c) C) :
+    ell.frame.Anc C ((SA.lookup ell.frame (tr.post c).latestConfirmed).getD ell.frame.F) := by
+  obtain ⟨hΦ, -⟩ := SA.frameIn_of_callAt hr hy hu.1
+  obtain ⟨ell', hu', hC, -⟩ := hR
+  have heq : ell' = ell := Option.some.inj (hu'.1.2.symm.trans hu.1.2)
+  subst ell'
+  have hΔ := sp.toParams.hΔ
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SA.SAParams.ts]; push_cast; ring
+  have hslot : sp.slot (tr.time c) = s + 1 := SA.slot_of_mem sp (s + 1)
+    (by rw [hu.2.2.1, hts]; linarith)
+    (by rw [hu.2.2.1, show sp.ts (s + 1 + 1 : Nat) =
+      sp.ts (s + 1 : Nat) + 4 * sp.Δ by simp only [SA.SAParams.ts]; push_cast; ring, hts]; linarith)
+  have he := hr.exec c ell hu.1.2 (hu.1.1 ▸ hy)
+  rw [hu.1.1, hu.2.1] at he
+  have hpost := (congrArg Prod.fst he).symm
+  dsimp only at hpost
+  rw [hpost]
+  change ell.frame.Anc C ((SA.lookup ell.frame
+    (SA.acOnTick sp y (tr.state y c) ell.frame (tr.time c)).1.latestConfirmed).getD ell.frame.F)
+  unfold SA.acOnTick
+  dsimp only
+  rw [hslot]
+  have ht1 : ¬ tr.time c = sp.ts (s + 1 : Nat) + sp.Δ := by
+    rw [hu.2.2.1, hts]; linarith
+  have ht2 : tr.time c = sp.ts (s + 1 : Nat) + 2 * sp.Δ := by
+    rw [hu.2.2.1, hts]; ring
+  rw [ite_eq_right (not_not.mpr hu.2.2.2), ite_eq_right ht1,
+    ite_eq_left ⟨ht2, Nat.succ_pos s⟩]
+  dsimp only
+  rw [Nat.add_sub_cancel]
+  unfold SA.updateConfirmation
+  simp only [hC]
+  rw [ite_eq_right hnv]
+  exact (effective_record_update_slot_growth (sp := sp) hΦ (SA.deepest_mem hC).1.1).1
 
 /-- The conditional ready update flushes every non-descendant record. The post-state
 is read in the actual call frame; frame evolution is handled by the separate adapter. -/
