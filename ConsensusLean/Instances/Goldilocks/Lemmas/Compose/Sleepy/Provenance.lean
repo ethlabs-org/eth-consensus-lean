@@ -624,8 +624,14 @@ private theorem honest_of_quorum {t : Time} (hfb : tr.FaultBound H t) {Q : Finse
   unfold RunTrace.FaultBound at hfb
   omega
 
-/-- **The record names genesis or an origin within `b`** at a cut within `b`, a block of the
-node's tree. -/
+/-- The record names a held genesis or an actual origin strictly before this cut. -/
+theorem record_origin_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+    ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧
+      (C.root = sp.genesisRoot ∨ ∃ s, OriginBefore tr H C s i) :=
+  (good_state hrun hnc hy i).1
+
+/-- The time-bounded form of causal record provenance. -/
 theorem record_origin_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {b : Time} (hi : ∀ k < i, tr.time k ≤ b) :
     ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧
