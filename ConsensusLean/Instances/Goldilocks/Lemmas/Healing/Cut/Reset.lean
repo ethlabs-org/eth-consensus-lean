@@ -204,17 +204,26 @@ theorem signAt_h_le (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy :
 
 /-! ## HR.1 (a) -/
 
-/-- **HR.1 (a), first part.** An honest row signed at or before `c_z` has height `≤ H_z`. -/
-theorem signed_le_HZ (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
+/-- An actual cut after `c_z` bounds every honest row signed at or before `c_z`,
+without requiring healthy continuation of the run. -/
+theorem signed_le_HZ_of_snapshot (hrun : GoldilocksRun proposer dg H tr)
+    (hsnapshot : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g))
     {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att)
     (hk : tr.time k ≤ cutZ sp.toParams g) : att.h ≤ HZ tr H g := by
-  obtain ⟨j, hj⟩ := exists_firstCutAfter hrun hh hy
+  obtain ⟨j, hj⟩ := hsnapshot
   have hkj : k ≤ j := by
     by_contra hc
     have := hrun.time_mono (le_of_not_ge hc)
     linarith [hj.2]
   exact (signAt_h_le hrun hy hs).trans ((hmax_mono hrun.toLocalRun hy hkj).trans (hmax_le_HZ hy hj))
+
+/-- **HR.1 (a), first part.** An honest row signed at or before `c_z` has height `≤ H_z`. -/
+theorem signed_le_HZ (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
+    {y : Fin sp.n}
+    (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att)
+    (hk : tr.time k ≤ cutZ sp.toParams g) : att.h ≤ HZ tr H g :=
+  signed_le_HZ_of_snapshot hrun (exists_firstCutAfter hrun hh hy) hy hs hk
 
 /-- A block that `ac_to_fg` returns is a candidate. -/
 private theorem mem_toFGCandidates {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
@@ -299,13 +308,20 @@ theorem honest_row_of_height (hrun : GoldilocksRun proposer dg H tr) (hh : tr.He
 
 /-! ## HR.1 (c) -/
 
-/-- **HR.1 (c), `a_z > c_z`.** -/
-theorem cutZ_lt_reset (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g) {a : Time}
+/-- A reset is strictly after `c_z` whenever its frontier has an actual snapshot cut. -/
+theorem cutZ_lt_reset_of_snapshot (hrun : GoldilocksRun proposer dg H tr)
+    (hsnapshot : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g)) {a : Time}
     (hR : IsReset tr H g a) : cutZ sp.toParams g < a := by
   obtain ⟨⟨y, hy, k, att, hs, hatt, rfl⟩, -⟩ := hR
   by_contra hc
-  have := signed_le_HZ hrun hh hy hs (not_lt.1 hc)
+  have := signed_le_HZ_of_snapshot hrun hsnapshot hy hs (not_lt.1 hc)
   omega
+
+/-- **HR.1 (c), `a_z > c_z`.** -/
+theorem cutZ_lt_reset (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g) {a : Time}
+    (hR : IsReset tr H g a) : cutZ sp.toParams g < a := by
+  obtain ⟨y, hy, _⟩ := hR.1
+  exact cutZ_lt_reset_of_snapshot hrun (exists_firstCutAfter hrun hh hy) hR
 
 /-- An honest row on a block that a node holds at its `fg_attest` cut was signed before the
 reset when that cut is at or before the reset (it was signed before that cut's time), so its
