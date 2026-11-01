@@ -102,6 +102,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Live
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.LiveConstants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
