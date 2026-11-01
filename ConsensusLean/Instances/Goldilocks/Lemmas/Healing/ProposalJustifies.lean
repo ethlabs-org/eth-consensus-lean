@@ -119,7 +119,7 @@ private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.No
   exact Compose.fg_projection _ _ dg H _ tr proposer hreq hrun.genesis_root_ok hrun.toLocalRun hnc
 
 /-- An honest validator signs its own attestations. -/
-private theorem signAt_val (hrun : GoldilocksRun proposer dg H tr)
+theorem signAt_val (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {att : FG.Att sp.n} (hs : tr.SignAt y k att) : att.val = y := by
   obtain ⟨src, hc⟩ := hs
@@ -131,6 +131,62 @@ private theorem signAt_val (hrun : GoldilocksRun proposer dg H tr)
     simp only [Option.some.injEq, Prod.mk.injEq] at h
     obtain ⟨rfl, -⟩ := h
     rfl
+
+/-- **The rows of an honest proposal** (s5 §4, step 3): for an honest proposal `X` at the cut `kX`
+on the held parent `Pr`, the FG projection is a local run, the store after the cut holds `X` and
+`Pr` with the same states, and every row that the proposer processed before `kX` and that names
+`Pr`'s entry is in `X`'s payload or on `Pr`'s chain. -/
+theorem proposal_rows_placed (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
+    {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
+    (hPr : Pr ∈ (tr.state p kX).fg.tree) :
+    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
+      X ∈ (tr.projFG.store p (kX + 1)).tree ∧ Pr ∈ (tr.projFG.store p (kX + 1)).tree ∧
+      (tr.post kX).fg.σ X.root = (tr.projFG.store p (kX + 1)).σ X.root ∧
+      (tr.state p kX).fg.σ Pr.root = (tr.projFG.store p (kX + 1)).σ Pr.root ∧
+      ∀ att, (∃ k' < kX, tr.ProcessAttAt p k' att) →
+        att.h = ((tr.state p kX).fg.σ Pr.root).h → att.T = ((tr.state p kX).fg.σ Pr.root).Th →
+        att ∈ X.fgPayload ∨ (tr.projFG.store p (kX + 1)).OnChain Pr att := by
+  classical
+  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
+  obtain ⟨hacc, hXt, hpost⟩ := accept_of_proposesAt hrun hnc hp hX
+  have hst := store_eq hrun hp (kX + 1)
+  have hmono := Compose.tree_mono hrun.toLocalRun hp (Nat.le_succ kX)
+  have hPrU : Pr ∈ tr.HonestBlocks H := ⟨p, hp, kX, hPr⟩
+  have hXU : X ∈ tr.HonestBlocks H := ⟨p, hp, kX + 1, hXt⟩
+  -- `X` is `propose_block`'s block on `d.head`, with the pool before the tick
+  rcases Compose.blockCall_cases hrun.toLocalRun hp hacc with hg |
+    ⟨j, x, -, -, -, d, pay, -, hB, -, -, -, hfgj⟩
+  · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hX.1.2
+  have hpay : X.fgPayload = (tr.state p kX).fg.proposalAttestations d.head := by
+    rw [hfgj, hB]; rfl
+  have hdroot : d.head.root = Pr.root := by
+    have : X.parent = some d.head.root := by rw [hB]; rfl
+    exact Option.some.inj (this.symm.trans hpar)
+  -- `σ[Pr]` before the proposal cut
+  have hσPr : (tr.state p kX).fg.σ Pr.root = (tr.state p (kX + 1)).fg.σ Pr.root := by
+    obtain ⟨_, _, _, _, _, _, _, hsf, _⟩ :=
+      Goldilocks.Store.onBlock_fields (hrun.cutLaw p hp kX _ hacc).2.1
+    have hne : Pr.root ≠ X.root := fun he => by
+      obtain rfl : Pr = X := hU.1 hPrU hXU he
+      exact lt_irrefl _ (hU.2 _ hPrU _ hPrU hpar)
+    rw [tr.state_succ_of_call hacc, hsf, Function.update_of_ne hne]
+  refine ⟨fg_run hrun hnc, by rw [hst]; exact hXt, by rw [hst]; exact hmono hPr,
+    by rw [hpost, hst], by rw [hst, hσPr], fun att ⟨k', hk', hproc⟩ hah haT => ?_⟩
+  have hpool := processed_att_retained hrun hp hproc hk'
+  rw [hst]
+  by_cases hon : (tr.state p kX).fg.OnChain d.head att
+  · right
+    obtain ⟨Z, hZ, hZd, haZ⟩ := hon
+    have hdt := mem_of_anc_right hZd hZ
+    obtain rfl : d.head = Pr := hU.1 ⟨p, hp, kX, hdt⟩ hPrU hdroot
+    exact ⟨Z, hmono hZ, hZd.mono hmono, haZ⟩
+  · left
+    rw [hpay]
+    refine List.mem_filter.2 ⟨hpool, decide_eq_true ⟨Or.inl ⟨?_, ?_⟩, hon⟩⟩
+    · rw [hdroot, hah]
+    · rw [hdroot, haT]
 
 /-- **Lemma 3′ at an honest proposal** (s5 §4): an honest proposal `X` at the cut `kX` on the
 parent `Pr` of the proposer's tree, with parent state `σ = σ[Pr]` (the proposer's, at `kX`), and
@@ -155,61 +211,12 @@ theorem justify_of_rows' (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.
       (((tr.state p kX).fg.σ Pr.root).bound →
         ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
   classical
-  have hfg := fg_run hrun hnc
-  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
-  obtain ⟨hacc, hXt, hpost⟩ := accept_of_proposesAt hrun hnc hp hX
-  rw [hpost]
-  have hst := store_eq hrun hp (kX + 1)
-  have hmono := Compose.tree_mono hrun.toLocalRun hp (Nat.le_succ kX)
-  have hPrU : Pr ∈ tr.HonestBlocks H := ⟨p, hp, kX, hPr⟩
-  have hXU : X ∈ tr.HonestBlocks H := ⟨p, hp, kX + 1, hXt⟩
-  -- `X` is `propose_block`'s block on `d.head`, with the pool before the tick
-  rcases Compose.blockCall_cases hrun.toLocalRun hp hacc with hg |
-    ⟨j, x, -, -, -, d, pay, -, hB, -, -, -, hfgj⟩
-  · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hX.1.2
-  have hpay : X.fgPayload = (tr.state p kX).fg.proposalAttestations d.head := by
-    rw [hfgj, hB]; rfl
-  have hdroot : d.head.root = Pr.root := by
-    have : X.parent = some d.head.root := by rw [hB]; rfl
-    exact Option.some.inj (this.symm.trans hpar)
-  -- `σ[Pr]` before the proposal cut
-  have hσPr : (tr.state p kX).fg.σ Pr.root = (tr.state p (kX + 1)).fg.σ Pr.root := by
-    obtain ⟨_, _, _, _, _, _, _, hsf, _⟩ :=
-      Goldilocks.Store.onBlock_fields (hrun.cutLaw p hp kX _ hacc).2.1
-    have hne : Pr.root ≠ X.root := fun he => by
-      obtain rfl : Pr = X := hU.1 hPrU hXU he
-      exact lt_irrefl _ (hU.2 _ hPrU _ hPrU hpar)
-    rw [tr.state_succ_of_call hacc, hsf, Function.update_of_ne hne]
-  -- the rows
-  have hrow : ∀ v ∈ S, ∃ a : FG.Att sp.n, a.val = v ∧
-      a.h = ((tr.projFG.store p (kX + 1)).σ Pr.root).h ∧
-      a.T = ((tr.projFG.store p (kX + 1)).σ Pr.root).Th ∧ a.timeout = false ∧
-      (((tr.projFG.store p (kX + 1)).σ Pr.root).bound →
-        (((tr.projFG.store p (kX + 1)).σ Pr.root).hj,
-          ((tr.projFG.store p (kX + 1)).σ Pr.root).J) ∈
-          ((tr.projFG.store p (kX + 1)).σ Pr.root).pending → a.fin =
-        some (((tr.projFG.store p (kX + 1)).σ Pr.root).hj,
-          ((tr.projFG.store p (kX + 1)).σ Pr.root).J)) ∧
-      (a ∈ X.fgPayload ∨ (tr.projFG.store p (kX + 1)).OnChain Pr a) := by
-    intro v hv
-    obtain ⟨k, att, hsig, hah, haT, hto, hfin, k', hk', hproc⟩ := hdel v hv
-    rw [hst, ← hσPr]
-    refine ⟨att, signAt_val hrun (hSH v hv) hsig, hah, haT, hto, hfin, ?_⟩
-    have hpool := processed_att_retained hrun hp hproc hk'
-    by_cases hon : (tr.state p kX).fg.OnChain d.head att
-    · right
-      obtain ⟨Z, hZ, hZd, haZ⟩ := hon
-      have hdt := mem_of_anc_right hZd hZ
-      obtain rfl : d.head = Pr := hU.1 ⟨p, hp, kX, hdt⟩ hPrU hdroot
-      exact ⟨Z, hmono hZ, hZd.mono hmono, haZ⟩
-    · left
-      rw [hpay]
-      refine List.mem_filter.2 ⟨hpool, decide_eq_true ⟨Or.inl ⟨?_, ?_⟩, hon⟩⟩
-      · rw [hdroot, hah]
-      · rw [hdroot, haT]
-  have := justify_step' hfg hp (i := kX + 1) (by rw [hst]; exact hXt)
-    (by rw [hst]; exact hmono hPr) hpar S hS hrow
-  rw [hst, ← hσPr] at this
+  obtain ⟨hfg, hXt, hPrt, hσX, hσPr, hplace⟩ := proposal_rows_placed hrun hnc hp hX hpar hPr
+  have := justify_step' hfg hp hXt hPrt hpar S hS fun v hv => by
+    obtain ⟨k, att, hsig, hah, haT, hto, hfin, hproc⟩ := hdel v hv
+    rw [← hσPr]
+    exact ⟨att, signAt_val hrun (hSH v hv) hsig, hah, haT, hto, hfin, hplace att hproc hah haT⟩
+  rw [hσX, hσPr]
   exact this
 
 /-- `justify_of_rows'` with the earlier premises: `(h_j, J)` pending at a bound height (now
