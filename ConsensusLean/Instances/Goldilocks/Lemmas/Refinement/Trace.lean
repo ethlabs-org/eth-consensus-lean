@@ -246,6 +246,35 @@ theorem deliverRecs_cons_none (proposer : Nat → Fin sp.n)
       deliverRecs proposer dg hs self t i os st (sub + 1) := by
   simp only [deliverRecs, he]
 
+/-- A canonical message in a recursive receipt has an actual AC message cut,
+even when its vote is already present or rejected by the pool cap. -/
+theorem deliverRecs_message_call (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
+    (m : Vote sp.n) :
+    ∀ (os : List (Wire sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),
+    (∃ o ∈ os, canonEvent sp ro hs o = some (.message m)) →
+    ∃ r ∈ deliverRecs proposer dg hs self t i os st sub,
+      ∃ ℓ, r.label = .ac ℓ ∧ ℓ.call = .message m := by
+  intro os
+  induction os with
+  | nil => intro st sub h; simp at h
+  | cons o os ih =>
+    intro st sub ⟨x, hx, he⟩
+    rcases List.mem_cons.mp hx with rfl | hx
+    · rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he]
+      simp only [groupRecs, exec, onMessage, acCall, cutPosts]
+      simp
+    · cases ho : canonEvent sp ro hs o with
+      | none =>
+        rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ ho]
+        exact ih st (sub + 1) ⟨x, hx, he⟩
+      | some e =>
+        rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ ho]
+        obtain ⟨r, hr, ℓ, hl, hm⟩ := ih (exec proposer dg self st t e).1
+          (sub + 1) ⟨x, hx, he⟩
+        exact ⟨r, List.mem_append_right _ hr, ℓ, hl, hm⟩
+
 end
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)

@@ -282,6 +282,39 @@ theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}
     have hcall := congrArg (fun c => match c with | .ac l => l.call | _ => .restart) heq
     exact False.elim (hnr hcall.symm)
 
+/-- A vote carried by an actual receipt is processed at a cut of that same event.
+No fresh insertion, honest signer, or pool-cap premise is required. -/
+theorem received_vote_processAt {i : Nat} {v : V}
+    {receipt : Wire (Fintype.card V)} {u : Time} {m : SA.Vote (Fintype.card V)}
+    (he : rho.events[i]? = some (.deliver v receipt u))
+    (hc : Model.Obj.Contains receipt (voteObj m)) :
+    ∃ k, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
+      (simTrace S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
+      (simTrace S rho hn).time k = u := by
+  obtain ⟨r, hr, ℓ, hl, hm⟩ := deliverRecs_message_call (runProposer S rho hn)
+    (digestOf S rho) (Model.digests rho.hash receipt) (rho.ownKey v) u i m
+    (delivered _ receipt) (stateAt S rho hn v i).node 0
+    ⟨voteObj m, by simpa only [delivered, Model.Obj.Contains] using hc,
+      canonEvent_voteObj (sp := S.params (pubOf E) hn) (ro := S.ro _)
+        (Model.digests rho.hash receipt) m⟩
+  obtain ⟨hn', ht', _⟩ := mem_deliverRecs (sp := S.params (pubOf E) hn)
+    (ro := S.ro _) (runProposer S rho hn) (digestOf S rho)
+    (rho.ownKey v) (Model.digests rho.hash receipt) u i hr
+  have hr' : r ∈ eventCuts S rho hn i := by
+    rw [eventCuts_deliver S rho hn i v receipt u he]
+    exact hr
+  obtain ⟨j, hj, heq⟩ := List.getElem_of_mem hr'
+  have hk : (allCuts S rho hn)[cutMap S rho hn i + j]? = some r := by
+    rw [allCuts_getElem?_add S rho hn i j (List.getElem?_eq_some_iff.mp he).1 hj,
+      List.getElem?_eq_getElem hj, heq]
+  refine ⟨cutMap S rho hn i + j, Nat.le_add_right _ _, ?_, ?_, ?_⟩
+  · rw [cutMap_succ]
+    omega
+  · refine ⟨ℓ, Compose.projAC_callAt.mpr ⟨?_, ?_⟩, Or.inl hm⟩
+    · simpa only [simTrace_node, hk, Option.elim_some] using hn'
+    · simp [simTrace_label, hk, hl]
+  · simpa only [simTrace_time, hk, Option.elim_some] using ht'
+
 /-- Option C's outstanding publication supplier: actual same-event release and first release,
 not merely candidate construction or pool membership. -/
 theorem simTrace_vote_forwarded (hv : rho.ExecutionValid) :
