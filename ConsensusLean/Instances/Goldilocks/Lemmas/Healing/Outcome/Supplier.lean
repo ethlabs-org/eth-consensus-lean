@@ -175,6 +175,45 @@ theorem reset_views_agree
   · intro v hv B hB hBr hF
     exact reset_support_frame hp hc hP hci hd hti hpay hy hcy hes hgj hv hB hBr hF
 
+/-- At a first-disagreement cut, a frame-held proposal is a viable voter-tree candidate. -/
+theorem reset_proposal_viable
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k i j u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u)
+    (hPy : P ∈ elly.frame.tree)
+    (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
+      e'.msg.head = P.root) :
+    P ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u) := by
+  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hP.1 hci
+  obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  have hroot := reset_vote_root_below_proposal hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE
+  have hroot' := SA.anc_tree_of_anc_U hr.coherent hPsi hPsiU hPsi.fcRoot_mem hroot hPy
+  have hPt : P ∈ SA.voterBlockTree sp e.readPoint elly.frame u :=
+    ⟨hPy, Or.inr ⟨P, hPy, hP.2.2.2.2.1, .refl⟩⟩
+  have hPyStore : P ∈ (tr.state y j).fg.tree := by
+    rw [Compose.frame_of_projAC hp.run hy hcy.1] at hPy
+    exact hPy.1
+  have hfloor := reset_vote_floor_above_old hp hy hR hcy hes hPyStore (fun x r l O ho ht => by
+    have hOQ := crossing_below_proposal_parent hp hc hP hR hci hcall hd hti hPQ ho ht
+      (show Anc (tr.HonestBlocks H) O O from .refl)
+    obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
+    have hQt : d.head ∈ ellp.frame.tree := by
+      rcases eq_or_ne d.start d.head with he | he
+      · exact he ▸ hst
+      · exact (Anc.mem hsQ he).2
+    exact hOQ.trans (.single ⟨hPhiU hQt, hPsiU hPy, hPQ⟩))
+  refine ⟨hPt, hroot', P, hPt, ?_, .refl⟩
+  rw [Compose.frame_of_projAC hp.run hy hcy.1] at hPy hroot' ⊢
+  exact ⟨hPy.1, hPy.2, hroot'.mono (fun X hX => hX.1), hfloor⟩
+
 /-- **The joined duty, unanimity** (§23; phase-service §10, "Join with RN/RU"): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
 `t_u ≥ R` is `P`. -/
