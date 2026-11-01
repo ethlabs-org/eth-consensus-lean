@@ -882,6 +882,50 @@ theorem row_target_of_sign (hp : ResetPremises tr H proposer dg g ΔF a)
     (hEO.mono fun X hX => ⟨z, hz, _, hX⟩) hTB hz hy hE hT (hEh.trans hatt) hET hTe)
   exact ⟨hv, hTr, sign_target hp hz ⟨src, hc⟩ hh (timeout_empty hp hz j _ hh)⟩
 
+/-- Historical signatures carry the exact bound predecessor when that predecessor
+is high; permission is proved at the original signing cut. -/
+theorem ResetPremisesUpTo.row_of_sign {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {z : Fin sp.n} (hz : z ∈ H)
+    {j : Nat} {att : FG.Att sp.n} (hs : tr.SignAt z j att) (hjb : tr.time j ≤ b)
+    {T : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
+    {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
+    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → HZ tr H g + 1 ≤ σT.hj)
+    {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
+    (hTB : Anc (tr.HonestBlocks H) T B) (hatt : att.h = σT.h) :
+    att.val = z ∧ att.T = T.root ∧ att.timeout = false ∧
+      (σT.bound → att.fin = some (σT.hj, σT.J)) := by
+  subst hσ
+  obtain ⟨hv, hTr, htimeout⟩ := hp.row_target_of_sign hz hs hjb hy hT rfl hTe hhT ho hiob hTB hatt
+  obtain ⟨src, hc⟩ := hs
+  have hcl := (hp.run.cutLaw z hz j _ hc).1
+  change (tr.state z j).record.createAtt z ((tr.state z j).fg.σ
+    ((tr.state z j).fg.σ src.root).Th) = some (att, _) at hcl
+  obtain ⟨_, _, haT, hfin, _, _⟩ := createAtt_spec hcl
+  refine ⟨hv, hTr, htimeout, fun hb => ?_⟩
+  obtain ⟨E', hE', hE'r, hE'T⟩ := source_entry (Compose.fg_reachable hp.run.toLocalRun hz j) src
+  have hR : ((tr.state z j).fg.σ src.root).Th = T.root := by
+    rw [← hTr, haT, ← hE'r, hE'T]
+  have he : E' = T := hp.honest_coherent.1 ⟨z, hz, j, hE'⟩ ⟨y, hy, m, hT⟩ (hE'r.trans hR)
+  rw [he] at hE'
+  rw [hfin, hR, σ_eq_honest hp.run hp.noColl hz hy hE' hT]
+  obtain ⟨J₀, hJ₀, hJ₀T, hJ₀r, hJ₀h, hJ₀T'⟩ :=
+    (chain_pairs_entry (Compose.fg_reachable hp.run.toLocalRun hy m) hT).1 hb.1
+  have hsub : (tr.state y m).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, m, hX⟩
+  have heq := fun r hr => (hp.record_entry_eq hz hjb (hhj hb) (i := j) (r := r) hr ho hiob
+    ((hJ₀T.mono hsub).trans hTB) hy hJ₀ hJ₀h hJ₀T').trans hJ₀r
+  have hperm : (tr.state z j).record.permits ((tr.state y m).fg.σ T.root).hj
+      ((tr.state y m).fg.σ T.root).J := by
+    refine ⟨?_, fun r hr => Finset.mem_singleton.2 (heq r (Or.inr (Or.inl hr))), ?_⟩
+    · rcases ht : (tr.state z j).record.target _ with _ | r
+      exacts [Or.inl rfl, Or.inr (by rw [heq r (Or.inl ht)])]
+    · rcases hl : (tr.state z j).record.lock _ with _ | r
+      exacts [Or.inl rfl, Or.inr (by rw [heq r (Or.inr (Or.inr hl))])]
+  unfold FG.Record.finalityPair
+  simp only [hb, hperm, ↓reduceIte]
+
 /-- **An honest row of a high entry's height is its target row, with the predecessor at a bound
 entry** (workbench#30 §4): it names `T` (`high_entry_eq`), is no timeout (`timeout_empty`), and
 its `finality_pair` of `σ[T]` is `(h_j, J)`, which the high records permit (`record_entry_eq`). -/
