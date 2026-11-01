@@ -315,6 +315,53 @@ theorem received_vote_processAt {i : Nat} {v : V}
     · simp [simTrace_label, hk, hl]
   · simpa only [simTrace_time, hk, Option.elim_some] using ht'
 
+/-- An AC block cut in an actual delivery comes from that receipt's canonical block.
+Consequently its payload votes also receive explicit message processing in that event. -/
+theorem delivery_block_payload_processAt {i : Nat} {v : V}
+    {receipt : Wire (Fintype.card V)} {u : Time}
+    {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+    {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
+    {B : Blk (S.params (pubOf E) hn)} {m : SA.Vote (Fintype.card V)}
+    (he : rho.events[i]? = some (.deliver v receipt u))
+    (hr : r ∈ eventCuts S rho hn i) (hl : r.label = .ac ℓ)
+    (hb : ℓ.call = .block B) (hm : m ∈ SA.blockVotes B) :
+    ∃ k, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
+      (simTrace S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
+      (simTrace S rho hn).time k = u := by
+  rw [eventCuts_deliver S rho hn i v receipt u he] at hr
+  obtain ⟨o, e, st, ho, hce, q, hq, hlabel, _⟩ :=
+    mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hr
+  have hcut := List.getElem_mem hq
+  rw [← hlabel, hl] at hcut
+  have heq : e = .block B := by
+    cases e with
+    | tick x => exact False.elim (canonEvent_ne_tick hce x rfl)
+    | block B' =>
+      simp only [Node.exec, Node.onBlock] at hcut
+      split_ifs at hcut
+      · simp at hcut
+      · split at hcut <;> simp [Node.acCall] at hcut
+        subst ℓ
+        cases hb
+        rfl
+    | message m' =>
+      simp only [Node.exec, Node.onMessage, Node.acCall, List.mem_singleton,
+        Cut.ac.injEq] at hcut
+      subst ℓ
+      cases hb
+    | attestation => simp [Node.exec, Node.onAttestation] at hcut
+    | restart =>
+      simp only [Node.exec, Node.restart, Node.acCall, List.mem_singleton,
+        Cut.ac.injEq] at hcut
+      subst ℓ
+      cases hb
+  subst e
+  obtain rfl := eq_blockObj_of_decodeBlock (decodeBlock_of_canonEvent hce)
+  have hp : voteObj m ∈ payloadObjs B.fgPayload B.acPayload :=
+    List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
+  exact received_vote_processAt S rho hn he
+    ((contains_of_mem_delivered ho).trans (Model.Obj.Contains.step hp (.refl _)))
+
 /-- An authenticated vote envelope received after its globally first release yields
 processing no earlier than that release. The first-release premise is essential:
 the wire timestamp alone does not authenticate a fresh source occurrence. -/
