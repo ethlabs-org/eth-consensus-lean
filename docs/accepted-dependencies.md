@@ -21,14 +21,14 @@ are not elaborated evidence merely because a downstream theorem uses `sorry`.
 
 Current status: **endpoint skeleton wired; mathematical proofs OPEN**. Every
 Accepted field now assembles named suppliers rather than containing a direct
-adapter sorry. Numeric witnesses remain three direct OPEN leaves. The master
+adapter sorry. The healing coefficient remains a direct OPEN leaf. The master
 view below is compiled reachability, not proof closure or evidence that every
 joint supplier has been decomposed into its eventual proof obligations.
 
 ## Master status: every Accepted field, grouped by leaf owner
 
-Current compiled audit: `5e49ee92`, based on main `343d93f4`, regenerated on
-ethlabs-box. It includes healthy_preserve and pivot closure. The JSON records
+Current compiled audit: main `b9aa0bf5`, regenerated on
+ethlabs-box after the Sleepy service proofs. The JSON records
 the exact source pin separately from its publication commit.
 Machine-readable rows and per-field edges are in `docs/accepted-status.json`.
 Regenerate with `python3 scripts/accepted-status.py` after building `ConsensusLean`
@@ -44,14 +44,11 @@ an assembly depending on them is not an additional leaf.
 
 | Set | Owner | Complete direct leaf list |
 |---|---|---|
-| C | Spec orb, joint coefficient synthesis | `accepted_catchUp`, `accepted_heal`, `accepted_latency` |
-| F | Four-anchor/final service owner | `final_window_extract`, `final_inherited_progress`, `final_row_supply`, `final_cache_acceptance` |
-| H | Healing paper/T3; Spec orb integration | `healthy_old_inventory_initialize`, `healthy_prepare`, `healthy_cut_tips_comparable`, `healthy_cut_tips_ancestor` |
+| C | Spec orb, joint coefficient synthesis | `accepted_heal` |
+| F | Four-anchor/final service owner | `final_window_extract`, `final_inherited_progress`, `final_row_signers` |
+| H | Healing paper/T3; Spec orb integration | `healthy_old_inventory_initialize`, `healthy_prepare`, `healthy_bounded_repairing_opening`, `healthy_current_live_candidates`, `healthy_current_mature_or_anchor`, `healthy_current_record_viable`, `healthy_repair_schedule` |
 | N | Healing paper/T3; Spec orb integration | `healthy_confirmed_supply` |
-| O | Healing/outage owner; Spec orb integration | `outage_pre_service`, `outage_repair` |
-| B | Spec orb joint coefficient synthesis | `accepted_catchUp_ge_sleepy`, `accepted_latency_ge_sleepy` |
-| S | Engine finite service | `sleepy_query_sync` |
-| R | Engine finite service (Healing box) | `sleepy_safety_inputs` |
+| O | Healing/outage owner; Spec orb integration | `outage_repair` |
 
 | Accepted field / branch | Reachable OPEN leaves by owner set | Direct adapter sorry? |
 |---|---|---|
@@ -61,15 +58,21 @@ an assembly depending on them is not an additional leaf.
 | finalAccountable | C (contract/type dependencies) | no |
 | healthyLive, final | C ∪ F | no |
 | healthyLive, available/stable | C ∪ N | no |
-| sleepySafe, available/stable | C ∪ {accepted_catchUp_ge_sleepy} ∪ R | no |
-| sleepyLive, available/stable | C ∪ B ∪ S | no |
+| sleepySafe, available/stable | C (contract/type dependencies) | no |
+| sleepyLive, available/stable | C (contract/type dependencies) | no |
 | healedSafe, available/stable | C ∪ H | no |
 | persists | C ∪ O | no |
 | progressFits, progressTolerant, admissible | C | no |
 | serves | none (schema provides final output) | no |
-| claims and complete accepted | C ∪ F ∪ H ∪ N ∪ O ∪ B ∪ S ∪ R | no |
+| claims and complete accepted | C ∪ F ∪ H ∪ N ∪ O | no |
 
-The rerun finds **18 direct sorry owners**: `healthy_preserve` has a proved body
+The rerun finds **13 direct sorry owners** in Accepted's closure. `simTrace_vote_forwarded`
+is fully sorry-free; `sleepy_query_sync` and `sleepy_safety_inputs` have proved bodies,
+not direct sorries. Their full closures depend on `accepted_heal` through
+`K S A = acceptanceContract A (accepted_coefficients S A)`: the query and Sleepy
+premise types include that sorry definition. Kev's independent read-back and axiom
+split are recorded on [#132](https://github.com/ethlabs-org/consensus-lean/issues/132).
+`healthy_preserve` has a proved body
 at ed329627, while its coefficient type dependencies remain. `outage_arm` is proved at 649f0286;
 103bfbd moves the two cut adapters' holes into actual-tip comparability/ancestry,
 without reducing their count. At the pre-wiring baseline the two nonfinal
@@ -122,9 +125,10 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 | `Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy` | OPEN, Spec orb joint synthesis: 37≤accepted_catchUp is a minimum Sleepy constraint, not a selected shared witness. Covers 18(Δe+1)+1≤37Δe for Δe≥1. Reached by Sleepy safety and liveness. |
 | `Consensus.Goldilocks.Refinement.accepted_latency_ge_sleepy` | OPEN, Spec orb joint synthesis: available/stable latency≥8idx+12, covering (4idx+6)(Δe+1)≤(8idx+12)Δe. Other regimes may raise it; not a final joint value or new endpoint premise. Reached by Sleepy liveness slot selection. |
 | `Consensus.Goldilocks.Refinement.healthy_confirmed_supply` | OPEN, Healing paper/T3 with Spec orb integration: finite Healthy preparation, exact-cDur-ready actual producer selection and its budget, frozen service and deadline coverage remain inside this joint existential. Only the selected accepted proposal is covered; no new endpoint assumption. |
-| `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | One direct sorry remains for finite fresh-or-retained SleepyServiceBefore after 14f5ce06. Statement-obstructed under #128 pending protocol/service repair; duration catchUp+1≤cDur and population are derived from the OPEN catch-up bound. No progress/query/reader-existence premise. |
+| `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | Body proved via finite SVC at the horizon, duration arithmetic and fault bounds. No direct sorry; full closure depends on accepted_heal through the K S A premise types, not a #128 statement obstruction. |
 | `Consensus.Goldilocks.Refinement.confirmed_duration_supply` | Body closed at 7547caee using accepted_catchUp_ge_sleepy and exact scale arithmetic; still transitively sorry-dependent, not a selected coefficient or positivity argument. |
-| `Consensus.Goldilocks.Refinement.sleepy_query_sync` | PAPER-PARTIAL, engine: fresh-or-retained canonical service through exact deadline. Engine transport and applicability under the full progress/latency query remain unresolved; #128's short run does not instantiate these premises. |
+| `Consensus.Goldilocks.Refinement.sleepy_query_sync` | Body proved via finite SVC at Q.deadline with Q.bounded. No direct sorry; full closure depends on accepted_heal through K S A in the query and Sleepy premise types. |
+| `Consensus.Goldilocks.Refinement.simTrace_vote_forwarded` | Proved with a sorry-free closure (standard axioms only); same-event signed envelope release and first-release freshness. |
 | `Consensus.Goldilocks.Refinement.sleepy_query_population` | Body closed via duration monotonicity and sleepy_faultBound; retains the joint catch-up bound dependency. |
 | `Consensus.Goldilocks.Refinement.sleepy_query_slot` | Body closed at 7547caee: actual recurrence/grid selection at exact cDur with strict freshness and 6Δp margin; retains named joint lower-bound/witness dependencies. |
 | `Consensus.Goldilocks.Refinement.confirmed_slot_event` | Body closed via scheduled actual event and joined readiness transport; retains confirmed_duration_supply dependency, not eligibility-as-event by definition. |
@@ -587,8 +591,9 @@ The #127 migration landed at 14f5ce06: finite service consumers use
 and whole-run signatures remain wrappers. Seven Service modules and the combined
 chain compiled; changed/landing gates passed with 22 skips and boundary passed.
 #127 closed with a retained-pool concrete-instance check and compiled reduced-facts
-regression, not a full engine replay; full tier was not run. Both engine service
-suppliers remain OPEN. The subsequent #128 obstruction is not resolved by this migration.
+regression, not a full engine replay; full tier was not run. At that migration the engine service
+suppliers remained OPEN. They now have proved bodies via finite SVC; #128 is historical,
+not a current obstruction. Their shared accepted_heal type dependency remains.
 
 `Lemmas/Refinement/NonfinalSuppliers.lean` contains the lead-reviewed Sleepy
 signature slices. It imports AcceptanceDefs for its existing coefficients and
@@ -598,17 +603,17 @@ now feeds the Sleepy liveness endpoint; it does not enter Main/Solution. All nam
 | Named obligation | Status and exact remaining work |
 |---|---|
 | `confirmed_duration_supply` | Body closed using OPEN accepted_catchUp_ge_sleepy, including Healthy queries; no coefficient selected. |
-| `sleepy_query_sync` | OPEN: actual canonical finite service through the exact engine deadline. |
+| `sleepy_query_sync` | Body proved: canonical finite SVC through the exact engine deadline; full closure depends on accepted_heal through K S A. |
 | `sleepy_query_population` | Body closed at finite slot points via duration monotonicity; transitively OPEN through the catch-up bound. |
 | `sleepy_query_producer` | OPEN transitively; assembly body now uses the separate slot and event leaves below, then proved own-proposal acceptance. |
 | `sleepy_query_slot` | Body closed: recurrence/grid selects exact-cDur readiness, positive slot, strict freshness and 6Δp margin; joint lower bounds remain OPEN. |
 | `confirmed_slot_event` | Body closed: actual scheduled canonical proposal from joined readiness; duration dependency retained. |
 | imported `sleepy_include_finite` | Proved at 5b33645 from finite service/population and 6Δp margin. |
 
-These six named supplier obligations now contain **one direct sorry**, in
-`sleepy_query_sync`. The two named joint coefficient lower bounds are separate
-OPEN leaves. Closed supplier bodies still reach sorryAx through those bounds
-and shared witnesses; this reduction is not unconditional proof closure.
+These six named supplier obligations contain **no direct sorry**.
+The two named coefficient lower bounds are proved. Closed supplier bodies still
+reach sorryAx through the shared accepted_heal type dependency;
+this reduction is not unconditional proof closure.
 `sleepy_serviced_proposal_supply` assembles the selected actual proposal and concrete
 service record; `sleepy_serviced_proposal_coverage` applies finite inclusion only to
 that serviced proposal. Their bodies are not no-sorry proofs. Actual acceptance uses

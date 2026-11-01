@@ -39,8 +39,6 @@ RATINGS = {
     'outage_arm': ('paper-partial', PAPER, 'Whole-statement audit 6d6af170 §§10,14–19: inherited record/lookup and exact reader extraction; arming is not protection.'),
     'outage_repair': ('paper-open (research)', PAPER, 'Whole-statement audit 6d6af170 §§10,17–19: covering nonvetoed renewal, pool bound/resolutions, RESULT compatibility, persistence and both reader branches remain.'),
     'outage_pre_service': ('paper-partial', LEAD, 'Revision update 4d69fdd: old duplicate-fresh signature obstruction retired by migration; replacement engine service unproved. #128 Outage applicability not established.'),
-    'sleepy_query_sync': ('paper-partial', LEAD, 'Corrected service audit: engine transport and full progress/latency applicability unresolved; #128 short run does not instantiate query premises.'),
-    'sleepy_safety_inputs': ('paper-open (research)', LEAD, 'Corrected service audit: statement-obstructed under #128 pending approved protocol/service repair; duration/population and consumer migration do not prove service.'),
     'clean_result_next_votes': ('paper-open (research)', PAPER, 'Outside audit 649f0286 §§73,77,82: raw-result induction after repair does not cover arbitrary early sub-fast/vetoed ResultAt without Catch/base.'),
     'reset_inv': ('paper-partial', PAPER, 'Outside audit 649f0286 §§74–81: full Protected/P3, arbitrary admissions/root/frame retention and uniform Tb remain beyond P1/P2.'),
     'vote_old_live_lock_below_parent': ('paper-proved awaiting Lean', PAPER, 'Outside audit 649f0286 §§80–81: provenance+l+2 transfer and separate optimistic u−1 branch; non-vote full-tree domain/service integration remains.'),
@@ -293,8 +291,16 @@ def main : IO Unit := do
             row['status-source'] = 'compiled dependency audit'
             row['evidence'] = ('Body proved at 649f0286; shared coefficient type dependencies remain. Exact endCut(T), both lookup alternatives and actual read prefix; arming is not protection.' if short == 'outage_arm' else
                                'Body proved at ed329627 from the existing base; J-specific target membership avoids healthy_old_row_realize. Shared coefficient type dependencies remain, not a direct sorry.')
-        if short == 'sleepy_safety_inputs':
-            row['obstruction'] = '#128: protocol/service repair pending (source-reduced evidence)'
+        if short in ('sleepy_query_sync', 'sleepy_safety_inputs'):
+            row.pop('obstruction', None)
+            if name not in owners and dependencies == [
+                    'Consensus.Goldilocks.Refinement.accepted_heal']:
+                row['status'] = 'unknown'
+                row['status-source'] = 'compiled dependency audit'
+                row['evidence'] = ('Body proved; full closure depends on accepted_heal through '
+                                   'K S A = acceptanceContract A (accepted_coefficients S A). '
+                                   'The query and Sleepy premise types include the sorry definition; '
+                                   'this is not a direct sorry in the proof body.')
         comparison = {k: v for k, v in row.items() if k not in ('last-changed', 'file:line')}
         if comparison == {k: v for k, v in prior.items() if k not in ('last-changed', 'file:line')}:
             row['last-changed'] = prior['last-changed']

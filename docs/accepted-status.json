@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_commit": "396788fe88ca86c7e9ad2aa052e1e3246fa38481",
+  "audit_commit": "b9aa0bf510f2db936d28bcee172de1bb5b7c2d2f",
   "baseline_commit": "fd7f498a15bf9e9e694102ffaeb8de6b33067052",
   "generated_on": "2026-11-01",
   "notes": [
@@ -136,7 +136,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ready_unanimous",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:1088",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:1288",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -155,7 +155,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ready_update",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:1676",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:1876",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-partial",
@@ -174,7 +174,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.report_cover",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:1784",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:1984",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-open (research)",
@@ -1159,16 +1159,16 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:241",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
-      "status": "paper-proved awaiting Lean",
+      "status": "unknown",
       "blocked-by": [
         "Consensus.Goldilocks.Refinement.accepted_heal"
       ],
       "in_accepted_closure": true,
       "direct_sorry": false,
       "lean-status": "sorry-dependent",
-      "status-source": "https://ampcode.com/threads/T-01a196e7-6159-767f-92d9-5b4cab43cdb7",
+      "status-source": "compiled dependency audit",
       "last-changed": "2026-11-01",
-      "evidence": "COMPLETE relative to sleepy_safety_inputs' finite SVC producer; paper-sleepy 4b67223 read back clean. Restricts horizon service to Q.deadline without changing source/recipient cuts or exact processing bounds.",
+      "evidence": "Body proved; full closure depends on accepted_heal through K S A = acceptanceContract A (accepted_coefficients S A). The query and Sleepy premise types include the sorry definition; this is not a direct sorry in the proof body.",
       "card-commit": "56881e99",
       "card-path": "repos/consensus-lean/notes/cards/sleepy_query_sync.md",
       "card-repo": "ethlabs-org/workbench",
@@ -1197,17 +1197,16 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalEndpoints.lean:64",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
-      "status": "paper-proved awaiting Lean",
+      "status": "unknown",
       "blocked-by": [
         "Consensus.Goldilocks.Refinement.accepted_heal"
       ],
       "in_accepted_closure": true,
       "direct_sorry": false,
       "lean-status": "sorry-dependent",
-      "status-source": "https://ampcode.com/threads/T-01a196e7-6159-767f-92d9-5b4cab43cdb7",
+      "status-source": "compiled dependency audit",
       "last-changed": "2026-11-01",
-      "evidence": "COMPLETE relative to sibling simTrace_vote_forwarded publication and its pinned first-release lemmas; paper-sleepy 4b67223 read back clean. Full finite message/acceptance service, catchUp duration and fault bound; paper completion is separate from Lean closure.",
-      "obstruction": "Historical #128 unsigned-service obstruction superseded by fix C and the reviewed finite SVC derivation; remaining Lean obligations are not a counterexample.",
+      "evidence": "Body proved; full closure depends on accepted_heal through K S A = acceptanceContract A (accepted_coefficients S A). The query and Sleepy premise types include the sorry definition; this is not a direct sorry in the proof body.",
       "card-commit": "56881e99",
       "card-path": "repos/consensus-lean/notes/cards/sleepy_safety_inputs.md",
       "card-repo": "ethlabs-org/workbench",
