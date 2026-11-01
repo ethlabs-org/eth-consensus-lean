@@ -531,6 +531,51 @@ theorem pool_mono_between_same_time_sends (hv : rho.ExecutionValid)
       (hak.trans hkj) (hjl.trans_le hlb)) σ
   simpa only [Compose.projAC_state hr.toLocalRun hy] using hm
 
+/-- Retention also covers the later sending event's own cuts: its event cannot
+be a restart. This is the interval needed for a fresh admission inside that event. -/
+theorem pool_mono_through_same_time_send (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
+    {a b : Nat} {t : Time} (ha : rho.SendsAt (rho.key y) a t)
+    (hb : rho.SendsAt (rho.key y) b t) {k l : Nat}
+    (hak : cutMap S rho hn a ≤ k) (hkl : k ≤ l)
+    (hlb : l ≤ cutMap S rho hn (b + 1)) (σ : Nat) :
+    ((simTrace S rho hn).state y k).ac.pool σ ⊆
+      ((simTrace S rho hn).state y l).ac.pool σ := by
+  have hr := simTrace_goldilocksRun S rho hn hv
+  have hnr : ∀ i, a ≤ i → i < b + 1 → ∀ u,
+      rho.events[i]? ≠ some (.restart (rho.key y) u) := by
+    intro i hai hib u he
+    rcases Nat.lt_or_eq_of_le (Nat.lt_succ_iff.mp hib) with hib | rfl
+    · exact noRestart_between_same_time_sends S rho hv ha hb hai hib _ u he
+    · rcases hb with hb | ⟨o, hb⟩ <;> rw [he] at hb <;> cases hb
+  have hm := Compose.pool_mono hr hy hkl (fun j hkj hjl =>
+    simTrace_noRestart_between S rho hn hnr (hak.trans hkj) (hjl.trans_le hlb)) σ
+  simpa only [Compose.projAC_state hr.toLocalRun hy] using hm
+
+/-- Fresh admission rules out an earlier exact envelope once every earlier release
+is backed by a pool cut in its event. Only that release-to-pool supplier remains
+explicit; stamp authentication and restart-free retention are proved here. -/
+theorem admission_voteForward_first_of_release_pool (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
+    {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
+    (hs : rho.SendsAt (rho.key y) i t)
+    (hlo : cutMap S rho hn i ≤ k) (hhi : k < cutMap S rho hn (i + 1))
+    (hf : m ∉ ((simTrace S rho hn).state y k).ac.pool m.slot)
+    (hpool : ∀ j < i, Model.Obj.mk (.signed y .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.releasesAt j →
+      ∃ c, cutMap S rho hn j ≤ c ∧ c ≤ cutMap S rho hn (j + 1) ∧
+        m ∈ ((simTrace S rho hn).state y c).ac.pool m.slot) :
+    ∀ j < i, Model.Obj.mk (.signed y .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∉ rho.releasesAt j := by
+  intro j hji hj
+  obtain ⟨u, hsend⟩ := voteForward_release_sender S rho hj
+  have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
+  have ht : t = u := released_voteForward_stamp S rho hn hv hsend m (by simpa only [hkey] using hj)
+  subst u
+  obtain ⟨c, hjc, hcj, hm⟩ := hpool j hji hj
+  have hck := hcj.trans ((cutMap_mono S rho hn (Nat.succ_le_of_lt hji)).trans hlo)
+  exact hf (pool_mono_through_same_time_send S rho hn hv hy hsend hs hjc hck hhi.le m.slot hm)
+
 /-- Every non-restart AC cut lies in a sending engine event of the same node and time.
 This is interval transport only; it does not assume the publication supplier. -/
 theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}
