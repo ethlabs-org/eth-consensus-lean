@@ -421,4 +421,62 @@ theorem stateBefore_wrappers_held {V : Type} [Fintype V] [DecidableEq V] {E : En
   · rw [pendingWrappers_eq, forwards_empty S rho hn hv v i, List.map_nil] at h
     exact False.elim (List.not_mem_nil h)
 
+/-- The delivery poll's immutable input is ready directly from the reachable inventory.
+The received object's recursive children are held before any of its calls run. -/
+theorem delivery_pendingReady {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (i : Nat) (o : (protoOf (compiled (family S)) E).Object) :
+    PendingReady ((rho.stateBefore i v).seen ++ [o])
+      (pendingWrappers (process (stateAt S rho hn v i) o (digests rho.hash o))) := by
+  obtain ⟨ha, hr⟩ := stateBefore_forwardInventory S rho hn v i
+  let seen : List (Wire (Fintype.card V)) := (rho.stateBefore i v).seen ++ [o]
+  have hm : ∀ c ∈ (rho.stateBefore i v).seen.flatMap Obj.parts,
+      c ∈ seen.flatMap Obj.parts := by
+    intro c hc
+    obtain ⟨a, ha, hc⟩ := List.mem_flatMap.mp hc
+    exact List.mem_flatMap.mpr ⟨a, List.mem_append_left _ ha, hc⟩
+  have ha' : WrappersAccounted (sp := S.params (pubOf E) hn)
+      (fun c => c ∈ seen.flatMap Obj.parts) (stateAt S rho hn v i) := by
+    rw [wrappersAccounted_iff] at ha ⊢
+    exact fun root c hw => (ha root c hw).imp (hm c) id
+  exact (pendingReady_process (sp := S.params (pubOf E) hn) seen
+    (stateAt S rho hn v i) (digests rho.hash o) o ha' (pendingReady_mono hm hr)
+    (fun c hc => List.mem_flatMap.mpr
+      ⟨o, List.mem_append_right _ (List.mem_singleton_self o), hc⟩)).2
+
+/-- Every block wrapper pending after an actual receipt passes the delivery poll.
+This is release completeness for the queue, not yet completeness for acceptance cuts. -/
+theorem delivery_pending_released {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {v : V} {i : Nat}
+    {o : (protoOf (compiled (family S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t))
+    (c : Wire (Fintype.card V))
+    (hc : c ∈ pendingWrappers
+      (process (stateAt S rho hn v i) o (digests rho.hash o))) :
+    c ∈ rho.releasesAt i := by
+  let nd : Model.Node (protoOf (compiled (family S)) E) :=
+    ⟨(protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
+      (digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
+  have hself : (shapeOf S hn nd).self = rho.ownKey v :=
+    (process_self _ _ _).trans (self_eq_ownKey S rho hn v i)
+  have hcanon : ForwardQueueCanonical (shapeOf S hn nd) := by
+    have hf : ∀ xs : List (Wire (Fintype.card V)),
+        ∀ st : State (S.params (pubOf E) hn) (S.ro _), ForwardQueueCanonical st →
+          ForwardQueueCanonical (xs.foldl (processOne (digests rho.hash o)) st) := by
+      intro xs
+      induction xs with
+      | nil => exact fun _ h => h
+      | cons a as ih => exact fun st h => ih _ (canonical_processOne st a _ h)
+    exact hf _ _ (stateAt_forwardQueueCanonical S rho hn v i)
+  have hs := forwardQueueCanonical_pending (shapeOf S hn nd) hcanon
+  rw [hself] at hs
+  have hp := dutyStep_poll_pending S rho hn v nd t.toNat (poll_selected S rho hv v)
+    hself (delivery_pendingReady S rho hn v i o) hs c hc
+  have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
+  simp only [Model.Run.releasesAt, he, Model.Run.deliver]
+  rw [deliverDuties_eq S t ht]
+  apply List.mem_append_left
+  exact hp
+
 end Consensus.Goldilocks.Refinement
