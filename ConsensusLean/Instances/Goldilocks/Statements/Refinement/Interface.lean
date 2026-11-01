@@ -140,10 +140,18 @@ structure Simulates (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (ι 
   /-- An honest node relays a block it accepts from the wire (a delivery, position `0`). -/
   block_relayed : ∀ y ∈ honestKeys S rho, ∀ k B, tr.AcceptAt y k B → tr.pos k = 0 →
     RelayedFrom S rho (rho.key y) (blockObj (S.params (pubOf E) hn) B) (tr.time k)
-  /-- An honest node relays a vote it admits from the wire (an `ac_on_message` call after which
-  its pool holds the vote). -/
-  vote_relayed : ∀ y ∈ honestKeys S rho, ∀ k m, tr.MsgCallAt y k m →
-    m ∈ (tr.post k).ac.pool m.slot → RelayedFrom S rho (rho.key y) (voteObj m) (tr.time k)
+  /-- Fresh wire/payload admissions and own emissions publish a signed admission-stamped
+  envelope in their actual engine event, including the horizon. Restart replay is not an
+  admission. The exact envelope has no earlier engine release. -/
+  vote_forwarded : ∀ y ∈ honestKeys S rho, ∀ k (m : Vote (Fintype.card V)),
+    (tr.EmitAt y k m ∨
+      ((tr.MsgCallAt y k m ∨ ∃ ℓ B, tr.CallAt y k (.ac ℓ) ∧ ℓ.call = .block B ∧
+          m ∈ SA.blockVotes B) ∧
+        m ∉ (tr.state y k).ac.pool m.slot ∧ m ∈ (tr.post k).ac.pool m.slot)) →
+    let envelope : (Model.protoOf (compiled (family S)) E).Object :=
+      .mk (.signed y .poll) (.data (.voteForward (tr.time k) (encodeVote m))) [voteObj m]
+    ∃ i, ι i ≤ k ∧ k < ι (i + 1) ∧ rho.SendsAt (rho.key y) i (tr.time k) ∧
+      envelope ∈ rho.releasesAt i ∧ ∀ j < i, envelope ∉ rho.releasesAt j
   /-- An honest node relays an attestation it receives from the wire (an `fg_on_attestation`
   call at a delivery). -/
   att_relayed : ∀ y ∈ honestKeys S rho, ∀ k a, tr.AttCallAt y k a → tr.pos k = 0 →

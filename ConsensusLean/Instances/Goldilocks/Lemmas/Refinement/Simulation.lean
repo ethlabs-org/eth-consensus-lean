@@ -7,8 +7,8 @@ public section
 
 `EngineSimulatesNode` (`Statements/Refinement`) assembled from its steps: the trace `simTrace`
 with the cut map `cutMap` (`Trace`), a Goldilocks run by `simTrace_goldilocksRun` and agreeing
-with the engine by the `Simulates` steps (`Run`). This file has no `sorry` of its own; the open
-steps are in `Shape`, `Steps` and `Run`. -/
+with the engine by the `Simulates` steps (`Run`). Signed fresh-admission publication remains
+an explicit open supplier below; simulation inherits that obligation. -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -17,6 +17,22 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+
+/-- Option C's outstanding publication supplier: actual same-event release and first release,
+not merely candidate construction or pool membership. -/
+theorem simTrace_vote_forwarded (hv : rho.ExecutionValid) :
+    ∀ y ∈ honestKeys S rho, ∀ k (m : SA.Vote (Fintype.card V)),
+    let tr := simTrace S rho hn
+    (tr.EmitAt y k m ∨
+      ((tr.MsgCallAt y k m ∨ ∃ ℓ B, tr.CallAt y k (.ac ℓ) ∧ ℓ.call = .block B ∧
+          m ∈ SA.blockVotes B) ∧
+        m ∉ (tr.state y k).ac.pool m.slot ∧ m ∈ (tr.post k).ac.pool m.slot)) →
+    let envelope : (Model.protoOf (compiled (family S)) E).Object :=
+      .mk (.signed y .poll) (.data (.voteForward (tr.time k) (encodeVote m))) [voteObj m]
+    ∃ i, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
+      rho.SendsAt (rho.key y) i (tr.time k) ∧ envelope ∈ rho.releasesAt i ∧
+      ∀ j < i, envelope ∉ rho.releasesAt j := by
+  sorry
 
 /-- The simulating trace and cut map of a valid engine run simulate it. -/
 theorem simTrace_simulates (hv : rho.ExecutionValid) :
@@ -37,7 +53,7 @@ theorem simTrace_simulates (hv : rho.ExecutionValid) :
   vote_released := simTrace_vote_released S rho hn hv (simTrace_goldilocksRun S rho hn hv)
   att_released := simTrace_att_released S rho hn hv (simTrace_goldilocksRun S rho hn hv)
   block_relayed := simTrace_block_relayed S rho hn hv
-  vote_relayed := simTrace_vote_relayed S rho hn hv
+  vote_forwarded := simTrace_vote_forwarded S rho hn hv
   att_relayed := simTrace_att_relayed S rho hn hv
 
 variable (V) in

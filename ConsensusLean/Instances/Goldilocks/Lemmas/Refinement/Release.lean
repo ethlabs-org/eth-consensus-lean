@@ -338,14 +338,15 @@ omit [DecidableEq V] in
 `pollPre`'s outbox. -/
 theorem dutyStep_poll_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
     (k : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll)
-    (hempty : (shapeOf S hn nd).forwards = []) :
+    (hempty : (shapeOf S hn nd).forwards = [])
+    (hvote : (shapeOf S hn nd).voteForwards = []) :
     (rho.dutyStep v nd (.poll k)).2 =
       relHead S rho v nd.seen (pollPre (shapeOf S hn nd)).outbox.head? := by
   unfold Model.Run.dutyStep
   simp only [show (Model.protoOf (compiled (family S)) E).role (.poll k) = .poll from rfl,
     hsel, ↓reduceIte]
   rw [act_poll_snd S hn, (poll_outbox _ _).2]
-  erw [hempty, List.map_nil, List.append_nil]
+  erw [hempty, hvote, List.map_nil, List.append_nil, List.append_nil]
   cases hh : (pollPre (shapeOf S hn nd)).outbox.head? with
   | none =>
     simp only [Option.map_none, Option.toList_none, Model.Run.signedCandidate]
@@ -394,7 +395,10 @@ theorem dutyStep_poll_batch (v : V) (nd : Model.Node (Model.protoOf (compiled (f
       (fun bc => Model.Obj.mk (.signed (rho.ownKey v) .poll) (.data bc.1) bc.2)
     let headRelease := Model.releaseAll P rho.hash (rho.ownKey v) start ordinary
     let forwards := (shapeOf S hn nd).forwards.map
-      (fun p => Model.Obj.mk (.signed (rho.ownKey v) .poll) (.data (.forward p.1)) p.2)
+      (fun p => Model.Obj.mk (.signed (rho.ownKey v) .poll) (.data (.forward p.1)) p.2) ++
+      (shapeOf S hn nd).voteForwards.map (fun p =>
+        Model.Obj.mk (.signed (rho.ownKey v) .poll)
+          (.data (.voteForward p.1 (encodeVote p.2))) [voteObj p.2])
     (rho.dutyStep v nd (.poll k)).2 = headRelease.2 ++
       (Model.releaseAll P rho.hash (rho.ownKey v) headRelease.1 forwards).2 := by
   dsimp only
@@ -405,7 +409,8 @@ theorem dutyStep_poll_batch (v : V) (nd : Model.Node (Model.protoOf (compiled (f
   unfold Model.Run.signedCandidate
   simp only [show (Model.protoOf (compiled (family S)) E).role (.poll k) = .poll from rfl,
     hsel, ↓reduceIte]
-  erw [List.map_append, List.map_map, Option.toList_map, List.map_map]
+  erw [List.append_assoc, List.map_append, List.map_append, List.map_map,
+    Option.toList_map, List.map_map, List.map_map]
   exact congrArg Prod.snd (Model.releaseAll_append _ _ _ _ _)
 
 omit [DecidableEq V] in
@@ -499,7 +504,8 @@ them nothing is queued, the node state and the own index are the node's, the clo
 theorem leading_polls (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) E))
     (t : Time) (hsel : rho.ownKey v ∈ rho.sel .poll) (hf : (shapeOf S hn nd).fgDue = false)
     (hb : (shapeOf S hn nd).outbox.length ≤ 1)
-    (hempty : (shapeOf S hn nd).forwards = []) :
+    (hempty : (shapeOf S hn nd).forwards = [])
+    (hvote : (shapeOf S hn nd).voteForwards = []) :
     let N0 : Model.Node (Model.protoOf (compiled (family S)) E) :=
       ⟨(Model.protoOf (compiled (family S)) E).clock nd.st t (Model.mempool rho.inbox v t),
         nd.seen⟩
@@ -532,9 +538,10 @@ theorem leading_polls (v : V) (nd : Model.Node (Model.protoOf (compiled (family 
     | _ :: _ :: _ => rw [hq] at hb; simp at hb
   have hS2 : shapeOf S hn N2 = (poll (shapeOf S hn N1) t.toNat).1 :=
     dutyStep_poll S rho hn v N1 _ hsel
-  have hR1 := dutyStep_poll_eq S rho hn v N0 t.toNat hsel hempty
+  have hR1 := dutyStep_poll_eq S rho hn v N0 t.toNat hsel hempty hvote
   rw [hpre0, hS0] at hR1
-  have hR2 := dutyStep_poll_eq S rho hn v N1 t.toNat hsel (by rw [hS1]; exact poll_forwards _ _)
+  have hR2 := dutyStep_poll_eq S rho hn v N1 t.toNat hsel
+    (by rw [hS1]; exact poll_forwards _ _) (by rw [hS1]; exact poll_voteForwards _ _)
   rw [hpre1, hout1] at hR2
   have hR3 := dutyStep_pollPropose_snd S rho hn v N2 t.toNat
   refine ⟨hR1, hR2, hR3, ?_, dutyStep_pollPropose S rho hn v N2 _ hsel, ?_, ?_, ?_, ?_, ?_⟩
@@ -581,7 +588,9 @@ theorem trailing_polls (v : V) (N4 : Model.Node (Model.protoOf (compiled (family
         relHead S rho v N5.seen (fgUpdate (shapeOf S hn N4)).outbox.tail.head? ∧
       (shapeOf S hn (rho.dutyStep v N5 (.poll k)).1).outbox =
         (fgUpdate (shapeOf S hn N4)).outbox.tail.tail ∧
-      (∀ o ∈ F, ∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs) := by
+      (∀ o ∈ F, (∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs) ∨
+        ∃ τ m, o = .mk (.signed (rho.ownKey v) .poll)
+          (.data (.voteForward τ (encodeVote m))) [voteObj m]) := by
   intro N5
   have hpre4 : pollPre (shapeOf S hn N4) = fgUpdate (shapeOf S hn N4) := by
     rw [pollPre_eq]; rw [ite_eq_left hf]
@@ -597,8 +606,20 @@ theorem trailing_polls (v : V) (N4 : Model.Node (Model.protoOf (compiled (family
     (Model.releaseAll _ _ _ _ ((pollPre (shapeOf S hn N4)).outbox.head?.toList.map
       (pollObj S rho v))).2 ++ _ at hR5
   rw [release_head, hpre4] at hR5
-  generalize hF : (Model.releaseAll _ _ _ _ _).2 = F at hR5
-  have hR6 := dutyStep_poll_eq S rho hn v N5 k hsel (by rw [hS5]; exact poll_forwards _ _)
+  let P := Model.protoOf (compiled (family S)) E
+  let start : Model.Node P := ⟨(P.act N4.st (.poll k)).1, N4.seen⟩
+  let head := Model.releaseAll P rho.hash (rho.ownKey v) start
+    ((fgUpdate (shapeOf S hn N4)).outbox.head?.toList.map (pollObj S rho v))
+  let F := (Model.releaseAll P rho.hash (rho.ownKey v) head.1
+    ((shapeOf S hn N4).forwards.map (fun p =>
+      .mk (.signed (rho.ownKey v) .poll) (.data (.forward p.1)) p.2) ++
+     (shapeOf S hn N4).voteForwards.map (fun p =>
+      .mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward p.1 (encodeVote p.2))) [voteObj p.2]))).2
+  change (rho.dutyStep v N4 (.poll k)).2 =
+    relHead S rho v N4.seen (fgUpdate (shapeOf S hn N4)).outbox.head? ++ F at hR5
+  have hR6 := dutyStep_poll_eq S rho hn v N5 k hsel
+    (by rw [hS5]; exact poll_forwards _ _) (by rw [hS5]; exact poll_voteForwards _ _)
   rw [hpre5, hout5] at hR6
   have e5 := dutyStep_seen S rho v N4 (.poll k)
   rw [hR5] at e5
@@ -606,9 +627,12 @@ theorem trailing_polls (v : V) (N4 : Model.Node (Model.protoOf (compiled (family
   · have e6 := dutyStep_poll S rho hn v N5 k hsel
     rw [e6, (poll_outbox _ _).1, hpre5, hout5]
   · intro o ho
-    rw [← hF] at ho
-    obtain ⟨⟨τ, cs⟩, _, rfl⟩ := List.mem_map.mp (Model.releaseAll_subset _ _ _ _ o ho)
-    exact ⟨τ, cs, rfl⟩
+    change o ∈ (Model.releaseAll _ _ _ _ (_ ++ _)).2 at ho
+    rcases List.mem_append.mp (Model.releaseAll_subset _ _ _ _ o ho) with ho | ho
+    · obtain ⟨⟨τ, cs⟩, _, rfl⟩ := List.mem_map.mp ho
+      exact Or.inl ⟨τ, cs, rfl⟩
+    · obtain ⟨⟨τ, m⟩, _, rfl⟩ := List.mem_map.mp ho
+      exact Or.inr ⟨τ, m, rfl⟩
 
 /-- The proposal step of a key that does not propose at `t` makes no cut. -/
 theorem tickStep_proposal_not' {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
@@ -646,7 +670,9 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
       N4.seen = (rho.stateBefore i v).seen ++
         relHead S rho v (rho.stateBefore i v).seen (stateAt S rho hn v i).outbox.head? ++ R4 ∧
       N5.seen = N4.seen ++ (relHead S rho v N4.seen Q.head? ++ F) ∧
-      (∀ o ∈ F, ∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs) ∧
+      (∀ o ∈ F, (∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs) ∨
+        ∃ τ m, o = .mk (.signed (rho.ownKey v) .poll)
+          (.data (.voteForward τ (encodeVote m))) [voteObj m]) ∧
       (∀ o ∈ G, o.auth = .none) ∧ Q.length ≤ 2 ∧
       Q = emitted (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
           (stateAt S rho hn v i).node t
@@ -674,6 +700,7 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
   rw [hσ] at hlen hf hself0 ⊢
   obtain ⟨hR1, hR2, hR3, hseen3, hS3, hout2, hnode2, hself2, hnow2, hfg2⟩ :=
     leading_polls S rho hn v nd t hsel hf hlen (forwards_empty S rho hn hv v i)
+      (voteForwards_empty S rho hn hv v i)
   set X := encodeTxs (Model.mempool rho.inbox v t)
   set dg := digestOf S rho
   set n1 := (Node.acCall (rho.ownKey v) (shapeOf S hn nd).node t .tick).1
@@ -732,7 +759,9 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
             (relHead S rho v N4.seen Q.head? ++ F) ++ relHead S rho v N5.seen Q.tail.head? ++ G ∧
         N4.seen = nd.seen ++ relHead S rho v nd.seen (shapeOf S hn nd).outbox.head? ++ R4 ∧
         N5.seen = N4.seen ++ (relHead S rho v N4.seen Q.head? ++ F) ∧
-        (∀ o ∈ F, ∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs) ∧
+        (∀ o ∈ F, (∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs) ∨
+          ∃ τ m, o = .mk (.signed (rho.ownKey v) .poll)
+            (.data (.voteForward τ (encodeVote m))) [voteObj m]) ∧
         (∀ o ∈ G, o.auth = .none) ∧ Q.length ≤ 2 ∧
         Q = emitted (exec (runProposer S rho hn) dg (rho.ownKey v)
             (shapeOf S hn nd).node t (.tick X)).2 ++
@@ -970,6 +999,7 @@ theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Tim
   rw [hσ] at hlen hf ⊢
   obtain ⟨hR1, hR2, hR3, -, hS3, hout2, -, -, hnow2, hfg2⟩ :=
     leading_polls S rho hn v nd t hsel hf hlen (forwards_empty S rho hn hv v i)
+      (voteForwards_empty S rho hn hv v i)
   have hnil : (skeleton (pubOf E)).proposeAt t = [] := by
     rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
       ⟨h, -⟩ | ⟨s, hs, -, hts⟩
@@ -988,7 +1018,9 @@ theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Tim
   have hR5 := dutyStep_poll_eq S rho hn v (rho.dutyStep v (rho.dutyStep v N1 (.poll t.toNat)).1
     (.pollPropose t.toNat)).1 t.toNat hsel (by
       rw [hS3', dutyStep_poll S rho hn _ _ _ hsel]
-      exact poll_forwards _ _)
+      exact poll_forwards _ _) (by
+      rw [hS3', dutyStep_poll S rho hn _ _ _ hsel]
+      exact poll_voteForwards _ _)
   rw [hpre3, hout2] at hR5
   have hS5 := dutyStep_poll S rho hn v (rho.dutyStep v (rho.dutyStep v N1 (.poll t.toNat)).1
     (.pollPropose t.toNat)).1 t.toNat hsel
@@ -1004,6 +1036,7 @@ theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Tim
   have hR6 := dutyStep_poll_eq S rho hn v (rho.dutyStep v (rho.dutyStep v
     (rho.dutyStep v N1 (.poll t.toNat)).1 (.pollPropose t.toNat)).1 (.poll t.toNat)).1
     t.toNat hsel (by rw [hS5]; exact poll_forwards _ _)
+      (by rw [hS5]; exact poll_voteForwards _ _)
   rw [hpre5, hout5] at hR6
   intro o ho
   simp only [Model.Run.releasesAt, he] at ho
@@ -1061,10 +1094,8 @@ theorem att_released_inv (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
     swap
     · rcases List.mem_append.mp h with h | h
       · exact hQmem _ _ (by simp) h
-      · obtain ⟨τ, cs, heq⟩ := hF _ h
-        have hm := congrArg Model.Obj.msg heq
-        change Model.Msg.data (Body.att (encodeAtt b)) = Model.Msg.data (Body.forward τ) at hm
-        cases hm
+      · rcases hF _ h with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
+        all_goals have hm := congrArg Model.Obj.msg heq; cases hm
     rcases List.mem_append.mp hb with h | h
     · exact absurd h (hnotpend _)
     · rw [hR4] at h; exact absurd h (attObj_not_mem_blockObjs S hn b _)
@@ -1308,10 +1339,8 @@ theorem tick_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
       rw [hrel] at ho
       rcases List.mem_append.mp ho with hx | hx
       swap
-      · obtain ⟨τ, cs, heq⟩ := hF _ hx
-        have hm := congrArg Model.Obj.msg heq
-        change Model.Msg.data (Body.att (encodeAtt b')) = Model.Msg.data (Body.forward τ) at hm
-        cases hm
+      · rcases hF _ hx with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
+        all_goals have hm := congrArg Model.Obj.msg heq; cases hm
       obtain ⟨q, hq, hobj⟩ := mem_relHead S rho hx
       have hq' := (attObj_eq_pollObj S rho hobj).1
       have hqQ : q ∈ Q := List.mem_of_mem_head? hq

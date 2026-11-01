@@ -246,7 +246,9 @@ theorem publisher_poll_drain {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time)
     (hf : st.fgDue = false) (ho : st.outbox = []) :
     (goldilocksShape sp ro).pollBatch st t =
-      ({ st with forwards := [] }, st.forwards.map fun p => (.forward p.1, p.2)) := by
+      ({ st with forwards := [], voteForwards := [] },
+        st.forwards.map (fun p => (.forward p.1, p.2)) ++
+        st.voteForwards.map (fun p => (.voteForward p.1 (encodeVote p.2), [voteObj p.2]))) := by
   simp [goldilocksShape, pollBatch, poll, hf, ho]
   rfl
 

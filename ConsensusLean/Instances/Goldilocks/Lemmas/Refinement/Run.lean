@@ -517,9 +517,8 @@ private theorem released_block_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {
               · exact hb
             · rcases List.mem_append.mp hb with hb | hb
               · exact False.elim (hhead _ _ hb)
-              · obtain ⟨τ, cs, heq⟩ := hF _ hb
-                have hh := congrArg Model.Obj.msg heq
-                cases hh
+              · rcases hF _ hb with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
+                all_goals have hh := congrArg Model.Obj.msg heq; cases hh
           · exact False.elim (hhead _ _ hb)
         · have hh := hG _ hb
           cases hh
@@ -766,9 +765,8 @@ private theorem released_vote_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t
               cases hh
           · rcases List.mem_append.mp hb with hb | hb
             · exact hq _ _ (fun _ h => List.mem_of_mem_head? h) hb
-            · obtain ⟨τ, cs, heq⟩ := hF _ hb
-              have hh := congrArg Model.Obj.msg heq
-              cases hh
+            · rcases hF _ hb with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
+              all_goals have hh := congrArg Model.Obj.msg heq; cases hh
         · exact hq _ _ (fun _ h => List.mem_of_mem_tail (List.mem_of_mem_head? h)) hb
       · have hh := hG _ hb; cases hh
     · rcases tick_other_releases S rho hn hv hv' he hp _ hb with hb | hb
@@ -1561,8 +1559,6 @@ theorem relays_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : 
     ∃ r : CutRec (S.params (pubOf E) hn) (S.ro _),
       (simTrace S rho hn).label k = some r.label ∧ (simTrace S rho hn).post k = r.post ∧
       ∀ x, ((∃ B, r.label = .fg (.block B true) ∧ x = blockObj (S.params (pubOf E) hn) B) ∨
-          (∃ ℓ m, r.label = .ac ℓ ∧ ℓ.call = .message m ∧ m ∈ r.post.ac.pool m.slot ∧
-            x = voteObj m) ∨
           (∃ a, r.label = .fg (.attestation a) ∧ x = attObj a)) →
         ∃ cs, x ∈ cs ∧ rho.releases (rho.key y) (.mk .none (.data .relay) cs)
           ((simTrace S rho hn).time k) := by
@@ -1576,15 +1572,14 @@ theorem relays_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : 
   rw [ht]
   rw [eventCuts_deliver S rho hn i _ o t he] at hmem
   obtain ⟨hnow, hself⟩ := deliver_state S rho hn hv he
-  obtain ⟨h1, h2, h3⟩ := (process_relay (runProposer S rho hn)
+  obtain ⟨h1, -, h3⟩ := (process_relay (runProposer S rho hn)
     (digestOf S rho) (Model.digests rho.hash o) t i
     (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn _ i) 0 hnow).2.2.2 r
     (by rw [hself]; exact hmem)
   have hq : x ∈
       (process (stateAt S rho hn (rho.key y) i) o (Model.digests rho.hash o)).relayBuf := by
-    rcases hx with ⟨B, hB, rfl⟩ | ⟨ℓ, m, hℓ, hc, hp, rfl⟩ | ⟨a, ha, rfl⟩
+    rcases hx with ⟨B, hB, rfl⟩ | ⟨a, ha, rfl⟩
     · exact h1 B hB
-    · exact h2 ℓ m hℓ hc hp
     · exact h3 a ha
   obtain ⟨cs, hxcs, hrel⟩ := deliver_relays S rho hn he hq
   exact ⟨cs, hxcs, i, Or.inr ⟨o, he⟩, hrel⟩
@@ -1785,20 +1780,6 @@ theorem simTrace_block_relayed (hv : rho.ExecutionValid) :
   obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inl ⟨B, Option.some.inj (hrl.symm.trans hlab), rfl⟩)
   exact ⟨cs, hx, hcs⟩
 
-/-- An honest node relays a vote it admits from the wire. -/
-theorem simTrace_vote_relayed (hv : rho.ExecutionValid) :
-    ∀ y ∈ honestKeys S rho, ∀ k m, (simTrace S rho hn).MsgCallAt y k m →
-      m ∈ ((simTrace S rho hn).post k).ac.pool m.slot →
-        RelayedFrom S rho (rho.key y) (voteObj m) ((simTrace S rho hn).time k) := by
-  rintro y _ k m ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ hpool
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, hrl, hpost, hrel⟩ := relays_of_cut S rho hn hv hnode hl fun r hr => Or.inr
-    ⟨ℓ, m, Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab),
-      hcall⟩
-  obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inr (Or.inl ⟨ℓ, m, Option.some.inj (hrl.symm.trans hlab),
-    hcall, hpost ▸ hpool, rfl⟩))
-  exact ⟨cs, hx, hcs⟩
-
 /-- An honest node relays an attestation it receives from the wire. -/
 theorem simTrace_att_relayed (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ k a, (simTrace S rho hn).AttCallAt y k a →
@@ -1809,7 +1790,7 @@ theorem simTrace_att_relayed (hv : rho.ExecutionValid) :
   obtain ⟨r, hrl, -, hrel⟩ := relays_of_cut S rho hn hv hnode hl fun r hr => Or.inl
     ⟨by rw [simTrace_pos, hr] at hpos; exact hpos, _,
       Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab)⟩
-  obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inr (Or.inr ⟨a, Option.some.inj (hrl.symm.trans hlab), rfl⟩))
+  obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inr ⟨a, Option.some.inj (hrl.symm.trans hlab), rfl⟩)
   exact ⟨cs, hx, hcs⟩
 
 /-! ## `LocalRun`: groups, the cut law and the wire checks

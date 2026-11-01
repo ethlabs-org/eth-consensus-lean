@@ -416,6 +416,12 @@ theorem poll_forwards (st : State sp ro) (t : Time) : (poll st t).1.forwards = [
   dsimp only
   split <;> rfl
 
+/-- Polling drains pending vote envelopes irrespective of release-guard success. -/
+theorem poll_voteForwards (st : State sp ro) (t : Time) : (poll st t).1.voteForwards = [] := by
+  unfold poll
+  dsimp only
+  split <;> rfl
+
 /-- The object a poll step of `v` releases for the body `b`. -/
 noncomputable abbrev pollObj (v : V) (b : Body) : (Model.protoOf (compiled (family S)) E).Object :=
   .mk (.signed (rho.ownKey v) .poll) (.data b) []
@@ -1212,6 +1218,79 @@ theorem forwards_empty (hv : rho.ExecutionValid) (v : V) :
           subst w
           rw [stateAt_restart S rho hn v he]
           exact ih
+      · rw [state_of_other S rho hn v i ev he hnode]; exact ih
+
+omit [DecidableEq V] in
+/-- Unsigned gossip preserves the vote publication queue. -/
+theorem gossip_voteForwards (k : Fin (Fintype.card V))
+    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Time) :
+    (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E) rho.hash k nd
+      (Model.gossipCandidates (Model.protoOf (compiled (family S)) E) nd.st t)).1).voteForwards =
+      (shapeOf S hn nd).voteForwards := by
+  suffices h : ∀ (nd' : Model.Node (Model.protoOf (compiled (family S)) E))
+      (cs : List (Model.protoOf (compiled (family S)) E).Object), (∀ c ∈ cs, c.auth = .none) →
+      (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (family S)) E) rho.hash k nd'
+        cs).1).voteForwards = (shapeOf S hn nd').voteForwards from
+    h _ _ fun c hc => by
+      obtain ⟨mc, -, rfl⟩ := Model.mem_gossipCandidates.mp hc
+      rfl
+  intro nd' cs
+  induction cs generalizing nd' with
+  | nil => intro _; rfl
+  | cons c cs ih =>
+    intro hc
+    unfold Model.releaseAll
+    split
+    · rw [ih _ fun c' h => hc c' (List.mem_cons_of_mem _ h)]
+      obtain ⟨a, m, cs'⟩ := c
+      have : a = .none := hc _ List.mem_cons_self
+      subst this
+      change (recordOwn (shapeOf S hn nd') (.mk .none m cs') _).voteForwards = _
+      cases m with
+      | item h => rfl
+      | data b => cases b <;> rfl
+    · exact ih _ fun c' h => hc c' (List.mem_cons_of_mem _ h)
+
+/-- Every event drains pending vote publications; a restart produces no vote at its clock.
+Queue emptiness does not assert successful release. -/
+theorem voteForwards_empty (hv : rho.ExecutionValid) (v : V) :
+    ∀ i, (stateAt S rho hn v i).voteForwards = []
+  | 0 => rfl
+  | i + 1 => by
+    have ih := voteForwards_empty hv v i
+    cases he : rho.events[i]? with
+    | none => rw [stateAt_succ_none S rho hn v he]; exact ih
+    | some ev =>
+      by_cases hnode : ev.node = v
+      · have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
+        cases ev with
+        | tick w t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          rw [stateAt_tick S rho hn v he]
+          rw [tick_of_awake S rho v _ t (hv.tick_awake v t (List.mem_of_getElem? he)),
+            gossip_voteForwards, duties_eq S t ht, runDuties_fst_append]
+          change (shapeOf S hn (rho.dutyStep v _ (.poll t.toNat)).1).voteForwards = []
+          rw [dutyStep_poll S rho hn _ _ _ (poll_selected S rho hv v)]
+          exact poll_voteForwards _ _
+        | deliver w o t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          rw [stateAt_deliver S rho hn v he]
+          unfold Model.Run.deliver
+          rw [gossip_voteForwards, deliverDuties_eq S t ht]
+          erw [runDuties_fst_cons, runDuties_fst_nil,
+            dutyStep_poll S rho hn _ _ _ (poll_selected S rho hv v)]
+          exact poll_voteForwards _ _
+        | restart w t =>
+          simp only [Model.Event.node] at hnode
+          subst w
+          rw [stateAt_restart S rho hn v he]
+          have hnil := restart_emits_nil (S.ro _) (rho.ownKey v)
+            (stateAt S rho hn v i).node.ac (frame (stateAt S rho hn v i).node) t ht
+          simp only [restore, apply, Node.restart, acCall, hnil, List.map_nil,
+            List.flatMap_cons, List.flatMap_nil, List.append_nil,
+            List.dedup_nil, List.filter_nil, ih]
       · rw [state_of_other S rho hn v i ev he hnode]; exact ih
 
 end ForwardingQueue
