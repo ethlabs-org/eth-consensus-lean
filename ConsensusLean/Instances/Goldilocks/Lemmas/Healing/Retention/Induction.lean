@@ -536,6 +536,90 @@ theorem historical_activation_before (hp : ResetPremises tr H proposer dg g ΔF 
       RawVoteAt (tr := tr) (H := H) (HistoricalTargets (tr := tr) (H := H) (g := g)) Q k :=
   historical_activation_cutZ_before hp Q (reset_sync_window_before hp Q)
 
+/-- Conditional §75 domain reduction. The explicit producer hypotheses are the open
+joint-induction boundary, not consequences asserted of reset premises. Frozen target
+membership must be produced before its receiver height is read. -/
+theorem slow_target_vote_domain_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    (_hc : CatchRun tr H g (2 * sp.Δ)) (Q : Time)
+    {x y : Fin sp.n} (_hx : x ∈ H) (hy : y ∈ H)
+    {r l i : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (_hsl : SA.SlowLockAt tr.projAC x r l B)
+    (_hjoined : SA.JoinedAt tr.projAC x (tr.time r))
+    (_hclean : sp.ts (sp.slot a + 3 : Nat) ≤ sp.ts ((l : Int) - sp.k + 1))
+    (_hrQ : tr.time r ≤ Q)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcast : SA.CastAt tr.projAC y i ell e) (_hl : l < e.msg.slot) (_hiQ : tr.time i ≤ Q)
+    (hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot B)
+    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B →
+      B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
+    (hseed : ∃ v r₀ m S, HighOrigin tr H g v r₀ m S ∧ m < e.msg.slot ∧
+      Compatible (tr.HonestBlocks H) B S)
+    (hcompare : ∀ v r₀ m O, r₀ < i → HighOrigin tr H g v r₀ m O →
+      Compatible (tr.HonestBlocks H) B O) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B ∧
+      ((∃ W ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+        Anc (tr.HonestBlocks H) B W ∧ (tr.state y i).fg.IsViable W) ∨
+        Anc (tr.HonestBlocks H) B ell.frame.fcRoot) := by
+  refine ⟨hroot, ?_⟩
+  by_cases hcovered : Anc (tr.HonestBlocks H) B ell.frame.fcRoot
+  · exact Or.inr hcovered
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcast.1
+  have hFB := (Anc.mono hPhiU hPhi.F_anc_fcRoot).trans (hroot.resolve_right hcovered)
+  have hBt := hheld hFB
+  have hBy := frame_tree_subset hp hy hcast.1 hBt.1
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hy i
+  by_cases hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h
+  · exact Or.inl ⟨B, hBt, .refl, hfloor⟩
+  have hBfloor := lt_of_not_ge hfloor
+  obtain ⟨v, r₀, m, S, hS, hm, hBS⟩ := hseed
+  obtain ⟨-, -, -, -, -, -, -, -, -, hSsrc⟩ := highOrigin_mem hp hS
+  have orient : ∀ {z q n O E}, HighOrigin tr H g z q n O →
+      E ∈ (tr.state y i).fg.tree → Anc (tr.HonestBlocks H) E O →
+      (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ E.root).h →
+      Compatible (tr.HonestBlocks H) B O → Anc (tr.HonestBlocks H) B O := by
+    intro z q n O E _ hE hEO hEf hcomp
+    rcases hcomp with h | h
+    · exact h
+    · have hEB := hEO.trans h
+      have hh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy hEB hBy)
+      omega
+  by_cases hSf : (tr.state y i).fg.headHeightFloor ≤ ((tr.state v r₀).fg.σ S.root).h
+  · have hBS' : Anc (tr.HonestBlocks H) B S := by
+      rcases hBS with h | h
+      · exact h
+      · have hSy := mem_tree_of_anc hp hy h hBy
+        have hh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy h hBy)
+        rw [← σ_eq_run hp hS.1 hy hSsrc hSy] at hh
+        omega
+    have hSy := high_origin_held_at_vote hp hS hy hcast hm (hFB.trans hBS')
+    have hSf' : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ S.root).h := by
+      rw [← σ_eq_run hp hS.1 hy hSsrc hSy]
+      exact hSf
+    exact Or.inl (raw_target_frozen_witness hp hS hy hcast hm hFB hBS' hSy .refl hSf')
+  · have hist : HistoricalVoteExtensionBefore (tr := tr) (H := H) (g := g) i := by
+      apply (historicalVoteExtensionBefore_iff i).mpr
+      intro z q n O ho _ w hw c _ e' hv hn
+      obtain ⟨ell', hc', he'⟩ := hv
+      exact ((rawVoteAt_iff _ _ _).mp
+        (historical_activation_before hp (tr.time c) c le_rfl).2 O n
+        ((historicalTargets_iff O n).mpr ⟨z, q, ho⟩) w hw ell' e' ⟨hc', he'⟩ hn le_rfl).1
+    have hact : sp.ts (m + 1 : Nat) ≤ tr.time i := by
+      have ht := (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) e.msg.slot).mpr
+        (by rw [(SA.castAt_spec hr hy hcast).2.1])
+      exact ((SA.ts_le_iff sp).mpr (by omega)).trans ht
+    have hScmp := (rawCompareAt_iff _ _ _).mp
+      (historical_activation_before hp (tr.time i) i le_rfl).1 S m
+      ((historicalTargets_iff S m).mpr ⟨v, r₀, hS⟩) hact
+    obtain ⟨z, q, n, O, E, hq, ho, hn, hE, hEO, _, hEf⟩ :=
+      high_floor_source_core hp hS hy hcast hm
+        (fun _ _ _ _ hq ho _ _ _ _ hq' ho' =>
+          historical_origins_compatible_before hp hist ho hq ho' hq')
+        hScmp (lt_of_not_ge hSf)
+    exact Or.inl (raw_target_frozen_witness hp ho hy hcast hn hFB
+      (orient ho hE hEO hEf (hcompare z q n O hq ho)) hE hEO hEf)
+
 end Consensus.Goldilocks.Healing
 
 end

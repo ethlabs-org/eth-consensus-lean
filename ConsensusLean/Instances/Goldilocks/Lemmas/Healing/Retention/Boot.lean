@@ -400,7 +400,7 @@ theorem high_origin_height_at_vote (hp : ResetPremises tr H proposer dg g ΔF a)
 receiver's floor. Heights of `B` are read at its source, where it is held. Pairwise comparison
 of earlier origins rules out a high contest; comparison with `B` orients the crossing.
 Neither a vote/cache invariant nor pivot service is assumed. -/
-theorem high_floor_source_before
+theorem high_floor_source_core
     (hp : ResetPremises tr H proposer dg g ΔF a)
     {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
@@ -411,7 +411,6 @@ theorem high_floor_source_before
       Compatible (tr.HonestBlocks H) O O')
     (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
       Compatible (tr.HonestBlocks H) B O)
-    (_hF : Anc (tr.HonestBlocks H) ell.frame.F B)
     (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
     ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < e.msg.slot ∧
       E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
@@ -484,6 +483,27 @@ theorem high_floor_source_before
       omega
   exact ⟨v, r, l, O, E, by omega, hoO,
     row_origin_label_lt hp hy hc hW ha hv hsd hd₁ hrd hoO, hE, hEO, hBO, by omega⟩
+
+/-- Compatibility interface retaining the receiver-finalization argument. The crossing
+itself does not need that argument, as exposed by `high_floor_source_core`. -/
+theorem high_floor_source_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot)
+    (hpair : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      ∀ v' r' l' O', r' < k → HighOrigin tr H g v' r' l' O' →
+      Compatible (tr.HonestBlocks H) O O')
+    (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocks H) B O)
+    (_hF : Anc (tr.HonestBlocks H) ell.frame.F B)
+    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
+    ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < e.msg.slot ∧
+      E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocks H) E O ∧
+      Anc (tr.HonestBlocks H) B O ∧
+      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h :=
+  high_floor_source_core hp ho hy hc hj hpair hcomp hfloor
 
 /-- **R5 above the floor** (`hr4-boot-carry.md` §7): the crossing origin's counted honest
 head is relayed before the voter's freeze and supplies a viable witness above `B`. -/
