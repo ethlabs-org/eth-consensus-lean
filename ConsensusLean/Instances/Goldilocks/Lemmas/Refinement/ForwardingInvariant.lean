@@ -1269,4 +1269,46 @@ theorem tick_acceptance_publication {V : Type} [Fintype V] [DecidableEq V] {E : 
       (htime.trans (slotTime_eq S hn s).symm) B
     rwa [hnode]
 
+/-- Every honest accepting trace cut has an actual wrapper publication in its own engine
+event, with the exact cut interval and timestamp. Decoding is a separate invariant. -/
+theorem acceptance_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (x : Fin (Fintype.card V)) (hx : x ∈ honestKeys S rho)
+    (k : Nat) (B : Blk (S.params (pubOf E) hn))
+    (ha : (simTrace S rho hn).AcceptAt x k B) :
+    ∃ q p, (publisherExecution S rho).actual q ∧ q.origin = x ∧
+      cutMap S rho hn q.event ≤ k ∧ k < cutMap S rho hn (q.event + 1) ∧
+      (publisherExecution S rho).eventTime q.event = (simTrace S rho hn).time k ∧
+      q.object = forwardObj (S.params (pubOf E) hn) x ((simTrace S rho hn).time k) p B := by
+  obtain ⟨hxk, hlab⟩ := ha
+  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
+  obtain ⟨r, i, ev, _, he, hlo, hhi, hidx, hnode, htime, _, hlabel⟩ :=
+    simTrace_cut S rho hn hl
+  have hb : r.label = .fg (.block B true) := Option.some.inj (hlabel.symm.trans hlab)
+  have hr := List.mem_of_getElem? hidx
+  have hxev : rho.ownKey ev.node = x := hnode.symm.trans hxk
+  have hhon : ev.node ∈ rho.honest := by
+    have hi : rho.key (rho.ownKey ev.node) = ev.node := rho.key.apply_symm_apply _
+    change rho.key x ∈ rho.honest at hx
+    rwa [← hxev, hi] at hx
+  have hp : ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
+      q.origin = rho.ownKey ev.node ∧
+      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey ev.node) ev.time p B := by
+    cases ev with
+    | tick v t => exact tick_acceptance_publication S rho hn hv v hhon i t he r B hr hb
+    | deliver v o t => exact delivery_acceptance_publication S rho hn hv he r B hr hb
+    | restart v t =>
+      rw [eventCuts_restart S rho hn i v t he] at hr
+      obtain ⟨j, hj, hjr⟩ := List.getElem_of_mem hr
+      have hc := (getElem_groupRecs (runProposer S rho hn) (digestOf S rho)
+        (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0) .restart j hj).2.2.2.2
+      rw [hjr, hb] at hc
+      have hm := hc.symm ▸ List.getElem_mem (by simpa only [length_groupRecs] using hj)
+      simp [Node.exec, Node.restart, Node.acCall] at hm
+  obtain ⟨p, q, hq, hqi, hqx, hqo⟩ := hp
+  refine ⟨q, p, hq, hqx.trans hxev, hqi ▸ hlo, hqi ▸ hhi, ?_, ?_⟩
+  · rw [hqi, publisherExecution_eventTime_eq, he]
+    exact htime.symm
+  · simpa only [hxev, ← htime] using hqo
+
 end Consensus.Goldilocks.Refinement
