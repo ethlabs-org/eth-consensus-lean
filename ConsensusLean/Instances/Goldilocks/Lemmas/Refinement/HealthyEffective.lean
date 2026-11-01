@@ -1998,6 +1998,54 @@ theorem candidate_after_fast_update {A : SA.SAState sp.n} {Phi : SA.Frm sp.n FGP
   refine ⟨hPv, ⟨P.root, u, true⟩, ?_, rfl, rfl, hage⟩
   exact ⟨⟨P.root, u, true⟩, hlock, P, hPv.1, rfl, hlive, by rw [hself]⟩
 
+/-- The exact fast candidate persists into an adjacent call with the same frame
+and timestamp; these are the equalities supplied by `update_toFG_calls`. -/
+theorem candidate_at_adjacent_call
+    {y : Fin sp.n} {j u : Nat} {ell ell' : ACLabel (goldilocksNode sp ro)}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hc : tr.projAC.CallAt y j ell) (hPhi : FrameOK ell.frame)
+    (hframe : ell'.frame = ell.frame) (htime : tr.time (j + 1) = tr.time j)
+    (hPv : P ∈ ell.frame.viableTree ell.frame.tree)
+    (hconf : SA.getConfirmation sp (tr.projAC.state y j) ell.frame u = some P)
+    (hnv : ¬ SA.conflictsWithLock sp (tr.projAC.state y j).locks ell.frame (tr.time j) P)
+    (hfast : SA.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P)
+    (hpost : tr.projAC.post j =
+      SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u)
+    (hlive : sp.slot (tr.time j) ≤ u + sp.k) (hage : sp.slot (tr.time j) ≤ u + 2) :
+    P ∈ SA.toFGCandidates sp (tr.projAC.state y (j + 1)) ell'.frame (tr.time (j + 1)) := by
+  rw [tr.projAC.state_succ_of_call hc, hpost, hframe, htime]
+  exact candidate_after_fast_update hPhi hPv hconf hnv hfast hlive hage
+
+/-- A full viable unanimous pool at an actual update produces an actual report
+at or before the adjacent toFG call, not merely a selected candidate. -/
+theorem report_of_viable_unanimous_pool {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
+    {ell ell' : ACLabel (goldilocksNode sp ro)}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hu : SA.UpdateAt tr.projAC y j u ell)
+    (hc : tr.projAC.CallAt y (j + 1) ell') (hto : ell'.call = .toFG)
+    (hframe : ell'.frame = ell.frame) (htime : tr.time (j + 1) = tr.time j)
+    (hjoin : SA.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)))
+    (hPg : P.root ≠ sp.genesisRoot) (hPv : P ∈ ell.frame.viableTree ell.frame.tree)
+    (hpool : ∀ v ∈ H, ∃ vote ∈ (tr.projAC.state y j).pool u,
+      vote.val = v ∧ vote.head = P.root ∧
+      SA.resolutionTime (tr.projAC.state y j) ell.frame vote < SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
+      ∀ vote' ∈ (tr.projAC.state y j).pool u, vote'.val = v → vote' = vote)
+    (hlocks : ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
+      Compatible (tr.HonestBlocks H) L P)
+    (hnext : ∀ C ∈ SA.toFGCandidates sp (tr.projAC.state y (j + 1)) ell'.frame (tr.time (j + 1)),
+      Compatible (tr.HonestBlocks H) C P)
+    (hlive : sp.slot (tr.time j) ≤ u + sp.k) (hage : sp.slot (tr.time j) ≤ u + 2) :
+    ∃ r e R, SA.ToFGAt tr.projAC y r e R ∧ tr.time r ≤ tr.time (j + 1) ∧
+      Anc (tr.HonestBlocks H) P R := by
+  obtain ⟨hconf, hnv, hfast, hpost, _⟩ :=
+    hp.ready_update_selection_of_pool hy hu hPv.1 hPg hpool hlocks
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hPc := candidate_at_adjacent_call hu.1 (SA.frameIn_of_callAt hr hy hu.1).1
+    hframe htime hPv hconf hnv hfast hpost hlive hage
+  exact Healing.report_of_compatible_candidate_of_run hp.run hp.noColl hy hc hto hjoin hPg hPc hnext
+
 end UpTo
 
 end CoveredEndpoint
