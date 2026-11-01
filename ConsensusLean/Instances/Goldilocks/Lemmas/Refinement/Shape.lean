@@ -529,6 +529,50 @@ theorem processOne_now hs (st : State sp ro) o : (processOne hs st o).now = st.n
 theorem processOne_fgDue hs (st : State sp ro) o : (processOne hs st o).fgDue = st.fgDue := by
   unfold processOne; split <;> simp [relayIf_fgDue, apply_fgDue]
 
+/-- Processing one object preserves all previously queued admission envelopes. -/
+theorem processOne_voteForwards_subset hs (st : State sp ro) o :
+    st.voteForwards ⊆ (processOne hs st o).voteForwards := by
+  unfold processOne
+  split
+  · dsimp only
+    unfold relayIf
+    split <;> exact List.subset_append_left _ _
+  · exact List.subset_append_left _ _
+  · unfold relayIf
+    split <;> exact List.subset_append_left _ _
+  · exact List.Subset.refl _
+
+/-- Later objects in a delivery cannot remove an already queued admission envelope. -/
+theorem foldl_processOne_voteForwards_subset hs (os : List (Wire sp.n)) (st : State sp ro) :
+    st.voteForwards ⊆ (os.foldl (processOne hs) st).voteForwards := by
+  induction os generalizing st with
+  | nil => exact List.Subset.refl _
+  | cons o os ih =>
+    intro q hq
+    exact ih _ (processOne_voteForwards_subset hs st o hq)
+
+/-- A fresh canonical wire admission at any delivery prefix remains queued after the
+whole delivery. The freshness test is at this handler's input, not the event boundary. -/
+theorem process_message_voteForward (st : State sp ro) (o : Wire sp.n) hs
+    (pre post : List (Wire sp.n)) (m : Vote sp.n)
+    (hparts : delivered sp o = pre ++ voteObj m :: post)
+    (hold : m ∉ (pre.foldl (processOne hs) st).node.ac.pool m.slot)
+    (hnew : m ∈ (Node.onMessage (pre.foldl (processOne hs) st).self
+      (pre.foldl (processOne hs) st).node st.now m).1.ac.pool m.slot) :
+    (st.now, m) ∈ (process st o hs).voteForwards := by
+  have hnow : (pre.foldl (processOne hs) st).now = st.now := by
+    clear hparts hold hnew
+    induction pre generalizing st with
+    | nil => rfl
+    | cons x xs ih => exact (ih _).trans (processOne_now hs st x)
+  have hq := onMessage_voteForward (pre.foldl (processOne hs) st) m hold
+    (by simpa only [hnow] using hnew)
+  rw [hnow] at hq
+  unfold process
+  rw [hparts, List.foldl_append, List.foldl_cons]
+  apply foldl_processOne_voteForwards_subset hs post _
+  simpa only [processOne, canonEvent_voteObj, hnow] using hq
+
 /-- Processing a list of delivered objects keeps the key. -/
 theorem foldl_processOne_self hs (os : List (Wire sp.n)) (st : State sp ro) :
     (os.foldl (processOne hs) st).self = st.self := by

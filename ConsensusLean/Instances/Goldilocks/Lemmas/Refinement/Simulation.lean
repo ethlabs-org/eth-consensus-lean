@@ -191,6 +191,28 @@ theorem delivery_voteForward_released (hv : rho.ExecutionValid) {v : V}
   erw [Model.Run.runDuties_cons]
   exact List.mem_append_left _ hout
 
+/-- A fresh wire admission anywhere in the actual delivery traversal publishes its exact
+admission-time envelope in the same event. Prefix-state identification is explicit here. -/
+theorem delivery_message_admission_released (hv : rho.ExecutionValid) {v : V}
+    {i : Nat} {o : (Model.protoOf (compiled (family S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t))
+    (pre post : List (Wire (Fintype.card V))) (m : SA.Vote (Fintype.card V))
+    (hparts : delivered (S.params (pubOf E) hn) o = pre ++ voteObj m :: post)
+    (hold : m ∉ (pre.foldl (processOne (Model.digests rho.hash o))
+      (stateAt S rho hn v i)).node.ac.pool m.slot)
+    (hnew : m ∈ (Node.onMessage
+      (pre.foldl (processOne (Model.digests rho.hash o)) (stateAt S rho hn v i)).self
+      (pre.foldl (processOne (Model.digests rho.hash o)) (stateAt S rho hn v i)).node
+      t m).1.ac.pool m.slot) :
+    Model.Obj.mk (.signed (rho.ownKey v) .poll)
+      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.releasesAt i := by
+  have hnow : (stateAt S rho hn v i).now = t :=
+    (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
+  apply delivery_voteForward_released S rho hn hv he (t, m)
+  have hq := process_message_voteForward (stateAt S rho hn v i) o
+    (Model.digests rho.hash o) pre post m hparts hold (by simpa only [hnow] using hnew)
+  simpa only [hnow] using hq
+
 /-- An honest emission cut cannot be a restart, even though `EmitAt` permits that call
 syntactically. This uses the actual cut law and the run's nonnegative clock. -/
 theorem simTrace_emission_not_restart (hv : rho.ExecutionValid)
