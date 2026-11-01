@@ -696,20 +696,21 @@ theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
 
 /-- Every honest node executes the joined update and immediately following joined to-FG call
 at the coverage deadline. This supplies calls, not a nonempty returned report. -/
-theorem reset_update_toFG_calls
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    {y : Fin sp.n} (hy : y ∈ H) {u : Nat} (hu : SA.gbar g ≤ sp.ts u) :
+theorem update_toFG_calls_of_awake
+    (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {u : Nat}
+    (hawake : tr.awake y (sp.ts u + 6 * sp.Δ))
+    (hjoin : ∀ i, tr.time i = sp.ts u + 6 * sp.Δ →
+      SA.joined sp (tr.projAC.state y i) (tr.time i)) :
     ∃ j ell ell', SA.UpdateAt tr.projAC y j u ell ∧
       tr.projAC.CallAt y (j + 1) ell' ∧ ell'.call = .toFG ∧
       tr.time (j + 1) = sp.ts u + 6 * sp.Δ ∧
       ell'.frame = ell.frame ∧
       SA.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)) := by
-  have hS := healthy_base_of_reset_catch hp hc
   have hDelta := sp.toParams.hΔ
-  have hg0 := SA.gbar_nonneg g
-  obtain ⟨j, x, hg⟩ := hp.run.tick_of_awake y hy (sp.ts u + 6 * sp.Δ)
-    (by linarith) ⟨4 * (u : Int) + 6, by simp only [SAParams.ts]; ring⟩
-    (hp.healthy.2.1 y hy _ (by change SA.gbar g ≤ _; linarith))
+  have hts : 0 ≤ sp.ts u := by simp only [SAParams.ts]; positivity
+  obtain ⟨j, x, hg⟩ := hrun.tick_of_awake y hy (sp.ts u + 6 * sp.Δ)
+    (by linarith) ⟨4 * (u : Int) + 6, by simp only [SAParams.ts]; ring⟩ hawake
   have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
     SA.slot_of_mem sp (u + 1) (by simp only [SAParams.ts]; push_cast; linarith)
       (by simp only [SAParams.ts]; push_cast; linarith)
@@ -738,19 +739,67 @@ theorem reset_update_toFG_calls
   obtain ⟨ell, hcjAC, hcall⟩ : ∃ ell : ACLabel (goldilocksNode sp ro),
       tr.projAC.CallAt y j ell ∧ ell.call = .tick :=
     ⟨_, Compose.projAC_callAt.2 hcj, rfl⟩
-  have hjoin : ∀ i, tr.time i = sp.ts u + 6 * sp.Δ →
-      SA.joined sp (tr.projAC.state y i) (tr.time i) := by
-    intro i hi
-    apply hS.joined_state hy i
-    change SA.gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
-    rw [hi, hslot]
-    simpa using hu
   refine ⟨j, ell, ell', ⟨hcjAC, hcall, htj, hjoin j htj⟩,
     Compose.projAC_callAt.2 hcj1, hcall', htj1, ?_, hjoin (j + 1) htj1⟩
-  rw [(hp.run.cutLaw y hy (j + 1) _ hcj1).1,
-    Compose.frame_of_projAC hp.run hy hcjAC, tr.state_succ_of_call hcj]
+  rw [(hrun.cutLaw y hy (j + 1) _ hcj1).1,
+    Compose.frame_of_projAC hrun hy hcjAC, tr.state_succ_of_call hcj]
   unfold Node.frame
-  rw [(hp.run.cutLaw y hy j _ hcj).2.2.1]
+  rw [(hrun.cutLaw y hy j _ hcj).2.2.1]
+
+/-- Whole-run specialization with the original first-slot joined-state bound. -/
+theorem reset_update_toFG_calls
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {y : Fin sp.n} (hy : y ∈ H) {u : Nat} (hu : SA.gbar g ≤ sp.ts u) :
+    ∃ j ell ell', SA.UpdateAt tr.projAC y j u ell ∧
+      tr.projAC.CallAt y (j + 1) ell' ∧ ell'.call = .toFG ∧
+      tr.time (j + 1) = sp.ts u + 6 * sp.Δ ∧
+      ell'.frame = ell.frame ∧
+      SA.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)) := by
+  apply update_toFG_calls_of_awake hp.run hy
+    (hp.healthy.2.1 y hy _ (by change SA.gbar g ≤ _; linarith [sp.toParams.hΔ]))
+  intro i hi
+  apply (healthy_base_of_reset_catch hp hc).joined_state hy i
+  change SA.gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
+  have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
+    SA.slot_of_mem sp (u + 1) (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+      (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+  rw [hi, hslot]
+  simpa using hu
+
+/-- Bounded wakefulness and the causal restart bound supply the actual adjacent
+update and report call. The slot bound follows from the ready-slot initial margin;
+no Catch or service premise is needed to produce these calls. -/
+theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y : Fin sp.n} (hy : y ∈ H) {u : Nat}
+    (hu : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u)
+    (hub : sp.ts u + 6 * sp.Δ ≤ b) :
+    ∃ j ell ell', SA.UpdateAt tr.projAC y j u ell ∧
+      tr.projAC.CallAt y (j + 1) ell' ∧ ell'.call = .toFG ∧
+      tr.time (j + 1) = sp.ts u + 6 * sp.Δ ∧
+      ell'.frame = ell.frame ∧
+      SA.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)) := by
+  have hgu : SA.gbar g ≤ sp.ts u := by
+    have hnext := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g)
+      ((sp.slot (SA.gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega)
+    exact (not_le.mp hnext).le.trans hu
+  apply update_toFG_calls_of_awake hp.run hy
+    (hp.awake y hy _ (by linarith [sp.toParams.hΔ]) hub)
+  intro i hi
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  unfold SA.joined
+  rcases SA.restartTime_state hr hy i with h | ⟨r, hri, hrs, h⟩
+  · rw [h]; exact bot_le
+  · rw [h]
+    apply WithBot.coe_le_coe.mpr
+    have hrestart := restart_le_before hp hy (Compose.projAC_restartAt.1 hrs)
+      ((hp.run.time_mono hri.le).trans (hi ▸ hub))
+    have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
+      SA.slot_of_mem sp (u + 1) (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+        (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+    change tr.time r ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
+    rw [hi, hslot]
+    simpa using hrestart.trans hu
 
 /-- A deepest candidate extending a non-genesis block gives an actual report by this call's
 time, including the historical report that suppresses a new return. -/
