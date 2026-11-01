@@ -299,22 +299,6 @@ theorem healthy_stored_read_eq_record_after_repair (Q : HealthyPreparationQuery 
       hready hheal hbudget hrepair hi hcut hv
   · exact hv
 
-/-- A finite record source is either the current finalized block or an actual late raw
-write before this cut. It does not require a future fast-lock cover. -/
-def HealthyRecordSource (Q : HealthyPreparationQuery S A V) (cleanLabel : Nat)
-    (y : Fin Q.params.n) (n : Nat) (R : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
-  R = (Q.trace.state y n).fg.F ∨ ∃ q s CV, q < n ∧ Q.trace.time q ≤ Q.run.2.horizon ∧
-    cleanLabel + 2 * Q.params.k + 1 ≤ s ∧
-    (SA.ResultAt Q.trace.projAC y q s R CV ∨ SA.OptimisticLockAt Q.trace.projAC y q s R CV)
-
-theorem healthyRecordSource_iff (Q : HealthyPreparationQuery S A V) (cleanLabel : Nat)
-    (y : Fin Q.params.n) (n : Nat) (R : SA.Blk Q.params.n (List (FG.Att Q.params.n))) :
-    HealthyRecordSource S A V Q cleanLabel y n R ↔
-      R = (Q.trace.state y n).fg.F ∨ ∃ q s CV, q < n ∧ Q.trace.time q ≤ Q.run.2.horizon ∧
-        cleanLabel + 2 * Q.params.k + 1 ≤ s ∧
-        (SA.ResultAt Q.trace.projAC y q s R CV ∨ SA.OptimisticLockAt Q.trace.projAC y q s R CV) :=
-  Iff.rfl
-
 section ConditionalSafety
 variable (Q : HealthyPreparationQuery S A V) {c t₀ ΔF a : Time}
   (hsync : Healing.ResetService Q.trace (honestKeys S Q.run.2)
@@ -359,36 +343,350 @@ theorem healthy_cut_tips_ancestor_of_interval
     (honest_ownKey (S := S) hvi.1) (cutMap_mono S Q.run.2 Q.hn hij) hinterval
       (by rw [hri]; exact .refl)
 
-omit hsync hreset ha hsnapshot in
-/-- Actual raw record sources admit frontier reads without a future origin cover. -/
-theorem healthy_cut_tips_comparable_of_sources
-    (cleanLabel : Nat)
-    {u v : V} {i j : Nat} (hi : i ≤ Q.run.2.events.length)
-    (hj : j ≤ Q.run.2.events.length)
-    (hfloori : t₀ ≤ (stateAt S Q.run.2 Q.hn u i).now)
-    (hfloorj : t₀ ≤ (stateAt S Q.run.2 Q.hn v j).now)
-    (hu : Q.run.2.point.Ready (c + 1) u (Q.run.2.cutTime i))
-    (hv : Q.run.2.point.Ready (c + 1) v (Q.run.2.cutTime j))
-    (hcover : ∀ w k, (w = u ∧ k = i) ∨ (w = v ∧ k = j) →
-      HealthyRecordSource S A V Q cleanLabel (Q.run.2.ownKey w) (cutMap S Q.run.2 Q.hn k)
-          ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey w) (cutMap S Q.run.2 Q.hn k)))
-            (Q.trace.state (Q.run.2.ownKey w) (cutMap S Q.run.2 Q.hn k)).ac.latestConfirmed).getD
-              (Q.trace.state (Q.run.2.ownKey w) (cutMap S Q.run.2 Q.hn k)).fg.F))
-    (hcompare : ∀ B B',
-      HealthyRecordSource S A V Q cleanLabel (Q.run.2.ownKey u) (cutMap S Q.run.2 Q.hn i) B →
-      HealthyRecordSource S A V Q cleanLabel (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn j) B' →
-      Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) B B') :
-    Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2))
-      (Regimes.readAfter Q.trace (Q.run.2.ownKey u) (cutMap S Q.run.2 Q.hn i)
-        (stateAt S Q.run.2 Q.hn u i).now)
-      (Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn j)
-        (stateAt S Q.run.2 Q.hn v j).now) := by
-  rw [healthy_stored_read_eq_record S A V Q hc hread hi hfloori hu,
-    healthy_stored_read_eq_record S A V Q hc hread hj hfloorj hv]
-  exact hcompare _ _ (hcover u i (Or.inl ⟨rfl, rfl⟩))
-    (hcover v j (Or.inr ⟨rfl, rfl⟩))
-
 end ConditionalSafety
+
+/-- Finite schedule to be synthesized from the original healthy progress interval.
+The window pays for the opening and its update, with strict pre-read reserve. -/
+structure HealthyRepairSchedule (Q : HealthyPreparationQuery S A V) where
+  resetTime : Time
+  deltaF : Time
+  reset : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
+    (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst deltaF resetTime Q.run.2.horizon
+  cleanLabel : Nat
+  cleanLabel_eq : cleanLabel = Healing.cleanLabel Q.params resetTime
+  duration_bound : 18 * Q.params.Δ ≤ (Sys (family S) V).cDur (K S A) Q.run
+  oldLabel : Nat
+  old_bound : cleanLabel + 2 * Q.params.k + 1 ≤ oldLabel
+  query : Time
+  lower : max Q.ready (max (Healing.drainTime Q.params resetTime)
+    (max (Q.params.ts oldLabel) (max (SA.gbar Q.gst + 4 * Q.params.Δ) 0))) ≤ query
+  reserve : query + (4 * (Q.index : Time) + 6) * Q.params.Δ < Q.heal - 1
+
+/-- An operational opening; no unguarded support-head premise is included. -/
+structure HealthyRepairOpening (Q : HealthyPreparationQuery S A V)
+    (D : HealthyRepairSchedule S A V Q) where
+  slot : Nat
+  cut : Nat
+  block : SA.Blk Q.params.n (List (FG.Att Q.params.n))
+  fresh : D.query < Q.params.ts slot
+  bounded : Q.params.ts slot ≤ D.query + 4 * (Q.index : Time) * Q.params.Δ
+  old_lt : D.oldLabel < slot
+  label : block.slot = slot
+  proposes : Q.trace.ProposesAt (runProposer S Q.run.2 Q.hn slot) cut block
+  accepts : Q.trace.AcceptAt (runProposer S Q.run.2 Q.hn slot) cut block
+  time : Q.trace.time cut = Q.params.ts slot
+  ready : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+    ((Sys (family S) V).cDur (K S A) Q.run)
+    (runProposer S Q.run.2 Q.hn slot) (Q.params.ts slot)
+
+/-- Immediate receiver repair at its actual update. This says nothing about later
+canonical reads. A retained optimistic source may have label u+1 and is not mature
+at this update; no latest-view inequality follows. A missing lookup needs no cover. -/
+def HealthyReceiverRepair (Q : HealthyPreparationQuery S A V)
+    (D : HealthyRepairSchedule S A V Q) (O : HealthyRepairOpening S A V Q D) : Prop :=
+  ∀ y ∈ honestKeys S Q.run.2,
+    Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+      ((Sys (family S) V).cDur (K S A) Q.run) y
+      (Q.params.ts O.slot + 6 * Q.params.Δ) → ∃ j ell,
+    SA.UpdateAt Q.trace.projAC y j O.slot ell ∧
+    Q.trace.time j = Q.params.ts O.slot + 6 * Q.params.Δ ∧
+    Q.trace.time j ≤ Q.run.2.horizon ∧
+    ∀ R, SA.lookup (Node.frame (Q.trace.state y (j + 1)))
+      (Q.trace.state y (j + 1)).ac.latestConfirmed = some R →
+      ∃ x ∈ honestKeys S Q.run.2, ∃ q s C CV,
+        q ≤ j ∧ Q.trace.time q ≤ Q.trace.time j ∧ D.oldLabel ≤ s ∧
+        (SA.ResultAt Q.trace.projAC x q s C CV ∨
+          SA.OptimisticLockAt Q.trace.projAC x q s C CV) ∧
+        Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R C
+
+/-- Coverage of the effective current record, not recency of its own setter.
+Maturity and anchor geometry are separate read-certificate obligations. -/
+def HealthyRecordCover (Q : HealthyPreparationQuery S A V) (cleanLabel : Nat)
+    (y : Fin Q.params.n) (n : Nat) (R : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
+  R = (Q.trace.state y n).fg.F ∨ ∃ x ∈ honestKeys S Q.run.2, ∃ q s C CV,
+    q < n ∧ Q.trace.time q ≤ Q.run.2.horizon ∧ cleanLabel + 2 * Q.params.k + 1 ≤ s ∧
+    (SA.ResultAt Q.trace.projAC x q s C CV ∨ SA.OptimisticLockAt Q.trace.projAC x q s C CV) ∧
+    Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R C
+
+/-- The last local representative and finite service at the actual stored clock.
+No record geometry is part of this context. -/
+structure HealthyReadContext (Q : HealthyPreparationQuery S A V)
+    (D : HealthyRepairSchedule S A V Q) (v : V) (i : Nat) where
+  cut : Nat
+  state_eq : Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i) =
+    Q.trace.state (Q.run.2.ownKey v) cut
+  label : Nat
+  time_nonneg : 0 ≤ (stateAt S Q.run.2 Q.hn v i).now
+  time_bound : (stateAt S Q.run.2 Q.hn v i).now ≤ Q.run.2.horizon
+  repaired : D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ <
+    (stateAt S Q.run.2 Q.hn v i).now
+  readPoint : Regimes.ReadPoint Q.trace cut (stateAt S Q.run.2 Q.hn v i).now
+  awake : Q.trace.awake (Q.run.2.ownKey v) (stateAt S Q.run.2 Q.hn v i).now
+  joined : Q.trace.JoinedAt (Q.run.2.ownKey v) (stateAt S Q.run.2 Q.hn v i).now
+  latest : (label : Int) = (SA.latestView Q.params
+    (Q.trace.state (Q.run.2.ownKey v) cut).ac
+    (Node.frame (Q.trace.state (Q.run.2.ownKey v) cut)) (stateAt S Q.run.2 Q.hn v i).now).2
+  reset_le : D.resetTime ≤ Q.params.ts label
+  sync : SyncACWindowBefore (honestKeys S Q.run.2)
+    (Q.trace.HonestBlocks (honestKeys S Q.run.2)) D.resetTime
+    (stateAt S Q.run.2 Q.hn v i).now Q.trace.projAC
+  catchup : CatchACWindowBefore Q.trace.projAC (honestKeys S Q.run.2)
+    (Q.trace.HonestBlocks (honestKeys S Q.run.2)) D.resetTime (2 * Q.params.Δ)
+    (stateAt S Q.run.2 Q.hn v i).now
+  fault : (honestKeys S Q.run.2)ᶜ.ncard <
+    {x | x ∈ honestKeys S Q.run.2 ∧ Q.trace.awake x (Q.params.ts label + Q.params.Δ) ∧
+      Q.trace.JoinedAt x (Q.params.ts label + Q.params.Δ)}.ncard
+
+section EndpointProducers
+variable (Q : HealthyPreparationQuery S A V)
+  (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.run.2.horizon)
+  (hp : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) Q.cap Q.index
+    Q.ready Q.heal Q.run)
+  (W : HealthyBaseTiming S A V Q)
+  (states : ∀ k, Q.cut ≤ k → k ≤ cutMap S Q.run.2 Q.hn Q.run.2.events.length →
+    HealthyStateFacts S A V Q W.slot k)
+
+include h0 hb hp W states
+
+/-- OPEN reset/snapshot, old threshold and joint coefficient/window producer. -/
+theorem healthy_repair_schedule : Nonempty (HealthyRepairSchedule S A V Q) := by
+  sorry
+
+/-- OPEN existence of a bounded operational opening that repairs every ready receiver.
+Proof route: opening → operational unanimity → held-only selection → receiver repair.
+Unanimity and live-lock comparison are not inferred from operational opening data alone;
+no `Healing.ReadyProposal` unguarded-support clause is assumed. -/
+theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
+    ∃ O : HealthyRepairOpening S A V Q D, HealthyReceiverRepair S A V Q D O := by
+  sorry
+
+/-- OPEN canonical transport and renewal for the CURRENT record. The actual read
+clock must be strictly after the opening update; old overwritten records are not covered. -/
+theorem healthy_current_record_sources (D : HealthyRepairSchedule S A V Q)
+    (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
+    {v : V} {i : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
+    (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
+      ((chainTrace Q.run.2).cutTime i)) :
+    HealthyRecordCover S A V Q D.cleanLabel (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)
+      ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
+        (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
+          (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) := by
+  sorry
+
+/-- OPEN stored-clock representative, repair floor and finite service producer. -/
+theorem healthy_current_read_context (D : HealthyRepairSchedule S A V Q)
+    (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
+    {v : V} {i : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
+    (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
+      ((chainTrace Q.run.2).cutTime i)) : Nonempty (HealthyReadContext S A V Q D v i) := by
+  sorry
+
+/-- OPEN current anchor candidates are compatible with the current looked-up record. -/
+theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
+    {v : V} {i : Nat} (C : HealthyReadContext S A V Q D v i)
+    {R : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
+    (hR : SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
+      (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.latestConfirmed = some R) :
+    ∀ X ∈ SA.liveLockBlocks Q.params (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.locks
+        (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
+        (stateAt S Q.run.2 Q.hn v i).now ∪
+        {(Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).fcRoot},
+      Goldilocks.Compatible (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree X R := by
+  sorry
+
+/-- OPEN pairwise compatibility of normalized current live locks. -/
+theorem healthy_current_live_chain (D : HealthyRepairSchedule S A V Q)
+    {v : V} {i : Nat} (C : HealthyReadContext S A V Q D v i) :
+    ∀ X ∈ SA.liveLockBlocks Q.params (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.locks
+        (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
+        (stateAt S Q.run.2 Q.hn v i).now,
+      ∀ Y ∈ SA.liveLockBlocks Q.params (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.locks
+        (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
+        (stateAt S Q.run.2 Q.hn v i).now,
+      Goldilocks.Compatible (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree X Y := by
+  sorry
+
+/-- OPEN actual anchor coverage or a mature raw witness; a young optimistic origin
+does not satisfy the raw arm merely because it was produced before this read. -/
+theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
+    (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
+    {v : V} {i : Nat} (C : HealthyReadContext S A V Q D v i)
+    {R : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
+    (hR : SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
+      (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.latestConfirmed = some R) :
+    (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).Anc R
+      (SA.getAnchor Q.params (Q.trace.state (Q.run.2.ownKey v) C.cut).ac
+        (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
+        (stateAt S Q.run.2 Q.hn v i).now) ∨
+    ∃ x ∈ honestKeys S Q.run.2, ∃ r s B CV,
+      SA.ResultAt Q.trace.projAC x r s B CV ∧
+      Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R B ∧
+      Q.trace.time r ≤ Q.run.2.horizon ∧ Healing.cutZ Q.params.toParams Q.gst ≤ Q.params.ts s ∧
+      D.cleanLabel + 2 * Q.params.k + 1 ≤ s ∧ s < C.label := by
+  sorry
+
+/-- OPEN current viability for a record supported by a mature result. -/
+theorem healthy_current_record_viable (D : HealthyRepairSchedule S A V Q)
+    {v : V} {i : Nat} (C : HealthyReadContext S A V Q D v i)
+    {R B : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {x r s CV}
+    (hx : x ∈ honestKeys S Q.run.2) (hr : SA.ResultAt Q.trace.projAC x r s B CV)
+    (hRB : Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R B)
+    (hrb : Q.trace.time r ≤ Q.run.2.horizon)
+    (hs : Healing.cutZ Q.params.toParams Q.gst ≤ Q.params.ts s) (hL : s < C.label)
+    (hfc : ¬ (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).Anc R
+      (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).fcRoot)
+    (hR : SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
+      (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.latestConfirmed = some R) :
+    R ∈ (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).viableTree
+      (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree := by
+  sorry
+
+omit h0 hb hp W states in
+/-- M4 vote-domain input from the bounded actual-result theorem. -/
+theorem healthy_current_vote_domain (D : HealthyRepairSchedule S A V Q)
+    (hc : Healing.CatchRun Q.trace (honestKeys S Q.run.2) Q.gst (2 * Q.params.Δ))
+    {R B : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {x r s CV}
+    (hx : x ∈ honestKeys S Q.run.2) (hr : SA.ResultAt Q.trace.projAC x r s B CV)
+    (hRB : Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R B)
+    (hrb : Q.trace.time r ≤ Q.run.2.horizon)
+    (hs : D.cleanLabel + Q.params.k + 2 ≤ s) :
+    ∀ z ∈ honestKeys S Q.run.2, ∀ q ell e, SA.CastAt Q.trace.projAC z q ell e →
+      Q.trace.time q ≤ Q.run.2.horizon → s < e.msg.slot →
+      (∀ w ∈ honestKeys S Q.run.2, ∀ p < q, ∀ e', SA.VoteAt Q.trace.projAC w p e' →
+        s < e'.msg.slot → SA.VoteExtends (Q.trace.HonestBlocks (honestKeys S Q.run.2)) e'.msg R) →
+      Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R ell.frame.fcRoot ∨
+        R ∈ ell.frame.viableTree (SA.voterBlockTree Q.params e.readPoint ell.frame e.msg.slot) := by
+  intro z hz q ell e he hqb hse hprior
+  exact D.reset.result_prefix_vote_domain_before hc hx hz hr hRB
+    (by simpa only [D.cleanLabel_eq] using hs) hrb he hse hqb hprior
+
+/-- OPEN comparison against actually stored time-live locks at the first successor. -/
+theorem healthy_current_stored_locks (D : HealthyRepairSchedule S A V Q)
+    {R B : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {x r s CV}
+    (hx : x ∈ honestKeys S Q.run.2) (hr : SA.ResultAt Q.trace.projAC x r s B CV)
+    (hRB : Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R B)
+    (hrb : Q.trace.time r ≤ Q.run.2.horizon)
+    (hs : D.cleanLabel + 2 * Q.params.k + 1 ≤ s) :
+    ∀ z ∈ honestKeys S Q.run.2, ∀ q ell e, SA.CastAt Q.trace.projAC z q ell e →
+      Q.trace.time q ≤ Q.run.2.horizon → e.msg.slot = s + 1 →
+      ∀ l ∈ (Q.trace.projAC.state z q).locks, Q.params.slot (Q.trace.time q) ≤ l.slot + Q.params.k →
+        l.slot ≤ s → ∀ Y ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2), Y.root = l.block →
+          Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) Y R := by
+  sorry
+
+/-- OPEN finite catch service, independently of record geometry. -/
+theorem healthy_repair_catch (D : HealthyRepairSchedule S A V Q) :
+    Healing.CatchRun Q.trace (honestKeys S Q.run.2) Q.gst (2 * Q.params.Δ) := by
+  sorry
+
+/-- Assemble the current whole-record certificate through the landed scoped adapters. -/
+theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
+    (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
+    {v : V} {i : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
+    (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
+      ((chainTrace Q.run.2).cutTime i)) :
+    Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)
+        (stateAt S Q.run.2 Q.hn v i).now =
+      (SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
+        (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
+          (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F := by
+  obtain ⟨C⟩ := healthy_current_read_context S A V Q h0 hb hp W states D O hrepair hi hv
+  have hc := healthy_repair_catch S A V Q h0 hb hp W states D
+  have heq := read_eq_record_of_current_votes D.reset.run D.reset.noColl
+    (honest_ownKey (S := S) hv.1) C.time_nonneg C.readPoint C.awake C.joined
+    C.sync C.catchup C.latest C.reset_le (fun R hR => ⟨
+      healthy_current_live_candidates S A V Q h0 hb hp W states D C hR, ?_⟩) C.fault
+  · simpa only [Regimes.readAfter, C.state_eq] using heq
+  apply read_source_of_recent_result D.reset hc C.time_bound
+  by_cases hfc : (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).Anc R
+      (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).fcRoot
+  · exact Or.inl (hfc.trans ((SA.anc_getAnchor
+      (Compose.frameOK_state D.reset.run.toLocalRun (honest_ownKey (S := S) hv.1) C.cut)
+      (healthy_current_live_chain S A V Q h0 hb hp W states D C)).2 _ (Or.inr rfl)))
+  rcases healthy_current_mature_or_anchor S A V Q h0 hb hp W states D O hrepair C hR with
+    ha | ⟨x, hx, r, s, B, CV, hr, hRB, hrb, hs, hlate, hL⟩
+  · exact Or.inl ha
+  exact Or.inr ⟨healthy_current_record_viable S A V Q h0 hb hp W states D C
+    hx hr hRB hrb hs hL hfc hR, x, hx, r, s, B, CV, hr, hRB, hrb, hs, hL,
+    healthy_current_vote_domain S A V Q D hc hx hr hRB hrb
+      (by have := Q.params.two_le_k; omega),
+    healthy_current_stored_locks S A V Q h0 hb hp W states D hx hr hRB hrb hlate⟩
+
+omit h0 hb hp W states in
+/-- Bound completed events, not the next-event clock of a terminal observation. -/
+theorem healthy_cut_prefix_time {i : Nat} (hi : i ≤ Q.run.2.events.length) :
+    ∀ q < cutMap S Q.run.2 Q.hn i, Q.trace.time q ≤ Q.run.2.horizon := by
+  intro q hq
+  apply simTrace_labelled_time_le S Q.run.2 Q.hn Q.valid
+  have hlen : q < (allCuts S Q.run.2 Q.hn).length := by
+    rw [length_allCuts]
+    exact hq.trans_le (cutMap_mono S Q.run.2 Q.hn hi)
+  rw [simTrace_label, List.getElem?_eq_getElem hlen]
+  simp
+
+/-- OPEN M5 mixed-source pairwise compatibility at the two actual cuts. -/
+theorem healthy_current_sources_compatible (D : HealthyRepairSchedule S A V Q)
+    {u v : V} {i j : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
+    (hj : (chainTrace Q.run.2).InCuts Q.heal j)
+    (hbi : ∀ q < cutMap S Q.run.2 Q.hn i, Q.trace.time q ≤ Q.run.2.horizon)
+    (hbj : ∀ q < cutMap S Q.run.2 Q.hn j, Q.trace.time q ≤ Q.run.2.horizon)
+    (hu : u ∈ Q.run.2.honest) (hv : v ∈ Q.run.2.honest)
+    {R R' : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
+    (hR : HealthyRecordCover S A V Q D.cleanLabel (Q.run.2.ownKey u)
+      (cutMap S Q.run.2 Q.hn i) R)
+    (hR' : HealthyRecordCover S A V Q D.cleanLabel (Q.run.2.ownKey v)
+      (cutMap S Q.run.2 Q.hn j) R') :
+    Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R R' := by
+  sorry
+
+/-- OPEN actual candidate comparison on the original directed cut interval. -/
+theorem healthy_current_record_candidates (D : HealthyRepairSchedule S A V Q)
+    (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
+    {v : V} {i j : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
+    (hj : (chainTrace Q.run.2).InCuts Q.heal j) (hij : i ≤ j)
+    (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
+      ((chainTrace Q.run.2).cutTime i)) :
+    ∀ q, cutMap S Q.run.2 Q.hn i ≤ q → q < cutMap S Q.run.2 Q.hn j → ∀ B s CV,
+      SA.ResultAt Q.trace.projAC (Q.run.2.ownKey v) q s B CV ∨
+        SA.OptimisticLockAt Q.trace.projAC (Q.run.2.ownKey v) q s B CV →
+      Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2))
+        ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
+          (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
+            (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) B := by
+  sorry
+
+/-- OPEN next-floor comparison, independently of candidate comparison. -/
+theorem healthy_current_record_next_floor (D : HealthyRepairSchedule S A V Q)
+    (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
+    {v : V} {i j : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
+    (hj : (chainTrace Q.run.2).InCuts Q.heal j) (hij : i ≤ j)
+    (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
+      ((chainTrace Q.run.2).cutTime i)) :
+    ∀ q, cutMap S Q.run.2 Q.hn i ≤ q → q < cutMap S Q.run.2 Q.hn j →
+      Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2))
+        (Q.trace.state (Q.run.2.ownKey v) (q + 1)).fg.F
+        ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
+          (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
+            (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) := by
+  sorry
+
+/-- Candidate and next-floor inputs produce the original directed cut interval. -/
+theorem healthy_current_record_interval (D : HealthyRepairSchedule S A V Q)
+    (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
+    {v : V} {i j : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
+    (hj : (chainTrace Q.run.2).InCuts Q.heal j) (hij : i ≤ j)
+    (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
+      ((chainTrace Q.run.2).cutTime i)) :
+    EffectiveRecordInterval Q.trace (honestKeys S Q.run.2) (Q.run.2.ownKey v)
+      (cutMap S Q.run.2 Q.hn i) (cutMap S Q.run.2 Q.hn j)
+      ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
+        (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
+          (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) := by
+  exact effectiveRecordInterval_of_candidates_before D.reset (honest_ownKey (S := S) hv.1)
+    (healthy_current_record_candidates S A V Q h0 hb hp W states D O hrepair hi hj hij hv)
+    (healthy_current_record_next_floor S A V Q h0 hb hp W states D O hrepair hi hj hij hv)
+
+end EndpointProducers
 
 /-- OPEN comparability of actual stored-clock tips. Old-row realization,
 label replacement and head/lock/frame comparability remain obligations. InCuts
@@ -411,7 +709,16 @@ theorem healthy_cut_tips_comparable (Q : HealthyPreparationQuery S A V)
       (cutMap S Q.run.2 Q.hn i) (stateAt S Q.run.2 Q.hn v i).now
     Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) (C u i) (C v j) ∨
       Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) (C v j) (C u i) := by
-  sorry
+  obtain ⟨D⟩ := healthy_repair_schedule S A V Q h0 hb hp W states
+  obtain ⟨O, hr⟩ := healthy_bounded_repairing_opening S A V Q h0 hb hp W states D
+  have hri := healthy_current_record_read S A V Q h0 hb hp W states D O hr hi hu
+  have hrj := healthy_current_record_read S A V Q h0 hb hp W states D O hr hj hv
+  dsimp only
+  rw [hri, hrj]
+  exact healthy_current_sources_compatible S A V Q h0 hb hp W states D hi hj
+    (healthy_cut_prefix_time S A V Q hi.1) (healthy_cut_prefix_time S A V Q hj.1) hu.1 hv.1
+    (healthy_current_record_sources S A V Q h0 hb hp W states D O hr hi hu)
+    (healthy_current_record_sources S A V Q h0 hb hp W states D O hr hj hv)
 
 /-- OPEN temporal ancestry, not merely common-chain membership. The stored
 clock and equality-time boundary are retained exactly as in the engine reads. -/
@@ -434,7 +741,13 @@ theorem healthy_cut_tips_ancestor (Q : HealthyPreparationQuery S A V)
         (stateAt S Q.run.2 Q.hn v i).now)
       (Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn j)
         (stateAt S Q.run.2 Q.hn v j).now) := by
-  sorry
+  obtain ⟨D⟩ := healthy_repair_schedule S A V Q h0 hb hp W states
+  obtain ⟨O, hr⟩ := healthy_bounded_repairing_opening S A V Q h0 hb hp W states D
+  rw [healthy_current_record_read S A V Q h0 hb hp W states D O hr hi hvi,
+    healthy_current_record_read S A V Q h0 hb hp W states D O hr hj hvj]
+  exact effective_record_of_interval D.reset.run D.reset.noColl
+    (honest_ownKey (S := S) hvi.1) (cutMap_mono S Q.run.2 Q.hn hij)
+    (healthy_current_record_interval S A V Q h0 hb hp W states D O hr hi hj hij hvi) .refl
 
 /-- Arbitrary-cut engine agreement reduces to the named open tip comparability
 obligation. No equality between stored clock and cut time is assumed. -/
