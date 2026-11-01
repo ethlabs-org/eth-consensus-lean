@@ -238,4 +238,28 @@ theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
       reduceCtorEq, not_false_eq_true]) h.2.2.2.2.2.1
     (fun a ha => (h.2.2.2.1 a ha).1) h.2.2.2.2.1
 
+/-- Every honest acceptance in the simulating trace has a valid canonical child wire.
+Receipt validity and own-proposal validity are proved by their respective run laws. -/
+theorem accepted_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) (y : Fin (Fintype.card V)) (hy : y ∈ honestKeys S rho)
+    (i : Nat) (B : Blk (S.params (pubOf E) hn))
+    (hc : (simTrace S rho hn).CallAt y i (.fg (.block B true))) :
+    decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      (blockObj _ B) = some B := by
+  have run := simTrace_goldilocksRun S rho hn hv
+  rcases Compose.blockCall_cases run.toLocalRun hy hc with hg |
+    ⟨j, x, _, hg, hp, d, p, hdp, hB, _, _, _, _⟩
+  · have hw := run.wire y hy i _ _ hg
+    have ha := (run.cutLaw y hy i _ hc).2.1
+    obtain ⟨root, _, hr, _, _, _, _, _⟩ := Store.onBlock_eq_some ha
+    exact canonical_block_decodes S rho hn B (by rw [hr]; simp) hw.1 hw.2.1 hw.2.2
+  · obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run.toLocalRun hy hg
+    have req := SA.interface_requirements (S.params (pubOf E) hn)
+      (List (FG.Att (Fintype.card V))) (S.ro _)
+    have hd := own_proposal_decodes S rho hn (runProposer S rho hn) y cfg _ _ x
+      ⟨req.1, req.2.1, req.2.2.1, req.2.2.2, SA.proposal_payload_valid _ _ _⟩
+      run.genesis_root_ok hr hs hp d p (by rw [hst]; exact hdp)
+    simpa only [hst, Node.acProposal, Node.tickStep, Node.acCall, hB] using hd
+
 end Consensus.Goldilocks.Refinement
