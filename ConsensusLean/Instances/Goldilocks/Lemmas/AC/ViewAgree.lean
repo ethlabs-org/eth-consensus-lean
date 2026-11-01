@@ -343,7 +343,7 @@ theorem view_agree_before (hrun : ACRun proposer tr H U) {s : Nat} {p y : Fin sp
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
-    {b : Time} (hsync : SyncACBefore H U b tr) (hb : tr.time i ≤ b)
+    {b : Time} (hsync : ServiceBefore H U b tr) (hb : tr.time i ≤ b)
     (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
       e.readPoint.blockStamp Hd.root < ETime.of (freeze sp (s + 1)) → Anc U ℓp.frame.F Hd →
         Hd ∈ ℓp.frame.tree)

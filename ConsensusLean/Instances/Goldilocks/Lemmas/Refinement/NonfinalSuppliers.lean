@@ -67,7 +67,7 @@ structure SleepyProposalService (Q : ConfirmedQuery S A V)
   nonnegative : 0 ≤ Q.trace.time P.cut
   margin : Q.trace.time P.cut + 6 * Q.params.Δ ≤ Q.deadline
   duration : Regimes.catchUp Q.params ≤ Q.duration
-  sync : Q.trace.SyncBefore (honestKeys S Q.run.2) Q.params.Δ Q.deadline
+  sync : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.deadline
   population : ∀ s : Nat, ∀ d ∈ ({0, Q.params.Δ, 2 * Q.params.Δ} : Set Time),
     Q.params.ts s + d ≤ Q.deadline →
       Q.trace.FaultBound (honestKeys S Q.run.2) (Q.params.ts s + d)
@@ -97,7 +97,7 @@ theorem confirmed_duration_supply (Q : ConfirmedQuery S A V) :
 /-- OPEN canonical recipient service through the actual query deadline. -/
 theorem sleepy_query_sync (Q : ConfirmedQuery S A V)
     (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run) :
-    Q.trace.SyncBefore (honestKeys S Q.run.2) Q.params.Δ Q.deadline := by
+    Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.deadline := by
   sorry
 
 /-- Shortening the readiness duration preserves a strict half-ready population. -/

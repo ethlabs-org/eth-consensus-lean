@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import Mathlib.Data.Set.Finite.Basic
 @[expose] public section
 
@@ -189,6 +190,26 @@ theorem acRun_one_tick : ACRun (fun _ => 0) oneTick Set.univ ({g} : Set (Blk sp1
         obtain ⟨rfl, rfl⟩ := oneTick_label h.2
         obtain ⟨rfl, rfl⟩ := oneTick_label h'.2
         rw [Set.mem_singleton_iff.mp hB, Set.mem_singleton_iff.mp hB'] }
+
+/-- Earlier admission satisfies retained service without pretending that it processed again.
+The numerical readpoint data are the source-time counterexample: admission at 4, a new
+source at 5, and recipient deadline 8. This checks the adapter on those reduced facts,
+not a replay of the engine execution supplying them. -/
+theorem earlier_admission_served {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+    (tr : SATrace sp FGP ro) (y : Fin sp.n) (v : Vote sp.n) {q j : Nat}
+    (hqj : q ≤ j) (hp : v ∈ (tr.state y q).pool v.slot)
+    (hst : (tr.state y q).voteStamp v = ETime.of 4)
+    (hd : tr.deadline y j 5 = 8)
+    (hnr : ∀ r, q ≤ r → r < j → ¬ tr.RestartAt y r)
+    (hno : ∀ k ≤ j, 5 ≤ tr.time k → ¬ tr.ProcessAt y k v) :
+    MessageServedBefore tr y j 5 v ∧
+      ¬ (∃ k ≤ j, 5 ≤ tr.time k ∧ tr.ProcessAt y k v ∧
+        tr.time k < tr.deadline y k 5) := by
+  refine ⟨messageServedBefore_of_retained y hqj ⟨hp, ?_⟩ hnr, ?_⟩
+  · rw [hst, hd]
+    exact WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by decide : (4 : Time) < 8))
+  · rintro ⟨k, hk, ht, hm, -⟩
+    exact hno k hk ht hm
 
 end Consensus.Goldilocks.SA.Test
 

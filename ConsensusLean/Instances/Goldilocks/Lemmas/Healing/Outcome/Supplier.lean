@@ -449,7 +449,7 @@ private theorem clean_source_vote_domain_step
       simp only [SA.SAParams.ts]; ring
     rw [he]; linarith
   have hparts := Compose.honest_participants_window_before hp.run hp.noColl
-    (reset_raw_sync_window_before hp Q) hgs hx hupd hrQ
+    (SA.serviceWindowBefore_of_sync (reset_raw_sync_window_before hp Q)) hgs hx hupd hrQ
     (fun z hz => ⟨hp.healthy.2.1 z hz _ (by change SA.gbar g ≤ sp.ts s + sp.Δ; linarith),
       (Compose.joined_projection sp ro dg H tr proposer hp.run z hz _).1.mpr
         (hS.joinedAt hz (by rw [hslot]; exact hprev))⟩)
@@ -549,8 +549,8 @@ theorem clean_source_votes_before
               tr.projAC.time k < sp.ts s + 2 * sp.Δ)) →
           SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
         intro CV hW
-        apply Compose.carryAt_of_writer_window_before hr hsync hgs hcatch'
-          (by linarith [sp.toParams.hΔ]) hx hy hcast hfirst hiQ
+        apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hsync)
+          hgs hcatch' (by linarith [sp.toParams.hΔ]) hx hy hcast hfirst hiQ
         intro v hv
         obtain ⟨hvs, hw, H, hH, hHr, hBH, ha⟩ := hW v hv
         exact ⟨hvs, hw, H, hH, hHr, hFB.trans hBH, ha⟩
@@ -570,7 +570,8 @@ theorem clean_source_votes_before
           hx hy hres hBC hcast hfirst (carry _ ?_) viab
           (SA.slow_stored_locks hS hx hslow hwindow hy (by
             rw [← (SA.castAt_spec hr hy hcast).2.1, hfirst])) earlier
-          (SA.writer_merged_window_before hS.run hsync hx hgs hupd hrQ hy hcast hfirst)
+          (SA.writer_merged_window_before hS.run (SA.serviceWindowBefore_of_sync hsync)
+            hx hgs hupd hrQ hy hcast hfirst)
         intro v hv
         obtain ⟨hvs, hw, H, hH, hHr, hCH, ha⟩ := Compose.result_writer hr hx hres v hv
         exact ⟨hvs, hw, H, hH, hHr, hBC.trans hCH, ha⟩
@@ -590,8 +591,8 @@ theorem clean_source_votes_before
         obtain rfl : Hd = Hv := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hc'.1).2 hHd)
           hHv (hHdr.trans hHvr.symm)
         have hgm := hgs.trans ((SA.ts_le_iff sp).mpr (show (s : Int) ≤ m by omega))
-        apply Compose.carryAt_of_writer_window_before hr hsync hgm hcatch'
-          (by linarith [sp.toParams.hΔ]) hz hy hcast hm hiQ
+        apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hsync)
+          hgm hcatch' (by linarith [sp.toParams.hΔ]) hz hy hcast hm hiQ
         rintro v rfl
         have ht : tr.projAC.time q < sp.ts m + 2 * sp.Δ := by
           rw [hslot] at hqt

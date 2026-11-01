@@ -342,7 +342,7 @@ private theorem relayed_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
 
 /-- Relay delivery to an update uses no recipient deadline beyond that update. -/
 private theorem relayed_held_before (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {s : Nat} {b : Time} (hsync : SyncACBefore H U b tr)
+    {s : Nat} {b : Time} (hsync : ServiceBefore H U b tr)
     {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hb : tr.time c ≤ b)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D : Blk sp.n FGP} {u : Fin sp.n}
@@ -610,7 +610,7 @@ private theorem awake_participant (hrun : GoldilocksRun proposer dg H tr) (hnc :
 cutoff. Only their vote deadlines are used; later receiver wakes are irrelevant. -/
 theorem awake_participant_window_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {s : Nat} {a b : Time}
-    (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
+    (hsync : SA.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
     (ha : a ≤ sp.ts s)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
     {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
@@ -648,7 +648,7 @@ theorem awake_participant_window_before (hrun : GoldilocksRun proposer dg H tr)
 /-- The zero-source finite participant theorem retains its original interface. -/
 theorem awake_participant_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {s : Nat} {b : Time}
-    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
     {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
     (hib : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
@@ -662,7 +662,7 @@ twice the faulty population in the actual update pool. No head resolution is nee
 theorem honest_participants_window_before
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {a b : Time} {s : Nat}
-    (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
+    (hsync : SA.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
     (ha : a ≤ sp.ts s) {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
     {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
     (hib : tr.time i₀ ≤ b)
@@ -784,7 +784,7 @@ private theorem honest_supporter_win (hrun : GoldilocksRun proposer dg H tr) (hn
 /-- An origin within the finite horizon has an honest supporter using only deadline-bounded
 service and the fault bounds at slot points inside the horizon. -/
 theorem honest_supporter_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hC : OriginWithin tr H C s b) :
@@ -802,7 +802,7 @@ theorem honest_supporter_before (hrun : GoldilocksRun proposer dg H tr) (hnc : N
       {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)}.ncard at hJ
     have hJV : {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)} ⊆
         SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy =>
-      awake_participant_before hrun hnc (syncBefore_projection hrun.toLocalRun hsync)
+      awake_participant_before hrun hnc hsync.ac
         hX hu hi₀ hy.1 hy.2.1 hy.2.2
     have hSV : {w | ∃ v ∈ CV, v.val = w} ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
       rintro w ⟨v, hv, rfl⟩
@@ -931,13 +931,13 @@ private theorem same_label_compatible_win (hrun : GoldilocksRun proposer dg H tr
 
 /-- Origins of one label compare using recipient deadlines only up to `b`. -/
 theorem same_label_compatible_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hf : 2 * Hᶜ.ncard < sp.n)
     {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
     Compatible (tr.HonestBlocks H) C C' := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
-  have hs := syncBefore_projection hrun.toLocalRun hsync
+  have hs := hsync.ac
   have hle : ∀ T : Set (Fin sp.n), T.ncard ≤ sp.n := fun T =>
     (Set.ncard_le_ncard (Set.subset_univ T)).trans (by rw [Set.ncard_univ, Nat.card_fin])
   have hro : ∀ {X x i i' D D' CV CV'}, X ∈ H → x ∈ H → tr.time i ≤ b →
@@ -1048,7 +1048,7 @@ theorem origins_below_succ_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : N
 
 /-- The finite-deadline origin step preserves the horizon on every vote witness. -/
 theorem origins_below_succ_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     {s : Nat} (hP : OriginsBelowUpTo tr H s b) (hV : VotesBelowUpTo tr H s b) :

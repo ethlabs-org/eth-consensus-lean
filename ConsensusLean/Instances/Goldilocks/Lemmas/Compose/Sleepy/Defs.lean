@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 
 public section
 
@@ -27,6 +29,26 @@ read on its AC projection, with ancestry inside the honest blocks of the run:
 namespace Consensus.Goldilocks.Compose
 
 open SA (SAParams ReplayOrder Vote Payload)
+
+/-- The finite Sleepy consumers need SA evidence and actual block acceptance relay,
+not fresh processing of every repeated vote or attestation admission. -/
+structure SleepyServiceBefore {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (ΔF b : Time) : Prop where
+  deltaF : sp.Δ ≤ ΔF
+  ac : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC
+  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → 0 ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) sp.Δ ≤ b →
+      tr.deadline y j (tr.time i) sp.Δ ≤ tr.time j →
+      Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
+      tr.BlockAcceptedBy y j (tr.time i) B
+
+/-- Existing node synchrony is sufficient for the specialized Sleepy service. -/
+theorem sleepyServiceBefore_of_sync {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {ΔF b : Time}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    (hr : Node.LocalRun proposer dg H SA.Vote.val tr) (hs : tr.SyncBefore H ΔF b) :
+    SleepyServiceBefore tr H ΔF b :=
+  ⟨hs.deltaF, SA.serviceBefore_of_sync (syncBefore_projection hr hs), hs.relay⟩
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))

@@ -242,7 +242,7 @@ private theorem fwd_reaches_update_window_before
   have hΔ := sp.toParams.hΔ
   obtain ⟨v, rfl, hvs, hR, k, hsend, h1, h2⟩ := hu
   refine ⟨v, rfl, hR, ?_⟩
-  have h := sync_window_before_forward hr hsync hX hsend (ha.trans h1)
+  have h := sync_window_before_forward hr (serviceWindowBefore_of_sync hsync) hX hsend (ha.trans h1)
     (by linarith) hY hc (fun k' hk' hr' => (hrs k' hk' hr').trans h1)
     (by linarith) fun t ht₁ ht₂ => by
       rw [slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]

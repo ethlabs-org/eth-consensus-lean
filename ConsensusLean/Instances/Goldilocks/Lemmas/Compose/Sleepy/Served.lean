@@ -797,7 +797,7 @@ private theorem ReadInv.of_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
 
 private theorem ReadInvWith.of_before {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hi : ∀ k < i, tr.time k ≤ b) {t : Time}
     (ht : t ≤ b) (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ t → tr.FaultBound H (sp.ts s + sp.Δ)) :
     ReadInvWith tr H (fun B => OnOriginChainWithin tr H B b)
@@ -816,8 +816,7 @@ private theorem ReadInvWith.of_before {b : Time} (hinv : SleepyInvariantUpTo tr 
       hinv.vote_extends C s hO x hx k e hv (hi k hk) hs
     sync := Or.inr {
       message := fun x hx k m hm h0 z hz j ℓ hc hd hj =>
-        (SA.messageServedBefore_iff _ _ _ _).mpr
-          (Or.inl (hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans ht) hj))
+        hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans ht) hj
       relay := fun x hx k B hB h0 z hz j ℓ hc hd hj ha =>
         hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans ht) hj ha }
     awake := hfb }
@@ -1593,7 +1592,7 @@ theorem read_head_support_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
 Only the fault bounds at `t_s + Δ ≤ t` are needed for the latest-view majority. -/
 theorem read_head_support_before {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time} (htb : t ≤ b)
     (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ t → tr.FaultBound H (sp.ts s + sp.Δ))
     (hle : ∀ k < i, tr.time k ≤ t) (hti : t ≤ tr.time i)

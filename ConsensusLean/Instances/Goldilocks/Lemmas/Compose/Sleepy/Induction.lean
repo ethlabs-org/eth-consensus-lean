@@ -83,7 +83,7 @@ theorem frontier_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : 
 
 /-- Both frontiers at a finite horizon, with recipient-bounded rather than whole-run service. -/
 theorem frontier_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d)) :
     ∀ s, OriginsBelowUpTo tr H s b ∧ VotesBelowUpTo tr H s b := by
@@ -121,7 +121,7 @@ theorem sleepy_invariant_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
 
 /-- The complete finite record invariant under recipient-bounded service. -/
 theorem sleepy_invariant_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d)) : SleepyInvariantUpTo tr H b := by
   have hF := frontier_before hrun hnc hb hsync hfb

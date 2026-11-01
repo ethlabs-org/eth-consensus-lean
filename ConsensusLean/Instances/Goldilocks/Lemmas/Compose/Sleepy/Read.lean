@@ -73,7 +73,7 @@ block `R` named by the record, `readAfter y j t = R`; otherwise it is `Σ.F`. -/
 theorem ready_read_record_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
     (hinv : SleepyInvariantUpTo tr H b)
-    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → tr.FaultBound H (sp.ts s + sp.Δ))
     {y : Fin sp.n} {j : Nat} {t : Time}
     (hrp : Regimes.ReadPoint tr j t) (_hb : Regimes.Boundary tr y j)

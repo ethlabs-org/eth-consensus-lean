@@ -337,7 +337,7 @@ private theorem honest_batch_carry_win (hrun : GoldilocksRun proposer dg H tr)
 
 /-- The honest batch reaches a next-slot vote using recipient service within the horizon. -/
 theorem honest_batch_carry_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) (hsync : SleepyServiceBefore tr H ΔF b)
     {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
@@ -361,7 +361,7 @@ theorem honest_batch_carry_before (hrun : GoldilocksRun proposer dg H tr)
     have hkt' : tr.projAC.time k < sp.ts s + 2 * sp.Δ := by
       rw [hvs] at hkt
       linarith
-    refine carryAt_of_writer_before hr (syncBefore_projection hrun.toLocalRun hsync)
+    refine carryAt_of_writer_before hr hsync.ac
       hx hy hc hs hib ?_
     rintro v rfl
     refine ⟨hvs, ⟨k, ⟨ℓk, hck, Or.inl ⟨e', he', rfl⟩⟩,
@@ -567,7 +567,7 @@ theorem first_transfer_step_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : 
 
 /-- First transfer with service restricted to recipient deadlines within `b`. -/
 theorem first_transfer_step_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
@@ -609,7 +609,7 @@ theorem first_transfer_step_before (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨x, hx, i₀, CV, hi₀, hR | hO⟩ := originWithin_iff.1 hC
   · exact SA.result_transfer sp _ ro H _ tr.projAC proposer hrun' s x y i₀ i C CV ℓ e hx hR hy hc hs
       (result_carry_before hrun hnc hsync hx hR hy hc hs hib hF) (Or.inl hv) hlocks
-      (result_writer_pool_before hrun hnc (syncBefore_projection hrun.toLocalRun hsync)
+      (result_writer_pool_before hrun hnc hsync.ac
         hx hR hi₀ hy hc hs)
   · exact SA.optimistic_transfer_stored sp hrun' hx hO .refl hf hy hc hs
       (optimistic_carry_before hrun hnc hsync hx hO hy hc hs hib hF) (Or.inl hv) hE
@@ -708,7 +708,7 @@ theorem later_transfer_step_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : 
 
 /-- Later-batch transfer with recipient-deadline-bounded service. -/
 theorem later_transfer_step_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
@@ -835,7 +835,7 @@ theorem votes_below_succ_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
 
 /-- The first-bad-vote induction uses only recipient deadlines within the horizon. -/
 theorem votes_below_succ_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)

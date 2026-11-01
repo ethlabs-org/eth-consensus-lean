@@ -779,7 +779,7 @@ slot-`(s+1)` voter whose `Σ.F` it extends: its voter accepted it (or it is gene
 `t_m + Δ ≤ t_s + Δ`, and `Sync` relays the acceptance (from `t_{s₀}` on; an earlier one by
 `hold`) to the voter, awake since its last restart at or before `t_s`, by `t_s + 2Δ`. -/
 private theorem honest_head_accepted (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {s₀ : Nat} {b : Time} (hservice : SleepyWindow tr H ΔF s₀ b ∨ tr.SyncBefore H ΔF b)
+    {s₀ : Nat} {b : Time} (hservice : SleepyWindow tr H ΔF s₀ b ∨ SleepyServiceBefore tr H ΔF b)
     {s : Nat} {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
@@ -937,7 +937,7 @@ vote (workbench#11 §3, the frozen witness): it was accepted by its voter by `t_
 and relayed to `y` (joined, so awake since `t_s`, with `Σ.F` below it) before the freeze
 `t_s + 3Δ`. -/
 private theorem honest_head_frozen (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {s₀ : Nat} {b : Time} (hservice : SleepyWindow tr H ΔF s₀ b ∨ tr.SyncBefore H ΔF b)
+    {s₀ : Nat} {b : Time} (hservice : SleepyWindow tr H ΔF s₀ b ∨ SleepyServiceBefore tr H ΔF b)
     {s : Nat} {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
@@ -1455,7 +1455,7 @@ compatible with `B`, each extended by an honest vote of a slot `≤ s`) and the 
 before `t_{s₀}` caught up (`hold`), a block `B` that an honest slot-`s` vote extends is in the
 viable tree of the voter block tree, or at or below `fc_root`. -/
 private theorem vote_frame_of {s₀ : Nat} {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hservice : SleepyWindow tr H ΔF s₀ b ∨ tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) (hservice : SleepyWindow tr H ΔF s₀ b ∨ SleepyServiceBefore tr H ΔF b)
     (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
@@ -1567,7 +1567,7 @@ theorem vote_frame_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc 
 
 /-- The frozen witness at a vote needs only recipient service within its finite horizon. -/
 theorem vote_frame_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)

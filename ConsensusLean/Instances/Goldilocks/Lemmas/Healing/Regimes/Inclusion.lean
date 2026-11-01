@@ -52,7 +52,7 @@ record of `y` after all events at `t`, or its `Σ.F`, extends `P`: `y` ran the u
 `P` (`later_update_adopts`), and the record and `Σ.F` only extend (`record_step`,
 `run_F_mono`). -/
 theorem ready_record_extends_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hb0 : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time),
       sp.ts s + d ≤ b → tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -150,7 +150,8 @@ theorem ready_record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact ready_record_extends_before hrun hnc hb0 hs (sleepyPrefix_iff.1 (hsl.prefix hb0)).2.2
+  exact ready_record_extends_before hrun hnc hb0 (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
+    (sleepyPrefix_iff.1 (hsl.prefix hb0)).2.2
     (sleepy_invariant_upTo hrun hnc (hsl.prefix hb0)) hP ht hy hj (le_max_left t 0)
 
 /-- **A proposer ready at its slot start proposes** (node-level: its tick at `t_s` runs
@@ -245,7 +246,7 @@ proof: the read is the record's block, above `Σ.F`, or `Σ.F`, which the record
 then). -/
 theorem read_extends_of_record_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     (hfb : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → tr.FaultBound H (sp.ts s + sp.Δ))
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {t : Time}
     (hj : CutAfter tr j t) (hready : ReadyAt tr H (catchUp sp) y t) (htb : t ≤ b)
@@ -301,7 +302,7 @@ theorem include_sleepy : IncludeSleepy := by
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
   exact read_extends_of_record_before hrun hnc
     (sleepy_invariant_upTo hrun hnc (hsl.prefix (le_max_right t 0)))
-    (syncBefore_projection hrun.toLocalRun hs)
+    (SA.serviceBefore_of_sync (syncBefore_projection hrun.toLocalRun hs))
     (fun s _ => by simpa only [sp.slotTime_eq, SA.SAParams.ts] using (hsl.2 s).2.1)
     hy.1 hj hy (le_max_left t 0)
     (ready_record_extends hrun hnc hsl hP ht hy hj)

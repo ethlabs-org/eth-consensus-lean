@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
@@ -17,7 +18,8 @@ safety/inclusion/growth; they do not prove these finite engine bridges. No whole
 
 `SleepySafePrefix` requires `SyncRun 0 (b - Δ)`: this still quantifies receiver calls after
 `b`, including later wakes. `SyncUntil b` alone cannot supply it. The finite consumers below
-instead use `SyncBefore`, which bounds the recipient's deadline, and bound all observations
+instead use `SleepyServiceBefore`, which permits retained stamped SA evidence and bounds
+the recipient's deadline, and bound all observations
 by `b`. Their proofs need a dependency-local version of R.1/R.2, not direct application of
 `IncludeSleepy`/`GrowSleepy` (both currently require whole-run `SleepyRun`).
 
@@ -119,7 +121,7 @@ to the consumer and contract rather than assumed away. -/
 def SleepyServiceSupplier : Prop :=
   ∀ b, 0 ≤ b → b ≤ rho.horizon → rho.ExecutionValid →
     rho.log.SyncUntil rho.point b →
-    (simTrace S rho hn).SyncBefore (honestKeys S rho) (S.params (pubOf E) hn).Δ b
+    Compose.SleepyServiceBefore (simTrace S rho hn) (honestKeys S rho) (S.params (pubOf E) hn).Δ b
 
 private theorem event_before_endCut (hv : rho.ExecutionValid) {t : Time} (ht : 0 ≤ t)
     {i : Nat} {e : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
@@ -253,7 +255,8 @@ The unused horizon premise is retained to preserve the existing named-argument i
 theorem sleepy_safe_finite (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn)) {b : Time}
     (hb0 : 0 ≤ b) (hbh : b ≤ rho.horizon)
-    (hsync : (simTrace S rho hn).SyncBefore (honestKeys S rho) (S.params (pubOf E) hn).Δ b)
+    (hsync : Compose.SleepyServiceBefore (simTrace S rho hn) (honestKeys S rho)
+      (S.params (pubOf E) hn).Δ b)
     (hf : ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf E) hn).Δ,
       2 * (S.params (pubOf E) hn).Δ} : Set Time), (S.params (pubOf E) hn).ts s + d ≤ b →
       (simTrace S rho hn).FaultBound (honestKeys S rho) ((S.params (pubOf E) hn).ts s + d)) :
@@ -264,13 +267,14 @@ theorem sleepy_safe_finite (hv : rho.ExecutionValid)
 set_option linter.unusedVariables false in
 /-- Finite R.2 inclusion consumer (owner: Regimes/Refinement). Re-run A1.7/F.4 only
 through the observation `t ≤ b`: the producer at `τ` is in the horizon, and its full `6Δ`
-margin ends before the observation. Every service dependency must fit `SyncBefore b`.
+margin ends before the observation. Every service dependency must fit `SleepyServiceBefore b`.
 `IncludeSleepy` is the paper source, not an applicable finite theorem. No future participation
 or whole-run extension is assumed. Uses the canonical run with `runProposer S rho hn`. -/
 theorem sleepy_include_finite (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn)) {b : Time}
     (hb0 : 0 ≤ b) (hbh : b ≤ rho.horizon)
-    (hsync : (simTrace S rho hn).SyncBefore (honestKeys S rho) (S.params (pubOf E) hn).Δ b)
+    (hsync : Compose.SleepyServiceBefore (simTrace S rho hn) (honestKeys S rho)
+      (S.params (pubOf E) hn).Δ b)
     (hf : ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf E) hn).Δ,
       2 * (S.params (pubOf E) hn).Δ} : Set Time), (S.params (pubOf E) hn).ts s + d ≤ b →
       (simTrace S rho hn).FaultBound (honestKeys S rho) ((S.params (pubOf E) hn).ts s + d))
@@ -288,7 +292,7 @@ theorem sleepy_include_finite (hv : rho.ExecutionValid)
   have hrun := simTrace_goldilocksRun S rho hn hv
   have hinv := Compose.sleepy_invariant_before hrun hnc hb0 hsync hf
   exact Regimes.read_extends_of_record_before hrun hnc hinv
-    (Compose.syncBefore_projection hrun.toLocalRun hsync)
+    hsync.ac
     (fun s hs => hf s _ (by simp) hs) hy.1 hj hy htb
     (Regimes.ready_record_extends_before hrun hnc hb0 hsync hf hinv hP hmargin hy hj htb)
 
@@ -302,7 +306,8 @@ theorem sleepy_grow_finite (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn)) {t b : Time} {k : Nat}
     (ht : 0 ≤ t) (hk : 1 ≤ k) (hb : b = t + (4 * k + 6) * (S.params (pubOf E) hn).Δ)
     (hbh : b ≤ rho.horizon)
-    (hsync : (simTrace S rho hn).SyncBefore (honestKeys S rho) (S.params (pubOf E) hn).Δ b)
+    (hsync : Compose.SleepyServiceBefore (simTrace S rho hn) (honestKeys S rho)
+      (S.params (pubOf E) hn).Δ b)
     (hf : ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf E) hn).Δ,
       2 * (S.params (pubOf E) hn).Δ} : Set Time), (S.params (pubOf E) hn).ts s + d ≤ b →
       (simTrace S rho hn).FaultBound (honestKeys S rho) ((S.params (pubOf E) hn).ts s + d))
@@ -738,7 +743,7 @@ This uses the head-support theorem directly: no call-boundary premise is needed.
 private theorem read_eq_effective_record (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
     (hinv : Compose.SleepyInvariantUpTo (simTrace S rho hn) (honestKeys S rho) rho.horizon)
-    (hsync : (simTrace S rho hn).SyncBefore (honestKeys S rho)
+    (hsync : Compose.SleepyServiceBefore (simTrace S rho hn) (honestKeys S rho)
       (S.params (pubOf E) hn).Δ rho.horizon)
     (hf : ∀ s : Nat, (S.params (pubOf E) hn).ts s + (S.params (pubOf E) hn).Δ ≤ rho.horizon →
       (simTrace S rho hn).FaultBound (honestKeys S rho)
@@ -764,7 +769,7 @@ private theorem read_eq_effective_record (hv : rho.ExecutionValid)
       Compose.ready_implies_joined _ _ _ _ _ _ hrun y hr.1 t _ ht0
         (by unfold Regimes.catchUp; linarith [(S.params (pubOf E) hn).toParams.hΔ]) hr.2
     obtain ⟨hc, hs⟩ := Compose.read_head_support_before hinv hrun hnc
-      (Compose.syncBefore_projection hrun.toLocalRun hsync) hr.1 ht
+      hsync.ac hr.1 ht
       (fun s hs => hf s (hs.trans ht)) hrp.1 hrp.2 hwj ⟨hR, hRr⟩
     exact SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)
 
@@ -773,7 +778,7 @@ there, then transport back through the unchanged local state. -/
 private theorem stored_read_eq_record (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
     (hinv : Compose.SleepyInvariantUpTo (simTrace S rho hn) (honestKeys S rho) rho.horizon)
-    (hsync : (simTrace S rho hn).SyncBefore (honestKeys S rho)
+    (hsync : Compose.SleepyServiceBefore (simTrace S rho hn) (honestKeys S rho)
       (S.params (pubOf E) hn).Δ rho.horizon)
     (hf : ∀ s : Nat, (S.params (pubOf E) hn).ts s + (S.params (pubOf E) hn).Δ ≤ rho.horizon →
       (simTrace S rho hn).FaultBound (honestKeys S rho)
@@ -817,7 +822,7 @@ complete local event identifies the output with the effective record. Records ex
 at the original ordered cuts, and coherent stores preserve their emitted chains. -/
 theorem sleepy_safe_engine (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
-    (hsync : (simTrace S rho hn).SyncBefore (honestKeys S rho)
+    (hsync : Compose.SleepyServiceBefore (simTrace S rho hn) (honestKeys S rho)
       (S.params (pubOf E) hn).Δ rho.horizon)
     (hf : ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf E) hn).Δ,
       2 * (S.params (pubOf E) hn).Δ} : Set Time),

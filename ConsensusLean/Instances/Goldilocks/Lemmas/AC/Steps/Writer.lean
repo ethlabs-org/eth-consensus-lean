@@ -195,7 +195,7 @@ private theorem writer_pool_of_sync (hrun : ACRun proposer tr H U) {X : Fin sp.n
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr ∨
-      SyncACWindowBefore H U (sp.ts s) (tr.time i₀) tr) {k : Nat}
+      ServiceWindowBefore H U (sp.ts s) (tr.time i₀) tr) {k : Nat}
     (hk : k ≤ i) :
     ∀ v ∈ (tr.state y (k + 1)).pool s, v ∈ (tr.state X i₀).pool s ∨
       v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} := by
@@ -271,7 +271,7 @@ private theorem writer_merged_of_sync (hrun : ACRun proposer tr H U) {X : Fin sp
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr ∨
-      SyncACWindowBefore H U (sp.ts s) (tr.time i₀) tr) :
+      ServiceWindowBefore H U (sp.ts s) (tr.time i₀) tr) :
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} := by
   have hr := hrun.localRun
@@ -336,7 +336,7 @@ theorem writer_merged (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ 
 
 /-- Writer-pool comparison uses only sources at or after the result slot's start. -/
 theorem writer_pool_window_before (hrun : ACRun proposer tr H U) {a b : Time}
-    (hsync : SyncACWindowBefore H U a b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+    (hsync : ServiceWindowBefore H U a b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
     (ha : a ≤ sp.ts s)
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX)
     (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -352,7 +352,7 @@ theorem writer_pool_window_before (hrun : ACRun proposer tr H U) {a b : Time}
 
 /-- A1.8 (d) with an inclusive source window and the writer's update cutoff. -/
 theorem writer_merged_window_before (hrun : ACRun proposer tr H U) {a b : Time}
-    (hsync : SyncACWindowBefore H U a b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+    (hsync : ServiceWindowBefore H U a b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
     (ha : a ≤ sp.ts s)
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX)
     (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -368,26 +368,26 @@ theorem writer_merged_window_before (hrun : ACRun proposer tr H U) {a b : Time}
 
 /-- The source-zero specialization of writer-pool service. -/
 theorem writer_pool_before (hrun : ACRun proposer tr H U) {b : Time}
-    (hsync : SyncACBefore H U b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+    (hsync : ServiceBefore H U b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX)
     (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {k : Nat} (hk : k ≤ i) :
     ∀ v ∈ (tr.state y (k + 1)).pool s, v ∈ (tr.state X i₀).pool s ∨
       v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} :=
-  writer_pool_window_before hrun ((syncACWindowBefore_zero_iff _ _ _ _).mpr hsync) hX
+  writer_pool_window_before hrun hsync hX
     (by have := sp.toParams.hΔ; simp only [SAParams.ts]; positivity) hupd hi₀ hy hc hs hk
 
 /-- The source-zero specialization of A1.8 (d). -/
 theorem writer_merged_before (hrun : ACRun proposer tr H U) {b : Time}
-    (hsync : SyncACBefore H U b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+    (hsync : ServiceBefore H U b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX)
     (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) :
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} :=
-  writer_merged_window_before hrun ((syncACWindowBefore_zero_iff _ _ _ _).mpr hsync) hX
+  writer_merged_window_before hrun hsync hX
     (by have := sp.toParams.hΔ; simp only [SAParams.ts]; positivity) hupd hi₀ hy hc hs
 
 end Consensus.Goldilocks.SA

@@ -20,26 +20,6 @@ namespace Consensus.Goldilocks.Compose
 
 open SA (SAParams ReplayOrder Vote Payload)
 
-/-- The finite Sleepy consumers need SA evidence and actual block acceptance relay,
-not fresh processing of every repeated vote or attestation admission. -/
-structure SleepyServiceBefore {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (ΔF b : Time) : Prop where
-  deltaF : sp.Δ ≤ ΔF
-  ac : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC
-  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → 0 ≤ tr.time i →
-    ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) sp.Δ ≤ b →
-      tr.deadline y j (tr.time i) sp.Δ ≤ tr.time j →
-      Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
-      tr.BlockAcceptedBy y j (tr.time i) B
-
-/-- Existing node synchrony is sufficient for the specialized Sleepy service. -/
-theorem sleepyServiceBefore_of_sync {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {ΔF b : Time}
-    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    (hr : Node.LocalRun proposer dg H SA.Vote.val tr) (hs : tr.SyncBefore H ΔF b) :
-    SleepyServiceBefore tr H ΔF b :=
-  ⟨hs.deltaF, SA.serviceBefore_of_sync (syncBefore_projection hr hs), hs.relay⟩
-
 /-! ### Deadlines -/
 
 section Deadline
@@ -385,7 +365,7 @@ theorem carryAt_of_writer_win (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T
 
 /-- Windowed writer transport combines new-source service with old-head catch-up. -/
 theorem carryAt_of_writer_window_before (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
-    {a κ b : Time} (hsync : SyncACWindowBefore H U a b T) {s : Nat} (ha : a ≤ sp.ts s)
+    {a κ b : Time} (hsync : SA.ServiceWindowBefore H U a b T) {s : Nat} (ha : a ≤ sp.ts s)
     (hcatch : CatchACWindowBefore T H U a κ b) (hcatchTime : a + κ ≤ sp.ts s + 3 * sp.Δ)
     {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
@@ -396,13 +376,13 @@ theorem carryAt_of_writer_window_before (hr : ACLocalRun (SA.goldilocksSA sp FGP
       ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
         (Hv.root = sp.genesisRoot ∨ ∃ k, T.AcceptAt w k Hv ∧ T.time k < sp.ts s + 2 * sp.Δ)) :
     SA.CarryAt T U y i e s CV := by
-  have restricted : SyncACWindowBefore H U a (T.time i) T := {
+  have restricted : SA.ServiceWindowBefore H U a (T.time i) T := {
     message := fun x hx k m hm h0 z hz j ℓ hc hd ht =>
       hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans hi) ht
     relay := fun x hx k B hB h0 z hz j ℓ hc hd ht hanc =>
       hsync.relay x hx k B hB h0 z hz j ℓ hc (hd.trans hi) ht hanc }
   refine carryAt_of_writer_service hr (b := sp.ts s + 2 * sp.Δ) ha le_rfl
-    hw hy hc hs (Or.inr (SA.serviceWindowBefore_of_sync restricted)) hW ?_
+    hw hy hc hs (Or.inr restricted) hW ?_
   intro k B hk hka hanc
   have hslot := (SA.castAt_spec hr hy hc).2.1
   have hstart : sp.ts (s + 1 : Nat) ≤ T.time i :=
@@ -415,7 +395,7 @@ theorem carryAt_of_writer_window_before (hr : ACLocalRun (SA.goldilocksSA sp FGP
 
 /-- Writer transport needs recipient service only up to the receiving vote's time. -/
 theorem carryAt_of_writer_before (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
-    {b : Time} (hsync : SyncACBefore H U b T) {s : Nat}
+    {b : Time} (hsync : SA.ServiceBefore H U b T) {s : Nat}
     {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) (hi : T.time i ≤ b)
@@ -429,7 +409,7 @@ theorem carryAt_of_writer_before (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
     have := sp.toParams.hΔ
     simp only [SAParams.ts]
     positivity
-  exact carryAt_of_writer_window_before hr ((syncACWindowBefore_zero_iff _ _ _ _).mpr hsync) hs0
+  exact carryAt_of_writer_window_before hr hsync hs0
     (κ := 0) ⟨fun _ _ k _ _ hk => absurd hk (not_lt.2 (hr.time_nonneg k))⟩
     (by linarith [sp.toParams.hΔ]) hw hy hc hs hi hW
 
@@ -628,7 +608,7 @@ theorem result_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
 
 /-- A result's counted votes reach a next-slot voter using only deadlines within `b`. -/
 theorem result_carry_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsync : tr.SyncBefore H ΔF b) {X : Fin sp.n} (hX : X ∈ H)
+    (hnc : NoCollRun dg tr) (hsync : SleepyServiceBefore tr H ΔF b) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -636,7 +616,7 @@ theorem result_carry_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hF : Anc (tr.HonestBlocks H) ℓ.frame.F C) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  refine carryAt_of_writer_before hr (syncBefore_projection hrun.toLocalRun hsync)
+  refine carryAt_of_writer_before hr hsync.ac
     hX hy hc hs hib ?_
   intro v hv
   obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := result_writer hr hX hR v hv
@@ -694,7 +674,7 @@ theorem optimistic_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
 
 /-- An optimistic writer's votes reach a next-slot voter within the recipient horizon. -/
 theorem optimistic_carry_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsync : tr.SyncBefore H ΔF b) {x : Fin sp.n} (hx : x ∈ H)
+    (hnc : NoCollRun dg tr) (hsync : SleepyServiceBefore tr H ΔF b) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hO : SA.OptimisticLockAt tr.projAC x i₀ s C CV) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -702,7 +682,7 @@ theorem optimistic_carry_before {b : Time} (hrun : GoldilocksRun proposer dg H t
     (hF : Anc (tr.HonestBlocks H) ℓ.frame.F C) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  refine carryAt_of_writer_before hr (syncBefore_projection hrun.toLocalRun hsync)
+  refine carryAt_of_writer_before hr hsync.ac
     hx hy hc hs hib ?_
   intro v hv
   obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := optimistic_writer_votes hr hx hO v hv
@@ -739,7 +719,7 @@ theorem optimistic_carry (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
 
 /-- A result's writer pool needs only sources since the result slot's start. -/
 theorem result_writer_pool_window_before {a b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
+    (hnc : NoCollRun dg tr) (hsync : SA.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat} (ha : a ≤ sp.ts s)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b)
@@ -755,7 +735,7 @@ theorem result_writer_pool_window_before {a b : Time} (hrun : GoldilocksRun prop
 
 /-- A1.8 (d) uses AC recipient service only through the result's writer update. -/
 theorem result_writer_pool_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsync : SyncACBefore H (tr.HonestBlocks H) b tr.projAC)
+    (hnc : NoCollRun dg tr) (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b)
@@ -765,7 +745,7 @@ theorem result_writer_pool_before {b : Time} (hrun : GoldilocksRun proposer dg H
     ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.projAC.state X i₀).pool s ∨
         v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} :=
-  result_writer_pool_window_before hrun hnc ((syncACWindowBefore_zero_iff _ _ _ _).mpr hsync)
+  result_writer_pool_window_before hrun hnc hsync
     hX (by have := sp.toParams.hΔ; simp only [SAParams.ts]; positivity) hR hi₀ hy hc hs
 
 /-- **A1.8 (d) on the window from slot `s₀ ≤ s` to `b`**, for a result within `b`. -/

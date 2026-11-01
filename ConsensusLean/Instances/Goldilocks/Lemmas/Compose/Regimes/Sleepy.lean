@@ -130,11 +130,11 @@ theorem sleepy_safe_prefix : SleepySafePrefix := by
 
 /-- R.1 localized to recipient deadlines within the observation horizon. -/
 theorem sleepy_safe_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : tr.SyncBefore H ΔF b)
+    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d)) : ReadySafeOn tr H (catchUp sp) 0 b := by
   have hinv := sleepy_invariant_before hrun hnc hb hsync hfb
-  have hac := syncBefore_projection hrun.toLocalRun hsync
+  have hac := hsync.ac
   have hpop := fun s hs => hfb s sp.Δ (by simp) hs
   refine ⟨fun y z i j t t' hi hj _ _ _ htb _ htb' hy hz => ?_,
     fun y i j t t' hi hj hbi hbj hij htt _ htb hy hy' => ?_⟩
