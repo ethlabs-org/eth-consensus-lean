@@ -4,6 +4,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 
 public section
 
@@ -1409,5 +1410,47 @@ theorem WrappersDecoded.enqueue {sp : SA.SAParams}
     · simp only [List.map_cons, List.map_nil, List.mem_singleton] at ho
       subst o
       exact ⟨st.now, p, B, hs ▸ hd, ht ▸ le_rfl⟩
+
+/-- The engine digest tables let a decoded child and the selected durable parent certify
+the new wrapper. Parent slot order is explicit until supplied by the held-block invariant. -/
+theorem WrappersDecoded.engine_enqueue {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (st : State (S.params (pubOf E) hn) (S.ro _))
+    (h : WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash) st)
+    (B : Blk (S.params (pubOf E) hn)) (root : Nat) (p : Option (Wire (Fintype.card V)))
+    (hr : B.parent = some root)
+    (hp : (if root = (S.params (pubOf E) hn).genesisRoot then some none else
+      (st.wrappers root).map some) = some p)
+    (hb : decodeBlock (S.params (pubOf E) hn) (digests rho.hash (blockObj _ B))
+      (blockObj _ B) = some B)
+    (ht : 0 ≤ st.now) (hs : (S.params (pubOf E) hn).toParams.slotTime B.slot ≤ st.now)
+    (hslot : ∀ parent pt pp A, st.wrappers root = some parent →
+      decodeForward (S.params (pubOf E) hn) (digests rho.hash parent) parent =
+        some (st.self, pt, pp, A) → A.slot < B.slot) :
+    WrappersDecoded (digests (P := protoOf (compiled (family S)) E) rho.hash)
+      (queueAccepted st B) := by
+  apply h.enqueue B root p hr hp
+  have hc : Obj.Contains (forwardObj (S.params (pubOf E) hn) st.self st.now p B)
+      (blockObj _ B) :=
+    Obj.Contains.step (List.mem_append_right _ (List.mem_singleton_self _)) (Obj.Contains.refl _)
+  have hb' := decodeBlock_transport hb (show
+      rootOf (digests rho.hash (forwardObj (S.params (pubOf E) hn) st.self st.now p B))
+        (headerOf _ B) = rootOf (digests rho.hash (blockObj _ B)) (headerOf _ B) by
+    rw [rootOf_digests_of_mem S rho _ _ (List.mem_filterMap.mpr ⟨_, hc, rfl⟩),
+      rootOf_digests_blockObj])
+  by_cases hg : root = (S.params (pubOf E) hn).genesisRoot
+  · simp only [hg, ↓reduceIte, Option.some.injEq] at hp
+    subst p
+    exact decodeForward_genesis _ _ _ B hb' (hr.trans (congrArg some hg)) ht hs
+  · simp only [hg, ↓reduceIte, Option.map_eq_some_iff] at hp
+    obtain ⟨parent, hparent, rfl⟩ := hp
+    obtain ⟨pt, pp, A, hd, hroot, htime⟩ := h.stored root parent hparent
+    have hcontains : Obj.Contains
+        (forwardObj (S.params (pubOf E) hn) st.self st.now (some parent) B) parent :=
+      Obj.Contains.step (by simp [forwardObj, Obj.carried]) (Obj.Contains.refl _)
+    exact decodeForward_parent _ st.self st.now pt B A parent pp hb'
+      ((decodeForward_receipt_iff S rho hn hcontains).mpr hd)
+      (hr.trans (congrArg some hroot.symm)) (hroot ▸ hg)
+      (hslot parent pt pp A hparent hd) htime ht hs
 
 end Consensus.Goldilocks.Refinement
