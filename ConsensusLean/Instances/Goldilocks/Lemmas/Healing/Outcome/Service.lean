@@ -686,7 +686,7 @@ private theorem timeout_empty (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- **An honest row of a high entry's height is its target row, with the predecessor at a bound
 entry** (workbench#30 §4): it names `T` (`high_entry_eq`), is no timeout (`timeout_empty`), and
 its `finality_pair` of `σ[T]` is `(h_j, J)`, which the high records permit (`record_entry_eq`). -/
-private theorem row_of_sign (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem row_of_sign (hp : ResetPremises tr H proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H)
     {j : Nat} {att : FG.Att sp.n} (hs : tr.SignAt z j att) {T : SA.Blk sp.n (List (FG.Att sp.n))}
     {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
@@ -732,7 +732,7 @@ private theorem row_of_sign (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- **A same-height report gives a row of the entry's height by then** (workbench#30 §4): the
 client call after it (`toFG_attest`) reads `σ[T]`; it signs, or (no foreign lock,
 `record_entry_eq`) already sent a content of that height, signed earlier (`sent_origin`). -/
-private theorem sign_of_report (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem sign_of_report (hp : ResetPremises tr H proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H)
     {r : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hrep : SA.ToFGAt tr.projAC z r ℓ C) {T : SA.Blk sp.n (List (FG.Att sp.n))}
