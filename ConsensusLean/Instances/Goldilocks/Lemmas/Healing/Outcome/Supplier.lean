@@ -239,6 +239,54 @@ theorem reset_winner_voter_tree
     exact SA.voterBlockTree_anc hr hy hc P hP.1 C hCP'
   exact ⟨hCs, hfC', W, hW, hWv, hCP'.trans hPW⟩
 
+/-- A voter competitor below a strict predecessor of the proposal parent reflects into the
+proposer's viable tree. Frozen candidates use guarded relay; current-slot candidates use the
+actual proposal's uniqueness. -/
+theorem reset_competitor_reflect
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k (s + 1) P)
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    (hci : tr.projAC.CallAt p i ellp) (hti : tr.time i = sp.ts (s + 1 : Nat))
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e)
+    (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
+    {Q X B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hQt : Q ∈ ellp.frame.tree) (hPQ : P.parent = some Q.root)
+    (hXQ : ellp.frame.Anc X Q) (hne : X ≠ Q)
+    (hXv : X ∈ ellp.frame.viableHeads)
+    (hBX : B.parent = some X.root)
+    (hB : B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1))) :
+    B ∈ ellp.frame.viableTree ellp.frame.tree := by
+  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hP.1 hci
+  obtain ⟨-, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  have hXt : X ∈ ellp.frame.tree := SA.mem_of_anc hXQ hQt
+  have hXB : Anc (tr.HonestBlocks H) X B := .single ⟨hPhiU hXt, hPsiU hB.1.1, hBX⟩
+  have hFB := ((hPhi.rooted.2 X hXt).mono hPhiU).trans hXB
+  have hBt : B ∈ ellp.frame.tree := by
+    rcases hB.1.2 with hfz | ⟨P', hP't, hP's, hBP'⟩
+    · exact reset_frozen_frame hp hc hP.1 hy hci hti hcy hg hB.1.1 hfz hFB
+    · obtain rfl := reset_proposal_frame_unique hp hP (by omega) hy hcy.1 hP't hP's
+      have hBP : B ≠ P' := by
+        rintro rfl
+        exact hne (hr.coherent.1 (hPhiU hXt) (hPhiU hQt)
+          (Option.some_injective _ (hBX.symm.trans hPQ)))
+      have hBQ : Anc (tr.HonestBlocks H) B Q := by
+        rcases Relation.ReflTransGen.cases_tail (hBP'.mono hPsiU) with heq | ⟨Y, hBY, hY⟩
+        · exact absurd heq.symm hBP
+        obtain rfl : Y = Q := hr.coherent.1 hY.1 (hPhiU hQt)
+          (Option.some_injective _ (hY.2.2.symm.trans hPQ))
+        exact hBY
+      exact SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hQt hBQ hFB
+  have hfB := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem
+    (((hPhi.fcRoot_anc_viableHeads X hXv).mono hPhiU).trans hXB) hBt
+  refine ⟨hBt, hfB, B, hBt, ?_, .refl⟩
+  rw [Compose.frame_of_projAC hp.run hP.1 hci] at hXv hBt ⊢
+  have hXBs := Compose.honest_held_anc hp.run hp.noColl hP.1 hXB hBt.1
+  exact ⟨hBt.1, hBt.2, hXv.2.2.1.trans hXBs,
+    le_trans hXv.2.2.2 (Compose.honest_held_height hp.run hp.noColl hP.1 hXBs).1⟩
+
 /-- **The joined duty, unanimity** (§23; phase-service §10, "Join with RN/RU"): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
 `t_u ≥ R` is `P`. -/
