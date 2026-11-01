@@ -33,13 +33,42 @@ theorem outage_reader_windows (Q : OutageQuery S A V) (w : V) (t : Time)
       (Q.stop ≤ t - Q.duration - 1 ∧
         Q.run.2.point.AwakeOnClosed w (t - Q.duration - 1) t) := hr
 
-/-- OPEN pre-outage service only for recipient deadlines through start.
-Fresh processing or retained stamped SA evidence replaces duplicate-processing synchrony.
-Engine holdings alone do not establish this supplier; admission/retention remains OPEN.
-No late-wake unrestricted SyncRun is inferred. -/
+/-- Pre-outage service through start, saturating at the finite engine horizon.
+Only labelled recipient cuts require service; no unrestricted SyncRun is inferred. -/
 theorem outage_pre_service (Q : OutageQuery S A V) :
     Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start := by
-  sorry
+  let b := min Q.start Q.run.2.horizon
+  have hnet : Q.run.2.log.SyncUntil Q.run.2.point b := by
+    constructor
+    · intro x hx m t hs y hy a hta hcut hhor haw
+      have hh := Q.outage.2.1.1.msgs x hx ⟨Q.run.1, m⟩ t ⟨m, rfl, hs⟩
+        y hy a hta (hcut.trans (min_le_left _ _)) hhor haw
+      obtain ⟨u, hu, hsent | hrecv, hnw⟩ := hh
+      · obtain ⟨o, he, ho⟩ := hsent
+        cases he
+        exact ⟨u, hu, Or.inl ho, hnw⟩
+      · obtain ⟨o, he, ho⟩ := hrecv
+        cases he
+        exact ⟨u, hu, Or.inr ho, hnw⟩
+    · intro x hx tx t ht ha hs y hy a hta hcut hhor haw
+      exact Q.outage.2.1.1.txs x hx tx t ht ha hs y hy a hta
+        (hcut.trans (min_le_left _ _)) hhor haw
+  have service := sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
+    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    (min_le_right Q.start Q.run.2.horizon) hnet
+  have bound {y j} (hj : Q.trace.IsCall y j) : Q.trace.time j ≤ Q.run.2.horizon := by
+    obtain ⟨l, hl⟩ := hj
+    exact simTrace_labelled_time_le S Q.run.2 Q.hn Q.valid (by rw [hl.2]; simp)
+  refine ⟨service.deltaF, ⟨?_, ?_⟩, ?_⟩
+  · intro x hx i m hi h0 y hy j l hj hb hd
+    exact service.ac.message x hx i m hi h0 y hy j l hj
+      (le_min hb (hd.trans (bound ⟨_, Compose.projAC_callAt.mp hj⟩))) hd
+  · intro x hx i B hi h0 y hy j l hj hb hd hF
+    exact service.ac.relay x hx i B hi h0 y hy j l hj
+      (le_min hb (hd.trans (bound ⟨_, Compose.projAC_callAt.mp hj⟩))) hd hF
+  · intro x hx i B hi h0 y hy j hj hb hd hF
+    exact service.relay x hx i B hi h0 y hy j hj
+      (le_min hb (hd.trans (bound hj))) hd hF
 
 /-- Concrete source read and record witness at the exact end-of-time T cut.
 Arming must handle each ready source, including an inherited confirmed record.
