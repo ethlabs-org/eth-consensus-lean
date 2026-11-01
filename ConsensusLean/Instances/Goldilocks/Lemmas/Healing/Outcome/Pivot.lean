@@ -544,16 +544,17 @@ private theorem proposal_holds_old (hp : ResetPremises tr H proposer dg g ΔF a)
 
 /-! ### Sources of the proposer's rows -/
 
-/-- A high row signed before the proposal has an old high origin. The write cannot be an
-optimistic check of the proposal's slot, and a regular write in that slot is later. -/
-private theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)
+/-- A high row signed before a proposal has a strictly earlier source cut and label.
+The entry remains explicit so a crossing proof can identify it by root coherence. -/
+theorem proposal_high_row_source_before (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hti : tr.time i = sp.ts u) {v : Fin sp.n} (hv : v ∈ H) {k : Nat}
     {att : FG.Att sp.n} (hki : k < i) (hs : tr.SignAt v k att)
     (hh : HZ tr H g + 1 ≤ att.h) :
-    ∃ E O, Compose.IsHonestSource tr H E att.T ∧ OldSrc tr H g u O ∧
-      Anc (tr.HonestBlocks H) E O := by
+    ∃ r l O E, r < k ∧ l < u ∧ HighOrigin tr H g v r l O ∧
+      tr.time r < sp.ts u ∧ E ∈ (tr.state v r).fg.tree ∧ E.root = att.T ∧
+      Compose.IsHonestSource tr H E att.T ∧ Anc (tr.HonestBlocks H) E O := by
   obtain ⟨r, hrk, l, O, ho, E, hE, hEO, hEr, -, hET⟩ := high_row_source hp hv hs hh
   obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_mem hp ho
   have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono (by omega)
@@ -569,10 +570,23 @@ private theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)
       have := sp.toParams.hΔ
       linarith
     · exact proposal_no_optimistic hp hpH hci hcall hti v hv r (by omega) D CV hop
-  refine ⟨E, O, Compose.isHonestSource_iff.2 ⟨v, hv, r, hE, hET.trans hEr⟩,
-    ⟨v, r, l, ho, ?_⟩,
+  exact ⟨r, l, O, E, hrk, hlu, ho,
+    fastLock_time_lt hp hfl hlu (by have := sp.toParams.hΔ; linarith), hE, hEr,
+    Compose.isHonestSource_iff.2 ⟨v, hv, r, hE, hET.trans hEr⟩,
     hEO.mono (fun X hX => ⟨v, hv, r, hX⟩)⟩
-  exact fastLock_time_lt hp hfl hlu (by have := sp.toParams.hΔ; linarith)
+
+/-- The packed old-source interface of the proposal row ordering lemma. -/
+private theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)
+    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
+    (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hti : tr.time i = sp.ts u) {v : Fin sp.n} (hv : v ∈ H) {k : Nat}
+    {att : FG.Att sp.n} (hki : k < i) (hs : tr.SignAt v k att)
+    (hh : HZ tr H g + 1 ≤ att.h) :
+    ∃ E O, Compose.IsHonestSource tr H E att.T ∧ OldSrc tr H g u O ∧
+      Anc (tr.HonestBlocks H) E O := by
+  obtain ⟨r, l, O, E, _, _, ho, ht, _, _, hE, hEO⟩ :=
+    proposal_high_row_source_before hp hpH hci hcall hti hv hki hs hh
+  exact ⟨E, O, hE, ⟨v, r, l, ho, ht⟩, hEO⟩
 
 /-- Global high-origin comparability excludes contests at high justification heights. -/
 private theorem no_high_contest (hp : ResetPremises tr H proposer dg g ΔF a)
