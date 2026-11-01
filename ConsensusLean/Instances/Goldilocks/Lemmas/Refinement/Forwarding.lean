@@ -497,6 +497,46 @@ theorem releaseAll_candidate_success {pub : Public} {O : Type} (P : Protocol pub
         simp only [h]
         exact ih _ i hi hs
 
+/-- Keep the immutable pre-poll candidates when advancing the release prefix. A durable
+entry is either a prior publication, a successful release in this prefix, or a candidate
+not yet visited. The guard premise is essential: merely clearing the queue proves nothing
+about publication. It is required only for entries of the durable map. -/
+theorem wrappers_release_prefix {pub : Public} {O : Type} (P : Protocol pub O)
+    (hash : P.Item → Nat) (origin : Key pub) (nd : Model.Node P)
+    (cs : List P.Object) (wrappers : Nat → Option P.Object) (prior : P.Object → Prop)
+    (hmap : ∀ root o, wrappers root = some o →
+      prior o ∨ ∃ i : Nat, cs[i]? = some o)
+    (hguards : ∀ root o, wrappers root = some o → ∀ i, cs[i]? = some o →
+      let pre := (Model.releaseAll P hash origin nd (cs.take i)).1
+      Model.releasable pre.seen o = true ∧
+        Model.protects P origin pre.seen o = true ∧
+        P.dependencies.ready (Model.closure pre.seen) o = true)
+    (r : Nat) :
+    ∀ root o, wrappers root = some o →
+      prior o ∨ o ∈ (Model.releaseAll P hash origin nd (cs.take r)).2 ∨
+        ∃ i, r ≤ i ∧ cs[i]? = some o := by
+  intro root o hw
+  rcases hmap root o hw with hp | ⟨i, hi⟩
+  · exact Or.inl hp
+  · by_cases hir : i < r
+    · right; left
+      apply releaseAll_candidate_success P hash origin nd (cs.take r) i o
+      · simpa only [List.getElem?_take, hir, ↓reduceIte] using hi
+      · simpa only [List.take_take, Nat.min_eq_left (Nat.le_of_lt hir)] using
+          hguards root o hw i hi
+    · exact Or.inr (Or.inr ⟨i, Nat.le_of_not_gt hir, hi⟩)
+
+/-- Polling keeps the old queue's exact order after the optional ordinary emission.
+The index belongs to the immutable pre-poll queue, not the cleared returned state. -/
+theorem pollBatch_forward_index {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time)
+    (i : Nat) (q : Time × List (Wire sp.n)) (hi : st.forwards[i]? = some q) :
+    (pollBatch st t).2[(poll st t).2.toList.length + i]? =
+      some (.forward q.1, q.2) := by
+  simp only [pollBatch]
+  rw [List.getElem?_append_right (by omega)]
+  simp only [Nat.add_sub_cancel_left, List.getElem?_map, hi, Option.map_some]
+
 /-- Each enumerated duty batch releases only objects released by the actual duty list.
 The induction threads the same intermediate node as `runDuties`, including unselected
 duties, which have an empty batch and leave the state unchanged. -/
