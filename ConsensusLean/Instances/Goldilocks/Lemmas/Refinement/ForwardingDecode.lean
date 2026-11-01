@@ -586,4 +586,25 @@ theorem decoded_held_proposal_candidate {V : Type} [Fintype V] {E : Env V}
     rw [shapeOf_act_propose S hn]
     exact hp
 
+/-- The engine's selected proposal candidate is the node's canonical constructed block. -/
+theorem proposal_candidate_block {V : Type} [Fintype V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
+    (hsel : rho.ownKey v ∈ rho.sel (.proposer s))
+    (hslot : (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now = s) :
+    let r := Node.acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now
+    ∀ d p, r.2.2 = some (d, p) →
+      rho.signedCandidate v (.propose s hs)
+        ((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).2 =
+      [blockObj (S.params (pubOf E) hn) (Node.mkBlock (digestOf S rho) (rho.ownKey v)
+        r.1.fg (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p)] := by
+  dsimp only
+  intro d p hp
+  rw [act_propose_snd S hn nd s hs]
+  simp only [propose, hp, Option.map_some, Option.toList_some, Model.Run.signedCandidate,
+    show (protoOf (compiled (family S)) E).role (.propose s hs) = .proposer s from rfl,
+    hsel, ↓reduceIte]
+  simp only [blockObj, Node.mkBlock, headerOf, hslot]
+  rfl
+
 end Consensus.Goldilocks.Refinement
