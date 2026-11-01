@@ -1,0 +1,23 @@
+diff --git a/scripts/proof-audit-coverage.txt b/scripts/proof-audit-coverage.txt
+index 3f67d63b..0d8bfe80 100644
+--- a/scripts/proof-audit-coverage.txt
++++ b/scripts/proof-audit-coverage.txt
+@@ -5455,2 +5455 @@
+-        'AvailableChainPCSAProofs.Proofs.AcFrame.Store': (
+-            'AvailableChain.PCSA.AcStoreSafe_def',
++        'AvailableChainPCSAProofs.Proofs.Shared.FGStore': (
+@@ -5459 +5457,0 @@
+-            'AvailableChain.PCSA.pcsa_clock_fg',
+@@ -5462,0 +5461,4 @@
++        ),
++        'AvailableChainPCSAProofs.Proofs.AcFrame.Store': (
++            'AvailableChain.PCSA.AcStoreSafe_def',
++            'AvailableChain.PCSA.pcsa_clock_fg',
+@@ -5884,0 +5887 @@
++            'AvailableChain.PCSA.Run.pcsaSafetyOrderLaws',
+@@ -5888,0 +5892 @@
++            'AvailableChain.PCSA.Run.pcsa_safety_process_F',
+@@ -5891,0 +5896,3 @@
++        'AvailableChainPCSAProofs.Proofs.Shared.FGStore': (
++            'AvailableChain.PCSA.pcsa_process_F_mono',
++        ),

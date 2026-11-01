@@ -1,0 +1,307 @@
+[
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Clean/Transfer.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Clean/Transfer.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Clean/TransferFrame.lean",
+    "import": "public import AvailableChainFGSA.Proofs.Head.Pool"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Clean/TransferFrame.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Clean/TransferFrame.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Finality/CoreServices.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Finality/CoreServices.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Finality/MiddleSupport.lean",
+    "import": "public import AvailableChainFGSARun.Proofs.Interface"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/DescentLoss.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/DescentLoss.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/DescentLossCause.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/DescentLossCause.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/DescentLossFirst.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/DescentLossFirst.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/DescentLossNext.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/DescentLossNext.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/FrameSource.lean",
+    "import": "public import AvailableChainFGSAProofs.Proofs.Shared.Relay",
+    "replacement": "public import AvailableChainFGSARun.Proofs.RootResolution"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/FrameSource.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/FrameSource.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/FrontierSupportHeads.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/FrontierSupportHeads.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/FrontierSupportProposal.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/FrontierSupportProposal.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/FrontierSupportTransfer.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/FrontierSupportTransfer.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/OpeningServiceGate.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/OpeningServiceGate.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetConePool.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetConePool.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetConeReceipts.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetConeReceipts.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetHealed.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetHealed.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetHigh.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetHigh.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetLeaseMove.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetLeaseMove.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetLeaseStep.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetLeaseStep.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetRaw.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetRaw.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetTHigh.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PostResetTHigh.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/PromotionCarrier.lean",
+    "import": "public import AvailableChainFGSAProofs.Proofs.Shared.Channels"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/RepairH6.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/RepairH6.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/SourceTiming.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/SourceTiming.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/SupportHeads.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/SupportHeads.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/SupportProposal.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/SupportProposal.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/SupportSlow.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/SupportSlow.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/SupportTransfer.lean",
+    "import": "public import AvailableChainFGSA.Proofs.Head.Pool"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/SupportTransfer.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Healing/SupportTransfer.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Outage/ArmingInput.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Outage/ArmingInput.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Outage/ExactProposalReceipts.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Outage/ExactProposalReceipts.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/Count.lean",
+    "import": "public import AvailableChainFGSA.Proofs.Head.Pool"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/Count.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/Count.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/ExactService.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/ExactService.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/HeadAdmit.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/HeadAdmit.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/HeadCover.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/HeadCover.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/ProposalRead.lean",
+    "import": "public import AvailableChainFGSARun.Proofs.Emission"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/Relay.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/Relay.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/ScoreRun.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootBatch"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Proofs/Shared/ScoreRun.lean",
+    "import": "public import AvailableChainGeneric.Proofs.AC.RootSupport"
+  },
+  {
+    "file": "AvailableChainFGSAProofs/Tests/Axioms.lean",
+    "import": "public import AvailableChainFGSAProofs.Proofs.Shared.ProposalRead"
+  }
+]

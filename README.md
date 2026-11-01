@@ -558,6 +558,7 @@ The only default target is `ConsensusLean` (`defaultTargets = ["ConsensusLean"]`
 `ConsensusLeanTest` is the test library, selected by the lakefile's `testDriver` and built by
 `lake test`; it is not a default target.
 `Solution` and `Challenge` are single-module libraries for the comparator.
+`archive/goldilocks/` is a read-only snapshot of the old Goldilocks Lean model and spec, outside every Lake target and check ([`ARCHIVE.md`](archive/goldilocks/ARCHIVE.md)).
 
 | Layer under `ConsensusLean/` | Contents |
 |---|---|

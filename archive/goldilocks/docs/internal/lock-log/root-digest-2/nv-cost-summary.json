@@ -1,0 +1,170 @@
+[
+  {
+    "target": "HealingParams",
+    "means": {
+      "base": {
+        "wall_s": 3.56,
+        "rss_MiB": 1648.4296875,
+        "heartbeats": 3452.5245
+      },
+      "new": {
+        "wall_s": 1.955,
+        "rss_MiB": 807.7265625,
+        "heartbeats": 3466.266
+      }
+    },
+    "delta_pct": {
+      "wall_s": -45.08426966292135,
+      "rss_MiB": -51.00024170730667,
+      "heartbeats": 0.3980131060619563
+    },
+    "flag": false
+  },
+  {
+    "target": "HealingFirst",
+    "means": {
+      "base": {
+        "wall_s": 15.535,
+        "rss_MiB": 2033.40625,
+        "heartbeats": 171174.7965
+      },
+      "new": {
+        "wall_s": 16.57,
+        "rss_MiB": 2043.015625,
+        "heartbeats": 177569.386
+      }
+    },
+    "delta_pct": {
+      "wall_s": 6.662375281622146,
+      "rss_MiB": 0.4725752662558147,
+      "heartbeats": 3.7357073767574134
+    },
+    "flag": false
+  },
+  {
+    "target": "HealingReset",
+    "means": {
+      "base": {
+        "wall_s": 11.84,
+        "rss_MiB": 2001.3671875,
+        "heartbeats": 128886.1365
+      },
+      "new": {
+        "wall_s": 12.095,
+        "rss_MiB": 2016.9765625,
+        "heartbeats": 133125.7465
+      }
+    },
+    "delta_pct": {
+      "wall_s": 2.153716216216228,
+      "rss_MiB": 0.7799355909046568,
+      "heartbeats": 3.2894228309807483
+    },
+    "flag": false
+  },
+  {
+    "target": "HealingRun",
+    "means": {
+      "base": {
+        "wall_s": 5.665,
+        "rss_MiB": 1711.2109375,
+        "heartbeats": 66874.454
+      },
+      "new": {
+        "wall_s": 5.67,
+        "rss_MiB": 1713.46875,
+        "heartbeats": 67746.633
+      }
+    },
+    "delta_pct": {
+      "wall_s": 0.08826125330978485,
+      "rss_MiB": 0.13194238363731792,
+      "heartbeats": 1.3042035453478373
+    },
+    "flag": false
+  },
+  {
+    "target": "HealingPackages",
+    "means": {
+      "base": {
+        "wall_s": 5.654999999999999,
+        "rss_MiB": 1712.3359375,
+        "heartbeats": 68415.5175
+      },
+      "new": {
+        "wall_s": 5.76,
+        "rss_MiB": 1712.2421875,
+        "heartbeats": 69301.9335
+      }
+    },
+    "delta_pct": {
+      "wall_s": 1.8567639257294433,
+      "rss_MiB": -0.005474977073538501,
+      "heartbeats": 1.2956358913750687
+    },
+    "flag": false
+  },
+  {
+    "target": "HealingClaims",
+    "means": {
+      "base": {
+        "wall_s": 21.630000000000003,
+        "rss_MiB": 2132.203125,
+        "heartbeats": 255271.728
+      },
+      "new": {
+        "wall_s": 23.02,
+        "rss_MiB": 2156.046875,
+        "heartbeats": 267818.566
+      }
+    },
+    "delta_pct": {
+      "wall_s": 6.426259824318059,
+      "rss_MiB": 1.1182682231553276,
+      "heartbeats": 4.91509110636803
+    },
+    "flag": false
+  },
+  {
+    "target": "FinalityClaims",
+    "means": {
+      "base": {
+        "wall_s": 17.875,
+        "rss_MiB": 2196.7578125,
+        "heartbeats": 215719.8045
+      },
+      "new": {
+        "wall_s": 18.97,
+        "rss_MiB": 2216.625,
+        "heartbeats": 222963.33299999998
+      }
+    },
+    "delta_pct": {
+      "wall_s": 6.125874125874109,
+      "rss_MiB": 0.9043867916140647,
+      "heartbeats": 3.357841212951773
+    },
+    "flag": false
+  },
+  {
+    "target": "Finality404",
+    "means": {
+      "base": {
+        "wall_s": 17.665,
+        "rss_MiB": 2195.65625,
+        "heartbeats": 215036.152
+      },
+      "new": {
+        "wall_s": 18.765,
+        "rss_MiB": 2216.9765625,
+        "heartbeats": 222266.7245
+      }
+    },
+    "delta_pct": {
+      "wall_s": 6.227002547410132,
+      "rss_MiB": 0.9710223310229082,
+      "heartbeats": 3.3624915776952813
+    },
+    "flag": false
+  }
+]

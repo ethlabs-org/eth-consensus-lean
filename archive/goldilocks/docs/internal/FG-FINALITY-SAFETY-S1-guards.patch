@@ -1,0 +1,146 @@
+diff --git a/scripts/CheckFGAxioms.lean b/scripts/CheckFGAxioms.lean
+index bed5a38..c268cdd 100644
+--- a/scripts/CheckFGAxioms.lean
++++ b/scripts/CheckFGAxioms.lean
+@@ -113,11 +113,19 @@ def composeImportAllowed (m dep : Name) : Bool :=
+     (under `AvailableChainGeneric.Statements.Pure &&
+       !under `AvailableChainGeneric.Statements.Pure.Walk) ||
+     [`AvailableChainSimplexFG.Store, `AvailableChainKitFG.HeightLawsDef].contains dep
++  let safety := [(`AvailableChainFGCompose.Statements.SafetyReads, `AvailableChainKitFG.ClientOnce),
++    (`AvailableChainFGCompose.Statements.SafetyReads, `AvailableChainSimplexFG.Evidence),
++    (`AvailableChainFGCompose.Statements.SafetyReads, `AvailableChainKitFG.CertificateCoreDef),
++    (`AvailableChainFGCompose.Statements.SafetyReads, `AvailableChainGeneric.Statements.V2.Duty.Slashing),
++    (`AvailableChainFGCompose.Statements.SafetyStore, `AvailableChainKitFG.StoreSafetyDef),
++    (`AvailableChainFGCompose.Statements.SafetyClient, `AvailableChainGeneric.Statements.Pure.Quorum)].contains (m, dep)
+   if dep == `Init then true
+   else if m == `AvailableChainFGCompose then
+     [`AvailableChainFGCompose.Statements.EventReads, `AvailableChainFGCompose.Statements.CoreReads,
+-     `AvailableChainFGCompose.Proofs.SourceHead].contains dep
+-  else if composeStatements m then base || ownStatements
++     `AvailableChainFGCompose.Proofs.SourceHead,
++     `AvailableChainFGCompose.Statements.SafetyReads, `AvailableChainFGCompose.Statements.SafetyStore,
++     `AvailableChainFGCompose.Statements.SafetyClient, `AvailableChainFGCompose.Statements.SafetyClaims].contains dep
++  else if composeStatements m then base || ownStatements || safety
+   else if (`AvailableChainFGCompose.Tests).isPrefixOf m then
+     foundation || ownStatements || ownProofs
+   else if (`AvailableChainFGCompose.Proofs).isPrefixOf m then
+diff --git a/scripts/check-layers.py b/scripts/check-layers.py
+index b9ce2ce..6e48eb0 100755
+--- a/scripts/check-layers.py
++++ b/scripts/check-layers.py
+@@ -630,8 +630,19 @@ def check_support(ctx: Context, m: Module, dep: str) -> bool:
+ # Exact external edges. Both source guards use this table.
+ COMPOSE_MODULES = (COMPOSE + ".Statements.EventReads", COMPOSE + ".Statements.CoreReads",
+                    COMPOSE + ".Proofs.SourceHead")
++COMPOSE_SAFETY_MODULES = tuple(COMPOSE + ".Statements." + name for name in
++                               ("SafetyReads", "SafetyStore", "SafetyClient", "SafetyClaims"))
++COMPOSE_MODULES += COMPOSE_SAFETY_MODULES
++COMPOSE_SAFETY_IMPORTS = frozenset({
++    (COMPOSE + ".Statements.SafetyReads", KITFG + ".ClientOnce"),
++    (COMPOSE + ".Statements.SafetyReads", "AvailableChainSimplexFG.Evidence"),
++    (COMPOSE + ".Statements.SafetyReads", KITFG + ".CertificateCoreDef"),
++    (COMPOSE + ".Statements.SafetyReads", SV + ".Duty.Slashing"),
++    (COMPOSE + ".Statements.SafetyStore", KITFG + ".StoreSafetyDef"),
++    (COMPOSE + ".Statements.SafetyClient", SP + ".Quorum"),
++})
+ COMPOSE_EDGES = frozenset(
+-    [(PROOFS + ".Proofs.Shared.FGCompose", dep) for dep in COMPOSE_MODULES]
++    [(PROOFS + ".Proofs.Shared.FGCompose", dep) for dep in COMPOSE_MODULES[:3]]
+     + [(PROOFS + ".Proofs.Finality." + name, COMPOSE + ".Proofs.SourceHead")
+        for name in ("MiddleSupport", "Rows")]
+     + [("AvailableChainPCSAProofs.Proofs.Shared.FGCompose", COMPOSE + ".Statements.CoreReads")]
+@@ -653,7 +664,8 @@ def compose_s(ctx: Context, m: Module, dep: str) -> bool:
+     if m.facade:
+         return dep not in COMPOSE_MODULES
+     if under(m.name, COMPOSE + ".Statements"):
+-        return not (compose_base(dep) or under(dep, COMPOSE + ".Statements"))
++        return not (compose_base(dep) or under(dep, COMPOSE + ".Statements")
++                    or (m.name, dep) in COMPOSE_SAFETY_IMPORTS)
+     return not any_under(m.name, (COMPOSE + ".Proofs", COMPOSE + ".Tests"))
+
+
+diff --git a/scripts/fg-compose-expected.txt b/scripts/fg-compose-expected.txt
+index 2ba9c6f..5504b3b 100644
+--- a/scripts/fg-compose-expected.txt
++++ b/scripts/fg-compose-expected.txt
+@@ -55,4 +55,80 @@
+     'AvailableChain.FGCompose.tick_lt_afterTicks',
+     'AvailableChain.FGCompose.timeIdx',
+     'AvailableChain.FGCompose.timeIdx_def',
++    'AvailableChain.FGCompose.FGSafetyClientLaws',
++    'AvailableChain.FGCompose.FGSafetyClientLaws.clock_record',
++    'AvailableChain.FGCompose.FGSafetyClientLaws.initial_record',
++    'AvailableChain.FGCompose.FGSafetyClientLaws.own_record',
++    'AvailableChain.FGCompose.FGSafetyClientLaws.process_record',
++    'AvailableChain.FGCompose.FGSafetyClientLaws.restart_record',
++    'AvailableChain.FGCompose.FGSafetyClientLaws.tick_rows',
++    'AvailableChain.FGCompose.FGSafetyOrderLaws',
++    'AvailableChain.FGCompose.FGSafetyOrderLaws.erase_prefix',
++    'AvailableChain.FGCompose.FGSafetyOrderLaws.output_eq',
++    'AvailableChain.FGCompose.FGSafetyOrderLaws.process_F',
++    'AvailableChain.FGCompose.FGSafetyReads',
++    'AvailableChain.FGCompose.FGSafetyReads.decode',
++    'AvailableChain.FGCompose.FGSafetyReads.decodeObject',
++    'AvailableChain.FGCompose.FGSafetyReads.enabled',
++    'AvailableChain.FGCompose.FGSafetyReads.encode',
++    'AvailableChain.FGCompose.FGSafetyReads.fgLabel',
++    'AvailableChain.FGCompose.FGSafetyReads.fgSeats',
++    'AvailableChain.FGCompose.FGSafetyReads.finalizedOut',
++    'AvailableChain.FGCompose.FGSafetyReads.inputs',
++    'AvailableChain.FGCompose.FGSafetyReads.proposalErase',
++    'AvailableChain.FGCompose.FGSafetyReads.proposalRows',
++    'AvailableChain.FGCompose.FGSafetyReads.record',
++    'AvailableChain.FGCompose.FGSafetyScopeLaws',
++    'AvailableChain.FGCompose.FGSafetyScopeLaws.delivered_scope',
++    'AvailableChain.FGCompose.FGSafetyScopeLaws.genesis_scope',
++    'AvailableChain.FGCompose.FGSafetyScopeLaws.parent_scope',
++    'AvailableChain.FGCompose.FGSafetyStoreLaws',
++    'AvailableChain.FGCompose.FGSafetyStoreLaws.clock_good',
++    'AvailableChain.FGCompose.FGSafetyStoreLaws.initial_good',
++    'AvailableChain.FGCompose.FGSafetyStoreLaws.initial_tf',
++    'AvailableChain.FGCompose.FGSafetyStoreLaws.invariant',
++    'AvailableChain.FGCompose.FGSafetyStoreLaws.own_good',
++    'AvailableChain.FGCompose.FGSafetyStoreLaws.process_good',
++    'AvailableChain.FGCompose.FGSafetyStoreLaws.process_new',
++    'AvailableChain.FGCompose.FGSafetyStoreLaws.restart_good',
++    'AvailableChain.FGCompose.FGSafetyStoreLaws.restart_tf',
++    'AvailableChain.FGCompose.FGSafetyUnitLaws',
++    'AvailableChain.FGCompose.FGSafetyUnitLaws.n_pos',
++    'AvailableChain.FGCompose.FGSafetyUnitLaws.quorum',
++    'AvailableChain.FGCompose.FGSafetyUnitLaws.total',
++    'AvailableChain.FGCompose.FGSafetyUnitLaws.weight',
++    'AvailableChain.FGCompose.FGSafetyWireLaws',
++    'AvailableChain.FGCompose.FGSafetyWireLaws.carried',
++    'AvailableChain.FGCompose.FGSafetyWireLaws.decode_auth',
++    'AvailableChain.FGCompose.FGSafetyWireLaws.decode_encode',
++    'AvailableChain.FGCompose.FGSafetyWireLaws.decoded_visible',
++    'AvailableChain.FGCompose.FGSafetyWireLaws.encode_injective',
++    'AvailableChain.FGCompose.SafetyWholeAccountable',
++    'AvailableChain.FGCompose.SafetyWholeAccountable_def',
++    'AvailableChain.FGCompose.SafetyWholeAgreement',
++    'AvailableChain.FGCompose.SafetyWholeAgreement_def',
++    'AvailableChain.FGCompose.safetyBound',
++    'AvailableChain.FGCompose.safetyBound_def',
++    'AvailableChain.FGCompose.safetyCarriage',
++    'AvailableChain.FGCompose.safetyCarriage_def',
++    'AvailableChain.FGCompose.safetyEmits',
++    'AvailableChain.FGCompose.safetyEmits_def',
++    'AvailableChain.FGCompose.safetyFinalizedAt',
++    'AvailableChain.FGCompose.safetyFinalizedAt_def',
++    'AvailableChain.FGCompose.safetyHolder',
++    'AvailableChain.FGCompose.safetyHolder_def',
++    'AvailableChain.FGCompose.safetyInputAt',
++    'AvailableChain.FGCompose.safetyInputAt_def',
++    'AvailableChain.FGCompose.safetyNoSlash',
++    'AvailableChain.FGCompose.safetyNoSlash_def',
++    'AvailableChain.FGCompose.safetyRecordStep',
++    'AvailableChain.FGCompose.safetyRecordStep_def',
++    'AvailableChain.FGCompose.safetyRows',
++    'AvailableChain.FGCompose.safetyRows_def',
++    'AvailableChain.FGCompose.safetyRunBlock',
++    'AvailableChain.FGCompose.safetyRunBlock_def',
++    'AvailableChain.FGCompose.safetyScopedRoots',
++    'AvailableChain.FGCompose.safetyScopedRoots_def',
++    'AvailableChain.FGCompose.safetySlashesRead',
++    'AvailableChain.FGCompose.safetySlashesRead_def',
+ )

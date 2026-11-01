@@ -1,0 +1,29 @@
+# P-Cl2 serial integration fragment. Merge into existing keys and owner tuples.
+# Existing commands for these names are already in both canonical audit roots.
+# Register the local growth audit under the FGSAProofs key at the serial close.
+{
+    'AvailableChainFGSAClaims.Tests.Axioms': {
+        'AvailableChainFGSAClaims.Claims.Clean': (
+            'AvailableChain.FGSA.Run.CleanHistoryAt',
+            'AvailableChain.FGSA.Run.CleanGateAt',
+            'AvailableChain.FGSA.Run.CleanTruncAt',
+            'AvailableChain.FGSA.Run.CleanSafetyAt',
+        ),
+    },
+    'AvailableChainFGSAProofs.Tests.Axioms': {
+        'AvailableChainFGSAProofs.Proofs.Clean.Export': (
+            'AvailableChain.FGSA.Run.cleanHistoryAt',
+            'AvailableChain.FGSA.Run.cleanHistoryAt_zero',
+            'AvailableChain.FGSA.Run.cleanTruncAt_zero',
+            'AvailableChain.FGSA.Run.cleanSafetyAt_of_trunc',
+            'AvailableChain.FGSA.Run.cleanCutZero_export',
+            'AvailableChain.FGSA.Run.cleanGateAt',
+            'AvailableChain.FGSA.Run.cleanTruncAt',
+            'AvailableChain.FGSA.Run.cleanCutPos_export',
+            'AvailableChain.FGSA.Run.cleanSafety_of_cut',
+        ),
+        'AvailableChainFGSAProofs.Proofs.Outage.Growth': (
+            'AvailableChain.FGSA.Run.clean_growth_body',
+        ),
+    },
+}

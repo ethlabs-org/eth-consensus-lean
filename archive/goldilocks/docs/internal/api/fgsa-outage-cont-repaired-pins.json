@@ -1,0 +1,25 @@
+[
+  {
+    "name": "AvailableChain.FGSA.Run.OutageContinuationConcl",
+    "before": "470254a6b453047d",
+    "after": "7d400cefdc047217",
+    "reason": "OUTAGE-CONT-REPAIRED (lead ruling 2026-10-10)",
+    "deep_before": "bef1ba8e1b66149cd09d8f85beca0464d5092d858d6e6cfb24a4616607354084",
+    "deep_after": "692537490e3cb6da6d5e974e059b46bc7b674ff739148230fad564cf4f8c49a4"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.OutageRepairReady",
+    "before": null,
+    "after": "f50983792c00ad02",
+    "reason": "OUTAGE-CONT-REPAIRED (lead ruling 2026-10-10)",
+    "deep_before": null,
+    "deep_after": "19f8d85f71f627d8630d354d9c4ad5f6adcaebf40c533b3430eb5d42e5e532ad"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.OutageContinuationClaim",
+    "deep_before": "c5a31d5be98d9d3bf3fa0daee437e07cd9f4e63e13318618d389613e01e11de8",
+    "deep_after": "3395ee7f18ec06f170d11a3d20c23946e033adbafebaa74c4a95fc53e943c269",
+    "reason": "OUTAGE-CONT-REPAIRED (lead ruling 2026-10-10)",
+    "cause": "OutageContinuationConcl dependency; shallow declaration unchanged"
+  }
+]

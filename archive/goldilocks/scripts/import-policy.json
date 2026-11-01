@@ -1,0 +1,243 @@
+{
+  "groups": {
+    "foundation": [
+      "Init.**",
+      "Lean.**",
+      "Std.**",
+      "Mathlib.**"
+    ],
+    "fgsaExternal": [
+      "AvailableChainModel.*",
+      "AvailableChainGridCO.Model.Protocol",
+      "AvailableChainSA.Model.Protocol",
+      "AvailableChainSimplexFG.*",
+      "Mathlib.*"
+    ],
+    "runExternal": [
+      "AvailableChainEngineV2.*",
+      "AvailableChainFGSA.Model.*",
+      "AvailableChainFGSA.Statements.*",
+      "AvailableChainGeneric.Statements.*",
+      "AvailableChainSimplexFG.*",
+      "Mathlib.*",
+      "AvailableChainModel.Objects.Identifiers",
+      "AvailableChainModel.Objects.Time",
+      "AvailableChainModel.Objects.Blocks",
+      "AvailableChainModel.Objects.Codec",
+      "AvailableChainModel.Generic.Env",
+      "AvailableChainGridCO.Model.Protocol",
+      "AvailableChainGridCO.Model.Walk",
+      "AvailableChainSA.Model.Protocol"
+    ],
+    "runProof": [
+      "AvailableChainKitV2.*",
+      "AvailableChainFGSA.Proofs.*",
+      "AvailableChainKitFG.*",
+      "AvailableChainGeneric.Proofs.*"
+    ],
+    "claimsExternal": [
+      "AvailableChainEngineV2.*",
+      "AvailableChainFGSA.Model.*",
+      "AvailableChainFGSA.Statements.*",
+      "AvailableChainFGSARun.Model.*",
+      "AvailableChainFGSARun.Statements.*",
+      "AvailableChainGeneric.Statements.*",
+      "AvailableChainSimplexFG.*",
+      "Mathlib.*",
+      "Init.*",
+      "Lean.*",
+      "Std.*",
+      "AvailableChainModel.Objects.Identifiers",
+      "AvailableChainModel.Objects.Time",
+      "AvailableChainModel.Objects.Blocks",
+      "AvailableChainModel.Objects.Codec",
+      "AvailableChainModel.Generic.Env",
+      "AvailableChainGridCO.Model.Protocol",
+      "AvailableChainGridCO.Model.Walk",
+      "AvailableChainSA.Model.Protocol"
+    ],
+    "claimsProof": [
+      "AvailableChainKitV2.*",
+      "AvailableChainKitFG.*",
+      "AvailableChainFGSA.Proofs.*",
+      "AvailableChainFGSARun.Proofs.*",
+      "AvailableChainGeneric.Proofs.*",
+      "AvailableChainFGCompose.Statements.EventReads",
+      "AvailableChainFGCompose.Statements.CoreReads",
+      "AvailableChainFGCompose.Proofs.SourceHead"
+    ],
+    "layersRun": [
+      "AvailableChainFGSARun.**",
+      "AvailableChainFGSA.**",
+      "AvailableChainGeneric.**",
+      "AvailableChainEngineV2.**",
+      "AvailableChainKitV2.**",
+      "AvailableChainKitFG.**",
+      "AvailableChainSimplexFG.**"
+    ],
+    "layersClaims": [
+      "AvailableChainFGSAClaims.**",
+      "AvailableChainFGSARun.Model.**",
+      "AvailableChainFGSARun.Statements.**",
+      "AvailableChainFGSA.Model.**",
+      "AvailableChainFGSA.Statements.**",
+      "AvailableChainGeneric.Statements.**"
+    ],
+    "laneUpstream": [
+      "AvailableChainFGCompose.Proofs.Finality.Joined",
+      "AvailableChainFGCompose.Proofs.Finality.Forward",
+      "AvailableChainFGCompose.Proofs.Finality.Local",
+      "AvailableChainFGCompose.Statements.SafetyOrigin",
+      "AvailableChainFGCompose.Proofs.SafetyOrigin",
+      "AvailableChainFGCompose.Statements.ExecutionObs",
+      "AvailableChainFGCompose.Statements.ExecutionBridges",
+      "AvailableChainFGCompose.Statements.ExecutionRecords",
+      "AvailableChainFGCompose.Proofs.ExecutionObs",
+      "AvailableChainFGCompose.Proofs.ExecutionHistory",
+      "AvailableChainFGCompose.Statements.HolderClient",
+      "AvailableChainFGCompose.Proofs.HolderClient",
+      "AvailableChainFGCompose.Proofs.OrdinaryHolderClient",
+      "AvailableChainFGCompose.Proofs.Finality.Kernel",
+      "AvailableChainFGCompose.Proofs.Finality.RestoreReads",
+      "AvailableChainFGCompose.Proofs.Finality.Receipt",
+      "AvailableChainFGCompose.Proofs.Finality.Accept",
+      "AvailableChainFGCompose.Statements.FinalityRows",
+      "AvailableChainFGCompose.Proofs.Finality.Rows",
+      "AvailableChainFGCompose.Proofs.Finality.RowsRecords",
+      "AvailableChainFGCompose.Proofs.Finality.RowsPrem",
+      "AvailableChainFGCompose.Proofs.Finality.Batch",
+      "AvailableChainFGCompose.Proofs.Finality.Carry",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchStop",
+      "AvailableChainFGCompose.Statements.FrontierMaturity",
+      "AvailableChainFGCompose.Proofs.Healing.PromotionSource",
+      "AvailableChainFGCompose.Proofs.Healing.PromotionAge",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchAge",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchHG2a",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchRepair",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchGap",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchTop",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchTail",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchRise",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchCompose",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchTasks",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchFull",
+      "AvailableChainFGCompose.Proofs.Healing.Reset",
+      "AvailableChainFGCompose.Proofs.Healing.FrontierSearchBudget",
+      "AvailableChainFGCompose.Statements.FrontierSearch",
+      "AvailableChainFGCompose.Proofs.Healing.Attempt",
+      "AvailableChainFGCompose.Proofs.Healing.AttemptRows",
+      "AvailableChainFGCompose.Proofs.Healing.AttemptSettle",
+      "AvailableChainFGCompose.Proofs.Healing.AttemptStop",
+      "AvailableChainFGCompose.Statements.Attempt",
+      "AvailableChainFGCompose.Proofs.Healing.PhaseSettle",
+      "AvailableChainFGCompose.Proofs.Healing.PhaseOrder",
+      "AvailableChainFGCompose.Proofs.Healing.PhaseFrame",
+      "AvailableChainFGCompose.Statements.Promotion",
+      "AvailableChainFGCompose.Proofs.Healing.PromotionArithmetic",
+      "AvailableChainFGCompose.Proofs.Healing.CommonEntry",
+      "AvailableChainFGCompose.Proofs.Healing.Promotion",
+      "AvailableChainFGCompose.Proofs.Healing.PromotionRows",
+      "AvailableChainFGCompose.Statements.ResetHistory",
+      "AvailableChainFGCompose.Statements.Service",
+      "AvailableChainFGCompose.Statements.Bounds",
+      "AvailableChainFGCompose.Statements.Finality",
+      "AvailableChainFGCompose.Statements.FinalityReceipts",
+      "AvailableChainFGCompose.Proofs.ServiceTransport",
+      "AvailableChainFGCompose.Statements.Dependency",
+      "AvailableChainFGCompose.Statements.DependencyTrace",
+      "AvailableChainFGCompose.Proofs.Dependency",
+      "AvailableChainFGCompose.Proofs.ObservationTransport",
+      "AvailableChainFGCompose.Proofs.Timing",
+      "AvailableChainFGCompose.Statements.ChannelLaws",
+      "AvailableChainFGCompose.Statements.Selection",
+      "AvailableChainGeneric.**",
+      "AvailableChainKitFG.**",
+      "AvailableChainEngineV2.**",
+      "AvailableChainKitV2.**",
+      "AvailableChainFGSA.**",
+      "AvailableChainFGSARun.**",
+      "AvailableChainFGCompose.Statements.EventReads",
+      "AvailableChainFGCompose.Statements.CoreReads",
+      "AvailableChainFGCompose.Proofs.SourceHead",
+      "AvailableChainFGCompose.Proofs.Restart",
+      "AvailableChainFGCompose.Statements.SafetyClient",
+      "AvailableChainFGCompose.Statements.SafetyStore",
+      "AvailableChainFGCompose.Proofs.SafetyAccountable",
+      "AvailableChainFGCompose.Proofs.SafetyCount",
+      "AvailableChainFGCompose.Proofs.SafetyMonotone",
+      "AvailableChainFGCompose.Proofs.SafetySlashing",
+      "AvailableChainFGCompose.Statements.HistoricalReads",
+      "AvailableChainFGCompose.Proofs.HistoricalReads",
+      "AvailableChainFGCompose.Proofs.RowPermission",
+      "AvailableChainFGCompose.Statements.FinalityHistory",
+      "AvailableChainFGCompose.Proofs.Finality.History",
+      "AvailableChainFGCompose.Proofs.Healing.ResetCut",
+      "AvailableChainFGCompose.Statements.ResetCut",
+      "AvailableChainFGCompose.Statements.FinalityKernel",
+      "AvailableChainFGCompose.Proofs.Finality.MiddleSupport",
+      "AvailableChainFGCompose.Proofs.Finality.Middle",
+      "AvailableChainFGCompose.Statements.FinalityRecords",
+      "AvailableChainFGCompose.Proofs.Finality.RecordInv"
+    ]
+  },
+  "profiles": {
+    "AvailableChainFGSA": {
+      "root": [
+        "AvailableChainFGSA.*"
+      ],
+      "Tests": [
+        "AvailableChainFGSA.*",
+        "@fgsaExternal"
+      ],
+      "Model": [
+        "AvailableChainFGSA.Model.*",
+        "@fgsaExternal",
+        "AvailableChainKitFG.ClientOnce",
+        "AvailableChainKitFG.FrameBridgeDef",
+        "AvailableChainKitFG.TreeFrameDef"
+      ],
+      "Statements": [
+        "AvailableChainFGSA.Model.*",
+        "AvailableChainFGSA.Statements.*",
+        "@fgsaExternal",
+        "AvailableChainKitFG.*"
+      ],
+      "Proofs": [
+        "AvailableChainFGSA.Model.*",
+        "AvailableChainFGSA.Statements.*",
+        "AvailableChainFGSA.Proofs.*",
+        "@fgsaExternal",
+        "AvailableChainGridCO.Proofs.*",
+        "AvailableChainKitFG.*",
+        "AvailableChainGeneric.Proofs.*"
+      ]
+    },
+    "AvailableChainFGSARun": {
+      "root": [
+        "AvailableChainFGSARun.*"
+      ],
+      "Tests": [
+        "AvailableChainFGSARun.*",
+        "@runExternal",
+        "@runProof",
+        "AvailableChainFGSA.Tests.Support"
+      ],
+      "Model": [
+        "AvailableChainFGSARun.Model.*",
+        "@runExternal"
+      ],
+      "Statements": [
+        "AvailableChainFGSARun.Model.*",
+        "AvailableChainFGSARun.Statements.*",
+        "@runExternal"
+      ],
+      "Proofs": [
+        "AvailableChainFGSARun.Model.*",
+        "AvailableChainFGSARun.Statements.*",
+        "AvailableChainFGSARun.Proofs.*",
+        "@runExternal",
+        "@runProof"
+      ]
+    }
+  }
+}

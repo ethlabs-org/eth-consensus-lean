@@ -1,0 +1,4 @@
+
+public section
+theorem precheckForbiddenClaim : True := by trivial
+end

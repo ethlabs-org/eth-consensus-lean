@@ -1,0 +1,73 @@
+module
+public import AvailableChainFGCompose.Proofs.Population.Middle -- shake: keep (axiom audit)
+public import AvailableChainFGCompose.Proofs.Population.KernelBridges -- shake: keep (axioms)
+
+public section
+
+#print axioms AvailableChain.FGCompose.KernelActionSupplyFG_W
+#print axioms AvailableChain.FGCompose.KernelActionSupplyFG_W.head
+#print axioms AvailableChain.FGCompose.KernelActionSupplyFG_W.mk
+#print axioms AvailableChain.FGCompose.KernelActionSupplyFG_W.read
+#print axioms AvailableChain.FGCompose.KernelActionSupplyFG_W.service
+#print axioms AvailableChain.FGCompose.KernelActionSupplyFG_W.walk
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.A₀
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.B
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.U
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.X_D
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.actionsInRun
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.batchB
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.batchD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.cD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.capThroughBAction
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.capThroughFinalAction
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.carrierA
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.carrierB
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.carrierD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.chainA
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.chainB
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.chainD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.d
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.earlySlot
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.entryB
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.eraseA
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.finalityThroughFinalAction
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.freshD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.freshEntry
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.freshSlot
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.heightA
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.heightB
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.heightD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.heldAAtEnd
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.heldDAtFinalAction
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.highA
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.honestB
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.honestD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.justifiedD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.justifiedHeightD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.mk
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.noEarlyFinality
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.noFirstHeight
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.noMixedD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.noSecondHeight
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.opening
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.parentAB
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.parentBD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.pathUB
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.pendingD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.retainedD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.serviceD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.slotA
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.slotB
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.slotD
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.sourceA
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.sourceB
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.strictAU
+#print axioms AvailableChain.FGCompose.KernelMiddleWitnessFG_W.targetsB
+#print axioms AvailableChain.FGCompose.kernel_action_holder_frozen_iff
+#print axioms AvailableChain.FGCompose.kernel_middle_early_justification_holder
+#print axioms AvailableChain.FGCompose.kernel_middle_fresh_U_holder
+#print axioms AvailableChain.FGCompose.kernel_middle_holder_frozen_iff
+#print axioms AvailableChain.FGCompose.kernel_middle_source_cap_holder
+#print axioms AvailableChain.FGCompose.kernel_opening_and_middle_holder
+#print axioms AvailableChain.FGCompose.kmid_batchPrem_holder

@@ -1,0 +1,50 @@
+P-Cl1 Round 2. Existing key: AvailableChainFGSAProofs.Tests.Axioms.
+Append only missing names; do not create a duplicate key.
+
+public import AvailableChainFGSAProofs.Proofs.Clean.GateEpoch
+public import AvailableChainFGSAProofs.Proofs.Clean.StateEpoch
+public import AvailableChainFGSAProofs.Proofs.Clean.Service
+public import AvailableChainFGSAProofs.Proofs.Clean.EpochSaved
+
+#print axioms AvailableChain.FGSA.Run.clean_gate_enabled_of_result
+#print axioms AvailableChain.FGSA.Run.clean_gate_executed
+#print axioms AvailableChain.FGSA.Run.clean_gate_raw_enabled
+#print axioms AvailableChain.FGSA.Run.clean_gate_nonempty_raw
+#print axioms AvailableChain.FGSA.Run.clean_gate_join_test_iff
+#print axioms AvailableChain.FGSA.Run.clean_gate_unjoined
+#print axioms AvailableChain.FGSA.Run.clean_restart_marker_after
+#print axioms AvailableChain.FGSA.Run.clean_enabledGate_awakeClosed
+#print axioms AvailableChain.FGSA.Run.clean_enabledGate_restartFreeTime
+#print axioms AvailableChain.FGSA.Run.clean_enabledGate_of_joinedAt
+#print axioms AvailableChain.FGSA.Run.clean_joined_witness
+#print axioms AvailableChain.FGSA.Run.clean_joined_gate_witness
+#print axioms AvailableChain.FGSA.Run.clean_restartFree_succ
+#print axioms AvailableChain.FGSA.Run.clean_gate_restartFree
+#print axioms AvailableChain.FGSA.Run.clean_gate_fg_eq
+#print axioms AvailableChain.FGSA.Run.clean_restart_fields
+#print axioms AvailableChain.FGSA.Run.cleanHist_step_restart
+#print axioms AvailableChain.FGSA.Run.clean_enabledGate_service_epoch
+#print axioms AvailableChain.FGSA.Run.clean_gate_fg_before_time
+#print axioms AvailableChain.FGSA.Run.clean_enabledGate_of_confirmedReader
+#print axioms AvailableChain.FGSA.Run.clean_gate_head_prefixes_joined
+#print axioms AvailableChain.FGSA.Run.clean_gate_batch_joined
+#print axioms AvailableChain.FGSA.Run.clean_joinedNow_of_joined_vote
+#print axioms AvailableChain.FGSA.Run.clean_gate_suppressed_fields
+#print axioms AvailableChain.FGSA.Run.clean_restartStateStep
+#print axioms AvailableChain.FGSA.Run.clean_epoch_saved_row
+#print axioms AvailableChain.FGSA.Run.clean_head_epoch
+#print axioms AvailableChain.FGSA.Run.clean_head_history
+#print axioms AvailableChain.FGSA.Run.clean_head_handlers
+#print axioms AvailableChain.FGSA.Run.clean_gate_restart_bound
+#print axioms AvailableChain.FGSA.Run.clean_vote_restart_bound
+#print axioms AvailableChain.FGSA.Run.clean_head_receiver_service
+#print axioms AvailableChain.FGSA.Run.clean_head_relay_scope
+#print axioms AvailableChain.FGSA.Run.clean_headVotes_provenance
+#print axioms AvailableChain.FGSA.Run.clean_head_receipt_at_read
+#print axioms AvailableChain.FGSA.Run.clean_vote_proposal_tick
+#print axioms AvailableChain.FGSA.Run.clean_support_accepted
+#print axioms AvailableChain.FGSA.Run.clean_transfer_head_scope
+#print axioms AvailableChain.FGSA.Run.clean_gate_read_epoch
+#print axioms AvailableChain.FGSA.Run.clean_gate_head_receipt
+#print axioms AvailableChain.FGSA.Run.clean_headVotes_backward
+#print axioms AvailableChain.FGSA.Run.cleanSafety_body

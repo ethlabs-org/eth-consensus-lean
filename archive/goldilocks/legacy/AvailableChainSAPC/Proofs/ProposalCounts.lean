@@ -1,0 +1,15 @@
+module
+public import AvailableChainSAPC.Proofs.EffectiveScores
+public import AvailableChainGridCO.Proofs.ProposalViews
+public import AvailableChainGridCO.Proofs.ScoreExtension
+
+@[expose] public section
+namespace AvailableChain.SAPC
+
+alias seats_eq_of_mem_or_equivocates := GridCO.seats_eq_of_mem_or_equivocates
+alias equivocates_eq_of_mem_or_equivocates := GridCO.equivocates_eq_of_mem_or_equivocates
+alias voterCount_eq_of_mem_or_equivocates := GridCO.voterCount_eq_of_mem_or_equivocates
+alias goldfishScore_eq_of_mem_or_equivocates := GridCO.goldfishScore_eq_of_mem_or_equivocates
+
+end AvailableChain.SAPC
+end

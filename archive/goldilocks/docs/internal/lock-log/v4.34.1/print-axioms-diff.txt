@@ -1,0 +1,74 @@
+5c5
+< 'AvailableChain.Engine.eventIndex_lt_of_time_lt' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.Engine.eventIndex_lt_of_time_lt' depends on axioms: [propext, Classical.choice, Quot.sound]
+16,17c16,17
+< 'AvailableChain.Engine.prefixEnv_execution' depends on axioms: [propext, Quot.sound]
+< 'AvailableChain.Engine.prefixEnv_schedule' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.Engine.prefixEnv_execution' depends on axioms: [propext, Classical.choice, Quot.sound]
+> 'AvailableChain.Engine.prefixEnv_schedule' depends on axioms: [propext, Classical.choice, Quot.sound]
+33c33
+< 'AvailableChain.Engine.state_interval_induction' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.Engine.state_interval_induction' depends on axioms: [propext, Classical.choice, Quot.sound]
+42c42
+< 'AvailableChain.Engine.tick_index_lt_delivery' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.Engine.tick_index_lt_delivery' depends on axioms: [propext, Classical.choice, Quot.sound]
+45c45
+< 'AvailableChain.FGSA.accepted_rows_decode' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.FGSA.accepted_rows_decode' depends on axioms: [propext, Classical.choice, Quot.sound]
+96,98c96,98
+< 'AvailableChain.FGSA.blockAccepted_facts' depends on axioms: [propext, Quot.sound]
+< 'AvailableChain.FGSA.blockAccepted_of_wellFormed' depends on axioms: [propext, Quot.sound]
+< 'AvailableChain.FGSA.blockAccepted_rowsOk' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.FGSA.blockAccepted_facts' depends on axioms: [propext, Classical.choice, Quot.sound]
+> 'AvailableChain.FGSA.blockAccepted_of_wellFormed' depends on axioms: [propext, Classical.choice, Quot.sound]
+> 'AvailableChain.FGSA.blockAccepted_rowsOk' depends on axioms: [propext, Classical.choice, Quot.sound]
+119c119
+< 'AvailableChain.FGSA.compatible_iff_eraseFG' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.FGSA.compatible_iff_eraseFG' depends on axioms: [propext, Classical.choice, Quot.sound]
+141,142c141,142
+< 'AvailableChain.FGSA.eraseFG_ancestor_mem' depends on axioms: [propext, Quot.sound]
+< 'AvailableChain.FGSA.eraseFG_ancestor_preceq' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.FGSA.eraseFG_ancestor_mem' depends on axioms: [propext, Classical.choice, Quot.sound]
+> 'AvailableChain.FGSA.eraseFG_ancestor_preceq' depends on axioms: [propext, Classical.choice, Quot.sound]
+147c147
+< 'AvailableChain.FGSA.eraseFG_injOn' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.FGSA.eraseFG_injOn' depends on axioms: [propext, Classical.choice, Quot.sound]
+159c159
+< 'AvailableChain.FGSA.fgBlock_notMem' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.FGSA.fgBlock_notMem' depends on axioms: [propext, Classical.choice, Quot.sound]
+193c193
+< 'AvailableChain.FGSA.metaInv_init' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.FGSA.metaInv_init' depends on axioms: [propext, Classical.choice, Quot.sound]
+211,212c211,212
+< 'AvailableChain.FGSA.parentFG_spec' depends on axioms: [propext, Quot.sound]
+< 'AvailableChain.FGSA.pickPair_some_spec' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.FGSA.parentFG_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+> 'AvailableChain.FGSA.pickPair_some_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+215c215
+< 'AvailableChain.FGSA.preceq_of_eraseFG_preceq' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.FGSA.preceq_of_eraseFG_preceq' depends on axioms: [propext, Classical.choice, Quot.sound]
+239c239
+< 'AvailableChain.FGSA.rootInjectiveOn_of_viewRootInj' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.FGSA.rootInjectiveOn_of_viewRootInj' depends on axioms: [propext, Classical.choice, Quot.sound]
+258c258
+< 'AvailableChain.FGSA.viewRootInj_of_rootInj' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.FGSA.viewRootInj_of_rootInj' depends on axioms: [propext, Classical.choice, Quot.sound]
+613c613
+< 'AvailableChain.SAPC.emitted_seat_unique' depends on axioms: [propext, Quot.sound]
+---
+> 'AvailableChain.SAPC.emitted_seat_unique' depends on axioms: [propext, Classical.choice, Quot.sound]

@@ -1,0 +1,6 @@
+# Exact owning module and declaration. No prefix or whole-Model exception.
+# The _def names are audited when they exist; no public declaration is added here.
+AvailableChainFGSA.Model.RowCore AvailableChain.FGSA.parentFoldState
+AvailableChainFGSA.Model.RowCore AvailableChain.FGSA.parentFoldState_def
+AvailableChainFGSA.Model.Objects AvailableChain.FGSA.Params.actionTime
+AvailableChainFGSA.Model.Objects AvailableChain.FGSA.Params.actionTime_def

@@ -1,0 +1,816 @@
+\documentclass{article}
+\usepackage[margin=3cm]{geometry}
+\usepackage{amsmath,amssymb,mathtools,amsthm}
+\usepackage{enumitem}
+\usepackage[noend]{algpseudocode}
+\usepackage{capt-of}
+\usepackage{float}
+\usepackage{boxedminipage}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+\makeatletter
+\providecommand*{\theHALG@line}{}
+\renewcommand*{\theHALG@line}{\thefigure.\arabic{ALG@line}}
+\makeatother
+\pagestyle{plain}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\floatpagefraction}{0.8}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% Objects and fields.
+\newcommand{\genesis}{B_{\mathrm{gen}}}
+\newcommand{\slot}{\operatorname{slot}}
+\newcommand{\parent}{\mathsf{parent}}
+\newcommand{\seat}{\mathsf{seat}}
+\newcommand{\rootf}{\mathsf{root}}
+\newcommand{\votesf}{\mathsf{votes}}
+\newcommand{\supportf}{\mathsf{support\_votes}}
+
+% Store and fork choice.
+\newcommand{\T}{\mathcal T}
+\newcommand{\gfPool}{\mathsf{gf\_votes}}
+\newcommand{\fname}[1]{\text{\textsc{#1}}}
+\newcommand{\latestConfirmed}{\mathsf{latest\_confirmed}}
+\newcommand{\timestamp}{\mathsf{timestamp}}
+\newcommand{\resolutionTime}{\mathsf{resolution\_time}}
+
+% Slow arming.
+\newcommand{\savedConfirmation}{\mathsf{saved\_confirmation}}
+\newcommand{\lockDeadline}{\mathsf{lock\_deadline}}
+\newcommand{\dom}{\operatorname{dom}}
+
+% Sources and status marks.
+\newcommand{\DC}[1]{\cite[\S#1]{DC}}
+\newcommand{\lean}[1]{\textsf{#1}}
+\newcommand{\OPEN}{\textbf{OPEN}}
+
+\title{Slow arming (SA): complete protocol}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}\label{sec:intro}
+
+This document specifies plain SA: slow arming with one revocation level.
+SA is an available-chain protocol for rotating committees.  It exposes
+one chain.  It has no finality gadget, no persistent certificate layer,
+and no stabilization gadget.  SA replaces the complete available-chain
+unit of the decoupled consensus paper~\cite{DC}: Goldfish confirmation,
+the stabilization gadget, graded healing, and the stable and confirmed
+record layers.  SA keeps these parts of Goldfish~\DC{2}: the Goldfish
+vote, the proposal, the view merge, the GHOST walk, and the timestamped
+store.  It adds three parts:
+\begin{itemize}[nosep]
+\item \emph{saved confirmations}: the node saves the raw result of each
+  confirmation evaluation, also when that result is empty;
+\item \emph{locks}: a gate result can write a deadline on each of its
+  non-genesis prefixes, after a fast or a slow admission test;
+\item \emph{revocation}: a lock stops early when $\tau=\lceil n/2\rceil$
+  seats conflict with it.
+\end{itemize}
+These are the only locks.  The walks of the proposer and of the voter
+start at the deepest live lock target, and a live lock vetoes each
+conflicting result.
+
+The form follows Section~7 of~\cite{DC}.  Section~\ref{sec:model} gives
+the committee model, the schedule, the wire objects, and the parameters.
+Section~\ref{sec:complete-store} describes the node store in prose.
+Section~\ref{sec:public-handlers} gives the tick order.
+Figures~\ref{alg:store}--\ref{alg:duties} give every function in its
+final form.
+
+\paragraph{Sources.}
+The executable source is the Lean model \lean{SA.sa}
+in \nolinkurl{AvailableChainSA/Model/Protocol.lean}~\cite{Lean}.  It is
+the shared Grid CO engine \lean{GridCO.gridCO} with the lock policy
+\lean{slowLeasePolicy}\footnote{(Lean name; to be renamed)}.  The design notes are~\cite{SA} and the
+adversarial review~\cite{RT}.  The Lean model is authoritative for the
+rules and the times.  Where the Lean model differs from~\cite{DC} or
+from the notes, this document follows the Lean model, and a comment or
+Section~\ref{sec:differences} gives the difference.  This document adds
+no protocol rule.
+
+\paragraph{Proved guarantees.}
+The Lean theorems \lean{saContract\_from\_engine} and
+\lean{fastP1\_from\_engine} prove the contract claims for this model,
+with the standard axioms only~\cite{Lean}.  The constants are: inclusion
+delay $6\Delta$; arming lag $A_{\rm slow}=4(k-1)\Delta=L-3\Delta$, and
+$A_{\rm fast}=4\Delta$ when $h_t\geq\tau$ through the healthy prefix;
+outage budget $\Pi=\min(\eta,L)$; recovery bound
+$\rho=2L+G+8\Delta$, where $G$ is the gap between honest awake
+proposers after GST.  These are statements about runs.  No rule of the
+protocol reads $a$, $h$, $G$, or~$\eta$.
+
+\section{Model and parameters}\label{sec:model}
+
+\subsection{Committees and time}\label{sec:committees}
+
+The committee model is C*.  Every slot~$s$ has a committee of $n$
+seats, numbered $1,\dots,n$.  For each slot, the run chooses a new
+hidden bijection from the seats of that slot to the validators.  Honest
+code does not know this bijection.  Thus, honest code cannot link the
+seats of two different slots, and a node does not know its own seats.
+The faulty set is static.  The faulty count~$a$ and the honest awake
+count~$h_t$ are quantities of the run; the code does not know them.
+
+Each awake validator signs its slot-$s$ vote with its slot-$s$ seat.
+The proposer of slot~$s$ signs with a key for slot~$s$ only.  A block
+has no proposer index.  Signatures are unforgeable.  An asleep node
+receives objects, processes them, and runs its tick, but it sends
+nothing.  A node processes an object that it sends only when that object
+is delivered to it, as for any other object.
+
+Time is an integer.  $\Delta>0$ is an integer, and after~$t_{\rm GST}$
+it is a strict delivery bound.  The public times are the multiples
+of~$\Delta$.  Every node, awake or asleep, has a tick at every public
+time.  An object that an honest node accepts at time~$t$ reaches every
+honest node before $\max\{t,t_{\rm GST}\}+\Delta$ (the accepted-object
+relay premise of the Lean run).  Block roots
+are distinct.
+
+\subsection{Schedule and wire objects}\label{sec:schedule}
+
+Slot~$s$ starts at $t_s=4\Delta s$ and has these public actions:
+\[
+\begin{array}{c@{\qquad}c@{\qquad}l}
+ t_s        &      & \text{proposal},\\
+ t_s+\Delta  & v_s & \text{Goldfish vote},\\
+ t_s+2\Delta & e_s & \text{early (support) cutoff},\\
+ t_s+3\Delta & z_s & \text{view freeze},\\
+ t_s+5\Delta & q_s & \text{revocation of the locks against slot-$s$ votes},\\
+ t_s+6\Delta & d_s & \text{gate: slot-$s$ confirmation evaluation}.
+\end{array}
+\]
+Because $q_s=t_{s+1}+\Delta=v_{s+1}$, the revocation of slot~$s$ occurs at
+the vote time of slot~$s+1$, before that vote.  Because
+$d_s=t_{s+1}+2\Delta=e_{s+1}$, the gate of slot~$s$ is also the early
+cutoff of slot~$s+1$.  Every cutoff is strict: an object that the node
+processes at the cutoff is late.
+
+A Goldfish vote is a tuple $(i,s,B)$: seat~$i$ of slot~$s$ signs
+head~$B$.  The honest code chooses only the payload $(s,B)$; the signer
+supplies~$i$.  A vote \emph{resolves} only when the store holds its head
+and $B.\slot\leq s$.  A vote with a later-slot head stays in the pool,
+but it never resolves.
+
+A block~$B$ has a root $B.\rootf$, a slot $B.\slot$, a parent
+$B.\parent$, a set $B.\votesf$ of slot-$(B.\slot-1)$ votes, and a
+subset $B.\supportf\subseteq B.\votesf$.  A block is \emph{well formed}
+when it has a parent, $B.\parent.\slot<B.\slot$, every vote in
+$B.\votesf$ has slot $B.\slot-1$, and $B.\supportf\subseteq B.\votesf$.
+The slot-$B.\slot$ proposer key signs it.  There is no proposal
+envelope: the block is the only object that a proposer sends.
+$B.\supportf$ records the proposer's resolved subset.  It is not a
+second set of votes to process.  No block carries attestations, and
+there is no state transition.
+
+Processed blocks form a parent-closed tree with root~$\genesis$.  Write
+$B\preceq C$ when $B=C$ or $B$ is an ancestor of~$C$.  Two blocks are
+compatible when one is an ancestor of the other; otherwise they
+conflict.  ``Deepest'' means the largest number of parent edges from
+genesis.
+
+\subsection{Symbols and parameters}\label{sec:parameters}
+
+\begin{center}
+\footnotesize
+\begin{tabular}{lll}
+\hline
+Symbol & Meaning & Value\\
+\hline
+$n$ & seats in each slot committee & integer, $n\geq1$\\
+$\Delta$ & public-time step; delivery bound after GST & integer, $\Delta>0$\\
+$k$ & length of the slow window, in slots & integer, $k\geq2$\\
+$\tau$ & revocation threshold and fast admission threshold &
+  $\lceil n/2\rceil=\lfloor (n+1)/2\rfloor$\\
+$L$ & lock lifetime & $(4k-1)\Delta$\\
+$\eta$ & sleepiness budget of the contract; no rule reads it &
+  $\eta\geq0$\\
+$t_s,v_s,e_s$ & proposal, vote, early cutoff of slot~$s$ &
+  $4\Delta s$, $t_s+\Delta$, $t_s+2\Delta$\\
+$z_s,q_s,d_s$ & freeze, revocation, gate of slot~$s$ &
+  $t_s+3\Delta$, $t_s+5\Delta$, $t_s+6\Delta$\\
+$\Sigma.\lockDeadline[B]$ & deadline of the lock on~$B$ &
+  $d_r+L$ of the last write, or $\bot$\\
+$\Sigma.\savedConfirmation[r]$ & saved confirmation of slot~$r$ &
+  a block, $\bot$ (empty), or missing\\
+$p(r,B)$ & surviving early support of~$B$ at gate~$d_r$ &
+  \fname{prefix\_support}\\
+$c(r,B)$ & seats that conflict with~$B$ at~$q_r$ &
+  \fname{revocation\_count}\\
+$a$, $h_t$ & faulty count; honest awake count at~$t$ &
+  run quantities, not known to code\\
+\hline
+\end{tabular}
+\end{center}
+
+A lock written at~$d_r$ has the deadline
+$d_r+L=t_{r+k}+5\Delta=q_{r+k}=v_{r+k+1}$.  Thus every deadline is a
+vote time.  The regime bound $h_t>a$ with $h_t+a\leq n$ gives
+$a\leq\lfloor(n-1)/2\rfloor<\tau$; the code does not use this bound.
+
+\section{Complete protocol}\label{sec:complete-protocol}
+
+\subsection{Cumulative node store}\label{sec:complete-store}
+
+The node store is one cumulative object:
+\[
+ \Sigma=(t,s,\T,\timestamp[\cdot],\gfPool[\cdot],
+ \savedConfirmation[\cdot],\lockDeadline[\cdot],\latestConfirmed).
+\]
+There is no validator record and no anti-slashing record.  The node has
+no validator index: in C* it does not know its seats, and the signer
+attaches them.
+
+$\Sigma.\T$ is the tree of processed blocks, and $\Sigma.\gfPool[r]$ is
+the set of processed slot-$r$ votes.  The store stamps both with
+$\Sigma.\timestamp$, the time of the last tick before processing.  The
+pool keeps at most two distinct votes per seat, and it admits votes of
+the current slot and the previous slot only.  A vote $\mathit{vote}=(i,r,H)$
+has the resolution time
+\[
+ \Sigma.\resolutionTime(\mathit{vote})=
+ \begin{cases}
+  \max\{\Sigma.\timestamp(\mathit{vote}),\Sigma.\timestamp(H)\},
+    & H\in\Sigma.\T\text{ and }H.\slot\leq r,\\
+  +\infty, & \text{otherwise}.
+ \end{cases}
+\]
+
+$\Sigma.\savedConfirmation[r]$ holds the raw saved confirmation of slot~$r$: a block,
+or $\bot$ for an empty result.  The gate at~$d_r$ writes it once.  It
+writes it also when the result is empty and when a lock vetoes the
+result.  A slot with no entry is \emph{missing}.  A missing slot and an
+empty result both break the slow test.  No later object, report, or
+result of another slot can replace a saved or missing entry.
+
+$\Sigma.\lockDeadline[B]$ is the deadline of the lock on block~$B$, or $\bot$
+when $B$ has no lock.  There is one revocation level: every lock has the
+revocation threshold~$\tau$.  Each non-genesis prefix of a result has its
+own entry.  A child does not take the deadline of its parent, and a
+result that covers only an ancestor does not renew a child.  Every
+entry is finite: its deadline is $d_r+L$ for the last gate~$d_r$ that
+wrote it, and a later write keeps the larger deadline.  A lock stops in
+two ways only.  It \emph{expires} at the first tick at or after its
+deadline.  It is \emph{revoked} at~$q_r$ when $\tau$ or more seats
+conflict with it in the slot-$r$ pool.  Expiry and revocation do not change
+$\Sigma.\latestConfirmed$ or $\Sigma.\savedConfirmation$.
+
+Every live lock is mandatory.  The proposal walk and the vote walk
+start at the \emph{live root}: the deepest live lock target, or
+$\genesis$ when there is none.  A gate result that conflicts with a live
+target does not change the record and writes no lock.  A lock write
+needs a result that is compatible with every live target, and each
+written target is a prefix of that result.  Thus the live targets of a
+node lie on one chain.
+
+$\Sigma.\savedConfirmation$, $\Sigma.\lockDeadline$, and $\Sigma.\latestConfirmed$ are
+the only quantities that the store caches.  A view, a frozen pool, an
+early or late pool, a score, a support count, a revocation count, the live
+root, and a vote tree are derived when used, from timestamps compared
+against past instants.  The Lean state also saves the frozen
+previous-slot views at~$z_r$, the early pool at~$e_r$, the revocation
+snapshot at~$q_r$, and a second record \lean{goldfishRecord} that
+advances at every non-empty saved confirmation, also a vetoed one.  The
+frozen views are equal to the derived ones, because timestamps never
+change and every public time has a tick.  No rule reads the early pool,
+the revocation snapshot, or the second record.
+
+At initialization,
+\[
+ \Sigma.t=\Sigma.s=0,\quad \Sigma.\T=\{\genesis\},\quad
+ \Sigma.\timestamp(\genesis)=0,\quad
+ \Sigma.\latestConfirmed=\genesis,
+\]
+every pool is empty, and $\Sigma.\savedConfirmation$ and $\Sigma.\lockDeadline$ have no
+entries.  All nodes have the same initial store.  (\cite{DC} sets the
+genesis stamp to $-\infty$.  The Lean model sets it to~$0$.  No cutoff
+is at or before~$0$, so the two choices give the same results.)
+
+A block is accepted only when it is well formed, its slot is at
+most~$\Sigma.s$, the store holds its parent and does not hold the block,
+and the slot-$B.\slot$ proposer key signs it.  The proposer and
+parent-slot checks are the assertions of the state transition in~\cite{DC};
+SA has no state transition, so $\Call{on\_block}{}$ makes them.  A call
+that returns before acceptance does not consume the block: a later
+delivery can call the handler again.  The votes of an accepted block
+pass through $\Call{on\_goldfish\_vote}{}$ at acceptance, under the same
+admission rule as a wire receipt.  $B.\supportf$ causes no handler call.
+The proposer includes in $B.\votesf$ every previous-slot vote that it
+holds, resolved or not, and it includes in $B.\supportf$ exactly the
+members that are resolved at proposal time.  There is no other
+inclusion rule.
+
+SA exposes one chain, with tip $\Call{get\_confirmed}{\Sigma}$.  The
+contract has a stable output and a confirmed output.  Both outputs
+read the same record, $\Sigma.\latestConfirmed$.  Thus the accessors
+$\Call{get\_stable}{\Sigma}$ and $\Call{get\_confirmed}{\Sigma}$ are
+equal, and the two outputs nest at every node and every time by
+construction.  The record changes only at
+a gate with a non-empty result that no live lock vetoes.  It advances
+by the rule of~\cite{DC}: an ancestor candidate leaves it unchanged; an
+extension or a conflicting candidate replaces it.  A record write does
+not need lock admission.  No voting rule reads the record.  SA has no
+protocol-facing confirmation value, such as the value
+$\mathsf{live\_confirmed}$ of~\cite{DC}.
+
+\subsection{Duties and handlers}\label{sec:public-handlers}
+
+The public times are the only tick times.  The tick at a public time
+runs once, before the objects that the node processes at that time.
+Thus an object processed between two public times gets the stamp of the
+earlier one.  A tick first advances the clock and removes the expired
+locks.  At $q_{s-1}=t_s+\Delta$ it then revokes locks against the
+slot-$(s-1)$ votes.  At $d_{s-1}=t_s+2\Delta$ it runs the gate of
+slot~$s-1$.  Only then does an awake node run its duties, from the
+updated store: the proposal at~$t_s$ and the vote at $t_s+\Delta$.
+Thus expiry and revocation come before the vote at the same time, and no
+live target changes between a vote at~$v_{s}$ and the gate
+at~$d_{s-1}=v_s+\Delta$ except by that gate.  An asleep node runs the
+same tick and the same handlers, but no duty.
+
+The node does not process an object when it sends it.  It processes its
+own block and its own vote only on delivery.  The network relays each
+accepted object; the Lean model states this as a premise of the run,
+and no handler sends a relay copy.  The honest code sends no unsigned
+object.
+
+Figures~\ref{alg:store}--\ref{alg:duties} list the complete protocol:
+the store handlers, the fork choice with the gate helpers, and the
+validator duties.  Each function has a comment that gives its source.
+``Unchanged'' means verbatim from~\cite{DC}.  ``Adapted'' means the
+function of~\cite{DC} with C* seats and delivery-only processing.
+``Extended'' and ``redefined'' mark functions that SA changes.  ``New''
+marks SA functions.  The comment also names the Lean function.  At
+slot~$0$ the head is genesis.
+
+Relative to Goldfish in~\DC{2}, the proposer and the voter start their
+walks at the live root instead of genesis.  The available confirmation
+of~\DC{2.6} becomes the gate: it stores the saved confirmation, applies the
+lock veto, advances the record, and writes locks after the fast or
+the slow admission test.  Expiry and revocation are new.  The confirmation
+walk still starts at genesis, over the full store.
+
+\captionof{figure}{Complete protocol: handlers}\label{alg:store}
+\nopagebreak
+{\footnotesize
+\begin{algorithmic}[1]
+\Function{on\_tick}{$\Sigma,t$}
+  \Comment{\DC{7}, redefined; Lean \lean{clock}}
+  \State $s\gets\lfloor t/(4\Delta)\rfloor$; $(\Sigma.t,\Sigma.s)\gets(t,s)$
+  \State \Call{expire\_locks}{$\Sigma,t$}
+  \If{$s>0$ and $t=t_s+\Delta$}
+    \State \Call{revoke\_locks}{$\Sigma,s-1$}
+    \Comment{$q_{s-1}$, before the vote}
+  \EndIf
+  \If{$s>0$ and $t=t_s+2\Delta$}
+    \State \Call{update\_confirmation}{$\Sigma,s-1$}
+    \Comment{$d_{s-1}$}
+  \EndIf
+  \If{$s>0$ and $t=t_s$ and the node is awake and is the slot-$s$ proposer}
+    \State \Call{propose\_block}{$\Sigma$}
+  \EndIf
+  \If{$t=t_s+\Delta$ and the node is awake}
+    \State \Call{goldfish\_vote}{$\Sigma$}
+    \Comment{also at slot~$0$ (Lean)}
+  \EndIf
+\EndFunction
+\vspace{1pt}
+\Function{expire\_locks}{$\Sigma,t$}
+  \Comment{new; Lean \lean{expire}}
+  \ForAll{$B$ with $\Sigma.\lockDeadline[B]\neq\bot$ and $\Sigma.\lockDeadline[B]\leq t$}
+    \State $\Sigma.\lockDeadline[B]\gets\bot$
+    \Comment{deadlines are vote times}
+  \EndFor
+\EndFunction
+\vspace{1pt}
+\Function{revoke\_locks}{$\Sigma,r$}
+  \Comment{new; Lean \lean{release} (Lean name; to be renamed)}
+  \Comment{at $t_r+5\Delta$}
+  \ForAll{$B$ with $\Sigma.\lockDeadline[B]\neq\bot$}
+    \If{$\Call{revocation\_count}{\Sigma,r,B}\geq\tau$}
+      \State $\Sigma.\lockDeadline[B]\gets\bot$
+      \Comment{inclusive at $\tau$}
+    \EndIf
+  \EndFor
+\EndFunction
+\vspace{1pt}
+\Function{update\_confirmation}{$\Sigma,s$}
+  \Comment{\DC{2.6}, redefined; Lean \lean{gate}}
+  \Comment{at $t_s+6\Delta$}
+  \State $C\gets\Call{saved\_confirmation\_result}{\Sigma,s}$
+  \State $\Sigma.\savedConfirmation[s]\gets C$
+  \Comment{saved once, also when empty or vetoed}
+  \If{$C=\bot$} \State \Return \EndIf
+  \If{some $K$ with $\Sigma.\lockDeadline[K]\neq\bot$ conflicts with $C$}
+    \State \Return
+    \Comment{a live lock vetoes the result}
+  \EndIf
+  \State $\Sigma.\latestConfirmed\gets
+    \Call{advance}{\Sigma.\latestConfirmed,C}$
+  \Comment{no lock admission needed}
+  \ForAll{$B\in\Sigma.\T$ with $B\neq\genesis$ and $B\preceq C$}
+    \If{$\Call{fast\_admissible}{\Sigma,s,B}$ or
+        $\Call{slow\_admissible}{\Sigma,s,B}$}
+      \State $\Sigma.\lockDeadline[B]\gets\max\{\Sigma.\lockDeadline[B],t_s+6\Delta+L\}$
+      \Comment{$\max\{\bot,x\}=x$}
+    \EndIf
+  \EndFor
+\EndFunction
+\vspace{1pt}
+\Function{advance}{$\mathit{old},C$}
+  \Comment{\DC{7}, unchanged; Lean \lean{advance}}
+  \State \Return $\mathit{old}$ if $C=\bot$ or $C\preceq\mathit{old}$, else $C$
+  \Comment{no candidate or an ancestor leaves the record unchanged}
+\EndFunction
+\vspace{1pt}
+\Function{get\_stable}{$\Sigma$}
+  \Comment{\DC{7}, redefined; Lean \lean{stable}}
+  \Comment{user-facing; no protocol rule reads it}
+  \State \Return $\Sigma.\latestConfirmed$
+  \Comment{the stable output is the confirmed output}
+\EndFunction
+\vspace{1pt}
+\Function{get\_confirmed}{$\Sigma$}
+  \Comment{\DC{7}, redefined; Lean \lean{confirmed}}
+  \Comment{user-facing; no protocol rule reads it}
+  \State \Return $\Sigma.\latestConfirmed$
+\EndFunction
+\vspace{1pt}
+\Function{on\_block}{$\Sigma,B$}
+  \Comment{\DC{2.5}, extended; Lean \lean{admitProposal}}
+  \If{$B.\slot>\Sigma.s$ or $B\in\Sigma.\T$ or
+      $B.\parent\notin\Sigma.\T$} \State \Return \EndIf
+  \If{$B.\parent.\slot\geq B.\slot$ or
+      the slot-$B.\slot$ proposer key does not sign $B$}
+    \State \Return
+    \Comment{no state transition makes these checks}
+  \EndIf
+  \State add $B$ to $\Sigma.\T$; $\Sigma.\timestamp(B)\gets\Sigma.t$
+  \ForAll{$\mathit{vote}\in B.\votesf$}
+    \State \Call{on\_goldfish\_vote}{$\Sigma,\mathit{vote}$}
+    \Comment{$B.\supportf$ causes no call}
+  \EndFor
+\EndFunction
+\vspace{1pt}
+\Function{on\_goldfish\_vote}{$\Sigma,\mathit{vote}$}
+  \Comment{\DC{2.5}, adapted; Lean \lean{admitVote}}
+  \State $(i,r,H)\gets\mathit{vote}$
+  \Comment{every seat of slot $r$ is in its committee}
+  \If{$r<\Sigma.s-1$ or $r>\Sigma.s$ or
+    $\mathit{vote}\in\Sigma.\gfPool[r]$}
+    \State \Return \EndIf
+  \If{$\Sigma.\gfPool[r]$ holds two distinct votes by seat~$i$}
+    \State \Return
+    \Comment{two witness the equivocation; no rule needs a third}
+  \EndIf
+  \State add $\mathit{vote}$ to $\Sigma.\gfPool[r]$;
+    $\Sigma.\timestamp(\mathit{vote})\gets\Sigma.t$
+\EndFunction
+\end{algorithmic}
+}
+
+\captionof{figure}{Complete protocol: fork choice}\label{alg:fc-full}
+\nopagebreak
+{\footnotesize
+\begin{algorithmic}[1]
+\Function{resolution\_time}{$\Sigma,\mathit{vote}$}
+  \Comment{\DC{2.2}, unchanged; Lean \lean{resolvedBefore}}
+  \State $(i,r,H)\gets\mathit{vote}$
+  \If{$H\notin\Sigma.\T$ or $H.\slot>r$}
+    \State \Return $+\infty$
+    \Comment{a later-slot head never resolves}
+  \EndIf
+  \State \Return $\max\{\Sigma.\timestamp(\mathit{vote}),\Sigma.\timestamp(H)\}$
+\EndFunction
+\vspace{1pt}
+\Function{goldfish\_score}{$\mathit{votes},\mathit{support\_votes},s,B$}
+  \Comment{\DC{2.4}, adapted; Lean \lean{goldfishScore}}
+  \State $\mathit{equivocators}\gets\{i:
+    \mathit{votes}\text{ holds two distinct votes by seat }i\}$
+  \State $\mathit{supporters}\gets
+    \{i\notin\mathit{equivocators}:
+    (i,s,B')\in\mathit{support\_votes}\text{ with }B\preceq B'\}$
+  \State \Return $|\mathit{equivocators}|+|\mathit{supporters}|$
+  \Comment{equivocators count for every block}
+\EndFunction
+\vspace{1pt}
+\Function{ghost}{$\mathit{anchor},\mathit{tree},
+  \mathit{score},\mathit{eligible}$}
+  \Comment{\DC{2.4}, unchanged; Lean \lean{ghost}}
+  \State $H\gets\mathit{anchor}$
+  \Loop
+    \State $\mathit{children}\gets\{B:B\text{ is a child of }H\text{ in }
+      \mathit{tree},\ \mathit{eligible}(B)\}$
+    \If{$\mathit{children}=\emptyset$} \State \Return $H$ \EndIf
+    \State $H\gets\arg\max_{B\in\mathit{children}}\mathit{score}(B)$,
+      ties by root order
+    \Comment{the greater root wins}
+  \EndLoop
+\EndFunction
+\vspace{1pt}
+\Function{goldfish\_eligible}{$\Sigma,\mathit{votes},
+  \mathit{support\_votes},s,B$}
+  \Comment{\DC{2.4}, adapted; Lean \lean{goldfishEligible}}
+  \State $\mathit{voters\_count}\gets
+    |\{i:\mathit{votes}\text{ holds a vote by seat }i\}|$
+  \State \Return $2\,\Call{goldfish\_score}{\mathit{votes},
+    \mathit{support\_votes},s,B}
+    >\mathit{voters\_count}$ or $B.\slot=\Sigma.s$
+\EndFunction
+\vspace{1pt}
+\Function{goldfish\_fork\_choice}{$\Sigma,\mathit{anchor},\mathit{tree},
+  \mathit{votes},\mathit{support\_votes},s$}
+  \Comment{\DC{2.4}, unchanged; Lean \lean{forkChoice}}
+  \State define $\mathit{score}(B)$ as
+  \Statex \hspace{2em}
+    $\Call{goldfish\_score}{\mathit{votes},\mathit{support\_votes},s,B}$
+  \State define $\mathit{eligible}(B)$ as
+  \Statex \hspace{2em}
+    $\Call{goldfish\_eligible}{\Sigma,\mathit{votes},
+      \mathit{support\_votes},s,B}$
+  \State \Return $\Call{ghost}{\mathit{anchor},\mathit{tree},
+    \mathit{score},\mathit{eligible}}$
+\EndFunction
+\vspace{1pt}
+\Function{live\_root}{$\Sigma$}
+  \Comment{new; Lean \lean{liveRoot}}
+  \State $\mathit{targets}\gets\{B:\Sigma.\lockDeadline[B]\neq\bot\}$
+  \Comment{they lie on one chain}
+  \If{$\mathit{targets}=\emptyset$} \State \Return $\genesis$ \EndIf
+  \State \Return the deepest $B\in\mathit{targets}$
+  \Comment{ties by root order, as in \fname{ghost}}
+\EndFunction
+\vspace{1pt}
+\Function{get\_head\_in\_tree}{$\Sigma,\mathit{tree},
+  \mathit{votes},\mathit{support\_votes},k$}
+  \Comment{\DC{7}, redefined; Lean \lean{forkChoice}}
+  \State $A\gets\Call{live\_root}{\Sigma}$
+  \Comment{every live lock is mandatory}
+  \State \Return $\Call{goldfish\_fork\_choice}{\Sigma,A,
+    \mathit{tree},\mathit{votes},\mathit{support\_votes},k}$
+\EndFunction
+\vspace{1pt}
+\Function{get\_head}{$\Sigma,\mathit{votes},\mathit{support\_votes},k$}
+  \Comment{\DC{2.4}, redefined; Lean \lean{forkChoice}}
+  \State \Return $\Call{get\_head\_in\_tree}{\Sigma,\Sigma.\T,
+    \mathit{votes},\mathit{support\_votes},k}$
+  \Comment{from the live root, not genesis}
+\EndFunction
+\vspace{1pt}
+\Function{early\_votes}{$\Sigma,s$}
+  \Comment{\DC{2.6}, as a function; Lean \lean{earlyVotes}}
+  \State \Return $\{\mathit{vote}\in\Sigma.\gfPool[s]:
+    \Sigma.\resolutionTime(\mathit{vote})<t_s+2\Delta\}$
+\EndFunction
+\vspace{1pt}
+\Function{late\_votes}{$\Sigma,s$}
+  \Comment{\DC{2.6}, as a function; Lean \lean{lateVotes}}
+  \State \Return $\{\mathit{vote}\in\Sigma.\gfPool[s]:
+    \Sigma.\timestamp(\mathit{vote})<t_s+6\Delta\}$
+\EndFunction
+\vspace{1pt}
+\Function{confirmation\_support}{$\Sigma,s$}
+  \Comment{\DC{2.6}, as a function; Lean \lean{cleanSupport}}
+  \State \Return $\{\mathit{vote}\in\Call{early\_votes}{\Sigma,s}:
+    \Call{late\_votes}{\Sigma,s}\text{ holds no second distinct vote by }
+    \mathit{vote}.\seat\}$
+\EndFunction
+\vspace{1pt}
+\Function{saved\_confirmation\_result}{$\Sigma,s$}
+  \Comment{\DC{2.6}, redefined; Lean \lean{confirmation}}
+  \State $\mathit{support\_votes}\gets\Call{confirmation\_support}{\Sigma,s}$
+  \State $\mathit{voters\_count}\gets
+    |\{i:\Call{late\_votes}{\Sigma,s}\text{ holds a vote by seat }i\}|$
+  \State define $\mathit{eligible}(B)$ as
+    $2\,\Call{goldfish\_score}{\mathit{support\_votes},
+      \mathit{support\_votes},s,B}>\mathit{voters\_count}$
+  \State $H\gets\Call{ghost}{\genesis,\Sigma.\T,
+    \fname{goldfish\_score}(\mathit{support\_votes},
+      \mathit{support\_votes},s,\cdot),\mathit{eligible}}$
+  \If{$\mathit{eligible}(H)$}
+    \State \Return $H$
+  \EndIf
+  \State \Return $\bot$
+  \Comment{the empty result: no strict majority at genesis}
+\EndFunction
+\vspace{1pt}
+\Function{prefix\_support}{$\Sigma,s,B$}
+  \Comment{new; Lean \lean{prefixSupport}}
+  \State $\mathit{support\_votes}\gets\Call{confirmation\_support}{\Sigma,s}$
+  \State \Return $\Call{goldfish\_score}{\mathit{support\_votes},
+    \mathit{support\_votes},s,B}$
+  \Comment{$p(s,B)$}
+\EndFunction
+\vspace{1pt}
+\Function{fast\_admissible}{$\Sigma,s,B$}
+  \Comment{new; Lean \lean{admissionLevels}}
+  \State \Return $\Call{prefix\_support}{\Sigma,s,B}\geq\tau$
+  \Comment{the caller gives $B\preceq$ the slot-$s$ result}
+\EndFunction
+\vspace{1pt}
+\Function{slow\_admissible}{$\Sigma,s,B$}
+  \Comment{new; Lean \lean{slowEligible}}
+  \If{$s<k-1$}
+    \State \Return $\mathsf{false}$
+    \Comment{no negative slot}
+  \EndIf
+  \ForAll{$j\in\{s-k+1,\dots,s-1\}$}
+    \If{$j\notin\dom\Sigma.\savedConfirmation$ or $\Sigma.\savedConfirmation[j]=\bot$ or
+        $B\not\preceq\Sigma.\savedConfirmation[j]$}
+      \State \Return $\mathsf{false}$
+      \Comment{a missing or empty slot breaks the window}
+    \EndIf
+  \EndFor
+  \State \Return $\mathsf{true}$
+  \Comment{the caller gives slot $s$: $B\preceq$ its result}
+\EndFunction
+\vspace{1pt}
+\Function{revocation\_count}{$\Sigma,r,B$}
+  \Comment{new; Lean \lean{releaseCount} (Lean name; to be renamed)}
+  \State $\mathit{votes}\gets\{\mathit{vote}\in\Sigma.\gfPool[r]:
+    \Sigma.\timestamp(\mathit{vote})<t_r+5\Delta\}$
+  \Comment{every vote held at the tick}
+  \State $\mathit{equivocators}\gets\{i:
+    \mathit{votes}\text{ holds two distinct votes by seat }i\}$
+  \State $\mathit{conflicting}\gets\{(i,r,H)\in\mathit{votes}:
+    \Sigma.\resolutionTime(i,r,H)<t_r+5\Delta,\
+    H\text{ conflicts with }B\}$
+  \State \Return $|\{i\notin\mathit{equivocators}:
+    \mathit{conflicting}\text{ holds a vote by seat }i\}|$
+\EndFunction
+\end{algorithmic}
+}
+
+The vote duty uses a block-domain merge that is analogous to its vote
+merge, as in~\cite{DC}.  It first forms a processed-block view from the
+blocks received before the previous-slot freeze and every ancestor of a
+current-slot proposal.  A late block cannot make an old pre-freeze child
+enter this vote's walk.  The proposer uses the full store.  Both walks
+start at the live root.
+
+\captionof{figure}{Complete protocol: validator duties}\label{alg:duties}
+\nopagebreak
+{\footnotesize
+\begin{algorithmic}[1]
+\Function{voter\_processed\_block\_tree}{$\Sigma,s$}
+  \Comment{\DC{7}, unchanged; Lean \lean{voterTree}}
+  \State $\mathit{freeze}\gets t_{s-1}+3\Delta$
+  \State $\mathit{proposals}\gets\{P\in\Sigma.\T:P.\slot=s\}$
+  \State \Return $\{B\in\Sigma.\T:
+    \Sigma.\timestamp(B)<\mathit{freeze}\ \textbf{or}\
+    \exists P\in\mathit{proposals},\ B\preceq P\}$
+\EndFunction
+\vspace{1pt}
+\Function{propose\_block}{$\Sigma$}
+  \Comment{\DC{2.5}, adapted; Lean \lean{propose}}
+  \State $s\gets\Sigma.s$
+  \Comment{runs at $t_s$, $s>0$}
+  \State $\mathit{votes}\gets\Sigma.\gfPool[s-1]$
+  \Comment{every previous-slot vote held}
+  \State $\mathit{support\_votes}\gets\{\mathit{vote}\in\mathit{votes}:
+    \Sigma.\resolutionTime(\mathit{vote})<+\infty\}$
+  \State $H\gets\Call{get\_head}{\Sigma,\mathit{votes},
+    \mathit{support\_votes},s-1}$
+  \State $B\gets$ a new block with $B.\parent=H$ and $B.\slot=s$
+  \State $B.\votesf\gets\mathit{votes}$
+  \Comment{everything, not only the pre-freeze part}
+  \State $B.\supportf\gets\mathit{support\_votes}$
+  \Comment{the proposal-time support subset}
+  \State sign $B$ with the slot-$s$ proposer key; broadcast $B$
+  \Comment{processed on delivery only}
+\EndFunction
+\vspace{1pt}
+\Function{goldfish\_vote}{$\Sigma$}
+  \Comment{\DC{2.5}, adapted; Lean \lean{act}}
+  \State $s\gets\Sigma.s$
+  \Comment{runs at $t_s+\Delta$}
+  \If{$s=0$}
+    \State $H\gets\genesis$
+    \Comment{the slot-$0$ vote (Lean)}
+  \Else
+    \State $\mathit{votes}\gets\{\mathit{vote}\in\Sigma.\gfPool[s-1]:
+      \Sigma.\timestamp(\mathit{vote})<t_{s-1}+3\Delta\}$
+    \Comment{received before the freeze}
+    \State $\mathit{support\_votes}\gets\{\mathit{vote}\in\mathit{votes}:
+      \Sigma.\resolutionTime(\mathit{vote})<t_{s-1}+3\Delta\}$
+    \ForAll{$B\in\Sigma.\T$ with $B.\slot=s$}
+      \State $\mathit{included\_votes}\gets
+        \{\mathit{vote}\in B.\votesf:\mathit{vote}.\slot=s-1\}$
+      \State $\mathit{votes}\gets\mathit{votes}\cup\mathit{included\_votes}$
+      \State $\mathit{support\_votes}\gets\mathit{support\_votes}\cup
+        \{(i,s-1,H')\in B.\supportf:H'\in\Sigma.\T,\ H'.\slot\leq s-1\}$
+      \Comment{fixed proposal support}
+    \EndFor
+    \State $\mathit{tree}\gets
+      \Call{voter\_processed\_block\_tree}{\Sigma,s}$
+    \State $H\gets\Call{get\_head\_in\_tree}{\Sigma,\mathit{tree},
+      \mathit{votes},\mathit{support\_votes},s-1}$
+  \EndIf
+  \State broadcast the vote $(i,s,H)$, signed with the node's seat~$i$
+    of slot~$s$
+  \Comment{the signer supplies $i$}
+\EndFunction
+\end{algorithmic}
+}
+
+\section{Differences between the sources}\label{sec:differences}
+
+This section lists each point where the Lean model differs from~\cite{DC}
+or from the design notes~\cite{SA,RT}, and the choice of this document.
+In every case the document follows the Lean model.
+
+\begin{enumerate}[leftmargin=*]
+\item \emph{Own objects.}  \cite{DC} calls $\Call{on\_block}{}$ and
+  $\Call{on\_goldfish\_vote}{}$ at once for the node's own block and
+  vote.  In the Lean model, sending does not change the state, and the
+  node processes its own objects only on delivery.  The notes~\cite{SA}
+  agree with the Lean model.
+\item \emph{Slot-$0$ vote.}  \cite{DC} has no vote at slot~$0$.  The
+  Lean model has a slot-$0$ vote for $\genesis$ at time~$\Delta$.
+\item \emph{Committees.}  \cite{DC} has a committee $\mathcal K_s$ of
+  validators and a validator index.  The Lean model has C* seats: $n$
+  seats in every slot, a hidden bijection, and no index in honest code.
+  Every awake validator votes in every slot.  The pool counts seats.
+\item \emph{Empty results.}  The available confirmation of~\DC{2.6}
+  always returns a block, genesis at worst.  The Lean gate returns an
+  empty result when the walk's end has no strict majority, and saves it.
+  The notes~\cite{SA} agree with the Lean model.
+\item \emph{Expiry time.}  The notes~\cite[\S3]{SA} delete expired locks
+  at~$q_r$.  The Lean model deletes them at every tick.  Every deadline
+  is a vote time $q_r$, so the two rules give the same state.
+\item \emph{Cached views.}  \cite{DC} derives every view from
+  timestamps.  The Lean model saves the frozen views, the early pools,
+  the revocation snapshots, and a second record \lean{goldfishRecord}.
+  This document derives the views and omits the fields that no rule
+  reads (Section~\ref{sec:complete-store}).
+\item \emph{Genesis stamp.}  \cite{DC} uses $-\infty$; the Lean model
+  uses~$0$.  This document uses~$0$.  No cutoff is at or before~$0$.
+\item \emph{Block checks.}  In~\cite{DC}, the state transition asserts
+  the proposer and the parent slot.  In the Lean model, well-formedness
+  is a premise on delivered objects, and the block handler checks the
+  proposer key and the parent slot.  This document puts both checks in
+  $\Call{on\_block}{}$ and states well-formedness as a property of the
+  wire object.
+\item \emph{Relay.}  \cite{DC} says that an honest node forwards every
+  admitted block and every accepted vote.  The Lean model has no
+  forwarding step and no unsigned gossip; accepted-object relay is a
+  premise of the run.
+\item \emph{Resolution.}  The function $\Call{resolution\_time}{}$
+  in~\DC{7} has no slot clause; the prose of~\DC{2.2} has it.  The Lean
+  model has it in the code.  This document puts it in the function.
+\item \emph{Walk ties.}  \cite{DC} breaks ties by root order.  In the
+  Lean model the greater root wins, and a tie between two children with
+  the same root stops the walk.  Distinct roots (a run premise) exclude
+  that last case.
+\end{enumerate}
+
+The Lean model and the notes~\cite{SA,RT} agree on every SA rule:
+the revocation threshold, the lifetime, the saved raw results, both
+admission tests, the veto, the record write, and the order of expiry,
+revocation, vote, and gate.
+
+\paragraph{Open points.}
+\begin{enumerate}[leftmargin=*]
+\item \OPEN: \emph{retention.}  The Lean model keeps every processed
+  object and every saved result.  The rules read $\Sigma.\savedConfirmation$ only
+  for the last $k-1$ slots, and the pools only for recent slots.  This
+  document gives no pruning rule, and no proof covers one.
+\item \OPEN: \emph{relay.}  The Lean model states accepted-object relay
+  as a premise.  This document does not specify how a node forwards
+  objects, or how it forwards objects that it refuses.
+\item \OPEN: \emph{missed ticks.}  The Lean run has a tick at every
+  public time for every honest node.  This document does not specify the
+  behaviour of a node that misses a public time, for example a node that
+  restarts or joins late.  For such a node, the missed slots are missing
+  entries of $\Sigma.\savedConfirmation$.
+\end{enumerate}
+
+\begin{thebibliography}{RT}
+\bibitem[DC]{DC}
+  Decoupled consensus.
+  \nolinkurl{research/healing/rewrite/consensus.tex}, Section~7 for the
+  form and Section~2 for Goldfish.
+\bibitem[Lean]{Lean}
+  Available-chain Lean model.
+  \nolinkurl{lean/available-chain/AvailableChainSA/Model/Protocol.lean},
+  \nolinkurl{AvailableChainGridCO/Model/Protocol.lean}, and
+  \nolinkurl{docs/SA-STATUS.md}.
+\bibitem[SA]{SA}
+  Slow arming with one revocation level.
+  \nolinkurl{tip-stability/codex/slow-arming.md}, 2026-09-27.
+\bibitem[RT]{RT}
+  Slow arming: adversarial review.
+  \nolinkurl{tip-stability/codex/sa-redteam.md}, 2026-09-27.
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,50 @@
+# P-Cl1 Round 2: merge these names into owners under the existing FGSAProofs key.
+AvailableChainFGSAProofs.Proofs.Clean.EpochSaved
+  AvailableChain.FGSA.Run.clean_epoch_saved_row
+AvailableChainFGSAProofs.Proofs.Clean.GateEpoch
+  AvailableChain.FGSA.Run.clean_enabledGate_awakeClosed
+  AvailableChain.FGSA.Run.clean_enabledGate_of_joinedAt
+  AvailableChain.FGSA.Run.clean_enabledGate_restartFreeTime
+  AvailableChain.FGSA.Run.clean_gate_enabled_of_result
+  AvailableChain.FGSA.Run.clean_gate_executed
+  AvailableChain.FGSA.Run.clean_gate_join_test_iff
+  AvailableChain.FGSA.Run.clean_gate_nonempty_raw
+  AvailableChain.FGSA.Run.clean_gate_raw_enabled
+  AvailableChain.FGSA.Run.clean_gate_unjoined
+  AvailableChain.FGSA.Run.clean_joined_gate_witness
+  AvailableChain.FGSA.Run.clean_joined_witness
+  AvailableChain.FGSA.Run.clean_restart_marker_after
+AvailableChainFGSAProofs.Proofs.Clean.Safety
+  AvailableChain.FGSA.Run.cleanSafety_body
+AvailableChainFGSAProofs.Proofs.Clean.Service
+  AvailableChain.FGSA.Run.clean_gate_head_receipt
+  AvailableChain.FGSA.Run.clean_gate_read_epoch
+  AvailableChain.FGSA.Run.clean_gate_restart_bound
+  AvailableChain.FGSA.Run.clean_headVotes_backward
+  AvailableChain.FGSA.Run.clean_headVotes_provenance
+  AvailableChain.FGSA.Run.clean_head_epoch
+  AvailableChain.FGSA.Run.clean_head_handlers
+  AvailableChain.FGSA.Run.clean_head_history
+  AvailableChain.FGSA.Run.clean_head_receipt_at_read
+  AvailableChain.FGSA.Run.clean_head_receiver_service
+  AvailableChain.FGSA.Run.clean_head_relay_scope
+  AvailableChain.FGSA.Run.clean_support_accepted
+  AvailableChain.FGSA.Run.clean_transfer_head_scope
+  AvailableChain.FGSA.Run.clean_vote_proposal_tick
+  AvailableChain.FGSA.Run.clean_vote_restart_bound
+AvailableChainFGSAProofs.Proofs.Clean.State
+  AvailableChain.FGSA.Run.clean_restartStateStep
+AvailableChainFGSAProofs.Proofs.Clean.StateEpoch
+  AvailableChain.FGSA.Run.cleanHist_step_restart
+  AvailableChain.FGSA.Run.clean_enabledGate_of_confirmedReader
+  AvailableChain.FGSA.Run.clean_enabledGate_service_epoch
+  AvailableChain.FGSA.Run.clean_gate_batch_joined
+  AvailableChain.FGSA.Run.clean_gate_fg_before_time
+  AvailableChain.FGSA.Run.clean_gate_fg_eq
+  AvailableChain.FGSA.Run.clean_gate_head_prefixes_joined
+  AvailableChain.FGSA.Run.clean_gate_restartFree
+  AvailableChain.FGSA.Run.clean_joinedNow_of_joined_vote
+  AvailableChain.FGSA.Run.clean_restartFree_succ
+  AvailableChain.FGSA.Run.clean_restart_fields
+AvailableChainFGSAProofs.Proofs.Clean.StateGate
+  AvailableChain.FGSA.Run.clean_gate_suppressed_fields

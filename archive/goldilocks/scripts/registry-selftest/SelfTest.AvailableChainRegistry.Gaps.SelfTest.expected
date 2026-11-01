@@ -1,0 +1,28 @@
+│ RegistrySelfTest.closedOne │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants RegistrySelfTest.Sm 1 │ AvailableChain.Registry.GridCO.gridInst RegistrySelfTest.Sm │ KNOWN-GAP │ gap │
+│ RegistrySelfTest.closedSapc │ profile-holds │ strong-1 at C = (AvailableChain.SAPC.sapcConstants AvailableChain.SAPC.Tests.p 1, AvailableChain.SAPC.sapcStrongConstants AvailableChain.SAPC.Tests.p) │ AvailableChain.Registry.SAPC.sapcInst AvailableChain.SAPC.Tests.p │ KNOWN-GAP │ gap │
+│ RegistrySelfTest.fieldCert │ cert │ AvailableChain.Framework.Catalog.safeConfirmed │ RegistrySelfTest.two.a │ KNOWN-GAP │ gap │
+│ RegistrySelfTest.negAlias │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants p 1 │ AvailableChain.Registry.GridCO.gridInst │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negCert │ cert │ AvailableChain.Framework.Catalog.safeConfirmed │ AvailableChain.Registry.Counter.counterInst │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negEmpty │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants RegistrySelfTest.Sm 1 │ AvailableChain.Registry.GridCO.gridInst RegistrySelfTest.Sm │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negEmptyAbbrev │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants RegistrySelfTest.Sm 1 │ AvailableChain.Registry.GridCO.gridInst RegistrySelfTest.Sm │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negFalsePropAbbrev │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants RegistrySelfTest.Sm 1 │ AvailableChain.Registry.GridCO.gridInst RegistrySelfTest.Sm │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negFamLeak │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants RegistrySelfTest.Sm 1 │ AvailableChain.Registry.GridCO.gridInst RegistrySelfTest.Sm │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negHidArg │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants q 1 │ AvailableChain.Registry.GridCO.gridInst │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negHidden │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants RegistrySelfTest.Sm 1 │ AvailableChain.Registry.GridCO.gridInst RegistrySelfTest.Sm │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negHiddenFun │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants RegistrySelfTest.Sm 1 │ AvailableChain.Registry.GridCO.gridInst RegistrySelfTest.Sm │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negImplicit │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants RegistrySelfTest.Sm 1 │ AvailableChain.Registry.GridCO.gridInst RegistrySelfTest.Sm │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negOptParam │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants q 1 │ AvailableChain.Registry.GridCO.gridInst │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negPLift │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants q.down 1 │ AvailableChain.Registry.GridCO.gridInst │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negPLiftFalse │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants RegistrySelfTest.Sm 1 │ AvailableChain.Registry.GridCO.gridInst RegistrySelfTest.Sm │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negParamsAndProp │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants p 1 │ AvailableChain.Registry.GridCO.gridInst │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negSelFalse │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants RegistrySelfTest.Sm 1 │ AvailableChain.Registry.GridCO.gridInst RegistrySelfTest.Sm │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negSelTrue │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants q 1 │ AvailableChain.Registry.GridCO.gridInst │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negSubtype │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants (↑q) 1 │ AvailableChain.Registry.GridCO.gridInst │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.negTwoParams │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants p 1 │ AvailableChain.Registry.GridCO.gridInst │ CONDITIONAL (not a certificate) │ cond │
+│ RegistrySelfTest.nonCatalog │ refutation-family │ AvailableChain.Registry.Tests.testStrongSafe NON-CATALOG │ AvailableChain.Registry.Tests.badStrong │ KNOWN-GAP │ no cell: claim not in the catalog │
+│ RegistrySelfTest.posGrid │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants p 1 │ AvailableChain.Registry.GridCO.gridInst │ KNOWN-GAP (family) │ gap │
+│ RegistrySelfTest.posInstBinder │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants q 1 │ AvailableChain.Registry.GridCO.gridInst │ KNOWN-GAP (family) │ gap │
+│ RegistrySelfTest.posSA │ profile-holds │ core.v1 at C = (AvailableChain.SA.saConstants p 1).D_c │ AvailableChain.Registry.SA.saInst │ KNOWN-GAP (family) │ gap │
+│ RegistrySelfTest.posSapc │ profile-holds │ ac-4.3 at C = AvailableChain.SAPC.sapcConstants p 1 │ AvailableChain.Registry.SAPC.sapcInst │ KNOWN-GAP (family) │ gap │
+│ RegistrySelfTest.unsafeClosed │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants RegistrySelfTest.Sm 1 │ AvailableChain.Registry.GridCO.gridInst RegistrySelfTest.Sm │ UNSOUND(unsafe) │ unsound │
+│ RegistrySelfTest.unsafeFamily │ profile-holds │ ac-4.3 at C = AvailableChain.GridCO.gridConstants q 1 │ AvailableChain.Registry.GridCO.gridInst │ UNSOUND(unsafe) (family) │ unsound │

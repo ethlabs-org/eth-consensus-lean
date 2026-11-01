@@ -1,0 +1,34 @@
+# Checker code and data. fnmatch globs: * also matches /; no implicit docs catch-all.
+# scripts/** includes check support, control fixtures, generators, baselines and inventories.
+scripts/**
+*Check*.lean
+*Control*.lean
+*CheckSupport/**
+*Control/**
+*/Tests/*.lean
+lakefile.toml
+lakefile.lean
+lean-toolchain
+lake-manifest.json
+# CatalogLock.lean; Registry.lean --check
+docs/internal/catalog.lock
+docs/internal/REGISTRY.md
+docs/internal/MATRIX.md
+# V2Manifest.lean (all scopes and anchor files); fgsa-deep.py
+docs/internal/V2-API.md
+docs/internal/GEN-API.md
+docs/internal/FGSA-API.md
+docs/internal/PCSA-API.md
+docs/internal/api/**
+# check-fg-pins.sh; check-fg.sh controls
+# Pin table, history/registry parsing, manifest and external names (FGPinIds.lean)
+AvailableChainKitFG/Pins.lean
+docs/internal/FG-COMPOSITION.md
+# check-fgsa-blueprint.py: claim map, generated OPEN document and chapter snapshots
+docs/internal/FGSA-BLUEPRINT-LEAN.json
+docs/internal/FGSA-BLUEPRINT-OPEN.md
+docs/internal/blueprint/fgsa/**
+# Archival check-fg-finality-freeze.py inputs (kept as checker data)
+docs/internal/FG-FINALITY-SAFETY-S0-hashes.json
+docs/internal/FG-FINALITY-SAFETY-S0-step1-hashes.json
+docs/internal/FG-FINALITY-SAFETY-S0-inherited.json

@@ -1,0 +1,25 @@
+{
+  "publicDeclarations": 133,
+  "modules": {
+    "AvailableChainFGSAProofs.Proofs.Foundations.Leases": 7,
+    "AvailableChainFGSAProofs.Proofs.Healing.SupportLease": 6,
+    "AvailableChainFGSAProofs.Proofs.Shared.Relay": 8,
+    "AvailableChainFGSARun.Proofs.Acceptance": 10,
+    "AvailableChainFGSARun.Proofs.EmissionWellFormed": 5,
+    "AvailableChainFGSARun.Proofs.Excludes": 59,
+    "AvailableChainFGSARun.Proofs.Receipts": 16,
+    "AvailableChainSAPC.Proofs.BaseViews": 22
+  },
+  "added": [],
+  "removed": [],
+  "changedTypes": [],
+  "comparison": [
+    "name",
+    "kind",
+    "universe parameters",
+    "typeHash",
+    "fully qualified type"
+  ],
+  "missingBefore": [],
+  "missingAfter": []
+}

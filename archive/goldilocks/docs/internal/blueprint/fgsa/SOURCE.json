@@ -1,0 +1,20 @@
+{
+ "version": 1,
+ "description": "Exact copy of the current FG-SA blueprint chapters, for the D10 check. Do not edit these files; replace the whole snapshot and review the claim map.",
+ "source_path": "research/async-resilient-committees/tip-stability/blueprint",
+ "source_repository": "research",
+ "source_repository_head": "13d8e6de45b3897fa679876436737a7c1862c2b4",
+ "source_tracked": false,
+ "source_note": "The blueprint directory is untracked in the research repository at this head; the SHA-256 values below identify the copied bytes.",
+ "captured": "2026-10-08T16:33:03+0200",
+ "outline": "00-outline.md",
+ "files": {
+  "00-outline.md": "ac670cb93a8cf165cc0248150daabe14c82a24382e496a0675f6447223535604",
+  "01-foundations.md": "4eb3e273cbad19135e897df2aa062cff4de613b2e429e0ff1bba5b24b0454414",
+  "02-clean.md": "ed1beb7f1fb394502d033ebdeb9a36a0e00af69d5b8bfd7620f20af43c6d270a",
+  "03-p1-inclusion.md": "5624b6888b81ed03e151b8303a40891e01a86ebce2d41af0037147ec0ad1abae",
+  "21-healing.md": "ba95a5f5adf39716d8bb0e32bf7e79d6e12c8367ce04e43032e979736090c68a",
+  "22-finality.md": "02a814aee8359852ab8f9739d405211e4d9ce557a5a98ad110a1235077ba0649",
+  "23-continuation.md": "7ef8987b37e87e10b7ac7509116e77ec7c9cd53fc104913f257717dcb8094b2d"
+ }
+}

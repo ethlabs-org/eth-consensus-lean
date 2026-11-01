@@ -1,0 +1,20 @@
+[
+  {
+    "name": "AvailableChain.V2.D.rootInjective_all",
+    "old": [
+      "theorem",
+      "ca90d362547a2164"
+    ],
+    "new": null,
+    "classification": "M1: deleted global injection"
+  },
+  {
+    "name": "AvailableChain.V2.rootInjective_all",
+    "old": [
+      "theorem",
+      "97e44d2a94e02a96"
+    ],
+    "new": null,
+    "classification": "M1: deleted global injection"
+  }
+]

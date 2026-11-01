@@ -1,0 +1,20 @@
+7c7
+< def AvailableChain.V2.instDecidableEqAuth 9485793c09c144ca
+---
+> def AvailableChain.V2.instDecidableEqAuth cb6e363e7b392734
+9c9
+< def AvailableChain.V2.instReprAuth c0ad29792b8edc84
+---
+> def AvailableChain.V2.instReprAuth bb347e931a7e66ba
+15c15
+< def AvailableChain.V2.instDecidableEqSigned b90103bb597280b7
+---
+> def AvailableChain.V2.instDecidableEqSigned 8c6004fed206f7d9
+17c17
+< def AvailableChain.V2.instReprSigned 3d1dafe855d0b2dd
+---
+> def AvailableChain.V2.instReprSigned fd8687e973ad88a3
+28c28
+< def AvailableChain.V2.instDecidableEqEvent 456f2c423f3bf306
+---
+> def AvailableChain.V2.instDecidableEqEvent 0785c5691b6deb98

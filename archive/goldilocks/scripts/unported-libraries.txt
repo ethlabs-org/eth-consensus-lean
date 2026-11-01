@@ -1,0 +1,11 @@
+# UNPORTED: PC-SA has not been ported to the sleep wake-time restore interface.
+# User decision 2026-10-10. Sources and last snapshots stay in the repository.
+# This is the only exclusion switch for compiled checks and development packages.
+# Source, layer, header, export and source coverage checks still check PC-SA.
+# Keep the five-library group together. After the port, remove all five lines,
+# restore PC-SA build/audit inputs, remove STALE-UNPORTED, and run the full gate.
+AvailableChainPCSA
+AvailableChainPCSARun
+AvailableChainPCSAClaims
+AvailableChainPCSAProofs
+AvailableChainPCSAProofsTests

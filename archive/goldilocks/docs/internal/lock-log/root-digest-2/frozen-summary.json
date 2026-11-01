@@ -1,0 +1,494 @@
+{
+  "fgsa": {
+    "entries": 965,
+    "statuses": {
+      "CHANGED": 919,
+      "ADDED": 46
+    },
+    "causeCounts": [
+      {
+        "causeWords": [
+          "§1/§2",
+          "Params.digest",
+          "and",
+          "explicit",
+          "Block/FGBlock",
+          "roots;",
+          "generated/type",
+          "closure",
+          "propagation;",
+          "ROOT-DIGEST-2",
+          "representation",
+          "dependency",
+          "(§4.2)"
+        ],
+        "entries": 67
+      },
+      {
+        "causeWords": [
+          "N",
+          "/",
+          "H",
+          "/",
+          "Q",
+          "representation",
+          "dependency:",
+          "shared",
+          "state/readers",
+          "and",
+          "generated",
+          "constructor/projection",
+          "closure",
+          "(§2.3",
+          "/",
+          "§4.2)"
+        ],
+        "entries": 818
+      },
+      {
+        "causeWords": [
+          "N",
+          "/",
+          "Q:",
+          "full",
+          "named",
+          "and",
+          "list",
+          "identity",
+          "(§1.4",
+          "/",
+          "§4.1.1)"
+        ],
+        "entries": 1
+      },
+      {
+        "causeWords": [
+          "N",
+          "/",
+          "A:",
+          "exact",
+          "full",
+          "named",
+          "metadata",
+          "and",
+          "parent",
+          "closure",
+          "(§1.2",
+          "/",
+          "§4.1.1)"
+        ],
+        "entries": 10
+      },
+      {
+        "causeWords": [
+          "Q:",
+          "same",
+          "single",
+          "idealization",
+          "field",
+          "(§4.1.8)"
+        ],
+        "entries": 8
+      },
+      {
+        "causeWords": [
+          "Q:",
+          "unchanged",
+          "scoped",
+          "geometric",
+          "contract",
+          "(§4.1.12)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "H:",
+          "vote",
+          "and",
+          "walk",
+          "field",
+          "referents",
+          "(§4.1.14)"
+        ],
+        "entries": 5
+      },
+      {
+        "causeWords": [
+          "additive",
+          "named",
+          "/",
+          "root-mode",
+          "declaration"
+        ],
+        "entries": 3
+      },
+      {
+        "causeWords": [
+          "Q:",
+          "existential",
+          "named",
+          "erasure",
+          "scope",
+          "(§1.3)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "E",
+          "/",
+          "N:",
+          "actual",
+          "emitted",
+          "HEAD",
+          "body",
+          "and",
+          "named",
+          "parent",
+          "(§4.1.10)"
+        ],
+        "entries": 1
+      },
+      {
+        "causeWords": [
+          "N:",
+          "named",
+          "payload",
+          "rows",
+          "(§4.1.3)"
+        ],
+        "entries": 1
+      },
+      {
+        "causeWords": [
+          "N:",
+          "same",
+          "emitted-or-delivered",
+          "observation",
+          "(§4.1.15)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "H:",
+          "resolved",
+          "support",
+          "witness",
+          "(§4.1.14)"
+        ],
+        "entries": 1
+      },
+      {
+        "causeWords": [
+          "H:",
+          "root",
+          "HEAD",
+          "wire",
+          "(§4.1.11)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "N:",
+          "emitted",
+          "named",
+          "body",
+          "and",
+          "exact",
+          "projections",
+          "(§4.1.13)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "N:",
+          "named",
+          "payload",
+          "erasure",
+          "(§4.1.3)"
+        ],
+        "entries": 1
+      },
+      {
+        "causeWords": [
+          "N",
+          "/",
+          "Q:",
+          "single",
+          "full",
+          "named",
+          "premise",
+          "(§1.3)"
+        ],
+        "entries": 3
+      },
+      {
+        "causeWords": [
+          "N:",
+          "named",
+          "payload",
+          "with",
+          "the",
+          "old",
+          "geometric",
+          "projection",
+          "(§4.1.17)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "§2",
+          "named",
+          "premise/admission/content",
+          "delta;",
+          "ROOT-DIGEST-2",
+          "representation",
+          "dependency",
+          "(§4.2)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "N",
+          "/",
+          "A",
+          "/",
+          "H:",
+          "exact",
+          "named",
+          "admission",
+          "and",
+          "root",
+          "view",
+          "(§4.1.12)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "N:",
+          "exact",
+          "stored",
+          "named",
+          "carrier",
+          "(§4.1.12)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "N",
+          "/",
+          "A:",
+          "exact",
+          "named",
+          "parent",
+          "and",
+          "admission",
+          "(§4.1.16)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "N",
+          "/",
+          "H:",
+          "named",
+          "payload",
+          "and",
+          "root",
+          "HEAD",
+          "(§4.1.6)"
+        ],
+        "entries": 6
+      },
+      {
+        "causeWords": [
+          "N",
+          "/",
+          "H",
+          "/",
+          "Q:",
+          "named",
+          "payload",
+          "and",
+          "root",
+          "HEAD",
+          "(§4.1.6)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "E",
+          "/",
+          "H:",
+          "actual",
+          "emitted",
+          "HEAD",
+          "body",
+          "(§4.1.11)"
+        ],
+        "entries": 1
+      },
+      {
+        "causeWords": [
+          "N:",
+          "preserve",
+          "emitted-or-delivered",
+          "observation",
+          "(§4.1.9)"
+        ],
+        "entries": 1
+      },
+      {
+        "causeWords": [
+          "E",
+          "/",
+          "H:",
+          "prepared",
+          "sender",
+          "body",
+          "with",
+          "target",
+          "root",
+          "(§4.1.14)"
+        ],
+        "entries": 1
+      },
+      {
+        "causeWords": [
+          "H:",
+          "cumulative",
+          "resolver",
+          "witness",
+          "(§4.1.14)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "N:",
+          "geometric",
+          "block",
+          "projection",
+          "(§4.1.4)"
+        ],
+        "entries": 2
+      },
+      {
+        "causeWords": [
+          "Append-only",
+          "public",
+          "declaration",
+          "/",
+          "contract",
+          "projection;",
+          "ROOT-DIGEST-2",
+          "representation",
+          "dependency",
+          "(§4.2)"
+        ],
+        "entries": 8
+      },
+      {
+        "causeWords": [
+          "N",
+          "/",
+          "A",
+          "/",
+          "H:",
+          "named",
+          "dependency",
+          "and",
+          "root",
+          "HEAD",
+          "(§4.1.5)"
+        ],
+        "entries": 1
+      },
+      {
+        "causeWords": [
+          "H",
+          "/",
+          "generic",
+          "mode:",
+          "root-mode",
+          "ACReads",
+          "(§4.1.7)"
+        ],
+        "entries": 1
+      },
+      {
+        "causeWords": [
+          "GUP",
+          "r2;",
+          "ROOT-DIGEST",
+          "§1/§2",
+          "representation",
+          "closure",
+          "where",
+          "hash",
+          "changes;",
+          "ROOT-DIGEST-2",
+          "representation",
+          "dependency",
+          "(§4.2)"
+        ],
+        "entries": 1
+      }
+    ]
+  },
+  "gen": {
+    "entries": 162,
+    "statuses": {
+      "CHANGED": 125,
+      "ADDED": 37
+    },
+    "causeCounts": [
+      {
+        "causeWords": [
+          "dependency-only:",
+          "legacy",
+          ".block",
+          "representation;",
+          "source",
+          "claim",
+          "unchanged"
+        ],
+        "entries": 61
+      },
+      {
+        "causeWords": [
+          "generic-mode",
+          "plumbing:",
+          "plan",
+          "§4.2",
+          "/",
+          "§9"
+        ],
+        "entries": 64
+      },
+      {
+        "causeWords": [
+          "additive",
+          "root-mode",
+          "companion"
+        ],
+        "entries": 37
+      }
+    ]
+  },
+  "v2": {
+    "entries": 0,
+    "statuses": {},
+    "causeCounts": []
+  }
+}

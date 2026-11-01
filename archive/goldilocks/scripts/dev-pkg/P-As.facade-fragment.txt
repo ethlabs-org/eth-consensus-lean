@@ -1,0 +1,7 @@
+# Apply at final serial assembly after the owned import closures are GREEN.
+public import AvailableChainFGSAProofs.Proofs.Assembly.ResetSource
+public import AvailableChainFGSAProofs.Proofs.Assembly.ContinuationReplay
+public import AvailableChainFGSAProofs.Proofs.Assembly.ContinuationService
+public import AvailableChainFGSAInhabit.SleepPositive
+# Register the two local audits with the existing full audit keys; add no new key.
+# Do not mark Root/FGSAClaims accepted from these imports alone.

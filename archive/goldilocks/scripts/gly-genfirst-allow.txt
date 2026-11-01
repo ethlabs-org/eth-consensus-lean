@@ -1,0 +1,2 @@
+# Exact GEN-FIRST keys need a nonempty reason after #.
+# Only F-13 rule (a) KitFG wrappers may be allowed here.

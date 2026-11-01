@@ -1,0 +1,183 @@
+{
+  "AvailableChain.FGSA.Run.fgsaSafetyReads": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.FGSA.Run.fgsa_safetyProposalErase_def": [
+    "propext"
+  ],
+  "AvailableChain.FGSA.Run.fgsa_safetyProposalRows_def": [
+    "propext"
+  ],
+  "AvailableChain.FGSA.Run.safetyProposalErase": [
+    "propext"
+  ],
+  "AvailableChain.FGSA.Run.safetyProposalRows": [
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.decodeSafetyRow": [
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsaCoreReadsWith": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsaCoreReadsWith_def": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsaCoreReadsWith_on": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsaSafetyCertificateLaws": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsaSafetyOrderLaws": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsaSafetyReads": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsaSafetyReads_def": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsaSafetyWireLaws": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_decodeSafetyRow_def": [
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safetyEnabled_def": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safetyProposalErase_def": [
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safetyProposalRows_def": [
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_carried": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_clock_record": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_decode_auth": [
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_decode_encode": [
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_decoded_visible": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_encode_injective": [
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_erase_prefix": [
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_finalityView_eq": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_initial_record": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_initial_tf": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_output_eq": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_own_core": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_own_record": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_process_F": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_process_record": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_restart_record": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_restart_tf": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_row_auth": [
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.pcsa_safety_source_mem": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.safetyEnabled": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.safetyProposalErase": [
+    "propext"
+  ],
+  "AvailableChain.PCSA.Run.safetyProposalRows": [
+    "propext"
+  ],
+  "AvailableChain.PCSA.pcsa_process_F_mono": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "AvailableChain.PCSA.pcsa_safety_delete_core": [
+    "Quot.sound",
+    "propext"
+  ]
+}

@@ -1,0 +1,282 @@
+\section{Composition}\label{sec:composition}
+
+\subsection{Model}\label{sec:model}
+
+A fixed set~$V$ of $n\geq1$ validators is given.  Every validator has
+weight~$1$: for $S\subseteq V$, $w(S)=|S|$, and the quorum threshold is
+$q=\lceil 2n/3\rceil$.  $\Delta$ is the delivery parameter of blocks and
+AC messages, and $\Delta_F\geq\Delta$ is the delivery parameter of
+attestations.  A bound is strict: the receiver processes the object at
+a time strictly less than the deadline of the bound.  When the deadline is
+a public time, the receiver thus processes the object before the tick at
+that time.  Time is continuous, and the clock~$t$ of a node is the
+current time.  The public times are the multiples of~$\Delta$.  A node
+runs one tick at each public time.  A tick starts from the state as it
+was before its public time, and each step of the tick reads the state
+after the earlier steps of that tick.
+
+A node is awake or asleep.  An asleep node receives nothing and runs no
+tick, so it has no duty and no output.  An object that is sent while its
+receiver sleeps, or that is not yet delivered when its receiver goes to
+sleep, is delivered after the next wake: a delivery bound counts from the
+later of the send time and that wake.  The node stamps an object with its
+time of receipt.  A node that wakes restarts (Section~\ref{sec:store})
+before it runs a tick or processes an object at that time; a crash is a
+sleep.
+
+The delivery bounds hold for every awake honest node.  An honest node
+forwards an object when it accepts it: a block when the FG accepts it, an
+AC message when the AC admits it, and an attestation when it passes the
+checks.  This includes the objects that a block carries: a vote that the AC
+admits from the payload of an accepted block, and an attestation of an
+accepted block that enters the pool, are forwarded as wire objects of their
+own, whether or not another node accepts the block.  So a delivery bound also counts from the time at which an honest
+node first accepts the object; a receipt that is refused is not forwarded.  A node that runs
+while its delivery is under the control of the adversary is faulty.
+
+Slot~$s$ starts at the public time~$t_s$, with $t_0=0$ and
+$t_s<t_{s+1}$, and has an assigned proposer.  The slot of a time~$t$, written $\slot(t)$, is
+the greatest~$s$ with $t_s\leq t$.  Round~$r$ has the slots
+$rR,\ldots,rR+R-1$, and $\round(s)=\lfloor s/R\rfloor$.  Its opening time
+is $T_r=t_{rR}$.  Rounds are the heartbeat of the network for the
+aggregation of attestations; no rule of the shared node reads them, and an
+AC can use them.  The AC fixes the slot times and a lower bound on~$R$.
+
+The local validator index is~$\valindex$.
+
+\subsection{Blocks}\label{sec:blocks}
+
+Every block~$B$ has a root~$B.\rootf$, slot~$B.\slot$, parent~$B.\parent$,
+and proposer index~$B.\proposer$.  It has an AC payload~$B.\acp$ and a list
+$B.\mathsf{attestations}$ of attestations (the FG payload).  The
+order of each list and its repeated entries are part of the block.  The
+block names its parent by root; the FG state must hold that parent in full,
+with the same content, not only a block with the same root.  $B.\rootf$
+is the fixed digest of
+\[
+ (B.\parent.\rootf,\ B.\slot,\ B.\mathsf{attestations},\ B.\acp).
+\]
+The AC fixes the encoding of its payload in this input.
+
+The proposer signs a block with the slot key of $B.\proposer$.  A
+validator signs an attestation with its fixed identity $\valindex\in V$.
+A handler receives an object only when its signature is valid for its
+signer and these checks pass: the signer of an attestation is in~$V$ and
+its pairs have the forms of Section~\ref{sec:fg}; the slot key of
+$B.\proposer$ signs a block~$B$; every attestation
+that $B$ carries passes the same checks as on the wire;
+$\Call{ac\_valid\_payload}{B}$ holds; an AC message passes the checks of
+the AC; and $B.\rootf$ is the digest of the content of~$B$.  The check
+drops an object that fails it, with no effect.
+
+Processed blocks form a parent-closed tree rooted at~$\genesis$.  Write
+$B\preceq C$ when $B=C$ or $B$ is an ancestor of~$C$, and write $B\prec C$
+for strict ancestry.  Two blocks are compatible when one is an ancestor of
+the other, and they conflict otherwise.  The depth of a block is the
+number of parent edges from genesis.  ``Deepest'' means maximum depth;
+ties use a fixed root order.
+
+\subsection{State}\label{sec:store}
+
+The node keeps the clock~$t$, the FG state~$\Sigma$ and the AC
+state~$\AC$.  The FG state is
+\[
+ \Sigma=(\T,\sigma[\cdot],F,J,h_j,\hmax,\attestations).
+\]
+$\Sigma.\T$ is the tree of accepted blocks.  A block enters it only when
+it extends~$\Sigma.F$, and no rule removes a block.
+$\Sigma.\sigma[B]$ is the immutable chain state of an accepted
+block.  $\Sigma.F$, $\Sigma.J$, $\Sigma.h_j$ and $\Sigma.\hmax$ are the
+finality caches.  Section~\ref{sec:fg} defines the chain state and the
+caches.  $\Sigma.\attestations$ holds
+the processed attestations in full, one copy of each, in the order of
+first acceptance, with no age limit and no limit per validator.  No rule
+reads the time at which an attestation arrived; the pool serves inclusion
+only.  Attestations reach the pool on the wire, through the node's own
+$\Call{attest}{}$, and from the blocks that the FG accepts, after the
+block's finality update.
+
+Only the FG functions read and write~$\Sigma$, and only the AC functions
+read and write~$\AC$.  The AC has no block store: the FG decides which
+blocks are accepted, and the AC sees them through the FG frame.
+
+The validator also keeps its anti-slashing record~$\Lambda$
+(Section~\ref{sec:fg}).  The record belongs to the validator.  It is
+durable: it persists through a restart.  A restart keeps~$\Lambda$,
+$\Sigma$ and the clock, and it replaces~$\AC$ by
+$\Call{ac\_restart}{\AC,\Fr,t}$, with $\Fr=\Call{fg\_to\_ac}{\Sigma}$
+and $t$ the time of the restart.  The AC decides which part of its state
+persists.
+
+At initialization, $t=0$,
+\[
+ \Sigma.\T=\{\genesis\},\quad
+ \Sigma.F=\Sigma.J=\genesis,\quad \Sigma.h_j=0,\quad \Sigma.\hmax=1,
+\]
+$\Sigma.\sigma[\genesis]$ is the initial chain state, the pool is empty,
+and $\AC$ is the initial state of the AC.
+
+\subsection{The FG frame}\label{sec:frame}
+
+The FG frame is what the FG gives to the AC.  It is derived from the FG
+state when used, and every call of one tick step reads the FG frame of the
+same state:
+\[
+ \Fr=\Call{fg\_to\_ac}{\Sigma}=(\tree,\fcroot,\allowed).
+\]
+\begin{itemize}
+\item $\Fr.\tree$ is the set of the accepted blocks that
+  extend~$\Sigma.F$.  Write $\Fr.F$ for its root, the block~$\Sigma.F$.
+\item $\Fr.\fcroot$ is a block of $\Fr.\tree$: the root of the fork
+  choice.
+\item $\Fr.\allowed$ is a set of blocks of $\Fr.\tree$ that
+  extend~$\Fr.\fcroot$: the blocks on which a head walk may stop.
+\end{itemize}
+For a set $\mathit{tree}\subseteq\Fr.\tree$, the \emph{viable tree}
+$\filtered(\Fr,\mathit{tree})$ is the set of the blocks of~$\mathit{tree}$
+that extend~$\Fr.\fcroot$ and have a descendant in
+$\mathit{tree}\cap\Fr.\allowed$.  It follows from the FG frame; it is not a
+part of it.
+$\Fr.F$ moves only to a descendant, also through a restart, because a
+restart keeps~$\Sigma$.  So a block that leaves $\Fr.\tree$ does not
+return.  Figure~\ref{alg:fg-store} computes the FG frame.
+
+\subsection{The available chain}\label{sec:ac-interface}
+
+An AC has a state~$\AC$, a set of wire messages, a block payload, and
+these functions.  $t$ is the clock of the node.
+\[
+\begin{array}{l@{\qquad}l}
+ \Call{ac\_valid\_payload}{B} & \text{stateless check of $B.\acp$},\\
+ \Call{ac\_on\_message}{\AC,\Fr,t,m} & \text{an AC wire message arrives},\\
+ \Call{ac\_on\_block}{\AC,\Fr,t,B} & \text{the FG accepted block $B$},\\
+ \Call{ac\_on\_tick}{\AC,\Fr,t} & \text{the schedule of the AC; it can
+   send AC messages},\\
+ \Call{ac\_proposal}{\AC,\Fr,t} & \text{returns
+   $(H,\mathit{ac\_payload})$: a parent and an AC payload, or $\bot$},\\
+ \Call{ac\_to\_fg}{\AC,\Fr,t} & \text{returns
+   $(\mathit{fg\_confirmed},\mathit{head})$; $\mathit{fg\_confirmed}=\bot$
+   when no block is new},\\
+ \Call{ac\_confirmed}{\AC,\Fr,t} & \text{returns the confirmed tip},\\
+ \Call{ac\_head}{\AC,\Fr,t} & \text{returns the head},\\
+ \Call{ac\_restart}{\AC,\Fr,t} & \text{returns the AC state after a restart}.
+\end{array}
+\]
+The two receipt handlers $\Call{ac\_on\_message}{}$ and
+$\Call{ac\_on\_block}{}$ can also send AC messages, as
+$\Call{ac\_on\_tick}{}$ can.  These functions do not take the FG state.  The AC holds a block in its state only as
+a name: the content of a block and its ancestry come from $\Fr.\tree$, or
+from the block that a call supplies.  The AC must satisfy these
+requirements.
+\begin{enumerate}
+\item Every head of a duty (the parent of a proposal, the head of a vote,
+  the head that $\Call{ac\_to\_fg}{}$ returns) extends~$\Fr.\fcroot$.
+  Such a head whose walk starts in $\filtered(\Fr,\mathit{tree})$ is in
+  $\Fr.\allowed$.
+\item A block $\mathit{fg\_confirmed}$ other than~$\bot$ is in
+  $\filtered(\Fr,\Fr.\tree)$, and the returned head extends it.
+\item The output of $\Call{ac\_head}{}$ extends~$\Fr.\fcroot$, and the
+  confirmed tip extends~$\Fr.F$ and is an ancestor of that output.
+\item The parent of a proposal is a head of the AC at that time.
+\end{enumerate}
+
+The protocol exposes three tips: the finalized tip~$\Sigma.F$, the
+confirmed tip $\Call{ac\_confirmed}{\AC,\Fr,t}$ and the head
+$\Call{ac\_head}{\AC,\Fr,t}$, with $\Fr=\Call{fg\_to\_ac}{\Sigma}$.  They
+lie on one chain: the finalized tip is an ancestor of the confirmed tip,
+and the confirmed tip is an ancestor of the head.
+
+\subsection{Node}\label{sec:node}
+
+The node runs the tick of a public time before it processes any object
+received at that time.  It stamps an object with the time at which it
+processes it, so an object received at a public time~$\tau$ counts as
+received after the tick at~$\tau$.  A tick runs the schedule of the AC,
+then the proposal duty at~$t_s$,
+then the FG update.  A node processes its own block, its own AC
+message and its own attestation at once.
+
+The node drops a block of a future slot.  The FG then accepts the block
+only when its full parent is held, no held block has its root, it
+extends~$\Sigma.F$, and the assertions of its state transition hold.  A
+failed test or assertion refuses the block before any write, and the AC
+does not see a refused block.
+No handler then runs for an object that it carries, and a later delivery
+can call the handler again.  The proposer takes the parent and the AC
+payload from the AC; when the AC returns~$\bot$, it makes no proposal.  It includes every attestation of its pool that is
+valid against the state of the parent and is not already on the parent's
+chain, in the order of its pool.
+
+\emph{The FG update.}  After each tick the node asks the AC for an FG
+update.  The AC returns a pair $(\mathit{fg\_confirmed},\mathit{head})$, with
+$\mathit{fg\_confirmed}\neq\bot$ only when it has a new block to vouch
+for.
+$\mathit{fg\_confirmed}$ is the block up to which the AC vouches for the
+chain of the head, for the FG.  The node gives the FG the block
+$\mathit{fg\_confirmed}$ of each such pair, the \emph{source}, and the
+client record decides whether an attestation follows: a target only as the
+first vote at a height, and no entry twice (Section~\ref{sec:fg}).  The
+height pair comes from the chain state of the source, and the finality
+pair from the entry state of that chain state
+(Section~\ref{sec:fg-client}).  The FG does not read the head.
+
+The node functions take the input from outside the node: the time of a
+tick, a received object, or the output of the AC for a duty.  They read
+the clock~$t$ and pass $\Sigma$, $\AC$ and~$\Lambda$ to the two parts.
+
+\captionof{figure}{Node: handlers and duties}\label{alg:node}
+\nopagebreak
+{\footnotesize
+\begin{algorithmic}[1]
+\Function{on\_tick}{$t$}
+  \Comment{at each public time $t$}
+  \State $s\gets\slot(t)$
+  \State $\Fr\gets\Call{fg\_to\_ac}{\Sigma}$; \Call{ac\_on\_tick}{$\AC,\Fr,t$}
+  \If{$s>0$ and $t=t_s$ and $\valindex$ is the slot-$s$ proposer}
+    \State $P\gets\Call{ac\_proposal}{\AC,\Fr,t}$
+    \Comment{$\bot$: the AC makes no proposal}
+    \If{$P\neq\bot$} \State \Call{propose\_block}{$P$} \EndIf
+  \EndIf
+  \State $\Fr\gets\Call{fg\_to\_ac}{\Sigma}$;\quad
+    $(\mathit{fg\_confirmed},\cdot)\gets\Call{ac\_to\_fg}{\AC,\Fr,t}$
+  \Comment{$\bot$: no new block for the FG}
+  \If{$\mathit{fg\_confirmed}\neq\bot$}
+    \State \Call{attest}{$\mathit{fg\_confirmed}$}
+    \Comment{the source; the FG does not read the head}
+  \EndIf
+\EndFunction
+\vspace{1pt}
+\Function{on\_block}{$B$}
+  \If{$B.\slot>\slot(t)$} \State \Return \EndIf
+  \If{not $\Call{fg\_on\_block}{\Sigma,B}$} \State \Return
+    \Comment{the FG accepts or refuses the block}
+  \EndIf
+  \State $\Fr\gets\Call{fg\_to\_ac}{\Sigma}$; \Call{ac\_on\_block}{$\AC,\Fr,t,B$}
+    \Comment{the frame after the FG accepted $B$}
+\EndFunction
+\vspace{1pt}
+\Function{on\_ac\_message}{$m$}
+  \State $\Fr\gets\Call{fg\_to\_ac}{\Sigma}$; \Call{ac\_on\_message}{$\AC,\Fr,t,m$}
+\EndFunction
+\vspace{1pt}
+\Function{on\_attestation}{$a$}
+  \State \Call{fg\_on\_attestation}{$\Sigma,a$}
+\EndFunction
+\vspace{1pt}
+\Function{propose\_block}{$(H,\mathit{ac\_payload})$}
+  \Comment{runs at $t_s$}
+  \State $B\gets$ a block with $B.\parent=H$, $B.\slot=\slot(t)$,
+    $B.\proposer=\valindex$, $B.\acp=\mathit{ac\_payload}$
+  \State $B.\mathsf{attestations}\gets
+    \Call{proposal\_attestations}{\Sigma,H}$
+  \State broadcast $B$; \Call{on\_block}{$B$}
+\EndFunction
+\vspace{1pt}
+\Function{attest}{$\mathit{fg\_confirmed}$}
+  \State $a\gets\Call{fg\_attest}{\Sigma,\Lambda,\mathit{fg\_confirmed}}$
+  \If{$a=\bot$} \State \Return \EndIf
+  \State broadcast $a$; \Call{on\_attestation}{$a$}
+\EndFunction
+\end{algorithmic}
+}
+

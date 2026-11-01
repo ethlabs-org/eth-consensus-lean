@@ -1,0 +1,152 @@
+diff --git a/scripts/check-fgsa-claims.sh b/scripts/check-fgsa-claims.sh
+index dd10c6c..069fe5d 100755
+--- a/scripts/check-fgsa-claims.sh
++++ b/scripts/check-fgsa-claims.sh
+@@ -123,0 +124,2 @@ def direct_ok(m, dep):
++    if (m, dep) in L.COMPOSE_EDGES:
++        return True  # the shared exact adapter/wrapper pairs, with no prefix exception
+diff --git a/scripts/check-layers-selftest.sh b/scripts/check-layers-selftest.sh
+index 2744b18..15e3ead 100755
+--- a/scripts/check-layers-selftest.sh
++++ b/scripts/check-layers-selftest.sh
+@@ -222,0 +223,26 @@ with tempfile.TemporaryDirectory(prefix="check-layers-selftest-") as temporary:
++        for index, (importer, dep) in enumerate(sorted(api["COMPOSE_EDGES"])):
++            if "FGSafetyClient" not in importer:
++                continue
++            for neighbor, target in ((importer + ".Extra", dep), (importer, dep + ".Extra")):
++                root = temp / f"safety-adapter-{index}-{neighbor}-{target}"
++                setup(root)
++                module(root, neighbor, target)
++                found = run(root, 1)
++                assert ("UPSTREAM-COMPOSE", neighbor, target) in found, found
++        for index, (importer, dep) in enumerate([
++            ("AvailableChainPCSAProofs.Proofs.Foundations.FGSafetyClient",
++             R + ".Proofs.Protocol"),
++            ("AvailableChainPCSAProofs.Proofs.Foundations.FGSafetyStore",
++             R + ".Proofs.Reachable"),
++            ("AvailableChainPCSAProofs.Proofs.Foundations.FGSafetyStore",
++             "AvailableChainPCSAProofs.Proofs.AcFrame.Store"),
++            ("AvailableChainPCSAProofs.Proofs.Foundations.FGSafetyStore",
++             F + ".Proofs.StoreLaws.Extra"),
++        ]):
++            root = temp / f"safety-forbidden-{index}"
++            setup(root)
++            module(root, importer, dep)
++            found = run(root, 1)
++            assert ("LANE", importer, dep) in found, found
++        print("PASS Safety adapters, run exclusion, and AcFrame lane STOP")
++
+diff --git a/scripts/check-layers.py b/scripts/check-layers.py
+index 6e48eb0..8088e2d 100755
+--- a/scripts/check-layers.py
++++ b/scripts/check-layers.py
+@@ -650,0 +651,7 @@ COMPOSE_EDGES = frozenset(
++COMPOSE_EDGES |= frozenset({
++    ('AvailableChainFGSAProofs.Proofs.Shared.FGSafetyClient', 'AvailableChainFGCompose.Statements.SafetyClient'),
++    ('AvailableChainFGSAProofs.Proofs.Shared.FGSafetyClient', 'AvailableChainFGCompose.Statements.SafetyStore'),
++    ('AvailableChainPCSAProofs.Proofs.Foundations.FGSafetyClient', 'AvailableChainFGCompose.Statements.SafetyClient'),
++    ('AvailableChainPCSAProofs.Proofs.Foundations.FGSafetyClient', 'AvailableChainFGCompose.Statements.SafetyStore'),
++})
++
+@@ -738,0 +746,7 @@ def pcsa_findings(ctx: Context, m: Module, dep: str) -> Iterator[Finding]:
++    # New safety adapters use named FG-SA model producers, never its run claims.
++    if m.name in {
++            PC_PROOFS + ".Proofs.Foundations.FGSafetyClient",
++            PC_PROOFS + ".Proofs.Foundations.FGSafetyStore"} and any_under(dep, (
++                "AvailableChainFGSA", "AvailableChainFGSARun", PROOFS, CLAIMS)):
++        upstream = dep in {"AvailableChainFGSA.Proofs.Carrier",
++                           "AvailableChainFGSA.Proofs.StoreLaws"}
+diff --git a/scripts/check-proof-coverage.py b/scripts/check-proof-coverage.py
+index bca81c8..0a7786e 100644
+--- a/scripts/check-proof-coverage.py
++++ b/scripts/check-proof-coverage.py
+@@ -14 +14,3 @@ AUDITS = tuple('AvailableChain' + lib + '.Tests.Axioms' for lib in
+-                                            'AvailableChainFGCompose.Tests.SafetyAxioms')
++                                            'AvailableChainFGCompose.Tests.SafetyAxioms',
++                                            'AvailableChainFGSAProofs.Tests.FGSafety',
++                                            'AvailableChainPCSAProofs.Tests.FGSafety')
+diff --git a/scripts/full-pass.py b/scripts/full-pass.py
+index 2ad7847..c306099 100644
+--- a/scripts/full-pass.py
++++ b/scripts/full-pass.py
+@@ -15 +15 @@ STEPS = ('build', 'check-build', 'check-fgsa', 'check-fgsa-run', 'catalog-lock',
+-         'FGSafety-axioms')
++         'FGSafety-axioms', 'FGSASafety-axioms', 'PCSASafety-axioms')
+diff --git a/scripts/gate.sh b/scripts/gate.sh
+index 142d0f6..dfe2f61 100755
+--- a/scripts/gate.sh
++++ b/scripts/gate.sh
+@@ -276,0 +277,6 @@ stop_if_failed
++step FGSASafety-axioms audit AvailableChainFGSAProofs/Tests/FGSafety.lean "$logs/FGSASafety.axioms"
++summary FGSASafety-axioms
++stop_if_failed
++step PCSASafety-axioms audit AvailableChainPCSAProofs/Tests/FGSafety.lean "$logs/PCSASafety.axioms"
++summary PCSASafety-axioms
++stop_if_failed
+diff --git a/scripts/import-policy.json b/scripts/import-policy.json
+index 259e04a..ca30d22 100644
+--- a/scripts/import-policy.json
++++ b/scripts/import-policy.json
+@@ -95 +95,3 @@
+-      "AvailableChainFGCompose.Proofs.SourceHead"
++      "AvailableChainFGCompose.Proofs.SourceHead",
++      "AvailableChainFGCompose.Statements.SafetyClient",
++      "AvailableChainFGCompose.Statements.SafetyStore"
+diff --git a/scripts/proof-audit-coverage.txt b/scripts/proof-audit-coverage.txt
+index 49bfb54..3f67d63 100644
+--- a/scripts/proof-audit-coverage.txt
++++ b/scripts/proof-audit-coverage.txt
+@@ -5849,0 +5850,53 @@
++    'AvailableChainFGSAProofs.Tests.FGSafety': {
++        'AvailableChainFGSAProofs.Proofs.Shared.FGSafetyClient': (
++            'AvailableChain.FGSA.Run.fgsaSafetyReads',
++        ),
++        'AvailableChainFGSARun.Model.Protocol': (
++            'AvailableChain.FGSA.Run.fgsa_safetyProposalErase_def',
++            'AvailableChain.FGSA.Run.fgsa_safetyProposalRows_def',
++            'AvailableChain.FGSA.Run.safetyProposalErase',
++            'AvailableChain.FGSA.Run.safetyProposalRows',
++        ),
++    },
++    'AvailableChainPCSAProofs.Tests.FGSafety': {
++        'AvailableChainPCSAProofs.Proofs.Foundations.FGSafetyClient': (
++            'AvailableChain.PCSA.Run.pcsaCoreReadsWith',
++            'AvailableChain.PCSA.Run.pcsaCoreReadsWith_def',
++            'AvailableChain.PCSA.Run.pcsaCoreReadsWith_on',
++            'AvailableChain.PCSA.Run.pcsaSafetyReads',
++            'AvailableChain.PCSA.Run.pcsaSafetyReads_def',
++            'AvailableChain.PCSA.Run.pcsaSafetyWireLaws',
++            'AvailableChain.PCSA.Run.pcsa_safety_carried',
++            'AvailableChain.PCSA.Run.pcsa_safety_clock_record',
++            'AvailableChain.PCSA.Run.pcsa_safety_decode_auth',
++            'AvailableChain.PCSA.Run.pcsa_safety_decode_encode',
++            'AvailableChain.PCSA.Run.pcsa_safety_decoded_visible',
++            'AvailableChain.PCSA.Run.pcsa_safety_encode_injective',
++            'AvailableChain.PCSA.Run.pcsa_safety_initial_record',
++            'AvailableChain.PCSA.Run.pcsa_safety_own_core',
++            'AvailableChain.PCSA.Run.pcsa_safety_own_record',
++            'AvailableChain.PCSA.Run.pcsa_safety_process_record',
++            'AvailableChain.PCSA.Run.pcsa_safety_restart_record',
++            'AvailableChain.PCSA.Run.pcsa_safety_row_auth',
++            'AvailableChain.PCSA.Run.pcsa_safety_source_mem',
++        ),
++        'AvailableChainPCSAProofs.Proofs.Foundations.FGSafetyStore': (
++            'AvailableChain.PCSA.Run.pcsaSafetyCertificateLaws',
++            'AvailableChain.PCSA.Run.pcsa_safety_erase_prefix',
++            'AvailableChain.PCSA.Run.pcsa_safety_finalityView_eq',
++            'AvailableChain.PCSA.Run.pcsa_safety_initial_tf',
++            'AvailableChain.PCSA.Run.pcsa_safety_output_eq',
++            'AvailableChain.PCSA.Run.pcsa_safety_restart_tf',
++            'AvailableChain.PCSA.pcsa_safety_delete_core',
++        ),
++        'AvailableChainPCSARun.Model.Protocol': (
++            'AvailableChain.PCSA.Run.decodeSafetyRow',
++            'AvailableChain.PCSA.Run.pcsa_decodeSafetyRow_def',
++            'AvailableChain.PCSA.Run.pcsa_safetyEnabled_def',
++            'AvailableChain.PCSA.Run.pcsa_safetyProposalErase_def',
++            'AvailableChain.PCSA.Run.pcsa_safetyProposalRows_def',
++            'AvailableChain.PCSA.Run.safetyEnabled',
++            'AvailableChain.PCSA.Run.safetyProposalErase',
++            'AvailableChain.PCSA.Run.safetyProposalRows',
++        ),
++    },

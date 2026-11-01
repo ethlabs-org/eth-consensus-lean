@@ -1,0 +1,16 @@
+# Check (b) allow list (BUILD §7.2 B8, §7.3; E7 in a0-s4-build.md §2.2): a
+# `def`, `abbrev` or `instance` in a proof module that may carry its own
+# `@[expose]`, because a test decides it. One line: <path> <declName>.
+AvailableChainKitFG/ClientSafety.lean clientRow
+AvailableChainKitFG/Certificates.lean afterFin
+AvailableChainKitFG/Certificates.lean foldRows
+AvailableChainKitV2/RunCheck.lean allDeliveries
+# P-Da Round 3: exact predicates required by module consumers (lead ruling B).
+# HealingJoinedTick: Other healing modules unfold the joined-tick premise.
+AvailableChainFGSAProofs/Proofs/Healing/SupportFrame.lean HealingJoinedTick
+# HealingCarriersAt: Other healing modules unfold the retained carrier premise.
+AvailableChainFGSAProofs/Proofs/Healing/SupportFrame.lean HealingCarriersAt
+# HealingWindow: Recovery and post-reset modules unfold the selected window.
+AvailableChainFGSAProofs/Proofs/Healing/SupportRecovery.lean HealingWindow
+# OutageScopedRegression: ScopedPaths and OutageLaterHeads unfold the regression premise.
+AvailableChainFGSAProofs/Proofs/Outage/ScopedPrefix.lean OutageScopedRegression

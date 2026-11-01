@@ -1,0 +1,22 @@
+module
+public import AvailableChainFramework.ClaimDomain
+public import AvailableChainFramework.Hooks
+public import AvailableChainFramework.Instance
+public import AvailableChainFramework.Claim
+public import AvailableChainFramework.Cert
+public import AvailableChainFramework.DomainMap
+public import AvailableChainFramework.Facets.Strong
+public import AvailableChainFramework.Profile
+public import AvailableChainFramework.Pareto
+public import AvailableChainFramework.Catalog.Core
+public import AvailableChainFramework.Catalog.Meaning
+public import AvailableChainFramework.Catalog.Mono
+public import AvailableChainFramework.Catalog.Standard
+public import AvailableChainFramework.Catalog.Strong
+public import AvailableChainFramework.Catalog.Profiles
+public import AvailableChainFramework.Catalog.Relations
+public import AvailableChainFramework.V2.Anchor
+public import AvailableChainFramework.V2.DutyAnchor
+
+@[expose] public section
+end

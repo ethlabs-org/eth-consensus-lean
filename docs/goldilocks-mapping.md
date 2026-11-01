@@ -12,13 +12,14 @@ that did not write it (`CONTRIBUTING.md` "Statements").
 
 ## References
 
-All in the Goldilocks repository (`fradamt-agent/goldilocks`, archived for the team at `ethlabs-org/goldilocks-archive`), `spec/`:
+All in the Goldilocks repository (`fradamt-agent/goldilocks`, archived for the team at `ethlabs-org/goldilocks-archive`), `spec/`;
+a snapshot (at `23f5fdaa`) is in this repository at [`archive/goldilocks/spec/`](../archive/goldilocks/spec/):
 
 | Id | Document | Role |
 |---|---|---|
-| FGSA | `fgsa-protocol.tex` | FG-SA in the round model: the source of the baseline's numbers |
-| SPEC | `fgsa-spec.tex` | the current Goldilocks spec (with loose BJ, goldilocks#14, and weakened E1, goldilocks#15) |
-| CLAIMS | `goldilocks-claims.tex` (draft, goldilocks#12) | the claims and proof DAG that the instance statements will transcribe |
+| FGSA | [`fgsa-protocol.tex`](../archive/goldilocks/spec/fgsa-protocol.tex) | FG-SA in the round model: the source of the baseline's numbers |
+| SPEC | [`fgsa-spec.tex`](../archive/goldilocks/spec/fgsa-spec.tex) | the current Goldilocks spec (with loose BJ, goldilocks#14, and weakened E1, goldilocks#15) |
+| CLAIMS | [`goldilocks-claims.tex`](../archive/goldilocks/spec/goldilocks-claims.tex) (draft, goldilocks#12) | the claims and proof DAG that the instance statements will transcribe |
 
 ## Baseline (pre-foundation, not approved)
 

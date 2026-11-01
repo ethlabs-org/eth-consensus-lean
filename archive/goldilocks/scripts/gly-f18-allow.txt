@@ -1,0 +1,1 @@
+F-18 AvailableChain.Gen.Pure.WindowRule AvailableChainGeneric/Statements/Pure/FirstBad.lean # D12/I02: WindowRule is the intended slot rule for window recurrences.

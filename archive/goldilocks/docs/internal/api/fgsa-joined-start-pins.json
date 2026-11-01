@@ -1,0 +1,98 @@
+[
+  {
+    "name": "AvailableChain.FGSA.Run.AttemptValid",
+    "before": "b4f61bfc54aecb84",
+    "after": "9b0c39ffb66acfc8",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.AvailableGSTClaim",
+    "before": "03bbb9e68bb5017d",
+    "after": "e2298320bfe69e0a",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.AvailableGrowthGSTClaim",
+    "before": "181e72d7a50f5db5",
+    "after": "d0aeb463a9d32e6e",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.ProposalGap",
+    "before": "38fdf4b462101586",
+    "after": "19e914ffe8dc8c61",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.RPhase",
+    "before": "273d92a152a578e6",
+    "after": "b7a024f03a877f9f",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.RPhase_def",
+    "before": "65241fec4d6909e1",
+    "after": "66f9483da363379d",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.RenewedPromotionConcl",
+    "before": "c36fa5ae4de95025",
+    "after": "46aa4989ce76d164",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.ResetArrivalFullStatement",
+    "before": "3dc4b1d721e5bd9f",
+    "after": "3ce18d85c267ac5e",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.ResetArrivalFullStatement_def",
+    "before": "cedadd53db2d14a4",
+    "after": "8637df07c077175d",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.ResetArrivalStatement",
+    "before": "5210753060a4f71d",
+    "after": "9f655ca293622db3",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.ResetArrivalStatement_def",
+    "before": "58c52e1b3c2e7673",
+    "after": "a7549810bc7507a7",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.TCommon",
+    "before": "e8084a92584fc66a",
+    "after": "44717970edca5fc2",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.TDel",
+    "before": "c17859c92b09181e",
+    "after": "9f3fe05ef8297719",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.TFrontier",
+    "before": "03c591a02968860a",
+    "after": "da4929d474147fe1",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.TPerm",
+    "before": "16c5001e0aad29de",
+    "after": "7107e0c92bc6f203",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  },
+  {
+    "name": "AvailableChain.FGSA.Run.TRepair",
+    "before": "ddf5ee8f030541d8",
+    "after": "aa05dd16fc9cf562",
+    "reason": "JOINED-START (lead ruling 2026-10-10)"
+  }
+]

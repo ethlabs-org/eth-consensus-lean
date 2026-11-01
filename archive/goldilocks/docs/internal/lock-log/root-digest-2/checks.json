@@ -1,0 +1,229 @@
+[
+  {
+    "name": "full-build",
+    "command": "lake build --wfail",
+    "exit": 0,
+    "log": ".lake/rd2w3d/full-build.log"
+  },
+  {
+    "name": "check-fg",
+    "command": "bash scripts/check-fg.sh",
+    "exit": 0,
+    "log": ".lake/rd2w3d/check-fg.log"
+  },
+  {
+    "name": "check-build",
+    "command": "SKIP_CONE=0 bash scripts/check-build.sh",
+    "exit": 0,
+    "log": ".lake/rd2w3d/check-build.log"
+  },
+  {
+    "name": "check-fgsa",
+    "command": "bash scripts/check-fgsa.sh",
+    "exit": 0,
+    "log": ".lake/rd2w3d/check-fgsa.log"
+  },
+  {
+    "name": "check-fgsa-run",
+    "command": "bash scripts/check-fgsa-run.sh",
+    "exit": 0,
+    "log": ".lake/rd2w3d/check-fgsa-run.log"
+  },
+  {
+    "name": "check-fgsa-claims",
+    "command": "NEG=0 bash scripts/check-fgsa-claims.sh",
+    "exit": 0,
+    "log": ".lake/rd2w3d/check-fgsa-claims.log"
+  },
+  {
+    "name": "fgsa-manifest",
+    "command": "bash scripts/check-fgsa-manifest.sh",
+    "exit": 0,
+    "log": ".lake/rd2w3d/fgsa-manifest.log"
+  },
+  {
+    "name": "v2-manifest",
+    "command": "lake env lean --run scripts/V2Manifest.lean --check",
+    "exit": 0,
+    "log": ".lake/rd2w3d/v2-manifest.log"
+  },
+  {
+    "name": "gen-manifest",
+    "command": "lake env lean --run scripts/V2Manifest.lean --scope gen --check",
+    "exit": 0,
+    "log": ".lake/rd2w3d/gen-manifest.log"
+  },
+  {
+    "name": "registry",
+    "command": "lake env lean --run scripts/Registry.lean --check",
+    "exit": 0,
+    "log": ".lake/rd2w3d/registry.log"
+  },
+  {
+    "name": "pins",
+    "command": "bash scripts/check-fg-pins.sh",
+    "exit": 0,
+    "log": ".lake/rd2w3d/pins.log"
+  },
+  {
+    "name": "expose",
+    "command": "python3 scripts/check-expose.py",
+    "exit": 0,
+    "log": ".lake/rd2w3d/expose.log"
+  },
+  {
+    "name": "headers",
+    "command": "python3 scripts/check-module-headers.py",
+    "exit": 0,
+    "log": ".lake/rd2w3d/headers.log"
+  },
+  {
+    "name": "layers",
+    "command": "python3 scripts/check-layers.py",
+    "exit": 0,
+    "log": ".lake/rd2w3d/layers.log"
+  },
+  {
+    "name": "gly",
+    "command": "bash scripts/check-gly-rules.sh",
+    "exit": 0,
+    "log": ".lake/rd2w3d/gly.log"
+  },
+  {
+    "name": "old-reads",
+    "command": "lake env lean --run scripts/CheckFGSAOldReads.lean --controls",
+    "exit": 0,
+    "log": ".lake/rd2w3d/old-reads.log"
+  },
+  {
+    "name": "proof-equations",
+    "command": [
+      "lake",
+      "env",
+      "lean",
+      "--run",
+      "scripts/CheckProofEqns.lean",
+      "--baseline",
+      "scripts/baselines/check-proof-eqns.txt"
+    ],
+    "exit": 0,
+    "log": ".lake/rd2w3d/proof-equations.log"
+  },
+  {
+    "name": "expected-order-source",
+    "command": "SOURCE_ONLY=1 bash scripts/check-fgsa-claims.sh",
+    "exit": 0,
+    "log": ".lake/rd2w3d/expected-order-source.log"
+  },
+  {
+    "name": "axiom-audit",
+    "command": "lake env lean .lake/rd2w3d/axiom-audit.lean",
+    "exit": 0,
+    "log": ".lake/rd2w3d/axiom-audit.log"
+  },
+  {
+    "name": "catalog",
+    "command": "lake env lean --run scripts/CatalogLock.lean --check",
+    "exit": 0,
+    "log": ".lake/rd2w3d/catalog.log"
+  },
+  {
+    "name": "diff-check",
+    "command": "git diff --check",
+    "exit": 0,
+    "log": ".lake/rd2w3d/diff-check.log"
+  },
+  {
+    "name": "precheck",
+    "command": "bash -c \"source scripts/gate-common.sh; gate_precheck f106ff8\"",
+    "exit": 0,
+    "log": ".lake/rd2w3d/precheck.log"
+  },
+  {
+    "name": "compiled-expected",
+    "command": "Claims axioms-coverage-used-constants step",
+    "exit": 0,
+    "log": ".lake/fgsa-claims-check._o5dvb4m/09-axioms-coverage-used-constants.log"
+  },
+  {
+    "name": "claims-shake",
+    "command": "Claims unused-imports --fail-on-new step",
+    "exit": 0,
+    "log": ".lake/fgsa-claims-check._o5dvb4m/12-unused-imports.log"
+  },
+  {
+    "name": "axiom-validation",
+    "command": "python3 .lake/rd2w3d/validate-axioms.py",
+    "exit": 0
+  },
+  {
+    "name": "check-build-a",
+    "command": "check-module-headers",
+    "exit": 0,
+    "status": "PASS",
+    "log": ".lake/rd2w3d/check-build.log"
+  },
+  {
+    "name": "check-build-b",
+    "command": "check-expose",
+    "exit": 0,
+    "status": "PASS",
+    "log": ".lake/rd2w3d/check-build.log"
+  },
+  {
+    "name": "check-build-c",
+    "command": "rebuild-cone-test AvailableChainGridCO.Proofs.Map",
+    "exit": 0,
+    "status": "PASS",
+    "log": ".lake/rd2w3d/check-build.log"
+  },
+  {
+    "name": "check-build-d",
+    "command": "CheckProofEqns",
+    "exit": 0,
+    "status": "PASS",
+    "log": ".lake/rd2w3d/check-build.log"
+  },
+  {
+    "name": "check-build-e",
+    "command": "check-layers",
+    "exit": 0,
+    "status": "PASS",
+    "log": ".lake/rd2w3d/check-build.log"
+  },
+  {
+    "name": "check-build-f",
+    "command": "shake-report",
+    "exit": 0,
+    "status": "REPORT",
+    "log": ".lake/rd2w3d/check-build.log"
+  },
+  {
+    "name": "check-build-g",
+    "command": "chain-depth",
+    "exit": 0,
+    "status": "REPORT",
+    "log": ".lake/rd2w3d/check-build.log"
+  },
+  {
+    "name": "check-build-h",
+    "command": "check-transparency",
+    "exit": 0,
+    "status": "PASS",
+    "log": ".lake/rd2w3d/check-build.log"
+  },
+  {
+    "name": "check-build-i",
+    "command": "check-gly-rules",
+    "exit": 0,
+    "status": "PASS",
+    "log": ".lake/rd2w3d/check-build.log"
+  },
+  {
+    "name": "check-build-j",
+    "command": "checker-self-tests",
+    "exit": 0,
+    "status": "PASS",
+    "log": ".lake/rd2w3d/check-build.log"
+  }
+]

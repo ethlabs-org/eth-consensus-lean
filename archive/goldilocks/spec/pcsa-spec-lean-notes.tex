@@ -1,0 +1,418 @@
+\documentclass{article}
+\usepackage[margin=3cm]{geometry}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{longtable,array}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+\pagestyle{plain}
+
+% Objects and fields.
+\newcommand{\genesis}{B_{\mathrm{gen}}}
+\newcommand{\slot}{\operatorname{slot}}
+\newcommand{\depth}{\operatorname{depth}}
+\newcommand{\rank}{\operatorname{rank}}
+\newcommand{\T}{\mathcal T}
+\newcommand{\AC}{\mathcal A}
+\newcommand{\Fr}{\Phi}
+\newcommand{\tree}{\mathsf{tree}}
+\newcommand{\fcroot}{\mathsf{fc\_root}}
+\newcommand{\gfPool}{\mathsf{gf\_votes}}
+\newcommand{\fname}[1]{\text{\textsc{#1}}}
+\newcommand{\latestConfirmed}{\mathsf{latest\_confirmed}}
+\newcommand{\timestamp}{\mathsf{timestamp}}
+\newcommand{\savedConfirmation}{\mathsf{saved\_confirmation}}
+\newcommand{\locks}{\mathsf{locks}}
+\newcommand{\restartTime}{\mathsf{restart\_time}}
+\newcommand{\acks}{\mathsf{acks}}
+\newcommand{\acked}{\mathsf{acked}}
+
+\usepackage{xurl}
+\newcommand{\nm}[1]{\nolinkurl{#1}}
+\newcommand{\Lc}{\textbf{Lean change}}
+\newcommand{\Sc}{\textbf{spec change}}
+\newcommand{\Ld}{\textbf{lead}}
+\newcommand{\Pm}{\textbf{premise}}
+\newcommand{\Fm}{\textbf{form}}
+\newcommand{\UC}{\textbf{UNCHECKED}}
+
+\title{PC-SA specification: relation to the stage-2 Lean model}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+
+This note is a companion to \nm{pcsa-spec.tex} on the branch
+\nm{pcsa-rebase}, after the stage-2 port (ruling R-spec-a).  It maps the
+names of the specification to the stage-2 Lean model, it lists the
+differences with their status, and it maps the claims.  Its section
+numbers refer to this note.  ``Spec~3.7'' is Section~3.7 of the
+specification, and ``S32'' is a row of its decision ledger.
+
+\emph{The Lean of record.}  The repository is
+\nm{~/ethereum/lean/available-chain}, branch \nm{pc-int16} (tip
+\nm{45926c3b2}; \nm{pc-int15} is \nm{ac4745e99}).  It was read on
+2026-10-19 from a read-only worktree.  No Lean file was changed and
+nothing was built.  The release model is stage~2:
+\begin{itemize}
+\item M: \nm{pcsa/AvailableChainPCSA/Model/Stage2/}; a citation
+  ``Gate:34'' is line~34 of \nm{Gate.lean} in that folder.
+\item P: \nm{pcsa/AvailableChainPCSARun/Model/Stage2/Protocol.lean}, the
+  run protocol \nm{pcProtocol} (P:1241) on the engine
+  \nm{V2.ProtocolSpecD}; ``P:996'' is a line of that file.
+\item The run driver: \nm{Driver.lean} and \nm{Macro.lean} in the folder
+  of P (``Driver:383'', ``Macro:171'').
+\item The claims:
+  \nm{pcsa/AvailableChainPCSAClaims/Statements/Stage2/Claims.lean}.
+\end{itemize}
+Lean names have the namespace \nm{AvailableChain.PCSA.Stage2}.  The model
+follows \nm{drafts/pcsa-n2-r4-stage2.md} (S2); its docstrings cite S2
+lines.  The old clone \nm{~/lean/available-chain} and its stage-1 model
+are legacy (Section~\ref{sec:legacy}).
+
+\emph{Status words.}  A \Fm{} difference changes no output and no message
+of an honest node, under the stated condition.  A behaviour difference
+changes a rule, a wire object, a read, or the scope of a claim.  For each
+one the note says what is necessary: a \Lc{} (not made), a \Sc{}, a
+\Pm{} of the claims, or a decision of the \Ld.  A statement that this note
+did not check against the Lean code is marked \UC.
+
+\section{Names}\label{sec:names}
+
+The rows follow the figures of the specification.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{8.4cm}@{}}
+\hline
+Specification & Lean (M unless P)\\
+\hline
+\endhead
+\multicolumn{2}{@{}l}{\emph{Spec~3.1, schedule and parameters}}\\
+$t_s,v_s,e_s,z_s,q_s,d_s$, $a_r$ & \nm{proposalTime}, \nm{voteTime}, \nm{earlyTime}, \nm{freezeTime}, \nm{releaseTime}, \nm{gateTime}, \nm{actionTime} (Params:42--49)\\
+$k$, $L$, $\mu$ & \nm{ℓ}, \nm{L}, \nm{μ} $=$ \nm{pcQuorum n} (Params:33--35, PCKey:37)\\
+\multicolumn{2}{@{}l}{\emph{Spec~3.2, state (Table~1)}}\\
+$\gfPool$, vote stamps & P: \nm{core.heads}, \nm{core.headReceipts}, \nm{core.headResolutions}\\
+block stamps $\timestamp[B]$ & P: \nm{core.bodyStamps}\\
+$\acks$ & the ack pool of \nm{onAck} (Pools:43)\\
+$\savedConfirmation$, $\mathsf{gate\_ok}$, $\mathsf{ft}$ & \nm{rawResults}, the flags \nm{(w, guard, ft)} of \nm{runGate}\\
+$\mathsf{ack\_ok}$ & the third output of \nm{prepareClock}; P: \nm{core.ackEnabled}\\
+$\locks$, $\latestConfirmed$ & \nm{locks}, \nm{latestConfirmed} (State:29--45)\\
+$M$, a role pair & \nm{maximum}, \nm{RolePair} (State:10)\\
+$\mathsf{early}$, $\mathsf{recent}$, $\mathsf{unknown\_recent}$, $\mathsf{interval}$ & \nm{early}, \nm{recent} (\nm{Recent}, State:21), \nm{unknownRecent}, \nm{interval}\\
+$\mathsf{freeze}[2]$, $\mathsf{carried}[2]$ & \nm{freeze0}, \nm{freeze1}, \nm{carrier0}, \nm{carrier1} (\nm{LabelledRole}, State:15)\\
+$\mathsf{fg\_candidate}$ & \nm{sourceCandidate}\\
+$\mathsf{sent\_keys}$ & P: \nm{core.firstKeys}\\
+$\acked$ & none (S33)\\
+$\restartTime$ & \nm{restartTime}\\
+\multicolumn{2}{@{}l}{\emph{Spec~3.3, messages and handlers (Fig.~3)}}\\
+vote, ack, PC & \nm{HeadWire}, \nm{AckWire}, \nm{PC} (Signing:41, PCKey:41, PCKey:56)\\
+key, rank, valid & \nm{PCKey}, \nm{PC.rank}, \nm{rankBelow}, \nm{preferPC}, \nm{PC.valid} (PCKey:10--84)\\
+payload, digest input & \nm{NamedProposal}, \nm{DigestInput} (ProposalContent:26, 115)\\
+\fname{ac\_valid\_payload} & P: \nm{bodyValid} (P:268), \nm{namedContentOk} (Objects:9)\\
+\fname{ac\_on\_tick} & \nm{prepareClock} (Clock:25); P: \nm{tick} (P:996)\\
+\fname{ac\_duties} & P: \nm{act} duties 1 and 3 (P:1126)\\
+\fname{on\_goldfish\_vote} & \nm{onHead} (Pools:13)\\
+\fname{on\_ack} & \nm{onAck} (Pools:43)\\
+\fname{ac\_on\_block} & \nm{ac\_on\_block} (BlockCallback:35), after \nm{pcLeaf} (Leaf:17)\\
+\multicolumn{2}{@{}l}{\emph{Spec~3.4, fork choice (Fig.~4)}}\\
+\fname{resolution\_time}, \fname{vote\_view} & P: \nm{resolveHeads}, \nm{batchBefore}, \nm{batch}, \nm{releaseBatch}, \nm{outputBatch}\\
+\fname{equivocators}, \fname{supporters}, \fname{opponents}, \fname{goldfish\_score} & \nm{equivocatingSeats}, \nm{supportCount}, \nm{oppositionCount}, \nm{dutyScore} (Walks:11--38)\\
+\fname{latest\_view} & \nm{outputBatchLabel} (Outputs:30) with P: \nm{outputBatch}\\
+\fname{ghost}, \fname{get\_head} & \nm{dutyWalk} (Walks:69)\\
+\fname{viable\_tree} & \nm{activeDomain}, \nm{viableDomain} (Frame:11--15)\\
+\fname{status}, \fname{authority} & \nm{targetStatus}, \nm{roleAuthority} (Authority:16--25)\\
+\fname{anc} & \nm{latestAncestor}, \nm{authorityAncestor} (Authority:31--36)\\
+\fname{get\_anchor} & \nm{framePrefix}, \nm{framedBase}, \nm{liveLockRoot} (Frame:25--44)\\
+\fname{ac\_head} & \nm{outputHead} (Outputs:67)\\
+\multicolumn{2}{@{}l}{\emph{Spec~3.5, locks (Fig.~5)}}\\
+\fname{effective} & \nm{effectiveLock} (Frame:38), \nm{lockCompatible} (History:34)\\
+\fname{unlock} & \nm{releaseLocks} (Frame:51) with P: \nm{releaseBatch}\\
+\fname{write\_lock} & the lock fold of \nm{runGate} (Gate:10)\\
+\multicolumn{2}{@{}l}{\emph{Spec~3.6, confirmation (Fig.~6)}}\\
+\fname{get\_confirmation} & \nm{rawConfirmation} (Walks:43)\\
+\fname{update\_confirmation} & \nm{runGate} (Gate:10), \nm{saveRawResult}, \nm{slowWindow}, \nm{slowWriteAllowed}, \nm{rawLockGuard} (Walks:51--64)\\
+\fname{history\_ok}, \fname{known\_compatible} & \nm{boundedHistoryCompatible}, \nm{historyCompatible} (History:29, 69)\\
+\fname{outputs}, \fname{ac\_strong}, \fname{ac\_confirmed} & \nm{pcOutputs}, \nm{normalizeConfirmed}, \nm{readOutputs} (Outputs:17--79)\\
+\multicolumn{2}{@{}l}{\emph{Spec~3.7, pre-confirmations (Fig.~7)}}\\
+\fname{role\_receipt} & \nm{roleReceipt} (Roles:14)\\
+\fname{on\_pc} & \nm{on\_pc} (PCProcess:14), \nm{historyReceipt} (History:75), \nm{carrierReceipt} (Roles:47)\\
+\fname{add\_recent}, \fname{recent\_compatible} & \nm{addRecent}, \nm{recentCompatible} (History:44--61)\\
+\fname{try\_assemble} & \nm{assemblePC} (Pools:29), called by \nm{onAck}\\
+\fname{target\_accepted} & \nm{notifyAccepted}, \nm{acceptTargets}, \nm{roleAccepted} (BlockCallback:10, Roles:20--24)\\
+\fname{early\_cut}, \fname{save\_freeze}, \fname{open\_carrier} & \nm{earlyCut} (History:85), \nm{saveFreeze}, \nm{openCarrier} (Roles:33--42)\\
+\fname{view\_source}, \fname{recent\_source} & \nm{viewSource}, \nm{recentSource} (Roles:56--63)\\
+\fname{ack\_test} & \nm{ackEligible} (Gate:34); \nm{recentAllowsAck} (History:39)\\
+\multicolumn{2}{@{}l}{\emph{Spec~3.8, duties (Fig.~8)}}\\
+\fname{voter\_block\_tree}, \fname{merged\_vote\_view} & P: \nm{headDomain}, \nm{headBatch} (P:910--924)\\
+\fname{goldfish\_vote} & P: \nm{headVote} (P:949)\\
+\fname{ac\_proposal} & P: \nm{act} duty 0, \nm{paired} (P:966)\\
+\fname{prepare\_fg\_source}, \fname{ac\_to\_fg} & \nm{prepareSource}, \nm{ac\_to\_fg} (Source:11--27); P: \nm{fgInputs} (P:979)\\
+\multicolumn{2}{@{}l}{\emph{Spec~3.9, joining and restart (Fig.~9)}}\\
+\fname{joined} & \nm{clockJoined} (Clock:10)\\
+\fname{ac\_restart} & \nm{restorePC}, \nm{reconstructMissedFreezes}, \nm{ac\_restart} (Restart:12--75); \nm{scanCumulativeCarriers}, \nm{normalizeRestartCompanions} (Replay:31--40); P: \nm{Durable}, \nm{durable}, \nm{restore} (P:1018--1045); Driver: \nm{reconstruct}, \nm{replays}, \nm{replay}, \nm{rebuild}; Macro: \nm{restartWork}, \nm{macroRestore}\\
+\multicolumn{2}{@{}l}{\emph{Spec~4, PC-SA node (Fig.~10)}}\\
+\fname{on\_tick} & P: \nm{tick}, \nm{due}, \nm{act}, \nm{recordOwn} (P:996--1188); \nm{selectDuties} (Clock:58)\\
+\fname{on\_block}, dependency service & P: \nm{processOrdinary}, \nm{processReceipt}, \nm{pendingTokens}, \nm{refusalEntries}, \nm{targetPath} (P:363--790); \nm{pcLeaf}\\
+\fname{pc\_frame} & P: \nm{readTarget}, \nm{refusedRoot}, \nm{tree}, \nm{controls}, \nm{floor}, \nm{frameRoot}, \nm{allowed} (P:799--851)\\
+relay & the relay actions of \nm{onHead}, \nm{onAck}, \nm{on\_pc}, \nm{ac\_on\_block}; P: \nm{consumeEffects} (P:566)\\
+\hline
+\end{longtable}
+}
+
+\section{Differences}\label{sec:diff}
+
+The specification follows S2 and the Lean.  Where they differ, the
+ledger of the specification says which form it takes.  The table lists
+every difference that this note found.  Items (a), (c)--(e), (g), (k)
+and (m) are \Fm.  By ruling R-spec-b the specification follows the Lean
+code unless the Lean behaviour is a defect; items (f), (h)--(j), (l), (n)
+and (p) are now equal to the Lean, and each paragraph says what differs
+from S2 or from Goldilocks.
+
+\begin{table}[!ht]
+\centering
+\footnotesize
+\caption{The differences between the specification and the stage-2 Lean.}\label{tab:diff}
+\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}p{2.4cm}@{}}
+\hline
+Item & Specification & Lean & Status\\
+\hline
+(a) S13 & liveness test $d>t$ & expiry filter at each tick & form\\
+(b) S11, S44 & no application value; parent root in the digest & \nm{app}; full parent in \nm{DigestInput} & content abstraction\\
+(c) S24 & $\Fr.\T$, $\Fr.\mathsf{refused}$ in a PC frame & \nm{read}, \nm{refused} arguments & form\\
+(d) V3 & carried PC with the votes & \nm{onHead} on \nm{raw ++ support} & form\\
+(e) S21, S33 & $\AC.\acked$ and A3 & no record; one duty tick & form (one tick per time)\\
+(f) S35 & output head with the current duty slot & the same; S2 has $s^*+1$ & ruled; spec $=$ Lean $\neq$ S2\\
+(g) S36 & 13 PC records & \nm{State.pcSlots} & form\\
+(h) S17, S45 & select; own objects at delivery & \nm{selectDuties}; \nm{recordOwn} sends only & ruled; spec $=$ Lean\\
+(i) S32 & A2 reads the gate batch of slot $w-1$ & \nm{batch (s - 2)} & ruled; spec $=$ Lean; docstring defect\\
+(j) S34 & no slot-0 duty & \nm{0 < s} in \nm{clockJoined} & ruled; spec $=$ Lean\\
+(k) S40 & restart order of S2 \S5.1 & the same, in the run driver & form (UNCHECKED in part)\\
+(l) S39 & LATEST-ANC & LATEST-ANC; D21c has R-OPP3 & ruled; spec $=$ Lean; research OPEN\\
+(m) S2 \S6.1 & dependency service in the node & driver \nm{drainState}; P durable fields & form; shared item (e)\\
+(n) S41 & no slot test in resolution; views keep it & the same & ruled; spec $=$ Lean\\
+(o) S42 & one population, $n=N$ & PC seats $n$, FG population $N$ & specialization\\
+(p) S43 & witnesses by seat index & the same & ruled; spec $=$ Lean\\
+\hline
+\end{tabular}
+\end{table}
+
+\emph{(a) Lock expiry.}  \nm{prepareClock} first removes each lock with
+$t\geq d$ (Clock:29).  The specification keeps a dead lock and tests
+$d>t$ at each use.  A dead lock changes no decision in either form, and
+\nm{releaseLocks} and \nm{effectiveLock} test the deadline.  \Fm.
+
+\emph{(b) Payload content.}  \nm{NamedProposal} has \nm{app}
+(ProposalContent:48), and \nm{act} duty~0 puts it in an honest proposal;
+\nm{DigestInput} (ProposalContent:115--126) has \nm{app} and the full
+parent, where the specification has no application value (S11) and the
+parent root.  No AC rule and no claim reads \nm{app}.  So the honest
+blocks differ in their bytes and roots, and the difference is not \Fm{}
+under the definition above.  The correspondence is a content abstraction:
+a Lean block maps to a block of the specification by dropping \nm{app}
+and by the root of its parent (S44).
+
+\emph{(c) Frame.}  The Lean passes \nm{read} (the cumulative accepted
+bodies, \nm{historicalTarget}) and \nm{refused} to each function.  The
+specification gives the same reads as two fields of the PC frame.  The
+effective-lock test of the Lean is $\Fr.F\preceq B$ and $B$ held; the
+specification writes $B\in\Fr.\tree$, which is the same set, because
+$\Fr.\tree$ is the set of accepted blocks that extend $\Sigma.F$.  \Fm.
+
+\emph{(d) Carried votes.}  \nm{ac\_on\_block} admits \nm{raw ++ support}
+(BlockCallback:47--50); the support list is a subset of the raw list
+(\nm{bodyValid}), so the admitted set is the same.  \Fm.
+
+\emph{(e) Own-ack record.}  The Lean passes \nm{false} for \nm{acked}
+(Clock:47) and keeps no record; the docstring of \nm{prepareClock} says
+that the unique duty tick gives one ack per slot.  The specification keeps
+$\AC.\acked$ across a restart (S21).  On a run with one tick at each time
+the two agree.  \Fm{} under that condition, as ruled in S33.
+
+\emph{(f) Output duty slot.}  \nm{outputHead} uses the current slot~$s$
+as the duty slot of eligibility (Outputs:63--76).  S2 (line~476) uses
+$s^*+1$.  Before $e_s$, $s^*=s-1$, and the two agree.  From $e_s$ on,
+$s^*=s$, and S2 uses $s+1$: no accepted block has slot $s+1$ before
+$t_{s+1}$, so in S2 the current-slot exception applies to no block, and
+in the Lean it applies to the blocks of slot~$s$.  So the head of
+\fname{ac\_head} and of \fname{ac\_to\_fg} can differ in
+$[e_s,t_{s+1})$, for example at $a_r=d_{rR}$.  The specification follows
+the Lean, as ruled in S35; the difference is against S2, not against the
+Lean.
+
+\emph{(g) Records.}  \nm{State.pcSlots} (State:47) counts the PC records;
+\nm{decisionRecordSlots} and \nm{heldCompanionSlots} (Params:96--100)
+give 13.  The specification lists the same 13 records.  \Fm.
+
+\emph{(h) Atomic selection and own objects.}  \nm{selectDuties}
+(Clock:58) and P \nm{act} select the four duties from one post-clock
+state.  P \nm{recordOwn} (P:1188--1193) writes the send record and sends,
+and the driver (Driver:574--580, Macro:194--197) runs those records and a
+drain; the node admits its own duty object only at a delivery.  A PC that the
+node assembles goes to \nm{on\_pc} at once (\nm{onAck}, Pools:64--67).
+The specification now has the same rules (S45): its tick does not
+process its own duty objects.  S2~\S1.1 processes them before the external receipts, so
+just after an honest proposal tick the S2 head can be the new block while
+the head of the Lean and of the specification is still the parent.
+
+\emph{(i) The A2 batch.}  At the call (Clock:45--47), with $w=s-1$, A2
+reads \nm{batch (s - 2)}: the votes of label $w-1$ received before
+$d_{w-1}$ and resolved before $e_{w-1}$ (P:861--877); the batch is empty
+for $s\leq1$, and \nm{ackEligible} uses no batch for label~0.  The
+specification now reads the same view (S32): \fname{vote\_view} of slot
+$w-1$ with the cutoffs $t_{w-1}+6\Delta$ and $t_{w-1}+2\Delta$.  The
+docstring of \nm{ackEligible} (Gate:30--32) and S2 name the frozen and
+carried batch (\nm{headBatch w}); the lead rules the docstring a defect.
+A2 safety after a restart in $(t_{w-1},t_w]$ is OPEN.
+
+\emph{(j) Slot~0.}  \nm{clockJoined} (Clock:10--12) is false at $s=0$, so
+no honest node sends a slot-0 vote or runs a slot-0 duty.  The
+specification now has the same test, and its $\AC.\restartTime$ starts at
+$t_0=0$ (S34).  A faulty slot-0 vote is still admitted (\nm{onHead},
+Pools:13--24), and a single early genesis vote can make a strict majority
+of the participants of the raw test (Walks:43--48), so the raw result of
+slot~0 can be non-$\bot$.  It has at most $a<\mu$ clean supporters, so FT
+fails (Gate:17, 38--44): no honest node acks slot~0, and no valid slot-0
+PC forms, although \nm{PC.valid} accepts label~0.  The difference is
+against Goldilocks, which votes genesis at slot~0 (V24).
+
+\emph{(k) Restart.}  The raw hook P \nm{restore} (P:1045--1051) applies
+only \nm{restorePC}.  The run driver does the rest: \nm{macroRestore} and
+\nm{restartWork} (Macro:171--186) run \nm{reconstruct} (the missed freezes
+by \nm{lastFreeze}, from the sleep~$M$; Driver:383--398), a drain, the
+replays of the non-genesis blocks of the active domain in depth order with
+the restart stamp and the block relay (Driver:470--501, BlockCallback:
+46--55), \nm{rebuild} (\nm{ac\_restart} with \nm{openLabels}: the scan of
+every cumulative carrier into~$M$ and its open arm, the companion
+normalization, and the regenerated requests; Driver:427--441,
+Restart:75--83, Replay:21--68), and a last drain.  The specification (spec
+3.9, S40) now has the same steps in the same order.  \Fm; the order of the
+first drain against the replay relays is \UC.
+
+\emph{(l) Opposition release.}  The specification and the Lean have the
+same rule: \nm{authorityAncestor} gives the target when the slot of the
+certificate, \nm{q.key.slot} (not the slot of the target block), is at
+least the age slot, and \nm{latestAncestor} the deepest ancestor with
+fewer than $\mu$ opponents otherwise (Authority:31--40).  D21c of
+\nm{pcsa-decisions.md} has a different rule (R-OPP3); S39 lists the
+differences.  The match of the specification with the Lean is checked;
+the match with D21c fails.
+
+\emph{(m) Dependency service.}  P keeps \nm{pending}, \nm{refused} and
+\nm{origins} in \nm{Durable} (P:1018--1029).  P \nm{processReceipt}
+(P:782--791) only calls the ordinary handler; the drain is in the run
+driver (\nm{drainState}, Driver:363--370; \nm{drainOf} in
+\nm{Macro.lean}:107--112), after each delivery, tick and restart step.  The
+specification puts the same service in the PC-SA node (spec~4) and
+proposes it as shared item (e).  The validation order: \nm{pcLeaf}
+(Leaf:32--50) runs the stateless checks (with $B.\mathsf{parent}.\slot<B.\slot$),
+the future test, the duplicate test, the parent test and the
+parent-relative rows before the ancestry refusal, and the driver needs
+\nm{rowChecks} before a leaf (Driver:219--225).  So a direct refusal never
+marks an invalid block.  An inherited refusal (Driver:50--60, 79--85) is a
+separate path and does not run the parent-relative row checks.  The
+shared FG handler tests ancestry first; the PC-SA node of the
+specification now has the Lean order for both paths (S46, V19).  With
+that order the correspondence is \Fm; the exact interleaving of a drain
+with the AC callbacks is \UC.
+
+\emph{(n) Resolution.}  P \nm{resolveHeads} (P:620--625) tests only that
+the head is held, and \nm{batchBefore}, \nm{batch} and \nm{releaseBatch}
+(P:861--902) use that resolution; \nm{cleanCount} (Walks:23--27) reads the
+resolved list as it is.  The specification now has no slot test in
+resolution either (S41); its latest view and merged view keep the slot
+test, as \nm{outputBatch} and \nm{headBatch}.  Against Goldilocks the
+difference reaches only the unlocking: a block of slot $w+1$ is not
+accepted before $t_{w+1}$ (Leaf:40), after the cut $e_w$ of \nm{batch},
+but before the cut $q_w$ of \nm{releaseBatch}.  So a faulty label-$w$ vote
+that names an accepted slot-$(w+1)$ block can be an opponent at the
+unlocking.  \nm{oppositionCount} counts only clean seats, so an
+equivocator is not an opponent.  The FG-SA draft of the main tree
+(uncommitted) also counts the equivocators; this difference is recorded
+in S41, to revisit when the FG-SA fast confirmation is committed.
+
+\emph{(o) Population.}  S2~\S0 and the Lean (Params:14--15) have a PC
+committee of $n$ seats and an FG population of $N$ validators, with
+separate fault bounds; the claims (\nm{Regimes.lean}) use slot-dependent
+holders.  The specification has one population, $n=N$, with every
+committee~$V$, as \nm{shared/composition.tex}.  It is a specialization
+(S42); the FG fault bound and the FG liveness quorum stay premises of the
+transferred claims.
+
+\emph{(p) Witness order.}  \nm{assemblePC} (Pools:29--37) orders the
+acks by the decoded seat index of the slot.  The specification now does
+the same (S43); this is a form difference against S6, which ordered the
+acks by validator index.
+
+\emph{Checked equal.}  These rules of the specification were compared
+line by line with the Lean and have no difference: the order of
+\nm{prepareClock} (carrier arm, unlock, update, early cut, freeze, ack
+test, source); \nm{runGate} (raw result, FT, guard, record, lock writes
+with the deadline $d_w+L$) apart from the path domain of V9;
+\nm{ackEligible};
+\nm{recentSource} and \nm{viewSource} with the label-0 empty freeze;
+\nm{roleReceipt}, \nm{carrierReceipt} and \nm{acceptTargets};
+\nm{historyReceipt}, \nm{addRecent}, \nm{recentCompatible} and
+\nm{boundedHistoryCompatible}; \nm{targetStatus} and \nm{roleAuthority};
+\nm{effectiveLock}; \nm{releaseLocks}; \nm{resolveHeads}; \nm{pcOutputs} (the clamp);
+\nm{outputHead} at slot~0; \nm{onHead}, \nm{onAck}, and \nm{assemblePC};
+\nm{clockJoined}; \nm{recordOwn};
+\nm{on\_pc}; \nm{prepareSource} and \nm{ac\_to\_fg}; \nm{headDomain} and
+\nm{headBatch}; P \nm{act} for the ack payload $(s-1,X.\mathsf{root},
+X.\depth)$.
+
+\section{Claims}\label{sec:claims}
+
+The aggregate \nm{PCSAStage2Claims} (Claims:123) has twelve fields:
+\nm{localModel}, \nm{healthySafety}, \nm{healthyInclusion},
+\nm{formation}, \nm{recoveryService}, \nm{recoveryServiceValidator},
+\nm{armedProtection}, \nm{localStrongProtection}, \nm{coveredSlowP1},
+\nm{fgSafety}, \nm{fgFinality} and \nm{targetResolution}.  Its docstring
+says: ``This checkpoint has no inhabitant.''  So no field is proved, and
+each field is OPEN.  The claim table of spec~6 maps each S2 claim to a
+field; the mapping is by name and by the S2 lines that the Lean
+docstrings cite, and the rows marked \UC{} there are not checked.  The
+fields range over canonical bindings of runs of \nm{pcProtocol}.  So a
+proof of a field is about the rules of P.  Apart from loose BJ and the
+weak E1, the specification differs from P only in items (b), (e) and (o), which are a
+content abstraction, a form under one duty tick per time, and a
+specialization.  Loose BJ, in the shared FG, changes the behaviour: a
+justification at a bound height waits for the finality of its
+predecessor, and the client reads its finality pair from the entry state
+of its source (spec~6, paragraph Loose BJ).  P has neither, and no field
+covers it; \nm{fgFinality} is a claim about the FG before loose BJ.
+The weak E1 of the shared FG is not in P either: a timeout at~$h$ is E1
+with a finality pair at~$h$ only when the two name different blocks, and
+the client record keeps the set of the blocks that its timeouts name.
+The Lean evidence predicate (\nm{conflictsWithFinality}) needs the root
+test on its timeout arm.
+The fields \nm{localModel.capacity} and
+\nm{localModel.certificate\_provenance} (\nm{Local.lean}:67--105) state the
+13-record and the provenance claims; \nm{formation} states the common key
+(\nm{Formation.lean}:43--61).
+
+The S2 claim table has REFUTED rows (spec~6).  No Lean field states a
+REFUTED claim.
+
+\section{Shared interface}\label{sec:shared}
+
+Spec~5 lists the pending shared items: (a) the receipt frame, (b) the
+atomic duty selection, (c) no pre-finality hook, (d) the historical read
+service, (e) the dependency service, and (f) the relay.  The Lean has (a),
+(b), (d), (e) and (f) inside the PC-SA run protocol P, its run driver
+(\nm{Driver.lean}, \nm{Macro.lean}) and the shared \nm{FGCompose} layer
+(\nm{RefusalEvidence}, \nm{ReceiptToken}).  S2
+\S14.1 marks the shared refusal report as a REQUIRED rule that the shared
+spec and the Lean implementation do not yet give.  This note makes no
+change to the shared files.
+
+\section{Legacy}\label{sec:legacy}
+
+The earlier versions of this note (commits \nm{d8310c8}, \nm{fd996a5} and
+\nm{f10fa3b}) compared the r5 text with the stage-1 model of the clone
+\nm{~/lean/available-chain}.  That model (\nm{GridCO}, \nm{pcs},
+\nm{pcStamps}, \nm{leaseRanks}, \nm{proposerPC}) is not the release
+model, and those comparisons do not apply to the stage-2 specification.
+The git history keeps them.
+
+\end{document}

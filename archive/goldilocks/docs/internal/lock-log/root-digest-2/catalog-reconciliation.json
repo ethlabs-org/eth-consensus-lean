@@ -1,0 +1,14 @@
+{
+  "base": "c24711d",
+  "input": "54e6aa4e5ff9d1e7b581ad335639130f9ad05aea",
+  "lockSHA256": "196fc80e165ad5ad4900e717b3a636fd0a7f066f27d03b4ae6fbb5b5c330e891",
+  "lockedNames": 252,
+  "predictedRoots": 77,
+  "distinctCauses": 78,
+  "omittedInternalCauses": 78,
+  "measuredChanged": 0,
+  "measuredRemoved": 0,
+  "measuredAdded": 0,
+  "writeNeeded": false,
+  "predictionFilter": "n.isInternal and not _private prefix"
+}

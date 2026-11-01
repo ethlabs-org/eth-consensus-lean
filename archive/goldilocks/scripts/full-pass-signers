@@ -1,0 +1,2 @@
+# No signer is trusted by default. Add operator public keys by a policy-only change.
+# OpenSSH allowed_signers format: full-gate ssh-ed25519 <public-key>

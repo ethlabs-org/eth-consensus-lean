@@ -1,0 +1,896 @@
+{
+  "version": 1,
+  "description": "History of the S0 frozen-file differences. A record of past changes only; it grants no permission to edit a listed path.",
+  "s0_revision": "88c616d10ac4c11f39333937e36998d8d05b8274",
+  "s0_manifest": "docs/FG-FINALITY-SAFETY-S0-hashes.json",
+  "s0_manifest_sha256": "e1146f22e551cbc453fd21b3090347b0229fd44a5d9d098bc281925a0c8482cd",
+  "s0_step1_manifest": "docs/FG-FINALITY-SAFETY-S0-step1-hashes.json",
+  "s0_step1_manifest_sha256": "642fac24b050c80569be89ffd607d8d062660e79fba50f14909adeb7993340d8",
+  "comparison_revision": "b7946b9b940098ae1800904177173f04fff8a507",
+  "main_revision": "d58093e4c63023a418f6c3ed698f7bb28cefe305",
+  "main_revision_note": "Sleep P-PC on sleep-int; authorized change (2026-10-09); history only.",
+  "differences": [
+    {
+      "path": "AvailableChainFGSAClaims.lean",
+      "s0_sha256": "2daee7fa4b065d82f3bedb5bd70417160b3e3516d2b0f2dfb137ccda87ea6a59",
+      "comparison_sha256": "dfd4a9fdbc46d417f1ac84768f1670e2c8da0c08acb98f6d91768133d0d20c41",
+      "main_sha256": "f67050bc3bbd868ab6b890be316125686e196c54f1b44ea3af509a2560c68dc9",
+      "changes": [
+        {
+          "commit": "4dbcf7871148db227abedd3a8c66fdbd1892cf55",
+          "parent": "43733fe83606f541daf1ea857995e8a5f75abc75",
+          "before_sha256": "2daee7fa4b065d82f3bedb5bd70417160b3e3516d2b0f2dfb137ccda87ea6a59",
+          "after_sha256": "be55aa8719db84857315488a84159500e03c174c7fe7d48c3251fc51803820a6",
+          "reason": "Import the WeakContinuationGrowth companion claim module (retained weak continuation with corruption growth).",
+          "kind": "commit"
+        },
+        {
+          "commit": "53d311eb152b1007d516aa1d64f9c30f10414e9c",
+          "parent": "5dd22552e403dc6c014710274b8feebed14c641f",
+          "before_sha256": "2daee7fa4b065d82f3bedb5bd70417160b3e3516d2b0f2dfb137ccda87ea6a59",
+          "after_sha256": "a7382d396862b147d1e1bf84638e8ed98ca3dba4a51e3ae7dd91144b8bdda81a",
+          "reason": "Import the OutageContinuation companion claim module (outage continuation statement).",
+          "kind": "commit"
+        },
+        {
+          "commit": "ceffc042033d8597e2a513b601de7fe46ca2bb9b",
+          "parent": "71fd5d9189112efbf3136a2f5574d9aba64ca526",
+          "before_sha256": "a7382d396862b147d1e1bf84638e8ed98ca3dba4a51e3ae7dd91144b8bdda81a",
+          "after_sha256": "dfd4a9fdbc46d417f1ac84768f1670e2c8da0c08acb98f6d91768133d0d20c41",
+          "reason": "Merge resolution: keep both companion imports (OutageContinuation and WeakContinuationGrowth).",
+          "kind": "merge-resolution",
+          "merge_parents": [
+            {
+              "parent": "71fd5d9189112efbf3136a2f5574d9aba64ca526",
+              "before_sha256": "a7382d396862b147d1e1bf84638e8ed98ca3dba4a51e3ae7dd91144b8bdda81a"
+            },
+            {
+              "parent": "8b09725aa88b6f5fd9a63ae7e1293c0a91f49ae1",
+              "before_sha256": "be55aa8719db84857315488a84159500e03c174c7fe7d48c3251fc51803820a6"
+            }
+          ]
+        },
+        {
+          "commit": "0d34012a4b71d7520e7d7350f7c6f845d413a015",
+          "parent": "cd736e868ef710d87c326ebc220297435a3f79b9",
+          "before_sha256": "dfd4a9fdbc46d417f1ac84768f1670e2c8da0c08acb98f6d91768133d0d20c41",
+          "after_sha256": "faecd1a35bc552dceb92ac7607103f9cb597cd63498d25a551b3bc8875cfb17b",
+          "reason": "Import the additive FrameNext statement and claim modules for S0-F/WP00b (docs/plans/fgsa-port-r2.md, WP16 data-owner role).",
+          "kind": "commit"
+        },
+        {
+          "commit": "ee14de5f39ecd57eda0b44941646d254e534ab8a",
+          "parent": "0d34012a4b71d7520e7d7350f7c6f845d413a015",
+          "before_sha256": "faecd1a35bc552dceb92ac7607103f9cb597cd63498d25a551b3bc8875cfb17b",
+          "after_sha256": "f67050bc3bbd868ab6b890be316125686e196c54f1b44ea3af509a2560c68dc9",
+          "reason": "Import ComposeNext after the S0-F/WP00b frame-layer split moves FGFoundationNext there (docs/plans/fgsa-port-r2.md, WP16 data-owner role).",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainFGSAClaims/Tests/Axioms.lean",
+      "s0_sha256": "a085f26a82c48f5554afc3263211ee872fa9cda227efa9ecd013e621b2a3a82e",
+      "comparison_sha256": "a085f26a82c48f5554afc3263211ee872fa9cda227efa9ecd013e621b2a3a82e",
+      "main_sha256": "b93ad6459ba5afa17283a8521014bcb9fed4d2df100f299e41476ea0a2c148da",
+      "changes": [
+        {
+          "commit": "0d34012a4b71d7520e7d7350f7c6f845d413a015",
+          "parent": "cd736e868ef710d87c326ebc220297435a3f79b9",
+          "before_sha256": "a085f26a82c48f5554afc3263211ee872fa9cda227efa9ecd013e621b2a3a82e",
+          "after_sha256": "b76dd0681804cc053f0071e525105a625ef975ac0bab97656cdf6e2cfa393fa5",
+          "reason": "Add the FrameNext claim import and axiom audit lines for the additive S0-F/WP00b declarations (docs/plans/fgsa-port-r2.md, WP16 data-owner role).",
+          "kind": "commit"
+        },
+        {
+          "commit": "ee14de5f39ecd57eda0b44941646d254e534ab8a",
+          "parent": "0d34012a4b71d7520e7d7350f7c6f845d413a015",
+          "before_sha256": "b76dd0681804cc053f0071e525105a625ef975ac0bab97656cdf6e2cfa393fa5",
+          "after_sha256": "b93ad6459ba5afa17283a8521014bcb9fed4d2df100f299e41476ea0a2c148da",
+          "reason": "Add the WalkBatchNext axiom audit line and identify the FrameNext/ComposeNext statement modules after the S0-F/WP00b frame-layer split (docs/plans/fgsa-port-r2.md, WP16 data-owner role).",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainFGSAProofs/Proofs/Assembly/Root.lean",
+      "s0_sha256": "108588b8661f924812f5a75e5288f7ddf295e3d89f3e8c484892650964be1e2c",
+      "comparison_sha256": "e1e8d7fcacbbaadd8c95d52ea9c4ebf51511868e42507c3001e4c57bc67107fc",
+      "main_sha256": "e1e8d7fcacbbaadd8c95d52ea9c4ebf51511868e42507c3001e4c57bc67107fc",
+      "changes": [
+        {
+          "commit": "27d23b7f3b5462fddfd94db531dfc6f0380cd76e",
+          "parent": "9e35b8779c6ef3610d9b5168e515b85b0e1392fd",
+          "before_sha256": "108588b8661f924812f5a75e5288f7ddf295e3d89f3e8c484892650964be1e2c",
+          "after_sha256": "e1e8d7fcacbbaadd8c95d52ea9c4ebf51511868e42507c3001e4c57bc67107fc",
+          "reason": "Import the growth assembly modules and add fgsa_weakContinuationGrowthClaim; the frozen FGSAClaims field is unchanged.",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainFGSAProofs/Tests/Axioms.lean",
+      "s0_sha256": "eadf5b295fbd91c13684573d4b91d1facd7ab13243696f26c7ec41e66ff726d9",
+      "comparison_sha256": "4f8d10bbf562323edf96fa8f6a299c35939dec65ab8b3864dd8c5d172be826dd",
+      "main_sha256": "b47acf499f78d35e1383b5d04209f0da8c065e096b3cb7ca380e8e85bd008ab5",
+      "changes": [
+        {
+          "commit": "8be7bf6bfde3f9b109216274cdf43c2cf95d6c62",
+          "parent": "861ca1f86996b2e3c8624c908f0acb1970491852",
+          "before_sha256": "eadf5b295fbd91c13684573d4b91d1facd7ab13243696f26c7ec41e66ff726d9",
+          "after_sha256": "4f8d10bbf562323edf96fa8f6a299c35939dec65ab8b3864dd8c5d172be826dd",
+          "reason": "Add the axiom audit line for healing_resetArrivalClaim.",
+          "kind": "commit"
+        },
+        {
+          "commit": "2c3a3460c9f1794005fb66eb70f798979d9ff648",
+          "parent": "4aa85d9dbbaee0d840a4ed3d1fcb3191e79eeec9",
+          "before_sha256": "4f8d10bbf562323edf96fa8f6a299c35939dec65ab8b3864dd8c5d172be826dd",
+          "after_sha256": "b504cd3dfcd911f6889954a76ff6f554cc79aeeedd083826419d67e36526a1a9",
+          "reason": "WP13v audit registration: test(fgsa): replace removed helper audits and cover guarded suppliers",
+          "kind": "commit"
+        },
+        {
+          "commit": "fd5a26137eb9d0346dec6ceb9eed88e91703e948",
+          "parent": "a05654a26c7c4e15507c98709e289bbf1716ea4d",
+          "before_sha256": "b504cd3dfcd911f6889954a76ff6f554cc79aeeedd083826419d67e36526a1a9",
+          "after_sha256": "b47acf499f78d35e1383b5d04209f0da8c065e096b3cb7ca380e8e85bd008ab5",
+          "reason": "WP13v A/V/S/T regression and axiom audit repairs: test(fgsa): audit guarded outage receipts and retained domains",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainPCSAClaims.lean",
+      "s0_sha256": "22fe08b598e798738e1d1e187a6a56cef2230f7dc42d75c76d5e04ae8c54c259",
+      "comparison_sha256": "22fe08b598e798738e1d1e187a6a56cef2230f7dc42d75c76d5e04ae8c54c259",
+      "main_sha256": "bab68984019db95edd7079abb953d3f90ea7f76b4eac2968f6d8b633602d1998",
+      "changes": [
+        {
+          "commit": "206e67705042ee271ccac4dc59adab5cbe58df99",
+          "parent": "24f5342bb5c32d7f9a5c759cc6d3014278b039b2",
+          "before_sha256": "22fe08b598e798738e1d1e187a6a56cef2230f7dc42d75c76d5e04ae8c54c259",
+          "after_sha256": "bab68984019db95edd7079abb953d3f90ea7f76b4eac2968f6d8b633602d1998",
+          "reason": "Import the Statements.OutageItems facade module.",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainPCSAClaims/Claims/Clean.lean",
+      "s0_sha256": "8aef65f8b592cccde6720efc1a14607bc402e08073d8e09d69a5c762a4284edb",
+      "comparison_sha256": "8aef65f8b592cccde6720efc1a14607bc402e08073d8e09d69a5c762a4284edb",
+      "main_sha256": "da80b8c763afd5297218afe53fc50316996354bf526cc4c293596b118f2fc292",
+      "changes": [
+        {
+          "commit": "540cb9bbd89d0061542983448d191b941ee86f1f",
+          "parent": "fa20e9cebdd42cef769048aeecd858adff57c044",
+          "before_sha256": "8aef65f8b592cccde6720efc1a14607bc402e08073d8e09d69a5c762a4284edb",
+          "after_sha256": "bbe2239a2ab2c39c10c03ce1fd69cf35ea461ca59b0b37301cb302fd9e9eedc5",
+          "reason": "Correct the CI root clause: drop the HEAD compatibility conjunct (r4.3a); step (d) proves N-target compatibility separately.",
+          "kind": "commit"
+        },
+        {
+          "commit": "206e67705042ee271ccac4dc59adab5cbe58df99",
+          "parent": "24f5342bb5c32d7f9a5c759cc6d3014278b039b2",
+          "before_sha256": "8aef65f8b592cccde6720efc1a14607bc402e08073d8e09d69a5c762a4284edb",
+          "after_sha256": "8a755c4180cb9e7455b9480083ee7d24f81104ae971dea240b9705e4faf5a49a",
+          "reason": "Add the pending-label claims section for the Outage lane (later revised by 512f60ed).",
+          "kind": "commit"
+        },
+        {
+          "commit": "730328506e9f8dcd1c06b8a60b8f6722cb300e97",
+          "parent": "b472f509bcf3332305403c11063dc2cad8e2e7af",
+          "before_sha256": "bbe2239a2ab2c39c10c03ce1fd69cf35ea461ca59b0b37301cb302fd9e9eedc5",
+          "after_sha256": "e99dbedf501b2c7df823696935a94eca3e1d95b1b31761d31bdd8512c8de1b93",
+          "reason": "Add the pending-label claims section (later refuted and removed by 116aa6e6).",
+          "kind": "commit"
+        },
+        {
+          "commit": "512f60edbef10127656935b63f9f4262c468f617",
+          "parent": "66f60fa0301e9541c0e5210ed330a5bd68a8fdf4",
+          "before_sha256": "8a755c4180cb9e7455b9480083ee7d24f81104ae971dea240b9705e4faf5a49a",
+          "after_sha256": "eb8ffa639f815e03e74ec3a76c00582c8c31b02d72dd1414f93030cb611ea075",
+          "reason": "Drop the false pending HEAD claims; record the boundary case v_r <= b0 < d_{r-1}; CutChain/CutFacts become OPEN hypotheses.",
+          "kind": "commit"
+        },
+        {
+          "commit": "89ebba3f77bfd0bfc308439fb73a71d73c5ff5a2",
+          "parent": "e71d40ea0dcdd643b5e8fe789bc55a8eea64301b",
+          "before_sha256": "eb8ffa639f815e03e74ec3a76c00582c8c31b02d72dd1414f93030cb611ea075",
+          "after_sha256": "75443cbcb5b14e7a16d7623687d555d69a3075b36421a5ae4f3b2d1139b60b2c",
+          "reason": "Comment: the Outage assembly takes the cone and bridge forms of the pending facts as OPEN hypotheses.",
+          "kind": "commit"
+        },
+        {
+          "commit": "116aa6e6c261a37c653e432a2647feacc5664d32",
+          "parent": "5007e773a65811ccad37544b40439da3ec1caaa5",
+          "before_sha256": "e99dbedf501b2c7df823696935a94eca3e1d95b1b31761d31bdd8512c8de1b93",
+          "after_sha256": "bbe2239a2ab2c39c10c03ce1fd69cf35ea461ca59b0b37301cb302fd9e9eedc5",
+          "reason": "Remove the pending-label claims from the clean lane.",
+          "kind": "commit"
+        },
+        {
+          "commit": "26a11355507b496c3bb863827e4830aa55448783",
+          "parent": "1bea1a544c5aabaa6d688a77938f3898c7dfe578",
+          "before_sha256": "bbe2239a2ab2c39c10c03ce1fd69cf35ea461ca59b0b37301cb302fd9e9eedc5",
+          "after_sha256": "67ff0372093021e79ecbfc01d9cd813e06e512fb3296a783391ae165a36b934d",
+          "reason": "Merge resolution of main 6611726b: corrected CI roots (540cb9bb) with the repaired pending-label section (512f60ed, 89ebba3f).",
+          "kind": "merge-resolution",
+          "merge_parents": [
+            {
+              "parent": "1bea1a544c5aabaa6d688a77938f3898c7dfe578",
+              "before_sha256": "bbe2239a2ab2c39c10c03ce1fd69cf35ea461ca59b0b37301cb302fd9e9eedc5"
+            },
+            {
+              "parent": "6611726ba9ee0219e99c62ea4a662f248fcdd490",
+              "before_sha256": "75443cbcb5b14e7a16d7623687d555d69a3075b36421a5ae4f3b2d1139b60b2c"
+            }
+          ]
+        },
+        {
+          "commit": "6e1b9af858e79b3f37bcaf043b2863069c264763",
+          "parent": "6225022fed54f4eea13d555a24413f196c042f22",
+          "before_sha256": "67ff0372093021e79ecbfc01d9cd813e06e512fb3296a783391ae165a36b934d",
+          "after_sha256": "ce385151d23f098ecaa880f89ad97a8edaee35d63c81475a4c447759b08eec62",
+          "reason": "Comment only: the Outage assembly builds CutChain/CutFacts from these claims; the HEAD cone is OPEN; drop the Unverified note.",
+          "kind": "commit"
+        },
+        {
+          "commit": "46aaa33fdb84d645d4eece9276a8a0608f3cfbe2",
+          "parent": "caaceaf8835742a50b0e85804fe1cef9fb543f05",
+          "before_sha256": "ce385151d23f098ecaa880f89ad97a8edaee35d63c81475a4c447759b08eec62",
+          "after_sha256": "da80b8c763afd5297218afe53fc50316996354bf526cc4c293596b118f2fc292",
+          "reason": "Comment only: the Clean HEAD cone theorems discharge the cone (C8, C10 closed).",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainPCSAClaims/Claims/PC.lean",
+      "s0_sha256": "a05379e51e417c4774cb60a17dff86d1e70c772559733b23684e403aab19ec88",
+      "comparison_sha256": "a05379e51e417c4774cb60a17dff86d1e70c772559733b23684e403aab19ec88",
+      "main_sha256": "10f5fcc8649fb1df61b55f89b1506af0b5767805f7176109f31edae274999164",
+      "changes": [
+        {
+          "commit": "225b73e8964d06508a75b13e0b9ad4567c51eb29",
+          "parent": "f2111f5347b2106ea54c2e293c967e97caa6e578",
+          "before_sha256": "a05379e51e417c4774cb60a17dff86d1e70c772559733b23684e403aab19ec88",
+          "after_sha256": "10f5fcc8649fb1df61b55f89b1506af0b5767805f7176109f31edae274999164",
+          "reason": "Positive-slot premise 0 < s for PC dissemination (genesis needs no PC).",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainPCSAClaims/Claims/Recovery.lean",
+      "s0_sha256": "c69ef942bf46151b21277b77efd5bfa5bd2f2b99978bbe9ca2f883897398d93a",
+      "comparison_sha256": "c69ef942bf46151b21277b77efd5bfa5bd2f2b99978bbe9ca2f883897398d93a",
+      "main_sha256": "7454021d8895ae6de008a29b45bfa90a894c2e711972efff352b31aed7224ef2",
+      "changes": [
+        {
+          "commit": "fcf5cb78b386d594a73979c29fb1a78654f9c9e1",
+          "parent": "723d8215a25e8c728000bd11460e54cbe020ad1a",
+          "before_sha256": "c69ef942bf46151b21277b77efd5bfa5bd2f2b99978bbe9ca2f883897398d93a",
+          "after_sha256": "7454021d8895ae6de008a29b45bfa90a894c2e711972efff352b31aed7224ef2",
+          "reason": "ShortBreakPrem requires a positive anchor slot (anchorPos : 0 < cA); slot 0 goes to LongBreakRecoveredClaim.",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainPCSAClaims/Statements/Premises.lean",
+      "s0_sha256": "ac7303d7b14216553d357ddc9c787c6ae33e7148ad3ebc001d1ef2111b1b205f",
+      "comparison_sha256": "ac7303d7b14216553d357ddc9c787c6ae33e7148ad3ebc001d1ef2111b1b205f",
+      "main_sha256": "8784f1c7fcfc493ddb544e5cdc1121a67f1d2c6223a44c61ff8e4a1f0a9562b5",
+      "changes": [
+        {
+          "commit": "edc925ffe5969b035ba5c6b396b2196787e13391",
+          "parent": "2d60817531d5456be72bb2f70708dfdf6bd153e9",
+          "before_sha256": "ac7303d7b14216553d357ddc9c787c6ae33e7148ad3ebc001d1ef2111b1b205f",
+          "after_sha256": "8784f1c7fcfc493ddb544e5cdc1121a67f1d2c6223a44c61ff8e4a1f0a9562b5",
+          "reason": "Add FormationRootReachable (F4 first clause) and its fields in FormationPrem and HealedSourcePrem (Formation lane, PC-SA).",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "docs/FGSA-API.md",
+      "s0_sha256": "63b46ca4928064c0f21f9ade352bb6b9aa061e7b7d4d295842e3ed94c0fdab2e",
+      "comparison_sha256": "b3075a0c0979320a26ba3fca7a43327882e24685574242a0f7e979381cc0e018",
+      "main_sha256": "e43abf02e1359e1dd320aa647465613da6f82c8ce15b41b747faed5dbfedc05f",
+      "changes": [
+        {
+          "commit": "4dbcf7871148db227abedd3a8c66fdbd1892cf55",
+          "parent": "43733fe83606f541daf1ea857995e8a5f75abc75",
+          "before_sha256": "63b46ca4928064c0f21f9ade352bb6b9aa061e7b7d4d295842e3ed94c0fdab2e",
+          "after_sha256": "f38a939ca37de65c722cad4c994e626cf9d4497041e4965e0618afa202e01104",
+          "reason": "Manifest sections for Claims/WeakContinuationGrowth and Statements/WeakContinuationGrowth.",
+          "kind": "commit"
+        },
+        {
+          "commit": "53d311eb152b1007d516aa1d64f9c30f10414e9c",
+          "parent": "5dd22552e403dc6c014710274b8feebed14c641f",
+          "before_sha256": "63b46ca4928064c0f21f9ade352bb6b9aa061e7b7d4d295842e3ed94c0fdab2e",
+          "after_sha256": "37d7ff49528120a9ef5021c4a74a610ee3522ffcf7bb00bbc239fac489386fa7",
+          "reason": "Manifest sections for Claims/OutageContinuation and Statements/OutageContinuation.",
+          "kind": "commit"
+        },
+        {
+          "commit": "ceffc042033d8597e2a513b601de7fe46ca2bb9b",
+          "parent": "71fd5d9189112efbf3136a2f5574d9aba64ca526",
+          "before_sha256": "37d7ff49528120a9ef5021c4a74a610ee3522ffcf7bb00bbc239fac489386fa7",
+          "after_sha256": "b3075a0c0979320a26ba3fca7a43327882e24685574242a0f7e979381cc0e018",
+          "reason": "Merge resolution: keep both companion manifest sections.",
+          "kind": "merge-resolution",
+          "merge_parents": [
+            {
+              "parent": "71fd5d9189112efbf3136a2f5574d9aba64ca526",
+              "before_sha256": "37d7ff49528120a9ef5021c4a74a610ee3522ffcf7bb00bbc239fac489386fa7"
+            },
+            {
+              "parent": "8b09725aa88b6f5fd9a63ae7e1293c0a91f49ae1",
+              "before_sha256": "f38a939ca37de65c722cad4c994e626cf9d4497041e4965e0618afa202e01104"
+            }
+          ]
+        },
+        {
+          "commit": "0d34012a4b71d7520e7d7350f7c6f845d413a015",
+          "parent": "cd736e868ef710d87c326ebc220297435a3f79b9",
+          "before_sha256": "b3075a0c0979320a26ba3fca7a43327882e24685574242a0f7e979381cc0e018",
+          "after_sha256": "9bdf6d0c0142c49cf116bdaa720718ffeffe7914944bf03c45a891291aa82160",
+          "reason": "Add current API manifest entries for the additive FrameNext statements and claims in S0-F/WP00b (docs/plans/fgsa-port-r2.md, WP16 data-owner role).",
+          "kind": "commit"
+        },
+        {
+          "commit": "ee14de5f39ecd57eda0b44941646d254e534ab8a",
+          "parent": "0d34012a4b71d7520e7d7350f7c6f845d413a015",
+          "before_sha256": "9bdf6d0c0142c49cf116bdaa720718ffeffe7914944bf03c45a891291aa82160",
+          "after_sha256": "23453dec2be723dfead8822514b68ef6d154f2a0a1b8d229c1281cef01e62046",
+          "reason": "Move FGFoundationNext entries to ComposeNext and FrameAtNext to Statements.FrameNext; add WalkBatchNext and update the TWalkNext fingerprint for the S0-F/WP00b layering repair (docs/plans/fgsa-port-r2.md, WP16 data-owner role).",
+          "kind": "commit"
+        },
+        {
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f",
+          "parent": "318074ba78132f90c894e54dbbc18dd571b02b5b",
+          "before_sha256": "23453dec2be723dfead8822514b68ef6d154f2a0a1b8d229c1281cef01e62046",
+          "after_sha256": "34c9bd072c9f57b928033e12a3b1825897143067c7f2fbe74867aeb6c89643cf",
+          "reason": "A; h+i+j protocol switch: Switch canonical FG-SA readers and final frame surface (red window)",
+          "kind": "commit"
+        },
+        {
+          "commit": "2862a33a167325da8a0302a4fc2f29284b19fa60",
+          "parent": "33ac5feca6f3e2785ee18e892b1fb72e47f9f43c",
+          "before_sha256": "34c9bd072c9f57b928033e12a3b1825897143067c7f2fbe74867aeb6c89643cf",
+          "after_sha256": "e43abf02e1359e1dd320aa647465613da6f82c8ce15b41b747faed5dbfedc05f",
+          "reason": "WP16 measured Y API data: fix(fgsa): measure Y suppliers and record remaining audit blockers",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "scripts/baselines/fgsa-old-reads.txt",
+      "s0_sha256": "6e83b61661d138f8d6b1343766c60c3966c31d2de52244df1028b1c1c61d8d61",
+      "comparison_sha256": "7463e7487fcd6f940180a791dbe2399aa4809a5e570f20d6dcbaf31586eda17a",
+      "main_sha256": "501e7df699fab34f2f39b977c89d4b01092913721ddcf9c0aa18372ea54ed695",
+      "changes": [
+        {
+          "commit": "cd13880836f16a76af42d094857bd4b428e0c02c",
+          "parent": "d7be08b9d28fb6fb1807141e49ad3e2a8ce37a20",
+          "before_sha256": "6e83b61661d138f8d6b1343766c60c3966c31d2de52244df1028b1c1c61d8d61",
+          "after_sha256": "ae0767074e09750efd2d47affaaa177a88314b30bdea126e0555f0c02845d1be",
+          "reason": "Approved P4b client-law height line (fgsaSafetyClientLaws; lead ruling 2026-10-07).",
+          "kind": "commit"
+        },
+        {
+          "commit": "a21a170b0a706d5cc963ef2be890f30014ece420",
+          "parent": "b1a83e483c46cec32fbd2b3a5d41077c02074002",
+          "before_sha256": "6e83b61661d138f8d6b1343766c60c3966c31d2de52244df1028b1c1c61d8d61",
+          "after_sha256": "da9601de814b83fad2716e4513c2943ef97022d37fe5ec85c91f961bcf80d209",
+          "reason": "Lead ruling 2026-10-07: 7 WC growth height lines.",
+          "kind": "commit"
+        },
+        {
+          "commit": "f14afb80dc7ebd29ef5595d9f211045ca5f8046f",
+          "parent": "a21a170b0a706d5cc963ef2be890f30014ece420",
+          "before_sha256": "da9601de814b83fad2716e4513c2943ef97022d37fe5ec85c91f961bcf80d209",
+          "after_sha256": "c670a9ae8024cd1d75e03d2f68102fbaf61bc6969d1d5c3171834b47acb97e5e",
+          "reason": "Lead ruling 2026-10-07: the remaining 47 WC growth height lines (54 in total).",
+          "kind": "commit"
+        },
+        {
+          "commit": "ad58e0f98bf767a65812a044c11fe785ddb116dd",
+          "parent": "cd13880836f16a76af42d094857bd4b428e0c02c",
+          "before_sha256": "ae0767074e09750efd2d47affaaa177a88314b30bdea126e0555f0c02845d1be",
+          "after_sha256": "7463e7487fcd6f940180a791dbe2399aa4809a5e570f20d6dcbaf31586eda17a",
+          "reason": "Merge resolution of main 646cca1c into fgfin-p4b: keep the 54 WC growth lines and the P4b client-law line.",
+          "kind": "merge-resolution",
+          "merge_parents": [
+            {
+              "parent": "cd13880836f16a76af42d094857bd4b428e0c02c",
+              "before_sha256": "ae0767074e09750efd2d47affaaa177a88314b30bdea126e0555f0c02845d1be"
+            },
+            {
+              "parent": "646cca1c52e325b966e650f97d6f8a7706236aa8",
+              "before_sha256": "c670a9ae8024cd1d75e03d2f68102fbaf61bc6969d1d5c3171834b47acb97e5e"
+            }
+          ]
+        },
+        {
+          "commit": "a038975cc2eb3fe2afeec26cd64f1411e059954a",
+          "parent": "8585ed435ec30a5063a82c190f960c74bea4a1fe",
+          "before_sha256": "7463e7487fcd6f940180a791dbe2399aa4809a5e570f20d6dcbaf31586eda17a",
+          "after_sha256": "2a86e9b9c1c59bd89dfe4b42b71057acc6a7d40f7f65c9e5d18a0f389f7e482f",
+          "reason": "Record the three height-only old-read lines for Legacy.attest, Next.attestNext and its eq_1 export, which mirror canonical attest; retain the SWITCH/J6 obligation (lead ruling 2026-10-09; docs/plans/fgsa-port-r2.md, S0-IJ/WP01b and WP16 data-owner role).",
+          "kind": "commit"
+        },
+        {
+          "commit": "45db161df91761be29d6115659aa5182f4afaab3",
+          "parent": "02f5ac9aab84c6587f3f8e708a1736f354021d3b",
+          "before_sha256": "2a86e9b9c1c59bd89dfe4b42b71057acc6a7d40f7f65c9e5d18a0f389f7e482f",
+          "after_sha256": "501e7df699fab34f2f39b977c89d4b01092913721ddcf9c0aa18372ea54ed695",
+          "reason": "WP16 measured data and exact approved guard records: fix(fgsa): measure P13 suppliers and refresh merged port data",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "scripts/baselines/kitfg-def-modules.txt",
+      "s0_sha256": "4b548a8a8dfaed422ae177c0ca0fb823acc6fc7e6825e8f76170c7933d756f81",
+      "comparison_sha256": "4b548a8a8dfaed422ae177c0ca0fb823acc6fc7e6825e8f76170c7933d756f81",
+      "main_sha256": "a98b46deb10d65b1db855157240d68f8f60d7a10e51acafa606cf16b38de89c4",
+      "changes": [
+        {
+          "commit": "aa46ab5e4535e046c43f38c6f319bfd408374a08",
+          "parent": "981cbc2b9dd8b99477558e6f43ce7b33d744c8b1",
+          "before_sha256": "4b548a8a8dfaed422ae177c0ca0fb823acc6fc7e6825e8f76170c7933d756f81",
+          "after_sha256": "a98b46deb10d65b1db855157240d68f8f60d7a10e51acafa606cf16b38de89c4",
+          "reason": "Register the additive TreeFrameDef module in the KitFG definition policy for S0-IJ/WP02 (docs/plans/fgsa-port-r2.md, WP16 data-owner role).",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "scripts/baselines/shake-report.txt",
+      "s0_sha256": "6adaf95d3d9e22cf6ef7631658ddc87f1b784d5939ab9617a4635d01655407b7",
+      "comparison_sha256": "6adaf95d3d9e22cf6ef7631658ddc87f1b784d5939ab9617a4635d01655407b7",
+      "main_sha256": "55abebd7bed1541ff19d1a191bc88bb79b9f91dc5c3ff03c4bac2417f3fd5449",
+      "changes": [
+        {
+          "commit": "c29eee71b51479141668297c5c720b40fa78efec",
+          "parent": "a207ed5a76e452302239e9a5d9fc8d918982a415",
+          "before_sha256": "6adaf95d3d9e22cf6ef7631658ddc87f1b784d5939ab9617a4635d01655407b7",
+          "after_sha256": "55abebd7bed1541ff19d1a191bc88bb79b9f91dc5c3ff03c4bac2417f3fd5449",
+          "reason": "Record 4 unused imports in S0-frozen claim files; the files stay byte-identical (lead ruling 2026-10-09).",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "scripts/check-fgsa-manifest.sh",
+      "s0_sha256": "1c8622dc076d0926b08d0171d0e9fe1c383eb8c92641fc50ad9b3df58860fe9c",
+      "comparison_sha256": "1c8622dc076d0926b08d0171d0e9fe1c383eb8c92641fc50ad9b3df58860fe9c",
+      "main_sha256": "549ed5ed530e552c00b6b3c43d3507d7bde8ab5ab160788220be870159f7b044",
+      "changes": [
+        {
+          "commit": "360612574ad7661fc3757d8579883fb15a9386db",
+          "parent": "ee14de5f39ecd57eda0b44941646d254e534ab8a",
+          "before_sha256": "1c8622dc076d0926b08d0171d0e9fe1c383eb8c92641fc50ad9b3df58860fe9c",
+          "after_sha256": "3b95a9dbe9815162fc6fad985ba182bb6aa9170d9fdb94b63df5830cecc73908",
+          "reason": "Add the required frame and deep baseline checks before the NEG=0 early exit and the deep controls for S0-F/WP00c (docs/plans/fgsa-port-r2.md, WP16 data-owner role).",
+          "kind": "commit"
+        },
+        {
+          "commit": "3aa5071ca64f2f91045cbc5dbe80b320c321b3b7",
+          "parent": "318074ba78132f90c894e54dbbc18dd571b02b5b",
+          "before_sha256": "3b95a9dbe9815162fc6fad985ba182bb6aa9170d9fdb94b63df5830cecc73908",
+          "after_sha256": "549ed5ed530e552c00b6b3c43d3507d7bde8ab5ab160788220be870159f7b044",
+          "reason": "Shared gate slots; all checks/controls stay (user request 2026-10-09).",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainFGSAClaims/Claims/Clean.lean",
+      "s0_sha256": "fc9969885e1daa52b2c86e88df5612ed95319466fa41703305c41b5bbb1d4559",
+      "comparison_sha256": "fc9969885e1daa52b2c86e88df5612ed95319466fa41703305c41b5bbb1d4559",
+      "main_sha256": "406d5b2fd9c1023c194979b061088d543c31b9f7ef3be39aadd112a7a6bf591d",
+      "changes": [
+        {
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f",
+          "parent": "318074ba78132f90c894e54dbbc18dd571b02b5b",
+          "before_sha256": "fc9969885e1daa52b2c86e88df5612ed95319466fa41703305c41b5bbb1d4559",
+          "after_sha256": "406d5b2fd9c1023c194979b061088d543c31b9f7ef3be39aadd112a7a6bf591d",
+          "reason": "A; h+i+j protocol switch: Switch canonical FG-SA readers and final frame surface (red window)",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainFGSAClaims/Claims/Foundations.lean",
+      "s0_sha256": "396cba3d002fdb24c7bebac5591686834c98d3b2cbfebaae46b366ee194e9713",
+      "comparison_sha256": "396cba3d002fdb24c7bebac5591686834c98d3b2cbfebaae46b366ee194e9713",
+      "main_sha256": "b4fcb9bbb581dcb0804424c4aa7157d4364860dac128bfd291c5c9742d624b3d",
+      "changes": [
+        {
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f",
+          "parent": "318074ba78132f90c894e54dbbc18dd571b02b5b",
+          "before_sha256": "396cba3d002fdb24c7bebac5591686834c98d3b2cbfebaae46b366ee194e9713",
+          "after_sha256": "b4fcb9bbb581dcb0804424c4aa7157d4364860dac128bfd291c5c9742d624b3d",
+          "reason": "A; h+i+j protocol switch: Switch canonical FG-SA readers and final frame surface (red window)",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainFGSAClaims/FGSAClaims.lean",
+      "s0_sha256": "a088b51e2333854e4c02f436e52bddfaccaf074e66cdb76b0df037c072bf729e",
+      "comparison_sha256": "a088b51e2333854e4c02f436e52bddfaccaf074e66cdb76b0df037c072bf729e",
+      "main_sha256": "d38995efed9e99f88a4c0286753d69a1b88934968adff2c1a78dd4c57fb3890c",
+      "changes": [
+        {
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f",
+          "parent": "318074ba78132f90c894e54dbbc18dd571b02b5b",
+          "before_sha256": "a088b51e2333854e4c02f436e52bddfaccaf074e66cdb76b0df037c072bf729e",
+          "after_sha256": "d38995efed9e99f88a4c0286753d69a1b88934968adff2c1a78dd4c57fb3890c",
+          "reason": "A; h+i+j protocol switch: Switch canonical FG-SA readers and final frame surface (red window)",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainFGSAClaims/Statements/ComposeStmt.lean",
+      "s0_sha256": "68788cd546204b5149e2af75f31d733880ea52fbd166b2c439abdf98068cf06e",
+      "comparison_sha256": "68788cd546204b5149e2af75f31d733880ea52fbd166b2c439abdf98068cf06e",
+      "main_sha256": "3752e9b81bf5e190d85fd79cfcda9333c2c026d93948fd66c680ed50354b252b",
+      "changes": [
+        {
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f",
+          "parent": "318074ba78132f90c894e54dbbc18dd571b02b5b",
+          "before_sha256": "68788cd546204b5149e2af75f31d733880ea52fbd166b2c439abdf98068cf06e",
+          "after_sha256": "3752e9b81bf5e190d85fd79cfcda9333c2c026d93948fd66c680ed50354b252b",
+          "reason": "A; h+i+j protocol switch: Switch canonical FG-SA readers and final frame surface (red window)",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "scripts/fgsa-manifest-allow.txt",
+      "s0_sha256": "526b2b1e05476d9f722cbf1775ad00eeaccc8c45297790ac2d21908128e8f2a9",
+      "comparison_sha256": "526b2b1e05476d9f722cbf1775ad00eeaccc8c45297790ac2d21908128e8f2a9",
+      "main_sha256": "b4d8cd96a5fb23ac6f62a74d4beb89d1e0f6106668cf96da00d87f900a776972",
+      "changes": [
+        {
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f",
+          "parent": "318074ba78132f90c894e54dbbc18dd571b02b5b",
+          "before_sha256": "526b2b1e05476d9f722cbf1775ad00eeaccc8c45297790ac2d21908128e8f2a9",
+          "after_sha256": "c86a1e8c0ee181e2ca855f8766c43d2481afe2ee5d0896ac58ffbbee750e69d4",
+          "reason": "A; h+i+j protocol switch: Switch canonical FG-SA readers and final frame surface (red window)",
+          "kind": "commit"
+        },
+        {
+          "commit": "79c3390cbddc1939dbe7735aabd37b03063f47e5",
+          "parent": "4924efecd4635740060126d4ac9946063ef65ad6",
+          "before_sha256": "c86a1e8c0ee181e2ca855f8766c43d2481afe2ee5d0896ac58ffbbee750e69d4",
+          "after_sha256": "b4d8cd96a5fb23ac6f62a74d4beb89d1e0f6106668cf96da00d87f900a776972",
+          "reason": "Lead approval A: exact ruling Y Reachable pin; codex/reports/reviews/rev-port-w16c-astra.md",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "scripts/guard-lists-allow.txt",
+      "s0_sha256": "e05e674f98e0a494e9ea9031c45e8da9262ff99eedd5edd610b7e2d13dab5009",
+      "comparison_sha256": "e05e674f98e0a494e9ea9031c45e8da9262ff99eedd5edd610b7e2d13dab5009",
+      "main_sha256": "475793a013e98e5568665b6fce1fa51d8706bd0da1d12675506259c1b0463d9a",
+      "changes": [
+        {
+          "commit": "02f5ac9aab84c6587f3f8e708a1736f354021d3b",
+          "parent": "e961df941261be5f421a03ae80635d1806a516e9",
+          "before_sha256": "e05e674f98e0a494e9ea9031c45e8da9262ff99eedd5edd610b7e2d13dab5009",
+          "after_sha256": "475793a013e98e5568665b6fce1fa51d8706bd0da1d12675506259c1b0463d9a",
+          "reason": "WP16 exact guard records approved by fg-sa-manager: fix(fgsa): correct WP16 attribution and apply approved guard records",
+          "kind": "commit"
+        }
+      ]
+    },
+    {
+      "path": "AvailableChainFGSA/Statements/Invariants.lean",
+      "s0_sha256": "f4cb8df055a973b7525b33d8c3aaef00c33c04864f1dd3de01165565a411694e",
+      "comparison_sha256": "f4cb8df055a973b7525b33d8c3aaef00c33c04864f1dd3de01165565a411694e",
+      "main_sha256": "296d28b56327445d5504fd7022d3a3ca7a5dc0dbd785aba57ec427046ac2a578",
+      "changes": [
+        {
+          "commit": "b0b493d88a0973da9c9716f430e2371eae0cdfd1",
+          "parent": "b8f60fd1f24c18ff11c4534531dfed9b59ebf6ad",
+          "before_sha256": "f4cb8df055a973b7525b33d8c3aaef00c33c04864f1dd3de01165565a411694e",
+          "after_sha256": "296d28b56327445d5504fd7022d3a3ca7a5dc0dbd785aba57ec427046ac2a578",
+          "reason": "Integrated Y/WP12d/wfix2 source and prior WP16 data: Retain the FG-SA last tick clock through restore (ruling Y)",
+          "kind": "commit"
+        }
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "id": "P1",
+      "base": "a98317c3cd930f4bb0d5677a7bde68a83beb12fa",
+      "tip": "fc94a4cbc75af568a9eeca464623064c3d21c768",
+      "recorded_changes": [],
+      "policy_commits": [
+        {
+          "base": "cdbb00b86b37b87b742761140eb655ae5193b10d",
+          "tip": "a98317c3cd930f4bb0d5677a7bde68a83beb12fa"
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "base": "86ba204bf49e17d8d745cbb2d361ff10dc32a6f1",
+      "tip": "cbfa209f9fc54724fd453f836b75b6c242ab5a59",
+      "recorded_changes": []
+    },
+    {
+      "id": "P3",
+      "base": "caaceaf8835742a50b0e85804fe1cef9fb543f05",
+      "tip": "72ede766ce0575c87edc867c53bbdfc5bdb6cc65",
+      "recorded_changes": []
+    },
+    {
+      "id": "P4a",
+      "base": "b710e4844e8b821014be0de8f6b1030958119be6",
+      "tip": "706d19bde7c18a1392531aec4d93ddbd4f281957",
+      "recorded_changes": []
+    },
+    {
+      "id": "P4b",
+      "base": "d7be08b9d28fb6fb1807141e49ad3e2a8ce37a20",
+      "tip": "cd13880836f16a76af42d094857bd4b428e0c02c",
+      "recorded_changes": [
+        {
+          "path": "scripts/baselines/fgsa-old-reads.txt",
+          "commit": "cd13880836f16a76af42d094857bd4b428e0c02c"
+        }
+      ],
+      "note": "The WC growth changes in fgsa-old-reads.txt reached fgfin-p4b through its merges of main (ad58e0f9); they are inherited, not P4b changes."
+    },
+    {
+      "id": "P5",
+      "base": "a1dd76ab9bc32c27ca6d2fdc5d3b665c5bdc2e1d",
+      "tip": "a4762ee8134aa35b3663aad6a33ba191d8c16faa",
+      "recorded_changes": []
+    },
+    {
+      "id": "P6",
+      "base": "861ca1f86996b2e3c8624c908f0acb1970491852",
+      "tip": "a1dd76ab9bc32c27ca6d2fdc5d3b665c5bdc2e1d",
+      "recorded_changes": []
+    },
+    {
+      "id": "P7",
+      "base": "e30b4cbf8db2d7b9e68540e3c2c1998b9cfd2202",
+      "tip": "1cfd33a2c6a6ce8814a99da7474f0c3ffeca1cf0",
+      "recorded_changes": []
+    },
+    {
+      "id": "P5-P7-landing",
+      "base": "1ae31f160274d2c8f58e96428da6b9f704e654ff",
+      "tip": "cdbb00b86b37b87b742761140eb655ae5193b10d",
+      "recorded_changes": []
+    },
+    {
+      "id": "P8",
+      "base": "c30bb26517d15aaff9e26512bf4386483ed14374",
+      "tip": "b7946b9b940098ae1800904177173f04fff8a507",
+      "recorded_changes": []
+    },
+    {
+      "id": "P9",
+      "base": "70e846d0dd216ef8370efbee3ddd042a3d7c297b",
+      "tip": "86ba204bf49e17d8d745cbb2d361ff10dc32a6f1",
+      "recorded_changes": []
+    },
+    {
+      "id": "P10",
+      "base": "5995104ab41ecaa982063bd578a8c04fa3a3e8a6",
+      "tip": "222cf06a368789a89614e0f148dcf81f3bf3517f",
+      "recorded_changes": []
+    },
+    {
+      "id": "P11",
+      "base": "706d19bde7c18a1392531aec4d93ddbd4f281957",
+      "tip": "363134d0cf838a600114e2839e6456fc83db845b",
+      "recorded_changes": []
+    },
+    {
+      "id": "P12",
+      "base": "048957e539101a667a50a4f1a01e45487c26a9dd",
+      "tip": "d1e2232c4794d167a04cf3e73e0a2081fc7eba06",
+      "recorded_changes": []
+    },
+    {
+      "id": "P13",
+      "base": "1e958d9ceca4a5f4c381f6483641a1866e1e0495",
+      "tip": "b033d223088fa30fd2763c3ae4a00b20bf28e91b",
+      "recorded_changes": [
+        {
+          "path": "AvailableChainPCSAClaims/Statements/Premises.lean",
+          "commit": "edc925ffe5969b035ba5c6b396b2196787e13391",
+          "kind": "inherited-main",
+          "reason": "Inherited from main in the P13 base-to-landing range; already recorded in differences. This is a PC-SA Formation change, not a P13 edit. The package checker checks endpoint bytes and requires this exact range attribution."
+        }
+      ],
+      "note": "Combined base: main 5995104a with P10 (222cf06a) and P12 (d1e2232c). The tip is the checked revision."
+    },
+    {
+      "id": "FGSA-port-Stage0",
+      "base": "5dbfcb3c0808543d1355d4c01f2289c2af4737b4",
+      "tip": "9bbecdbb088b9a1d95d0eb8445e092ff988c0f0c",
+      "recorded_changes": [
+        {
+          "path": "AvailableChainFGSAClaims.lean",
+          "commit": "ee14de5f39ecd57eda0b44941646d254e534ab8a"
+        },
+        {
+          "path": "AvailableChainFGSAClaims/Tests/Axioms.lean",
+          "commit": "ee14de5f39ecd57eda0b44941646d254e534ab8a"
+        },
+        {
+          "path": "docs/FGSA-API.md",
+          "commit": "ee14de5f39ecd57eda0b44941646d254e534ab8a"
+        },
+        {
+          "path": "scripts/baselines/fgsa-old-reads.txt",
+          "commit": "a038975cc2eb3fe2afeec26cd64f1411e059954a"
+        },
+        {
+          "path": "scripts/baselines/kitfg-def-modules.txt",
+          "commit": "aa46ab5e4535e046c43f38c6f319bfd408374a08"
+        },
+        {
+          "path": "scripts/check-fgsa-manifest.sh",
+          "commit": "360612574ad7661fc3757d8579883fb15a9386db"
+        }
+      ],
+      "note": "Stage 0 candidate after the deep checker (WP00c) merge. All qualifying byte changes, including intermediate commits and any merge resolution with new bytes, are recorded in differences. Package entries identify the commits with the exact tip bytes. Merge commits in this range select existing parent bytes for frozen paths; none produces new frozen bytes. Changes follow docs/plans/fgsa-port-r2.md and its WP16 data-owner role; this record grants no edit permission."
+    },
+    {
+      "id": "FGSA-port-core-first-pass",
+      "base": "9bbecdbb088b9a1d95d0eb8445e092ff988c0f0c",
+      "tip": "63b98347ffc517732bdf8e42c19730d4cc502a4b",
+      "recorded_changes": [
+        {
+          "path": "AvailableChainFGSAClaims/Claims/Clean.lean",
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f"
+        },
+        {
+          "path": "AvailableChainFGSAClaims/Claims/Foundations.lean",
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f"
+        },
+        {
+          "path": "AvailableChainFGSAClaims/FGSAClaims.lean",
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f"
+        },
+        {
+          "path": "AvailableChainFGSAClaims/Statements/ComposeStmt.lean",
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f"
+        },
+        {
+          "path": "AvailableChainFGSAProofs/Tests/Axioms.lean",
+          "commit": "2c3a3460c9f1794005fb66eb70f798979d9ff648"
+        },
+        {
+          "path": "docs/FGSA-API.md",
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f"
+        },
+        {
+          "path": "scripts/fgsa-manifest-allow.txt",
+          "commit": "3dab58433a4ae070aac169753c7844d0fdfb734f"
+        }
+      ],
+      "note": "WP16 first pass. The core package remains open for later source/data commits. This fixed tip records merged bytes only. Every qualifying intermediate change and merge resolution is in differences."
+    },
+    {
+      "id": "FGSA-port-second-pass-base",
+      "base": "63b98347ffc517732bdf8e42c19730d4cc502a4b",
+      "tip": "e961df941261be5f421a03ae80635d1806a516e9",
+      "recorded_changes": [
+        {
+          "path": "AvailableChainFGSAProofs/Tests/Axioms.lean",
+          "commit": "fd5a26137eb9d0346dec6ceb9eed88e91703e948"
+        }
+      ],
+      "note": "Exact pre-Y/pre-WP12d integration bytes. Pending packages have no inferred freeze records."
+    },
+    {
+      "id": "FGSA-port-approved-guard-edit",
+      "base": "e961df941261be5f421a03ae80635d1806a516e9",
+      "tip": "02f5ac9aab84c6587f3f8e708a1736f354021d3b",
+      "recorded_changes": [
+        {
+          "path": "scripts/guard-lists-allow.txt",
+          "commit": "02f5ac9aab84c6587f3f8e708a1736f354021d3b"
+        }
+      ],
+      "note": "Exact pre-Y/pre-WP12d integration bytes. Pending packages have no inferred freeze records."
+    },
+    {
+      "id": "FGSA-port-measured-data",
+      "base": "02f5ac9aab84c6587f3f8e708a1736f354021d3b",
+      "tip": "45db161df91761be29d6115659aa5182f4afaab3",
+      "recorded_changes": [
+        {
+          "path": "scripts/baselines/fgsa-old-reads.txt",
+          "commit": "45db161df91761be29d6115659aa5182f4afaab3"
+        }
+      ],
+      "note": "Exact pre-Y/pre-WP12d integration bytes. Pending packages have no inferred freeze records."
+    },
+    {
+      "id": "FGSA-port-final-refresh-base",
+      "base": "45db161df91761be29d6115659aa5182f4afaab3",
+      "tip": "988177e222b441e9ee08d51f8dfd39c80b0d395d",
+      "recorded_changes": [
+        {
+          "path": "AvailableChainFGSA/Statements/Invariants.lean",
+          "commit": "b0b493d88a0973da9c9716f430e2371eae0cdfd1"
+        }
+      ],
+      "note": "Exact integrated Y/WP12d/wfix2 bytes with actual parents and hashes."
+    },
+    {
+      "id": "FGSA-port-final-refresh-data",
+      "base": "988177e222b441e9ee08d51f8dfd39c80b0d395d",
+      "tip": "2862a33a167325da8a0302a4fc2f29284b19fa60",
+      "recorded_changes": [
+        {
+          "path": "docs/FGSA-API.md",
+          "commit": "2862a33a167325da8a0302a4fc2f29284b19fa60"
+        }
+      ],
+      "note": "Exact measured API bytes after the integrated Y constructor change."
+    },
+    {
+      "id": "FGSA-port-last-data-closure",
+      "base": "2862a33a167325da8a0302a4fc2f29284b19fa60",
+      "tip": "79c3390cbddc1939dbe7735aabd37b03063f47e5",
+      "recorded_changes": [
+        {
+          "path": "scripts/fgsa-manifest-allow.txt",
+          "commit": "79c3390cbddc1939dbe7735aabd37b03063f47e5"
+        }
+      ],
+      "note": "Exact approval A delta; no other new S0 path changes."
+    },
+    {
+      "id": "port-shake",
+      "base": "a207ed5a76e452302239e9a5d9fc8d918982a415",
+      "tip": "c29eee71b51479141668297c5c720b40fa78efec",
+      "recorded_changes": [
+        {
+          "path": "scripts/baselines/shake-report.txt",
+          "commit": "c29eee71b51479141668297c5c720b40fa78efec"
+        }
+      ]
+    },
+    {
+      "id": "gate-par",
+      "base": "318074ba78132f90c894e54dbbc18dd571b02b5b",
+      "tip": "5ba8d4da647fe19d2006f3080dbeb076ea8b01e4",
+      "recorded_changes": [
+        {
+          "path": "scripts/check-fgsa-manifest.sh",
+          "commit": "3aa5071ca64f2f91045cbc5dbe80b320c321b3b7"
+        }
+      ],
+      "note": "Exact bytes for the authorized gate scheduling change (2026-10-09)."
+    },
+    {
+      "id": "sleep-ppc",
+      "base": "943c1dfba1d514209a10f0e855b87835acdc0a87",
+      "tip": "d58093e4c63023a418f6c3ed698f7bb28cefe305",
+      "recorded_changes": [],
+      "note": "No S0-frozen path changed; history only."
+    }
+  ]
+}

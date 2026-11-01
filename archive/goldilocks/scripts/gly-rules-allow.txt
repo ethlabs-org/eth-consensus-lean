@@ -1,0 +1,85 @@
+# Check (i) allow list: `<rule> <declaration (full name)>` lines that a rule
+# skips in every library. F-3: the old-name wrappers of E-13 (GLY §F F-3);
+# empty now, and empty again after F2.
+
+# ROOT-DIGEST W3b; option 3, plan §2 + r2.1–r2.3.
+F-3 AvailableChain.FGSA.Run.fgsa_apiPureAccountableClaim_body
+F-3 AvailableChain.FGSA.Run.fgsa_apiPureAgreementClaim_body
+F-3 AvailableChain.FGSA.Run.fgsa_pureAccountable
+F-3 AvailableChain.FGSA.Run.fgsa_pureAgreement
+F-3 AvailableChain.FGSA.Run.store_accountable
+F-3 AvailableChain.FGSA.Window.window_exists_crossing_quorum_ne_justified
+F-3 AvailableChain.FGSA.Window.window_exists_honest_timeout_of_crossing
+F-3 AvailableChain.FGSA.Window.window_pair_iff
+F-3 AvailableChain.FGSA.stored_fg_roots_injective
+F-3 AvailableChain.KitFG.FGStoreSafety.accepted_lock_fault
+F-3 AvailableChain.KitFG.FGStoreSafety.accepted_lock_no_evidence
+F-3 AvailableChain.KitFG.Tests.AccountableCore.accountable_certificate_bundle_test
+F-3 AvailableChain.KitFG.Tests.CertificateIntegration.certificate_integration_accepted_lock_test
+F-3 AvailableChain.KitFG.Tests.CertificateIntegration.certificate_integration_accountable_test
+F-3 AvailableChain.KitFG.Tests.CrossingCore.crossing_birth_key_test
+F-3 AvailableChain.KitFG.Tests.StoreSafety.store_safety_step_test
+F-3 AvailableChain.KitFG.accepted_lock_of_fault_bound
+F-3 AvailableChain.KitFG.accepted_lock_of_no_evidence
+F-3 AvailableChain.KitFG.candidateJ_rootInj_of_viewRootInj
+F-3 AvailableChain.KitFG.e1Weight_of_finalityQC_not_preceq
+F-3 AvailableChain.KitFG.e1Weight_of_finalityQC_not_preceq_of_heightLaws
+F-3 AvailableChain.KitFG.e1Weight_or_finalized_compatible_of_le
+F-3 AvailableChain.KitFG.e1Weight_or_finalized_compatible_of_le_of_certificate
+F-3 AvailableChain.KitFG.e1Weight_or_finalized_preceq
+F-3 AvailableChain.KitFG.e1Weight_or_finalized_preceq_of_certificate
+F-3 AvailableChain.KitFG.e1Weight_or_finalized_preceq_of_parent_roots
+F-3 AvailableChain.KitFG.exists_crossing_quorum_ne_justified
+F-3 AvailableChain.KitFG.exists_crossing_quorum_ne_justified_of_heightLaws
+F-3 AvailableChain.KitFG.exists_honest_timeout_of_crossing
+F-3 AvailableChain.KitFG.exists_honest_timeout_of_crossing_of_heightLaws
+F-3 AvailableChain.KitFG.finality_occurrence_history
+F-3 AvailableChain.KitFG.finalized_compatible_of_fault_bound
+F-3 AvailableChain.KitFG.finalized_preceq_of_fault_bound
+F-3 AvailableChain.KitFG.finalized_preceq_of_no_evidence
+F-3 AvailableChain.KitFG.frame_J_carrier
+F-3 AvailableChain.KitFG.frame_contest_crossing
+F-3 AvailableChain.KitFG.frame_facts
+F-3 AvailableChain.KitFG.height_occurrence_keys
+F-3 AvailableChain.KitFG.height_occurrence_keys_of_bridge
+F-3 AvailableChain.KitFG.simplexStoreInvariant
+F-3 AvailableChain.KitFG.slashableWeight_of_finalized_crossing
+F-3 AvailableChain.KitFG.slashableWeight_of_finalized_crossing_of_certificate
+F-3 AvailableChain.KitFG.slashableWeight_of_finalized_pair_crossing_of_certificate
+F-3 AvailableChain.KitFG.slashableWeight_or_finalized_compatible
+F-3 AvailableChain.KitFG.slashableWeight_or_finalized_compatible_of_certificate
+F-3 AvailableChain.KitFG.slashableWeight_or_finalized_compatible_of_parent_roots
+F-3 AvailableChain.KitFG.slashableWeight_or_finalized_preceq
+F-3 AvailableChain.KitFG.slashableWeight_or_finalized_preceq_of_certificate
+F-3 AvailableChain.KitFG.slashableWeight_or_justified_eq
+F-3 AvailableChain.KitFG.slashableWeight_or_justified_eq_of_certificate
+F-3 AvailableChain.KitFG.storeFrame_contest_of_compatible
+F-3 AvailableChain.KitFG.storeFrame_noContest_of_crossed
+F-3 AvailableChain.KitFG.storeFrame_retention_of_compatible
+F-3 AvailableChain.KitFG.viewLock_of_certificate
+F-3 AvailableChain.KitFG.viewLock_of_fault_certificate
+
+# AUTHORIZED EXCEPTION: ROOT-DIGEST-2 option 3, plan §1.4 premise, lead ruling 2026-10-04
+F-3 AvailableChain.FGSA.contentAgree_projection
+
+# AUTHORIZED EXCEPTION: WC plan r2 §5 pure crossing adapter (explicit two-chain root identity; run callers discharge it from named scope), lead ruling 2026-10-05
+F-3 AvailableChain.KitFG.finalizedOccurrence_preceq_of_crossing
+# P0 generic homes of the allowed frozen FG-SA copies above (same premise; lead ruling 2026-10-11, plan v3 §1).
+F-3 AvailableChain.KitFG.Window.window_exists_crossing_quorum_ne_justified
+F-3 AvailableChain.KitFG.Window.window_exists_honest_timeout_of_crossing
+F-3 AvailableChain.KitFG.Window.store_window_pair_iff
+
+# P0d7a2 generic root-uniqueness premise (lead ruling 2026-10-12; FG-SA wrapper discharges it from viewRootInj_TF)
+F-3 AvailableChain.FGCompose.ff2_no_high_contest
+
+# P0d7a3 generic root-uniqueness premise (lead ruling 2026-10-12; FG-SA wrapper discharges it from viewRootInj_TF)
+F-3 AvailableChain.FGCompose.kmid_rows_above_entry
+F-3 AvailableChain.FGCompose.kmid_batchPrem
+F-3 AvailableChain.FGCompose.kernel_opening_and_middle
+
+# P0d7b-a: pass-through of the allowed kernel_opening_and_middle ViewRootInj premise (lead ruling 2026-10-13)
+F-3 AvailableChain.FGCompose.finality_kernel_W_of
+F-3 AvailableChain.FGCompose.kmid_batchPrem_holder
+F-3 AvailableChain.FGCompose.kernel_opening_and_middle_holder
+F-3 AvailableChain.FGCompose.finality_kernel_W_of_holder
+F-3 AvailableChain.FGCompose.Tests.PopulationKernel.FrozenOwner.frozen_owner_specialization

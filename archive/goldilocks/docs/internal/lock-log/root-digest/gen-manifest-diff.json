@@ -1,0 +1,50 @@
+[
+  {
+    "name": "AvailableChain.Gen.Pure.WalkCoversOfRetainedTransportStatement",
+    "old": [
+      "def",
+      "3385b4377a3077f7"
+    ],
+    "new": [
+      "def",
+      "581bc76ef7dc35d5"
+    ],
+    "classification": "r2.1/r2.2: exact walked-tree uniqueness"
+  },
+  {
+    "name": "AvailableChain.Gen.Pure.WalkCoversOfRetainedTransportStatement_def",
+    "old": [
+      "theorem",
+      "f2834ebaab4d115e"
+    ],
+    "new": [
+      "theorem",
+      "5f6252068ab2f1c2"
+    ],
+    "classification": "r2.1/r2.2: exact walked-tree uniqueness"
+  },
+  {
+    "name": "AvailableChain.Gen.Pure.WalkNoEligibleChildOfAnchorClosedStatement",
+    "old": [
+      "def",
+      "594efa6956805067"
+    ],
+    "new": [
+      "def",
+      "d7e1a22448999412"
+    ],
+    "classification": "r2.1/r2.2: exact walked-tree uniqueness"
+  },
+  {
+    "name": "AvailableChain.Gen.Pure.WalkNoEligibleChildOfAnchorClosedStatement_def",
+    "old": [
+      "theorem",
+      "f44105eff0f46eb7"
+    ],
+    "new": [
+      "theorem",
+      "3d69bb72395a590e"
+    ],
+    "classification": "r2.1/r2.2: exact walked-tree uniqueness"
+  }
+]
