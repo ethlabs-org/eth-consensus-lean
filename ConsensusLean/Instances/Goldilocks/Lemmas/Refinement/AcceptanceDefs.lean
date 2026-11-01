@@ -80,6 +80,9 @@ theorem acceptanceContract_params_eq {S : Setup} (A : AcceptanceAssumptions S)
 theorem accepted_coefficients_catchUp (S : Setup) (A : AcceptanceAssumptions S) :
     (accepted_coefficients S A).catchUp = accepted_catchUp S A := by rfl
 
+theorem accepted_coefficients_latency (S : Setup) (A : AcceptanceAssumptions S) :
+    (accepted_coefficients S A).latency = accepted_latency S A := by rfl
+
 /-- The fixed engine-unit coefficients imply the node arming lag and phase-sensitive (V).
 This is only the time-window adapter, not network or participation transport. -/
 theorem acceptance_outage_times (S : Setup) (A : AcceptanceAssumptions S)
