@@ -25,7 +25,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing
 public section
 
 -- Keep the finite finality supplier contracts and their endpoint assembly together.
-set_option linter.style.longFile 1700
+set_option linter.style.longFile 1900
 
 /-! # Acceptance assembly with finite guarantee witnesses
 
@@ -810,11 +810,98 @@ theorem final_row_processed {x : Fin Q.params.n} {row : FG.Att Q.params.n} {j : 
   refine ⟨hbudget, k, hp, ?_, htime⟩
   exact lt_of_le_of_ne hk (by intro he; subst k; exact (not_lt_of_ge hcut.le) htime)
 
-/-- OPEN structural pending-pair retention along the protected stable chain. -/
+-- Preserve the supplier contract, including the unused anchor geometry.
+set_option linter.unusedSectionVars false in
+/-- Structural pending-pair retention along the protected stable chain. -/
 theorem final_row_pending_or_finalized (hb : (W.state B).bound) :
     ((W.state B).hj, (W.state B).J) ∈ (W.state P).pending ∨
       (W.state B).hj ≤ (W.state P).hF := by
-  sorry
+  have hr := final_store_reachable S A V Q W
+  have hc := (Store.accepted_tree _ _ _ _ hr).2.1
+  have hentry : W.Entry B := by
+    rcases hprotected with ⟨h, _⟩ | ⟨_, _, h, _⟩
+    · exact h.1
+    · exact h
+  have hheld := final_chain_held S A V Q W hentry.1
+  have hinit : ((W.state B).hj, (W.state B).J) ∈ (W.state B).pending := by
+    have hg := (Store.accepted_tree _ _ _ _ hr).2.2.2 B hheld
+    rcases hg.cases_tail with he | ⟨Z, _, hZB⟩
+    · subst B
+      have hz := Healing.Store.σ_genesis hr
+      change 0 < (W.store.σ Q.params.genesisRoot).hj ∧ _ at hb
+      rw [hz] at hb
+      exact False.elim (by simpa [FG.ChainState.init] using hb.1)
+    · obtain ⟨_, _, _, ht⟩ := Healing.Store.step_σ hr hheld hZB.2.2
+      obtain ⟨c, _, _, _, hchain⟩ := Store.chain_state_of_chain _ _ _ _ hr Z hZB.1
+      rcases final_step_entry ht with ⟨_, hTh, _⟩ | ⟨hh, _, _⟩
+      · obtain ⟨⟨E, hE, hEr, hEZ, _⟩, _⟩ := Store.entry_state_of_source _ _ _ _ hr Z hZB.1
+        have he : E = B := hc.1 hE hheld (hEr.trans (hTh.symm.trans hentry.2.1))
+        subst E
+        have := (hEZ.slot_le hc).1
+        have := hc.2 Z hZB.1 B hheld hZB.2.2
+        omega
+      · obtain ⟨_, _, _, _, hnext⟩ := FG.height_step _ _ _ _ _ hchain ht
+        exact List.mem_of_getLast? ((hnext hh).2.2 hb).2
+  have hPa : W.Extends P (W.block a) := by
+    have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+    have hA : W.block a ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
+      refine ⟨_, (W.ready a).1, W.cut a + 1, ?_⟩
+      rw [← final_anchor_post S A V Q W a]
+      have h := (run.cutLaw _ (W.ready a).1 _ _ (W.accepted a)).2.1
+      rw [(Store.tree_grows _ _ _ _ (Compose.fg_reachable run.toLocalRun
+        (W.ready a).1 _)).1 _ _ h]
+      exact Set.mem_insert _ _
+    have hP : P ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
+      cases hBP with
+      | refl =>
+        exact ⟨_, (W.ready 3).1, W.cut 3 + 1, by
+          rw [← final_anchor_post S A V Q W 3]; exact hheld⟩
+      | tail _ h => exact h.2.1
+    exact .single ⟨hP, hA, hparent⟩
+  have hP3 := hPa.trans (W.chain a 3 (by omega))
+  have hsame := (hstable P hBP .refl).resolve_right hnjust
+  suffices hwalk : ∀ C, W.Extends B C → W.OnChain C →
+      (W.state C).h = (W.state B).h →
+      ((W.state B).hj, (W.state B).J) ∈ (W.state C).pending ∨
+        (W.state B).hj ≤ (W.state C).hF from hwalk P hBP hP3 hsame
+  intro C hBC
+  induction hBC with
+  | refl => exact fun _ _ => Or.inl hinit
+  | @tail Y C hBY hYC ih =>
+    intro hC3 hCh
+    have hY3 := (Relation.ReflTransGen.single hYC).trans hC3
+    have hlo := (final_chain_height S A V Q W hBY hY3).1
+    have hhi := (final_chain_height S A V Q W (.single hYC) hC3).1
+    have hYh : (W.state Y).h = (W.state B).h := by omega
+    have hp := ih hY3 hYh
+    have ht := final_chain_step S A V Q W hC3 hYC.2.2
+    obtain ⟨c, _, _, _, hchain⟩ := Store.chain_state_of_chain _ _ _ _ hr Y
+      (final_chain_held S A V Q W hY3)
+    have hmono := (FG.height_step _ _ _ _ _ hchain ht).2.2.1
+    let gp := Q.params.toParams.fg
+    have he := (gp.stateTransition_eq_some.1 ht).2
+    change gp.heightEvents { List.foldl FG.ChainState.processAtt
+      { W.state Y with s := C.fgView.slot } C.fgView.atts with L := C.fgView.root } =
+        W.state C at he
+    obtain ⟨f, p, t, hf⟩ := FG.ChainState.foldl_processAtt_eq
+      { W.state Y with s := C.fgView.slot } C.fgView.atts
+    rw [hf] at he
+    obtain ⟨F, hF, σ, rfl, _, hcases⟩ := Q.params.toParams.fg.heightEvents_cases
+      { W.state Y with s := C.fgView.slot, L := C.fgView.root, fin := f, prog := p, target := t }
+    rcases hcases with ⟨_, he'⟩ | ⟨_, _, he'⟩ | ⟨_, _, he'⟩ <;> rw [he'] at he
+    · have := congrArg FG.ChainState.h he
+      simp only [FG.ChainState.advance] at this
+      omega
+    · have := congrArg FG.ChainState.h he
+      simp only [FG.ChainState.advance] at this
+      omega
+    · rw [← he]
+      rcases hp with hp | hp
+      · by_cases hfin : (W.state B).hj ≤ hF
+        · exact Or.inr hfin
+        · exact Or.inl (List.mem_filter.mpr ⟨hp, by simpa using Nat.lt_of_not_ge hfin⟩)
+      · rw [← he] at hmono
+        exact Or.inr (hp.trans hmono)
 
 omit hanchor in
 /-- Honest exact-entry rows are well formed and valid against the normalized parent. -/
