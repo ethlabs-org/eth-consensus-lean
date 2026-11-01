@@ -287,6 +287,63 @@ theorem reset_competitor_reflect
   exact ⟨hBt.1, hBt.2, hXv.2.2.1.trans hXBs,
     le_trans hXv.2.2.2 (Compose.honest_held_height hp.run hp.noColl hP.1 hXBs).1⟩
 
+/-- A best child on the proposal-parent path stays best at the voter. The winner is
+transported through the viable proposal, while competitors reflect through guarded relay. -/
+theorem reset_suffix_best
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k i j s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k (s + 1) P)
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hpay : P.acPayload = pay)
+    (hPQ : P.parent = some d.head.root)
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
+    (hPv : P ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)))
+    (hg : SA.gbar g ≤ sp.ts s)
+    (hgi : SA.gbar g + 2 * sp.Δ ≤ tr.time i)
+    (hgj : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
+    {X C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hQt : d.head ∈ ellp.frame.tree) (hXQ : ellp.frame.Anc X d.head)
+    (hne : X ≠ d.head) (hXv : X ∈ ellp.frame.viableHeads)
+    (hCQ : ellp.frame.Anc C d.head)
+    (haX : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) X)
+    (hC : SA.IsBest sp (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
+      {B | B ∈ ellp.frame.viableTree ellp.frame.tree ∧ B.parent = some X.root ∧
+        SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s B} C) :
+    SA.IsBest sp (SA.goldfishScore sp elly.frame
+      (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
+      {B | B ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ∧
+        B.parent = some X.root ∧ SA.goldfishEligible sp elly.frame (tr.time j)
+          (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s B} C := by
+  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hP.1 hci
+  obtain ⟨-, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  obtain ⟨heq, hvot, hsup⟩ := reset_views_agree hp hc hP hci hcall hd hti hpay hy hcy hes
+    hPv.1.1 hg hgi hgj
+  have hQP : Anc (tr.HonestBlocks H) d.head P :=
+    .single ⟨hPhiU hQt, hPsiU hPv.1.1, hPQ⟩
+  have hXC : Anc (tr.HonestBlocks H) X C :=
+    .single ⟨hPhiU (SA.mem_of_anc hXQ hQt), hPhiU hC.1.1.1, hC.1.2.1⟩
+  have hCy := reset_winner_voter_tree hp hy hcy hes hPv
+    ((hCQ.mono hPhiU).trans hQP) (haX.trans hXC)
+  have hCs : C.slot < s + 1 := by
+    have h1 := (Anc.slot_le hPhi.coherent hCQ).1
+    have h2 := hr.coherent.2 d.head (hPhiU hQt) P (hPsiU hPv.1.1) hPQ
+    have hPs := hP.2.2.2.2.1
+    omega
+  have hslot : sp.slot (tr.time i) = s + 1 := by
+    rw [hti]
+    simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
+  apply SA.isBest_transfer hXv (by omega) hvot ?_ (fun B hB => hB.1)
+    (fun B hB => hB.1.1) hCy ?_ hC
+  · intro B hBp hBy
+    simp only [SA.goldfishScore, heq, hsup B hBp hBy]
+  · intro B hB hBX
+    exact reset_competitor_reflect hp hc hP hci hti hy hcy hgi hQt hPQ hXQ hne hXv hBX hB
+
 /-- **The joined duty, unanimity** (§23; phase-service §10, "Join with RN/RU"): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
 `t_u ≥ R` is `P`. -/
