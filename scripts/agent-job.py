@@ -5,8 +5,11 @@ Usage: python3 -I scripts/agent-job.py <name> -- <command...>
 Delegates to the installed job unchanged. An uncertain launch keeps its reservation;
 inspect its UUID job name with jobs-all, /srv/status and systemctl before manual repair.
 Never remove a reservation merely because its owner died or its heartbeat is old.
+Confirmed-dead queued owners are removed immediately; heartbeat is diagnostic,
+not a 120-second lease (live or uncertain owners never expire).
 """
 import contextlib
+import copy
 import fcntl
 import getpass
 import json
@@ -160,6 +163,25 @@ class Queue:
     def tick(self, token, cancel=False):
         """Reconcile, heartbeat and atomically reserve; never launch under the lock."""
         with self.locked() as data:
+            own = next((t for t in data['tickets'] if t['id'] == token), None)
+            if own is None or own['owner'] != identity():
+                raise Uncertain('own ticket missing or ownership changed')
+            own['heartbeat_at'] = time.time()
+            if cancel and own['state'] == 'queued':
+                data['tickets'].remove(own)
+                return 'cancelled', own, None
+            snapshot = copy.deepcopy(data['tickets'])
+        observations = {}
+        for ticket in snapshot:
+            if ticket['state'] == 'queued':
+                continue
+            try:
+                unit = ticket['unit'] or self.backend.discover(ticket)
+                result = self.backend.outcome({**ticket, 'unit': unit}) if unit else None
+                observations[ticket['id']] = (ticket['state'], ticket['unit'], unit, result)
+            except (Uncertain, OSError, ValueError, subprocess.SubprocessError) as error:
+                print(f'{ticket["job_name"]}: {error}; reservation retained', file=sys.stderr)
+        with self.locked() as data:
             own = None
             for ticket in list(data['tickets']):
                 if ticket['id'] == token:
@@ -174,19 +196,17 @@ class Queue:
                     if live is False or (ticket is own and cancel):
                         data['tickets'].remove(ticket)
                 else:
-                    if ticket['unit'] is None:
-                        ticket['unit'] = self.backend.discover(ticket)
+                    observation = observations.get(ticket['id'])
+                    # Apply only the observation of this exact launch generation/unit.
+                    if observation is None or observation[:2] != (ticket['state'], ticket['unit']):
+                        continue
+                    _, _, ticket['unit'], result = observation
                     if ticket['unit']:
                         ticket['state'] = 'running'
-                        try:
-                            result = self.backend.outcome(ticket)
-                        except Uncertain as error:
-                            print(str(error), file=sys.stderr)
-                        else:
-                            if result is not None and (ticket is own or alive(ticket['owner']) is False):
-                                data['tickets'].remove(ticket)
-                                if ticket is own:
-                                    return 'done', ticket, result
+                        if result is not None and (ticket is own or alive(ticket['owner']) is False):
+                            data['tickets'].remove(ticket)
+                            if ticket is own:
+                                return 'done', ticket, result
                     elif alive(ticket['owner']) is not True:
                         print(f'launch ambiguous: {ticket["job_name"]}; manual reconciliation required',
                               file=sys.stderr)

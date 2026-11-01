@@ -124,7 +124,9 @@ class Admission(unittest.TestCase):
             if pid == 0:
                 try:
                     self.queue.enqueue(str(i), ['true'])
-                finally:
+                except BaseException:
+                    os._exit(1)
+                else:
                     os._exit(0)
             children.append(pid)
         for pid in children:
@@ -192,6 +194,36 @@ class Admission(unittest.TestCase):
         self.assertEqual(self.queue.tick(b)[0], 'queued')
         self.assertEqual(len(self.tickets()), 2)
 
+    def test_blocked_probe_does_not_hold_enqueue_or_queued_cancel_lock(self):
+        a = self.enqueue('probe')
+        self.queue.tick(a)
+        ready_r, ready_w = os.pipe()
+        release_r, release_w = os.pipe()
+        pid = os.fork()
+        if pid == 0:
+            try:
+                def blocked(_):
+                    os.write(ready_w, b'1')
+                    os.read(release_r, 1)
+                    return None
+                self.backend.discover = blocked
+                with patch.object(agent, 'identity', return_value=agent.identity(os.getppid())):
+                    self.queue.tick(a)
+                os._exit(0)
+            except BaseException:
+                os._exit(1)
+        try:
+            import select
+            self.assertTrue(select.select([ready_r], [], [], 3)[0])
+            b = self.enqueue('enqueue-while-probing')
+            self.assertEqual(self.queue.tick(b, cancel=True)[0], 'cancelled')
+        finally:
+            os.write(release_w, b'1')
+            _, status = os.waitpid(pid, 0)
+            for fd in (ready_r, ready_w, release_r, release_w):
+                os.close(fd)
+        self.assertEqual(status, 0)
+
 
 class SystemdProtocol(unittest.TestCase):
     def setUp(self):
@@ -237,6 +269,56 @@ class SystemdProtocol(unittest.TestCase):
             self.backend.launch(self.ticket)
             popen.assert_called_once_with(['job', '--mem', '16G', '--cpus', '8', 'consensus-lean',
                 self.ticket['job_name'], '--', *self.ticket['argv']], cwd='/tmp')
+
+    def test_main_process_launch_failure_and_term_before_discovery(self):
+        source = str(Path(__file__).with_name('agent-job.py').resolve())
+        for mode in ('failed-launch', 'delayed-discovery'):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as state:
+                code = '''
+import importlib.util, pathlib, sys
+sys.dont_write_bytecode = True
+spec = importlib.util.spec_from_file_location('agent', sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+root = pathlib.Path(sys.argv[2]); mode = sys.argv[3]
+class Backend:
+    terminal = False
+    def launch(self, ticket):
+        (root / 'launched').touch()
+        return type('Launcher', (), {'poll': lambda self: 1, 'returncode': 1})()
+    def discover(self, ticket):
+        return 'exact-test-unit' if (root / 'discover').exists() else None
+    def outcome(self, ticket):
+        return 143 if self.terminal else None
+    def stop(self, ticket):
+        assert ticket['unit'] == 'exact-test-unit'
+        (root / 'stopped').touch(); self.terminal = True
+m.Backend = Backend
+sys.exit(m.main(['process-fixture', '--', 'literal']))
+'''
+                env = {**os.environ, 'XDG_STATE_HOME': state}
+                child = subprocess.Popen([sys.executable, '-I', '-c', code, source, state, mode],
+                                         env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                try:
+                    deadline = time.monotonic() + 5
+                    while not (Path(state) / 'launched').exists() and time.monotonic() < deadline:
+                        time.sleep(0.01)
+                    self.assertTrue((Path(state) / 'launched').exists())
+                    child.send_signal(signal.SIGTERM)
+                    if mode == 'delayed-discovery':
+                        (Path(state) / 'discover').touch()
+                        self.assertEqual(child.wait(timeout=8), 143)
+                        self.assertTrue((Path(state) / 'stopped').exists())
+                    else:
+                        with self.assertRaises(subprocess.TimeoutExpired):
+                            child.wait(timeout=2.2)
+                        queue = json.loads((Path(state) / 'consensus-lean/agent-build-queue/queue.json').read_text())
+                        self.assertEqual(queue['tickets'][0]['state'], 'launching')
+                        self.assertIsNone(queue['tickets'][0]['unit'])
+                        self.assertFalse((Path(state) / 'stopped').exists())
+                finally:
+                    if child.poll() is None:
+                        child.kill()  # This disposable fixture process only, never a job unit.
+                    child.wait(timeout=3)
 
 
 if __name__ == '__main__':
