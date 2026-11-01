@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_commit": "fe43d480f35ba7740ddc9fa49e93ee7ed58b1e69",
+  "audit_commit": "5e49ee92d5389513104ec2a65c76cfd32c60c752",
   "baseline_commit": "fd7f498a15bf9e9e694102ffaeb8de6b33067052",
   "generated_on": "2026-11-01",
   "notes": [
@@ -38,7 +38,6 @@
       "Consensus.Goldilocks.Refinement.healthy_cut_tips_comparable",
       "Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize",
       "Consensus.Goldilocks.Refinement.healthy_prepare",
-      "Consensus.Goldilocks.Refinement.healthy_preserve",
       "Consensus.Goldilocks.Refinement.outage_pre_service",
       "Consensus.Goldilocks.Refinement.outage_repair",
       "Consensus.Goldilocks.Refinement.sleepy_query_sync",
@@ -75,8 +74,7 @@
       "Consensus.Goldilocks.Refinement.healthy_cut_tips_ancestor",
       "Consensus.Goldilocks.Refinement.healthy_cut_tips_comparable",
       "Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize",
-      "Consensus.Goldilocks.Refinement.healthy_prepare",
-      "Consensus.Goldilocks.Refinement.healthy_preserve"
+      "Consensus.Goldilocks.Refinement.healthy_prepare"
     ],
     "Consensus.Goldilocks.Refinement.accepted_healthyLive": [
       "Consensus.Goldilocks.Refinement.accepted_catchUp",
@@ -154,14 +152,14 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Outside audit 649f0286 \u00a7\u00a773,77,82: raw-result induction after repair does not cover arbitrary early sub-fast/vetoed ResultAt without Catch/base.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/clean_result_next_votes.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Healing.proposal_start_supported",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:1233",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:1675",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -188,10 +186,10 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Outside audit 649f0286 \u00a7\u00a723,79\u201381: actual first-deviation head/walk/payload equality remains, not merely parent extension.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/ready_unanimous.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Healing.ready_update",
@@ -206,10 +204,10 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Four outside audits 649f0286: exact result, veto, fast selection and source at actual update or higher report by deadline remain.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/ready_update.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Healing.report_cover",
@@ -224,10 +222,10 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Four outside audits 649f0286: actual acToFG report existence under fgReported suppression, candidate survival/normalization and higher source remains; entry-rows-exact \u00a7\u00a72,6.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/report_cover.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Healing.reset_inv",
@@ -242,28 +240,28 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Outside audit 649f0286 \u00a7\u00a774\u201381: full Protected/P3, arbitrary admissions/root/frame retention and uniform Tb remain beyond P1/P2.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/reset_inv.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Healing.vote_old_live_lock_below_parent",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:918",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:1297",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
-      "status": "paper-proved awaiting Lean",
+      "status": "lean-proved",
       "blocked-by": [],
       "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
+      "direct_sorry": false,
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
       "last-changed": "2026-11-01",
       "evidence": "Outside audit 649f0286 \u00a7\u00a780\u201381: provenance+l+2 transfer and separate optimistic u\u22121 branch; non-vote full-tree domain/service integration remains.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/vote_old_live_lock_below_parent.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Healing.voter_unlock_keeps_lock",
@@ -278,10 +276,10 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Outside audit 649f0286: voter-only opponents and proposer s\u22121 lock defeat simple view bound; new pivot bypasses this leaf; no full-run counterexample asserted.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/voter_unlock_keeps_lock.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_catchUp",
@@ -296,10 +294,10 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Settled coefficient audit: simultaneous finite engine envelope and repaired transport remain; no arbitrary witness choice.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/accepted_catchUp.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy",
@@ -316,10 +314,10 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Settled coefficient audit: 37 is a verified constraint, not a proof about the opaque shared witness; enlargement needs monotonicity audit.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/accepted_catchUp_ge_sleepy.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_heal",
@@ -334,10 +332,10 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Settled coefficient audit: finite reset/preparation/retention and endpoint margins need joint synthesis.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/accepted_heal.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_latency",
@@ -352,10 +350,10 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Settled coefficient audit: joint nonfinal/four-anchor latency and actual carrier acceptance remain.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/accepted_latency.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_latency_ge_sleepy",
@@ -372,10 +370,10 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Settled coefficient audit: 8idx+12 is a verified constraint, not a jointly admissible selected witness.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/accepted_latency_ge_sleepy.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.confirmed_duration_supply",
@@ -400,7 +398,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.confirmed_slot_event",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:206",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:221",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "unknown",
@@ -421,7 +419,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_cache_acceptance",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:1019",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:1060",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "paper-partial",
@@ -436,14 +434,14 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Settled final-liveness audit: actual last-carrier acceptance, retained lookup/cache for every reader and processing/read deadline budget remain.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/final_cache_acceptance.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_inherited_progress",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:545",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:564",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "paper-open (research)",
@@ -458,14 +456,14 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Settled final-liveness audit: arbitrary dirty inherited permissions/held or credited rows must yield same-entry progress without a birth lower bound.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/final_inherited_progress.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_row_supply",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:618",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:637",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "paper-open (research)",
@@ -480,14 +478,14 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Research refinement: high same-entry/high-predecessor row algebra is proved conditionally; report_cover, inherited/low entries and carrier credit/acceptance remain. entry-rows-exact \u00a7\u00a72,4\u20136.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/final_row_supply.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_window_extract",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:540",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:559",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "paper-partial",
@@ -502,10 +500,10 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Settled final-liveness audit: four-anchor combinatorics known; actual ready accepted chain, recurrence and endpoint carrier budget remain.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/final_window_extract.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_confirmed_supply",
@@ -524,14 +522,14 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Whole-statement audit 6d6af170 \u00a7\u00a723\u201328,79\u201381: finite Healthy/service/preparation and fresh actual proposal with universal exact ReadyAt/CutAfter coverage remain.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_confirmed_supply.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_cut_agreement",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:60",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:143",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-partial",
@@ -553,7 +551,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_cut_monotone",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:84",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:167",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-partial",
@@ -575,7 +573,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_cut_tips_ancestor",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:37",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:120",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-partial",
@@ -590,14 +588,14 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "103bfbd extracts directed actual stored-clock read-tip ancestry; temporal/equality-time gap remains. Engine output transport is proved.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_cut_tips_ancestor.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_cut_tips_comparable",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:15",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:98",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-partial",
@@ -612,14 +610,14 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "103bfbd extracts actual stored-clock read-tip comparability; same equality-time pre-endCut gap. Engine output transport is proved.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_cut_tips_comparable.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:61",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:102",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-open (research)",
@@ -634,14 +632,14 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Whole-statement audit 6d6af170 \u00a7\u00a727\u201328: global future first arrivals require upper coverage or strict below-hj, including equality; bounded actual reset production missing.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_old_inventory_initialize.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_old_row_realize",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:81",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:122",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-partial",
@@ -656,14 +654,14 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Superseding exact audit 732a1b6: older validAtt branch does not constrain target; receiver-held target/replay-height bridge missing. No full-run counterexample. J-specific preservation has target membership.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_old_row_realize.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_prepare",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:114",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:233",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-partial",
@@ -678,35 +676,35 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Whole-statement audit 6d6af170 \u00a7\u00a716\u201317,24,27\u201328: actual heal-cut stored record/cache/lock base production remains; inherited C above R not handled by R\u2264C.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/healthy_prepare.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_preserve",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:127",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:247",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
-      "status": "paper-proved awaiting Lean",
+      "status": "unknown",
       "blocked-by": [
         "Consensus.Goldilocks.Refinement.accepted_catchUp",
         "Consensus.Goldilocks.Refinement.accepted_heal",
         "Consensus.Goldilocks.Refinement.accepted_latency"
       ],
       "in_accepted_closure": true,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
+      "direct_sorry": false,
+      "lean-status": "sorry-dependent",
+      "status-source": "compiled dependency audit",
       "last-changed": "2026-11-01",
-      "evidence": "Superseding \u00a783 e8fc89c4: J quorum/inventory contradiction; F via F\u2264J; recent locks via lock_origin; retained records via archival tree/F monotonicity/restart. Adapter/J-entry elaboration remains.",
+      "evidence": "Body proved at ed329627 from the existing base; J-specific target membership avoids healthy_old_row_realize. Shared coefficient type dependencies remain, not a direct sorry.",
       "card-path": null,
       "derisk-verdict": "none yet",
       "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_vote_row_replacement",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:139",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:326",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-partial",
@@ -763,10 +761,10 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Revision update 4d69fdd: old duplicate-fresh signature obstruction retired by migration; replacement engine service unproved. #128 Outage applicability not established.",
+      "card-commit": "af61e7b436f950709d0046a552a25ac1f3123134",
       "card-path": "repos/goldilocks/notes/derisk/outage_pre_service.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "af61e7b436f950709d0046a552a25ac1f3123134"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.outage_repair",
@@ -785,10 +783,10 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Whole-statement audit 6d6af170 \u00a7\u00a710,17\u201319: covering nonvetoed renewal, pool bound/resolutions, RESULT compatibility, persistence and both reader branches remain.",
+      "card-commit": "af61e7b436f950709d0046a552a25ac1f3123134",
       "card-path": "repos/goldilocks/notes/derisk/outage_repair.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "af61e7b436f950709d0046a552a25ac1f3123134"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_include_finite",
@@ -808,7 +806,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_population",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:119",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:134",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "unknown",
@@ -829,7 +827,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_slot",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:141",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:156",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "unknown",
@@ -850,7 +848,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_sync",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:98",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:113",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "paper-partial",
@@ -865,10 +863,10 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Corrected service audit: engine transport and full progress/latency applicability unresolved; #128 short run does not instantiate query premises.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/sleepy_query_sync.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_safe_engine",
@@ -905,10 +903,10 @@
       "last-changed": "2026-11-01",
       "evidence": "Corrected service audit: statement-obstructed under #128 pending approved protocol/service repair; duration/population and consumer migration do not prove service.",
       "obstruction": "#128: protocol/service repair pending (source-reduced evidence)",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/sleepy_safety_inputs.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Regimes.grow_healed_until",
@@ -991,10 +989,10 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Outside audit 649f0286: held rows through T do not cover future first arrivals/new cache roots; event/restart continuation needed.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/weak_base_extend.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Regimes.weak_base_locks",
@@ -1009,10 +1007,10 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Outside audit 649f0286: expiry confines cases, but finite Healthy drain/support against later origins remains.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/weak_base_locks.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "Consensus.Goldilocks.Regimes.weak_base_until",
@@ -1027,14 +1025,14 @@
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "last-changed": "2026-11-01",
       "evidence": "Outside audit 649f0286 \u00a7\u00a716\u201319,27\u201328,82: exact records/cache/global old-row base is not supplied by pivot seed.",
+      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5",
       "card-path": "repos/goldilocks/notes/derisk/weak_base_until.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "013e11ace8151bf5525ef3a1c6a7f6fd44eac1d5"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot.0.Consensus.Goldilocks.Healing.proposal_stored_locks_compatible_old",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:798",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:1176",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -1050,14 +1048,16 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service.0.Consensus.Goldilocks.Healing.higher_report_window_origin",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Service.lean:1229",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Service.lean:1249",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-proved awaiting Lean",
-      "blocked-by": [],
+      "blocked-by": [
+        "Consensus.Goldilocks.Healing.ready_unanimous"
+      ],
       "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
+      "direct_sorry": false,
+      "lean-status": "sorry-dependent",
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Four outside audits 649f0286: reset_origin_below and same-store high_of_anc establish high C, then high_report_origin; no unheld receiver height. entry-rows-exact \u00a73.",
@@ -1078,10 +1078,10 @@
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
       "last-changed": "2026-11-01",
       "evidence": "Four outside audits 649f0286: actual update-frame viable-or-higher-origin dichotomy remains; hsrc can be vacuous; no reverse raw\u2192stored ancestry.",
+      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675",
       "card-path": "repos/goldilocks/notes/derisk/update_window_kept.md",
       "derisk-verdict": "research",
-      "adversarial-pass-done": "y",
-      "card-commit": "fb40eb4c7dfb235493d97837533f2fc402026675"
+      "adversarial-pass-done": "y"
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier.0.Consensus.Goldilocks.Healing.clean_source_vote_domain_step",

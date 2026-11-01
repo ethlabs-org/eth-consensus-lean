@@ -267,10 +267,11 @@ def main : IO Unit := do
         for key, default in (('card-path', None), ('derisk-verdict', 'none yet'),
                              ('adversarial-pass-done', 'n')):
             row[key] = prior.get(key, default)
-        if short == 'outage_arm' and name not in owners:
+        if short in ('outage_arm', 'healthy_preserve') and name not in owners:
             row['status'] = 'unknown'
             row['status-source'] = 'compiled dependency audit'
-            row['evidence'] = 'Body proved at 649f0286; shared coefficient type dependencies remain. Exact endCut(T), both lookup alternatives and actual read prefix; arming is not protection.'
+            row['evidence'] = ('Body proved at 649f0286; shared coefficient type dependencies remain. Exact endCut(T), both lookup alternatives and actual read prefix; arming is not protection.' if short == 'outage_arm' else
+                               'Body proved at ed329627 from the existing base; J-specific target membership avoids healthy_old_row_realize. Shared coefficient type dependencies remain, not a direct sorry.')
         if short == 'sleepy_safety_inputs':
             row['obstruction'] = '#128: protocol/service repair pending (source-reduced evidence)'
         comparison = {k: v for k, v in row.items() if k not in ('last-changed', 'file:line')}

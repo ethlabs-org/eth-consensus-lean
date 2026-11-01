@@ -27,9 +27,9 @@ joint supplier has been decomposed into its eventual proof obligations.
 
 ## Master status: every Accepted field, grouped by leaf owner
 
-Current compiled audit: main `fe43d480` (including the 14f5ce06 service migration
-and 103bfbd cut-tip extraction). Later reported landings are not silently folded
-into this pinned dependency graph.
+Current compiled audit: `5e49ee92`, based on main `343d93f4`, regenerated on
+ethlabs-box. It includes healthy_preserve and pivot closure. The JSON records
+the exact source pin separately from its publication commit.
 Machine-readable rows and per-field edges are in `docs/accepted-status.json`.
 Regenerate with `python3 scripts/accepted-status.py` after building `ConsensusLean`
 and `spec-surface`, on every ledger update. Historical former sorry declarations
@@ -46,7 +46,7 @@ an assembly depending on them is not an additional leaf.
 |---|---|---|
 | C | Spec orb, joint coefficient synthesis | `accepted_catchUp`, `accepted_heal`, `accepted_latency` |
 | F | Four-anchor/final service owner | `final_window_extract`, `final_inherited_progress`, `final_row_supply`, `final_cache_acceptance` |
-| H | Healing paper/T3; Spec orb integration | `healthy_old_inventory_initialize`, `healthy_prepare`, `healthy_preserve`, `healthy_cut_tips_comparable`, `healthy_cut_tips_ancestor` |
+| H | Healing paper/T3; Spec orb integration | `healthy_old_inventory_initialize`, `healthy_prepare`, `healthy_cut_tips_comparable`, `healthy_cut_tips_ancestor` |
 | N | Healing paper/T3; Spec orb integration | `healthy_confirmed_supply` |
 | O | Healing/outage owner; Spec orb integration | `outage_pre_service`, `outage_repair` |
 | B | Spec orb joint coefficient synthesis | `accepted_catchUp_ge_sleepy`, `accepted_latency_ge_sleepy` |
@@ -69,7 +69,8 @@ an assembly depending on them is not an additional leaf.
 | serves | none (schema provides final output) | no |
 | claims and complete accepted | C ∪ F ∪ H ∪ N ∪ O ∪ B ∪ S ∪ R | no |
 
-The rerun finds **19 direct sorry owners**: `outage_arm` is proved at 649f0286;
+The rerun finds **18 direct sorry owners**: `healthy_preserve` has a proved body
+at ed329627, while its coefficient type dependencies remain. `outage_arm` is proved at 649f0286;
 103bfbd moves the two cut adapters' holes into actual-tip comparability/ancestry,
 without reducing their count. At the pre-wiring baseline the two nonfinal
 healthyLive branches and sleepySafe/sleepyLive were direct adapter holes; all
@@ -129,7 +130,7 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 | `Consensus.Goldilocks.Refinement.confirmed_slot_event` | Body closed via scheduled actual event and joined readiness transport; retains confirmed_duration_supply dependency, not eligibility-as-event by definition. |
 | `Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize` | OPEN, Healing paper/T3: global old signed-entry inventory including unseen future arrivals, §§27/28. |
 | `Consensus.Goldilocks.Refinement.healthy_prepare` | OPEN, Healing paper/T3: finite ready→heal record/cache/stored-lock preparation consuming inventory. |
-| `Consensus.Goldilocks.Refinement.healthy_preserve` | PAPER-PROVED awaiting Lean at this audit pin, §83 e8fc89c4: J quorum/inventory contradiction, F≤J, archival records and recent locks. Subsequent ed329627 reports body closure; regenerate before counting that landing. |
+| `Consensus.Goldilocks.Refinement.healthy_preserve` | Body proved at ed329627 from the given base; J-specific target membership avoids healthy_old_row_realize. Only shared coefficient type dependencies remain; no direct sorry. |
 | `Consensus.Goldilocks.Refinement.healthy_cut_agreement` | Body closed at 103bfbd using actual-tip comparability and confirmed_prefix_of_anc; equality-time gap remains in healthy_cut_tips_comparable. |
 | `Consensus.Goldilocks.Refinement.healthy_cut_monotone` | Body closed at 103bfbd using directed tip ancestry and confirmed_prefix_of_anc; temporal/equality-time gap remains in healthy_cut_tips_ancestor. |
 | `Consensus.Goldilocks.Refinement.healthy_cut_tips_comparable` | PAPER-PARTIAL: actual stored-clock read tips at arbitrary InCuts, including pre-endCut heal-time cuts, still require comparability. |
@@ -560,7 +561,7 @@ bound dirty entries or prove finality progress. No final latency coefficient is 
 
 ## Healing pivot compatibility suppliers
 
-The remaining named leaf in `Healing/Outcome/Pivot.lean` is **OPEN**, owned by
+The named pivot leaves below are now proved, by
 the healing source-service work (OpenAI pivot prover, coordinated by the healing lead).
 All retain `ResetPremises`, `Catch(2Δ)`, the ready proposal, and the existing drain.
 They are proof obligations, not additional protocol premises.
@@ -569,7 +570,7 @@ They are proof obligations, not additional protocol premises.
 |---|---|---|
 | `proposal_stored_locks_compatible_old` | Proposal stored high locks compatible with each `OldSrc` | PROVED: stored provenance and proposal timing reduce to label u−1 optimism; `optimistic_prefix_compatible_old` uses historical votes for strict labels and explicit same-label fast/optimistic compatibility |
 | `proposal_start_supported` | Proposal start below the actual honest vote head, under earlier-votes=P | PROVED at c37143b, standard axioms; clean source votes discharge the source-vote adapter |
-| `vote_old_live_lock_below_parent` | Viable ancestor of each non-current live read-point lock below the proposal parent | OPEN: two joins remain, head/stamp held-at-proposal and proposal domain; paper-ported in healing §81, not yet a Lean proof |
+| `vote_old_live_lock_below_parent` | Viable ancestor of each non-current live read-point lock below the proposal parent | PROVED, compiled sorry-free in the 5e49ee92 audit; the head/stamp held-at-proposal and proposal-domain joins formerly recorded here no longer leave a direct hole |
 
 The deepest set remains `{start} ∪ OldSrc`; floor/root and same-slot optimistic
 arguments are unchanged. The unused `hnoSlow`, `late_slow_lock_votes`,
