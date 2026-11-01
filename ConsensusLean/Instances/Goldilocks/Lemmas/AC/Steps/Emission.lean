@@ -71,6 +71,28 @@ private theorem onTick_emits (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FG
   · simp [EmitsVotes]
   · simp [EmitsVotes]
 
+private theorem step_emits (y : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (c : (goldilocksSA sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t) :
+    EmitsVotes y Φ t ((goldilocksSA sp FGP ro).step y A Φ t c) := by
+  cases c with
+  | tick => exact onTick_emits y A _ _
+  | proposal => simp [EmitsVotes, ACInterface.step]
+  | toFG => simp [EmitsVotes, ACInterface.step]
+  | message m => exact tryVote_emits y _ _ _
+  | block B => exact tryVote_emits y _ _ _
+  | restart =>
+    intro e he
+    change e ∈ (acRestart sp ro y A Φ t).2 at he
+    rw [((restart_state sp) FGP ro y A Φ t hΦ ht).1] at he
+    simp at he
+
+/-- A single call emits only its own signer's vote, without a coherent-universe premise. -/
+theorem step_emission_signer (y : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (c : (goldilocksSA sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
+    {e : Em sp FGP} (he : e ∈ ((goldilocksSA sp FGP ro).step y A Φ t c).2) :
+    e.msg.val = y :=
+  (step_emits y A Φ t c hΦ ht e he).1.1
+
 /-- An honest vote, and the state its call leaves. -/
 private theorem cast_emits (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -88,17 +110,7 @@ private theorem cast_emits (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y 
       ((goldilocksSA sp FGP ro).step y A ℓ.frame (tr.time i) ℓ.call) by
     rw [hx] at h
     exact h e he
-  cases ℓ.call with
-  | tick => exact onTick_emits y A _ _
-  | proposal => simp [EmitsVotes, ACInterface.step]
-  | toFG => simp [EmitsVotes, ACInterface.step]
-  | message m => exact tryVote_emits y _ _ _
-  | block B => exact tryVote_emits y _ _ _
-  | restart =>
-    intro e he
-    change e ∈ (acRestart sp ro y A ℓ.frame (tr.time i)).2 at he
-    rw [((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he
-    simp at he
+  exact step_emits y A ℓ.frame (tr.time i) ℓ.call hΦ (hr.time_nonneg i)
 
 /-- **An honest vote.** -/
 theorem castAt_spec (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
