@@ -3,7 +3,7 @@ public import ConsensusLean.Spec.Shape.Run
 public import ConsensusLean.Lemmas.Model.Laws
 public import ConsensusLean.Lemmas.Model.Mempool
 public import ConsensusLean.Lemmas.Model.Causal
-public import ConsensusLean.Proofs.Faithful.Main
+public import ConsensusLean.Lemmas.Model.SysLog
 public import ConsensusLean.Lemmas.Model.Adequate
 public import ConsensusLean.Lemmas.Blocks.Facts
 

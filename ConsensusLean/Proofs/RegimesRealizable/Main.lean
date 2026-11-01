@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Spec.Shape.Active
-public import ConsensusLean.Proofs.Behaviour.Main
+public import ConsensusLean.Lemmas.Shape.Payload
 public import ConsensusLean.Spec.Shape.ProgressFit
 public import Mathlib.Tactic
 

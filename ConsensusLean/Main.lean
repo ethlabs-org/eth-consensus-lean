@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Spec.Shape.Accepted
+public import ConsensusLean.Proofs.Behaviour.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 
 public section

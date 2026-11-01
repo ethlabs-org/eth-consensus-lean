@@ -670,22 +670,9 @@ about = "tests, review pins (ReviewAxioms, ReviewGuard) and the README index"
 
 # Reviewed deviations from the plan §2 matrix, each a debt with its reason. An exception lets the modules
 # under `from` import the modules under `to` (a milestone only through its `Main`), and so depend on what
-# those reach, through their own exceptions too (so RegimesRealizable reaches Faithful.Main through exception 2
-# then 1, and Streamlet/Tendermint reach Main through 4 then 3); it does not extend to the importers of the
-# `from` modules. None may start in a trusted layer, and every `from` and `to` entry must be used (a fixed
-# deviation must be removed).
-[[exception]]
-from = ["ConsensusLean.Lemmas.Shape.Payload", "ConsensusLean.Proofs.Behaviour.Main"]
-to = ["ConsensusLean.Proofs.Faithful.Main"]
-reason = """Lemmas.Shape.Payload uses the Faithful milestone, and the Behaviour milestone reaches it through
-Payload. Plan §2: Lemmas never import Proofs; move the Faithful facts Payload needs down to Lemmas, or state
-Behaviour as Faithful -> Behaviour (plan §4)."""
-
-[[exception]]
-from = ["ConsensusLean.Proofs.RegimesRealizable.Main"]
-to = ["ConsensusLean.Proofs.Behaviour.Main"]
-reason = """RegimesRealizable builds on the Behaviour milestone (plan §0 rule 1b: a reviewed cross-milestone
-import; plan §4 would state it as Behaviour -> RegimesRealizable in RegimesRealizable's Main)."""
+# those reach, through their own exceptions too (so Streamlet/Tendermint reach Main through the second
+# exception then the first); it does not extend to the importers of the `from` modules. None may start in a
+# trusted layer, and every `from` and `to` entry must be used (a fixed deviation must be removed).
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Spec.Baseline", "ConsensusLean.Instances.Goldilocks.Statements.Baseline",
