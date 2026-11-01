@@ -16,6 +16,28 @@ public section
 namespace Consensus.Goldilocks.Refinement
 open Blocks Shape
 
+/-- A completed result is strictly older than the current latest view, including
+the equality boundary at its update time. -/
+theorem result_label_lt_latest_of_time
+    {sp : SA.SAParams} {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
+    {s : Nat} {t : Time} (ht0 : 0 ≤ t) (ht : sp.ts s + 6 * sp.Δ ≤ t) :
+    (s : Int) < (SA.latestView sp A Φ t).2 := by
+  have hnext : sp.ts (s + 1 : Nat) + 2 * sp.Δ ≤ t := by
+    simp only [SA.SAParams.ts] at ht ⊢
+    push_cast
+    linarith
+  have hd := sp.toParams.hΔ
+  simp only [SA.latestView]
+  split_ifs with hphase
+  · have hh := (SA.ts_le_iff_le_slot sp ht0 (s + 1 : Nat)).mp
+      (show sp.ts (s + 1 : Nat) ≤ t by linarith)
+    push_cast at hh
+    omega
+  · have hh := (SA.ts_lt_iff sp).mp
+      (show sp.ts (s + 1 : Nat) < sp.ts (sp.slot t) by linarith)
+    push_cast at hh
+    omega
+
 /-- An unchanged record cannot reenter the filtered frame after its finalized floor advances. -/
 theorem record_lookup_of_later
     {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
