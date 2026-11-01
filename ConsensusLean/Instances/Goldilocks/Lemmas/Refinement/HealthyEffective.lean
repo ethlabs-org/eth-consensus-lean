@@ -14,7 +14,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 
 -- Whole-run consumers and their finite-horizon counterparts share this endpoint layer.
-set_option linter.style.longFile 2100
+set_option linter.style.longFile 2200
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -2045,6 +2045,71 @@ theorem report_of_viable_unanimous_pool {b : Time}
   have hPc := candidate_at_adjacent_call hu.1 (SA.frameIn_of_callAt hr hy hu.1).1
     hframe htime hPv hconf hnv hfast hpost hlive hage
   exact Healing.report_of_compatible_candidate_of_run hp.run hp.noColl hy hc hto hjoin hPg hPc hnext
+
+/-- An honest node retains its unanimous vote head at a later call whenever
+that call's finality is still below the head. -/
+theorem unanimous_head_held_at_call {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hcall : tr.projAC.CallAt y j ell) (ht : sp.ts u + sp.Δ < tr.time j)
+    (hjb : tr.time j ≤ b) (hFP : Anc (tr.HonestBlocks H) (tr.state y j).fg.F P) :
+    P ∈ ell.frame.tree := by
+  have hr := (Healing.healthy_base_of_reset_catch_before hp hc).run.localRun
+  have hub : sp.ts u + sp.Δ ≤ b := ht.le.trans hjb
+  obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot hp hc hgu hR hub y hy
+  obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hr hy hv
+  obtain rfl : Hd = P := hr.coherent.1 ((SA.frameIn_of_callAt hr hy hv.1).2 hHd) hP
+    (he.trans (hun y hy q e ⟨ellv, hv⟩ (hq.trans hub) hs))
+  have hqj : q ≤ j := by
+    by_contra hn
+    have := hp.run.time_mono (show j ≤ q by omega)
+    linarith
+  have hPy := (Compose.fg_grows hp.run hy hqj).1
+    (Healing.mem_tree_of_frame hp.run hy hv.1 hHd)
+  rw [Compose.frame_of_projAC hp.run hy hcall]
+  exact ⟨hPy, Healing.store_anc_of_honest_anc hp.run hp.noColl hy hFP hPy⟩
+
+/-- At the update deadline, finality below the unanimous head gives full
+viability or an actual higher report. Holding and the high seed are derived. -/
+theorem unanimous_viable_or_higher_report {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hTb : sp.ts u + 6 * sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hcall : tr.projAC.CallAt y j ell) (ht : tr.time j = sp.ts u + 6 * sp.Δ)
+    (hFP : Anc (tr.HonestBlocks H) (tr.state y j).fg.F P) :
+    P ∈ ell.frame.viableTree ell.frame.tree ∨
+      ∃ x ∈ H, ∃ r e C, r < j ∧ SA.ToFGAt tr.projAC x r e C ∧
+        tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C ∧
+        ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
+  have hjb : tr.time j ≤ b := ht ▸ hTb
+  have hPt := unanimous_head_held_at_call hp hc hP hun hgu hR hy hcall
+    (by rw [ht]; linarith [sp.toParams.hΔ]) hjb hFP
+  obtain ⟨v, q, m, S, ho, hqb, _, hqt⟩ := hp.reset_seed_before_slot hR
+  have hSP := high_origins_before_next_slot_below hp hc hP hun hgu hR
+    (by linarith [sp.toParams.hΔ]) ho hqt hqb
+  have hcompare : ∀ x r l B, r < j → Healing.HighOrigin tr H g x r l B →
+      Compatible (tr.HonestBlocks H) P B := by
+    intro x r l B hrj horig
+    exact (high_origin_compatible_before_update hp hc hP hslot hu hun hgu hR hTb
+      horig ((hp.run.time_mono hrj.le).trans ht.le)).symm
+  rcases held_target_viable_or_higher_report hp hy hcall hjb hPt ho hqb hSP hcompare with
+    hv | ⟨x, hx, r, e, C, hrj, hto, hPC, hh⟩
+  · exact Or.inl hv
+  · exact Or.inr ⟨x, hx, r, e, C, hrj, hto, (hp.run.time_mono hrj.le).trans ht.le, hPC, hh⟩
 
 end UpTo
 
