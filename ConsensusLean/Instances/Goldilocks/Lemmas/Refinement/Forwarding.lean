@@ -780,7 +780,8 @@ private theorem wrappersCover_recordOwn {sp : SA.SAParams}
     · exact h
   · exact h
 
-private theorem wrappersCover_processOne {sp : SA.SAParams}
+/-- Each receipt call preserves coverage of held non-genesis roots by own wrappers. -/
+theorem wrappersCover_processOne {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) o hs
     (h : WrappersCover st) : WrappersCover (processOne hs st o) := by
   unfold processOne

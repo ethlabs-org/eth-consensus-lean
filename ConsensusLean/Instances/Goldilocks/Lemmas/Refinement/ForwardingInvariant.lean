@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
 
 public section
 
@@ -689,5 +690,90 @@ theorem processOne_acceptance_pending {sp : SA.SAParams}
   simp only [processOne, he]
   unfold relayIf
   split <;> exact hm
+
+/-- Every successful block record in a recursive receipt traversal leaves a matching
+stamped child in its final queue. Coverage is threaded through actual intermediate states. -/
+theorem deliverRecs_acceptance_pending {sp : SA.SAParams}
+    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)) (hs : List (Header Info × Nat))
+    (event : Nat) (xs : List (Wire sp.n)) (st : State sp ro) (sub : Nat)
+    (hcover : WrappersCover st) (r : CutRec sp ro) (B : Blk sp)
+    (hr : r ∈ deliverRecs proposer dg hs st.self st.now event xs st.node sub)
+    (hb : r.label = .fg (.block B true)) :
+    ∃ p : Option (Wire sp.n), (st.now, p.toList ++ [blockObj sp B]) ∈
+      (xs.foldl (processOne hs) st).forwards := by
+  induction xs generalizing st sub with
+  | nil => simp only [deliverRecs_nil, List.not_mem_nil] at hr
+  | cons o os ih =>
+    cases he : canonEvent sp ro hs o with
+    | none =>
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
+      simpa only [List.foldl_cons, processOne, he] using ih st (sub + 1) hcover hr
+    | some e =>
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he] at hr
+      rcases List.mem_append.mp hr with hr | hr
+      · obtain ⟨k, hk, hkr⟩ := List.getElem_of_mem hr
+        have hl := (getElem_groupRecs proposer dg st.self st.node st.now
+          (Nat.pair event sub) e k hk).2.2.2.2
+        have ha : .fg (.block B true) ∈ (Node.exec proposer dg st.self st.node st.now e).2 := by
+          rw [hkr, hb] at hl
+          exact hl.symm ▸ List.getElem_mem _
+        rcases canonEvent_cases (ro := ro) hs o with hn | ⟨C, hc⟩ | ⟨m, hm⟩ | ⟨a, ha'⟩
+        · rw [hn] at he; cases he
+        · have ee := Option.some.inj (he.symm.trans hc)
+          subst e
+          have hBC : B = C := by
+            have h := ha
+            simp only [Node.exec, Node.onBlock] at h
+            split at h
+            · simp at h
+            · split at h
+              · simp at h
+              · simpa [Node.acCall] using h
+          subst C
+          exact processOne_acceptance_pending st hs o B os hcover hc ha
+        · have ee := Option.some.inj (he.symm.trans hm)
+          subst e
+          simp [Node.exec, Node.onMessage, Node.acCall] at ha
+        · have ee := Option.some.inj (he.symm.trans ha')
+          subst e
+          simp [Node.exec, Node.onAttestation] at ha
+      · have hc := wrappersCover_processOne st o hs hcover
+        have hh : r ∈ deliverRecs proposer dg hs (processOne hs st o).self
+            (processOne hs st o).now event os (processOne hs st o).node (sub + 1) := by
+          simpa only [processOne_self, processOne_now, processOne_node proposer dg, he] using hr
+        simpa only [List.foldl_cons, processOne_now] using ih _ (sub + 1) hc hh
+
+/-- An actual receipt acceptance produces a publication in that same engine event.
+The coverage and release-readiness premises are discharged by reachable invariants. -/
+theorem delivery_acceptance_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {v : V} {i : Nat}
+    {o : (protoOf (compiled (family S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t))
+    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
+    (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true)) :
+    ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
+      q.origin = rho.ownKey v ∧
+      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B := by
+  have ht : (stateAt S rho hn v i).now = t :=
+    (now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he)
+  rw [eventCuts_deliver S rho hn i v o t he] at hr
+  have hr' : r ∈ deliverRecs (runProposer S rho hn) (digestOf S rho)
+      (digests rho.hash o) (stateAt S rho hn v i).self (stateAt S rho hn v i).now i
+      (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node 0 := by
+    simpa only [self_eq_ownKey, ht] using hr
+  obtain ⟨p, hp⟩ := deliverRecs_acceptance_pending (runProposer S rho hn) (digestOf S rho)
+    (digests rho.hash o) i _ _ 0 (stateAt_wrappersCover S rho hn v i) r B hr' hb
+  have hc : forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∈
+      pendingWrappers (process (stateAt S rho hn v i) o (digests rho.hash o)) := by
+    rw [pendingWrappers_eq]
+    refine List.mem_map.mpr ⟨_, hp, ?_⟩
+    have hself : (process (stateAt S rho hn v i) o (digests rho.hash o)).self =
+        rho.ownKey v := (process_self _ _ _).trans (self_eq_ownKey S rho hn v i)
+    simp only [ht, forwardObj]
+    rw [hself]
+  obtain ⟨q, hq, hi, hx, ho⟩ := delivery_pending_publication S rho hn hv he _ hc
+  exact ⟨p, q, hq, hi, hx, ho⟩
 
 end Consensus.Goldilocks.Refinement
