@@ -9,8 +9,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 
 -- The served head shares a proof across whole-run, prefix and deadline-bounded service through
--- the private `ReadInvWith`; splitting would expose the private record-write helpers.
-set_option linter.style.longFile 1700
+-- the private `ReadInvWith`; the scoped relay also shares the read/tick machinery.
+-- Splitting would expose the private record-write and served-tick helpers.
+set_option linter.style.longFile 1900
 
 public section
 
@@ -1014,8 +1015,11 @@ latest view's slot, the head `Hd` of an honest slot-`l` vote that extends the no
 its frame, with a finite stamp: the voter accepted it before its vote, and it is relayed to the
 node before `t_l + 2Δ` (by its tick then), with no restart since. -/
 private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {t : Time} (hsync : ReadService tr H t)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {y : Fin sp.n} {i : Nat} {t : Time} (hsync : ReadService tr H t ∨ ∃ a,
+      SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC ∧
+      CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a (2 * sp.Δ) t ∧
+      a ≤ sp.ts (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+    (hy : y ∈ H)
     (hrd : ReadAt proposer dg tr y i t) {L : Nat}
     (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
     {x : Fin sp.n} (hx : x ∈ H) {j' : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -1057,15 +1061,34 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
         change _ ≤ tr.time jc
         rw [htj]
         linarith [max_le hkt (show sp.ts L ≤ sp.ts L + sp.Δ by linarith)]
-      obtain ⟨k₂, hk₂j, hk₂, hk₂t⟩ := hsync.elim
-        (fun h => h.2 x hx k Hd' hkA (hr.time_nonneg k)
-          (by have hkt' : tr.time k ≤ sp.ts L + sp.Δ := hkt; linarith)
-          y hy jc ℓj hcj hdl hFj)
-        (fun h => h.relay x hx k Hd' hkA (hr.time_nonneg k)
-          y hy jc ℓj hcj (hdl.trans (hjct jc le_rfl)) hdl hFj)
-      have hd₂ := deadline_le (fun r hr' hrr => hres' r hrr (hjct r (hr'.trans hk₂j)))
-        (tr.projAC.time k)
-      have hmax : max (tr.projAC.time k) (sp.ts L) ≤ sp.ts L + sp.Δ := max_le hkt (by linarith)
+      obtain ⟨k₂, hk₂j, hk₂, hk₂t⟩ : ∃ k₂ ≤ jc, tr.projAC.AcceptAt y k₂ Hd' ∧
+          tr.projAC.time k₂ < sp.ts L + 2 * sp.Δ := by
+        have finish : (∃ k₂ ≤ jc, tr.projAC.AcceptAt y k₂ Hd' ∧
+            tr.projAC.time k₂ < tr.projAC.deadline y k₂ (tr.projAC.time k)) →
+            ∃ k₂ ≤ jc, tr.projAC.AcceptAt y k₂ Hd' ∧
+              tr.projAC.time k₂ < sp.ts L + 2 * sp.Δ := by
+          rintro ⟨k₂, hk₂j, hk₂, hk₂t⟩
+          have hd₂ := deadline_le (fun r hr' hrr => hres' r hrr (hjct r (hr'.trans hk₂j)))
+            (tr.projAC.time k)
+          have hmax : max (tr.projAC.time k) (sp.ts L) ≤ sp.ts L + sp.Δ :=
+            max_le hkt (by linarith)
+          exact ⟨k₂, hk₂j, hk₂, by linarith⟩
+        rcases hsync with hsync | ⟨a, hsync, hcatch, ha⟩
+        · apply finish
+          exact hsync.elim
+            (fun h => h.2 x hx k Hd' hkA (hr.time_nonneg k)
+              (by have hkt' : tr.time k ≤ sp.ts L + sp.Δ := hkt; linarith)
+              y hy jc ℓj hcj hdl hFj)
+            (fun h => h.relay x hx k Hd' hkA (hr.time_nonneg k)
+              y hy jc ℓj hcj (hdl.trans (hjct jc le_rfl)) hdl hFj)
+        · rw [← hL] at ha
+          by_cases hka : a ≤ tr.projAC.time k
+          · exact finish (hsync.relay x hx k Hd' hkA hka y hy jc ℓj hcj
+              (hdl.trans (hjct jc le_rfl)) hdl hFj)
+          · obtain ⟨k₂, hk₂j, hk₂, hk₂t⟩ := hcatch.relay x hx k Hd' hkA (lt_of_not_ge hka)
+              y hy jc ℓj hcj (by change a + _ ≤ tr.time jc; rw [htj]; linarith)
+              (hjct jc le_rfl) hFj
+            exact ⟨k₂, hk₂j, hk₂, by linarith⟩
       have h1 := (SA.accept_new sp hr hy hk₂).1
       obtain ⟨ℓk, hck, hkc⟩ := hk₂
       refine ⟨?_, Or.inr ⟨k₂, ⟨ℓk, hck, hkc⟩, by linarith⟩⟩
@@ -1180,15 +1203,18 @@ private theorem latest_honest_supporter (hrun : GoldilocksRun proposer dg H tr)
   · intro z hz q hq e hv hs
     exact hI.vote_extends R j hO z hz q hq e hv (by rw [hs]; omega)
   · intro z hz q e hv hs Hd hHd hHdr hF
-    exact head_in_frame hrun hnc hI.sync hy hrd hL hz hv hs hHd hHdr hF
+    exact head_in_frame hrun hnc (Or.inl hI.sync) hy hrd hL hz hv hs hHd hHdr hF
 
 /-- **The awake validators vote in the latest view** (Sync): at a read at `t`, an honest
 validator awake and joined at `t_l + Δ`, with `l` the latest view's slot, votes in slot `l` by
 then, and its vote reaches the node before `t_l + 2Δ ≤ t`, so before the read, and the node has
 not restarted since. -/
 private theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {t : Time} (hsync : ReadService tr H t)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {y : Fin sp.n} {i : Nat} {t : Time}
+    (hsync : ReadService tr H t ∨ ∃ a,
+      SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC ∧
+      a ≤ sp.ts (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+    (hy : y ∈ H)
     (hrd : ReadAt proposer dg tr y i t) {L : Nat}
     (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
     {x : Fin sp.n} (hx : x ∈ H) (hxw : tr.awake x (sp.ts L + sp.Δ))
@@ -1213,12 +1239,18 @@ private theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc 
       (by rw [max_eq_left hk0])
   have hdj : tr.projAC.deadline y jc (tr.projAC.time k) ≤ tr.projAC.time jc := by
     have := hdl jc le_rfl; change _ ≤ tr.time jc; rw [htj]; linarith
-  have served := hsync.elim
-    (fun h => (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
-      (h.1 x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
-      (by have hk' : tr.time k ≤ sp.ts L + sp.Δ := hk; linarith) y hy jc ℓj hcj hdj)))
-    (fun h => h.message x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
-      y hy jc ℓj hcj (hdj.trans (hjct jc le_rfl)) hdj)
+  have served : SA.MessageServedBefore tr.projAC y jc (tr.projAC.time k) e.msg := by
+    rcases hsync with hsync | ⟨a, hsync, ha⟩
+    · exact hsync.elim
+        (fun h => (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
+          (h.1 x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
+          (by have hk' : tr.time k ≤ sp.ts L + sp.Δ := hk; linarith) y hy jc ℓj hcj hdj)))
+        (fun h => h.message x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
+          y hy jc ℓj hcj (hdj.trans (hjct jc le_rfl)) hdj)
+    · rw [← hL] at ha
+      exact (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
+        (hsync.message x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (ha.trans hk0)
+          y hy jc ℓj hcj (hdj.trans (hjct jc le_rfl)) hdj))
   rcases (SA.messageServedBefore_iff _ _ _ _).mp served with served | retained
   swap
   · have evidence := retained.evidence hr hy
@@ -1266,6 +1298,63 @@ private theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc 
   · rw [hes] at ha
     exact ⟨a, mem_latest_votes hrun hnc hy hL (hpm ha), hav.trans hval⟩
 
+/-- Time expiry leaves the latest-view label at least the expired label plus the lock window.
+This says nothing about locks removed by normalization or unlocking. -/
+theorem latestView_label_of_expired_lock
+    (A : SA.SAState sp.n) (Φ : SA.Frm sp.n (List (FG.Att sp.n))) {t : Time} {b : Nat}
+    (hexpired : b + sp.k < sp.slot t) :
+    (b + sp.k : Nat) ≤ (SA.latestView sp A Φ t).2 := by
+  simp only [SA.latestView]
+  split_ifs <;> dsimp <;> omega
+
+/-- At an actual awake, joined call, direct target votes and scoped Sync/Catch yield a
+strict current-view supporter majority. No target viability or origin invariant is used. -/
+theorem latest_majority_of_target_votes_at_call
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hcall : tr.IsCall y i)
+    (hw : tr.awake y (tr.time i)) (hj : tr.JoinedAt y (tr.time i))
+    {a : Time} (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a (tr.time i) tr.projAC)
+    (hcatch : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a (2 * sp.Δ) (tr.time i))
+    {L : Nat}
+    (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac
+      (Node.frame (tr.state y i)) (tr.time i)).2) (ha : a ≤ sp.ts L)
+    {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ (Node.frame (tr.state y i)).tree)
+    (hvotes : ∀ z ∈ H, ∀ q < i, ∀ e, SA.VoteAt tr.projAC z q e → e.msg.slot = L →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg R)
+    (hfault : Hᶜ.ncard <
+      {x | x ∈ H ∧ tr.awake x (sp.ts L + sp.Δ) ∧ tr.JoinedAt x (sp.ts L + sp.Δ)}.ncard) :
+    (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
+      (tr.time i)).1.votes).ncard <
+      2 * (SA.supporters (Node.frame (tr.state y i))
+        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)).1
+        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
+          (tr.time i)).2 R).ncard := by
+  have hrd := readAt_self hrun hy hcall hw hj
+  set Vt := SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
+    (tr.time i)).1.votes
+  set Sp := SA.supporters (Node.frame (tr.state y i))
+    (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)).1
+    (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)).2 R
+  have hHV : Vt ∩ H ⊆ Sp := by
+    intro w hw
+    apply latest_honest_supporter_of_target_votes hrun hnc hy hR hL hvotes ?_ w hw.1 hw.2
+    intro z hz q e hv hs Hd hHd hHdr hF
+    exact head_in_frame hrun hnc (Or.inr ⟨a, hsync, hcatch, by rw [← hL]; exact ha⟩)
+      hy hrd hL hz hv hs hHd hHdr hF
+  have hSX : {x | x ∈ H ∧ tr.awake x (sp.ts L + sp.Δ) ∧ tr.JoinedAt x (sp.ts L + sp.Δ)} ⊆
+      Vt ∩ H := fun x hx =>
+    ⟨latest_awake_voter hrun hnc (Or.inr ⟨a, hsync, by rw [← hL]; exact ha⟩)
+      hy hrd hL hx.1 hx.2.1 hx.2.2, hx.1⟩
+  have h₁ := Set.ncard_le_ncard (hSX.trans hHV) (Set.toFinite _)
+  have h₂ := Set.ncard_le_ncard hHV (Set.toFinite _)
+  have h₃ : Vt.ncard ≤ (Vt ∩ H).ncard + Hᶜ.ncard := by
+    refine (Set.ncard_le_ncard (fun w hw => ?_) (Set.toFinite _)).trans (Set.ncard_union_le _ _)
+    by_cases hwH : w ∈ H
+    · exact Or.inl ⟨hw, hwH⟩
+    · exact Or.inr hwH
+  change Vt.ncard < 2 * Sp.ncard
+  omega
+
 /-- **The supporter majority of an older origin** (workbench#11 §2.4, §5): at a read at `t`, an
 origin `R` of the frame whose label is below the latest view's slot `l` is supported by a strict
 majority of the latest view's voters: the honest voters support it, the more than `f` validators
@@ -1295,7 +1384,7 @@ private theorem latest_majority (hrun : GoldilocksRun proposer dg H tr) (hnc : N
     latest_honest_supporter hrun hnc hy hI hrd hR hO hjl w hwV.1 hwV.2
   have hSX : {x | x ∈ H ∧ tr.awake x (sp.ts L + sp.Δ) ∧ tr.JoinedAt x (sp.ts L + sp.Δ)} ⊆
       Vt ∩ H := fun x hx =>
-    ⟨latest_awake_voter hrun hnc hI.sync hy hrd hL hx.1 hx.2.1 hx.2.2, hx.1⟩
+    ⟨latest_awake_voter hrun hnc (Or.inl hI.sync) hy hrd hL hx.1 hx.2.1 hx.2.2, hx.1⟩
   have h₁ := Set.ncard_le_ncard (hSX.trans hHV) (Set.toFinite _)
   have h₂ := Set.ncard_le_ncard hHV (Set.toFinite _)
   have h₃ : Vt.ncard ≤ (Vt ∩ H).ncard + Hᶜ.ncard := by
