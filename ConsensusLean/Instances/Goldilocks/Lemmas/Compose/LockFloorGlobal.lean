@@ -41,6 +41,32 @@ theorem floor_frame_transport (hrun : GoldilocksRun proposer dg H tr) {y : Fin s
   have h1 : Anc (tr.state y i').fg.tree B₀ B := (h.mono fun X hX => hX.1).mono hsub
   exact ⟨⟨hsub hB.1, hB0.2.trans h1⟩, Anc.restrict hB0.2 h1⟩
 
+/-- **Frame-tree membership** (N2): a block of an honest tree at cut `i` is in the frame's tree
+at a later cut `j` when it is at or above the finalized block there. -/
+theorem frame_mem_of_tree (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {i j : Nat} (hij : i ≤ j) {B₀ : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB0 : B₀ ∈ (tr.state y i).fg.tree)
+    (hF : (tr.state y j).fg.Anc (tr.state y j).fg.F B₀) :
+    B₀ ∈ (tr.state y j).fg.toFrame.tree :=
+  ⟨tree_mono hrun.toLocalRun hy hij hB0, hF⟩
+
+/-- **A frame block stays in the frame or is passed by the finalized block** (N2): `B₀` in the
+frame's tree at cut `i`, and at a later cut `j` `B₀` and the finalized block compare. Then `B₀`
+is in the frame's tree at `j`, or `B₀` is a strict ancestor of the finalized block at `j`. -/
+theorem frame_mem_or_passed (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {i j : Nat} (hij : i ≤ j) {B₀ : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB0 : B₀ ∈ (tr.state y i).fg.toFrame.tree)
+    (hcmp : Compatible (tr.state y j).fg.tree (tr.state y j).fg.F B₀) :
+    B₀ ∈ (tr.state y j).fg.toFrame.tree ∨
+      ((tr.state y j).fg.Anc B₀ (tr.state y j).fg.F ∧ B₀ ≠ (tr.state y j).fg.F) := by
+  rcases hcmp with h | h
+  · exact Or.inl (frame_mem_of_tree hrun hy hij hB0.1 h)
+  · by_cases he : B₀ = (tr.state y j).fg.F
+    · refine Or.inl (frame_mem_of_tree hrun hy hij hB0.1 ?_)
+      rw [← he]
+      exact .refl
+    · exact Or.inr ⟨h, he⟩
+
 /-- **The floor over one cut.** At an honest `y`, cut `i`: the floor, no expiry, `B₀` in the
 trees at `i` and `i + 1` and its own viable ancestor at `i`, and `unlock` at the AC call's view
 keeping `B₀` (or `slot(t_i) − 1 ≤ j`) give the floor at `i + 1`. -/
