@@ -5,10 +5,88 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffect
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 
 public section
 namespace Consensus.Goldilocks.Refinement
 open Blocks Shape
+
+/-- Whole-record equality at the actual clock. Current source classification, viability
+and live-candidate compatibility remain explicit, with no pre-repair invariant. -/
+theorem read_eq_record_of_current_votes
+    {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {a : Time}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time} (ht0 : 0 ≤ t)
+    (hrp : Regimes.ReadPoint tr i t) (hw : tr.awake y t) (hj : tr.JoinedAt y t)
+    (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC)
+    (hcatch : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a (2 * sp.Δ) t)
+    {L : Nat} (hL : (L : Int) =
+      (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+    (ha : a ≤ sp.ts L)
+    (hrecord : ∀ R, SA.lookup (Node.frame (tr.state y i))
+        (tr.state y i).ac.latestConfirmed = some R →
+      (∀ X ∈ SA.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t ∪
+          {(Node.frame (tr.state y i)).fcRoot},
+        Goldilocks.Compatible (Node.frame (tr.state y i)).tree X R) ∧
+      ((Node.frame (tr.state y i)).Anc R
+          (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+        (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
+          ∀ z ∈ H, ∀ q, tr.time q ≤ t → ∀ e, SA.VoteAt tr.projAC z q e →
+            e.msg.slot = L → SA.VoteExtends (tr.HonestBlocks H) e.msg R)))
+    (hfault : Hᶜ.ncard <
+      {x | x ∈ H ∧ tr.awake x (sp.ts L + sp.Δ) ∧ tr.JoinedAt x (sp.ts L + sp.Δ)}.ncard) :
+    Regimes.readAfter tr y i t =
+      (SA.lookup (Node.frame (tr.state y i))
+        (tr.state y i).ac.latestConfirmed).getD (tr.state y i).fg.F := by
+  have hΦ := Compose.frameOK_state hrun.toLocalRun hy i
+  cases hl : SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed with
+  | none => exact SA.acConfirmed_eq_F hΦ (SA.lookup_eq_none hl)
+  | some R =>
+    obtain ⟨hR, hRr⟩ := SA.lookup_eq_some hl
+    obtain ⟨hcomp, hsource⟩ := hrecord R hl
+    have hanchor := Compose.anchor_compatible_of_live_candidates hΦ hcomp
+    obtain ⟨hc, hs⟩ := Compose.read_head_support_of_target_votes hrun hnc hy ht0
+      hrp.1 hrp.2 hw hj hsync hcatch hL ha hR hanchor hsource hfault
+    exact SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)
+
+/-- The source arm consumed by `read_eq_record_of_current_votes`: either actual anchor
+coverage, or an actual recent raw witness covering the whole record. Its finite transfer
+uses explicit current-domain and stored-lock comparisons, not last-setter recency. -/
+theorem read_source_of_recent_result
+    {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a b t : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ)) {y : Fin sp.n} {i L : Nat}
+    {R : SA.Blk sp.n (List (FG.Att sp.n))} (htb : t ≤ b)
+    (hsource : (Node.frame (tr.state y i)).Anc R
+        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+      (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
+        ∃ x ∈ H, ∃ r s C CV, SA.ResultAt tr.projAC x r s C CV ∧
+          Anc (tr.HonestBlocks H) R C ∧ tr.time r ≤ b ∧
+          Healing.cutZ sp.toParams g ≤ sp.ts s ∧ s < L ∧
+          (∀ z ∈ H, ∀ q ell e, SA.CastAt tr.projAC z q ell e →
+            tr.time q ≤ b → s < e.msg.slot →
+            (∀ w ∈ H, ∀ p < q, ∀ e', SA.VoteAt tr.projAC w p e' →
+              s < e'.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e'.msg R) →
+            Anc (tr.HonestBlocks H) R ell.frame.fcRoot ∨
+              R ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)) ∧
+          (∀ z ∈ H, ∀ q ell e, SA.CastAt tr.projAC z q ell e →
+            tr.time q ≤ b → e.msg.slot = s + 1 → ∀ l ∈ (tr.projAC.state z q).locks,
+              sp.slot (tr.time q) ≤ l.slot + sp.k → l.slot ≤ s →
+              ∀ Y ∈ tr.HonestBlocks H, Y.root = l.block →
+                Goldilocks.Compatible (tr.HonestBlocks H) Y R))) :
+    (Node.frame (tr.state y i)).Anc R
+        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+      (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
+        ∀ z ∈ H, ∀ q, tr.time q ≤ t → ∀ e, SA.VoteAt tr.projAC z q e →
+          e.msg.slot = L → SA.VoteExtends (tr.HonestBlocks H) e.msg R) := by
+  rcases hsource with h | ⟨hv, x, hx, r, s, C, CV, hres, hRC, hrb, hts, hsL, hd, hl⟩
+  · exact Or.inl h
+  · exact Or.inr ⟨hv, hp.latest_votes_of_recent_result hc hx hres hRC hrb hts hd hl htb hsL⟩
+
 variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
 
