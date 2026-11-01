@@ -43,13 +43,15 @@ instance"):
   through `recordOwn`, which brings the digest). The first trailing poll runs the FG update
   (`ac_to_fg`, then `attest`, written out as `Node.tickStep … .fgUpdate` does) and queues the
   attestation; the two trailing polls drain the tick's at most one vote and one attestation.
-* **Relay.** An admitted object (a block held after the call, a vote the pool holds, an
-  attestation) is relayed at the gossip of the event that admitted it (a delivery or a tick) as
+* **Relay.** An admitted block or attestation is relayed at the gossip of its event as
   a carried object of an unsigned `.relay` wrapper; a delivery's emission and relay leave at the
   delivery's own time (`Model.Run.deliver`), as the spec's relay rule sends them.
+  Fresh vote insertions instead queue `.voteForward` envelopes, signed by the admitting node
+  and stamped with its admission time. The envelope carries the canonical vote, which recursive
+  delivery visits again. Restart replay does not create vote envelopes.
   Separately, successful block acceptance cuts queue fresh signed `.forward` wrappers, including
   own proposals. The durable node-root map supplies exact same-origin parent wrappers. A selected
-  `pollBatch` emits its ordinary body followed by all pending wrappers in acceptance order;
+  `pollBatch` emits its ordinary body, block wrappers in acceptance order, then vote envelopes;
   `releaseAll` checks each against actual prefix holdings. Duplicate/refused calls do not mint
   wrappers. Unsigned compatibility relay is retained, but certifies no acceptance timestamp.
 * **Restart.** Everything is durable (the spec keeps `Σ`, `𝒜`, `Λ` and restarts the AC); the
@@ -159,6 +161,9 @@ inductive Body where
   /-- Forwarding tag with a claimed acceptance time. Authentication and actual acceptance
   provenance are established separately. -/
   | forward (acceptedAt : Time)
+  /-- A fresh vote admission, authenticated by the enclosing poll signer rather than the
+  vote's author. The carried canonical vote is processed recursively. -/
+  | voteForward (admittedAt : Time) (vote : WireVote)
   deriving DecidableEq
 
 /-- The wire objects of the shape (no committee kinds). -/
@@ -281,6 +286,8 @@ structure State where
   wrappers : Nat → Option (Wire sp.n) := fun _ => none
   /-- Signed forwarding bodies awaiting the next selected poll, in acceptance order. -/
   forwards : List (Time × List (Wire sp.n)) := []
+  /-- Fresh vote admissions awaiting signed poll publication, retained across restarts. -/
+  voteForwards : List (Time × Vote sp.n) := []
 
 variable {sp ro}
 
@@ -342,18 +349,29 @@ def queueAccepted (st : State sp ro) (B : Blk sp) : State sp ro :=
             wrappers := Function.update st.wrappers B.root (some (forwardObj sp st.self st.now p B))
             forwards := st.forwards ++ [(st.now, p.toList ++ [blockObj sp B])] }
 
-/-- Record handler state and emissions, then queue publications for successful acceptance
-cuts in their executed order. Refused and duplicate block calls cannot create fresh wrappers. -/
+/-- Record handler state and emissions, then queue successful acceptances and fresh vote
+insertions. Candidate votes come from message/block calls and own emissions, not restart
+replay. The pool difference preserves admission's duplicate and two-vote-cap checks. -/
 def apply (st : State sp ro)
     (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro))) : State sp ro :=
   let publications := r.2.foldl (fun s c => match c with
     | .fg (.block B true) => queueAccepted s B
     | _ => s) st
+  let candidates := r.2.flatMap fun
+    | .fg _ => []
+    | .ac ℓ =>
+        (match ℓ.call with
+          | .message v => [v]
+          | .block B => SA.blockVotes B
+          | _ => []) ++ ℓ.emits.map (·.msg)
+  let admitted := candidates.dedup.filter fun v =>
+    v ∉ st.node.ac.pool v.slot ∧ v ∈ r.1.ac.pool v.slot
   { st with
     node := r.1
     outbox := st.outbox ++ emitted r.2
     wrappers := publications.wrappers
-    forwards := publications.forwards }
+    forwards := publications.forwards
+    voteForwards := st.voteForwards ++ admitted.map (st.now, ·) }
 
 variable (sp) in
 open Classical in
@@ -408,9 +426,9 @@ noncomputable def canonEvent (hs : List (Header Info × Nat)) (o : Wire sp.n) :
   | none, none, none => none
 
 open Classical in
-/-- Processing one received object: its `canonEvent` through the node's handler (`on_block`,
-`on_ac_message`, `on_attestation`); anything else is dropped. An admitted object (a block the
-tree holds after the call, a vote the pool holds, any attestation) is queued for relay. -/
+/-- Processing one received object through its canonical node handler. Blocks held after
+the call and attestations use unsigned relay; fresh vote insertions use the signed queue in
+`apply`. Noncanonical wrappers make no call; their carried objects are processed separately. -/
 noncomputable def processOne (hs : List (Header Info × Nat)) (st : State sp ro) (o : Wire sp.n) :
     State sp ro :=
   match canonEvent sp ro hs o with
@@ -419,7 +437,7 @@ noncomputable def processOne (hs : List (Header Info × Nat)) (st : State sp ro)
       relayIf (apply st r) (r.1.fg.blocks B.root = some B) o
   | some (.message v) =>
       let r := Node.onMessage st.self st.node st.now v
-      relayIf (apply st r) (v ∈ r.1.ac.pool v.slot) o
+      apply st r
   | some (.attestation a) => relayIf (apply st (Node.onAttestation st.node a)) True o
   | _ => st
 
@@ -541,15 +559,17 @@ noncomputable def poll (st : State sp ro) (_ : Time) :
     State sp ro × Option (Body × List (Wire sp.n)) :=
   let st₁ := if st.fgDue then fgUpdate st else st
   match st₁.outbox with
-  | [] => ({ st₁ with forwards := [] }, none)
-  | b :: rest => ({ st₁ with outbox := rest, forwards := [] }, some (b, []))
+  | [] => ({ st₁ with forwards := [], voteForwards := [] }, none)
+  | b :: rest => ({ st₁ with outbox := rest, forwards := [], voteForwards := [] }, some (b, []))
 
-/-- Keep the ordinary poll emission, then drain acceptance wrappers in parent-first order.
-The engine signs the entire list and checks each candidate against its actual release prefix. -/
+/-- Keep the ordinary emission and parent-first block wrappers at their original offsets,
+then drain vote envelopes. Both queues are read before polling; the FG update admits no votes.
+The engine signs the list and checks each candidate against its actual release prefix. -/
 noncomputable def pollBatch (st : State sp ro) (t : Time) :
     State sp ro × List (Body × List (Wire sp.n)) :=
   let r := poll st t
-  (r.1, r.2.toList ++ st.forwards.map fun p => (.forward p.1, p.2))
+  (r.1, r.2.toList ++ (st.forwards.map fun p => (.forward p.1, p.2)) ++
+    (st.voteForwards.map fun p => (.voteForward p.1 (encodeVote p.2), [voteObj p.2])))
 
 /-- The chain of headers from genesis (excluded) to `B`, oldest first, by parent walk in the
 held blocks `blocks`, with `fuel` steps at most. -/
