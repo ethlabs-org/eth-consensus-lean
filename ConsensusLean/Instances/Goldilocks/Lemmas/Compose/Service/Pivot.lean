@@ -1135,8 +1135,9 @@ theorem proposal_walk_passes_old (hrun : GoldilocksRun proposer dg H tr) (hnc : 
 unlocked anchors are `≤ D_s`"): a live lock block sits below an origin before `t_s` of a slot
 below `s` (`proposal_locks_slot`), which is old (a regular origin of label `s − 1` is written at
 `t_s + 2Δ`); `fc_root` by `proposal_fcRoot_old`. -/
-private theorem proposal_anchor_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
+private theorem proposal_anchor_old_of (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hfault : 2 * Hᶜ.ncard < sp.n)
+    {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
@@ -1150,7 +1151,7 @@ private theorem proposal_anchor_old (hrun : GoldilocksRun proposer dg H tr) (hnc
   rcases anchor_mem ℓp.frame A₁ (tr.time i) with hL | hf
   · right
     obtain ⟨l, hl, O, hO, hLO⟩ := proposal_lock_below hrun hnc hp hΦ hΦU hA₁ _ hL
-    have hls := proposal_locks_slot hrun hnc hsl hp hc hcall hd hti l hl
+    have hls := proposal_locks_slot_of hrun hnc hfault hp hc hcall hd hti l hl
     refine ⟨O, ?_, hLO⟩
     obtain ⟨x, hx, k', hki, CV, hR | hOp⟩ := originBefore_iff.1 hO
     · refine ⟨x, hx, k', l.slot, CV, Or.inl ⟨hR, ts_add_two_le (sp := sp) ?_⟩⟩
@@ -1160,15 +1161,25 @@ private theorem proposal_anchor_old (hrun : GoldilocksRun proposer dg H tr) (hnc
       linarith [sp.toParams.hΔ]
     · exact ⟨x, hx, k', l.slot, CV, Or.inr ⟨hOp, by omega⟩⟩
   · rw [Set.mem_singleton_iff.1 hf]
-    exact proposal_fcRoot_old hrun hnc hsl hp hc hcall hd hti
+    exact proposal_fcRoot_old_of hrun hnc hfault hp hc hcall hd hti
+
+private theorem proposal_anchor_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts s) :
+    d.start.root = sp.genesisRoot ∨
+      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) d.start O :=
+  proposal_anchor_old_of hrun hnc (two_faults_lt_of_sleepy hsl) hp hc hcall hd hti
 
 /-- **A voter's `fc_root` is below an old origin, or genesis** (workbench#12 §2,
 `F ≤ fc_root ≤ D_s` at the vote reads): every honest row the voter holds was signed before the
 vote, with a source below an origin before the signing (`attestation_source`); a regular one of
 label `l` is written at `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most
 `s`, and not `s` (`no_optimistic_before_held_row`). -/
-theorem vote_fcRoot_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hs : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+theorem vote_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) :
     ℓ.frame.fcRoot.root = sp.genesisRoot ∨
@@ -1180,7 +1191,10 @@ theorem vote_fcRoot_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun
     hes ▸ (cast_head_fcRoot hr hy hc).2
   have hsj : sp.slot (tr.projAC.time j) = s' + 1 := (SA.castAt_spec hr hy hc).2.1.symm.trans hes
   rw [frame_of_projAC hrun hy hc.1]
-  refine fcRoot_old_of_rows hrun hnc hsl hy (honestRowsSourced_iff.2 fun X hX a ha hav => ?_)
+  refine fcRoot_of_rows_of hrun hnc hf hy (j := j)
+    (R := fun B => ∃ O, OldOrigin tr H (s' + 1) O ∧ Anc (tr.HonestBlocks H) B O)
+    (fun _ _ hAB ⟨O, hO, hBO⟩ => ⟨O, hO, hAB.trans hBO⟩)
+    (honestRowsSourced_iff.2 fun X hX a ha hav => ?_)
   obtain ⟨m, hmj, hm, k, hkm, hsg⟩ := honest_row_signed_before hrun hnc hy hX ha hav
   obtain ⟨D, -, hDs, C, l, hC, hDC⟩ := attestation_source hrun hnc hav hsg
   refine ⟨D, ⟨C, ?_, hDC⟩, hDs⟩
@@ -1196,13 +1210,23 @@ theorem vote_fcRoot_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun
     rcases Nat.lt_or_ge l (s' + 1) with h | h
     · omega
     obtain rfl : l = s' + 1 := by omega
-    exact (no_optimistic_before_held_row hrun hnc hsl hy hc hes hm hmj hav hkm hsg hz hck hOp).elim
+    exact (no_optimistic_before_held_row_of hrun hnc hf hy hc hes hm hmj hav
+      hkm hsg hz hck hOp).elim
+
+/-- Whole-run Sleepy supplies the numerical fault bound for voter-root geometry. -/
+theorem vote_fcRoot_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hs : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) :
+    ℓ.frame.fcRoot.root = sp.genesisRoot ∨
+      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓ.frame.fcRoot O :=
+  vote_fcRoot_old_of hrun hnc (two_faults_lt_of_sleepy hsl) hs hy hc hes
 
 /-- **A voter's anchor is below `D`, or on `P`'s chain above `D`**: for a block `D` above every
 old origin and below `Q = P.parent`, at an honest slot-`s` vote whose earlier honest slot-`s`
 votes are `P`. -/
 private theorem vote_anchor_cases (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    (hf : 2 * Hᶜ.ncard < sp.n) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P Q D : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hs0 : 0 < s) (hPQ : P.parent = some Q.root) (hQU : Q ∈ tr.HonestBlocks H)
     (hDQ : Anc (tr.HonestBlocks H) D Q) (hDU : D ∈ tr.HonestBlocks H)
@@ -1230,7 +1254,7 @@ private theorem vote_anchor_cases (hrun : GoldilocksRun proposer dg H tr) (hnc :
   · -- `fc_root` is below an old origin, or genesis
     left
     rw [Set.mem_singleton_iff.1 haf]
-    rcases vote_fcRoot_old hrun hnc hsl hs0 hy hcy hes with hg | ⟨O, hO, hfO⟩
+    rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes with hg | ⟨O, hO, hfO⟩
     · exact honest_genesis_root_anc hrun hU (hΦU hΦ.fcRoot_mem) hg hDU
     · exact hfO.trans (hDold O hO)
   -- a live lock block: the viable ancestor of the block of a read-point lock
@@ -1243,7 +1267,6 @@ private theorem vote_anchor_cases (hrun : GoldilocksRun proposer dg H tr) (hnc :
     obtain ⟨Φ', A', D', -, hΦ'U, -, h34, hpool, -, L, hLU, hLr, hLD'⟩ :=
       SA.lock_origin_readPoint hrun' hy hcy l hl (by rw [hes, hls]; omega)
     obtain rfl : L = B := hU.1 hLU (hΦU hB) (hLr.trans hBr.symm)
-    have hf := two_faults_lt_of_sleepy hsl
     obtain ⟨x, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hxH⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
         (t := SA.optimisticVoters sp A' Φ' l.slot D') (by omega)
@@ -1424,7 +1447,8 @@ theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp
     obtain ⟨Hd, hHd, hHdr, hDHd⟩ :=
       hinv.vote_extends D m hO y hy j e ⟨ℓy, hcy.1, hcy.2⟩ (by omega)
     rwa [hU.1 hHd (hΦU hht) (hHdr.trans hhead)] at hDHd
-  rcases vote_anchor_cases hrun hnc hsl hp hP hs0 hPQ (hΦpU hQt) (Anc.mono hΦpU hDQ) (hΦpU hDt)
+  rcases vote_anchor_cases hrun hnc (two_faults_lt_of_sleepy hsl) hp hP hs0 hPQ
+      (hΦpU hQt) (Anc.mono hΦpU hDQ) (hΦpU hDt)
       hDold hy hcy hes hE with haD | ⟨hDa, haP, hPU⟩
   · have hDt' := mem_between hU hΦ hΦU hat hht haD hDh
     exact ⟨D, Or.inr ⟨.refl, hDQ⟩, SA.anc_tree_of_anc_U hU hΦ hΦU hat haD hDt',
