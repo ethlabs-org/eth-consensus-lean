@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
@@ -1025,6 +1026,139 @@ theorem effectiveRecordInterval_after_cover_update
       omega
   · have ht := rawtime h
     linarith
+
+/-- Frozen admission and healthy carry propagate a unanimous slot through every
+next-slot cast, by strong induction on the cast cut. -/
+theorem unanimous_next_votes_extend
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : Healing.Unanimous tr H u P) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hold : ∀ x r b B, Healing.HighOrigin tr H g x r b B → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) B P) :
+    ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → e.msg.slot = u + 1 →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg P := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  have hprev : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → e.msg.slot = u →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg P := by
+    intro y hy j e hv hs
+    exact ⟨P, hP, (hun y hy j e hv hs).symm, .refl⟩
+  have all : ∀ j y, y ∈ H → ∀ e, SA.VoteAt tr.projAC y j e → e.msg.slot = u + 1 →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg P := by
+    intro j
+    induction j using Nat.strong_induction_on with
+    | h j ih =>
+      intro y hy e hv hs
+      obtain ⟨ell, hcast⟩ := hv
+      obtain ⟨hFP, hvi⟩ := unanimous_next_vote_viable hp hc hP hslot hu hun hgu hR hold hy hcast hs
+      have hsl := (SA.castAt_spec hS.run.localRun hy hcast).2.1
+      have hT : SA.gbar g ≤ sp.ts ((sp.slot (tr.projAC.time j) : Int) - 1) := by
+        rw [← hsl, hs]
+        simp only [Nat.cast_add, Nat.cast_one, add_sub_cancel_right]
+        linarith [sp.toParams.hΔ]
+      apply SA.next_vote_extends_before hS.run hy hcast hs ?_
+        (SA.honest_voters_half hS hgu)
+        (SA.healthy_carry_votes hS hgu hprev hy hcast hs hFP)
+        (hS.faultBound (hS.run.localRun.time_nonneg j) hT)
+        (hS.syncAC (by linarith [sp.toParams.hΔ]) (tr.projAC.time j)) (Or.inl hvi)
+      intro z hz q hq v hv hvs
+      rcases hvs with hvs | hvs
+      · exact hprev z hz q v hv hvs
+      · exact ih q hq z hz v hv hvs
+  exact fun y hy j e hv hs => all j y hy e hv hs
+
+/-- Next-slot optimistic candidates are comparable with the unanimous prefix. -/
+theorem unanimous_next_optimistic_compatible
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : Healing.Unanimous tr H u P) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hold : ∀ x r b B, Healing.HighOrigin tr H g x r b B → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) B P)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (SA.Vote sp.n)} (hopt : SA.OptimisticLockAt tr.projAC y j (u + 1) D CV) :
+    Compatible (tr.HonestBlocks H) D P := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  exact SA.optimisticLock_compatible hS.run hS.two_faulty_lt hy hopt
+    (unanimous_next_votes_extend hp hc hP hslot hu hun hgu hR hold)
+
+/-- At an actual update, the only additional admission obligation is its floor bound.
+The receiver's prior unanimous vote supplies acceptance; next-slot optimism is derived. -/
+theorem ready_update_of_floor_bound
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : Healing.ReadyProposal tr H proposer p k u P)
+    (hPU : P ∈ tr.HonestBlocks H) (hupos : 0 < u)
+    (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hold : ∀ x r b B, Healing.HighOrigin tr H g x r b B → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) B P)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hupd : SA.UpdateAt tr.projAC y j u ell)
+    (hFP : Anc (tr.HonestBlocks H) ell.frame.F P) :
+    Anc (tr.HonestBlocks H) P
+      ((SA.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F) ∧
+      SA.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  have hun := Healing.ready_unanimous hp hc hP hR
+  obtain ⟨q, v, hvote, hvs⟩ := SA.honest_votes_in_slot hS hgu y hy
+  obtain ⟨ellv, hv⟩ := hvote
+  obtain ⟨⟨Hd, hHd, he, _⟩, ht⟩ := Compose.cast_head_fcRoot hS.run.localRun hy hv
+  have hPsiU := (SA.frameIn_of_callAt hS.run.localRun hy hv.1).2
+  have heq : Hd = P := hS.run.localRun.coherent.1 (hPsiU hHd) hPU
+    (he.trans (hun y hy q v ⟨ellv, hv⟩ hvs))
+  subst Hd
+  obtain ⟨ka, hka, hacc⟩ :=
+    (SA.frame_genesis_or_accepted sp hS.run.localRun hy hv.1 P hHd).resolve_left
+    (by have := hP.2.2.2.2.1; omega)
+  have hqj : q ≤ j := by
+    by_contra hn
+    have hm := hp.run.time_mono (Nat.le_of_not_ge hn)
+    have hupdate : tr.time j = sp.ts u + 6 * sp.Δ := hupd.2.2.1
+    rw [hvs] at ht
+    change tr.time q ≤ sp.ts u + sp.Δ at ht
+    linarith [sp.toParams.hΔ]
+  have hPt := SA.mem_tree_of_acceptAt sp hS.run.localRun hy hacc (hka.trans hqj) hupd.1 hFP
+  apply ready_update_effective_record hp hc hP hR hgu hy hupd hPt
+  intro r _ D CV hop
+  exact unanimous_next_optimistic_compatible hp hc hPU hP.2.2.2.2.1 hupos hun hgu
+    (hR.trans ((SA.ts_le_iff sp).2 (by omega))) hold hy hop
+
+/-- Ready-update assembly from the actual proposal walk. Only the update-floor bound
+remains as a loss-prevention premise; an alternative higher report is not manufactured. -/
+theorem ready_update_of_proposal_floor_bound
+    (hp : Healing.ResetPremises tr H proposer dg g ΔF a)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : Healing.ReadyProposal tr H proposer p k u P)
+    (hPU : P ∈ tr.HonestBlocks H) (hu : 0 < u)
+    (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {i : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (SA.Payload sp.n)} {pay : SA.Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hupd : SA.UpdateAt tr.projAC y j u ell)
+    (hFP : Anc (tr.HonestBlocks H) ell.frame.F P) :
+    Anc (tr.HonestBlocks H) P
+      ((SA.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F) ∧
+      SA.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P := by
+  have hS := Healing.healthy_base_of_reset_catch hp hc
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hS.run.localRun hP.1 hci
+  obtain ⟨hst, hsh⟩ := Compose.acProposal_start_anc_head hPhi hd
+  have hhead : d.head ∈ ellp.frame.tree := by
+    rcases eq_or_ne d.start d.head with he | he
+    · exact he ▸ hst
+    · exact (Anc.mem hsh he).2
+  apply ready_update_of_floor_bound hp hc hP hPU hu hR hgu ?_ hy hupd hFP
+  intro x r b B ho ht
+  exact (Healing.crossing_below_proposal_parent hp hc hP hR hci hcall hd hti hPQ ho ht
+    (.refl)).trans (.single ⟨hPhiU hhead, hPU, hPQ⟩)
 
 end CoveredEndpoint
 

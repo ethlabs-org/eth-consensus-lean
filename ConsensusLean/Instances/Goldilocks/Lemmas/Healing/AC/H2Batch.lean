@@ -73,7 +73,7 @@ theorem inv_at_vote (hI : InclusionRun tr H U proposer g t₀) {B : Blk sp.n FGP
 honest vote of slot `m + 1` with `Φ.F ⪯ B`, where `t_m ≥ ḡ + 4Δ` and every honest vote of slot `m`
 extends `B`, `Carry_y` holds for the honest slot-`m` votes (each sent by its voter by
 `t_m + Δ`, its head in the voter's frame, accepted after `ḡ` or caught up by `Catch(2Δ)`). -/
-theorem h2_carry_votes (hI : InclusionRun tr H U proposer g t₀) {m : Nat}
+theorem healthy_carry_votes (hI : HealthyBase tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) {B : Blk sp.n FGP}
     (hvB : ∀ x ∈ H, ∀ k e, VoteAt tr x k e → e.msg.slot = m → VoteExtends U e.msg B)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -113,6 +113,15 @@ theorem h2_carry_votes (hI : InclusionRun tr H U proposer g t₀) {m : Nat}
   · obtain ⟨k', hk', hacc', hk't⟩ := hI.catchUp x hx k Hd' hacc (not_le.1 hkg) y hy i ℓ hc.1
       (by linarith) (hFB.trans hBHd)
     exact Or.inr (Or.inr ⟨k', hk', hacc', by linarith⟩)
+
+/-- H.2's existing interface specializes healthy carry; no inclusion invariant is used. -/
+theorem h2_carry_votes (hI : InclusionRun tr H U proposer g t₀) {m : Nat}
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) {B : Blk sp.n FGP}
+    (hvB : ∀ x ∈ H, ∀ k e, VoteAt tr x k e → e.msg.slot = m → VoteExtends U e.msg B)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1) (hFB : Anc U ℓ.frame.F B) :
+    CarryAt tr U y i e m {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} :=
+  healthy_carry_votes hI.toHealthyBase hm hvB hy hc hs hFB
 
 private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).pool = A.pool := by
