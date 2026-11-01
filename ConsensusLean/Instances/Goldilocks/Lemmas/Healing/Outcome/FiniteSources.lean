@@ -647,6 +647,53 @@ theorem ResetPremisesUpTo.clean_stored_locks_compatible
     · exact SA.anc_total hr.coherent hLD (hME.trans hED)
   · exact (ordered hm hl hms h hC hCr hB hBr).symm
 
+/-- A clean raw source compares with protected stored locks at the weaker lock threshold. -/
+theorem ResetPremisesUpTo.clean_source_stored_lock_compatible
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {r s i : Nat}
+    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hB : SA.ResultAt tr.projAC x r s B CV ∨ SA.OptimisticLockAt tr.projAC x r s B CV)
+    (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b)
+    (hib : ∀ q < i, tr.time q ≤ b) {l : SA.Lock}
+    (hl : l ∈ (tr.projAC.state y i).locks) (hls : cleanLabel sp a + sp.k + 2 ≤ l.slot)
+    (hC : C ∈ tr.HonestBlocks H) (hCr : C.root = l.block) :
+    Compatible (tr.HonestBlocks H) B C := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  by_cases hsl : s ≤ l.slot
+  · obtain ⟨L, hL, hLr, D, hLD, q, hqi, DV, hD⟩ := SA.lock_below_origin hr hy i l hl
+    obtain rfl : C = L := hr.coherent.1 hC hL (hCr.trans hLr.symm)
+    rcases hp.clean_sources_compatible hc hx hy hB hD hs (hs.trans hsl) hrb (hib q hqi) with h | h
+    · exact SA.anc_total hr.coherent h hLD
+    · exact Or.inr (hLD.trans h)
+  · obtain ⟨q, hqi, D, hD, L, hL, hLr, hLD⟩ : ∃ q < i, ∃ D,
+        ((∃ DV, SA.FastLockAt tr.projAC y q l.slot D DV) ∨
+          SA.SlowLockAt tr.projAC y q l.slot D) ∧
+        ∃ L ∈ tr.HonestBlocks H, L.root = l.block ∧ Anc (tr.HonestBlocks H) L D := by
+      cases hf : l.fast
+      · obtain ⟨q, hqi, D, hD, hL⟩ := SA.slow_lock_provenance hr hy i l hl hf
+        exact ⟨q, hqi, D, Or.inr hD, hL⟩
+      · obtain ⟨q, hqi, D, DV, hD, hL⟩ := SA.fast_lock_provenance hr hy i l hl hf
+        exact ⟨q, hqi, D, Or.inl ⟨DV, hD⟩, hL⟩
+    obtain rfl : C = L := hr.coherent.1 hC hL (hCr.trans hLr.symm)
+    have hts := hp.clean_window_timing (show cleanLabel sp a + sp.k + 2 ≤ s by
+      have := sp.two_le_k; omega) s (by have := sp.two_le_k; omega)
+    obtain ⟨z, hz, j, hjr, e, ⟨ell, he⟩, hes, Hd, hHd, heHd, hBHd⟩ :
+        ∃ z ∈ H, ∃ j ≤ r, ∃ e, SA.VoteAt tr.projAC z j e ∧ e.msg.slot = s ∧
+          SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
+      rcases hB with hB | hB
+      · obtain ⟨z, hz, j, hjr, e, he, _, hes, hBHd⟩ := hp.result_supporter hc hx hB .refl hrb hts
+        exact ⟨z, hz, j, hjr.le, e, he, hes, hBHd⟩
+      · exact (hp.optimistic_supporter hx hB).2
+    have hv : SA.VoteExtends (tr.HonestBlocks H) e.msg D := by
+      rcases hD with ⟨DV, hD⟩ | hD
+      · exact hp.fast_source_votes_before hc hy hD hls (hib q hqi) j
+          ((hp.run.time_mono hjr).trans hrb) z hz ell e he (by omega)
+      · exact hp.slow_source_votes_before hc hy hD hls (hib q hqi) j
+          ((hp.run.time_mono hjr).trans hrb) z hz ell e he (by omega)
+    obtain ⟨Hd', hHd', heHd', hDHd⟩ := hv
+    obtain rfl : Hd' = Hd := hr.coherent.1 hHd' hHd (heHd'.trans heHd.symm)
+    exact SA.anc_total hr.coherent hBHd (hLD.trans hDHd)
+
 end Consensus.Goldilocks.Healing
 
 end

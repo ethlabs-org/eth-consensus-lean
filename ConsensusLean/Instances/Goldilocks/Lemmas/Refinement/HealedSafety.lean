@@ -896,6 +896,53 @@ theorem healthy_current_live_chain (D : HealthyRepairSchedule S A V Q)
   · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi hsub hX.1 h hY.1)
   · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hsub hY.1 h hX.1)
 
+set_option linter.unusedSectionVars false in
+/-- The live-lock part of current candidate comparison needs only repaired record cover. -/
+theorem healthy_current_live_locks (D : HealthyRepairSchedule S A V Q)
+    (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
+    {v : V} {i : Nat} (hi : (chainTrace Q.run.2).InCuts Q.heal i)
+    (hv : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v
+      ((chainTrace Q.run.2).cutTime i)) (C : HealthyReadContext S A V Q D v i)
+    {R : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
+    (hR : SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
+      (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.latestConfirmed = some R) :
+    ∀ X ∈ SA.liveLockBlocks Q.params (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.locks
+        (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
+        (stateAt S Q.run.2 Q.hn v i).now,
+      Goldilocks.Compatible (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree X R := by
+  have hy := honest_ownKey (S := S) hv.1
+  have hU := Compose.honest_blocks_coherent D.reset.run.toLocalRun D.reset.noColl
+  have hPhi := Compose.frameOK_state D.reset.run.toLocalRun hy C.cut
+  have hsub : (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree ⊆
+      Q.trace.HonestBlocks (honestKeys S Q.run.2) := fun X hX => ⟨_, hy, _, hX.1⟩
+  have hcover := healthy_current_record_sources S A V Q h0 hb hp W states D O hrepair hi hv
+  rw [C.state_eq, hR] at hcover
+  simp only [Option.getD_some] at hcover
+  have hquery : D.query ≤ (stateAt S Q.run.2 Q.hn v i).now := by
+    have := C.repaired
+    have := Q.params.toParams.hΔ
+    have : (0 : Int) ≤ (Q.index : Time) := Int.natCast_nonneg _
+    nlinarith
+  have hdrain : Healing.drainTime Q.params D.resetTime ≤
+      (stateAt S Q.run.2 Q.hn v i).now :=
+    ((le_max_of_le_right (le_max_left _ _)).trans D.lower).trans hquery
+  intro X hX
+  have hRm := (SA.lookup_eq_some hR).1
+  rcases hcover with hF | ⟨x, hx, r, s, B, CV, _, hrb, hs, hB, hRB⟩
+  · rw [hF, C.state_eq]
+    exact Or.inr (hPhi.rooted.2 _ hX.1)
+  · obtain ⟨l, hl, E, hE, hEr, hlive, rfl⟩ := SA.mem_liveLockBlocks hPhi hX
+    rw [← Compose.projAC_state D.reset.run.toLocalRun hy C.cut] at hl
+    have hBE := D.reset.clean_source_stored_lock_compatible (healthy_repair_catch S A V Q)
+      hx hy hB (by simpa only [D.cleanLabel_eq] using hs) hrb
+      (fun q hq => (C.readPoint.1 q hq).trans C.time_bound) hl
+      (Healing.drain_stored_lock_label hdrain hlive) (hsub hE) hEr
+    have hXE := (SA.viableAncestor_anc hPhi hE).2.mono hsub
+    have hXR := tips_comparable_of_origin_witnesses S A V Q hXE hRB hBE.symm
+    rcases hXR with h | h
+    · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi hsub hX.1 h hRm)
+    · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hsub hRm h hX.1)
+
 /-- Assemble the current whole-record certificate through the landed scoped adapters. -/
 theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
     (O : HealthyRepairOpening S A V Q D) (hrepair : HealthyReceiverRepair S A V Q D O)
