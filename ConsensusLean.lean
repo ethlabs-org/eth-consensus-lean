@@ -201,6 +201,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Evidence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingInvariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingState
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
