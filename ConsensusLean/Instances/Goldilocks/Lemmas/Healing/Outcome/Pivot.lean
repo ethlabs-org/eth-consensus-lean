@@ -665,6 +665,92 @@ theorem high_floor_source_at_proposal
   intro W hW att ha v hv d hs hdi r l O hrd hO
   exact origin_label_lt_at_proposal hp hpH hci hcall hti (by omega) hO
 
+/-- Arbitrary-target proposal domain from actual receipt and bounded source comparisons. -/
+theorem held_target_proposal_domain_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r i u : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
+    (hai : a ≤ tr.time i) {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u)
+    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B → B ∈ ell.frame.tree)
+    (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
+      Compatible (tr.HonestBlocks H) B S)
+    (hcompare : ∀ v q m O, q < i → HighOrigin tr H g v q m O →
+      Compatible (tr.HonestBlocks H) B O) :
+    Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
+  have hroot := held_target_proposal_root_before hp hx hpH hBx hai hci hcall hd hti
+    hheld hseed hcompare
+  by_cases hcovered : Anc (tr.HonestBlocks H) B ell.frame.fcRoot
+  · exact Or.inl hcovered
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  have hrootB := hroot.resolve_right hcovered
+  have hFB := (hPhi.F_anc_fcRoot.mono hPhiU).trans hrootB
+  have hBt := hheld hFB
+  have hBy := frame_tree_subset hp hpH hci hBt
+  have hreach := Compose.fg_reachable hp.run.toLocalRun hpH i
+  have hfr := Compose.frame_of_projAC hp.run hpH hci
+  have hdesc : ∃ C ∈ ell.frame.tree, Anc (tr.HonestBlocks H) B C ∧
+      (tr.state p i).fg.IsViable C := by
+    by_cases hfloor : (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ B.root).h
+    · exact ⟨B, hBt, .refl, hfloor⟩
+    have hBfloor := lt_of_not_ge hfloor
+    obtain ⟨v, q, m, S, hS, hqt, hBS⟩ := hseed
+    obtain ⟨-, -, -, -, -, -, -, -, -, hSsrc⟩ := highOrigin_mem hp hS
+    have finish : ∀ {z q n O E}, HighOrigin tr H g z q n O → tr.time q < sp.ts u →
+        E ∈ (tr.state p i).fg.tree → Anc (tr.HonestBlocks H) E O →
+        (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ E.root).h →
+        Compatible (tr.HonestBlocks H) B O →
+        ∃ C ∈ ell.frame.tree, Anc (tr.HonestBlocks H) B C ∧ (tr.state p i).fg.IsViable C := by
+      intro z q n O E ho hqt hE hEO hEf hcomp
+      have hBO : Anc (tr.HonestBlocks H) B O := by
+        rcases hcomp with h | h
+        · exact h
+        · have hh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hpH (hEO.trans h) hBy)
+          omega
+      have hOt := proposal_holds_high_of_finalized hp hpH hai hci hcall hd hti ho hqt
+        (hFB.trans hBO)
+      have hOy := frame_tree_subset hp hpH hci hOt
+      have hh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hpH hEO hOy)
+      exact ⟨O, hOt, hBO, hEf.trans hh⟩
+    by_cases hSf : (tr.state p i).fg.headHeightFloor ≤ ((tr.state v q).fg.σ S.root).h
+    · have hBS' : Anc (tr.HonestBlocks H) B S := by
+        rcases hBS with h | h
+        · exact h
+        · have hSy := mem_tree_of_anc hp hpH h hBy
+          have hh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hpH h hBy)
+          rw [← σ_eq_run hp hS.1 hpH hSsrc hSy] at hh
+          omega
+      have hSt := proposal_holds_high_of_finalized hp hpH hai hci hcall hd hti hS hqt
+        (hFB.trans hBS')
+      have hSy := frame_tree_subset hp hpH hci hSt
+      refine ⟨S, hSt, hBS', ?_⟩
+      change (tr.state p i).fg.headHeightFloor ≤ _
+      rw [← σ_eq_run hp hS.1 hpH hSsrc hSy]
+      exact hSf
+    · have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
+        hp.run hp.healthy hp.noColl a hp.reset
+      obtain ⟨z, q', n, O, E, hqi, ho, hn, hE, hEO, _, hEf⟩ :=
+        high_floor_source_at_proposal hp hS hpH hci hcall hti
+          (fun v r l O _ ho v' r' l' O' _ ho' => hret.comparable v r l O v' r' l' O' ho ho')
+          (fun z q' n O _ ho => hret.comparable v q m S z q' n O hS ho)
+          (lt_of_not_ge hSf)
+      obtain ⟨-, D, CV, -, hf, -⟩ := highOrigin_mem hp ho
+      have htime : tr.time q' < sp.ts u := fastLock_time_lt hp hf hn
+        (by have := hp.run.time_mono hqi.le; rw [hti] at this; have := sp.toParams.hΔ; linarith)
+      exact finish ho htime hE hEO hEf (hcompare z q' n O hqi ho)
+  obtain ⟨C, hCt, hBC, hCv⟩ := hdesc
+  have hrootB' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hrootB hBt
+  have hBC' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hBt hBC hCt
+  refine Or.inr ⟨hBt, hrootB', C, hCt, ?_, hBC'⟩
+  have hCf : C ∈ (Node.frame (tr.state p i)).tree := hfr ▸ hCt
+  have hrootC := hrootB'.trans hBC'
+  rw [hfr] at hrootC ⊢
+  exact ⟨hCf.1, hCf.2, Anc.mono (fun _ h => h.1) hrootC, hCv⟩
+
 /-- The packed old-source interface of the proposal row ordering lemma. -/
 private theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
