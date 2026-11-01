@@ -137,7 +137,8 @@ theorem origins_compatible_before (hp : ResetPremises tr H proposer dg g ΔF a) 
 store before cut `k` that a held chain has left is named by an honest attestation on a block of
 that store, signed before `k`, whose entry `E` lies below a high origin written by its signer
 before the signing (`high_row_source`). -/
-theorem left_entry_origin (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
+theorem ResetPremisesUpTo.left_entry_origin {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {E C : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
     (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
     (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
@@ -145,19 +146,36 @@ theorem left_entry_origin (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin
     ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v ∈ H, ∃ d < k, tr.SignAt v d att ∧
       att.T = E.root ∧ ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
         Anc (tr.HonestBlocks H) E O := by
-  have hU := honest_coherent hp
+  have hU := hp.honest_coherent
+  have hq : Hᶜ.ncard < sp.toParams.fg.q := by
+    have h3 := hp.faults
+    have hn := sp.toParams.hn
+    change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at h3
+    change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
+    omega
   obtain ⟨W, hW, att, ha, haT, haH⟩ := honest_att_of_left
-    (Compose.fg_reachable hp.run.toLocalRun hy k) (faulty_lt_q hp.healthy) hET hEC hlt
+    (Compose.fg_reachable hp.run.toLocalRun hy k) hq hET hEC hlt
   rcases tree_accepted hp.run.toLocalRun hy hW with rfl | ⟨i', hi', hA⟩
   · cases ha
   obtain ⟨d, hdi, hsd⟩ := hp.run.att_unforgeable y hy i' att (Or.inr ⟨W, ⟨true, hA⟩, ha⟩) haH
   obtain ⟨E', hE', hE'r, hE'h⟩ := signAt_entry hp.run haH hsd
   obtain rfl : E' = E := hU.1 ⟨_, haH, d, hE'⟩ ⟨y, hy, k, hE⟩ (hE'r.trans haT)
   obtain ⟨r, hrd, l, O, hoO, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
-    high_row_source hp haH hsd (by rw [← hE'h, σ_eq_run hp haH hy hE' hE]; exact hEh)
+    hp.high_row_source haH hsd (by rw [← hE'h, hp.σ_eq_run haH hy hE' hE]; exact hEh)
   obtain rfl : E₀ = E' := hU.1 ⟨_, haH, r, hE₀⟩ ⟨y, hy, k, hE⟩ (hE₀r.trans haT)
   exact ⟨W, hW, att, ha, att.val, haH, d, by omega, hsd, haT, r, hrd, l, O, hoO,
     hE₀O.mono fun X hX => ⟨_, haH, r, hX⟩⟩
+
+/-- Whole-run specialization of left-entry provenance. -/
+theorem left_entry_origin (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {E C : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
+    (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
+    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
+    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h) :
+    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v ∈ H, ∃ d < k, tr.SignAt v d att ∧
+      att.T = E.root ∧ ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
+        Anc (tr.HonestBlocks H) E O :=
+  (hp.toUpTo tr H (le_refl a)).left_entry_origin hy hE hET hEh hEC hlt
 
 /-! ### The report-time bound: pools and records at a slot start -/
 

@@ -144,7 +144,8 @@ private theorem mem_toFGCandidates' {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.
 /-- **Temporal source provenance of a high row** (`hr4-cut-scope.md` §4). An honest row of height
 `≥ H_z + 1` signed at cut `d` names the entry `E` (at its height) of the chain of a high origin
 `(O, l)` written by the signer at a cut `r < d`: `E ⪯ Q ⪯ O` for the row's source `Q`. -/
-theorem high_row_source (hp : ResetPremises tr H proposer dg g ΔF a) {v : Fin sp.n} (hv : v ∈ H)
+theorem ResetPremisesUpTo.high_row_source {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {v : Fin sp.n} (hv : v ∈ H)
     {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h) :
     ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ ∃ E ∈ (tr.state v r).fg.tree,
       (tr.state v r).fg.Anc E O ∧ E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
@@ -209,6 +210,14 @@ theorem high_row_source (hp : ResetPremises tr H proposer dg g ΔF a) {v : Fin s
     exact ⟨hv, joinedAt_of_fastLockAt hp.run hp.noColl hv hfl, ⟨CV, ℓw, D, hcw, hfl, rfl⟩, hOh⟩
   refine ⟨r, by omega, l₀.slot, O, hoO, E, hEt, store_anc_of_honest_anc hp.run hp.noColl hv hEO hOt,
     hEr', by rw [hσE, hEh'], by rw [hσE, hETh']⟩
+
+/-- Whole-run specialization of actual signed-row provenance. -/
+theorem high_row_source (hp : ResetPremises tr H proposer dg g ΔF a) {v : Fin sp.n} (hv : v ∈ H)
+    {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h) :
+    ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ ∃ E ∈ (tr.state v r).fg.tree,
+      (tr.state v r).fg.Anc E O ∧ E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
+      ((tr.state v r).fg.σ E.root).Th = E.root :=
+  (hp.toUpTo tr H (le_refl a)).high_row_source hv hs hh
 
 end Consensus.Goldilocks.Healing
 
