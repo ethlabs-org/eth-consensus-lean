@@ -86,7 +86,8 @@ otherwise the finality quorum of `(h_F, F)` on `X`'s chain and the crossing quor
 `W`'s chain (whose roots do not contain `F`) share `2q − n > f` validators with an E1 pair
 (`FG.finalization_meets_crossing`), an honest one of which signed both attestations
 (unforgeability) in one client run (`Store.signed_run`), against client safety (G0.5). -/
-theorem finalized_anc_of_height_lt (hp : ResetPremises tr H proposer dg g ΔF a) {y z : Fin sp.n}
+theorem finalized_anc_of_height_lt_of_run (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) {y z : Fin sp.n}
     (hy : y ∈ H) (hz : z ∈ H) {k m : Nat} {X F W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y k).fg.tree) (hF : F ∈ (tr.state y k).fg.tree)
     (hFr : F.root = ((tr.state y k).fg.σ X.root).F) (hW : W ∈ (tr.state z m).fg.tree)
@@ -95,17 +96,27 @@ theorem finalized_anc_of_height_lt (hp : ResetPremises tr H proposer dg g ΔF a)
   have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
   have hfg := Compose.fg_projection _ _ dg H _ tr proposer
     ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-    hp.run.genesis_root_ok hp.run.toLocalRun hp.noColl
+    hrun.genesis_root_ok hrun.toLocalRun hnc
   have hst : ∀ {w : Fin sp.n}, w ∈ H → ∀ i, tr.projFG.store w i = (tr.state w i).fg :=
-    fun hw i => by simp only [FGTrace.store, Compose.projFG_state hp.run.toLocalRun hw i]
+    fun hw i => by simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hw i]
   have hH : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
-    have h3 := hp.healthy.2.2
+    have h3 := hf
+    change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at h3
     have hn := sp.toParams.hn
     change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n
     omega
   have h := finalized_anc_of_lt_fg hfg hH hy hz (k := k) (m := m) (X := X) (F := F) (W := W)
   rw [hst hy, hst hz] at h
   exact h hX hF hFr hW hlt
+
+/-- Whole-run specialization; strict-height ancestry needs no future health. -/
+theorem finalized_anc_of_height_lt (hp : ResetPremises tr H proposer dg g ΔF a) {y z : Fin sp.n}
+    (hy : y ∈ H) (hz : z ∈ H) {k m : Nat} {X F W : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hX : X ∈ (tr.state y k).fg.tree) (hF : F ∈ (tr.state y k).fg.tree)
+    (hFr : F.root = ((tr.state y k).fg.σ X.root).F) (hW : W ∈ (tr.state z m).fg.tree)
+    (hlt : ((tr.state y k).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h) :
+    Anc (tr.HonestBlocks H) F W :=
+  finalized_anc_of_height_lt_of_run hp.run hp.noColl hp.healthy.2.2 hy hz hX hF hFr hW hlt
 
 /-- **G1.2 at strict height: a low `Σ.F` is below an honest-held high block**
 (`hr4-cut-scope.md` §3, "For low finalized height `d ≤ H`, `B`'s accepted chain has height `> d`";
@@ -114,21 +125,22 @@ claims G1.2;
 node's `Σ.h_j ≤ H_z`, its `Σ.F ⪯ Σ.J` is genesis or finalized at a height
 `d = σ[Σ.F].h ≤ σ[Σ.J].h = Σ.h_j ≤ H_z < σ[B].h` (`fin_pair_entry`; a genesis `Σ.J` makes `Σ.F`
 genesis), so `Σ.F ⪯ B` by G1.2 (`finalized_anc_of_height_lt`). -/
-theorem low_finalized_below_high_block (hp : ResetPremises tr H proposer dg g ΔF a)
+theorem low_finalized_below_high_block_of_run (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
     {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {m i : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBt : B ∈ (tr.state x i).fg.tree)
     (hhigh : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h)
     (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) :
     Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := by
-  have hreach := Compose.fg_reachable hp.run.toLocalRun hy m
-  have hU := Compose.honest_blocks_coherent hp.run.toLocalRun hp.noColl
+  have hreach := Compose.fg_reachable hrun.toLocalRun hy m
+  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
   have hsub : (tr.state y m).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, m, hX⟩
   have hcoh : Coherent (tr.state y m).fg.tree := hU.mono hsub
   have hg := Store.genesis_mem hreach
   have hgB : Anc (tr.HonestBlocks H)
       (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B :=
     ((Goldilocks.Store.accepted_tree _ _ _ _
-      (Compose.fg_reachable hp.run.toLocalRun hx i)).2.2.2 B hBt).mono
+      (Compose.fg_reachable hrun.toLocalRun hx i)).2.2.2 B hBt).mono
         (fun X hX => (⟨x, hx, i, hX⟩ : X ∈ tr.HonestBlocks H))
   obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ hreach
@@ -149,8 +161,17 @@ theorem low_finalized_below_high_block (hp : ResetPremises tr H proposer dg g Δ
     rw [hEg] at hFJ
     exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
   have h₁ := h_le_of_store_anc hreach hFJ
-  refine finalized_anc_of_height_lt hp hy hx hBf hFm hBfF.symm hBt ?_
+  refine finalized_anc_of_height_lt_of_run hrun hnc hf hy hx hBf hFm hBfF.symm hBt ?_
   omega
+
+/-- Whole-run specialization of the actual held-block finality comparison. -/
+theorem low_finalized_below_high_block (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {m i : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBt : B ∈ (tr.state x i).fg.tree)
+    (hhigh : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h)
+    (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) :
+    Anc (tr.HonestBlocks H) (tr.state y m).fg.F B :=
+  low_finalized_below_high_block_of_run hp.run hp.noColl hp.healthy.2.2 hy hx hBt hhigh hlow
 
 /-- The origin-specialized form of strict-height finalized ancestry. -/
 theorem low_finalized_below_origin (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n}
