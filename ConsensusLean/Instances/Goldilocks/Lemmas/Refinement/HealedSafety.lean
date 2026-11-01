@@ -10,6 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CoefficientAdapters
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 
 public section
@@ -557,14 +558,6 @@ theorem healthy_receiver_repair_of_opening (D : HealthyRepairSchedule S A V Q)
       hR hgu hTb hy hu hlookup
   exact ⟨x, hx, q, s, R, CV, hqj, hqt, O.old_lt.le.trans hs, hsource, .refl⟩
 
-/-- OPEN existence of a bounded operational opening that repairs every ready receiver.
-Proof route: opening → operational unanimity → held-only selection → receiver repair.
-Unanimity and live-lock comparison are not inferred from operational opening data alone;
-no `Healing.ReadyProposal` unguarded-support clause is assumed. -/
-theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
-    ∃ O : HealthyRepairOpening S A V Q D, HealthyReceiverRepair S A V Q D O := by
-  sorry
-
 set_option linter.unusedSectionVars false in
 /-- Repair cover retains the actual source-time bound at the stored clock. -/
 theorem healthy_current_record_sources_before_now (D : HealthyRepairSchedule S A V Q)
@@ -887,6 +880,76 @@ theorem healthy_repair_catch :
   exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
     (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
     hnet Q.healthy.2.2
+
+set_option linter.unusedSectionVars false in
+/-- The original progress interval supplies an actual opening; finite catch and
+operational selection then repair every ready receiver without read geometry. -/
+theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
+    ∃ O : HealthyRepairOpening S A V Q D, HealthyReceiverRepair S A V Q D O := by
+  classical
+  have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
+  have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
+      (fun s => Q.run.2.sel (.proposer s)) (family S (Model.pubOf Q.run.1)).skel.grid
+      ⟨Pattern.single, Q.index⟩ ((Sys (family S) V).cDur (K S A) Q.run)
+      Q.ready Q.heal := by
+    simpa only [System.prog, shapeProgress, shapeHolds, acceptanceContract, ite_eq_right hcap,
+      Model.sysExternal, System.cDur, System.pt, Sys, Model.sysOf, Model.Run.point] using hp
+  have hq0 : 0 ≤ D.query := (le_max_right _ _).trans ((le_max_right _ _).trans
+    ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower)))
+  have hq : max Q.ready 0 ≤ D.query := max_le ((le_max_left _ _).trans D.lower) hq0
+  have hd := Q.params.toParams.hΔ
+  have hwin : D.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.heal := by
+    nlinarith [D.reserve]
+  obtain ⟨s, hlo, hhi, hr⟩ := hrec D.query hq
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton] using hwin)
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton,
+      Model.Run.point] using hwin.trans hb)
+  have htime : (family S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
+    change (s : Time) * (4 * (Q.run.1.Δ + 1)) = 4 * (Q.run.1.Δ + 1) * s
+    ring
+  rw [htime] at hlo hhi
+  have hbound : Q.params.ts s ≤ D.query + 4 * (Q.index : Time) * Q.params.Δ := by
+    change Q.params.ts s ≤ D.query + (Q.index : Time) * (4 * Q.params.Δ) at hhi
+    nlinarith
+  have hsb : Q.params.ts s ≤ Q.run.2.horizon := by nlinarith [D.reserve]
+  have hready := hr 0 (by simp [Pattern.single])
+  simp only [Nat.add_zero] at hready
+  have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
+    simp only [runProposer, dite_eq_left hready.1]
+    exact Finset.min'_mem _ _
+  have hR := hready.2 _ hmem
+  rw [htime] at hR
+  have hnode := ready_transport S Q.run.2 Q.hn Q.valid (hq0.trans hlo.le) hsb hR
+  rw [show Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn s)) =
+    runProposer S Q.run.2 Q.hn s from Q.run.2.key.symm_apply_apply _] at hnode
+  have hold : D.oldLabel < s := by
+    exact_mod_cast (SA.ts_lt_iff Q.params).mp
+      (lt_of_le_of_lt ((le_max_left _ _).trans ((le_max_right _ _).trans
+        ((le_max_right _ _).trans D.lower))) hlo)
+  have hshort : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) (Regimes.catchUp Q.params)
+      (runProposer S Q.run.2 Q.hn s) (Q.params.ts s) := by
+    refine ⟨hnode.1, fun t ht hts => hnode.2 t ?_ hts⟩
+    apply le_trans _ ht
+    apply max_le_max_left
+    have : Regimes.catchUp Q.params ≤ (Sys (family S) V).cDur (K S A) Q.run := by
+      simpa only [Regimes.catchUp] using D.duration_bound
+    linarith
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hnc := noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision
+  obtain ⟨k, P, hP, ht⟩ := Regimes.ready_proposer_proposes hrun hnc (s := s)
+    (Nat.zero_le D.oldLabel |>.trans_lt hold) hshort
+  have hlabel : P.slot = s := by
+    have := hP.2.2
+    rw [ht] at this
+    rw [Q.params.slotTime_eq] at this
+    have he : (P.slot : Time) = (s : Time) := by
+      simp only [SA.SAParams.ts] at this
+      nlinarith
+    exact_mod_cast he
+  let O : HealthyRepairOpening S A V Q D :=
+    ⟨s, k, P, hlo, hbound, hold, hlabel, hP, Compose.proposal_accepted hrun hnc hnode.1 hP,
+      ht, hnode⟩
+  exact ⟨O, healthy_receiver_repair_of_opening S A V Q hb D O (healthy_repair_catch S A V Q)⟩
 
 -- Preserve the producer's existing section hypotheses although the finite adapter needs fewer.
 set_option linter.unusedSectionVars false in
