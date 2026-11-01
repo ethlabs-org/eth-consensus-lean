@@ -445,6 +445,32 @@ eventual cache acceptance. Selection alone is not P4. The revised good-window
 productivity and preservation obligations remain to be stated; C alone does not
 bound dirty entries or prove finality progress. No final latency coefficient is selected.
 
+## Approved conditional Sleepy supplier skeleton
+
+`Lemmas/Refinement/NonfinalSuppliers.lean` contains the lead-reviewed Sleepy
+signature slices. It imports Accepted for its existing coefficients; it does not
+yet replace the endpoint adapters or enter Main/Solution. All names below are in
+`Consensus.Goldilocks.Refinement`. No Healthy premise or endpoint duration changes.
+
+| Named obligation | Status and exact remaining work |
+|---|---|
+| `confirmed_duration_supply` | OPEN: joint coefficient bound `18Δp ≤ cDur`, also for Healthy queries; positivity alone does not prove it. |
+| `sleepy_query_sync` | OPEN: actual canonical finite service through the exact engine deadline. |
+| `sleepy_query_population` | OPEN: population transport at slot points `{0,Δp,2Δp}` bounded by that deadline. |
+| `sleepy_query_producer` | OPEN transitively; assembly body now uses the separate slot and event leaves below, then proved own-proposal acceptance. |
+| `sleepy_query_slot` | OPEN: recurrence/grid selects a positive slot with strict freshness, `6Δp` service margin and exact-cDur-ready selected proposer. Readiness at `18Δp` cannot be upgraded. |
+| `confirmed_slot_event` | OPEN: joined/eligible state and an actual scheduled canonical engine event within the horizon. Eligibility is not event existence; any duration bridge retains the coefficient dependency. |
+| imported `sleepy_include_finite` | OPEN: finite inclusion from the explicit service/population premises and `6Δp` margin. |
+
+These six named supplier obligations contain **five direct sorries**, because
+`sleepy_query_producer` is an assembly, not an additional leaf.
+`sleepy_serviced_proposal_supply` assembles the selected actual proposal and concrete
+service record; `sleepy_serviced_proposal_coverage` applies finite inclusion only to
+that serviced proposal. Their bodies are not no-sorry proofs. Actual acceptance uses
+`Compose.proposal_accepted`. The directional readiness proof preserves exact cDur.
+Healthy preparation/preservation, arbitrary-cut safety, outage and endpoint assembly
+are excluded from this landing and remain OPEN.
+
 ## Still missing from this inventory
 
 Remaining finite adapter types, deeper outage/final leaves, and completed paper

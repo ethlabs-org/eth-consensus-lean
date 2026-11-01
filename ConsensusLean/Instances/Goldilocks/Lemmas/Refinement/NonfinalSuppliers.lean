@@ -1,0 +1,185 @@
+module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
+
+public section
+
+namespace Consensus.Goldilocks.Refinement
+open Blocks Shape
+
+variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type)
+  [Fintype V] [DecidableEq V]
+
+/-- Draft: the two non-final liveness routes keep their distinct capability budgets.
+The endpoint readiness duration is unchanged; this is not protocol catchUp. -/
+structure ConfirmedQuery where
+  run : (Sys (family S) V).Run
+  hn : 1 ≤ Fintype.card V
+  cap : Capability
+  nonfinal : cap = .available ∨ cap = .stable
+  index : (K S A).Idx
+  gst : Time
+  query : Time
+  valid : (Sys (family S) V).Valid run
+  noCollision : ¬ run.2.HashCollision
+  regime :
+    ((Sys (family S) V).Sleepy (K S A) run ∧
+      (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) cap index
+        0 run.2.horizon run ∧ 0 ≤ query) ∨
+    ((Sys (family S) V).Healthy (K S A) gst run ∧
+      (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) cap index
+        ((Sys (family S) V).ready (K S A) gst run) run.2.horizon run ∧
+      (Sys (family S) V).heal (K S A) cap index gst run ≤ query)
+  bounded : query + ((K S A).params.latency cap index : Time) * run.1.Δ ≤ run.2.horizon
+  reader : ∃ v, run.2.point.Ready ((Sys (family S) V).cDur (K S A) run) v
+    (query + ((K S A).params.latency cap index : Time) * run.1.Δ)
+
+namespace ConfirmedQuery
+variable {S A V}
+abbrev params (Q : ConfirmedQuery S A V) := S.params (Model.pubOf Q.run.1) Q.hn
+noncomputable abbrev trace (Q : ConfirmedQuery S A V) := simTrace S Q.run.2 Q.hn
+noncomputable abbrev duration (Q : ConfirmedQuery S A V) :=
+  (Sys (family S) V).cDur (K S A) Q.run
+noncomputable abbrev deadline (Q : ConfirmedQuery S A V) : Time :=
+  Q.query + ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.Δ
+end ConfirmedQuery
+
+/-- Actual production at a finite cut, not an eligible schedule slot alone.
+Acceptance is explicit: release alone does not imply local acceptance. -/
+structure ConfirmedProposal (Q : ConfirmedQuery S A V) where
+  block : SA.Blk Q.params.n (List (FG.Att Q.params.n))
+  cut : Nat
+  proposal : Q.trace.ProposesAt block.proposer cut block
+  accepted : Q.trace.AcceptAt block.proposer cut block
+  ready : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration
+    block.proposer (Q.trace.time cut)
+  fresh : Q.query < Q.trace.time cut
+  bounded : Q.trace.time cut ≤ Q.deadline
+
+/-- Concrete finite service inputs for the Sleepy inclusion consumer. These are
+supplier conclusions, never additional assumptions of the Accepted endpoint.
+The duration inequality is directional and preserves the endpoint's exact cDur. -/
+structure SleepyProposalService (Q : ConfirmedQuery S A V)
+    (P : ConfirmedProposal S A V Q) : Prop where
+  nonnegative : 0 ≤ Q.trace.time P.cut
+  margin : Q.trace.time P.cut + 6 * Q.params.Δ ≤ Q.deadline
+  duration : Regimes.catchUp Q.params ≤ Q.duration
+  sync : Q.trace.SyncBefore (honestKeys S Q.run.2) Q.params.Δ Q.deadline
+  population : ∀ s : Nat, ∀ d ∈ ({0, Q.params.Δ, 2 * Q.params.Δ} : Set Time),
+    Q.params.ts s + d ≤ Q.deadline →
+      Q.trace.FaultBound (honestKeys S Q.run.2) (Q.params.ts s + d)
+
+/-- Directional node-readiness bridge. Larger catch-up duration requires an awake
+interval containing the smaller one; no equality of engine and protocol scales. -/
+theorem confirmed_ready_mono (Q : ConfirmedQuery S A V) {c d : Time}
+    (hcd : c ≤ d) {y t}
+    (h : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) d y t) :
+    Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) c y t := by
+  change _ ∧ (∀ τ, max 0 (t - d - 1) ≤ τ → τ ≤ t → _) at h
+  change _ ∧ (∀ τ, max 0 (t - c - 1) ≤ τ → τ ≤ t → _)
+  refine ⟨h.1, fun τ hlo hhi => h.2 τ ?_ hhi⟩
+  exact (max_le_max_left 0 (sub_le_sub_right (sub_le_sub_left hcd t) 1)).trans hlo
+
+/-- OPEN joint coefficient obligation, not equality of engine and node durations. -/
+theorem confirmed_duration_supply (Q : ConfirmedQuery S A V) :
+    Regimes.catchUp Q.params ≤ Q.duration := by
+  sorry
+
+/-- OPEN canonical recipient service through the actual query deadline. -/
+theorem sleepy_query_sync (Q : ConfirmedQuery S A V)
+    (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run) :
+    Q.trace.SyncBefore (honestKeys S Q.run.2) Q.params.Δ Q.deadline := by
+  sorry
+
+/-- OPEN population transport only at the finite consumer's slot points. -/
+theorem sleepy_query_population (Q : ConfirmedQuery S A V)
+    (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run) :
+    ∀ s : Nat, ∀ d ∈ ({0, Q.params.Δ, 2 * Q.params.Δ} : Set Time),
+      Q.params.ts s + d ≤ Q.deadline →
+        Q.trace.FaultBound (honestKeys S Q.run.2) (Q.params.ts s + d) := by
+  sorry
+
+/-- The recurrence/grid supplier selects readiness at exact endpoint cDur directly.
+Readiness merely at 18Δp cannot be upgraded to this field by monotonicity. -/
+structure ConfirmedProducerSlot (Q : ConfirmedQuery S A V) where
+  slot : Nat
+  positive : 1 ≤ slot
+  fresh : Q.query < Q.params.ts slot
+  margin : Q.params.ts slot + 6 * Q.params.Δ ≤ Q.deadline
+  ready : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration
+    (runProposer S Q.run.2 Q.hn slot) (Q.params.ts slot)
+
+/-- OPEN recurrence/grid selection with stronger exact-cDur readiness. -/
+theorem sleepy_query_slot (Q : ConfirmedQuery S A V)
+    (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run)
+    (hprogress : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A)
+      Q.cap Q.index 0 Q.run.2.horizon Q.run)
+    (hquery : 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlot S A V Q) := by
+  sorry
+
+/-- OPEN selected eligible slot to actual canonical proposal event. Acceptance is
+not assumed here: the existing own-proposal acceptance theorem supplies it.
+The proof must establish joined/eligible state and an actual scheduled engine
+event. Slot eligibility is not event existence. W.margin and Q.bounded bound
+the slot by the horizon; any ready-to-joined use of confirmed_duration_supply
+retains that unresolved joint coefficient dependency. -/
+theorem confirmed_slot_event (Q : ConfirmedQuery S A V)
+    (W : ConfirmedProducerSlot S A V Q) :
+    ∃ (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (k : Nat),
+      B.proposer = runProposer S Q.run.2 Q.hn W.slot ∧
+      Q.trace.ProposesAt B.proposer k B ∧ Q.trace.time k = Q.params.ts W.slot := by
+  sorry
+
+/-- Actual production assembled from selected slot, canonical event and proved
+own acceptance, preserving the exact-cDur readiness selected by recurrence. -/
+theorem sleepy_query_producer (Q : ConfirmedQuery S A V)
+    (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run)
+    (hprogress : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A)
+      Q.cap Q.index 0 Q.run.2.horizon Q.run)
+    (hquery : 0 ≤ Q.query) :
+    ∃ P : ConfirmedProposal S A V Q,
+      Q.trace.time P.cut + 6 * Q.params.Δ ≤ Q.deadline := by
+  obtain ⟨W⟩ := sleepy_query_slot S A V Q hsleepy hprogress hquery
+  obtain ⟨B, k, hp, he, ht⟩ := confirmed_slot_event S A V Q W
+  have hr : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration
+      B.proposer (Q.trace.time k) := by rw [hp, ht]; exact W.ready
+  have hacc := Compose.proposal_accepted (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid)
+    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hr.1 he
+  have hmargin : Q.trace.time k + 6 * Q.params.Δ ≤ Q.deadline := by
+    rw [ht]; exact W.margin
+  have hbound : Q.trace.time k ≤ Q.deadline :=
+    (le_add_of_nonneg_right (mul_nonneg (by norm_num) Q.params.toParams.hΔ.le)).trans hmargin
+  exact ⟨⟨B, k, he, hacc, hr, ht ▸ W.fresh, hbound⟩, hmargin⟩
+
+/-- Assembly of the named production, coefficient and finite-service obligations.
+The approved joint signature is unchanged; its body no longer hides those leaves. -/
+theorem sleepy_serviced_proposal_supply (Q : ConfirmedQuery S A V)
+    (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run)
+    (hprogress : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A)
+      Q.cap Q.index 0 Q.run.2.horizon Q.run)
+    (hquery : 0 ≤ Q.query) :
+    ∃ P : ConfirmedProposal S A V Q, SleepyProposalService S A V Q P := by
+  obtain ⟨P, hm⟩ := sleepy_query_producer S A V Q hsleepy hprogress hquery
+  exact ⟨P, ⟨hquery.trans P.fresh.le, hm, confirmed_duration_supply S A V Q,
+    sleepy_query_sync S A V Q hsleepy, sleepy_query_population S A V Q hsleepy⟩⟩
+
+/-- Coverage consumes the selected proposal's service evidence, not boundedness
+alone. Its remaining proof dependency is the existing finite inclusion theorem. -/
+theorem sleepy_serviced_proposal_coverage (Q : ConfirmedQuery S A V)
+    (P : ConfirmedProposal S A V Q) (W : SleepyProposalService S A V Q P) :
+    ∀ y j, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration y Q.deadline →
+      Regimes.CutAfter Q.trace j Q.deadline →
+      Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) P.block
+        (Regimes.readAfter Q.trace y j Q.deadline) := by
+  intro y j hy hj
+  exact sleepy_include_finite S Q.run.2 Q.hn Q.valid
+    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    (W.nonnegative.trans P.bounded) Q.bounded W.sync W.population
+    W.nonnegative P.bounded
+    ⟨P.block.proposer, P.cut, confirmed_ready_mono S A V Q W.duration P.ready,
+      P.proposal, rfl⟩ W.margin le_rfl
+    (confirmed_ready_mono S A V Q W.duration hy) hj
+
+end Consensus.Goldilocks.Refinement
+end
