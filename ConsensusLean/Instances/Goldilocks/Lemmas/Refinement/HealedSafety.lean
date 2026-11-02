@@ -13,6 +13,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 
+-- Keep the finite stored-clock producer proofs beside their common context and consumers.
+set_option linter.style.longFile 1600
+
 public section
 namespace Consensus.Goldilocks.Refinement
 open Blocks Shape
@@ -854,7 +857,7 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
       ht, hnode⟩
   exact ⟨O, healthy_receiver_repair_of_opening S A V Q hb D O (healthy_repair_catch S A V Q)⟩
 
-/-- OPEN current anchor candidates are compatible with the current looked-up record. -/
+/-- Current anchor candidates are compatible with the current looked-up record. -/
 theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
     {v : V} {i : Nat} (C : HealthyReadContext S A V Q D v i)
     {R : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
@@ -865,7 +868,82 @@ theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
         (stateAt S Q.run.2 Q.hn v i).now ∪
         {(Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).fcRoot},
       Goldilocks.Compatible (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree X R := by
-  sorry
+  have hq := D.lower
+  simp only [max_le_iff] at hq
+  obtain ⟨_, hqd, _, hqg, hq0⟩ := hq
+  have hΔ := Q.params.toParams.hΔ
+  have htpos : 0 < (stateAt S Q.run.2 Q.hn v i).now := by
+    have := C.repaired
+    have := Int.natCast_nonneg Q.index
+    nlinarith
+  have hv : v ∈ Q.run.2.honest := by
+    rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with
+      hs | ⟨j, _, e, he, hev, _, _⟩
+    · rw [hs] at htpos
+      change 0 < (0 : Time) at htpos
+      exact (lt_irrefl (0 : Time) htpos).elim
+    · exact hev ▸ Q.valid.honest_only e (List.mem_of_getElem? he)
+  have hy := honest_ownKey (S := S) hv
+  have hc := healthy_repair_catch S A V Q
+  obtain ⟨O, _⟩ := healthy_bounded_repairing_opening S A V Q h0 hb hp W states D
+  have hdrain := hqd.trans O.fresh.le
+  have hgu := hqg.trans O.fresh.le
+  have hbefore : Q.params.ts O.slot + 6 * Q.params.Δ <
+      (stateAt S Q.run.2 Q.hn v i).now := by
+    have := O.bounded
+    have := C.repaired
+    linarith
+  have hTb := hbefore.le.trans C.time_bound
+  have hjoin : Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤
+      Q.params.ts O.slot := by
+    have hbase := (SA.ts_le_iff_le_slot Q.params (SA.gbar_nonneg Q.gst)
+      (Q.params.slot (SA.gbar Q.gst))).mpr le_rfl
+    simp only [SA.SAParams.ts] at hbase hgu ⊢
+    push_cast at hbase hgu ⊢
+    linarith
+  obtain ⟨j, ell, _, hup, _⟩ := D.reset.update_toFG_calls hy hjoin hTb
+  have hjn : j < C.cut := by
+    by_contra h
+    have := C.readPoint.2.trans (D.reset.run.time_mono (Nat.le_of_not_gt h))
+    have ht : Q.trace.time j = Q.params.ts O.slot + 6 * Q.params.Δ := hup.2.2.1
+    linarith
+  obtain ⟨x, hx, r, s, CV, hrn, hus, hsource⟩ :=
+    UpTo.record_source_after_operational_update D.reset hc O.ready.1 rfl O.proposes O.label
+      hdrain hgu hTb hy hup hjn hR
+  have hrb := (C.readPoint.1 r hrn).trans C.time_bound
+  have hs : Healing.cleanLabel Q.params D.resetTime + 2 * Q.params.k + 1 ≤ s := by
+    rw [← D.cleanLabel_eq]
+    have := D.old_bound
+    have := O.old_lt
+    omega
+  have hib : ∀ q < C.cut, Q.trace.time q ≤ Q.run.2.horizon :=
+    fun q hq => (C.readPoint.1 q hq).trans C.time_bound
+  have hU := D.reset.honest_coherent
+  have hPhi := Compose.frameOK_state D.reset.run.toLocalRun hy C.cut
+  have hsub : (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree ⊆
+      Q.trace.HonestBlocks (honestKeys S Q.run.2) := fun X hX => ⟨_, hy, _, hX.1⟩
+  have hRm := (SA.lookup_eq_some hR).1
+  intro X hX
+  rcases hX with hX | hX
+  · have hdrainNow := hdrain.trans (show Q.params.ts O.slot ≤
+        (stateAt S Q.run.2 Q.hn v i).now by linarith)
+    obtain ⟨l, hl, E, hE, hEr, hlive, rfl⟩ := SA.mem_liveLockBlocks hPhi hX
+    rw [← Compose.projAC_state D.reset.run.toLocalRun hy C.cut] at hl
+    have hRE := D.reset.clean_source_stored_lock_compatible hc hx hy hsource hs hrb hib hl
+      (Healing.drain_stored_lock_label hdrainNow hlive) (hsub hE) hEr
+    have hXE := (SA.viableAncestor_anc hPhi hE).2.mono hsub
+    have hXR := tips_comparable_of_origin_witnesses S A V Q hXE (.refl (a := R)) hRE.symm
+    rcases hXR with h | h
+    · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi hsub hX.1 h hRm)
+    · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hsub hRm h hX.1)
+  · obtain rfl := Set.mem_singleton_iff.mp hX
+    obtain ⟨z, q, l, B, hseed, hqb, _, _, hhold⟩ :=
+      D.reset.reset_seed_held_at_read hc hy C.readPoint C.time_bound hdrain hgu hbefore
+    have hcandidate := UpTo.guarded_seed_ancestor_candidate_at_state D.reset hy hib hRm
+      hseed hqb hhold (D.reset.clean_source_compatible_high_origin hc hx hsource hs hrb hseed hqb)
+      (fun z q l B hqn ho =>
+        D.reset.clean_source_compatible_high_origin hc hx hsource hs hrb ho (hib q hqn))
+    exact hcandidate.elim Or.inr (fun h => Or.inl h.2.1)
 
 /-- OPEN actual anchor coverage or a mature raw witness; a young optimistic origin
 does not satisfy the raw arm merely because it was produced before this read. -/
