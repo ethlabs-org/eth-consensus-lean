@@ -1305,6 +1305,47 @@ theorem FrameWindow.toFG_later_proposal_head
         rwa [show (tr.state y a).fg.fcRoot = (tr.state y a).fg.J from ite_eq_left hkind,
           hframe.root_eq y hy a halo ((hrun.time_mono hai.le).trans hihi) hk'] at hroot
 
+/-- The drain caller's warm schedule supplies vote-deadline joinedness;
+the weaker independent `2Δ` margin is not used as a substitute. -/
+theorem joined_voteTime_of_warm_frame {g : Time} {s₀ u : Nat}
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hs : s₀ + 1 ≤ u)
+    {y : Fin sp.n} (hy : y ∈ H) :
+    SA.JoinedAt tr.projAC y (sp.ts u + sp.Δ) := by
+  have hΔ := sp.toParams.hΔ
+  have hslot : sp.slot (sp.ts u + sp.Δ) = u := by
+    apply SA.slot_of_mem sp u
+    all_goals simp only [SAParams.ts]; push_cast; linarith
+  intro i hi _
+  change tr.time i ≤ sp.ts ((sp.slot (sp.ts u + sp.Δ) : Int) - 1)
+  rw [hslot]
+  have ht := (SA.ts_le_iff sp).2 (show (s₀ : Int) ≤ (u : Int) - 1 by omega)
+  exact (hnr y hy i (Compose.projAC_restartAt.mp hi)).trans (by linarith)
+
+/-- The fresh lock remains a ToFG candidate at the adjacent read once its
+full-frame viability and unchanged viable ancestor have been transported. -/
+theorem fresh_lock_toFG_candidate {A : SA.SAState sp.n}
+    {Phi : SA.Frm sp.n (List (FG.Att sp.n))} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u : Nat} {t : Time} (hv : P ∈ Phi.viableTree Phi.tree)
+    (hva : Phi.viableAncestor P = P)
+    (hl : (⟨P.root, u, true⟩ : SA.Lock) ∈ A.locks)
+    (ht : t = sp.ts (u + 1 : Nat) + 2 * sp.Δ) :
+    P ∈ SA.toFGCandidates sp A Phi t := by
+  have hslot : sp.slot t = u + 1 := by
+    rw [ht]
+    apply SA.slot_of_mem sp (u + 1)
+    all_goals simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+  refine ⟨hv, ⟨P.root, u, true⟩, ?_, rfl, rfl, ?_⟩
+  · refine ⟨⟨P.root, u, true⟩, hl, P, hv.1, rfl, ?_, ?_⟩
+    · change sp.slot t ≤ u + sp.k
+      rw [hslot]
+      have := sp.two_le_k
+      omega
+    · simp only [hva]
+  · change sp.slot t ≤ u + 2
+    rw [hslot]
+    omega
+
 end Consensus.Goldilocks.Healing
 
 end
