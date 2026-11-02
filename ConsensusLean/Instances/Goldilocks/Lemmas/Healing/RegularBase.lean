@@ -1048,6 +1048,256 @@ theorem FrameWindow.frozen_competitor_reflect {s₀ s floor : Nat}
   exact ⟨hBp, hrootX.tail ⟨hX, hBp, hBX⟩, W', hW't, hW'v,
     SA.anc_tree_of_anc_U hr.coherent hPhip.1 hPhip.2 hBp hBW' hW't⟩
 
+/-- The actual full-frame proposal walk stops at its duty head. This is the
+finite walk supplied by acProposal, without any settled-phase interface. -/
+theorem proposal_walk_end (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {z : Fin sp.n} (hz : z ∈ H) {ip : Nat}
+    {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z ip ellp)
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hp : (SA.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
+      some (d, pay)) :
+    d.start ∈ ellp.frame.tree ∧
+      ellp.frame.Anc ellp.frame.fcRoot d.start ∧
+      SA.WalkEnd (sp := sp) (ellp.frame.viableTree ellp.frame.tree)
+        (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) ((sp.slot (tr.time ip) : Int) - 1))
+        (SA.goldfishEligible sp ellp.frame (tr.time ip) (SA.View.ofLists pay)
+          ((sp.slot (tr.time ip) : Int) - 1)) d.start d.head := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hPhi := (SA.frameIn_of_callAt hr hz hcp).1
+  have key (A : SA.SAState sp.n) (V : SA.View sp.n) (σ : Int) :
+      SA.getAnchor sp A ellp.frame (tr.time ip) ∈ ellp.frame.tree ∧
+      ellp.frame.Anc ellp.frame.fcRoot (SA.getAnchor sp A ellp.frame (tr.time ip)) ∧
+      SA.WalkEnd (sp := sp) (ellp.frame.viableTree ellp.frame.tree)
+        (SA.goldfishScore sp ellp.frame V σ)
+        (SA.goldfishEligible sp ellp.frame (tr.time ip) V σ)
+        (SA.getAnchor sp A ellp.frame (tr.time ip))
+        (SA.getHead sp A ellp.frame (tr.time ip) (ellp.frame.viableTree ellp.frame.tree) V σ) := by
+    have hroot := SA.fcRoot_anc_getAnchor hPhi A (tr.time ip)
+    have hstart : SA.getAnchor sp A ellp.frame (tr.time ip) ∈ ellp.frame.tree := by
+      rcases eq_or_ne ellp.frame.fcRoot (SA.getAnchor sp A ellp.frame (tr.time ip)) with he | he
+      · exact he ▸ hPhi.fcRoot_mem
+      · exact (Anc.mem hroot he).2
+    refine ⟨hstart, hroot, ?_⟩
+    exact SA.walkEnd_ghost hPhi.coherent (fun X hX => hX.1)
+      (hPhi.finite.subset fun X hX => hX.1)
+      (Set.ncard_le_ncard (fun X hX => hX.1) hPhi.finite) _
+  unfold SA.acProposal at hp
+  split_ifs at hp
+  simp only [Option.some.injEq, Prod.mk.injEq] at hp
+  obtain ⟨rfl, rfl⟩ := hp
+  exact key _ _ _
+
+/-- Above both anchors, the actual proposal winner remains the voter's winner.
+Finite view equality and reflected competitors replace the settled-phase
+supplier. The path and frozen proposal are the Step 5 consumer geometry. -/
+theorem FrameWindow.proposal_suffix_before {s₀ s floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hm : gbar g + 2 * sp.Δ ≤ sp.ts s) (hs₀ : s₀ ≤ s + 1)
+    {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1))
+    {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
+    (hti : tr.time ip = sp.ts (s + 1 : Nat))
+    (hpay : (SA.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
+      some (d, pay)) (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
+    (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
+    (hPv : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+    {X C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hstartX : ellp.frame.Anc d.start X) (hXQ : ellp.frame.Anc X d.head) (hne : X ≠ d.head)
+    (hanchorX : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) X)
+    (hC : SA.IsBest sp (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
+      {B | B ∈ ellp.frame.viableTree ellp.frame.tree ∧ B.parent = some X.root ∧
+        SA.goldfishEligible sp ellp.frame (tr.time ip) (SA.View.ofLists pay) s B} C) :
+    SA.IsBest sp (SA.goldfishScore sp ell.frame
+      (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s)
+      {B | B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)) ∧
+        B.parent = some X.root ∧ SA.goldfishEligible sp ell.frame (tr.time i)
+          (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B} C := by
+  have hr := hS.run.localRun
+  have hPhi := SA.frameIn_of_callAt hr hy hc.1
+  have hPhip := SA.frameIn_of_callAt hr hz hcp
+  have hslot : sp.slot (tr.time ip) = s + 1 := SA.proposal_slot (tr := tr.projAC) hti
+  have ⟨hst, hroot, hw⟩ := proposal_walk_end hrun hnc hz hcp hpay
+  simp only [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hw
+  have hT : ellp.frame.viableTree ellp.frame.tree ⊆ ellp.frame.tree := fun _ h => h.1
+  have hQt : d.head ∈ ellp.frame.tree := by
+    rcases eq_or_ne d.start d.head with he | he
+    · exact he ▸ hst
+    · exact (Anc.mem (hw.anc hT hst) he).2
+  have hXt := SA.mem_of_anc hXQ hQt
+  have hCQ : ellp.frame.Anc C d.head := by
+    obtain ⟨f, hwalk, _⟩ := SA.walkEnd_iff.1 (hw.of_anc hPhip.1.coherent hT hstartX hXQ)
+    cases f with
+    | zero => exact (hne hwalk).elim
+    | succ f =>
+      rw [show f + 1 = 1 + f by omega, SA.ghost_add, SA.ghost_succ_of_best 0 X hC] at hwalk
+      exact hwalk ▸ SA.anc_ghost hT f (hT hC.1.1)
+  have hCP : Anc (tr.HonestBlocks H) C P :=
+    (hCQ.mono hPhip.2).tail ⟨hPhip.2 hQt, hPhi.2 hPv.1.1, hparent⟩
+  have hXC : Anc (tr.HonestBlocks H) X C :=
+    .single ⟨hPhip.2 hXt, hPhip.2 hC.1.1.1, hC.1.2.1⟩
+  have hfX := ((SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)).mono hPhi.2).trans hanchorX
+  have hfC := hfX.trans hXC
+  have hCt := SA.frame_mem_of_between sp hr.coherent hPhi.1 hPhi.2 hPv.1.1 hCP
+    ((hPhi.1.F_anc_fcRoot.mono hPhi.2).trans hfC)
+  have hCPy := SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hCt hCP hPv.1.1
+  have hCy : C ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)) :=
+    ⟨⟨hCt, Or.inr ⟨P, hPv.1.1, hPs, hCPy⟩⟩,
+      SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hPhi.1.fcRoot_mem hfC hCt,
+      hPv.2.2.choose, hPv.2.2.choose_spec.1, hPv.2.2.choose_spec.2.1,
+      hCPy.trans hPv.2.2.choose_spec.2.2⟩
+  have hXy := SA.frame_mem_of_between sp hr.coherent hPhi.1 hPhi.2 hCt hXC
+    ((hPhi.1.F_anc_fcRoot.mono hPhi.2).trans hfX)
+  have hlo : sp.ts (s + 1 : Nat) ≤ tr.time i :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2
+      (by rw [← (SA.castAt_spec hr hy hc).2.1, hes])
+  have hipb : sp.ts (s + 1 : Nat) ≤ b := hlo.trans hib
+  have hv := proposal_views_agree_before hrun hnc hS hnr hm hz hdesignated hactual hPs
+    ⟨hcp, hcall, d, hpay⟩ hti hpayload hy hc hes hPv.1.1 hib
+  have hsc : ∀ B ∈ ellp.frame.tree, B ∈ ell.frame.tree →
+      SA.goldfishScore sp ell.frame (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B =
+        SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s B := by
+    intro B hBp hBy
+    simp only [SA.goldfishScore, hv.1, hv.2.2 B hBp hBy]
+  have hrefl : ∀ B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)),
+      B.parent = some X.root → B ∈ ellp.frame.viableTree ellp.frame.tree := by
+    intro B hB hBX
+    apply hframe.frozen_competitor_reflect hrun hnc hS hnr hf hm hs₀ hz hdesignated
+      hactual hPs hcp hcall hti hpay hparent hy hc hes hhigh hipb hXt (hroot.trans hstartX) hBX _ hB
+    intro he
+    subst B
+    exact hne (hPhip.1.coherent.1 hXt hQt (Option.some.inj (hBX.symm.trans hparent)))
+  by_cases hXv : X ∈ ellp.frame.viableHeads
+  · have hCs : C.slot ≠ sp.slot (tr.time ip) := by
+      have hle := (Anc.slot_le hPhip.1.coherent hCQ).1
+      have hlt := hr.coherent.2 d.head (hPhip.2 hQt) P (hPhi.2 hPv.1.1) hparent
+      rw [hslot, hPs] at *
+      omega
+    exact SA.isBest_transfer hXv hCs hv.2.1 hsc hT (fun _ h => h.1.1) hCy hrefl hC
+  · have hXnv : X ∉ ell.frame.viableHeads := by
+      intro hXv'
+      have hiplo : sp.ts s₀ ≤ tr.time ip := by
+        rw [hti]; exact (SA.ts_le_iff sp).2 (by exact_mod_cast hs₀)
+      have hiphi : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by rw [hti]; linarith [sp.toParams.hΔ]
+      have hvX := hXv'
+      have htX := hXt
+      rw [Compose.frame_of_projAC hrun hy hc.1] at hvX
+      rw [Compose.frame_of_projAC hrun hz hcp] at htX
+      have hvp := hframe.viableHead_transfer hrun hnc hf hz hy hiplo hiphi
+        (hiplo.trans (hti ▸ hlo)) hhigh hvX htX
+      rw [← Compose.frame_of_projAC hrun hz hcp] at hvp
+      exact hXv hvp
+    refine SA.isBest_transfer_low (fun W hW hr => hXv ?_) (fun W hW hr => hXnv ?_)
+      hsc hT (fun _ h => h.1.1) hCy hrefl hC
+    · rwa [hPhip.1.coherent.1 (hPhip.1.viableHeads_subset hW) hXt hr] at hW
+    · rwa [hPhi.1.coherent.1 (hPhi.1.viableHeads_subset hW) hXy hr] at hW
+
+/-- At the viable proposal parent above the voter's root, the voter takes P
+and stops. Old competitors reflect to the stopped proposal walk, with the
+same scores; no prior unanimity above the parent is assumed. -/
+theorem FrameWindow.proposal_stop_before {s₀ s floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hm : gbar g + 2 * sp.Δ ≤ sp.ts s) (hs₀ : s₀ ≤ s + 1)
+    {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1))
+    {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1) (hpH : P.proposer ∈ H)
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
+    (hti : tr.time ip = sp.ts (s + 1 : Nat))
+    (hpay : (SA.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
+      some (d, pay)) (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
+    (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
+    (hPv : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+    (hrootQ : Anc (tr.HonestBlocks H) ell.frame.fcRoot d.head) :
+    (P ∈ {B | B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)) ∧
+        B.parent = some d.head.root ∧ SA.goldfishEligible sp ell.frame (tr.time i)
+          (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B} ∧
+      ∀ B ∈ {B | B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)) ∧
+        B.parent = some d.head.root ∧ SA.goldfishEligible sp ell.frame (tr.time i)
+          (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B}, B = P) ∧
+    ¬ ∃ C, SA.IsBest sp
+      (SA.goldfishScore sp ell.frame (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s)
+      {B | B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)) ∧
+        B.parent = some P.root ∧ SA.goldfishEligible sp ell.frame (tr.time i)
+          (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B} C := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hr := hS.run.localRun
+  have hPhi := SA.frameIn_of_callAt hr hy hc.1
+  have hPhip := SA.frameIn_of_callAt hr hz hcp
+  have hslot : sp.slot (tr.time ip) = s + 1 := SA.proposal_slot (tr := tr.projAC) hti
+  obtain ⟨hst, hroot, hw⟩ := proposal_walk_end hrun hnc hz hcp hpay
+  simp only [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hw
+  have hvQ := proposal_parent_viable_full_frame hrun hnc hf hz hcp hcall
+    (s := s + 1) (by rw [sp.slotTime_eq]; simpa [SAParams.ts] using hti) hpay
+  have hQt := hPhip.1.viableHeads_subset hvQ
+  have hQP : Anc (tr.HonestBlocks H) d.head P :=
+    .single ⟨hPhip.2 hQt, hPhi.2 hPv.1.1, hparent⟩
+  have hQy := SA.frame_mem_of_between sp hr.coherent hPhi.1 hPhi.2 hPv.1.1 hQP
+    ((hPhi.1.F_anc_fcRoot.mono hPhi.2).trans hrootQ)
+  have hlo : sp.ts (s + 1 : Nat) ≤ tr.time i :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2
+      (by rw [← (SA.castAt_spec hr hy hc).2.1, hes])
+  have hiplo : sp.ts s₀ ≤ tr.time ip := by
+    rw [hti]; exact (SA.ts_le_iff sp).2 (by exact_mod_cast hs₀)
+  have hiphi : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by rw [hti]; linarith [sp.toParams.hΔ]
+  have hvQ' := hvQ
+  have hQy' := hQy
+  rw [Compose.frame_of_projAC hrun hz hcp] at hvQ'
+  rw [Compose.frame_of_projAC hrun hy hc.1] at hQy'
+  have hvQy := hframe.viableHead_transfer hrun hnc hf hy hz
+    (hiplo.trans (hti ▸ hlo)) hhigh hiplo hiphi hvQ' hQy'
+  rw [← Compose.frame_of_projAC hrun hy hc.1] at hvQy
+  have hng : ∀ B ∈ ell.frame.tree, B.parent ≠ none → B.root ≠ sp.genesisRoot := by
+    intro B hB hpar hg
+    rw [Compose.honest_eq_genesis hrun hr.coherent (hPhi.2 hB) hg] at hpar
+    exact hpar rfl
+  have hv := proposal_views_agree_before hrun hnc hS hnr hm hz hdesignated hactual hPs
+    ⟨hcp, hcall, d, hpay⟩ hti hpayload hy hc hes hPv.1.1 hib
+  have hstop := (SA.walkEnd_iff.1 hw).choose_spec.2
+  have hcore := SA.stop_core hac hy hc hes hPs hparent hpH hng hPv
+  simp only [show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hcore
+  apply hcore
+  intro B hB hBQ hBs hel
+  have hBp := hframe.frozen_competitor_reflect hrun hnc hS hnr hf hm hs₀ hz hdesignated
+    hactual hPs hcp hcall hti hpay hparent hy hc hes hhigh (hlo.trans hib)
+    hQt (hroot.trans (hw.anc (fun X hX => hX.1) hst)) hBQ
+    (fun he => by rw [he, hPs] at hBs; omega) hB
+  have hsc : SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s B =
+      SA.goldfishScore sp ell.frame (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B := by
+    simp only [SA.goldfishScore, hv.1, hv.2.2 B hBp.1 hB.1.1]
+  have help : SA.goldfishEligible sp ellp.frame (tr.time ip) (SA.View.ofLists pay) s B := by
+    rcases hel with hn | hs | hmj
+    · exact (hn ⟨d.head, hvQy, hBQ⟩).elim
+    · have hsi := (SA.castAt_spec hr hy hc).2.1.symm.trans hes
+      omega
+    · exact Or.inr (Or.inr (by rw [hv.2.1, hsc]; exact hmj))
+  exact hstop (SA.exists_isBest hPhip.1
+    (S := {C | C ∈ ellp.frame.viableTree ellp.frame.tree ∧ C.parent = some d.head.root ∧
+      SA.goldfishEligible sp ellp.frame (tr.time ip) (SA.View.ofLists pay) s C})
+    (fun C hC => hC.1.1)
+    ⟨B, hBp, hBQ, help⟩ _)
+
 end Consensus.Goldilocks.Healing
 
 end
