@@ -87,12 +87,45 @@ open Blocks Shape
 
 variable {S : Setup} {A : AcceptanceAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
 
-/-- **`FinalWindowData` from four honest anchors** at the slots `start + off a` with the
-window's offsets `off = ![0, 2, 4, 6]`. Derived: `slots`, `proposals`,
+/-- **`FinalWindowData` from four honest anchors at gap `c`**, at the slots
+`start + [0, c, 2c, 3c]`, with `2 ≤ c` and `3c ≤ δt`. Derived: `slots`, `proposals`,
 `accepted`, `ordered`, `chain`. Explicit run/regime premises: `hq` (`fresh`) and `hD`
 (`bounded`). OPEN, explicit premises: `hready` (`ready`, the awake schedule of each anchor
 proposer over its catch-up interval) and `hcarrier` (`carrierProcessed`, delivery of the last
 anchor to every node ready at the deadline). -/
+theorem finalWindow_data_of_honest_anchors_gap (Q : FinalQuery S A V)
+    {proposer : Nat → Fin Q.params.n}
+    {dg : Digest (List (FG.Att Q.params.n)) (Payload Q.params.n)} {g ΔF a b : Time}
+    (hp : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b)
+    (hc : Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ)) {c : Nat}
+    (hc2 : 2 ≤ c) (h3c : 3 * c ≤ S.δt) (start : Nat)
+    {P : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))}
+    (hP : ∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
+      (start + ![0, c, 2 * c, 3 * c] i) (P i))
+    (hR : Healing.drainTime Q.params a ≤ Q.params.ts start)
+    (hb : Q.params.ts (start + 3 * c) ≤ b)
+    (hq : Q.query < Q.params.toParams.slotTime start)
+    (hD : Q.params.toParams.slotTime (start + 3 * c) ≤ Q.deadline)
+    (hready : ∀ i, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+      ((Sys (family S) V).cDur (K S A) Q.run) (P i).proposer
+      (Q.params.toParams.slotTime (start + ![0, c, 2 * c, 3 * c] i)))
+    (hcarrier : ∀ y, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
+      ((Sys (family S) V).cDur (K S A) Q.run) y Q.deadline →
+      ∃ j, Q.trace.BlockCallAt y j (P 3) ∧ Q.trace.time j ≤ Q.deadline) :
+    ∃ W : FinalWindowData S A V Q, W.start = start ∧ W.gap = c ∧ W.block = P := by
+  have hs : StrictMono fun i : Fin 4 => start + ![0, c, 2 * c, 3 * c] i := by
+    refine Fin.strictMono_iff_lt_succ.mpr fun i => ?_
+    fin_cases i <;> simp <;> omega
+  obtain ⟨cut, hcut, hacc, -, -, hch, ht, hord, hfr, hbd⟩ :=
+    finalWindow_cuts_of_honest_anchors hp hc hP hs (by simpa using hR) (by simpa using hb)
+      (by intro h; simp at h; omega) (by simpa using hq) (by simpa using hD)
+  refine ⟨⟨start, c, hc2, h3c, P, cut, window_slots_of_honest_anchors hP, hcut, hacc,
+    fun i => ?_, hfr, hord, hbd, hch, hcarrier⟩, rfl, rfl, rfl⟩
+  rw [ht i]
+  exact hready i
+
+/-- **`FinalWindowData` from four honest anchors** at the slots `start + off a` with the
+window's offsets `off = ![0, 2, 4, 6]`: `finalWindow_data_of_honest_anchors_gap` at `c = 2`. -/
 theorem finalWindow_data_of_honest_anchors (Q : FinalQuery S A V)
     {proposer : Nat → Fin Q.params.n}
     {dg : Digest (List (FG.Att Q.params.n)) (Payload Q.params.n)} {g ΔF a b : Time}
@@ -115,9 +148,12 @@ theorem finalWindow_data_of_honest_anchors (Q : FinalQuery S A V)
       ((Sys (family S) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j (P 3) ∧ Q.trace.time j ≤ Q.deadline) :
     ∃ W : FinalWindowData S A V Q, W.start = start ∧ W.block = P := by
+  have hoff : (![0, 2, 2 * 2, 3 * 2] : Fin 4 → Nat) = ![0, 2, 4, 6] := by
+    ext i; fin_cases i <;> rfl
   obtain ⟨cut, hcut, hacc, -, -, hch, ht, hord, hfr, hbd⟩ :=
     finalWindow_cuts_of_honest_anchors hp hc hP hs hR hb hadj hq hD
-  refine ⟨⟨start, P, cut, window_slots_of_honest_anchors hP, hcut, hacc, fun i => ?_, hfr,
+  refine ⟨⟨start, 2, le_rfl, by have := A.timeout; omega, P, cut,
+    by rw [hoff]; exact window_slots_of_honest_anchors hP, hcut, hacc, fun i => ?_, hfr,
     hord, hbd, hch, hcarrier⟩, rfl, rfl⟩
   rw [ht i]
   exact hready i

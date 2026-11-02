@@ -125,6 +125,43 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
   obtain ⟨j, hj, hjt⟩ := held_forward_blockCall_lt S Q.run.2 Q.hn Q.valid hmem hheld hdecode hdt
   exact ⟨j, hj, hjt.le⟩
 
+/-- **Final-window extraction at a gap `c` with (H4) discharged.** `final_window_extract_of_gap`
+with the carrier premise from `carrier_processed_of_honest`; the gap, forwarding-delay and latency
+premises, (H1) `hreset`, (H2) `hpropose` and (H3) `hplace` stay explicit. -/
+theorem final_window_extract_of_gap' (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 ≤ c)
+    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow S).offsets = [0, c, 2 * c, 3 * c])
+    {ΔR a ΔF : Time}
+    (hs : Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst ΔF
+      Q.run.2.horizon)
+    (hdel : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (c : Nat))
+    (hlat : Q.query + 4 * ((Q.index : Nat) + 3 * c) * Q.params.Δ + Q.params.Δ ≤ Q.deadline)
+    (hreset : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
+      (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon)
+    (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
+      HonestReadyIn Q.run.2.point Q.run.2.key
+      (fun s => Q.run.2.sel (.proposer s)) s ((Sys (family S) V).cDur (K S A) Q.run)
+      ((finalGrid S A V Q).slotTime s) →
+      ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
+        (runProposer S Q.run.2 Q.hn) s P)
+    (hplace : max (max ((Sys (family S) V).ready (K S A) Q.gst Q.run) 0)
+        ((finalGrid S A V Q).slotTime (finalSeedMin S A V Q a) - 1) +
+        ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGrid S A V Q).slotLen ≤
+      Q.query + (finalGrid S A V Q).slotLen) :
+    ∃ W : FinalWindowData S A V Q, W.gap = c ∧
+      Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
+      (∃ (proposer : Nat → Fin Q.params.n)
+        (dg : Digest (List (FG.Att Q.params.n)) (SA.Payload Q.params.n)) (g ΔF a b : Time),
+        Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b ∧
+        Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ) ∧
+        (∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
+          (W.start + ![0, W.gap, 2 * W.gap, 3 * W.gap] i) (W.block i)) ∧
+        Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
+        Q.params.ts (W.start + 3 * W.gap) ≤ b) ∧
+      ∀ i : Fin 3, AnchorStep Q.trace (honestKeys S Q.run.2) (W.block i.castSucc)
+        (W.block i.succ) :=
+  final_window_extract_of_gap S A V Q hc2 h3c hpat hs hdel hlat hreset hpropose hplace
+    (carrier_processed_of_honest S A V Q)
+
 /-- **Final-window extraction with (H4) discharged.** `final_window_extract_of` with the
 carrier premise from `carrier_processed_of_honest`; (H1) `hreset`, (H2) `hpropose` and
 (H3) `hplace` stay explicit. -/

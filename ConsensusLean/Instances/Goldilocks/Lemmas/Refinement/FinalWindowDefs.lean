@@ -59,12 +59,19 @@ end FinalQuery
 
 /-- Operational window witnesses only. The processing field is an OPEN endpoint-specific
 transport budget, not acceptance or a freely chosen output delay. Route A (#136, docs/decisions.md
-2026-11-02): four honest anchors at the slots `start + [0, 2, 4, 6]`. -/
+2026-11-02): four honest anchors at the slots `start + [0, c, 2c, 3c]` for the anchor gap
+`c = gap`, with `2 ≤ c` and the span `3c ≤ δt` (workbench `two_bound_network.md` §4; the gap
+`c = 2` is the current instance). -/
 structure FinalWindowData (Q : FinalQuery S A V) where
   start : Nat
+  /-- The anchor gap `c`. -/
+  gap : Nat
+  gap_two : 2 ≤ gap
+  /-- The window spans at most `δt` slots. -/
+  gap_span : 3 * gap ≤ S.δt
   block : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))
   cut : Fin 4 → Nat
-  slots : ∀ a, (block a).slot = start + (![0, 2, 4, 6] a)
+  slots : ∀ a, (block a).slot = start + (![0, gap, 2 * gap, 3 * gap] a)
   proposals : ∀ a, Q.trace.ProposesAt (block a).proposer (cut a) (block a)
   accepted : ∀ a, Q.trace.AcceptAt (block a).proposer (cut a) (block a)
   ready : ∀ a, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
@@ -93,19 +100,19 @@ abbrev Extends (_W : FinalWindowData S A V Q)
 
 /-- **Route-A run premises** for the window (`cacheCoverage_of_anchor_window_upTo`,
 WindowAnchorRoute.lean): reset premises through a horizon `b`, catch-up `2Δ`, the four anchors
-are honest proposals at the window slots, the drain time is before the first anchor, and the
-last anchor is before `b`. -/
+are honest proposals at the window slots `start + [0, c, 2c, 3c]` (`c = W.gap`), the drain time
+is before the first anchor, and the last anchor is before `b`. -/
 def AnchorRun : Prop :=
   ∃ (proposer : Nat → Fin Q.params.n)
     (dg : Digest (List (FG.Att Q.params.n)) (SA.Payload Q.params.n)) (g ΔF a b : Time),
     Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b ∧
     Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ) ∧
     (∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
-      (W.start + ![0, 2, 4, 6] i) (W.block i)) ∧
+      (W.start + ![0, W.gap, 2 * W.gap, 3 * W.gap] i) (W.block i)) ∧
     Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
-    Q.params.ts (W.start + 6) ≤ b
+    Q.params.ts (W.start + 3 * W.gap) ≤ b
 
-/-- **Route-A anchor steps**: `σ[P_i].h + 1 ≤ σ[P_{i+1}].h` for the three gap-2 steps, read at
+/-- **Route-A anchor steps**: `σ[P_i].h + 1 ≤ σ[P_{i+1}].h` for the three gap-`c` steps, read at
 honest stores (`AnchorStep`). Paper: workbench route_a_gap2.md §1 (rows by `row_of_report`,
 or a crossing above the previous anchor; step 0 from the seed `h₀ ≥ HZ+2`). -/
 def AnchorSteps : Prop :=
@@ -125,9 +132,9 @@ theorem anchorRun_iff : W.AnchorRun ↔
       Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b ∧
       Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ) ∧
       (∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
-        (W.start + ![0, 2, 4, 6] i) (W.block i)) ∧
+        (W.start + ![0, W.gap, 2 * W.gap, 3 * W.gap] i) (W.block i)) ∧
       Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
-      Q.params.ts (W.start + 6) ≤ b :=
+      Q.params.ts (W.start + 3 * W.gap) ≤ b :=
   Iff.rfl
 
 /-- `AnchorSteps` unfolded (the definition is not exposed outside this module). -/

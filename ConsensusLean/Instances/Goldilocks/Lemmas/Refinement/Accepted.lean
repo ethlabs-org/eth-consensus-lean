@@ -123,7 +123,9 @@ theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
       ((Sys (family S) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j (block 3) ∧ Q.trace.time j ≤ Q.deadline) :
     Nonempty (FinalWindowData S A V Q) :=
-  ⟨⟨start, block, cut, slots, proposals, accepted, ready, fresh, ordered, bounded, chain, carrier⟩⟩
+  ⟨⟨start, 2, le_rfl, by have := A.timeout; omega, block, cut, fun a => by
+    rw [slots a], proposals, accepted, ready, fresh, ordered, bounded, chain,
+    carrier⟩⟩
 
 
 /-- (H1)+(H3) of `final_window_extract_of'` (CarrierProcessed.lean), route A (#136). One reset `a`
@@ -160,31 +162,38 @@ theorem final_duty_proposal (Q : FinalQuery S A V) :
   exact ⟨P, hP⟩
 
 /-- Extraction and endpoint budget (route A). A window of four honest anchors at the slots
-`start + [0, 2, 4, 6]` after the query, its route-A run premises, and its three anchor steps.
-Proved by `final_window_extract_of'` from `final_reset_premises` ((H1), (H3)) and
-the proved `final_duty_proposal` ((H2)); (H4) is proved there. Paper: workbench route_a_gap2.md,
-window_start_h0.md, anchor_row_supplier.md, anchor_tick_ac_producer.md (read-back #136). -/
+`start + [0, 2, 4, 6]` after the query (gap `c = 2`), its route-A run premises, and its three
+anchor steps. Proved by `final_window_extract_of_gap'` at `c = 2` and `ΔF := Δ` (the shared HS
+premises `FinalQuery.hsSharedUpTo`, the latency `final_latency_gap_two`) from
+`final_reset_premises` ((H1), (H3)) and the proved `final_duty_proposal` ((H2)); (H4) is proved
+there. Paper: workbench route_a_gap2.md, window_start_h0.md, anchor_row_supplier.md,
+anchor_tick_ac_producer.md (read-back #136). -/
 theorem final_window_extract (Q : FinalQuery S A V) :
     ∃ W : FinalWindowData S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
       W.AnchorRun ∧ W.AnchorSteps := by
+  have hΔ : (0 : Time) < Q.params.Δ := Q.params.toParams.hΔ
   obtain ⟨ΔR, a, hreset, hplace⟩ := final_reset_premises S A V Q
-  obtain ⟨W, hslack, hrun, hsteps⟩ :=
-    final_window_extract_of' S A V Q hreset (final_duty_proposal S A V Q) hplace
+  obtain ⟨W, -, hslack, hrun, hsteps⟩ :=
+    final_window_extract_of_gap' S A V Q le_rfl (by have := A.timeout; omega)
+      (by rw [finalWindow_offsets]) Q.hsSharedUpTo (by push_cast; linarith)
+      (final_latency_gap_two S A V Q) hreset (final_duty_proposal S A V Q) hplace
   exact ⟨W, hslack, W.anchorRun_iff.mpr hrun, W.anchorSteps_iff.mpr hsteps⟩
 
 /-- **Window coverage by the anchor route.** The run premises and the three anchor steps give,
 at the last anchor's store, the block `F` of root `σ[P₃].F` and `P₀ ⪯ F`. The window slots and
-`6 ≤ δt` give `P₃.slot ≤ P₀.slot + δt`; the adjacent-anchor guard is vacuous (gap 2). -/
+the span `3c ≤ δt` (`W.gap_span`) give `P₃.slot ≤ P₀.slot + δt`; the adjacent-anchor guard is
+vacuous (`2 ≤ c`, `W.gap_two`). -/
 theorem final_anchor_coverage (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
     (run : W.AnchorRun) (steps : W.AnchorSteps) :
     ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧ W.Extends (W.block 0) F := by
   obtain ⟨proposer, dg, g, ΔF, a, b, hp, hc, hP, hR, hb⟩ := W.anchorRun_iff.mp run
-  have hd := A.timeout
+  have hg2 := W.gap_two
+  have hg3 := W.gap_span
   have hs0 : (W.block 0).slot = W.start := by simpa using W.slots 0
-  have hs3 : (W.block 3).slot = W.start + 6 := by simpa using W.slots 3
-  have hmono : StrictMono fun i : Fin 4 => W.start + ![0, 2, 4, 6] i := by
+  have hs3 : (W.block 3).slot = W.start + 3 * W.gap := by simpa using W.slots 3
+  have hmono : StrictMono fun i : Fin 4 => W.start + ![0, W.gap, 2 * W.gap, 3 * W.gap] i := by
     refine Fin.strictMono_iff_lt_succ.mpr fun i => ?_
-    fin_cases i <;> simp
+    fin_cases i <;> simp <;> omega
   have hsl : (W.block 3).slot ≤ (W.block 0).slot + Q.params.toParams.fg.δt := by
     change (W.block 3).slot ≤ (W.block 0).slot + S.δt
     omega
@@ -192,7 +201,8 @@ theorem final_anchor_coverage (Q : FinalQuery S A V) (W : FinalWindowData S A V 
     rw [← final_anchor_post S A V Q W 3]
     exact final_anchor_held S A V Q W
   obtain ⟨F, hF, hAF⟩ := cacheCoverage_of_anchor_window_upTo hp hc hP hmono
-    (by simpa using hR) (by simpa using hb) (by intro h; simp at h) (W.anchorSteps_iff.mp steps) hsl
+    (by simpa using hR) (by simpa using hb) (by intro h; simp at h; omega)
+    (W.anchorSteps_iff.mp steps) hsl
     (W.ready 3).1 hB3
   refine ⟨F, ?_, hAF⟩
   change (Q.trace.post (W.cut 3)).fg.blocks ((Q.trace.post (W.cut 3)).fg.σ (W.block 3).root).F =
