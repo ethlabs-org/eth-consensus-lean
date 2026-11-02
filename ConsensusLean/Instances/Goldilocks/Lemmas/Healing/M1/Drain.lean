@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FreshLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 
 public section
 
@@ -132,6 +133,44 @@ theorem reset_of_high_report {g : Time}
     rwa [hfg]
   obtain ⟨a, ha, hat⟩ := reset_of_high_source hrun hq hy hatt hh'
   exact ⟨a, ha, hat.trans ht.le⟩
+
+/-- The finite F-step: a high actual warm proposal forces a reset by its
+closed update deadline. The height is measured at any honest cut holding P,
+then transported to the actual reporter's store by collision freedom. -/
+theorem FrameWindow.reset_of_high_proposal
+    {g ΔF b : Time} {s₀ s N floor : Nat} {contest kindJ : Prop}
+    {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ s + 1)
+    (hN : s + 2 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1))
+    {kP : Nat} (hactual : tr.ProposesAt z kP P) (hPs : P.slot = s + 1)
+    {w : Fin sp.n} (hw : w ∈ H) {c : Nat}
+    (hP : P ∈ (tr.state w c).fg.tree)
+    (hh : HZ tr H g + 1 ≤ ((tr.state w c).fg.σ P.root).h) :
+    ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (s + 2 : Nat) + 2 * sp.Δ := by
+  obtain ⟨i, ell, R, hR, ht, hPR, _⟩ := hframe.proposal_report_follow
+    hrun hnc hsvc hawake hf hcatch hnr hm hwarm hN hmb hz hdesignated hactual hPs hz
+  have hRt := toFG_mem_tree hrun hz hR
+  have hanc := store_anc_of_honest_anc hrun hnc hz hPR hRt
+  have hPt := mem_of_honest_anc hrun hnc hz hPR hRt
+  have hh' : HZ tr H g + 1 ≤ ((tr.state z i).fg.σ R.root).h := by
+    have he := σ_eq_honest hrun hnc hw hz hP hPt
+    rw [he] at hh
+    exact hh.trans (σ_h_le_of_anc (Compose.fg_reachable hrun.toLocalRun hz i) hanc)
+  have hq : Hᶜ.ncard < sp.toParams.fg.q := by
+    have hn := sp.toParams.hn
+    change 0 < sp.n at hn
+    change Hᶜ.ncard < (2 * sp.n + 2) / 3
+    omega
+  obtain ⟨a, ha, hat⟩ := reset_of_high_report hrun hq hz hR hh'
+  exact ⟨a, ha, hat.trans ht⟩
 
 end Consensus.Goldilocks.Healing
 
