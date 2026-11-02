@@ -303,6 +303,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowFieldsU
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowParents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowParentsUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowPlacement
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowSeed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowUnanimous
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowUnanimousUpTo
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
