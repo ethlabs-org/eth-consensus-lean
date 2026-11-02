@@ -293,6 +293,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationPr
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RiseGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RowServiceParam
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RowsSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RowsSupplyUpTo
