@@ -833,26 +833,6 @@ theorem healthy_read_label (D : HealthyRepairSchedule S A V Q)
       rw [hs]
       nlinarith
 
-omit h0 hb hp W states in
-/-- Finite catch service follows directly from the healthy engine's PSync and awake interval. -/
-theorem healthy_repair_catch :
-    Healing.CatchRun Q.trace (honestKeys S Q.run.2) Q.gst (2 * Q.params.Δ) := by
-  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst := by
-    constructor
-    · intro v hv o s hs w hw a hsa hc hh haw
-      have h := Q.healthy.1.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw a hsa hc hh haw
-      rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
-      · obtain ⟨o', he, hs'⟩ := hsent
-        cases he
-        exact ⟨u, hu, Or.inl hs', hnowake⟩
-      · obtain ⟨o', he, hr'⟩ := hrecv
-        cases he
-        exact ⟨u, hu, Or.inr hr', hnowake⟩
-    · exact Q.healthy.1.txs
-  exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
-    hnet Q.healthy.2.2
-
 set_option linter.unusedSectionVars false in
 /-- The original progress interval supplies an actual opening; finite catch and
 operational selection then repair every ready receiver without read geometry. -/

@@ -90,6 +90,26 @@ theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
     change 3 * Q.run.2.point.faulty.card ≤ Fintype.card V - 1
     omega
 
+/-- Finite catch service follows directly from the healthy engine's PSync and awake interval.
+It is upstream of repair schedules so reset-envelope producers can use it without a cycle. -/
+theorem healthy_repair_catch (Q : HealthyPreparationQuery S A V) :
+    Healing.CatchRun Q.trace (honestKeys S Q.run.2) Q.gst (2 * Q.params.Δ) := by
+  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst := by
+    constructor
+    · intro v hv o s hs w hw a hsa hc hh haw
+      have h := Q.healthy.1.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw a hsa hc hh haw
+      rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
+      · obtain ⟨o', he, hs'⟩ := hsent
+        cases he
+        exact ⟨u, hu, Or.inl hs', hnowake⟩
+      · obtain ⟨o', he, hr'⟩ := hrecv
+        cases he
+        exact ⟨u, hu, Or.inr hr', hnowake⟩
+    · exact Q.healthy.1.txs
+  exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
+    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    hnet Q.healthy.2.2
+
 /-- Global inventory obligation, exactly the initialization required by
 oldHonest_inventory_preserved. OldHonest includes signed entries not yet held by
 the receiver. OldEntryCovered has an eventual whole-run origin: this predicate
