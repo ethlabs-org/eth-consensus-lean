@@ -37,9 +37,9 @@ variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
 FrameWindow `[t_{s₀}, t_N + 2Δ]` with `ḡ + 4Δ ≤ t_{s₀}`, `s₀ + L_drain ≤ N`, no honest signature
 above `H_z` up to `t_N + 2Δ`, and the honest-proposer gap `G` on `[s₀, N]`: an actual warm honest
 proposal `P` of a slot `u ∈ [s₀ + 2k, s₀ + L_drain]` by its designated proposer, with
-`σ[P].h ≥ H_z − 1` (`hlow` of `rise_reset`) and the O1-L lock premise at its actual reports
-(`hkind` of `rise_reset`). These are exactly the premises of `FrameWindow.rise_reset` that no
-landed lemma gives; `proposal_report_follow` needs nothing more from the drain. -/
+`σ[P].h ≥ H_z − 1` (`hlow` of `rise_reset`). The O1-L lock clause is derived from the warm
+proposal and frame inside the rise, not an additional drain output. The uniform frame/warm
+producer remains an input; this interface strengthening does not construct it. -/
 structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n)
     (H : Set (Fin sp.n)) (g : Time) (G Ld : Nat) : Prop where
   warm : ∀ {s₀ N floor : Nat} {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))},
@@ -51,14 +51,7 @@ structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n
       ∃ k Q, tr.ProposesAt (proposer x) k Q ∧ Q.slot = x) →
     ∃ u, s₀ + 2 * sp.k ≤ u ∧ u ≤ s₀ + Ld ∧ ∃ z ∈ H, z = proposer u ∧
       ∃ kP P, tr.ProposesAt z kP P ∧ P.slot = u ∧
-        HZ tr H g ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + 1 ∧
-        ∀ y ∈ H, ∀ i ell R, SA.ToFGAt tr.projAC y i ell R →
-          Anc (tr.HonestBlocks H) P R →
-          ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ P.root).h →
-          ((tr.state y i).fg.σ P.root).h + 1 = HZ tr H g →
-          (tr.state y i).fg.hj < ((tr.state y i).fg.σ P.root).h ∨
-          ((tr.state y i).fg.hj = ((tr.state y i).fg.σ P.root).h ∧
-            (tr.state y i).fg.Anc (tr.state y i).fg.J R)
+        HZ tr H g ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + 1
 
 /-- A FrameWindow restricts to every sub-interval. -/
 theorem frameWindow_sub {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
@@ -218,14 +211,13 @@ theorem reset_of_drain (Q : FinalQuery S A V)
       simp only [SA.SAParams.ts]; push_cast; ring
     rw [this]; linarith [hfitN.2])
   -- the drain
-  obtain ⟨u, hwarm, huLd, z, hz, hdes, kP, P, hP, hPs, hlow, hkind⟩ :=
+  obtain ⟨u, hwarm, huLd, z, hz, hdes, kP, P, hP, hPs, hlow⟩ :=
     hdrain.warm hframe hm (by omega)
       (fun v hv k att hs hk => hna v hv k att hs (by linarith [hfitN.2])) hgp
   have hN2 : u + 2 * ρ + 1 ≤ N := by rw [hNdef]; omega
   -- the rise
   obtain ⟨a, ha, hab⟩ := hframe.rise_reset hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ hΔF
     hgp hN2 (by linarith [hfitN.2]) hz hdes hP hPs hlow
-    (fun y hy i ell R hR hPR _ => hkind y hy i ell R hR hPR)
   refine ⟨a, ha, hab.trans ?_⟩
   have hts : Q.params.ts (u + 2 * (δt + X - 1) + 1 : Nat) ≤ Q.params.ts N :=
     (SA.ts_le_iff Q.params).2 (by exact_mod_cast (show _ ≤ N by omega))

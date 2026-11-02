@@ -239,7 +239,8 @@ theorem row_or_high_of_report (hrun : GoldilocksRun proposer dg H tr)
 /-- **ROUND at a warm proposal** (§26 Step E with §30 G1). `P` is the actual warm proposal of
 slot `u` (FrameWindow drain), `X` an actual honest proposal of slot `x ∈ [u + δ_t, N]`. The rows
 come from the actual reports of `proposal_report_follow`; at each report of the same height as
-`P`, `hkind` is the lock premise at the actual report cut (HZ, or the O1-L kind clause). -/
+`P`, `report_kind_of_warm` derives O1-L from the frame floor. This strengthens the interface
+by removing the redundant lock premise, without changing the conclusion. -/
 theorem FrameWindow.round_of_warm
     {g ΔF b T : Time} {s₀ u x N floor : Nat} {contest kindJ : Prop}
     {J P X : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -259,14 +260,7 @@ theorem FrameWindow.round_of_warm
     {z : Fin sp.n} (hz : z ∈ H) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {p : Fin sp.n} (hp : p ∈ H) (hdx : p = proposer x)
-    {kX : Nat} (hX : tr.ProposesAt p kX X) (hXs : X.slot = x)
-    (hkind : ∀ y ∈ H, ∀ i ell R, SA.ToFGAt tr.projAC y i ell R →
-      Anc (tr.HonestBlocks H) P R → tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ →
-      ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ P.root).h →
-      ((tr.state y i).fg.σ P.root).h = HZ tr H g ∨
-      (tr.state y i).fg.hj < ((tr.state y i).fg.σ P.root).h ∨
-      ((tr.state y i).fg.hj = ((tr.state y i).fg.σ P.root).h ∧
-        (tr.state y i).fg.Anc (tr.state y i).fg.J R)) :
+    {kX : Nat} (hX : tr.ProposesAt p kX X) (hXs : X.slot = x) :
     P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
       ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
         ((tr.state p (kX + 1)).fg.σ X.root).h := by
@@ -307,7 +301,8 @@ theorem FrameWindow.round_of_warm
   obtain ⟨i, ell, R, hR, hti, hPR, hRd⟩ := hfol y hy
   have hiT : tr.time i < T := lt_of_le_of_lt hti hT
   obtain ⟨hPy, hRy, hor⟩ := row_or_high_of_report hrun hnc hf hna hy hR hiT hPR
-    (hkind y hy i ell R hR hPR hti)
+    (fun heq => Or.inr (hframe.report_kind_of_warm hrun hnc hsvc hawake hf hcatch hnr
+      hm hwarm (by omega) hmb hz hdes hP hPs y hy i ell R hR hPR hti heq))
   rcases hor with ⟨k', att, hs, hk', hah, haT⟩ | hlt
   · exact Or.inl ⟨y, hy, i, hPy, k', att, hs, hk'.trans hti, hah, haT⟩
   · exact Or.inr ⟨R, hRd, y, hy, i, hPy, hRy, hlt⟩
@@ -315,8 +310,8 @@ theorem FrameWindow.round_of_warm
 /-- **Two rounds and Step F** (§26 Step E/F, §27). From the actual warm proposal `P` of slot `u`
 at height `≥ HZ − 1`, with the honest-proposer gap `G` (GP: every slot window `[a, a + G)` inside
 `[s₀, N]` has an actual honest designated proposal) and `ρ = δ_t + G − 1`, `2ρ + 1 ≤ N − u`:
-a reset by `t_{u+2ρ+1} + 2Δ`. `hkind` is the O1-L lock premise at the actual reports above `P`
-(used only for the round at `HZ − 1`). -/
+a reset by `t_{u+2ρ+1} + 2Δ`. The O1-L lock clause is derived inside each round, so no
+additional lock premise is required (the interface strengthening of variant B). -/
 theorem FrameWindow.rise_reset
     {g ΔF b : Time} {s₀ u N G floor : Nat} {contest kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -335,14 +330,7 @@ theorem FrameWindow.rise_reset
     (hN : u + 2 * (sp.toParams.fg.δt + G - 1) + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hlow : HZ tr H g ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + 1)
-    (hkind : ∀ y ∈ H, ∀ i ell R, SA.ToFGAt tr.projAC y i ell R →
-      Anc (tr.HonestBlocks H) P R → tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ →
-      ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ P.root).h →
-      ((tr.state y i).fg.σ P.root).h + 1 = HZ tr H g →
-      (tr.state y i).fg.hj < ((tr.state y i).fg.σ P.root).h ∨
-      ((tr.state y i).fg.hj = ((tr.state y i).fg.σ P.root).h ∧
-        (tr.state y i).fg.Anc (tr.state y i).fg.J R)) :
+    (hlow : HZ tr H g ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + 1) :
     ∃ a, IsReset tr H g a ∧
       a ≤ sp.ts (u + 2 * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ := by
   classical
@@ -393,20 +381,11 @@ theorem FrameWindow.rise_reset
   obtain ⟨hPm₁, hXm₁, hr₁⟩ := hframe.round_of_warm hrun hnc hsvc hawake hf hcatch hnr hm hwarm
     hδ hΔF hx₁l (by omega) hmb hna
     (by rw [hTdef]; linarith [htlt (show u + 1 < u + 2 * ρ + 1 by omega)])
-    hz hdes hP hPs hp₁ rfl hX₁ hX₁s (fun y hy i ell R hR hPR hti heq => by
-      have hPy := mem_of_honest_anc hrun hnc hy hPR (toFG_mem_tree hrun hy hR)
-      rw [hσy y hy i hPy] at heq ⊢
-      by_cases hHZ : h₀ = HZ tr H g
-      · exact Or.inl hHZ
-      · have := hkind y hy i ell R hR hPR hti (by rw [hσy y hy i hPy]; exact heq)
-          (by rw [hσy y hy i hPy]; omega)
-        rw [hσy y hy i hPy] at this
-        exact Or.inr this)
+    hz hdes hP hPs hp₁ rfl hX₁ hX₁s
   rw [hσy _ hp₁ _ hPm₁] at hr₁
   set h₁ := ((tr.state (proposer x₁) (k₁ + 1)).fg.σ X₁.root).h with hh₁
   by_cases hhigh₁ : HZ tr H g + 1 ≤ h₁
   · exact hF x₁ (by omega) (by omega) X₁ k₁ hX₁ hX₁s hp₁ hhigh₁
-  have hX₁HZ : h₁ = HZ tr H g := by omega
   -- round 2
   obtain ⟨x₂, hx₂l, hx₂r, hp₂, k₂, X₂, hX₂, hX₂s⟩ := hgp (x₁ + sp.toParams.fg.δt)
     (by omega) (by omega)
@@ -416,9 +395,7 @@ theorem FrameWindow.rise_reset
   obtain ⟨hXm₁', -, hr₂⟩ := hframe.round_of_warm hrun hnc hsvc hawake hf hcatch hnr hm
     (by omega) hδ hΔF hx₂l (by omega) hmb hna
     (by rw [hTdef]; linarith [htlt (show x₁ + 1 < u + 2 * ρ + 1 by omega)])
-    hp₁ rfl hX₁ hX₁s hp₂ rfl hX₂ hX₂s (fun y hy i ell R hR hPR _ _ => by
-      have hy' := mem_of_honest_anc hrun hnc hy hPR (toFG_mem_tree hrun hy hR)
-      exact Or.inl ((hσy₁ y hy i hy').trans hX₁HZ))
+    hp₁ rfl hX₁ hX₁s hp₂ rfl hX₂ hX₂s
   rw [hσy₁ _ hp₂ _ hXm₁'] at hr₂
   exact hF x₂ (by omega) (by omega) X₂ k₂ hX₂ hX₂s hp₂ (by omega)
 
