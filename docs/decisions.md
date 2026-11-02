@@ -15,6 +15,20 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-11-02, claude-mac, owner direction Francesco ([#136]): route A for final liveness.
+  `finalWindow` offsets are `[0, 2, 4, 6]` (span 6), `AcceptanceAssumptions.timeout` is
+  `6 ≤ δt`, and `accepted_latency .final X = 8(X+6)+2`. The window coverage comes from the anchor
+  route (`cacheCoverage_of_anchor_window_upTo`, WindowAnchorRoute.lean): honest proposers only at
+  the four anchors, three gap-2 anchor steps, and `P₃.slot ≤ P₀.slot + δt`. Only this coverage
+  lemma needs `δt ≥ 6`; the seed needs `δt ≥ 4`. `δt` is a fixed constant, independent of the
+  honest-proposer gap X; tolerance keeps X = span+2 = 8 as an existential witness only, and every
+  leaf stays valid for all positive X. Francesco does not gate this decision (agents decide); his
+  earlier direction was a fixed δt, changed offsets, honest proposers only at anchors. The
+  independent read-back on #136 passed for the workbench cards `route_a_gap2.md`,
+  `window_start_h0.md`, `anchor_row_supplier.md` and `anchor_tick_ac_producer.md`. The old
+  first-crossing / bounded-crossing assembly (`[0, δt−1, δt+1, δt+3]`, `δt ≥ 4`) is retired.
+  Route B has no proved supplier.
+
 - 2026-11-01, Francesco ([#17]): final liveness uses four anchors; the two-proposer route is parked.
 
 - 2026-10-31, coordinator (outage coefficient correctness audit after #125).
@@ -404,5 +418,6 @@ where it is recorded; "Francesco" marks the owner's decisions.
 [#93]: https://github.com/ethlabs-org/consensus-lean/issues/93
 [#107]: https://github.com/ethlabs-org/consensus-lean/issues/107
 [#17]: https://github.com/ethlabs-org/consensus-lean/issues/17
+[#136]: https://github.com/ethlabs-org/consensus-lean/issues/136
 [#21]: https://github.com/ethlabs-org/consensus-lean/issues/21
 [#38]: https://github.com/ethlabs-org/consensus-lean/issues/38

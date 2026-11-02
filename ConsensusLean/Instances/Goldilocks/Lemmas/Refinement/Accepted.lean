@@ -21,11 +21,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorRoute
 
 public section
-
--- Keep the finite finality supplier contracts and their endpoint assembly together.
-set_option linter.style.longFile 1900
 
 /-! # Acceptance assembly with finite guarantee witnesses
 
@@ -101,8 +99,8 @@ noncomputable abbrev deadline (Q : FinalQuery S A V) : Time :=
 end FinalQuery
 
 /-- Operational window witnesses only. The processing field is an OPEN endpoint-specific
-transport budget, not acceptance or a freely chosen output delay. Source: workbench b3ca078,
-four-anchor-window.md and fixed-timeout-synthesis.md. -/
+transport budget, not acceptance or a freely chosen output delay. Route A (#136, docs/decisions.md
+2026-11-02): four honest anchors at the slots `start + [0, 2, 4, 6]`. -/
 structure FinalWindowData (Q : FinalQuery S A V) where
   start : Nat
   block : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))
@@ -129,106 +127,30 @@ variable {S A V} {Q : FinalQuery S A V} (W : FinalWindowData S A V Q)
 /-- Use the actual last anchor's store, not an independently chosen chain-state map. -/
 noncomputable abbrev store := (Q.trace.post (W.cut 3)).fg
 noncomputable abbrev state (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) := W.store.σ B.root
-abbrev OnChain (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
-  Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) B (W.block 3)
 abbrev Extends (_W : FinalWindowData S A V Q)
     (B C : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
   Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) B C
 
-/-- An actual entry-creating transition, whether justification or timeout. -/
-def Entry (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
-  W.OnChain B ∧ (W.state B).Th = B.root ∧ (W.state B).ThSlot = B.slot
 
-/-- The actual first crossing after A0, or A0's own newly created entry. -/
-def Selected (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
-  W.Entry B ∧ W.Extends (W.block 0) B ∧
-    (B = W.block 0 ∨
-      (W.start + 1 ≤ B.slot ∧ B.slot ≤ W.start + (S.δt - 1) ∧
-        ∀ D, W.OnChain D → W.Extends (W.block 0) D → W.Extends D B →
-          W.start < D.slot → D.slot < B.slot → (W.state D).Th = (W.state (W.block 0)).Th))
+/-- **Route-A run premises** for the window (`cacheCoverage_of_anchor_window_upTo`,
+WindowAnchorRoute.lean): reset premises through a horizon `b`, catch-up `2Δ`, the four anchors
+are honest proposals at the window slots, the drain time is before the first anchor, and the
+last anchor is before `b`. -/
+def AnchorRun : Prop :=
+  ∃ (proposer : Nat → Fin Q.params.n)
+    (dg : Digest (List (FG.Att Q.params.n)) (SA.Payload Q.params.n)) (g ΔF a b : Time),
+    Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b ∧
+    Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ) ∧
+    (∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
+      (W.start + ![0, 2, 4, 6] i) (W.block i)) ∧
+    Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
+    Q.params.ts (W.start + 6) ≤ b
 
-/-- No crossing of the inherited entry on the serving parent's chain. -/
-def Uncrossed (P : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
-  ∀ D, W.Extends (W.block 0) D → W.Extends D P →
-    (W.state D).h = (W.state (W.block 0)).h ∧ (W.state D).Th = (W.state (W.block 0)).Th
-
-/-- Quorum counts identities once, including previously credited rows. -/
-def InheritedProgress : Prop :=
-  ∀ P, (W.block 1).parent = some P.root → W.Extends (W.block 0) P →
-    (W.state (W.block 0)).ThSlot < W.start → W.Uncrossed P →
-    ∃ ids : Finset (Fin Q.params.n), Q.params.toParams.fg.q ≤ ids.card ∧
-      ∀ x ∈ ids, x ∈ (W.state P).prog ∨
-        ∃ a ∈ (Q.trace.state (W.block 1).proposer (W.cut 1)).fg.atts,
-          a.val = x ∧ a.WellFormed ∧ (W.state P).validAtt a ∧
-          a.h = (W.state P).h ∧ a.T = (W.state P).Th
-
-/-- Only the selected first descendant has the d−2 exposure bound. -/
-def FirstCrossing : Prop :=
-  ∃ B, W.Selected B ∧
-    (B = W.block 0 ∨
-      (B.slot ≤ W.start + (S.δt - 1) ∧ W.start + (S.δt - 1) - B.slot ≤ S.δt - 2))
-
-/-- A justification on the surviving chain is distinct from a timeout crossing. -/
-def JustifiedBy (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (v : Nat) : Prop :=
-  ∃ D, W.OnChain D ∧ W.Extends B D ∧ D.slot ≤ v ∧
-    (W.state D).J = B.root ∧ (W.state D).hj = (W.state B).h
-
-open Classical in
-/-- Selected entry or its actual bound successor, at the designated exposing anchor.
-An arbitrary no-timeout entry is deliberately not admitted by this domain. -/
-def Protected (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (e : Nat) : Prop :=
-  (W.Selected B ∧ e = if B = W.block 0 then W.start else W.start + (S.δt - 1)) ∨
-  (∃ D, W.Selected D ∧ W.Entry B ∧ W.Extends D B ∧
-    (W.state B).J = D.root ∧ (W.state B).bound ∧
-    B.slot ≤ W.start + (S.δt + 1) ∧
-    e = if B.slot ≤ W.start + (S.δt - 1) then W.start + (S.δt - 1)
-      else W.start + (S.δt + 1))
-
-/-- Exact target rows with actual signing provenance; prior matching reports count.
-Timing is only in this quorum branch, never imposed on already-justified entries.
-The pair is tested against the actual parent, and identities are not multiplied. -/
-def TargetRows (B P : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (e : Nat) (a : Fin 4) : Prop :=
-  (W.state P).h = (W.state B).h ∧ (W.state P).Th = B.root ∧
-  ∃ ids : Finset (Fin Q.params.n), Q.params.toParams.fg.q ≤ ids.card ∧
-    ∀ x ∈ ids, x ∈ honestKeys S Q.run.2 ∧ ∃ row j,
-      Q.trace.SignAt x j row ∧ row.val = x ∧ row.h = (W.state B).h ∧ row.T = B.root ∧
-      row.timeout = false ∧ row.WellFormed ∧ (W.state P).validAtt row ∧
-      Q.trace.time j ≤ Q.params.ts e + 6 * Q.params.Δ ∧
-      Q.params.ts e + 7 * Q.params.Δ ≤ Q.deadline ∧
-      ((x ∈ (W.state P).target ∧
-          ((W.state B).bound → x ∈ (W.state P).fin (W.state B).hj ∨
-            (W.state B).hj ≤ (W.state P).hF)) ∨
-        (row ∈ (Q.trace.state (W.block a).proposer (W.cut a)).fg.atts ∧
-          ∃ k, Q.trace.ProcessAttAt (W.block a).proposer k row ∧ k < W.cut a ∧
-            Q.trace.time k < Q.params.ts e + 7 * Q.params.Δ)) ∧
-      ((W.state B).bound →
-        row.fin = some ((W.state B).hj, (W.state B).J) ∧
-        (((W.state B).hj, (W.state B).J) ∈ (W.state P).pending ∨
-          (W.state B).hj ≤ (W.state P).hF))
-
-/-- OPEN stable-entry normalization, prior-report/dedup and mandatory pool validity supplier.
-No-timeout is local and must be discharged by the bounded-crossing argument. -/
-def RowSupply : Prop :=
-  ∀ B e, W.Protected B e → ∀ a : Fin 4,
-    (e + 2 = (W.block a).slot ∨ (B = W.block 0 ∧ a = 1)) →
-    ∀ P, (W.block a).parent = some P.root → W.Extends B P →
-      (∀ D, W.Extends B D → W.Extends D P →
-        (W.state D).h = (W.state B).h ∨ W.JustifiedBy B D.slot) →
-      W.JustifiedBy B P.slot ∨ W.TargetRows B P e a
-
-open Classical in
-/-- Justification creates the actual bound successor. The birth-s branch permits w=1;
-only the strictly post-A0 crossing has w≥2. Earlier successor justification finalizes B. -/
-def BoundedCrossings : Prop :=
-  ∃ B C, W.Selected B ∧ W.JustifiedBy B (W.start + (S.δt + 1)) ∧
-    W.Entry C ∧ W.Extends B C ∧ (W.state C).J = B.root ∧ (W.state C).bound ∧
-    W.start + (if B = W.block 0 then 1 else 2) ≤ C.slot ∧
-    C.slot ≤ W.start + (S.δt + 1) ∧
-    (let v := if C.slot ≤ W.start + (S.δt - 1) then W.start + (S.δt + 1)
-      else W.start + (S.δt + 3)
-     ∀ D, W.OnChain D → W.Extends C D → D.slot < v →
-       (W.state D).h = (W.state C).h ∨ (W.state B).h ≤ (W.state D).hF) ∧
-    ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧ W.Extends B F
+/-- **Route-A anchor steps**: `σ[P_i].h + 1 ≤ σ[P_{i+1}].h` for the three gap-2 steps, read at
+honest stores (`AnchorStep`). Paper: workbench route_a_gap2.md §1 (rows by `row_of_report`,
+or a crossing above the previous anchor; step 0 from the seed `h₀ ≥ HZ+2`). -/
+def AnchorSteps : Prop :=
+  ∀ i : Fin 3, AnchorStep Q.trace (honestKeys S Q.run.2) (W.block i.castSucc) (W.block i.succ)
 
 /-- Actual cache acceptance and persistence at the original endpoint, not mere delivery. -/
 def CacheCoverage : Prop :=
@@ -272,277 +194,6 @@ private theorem final_anchor_held (Q : FinalQuery S A V) (W : FinalWindowData S 
   rw [(Store.tree_grows _ _ _ _ (Compose.fg_reachable hr.toLocalRun (W.ready 3).1 _)).1 _ _ hon]
   exact Set.mem_insert _ _
 
-private theorem final_ancestry_local (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {B C : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (h : W.Extends B C) (hC : C ∈ W.store.tree) : W.store.Anc B C := by
-  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision
-  have coh := Compose.honest_blocks_coherent hr.toLocalRun hnc
-  have hs : W.store.tree ⊆ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
-    intro X hX
-    refine ⟨(W.block 3).proposer, (W.ready 3).1, W.cut 3 + 1, ?_⟩
-    change X ∈ (Q.trace.post (W.cut 3)).fg.tree at hX
-    rwa [final_anchor_post S A V Q W 3] at hX
-  have hg := (Store.accepted_tree _ _ _ _ (final_store_reachable S A V Q W)).2.2.2
-  induction h with
-  | refl => exact .refl
-  | @tail Y C hBY hYC ih =>
-    rcases (hg C hC).cases_tail with he | ⟨Z, _, hZC⟩
-    · cases he
-      cases hYC.2.2
-    · have he : Z = Y := coh.1 (hs hZC.1) hYC.1
-        (Option.some.inj (hZC.2.2.symm.trans hYC.2.2))
-      subst he
-      exact (ih hZC.1).tail hZC
-
-private theorem final_chain_held (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {B : SA.Blk Q.params.n (List (FG.Att Q.params.n))} (hB : W.OnChain B) :
-    B ∈ W.store.tree := by
-  by_cases he : B = W.block 3
-  · exact he ▸ final_anchor_held S A V Q W
-  · exact (Anc.mem (final_ancestry_local S A V Q W hB (final_anchor_held S A V Q W)) he).1
-
-private theorem final_chain_step (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {B C : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (hC : W.OnChain C) (hp : C.parent = some B.root) :
-    Q.params.toParams.fg.stateTransition (W.state B) C.fgView = some (W.state C) := by
-  have hC := final_chain_held S A V Q W hC
-  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hfg := final_fg_run S A V Q
-  have he : W.store = Q.trace.projFG.store (W.block 3).proposer (W.cut 3 + 1) := by
-    change (Q.trace.post (W.cut 3)).fg = _
-    rw [final_anchor_post S A V Q W 3]
-    exact (congrArg Prod.fst (Compose.projFG_state hr.toLocalRun (W.ready 3).1 _)).symm
-  change Q.params.toParams.fg.stateTransition (W.store.σ B.root) C.fgView = some (W.store.σ C.root)
-  rw [he] at hC ⊢
-  exact Store.step_σ hfg (W.ready 3).1 hC hp
-
-private theorem final_fold_progress {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
-    {v : Fin n} (h : v ∈ σ.prog ∨ ∃ a ∈ atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th) :
-    v ∈ (atts.foldl FG.ChainState.processAtt σ).prog := by
-  induction atts generalizing σ with
-  | nil => exact h.resolve_right (by simp)
-  | cons a as ih =>
-    obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq σ [a]
-    have hh : (σ.processAtt a).h = σ.h := by simpa using congrArg FG.ChainState.h he
-    have hT : (σ.processAtt a).Th = σ.Th := by simpa using congrArg FG.ChainState.Th he
-    have key : σ.prog ⊆ (σ.processAtt a).prog ∧
-        (a.h = σ.h ∧ a.T = σ.Th → a.val ∈ (σ.processAtt a).prog) := by
-      unfold FG.ChainState.processAtt
-      rcases hf : a.fin with _ | q <;> dsimp only <;> split_ifs <;> simp_all
-    rw [List.foldl_cons]
-    refine ih ?_
-    rw [hh, hT]
-    rcases h with h | ⟨b, hb, hbv, hbh, hbT⟩
-    · exact Or.inl (key.1 h)
-    · rcases List.mem_cons.1 hb with rfl | hb
-      · exact Or.inl (hbv ▸ key.2 ⟨hbh, hbT⟩)
-      · exact Or.inr ⟨b, hb, hbv, hbh, hbT⟩
-
-private theorem final_step_entry {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
-    {B : FG.FGBlock gp.n} (h : gp.stateTransition σ B = some σ') :
-    (σ'.h = σ.h ∧ σ'.Th = σ.Th ∧ σ'.ThSlot = σ.ThSlot ∧
-      (∀ v, (v ∈ σ.prog ∨ ∃ a ∈ B.atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th) →
-        v ∈ σ'.prog) ∧ ¬ (gp.q ≤ σ'.prog.card ∧ σ.ThSlot + gp.δt ≤ B.slot)) ∨
-    (σ'.h = σ.h + 1 ∧ σ'.Th = B.root ∧ σ'.ThSlot = B.slot) := by
-  obtain ⟨_, rfl⟩ := gp.stateTransition_eq_some.1 h
-  have hP := fun v (hv : v ∈ σ.prog ∨ ∃ a ∈ B.atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th) =>
-    final_fold_progress (σ := { σ with s := B.slot }) hv
-  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he] at hP ⊢
-  obtain ⟨F, hF, σ₁, rfl, _, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨_, he'⟩ | ⟨_, _, he'⟩ | ⟨_, hto, he'⟩ <;> rw [he']
-  · exact Or.inr ⟨rfl, rfl, rfl⟩
-  · exact Or.inr ⟨rfl, rfl, rfl⟩
-  · exact Or.inl ⟨rfl, rfl, rfl, hP, hto⟩
-
-private theorem final_entry_origin (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {B : SA.Blk Q.params.n (List (FG.Att Q.params.n))} (hB : B ∈ W.store.tree) :
-    ∃ E ∈ W.store.tree, E.root = (W.state B).Th ∧ E.slot = (W.state B).ThSlot ∧
-      W.store.Anc E B := by
-  have hreach := final_store_reachable S A V Q W
-  have hg := (Store.accepted_tree _ _ _ _ hreach).2.2.2 B hB
-  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have he : W.store = Q.trace.projFG.store (W.block 3).proposer (W.cut 3 + 1) := by
-    change (Q.trace.post (W.cut 3)).fg = _
-    rw [final_anchor_post S A V Q W 3]
-    exact (congrArg Prod.fst (Compose.projFG_state hr.toLocalRun (W.ready 3).1 _)).symm
-  have hstep {Y Z} (hYZ : ParentIn W.store.tree Y Z) :=
-    Store.step_σ (final_fg_run S A V Q) (W.ready 3).1 (he ▸ hYZ.2.1) hYZ.2.2
-  induction hg with
-  | refl =>
-    have hz := Store.σ_genesis (final_fg_run S A V Q) (W.ready 3).1 (W.cut 3 + 1)
-    rw [← he] at hz
-    refine ⟨_, (Store.accepted_tree _ _ _ _ hreach).2.2.1, ?_, ?_, .refl⟩
-    · exact congrArg FG.ChainState.Th hz.symm
-    · exact congrArg FG.ChainState.ThSlot hz.symm
-  | @tail Y Z hGY hYZ ih =>
-    have ht := hstep hYZ
-    rw [← he] at ht
-    rcases final_step_entry ht with ⟨_, hT, hs, _⟩ | ⟨_, hT, hs⟩
-    · obtain ⟨E, hE, heT, hes, hEY⟩ := ih hYZ.1
-      exact ⟨E, hE, heT.trans hT.symm, hes.trans hs.symm, hEY.tail hYZ⟩
-    · exact ⟨Z, hYZ.2.1, hT.symm, hs.symm, .refl⟩
-
-private theorem final_chain_height (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {B C : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (h : W.Extends B C) (hC : W.OnChain C) :
-    (W.state B).h ≤ (W.state C).h ∧
-      ((W.state C).h = (W.state B).h → (W.state C).Th = (W.state B).Th) := by
-  induction h with
-  | refl => exact ⟨le_rfl, fun _ => rfl⟩
-  | @tail Y C hBY hYC ih =>
-    have hy := ih ((Relation.ReflTransGen.single hYC).trans hC)
-    rcases final_step_entry (final_chain_step S A V Q W hC hYC.2.2) with
-      ⟨hh, ht, _⟩ | ⟨hh, _, _⟩
-    · exact ⟨hh ▸ hy.1, fun he => ht.trans (hy.2 (hh.symm.trans he))⟩
-    · exact ⟨by omega, fun _ => by omega⟩
-
-private theorem final_chain_stable (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {B C : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (h : W.Extends B C) (hC : W.OnChain C) (hh : (W.state C).h = (W.state B).h) :
-    (W.state C).ThSlot = (W.state B).ThSlot ∧ (W.state B).prog ⊆ (W.state C).prog := by
-  induction h with
-  | refl => exact ⟨rfl, subset_rfl⟩
-  | @tail Y C hBY hYC ih =>
-    have hY3 := (Relation.ReflTransGen.single hYC).trans hC
-    have hy := (final_chain_height S A V Q W hBY hY3).1
-    rcases final_step_entry (final_chain_step S A V Q W hC hYC.2.2) with
-      ⟨he, _, hs, hp, _⟩ | ⟨he, _, _⟩
-    · obtain ⟨hs', hp'⟩ := ih hY3 (by omega)
-      exact ⟨hs.trans hs', fun v hv => hp v (Or.inl (hp' hv))⟩
-    · omega
-
-private theorem final_chain_row (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {X P : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {row : FG.Att Q.params.n}
-    (hXP : W.Extends X P) (hP : W.OnChain P) (hx : row ∈ X.fgPayload)
-    (hh : row.h = (W.state P).h) (hT : row.T = (W.state P).Th) :
-    row.val ∈ (W.state P).prog := by
-  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have coh := Compose.honest_blocks_coherent hr.toLocalRun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
-  have hX3 := hXP.trans hP
-  have hXt := final_chain_held S A V Q W hX3
-  have hreach := final_store_reachable S A V Q W
-  rcases ((Store.accepted_tree _ _ _ _ hreach).2.2.2 X hXt).cases_tail with
-    he | ⟨Y, _, hYX⟩
-  · cases he
-    simp [Params.genesisBlock] at hx
-  · have hs : W.store.tree ⊆ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
-      intro Z hZ
-      refine ⟨(W.block 3).proposer, (W.ready 3).1, W.cut 3 + 1, ?_⟩
-      change Z ∈ (Q.trace.post (W.cut 3)).fg.tree at hZ
-      rwa [final_anchor_post S A V Q W 3] at hZ
-    have hYX' : W.Extends Y X := .single ⟨hs hYX.1, hs hYX.2.1, hYX.2.2⟩
-    have ht := final_chain_step S A V Q W hX3 hYX.2.2
-    obtain ⟨⟨_, hv⟩, _⟩ := Q.params.toParams.fg.stateTransition_eq_some.1 ht
-    have hrow : row.h ≤ (W.state Y).h := by
-      rcases (hv row hx).2 with ⟨h, _⟩ | ⟨_, _, _, _, h⟩ <;> exact h.le
-    have hYXh := (final_chain_height S A V Q W hYX' hX3).1
-    have hXPh := (final_chain_height S A V Q W hXP hP).1
-    have hXeq : (W.state X).h = (W.state P).h := by omega
-    have hYeq : (W.state Y).h = (W.state P).h := by omega
-    have hYT := (final_chain_height S A V Q W (hYX'.trans hXP) hP).2 hYeq.symm
-    have hcredit : row.val ∈ (W.state X).prog := by
-      rcases final_step_entry ht with ⟨_, _, _, hp, _⟩ | ⟨he, _⟩
-      · exact hp _ (Or.inr ⟨row, hx, rfl, hh.trans hYeq.symm, hT.trans hYT⟩)
-      · omega
-    exact (final_chain_stable S A V Q W hXP hP hXeq.symm).2 hcredit
-
-private theorem final_first_change (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    (hchange : (W.state (W.block 1)).h ≠ (W.state (W.block 0)).h) : W.FirstCrossing := by
-  classical
-  let pred (n : Nat) := ∃ B, W.Extends (W.block 0) B ∧ W.Extends B (W.block 1) ∧
-    B.slot = n ∧ (W.state B).h ≠ (W.state (W.block 0)).h
-  have hex : ∃ n, pred n := ⟨_, W.block 1, W.chain 0 1 (by decide), .refl, rfl, hchange⟩
-  obtain ⟨B, hAB, hB1, hslot, hBh⟩ := Nat.find_spec hex
-  have hB3 : W.OnChain B := hB1.trans (W.chain 1 3 (by decide))
-  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have coh := Compose.honest_blocks_coherent hr.toLocalRun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
-  have hne : W.block 0 ≠ B := by rintro rfl; exact hBh rfl
-  obtain ⟨P, hAP, hPB⟩ := hAB.cases_tail.resolve_left (Ne.symm hne)
-  have hPlt : P.slot < B.slot := coh.2 _ hPB.1 _ hPB.2.1 hPB.2.2
-  have hPh : (W.state P).h = (W.state (W.block 0)).h := by
-    by_contra hn
-    have hp : pred P.slot := ⟨P, hAP, (Relation.ReflTransGen.single hPB).trans hB1, rfl, hn⟩
-    have := Nat.find_min' hex hp
-    omega
-  have hentry : (W.state B).Th = B.root ∧ (W.state B).ThSlot = B.slot := by
-    rcases final_step_entry (final_chain_step S A V Q W hB3 hPB.2.2) with h | h
-    · exact False.elim (hBh (h.1.trans hPh))
-    · exact h.2
-  have hs0 : (W.block 0).slot = W.start := by simpa using W.slots 0
-  have hs1 : (W.block 1).slot = W.start + 2 := by simpa using W.slots 1
-  have hlo := (hAB.slot_le coh).2 hne
-  have hhi := (hB1.slot_le coh).1
-  refine ⟨B, ⟨⟨hB3, hentry⟩, hAB, Or.inr ⟨by omega, by omega, ?_⟩⟩,
-    Or.inr ⟨by omega, by omega⟩⟩
-  intro D hD3 hAD hDB _ hDBslot
-  have hDh : (W.state D).h = (W.state (W.block 0)).h := by
-    by_contra hn
-    have hd : pred D.slot := ⟨D, hAD, hDB.trans hB1, rfl, hn⟩
-    have := Nat.find_min' hex hd
-    omega
-  exact (final_chain_height S A V Q W hAD hD3).2 hDh
-
-private theorem final_own_rows (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    (a : Fin 4) : ∃ P,
-      (W.block a).parent = some P.root ∧
-      P ∈ (Q.trace.state (W.block a).proposer (W.cut a)).fg.tree ∧
-      (W.block a).fgPayload =
-        (Q.trace.state (W.block a).proposer (W.cut a)).fg.proposalAttestations P := by
-  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hc := W.accepted a
-  rcases Compose.blockCall_cases hr.toLocalRun (W.ready a).1 hc with hg |
-    ⟨j, x, hi, hg, hpr, d, p, hdp, hB, _, _, _, hfg⟩
-  · have hp := (W.proposals a).1.2
-    have hz := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
-    simp only [Nat.add_zero] at hz
-    exact False.elim (hp hz)
-  · have hp : (W.block a).parent = some d.head.root := by rw [hB]; rfl
-    have hpay : (W.block a).fgPayload =
-        (Q.trace.state (W.block a).proposer (W.cut a)).fg.proposalAttestations d.head := by
-      rw [hfg, hB]; rfl
-    obtain ⟨cfg, hreach, hst, hstep⟩ := Compose.group_step hr.toLocalRun (W.ready a).1 hg
-    have hhead := Compose.honest_block_accepted _ _ _ (final_node_requirements S A V Q)
-      hr.genesis_root_ok cfg _ _ x hreach hstep hpr d p (by rw [hst]; exact hdp)
-    refine ⟨d.head, hp, ?_, hpay⟩
-    rw [hfg]
-    simpa only [hst, Node.acProposal, Node.tickStep, Node.acCall] using hhead.1
-
-private theorem final_pool_row (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    (a : Fin 4) {P : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (hP : W.OnChain P)
-    (hPt : P ∈ (Q.trace.state (W.block a).proposer (W.cut a)).fg.tree)
-    (hpay : (W.block a).fgPayload =
-      (Q.trace.state (W.block a).proposer (W.cut a)).fg.proposalAttestations P)
-    {row : FG.Att Q.params.n}
-    (hr : row ∈ (Q.trace.state (W.block a).proposer (W.cut a)).fg.atts)
-    (hv : (W.state P).validAtt row) (hh : row.h = (W.state P).h)
-    (hT : row.T = (W.state P).Th) :
-    row.val ∈ (W.state P).prog ∨ row ∈ (W.block a).fgPayload := by
-  classical
-  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have he a i : Q.trace.projFG.store (W.block a).proposer i =
-      (Q.trace.state (W.block a).proposer i).fg :=
-    congrArg Prod.fst (Compose.projFG_state run.toLocalRun (W.ready a).1 i)
-  have hlast : Q.trace.projFG.store (W.block 3).proposer (W.cut 3 + 1) = W.store := by
-    rw [he, ← final_anchor_post S A V Q W 3]
-  have hσ := Store.σ_eq_of_held (final_fg_run S A V Q) (W.ready a).1 (W.ready 3).1
-    (he a (W.cut a) ▸ hPt) (hlast ▸ final_chain_held S A V Q W hP)
-  rw [he, hlast] at hσ
-  by_cases hon : (Q.trace.state (W.block a).proposer (W.cut a)).fg.OnChain P row
-  · obtain ⟨X, _, hXP, hx⟩ := hon
-    have hs : (Q.trace.state (W.block a).proposer (W.cut a)).fg.tree ⊆
-        Q.trace.HonestBlocks (honestKeys S Q.run.2) := fun X hX =>
-      ⟨_, (W.ready a).1, W.cut a, hX⟩
-    exact Or.inl (final_chain_row S A V Q W (Anc.mono hs hXP) hP hx hh hT)
-  · right
-    rw [hpay]
-    exact List.mem_filter.mpr ⟨hr, by simpa only [decide_eq_true_eq, hσ] using And.intro hv hon⟩
-
 /-- Assemble independently produced finite anchors and carrier processing.
 Every budget and actual event remains explicit; eligible duties alone do not suffice. -/
 theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
@@ -561,777 +212,43 @@ theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
     Nonempty (FinalWindowData S A V Q) :=
   ⟨⟨start, block, cut, slots, proposals, accepted, ready, fresh, ordered, bounded, chain, carrier⟩⟩
 
-/-- OPEN extraction and endpoint budget; four-anchor-window.md / fixed-timeout-synthesis.md
-at workbench b3ca078. Synthesizing accepted_latency must leave enough time for actual carrier
-processing by the exact engine-scaled endpoint. No numeric output delay is invented. -/
+
+/-- OPEN extraction and endpoint budget (route A). A window of four honest anchors at the slots
+`start + [0, 2, 4, 6]` after the query, its route-A run premises, and its three anchor steps.
+Synthesizing accepted_latency must leave enough time for actual carrier processing by the exact
+engine-scaled endpoint. No numeric output delay is invented. Paper: workbench route_a_gap2.md,
+window_start_h0.md, anchor_row_supplier.md, anchor_tick_ac_producer.md (read-back #136). -/
 theorem final_window_extract (Q : FinalQuery S A V) :
-    ∃ W : FinalWindowData S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline := by
+    ∃ W : FinalWindowData S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
+      W.AnchorRun ∧ W.AnchorSteps := by
   sorry
 
-/-- OPEN inherited progress, with no lower bound on inherited birth. Paper: workbench b3ca078,
-four-anchor-window.md and fixed-timeout-synthesis.md, inherited-entry bootstrap. -/
-theorem final_inherited_progress (Q : FinalQuery S A V) (W : FinalWindowData S A V Q) :
-    W.InheritedProgress := by
-  sorry
-
-/-- Conditional first crossing, justification OR timeout; exposure d−2 applies only to the
-first post-A0 descendant. Paper: workbench 501e66f, fixed-timeout-synthesis.md, supplier 1.
-InheritedProgress remains an explicit local input, not a new Healthy premise. -/
-theorem final_first_crossing (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    (progress : W.InheritedProgress) : W.FirstCrossing := by
-  classical
-  have h03 := W.chain 0 3 (by decide)
-  have h13 := W.chain 1 3 (by decide)
-  have h01 := W.chain 0 1 (by decide)
-  have hs0 : (W.block 0).slot = W.start := by simpa using W.slots 0
-  have hs1 : (W.block 1).slot = W.start + 2 := by simpa using W.slots 1
-  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have coh := Compose.honest_blocks_coherent run.toLocalRun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
-  have reach := final_store_reachable S A V Q W
-  obtain ⟨E, hE, hEr, hEs, hE0⟩ :=
-    final_entry_origin S A V Q W (final_chain_held S A V Q W h03)
-  by_cases he : E = W.block 0
-  · subst E
-    exact ⟨W.block 0, ⟨⟨h03, hEr.symm, hEs.symm⟩, .refl, Or.inl rfl⟩, Or.inl rfl⟩
-  have hbirth : (W.state (W.block 0)).ThSlot < W.start := by
-    have hc := (Store.accepted_tree _ _ _ _ reach).2.1
-    have := (hE0.slot_le hc).2 he
-    omega
-  apply final_first_change S A V Q W
-  intro hsame
-  have hne : W.block 1 ≠ W.block 0 := by
-    intro he
-    have hd := A.timeout
-    rw [he] at hs1
-    omega
-  obtain ⟨P, h0P, hP1⟩ := h01.cases_tail.resolve_left hne
-  have hP3 : W.OnChain P := (Relation.ReflTransGen.single hP1).trans h13
-  have hlo := (final_chain_height S A V Q W h0P hP3).1
-  have hhi := (final_chain_height S A V Q W (.single hP1) h13).1
-  have hPh : (W.state P).h = (W.state (W.block 0)).h := by omega
-  have huncrossed : W.Uncrossed P := by
-    intro D h0D hDP
-    have hD3 := hDP.trans hP3
-    have hlo := (final_chain_height S A V Q W h0D hD3).1
-    have hhi := (final_chain_height S A V Q W hDP hP3).1
-    have hh : (W.state D).h = (W.state (W.block 0)).h := by omega
-    exact ⟨hh, (final_chain_height S A V Q W h0D hD3).2 hh⟩
-  obtain ⟨ids, hq, hid⟩ := progress P hP1.2.2 h0P hbirth huncrossed
-  obtain ⟨P', hp', hPt, hpay⟩ := final_own_rows S A V Q W 1
-  have heP : P' = P := coh.1
-    ⟨_, (W.ready 1).1, W.cut 1, hPt⟩ hP1.1
-    (Option.some.inj (hp'.symm.trans hP1.2.2))
-  subst P'
-  rcases final_step_entry (final_chain_step S A V Q W h13 hP1.2.2) with
-    ⟨_, _, _, hcredit, hnot⟩ | ⟨he, _⟩
-  · apply hnot
-    refine ⟨hq.trans (Finset.card_le_card ?_), ?_⟩
-    · intro x hx
-      apply hcredit
-      rcases hid x hx with hx | ⟨row, hr, hv, _, hvalid, hh, hT⟩
-      · exact Or.inl hx
-      · rcases final_pool_row S A V Q W 1 hP3 hPt hpay hr hvalid hh hT with hc | hi
-        · exact Or.inl (hv ▸ hc)
-        · exact Or.inr ⟨row, hi, hv, hh, hT⟩
-    · have hb := (final_chain_stable S A V Q W h0P hP3 hPh).1
-      change (W.state P).ThSlot + S.δt ≤ (W.block 1).slot
-      omega
-  · omega
-
-section FinalRows
-
-variable (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-  {B P : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {e : Nat} {a : Fin 4}
-  (hprotected : W.Protected B e)
-  (hanchor : e + 2 = (W.block a).slot ∨ (B = W.block 0 ∧ a = 1))
-  (hparent : (W.block a).parent = some P.root) (hBP : W.Extends B P)
-  (hstable : ∀ D, W.Extends B D → W.Extends D P →
-    (W.state D).h = (W.state B).h ∨ W.JustifiedBy B D.slot)
-  (hnjust : ¬ W.JustifiedBy B P.slot)
-
-include hprotected hanchor hparent hBP hstable hnjust
-
-omit hanchor in
-/-- The non-justified parent still names the protected entry. -/
-theorem final_row_normalized :
-    (W.state P).h = (W.state B).h ∧ (W.state P).Th = B.root := by
-  have hh := (hstable P hBP .refl).resolve_right hnjust
-  have hentry : W.Entry B := by
-    rcases hprotected with ⟨h, _⟩ | ⟨D, _, h, _⟩
-    · exact h.1
-    · exact h
-  have hP : W.OnChain P := by
-    have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-    have hBU : B ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
-      refine ⟨_, (W.ready 3).1, W.cut 3 + 1, ?_⟩
-      rw [← final_anchor_post S A V Q W 3]
-      exact final_chain_held S A V Q W hentry.1
-    have hPU : P ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
-      cases hBP with
-      | refl => exact hBU
-      | tail _ hYP => exact hYP.2.1
-    have hAU : W.block a ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
-      exact ⟨_, (W.ready a).1, W.cut a + 1, by
-        rw [← final_anchor_post S A V Q W a]
-        have h := (run.cutLaw _ (W.ready a).1 _ _ (W.accepted a)).2.1
-        rw [(Store.tree_grows _ _ _ _ (Compose.fg_reachable run.toLocalRun
-          (W.ready a).1 _)).1 _ _ h]
-        exact Set.mem_insert _ _⟩
-    exact (Relation.ReflTransGen.single ⟨hPU, hAU, hparent⟩).trans (W.chain a 3 (by omega))
-  exact ⟨hh, ((final_chain_height S A V Q W hBP hP).2 hh).trans hentry.2.1⟩
-
-/-- OPEN semantic producer: an identity quorum of actual exact-entry reports, including
-the exact finality pair for bound entries. A finite set counts each signer only once. -/
-theorem final_row_signers :
-    ∃ ids : Finset (Fin Q.params.n), Q.params.toParams.fg.q ≤ ids.card ∧
-      ∀ x ∈ ids, x ∈ honestKeys S Q.run.2 ∧ ∃ row j,
-        Q.trace.SignAt x j row ∧ row.val = x ∧ row.h = (W.state B).h ∧
-        row.T = B.root ∧ row.timeout = false ∧
-        Q.trace.time j ≤ Q.params.ts e + 6 * Q.params.Δ ∧
-        ((W.state B).bound → row.fin = some ((W.state B).hj, (W.state B).J)) := by
-  sorry
-
--- Keep the existing supplier contract; only protection and anchor geometry are needed here.
-set_option linter.unusedSectionVars false in
-/-- Continuous post-GST awake/service geometry, including every earlier processing cut. -/
-theorem final_row_service_geometry {j : Nat}
-    (ht : Q.trace.time j ≤ Q.params.ts e + 6 * Q.params.Δ) :
-    Q.params.ts e + 7 * Q.params.Δ ≤ Q.deadline ∧
-      Q.params.ts e + 7 * Q.params.Δ < Q.trace.time (W.cut a) ∧
-      ∀ k ≤ W.cut a, Q.trace.deadline (W.block a).proposer k
-        (max (Q.trace.time j) Q.gst) Q.params.Δ ≤ Q.params.ts e + 7 * Q.params.Δ := by
-  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have coh := Compose.honest_blocks_coherent run.toLocalRun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
-  have hd : 0 < Q.params.Δ := Q.params.toParams.hΔ
-  have htime (i : Fin 4) : Q.trace.time (W.cut i) = Q.params.ts (W.block i).slot :=
-    (W.proposals i).2.2
-  have hstart : max Q.gst 0 < Q.params.ts W.start := by
-    have hm := Q.mature
-    have hpos : (0 : Time) ≤ ((K S A).params.heal .final Q.index : Time) * Q.run.1.Δ :=
-      mul_nonneg (Nat.cast_nonneg _) Q.run.1.Δ_pos.le
-    change max Q.gst 0 + _ ≤ Q.query at hm
-    change max Q.gst 0 + ((K S A).params.heal .final Q.index : Time) * Q.run.1.Δ ≤ Q.query at hm
-    have hf := W.fresh
-    rw [htime, W.slots] at hf
-    simp only [Matrix.cons_val_zero, add_zero] at hf
-    linarith
-  have hexpose : W.start ≤ e := by
-    rcases hprotected with ⟨_, he⟩ | ⟨_, _, _, _, _, _, _, he⟩ <;>
-      split_ifs at he <;> omega
-  have hegst : max Q.gst 0 < Q.params.ts e :=
-    hstart.trans_le ((SA.ts_le_iff Q.params).mpr (Nat.cast_le.mpr hexpose))
-  have hstrict : Q.params.ts e + 7 * Q.params.Δ < Q.trace.time (W.cut a) := by
-    rw [htime]
-    rcases hanchor with ha | ⟨rfl, rfl⟩
-    · rw [← ha]
-      simp only [SA.SAParams.ts, Nat.cast_add, Nat.cast_ofNat]
-      nlinarith
-    · have he : e = W.start := by
-        rcases hprotected with ⟨_, he⟩ | ⟨C, hC, hB, hCB, hJ, hb, _, _⟩
-        · simpa only [ite_true] using he
-        · have hCeq := hC.2.1.antisymm coh hCB
-          subst C
-          have hheld := final_chain_held S A V Q W hB.1
-          have hr := final_store_reachable S A V Q W
-          obtain ⟨E, hE, hEr, _, hcase⟩ := Healing.Store.J_entry_of_reachable hr hheld
-          have hEq : E = W.block 0 := (Store.accepted_tree _ _ _ _ hr).2.1.1 hE hheld
-            (hEr.trans hJ)
-          subst E
-          rcases hcase with hg | ⟨hh, _⟩
-          · have hσ := Healing.Store.σ_genesis hr
-            rw [hg] at hb
-            change 0 < (W.store.σ Q.params.genesisRoot).hj ∧ _ at hb
-            rw [hσ] at hb
-            exact False.elim (by simpa [FG.ChainState.init] using hb.1)
-          · have hlt := Healing.Store.hj_lt_h hr hheld
-            change (W.state (W.block 0)).hj < (W.state (W.block 0)).h at hlt
-            change (W.state (W.block 0)).h = (W.state (W.block 0)).hj at hh
-            omega
-      rw [he, W.slots]
-      simp only [Matrix.cons_val_one, Matrix.cons_val_zero, SA.SAParams.ts,
-        Nat.cast_add, Nat.cast_sub (by have := A.timeout; omega : 1 ≤ S.δt), Nat.cast_one]
-      have ht : (4 : Time) ≤ S.δt := by exact_mod_cast A.timeout
-      nlinarith
-  refine ⟨hstrict.le.trans (W.bounded a), hstrict, ?_⟩
-  intro k hk
-  have hrestart : ∀ r ≤ k, Q.trace.RestartAt (W.block a).proposer r →
-      Q.trace.time r ≤ max Q.gst 0 := by
-    intro r hr hrest
-    obtain ⟨i, _, _, he⟩ := simTrace_restart_event S Q.run.2 Q.hn hrest
-    have hw := Q.valid.restart_at_wake _ _ (List.mem_of_getElem? he)
-    have hbound := (run.time_mono (hr.trans hk)).trans ((W.bounded a).trans Q.bounded)
-    change Q.trace.time r ≤ Q.run.2.horizon at hbound
-    by_contra h
-    change ¬ Q.trace.time r ≤ max Q.gst 0 at h
-    have hon : Q.run.2.key (W.block a).proposer ∈ Q.run.2.honest := (W.ready a).1
-    have hlo : max Q.gst 0 ≤ Q.trace.time r - 1 := Int.le_sub_one_of_lt (lt_of_not_ge h)
-    have hhi : Q.trace.time r - 1 ≤ Q.run.2.horizon :=
-      (sub_le_self _ (by decide : (0 : Time) ≤ 1)).trans hbound
-    have haw := Q.healthy.2.2 _ hon (Q.trace.time r - 1) hlo hhi
-    exact Bool.false_ne_true (hw.2.2.symm.trans haw)
-  apply le_trans (Compose.deadline_le_of_restarts hrestart _ _)
-  have hg : Q.gst ≤ Q.params.ts e + 6 * Q.params.Δ := by
-    have := le_max_left Q.gst 0
-    linarith
-  have hmax : max (Q.trace.time j) Q.gst ≤ Q.params.ts e + 6 * Q.params.Δ :=
-    max_le ht hg
-  have hm := max_le hmax (show max Q.gst 0 ≤ Q.params.ts e + 6 * Q.params.Δ by linarith)
-  linarith
-
-/-- Signed-row engine service transported to the anchor's strict processing endpoint. -/
-theorem final_row_processed {x : Fin Q.params.n} {row : FG.Att Q.params.n} {j : Nat}
-    (hx : x ∈ honestKeys S Q.run.2) (hsign : Q.trace.SignAt x j row)
-    (ht : Q.trace.time j ≤ Q.params.ts e + 6 * Q.params.Δ) :
-    Q.params.ts e + 7 * Q.params.Δ ≤ Q.deadline ∧
-      ∃ k, Q.trace.ProcessAttAt (W.block a).proposer k row ∧ k < W.cut a ∧
-        Q.trace.time k < Q.params.ts e + 7 * Q.params.Δ := by
-  obtain ⟨hbudget, hcut, hgeom⟩ :=
-    final_row_service_geometry S A V Q W hprotected hanchor hparent hBP hstable hnjust ht
-  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst := by
-    constructor
-    · intro v hv o s hs w hw b hsb hc hh haw
-      have h := Q.healthy.1.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw b hsb hc hh haw
-      rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
-      · obtain ⟨o', he, hs'⟩ := hsent
-        cases he
-        exact ⟨u, hu, Or.inl hs', hnowake⟩
-      · obtain ⟨o', he, hr'⟩ := hrecv
-        cases he
-        exact ⟨u, hu, Or.inr hr', hnowake⟩
-    · exact Q.healthy.1.txs
-  have service := signed_row_service_psync S Q.run.2 Q.hn Q.valid
-  rw [psyncFGRowTransport_iff] at service
-  obtain ⟨k, hk, hp, ht'⟩ := service Q.gst hnet
-    x hx j row hsign _ (W.ready a).1 (W.cut a) ⟨_, W.accepted a⟩
-    ((W.bounded a).trans Q.bounded) ((hgeom _ le_rfl).trans hcut.le)
-  have htime := ht'.trans_le (hgeom k hk)
-  refine ⟨hbudget, k, hp, ?_, htime⟩
-  exact lt_of_le_of_ne hk (by intro he; subst k; exact (not_lt_of_ge hcut.le) htime)
-
--- Preserve the supplier contract, including the unused anchor geometry.
-set_option linter.unusedSectionVars false in
-/-- Structural pending-pair retention along the protected stable chain. -/
-theorem final_row_pending_or_finalized (hb : (W.state B).bound) :
-    ((W.state B).hj, (W.state B).J) ∈ (W.state P).pending ∨
-      (W.state B).hj ≤ (W.state P).hF := by
-  have hr := final_store_reachable S A V Q W
-  have hc := (Store.accepted_tree _ _ _ _ hr).2.1
-  have hentry : W.Entry B := by
-    rcases hprotected with ⟨h, _⟩ | ⟨_, _, h, _⟩
-    · exact h.1
-    · exact h
-  have hheld := final_chain_held S A V Q W hentry.1
-  have hinit : ((W.state B).hj, (W.state B).J) ∈ (W.state B).pending := by
-    have hg := (Store.accepted_tree _ _ _ _ hr).2.2.2 B hheld
-    rcases hg.cases_tail with he | ⟨Z, _, hZB⟩
-    · subst B
-      have hz := Healing.Store.σ_genesis hr
-      change 0 < (W.store.σ Q.params.genesisRoot).hj ∧ _ at hb
-      rw [hz] at hb
-      exact False.elim (by simpa [FG.ChainState.init] using hb.1)
-    · obtain ⟨_, _, _, ht⟩ := Healing.Store.step_σ hr hheld hZB.2.2
-      obtain ⟨c, _, _, _, hchain⟩ := Store.chain_state_of_chain _ _ _ _ hr Z hZB.1
-      rcases final_step_entry ht with ⟨_, hTh, _⟩ | ⟨hh, _, _⟩
-      · obtain ⟨⟨E, hE, hEr, hEZ, _⟩, _⟩ := Store.entry_state_of_source _ _ _ _ hr Z hZB.1
-        have he : E = B := hc.1 hE hheld (hEr.trans (hTh.symm.trans hentry.2.1))
-        subst E
-        have := (hEZ.slot_le hc).1
-        have := hc.2 Z hZB.1 B hheld hZB.2.2
-        omega
-      · obtain ⟨_, _, _, _, hnext⟩ := FG.height_step _ _ _ _ _ hchain ht
-        exact List.mem_of_getLast? ((hnext hh).2.2 hb).2
-  have hPa : W.Extends P (W.block a) := by
-    have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-    have hA : W.block a ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
-      refine ⟨_, (W.ready a).1, W.cut a + 1, ?_⟩
-      rw [← final_anchor_post S A V Q W a]
-      have h := (run.cutLaw _ (W.ready a).1 _ _ (W.accepted a)).2.1
-      rw [(Store.tree_grows _ _ _ _ (Compose.fg_reachable run.toLocalRun
-        (W.ready a).1 _)).1 _ _ h]
-      exact Set.mem_insert _ _
-    have hP : P ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
-      cases hBP with
-      | refl =>
-        exact ⟨_, (W.ready 3).1, W.cut 3 + 1, by
-          rw [← final_anchor_post S A V Q W 3]; exact hheld⟩
-      | tail _ h => exact h.2.1
-    exact .single ⟨hP, hA, hparent⟩
-  have hP3 := hPa.trans (W.chain a 3 (by omega))
-  have hsame := (hstable P hBP .refl).resolve_right hnjust
-  suffices hwalk : ∀ C, W.Extends B C → W.OnChain C →
-      (W.state C).h = (W.state B).h →
-      ((W.state B).hj, (W.state B).J) ∈ (W.state C).pending ∨
-        (W.state B).hj ≤ (W.state C).hF from hwalk P hBP hP3 hsame
-  intro C hBC
-  induction hBC with
-  | refl => exact fun _ _ => Or.inl hinit
-  | @tail Y C hBY hYC ih =>
-    intro hC3 hCh
-    have hY3 := (Relation.ReflTransGen.single hYC).trans hC3
-    have hlo := (final_chain_height S A V Q W hBY hY3).1
-    have hhi := (final_chain_height S A V Q W (.single hYC) hC3).1
-    have hYh : (W.state Y).h = (W.state B).h := by omega
-    have hp := ih hY3 hYh
-    have ht := final_chain_step S A V Q W hC3 hYC.2.2
-    obtain ⟨c, _, _, _, hchain⟩ := Store.chain_state_of_chain _ _ _ _ hr Y
-      (final_chain_held S A V Q W hY3)
-    have hmono := (FG.height_step _ _ _ _ _ hchain ht).2.2.1
-    let gp := Q.params.toParams.fg
-    have he := (gp.stateTransition_eq_some.1 ht).2
-    change gp.heightEvents { List.foldl FG.ChainState.processAtt
-      { W.state Y with s := C.fgView.slot } C.fgView.atts with L := C.fgView.root } =
-        W.state C at he
-    obtain ⟨f, p, t, hf⟩ := FG.ChainState.foldl_processAtt_eq
-      { W.state Y with s := C.fgView.slot } C.fgView.atts
-    rw [hf] at he
-    obtain ⟨F, hF, σ, rfl, _, hcases⟩ := Q.params.toParams.fg.heightEvents_cases
-      { W.state Y with s := C.fgView.slot, L := C.fgView.root, fin := f, prog := p, target := t }
-    rcases hcases with ⟨_, he'⟩ | ⟨_, _, he'⟩ | ⟨_, _, he'⟩ <;> rw [he'] at he
-    · have := congrArg FG.ChainState.h he
-      simp only [FG.ChainState.advance] at this
-      omega
-    · have := congrArg FG.ChainState.h he
-      simp only [FG.ChainState.advance] at this
-      omega
-    · rw [← he]
-      rcases hp with hp | hp
-      · by_cases hfin : (W.state B).hj ≤ hF
-        · exact Or.inr hfin
-        · exact Or.inl (List.mem_filter.mpr ⟨hp, by simpa using Nat.lt_of_not_ge hfin⟩)
-      · rw [← he] at hmono
-        exact Or.inr (hp.trans hmono)
-
-omit hanchor in
-/-- Honest exact-entry rows are well formed and valid against the normalized parent. -/
-theorem final_row_valid {x : Fin Q.params.n} {row : FG.Att Q.params.n} {j : Nat}
-    (hx : x ∈ honestKeys S Q.run.2) (hsign : Q.trace.SignAt x j row)
-    (hh : row.h = (W.state B).h) (hT : row.T = B.root) :
-    row.WellFormed ∧ (W.state P).validAtt row := by
-  have hn := final_row_normalized S A V Q W hprotected hparent hBP hstable hnjust
-  exact ⟨signed_att_wellFormed S Q.run.2 Q.hn Q.valid hx hsign,
-    Or.inl ⟨hh.trans hn.1.symm, hT.trans hn.2.symm⟩⟩
-
-end FinalRows
-
-/-- Top-down row assembly. Semantic signing, service geometry and pending-pair retention
-remain named obligations; durable pool retention and identity counting add no premises. -/
-theorem final_row_supply (Q : FinalQuery S A V) (W : FinalWindowData S A V Q) :
-    W.RowSupply := by
-  intro B e hp a ha P hpar hBP hstable
-  by_cases hj : W.JustifiedBy B P.slot
-  · exact Or.inl hj
-  right
-  obtain ⟨hh, hT⟩ := final_row_normalized S A V Q W hp hpar hBP hstable hj
-  obtain ⟨ids, hq, hids⟩ := final_row_signers S A V Q W hp ha hpar hBP hstable hj
-  refine ⟨hh, hT, ids, hq, ?_⟩
-  intro x hx
-  obtain ⟨hhon, row, j, hs, hv, hrh, hrT, hnt, ht, hfin⟩ := hids x hx
-  obtain ⟨hwf, hvalid⟩ := final_row_valid S A V Q W hp hpar hBP hstable hj hhon hs hrh hrT
-  obtain ⟨hdeadline, k, hproc, hk, htime⟩ :=
-    final_row_processed S A V Q W hp ha hpar hBP hstable hj hhon hs ht
-  refine ⟨hhon, row, j, hs, hv, hrh, hrT, hnt, hwf, hvalid, ht, hdeadline,
-    Or.inr ⟨?_, k, hproc, hk, htime⟩, ?_⟩
-  · exact Healing.processed_att_retained
-      (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid) (W.ready a).1 hproc hk
-  · intro hb
-    exact ⟨hfin hb, final_row_pending_or_finalized S A V Q W hp ha hpar hBP hstable hj hb⟩
-
-private theorem final_chain_final_height (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {B C : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (hBC : W.Extends B C) (hC : W.OnChain C) : (W.state B).hF ≤ (W.state C).hF := by
-  induction hBC with
-  | refl => exact le_rfl
-  | @tail P C hBP hPC ih =>
-    have hP3 := (Relation.ReflTransGen.single hPC).trans hC
-    obtain ⟨c, _, _, _, hc⟩ := Store.chain_state_of_chain _ _ _ _
-      (final_store_reachable S A V Q W) P (final_chain_held S A V Q W hP3)
-    exact (ih hP3).trans
-      (FG.height_step _ _ _ _ _ hc (final_chain_step S A V Q W hC hPC.2.2)).2.2.1
-
-private theorem final_root_heights (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {D : SA.Blk Q.params.n (List (FG.Att Q.params.n))} (hD : D ∈ W.store.tree) :
-    (W.state ((W.store.blocks (W.state D).F).getD D)).h ≥ (W.state D).hF ∧
-    ∀ p ∈ (W.state D).pending, ∃ E ∈ W.store.tree,
-      E.root = p.2 ∧ (W.state E).h = p.1 := by
-  have reach := final_store_reachable S A V Q W
-  have hg := (Store.accepted_tree _ _ _ _ reach).2.2.2 D hD
-  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have he : Q.trace.projFG.store (W.block 3).proposer (W.cut 3 + 1) = W.store := by
-    change (Q.trace.projFG.state _ _).1 = _
-    rw [Compose.projFG_state run.toLocalRun (W.ready 3).1,
-      ← final_anchor_post S A V Q W 3]
-  induction hg with
-  | refl =>
-    have hz := Store.σ_genesis (final_fg_run S A V Q) (W.ready 3).1 (W.cut 3 + 1)
-    rw [he] at hz
-    change _ ≥ (W.store.σ Q.params.genesisRoot).hF ∧
-      ∀ p ∈ (W.store.σ Q.params.genesisRoot).pending, _
-    rw [hz]
-    exact ⟨Nat.zero_le _, by simp [FG.ChainState.init]⟩
-  | @tail P D hGP hPD ih =>
-    obtain ⟨ihF, ihp⟩ := ih hPD.1
-    have ht := Store.step_σ (final_fg_run S A V Q) (W.ready 3).1
-      (he ▸ hPD.2.1) hPD.2.2
-    rw [he] at ht
-    obtain ⟨_, ht⟩ := Q.params.toParams.fg.stateTransition_eq_some.1 ht
-    obtain ⟨f, p, t, hf⟩ := FG.ChainState.foldl_processAtt_eq
-      { W.state P with s := D.slot } D.fgPayload
-    change Q.params.toParams.fg.heightEvents
-      { D.fgPayload.foldl FG.ChainState.processAtt { W.state P with s := D.slot }
-        with L := D.root } = W.state D at ht
-    rw [hf] at ht
-    obtain ⟨F, hF, σ₁, rfl, hchoice, hcases⟩ := Q.params.toParams.fg.heightEvents_cases
-      { W.state P with s := D.slot, L := D.root, fin := f, prog := p, target := t }
-    have hFbound : ∀ X, (W.state ((W.store.blocks F).getD X)).h ≥ hF := by
-      intro X
-      rcases hchoice with ⟨rfl, rfl⟩ | ⟨hm, _⟩
-      · obtain ⟨E, hE, hEr, _⟩ := (Store.entry_state_of_source _ _ _ _ reach P hPD.1).2.1
-        have hlookup : W.store.blocks (W.state P).F = some E := by
-          rw [← hEr]; exact hE
-        change (W.state ((W.store.blocks (W.state P).F).getD X)).h ≥ _
-        rw [hlookup] at ihF ⊢
-        exact ihF
-      · obtain ⟨E, hE, hEr, hEh⟩ := ihp _ hm
-        change E.root = F at hEr
-        change (W.state E).h = hF at hEh
-        have hlookup : W.store.blocks F = some E := by rw [← hEr]; exact hE
-        simpa only [hlookup, Option.getD_some, hEh] using (le_rfl : hF ≤ hF)
-    have hold : ∀ q ∈ (W.state P).pending.filter (fun q => hF < q.1),
-        ∃ E ∈ W.store.tree, E.root = q.2 ∧ (W.state E).h = q.1 :=
-      fun q hq => ihp q (List.mem_of_mem_filter hq)
-    rcases hcases with ⟨_, hevent⟩ | ⟨_, _, hevent⟩ | ⟨_, _, hevent⟩
-    all_goals rw [hevent] at ht
-    · have hTh : ∃ E ∈ W.store.tree, E.root = (W.state P).Th ∧
-          (W.state E).h = (W.state P).h := by
-        obtain ⟨E, hE, hr, _, hh, _⟩ :=
-          (Store.entry_state_of_source _ _ _ _ reach P hPD.1).1
-        exact ⟨E, hE, hr, hh⟩
-      rw [← ht]
-      refine ⟨hFbound D, fun q hq => ?_⟩
-      rcases List.mem_append.mp (List.mem_of_mem_drop hq) with hq | hq
-      · exact hold q hq
-      · have heq := List.mem_singleton.mp hq
-        subst q
-        exact hTh
-    · rw [← ht]; exact ⟨hFbound D, hold⟩
-    · rw [← ht]; exact ⟨hFbound D, hold⟩
-
-private theorem final_coverage_of_height (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {B D : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (hB : W.Entry B) (hBD : W.Extends B D) (hD : W.OnChain D)
-    (hh : (W.state B).h ≤ (W.state D).hF) :
-    ∃ F, W.store.blocks (W.state D).F = some F ∧ W.Extends B F := by
-  have reach := final_store_reachable S A V Q W
-  have hs : W.store.tree ⊆ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
-    intro X hX
-    refine ⟨_, (W.ready 3).1, W.cut 3 + 1, ?_⟩
-    change X ∈ (Q.trace.post (W.cut 3)).fg.tree at hX
-    rwa [final_anchor_post S A V Q W 3] at hX
-  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have coh := Compose.honest_blocks_coherent run.toLocalRun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
-  have hDt := final_chain_held S A V Q W hD
-  obtain ⟨F, hF, hFr, hFD⟩ := (Store.entry_state_of_source _ _ _ _ reach D hDt).2.1
-  have hlookup : W.store.blocks (W.state D).F = some F := by rw [← hFr]; exact hF
-  refine ⟨F, hlookup, ?_⟩
-  have hFD' := Anc.mono hs hFD
-  rcases Anc.total coh hBD hFD' with h | h
-  · exact h
-  · have hheight := (final_root_heights S A V Q W hDt).1
-    rw [hlookup] at hheight
-    have hle := (final_chain_height S A V Q W h hB.1).1
-    have heq : (W.state B).h = (W.state F).h := by dsimp only [Option.getD] at hheight; omega
-    have hTh := (final_chain_height S A V Q W h hB.1).2 heq
-    obtain ⟨E, hE, hEr, _, hEF⟩ := final_entry_origin S A V Q W hF
-    have he : E = B := coh.1 (hs hE) (hs (final_chain_held S A V Q W hB.1))
-      (hEr.trans (hTh.symm.trans hB.2.1))
-    exact he ▸ Anc.mono hs hEF
-
-private theorem final_target_counted (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {B P : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {e : Nat} {a : Fin 4}
-    (hP : W.OnChain P)
-    (hPt : P ∈ (Q.trace.state (W.block a).proposer (W.cut a)).fg.tree)
-    (hpay : (W.block a).fgPayload =
-      (Q.trace.state (W.block a).proposer (W.cut a)).fg.proposalAttestations P)
-    (rows : W.TargetRows B P e a) :
-    let counted := (W.block a).fgPayload.foldl FG.ChainState.processAtt
-      { W.state P with s := (W.block a).slot }
-    Q.params.toParams.fg.q ≤ counted.target.card ∧
-      ((W.state B).bound → ((W.state B).hj, (W.state B).J) ∈ (W.state P).pending →
-        Q.params.toParams.fg.q ≤ (counted.fin (W.state B).hj).card) := by
-  classical
-  obtain ⟨hh, hT, ids, hq, hrows⟩ := rows
-  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have he a i : Q.trace.projFG.store (W.block a).proposer i =
-      (Q.trace.state (W.block a).proposer i).fg :=
-    congrArg Prod.fst (Compose.projFG_state run.toLocalRun (W.ready a).1 i)
-  have hlast : Q.trace.projFG.store (W.block 3).proposer (W.cut 3 + 1) = W.store := by
-    rw [he, ← final_anchor_post S A V Q W 3]
-  have hσ := Store.σ_eq_of_held (final_fg_run S A V Q) (W.ready a).1 (W.ready 3).1
-    (he a (W.cut a) ▸ hPt) (hlast ▸ final_chain_held S A V Q W hP)
-  rw [he, hlast] at hσ
-  obtain ⟨bf, bt, brow⟩ := Store.foldl_bits
-    { W.state P with s := (W.block a).slot } (W.block a).fgPayload
-  have credit x (hx : x ∈ ids) :
-      x ∈ ((W.block a).fgPayload.foldl FG.ChainState.processAtt
-        { W.state P with s := (W.block a).slot }).target ∧
-      ((W.state B).bound → ((W.state B).hj, (W.state B).J) ∈ (W.state P).pending →
-        x ∈ ((W.block a).fgPayload.foldl FG.ChainState.processAtt
-          { W.state P with s := (W.block a).slot }).fin (W.state B).hj) := by
-    obtain ⟨_, row, j, _, hv, hrh, hrT, hto, _, hvalid, _, _, hc, hpair⟩ := hrows x hx
-    have rh : row.h = (W.state P).h := hrh.trans hh.symm
-    have rT : row.T = (W.state P).Th := hrT.trans hT.symm
-    rcases hc with ⟨ht, hf⟩ | ⟨hp, _⟩
-    · refine ⟨bt ht, fun hb hm => ?_⟩
-      rcases hf hb with hf | hf
-      · exact bf _ hf
-      · obtain ⟨c, _, _, _, hchain⟩ := Store.chain_state_of_chain _ _ _ _
-          (final_store_reachable S A V Q W) P (final_chain_held S A V Q W hP)
-        have hmem := (FG.chain_invariants _ _ _ hchain).2.2.2.2.2.2.2.1 _ hm
-        change (W.state P).hF < (W.state B).hj ∧ _ at hmem
-        omega
-    · by_cases hon : (Q.trace.state (W.block a).proposer (W.cut a)).fg.OnChain P row
-      · obtain ⟨X, _, hXP, hrX⟩ := hon
-        have hs : (Q.trace.state (W.block a).proposer (W.cut a)).fg.tree ⊆
-            Q.trace.HonestBlocks (honestKeys S Q.run.2) := fun X hX =>
-          ⟨_, (W.ready a).1, W.cut a, hX⟩
-        have hlocal := final_ancestry_local S A V Q W (Anc.mono hs hXP)
-          (final_chain_held S A V Q W hP)
-        have hbits := Store.rows_counted (final_fg_run S A V Q) (W.ready 3).1 (W.cut 3 + 1)
-          (hlast ▸ final_chain_held S A V Q W hP) X (hlast ▸ hlocal) row hrX
-        rw [hlast] at hbits
-        obtain ⟨ht, hf⟩ := hbits.2 rh rT
-        refine ⟨hv ▸ bt (ht hto), fun hb hm => ?_⟩
-        exact hv ▸ bf _ (hf _ (hpair hb).1 hm)
-      · have hin : row ∈ (W.block a).fgPayload := by
-          rw [hpay]
-          exact List.mem_filter.mpr ⟨hp, by
-            simpa only [decide_eq_true_eq, hσ] using And.intro hvalid hon⟩
-        obtain ⟨ht, hf⟩ := brow row hin rh rT
-        exact ⟨hv ▸ ht hto, fun hb hm => hv ▸ hf _ (hpair hb).1 hm⟩
-  exact ⟨hq.trans (Finset.card_le_card fun x hx => (credit x hx).1),
-    fun hb hm => hq.trans (Finset.card_le_card fun x hx => (credit x hx).2 hb hm)⟩
-
-private theorem final_before_timeout (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {B D : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (hB : W.Entry B) (hBD : W.Extends B D) (hD : W.OnChain D)
-    (hage : D.slot < B.slot + S.δt) :
-    ((W.state D).h = (W.state B).h ∧ (W.state D).Th = B.root ∧
-      (W.state D).ThSlot = B.slot ∧ (W.state D).hj = (W.state B).hj ∧
-      (W.state D).J = (W.state B).J ∧
-      ((W.state B).bound → ((W.state B).hj, (W.state B).J) ∈ (W.state D).pending ∨
-        (W.state D).hF = (W.state B).hj ∧ (W.state D).F = (W.state B).J)) ∨
-    ∃ C, W.OnChain C ∧ W.Extends B C ∧ W.Extends C D ∧ B.slot < C.slot ∧
-      (W.state C).h = (W.state B).h + 1 ∧ (W.state C).Th = C.root ∧
-      (W.state C).ThSlot = C.slot ∧ (W.state C).hj = (W.state B).h ∧
-      (W.state C).J = B.root ∧
-      ((W.state B).bound → (W.state C).F = (W.state B).J ∧
-        (W.state C).hF = (W.state B).hj) := by
-  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have coh := Compose.honest_blocks_coherent run.toLocalRun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
-  have reach := final_store_reachable S A V Q W
-  induction hBD with
-  | refl =>
-    have he : Q.trace.projFG.store (W.block 3).proposer (W.cut 3 + 1) = W.store := by
-      change (Q.trace.projFG.state _ _).1 = _
-      rw [Compose.projFG_state run.toLocalRun (W.ready 3).1,
-        ← final_anchor_post S A V Q W 3]
-    have hf := Store.entry_facts (final_fg_run S A V Q) (W.ready 3).1
-      (he ▸ final_chain_held S A V Q W hB.1) (he ▸ hB.2.1)
-    rw [he] at hf
-    exact Or.inl ⟨rfl, hB.2.1, hB.2.2, rfl, rfl, fun hb => Or.inl (hf.2 hb)⟩
-  | @tail P D hBP hPD ih =>
-    have hP3 := (Relation.ReflTransGen.single hPD).trans hD
-    have hPDslot := coh.2 _ hPD.1 _ hPD.2.1 hPD.2.2
-    rcases ih hP3 (by omega) with ⟨hh, hT, hu, hj, hJ, hp⟩ | ⟨C, hC, hBC, hCP, rest⟩
-    · obtain ⟨c, _, _, _, hc⟩ := Store.chain_state_of_chain _ _ _ _ reach P
-        (final_chain_held S A V Q W hP3)
-      have ht := final_chain_step S A V Q W hD hPD.2.2
-      rcases (Store.step_current hc ht hh hT hu hj hJ hp).1 hage with hkeep | hcross
-      · exact Or.inl hkeep
-      · obtain ⟨hheight, hentry, hjust, hroot, _, hfin⟩ := hcross
-        have hslot : (W.state D).ThSlot = D.slot := by
-          rcases final_step_entry ht with ⟨he, _⟩ | ⟨_, _, hs⟩
-          · omega
-          · exact hs
-        have hBPs := (Anc.slot_le coh hBP).1
-        exact Or.inr ⟨D, hD, hBP.tail hPD, .refl, by omega,
-          hheight, hentry, hslot, hjust, hroot, hfin⟩
-    · exact Or.inr ⟨C, hC, hBC, hCP.tail hPD, rest⟩
-
-private theorem final_justified_crossing (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    {B D : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (hB : W.Entry B) (hBD : W.Extends B D) (hD : W.OnChain D)
-    (hage : D.slot < B.slot + S.δt)
-    (hj : (W.state D).hj = (W.state B).h) :
-    ∃ C, W.OnChain C ∧ W.Extends B C ∧ W.Extends C D ∧ B.slot < C.slot ∧
-      (W.state C).h = (W.state B).h + 1 ∧ (W.state C).Th = C.root ∧
-      (W.state C).ThSlot = C.slot ∧ (W.state C).hj = (W.state B).h ∧
-      (W.state C).J = B.root ∧
-      ((W.state B).bound → (W.state C).F = (W.state B).J ∧
-        (W.state C).hF = (W.state B).hj) := by
-  rcases final_before_timeout S A V Q W hB hBD hD hage with hkeep | hc
-  · obtain ⟨c, _, _, _, hchain⟩ := Store.chain_state_of_chain _ _ _ _
-      (final_store_reachable S A V Q W) B (final_chain_held S A V Q W hB.1)
-    have hlt := (FG.chain_invariants _ _ _ hchain).2.2.1
-    change (W.state B).hj < (W.state B).h at hlt
-    have he := hkeep.2.2.2.1
-    omega
-  · exact hc
-
-private theorem final_entry_service (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    (rows : W.RowSupply) {B : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    {e : Nat} {a : Fin 4} (hB : W.Entry B) (hprot : W.Protected B e)
-    (hserve : e + 2 = (W.block a).slot ∨ (B = W.block 0 ∧ a = 1))
-    (hBA : W.Extends B (W.block a)) (hstrict : B.slot < (W.block a).slot)
-    (hage : (W.block a).slot ≤ B.slot + S.δt) :
-    ∃ C, W.OnChain C ∧ W.Extends B C ∧ W.Extends C (W.block a) ∧ B.slot < C.slot ∧
-      (W.state C).h = (W.state B).h + 1 ∧ (W.state C).Th = C.root ∧
-      (W.state C).ThSlot = C.slot ∧ (W.state C).hj = (W.state B).h ∧
-      (W.state C).J = B.root ∧
-      ((W.state B).bound → (W.state C).F = (W.state B).J ∧
-        (W.state C).hF = (W.state B).hj) := by
-  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have coh := Compose.honest_blocks_coherent run.toLocalRun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
-  have hA3 := W.chain a 3 (by omega)
-  have hne : W.block a ≠ B := by rintro rfl; omega
-  obtain ⟨P, hBP, hPA⟩ := hBA.cases_tail.resolve_left hne
-  have hP3 := (Relation.ReflTransGen.single hPA).trans hA3
-  have hPslot := coh.2 _ hPA.1 _ hPA.2.1 hPA.2.2
-  rcases final_before_timeout S A V Q W hB hBP hP3 (by omega) with
-    ⟨hh, hT, hu, hj, hJ, hp⟩ | ⟨C, hC, hBC, hCP, rest⟩
-  swap
-  · exact ⟨C, hC, hBC, hCP.tail hPA, rest⟩
-  have hinterval : ∀ D, W.Extends B D → W.Extends D P →
-      (W.state D).h = (W.state B).h ∨ W.JustifiedBy B D.slot := by
-    intro D hBD hDP
-    have hlo := (final_chain_height S A V Q W hBD (hDP.trans hP3)).1
-    have hhi := (final_chain_height S A V Q W hDP hP3).1
-    exact Or.inl (by omega)
-  rcases rows B e hprot a hserve P hPA.2.2 hBP hinterval with
-    ⟨D, hD, hBD, hDs, _, hDh⟩ | hrows
-  · have hPD : W.Extends D P := by
-      rcases Anc.total coh hD hP3 with h | h
-      · exact h
-      · by_cases he : P = D
-        · exact he ▸ Relation.ReflTransGen.refl
-        · have := (Anc.slot_le coh h).2 he
-          omega
-    obtain ⟨C, hC, hBC, hCD, rest⟩ :=
-      final_justified_crossing S A V Q W hB hBD hD (by omega) hDh
-    exact ⟨C, hC, hBC, (hCD.trans hPD).tail hPA, rest⟩
-  · obtain ⟨P', hp', hPt, hpay⟩ := final_own_rows S A V Q W a
-    have heP : P' = P := coh.1 ⟨_, (W.ready a).1, W.cut a, hPt⟩ hPA.1
-      (Option.some.inj (hp'.symm.trans hPA.2.2))
-    subst P'
-    have hcount := final_target_counted S A V Q W hP3 hPt hpay hrows
-    obtain ⟨c, _, _, _, hc⟩ := Store.chain_state_of_chain _ _ _ _
-      (final_store_reachable S A V Q W) P (final_chain_held S A V Q W hP3)
-    have ht := final_chain_step S A V Q W hA3 hPA.2.2
-    obtain ⟨hheight, hentry, hjust, hroot, _, hfin⟩ :=
-      (Store.step_current hc ht hh hT hu hj hJ hp).2 hcount.1 hcount.2
-    have hslot : (W.state (W.block a)).ThSlot = (W.block a).slot := by
-      rcases final_step_entry ht with ⟨he, _⟩ | ⟨_, _, hs⟩
-      · omega
-      · exact hs
-    exact ⟨W.block a, hA3, hBA, .refl, hstrict,
-      hheight, hentry, hslot, hjust, hroot, hfin⟩
-
-/-- Conditional bounded crossing assembly; paper workbench 501e66f,
-fixed-timeout-synthesis.md, supplier 1. Consumes FirstCrossing and RowSupply without
-discharging them. Handles birth-s separately and counts targets before the timeout tie. -/
-theorem final_bounded_crossings (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
-    (crossing : W.FirstCrossing) (rows : W.RowSupply) : W.BoundedCrossings := by
-  classical
-  obtain ⟨B, hB, _⟩ := crossing
+/-- **Window coverage by the anchor route.** The run premises and the three anchor steps give,
+at the last anchor's store, the block `F` of root `σ[P₃].F` and `P₀ ⪯ F`. The window slots and
+`6 ≤ δt` give `P₃.slot ≤ P₀.slot + δt`; the adjacent-anchor guard is vacuous (gap 2). -/
+theorem final_anchor_coverage (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
+    (run : W.AnchorRun) (steps : W.AnchorSteps) :
+    ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧ W.Extends (W.block 0) F := by
+  obtain ⟨proposer, dg, g, ΔF, a, b, hp, hc, hP, hR, hb⟩ := run
   have hd := A.timeout
   have hs0 : (W.block 0).slot = W.start := by simpa using W.slots 0
-  have hs1 : (W.block 1).slot = W.start + 2 := by simpa using W.slots 1
-  have hs2 : (W.block 2).slot = W.start + 4 := by simpa using W.slots 2
   have hs3 : (W.block 3).slot = W.start + 6 := by simpa using W.slots 3
-  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have coh := Compose.honest_blocks_coherent run.toLocalRun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
-  have below {X} (hX : W.OnChain X) (a : Fin 4) (hlt : X.slot < (W.block a).slot) :
-      W.Extends X (W.block a) := by
-    rcases Anc.total coh hX (W.chain a 3 (by omega)) with h | h
-    · exact h
-    · have := (Anc.slot_le coh h).1
-      omega
-  have first : ∃ C, W.OnChain C ∧ W.Extends B C ∧
-      B.slot < C.slot ∧ C.slot ≤ W.start + (S.δt + 1) ∧
-      (W.state C).h = (W.state B).h + 1 ∧ (W.state C).Th = C.root ∧
-      (W.state C).ThSlot = C.slot ∧ (W.state C).hj = (W.state B).h ∧
-      (W.state C).J = B.root := by
-    by_cases he : B = W.block 0
-    · have hp : W.Protected B W.start := Or.inl ⟨hB, by simp [he]⟩
-      have hBA : W.Extends B (W.block 1) := he ▸ W.chain 0 1 (by decide)
-      obtain ⟨C, hC, hBC, hC1, hlt, hh, hT, hu, hj, hJ, _⟩ :=
-        final_entry_service S A V Q W rows hB.1 hp (Or.inr ⟨he, rfl⟩) hBA
-          (by rw [he]; omega) (by rw [he]; omega)
-      have hCs := (Anc.slot_le coh hC1).1
-      exact ⟨C, hC, hBC, hlt, by omega, hh, hT, hu, hj, hJ⟩
-    · obtain ⟨hlo, hhi, _⟩ := hB.2.2.resolve_left he
-      have hp : W.Protected B (W.start + (S.δt - 1)) := Or.inl ⟨hB, by simp [he]⟩
-      obtain ⟨C, hC, hBC, hC2, hlt, hh, hT, hu, hj, hJ, _⟩ :=
-        final_entry_service S A V Q W rows hB.1 hp (Or.inl (by omega))
-          (below hB.1.1 2 (by omega)) (by omega) (by omega)
-      have hCs := (Anc.slot_le coh hC2).1
-      exact ⟨C, hC, hBC, hlt, by omega, hh, hT, hu, hj, hJ⟩
-  obtain ⟨C, hC, hBC, hBCslot, hCs, hCh, hCT, hCu, hCj, hCJ⟩ := first
-  have hCE : W.Entry C := ⟨hC, hCT, hCu⟩
-  have hbound : (W.state C).bound := by
-    obtain ⟨c, _, _, _, hc⟩ := Store.chain_state_of_chain _ _ _ _
-      (final_store_reachable S A V Q W) B (final_chain_held S A V Q W hB.1.1)
-    have hpos := (FG.chain_invariants _ _ _ hc).1
-    change 1 ≤ (W.state B).h at hpos
-    change 0 < (W.state C).hj ∧ (W.state C).hj + 1 = (W.state C).h
+  have hmono : StrictMono fun i : Fin 4 => W.start + ![0, 2, 4, 6] i := by
+    refine Fin.strictMono_iff_lt_succ.mpr fun i => ?_
+    fin_cases i <;> simp
+  have hsl : (W.block 3).slot ≤ (W.block 0).slot + Q.params.toParams.fg.δt := by
+    change (W.block 3).slot ≤ (W.block 0).slot + S.δt
     omega
-  have hClo : W.start + (if B = W.block 0 then 1 else 2) ≤ C.slot := by
-    split_ifs with he
-    · rw [he] at hBCslot; omega
-    · have := (hB.2.2.resolve_left he).1; omega
-  let v := if C.slot ≤ W.start + (S.δt - 1) then W.start + (S.δt + 1)
-    else W.start + (S.δt + 3)
-  have hv : v ≤ C.slot + S.δt := by
-    dsimp only [v]
-    split_ifs <;> split_ifs at hClo <;> omega
-  have hprotected : ∀ D, W.OnChain D → W.Extends C D → D.slot < v →
-      (W.state D).h = (W.state C).h ∨ (W.state B).h ≤ (W.state D).hF := by
-    intro D hD hCD hDs
-    rcases final_before_timeout S A V Q W hCE hCD hD (by omega) with hkeep |
-      ⟨Z, hZ, _, hZD, _, _, _, _, _, _, hfin⟩
-    · exact Or.inl hkeep.1
-    · have hz := (hfin hbound).2
-      have hmono := final_chain_final_height S A V Q W hZD hD
-      exact Or.inr (by omega)
-  have hfinal : (W.state B).h ≤ (W.state (W.block 3)).hF := by
-    let e := if C.slot ≤ W.start + (S.δt - 1) then W.start + (S.δt - 1)
-      else W.start + (S.δt + 1)
-    have hp : W.Protected C e := Or.inr ⟨B, hB, hCE, hBC, hCJ, hbound, hCs, rfl⟩
-    by_cases hsmall : C.slot ≤ W.start + (S.δt - 1)
-    · have he : e = W.start + (S.δt - 1) := by simp [e, hsmall]
-      obtain ⟨Z, _, _, hZ2, _, _, _, _, _, _, hfin⟩ :=
-        final_entry_service S A V Q W rows hCE hp (Or.inl (by omega))
-          (below hC 2 (by omega)) (by omega) (by simpa [v, hsmall, hs2] using hv)
-      have hZ3 := hZ2.trans (W.chain 2 3 (by decide))
-      have hz := (hfin hbound).2
-      have hm := final_chain_final_height S A V Q W hZ3 (W.chain 3 3 (by decide))
-      omega
-    · have he : e = W.start + (S.δt + 1) := by simp [e, hsmall]
-      obtain ⟨Z, _, _, hZ3, _, _, _, _, _, _, hfin⟩ :=
-        final_entry_service S A V Q W rows hCE hp (Or.inl (by omega)) hC
-          (by omega) (by simpa [v, hsmall, hs3] using hv)
-      have hz := (hfin hbound).2
-      have hm := final_chain_final_height S A V Q W hZ3 (W.chain 3 3 (by decide))
-      omega
-  exact ⟨B, C, hB, ⟨C, hC, hBC, hCs, hCJ, hCj⟩, hCE, hBC, hCJ, hbound,
-    hClo, hCs, hprotected,
-    final_coverage_of_height S A V Q W hB.1 (hBC.trans hC) (W.chain 3 3 (by decide)) hfinal⟩
+  have hB3 : W.block 3 ∈ (Q.trace.state (W.block 3).proposer (W.cut 3 + 1)).fg.tree := by
+    rw [← final_anchor_post S A V Q W 3]
+    exact final_anchor_held S A V Q W
+  obtain ⟨F, hF, hAF⟩ := cacheCoverage_of_anchor_window_upTo hp hc hP hmono
+    (by simpa using hR) (by simpa using hb) (by intro h; simp at h) steps hsl (W.ready 3).1 hB3
+  refine ⟨F, ?_, hAF⟩
+  change (Q.trace.post (W.cut 3)).fg.blocks ((Q.trace.post (W.cut 3)).fg.σ (W.block 3).root).F =
+    some F
+  rw [final_anchor_post S A V Q W 3]
+  exact hF
 
 /-- Transport an acceptance-or-coverage certificate from its actual historical
 cut to the reader endpoint. The acceptance branch must already transfer immutable
@@ -1477,12 +394,12 @@ theorem final_cache_acceptance (Q : FinalQuery S A V) (W : FinalWindowData S A V
 
 /-- Conditional payload/read projection of the finite supplier package. Uses the engine's
 existing catch-up duration, raw own-block release, and final cache membership at endCut.
-Window extraction and CacheCoverage remain explicit inputs; no coefficient is synthesized. -/
+Window extraction with CacheCoverage of the extracted window remains an explicit input;
+no coefficient is synthesized. -/
 theorem final_payload_projection
     (windows : ∀ Q : FinalQuery S A V,
-      ∃ W : FinalWindowData S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline)
-    (coverage : ∀ (Q : FinalQuery S A V) (W : FinalWindowData S A V Q),
-      Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline → W.CacheCoverage) :
+      ∃ W : FinalWindowData S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
+        W.CacheCoverage) :
     ∀ g, schema.output .final = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (family S) V).Holds
       (fun r => (Sys (family S) V).Healthy (K S A) gst r ∧
@@ -1501,7 +418,7 @@ theorem final_payload_projection
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
   let Q : FinalQuery S A V := ⟨r, hn, i, gst, t, hv, hcollision, hhealthy,
     hprog, hm, hb, v, hvr⟩
-  obtain ⟨W, hslack⟩ := windows Q
+  obtain ⟨W, hslack, hcover⟩ := windows Q
   have ht : 0 ≤ t := by
     have hd := r.1.Δ_pos
     have hg0 : (0 : Time) ≤ max gst 0 := le_max_right _ _
@@ -1530,10 +447,11 @@ theorem final_payload_projection
       exact taggedRoot_ne _ _
   exact finalized_inBy S r.2 hn hv
     (noCollTransport V S r.1 r.2 hn hv hcollision) hc hdeadline hb hroot
-    (fun y j hy hj => coverage Q W hslack y Q.deadline j le_rfl hb hy hj)
+    (fun y j hy hj => hcover y Q.deadline j le_rfl hb hy hj)
 
-/-- Statement-only assembly of the OPEN four-anchor suppliers; not a completed liveness proof.
-Paper: workbench b3ca078, four-anchor-window.md and fixed-timeout-synthesis.md. -/
+/-- Statement-only assembly of the OPEN route-A suppliers; not a completed liveness proof.
+Coverage is the anchor route (`final_anchor_coverage`); the open leaf is `final_window_extract`.
+Paper: workbench route_a_gap2.md (read-back #136). -/
 theorem accepted_healthyLive_final : ∀ g, schema.output .final = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (family S) V).Holds
       (fun r => (Sys (family S) V).Healthy (K S A) gst r ∧
@@ -1541,13 +459,11 @@ theorem accepted_healthyLive_final : ∀ g, schema.output .final = some g →
           ((Sys (family S) V).ready (K S A) gst r) ((Sys (family S) V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys (family S) V).cDur (K S A) r)
         g ((Sys (family S) V).heal (K S A) .final i gst r) ((K S A).params.latency .final i) := by
-  apply final_payload_projection S A V (final_window_extract S A V)
-  intro Q W hslack
-  have crossings := final_bounded_crossings S A V Q W
-      (final_first_crossing S A V Q W (final_inherited_progress S A V Q W))
-      (final_row_supply S A V Q W)
-  obtain ⟨B, C, hB, _, _, _, _, _, _, _, _, F, hF, hBF⟩ := crossings
-  exact final_cache_acceptance S A V Q W hslack ⟨F, hF, hB.2.1.trans hBF⟩
+  apply final_payload_projection S A V
+  intro Q
+  obtain ⟨W, hslack, run, steps⟩ := final_window_extract S A V Q
+  exact ⟨W, hslack,
+    final_cache_acceptance S A V Q W hslack (final_anchor_coverage S A V Q W run steps)⟩
 
 /-- R3 available/stable inclusion; R4 FinalInclude for final.
 NO PAPER PROOF for exact contract gHeal, bounded recurrence→node progress,

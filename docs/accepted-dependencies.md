@@ -45,7 +45,7 @@ an assembly depending on them is not an additional leaf.
 | Set | Owner | Complete direct leaf list |
 |---|---|---|
 | C | Spec orb, joint coefficient synthesis | `accepted_heal` |
-| F | Four-anchor/final service owner | `final_window_extract`, `final_inherited_progress`, `final_row_signers` |
+| F | Four-anchor/final service owner | `final_window_extract` |
 | H | Healing paper/T3; Spec orb integration | `healthy_old_inventory_initialize`, `healthy_prepare`, `healthy_bounded_repairing_opening`, `healthy_current_live_candidates`, `healthy_current_mature_or_anchor`, `healthy_current_record_viable`, `healthy_repair_schedule` |
 | N | Healing paper/T3; Spec orb integration | `healthy_confirmed_supply` |
 | O | Healing/outage owner; Spec orb integration | `outage_repair` |
@@ -152,7 +152,8 @@ dependency graph; traversing it identifies the following exact direct `sorryAx` 
 Names in this section have prefix `Consensus.Goldilocks.Refinement.`.
 `C` abbreviates the set `{accepted_catchUp, accepted_heal, accepted_latency}`.
 `F` abbreviates `{final_window_extract, final_inherited_progress, final_row_supply,
-final_cache_acceptance}`. These are named sets of leaves, not extra assumptions.
+final_cache_acceptance}` (historical; since route A (#136) the only final direct sorry owner is
+`final_window_extract`). These are named sets of leaves, not extra assumptions.
 
 | Audited root | Reachable direct sorry owners |
 |---|---|
@@ -216,8 +217,8 @@ paths; names in compiled rows are fully qualified.
 
 ## Concrete acceptance assembly
 
-The root fixes standard fractions, `finalWindow S = [0,δt−1,δt+1,δt+3]`,
-δt≥4 and positive outage look-back η. Engine-unit outage lag is 8k−8 and budget
+The root fixes standard fractions, `finalWindow S = [0,2,4,6]` (route A, #136),
+δt≥6 and positive outage look-back η. Engine-unit outage lag is 8k−8 and budget
 is min(η,4k−6), corrected in f416034 to imply the unchanged node time window at Δp=Δe+1.
 Only catch-up (positive Nat), heal and latency (Nat-valued functions at each gap)
 are existential. They are independent of validator set, execution and horizon.
@@ -226,11 +227,14 @@ The three numeric leaves must be solved jointly with the named endpoint supplier
 their arbitrary separate instantiation would not prove the endpoint. Local-pattern
 sufficiency remains OPEN, not supplied by the timeout inequality alone.
 The one-Δ model maps Δ_F:=Δ_p, hence c_F=2; this deliberately excludes the
-intended model's independent slower FG delivery. The engine-owned actual-row
-service bridge, first-honest-descendant usable rows (exposure up to δt−2) or
-earlier justification, inherited progress, productive chain and cache acceptance
-remain OPEN. The four-anchor paper argument is conditional on those joins.
-Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbench/blob/fd8cb311fac057347fb49e32cf17841e27a75e76/repos/goldilocks/notes/healing-simple/four-anchor-window.md#general-fixed-timeout-d4).
+intended model's independent slower FG delivery. Route A (#136): window coverage is the
+proved anchor route (`final_anchor_coverage` over `cacheCoverage_of_anchor_window_upTo`);
+its inputs `AnchorRun` (reset premises, catch-up, honest anchor proposals, drain, horizon)
+and `AnchorSteps` (three gap-2 anchor steps) are part of the OPEN `final_window_extract`.
+The paper route (workbench `route_a_gap2.md`, read-back passed on #136) is conditional on
+the duty-to-proposal adapter, the M1′ bound, an `accepted_heal` that satisfies (H*), and
+the mechanical links. Final latency is 8(X+6)+2; it does not depend on δt.
+Superseded argument: [general fixed timeout](https://github.com/fradamt-agent/workbench/blob/fd8cb311fac057347fb49e32cf17841e27a75e76/repos/goldilocks/notes/healing-simple/four-anchor-window.md#general-fixed-timeout-d4).
 
 | Declaration | Paper argument/status |
 |---|---|
@@ -242,14 +246,11 @@ Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbe
 | `Consensus.Goldilocks.Refinement.accepted_finalMonotone` | Reduction to shape_finalMonotone; exact generic field. |
 | `Consensus.Goldilocks.Refinement.accepted_finalAccountable` | Body closed through shape_finalAccountable at fixed 1/3; only the three coefficient leaves are reachable through the contract type. Encoding/transport is proved. |
 | `Consensus.Goldilocks.Refinement.accepted_healthyLive` | Assembly: available/stable use healthy_confirmed_supply and proved payload projection; final uses accepted_healthyLive_final. Named suppliers remain OPEN. |
-| `Consensus.Goldilocks.Refinement.final_window_extract` | OPEN: actual ready four-anchor proposals/cuts on the canonical finite trace, surviving ancestry and carrier processing by query + latency(.final,i)·Δe. Joint accepted_latency synthesis must supply transport slack, not just A3≤deadline. |
-| `Consensus.Goldilocks.Refinement.final_inherited_progress` | OPEN: inherited post-A0 entry has no birth lower bound; if uncrossed through A1's parent, distinct credited/pool current-entry progress reaches quorum. |
-| `Consensus.Goldilocks.Refinement.final_first_crossing` | Body closed conditional on InheritedProgress: birth-s entry OR first post-A0 crossing by s+d−1 (justify OR timeout); only the latter has exposure age≤d−2. Canonical store coherence, actual mandatory inclusion and dedup are derived, not extra premises. |
-| `Consensus.Goldilocks.Refinement.final_row_supply` | OPEN: designated protected first entry/actual bound successor, local no-timeout condition; already justified OR distinct honest exact valid paired targets, prior matching reports/dedup included. Report/delivery bounds apply only to the quorum branch. |
-| `Consensus.Goldilocks.Refinement.final_bounded_crossings` | Body closed conditional on FirstCrossing and RowSupply: justification by s+d+1, actual bound successor with separate birth-s w≥1/post-A0 w≥2 cases, no timeout before designated service and chain finalization above A0 by A3. Uses actual pool inclusion/dedup and target-before-timeout at equality. |
-| `Consensus.Goldilocks.Refinement.final_cache_acceptance` | OPEN, consumes only A3 chain-finalized coverage of A0, projected from bounded crossings by the assembly: actual cache ancestry at the exact engine-scaled query endpoint and later horizon-bounded ready CutAfter reads. Not arbitrary-delay acceptance or receipt alone. |
-| `Consensus.Goldilocks.Refinement.final_payload_projection` | Body closed conditional on window extraction and CacheCoverage: raw own-block release via simTrace_block_released and final-output chain membership at engine endCut. Preserves existing cDur, reader condition, latency scaling and collision escape; no forwarding-envelope origin assumption. |
-| `Consensus.Goldilocks.Refinement.accepted_healthyLive_final` | Assembly explicitly references extraction, inherited progress, first crossing, row supply, bounded crossings, cache acceptance and payload projection. First crossing, bounded crossings and payload projection are conditionally body closed; the other four suppliers remain sorry leaves. The three closed bodies' only transitive sorry owners are accepted_catchUp/heal/latency through their types, not canonical transport or supplier proofs. No new public Healthy premises; accepted coefficients remain OPEN. |
+| `Consensus.Goldilocks.Refinement.final_window_extract` | OPEN (route A): actual ready four-anchor proposals/cuts at start+[0,2,4,6] on the canonical finite trace, surviving ancestry and carrier processing by query + latency(.final,i)·Δe, the route-A run premises `AnchorRun` and the three anchor steps `AnchorSteps`. Joint accepted_latency synthesis must supply transport slack, not just A3≤deadline. |
+| `Consensus.Goldilocks.Refinement.final_anchor_coverage` | Body closed: `AnchorRun` and `AnchorSteps` give A3 chain-finalized coverage of A0 through `cacheCoverage_of_anchor_window_upTo`; uses `6 ≤ δt` for `P₃.slot ≤ P₀.slot + δt`. |
+| `Consensus.Goldilocks.Refinement.final_cache_acceptance` | OPEN, consumes only A3 chain-finalized coverage of A0, supplied by `final_anchor_coverage` (route A): actual cache ancestry at the exact engine-scaled query endpoint and later horizon-bounded ready CutAfter reads. Not arbitrary-delay acceptance or receipt alone. |
+| `Consensus.Goldilocks.Refinement.final_payload_projection` | Body closed conditional on window extraction with CacheCoverage of the extracted window (one premise; route A, #136): raw own-block release via simTrace_block_released and final-output chain membership at engine endCut. Preserves existing cDur, reader condition, latency scaling and collision escape; no forwarding-envelope origin assumption. |
+| `Consensus.Goldilocks.Refinement.accepted_healthyLive_final` | Assembly (route A, #136): extraction (`final_window_extract`, OPEN), anchor coverage (`final_anchor_coverage`, body closed), cache acceptance and payload projection. The only final direct sorry owner is `final_window_extract`; the closed bodies reach sorryAx only through the contract type (accepted coefficients). The first-crossing / bounded-crossing assembly and its leaves `final_inherited_progress`, `final_row_signers` are retired (git history before #136 route A). No new public Healthy premises; accepted coefficients remain OPEN. |
 | `Consensus.Goldilocks.Refinement.accepted_sleepySafe` | Assembly over partly OPEN sleepy_safety_inputs and proved sleepy_safe_engine, with directional readiness and empty-V handling. |
 | `Consensus.Goldilocks.Refinement.accepted_sleepyLive` | Assembly over selected serviced Sleepy proposal, finite inclusion and proved payload projection; suppliers OPEN. |
 | `Consensus.Goldilocks.Refinement.accepted_healedSafe` | Assembly over finite preparation, progress-free preservation and arbitrary-cut adapters; suppliers OPEN. |
@@ -263,9 +264,9 @@ Pinned argument: [general fixed timeout](https://github.com/fradamt-agent/workbe
 
 ## Ownership and architecture
 
-The four-anchor skeleton above is pinned to workbench `b3ca078`,
-`four-anchor-window.md` and `fixed-timeout-synthesis.md`. Its statements are under
-review, not proved. The cache endpoint is the original query plus the SAME joint
+The four-anchor skeleton above follows route A (#136; workbench `route_a_gap2.md`,
+`window_start_h0.md`, `anchor_row_supplier.md`, `anchor_tick_ac_producer.md`). Its
+statements are under review, not proved. The cache endpoint is the original query plus the SAME joint
 `accepted_latency` coefficient times engine Δe; no separate output-delay witness,
 catch-up substitution or guessed 2Δ bound is introduced. `FinalWindowData` contains
 operational witnesses, not any of the five desired supplier conclusions.
