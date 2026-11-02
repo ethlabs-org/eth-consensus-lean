@@ -964,7 +964,12 @@ layer_files() {
 # lean_scan <sorry|example> <count|lines> <files...>: Lean source with comments (nested block comments and
 # docstrings, line comments) removed, and string, raw string and char literals (interpolations included) masked;
 # a name literal (`sorry) is not a match.
-# `sorry`: the tokens sorry and admit. `example`: an `example` other than a bare `example := @Name` (or ``Name) reference
+# `sorry`: the tokens sorry and admit as a term or tactic. Not a match: part of a longer name (`admit_foo`,
+# `hP.admit`, `.admit`), or `admit` as a declared or bound name, i.e. followed by `:` (or `:=`) on its line and
+# preceded on its line by `(`, `{`, `⦃`, `[` or `,` (a binder, named argument or structure-instance field), or by
+# nothing at bracket depth 0 over the file so far (a structure field). `sorry` is a keyword:
+# every `sorry` counts, `(sorry : T)` included, and so does an `admit` after `by`, `;`, `·`, `=>` or any other token,
+# and a line-start `admit :` inside a bracket, so `(by admit : T)` and `(by⏎ admit : T)` count. `example`: an `example` other than a bare `example := @Name` (or ``Name) reference
 # (nothing after the name but the next command at column 0, or the end of the file: an argument must be
 # indented, so none can follow). An example never enters the environment, so neither check-decls nor the axiom
 # audit sees its proof (one built on an unfinished lemma would pass unseen). Prints the number of matches
@@ -1002,6 +1007,14 @@ for f in sys.argv[3:]:
     code = "".join(out)
     for m in pat.finditer(code):
         if sys.argv[1] == "example" and bare_ref(code, m.start()): continue
+        before = code[code.rfind("\n", 0, m.start()) + 1:m.start()]  # the line before the token
+        if m.group() == "admit" and re.match(r"[ \t]*:", code[m.end():]):
+            if re.fullmatch(r".*[({⦃\[,][ \t]*", before):
+                continue  # a binder, named argument or structure-instance field `admit`
+            if re.fullmatch(r"[ \t]*", before):  # at a line start: a field only outside every bracket so far
+                seg = code[:m.start()]  # the file so far: every earlier command is balanced
+                if sum(seg.count(o) for o in "([{⦃⟨") == sum(seg.count(c) for c in ")]}⦄⟩"):
+                    continue  # a structure field `admit`, not the tactic
         n += 1
         ln = code.count("\n", 0, m.start()) + 1
         if mode == "lines": print(f"{f}:{ln}: {src.split(chr(10))[ln - 1].strip()}")
@@ -1055,6 +1068,11 @@ selftest_grep() {
     echo "  ok: only the Spec fixture's sorry is outside the sorry layers" || { echo "  placement: '$out'"; rc=1; }
   [[ "$(sorry_count "$WORK/fx-sorry-inv.tsv")" == 1 ]] && echo "  ok: the Lemmas fixture's sorry is counted, its comments are not" ||
     { echo "  sorry_count: $(sorry_count "$WORK/fx-sorry-inv.tsv")"; rc=1; }
+  # Names are not holes: only the thirteen real holes of grep/sorry/Tokens.lean count (an `admit` field, projection,
+  # longer name, structure-instance field and named argument do not; a line-start `admit :` inside a bracket does).
+  out="$(lean_scan sorry lines "$FX/grep/sorry/Tokens.lean" | sed 's/^[^:]*:\([0-9]*\):.*/\1/' | tr '\n' ' ')"
+  [[ "$out" == "12 13 14 15 16 18 20 24 26 28 31 36 41 " ]] && echo "  ok: sorry/admit as a term or tactic counted, as a name not" ||
+    { echo "  grep/sorry/Tokens.lean: counted lines '$out', expected '12 13 14 15 16 18 20 24 26 28 31 36 41 '"; rc=1; }
   out="$(lean_scan example lines "$FX/grep/Example.lean")"
   [[ "$out" == "$FX/grep/Example.lean:4: example : 1 = 1 := rfl
 $FX/grep/Example.lean:6: example := @id (0 = 0) rfl

@@ -74,9 +74,9 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   an inductive/constructor cycle when the declaration that uses the axiom directly is not audited (the tests gate,
   whose roots exclude the library): check-decls still fails a direct `sorry` outside the sorry layers. `lake build --wfail` runs with `warn.sorry = false`, so every other warning fails the build.
 - **Proofs:** leanchecker, one process per leaf module of the checked libraries (parents own no
-  constants); `lake check` (of the default targets while the sorry layers' files hold no `sorry`/`admit` outside
-  comments and strings: it rejects `sorryAx`; otherwise only the comparator replays what the solution uses of the
-  dependencies); check-decls; axiom-audit; and the comparator: statement matching, axiom limits,
+  constants); `lake check` (of the default targets while the sorry layers' files hold no `sorry`/`admit` term or
+  tactic outside comments and strings, an `admit`-named field or binder not being one: it rejects `sorryAx`;
+  otherwise only the comparator replays what the solution uses of the dependencies); check-decls; axiom-audit; and the comparator: statement matching, axiom limits,
   identical reachable constants across exports (tamper resistance) and sandboxed replay, by Lean's
   kernel and, with `--paranoid`, by every external kernel bundled with Lean.
   The comparator is **not a Spec-drift check**: both sides read the same source tree.
