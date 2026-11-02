@@ -269,6 +269,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDec
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingInvariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingState
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HSSharedOfQuery
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HSSharedRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealCompose
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealComposeDefs
@@ -281,6 +282,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyConfirmedSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyGap
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyQueryShared
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordWriters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppliers
