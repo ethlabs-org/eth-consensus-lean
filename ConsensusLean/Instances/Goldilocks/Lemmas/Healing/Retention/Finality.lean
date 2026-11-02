@@ -425,20 +425,16 @@ theorem low_finalized_below_high_block_of_run (hrun : GoldilocksRun proposer dg 
   refine finalized_anc_of_height_lt_of_run hrun hnc hf hy hx hBf hFm hBfF.symm hBt ?_
   omega
 
-/-- Equal frame floors, contest status and root kind suffice for cross-node finality
-ancestry of an actual viable head. J roots agree only in the J-root case. -/
-theorem finalized_below_viable_head (hrun : GoldilocksRun proposer dg H tr)
+/-- A block held anywhere honestly extends the target's finalized block if it meets the
+target's floor and, in the J-root case, extends the target's J. No target acceptance is needed. -/
+theorem finalized_below_floor_held (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i m : Nat}
-    (hfloor : (tr.state y i).fg.headHeightFloor = (tr.state z m).fg.headHeightFloor)
-    (_hcontest : (tr.state y i).fg.Contest ↔ (tr.state z m).fg.Contest)
-    (hkind : ((tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
-        ¬(tr.state y i).fg.Contest) ↔
-      ((tr.state z m).fg.hmax = (tr.state z m).fg.hj + 1 ∧ ¬(tr.state z m).fg.Contest))
-    (hJ : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
-      ¬(tr.state y i).fg.Contest → (tr.state y i).fg.J = (tr.state z m).fg.J)
     {W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hv : W ∈ (tr.state z m).fg.toFrame.viableHeads) :
+    (hW : W ∈ (tr.state z m).fg.tree)
+    (hheight : (tr.state y i).fg.headHeightFloor ≤ ((tr.state z m).fg.σ W.root).h)
+    (hJ : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
+      ¬(tr.state y i).fg.Contest → Anc (tr.HonestBlocks H) (tr.state y i).fg.J W) :
     Anc (tr.HonestBlocks H) (tr.state y i).fg.F W := by
   have hr := Compose.fg_reachable hrun.toLocalRun hy i
   have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
@@ -446,14 +442,9 @@ theorem finalized_below_viable_head (hrun : GoldilocksRun proposer dg H tr)
   have hcoh := hU.mono hsub
   obtain ⟨hF, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, hmax, -, X, hX, hXF⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ hr
-  rcases hv with ⟨hW, -, hroot, hheight⟩
   by_cases hk : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
       ¬(tr.state y i).fg.Contest
-  · have hkz := hkind.mp hk
-    have he : (tr.state z m).fg.fcRoot = (tr.state z m).fg.J := by
-      simp [Goldilocks.Store.fcRoot, hkz.1, hkz.2]
-    rw [he, ← hJ hk.1 hk.2] at hroot
-    exact (hFJ.mono hsub).trans (hroot.mono (fun B hB => ⟨z, hz, m, hB⟩))
+  · exact (hFJ.mono hsub).trans (hJ hk.1 hk.2)
   have hg := Store.genesis_mem hr
   have hgen : (tr.state y i).fg.F.root = sp.toParams.genesisRoot →
       Anc (tr.HonestBlocks H) (tr.state y i).fg.F W := fun he => by
@@ -475,8 +466,6 @@ theorem finalized_below_viable_head (hrun : GoldilocksRun proposer dg H tr)
   have hjlt := (FG.chain_invariants _ _ _ hc).2.2.1
   have hmaxBj := hmax Bj hBj
   have hstrict : ((tr.state y i).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h := by
-    change (tr.state z m).fg.headHeightFloor ≤ _ at hheight
-    rw [← hfloor] at hheight
     by_cases hcon : (tr.state y i).fg.Contest
     · simp only [Goldilocks.Store.headHeightFloor, ite_eq_left hcon] at hheight
       omega
@@ -494,6 +483,53 @@ theorem finalized_below_viable_head (hrun : GoldilocksRun proposer dg H tr)
     (X := X) (F := (tr.state y i).fg.F) (W := W)
   rw [hst hy, hst hz] at h
   exact h hX hF hXF.symm hW hstrict
+
+/-- Equal frame floors, contest status and root kind suffice for cross-node finality
+ancestry of an actual viable head. J roots agree only in the J-root case. -/
+theorem finalized_below_viable_head (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i m : Nat}
+    (hfloor : (tr.state y i).fg.headHeightFloor = (tr.state z m).fg.headHeightFloor)
+    (_hcontest : (tr.state y i).fg.Contest ↔ (tr.state z m).fg.Contest)
+    (hkind : ((tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
+        ¬(tr.state y i).fg.Contest) ↔
+      ((tr.state z m).fg.hmax = (tr.state z m).fg.hj + 1 ∧ ¬(tr.state z m).fg.Contest))
+    (hJ : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
+      ¬(tr.state y i).fg.Contest → (tr.state y i).fg.J = (tr.state z m).fg.J)
+    {W : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hv : W ∈ (tr.state z m).fg.toFrame.viableHeads) :
+    Anc (tr.HonestBlocks H) (tr.state y i).fg.F W := by
+  rcases hv with ⟨hW, -, hroot, hheight⟩
+  refine finalized_below_floor_held hrun hnc hf hy hz hW (hfloor ▸ hheight) ?_
+  intro hm hc
+  have hkz := hkind.mp ⟨hm, hc⟩
+  have he : (tr.state z m).fg.fcRoot = (tr.state z m).fg.J := by
+    simp [Goldilocks.Store.fcRoot, hkz.1, hkz.2]
+  rw [he, ← hJ hm hc] at hroot
+  exact hroot.mono (fun B hB => ⟨z, hz, m, hB⟩)
+
+/-- A locally held floor-viable block satisfying the J-root condition is a viable frame head.
+This is local: no agreement between different frames is assumed. -/
+theorem viable_head_of_floor (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree)
+    (hh : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ X.root).h)
+    (hJ : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
+      ¬(tr.state y i).fg.Contest → (tr.state y i).fg.Anc (tr.state y i).fg.J X) :
+    (tr.state y i).fg.Anc (tr.state y i).fg.F X ∧
+      X ∈ (tr.state y i).fg.toFrame.tree ∧
+      (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot X ∧
+      (tr.state y i).fg.IsViable X ∧ X ∈ (tr.state y i).fg.toFrame.viableHeads := by
+  have hFX := Compose.honest_held_anc hrun hnc hy
+    (finalized_below_floor_held hrun hnc hf hy hy hX hh
+      (fun hm hc => (hJ hm hc).mono (fun B hB => ⟨y, hy, i, hB⟩))) hX
+  have hroot : (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot X := by
+    by_cases hk : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
+        ¬(tr.state y i).fg.Contest
+    · simpa [Goldilocks.Store.fcRoot, hk] using hJ hk.1 hk.2
+    · simpa [Goldilocks.Store.fcRoot, hk] using hFX
+  exact ⟨hFX, ⟨hX, hFX⟩, hroot, hh, ⟨hX, hFX, hroot, hh⟩⟩
 
 /-- Whole-run specialization of the actual held-block finality comparison. -/
 theorem low_finalized_below_high_block (hp : ResetPremises tr H proposer dg g ΔF a)
