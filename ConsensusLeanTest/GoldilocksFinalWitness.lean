@@ -36,12 +36,14 @@ theorem healthy_run (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients) (
       (Sys (family S) (Fin 2)).Healthy (acceptanceContract A C) 0 r := by
   obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (family S) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
-  refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ?_, ?_⟩
-  · exact (Model.sysOf_delivers_iff rho _ _).mpr (he.psync le_rfl)
+  refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ⟨?_, ?_⟩, ?_⟩
+  · exact (Model.sysOf_delivers_iff rho _ _ _).mpr (he.psync le_rfl)
   · change ((rho.point.faulty.card : ℚ)) < _ * _
     rw [hp, point_faulty]
     norm_num [Params.standard]
   · exact fun _ _ _ _ _ => rfl
+  · exact le_mul_of_one_le_left zero_le_one
+      (by exact_mod_cast (acceptanceContract A C).params.rowRatio.pos)
 
 /-- (a) The `FinalQuery` fields, over `acceptanceContract A C`, are jointly satisfiable: index 1,
 GST 0, query time `heal`, horizon `heal + latency` (engine `Δ = 1`). -/

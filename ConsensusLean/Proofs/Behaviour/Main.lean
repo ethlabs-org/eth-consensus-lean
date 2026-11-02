@@ -140,7 +140,7 @@ theorem psync_of_sys {rho : Model.Run (compiled F) E} {gst : Time}
     (h : CommLog.PSync ((sysOf O (compiled F) V).trace ⟨E, rho⟩).point
       ((sysOf O (compiled F) V).log ⟨E, rho⟩) gst) :
     CommLog.PSync rho.point rho.log gst :=
-  (Model.sysOf_delivers_iff rho _ _).mp h
+  (Model.sysOf_delivers_iff rho _ _ _).mp h
 
 /-- The heal point is at or after the GST. -/
 theorem gst_le_heal (K : Contract ProgressReq) (rho : Model.Run (compiled F) E)

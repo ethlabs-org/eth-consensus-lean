@@ -76,7 +76,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
 /- M1: the healed regime requires every honest validator awake to the horizon
 ("stay in recovery"); a run that leaves it is outside the regime. -/
 theorem m1_healthy_awake_to_horizon (r : S.Run) (g : Time) (h : S.Healthy K g r) :
-    (S.pt r).HealthyOn K.params.β g (S.pt r).horizon := h.2
+    (S.pt r).HealthyOn K.params.β g (S.pt r).horizon := h.2.1
 
 /- M4: partially synchronous safety and liveness are mandated: they are
 fields of the fixed behaviour table (liveness for every provided output). -/
@@ -95,7 +95,7 @@ theorem m5_final_agree (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output 
 /- M21: the healthy regime bounds the faults below `β ≤ α`, so final
 safety holds there. -/
 theorem m21_healthy_faults_below (r : S.Run) (g : Time) (h : S.Healthy K g r) :
-    (S.pt r).FaultsBelow K.params.β := h.2.faultsBelow
+    (S.pt r).FaultsBelow K.params.β := h.2.1.faultsBelow
 
 theorem m21_final_safe_healthy (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g) (r : S.Run)
     (hv : S.Valid r) {gst : Time} (hH : S.Healthy K gst r) :

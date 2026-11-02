@@ -123,19 +123,19 @@ theorem card5 : 5 ≤ Fintype.card (Fin 5) := by simp
 def k1 : ctrlK.Idx := (1 : ℕ+)
 
 /-- The everyone-awake point: `Δ = 1`, horizon `20`. -/
-abbrev ptA : EnvPoint (Fin 5) := realPoint key5 card5 1 one_pos allAwake 20
+abbrev ptA : EnvPoint (Fin 5) := realPoint key5 card5 1 one_pos 1 one_pos allAwake 20
 
 /-- The sleeper point: `key 2` always asleep, `Δ = 1`, horizon `20`. -/
 abbrev ptS : EnvPoint (Fin 5) :=
-  realPoint key5 card5 1 one_pos (asleepAlways (kv key5 card5 2 (by decide))) 20
+  realPoint key5 card5 1 one_pos 1 one_pos (asleepAlways (kv key5 card5 2 (by decide))) 20
 
 /-- One window of every control progress requirement is at most `8` long. -/
 theorem progLen_le (cap : Capability) :
-    progLen ctrlFamily ctrlK cap k1 (⟨1, one_pos, allAwake⟩ : Env (Fin 5)) ≤ 8 := by
+    progLen ctrlFamily ctrlK cap k1 (⟨1, one_pos, 1, one_pos, allAwake⟩ : Env (Fin 5)) ≤ 8 := by
   cases cap <;> decide
 
 theorem progLen_nonneg' (cap : Capability) :
-    0 ≤ progLen ctrlFamily ctrlK cap k1 (⟨1, one_pos, allAwake⟩ : Env (Fin 5)) :=
+    0 ≤ progLen ctrlFamily ctrlK cap k1 (⟨1, one_pos, 1, one_pos, allAwake⟩ : Env (Fin 5)) :=
   progLen_nonneg _ _ _ _ _
 
 /-- **Positive controls** (sleepy, and healthy at GST `5` with a log silent
@@ -156,19 +156,21 @@ theorem positive_controls (cap : Capability) :
   have hlat : (ctrlK.params.latency cap k1 : Time) * 1 = 1 := by cases cap <;> rfl
   constructor
   · obtain ⟨rho, hpt, -, hw, hs, hp, hpa, ht⟩ :=
-      sleepy_witness (F := ctrlFamily) key5 card5 one_pos 20 ctrlK_admissible ctrlK_progressFits
-        cap k1 (by rw [hlat]; linarith)
+      sleepy_witness (F := ctrlFamily) key5 card5 one_pos one_pos 20 ctrlK_admissible
+        ctrlK_progressFits cap k1 (by rw [hlat]; linarith)
     refine ⟨⟨_, rho⟩, hpt, hw, hs, hp, hpa, ht, ?_⟩
     have hps : CommLog.PSync rho.point rho.log 0 :=
-      (Model.sysOf_delivers_iff (O := goldilocksSchema) rho _ _).mp hs.1
+      (Model.sysOf_delivers_iff (O := goldilocksSchema) rho _ _ _).mp hs.1
     exact active_relay rho hps le_rfl (mul_nonneg (Nat.cast_nonneg _) (Env.Δ_pos _).le)
       (fun _ _ => by rw [realPoint_env]; exact allAwake_apply _ _) ht
   · have hheal : max (5 : Time) 0 + (ctrlK.params.heal cap k1 : Time) * 1 = 6 := by
       cases cap <;> rfl
     have hrdy : max (5 : Time) 0 + (ctrlK.params.catchUp : Time) * 1 + 1 = 7 := by decide
     obtain ⟨rho, hpt, -, hw, he, hH, hp, hpa, ht, hsa⟩ :=
-      healthy_witness (F := ctrlFamily) key5 card5 one_pos 20 ctrlK_admissible
-        ctrlK_progressFits cap k1 5 (by rw [hheal, hlat]; norm_num) (by rw [hheal]; norm_num)
+      healthy_witness (F := ctrlFamily) key5 card5 one_pos one_pos 20 ctrlK_admissible
+        ctrlK_progressFits cap k1 5
+        (le_mul_of_one_le_left zero_le_one (by exact_mod_cast ctrlK.params.rowRatio.pos))
+        (by rw [hheal, hlat]; norm_num) (by rw [hheal]; norm_num)
         (by rw [hrdy]; linarith)
     exact ⟨⟨_, rho⟩, hpt, hw, he.quiet, he, hH, hp, hpa, ht, hsa⟩
 
@@ -190,7 +192,7 @@ theorem outage_control :
       (∀ t, (S.pt r).env.awake (kv key5 card5 2 (by decide)) t = false) ∧
       (S.pt r).faulty.Nonempty := by
   obtain ⟨rho, hpt, -, hw, ho, hoa⟩ :=
-    outage_witness (F := ctrlFamily) key5 card5 one_pos 20 ctrlK_admissible
+    outage_witness (F := ctrlFamily) key5 card5 one_pos one_pos 20 ctrlK_admissible
       (T := 1) (b₀ := 3) (b₁ := 4)
       ⟨by norm_num, by decide, by norm_num, by decide⟩ (by norm_num) (by norm_num) (by decide)
   have hC : ctrlK.params.noSleep = 2 := rfl
@@ -211,7 +213,7 @@ theorem outage_control :
     norm_num
   · change _ ∈ rho.point.honest
     rw [hpt]
-    exact realPoint_honest key5 card5 one_pos _ 20 (j := 2) (by decide) (by decide)
+    exact realPoint_honest key5 card5 one_pos one_pos _ 20 (j := 2) (by decide) (by decide)
   · intro t
     change rho.point.env.awake _ t = false
     rw [hpt, realPoint_env]

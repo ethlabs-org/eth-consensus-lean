@@ -271,7 +271,7 @@ private theorem hs_setup {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n
     omega
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨s, -, -, -, h1, h2, -⟩ := hp (gbar g) le_rfl
-  have hF := hgst.deltaF
+  have hF : 0 ≤ ΔF := hgst.deltaF.le
   have hk : (0 : Time) ≤ sp.k := Int.natCast_nonneg _
   have hδ : (0 : Time) ≤ sp.toParams.δt := Int.natCast_nonneg _
   have hD : 0 ≤ D_HS sp Gp := by

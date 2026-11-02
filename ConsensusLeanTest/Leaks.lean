@@ -129,7 +129,7 @@ def family (proposal vote bad : Bool) : ShapeFamily schema Unit := fun pub => {
   conflicts := fun _ _ => vote }
 
 /-- One validator, always awake, `Δ = 1`. -/
-def env : Env (Fin 1) := ⟨1, by decide, fun _ _ => true⟩
+def env : Env (Fin 1) := ⟨1, by decide, 1, by decide, fun _ _ => true⟩
 
 /-- The selection: the only key everywhere, except the (disabled) poll role. -/
 def testSel : ShapeRole Unit → Finset (Fin (Fintype.card (Fin 1)))
@@ -176,7 +176,7 @@ theorem refuted_of_empty (F : ShapeFamily schema Unit)
     simp only [EnvPoint.readyAt, Finset.mem_filter, Finset.mem_univ, iff_true]
     exact ⟨Finset.mem_univ v, hready c t v⟩
   have hsleepy : (Sys F (Fin 1)).Sleepy testK ⟨env, r⟩ := by
-    refine ⟨(Model.sysOf_delivers_iff r _ _).mpr sync, ?_⟩
+    refine ⟨(Model.sysOf_delivers_iff r _ _ _).mpr sync, ?_⟩
     intro t _ _
     change r.point.ReadyAbove (1 / 2) _ t
     unfold EnvPoint.ReadyAbove

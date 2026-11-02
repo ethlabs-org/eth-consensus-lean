@@ -15,6 +15,46 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-11-02, Francesco, lead-approved design (two-bound network, revision 3): **two delay
+  bounds**. `Env` and `Public` carry the message bound `Δ` and the row bound `ΔF` (both positive,
+  neither bounds the other). The log carries the protocol's message class (`CommLog.row`, filled
+  only from `Protocol.isRow` by `Model.Run.log` and `Model.tagLog`); `Delivers` serves rows within
+  `ΔF` (`rows`) and every other message and every transaction within `Δ` (`msgs`, `txs`): no
+  statement may claim a block or vote within `ΔF`, and when `ΔF < Δ` rows may overtake blocks.
+  Contract units option A: `Params.rowRatio r ≥ 1`; only `System.Healthy` assumes `ΔF ≤ r·Δ` (an
+  upper envelope for the coefficients, never a deadline; a larger `r` weakens the premise). Sleepy
+  and Outage carry no ratio and so cover every `ΔF > 0` (a weaker premise, stronger claims);
+  sleepy row-independence is an audit question still open, and `η` stays as it is (its fixing is
+  a separate contract change). **Inherited semantic change, lead ruling 2026-11-02:** the
+  baseline sheet's weak-continuation premise (`WeakPremise`, `Statements/Baseline.lean`: healthy
+  up to the heal point, without the ratio) keeps its text and gets no ratio, and its targets
+  `weakSafe`, `weakInclude`, `weakGrow` (each with premise `WeakPremise ∧ gProg`) are not
+  weakened. Its meaning changes: its `PSync` now holds the family's own rows (`isRow`) to
+  `max a gst + ΔF` with no ratio, and its healthy part is `HealthyOn`, so the pre-heal phase is
+  unbounded in `ΔF` too. It newly admits runs with `ΔF > Δ` whose rows arrive after
+  `max a gst + Δ` but by `max a gst + ΔF`; at `ΔF < Δ` the row deadline is tighter, so the
+  premise is not uniformly weaker; for a family without rows nothing changes. The targets keep
+  their `Δ`-denominated times and must now hold with rows slower than `Δ` by any factor. They
+  are targets (bare fields of `GoldilocksExtraAt`; the node-level R.6 `WeakSafe`, `WeakInclude`,
+  `WeakGrow` are unproved), not proved here; `weakPremise_inhabited` is a satisfiability witness
+  at `ΔF := Δ` only. Whether they hold at `ΔF ≫ Δ` is an open audit item (below); a plausible
+  risk, not a counterexample, is that AC recovery after GST may need FG rows, now unbounded before
+  `gHeal`. A counterexample would go through the believed-false process, with the statements
+  unchanged. **Node level:** `SyncOn.deltaF` and `SyncBefore.deltaF` change from `Δ ≤ ΔF` to
+  `0 < ΔF`, which broadens every node statement built on them (`SyncRun`, `GSTRun`, `SleepyRun`,
+  `HealthyRun`, the R.6 weak premises, `HSShared`, the Persist, Run and Service rows, the healing
+  statements): they now admit `ΔF < Δ`, so their claims are stronger. The claims proved in
+  `Solution` remain proved (check.sh step 3b, standard axioms); the bare ones (R.6, the open
+  healing statements) are targets. Goldilocks: rows are standalone attestations and relay wrappers of
+  attestations only; a mixed relay wrapper (attestations with a block or a vote) and the empty
+  wrapper are delivered within `Δ` (Francesco's decision 2026-11-02, option (a)), so attestations
+  bundled with a block reach the others within `Δ`. Protocol row delay `ΔF_p = ΔF + 1`, as
+  `Δ_p = Δ + 1`; the FG row gap at ratio `r` is `cF r = ⌈(r + 6)/4⌉` with
+  `6Δ_p + ΔF_p ≤ 4Δ_p·cF r` (`cF_spec`). **Transitional (keep-green):** the Goldilocks contract
+  keeps `rowRatio = 1` (`Params.standard`), so its healthy regime still requires `ΔF ≤ Δ`, the
+  case Francesco ruled out as a final state; this is not the arbitrary-ratio port, which chooses
+  `r` in the acceptance assumptions, adds `3·cF r ≤ δt`, and reworks the coefficients. Card:
+  workbench `two_bound_network.md`.
 - 2026-11-02, Francesco ("1. Yes 2. we should edit the spec in consensus-lean"): the full-tree
   fallback for an honest vote's head. `tryVote` walks the viable tree of `SA.voteDomain`: the
   voter block tree when its viable tree in the current frame is nonempty, else the whole frame
@@ -426,6 +466,17 @@ where it is recorded; "Francesco" marks the owner's decisions.
 ## Open, for the owner
 
 - A branch ruleset enforcing owner review ([#21], option 2).
+- Audit (two-bound network, 2026-11-02): do the baseline targets `weakSafe`, `weakInclude` and
+  `weakGrow` hold under `WeakPremise` at every row bound `ΔF > 0` (no ratio)? Kept unchanged by
+  lead ruling; a counterexample goes through the believed-false process.
+- Audit (two-bound network, 2026-11-02): sleepy row-independence: do the sleepy claims hold at
+  every `ΔF > 0`, as `System.Sleepy` (no ratio) now states? Goldilocks's `sleepySafe`,
+  `sleepyLive` and `persists` are proved with no `rowRatio` premise, for each positive `ΔF`, in
+  the two-bound model (`Refinement.accepted`, standard axioms). That model still imposes finite
+  row delivery at `ΔF`: `System.Sleepy` contains `PSync 0` and `System.Outage` contains
+  `OutageNet`, whose `rows` clause delivers rows by `ΔF`. This is not independence from any
+  row-delivery assumption, and it does not allow unbounded or missing delivery. Generically the
+  question stays open.
 
 [#129]: https://github.com/ethlabs-org/consensus-lean/issues/129
 [#2]: https://github.com/ethlabs-org/consensus-lean/issues/2

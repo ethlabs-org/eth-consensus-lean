@@ -218,7 +218,7 @@ theorem truncate_prefix (hv : rho.ExecutionValid) (b : Time) :
   obtain ⟨ys, hsplit, hys⟩ := rho.truncate_split hv.sorted b
   have hlen : rho.events.length = (rho.truncate b).events.length + ys.length := by
     rw [hsplit, List.length_append]
-  refine ⟨⟨rfl, ?_, ?_, ?_⟩, ?_, ⟨?_, fun _ _ _ => rfl⟩, ?_⟩
+  refine ⟨⟨rfl, ?_, ?_, ?_⟩, ?_, ⟨?_, fun _ _ _ => rfl, rfl⟩, ?_⟩
   · -- the prefix's cuts end at `endCut b`
     change (rho.truncate b).events.length =
       Nat.findGreatest (fun i => rho.cutTime i ≤ b) rho.events.length

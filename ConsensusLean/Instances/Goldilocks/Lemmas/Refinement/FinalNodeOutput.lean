@@ -93,7 +93,7 @@ theorem finalized_carrier_cached (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCol
   rcases hsafe with hXF | hFX
   · exact hXF
   obtain ⟨d, hheld, hdt'⟩ := publication_held_ready_tail S rho hn hnet r hr
-    (horg ▸ hx) hy ht (by rw [htime]; exact hbudget) hc
+    (horg ▸ hx) (not_isRow_of_decodeForward hdecode) hy ht (by rw [htime]; exact hbudget) hc
   obtain ⟨k', hkj, hacc', hkt⟩ := held_forward_accepted_before S rho hn hv hncR
     hy.1 hx hheld hdecode hdt' hj.2.le (hFX.trans hXZ)
   have hkj' : k' + 1 ≤ j := by

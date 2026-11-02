@@ -63,14 +63,18 @@ structure OutputSchema where
   /-- The output serving each capability, if provided. -/
   output : Capability → Option Id
 
-/-- The physical environment: the message delay bound `Δ` and when each node
-is awake. Time is in integer units; `Δ` is a positive integer number of units;
-nodes act at every integer time (unit ticks). The GST is not part of the
-environment: it is a parameter of the network regimes (`Network.lean`,
-`Regimes.lean`). -/
+/-- The physical environment: the delay bound `Δ` of messages and
+transactions, the delay bound `ΔF` of rows (the protocol's row messages,
+`CommLog.row`), and when each node is awake. Time is in integer
+units; both bounds are positive integer numbers of units, and neither is
+assumed to bound the other; nodes act at every integer time (unit ticks). The
+GST is not part of the environment: it is a parameter of the network regimes
+(`Network.lean`, `Regimes.lean`). -/
 structure Env (V : Type) where
   Δ : Time
   Δ_pos : 0 < Δ
+  ΔF : Time
+  ΔF_pos : 0 < ΔF
   awake : V → Time → Bool
 
 /-- Awake now, asleep one time unit earlier. -/
@@ -186,13 +190,17 @@ def InCuts (t₀ : Time) (i : Nat) : Prop := i ≤ tr.cuts ∧ t₀ ≤ tr.cutTi
 end Trace
 
 /-- A run's communication, with opaque messages `M`: what each node sent and
-received at each time, and the transactions handed to it at each time (own
-submissions and network relay; the inbox is cumulative across restarts). The
-network conditions on it are in `Network.lean`. -/
+received at each time, the transactions handed to it at each time (own
+submissions and network relay; the inbox is cumulative across restarts), and
+the message class: `row m` marks the row messages, delivered within `ΔF`
+instead of `Δ`. In the model the class is the protocol's (`Model.Run.log`,
+`Model.tagLog`), never chosen per run. The network conditions on it are in
+`Network.lean`. -/
 structure CommLog (V M : Type) where
   sent : V → M → Time → Prop
   recv : V → M → Time → Prop
   inbox : V → Time → List Tx
+  row : M → Prop
 
 /-- A system: an output schema and a space of runs; for each run its trace
 of ledgers (one per output identifier), its communication log, its evidence

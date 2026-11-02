@@ -98,7 +98,7 @@ theorem stable_is_confirmed :
 and awake up to time `5`, asleep after it: participation collapses at `6`,
 inside an outage `[b₀, b₁) = [5, 10)`. `Δ = 1`, horizon `10`. -/
 def collapsePoint : EnvPoint (Fin 5) :=
-  ⟨⟨1, by decide, fun v t => decide ((v : Nat) ≤ 1 ∨ t ≤ 5)⟩, Finset.univ.erase 0, 10,
+  ⟨⟨1, by decide, 1, by decide, fun v t => decide ((v : Nat) ≤ 1 ∨ t ≤ 5)⟩, Finset.univ.erase 0, 10,
     fun _ _ => []⟩
 
 theorem collapsePoint_faulty : collapsePoint.faulty = {0} := by
@@ -204,7 +204,7 @@ theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Countable Info]
   have hn : 5 ≤ Fintype.card (Fin 5) := by simp
   have ha := goldilocks_admissible pp
   have hf := goldilocks_progressFits pp F (fun pub _ => by rw [hb pub]; rfl)
-  have hL := progLen_nonneg F K .available k (⟨Δ, hΔ, allAwake⟩ : Env (Fin 5))
+  have hL := progLen_nonneg F K .available k (⟨Δ, hΔ, Δ, hΔ, allAwake⟩ : Env (Fin 5))
   have hlat : 0 ≤ (K.params.latency .available k : Time) * Δ := mul_nonneg (by positivity) hΔ.le
   have hheal : 0 ≤ (max g 0 + (K.params.heal .available k : Time) * Δ) :=
     add_nonneg (le_max_right _ _) (mul_nonneg (by positivity) hΔ.le)
@@ -212,11 +212,13 @@ theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Countable Info]
     have := le_max_right g 0
     have : (0 : Time) ≤ (K.params.catchUp : Time) * Δ := mul_nonneg (by positivity) hΔ.le
     linarith
-  obtain ⟨rho, hpt, -, hw, -, hH, hp, -, -, -⟩ := healthy_witness (F := F) (K := K) key hn hΔ
+  have hr : Δ ≤ (K.params.rowRatio : Time) * Δ :=
+    le_mul_of_one_le_left hΔ.le (by exact_mod_cast K.params.rowRatio.pos)
+  obtain ⟨rho, hpt, -, hw, -, hH, hp, -, -, -⟩ := healthy_witness (F := F) (K := K) key hn hΔ hΔ
     ((max g 0 + (K.params.heal .available k : Time) * Δ) +
       (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency .available k : Time) * Δ +
-      progLen F K .available k ⟨Δ, hΔ, allAwake⟩ + Δ + 2)
-    ha hf .available k g (by linarith) (by linarith) (by linarith)
+      progLen F K .available k ⟨Δ, hΔ, Δ, hΔ, allAwake⟩ + Δ + 2)
+    ha hf .available k g hr (by linarith) (by linarith) (by linarith)
   have hhh : gHeal pp k g ⟨_, rho⟩ ≤ rho.horizon := by
     have hh : rho.horizon = rho.point.horizon := rfl
     have hd : ((Sys F (Fin 5)).pt ⟨_, rho⟩).env.Δ = Δ := by
@@ -226,19 +228,19 @@ theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Countable Info]
     change (max g 0 + (K.params.heal .available k : Time) * ((Sys F (Fin 5)).pt ⟨_, rho⟩).env.Δ) ≤
       (max g 0 + (K.params.heal .available k : Time) * Δ) +
       (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency .available k : Time) * Δ +
-      progLen F K .available k ⟨Δ, hΔ, allAwake⟩ + Δ + 2
+      progLen F K .available k ⟨Δ, hΔ, Δ, hΔ, allAwake⟩ + Δ + 2
     rw [hd]
     linarith
-  refine ⟨⟨_, rho⟩, hw.1, (Model.sysOf_delivers_iff rho _ _).mp hH.1, ?_,
+  refine ⟨⟨_, rho⟩, hw.1, (Model.sysOf_delivers_iff rho _ _ _).mp hH.1, ?_,
     (shapeProgress F (Fin 5)).mono le_rfl hhh hp, ?_⟩
-  · obtain ⟨hcard, hawk⟩ := hH.2
+  · obtain ⟨hcard, hawk⟩ := hH.2.1
     exact ⟨hcard, fun v hv u h1 h2 => hawk v hv u h1 (h2.trans hhh)⟩
   · intro t _ _
     change rho.point.ReadyAbove _ _ t
     rw [hpt]
     refine readyAbove_of_card hn ha.θ_range _ t ?_ ?_
     · rw [realPoint_faulty]; rfl
-    · exact (allAwake_readyAt key hn hΔ _ _ t).trans (Nat.le_succ _)
+    · exact (allAwake_readyAt key hn hΔ hΔ _ _ t).trans (Nat.le_succ _)
 
 end Consensus.Shape.Tests.Goldilocks
 

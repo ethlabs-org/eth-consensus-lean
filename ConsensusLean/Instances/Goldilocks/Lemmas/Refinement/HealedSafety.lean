@@ -644,7 +644,7 @@ theorem healthy_current_record_sources_before_now (D : HealthyRepairSchedule S A
       linarith
     exact this.trans hready.le
   have hr : Q.run.2.point.Ready ((Sys (family S) V).cDur (K S A) Q.run) v T := by
-    refine ⟨hv.1, fun t ht htt => Q.healthy.2.2 v hv.1 t ?_ (htt.trans hTb)⟩
+    refine ⟨hv.1, fun t ht htt => Q.healthy.2.1.2 v hv.1 t ?_ (htt.trans hTb)⟩
     change max Q.gst 0 + (Sys (family S) V).cDur (K S A) Q.run + 1 < T at hready
     have := (le_max_right _ _).trans ht
     linarith

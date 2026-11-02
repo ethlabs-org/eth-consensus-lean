@@ -138,7 +138,8 @@ that a claim or regime evaluates.
     progress on windows that end by `b`.
 - **`Realizable`** (at least five validators): every regime is met by a clean
   witness. A witness is valid, has no excuse, and has a faulty and an honest
-  validator. The witnesses exist at every `Δ`, at every GST `g ≥ 0` (healthy: with a
+  validator. The witnesses exist at every `Δ` and every row bound `ΔF` (healthy: every
+  `ΔF ≤ rowRatio·Δ`), at every GST `g ≥ 0` (healthy: with a
   log that is silent before the GST), and for outages armed arbitrarily late.
   Each witness has active claims (the sleepy and healthy witnesses bundle
   regime, progress and `TxLiveActive` as `SleepyLive` and `HealthyLive`):
@@ -240,10 +241,25 @@ has it by `max(t, GST) + Δ`. At a later `a`: a node that wakes at `a` and
 stays awake has it by `max(a, GST) + Δ`, not at the wake itself (no instant
 re-delivery; tests `waker_within_bound`, `waker_not_instant`).
 
+**Two bounds.** The environment has a message bound `Δ` and a row bound `ΔF`
+(`Env.Δ`, `Env.ΔF`, both positive; neither bounds the other). The log carries
+the protocol's message class (`CommLog.row`): for model runs it is filled only
+from `Protocol.isRow` (`Run.log`, `tagLog`, `sysOf_log_row`), so no theorem or
+regime about the model can choose another one (an abstract L0 `System` fixes
+its own). Rows are served by `Delivers.rows` with their own deadline function
+`dlF` (`max a GST + ΔF` in partial synchrony); every other message by
+`Delivers.msgs` with `dl`, and a row is never served by `msgs`. When `ΔF < Δ`,
+rows may overtake blocks; no statement claims a block or a vote within `ΔF`.
+For Goldilocks the rows are the standalone attestations and the relay wrappers
+of attestations only; a mixed relay wrapper is delivered within `Δ` (owner
+decision 2026-11-02). Every other protocol has no rows (`isRow` defaults to
+`False`), which is the single-bound model (tests `two_bound_witnesses`,
+`row_held_to_row_bound`, `nonrow_held_to_message_bound`).
+
 - "Has it at `d`" is `Held`. The node sent or received the message
   at some `t' ≤ d`, and did not wake in `(t', d]`. Receipt at the deadline
   itself counts. A restart loses earlier receipts.
-- **Transactions** (`Delivers.txs`), the same rule: a transaction submitted at
+- **Transactions** (`Delivers.txs`), the same rule at `dl` (bound `Δ`): a transaction submitted at
   `τ ≥ 0` to an awake honest node is held (`TxHeld`, in the inbox at some
   `τ' ∈ [0, d]`) at `dl a` by every honest node awake throughout `[a, dl a]`,
   for every `a ≥ τ`.
@@ -255,9 +271,10 @@ re-delivery; tests `waker_within_bound`, `waker_not_instant`).
   delivery duties and release at once; a tick first reads it at the node's
   next tick. That slack belongs to the protocol.
 
-Instances: `PSync g` (deadline `max a g + Δ`), `SyncUntil b` (deadline
-`a + Δ`, for deadlines up to `b`), and `OutageNet b₀ b₁ = SyncUntil b₀ ∧
-PSync b₁`. Every delivery obligation (both clauses, in every instance)
+Instances: `PSync g` (deadline `max a g + Δ`, rows `max a g + ΔF`), `SyncUntil b`
+(deadline `a + Δ`, rows `a + ΔF`, for deadlines up to `b`), and
+`OutageNet b₀ b₁ = SyncUntil b₀ ∧ PSync b₁`. Every delivery obligation (all
+three clauses, in every instance)
 applies only when its deadline is within both the cut and the horizon: a
 `SyncUntil b` with `b` past the horizon still promises nothing after the
 horizon. `PSync.mono` (tests): a later GST is weaker.
@@ -267,8 +284,8 @@ received at every awake time in `[max t g, horizon]`, and no message is
 received before `g` ("silent" refers to message receipts only:
 `EagerFrom.txs` still relays transaction inboxes at once). It meets an
 instance only under these hypotheses:
-- `EagerFrom.delivers`: `Delivers dl cut` for any `dl` with `∀ a, max a g ≤
-  dl a`;
+- `EagerFrom.delivers`: `Delivers dl dlF cut` for any `dl`, `dlF` with
+  `∀ a, max a g < dl a` and `∀ a, max a g < dlF a`;
 - `EagerFrom.psync`: `PSync g'` for `g ≤ g'`;
 - `EagerFrom.syncUntil`: `SyncUntil b` for every `b`, given `g ≤ 0` and
   `SendsFromZero`.
@@ -302,7 +319,7 @@ submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 | Regime | Definition |
 |---|---|
 | `System.Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + \|faulty\|) < \|ready_t\|` |
-| `System.Healthy g` | `L.PSync p g ∧ \|faulty\| < β·n ∧ ∀ v ∈ honest, v awake throughout [max g 0, horizon]` (full participation; awake, not ready) |
+| `System.Healthy g` | `L.PSync p g ∧ \|faulty\| < β·n ∧ ∀ v ∈ honest, v awake throughout [max g 0, horizon] ∧ ΔF ≤ rowRatio·Δ` (full participation; awake, not ready; the row ratio is an upper envelope, not a deadline) |
 | `System.Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·Δ) c 0 horizon ∧ NoSleepOn a z ∧ CohortOn a z` (`a`, `z`: `outageStart`, `outageEnd`) |
 | `OutageTimes` | `0 ≤ T ∧ T + lag·Δ ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·Δ` |
 | η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·Δ), t] ∪ faulty\| < \|ready_t\|` |
@@ -325,8 +342,9 @@ structure Params (Idx : Type) where
   lag budget η : Nat                         -- outage arming lag, budget, look-back (Δ-coefficients)
   noSleep recovery : Nat                     -- outage no-sleep margin C, recovery delay D (Δ-coefficients)
   heal latency : Capability → Idx → Nat      -- heal point after max g 0; transaction latency
+  rowRatio : ℕ+                              -- healthy regime: ΔF ≤ rowRatio·Δ (larger = weaker premise)
 def Params.standard (catchUp lag budget heal latency) :=
-  ⟨catchUp, ½, ⅓, ½, ⅓, lag, budget, 0, 0, 0, heal, latency⟩
+  ⟨catchUp, ½, ⅓, ½, ⅓, lag, budget, 0, 0, 0, heal, latency, 1⟩
 structure Params.Admissible (P) : Prop :=
   1 ≤ catchUp,  0 ≤ θ ≤ ½,  ⅓ ≤ β,  0 ≤ cover ≤ ½,  β ≤ α ≤ 1,  1 ≤ budget
 ```
@@ -764,13 +782,15 @@ are the intended ones.
 ### Goldilocks
 
 `ConsensusLean/Instances/Goldilocks/Spec/Baseline.lean` pins the numbers (round-model FG-SA,
-`Δ_F = Δ`, `κ = 2`, slow arming; `FGSAParams = ⟨R, lockK, eta⟩`):
+row ratio `1` (transitional: the healthy regime assumes `ΔF ≤ Δ`), `κ = 2`, slow arming;
+`FGSAParams = ⟨R, lockK, eta⟩`):
 
 | Number | Value |
 |---|---|
 | thresholds | standard (`θ = ½`, `β = ⅓`, `cover = ½`, `α = ⅓`) |
 | catch-up; arming lag; budget; `η` | `18`; `4·lockK + 6`; `min eta (4·lockK − 5)`; `eta` |
 | outage no-sleep margin; recovery delay | `max 19 (4·lockK + 8)`; `9` |
+| row ratio | `1` (`Params.standard`; transitional) |
 | heal (available, stable), gap `k`; final, index `gf` | `29 + B_H^F(k)`; `29 + B_H^F(gf·R) + W_W(gf)` |
 | latency | `4k + 6`; final `4·gf·R + 6 + W_W(gf)` |
 | progress | `.recur ⟨single, k⟩`; final `.recur ⟨range(3R+κ), gf·R⟩` (tolerant indices: `k = 2`, `gf = 5`) |

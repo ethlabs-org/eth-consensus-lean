@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
+public import ConsensusLean.Lemmas.Model.SysLog
 
 public section
 
@@ -14,8 +15,11 @@ public section
 These are goals for the concrete publisher/simulation adapter, not extra premises of Accepted.
 The trace parameters remain independent here. `Setup.params` now gives protocol delay
 Δp = Δe + 1; this endpoint slack does not instantiate any supplier below. FG row service has
-its own delay `Δ_F` (`PSyncFGRowTransport`); `signed_row_service_psync` is the single point that
-sets `Δ_F := Δ_p` (the protocol bound, not the engine delay).
+its own delay `Δ_F` (`PSyncFGRowTransport`): the engine serves standalone rows (`isRow`) within
+its row bound `ΔF` (the `rows` clause of `PSync`), and `signed_row_service_psync` serves them at
+the protocol row delay `Δ_F,p = rowDelay (pubOf E) = ΔF + 1`, the same one-tick slack as `Δ_p`.
+Every other object (blocks, votes, forwarding and vote-forwarding wrappers) is served within `Δ`;
+no statement here claims a block within `ΔF`.
 All three suppliers include message, block, acceptance-relay and attestation service. Receipt
 alone proves none of the acceptance-relay fields. The finite `ResetService` assembly below
 uses the concrete message, block, relay and signed-row services; full GST remains separate.
@@ -32,6 +36,17 @@ theorem deadline_mono_delta (y : Fin P.n) (k : Nat) (τ : Time) {Δ₁ Δ₂ : T
   linarith
 
 end Consensus.Goldilocks.RunTrace
+
+namespace Consensus.Goldilocks.Refinement
+
+/-- The engine row slack: the engine row endpoint is strictly before the protocol row delay
+`Δ_F,p = rowDelay (pubOf E) = Δ_F + 1`, the same one-tick slack as `Δ_p = Δ + 1`. -/
+theorem row_endpoint_slack {V : Type} [Fintype V] (E : Env V) (w : Time) :
+    w + E.ΔF < w + rowDelay (Model.pubOf E) := by
+  change w + E.ΔF < w + (E.ΔF + 1)
+  linarith
+
+end Consensus.Goldilocks.Refinement
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -88,14 +103,35 @@ theorem psyncFGRowTransport_iff : PSyncFGRowTransport S rho tr H ΔF ↔
   rfl
 
 /-- **The monotone lift of row service**: row service at `Δ₁` is row service at every
-`Δ₂ ≥ Δ₁`, since the row deadline is monotone in the delay. This is the only use of an order
-between delays here; it is valid under the single-bound network, where rows are served at `Δ_p`. -/
+`Δ₂ ≥ Δ₁`, since the row deadline is monotone in the delay. It is the only use of an order
+between row delays here; a consumer lifts the base row service at `Δ_F,p` only where an upper
+envelope of the row bound is in scope (`rowDelay_le_of_healthy`). -/
 theorem PSyncFGRowTransport.mono {Δ₁ Δ₂ : Time} (h : PSyncFGRowTransport S rho tr H Δ₁)
     (h12 : Δ₁ ≤ Δ₂) : PSyncFGRowTransport S rho tr H Δ₂ := by
   intro g hnet x hx i a hs y hy j hj hb hd
   obtain ⟨k, hkj, hp, ht⟩ := h g hnet x hx i a hs y hy j hj hb
     ((tr.deadline_mono_delta y j _ h12).trans hd)
   exact ⟨k, hkj, hp, ht.trans_le (tr.deadline_mono_delta y k _ h12)⟩
+
+/-- The engine log's message class is the Goldilocks row class (`isRow`). -/
+theorem log_row_iff (o : Wire (Fintype.card V)) : rho.log.row o ↔ isRow o := Iff.rfl
+
+/-- A standalone attestation is a row. -/
+theorem isRow_attObj {n : Nat} (a : FG.Att n) : isRow (attObj a) := by
+  simp [isRow, IsAttObj, attObj]
+
+/-- A forwarding wrapper is not a row. -/
+theorem not_isRow_forwardObj {sp : SA.SAParams} (origin : Fin sp.n) (t : Time)
+    (parent : Option (Wire sp.n)) (B : Blk sp) : ¬ isRow (forwardObj sp origin t parent B) := by
+  simp [forwardObj, isRow, IsAttObj]
+
+/-- An object that decodes as a forwarding wrapper is not a row. -/
+theorem not_isRow_of_decodeForward {sp : SA.SAParams} {hs : List (Header Info × Nat)}
+    {o : Wire sp.n} {q : Fin sp.n × Time × Option (Wire sp.n) × Blk sp}
+    (h : decodeForward sp hs o = some q) : ¬ isRow o := by
+  obtain ⟨origin, t, parent, B⟩ := q
+  rw [forwardObj_of_decodeForward hs o origin t parent B h]
+  exact not_isRow_forwardObj origin t parent B
 
 /-- Pure endpoint arithmetic, independent of the unimplemented adapter. Service at the engine
 endpoint is strictly before the protocol endpoint, including equality at the engine bound.
@@ -121,6 +157,7 @@ theorem publication_held_psync (hn : 1 ≤ Fintype.card V) {g : Time}
     (hnet : rho.log.PSync rho.point g)
     (r : Publication (Model.protoOf (compiled (family S)) E))
     (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    (hrow : ¬ rho.log.row r.object)
     {y : V} (hy : y ∈ rho.honest) {a : Time}
     (ha : (publisherExecution S rho).eventTime r.event ≤ a)
     (hh : max a g + E.Δ ≤ rho.horizon)
@@ -130,7 +167,7 @@ theorem publication_held_psync (hn : 1 ≤ Fintype.card V) {g : Time}
   constructor
   · exact hnet.msgs _ hx _ _
       ⟨r.event, (publisherExecution S rho).actual_event r hr,
-        (publisherExecution S rho).actual_release r hr⟩ y hy a ha hh hh hawake
+        (publisherExecution S rho).actual_release r hr⟩ hrow y hy a ha hh hh hawake
   · change max a g + E.Δ < max a g + (E.Δ + 1)
     linarith
 
@@ -140,6 +177,7 @@ theorem publication_held_syncUntil (hn : 1 ≤ Fintype.card V) {b : Time}
     (hnet : rho.log.SyncUntil rho.point b)
     (r : Publication (Model.protoOf (compiled (family S)) E))
     (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    (hrow : ¬ rho.log.row r.object)
     {y : V} (hy : y ∈ rho.honest) {a : Time}
     (ha : (publisherExecution S rho).eventTime r.event ≤ a)
     (hb : a + (S.params (Model.pubOf E) hn).Δ ≤ b)
@@ -151,7 +189,7 @@ theorem publication_held_syncUntil (hn : 1 ≤ Fintype.card V) {b : Time}
     linarith
   exact ⟨hnet.msgs _ hx _ _
     ⟨r.event, (publisherExecution S rho).actual_event r hr,
-      (publisherExecution S rho).actual_release r hr⟩ y hy a ha hlt.le hh hawake, hlt⟩
+      (publisherExecution S rho).actual_release r hr⟩ hrow y hy a ha hlt.le hh hawake, hlt⟩
 
 /-- Delivery of an honest publication yields a real block call at receipt time, no earlier
 than its source event. A bounded receipt therefore gives a strictly protocol-bounded call.
@@ -292,6 +330,7 @@ theorem publication_held_before_deadline (hn : 1 ≤ Fintype.card V)
     (hnet : rho.log.SyncUntil rho.point b)
     (r : Publication (Model.protoOf (compiled (family S)) E))
     (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    (hrow : ¬ rho.log.row r.object)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
     (hj : (simTrace S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ)
     (ht : (publisherExecution S rho).eventTime r.event = τ)
@@ -305,7 +344,7 @@ theorem publication_held_before_deadline (hn : 1 ≤ Fintype.card V)
   have hslack : a + E.Δ < a + (S.params (Model.pubOf E) hn).Δ := by
     change a + E.Δ < a + (E.Δ + 1)
     linarith
-  obtain ⟨hheld, _⟩ := publication_held_syncUntil S rho hn hnet r hr hx hy
+  obtain ⟨hheld, _⟩ := publication_held_syncUntil S rho hn hnet r hr hx hrow hy
     (ht ▸ ha) hb ((hslack.le.trans hb).trans hbh)
     (fun u hau hud => hw u hau (hud.trans (hslack.le.trans hd)))
   exact ⟨a + E.Δ, hheld, hslack⟩
@@ -397,7 +436,7 @@ theorem publication_acceptedBy_syncUntil (hn : 1 ≤ Fintype.card V)
   induction j using Nat.strong_induction_on with
   | h j ih =>
     obtain ⟨d, hheld, hlt⟩ := publication_held_before_deadline S rho hn hv hbh hnet
-      r hr hx hy hj hτ ht hb hd
+      r hr hx (not_isRow_of_decodeForward hdecode) hy hj hτ ht hb hd
     obtain ⟨k, hkj, hacc, htime⟩ := held_forward_accepted_before S rho hn hv hnc
       hy hx hheld hdecode hlt hd hF
     by_cases hk : (simTrace S rho hn).time k <
@@ -442,6 +481,7 @@ theorem publication_held_before_deadline_psync (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
     (r : Publication (Model.protoOf (compiled (family S)) E))
     (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    (hrow : ¬ rho.log.row r.object)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
     (hj : (simTrace S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ) (hg : g ≤ τ)
     (ht : (publisherExecution S rho).eventTime r.event = τ)
@@ -456,7 +496,7 @@ theorem publication_held_before_deadline_psync (hn : 1 ≤ Fintype.card V)
   have hslack : a + E.Δ < a + (S.params (Model.pubOf E) hn).Δ := by
     change a + E.Δ < a + (E.Δ + 1)
     linarith
-  have hheld := (publication_held_psync S rho hn hnet r hr hx hy (ht ▸ ha)
+  have hheld := (publication_held_psync S rho hn hnet r hr hx hrow hy (ht ▸ ha)
     (by rw [hga]; exact hslack.le.trans hb)
     (by rw [hga]; exact fun u hau hud => hw u hau (hud.trans (hslack.le.trans hd)))).1
   rw [hga] at hheld
@@ -486,7 +526,7 @@ theorem publication_acceptedBy_psync (hn : 1 ≤ Fintype.card V)
   induction j using Nat.strong_induction_on with
   | h j ih =>
     obtain ⟨d, hheld, hlt⟩ := publication_held_before_deadline_psync S rho hn hv hnet
-      r hr hx hy hj hτ hg ht hb hd
+      r hr hx (not_isRow_of_decodeForward hdecode) hy hj hτ hg ht hb hd
     obtain ⟨k, hkj, hacc, htime⟩ := held_forward_accepted_before S rho hn hv hnc
       hy hx hheld hdecode hlt hd hF
     by_cases hk : (simTrace S rho hn).time k <
@@ -547,7 +587,8 @@ theorem catchRun_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B hi
   have hmax : max (max g 0) g = max g 0 := max_eq_left (le_max_left _ _)
-  obtain ⟨hheld, hslack⟩ := publication_held_psync S rho hn hnet r hr (horg ▸ hx) hy
+  obtain ⟨hheld, hslack⟩ := publication_held_psync S rho hn hnet r hr (horg ▸ hx)
+    (not_isRow_of_decodeForward hdecode) hy
     (a := max g 0) (by rw [htime]; exact hbefore.le)
     (by rw [hmax]; exact hservice)
     (by
@@ -571,6 +612,7 @@ theorem publication_held_before_gst_deadline (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
     (r : Publication (Model.protoOf (compiled (family S)) E))
     (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    (hrow : ¬ rho.log.row r.object)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
     (hj : (simTrace S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ)
     (ht : (publisherExecution S rho).eventTime r.event = τ)
@@ -587,7 +629,7 @@ theorem publication_held_before_gst_deadline (hn : 1 ≤ Fintype.card V)
   have hslack : a + E.Δ < a + (S.params (Model.pubOf E) hn).Δ := by
     change a + E.Δ < a + (E.Δ + 1)
     linarith
-  have hheld := (publication_held_psync S rho hn hnet r hr hx hy
+  have hheld := (publication_held_psync S rho hn hnet r hr hx hrow hy
     (ht ▸ (le_max_left τ g).trans ha)
     (by rw [hga]; exact hslack.le.trans hb)
     (by rw [hga]; exact fun u hau hud => hw u hau (hud.trans (hslack.le.trans hd)))).1
@@ -619,7 +661,7 @@ theorem publication_acceptedBy_psync_any (hn : 1 ≤ Fintype.card V)
   induction j using Nat.strong_induction_on with
   | h j ih =>
     obtain ⟨d, hheld, hlt⟩ := publication_held_before_gst_deadline S rho hn hv hnet
-      r hr hx hy hj hτ ht hb hd
+      r hr hx (not_isRow_of_decodeForward hdecode) hy hj hτ ht hb hd
     obtain ⟨k, hkj, hacc, htime⟩ := held_forward_accepted_before S rho hn hv hnc
       hy hx hheld hdecode hlt hd hF
     by_cases hk : (simTrace S rho hn).time k <
@@ -715,7 +757,7 @@ theorem publication_blockDeliveredBy_psync (hn : 1 ≤ Fintype.card V)
   induction j using Nat.strong_induction_on with
   | h j ih =>
     obtain ⟨d, hheld, hlt⟩ := publication_held_before_gst_deadline S rho hn hv hnet
-      r hr hx hy hj hτ ht hb hd
+      r hr hx (not_isRow_of_decodeForward hdecode) hy hj hτ ht hb hd
     obtain ⟨k, hkj, hlo, hcall, htime⟩ := held_forward_blockCall_before S rho hn hv
       hx hheld hdecode hlt hd
     by_cases hk : (simTrace S rho hn).time k <
@@ -916,31 +958,36 @@ theorem held_att_processed_before (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
   · have he : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
     exact he ▸ hk
 
-/-- **The single instantiation point of `Δ_F`.** The single-bound partial synchrony of the
-engine log serves signed rows at bounded recipient calls at the protocol delay `Δ_F := Δ_p`. An
-identical earlier processing is enough, and descent supplies the processing cut's own strict
+/-- **The base row supplier, at the row bound.** Partial synchrony of the engine log serves
+signed rows (`rows` clause, row bound `ΔF`) at bounded recipient calls at the protocol row delay
+`Δ_F,p = rowDelay (pubOf E) = ΔF + 1`. No order between `Δ` and `ΔF` is used: the recipient's
+awake interval is the one of its call, and the row deadline is the call's deadline at `Δ_F,p`.
+An identical earlier processing is enough, and descent supplies the processing cut's own strict
 deadline. Every consumer takes row service at a parametric `Δ_F` as a premise
-(`resetService_of_psync`, `hsSharedUpTo_of_rows`) or lifts this one (`PSyncFGRowTransport.mono`).
-This prep does not change the network model: rows are still served at `Δ_p` here. -/
+(`resetService_of_psync`, `hsSharedUpTo_of_rows`) or lifts this one where an upper envelope of
+the row bound is in scope (`PSyncFGRowTransport.mono`). -/
 theorem signed_row_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
     PSyncFGRowTransport S rho (simTrace S rho hn) (honestKeys S rho)
-      (S.params (Model.pubOf E) hn).Δ := by
+      (rowDelay (Model.pubOf E)) := by
   intro g hnet x hx i a hsign y hy j hj hb hd
   have run := simTrace_goldilocksRun S rho hn hv
   have hwf := signed_att_wellFormed S rho hn hv hx hsign
   have hrel := simTrace_att_released S rho hn hv run x hx i a hsign
   have hτ := simTrace_time_nonneg S rho hn hv i
+  have hrowa : rho.log.row (attObj a) := (log_row_iff S rho _).mpr (isRow_attObj a)
   induction j using Nat.strong_induction_on with
   | h j ih =>
-    obtain ⟨w, hw, heq, haw⟩ := deadline_awake_interval S rho hn hv hy hj
+    obtain ⟨w, hw, heq₀, haw⟩ := deadline_awake_interval S rho hn hv hy hj
       (hτ.trans (le_max_left _ g))
-    have hgw : max w g = w := max_eq_left ((le_max_right _ g).trans hw)
-    have slack : w + E.Δ < w + (S.params (Model.pubOf E) hn).Δ := by
-      change w + E.Δ < w + (E.Δ + 1)
+    have heq : (simTrace S rho hn).deadline y j (max ((simTrace S rho hn).time i) g)
+        (rowDelay (Model.pubOf E)) = w + rowDelay (Model.pubOf E) := by
+      unfold RunTrace.deadline at heq₀ ⊢
       linarith
-    have hbound : w + E.Δ ≤ (simTrace S rho hn).time j :=
+    have hgw : max w g = w := max_eq_left ((le_max_right _ g).trans hw)
+    have slack := row_endpoint_slack E w
+    have hbound : w + E.ΔF ≤ (simTrace S rho hn).time j :=
       slack.le.trans (heq ▸ hd)
-    have held := hnet.msgs (rho.key x) hx (attObj a) _ hrel (rho.key y) hy w
+    have held := hnet.rows (rho.key x) hx (attObj a) _ hrel hrowa (rho.key y) hy w
       ((le_max_left _ g).trans hw) (by rw [hgw]; exact hbound.trans hb)
       (by rw [hgw]; exact hbound.trans hb)
       (by rw [hgw]; exact fun t hwt htd => haw t hwt (htd.trans hbound))
@@ -949,7 +996,7 @@ theorem signed_row_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
       (heq ▸ slack) hd
     by_cases hk : (simTrace S rho hn).time k <
         (simTrace S rho hn).deadline y k (max ((simTrace S rho hn).time i) g)
-          (S.params (Model.pubOf E) hn).Δ
+          (rowDelay (Model.pubOf E))
     · exact ⟨k, hkj, hp, hk⟩
     · have hkj' : k < j := lt_of_le_of_ne hkj (by intro he; subst k; exact hk ht)
       have hc : (simTrace S rho hn).IsCall y k := by
@@ -965,6 +1012,7 @@ theorem publication_held_ready_tail (hn : 1 ≤ Fintype.card V) {g : Time}
     (hnet : rho.log.PSync rho.point g)
     (r : Publication (Model.protoOf (compiled (family S)) E))
     (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    (hrow : ¬ rho.log.row r.object)
     {y : Fin (Fintype.card V)} {t c : Time}
     (hy : Regimes.ReadyAt (simTrace S rho hn) (honestKeys S rho) c y t)
     (ht : t ≤ rho.horizon)
@@ -983,7 +1031,7 @@ theorem publication_held_ready_tail (hn : 1 ≤ Fintype.card V) {g : Time}
     intro u hau hud
     have h := hy.2 u (by dsimp [a, Time] at *; omega) (hud.trans hlt.le)
     exact ((awakeAt_iff S rho hn y u).mp ((simTrace_awake_iff S rho hn y u).mp h)).1
-  have hh := (publication_held_psync S rho hn hnet r hr hx hy.1
+  have hh := (publication_held_psync S rho hn hnet r hr hx hrow hy.1
     (show (publisherExecution S rho).eventTime r.event ≤ a by dsimp [a, Time]; omega)
     (by rw [hga]; exact hlt.le.trans ht) (by rw [hga]; exact hw)).1
   rw [hga] at hh
@@ -1172,7 +1220,8 @@ theorem vote_message_service_psync_other (hn : 1 ≤ Fintype.card V)
       simp only [Time]; omega
     have hbound := hslack.le.trans (heq' ▸ hd)
     have hag : max a g = a := max_eq_left ((le_max_right _ _).trans ha)
-    have hheld := hnet.msgs (rho.key x) hx _ τ ⟨source, hs, hrel⟩ (rho.key y) hy
+    have hheld := hnet.msgs (rho.key x) hx _ τ ⟨source, hs, hrel⟩
+      (by simp [log_row_iff, isRow, IsAttObj]) (rho.key y) hy
       a ((le_max_left _ _).trans ha) (by rw [hag]; exact hbound.trans hb)
       (by rw [hag]; exact hbound.trans hb)
       (by rw [hag]; exact fun u hau hud => hw u hau (hud.trans hbound))
@@ -1246,14 +1295,14 @@ theorem message_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVal
 
 /-- The finite valid engine run supplies every reset-service field, with row service at a
 parametric `Δ_F` as a premise (`hrow`). Actual receiver calls lie within the engine horizon,
-including the unguarded AC fields; the message, block and relay fields are at `Δ`. The order
-`hΔF : Δ ≤ Δ_F` only fills the field `ResetService.deltaF` (Healing/Retention/Defs); no step
-here uses it. -/
+including the unguarded AC fields; the message, block and relay fields are at `Δ`. The
+positivity `hΔF : 0 < Δ_F` fills the field `ResetService.deltaF` (Healing/Retention/Defs); no
+order between `Δ` and `Δ_F` is used. -/
 theorem resetService_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
     {g ΔF : Time} (hnet : rho.log.PSync rho.point g)
     (hrow : PSyncFGRowTransport S rho (simTrace S rho hn) (honestKeys S rho) ΔF)
-    (hΔF : (S.params (Model.pubOf E) hn).Δ ≤ ΔF) :
+    (hΔF : 0 < ΔF) :
     Healing.ResetService (simTrace S rho hn) (honestKeys S rho) g ΔF rho.horizon := by
   have bound {y j} (hj : (simTrace S rho hn).IsCall y j) :
       (simTrace S rho hn).time j ≤ rho.horizon := by

@@ -108,13 +108,13 @@ theorem false_progress_not_good (hX : ∀ π c s e p x, ¬ X.holds π c s e p x)
     (h5 : 5 ≤ Fintype.card V) : ¬ Good S X K := by
   intro h
   obtain ⟨i⟩ := K.idx_nonempty
-  obtain ⟨r, -, -, -, hp, -⟩ := (h.realizable h5).sleepy .available i 1 one_pos
+  obtain ⟨r, -, -, -, -, hp, -⟩ := (h.realizable h5).sleepy .available i 1 1 one_pos one_pos
   exact hX _ _ _ _ _ _ hp
 
 /-- A well-formed point: `Δ = 1`, GST `0`, everybody awake, nobody honest,
 horizon `0`, no submissions. -/
 def trivPoint (V : Type) : EnvPoint V :=
-  ⟨⟨1, by decide, fun _ _ => true⟩, ∅, 0, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, ∅, 0, fun _ _ => []⟩
 
 omit [Fintype V] [DecidableEq V] in
 /-- No admissible external data (e.g. `Admits := False`): not adequate. -/
@@ -153,11 +153,11 @@ section Prefix
 /-- Two honest, always-awake validators, `Δ = 1`, horizon `3`, no
 submissions. -/
 def prefixPoint : EnvPoint (Fin 2) :=
-  ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ, 3, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, Finset.univ, 3, fun _ _ => []⟩
 
 /-- Validator `0` sends at `2`; nobody ever receives anything. -/
 def prefixLog : CommLog (Fin 2) Unit :=
-  ⟨fun v _ t => v = 0 ∧ t = 2, fun _ _ _ => False, fun _ _ => []⟩
+  ⟨fun v _ t => v = 0 ∧ t = 2, fun _ _ _ => False, fun _ _ => [], fun _ => False⟩
 
 theorem prefixPoint_readyAt (c t : Time) : prefixPoint.readyAt c t = Finset.univ := by
   classical
@@ -182,13 +182,13 @@ theorem prefix_sync_then_async :
             prefixPoint.horizon) := by
   have hnp : ¬ prefixLog.PSync prefixPoint 0 := by
     intro h
-    obtain ⟨t', ht', hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 2 ⟨rfl, rfl⟩ 1 (Finset.mem_univ _)
+    obtain ⟨t', ht', hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 2 ⟨rfl, rfl⟩ id 1 (Finset.mem_univ _)
       2 le_rfl (by decide) (by decide) (fun _ _ _ => rfl)
     rcases hs with ⟨h1, -⟩ | h1
     · exact absurd h1 (by decide)
     · exact h1
-  refine ⟨⟨?_, ?_⟩, ?_, hnp, fun P h => hnp h.1⟩
-  · rintro v - m t ⟨-, rfl⟩ w - a ha hc - -
+  refine ⟨⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩, ?_, hnp, fun P h => hnp h.1⟩
+  · rintro v - m t ⟨-, rfl⟩ - w - a ha hc - -
     have h2 : ∀ a : Int, 2 ≤ a → ¬ a + 1 ≤ 1 := by intro a h; omega
     exact absurd hc (h2 a ha)
   · intro u _ x τ _ _ hx
@@ -206,7 +206,7 @@ section Rotating
 /-- Four honest validators; at time `t`, validator `t mod 4` sleeps. `Δ = 1`,
 horizon `10`. -/
 def rotPoint : EnvPoint (Fin 4) :=
-  ⟨⟨1, by decide, fun v t => decide (t % 4 ≠ ((v : Nat) : Int))⟩, Finset.univ, 10,
+  ⟨⟨1, by decide, 1, by decide, fun v t => decide (t % 4 ≠ ((v : Nat) : Int))⟩, Finset.univ, 10,
     fun _ _ => []⟩
 
 theorem rotPoint_awake_card (t : Int) : (rotPoint.awakeAt t).card = 3 := by
@@ -324,7 +324,7 @@ section EtaHistory
 /-- Ten validators, `0` faulty, `1`–`3` honest and always awake, `4`–`9`
 honest and awake only at time `0`. `Δ = 1`, horizon `10`. -/
 def briefPoint : EnvPoint (Fin 10) :=
-  ⟨⟨1, by decide, fun v t => decide ((v : Nat) ≤ 3 ∨ t = 0)⟩, Finset.univ.erase 0, 10,
+  ⟨⟨1, by decide, 1, by decide, fun v t => decide ((v : Nat) ≤ 3 ∨ t = 0)⟩, Finset.univ.erase 0, 10,
     fun _ _ => []⟩
 
 theorem briefPoint_faulty : briefPoint.faulty = {0} := by
@@ -377,7 +377,7 @@ theorem eta_sleepy_counts_brief :
 /-- Seven validators, `0` faulty, `1`–`2` honest and always awake, `3`–`6`
 honest and always asleep. `Δ = 1`, horizon `10`. -/
 def startPoint : EnvPoint (Fin 7) :=
-  ⟨⟨1, by decide, fun v _ => decide ((v : Nat) ≤ 2)⟩, Finset.univ.erase 0, 10,
+  ⟨⟨1, by decide, 1, by decide, fun v _ => decide ((v : Nat) ≤ 2)⟩, Finset.univ.erase 0, 10,
     fun _ _ => []⟩
 
 theorem startPoint_faulty : startPoint.faulty = {0} := by

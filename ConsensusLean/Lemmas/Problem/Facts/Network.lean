@@ -25,16 +25,20 @@ theorem _root_.Consensus.EnvPoint.AwakeOnClosed.mono {w : V} {a b a' b' : Time}
     (h : p.AwakeOnClosed w a b) (ha : a ≤ a') (hb : b' ≤ b) : p.AwakeOnClosed w a' b' :=
   fun u h₁ h₂ => h u (le_trans ha h₁) (le_trans h₂ hb)
 
-/-- Reindexing: delivery for `dl` gives delivery for every deadline function
-`dl'` that is `dl` at a later start (`dl' a = dl (f a)`, `a ≤ f a`) with a
-smaller cut. -/
-theorem Delivers.reindex {dl dl' f : Time → Time} {cut cut' : Time} (h : L.Delivers p dl cut)
-    (hf : ∀ a, a ≤ f a) (hd : ∀ a, dl' a = dl (f a)) (hc : cut' ≤ cut) :
-    L.Delivers p dl' cut' := by
+/-- Reindexing: delivery for `dl` and `dlF` gives delivery for every pair of
+deadline functions `dl'`, `dlF'` that are `dl`, `dlF` at a later start
+(`dl' a = dl (f a)`, `dlF' a = dlF (f a)`, `a ≤ f a`) with a smaller cut. -/
+theorem Delivers.reindex {dl dl' dlF dlF' f : Time → Time} {cut cut' : Time}
+    (h : L.Delivers p dl dlF cut) (hf : ∀ a, a ≤ f a) (hd : ∀ a, dl' a = dl (f a))
+    (hdF : ∀ a, dlF' a = dlF (f a)) (hc : cut' ≤ cut) : L.Delivers p dl' dlF' cut' := by
   constructor
-  · intro v hv m t hs w hw a hta hdc hdh haw
+  · intro v hv m t hs hr w hw a hta hdc hdh haw
     rw [hd] at hdc hdh haw ⊢
-    exact h.msgs v hv m t hs w hw (f a) (le_trans hta (hf a)) (le_trans hdc hc) hdh
+    exact h.msgs v hv m t hs hr w hw (f a) (le_trans hta (hf a)) (le_trans hdc hc) hdh
+      (haw.mono (hf a) le_rfl)
+  · intro v hv m t hs hr w hw a hta hdc hdh haw
+    rw [hdF] at hdc hdh haw ⊢
+    exact h.rows v hv m t hs hr w hw (f a) (le_trans hta (hf a)) (le_trans hdc hc) hdh
       (haw.mono (hf a) le_rfl)
   · intro u hu x τ hτ hua hx w hw a hτa hdc hdh haw
     rw [hd] at hdc hdh haw ⊢
@@ -47,9 +51,14 @@ theorem Delivers.reindex {dl dl' f : Time → Time} {cut cut' : Time} (h : L.Del
 theorem PSync.syncUntil_zero (hns : L.SendsFromZero p) (h : L.PSync p 0) (b : Time) :
     L.SyncUntil p b := by
   constructor
-  · intro v hv m t hs w hw a hta _ hdh haw
+  · intro v hv m t hs hr w hw a hta _ hdh haw
     have ht0 := sendsFromZero_iff.mp hns v hv m t hs
-    have := h.msgs v hv m t hs w hw a hta
+    have := h.msgs v hv m t hs hr w hw a hta
+    simp only [max_eq_left (le_trans ht0 hta)] at this
+    exact this hdh hdh haw
+  · intro v hv m t hs hr w hw a hta _ hdh haw
+    have ht0 := sendsFromZero_iff.mp hns v hv m t hs
+    have := h.rows v hv m t hs hr w hw a hta
     simp only [max_eq_left (le_trans ht0 hta)] at this
     exact this hdh hdh haw
   · intro u hu x τ hτ hua hx w hw a hτa _ hdh haw
@@ -57,15 +66,23 @@ theorem PSync.syncUntil_zero (hns : L.SendsFromZero p) (h : L.PSync p 0) (b : Ti
     simp only [max_eq_left (le_trans hτ hτa)] at this
     exact this hdh hdh haw
 
-/-- An eager log meets every deadline function strictly above `max a g`, at
-every cut. -/
-theorem EagerFrom.delivers {g : Time} (h : L.EagerFrom p g) {dl : Time → Time}
-    (hdl : ∀ a, max a g < dl a) (cut : Time) : L.Delivers p dl cut := by
+/-- An eager log meets every pair of deadline functions strictly above
+`max a g`, at every cut. -/
+theorem EagerFrom.delivers {g : Time} (h : L.EagerFrom p g) {dl dlF : Time → Time}
+    (hdl : ∀ a, max a g < dl a) (hdlF : ∀ a, max a g < dlF a) (cut : Time) :
+    L.Delivers p dl dlF cut := by
+  have hheld : ∀ {d : Time → Time}, (∀ a, max a g < d a) → ∀ v ∈ p.honest, ∀ m t,
+      L.sent v m t → ∀ w ∈ p.honest, ∀ a, t ≤ a → d a ≤ p.horizon →
+        p.AwakeOnClosed w a (d a) → L.Held p w m (d a) := by
+    intro d hd v hv m t hs w hw a hta hdh haw
+    have hle : max t g < d a := lt_of_le_of_lt (max_le_max hta le_rfl) (hd a)
+    exact held_of_recv (h.recv v hv m t hs w hw (d a) hle hdh
+      (haw (d a) (le_trans (le_max_left a g) (hd a).le) le_rfl))
   constructor
-  · intro v hv m t hs w hw a hta _ hdh haw
-    have hle : max t g < dl a := lt_of_le_of_lt (max_le_max hta le_rfl) (hdl a)
-    exact held_of_recv (h.recv v hv m t hs w hw (dl a) hle hdh
-      (haw (dl a) (le_trans (le_max_left a g) (hdl a).le) le_rfl))
+  · intro v hv m t hs _ w hw a hta _ hdh haw
+    exact hheld hdl v hv m t hs w hw a hta hdh haw
+  · intro v hv m t hs _ w hw a hta _ hdh haw
+    exact hheld hdlF v hv m t hs w hw a hta hdh haw
   · intro u hu x τ hτ hua hx w hw a hτa _ _ haw
     have hle : τ ≤ dl a := le_trans hτa (le_trans (le_max_left a g) (hdl a).le)
     exact ⟨dl a, le_trans hτ hle, le_rfl, h.txs u hu x τ hτ hua hx w hw (dl a) hle
@@ -73,11 +90,10 @@ theorem EagerFrom.delivers {g : Time} (h : L.EagerFrom p g) {dl : Time → Time}
 
 /-- An eager log from `g` is partially synchronous with every GST `g' ≥ g`. -/
 theorem EagerFrom.psync {g g' : Time} (h : L.EagerFrom p g) (hg : g ≤ g') : L.PSync p g' := by
-  apply h.delivers
-  intro a
-  have := p.env.Δ_pos
-  exact max_lt (lt_of_le_of_lt (le_max_left a g') (by linarith))
-    (lt_of_le_of_lt hg (lt_of_le_of_lt (le_max_right a g') (by linarith)))
+  have key : ∀ d : Time, 0 < d → ∀ a, max a g < max a g' + d := fun d hd a =>
+    max_lt (lt_of_le_of_lt (le_max_left a g') (by linarith))
+      (lt_of_le_of_lt hg (lt_of_le_of_lt (le_max_right a g') (by linarith)))
+  exact h.delivers (key _ p.env.Δ_pos) (key _ p.env.ΔF_pos) _
 
 /-- An eager log from `g ≤ 0` with no honest send before `0` is synchronous up
 to every cut. -/
@@ -87,10 +103,12 @@ theorem EagerFrom.syncUntil {g : Time} (hns : L.SendsFromZero p) (h : L.EagerFro
 
 /-- Delivery transfers to a log `L'` that agrees with `L` up to `b`, on the
 point with horizon `b ≤ horizon`, for deadlines at or after the start
-(`a ≤ dl a`): everything the clauses read lies at times `≤ b`. -/
-theorem Delivers.prefix {L' : CommLog V M} {dl : Time → Time} {cut b : Time}
-    (h : L.Delivers p dl cut) (hag : L'.AgreesUpTo L b) (hb : b ≤ p.horizon)
-    (hdl : ∀ a, a ≤ dl a) : L'.Delivers { p with horizon := b } dl cut := by
+(`a ≤ dl a`, `a ≤ dlF a`): everything the clauses read lies at times `≤ b`, and
+the two logs have the same message class. -/
+theorem Delivers.prefix {L' : CommLog V M} {dl dlF : Time → Time} {cut b : Time}
+    (h : L.Delivers p dl dlF cut) (hag : L'.AgreesUpTo L b) (hb : b ≤ p.horizon)
+    (hdl : ∀ a, a ≤ dl a) (hdlF : ∀ a, a ≤ dlF a) :
+    L'.Delivers { p with horizon := b } dl dlF cut := by
   have hheld : ∀ w m d, d ≤ b → L.Held p w m d → L'.Held { p with horizon := b } w m d := by
     rintro w m d hd ⟨t', ht', hs, hn⟩
     have hb' : t' ≤ b := le_trans ht' hd
@@ -98,14 +116,19 @@ theorem Delivers.prefix {L' : CommLog V M} {dl : Time → Time} {cut b : Time}
     rcases hs with hs | hs
     · exact Or.inl (((hag.1 w m t' hb').1).mpr hs)
     · exact Or.inr (((hag.1 w m t' hb').2).mpr hs)
+  have hrow : ∀ m, L'.row m ↔ L.row m := fun m => by rw [hag.2.2]
   constructor
-  · intro v hv m t hs w hw a hta hdc hdh haw
+  · intro v hv m t hs hr w hw a hta hdc hdh haw
     have ht : t ≤ b := le_trans (le_trans hta (hdl a)) hdh
-    exact hheld w m _ hdh (h.msgs v hv m t (((hag.1 v m t ht).1).mp hs) w hw a hta hdc
-      (le_trans hdh hb) haw)
+    exact hheld w m _ hdh (h.msgs v hv m t (((hag.1 v m t ht).1).mp hs)
+      (fun h' => hr ((hrow m).mpr h')) w hw a hta hdc (le_trans hdh hb) haw)
+  · intro v hv m t hs hr w hw a hta hdc hdh haw
+    have ht : t ≤ b := le_trans (le_trans hta (hdlF a)) hdh
+    exact hheld w m _ hdh (h.rows v hv m t (((hag.1 v m t ht).1).mp hs) ((hrow m).mp hr)
+      w hw a hta hdc (le_trans hdh hb) haw)
   · intro u hu x τ hτ hua hx w hw a hτa hdc hdh haw
     obtain ⟨τ', h0, hτ', hin⟩ := h.txs u hu x τ hτ hua hx w hw a hτa hdc (le_trans hdh hb) haw
-    exact ⟨τ', h0, hτ', by rw [hag.2 w τ' (le_trans hτ' hdh)]; exact hin⟩
+    exact ⟨τ', h0, hτ', by rw [hag.2.1 w τ' (le_trans hτ' hdh)]; exact hin⟩
 
 end CommLog
 

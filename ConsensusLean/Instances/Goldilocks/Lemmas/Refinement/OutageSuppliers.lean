@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalSuppliers
 
+import ConsensusLean.Lemmas.Model.SysLog
+
 public section
 namespace Consensus.Goldilocks.Refinement
 open Blocks Shape
@@ -30,21 +32,11 @@ Only labelled recipient cuts require service; no unrestricted SyncRun is inferre
 theorem outage_pre_service (Q : OutageQuery S A V) :
     Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start := by
   let b := min Q.start Q.run.2.horizon
-  have hnet : Q.run.2.log.SyncUntil Q.run.2.point b := by
-    constructor
-    · intro x hx m t hs y hy a hta hcut hhor haw
-      have hh := Q.outage.2.1.1.msgs x hx ⟨Q.run.1, m⟩ t ⟨m, rfl, hs⟩
-        y hy a hta (hcut.trans (min_le_left _ _)) hhor haw
-      obtain ⟨u, hu, hsent | hrecv, hnw⟩ := hh
-      · obtain ⟨o, he, ho⟩ := hsent
-        cases he
-        exact ⟨u, hu, Or.inl ho, hnw⟩
-      · obtain ⟨o, he, ho⟩ := hrecv
-        cases he
-        exact ⟨u, hu, Or.inr ho, hnw⟩
-    · intro x hx tx t ht ha hs y hy a hta hcut hhor haw
-      exact Q.outage.2.1.1.txs x hx tx t ht ha hs y hy a hta
-        (hcut.trans (min_le_left _ _)) hhor haw
+  have h0 : Q.run.2.log.SyncUntil Q.run.2.point Q.start :=
+    (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.2.1.1
+  have hnet : Q.run.2.log.SyncUntil Q.run.2.point b :=
+    CommLog.Delivers.reindex h0 (f := id) (fun _ => le_rfl) (fun _ => rfl) (fun _ => rfl)
+      (min_le_left _ _)
   have service := sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
     (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
     (min_le_right Q.start Q.run.2.horizon) hnet

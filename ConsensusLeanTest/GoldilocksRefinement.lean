@@ -153,7 +153,7 @@ theorem projection_observation {sp : SA.SAParams}
 
 /-- Regression #118: a non-public terminal observation belongs to a valid run. -/
 def terminalPoint : EnvPoint (Fin 1) :=
-  ⟨⟨2, by decide, fun _ _ => true⟩, Finset.univ, 1, fun _ _ => []⟩
+  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, Finset.univ, 1, fun _ _ => []⟩
 
 /-- A ready reader remains awake at the finite horizon, and a strictly later unlabelled
 cut exists. The old constant-horizon filler makes this conclusion impossible. -/
@@ -200,7 +200,7 @@ theorem tagged_genesis_boundary :
 
 /-- Engine Δ=2 induces protocol Δ=3, not a second increment in the node shape's grid. -/
 theorem protocol_delay_grid (S : Setup) :
-    let pub : Model.Public := ⟨1, 2, by decide⟩
+    let pub : Model.Public := ⟨1, 2, by decide, 2, by decide⟩
     (S.params pub (by decide)).Δ = 3 ∧
       (family S pub).skel.grid.slotTime 1 = 12 ∧
       (goldilocksShape (S.params pub (by decide)) (S.ro 1)).skel.grid.slotTime 1 = 12 := by
@@ -276,5 +276,17 @@ theorem forwarding_root_alias (sp : SA.SAParams) (x : Fin sp.n) (t : Time)
   intro h
   have hr := congrArg (fun C : Blk sp => C.root) h
   simp at hr
+
+/-- **Row classification** (`isRow`, owner decision 2026-11-02): a standalone attestation and a
+relay wrapper of attestations only are rows (bound `ΔF`); a mixed relay wrapper (an attestation
+with a vote) and the empty relay wrapper are not (bound `Δ`). -/
+theorem isRow_classification {n : Nat} (a : FG.Att n) (v : SA.Vote n) :
+    isRow (attObj a) ∧ isRow (.mk .none (.data .relay) [attObj a] : Wire n) ∧
+      ¬ isRow (.mk .none (.data .relay) [attObj a, voteObj v] : Wire n) ∧
+      ¬ isRow (.mk .none (.data .relay) [] : Wire n) := by
+  simp [isRow, IsAttObj, attObj, voteObj]
+
+/-- The FG row gap `cF r = ⌈(r + 6)/4⌉` at `r = 1, 2, 3, 32`. -/
+theorem cF_values : cF 1 = 2 ∧ cF 2 = 2 ∧ cF 3 = 3 ∧ cF 32 = 10 := by decide
 
 end Consensus.Goldilocks.Refinement.Test

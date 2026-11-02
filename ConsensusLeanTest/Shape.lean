@@ -37,7 +37,7 @@ def trivialSkel (pub : Public) : Skeleton pub.n where
 
 /-- An absolute grid need not be divisible by the environment delay. -/
 def slackSkel : Skeleton 1 :=
-  { trivialSkel ⟨1, 3, by decide⟩ with
+  { trivialSkel ⟨1, 3, by decide, 3, by decide⟩ with
     grid := ⟨16, by decide⟩
     phase := fun _ => 4 }
 
@@ -170,7 +170,7 @@ theorem poll_proposal_local_height (pub : Public) (k : Key pub) (t : Nat) (xs : 
   simp [compile, withMempool, pollShape, h]
 
 /-- Public parameters with `Δ = 2` and three keys. -/
-def pub2 : Public := ⟨3, 2, by decide⟩
+def pub2 : Public := ⟨3, 2, by decide, 2, by decide⟩
 
 /-- Time 3 is off the slot grid (slots of `4·Δ = 8`), and yet the poll
 proposal duty of tick 3 is due at 3: poll duties exist at every unit tick. -/

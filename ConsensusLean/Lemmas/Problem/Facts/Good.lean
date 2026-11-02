@@ -80,7 +80,7 @@ theorem final_safe_healthy (h : Good S X K) {g : S.schema.Id}
     (hg : S.schema.output .final = some g) (r : S.Run) (hv : S.Valid r) {gst : Time}
     (hH : S.Healthy K gst r) : (S.trace r).Safe g 0 ∨ S.Excuse r := by
   have hb : (S.pt r).FaultsBelow K.params.α :=
-    hH.2.faultsBelow.mono _ h.behaviour.admissible.α_range.1
+    hH.2.1.faultsBelow.mono _ h.behaviour.admissible.α_range.1
   exact (h.final_agree hg r hv hb).imp
     (fun ha => Trace.safe_iff.mpr ⟨ha, h.behaviour.finalMonotone g hg r hv⟩) id
 
@@ -130,22 +130,28 @@ theorem sleepySafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
     unfold System.Sleepy
     rw [hc, show S.pt r' = { S.pt r with horizon := b } from hP.point]
     refine ⟨?_, hθ⟩
-    have hd : (S.log r).Delivers (S.pt r) (fun a => max a 0 + (S.pt r).env.Δ) b :=
-      hs.reindex (f := fun a => max a 0) (fun a => le_max_left a 0) (fun _ => rfl) le_rfl
+    have hd : (S.log r).Delivers (S.pt r) (fun a => max a 0 + (S.pt r).env.Δ)
+        (fun a => max a 0 + (S.pt r).env.ΔF) b :=
+      hs.reindex (f := fun a => max a 0) (fun a => le_max_left a 0) (fun _ => rfl) (fun _ => rfl)
+        le_rfl
     exact hd.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.Δ_pos.le)
+      (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.ΔF_pos.le)
   rcases h.behaviour.sleepySafe cap g hcap hg r' hv' hreg with hr | he
   · rw [hc] at hr; exact Or.inl (hP.readySafeUpTo hr)
   · exact Or.inr (hE he)
 
 /-- Healed safety of the past: a run partially synchronous with GST `gst` and
-healthy up to `b`, with progress on `[ready, heal]` and `heal ≤ b`, is
+healthy up to `b` (row bound within the row ratio), with progress on `[ready, heal]` and
+`heal ≤ b`, is
 safe for ready readers at cuts in `[heal, b]`, whatever happens after `b`. -/
 theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
     (hcap : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g)
     (r : S.Run) (hv : S.Valid r) (i : K.Idx) (gst : Time) {b : Time} (hb0 : 0 ≤ b)
     (hbh : b ≤ (S.pt r).horizon)
-    (hs : (S.log r).Delivers (S.pt r) (fun a => max a gst + (S.pt r).env.Δ) b)
+    (hs : (S.log r).Delivers (S.pt r) (fun a => max a gst + (S.pt r).env.Δ)
+      (fun a => max a gst + (S.pt r).env.ΔF) b)
     (hH : (S.pt r).HealthyOn K.params.β gst b)
+    (hrat : (S.pt r).env.ΔF ≤ (K.params.rowRatio : Time) * (S.pt r).env.Δ)
     (hp : S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
     (hhb : S.heal K cap i gst r ≤ b) :
     (S.trace r).ReadySafeUpTo (S.cDur K r) g (S.heal K cap i gst r) b ∨ S.Excuse r := by
@@ -158,8 +164,9 @@ theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
   have hreg : S.Healthy K gst r' := by
     unfold System.Healthy
     rw [show S.pt r' = { S.pt r with horizon := b } from hP.point]
-    refine ⟨?_, hH⟩
+    refine ⟨?_, hH, hrat⟩
     exact hs.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.Δ_pos.le)
+      (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.ΔF_pos.le)
   have hpr : S.prog X K cap i (S.ready K gst r') (S.heal K cap i gst r') r' := by
     rw [hready, hheal]
     unfold System.prog at hp ⊢
@@ -180,7 +187,8 @@ theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
     {T b₀ b₁ b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ (S.pt r).horizon)
     (hT : OutageTimes K.params (S.pt r).env.Δ T b₀ b₁)
     (hs : (S.log r).SyncUntil (S.pt r) b₀)
-    (hps : (S.log r).Delivers (S.pt r) (fun a => max a b₁ + (S.pt r).env.Δ) b)
+    (hps : (S.log r).Delivers (S.pt r) (fun a => max a b₁ + (S.pt r).env.Δ)
+      (fun a => max a b₁ + (S.pt r).env.ΔF) b)
     (hθ : (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.Δ) (S.cDur K r) 0 b)
     (hns : (S.pt r).NoSleepOn (min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.Δ)) b)
       (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.Δ) b))
@@ -204,7 +212,9 @@ theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
     rw [hc, hst, hen, hpt]
     refine ⟨hT, ⟨?_, ?_⟩, hθ, hns, hco⟩
     · exact hs.prefix hL hbh (fun a => le_add_of_nonneg_right hΔ.le)
+        (fun a => le_add_of_nonneg_right (S.pt r).env.ΔF_pos.le)
     · exact hps.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) hΔ.le)
+        (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.ΔF_pos.le)
   have hTb : T ≤ S.recoveryAt K b₁ r := by
     obtain ⟨-, hl, h01, -⟩ := hT
     have : (0 : Time) ≤ (K.params.lag : Time) * (S.pt r).env.Δ := by positivity
@@ -230,7 +240,10 @@ theorem served (h : Good S X K) (hn : 5 ≤ Fintype.card V) {cap : Capability}
       ∃ x u w t t', u ∈ (S.pt r).honest ∧ w ∈ (S.pt r).honest ∧ w ≠ u ∧
         x ∈ (S.pt r).submit u t ∧ (∀ τ, x ∉ (S.pt r).submit w τ) ∧
         t' ≤ (S.pt r).horizon ∧ x ∈ (S.trace r).readAt g w t' := by
-  obtain ⟨r, hw, hd, ⟨-, hH, hp, ha⟩, -⟩ := (h.realizable hn).healthy cap i Δ gst hΔ hgst
+  have hrat : Δ ≤ (K.params.rowRatio : Time) * Δ :=
+    le_mul_of_one_le_left hΔ.le (by exact_mod_cast K.params.rowRatio.pos)
+  obtain ⟨r, hw, hd, -, ⟨-, hH, hp, ha⟩, -⟩ :=
+    (h.realizable hn).healthy cap i Δ Δ gst hΔ hΔ hrat hgst
   refine ⟨r, hw, hd, hH, hp, ?_⟩
   rcases h.behaviour.healthyLive cap g hg i gst r hw.1 ⟨hH, hp⟩ with hl | he
   · exact hl.served ha

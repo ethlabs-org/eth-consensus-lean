@@ -6,8 +6,9 @@ public import Mathlib.Tactic
 
 /-! # The Goldilocks properties sheet
 
-**Round-model FG-SA, `Δ_F = Δ`, slow arming, `κ = 2`.** These pins (the
-intended properties allow `Δ_F ≥ Δ`, other `κ` and fast arming, and the final
+**Round-model FG-SA, row ratio `1` (transitional: the healthy regime assumes
+`ΔF ≤ Δ`), slow arming, `κ = 2`.** These pins (the intended properties allow a
+row bound `Δ_F` larger than `Δ`, other `κ` and fast arming, and the final
 heal point couples the healing gap to `gf·R`) are instance restrictions of this
 target, not limits of the intended properties. `GoldilocksTarget F pp`
 is a *reviewed target*, not a proof that FG-SA meets it: the reviewed bindings
@@ -593,14 +594,18 @@ theorem confirmed_safe_healed (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
     ⟨hH, hp⟩
 
 /-- **A4, prefix form.** The healed safety of the past: partially synchronous
-with GST `gst` and healthy up to `b ≥ heal`, with the recurrence on
+with GST `gst` (rows within `ΔF`) and healthy up to `b ≥ heal` (row bound within the row
+ratio), with the recurrence on
 `[ready, heal]`: ready confirmed readers are safe at cuts in `[heal, b]`,
 whatever happens after `b`. -/
 theorem confirmed_safe_healed_prefix (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
     (hv : (Sys F V).Valid r) {b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ ((Sys F V).pt r).horizon)
     (hs : ((Sys F V).log r).Delivers ((Sys F V).pt r)
-      (fun a => max a gst + ((Sys F V).pt r).env.Δ) b)
+      (fun a => max a gst + ((Sys F V).pt r).env.Δ)
+      (fun a => max a gst + ((Sys F V).pt r).env.ΔF) b)
     (hH : ((Sys F V).pt r).HealthyOn (1 / 3) gst b)
+    (hrat : ((Sys F V).pt r).env.ΔF ≤
+      ((goldilocksContract pp).params.rowRatio : Time) * ((Sys F V).pt r).env.Δ)
     (hp : gProg pp .available k
       (gReady gst r)
       (gHeal pp k gst r) r)
@@ -609,7 +614,7 @@ theorem confirmed_safe_healed_prefix (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
       gConfirmed (gHeal pp k gst r) b ∨
       (Sys F V).Excuse r :=
   (goldilocks_good h V).healedSafe_prefix (cap := .available) (Or.inl rfl) rfl r hv k gst hb0 hbh
-    hs hH hp hhb
+    hs hH hrat hp hhb
 
 /-- **A3 / P-OUT-CONTINUE** (stable retention; M14 closed: stable =
 confirmed). In the outage regime, what a node ready at `T` reads as confirmed

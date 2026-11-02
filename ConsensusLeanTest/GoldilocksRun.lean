@@ -561,7 +561,7 @@ message exists (`idleAC.Msg` is empty), and the run has no FG cut, so nothing is
 admitted or signed. -/
 theorem periodicRun_syncOn (W Wr : Time → Prop) (eff : Time → Time) :
     periodicRun.SyncOn Set.univ 1 W Wr eff where
-  deltaF := le_rfl
+  deltaF := one_pos
   message _ _ _ m _ := m.elim
   block x _ i B h := by
     rcases h with h | ⟨⟨_, h⟩, -⟩ <;> exact absurd h (periodicRun_no_fg x i _)

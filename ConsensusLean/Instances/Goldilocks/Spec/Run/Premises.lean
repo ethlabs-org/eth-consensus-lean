@@ -31,7 +31,8 @@ over a run (`Spec/Run/Model`), for the honest validators `H`:
   `GST(g)` re-delivers old objects, it does not make them accepted, since a block refused for a
   missing parent is not delivered again): pre-`g` acceptance catch-up is the separate regime
   premise `Catch(κ)` (`Healing.CatchRun`).
-  `SyncOn` also carries the parameter bound `Δ_F ≥ Δ`, so every premise built on it has it.
+  `SyncOn` also carries the positivity `0 < Δ_F` (no order between `Δ` and `Δ_F`), so every
+  premise built on it has it.
 * **`Sleepy`**: `Sync[0, ∞)` and `f < h_t` at every `t ∈ {t_s, t_s + Δ, t_s + 2Δ}`, `h_t` the
   honest validators awake and joined at `t` (`JoinedAt`: every restart at or before `t` is at
   or before `t_{slot(t) − 1}`; in slot `0`, no restart).
@@ -92,8 +93,9 @@ def AttDeliveredBy (y : Fin P.n) (j : Nat) (τ₀ τ ΔF : Time) (a : FG.Att P.n
 (claims §"Premises", `Sync[a, b]` and `GST(g)`; goldilocks `a470648c`). -/
 structure SyncOn (H : Set (Fin P.n)) (ΔF : Time) (W Wr : Time → Prop) (eff : Time → Time) :
     Prop where
-  /-- The parameter bound `Δ_F ≥ Δ` (claims §"Model"). -/
-  deltaF : P.Δ ≤ ΔF
+  /-- The attestation delay `Δ_F` is positive. It is not assumed to be at least `Δ`: each
+  class of objects has its own bound. -/
+  deltaF : 0 < ΔF
   /-- Every AC message an honest node sends or admits in the window is processed by every honest
   node before its deadline. -/
   message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m → W (tr.time i) →
@@ -127,8 +129,8 @@ the sender's time. A later call still checks an earlier qualifying deadline, but
 whose deadline lies after `b` creates no pre-outage service obligation. All processing
 lower bounds and strict upper bounds are unchanged. -/
 structure SyncBefore (H : Set (Fin P.n)) (ΔF b : Time) : Prop where
-  /-- The attestation delay is at least the protocol delay. -/
-  deltaF : P.Δ ≤ ΔF
+  /-- The attestation delay `Δ_F` is positive (not assumed to be at least `Δ`). -/
+  deltaF : 0 < ΔF
   /-- Message service for nonnegative sends/admissions with recipient deadline at most `b`. -/
   message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m → 0 ≤ tr.time i →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →

@@ -390,8 +390,8 @@ Modelling choices:
   slot-key law on processed blocks: composition.tex §"Blocks" checks only that `B.proposer`'s slot key signs `B`;
   that an accepted block's proposer is its slot's is an assertion of `state_transition`, so
   `SA.HonestObjects.proposer` (frame blocks) follows without a run law.
-- **`Δ_F` is a parameter** of `SyncOn`/`SyncRun`/…, not a field of `Params`; the claims' parameter bound `Δ_F ≥ Δ`
-  is a field of `SyncOn` (`deltaF`), so every premise built on it has it. `Sync` carries the acceptance-relay clause
+- **`Δ_F` is a parameter** of `SyncOn`/`SyncRun`/…, not a field of `Params`; its positivity `0 < Δ_F` (no order
+  with `Δ`, two-bound network 2026-11-02) is a field of `SyncOn` (`deltaF`), so every premise built on it has it. `Sync` carries the acceptance-relay clause
   (`relay`), the own proposal as a send (`block`: accepted or own), and admissions from payloads (`SendOrAdmitAt`,
   mirroring `ACTrace.SendOrAdmit`). `GST(g)` is `SyncOn` on every time with `eff τ = max τ g`: only the deadline
   moves to `max(τ, g)`; the lower bound of the delivery interval stays the real send time `τ`. Its acceptance relay
@@ -514,7 +514,7 @@ Modelling choices:
 - **`Prop⁺(G_p)`**: "ready" and "support references accepted at every honest voter before its deadline" are read as
   `vote_ready`'s condition on the slot-`(s−1)` support entries (a block of slot `≤ s − 1` with that root) held by
   every honest node at `t_s + Δ`, the vote deadline.
-- **HS parameter bounds**: of "the protocol's parameter bounds", `k ≥ 2` is in `SAParams` and `Δ_F ≥ Δ` in `SyncOn`;
+- **HS parameter bounds**: of "the protocol's parameter bounds", `k ≥ 2` is in `SAParams` and `0 < Δ_F` in `SyncOn`;
   `δ_t ≥ x + 𝓕 + k_F` (with `x, k_F ≥ 0`, which `Params` does not carry) enters `HSShared` as its consequence
   `4Δδ_t ≥ 6Δ + Δ_F`. `R ≥ 𝓕` has no counterpart (the model attests in every tick).
 - **Slots against `r_AC`, `s_AC`**: "`j ≥ r_AC(t₀)`" (the least slot with `t_r ≥ t₀ + 4Δ`) is `t_j ≥ t₀ + 4Δ`, and

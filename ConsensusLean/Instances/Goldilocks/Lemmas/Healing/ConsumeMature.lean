@@ -82,7 +82,7 @@ theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
       ∀ y ∈ H, ∃ k, tr.AcceptAt y k X ∧ tr.time k < sp.ts x + sp.Δ := by
   have hnc := hs.noColl
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hΔF : sp.Δ ≤ ΔF := hs.healthy.1.deltaF
+  have hΔF : 0 ≤ ΔF := hs.healthy.1.deltaF.le
   have hg8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hset.1.late
   set τ := max (sp.ts s + 6 * sp.Δ + ΔF) (sp.ts (E.slot + sp.toParams.δt : Nat)) with hτ
   have hτ₁ : sp.ts s + 6 * sp.Δ + ΔF ≤ τ := le_max_left _ _

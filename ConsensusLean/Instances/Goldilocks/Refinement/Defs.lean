@@ -191,6 +191,25 @@ and support votes. -/
 def payloadObjs {n : Nat} (atts : List (FG.Att n)) (p : Payload n) : List (Wire n) :=
   atts.map attObj ++ (p.1 ++ p.2).map voteObj
 
+/-- A standalone attestation object: an attestation body signed in the `.poll` role, carrying
+nothing (the shape of `attObj`, whether or not its body decodes). -/
+def IsAttObj {n : Nat} : Wire n → Prop
+  | .mk (.signed _ .poll) (.data (.att _)) [] => True
+  | _ => False
+
+/-- **The row objects** (`Model.Protocol.isRow`, delivered within the row bound `ΔF`): a
+standalone attestation (`IsAttObj`), and an unsigned relay wrapper whose carried list is nonempty
+and consists of standalone attestations only. Every other object is delivered within `Δ`: blocks
+(with the attestations they carry), votes, `.forward` and `.voteForward` wrappers, the empty relay
+wrapper, and a mixed relay wrapper (attestations relayed together with a block or a vote).
+
+Model choice (owner decision, 2026-11-02): attestations bundled with a block or a vote in one
+relay wrapper are delivered within `Δ`, the bound of the bundle; so such attestations reach the
+other nodes within `Δ` instead of `ΔF` (faster than a standalone row whenever `Δ < ΔF`). -/
+def isRow {n : Nat} : Wire n → Prop
+  | .mk .none (.data .relay) cs => cs ≠ [] ∧ ∀ c ∈ cs, IsAttObj c
+  | o => IsAttObj o
+
 /-- The slashing rule: two canonical attestation objects whose attestations are `slashable`
 (E1/E2 of fg.tex). -/
 def conflicts {n : Nat} : Wire n → Wire n → Bool
@@ -233,8 +252,12 @@ def rootOf (hs : List (Header Info × Nat)) (h : Header Info) : Option Nat :=
 
 variable (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
 
-/-- The public parameters of `sp`. -/
-abbrev _root_.Consensus.Goldilocks.SA.SAParams.pub : Public := ⟨sp.n, sp.Δ, sp.toParams.hΔ⟩
+/-- The public parameters of `sp`: the type index of `goldilocksShape`. Only `n` (keys and
+objects) and `Δ` (`skeleton`'s grid, overridden by `goldilocksShape`) are read from it; its row
+bound is set to `sp.Δ` only to fill the field and is read by no definition. The run's row bound
+is the family's `Public.ΔF` (`rowDelay`). -/
+abbrev _root_.Consensus.Goldilocks.SA.SAParams.pub : Public :=
+  ⟨sp.n, sp.Δ, sp.toParams.hΔ, sp.Δ, sp.toParams.hΔ⟩
 
 /-- A node block of the Goldilocks node. -/
 abbrev Blk := NodeBlock sp.toParams (Payload sp.n)
@@ -624,6 +647,7 @@ noncomputable def goldilocksShape : ChainShape sp.pub Out Info where
   restore := restore
   out g st := outOf st.node st.now g
   conflicts := conflicts
+  isRow := isRow
 
 /-! ## The family -/
 
@@ -703,7 +727,32 @@ noncomputable def family (S : Setup) : ShapeFamily schema Info := fun pub =>
     durable := id
     restore := fun k d t hn => (G hn).restore k (d hn) t
     out := fun g st => if hn : 1 ≤ pub.n then (G hn).out g (st hn) else []
-    conflicts := conflicts }
+    conflicts := conflicts
+    isRow := isRow }
+
+/-! ## The row bound -/
+
+/-- The protocol row delay of the public parameters: `ΔF_p = ΔF + 1`, the engine row bound plus
+the same one-tick slack as the protocol delay `Δ_p = Δ + 1` (`Setup.params`): a row received at
+its engine deadline is used at the node's next tick. -/
+def rowDelay (pub : Public) : Time := pub.ΔF + 1
+
+/-- The FG row gap at row ratio `r`: `cF r = ⌈(r + 6)/4⌉` slots (`cF_ceil`). It bounds
+`⌈(6Δ_p + ΔF_p)/(4Δ_p)⌉` whenever the engine bounds satisfy `ΔF ≤ r·Δ` (`cF_spec`). -/
+def cF (r : ℕ+) : Nat := ((r : Nat) + 9) / 4
+
+/-- `cF r` is the ceiling `⌈(r + 6)/4⌉`, for every `r`. -/
+theorem cF_ceil (r : ℕ+) : (r : Nat) + 6 ≤ 4 * cF r ∧ 4 * cF r < (r : Nat) + 10 := by
+  unfold cF
+  omega
+
+/-- The row transport at ratio `r`: with engine bounds `0 < Δ` and `ΔF ≤ r·Δ`, the protocol
+delays `Δ_p = Δ + 1` and `ΔF_p = ΔF + 1` satisfy `6Δ_p + ΔF_p ≤ 4Δ_p·cF r`. -/
+theorem cF_spec (r : ℕ+) (Δ ΔF : Time) (hΔ : 0 < Δ) (hr : ΔF ≤ (r : Time) * Δ) :
+    6 * (Δ + 1) + (ΔF + 1) ≤ 4 * (Δ + 1) * (cF r : Time) := by
+  have h1 : (1 : Time) ≤ r := by exact_mod_cast r.pos
+  have h4 : ((r : Nat) : Time) + 6 ≤ 4 * (cF r : Time) := by exact_mod_cast (cF_ceil r).1
+  nlinarith
 
 end Consensus.Goldilocks.Refinement
 

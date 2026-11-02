@@ -72,9 +72,9 @@ theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
     hsync, ?_, ?_, hreset, ha, hsnapshot⟩
   · intro y hy t ht htb
     rw [simTrace_awake_iff, awakeAt_iff]
-    exact ⟨Q.healthy.2.2 (Q.run.2.key y) hy t ht htb,
+    exact ⟨Q.healthy.2.1.2 (Q.run.2.key y) hy t ht htb,
       (le_max_right Q.gst 0).trans ht, htb⟩
-  · have hpop := Q.healthy.2.1
+  · have hpop := Q.healthy.2.1.1
     change (Q.run.2.point.faulty.card : ℚ) < (K S A).params.β * Fintype.card V at hpop
     rw [acceptanceContract_params_eq] at hpop
     change (Q.run.2.point.faulty.card : ℚ) < 1 / 3 * Fintype.card V at hpop
@@ -94,21 +94,11 @@ theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
 It is upstream of repair schedules so reset-envelope producers can use it without a cycle. -/
 theorem healthy_repair_catch (Q : HealthyPreparationQuery S A V) :
     Healing.CatchRun Q.trace (honestKeys S Q.run.2) Q.gst (2 * Q.params.Δ) := by
-  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst := by
-    constructor
-    · intro v hv o s hs w hw a hsa hc hh haw
-      have h := Q.healthy.1.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw a hsa hc hh haw
-      rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
-      · obtain ⟨o', he, hs'⟩ := hsent
-        cases he
-        exact ⟨u, hu, Or.inl hs', hnowake⟩
-      · obtain ⟨o', he, hr'⟩ := hrecv
-        cases he
-        exact ⟨u, hu, Or.inr hr', hnowake⟩
-    · exact Q.healthy.1.txs
+  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
+    (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
     (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
-    hnet Q.healthy.2.2
+    hnet Q.healthy.2.1.2
 
 /-- Global inventory obligation, exactly the initialization required by
 oldHonest_inventory_preserved. OldHonest includes signed entries not yet held by
@@ -243,21 +233,11 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
     (D : HealthyPreparationSchedule S A V Q W) :
     HealthyStateFacts S A V Q W.slot Q.cut := by
   classical
-  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst := by
-    constructor
-    · intro v hv o s hs w hw a hsa hc hh haw
-      have h := Q.healthy.1.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw a hsa hc hh haw
-      rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
-      · obtain ⟨o', he, hs'⟩ := hsent
-        cases he
-        exact ⟨u, hu, Or.inl hs', hnowake⟩
-      · obtain ⟨o', he, hr'⟩ := hrecv
-        cases he
-        exact ⟨u, hu, Or.inr hr', hnowake⟩
-    · exact Q.healthy.1.txs
+  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
+    (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   have hcatch := catchRun_of_psync S Q.run.2 Q.hn Q.valid
     (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
-    hnet Q.healthy.2.2
+    hnet Q.healthy.2.1.2
   have hduration : Regimes.catchUp Q.params ≤ (Sys (family S) V).cDur (K S A) Q.run := by
     have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
       exact_mod_cast accepted_catchUp_ge_sleepy S A

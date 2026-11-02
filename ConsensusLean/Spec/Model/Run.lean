@@ -77,7 +77,8 @@ def keyLe (e f : Event V O) : Prop :=
 end Event
 
 /-- The public parameters of an environment. -/
-abbrev pubOf {V : Type} [Fintype V] (E : Env V) : Public := ⟨Fintype.card V, E.Δ, E.Δ_pos⟩
+abbrev pubOf {V : Type} [Fintype V] (E : Env V) : Public :=
+  ⟨Fintype.card V, E.Δ, E.Δ_pos, E.ΔF, E.ΔF_pos⟩
 
 variable {V : Type} [Fintype V] [DecidableEq V]
 

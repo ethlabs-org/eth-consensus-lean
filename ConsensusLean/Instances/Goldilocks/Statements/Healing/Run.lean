@@ -222,7 +222,8 @@ premises (`CatchRun`, `PropPlus`, taken separately): `NoColl` with a genesis who
 digest (the model's reading of `NoColl` for genesis, as C0.3), `Healthy(g)` (with `GST(g)`'s
 strict delivery, acceptance relay and row convention), no honest restart after `ḡ`, and the
 protocol's parameter bound `δ_t ≥ 𝓕 = ⌈(6Δ + Δ_F)/(4Δ)⌉` (from `δ_t ≥ x + 𝓕 + k_F`,
-`x, k_F ≥ 0`; `k ≥ 2` and `Δ_F ≥ Δ` are carried by `SAParams` and `SyncOn`). Unforgeable
+`x, k_F ≥ 0`; `k ≥ 2` and `0 < Δ_F` are carried by `SAParams` and `SyncOn`; no order between
+`Δ` and `Δ_F` is assumed). Unforgeable
 signatures, persistent honest client records and finite event prefixes are laws of the run
 (`GoldilocksRun`). -/
 structure HSShared (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF : Time) : Prop where

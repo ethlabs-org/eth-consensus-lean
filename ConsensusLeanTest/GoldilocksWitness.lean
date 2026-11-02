@@ -362,7 +362,7 @@ theorem tickRun_lt_of_time {i j : Nat} (h : (tickRun N1 dg1).time i < (tickRun N
 `eff τ ≥ τ`, with `Δ_F = 1`. -/
 theorem tickRun_syncOn (W Wr : Time → Prop) (eff : Time → Time) (heff : ∀ τ, τ ≤ eff τ) :
     (tickRun N1 dg1).SyncOn Set.univ 1 W Wr eff where
-  deltaF := le_rfl
+  deltaF := one_pos
   message x _ i m h _ y _ j _ hdl := by
     rw [eq_v0 rfl x] at h
     rw [eq_v0 rfl y] at hdl ⊢

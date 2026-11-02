@@ -92,18 +92,8 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptance_iff S Q.run.2 Q.hn _ _ _).mp
       (forwardAtAcceptance S Q.run.2 Q.hn Q.valid) _ hmem _ _ hacc
-  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst := by
-    constructor
-    · intro v hv o s hs w hw a hsa hc hh haw
-      have h := Q.healthy.1.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw a hsa hc hh haw
-      rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
-      · obtain ⟨o', he, hs'⟩ := hsent
-        cases he
-        exact ⟨u, hu, Or.inl hs', hnowake⟩
-      · obtain ⟨o', he, hr'⟩ := hrecv
-        cases he
-        exact ⟨u, hu, Or.inr hr', hnowake⟩
-    · exact Q.healthy.1.txs
+  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
+    (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   have hΔ := Q.run.1.Δ_pos
   have hg : max Q.gst 0 ≤ Q.query :=
     (le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) hΔ.le)).trans Q.mature
@@ -121,7 +111,8 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
     change Q.run.1.Δ + 1 ≤ ((K S A).params.catchUp : Time) * Q.run.1.Δ + 1
     nlinarith
   obtain ⟨d, hheld, hdt⟩ := publication_held_ready_tail S Q.run.2 Q.hn hnet r hr
-    (horg ▸ hmem) hy Q.bounded (by rw [htime, htk, hmax]; exact hD) hc
+    (horg ▸ hmem) (not_isRow_of_decodeForward hdecode) hy Q.bounded
+    (by rw [htime, htk, hmax]; exact hD) hc
   obtain ⟨j, hj, hjt⟩ := held_forward_blockCall_lt S Q.run.2 Q.hn Q.valid hmem hheld hdecode hdt
   exact ⟨j, hj, hjt.le⟩
 

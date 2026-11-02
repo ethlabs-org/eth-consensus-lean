@@ -66,8 +66,8 @@ def proto (pub : Public) : Protocol pub Unit where
 def family : Family schema := proto
 
 /-- Data depends on a previously held item; items have no dependency. -/
-def dependentProto : Protocol ⟨1, 1, by decide⟩ Unit :=
-  { proto ⟨1, 1, by decide⟩ with
+def dependentProto : Protocol ⟨1, 1, by decide, 1, by decide⟩ Unit :=
+  { proto ⟨1, 1, by decide, 1, by decide⟩ with
     dependencies := {
       ready := fun held (o : Obj 1 Bool Unit Unit) => match o.msg with
         | .item _ => true
@@ -109,7 +109,7 @@ def batchProto (pub : Public) : Protocol pub Unit :=
 /-- Batch order is observable through the duty interface: parent-first releases both;
 child-first refuses the child without retry. Unselected duties release neither. -/
 theorem signed_batch_dependency_order :
-    let rho : Run (O := schema) batchProto (Env.mk 1 (by decide) (fun _ _ => true)) :=
+    let rho : Run (O := schema) batchProto (Env.mk 1 (by decide) 1 (by decide) (fun _ _ => true)) :=
       Run.mk Finset.univ 1 [] (pkiFin 1) (fun _ => Finset.univ)
         (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
     let parent := Obj.mk (.signed (0 : Fin 1) false) (.item ()) []
@@ -123,7 +123,7 @@ theorem signed_batch_dependency_order :
   exact ⟨rfl, rfl⟩
 
 /-- Two validators, always awake, `Δ = 3`, `GST = 4`. -/
-def env : Env (Fin 2) := ⟨3, by decide, fun _ _ => true⟩
+def env : Env (Fin 2) := ⟨3, by decide, 3, by decide, fun _ _ => true⟩
 
 /-- An admissible selection: every key in role `false`, key `0` in role `true`. -/
 def sel : Bool → Finset (Fin (Fintype.card (Fin 2))) :=

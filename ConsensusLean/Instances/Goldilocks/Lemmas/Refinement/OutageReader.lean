@@ -25,18 +25,8 @@ variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
 
 /-- PSync from the outage's GST on the engine log (wrapper erasure, as `outage_pre_service`). -/
-theorem outage_psync (Q : OutageQuery S A V) : Q.run.2.log.PSync Q.run.2.point Q.stop := by
-  constructor
-  · intro v hv o s hs w hw a hsa hc hh haw
-    have h := Q.outage.2.1.2.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw a hsa hc hh haw
-    rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
-    · obtain ⟨o', he, hs'⟩ := hsent
-      cases he
-      exact ⟨u, hu, Or.inl hs', hnowake⟩
-    · obtain ⟨o', he, hr'⟩ := hrecv
-      cases he
-      exact ⟨u, hu, Or.inr hr', hnowake⟩
-  · exact Q.outage.2.1.2.txs
+theorem outage_psync (Q : OutageQuery S A V) : Q.run.2.log.PSync Q.run.2.point Q.stop :=
+  (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.2.1.2
 
 /-- PG for the lock module (`OutageLockOthers.pg`). -/
 theorem outage_pool_delivery (Q : OutageQuery S A V) :

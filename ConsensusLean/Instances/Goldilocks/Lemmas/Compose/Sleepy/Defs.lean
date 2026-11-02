@@ -34,7 +34,7 @@ open SA (SAParams ReplayOrder Vote Payload)
 not fresh processing of every repeated vote or attestation admission. -/
 structure SleepyServiceBefore {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (ΔF b : Time) : Prop where
-  deltaF : sp.Δ ≤ ΔF
+  deltaF : 0 < ΔF
   ac : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC
   relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → 0 ≤ tr.time i →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) sp.Δ ≤ b →
@@ -59,7 +59,7 @@ theorem sleepyServiceBefore_of_message_relay
         Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
         tr.BlockAcceptedBy y j (tr.time i) B) :
     SleepyServiceBefore tr H sp.Δ b := by
-  refine ⟨le_rfl, ⟨message, ?_⟩, relay⟩
+  refine ⟨sp.toParams.hΔ, ⟨message, ?_⟩, relay⟩
   intro x hx i B hacc hai y hy j ℓ hc hdb hdl hanc
   obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
   have hc := projAC_callAt.mp hc

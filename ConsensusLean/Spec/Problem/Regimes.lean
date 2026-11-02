@@ -14,7 +14,13 @@ thresholds. The other numbers (catch-up, lag, budget, look-back `η`, outage
 no-sleep margin and recovery delay, heal points, latencies) are instance
 numbers that the reviewer reads: larger values strengthen premises or weaken
 claims, and they are not bounded (any `η` is realizable,
-`Shape.outage_witness`).
+`Shape.outage_witness`). The row ratio `rowRatio` is the exception: the healthy
+regime assumes `ΔF ≤ rowRatio·Δ`, so a larger ratio weakens that premise (it
+admits slower rows) and strengthens the claims; it is an upper envelope of the
+row bound for the coefficients, never a deadline (rows are delivered within
+`ΔF` itself, `CommLog.PSync`) and never an order between the bounds (`ΔF < Δ`
+is allowed). The sleepy and outage regimes carry no ratio: they are stated at
+every row bound `ΔF > 0` (sleepy row-independence is an open audit question).
 
 The three regimes (`System.Sleepy`, `System.Healthy`, `System.Outage`) and
 the run quantities they use (`System.cDur`, `heal`, `ready`, `lat`) are read
@@ -53,17 +59,23 @@ structure Params (Idx : Type) where
   heal : Capability → Idx → Nat
   /-- Transaction latency per capability and index. -/
   latency : Capability → Idx → Nat
+  /-- Row ratio `r ≥ 1`: the healthy regime assumes `ΔF ≤ r·Δ` (`System.Healthy`). Unlike the
+  other numbers, a larger `r` weakens that premise (it admits slower rows) and so strengthens
+  the claims. An upper envelope of the row bound for the coefficients, not an order between the
+  bounds (`ΔF < Δ` is allowed), and never a deadline (rows are delivered within `ΔF`). -/
+  rowRatio : ℕ+
 
 namespace Params
 
 variable {Idx : Type}
 
-/-- The standard thresholds `θ = ½`, `β = ⅓`, `cover = ½`, `α = ⅓`, and
-look-back, no-sleep margin and recovery delay `0` (an instance sets them with
-`{ standard … with η := k, noSleep := C, recovery := D }`). -/
+/-- The standard thresholds `θ = ½`, `β = ⅓`, `cover = ½`, `α = ⅓`,
+look-back, no-sleep margin and recovery delay `0`, and row ratio `1` (an
+instance sets them with
+`{ standard … with η := k, noSleep := C, recovery := D, rowRatio := r }`). -/
 def standard (catchUp lag budget : Nat) (heal latency : Capability → Idx → Nat) :
     Params Idx :=
-  ⟨catchUp, 1 / 2, 1 / 3, 1 / 2, 1 / 3, lag, budget, 0, 0, 0, heal, latency⟩
+  ⟨catchUp, 1 / 2, 1 / 3, 1 / 2, 1 / 3, lag, budget, 0, 0, 0, heal, latency, 1⟩
 
 /-- Admissible numbers: thresholds no stronger than standard (the healthy
 fault bound `β ≥ ⅓`: a larger `β` admits more faults, a weaker premise),
@@ -175,9 +187,11 @@ def Sleepy (K : Contract Prog) (r : S.Run) : Prop :=
 /-- **Healthy from GST `g`**: partial synchrony with GST `g`, fewer than
 `β·n` faulty validators, and full participation: every honest validator is
 awake throughout `[max g 0, horizon]` (awake, not ready: readiness restricts
-readers and progress only). -/
+readers and progress only); and the row bound is within the row ratio,
+`ΔF ≤ rowRatio·Δ`. -/
 def Healthy (K : Contract Prog) (g : Time) (r : S.Run) : Prop :=
-  (S.log r).PSync (S.pt r) g ∧ (S.pt r).HealthyOn K.params.β g (S.pt r).horizon
+  (S.log r).PSync (S.pt r) g ∧ (S.pt r).HealthyOn K.params.β g (S.pt r).horizon ∧
+    (S.pt r).env.ΔF ≤ (K.params.rowRatio : Time) * (S.pt r).env.Δ
 
 /-- **Outage `[b₀, b₁)` armed at `T`** (`OutageTimes`): synchronous before
 `b₀`, partially synchronous with GST `b₁`, η-sleepy throughout (look-back

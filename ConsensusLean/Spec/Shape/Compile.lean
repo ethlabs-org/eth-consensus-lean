@@ -123,6 +123,7 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
   restore k d t := (S.restore k d t, [])
   out g st := ledgerOf (S.out g st.1)
   conflicts := S.conflicts
+  isRow := S.isRow
 
 /-- The model family of a shape family. -/
 abbrev compiled {O : OutputSchema} (F : ShapeFamily O Info) : Model.Family O :=

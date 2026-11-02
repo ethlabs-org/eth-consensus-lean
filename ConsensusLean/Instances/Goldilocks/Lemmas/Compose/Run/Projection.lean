@@ -16,7 +16,7 @@ namespace Consensus.Goldilocks
 The relay is actual acceptance; network receipt alone does not supply it. -/
 structure RunTrace.SyncWindowBefore {P : Params} {A : NodeAC P} (tr : RunTrace A)
     (H : Set (Fin P.n)) (ΔF a b : Time) : Prop where
-  deltaF : P.Δ ≤ ΔF
+  deltaF : 0 < ΔF
   message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m → a ≤ tr.time i →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
       tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →

@@ -74,7 +74,8 @@ structure ExecutionValid : Prop where
 /-- The run's communication log (L0 `CommLog`): engine releases, deliveries
 and inboxes. Network conditions are the L0 ones (`CommLog.PSync`,
 `CommLog.SyncUntil`, …) on `rho.point` and `rho.log`. -/
-def log : CommLog V (protoOf F E).Object := ⟨rho.releases, rho.receives, rho.inbox⟩
+def log : CommLog V (protoOf F E).Object :=
+  ⟨rho.releases, rho.receives, rho.inbox, (protoOf F E).isRow⟩
 
 end Run
 

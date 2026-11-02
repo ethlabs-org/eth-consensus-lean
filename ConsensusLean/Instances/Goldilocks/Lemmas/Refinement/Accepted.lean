@@ -256,7 +256,7 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
     rw [hst _ (W.ready 3).1]
     exact congrArg NodeState.fg (final_anchor_post S A V Q W 3)
   have hf : (honestKeys S Q.run.2)ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n := by
-    have hpop := Q.healthy.2.1
+    have hpop := Q.healthy.2.1.1
     change (Q.run.2.point.faulty.card : ℚ) < (K S A).params.β * Fintype.card V at hpop
     rw [acceptanceContract_params_eq] at hpop
     change (Q.run.2.point.faulty.card : ℚ) < 1 / 3 * Fintype.card V at hpop
@@ -292,20 +292,11 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
   rw [hst _ hy.1] at hsafe
   rcases hsafe with hXF | hFX
   · exact hAX.trans hXF
-  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst := by
-    constructor
-    · intro v hv o s hs w hw a hsa hc hh haw
-      have h := Q.healthy.1.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw a hsa hc hh haw
-      rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
-      · obtain ⟨o', he, hs'⟩ := hsent
-        cases he
-        exact ⟨u, hu, Or.inl hs', hnowake⟩
-      · obtain ⟨o', he, hr'⟩ := hrecv
-        cases he
-        exact ⟨u, hu, Or.inr hr', hnowake⟩
-    · exact Q.healthy.1.txs
+  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
+    (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   obtain ⟨d, hheld, hdt'⟩ := publication_held_ready_tail S Q.run.2 Q.hn hnet r hr
-    (horg ▸ (W.ready 3).1) hy hth (by rw [htime]; exact tail.1.trans hdt) tail.2
+    (horg ▸ (W.ready 3).1) (not_isRow_of_decodeForward hdecode) hy hth
+    (by rw [htime]; exact tail.1.trans hdt) tail.2
   obtain ⟨k, hkj, hacc, hkt⟩ := held_forward_accepted_before S Q.run.2 Q.hn Q.valid hnc
     hy.1 (W.ready 3).1 hheld hdecode hdt' hj.2.le (hFX.trans hXB)
   have hkj' : k + 1 ≤ j := by

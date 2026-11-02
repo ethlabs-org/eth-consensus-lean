@@ -86,7 +86,7 @@ theorem slack_grid_slots : slackGrid.slotAt? 0 16 = some 1 ∧
 
 /-- One validator, always awake, `Δ = 1`, horizon 100. -/
 def point1 : EnvPoint (Fin 1) :=
-  ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ, 100, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, Finset.univ, 100, fun _ _ => []⟩
 
 /-- The Streamlet pattern: five consecutive honest slots, within every window
 of 3 slots. -/
@@ -134,7 +134,7 @@ theorem span_guard (c : Time) :
 /-- Two validators, always awake, `Δ = 1`, horizon 10; only validator 0 is
 honest. -/
 def point2 : EnvPoint (Fin 2) :=
-  ⟨⟨1, by decide, fun _ _ => true⟩, {0}, 10, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, {0}, 10, fun _ _ => []⟩
 
 /-- The only proposer key is the faulty validator 1's. -/
 def faultySel : Slot → Finset (Fin (Fintype.card (Fin 2))) := fun _ => {(pkiFin 2).symm 1}

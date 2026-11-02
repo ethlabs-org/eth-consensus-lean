@@ -193,20 +193,10 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
   have hgSu : gbar Q.gst ≤ Q.params.ts u + 6 * Q.params.Δ := by linarith
   -- shared premises
   have hc : Healing.CatchRun Q.trace H Q.gst (2 * Q.params.Δ) := by
-    have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst := by
-      constructor
-      · intro v hv o s hs w hw a hsa hc hh haw
-        have h := Q.healthy.1.msgs v hv ⟨Q.run.1, o⟩ s ⟨o, rfl, hs⟩ w hw a hsa hc hh haw
-        rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
-        · obtain ⟨o', he, hs'⟩ := hsent
-          cases he
-          exact ⟨u, hu, Or.inl hs', hnowake⟩
-        · obtain ⟨o', he, hr'⟩ := hrecv
-          cases he
-          exact ⟨u, hu, Or.inr hr', hnowake⟩
-      · exact Q.healthy.1.txs
+    have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
+      (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
     exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
-      (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hnet Q.healthy.2.2
+      (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hnet Q.healthy.2.1.2
   -- the seed and the anchors
   obtain ⟨Ps, hPs⟩ := hpropose u hu0 (hu₀.trans hb₀) hdu
   have hoff : ∀ i : Fin 4, ![0, c, 2 * c, 3 * c] i ≤ 3 * c := by

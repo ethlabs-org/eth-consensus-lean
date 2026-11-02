@@ -46,16 +46,19 @@ namespace Consensus.CommLog
 variable {V M : Type} {p : EnvPoint V} {L : CommLog V M}
 
 /-- A smaller cut is weaker. -/
-theorem Delivers.mono_cut {dl : Time → Time} {cut cut' : Time} (h : L.Delivers p dl cut)
-    (hc : cut' ≤ cut) : L.Delivers p dl cut' :=
-  h.reindex (f := id) (fun _ => le_rfl) (fun _ => rfl) hc
+theorem Delivers.mono_cut {dl dlF : Time → Time} {cut cut' : Time}
+    (h : L.Delivers p dl dlF cut) (hc : cut' ≤ cut) : L.Delivers p dl dlF cut' :=
+  h.reindex (f := id) (fun _ => le_rfl) (fun _ => rfl) (fun _ => rfl) hc
 
 /-- A later GST is weaker. -/
 theorem PSync.mono {g g' : Time} (hg : g ≤ g') (h : L.PSync p g) : L.PSync p g' := by
-  apply h.reindex (f := fun a => max a g') (fun a => le_max_left a g') ?_ le_rfl
-  intro a
-  show max a g' + p.env.Δ = max (max a g') g + p.env.Δ
-  rw [max_assoc, max_eq_left hg]
+  apply h.reindex (f := fun a => max a g') (fun a => le_max_left a g') ?_ ?_ le_rfl
+  · intro a
+    show max a g' + p.env.Δ = max (max a g') g + p.env.Δ
+    rw [max_assoc, max_eq_left hg]
+  · intro a
+    show max a g' + p.env.ΔF = max (max a g') g + p.env.ΔF
+    rw [max_assoc, max_eq_left hg]
 
 /-- Synchrony up to a cut is weaker at a smaller cut. -/
 theorem SyncUntil.mono {b b' : Time} (hb : b' ≤ b) (h : L.SyncUntil p b) : L.SyncUntil p b' :=
@@ -67,20 +70,20 @@ namespace Consensus.Shape.Tests.Network
 open Consensus
 
 /-- `Δ = 2`; validator 0 always awake, validator 1 asleep before time `2`. -/
-def envW : Env (Fin 2) := ⟨2, by decide, fun v t => decide (v = 0 ∨ 2 ≤ t)⟩
+def envW : Env (Fin 2) := ⟨2, by decide, 2, by decide, fun v t => decide (v = 0 ∨ 2 ≤ t)⟩
 
 /-- Both honest, horizon `5`, no submissions. -/
 def ptW : EnvPoint (Fin 2) := ⟨envW, Finset.univ, 5, fun _ _ => []⟩
 
 /-- Validator 0 sends one message at `0`; receipts as given. -/
 def logW (recv : Fin 2 → Unit → Time → Prop) : CommLog (Fin 2) Unit :=
-  ⟨fun v _ t => v = 0 ∧ t = 0, recv, fun _ _ => []⟩
+  ⟨fun v _ t => v = 0 ∧ t = 0, recv, fun _ _ => [], fun _ => False⟩
 
 /-- Francesco's rule for a waker: validator 1, asleep at `0`–`1` and awake from
 `2`, must hold the message sent at `0` by `max 2 0 + Δ = 4`. -/
 theorem waker_within_bound (recv : Fin 2 → Unit → Time → Prop) (h : (logW recv).PSync ptW 0) :
     (logW recv).Held ptW 1 () 4 :=
-  h.msgs 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ 1 (Finset.mem_univ _) 2 (by decide)
+  h.msgs 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ id 1 (Finset.mem_univ _) 2 (by decide)
     (by decide) (by decide) (fun u hu _ => by simp [ptW, envW, hu])
 
 /-- A log in which validator 1 never receives the message violates `PSync 0`. -/
@@ -113,8 +116,8 @@ theorem held_all (w : Fin 2) (d : Time) (hd : 2 ≤ d) : (logW recvAt2).Held ptW
 
 /-- Receipt exactly at the deadline `t + Δ` satisfies `PSync 0`. -/
 theorem receipt_at_deadline : (logW recvAt2).PSync ptW 0 := by
-  refine ⟨?_, ?_⟩
-  · rintro v - m t ⟨-, rfl⟩ w - a ha - - -
+  refine ⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩
+  · rintro v - m t ⟨-, rfl⟩ - w - a ha - - -
     refine held_all w _ ?_
     change 2 ≤ max a 0 + 2
     have := le_max_right a 0
@@ -131,8 +134,8 @@ def recvAt4 : Fin 2 → Unit → Time → Prop := fun w _ t => w = 1 ∧ t = 4
 its wake `2`, satisfies `PSync 0`. Validator 1 is awake over no delivery
 interval `[a, max a 0 + 2]` with `a < 2`. -/
 theorem waker_not_instant : (logW recvAt4).PSync ptW 0 ∧ ¬ (logW recvAt4).Held ptW 1 () 2 := by
-  refine ⟨⟨?_, ?_⟩, ?_⟩
-  · rintro v - m t ⟨-, rfl⟩ w - a ha - hh haw
+  refine ⟨⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩, ?_⟩
+  · rintro v - m t ⟨-, rfl⟩ - w - a ha - hh haw
     fin_cases w
     · refine ⟨0, ?_, Or.inl ⟨rfl, rfl⟩, fun u _ _ hwk => ?_⟩
       · change 0 ≤ max a 0 + 2
@@ -170,10 +173,11 @@ theorem waker_not_instant : (logW recvAt4).PSync ptW 0 ∧ ¬ (logW recvAt4).Hel
     · exact absurd ht' (by decide)
 
 /-- Validator 0 awake at `0`, asleep at `1`, awake again (a wake) at `2`. -/
-def envR : Env (Fin 2) := ⟨1, by decide, fun _ t => decide (t ≠ 1)⟩
+def envR : Env (Fin 2) := ⟨1, by decide, 1, by decide, fun _ t => decide (t ≠ 1)⟩
 
 /-- Validator 0 received one message at `0`. -/
-def logR : CommLog (Fin 2) Unit := ⟨fun _ _ _ => False, fun v _ t => v = 0 ∧ t = 0, fun _ _ => []⟩
+def logR : CommLog (Fin 2) Unit :=
+  ⟨fun _ _ _ => False, fun v _ t => v = 0 ∧ t = 0, fun _ _ => [], fun _ => False⟩
 
 def ptR : EnvPoint (Fin 2) := ⟨envR, Finset.univ, 5, fun _ _ => []⟩
 
@@ -191,31 +195,33 @@ theorem held_restart : logR.Held ptR 0 () 1 ∧ ¬ logR.Held ptR 0 () 2 := by
     · exact hn 2 (by decide) le_rfl ⟨by simp [ptR, envR], by simp [ptR, envR]⟩
 
 /-- Both validators always awake, `Δ = 2`, GST `0`. -/
-def envN : Env (Fin 2) := ⟨2, by decide, fun _ _ => true⟩
+def envN : Env (Fin 2) := ⟨2, by decide, 2, by decide, fun _ _ => true⟩
 
 def ptN : EnvPoint (Fin 2) := ⟨envN, Finset.univ, 5, fun _ _ => []⟩
 
 /-- Validator 0 sends at `-1`; nobody receives. -/
-def logN : CommLog (Fin 2) Unit := ⟨fun v _ t => v = 0 ∧ t = -1, fun _ _ _ => False, fun _ _ => []⟩
+def logN : CommLog (Fin 2) Unit :=
+  ⟨fun v _ t => v = 0 ∧ t = -1, fun _ _ _ => False, fun _ _ => [], fun _ => False⟩
 
 /-- A send at a negative time is covered by `PSync 0`: validator 1 must hold
 it at `max (-1) 0 + Δ = 2`. -/
 theorem negative_send_covered : ¬ logN.PSync ptN 0 := by
   intro h
-  obtain ⟨t', -, hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () (-1) ⟨rfl, rfl⟩ 1
+  obtain ⟨t', -, hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () (-1) ⟨rfl, rfl⟩ id 1
     (Finset.mem_univ _) (-1) le_rfl (by decide) (by decide) (fun _ _ _ => rfl)
   rcases hs with ⟨h1, -⟩ | hs
   · exact absurd h1 (by decide)
   · exact hs
 
 /-- Two logs over an empty message type whose inboxes differ at `0`. -/
-def logE₁ : CommLog Unit Empty := ⟨fun _ _ _ => False, fun _ _ _ => False, fun _ _ => []⟩
+def logE₁ : CommLog Unit Empty :=
+  ⟨fun _ _ _ => False, fun _ _ _ => False, fun _ _ => [], fun _ => False⟩
 def logE₂ : CommLog Unit Empty :=
-  ⟨fun _ _ _ => False, fun _ _ _ => False, fun _ t => if t = 0 then [42] else []⟩
+  ⟨fun _ _ _ => False, fun _ _ _ => False, fun _ t => if t = 0 then [42] else [], fun _ => False⟩
 
 /-- Prefix agreement is not vacuous for an empty message type. -/
 theorem agreesUpTo_empty_messages : ¬ logE₁.AgreesUpTo logE₂ 0 := by
-  rintro ⟨-, h⟩
+  rintro ⟨-, h, -⟩
   have := h () 0 le_rfl
   simp [logE₁, logE₂] at this
 
@@ -261,11 +267,11 @@ honest send at `t` has a deadline `d = max t g' + Δ` in the horizon and an
 honest node awake throughout `[t, d]` has not sent the message itself by `d`. -/
 theorem silent_not_psync {V M : Type} (p : EnvPoint V) (L : CommLog V M)
     (hq : ∀ w m t, ¬ L.recv w m t) {g' t : Time} {v w : V} {m : M} (hv : v ∈ p.honest)
-    (hs : L.sent v m t) (hw : w ∈ p.honest) (hd : max t g' + p.env.Δ ≤ p.horizon)
+    (hs : L.sent v m t) (hr : ¬ L.row m) (hw : w ∈ p.honest) (hd : max t g' + p.env.Δ ≤ p.horizon)
     (ha : p.AwakeOnClosed w t (max t g' + p.env.Δ))
     (hns : ∀ t', t' ≤ max t g' + p.env.Δ → ¬ L.sent w m t') : ¬ L.PSync p g' := by
   intro h
-  obtain ⟨t', ht', hs', -⟩ := h.msgs v hv m t hs w hw t le_rfl hd hd ha
+  obtain ⟨t', ht', hs', -⟩ := h.msgs v hv m t hs hr w hw t le_rfl hd hd ha
   rcases hs' with hs' | hr
   · exact hns t' ht' hs'
   · exact hq _ _ _ hr
@@ -284,7 +290,7 @@ theorem silent_run_valid (O : OutputSchema) (F : Family O) (V : Type) [Fintype V
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
       let rho := Run.mk (F := F) (E := E) honest horizon events key sel submit relay hash
       rho.ExecutionValid ∧ (∀ w o t, ¬ rho.receives w o t) ∧
-        ∀ g' v w o t, v ∈ honest → rho.releases v o t → w ∈ honest →
+        ∀ g' v w o t, v ∈ honest → rho.releases v o t → ¬ (protoOf F E).isRow o → w ∈ honest →
           max t g' + E.Δ ≤ horizon → (∀ u, t ≤ u → u ≤ max t g' + E.Δ → E.awake w u = true) →
           (∀ t', t' ≤ max t g' + E.Δ → ¬ rho.releases w o t') →
           ¬ CommLog.PSync rho.point rho.log g' := by
@@ -299,8 +305,8 @@ theorem silent_run_valid (O : OutputSchema) (F : Family O) (V : Type) [Fintype V
     change horizon + 1 ≤ t at hq
     dsimp only [Time] at *
     omega
-  · intro g' v w o t hvh hs hw hd ha hns
-    refine silent_not_psync _ _ ?_ hvh hs hw hd ha hns
+  · intro g' v w o t hvh hs hr hw hd ha hns
+    refine silent_not_psync _ _ ?_ hvh hs hr hw hd ha hns
     intro w' o' t' hr
     have hq := he.quiet w' o' t' hr
     obtain ⟨i, hi⟩ := hr
@@ -364,6 +370,76 @@ theorem truncate_relayedRun :
     (Run.truncate_prefix tickedRun_valid 1).1, ?_⟩
   · simp [Run.truncate_eq, tickedRun, Event.time]
   · simp [sysOf, tagLog, Run.log, Run.truncate_eq, tickedRun, Run.inbox]
+
+/-! ## Two bounds: rows within `ΔF`, every other message within `Δ`
+
+Two honest validators, always awake, `Δ = 2`, horizon `10`; validator 0 sends one message at
+`0`, validator 1 receives it at `R`; the message is a row exactly when `row`. Regression
+witnesses at `ΔF < Δ`, `ΔF = Δ` and `ΔF > Δ` (`two_bound_witnesses`), and two controls
+(`row_held_to_row_bound`: a row is due by `ΔF`, not by `Δ`, when `ΔF < Δ`;
+`nonrow_held_to_message_bound`: a non-row is due by `Δ`, not by `ΔF`, when `ΔF > Δ`; the row
+witness at `ΔF = 5 > Δ` shows that `msgs` does not hold rows to `Δ`), so no order
+between the two bounds is assumed in either direction. -/
+
+/-- `Δ = 2`, row bound `ΔF`, everyone awake. -/
+def envT (ΔF : Time) (h : 0 < ΔF) : Env (Fin 2) := ⟨2, by decide, ΔF, h, fun _ _ => true⟩
+
+/-- Both honest, horizon `10`, no submissions. -/
+def ptT (ΔF : Time) (h : 0 < ΔF) : EnvPoint (Fin 2) := ⟨envT ΔF h, Finset.univ, 10, fun _ _ => []⟩
+
+/-- Validator 0 sends at `0`, validator 1 receives at `R`; the message is a row iff `row`. -/
+def logT (row : Prop) (R : Time) : CommLog (Fin 2) Unit :=
+  ⟨fun v _ t => v = 0 ∧ t = 0, fun v _ t => v = 1 ∧ t = R, fun _ _ => [], fun _ => row⟩
+
+theorem heldT {ΔF : Time} {h : 0 < ΔF} {row : Prop} {R : Time} (w : Fin 2) (d : Time)
+    (h0 : 0 ≤ d) (hR : R ≤ d) : (logT row R).Held (ptT ΔF h) w () d := by
+  fin_cases w
+  · exact ⟨0, h0, Or.inl ⟨rfl, rfl⟩, fun u _ _ hwk => by simp [Wakes, ptT, envT] at hwk⟩
+  · exact ⟨R, hR, Or.inr ⟨rfl, rfl⟩, fun u _ _ hwk => by simp [Wakes, ptT, envT] at hwk⟩
+
+/-- A receipt by `ΔF` (a row) or by `Δ = 2` (any other message) meets `PSync 0`. -/
+theorem psyncT {ΔF : Time} {h : 0 < ΔF} {row : Prop} {R : Time}
+    (hrow : row → R ≤ ΔF) (hnr : ¬ row → R ≤ 2) : (logT row R).PSync (ptT ΔF h) 0 := by
+  refine ⟨?_, ?_, ?_⟩
+  · rintro v - m t ⟨-, rfl⟩ hr w - a ha - - -
+    have := hnr hr
+    have := le_max_right a 0
+    exact heldT w (max a 0 + 2) (by linarith) (by linarith)
+  · rintro v - m t ⟨-, rfl⟩ hr w - a ha - - -
+    have := hrow hr
+    have := le_max_right a 0
+    exact heldT w (max a 0 + ΔF) (by linarith) (by linarith)
+  · intro u _ x τ _ _ hx
+    exact absurd hx List.not_mem_nil
+
+/-- **Regression witnesses** at `ΔF = 1 < Δ`, `ΔF = 2 = Δ` and `ΔF = 5 > Δ`: a row received
+exactly at `ΔF` and a non-row received exactly at `Δ` meet `PSync 0`. -/
+theorem two_bound_witnesses :
+    (logT True 1).PSync (ptT 1 one_pos) 0 ∧ (logT False 2).PSync (ptT 1 one_pos) 0 ∧
+    (logT True 2).PSync (ptT 2 two_pos) 0 ∧ (logT False 2).PSync (ptT 2 two_pos) 0 ∧
+    (logT True 5).PSync (ptT 5 (by decide)) 0 ∧ (logT False 2).PSync (ptT 5 (by decide)) 0 := by
+  refine ⟨psyncT ?_ ?_, psyncT ?_ ?_, psyncT ?_ ?_, psyncT ?_ ?_, psyncT ?_ ?_, psyncT ?_ ?_⟩ <;>
+    simp
+
+/-- **Control at `ΔF < Δ`**: a row received only at `Δ = 2` misses its row deadline `ΔF = 1`
+(rows are held to their own bound, not to `Δ`). -/
+theorem row_held_to_row_bound : ¬ (logT True 2).PSync (ptT 1 one_pos) 0 := by
+  intro hp
+  obtain ⟨t', ht', hs, -⟩ := hp.rows 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ trivial 1
+    (Finset.mem_univ _) 0 le_rfl (by decide) (by decide) (fun _ _ _ => rfl)
+  rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
+  · exact absurd h1 (by decide)
+  · exact absurd ht' (by decide)
+
+/-- **Control at `ΔF > Δ`**: a non-row received only at `ΔF = 5` misses its deadline `Δ = 2`
+(the larger row bound does not extend to other messages). -/
+theorem nonrow_held_to_message_bound : ¬ (logT False 5).PSync (ptT 5 (by decide)) 0 := by
+  intro hp
+  obtain ⟨t', ht', hs, -⟩ := hp.msgs 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ id 1
+    (Finset.mem_univ _) 0 le_rfl (by decide) (by decide) (fun _ _ _ => rfl)
+  rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
+  · exact absurd h1 (by decide)
+  · exact absurd ht' (by decide)
 
 end Consensus.Shape.Tests.Network
 

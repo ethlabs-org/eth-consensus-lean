@@ -53,8 +53,8 @@ theorem notReadyAtMost_below_not_realizable {O : OutputSchema} {Info : Type}
     (hp : ∀ i, K.progress .available i = .notReadyAtMost (m i)) :
     ¬ Realizable (sysOf O (compiled F) V) (shapeProgress F V) K := by
   intro h
-  obtain ⟨i, r, -, hd, ⟨-, hprog, hlive⟩, hawake⟩ :=
-    h.sleepyStress .available (Or.inl rfl) ho 1 one_pos
+  obtain ⟨i, r, -, hd, -, ⟨-, hprog, hlive⟩, hawake⟩ :=
+    h.sleepyStress .available (Or.inl rfl) ho 1 1 one_pos one_pos
   let S := sysOf O (compiled F) V
   have hc : 0 ≤ S.cDur K r := mul_nonneg (by positivity) (S.pt r).env.Δ_pos.le
   have hD : 0 ≤ S.lat K .available i r :=
@@ -156,9 +156,9 @@ theorem allProposers_unfit {O : OutputSchema} {Info : Type} [DecidableEq Info]
     (K : Contract ProgressReq) (cap : Capability) (i : K.Idx) (ρ : Recurrence)
     (hK : K.progress cap i = .recur ρ) : ¬ ProgressFits K F := by
   intro h
-  have := h cap i ⟨2, 1, by decide⟩
+  have := h cap i ⟨2, 1, by decide, 1, by decide⟩
   rw [hK] at this
-  change ∀ s, (F ⟨2, 1, by decide⟩).skel.proposerSel s = .sized 1 at this
+  change ∀ s, (F ⟨2, 1, by decide, 1, by decide⟩).skel.proposerSel s = .sized 1 at this
   have := this 0
   rw [hF] at this
   cases this
@@ -169,7 +169,7 @@ theorem noProgressFit_contract (K : Contract ProgressReq) (cap : Capability) (i 
     (ρ : Recurrence) (hK : K.progress cap i = .recur ρ) :
     ¬ ProgressFits K (show ShapeFamily schema Unit from fun pub => pollShape pub) := by
   intro h
-  have := h cap i ⟨1, 1, by decide⟩
+  have := h cap i ⟨1, 1, by decide, 1, by decide⟩
   rw [hK] at this
   cases this 0
 

@@ -53,10 +53,11 @@ def HashCollision : Prop :=
 
 end Run
 
-/-- A log over the objects of environment `E`, each tagged with `E`. -/
+/-- A log over the objects of environment `E`, each tagged with `E`; a tagged
+object is a row exactly when it is a row of `L`. -/
 def tagLog {M : Env V → Type} (E : Env V) (L : CommLog V (M E)) : CommLog V (Σ E, M E) :=
   ⟨fun v m t => ∃ o, m = ⟨E, o⟩ ∧ L.sent v o t, fun v m t => ∃ o, m = ⟨E, o⟩ ∧ L.recv v o t,
-    L.inbox⟩
+    L.inbox, fun m => ∃ o, m = ⟨E, o⟩ ∧ L.row o⟩
 
 /-- The system of family `F`. Reducible by unfolding: `(sysOf O F V).schema`
 is `O` by definition. -/

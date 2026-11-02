@@ -127,7 +127,7 @@ private theorem confirmed_ready_of_healthy (Q : ConfirmedQuery S A V)
     (hv : v ∈ Q.run.2.point.honest) {t : Time}
     (hr : (Sys (family S) V).ready (K S A) Q.gst Q.run ≤ t) (htb : t ≤ Q.run.2.horizon) :
     Q.run.2.point.Ready Q.duration v t := by
-  refine ⟨hv, fun τ hτ hτt => hh.2.2 v hv τ ?_ (hτt.trans htb)⟩
+  refine ⟨hv, fun τ hτ hτt => hh.2.1.2 v hv τ ?_ (hτt.trans htb)⟩
   change max Q.gst 0 + Q.duration + 1 ≤ t at hr
   exact le_trans (show max Q.gst 0 ≤ t - Q.duration - 1 by linarith)
     ((le_max_right 0 _).trans hτ)

@@ -13,9 +13,10 @@ The shared HS premises through the engine horizon, from the run data of a query 
 execution, no observed collision, `Healthy` at GST `g`), at a parametric row delay `Δ_F`.
 
 * `hsSharedUpTo_of_rows`: from row service at `Δ_F` (`PSyncFGRowTransport … Δ_F`) as a premise.
-* `hsSharedUpTo_of_healthy`: the monotone lift, at every `Δ_F ≥ Δ_p`, from the row service at
-  `Δ_p` of the single-bound network (`signed_row_service_psync`, the single instantiation point of
-  `Δ_F`).
+* `hsSharedUpTo_of_healthy`: the monotone lift, at every `Δ_F ≥ Δ_p`, from the network's row
+  service at the protocol row delay `Δ_F,p = rowDelay (pubOf E)` (`signed_row_service_psync`),
+  through `Δ_F,p ≤ Δ_p` (`rowDelay_le_of_healthy`): the healthy regime of the contract bounds the
+  engine row bound by its row ratio, `1` for `K S A` (transitional).
 
 Fields: `noColl`, `genesisRoot` (`noCollTransport`, `simTrace_genesis_root_ok`); `sync`
 (`resetService_of_psync` at `PSync g`, from `Healthy`, with the row service); `awake`
@@ -35,36 +36,25 @@ variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type) [Fintype V] [Decid
 /-- **The shared HS premises of a healthy run through its horizon, from row service at `Δ_F`**,
 at GST `g` and the digest of the run. Only the run data of a query are used (valid execution, no
 observed collision, `Healthy` at `g`) plus three premises on `Δ_F`: row service at `Δ_F`
-(`hrow`), `6Δ + Δ_F ≤ 4Δ·δt` (`htd`, the field `timeoutDelay`), and `Δ ≤ Δ_F` (`hΔF`), which
-only fills the field `ResetService.deltaF`. -/
+(`hrow`), `6Δ + Δ_F ≤ 4Δ·δt` (`htd`, the field `timeoutDelay`), and `0 < Δ_F` (`hΔF`), which
+only fills the field `ResetService.deltaF`; no order between `Δ` and `Δ_F` is used. -/
 theorem hsSharedUpTo_of_rows (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.card V)
     (valid : (Sys (family S) V).Valid run) (noCollision : ¬ run.2.HashCollision) {g : Time}
     (healthy : (Sys (family S) V).Healthy (K S A) g run) {ΔF : Time}
     (hrow : PSyncFGRowTransport S run.2 (simTrace S run.2 hn) (honestKeys S run.2) ΔF)
-    (hΔF : (S.params (Model.pubOf run.1) hn).Δ ≤ ΔF)
+    (hΔF : 0 < ΔF)
     (htd : 6 * (S.params (Model.pubOf run.1) hn).Δ + ΔF ≤
       4 * (S.params (Model.pubOf run.1) hn).Δ * (S.δt : Time)) :
     Healing.HSSharedUpTo (simTrace S run.2 hn) (honestKeys S run.2) (digestOf S run.2) g
       ΔF run.2.horizon := by
   have hnc := noCollTransport V S run.1 run.2 hn valid noCollision
-  have hnet : run.2.log.PSync run.2.point g := by
-    constructor
-    · intro v hv o s hs w hw a hsa hc hh haw
-      have h := healthy.1.msgs v hv ⟨run.1, o⟩ s ⟨o, rfl, hs⟩ w hw a hsa hc hh haw
-      rcases h with ⟨u, hu, hsent | hrecv, hnowake⟩
-      · obtain ⟨o', he, hs'⟩ := hsent
-        cases he
-        exact ⟨u, hu, Or.inl hs', hnowake⟩
-      · obtain ⟨o', he, hr'⟩ := hrecv
-        cases he
-        exact ⟨u, hu, Or.inr hr', hnowake⟩
-    · exact healthy.1.txs
+  have hnet : run.2.log.PSync run.2.point g := (Model.sysOf_delivers_iff _ _ _ _).mp healthy.1
   have hawake : ∀ y ∈ honestKeys S run.2, ∀ t, SA.gbar g ≤ t → t ≤ run.2.horizon →
       (simTrace S run.2 hn).awake y t := fun y hy t hg hb =>
-    ⟨healthy.2.2 (run.2.key y) hy t hg hb, le_trans (le_max_right _ _) hg, hb⟩
+    ⟨healthy.2.1.2 (run.2.key y) hy t hg hb, le_trans (le_max_right _ _) hg, hb⟩
   refine ⟨hnc, simTrace_genesis_root_ok S run.2 hn,
     resetService_of_psync S run.2 hn valid hnc hnet hrow hΔF, hawake, ?_, ?_, htd⟩
-  · have hpop := healthy.2.1
+  · have hpop := healthy.2.1.1
     change (run.2.point.faulty.card : ℚ) < (K S A).params.β * Fintype.card V at hpop
     rw [acceptanceContract_params_eq] at hpop
     change (run.2.point.faulty.card : ℚ) < 1 / 3 * Fintype.card V at hpop
@@ -84,9 +74,22 @@ theorem hsSharedUpTo_of_rows (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.
     exact simTrace_asleep_before_restart S run.2 hn valid y hy k hk
       (hawake y hy _ (Int.le_sub_one_of_lt hlt) (by linarith))
 
+/-- **The row bound of a healthy run of `K S A`**: the protocol row delay is at most the protocol
+delay, `Δ_F,p = ΔF + 1 ≤ Δ + 1 = Δ_p`, from the healthy regime's row ratio `ΔF ≤ r·Δ` at the
+contract's `r = 1` (`Params.standard`; transitional, until the contract chooses its ratio). -/
+theorem rowDelay_le_of_healthy (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.card V)
+    {g : Time} (healthy : (Sys (family S) V).Healthy (K S A) g run) :
+    rowDelay (Model.pubOf run.1) ≤ (S.params (Model.pubOf run.1) hn).Δ := by
+  have h := healthy.2.2
+  change run.1.ΔF ≤ ((1 : ℕ+) : Time) * run.1.Δ at h
+  change run.1.ΔF + 1 ≤ run.1.Δ + 1
+  simp only [PNat.one_coe, Nat.cast_one, one_mul] at h
+  linarith
+
 /-- **The monotone lift**: the shared HS premises of a healthy run at every `Δ_F ≥ Δ_p` with
-`6Δ + Δ_F ≤ 4Δ·δt`, from the network's row service at `Δ_p` (`signed_row_service_psync`) lifted
-by `PSyncFGRowTransport.mono`. -/
+`6Δ + Δ_F ≤ 4Δ·δt`, from the network's row service at the protocol row delay
+(`signed_row_service_psync`) lifted by `PSyncFGRowTransport.mono` through
+`rowDelay_le_of_healthy`. -/
 theorem hsSharedUpTo_of_healthy (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.card V)
     (valid : (Sys (family S) V).Valid run) (noCollision : ¬ run.2.HashCollision) {g : Time}
     (healthy : (Sys (family S) V).Healthy (K S A) g run) {ΔF : Time}
@@ -96,7 +99,9 @@ theorem hsSharedUpTo_of_healthy (run : (Sys (family S) V).Run) (hn : 1 ≤ Finty
     Healing.HSSharedUpTo (simTrace S run.2 hn) (honestKeys S run.2) (digestOf S run.2) g
       ΔF run.2.horizon :=
   hsSharedUpTo_of_rows S A V run hn valid noCollision healthy
-    ((signed_row_service_psync S run.2 hn valid).mono _ _ _ _ hΔF) hΔF htd
+    ((signed_row_service_psync S run.2 hn valid).mono _ _ _ _
+      ((rowDelay_le_of_healthy S A V run hn healthy).trans hΔF))
+    ((S.params (Model.pubOf run.1) hn).toParams.hΔ.trans_le hΔF) htd
 
 end Consensus.Goldilocks.Refinement
 

@@ -29,7 +29,7 @@ open Consensus.Model (pubOf)
 
 /-- Two validators, always awake and honest, engine `Δ = 1`, horizon `H`, no submissions. -/
 def point (H : Time) : EnvPoint (Fin 2) :=
-  ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ, H, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, Finset.univ, H, fun _ _ => []⟩
 
 theorem one_le_card : 1 ≤ Fintype.card (Fin 2) := by decide
 
@@ -78,7 +78,7 @@ theorem sleepy_run (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients) (H
   obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (family S) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
   refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ?_⟩
-  · exact (Model.sysOf_delivers_iff rho _ _).mpr (he.psync le_rfl)
+  · exact (Model.sysOf_delivers_iff rho _ _ _).mpr (he.psync le_rfl)
   · intro t _ _
     change rho.point.ReadyAbove (1 / 2) _ t
     unfold EnvPoint.ReadyAbove

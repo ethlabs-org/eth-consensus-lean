@@ -159,7 +159,8 @@ def recovery : Nat := 9
 def budget : Nat := min pp.eta (4 * pp.lockK - 5)
 
 /-- The pinned Goldilocks numbers: standard thresholds, outage look-back
-`η = eta`, no-sleep margin and recovery delay. -/
+`η = eta`, no-sleep margin and recovery delay, and row ratio `1` (`Params.standard`;
+transitional: the healthy regime assumes `ΔF ≤ Δ` until the arbitrary-ratio port). -/
 def params : Params ℕ+ :=
   { Params.standard catchUp pp.lag pp.budget pp.heal pp.latency with
     η := pp.eta, noSleep := pp.noSleep, recovery := FGSAParams.recovery }

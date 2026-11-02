@@ -225,10 +225,13 @@ theorem Sleepy.of_le (hc : K'.params.catchUp = K.params.catchUp) (hθ : K'.param
   rw [cDur_of_catchUp hc]
   exact EnvPoint.SleepyOn.mono h.2 hθ
 
-/-- A weaker fault bound keeps the healthy regime. -/
-theorem Healthy.of_le {g : Time} (hβ : K.params.β ≤ K'.params.β) (h : S.Healthy K g r) :
-    S.Healthy K' g r :=
-  ⟨h.1, EnvPoint.HealthyOn.mono h.2 hβ⟩
+/-- A weaker fault bound and a larger row ratio keep the healthy regime. -/
+theorem Healthy.of_le {g : Time} (hβ : K.params.β ≤ K'.params.β)
+    (hr : K.params.rowRatio ≤ K'.params.rowRatio) (h : S.Healthy K g r) : S.Healthy K' g r := by
+  refine ⟨h.1, EnvPoint.HealthyOn.mono h.2.1 hβ, h.2.2.trans ?_⟩
+  have hr' : ((K.params.rowRatio : Nat) : Time) ≤ (K'.params.rowRatio : Nat) := by
+    exact_mod_cast hr
+  exact mul_le_mul_of_nonneg_right hr' (S.pt r).env.Δ_pos.le
 
 /-- Weaker thresholds (`θ' ≥ 0`), a shorter look-back, a shorter lag, a
 larger budget and a smaller no-sleep margin (same catch-up) keep the outage
@@ -270,13 +273,13 @@ open Consensus
 
 /-- The log with no sends, no receipts and empty inboxes. -/
 def silentLog (V M : Type) : CommLog V M :=
-  ⟨fun _ _ _ => False, fun _ _ _ => False, fun _ _ => []⟩
+  ⟨fun _ _ _ => False, fun _ _ _ => False, fun _ _ => [], fun _ => False⟩
 
 /-- With no submissions, the silent log meets every delivery requirement
 vacuously. -/
 theorem silentLog_delivers {V M : Type} (p : EnvPoint V) (hs : ∀ v t, p.submit v t = [])
-    (dl : Time → Time) (cut : Time) : (silentLog V M).Delivers p dl cut := by
-  refine ⟨fun _ _ _ _ h => h.elim, ?_⟩
+    (dl dlF : Time → Time) (cut : Time) : (silentLog V M).Delivers p dl dlF cut := by
+  refine ⟨fun _ _ _ _ h => h.elim, fun _ _ _ _ h => h.elim, ?_⟩
   intro u _ x τ _ _ hx
   rw [hs] at hx
   exact absurd hx List.not_mem_nil
@@ -284,24 +287,26 @@ theorem silentLog_delivers {V M : Type} (p : EnvPoint V) (hs : ∀ v t, p.submit
 section Lost
 
 /-- Two honest validators, always awake, `Δ = 1`, horizon `10`. -/
-def ptL : EnvPoint (Fin 2) := ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ, 10, fun _ _ => []⟩
+def ptL : EnvPoint (Fin 2) :=
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, Finset.univ, 10, fun _ _ => []⟩
 
 /-- Validator 0 sends at `0`; nobody receives anything. -/
-def logL : CommLog (Fin 2) Unit := ⟨fun v _ t => v = 0 ∧ t = 0, fun _ _ _ => False, fun _ _ => []⟩
+def logL : CommLog (Fin 2) Unit :=
+  ⟨fun v _ t => v = 0 ∧ t = 0, fun _ _ _ => False, fun _ _ => [], fun _ => False⟩
 
 /-- A lost honest message: not partially synchronous for any GST `g ≤ 9`; for
 `g = 10` every deadline is past the horizon and nothing is required. -/
 theorem psync_lost_message : (∀ g : Time, g ≤ 9 → ¬ logL.PSync ptL g) ∧ logL.PSync ptL 10 := by
-  refine ⟨fun g hg h => ?_, ⟨?_, ?_⟩⟩
+  refine ⟨fun g hg h => ?_, ⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩⟩
   · have hd : max 0 g + 1 ≤ 10 := by
       have : max 0 g ≤ 9 := max_le (by decide) hg
       dsimp only [Time] at *; omega
-    obtain ⟨t', -, hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ 1 (Finset.mem_univ _)
+    obtain ⟨t', -, hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ id 1 (Finset.mem_univ _)
       0 le_rfl hd hd (fun _ _ _ => rfl)
     rcases hs with ⟨h1, -⟩ | h1
     · exact absurd h1 (by decide)
     · exact h1
-  · rintro v - m t ⟨-, rfl⟩ w - a - hc - -
+  · rintro v - m t ⟨-, rfl⟩ - w - a - hc - -
     change max a 10 + 1 ≤ 10 at hc
     have := le_max_right a 10
     dsimp only [Time] at *; omega
@@ -314,7 +319,7 @@ section Async
 
 /-- Validator 0 sends at `3`; validator 1 receives it at `7`. -/
 def logA : CommLog (Fin 2) Unit :=
-  ⟨fun v _ t => v = 0 ∧ t = 3, fun v _ t => v = 1 ∧ t = 7, fun _ _ => []⟩
+  ⟨fun v _ t => v = 0 ∧ t = 3, fun v _ t => v = 1 ∧ t = 7, fun _ _ => [], fun _ => False⟩
 
 /-- Nobody ever wakes at `ptL` (always awake). -/
 theorem ptL_no_wake (w : Fin 2) (u : Time) : ¬ Wakes ptL.env w u := fun h => by
@@ -332,22 +337,23 @@ theorem logA_held (w : Fin 2) (d : Time) (hd : 7 ≤ d) : logA.Held ptL w () d :
 but neither synchrony nor synchrony up to `4`. -/
 theorem outage_async_log :
     logA.OutageNet ptL 3 6 ∧ ¬ logA.PSync ptL 0 ∧ ¬ logA.SyncUntil ptL 4 := by
-  have hnot : ∀ dl cut, dl 3 = 4 → 4 ≤ cut → ¬ logA.Delivers ptL dl cut := by
-    intro dl cut h3 hc h
-    obtain ⟨t', ht', hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 3 ⟨rfl, rfl⟩ 1
+  have hnot : ∀ dl dlF cut, dl 3 = 4 → 4 ≤ cut → ¬ logA.Delivers ptL dl dlF cut := by
+    intro dl dlF cut h3 hc h
+    obtain ⟨t', ht', hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 3 ⟨rfl, rfl⟩ id 1
       (Finset.mem_univ _) 3 le_rfl (by rw [h3]; exact hc) (by rw [h3]; decide)
       (fun _ _ _ => rfl)
     rw [h3] at ht'
     rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
     · exact absurd h1 (by decide)
     · exact absurd ht' (by decide)
-  refine ⟨⟨⟨?_, ?_⟩, ⟨?_, ?_⟩⟩, hnot _ _ rfl (by decide), hnot _ _ rfl le_rfl⟩
-  · rintro v - m t ⟨-, rfl⟩ w - a ha hc - -
+  refine ⟨⟨⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩, ⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩⟩,
+    hnot _ _ _ rfl (by decide), hnot _ _ _ rfl le_rfl⟩
+  · rintro v - m t ⟨-, rfl⟩ - w - a ha hc - -
     change a + 1 ≤ 3 at hc
     dsimp only [Time] at *; omega
   · intro u _ x τ _ _ hx
     exact absurd hx List.not_mem_nil
-  · rintro v - m t ⟨-, rfl⟩ w - a - - - -
+  · rintro v - m t ⟨-, rfl⟩ - w - a - - - -
     refine logA_held w _ ?_
     change 7 ≤ max a 6 + 1
     have := le_max_right a 6
@@ -362,7 +368,7 @@ section Sleeper
 /-- Five validators, `0` faulty; honest `4` asleep on `[2, 5]`; `Δ = 1`,
 horizon `10`, no submissions. -/
 def ptS : EnvPoint (Fin 5) :=
-  ⟨⟨1, by decide, fun v t => decide (v ≠ 4 ∨ t < 2 ∨ 5 < t)⟩, Finset.univ.erase 0, 10,
+  ⟨⟨1, by decide, 1, by decide, fun v t => decide (v ≠ 4 ∨ t < 2 ∨ 5 < t)⟩, Finset.univ.erase 0, 10,
     fun _ _ => []⟩
 
 theorem ptS_faulty : ptS.faulty = {0} := by
@@ -396,7 +402,7 @@ theorem sleepy_with_sleeper :
         ptS.SleepyOn P.θ ((P.catchUp : Time) * ptS.env.Δ) 0 ptS.horizon) ∧
     ∀ β, ¬ ptS.HealthyOn β 0 ptS.horizon := by
   refine ⟨by decide, by decide, fun c t _ _ => ptS_readyAbove c t, fun P hθ => ?_, ?_⟩
-  · exact ⟨silentLog_delivers _ (fun _ _ => rfl) _ _,
+  · exact ⟨silentLog_delivers _ (fun _ _ => rfl) _ _ _,
       fun t _ _ => (ptS_readyAbove _ t).mono _ hθ⟩
   · rintro β ⟨-, ha⟩
     have := ha 4 (by decide) 2 (by decide) (by decide)
@@ -409,7 +415,7 @@ section WakeAtGST
 /-- Three honest validators, all asleep before `5` and awake from `5`; `Δ = 1`,
 horizon `20`. -/
 def ptG : EnvPoint (Fin 3) :=
-  ⟨⟨1, by decide, fun _ t => decide (5 ≤ t)⟩, Finset.univ, 20, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ t => decide (5 ≤ t)⟩, Finset.univ, 20, fun _ _ => []⟩
 
 /-- A wake at GST: healthy from `5` at `β = ⅓` (and the healthy regime holds
 with the silent log for every `β ≥ ⅓`), nobody ready at `5` with catch-up `2`,
@@ -424,7 +430,7 @@ theorem healthy_wake_at_gst :
     refine ⟨by rw [hf]; norm_num, fun v _ u hu _ => ?_⟩
     simp only [ptG, decide_eq_true_eq]
     exact le_trans (le_max_left _ _) hu
-  refine ⟨hH, fun P hφ => ⟨silentLog_delivers _ (fun _ _ => rfl) _ _, hH.mono hφ⟩, ?_,
+  refine ⟨hH, fun P hφ => ⟨silentLog_delivers _ (fun _ _ => rfl) _ _ _, hH.mono hφ⟩, ?_,
     by decide, fun v => ⟨Finset.mem_univ _, fun u hu _ => ?_⟩⟩
   · classical
     unfold EnvPoint.readyAt
@@ -444,11 +450,11 @@ section FullParticipation
 
 /-- Three honest validators; validator `2` always asleep. -/
 def ptT : EnvPoint (Fin 3) :=
-  ⟨⟨1, by decide, fun v _ => decide (v ≠ 2)⟩, Finset.univ, 10, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun v _ => decide (v ≠ 2)⟩, Finset.univ, 10, fun _ _ => []⟩
 
 /-- Three honest validators, everyone always awake. -/
 def ptA : EnvPoint (Fin 3) :=
-  ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ, 10, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, Finset.univ, 10, fun _ _ => []⟩
 
 /-- The healthy regime is full participation: two of three honest validators
 awake throughout (no faults) is not healthy at any fault bound `β`; with
@@ -467,7 +473,7 @@ section Faults
 
 /-- One faulty validator among three, everyone awake. -/
 def ptF : EnvPoint (Fin 3) :=
-  ⟨⟨1, by decide, fun _ _ => true⟩, Finset.univ.erase 0, 10, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, Finset.univ.erase 0, 10, fun _ _ => []⟩
 
 /-- So one faulty validator among three is never healthy at `β = ⅓`, on any
 window. -/
@@ -502,12 +508,13 @@ section OutageCohort
 /-- Five validators, `0` faulty; honest `4` asleep before `3` and awake from
 `3` (a late waker); `Δ = 1`, horizon `10`, no submissions. -/
 def ptW : EnvPoint (Fin 5) :=
-  ⟨⟨1, by decide, fun v t => decide (v ≠ 4 ∨ 3 ≤ t)⟩, Finset.univ.erase 0, 10,
+  ⟨⟨1, by decide, 1, by decide, fun v t => decide (v ≠ 4 ∨ 3 ≤ t)⟩, Finset.univ.erase 0, 10,
     fun _ _ => []⟩
 
 /-- As `ptW`, with honest `3` and `4` both waking at `3`. -/
 def ptW2 : EnvPoint (Fin 5) :=
-  ⟨⟨1, by decide, fun v t => decide ((v ≠ 3 ∧ v ≠ 4) ∨ 3 ≤ t)⟩, Finset.univ.erase 0, 10,
+  ⟨⟨1, by decide, 1, by decide, fun v t => decide ((v ≠ 3 ∧ v ≠ 4) ∨ 3 ≤ t)⟩,
+    Finset.univ.erase 0, 10,
     fun _ _ => []⟩
 
 theorem ptW_lateWakers : ptW.lateWakers 0 10 = {4} := by

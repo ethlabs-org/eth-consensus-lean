@@ -43,7 +43,8 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
       change a + E.Δ < a + (E.Δ + 1)
       linarith
     have hbound : a + E.Δ ≤ b := hslack.le.trans (heq' ▸ hb)
-    have hheld := hnet.msgs (rho.key x) hx _ τ ⟨source, hs, hrel⟩ (rho.key y) hy
+    have hheld := hnet.msgs (rho.key x) hx _ τ ⟨source, hs, hrel⟩
+      (by simp [log_row_iff, isRow, IsAttObj]) (rho.key y) hy
       a ha hbound (hbound.trans hbh)
       (fun u hau hud => hw u hau (hud.trans (hslack.le.trans (heq' ▸ hd))))
     rcases held_voteForward_source_or_process S rho hn hv hx hs hfirst hheld with
@@ -121,19 +122,7 @@ theorem sleepy_raw_syncUntil (r : (Sys (family S) V).Run)
     (hv : (Sys (family S) V).Valid r)
     (hsleepy : (Sys (family S) V).Sleepy (K S A) r) (b : Time) :
     r.2.log.SyncUntil r.2.point b := by
-  have hp : r.2.log.PSync r.2.point 0 := by
-    constructor
-    · intro x hx m t hs y hy a hta hcut hhor haw
-      have hh := hsleepy.1.msgs x hx ⟨r.1, m⟩ t ⟨m, rfl, hs⟩
-        y hy a hta hcut hhor haw
-      obtain ⟨u, hu, hsent | hrecv, hnw⟩ := hh
-      · obtain ⟨o, he, ho⟩ := hsent
-        cases he
-        exact ⟨u, hu, Or.inl ho, hnw⟩
-      · obtain ⟨o, he, ho⟩ := hrecv
-        cases he
-        exact ⟨u, hu, Or.inr ho, hnw⟩
-    · exact hsleepy.1.txs
+  have hp : r.2.log.PSync r.2.point 0 := (Model.sysOf_delivers_iff _ _ _ _).mp hsleepy.1
   apply hp.syncUntil_zero ?_ b
   rw [CommLog.sendsFromZero_iff]
   intro x hx m t hs

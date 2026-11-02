@@ -83,7 +83,7 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
     (hOn : PhaseOn tr.projFG H i₀ jA m c) : False := by
   have hnc := hs.noColl
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hΔF : sp.Δ ≤ ΔF := hs.healthy.1.deltaF
+  have hΔF : 0 ≤ ΔF := hs.healthy.1.deltaF.le
   have hg8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hset.1.late
   have hrw := add_le_rTime sp w
   have hδ : (0 : Time) ≤ 4 * sp.Δ * (sp.toParams.δt : Time) := by positivity

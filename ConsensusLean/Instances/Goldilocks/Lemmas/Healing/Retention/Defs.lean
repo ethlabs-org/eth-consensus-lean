@@ -53,7 +53,7 @@ structure ResetPremises (proposer : Nat → Fin sp.n)
 /-- GST service at actual receiver calls through `b`. Effective send times and strict
 delivery deadlines agree with `GSTRun`; no service after the observation horizon is required. -/
 structure GSTRunUpTo (g ΔF b : Time) : Prop where
-  deltaF : sp.Δ ≤ ΔF
+  deltaF : 0 < ΔF
   message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ b →
       tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
@@ -75,7 +75,7 @@ structure GSTRunUpTo (g ΔF b : Time) : Prop where
 /-- Reset service keeps the AC message/block/relay contracts, but requests only
 signed-row delivery by the deadline, without a row processing lower bound. -/
 structure ResetService (g ΔF b : Time) : Prop where
-  deltaF : sp.Δ ≤ ΔF
+  deltaF : 0 < ΔF
   message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m →
     ∀ y ∈ H, ∀ j, tr.IsCall y j →
       tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
