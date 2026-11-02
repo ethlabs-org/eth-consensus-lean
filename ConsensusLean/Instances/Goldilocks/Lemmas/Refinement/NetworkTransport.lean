@@ -612,6 +612,26 @@ theorem publication_acceptedBy_psync_any (hn : 1 ≤ Fintype.card V)
         ((Healing.run_F_mono (simTrace_goldilocksRun S rho hn hv).toLocalRun hy hkj).trans hF)
       exact ⟨l, hl.trans hkj, ha, ht'⟩
 
+/-- The acceptance-relay service for an arbitrary honest acceptance, including a pre-GST one.
+The effective deadline base is max(acceptance time, GST); the receiver call is in the horizon. -/
+theorem acceptance_relay_psync_any (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {g : Time} (hnet : rho.log.PSync rho.point g)
+    {x : Fin (Fintype.card V)} (hx : x ∈ honestKeys S rho) {i : Nat}
+    {B : Blk (S.params (Model.pubOf E) hn)} (hi : (simTrace S rho hn).AcceptAt x i B)
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j) (hb : (simTrace S rho hn).time j ≤ rho.horizon)
+    (hd : (simTrace S rho hn).deadline y j (max ((simTrace S rho hn).time i) g)
+      (S.params (Model.pubOf E) hn).Δ ≤ (simTrace S rho hn).time j)
+    (hF : Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
+      ((simTrace S rho hn).state y j).fg.F B) :
+    (simTrace S rho hn).BlockAcceptedBy y j (max ((simTrace S rho hn).time i) g) B := by
+  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
+    (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B hi
+  exact publication_acceptedBy_psync_any S rho hn hv hnc hnet r hr (horg ▸ hx)
+    (simTrace_time_nonneg S rho hn hv i) htime (p := p) (by simpa only [horg] using hdecode)
+    hy hj (hd.trans hb) hd hF
+
 /-- Holdings of an honest decoded wrapper give a block call after its source stamp.
 Local publication uses the actual acceptance; receipt uses recursive block processing. -/
 theorem held_forward_blockCall_before (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)

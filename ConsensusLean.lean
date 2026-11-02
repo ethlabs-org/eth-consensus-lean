@@ -77,6 +77,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accounta
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutagePostStop
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageRead
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageReader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Weak
@@ -312,6 +313,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposerGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Queue
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ReceiverService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RiseGap
