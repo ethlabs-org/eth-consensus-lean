@@ -1,5 +1,10 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageArming
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Arming
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageReaderGate
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageBridge
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Suppliers
 
 public section
 
@@ -14,25 +19,15 @@ open Blocks Shape
 variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
 
-/-- OPEN slow-only recovery for ready readers from the recovery point
-`b₁ + recovery·Δe` (`recovery = 18`). Open obligations (workbench
-`outage_slow_only_delta.md`; O3 from 9f5d6a3 `outage_recovery_delay-readback-opus.md`
-§2, §4):
-* O1, slow lock formation at labels `j₀ − 1` (armed by `b₀` under the lag
-  `8k + 12`) and `j₀ = coverLabel b₀`, for the honest validators awake at the
-  no-sleep window start;
-* O2, effective lock retention of both locks, including the base handoff at
-  slots `j₀ + 1` (pre-`b₀` votes) and `j₀ + 2` (votes under the live `j₀ − 1`
-  lock), VA for the `j₀ − 1` anchor, and both unlock paths;
-* O3, the recovery at the reader gates: (i) the `k − 1` conflicting-label
-  count, with O2/VA, S-vote and η-sleepy participation at `j₀`; (ii) the
-  cohort count of `System.Outage` at the reader gates; (iii) a veto is
-  harmless: it implies the record extends the proposal (from
-  `lockInv_of_reachable`, the live-lock chain and OB-F; this replaces a false
-  no-veto comparability lemma); (iv) S5: restored heads `⪰` the record at
-  every later `t`;
-* O4, the reader bridge: `Ready` at `t` gives the post-recovery gate and view.
-An armed record alone is not a proof of protection. -/
+set_option linter.unusedVariables false in
+/-- Slow-only recovery for ready readers from the recovery point `b₁ + recovery·Δe`
+(`recovery = 18`): the reader's read extends the ready source's read. The source is armed
+(`outage_arming`); the lock module's premise package and invariant come from the arming
+(`outageLockPremises_of_arming`, `outage_locks`) with S5's step (`outage_s5_step_query`); the
+reader reads above the armed read tip (`outage_reader_bridge`, with S5's suppliers
+`outage_reader_head`, `outage_reader_early`, `outage_reader_late`), and the ancestry of the two
+read tips is the engine read prefix (`outage_reader_prefix`). The armed-read witness `armed` of
+`outage_arm` is not needed. -/
 theorem outage_repair (Q : OutageQuery S A V)
     (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start)
     (v : V) (hv : Q.run.2.point.Ready Q.duration v Q.T)
@@ -42,7 +37,28 @@ theorem outage_repair (Q : OutageQuery S A V)
     (w : V) (reader : Q.run.2.point.Ready Q.duration w t) :
     (chainTrace Q.run.2).readAt .confirmed v Q.T <+:
       (chainTrace Q.run.2).readAt (resilienceTarget schema .confirmed) w t := by
-  sorry
+  have hTs : Q.T ≤ Q.start := by
+    obtain ⟨⟨-, hlag, -, -⟩, -⟩ := Q.outage
+    have : (0 : Time) ≤ ((K S A).params.lag : Time) * Q.run.1.Δ := by
+      have := Q.run.1.Δ_pos; positivity
+    change Q.T + _ * Q.run.1.Δ ≤ Q.start at hlag
+    linarith
+  have hst : Q.start ≤ Q.stop := Q.outage.1.2.2.1
+  have hrec : Q.stop ≤ t := by
+    have : (0 : Time) ≤ ((K S A).params.recovery : Time) * Q.run.1.Δ := by
+      have := Q.run.1.Δ_pos; positivity
+    change Q.stop + _ * Q.run.1.Δ ≤ t at ht
+    linarith
+  have hsh : Q.start ≤ Q.run.2.horizon := hst.trans (hrec.trans hth)
+  have hTh : Q.T ≤ Q.run.2.horizon := hTs.trans hsh
+  obtain ⟨ar⟩ := outage_arming S A V Q service v hv hTh
+  have hS5 := outage_s5_step_query Q service hv hTh hsh ar
+  refine outage_reader_prefix S A V Q hv (hTs.trans (hst.trans hrec)) hth reader ?_
+  rw [← ar.tip_eq]
+  exact outage_reader_bridge Q service hv hTh hsh ar hS5 ht hth reader
+    (outage_reader_head Q service hv hTh hsh ar hS5 reader)
+    (outage_reader_early Q service hv hTh hsh ar hS5 reader)
+    (outage_reader_late Q service hv hTh hsh ar hS5 ht hth reader)
 
 /-- Assembly preserves the reader and time quantifiers of persists. -/
 theorem outage_protected (Q : OutageQuery S A V) :
