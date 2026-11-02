@@ -55,6 +55,15 @@ where it is recorded; "Francesco" marks the owner's decisions.
   case Francesco ruled out as a final state; this is not the arbitrary-ratio port, which chooses
   `r` in the acceptance assumptions, adds `3·cF r ≤ δt`, and reworks the coefficients. Card:
   workbench `two_bound_network.md`.
+- 2026-11-02, Francesco (η = 0, coefficient lane): the Goldilocks outage regime is plain sleepy.
+  `AcceptanceAssumptions.lookback` is removed, `acceptanceContract` keeps `Params.standard`'s
+  `η = 0`, and the outage budget is `4k − 6` (was `min(lookback, 4k − 6)`). Statement impact:
+  `Outage`'s participation premise `EtaSleepyOn θ (η·Δ)` becomes plain sleepy and its window bound
+  `b₁ ≤ b₀ + budget·Δ` admits windows up to `(4k − 6)·Δ` (was `min(lookback, 4k − 6)·Δ`); both
+  weaken the outage premise, so `persists` claims at least as much as before. Its proof used only
+  the plain-sleepy consequence (`EtaReadyAbove.readyAbove`) and `budget ≤ 4k − 6`. This applies
+  to the acceptance contract; the Baseline sheet is unchanged and still pins `η = eta ≥ 1`
+  (OD-23), a stronger premise, so the acceptance claim is the stronger one.
 - 2026-11-02, coefficient lane (lead-approved plan): the arbitrary-ratio contract. The Goldilocks
   acceptance assumptions choose the row ratio, `AcceptanceAssumptions.rowRatio : ℕ+`, passed to
   `Params.rowRatio` by `acceptanceContract`, so its healthy regime assumes `ΔF ≤ r·Δ` for that `r`.

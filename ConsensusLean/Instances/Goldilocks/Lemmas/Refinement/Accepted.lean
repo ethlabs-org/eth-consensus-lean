@@ -598,7 +598,7 @@ theorem accepted_admissible : (K S A).params.Admissible := by
     β_range := by norm_num [Params.standard]
     cover_range := by norm_num [Params.standard]
     α_range := by norm_num [Params.standard]
-    budget_pos := by have := A.lookback.pos; have := S.two_le_k; dsimp [Params.standard]; omega }
+    budget_pos := by have := S.two_le_k; dsimp [Params.standard]; omega }
 
 /-- Concrete existential endpoint. Every gap is a named numeric or adapter
 leaf; no simulation, GenesisFresh, or desired safety premise is added. -/

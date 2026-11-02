@@ -19,14 +19,14 @@ at the actual protocol row delay `rowDelay` (HSSharedRun, HSSharedOfQuery); the 
 namespace Consensus.Goldilocks.Refinement
 open Blocks Shape
 
-/-- Fixed row ratio, timeout and outage assumptions. The row ratio `r` bounds the engine row delay
+/-- Fixed row ratio and timeout assumptions. The row ratio `r` bounds the engine row delay
 by `ΔF ≤ r·Δ` in the healthy regime (`Params.rowRatio`); the timeout pays the route-A window at
 the row gap `cF r` (`Refinement/Defs`), `3·cF r ≤ δ_t`. The final pattern is determined by these,
-not chosen by a caller; outer gaps never enter the timeout bound. -/
+not chosen by a caller; outer gaps never enter the timeout bound. The outage regime is plain
+sleepy (`η = 0`, Francesco 2026-11-02), so no outage look-back is assumed. -/
 structure AcceptanceAssumptions (S : Setup) where
   rowRatio : ℕ+
   timeout : 3 * cF rowRatio ≤ S.δt
-  lookback : ℕ+
 
 /-- The row gap is at least `2` at every ratio (`cF_ceil`: `4·cF r ≥ r + 6 ≥ 7`). -/
 theorem AcceptanceAssumptions.two_le_cF {S : Setup} (A : AcceptanceAssumptions S) :
@@ -157,15 +157,18 @@ Outage numbers (engine `Δe`, node `Δp = Δe + 1`, slot `4Δp`; slow arming onl
 * recovery delay `18` (`18Δe ≥ 9Δp` for every `Δe ≥ 1`, equality only at
   `Δe = 1`): enough for the restored votes of the locked validators to bring
   the confirmed read back above the record (owner decision 2026-11-02;
-  workbench 9f5d6a3, `outage_recovery_delay-readback-opus.md`).
+  workbench 9f5d6a3, `outage_recovery_delay-readback-opus.md`);
+* budget `4k − 6` and look-back `η = 0` (`Params.standard`): the outage regime is plain sleepy
+  (Francesco 2026-11-02), and the budget is the bound the node time window needs
+  (`acceptance_outage_times`).
 These numbers are not claimed minimal. -/
 abbrev acceptanceContract {S : Setup} (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
   params := { Params.standard C.catchUp (8 * S.k + 12)
-    (min A.lookback (4 * S.k - 6)) C.heal C.latency with
-    η := A.lookback, noSleep := max 38 (8 * S.k + 16), recovery := 18,
+    (4 * S.k - 6) C.heal C.latency with
+    noSleep := max 38 (8 * S.k + 16), recovery := 18,
     rowRatio := A.rowRatio }
   progress := fun cap X => .recur ⟨if cap = .final then finalWindow A else Pattern.single, X⟩
 
@@ -173,8 +176,8 @@ theorem acceptanceContract_params_eq {S : Setup} (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) :
     (acceptanceContract A C).params =
       { Params.standard C.catchUp (8 * S.k + 12)
-        (min A.lookback (4 * S.k - 6)) C.heal C.latency with
-        η := A.lookback, noSleep := max 38 (8 * S.k + 16), recovery := 18,
+        (4 * S.k - 6) C.heal C.latency with
+        noSleep := max 38 (8 * S.k + 16), recovery := 18,
         rowRatio := A.rowRatio } := by rfl
 
 theorem accepted_coefficients_catchUp (S : Setup) (A : AcceptanceAssumptions S) :
@@ -200,11 +203,9 @@ theorem acceptance_outage_times (S : Setup) (A : AcceptanceAssumptions S)
     omega
   have hbcast : ((4 * S.k - 6 : Nat) : Int) = 4 * (S.k : Int) - 6 := by
     omega
-  have hb : ((min A.lookback (4 * S.k - 6) : Nat) : Int) ≤ 4 * (S.k : Int) - 6 := by
-    rw [← hbcast]
-    exact_mod_cast (min_le_right (A.lookback : Nat) (4 * S.k - 6))
+  have hb : ((4 * S.k - 6 : Nat) : Int) ≤ 4 * (S.k : Int) - 6 := hbcast.le
   change T + ((8 * S.k + 12 : Nat) : Int) * pub.Δ ≤ b₀ at hlag
-  change b₁ ≤ b₀ + ((min A.lookback (4 * S.k - 6) : Nat) : Int) * pub.Δ at hbudget
+  change b₁ ≤ b₀ + ((4 * S.k - 6 : Nat) : Int) * pub.Δ at hbudget
   rw [hlcast] at hlag
   have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt pub.Δ_pos)
   have hmod := Int.emod_lt_of_pos (b₀ - 6 * (pub.Δ + 1))

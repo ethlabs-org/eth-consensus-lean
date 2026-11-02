@@ -123,9 +123,8 @@ private theorem query_numbers (Q : OutageQuery S A V) :
     have hΔ := Q.params.toParams.hΔ
     nlinarith)
   have hbcast : ((4 * S.k - 6 : Nat) : Int) = 4 * (S.k : Int) - 6 := by omega
-  have hb : ((min A.lookback (4 * S.k - 6) : Nat) : Int) ≤ 4 * (S.k : Int) - 6 := by
-    rw [← hbcast]; exact_mod_cast (min_le_right (A.lookback : Nat) (4 * S.k - 6))
-  change Q.stop ≤ Q.start + ((min A.lookback (4 * S.k - 6) : Nat) : Int) * Q.run.1.Δ at hbud
+  have hb : ((4 * S.k - 6 : Nat) : Int) ≤ 4 * (S.k : Int) - 6 := hbcast.le
+  change Q.stop ≤ Q.start + ((4 * S.k - 6 : Nat) : Int) * Q.run.1.Δ at hbud
   have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt Q.run.1.Δ_pos)
   have hC : (8 * (S.k : Int) + 16) ≤ ((max 38 (8 * S.k + 16) : Nat) : Int) := by
     exact_mod_cast le_max_right 38 (8 * S.k + 16)

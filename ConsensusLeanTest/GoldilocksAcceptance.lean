@@ -49,11 +49,11 @@ noncomputable def setupLarge : Setup where
   two_le_k := by decide
   ro := replayOrder
 
-/-- The assumptions at `setupSmall`, with row ratio `1` and lookback `1`. -/
-def assumptionsSmall : AcceptanceAssumptions setupSmall := ⟨1, by decide, 1⟩
+/-- The assumptions at `setupSmall`, with row ratio `1`. -/
+def assumptionsSmall : AcceptanceAssumptions setupSmall := ⟨1, by decide⟩
 
-/-- The assumptions at `setupLarge`, with row ratio `1` and lookback `3`. -/
-def assumptionsLarge : AcceptanceAssumptions setupLarge := ⟨1, by decide, 3⟩
+/-- The assumptions at `setupLarge`, with row ratio `1`. -/
+def assumptionsLarge : AcceptanceAssumptions setupLarge := ⟨1, by decide⟩
 
 /-- (a) The acceptance assumptions are satisfiable at `k = 2, δt = 6`. -/
 theorem assumptions_small : Nonempty (AcceptanceAssumptions setupSmall) := ⟨assumptionsSmall⟩
@@ -63,7 +63,7 @@ theorem assumptions_large : Nonempty (AcceptanceAssumptions setupLarge) := ⟨as
 
 /-- (a) The assumptions hold exactly at the setups with `6 ≤ δt`. -/
 theorem assumptions_iff (S : Setup) : Nonempty (AcceptanceAssumptions S) ↔ 6 ≤ S.δt :=
-  ⟨fun ⟨A⟩ => A.six_le_δt, fun h => ⟨⟨1, by rw [show cF 1 = 2 from rfl]; omega, 1⟩⟩⟩
+  ⟨fun ⟨A⟩ => A.six_le_δt, fun h => ⟨⟨1, by rw [show cF 1 = 2 from rfl]; omega⟩⟩⟩
 
 /-- (a) Rejection: a timeout of five is not admitted. -/
 theorem assumptions_empty_of_timeout (S : Setup) (h : S.δt = 5) :
@@ -174,14 +174,20 @@ theorem rowRatio_one (X : ℕ+) :
   ⟨rfl, assumptionsSmall.six_le_δt, by rw [finalWindow_offsets]; rfl, by rw [finalWindow_span]; rfl,
     by rw [accepted_latency_final]; rfl, rfl⟩
 
+/-- (b) The outage contract is plain sleepy with budget `4k − 6`: at `k = 2`, `η = 0` and
+`budget = 2`. -/
+theorem outage_eta_budget :
+    (K setupSmall assumptionsSmall).params.η = 0 ∧
+      (K setupSmall assumptionsSmall).params.budget = 2 := ⟨rfl, rfl⟩
+
 /-- (b) The rounding boundary of the gap: `cF 1 = cF 2 = 2`, `cF 3 = 3`, and `cF 32 = 10`. -/
 theorem rowGap_boundary : cF 1 = 2 ∧ cF 2 = 2 ∧ cF 3 = 3 ∧ cF 32 = 10 := ⟨rfl, rfl, rfl, rfl⟩
 
 /-- The assumptions at `setupRow` with row ratio `3` (gap `3`, `9 ≤ 30`). -/
-def assumptionsRowThree : AcceptanceAssumptions setupRow := ⟨3, by decide, 1⟩
+def assumptionsRowThree : AcceptanceAssumptions setupRow := ⟨3, by decide⟩
 
 /-- The assumptions at `setupRow` with row ratio `32` (gap `10`, `30 ≤ 30`). -/
-def assumptionsRowThirtyTwo : AcceptanceAssumptions setupRow := ⟨32, by decide, 1⟩
+def assumptionsRowThirtyTwo : AcceptanceAssumptions setupRow := ⟨32, by decide⟩
 
 /-- (b) Row ratio `3`: gap `3`, the window `[0, 3, 6, 9]` and final latency `8(X + 9) + 2`. -/
 theorem rowRatio_three (X : ℕ+) :
