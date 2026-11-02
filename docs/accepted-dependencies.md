@@ -46,7 +46,7 @@ an assembly depending on them is not an additional leaf.
 |---|---|---|
 | C | Spec orb, joint coefficient synthesis | `accepted_heal` |
 | F | Four-anchor/final service owner | `final_window_extract` |
-| H | Healing paper/T3; Spec orb integration | `healthy_old_inventory_initialize`, `healthy_prepare`, `healthy_bounded_repairing_opening`, `healthy_current_live_candidates`, `healthy_current_mature_or_anchor`, `healthy_current_record_viable`, `healthy_repair_schedule` |
+| H | Healing paper/T3; Spec orb integration | `healthy_old_inventory_initialize`, `healthy_prepare`, `healthy_current_live_candidates`, `healthy_current_mature_or_anchor`, `healthy_current_record_viable`, `healthy_repair_schedule` |
 | N | Healing paper/T3; Spec orb integration | `healthy_confirmed_supply` |
 | O | Healing/outage owner; Spec orb integration | `outage_repair` |
 
@@ -66,7 +66,7 @@ an assembly depending on them is not an additional leaf.
 | serves | none (schema provides final output) | no |
 | claims and complete accepted | C ∪ F ∪ H ∪ N ∪ O | no |
 
-The rerun finds **13 direct sorry owners** in Accepted's closure. `simTrace_vote_forwarded`
+The rerun (fresh audit at #141) finds **10 direct sorry owners** in Accepted's closure; the reduction from 13 is retirement/consolidation (`final_inherited_progress`, `final_row_signers`) and a closed body (`healthy_bounded_repairing_opening`), not proof closure of the retired leaves. `simTrace_vote_forwarded`
 is fully sorry-free; `sleepy_query_sync` and `sleepy_safety_inputs` have proved bodies,
 not direct sorries. Their full closures depend on `accepted_heal` through
 `K S A = acceptanceContract A (accepted_coefficients S A)`: the query and Sleepy
@@ -151,9 +151,13 @@ for every `accepted*` declaration and the nonframing/receipt/Sleepy bridges.
 dependency graph; traversing it identifies the following exact direct `sorryAx` owners.
 Names in this section have prefix `Consensus.Goldilocks.Refinement.`.
 `C` abbreviates the set `{accepted_catchUp, accepted_heal, accepted_latency}`.
-`F` abbreviates `{final_window_extract, final_inherited_progress, final_row_supply,
-final_cache_acceptance}` (historical; since route A (#136) the only final direct sorry owner is
-`final_window_extract`). These are named sets of leaves, not extra assumptions.
+The rows that reach the final branch name their current owners from the fresh audit
+(`docs/accepted-status.json`, route A, #141). The only final direct sorry owner is
+`final_window_extract`. `final_inherited_progress` and `final_row_signers` are retired
+(route A), not proved; their earlier rows are kept under `retired` in the status ledger.
+`final_cache_acceptance` has a closed body; it reaches `sorryAx` only through its type
+(accepted coefficients, `accepted_heal`). It is not a direct OPEN leaf.
+These are named sets of leaves, not extra assumptions.
 
 | Audited root | Reachable direct sorry owners |
 |---|---|
@@ -165,14 +169,14 @@ final_cache_acceptance}` (historical; since route A (#136) the only final direct
 | accepted_nested | none |
 | accepted_finalMonotone | none |
 | accepted_finalAccountable | C (contract/type dependencies, not encoding/transport gaps) |
-| accepted_healthyLive_final | C ∪ F |
-| accepted_healthyLive | C ∪ F ∪ {accepted_healthyLive} |
+| accepted_healthyLive_final | accepted_heal, final_window_extract |
+| accepted_healthyLive | accepted_heal, final_window_extract, healthy_confirmed_supply |
 | accepted_sleepySafe | C ∪ {accepted_sleepySafe} |
 | accepted_sleepyLive | C ∪ {accepted_sleepyLive} |
 | accepted_healedSafe | C ∪ {accepted_healedSafe} |
 | accepted_persists | C ∪ {accepted_persists} |
 | accepted_progressFits, accepted_progressTolerant, accepted_admissible | C |
-| accepted_claims, accepted | C ∪ F ∪ {accepted_healthyLive, accepted_sleepySafe, accepted_sleepyLive, accepted_healedSafe, accepted_persists} |
+| accepted_claims, accepted | accepted_heal, final_window_extract, healthy_confirmed_supply, healthy_current_live_candidates, healthy_current_mature_or_anchor, healthy_current_record_viable, healthy_old_inventory_initialize, healthy_prepare, healthy_repair_schedule, outage_repair (10, fresh audit) |
 | engine_signings_nonFraming, engine_att_protected | none |
 | simTrace_forwardOrigin, simTrace_forwardHeldProcessed | none |
 | sleepy_ready, sleepy_faultBound, sleepy_read_cut, sleepy_proposal, sleepy_inBy | none |
@@ -231,6 +235,9 @@ intended model's independent slower FG delivery. Route A (#136): window coverage
 proved anchor route (`final_anchor_coverage` over `cacheCoverage_of_anchor_window_upTo`);
 its inputs `AnchorRun` (reset premises, catch-up, honest anchor proposals, drain, horizon)
 and `AnchorSteps` (three gap-2 anchor steps) are part of the OPEN `final_window_extract`.
+For the `AnchorSteps` rows, the reusable finite signer results are landed in
+`Healing/Outcome/Service.lean` (`ResetPremisesUpTo.row_of_report`, `row_signers_of_reports`);
+the paper handoff is workbench b386900 `notes/cards/final_row_signers.md`.
 The paper route (workbench `route_a_gap2.md`, read-back passed on #136) is conditional on
 the duty-to-proposal adapter, the M1′ bound, an `accepted_heal` that satisfies (H*), and
 the mechanical links. Final latency is 8(X+6)+2; it does not depend on δt.
@@ -246,9 +253,9 @@ Superseded argument: [general fixed timeout](https://github.com/fradamt-agent/wo
 | `Consensus.Goldilocks.Refinement.accepted_finalMonotone` | Reduction to shape_finalMonotone; exact generic field. |
 | `Consensus.Goldilocks.Refinement.accepted_finalAccountable` | Body closed through shape_finalAccountable at fixed 1/3; only the three coefficient leaves are reachable through the contract type. Encoding/transport is proved. |
 | `Consensus.Goldilocks.Refinement.accepted_healthyLive` | Assembly: available/stable use healthy_confirmed_supply and proved payload projection; final uses accepted_healthyLive_final. Named suppliers remain OPEN. |
-| `Consensus.Goldilocks.Refinement.final_window_extract` | OPEN (route A): actual ready four-anchor proposals/cuts at start+[0,2,4,6] on the canonical finite trace, surviving ancestry and carrier processing by query + latency(.final,i)·Δe, the route-A run premises `AnchorRun` and the three anchor steps `AnchorSteps`. Joint accepted_latency synthesis must supply transport slack, not just A3≤deadline. |
+| `Consensus.Goldilocks.Refinement.final_window_extract` | OPEN (route A): actual ready four-anchor proposals/cuts at start+[0,2,4,6] on the canonical finite trace, surviving ancestry and carrier processing by query + latency(.final,i)·Δe, the route-A run premises `AnchorRun` and the three anchor steps `AnchorSteps` (reusable signer results: `row_of_report`, `row_signers_of_reports` in Healing/Outcome/Service.lean; paper handoff workbench b386900 `notes/cards/final_row_signers.md`). Joint accepted_latency synthesis must supply transport slack, not just A3≤deadline. |
 | `Consensus.Goldilocks.Refinement.final_anchor_coverage` | Body closed: `AnchorRun` and `AnchorSteps` give A3 chain-finalized coverage of A0 through `cacheCoverage_of_anchor_window_upTo`; uses `6 ≤ δt` for `P₃.slot ≤ P₀.slot + δt`. |
-| `Consensus.Goldilocks.Refinement.final_cache_acceptance` | OPEN, consumes only A3 chain-finalized coverage of A0, supplied by `final_anchor_coverage` (route A): actual cache ancestry at the exact engine-scaled query endpoint and later horizon-bounded ready CutAfter reads. Not arbitrary-delay acceptance or receipt alone. |
+| `Consensus.Goldilocks.Refinement.final_cache_acceptance` | Body closed; reaches `sorryAx` only through its type (accepted coefficients), not OPEN as a direct leaf. Consumes only A3 chain-finalized coverage of A0, supplied by `final_anchor_coverage` (route A): actual cache ancestry at the exact engine-scaled query endpoint and later horizon-bounded ready CutAfter reads. Not arbitrary-delay acceptance or receipt alone. |
 | `Consensus.Goldilocks.Refinement.final_payload_projection` | Body closed conditional on window extraction with CacheCoverage of the extracted window (one premise; route A, #136): raw own-block release via simTrace_block_released and final-output chain membership at engine endCut. Preserves existing cDur, reader condition, latency scaling and collision escape; no forwarding-envelope origin assumption. |
 | `Consensus.Goldilocks.Refinement.accepted_healthyLive_final` | Assembly (route A, #136): extraction (`final_window_extract`, OPEN), anchor coverage (`final_anchor_coverage`, body closed), cache acceptance and payload projection. The only final direct sorry owner is `final_window_extract`; the closed bodies reach sorryAx only through the contract type (accepted coefficients). The first-crossing / bounded-crossing assembly and its leaves `final_inherited_progress`, `final_row_signers` are retired (git history before #136 route A). No new public Healthy premises; accepted coefficients remain OPEN. |
 | `Consensus.Goldilocks.Refinement.accepted_sleepySafe` | Assembly over partly OPEN sleepy_safety_inputs and proved sleepy_safe_engine, with directional readiness and empty-V handling. |

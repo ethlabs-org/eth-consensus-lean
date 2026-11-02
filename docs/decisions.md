@@ -81,7 +81,9 @@ where it is recorded; "Francesco" marks the owner's decisions.
   admissibility, singleton progress fit and tolerance are proved separately.
   This is a proof skeleton, not a completed acceptance result, and does not
   revive the legacy consecutive-pattern or latency formulas.
-  Current conservative `finalWindow` is [0, δt−1, δt+1, δt+3], with δt≥4;
+  **Superseded by route A (2026-11-02, [#136], #141) for the final pattern:** the
+  `finalWindow` and δt sentences below are historical; see the 2026-11-02 entry.
+  Historical: current conservative `finalWindow` is [0, δt−1, δt+1, δt+3], with δt≥4;
   replace it in one place if a weaker two-anchor recurrence is proved. Its
   first-honest-descendant usable-row/earlier-justification supplier, inherited
   progress bootstrap, productive AC chain and cache acceptance remain OPEN

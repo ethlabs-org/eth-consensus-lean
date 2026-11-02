@@ -25,6 +25,7 @@ RATINGS = {
     'accepted_catchUp_ge_sleepy': ('paper-partial', LEAD, 'Settled coefficient audit: 37 is a verified constraint, not a proof about the opaque shared witness; enlargement needs monotonicity audit.'),
     'accepted_latency_ge_sleepy': ('paper-partial', LEAD, 'Settled coefficient audit: 8idx+12 is a verified constraint, not a jointly admissible selected witness.'),
     'final_window_extract': ('paper-partial', LEAD, 'Settled final-liveness audit: four-anchor combinatorics known; actual ready accepted chain, recurrence and endpoint carrier budget remain.'),
+    # Historical rating; the declaration is retired by route A (#141), see RETIRED.
     'final_inherited_progress': ('paper-open (research)', LEAD, 'Settled final-liveness audit: arbitrary dirty inherited permissions/held or credited rows must yield same-entry progress without a birth lower bound.'),
     'final_row_supply': ('paper-open (research)', LEAD, 'Research refinement: high same-entry/high-predecessor row algebra is proved conditionally; report_cover, inherited/low entries and carrier credit/acceptance remain. entry-rows-exact §§2,4–6.'),
     'final_cache_acceptance': ('paper-partial', LEAD, 'Settled final-liveness audit: actual last-carrier acceptance, retained lookup/cache for every reader and processing/read deadline budget remain.'),
@@ -114,6 +115,35 @@ def closure(seeds, edges):
             seen.add(name)
             todo.extend(edges.get(name, []))
     return seen
+
+
+# Former direct sorry owners retired by a reviewed refactor. Their prior rows are kept
+# under 'retired' with their provenance; retirement is not proof closure.
+RETIRED = {
+    'final_inherited_progress': ('route A (#136, #141)',
+        'Only consumer was the retired first-crossing assembly; no route-A caller.'),
+    'final_row_signers': ('route A (#136, #141)',
+        'Content moved into final_window_extract as the AnchorSteps conjunct. Reusable signer '
+        'results landed in Healing/Outcome/Service.lean (row_of_report, row_signers_of_reports); '
+        'paper handoff workbench b386900 notes/cards/final_row_signers.md.'),
+}
+
+
+def retired_rows(previous, current):
+    """Keep provenance of retired former owners; never mark them proved."""
+    kept = {row['name']: row for row in previous.get('retired', [])}
+    for row in previous['rows']:
+        short = row['name'].rsplit('.', 1)[-1]
+        if row['name'] not in current and short in RETIRED and row['name'] not in kept:
+            by, reason = RETIRED[short]
+            kept[row['name']] = {**row, 'status-before-retirement': row.get('status'),
+                                 'status': 'retired (not proved)', 'lean-status': 'removed',
+                                 'in_accepted_closure': False, 'direct_sorry': False,
+                                 'blocked-by': [], 'retired-by': by, 'retirement-note': reason}
+    unexpected = sorted(n for n in kept if n in current)
+    if unexpected:
+        raise ValueError(f'Retired declarations still present: {unexpected}')
+    return [kept[n] for n in sorted(kept)]
 
 
 def card_repositories(document):
@@ -310,11 +340,13 @@ def main : IO Unit := do
               'notes': ['blocked-by contains transitive compiled sorry owners, not speculative paper joins.',
                         'lean-proved means the full dependency closure is sorry-free.',
                         'Owner threads are area routing defaults; authoritative overrides are preserved.',
-                        'Historical removed declarations are listed separately, not counted as proved.'],
+                        'Historical removed declarations are listed separately, not counted as proved.',
+                        'retired keeps prior rows of retired former owners; retirement is not proof closure.'],
               'historical_removed': sorted(historical - current.keys()),
               'fields': {n: sorted(closure([n], edges) & owners) for n in sorted(accepted)
                          if n.startswith('Consensus.Goldilocks.Refinement.accepted_')},
-              'rows': rows}
+              'rows': rows,
+              'retired': retired_rows(previous, current)}
     for key in ('research-cores', 'shared-cards'):
         if key in previous:
             result[key] = previous[key]
