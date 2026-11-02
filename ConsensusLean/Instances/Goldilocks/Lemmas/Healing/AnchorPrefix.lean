@@ -1008,6 +1008,52 @@ theorem toFG_candidates_compatible_at_call (hrun : GoldilocksRun proposer dg H t
   exact (hinv'.liveBlocks_chain hr.coherent hPhi.1 hPhi.2 C (hlock hC) P (hlock hP)).elim
     (fun h => Or.inl (Anc.mono hPhi.2 h)) (fun h => Or.inr (Anc.mono hPhi.2 h))
 
+/-- An actual report comes from an earlier fast selection of a label no
+later than the report's slot, retaining ancestry through lock remapping. -/
+theorem toFG_fast_origin (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hto : SA.ToFGAt tr.projAC y i ell R) :
+    ∃ a < i, ∃ j D CV, SA.FastLockAt tr.projAC y a j D CV ∧
+      Anc (tr.HonestBlocks H) R D ∧ j ≤ sp.slot (tr.time i) := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hr := hac.localRun
+  have hPhi := SA.frameIn_of_callAt hr hy hto.1
+  have hRc : R ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i) := by
+    have h := hto.2.2
+    change (SA.acToFG sp (tr.projAC.state y i) ell.frame (tr.time i)).2.1 = some R at h
+    unfold SA.acToFG at h
+    dsimp only at h
+    split_ifs at h
+    split at h
+    · cases h
+    · rename_i C hC
+      split_ifs at h
+      cases h
+      exact (SA.deepest_mem hC).1
+  obtain ⟨hv, l, hl, hlr, hlf, _⟩ := hRc
+  obtain ⟨l₀, hl₀, B, hB, hBr, _, heq⟩ := hl
+  have hf₀ : l₀.fast = true := by rw [heq] at hlf; exact hlf
+  obtain ⟨a, hai, D, CV, ho, L, hL, hLr, hLD⟩ :=
+    SA.fast_lock_provenance hr hy i l₀ hl₀ hf₀
+  have hRB : Anc (tr.HonestBlocks H) R B := by
+    have he : R = ell.frame.viableAncestor B := hPhi.1.coherent.1 hv.1
+      (SA.viableAncestor_anc hPhi.1 hB).1 (hlr.symm.trans (congrArg SA.Lock.block heq))
+    rw [he]
+    exact Anc.mono hPhi.2 (SA.viableAncestor_anc hPhi.1 hB).2
+  obtain rfl : L = B := hr.coherent.1 hL (hPhi.2 hB) (hLr.trans hBr.symm)
+  refine ⟨a, hai, l₀.slot, D, CV, ho, hRB.trans hLD, ?_⟩
+  have ht := hrun.time_mono hai.le
+  rcases ho with ⟨ellw, C, hu, _⟩ | ⟨ellw, A, hp, hs, _⟩
+  · have hlow : sp.ts l₀.slot ≤ tr.time a := by
+      have htime : tr.time a = sp.ts l₀.slot + 6 * sp.Δ := hu.2.2.1
+      linarith [sp.toParams.hΔ]
+    have := (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).1 (hlow.trans ht)
+    exact_mod_cast this
+  · have hs' : l₀.slot = sp.slot (tr.time a) := hs.symm
+    rw [hs']
+    exact SA.slot_mono sp (hr.time_nonneg a) ht
+
 end Consensus.Goldilocks.Healing
 
 end
