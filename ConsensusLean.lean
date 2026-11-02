@@ -195,6 +195,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorSegments
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorSegmentsGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Drain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
