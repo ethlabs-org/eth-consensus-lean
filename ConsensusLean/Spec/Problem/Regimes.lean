@@ -10,17 +10,34 @@ A protocol's contract (`Contract`) supplies only numbers (`Params`) and a
 progress requirement per capability and index. Every duration is a
 coefficient of `Δ`. `Params.Admissible` bounds the thresholds by the standard
 ones (`Params.standard`), so a contract cannot buy its claims with stronger
-thresholds. The other numbers (catch-up, lag, budget, look-back `η`, outage
-no-sleep margin and recovery delay, heal points, latencies) are instance
-numbers that the reviewer reads: larger values strengthen premises or weaken
-claims, and they are not bounded (any `η` is realizable,
-`Shape.outage_witness`). The row ratio `rowRatio` is the exception: the healthy
-regime assumes `ΔF ≤ rowRatio·Δ`, so a larger ratio weakens that premise (it
-admits slower rows) and strengthens the claims; it is an upper envelope of the
-row bound for the coefficients, never a deadline (rows are delivered within
-`ΔF` itself, `CommLog.PSync`) and never an order between the bounds (`ΔF < Δ`
-is allowed). The sleepy and outage regimes carry no ratio: they are stated at
-every row bound `ΔF > 0` (sleepy row-independence is an open audit question).
+thresholds. The other numbers are instance numbers that the reviewer reads;
+they are not bounded (any `η` is realizable, `Shape.outage_witness`). The
+direction of each, for a larger value:
+
+* catch-up (mixed): a reader needs `catchUp·Δ` awake to be ready, so fewer
+  validators are ready: the participation premises (sleepy, η-sleepy) are
+  stronger, and the claims cover fewer readers; the healthy progress premise
+  counts only ready proposers but starts later, at
+  `ready = max g 0 + catchUp·Δ + 1`;
+* arming lag: `T + lag·Δ ≤ b₀` is a stronger premise;
+* outage budget: `b₁ ≤ b₀ + budget·Δ` is a weaker premise (longer outages are
+  admitted), so the persistence claim is stronger;
+* look-back `η`: validators awake anywhere in the longer window count against
+  the threshold, a stronger premise;
+* outage no-sleep margin: the no-sleep window `[b₀ − noSleep·Δ, b₁ + noSleep·Δ]`
+  is longer, a stronger premise;
+* recovery delay: protection starts later (`b₁ + recovery·Δ`), a weaker claim;
+* heal points: liveness and healed safety start later, weaker claims (and
+  healed safety's progress premise covers a longer window);
+* latencies: later transaction deadlines, weaker claims;
+* row ratio `rowRatio`: the healthy regime assumes `ΔF ≤ rowRatio·Δ`, so a
+  larger ratio weakens that premise (it admits slower rows) and strengthens the
+  claims; it is an upper envelope of the row bound for the coefficients, never
+  a deadline (rows are delivered within `ΔF` itself, `CommLog.PSync`) and never
+  an order between the bounds (`ΔF < Δ` is allowed).
+
+The sleepy and outage regimes carry no ratio: they are stated at every row
+bound `ΔF > 0` (sleepy row-independence is an open audit question).
 
 The three regimes (`System.Sleepy`, `System.Healthy`, `System.Outage`) and
 the run quantities they use (`System.cDur`, `heal`, `ready`, `lat`) are read
