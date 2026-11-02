@@ -11,7 +11,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 -- The served head shares a proof across whole-run, prefix and deadline-bounded service through
 -- the private `ReadInvWith`; the scoped relay also shares the read/tick machinery.
 -- Splitting would expose the private record-write and served-tick helpers.
-set_option linter.style.longFile 1900
+-- The public one-call writer interface stays beside its private record/lock producer.
+set_option linter.style.longFile 2100
 
 public section
 
@@ -528,6 +529,19 @@ private theorem call_reclock (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr
   | restart =>
     have hrs := (SA.restart_state sp) FGP ro x A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)
     exact ⟨KeepAll.of_eq hrs.2.1, Or.inl hrs.2.2.1⟩
+
+/-- A changed record has an actual writer in this call. An optimistic writer also
+leaves its normalized fast lock in the post-state; no read invariant is required. -/
+theorem call_record_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
+    {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
+    {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
+    (hne : (tr.post i).latestConfirmed ≠ (tr.state x i).latestConfirmed) :
+    ∃ C ∈ ℓ.frame.tree, (tr.post i).latestConfirmed = C.root ∧
+      ((∃ s CV, SA.ResultAt tr x i s C CV) ∨
+        ((∃ CV, SA.OptimisticLockAt tr x i (sp.slot (tr.time i)) C CV) ∧
+          (⟨(ℓ.frame.viableAncestor C).root, sp.slot (tr.time i), true⟩ : SA.Lock) ∈
+            (tr.post i).locks)) :=
+  (call_reclock hr hx hc).2.resolve_left hne
 
 end Writes
 
