@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageArming
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageReader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Induction
@@ -12,8 +13,10 @@ public section
 /-! # Outage lock safety: the arming adapter and the query-level headers (card §11, M0 and M6)
 
 `outageLockPremises_of_arming` builds the trace-level premise package of the lock module from an
-outage query, its pre-`b₀` service, an armed ready source (`OutageArming`, with `P` its origin)
-and the post-GST pool delivery (`OutageLockOthers`). It proves the arithmetic N1–N6 from
+outage query, its pre-`b₀` service and an armed ready source (`OutageArming`, with `P` its
+origin). The post-GST pool delivery `OutageLockOthers.pg` is discharged by
+`outage_pool_delivery` (its premise `b₁ ≤ t_m + Δ` is paid by `r ≤ m`, the restored label).
+It proves the arithmetic N1–N6 from
 `OutageTimes` and the accepted numbers (lag `8k + 12`, no-sleep `max 38 (8k+16)`, budget
 `≤ 4k − 6`), the Sleepy invariant and service up to `b₀`, the fault bounds from `EtaSleepyOn`, and
 the cohort premises from `NoSleepOn` and `CohortOn` through the key transport. The arming fields
@@ -78,6 +81,11 @@ structure OutageLockOthers (Q : OutageQuery S A V) : Prop where
 
 variable {S A V}
 
+/-- **PG is discharged** by the engine's partial synchrony from the stop (`outage_pool_delivery`,
+O4 cut 1). -/
+theorem outage_lock_others (Q : OutageQuery S A V) : OutageLockOthers S A V Q :=
+  ⟨outage_pool_delivery S A V Q⟩
+
 /-- The cohort's late wakers, as keys. -/
 noncomputable def OutageQuery.lateKeys (Q : OutageQuery S A V) : Set (Fin (Fintype.card V)) :=
   {x | Q.run.2.key x ∈ Q.run.2.point.lateWakers
@@ -141,7 +149,8 @@ private theorem query_numbers (Q : OutageQuery S A V) :
       Q.stop + (8 * (S.k : Int) + 16) * Q.run.1.Δ := by nlinarith
   linarith
 
-private theorem restoredLabel_spec (Q : OutageQuery S A V) :
+/-- The restored label is the least `r` with `b₁ ≤ t_r + Δ`. -/
+theorem restoredLabel_spec (Q : OutageQuery S A V) :
     Q.stop ≤ Q.params.ts Q.restoredLabel + Q.params.Δ ∧
       ∀ s : Nat, Q.stop ≤ Q.params.ts s + Q.params.Δ → Q.restoredLabel ≤ s := by
   classical
@@ -198,7 +207,7 @@ restored label. -/
 noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
     (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start)
     {v : V} (hv : Q.run.2.point.Ready Q.duration v Q.T) (hTh : Q.T ≤ Q.run.2.horizon)
-    (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArming S A V Q v) (O : OutageLockOthers S A V Q) :
+    (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArming S A V Q v) :
     Compose.OutageLockPremises Q.trace (honestKeys S Q.run.2) (runProposer S Q.run.2 Q.hn)
       (digestOf S Q.run.2) :=
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
@@ -321,7 +330,7 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
       obtain ⟨c, ℓ, hu, hfirst, hcond⟩ := ar.lockCover x hx hg (hle.trans (hcallh hc))
       exact ⟨c, ℓ, hu, hfirst, fun hF hVA hN => Compose.coverBase_iff.2 (hcond hF hVA hN)⟩
     PG := fun w hw c m ℓ hu hrm x hx i e hve hes =>
-      O.pg w hw c m ℓ hu (hr.1.trans (by
+      (outage_lock_others Q).pg w hw c m ℓ hu (hr.1.trans (by
         have := (SA.ts_le_iff Q.params).2 (show (Q.restoredLabel : Int) ≤ m by exact_mod_cast hrm)
         linarith)) x hx i e hve hes }
 
@@ -330,65 +339,65 @@ section Headers
 variable (Q : OutageQuery S A V)
   (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start)
   {v : V} (hv : Q.run.2.point.Ready Q.duration v Q.T) (hTh : Q.T ≤ Q.run.2.horizon)
-  (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArming S A V Q v) (O : OutageLockOthers S A V Q)
+  (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArming S A V Q v)
 
 theorem outageLockPremises_of_arming_P :
-    (outageLockPremises_of_arming Q service hv hTh hsh ar O).P = ar.origin := by rfl
+    (outageLockPremises_of_arming Q service hv hTh hsh ar).P = ar.origin := by rfl
 
 theorem outageLockPremises_of_arming_j₀ :
-    (outageLockPremises_of_arming Q service hv hTh hsh ar O).j₀ =
+    (outageLockPremises_of_arming Q service hv hTh hsh ar).j₀ =
       Compose.coverLabel Q.params Q.start := by rfl
 
 theorem outageLockPremises_of_arming_A₀ :
-    (outageLockPremises_of_arming Q service hv hTh hsh ar O).A₀ = Q.holders := by rfl
+    (outageLockPremises_of_arming Q service hv hTh hsh ar).A₀ = Q.holders := by rfl
 
 theorem outageLockPremises_of_arming_W :
-    (outageLockPremises_of_arming Q service hv hTh hsh ar O).W = Q.lateKeys := by rfl
+    (outageLockPremises_of_arming Q service hv hTh hsh ar).W = Q.lateKeys := by rfl
 
 theorem outageLockPremises_of_arming_b₀ :
-    (outageLockPremises_of_arming Q service hv hTh hsh ar O).b₀ = Q.start := by rfl
+    (outageLockPremises_of_arming Q service hv hTh hsh ar).b₀ = Q.start := by rfl
 
 theorem outageLockPremises_of_arming_b₁ :
-    (outageLockPremises_of_arming Q service hv hTh hsh ar O).b₁ = Q.stop := by rfl
+    (outageLockPremises_of_arming Q service hv hTh hsh ar).b₁ = Q.stop := by rfl
 
 theorem outageLockPremises_of_arming_r :
-    (outageLockPremises_of_arming Q service hv hTh hsh ar O).r = Q.restoredLabel := by rfl
+    (outageLockPremises_of_arming Q service hv hTh hsh ar).r = Q.restoredLabel := by rfl
 
 /-- The S5 step that the lock module consumes (856c1db, restated cut-indexed): from the lock
 invariant at `i`, the votes of cut `i` past the lock lifetime have heads compatible with the
 origin. -/
 abbrev OutageS5Step : Prop :=
-  ∀ i, Compose.OutageLockInv (outageLockPremises_of_arming Q service hv hTh hsh ar O) i →
+  ∀ i, Compose.OutageLockInv (outageLockPremises_of_arming Q service hv hTh hsh ar) i →
     ∀ y ∈ honestKeys S Q.run.2, ∀ e, SA.VoteAt Q.trace.projAC y i e →
       Compose.coverLabel Q.params Q.start + Q.params.k < e.msg.slot →
       Compose.VoteCompat (Q.trace.HonestBlocks (honestKeys S Q.run.2)) e.msg ar.origin
 
 /-- **O2 + (i) + OB-F + VA** (M6): the outage lock invariant at every cut, given the S5 step. -/
-theorem outage_locks (hS5 : OutageS5Step Q service hv hTh hsh ar O) :
-    ∀ i, Compose.OutageLockInv (outageLockPremises_of_arming Q service hv hTh hsh ar O) i :=
+theorem outage_locks (hS5 : OutageS5Step Q service hv hTh hsh ar) :
+    ∀ i, Compose.OutageLockInv (outageLockPremises_of_arming Q service hv hTh hsh ar) i :=
   Compose.outage_lock_inv _ (Compose.outageS5StepAt_iff.2 hS5)
 
 /-- **OB-F**: every honest `Σ.F` is compatible with the protected origin. -/
-theorem outage_F_compatible (hS5 : OutageS5Step Q service hv hTh hsh ar O) :
+theorem outage_F_compatible (hS5 : OutageS5Step Q service hv hTh hsh ar) :
     ∀ y ∈ honestKeys S Q.run.2, ∀ i,
       Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) (Q.trace.state y i).fg.F
         ar.origin :=
-  fun y hy i => ((outage_locks Q service hv hTh hsh ar O hS5 i).caches y hy i le_rfl).1
+  fun y hy i => ((outage_locks Q service hv hTh hsh ar hS5 i).caches y hy i le_rfl).1
 
 /-- **(i) at a reader** (`outage_reader_locks`, S5-G): at every honest cut and time, the live
 lock blocks are compatible with the read tip. -/
-theorem outage_reader_locks (hS5 : OutageS5Step Q service hv hTh hsh ar O) :
+theorem outage_reader_locks (hS5 : OutageS5Step Q service hv hTh hsh ar) :
     ∀ y ∈ honestKeys S Q.run.2, ∀ (m : Nat) (τ : Time),
       ∀ X ∈ SA.liveLockBlocks Q.params (Q.trace.state y m).ac.locks
         (Node.frame (Q.trace.state y m)) τ,
       Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) X ar.tip :=
-  fun _ hy m τ => Compose.liveLockBlocks_compatible (outage_locks Q service hv hTh hsh ar O hS5)
+  fun _ hy m τ => Compose.liveLockBlocks_compatible (outage_locks Q service hv hTh hsh ar hS5)
     hy m τ (origin_facts Q service hv hTh ar).2.1
 
 /-- **The reader frame** (`outage_reader_frame`, S5-G1/G2): `fc_root` is compatible with the read
 tip, and the tip, when in the frame, is below the anchor or in the full viable tree, at every
 honest cut. -/
-theorem outage_reader_frame (hS5 : OutageS5Step Q service hv hTh hsh ar O)
+theorem outage_reader_frame (hS5 : OutageS5Step Q service hv hTh hsh ar)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S Q.run.2) (m : Nat) (t : Time) :
     Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2))
         (Node.frame (Q.trace.state y m)).fcRoot ar.tip ∧
@@ -397,12 +406,12 @@ theorem outage_reader_frame (hS5 : OutageS5Step Q service hv hTh hsh ar O)
             (SA.getAnchor Q.params (Q.trace.state y m).ac (Node.frame (Q.trace.state y m)) t) ∨
           ar.tip ∈ (Node.frame (Q.trace.state y m)).viableTree
             (Node.frame (Q.trace.state y m)).tree) :=
-  Compose.reader_frame (outage_locks Q service hv hTh hsh ar O hS5) hy m t
+  Compose.reader_frame (outage_locks Q service hv hTh hsh ar hS5) hy m t
     (origin_facts Q service hv hTh ar).2.1
 
 /-- **(iii) + record** (`outage_record_above_from`): from a restored honest update with result
 above the origin, the effective record is above the origin at every later cut. -/
-theorem outage_record_above_from (hS5 : OutageS5Step Q service hv hTh hsh ar O)
+theorem outage_record_above_from (hS5 : OutageS5Step Q service hv hTh hsh ar)
     {w : Fin (Fintype.card V)} (hw : w ∈ honestKeys S Q.run.2) {c m : Nat}
     {ℓ : ACLabel (SA.goldilocksSA Q.params (List (FG.Att Q.params.n)) (S.ro Q.params.n))}
     (hu : SA.UpdateAt Q.trace.projAC w c m ℓ) (hrm : Q.stop ≤ Q.params.ts m + Q.params.Δ)
@@ -412,12 +421,12 @@ theorem outage_record_above_from (hS5 : OutageS5Step Q service hv hTh hsh ar O)
     ∀ c', c < c' → Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) ar.origin
       ((SA.lookup (Node.frame (Q.trace.state w c'))
         (Q.trace.state w c').ac.latestConfirmed).getD (Q.trace.state w c').fg.F) :=
-  Compose.record_above_from (outage_locks Q service hv hTh hsh ar O hS5) hw hu hR
+  Compose.record_above_from (outage_locks Q service hv hTh hsh ar hS5) hw hu hR
     ((restoredLabel_spec Q).2 m hrm) hPC
 
 /-- **(iii) veto-harmless** (`veto_record_above`): an honest update whose result above the origin
 a live lock vetoes has a stored record above the origin. -/
-theorem outage_veto_record_above (hS5 : OutageS5Step Q service hv hTh hsh ar O)
+theorem outage_veto_record_above (hS5 : OutageS5Step Q service hv hTh hsh ar)
     {w : Fin (Fintype.card V)} (hw : w ∈ honestKeys S Q.run.2) {c m : Nat}
     {ℓ : ACLabel (SA.goldilocksSA Q.params (List (FG.Att Q.params.n)) (S.ro Q.params.n))}
     {C : SA.Blk Q.params.n (List (FG.Att Q.params.n))} (hu : SA.UpdateAt Q.trace.projAC w c m ℓ)
@@ -428,7 +437,7 @@ theorem outage_veto_record_above (hS5 : OutageS5Step Q service hv hTh hsh ar O)
     ∃ E ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2),
       E.root = (Q.trace.state w c).ac.latestConfirmed ∧
       Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) ar.origin E :=
-  Compose.veto_record_above (outage_locks Q service hv hTh hsh ar O hS5) hw hu hC hPC hveto
+  Compose.veto_record_above (outage_locks Q service hv hTh hsh ar hS5) hw hu hC hPC hveto
 
 end Headers
 
