@@ -17,7 +17,9 @@ a row at `(h, T)` that is its first own row at height `h`.
 * `rows_supply_of_reports`: under `ResetPremisesUpTo` and `HealedRecords`, a same-height report
   `C ⪰ T` from each honest node by `v ≤ b` (`ResetPremisesUpTo.row_of_report`) gives `S`, `hS`
   and `hsig` at `(σT.h, T.root)`. The per-node reports stay a premise: no Lean lemma yet gives a
-  report at the entry height (`report_of_viable_unanimous_pool` gives `P ⪯ R`, no height). -/
+  report at the entry height (`report_of_viable_unanimous_pool` gives `P ⪯ R`, no height).
+* `reports_same_height_or_crossed`, `rows_supply_or_crossed`: from reports `C ⪰ T` of any
+  height, either some honest report crosses `σT.h` or the same-height supply holds. -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -104,6 +106,66 @@ theorem rows_supply_of_reports {g ΔF a b : Time}
   obtain ⟨j, att, hs, ht, -, hah, -⟩ :=
     hp.row_of_report hz hr (hrv.trans hvb) hy hTm hσ hTe hhT hhj hTC hCh
   exact ⟨j, att, hs, ht.trans hrv, hah⟩
+
+/-- **Same height or crossed** (the case split of "either `J` is revealed or we advance").
+Under `ResetPremisesUpTo`, for a held `T` with `σ[T] = σT`: if each honest `z` reports by `v` a
+`C ⪰ T`, then either (A) some honest `z` reports by `v` a `C ⪰ T`, held by `z`, whose state
+height is above `σT.h` (height `σT.h` is crossed on `T`'s chain), or (B) each honest `z` reports
+by `v` a `C ⪰ T` whose state height is `σT.h` (heights do not decrease along ancestry). -/
+theorem reports_same_height_or_crossed {g ΔF a b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {m : Nat}
+    (hTm : T ∈ (tr.state y m).fg.tree) {σT : FG.ChainState sp.n}
+    (hσ : (tr.state y m).fg.σ T.root = σT) {v : Time}
+    (hreports : ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ v ∧
+      Anc (tr.HonestBlocks H) T C) :
+    (∃ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ v ∧
+      Anc (tr.HonestBlocks H) T C ∧ C ∈ (tr.state z r).fg.tree ∧
+      σT.h < ((tr.state z r).fg.σ C.root).h) ∨
+    (∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ v ∧
+      Anc (tr.HonestBlocks H) T C ∧ ((tr.state z r).fg.σ C.root).h = σT.h) := by
+  classical
+  by_cases hA : ∃ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ v ∧
+      Anc (tr.HonestBlocks H) T C ∧ C ∈ (tr.state z r).fg.tree ∧
+      σT.h < ((tr.state z r).fg.σ C.root).h
+  · exact Or.inl hA
+  · refine Or.inr fun z hz => ?_
+    obtain ⟨r, ell, C, hrep, hrv, hTC⟩ := hreports z hz
+    have hCt := Healing.toFG_mem_tree hp.run hz hrep
+    have hTt := hp.mem_tree_of_anc hz hTC hCt
+    have hσT := Healing.σ_eq_honest hp.run hp.noColl hz hy hTt hTm
+    have hle := Healing.σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hz r)
+      (Healing.store_anc_of_honest_anc hp.run hp.noColl hz hTC hCt)
+    rw [hσT, hσ] at hle
+    refine ⟨r, ell, C, hrep, hrv, hTC, ?_⟩
+    rcases hle.lt_or_eq with hlt | heq
+    · exact absurd ⟨z, hz, r, ell, C, hrep, hrv, hTC, hCt, hlt⟩ hA
+    · exact heq.symm
+
+/-- **The rows supply or a crossing** (`rows_supply_of_reports` with the same-height premise
+dropped, via `reports_same_height_or_crossed`). Same premises as `rows_supply_of_reports`, but
+each honest `z` only reports by `v` some `C ⪰ T`: then some honest `z` holds and reports by `v`
+a `C ⪰ T` with state height above `σT.h`, or `S`, `q ≤ |S|` and the first rows at
+`(σT.h, T.root)` by `v` hold. -/
+theorem rows_supply_or_crossed {g ΔF a b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b) {gR : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hR : Healing.HealedRecords tr H gR h₀ E)
+    {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {m : Nat}
+    (hTm : T ∈ (tr.state y m).fg.tree) {σT : FG.ChainState sp.n}
+    (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
+    (hhT : Healing.HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → Healing.HZ tr H g + 1 ≤ σT.hj)
+    (hh₀ : h₀ ≤ σT.h) {v : Time} (hvb : v ≤ b)
+    (hreports : ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ v ∧
+      Anc (tr.HonestBlocks H) T C) :
+    (∃ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ v ∧
+      Anc (tr.HonestBlocks H) T C ∧ C ∈ (tr.state z r).fg.tree ∧
+      σT.h < ((tr.state z r).fg.σ C.root).h) ∨
+    ∃ S : Finset (Fin sp.n), (∀ y ∈ S, y ∈ H) ∧ sp.toParams.fg.q ≤ S.card ∧
+      ∀ y ∈ S, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧ att.h = σT.h ∧
+        att.T = T.root ∧ ∀ k' < k, ∀ att', tr.SignAt y k' att' → att'.h ≠ σT.h := by
+  rcases reports_same_height_or_crossed hp hy hTm hσ hreports with hA | hB
+  · exact Or.inl hA
+  · exact Or.inr (rows_supply_of_reports hp hR hy hTm hσ hTe hhT hhj hh₀ hvb hB)
 
 end Consensus.Goldilocks.Refinement
 
