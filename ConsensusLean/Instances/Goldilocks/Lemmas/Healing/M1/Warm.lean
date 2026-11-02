@@ -73,10 +73,7 @@ theorem FrameWindow.warm_proposal_height
     omega
   have hZ := HZ_le_hmax hrun hnc hf2 hsvc hcatch ⟨z, hz⟩ hsnap hz
     (hcallZ z hz c hlo (by linarith)) (by linarith)
-  have hPv := hvP.2.2.2
-  have hfloor := Store.headHeightFloor_bounds (tr.state z c).fg
-  change (tr.state z c).fg.headHeightFloor ≤ ((tr.state z c).fg.σ P.root).h at hPv
-  have hh : HZ tr H g ≤ ((tr.state z c).fg.σ P.root).h + 1 := by omega
+  have hh := Store.height_le_of_isViable hvP.2.2.2 hZ
   have hPm := (accept_of_proposesAt hrun hnc hz hP).2.1
   have hσ := σ_eq_honest hrun hnc hz hz hvP.1 hPm
   rwa [hσ] at hh
