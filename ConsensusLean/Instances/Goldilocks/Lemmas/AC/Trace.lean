@@ -392,7 +392,7 @@ theorem frame_genesis_or_accepted {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 
 /-- The stamp of a block of an honest node's frame after a call: `−∞` (genesis), the time of the
 node's acceptance of the block, or the time of one of its restarts, at or before the call. -/
-private theorem stamp_cases {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+theorem stamp_cases {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) :
     ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,

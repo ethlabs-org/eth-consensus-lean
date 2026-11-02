@@ -32,6 +32,27 @@ theorem readPoint_blockStamp_eq (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
     e.readPoint.blockStamp = (tr.post i).blockStamp := by
   rw [post_of_castAt hr hy hc, bs_optimistic, bs_admitVote]
 
+/-- A block already held in an earlier frame has an early read-point stamp. The
+stamp cases include restart replay; unique acceptance forbids a later overwrite. -/
+theorem readPoint_blockStamp_lt_of_earlier_frame
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H)
+    {a i : Nat} {ell₀ ell : ACLabel (goldilocksSA sp FGP ro)}
+    (ha : tr.CallAt y a ell₀) {e : Em sp FGP} (hc : CastAt tr y i ell e)
+    {Q : Blk sp.n FGP} (hQa : Q ∈ ell₀.frame.tree) (hQi : Q ∈ ell.frame.tree)
+    (hat : tr.time a < freeze sp e.msg.slot)
+    (hrs : ∀ r ≤ i, tr.RestartAt y r → tr.time r < freeze sp e.msg.slot) :
+    e.readPoint.blockStamp Q.root < ETime.of (freeze sp e.msg.slot) := by
+  rw [readPoint_blockStamp_eq hr hy hc]
+  rcases stamp_cases sp hr hy i ell hc.1 Q hQi with h | ⟨k, -, hk, h⟩ | ⟨r, hri, hrst, h⟩
+  · rw [h]; exact WithBot.bot_lt_coe _
+  · have hka : k ≤ a := by
+      by_contra hn
+      exact (accept_new sp hr hy hk).2 a (by omega) ell₀ ha hQa
+    rw [h]
+    exact WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr ((hr.time_mono hka).trans_lt hat))
+  · rw [h]
+    exact WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (hrs r hri hrst))
+
 private theorem tryVote_ready (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     {e : Em sp FGP} (he : e ∈ (tryVote sp x A Φ t).2) (ht : t < sp.ts (sp.slot t) + sp.Δ) :
     voteReady sp Φ (sp.slot t) := by

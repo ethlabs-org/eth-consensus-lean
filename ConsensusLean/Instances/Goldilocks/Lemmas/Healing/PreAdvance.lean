@@ -6,6 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
@@ -37,6 +39,30 @@ structure FrameWindow (lo hi : Time) (floor : Nat) (contest kindJ : Prop)
       ¬(tr.state y i).fg.Contest) ↔ kindJ)
   root_eq : ∀ y ∈ H, ∀ i, lo ≤ tr.time i → tr.time i ≤ hi → kindJ →
     (tr.state y i).fg.J = J
+
+/-- Under FS′ the fork-choice root is constant in kind J and follows finalized
+monotonicity otherwise (including Contest). -/
+theorem FrameWindow.fcRoot_mono {lo hi : Time} {floor : Nat} {contest kindJ : Prop}
+    {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {a i : Nat} (hai : a ≤ i) (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi) :
+    Anc (tr.HonestBlocks H) (tr.state y a).fg.fcRoot (tr.state y i).fg.fcRoot := by
+  classical
+  have htime := hrun.time_mono hai
+  by_cases hk : kindJ
+  · have hka := (hframe.kind_iff y hy a halo (htime.trans hihi)).mpr hk
+    have hki := (hframe.kind_iff y hy i (halo.trans htime) hihi).mpr hk
+    change Anc _ (if _ then _ else _) (if _ then _ else _)
+    rw [ite_eq_left hka, ite_eq_left hki]
+    rw [hframe.root_eq y hy a halo (htime.trans hihi) hk,
+      hframe.root_eq y hy i (halo.trans htime) hihi hk]
+    exact .refl
+  · have hka := (hframe.kind_iff y hy a halo (htime.trans hihi)).not.mpr hk
+    have hki := (hframe.kind_iff y hy i (halo.trans htime) hihi).not.mpr hk
+    change Anc _ (if _ then _ else _) (if _ then _ else _)
+    rw [ite_eq_right hka, ite_eq_right hki]
+    exact run_F_mono hrun.toLocalRun hy hai
 
 /-- The floor bound of a source block passes to every honest-held descendant, with no
 ordering requirement on the source and descendant cuts. -/
@@ -304,6 +330,168 @@ theorem floor_ancestor_mem_frame (hrun : GoldilocksRun proposer dg H tr)
   refine ⟨hframe, SA.anc_tree_of_anc_U
     (Compose.honest_blocks_coherent hrun.toLocalRun hnc) hΦ hsub hΦ.fcRoot_mem
     (hroot.mono (fun B hB => ⟨y, hy, j, hB⟩)) hframe, hv⟩
+
+/-- A write-frame viable head remains a viable head at every later cut in FS′.
+This is the writer-local persistence needed by OW, not cross-node delivery. -/
+theorem FrameWindow.viableHead_persists {lo hi : Time} {floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
+    (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y a ell)
+    {Q : SA.Blk sp.n (List (FG.Att sp.n))} (hv : Q ∈ ell.frame.viableHeads) :
+    Q ∈ (Node.frame (tr.state y i)).tree ∧
+      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q ∧
+      Q ∈ (Node.frame (tr.state y i)).viableHeads := by
+  have htime := hrun.time_mono hai
+  rw [Compose.frame_of_projAC hrun hy hc] at hv
+  have hQa : Q ∈ (tr.state y a).fg.tree := hv.1
+  apply floor_ancestor_mem_frame hrun hnc hf hy hy hQa
+  · rw [hframe.floor_eq y hy i (halo.trans htime) hihi,
+      ← hframe.floor_eq y hy a halo (htime.trans hihi)]
+    exact hv.2.2.2
+  · intro hm hcont
+    have hk := (hframe.kind_iff y hy i (halo.trans htime) hihi).mp ⟨hm, hcont⟩
+    have hka := (hframe.kind_iff y hy a halo (htime.trans hihi)).mpr hk
+    have hroot : (tr.state y a).fg.fcRoot = (tr.state y a).fg.J := ite_eq_left hka
+    rw [hframe.root_eq y hy i (halo.trans htime) hihi hk,
+      ← hframe.root_eq y hy a halo (htime.trans hihi) hk, ← hroot]
+    exact hv.2.2.1.mono (fun B hB => ⟨y, hy, a, hB⟩)
+  · exact Compose.tree_mono hrun.toLocalRun hy hai hQa
+  · exact Relation.ReflTransGen.refl
+
+/-- OW's strict-above-root stored-lock core. Old labels force the write into FS′
+and before the vote freeze. The below-write-root alternative is impossible by root
+monotonicity; the viable witness remains viable and frozen at the writer's vote.
+Current-slot optimistic locks and the root itself are deliberately outside this core. -/
+theorem FrameWindow.old_lock_witness {s₀ floor : Nat} {hi : Time}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hnr : NoRestartAfter tr H (gbar g))
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
+    (hgf : gbar g < SA.freeze sp e.msg.slot)
+    {l : SA.Lock} (hl : l ∈ (tr.projAC.state y i).locks)
+    (hlabel : s₀ ≤ l.slot) (hold : l.slot < e.msg.slot)
+    {L : SA.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ ell.frame.tree)
+    (hLr : L.root = l.block) (hstrict : ¬ Anc (tr.HonestBlocks H) L ell.frame.fcRoot) :
+    ∃ a < i, ∃ ell₀ D Q,
+      tr.projAC.CallAt y a ell₀ ∧ sp.ts s₀ ≤ tr.time a ∧
+      tr.time a < SA.freeze sp e.msg.slot ∧
+      ((∃ CV, SA.OptimisticLockAt tr.projAC y a l.slot D CV) ∨
+        ∃ ell', SA.UpdateAt tr.projAC y a l.slot ell') ∧
+      Q ∈ ell₀.frame.viableHeads ∧ Anc (tr.HonestBlocks H) L Q ∧
+      Q ∈ ell.frame.viableHeads ∧
+      Q ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have htvote := SA.vote_time_le hr hy ⟨ell, hc⟩
+  change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at htvote
+  have hslot : e.msg.slot = sp.slot (tr.time i) := (SA.castAt_spec hr hy hc).2.1
+  rw [← hslot] at htvote
+  obtain ⟨a, hai, ell₀, D, A, ha, hD, hAeq, ho, ⟨M, hM, hMr, hMA⟩, hcase⟩ :=
+    SA.lock_write_witness hr hy hl
+  have hPhiU := (SA.frameIn_of_callAt hr hy hc.1).2
+  have hPhi₀ := SA.frameIn_of_callAt hr hy ha
+  obtain rfl : M = L := hr.coherent.1 hM (hPhiU hL) (hMr.trans hLr.symm)
+  have htime : sp.ts s₀ ≤ tr.time a ∧ tr.time a < SA.freeze sp e.msg.slot := by
+    rcases ho with ⟨CV, ell', B, hp, hs, hsel, -⟩ | ⟨ell', hu⟩
+    · have hlo := (SA.ts_le_iff_le_slot sp (hr.time_nonneg a) (s₀ : Int)).mpr
+        (by rw [hs]; exact_mod_cast hlabel)
+      have hlt : tr.time a < sp.ts l.slot + 2 * sp.Δ := by
+        unfold SA.optimisticSelect at hsel
+        dsimp only at hsel
+        split_ifs at hsel with hn
+        exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (hs ▸ ht))))
+      have hts := (SA.ts_le_iff sp).mpr (show (l.slot : Int) ≤ (e.msg.slot : Int) - 1 by omega)
+      refine ⟨hlo, ?_⟩
+      unfold SA.freeze
+      have := sp.toParams.hΔ
+      linarith
+    · have ht := hu.2.2.1
+      change tr.time a = _ at ht
+      have hts₀ := (SA.ts_le_iff sp).mpr (show (s₀ : Int) ≤ l.slot by exact_mod_cast hlabel)
+      have hlabel' : l.slot + 2 ≤ e.msg.slot := by
+        by_contra hn
+        have heq : e.msg.slot = l.slot + 1 := by omega
+        have hmono := hrun.time_mono hai.le
+        rw [heq] at htvote
+        simp only [SA.SAParams.ts] at ht htvote
+        push_cast at htvote
+        have := sp.toParams.hΔ
+        linarith
+      have hts := (SA.ts_le_iff sp).mpr
+        (show (l.slot : Int) + 1 ≤ (e.msg.slot : Int) - 1 by omega)
+      simp only [SA.SAParams.ts] at ht hts hts₀
+      unfold SA.freeze
+      simp only [SA.SAParams.ts]
+      have := sp.toParams.hΔ
+      constructor <;> linarith
+  rcases hcase with hbelow | ⟨Q, hQ, hv, hAQ⟩
+  · exfalso
+    apply hstrict
+    have hroot := hframe.fcRoot_mono hrun hy hai.le htime.1 hihi
+    change Anc _ (Node.frame (tr.state y a)).fcRoot (Node.frame (tr.state y i)).fcRoot at hroot
+    rw [← Compose.frame_of_projAC hrun hy ha,
+      ← Compose.frame_of_projAC hrun hy hc.1] at hroot
+    exact hMA.trans ((hbelow.mono hPhi₀.2).trans hroot)
+  · obtain ⟨hQt, -, hvQ⟩ := hframe.viableHead_persists hrun hnc hf hy hai.le htime.1 hihi ha hv
+    rw [← Compose.frame_of_projAC hrun hy hc.1] at hQt hvQ
+    refine ⟨a, hai, ell₀, D, Q, ha, htime.1, htime.2, ho, hv,
+      hMA.trans (hAQ.mono hPhi₀.2), hvQ, hQt, Or.inl ?_⟩
+    apply SA.readPoint_blockStamp_lt_of_earlier_frame hr hy ha hc hQ hQt htime.2
+    intro r _ hrs
+    exact (hnr y hy r (Compose.projAC_restartAt.mp hrs)).trans_lt hgf
+
+/-- OW for an older live read-point lock strictly above the current root. Liveness
+and the warmup bound derive the label lower bound; no write-cut or witness premise
+is supplied by the caller. The result is directly consumable by W-dichotomy. -/
+theorem FrameWindow.live_old_lock_witness {s₀ floor : Nat} {hi : Time}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hnr : NoRestartAfter tr H (gbar g))
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
+    (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
+    (hgf : gbar g < SA.freeze sp e.msg.slot)
+    {l : SA.Lock} (hl : l ∈ SA.liveLocks sp e.readPoint.locks ell.frame (tr.time i))
+    (hold : l.slot < e.msg.slot)
+    {L : SA.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ ell.frame.tree)
+    (hLr : L.root = l.block) (hstrict : ¬ Anc (tr.HonestBlocks H) L ell.frame.fcRoot) :
+    ∃ Q ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+      Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc L Q := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hs := (SA.castAt_spec hr hy hc).2.1
+  change e.msg.slot = sp.slot (tr.time i) at hs
+  obtain ⟨l₀, hl₀, B, hB, hBr, hlive, heq⟩ := hl
+  have hsl : l.slot = l₀.slot := by simpa only using congrArg SA.Lock.slot heq
+  have hne : l₀.slot ≠ sp.slot (tr.time i) := by rw [← hs]; omega
+  obtain ⟨l₁, hl₁, hs₁, C, hC, hCr, B', hB', hB'r, hBC⟩ :=
+    SA.readPoint_locks_below_stored hr hy hc
+      (by change 0 < sp.slot (tr.time i); rwa [← hs]) l₀ hl₀ hne
+  have hPhi := SA.frameIn_of_callAt hr hy hc.1
+  have hBB : B' = B := hPhi.1.coherent.1 hB' hB (hB'r.trans hBr.symm)
+  rw [hBB] at hBC
+  have hLB : ell.frame.Anc L B := by
+    have he : L = ell.frame.viableAncestor B := hPhi.1.coherent.1 hL
+      (SA.viableAncestor_anc hPhi.1 hB).1 (hLr.trans (congrArg SA.Lock.block heq))
+    rw [he]; exact (SA.viableAncestor_anc hPhi.1 hB).2
+  have hlabel : s₀ ≤ l₁.slot := by rw [← hs₁, ← hsl]; rw [← hs] at hlive; omega
+  have hstrictC : ¬ Anc (tr.HonestBlocks H) C ell.frame.fcRoot := by
+    intro h
+    exact hstrict ((Anc.mono hPhi.2 (hLB.trans hBC)).trans h)
+  obtain ⟨a, hai, ell₀, D, Q, -, -, -, -, -, hCQ, hvQ, hQv⟩ :=
+    hframe.old_lock_witness hrun hnc hf hnr hy hc hihi hgf hl₁ hlabel
+      (by rw [← hs₁, ← hsl]; exact hold) hC hCr hstrictC
+  refine ⟨Q, hQv, hvQ, ?_⟩
+  exact hLB.trans (hBC.trans (SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hC hCQ hQv.1))
 
 /-- A carried honest head extending a floor-viable X makes X frozen-viable at the
 receiving vote. This does not assume that arbitrary honest heads are viable. -/
