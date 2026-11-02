@@ -299,6 +299,70 @@ theorem FrameWindow.honest_prefix_before {s floor : Nat}
       obtain ⟨R, hR, hRr, hQR⟩ := hheads x hx j ev hv hs
       exact ⟨R, hR, hRr, hBQ.trans hQR⟩) hex hcarry hB haB
 
+/-- At the actual proposal start, expiry and proposal causality put every
+non-root anchor in the warm older-label range. The returned lock is the
+pre-unlock live lock, ready for live_lock_write_origin. -/
+theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
+    {s₀ p i : Nat} (hp : 1 ≤ p) (hmargin : s₀ + sp.k ≤ p)
+    {ell : ACLabel (goldilocksNode sp ro)} (hz : proposer p ∈ H)
+    (hc : tr.projAC.CallAt (proposer p) i ell) (hcall : ell.call = .proposal)
+    (hti : tr.time i = sp.ts p)
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hd : (SA.acProposal sp (tr.projAC.state (proposer p) i) ell.frame (tr.time i)).2 =
+      some (d, pay)) :
+    d.start = ell.frame.fcRoot ∨
+      ∃ l ∈ SA.liveLocks sp (tr.projAC.state (proposer p) i).locks ell.frame (tr.time i),
+        s₀ ≤ l.slot ∧ l.slot < p ∧ ∃ B ∈ ell.frame.tree,
+          B.root = l.block ∧ ell.frame.Anc d.start B := by
+  rcases actual_proposal_start_cases hd with hroot | hlock
+  · exact Or.inl hroot
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hPhi := (SA.frameIn_of_callAt hr hz hc).1
+  obtain ⟨l, hl, B, hB, hBr, hlive, hstart⟩ := unlocked_live_preimage hPhi hlock
+  have hslot : sp.slot (tr.time i) = p := by
+    rw [hti]
+    exact SA.slot_of_mem sp p le_rfl (by
+      simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+  rw [hslot] at hlive
+  obtain ⟨l₀, hl₀, hs, -⟩ := (SA.liveLocks_movesBack sp hPhi _ _ ) l hl
+  have hold := stored_lock_lt_at_proposal hrun hnc hf hp hz hc hcall hti hl₀
+  exact Or.inr ⟨l, hl, by omega, by omega, B, hB, hBr, hstart⟩
+
+/-- If the strict-cut induction already places the vote anchor at P, the
+walk cannot move further: every frame child would have a later slot. -/
+theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = e.msg.slot)
+    (hPt : P ∈ ell.frame.tree)
+    (haP : SA.getAnchor sp e.readPoint ell.frame (tr.time i) = P) :
+    e.msg.head = P.root := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hPhi := (SA.frameIn_of_callAt hr hy hc.1).1
+  have hslot := SA.frame_slot_le sp hr hy hc.1
+  have hs := (SA.castAt_spec hr hy hc).2.1
+  have hstop : ¬ ∃ C, SA.IsBest sp
+      (SA.goldfishScore sp ell.frame (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot)
+        ((e.msg.slot : Int) - 1))
+      (SA.eligibleChildren
+        (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
+        (SA.goldfishEligible sp ell.frame (tr.time i)
+          (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) P)
+      C := by
+    rintro ⟨C, ⟨⟨hC, hCP, -⟩, -⟩⟩
+    have hlt := hPhi.coherent.2 P hPt C hC.1.1 hCP
+    have hle := hslot C hC.1.1
+    omega
+  have heq : SA.getHead sp e.readPoint ell.frame (tr.time i)
+      (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
+      (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1) = P := by
+    unfold SA.getHead
+    rw [haP]
+    exact SA.ghost_fuel_stable (Nat.zero_le _) hstop
+  exact (SA.castAt_spec hr hy hc).2.2.2.trans (congrArg Block.root heq)
+
 end Consensus.Goldilocks.Healing
 
 end
