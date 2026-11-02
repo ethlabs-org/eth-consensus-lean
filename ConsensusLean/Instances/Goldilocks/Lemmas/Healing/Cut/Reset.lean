@@ -85,6 +85,14 @@ theorem faulty_lt_q (hh : tr.HealthyRun H ΔF g) : Hᶜ.ncard < sp.toParams.fg.q
   change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
   omega
 
+/-- The finite one-third fault bound gives fewer than a progress quorum of faulty validators. -/
+theorem faulty_lt_q_of_le (h3 : 3 * Hᶜ.ncard ≤ sp.n - 1) :
+    Hᶜ.ncard < sp.toParams.fg.q := by
+  have hn := sp.toParams.hn
+  change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at h3
+  change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
+  omega
+
 /-- The height pair an honest node signs names a block it holds, of that height. -/
 theorem signAt_entry (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {att : FG.Att sp.n} (hs : tr.SignAt y k att) :
@@ -355,6 +363,38 @@ theorem reset_le_of_high (hrun : GoldilocksRun proposer dg H tr) (hh : tr.Health
     have := held_row_lt hrun hh hR hy hc (not_le.1 hk).le hE
     omega
   · exact hR.2 y hy k att hs hatt.symm
+
+/-- An honest signature above the frontier forces a reset no later than its signing time,
+without healthy continuation or an existing reset witness. -/
+theorem reset_of_height_advance (hrun : GoldilocksRun proposer dg H tr)
+    (hq : Hᶜ.ncard < sp.toParams.fg.q) {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att)
+    (hh : HZ tr H g + 1 ≤ att.h) :
+    ∃ a, IsReset tr H g a ∧ a ≤ tr.time k := by
+  classical
+  have hex₀ : ∃ j, ∃ z ∈ H, ∃ b, tr.SignAt z j b ∧ b.h = HZ tr H g + 1 ∧
+      tr.time j ≤ tr.time k := by
+    rcases hh.lt_or_eq with hh | hh
+    · obtain ⟨E, hE, -, hEh⟩ := signAt_entry hrun hy hs
+      obtain ⟨Y, hYE, b, hb, hbH, hbh⟩ := Store.exists_honest_att_of_lt
+        (Compose.fg_reachable hrun.toLocalRun hy k) hq hE (HZ tr H g + 1)
+        (by omega) (by omega)
+      have hY : Y ∈ (tr.state y k).fg.tree := by
+        by_cases he : Y = E
+        · exact he ▸ hE
+        · exact (Anc.mem hYE he).1
+      obtain ⟨src, hc⟩ := hs
+      obtain ⟨j, hj, hjk⟩ := signed_before_attest hrun.toLocalRun hy hc hY hb hbH
+      exact ⟨j, b.val, hbH, b, hj, hbh, hjk.le⟩
+    · exact ⟨k, y, hy, att, hs, hh.symm, le_rfl⟩
+  obtain ⟨j, v, hv, c, hc, hch, hjk⟩ := hex₀
+  have hex : ∃ j, ∃ z ∈ H, ∃ b, tr.SignAt z j b ∧ b.h = HZ tr H g + 1 :=
+    ⟨j, v, hv, c, hc, hch⟩
+  obtain ⟨z, hz, b, hb, hbh⟩ := Nat.find_spec hex
+  have hR : IsReset tr H g (tr.time (Nat.find hex)) :=
+    ⟨⟨z, hz, Nat.find hex, b, hb, hbh, rfl⟩,
+      fun v hv j c hc hch => hrun.time_mono (Nat.find_min' hex ⟨v, hv, c, hc, hch⟩)⟩
+  exact ⟨_, hR, (hR.2 v hv j c hc hch).trans hjk⟩
 
 /-- **The frontier up to the reset is `≤ H_z + 1` (r14 s2, L2.4 upper bound).** At every
 `fg_attest` cut at or before the reset, the honest frontier is at most `H_z + 1`. -/
