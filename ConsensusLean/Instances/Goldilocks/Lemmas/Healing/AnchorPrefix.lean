@@ -865,6 +865,40 @@ theorem FrameWindow.honest_vote_heads_eq {s₀ s floor : Nat}
     exact fun haS => hframe.proposal_start_prefix hrun hnc hsvc hawake hf hcatch hnr
       hm hk hmargin hmb hz hdesignated hcp hcall hti hpay hparent hy hcast hes hPv hvP haS
 
+/-- Finite L1.5(ii): iterate U through the last used vote slot. The source
+floor and kind-J ancestry are explicit, with no whole-run frame premise. -/
+theorem FrameWindow.vote_extends_through {u last floor : Nat}
+    {contest kindJ : Prop} {J X : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts u) (sp.ts last + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts u) (hmb : sp.ts last + sp.Δ ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hX : X ∈ (tr.state z c).fg.tree)
+    (hh : floor ≤ ((tr.state z c).fg.σ X.root).h)
+    (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
+    (hbase : ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = u →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg X)
+    {m : Nat} (hum : u ≤ m) (hml : m ≤ last) :
+    ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = m →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg X := by
+  induction m, hum using Nat.le_induction with
+  | base => exact hbase
+  | succ m hum ih =>
+    have ht : sp.ts u ≤ sp.ts m := (SA.ts_le_iff sp).2 (by omega)
+    have ht' : sp.ts (m + 1 : Nat) ≤ sp.ts last := (SA.ts_le_iff sp).2 (by omega)
+    have hsub : FrameWindow (tr := tr) (H := H) (sp.ts m)
+        (sp.ts (m + 1 : Nat) + sp.Δ) floor contest kindJ J :=
+      ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i (ht.trans hlo) (by linarith),
+        fun y hy i hlo hhi => hframe.contest_iff y hy i (ht.trans hlo) (by linarith),
+        fun y hy i hlo hhi => hframe.kind_iff y hy i (ht.trans hlo) (by linarith),
+        fun y hy i hlo hhi hk => hframe.root_eq y hy i (ht.trans hlo) (by linarith) hk⟩
+    exact unanimous_next_votes hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+      (by linarith) hsub hz hX hh hJ (ih (by omega))
+
 end Consensus.Goldilocks.Healing
 
 end
