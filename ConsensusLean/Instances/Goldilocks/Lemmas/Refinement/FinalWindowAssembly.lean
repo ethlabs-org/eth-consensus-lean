@@ -83,7 +83,8 @@ theorem final_window_extract_of_shared (Q : FinalQuery S A V) {ΔR a ΔF : Time}
     (hdel : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (2 : Nat))
     (hreset : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon)
-    (hpropose : ∀ s, HonestReadyIn Q.run.2.point Q.run.2.key
+    (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
+      HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (family S) V).cDur (K S A) Q.run)
       ((finalGrid S A V Q).slotTime s) →
       ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
@@ -182,13 +183,16 @@ theorem final_window_extract_of_shared (Q : FinalQuery S A V) {ΔR a ΔF : Time}
     exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
       (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hnet Q.healthy.2.2
   -- the seed and the anchors
-  obtain ⟨Ps, hPs⟩ := hpropose u hdu
+  obtain ⟨Ps, hPs⟩ := hpropose u hu0 (hu₀.trans hb₀) hdu
   have hduty : ∀ i : Fin 4, HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) (s₀ + ![0, 2, 4, 6] i)
       ((Sys (family S) V).cDur (K S A) Q.run) (G.slotTime (s₀ + ![0, 2, 4, 6] i)) := by
     intro i
     exact hds _ (by fin_cases i <;> simp [finalWindow_offsets])
-  choose P hP using fun i => hpropose _ (hduty i)
+  choose P hP using fun i : Fin 4 => hpropose _
+    (Nat.lt_of_lt_of_le (Nat.lt_of_lt_of_le hu0 ((Nat.le_add_right _ _).trans hus'))
+      (Nat.le_add_right _ _))
+    ((hts _ _ (by fin_cases i <;> simp)).trans hb6) (hduty i)
   have hδ2 : 2 ≤ Q.params.toParams.fg.δt := by omega
   have hh₀ := seed_height_held hreset hc hs hδ2 hPs hu0 hRu (by linarith) (hP 0)
     (by simpa using hus') (by simpa using hb₀) hgSu
@@ -245,7 +249,8 @@ shared HS premises `FinalQuery.hsSharedUpTo`. -/
 theorem final_window_extract_of (Q : FinalQuery S A V) {ΔR a : Time}
     (hreset : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon)
-    (hpropose : ∀ s, HonestReadyIn Q.run.2.point Q.run.2.key
+    (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
+      HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (family S) V).cDur (K S A) Q.run)
       ((finalGrid S A V Q).slotTime s) →
       ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)

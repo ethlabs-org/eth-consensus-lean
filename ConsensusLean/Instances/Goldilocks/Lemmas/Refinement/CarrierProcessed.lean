@@ -131,7 +131,8 @@ carrier premise from `carrier_processed_of_honest`; (H1) `hreset`, (H2) `hpropos
 theorem final_window_extract_of' (Q : FinalQuery S A V) {ΔR a : Time}
     (hreset : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon)
-    (hpropose : ∀ s, HonestReadyIn Q.run.2.point Q.run.2.key
+    (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
+      HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (family S) V).cDur (K S A) Q.run)
       ((finalGrid S A V Q).slotTime s) →
       ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)

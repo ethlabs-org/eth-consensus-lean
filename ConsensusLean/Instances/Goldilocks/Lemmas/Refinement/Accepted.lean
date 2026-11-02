@@ -24,6 +24,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorRoute
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CarrierProcessed
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalDutyProposal
 
 public section
 
@@ -139,21 +140,25 @@ theorem final_reset_premises (Q : FinalQuery S A V) :
         Q.query + (finalGrid S A V Q).slotLen := by
   sorry
 
-/-- OPEN (H2) of `final_window_extract_of'` (CarrierProcessed.lean), route A (#136): the
-duty → proposal adapter (Kev). An honest proposer that is ready in slot `s` (`HonestReadyIn`)
-makes an honest proposal run at `s` (`HonestProposalRun`). No producer is assumed. -/
+/-- (H2) of `final_window_extract_of'` (CarrierProcessed.lean), route A (#136): the duty →
+proposal adapter. An honest proposer that is ready in a slot `s > 0` with `t_s ≤ horizon`
+(`HonestReadyIn`) makes an honest proposal run at `s` (`HonestProposalRun`). Proved by
+`final_duty_proposal_run` (FinalDutyProposal.lean). -/
 theorem final_duty_proposal (Q : FinalQuery S A V) :
-    ∀ s, HonestReadyIn Q.run.2.point Q.run.2.key
+    ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
+      HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (family S) V).cDur (K S A) Q.run)
       ((finalGrid S A V Q).slotTime s) →
       ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
         (runProposer S Q.run.2 Q.hn) s P := by
-  sorry
+  intro s hs hth hduty
+  obtain ⟨_, P, hP, -⟩ := final_duty_proposal_run S A V Q hs hth hduty
+  exact ⟨P, hP⟩
 
 /-- Extraction and endpoint budget (route A). A window of four honest anchors at the slots
 `start + [0, 2, 4, 6]` after the query, its route-A run premises, and its three anchor steps.
-Proved by `final_window_extract_of'` from the open leaves `final_reset_premises` ((H1), (H3))
-and `final_duty_proposal` ((H2)); (H4) is proved there. Paper: workbench route_a_gap2.md,
+Proved by `final_window_extract_of'` from the open leaf `final_reset_premises` ((H1), (H3)) and
+the proved `final_duty_proposal` ((H2)); (H4) is proved there. Paper: workbench route_a_gap2.md,
 window_start_h0.md, anchor_row_supplier.md, anchor_tick_ac_producer.md (read-back #136). -/
 theorem final_window_extract (Q : FinalQuery S A V) :
     ∃ W : FinalWindowData S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
@@ -393,8 +398,8 @@ theorem final_payload_projection
     (fun y j hy hj => W.cacheCoverage_iff.mp hcover y Q.deadline j le_rfl hb hy hj)
 
 /-- Statement-only assembly of the OPEN route-A suppliers; not a completed liveness proof.
-Coverage is the anchor route (`final_anchor_coverage`); the open leaves are
-`final_reset_premises` and `final_duty_proposal` (via `final_window_extract`).
+Coverage is the anchor route (`final_anchor_coverage`); the open leaf is
+`final_reset_premises` (via `final_window_extract`; `final_duty_proposal` is proved).
 Paper: workbench route_a_gap2.md (read-back #136). -/
 theorem accepted_healthyLive_final : ∀ g, schema.output .final = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (family S) V).Holds
