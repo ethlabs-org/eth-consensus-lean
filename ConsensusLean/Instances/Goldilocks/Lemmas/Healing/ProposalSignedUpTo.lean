@@ -40,11 +40,15 @@ theorem justify_of_signed_rows'_upTo (hrun : GoldilocksRun proposer dg H tr) {g 
         ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
   obtain ⟨Pr', hpar', hPr'⟩ := proposal_parent_held hrun hs.noColl hp hX
   have hr : Pr'.root = Pr.root := Option.some.inj (hpar'.symm.trans hpar)
+  have hnr : ∀ r ≤ kX, tr.RestartAt p r → tr.time r ≤ gbar g :=
+    fun r hr hrs => hs.noRestart p hp r hrs ((hrun.time_mono hr).trans hkb)
   have := justify_of_rows' hrun hs.noColl hp hX hpar' hPr' S hSH hS
     fun y hy => by
       obtain ⟨k, att, hsg, hk, hah, haT, hto, hfin⟩ := hsig y hy
+      obtain ⟨k', hk', hproc, _⟩ :=
+        rows_delivered_upTo hrun hs.sync hv hp hnr hX hvx hkb (hSH y hy) hsg hk
       exact ⟨k, att, hsg, by rw [hr]; exact hah, by rw [hr]; exact haT, hto,
-        by rw [hr]; exact hfin, rows_delivered_upTo hrun hs hv hp hX hvx hkb (hSH y hy) hsg hk⟩
+        by rw [hr]; exact hfin, k', hk', hproc⟩
   rw [hr] at this
   exact this
 
@@ -68,11 +72,15 @@ theorem cross_of_signed_rows_upTo (hrun : GoldilocksRun proposer dg H tr) {g ΔF
         ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
   obtain ⟨Pr', hpar', hPr'⟩ := proposal_parent_held hrun hs.noColl hp hX
   have hr : Pr'.root = Pr.root := Option.some.inj (hpar'.symm.trans hpar)
+  have hnr : ∀ r ≤ kX, tr.RestartAt p r → tr.time r ≤ gbar g :=
+    fun r hr hrs => hs.noRestart p hp r hrs ((hrun.time_mono hr).trans hkb)
   have := cross_of_rows hrun hs.noColl hp hX hpar' hPr' S hSH hS
     (fun y hy => by
       obtain ⟨k, att, hsg, hk, hah, haT⟩ := hsig y hy
+      obtain ⟨k', hk', hproc, _⟩ :=
+        rows_delivered_upTo hrun hs.sync hv hp hnr hX hvx hkb (hSH y hy) hsg hk
       exact ⟨k, att, hsg, by rw [hr]; exact hah, by rw [hr]; exact haT,
-        rows_delivered_upTo hrun hs hv hp hX hvx hkb (hSH y hy) hsg hk⟩)
+        k', hk', hproc⟩)
     (by rw [hr]; exact hage)
   rw [hr] at this
   exact this

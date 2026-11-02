@@ -60,27 +60,31 @@ theorem HSSharedUpTo.deadline_le (hrun : GoldilocksRun proposer dg H tr)
   simp only [ACTrace.deadline, RunTrace.deadline, Compose.projAC_lastWake] at h ⊢
   linarith
 
-/-- **The rows reach the proposer before `t_x`, through the horizon** (`rows_delivered` for a
-proposal cut `kX` with `time kX ≤ b`): a row signed by an honest validator by `v ≥ ḡ` is
-processed by the honest proposer before its proposal cut when `v + Δ_F ≤ time kX`. -/
+/-- **The rows reach the proposer strictly before `t_x`, through the horizon.** Signed-row
+service and a proposer restart-prefix bound suffice: when `v + Δ_F ≤ time kX ≤ b`, a row
+signed by `v ≥ ḡ` is processed at an earlier cut and strictly earlier time. No timeout-delay
+bound is needed, including when `v + Δ_F = time kX`. -/
 theorem rows_delivered_upTo (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSSharedUpTo tr H dg g ΔF b) {v : Time}
+    (hsvc : ResetService tr H g ΔF b) {v : Time}
     (hv : gbar g ≤ v) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
+    (hnr : ∀ r ≤ kX, tr.RestartAt p r → tr.time r ≤ gbar g)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)
-    (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {att : FG.Att sp.n} (hsig : tr.SignAt y k att) (hk : tr.time k ≤ v) :
-    ∃ k' < kX, tr.ProcessAttAt p k' att := by
+    (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
+    (hsig : tr.SignAt y k att) (hk : tr.time k ≤ v) :
+    ∃ k' < kX, tr.ProcessAttAt p k' att ∧ tr.time k' < tr.time kX := by
   have hg : max (tr.time k) g ≤ v := max_le hk ((le_gbar g).trans hv)
   have hdl : ∀ j ≤ kX, tr.deadline p j (max (tr.time k) g) ΔF ≤ v + ΔF := fun j hj => by
-    have := hs.deadline_le hrun hp ((hrun.time_mono hj).trans hkb) (max (tr.time k) g) ΔF
+    have h := deadline_le_restarts (T := tr.projAC) (c := j)
+      (fun r hr hrs => hnr r (hr.trans hj) (Compose.projAC_restartAt.1 hrs)) (max (tr.time k) g)
+    simp only [ACTrace.deadline, RunTrace.deadline, Compose.projAC_lastWake] at h ⊢
     have := max_le hg hv
     linarith
   obtain ⟨acc, hcall⟩ := hX.1.1
-  obtain ⟨k', hk', hproc, hlt⟩ := hs.sync.signedRow y hy k att hsig p hp kX ⟨_, hcall⟩ hkb
+  obtain ⟨k', hk', hproc, hlt⟩ := hsvc.signedRow y hy k att hsig p hp kX ⟨_, hcall⟩ hkb
     (by linarith [hdl kX le_rfl])
-  refine ⟨k', lt_of_le_of_ne hk' fun h => ?_, hproc⟩
-  subst h
-  linarith [hdl k' le_rfl]
+  have htime : tr.time k' < tr.time kX := hlt.trans_le ((hdl k' hk').trans hvx)
+  exact ⟨k', lt_of_not_ge (fun h => (not_lt_of_ge (hrun.time_mono h)) htime), hproc, htime⟩
 
 end Consensus.Goldilocks.Healing
 
