@@ -1099,6 +1099,99 @@ theorem toFG_fast_origin_between (hrun : GoldilocksRun proposer dg H tr)
     linarith
   exact ⟨a, hai, j, D, CV, ho, hRD, by omega, by omega⟩
 
+/-- Any honest FS′ root is below the head of an actual proposal read in
+the same window. Kind J uses the common J; F/Contest uses finality geometry. -/
+theorem FrameWindow.fcRoot_anc_proposal_head {lo hi : Time} {floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i c s : Nat}
+    (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
+    (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z c ell)
+    (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts s)
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hd : (SA.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =
+      some (d, pay)) : Anc (tr.HonestBlocks H) (tr.state y i).fg.fcRoot d.head := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hPhi := SA.frameIn_of_callAt hr hz hc
+  have hv := proposal_parent_viable_full_frame hrun hnc hf hz hc hcall
+    (by rwa [sp.slotTime_eq]) hd
+  rw [Compose.frame_of_projAC hrun hz hc] at hv
+  by_cases hk : kindJ
+  · have hki := (hframe.kind_iff y hy i hilo hihi).mpr hk
+    have hkc := (hframe.kind_iff z hz c hclo hchi).mpr hk
+    have hiJ : (tr.state y i).fg.fcRoot = (tr.state y i).fg.J := ite_eq_left hki
+    have hcJ : (tr.state z c).fg.fcRoot = (tr.state z c).fg.J := ite_eq_left hkc
+    have ha : Anc (tr.HonestBlocks H) (tr.state z c).fg.fcRoot d.head :=
+      Anc.mono (fun B hB => ⟨z, hz, c, hB⟩) hv.2.2.1
+    rw [hcJ, hframe.root_eq z hz c hclo hchi hk] at ha
+    rwa [hiJ, hframe.root_eq y hy i hilo hihi hk]
+  · have hki := (hframe.kind_iff y hy i hilo hihi).not.mpr hk
+    have hiF : (tr.state y i).fg.fcRoot = (tr.state y i).fg.F := ite_eq_right hki
+    rw [hiF]
+    exact hframe.finalized_below_viable hrun hnc hf hy hz hilo hihi hclo hchi hv
+
+/-- Propagate a remapped optimistic write, using its viable ancestor rather
+than assuming that the raw selected block is viable. This accepts exactly the
+root-or-witness alternative returned by `live_lock_write_origin`. -/
+theorem FrameWindow.optimistic_write_later_proposal_head
+    {g ΔF b : Time} {s₀ j N floor : Nat} {contest kindJ : Prop}
+    {J R A D : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g)) (hm : gbar g ≤ sp.ts s₀)
+    (hmb : sp.ts N + sp.Δ ≤ b) (hj : s₀ ≤ j)
+    {y : Fin sp.n} (hy : y ∈ H) {a : Nat} {CV : Set (SA.Vote sp.n)}
+    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt y a ellw)
+    (halo : sp.ts s₀ ≤ tr.time a) (hat : tr.time a < sp.ts j + 2 * sp.Δ)
+    (hopt : SA.OptimisticLockAt tr.projAC y a j D CV)
+    (hRA : Anc (tr.HonestBlocks H) R A) (hAD : Anc (tr.HonestBlocks H) A D)
+    (hsource : ellw.frame.Anc A ellw.frame.fcRoot ∨
+      ∃ Q ∈ ellw.frame.tree, floor ≤ ((tr.state y a).fg.σ Q.root).h ∧
+        (kindJ → Anc (tr.HonestBlocks H) J A) ∧ Anc (tr.HonestBlocks H) A Q)
+    {r : Nat} (hrlo : j + 1 ≤ r) (hrN : r ≤ N)
+    {z : Fin sp.n} (hz : z ∈ H) {c : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z c ell)
+    (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts r)
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hd : (SA.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =
+      some (d, pay)) : Anc (tr.HonestBlocks H) R d.head := by
+  have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
+    (SA.ts_le_iff sp).2 (by exact_mod_cast hpq)
+  rcases hsource with hroot | ⟨Q, hQ, hh, hJ, hAQ⟩
+  · have hrootU := hroot.mono
+      (SA.frameIn_of_callAt
+        (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun hy hcw).2
+    rw [Compose.frame_of_projAC hrun hy hcw] at hrootU
+    have hf' : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+      have hn := sp.toParams.hn
+      change 0 < sp.n at hn
+      change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+      omega
+    apply hRA.trans (hrootU.trans ?_)
+    exact hframe.fcRoot_anc_proposal_head hrun hnc hf' hy hz halo
+      (by have ht := hts hrlo; have ht' := hts hrN
+          simp only [SAParams.ts] at ht ht' hat ⊢
+          push_cast at ht ht'
+          linarith [sp.toParams.hΔ])
+      (by rw [hti]; exact hts (by omega))
+      (by rw [hti]; have := hts hrN; linarith [sp.toParams.hΔ]) hc hcall hti hd
+  · have hsub : FrameWindow (tr := tr) (H := H) (sp.ts j) (sp.ts N + sp.Δ)
+        floor contest kindJ J :=
+      ⟨fun x hx i hlo hhi => hframe.floor_eq x hx i ((hts hj).trans hlo) hhi,
+       fun x hx i hlo hhi => hframe.contest_iff x hx i ((hts hj).trans hlo) hhi,
+       fun x hx i hlo hhi => hframe.kind_iff x hx i ((hts hj).trans hlo) hhi,
+       fun x hx i hlo hhi => hframe.root_eq x hx i ((hts hj).trans hlo) hhi⟩
+    exact hRA.trans ((optimistic_later_heads_of_early_witness hrun hnc hsvc hawake hf
+      hcatch hnr (hm.trans (hts hj)) hmb hsub hy hopt hAD hy hat hcw hQ hh hJ hAQ
+      r hrlo hrN).2 z hz c ell hc hcall hti d pay hd)
+
 end Consensus.Goldilocks.Healing
 
 end
