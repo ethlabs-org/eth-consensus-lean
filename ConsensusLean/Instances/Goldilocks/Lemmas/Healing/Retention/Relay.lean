@@ -439,7 +439,8 @@ private theorem relay_mem_voterBlockTree_window_aux
     {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
     (hcatch : T.time kw < a → ∃ ky ≤ i, T.AcceptAt y ky W ∧ T.time ky < SA.freeze sp e.msg.slot)
-    (hF : Anc U ℓ.frame.F W) : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
+    (hF : Anc U ℓ.frame.F W) :
+    W ∈ ℓ.frame.tree ∧ e.readPoint.blockStamp W.root < SA.ETime.of (SA.freeze sp e.msg.slot) := by
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨-, hys, hyj, -⟩ := SA.castAt_spec hr hy hc
@@ -487,7 +488,7 @@ private theorem relay_mem_voterBlockTree_window_aux
     rw [heq] at hkyt
     linarith
   rw [← readPoint_blockStamp hr hy hc hne] at hbs
-  exact ⟨hWt, Or.inl hbs⟩
+  exact ⟨hWt, hbs⟩
 
 /-- Post-start acceptance relay needs no catch-up premise. -/
 theorem relay_mem_voterBlockTree_window_after
@@ -497,12 +498,14 @@ theorem relay_mem_voterBlockTree_window_after
     (hkw : T.AcceptAt w kw W) (ha : a ≤ T.time kw) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
     {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
-    (hF : Anc U ℓ.frame.F W) : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot :=
-  relay_mem_voterBlockTree_window_aux hr hsync hw hy hkw ht hc hs hi
+    (hF : Anc U ℓ.frame.F W) : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
+  obtain ⟨hW, hstamp⟩ := relay_mem_voterBlockTree_window_aux hr hsync hw hy hkw ht hc hs hi
     (fun h => False.elim (not_lt_of_ge ha h)) hF
+  exact ⟨hW, Or.inl hstamp⟩
 
-/-- Old acceptances use catch-up; post-start acceptances use window relay. -/
-theorem relay_mem_voterBlockTree_window_before
+/-- Old acceptances use catch-up; post-start acceptances use window relay.
+The strict stamp is at the actual emission read point, suitable for U-W iteration. -/
+theorem relay_readPoint_stamp_window_before
     (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
     {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : SA.Blk sp.n FGP}
@@ -510,7 +513,8 @@ theorem relay_mem_voterBlockTree_window_before
     {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
     (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
-    (hF : Anc U ℓ.frame.F W) : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
+    (hF : Anc U ℓ.frame.F W) :
+    W ∈ ℓ.frame.tree ∧ e.readPoint.blockStamp W.root < SA.ETime.of (SA.freeze sp e.msg.slot) := by
   apply relay_mem_voterBlockTree_window_aux hr hsync hw hy hkw ht hc hs hi ?_ hF
   intro ha
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -523,6 +527,20 @@ theorem relay_mem_voterBlockTree_window_before
   refine ⟨ky, hky, hacc, ?_⟩
   unfold SA.freeze
   linarith
+
+/-- Relay and catch-up place an accepted block in the later frozen voter domain. -/
+theorem relay_mem_voterBlockTree_window_before
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
+    (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
+    {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : SA.Blk sp.n FGP}
+    (hkw : T.AcceptAt w kw W) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
+    {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
+    (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
+    (hF : Anc U ℓ.frame.F W) : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
+  obtain ⟨hW, hstamp⟩ := relay_readPoint_stamp_window_before hr hsync hcatch hw hy
+    hkw ht hc hs hi hcatchTime hF
+  exact ⟨hW, Or.inl hstamp⟩
 
 /-- **What the writer of a fast lock did with its counted votes** (main's Sleepy
 `result_writer` and `optimistic_writer`, for the selected block): each was admitted (or sent) by

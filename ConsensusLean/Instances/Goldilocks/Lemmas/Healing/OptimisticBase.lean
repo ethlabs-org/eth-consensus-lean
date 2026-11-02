@@ -281,6 +281,147 @@ theorem optimistic_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H 
     · exact SA.anc_total hr.coherent (hLO.trans hOD) hXD
     · exact SA.anc_total hr.coherent hLO (hXD.trans hDO)
 
+/-- MI-opt's bounded later-label propagation: every honest vote and actual proposal
+from s+1 through N extends X. The boundary proposal uses the optimistic base directly;
+later labels use U-W. This does not prove unlock passage, regular BASE, DESC or drain.
+The archived capped H.2 induction (`frontier_heads_transfer`) uses leases rather than
+the current FS′ frame and emission-read-point stamps; only its label-induction pattern
+is reused here. All witness transport is derived from the actual optimistic write. -/
+theorem optimistic_later_heads_of_witness (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g)) {s N floor : Nat}
+    (hm : gbar g ≤ sp.ts s) (hmb : sp.ts N + sp.Δ ≤ b)
+    {contest kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts N + sp.Δ)
+      floor contest kindJ J)
+    {x : Fin sp.n} (hx : x ∈ H) {c : Nat} {CV : Set (SA.Vote sp.n)}
+    (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
+    (hXD : Anc (tr.HonestBlocks H) X D)
+    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt x c ellw)
+    (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state x c).fg.σ Q.root).h)
+    (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
+    (hXQ : Anc (tr.HonestBlocks H) X Q) :
+    ∀ r, s + 1 ≤ r → r ≤ N →
+      (∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = r →
+        SA.VoteExtends (tr.HonestBlocks H) e.msg X) ∧
+      (∀ y ∈ H, ∀ i ell, tr.projAC.CallAt y i ell → ell.call = .proposal →
+        tr.time i = sp.ts r →
+        ∀ d pay, (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 =
+          some (d, pay) → Anc (tr.HonestBlocks H) X d.head) := by
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hr := hS.run.localRun
+  have hΔ := sp.toParams.hΔ
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+    have hn := sp.toParams.hn
+    change 0 < sp.n at hn
+    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+    omega
+  have hQ := mem_tree_of_frame hrun hx hcw hQw
+  have hQU : Q ∈ tr.HonestBlocks H := ⟨x, hx, c, hQ⟩
+  have hsource : Q.root = sp.genesisRoot ∨
+      ∃ q, tr.projAC.AcceptAt x q Q ∧ tr.projAC.time q < sp.ts s + 2 * sp.Δ := by
+    rcases Compose.frame_anc_accepted hr hx c ellw hcw Q hQw Q .refl with hg | ⟨q, hqc, ha⟩
+    · exact Or.inl hg
+    · exact Or.inr ⟨q, ha, (hr.time_mono hqc).trans_lt
+        (SA.optimisticLockAt_spec hS.run hx hopt).1⟩
+  have hts {a b : Nat} (hab : a ≤ b) : sp.ts a ≤ sp.ts b :=
+    (SA.ts_le_iff sp).2 (by exact_mod_cast hab)
+  have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hsub {lo hi : Time} (hl : sp.ts s ≤ lo) (hh' : hi ≤ sp.ts N + sp.Δ) :
+      FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J :=
+    ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i (hl.trans hlo) (hhi.trans hh'),
+      fun y hy i hlo hhi => hframe.contest_iff y hy i (hl.trans hlo) (hhi.trans hh'),
+      fun y hy i hlo hhi => hframe.kind_iff y hy i (hl.trans hlo) (hhi.trans hh'),
+      fun y hy i hlo hhi => hframe.root_eq y hy i (hl.trans hlo) (hhi.trans hh')⟩
+  intro r hrlo
+  induction r, hrlo using Nat.le_induction with
+  | base =>
+    intro hrN
+    have ht := hts hrN
+    refine ⟨optimistic_next_votes_of_witness hrun hnc hsvc hawake hf hcatch hm
+      (by linarith) (hsub le_rfl (by linarith)) hx hopt hXD hcw hQw hh hJ hXQ, ?_⟩
+    intro y hy i ell hc hcall hti d pay hd
+    exact optimistic_next_proposal_of_witness hrun hnc hsvc hawake hf hcatch hm
+      (by linarith) (hsub le_rfl (by linarith)) hx hopt hXD hcw hQw hh hJ hXQ
+      hy hc hcall hti hd
+  | succ m hsm ih =>
+    intro hrN
+    have hmN : m ≤ N := by omega
+    have hprior := (ih hmN).1
+    have ht := hts hrN
+    have hms := hts hsm
+    have hwarm : gbar g + 4 * sp.Δ ≤ sp.ts m := by rw [hstep] at hms; linarith
+    have hwin := hsub (hts (show s ≤ m by omega))
+      (show sp.ts (m + 1 : Nat) + sp.Δ ≤ sp.ts N + sp.Δ by linarith)
+    have hheld : ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = m + 1 →
+        Q ∈ (tr.state y i).fg.tree ∧
+          e.readPoint.blockStamp Q.root < SA.ETime.of (SA.freeze sp (m + 1)) := by
+      intro y hy i e hv hs
+      obtain ⟨ell, hc, he⟩ := hv
+      have hcast : SA.CastAt tr.projAC y i ell e := ⟨hc, he⟩
+      have hslot := (SA.castAt_spec hr hy hcast).2.1.symm.trans hs
+      change sp.slot (tr.time i) = m + 1 at hslot
+      have hlo : sp.ts s ≤ tr.time i :=
+        (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
+          change (s : Int) ≤ sp.slot (tr.time i)
+          rw [hslot]; omega)
+      have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ := by
+        have h := SA.vote_time_le hr hy ⟨ell, hcast⟩
+        change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at h
+        rw [hslot] at h
+        exact h
+      have hFQ := hframe.finalized_below_descendant hrun hnc hmf hy hx hx hlo
+        (hhi.trans (by linarith)) hQ hh (fun hk => (hJ hk).trans hXQ) hQ .refl
+      change Anc (tr.HonestBlocks H) (Node.frame (tr.state y i)).F Q at hFQ
+      rw [← Compose.frame_of_projAC hrun hy hc] at hFQ
+      have hct : gbar g + 2 * sp.Δ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
+        rw [hs, show ((m + 1 : Nat) : Int) - 1 = (m : Int) by omega]; linarith
+      have hdom := voterBlockTree_of_relay_source hr hS.sync hS.catchUp hx hy hQU
+        (Relation.ReflTransGen.refl : Anc (tr.HonestBlocks H) Q Q) hsource hcast
+        (by omega) (hhi.trans (by linarith)) hct hFQ
+      refine ⟨mem_tree_of_frame hrun hy hc hdom.1, ?_⟩
+      rw [← hs]
+      rcases hsource with hg | ⟨q, hq, hqt⟩
+      · apply SA.readPoint_blockStamp_lt_of_acceptedBefore hr hy hcast hdom.1 (Or.inl hg)
+        · intro k hk hrs
+          have h := hnr y hy k (Compose.projAC_restartAt.mp hrs)
+          change tr.time k < _
+          rw [hs]; unfold SA.freeze; rw [show ((m + 1 : Nat) : Int) - 1 = (m : Int) by omega]
+          linarith
+        · have h : sp.ts (m + 1 : Nat) ≤ tr.time i :=
+            (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
+              change ((m + 1 : Nat) : Int) ≤ sp.slot (tr.time i)
+              rw [hslot])
+          change SA.freeze sp e.msg.slot ≤ tr.time i
+          rw [hs]; unfold SA.freeze
+          rw [show ((m + 1 : Nat) : Int) - 1 = (m : Int) by omega, hstep] at *
+          linarith
+      · exact (relay_readPoint_stamp_window_before hr hS.sync hS.catchUp hx hy hq hqt
+          hcast (by omega) (hhi.trans (by linarith)) hct hFQ).2
+    refine ⟨unanimous_next_votes_of_witness hrun hnc hsvc hawake hf hcatch hnr hwarm
+      (by linarith) hwin hx hQ hh hJ hXQ hheld hprior, ?_⟩
+    intro y hy i ell hc hcall hti d pay hd
+    have hlo : sp.ts s ≤ tr.time i := by rw [hti]; exact hts (by omega)
+    have hhi : tr.time i ≤ sp.ts N + sp.Δ := by rw [hti]; linarith
+    have hFQ := hframe.finalized_below_descendant hrun hnc hmf hy hx hx hlo hhi
+      hQ hh (fun hk => (hJ hk).trans hXQ) hQ .refl
+    change Anc (tr.HonestBlocks H) (Node.frame (tr.state y i)).F Q at hFQ
+    rw [← Compose.frame_of_projAC hrun hy hc] at hFQ
+    have hsource' : Q.root = sp.genesisRoot ∨
+        ∃ q, tr.projAC.AcceptAt x q Q ∧ tr.projAC.time q < sp.ts m + 2 * sp.Δ := by
+      rcases hsource with hg | ⟨q, hq, hqt⟩
+      · exact Or.inl hg
+      · exact Or.inr ⟨q, hq, by linarith [hts (show s ≤ m by omega)]⟩
+    have hQt := (relay_source_at_proposal hS (hm.trans (hts (by omega))) hx hy hc hti
+      (hhi.trans hmb) (fun k hk hrs => (hnr y hy k (Compose.projAC_restartAt.mp hrs)).trans
+        (hm.trans (hts (by omega)))) hQU hsource' hFQ).1
+    exact unanimous_next_proposal_of_witness hrun hnc hsvc hawake hf hcatch hnr hwarm
+      (by linarith) hwin hx hQ hh hJ hXQ hprior hy hc hcall hti hd
+      (mem_tree_of_frame hrun hy hc hQt)
+
 end Consensus.Goldilocks.Healing
 
 end
