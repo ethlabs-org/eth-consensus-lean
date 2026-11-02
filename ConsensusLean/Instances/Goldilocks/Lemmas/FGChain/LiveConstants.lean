@@ -65,6 +65,39 @@ theorem ΛF_eq {gapH cF δt : Nat} (hg : 1 ≤ gapH) :
   simp only [ΛF, ΛJ]
   omega
 
+/-- **Theorem F slot bound (r14 s6, L6.5 step 4, case i = 0).** If `E₀` crosses at `u₁ ≤
+s_h + δt + g` (L5.3), `E₁` is justified at `u₂ ≤ u₁ + Λ_J` and `E₂` at `u₃ ≤ u₂ + Λ_J` (L5.4
+twice), then `u₃ + g ≤ s_h + Λ_F`: the finalizing block of `E₁`'s entry block, plus the `g`
+slots of node-output delivery. -/
+theorem ΛF_slot_le {sh u₁ u₂ u₃ gapH cF δt : Nat} (hg : 1 ≤ gapH)
+    (h₁ : u₁ ≤ sh + δt + gapH) (h₂ : u₂ ≤ u₁ + ΛJ gapH cF) (h₃ : u₃ ≤ u₂ + ΛJ gapH cF) :
+    u₃ + gapH ≤ sh + ΛF gapH cF δt := by
+  rw [ΛF_eq hg]
+  omega
+
+/-- **Theorem F slot bound, steady state (r14 s6, L6.5 step 4, case i ≥ 1).** If the entry
+after slot `s` crosses at `u₁ ≤ s + Λ_J` and the next two are justified within `Λ_J` each,
+then `u₃ + g ≤ s + 3Λ_J + g`, and with `Λ_J ≤ δt`, `u₃ + g ≤ s + Λ_F`. -/
+theorem ΛF_slot_le_steady {s u₁ u₂ u₃ gapH cF δt : Nat} (hg : 1 ≤ gapH)
+    (hδ : ΛJ gapH cF ≤ δt) (h₁ : u₁ ≤ s + ΛJ gapH cF) (h₂ : u₂ ≤ u₁ + ΛJ gapH cF)
+    (h₃ : u₃ ≤ u₂ + ΛJ gapH cF) :
+    u₃ + gapH ≤ s + 3 * ΛJ gapH cF + gapH ∧ u₃ + gapH ≤ s + ΛF gapH cF δt := by
+  rw [ΛF_eq hg]
+  omega
+
+/-- **Theorem F slot bound, window form (r14 s6, L6.5 step 4 with s5 L5.3 step 6 and L5.4
+step 1).** The crossing slot `u₁` of `E₀` is before `max (s₁′ + c) (u₀ + δt) + g` with
+`s₁′ ≤ s_h + g`, `u₀ ≤ s_h` and `c + g ≤ δt + 1` (`Healing.handoff_slot_le`); the
+justification slots `u₂`, `u₃` are before `u + x + c + g` with `x ≤ g − 1` after the previous
+one (`Refinement.theorem_J_slot_le`). Then `u₃ + g ≤ s_h + Λ_F`. -/
+theorem ΛF_slot_le_window {sh s₁ u₀ u₁ u₂ u₃ x₂ x₃ gapH cF δt : Nat}
+    (hs₁ : s₁ ≤ sh + gapH) (hu₀ : u₀ ≤ sh) (hu₁ : u₁ < max (s₁ + cF) (u₀ + δt) + gapH)
+    (hδ : cF + gapH ≤ δt + 1) (hx₂ : x₂ + 1 ≤ gapH) (hu₂ : u₂ < u₁ + x₂ + cF + gapH)
+    (hx₃ : x₃ + 1 ≤ gapH) (hu₃ : u₃ < u₂ + x₃ + cF + gapH) :
+    u₃ + gapH ≤ sh + ΛF gapH cF δt :=
+  ΛF_slot_le (u₁ := u₁) (u₂ := u₂) (by omega) (by omega) (by simp only [ΛJ]; omega)
+    (by simp only [ΛJ]; omega)
+
 /-- At `Δ_F = 32Δ`, `c = 10`. -/
 theorem cF_32 {Δ : Nat} (hΔ : 1 ≤ Δ) : cF Δ (32 * Δ) = 10 := by
   simp only [cF]
