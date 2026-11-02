@@ -173,6 +173,59 @@ theorem honest_voter_at_update (hI : InclusionRun tr H U proposer g t₀) {X : F
   · exact hvot _ h hval
   · exact hvot a ha hav
 
+/-- Every honest validator participates in an actual update inside the finite
+service horizon. Only the slot and its successor's voting deadlines are used. -/
+theorem honest_voter_at_update_before {b : Time}
+    (hS : HealthyBaseUpTo tr H U proposer g b)
+    (hnr : ∀ y ∈ H, ∀ r, tr.RestartAt y r → tr.time r ≤ gbar g)
+    {X : Fin sp.n} (hX : X ∈ H) {i₀ l : Nat}
+    {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ l ℓX)
+    (hl : gbar g + 4 * sp.Δ ≤ sp.ts l) (hib : tr.time i₀ ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H) :
+    z ∈ voters {v | v ∈ (tr.state X i₀).pool l} := by
+  have hrun := hS.run
+  have hr := hrun.localRun
+  have hΔ := sp.toParams.hΔ
+  have hts : sp.ts (l + 1 : Nat) = sp.ts l + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hbefore : ∀ m, l ≤ m → gbar g ≤ sp.ts ((m : Int) - 1) := by
+    intro m hm
+    have hml : sp.ts l ≤ sp.ts m := (ts_le_iff sp).2 (by exact_mod_cast hm)
+    have hprev : sp.ts ((m : Int) - 1) = sp.ts m - 4 * sp.Δ := by
+      simp only [SAParams.ts]; ring
+    linarith
+  obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, htk⟩ := honest_votes_in_slot_before hS hl
+    (by linarith [hupd.2.2.1]) (fun y hy r _ hrs =>
+      (hnr y hy r hrs).trans (hbefore l le_rfl)) z hz
+  obtain ⟨i, e', ⟨ℓ', hc', he'⟩, hes', -⟩ := honest_votes_in_slot_before hS
+    (show gbar g + 4 * sp.Δ ≤ sp.ts (l + 1 : Nat) by linarith)
+    (by linarith [hupd.2.2.1]) (fun y hy r _ hrs =>
+      (hnr y hy r hrs).trans (hbefore (l + 1) (by omega))) z hz
+  obtain ⟨hval, hsl, -, -⟩ := castAt_spec hr hz ⟨hc, he⟩
+  obtain ⟨-, hsl', -, -⟩ := castAt_spec hr hz ⟨hc', he'⟩
+  have hti : sp.ts (l + 1 : Nat) ≤ tr.time i :=
+    (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [← hsl', hes'])
+  have hki : k ≤ i := by
+    by_contra h
+    have := hr.time_mono (not_le.1 h).le
+    linarith
+  have hpool : e.msg ∈ (tr.state z (k + 1)).pool l ∨
+      z ∈ equivocators {x | x ∈ (tr.state z (k + 1)).pool l} := by
+    rw [show tr.state z (k + 1) = tr.post k by simp [Trace.state, hc.1, hc.2],
+      post_of_castAt hr hz ⟨hc, he⟩, optimistic_pool, ← hes, ← hval]
+    exact admitVote_held _ _ _ (by omega) (by omega)
+  have hW := writer_pool_window_before hrun (serviceWindowBefore_of_sync hS.sync)
+    hX (show gbar g ≤ sp.ts l by linarith) hupd hib hz ⟨hc', he'⟩ hes' hki
+  have hvot : ∀ v ∈ (tr.state z (k + 1)).pool l, v.val = z →
+      z ∈ voters {v | v ∈ (tr.state X i₀).pool l} := by
+    intro v hv hvz
+    rcases hW v hv with h | ⟨a, ha, -, -, -, hav, -⟩
+    · exact ⟨v, h, hvz⟩
+    · exact ⟨a, ha, hav.trans hvz⟩
+  rcases hpool with h | ⟨a, ha, -, -, -, hav, -⟩
+  · exact hvot _ h hval
+  · exact hvot a ha hav
+
 /-- **A result of a slot `l` with `t_l ≥ ḡ + 4Δ` has an honest supporter**: an honest slot-`l`
 vote whose head extends it (its counted validators are a strict majority of the writer's
 voters, which include every honest node, and `f < n/2`). -/

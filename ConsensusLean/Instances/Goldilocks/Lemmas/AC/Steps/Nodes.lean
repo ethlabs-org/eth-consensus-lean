@@ -218,14 +218,21 @@ theorem optimistic_transfer : OptimisticTransfer sp :=
 /-- **A1.2, for the stored block.** A1.2 for a block `B ⪯ D` of a fast lock on `D` (the block
 the lock stores after moving back): every hypothesis and the conclusion are about `B`, with the
 counted votes `CV` of `D`. -/
-theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+theorem first_transfer_stored_of_pool {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
     (hrun : ACRun proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = s + 1)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr)
+    (hmerged : ∀ ℓX, UpdateAt tr x i₀ s ℓX →
+      ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
+        v ∈ (tr.state x i₀).pool s ∨
+          v.val ∈ equivocators {w | w ∈ (tr.state x i₀).pool s})
+    (hpool : ∀ ℓX, UpdateAt tr x i₀ s ℓX → ∀ k ≤ i,
+      ∀ v ∈ (tr.state y (k + 1)).pool s,
+        v ∈ (tr.state x i₀).pool s ∨
+          v.val ∈ equivocators {w | w ∈ (tr.state x i₀).pool s})
     (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBound tr H (tr.time i))
     (hviab : ViableAtVote ℓ e (s + 1) B) (hearlier : EarlierVotesExtend tr H U i (s + 1) B) :
     VoteExtends U e.msg B := by
@@ -260,7 +267,7 @@ theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (F
   obtain ⟨⟨-, -, hBC⟩, hfast⟩ := (deepest_mem hfs).1
   set P := tr.state x i₀
   set SX := {w | ∃ v ∈ fastCounted sp P ℓX.frame s D, v.val = w}
-  have hd := writer_merged hrun hx hupd hy hc hs hsync
+  have hd := hmerged ℓX hupd
   have hsupp := counted_supporters hrun hx hy hupd.1 hc hs hBD hcarry hviab hd
   -- half of the committee are counted for `B`, and a strict majority of `x`'s participants
   have hhalf : sp.n ≤ 2 * SX.ncard := by
@@ -289,7 +296,7 @@ theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (F
     obtain ⟨w, ⟨⟨v₁, ⟨hv₁, hneq, -, R₁, hR₁, hR₁r, hBR₁⟩, rfl⟩, v₂, hv₂, hv₂w, R₂, hR₂, hR₂r,
       hDR₂⟩, -⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard hint
     obtain rfl : v₂ = v₁ := by
-      rcases writer_pool hrun hx hupd hy hc hs hsync hk v₂ (hsub hv₂) with h | h
+      rcases hpool ℓX hupd k hk v₂ (hsub hv₂) with h | h
       · by_contra hne
         exact hneq ⟨v₂, h, v₁, hv₁, hne, hv₂w, rfl⟩
       · exact absurd (hv₂w ▸ h) hneq
@@ -310,6 +317,42 @@ theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (F
       (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
+
+/-- A1.2 with source-window service supplying the writer pool interfaces. -/
+theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    (hrun : ACRun proposer tr H U) {s : Nat}
+    {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
+    (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
+    (hs : e.msg.slot = s + 1)
+    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr)
+    (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBound tr H (tr.time i))
+    (hviab : ViableAtVote ℓ e (s + 1) B) (hearlier : EarlierVotesExtend tr H U i (s + 1) B) :
+    VoteExtends U e.msg B :=
+  first_transfer_stored_of_pool sp hrun hx hfl hBD hy hc hs
+    (fun _ hu => writer_merged hrun hx hu hy hc hs hsync)
+    (fun _ hu _ hk => writer_pool hrun hx hu hy hc hs hsync hk)
+    hcarry hfault hviab hearlier
+
+/-- A1.2 on a finite service prefix. The update can occur after the receiving
+vote; both pool inclusions use the actual writer's observation cutoff. -/
+theorem first_transfer_stored_window_before {FGP : Type} {ro : ReplayOrder sp FGP}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U) {s : Nat}
+    {a b : Time} (hsync : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
+    {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
+    (hfl : FastLockAt tr x i₀ s D CV) (hi₀ : tr.time i₀ ≤ b)
+    (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
+    (hs : e.msg.slot = s + 1)
+    (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBound tr H (tr.time i))
+    (hviab : ViableAtVote ℓ e (s + 1) B)
+    (hearlier : EarlierVotesExtend tr H U i (s + 1) B) : VoteExtends U e.msg B :=
+  first_transfer_stored_of_pool sp hrun hx hfl hBD hy hc hs
+    (fun _ hu => writer_merged_window_before hrun hsync hx ha hu hi₀ hy hc hs)
+    (fun _ hu _ hk => writer_pool_window_before hrun hsync hx ha hu hi₀ hy hc hs hk)
+    hcarry hfault hviab hearlier
 
 /-- **A1.2.** -/
 theorem first_transfer : FirstTransfer sp :=
