@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
@@ -1871,6 +1872,71 @@ theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
     change tr.time r ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
     rw [hi, hslot]
     simpa using hrestart.trans hu
+
+/-- A bounded reset seed reaches a read through an earlier actual update, provided
+the read's finalized tip is below it. The next-event clock need not be in the horizon. -/
+theorem ResetPremisesUpTo.reset_seed_held_at_read {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {y : Fin sp.n} (hy : y ∈ H) {n u : Nat} {t : Time}
+    (hrp : Regimes.ReadPoint tr n t) (htb : t ≤ b)
+    (hdrain : drainTime sp a ≤ sp.ts u) (hgst : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hbefore : sp.ts u + 6 * sp.Δ < t) :
+    ∃ v r l S, HighOrigin tr H g v r l S ∧ tr.time r ≤ b ∧ l < u ∧
+      tr.time r < sp.ts u ∧
+      (Anc (tr.HonestBlocks H) (tr.state y n).fg.F S → S ∈ (tr.state y n).fg.tree) := by
+  obtain ⟨v, r, l, S, hS, hrb, hlu, hru⟩ := hp.reset_seed_before_slot hdrain
+  have hΔ := sp.toParams.hΔ
+  have hslot := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g) (sp.slot (SA.gbar g))).mpr
+    (by omega)
+  have hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u := by
+    simp only [SAParams.ts] at hslot hgst ⊢
+    push_cast
+    linarith
+  obtain ⟨j, ell, _, hup, _⟩ := hp.update_toFG_calls hy hjoin (hbefore.le.trans htb)
+  have hjt : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
+  have hjn : j ≤ n := by
+    by_contra h
+    have := (hrp.2.trans (hp.run.time_mono (by omega : n ≤ j))).trans_eq hjt
+    linarith
+  refine ⟨v, r, l, S, hS, hrb, hlu, hru, fun hF => ?_⟩
+  obtain ⟨ellS, _, _, hcallS, _, _, _, hSm, _⟩ := hp.highOrigin_mem hS
+  have hgrow := Compose.fg_grows hp.run hy hjn
+  have hFj : Anc (tr.HonestBlocks H) ell.frame.F S := by
+    rw [Compose.frame_of_projAC hp.run hy hup.1]
+    exact hgrow.2.trans hF
+  have hheld := hp.reset_frame_relay hc hS.1 hy hcallS hup.1 hSm
+    (hjt ▸ hbefore.le.trans htb) (by rw [hjt]; linarith)
+    (by rw [hjt]; linarith) (by rw [hjt]; linarith) hFj
+  exact hgrow.1 (hp.frame_tree_subset hy hup.1 hheld)
+
+/-- One reset seed is available at every bounded honest call after the relay delay,
+whenever that call's finalized tip is below it. The seed is chosen before the calls. -/
+theorem ResetPremisesUpTo.reset_seed_held_at_call {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ)) :
+    ∃ v r l S, HighOrigin tr H g v r l S ∧ tr.time r ≤ a ∧ tr.time r ≤ b ∧
+      ∀ y ∈ H, ∀ c (ell : ACLabel (goldilocksNode sp ro)), tr.projAC.CallAt y c ell →
+        a + sp.Δ ≤ tr.time c → tr.time c ≤ b →
+        Anc (tr.HonestBlocks H) ell.frame.F S → S ∈ ell.frame.tree := by
+  obtain ⟨⟨v, hv, k, att, hs, hh, hka⟩, _⟩ := hp.reset
+  obtain ⟨r, hrk, l, S, hS, _⟩ := hp.high_row_source hv hs hh.ge
+  have hra : tr.time r ≤ a := (hp.run.time_mono hrk.le).trans hka.le
+  refine ⟨v, r, l, S, hS, hra, hra.trans hp.reset_le, ?_⟩
+  intro y hy c ell hcall hac hcb hF
+  obtain ⟨ellS, _, _, hcallS, _, _, _, hSm, _⟩ := hp.highOrigin_mem hS
+  have hcut : cutZ sp.toParams g < a := cutZ_lt_reset_of_snapshot hp.run
+    (let ⟨q, hq, _⟩ := hp.snapshot; ⟨q, hq⟩) hp.reset
+  have hnext : SA.gbar g < sp.ts (sp.slot (SA.gbar g) + 1 : Nat) := by
+    exact not_le.mp ((SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g)
+      ((sp.slot (SA.gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega))
+  rw [cutZ_eq] at hcut
+  have hΔ := sp.toParams.hΔ
+  apply hp.reset_frame_relay hc hv hy hcallS hcall hSm hcb ?_ ?_ (by linarith) hF
+  · simp only [SAParams.ts] at hcut hnext
+    push_cast at hcut hnext
+    linarith
+  · simp only [SAParams.ts] at hcut ⊢
+    push_cast at hcut ⊢
+    linarith
 
 /-- A deepest candidate extending a non-genesis block gives an actual report by this call's
 time, including the historical report that suppresses a new return. -/
