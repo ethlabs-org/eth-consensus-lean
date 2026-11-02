@@ -457,12 +457,12 @@ theorem tryVote_zero {A : SAState sp1.n} {Φ : N1.Frm} (h : ChainFrame Φ 0 0 0)
   rw [hs, ite_neg (by rw [ts_nat, hvs]; push Not; exact ⟨joined_of_bot hj _, by decide, by decide⟩),
     ite_neg (by rw [ts_nat]; change ¬ ((1 : Int) < 4 * 0 + 1 ∧ _); omega), ite_neg (lt_irrefl 0)]
   have hanc : getAnchor sp1 A Φ 1 = blk 0 := h.getAnchor_eq hL le_rfl (Or.inr rfl)
-  have hhead : getHead sp1 A Φ 1 (Φ.viableTree (voterBlockTree sp1 A Φ 0))
+  have hhead : getHead sp1 A Φ 1 (Φ.viableTree (voteDomain sp1 A Φ 0))
       (mergedVoteView sp1 A Φ 0) ((0 : Nat) - 1) = blk 0 := by
     unfold getHead
     rw [hanc]
     refine ghost_tip (fun B hB => ?_) _ _ _
-    obtain ⟨m, -, hm, rfl⟩ := h.eq_of_mem (voterBlockTree_sub A 0 hB.1)
+    obtain ⟨m, -, hm, rfl⟩ := h.eq_of_mem (voteDomain_subset_tree hB.1)
     exact ⟨m, hm, rfl⟩
   rw [hhead, optimisticConfirmation_of_none (optimisticSelect_slot_zero hs)]
   exact ⟨_, rfl⟩
@@ -512,17 +512,18 @@ theorem tryVote_blk {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
         (by rw [hs]; change k + 1 ≤ k + 2; omega), rfl⟩
   have hncard : Φ.tree.ncard = (k + 1 - f) + 1 := by rw [h.tree_ncard]; omega
   have hhead : getHead sp1 { A with locks := L₁ } Φ ((4 * (k + 1) : Nat) : Int)
-      (Φ.viableTree (voterBlockTree sp1 { A with locks := L₁ } Φ (k + 1))) V
+      (Φ.viableTree (voteDomain sp1 { A with locks := L₁ } Φ (k + 1))) V
       (((k + 1 : Nat) : Int) - 1) = blk (k + 1) := by
     unfold getHead
     rw [hanc, hncard]
-    have hT : ∀ B ∈ Φ.viableTree (voterBlockTree sp1 { A with locks := L₁ } Φ (k + 1)),
+    have hT : ∀ B ∈ Φ.viableTree (voteDomain sp1 { A with locks := L₁ } Φ (k + 1)),
         ∃ m ≤ k + 1, B = blk m := fun B hB => by
-      obtain ⟨m, -, hm, rfl⟩ := h.eq_of_mem (voterBlockTree_sub _ _ hB.1)
+      obtain ⟨m, -, hm, rfl⟩ := h.eq_of_mem (voteDomain_subset_tree hB.1)
       exact ⟨m, hm, rfl⟩
     rw [ghost_step (fun B hB => (hT B hB).imp fun _ h => h.2)
-      (h.mem_viableTree (mem_voterBlockTree h _ (by omega) le_rfl) (jexp_le _) le_rfl
-        (mem_voterBlockTree h _ (by omega) le_rfl))
+      (viableTree_voterBlockTree_subset_voteDomain
+        (h.mem_viableTree (mem_voterBlockTree h _ (by omega) le_rfl) (jexp_le _) le_rfl
+          (mem_voterBlockTree h _ (by omega) le_rfl)))
       (Or.inr (Or.inl (by rw [blk_slot, hs])))]
     exact ghost_tip hT _ _ _
   rw [hhead]

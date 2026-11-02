@@ -1426,7 +1426,9 @@ theorem optimistic_prefix_before (hrun : GoldilocksRun proposer dg H tr)
   have hhalf : 2 * Hᶜ.ncard < sp.n := by
     have hn : 0 < sp.n := sp.toParams.hn
     omega
-  exact SA.optimistic_prefix_of_carry sp hS.run hx hopt hBD hhalf hy hc hes hcarry hB haB
+  rw [← SA.viableTree_voteDomain_eq_of_viable ⟨B, hB⟩]
+  exact SA.optimistic_prefix_of_carry sp hS.run hx hopt hBD hhalf hy hc hes hcarry
+    (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB
 
 end Consensus.Goldilocks.Healing
 

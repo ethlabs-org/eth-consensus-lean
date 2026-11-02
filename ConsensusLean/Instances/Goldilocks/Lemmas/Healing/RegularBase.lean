@@ -1385,7 +1385,7 @@ theorem FrameWindow.vote_head_eq_of_path {s₀ s floor : Nat}
       (Set.ncard_le_ncard hTy hPhi.1.finite) _
   have heq := (hvoter.of_anc hPhi.1.coherent hTy haX hXE).unique
     (SA.walkEnd_iff.2 ⟨f + 1, hfollow, hstopP⟩)
-  have hspec := (SA.castAt_spec hr hy hc).2.2.2
+  have hspec := SA.castAt_head_of_viable hr hy hc (hes ▸ ⟨P, hPv⟩)
   rw [hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hspec
   exact hspec.trans (congrArg Block.root heq)
 

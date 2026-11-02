@@ -97,8 +97,8 @@ theorem honest_head_frame (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x :
   obtain ⟨hΦ, -⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
     rcases hr.frameLaw x hx j ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨k, ℓ', -, -, -, h⟩ <;> exact h.1
   obtain ⟨-, hs, -, hh⟩ := castAt_spec hr hx hc
-  have hm := getHead_mem hΦ (T := ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame
-    e.msg.slot)) (fun _ hB => hB.1.1) e.readPoint (tr.time j)
+  have hm := getHead_mem hΦ (T := ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame
+    e.msg.slot)) (fun _ hB => voteDomain_subset_tree hB.1) e.readPoint (tr.time j)
     (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)
   exact ⟨_, hm, hh.symm, (frame_slot_le sp hr hx hc.1 _ hm).trans hs.ge⟩
 

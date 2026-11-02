@@ -1507,6 +1507,7 @@ theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
       hcy hes hPv hg (hti ▸ hgu) hgj hQt (hviab _ hDQ .refl)
     obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j elly e hcy hes hE
     rw [hcast] at hXend
+    rw [SA.viableTree_voteDomain_eq_of_viable ⟨P, hPv⟩] at hXend
     set W₂ := SA.ghost sp
       (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)))
       (SA.goldfishScore sp elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
@@ -1553,7 +1554,7 @@ theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
         (hti ▸ hgu) hgj hQt hQm hne (hviab _ (hDX.trans hXm) hQm) hCQ
         ((haX.mono hPsiU).trans (hXm.mono hPhiU)) hC
     obtain ⟨fX, hfX⟩ := hXP
-    have hspec := (SA.castAt_spec hr hy hcy).2.2.2
+    have hspec := SA.castAt_head_of_viable hr hy hcy (hes ▸ ⟨P, hPv⟩)
     rw [hes, hcast] at hspec
     rw [hspec]
     congr 1
@@ -1698,6 +1699,7 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
       (hti ▸ hjoin) (hjoin.trans hjt) hQt (hviab _ hDQ .refl)
     obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j elly e hcy hes hjb hE
     rw [hcast] at hXend
+    rw [SA.viableTree_voteDomain_eq_of_viable ⟨P, hPv⟩] at hXend
     set W₂ := SA.ghost sp
       (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)))
       (SA.goldfishScore sp elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
@@ -1745,7 +1747,7 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
         hQt hQm hne (hviab _ (hDX.trans hXm) hQm) hCQ
         ((haX.mono hPsiU).trans (hXm.mono hPhiU)) hC
     obtain ⟨fX, hfX⟩ := hXP
-    have hspec := (SA.castAt_spec hr hy hcy).2.2.2
+    have hspec := SA.castAt_head_of_viable hr hy hcy (hes ▸ ⟨P, hPv⟩)
     rw [hes, hcast] at hspec
     rw [hspec]
     congr 1

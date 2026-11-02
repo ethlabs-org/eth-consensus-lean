@@ -294,10 +294,12 @@ theorem FrameWindow.honest_prefix_before {s floor : Nat}
   have hf' : 3 * Hᶜ.ncard < sp.n := by
     have hn : 0 < sp.n := sp.toParams.hn
     omega
+  rw [← SA.viableTree_voteDomain_eq_of_viable ⟨B, hB⟩]
   exact SA.honest_prefix_of_carry sp hS.run hf' hy hc hes
     (fun x hx j ev hv hs => by
       obtain ⟨R, hR, hRr, hQR⟩ := hheads x hx j ev hv hs
-      exact ⟨R, hR, hRr, hBQ.trans hQR⟩) hex hcarry hB haB
+      exact ⟨R, hR, hRr, hBQ.trans hQR⟩) hex hcarry
+    (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB
 
 /-- At the actual proposal start, expiry and proposal causality put every
 non-root anchor in the warm older-label range. The returned lock is the
@@ -347,16 +349,16 @@ theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr)
       (SA.goldfishScore sp ell.frame (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot)
         ((e.msg.slot : Int) - 1))
       (SA.eligibleChildren
-        (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
+        (ell.frame.viableTree (SA.voteDomain sp e.readPoint ell.frame e.msg.slot))
         (SA.goldfishEligible sp ell.frame (tr.time i)
           (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) P)
       C := by
     rintro ⟨C, ⟨⟨hC, hCP, -⟩, -⟩⟩
-    have hlt := hPhi.coherent.2 P hPt C hC.1.1 hCP
-    have hle := hslot C hC.1.1
+    have hlt := hPhi.coherent.2 P hPt C (SA.voteDomain_subset_tree hC.1) hCP
+    have hle := hslot C (SA.voteDomain_subset_tree hC.1)
     omega
   have heq : SA.getHead sp e.readPoint ell.frame (tr.time i)
-      (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
+      (ell.frame.viableTree (SA.voteDomain sp e.readPoint ell.frame e.msg.slot))
       (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1) = P := by
     unfold SA.getHead
     rw [haP]
@@ -548,7 +550,9 @@ theorem honest_prefix_of_finality_before (hrun : GoldilocksRun proposer dg H tr)
   have hf' : 3 * Hᶜ.ncard < sp.n := by
     have hn : 0 < sp.n := sp.toParams.hn
     omega
-  exact SA.honest_prefix_of_carry sp hS.run hf' hy hc hes hheads hex hcarry hB haB
+  rw [← SA.viableTree_voteDomain_eq_of_viable ⟨B, hB⟩]
+  exact SA.honest_prefix_of_carry sp hS.run hf' hy hc hes hheads hex hcarry
+    (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB
 
 /-- Any point between the actual voter anchor and a frozen viable block is
 itself frozen-viable. In Step 5 the upper block is P, not a transported

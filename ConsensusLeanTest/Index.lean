@@ -442,6 +442,7 @@ example := ``Consensus.Goldilocks.SA.updateConfirmation
 example := ``Consensus.Goldilocks.SA.validPayload
 example := ``Consensus.Goldilocks.SA.voteView
 example := ``Consensus.Goldilocks.SA.voterBlockTree
+example := ``Consensus.Goldilocks.SA.voteDomain
 example := ``Consensus.Goldilocks.SyncAC
 example := ``Consensus.Goldilocks.Trace
 example := ``Consensus.Goldilocks.Trace.CallAt

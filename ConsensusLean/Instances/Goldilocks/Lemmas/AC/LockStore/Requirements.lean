@@ -255,7 +255,8 @@ theorem interface_requirements : InterfaceRequirements sp := by
       have hsp := stamp_parent sp FGP ro x U hU _ _ _ (ACInterface.ReachableAt.step c hr ht hok)
       beta_reduce at hsp
       rw [← h2] at hsp
-      exact headOK_of hU hok.1.1 hok.1.2 h1 (fun B hB => hB.1) (voterBlockTree_closed hsp _) V σ
+      exact headOK_of hU hok.1.1 hok.1.2 h1 (fun B hB => voteDomain_subset_tree hB)
+        (voteDomain_anc_closed (voterBlockTree_closed hsp _)) V σ
   · -- requirement 2: the block for the FG
     intro x U hU A Φ t₀ hr t ht C hC
     obtain ⟨⟨hΦ, hΦU⟩, -, h⟩ := lockInv_of_reachable hU hr

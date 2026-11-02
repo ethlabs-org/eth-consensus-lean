@@ -1371,7 +1371,7 @@ theorem pivot_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set 
         ∃ X, (X = P ∨ (ℓp.frame.Anc D X ∧ ℓp.frame.Anc X d.head)) ∧
           ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X ∧
           ℓy.frame.Anc X (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-            (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
+            (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame s))
             (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
@@ -1427,13 +1427,13 @@ theorem pivot_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set 
   have hat := anchor_tree hΦ e.readPoint (tr.time j)
   have hah : ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j))
       (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-        (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
+        (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame s))
         (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) :=
-    SA.anc_ghost (fun B hB => hB.1.1) _ hat
+    SA.anc_ghost (fun B hB => (SA.voteDomain_subset_tree hB.1)) _ hat
   have hht := mem_of_anc_left hah hat
   -- the vote's head extends `D` (S2, or genesis)
   have hDh : Anc (tr.HonestBlocks H) D (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-      (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
+      (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame s))
       (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
     rcases hDkind with hg | hO
     · exact honest_genesis_root_anc hrun hU (hΦpU hDt) hg (hΦU hht)
@@ -1472,7 +1472,7 @@ theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp
         ∃ X, (X = P ∨ (ℓp.frame.Anc D X ∧ ℓp.frame.Anc X d.head)) ∧
           ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X ∧
           ℓy.frame.Anc X (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-            (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
+            (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame s))
             (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
   let b := sp.ts s + sp.Δ
   have hib : tr.time i ≤ b := by dsimp [b]; rw [hti]; linarith [sp.toParams.hΔ]

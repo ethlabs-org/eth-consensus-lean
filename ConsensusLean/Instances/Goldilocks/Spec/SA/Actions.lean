@@ -13,12 +13,14 @@ fgsa-spec.tex §"Node actions" (Figures "Goldilocks: the vote and the vote recei
   voted in slot `s` votes at the first time in `[t_s, t_s + Δ]` at which it holds a ready
   proposal of slot `s > 0`, else at `t_s + Δ`. The vote is one sequence: the unlocking against
   the slot-`(s−1)` votes of the merged view (for `s > 0`); the walk of the viable tree of the
-  voter block tree with the merged view; `voted_slot ← s`; the own vote, broadcast and processed
+  vote domain (`voteDomain`: the voter block tree, or the whole tree when the voter block tree
+  has no viable block in the current frame) with the merged view; `voted_slot ← s`; the own
+  vote, broadcast and processed
   as a receipt by `ac_on_message`. That re-entrant `ac_on_message` admits the own vote and runs
   the optimistic check; its own `try_vote` returns at once, since `voted_slot = s` was written
   before (so it is not unfolded here). The emission records the vote, the state at its read
   point (after the unlocking and `voted_slot ← s`, before the own admission), and its duty head
-  (the walk from the anchor over the viable tree of the voter block tree).
+  (the walk from the anchor over the viable tree of the vote domain).
 * `ac_on_message`: admission, the optimistic check, `try_vote`.
 * `ac_on_block`: the stamp of the block, admission of its votes in order, the optimistic check,
   `try_vote`.
@@ -55,7 +57,7 @@ noncomputable def tryVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FG
   else
     let V := mergedVoteView sp A Φ s
     let A₁ := if 0 < s then { A with locks := unlock sp A.locks Φ t ((s : Int) - 1) V } else A
-    let dom := voterBlockTree sp A₁ Φ s
+    let dom := voteDomain sp A₁ Φ s
     let H := getHead sp A₁ Φ t (Φ.viableTree dom) V ((s : Int) - 1)
     let A₂ := { A₁ with votedSlot := s }
     let vote : Vote sp.n := ⟨self, s, H.root⟩

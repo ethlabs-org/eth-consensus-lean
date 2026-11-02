@@ -157,7 +157,7 @@ theorem vote_extends_of_counted_batch (hrun : SA.ACRun proposer tr H U)
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := SA.voterBlockTree_anc hr hy hc
+  have hdomA := SA.voteDomain_anc hr hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -201,13 +201,15 @@ theorem vote_extends_of_counted_batch (hrun : SA.ACRun proposer tr H U)
       (SA.honest_not_equivocator hrun hy hc (hvw ▸ hw))
     exact hvw ▸ this
   have hcore := SA.anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
-    (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => hB.1) hdomA hviab
+    (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB =>
+        SA.voteDomain_subset_tree hB) hdomA hviab.voteDomain
     hlocks fun X' Cx hCx hp hCxC =>
-      SA.isBest_of_majority hΦ (SA.merged_support_subset hr hy hc (s + 1)) (fun B hB => hB.1.1)
+      SA.isBest_of_majority hΦ (SA.merged_support_subset hr hy hc (s + 1)) (fun B hB =>
+          (SA.voteDomain_subset_tree hB.1))
         hsupp hW hcount hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = SA.getHead sp e.readPoint ℓ.frame (tr.time i)
-      (ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+      (ℓ.frame.viableTree (SA.voteDomain sp e.readPoint ℓ.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2

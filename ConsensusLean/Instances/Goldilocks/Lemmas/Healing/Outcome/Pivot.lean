@@ -2883,21 +2883,21 @@ theorem proposal_start_supported_of_source_votes
       SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
     Anc (tr.HonestBlocks H) d.start
       (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-        (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
+        (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
         (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hP.1 hci
   obtain ⟨hΨ, hΨU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hhead := SA.getHead_mem hΨ
-    (T := ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
-    (fun _ h => h.1.1) e.readPoint (tr.time j)
+    (T := ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
+    (fun _ h => (SA.voteDomain_subset_tree h.1)) e.readPoint (tr.time j)
     (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)
   have hheadr := (SA.castAt_spec hr hy hcy).2.2.2
   rw [hes] at hheadr
   have extend : ∀ B, SA.VoteExtends (tr.HonestBlocks H) e.msg B →
       Anc (tr.HonestBlocks H) B
         (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-          (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
+          (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
           (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
     rintro B ⟨W, hW, hWr, hBW⟩
     obtain rfl := hr.coherent.1 hW (hΨU hhead) (hWr.trans hheadr)
@@ -2967,7 +2967,7 @@ include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
 theorem proposal_start_supported :
     Anc (tr.HonestBlocks H) d.start
       (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-        (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
+        (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
         (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
   apply proposal_start_supported_of_source_votes hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE
   intro r l B hri horig hclean hlu
@@ -2991,21 +2991,21 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
     (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocks H) d.start
       (SA.getHead sp e.readPoint elly.frame (tr.time j)
-        (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u))
+        (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
         (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hhead := SA.getHead_mem hPsi
-    (T := elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u))
-    (fun _ h => h.1.1) e.readPoint (tr.time j)
+    (T := elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
+    (fun _ h => (SA.voteDomain_subset_tree h.1)) e.readPoint (tr.time j)
     (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)
   have hheadr := (SA.castAt_spec hr hy hcy).2.2.2
   rw [hes] at hheadr
   have extend : ∀ B, SA.VoteExtends (tr.HonestBlocks H) e.msg B →
       Anc (tr.HonestBlocks H) B
         (SA.getHead sp e.readPoint elly.frame (tr.time j)
-          (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u))
+          (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
           (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
     rintro B ⟨W, hW, hWr, hBW⟩
     obtain rfl := hr.coherent.1 hW (hPsiU hhead) (hWr.trans hheadr)
@@ -3718,7 +3718,7 @@ theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun
         ∃ X, (X = P ∨ (ℓp.frame.Anc D X ∧ ℓp.frame.Anc X d.head)) ∧
           ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X ∧
           ℓy.frame.Anc X (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-            (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
+            (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
             (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
   have hrun := hp.run
   have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl
@@ -3756,13 +3756,13 @@ theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun
   have hat := anchor_tree hΦ e.readPoint (tr.time j)
   have hah : ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j))
       (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-        (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
+        (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
         (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) :=
-    SA.anc_ghost (fun B hB => hB.1.1) _ hat
+    SA.anc_ghost (fun B hB => (SA.voteDomain_subset_tree hB.1)) _ hat
   have hht := mem_of_anc_left hah hat
   -- The vote's head extends `D`: direct start support, or HR.4 (R3).
   have hDh : Anc (tr.HonestBlocks H) D (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-      (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame u))
+      (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
       (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
     rcases hDk with rfl | ⟨x, i', j', ho, hti'⟩
     · exact proposal_start_supported hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE
@@ -3801,7 +3801,7 @@ theorem ResetPremisesUpTo.reset_pivot {b : Time}
         ∃ X, (X = P ∨ (ellp.frame.Anc D X ∧ ellp.frame.Anc X d.head)) ∧
           elly.frame.Anc (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) X ∧
           elly.frame.Anc X (SA.getHead sp e.readPoint elly.frame (tr.time j)
-            (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u))
+            (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
             (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hU := hr.coherent
@@ -3841,12 +3841,12 @@ theorem ResetPremisesUpTo.reset_pivot {b : Time}
   have hat := anchor_tree hPsi e.readPoint (tr.time j)
   have hah : elly.frame.Anc (SA.getAnchor sp e.readPoint elly.frame (tr.time j))
       (SA.getHead sp e.readPoint elly.frame (tr.time j)
-        (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u))
+        (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
         (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) :=
-    SA.anc_ghost (fun B hB => hB.1.1) _ hat
+    SA.anc_ghost (fun B hB => (SA.voteDomain_subset_tree hB.1)) _ hat
   have hht := mem_of_anc_left hah hat
   have hDh : Anc (tr.HonestBlocks H) D (SA.getHead sp e.readPoint elly.frame (tr.time j)
-      (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u))
+      (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
       (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
     rcases hDk with rfl | ⟨x, r, l, ho, hrt⟩
     · exact hp.proposal_start_supported hc hpH hR hci hcall hd hti hib hy hcy hes hjb

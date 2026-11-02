@@ -275,6 +275,10 @@ theorem honest_votes_eq_proposal_before {dg : Digest (List (FG.Att sp.n)) (Paylo
   have hΦyU := (SA.frameIn_of_callAt hr hy hcy).2
   have hΦpU := (SA.frameIn_of_callAt hr hp hc).2
   obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j ℓy e hcast hjb hes hIH
+  -- the voter block tree has a viable block: `P` itself (`stop_at_parent_before`)
+  have hne : (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s)).Nonempty :=
+    ⟨P, hstep₀.1.1⟩
+  rw [SA.viableTree_voteDomain_eq_of_viable hne] at hXend
   set W₂ := SA.ghost sp (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
     (SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1))
     (SA.goldfishEligible sp ℓy.frame (tr.time j) (SA.mergedVoteView sp e.readPoint ℓy.frame s)
@@ -305,7 +309,7 @@ theorem honest_votes_eq_proposal_before {dg : Digest (List (FG.Att sp.n)) (Paylo
       exact hsuf _ (hDX.trans hXm) hQm
         ((haX.mono hΦyU).trans (hXm.mono hΦpU)) hne
   obtain ⟨fX, hfX⟩ := hXP
-  have hspec := (SA.castAt_spec hr hy hcast).2.2.2
+  have hspec := SA.castAt_head_of_viable hr hy hcast (hes ▸ hne)
   rw [hes] at hspec
   rw [hspec]
   congr 1

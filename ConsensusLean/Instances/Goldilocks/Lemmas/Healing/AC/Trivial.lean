@@ -471,9 +471,9 @@ theorem trivial_viable (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} (hy
   -- the head of `z`'s vote is in its tree
   obtain ⟨-, hslz, -, hhead⟩ := castAt_spec hr hz ⟨hcz, hez⟩
   have hHdt : Hd ∈ ℓz.frame.tree := by
-    have hm := getHead_mem' hΦz (fun _ hX => hX.1.1) e'.readPoint (tr.time j)
+    have hm := getHead_mem' hΦz (fun _ hX => (voteDomain_subset_tree hX.1)) e'.readPoint (tr.time j)
       (mergedVoteView sp e'.readPoint ℓz.frame e'.msg.slot) ((e'.msg.slot : Int) - 1)
-      (T := ℓz.frame.viableTree (voterBlockTree sp e'.readPoint ℓz.frame e'.msg.slot))
+      (T := ℓz.frame.viableTree (voteDomain sp e'.readPoint ℓz.frame e'.msg.slot))
     rwa [hU.1 hHdU (hΦzU hm) (hHdr.trans hhead)]
   -- `B` is genesis, or `z` accepted it by its vote
   have hgen : ∀ X, Anc U X ℓz.frame.F → X = ℓz.frame.F := by
@@ -647,9 +647,9 @@ theorem trivial_carry_votes (hS : StandaloneRun tr H U proposer g) {m : Nat}
   rw [← hsl, hvs] at htj
   have htj' : sp.ts m ≤ tr.time j :=
     (ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by rw [← hsl, hvs])
-  have hG := getHead_mem' hΦ (fun _ hX => hX.1.1) e'.readPoint (tr.time j)
+  have hG := getHead_mem' hΦ (fun _ hX => (voteDomain_subset_tree hX.1)) e'.readPoint (tr.time j)
     (mergedVoteView sp e'.readPoint ℓ.frame e'.msg.slot) ((e'.msg.slot : Int) - 1)
-    (T := ℓ.frame.viableTree (voterBlockTree sp e'.readPoint ℓ.frame e'.msg.slot))
+    (T := ℓ.frame.viableTree (voteDomain sp e'.readPoint ℓ.frame e'.msg.slot))
   exact ⟨hvs, x, hx, j, ⟨ℓ, hc, Or.inl ⟨e', he, rfl⟩⟩, htj', by linarith, _, hΦU hG, hhead.symm,
     Or.inr ⟨j, ℓ, hc, by linarith, hG⟩⟩
 

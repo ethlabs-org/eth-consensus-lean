@@ -8,9 +8,10 @@ public section
 
 Every emission of an honest node's call is the vote of `try_vote` (a restart's replay sends
 nothing, A0.7): it is the node's own vote of the slot of the call's time, cast while joined, and
-its head is the walk from the anchor over the viable tree of the voter block tree with the
-merged view against the previous slot, all read at the emission's read point (the unlocking and
-`voted_slot` change nothing the walk reads but the locks). -/
+its head is the walk from the anchor over the viable tree of the vote domain (the voter block
+tree, or the whole tree when the voter block tree has no viable block) with the merged view
+against the previous slot, all read at the emission's read point (the unlocking and `voted_slot`
+change nothing the walk reads but the locks). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -21,7 +22,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 private def VoteSpec (x : Fin sp.n) (Φ : Frm sp.n FGP) (t : Time) (e : Em sp FGP) : Prop :=
   e.msg.val = x ∧ e.msg.slot = sp.slot t ∧ joined sp e.readPoint t ∧
     e.msg.head = (getHead sp e.readPoint Φ t
-      (Φ.viableTree (voterBlockTree sp e.readPoint Φ e.msg.slot))
+      (Φ.viableTree (voteDomain sp e.readPoint Φ e.msg.slot))
       (mergedVoteView sp e.readPoint Φ e.msg.slot) ((e.msg.slot : Int) - 1)).root
 
 /-- Every emission of a call is a vote of `VoteSpec`, and the call leaves the state of the
@@ -118,7 +119,7 @@ theorem castAt_spec (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin s
     (hc : CastAt tr y i ℓ e) :
     e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time i) ∧ joined sp e.readPoint (tr.time i) ∧
       e.msg.head = (getHead sp e.readPoint ℓ.frame (tr.time i)
-        (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame e.msg.slot))
+        (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame e.msg.slot))
         (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)).root :=
   (cast_emits hr hy hc).1
 
@@ -141,6 +142,33 @@ theorem voterBlockTree_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y 
   rw [(cast_emits hr hy hc).2, optimistic_blockStamp, admitVote_blockStamp] at hle
   exact ⟨mem_of_anc hX hB.1, hB.2.imp hle.trans_lt
     fun ⟨P, hP, hPs, hBP⟩ => ⟨P, hP, hPs, hX.trans hBP⟩⟩
+
+/-- **An honest vote whose voter block tree has a viable block**: its head is the walk over the
+viable voter block tree (the vote domain is the voter block tree, `voteDomain_eq_of_viable`). -/
+theorem castAt_head_of_viable (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e)
+    (hne : (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)).Nonempty) :
+    e.msg.head = (getHead sp e.readPoint ℓ.frame (tr.time i)
+      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame e.msg.slot))
+      (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)).root := by
+  rw [← viableTree_voteDomain_eq_of_viable hne]
+  exact (castAt_spec hr hy hc).2.2.2
+
+/-- Viability at a vote in the voter block tree gives viability in the vote domain. -/
+theorem ViableAtVote.voteDomain {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} {σ : Nat}
+    {B : Blk sp.n FGP} (h : ViableAtVote ℓ e σ B) :
+    B ∈ ℓ.frame.viableTree (SA.voteDomain sp e.readPoint ℓ.frame σ) ∨
+      ℓ.frame.Anc B ℓ.frame.fcRoot :=
+  h.imp_left fun h => viableTree_voterBlockTree_subset_voteDomain h
+
+/-- The vote domain of an honest vote is closed under ancestors in the frame. -/
+theorem voteDomain_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) :
+    ∀ B ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
+      X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot :=
+  voteDomain_anc_closed (voterBlockTree_anc hr hy hc)
 
 /-- The call that casts an honest vote leaves the state of the vote's own receipt: the read
 point with the own vote admitted and the optimistic check run. -/

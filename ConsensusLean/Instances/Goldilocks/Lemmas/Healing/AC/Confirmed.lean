@@ -164,9 +164,9 @@ theorem late_vote_accepted_of_frame_before {b : Time} (hS : HealthyBaseUpTo tr H
     rwa [← hslx, hes] at hh
   obtain ⟨hPhix, hPhixU⟩ := frameIn_of_callAt hr hx hcx
   obtain ⟨B, hB, hBr⟩ : ∃ B ∈ ellx.frame.tree, B.root = e.msg.head :=
-    ⟨_, getHead_mem' hPhix (fun _ h => h.1.1) e.readPoint (tr.time i)
+    ⟨_, getHead_mem' hPhix (fun _ h => (voteDomain_subset_tree h.1)) e.readPoint (tr.time i)
       (mergedVoteView sp e.readPoint ellx.frame e.msg.slot) ((e.msg.slot : Int) - 1)
-      (T := ellx.frame.viableTree (voterBlockTree sp e.readPoint ellx.frame e.msg.slot)),
+      (T := ellx.frame.viableTree (voteDomain sp e.readPoint ellx.frame e.msg.slot)),
       hhead.symm⟩
   have hBs : B.slot ≤ s := by
     have hh := frame_slot_le sp hr hx hcx B hB
@@ -332,9 +332,9 @@ theorem late_vote_held_of_frame (hS : HealthyBase tr H U proposer g) {y : Fin sp
   -- the head: in `x`'s frame, accepted by `y` before `t_s + 2Δ`
   obtain ⟨hΦx, hΦxU⟩ := frameIn_of_callAt hr hx hcx
   obtain ⟨Hx, hHx, hHxr⟩ : ∃ Hx ∈ ℓx.frame.tree, Hx.root = e.msg.head :=
-    ⟨_, getHead_mem' hΦx (fun _ hX => hX.1.1) e.readPoint (tr.time i)
+    ⟨_, getHead_mem' hΦx (fun _ hX => (voteDomain_subset_tree hX.1)) e.readPoint (tr.time i)
       (mergedVoteView sp e.readPoint ℓx.frame e.msg.slot) ((e.msg.slot : Int) - 1)
-      (T := ℓx.frame.viableTree (voterBlockTree sp e.readPoint ℓx.frame e.msg.slot)),
+      (T := ℓx.frame.viableTree (voteDomain sp e.readPoint ℓx.frame e.msg.slot)),
       hhead.symm⟩
   have hHxs : Hx.slot ≤ s := by
     have := frame_slot_le sp hr hx hcx Hx hHx

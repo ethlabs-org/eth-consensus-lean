@@ -552,7 +552,7 @@ theorem voter_passes_proposer_root
         (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
         (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) ∈ ℓy.frame.tree :=
       SA.getHead_mem hΦ (fun _ hB => hB.1.1) _ _ _ _
-    have hhead := (SA.castAt_spec hr hy hcy).2.2.2
+    have hhead := SA.castAt_head_of_viable hr hy hcy (hes ▸ ⟨_, hRv⟩)
     rw [hes] at hhead
     exact ⟨_, hΦU hGt, hhead.symm, Anc.mono hΦU hRG⟩
   -- the child towards `R` is the only eligible viable child

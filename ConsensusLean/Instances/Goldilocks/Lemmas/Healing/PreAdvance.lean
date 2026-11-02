@@ -575,7 +575,7 @@ theorem prior_vote_call_before_freeze
     linarith
 
 /-- Writer-local OW at a vote, with an explicit earlier action cut for H-wit.
-The head is viable in its walked domain, the common kind-J root, or the anchor
+The head is viable in its walked domain (the vote domain), the common kind-J root, or the anchor
 of a current-slot optimistic lock. No viability of a counted vote head is assumed. -/
 theorem FrameWindow.vote_head_classification {s₀ floor : Nat} {hi : Time}
     {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -592,7 +592,7 @@ theorem FrameWindow.vote_head_classification {s₀ floor : Nat} {hi : Time}
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hgf : gbar g < SA.freeze sp e.msg.slot) :
     ∃ Hd ∈ ell.frame.tree, Hd.root = e.msg.head ∧
-      ((Hd ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot ∧
+      ((Hd ∈ SA.voteDomain sp e.readPoint ell.frame e.msg.slot ∧
         Hd ∈ ell.frame.viableHeads) ∨
       (kindJ ∧ Hd = J) ∨
       (Hd = SA.getAnchor sp e.readPoint ell.frame (tr.time i) ∧
@@ -605,15 +605,15 @@ theorem FrameWindow.vote_head_classification {s₀ floor : Nat} {hi : Time}
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hPhi := SA.frameIn_of_callAt hr hy hc.1
   let A := SA.getAnchor sp e.readPoint ell.frame (tr.time i)
-  let S := SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot
+  let S := SA.voteDomain sp e.readPoint ell.frame e.msg.slot
   let Hd := SA.getHead sp e.readPoint ell.frame (tr.time i) (ell.frame.viableTree S)
     (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)
   obtain ⟨hAt, hanc⟩ := SA.anc_getAnchor hPhi.1 (SA.castAt_liveLockBlocks_chain hr hy hc _)
   have hroot := hanc _ (Or.inr rfl)
-  have hwalk := SA.getHead_viable_dichotomy hPhi.1 (fun _ h => h.1)
-    (SA.voterBlockTree_anc hr hy hc) e.readPoint (tr.time i)
+  have hwalk := SA.getHead_viable_dichotomy hPhi.1 (fun _ h => SA.voteDomain_subset_tree h)
+    (SA.voteDomain_anc hr hy hc) e.readPoint (tr.time i)
     (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1) hAt hroot
-  refine ⟨Hd, SA.getHead_mem hPhi.1 (fun _ h => h.1.1) _ _ _ _,
+  refine ⟨Hd, SA.getHead_mem hPhi.1 (fun _ h => SA.voteDomain_subset_tree h.1) _ _ _ _,
     (SA.castAt_spec hr hy hc).2.2.2.symm, ?_⟩
   by_cases hd : ∃ Q ∈ S, Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc A Q
   · exact Or.inl (hwalk.1 hd)
@@ -631,7 +631,7 @@ theorem FrameWindow.vote_head_classification {s₀ floor : Nat} {hi : Time}
     · exfalso
       obtain ⟨Q, hQ, hv, hrQ⟩ :=
         hframe.root_witness_of_earlier_call hrun hnc hf hk hnr hy hai ha hc halo hihi hat hgf
-      exact hd ⟨Q, hQ, hv, heq ▸ hrQ⟩
+      exact hd ⟨Q, SA.voterBlockTree_subset_voteDomain hQ, hv, heq ▸ hrQ⟩
   have hAm : A ∈ SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
     unfold A SA.getAnchor
     cases hh : SA.deepest ell.frame
@@ -650,7 +650,7 @@ theorem FrameWindow.vote_head_classification {s₀ floor : Nat} {hi : Time}
   · exfalso
     obtain ⟨Q, hQ, hv, hAQ⟩ := hframe.live_old_lock_witness hrun hnc hf hnr hy hc hihi
       hwarm hpos hgf hl hold hA hlr.symm hstrict
-    exact hd ⟨Q, hQ, hv, hAQ⟩
+    exact hd ⟨Q, SA.voterBlockTree_subset_voteDomain hQ, hv, hAQ⟩
   obtain ⟨l₀, hl₀, B, hB, hBr, -, hleq⟩ := hl
   have hsl : l.slot = l₀.slot := by simpa only using congrArg SA.Lock.slot hleq
   obtain ⟨hs, c, hci, D, CV, ho, ht, L, hL, hLr, hLD⟩ :=
@@ -681,7 +681,7 @@ theorem FrameWindow.vote_head_classification_of_service {s₀ floor : Nat} {hi :
     (hmb : sp.ts ((e.msg.slot - 1 : Nat) : Int) + sp.Δ ≤ b)
     (hgf : gbar g < SA.freeze sp e.msg.slot) :
     ∃ Hd ∈ ell.frame.tree, Hd.root = e.msg.head ∧
-      ((Hd ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot ∧
+      ((Hd ∈ SA.voteDomain sp e.readPoint ell.frame e.msg.slot ∧
         Hd ∈ ell.frame.viableHeads) ∨
       (kindJ ∧ Hd = J) ∨
       (Hd = SA.getAnchor sp e.readPoint ell.frame (tr.time i) ∧

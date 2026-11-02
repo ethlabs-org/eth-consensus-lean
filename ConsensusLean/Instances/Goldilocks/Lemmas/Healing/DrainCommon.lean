@@ -245,7 +245,7 @@ private theorem ghost_mem {FGP : Type} {S T : Set (SA.Blk sp.n FGP)} (hTS : T �
 
 /-- **An honest vote's head is in the full viable tree** when `fc_root` is
 (`hs234-exact-interface.md` §2.1): the anchor is in the full viable tree (`getAnchor_viable`), and
-every step of the walk is in the frozen viable tree, a subset of the full one. -/
+every step of the walk is in the viable vote domain, a subset of the full one. -/
 private theorem head_viable {FGP : Type} {ro' : ReplayOrder sp FGP} {U : Set (SA.Blk sp.n FGP)}
     {T : SA.SATrace sp FGP ro'} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro') H U T)
     {z : Fin sp.n} (hz : z ∈ H) {kz : Nat} {ℓz : ACLabel (SA.goldilocksSA sp FGP ro')}
@@ -255,10 +255,9 @@ private theorem head_viable {FGP : Type} {ro' : ReplayOrder sp FGP} {U : Set (SA
   have hΦ := (SA.frameIn_of_callAt hr hz hc.1).1
   obtain ⟨-, -, -, hhead⟩ := SA.castAt_spec hr hz hc
   refine ⟨_, ?_, hhead.symm⟩
-  have hsub : ℓz.frame.viableTree (SA.voterBlockTree sp e'.readPoint ℓz.frame e'.msg.slot) ⊆
-      ℓz.frame.viableTree ℓz.frame.tree := by
-    rintro B ⟨hBS, hfB, W, hWS, hWv, hBW⟩
-    exact ⟨hBS.1, hfB, W, hWS.1, hWv, hBW⟩
+  have hsub : ℓz.frame.viableTree (SA.voteDomain sp e'.readPoint ℓz.frame e'.msg.slot) ⊆
+      ℓz.frame.viableTree ℓz.frame.tree :=
+    SA.viableTree_voteDomain_subset_tree
   exact ghost_mem hsub _ (getAnchor_viable hΦ e'.readPoint (T.time kz) hfc)
 
 /-- **`fc_root` is in the full viable tree** at an honest call in the settled phase: the
@@ -364,7 +363,7 @@ private theorem mem_voterBlockTree_of_accept {FGP : Type} {ro' : ReplayOrder sp 
 and let the phase hold from `i₀` through a cut `k` after `t_j + Δ`. Then `i₀ ≤ kz < k`, the vote
 is cast by `t_j + Δ`, and `B` is below a block `W` effectively allowed at the vote (its head is in
 its voter's full viable tree: `fc_root` is there, by the phase's frontier block,
-`getAnchor_viable`, and the walk steps in the frozen viable tree; so it is below a viable head,
+`getAnchor_viable`, and the walk steps in the viable vote domain; so it is below a viable head,
 allowed by `viableHeads_iff`) that is genesis or that the voter accepted before `t_j + 2Δ`. -/
 theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}

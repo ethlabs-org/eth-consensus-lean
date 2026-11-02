@@ -15,6 +15,13 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-11-02, Francesco ("1. Yes 2. we should edit the spec in consensus-lean"): the full-tree
+  fallback for an honest vote's head. `tryVote` walks the viable tree of `SA.voteDomain`: the
+  voter block tree when its viable tree in the current frame is nonempty, else the whole frame
+  tree. `voterBlockTree` keeps its frozen meaning, so `ViableAtVote` and every trusted statement
+  are unchanged in meaning (coordinator decision after the T-6daee397 fidelity read, smallest
+  trusted diff). Paper: workbench `outage_restoration_s5.md` §11 (f7f7dbb), §11.5 (3828c33);
+  gate review e178adef; fixture e90575ed; audit a54316c.
 - 2026-11-02, Francesco: the generic outage is slow arming only, with no absolute-majority
   participation premise. `System.Outage` drops `ReadyOfAll cover` and gains, after its existing
   conjuncts, `NoSleepOn a z` (no honest validator falls asleep in `[a, z]`, waking allowed;

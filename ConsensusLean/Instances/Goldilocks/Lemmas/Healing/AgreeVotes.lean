@@ -183,7 +183,8 @@ private theorem walk_passes_start
       (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
       (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) ∈ ℓy.frame.tree :=
     SA.getHead_mem hΦ (fun _ hB => hB.1.1) _ _ _ _
-  have hhead := (SA.castAt_spec hr' hy hcy).2.2.2
+  have hhead := SA.castAt_head_of_viable hr' hy hcy
+    (hes ▸ ⟨P, proposal_frozen_viable hS hy hcy hes⟩)
   rw [hes] at hhead
   obtain rfl := hU.1 hHd (hΦU hGt) (hHdr.trans hhead)
   -- `d.start ⪯ P`, so the anchor is below `d.start`
@@ -522,7 +523,8 @@ theorem votes_eq_of_pass
         exact SA.anc_ghost hTp _ hmem
       exact hsuf _ (hDX.trans hXm) hQm hne ((haX.mono hΦyU).trans (hXm.mono hΦpU))
   obtain ⟨fX, hfX⟩ := hXP
-  have hspec := (SA.castAt_spec hr hy hcast).2.2.2
+  have hspec := SA.castAt_head_of_viable hr hy hcast
+    (hes ▸ ⟨P, proposal_frozen_viable hS hy hcast hes⟩)
   rw [hes] at hspec
   rw [hspec]
   congr 1

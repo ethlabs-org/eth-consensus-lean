@@ -261,15 +261,15 @@ private theorem update_blockStamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Ti
   · rfl
   · split_ifs <;> rfl
 
-/-- The duty head of a vote that `try_vote` emits: the walk over the viable voter block tree from
+/-- The duty head of a vote that `try_vote` emits: the walk over the viable vote domain from
 the anchor of a state with the lock invariant, whose block stamps are those of the state
 `try_vote` leaves. -/
 private def EmitOK (U : Set (Blk sp.n FGP)) (Φ : Frm sp.n FGP) (t : Time) (post : SAState sp.n)
     (es : List (Em sp FGP)) : Prop :=
   ∀ e ∈ es, ∀ d, e.head = some d → ∃ (A₁ : SAState sp.n) (V : View sp.n) (σ : Int),
     LockInv U A₁ Φ ∧ A₁.blockStamp = post.blockStamp ∧
-    d = ⟨getHead sp A₁ Φ t (Φ.viableTree (voterBlockTree sp A₁ Φ (sp.slot t))) V σ,
-      getAnchor sp A₁ Φ t, voterBlockTree sp A₁ Φ (sp.slot t)⟩
+    d = ⟨getHead sp A₁ Φ t (Φ.viableTree (voteDomain sp A₁ Φ (sp.slot t))) V σ,
+      getAnchor sp A₁ Φ t, voteDomain sp A₁ Φ (sp.slot t)⟩
 
 include hU hΦ hΦU
 
@@ -293,8 +293,8 @@ theorem LockInv.step_emits {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : Loc
     ∀ e ∈ ((goldilocksSA sp FGP ro).step x A Φ t c).2, ∀ d, e.head = some d →
       ∃ (A₁ : SAState sp.n) (V : View sp.n) (σ : Int), LockInv U A₁ Φ ∧
         A₁.blockStamp = ((goldilocksSA sp FGP ro).step x A Φ t c).1.blockStamp ∧
-        d = ⟨getHead sp A₁ Φ t (Φ.viableTree (voterBlockTree sp A₁ Φ (sp.slot t))) V σ,
-          getAnchor sp A₁ Φ t, voterBlockTree sp A₁ Φ (sp.slot t)⟩ := by
+        d = ⟨getHead sp A₁ Φ t (Φ.viableTree (voteDomain sp A₁ Φ (sp.slot t))) V σ,
+          getAnchor sp A₁ Φ t, voteDomain sp A₁ Φ (sp.slot t)⟩ := by
   cases c with
   | tick =>
     change EmitOK U Φ t (acOnTick sp x A Φ t).1 (acOnTick sp x A Φ t).2

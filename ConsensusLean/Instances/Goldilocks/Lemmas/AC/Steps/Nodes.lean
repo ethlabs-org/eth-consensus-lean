@@ -40,7 +40,7 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
       exact h.1
   have hσ : ((m + 1 : Nat) : Int) - 1 = (m : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voterBlockTree_anc hr hy hc
+  have hdomA := voteDomain_anc hr hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -98,7 +98,8 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
     omega
   have hf2 : 2 * Hᶜ.ncard < sp.n := by omega
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
-    (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) (m : Int) (fun B hB => hB.1) hdomA hviab
+    (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) (m : Int) (fun B hB => voteDomain_subset_tree
+        hB) hdomA hviab.voteDomain
     (locks_compatible hrun hy hc hs hBt (S := SX) (fun w hw => by
         obtain ⟨-, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
@@ -107,11 +108,12 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
           obtain ⟨hvs, j, -, e', hvote, rfl⟩ := hpool v hv hvH
           exact hall _ hvH j e' hvote hvs)
     fun X' Cx hCx hp hCxC =>
-      isBest_of_majority hΦ (merged_support_subset hr hy hc (m + 1)) (fun B hB => hB.1.1)
+      isBest_of_majority hΦ (merged_support_subset hr hy hc (m + 1)) (fun B hB =>
+          voteDomain_subset_tree hB.1)
         hsupp hvoters h3 hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)
-      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (m + 1)))
+      (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (m + 1)))
       (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) (m : Int)
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
@@ -135,10 +137,10 @@ theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     (hcarry : CarryAt tr U y i e s
       {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = s})
     {X C : Blk sp.n FGP}
-    (hC : C ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+    (hC : C ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
     (hp : C.parent = some X.root) (hCB : ℓ.frame.Anc C B) :
     IsBest sp (goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s)
-      {Q | Q ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∧
+      {Q | Q ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ∧
         Q.parent = some X.root ∧
         goldfishEligible sp ℓ.frame (tr.time i) (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s Q}
       C := by
@@ -165,7 +167,8 @@ theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
   have hout : (voters V.votes \ H).ncard ≤ Hᶜ.ncard :=
     Set.ncard_le_ncard fun _ h => h.2
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ H).ncard < H.ncard := by omega
-  exact isBest_of_cover hΦ.1 (merged_support_subset hr hy hc (s + 1)) (fun _ h => h.1.1)
+  exact isBest_of_cover hΦ.1 (merged_support_subset hr hy hc (s + 1)) (fun _ h =>
+      voteDomain_subset_tree h.1)
     hcover h3 hC hp hCB
 
 /-- A shallower voter walk reaches a lock anchor supported by all actual
@@ -180,16 +183,16 @@ theorem honest_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     (hex : ∀ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = s)
     (hcarry : CarryAt tr U y i e s
       {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = s})
-    (hB : B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+    (hB : B ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
     (haB : ℓ.frame.Anc (getAnchor sp e.readPoint ℓ.frame (tr.time i)) B) :
     ℓ.frame.Anc B (getHead sp e.readPoint ℓ.frame (tr.time i)
-      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+      (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
       (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s) := by
   have hΦ := frameIn_of_callAt hrun.localRun hy hc.1
-  have hT : ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ⊆ ℓ.frame.tree :=
-    fun _ h => h.1.1
+  have hT : ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ⊆ ℓ.frame.tree :=
+    fun _ h => voteDomain_subset_tree h.1
   have hBt := hT hB
-  have hdomA := voterBlockTree_anc hrun.localRun hy hc
+  have hdomA := voteDomain_anc hrun.localRun hy hc
   rw [hs] at hdomA
   unfold getHead
   refine anc_ghost_of_best hΦ.1.coherent hT (hΦ.1.finite.subset hT) hBt _ haB
@@ -198,7 +201,7 @@ theorem honest_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
   obtain rfl | ⟨C, eC, hCB⟩ := Relation.ReflTransGen.cases_head_iff.1 hXB
   · exact (hne rfl).elim
   obtain ⟨_, _, Y, hY, hvY, hBY⟩ := hB
-  have hCv : C ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)) :=
+  have hCv : C ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) :=
     ⟨hdomA Y hY C (hCB.trans hBY),
       ((fcRoot_anc_getAnchor hΦ.1 e.readPoint (tr.time i)).trans haX).tail eC,
       Y, hY, hvY, hCB.trans hBY⟩
@@ -216,10 +219,10 @@ theorem optimistic_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     (hf : 2 * Hᶜ.ncard < sp.n) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = s + 1) (hcarry : CarryAt tr U y i e s CV) (hBt : B ∈ ℓ.frame.tree)
     {X C : Blk sp.n FGP}
-    (hC : C ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+    (hC : C ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
     (hp : C.parent = some X.root) (hCB : ℓ.frame.Anc C B) :
     IsBest sp (goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s)
-      {Q | Q ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∧
+      {Q | Q ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ∧
         Q.parent = some X.root ∧
         goldfishEligible sp ℓ.frame (tr.time i) (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s Q}
       C := by
@@ -248,7 +251,8 @@ theorem optimistic_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     Set.ncard_le_ncard fun _ h => h.2
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard := by
     omega
-  exact isBest_of_cover hΦ.1 (merged_support_subset hr hy hc (s + 1)) (fun _ h => h.1.1)
+  exact isBest_of_cover hΦ.1 (merged_support_subset hr hy hc (s + 1)) (fun _ h =>
+      voteDomain_subset_tree h.1)
     hcover h3 hC hp hCB
 
 /-- CV dominance carries a shallower walk up to an optimistic anchor.
@@ -262,16 +266,16 @@ theorem optimistic_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
     (hf : 2 * Hᶜ.ncard < sp.n) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = s + 1) (hcarry : CarryAt tr U y i e s CV)
-    (hB : B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+    (hB : B ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
     (haB : ℓ.frame.Anc (getAnchor sp e.readPoint ℓ.frame (tr.time i)) B) :
     ℓ.frame.Anc B (getHead sp e.readPoint ℓ.frame (tr.time i)
-      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+      (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
       (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s) := by
   have hΦ := frameIn_of_callAt hrun.localRun hy hc.1
-  have hT : ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ⊆ ℓ.frame.tree :=
-    fun _ h => h.1.1
+  have hT : ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ⊆ ℓ.frame.tree :=
+    fun _ h => voteDomain_subset_tree h.1
   have hBt := hT hB
-  have hdomA := voterBlockTree_anc hrun.localRun hy hc
+  have hdomA := voteDomain_anc hrun.localRun hy hc
   rw [hs] at hdomA
   unfold getHead
   refine anc_ghost_of_best hΦ.1.coherent hT (hΦ.1.finite.subset hT) (hT hB) _ haB
@@ -280,7 +284,7 @@ theorem optimistic_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
   obtain rfl | ⟨C, eC, hCB⟩ := Relation.ReflTransGen.cases_head_iff.1 hXB
   · exact (hne rfl).elim
   obtain ⟨_, _, Y, hY, hvY, hBY⟩ := hB
-  have hCv : C ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)) :=
+  have hCv : C ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) :=
     ⟨hdomA Y hY C (hCB.trans hBY),
       ((fcRoot_anc_getAnchor hΦ.1 e.readPoint (tr.time i)).trans haX).tail eC,
       Y, hY, hvY, hCB.trans hBY⟩
@@ -311,7 +315,7 @@ theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : S
       exact h.1.2
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voterBlockTree_anc hr hy hc
+  have hdomA := voteDomain_anc hr hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -361,19 +365,20 @@ theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : S
     obtain rfl : R₂ = R₁ := hU.1 (hΦ'U hR₂) (hΦxU hR₁) (hR₂r.trans hR₁r.symm)
     exact anc_total hU (Anc.mono hΦ'U hDR₂) (hBD.trans (Anc.mono hΦxU hBR₁))
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard := by omega
-  have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i) V (s : Int) (fun B hB => hB.1)
-    hdomA hviab
+  have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i) V (s : Int)
+    (fun B hB => voteDomain_subset_tree hB) hdomA hviab.voteDomain
     (locks_compatible hrun hy hc hs hBt (S := SX) (fun w hw => by
         rcases hcover hw with ⟨-, x, hx, hxv, hxs, hxa⟩ | h
         · exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩
         · exact Or.inl h)
       (by omega) hf hearlier hm)
     fun X' Cx hCx hp hCxC =>
-      isBest_of_cover hΦ (merged_support_subset hr hy hc (s + 1)) (fun B hB => hB.1.1)
+      isBest_of_cover hΦ (merged_support_subset hr hy hc (s + 1)) (fun B hB =>
+          voteDomain_subset_tree hB.1)
         hcover h3 hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)
-      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1))) V (s : Int)
+      (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1))) V (s : Int)
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
 
@@ -425,7 +430,7 @@ theorem first_transfer_stored_of_pool {FGP : Type} {ro : ReplayOrder sp FGP} {H 
       exact h.1.2
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voterBlockTree_anc hr hy hc
+  have hdomA := voteDomain_anc hr hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -470,17 +475,19 @@ theorem first_transfer_stored_of_pool {FGP : Type} {ro : ReplayOrder sp FGP} {H 
     obtain rfl : R₂ = R₁ := hU.1 (hΦ'U hR₂) (hΦxU hR₁) (hR₂r.trans hR₁r.symm)
     exact anc_total hU (Anc.mono hΦ'U hDR₂) (hBD.trans (Anc.mono hΦxU hBR₁))
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
-    (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => hB.1) hdomA hviab
+    (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => voteDomain_subset_tree
+        hB) hdomA hviab.voteDomain
     (locks_compatible hrun hy hc hs hBt (S := SX) (fun w hw => by
         obtain ⟨-, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
       hhalf hf hearlier hm)
     fun X' Cx hCx hp hCxC =>
-      isBest_of_majority hΦ (merged_support_subset hr hy hc (s + 1)) (fun B hB => hB.1.1)
+      isBest_of_majority hΦ (merged_support_subset hr hy hc (s + 1)) (fun B hB =>
+          voteDomain_subset_tree hB.1)
         hsupp (merged_voters_subset hr hy hc hd) hmaj hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)
-      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+      (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
       (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
@@ -589,17 +596,18 @@ theorem result_transfer : ResultTransfer sp := by
       exact h.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voterBlockTree_anc hrun.localRun hy hc
+  have hdomA := voteDomain_anc hrun.localRun hy hc
   rw [hs] at hdomA
   have hCt : C ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
     · exact mem_of_anc h hΦ.fcRoot_mem
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
-    (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => hB.1) hdomA hviab
+    (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => voteDomain_subset_tree
+        hB) hdomA hviab.voteDomain
     (fun L hL => hlocks L hL) fun X' Cx hCx hp hCxC =>
       isBest_of_majority hΦ (merged_support_subset hrun.localRun hy hc (s + 1))
-        (fun B hB => hB.1.1)
+        (fun B hB => voteDomain_subset_tree hB.1)
         (by
           obtain ⟨ℓX, hupd, -, rfl⟩ := hres
           exact counted_supporters hrun hX hy hupd.1 hc hs .refl hcarry hviab hd)
@@ -607,7 +615,7 @@ theorem result_transfer : ResultTransfer sp := by
         (result_majority hres) hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : C = getHead sp e.readPoint ℓ.frame (tr.time i)
-      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+      (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
       (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
   · exact he ▸ hCt
   · exact (Anc.mem hcore he).2

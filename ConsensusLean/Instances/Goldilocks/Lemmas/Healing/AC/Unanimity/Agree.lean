@@ -383,6 +383,17 @@ private theorem supported_viable {s : Nat}
       rw [F_parent hS hx hc.1] at this
       exact absurd this (by simp)
 
+/-- At an honest vote of slot `p`, the voter block tree has a viable block: the voter holds `P`,
+and every block of its tree is viable (trivial frames). -/
+theorem vote_viable_nonempty (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay)
+    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
+    (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame p)).Nonempty := by
+  obtain ⟨s, rfl⟩ : ∃ s, p = s + 1 := ⟨p - 1, by have := slot_pos hs; omega⟩
+  obtain ⟨hPΦ, -⟩ := vote_holds hs hx hc hes
+  exact ⟨P, mem_viableTree hs.standalone hx hc.1 (fun _ h => h.1)
+    ⟨hPΦ, Or.inr ⟨P, hPΦ, hs.slot, .refl⟩⟩⟩
+
 /-! ## The canonical walk -/
 
 /-- **The voter's walk is the canonical walk**: at an honest vote of slot `p`, the eligible

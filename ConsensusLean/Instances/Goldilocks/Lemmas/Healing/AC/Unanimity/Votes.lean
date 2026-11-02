@@ -37,7 +37,7 @@ private theorem vote_walkEnd (hs : UnanimitySetting tr H U schedule g p P k ℓp
   have hr := hs.standalone.run.localRun
   have hU := hr.coherent
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc.1
-  obtain ⟨-, -, -, hhead⟩ := castAt_spec hr hx hc
+  have hhead := castAt_head_of_viable hr hx hc (hes ▸ vote_viable_nonempty hs hx hc hes)
   rw [hes] at hhead
   have ha := (vote_anchor_cases hs hx hc hes).1
   set T := ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame p)

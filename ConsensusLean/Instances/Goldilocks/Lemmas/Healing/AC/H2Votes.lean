@@ -228,7 +228,8 @@ theorem h2_votes_of_duty (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P
     · exact (Anc.mem (hw.anc (fun _ h => h.1) hst) he).2
   have hsP : Anc U d.start P := (hw.anc (fun _ h => hΦpU h.1) (hΦpU hst)).tail
     ⟨hΦpU hQt, hΦU hPt, hQP⟩
-  have hh := (castAt_spec hr hx hc).2.2.2
+  have hh := castAt_head_of_viable hr hx hc
+    (hes ▸ ⟨P, proposal_mem_viableTree_voterBlockTree hΦ hPt hPs hPv⟩)
   rw [hes] at hh
   rcases h2_proposal_anchor hr hpH hck htk hpay
       (h2_proposal_locks_below hI hpH hck hcall htk) hset with he | hall

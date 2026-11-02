@@ -151,6 +151,13 @@ def voterBlockTree (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Set (Blk s
   {B | B ∈ Φ.tree ∧ (A.blockStamp B.root < ETime.of (freeze sp s) ∨
     ∃ P ∈ Φ.tree, P.slot = s ∧ Φ.Anc B P)}
 
+/-- The head domain of an honest slot-`s` vote: the voter block tree, or the whole tree when the
+voter block tree has no viable block in the current frame `Φ` (`fc_root` and viable heads as of
+now). -/
+def voteDomain (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Set (Blk sp.n FGP) :=
+  {B | (B ∈ voterBlockTree sp A Φ s ∧ (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty) ∨
+    (B ∈ Φ.tree ∧ ¬ (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty)}
+
 end Consensus.Goldilocks.SA
 
 end

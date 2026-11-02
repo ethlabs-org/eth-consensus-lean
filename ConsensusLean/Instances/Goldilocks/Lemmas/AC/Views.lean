@@ -108,6 +108,83 @@ theorem optimistic_chain : OptimisticChain sp := by
   subst hxy
   exact compatible_of_ancR hΦ hxB hyC
 
+section VoteDomain
+
+variable {sp} {FGP : Type}
+
+/-- The vote domain is part of the frame tree. -/
+theorem voteDomain_subset_tree {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat} :
+    voteDomain sp A Φ s ⊆ Φ.tree := by
+  rintro B (⟨hB, -⟩ | ⟨hB, -⟩)
+  exacts [hB.1, hB]
+
+/-- The voter block tree is part of the vote domain (in both cases of the fallback). -/
+theorem voterBlockTree_subset_voteDomain {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat} :
+    voterBlockTree sp A Φ s ⊆ voteDomain sp A Φ s := by
+  intro B hB
+  by_cases hv : (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty
+  · exact Or.inl ⟨hB, hv⟩
+  · exact Or.inr ⟨hB.1, hv⟩
+
+/-- With a viable block in the voter block tree, the vote domain is the voter block tree. -/
+theorem voteDomain_eq_of_viable {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+    (h : (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty) :
+    voteDomain sp A Φ s = voterBlockTree sp A Φ s := by
+  ext B
+  exact ⟨fun hB => hB.elim And.left fun hB' => absurd h hB'.2, fun hB => Or.inl ⟨hB, h⟩⟩
+
+/-- Without a viable block in the voter block tree, the vote domain is the whole tree. -/
+theorem voteDomain_eq_tree_of_not_viable {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+    (h : ¬ (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty) :
+    voteDomain sp A Φ s = Φ.tree := by
+  ext B
+  exact ⟨fun hB => hB.elim (fun hB' => absurd hB'.2 h) And.left, fun hB => Or.inr ⟨hB, h⟩⟩
+
+/-- The viable tree grows with the domain. -/
+theorem viableTree_mono {Φ : Frm sp.n FGP} {S T : Set (Blk sp.n FGP)} (hST : S ⊆ T) :
+    Φ.viableTree S ⊆ Φ.viableTree T := by
+  rintro B ⟨hB, hf, W, hW, hWv, hBW⟩
+  exact ⟨hST hB, hf, W, hST hW, hWv, hBW⟩
+
+/-- The viable voter block tree is part of the viable vote domain. -/
+theorem viableTree_voterBlockTree_subset_voteDomain {A : SAState sp.n} {Φ : Frm sp.n FGP}
+    {s : Nat} :
+    Φ.viableTree (voterBlockTree sp A Φ s) ⊆ Φ.viableTree (voteDomain sp A Φ s) :=
+  viableTree_mono voterBlockTree_subset_voteDomain
+
+/-- The viable vote domain is part of the viable tree of the frame tree. -/
+theorem viableTree_voteDomain_subset_tree {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat} :
+    Φ.viableTree (voteDomain sp A Φ s) ⊆ Φ.viableTree Φ.tree :=
+  viableTree_mono voteDomain_subset_tree
+
+/-- With a viable block in the voter block tree, the viable vote domain is the viable voter
+block tree. -/
+theorem viableTree_voteDomain_eq_of_viable {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+    (h : (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty) :
+    Φ.viableTree (voteDomain sp A Φ s) = Φ.viableTree (voterBlockTree sp A Φ s) := by
+  rw [voteDomain_eq_of_viable h]
+
+/-- The vote domain is closed under ancestors in the frame when the voter block tree is. -/
+theorem voteDomain_anc_closed {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+    (hfz : ∀ B ∈ voterBlockTree sp A Φ s, ∀ X, Φ.Anc X B → X ∈ voterBlockTree sp A Φ s) :
+    ∀ B ∈ voteDomain sp A Φ s, ∀ X, Φ.Anc X B → X ∈ voteDomain sp A Φ s := by
+  intro B hB X hX
+  by_cases hv : (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty
+  · rw [voteDomain_eq_of_viable hv] at hB ⊢
+    exact hfz B hB X hX
+  · rw [voteDomain_eq_tree_of_not_viable hv] at hB ⊢
+    exact mem_of_anc hX hB
+
+/-- A slot-`s` proposal of the tree that is a viable head is in the viable voter block tree of
+slot `s` (the voter block tree holds the ancestors of a slot-`s` proposal). -/
+theorem proposal_mem_viableTree_voterBlockTree {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+    (hΦ : FrameOK Φ) {P : Blk sp.n FGP} (hPt : P ∈ Φ.tree) (hPs : P.slot = s)
+    (hPv : P ∈ Φ.viableHeads) : P ∈ Φ.viableTree (voterBlockTree sp A Φ s) :=
+  ⟨⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, hΦ.fcRoot_anc_viableHeads P hPv, P,
+    ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, hPv, .refl⟩
+
+end VoteDomain
+
 end Consensus.Goldilocks.SA
 
 end

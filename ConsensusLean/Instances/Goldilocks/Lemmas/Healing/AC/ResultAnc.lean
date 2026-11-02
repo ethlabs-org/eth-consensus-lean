@@ -33,7 +33,7 @@ theorem result_transfer_anc {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin
       exact h.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voterBlockTree_anc hrun.localRun hy hc
+  have hdomA := voteDomain_anc hrun.localRun hy hc
   rw [hs] at hdomA
   have hDt : D ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -43,13 +43,15 @@ theorem result_transfer_anc {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin
   obtain ⟨ℓX, hupd, -, rfl⟩ := hres
   have hsupp := counted_supporters hrun hX hy hupd.1 hc hs hDC hcarry hviab hd
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
-    (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => hB.1) hdomA hviab
+    (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => voteDomain_subset_tree
+        hB) hdomA hviab.voteDomain
     (fun L hL => hlocks L hL) fun X' Cx hCx hp hCxD =>
       isBest_of_majority hΦ (merged_support_subset hrun.localRun hy hc (s + 1))
-        (fun B hB => hB.1.1) hsupp (merged_voters_subset hrun.localRun hy hc hd) hmaj hCx hp hCxD
+        (fun B hB => (voteDomain_subset_tree hB.1)) hsupp (merged_voters_subset hrun.localRun hy hc
+            hd) hmaj hCx hp hCxD
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : D = getHead sp e.readPoint ℓ.frame (tr.time i)
-      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (s + 1)))
+      (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
       (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
   · exact he ▸ hDt
   · exact (Anc.mem hcore he).2

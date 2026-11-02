@@ -118,7 +118,8 @@ theorem h2_compare_reader (hS : HealthyBase tr H U proposer g) {p k : Nat} (hp :
           (fun B hB X hXB _ => hclosed B hB X hXB) hPvt
           (anc_tree_of_anc_U hU hΦ hΦU hat haP hPt) hfa hwitness _ _ _)
       exact (hwy.of_anc hU hTyU haP hPHd).unique hstopP
-  have hh := (castAt_spec hr hy hc).2.2.2
+  have hh := castAt_head_of_viable hr hy hc
+    (hes ▸ ⟨P, proposal_mem_viableTree_voterBlockTree hΦ hPt hPs hPv⟩)
   rw [hes] at hh
   exact hh.trans (congrArg Block.root hHdP)
 
