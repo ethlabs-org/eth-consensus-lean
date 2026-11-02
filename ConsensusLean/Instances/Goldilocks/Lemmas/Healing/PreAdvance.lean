@@ -950,7 +950,7 @@ private theorem unanimous_next_votes_of_geometry (hrun : GoldilocksRun proposer 
       (fun x hx k hki ev hv hsx => ih k hki x hx ev hv hsx)
 
 /-- Local V for a witness also places every ancestor above F and the common J in the frame. -/
-private theorem FrameWindow.witness_path {lo hi : Time} {floor : Nat}
+theorem FrameWindow.witness_path {lo hi : Time} {floor : Nat}
     {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)

@@ -655,19 +655,20 @@ theorem raw_writer_relay_source
   obtain ⟨D, hD, hDr, hCD, hacc⟩ := hw.2.2
   exact ⟨v, hv, D, hD, hDr, hBC.trans hCD, hacc⟩
 
-/-- A raw writer's ancestor is available in a later voter's frozen block tree. -/
-theorem raw_writer_voterBlockTree_window_before
+/-- An ancestor of an early source is available in a later voter's frozen block tree.
+The source may be genesis or an actual acceptance; old acceptances use Catch. -/
+theorem voterBlockTree_of_relay_source
     (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
-    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {j i s : Nat}
-    {B C : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    (hwriter : SA.ResultAt T x j s C CV ∨ SA.FastLockAt T x j s C CV)
-    (hBC : Anc U B C) {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {i s : Nat}
+    {B D : SA.Blk sp.n FGP} (hDU : D ∈ U) (hBD : Anc U B D)
+    (hsource : D.root = sp.genesisRoot ∨
+      ∃ q, T.AcceptAt x q D ∧ T.time q < sp.ts s + 2 * sp.Δ)
+    {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
     (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
     (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
     (hF : Anc U ℓ.frame.F B) : B ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
-  obtain ⟨v, _, D, hDU, _, hBD, hgen | ⟨q, hq, hqt⟩⟩ :=
-    raw_writer_relay_source hr hx hwriter hBC
+  rcases hsource with hgen | ⟨q, hq, hqt⟩
   all_goals obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
   · have hFD := hF.trans hBD
     obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy _ _ hc.1
@@ -706,6 +707,21 @@ theorem raw_writer_voterBlockTree_window_before
     have hBt := SA.frame_mem_of_between sp hr.coherent hΦ hΦU hDt.1 hBD hF
     exact SA.voterBlockTree_anc hr hy hc D hDt B
       (SA.anc_tree_of_anc_U hr.coherent hΦ hΦU hBt hBD hDt.1)
+
+/-- A raw writer's ancestor is available in a later voter's frozen block tree. -/
+theorem raw_writer_voterBlockTree_window_before
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
+    (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {j i s : Nat}
+    {B C : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    (hwriter : SA.ResultAt T x j s C CV ∨ SA.FastLockAt T x j s C CV)
+    (hBC : Anc U B C) {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
+    (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
+    (hF : Anc U ℓ.frame.F B) : B ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
+  obtain ⟨v, _, D, hDU, _, hBD, hsource⟩ := raw_writer_relay_source hr hx hwriter hBC
+  exact voterBlockTree_of_relay_source hr hsync hcatch hx hy hDU hBD hsource
+    hc hs hi hcatchTime hF
 
 end Node
 
