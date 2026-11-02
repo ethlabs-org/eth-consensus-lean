@@ -17,6 +17,13 @@ canonical chain, and the predecessor is finalized if the height is bound.
 * `Store.entry_justified_of_anc`: `FGParams.early_cross_chain_justifies` at the store: if
   `σ[X].h < σ[W].h` and `W.slot < σ[X].ThSlot + δt`, a held `D` with `X ⪯ D ⪯ W` justified
   the entry of `σ[X]`, and finalized the predecessor block if `σ[X]` is bound.
+* `Store.chain_states_of_anc'`: the bridge with parent links: every earlier block of `d` is an
+  ancestor of `B`, and the parent `Z` of `B` is held, `X ⪯ Z`, and the prefix before `B`
+  reaches `σ[Z]`.
+* `Store.theorem_F_of_anc`: `FGParams.theorem_F_chain` at the store: if `σ[X].h + 1 < σ[W].h`
+  and every held `D ⪯ W` with parent `Z ⪰ X` at height `σ[X].h` or `σ[X].h + 1` has
+  `D.slot < σ[Z].ThSlot + δt`, held `X ⪯ D₁ ⪯ D₂ ⪯ W` justify the two entries and `D₂`
+  finalized the held block of root `σ[X].Th` at height `σ[X].h`.
 * `window_justifies_or_parents_above_after'`: `window_justifies_or_parents_above_after` with
   `X ⪯ C` for every held `X` of root `T` in case (A).
 * `window_justifies_or_parents_above_unanimous_entry`:
@@ -56,6 +63,33 @@ theorem early_cross_map_justifies {α : Type} (f : α → FGBlock gp.n) {c d : L
   obtain ⟨D, d₂, rfl, rfl, rfl⟩ := List.map_eq_cons_iff.1 hr'
   refine ⟨d₁, D, d₂, σ₂, rfl, ?_, h⟩
   simpa [List.map_append] using hσ₂
+
+
+/-- `theorem_F_chain` through a map: the two justifying blocks are images of blocks of `d`. -/
+theorem theorem_F_map_chain {α : Type} (f : α → FGBlock gp.n) {c d : List α}
+    {σ τ : ChainState gp.n} (hc : gp.chainState (c.map f) = some σ)
+    (hd : gp.chainState ((c ++ d).map f) = some τ) (hh : σ.h + 1 < τ.h)
+    (hs : ∀ d₁ B d₂ ρ, d = d₁ ++ B :: d₂ → gp.chainState ((c ++ d₁).map f) = some ρ →
+      (ρ.h = σ.h ∨ ρ.h = σ.h + 1) → (f B).slot < ρ.ThSlot + gp.δt) :
+    ∃ d₁ B₁ d₂ B₂ d₃ σ₁ σ₂, d = d₁ ++ B₁ :: (d₂ ++ B₂ :: d₃) ∧
+      gp.chainState ((c ++ d₁ ++ [B₁]).map f) = some σ₁ ∧
+      σ₁.h = σ.h + 1 ∧ σ₁.hj = σ.h ∧ σ₁.J = σ.Th ∧
+      gp.chainState ((c ++ (d₁ ++ B₁ :: d₂) ++ [B₂]).map f) = some σ₂ ∧
+      σ₂.h = σ.h + 2 ∧ σ₂.hj = σ.h + 1 ∧ σ₂.J = σ₁.Th ∧
+      σ₂.F = σ.Th ∧ σ₂.hF = σ.h := by
+  rw [List.map_append] at hd
+  obtain ⟨e₁, B₁, e₂, B₂, e₃, σ₁, σ₂, he, h1, h1h, h1j, h1J, h2, h2h, h2j, h2J, h2F, h2hF⟩ :=
+    gp.theorem_F_chain hc hd hh (by
+      intro e₁ B e₂ ρ he hρ hρh
+      obtain ⟨d₁, r, rfl, rfl, hr'⟩ := List.map_eq_append_iff.1 he
+      obtain ⟨D, d₂, rfl, rfl, rfl⟩ := List.map_eq_cons_iff.1 hr'
+      exact hs d₁ D d₂ ρ rfl (by simpa [List.map_append] using hρ) hρh)
+  obtain ⟨d₁, r, rfl, rfl, hr₁⟩ := List.map_eq_append_iff.1 he
+  obtain ⟨D₁, r', rfl, rfl, hr₂⟩ := List.map_eq_cons_iff.1 hr₁
+  obtain ⟨d₂, r'', rfl, rfl, hr₃⟩ := List.map_eq_append_iff.1 hr₂
+  obtain ⟨D₂, d₃, rfl, rfl, rfl⟩ := List.map_eq_cons_iff.1 hr₃
+  exact ⟨d₁, D₁, d₂, D₂, d₃, σ₁, σ₂, rfl, by simpa [List.map_append] using h1, h1h, h1j, h1J,
+    by simpa [List.map_append] using h2, h2h, h2j, h2J, h2F, h2hF⟩
 
 end FG.FGParams
 
@@ -122,6 +156,85 @@ theorem entry_justified_of_anc (hr : st.Reachable acp₀) {X W : NodeBlock P ACP
   obtain ⟨hD, hXD, hDW, -, hσ⟩ := hpre d₁ D d₂ rfl
   obtain rfl : σ₂ = st.σ D.root := Option.some.inj (hσ₂.symm.trans hσ)
   exact ⟨D, hD, hXD, hDW, h1, h2, h3, h4⟩
+
+
+/-- **The store bridge with parent links.** `chain_states_of_anc`, and for every block `B` of
+`d` (with `d = d₁ ++ B :: d₂`), every block of `d₁` is an ancestor of `B`, and the parent `Z` of
+`B` (the last block of `d₁`, or `X`) is held, has `B.parent = some Z.root` and `X ⪯ Z`, and
+`c ++ d₁` reaches `σ[Z]`. -/
+theorem chain_states_of_anc' (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
+    (hX : X ∈ st.tree) (hXW : st.Anc X W) :
+    ∃ c d : List (NodeBlock P ACP),
+      P.fg.chainState (c.map Block.fgView) = some (st.σ X.root) ∧
+      P.fg.chainState ((c ++ d).map Block.fgView) = some (st.σ W.root) ∧
+      ∀ d₁ B d₂, d = d₁ ++ B :: d₂ → B ∈ st.tree ∧ st.Anc X B ∧ st.Anc B W ∧
+        B.slot ≤ W.slot ∧
+        P.fg.chainState ((c ++ d₁ ++ [B]).map Block.fgView) = some (st.σ B.root) ∧
+        (∀ Y ∈ d₁, st.Anc Y B) ∧
+        ∃ Z ∈ st.tree, B.parent = some Z.root ∧ st.Anc X Z ∧
+          P.fg.chainState ((c ++ d₁).map Block.fgView) = some (st.σ Z.root) := by
+  obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain P ACP acp₀ st hr X hX
+  refine ⟨c, ?_⟩
+  induction hXW with
+  | refl => exact ⟨[], hc, by rw [List.append_nil]; exact hc, fun d₁ B d₂ h => by simp at h⟩
+  | @tail W W' hXW' hWW' ih =>
+    obtain ⟨d, -, hd, hpre⟩ := ih
+    obtain ⟨hW, hW', hp⟩ := hWW'
+    obtain ⟨-, -, -, ht⟩ := Healing.Store.step_σ hr hW' hp
+    have hsl : W.slot < W'.slot := (accepted_tree P ACP acp₀ st hr).2.1.2 W hW W' hW' hp
+    have hd' : P.fg.chainState ((c ++ (d ++ [W'])).map Block.fgView) = some (st.σ W'.root) := by
+      have e := P.fg.chainState_map_append_singleton Block.fgView (c ++ d) W'
+      rw [hd] at e
+      rw [← List.append_assoc]
+      exact e.trans ht
+    refine ⟨d ++ [W'], hc, hd', fun d₁ B d₂ he => ?_⟩
+    rcases List.eq_nil_or_concat d₂ with rfl | ⟨d₂', z, rfl⟩
+    · obtain ⟨rfl, hB⟩ := List.append_inj' he rfl
+      obtain rfl : W' = B := List.singleton_inj.1 hB
+      refine ⟨hW', hXW'.tail ⟨hW, hW', hp⟩, Relation.ReflTransGen.refl, le_rfl, ?_, ?_,
+        W, hW, hp, hXW', hd⟩
+      · rw [← List.append_assoc] at hd'; exact hd'
+      · intro Y hY
+        obtain ⟨e₁, e₂, rfl⟩ := List.append_of_mem hY
+        exact (hpre e₁ Y e₂ rfl).2.2.1.tail ⟨hW, hW', hp⟩
+    · have he' : d ++ [W'] = (d₁ ++ B :: d₂') ++ [z] := by simpa using he
+      obtain ⟨rfl, -⟩ := List.append_inj' he' rfl
+      obtain ⟨hB, hXB, hBW, hBs, hσ, hY, hZ⟩ := hpre d₁ B d₂' rfl
+      exact ⟨hB, hXB, hBW.tail ⟨hW, hW', hp⟩, by omega, hσ, hY, hZ⟩
+
+/-- **Theorem F along an ancestry (store form).** In a reachable store, let `X ⪯ W` be held with
+`σ[X].h + 1 < σ[W].h`, and let every held `D` with a held parent `Z`, `X ⪯ Z`, `D ⪯ W` and
+`σ[Z].h ∈ {σ[X].h, σ[X].h + 1}` have `D.slot < σ[Z].ThSlot + δt`. Then there are held
+`X ⪯ D₁ ⪯ D₂ ⪯ W`: `D₁` justified `(σ[X].h, σ[X].Th)`, `D₂` justified `(σ[X].h + 1, σ[D₁].Th)`
+and finalized `F = σ[X].Th` with `h_F = σ[X].h`; the block `T` of root `σ[X].Th` is held with
+`T ⪯ X`. -/
+theorem theorem_F_of_anc (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
+    (hX : X ∈ st.tree) (hXW : st.Anc X W) (hh : (st.σ X.root).h + 1 < (st.σ W.root).h)
+    (hs : ∀ D ∈ st.tree, ∀ Z ∈ st.tree, D.parent = some Z.root → st.Anc X Z → st.Anc D W →
+      ((st.σ Z.root).h = (st.σ X.root).h ∨ (st.σ Z.root).h = (st.σ X.root).h + 1) →
+      D.slot < (st.σ Z.root).ThSlot + P.fg.δt) :
+    ∃ D₁ ∈ st.tree, ∃ D₂ ∈ st.tree, st.Anc X D₁ ∧ st.Anc D₁ D₂ ∧ st.Anc D₂ W ∧
+      (st.σ D₁.root).h = (st.σ X.root).h + 1 ∧ (st.σ D₁.root).hj = (st.σ X.root).h ∧
+      (st.σ D₁.root).J = (st.σ X.root).Th ∧
+      (st.σ D₂.root).h = (st.σ X.root).h + 2 ∧ (st.σ D₂.root).hj = (st.σ X.root).h + 1 ∧
+      (st.σ D₂.root).J = (st.σ D₁.root).Th ∧
+      (st.σ D₂.root).F = (st.σ X.root).Th ∧ (st.σ D₂.root).hF = (st.σ X.root).h ∧
+      ∃ T ∈ st.tree, T.root = (st.σ X.root).Th ∧ st.Anc T X := by
+  obtain ⟨c, d, hc, hd, hpre⟩ := chain_states_of_anc' hr hX hXW
+  obtain ⟨d₁, D₁, d₂, D₂, d₃, σ₁, σ₂, rfl, h1, h1h, h1j, h1J, h2, h2h, h2j, h2J, h2F, h2hF⟩ :=
+    P.fg.theorem_F_map_chain Block.fgView hc hd hh (by
+      intro d₁ D d₂ ρ he hρ hρh
+      obtain ⟨hD, -, hDW, -, -, -, Z, hZ, hpar, hXZ, hσZ⟩ := hpre d₁ D d₂ he
+      obtain rfl : ρ = st.σ Z.root := Option.some.inj (hρ.symm.trans hσZ)
+      exact hs D hD Z hZ hpar hXZ hDW hρh)
+  obtain ⟨hD₁, hXD₁, -, -, hσ₁, -⟩ := hpre d₁ D₁ (d₂ ++ D₂ :: d₃) rfl
+  obtain ⟨hD₂, -, hD₂W, -, hσ₂, hY, -⟩ := hpre (d₁ ++ D₁ :: d₂) D₂ d₃
+    (List.append_assoc d₁ (D₁ :: d₂) (D₂ :: d₃)).symm
+  obtain rfl : σ₁ = st.σ D₁.root := Option.some.inj (h1.symm.trans hσ₁)
+  obtain rfl : σ₂ = st.σ D₂.root := Option.some.inj (h2.symm.trans hσ₂)
+  obtain ⟨⟨T, hT, hTr, hTX, -⟩, -⟩ := entry_state_of_source P ACP acp₀ st hr X hX
+  exact ⟨D₁, hD₁, D₂, hD₂, hXD₁, hY D₁ (List.mem_append_right d₁ List.mem_cons_self), hD₂W,
+    h1h, h1j, h1J, h2h, h2j, h2J, h2F, h2hF, T, hT, hTr, hTX⟩
 
 end Store
 
