@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.HealedClient
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Justified
 
 public section
 
@@ -22,6 +23,9 @@ pending. The row from `awake_signs_target` carries `Λ.finality_pair(σe)` of th
 * `finalityPair_entry_iff`: the trace form (honest `y`, `p`, any cuts); the pending premise of
   `hsig` is not needed.
 * `finalityPair_entry_healed`: under `HealedRecords`, with `h₀ ≤ σ.h_j` and `σ.J = E σ.h_j`.
+* `J_eq_entry_of_healed`: under `HealedRecords` and `f < q`, `σ.J = E σ.h_j` when
+  `h₀ ≤ σ.h_j` and `1 ≤ σ.h_j` (an honest row of the target quorum names `E σ.h_j`).
+* `finalityPair_entry_healed'`: `finalityPair_entry_healed` without the `J` premise.
 
 Counterexample shape for dropping `permits`: `y`'s record has `target[σ.h_j] = some T' ≠ σ.J`
 (an own target row at `h_j` for another block, possible below `h₀`), so `finality_pair(σe)` is
@@ -137,6 +141,58 @@ theorem finalityPair_entry_healed (hrun : GoldilocksRun proposer dg H tr)
   refine (finalityPair_entry_iff hrun hnc hy hC hp hPr hT hb _).2 ?_
   rw [hJ]
   exact hR.permits_entry hrun hy i _ hj₀
+
+/-- **The justification of a held honest state is the entry (WI-18).** Under `HealedRecords`
+and `f < q`, a held honest state `σ = σ_p[Pr]` with `h₀ ≤ σ.h_j` and `1 ≤ σ.h_j` has
+`σ.J = (E σ.h_j).root`: its target quorum for `(σ.h_j, σ.J)` (`justified_evidence`) has an
+honest row, signed (`att_unforgeable`), which names `E σ.h_j` (C2*⁺ (i)). -/
+theorem J_eq_entry_of_healed (hrun : GoldilocksRun proposer dg H tr)
+    (hq : Hᶜ.ncard < sp.toParams.fg.q) {gR : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hR : Healing.HealedRecords tr H gR h₀ E)
+    {p : Fin sp.n} (hp : p ∈ H) {k' : Nat} {Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hPr : Pr ∈ (tr.state p k').fg.tree)
+    (hj₀ : h₀ ≤ ((tr.state p k').fg.σ Pr.root).hj) (hj1 : 1 ≤ ((tr.state p k').fg.σ Pr.root).hj) :
+    ((tr.state p k').fg.σ Pr.root).J = (E ((tr.state p k').fg.σ Pr.root).hj).root := by
+  obtain ⟨c, hcT, -, -, hc⟩ := Goldilocks.Store.chain_state_of_chain _ _ _ _
+    (Compose.fg_reachable hrun.toLocalRun hp k') Pr hPr
+  obtain ⟨Q, hQ, hQv⟩ := (FG.FGParams.justified_evidence _ hc).2 hj1
+  have hv : ∃ v ∈ Q, v ∈ H := by
+    by_contra hn
+    push Not at hn
+    have := Set.ncard_le_ncard (s := (Q : Set (Fin sp.toParams.fg.n))) (t := Hᶜ) hn
+      (Set.toFinite _)
+    rw [Set.ncard_coe_finset] at this
+    exact lt_irrefl _ (lt_of_lt_of_le hq (hQ.trans this))
+  obtain ⟨v, hvQ, hvH⟩ := hv
+  obtain ⟨a, ha, rfl, hah, haT, -⟩ := hQv v hvQ
+  obtain ⟨B, hB, ha⟩ := List.mem_flatMap.1 ha
+  obtain ⟨X, hX, rfl⟩ := List.mem_map.1 hB
+  change a ∈ X.fgPayload at ha
+  rcases Healing.tree_accepted hrun.toLocalRun hp (hcT X hX) with hg | ⟨i', -, hA⟩
+  · rw [hg] at ha
+    cases ha
+  obtain ⟨d, -, hsd⟩ := hrun.att_unforgeable p hp i' a (Or.inr ⟨X, ⟨true, hA⟩, ha⟩) hvH
+  rw [← haT, hR.rows _ hvH d a hsd (hah ▸ hj₀), hah]
+
+/-- **The fin-pair link under `HealedRecords`, without the `J` premise (WI-18).**
+`finalityPair_entry_healed` with `σ.J = E σ.h_j` from `J_eq_entry_of_healed` (`f < q`,
+`1 ≤ σ.h_j`). -/
+theorem finalityPair_entry_healed' (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hq : Hᶜ.ncard < sp.toParams.fg.q) {gR : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hR : Healing.HealedRecords tr H gR h₀ E)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state y k).fg.tree)
+    {p : Fin sp.n} (hp : p ∈ H) {k' : Nat} {Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hPr : Pr ∈ (tr.state p k').fg.tree)
+    (hT : ((tr.state p k').fg.σ Pr.root).Th =
+      ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th)
+    (hb : ((tr.state p k').fg.σ Pr.root).bound)
+    (hj₀ : h₀ ≤ ((tr.state p k').fg.σ Pr.root).hj) (hj1 : 1 ≤ ((tr.state p k').fg.σ Pr.root).hj)
+    (i : Nat) :
+    (tr.state y i).record.finalityPair ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th) =
+      some (((tr.state p k').fg.σ Pr.root).hj, ((tr.state p k').fg.σ Pr.root).J) :=
+  finalityPair_entry_healed hrun hnc hR hy hC hp hPr hT hb hj₀
+    (J_eq_entry_of_healed hrun hq hR hp hPr hj₀ hj1) i
 
 end Consensus.Goldilocks.Refinement
 
