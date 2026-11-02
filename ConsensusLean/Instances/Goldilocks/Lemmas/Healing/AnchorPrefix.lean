@@ -1054,6 +1054,51 @@ theorem toFG_fast_origin (hrun : GoldilocksRun proposer dg H tr)
     rw [hs']
     exact SA.slot_mono sp (hr.time_nonneg a) ht
 
+/-- The raw fast selection's block is no newer than its lock label. An
+honest counted head supplies the bound even when the selection is optimistic. -/
+theorem fast_selection_slot_le (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
+    {x : Fin sp.n} (hx : x ∈ H) {a j : Nat}
+    {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (ho : SA.FastLockAt tr.projAC x a j D CV) : D.slot ≤ j := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hf' : 2 * Hᶜ.ncard < sp.n := by
+    have hn := sp.toParams.hn
+    change 0 < sp.n at hn
+    omega
+  obtain ⟨y, hy, i, e, hv, hs, W, hW, hWr, hDW⟩ :=
+    SA.fastLock_honest_vote hac hf' hx ho
+  obtain ⟨W', hW', hW'r, hWs⟩ := SA.honest_head hac hy hv
+  obtain rfl : W' = W := hac.localRun.coherent.1 hW' hW (hW'r.trans hWr.symm)
+  exact (Anc.slot_le hac.localRun.coherent hDW).1.trans (hWs.trans_eq hs)
+
+/-- A report extending a slot-u block by the adjacent update deadline has
+an actual fast origin of label u or u+1, even if an earlier report suppressed
+the current ToFG call. -/
+theorem toFG_fast_origin_between (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
+    {y : Fin sp.n} (hy : y ∈ H) {i u : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {P R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hto : SA.ToFGAt tr.projAC y i ell R) (hPs : P.slot = u)
+    (hPR : Anc (tr.HonestBlocks H) P R)
+    (ht : tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ) :
+    ∃ a < i, ∃ j D CV, SA.FastLockAt tr.projAC y a j D CV ∧
+      Anc (tr.HonestBlocks H) R D ∧ u ≤ j ∧ j ≤ u + 1 := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  obtain ⟨a, hai, j, D, CV, ho, hRD, hj⟩ := toFG_fast_origin hrun hnc hy hto
+  have hPD := (Anc.slot_le hac.localRun.coherent (hPR.trans hRD)).1
+  have hDj := fast_selection_slot_le hrun hnc hf hy ho
+  have hΔ := sp.toParams.hΔ
+  have hstep : sp.ts (u + 2 : Nat) = sp.ts (u + 1 : Nat) + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hslot : sp.slot (tr.time i) < u + 2 := by
+    by_contra hn
+    have hlow := (SA.ts_le_iff_le_slot sp (hac.localRun.time_nonneg i)
+      ((u + 2 : Nat) : Int)).2 (by exact_mod_cast (by omega : u + 2 ≤ sp.slot (tr.time i)))
+    change sp.ts (u + 2 : Nat) ≤ tr.time i at hlow
+    linarith
+  exact ⟨a, hai, j, D, CV, ho, hRD, by omega, by omega⟩
+
 end Consensus.Goldilocks.Healing
 
 end
