@@ -195,7 +195,8 @@ theorem healthy_old_inventory_of_fresh_origin (Q : HealthyPreparationQuery S A V
 (an actual reset with service through the horizon, its seed, and a query with the lower
 bound and the strict reserve). Labelled decomposition replacement (R0) of the former
 `healthy_old_inventory_initialize`: no old-entry inventory is produced or required,
-since no consumer of the state facts read it. This removes the inventory obligation
+since nothing outside `healthy_preserve`'s own preservation plumbing read the inventory
+or the caches. This removes the inventory obligation
 from this route; it proves nothing about it.
 No new Healthy premise, whole-run progress, or prefix-causal coverage is asserted. -/
 theorem healthy_preparation_initialize (Q : HealthyPreparationQuery S A V)
@@ -205,9 +206,11 @@ theorem healthy_preparation_initialize (Q : HealthyPreparationQuery S A V)
     ∃ W : HealthyBaseTiming S A V Q, Nonempty (HealthyPreparationSchedule S A V Q W) := by
   sorry
 
-/-- Existing proven preservation consumes exactly the OPEN initialization.
-It ranges over ALL later cuts, not merely end-of-time observations. It does not
-turn eventual coverage into prefix-produced coverage or give a vote label bound. -/
+/-- Proven preservation of an explicitly supplied old-entry inventory. Since R0 no
+inventory is produced on the Accepted route; the inventory is a premise of the outside
+OPEN leaf `healthy_vote_row_replacement`. It ranges over ALL later cuts, not merely
+end-of-time observations. It does not turn eventual coverage into prefix-produced
+coverage or give a vote label bound. -/
 theorem healthy_old_inventory_preserve (Q : HealthyPreparationQuery S A V)
     {s₀ : Nat} (base : HealthyOldInventory S A V Q s₀ Q.cut) :
     ∀ i, Q.cut ≤ i → HealthyOldInventory S A V Q s₀ i := by
@@ -235,7 +238,8 @@ theorem healthy_old_row_realize (Q : HealthyPreparationQuery S A V) {s₀ : Nat}
 inside a timestamp: archival records and recent stored locks on the recent-origin
 chain. These have eventual origin witnesses, explicitly not causal prefix witnesses.
 No stronger OriginBefore is inferred from a label bound. The former cache and
-old-entry inventory fields were removed (R0): no consumer read them. -/
+old-entry inventory fields were removed (R0): nothing outside `healthy_preserve`'s own
+preservation plumbing read them. -/
 structure HealthyStateFacts (Q : HealthyPreparationQuery S A V) (s₀ i : Nat) : Prop where
   records : ∀ y ∈ honestKeys S Q.run.2,
     ∃ C ∈ (Q.trace.state y i).fg.tree,

@@ -37,7 +37,7 @@ RATINGS = {
     'final_cache_acceptance': ('paper-partial', LEAD, 'Settled final-liveness audit: actual last-carrier acceptance, retained lookup/cache for every reader and processing/read deadline budget remain.'),
     'healthy_old_inventory_initialize': ('paper-open (research)', PAPER, 'Whole-statement audit 6d6af170 §§27–28: global future first arrivals require upper coverage or strict below-hj, including equality; bounded actual reset production missing.'),
     'healthy_preparation_initialize': ('paper-open (research)', ROUTE_A, 'R0 replacement of healthy_old_inventory_initialize (workbench old_entry_post_reset.md §14, fidelity review f135cc9): exactly the joint (E) tuple, an actual reset with service through the horizon, its seed and a query with lower bound and strict reserve; needs the same-a reset envelope and the coefficient inequality, supplied by no landed declaration (healing_supply_repair_contracts.md, 5afa609).'),
-    'healthy_prepare': ('paper-partial', PAPER, 'Whole-statement audit 6d6af170 §§16–17,24,27–28: actual heal-cut stored record/cache/lock base production remains; inherited C above R not handled by R≤C.'),
+    'healthy_prepare': ('paper-partial', PAPER, 'Body proved: heal-cut archival records from the operational update and recent stored locks by lock_origin, from W and the preparation schedule; since R0 no cache or inventory is produced. Sorry-dependent through its premise types and callees, not a direct sorry.'),
     'healthy_preserve': ('paper-proved awaiting Lean', PAPER, 'Superseding §83 e8fc89c4: J quorum/inventory contradiction; F via F≤J; recent locks via lock_origin; retained records via archival tree/F monotonicity/restart. Adapter/J-entry elaboration remains.'),
     'healthy_cut_tips_comparable': ('paper-partial', PAPER, '103bfbd extracts actual stored-clock read-tip comparability; same equality-time pre-endCut gap. Engine output transport is proved.'),
     'healthy_cut_tips_ancestor': ('paper-partial', PAPER, '103bfbd extracts directed actual stored-clock read-tip ancestry; temporal/equality-time gap remains. Engine output transport is proved.'),
@@ -135,8 +135,9 @@ RETIRED = {
         'paper handoff workbench b386900 notes/cards/final_row_signers.md.'),
     'healthy_old_inventory_initialize': ('R0 decomposition replacement (#136)',
         'Replaced by healthy_preparation_initialize, which produces only the joint (E) tuple. '
-        'The old-entry inventory had no reader beyond building HealthyStateFacts, whose cache and '
-        'inventory fields were removed. Removal is not proof closure: the inventory gap stays '
+        'Nothing outside healthy_preserve\'s own preservation plumbing read the old-entry inventory '
+        'or the caches, and those HealthyStateFacts fields were removed. Removal is not proof '
+        'closure: the inventory gap stays '
         'documented at the outside leaf healthy_vote_row_replacement '
         '(workbench old_entry_post_reset.md §14, review f135cc9).'),
 }
