@@ -320,6 +320,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Coun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Step
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Suppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
