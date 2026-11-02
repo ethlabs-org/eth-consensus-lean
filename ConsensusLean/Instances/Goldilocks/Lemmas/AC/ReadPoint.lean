@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 
 public section
 
@@ -116,7 +117,9 @@ private theorem vote_tryVote_input_point (hr : ACLocalRun (goldilocksSA sp FGP r
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     ∃ P, e ∈ (tryVote sp y P ℓ.frame (tr.time i)).2 ∧ (P = tr.state y i ∨
       ∃ A : SAState sp.n, P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧
-        A.locks = (tr.state y i).locks ∧ OptimisticPoint tr y i ℓ A) := by
+        A.locks = (tr.state y i).locks ∧ OptimisticPoint tr y i ℓ A ∧
+        ((∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y i) (tr.time i) m) ∨
+          ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y i) (tr.time i) B)) := by
   obtain ⟨hc, he⟩ := hc
   have hΦ := (frameIn_of_callAt hr hy hc).1
   have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
@@ -141,10 +144,12 @@ private theorem vote_tryVote_input_point (hr : ACLocalRun (goldilocksSA sp FGP r
     simp [ACInterface.step] at he'
   | message m =>
     rw [hcall] at he'
-    exact ⟨_, he', Or.inr ⟨_, rfl, admitVote_locks_eq _ _ _, hc, Or.inl ⟨m, hcall, rfl⟩⟩⟩
+    exact ⟨_, he', Or.inr ⟨_, rfl, admitVote_locks_eq _ _ _, ⟨hc, Or.inl ⟨m, hcall, rfl⟩⟩,
+      Or.inl ⟨m, rfl, rfl⟩⟩⟩
   | block B =>
     rw [hcall] at he'
-    exact ⟨_, he', Or.inr ⟨_, rfl, blockReceipt_locks _ _ _, hc, Or.inr (Or.inl ⟨B, hcall, rfl⟩)⟩⟩
+    exact ⟨_, he', Or.inr ⟨_, rfl, blockReceipt_locks _ _ _, ⟨hc, Or.inr (Or.inl ⟨B, hcall, rfl⟩)⟩,
+      Or.inr ⟨B, rfl, rfl⟩⟩⟩
   | restart =>
     rw [hcall] at he'
     change e ∈ (acRestart sp ro y _ ℓ.frame (tr.time i)).2 at he'
@@ -168,7 +173,7 @@ theorem readPoint_locks_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U
   obtain ⟨l₁, hl₁, -, -, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩ :=
     ((locks_move_back sp) FGP ℓ.frame P.locks (tr.time i) hΦ).2.2 _ _ l' hl'
   refine ⟨B', hB', hB'r, ?_⟩
-  rcases hP with rfl | ⟨A, rfl, hAl, hpt⟩
+  rcases hP with rfl | ⟨A, rfl, hAl, hpt, -⟩
   · exact Or.inl ⟨l₁, hl₁, B₁, hB₁, hB₁r, hA⟩
   unfold optimisticConfirmation at hl₁
   split at hl₁
@@ -190,6 +195,51 @@ theorem readPoint_locks_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U
       exact (deepest_mem h).1.1
     obtain rfl : B₂ = B := hΦ.coherent.1 hB₂ hBt hB₂r
     exact Or.inr ⟨B₂, _, ⟨ℓ, A, hpt, rfl, hsel, rfl⟩, hA.trans hA'⟩
+
+/-- `readPoint_locks_provenance` with the cut bound of the optimistic arm: the read point's
+optimistic lock is written by the receipt's check (`on_message`/`on_block`, before the own vote of
+the call), so its counted honest votes were cast at cuts before `i`. -/
+theorem readPoint_locks_provenance_strict {proposer : Nat → Fin sp.n}
+    (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
+    (hpos : 0 < sp.slot (tr.time i)) :
+    ∀ l' ∈ e.readPoint.locks, ∃ B' ∈ ℓ.frame.tree, B'.root = l'.block ∧
+      ((∃ l ∈ (tr.state y i).locks, ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧ ℓ.frame.Anc B' B) ∨
+       ∃ B CV, OptimisticLockAt tr y i (sp.slot (tr.time i)) B CV ∧
+         (∀ v ∈ CV, v.val ∈ H → ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) ∧
+         ℓ.frame.Anc B' B) := by
+  have hr := hrun.localRun
+  obtain ⟨P, he, hP⟩ := vote_tryVote_input_point hr hy hc
+  have hΦ := (frameIn_of_callAt hr hy hc.1).1
+  intro l' hl'
+  rw [tryVote_readPoint_locks_eq he] at hl'
+  simp only [hpos, ↓reduceIte] at hl'
+  obtain ⟨l₁, hl₁, -, -, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩ :=
+    ((locks_move_back sp) FGP ℓ.frame P.locks (tr.time i) hΦ).2.2 _ _ l' hl'
+  refine ⟨B', hB', hB'r, ?_⟩
+  rcases hP with rfl | ⟨A, rfl, hAl, hpt, hrcpt⟩
+  · exact Or.inl ⟨l₁, hl₁, B₁, hB₁, hB₁r, hA⟩
+  unfold optimisticConfirmation at hl₁
+  split at hl₁
+  · exact Or.inl ⟨l₁, hAl ▸ hl₁, B₁, hB₁, hB₁r, hA⟩
+  rename_i B hsel
+  rw [updateLatestConfirmed_locks_eq] at hl₁
+  obtain ⟨l₂, hl₂, -, -, B₂, hB₂, hB₂r, B₁', hB₁', hB₁'r, hA'⟩ :=
+    ((locks_move_back sp) FGP ℓ.frame A.locks (tr.time i) hΦ).2.1 _ _ l₁ hl₁
+  obtain rfl : B₁' = B₁ := hΦ.coherent.1 hB₁' hB₁ (hB₁'r.trans hB₁r.symm)
+  rcases hl₂ with hl₂ | ⟨p, hp, rfl⟩
+  · exact Or.inl ⟨l₂, hAl ▸ hl₂, B₂, hB₂, hB₂r, hA.trans hA'⟩
+  · rw [Set.mem_singleton_iff] at hp
+    subst hp
+    have hBt : B ∈ ℓ.frame.tree := by
+      have h := hsel
+      unfold optimisticSelect at h
+      dsimp only at h
+      split_ifs at h
+      exact (deepest_mem h).1.1
+    obtain rfl : B₂ = B := hΦ.coherent.1 hB₂ hBt hB₂r
+    exact Or.inr ⟨B₂, _, ⟨ℓ, A, hpt, rfl, hsel, rfl⟩,
+      fun v hv hvH => receipt_pool_vote hrun hy hc.1 hrcpt hv.1 hvH, hA.trans hA'⟩
 
 end Consensus.Goldilocks.SA
 

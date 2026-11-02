@@ -129,14 +129,16 @@ theorem reader_frame (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy : y �
       (liveBlocks_chain_at D.hrun D.hnc hy m t)).2 _ (Or.inr rfl)))
   · exact Or.inr h
 
-/-- **Every honest fast lock block is compatible with `P`** (§5.2(a)(b)): a fast update lock or an
-optimistic selection of an honest node. -/
-theorem fastLock_compatible (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy : y ∈ H)
+/-- **An honest fast lock block is compatible with `P`, cut-indexed** (§5.2(a)(b)): a fast update
+lock or an optimistic selection of an honest node at cut `c`, whose counted honest votes were
+cast at cuts before `n`, from (H)/S5V at the cuts before `n` (`OutageVoteInv D n`) only. -/
+theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n} (hy : y ∈ H)
     {c s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hfl : SA.FastLockAt tr.projAC y c s B CV) : Compatible (tr.HonestBlocks H) B D.P := by
+    (hfl : SA.FastLockAt tr.projAC y c s B CV)
+    (hcut : ∀ v ∈ CV, v.val ∈ H → ∃ j < n, ∃ e, SA.VoteAt tr.projAC v.val j e ∧ e.msg = v) :
+    Compatible (tr.HonestBlocks H) B D.P := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer D.hrun D.hnc
   have hU := D.coherent
-  have hvi := (hinv (c + 1)).toOutageVoteInv
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hcount, hCV⟩ := SA.fastLock_counted hrun' hy hfl
   by_cases hs : s < D.j₀
@@ -173,12 +175,52 @@ theorem fastLock_compatible (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy
     by_contra hu
     simp only [Set.mem_union, Set.mem_compl_iff, not_or, not_not] at hu
     obtain ⟨hvs, R, hRU, hRr, -, hBR⟩ := hCV v hv
-    obtain ⟨j', hj', e, hve, rfl⟩ := fastLock_honest_vote D.hrun D.hnc hy hfl hv hu.1
+    obtain ⟨j', hj', e, hve, rfl⟩ := hcut v hv hu.1
     exact hB (compatible_of_voteCompat hU hRU hRr hBR
-      (hvi.voteCompat_of_not_lateWaker hu.1 hu.2 (by omega) hve (by omega)))
+      (hvi.voteCompat_of_not_lateWaker hu.1 hu.2 hj' hve (by omega)))
   have := Set.ncard_le_ncard hsub
   have := D.two_mul_lt
   omega
+
+/-- **Every honest fast lock block is compatible with `P`** (§5.2(a)(b)): a fast update lock or an
+optimistic selection of an honest node. -/
+theorem fastLock_compatible (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy : y ∈ H)
+    {c s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hfl : SA.FastLockAt tr.projAC y c s B CV) : Compatible (tr.HonestBlocks H) B D.P :=
+  fastLock_compatible_at (hinv (c + 1)).toOutageVoteInv hy hfl fun _ hv hvH =>
+    let ⟨j', hj', e, hve, he⟩ := fastLock_honest_vote D.hrun D.hnc hy hfl hv hvH
+    ⟨j', Nat.lt_succ_of_le hj', e, hve, he⟩
+
+/-- **(i) at a read point, cut-indexed** (S5's `LiveLocksCompatible` inside the cut induction):
+at an honest vote of a slot `> 0` cast at cut `i`, the live lock blocks of the read point are
+compatible with every block `B ⪯ P`, from the invariant at the cast cut `i` only. The stored locks
+are the `locks` field at `i`; the read point's optimistic lock is written by the receipt's check
+before the call's own vote, so its counted honest votes were cast at cuts before `i`
+(`SA.readPoint_locks_provenance_strict`) and (H)/S5V at the cuts before `i` decide it. -/
+theorem readPoint_liveLockBlocks_compatible_at {i : Nat} (hinv : OutageLockInv D i)
+    {y : Fin sp.n} (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
+    (hpos : 0 < sp.slot (tr.time i)) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hBP : Anc (tr.HonestBlocks H) B D.P) :
+    ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
+      Compatible (tr.HonestBlocks H) L B := by
+  intro L hL
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer D.hrun D.hnc
+  have hr := hrun'.localRun
+  have hU := D.coherent
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  obtain ⟨l', hl', B₀, hB₀, hB₀r, -, rfl⟩ := SA.mem_liveLockBlocks hΦ hL
+  obtain ⟨B', hB', hB'r, h⟩ := SA.readPoint_locks_provenance_strict hrun' hy hc hpos l' hl'
+  obtain rfl : B₀ = B' := hΦ.coherent.1 hB₀ hB' (hB₀r.trans hB'r.symm)
+  refine compatible_of_anc_right hU hBP
+    (compatible_of_anc hU ((SA.viableAncestor_anc hΦ hB₀).2.mono hΦU) ?_)
+  rcases h with ⟨l, hl, B₁, hB₁, hB₁r, hanc⟩ | ⟨B₁, CV, hfl, hcut, hanc⟩
+  · rw [projAC_state D.hrun.toLocalRun hy] at hl
+    obtain ⟨L', hL', hL'r, hcomp⟩ := hinv.locks y hy i le_rfl l hl
+    obtain rfl : B₁ = L' := hU.1 (hΦU hB₁) ⟨y, hy, i, hL'⟩ (hB₁r.trans hL'r.symm)
+    exact compatible_of_anc hU (hanc.mono hΦU) hcomp
+  · exact compatible_of_anc hU (hanc.mono hΦU)
+      (fastLock_compatible_at hinv.toOutageVoteInv hy (Or.inr hfl) hcut)
 
 /-- **(i) at a read point** (S5's `LiveLocksCompatible`): at an honest vote of a slot `> 0`, the
 live lock blocks of the read point are compatible with every block `B ⪯ P`. -/
@@ -188,22 +230,8 @@ theorem readPoint_liveLockBlocks_compatible (hinv : ∀ i, OutageLockInv D i) {y
     (hpos : 0 < sp.slot (tr.time i)) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hBP : Anc (tr.HonestBlocks H) B D.P) :
     ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
-      Compatible (tr.HonestBlocks H) L B := by
-  intro L hL
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer D.hrun D.hnc).localRun
-  have hU := D.coherent
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
-  obtain ⟨l', hl', B₀, hB₀, hB₀r, -, rfl⟩ := SA.mem_liveLockBlocks hΦ hL
-  obtain ⟨B', hB', hB'r, h⟩ := SA.readPoint_locks_provenance hr hy hc hpos l' hl'
-  obtain rfl : B₀ = B' := hΦ.coherent.1 hB₀ hB' (hB₀r.trans hB'r.symm)
-  refine compatible_of_anc_right hU hBP
-    (compatible_of_anc hU ((SA.viableAncestor_anc hΦ hB₀).2.mono hΦU) ?_)
-  rcases h with ⟨l, hl, B₁, hB₁, hB₁r, hanc⟩ | ⟨B₁, CV, hfl, hanc⟩
-  · rw [projAC_state D.hrun.toLocalRun hy] at hl
-    obtain ⟨L', hL', hL'r, hcomp⟩ := (hinv i).locks y hy i le_rfl l hl
-    obtain rfl : B₁ = L' := hU.1 (hΦU hB₁) ⟨y, hy, i, hL'⟩ (hB₁r.trans hL'r.symm)
-    exact compatible_of_anc hU (hanc.mono hΦU) hcomp
-  · exact compatible_of_anc hU (hanc.mono hΦU) (fastLock_compatible hinv hy (Or.inr hfl))
+      Compatible (tr.HonestBlocks H) L B :=
+  readPoint_liveLockBlocks_compatible_at (hinv i) hy hc hpos hBP
 
 /-- **(iii) veto-harmless** (§8): at an honest update whose result `C ⪰ P` a live lock vetoes, the
 stored record names a block above `P`. -/

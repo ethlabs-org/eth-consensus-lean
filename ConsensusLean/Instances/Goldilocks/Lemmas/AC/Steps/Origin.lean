@@ -276,6 +276,16 @@ theorem optimisticPoint_pool_vote (hrun : ACRun proposer tr H U)
     obtain ⟨j', hj', h⟩ := hrun.honest.pool_vote x hx _ _ v hv hvH
     exact ⟨j', Nat.lt_succ_iff.1 hj', h⟩
 
+/-- **The honest votes at a receipt's optimistic point** (after an `on_message` admission or an
+`on_block` receipt, before any own vote of the call) were emitted at earlier cuts. -/
+theorem receipt_pool_vote (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {A : SAState sp.n}
+    (h : (∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y j) (tr.time j) m) ∨
+      ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y j) (tr.time j) B)
+    {σ : Nat} {v : Vote sp.n} (hv : v ∈ A.pool σ) (hvH : v.val ∈ H) :
+    ∃ j' < j, ∃ e', VoteAt tr v.val j' e' ∧ e'.msg = v :=
+  (receipt_poolOK hrun hy hc h σ v hv hvH).2
+
 /-- Every read-point lock has a genuine optimistic or update write, including an
 optimistic receipt in the vote's own call. Unlock and live remaps preserve its label
 and move its block only to ancestors of the selected block. -/
