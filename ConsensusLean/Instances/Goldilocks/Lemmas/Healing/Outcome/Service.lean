@@ -340,6 +340,14 @@ private theorem entry_slot_pending {st : Store P ACP} (hr : st.Reachable acp₀)
     obtain ⟨-, -, -, -, h5⟩ := FG.height_step P.fg _ _ _ _ hc hst
     exact List.mem_of_getLast? ((h5 hh).2.2 hb).2
 
+/-- **The entry slot of an entry block.** In a reachable store, a held `T` that is the entry of
+its own state (`σ[T].Th = T.root`) entered its height at its slot: `σ[T].ThSlot = T.slot`
+(`Th := B.root` and `ThSlot := B.slot` are set together by the height events). -/
+theorem Store.ThSlot_eq_slot {st : Store P ACP} (hr : st.Reachable acp₀)
+    {T : NodeBlock P ACP} (hT : T ∈ st.tree) (hTe : (st.σ T.root).Th = T.root) :
+    (st.σ T.root).ThSlot = T.slot :=
+  (entry_slot_pending hr hT hTe).1
+
 /-- **The first crossing of an entry before its timeout** (workbench#30 §5): from an entry `T` to
 `C`, all slots before `T.slot + δ_t`, each block keeps `T`'s height, entry and justification (all
 blocks from `T` to it too), or some `X` on the way justifies `T` and (bound) finalized `P_E`. -/

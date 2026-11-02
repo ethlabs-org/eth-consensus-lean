@@ -337,6 +337,77 @@ theorem window_entry_justified_or_window (hrun : GoldilocksRun proposer dg H tr)
     exact ⟨D, hD, hXD, hDPr, h1, h2, h3, h4⟩
   · exact Or.inr hW
 
+/-- **The entry slot of the lock's entry block.** For a held `X` of an honest `y` with root
+`σ[B].Th` (the entry block of the held `B`), `σ[X].ThSlot = X.slot`. -/
+theorem lock_entry_ThSlot (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {B X : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y k).fg.tree)
+    (hX : X ∈ (tr.state y k).fg.tree) (hXr : X.root = ((tr.state y k).fg.σ B.root).Th) :
+    ((tr.state y k).fg.σ X.root).ThSlot = X.slot ∧ ((tr.state y k).fg.σ X.root).Th = X.root := by
+  obtain ⟨X₀, hX₀, hX₀r, -, -, hX₀T⟩ := lock_entry_block hrun hy hB
+  obtain rfl : X = X₀ := eq_of_root_eq hrun hy hX hX₀ (hXr.trans hX₀r.symm)
+  exact ⟨Healing.Store.ThSlot_eq_slot (Compose.fg_reachable hrun.toLocalRun hy k) hX hX₀T, hX₀T⟩
+
+/-- **L5.4 with the M4 proposal (r14 s5).** `window_entry_justified_or_window` with the timing
+premise discharged by M4: for a slot `s₂ ≥ s₀` with `v + Δ ≤ t_{s₂}`, in case (A), for every held
+`X` of `y` with root `T` and `s₂ + gM ≤ X.slot + δt + 1`, some honest proposal `P` of a slot
+`s ∈ [s₂, s₂ + gM)` has an honest parent `Pr ⪰ X` on whose chain, at every honest holder, a held
+`D` with `X ⪯ D ⪯ Pr` justified `(h, T)` (and finalized the predecessor if `σ[X]` is bound). The
+entry slot is `σ[X].ThSlot = X.slot` (`lock_entry_ThSlot`). -/
+theorem window_entry_justified_M4 (hrun : GoldilocksRun proposer dg H tr)
+    (hq : Hᶜ.ncard < sp.toParams.fg.q)
+    {g ΔF v gR tH : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hH : Healed tr H proposer gR tH h₀ E)
+    (hs : Healing.HSShared tr H dg g ΔF) (hv : gbar g ≤ v) {s₀ gM s₁ : Nat}
+    (hM4 : ∀ s, s₀ ≤ s → ∃ s', s ≤ s' ∧ s' < s + gM ∧
+      ∃ P, Healing.HonestProposalRun tr H proposer s' P)
+    (hs₁ : s₀ ≤ s₁) (hvs : v + ΔF ≤ sp.ts s₁)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ℓ) (htH : tH ≤ tr.time k) {l}
+    (hl : l ∈ SA.liveLocks sp (tr.projAC.state y k).locks ℓ.frame (tr.time k))
+    (hf : l.fast = true) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree)
+    (hBl : B.root = l.block) (hks : tr.time k + sp.Δ ≤ sp.ts s₁) {h T : Nat}
+    (hh : ((tr.state y k).fg.σ B.root).h = h) (hT : ((tr.state y k).fg.σ B.root).Th = T)
+    (hh₀ : h₀ + 1 ≤ h) {ΔR a b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg gR ΔR a b) (hvb : v ≤ b)
+    (hcatch : Healing.CatchRun tr H gR (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hPg : P.root ≠ sp.genesisRoot)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar gR + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (htu : tH ≤ sp.ts u) (huv : sp.ts u + 6 * sp.Δ ≤ v)
+    (hXP : ∀ X ∈ (tr.state y k).fg.tree, X.root = T → Anc (tr.HonestBlocks H) X P)
+    {s₂ : Nat} (hs₂ : s₀ ≤ s₂) (hvs₂ : v + sp.Δ ≤ sp.ts s₂) :
+    (∀ X ∈ (tr.state y k).fg.tree, X.root = T → s₂ + gM ≤ X.slot + sp.toParams.fg.δt + 1 →
+      ∃ s, s₂ ≤ s ∧ s < s₂ + gM ∧ ∃ P, Healing.HonestProposalRun tr H proposer s P ∧
+        ∃ Pr ∈ tr.HonestBlocks H, P.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) X Pr ∧
+          ∀ w ∈ H, ∀ j, Pr ∈ (tr.state w j).fg.tree →
+            ∃ D ∈ (tr.state w j).fg.tree, (tr.state w j).fg.Anc X D ∧
+              (tr.state w j).fg.Anc D Pr ∧ ((tr.state w j).fg.σ D.root).h = h + 1 ∧
+              ((tr.state w j).fg.σ D.root).hj = h ∧ ((tr.state w j).fg.σ D.root).J = T ∧
+              (((tr.state y k).fg.σ X.root).bound →
+                ((tr.state w j).fg.σ D.root).F = ((tr.state y k).fg.σ X.root).J ∧
+                ((tr.state w j).fg.σ D.root).hF = ((tr.state y k).fg.σ X.root).hj)) ∨
+    ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ k X Pr,
+      tr.ProposesAt (proposer s') k X ∧ X.slot = s' ∧ X.parent = some Pr.root ∧
+      Pr ∈ (tr.state (proposer s') k).fg.tree ∧
+      (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
+        (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
+          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+            ((tr.post k).fg.σ X.root).hF =
+              ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
+  have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
+  rcases window_entry_justified_or_window hrun hq hH hs hv hM4 hs₁ hvs hy hc htH hl hf hB hBl
+    hks hh hT hh₀ hp hvb hcatch hP hslot hu hPg hun hgu hR htu huv hXP with hA | hW
+  · refine Or.inl fun X hX hXr hδ => ?_
+    obtain ⟨s, hs₂s, hss, P', hP'⟩ := hM4 s₂ hs₂
+    have hThs := (lock_entry_ThSlot hrun hy hBy hX (hXr.trans hT.symm)).1
+    have hts : sp.ts s₂ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by exact_mod_cast hs₂s)
+    exact ⟨s, hs₂s, hss, P', hP', hA X hX hXr s P' hP' (hvs₂.trans hts) (by rw [hThs]; omega)⟩
+  · exact Or.inr hW
+
 end Refinement
 
 end Consensus.Goldilocks
