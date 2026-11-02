@@ -43,14 +43,17 @@ and body edges and cycle-safe transitive traversal. Names below have prefix
 an assembly depending on them is not an additional leaf.
 
 Compiled closure: no direct owner in the audit at 70e90b44; `accepted` at
-[propext, Classical.choice, Quot.sound] (`#print axioms` at 70e90b44). The exact-head full tier on
+[propext, Classical.choice, Quot.sound] (`#print axioms` at 70e90b44). Since dea4a19e (#136, sorry
+groups A, B and C deleted) no declaration in the import closure of `Refinement.Accepted` and
+`Solution` depends on `sorryAx` (`axiom-audit` at dea4a19e); the only direct sorry owners left in
+ConsensusLean are `Healing.voter_unlock_keeps_lock` and `Healing.reset_inv`, outside that closure. The exact-head full tier on
 70e90b443ce1d0871b8efd21e131ee54367559e9 (`check.sh --full`) passed, exit 0, 801 s, recorded on
 [#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-02 18:03, milestone
-closure): kernel replay and `lake comparator --paranoid` with its fixtures passed, and the
-`lake check` fixtures and the Solution/test audit passed. Default-target `lake check` was
-intentionally omitted, because 15 `sorry`/`admit` remain in the allowed layers; the default targets
-are not claimed `lake check`-clean. This is distinct from the Accepted Challenge certification,
-which is pending: it is not certified yet and needs its own full tier.
+closure): kernel replay, `lake comparator --paranoid` with its fixtures and the Solution/test
+audit passed. Step 10 logged 15 lexical sorry/admit matches (14 sorry holes plus an admit-named
+structure field) and skipped the default-target lake check; the good/bad fixtures passed. This is
+distinct from the Accepted Challenge certification, which is pending: it is not certified yet and
+needs its own full tier.
 
 | Set | Owner | Direct leaf list |
 |---|---|---|
@@ -92,10 +95,9 @@ available and stable both project to confirmed output. Collision escapes,
 empty-validator handling, exact cDur, deadline scaling and endpoint premises
 are unchanged. No Main/Solution certification is claimed.
 
-OPEN but **not currently reachable from accepted**: `healthy_old_row_realize`,
-`healthy_vote_row_replacement` (Healing paper/T3, first-arrival/self-entry and
-label-bounded replacement; since R0 the latter takes the old-entry inventory as an
-explicit premise, so the inventory gap stays documented outside the Accepted route). `sleepy_safe_finite` (Healing box finite R.1) is
+`healthy_old_row_realize` and `healthy_vote_row_replacement` (OPEN, unreachable from
+accepted) were deleted at fa194fa6 (#136, sorry group A); the first-arrival/self-entry join and
+the label-bounded replacement they stated stay open on paper. `sleepy_safe_finite` (Healing box finite R.1) is
 **proved and unreached**, via `Regimes.sleepy_safe_before` at c3f8f4d.
 Their absence from the closure means the current joint leaves do not yet call
 them; reachability alone says nothing about proof status. Likewise imported implementation
@@ -665,10 +667,10 @@ finite `[ready, heal]` preparation from health-only preservation.
 | Named leaf | Remaining obligation |
 |---|---|
 | `healthy_preparation_initialize` | Proved: the joint (E) tuple from the reset envelope (`healthy_reset_envelope`) and the coefficient inequality `accepted_heal_ge_reset`; explicit record/cache/expiry/service timing W and a finite preparation schedule. R0 replaced the former `healthy_old_inventory_initialize`: nothing outside `healthy_preserve`'s own preservation plumbing read its coverage-or-below-hj inventory. |
-| `healthy_old_row_realize` | OPEN first-arrival/self-entry join: the exact old-source antecedent identifies E with root a.T and the receiver's replay height; E is not the source D, and no extra ToFGAt D is assumed. |
+| `healthy_old_row_realize` | Deleted at fa194fa6 (#136, sorry group A; it had no consumer). It stated the OPEN first-arrival/self-entry join: the exact old-source antecedent identifies E with root a.T and the receiver's replay height. |
 | `healthy_prepare` | Record and recent stored-lock preparation at cutMap(endCut heal), from W, the preparation schedule and progress only on `[ready, heal]` (body proved; no inventory since R0). |
 | `healthy_preserve` | Body proved: preservation of records and recent stored locks at every later canonical cut through engine end, including same-time intermediate states, under health without later progress. No timestamp bound on the boundary cut is asserted. |
-| `healthy_vote_row_replacement` | OPEN eventual-coverage-to-label-bounded replacement matching BaseFacts: replacement label ≤ predecessor slot, not OriginBefore or a newly assumed causal source. Since R0 it takes `HealthyOldInventory` as an explicit premise. |
+| `healthy_vote_row_replacement` | Deleted at fa194fa6 (#136, sorry group A; it had no consumer). It stated the OPEN eventual-coverage-to-label-bounded replacement matching BaseFacts (replacement label ≤ predecessor slot), over `HealthyOldInventory` as an explicit premise. |
 
 `healthy_old_inventory_preserve` delegates to the proved
 `Healing.oldHonest_inventory_preserved` from 9f5d6e7. Monotone hj preserves

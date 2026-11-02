@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_commit": "70e90b443ce1d0871b8efd21e131ee54367559e9",
+  "audit_commit": "dea4a19e3f4f486ee7d3a04d167f055338cec056",
   "baseline_commit": "fd7f498a15bf9e9e694102ffaeb8de6b33067052",
   "generated_on": "2026-11-02",
   "notes": [
@@ -11,12 +11,24 @@
     "retired keeps prior rows of retired former owners; retirement is not proof closure."
   ],
   "historical_removed": [
+    "Consensus.Goldilocks.Healing.clean_result_next_votes",
+    "Consensus.Goldilocks.Healing.ready_update",
+    "Consensus.Goldilocks.Healing.report_cover",
     "Consensus.Goldilocks.Refinement.final_inherited_progress",
     "Consensus.Goldilocks.Refinement.final_row_pending_or_finalized",
     "Consensus.Goldilocks.Refinement.final_row_service_geometry",
     "Consensus.Goldilocks.Refinement.final_row_signers",
     "Consensus.Goldilocks.Refinement.final_row_supply",
-    "Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize"
+    "Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize",
+    "Consensus.Goldilocks.Refinement.healthy_old_row_realize",
+    "Consensus.Goldilocks.Refinement.healthy_vote_row_replacement",
+    "Consensus.Goldilocks.Regimes.grow_healed_until",
+    "Consensus.Goldilocks.Regimes.healed_safe_until",
+    "Consensus.Goldilocks.Regimes.include_healed_until",
+    "Consensus.Goldilocks.Regimes.outage_statements",
+    "Consensus.Goldilocks.Regimes.weak_base_extend",
+    "Consensus.Goldilocks.Regimes.weak_base_locks",
+    "Consensus.Goldilocks.Regimes.weak_base_until"
   ],
   "fields": {
     "Consensus.Goldilocks.Refinement.accepted_admissible": [],
@@ -55,25 +67,6 @@
   },
   "rows": [
     {
-      "name": "Consensus.Goldilocks.Healing.clean_result_next_votes",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Foundation.lean:235",
-      "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "area": "healing",
-      "status": "paper-open (research)",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
-      "evidence": "Outside audit 649f0286 \u00a7\u00a773,77,82: raw-result induction after repair does not cover arbitrary early sub-fast/vetoed ResultAt without Catch/base.",
-      "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
-      "card-path": "repos/consensus-lean/notes/archive/clean_result_next_votes.md",
-      "card-repo": "ethlabs-org/workbench",
-      "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
-    },
-    {
       "name": "Consensus.Goldilocks.Healing.proposal_start_supported",
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2967",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
@@ -85,11 +78,11 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Healing.ready_unanimous",
@@ -106,44 +99,6 @@
       "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/ready_unanimous.md",
-      "card-repo": "ethlabs-org/workbench",
-      "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
-    },
-    {
-      "name": "Consensus.Goldilocks.Healing.ready_update",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:2249",
-      "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "area": "healing",
-      "status": "paper-partial",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
-      "last-changed": "2026-11-01",
-      "evidence": "Four outside audits 649f0286: exact result, veto, fast selection and source at actual update or higher report by deadline remain.",
-      "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
-      "card-path": "repos/consensus-lean/notes/cards/ready_update.md",
-      "card-repo": "ethlabs-org/workbench",
-      "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
-    },
-    {
-      "name": "Consensus.Goldilocks.Healing.report_cover",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:2357",
-      "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "area": "healing",
-      "status": "paper-open (research)",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
-      "last-changed": "2026-11-01",
-      "evidence": "d3e0244 proves finalized_descendant_report from ResetPremises and held finality witnesses: a finalized strict descendant supplies an actual earlier honest ToFG report, with heights compared in the reporter store. finality_below_or_higher_report retains explicit finality/P compatibility. This resolves that conditional report-extraction branch, not general report_cover: compatibility, candidate survival/normalization and fgReported suppression remain. No compiled leaf closes.",
-      "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
-      "card-path": "repos/consensus-lean/notes/cards/report_cover.md",
       "card-repo": "ethlabs-org/workbench",
       "derisk-verdict": "research",
       "adversarial-pass-done": "y"
@@ -312,11 +267,11 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.confirmed_slot_event",
@@ -330,11 +285,11 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_cache_acceptance",
@@ -422,12 +377,12 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_bounded_repairing_opening.md",
       "card-repo": "ethlabs-org/workbench",
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_confirmed_supply",
@@ -517,12 +472,12 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_current_read_context.md",
       "card-repo": "ethlabs-org/workbench",
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_current_record_candidates",
@@ -536,12 +491,12 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_current_record_candidates.md",
       "card-repo": "ethlabs-org/workbench",
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_current_record_next_floor",
@@ -555,12 +510,12 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_current_record_next_floor.md",
       "card-repo": "ethlabs-org/workbench",
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_current_record_sources",
@@ -574,12 +529,12 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_current_record_sources.md",
       "card-repo": "ethlabs-org/workbench",
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_current_record_viable",
@@ -713,25 +668,6 @@
       "adversarial-pass-done": "y"
     },
     {
-      "name": "Consensus.Goldilocks.Refinement.healthy_old_row_realize",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:209",
-      "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "area": "healing",
-      "status": "paper-partial",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-02",
-      "evidence": "Superseding exact audit 732a1b6: older validAtt branch does not constrain target; receiver-held target/replay-height bridge missing. No full-run counterexample. J-specific preservation has target membership.",
-      "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
-      "card-path": "repos/consensus-lean/notes/cards/healthy_old_row_realize.md",
-      "card-repo": "ethlabs-org/workbench",
-      "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
-    },
-    {
       "name": "Consensus.Goldilocks.Refinement.healthy_preparation_initialize",
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthyResetEnvelope.lean:205",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
@@ -751,7 +687,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_prepare",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:256",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:238",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -770,7 +706,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_preserve",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:379",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:361",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -821,24 +757,6 @@
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_repair_schedule.md",
       "card-repo": "ethlabs-org/workbench",
-      "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
-    },
-    {
-      "name": "Consensus.Goldilocks.Refinement.healthy_vote_row_replacement",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:440",
-      "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "area": "healing",
-      "status": "paper-partial",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-02",
-      "evidence": "Outside audit 649f0286: realization/inventory give eventual coverage but still need l\u2264s; OldEntryCovered has no label upper bound.",
-      "card-path": null,
-      "card-repo": null,
       "derisk-verdict": "none yet",
       "adversarial-pass-done": "n"
     },
@@ -929,11 +847,11 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_population",
@@ -947,11 +865,11 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_slot",
@@ -965,11 +883,11 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_sync",
@@ -1002,11 +920,11 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_safety_inputs",
@@ -1028,137 +946,8 @@
       "adversarial-pass-done": "y"
     },
     {
-      "name": "Consensus.Goldilocks.Regimes.grow_healed_until",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Regimes/Weak.lean:64",
-      "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "area": "healing",
-      "status": "paper-partial",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
-      "evidence": "Outside audit 649f0286: fresh actual ready proposal plus inclusion and temporal safety joins remain.",
-      "card-path": null,
-      "card-repo": null,
-      "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
-    },
-    {
-      "name": "Consensus.Goldilocks.Regimes.healed_safe_until",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Regimes/Weak.lean:41",
-      "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "area": "healing",
-      "status": "paper-partial",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
-      "evidence": "Outside audit 649f0286: weak-base production/preservation and actual ReadySafeOn reads remain; no extra progress premise.",
-      "card-path": null,
-      "card-repo": null,
-      "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
-    },
-    {
-      "name": "Consensus.Goldilocks.Regimes.include_healed_until",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Regimes/Weak.lean:51",
-      "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "area": "healing",
-      "status": "paper-partial",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
-      "evidence": "Outside audit 649f0286: given unanimity, covering nonvetoed update and preserved records at exact post-T Sleepy reads remain.",
-      "card-path": null,
-      "card-repo": null,
-      "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
-    },
-    {
-      "name": "Consensus.Goldilocks.Regimes.outage_statements",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Compose/Regimes/Outage.lean:31",
-      "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
-      "area": "outage+persist",
-      "status": "paper-open (research)",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
-      "evidence": "Outside audit 649f0286 \u00a7\u00a710,17\u201319,82: full arming/lifetime/source compatibility and covering repair for both reader classes remain.",
-      "card-path": null,
-      "card-repo": null,
-      "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n"
-    },
-    {
-      "name": "Consensus.Goldilocks.Regimes.weak_base_extend",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/WeakBase.lean:278",
-      "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
-      "area": "network+Sleepy",
-      "status": "paper-open (research)",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
-      "evidence": "Outside audit 649f0286: held rows through T do not cover future first arrivals/new cache roots; event/restart continuation needed.",
-      "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
-      "card-path": "repos/consensus-lean/notes/archive/weak_base_extend.md",
-      "card-repo": "ethlabs-org/workbench",
-      "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
-    },
-    {
-      "name": "Consensus.Goldilocks.Regimes.weak_base_locks",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/WeakBase.lean:90",
-      "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
-      "area": "network+Sleepy",
-      "status": "paper-partial",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
-      "evidence": "Outside audit 649f0286: expiry confines cases, but finite Healthy drain/support against later origins remains.",
-      "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
-      "card-path": "repos/consensus-lean/notes/archive/weak_base_locks.md",
-      "card-repo": "ethlabs-org/workbench",
-      "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
-    },
-    {
-      "name": "Consensus.Goldilocks.Regimes.weak_base_until",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/WeakBase.lean:271",
-      "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
-      "area": "network+Sleepy",
-      "status": "paper-open (research)",
-      "blocked-by": [],
-      "in_accepted_closure": false,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
-      "evidence": "Outside audit 649f0286 \u00a7\u00a716\u201319,27\u201328,82: exact records/cache/global old-row base is not supplied by pivot seed.",
-      "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
-      "card-path": "repos/consensus-lean/notes/archive/weak_base_until.md",
-      "card-repo": "ethlabs-org/workbench",
-      "derisk-verdict": "research",
-      "adversarial-pass-done": "y"
-    },
-    {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation.0.Consensus.Goldilocks.Healing.clean_source_vote_domain_step",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Foundation.lean:432",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Foundation.lean:421",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -1168,11 +957,11 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot.0.Consensus.Goldilocks.Healing.proposal_stored_locks_compatible_old",
@@ -1186,15 +975,15 @@
       "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
+      "evidence": "Proved; no direct owner in compiled audit at 70e90b44.",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
-      "adversarial-pass-done": "n",
-      "evidence": "Proved; no direct owner in compiled audit at 70e90b44."
+      "adversarial-pass-done": "n"
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service.0.Consensus.Goldilocks.Healing.higher_report_window_origin",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Service.lean:1540",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Service.lean:1432",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -1212,7 +1001,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service.0.Consensus.Goldilocks.Healing.update_window_kept",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Service.lean:1494",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Service.lean:1386",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",

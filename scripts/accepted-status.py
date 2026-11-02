@@ -22,7 +22,7 @@ ROUTE_A = 'https://github.com/ethlabs-org/consensus-lean/issues/136'
 # Evidence of a proved row outside REFRESH: the compiled audit fact, not prose.
 PROVED_EVIDENCE = 'Proved; no direct owner in compiled audit at '
 # Rows whose RATINGS entry replaces the previous row's rating and evidence on every run.
-REFRESH = ('healthy_preserve', 'healthy_old_row_realize', 'accepted_heal', 'final_window_extract',
+REFRESH = ('healthy_preserve', 'accepted_heal', 'final_window_extract',
            'final_reset_premises', 'healthy_preparation_initialize', 'healthy_repair_schedule',
            'healthy_confirmed_supply')
 RATINGS = {
@@ -55,24 +55,12 @@ RATINGS = {
     'outage_arm': ('paper-partial', PAPER, 'Whole-statement audit 6d6af170 §§10,14–19: inherited record/lookup and exact reader extraction; arming is not protection.'),
     'outage_repair': ('paper-open (research)', PAPER, 'Whole-statement audit 6d6af170 §§10,17–19: covering nonvetoed renewal, pool bound/resolutions, RESULT compatibility, persistence and both reader branches remain.'),
     'outage_pre_service': ('paper-partial', LEAD, 'Revision update 4d69fdd: old duplicate-fresh signature obstruction retired by migration; replacement engine service unproved. #128 Outage applicability not established.'),
-    'clean_result_next_votes': ('paper-open (research)', PAPER, 'Outside audit 649f0286 §§73,77,82: raw-result induction after repair does not cover arbitrary early sub-fast/vetoed ResultAt without Catch/base.'),
     'reset_inv': ('paper-partial', PAPER, 'Outside audit 649f0286 §§74–81: full Protected/P3, arbitrary admissions/root/frame retention and uniform Tb remain beyond P1/P2.'),
     'vote_old_live_lock_below_parent': ('paper-proved awaiting Lean', PAPER, 'Outside audit 649f0286 §§80–81: provenance+l+2 transfer and separate optimistic u−1 branch; non-vote full-tree domain/service integration remains.'),
     'ready_unanimous': ('paper-partial', PAPER, 'Outside audit 649f0286 §§23,79–81: actual first-deviation head/walk/payload equality remains, not merely parent extension.'),
     'voter_unlock_keeps_lock': ('paper-open (research)', PAPER, 'Outside audit 649f0286: voter-only opponents and proposer s−1 lock defeat simple view bound; new pivot bypasses this leaf; no full-run counterexample asserted.'),
-    'healthy_old_row_realize': ('paper-partial', PAPER, 'Superseding exact audit 732a1b6: older validAtt branch does not constrain target; receiver-held target/replay-height bridge missing. No full-run counterexample. J-specific preservation has target membership.'),
-    'healthy_vote_row_replacement': ('paper-partial', PAPER, 'Outside audit 649f0286: realization/inventory give eventual coverage but still need l≤s; OldEntryCovered has no label upper bound.'),
-    'weak_base_until': ('paper-open (research)', PAPER, 'Outside audit 649f0286 §§16–19,27–28,82: exact records/cache/global old-row base is not supplied by pivot seed.'),
-    'weak_base_extend': ('paper-open (research)', PAPER, 'Outside audit 649f0286: held rows through T do not cover future first arrivals/new cache roots; event/restart continuation needed.'),
-    'weak_base_locks': ('paper-partial', PAPER, 'Outside audit 649f0286: expiry confines cases, but finite Healthy drain/support against later origins remains.'),
-    'healed_safe_until': ('paper-partial', PAPER, 'Outside audit 649f0286: weak-base production/preservation and actual ReadySafeOn reads remain; no extra progress premise.'),
-    'include_healed_until': ('paper-partial', PAPER, 'Outside audit 649f0286: given unanimity, covering nonvetoed update and preserved records at exact post-T Sleepy reads remain.'),
-    'grow_healed_until': ('paper-partial', PAPER, 'Outside audit 649f0286: fresh actual ready proposal plus inclusion and temporal safety joins remain.'),
-    'outage_statements': ('paper-open (research)', PAPER, 'Outside audit 649f0286 §§10,17–19,82: full arming/lifetime/source compatibility and covering repair for both reader classes remain.'),
     'higher_report_window_origin': ('paper-proved awaiting Lean', LEAD, 'Four outside audits 649f0286: reset_origin_below and same-store high_of_anc establish high C, then high_report_origin; no unheld receiver height. entry-rows-exact §3.'),
     'update_window_kept': ('paper-partial', LEAD, 'Four outside audits 649f0286: actual update-frame viable-or-higher-origin dichotomy remains; hsrc can be vacuous; no reverse raw→stored ancestry.'),
-    'ready_update': ('paper-partial', LEAD, 'Four outside audits 649f0286: exact result, veto, fast selection and source at actual update or higher report by deadline remain.'),
-    'report_cover': ('paper-open (research)', LEAD, 'Four outside audits 649f0286: actual acToFG report existence under fgReported suppression, candidate survival/normalization and higher source remains; entry-rows-exact §§2,6.'),
 }
 
 
