@@ -240,6 +240,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDef
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AnchorStepsGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AnchorStepsSupply
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CarrierProcessed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Chains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CoefficientAdapters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
