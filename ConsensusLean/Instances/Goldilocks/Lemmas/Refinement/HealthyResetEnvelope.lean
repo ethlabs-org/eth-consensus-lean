@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetOfDrain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetCoefficients
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyQueryShared
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.DrainWarm
 
 public section
 
@@ -24,7 +25,8 @@ only up to heal, given the fit `ready + R·Δ + r ≤ heal`. This module stays u
 
 The fit `hfit` of `healthy_reset_envelope_of_fit` is the window fit of the heal coefficient,
 `healthy_reset_fit` (S6), so `healthy_reset_envelope_of_drain` takes only the drain at
-`healthyDrainLen`. -/
+`healthyDrainLen`, and the leaf form `healthy_reset_envelope` takes the drain from
+`drainOutputs_of_service` (`DrainWarm`). -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -32,6 +34,23 @@ open Blocks Shape
 open SA (gbar)
 
 variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
+
+/-- The shared HS premises of the query through the horizon at `Δ_F = Δ` (`7Δ ≤ 4Δ·δ_t` from
+`δ_t ≥ 6`). -/
+private theorem healthy_hsShared (Q : HealthyPreparationQuery S A V) :
+    Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
+      Q.params.Δ Q.run.2.horizon :=
+  Q.hsSharedUpTo_of_le Q.params.Δ le_rfl (by
+    have hΔ : 0 < Q.params.Δ := Q.params.toParams.hΔ
+    have : (6 : Time) ≤ S.δt := by exact_mod_cast A.timeout
+    nlinarith)
+
+/-- The whole-run no-restart premise: a restart is a labelled call, at a time `≤ horizon`, so
+the bounded one of `healthy_hsShared` covers it. -/
+private theorem healthy_noRestartAfter (Q : HealthyPreparationQuery S A V) :
+    Healing.NoRestartAfter Q.trace (honestKeys S Q.run.2) (gbar Q.gst) :=
+  fun y hy k hk => (healthy_hsShared S A V Q).noRestart y hy k hk
+    (healthy_query_call_time_le S A V Q (by obtain ⟨ℓ, hc, -⟩ := hk; exact ⟨_, hc⟩))
 
 /-- **The reset envelope from the drain and the fit before heal.** With the drain at the engine
 horizon (`DrainOutputs`, gap `X`, length `healthyDrainLen`) and the fit
@@ -53,9 +72,7 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
   have hΔ : 0 < Q.params.Δ := Q.params.toParams.hΔ
   have hδ6 : 6 ≤ S.δt := A.timeout
   have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
-  have hs := Q.hsSharedUpTo_of_le Q.params.Δ le_rfl (by
-    have : (6 : Time) ≤ S.δt := by exact_mod_cast hδ6
-    nlinarith)
+  have hs := healthy_hsShared S A V Q
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
   -- the ready scalar
   have hready : Q.ready = max Q.gst 0 + (Sys (family S) V).cDur (K S A) Q.run + 1 := rfl
@@ -70,10 +87,7 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
   change Healing.cutZ Q.params.toParams Q.gst + Q.params.Δ + 1 ≤ max Q.ready 0 + 4 * Q.params.Δ
     at hcz
   rw [max_eq_left hr0] at hcz
-  -- the whole-run no-restart premise: a restart is a labelled call, at a time `≤ horizon`
-  have hnr : Healing.NoRestartAfter Q.trace (honestKeys S Q.run.2) (gbar Q.gst) :=
-    fun y hy k hk => hs.noRestart y hy k hk
-      (healthy_query_call_time_le S A V Q (by obtain ⟨ℓ, hc, -⟩ := hk; exact ⟨_, hc⟩))
+  have hnr := healthy_noRestartAfter S A V Q
   -- an honest node exists
   have hH : (honestKeys S Q.run.2).Nonempty := by
     by_contra hne
@@ -153,6 +167,27 @@ theorem healthy_reset_envelope_of_drain (Q : HealthyPreparationQuery S A V)
       a ≤ Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
         (healthyResetSlack S Q.index : Time) :=
   healthy_reset_envelope_of_fit S A V Q hb hp (healthy_reset_fit S A V Q) hdrain
+
+/-- **The reset envelope (E) of a healthy preparation query** (S5): from the query, `heal ≤ horizon`
+and nonfinal progress on `[ready, heal]` alone, a delay `Δ_F` and a reset `a` with its premises
+through the horizon and `a ≤ ready + R·Δ + r`, `R = healthyResetCoeff`, `r = healthyResetSlack`.
+The drain is `drainOutputs_of_service` at `L_drain = healthyDrainLen = 2k + X`, which pays its
+guard `2k + X ≤ L_drain + 1`; the fit is `healthy_reset_fit`. -/
+theorem healthy_reset_envelope (Q : HealthyPreparationQuery S A V)
+    (hb : Q.heal ≤ Q.run.2.horizon)
+    (hp : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A)
+      Q.cap Q.index Q.ready Q.heal Q.run) :
+    ∃ ΔF a, Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
+        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon ∧
+      a ≤ Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
+        (healthyResetSlack S Q.index : Time) := by
+  have hs := healthy_hsShared S A V Q
+  refine healthy_reset_envelope_of_drain S A V Q hb hp
+    (drainOutputs_of_service (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid) hs.noColl hs.sync
+      hs.awake hs.faults (healthy_repair_catch S A V Q) (healthy_noRestartAfter S A V Q) ?_)
+  rw [healthyDrainLen_val]
+  change 2 * S.k + (Q.index : Nat) ≤ 2 * S.k + (Q.index : Nat) + 1
+  omega
 
 end Consensus.Goldilocks.Refinement
 
