@@ -224,7 +224,8 @@ theorem reset_of_drain (Q : FinalQuery S A V)
   have hN2 : u + 2 * ρ + 1 ≤ N := by rw [hNdef]; omega
   -- the rise
   obtain ⟨a, ha, hab⟩ := hframe.rise_reset hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ hΔF
-    hgp hN2 (by linarith [hfitN.2]) hz hdes hP hPs hlow hkind
+    hgp hN2 (by linarith [hfitN.2]) hz hdes hP hPs hlow
+    (fun y hy i ell R hR hPR _ => hkind y hy i ell R hR hPR)
   refine ⟨a, ha, hab.trans ?_⟩
   have hts : Q.params.ts (u + 2 * (δt + X - 1) + 1 : Nat) ≤ Q.params.ts N :=
     (SA.ts_le_iff Q.params).2 (by exact_mod_cast (show _ ≤ N by omega))

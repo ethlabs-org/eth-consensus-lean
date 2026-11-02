@@ -261,7 +261,7 @@ theorem FrameWindow.round_of_warm
     {p : Fin sp.n} (hp : p ∈ H) (hdx : p = proposer x)
     {kX : Nat} (hX : tr.ProposesAt p kX X) (hXs : X.slot = x)
     (hkind : ∀ y ∈ H, ∀ i ell R, SA.ToFGAt tr.projAC y i ell R →
-      Anc (tr.HonestBlocks H) P R → tr.time i < T →
+      Anc (tr.HonestBlocks H) P R → tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ →
       ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ P.root).h →
       ((tr.state y i).fg.σ P.root).h = HZ tr H g ∨
       (tr.state y i).fg.hj < ((tr.state y i).fg.σ P.root).h ∨
@@ -307,7 +307,7 @@ theorem FrameWindow.round_of_warm
   obtain ⟨i, ell, R, hR, hti, hPR, hRd⟩ := hfol y hy
   have hiT : tr.time i < T := lt_of_le_of_lt hti hT
   obtain ⟨hPy, hRy, hor⟩ := row_or_high_of_report hrun hnc hf hna hy hR hiT hPR
-    (hkind y hy i ell R hR hPR hiT)
+    (hkind y hy i ell R hR hPR hti)
   rcases hor with ⟨k', att, hs, hk', hah, haT⟩ | hlt
   · exact Or.inl ⟨y, hy, i, hPy, k', att, hs, hk'.trans hti, hah, haT⟩
   · exact Or.inr ⟨R, hRd, y, hy, i, hPy, hRy, hlt⟩
@@ -337,7 +337,7 @@ theorem FrameWindow.rise_reset
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hlow : HZ tr H g ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + 1)
     (hkind : ∀ y ∈ H, ∀ i ell R, SA.ToFGAt tr.projAC y i ell R →
-      Anc (tr.HonestBlocks H) P R →
+      Anc (tr.HonestBlocks H) P R → tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ →
       ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ P.root).h →
       ((tr.state y i).fg.σ P.root).h + 1 = HZ tr H g →
       (tr.state y i).fg.hj < ((tr.state y i).fg.σ P.root).h ∨
@@ -393,12 +393,12 @@ theorem FrameWindow.rise_reset
   obtain ⟨hPm₁, hXm₁, hr₁⟩ := hframe.round_of_warm hrun hnc hsvc hawake hf hcatch hnr hm hwarm
     hδ hΔF hx₁l (by omega) hmb hna
     (by rw [hTdef]; linarith [htlt (show u + 1 < u + 2 * ρ + 1 by omega)])
-    hz hdes hP hPs hp₁ rfl hX₁ hX₁s (fun y hy i ell R hR hPR _ heq => by
+    hz hdes hP hPs hp₁ rfl hX₁ hX₁s (fun y hy i ell R hR hPR hti heq => by
       have hPy := mem_of_honest_anc hrun hnc hy hPR (toFG_mem_tree hrun hy hR)
       rw [hσy y hy i hPy] at heq ⊢
       by_cases hHZ : h₀ = HZ tr H g
       · exact Or.inl hHZ
-      · have := hkind y hy i ell R hR hPR (by rw [hσy y hy i hPy]; exact heq)
+      · have := hkind y hy i ell R hR hPR hti (by rw [hσy y hy i hPy]; exact heq)
           (by rw [hσy y hy i hPy]; omega)
         rw [hσy y hy i hPy] at this
         exact Or.inr this)
