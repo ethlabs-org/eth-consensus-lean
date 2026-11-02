@@ -171,6 +171,61 @@ theorem window_advance_post_of_steps (hrun : GoldilocksRun proposer dg H tr)
   rw [he]
   exact window_advance_of_steps hrun hnc h₁ h₂ h₃ h₄ hpH hB
 
+/-! ## Slot bookkeeping of the three steps (#137)
+
+Step `i + 1` starts at the output slot `σ` of step `i` and takes `s₁ = s₂ = σ + x + cF` with the
+proposal offset `x ≤ gap − 1` (L5.4 step 1). The entry `X` of its lock is above `Q_i`, so
+`σ ≤ X.slot`. The case-(A) condition `hδ` then holds for every such `x` exactly when
+`cF + gap + gM ≤ δt + 2` (`window_advance_slot_hδ`, `window_advance_slot_hδ_necessary`). -/
+
+/-- **`hδ` for one step.** With `s₂ = σ + x + cF`, `x + 1 ≤ gap`, `σ ≤ X.slot` and
+`cF + gap + gM ≤ δt + 2`: `s₂ + gM ≤ X.slot + δt + 1`. -/
+theorem window_advance_slot_hδ {σ x cF gap gM δt Xs : Nat} (hx : x + 1 ≤ gap)
+    (hpar : cF + gap + gM ≤ δt + 2) (hX : σ ≤ Xs) : σ + x + cF + gM ≤ Xs + δt + 1 := by
+  omega
+
+/-- The condition is the weakest: if `hδ` holds at `X.slot = σ` for the worst offset
+`x = gap − 1`, then `cF + gap + gM ≤ δt + 2`. -/
+theorem window_advance_slot_hδ_necessary {σ cF gap gM δt : Nat} (hg : 1 ≤ gap)
+    (h : σ + (gap - 1) + cF + gM ≤ σ + δt + 1) : cF + gap + gM ≤ δt + 2 := by
+  omega
+
+/-- **The output slot of one step.** A slot `s ∈ [min s₁ s₂, max s₁ s₂ + gM)` with
+`s₁ = s₂ = σ + x + cF` and `x + 1 ≤ gap` has `σ ≤ s` and `s + 2 ≤ σ + cF + gap + gM`. -/
+theorem window_advance_slot_next {σ x cF gap gM s : Nat} (hx : x + 1 ≤ gap)
+    (hs : min (σ + x + cF) (σ + x + cF) ≤ s) (hs' : s < max (σ + x + cF) (σ + x + cF) + gM) :
+    σ ≤ s ∧ s + 2 ≤ σ + cF + gap + gM := by
+  simp only [Nat.min_self, Nat.max_self] at hs hs'
+  omega
+
+/-- **The three steps.** From the anchor slot `σ₀`: step `i` takes `s₁ = s₂ = σᵢ₋₁ + xᵢ + cF`,
+its lock entry has slot `Xᵢ ≥ σᵢ₋₁`, and its output slot `σᵢ` is in the step range. Under
+`cF + gap + gM ≤ δt + 2` all three `hδ` hold, and the third crossing has
+`σ₃ + 6 ≤ σ₀ + 3 (cF + gap + gM)`. -/
+theorem window_advance_slots {σ₀ σ₁ σ₂ σ₃ x₁ x₂ x₃ X₁ X₂ X₃ cF gap gM δt : Nat}
+    (hpar : cF + gap + gM ≤ δt + 2)
+    (hx₁ : x₁ + 1 ≤ gap) (hx₂ : x₂ + 1 ≤ gap) (hx₃ : x₃ + 1 ≤ gap)
+    (hX₁ : σ₀ ≤ X₁) (hX₂ : σ₁ ≤ X₂) (hX₃ : σ₂ ≤ X₃)
+    (h₁ : min (σ₀ + x₁ + cF) (σ₀ + x₁ + cF) ≤ σ₁ ∧
+      σ₁ < max (σ₀ + x₁ + cF) (σ₀ + x₁ + cF) + gM)
+    (h₂ : min (σ₁ + x₂ + cF) (σ₁ + x₂ + cF) ≤ σ₂ ∧
+      σ₂ < max (σ₁ + x₂ + cF) (σ₁ + x₂ + cF) + gM)
+    (h₃ : min (σ₂ + x₃ + cF) (σ₂ + x₃ + cF) ≤ σ₃ ∧
+      σ₃ < max (σ₂ + x₃ + cF) (σ₂ + x₃ + cF) + gM) :
+    (σ₀ + x₁ + cF + gM ≤ X₁ + δt + 1 ∧ σ₁ + x₂ + cF + gM ≤ X₂ + δt + 1 ∧
+      σ₂ + x₃ + cF + gM ≤ X₃ + δt + 1) ∧
+    σ₀ ≤ σ₁ ∧ σ₁ ≤ σ₂ ∧ σ₂ ≤ σ₃ ∧ σ₃ + 6 ≤ σ₀ + 3 * (cF + gap + gM) := by
+  have e₁ := window_advance_slot_next hx₁ h₁.1 h₁.2
+  have e₂ := window_advance_slot_next hx₂ h₂.1 h₂.2
+  have e₃ := window_advance_slot_next hx₃ h₃.1 h₃.2
+  refine ⟨⟨window_advance_slot_hδ hx₁ hpar hX₁, window_advance_slot_hδ hx₂ hpar hX₂,
+    window_advance_slot_hδ hx₃ hpar hX₃⟩, by omega, by omega, by omega, by omega⟩
+
+/-- With `gap = gM = g ≥ 1`, the condition is `Λ_J = cF + 2(g − 1) ≤ δt` (`FGLive.ΛJ`). -/
+theorem window_advance_slot_cond_ΛJ {cF g δt : Nat} (hg : 1 ≤ g) :
+    cF + g + g ≤ δt + 2 ↔ cF + 2 * (g - 1) ≤ δt := by
+  omega
+
 end Consensus.Goldilocks.Refinement
 
 end
