@@ -20,8 +20,8 @@ From the invariant at every cut (`outage_lock_inv`):
   live lock blocks of an honest stored lock set, in the node's frame, are compatible with every
   block `B ⪯ P` (the read tip is below the origin);
 * `reader_frame` (S5-G1/G2, `outage_reader_frame`): `fc_root` is compatible with `B`, and `B`,
-  when in the frame, is below the anchor or in the full viable tree, given the live-lock chain
-  (`LockInv.liveBlocks_chain`; `liveBlocks_chain_at_call` supplies it at an honest call);
+  when in the frame, is below the anchor or in the full viable tree; the live-lock chain holds
+  at every honest cut (`lockInv_state`, `liveBlocks_chain_at`);
 * `fastLock_compatible` (§5.2(a)(b)): every honest fast lock block (update or optimistic
   selection) is compatible with `P`;
 * `veto_record_above` ((iii), §8): an update with a result above `P` that a live lock vetoes has a
@@ -64,32 +64,44 @@ theorem liveLockBlocks_compatible (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.
   exact compatible_of_anc_right hU hBP
     (compatible_of_anc hU ((SA.viableAncestor_anc hΦ hB₀).2.mono hΦU) hLP)
 
-/-- The live lock blocks of an honest node at an AC call lie on one chain (the lock invariant). -/
-theorem liveBlocks_chain_at_call (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {m : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.CallAt y m (.ac ℓ)) (τ : Time) :
+/-- **The lock invariant at every honest cut**, in the cut's own frame: the stored record names a
+block of the node's tree above every stored lock block (`lockInv_of_reachable` at the last AC
+call, or none at the initial state), and the record is in the frame once `Σ.F` is below it. -/
+theorem lockInv_state (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) (m : Nat) :
+    SA.LockInv (tr.HonestBlocks H) (tr.state y m).ac (Node.frame (tr.state y m)) := by
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hU := hr.coherent
+  have hst := projAC_state hrun.toLocalRun hy m
+  obtain ⟨E, hEt, hEr, -⟩ := record_origin hrun hnc hy m
+  have hEU : E ∈ tr.HonestBlocks H := ⟨y, hy, m, hEt⟩
+  refine SA.lockInv_iff.2 ⟨E, hEU, hEr,
+    fun hFE => ⟨hEt, honest_held_anc hrun hnc hy hFE hEt⟩, fun l hl X hX hXr => ?_⟩
+  rw [← hst] at hl
+  rcases SA.state_reachable sp hr hy m with h0 | ⟨Φ, t, hreach, -⟩
+  · rw [h0] at hl
+    exact absurd hl (Set.notMem_empty l)
+  · obtain ⟨-, -, hli⟩ := SA.lockInv_of_reachable hU hreach
+    obtain ⟨E', hE'U, hE'r, -, hlE⟩ := SA.lockInv_iff.1 hli
+    obtain rfl : E' = E := hU.1 hE'U hEU (hE'r.trans (by rw [hst]; exact hEr.symm))
+    exact hlE l hl X hX hXr
+
+/-- **The live lock blocks of an honest node lie on one chain** at every cut and time, in the
+cut's frame (`lockInv_state`). -/
+theorem liveBlocks_chain_at (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) (m : Nat) (τ : Time) :
     ∀ X ∈ SA.liveLockBlocks sp (tr.state y m).ac.locks (Node.frame (tr.state y m)) τ,
       ∀ Y ∈ SA.liveLockBlocks sp (tr.state y m).ac.locks (Node.frame (tr.state y m)) τ,
-        Compatible (Node.frame (tr.state y m)).tree X Y := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hcA : tr.projAC.CallAt y m ℓ := projAC_callAt.2 hc
-  have hfr : ℓ.frame = Node.frame (tr.state y m) := (hrun.cutLaw y hy m _ hc).1
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcA
-  obtain ⟨Φp, tp, hreach, -, hok⟩ := pre_reachable hr hy hcA
-  obtain ⟨hin, -, hli⟩ := SA.lockInv_of_reachable hr.coherent hreach
-  have hli' := hli.callOK hr.coherent hin hok
-  rw [projAC_state hrun.toLocalRun hy, hfr] at hli'
-  rw [hfr] at hΦ hΦU
-  exact hli'.liveBlocks_chain hr.coherent hΦ hΦU
+        Compatible (Node.frame (tr.state y m)).tree X Y :=
+  (lockInv_state hrun hnc hy m).liveBlocks_chain
+    (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
+    (frameOK_state hrun.toLocalRun hy m) fun _ hX => ⟨y, hy, m, hX.1⟩
 
 /-- **The reader frame** (S5-G1/G2, `outage_reader_frame`): at an honest cut, for every block
 `B ⪯ P`, `fc_root` is compatible with `B`, and `B`, when in the frame, is below the anchor or in
-the full viable tree, given the live-lock chain at that cut. -/
+the full viable tree (the live-lock chain by `liveBlocks_chain_at`). -/
 theorem reader_frame (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy : y ∈ H) (m : Nat)
-    (t : Time) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBP : Anc (tr.HonestBlocks H) B D.P)
-    (hch : ∀ X ∈ SA.liveLockBlocks sp (tr.state y m).ac.locks (Node.frame (tr.state y m)) t,
-      ∀ Y ∈ SA.liveLockBlocks sp (tr.state y m).ac.locks (Node.frame (tr.state y m)) t,
-        Compatible (Node.frame (tr.state y m)).tree X Y) :
+    (t : Time) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBP : Anc (tr.HonestBlocks H) B D.P) :
     Compatible (tr.HonestBlocks H) (Node.frame (tr.state y m)).fcRoot B ∧
       (B ∈ (Node.frame (tr.state y m)).tree →
         (Node.frame (tr.state y m)).Anc B
@@ -108,7 +120,8 @@ theorem reader_frame (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy : y �
   rcases held_candidate_of_rows D.hrun D.hnc D.two_faults_lt hy m
     (rows_sourced D.hrun D.hnc hsrc hy) (fun _ h => compatible_of_anc_right hU hBP h) hBt with
     h | h
-  · exact Or.inl (h.trans ((SA.anc_getAnchor hΦ hch).2 _ (Or.inr rfl)))
+  · exact Or.inl (h.trans ((SA.anc_getAnchor hΦ
+      (liveBlocks_chain_at D.hrun D.hnc hy m t)).2 _ (Or.inr rfl)))
   · exact Or.inr h
 
 /-- **Every honest fast lock block is compatible with `P`** (§5.2(a)(b)): a fast update lock or an

@@ -31,8 +31,9 @@ arming use them:
   reads it at `t_m + Δ` for `m > j₀ + k`, §5.1, from `EtaSleepyOn`);
 * the cohort premises are stated over times (`hA₀awake`, `hA₀join`) and bound the no-sleep window
   end `z` from below at the times of honest calls (`hz`); a restart of `A₀` up to `z` is by
-  `a + Δ` (its first call after waking, at the first public time from `a`), so `ha` is
-  `a + Δ ≤ t_{j₀}`;
+  `a + Δ`, the bound the abstract run interface `GoldilocksRun` gives (the first call after
+  waking, at the first public time from `a`; `restart_le_of_awake`), so `ha` is
+  `a + Δ ≤ t_{j₀}` (the simulated trace restarts at the wake time itself);
 * `hΔ : 2 ≤ Δ` (node `Δ = Δe + 1`, `Δe ≥ 1`), for `exists_unpolluted_label`;
 * `lockPrev` and `lockCover` carry the antecedents of the landed `OutageArming`: `P` is not
   genesis, and the gate is reached by an honest call (the horizon bound);
@@ -151,8 +152,9 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
   hcohort : (Hᶜ ∪ W).ncard < A₀.ncard
   /-- Every honest validator awake in `[a, z]` is in `A₀` or a late waker. -/
   hawake : ∀ x ∈ H, ∀ t, a ≤ t → t ≤ z → tr.awake x t → x ∈ A₀ ∪ W
-  /-- `A₀` is awake throughout `[a, z]`; a restart of `A₀` up to `z` is by the first public time
-  from `a` (its first call after waking), at most `a + Δ`. -/
+  /-- `A₀` is awake throughout `[a, z]`; a restart of `A₀` up to `z` is at most `a + Δ`, the
+  abstract-interface bound (`GoldilocksRun`: the first call after waking, at the first public
+  time from `a`). -/
   hA₀awake : ∀ x ∈ A₀, ∀ t, a ≤ t → t ≤ z → tr.awake x t
   hA₀join : ∀ x ∈ A₀, ∀ k, tr.RestartAt x k → tr.time k ≤ z → tr.time k ≤ a + sp.Δ
   ha : a + sp.Δ ≤ sp.ts j₀

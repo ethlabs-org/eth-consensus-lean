@@ -386,15 +386,10 @@ theorem outage_reader_locks (hS5 : OutageS5Step Q service hv hTh hsh ar O) :
     hy m τ (origin_facts Q service hv hTh ar).2.1
 
 /-- **The reader frame** (`outage_reader_frame`, S5-G1/G2): `fc_root` is compatible with the read
-tip, and the tip, when in the frame, is below the anchor or in the full viable tree, given the
-live-lock chain at the cut (`Compose.liveBlocks_chain_at_call` at an AC call). -/
+tip, and the tip, when in the frame, is below the anchor or in the full viable tree, at every
+honest cut. -/
 theorem outage_reader_frame (hS5 : OutageS5Step Q service hv hTh hsh ar O)
-    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S Q.run.2) (m : Nat) (t : Time)
-    (hch : ∀ X ∈ SA.liveLockBlocks Q.params (Q.trace.state y m).ac.locks
-        (Node.frame (Q.trace.state y m)) t,
-      ∀ Y ∈ SA.liveLockBlocks Q.params (Q.trace.state y m).ac.locks
-        (Node.frame (Q.trace.state y m)) t,
-        Compatible (Node.frame (Q.trace.state y m)).tree X Y) :
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S Q.run.2) (m : Nat) (t : Time) :
     Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2))
         (Node.frame (Q.trace.state y m)).fcRoot ar.tip ∧
       (ar.tip ∈ (Node.frame (Q.trace.state y m)).tree →
@@ -403,7 +398,7 @@ theorem outage_reader_frame (hS5 : OutageS5Step Q service hv hTh hsh ar O)
           ar.tip ∈ (Node.frame (Q.trace.state y m)).viableTree
             (Node.frame (Q.trace.state y m)).tree) :=
   Compose.reader_frame (outage_locks Q service hv hTh hsh ar O hS5) hy m t
-    (origin_facts Q service hv hTh ar).2.1 hch
+    (origin_facts Q service hv hTh ar).2.1
 
 /-- **(iii) + record** (`outage_record_above_from`): from a restored honest update with result
 above the origin, the effective record is above the origin at every later cut. -/
