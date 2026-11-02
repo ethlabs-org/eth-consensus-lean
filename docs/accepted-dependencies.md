@@ -27,8 +27,8 @@ joint supplier has been decomposed into its eventual proof obligations.
 
 ## Master status: every Accepted field, grouped by leaf owner
 
-Current compiled audit: source `f8b4a2fd` (combined #142 + #143 integration with the #145 finalSeedMin correction, #136),
-regenerated on kevs-pc with `scripts/accepted-status.py`. The JSON records
+Current compiled audit: source `70e90b44` (main after `final_reset_premises` e621acd7, `healthy_confirmed_supply` db4b864f, `healthy_repair_schedule` f4997e9f and `outage_repair` 70e90b44, #136),
+regenerated in an Amp orb with `scripts/accepted-status.py`. The JSON records
 the exact source pin separately from its publication commit.
 Machine-readable rows and per-field edges are in `docs/accepted-status.json`.
 Regenerate with `python3 scripts/accepted-status.py` after building `ConsensusLean`
@@ -42,13 +42,18 @@ and body edges and cycle-safe transitive traversal. Names below have prefix
 `Consensus.Goldilocks.Refinement.`. Each set enumerates **direct sorry owners**;
 an assembly depending on them is not an additional leaf.
 
-| Set | Owner | Complete direct leaf list |
+Compiled closure: no direct owner in the audit at 70e90b44; `accepted` at
+[propext, Classical.choice, Quot.sound] (`#print axioms` at 70e90b44). The exact-head full-tier
+CI/replay (kernel replay, `lake check`, `lake comparator --paranoid`) on 70e90b44 is requested and
+pending; it is not claimed here.
+
+| Set | Owner | Direct leaf list |
 |---|---|---|
-| C | Spec orb, joint coefficient synthesis | none since 2d88bc90 (`accepted_heal` is the closed `catchUp + 2·healMargin + 3`) |
-| F | Four-anchor/final service owner (H1 Sol, H3 coefficients) | `final_reset_premises` |
-| H | Healing paper/T3; Spec orb integration | `healthy_repair_schedule` (`healthy_preparation_initialize` proved since the initializer commit) |
-| N | Healing paper/T3; Spec orb integration | `healthy_confirmed_supply` |
-| O | Healing/outage owner; Spec orb integration | `outage_repair` |
+| C | Spec orb, joint coefficient synthesis | none since 4078bc74 (`accepted_heal` is the closed `catchUp + 2·healMargin + 3`) |
+| F | Four-anchor/final service owner (H1 Sol, H3 coefficients) | none since e621acd7 (`final_reset_premises` is closed by `final_reset_premises_of_query`) |
+| H | Healing paper/T3; Spec orb integration | none since f4997e9f (`healthy_preparation_initialize` proved at 2d943744, `healthy_repair_schedule` at f4997e9f) |
+| N | Healing paper/T3; Spec orb integration | none since db4b864f (`healthy_confirmed_supply` proved from the preparation initializer) |
+| O | Healing/outage owner; Spec orb integration | none since 70e90b44 (`outage_repair` proved) |
 
 | Accepted field / branch | Reachable OPEN leaves by owner set | Direct adapter sorry? |
 |---|---|---|
@@ -56,19 +61,19 @@ an assembly depending on them is not an additional leaf.
 | nested | none | no |
 | finalMonotone | none | no |
 | finalAccountable | none | no |
-| healthyLive, final | F | no |
-| healthyLive, available/stable | N | no |
+| healthyLive, final | none | no |
+| healthyLive, available/stable | none | no |
 | sleepySafe, available/stable | none | no |
 | sleepyLive, available/stable | none | no |
-| healedSafe, available/stable | H | no |
-| persists | O | no |
+| healedSafe, available/stable | none | no |
+| persists | none | no |
 | progressFits, progressTolerant, admissible | none | no |
 | serves | none (schema provides final output) | no |
-| claims and complete accepted | F ∪ H ∪ N ∪ O | no |
+| claims and the whole of accepted | none | no |
 
-The rerun (fresh audit of the combined #142 + #143 integration, #136) finds **6 direct sorry owners** in Accepted's closure, matching `scripts/sorry-inventory.py` on the same source. Since 2d88bc90 (`accepted_heal` closed, S6) there are **5**; since `healthy_preparation_initialize` is proved there are **4**: `final_reset_premises`, `healthy_confirmed_supply`, `healthy_repair_schedule`, `outage_repair` (`docs/accepted-status.json`). At #141 there were 10. `final_window_extract` now has a closed body (`final_window_extract_of'` from the leaves `final_reset_premises` and `final_duty_proposal`); `final_duty_proposal` has a proved body (`final_duty_proposal_run`, FinalDutyProposal.lean), bounded by `0 < s` and `ts s ≤ horizon`, so the final set has 1 leaf. `healthy_current_live_candidates`, `healthy_current_record_viable`, `healthy_prepare` and `healthy_current_mature_or_anchor` are no longer direct owners (bodies closed on main after #141; they are sorry-dependent). At #141 the reduction from 13 was retirement/consolidation (`final_inherited_progress`, `final_row_signers`) and a closed body (`healthy_bounded_repairing_opening`), not proof closure of the retired leaves. `simTrace_vote_forwarded`
+The rerun (fresh audit of the combined #142 + #143 integration, #136) finds **6 direct sorry owners** in Accepted's closure, matching `scripts/sorry-inventory.py` on the same source. Since 4078bc74 (`accepted_heal` closed, S6) there are **5**; since `healthy_preparation_initialize` is proved (2d943744) there were **4**; since `final_reset_premises` (e621acd7), `healthy_confirmed_supply` (db4b864f) and `healthy_repair_schedule` (f4997e9f) are proved there was **1**, `outage_repair`; since 70e90b44 (`outage_repair` proved) there is **none** (`docs/accepted-status.json`, audit at 70e90b44). At #141 there were 10. `final_window_extract` now has a closed body (`final_window_extract_of'` from the leaves `final_reset_premises` and `final_duty_proposal`); `final_duty_proposal` has a proved body (`final_duty_proposal_run`, FinalDutyProposal.lean), bounded by `0 < s` and `ts s ≤ horizon`, so the final set had 1 leaf, and since e621acd7 it has none. `healthy_current_live_candidates`, `healthy_current_record_viable`, `healthy_prepare` and `healthy_current_mature_or_anchor` are no longer direct owners (bodies closed on main after #141; they are sorry-dependent). At #141 the reduction from 13 was retirement/consolidation (`final_inherited_progress`, `final_row_signers`) and a closed body (`healthy_bounded_repairing_opening`), not proof closure of the retired leaves. `simTrace_vote_forwarded`
 is fully sorry-free; `sleepy_query_sync` and `sleepy_safety_inputs` have proved bodies,
-not direct sorries. Since 2d88bc90 their full closures are sorry-free
+not direct sorries. Since 4078bc74 their full closures are sorry-free
 (`#print axioms`: `propext`, `Classical.choice`, `Quot.sound`): `accepted_heal` is a closed
 definition, so `K S A = acceptanceContract A (accepted_coefficients S A)` carries no sorry. Kev's independent read-back and axiom
 split are recorded on [#132](https://github.com/ethlabs-org/consensus-lean/issues/132).
@@ -125,17 +130,17 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 |---|---|
 | `Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy` | OPEN, Spec orb joint synthesis: 37≤accepted_catchUp is a minimum Sleepy constraint, not a selected shared witness. Covers 18(Δe+1)+1≤37Δe for Δe≥1. Reached by Sleepy safety and liveness. |
 | `Consensus.Goldilocks.Refinement.accepted_latency_ge_sleepy` | OPEN, Spec orb joint synthesis: available/stable latency≥8idx+12, covering (4idx+6)(Δe+1)≤(8idx+12)Δe. Other regimes may raise it; not a final joint value or new endpoint premise. Reached by Sleepy liveness slot selection. |
-| `Consensus.Goldilocks.Refinement.healthy_confirmed_supply` | OPEN, Healing paper/T3 with Spec orb integration: finite Healthy preparation, exact-cDur-ready actual producer selection and its budget, frozen service and deadline coverage remain inside this joint existential. Only the selected accepted proposal is covered; no new endpoint assumption. |
-| `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | Body proved via finite SVC at the horizon, duration arithmetic and fault bounds. No direct sorry; full closure sorry-free since 2d88bc90 (accepted_heal closed), not a #128 statement obstruction. |
+| `Consensus.Goldilocks.Refinement.healthy_confirmed_supply` | Proved (db4b864f): `healthy_confirmed_supply_of_initializer` (HealthyConfirmedEndpoint, cb3e1846) applied to `healthy_preparation_initialize`; statement unchanged. Only the selected accepted proposal is covered; no new endpoint assumption. |
+| `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | Body proved via finite SVC at the horizon, duration arithmetic and fault bounds. No direct sorry; full closure sorry-free since 4078bc74 (accepted_heal closed), not a #128 statement obstruction. |
 | `Consensus.Goldilocks.Refinement.confirmed_duration_supply` | Body closed at 7547caee using accepted_catchUp_ge_sleepy and exact scale arithmetic; still transitively sorry-dependent, not a selected coefficient or positivity argument. |
-| `Consensus.Goldilocks.Refinement.sleepy_query_sync` | Body proved via finite SVC at Q.deadline with Q.bounded. No direct sorry; full closure sorry-free since 2d88bc90 (accepted_heal closed). |
+| `Consensus.Goldilocks.Refinement.sleepy_query_sync` | Body proved via finite SVC at Q.deadline with Q.bounded. No direct sorry; full closure sorry-free since 4078bc74 (accepted_heal closed). |
 | `Consensus.Goldilocks.Refinement.simTrace_vote_forwarded` | Proved with a sorry-free closure (standard axioms only); same-event signed envelope release and first-release freshness. |
 | `Consensus.Goldilocks.Refinement.sleepy_query_population` | Body closed via duration monotonicity and sleepy_faultBound; retains the joint catch-up bound dependency. |
 | `Consensus.Goldilocks.Refinement.sleepy_query_slot` | Body closed at 7547caee: actual recurrence/grid selection at exact cDur with strict freshness and 6Δp margin; retains named joint lower-bound/witness dependencies. |
 | `Consensus.Goldilocks.Refinement.confirmed_slot_event` | Body closed via scheduled actual event and joined readiness transport; retains confirmed_duration_supply dependency, not eligibility-as-event by definition. |
 | `Consensus.Goldilocks.Refinement.healthy_preparation_initialize` | Proved (HealthyResetEnvelope.lean; moved unchanged from HealthySuppliers to sit downstream of the reset envelope): the joint (E) tuple from `healthy_reset_envelope` (ΔF = Δ, a ≤ ready + R·Δ), the seed of `ResetPremisesUpTo.reset_seed`, base slot slot(ready)+1 and the query the maximum of the lower bound; every timing bound, including the reserve and the W record/cache/expiry/service terms, is one step from `accepted_heal_ge_reset` (ready + (R+8k+4X+26)Δ + 2 ≤ heal). Closure: standard axioms only. |
 | `Consensus.Goldilocks.Refinement.healthy_prepare` | Body proved: finite ready→heal record and recent stored-lock preparation from W and the preparation schedule; since R0 it consumes no inventory. Sorry-dependent, not a direct owner. |
-| `Consensus.Goldilocks.Refinement.healthy_repair_schedule` | OPEN, Healing paper/T3 with Spec orb integration; direct sorry owner in the compiled audit at f9138fd9 (workbench 9f41db38 `post-mature-dependency-audit.md`). From `Q : HealthyPreparationQuery`, `0 ≤ heal ≤ horizon`, progress on `[ready, heal]`, `W : HealthyBaseTiming` and the `HealthyStateFacts` suffix, produce `HealthyRepairSchedule`: an actual finite reset `ResetPremisesUpTo` through the horizon at `Q.gst` with generic ΔF, oldLabel ≥ cleanLabel+2k+1, a query above ready, drainTime, ts(oldLabel), gbar+4Δ and 0, and the strict reserve query+(4X+6)Δ < heal−1. The conditional constructors `healthy_repair_schedule_of_reset` and `healthy_repair_schedule_of_preparation` (580f1e4) take the reset and reserve, or a `HealthyPreparationSchedule`, as inputs; they do not close this leaf. The body is reserved: call `healthy_preparation_initialize` (R0), then `healthy_repair_schedule_of_preparation`, only after the initializer is proved, landed and its contract reviewed; its open input is the joint (E) tuple, not an old-entry inventory. Its reset and reserve are the joint M1/reset/B and `accepted_heal` envelope, not heal nonnegativity. No paper rating supplied. |
+| `Consensus.Goldilocks.Refinement.healthy_repair_schedule` | Proved (f4997e9f) through the reserved route: `healthy_preparation_initialize` at the same `Q`, `h0`, `hb`, `hp`, then `healthy_repair_schedule_of_preparation` (580f1e4); the reserve is the schedule's own, paid by `accepted_heal_ge_reset`. Statement and section parameters unchanged. |
 | `Consensus.Goldilocks.Refinement.healthy_preserve` | Body proved from the given base: records by induction and recent locks by `lock_origin` (R0 removed the cache and inventory steps). Only shared coefficient type dependencies remain; no direct sorry. |
 | `Consensus.Goldilocks.Refinement.healthy_cut_agreement` | Body closed at 103bfbd using actual-tip comparability and confirmed_prefix_of_anc; equality-time gap remains in healthy_cut_tips_comparable. |
 | `Consensus.Goldilocks.Refinement.healthy_cut_monotone` | Body closed at 103bfbd using directed tip ancestry and confirmed_prefix_of_anc; temporal/equality-time gap remains in healthy_cut_tips_ancestor. |
@@ -143,7 +148,7 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 | `Consensus.Goldilocks.Refinement.healthy_cut_tips_ancestor` | PAPER-PARTIAL: directed ancestry of actual stored-clock read tips, with original ordered-cut/readiness domain. |
 | `Consensus.Goldilocks.Refinement.outage_pre_service` | PAPER-PARTIAL, engine/outage: migrated to SleepyServiceBefore at 4d69fdd3. The old #127 duplicate-fresh signature obstruction is historical; replacement finite engine service remains unproved. #128 applicability to the exact Outage premises is not established. |
 | `Consensus.Goldilocks.Refinement.outage_arm` | PROVED at 649f0286, unchanged signature: exact endCut(T), lookup success or F fallback, and actual engine read prefix via DCA ancestry. No recency assumption; unused service argument retained. Arming does not prove protection/repair. |
-| `Consensus.Goldilocks.Refinement.outage_repair` | OPEN, outage: lifetime, repair, old output compatibility and exact reader windows. |
+| `Consensus.Goldilocks.Refinement.outage_repair` | Proved (70e90b44; moved to OutageRepair.lean at 273f499a); no direct owner in the compiled audit at 70e90b44. |
 
 ## Historical per-field axiom audit at 259d0330 (superseded above)
 
@@ -152,15 +157,15 @@ for every `accepted*` declaration and the nonframing/receipt/Sleepy bridges.
 `lake exe spec-surface dependencies --from ... --modules ...` supplied the compiled
 dependency graph; traversing it identifies the following exact direct `sorryAx` owners.
 Names in this section have prefix `Consensus.Goldilocks.Refinement.`.
-`C` abbreviates the set `{accepted_catchUp, accepted_heal, accepted_latency}`. Since 2d88bc90 none of
-them reaches `sorryAx`; the table below is updated to the compiled audit at 2d88bc90
+`C` abbreviates the set `{accepted_catchUp, accepted_heal, accepted_latency}`. Since 4078bc74 none of
+them reaches `sorryAx`; the table below is since 4078bc74 (audit at 70e90b44)
 (`docs/accepted-status.json`, `fields`). `accepted_coefficients_catchUp` and
 `accepted_coefficients_heal` are proved by `rfl`; neither is an owner.
 The rows that reach the final branch name their current owners from the fresh audit
-(`docs/accepted-status.json`, route A, #136). The final direct sorry owner is
-`final_reset_premises`; `final_window_extract` and `final_duty_proposal` have closed bodies. `final_inherited_progress` and `final_row_signers` are retired
+(`docs/accepted-status.json`, route A, #136). Since e621acd7 the final branch has no direct sorry
+owner: `final_reset_premises`, `final_window_extract` and `final_duty_proposal` have closed bodies. `final_inherited_progress` and `final_row_signers` are retired
 (route A), not proved; their earlier rows are kept under `retired` in the status ledger.
-`final_cache_acceptance` has a closed body and, since 2d88bc90, a sorry-free closure. It is not a
+`final_cache_acceptance` has a closed body and, since 4078bc74, a sorry-free closure. It is not a
 direct OPEN leaf.
 These are named sets of leaves, not extra assumptions.
 
@@ -174,28 +179,28 @@ These are named sets of leaves, not extra assumptions.
 | accepted_nested | none |
 | accepted_finalMonotone | none |
 | accepted_finalAccountable | none |
-| accepted_healthyLive_final | final_reset_premises |
-| accepted_healthyLive | final_reset_premises, healthy_confirmed_supply |
+| accepted_healthyLive_final | none |
+| accepted_healthyLive | none |
 | accepted_sleepySafe | none |
 | accepted_sleepyLive | none |
-| accepted_healedSafe | healthy_repair_schedule |
-| accepted_persists | outage_repair |
+| accepted_healedSafe | none |
+| accepted_persists | none |
 | accepted_progressFits, accepted_progressTolerant, accepted_admissible | none |
-| accepted_claims, accepted | final_reset_premises, healthy_confirmed_supply, healthy_repair_schedule, outage_repair (4, after the initializer) |
+| accepted_claims, accepted | none (audit at 70e90b44) |
 | engine_signings_nonFraming, engine_att_protected | none |
 | simTrace_forwardOrigin, simTrace_forwardHeldProcessed | none |
 | sleepy_ready, sleepy_faultBound, sleepy_read_cut, sleepy_proposal, sleepy_inBy | none |
-| sleepy_safe_finite | sleepy_safe_finite |
-| sleepy_include_finite | sleepy_include_finite |
-| sleepy_grow_finite | sleepy_safe_finite, sleepy_include_finite |
-| sleepy_safe_engine | sleepy_safe_engine |
+| sleepy_safe_finite | none (`#print axioms` at 70e90b44) |
+| sleepy_include_finite | none (`#print axioms` at 70e90b44) |
+| sleepy_grow_finite | none (`#print axioms` at 70e90b44) |
+| sleepy_safe_engine | none (`#print axioms` at 70e90b44) |
 
 Nonframing is not a separate `Accepted` field: the audited signing/protection
 theorems provide it. Roots marked `none` use only the standard axioms
 `propext`, `Classical.choice`, `Quot.sound`. A direct sorry in an adapter does not
 reference its intended future suppliers, so this graph is not the remaining-work
-plan: in particular the open Accepted Sleepy fields do not yet reach the Sleepy
-consumer leaves. All Run unforgeability suppliers are proved, as recorded below.
+plan. At 70e90b44 the Accepted Sleepy fields have no direct sorry owner. All Run
+unforgeability suppliers are proved, as recorded below.
 
 ## Mechanical report contract
 
@@ -261,24 +266,24 @@ Superseded argument: [general fixed timeout](https://github.com/fradamt-agent/wo
 | Declaration | Paper argument/status |
 |---|---|
 | `Consensus.Goldilocks.Refinement.accepted_catchUp` | OPEN: finite positive uniform catch-up; canonical timing adapter required. Spec orb. |
-| `Consensus.Goldilocks.Refinement.accepted_heal` | Closed (2d88bc90): `accepted_catchUp + 2·healMargin S X + 3` at every capability, a named parameter-only value (`ResetCoefficients`), chosen to fit the proved reset envelope (owner: adjust the constants to what can be proved). `accepted_heal_ge_reset` is the coefficient inequality (★) of the nonfinal envelope and S0; `accepted_heal_ge_final` the final route's heal-bound margin at λ = 2Δ. A later leaf that needs more raises `healMargin`; consumers use only these ≥-forms. |
+| `Consensus.Goldilocks.Refinement.accepted_heal` | Closed (4078bc74): `accepted_catchUp + 2·healMargin S X + 3` at every capability, a named parameter-only value (`ResetCoefficients`), chosen to fit the proved reset envelope (owner: adjust the constants to what can be proved). `accepted_heal_ge_reset` is the coefficient inequality (★) of the nonfinal envelope and S0; `accepted_heal_ge_final` the final route's heal-bound margin at λ = 2Δ. A later leaf that needs more raises `healMargin`; consumers use only these ≥-forms. |
 | `Consensus.Goldilocks.Refinement.accepted_latency` | OPEN: finite latency at every gap; final local-pattern service and cache acceptance unresolved. Spec orb. |
 | `Consensus.Goldilocks.Refinement.accepted_outputValid` | Proved through shape_outputValid; compiled closure has no sorryAx. |
 | `Consensus.Goldilocks.Refinement.accepted_nested` | Reduction to shape_nested; exact generic field, no collision escape. |
 | `Consensus.Goldilocks.Refinement.accepted_finalMonotone` | Reduction to shape_finalMonotone; exact generic field. |
 | `Consensus.Goldilocks.Refinement.accepted_finalAccountable` | Body closed through shape_finalAccountable at fixed 1/3; only the three coefficient leaves are reachable through the contract type. Encoding/transport is proved. |
-| `Consensus.Goldilocks.Refinement.accepted_healthyLive` | Assembly: available/stable use healthy_confirmed_supply and proved payload projection; final uses accepted_healthyLive_final. Named suppliers remain OPEN. |
+| `Consensus.Goldilocks.Refinement.accepted_healthyLive` | Assembly: available/stable use healthy_confirmed_supply and proved payload projection; final uses accepted_healthyLive_final (sorry-free since e621acd7). `healthy_confirmed_supply` is proved since db4b864f; the compiled closure has no direct sorry owner. |
 | `Consensus.Goldilocks.Refinement.final_reset_premises` | Body closed (route A, #136): `final_reset_premises_of_query` (FinalResetPremises.lean), the reset kernel `exists_reset_of_drain_awake` with `drainOutputs_of_service` and `accepted_heal_ge_final`. (H1) `ResetPremisesUpTo` through the horizon at `Q.gst` with the run proposer and digest, for a reset `a` and bound `ΔR` (Sol's M1′), and (H3) the placement `(P)` with `u_min = finalSeedMin Q a = slot a + 2k + 5` (the heal coefficient; #145 removed a time summand that made (H3) false at large GST). One leaf: (H3) depends on the `a` of (H1). No producer is assumed. |
 | `Consensus.Goldilocks.Refinement.final_duty_proposal` | Body closed (route A, #136): (H2) duty → proposal adapter (Kev): for `0 < s` with `ts s ≤ horizon`, `HonestReadyIn` at slot `s` gives `HonestProposalRun` at `s`; proved by `final_duty_proposal_run` (FinalDutyProposal.lean). Reaches sorryAx only through the `FinalQuery` type (accepted coefficients). |
 | `Consensus.Goldilocks.Refinement.final_window_extract` | Body closed (route A, #136): `final_window_extract_of'` from `final_reset_premises` and `final_duty_proposal`; (H4) carrier processing is proved (`carrier_processed_of_honest`). Gives four honest anchors at start+[0,2,4,6], the slack `ts(A3) + Δ ≤ deadline`, `AnchorRun` and `AnchorSteps` (reusable signer results: `row_of_report`, `row_signers_of_reports` in Healing/Outcome/Service.lean; paper handoff workbench b386900 `notes/cards/final_row_signers.md`). |
 | `Consensus.Goldilocks.Refinement.final_anchor_coverage` | Body closed: `AnchorRun` and `AnchorSteps` give A3 chain-finalized coverage of A0 through `cacheCoverage_of_anchor_window_upTo`; uses `6 ≤ δt` for `P₃.slot ≤ P₀.slot + δt`. |
 | `Consensus.Goldilocks.Refinement.final_cache_acceptance` | Body closed; reaches `sorryAx` only through its type (accepted coefficients), not OPEN as a direct leaf. Consumes only A3 chain-finalized coverage of A0, supplied by `final_anchor_coverage` (route A): actual cache ancestry at the exact engine-scaled query endpoint and later horizon-bounded ready CutAfter reads. Not arbitrary-delay acceptance or receipt alone. |
 | `Consensus.Goldilocks.Refinement.final_payload_projection` | Body closed conditional on window extraction with CacheCoverage of the extracted window (one premise; route A, #136): raw own-block release via simTrace_block_released and final-output chain membership at engine endCut. Preserves existing cDur, reader condition, latency scaling and collision escape; no forwarding-envelope origin assumption. |
-| `Consensus.Goldilocks.Refinement.accepted_healthyLive_final` | Assembly (route A, #136): extraction (`final_window_extract`, body closed from the OPEN leaf `final_reset_premises` and the proved `final_duty_proposal`), anchor coverage (`final_anchor_coverage`, body closed), cache acceptance and payload projection. The final direct sorry owner is `final_reset_premises`; the closed bodies reach sorryAx only through the contract type (accepted coefficients). The first-crossing / bounded-crossing assembly and its leaves `final_inherited_progress`, `final_row_signers` are retired (git history before #136 route A). No new public Healthy premises; accepted coefficients remain OPEN. |
+| `Consensus.Goldilocks.Refinement.accepted_healthyLive_final` | Assembly (route A, #136): extraction (`final_window_extract`, body closed from the proved `final_reset_premises` and `final_duty_proposal`), anchor coverage (`final_anchor_coverage`, body closed), cache acceptance and payload projection. Since e621acd7 its closure is sorry-free (`#print axioms`: `propext`, `Classical.choice`, `Quot.sound`). The first-crossing / bounded-crossing assembly and its leaves `final_inherited_progress`, `final_row_signers` are retired (git history before #136 route A). No new public Healthy premises; the accepted coefficients are closed since 4078bc74. |
 | `Consensus.Goldilocks.Refinement.accepted_sleepySafe` | Assembly over partly OPEN sleepy_safety_inputs and proved sleepy_safe_engine, with directional readiness and empty-V handling. |
 | `Consensus.Goldilocks.Refinement.accepted_sleepyLive` | Assembly over selected serviced Sleepy proposal, finite inclusion and proved payload projection; suppliers OPEN. |
-| `Consensus.Goldilocks.Refinement.accepted_healedSafe` | Assembly over finite preparation, progress-free preservation and arbitrary-cut adapters; suppliers OPEN. |
-| `Consensus.Goldilocks.Refinement.accepted_persists` | Assembly over pre-service, effective-record arming and actual repair; suppliers OPEN, no late-wake SyncRun inference. |
+| `Consensus.Goldilocks.Refinement.accepted_healedSafe` | Assembly over finite preparation, progress-free preservation and arbitrary-cut adapters; since f4997e9f (`healthy_repair_schedule`) the compiled closure has no direct sorry owner. |
+| `Consensus.Goldilocks.Refinement.accepted_persists` | Assembly over pre-service, effective-record arming and actual repair; no late-wake SyncRun inference. No direct owner in the compiled audit at 70e90b44. |
 | `Consensus.Goldilocks.Refinement.proposal_releasable` | Proved (f614a12): scheduled proposal dependencies are in the actual engine closure; Steps wrapper of scheduled_proposal_releasable. |
 | `Consensus.Goldilocks.Refinement.simTrace_att_unforgeable` | Proved (c52d387): actual canonical attestation origin/authentication history. |
 | `Consensus.Goldilocks.Refinement.simTrace_block_unforgeable` | Proved (f9963e2): valid canonical calls carrying an honest proposer's block have an earlier own-block cut. |
@@ -618,7 +623,7 @@ chain compiled; changed/landing gates passed with 22 skips and boundary passed.
 #127 closed with a retained-pool concrete-instance check and compiled reduced-facts
 regression, not a full engine replay; full tier was not run. At that migration the engine service
 suppliers remained OPEN. They now have proved bodies via finite SVC; #128 is historical,
-not a current obstruction. Their former shared accepted_heal type dependency is gone since 2d88bc90.
+not a current obstruction. Their former shared accepted_heal type dependency is gone since 4078bc74.
 
 `Lemmas/Refinement/NonfinalSuppliers.lean` contains the lead-reviewed Sleepy
 signature slices. It imports AcceptanceDefs for its existing coefficients and
@@ -628,7 +633,7 @@ now feeds the Sleepy liveness endpoint; it does not enter Main/Solution. All nam
 | Named obligation | Status and exact remaining work |
 |---|---|
 | `confirmed_duration_supply` | Body closed using OPEN accepted_catchUp_ge_sleepy, including Healthy queries; no coefficient selected. |
-| `sleepy_query_sync` | Body proved: canonical finite SVC through the exact engine deadline; full closure sorry-free since 2d88bc90. |
+| `sleepy_query_sync` | Body proved: canonical finite SVC through the exact engine deadline; full closure sorry-free since 4078bc74. |
 | `sleepy_query_population` | Body closed at finite slot points via duration monotonicity; transitively OPEN through the catch-up bound. |
 | `sleepy_query_producer` | OPEN transitively; assembly body now uses the separate slot and event leaves below, then proved own-proposal acceptance. |
 | `sleepy_query_slot` | Body closed: recurrence/grid selects exact-cDur readiness, positive slot, strict freshness and 6Δp margin; joint lower bounds remain OPEN. |
@@ -636,7 +641,7 @@ now feeds the Sleepy liveness endpoint; it does not enter Main/Solution. All nam
 | imported `sleepy_include_finite` | Proved at 5b33645 from finite service/population and 6Δp margin. |
 
 These six named supplier obligations contain **no direct sorry**.
-The two named coefficient lower bounds are proved. Since 2d88bc90 the closed supplier bodies no
+The two named coefficient lower bounds are proved. Since 4078bc74 the closed supplier bodies no
 longer reach sorryAx through a shared accepted_heal type dependency.
 `sleepy_serviced_proposal_supply` assembles the selected actual proposal and concrete
 service record; `sleepy_serviced_proposal_coverage` applies finite inclusion only to
@@ -679,6 +684,8 @@ provenance evidence only; it does not initialize or renew old-entry coverage.
 Their endpoint types and collision escapes are unchanged. This is skeleton
 wiring, not closure of either proof. The common coefficient definitions moved
 unchanged to `AcceptanceDefs.lean` to avoid a supplier/Accepted import cycle.
+The table records the obligations as they were named; in the compiled audit at 70e90b44 none of
+these five leaves is a direct owner.
 
 | Named leaf | OPEN obligation |
 |---|---|

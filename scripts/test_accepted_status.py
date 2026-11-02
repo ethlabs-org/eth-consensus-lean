@@ -16,25 +16,23 @@ spec.loader.exec_module(status)
 
 
 class StatusTests(unittest.TestCase):
-    def test_sleepy_regeneration_distinguishes_body_and_type_dependency(self):
-        prefix = 'Consensus.Goldilocks.Refinement.'
-        names = ['accepted_heal', 'sleepy_query_sync', 'sleepy_safety_inputs',
-                 'simTrace_vote_forwarded', 'final_duty_proposal']
+    PREFIX = 'Consensus.Goldilocks.Refinement.'
+
+    def regenerate(self, names, sorry, dependencies, prior, head='fixture-pin'):
+        """Run `main` on a one-file fixture: every name was a historical sorry, `sorry` are the
+        current ones, `dependencies` the compiled edges, `prior` the previous rows; return rows."""
+        prefix = self.PREFIX
         source = 'namespace ' + prefix[:-1] + '\n' + '\n'.join(
-            'theorem ' + n + ' : True := by ' +
-            ('sorry' if n == 'accepted_heal' else 'trivial') for n in names)
-        records = [{'declaration': prefix + n, 'dependencies': deps}
-                   for n, deps in [
-                       ('accepted', [prefix + n for n in names]),
-                       ('accepted_heal', ['sorryAx']),
-                       ('sleepy_query_sync', [prefix + 'accepted_heal']),
-                       ('sleepy_safety_inputs', [prefix + 'accepted_heal']),
-                       ('simTrace_vote_forwarded', []),
-                       ('final_duty_proposal', [prefix + 'accepted_heal'])]]
+            'theorem ' + n + ' : True := by ' + ('sorry' if n in sorry else 'trivial')
+            for n in names)
+        records = [{'declaration': prefix + 'accepted', 'dependencies': [prefix + n for n in names]}]
+        records += [{'declaration': prefix + n,
+                     'dependencies': ['sorryAx'] if n in sorry else
+                     [prefix + d for d in dependencies.get(n, [])]} for n in names]
 
         def run(*args):
             if args[:2] == ('git', 'rev-parse'):
-                return 'fixture-pin\n'
+                return head + '\n'
             if args[:2] == ('git', 'ls-tree'):
                 return '100644 blob fixture\t' + str(file) + '\n'
             if args[:2] == ('git', 'cat-file'):
@@ -54,37 +52,69 @@ class StatusTests(unittest.TestCase):
                 file.write_text(source)
                 ledger = Path('docs/accepted-status.json')
                 ledger.parent.mkdir()
-                ledger.write_text(json.dumps({'rows': [
-                    {'name': prefix + n, 'status': 'paper-open (research)',
-                     'obstruction': '#128 stale', 'evidence': 'stale',
-                     'derisk-verdict': 'complete', 'adversarial-pass-done': 'y'}
-                    for n in names]}))
+                ledger.write_text(json.dumps({'rows': [{'name': prefix + n, **prior(n)} for n in names]}))
                 with patch.object(status, 'run', side_effect=run), \
                         patch.object(status.subprocess, 'run'), \
                         patch('sys.argv', ['accepted-status.py']):
                     status.main()
-                rows = {r['name']: r for r in json.loads(ledger.read_text())['rows']}
-                for n in names[1:3]:
-                    r = rows[prefix + n]
-                    self.assertFalse(r['direct_sorry'])
-                    self.assertEqual(r['lean-status'], 'sorry-dependent')
-                    self.assertEqual(r['status'], 'unknown')
-                    self.assertEqual(r['blocked-by'], [prefix + 'accepted_heal'])
-                    self.assertIn('Body proved', r['evidence'])
-                    self.assertIn('K S A', r['evidence'])
-                    self.assertNotIn('obstruction', r)
-                    self.assertEqual(r['derisk-verdict'], 'complete')
-                self.assertEqual(rows[prefix + names[3]]['status'], 'lean-proved')
-                duty = rows[prefix + 'final_duty_proposal']
-                self.assertFalse(duty['direct_sorry'])
-                self.assertEqual(duty['lean-status'], 'sorry-dependent')
-                self.assertEqual(duty['status'], 'unknown')
-                self.assertEqual(duty['status-source'], 'compiled dependency audit')
-                self.assertIn('final_duty_proposal_run', duty['evidence'])
-                self.assertIn('K S A', duty['evidence'])
-                self.assertTrue(rows[prefix + names[0]]['direct_sorry'])
+                return {r['name'][len(prefix):]: r for r in json.loads(ledger.read_text())['rows']}
             finally:
                 os.chdir(cwd)
+
+    def test_sleepy_regeneration_distinguishes_body_and_type_dependency(self):
+        names = ['accepted_heal', 'sleepy_query_sync', 'sleepy_safety_inputs',
+                 'simTrace_vote_forwarded', 'final_duty_proposal']
+        rows = self.regenerate(
+            names, {'accepted_heal'},
+            {n: ['accepted_heal'] for n in ('sleepy_query_sync', 'sleepy_safety_inputs',
+                                            'final_duty_proposal')},
+            lambda n: {'status': 'paper-open (research)', 'obstruction': '#128 stale',
+                       'evidence': 'stale', 'derisk-verdict': 'complete',
+                       'adversarial-pass-done': 'y'})
+        for n in names[1:3]:
+            r = rows[n]
+            self.assertFalse(r['direct_sorry'])
+            self.assertEqual(r['lean-status'], 'sorry-dependent')
+            self.assertEqual(r['status'], 'unknown')
+            self.assertEqual(r['blocked-by'], [self.PREFIX + 'accepted_heal'])
+            self.assertIn('Body proved', r['evidence'])
+            self.assertIn('K S A', r['evidence'])
+            self.assertNotIn('obstruction', r)
+            self.assertEqual(r['derisk-verdict'], 'complete')
+        self.assertEqual(rows[names[3]]['status'], 'lean-proved')
+        duty = rows['final_duty_proposal']
+        self.assertFalse(duty['direct_sorry'])
+        self.assertEqual(duty['lean-status'], 'sorry-dependent')
+        self.assertEqual(duty['status'], 'unknown')
+        self.assertEqual(duty['status-source'], 'compiled dependency audit')
+        self.assertIn('final_duty_proposal_run', duty['evidence'])
+        self.assertIn('K S A', duty['evidence'])
+        self.assertTrue(rows[names[0]]['direct_sorry'])
+
+    def test_proved_rows_refresh_ratings_and_skip_unproved_overrides(self):
+        # every row was reviewed before (status-source set), with stale prose evidence
+        names = ['final_reset_premises', 'outage_arm', 'sleepy_query_sync', 'healthy_cut_agreement',
+                 'outage_repair']
+        prior = lambda n: {'status': 'paper-partial', 'status-source': 'reviewed',
+                           'evidence': 'Open: stale prose that remains'}
+        rows = self.regenerate(names, {'outage_repair'}, {}, prior)
+        # (a) a REFRESH name takes its current RATINGS entry, not the previous evidence
+        self.assertIn('final_reset_premises', status.REFRESH)
+        self.assertEqual(rows['final_reset_premises']['evidence'],
+                         status.RATINGS['final_reset_premises'][2])
+        self.assertEqual(rows['final_reset_premises']['status'], 'lean-proved')
+        # (b) proved rows do not take the unproved-only overrides; their prose becomes the audit fact
+        for n in ('outage_arm', 'sleepy_query_sync', 'healthy_cut_agreement'):
+            self.assertEqual(rows[n]['status'], 'lean-proved')
+            self.assertEqual(rows[n]['evidence'], status.PROVED_EVIDENCE + 'fixture-.')
+        # an open row keeps its reviewed evidence
+        self.assertEqual(rows['outage_repair']['evidence'], 'Open: stale prose that remains')
+        self.assertTrue(rows['outage_repair']['direct_sorry'])
+        # the audit fact records the first proving audit and is stable across later audits
+        again = self.regenerate(names, {'outage_repair'}, {},
+                                lambda n: {k: v for k, v in rows[n].items() if k != 'name'},
+                                head='later-pin')
+        self.assertEqual(again['outage_arm']['evidence'], status.PROVED_EVIDENCE + 'fixture-.')
 
     def test_card_repositories_preserve_mixed_pins(self):
         archive = {'card-path': 'old.md', 'card-commit': 'old-pin'}

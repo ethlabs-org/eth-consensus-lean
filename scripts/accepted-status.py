@@ -19,17 +19,23 @@ import tempfile
 LEAD = 'https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27'
 PAPER = 'https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd'
 ROUTE_A = 'https://github.com/ethlabs-org/consensus-lean/issues/136'
+# Evidence of a proved row outside REFRESH: the compiled audit fact, not prose.
+PROVED_EVIDENCE = 'Proved; no direct owner in compiled audit at '
+# Rows whose RATINGS entry replaces the previous row's rating and evidence on every run.
+REFRESH = ('healthy_preserve', 'healthy_old_row_realize', 'accepted_heal', 'final_window_extract',
+           'final_reset_premises', 'healthy_preparation_initialize', 'healthy_repair_schedule',
+           'healthy_confirmed_supply')
 RATINGS = {
     'accepted_catchUp': ('paper-partial', LEAD, 'Settled coefficient audit: simultaneous finite engine envelope and repaired transport remain; no arbitrary witness choice.'),
-    'accepted_heal': ('paper-partial', LEAD, 'Settled coefficient audit: finite reset/preparation/retention and endpoint margins need joint synthesis.'),
+    'accepted_heal': ('lean-proved', ROUTE_A, 'Closed at 4078bc74 (S6): accepted_catchUp + 2·healMargin + 3 at every capability, a named parameter-only value (ResetCoefficients) fitted to the proved reset envelope. accepted_heal_ge_reset is the coefficient inequality of the nonfinal envelope, accepted_heal_ge_final the final route heal-bound margin; a later leaf may raise healMargin, consumers use only these ≥-forms.'),
     'accepted_latency': ('paper-partial', LEAD, 'Settled coefficient audit: joint nonfinal/four-anchor latency and actual carrier acceptance remain.'),
     'accepted_catchUp_ge_sleepy': ('paper-partial', LEAD, 'Settled coefficient audit: 37 is a verified constraint, not a proof about the opaque shared witness; enlargement needs monotonicity audit.'),
     'accepted_latency_ge_sleepy': ('paper-partial', LEAD, 'Settled coefficient audit: 8idx+12 is a verified constraint, not a jointly admissible selected witness.'),
-    'final_window_extract': ('paper-partial', LEAD, 'Settled final-liveness audit: four-anchor combinatorics known; actual ready accepted chain, recurrence and endpoint carrier budget remain.'),
+    'final_window_extract': ('lean-proved', ROUTE_A, "Body final_window_extract_of' from final_reset_premises (closed at e621acd7) and final_duty_proposal (final_duty_proposal_run, #143)."),
     # Route-A split of final_window_extract (#136): its body is final_window_extract_of'
     # from these two leaves (final_duty_proposal has a proved body); the rating is inherited
     # from final_window_extract.
-    'final_reset_premises': ('paper-partial', ROUTE_A, "Open (H1)+(H3) of final_window_extract_of': (H1) reset premises through the horizon at Q.gst = Sol's M1′ reset; (H3) placement with u_min = finalSeedMin Q a = slot a + 2k + 5 (corrected, #145) = the heal coefficient. One leaf: (H3) depends on the reset a of (H1). Owners: Sol (H1), coefficients (H3)."),
+    'final_reset_premises': ('lean-proved', ROUTE_A, "Closed at e621acd7 by final_reset_premises_of_query (FinalResetPremises.lean): exists_reset_of_drain_awake at r = ready, G = X, L_drain = healthyDrainLen, λ = 2Δ, b = horizon, with the guarded gap final_query_gap and drainOutputs_of_service; (H3) and the horizon fit from accepted_heal_ge_final."),
     'final_duty_proposal': ('paper-partial', ROUTE_A, "(H2) of final_window_extract_of': duty → proposal adapter, bounded by 0 < s and ts s ≤ horizon; body proved by final_duty_proposal_run (FinalDutyProposal.lean, #143). Owner: Kev."),
     # Historical rating; the declaration is retired by route A (#141), see RETIRED.
     'final_inherited_progress': ('paper-open (research)', LEAD, 'Settled final-liveness audit: arbitrary dirty inherited permissions/held or credited rows must yield same-entry progress without a birth lower bound.'),
@@ -37,14 +43,15 @@ RATINGS = {
     'final_cache_acceptance': ('paper-partial', LEAD, 'Settled final-liveness audit: actual last-carrier acceptance, retained lookup/cache for every reader and processing/read deadline budget remain.'),
     # Historical rating; the declaration is retired by R0 (#136), see RETIRED.
     'healthy_old_inventory_initialize': ('paper-open (research)', PAPER, 'Whole-statement audit 6d6af170 §§27–28: global future first arrivals require upper coverage or strict below-hj, including equality; bounded actual reset production missing.'),
-    'healthy_preparation_initialize': ('paper-open (research)', ROUTE_A, 'R0 replacement of healthy_old_inventory_initialize (workbench old_entry_post_reset.md §14, fidelity review f135cc9): exactly the joint (E) tuple, an actual reset with service through the horizon, its seed and a query with lower bound and strict reserve; needs the same-a reset envelope and the coefficient inequality, supplied by no landed declaration (healing_supply_repair_contracts.md, 5afa609).'),
+    'healthy_preparation_initialize': ('lean-proved', ROUTE_A, 'Proved at 2d943744 (moved unchanged to HealthyResetEnvelope.lean): the joint (E) tuple from healthy_reset_envelope (ΔF = Δ, a ≤ ready + R·Δ), ResetPremisesUpTo.reset_seed, base slot slot(ready) + 1 and the query the maximum of the lower bound; every timing bound, including the reserve and the base timing W, is one step from accepted_heal_ge_reset.'),
+    'healthy_repair_schedule': ('lean-proved', ROUTE_A, 'Proved at f4997e9f through the reserved route: healthy_preparation_initialize at the same Q, h0, hb, hp, then healthy_repair_schedule_of_preparation (580f1e4); the reserve is Dprep.reserve, paid by accepted_heal_ge_reset.'),
     'healthy_prepare': ('paper-partial', PAPER, 'Body proved: heal-cut archival records from the operational update and recent stored locks by lock_origin, from W and the preparation schedule; since R0 no cache or inventory is produced. Sorry-dependent through its premise types and callees, not a direct sorry.'),
     'healthy_preserve': ('paper-proved awaiting Lean', PAPER, 'Since R0 only records and recent locks are preserved: retained records via archival tree/F monotonicity/restart, recent locks via lock_origin. The former J quorum/inventory and F≤J cache steps were removed with those fields.'),
     'healthy_cut_tips_comparable': ('paper-partial', PAPER, '103bfbd extracts actual stored-clock read-tip comparability; same equality-time pre-endCut gap. Engine output transport is proved.'),
     'healthy_cut_tips_ancestor': ('paper-partial', PAPER, '103bfbd extracts directed actual stored-clock read-tip ancestry; temporal/equality-time gap remains. Engine output transport is proved.'),
     'healthy_cut_agreement': ('paper-partial', PAPER, 'Whole-statement audit 6d6af170 §§17.2,25–28: old-row realization/replacement, origin comparability and actual engine read transport; heal-time cuts can precede endCut-heal.'),
     'healthy_cut_monotone': ('paper-partial', PAPER, 'Whole-statement audit 6d6af170 §§17.2–3: temporal DCA lower bound and equality-time/readiness transport; common-chain membership does not prevent backwards reads.'),
-    'healthy_confirmed_supply': ('paper-partial', PAPER, 'Whole-statement audit 6d6af170 §§23–28,79–81: finite Healthy/service/preparation and fresh actual proposal with universal exact ReadyAt/CutAfter coverage remain.'),
+    'healthy_confirmed_supply': ('lean-proved', ROUTE_A, 'Proved at db4b864f: healthy_confirmed_supply_of_initializer (HealthyConfirmedEndpoint, cb3e1846) applied to healthy_preparation_initialize; statement unchanged.'),
     'outage_arm': ('paper-partial', PAPER, 'Whole-statement audit 6d6af170 §§10,14–19: inherited record/lookup and exact reader extraction; arming is not protection.'),
     'outage_repair': ('paper-open (research)', PAPER, 'Whole-statement audit 6d6af170 §§10,17–19: covering nonvetoed renewal, pool bound/resolutions, RESULT compatibility, persistence and both reader branches remain.'),
     'outage_pre_service': ('paper-partial', LEAD, 'Revision update 4d69fdd: old duplicate-fresh signature obstruction retired by migration; replacement engine service unproved. #128 Outage applicability not established.'),
@@ -310,7 +317,7 @@ def main : IO Unit := do
             'outage+persist': 'T-01a18fec-6e1e-7342-9ca9-8562977d7347',
         }[area]
         prior = old.get(name, {})
-        if short in RATINGS and (prior.get('status-source') is None or short in ('healthy_preserve', 'healthy_old_row_realize')):
+        if short in RATINGS and (prior.get('status-source') is None or short in REFRESH):
             rating, source, evidence = RATINGS[short]
             prior = {**prior, 'status': rating, 'status-source': source,
                      'evidence': evidence}
@@ -331,7 +338,7 @@ def main : IO Unit := do
         for key, default in (('card-path', None), ('card-repo', None), ('derisk-verdict', 'none yet'),
                              ('adversarial-pass-done', 'n')):
             row[key] = prior.get(key, default)
-        if short in ('outage_arm', 'healthy_preserve') and name not in owners:
+        if short in ('outage_arm', 'healthy_preserve') and name not in owners and not proved:
             row['status'] = 'unknown'
             row['status-source'] = 'compiled dependency audit'
             row['evidence'] = ('Body proved at 649f0286; shared coefficient type dependencies remain. Exact endCut(T), both lookup alternatives and actual read prefix; arming is not protection.' if short == 'outage_arm' else
@@ -353,6 +360,10 @@ def main : IO Unit := do
             row['evidence'] = ('Body proved by final_duty_proposal_run (#143); full closure depends on '
                                'accepted_heal only through the FinalQuery type (K S A). '
                                'Not a direct sorry in the proof body.')
+        # A proved row's prose evidence predates the proof; outside REFRESH (curated texts) it is
+        # replaced by the audit fact, recorded at the first audit that found the closure sorry-free.
+        if proved and short not in REFRESH and not row.get('evidence', '').startswith(PROVED_EVIDENCE):
+            row['evidence'] = f'{PROVED_EVIDENCE}{head[:8]}.'
         comparison = {k: v for k, v in row.items() if k not in ('last-changed', 'file:line')}
         if comparison == {k: v for k, v in prior.items() if k not in ('last-changed', 'file:line')}:
             row['last-changed'] = prior['last-changed']
