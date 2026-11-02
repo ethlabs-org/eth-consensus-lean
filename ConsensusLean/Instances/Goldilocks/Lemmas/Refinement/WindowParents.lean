@@ -164,6 +164,55 @@ theorem window_justifies_or_parents_above_of_le_cutZ (hrun : GoldilocksRun propo
     exact ⟨C, Pr, hPr, hpar, hCPr, hab⟩
   · exact Or.inr hW
 
+/-- **The lock window or parents above a crossing report, reports after `tH`.** As
+`window_justifies_or_parents_above`, with each honest report at a cut `r` with
+`tH ≤ t_r ≤ v`. Conclusion: (A) an honest report `C` of some `z` at a cut `r` with
+`cutZ(gR) < t_r`, `tH ≤ t_r ≤ v` and `h < σ[C].h`, and every honest proposal of a slot `s` with
+`v + Δ ≤ t_s` has an honest parent `Pr ⪰ C` with `h < σ[Pr].h` at every honest holder; or the
+window conclusion. -/
+theorem window_justifies_or_parents_above_after (hrun : GoldilocksRun proposer dg H tr)
+    (hq : Hᶜ.ncard < sp.toParams.fg.q)
+    {g ΔF v gR tH : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hH : Healed tr H proposer gR tH h₀ E)
+    (hs : Healing.HSShared tr H dg g ΔF) (hv : gbar g ≤ v) {s₀ gM s₁ : Nat}
+    (hM4 : ∀ s, s₀ ≤ s → ∃ s', s ≤ s' ∧ s' < s + gM ∧
+      ∃ P, Healing.HonestProposalRun tr H proposer s' P)
+    (hs₁ : s₀ ≤ s₁) (hvs : v + ΔF ≤ sp.ts s₁)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ℓ) (htH : tH ≤ tr.time k) {l}
+    (hl : l ∈ SA.liveLocks sp (tr.projAC.state y k).locks ℓ.frame (tr.time k))
+    (hf : l.fast = true) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree)
+    (hBl : B.root = l.block) (hks : tr.time k + sp.Δ ≤ sp.ts s₁) {h T : Nat}
+    (hh : ((tr.state y k).fg.σ B.root).h = h) (hT : ((tr.state y k).fg.σ B.root).Th = T)
+    (hh₀ : h₀ + 1 ≤ h) {ΔR a b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg gR ΔR a b) (hvb : v ≤ b)
+    (hreports' : ∀ X ∈ (tr.state y k).fg.tree, X.root = T →
+      ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tH ≤ tr.time r ∧
+        tr.time r ≤ v ∧ Anc (tr.HonestBlocks H) X C) :
+    (∃ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧
+      Healing.cutZ sp.toParams gR < tr.time r ∧ tH ≤ tr.time r ∧ tr.time r ≤ v ∧
+      h < ((tr.state z r).fg.σ C.root).h ∧
+      ∀ s P, Healing.HonestProposalRun tr H proposer s P → v + sp.Δ ≤ sp.ts s →
+        ∃ Pr ∈ tr.HonestBlocks H, P.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) C Pr ∧
+          ∀ y ∈ H, ∀ k, Pr ∈ (tr.state y k).fg.tree →
+            h < ((tr.state y k).fg.σ Pr.root).h) ∨
+    ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ k X Pr,
+      tr.ProposesAt (proposer s') k X ∧ X.slot = s' ∧ X.parent = some Pr.root ∧
+      Pr ∈ (tr.state (proposer s') k).fg.tree ∧
+      (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
+        (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
+          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+            ((tr.post k).fg.σ X.root).hF =
+              ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
+  rcases window_justifies_or_crossed_after hrun hq hH hs hv hM4 hs₁ hvs hy hc htH hl hf hB hBl
+      hks hh hT hh₀ hp hvb hreports' with
+    ⟨-, -, -, -, z, hz, r, ell, C, hto, htr, hrv, -, hC, hlt⟩ | hW
+  · refine Or.inl ⟨z, hz, r, ell, C, hto, ?_, htr, hrv, hlt, fun s P hP hsv => ?_⟩
+    · have hrh := hH.toHealedRecords.rh
+      exact hp.cutZ_lt_of_high hz hC (by omega)
+    · exact crossed_parents_above hrun hp.noColl hH hz hto htr hlt hP (by linarith)
+  · exact Or.inr hW
+
 end Consensus.Goldilocks.Refinement
 
 end

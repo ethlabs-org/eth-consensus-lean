@@ -97,6 +97,55 @@ theorem window_justifies_or_crossed (hrun : GoldilocksRun proposer dg H tr)
     obtain ⟨kz, att, hsg, hkv, hah, haT, hfirst⟩ := hsig z hz
     exact ⟨kz, att, hsg, hkv, hah.trans hXh, haT.trans hXr, by rw [← hXh]; exact hfirst⟩
 
+/-- **The lock window or a crossing report, after `u`.** As `window_justifies_or_crossed`, with
+each honest report at a cut `r` with `u ≤ t_r ≤ v`: case (A) also carries `u ≤ t_r`. -/
+theorem window_justifies_or_crossed_after (hrun : GoldilocksRun proposer dg H tr)
+    (hq : Hᶜ.ncard < sp.toParams.fg.q)
+    {g ΔF v gR tH : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hH : Healed tr H proposer gR tH h₀ E)
+    (hs : Healing.HSShared tr H dg g ΔF) (hv : gbar g ≤ v) {s₀ gM s₁ : Nat}
+    (hM4 : ∀ s, s₀ ≤ s → ∃ s', s ≤ s' ∧ s' < s + gM ∧
+      ∃ P, Healing.HonestProposalRun tr H proposer s' P)
+    (hs₁ : s₀ ≤ s₁) (hvs : v + ΔF ≤ sp.ts s₁)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ℓ) (htH : tH ≤ tr.time k) {l}
+    (hl : l ∈ SA.liveLocks sp (tr.projAC.state y k).locks ℓ.frame (tr.time k))
+    (hf : l.fast = true) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree)
+    (hBl : B.root = l.block) (hks : tr.time k + sp.Δ ≤ sp.ts s₁) {h T : Nat}
+    (hh : ((tr.state y k).fg.σ B.root).h = h) (hT : ((tr.state y k).fg.σ B.root).Th = T)
+    (hh₀ : h₀ + 1 ≤ h) {ΔR a b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg gR ΔR a b) (hvb : v ≤ b) {u : Time}
+    (hreports' : ∀ X ∈ (tr.state y k).fg.tree, X.root = T →
+      ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ u ≤ tr.time r ∧
+        tr.time r ≤ v ∧ Anc (tr.HonestBlocks H) X C) :
+    (∃ X ∈ (tr.state y k).fg.tree, X.root = T ∧ (tr.state y k).fg.Anc X B ∧
+      ∃ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ u ≤ tr.time r ∧
+        tr.time r ≤ v ∧ Anc (tr.HonestBlocks H) X C ∧ C ∈ (tr.state z r).fg.tree ∧
+        h < ((tr.state z r).fg.σ C.root).h) ∨
+    ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ k X Pr,
+      tr.ProposesAt (proposer s') k X ∧ X.slot = s' ∧ X.parent = some Pr.root ∧
+      Pr ∈ (tr.state (proposer s') k).fg.tree ∧
+      (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
+        (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
+          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+            ((tr.post k).fg.σ X.root).hF =
+              ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
+  have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
+  obtain ⟨X, hX, hXr, hXB, hXh, hXT⟩ := lock_entry_block hrun hy hBy
+  rw [hT] at hXr
+  rw [hh] at hXh
+  have hR := hH.toHealedRecords
+  obtain ⟨hhT, hhj⟩ := entry_HZ_bounds hR (σ := (tr.state y k).fg.σ X.root) (by omega)
+  rcases rows_supply_or_crossed_after hp hR hy hX rfl hXT hhT hhj (by omega) hvb
+      (hreports' X hX hXr) with
+    ⟨z, hz, r, ell, C, hto, hur, hrv, hXC, hC, hlt⟩ | ⟨S, hSH, hS, hsig⟩
+  · exact Or.inl ⟨X, hX, hXr, hXB, z, hz, r, ell, C, hto, hur, hrv, hXC, hC, by omega⟩
+  · refine Or.inr (window_justifies_of_lock_healed hrun hq hH hs hv hM4 hs₁ hvs hy hc htH hl hf
+      hB hBl hks hh hT hh₀ S hSH hS ?_)
+    intro z hz
+    obtain ⟨kz, att, hsg, hkv, hah, haT, hfirst⟩ := hsig z hz
+    exact ⟨kz, att, hsg, hkv, hah.trans hXh, haT.trans hXr, by rw [← hXh]; exact hfirst⟩
+
 end Consensus.Goldilocks.Refinement
 
 end
