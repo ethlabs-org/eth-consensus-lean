@@ -72,7 +72,7 @@ theorem reset_of_drain (Q : FinalQuery S A V)
       ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
         (runProposer S Q.run.2 Q.hn) s P)
     (hdrain : DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) (honestKeys S Q.run.2) g
-      (Q.index : Nat) Ld) :
+      (Q.index : Nat) Ld b) :
     ∃ a, IsReset Q.trace (honestKeys S Q.run.2) g a ∧
       a ≤ resetBound (max ((Sys (family S) V).ready (K S A) Q.gst Q.run) 0) Q.params.Δ lam
         Q.params.toParams.fg.δt (Q.index : Nat) Ld := by
@@ -171,7 +171,7 @@ theorem reset_of_drain (Q : FinalQuery S A V)
     rw [this]; linarith [hfitN.2])
   -- the drain
   obtain ⟨u, hwarm, huLd, z, hz, hdes, kP, P, hP, hPs, hlow⟩ :=
-    hdrain.warm hframe hm (by omega)
+    hdrain.warm hframe hm (by omega) (by linarith [hfitN.2])
       (fun v hv k att hs hk => hna v hv k att hs (by linarith [hfitN.2])) hgp
   have hN2 : u + 2 * ρ + 1 ≤ N := by rw [hNdef]; omega
   -- the rise
