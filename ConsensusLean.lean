@@ -76,6 +76,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageDelivery
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageMajority
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutagePostStop
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageRead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageReader
@@ -311,6 +312,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSaf
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageRead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageReader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageReaderGate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Count
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox

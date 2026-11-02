@@ -237,7 +237,7 @@ private theorem update_after {X : Fin sp.n}
 
 /-- A member of `A₀` is awake and joined at `t_m + Δ` for a label `m ∈ [j₀ + 1, j₀ + k]` whose
 update some honest call reaches. -/
-private theorem cohort_ready (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n}
+theorem cohort_ready (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n}
     (hx : x ∈ D.A₀) {m : Nat} (hm : D.j₀ + 1 ≤ m) (hmK : m ≤ D.j₀ + sp.k)
     (hcall : ∃ y ∈ H, ∃ i, tr.IsCall y i ∧ sp.ts m + sp.Δ ≤ tr.time i) :
     tr.awake x (sp.ts m + sp.Δ) ∧ tr.JoinedAt x (sp.ts m + sp.Δ) := by
