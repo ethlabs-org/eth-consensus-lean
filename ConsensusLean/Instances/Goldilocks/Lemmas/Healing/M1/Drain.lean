@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FreshLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts
 
 public section
 
@@ -171,6 +172,35 @@ theorem FrameWindow.reset_of_high_proposal
     omega
   obtain ⟨a, ha, hat⟩ := reset_of_high_report hrun hq hz hR hh'
   exact ⟨a, ha, hat.trans ht⟩
+
+/-- A concrete report produces a matching row by its timestamp, provided
+the finite O1-L lock alternative holds at that report's own store cut.
+The signature may be older; no lower bound on report time is assumed. -/
+theorem row_of_report_of_kind
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {R E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hR : SA.ToFGAt tr.projAC y i ell R) {h : Nat}
+    (hE : EntryOf (tr.state y i).fg R E h)
+    (hh : ((tr.state y i).fg.σ R.root).h = h)
+    (hkind : (tr.state y i).fg.hj < h ∨
+      ((tr.state y i).fg.hj = h ∧ (tr.state y i).fg.Anc (tr.state y i).fg.J R)) :
+    ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ tr.time i ∧
+      att.h = h ∧ att.T = E.root := by
+  obtain ⟨hc, hto, hres⟩ := hR
+  rw [Compose.projAC_state hrun.toLocalRun hy] at hres
+  obtain ⟨sg, hatt, ht, hfg⟩ := toFG_attest hrun.toLocalRun hy
+    (Compose.projAC_callAt.mp hc) hto hres
+  have hE' : EntryOf (tr.state y (i + 1)).fg R E h := by rwa [hfg]
+  have hh' : ((tr.state y (i + 1)).fg.σ R.root).h = h := by rwa [hfg]
+  have hk' : (tr.state y (i + 1)).fg.hj < h ∨
+      ((tr.state y (i + 1)).fg.hj = h ∧
+        (tr.state y (i + 1)).fg.Anc (tr.state y (i + 1)).fg.J R) := by rwa [hfg]
+  rcases client_signs_of_frame hrun hnc hf hy hatt hE' hh' hk' with
+    ⟨att, rfl, hah, haT⟩ | ⟨k, hki, att, hs, hah, haT⟩
+  · exact ⟨i + 1, att, ⟨R, hatt⟩, ht.le, hah, haT⟩
+  · exact ⟨k, att, hs, (hrun.time_mono hki.le).trans ht.le, hah, haT⟩
 
 end Consensus.Goldilocks.Healing
 
