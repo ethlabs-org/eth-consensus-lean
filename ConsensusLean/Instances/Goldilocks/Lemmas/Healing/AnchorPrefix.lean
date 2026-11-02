@@ -985,6 +985,29 @@ theorem FrameWindow.proposal_later_heads {s₀ s last floor : Nat}
   exact unanimous_next_proposal hrun hnc hsvc hawake hf hcatch hnr (by linarith)
     (by linarith) hstep hz hvP.1 hh hJP (hG (by omega) (by omega)) hy hci hcall hti hd
 
+/-- At an actual honest call, every ToFG candidate is compatible with any
+other candidate of that same read. Candidacy itself is not inferred here. -/
+theorem toFG_candidates_compatible_at_call (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i)) :
+    ∀ C ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),
+      Compatible (tr.HonestBlocks H) C P := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hPhi := SA.frameIn_of_callAt hr hy hc
+  obtain ⟨Phi, t, hreach, _, hok⟩ := Compose.pre_reachable hr hy hc
+  obtain ⟨hin, _, hinv⟩ := SA.lockInv_of_reachable hr.coherent hreach
+  have hinv' := hinv.callOK hr.coherent hin hok
+  have hlock {B : SA.Blk sp.n (List (FG.Att sp.n))}
+      (hB : B ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i)) :
+      B ∈ SA.liveLockBlocks sp (tr.projAC.state y i).locks ell.frame (tr.time i) := by
+    obtain ⟨hv, l, hl, hr, _⟩ := hB
+    exact ⟨hv.1, l, hl, hr⟩
+  intro C hC
+  exact (hinv'.liveBlocks_chain hr.coherent hPhi.1 hPhi.2 C (hlock hC) P (hlock hP)).elim
+    (fun h => Or.inl (Anc.mono hPhi.2 h)) (fun h => Or.inr (Anc.mono hPhi.2 h))
+
 end Consensus.Goldilocks.Healing
 
 end
