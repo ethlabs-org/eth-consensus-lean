@@ -272,6 +272,36 @@ theorem row_of_report_of_floor
   exact row_of_report_of_kind hrun hnc hf hy hR hE hh
     (hh ▸ report_kind_of_floor hrun hy (hh ▸ hfloor) hroot')
 
+/-- A shared source entry transports to each actual report extending that
+source. The caller's floor is inherited by ancestry, not candidate viability. -/
+theorem FrameWindow.row_of_report_of_source
+    {lo hi : Time} {floor : Nat} {contest kindJ : Prop}
+    {J P R E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {c i : Nat} {h : Nat}
+    (hentry : EntryOf (tr.state w c).fg P E h)
+    (hfloor : floor ≤ h)
+    {ell : ACLabel (goldilocksNode sp ro)} (hR : SA.ToFGAt tr.projAC y i ell R)
+    (hPR : Anc (tr.HonestBlocks H) P R)
+    (hh : ((tr.state y i).fg.σ R.root).h = h)
+    (hlo : lo ≤ tr.time i) (hhi : tr.time i ≤ hi) :
+    ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ tr.time i ∧
+      att.h = h ∧ att.T = E.root := by
+  obtain ⟨⟨hE, hETh⟩, hEh, hEP⟩ := hentry
+  have hRt := toFG_mem_tree hrun hy hR
+  have hEU : Anc (tr.HonestBlocks H) E P := honest_anc_of_store_anc hw hEP
+  have hER := hEU.trans hPR
+  have hEt := mem_of_honest_anc hrun hnc hy hER hRt
+  have he := σ_eq_honest hrun hnc hw hy hE hEt
+  have hentry' : EntryOf (tr.state y i).fg R E h := by
+    refine ⟨⟨hEt, ?_⟩, ?_, store_anc_of_honest_anc hrun hnc hy hER hRt⟩
+    · rwa [← he]
+    · rwa [← he]
+  exact row_of_report_of_floor hrun hnc hf hy hR hentry' hh
+    (by rw [hframe.floor_eq y hy i hlo hhi]; exact hfloor)
+
 end Consensus.Goldilocks.Healing
 
 end
