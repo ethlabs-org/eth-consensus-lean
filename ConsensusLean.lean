@@ -180,6 +180,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeContinue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMature
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMatureUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeUpper
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
