@@ -1192,6 +1192,119 @@ theorem FrameWindow.optimistic_write_later_proposal_head
       hcatch hnr (hm.trans (hts hj)) hmb hsub hy hopt hAD hy hat hcw hQ hh hJ hAQ
       r hrlo hrN).2 z hz c ell hc hcall hti d pay hd)
 
+/-- D8c at the actual report, including a report made before the current
+read. Its own fast-write origin supplies the regular or optimistic route. -/
+theorem FrameWindow.toFG_later_proposal_head
+    {g ΔF b : Time} {s₀ u N floor : Nat} {contest kindJ : Prop}
+    {J P R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hmb : sp.ts N + sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} (hto : SA.ToFGAt tr.projAC y i ell R)
+    (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocks H) P R)
+    (hihi : tr.time i ≤ sp.ts N + sp.Δ)
+    (ht : tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ)
+    {r : Nat} (hrlo : u + 3 ≤ r) (hrN : r ≤ N)
+    {z : Fin sp.n} (hz : z ∈ H) {c : Nat}
+    {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z c ellp)
+    (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hd : (SA.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
+      some (d, pay)) : Anc (tr.HonestBlocks H) R d.head := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hr := hac.localRun
+  have hPhi := SA.frameIn_of_callAt hr hy hto.1
+  have hRc : R ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i) := by
+    have h := hto.2.2
+    change (SA.acToFG sp (tr.projAC.state y i) ell.frame (tr.time i)).2.1 = some R at h
+    unfold SA.acToFG at h
+    dsimp only at h
+    split_ifs at h
+    split at h
+    · cases h
+    · rename_i C hC
+      split_ifs at h
+      cases h
+      exact (SA.deepest_mem hC).1
+  obtain ⟨hv, l, hl, hlr, hlf, _⟩ := hRc
+  obtain ⟨l₀, hl₀, B, hB, hBr, _, heq⟩ := hl
+  have hf₀ : l₀.fast = true := by rw [heq] at hlf; exact hlf
+  obtain ⟨a, hai, ellw, D, ha, hD, ho, L, hL, hLr, hLA⟩ :=
+    SA.lock_selection_candidate_provenance hr hy i l₀ hl₀
+  have hRB : Anc (tr.HonestBlocks H) R B := by
+    have he : R = ell.frame.viableAncestor B := hPhi.1.coherent.1 hv.1
+      (SA.viableAncestor_anc hPhi.1 hB).1 (hlr.symm.trans (congrArg SA.Lock.block heq))
+    rw [he]
+    exact (SA.viableAncestor_anc hPhi.1 hB).2.mono hPhi.2
+  obtain rfl : L = B := hr.coherent.1 hL (hPhi.2 hB) (hLr.trans hBr.symm)
+  have hRA := hRB.trans hLA
+  have hW := SA.frameIn_of_callAt hr hy ha
+  have hAD := (SA.viableAncestor_anc hW.1 hD).2.mono hW.2
+  have hRD := hRA.trans hAD
+  have hfast : ∃ CV, SA.FastLockAt tr.projAC y a l₀.slot D CV := by
+    rcases ho with ⟨_, CV, ho⟩ | ⟨hn, _⟩
+    · exact ⟨CV, ho⟩
+    · simp [hf₀] at hn
+  obtain ⟨CV, hfast⟩ := hfast
+  have hjlo : u ≤ l₀.slot := by
+    have := (Anc.slot_le hr.coherent (hPR.trans hRD)).1
+    have := fast_selection_slot_le hrun hnc hf hy hfast
+    omega
+  have hjhi : l₀.slot ≤ u + 1 := by
+    have hlow : sp.ts l₀.slot ≤ tr.time a := by
+      rcases hfast with ⟨_, _, hu, _⟩ | ⟨_, _, _, hs, _⟩
+      · have htime : tr.time a = sp.ts l₀.slot + 6 * sp.Δ := hu.2.2.1
+        linarith [sp.toParams.hΔ]
+      · exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg a) _).2 (by rw [hs])
+    have htj := (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).1
+      (hlow.trans (hrun.time_mono hai.le))
+    have htupper : sp.ts (u + 2 : Nat) = sp.ts (u + 1 : Nat) + 4 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    by_contra hn
+    have hlow' := (SA.ts_le_iff sp).2
+      (show ((u + 2 : Nat) : Int) ≤ l₀.slot by exact_mod_cast (by omega : u + 2 ≤ l₀.slot))
+    linarith [hrun.time_mono hai.le, sp.toParams.hΔ]
+  have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
+    (SA.ts_le_iff sp).2 (by exact_mod_cast hpq)
+  have hk := sp.two_le_k
+  rcases hfast with hreg | hopt
+  · exact hRD.trans ((hframe.regular_later_heads hrun hnc hsvc hawake hf hcatch hnr
+      (by omega) (by omega) (by omega) hm (by omega) hmb hy (Or.inl ⟨CV, hreg⟩)
+      r (by omega) hrN).2 (by omega) z hz c ellp hcp hcall hti d pay hd)
+  · have halo : sp.ts s₀ ≤ tr.time a := by
+      have hlow : sp.ts l₀.slot ≤ tr.time a := by
+        obtain ⟨_, _, _, hs, _⟩ := hopt
+        exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg a) _).2 (by rw [hs])
+      exact (hts (by omega)).trans hlow
+    have hat := (SA.optimisticLockAt_spec hac hy hopt).1
+    apply hframe.optimistic_write_later_proposal_head hrun hnc hsvc hawake hf hcatch hnr
+      (by linarith [sp.toParams.hΔ]) hmb (by omega) hy ha halo hat hopt hRA hAD
+      ?_ (by omega) hrN hz hcp hcall hti hd
+    rcases (SA.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
+    · exact Or.inl hbelow
+    · obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2
+      have hvQ' := hvQ
+      rw [Compose.frame_of_projAC hrun hy ha] at hvQ'
+      refine Or.inr ⟨Q, hQ, ?_, ?_, hAQ.mono hW.2⟩
+      · rw [← hframe.floor_eq y hy a halo ((hrun.time_mono hai.le).trans hihi)]
+        exact hvQ'.2.2.2
+      · intro hk'
+        have hkind := (hframe.kind_iff y hy a halo
+          ((hrun.time_mono hai.le).trans hihi)).mpr hk'
+        have hroot := hAv.2.1.mono hW.2
+        rw [Compose.frame_of_projAC hrun hy ha] at hroot
+        change Anc (tr.HonestBlocks H) (tr.state y a).fg.fcRoot _ at hroot
+        rw [Compose.frame_of_projAC hrun hy ha]
+        rwa [show (tr.state y a).fg.fcRoot = (tr.state y a).fg.J from ite_eq_left hkind,
+          hframe.root_eq y hy a halo ((hrun.time_mono hai.le).trans hihi) hk'] at hroot
+
 end Consensus.Goldilocks.Healing
 
 end
