@@ -14,28 +14,20 @@ public section
 This module lives in Healing because the base uses the reset and acceptance projection lemmas;
 the Compose layer is below Healing in the import matrix.
 
-`healed_safe_until` (R.6, `Lemmas/Compose/Regimes/Weak`) goes through the Sleepy record invariant
-started at a label `s₀` after the reset (`Compose.sleepy_invariant_from`, over `SleepyFrom` and
-`SleepyBase`). This file derives both from `WeakPremises` (the healing premises of R.3 cut at the
-heal point `T`) for a start label `s₀` with `a + T_b ≤ t_{s₀}` (the reset `a`, `T_b` of H.3 (c)'s
-bridge), early enough before `T` (`t_{s₀+k} ≤ T`, `t_{s₀+2} + 6Δ ≤ T`), split by owner
-(consensus-lean#17, 2026-10-31):
+R.6's safety goes through the Sleepy record invariant started at a label `s₀` after the reset
+(`Compose.sleepy_invariant_from`, over `SleepyFrom` and `SleepyBase`). This file derives, from
+`WeakPremises` (the healing premises of R.3 cut at the heal point `T`) for a start label `s₀` with
+`a + T_b ≤ t_{s₀}` (the reset `a`, `T_b` of H.3 (c)'s bridge), the proved parts:
 
 * `weak_sleepyFrom`: `Sync` and `f < h_t` from `t_{s₀}` (`GST(g)` from `ḡ`; every honest node
-  awake on `[ḡ, T]` and joined from `t_{s₀}`, the ready ones from `T`) (proved);
-* `weak_base_locks`, `weak_base_sources`, `weak_base_old_blocks`: `SleepyBase`'s (1) (a read-point
-  lock of a slot `< s₀` is live only at votes of slots `< s₀ + k`, so before `T`, under `Healthy`
-  and H.2's drain), (3b) (A1.5: a source is below the stored block of a recent fast lock) and (6)
-  (`Catch(2Δ)` for the acceptances before `ḡ`, `GST(g)`'s relay for those in `[ḡ, t_{s₀})`, the
-  voter joined). Sources and old blocks are proved; locks remain open;
-* `weak_base_until`: the facts (2), (3a), (5) and (5′) at the cuts up to `T` (`BaseFacts` at
-  `· ≤ T`), the paper obligation of the T3 orb (open);
-* `weak_base_extend`: the same facts at every cut (`BaseFacts` at every time), from those up to
-  `T` and the run after `T` (amp-orbs service; open). Not by monotonicity alone: a `Σ.F` that moves
-  past `T` needs a covering origin, and a row first held after `T` is not covered by the facts up
-  to `T`.
+  awake on `[ḡ, T]` and joined from `t_{s₀}`, the ready ones from `T`);
+* `weak_base_sources` and `weak_base_old_blocks`: `SleepyBase`'s (3b) (A1.5: a source is below the
+  stored block of a recent fast lock) and (6) (`Catch(2Δ)` for the acceptances before `ḡ`,
+  `GST(g)`'s relay for those in `[ḡ, t_{s₀})`, the voter joined).
 
-`weak_sleepyBase` assembles `SleepyBase` from them. -/
+`BaseFacts` names `SleepyBase`'s facts (2), (3a), (5) and (5′) at the cuts whose time satisfies a
+guard. The open remainder of `SleepyBase` ((1) old live locks, and `BaseFacts` up to `T` and at
+every cut) and its R.6 assembly are not stated here. -/
 
 namespace Consensus.Goldilocks.Regimes
 
@@ -84,16 +76,6 @@ section Base
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp a Tb T : Time} {s₀ : Nat}
   {proposer : Nat → Fin sp.n}
-
-/-- **(1) Old live locks** (open; acbase): a read-point lock of a slot `< s₀` is live at a vote
-of a slot `> s₀` only before `t_{s₀+k} ≤ T`, where `Healthy` and H.2's drain hold. -/
-theorem weak_base_locks (hrun : GoldilocksRun proposer dg H tr)
-    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T)
-    (hs₀ : a + Tb ≤ sp.ts s₀) (hk : sp.ts (s₀ + sp.k : Nat) ≤ T) :
-    ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → s₀ < e.msg.slot →
-      ∀ L ∈ SA.liveLockBlocks sp {l ∈ e.readPoint.locks | l.slot < s₀} ℓ.frame (tr.time i),
-        ∀ C j, OriginFrom tr H C j s₀ → j < e.msg.slot → Compatible (tr.HonestBlocks H) L C := by
-  sorry
 
 /-- **(3b) Sources**: the two-slot age bound puts the supporting lock's origin after `s₀`. -/
 theorem weak_base_sources (hrun : GoldilocksRun proposer dg H tr)
@@ -266,34 +248,6 @@ theorem weak_base_old_blocks (hrun : GoldilocksRun proposer dg H tr)
       rw [htk]
       have := hdl k hki
       linarith⟩
-
-/-- **(2), (3a), (5), (5′) up to `T`** (open; the T3 orb's paper obligation). -/
-theorem weak_base_until (hrun : GoldilocksRun proposer dg H tr)
-    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀)
-    (hT : sp.ts (s₀ + 2 : Nat) + 6 * sp.Δ ≤ T) :
-    BaseFacts tr H s₀ (· ≤ T) := by
-  sorry
-
-/-- **(2), (3a), (5), (5′) at every cut** from those up to `T` (open; amp-orbs service). -/
-theorem weak_base_extend (hrun : GoldilocksRun proposer dg H tr)
-    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀)
-    (hT : sp.ts (s₀ + 2 : Nat) + 6 * sp.Δ ≤ T) (hbase : BaseFacts tr H s₀ (· ≤ T)) :
-    BaseFacts tr H s₀ fun _ => True := by
-  sorry
-
-/-- **`SleepyBase` at `s₀` under `Weak`**, assembled. -/
-theorem weak_sleepyBase (hrun : GoldilocksRun proposer dg H tr)
-    (hw : WeakPremises tr H proposer dg g ΔF Gp a Tb T) (hs₀ : a + Tb ≤ sp.ts s₀)
-    (hk : sp.ts (s₀ + sp.k : Nat) ≤ T) (hT : sp.ts (s₀ + 2 : Nat) + 6 * sp.Δ ≤ T) :
-    SleepyBase tr H s₀ := by
-  have hb := weak_base_extend hrun hw hs₀ hT (weak_base_until hrun hw hs₀ hT)
-  exact ⟨weak_base_locks hrun hw hs₀ hk,
-    fun y hy i hi => hb.records y hy i trivial hi,
-    fun y hy i hi => hb.caches y hy i trivial hi,
-    weak_base_sources hrun hw hs₀,
-    fun y hy i ℓ e hc => hb.vote_rows y hy i ℓ e hc trivial,
-    fun y hy i hi => hb.event_rows y hy i trivial hi,
-    weak_base_old_blocks hrun hw hs₀⟩
 
 end Base
 

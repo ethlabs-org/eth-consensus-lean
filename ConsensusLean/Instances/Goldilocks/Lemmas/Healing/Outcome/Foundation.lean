@@ -34,7 +34,7 @@ With `b = slot(a) + 3` (`cleanLabel`) and `R = t_{b+2k+2}` (`drainTime`, the `R_
 
 `Outcome.Pivot` consumes these source facts. The downstream `Outcome.Supplier` retains
 `ready_unanimous`, `ready_update` and `report_cover`; this separation lets those suppliers
-use the pivot without an import cycle. `clean_result_next_votes` remains open here. -/
+use the pivot without an import cycle. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -228,17 +228,6 @@ theorem clean_fast_transfer (hp : ResetPremises tr H proposer dg g ΔF a) {x : F
     W, hWS, hWv, hBOΦ.trans hOW⟩
 
 /-! ### The clean slow transfer -/
-
-/-- **Clean regular-result transfer to the next slot** (open; the T3 paper orb's target): under the
-reset premises, every honest vote of slot `j + 1` extends the result `R` of an honest joined update
-of a clean label `j ≥ b` (fast, sub-fast or vetoed). -/
-theorem clean_result_next_votes (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x : Fin sp.n} {i j : Nat}
-    {R : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hx : x ∈ H)
-    (hR : SA.ResultAt tr.projAC x i j R CV) (hb : cleanLabel sp a ≤ j) :
-    ∀ y ∈ H, ∀ k e, SA.VoteAt tr.projAC y k e → e.msg.slot = j + 1 →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg R := by
-  sorry
 
 /-- A deepest block of a set is the one `deepest` returns. -/
 private theorem deepest_eq_of_isDeepest {Φ : SA.Frm sp.n (List (FG.Att sp.n))}

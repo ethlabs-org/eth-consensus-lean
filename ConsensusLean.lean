@@ -74,7 +74,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageDelivery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageGate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageMajority
@@ -83,7 +82,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageRe
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageReader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Weak
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection

@@ -192,32 +192,14 @@ theorem healthy_old_inventory_of_fresh_origin (Q : HealthyPreparationQuery S A V
       (hcap E h hold) (hcomp y hy E h hold (by omega)))
 
 /-- Proven preservation of an explicitly supplied old-entry inventory. Since R0 no
-inventory is produced on the Accepted route; the inventory is a premise of the outside
-OPEN leaf `healthy_vote_row_replacement`. It ranges over ALL later cuts, not merely
-end-of-time observations. It does not turn eventual coverage into prefix-produced
-coverage or give a vote label bound. -/
+inventory is produced on the Accepted route, and no declaration consumes the preserved
+inventory. It ranges over ALL later cuts, not merely end-of-time observations. It does not
+turn eventual coverage into prefix-produced coverage or give a vote label bound. -/
 theorem healthy_old_inventory_preserve (Q : HealthyPreparationQuery S A V)
     {s₀ : Nat} (base : HealthyOldInventory S A V Q s₀ Q.cut) :
     ∀ i, Q.cut ≤ i → HealthyOldInventory S A V Q s₀ i := by
   exact Healing.oldHonest_inventory_preserved
     (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid) base
-
-/-- OPEN first-arrival realization: a held honest row with the consumer's exact
-old-source antecedent identifies an OldHonest self-entry at its actual replay
-height. This does not posit ToFGAt for the particular D from that antecedent.
-The entry E is distinct from D and has root a.T. -/
-theorem healthy_old_row_realize (Q : HealthyPreparationQuery S A V) {s₀ : Nat}
-    {y : Fin Q.params.n} (hy : y ∈ honestKeys S Q.run.2) {i : Nat}
-    {X : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (hX : X ∈ (Q.trace.state y i).fg.tree) {a : FG.Att Q.params.n}
-    (ha : a ∈ X.fgPayload) (hav : a.val ∈ honestKeys S Q.run.2)
-    (hold : ∃ D C l, Compose.IsHonestSource Q.trace (honestKeys S Q.run.2) D a.T ∧
-      Compose.Origin Q.trace (honestKeys S Q.run.2) C l ∧ l < s₀ ∧
-      Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) D C) :
-    ∃ E, E.root = a.T ∧
-      Healing.OldHonest Q.trace (honestKeys S Q.run.2) s₀ E
-        ((Q.trace.state y i).fg.σ a.T).h := by
-  sorry
 
 /-- Consumer-facing state facts at an arbitrary canonical cut, including cuts
 inside a timestamp: archival records and recent stored locks on the recent-origin
@@ -431,30 +413,6 @@ theorem healthy_preserve (Q : HealthyPreparationQuery S A V)
       exact ⟨C, htree hC, hr, Or.inl (Compose.onOriginChainFrom_iff.2
         (Or.inr ⟨C, s, Compose.originFrom_iff.2
           ⟨Compose.origin_iff.2 ⟨y, hy, j, CV, hsource⟩, hs⟩, .refl⟩))⟩
-
-/-- OPEN vote-row adapter from an explicit old-entry inventory (outside the accepted
-route since R0; the inventory is a premise here, not a state fact). The replacement origin
-may be pending at this vote: ONLY label ≤ predecessor is claimed, matching
-BaseFacts.vote_rows. No causal OriginBefore or source holding-cut bound is added.
-The old-source antecedent has no additional ToFGAt requirement on D. -/
-theorem healthy_vote_row_replacement (Q : HealthyPreparationQuery S A V)
-    (W : HealthyBaseTiming S A V Q)
-    (inv : HealthyOldInventory S A V Q W.slot Q.cut)
-    {y : Fin Q.params.n} (hy : y ∈ honestKeys S Q.run.2) {i : Nat}
-    (hi : Q.cut ≤ i) (hih : i < cutMap S Q.run.2 Q.hn Q.run.2.events.length)
-    {ℓ e} (hc : SA.CastAt Q.trace.projAC y i ℓ e) {s : Nat}
-    (hs : e.msg.slot = s + 1) (hs₀ : W.slot ≤ s)
-    {X : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (hX : X ∈ (Q.trace.state y i).fg.tree) {a : FG.Att Q.params.n}
-    (ha : a ∈ X.fgPayload) (hav : a.val ∈ honestKeys S Q.run.2)
-    (hh : (Q.trace.state y i).fg.hj ≤ ((Q.trace.state y i).fg.σ a.T).h)
-    (hold : ∃ D C l, Compose.IsHonestSource Q.trace (honestKeys S Q.run.2) D a.T ∧
-      Compose.Origin Q.trace (honestKeys S Q.run.2) C l ∧ l < W.slot ∧
-      Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) D C) :
-    ∃ D C l, Compose.IsHonestSource Q.trace (honestKeys S Q.run.2) D a.T ∧
-      Compose.OriginFrom Q.trace (honestKeys S Q.run.2) C l W.slot ∧ l ≤ s ∧
-      Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) D C := by
-  sorry
 
 end Consensus.Goldilocks.Refinement
 end
