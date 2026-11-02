@@ -53,6 +53,13 @@ theorem store_anc_of_honest_anc (hrun : GoldilocksRun proposer dg H tr)
       (Option.some.inj (hZ.2.2.symm.trans hYC.2.2))
     exact (ih hZ.1).tail hZ
 
+/-- Ancestry in an honest tree is ancestry inside the honest blocks (the tree is a subset of
+them; the converse of `store_anc_of_honest_anc`). -/
+theorem honest_anc_of_store_anc {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {A C : SA.Blk sp.n (List (FG.Att sp.n))} (h : (tr.state y k).fg.Anc A C) :
+    Anc (tr.HonestBlocks H) A C :=
+  Anc.mono (fun _ hZ => ⟨y, hy, k, hZ⟩) h
+
 /-- A block below (inside the honest blocks) a block of an honest tree is in that tree. -/
 theorem mem_of_honest_anc (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {A C : SA.Blk sp.n (List (FG.Att sp.n))}

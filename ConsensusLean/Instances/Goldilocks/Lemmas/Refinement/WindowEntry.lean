@@ -29,7 +29,8 @@ canonical chain, and the predecessor is finalized if the height is bound.
   `W.slot < σ[X].ThSlot + δt`.
 * `Store.finalized_covers_of_window`: with held `X ⪯ W ⪯ B₃` as in the slot form, and `B₀`
   below the entry block of `σ[X]`, the block of root `σ[B₃].F` is held and `B₀ ⪯` it (the
-  `CacheCoverage` premise shape); `finalized_covers_of_window'`: per-height timing.
+  `CacheCoverage` premise shape); `finalized_covers_of_window'`: per-height timing;
+  `theorem_F_of_anc''`, `finalized_covers_of_window''`: each crossing early or justifying.
   Helpers: `hF_mono`, `Th_eq_of_h_eq`,
   `fin_pair_self_entry_or_zero`, `self_entry_anc_finalized`.
 * `window_justifies_or_parents_above_after'`: `window_justifies_or_parents_above_after` with
@@ -92,6 +93,34 @@ theorem theorem_F_map_chain {α : Type} (f : α → FGBlock gp.n) {c d : List α
       obtain ⟨d₁, r, rfl, rfl, hr'⟩ := List.map_eq_append_iff.1 he
       obtain ⟨D, d₂, rfl, rfl, rfl⟩ := List.map_eq_cons_iff.1 hr'
       exact hs d₁ D d₂ ρ rfl (by simpa [List.map_append] using hρ) hρh)
+  obtain ⟨d₁, r, rfl, rfl, hr₁⟩ := List.map_eq_append_iff.1 he
+  obtain ⟨D₁, r', rfl, rfl, hr₂⟩ := List.map_eq_cons_iff.1 hr₁
+  obtain ⟨d₂, r'', rfl, rfl, hr₃⟩ := List.map_eq_append_iff.1 hr₂
+  obtain ⟨D₂, d₃, rfl, rfl, rfl⟩ := List.map_eq_cons_iff.1 hr₃
+  exact ⟨d₁, D₁, d₂, D₂, d₃, σ₁, σ₂, rfl, by simpa [List.map_append] using h1, h1h, h1j, h1J,
+    by simpa [List.map_append] using h2, h2h, h2j, h2J, h2F, h2hF⟩
+
+/-- `theorem_F_chain'` through a map: the two justifying blocks are images of blocks of `d`. -/
+theorem theorem_F_map_chain' {α : Type} (f : α → FGBlock gp.n) {c d : List α}
+    {σ τ : ChainState gp.n} (hc : gp.chainState (c.map f) = some σ)
+    (hd : gp.chainState ((c ++ d).map f) = some τ) (hh : σ.h + 1 < τ.h)
+    (hs : ∀ d₁ B d₂ ρ ρ', d = d₁ ++ B :: d₂ → gp.chainState ((c ++ d₁).map f) = some ρ →
+      gp.chainState ((c ++ d₁ ++ [B]).map f) = some ρ' → (ρ.h = σ.h ∨ ρ.h = σ.h + 1) →
+      ρ'.h = ρ.h + 1 → (f B).slot < ρ.ThSlot + gp.δt ∨ ρ'.hj = ρ.h) :
+    ∃ d₁ B₁ d₂ B₂ d₃ σ₁ σ₂, d = d₁ ++ B₁ :: (d₂ ++ B₂ :: d₃) ∧
+      gp.chainState ((c ++ d₁ ++ [B₁]).map f) = some σ₁ ∧
+      σ₁.h = σ.h + 1 ∧ σ₁.hj = σ.h ∧ σ₁.J = σ.Th ∧
+      gp.chainState ((c ++ (d₁ ++ B₁ :: d₂) ++ [B₂]).map f) = some σ₂ ∧
+      σ₂.h = σ.h + 2 ∧ σ₂.hj = σ.h + 1 ∧ σ₂.J = σ₁.Th ∧
+      σ₂.F = σ.Th ∧ σ₂.hF = σ.h := by
+  rw [List.map_append] at hd
+  obtain ⟨e₁, B₁, e₂, B₂, e₃, σ₁, σ₂, he, h1, h1h, h1j, h1J, h2, h2h, h2j, h2J, h2F, h2hF⟩ :=
+    gp.theorem_F_chain' hc hd hh (by
+      intro e₁ B e₂ ρ ρ' he hρ hρ' hρh
+      obtain ⟨d₁, r, rfl, rfl, hr'⟩ := List.map_eq_append_iff.1 he
+      obtain ⟨D, d₂, rfl, rfl, rfl⟩ := List.map_eq_cons_iff.1 hr'
+      exact hs d₁ D d₂ ρ ρ' rfl (by simpa [List.map_append] using hρ)
+        (by simpa [List.map_append] using hρ') hρh)
   obtain ⟨d₁, r, rfl, rfl, hr₁⟩ := List.map_eq_append_iff.1 he
   obtain ⟨D₁, r', rfl, rfl, hr₂⟩ := List.map_eq_cons_iff.1 hr₁
   obtain ⟨d₂, r'', rfl, rfl, hr₃⟩ := List.map_eq_append_iff.1 hr₂
@@ -446,6 +475,63 @@ theorem finalized_covers_of_window' (hr : st.Reachable acp₀) {B₀ B₃ X W : 
     ∃ F, st.blocks (st.σ B₃.root).F = some F ∧ st.Anc B₀ F := by
   obtain ⟨-, -, D₂, -, -, -, hD₂W, -, -, -, -, -, -, -, hhF, -⟩ :=
     theorem_F_of_anc hr hX hXW hh hs
+  obtain ⟨⟨E, hE, hEr, hEX, hEh, hET⟩, -⟩ := entry_state_of_source P ACP acp₀ st hr X hX
+  obtain ⟨F, hF, hEF⟩ := self_entry_anc_finalized hr hE hB₃
+    (hEX.trans (hXW.trans hWB)) (hET.trans hEr.symm)
+    (by rw [hEh, ← hhF]; exact hF_mono hr (hD₂W.trans hWB))
+  exact ⟨F, hF, (hB₀ E hE hEr).trans hEF⟩
+
+/-- **Theorem F along an ancestry, crossings early or justifying (store form).**
+`theorem_F_of_anc` with the timing premise weakened: every held `D ⪯ W` with held parent
+`Z ⪰ X` at height `σ[X].h` or `σ[X].h + 1` that enters the next height
+(`σ[D].h = σ[Z].h + 1`) has `D.slot < σ[Z].ThSlot + δt` or justifies (`σ[D].hj = σ[Z].h`).
+A crossing at age `≥ δt` with a target quorum (justify precedes timeout) meets the second
+disjunct. -/
+theorem theorem_F_of_anc'' (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
+    (hX : X ∈ st.tree) (hXW : st.Anc X W) (hh : (st.σ X.root).h + 1 < (st.σ W.root).h)
+    (hs : ∀ D ∈ st.tree, ∀ Z ∈ st.tree, D.parent = some Z.root → st.Anc X Z → st.Anc D W →
+      ((st.σ Z.root).h = (st.σ X.root).h ∨ (st.σ Z.root).h = (st.σ X.root).h + 1) →
+      (st.σ D.root).h = (st.σ Z.root).h + 1 →
+      D.slot < (st.σ Z.root).ThSlot + P.fg.δt ∨ (st.σ D.root).hj = (st.σ Z.root).h) :
+    ∃ D₁ ∈ st.tree, ∃ D₂ ∈ st.tree, st.Anc X D₁ ∧ st.Anc D₁ D₂ ∧ st.Anc D₂ W ∧
+      (st.σ D₁.root).h = (st.σ X.root).h + 1 ∧ (st.σ D₁.root).hj = (st.σ X.root).h ∧
+      (st.σ D₁.root).J = (st.σ X.root).Th ∧
+      (st.σ D₂.root).h = (st.σ X.root).h + 2 ∧ (st.σ D₂.root).hj = (st.σ X.root).h + 1 ∧
+      (st.σ D₂.root).J = (st.σ D₁.root).Th ∧
+      (st.σ D₂.root).F = (st.σ X.root).Th ∧ (st.σ D₂.root).hF = (st.σ X.root).h ∧
+      ∃ T ∈ st.tree, T.root = (st.σ X.root).Th ∧ st.Anc T X := by
+  obtain ⟨c, d, hc, hd, hpre⟩ := chain_states_of_anc' hr hX hXW
+  obtain ⟨d₁, D₁, d₂, D₂, d₃, σ₁, σ₂, rfl, h1, h1h, h1j, h1J, h2, h2h, h2j, h2J, h2F, h2hF⟩ :=
+    P.fg.theorem_F_map_chain' Block.fgView hc hd hh (by
+      intro d₁ D d₂ ρ ρ' he hρ hρ' hρh
+      obtain ⟨hD, -, hDW, -, hσD, -, Z, hZ, hpar, hXZ, hσZ⟩ := hpre d₁ D d₂ he
+      obtain rfl : ρ = st.σ Z.root := Option.some.inj (hρ.symm.trans hσZ)
+      obtain rfl : ρ' = st.σ D.root := Option.some.inj (hρ'.symm.trans hσD)
+      exact hs D hD Z hZ hpar hXZ hDW hρh)
+  obtain ⟨hD₁, hXD₁, -, -, hσ₁, -⟩ := hpre d₁ D₁ (d₂ ++ D₂ :: d₃) rfl
+  obtain ⟨hD₂, -, hD₂W, -, hσ₂, hY, -⟩ := hpre (d₁ ++ D₁ :: d₂) D₂ d₃
+    (List.append_assoc d₁ (D₁ :: d₂) (D₂ :: d₃)).symm
+  obtain rfl : σ₁ = st.σ D₁.root := Option.some.inj (h1.symm.trans hσ₁)
+  obtain rfl : σ₂ = st.σ D₂.root := Option.some.inj (h2.symm.trans hσ₂)
+  obtain ⟨⟨T, hT, hTr, hTX, -⟩, -⟩ := entry_state_of_source P ACP acp₀ st hr X hX
+  exact ⟨D₁, hD₁, D₂, hD₂, hXD₁, hY D₁ (List.mem_append_right d₁ List.mem_cons_self), hD₂W,
+    h1h, h1j, h1J, h2h, h2j, h2J, h2F, h2hF, T, hT, hTr, hTX⟩
+
+/-- **Window coverage, crossings early or justifying.** `finalized_covers_of_window'` with the
+premise of `theorem_F_of_anc''`: only the held `D ⪯ W` that enter the next height from a held
+parent `Z ⪰ X` at height `σ[X].h` or `σ[X].h + 1` are constrained, and each is early
+(`D.slot < σ[Z].ThSlot + δt`) or justifies (`σ[D].hj = σ[Z].h`). -/
+theorem finalized_covers_of_window'' (hr : st.Reachable acp₀) {B₀ B₃ X W : NodeBlock P ACP}
+    (hX : X ∈ st.tree) (hB₃ : B₃ ∈ st.tree) (hXW : st.Anc X W) (hWB : st.Anc W B₃)
+    (hh : (st.σ X.root).h + 1 < (st.σ W.root).h)
+    (hs : ∀ D ∈ st.tree, ∀ Z ∈ st.tree, D.parent = some Z.root → st.Anc X Z → st.Anc D W →
+      ((st.σ Z.root).h = (st.σ X.root).h ∨ (st.σ Z.root).h = (st.σ X.root).h + 1) →
+      (st.σ D.root).h = (st.σ Z.root).h + 1 →
+      D.slot < (st.σ Z.root).ThSlot + P.fg.δt ∨ (st.σ D.root).hj = (st.σ Z.root).h)
+    (hB₀ : ∀ T ∈ st.tree, T.root = (st.σ X.root).Th → st.Anc B₀ T) :
+    ∃ F, st.blocks (st.σ B₃.root).F = some F ∧ st.Anc B₀ F := by
+  obtain ⟨-, -, D₂, -, -, -, hD₂W, -, -, -, -, -, -, -, hhF, -⟩ :=
+    theorem_F_of_anc'' hr hX hXW hh hs
   obtain ⟨⟨E, hE, hEr, hEX, hEh, hET⟩, -⟩ := entry_state_of_source P ACP acp₀ st hr X hX
   obtain ⟨F, hF, hEF⟩ := self_entry_anc_finalized hr hE hB₃
     (hEX.trans (hXW.trans hWB)) (hET.trans hEr.symm)
