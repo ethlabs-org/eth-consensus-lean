@@ -238,8 +238,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Evidence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Exposure
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinPair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ExposureHealed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinPair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingInvariant
@@ -265,6 +265,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationPr
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RowsSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
