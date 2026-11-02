@@ -156,7 +156,7 @@ theorem voteCompat_of_not_lateWaker {i : Nat} (hinv : OutageVoteInv D i) {x : Fi
   have hsK : sp.ts e.msg.slot ≤ sp.ts (D.j₀ + sp.k : Nat) := ts_le_ts (by omega)
   have hz := D.hz (tr.time k) (by linarith) ⟨x, hx, k, hcall, le_rfl⟩
   have haw := D.hrun.awake_of_call x hx k hcall
-  rcases D.hawake x hx (tr.time k) (by linarith [D.ha]) hz haw with h | h
+  rcases D.hawake x hx (tr.time k) (by linarith [D.ha, sp.toParams.hΔ]) hz haw with h | h
   · exact hpre.2 h
   · exact hxW h
 
@@ -247,7 +247,7 @@ private theorem cohort_ready (D : OutageLockPremises tr H proposer dg) {x : Fin 
   have hm1 : sp.ts (m - 1 : Nat) + 4 * sp.Δ = sp.ts m := by
     simp only [SAParams.ts]; rw [Nat.cast_sub (by omega)]; push_cast; ring
   have hz := D.hz (sp.ts m + sp.Δ) (by linarith) hcall
-  refine ⟨D.hA₀awake x hx _ (by linarith [D.ha]) hz, fun k hk hkt => ?_⟩
+  refine ⟨D.hA₀awake x hx _ (by linarith [D.ha, sp.toParams.hΔ]) hz, fun k hk hkt => ?_⟩
   have hslot : sp.slot (sp.ts m + sp.Δ) = m :=
     SA.slot_of_mem sp m (by linarith) (by simp only [SAParams.ts]; push_cast; linarith)
   change 0 < sp.slot (sp.ts m + sp.Δ) ∧

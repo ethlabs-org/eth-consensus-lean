@@ -24,11 +24,20 @@ are unpolluted.
   viable-ancestor candidate (`viable`); and `A₀` keeps its label-`(j₀ − 1)` and label-`j₀` locks
   (or root cover) through their lifetimes (`protPrev`, `protCover`, O2).
 
-Two premises differ in form from the card's §2 listing, both as the card's own proofs use them:
-the fault bound (`hFB`) is stated at every slot point that precedes an honest call (R-late reads
-it at `t_m + Δ` for `m > j₀ + k`, §5.1, from `EtaSleepyOn`), and the cohort premises are stated
-over times (`hA₀awake`, `hA₀join`) and bound the no-sleep window end `z` from below at the times
-of honest calls (`hz`). -/
+Differences in form from the card's §2 listing, each as the card's own proofs or the landed
+arming use them:
+
+* the fault bound (`hFB`) is stated at every slot point that precedes an honest call (R-late
+  reads it at `t_m + Δ` for `m > j₀ + k`, §5.1, from `EtaSleepyOn`);
+* the cohort premises are stated over times (`hA₀awake`, `hA₀join`) and bound the no-sleep window
+  end `z` from below at the times of honest calls (`hz`); a restart of `A₀` up to `z` is by
+  `a + Δ` (its first call after waking, at the first public time from `a`), so `ha` is
+  `a + Δ ≤ t_{j₀}`;
+* `hΔ : 2 ≤ Δ` (node `Δ = Δe + 1`, `Δe ≥ 1`), for `exists_unpolluted_label`;
+* `lockPrev` and `lockCover` carry the antecedents of the landed `OutageArming`: `P` is not
+  genesis, and the gate is reached by an honest call (the horizon bound);
+* `protPrev` and `protCover` take the bases `PrevBase` and `CoverBase` as antecedents (no
+  uniqueness of the update cut is needed). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -142,10 +151,11 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
   hcohort : (Hᶜ ∪ W).ncard < A₀.ncard
   /-- Every honest validator awake in `[a, z]` is in `A₀` or a late waker. -/
   hawake : ∀ x ∈ H, ∀ t, a ≤ t → t ≤ z → tr.awake x t → x ∈ A₀ ∪ W
-  /-- `A₀` is awake throughout `[a, z]` and does not restart after `a` in it. -/
+  /-- `A₀` is awake throughout `[a, z]`; a restart of `A₀` up to `z` is by the first public time
+  from `a` (its first call after waking), at most `a + Δ`. -/
   hA₀awake : ∀ x ∈ A₀, ∀ t, a ≤ t → t ≤ z → tr.awake x t
-  hA₀join : ∀ x ∈ A₀, ∀ k, tr.RestartAt x k → tr.time k ≤ z → tr.time k ≤ a
-  ha : a ≤ sp.ts j₀
+  hA₀join : ∀ x ∈ A₀, ∀ k, tr.RestartAt x k → tr.time k ≤ z → tr.time k ≤ a + sp.Δ
+  ha : a + sp.Δ ≤ sp.ts j₀
   /-- A time up to the last cast time of label `j₀ + k` that some honest call reaches is at or
   before `z` (the window end clamps at the horizon). -/
   hz : ∀ t, t ≤ sp.ts (j₀ + sp.k : Nat) + sp.Δ → (∃ x ∈ H, ∃ i, tr.IsCall x i ∧ t ≤ tr.time i) →

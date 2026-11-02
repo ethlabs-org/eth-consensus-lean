@@ -294,6 +294,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalSuppl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OperationalPersistence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageArming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageArmingSteps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Arming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Candidate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Defs
