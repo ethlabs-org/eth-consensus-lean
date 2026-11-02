@@ -4,6 +4,7 @@
 # the case must produce; a case without it must pass.
 
 [Good]
+protected = []
 
 # --- configuration -------------------------------------------------------------------------------
 [MissingConfig]
@@ -422,6 +423,40 @@ edit."boundaries.toml" = [['trusted_paths = ["Fx/Init.lean", ', 'trusted_paths =
 expect = "FAIL[config] Fx/Lemmas/L.lean (module Fx.Lemmas.L, layer Lemmas) is not covered by trusted_paths"
 edit."boundaries.toml" = [['name = "Lemmas"', '''name = "Lemmas"
 protected = true''']]
+
+# The protected surface (check.sh step 4's instance snapshot): a default lib's module covered by trusted_paths
+# outside the trusted layers. Selected: a `protected` instance layer's module (Fx.Inst.A) and a covered module of an
+# unprotected untrusted layer (Fx.Lemmas.L, as Lemmas/Problem/Derived.lean). Not selected: the trusted layers'
+# modules (the Spec snapshot holds them), an uncovered Lemmas module, and a covered module of the test lib.
+[ProtectedSurface]
+protected = ["Fx.Inst.A", "Fx.Lemmas.L"]
+files."Fx/Inst/A.lean" = '''module
+
+public import Fx.Init
+
+def a : Nat := 0
+'''
+edit."Fx.lean" = [['public import Fx.Init', '''public import Fx.Init
+public import Fx.Inst.A''']]
+edit."boundaries.toml" = [['''[[layer]]
+name = "Lemmas"''', '''[[layer]]
+name = "Inst"
+prefixes = ["Fx.Inst"]
+allow = ["Init", "ToMathlib", "Spec"]
+protected = true
+
+[[layer]]
+name = "Lemmas"'''], ['trusted_paths = ["Fx/Init.lean", "Fx/ToMathlib", "Fx/Spec", "Fx/Statements"]',
+  'trusted_paths = ["Fx/Init.lean", "Fx/ToMathlib", "Fx/Spec", "Fx/Statements", "Fx/Inst", "Fx/Lemmas/L.lean", "FxTest/T.lean"]'],
+  ['allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Main", "Sol"]',
+   'allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Main", "Sol", "Inst"]']]
+
+# A `protected` layer must lie in the protected surface: here its module is not in a default lib.
+[ProtectedOutsideDefault]
+expect = "FAIL[config] FxTest.T (protected layer Test) is not in the protected surface"
+edit."boundaries.toml" = [['name = "Test"', '''name = "Test"
+protected = true'''], ['trusted_paths = ["Fx/Init.lean", "Fx/ToMathlib", "Fx/Spec", "Fx/Statements"]',
+  'trusted_paths = ["Fx/Init.lean", "Fx/ToMathlib", "Fx/Spec", "Fx/Statements", "FxTest.lean", "FxTest"]']]
 
 [TrustedPathMagic]
 expect = "FAIL[config] trusted_paths entry ':(exclude)Fx/Spec'"

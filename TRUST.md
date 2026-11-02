@@ -32,7 +32,29 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
 - **Spec drift:** snapshot every Spec-owned constant (readable text plus structural hashes), diff
   against `scripts/spec-snapshot.txt`; the regenerated snapshot diff is committed with every change, and the change is
   recorded (a `Trusted-surface:` commit line, issue #129; the `spec-approved` approval tag is retired, 2026-11-01).
-  Proof values are omitted by proof irrelevance; non-proof auxiliary constants are included.
+  Proof values are omitted by proof irrelevance; non-proof auxiliary constants are included. So are the
+  auxiliary proofs of a definition (`d._proof_N`: their statements are part of what the body means); an auxiliary
+  proof generated for a theorem's proof (unranged, `Prop`-typed, owned by the theorem and not named in its
+  statement, such as `omega`'s `_proof_1_1`) is omitted with that proof; one its statement names is kept. Known
+  limit: a proof-only edit that adds a non-`Prop` auxiliary inside a theorem's proof (a `match_N` definition) still
+  changes the snapshot.
+- **Protected-surface drift:** the same generator and verdict over the **protected surface**, against
+  `scripts/instance-spec-snapshot.txt`. Its modules are the inventory's 6th column (`scripts/check-boundaries.py`,
+  from `scripts/boundaries.toml` alone): every module of the default library whose file `[checks] trusted_paths`
+  covers and whose layer is not trusted. Today these are 67 modules: every module of the `protected` layers
+  (Goldilocks `Spec`, `Statements` and `Refinement/Defs.lean`; the Bft, Streamlet and Tendermint `Spec`) and
+  `Lemmas/Problem/Derived.lean`. check-boundaries.py fails if a `protected` layer's module is not in it or a trusted
+  layer's module is. Like the Spec snapshot, it fails step 4 on any drift (a changed definition body or type, an
+  added or removed constant, the pins/options header) until `--update-snapshot` regenerates it and the diff is
+  committed for review; so it gates a landing at the regeneration level, and the regenerated diff is the record.
+  A proof-only change does not change it, with the limit stated for the Spec snapshot above. Not covered: the
+  trusted-surface files outside the default library (`ConsensusLeanTest/ReviewAxioms.lean`, `ReviewGuard.lean`:
+  step 6), `Challenge.lean` (the comparator challenge, a fixture library: step 9), the persisted-extension and
+  theorem policies of step 4 (they apply to the trusted layers only), and non-Lean trusted files (pins, comparator
+  config). In `--changed` mode it runs when a module of the protected surface is in the downstream cone of the
+  change (an upstream change can change how it elaborates), or a `.lean` file under `trusted_paths` was deleted or
+  lies outside the checked libraries; such a file is outside the import graph, so it only triggers the step: no
+  module of it is snapshotted (a deleted module's lines leave the snapshot, which fails the diff).
 - **Dependency drift:** exact pins; the upgrade above additionally used the dependency audit.
 - **Unfinished proofs** (foundation plan §5, the FLT/Carleson model): `sorry` may stay only in the
   `sorry = true` layers of `scripts/boundaries.toml` (`Lemmas`, `Proofs.<M>`; check-boundaries.py refuses

@@ -15,7 +15,9 @@
 #                       axioms (gate); unfinished declarations of the default library (report)
 #   3c sorry inventory  Accepted declaration closure and ledger (REPORT ONLY; JSON in WORK)
 #   4  Spec surface     persisted extensions, snapshot, theorems, noconst,      (SpecSurface.lean)
-#                       reach (report)
+#                       reach (report); the protected-surface snapshot (the instance Spec, Statements and
+#                       Refinement.Defs and every other default-library module under trusted_paths outside
+#                       the trusted layers: scripts/instance-spec-snapshot.txt)
 #   5  kernel replay    every leaf module of every checked library              (leanchecker)
 #   6  review pins      ReviewAxioms compiled into the tests root               (#guard_msgs)
 #   7  backstop         grep for sorry/admit outside the sorry layers (count inside them reported), proof `example`s,
@@ -45,13 +47,16 @@
 #   --changed [<base>]   the fast steps restricted to what changed since <base> (default: merge-base with
 #                        origin/main; uncommitted and untracked files count): build the changed modules'
 #                        downstream cone, check-decls on the affected libraries, Spec surface only if a Spec
-#                        module changed, grep on the changed files. A change of scripts/ or of the build
+#                        module changed, the protected-surface snapshot only if a module of it is in the
+#                        downstream cone of the change (or a .lean file under trusted_paths was deleted or lies
+#                        outside the checked libraries), grep on the changed files. A change of scripts/ or of the build
 #                        configuration falls back to --fast (with --selftests for scripts/). scripts/check-changed.sh
 #   --reach              in --fast mode, also run step 4's reach report (a report, not a gate)
 #   --canary             in --fast mode, also run step 14 (CI passes it when the build configuration changed)
 #   --selftests          also run the self-tests (fixtures) in --fast mode; with --changed, runs --fast
 #   --no-build           do not compile; `lake build --no-build` still fails on anything stale
-#   --update-snapshot    rewrite scripts/spec-snapshot.txt (the run then FAILS: review + commit it)
+#   --update-snapshot    rewrite scripts/spec-snapshot.txt and scripts/instance-spec-snapshot.txt (the run then
+#                        FAILS: review + commit them)
 #   --update-extensions  rewrite scripts/spec-extensions.txt likewise
 # Every skipped step prints `SKIP  <step> (<reason>)`; only --full ends with `check.sh: ALL CHECKS PASSED`.
 # With CI set, --update-* and --no-build are refused.
@@ -135,6 +140,7 @@ CANARY_MODULE="$(cfg canary_module)"
 mapfile -t CANARY_PROOF < <(cfg canary_proof_edit)
 mapfile -t CANARY_STMT < <(cfg canary_statement_edit)
 SPEC_MODULES=()  # every module of the inventory in a trusted layer (the Spec surface); filled after step 2
+PROTECTED_MODULES=()  # the inventory's protected surface (check-boundaries.py, 6th column); filled after step 2
 mapfile -t EXTRA_TARGETS < <(cfg extra_build_targets)
 mapfile -t FIXTURE_LIBS < <(cfg fixture_libs)
 mapfile -t NOCONST_EXEMPT < <(cfg noconst_exempt)
@@ -160,7 +166,7 @@ DECL_LIBS=("${LIBS[@]}")  # libraries whose every module check-decls checks (ste
 CHANGED=()                # --changed: paths changed since $base (committed, staged, unstaged, untracked)
 CONE=()                   # --changed: checked-library modules changed or (transitively) importing one
 BUILD_TARGETS=()          # --changed: what step 1 builds
-do_surface=1 do_comparator_config=1
+do_surface=1 do_comparator_config=1 do_protected=1
 do_audit=1 do_audit_tests=1 do_audit_report=1  # step 3b: the gates (solution closure, tests); the unfinished report
 
 # compute_changes: the change set since $base and its downstream cone (--changed). Falls back to --fast
@@ -189,7 +195,8 @@ compute_changes() {
     return 0
   fi
   # Only the graph is used here (step 2 reports the findings); it is written whenever the imports parse.
-  python3 -I scripts/check-boundaries.py --config "$CFG" --lakefile lakefile.toml --graph-out "$WORK/graph.tsv" >/dev/null 2>&1 || true
+  python3 -I scripts/check-boundaries.py --config "$CFG" --lakefile lakefile.toml --graph-out "$WORK/graph.tsv" \
+    --inventory-out "$WORK/changes-inventory.tsv" >/dev/null 2>&1 || true
   if [[ ! -s "$WORK/graph.tsv" ]]; then
     mode=fast
     echo "  NOTE  no import graph (lean --deps-json failed; step 2 shows why): running --fast on everything"
@@ -197,18 +204,23 @@ compute_changes() {
   fi
   # cone: the changed modules and every module importing one, transitively; lib: a library with a module
   # in the cone or a deleted file under its directory; spec: a module of a trusted layer in the cone, or a
-  # deleted file under a prefix of such a layer.
+  # deleted file under a prefix of such a layer; protected: a module of the protected surface (the inventory's
+  # 6th column) in the cone, or a deleted file under trusted_paths (conservative: its module is gone).
   DECL_LIBS=()
-  local spec_changed=0
+  local spec_changed=0 protected_changed=0
   while IFS=$'\t' read -r tag lib m; do
     case "$tag" in
       cone) CONE+=("$m") ;;
       lib) DECL_LIBS+=("$lib") ;;
       spec) spec_changed=1 ;;
+      protected) protected_changed=1 ;;
     esac
-  done < <(python3 -I - "$WORK/graph.tsv" "$CFG" "${CHANGED[@]}" <<'PY'
-import sys, tomllib
-graph, cfg, changed = sys.argv[1], tomllib.load(open(sys.argv[2], "rb")), sys.argv[3:]
+  done < <(python3 -I - "$WORK/graph.tsv" "$CFG" "$WORK/changes-inventory.tsv" "${CHANGED[@]}" <<'PY'
+import os, sys, tomllib
+graph, cfg, inv, changed = sys.argv[1], tomllib.load(open(sys.argv[2], "rb")), sys.argv[3], sys.argv[4:]
+protected = {r.split("\t")[1] for r in open(inv).read().splitlines() if r.split("\t")[5] == "protected"} \
+    if os.path.exists(inv) else None
+trusted_paths = cfg["checks"]["trusted_paths"]
 def under(m, p): return m == p or m.startswith(p + ".")
 def in_spec(m):  # the layer prefixes never overlap (check-boundaries.py)
     return any(l.get("trusted") is True and under(m, p) for l in cfg.get("layer", []) for p in l.get("prefixes", []))
@@ -229,6 +241,8 @@ for f in changed:
         libs |= {x["name"] for x in cfg["lib"] if under(m, x["name"])}
         if in_spec(m):
             print("spec", "", "", sep="\t")
+        if any(f == t or f.startswith(t + "/") for t in trusted_paths):
+            print("protected", "", "", sep="\t")
 cone = set()
 while todo:
     m = todo.pop()
@@ -241,9 +255,12 @@ for l in sorted(libs | {lib_of[m] for m in cone}):
     print("lib", l, "", sep="\t")
 if any(in_spec(m) for m in cone):
     print("spec", "", "", sep="\t")
+if protected is None or cone & protected:  # no inventory (step 2 shows why): run it
+    print("protected", "", "", sep="\t")
 PY
   )
   ((spec_changed)) || do_surface=0
+  ((protected_changed)) || do_protected=0
   do_comparator_config=$do_surface
   for f in "${CHANGED[@]}"; do
     [[ "$f" == comparator.json || "$f" == "$(mod_file "$CHALLENGE")" ]] && do_comparator_config=1
@@ -257,7 +274,7 @@ PY
   ((do_comparator_config)) && BUILD_TARGETS+=("$CHALLENGE")
   ((${#DECL_LIBS[@]})) && BUILD_TARGETS+=(check-decls)
   # steps 4 (Spec surface, or noconst alone for any Lean change) and 9 call it
-  ((do_surface || do_comparator_config || ${#DECL_LIBS[@]})) && BUILD_TARGETS+=(spec-surface)
+  ((do_surface || do_protected || do_comparator_config || ${#DECL_LIBS[@]})) && BUILD_TARGETS+=(spec-surface)
   echo "  downstream cone (built): ${#CONE[@]} modules"
   ((${#CONE[@]})) && printf '    %s\n' "${CONE[@]}"
   echo "  affected libraries (check-decls): ${DECL_LIBS[*]:-none}"
@@ -268,6 +285,7 @@ PY
 # modules of the trusted layers (the Spec surface); leaf or parent modules of all libraries.
 inv_modules() { awk -F'\t' -v l="$1" '$1 == l { print $2 }' "$INV"; }
 inv_trusted() { awk -F'\t' '$5 == "trusted" { print $2 }' "$INV"; }
+inv_protected() { awk -F'\t' '$6 == "protected" { print $2 }' "$INV"; }
 inv_kind() { awk -F'\t' -v k="$1" '$3 == k { print $2 }' "$INV"; }
 mod_file() { echo "${1//.//}.lean"; }
 
@@ -595,8 +613,8 @@ selftest_audit() {
 
 # --- step 4: Spec surface (SpecSurface.lean) ------------------------------------------------------
 # The snapshot header: what the Spec text means depends on (toolchain, dependency revs, options).
-snapshot_header() {
-  echo "# Spec snapshot: every constant owned by a Spec module. Generated by scripts/check.sh"
+snapshot_header() {  # snapshot_header [<first line>]
+  echo "${1:-# Spec snapshot: every constant owned by a Spec module. Generated by scripts/check.sh}"
   echo "# --update-snapshot; a change is a protected change (owner review)."
   python3 -I -c 'import json, sys, tomllib
 tc = open("lean-toolchain").read().strip()
@@ -618,8 +636,17 @@ for kind in ("lean_lib", "lean_exe"):
 make_snapshot() {  # make_snapshot <out> <modules...>
   local out="$1"
   shift
-  snapshot_header >"$out" && echo >>"$out" && "${SURFACE[@]}" snapshot --modules "$@" >>"$out" &&
-    grep -q '^## ' "$out"
+  snapshot_header "${SNAPSHOT_TITLE:-}" >"$out" && echo >>"$out" &&
+    "${SURFACE[@]}" snapshot --modules "$@" >>"$out" && grep -q '^## ' "$out"
+}
+PROTECTED_TITLE="# Protected-surface snapshot: every constant owned by a default-library module under trusted_paths outside the trusted layers. Generated by scripts/check.sh"
+# snapshot_verdict <committed> <generated> <what>: the drift verdict of step 4 (both snapshots): pass when the
+# generated snapshot equals the committed one, else FAIL[snapshot] with the head of the diff.
+snapshot_verdict() {
+  if ! diff -u "$1" "$2" >"$2.diff"; then
+    echo "  FAIL[snapshot] $3 changed (review the diff; accept it with --update-snapshot):"
+    head -200 "$2.diff"; return 1
+  fi
 }
 step_surface() {
   set +e
@@ -641,9 +668,8 @@ step_surface() {
       cp "$WORK/spec-snapshot.txt" scripts/spec-snapshot.txt
       echo "  FAIL  snapshot updated: review and commit scripts/spec-snapshot.txt as a protected change"
       rc=1
-    elif ! diff -u scripts/spec-snapshot.txt "$WORK/spec-snapshot.txt" >"$WORK/snapshot.diff"; then
-      echo "  FAIL[snapshot] the Spec changed (review the diff; accept it with --update-snapshot):"
-      head -200 "$WORK/snapshot.diff"; rc=1
+    else
+      snapshot_verdict scripts/spec-snapshot.txt "$WORK/spec-snapshot.txt" "the Spec" || rc=1
     fi
   else
     echo "  snapshot generation failed"; rc=1
@@ -683,6 +709,27 @@ step_noconst() {
     echo "  NOTE  exempt from noconst, hence not replayed by leanchecker here (step 10 lake check replays them): ${NOCONST_EXEMPT[*]}"
   "${SURFACE[@]}" noconst --modules "${parents[@]}"
 }
+# The protected-surface snapshot (part of step 4): the instance semantics and statements and every other
+# default-library module that trusted_paths covers outside the trusted layers (the inventory's 6th column, from
+# boundaries.toml alone). Same generator and verdict as the Spec snapshot; no extensions or theorems policy here.
+step_protected() {
+  local rc=0
+  echo "  snapshot over ${#PROTECTED_MODULES[@]} protected-surface modules"
+  ((${#PROTECTED_MODULES[@]})) || { echo "  FAIL[config] the protected surface is empty"; return 1; }
+  if SNAPSHOT_TITLE="$PROTECTED_TITLE" make_snapshot "$WORK/instance-spec-snapshot.txt" "${PROTECTED_MODULES[@]}"; then
+    if ((update_snapshot)); then
+      cp "$WORK/instance-spec-snapshot.txt" scripts/instance-spec-snapshot.txt
+      echo "  FAIL  snapshot updated: review and commit scripts/instance-spec-snapshot.txt as a protected change"
+      rc=1
+    else
+      snapshot_verdict scripts/instance-spec-snapshot.txt "$WORK/instance-spec-snapshot.txt" \
+        "the protected surface" || rc=1
+    fi
+  else
+    echo "  snapshot generation failed"; rc=1
+  fi
+  return "$rc"
+}
 # snap_compare <A> <B>: snapshots of two fixture modules (separate processes), `## ` lines dropped.
 snap_compare() {  # prints the diff; exit 1 = they differ (expected), anything else is an error
   make_snapshot "$WORK/snapA" "$1" && make_snapshot "$WORK/snapB" "$2" || return 2
@@ -718,6 +765,37 @@ selftest_surface() {
   if [[ -n "$d" ]] && ! grep -E '^[<>] ' <<<"$d" | grep -vE '^[<>] [a-z]+ [^ ]+ #' >/dev/null; then
     echo "  ok: SnapAuxA/SnapAuxB differ only in unranged auxiliary lines"
   else echo "  SnapAuxA/SnapAuxB: expected only unranged differences: $d"; rc=1; fi
+  # The drift verdict of step 4 (snapshot_verdict, the protected-surface header): a baseline from InstSnap.Base;
+  # each variant's snapshot, with its module name read as Base's, against it. A copy and a theorem's proof-only
+  # edit (a tactic proof whose auxiliary `_proof_1_1` the snapshot omits) pass; a changed definition body fails on
+  # its readable line; a changed definition whose proof is an auxiliary `_proof_1` fails on that auxiliary too.
+  SNAPSHOT_TITLE="$PROTECTED_TITLE" make_snapshot "$WORK/instsnap.Base" CheckFixtures.InstSnap.Base || rc=1
+  for m in Same Proof Body DefProof; do
+    SNAPSHOT_TITLE="$PROTECTED_TITLE" make_snapshot "$WORK/instsnap.raw" "CheckFixtures.InstSnap.$m" || rc=1
+    sed "s/CheckFixtures\.InstSnap\.$m\b/CheckFixtures.InstSnap.Base/g" "$WORK/instsnap.raw" >"$WORK/instsnap.$m"
+  done
+  expect_pass snapshot_verdict "$WORK/instsnap.Base" "$WORK/instsnap.Same" "the fixture" || rc=1
+  expect_pass snapshot_verdict "$WORK/instsnap.Base" "$WORK/instsnap.Proof" "the fixture" || rc=1
+  expect_fail 'FAIL[snapshot] the fixture changed' \
+    snapshot_verdict "$WORK/instsnap.Base" "$WORK/instsnap.Body" "the fixture" || rc=1
+  grep -qE '^\+def InstSnap\.dom : Nat → Nat := fun n => HAdd\.hAdd\.\{0, 0, 0\} n 2$' "$WORK/instsnap.Body.diff" &&
+    echo "  ok: the changed body is a readable line of the diff" ||
+    { echo "  InstSnap.Body: no readable body line in the diff"; cat "$WORK/instsnap.Body.diff"; rc=1; }
+  expect_fail 'FAIL[snapshot] the fixture changed' \
+    snapshot_verdict "$WORK/instsnap.Base" "$WORK/instsnap.DefProof" "the fixture" || rc=1
+  grep -qE '^\+theorem [^ ]*InstSnap\.w\._proof_1 #' "$WORK/instsnap.DefProof.diff" &&
+    echo "  ok: a definition's auxiliary proof stays in the snapshot" ||
+    { echo "  InstSnap.DefProof: no auxiliary line in the diff"; cat "$WORK/instsnap.DefProof.diff"; rc=1; }
+  # Not vacuous: InstSnap.Proof's theorem does use an auxiliary proof, and the snapshot omits it.
+  "${SURFACE[@]}" dependencies --from InstSnap.dom_pos --modules CheckFixtures.InstSnap.Proof >"$WORK/instsnap.deps" ||
+    rc=1
+  if grep -q 'dom_pos\._proof_1' "$WORK/instsnap.deps" && ! grep -q 'dom_pos\._proof' "$WORK/instsnap.Proof"; then
+    echo "  ok: the theorem's auxiliary proof exists and is omitted"
+  else echo "  InstSnap.Proof: expected an auxiliary proof of dom_pos, omitted from the snapshot"; rc=1; fi
+  # A theorem's auxiliary proof that its statement names is part of the statement: kept.
+  grep -qE '^theorem InstSnap\.w_val\._proof_[0-9]+ #' "$WORK/instsnap.Base" &&
+    echo "  ok: an auxiliary proof named by a theorem's statement is kept" ||
+    { echo "  InstSnap.Base: the statement-named auxiliary of w_val is missing"; rc=1; }
   expect_fail 'FAIL[theorem]' "${SURFACE[@]}" theorems --allow /dev/null --modules CheckFixtures.BadTheorem.A || rc=1
   expect_fail 'FAIL[noconst]' "${SURFACE[@]}" noconst --modules CheckFixtures.RootDecl || rc=1
   expect_pass "${SURFACE[@]}" noconst --modules CheckFixtures.GoodSpec || rc=1
@@ -1330,7 +1408,7 @@ if [[ "$mode" == changed ]]; then
   build_label="1 build (the downstream cone: ${#CONE[@]} modules"
   if ((do_comparator_config)); then build_label+=" + $CHALLENGE"; fi
   if ((${#DECL_LIBS[@]})); then build_label+=" + check-decls"; fi
-  if ((do_surface || do_comparator_config || ${#DECL_LIBS[@]})); then build_label+=" + spec-surface"; fi
+  if ((do_surface || do_protected || do_comparator_config || ${#DECL_LIBS[@]})); then build_label+=" + spec-surface"; fi
   build_label+=")"
 else
   build_label="1 build (default targets + ${BUILD_EXTRA[*]})"
@@ -1357,6 +1435,7 @@ if in_part 2 && [[ ! -s "$INV" ]]; then
   echo "check.sh: no inventory; the remaining steps need it"; echo; echo "check.sh: FAILURES PRESENT" >&2; exit 1
 fi
 ! in_part 2 || mapfile -t SPEC_MODULES < <(inv_trusted)
+! in_part 2 || mapfile -t PROTECTED_MODULES < <(inv_protected)
 run_selftest "2 boundaries self-test (fixtures/boundaries/cases.toml)" selftest_boundaries
 run_if "${#DECL_LIBS[@]}" "no library affected" "3 declarations (check-decls: ${DECL_LIBS[*]:-none})" step_decls
 run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope, HiddenOpaque, SorryPlace)" selftest_decls
@@ -1372,6 +1451,8 @@ else
   skip_step "4 Spec surface: extensions, snapshot, theorems" "no module of a trusted layer changed"
   run_if "${#DECL_LIBS[@]}" "no library affected" "4 noconst (every module with descendants)" step_noconst
 fi
+run_if "$do_protected" "no module of the protected surface in the downstream cone of the change, and no .lean file under trusted_paths deleted or outside the checked libraries" \
+  "4 protected-surface snapshot (scripts/instance-spec-snapshot.txt)" step_protected
 run_selftest "4 Spec surface self-test (CheckFixtures)" selftest_surface
 full_only "5 kernel replay (leanchecker, every leaf module)" step_replay
 run_selftest "5 kernel replay self-test (BadSkipKernel, prefix refusal)" selftest_replay

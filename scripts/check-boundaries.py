@@ -45,6 +45,9 @@ check-decls exemptions: a module with a `Proofs` component must be under
 `[checks].trusted_paths` (CI's review-boundary list) holds plain relative paths only and covers the file
   of every module of a trusted layer and of every `protected` layer (an untrusted layer whose files the tag
   still covers: the instance semantics and statements, #38).
+Protected surface (the inventory's 6th column; check.sh step 4's instance snapshot): every module of a default
+  lib whose file `trusted_paths` covers and whose layer is not trusted. Every module of a `protected` layer must
+  be in it, and none of a trusted layer.
 Failure tags: FAIL[config] FAIL[layer] FAIL[milestone] FAIL[import] FAIL[entry] FAIL[umbrella]
   FAIL[import-all] FAIL[root] FAIL[root-import] FAIL[aggregate] FAIL[init] FAIL[base] FAIL[fixture]
   FAIL[expose].
@@ -425,12 +428,25 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
         if not (isinstance(t, str) and re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]*(/[A-Za-z0-9_][A-Za-z0-9_.-]*)*", t)
                 and ".." not in t.split("/")):
             fails.append(f"FAIL[config] trusted_paths entry {t!r}: not a plain relative path")
+    # The protected surface (check.sh step 4, scripts/instance-spec-snapshot.txt): every module of a default
+    # library whose file trusted_paths covers, outside the trusted layers (which the Spec snapshot holds).
+    protected_surface = set()
     for n, mods in inv.items():
         for m, p in mods:
             rel = p.relative_to(tree).as_posix()
+            covered = any(rel == t or rel.startswith(t + "/") for t in trusted_paths)
             if (layer.get(m) in trusted_reach or layers.get(layer.get(m), {}).get("protected") is True) and \
-                    not any(rel == t or rel.startswith(t + "/") for t in trusted_paths):
+                    not covered:
                 fails.append(f"FAIL[config] {rel} (module {m}, layer {layer[m]}) is not covered by trusted_paths")
+            if covered and n in defaults and layer.get(m) not in trusted:
+                protected_surface.add(m)
+    for n, mods in inv.items():
+        for m, p in mods:
+            if layers.get(layer.get(m), {}).get("protected") is True and m not in protected_surface:
+                fails.append(f"FAIL[config] {m} (protected layer {layer[m]}) is not in the protected surface "
+                             f"(a default library's module covered by trusted_paths)")
+            if m in protected_surface and layer.get(m) in trusted:
+                fails.append(f"FAIL[config] {m}: in the protected surface and in the trusted layer {layer[m]}")
 
     # --- imports (lean --deps-json; the implicit prelude `Init` dropped)
     files = [str(p) for mods in inv.values() for _, p in mods]
@@ -550,18 +566,20 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
     for m in owner:
         if layer.get(m) and m not in public and not any(under(m, p) for p in cfg.get("init_exempt", [])):
             fails.append(f"FAIL[init] {m} does not reach {init} through public imports")
-    if inventory_out:  # lib, module, leaf|parent, layer (`-`: a generated root), trusted|-
+    if inventory_out:  # lib, module, leaf|parent, layer (`-`: a generated root), trusted|-, protected|-
         with open(inventory_out, "w") as out:
             for n, mods in inv.items():
                 for m, _ in mods:
                     kind = "parent" if any(under(o, m) and o != m for o, _ in mods) else "leaf"
                     t = "trusted" if layer.get(m) in trusted else "-"
-                    out.write(f"{n}\t{m}\t{kind}\t{layer.get(m) or '-'}\t{t}\n")
+                    pr = "protected" if m in protected_surface else "-"
+                    out.write(f"{n}\t{m}\t{kind}\t{layer.get(m) or '-'}\t{t}\t{pr}\n")
     return sorted(set(fails), key=fails.index)
 
 def self_test(fixtures):
     """Every case of <fixtures>/cases.toml: a copy of <fixtures>/Good with the case's edits must fail with a
-    finding that starts with `expect` (or pass, without `expect`). One lean --deps-json call for all cases."""
+    finding that starts with `expect` (or pass, without `expect`); with `protected`, the inventory's protected
+    surface (6th column) must be exactly that list. One lean --deps-json call for all cases."""
     fixtures = Path(fixtures)
     cases = tomllib.loads((fixtures / "cases.toml").read_text())
     ok = "Good" in cases and "expect" not in cases["Good"]
@@ -572,7 +590,7 @@ def self_test(fixtures):
         for case, c in cases.items():
             d = work / case
             shutil.copytree(fixtures / "Good", d)
-            for k in sorted(set(c) - {"expect", "files", "edit", "delete"}):
+            for k in sorted(set(c) - {"expect", "files", "edit", "delete", "protected"}):
                 print(f"FAIL self-test {case}: unknown key {k}"); ok = False
             for rel in c.get("delete", []):
                 (d / rel).unlink()
@@ -591,10 +609,18 @@ def self_test(fixtures):
         parse = lambda fs: [cache[str(Path(f).resolve())] for f in fs]
         for case, c in cases.items():
             d, tag = work / case, c.get("expect")
-            fails = check(d, d / "boundaries.toml", d / "lakefile.toml", parse=parse)
+            inv = work / f"{case}.inventory.tsv"
+            fails = check(d, d / "boundaries.toml", d / "lakefile.toml", parse=parse, inventory_out=inv)
             good = (not fails) if tag is None else any(f.startswith(tag) for f in fails)
             print(f"{'ok  ' if good else 'FAIL'} self-test {case}: expected {tag or 'pass'}, got {fails or 'pass'}")
             ok &= good
+            if "protected" in c:
+                got = sorted(r.split("\t")[1] for r in inv.read_text().splitlines()
+                             if r.split("\t")[5] == "protected") if inv.exists() else None
+                good = got == sorted(c["protected"])
+                print(f"{'ok  ' if good else 'FAIL'} self-test {case}: protected surface {got}, "
+                      f"expected {sorted(c['protected'])}")
+                ok &= good
     finally:
         shutil.rmtree(work)
     assert under("A.B", "A") and under("A", "A") and not under("AB", "A") and not under("A", "A.B")
@@ -617,7 +643,8 @@ if __name__ == "__main__":
     ap.add_argument("--config", default="scripts/boundaries.toml")
     ap.add_argument("--lakefile", default="lakefile.toml")
     ap.add_argument("--tree", default=".")
-    ap.add_argument("--inventory-out", help="write the inventory (lib, module, leaf|parent, layer, trusted|-)")
+    ap.add_argument("--inventory-out",
+                    help="write the inventory (lib, module, leaf|parent, layer, trusted|-, protected|-)")
     ap.add_argument("--graph-out", help="write the import graph of the checked libraries (lib, module, import)")
     ap.add_argument("--self-test", metavar="FIXTURES_DIR", nargs="?", const="scripts/fixtures/boundaries")
     a = ap.parse_args()

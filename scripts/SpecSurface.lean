@@ -20,6 +20,22 @@ def pretty (e : Expr) : MetaM String := do
   try return flat (toString (← PrettyPrinter.ppExpr e))
   catch _ => return flat (toString e)
 
+/-- The declaration an unranged auxiliary constant was generated for: the nearest proper prefix of its name
+that is a ranged constant, as written or as the user name of a private prefix. -/
+partial def auxOwner (env : Environment) (n : Name) : MetaM (Option Name) := do
+  let q := n.getPrefix
+  if q.isAnonymous then return none
+  for c in [q, (privateToUserName? q).getD q] do
+    if env.contains c && (← findDeclarationRanges? c).isSome then return some c
+  auxOwner env q
+
+/-- An auxiliary proof of a theorem's proof (a `Prop`-typed unranged constant generated for a theorem whose
+statement does not name it): proof content, omitted from the snapshot like the theorem's own proof. -/
+def isTheoremProofAux (env : Environment) (n : Name) : MetaM Bool := do
+  let some o ← auxOwner env n | return false
+  let some (.thmInfo t) := env.find? o | return false
+  return !t.type.getUsedConstants.contains n
+
 def allow (path : String) : IO (List String) := do
   return (← IO.FS.readFile path).splitOn "\n" |>.map (fun s =>
     (s.splitOn "#").head!.trimAscii.toString) |>.filter (· != "")
@@ -147,7 +163,8 @@ def run (args : List String) : IO UInt32 := do
           if let .defnInfo d := ci then
             unless prop do line := line ++ s!" := {← pretty d.value}"
           result := result.push line |>.push s!"  #{hashes}"
-        else result := result.push s!"{kind ci} {n} #{hashes}"
+        else if !prop || !(← isTheoremProofAux env n) then
+          result := result.push s!"{kind ci} {n} #{hashes}"
       return result
     if cmd == "theorems" && !report && !more.isEmpty then failed := true
     lines := lines ++ more

@@ -117,7 +117,9 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   proof `example`s (step 7: an example never enters the environment, so no check sees its proof). Step 3b's
   report lists what is unfinished.
 - **Spec snapshot:** a Spec change fails step 4 until `scripts/spec-snapshot.txt` is regenerated
-  (`scripts/check.sh --update-snapshot`, which then fails on purpose) and the diff is committed for review.
+  (`scripts/check.sh --update-snapshot`, which then fails on purpose) and the diff is committed for review. So
+  does a change of an instance Spec/Statements module or another module of the protected surface (TRUST.md), with
+  `scripts/instance-spec-snapshot.txt`.
 - **Cited names:** every `Consensus.`-prefixed token in `docs/roadmap.md` and `docs/goldilocks-mapping.md`
   (`doc_name_files` in `scripts/boundaries.toml`) is a fully qualified declaration name listed in
   `ConsensusLeanTest/Index.lean` (``` example := ``Name ```), whose build checks that it exists (check.sh step 12).
