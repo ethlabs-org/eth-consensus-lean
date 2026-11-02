@@ -15,7 +15,7 @@ public section
 
 The objects of fradamt-agent/workbench `producer-reset-continuation.md` §22–§23 and
 `phase-service.md` §10 (HS.2) after the reset `a = a_z`, stated over the run, for every consumer
-(C1.2 here, H.3 (c)'s `reset_inv` through workbench#21), not specialized to C1.2's entries.
+(C1.2 here, H.3 (c)'s `Inv` half through workbench#21), not specialized to C1.2's entries.
 With `b = slot(a) + 3` (`cleanLabel`) and `R = t_{b+2k+2}` (`drainTime`, the `R_z` of C1.2):
 
 * **RN, stored ancestry is irreversible** (§22): every lock stored at a later cut sits below a

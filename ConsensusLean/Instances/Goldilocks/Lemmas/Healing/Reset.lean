@@ -10,40 +10,21 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 
 public section
 
-/-! # Goldilocks Healing: HR.3, reset existence
+/-! # Goldilocks Healing: pieces of HR.3, reset existence
 
-HR.3 over a Goldilocks run under the HS shared premises, `Catch(2Δ)` and `Prop⁺(G_p)`
-(claims HR.3, status S given HS.0 and HS.5):
-(a) `c_z > ḡ + 8Δ` (`lt_cutZ`), so HS.0 (`Settle(Δ)`, `settle`) applies at every `u ≥ c_z`;
-(b) HS.5 (`Producer(A)`, `producer`): from a settled `w`, the effective phase changes by `w + A`;
-(c) the count (`reset_count`, `producer-reset-continuation.md` §§14–15): from `c_z`, every
-`Δ + A` the phase changes (settle within `Δ`, then produce within `A`); at most three phases per
-frontier value (HR.2) and two rises above `H_z` reach a block of state height `H_z + 2`, whose
-chain carries an honest row at `H_z + 1` (HR.1 (b)); so the reset exists by `c_z + 6(Δ + A)`.
-The reset is unique (`IsReset` is a least time), and the bound's closed forms are in `Arith`.
+The whole-run reset-existence route (HS.5's `producer`, the count `reset_count` and HR.3
+`reset_existence`) was retired (#136); the proved pieces remain. HR.3 (a): `c_z > ḡ + 8Δ`
+(`lt_cutZ`), so HS.0 (`Settle(Δ)`, `settle`) applies at every `u ≥ c_z`. A phase change persists
+to later cuts (`PhaseChanged.mono`). The reset is unique (`IsReset.eq`: `IsReset` is a least time).
 
-`settle` and `producer` are HS.0 and HS.5 (claims §"Healing: phase service"; phase-service.md
-§§1–8, the author's paper results with Astra's review applied), as the use in HR.3 needs them
-(`κ = 2Δ`, `G = G_p`); they become the HS statements' theorems when those are stated.
-
-`reset_count` is proved from HS.0, HS.5, HR.1 (b) and HR.2 (b): the potential `3m + rank` of the
-effective phase (frontier `m`, case rank gap 0, top 1, contest 2) never falls (the honest `Σ.h_max`
-only grow; HR.2 (b) at a fixed frontier) and rises at each phase change (HR.2 (b): a change at a
-fixed frontier raises the rank). It rises in each of the six windows `(c_z + n(Δ + A), c_z + (n +
-1)(Δ + A)]`, so the frontier after all events at `c_z + 6(Δ + A)` is `≥ H_z + 2`; an honest block
-of that state height carries an honest row of height `H_z + 1` (HR.1 (b)), signed before it
-(unforgeability on the FG projection, C0.5 (c)); the reset is the time of the first cut with such
-a signing.
+`settle` is HS.0 (claims §"Healing: phase service"; phase-service.md §§1–8, the author's paper
+results with Astra's review applied).
 
 `settle` is proved from the facts of `Settle` (`phase-service.md` §8.3): unless the phase changes,
 the phase at `u + Δ` is the one after `u`; its witnesses of state height `m` were accepted by `u`
 and extend every honest `Σ.F` at `u + Δ` (strict-height G1.2), so they reach every honest node by
 `Catch(2Δ)` or acceptance relay; joining and the catch-up at `u + Δ` follow from no restart after
 `ḡ` and `Catch(2Δ)`.
-
-`producer` is assembled from HS.4 (`common_path_acquisition'`) and HS.5's consumption step
-(`consume_continue`, with HS.1–HS.3), all open in `Service`; a phase change persists to later
-cuts (`PhaseChanged.mono`).
 
 Interfaces: none here (`settle` uses the chain-level G1.2 of `Settle`, open there
 only because its proof in `FGChain/Accountable` is private). -/
@@ -281,128 +262,6 @@ private theorem hs_setup {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n
   simp only [A_HS, C_HS]
   nlinarith [mul_nonneg (mul_nonneg (by norm_num : (0 : Time) ≤ 4) hΔ.le) hδ]
 
-/-- **HS.5, `Producer(A)`** (with `κ = 2Δ`, `G = G_p`): from a settled `w`, the effective phase
-has changed by `w + A_HS` (after all events there). Settled at `w` in the phase `(m, c)` at the
-state at `w` (cut `j`), HS.4 gives a phase change by `w + D_HS` (which persists to `w + A_HS`,
-`D_HS ≤ A_HS`) or the acquired common path, which HS.5's consumption step (`consume_continue`,
-with HS.1–HS.3) turns into a phase change by `w + A_HS`. -/
-theorem producer {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
-    (hp : PropPlus tr H proposer g Gp)
-    (w : Time) (hw : SettledAt tr H g (2 * sp.Δ) w) (j j' : Nat) (hj : tr.FirstCutFrom j w)
-    (hj' : FirstCutAfter tr j' (w + A_HS sp ΔF Gp)) : PhaseChanged tr.projFG H j j' := by
-  obtain ⟨hfg, hq, ⟨y₀, hy₀⟩, hD, hDA⟩ := hs_setup hrun hs hp
-  obtain ⟨⟨m, c⟩, hph⟩ := exists_phase (tr := tr.projFG) ⟨y₀, hy₀⟩ j
-  have hset : SettledIn tr H g w j m c := ⟨hw, hj, hph⟩
-  obtain ⟨hch | hwit, hcl⟩ := common_path_acquisition' hrun hs hc hp hset
-  · obtain ⟨j₁, hj₁⟩ := (exists_cuts hrun.toLocalRun hy₀ (hs.healthy.2.1 y₀ hy₀)
-      (w + D_HS sp Gp)).1
-    exact (hch j₁ hj₁).mono hfg hq (from_le_after hj hj₁ (by linarith))
-      (after_le_after hj₁ hj' (by linarith))
-  · exact consume_continue hrun hs hc hp viable_witness_retention clean_lock_drain
-      frozen_tree_agreement hset hwit hcl j' hj'
-
-/-- **The reset count** (HR.3 (c)): the reset exists by `c_z + 6(Δ + A_HS)`. -/
-theorem reset_count {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
-    (hp : PropPlus tr H proposer g Gp) :
-    ∃ a, IsReset tr H g a ∧ a ≤ cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) := by
-  classical
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨hfg, hq, ⟨y₀, hy₀⟩, hD, hDA⟩ := hs_setup hrun hs hp
-  have hA : 0 ≤ A_HS sp ΔF Gp := hD.trans hDA
-  have hcut := exists_cuts hrun.toLocalRun hy₀ (hs.healthy.2.1 y₀ hy₀)
-  choose fa hfa using fun t => (hcut t).1
-  choose ff hff using fun t => (hcut t).2
-  obtain ⟨-, hb, -⟩ := phase_count _ _ _ H _ tr.projFG hfg hq
-  have hmono : ∀ y ∈ H, ∀ i j, i ≤ j →
-      (tr.projFG.store y i).hmax ≤ (tr.projFG.store y j).hmax :=
-    fun y hy i j hij => store_hmax_mono hfg hy hij
-  choose ph hph using exists_phase (tr := tr.projFG) ⟨y₀, hy₀⟩
-  obtain ⟨φ, hφ⟩ : ∃ φ : Nat → Nat, ∀ i, φ i = 3 * (ph i).1 + (ph i).2.rank := ⟨_, fun _ => rfl⟩
-  have hle : ∀ i j, i ≤ j → φ i ≤ φ j := fun i j hij => by
-    rw [hφ, hφ]; exact pot_le hb hmono hij (hph i) (hph j)
-  have hlt : ∀ i j, i ≤ j → PhaseChanged tr.projFG H i j → φ i < φ j := fun i j hij hch => by
-    rw [hφ, hφ]; exact pot_lt hb hmono hij hch (hph i) (hph j)
-  -- the times `u n = c_z + n(Δ + A)`: the phase changes in each `(u n, u (n + 1)]`
-  obtain ⟨u, hu⟩ : ∃ u : Nat → Time,
-      ∀ n, u n = cutZ sp.toParams g + n * (sp.Δ + A_HS sp ΔF Gp) := ⟨_, fun _ => rfl⟩
-  have hstep : ∀ n, φ (fa (u n)) + 1 ≤ φ (fa (u (n + 1))) := by
-    intro n
-    have hu1 : u (n + 1) = u n + sp.Δ + A_HS sp ΔF Gp := by
-      rw [hu, hu]; push_cast; ring
-    have hun : gbar g + 8 * sp.Δ ≤ u n := by
-      have := lt_cutZ sp g
-      have : (0 : Time) ≤ n * (sp.Δ + A_HS sp ΔF Gp) :=
-        mul_nonneg (Int.natCast_nonneg n) (by linarith)
-      rw [hu]; linarith
-    have h1 : fa (u n) ≤ ff (u n + sp.Δ) := after_le_from (hfa _) (hff _) (by linarith)
-    have h2 : ff (u n + sp.Δ) ≤ fa (u (n + 1)) :=
-      from_le_after (hff _) (hfa _) (by rw [hu1]; linarith)
-    rcases settle hrun hs hc (u n) hun _ _ (hfa _) (hff _) with hch | hset
-    · exact (hlt _ _ h1 hch).trans_le (hle _ _ h2)
-    · have hch := producer hrun hs hc hp _ hset _ _ (hff _)
-        (Eq.subst (motive := fun t => FirstCutAfter tr (fa (u (n + 1))) t) hu1 (hfa _))
-      exact (hle _ _ h1).trans_lt (hlt _ _ h2 hch)
-  have hsix : ∀ n, φ (fa (u 0)) + n ≤ φ (fa (u n)) := by
-    intro n
-    induction n with
-    | zero => exact le_rfl
-    | succ n ih => have := hstep n; omega
-  -- `H_z` is at most the frontier just after `c_z`; six changes raise it by two
-  have hu0 : u 0 = cutZ sp.toParams g := by rw [hu]; simp
-  have hHZ : HZ tr H g ≤ (ph (fa (u 0))).1 := by
-    unfold HZ
-    apply csSup_le'
-    rintro _ ⟨y, hy, j, hj, rfl⟩
-    rw [← hu0] at hj
-    obtain rfl : j = fa (u 0) :=
-      le_antisymm (after_le_after hj (hfa _) le_rfl) (after_le_after (hfa _) hj le_rfl)
-    rw [← projFG_store hrun.toLocalRun hy]
-    exact (hph _).frontier.2 y hy
-  have h6 : HZ tr H g + 2 ≤ (ph (fa (u 6))).1 := by
-    have := hsix 6
-    rw [hφ, hφ] at this
-    have := (ph (fa (u 0))).2.rank_le
-    have := (ph (fa (u 6))).2.rank_le
-    omega
-  -- an honest block of state height `≥ H_z + 2` before the first cut after `u 6`
-  obtain ⟨y, hy, hym⟩ := (hph (fa (u 6))).frontier.1
-  obtain ⟨-, -, -, -, -, ⟨X, hX, hXh⟩, -⟩ := Store.cache_invariants _ _ _ _
-    (Store.store_reachable hfg hy (fa (u 6)))
-  rw [projFG_store hrun.toLocalRun hy] at hX hXh hym
-  obtain ⟨-, -, -, hrow, -⟩ :=
-    cut_and_reset sp ro proposer dg H tr g ΔF hrun hs.healthy hs.noColl
-  obtain ⟨Y, hYX, att, hatt, hval, hh⟩ := hrow y hy _ X hX (by omega)
-  -- HR.1 (b)'s row was signed before that cut, by unforgeability
-  have hY : Y ∈ (tr.projFG.store y (fa (u 6))).tree := by
-    rw [projFG_store hrun.toLocalRun hy]
-    by_cases he : Y = X
-    · exact he ▸ hX
-    · exact (Anc.mem hYX he).1
-  obtain ⟨k₀, hk₀, hsk₀⟩ : ∃ k₀ < fa (u 6), tr.SignAt att.val k₀ att := by
-    rcases Store.tree_accepted hfg hy hY with rfl | ⟨k, hk, hacc⟩
-    · simp [Params.genesisBlock] at hatt
-    · obtain ⟨j, hj, hsj⟩ := hfg.unforgeable y hy k att
-        ⟨.block Y true, hacc, by simpa [FGLabel.processed] using hatt⟩ hval
-      exact ⟨j, by omega, signAt_of_projFG hsj⟩
-  -- the reset: the first cut with an honest signing at height `H_z + 1`
-  have hex : ∃ k, ∃ y ∈ H, ∃ att : FG.Att sp.n, tr.SignAt y k att ∧ att.h = HZ tr H g + 1 :=
-    ⟨k₀, att.val, hval, att, hsk₀, hh⟩
-  obtain ⟨y', hy', att', hs', hh'⟩ := Nat.find_spec hex
-  refine ⟨tr.time (Nat.find hex), ⟨⟨y', hy', _, att', hs', hh', rfl⟩,
-    fun z hz k b hsk hb => hrun.time_mono (Nat.find_min' hex ⟨z, hz, b, hsk, hb⟩)⟩, ?_⟩
-  have := hrun.time_mono (Nat.find_min' hex ⟨att.val, hval, att, hsk₀, hh⟩)
-  have := (hfa (u 6)).1 k₀ hk₀
-  have h6' : u 6 = cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) := by rw [hu]; norm_num
-  linarith
-
 /-- The reset is unique. -/
 theorem IsReset.eq {P : Params} {A : NodeAC P} {tr : RunTrace A} {H : Set (Fin P.n)} {g a a' : Time}
     (h : IsReset tr H g a) (h' : IsReset tr H g a') : a = a' := by
@@ -410,16 +269,6 @@ theorem IsReset.eq {P : Params} {A : NodeAC P} {tr : RunTrace A} {H : Set (Fin P
   obtain ⟨y', hy', k', att', hk', hh', hka'⟩ := h'.1
   exact le_antisymm ((h.2 y' hy' k' att' hk' hh').trans hka'.le)
     ((h'.2 y hy k att hk hh).trans hka.le)
-
-/-- **HR.3, reset existence.** -/
-theorem reset_existence : ResetExistence := by
-  intro sp ro proposer dg H tr g ΔF Gp hrun hs hc hp
-  obtain ⟨a, ha, hle⟩ := reset_count hrun hs hc hp
-  refine ⟨⟨lt_cutZ sp g, fun u hu j j' hj hj' =>
-      settle hrun hs hc u (by linarith [lt_cutZ sp g]) j j' hj hj'⟩,
-    fun w hw j j' hj hj' => producer hrun hs hc hp w hw j j' hj hj', ⟨a, ha⟩,
-    fun a' ha' => ha'.eq ha ▸ hle, cutZ_add_le sp g ΔF Gp, reset_bound_eq sp g ΔF Gp,
-    C_HS_eq sp ΔF Gp⟩
 
 end Consensus.Goldilocks.Healing
 

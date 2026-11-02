@@ -14,12 +14,12 @@ public section
 
 The phase-service statements HS.1–HS.4 (`Statements/Healing/Service`; claims §"Healing: phase
 service"; `phase-service.md` §§2–5 and §7), and the interface through which HS.5
-(`Producer(A)`, `producer` in `Reset`) consumes them:
+(`Producer(A)`) would consume them (its whole-run producer was retired, #136):
 
 * `AcquiredPath` is HS.4 (a)'s second branch (the acquired common path: an honest unanimous
   proposal `W` of slot `s` with an entry `E` at `h ∈ {ℓ, m}` whose reports or rows every honest
   validator has by `t_s + 6Δ`, still in the phase), `ClientProgress` is HS.4 (b) (the client
-  subclaim), and `common_path_acquisition'` restates HS.4 with them;
+  subclaim);
 * `consume_continue` is HS.5's consumption and continuation (`phase-service.md` §6, §8.1;
   workbench#6 P3): from the acquired path, the phase changes by `w + A_HS`; one level down, its
   three steps that HS.1–HS.4 do not export are `historical_source_rows` (proved, `Source`),
@@ -55,21 +55,6 @@ theorem clean_lock_drain : CleanLockDrain := by
     fun _ _ _ _ _ hr _ _ hl => live_lock_clean hr hl,
     fun _ _ hP hr _ hy _ _ _ hv he hk _ hl hls _ hL hLr =>
       live_lock_below_proposal hrun hs hc hw hP hr hy hv he hk hl hls hL hLr⟩
-
-/-- **HS.3, honest-proposal frozen-tree agreement** (`phase-service.md` §3 "Relay and the
-honest-proposal sandwich", §7 HS.3). -/
-theorem frozen_tree_agreement : FrozenTreeAgreement := by
-  intro sp ro proposer dg H tr g ΔF w i₀ i m c hrun hs hc hw hi₀ p kP s P hP hikP hti hg hph
-  obtain ⟨iP, ℓp, d, pay, hS⟩ := agreeSetting_of hrun hs hc hw hi₀ hP hikP hti hg hph
-  exact ⟨fun hlock hstart => frozen_votes_unlocked hS hlock hstart,
-    fun _ hp hr => frozen_votes_clean hS hp hr clean_lock_drain⟩
-
-/-- **HS.4, bounded common path and actual-report acquisition** (`phase-service.md` §5 "First
-proposal, actual reports, and the one extra wait", §7 HS.4). -/
-theorem common_path_acquisition : CommonPathAcquisition :=
-  fun _ _ _ _ _ _ _ _ _ _ _ _ _ hrun hs hc hp hset =>
-    ⟨acquired_or_changed hrun hs hc hp hset clean_lock_drain frozen_tree_agreement,
-      client_progress hrun hs⟩
 
 section Contract
 
@@ -275,16 +260,6 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
-
-/-- **HS.4 with the named branches**: settled at `w` in `(m, c)`, the phase has changed by
-`w + D_HS` or the common path is acquired (`AcquiredPath`), and the client subclaim holds. -/
-theorem common_path_acquisition' (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
-    (hset : SettledIn tr H g w i₀ m c) :
-    ((∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j') ∨
-      AcquiredPath tr H proposer Gp w i₀ m c) ∧ ClientProgress tr H i₀ m c :=
-  common_path_acquisition sp ro proposer dg H tr g ΔF Gp w i₀ m c hrun hs hc hp hset
 
 /-! ### HS.5's consumption, one level down (proposed contract)
 

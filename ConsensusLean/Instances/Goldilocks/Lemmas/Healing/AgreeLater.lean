@@ -26,10 +26,8 @@ every in-phase honest proposal of a later slot has a parent extending `P`
   honest batch (`DrainProposal`'s `proposal_head_of_batch`, keyed on the proposal cut).
 
 It also has the start of HS.3's walk comparison (§4, "the unequal-root prefix"): a voter below
-the proposer's `fc_root` reaches it (`voter_passes_proposer_root`), a proposer lock start is at or
-below the voter's anchor under (a)'s start premise (`lock_start_below_anchor`, through the open
-`voter_unlock_keeps_lock`), and a clean proposer lock start is below the vote under (b)'s
-premises (`proposer_lock_extends`). -/
+the proposer's `fc_root` reaches it (`voter_passes_proposer_root`), and a clean proposer lock
+start is below the vote under (b)'s premises (`proposer_lock_extends`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -666,104 +664,6 @@ theorem proposal_post_locks
   unfold SA.acProposal at hpay ⊢
   split_ifs at hpay ⊢
   rfl
-
-/-- **The voter keeps a lock at or above the proposer's lock block through its unlocking**
-(`hs234-exact-interface.md` §4, "the unequal-root prefix"; HS.3 (a) with #101's start premise;
-open). Let `L` be a live lock block of label `< s` of the proposer after its `ac_proposal`, and
-let the voter's stored live lock `L'` extend `L`, with `L` not at or below the voter's
-`fc_root`. Then a live lock block of the voter's read point (after `try_vote`'s `unlock` against
-the merged view) extends `L`. A lock of label `≥ s − 1` is kept by `unlock` (and its viable
-ancestor extends `L`, a block below the frozen-viable `P`); one of a smaller label moves to the
-deepest `B' ⪯ L'` with `2·|opponents(B')| < n`, so it suffices that `2·|opponents(L)| < n` in the
-merged view. `proposal_views_agree` does not give that: it compares equivocators, voters and
-supporters, not opponents. The opponents of `L` in the two views differ by non-equivocating
-validators whose support head is in one frame and not in the other: a support head of the voter
-that does not extend the proposer's `Σ.F` (possible when the voter's `Σ.F` is strictly below the
-proposer's at an early vote) makes an opponent at the voter only. Moreover a proposer lock of
-label `s − 1` is not unlocked at the proposer, so the payload view gives no bound on its
-opponents. Both points need an argument beyond the view comparison. -/
-theorem voter_unlock_keeps_lock
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = s) {l : SA.Lock}
-    (hl : l ∈ SA.liveLocks sp (tr.post iP).ac.locks ℓp.frame (tr.time iP)) (hls : l.slot < s)
-    {L : SA.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ ℓp.frame.tree) (hLr : L.root = l.block)
-    {l' : SA.Lock} (hl' : l' ∈ SA.liveLocks sp (tr.state y j).ac.locks ℓy.frame (tr.time j))
-    {L' : SA.Blk sp.n (List (FG.Att sp.n))} (hL' : L' ∈ ℓy.frame.tree) (hL'r : L'.root = l'.block)
-    (hLL' : Anc (tr.HonestBlocks H) L L')
-    (hLy : ¬ Anc (tr.HonestBlocks H) L ℓy.frame.fcRoot) :
-    ∃ B ∈ SA.liveLockBlocks sp e.readPoint.locks ℓy.frame (tr.time j),
-      Anc (tr.HonestBlocks H) L B := by
-  sorry
-
-/-- **A proposal walk that starts at a lock of the proposer starts at or below the voter's
-anchor** (HS.3 (a), `hs234-exact-interface.md` §4): the lock is of a label `< s`
-(`proposer_stored_lock_lt`); by the start premise (#101) it is at or below the voter's `fc_root`
-or below a stored live lock of the voter, which the voter keeps through its unlocking
-(`voter_unlock_keeps_lock`). Either candidate of the voter's anchor is below `P`
-(`readPoint_lockBlocks_below`), as is the anchor, so it is at or below the anchor
-(`anc_getAnchor_of_mem`). -/
-theorem lock_start_below_anchor
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
-    (hlock : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
-      ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
-        ∀ L ∈ ℓ.frame.tree, L.root = l.block →
-          Anc (tr.HonestBlocks H) L P ∨ Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot)
-    (hstart : ∀ kq ℓP, tr.projAC.CallAt p kq ℓP → ℓP.call = .proposal → tr.time kq = sp.ts s →
-      ∀ l ∈ SA.liveLocks sp (tr.post kq).ac.locks ℓP.frame (tr.time kq), l.slot < s →
-        ∀ L ∈ ℓP.frame.tree, L.root = l.block →
-          ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
-            (∃ l' ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k),
-              ∃ L' ∈ ℓ.frame.tree, L'.root = l'.block ∧ Anc (tr.HonestBlocks H) L L') ∨
-            Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = s)
-    (hIH : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = s →
-      e'.msg.head = P.root)
-    (hbelow : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) P)
-    (h : d.start ∈ SA.liveLockBlocks sp (SA.unlock sp (tr.projAC.state p iP).locks ℓp.frame
-      (tr.time iP) ((sp.slot (tr.time iP) : Int) - 1)
-      (SA.View.ofLists (SA.voteViewList (tr.projAC.state p iP) ℓp.frame
-        ((sp.slot (tr.time iP) : Int) - 1) ⊤))) ℓp.frame (tr.time iP)) :
-    Anc (tr.HonestBlocks H) d.start (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) := by
-  have hrun := hS.run
-  have hnc := hS.shared.noColl
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
-  obtain ⟨hΦp, -⟩ := SA.frameIn_of_callAt hr hS.ready.1 hS.call
-  have hPv := proposal_frozen_viable hS hy hcy hes
-  have hPt : P ∈ ℓy.frame.tree := hPv.1.1
-  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := hPv.2.1.mono hΦU
-  have hlk := readPoint_lockBlocks_below hS hlock hy hcy hes hIH
-  have hat := getAnchor_mem hΦ e.readPoint (tr.time j)
-  have key : ∀ X ∈ SA.liveLockBlocks sp e.readPoint.locks ℓy.frame (tr.time j) ∪
-      {ℓy.frame.fcRoot}, Anc (tr.HonestBlocks H) d.start X →
-      Anc (tr.HonestBlocks H) d.start (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) := by
-    intro X hX hsX
-    have hXP : Anc (tr.HonestBlocks H) X P :=
-      hX.elim (hlk X) fun h => (Set.mem_singleton_iff.1 h) ▸ hfP
-    have hXt : X ∈ ℓy.frame.tree :=
-      hX.elim (·.1) fun h => (Set.mem_singleton_iff.1 h) ▸ hΦ.fcRoot_mem
-    exact hsX.trans (Anc.mono hΦU (anc_getAnchor_of_mem hΦ _ _ hX
-      (SA.anc_tree_of_anc_U hU hΦ hΦU hXt hXP hPt) (SA.anc_tree_of_anc_U hU hΦ hΦU hat hbelow hPt)))
-  obtain ⟨hdt, l, hl, hlr⟩ := h
-  have hlpost : l ∈ SA.liveLocks sp (tr.post iP).ac.locks ℓp.frame (tr.time iP) := by
-    rw [proposal_post_locks hS]
-    exact hl
-  obtain ⟨l₀, hl₀, B₀, -, -, -, rfl⟩ := hl
-  obtain ⟨l₁, hl₁, hs₁, -⟩ := ((SA.locks_move_back sp) _ ℓp.frame _ (tr.time iP) hΦp).2.2 _ _ l₀ hl₀
-  have hls : l₀.slot < s := hs₁ ▸ proposer_stored_lock_lt hS hl₁
-  rcases hstart iP ℓp hS.call hS.call_proposal hS.time _ hlpost hls d.start hdt hlr.symm y hy j ℓy
-    e hcy hes with ⟨l', hl', L', hL', hL'r, hLL'⟩ | hfc
-  · by_cases hfc : Anc (tr.HonestBlocks H) d.start ℓy.frame.fcRoot
-    · exact key _ (Or.inr rfl) hfc
-    obtain ⟨B, hB, hsB⟩ :=
-      voter_unlock_keeps_lock hS hy hcy hes hlpost hls hdt hlr.symm hl' hL' hL'r hLL' hfc
-    exact key B (Or.inl hB) hsB
-  · exact key _ (Or.inr rfl) hfc
 
 end Start
 

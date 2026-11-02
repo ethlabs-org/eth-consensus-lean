@@ -5,27 +5,19 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 
 public section
 
-/-! # Goldilocks Healing: H.3, FG non-interference after the reset
+/-! # Goldilocks Healing: H.3 (c), the `Geo` half of the bridge
 
-H.3 (a) is HR.3, (b) is HR.4, and (c) is the bridge (claims H.3, status L), split here as the
-paper splits it (workbench#14, healing-simple `h3-bridge.md` at `ab8459a`):
+H.3 (c) is the bridge (claims H.3, status L), split as the paper splits it (workbench#14,
+healing-simple `h3-bridge.md` at `ab8459a`) into an `Inv` half and a `Geo` half. The whole-run
+`Inv` half and the combined bridge were retired with the reset-existence route (#136); this file
+keeps:
 
-* `reset_inv`, the `Inv` half: **open on paper.** `Inv(a_z + T_b)` is not discharged by HR.4 as
-  stated (its (R3) is about stored high origins at votes) nor by the per-duty join
-  (phase-service §10, producer-reset-continuation §23). `h3-bridge.md` §3 isolates a sufficient
-  supplier, the "RC package": for every raw (P1)/(P2)/(P3) target an accepted high seed by its
-  first freeze (or the root alternative), the comparison of raw and actually returned high
-  sources behind delayed certificates, and the transfer/lock join at every intervening admission;
-  §4 shows that RC at `t₀ = a_z + 8Δ` gives `Inv(t₀)`. RC itself is open, and no fixed `T_b` is
-  established without it, so `T_b` stays existential.
 * `settled_geo`, the `Geo` half (H.3 (c3)): `h3-bridge.md` §5, from HS.1 and the proposal
   sandwich (the floor and the case are fixed in a settled stable phase, `F` may advance); proved
   in `Geo` (`geo_of_settled`) over the HS.1 interface `viable_witness_retention`. It holds for
   every honest proposal of a settled phase: the reset, `T_b ≥ 8Δ`, `t_p` and `Prop⁺` are not
-  used.
-* `bridge` combines them at `max(T_b, 8Δ)`, by the monotonicity of `Inv` (`Inv.mono`).
-
-Interfaces: `reset_inv` is open; `settled_geo` rests on HS.1 (`viable_witness_retention`). -/
+  used;
+* the monotonicity of `Inv` (`Inv.mono`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -45,20 +37,6 @@ theorem _root_.Consensus.Goldilocks.SA.Inv.mono {sp : SAParams} {FGP : Type}
   · exact Or.inr (Or.inl ⟨x, hx, i, hj, hl, by linarith⟩)
   · exact Or.inr (Or.inr ⟨hp, hP, by linarith, hv⟩)
 
-/-- **H.3 (c1)/(c2), retention after the reset** (open on paper: the RC package of
-`h3-bridge.md` §3; with RC, `T_b = 8Δ` by §4). -/
-theorem reset_inv : ∃ Tb : Nat → Time → Time → Nat → Nat → Time,
-    (∀ n Δ ΔF k δt, 0 ≤ Tb n Δ ΔF k δt) ∧
-    ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-      (proposer : Nat → Fin sp.n)
-      (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-      (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-      GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-      PropPlus tr H proposer g Gp → ∀ a, IsReset tr H g a →
-        SA.Inv proposer tr.projAC H (tr.HonestBlocks H)
-          (a + Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt) := by
-  sorry
-
 /-- **H.3 (c3), `Geo` in a settled phase** (`h3-bridge.md` §5, from HS.1): for `T_b ≥ 8Δ`, every
 honest proposal of a slot `p ≥ s_AC(a_z + T_b)` whose proposal and votes lie in one settled
 effective phase has `Geo(P)` (`geo_of_settled`, which needs neither the reset nor the slot bound).
@@ -74,33 +52,6 @@ theorem settled_geo {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (_htp : a + Tb + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p) (hph : InSettledPhase tr H g p) :
     SA.Geo proposer tr.projAC H p P :=
   geo_of_settled hrun hs hc p P hP hph
-
-/-- **H.3 (c), the bridge**, from `reset_inv` and `settled_geo`. -/
-theorem bridge : ∃ Tb : Nat → Time → Time → Nat → Nat → Time, (∀ n Δ ΔF k δt, 0 ≤ Tb n Δ ΔF k δt) ∧
-    ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-      (proposer : Nat → Fin sp.n)
-      (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-      (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time),
-      GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
-      PropPlus tr H proposer g Gp → ∀ a, IsReset tr H g a →
-        BridgeAt tr H proposer g a (Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt) := by
-  obtain ⟨Tb, hTb, hinv⟩ := reset_inv
-  refine ⟨fun n Δ ΔF k δt => max (Tb n Δ ΔF k δt) (8 * Δ), fun n Δ ΔF k δt =>
-    (hTb n Δ ΔF k δt).trans (le_max_left _ _),
-    fun sp ro proposer dg H tr g ΔF Gp hrun hs hc hp a ha =>
-    ⟨(hinv sp ro proposer dg H tr g ΔF Gp hrun hs hc hp a ha).mono
-      (add_le_add_right (le_max_left _ _) a),
-      fun p P hP htp hph => settled_geo hrun hs hc hp ha (le_max_right _ _) p P hP htp hph⟩⟩
-
-/-- **H.3, FG non-interference after the reset.** -/
-theorem non_interference : NonInterference := by
-  obtain ⟨Tb, hTb, hb⟩ := bridge
-  refine ⟨Tb, hTb, fun sp ro proposer dg H tr g ΔF Gp hrun hs hc hp => ?_⟩
-  have hr := reset_existence sp ro proposer dg H tr g ΔF Gp hrun hs hc hp
-  obtain ⟨a, ha⟩ := hr.2.2.1
-  exact ⟨a, ha, (hr.2.2.2.1 a ha).trans hr.2.2.2.2.1,
-    height_scoped_retention sp ro proposer dg H tr g ΔF hrun hs.healthy hs.noColl a ha,
-    hb sp ro proposer dg H tr g ΔF Gp hrun hs hc hp a ha⟩
 
 end Consensus.Goldilocks.Healing
 

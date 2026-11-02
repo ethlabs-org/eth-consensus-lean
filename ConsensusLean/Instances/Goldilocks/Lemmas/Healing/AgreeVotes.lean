@@ -18,9 +18,8 @@ slot-`s` vote that is not `P` (`votes_eq_of_pass`):
 * the voter passes a block of the path from `d.start` through `Q` to `P` (`voters_pass`): its
   anchor is below `P` (`voter_anchor_below`: the lock premise for the earlier labels, an honest
   earlier slot-`s` supporter of a slot-`s` optimistic lock, `fc_root ⪯ P`), and a voter whose
-  anchor is below `d.start` passes `d.start` (`voter_reaches_start_unlocked` under (a)'s premises
-  with #101's start premise, modulo `voter_unlock_keeps_lock`; `voter_reaches_start_clean` under
-  (b)'s);
+  anchor is below `d.start` passes `d.start` (`voter_reaches_start_clean` under (b)'s
+  premises);
 * at every block of that path at or above the voter's anchor, the proposer's best child is the
   voter's best child (`proposal_suffix`, `AgreeSuffix`); at `Q` the voter's only eligible child
   is `P` (`proposal_frozen_viable`, `AgreeFrozen`; `proposal_only_child`, `AgreeSuffix`), and
@@ -194,51 +193,9 @@ private theorem walk_passes_start
     mem_of_between hU hΦ hΦU (((hΦ.rooted.2 _ hat).mono hΦU).trans haS) hsH hGt
   exact ⟨SA.anc_tree_of_anc_U hU hΦ hΦU hat haS hst, hsG⟩
 
-/-- **A voter below the proposal walk's start reaches it, under HS.3 (a)'s premises**
-(`hs234-exact-interface.md` §4, "the unequal-root prefix", "induction on child comparisons reaches
-`P`"; #100/#101). At an honest slot-`s` vote whose anchor is below `P` and not above the proposal
-walk's start `d.start`, the voter's walk passes `d.start`. `d.start` is the deepest of the
-proposer's `fc_root` `R` and its live lock blocks after `unlock` (`proposal_start_cases`):
-
-* `d.start = R`: the vote extends `R` (`voter_passes_proposer_root`: every viable head of the
-  voter block tree extends `R`, so below `R` the child towards `R` is the only eligible viable
-  child);
-* a lock block: it is at or below the voter's anchor (`lock_start_below_anchor`, through the
-  start premise and `voter_unlock_keeps_lock`, open), against the premise. -/
-theorem voter_reaches_start_unlocked
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
-    (hlock : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
-      ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
-        ∀ L ∈ ℓ.frame.tree, L.root = l.block →
-          Anc (tr.HonestBlocks H) L P ∨ Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot)
-    (hstart : ∀ kq ℓP, tr.projAC.CallAt p kq ℓP → ℓP.call = .proposal → tr.time kq = sp.ts s →
-      ∀ l ∈ SA.liveLocks sp (tr.post kq).ac.locks ℓP.frame (tr.time kq), l.slot < s →
-        ∀ L ∈ ℓP.frame.tree, L.root = l.block →
-          ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
-            (∃ l' ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k),
-              ∃ L' ∈ ℓ.frame.tree, L'.root = l'.block ∧ Anc (tr.HonestBlocks H) L L') ∨
-            Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = s)
-    (hIH : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = s →
-      e'.msg.head = P.root)
-    (hbelow : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) P)
-    (hlow : ¬ Anc (tr.HonestBlocks H) d.start (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j))) :
-    ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) d.start ∧
-      ℓy.frame.Anc d.start (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-        (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
-        (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
-  have hsP := start_anc_proposal hS hy hcy hes
-  refine walk_passes_start hS hy hcy hes ?_ hbelow hlow
-  rcases proposal_start_cases hS with h | h
-  · rw [h] at hlow hsP ⊢
-    exact voter_passes_proposer_root hS hlock hy hcy hes hIH hsP hbelow hlow
-  · exact absurd (lock_start_below_anchor hS hlock hstart hy hcy hes hIH hbelow h) hlow
-
 /-- **A voter below the proposal walk's start reaches it, under HS.3 (b)'s premises**
-(`hs234-exact-interface.md` §3 "the proposal-boundary helper", §4 (b)): as
-`voter_reaches_start_unlocked`, with `t_s ≥ r` in place of the start premise. `d.start` is the
+(`hs234-exact-interface.md` §3 "the proposal-boundary helper", §4 (b)), with `t_s ≥ r` in
+place of (a)'s start premise. `d.start` is the
 proposer's `fc_root` `R` (`voter_passes_proposer_root`) or a live lock block of the proposer,
 clean (HS.2 (3)), whose origin every later in-phase honest vote extends
 (`proposer_lock_extends`). -/
@@ -565,35 +522,6 @@ theorem vote_conclusion
         Anc (tr.HonestBlocks H) X ℓ.frame.fcRoot :=
   ⟨hvotes y hy k e ⟨ℓ, hv⟩ hes, frozen_of_viableTree hS.run hS.shared.noColl hy hv hes
     hS.ready.2.2.2.2.1 (proposal_frozen_viable hS hy hv hes)⟩
-
-/-- **HS.3 (a)** (`hs234-exact-interface.md` §4, with the start premise of #101), over the open
-contracts (`voter_reaches_start_unlocked`, `proposal_suffix`, `proposal_only_child`). -/
-theorem frozen_votes_unlocked
-    (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
-    (hlock : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
-      ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
-        ∀ L ∈ ℓ.frame.tree, L.root = l.block →
-          Anc (tr.HonestBlocks H) L P ∨ Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot)
-    (hstart : ∀ kq ℓP, tr.projAC.CallAt p kq ℓP → ℓP.call = .proposal → tr.time kq = sp.ts s →
-      ∀ l ∈ SA.liveLocks sp (tr.post kq).ac.locks ℓP.frame (tr.time kq), l.slot < s →
-        ∀ L ∈ ℓP.frame.tree, L.root = l.block →
-          ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
-            (∃ l' ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k),
-              ∃ L' ∈ ℓ.frame.tree, L'.root = l'.block ∧ Anc (tr.HonestBlocks H) L L') ∨
-            Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot) :
-    ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
-      e.msg.head = P.root ∧
-      ((P ∈ ℓ.frame.viableHeads ∧
-          P ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s)) ∨
-        Anc (tr.HonestBlocks H) P ℓ.frame.fcRoot) ∧
-      ∀ X, Anc (tr.HonestBlocks H) X P →
-        X ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
-        Anc (tr.HonestBlocks H) X ℓ.frame.fcRoot := by
-  have hvotes := votes_eq_of_pass hS fun y hy j ℓy e hcy hes hIH =>
-    have hb := voter_anchor_below hS hlock hy hcy hes hIH
-    voters_pass hS hy hcy hb
-      (voter_reaches_start_unlocked hS hlock hstart hy hcy hes hIH hb)
-  exact fun y hy k ℓ e hv hes => vote_conclusion hS hvotes hy hv hes
 
 /-- **HS.3 (b)** (`hs234-exact-interface.md` §4 (b)), with HS.2 as a hypothesis: its fourth
 clause is (a)'s lock premise (the voters' cuts are in the phase from `i₀`, `phaseOn_voter`); the
