@@ -24,6 +24,9 @@ canonical chain, and the predecessor is finalized if the height is bound.
   and every held `D ⪯ W` with parent `Z ⪰ X` at height `σ[X].h` or `σ[X].h + 1` has
   `D.slot < σ[Z].ThSlot + δt`, held `X ⪯ D₁ ⪯ D₂ ⪯ W` justify the two entries and `D₂`
   finalized the held block of root `σ[X].Th` at height `σ[X].h`.
+* `Store.ThSlot_le_slot`, `Store.ThSlot_mono`: `σ[Z].ThSlot ≤ Z.slot`, and the entry slot grows
+  along an ancestry. `Store.theorem_F_of_anc_slot`: `theorem_F_of_anc` with the timing premise
+  `W.slot < σ[X].ThSlot + δt`.
 * `window_justifies_or_parents_above_after'`: `window_justifies_or_parents_above_after` with
   `X ⪯ C` for every held `X` of root `T` in case (A).
 * `window_justifies_or_parents_above_unanimous_entry`:
@@ -236,6 +239,58 @@ theorem theorem_F_of_anc (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
   exact ⟨D₁, hD₁, D₂, hD₂, hXD₁, hY D₁ (List.mem_append_right d₁ List.mem_cons_self), hD₂W,
     h1h, h1j, h1J, h2h, h2j, h2J, h2F, h2hF, T, hT, hTr, hTX⟩
 
+
+/-- **The entry slot is at most the slot.** In a reachable store, a held `Z` has
+`σ[Z].ThSlot ≤ Z.slot`. -/
+theorem ThSlot_le_slot (hr : st.Reachable acp₀) {Z : NodeBlock P ACP} (hZ : Z ∈ st.tree) :
+    (st.σ Z.root).ThSlot ≤ Z.slot := by
+  obtain ⟨hcoh, -, hg⟩ := (accepted_tree P ACP acp₀ st hr).2
+  induction hg Z hZ with
+  | refl =>
+    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, Healing.Store.σ_genesis hr]
+    exact Nat.zero_le _
+  | @tail Y Y' hGY hYY' ih =>
+    obtain ⟨hY, hY', hp⟩ := hYY'
+    obtain ⟨-, -, -, ht⟩ := Healing.Store.step_σ hr hY' hp
+    have hsl : Y.slot < Y'.slot := hcoh.2 Y hY Y' hY' hp
+    have := ih hY
+    rcases P.fg.stateTransition_ThSlot ht with ⟨-, e, -⟩ | ⟨-, e, -⟩
+    · rw [e]; omega
+    · rw [e]; rfl
+
+/-- **The entry slot grows along an ancestry.** In a reachable store, for a held `X ⪯ Z`,
+`σ[X].ThSlot ≤ σ[Z].ThSlot`. -/
+theorem ThSlot_mono (hr : st.Reachable acp₀) {X Z : NodeBlock P ACP} (hXZ : st.Anc X Z) :
+    (st.σ X.root).ThSlot ≤ (st.σ Z.root).ThSlot := by
+  induction hXZ with
+  | refl => exact le_rfl
+  | @tail Y Y' _ hYY' ih =>
+    obtain ⟨hY, hY', hp⟩ := hYY'
+    obtain ⟨-, -, -, ht⟩ := Healing.Store.step_σ hr hY' hp
+    have hsl : Y.slot < Y'.slot := (accepted_tree P ACP acp₀ st hr).2.1.2 Y hY Y' hY' hp
+    have := ThSlot_le_slot hr hY
+    rcases P.fg.stateTransition_ThSlot ht with ⟨-, e, -⟩ | ⟨-, e, -⟩
+    · rw [e]; exact ih
+    · rw [e]; change _ ≤ Y'.slot; omega
+
+/-- **Theorem F along an ancestry, slot form.** `theorem_F_of_anc` with the timing premise
+replaced by `W.slot < σ[X].ThSlot + δt`: slots grow along an ancestry, and so does the entry
+slot. -/
+theorem theorem_F_of_anc_slot (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
+    (hX : X ∈ st.tree) (hXW : st.Anc X W) (hh : (st.σ X.root).h + 1 < (st.σ W.root).h)
+    (hs : W.slot < (st.σ X.root).ThSlot + P.fg.δt) :
+    ∃ D₁ ∈ st.tree, ∃ D₂ ∈ st.tree, st.Anc X D₁ ∧ st.Anc D₁ D₂ ∧ st.Anc D₂ W ∧
+      (st.σ D₁.root).h = (st.σ X.root).h + 1 ∧ (st.σ D₁.root).hj = (st.σ X.root).h ∧
+      (st.σ D₁.root).J = (st.σ X.root).Th ∧
+      (st.σ D₂.root).h = (st.σ X.root).h + 2 ∧ (st.σ D₂.root).hj = (st.σ X.root).h + 1 ∧
+      (st.σ D₂.root).J = (st.σ D₁.root).Th ∧
+      (st.σ D₂.root).F = (st.σ X.root).Th ∧ (st.σ D₂.root).hF = (st.σ X.root).h ∧
+      ∃ T ∈ st.tree, T.root = (st.σ X.root).Th ∧ st.Anc T X := by
+  have hcoh := (accepted_tree P ACP acp₀ st hr).2.1
+  refine theorem_F_of_anc hr hX hXW hh fun D _ Z _ _ hXZ hDW _ => ?_
+  have h1 := (hDW.slot_le hcoh).1
+  have h2 := ThSlot_mono hr hXZ
+  omega
 end Store
 
 namespace Refinement

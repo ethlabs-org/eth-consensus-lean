@@ -293,6 +293,23 @@ private theorem step_stay_or_cross {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
   · exact Or.inr ⟨rfl, Or.inr rfl⟩
   · exact Or.inl ⟨rfl, rfl, rfl, rfl, rfl⟩
 
+/-- **One block keeps the entry, or enters the next height at its own slot.** For
+`stateTransition σ B = some σ'`, either the height, the entry slot and the entry stay, or the
+height goes up by one and the entry is `B` at its slot (`Th := B.root`, `ThSlot := B.slot`). -/
+theorem stateTransition_ThSlot {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
+    (h : gp.stateTransition σ B = some σ') :
+    (σ'.h = σ.h ∧ σ'.ThSlot = σ.ThSlot ∧ σ'.Th = σ.Th) ∨
+      (σ'.h = σ.h + 1 ∧ σ'.ThSlot = B.slot ∧ σ'.Th = B.root) := by
+  obtain ⟨-, he⟩ := gp.stateTransition_eq_some.1 h
+  obtain ⟨f, p, t, hf⟩ := ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [hf] at he
+  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
+    { σ with s := B.slot, fin := f, prog := p, target := t, L := B.root }
+  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he'] at he <;> subst he
+  · exact Or.inr ⟨rfl, rfl, rfl⟩
+  · exact Or.inr ⟨rfl, rfl, rfl⟩
+  · exact Or.inl ⟨rfl, rfl, rfl⟩
+
 /-- **An early crossing on an extension justifies the entry (r14 s5, L5.4 step 4, chain
 form).** Let `c` reach `σ` and `c ++ d` reach `τ` with `σ.h < τ.h`. If every block of `d` has a
 slot before `σ.ThSlot + δt`, then a block `B` of `d` justified the entry `(σ.h, σ.Th)` of `σ`:
