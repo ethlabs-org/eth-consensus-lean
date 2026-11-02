@@ -276,6 +276,120 @@ theorem optimisticPoint_pool_vote (hrun : ACRun proposer tr H U)
     obtain ⟨j', hj', h⟩ := hrun.honest.pool_vote x hx _ _ v hv hvH
     exact ⟨j', Nat.lt_succ_iff.1 hj', h⟩
 
+/-- Every read-point lock has a genuine optimistic or update write, including an
+optimistic receipt in the vote's own call. Unlock and live remaps preserve its label
+and move its block only to ancestors of the selected block. -/
+theorem lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ell e) (hpos : 0 < e.msg.slot)
+    {l : Lock} (hl : l ∈ e.readPoint.locks) :
+    ∃ a ≤ i, ∃ D,
+      ((∃ CV, OptimisticLockAt tr y a l.slot D CV) ∨ ∃ ell', UpdateAt tr y a l.slot ell') ∧
+      ∃ L ∈ U, L.root = l.block ∧ Anc U L D := by
+  have hPhi := frameIn_of_callAt hr hy hc.1
+  have transfer : ∀ {L L' : Set Lock}, MovesBack sp ell.frame L L' →
+      (∀ l ∈ L, ∃ a ≤ i, ∃ D,
+        ((∃ CV, OptimisticLockAt tr y a l.slot D CV) ∨ ∃ ell', UpdateAt tr y a l.slot ell') ∧
+        ∃ B ∈ U, B.root = l.block ∧ Anc U B D) →
+      ∀ l ∈ L', ∃ a ≤ i, ∃ D,
+        ((∃ CV, OptimisticLockAt tr y a l.slot D CV) ∨ ∃ ell', UpdateAt tr y a l.slot ell') ∧
+        ∃ B ∈ U, B.root = l.block ∧ Anc U B D := by
+    intro L L' hm ho l hl
+    obtain ⟨l₀, hl₀, hs, -, B, hB, hBr, B', hB', hB'r, hBB⟩ := hm l hl
+    obtain ⟨a, hai, D, hd, C, hC, hCr, hCD⟩ := ho l₀ hl₀
+    obtain rfl : C = B := hr.coherent.1 hC (hPhi.2 hB) (hCr.trans hBr.symm)
+    exact ⟨a, hai, D, hs ▸ hd, B', hPhi.2 hB', hB'r, (hBB.mono hPhi.2).trans hCD⟩
+  obtain ⟨P, he, hP⟩ := emits_tryVote hr hy hc
+  have hs := (castAt_spec hr hy hc).2.1
+  have hstored : ∀ l ∈ (tr.state y i).locks, ∃ a ≤ i, ∃ D,
+      ((∃ CV, OptimisticLockAt tr y a l.slot D CV) ∨ ∃ ell', UpdateAt tr y a l.slot ell') ∧
+      ∃ L ∈ U, L.root = l.block ∧ Anc U L D := by
+    intro l hl
+    obtain ⟨a, hai, D, ho, hb⟩ := lock_provenance hr hy i l hl
+    exact ⟨a, hai.le, D, ho, hb⟩
+  have hinput : ∀ l ∈ P.locks, ∃ a ≤ i, ∃ D,
+      ((∃ CV, OptimisticLockAt tr y a l.slot D CV) ∨ ∃ ell', UpdateAt tr y a l.slot ell') ∧
+      ∃ L ∈ U, L.root = l.block ∧ Anc U L D := by
+    rcases hP with rfl | ⟨A, hA, rfl, hAl⟩
+    · exact hstored
+    unfold optimisticConfirmation
+    rcases hsel : optimisticSelect sp A ell.frame (tr.time i) with _ | D
+    · exact hAl ▸ hstored
+    rw [updateLatestConfirmed_locks_eq]
+    apply transfer (((locks_move_back sp) FGP ell.frame A.locks (tr.time i) hPhi.1).2.1 _ _)
+    rintro l (hl | ⟨p, hp, rfl⟩)
+    · exact hstored l (hAl ▸ hl)
+    rw [Set.mem_singleton_iff] at hp
+    subst hp
+    refine ⟨i, le_rfl, D, Or.inl ⟨_, ell, A, ⟨hc.1, hA.imp_right Or.inl⟩,
+      rfl, hsel, rfl⟩, D, ?_, rfl, .refl⟩
+    unfold optimisticSelect at hsel
+    dsimp only at hsel
+    split_ifs at hsel
+    exact hPhi.2 (deepest_mem hsel).1.1
+  rw [(tryVote_em he).2.2.1, ite_eq_left (hs ▸ hpos)] at hl
+  exact transfer (((locks_move_back sp) FGP ell.frame P.locks (tr.time i) hPhi.1).2.2 _ _)
+    hinput l hl
+
+/-- A read-point lock not older than the vote is current-slot optimistic. Its
+write may be the receipt before the vote in the very same call. -/
+theorem current_lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ell e) (hpos : 0 < e.msg.slot)
+    {l : Lock} (hl : l ∈ e.readPoint.locks) (hs : e.msg.slot ≤ l.slot) :
+    l.slot = e.msg.slot ∧ ∃ a ≤ i, ∃ D CV,
+      OptimisticLockAt tr y a e.msg.slot D CV ∧
+      sp.ts e.msg.slot ≤ tr.time a ∧
+      (∃ L ∈ U, L.root = l.block ∧ Anc U L D) := by
+  obtain ⟨a, hai, D, ho, hb⟩ := lock_write_readPoint hr hy hc hpos hl
+  have hslot := (castAt_spec hr hy hc).2.1
+  have ht := vote_time_le hr hy ⟨ell, hc⟩
+  have htime := hr.time_mono hai
+  rcases ho with ⟨CV, ell₀, A, hp, hs₀, hsel, heq⟩ | ⟨ell₀, hu⟩
+  · have hle := slot_mono sp (hr.time_nonneg a) htime
+    have hsame : l.slot = e.msg.slot := by omega
+    refine ⟨hsame, a, hai, D, CV, ?_, ?_, hb⟩
+    · exact hsame ▸ ⟨ell₀, A, hp, hs₀, hsel, heq⟩
+    · apply (ts_le_iff_le_slot sp (hr.time_nonneg a) _).mpr
+      rw [hs₀, hsame]
+  · have hts := (ts_le_iff sp).mpr
+      (show (sp.slot (tr.time i) : Int) + 1 ≤ (l.slot : Int) + 1 by omega)
+    have hupdate := hu.2.2.1
+    simp only [SAParams.ts] at ht hts hupdate
+    have := sp.toParams.hΔ
+    exfalso
+    linarith
+
+/-- The optimistic write's actual counted pool, threshold, timing and honest-vote
+provenance. This retains the consumer content of `OptimisticLockAt`. -/
+theorem optimisticLockAt_spec (hrun : ACRun proposer tr H U)
+    {y : Fin sp.n} (hy : y ∈ H) {i s : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    (ho : OptimisticLockAt tr y i s D CV) :
+    tr.time i < sp.ts s + 2 * sp.Δ ∧ 3 * sp.n ≤ 4 * (voters CV).ncard ∧
+      ∃ ell A, OptimisticPoint tr y i ell A ∧ D ∈ ell.frame.tree ∧
+        (∀ v ∈ CV, v ∈ A.pool s ∧ v.slot = s ∧ AncR ell.frame D v.head) ∧
+        (∀ v ∈ CV, v.val ∈ H → ∃ a ≤ i, ∃ e, VoteAt tr v.val a e ∧ e.msg = v) := by
+  obtain ⟨ell, A, hp, hs, hsel, rfl⟩ := ho
+  unfold optimisticSelect at hsel
+  dsimp only at hsel
+  split_ifs at hsel with hn
+  obtain ⟨⟨hD, hcount, -⟩, -⟩ := deepest_mem hsel
+  have hv : voters {v | v ∈ A.pool s ∧ AncR ell.frame D v.head} =
+      optimisticVoters sp A ell.frame s D := by
+    ext x
+    constructor
+    · rintro ⟨v, ⟨hv, ha⟩, he⟩; exact ⟨v, hv, he, ha⟩
+    · rintro ⟨v, hv, he, ha⟩; exact ⟨v, ⟨hv, ha⟩, he⟩
+  refine ⟨?_, ?_, ell, A, hp, hD, ?_, ?_⟩
+  · exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (hs ▸ ht))))
+  · rw [hv]; exact hs ▸ hcount
+  · intro v hv
+    exact ⟨hv.1, (optimisticPoint_pool_slot hrun.localRun hy hp hv.1), hv.2⟩
+  · intro v hv hh
+    exact (optimisticPoint_pool_vote hrun hy hp hv.1 hh).2
+
 /-- The conclusion of `lock_origin_readPoint` for the lock `l`, before cut `i`. -/
 private def Good (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (y : Fin sp.n) (i : Nat) (l : Lock) : Prop :=
