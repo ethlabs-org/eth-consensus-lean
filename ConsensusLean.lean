@@ -289,6 +289,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyQueryShared
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordWriters
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyResetEnvelope
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.LockFloorReset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
@@ -322,6 +323,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ReceiverService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetCoefficients
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetOfDrain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RiseGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RowServiceParam
