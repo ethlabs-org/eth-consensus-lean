@@ -165,7 +165,8 @@ theorem ResetPremisesUpTo.optimistic_vote_domain_before
   have hΔ := sp.toParams.hΔ
   obtain ⟨hBx, z, hz, q, hqr, ev, hv, hvs, hVB⟩ := hp.optimistic_supporter hx hop
   have hqb := (hp.run.time_mono hqr).trans hrb
-  obtain ⟨v, d, m, S, hseed, hdb, hm⟩ := hp.reset_seed
+  obtain ⟨v, d, m, S, hseed, hda, hm⟩ := hp.reset_seed
+  have hdb := hda.trans hp.reset_le
   have hms : m < s := by rw [cleanLabel_eq] at hs; omega
   have hts := hp.clean_window_timing hs s (by have := sp.two_le_k; omega)
   have hgs : SA.gbar g ≤ sp.ts s := by
@@ -576,9 +577,10 @@ theorem ResetPremisesUpTo.finalized_compatible_clean_source
       rcases hcomp with h | h
       · exact SA.anc_total hU hFD h
       · exact Or.inl (hFD.trans h)
-  · obtain ⟨v, q, t, D, ho, hqb, _⟩ := hp.reset_seed
+  · obtain ⟨v, q, t, D, ho, hqa, _⟩ := hp.reset_seed
     have hFD := hp.low_finalized_below_origin hy n (by omega) ho
-    rcases hp.clean_source_compatible_high_origin hc hx hC hs hrb ho hqb with h | h
+    rcases hp.clean_source_compatible_high_origin hc hx hC hs hrb ho (hqa.trans hp.reset_le)
+      with h | h
     · exact SA.anc_total hU hFD h
     · exact Or.inl (hFD.trans h)
 

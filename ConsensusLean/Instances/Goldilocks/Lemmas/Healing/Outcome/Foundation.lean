@@ -141,7 +141,7 @@ private theorem reset_seed (hp : ResetPremises tr H proposer dg g ΔF a) :
 /-- The reset supplies an actual bounded high-origin seed, not merely an eventual origin. -/
 theorem ResetPremisesUpTo.reset_seed {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
-    ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧ l ≤ sp.slot a := by
+    ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ a ∧ l ≤ sp.slot a := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨⟨y, hy, k, att, hs, hh, hka⟩, -⟩ := hp.reset
   obtain ⟨r, hrk, l, O, ho, -⟩ := hp.high_row_source hy hs hh.ge
@@ -153,7 +153,7 @@ theorem ResetPremisesUpTo.reset_seed {b : Time}
       rw [ht']; linarith
     · exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) l).mpr (by omega)
   have hra : tr.time r ≤ a := (hr.time_mono hrk.le).trans hka.le
-  refine ⟨y, r, l, O, ho, hra.trans hp.reset_le, ?_⟩
+  refine ⟨y, r, l, O, ho, hra, ?_⟩
   have ha0 : 0 ≤ a := hka ▸ hr.time_nonneg k
   exact_mod_cast (SA.ts_le_iff_le_slot sp ha0 l).mp (htime.trans hra)
 
@@ -762,7 +762,8 @@ theorem ResetPremisesUpTo.result_prefix_vote_domain_before {b : Time}
   have hS := healthy_base_of_reset_catch_before hp hc
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
-  obtain ⟨v, d, m, S, hseed, hdb, hm⟩ := hp.reset_seed
+  obtain ⟨v, d, m, S, hseed, hda, hm⟩ := hp.reset_seed
+  have hdb := hda.trans hp.reset_le
   have hms : m < s := by rw [cleanLabel_eq] at hs; omega
   have hts : cutZ sp.toParams g ≤ sp.ts s :=
     (hp.cutZ_le_ts_of_highOrigin hseed).trans ((SA.ts_le_iff sp).mpr (by omega))

@@ -247,12 +247,12 @@ theorem ResetPremisesUpTo.reset_seed_before_slot {b : Time}
     (hR : drainTime sp a ≤ sp.ts u) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧
       l < u ∧ tr.time r < sp.ts u := by
-  obtain ⟨v, r, l, O, ho, hrb, hl⟩ := hp.reset_seed
+  obtain ⟨v, r, l, O, ho, hra, hl⟩ := hp.reset_seed
   have hlu : l + 2 ≤ u := by
     rw [drainTime_eq] at hR
     have := (SA.ts_le_iff sp).mp hR
     omega
-  refine ⟨v, r, l, O, ho, hrb, by omega, ?_⟩
+  refine ⟨v, r, l, O, ho, hra.trans hp.reset_le, by omega, ?_⟩
   obtain ⟨_, D, CV, _, hf, _⟩ := hp.highOrigin_mem ho
   rcases hf with ⟨ell, C, ⟨_, _, ht, _⟩, _⟩ | ⟨ell, A, _, hsl, _⟩
   · have ht' : tr.time r = sp.ts l + 6 * sp.Δ := ht
@@ -1384,7 +1384,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_domain_before {b : Time}
         hB.2.2.mono (SA.frameIn_of_callAt hr hx hupd.1).2,
         hp.frame_tree_subset hx hupd.1 hB.1⟩
   obtain ⟨C, CV, hw, hBC, hBx⟩ := evidence
-  obtain ⟨v, q, m, S, hS, hqb, hm⟩ := hp.reset_seed
+  obtain ⟨v, q, m, S, hS, hqa, hm⟩ := hp.reset_seed
   have htiming : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
     have ht := hp.cutZ_le_ts_of_highOrigin hS
     have hz := lt_cutZ sp g
@@ -1414,7 +1414,8 @@ theorem ResetPremisesUpTo.clean_source_proposal_domain_before {b : Time}
   refine hp.held_target_proposal_domain_before hx hpH hBx hci hcall hd hti hib ?_ ?_ ?_
   · exact hp.raw_writer_held_at_slot_start hc hx hpH hw hBC htiming hsu hci hti hib
   · exact ⟨v, q, m, S, hS, hqt,
-      hp.protected_source_compatible_high_origin hc hx hsource hs hrb hS hqb⟩
+      hp.protected_source_compatible_high_origin hc hx hsource hs hrb hS
+        (hqa.trans hp.reset_le)⟩
   · intro v q m O hqi ho
     exact hp.protected_source_compatible_high_origin hc hx hsource hs hrb ho
       ((hp.run.time_mono hqi.le).trans hib)
