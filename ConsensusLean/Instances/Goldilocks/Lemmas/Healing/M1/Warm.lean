@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Drain
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Range
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
 
 public section
 
@@ -9,6 +9,13 @@ public section
 The proposal gap supplies an actual proposal, while snapshot delivery supplies
 `HZ ≤ hmax` at its honest cast. These are separate inputs: a frozen frame alone
 does not supply the snapshot range. No reset envelope or whole-run progress is assumed.
+
+The snapshot (`hsnap`) and the snapshot call (`hcallZ` of `HZ_le_hmax`) are produced from
+wakefulness at the actual cast (`snapshot_of_awake`, `snapshotCall_of_awake` with `lo = t_u`).
+The fit `c_z + Δ + 1 ≤ t_u` is paid by the warm offset: `c_z ≤ ḡ + 12Δ` (`cutZ_le`),
+`ḡ + 4Δ ≤ t_{s₀}` and `s₀ + 2k ≤ u` with `k ≥ 2` give
+`c_z + Δ + 1 ≤ ḡ + 13Δ + 1 ≤ t_{s₀} + 16Δ ≤ t_u`.
+Catch is `κ = 2Δ`, and `ḡ + κ ≤ t_{s₀} ≤` the cast. The service horizon is `t_N + 2Δ ≤ b`.
 -/
 
 namespace Consensus.Goldilocks.Healing
@@ -32,10 +39,6 @@ theorem FrameWindow.warm_proposal_height
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hnr : NoRestartAfter tr H (gbar g))
-    (hsnap : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g))
-    (hcallZ : ∀ z ∈ H, ∀ m, sp.ts s₀ ≤ tr.time m → tr.time m ≤ sp.ts N + 2 * sp.Δ →
-      ∃ j < m, tr.IsCall z j ∧
-        tr.deadline z j (max (cutZ sp.toParams g) g) sp.Δ ≤ tr.time j)
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (huN : u ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H) (hdes : z = proposer u)
@@ -53,10 +56,11 @@ theorem FrameWindow.warm_proposal_height
   have hcast : SA.CastAt tr.projAC z c ell e := ⟨hc, he⟩
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hslot : sp.slot (tr.time c) = u := (SA.castAt_spec hr hz hcast).2.1.symm.trans hes
-  have hlo : sp.ts s₀ ≤ tr.time c := hsu.trans
-    ((SA.ts_le_iff_le_slot sp (hr.time_nonneg c) _).2 (by
+  have huc : sp.ts u ≤ tr.time c :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg c) _).2 (by
       change (u : Int) ≤ sp.slot (tr.time c)
-      rw [hslot]))
+      rw [hslot])
+  have hlo : sp.ts s₀ ≤ tr.time c := hsu.trans huc
   have hsub : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts u + sp.Δ)
       floor contest kindJ J :=
     ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo (by linarith),
@@ -71,8 +75,17 @@ theorem FrameWindow.warm_proposal_height
     change 0 < sp.n at hn
     change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
     omega
-  have hZ := HZ_le_hmax hrun hnc hf2 hsvc hcatch ⟨z, hz⟩ hsnap hz
-    (hcallZ z hz c hlo (by linarith)) (by linarith)
+  -- the snapshot fit at the warm offset: `c_z + Δ + 1 ≤ ḡ + 13Δ + 1 ≤ t_{s₀} + 16Δ ≤ t_u`
+  have hfit : cutZ sp.toParams g + sp.Δ + 1 ≤ sp.ts u := by
+    have h4 : sp.ts (s₀ + 4 : Nat) ≤ sp.ts u := hts (by omega)
+    have he : sp.ts (s₀ + 4 : Nat) = sp.ts s₀ + 16 * sp.Δ := by
+      simp only [SA.SAParams.ts]; push_cast; ring
+    have hΔ1 : 1 ≤ sp.Δ := sp.toParams.hΔ
+    linarith [cutZ_le sp g]
+  obtain ⟨jZ, hjZ, -⟩ := snapshot_of_awake hrun hawake ⟨z, hz⟩ (by linarith)
+  have hZ := HZ_le_hmax hrun hnc hf2 hsvc hcatch ⟨z, hz⟩ ⟨jZ, hjZ⟩ hz
+    (snapshotCall_of_awake hrun hawake hfit (T := b + 1) le_rfl z hz c huc (by linarith))
+    (by linarith)
   have hh := Store.height_le_of_isViable hvP.2.2.2 hZ
   have hPm := (accept_of_proposesAt hrun hnc hz hP).2.1
   have hσ := σ_eq_honest hrun hnc hz hz hvP.1 hPm
@@ -91,10 +104,6 @@ theorem FrameWindow.exists_warm_proposal
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hnr : NoRestartAfter tr H (gbar g))
-    (hsnap : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g))
-    (hcallZ : ∀ z ∈ H, ∀ m, sp.ts s₀ ≤ tr.time m → tr.time m ≤ sp.ts N + 2 * sp.Δ →
-      ∃ j < m, tr.IsCall z j ∧
-        tr.deadline z j (max (cutZ sp.toParams g) g) sp.Δ ≤ tr.time j)
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
     (hN : s₀ + 2 * sp.k + G ≤ N + 1) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     (hgp : ∃ u, s₀ + 2 * sp.k ≤ u ∧ u < s₀ + 2 * sp.k + G ∧ proposer u ∈ H ∧
@@ -104,7 +113,7 @@ theorem FrameWindow.exists_warm_proposal
         HZ tr H g ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + 1 := by
   obtain ⟨u, hlu, hhu, hz, kP, P, hP, hPs⟩ := hgp
   exact ⟨u, hlu, hhu, proposer u, hz, rfl, kP, P, hP, hPs,
-    hframe.warm_proposal_height hrun hnc hsvc hawake hf hcatch hnr hsnap hcallZ hm hlu
+    hframe.warm_proposal_height hrun hnc hsvc hawake hf hcatch hnr hm hlu
       (by omega) hmb hz rfl hP hPs⟩
 
 end Consensus.Goldilocks.Healing
