@@ -116,6 +116,25 @@ class StatusTests(unittest.TestCase):
                                 head='later-pin')
         self.assertEqual(again['outage_arm']['evidence'], status.PROVED_EVIDENCE + 'fixture-.')
 
+    def test_regressed_rows_drop_proof_ratings_and_evidence(self):
+        # proved at an earlier audit, now back to a sorry: a lean-proved REFRESH entry and an
+        # audit-fact row
+        self.assertIn('healthy_repair_schedule', status.REFRESH)
+        self.assertEqual(status.RATINGS['healthy_repair_schedule'][0], 'lean-proved')
+        names = ['healthy_repair_schedule', 'outage_arm']
+        before = {'healthy_repair_schedule': status.RATINGS['healthy_repair_schedule'][2],
+                  'outage_arm': status.PROVED_EVIDENCE + 'earlier.'}
+        prior = lambda n: {'status': 'lean-proved', 'status-source': 'compiled dependency audit',
+                           'evidence': before[n]}
+        rows = self.regenerate(names, set(names), {}, prior)
+        for n in names:
+            self.assertTrue(rows[n]['direct_sorry'])
+            self.assertNotEqual(rows[n]['status'], 'lean-proved')
+            self.assertFalse(rows[n].get('evidence', '').startswith('Proved'))
+        # the proof rating (and its source) is not applied to the regressed REFRESH row
+        self.assertEqual(rows['healthy_repair_schedule']['status-source'],
+                         'compiled dependency audit')
+
     def test_card_repositories_preserve_mixed_pins(self):
         archive = {'card-path': 'old.md', 'card-commit': 'old-pin'}
         team = {'card-path': 'new.md', 'card-commit': 'new-pin',

@@ -317,7 +317,10 @@ def main : IO Unit := do
             'outage+persist': 'T-01a18fec-6e1e-7342-9ca9-8562977d7347',
         }[area]
         prior = old.get(name, {})
-        if short in RATINGS and (prior.get('status-source') is None or short in REFRESH):
+        # A 'lean-proved' rating describes a proof; it is not applied to a row whose closure has
+        # regressed to a sorry.
+        if short in RATINGS and (prior.get('status-source') is None or short in REFRESH) and (
+                proved or RATINGS[short][0] != 'lean-proved'):
             rating, source, evidence = RATINGS[short]
             prior = {**prior, 'status': rating, 'status-source': source,
                      'evidence': evidence}
@@ -364,6 +367,11 @@ def main : IO Unit := do
         # replaced by the audit fact, recorded at the first audit that found the closure sorry-free.
         if proved and short not in REFRESH and not row.get('evidence', '').startswith(PROVED_EVIDENCE):
             row['evidence'] = f'{PROVED_EVIDENCE}{head[:8]}.'
+        # A regressed row drops the proof text it carried from an earlier audit.
+        if not proved and (row.get('evidence', '').startswith(PROVED_EVIDENCE) or (
+                short in RATINGS and RATINGS[short][0] == 'lean-proved'
+                and row.get('evidence') == RATINGS[short][2])):
+            row.pop('evidence')
         comparison = {k: v for k, v in row.items() if k not in ('last-changed', 'file:line')}
         if comparison == {k: v for k, v in prior.items() if k not in ('last-changed', 'file:line')}:
             row['last-changed'] = prior['last-changed']
