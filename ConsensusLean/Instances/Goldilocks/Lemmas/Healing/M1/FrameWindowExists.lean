@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
 
 public section
@@ -20,16 +20,15 @@ hypotheses here. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload)
+open SA (SAParams ReplayOrder Payload gbar)
 
 /-- **Pigeonhole (O2, counting).** A monotone key with 6 values and lag `Δ` is constant on
 one of 6 disjoint windows. -/
-theorem exists_const_window {α : Type*} (H : Set α) (time : Nat → Time) (htime : Monotone time)
+theorem exists_const_window {α : Type*} (H : Set α) (time : Nat → Time)
     (key : α → Nat → Nat) (base : Nat) {lo len Δ T : Time} (hlen : 0 ≤ len) (hΔ : 0 ≤ Δ)
-    (hmono : ∀ y ∈ H, Monotone (key y))
     (hrange : ∀ y ∈ H, ∀ i, lo ≤ time i → time i < T → base ≤ key y i ∧ key y i ≤ base + 5)
-    (hlag : ∀ x ∈ H, ∀ z ∈ H, ∀ i, lo ≤ time i → time i < T →
-      ∃ j, time j < time i + Δ ∧ key x i ≤ key z j)
+    (hlag : ∀ x ∈ H, ∀ z ∈ H, ∀ i m, lo ≤ time i → time i < T → time i + Δ ≤ time m →
+      time m < T → key x i ≤ key z m)
     (hT : lo + 6 * (len + Δ) < T) :
     ∃ a, lo + Δ ≤ a ∧ a + len ≤ lo + 6 * (len + Δ) ∧
       ∀ y ∈ H, ∀ z ∈ H, ∀ i m, a ≤ time i → time i ≤ a + len → a ≤ time m →
@@ -85,12 +84,7 @@ theorem exists_const_window {α : Type*} (H : Set α) (time : Nat → Time) (hti
       by_contra hn
       exact hk _ hv ⟨hE, hn⟩
     obtain ⟨x, hx, i', hlo', hti', hT', hkey'⟩ := hE0
-    obtain ⟨j, hj, hkj⟩ := hlag x hx z hz i' hlo' hT'
-    have hjm : j ≤ m := by
-      by_contra hn
-      have := htime (Nat.le_of_not_le hn)
-      linarith
-    have := hmono z hz hjm
+    have := hlag x hx z hz i' m hlo' hT' (by nlinarith) hTm
     omega
   intro y hy z hz i m hi1 hi2 hm1 hm2
   have hm2' : time m ≤ lo + k * D + Δ + len := hm2
@@ -136,22 +130,42 @@ theorem exists_frameWindow (hrun : GoldilocksRun proposer dg H tr)
     {lo len Δ T : Time} {HZ : Nat} (hlen : 0 ≤ len) (hΔ : 0 ≤ Δ)
     (hrange : ∀ y ∈ H, ∀ i, lo ≤ tr.time i → tr.time i < T →
       HZ ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ HZ + 1)
-    (hlag : ∀ x ∈ H, ∀ z ∈ H, ∀ i, lo ≤ tr.time i → tr.time i < T →
-      ∃ j, tr.time j < tr.time i + Δ ∧
-        frameKey (tr.state x i).fg ≤ frameKey (tr.state z j).fg)
+    (hlag : ∀ x ∈ H, ∀ z ∈ H, ∀ i m, lo ≤ tr.time i → tr.time i < T →
+      tr.time i + Δ ≤ tr.time m → tr.time m < T →
+        frameKey (tr.state x i).fg ≤ frameKey (tr.state z m).fg)
     (hT : lo + 6 * (len + Δ) < T) :
     ∃ a, lo + Δ ≤ a ∧ a + len ≤ lo + 6 * (len + Δ) ∧
       ∃ floor contest kindJ J,
         FrameWindow (tr := tr) (H := H) a (a + len) floor contest kindJ J := by
-  obtain ⟨a, h1, h2, hK⟩ := exists_const_window H tr.time (fun _ _ h => hrun.time_mono h)
+  obtain ⟨a, h1, h2, hK⟩ := exists_const_window H tr.time
     (fun y i => frameKey (tr.state y i).fg) (3 * HZ) hlen hΔ
-    (fun y hy _ _ h => frameKey_mono hrun hnc hf hy h)
     (fun y hy i h1 h2 => by
       have := hrange y hy i h1 h2
       have := frameKey_bounds (tr.state y i).fg
       omega)
     hlag hT
   exact ⟨a, h1, h2, frameWindow_of_frameKey_eq hrun hnc hf hK⟩
+
+/-- **B2 + B3 from the service (§23.2).** `exists_frameWindow` with the lag discharged by
+`frameKey_lag`. The remaining premises: the range (F1 and the lower bound), a call of every
+honest node in `[deadline, m)` for each cut `m` at least `λ` after the source cut (awake nodes
+with no restart after `ḡ` have one), and `ḡ + κ ≤ lo` for the catch-up route. -/
+theorem exists_frameWindow_of_service (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {g ΔF b κ : Time} (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    {lo len lam T : Time} {HZ : Nat} (hlen : 0 ≤ len) (hlam : 0 ≤ lam)
+    (hlo : gbar g + κ ≤ lo)
+    (hrange : ∀ y ∈ H, ∀ i, lo ≤ tr.time i → tr.time i < T →
+      HZ ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ HZ + 1)
+    (hcall : ∀ z ∈ H, ∀ i m, lo ≤ tr.time i → tr.time i + lam ≤ tr.time m → tr.time m < T →
+      ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
+    (hT : lo + 6 * (len + lam) < T) :
+    ∃ a, lo + lam ≤ a ∧ a + len ≤ lo + 6 * (len + lam) ∧
+      ∃ floor contest kindJ J,
+        FrameWindow (tr := tr) (H := H) a (a + len) floor contest kindJ J :=
+  exists_frameWindow hrun hnc hf hlen hlam hrange
+    (fun x hx z hz i m hi _ him hmT => frameKey_lag hrun hnc hf hsvc hcatch hx hz
+      (hcall z hz i m hi him hmT) (by linarith)) hT
 
 end Consensus.Goldilocks.Healing
 

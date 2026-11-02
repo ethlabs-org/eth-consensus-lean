@@ -29,6 +29,12 @@ open Classical in
 noncomputable def frameKey {P : Params} {ACP : Type} (st : Store P ACP) : Nat :=
   3 * st.hmax + (if st.Contest then 2 else if st.hmax = st.hj + 1 then 1 else 0)
 
+open Classical in
+theorem frameKey_def {P : Params} {ACP : Type} (st : Store P ACP) : frameKey st =
+    3 * st.hmax + (if st.Contest then 2 else if st.hmax = st.hj + 1 then 1 else 0) := by
+  unfold frameKey
+  rfl
+
 section Store
 
 variable {P : Params} {ACP : Type} {a b : Store P ACP}
