@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowPlacement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowSeed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AnchorStepsGap
@@ -13,7 +13,7 @@ public section
 
 /-! # Goldilocks Refinement: assembly of the route-A final window (#136)
 
-consensus-lean#136. `final_window_extract_of` has the statement of the open leaf
+consensus-lean#136. `final_window_extract_of` has the statement of the leaf
 `final_window_extract` (Accepted.lean), from explicit premises only:
 
 * (H1) `hreset`: the reset premises `ResetPremisesUpTo` through the horizon, at GST `Q.gst`,

@@ -22,6 +22,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorRoute
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalWindowDefs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CarrierProcessed
 
 public section
 
@@ -68,98 +70,6 @@ theorem accepted_finalAccountable : ∀ g, schema.output .final = some g →
       (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable
         (K S A).params.α g 0 := by
   exact shape_finalAccountable V S (K S A) (by norm_num [Params.standard])
-
-/-- A single reader-conditional final query, with the original engine-scaled latency.
-No supplier conclusion is a new premise of Healthy. -/
-structure FinalQuery where
-  run : (Sys (family S) V).Run
-  hn : 1 ≤ Fintype.card V
-  index : (K S A).Idx
-  gst : Time
-  query : Time
-  valid : (Sys (family S) V).Valid run
-  noCollision : ¬ run.2.HashCollision
-  healthy : (Sys (family S) V).Healthy (K S A) gst run
-  progress : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) .final index
-    ((Sys (family S) V).ready (K S A) gst run) run.2.horizon run
-  mature : (Sys (family S) V).heal (K S A) .final index gst run ≤ query
-  bounded : query + ((K S A).params.latency .final index : Time) * run.1.Δ ≤ run.2.horizon
-  reader : ∃ v, run.2.point.Ready ((Sys (family S) V).cDur (K S A) run) v
-    (query + ((K S A).params.latency .final index : Time) * run.1.Δ)
-
-namespace FinalQuery
-
-variable {S A V}
-
-abbrev params (Q : FinalQuery S A V) := S.params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : FinalQuery S A V) := simTrace S Q.run.2 Q.hn
-noncomputable abbrev deadline (Q : FinalQuery S A V) : Time :=
-  Q.query + ((K S A).params.latency .final Q.index : Time) * Q.run.1.Δ
-
-end FinalQuery
-
-/-- Operational window witnesses only. The processing field is an OPEN endpoint-specific
-transport budget, not acceptance or a freely chosen output delay. Route A (#136, docs/decisions.md
-2026-11-02): four honest anchors at the slots `start + [0, 2, 4, 6]`. -/
-structure FinalWindowData (Q : FinalQuery S A V) where
-  start : Nat
-  block : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))
-  cut : Fin 4 → Nat
-  slots : ∀ a, (block a).slot = start + (![0, 2, 4, 6] a)
-  proposals : ∀ a, Q.trace.ProposesAt (block a).proposer (cut a) (block a)
-  accepted : ∀ a, Q.trace.AcceptAt (block a).proposer (cut a) (block a)
-  ready : ∀ a, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
-    ((Sys (family S) V).cDur (K S A) Q.run) (block a).proposer (Q.trace.time (cut a))
-  fresh : Q.query < Q.trace.time (cut 0)
-  ordered : StrictMono cut
-  bounded : ∀ a, Q.trace.time (cut a) ≤ Q.deadline
-  chain : ∀ a b, a ≤ b → Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) (block a) (block b)
-  /-- Actual canonical processing before the exact query deadline; deriving sufficient slack
-  from the jointly chosen accepted_latency remains OPEN. No acceptance is assumed here. -/
-  carrierProcessed : ∀ y, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
-    ((Sys (family S) V).cDur (K S A) Q.run) y Q.deadline →
-    ∃ j, Q.trace.BlockCallAt y j (block 3) ∧ Q.trace.time j ≤ Q.deadline
-
-namespace FinalWindowData
-
-variable {S A V} {Q : FinalQuery S A V} (W : FinalWindowData S A V Q)
-
-/-- Use the actual last anchor's store, not an independently chosen chain-state map. -/
-noncomputable abbrev store := (Q.trace.post (W.cut 3)).fg
-noncomputable abbrev state (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) := W.store.σ B.root
-abbrev Extends (_W : FinalWindowData S A V Q)
-    (B C : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
-  Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) B C
-
-
-/-- **Route-A run premises** for the window (`cacheCoverage_of_anchor_window_upTo`,
-WindowAnchorRoute.lean): reset premises through a horizon `b`, catch-up `2Δ`, the four anchors
-are honest proposals at the window slots, the drain time is before the first anchor, and the
-last anchor is before `b`. -/
-def AnchorRun : Prop :=
-  ∃ (proposer : Nat → Fin Q.params.n)
-    (dg : Digest (List (FG.Att Q.params.n)) (SA.Payload Q.params.n)) (g ΔF a b : Time),
-    Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b ∧
-    Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ) ∧
-    (∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
-      (W.start + ![0, 2, 4, 6] i) (W.block i)) ∧
-    Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
-    Q.params.ts (W.start + 6) ≤ b
-
-/-- **Route-A anchor steps**: `σ[P_i].h + 1 ≤ σ[P_{i+1}].h` for the three gap-2 steps, read at
-honest stores (`AnchorStep`). Paper: workbench route_a_gap2.md §1 (rows by `row_of_report`,
-or a crossing above the previous anchor; step 0 from the seed `h₀ ≥ HZ+2`). -/
-def AnchorSteps : Prop :=
-  ∀ i : Fin 3, AnchorStep Q.trace (honestKeys S Q.run.2) (W.block i.castSucc) (W.block i.succ)
-
-/-- Actual cache acceptance and persistence at the original endpoint, not mere delivery. -/
-def CacheCoverage : Prop :=
-  ∀ y t j, Q.deadline ≤ t → t ≤ Q.run.2.horizon →
-    Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
-      ((Sys (family S) V).cDur (K S A) Q.run) y t → Regimes.CutAfter Q.trace j t →
-    W.Extends (W.block 0) (Q.trace.state y j).fg.F
-
-end FinalWindowData
 
 private theorem final_node_requirements (Q : FinalQuery S A V) :
     (goldilocksNode Q.params (S.ro _)).Requirements := by
@@ -213,15 +123,45 @@ theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
   ⟨⟨start, block, cut, slots, proposals, accepted, ready, fresh, ordered, bounded, chain, carrier⟩⟩
 
 
-/-- OPEN extraction and endpoint budget (route A). A window of four honest anchors at the slots
+/-- OPEN (H1)+(H3) of `final_window_extract_of'` (CarrierProcessed.lean), route A (#136). One
+reset `a` with a bound `ΔR` such that (H1) the reset premises `ResetPremisesUpTo` hold through the
+horizon at GST `Q.gst`, with the run proposer and digest (Sol's M1′ reset), and (H3) the
+placement `(P)` holds with `u_min = finalSeedMin Q a` (the heal coefficient must be large
+enough). (H1) and (H3) are one leaf because (H3) depends on the reset `a` of (H1): two
+separate existentials would not give the same `a`. No producer is assumed. -/
+theorem final_reset_premises (Q : FinalQuery S A V) :
+    ∃ ΔR a : Time,
+      Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
+        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon ∧
+      max (max ((Sys (family S) V).ready (K S A) Q.gst Q.run) 0)
+          ((finalGrid S A V Q).slotTime (finalSeedMin S A V Q a) - 1) +
+          ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGrid S A V Q).slotLen ≤
+        Q.query + (finalGrid S A V Q).slotLen := by
+  sorry
+
+/-- OPEN (H2) of `final_window_extract_of'` (CarrierProcessed.lean), route A (#136): the
+duty → proposal adapter (Kev). An honest proposer that is ready in slot `s` (`HonestReadyIn`)
+makes an honest proposal run at `s` (`HonestProposalRun`). No producer is assumed. -/
+theorem final_duty_proposal (Q : FinalQuery S A V) :
+    ∀ s, HonestReadyIn Q.run.2.point Q.run.2.key
+      (fun s => Q.run.2.sel (.proposer s)) s ((Sys (family S) V).cDur (K S A) Q.run)
+      ((finalGrid S A V Q).slotTime s) →
+      ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
+        (runProposer S Q.run.2 Q.hn) s P := by
+  sorry
+
+/-- Extraction and endpoint budget (route A). A window of four honest anchors at the slots
 `start + [0, 2, 4, 6]` after the query, its route-A run premises, and its three anchor steps.
-Synthesizing accepted_latency must leave enough time for actual carrier processing by the exact
-engine-scaled endpoint. No numeric output delay is invented. Paper: workbench route_a_gap2.md,
+Proved by `final_window_extract_of'` from the open leaves `final_reset_premises` ((H1), (H3))
+and `final_duty_proposal` ((H2)); (H4) is proved there. Paper: workbench route_a_gap2.md,
 window_start_h0.md, anchor_row_supplier.md, anchor_tick_ac_producer.md (read-back #136). -/
 theorem final_window_extract (Q : FinalQuery S A V) :
     ∃ W : FinalWindowData S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
       W.AnchorRun ∧ W.AnchorSteps := by
-  sorry
+  obtain ⟨ΔR, a, hreset, hplace⟩ := final_reset_premises S A V Q
+  obtain ⟨W, hslack, hrun, hsteps⟩ :=
+    final_window_extract_of' S A V Q hreset (final_duty_proposal S A V Q) hplace
+  exact ⟨W, hslack, W.anchorRun_iff.mpr hrun, W.anchorSteps_iff.mpr hsteps⟩
 
 /-- **Window coverage by the anchor route.** The run premises and the three anchor steps give,
 at the last anchor's store, the block `F` of root `σ[P₃].F` and `P₀ ⪯ F`. The window slots and
@@ -229,7 +169,7 @@ at the last anchor's store, the block `F` of root `σ[P₃].F` and `P₀ ⪯ F`.
 theorem final_anchor_coverage (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
     (run : W.AnchorRun) (steps : W.AnchorSteps) :
     ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧ W.Extends (W.block 0) F := by
-  obtain ⟨proposer, dg, g, ΔF, a, b, hp, hc, hP, hR, hb⟩ := run
+  obtain ⟨proposer, dg, g, ΔF, a, b, hp, hc, hP, hR, hb⟩ := W.anchorRun_iff.mp run
   have hd := A.timeout
   have hs0 : (W.block 0).slot = W.start := by simpa using W.slots 0
   have hs3 : (W.block 3).slot = W.start + 6 := by simpa using W.slots 3
@@ -243,7 +183,8 @@ theorem final_anchor_coverage (Q : FinalQuery S A V) (W : FinalWindowData S A V 
     rw [← final_anchor_post S A V Q W 3]
     exact final_anchor_held S A V Q W
   obtain ⟨F, hF, hAF⟩ := cacheCoverage_of_anchor_window_upTo hp hc hP hmono
-    (by simpa using hR) (by simpa using hb) (by intro h; simp at h) steps hsl (W.ready 3).1 hB3
+    (by simpa using hR) (by simpa using hb) (by intro h; simp at h) (W.anchorSteps_iff.mp steps) hsl
+    (W.ready 3).1 hB3
   refine ⟨F, ?_, hAF⟩
   change (Q.trace.post (W.cut 3)).fg.blocks ((Q.trace.post (W.cut 3)).fg.σ (W.block 3).root).F =
     some F
@@ -264,6 +205,7 @@ theorem final_cache_coverage_of_prior_cache (Q : FinalQuery S A V)
       ∃ k ≤ j, W.Extends F (Q.trace.state y k).fg.F ∨
         W.Extends (W.block 0) (Q.trace.state y k).fg.F) : W.CacheCoverage := by
   obtain ⟨F, hF, hAF⟩ := coverage
+  refine W.cacheCoverage_iff.mpr ?_
   intro y t j hdt hth hy hj
   obtain ⟨k, hkj, hk⟩ := producer F hF y t j hdt hth hy hj
   have hmono := (Compose.fg_grows
@@ -323,6 +265,7 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptance_iff S Q.run.2 Q.hn _ _ _).mp
       (forwardAtAcceptance S Q.run.2 Q.hn Q.valid) _ (W.ready 3).1 _ _ (W.accepted 3)
+  refine W.cacheCoverage_iff.mpr ?_
   intro y t j hdt hth hy hj
   have hsafe := Store.replay_finalized_safety fg hf (W.ready 3).1 hy.1
     (hsource ▸ hB) (hsource ▸ hXt) (show X.root = _ by rw [← hsource]; exact hXR)
@@ -447,10 +390,11 @@ theorem final_payload_projection
       exact taggedRoot_ne _ _
   exact finalized_inBy S r.2 hn hv
     (noCollTransport V S r.1 r.2 hn hv hcollision) hc hdeadline hb hroot
-    (fun y j hy hj => hcover y Q.deadline j le_rfl hb hy hj)
+    (fun y j hy hj => W.cacheCoverage_iff.mp hcover y Q.deadline j le_rfl hb hy hj)
 
 /-- Statement-only assembly of the OPEN route-A suppliers; not a completed liveness proof.
-Coverage is the anchor route (`final_anchor_coverage`); the open leaf is `final_window_extract`.
+Coverage is the anchor route (`final_anchor_coverage`); the open leaves are
+`final_reset_premises` and `final_duty_proposal` (via `final_window_extract`).
 Paper: workbench route_a_gap2.md (read-back #136). -/
 theorem accepted_healthyLive_final : ∀ g, schema.output .final = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (family S) V).Holds

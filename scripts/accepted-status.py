@@ -18,6 +18,7 @@ import tempfile
 # 2026-11-01. Later reviewed JSON ratings override these initial classifications.
 LEAD = 'https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27'
 PAPER = 'https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd'
+ROUTE_A = 'https://github.com/ethlabs-org/consensus-lean/issues/136'
 RATINGS = {
     'accepted_catchUp': ('paper-partial', LEAD, 'Settled coefficient audit: simultaneous finite engine envelope and repaired transport remain; no arbitrary witness choice.'),
     'accepted_heal': ('paper-partial', LEAD, 'Settled coefficient audit: finite reset/preparation/retention and endpoint margins need joint synthesis.'),
@@ -25,6 +26,10 @@ RATINGS = {
     'accepted_catchUp_ge_sleepy': ('paper-partial', LEAD, 'Settled coefficient audit: 37 is a verified constraint, not a proof about the opaque shared witness; enlargement needs monotonicity audit.'),
     'accepted_latency_ge_sleepy': ('paper-partial', LEAD, 'Settled coefficient audit: 8idx+12 is a verified constraint, not a jointly admissible selected witness.'),
     'final_window_extract': ('paper-partial', LEAD, 'Settled final-liveness audit: four-anchor combinatorics known; actual ready accepted chain, recurrence and endpoint carrier budget remain.'),
+    # Route-A split of final_window_extract (#136): its body is final_window_extract_of'
+    # from these two open leaves; the rating is inherited from final_window_extract.
+    'final_reset_premises': ('paper-partial', ROUTE_A, "Open (H1)+(H3) of final_window_extract_of': (H1) reset premises through the horizon at Q.gst = Sol's M1′ reset; (H3) placement with u_min = finalSeedMin Q a = the heal coefficient. One leaf: (H3) depends on the reset a of (H1). Owners: Sol (H1), coefficients (H3)."),
+    'final_duty_proposal': ('paper-partial', ROUTE_A, "Open (H2) of final_window_extract_of': duty → proposal adapter (HonestReadyIn at slot s gives HonestProposalRun at s). Owner: Kev."),
     # Historical rating; the declaration is retired by route A (#141), see RETIRED.
     'final_inherited_progress': ('paper-open (research)', LEAD, 'Settled final-liveness audit: arbitrary dirty inherited permissions/held or credited rows must yield same-entry progress without a birth lower bound.'),
     'final_row_supply': ('paper-open (research)', LEAD, 'Research refinement: high same-entry/high-predecessor row algebra is proved conditionally; report_cover, inherited/low entries and carrier credit/acceptance remain. entry-rows-exact §§2,4–6.'),

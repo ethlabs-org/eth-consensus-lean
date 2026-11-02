@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMatureUpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
