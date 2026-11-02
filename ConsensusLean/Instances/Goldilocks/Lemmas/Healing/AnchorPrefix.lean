@@ -104,6 +104,127 @@ theorem unlocked_anchor_preimage {Phi : SA.Frm sp.n (List (FG.Att sp.n))}
   exact ⟨l₀, hl₀, B₀, hB₀, hB₀r, hs ▸ hlive,
     (SA.viableAncestor_anc hPhi hE).2.trans hB₁B₀⟩
 
+/-- Keep the live preimage before unlock, so its actual writer origin can
+be classified without replacing it by an arbitrary optimistic lock. -/
+theorem unlocked_live_preimage {Phi : SA.Frm sp.n (List (FG.Att sp.n))}
+    (hPhi : FrameOK Phi) {L : Set SA.Lock} {t : Time} {s : Int} {V : SA.View sp.n}
+    {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hX : X ∈ SA.liveLockBlocks sp (SA.unlock sp L Phi t s V) Phi t) :
+    ∃ l ∈ SA.liveLocks sp L Phi t, ∃ B ∈ Phi.tree, B.root = l.block ∧
+      sp.slot t ≤ l.slot + sp.k ∧ Phi.Anc X B := by
+  obtain ⟨l', ⟨l, hl, B, hB, hBr, heq⟩, E, hE, hEr, hlive, rfl⟩ :=
+    SA.mem_liveLockBlocks hPhi hX
+  have hs : l'.slot = l.slot := by
+    rw [heq]; split_ifs <;> rfl
+  refine ⟨l, hl, B, hB, hBr, hs ▸ hlive, ?_⟩
+  have hEB : Phi.Anc E B := by
+    rw [heq] at hEr
+    split_ifs at hEr with hlt
+    · have he : E = SA.unlockTarget sp Phi V s B :=
+        hPhi.coherent.1 hE (SA.unlockTarget_anc sp hPhi V s hB).1 hEr
+      rw [he]
+      exact (SA.unlockTarget_anc sp hPhi V s hB).2
+    · have he : E = B := hPhi.coherent.1 hE hB (hEr.trans hBr.symm)
+      rw [he]
+      exact .refl
+  exact (SA.viableAncestor_anc hPhi hE).2.trans hEB
+
+/-- The below-write-root optimistic branch stays below the writer's current
+root, even after unlock and viableAncestor. This is not a cross-node root bound. -/
+theorem FrameWindow.unlocked_image_below_write_root {lo hi : Time} {floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
+    {ellw ell : ACLabel (goldilocksNode sp ro)}
+    (hcw : tr.projAC.CallAt y a ellw) (hc : tr.projAC.CallAt y i ell)
+    (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
+    {L B A : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hLB : ell.frame.Anc L B) (hBA : Anc (tr.HonestBlocks H) B A)
+    (hroot : ellw.frame.Anc A ellw.frame.fcRoot) :
+    Anc (tr.HonestBlocks H) L ell.frame.fcRoot := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hAw := Anc.mono (SA.frameIn_of_callAt hr hy hcw).2 hroot
+  have hmono := hframe.fcRoot_mono hrun hy hai halo hihi
+  rw [Compose.frame_of_projAC hrun hy hcw] at hAw
+  have hbound : Anc (tr.HonestBlocks H) L (tr.state y i).fg.fcRoot :=
+    (Anc.mono (SA.frameIn_of_callAt hr hy hc).2 hLB).trans (hBA.trans (hAw.trans hmono))
+  rw [Compose.frame_of_projAC hrun hy hc]
+  exact hbound
+
+/-- A write-held viable witness supplies the frozen domain for a boundary
+optimistic prefix. The receiver-root split is explicit; this branch is used
+only when the receiver's finalized root is below the target. -/
+theorem FrameWindow.optimistic_prefix_of_early_witness {s floor : Nat}
+    {contest kindJ : Prop} {J B Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {g ΔF b : Time}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s)
+      (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hm : gbar g ≤ sp.ts s) (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
+    {x w y : Fin sp.n} (hx : x ∈ H) (hw : w ∈ H) (hy : y ∈ H)
+    {c a i : Nat} {CV : Set (SA.Vote sp.n)}
+    (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
+    (hBD : Anc (tr.HonestBlocks H) B D)
+    (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    {ellw ell : ACLabel (goldilocksNode sp ro)}
+    (hcw : tr.projAC.CallAt w a ellw) (hQw : Q ∈ ellw.frame.tree)
+    (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
+    (hJ : kindJ → Anc (tr.HonestBlocks H) J B)
+    (hBQ : Anc (tr.HonestBlocks H) B Q)
+    {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
+    (hFB : Anc (tr.HonestBlocks H) (tr.state y i).fg.F B)
+    (haB : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) B) :
+    ell.frame.Anc B (SA.getHead sp e.readPoint ell.frame (tr.time i)
+      (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+      (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hr := hS.run.localRun
+  have hΔ := sp.toParams.hΔ
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+    have hn : 0 < sp.n := sp.toParams.hn
+    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+    omega
+  have hQ := mem_tree_of_frame hrun hw hcw hQw
+  have hQU : Q ∈ tr.HonestBlocks H := ⟨w, hw, a, hQ⟩
+  have hsource : Q.root = sp.genesisRoot ∨
+      ∃ q, tr.projAC.AcceptAt w q Q ∧ tr.projAC.time q < sp.ts s + 2 * sp.Δ := by
+    rcases Compose.frame_anc_accepted hr hw a ellw hcw Q hQw Q .refl with hg | ⟨q, hqc, ha⟩
+    · exact Or.inl hg
+    · exact Or.inr ⟨q, ha, (hr.time_mono hqc).trans_lt hat⟩
+  have hslot := (SA.castAt_spec hr hy hc).2.1.symm.trans hes
+  change sp.slot (tr.time i) = s + 1 at hslot
+  have hlo : sp.ts s ≤ tr.time i :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
+      change (s : Int) ≤ sp.slot (tr.time i)
+      rw [hslot]; omega)
+  have hhi := SA.vote_time_le hr hy ⟨ell, hc⟩
+  change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhi
+  rw [hslot] at hhi
+  have hFQ : Anc (tr.HonestBlocks H) ell.frame.F Q := by
+    rw [Compose.frame_of_projAC hrun hy hc.1]
+    exact hFB.trans hBQ
+  have hQdom := voterBlockTree_of_relay_source hr hS.sync hS.catchUp hw hy hQU
+    (Relation.ReflTransGen.refl : Anc (tr.HonestBlocks H) Q Q) hsource hc
+    (by omega) (hhi.trans hmb) (by
+      rw [hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]
+      linarith) hFQ
+  obtain ⟨-, hroot, -, hvQ, hBQf⟩ := hframe.witness_path hrun hnc hmf hy hw hc.1
+    hlo hhi hQ hh hJ hBQ (mem_tree_of_frame hrun hy hc.1 hQdom.1) hFB
+  have hdomA := SA.voterBlockTree_anc hr hy hc
+  rw [hes] at hQdom hdomA
+  have hB : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)) :=
+    ⟨hdomA Q hQdom B hBQf, hroot, Q, hQdom, hvQ, hBQf⟩
+  have hFD : Anc (tr.HonestBlocks H) ell.frame.F D := by
+    rw [Compose.frame_of_projAC hrun hy hc.1]
+    exact hFB.trans hBD
+  exact optimistic_prefix_before hrun hnc hsvc hawake hf hcatch hm hx hy hopt hBD hc hes
+    (hhi.trans hmb) hFD hB haB
+
 /-- Older-lock dominance supplies a finite voter prefix. The prior heads
 extend the lock image, not the proposal parent; actual delivery is derived. -/
 theorem FrameWindow.honest_prefix_before {s floor : Nat}
