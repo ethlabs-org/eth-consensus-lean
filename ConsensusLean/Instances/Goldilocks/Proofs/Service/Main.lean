@@ -6,8 +6,9 @@ public section
 
 /-! # Goldilocks milestone Service
 
-`ServiceStatements` (A1.6, A1.7) from `Lemmas/Compose/Service`. C1.2 (`OutcomeService`) is stated in
-`Statements/Healing/Outcome` and proved in `Lemmas/Healing/Outcome` (`Healing.outcome_service`). -/
+`ServiceStatements` (A1.6, A1.7) from `Lemmas/Compose/Service`. C1.2 (`OutcomeService`) is
+stated in `Statements/Healing/Outcome`; it is not proved (its building blocks are in
+`Lemmas/Healing/Outcome`). -/
 
 namespace Consensus.Goldilocks.Compose
 
