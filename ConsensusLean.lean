@@ -292,6 +292,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowCrossed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowCrossedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowEntryUpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowFieldsUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowParents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowParentsUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowUnanimous
