@@ -570,6 +570,48 @@ theorem publication_held_before_gst_deadline (hn : 1 ≤ Fintype.card V)
   rw [hga] at hheld
   exact ⟨a + E.Δ, hheld, hslack⟩
 
+/-- Acceptance service for arbitrary publications, including pre-GST sources, uses
+the effective max(source, GST) deadline at the acceptance cut. -/
+theorem publication_acceptedBy_psync_any (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
+    {g : Time} (hnet : rho.log.PSync rho.point g)
+    (r : Publication (Model.protoOf (compiled (family S)) E))
+    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
+    {τ : Time} (hτ : 0 ≤ τ)
+    (ht : (publisherExecution S rho).eventTime r.event = τ)
+    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
+    (hdecode : decodeForward (S.params (Model.pubOf E) hn)
+      (Model.digests rho.hash r.object) r.object = some (r.origin, τ, p, B))
+    {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {j : Nat}
+    (hj : (simTrace S rho hn).IsCall y j)
+    (hb : (simTrace S rho hn).deadline y j (max τ g) (S.params (Model.pubOf E) hn).Δ
+      ≤ rho.horizon)
+    (hd : (simTrace S rho hn).deadline y j (max τ g) (S.params (Model.pubOf E) hn).Δ
+      ≤ (simTrace S rho hn).time j)
+    (hF : Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
+      ((simTrace S rho hn).state y j).fg.F B) :
+    (simTrace S rho hn).BlockAcceptedBy y j (max τ g) B := by
+  induction j using Nat.strong_induction_on with
+  | h j ih =>
+    obtain ⟨d, hheld, hlt⟩ := publication_held_before_gst_deadline S rho hn hv hnet
+      r hr hx hy hj hτ ht hb hd
+    obtain ⟨k, hkj, hacc, htime⟩ := held_forward_accepted_before S rho hn hv hnc
+      hy hx hheld hdecode hlt hd hF
+    by_cases hk : (simTrace S rho hn).time k <
+        (simTrace S rho hn).deadline y k (max τ g) (S.params (Model.pubOf E) hn).Δ
+    · exact ⟨k, hkj, hacc, hk⟩
+    · have hkj' : k < j := lt_of_le_of_ne hkj (by
+        intro heq
+        subst k
+        exact hk htime)
+      have hmono := deadline_mono_cut S rho hn hv y (max τ g)
+        (S.params (Model.pubOf E) hn).Δ hkj
+      obtain ⟨l, hl, ha, ht'⟩ := ih k hkj' ⟨_, hacc⟩ (hmono.trans hb)
+        (le_of_not_gt hk)
+        ((Healing.run_F_mono (simTrace_goldilocksRun S rho hn hv).toLocalRun hy hkj).trans hF)
+      exact ⟨l, hl.trans hkj, ha, ht'⟩
+
 /-- Holdings of an honest decoded wrapper give a block call after its source stamp.
 Local publication uses the actual acceptance; receipt uses recursive block processing. -/
 theorem held_forward_blockCall_before (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
