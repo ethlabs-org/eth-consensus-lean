@@ -1,0 +1,64 @@
+module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Rise
+
+public section
+
+/-! # Goldilocks Refinement: definitions of the M1′ composition (#136)
+
+The drain interface `DrainOutputs`, the sub-interval restriction `frameWindow_sub`, and the
+reset bound `resetBound` of `reset_of_drain` (`HealCompose`). This module imports only the
+rise, so that it does not depend on the final-window or healed-safety layers. -/
+
+namespace Consensus.Goldilocks.Refinement
+
+open SA (gbar)
+open Healing
+
+section Drain
+
+variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+
+/-- **The drain outputs (to be supplied by Sol's DrainWindow, P5).** For every slot-aligned
+FrameWindow `[t_{s₀}, t_N + 2Δ]` with `ḡ + 4Δ ≤ t_{s₀}`, `s₀ + L_drain ≤ N`, no honest signature
+above `H_z` up to `t_N + 2Δ`, and the honest-proposer gap `G` on `[s₀, N]`: an actual warm honest
+proposal `P` of a slot `u ∈ [s₀ + 2k, s₀ + L_drain]` by its designated proposer, with
+`σ[P].h ≥ H_z − 1` (`hlow` of `rise_reset`). The O1-L lock clause is derived from the warm
+proposal and frame inside the rise, not an additional drain output. The uniform frame/warm
+producer remains an input; this interface strengthening does not construct it. -/
+structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n)
+    (H : Set (Fin sp.n)) (g : Time) (G Ld : Nat) : Prop where
+  warm : ∀ {s₀ N floor : Nat} {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))},
+    FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor contest kindJ J →
+    gbar g + 4 * sp.Δ ≤ sp.ts s₀ → s₀ + Ld ≤ N →
+    (∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k ≤ sp.ts N + 2 * sp.Δ →
+      att.h ≤ HZ tr H g) →
+    (∀ a, s₀ ≤ a → a + G ≤ N + 1 → ∃ x, a ≤ x ∧ x < a + G ∧ proposer x ∈ H ∧
+      ∃ k Q, tr.ProposesAt (proposer x) k Q ∧ Q.slot = x) →
+    ∃ u, s₀ + 2 * sp.k ≤ u ∧ u ≤ s₀ + Ld ∧ ∃ z ∈ H, z = proposer u ∧
+      ∃ kP P, tr.ProposesAt z kP P ∧ P.slot = u ∧
+        HZ tr H g ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + 1
+
+/-- A FrameWindow restricts to every sub-interval. -/
+theorem frameWindow_sub {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+    {lo hi lo' hi' : Time} {floor : Nat} {contest kindJ : Prop}
+    {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hf : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hlo : lo ≤ lo') (hhi : hi' ≤ hi) :
+    FrameWindow (tr := tr) (H := H) lo' hi' floor contest kindJ J :=
+  ⟨fun y hy i h1 h2 => hf.floor_eq y hy i (hlo.trans h1) (h2.trans hhi),
+    fun y hy i h1 h2 => hf.contest_iff y hy i (hlo.trans h1) (h2.trans hhi),
+    fun y hy i h1 h2 => hf.kind_iff y hy i (hlo.trans h1) (h2.trans hhi),
+    fun y hy i h1 h2 => hf.root_eq y hy i (hlo.trans h1) (h2.trans hhi)⟩
+
+end Drain
+
+/-- The reset bound of `reset_of_drain`: `r + (24 L_drain + 48ρ + 64)·Δ + 6λ`,
+`ρ = δ_t + X − 1`. -/
+def resetBound (r D lam δt X Ld : ℤ) : ℤ := r + (24 * Ld + 48 * (δt + X - 1) + 64) * D + 6 * lam
+
+/-- Unfolding equation of `resetBound` (the definition is not exposed outside this module). -/
+theorem resetBound_eq (r D lam δt X Ld : ℤ) :
+    resetBound r D lam δt X Ld = r + (24 * Ld + 48 * (δt + X - 1) + 64) * D + 6 * lam := by
+  rfl
+
+end Consensus.Goldilocks.Refinement

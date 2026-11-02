@@ -271,6 +271,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingSta
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HSSharedOfQuery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealCompose
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealComposeDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC3
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC4
