@@ -899,6 +899,92 @@ theorem FrameWindow.vote_extends_through {u last floor : Nat}
     exact unanimous_next_votes hrun hnc hsvc hawake hf hcatch hnr (by linarith)
       (by linarith) hsub hz hX hh hJ (ih (by omega))
 
+/-- Finite L1.5(ii)/(iv): the actual warm honest proposal supplies U's base
+batch and floor-viable source. Vote ancestry starts in its own slot, while
+proposal-head ancestry starts only in the next slot. -/
+theorem FrameWindow.proposal_later_heads {s₀ s last floor : Nat}
+    {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts last + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hk : 0 < sp.k)
+    (hmargin : s₀ + 2 * sp.k ≤ s + 1) (hul : s + 1 ≤ last)
+    (hmb : sp.ts last + sp.Δ ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1)) {k : Nat}
+    (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
+    {m : Nat} (hum : s + 1 ≤ m) (hml : m ≤ last) :
+    (∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = m →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg P) ∧
+    (s + 2 ≤ m → ∀ y ∈ H, ∀ i ell, tr.projAC.CallAt y i ell →
+      ell.call = .proposal → tr.time i = sp.ts m →
+      ∀ d pay, (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 =
+        some (d, pay) → Anc (tr.HonestBlocks H) P d.head) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hΔ := sp.toParams.hΔ
+  have hts : sp.ts s₀ ≤ sp.ts (s + 1 : Nat) := (SA.ts_le_iff sp).2 (by omega)
+  have htl : sp.ts (s + 1 : Nat) ≤ sp.ts last := (SA.ts_le_iff sp).2 (by omega)
+  have hsub : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
+      (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J :=
+    ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo (by linarith),
+      fun y hy i hlo hhi => hframe.contest_iff y hy i hlo (by linarith),
+      fun y hy i hlo hhi => hframe.kind_iff y hy i hlo (by linarith),
+      fun y hy i hlo hhi hc => hframe.root_eq y hy i hlo (by linarith) hc⟩
+  have hun := hsub.honest_vote_heads_eq hrun hnc hsvc hawake hf hcatch hnr hm hk
+    hmargin (by linarith) hz hdesignated hactual hPs
+  obtain ⟨c, e, hv, hes, hhi⟩ := honest_votes_before_of_service hrun hnc hsvc hawake hf
+    hcatch hnr (by linarith) (by linarith) z hz
+  obtain ⟨ell, hc, he⟩ := hv
+  have hcast : SA.CastAt tr.projAC z c ell e := ⟨hc, he⟩
+  have hslot : sp.slot (tr.time c) = s + 1 :=
+    (SA.castAt_spec hr hz hcast).2.1.symm.trans hes
+  have hlo : sp.ts s₀ ≤ tr.time c := hts.trans
+    ((SA.ts_le_iff_le_slot sp (hr.time_nonneg c) _).2 (by
+      change ((s + 1 : Nat) : Int) ≤ sp.slot (tr.time c)
+      rw [hslot]))
+  have hvP := (hsub.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr
+    (by linarith) (by omega) (by omega) (by linarith) hz hdesignated hactual hPs
+    hz hcast hes).1
+  rw [Compose.frame_of_projAC hrun hz hc] at hvP
+  have hPU : P ∈ tr.HonestBlocks H := ⟨z, hz, c, hvP.1⟩
+  have hh : floor ≤ ((tr.state z c).fg.σ P.root).h := by
+    rw [← hframe.floor_eq z hz c hlo (by linarith)]
+    exact hvP.2.2.2
+  have hJP : kindJ → Anc (tr.HonestBlocks H) J P := by
+    intro hj
+    have ha : Anc (tr.HonestBlocks H) (tr.state z c).fg.fcRoot P :=
+      Anc.mono (fun B hB => ⟨z, hz, c, hB⟩) hvP.2.2.1
+    have hkind := (hframe.kind_iff z hz c hlo (by linarith)).mpr hj
+    have heq : (tr.state z c).fg.fcRoot = (tr.state z c).fg.J := ite_eq_left hkind
+    rw [heq, hframe.root_eq z hz c hlo (by linarith) hj] at ha
+    exact ha
+  have htail : FrameWindow (tr := tr) (H := H) (sp.ts (s + 1 : Nat))
+      (sp.ts last + sp.Δ) floor contest kindJ J :=
+    ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i (hts.trans hlo) hhi,
+      fun y hy i hlo hhi => hframe.contest_iff y hy i (hts.trans hlo) hhi,
+      fun y hy i hlo hhi => hframe.kind_iff y hy i (hts.trans hlo) hhi,
+      fun y hy i hlo hhi hj => hframe.root_eq y hy i (hts.trans hlo) hhi hj⟩
+  have hG := fun {r} (hur : s + 1 ≤ r) (hrl : r ≤ last) =>
+    htail.vote_extends_through hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+      hmb hz hvP.1 hh hJP (fun y hy i ev hv hs =>
+        ⟨P, hPU, (hun y hy i ev hv hs).symm, .refl⟩) hur hrl
+  refine ⟨hG hum hml, ?_⟩
+  intro hsm y hy i ell hci hcall hti d pay hd
+  obtain ⟨r, rfl⟩ : ∃ r, m = r + 1 := ⟨m - 1, by omega⟩
+  have htr : sp.ts (s + 1 : Nat) ≤ sp.ts r := (SA.ts_le_iff sp).2 (by omega)
+  have htrl : sp.ts (r + 1 : Nat) ≤ sp.ts last := (SA.ts_le_iff sp).2 (by omega)
+  have hstep : FrameWindow (tr := tr) (H := H) (sp.ts r)
+      (sp.ts (r + 1 : Nat) + sp.Δ) floor contest kindJ J :=
+    ⟨fun y hy i hlo hhi => htail.floor_eq y hy i (htr.trans hlo) (by linarith),
+      fun y hy i hlo hhi => htail.contest_iff y hy i (htr.trans hlo) (by linarith),
+      fun y hy i hlo hhi => htail.kind_iff y hy i (htr.trans hlo) (by linarith),
+      fun y hy i hlo hhi hj => htail.root_eq y hy i (htr.trans hlo) (by linarith) hj⟩
+  exact unanimous_next_proposal hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+    (by linarith) hstep hz hvP.1 hh hJP (hG (by omega) (by omega)) hy hci hcall hti hd
+
 end Consensus.Goldilocks.Healing
 
 end
