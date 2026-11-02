@@ -292,6 +292,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAdvance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchors
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorsUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowCoverageUpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowCrossed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowCrossedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowEntry
