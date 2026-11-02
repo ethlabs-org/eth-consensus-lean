@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlocked
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 
 public section
 
@@ -24,6 +25,10 @@ From the invariant at every cut (`outage_lock_inv`):
   at every honest cut (`lockInv_state`, `liveBlocks_chain_at`);
 * `fastLock_compatible` (§5.2(a)(b)): every honest fast lock block (update or optimistic
   selection) is compatible with `P`;
+* `readPoint_liveLockBlocks_compatible` (S5's `LiveLocksCompatible` at a cast's read point): the
+  live lock blocks of an honest vote's read point are compatible with every block `B ⪯ P` (the
+  read-point locks sit below stored locks or below the cut's optimistic selection,
+  `SA.readPoint_locks_provenance`);
 * `veto_record_above` ((iii), §8): an update with a result above `P` that a live lock vetoes has a
   stored record above `P`;
 * `effective_record_above` (§8): a stored record above `P` makes the effective record above `P`,
@@ -174,6 +179,31 @@ theorem fastLock_compatible (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy
   have := Set.ncard_le_ncard hsub
   have := D.two_mul_lt
   omega
+
+/-- **(i) at a read point** (S5's `LiveLocksCompatible`): at an honest vote of a slot `> 0`, the
+live lock blocks of the read point are compatible with every block `B ⪯ P`. -/
+theorem readPoint_liveLockBlocks_compatible (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
+    (hpos : 0 < sp.slot (tr.time i)) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hBP : Anc (tr.HonestBlocks H) B D.P) :
+    ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
+      Compatible (tr.HonestBlocks H) L B := by
+  intro L hL
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer D.hrun D.hnc).localRun
+  have hU := D.coherent
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  obtain ⟨l', hl', B₀, hB₀, hB₀r, -, rfl⟩ := SA.mem_liveLockBlocks hΦ hL
+  obtain ⟨B', hB', hB'r, h⟩ := SA.readPoint_locks_provenance hr hy hc hpos l' hl'
+  obtain rfl : B₀ = B' := hΦ.coherent.1 hB₀ hB' (hB₀r.trans hB'r.symm)
+  refine compatible_of_anc_right hU hBP
+    (compatible_of_anc hU ((SA.viableAncestor_anc hΦ hB₀).2.mono hΦU) ?_)
+  rcases h with ⟨l, hl, B₁, hB₁, hB₁r, hanc⟩ | ⟨B₁, CV, hfl, hanc⟩
+  · rw [projAC_state D.hrun.toLocalRun hy] at hl
+    obtain ⟨L', hL', hL'r, hcomp⟩ := (hinv i).locks y hy i le_rfl l hl
+    obtain rfl : B₁ = L' := hU.1 (hΦU hB₁) ⟨y, hy, i, hL'⟩ (hB₁r.trans hL'r.symm)
+    exact compatible_of_anc hU (hanc.mono hΦU) hcomp
+  · exact compatible_of_anc hU (hanc.mono hΦU) (fastLock_compatible hinv hy (Or.inr hfl))
 
 /-- **(iii) veto-harmless** (§8): at an honest update whose result `C ⪰ P` a live lock vetoes, the
 stored record names a block above `P`. -/

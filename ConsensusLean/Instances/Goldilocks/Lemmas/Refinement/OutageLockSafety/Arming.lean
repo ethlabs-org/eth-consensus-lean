@@ -394,6 +394,30 @@ theorem outage_reader_locks (hS5 : OutageS5Step Q service hv hTh hsh ar) :
   fun _ hy m τ => Compose.liveLockBlocks_compatible (outage_locks Q service hv hTh hsh ar hS5)
     hy m τ (origin_facts Q service hv hTh ar).2.1
 
+/-- **(i) at a read point** (S5's `LiveLocksCompatible`, 856c1db): at every honest vote cast at
+or after `b₀`, the live lock blocks of the read point are compatible with the protected origin. -/
+theorem outage_live_locks_compatible (hS5 : OutageS5Step Q service hv hTh hsh ar) :
+    ∀ y ∈ honestKeys S Q.run.2, ∀ i (ℓ : ACLabel (goldilocksNode Q.params (S.ro Q.params.n))) e,
+      SA.CastAt Q.trace.projAC y i ℓ e → Q.start ≤ Q.trace.time i →
+      ∀ L ∈ SA.liveLockBlocks Q.params e.readPoint.locks ℓ.frame (Q.trace.time i),
+        Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) L ar.origin := by
+  intro y hy i ℓ e hc hti
+  have hσ := (outageLockPremises_of_arming Q service hv hTh hsh ar).hσ
+  have hj₀ := (outageLockPremises_of_arming Q service hv hTh hsh ar).hj₀.1
+  have hΔ := Q.params.toParams.hΔ
+  have hj : Q.params.ts (Compose.coverLabel Q.params Q.start) ≤ Q.trace.time i := by
+    change Q.params.ts (Compose.coverLabel Q.params Q.start) + 2 * Q.params.Δ ≤ Q.start at hj₀
+    linarith
+  have hpos : 0 < Q.params.slot (Q.trace.time i) := by
+    have := (SA.ts_le_iff_le_slot Q.params
+      ((simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid).time_nonneg i) _).1 hj
+    have h' : Compose.coverLabel Q.params Q.start ≤ Q.params.slot (Q.trace.time i) := by
+      exact_mod_cast this
+    change _ + Q.params.k < Compose.coverLabel Q.params Q.start at hσ
+    omega
+  exact Compose.readPoint_liveLockBlocks_compatible (outage_locks Q service hv hTh hsh ar hS5)
+    hy hc hpos .refl
+
 /-- **The reader frame** (`outage_reader_frame`, S5-G1/G2): `fc_root` is compatible with the read
 tip, and the tip, when in the frame, is below the anchor or in the full viable tree, at every
 honest cut. -/
