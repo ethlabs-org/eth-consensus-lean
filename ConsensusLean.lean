@@ -268,6 +268,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinPair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinPairUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalDutyProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalNodeOutput
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalResetPremises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalWindowAssembly
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding

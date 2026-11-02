@@ -25,6 +25,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorR
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CarrierProcessed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalDutyProposal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalResetPremises
 
 public section
 
@@ -124,13 +125,14 @@ theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
   ⟨⟨start, block, cut, slots, proposals, accepted, ready, fresh, ordered, bounded, chain, carrier⟩⟩
 
 
-/-- OPEN (H1)+(H3) of `final_window_extract_of'` (CarrierProcessed.lean), route A (#136). One
-reset `a` with a bound `ΔR` such that (H1) the reset premises `ResetPremisesUpTo` hold through the
-horizon at GST `Q.gst`, with the run proposer and digest (Sol's M1′ reset), and (H3) the
-placement `(P)` holds with `u_min = finalSeedMin Q a = slot a + 2k + 5` (the heal coefficient must
-be large enough; #145 removed a time summand that made (H3) false for large GST). (H1) and (H3)
-are one leaf because (H3) depends on the reset `a` of (H1): two separate existentials would not
-give the same `a`. No producer is assumed. -/
+/-- (H1)+(H3) of `final_window_extract_of'` (CarrierProcessed.lean), route A (#136). One reset `a`
+with a bound `ΔR` such that (H1) the reset premises `ResetPremisesUpTo` hold through the horizon at
+GST `Q.gst`, with the run proposer and digest (Sol's M1′ reset), and (H3) the placement `(P)` holds
+with `u_min = finalSeedMin Q a = slot a + 2k + 5` (#145 removed a time summand that made (H3)
+false for large GST). (H1) and (H3) are one leaf because (H3) depends on the reset `a` of (H1).
+Proved by `final_reset_premises_of_query` (FinalResetPremises.lean): the generic reset kernel
+`exists_reset_of_drain_awake` with the drain `drainOutputs_of_service`, and the heal coefficient
+`accepted_heal_ge_final`. -/
 theorem final_reset_premises (Q : FinalQuery S A V) :
     ∃ ΔR a : Time,
       Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
@@ -138,8 +140,8 @@ theorem final_reset_premises (Q : FinalQuery S A V) :
       max (max ((Sys (family S) V).ready (K S A) Q.gst Q.run) 0)
           ((finalGrid S A V Q).slotTime (finalSeedMin S A V Q a) - 1) +
           ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGrid S A V Q).slotLen ≤
-        Q.query + (finalGrid S A V Q).slotLen := by
-  sorry
+        Q.query + (finalGrid S A V Q).slotLen :=
+  final_reset_premises_of_query S A V Q
 
 /-- (H2) of `final_window_extract_of'` (CarrierProcessed.lean), route A (#136): the duty →
 proposal adapter. An honest proposer that is ready in a slot `s > 0` with `t_s ≤ horizon`
@@ -158,7 +160,7 @@ theorem final_duty_proposal (Q : FinalQuery S A V) :
 
 /-- Extraction and endpoint budget (route A). A window of four honest anchors at the slots
 `start + [0, 2, 4, 6]` after the query, its route-A run premises, and its three anchor steps.
-Proved by `final_window_extract_of'` from the open leaf `final_reset_premises` ((H1), (H3)) and
+Proved by `final_window_extract_of'` from `final_reset_premises` ((H1), (H3)) and
 the proved `final_duty_proposal` ((H2)); (H4) is proved there. Paper: workbench route_a_gap2.md,
 window_start_h0.md, anchor_row_supplier.md, anchor_tick_ac_producer.md (read-back #136). -/
 theorem final_window_extract (Q : FinalQuery S A V) :
