@@ -279,6 +279,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyConfirmedSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordWriters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppliers
@@ -295,6 +296,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposalWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposalWindowUpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposerGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Queue
