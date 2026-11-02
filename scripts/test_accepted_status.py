@@ -3,9 +3,12 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+
+sys.dont_write_bytecode = True  # a self-test leaves no scripts/__pycache__ in the checkout
 
 spec = importlib.util.spec_from_file_location('status', Path(__file__).with_name('accepted-status.py'))
 status = importlib.util.module_from_spec(spec)
