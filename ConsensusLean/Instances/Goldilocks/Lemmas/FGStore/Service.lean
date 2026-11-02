@@ -183,6 +183,14 @@ theorem headHeightFloor_bounds (st : Store P ACP) :
     st.hmax - 1 ≤ st.headHeightFloor ∧ st.headHeightFloor ≤ st.hmax := by
   unfold headHeightFloor; split <;> omega
 
+/-- A viable block's state height is at least `h_max − 1`: every `h ≤ h_max` is at most one above
+it. -/
+theorem height_le_of_isViable {st : Store P ACP} {B : NodeBlock P ACP} {h : Nat}
+    (hv : st.IsViable B) (hh : h ≤ st.hmax) : h ≤ (st.σ B.root).h + 1 := by
+  have hb := headHeightFloor_bounds st
+  change st.headHeightFloor ≤ (st.σ B.root).h at hv
+  omega
+
 /-- The finalization step of `update_finality` moves `Σ.F` to `X` when its four tests pass on
 the state after the justification step. -/
 private theorem updateFinality_F (st : Store P ACP) (σ : FG.ChainState P.n)
