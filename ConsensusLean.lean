@@ -304,6 +304,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSaf
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Sources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageRead
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageReader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs

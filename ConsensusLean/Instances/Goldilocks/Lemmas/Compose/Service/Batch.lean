@@ -64,7 +64,7 @@ private theorem etime_lt {t t' : Time} : SA.ETime.of t < SA.ETime.of t' ↔ t < 
 
 /-- The restarts of an honest node up to its update of slot `s` (joined) are at or before
 `t_s`. -/
-private theorem update_restarts (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem update_restarts (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
     (hu : SA.UpdateAt T y k₀ s ℓ) : ∀ k ≤ k₀, T.RestartAt y k → T.time k ≤ sp.ts s := by
   obtain ⟨hc, hcall, ht, hj⟩ := hu
