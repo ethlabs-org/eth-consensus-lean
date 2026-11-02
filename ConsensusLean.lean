@@ -248,6 +248,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC3
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC4
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.LockFloorReset
