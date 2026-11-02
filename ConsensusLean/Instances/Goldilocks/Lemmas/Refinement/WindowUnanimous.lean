@@ -17,7 +17,9 @@ strictly higher than `P`), which these statements keep as a separate disjunct.
 * `window_reports_of_unanimous`: the report duty from a unanimous slot, with `tH ≤ t_u` and
   `t_u + 6Δ ≤ v`, or the escape report in `[tH, v]`.
 * `window_justifies_or_parents_above_unanimous`: the window theorem with the report duty
-  replaced by the unanimous-slot premises. -/
+  replaced by the unanimous-slot premises.
+* `window_justifies_or_parents_above_unanimous'`: the same with a held `X` of root `T` at
+  height `h`; the escape folds into case (A), so the conclusion is two-way. -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -137,6 +139,73 @@ theorem window_justifies_or_parents_above_unanimous (hrun : GoldilocksRun propos
   · exact Or.inl (window_justifies_or_parents_above_after hrun hq hH hs hv hM4 hs₁ hvs hy hc
       htH hl hf hB hBl hks hh hT hh₀ hp hvb hrep)
   · exact Or.inr hesc
+
+/-- **The lock window or parents above a crossing report, from a unanimous slot, two-way.**
+`window_justifies_or_parents_above_unanimous` with one more premise `hXe`: some held `X` with
+root `T` has `σ[X].h = h` at the store of `y` at cut `k`. Then `X ⪯ P` gives `h ≤ σ[P].h`, so
+the escape report `C` has `h < σ[C].h` and `crossed_parents_above` applies to it: the
+conclusion is that of `window_justifies_or_parents_above_after` (no escape disjunct). -/
+theorem window_justifies_or_parents_above_unanimous' (hrun : GoldilocksRun proposer dg H tr)
+    (hq : Hᶜ.ncard < sp.toParams.fg.q)
+    {g ΔF v gR tH : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hH : Healed tr H proposer gR tH h₀ E)
+    (hs : Healing.HSShared tr H dg g ΔF) (hv : gbar g ≤ v) {s₀ gM s₁ : Nat}
+    (hM4 : ∀ s, s₀ ≤ s → ∃ s', s ≤ s' ∧ s' < s + gM ∧
+      ∃ P, Healing.HonestProposalRun tr H proposer s' P)
+    (hs₁ : s₀ ≤ s₁) (hvs : v + ΔF ≤ sp.ts s₁)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ℓ) (htH : tH ≤ tr.time k) {l}
+    (hl : l ∈ SA.liveLocks sp (tr.projAC.state y k).locks ℓ.frame (tr.time k))
+    (hf : l.fast = true) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree)
+    (hBl : B.root = l.block) (hks : tr.time k + sp.Δ ≤ sp.ts s₁) {h T : Nat}
+    (hh : ((tr.state y k).fg.σ B.root).h = h) (hT : ((tr.state y k).fg.σ B.root).Th = T)
+    (hh₀ : h₀ + 1 ≤ h) {ΔR a b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg gR ΔR a b) (hvb : v ≤ b)
+    (hcatch : Healing.CatchRun tr H gR (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hPg : P.root ≠ sp.genesisRoot)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar gR + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (htu : tH ≤ sp.ts u) (huv : sp.ts u + 6 * sp.Δ ≤ v)
+    (hXP : ∀ X ∈ (tr.state y k).fg.tree, X.root = T → Anc (tr.HonestBlocks H) X P)
+    (hXe : ∃ X ∈ (tr.state y k).fg.tree, X.root = T ∧ ((tr.state y k).fg.σ X.root).h = h) :
+    (∃ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧
+      Healing.cutZ sp.toParams gR < tr.time r ∧ tH ≤ tr.time r ∧ tr.time r ≤ v ∧
+      h < ((tr.state z r).fg.σ C.root).h ∧
+      ∀ s P, Healing.HonestProposalRun tr H proposer s P → v + sp.Δ ≤ sp.ts s →
+        ∃ Pr ∈ tr.HonestBlocks H, P.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) C Pr ∧
+          ∀ y ∈ H, ∀ k, Pr ∈ (tr.state y k).fg.tree →
+            h < ((tr.state y k).fg.σ Pr.root).h) ∨
+    ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ k X Pr,
+      tr.ProposesAt (proposer s') k X ∧ X.slot = s' ∧ X.parent = some Pr.root ∧
+      Pr ∈ (tr.state (proposer s') k).fg.tree ∧
+      (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
+        (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
+          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+            ((tr.post k).fg.σ X.root).hF =
+              ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
+  rcases window_justifies_or_parents_above_unanimous hrun hq hH hs hv hM4 hs₁ hvs hy hc htH hl
+      hf hB hBl hks hh hT hh₀ hp hvb hcatch hP hslot hu hPg hun hgu hR htu huv hXP with
+    hW | ⟨x, hx, r, e, C, hto, htr, hrv, hPC, hlt⟩
+  · exact hW
+  obtain ⟨X, hXk, hXT, hXh⟩ := hXe
+  have hnc := hp.noColl
+  have hXPa := hXP X hXk hXT
+  have hCx : C ∈ (tr.state x r).fg.tree :=
+    Healing.mem_tree_of_frame hrun hx hto.1 (toFG_live_fast_lock hto).1
+  have hPx : P ∈ (tr.state x r).fg.tree := Healing.mem_of_honest_anc hrun hnc hx hPC hCx
+  have hXx : X ∈ (tr.state x r).fg.tree := Healing.mem_of_honest_anc hrun hnc hx hXPa hPx
+  have hle := Healing.h_le_of_store_anc (Compose.fg_reachable hrun.toLocalRun hx r)
+    (Healing.store_anc_of_honest_anc hrun hnc hx hXPa hPx)
+  rw [Healing.σ_eq_honest hrun hnc hx hy hXx hXk, hXh] at hle
+  have hhC : h < ((tr.state x r).fg.σ C.root).h := by omega
+  refine Or.inl ⟨x, hx, r, e, C, hto, ?_, htr, hrv, hhC, fun s P' hP' hsv => ?_⟩
+  · have hrh := hH.toHealedRecords.rh
+    exact hp.cutZ_lt_of_high hx hCx (by omega)
+  · exact crossed_parents_above hrun hnc hH hx hto htr hhC hP' (by linarith)
 
 end Consensus.Goldilocks.Refinement
 
