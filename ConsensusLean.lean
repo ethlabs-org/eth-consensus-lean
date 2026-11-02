@@ -315,6 +315,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageReader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageReaderGate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Geometry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Step
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
