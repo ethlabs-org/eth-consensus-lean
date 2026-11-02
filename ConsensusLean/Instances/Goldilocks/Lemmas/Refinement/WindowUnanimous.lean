@@ -19,7 +19,9 @@ strictly higher than `P`), which these statements keep as a separate disjunct.
 * `window_justifies_or_parents_above_unanimous`: the window theorem with the report duty
   replaced by the unanimous-slot premises.
 * `window_justifies_or_parents_above_unanimous'`: the same with a held `X` of root `T` at
-  height `h`; the escape folds into case (A), so the conclusion is two-way. -/
+  height `h`; the escape folds into case (A), so the conclusion is two-way.
+* `window_justifies_or_parents_above_unanimous''`: the same without `hXe`, from
+  `lock_entry_block`. -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -206,6 +208,57 @@ theorem window_justifies_or_parents_above_unanimous' (hrun : GoldilocksRun propo
   · have hrh := hH.toHealedRecords.rh
     exact hp.cutZ_lt_of_high hx hCx (by omega)
   · exact crossed_parents_above hrun hnc hH hx hto htr hhC hP' (by linarith)
+
+/-- **The two-way window theorem without `hXe`.** `window_justifies_or_parents_above_unanimous'`
+with `hXe` discharged by `lock_entry_block`: the entry block `X` of the held lock block `B` has
+root `σ[B].Th = T` and `σ[X].h = σ[B].h = h`. -/
+theorem window_justifies_or_parents_above_unanimous'' (hrun : GoldilocksRun proposer dg H tr)
+    (hq : Hᶜ.ncard < sp.toParams.fg.q)
+    {g ΔF v gR tH : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hH : Healed tr H proposer gR tH h₀ E)
+    (hs : Healing.HSShared tr H dg g ΔF) (hv : gbar g ≤ v) {s₀ gM s₁ : Nat}
+    (hM4 : ∀ s, s₀ ≤ s → ∃ s', s ≤ s' ∧ s' < s + gM ∧
+      ∃ P, Healing.HonestProposalRun tr H proposer s' P)
+    (hs₁ : s₀ ≤ s₁) (hvs : v + ΔF ≤ sp.ts s₁)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ℓ) (htH : tH ≤ tr.time k) {l}
+    (hl : l ∈ SA.liveLocks sp (tr.projAC.state y k).locks ℓ.frame (tr.time k))
+    (hf : l.fast = true) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree)
+    (hBl : B.root = l.block) (hks : tr.time k + sp.Δ ≤ sp.ts s₁) {h T : Nat}
+    (hh : ((tr.state y k).fg.σ B.root).h = h) (hT : ((tr.state y k).fg.σ B.root).Th = T)
+    (hh₀ : h₀ + 1 ≤ h) {ΔR a b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg gR ΔR a b) (hvb : v ≤ b)
+    (hcatch : Healing.CatchRun tr H gR (2 * sp.Δ))
+    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
+    (hPg : P.root ≠ sp.genesisRoot)
+    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : SA.gbar gR + 4 * sp.Δ ≤ sp.ts u)
+    (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (htu : tH ≤ sp.ts u) (huv : sp.ts u + 6 * sp.Δ ≤ v)
+    (hXP : ∀ X ∈ (tr.state y k).fg.tree, X.root = T → Anc (tr.HonestBlocks H) X P) :
+    (∃ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧
+      Healing.cutZ sp.toParams gR < tr.time r ∧ tH ≤ tr.time r ∧ tr.time r ≤ v ∧
+      h < ((tr.state z r).fg.σ C.root).h ∧
+      ∀ s P, Healing.HonestProposalRun tr H proposer s P → v + sp.Δ ≤ sp.ts s →
+        ∃ Pr ∈ tr.HonestBlocks H, P.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) C Pr ∧
+          ∀ y ∈ H, ∀ k, Pr ∈ (tr.state y k).fg.tree →
+            h < ((tr.state y k).fg.σ Pr.root).h) ∨
+    ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ k X Pr,
+      tr.ProposesAt (proposer s') k X ∧ X.slot = s' ∧ X.parent = some Pr.root ∧
+      Pr ∈ (tr.state (proposer s') k).fg.tree ∧
+      (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
+        (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
+          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+            ((tr.post k).fg.σ X.root).hF =
+              ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
+  have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
+  obtain ⟨X, hX, hXr, -, hXh, -⟩ := Refinement.lock_entry_block hrun hy hBy
+  exact window_justifies_or_parents_above_unanimous' hrun hq hH hs hv hM4 hs₁ hvs hy hc htH
+    hl hf hB hBl hks hh hT hh₀ hp hvb hcatch hP hslot hu hPg hun hgu hR htu huv hXP
+    ⟨X, hX, hXr.trans hT, hXh.trans hh⟩
+
 
 end Consensus.Goldilocks.Refinement
 
