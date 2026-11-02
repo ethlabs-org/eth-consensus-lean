@@ -176,20 +176,21 @@ theorem readPoint_blockStamp (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     rw [((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
     simp at he'
 
-/-- A block accepted before the freeze belongs to an honest vote's frozen domain,
-including genesis. -/
-theorem voterBlockTree_of_acceptedBefore (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+/-- An early accepted block retained in the frame has a strictly early stamp at the
+emission read point, including through restart replay. Unique acceptance excludes a
+late `block` call overwriting that stamp. -/
+theorem readPoint_blockStamp_lt_of_acceptedBefore
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ell e) {B : Blk sp.n FGP}
     (hB : B ∈ ell.frame.tree) (hacc : AcceptedBefore tr y B (freeze sp e.msg.slot))
     (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < freeze sp e.msg.slot)
     (ht : freeze sp e.msg.slot ≤ tr.time i) :
-    B ∈ voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
+    e.readPoint.blockStamp B.root < ETime.of (freeze sp e.msg.slot) := by
   have hPhiU : ell.frame.tree ⊆ U := by
     rcases hr.frameLaw y hy i ell hc.1 with ⟨-, _, -, -, h⟩ | ⟨_, _, -, -, -, h⟩ <;>
       exact h.1.2
   have hstamp := blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hB hacc hrs (Or.inl ht)
-  refine ⟨hB, Or.inl ?_⟩
   rw [readPoint_blockStamp hr hy hc ?_]
   · exact hstamp
   intro C hcall hroot
@@ -200,6 +201,17 @@ theorem voterBlockTree_of_acceptedBefore (hr : ACLocalRun (goldilocksSA sp FGP r
   · exact accept_ne_genesis sp hr hy ⟨ell, hc.1, hcall⟩ hg
   · obtain rfl := accept_unique sp hr hy hk ⟨ell, hc.1, hcall⟩
     exact (not_lt_of_ge ht) hkt
+
+/-- A block accepted before the freeze belongs to an honest vote's frozen domain,
+including genesis. -/
+theorem voterBlockTree_of_acceptedBefore (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksSA sp FGP ro)}
+    {e : Em sp FGP} (hc : CastAt tr y i ell e) {B : Blk sp.n FGP}
+    (hB : B ∈ ell.frame.tree) (hacc : AcceptedBefore tr y B (freeze sp e.msg.slot))
+    (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < freeze sp e.msg.slot)
+    (ht : freeze sp e.msg.slot ≤ tr.time i) :
+    B ∈ voterBlockTree sp e.readPoint ell.frame e.msg.slot :=
+  ⟨hB, Or.inl (readPoint_blockStamp_lt_of_acceptedBefore hr hy hc hB hacc hrs ht)⟩
 
 /-- **A carried vote is a supporter.** A slot-`s` vote that an honest voter of slot `s + 1`
 holds, received before the vote freeze `t_s + 3Δ`, whose head (of slot at most `s`) extends a

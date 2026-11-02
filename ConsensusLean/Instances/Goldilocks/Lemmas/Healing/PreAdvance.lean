@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
@@ -86,6 +87,68 @@ theorem FrameWindow.finalized_below_descendant {lo hi : Time} {floor : Nat}
     have hk := (hframe.kind_iff y hy j hjlo hjhi).mp ⟨hm, hc⟩
     rw [hframe.root_eq y hy j hjlo hjhi hk]
     exact hJ hk
+
+/-- An actual early FG acceptance survives to a later action frame when the common-floor
+witness extends that action's finalized tip. Retention includes restart replay: finalized
+tips at intervening restarts lie below the target tip, hence below Q. -/
+theorem FrameWindow.early_accepted_mem_frame {lo hi : Time} {floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i c : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
+    (hlo : lo ≤ tr.time i) (hhi : tr.time i ≤ hi)
+    {Q : SA.Blk sp.n (List (FG.Att sp.n))} (hQ : Q ∈ (tr.state z c).fg.tree)
+    (hh : floor ≤ ((tr.state z c).fg.σ Q.root).h)
+    (hJ : kindJ → Anc (tr.HonestBlocks H) J Q)
+    {T : Time} (hacc : ∃ k, tr.AcceptAt y k Q ∧ tr.time k < T)
+    (hTi : T ≤ tr.time i) : Q ∈ ell.frame.tree := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  obtain ⟨k, hk, hkt⟩ := hacc
+  obtain ⟨ha, ht, -⟩ := ac_block_after hrun.toLocalRun hy hk
+  have hki : k + 1 ≤ i := by
+    by_contra hn
+    have htime := hr.time_mono (show i ≤ k + 1 by omega)
+    change tr.time i ≤ tr.time (k + 1) at htime
+    rw [ht] at htime
+    linarith
+  apply SA.mem_tree_of_acceptAt sp hr hy ha hki hc
+  rw [Compose.frame_of_projAC hrun hy hc]
+  exact hframe.finalized_below_descendant hrun hnc hf hy hz hz hlo hhi hQ hh hJ hQ
+    Relation.ReflTransGen.refl
+
+/-- Producer form of U-W's vote binder. Actual acceptance before the freeze supplies
+both FG heldness and the strict emission-read-point stamp. The common-floor/J geometry
+is used for retention, rather than assuming arbitrary early blocks survive a restart. -/
+theorem FrameWindow.early_accepted_vote_witness {lo hi : Time} {floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hnr : NoRestartAfter tr H (gbar g))
+    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i c : Nat}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC y i e)
+    (hlo : lo ≤ tr.time i) (hhi : tr.time i ≤ hi)
+    {Q : SA.Blk sp.n (List (FG.Att sp.n))} (hQ : Q ∈ (tr.state z c).fg.tree)
+    (hh : floor ≤ ((tr.state z c).fg.σ Q.root).h)
+    (hJ : kindJ → Anc (tr.HonestBlocks H) J Q)
+    (hacc : ∃ k, tr.AcceptAt y k Q ∧ tr.time k < SA.freeze sp e.msg.slot)
+    (hgf : gbar g < SA.freeze sp e.msg.slot)
+    (hti : SA.freeze sp e.msg.slot ≤ tr.time i) :
+    Q ∈ (tr.state y i).fg.tree ∧
+      e.readPoint.blockStamp Q.root < SA.ETime.of (SA.freeze sp e.msg.slot) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  obtain ⟨ell, hc, he⟩ := hv
+  have hQt := hframe.early_accepted_mem_frame hrun hnc hf hy hz hc hlo hhi hQ hh hJ hacc hti
+  refine ⟨mem_tree_of_frame hrun hy hc hQt, ?_⟩
+  apply SA.readPoint_blockStamp_lt_of_acceptedBefore hr hy ⟨hc, he⟩ hQt
+  · obtain ⟨k, hk, hkt⟩ := hacc
+    obtain ⟨ha, ht, -⟩ := ac_block_after hrun.toLocalRun hy hk
+    exact Or.inr ⟨k + 1, ha, by change tr.time (k + 1) < _; rwa [ht]⟩
+  · intro k _ hrs
+    exact (hnr y hy k (Compose.projAC_restartAt.mp hrs)).trans_lt hgf
+  · exact hti
 
 /-- A common-floor witness above X makes X comparable with the target's finalized tip.
 The witness's source cut is arbitrary. -/
