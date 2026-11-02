@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAdvanceUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.FrameKeepsCover
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Healed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC4
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
@@ -28,7 +29,9 @@ call (`hl hf hB hBl`) and a unanimous slot `u` (`hP hslot hu hPg hun hgu hR htu 
 * `height_advance_healed_c3_upTo`: `height_advance_upTo` with any live fast lock and `hXP`
   from C3; the scheduling premise is `time k + Δ ≤ t`.
 * `live_fast_lock_at_tick_upTo`, `height_advance_healed_tick_upTo`: the same at the cut right
-  after the unanimous tick (no keep interval). -/
+  after the unanimous tick (no keep interval)
+* `frame_facts_of_callAt`, `live_fast_lock_at_next_call_upTo`, `height_advance_healed_next_upTo`:
+  the same at the next AC call after the tick, with state-level frame facts (`FrameKeepsOrRoot`). -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -434,6 +437,110 @@ theorem height_advance_healed_tick_upTo (hrun : GoldilocksRun proposer dg H tr)
     htk hPt hva₀ hlocks (ℓ := ℓ) hkl hPl hval
   exact height_advance_healed_c3_upTo hrun hq hH hs hv hM4 hs₁ hvs hwb hp hvb hcatch hy hc htH
     hl hf hPl hBl hks hh₀ hU hTt hgt hRt htHt htv hkt hs₂ hvs₂ hwb₂ hAX hδ
+
+/-- **The frame facts of an AC call from the state.** At an honest AC call `ℓ` at `k`, if the
+state frame holds `P` and a frame regime keeps it (or `P ⪯ fc_root`), the call's frame holds
+`P` as its own viable ancestor. -/
+theorem frame_facts_of_callAt (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hc : tr.projAC.CallAt y k ℓ)
+    (hP : P ∈ (tr.state y k).fg.toFrame.tree) (hK : Compose.FrameKeepsOrRoot tr y k P) :
+    P ∈ ℓ.frame.tree ∧ ℓ.frame.viableAncestor P = P := by
+  obtain ⟨hfr, -⟩ := hrun.cutLaw y hy k _ (Compose.projAC_callAt.mp hc)
+  rw [hfr]
+  exact ⟨hP, Compose.viableAncestor_eq_self_of_keeps_or_root hrun hy k hP hK⟩
+
+/-- **The live fast lock at the next AC call** (group `hl hf hB hBl` of `height_advance_upTo`).
+The fast lock `⟨P.root, p, true⟩` written by the unanimous update at the tick `k₀` is a live
+fast lock of the AC call `ℓ` at `k > k₀` when `k` is the next AC call of `y` after `k₀`
+(`hnext`), it does not expire at `k` (`hk`; slots are monotone, so no cut of `[k₀+1, k]`
+expires), and at every cut of `[k₀+1, k]` the state frame holds `P` and a frame regime keeps
+it or `P ⪯ fc_root` (`hfk`). -/
+theorem live_fast_lock_at_next_call_upTo (hrun : GoldilocksRun proposer dg H tr) {g : Time}
+    (hS : SA.HealthyBase tr.projAC H (tr.HonestBlocks H) proposer g) {p : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hp4 : SA.gbar g + 4 * sp.Δ ≤ sp.ts p)
+    (hun : Healing.Unanimous tr H p P) (hPg : P.root ≠ sp.genesisRoot)
+    {y : Fin sp.n} (hy : y ∈ H) {k₀ : Nat} {ℓ₀ : ACLabel (goldilocksNode sp ro)}
+    (hc₀ : tr.projAC.CallAt y k₀ ℓ₀) (hcall : ℓ₀.call = .tick)
+    (htk : tr.time k₀ = sp.ts p + 6 * sp.Δ) (hPt : P ∈ ℓ₀.frame.tree)
+    (hva₀ : ℓ₀.frame.viableAncestor P = P)
+    (hlocks : ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y k₀).locks ℓ₀.frame (tr.time k₀),
+      Compatible (tr.HonestBlocks H) L P)
+    {k : Nat} (hk₀k : k₀ < k) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ℓ)
+    (hnext : ∀ j, k₀ < j → j < k → ∀ ℓ', ¬ tr.CallAt y j (.ac ℓ'))
+    (hk : sp.slot (tr.time k) ≤ p + sp.k)
+    (hfk : ∀ j, k₀ + 1 ≤ j → j ≤ k → P ∈ (tr.state y j).fg.toFrame.tree ∧
+      Compose.FrameKeepsOrRoot tr y j P) :
+    ∃ l ∈ SA.liveLocks sp (tr.projAC.state y k).locks ℓ.frame (tr.time k),
+      l.fast = true ∧ P.root = l.block := by
+  have hfk' := hfk k (by omega) le_rfl
+  have hfrk := frame_facts_of_callAt hrun hy hc hfk'.1 hfk'.2
+  refine live_fast_lock_of_healed_upTo hrun hS hp4 hun hPg hy hc₀ hcall htk hPt hva₀ hlocks
+    hk₀k (fun j h1 h2 => ?_) hk hfrk.1 hfrk.2
+  have hfj := hfk j h1 (by omega)
+  refine ⟨le_trans (SA.slot_mono sp (hrun.time_nonneg j) (hrun.time_mono (by omega))) hk,
+    hfj.1, Compose.viableAncestor_eq_self_of_keeps_or_root hrun hy j hfj.1 hfj.2,
+    fun ℓ' hc' => absurd hc' (hnext j (by omega) h2 ℓ')⟩
+
+/-- **One height of advance from the next call after the unanimous tick.**
+`height_advance_healed_c3_upTo` at the next AC call `k` of `y` after the unanimous slot-`pl`
+tick `k₀` (`hnext`), with the live fast lock from `live_fast_lock_at_next_call_upTo`. The frame
+facts at the call (`Pl` in its frame, its own viable ancestor) come from the state-level `hfk`
+at `k`. Open: `hfk` over `[k₀+1, k]`, no expiry `hkl` at `k`, and the scheduling premises
+`hks : time k + Δ ≤ t_{s₁}`, `hkt : time k + Δ ≤ t`. -/
+theorem height_advance_healed_next_upTo (hrun : GoldilocksRun proposer dg H tr)
+    (hq : Hᶜ.ncard < sp.toParams.fg.q)
+    {g ΔF v gR tH b : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hH : HealedUpTo tr H proposer gR tH b h₀ E)
+    (hs : Healing.HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v) {s₀ gM s₁ : Nat}
+    (hM4 : ∀ s, s₀ ≤ s → ∃ s', s ≤ s' ∧ s' < s + gM ∧
+      ∃ P, Healing.HonestProposalRun tr H proposer s' P)
+    (hs₁ : s₀ ≤ s₁) (hvs : v + ΔF ≤ sp.ts s₁) (hwb : ∀ s', s' < s₁ + gM → sp.ts s' ≤ b)
+    {ΔR a : Time} (hp : Healing.ResetPremisesUpTo tr H proposer dg gR ΔR a b) (hvb : v ≤ b)
+    (hcatch : Healing.CatchRun tr H gR (2 * sp.Δ))
+    -- the unanimous tick
+    {gl : Time} (hS : SA.HealthyBase tr.projAC H (tr.HonestBlocks H) proposer gl) {pl : Nat}
+    {Pl : SA.Blk sp.n (List (FG.Att sp.n))} (hp4 : SA.gbar gl + 4 * sp.Δ ≤ sp.ts pl)
+    (hunl : Healing.Unanimous tr H pl Pl) (hPgl : Pl.root ≠ sp.genesisRoot)
+    {y : Fin sp.n} (hy : y ∈ H) {k₀ : Nat} {ℓ₀ : ACLabel (goldilocksNode sp ro)}
+    (hc₀ : tr.projAC.CallAt y k₀ ℓ₀) (hcall : ℓ₀.call = .tick)
+    (htk : tr.time k₀ = sp.ts pl + 6 * sp.Δ) (hPt : Pl ∈ ℓ₀.frame.tree)
+    (hva₀ : ℓ₀.frame.viableAncestor Pl = Pl)
+    (hlocks : ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y k₀).locks ℓ₀.frame (tr.time k₀),
+      Compatible (tr.HonestBlocks H) L Pl)
+    -- the next AC call after the tick
+    {k : Nat} (hk₀k : k₀ < k) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ℓ)
+    (hnext : ∀ j, k₀ < j → j < k → ∀ ℓ', ¬ tr.CallAt y j (.ac ℓ'))
+    (htH : tH ≤ tr.time k) (hkl : sp.slot (tr.time k) ≤ pl + sp.k)
+    (hfk : ∀ j, k₀ + 1 ≤ j → j ≤ k → Pl ∈ (tr.state y j).fg.toFrame.tree ∧
+      Compose.FrameKeepsOrRoot tr y j Pl)
+    (hks : tr.time k + sp.Δ ≤ sp.ts s₁)
+    (hh₀ : h₀ + 1 ≤ ((tr.state y k).fg.σ Pl.root).h)
+    -- the unanimous slot
+    {T Bw : Time} (hU : Regimes.UnanimousWithin tr H proposer T Bw) {t : Time} (hTt : T ≤ t)
+    (hgt : SA.gbar gR + 4 * sp.Δ ≤ t) (hRt : Healing.drainTime sp a ≤ t) (htHt : tH ≤ t)
+    (htv : t + Bw + 6 * sp.Δ ≤ v) (hkt : tr.time k + sp.Δ ≤ t)
+    -- v, the windows, the link and the slot condition
+    {s₂ : Nat} (hs₂ : s₀ ≤ s₂) (hvs₂ : v + sp.Δ ≤ sp.ts s₂)
+    (hwb₂ : ∀ s, s < s₂ + gM → sp.ts s ≤ b) {A : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hAX : ∀ X ∈ (tr.state y k).fg.tree,
+      X.root = ((tr.state y k).fg.σ Pl.root).Th → Anc (tr.HonestBlocks H) A X)
+    (hδ : ∀ X ∈ (tr.state y k).fg.tree,
+      X.root = ((tr.state y k).fg.σ Pl.root).Th →
+        s₂ + gM ≤ X.slot + sp.toParams.fg.δt + 1) :
+    ∃ s, min s₁ s₂ ≤ s ∧ s < max s₁ s₂ + gM ∧ ∃ P',
+      Healing.HonestProposalRun tr H proposer s P' ∧ ∃ kp, tr.ProposesAt (proposer s) kp P' ∧
+        P' ∈ (tr.post kp).fg.tree ∧ Anc (tr.HonestBlocks H) A P' ∧
+        ∀ w ∈ H, ∀ j, P' ∈ (tr.state w j).fg.tree →
+          ((tr.state w j).fg.σ A.root).h + 1 ≤ ((tr.state w j).fg.σ P'.root).h := by
+  have hfk' := hfk k (by omega) le_rfl
+  have hfrk := frame_facts_of_callAt hrun hy hc hfk'.1 hfk'.2
+  obtain ⟨l, hl, hf, hBl⟩ := live_fast_lock_at_next_call_upTo hrun hS hp4 hunl hPgl hy hc₀
+    hcall htk hPt hva₀ hlocks hk₀k hc hnext hkl hfk
+  exact height_advance_healed_c3_upTo hrun hq hH hs hv hM4 hs₁ hvs hwb hp hvb hcatch hy hc htH
+    hl hf hfrk.1 hBl hks hh₀ hU hTt hgt hRt htHt htv hkt hs₂ hvs₂ hwb₂ hAX hδ
 
 end Consensus.Goldilocks.Refinement
 
