@@ -49,6 +49,86 @@ variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a : Time}
 
+/-- Every later archival record has an exact recent source before its cut,
+even if advancing finalization has removed it from the filtered frame. -/
+theorem archival_record_source_after_operational_update {b : Time}
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
+    (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
+    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hup : SA.UpdateAt tr.projAC y j u ell) {n : Nat} (hjn : j < n) :
+    ∃ C ∈ (tr.state y n).fg.tree,
+      C.root = (tr.state y n).ac.latestConfirmed ∧
+      ∃ l, u ≤ l ∧ Compose.OriginBefore tr H C l n := by
+  classical
+  have hind : ∀ m, j + 1 ≤ m →
+      ∃ C ∈ (tr.state y m).fg.tree,
+        C.root = (tr.state y m).ac.latestConfirmed ∧
+        ∃ l, u ≤ l ∧ Compose.OriginBefore tr H C l m := by
+    intro m hm
+    induction m, hm using Nat.le_induction with
+    | base =>
+      obtain ⟨hPt, _, _, _, _, hrecord⟩ :=
+        operational_update_selection hp hc hpH hdesignated hactual hPs hR hgu hTb hy hup
+      have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer
+        hp.run hp.noColl).localRun
+      have hc' := Compose.projAC_callAt.mp hup.1
+      have hlaw := hp.run.toLocalRun.cutLaw y hy j _ hc'
+      have hframe : Node.frame (tr.state y (j + 1)) = ell.frame := by
+        rw [tr.state_succ_of_call hc', hlaw.1]
+        exact congrArg Store.toFrame hlaw.2.2.1
+      have hstate := Compose.projAC_state hp.run.toLocalRun hy (j + 1)
+      rw [tr.projAC.state_succ_of_call hup.1] at hstate
+      have hex : ∃ C ∈ ell.frame.tree,
+          C.root = (tr.projAC.post j).latestConfirmed := by
+        rw [hrecord]
+        by_cases hguard : SA.AncR ell.frame P (tr.projAC.state y j).latestConfirmed
+        · simp only [SA.updateLatestConfirmed, ite_eq_left hguard]
+          obtain ⟨C, hC, hCr, _⟩ := hguard
+          exact ⟨C, hC, hCr⟩
+        · exact ⟨P, hPt, by simp only [SA.updateLatestConfirmed, ite_eq_right hguard]⟩
+      obtain ⟨C, hC, hCr⟩ := hex
+      have hlookup : SA.lookup ell.frame (tr.projAC.post j).latestConfirmed = some C := by
+        cases hk : SA.lookup ell.frame (tr.projAC.post j).latestConfirmed with
+        | none => exact False.elim (SA.lookup_eq_none hk ⟨C, hC, hCr⟩)
+        | some B =>
+          obtain ⟨hB, hBr⟩ := SA.lookup_eq_some hk
+          exact congrArg some ((SA.frameIn_of_callAt hr hy hup.1).1.coherent.1
+            hB hC (hBr.trans hCr.symm))
+      rw [← hframe, hstate] at hlookup
+      obtain ⟨x, hx, q, s, CV, hqj, -, hs, hsource⟩ :=
+        operational_update_recent_source hp hc hpH hdesignated hactual hPs hR hgu hTb
+          hy hup hlookup
+      refine ⟨C, ?_, hCr.trans (congrArg SA.SAState.latestConfirmed hstate), s, hs,
+        Compose.originBefore_iff.2 ⟨x, hx, q, by omega, CV, hsource⟩⟩
+      rw [← hframe] at hC
+      exact hC.1
+    | succ m hjm ih =>
+      have htree := Compose.tree_mono hp.run.toLocalRun hy (Nat.le_succ m)
+      rcases Compose.record_step_origin hp.run hy m with heq | ⟨B, hB, hBr, s, CV, hsource⟩
+      · obtain ⟨C, hC, hCr, s, hs, hsource⟩ := ih
+        obtain ⟨x, hx, q, hqm, CV, hsource⟩ := Compose.originBefore_iff.1 hsource
+        exact ⟨C, htree hC, hCr.trans heq.symm, s, hs,
+          Compose.originBefore_iff.2 ⟨x, hx, q, by omega, CV, hsource⟩⟩
+      · have htime : sp.ts u + 6 * sp.Δ ≤ tr.time m := by
+          rw [← hup.2.2.1]
+          exact hp.run.time_mono (by omega)
+        have hus : u ≤ s := by
+          rcases hsource with ⟨e, hu, _⟩ | ⟨e, A, ho, hslot, _⟩
+          · have ht : tr.time m = sp.ts s + 6 * sp.Δ := hu.2.2.1
+            have := (SA.ts_le_iff sp).mp (show sp.ts u ≤ sp.ts s by linarith)
+            omega
+          · have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg m) u).mp
+              (show sp.ts u ≤ tr.time m by linarith [sp.toParams.hΔ])
+            change sp.slot (tr.time m) = s at hslot
+            omega
+        exact ⟨B, htree hB, hBr, s, hus,
+          Compose.originBefore_iff.2 ⟨y, hy, m, Nat.lt_succ_self _, CV, hsource⟩⟩
+  exact hind n (by omega)
+
 /-- Every later successful record lookup has an exact raw or optimistic source
 at least as recent as the operational update. No current-read geometry is used. -/
 theorem record_source_after_operational_update {b : Time}
@@ -65,42 +145,15 @@ theorem record_source_after_operational_update {b : Time}
       (tr.state y n).ac.latestConfirmed = some R) :
     ∃ x ∈ H, ∃ q s CV, q < n ∧ u ≤ s ∧
       (SA.ResultAt tr.projAC x q s R CV ∨ SA.OptimisticLockAt tr.projAC x q s R CV) := by
-  have hU := hp.honest_coherent
-  have hind : ∀ m, j + 1 ≤ m → ∀ R,
-      SA.lookup (Node.frame (tr.state y m)) (tr.state y m).ac.latestConfirmed = some R →
-      ∃ x ∈ H, ∃ q s CV, q < m ∧ u ≤ s ∧
-        (SA.ResultAt tr.projAC x q s R CV ∨ SA.OptimisticLockAt tr.projAC x q s R CV) := by
-    intro m hm
-    induction m, hm using Nat.le_induction with
-    | base =>
-      intro R hlookup
-      obtain ⟨x, hx, q, s, CV, hqj, -, hs, hsource⟩ :=
-        operational_update_recent_source hp hc hpH hdesignated hactual hPs hR hgu hTb
-          hy hup hlookup
-      exact ⟨x, hx, q, s, CV, by omega, hs, hsource⟩
-    | succ m hjm ih =>
-      intro R hlookup
-      rcases Compose.record_step_origin hp.run hy m with heq | ⟨B, hB, hBr, s, CV, hsource⟩
-      · obtain ⟨x, hx, q, s, CV, hqm, hs, hsource⟩ :=
-          ih R (record_lookup_of_later hp.run hp.noColl hy (Nat.le_succ m) heq hlookup)
-        exact ⟨x, hx, q, s, CV, by omega, hs, hsource⟩
-      · obtain ⟨hRm, hRr⟩ := SA.lookup_eq_some hlookup
-        have hRB : R = B := hU.1 ⟨y, hy, m + 1, hRm.1⟩ ⟨y, hy, m, hB⟩
-          (hRr.trans hBr.symm)
-        have htime : sp.ts u + 6 * sp.Δ ≤ tr.time m := by
-          rw [← hup.2.2.1]
-          exact hp.run.time_mono (by omega)
-        have hus : u ≤ s := by
-          rcases hsource with ⟨e, hu, _⟩ | ⟨e, A, ho, hslot, _⟩
-          · have ht : tr.time m = sp.ts s + 6 * sp.Δ := hu.2.2.1
-            have := (SA.ts_le_iff sp).mp (show sp.ts u ≤ sp.ts s by linarith)
-            omega
-          · have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg m) u).mp
-              (show sp.ts u ≤ tr.time m by linarith [sp.toParams.hΔ])
-            change sp.slot (tr.time m) = s at hslot
-            omega
-        exact ⟨y, hy, m, s, CV, Nat.lt_succ_self _, hus, hRB ▸ hsource⟩
-  exact hind n (by omega) R hlookup
+  obtain ⟨C, hC, hCr, s, hs, hsource⟩ :=
+    archival_record_source_after_operational_update hp hc hpH hdesignated hactual hPs
+      hR hgu hTb hy hup hjn
+  obtain ⟨hR, hRr⟩ := SA.lookup_eq_some hlookup
+  have heq : C = R := hp.honest_coherent.1 ⟨y, hy, n, hC⟩ ⟨y, hy, n, hR.1⟩
+    (hCr.trans hRr.symm)
+  subst C
+  obtain ⟨x, hx, q, hq, CV, hsource⟩ := Compose.originBefore_iff.1 hsource
+  exact ⟨x, hx, q, s, CV, hq, hs, hsource⟩
 
 /-- A comparable bounded high seed, held whenever it is above finalization,
 supplies current candidacy. A local signed entry witnesses any higher floor. -/
