@@ -499,6 +499,37 @@ theorem lock_origin_readPoint (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy 
   · exact good_movesBack hU hΦU (((locks_move_back sp) FGP _ _ _ hΦ).2.2 _ _) hPl
   · exact hPl
 
+/-- A current-label read lock is below the common head of the strictly earlier
+honest casts. The strict cut comes from the read point, not from an arbitrary
+optimistic write (which may include its own post-cast admission). This is the
+local causal step; it does not assume future unanimity or close the induction. -/
+theorem current_read_lock_below_of_earlier_heads (hrun : ACRun proposer tr H U)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ell e) {l : Lock} (hl : l ∈ e.readPoint.locks)
+    (hs : l.slot = e.msg.slot) {P : Blk sp.n FGP} (hP : P ∈ U)
+    (hIH : ∀ x ∈ H, ∀ k < i, ∀ e', VoteAt tr x k e' →
+      e'.msg.slot = e.msg.slot → e'.msg.head = P.root)
+    {B : Blk sp.n FGP} (hB : B ∈ U) (hBr : B.root = l.block) : Anc U B P := by
+  obtain ⟨Φ, A, D, -, hΦU, -, hcnt, hpool, -, L, hL, hLr, hLD⟩ :=
+    lock_origin_readPoint hrun hy hc l hl (by omega)
+  obtain rfl : L = B := hrun.localRun.coherent.1 hL hB (hLr.trans hBr.symm)
+  obtain ⟨z, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hz⟩ :
+      ∃ z ∈ optimisticVoters sp A Φ l.slot D, z ∈ H := by
+    by_contra hn
+    push Not at hn
+    have hsub : optimisticVoters sp A Φ l.slot D ⊆ Hᶜ := fun z hz => hn z hz
+    have hle := Set.ncard_le_ncard hsub (Set.toFinite _)
+    have hn := sp.toParams.hn
+    change 0 < sp.n at hn
+    omega
+  obtain ⟨hvs, k, hki, e', he', hmsg⟩ := hpool v hv hz
+  have hhead := hIH v.val hz k hki e' he' (by rw [hmsg, hvs, hs])
+  have hRP : R = P := hrun.localRun.coherent.1 (hΦU hR) hP
+    (hRr.trans (by rw [← hmsg]; exact hhead))
+  exact hLD.trans (hRP ▸ hDR.mono hΦU)
+
 end Consensus.Goldilocks.SA
 
 end

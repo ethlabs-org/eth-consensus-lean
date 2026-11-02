@@ -76,6 +76,48 @@ theorem anc_getHead {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Frm sp.n FG
     ⟨hdomA C hCdom Cx hCxC, (hfa.trans haX).tail e, W, hWdom, hW, hCxC.trans hCW⟩
   exact ⟨Cx, hbest X Cx hCx e.2.2 hCxC, hCxC⟩
 
+/-- Below a common finalized ancestor of all viable heads, the viable-domain
+path is forced by geometry alone. No supporter or score bound is needed. -/
+theorem isBest_of_viable_floor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+    {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
+    {F X C : Blk sp.n FGP}
+    (hfloor : ∀ Q ∈ Φ.viableHeads, Φ.Anc F Q)
+    (hXF : Φ.Anc X F) (hne : X ≠ F)
+    (hC : C ∈ Φ.viableTree dom) (hp : C.parent = some X.root)
+    (hCF : Φ.Anc C F) (V : View sp.n) (t : Time) (σ : Int) :
+    IsBest sp (goldfishScore sp Φ V σ)
+      {B | B ∈ Φ.viableTree dom ∧ B.parent = some X.root ∧
+        goldfishEligible sp Φ t V σ B} C := by
+  have hCt := hdom hC.1
+  have hXt : X ∈ Φ.tree := (Anc.mem hXF hne).1
+  have hel : goldfishEligible sp Φ t V σ C := by
+    left
+    rintro ⟨Q, hQ, hpar⟩
+    have he : Q = X := hΦ.coherent.1 (hΦ.viableHeads_subset hQ) hXt
+      (Option.some.inj (hpar.symm.trans hp))
+    subst Q
+    exact hne (Anc.antisymm hΦ.coherent hXF (hfloor X hQ))
+  refine ⟨⟨hC, hp, hel⟩, fun D hD hDC => ?_⟩
+  have hDt := hdom hD.1.1
+  obtain ⟨Q, _, hQ, hDQ⟩ := hD.1.2.2
+  have hcomp : Compatible Φ.tree D C := by
+    rcases Anc.total hΦ.coherent hDQ (hfloor Q hQ) with hDF | hFD
+    · exact Anc.total hΦ.coherent hDF hCF
+    · exact Or.inr (hCF.trans hFD)
+  have key : ∀ {B B' : Blk sp.n FGP}, B ∈ Φ.tree →
+      B.parent = some X.root → B'.parent = some X.root → Φ.Anc B B' → B = B' := by
+    intro B B' hB hpB hpB' hBB'
+    by_contra hn
+    rcases Relation.ReflTransGen.cases_tail hBB' with he | ⟨Y, hBY, e⟩
+    · exact hn he.symm
+    · have hYr : Y.root = X.root := Option.some.inj (e.2.2.symm.trans hpB')
+      have hlt := hΦ.coherent.2 Y e.1 B hB
+        (hpB.trans (congrArg some hYr.symm))
+      have := (Anc.slot_le hΦ.coherent hBY).1
+      omega
+  exact (hDC (hcomp.elim (key hDt hD.2.1 hp)
+    (fun h => (key hCt hp hD.2.1 h).symm))).elim
+
 end Consensus.Goldilocks.SA
 
 end

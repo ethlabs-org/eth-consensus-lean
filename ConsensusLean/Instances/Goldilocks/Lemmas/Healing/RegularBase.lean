@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OptimisticBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 
 public section
 
@@ -695,6 +696,192 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
     (hm₀.trans hts) hpb hsub hy hop hAD ha hQ hh hJ (hAQ.mono hW.2) p hold le_rfl).2
       z hz ip ellp hcp hcall hti d pay hd
   exact Or.inl (hBA.trans (hAP.trans hHP))
+
+/-- All actual read locks are below P under the strict earlier-cast IH. The
+regular passage is unconditional; only its exact current-label alternative
+uses causal minimality. This is the input to Step 5, not head equality itself. -/
+theorem FrameWindow.read_locks_below_of_earlier_heads {s₀ p floor : Nat}
+    {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts p + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hsp : s₀ ≤ p) (hp0 : 0 < p)
+    (hpb : sp.ts p + sp.Δ ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer p)
+    {k : Nat} (hactual : tr.ProposesAt z k P) (hPs : P.slot = p)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
+    (hmargin : s₀ + 2 * sp.k ≤ p)
+    (hIH : ∀ x ∈ H, ∀ j < i, ∀ e', SA.VoteAt tr.projAC x j e' →
+      e'.msg.slot = p → e'.msg.head = P.root)
+    {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hlive : p ≤ l.slot + sp.k)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ell.frame.tree)
+    (hBr : B.root = l.block) : Anc (tr.HonestBlocks H) B P := by
+  obtain ⟨-, hdom, hpass⟩ := hframe.current_lock_passage_of_regular_base hrun hnc hsvc
+    hawake hf hcatch hnr hm hsp hp0 hpb hz hdesignated hactual hPs hy hc hes
+    hmargin hl hlive hB hBr
+  rcases hpass with h | ⟨hs, -⟩
+  · exact h
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hPhi := SA.frameIn_of_callAt hac.localRun hy hc.1
+  exact SA.current_read_lock_below_of_earlier_heads hac hf hy hc hl (hs.trans hes.symm)
+    (hPhi.2 hdom.1.1) (fun x hx j hj e' he' hs' => hIH x hx j hj e' he' (hs'.trans hes))
+    (hPhi.2 hB) hBr
+
+/-- Finite frame transport for Step 5. The receiver's finalized-ancestor guard
+is explicit; old acceptances use Catch and newer ones use their relay deadline.
+No settled phase, shared finalized root or frame equality is required. -/
+theorem frame_relay_before
+    (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
+    (hnr : NoRestartAfter tr H (gbar g))
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
+    {ellx elly : ACLabel (goldilocksNode sp ro)}
+    (hcx : tr.projAC.CallAt x q ellx) (hcy : tr.projAC.CallAt y j elly)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ellx.frame.tree)
+    (hg : gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hq : tr.time q + sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
+    (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
+  have hr := hS.run.localRun
+  rcases Compose.frame_anc_accepted hr hx q ellx hcx B hB B .refl with
+      hgen | ⟨k, hk, ha⟩
+  · obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy j elly hcy
+    obtain rfl : B = G := hr.coherent.1 ((SA.frameIn_of_callAt hr hx hcx).2 hB)
+      hGU (hgen.trans hGr.symm)
+    rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩
+    · exact he ▸ (SA.frameIn_of_callAt hr hy hcy).1.rooted.1
+    · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
+  have hkt : tr.time k + sp.Δ ≤ tr.time j := by
+    have := hr.time_mono hk
+    change tr.time k ≤ tr.time q at this
+    linarith
+  by_cases hnew : gbar g ≤ tr.time k
+  · have hdl : tr.projAC.deadline y j (tr.time k) ≤ tr.time j := by
+      have hd := deadline_le_restarts (T := tr.projAC) (c := j)
+        (fun r _ hrs => hnr y hy r (Compose.projAC_restartAt.mp hrs)) (tr.time k)
+      change _ ≤ max (tr.time k) (gbar g) + sp.Δ at hd
+      rw [max_eq_left hnew] at hd
+      exact hd.trans hkt
+    obtain ⟨a, haj, hacc, -⟩ := hS.sync.relay x hx k B ha hnew y hy j elly hcy
+      (hdl.trans hjb) hdl hF
+    exact SA.mem_tree_of_acceptAt sp hr hy hacc haj hcy hF
+  · obtain ⟨a, haj, hacc, -⟩ := hS.catchUp.relay x hx k B ha (not_le.mp hnew)
+      y hy j elly hcy hg hjb hF
+    exact SA.mem_tree_of_acceptAt sp hr hy hacc haj hcy hF
+
+/-- The finite Step 2 view comparison at an actual cast. Pre-freeze blocks
+relay to the proposer; payload support heads are held at an early ready cast
+or relay by the deadline. The statement has no settled/phase assumption. -/
+theorem proposal_views_agree_before
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
+    (hnr : NoRestartAfter tr H (gbar g)) {s : Nat}
+    (hm : gbar g + 2 * sp.Δ ≤ sp.ts s)
+    {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1))
+    {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)} {pay : Payload sp.n}
+    (hp : SA.ProposalAt tr.projAC z ip ellp pay) (hti : tr.time ip = sp.ts (s + 1 : Nat))
+    (hpay : P.acPayload = pay)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {elly : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
+    (hP : P ∈ elly.frame.tree) (hjb : tr.time j ≤ b) :
+    SA.equivocators (SA.View.ofLists pay).votes =
+        SA.equivocators (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)).votes ∧
+      SA.voters (SA.View.ofLists pay).votes =
+        SA.voters (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)).votes ∧
+      ∀ X ∈ ellp.frame.tree, X ∈ elly.frame.tree →
+        SA.supporters ellp.frame (SA.View.ofLists pay) s X =
+          SA.supporters elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s X := by
+  have hr := hS.run.localRun
+  have hΔ := sp.toParams.hΔ
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hslot := (SA.castAt_spec hr hy hc).2.1.symm.trans hes
+  have hjlo : sp.ts (s + 1 : Nat) ≤ tr.time j :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by rw [hslot])
+  have hipb : tr.time ip ≤ b := by rw [hti]; exact hjlo.trans hjb
+  have hPhiY := SA.frameIn_of_callAt hr hy hc.1
+  have hPhiP := SA.frameIn_of_callAt hr hz hp.1
+  apply SA.view_agree_window_before hS.run hz hy hdesignated hp hti hc
+    ⟨P, hP, hPs, hpay⟩ (SA.serviceWindowBefore_of_sync hS.sync) (by linarith) hipb
+  · intro B hB _ hstamp hFB
+    rw [SA.readPoint_blockStamp_eq hr hy hc] at hstamp
+    rcases stamp_origin hr hy j elly hc.1 B hB with hg | ⟨q, -, ellq, hq, hBq, hsq⟩
+    · obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hz ip ellp hp.1
+      obtain rfl : B = G := hr.coherent.1 (hPhiY.2 hB) hGU (hg.trans hGr.symm)
+      rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hFB with he | ⟨c, _, hpar⟩
+      · exact he ▸ hPhiP.1.rooted.1
+      · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
+    have hqt : tr.time q < sp.ts s + 3 * sp.Δ := by
+      rw [hsq] at hstamp
+      have ht := WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hstamp)
+      change tr.time q < SA.freeze sp (s + 1) at ht
+      simpa only [SA.freeze, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] using ht
+    exact frame_relay_before hS hnr hy hz hq hp.1 hBq
+      (by rw [hti, hts]; linarith) (by rw [hti, hts]; linarith) hipb hFB
+  · intro v hv B hB hBr hFB
+    by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
+    · obtain ⟨P', hP', hPs', hsup⟩ := SA.cast_ready hr hy hc (by rw [hes]; exact hearly)
+      rw [hes] at hPs' hsup
+      obtain rfl := proposal_frame_unique hrun hnc hz hdesignated hactual hPs
+        (by omega) hy hc.1 hP' hPs'
+      have hvs : v.slot + 1 = s + 1 := by
+        obtain ⟨d, hd⟩ := hp.2.2
+        have hpayeq : pay = SA.voteViewList (tr.projAC.state z ip) ellp.frame
+            ((sp.slot (tr.time ip) : Int) - 1) ⊤ := by
+          unfold SA.acProposal at hd
+          split_ifs at hd
+          simp only [Option.some.injEq, Prod.mk.injEq] at hd
+          exact hd.2.symm
+        have hsi : sp.slot (tr.time ip) = s + 1 := SA.proposal_slot (tr := tr.projAC) hti
+        rw [hpayeq, hsi] at hv
+        simp only [show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega,
+          SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
+          List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
+          Bool.and_eq_true, decide_eq_true_eq] at hv
+        rw [SA.state_pool_slot sp hr hz ip s v hv.1]
+      obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
+      rwa [hr.coherent.1 (hPhiP.2 hB) (hPhiY.2 hB') (hBr.trans hBr'.symm)]
+    · exact frame_relay_before hS hnr hz hy hp.1 hc.1 hB
+        (by linarith) (by rw [hti]; exact not_lt.1 hearly) hjb hFB
+
+/-- The unequal-finalized-root prefix in Step 5 is forced by V/V_U, not
+by prior-slot unanimity. Every viable descendant at the walking cut extends
+the other honest finalized tip under the common FS′ floor. -/
+theorem FrameWindow.isBest_below_finalized {lo hi : Time} {floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i c : Nat}
+    (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
+    (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z c ell)
+    {dom : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hdom : dom ⊆ ell.frame.tree)
+    {X C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hXF : ell.frame.Anc X (tr.state y i).fg.F) (hne : X ≠ (tr.state y i).fg.F)
+    (hC : C ∈ ell.frame.viableTree dom) (hp : C.parent = some X.root)
+    (hCF : ell.frame.Anc C (tr.state y i).fg.F)
+    (V : SA.View sp.n) (t : Time) (s : Int) :
+    SA.IsBest sp (SA.goldfishScore sp ell.frame V s)
+      {B | B ∈ ell.frame.viableTree dom ∧ B.parent = some X.root ∧
+        SA.goldfishEligible sp ell.frame t V s B} C := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hPhi := SA.frameIn_of_callAt hac.localRun hz hc
+  apply SA.isBest_of_viable_floor hPhi.1 hdom _ hXF hne hC hp hCF V t s
+  intro Q hQ
+  have hvQ := hQ
+  rw [Compose.frame_of_projAC hrun hz hc] at hvQ
+  exact SA.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2
+    (Anc.mem hXF hne).2
+    (hframe.finalized_below_viable hrun hnc hf hy hz hilo hihi hclo hchi hvQ)
+    (hPhi.1.viableHeads_subset hQ)
 
 end Consensus.Goldilocks.Healing
 

@@ -336,6 +336,42 @@ private theorem view_agree_of_forward (hrun : ACRun proposer tr H U)
       rw [hblk Q hQ hQs] at hx
       exact hPsup ▸ hx
 
+/-- View agreement needs service only from the previous slot through the
+proposal deadline. The two block-delivery premises are exactly the relay/Catch
+obligations; no settled phase or equality of the frame trees is assumed. -/
+theorem view_agree_window_before (hrun : ACRun proposer tr H U)
+    {s : Nat} {p y : Fin sp.n} {i j : Nat}
+    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
+    (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
+    (hc : CastAt tr y j ℓy e)
+    (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
+    {a b : Time} (hsync : ServiceWindowBefore H U a b tr)
+    (ha : a ≤ sp.ts s) (hb : tr.time i ≤ b)
+    (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
+      e.readPoint.blockStamp Hd.root < ETime.of (freeze sp (s + 1)) → Anc U ℓp.frame.F Hd →
+        Hd ∈ ℓp.frame.tree)
+    (hpy : ∀ x ∈ pay.2, ∀ Hd ∈ ℓp.frame.tree, Hd.root = x.head → Anc U ℓy.frame.F Hd →
+      Hd ∈ ℓy.frame.tree) :
+    equivocators (View.ofLists pay).votes =
+        equivocators (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes ∧
+      voters (View.ofLists pay).votes =
+        voters (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes ∧
+      ∀ X ∈ ℓp.frame.tree, X ∈ ℓy.frame.tree →
+        supporters ℓp.frame (View.ofLists pay) s X =
+          supporters ℓy.frame (mergedVoteView sp e.readPoint ℓy.frame (s + 1)) s X := by
+  refine view_agree_of_forward hrun hp hy hpp hprop hti hc hP ?_ hyp hpy
+  intro k v hsend hsk htk hvs hrs
+  have hΔ := sp.toParams.hΔ
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hdl : tr.time k + sp.Δ ≤ tr.time i := by rw [hti, hts]; linarith
+  have h := sync_window_before_forward hrun.localRun hsync hy hsend (ha.trans hsk)
+    (hdl.trans hb) hp hprop.1
+    (fun k' hk' hr' => (hrs k' hk' hr').trans hsk) hdl fun t h₁ h₂ => by
+      rw [slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith), hvs]; omega
+  simpa only [hvs] using h
+
 /-- View agreement needs service only through the proposal cut. -/
 theorem view_agree_before (hrun : ACRun proposer tr H U) {s : Nat} {p y : Fin sp.n} {i j : Nat}
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
@@ -355,17 +391,10 @@ theorem view_agree_before (hrun : ACRun proposer tr H U) {s : Nat} {p y : Fin sp
         voters (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes ∧
       ∀ X ∈ ℓp.frame.tree, X ∈ ℓy.frame.tree →
         supporters ℓp.frame (View.ofLists pay) s X =
-          supporters ℓy.frame (mergedVoteView sp e.readPoint ℓy.frame (s + 1)) s X := by
-  refine view_agree_of_forward hrun hp hy hpp hprop hti hc hP ?_ hyp hpy
-  intro k v hsend hsk htk hvs hrs
-  have hΔ := sp.toParams.hΔ
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  have hdl : tr.time k + sp.Δ ≤ tr.time i := by rw [hti, hts]; linarith
-  have h := sync_before_forward hrun.localRun hsync hy hsend (hdl.trans hb) hp hprop.1
-    (fun k' hk' hr' => (hrs k' hk' hr').trans hsk) hdl fun t h₁ h₂ => by
-      rw [slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith), hvs]; omega
-  simpa only [hvs] using h
+          supporters ℓy.frame (mergedVoteView sp e.readPoint ℓy.frame (s + 1)) s X :=
+  view_agree_window_before hrun hp hy hpp hprop hti hc hP
+    ⟨hsync.message, hsync.relay⟩
+    (by have := sp.toParams.hΔ; simp only [SAParams.ts]; positivity) hb hyp hpy
 
 /-- The original source-window service also suffices for view agreement. -/
 theorem view_agree (hrun : ACRun proposer tr H U) {s : Nat} {p y : Fin sp.n} {i j : Nat}
