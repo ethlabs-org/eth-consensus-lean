@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppliers
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyConfirmedEndpoint
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyResetEnvelope
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -8,7 +10,7 @@ open Blocks Shape
 variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
 
-/-- OPEN Healthy selected-proposal service. This is a joint existential, not
+/-- Healthy selected-proposal service. This is a joint existential, not
 coverage of every ready proposal before the deadline. Exact cDur readiness,
 freshness and the actual proposal/acceptance event are retained. Finite Healthy
 preparation and frozen service must produce this witness; the endpoint acquires
@@ -23,8 +25,8 @@ theorem healthy_confirmed_supply (Q : ConfirmedQuery S A V)
       ∀ y j, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration y Q.deadline →
         Regimes.CutAfter Q.trace j Q.deadline →
         Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) P.block
-          (Regimes.readAfter Q.trace y j Q.deadline) := by
-  sorry
+          (Regimes.readAfter Q.trace y j Q.deadline) :=
+  healthy_confirmed_supply_of_initializer S A V Q hh hp ht (healthy_preparation_initialize S A V)
 
 /-- The common projection is proved from actual production and selected coverage.
 Both regimes retain their own cap/index budget and the engine-scaled deadline. -/

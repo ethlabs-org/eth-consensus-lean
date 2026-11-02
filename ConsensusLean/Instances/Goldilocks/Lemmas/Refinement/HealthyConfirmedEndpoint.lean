@@ -7,7 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 /-! # The healthy confirmed-supply endpoint from the preparation initializer
 
 `healthy_confirmed_supply_of_initializer` proves the statement of `healthy_confirmed_supply`
-from the type of the open initializer `healthy_preparation_initialize`, taken as a hypothesis.
+from the type of the initializer `healthy_preparation_initialize`, taken as a hypothesis.
 Everything else is produced here or landed:
 
 * `UpTo.operational_update_fresh_lock`: at every actual honest update of an actual post-drain
@@ -23,8 +23,8 @@ Everything else is produced here or landed:
   later-read continuation is the variant above at the end-of-time cuts of `t_u + 6Δ` and the
   deadline (paper: workbench `healthy_confirmed_supply.md`, A1–A3).
 
-The endpoint is conditional on the initializer and is not wired into
-`healthy_confirmed_supply`; that leaf keeps its own `sorry` until the initializer is proved. -/
+`healthy_confirmed_supply` (NonfinalEndpoints) applies it to the proved initializer
+(`HealthyResetEnvelope`). -/
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -161,9 +161,8 @@ private theorem confirmed_cutAfter_unique (Q : ConfirmedQuery S A V) {i j : Nat}
   · exact absurd (hi.1 j h) (not_le.2 hj.2)
 
 /-- **The healthy confirmed supply, conditional on the preparation initializer.** The statement
-of `healthy_confirmed_supply`, with one more hypothesis: the type of the open initializer
-`healthy_preparation_initialize`. It does not close that initializer, and it does not close
-`healthy_confirmed_supply`, which keeps its own `sorry` until the initializer is proved. -/
+of `healthy_confirmed_supply`, with one more hypothesis: the type of the initializer
+`healthy_preparation_initialize`, which `healthy_confirmed_supply` supplies. -/
 theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
     (hh : (Sys (family S) V).Healthy (K S A) Q.gst Q.run)
     (hp : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A)
