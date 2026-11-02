@@ -22,9 +22,9 @@ from `cutZ_fit_of_catchUp`. The kernel's frame ends before `B = ready + R·Δ`, 
 only up to heal, given the fit `ready + R·Δ + r ≤ heal`. This module stays upstream of
 `FinalWindowDefs` and `HealedSafety`.
 
-The fit `hfit` and the drain `hdrain` are inputs of this intermediate form only: the fit is the
-window fit of the heal coefficient (S6), the drain W1's producer at `healthyDrainLen`. Neither is a
-premise of the leaf. -/
+The fit `hfit` of `healthy_reset_envelope_of_fit` is the window fit of the heal coefficient,
+`healthy_reset_fit` (S6), so `healthy_reset_envelope_of_drain` takes only the drain at
+`healthyDrainLen`. -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -113,6 +113,46 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
     (by linarith) ⟨j, hj, hjt⟩, ?_⟩
   rw [hBeq] at hab
   linarith
+
+/-- **The window fit before heal** (S6): `ready + R·Δ + r ≤ heal` at every query, from the
+coefficient inequality `accepted_heal_ge_reset` alone. With engine delay `d ≥ 1`, `Δ = d + 1`,
+`ready = g₀ + C·d + 1` and `heal = g₀ + H·d`, `H ≥ C + 2R + r + 3` gives
+`heal − ready − R·Δ − r ≥ (R + r)(d − 1) + 3d − 1 ≥ 0`. -/
+theorem healthy_reset_fit (Q : HealthyPreparationQuery S A V) :
+    Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
+      (healthyResetSlack S Q.index : Time) ≤ Q.heal := by
+  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hready : Q.ready = max Q.gst 0 + ((accepted_catchUp S A : Nat) : Time) * Q.run.1.Δ + 1 := by
+    change max Q.gst 0 + (((accepted_coefficients S A).catchUp : Nat) : Time) * Q.run.1.Δ + 1 = _
+    rw [accepted_coefficients_catchUp]
+  have hheal : Q.heal = max Q.gst 0 + (accepted_heal S A Q.cap Q.index : Time) * Q.run.1.Δ := by
+    change max Q.gst 0 + ((accepted_coefficients S A).heal Q.cap Q.index : Time) * Q.run.1.Δ = _
+    rw [accepted_coefficients_heal]
+  have hΔ : Q.params.Δ = Q.run.1.Δ + 1 := rfl
+  have hH : ((accepted_catchUp S A : Nat) : Time) + 2 * (healthyResetCoeff S Q.index : Time) +
+      (healthyResetSlack S Q.index : Time) + 3 ≤ (accepted_heal S A Q.cap Q.index : Time) := by
+    have := accepted_heal_ge_reset S A Q.cap Q.index
+    exact_mod_cast (show _ ≤ _ by omega)
+  have hR0 : (0 : Time) ≤ healthyResetCoeff S Q.index := Nat.cast_nonneg _
+  have hr0 : (0 : Time) ≤ healthyResetSlack S Q.index := Nat.cast_nonneg _
+  rw [hready, hheal, hΔ]
+  nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.Δ),
+    mul_nonneg hR0 (by linarith : (0 : Time) ≤ Q.run.1.Δ - 1),
+    mul_nonneg hr0 (by linarith : (0 : Time) ≤ Q.run.1.Δ - 1)]
+
+/-- **The reset envelope (E) from the drain.** `healthy_reset_envelope_of_fit` with the window fit
+`healthy_reset_fit`: the drain at `healthyDrainLen` is the only remaining input. -/
+theorem healthy_reset_envelope_of_drain (Q : HealthyPreparationQuery S A V)
+    (hb : Q.heal ≤ Q.run.2.horizon)
+    (hp : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A)
+      Q.cap Q.index Q.ready Q.heal Q.run)
+    (hdrain : DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) (honestKeys S Q.run.2) Q.gst
+      (Q.index : Nat) (healthyDrainLen S Q.index) Q.run.2.horizon) :
+    ∃ ΔF a, Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
+        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon ∧
+      a ≤ Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
+        (healthyResetSlack S Q.index : Time) :=
+  healthy_reset_envelope_of_fit S A V Q hb hp (healthy_reset_fit S A V Q) hdrain
 
 end Consensus.Goldilocks.Refinement
 

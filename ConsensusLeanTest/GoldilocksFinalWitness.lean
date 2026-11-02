@@ -6,9 +6,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
 /-! # Witness: the final liveness query's hypotheses are jointly satisfiable
 
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"), for the fields of `FinalQuery`, the
-hypotheses of `accepted_healthyLive_final`. `FinalQuery` fixes the contract to `K S A`, whose heal
-coefficient `accepted_heal` is still open, so a test cannot build it; the theorem below states the
-same fields over `acceptanceContract A C` for every coefficient record `C`. At
+hypotheses of `accepted_healthyLive_final`. `FinalQuery` fixes the contract to `K S A`; the
+theorem below states the same fields over `acceptanceContract A C` for every coefficient record
+`C`. At
 `C = accepted_coefficients S A` they are the structure's fields, since `K S A` is that
 abbreviation.
 

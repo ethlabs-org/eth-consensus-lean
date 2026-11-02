@@ -14,7 +14,7 @@ Labelled by kind (CONTRIBUTING "Statements"):
   `catchUp_of_five_le_k`, `catchUp_k_four`, `catchUp_k_five`). `accepted_latency` takes its
   documented value at each capability, and both Sleepy margins hold there.
 
-`accepted_heal` is open and is left out. -/
+`accepted_heal` (`catchUp + 2·healMargin + 3`, `accepted_heal_val`) is left out. -/
 
 namespace Consensus.Goldilocks.Refinement.Test.Acceptance
 

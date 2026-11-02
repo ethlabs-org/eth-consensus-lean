@@ -4,6 +4,7 @@ public import ConsensusLean.Spec.Shape.Accepted
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetCoefficients
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -44,10 +45,36 @@ def accepted_catchUp (S : Setup) (_A : AcceptanceAssumptions S) : ℕ+ :=
 theorem accepted_catchUp_val (S : Setup) (A : AcceptanceAssumptions S) :
     (accepted_catchUp S A : Nat) = max 37 (8 * S.k + 4) := by rfl
 
-/-- OPEN finite healing witness; no whole-run progress premise may be added. -/
-noncomputable def accepted_heal (S : Setup) (A : AcceptanceAssumptions S) :
-    Capability → ℕ+ → Nat := by
-  sorry
+/-- The finite healing witness `catchUp + 2M + 3`, `M = healMargin S X`, at every capability: a
+closed expression in `k`, `δ_t`, `X` and the catch-up, fixed before any run. `M` is read off the
+proved reset envelope (`healthy_reset_envelope_of_drain`) and covers the final route's heal-bound
+margin (`healMargin_ge_final`). No whole-run progress premise may be added. -/
+def accepted_heal (S : Setup) (A : AcceptanceAssumptions S) : Capability → ℕ+ → Nat :=
+  fun _ X => (accepted_catchUp S A : Nat) + 2 * healMargin S X + 3
+
+theorem accepted_heal_val (S : Setup) (A : AcceptanceAssumptions S) (cap : Capability) (X : ℕ+) :
+    accepted_heal S A cap X = (accepted_catchUp S A : Nat) + 2 * healMargin S X + 3 := by rfl
+
+/-- **The coefficient inequality (★)** of the nonfinal reset envelope, at every capability: the
+`hheal` of `healthy_repair_schedule_of_finite_envelope` at the named `R = healthyResetCoeff` and
+`r = healthyResetSlack`. -/
+theorem accepted_heal_ge_reset (S : Setup) (A : AcceptanceAssumptions S) (cap : Capability)
+    (X : ℕ+) :
+    (accepted_catchUp S A : Nat) + 2 * (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 26) +
+      healthyResetSlack S X + 3 ≤ accepted_heal S A cap X := by
+  rw [accepted_heal_val, healMargin_val, healthyResetSlack_val]
+  omega
+
+/-- The final route's coefficient form `accepted_heal(final, X) ≥ C + 2 M_f`,
+`M_f = 24 L_drain + 8k + 52δ_t + 52X + 44` at `λ = 2Δ` and `L_drain = healthyDrainLen`
+(`heal_bound.md` §0.1). A budget for the final route, not a proof of its reset. -/
+theorem accepted_heal_ge_final (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
+    (accepted_catchUp S A : Nat) +
+        2 * (24 * healthyDrainLen S X + 8 * S.k + 52 * S.δt + 52 * (X : Nat) + 44) ≤
+      accepted_heal S A .final X := by
+  rw [accepted_heal_val]
+  have := healMargin_ge_final S X
+  omega
 
 /-- Latency pays for the selected window and the final publication reserve. -/
 def accepted_latency (S : Setup) (_A : AcceptanceAssumptions S) :
@@ -121,6 +148,9 @@ theorem acceptanceContract_params_eq {S : Setup} (A : AcceptanceAssumptions S)
 theorem accepted_coefficients_catchUp (S : Setup) (A : AcceptanceAssumptions S) :
     (accepted_coefficients S A).catchUp = accepted_catchUp S A := by rfl
 
+theorem accepted_coefficients_heal (S : Setup) (A : AcceptanceAssumptions S) :
+    (accepted_coefficients S A).heal = accepted_heal S A := by rfl
+
 theorem accepted_coefficients_latency (S : Setup) (A : AcceptanceAssumptions S) :
     (accepted_coefficients S A).latency = accepted_latency S A := by rfl
 
@@ -156,11 +186,8 @@ noncomputable abbrev K (S : Setup) (A : AcceptanceAssumptions S) :=
   acceptanceContract A (accepted_coefficients S A)
 
 /-- The readiness duration of an acceptance contract with catch-up `≥ 37` covers `18 Δp`, for
-any coefficient record `C`. Stated generically so that it does not mention
-`accepted_coefficients`: every declaration whose type mentions `K S A` (so every `FinalQuery`
-or `HealthyPreparationQuery` lemma) depends on the `sorry` axiom through the OPEN
-`accepted_heal` in the body of `K S A`, whatever its proof. At `K S A` the premise is
-`accepted_catchUp_ge_sleepy`. -/
+any coefficient record `C`, so that it also serves the witnesses over `acceptanceContract A C`.
+At `K S A` the premise is `accepted_catchUp_ge_sleepy`. -/
 theorem cDur_ge_of_catchUp {S : Setup} (A : AcceptanceAssumptions S) (V : Type) [Fintype V]
     [DecidableEq V] (C : AcceptanceCoefficients) (hC : 37 ≤ (C.catchUp : Nat))
     (r : (Sys (family S) V).Run) :
@@ -172,9 +199,8 @@ theorem cDur_ge_of_catchUp {S : Setup} (A : AcceptanceAssumptions S) (V : Type) 
 
 /-- **The snapshot fit at readiness** for any coefficient record with catch-up `≥ 37`:
 `c_z + Δp + 1 ≤ max ready 0 + 4Δp`, the `lo` condition of `snapshotCall_of_awake` at the frame
-base `max ready 0 + 4Δp`. Generic in `C` for the reason given at `cDur_ge_of_catchUp`; its
-instance at `K S A` (`C := accepted_coefficients S A`, `hC := accepted_catchUp_ge_sleepy S A`)
-depends on the `sorry` axiom by its type only. -/
+base `max ready 0 + 4Δp`. Generic in `C` as `cDur_ge_of_catchUp`; its instance at `K S A` is
+`C := accepted_coefficients S A`, `hC := accepted_catchUp_ge_sleepy S A`. -/
 theorem cutZ_fit_of_catchUp {S : Setup} (A : AcceptanceAssumptions S) (V : Type) [Fintype V]
     [DecidableEq V] (C : AcceptanceCoefficients) (hC : 37 ≤ (C.catchUp : Nat))
     (r : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.card V) (g : Time) :

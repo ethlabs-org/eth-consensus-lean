@@ -8,8 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"), for the hypotheses of
 `sleepy_safety_inputs` (`SleepySafetyQuery`) and of `sleepy_query_sync` (`ConfirmedQuery`,
-Sleepy branch). Both structures fix the contract to `K S A`, whose heal coefficient
-`accepted_heal` is still open, so a test cannot build them. The theorems below state the same
+Sleepy branch). Both structures fix the contract to `K S A`. The theorems below state the same
 fields over `acceptanceContract A C` for every coefficient record `C`; at
 `C = accepted_coefficients S A` they are the structures' fields, since `K S A` is that
 abbreviation.
