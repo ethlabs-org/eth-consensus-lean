@@ -666,7 +666,10 @@ Modelling choices:
   recipient protocol deadlines (including the latest wake) at most `b₀`, not the send window
   `Sync[0, b₀ − Δ]`, which would still require service after later wakes during the outage. The
   protocol deadline itself is cut off, not its last admissible integer processing time; the
-  participation is the target's: η-sleepy at every time (`θ = ½`, `η = eta·Δ`) and more than half ready at `b₀`.
+  participation is the target's as of 2026-11-01: η-sleepy at every time (`θ = ½`, `η = eta·Δ`) and more than half
+  ready at `b₀`. The target changed on 2026-11-02 (slow arming only: lag `4·lockK + 6`, no majority premise, the
+  no-sleep window and cohort count, ready readers from `b₁ + 9Δ`; `docs/decisions.md`); the node-level R.5 is parked
+  on the old premise.
 - **R.6 (`Weak`)**: the heal point is `T ≥ T_heal`, as for R.3, and the healing premises are cut at `T`
   (`WeakPremises`: honest awake on `[ḡ, T]`, ready honest more than faulty from `T`, the ready-proposer premise on
   `[ḡ, T]`, plus R.3's); `weakInclude` and `weakGrow` also take H.4's open unanimity premises, as R.3 does. Its proof

@@ -33,8 +33,9 @@ variable {V : Type} [Fintype V] [DecidableEq V] {p : EnvPoint V}
 
 /-- If every validator ready at `t` is in an honest set `C`, and `W` avoids
 `C`, then more than half of all validators ready gives `2·|faulty ∪ W| < n`
-(the outage cover at `b₀` with `cover = ½` gives FG-SA's `OutageE1`: faulty
-validators and uncovered wakers are fewer than half). -/
+(a cover ½ would give FG-SA's `OutageE1`: faulty validators and uncovered
+wakers are fewer than half; the outage regime has no cover and uses
+`EnvPoint.CohortOn.two_mul_lt`). -/
 theorem two_mul_card_faulty_union_lt {c t : Time} {C W : Finset V}
     (hR : p.readyAt c t ⊆ C) (hC : C ⊆ p.honest) (hW : Disjoint W C)
     (h : p.ReadyOfAll (1 / 2) c t) : 2 * (p.faulty ∪ W).card < Fintype.card V := by

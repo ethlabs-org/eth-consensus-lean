@@ -332,7 +332,7 @@ structure Params.Admissible (P) : Prop :=
 ```
 
 A contract cannot buy its claims with easier **thresholds**: `θ` and `cover`
-must be at most their standard values (a smaller value is a weaker regime
+(`cover` is read by no regime) must be at most their standard values (a smaller value is a weaker regime
 premise, hence a stronger claim), and the healthy fault bound `β` at least
 its standard `⅓` (the premise is `|faulty| < β·n`: a larger `β` admits more
 faults). Accountability requires `β ≤ α ≤ 1` (a larger `α` convicts more,

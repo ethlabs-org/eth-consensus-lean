@@ -111,7 +111,8 @@ theorem reject_theta : ¬ ({ std with θ := 3 / 5 } : Params Unit).Admissible :=
 theorem reject_beta : ¬ ({ std with β := 1 / 4 } : Params Unit).Admissible :=
   fun h => by have := h.β_range; norm_num at this
 
-/-- A cover above ½ is rejected. -/
+/-- A cover above ½ is rejected (an `Admissible` range check only: no regime
+reads `cover`). -/
 theorem reject_cover : ¬ ({ std with cover := 3 / 5 } : Params Unit).Admissible :=
   fun h => by have := h.cover_range.2; norm_num at this
 
