@@ -806,6 +806,65 @@ theorem FrameWindow.proposal_start_prefix {s₀ s floor : Nat}
         have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)
         linarith) hz hy hop hSD hc hes (hhi.trans hmb) hFD hSv haS
 
+/-- Finite Step 5/6: every honest vote of the warm honest proposal's slot
+has exactly its root. Current-slot optimistic residues use only strictly
+earlier actual casts in the global-cut induction. -/
+theorem FrameWindow.honest_vote_heads_eq {s₀ s floor : Nat}
+    {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
+      (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hk : 0 < sp.k)
+    (hmargin : s₀ + 2 * sp.k ≤ s + 1)
+    (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1)) {k : Nat}
+    (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1) :
+    ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      e.msg.head = P.root := by
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hr := hS.run.localRun
+  have hΔ := sp.toParams.hΔ
+  have hf' : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+    have hn : 0 < sp.n := sp.toParams.hn
+    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+    omega
+  have hsp : s₀ ≤ s + 1 := by omega
+  have hms : gbar g + 2 * sp.Δ ≤ sp.ts s := by
+    have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)
+    linarith
+  obtain ⟨_, ip, ellp, d, pay, hcp, hcall, hpay, hti, hparent, _, hp, hpayload, _⟩ :=
+    honestProposalRun_of_proposesAt hrun hnc hz hdesignated hactual hPs
+  have hpH : P.proposer ∈ H := hp ▸ (hdesignated ▸ hz)
+  rw [← hdesignated] at hcp hpay
+  suffices hall : ∀ i, ∀ y ∈ H, ∀ e, SA.VoteAt tr.projAC y i e →
+      e.msg.slot = s + 1 → e.msg.head = P.root by
+    exact fun y hy i e hv hs => hall i y hy e hv hs
+  intro i
+  induction i using Nat.strong_induction_on with
+  | _ i ih =>
+    intro y hy e hv hes
+    obtain ⟨ell, hc, he⟩ := hv
+    have hcast : SA.CastAt tr.projAC y i ell e := ⟨hc, he⟩
+    have hhigh := SA.vote_time_le hr hy ⟨ell, hcast⟩
+    have hslot := (SA.castAt_spec hr hy hcast).2.1.symm.trans hes
+    change sp.slot (tr.time i) = s + 1 at hslot
+    change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhigh
+    rw [hslot] at hhigh
+    obtain ⟨hvP, hPv⟩ := hframe.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr
+      (by linarith) hsp (by omega) hmb hz hdesignated hactual hPs hy hcast hes
+    have haP := hframe.vote_anchor_below_of_earlier_heads hrun hnc hsvc hawake hf hcatch
+      hnr hm hsp (by omega) hmb hz hdesignated hactual hPs hy hcast hes hmargin
+      (fun x hx j hji ev hv hs => ih j hji x hx ev hv hs)
+    apply hframe.vote_head_eq_of_start_prefix hrun hnc hS hnr hf' hms hsp hz hdesignated
+      hactual hPs hpH hcp hcall hti hpay hpayload hparent hy hcast hes hhigh
+      (hhigh.trans hmb) hPv haP
+    exact fun haS => hframe.proposal_start_prefix hrun hnc hsvc hawake hf hcatch hnr
+      hm hk hmargin hmb hz hdesignated hcp hcall hti hpay hparent hy hcast hes hPv hvP haS
+
 end Consensus.Goldilocks.Healing
 
 end
