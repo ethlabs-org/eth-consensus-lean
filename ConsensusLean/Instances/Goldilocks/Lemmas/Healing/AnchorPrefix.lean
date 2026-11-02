@@ -441,6 +441,50 @@ theorem FrameWindow.vote_head_eq_of_start_prefix {s₀ s floor : Nat}
       hPs hpH hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
       hSAf hAQf .refl hAE
 
+/-- A voter below another honest fcRoot reaches it. In kind J the roots
+agree; otherwise V forces the prefix to the other finalized block. -/
+theorem FrameWindow.fcRoot_anc_head_at_cast {lo hi : Time} {floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {z y : Fin sp.n} (hz : z ∈ H) (hy : y ∈ H) {c i : Nat}
+    (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
+    (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
+    {ellz ell : ACLabel (goldilocksNode sp ro)} (hcz : tr.projAC.CallAt z c ellz)
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ell e)
+    {Y : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hY : Y ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
+    (hvY : Y ∈ ell.frame.viableHeads)
+    (haF : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i))
+      ellz.frame.fcRoot) :
+    Anc (tr.HonestBlocks H) ellz.frame.fcRoot
+      (SA.getHead sp e.readPoint ell.frame (tr.time i)
+        (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
+        (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hPhi := SA.frameIn_of_callAt hr hy hc.1
+  by_cases hk : kindJ
+  · have hroots : ellz.frame.fcRoot = ell.frame.fcRoot := by
+      rw [Compose.frame_of_projAC hrun hz hcz, Compose.frame_of_projAC hrun hy hc.1]
+      change (tr.state z c).fg.fcRoot = (tr.state y i).fg.fcRoot
+      rw [show (tr.state z c).fg.fcRoot = (tr.state z c).fg.J from
+        ite_eq_left ((hframe.kind_iff z hz c hclo hchi).mpr hk),
+        show (tr.state y i).fg.fcRoot = (tr.state y i).fg.J from
+        ite_eq_left ((hframe.kind_iff y hy i hilo hihi).mpr hk),
+        hframe.root_eq z hz c hclo hchi hk, hframe.root_eq y hy i hilo hihi hk]
+    rw [hroots]
+    exact Anc.mono hPhi.2 (SA.anc_getHead_of_compat hPhi.1 (Or.inr rfl)
+      (fun L hL => (SA.liveLockBlock_candidate hPhi.1 hL).elim
+        (fun h => Or.inr h.2.1) Or.inl) (fun _ h => h.1.1)
+      _ _ (.refl : ell.frame.Anc ell.frame.fcRoot ell.frame.fcRoot))
+  · have hroot : ellz.frame.fcRoot = (tr.state z c).fg.F := by
+      rw [Compose.frame_of_projAC hrun hz hcz]
+      exact ite_eq_right (fun h => hk ((hframe.kind_iff z hz c hclo hchi).mp h))
+    rw [hroot] at haF ⊢
+    exact hframe.finalized_anc_head_at_cast hrun hnc hf hz hy hclo hchi hilo hihi hc
+      hY hvY haF
+
 end Consensus.Goldilocks.Healing
 
 end
