@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_commit": "f4af60b4c72028199e306f044dd6921f93fbbb6b",
+  "audit_commit": "2d88bc907fcb9d54c8fd29ad163f014722a483e4",
   "baseline_commit": "fd7f498a15bf9e9e694102ffaeb8de6b33067052",
   "generated_on": "2026-11-02",
   "notes": [
@@ -19,49 +19,33 @@
     "Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize"
   ],
   "fields": {
-    "Consensus.Goldilocks.Refinement.accepted_admissible": [
-      "Consensus.Goldilocks.Refinement.accepted_heal"
-    ],
+    "Consensus.Goldilocks.Refinement.accepted_admissible": [],
     "Consensus.Goldilocks.Refinement.accepted_catchUp": [],
     "Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy": [],
     "Consensus.Goldilocks.Refinement.accepted_catchUp_val": [],
     "Consensus.Goldilocks.Refinement.accepted_child_decodes": [],
     "Consensus.Goldilocks.Refinement.accepted_claims": [
-      "Consensus.Goldilocks.Refinement.accepted_heal",
       "Consensus.Goldilocks.Refinement.final_reset_premises",
       "Consensus.Goldilocks.Refinement.healthy_confirmed_supply",
       "Consensus.Goldilocks.Refinement.healthy_preparation_initialize",
       "Consensus.Goldilocks.Refinement.healthy_repair_schedule",
       "Consensus.Goldilocks.Refinement.outage_repair"
     ],
-    "Consensus.Goldilocks.Refinement.accepted_coefficients": [
-      "Consensus.Goldilocks.Refinement.accepted_heal"
-    ],
-    "Consensus.Goldilocks.Refinement.accepted_coefficients_catchUp": [
-      "Consensus.Goldilocks.Refinement.accepted_heal"
-    ],
-    "Consensus.Goldilocks.Refinement.accepted_coefficients_latency": [
-      "Consensus.Goldilocks.Refinement.accepted_heal"
-    ],
-    "Consensus.Goldilocks.Refinement.accepted_finalAccountable": [
-      "Consensus.Goldilocks.Refinement.accepted_heal"
-    ],
+    "Consensus.Goldilocks.Refinement.accepted_coefficients": [],
+    "Consensus.Goldilocks.Refinement.accepted_coefficients_catchUp": [],
+    "Consensus.Goldilocks.Refinement.accepted_coefficients_latency": [],
+    "Consensus.Goldilocks.Refinement.accepted_finalAccountable": [],
     "Consensus.Goldilocks.Refinement.accepted_finalMonotone": [],
-    "Consensus.Goldilocks.Refinement.accepted_heal": [
-      "Consensus.Goldilocks.Refinement.accepted_heal"
-    ],
+    "Consensus.Goldilocks.Refinement.accepted_heal": [],
     "Consensus.Goldilocks.Refinement.accepted_healedSafe": [
-      "Consensus.Goldilocks.Refinement.accepted_heal",
       "Consensus.Goldilocks.Refinement.healthy_preparation_initialize",
       "Consensus.Goldilocks.Refinement.healthy_repair_schedule"
     ],
     "Consensus.Goldilocks.Refinement.accepted_healthyLive": [
-      "Consensus.Goldilocks.Refinement.accepted_heal",
       "Consensus.Goldilocks.Refinement.final_reset_premises",
       "Consensus.Goldilocks.Refinement.healthy_confirmed_supply"
     ],
     "Consensus.Goldilocks.Refinement.accepted_healthyLive_final": [
-      "Consensus.Goldilocks.Refinement.accepted_heal",
       "Consensus.Goldilocks.Refinement.final_reset_premises"
     ],
     "Consensus.Goldilocks.Refinement.accepted_in_view": [],
@@ -73,21 +57,12 @@
     "Consensus.Goldilocks.Refinement.accepted_nested": [],
     "Consensus.Goldilocks.Refinement.accepted_outputValid": [],
     "Consensus.Goldilocks.Refinement.accepted_persists": [
-      "Consensus.Goldilocks.Refinement.accepted_heal",
       "Consensus.Goldilocks.Refinement.outage_repair"
     ],
-    "Consensus.Goldilocks.Refinement.accepted_progressFits": [
-      "Consensus.Goldilocks.Refinement.accepted_heal"
-    ],
-    "Consensus.Goldilocks.Refinement.accepted_progressTolerant": [
-      "Consensus.Goldilocks.Refinement.accepted_heal"
-    ],
-    "Consensus.Goldilocks.Refinement.accepted_sleepyLive": [
-      "Consensus.Goldilocks.Refinement.accepted_heal"
-    ],
-    "Consensus.Goldilocks.Refinement.accepted_sleepySafe": [
-      "Consensus.Goldilocks.Refinement.accepted_heal"
-    ],
+    "Consensus.Goldilocks.Refinement.accepted_progressFits": [],
+    "Consensus.Goldilocks.Refinement.accepted_progressTolerant": [],
+    "Consensus.Goldilocks.Refinement.accepted_sleepyLive": [],
+    "Consensus.Goldilocks.Refinement.accepted_sleepySafe": [],
     "Consensus.Goldilocks.Refinement.accepted_slotTime_le": []
   },
   "rows": [
@@ -112,7 +87,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.proposal_start_supported",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2966",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2967",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -205,7 +180,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.vote_old_live_lock_below_parent",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2351",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2352",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -243,7 +218,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_catchUp",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/AcceptanceDefs.lean:40",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/AcceptanceDefs.lean:42",
       "owner-thread": "T-01a18ff0-1a20-744c-a2f0-a27048f42a3c",
       "area": "coefficients",
       "status": "lean-proved",
@@ -262,7 +237,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/AcceptanceDefs.lean:68",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/AcceptanceDefs.lean:96",
       "owner-thread": "T-01a18ff0-1a20-744c-a2f0-a27048f42a3c",
       "area": "coefficients",
       "status": "lean-proved",
@@ -281,16 +256,16 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_heal",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/AcceptanceDefs.lean:47",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/AcceptanceDefs.lean:52",
       "owner-thread": "T-01a18ff0-1a20-744c-a2f0-a27048f42a3c",
       "area": "coefficients",
-      "status": "paper-partial",
+      "status": "lean-proved",
       "blocked-by": [],
       "in_accepted_closure": true,
-      "direct_sorry": true,
-      "lean-status": "direct-sorry",
-      "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
-      "last-changed": "2026-11-01",
+      "direct_sorry": false,
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "evidence": "Settled coefficient audit: finite reset/preparation/retention and endpoint margins need joint synthesis.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/accepted_heal.md",
@@ -300,7 +275,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_latency",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/AcceptanceDefs.lean:52",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/AcceptanceDefs.lean:80",
       "owner-thread": "T-01a18ff0-1a20-744c-a2f0-a27048f42a3c",
       "area": "coefficients",
       "status": "lean-proved",
@@ -319,7 +294,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.accepted_latency_ge_sleepy",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/AcceptanceDefs.lean:74",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/AcceptanceDefs.lean:102",
       "owner-thread": "T-01a18ff0-1a20-744c-a2f0-a27048f42a3c",
       "area": "coefficients",
       "status": "lean-proved",
@@ -341,15 +316,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:215",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": null,
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
@@ -360,15 +333,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:345",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": null,
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
@@ -379,15 +350,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:323",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
-      "status": "paper-partial",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "evidence": "d408b23 proves acceptance_publication: an honest accepting cut has an actual same-event signed block wrapper with exact stamp. This does not prove receiver acceptance or decoding/strict parent order. Actual last-carrier acceptance, retained lookup/cache for every reader and processing/read deadline budget remain.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/final_cache_acceptance.md",
@@ -400,13 +369,11 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:148",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
+      "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
       "evidence": "Body proved by final_duty_proposal_run (#143); full closure depends on accepted_heal only through the FinalQuery type (K S A). Not a direct sorry in the proof body.",
@@ -421,9 +388,7 @@
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "paper-partial",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": true,
       "lean-status": "direct-sorry",
@@ -442,7 +407,6 @@
       "area": "final liveness",
       "status": "paper-partial",
       "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal",
         "Consensus.Goldilocks.Refinement.final_reset_premises"
       ],
       "in_accepted_closure": true,
@@ -462,15 +426,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:841",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": null,
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_bounded_repairing_opening.md",
       "card-repo": "ethlabs-org/workbench",
@@ -483,14 +445,12 @@
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-partial",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": true,
       "lean-status": "direct-sorry",
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
+      "last-changed": "2026-11-02",
       "evidence": "Whole-statement audit 6d6af170 \u00a7\u00a723\u201328,79\u201381: finite Healthy/service/preparation and fresh actual proposal with universal exact ReadyAt/CutAfter coverage remain.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_confirmed_supply.md",
@@ -503,13 +463,11 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:909",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
+      "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
       "evidence": "Body proved at 208c05b7 with the original signature. The declaration remains in Accepted; its only reachable direct sorry owner is accepted_heal through the shared coefficient type dependency. This is a body closure, not retirement or a fully sorry-free proof.",
@@ -524,15 +482,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:1161",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "paper-proved awaiting Lean",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": "https://ampcode.com/threads/T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "evidence": "COMPLETE; Opus skeptical read-back no findings, canonical card b14e6c2. Finite c+k+2 protected-source comparison, no future vote. Lean body landed c10d2131; shared accepted_heal type dependency remains.",
       "card-commit": "b14e6c2",
       "card-path": "repos/consensus-lean/notes/cards/healthy_current_live_chain.md",
@@ -545,13 +501,11 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:1204",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
+      "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
       "evidence": "Body proved at ca09826e with the original signature. The declaration remains in Accepted; its only reachable direct sorry owner is accepted_heal through the shared coefficient type dependency. This is a body closure, not retirement or a fully sorry-free proof.",
@@ -566,15 +520,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:1119",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": null,
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_current_read_context.md",
       "card-repo": "ethlabs-org/workbench",
@@ -586,15 +538,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:1546",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": null,
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_current_record_candidates.md",
       "card-repo": "ethlabs-org/workbench",
@@ -606,15 +556,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:1599",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": null,
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_current_record_next_floor.md",
       "card-repo": "ethlabs-org/workbench",
@@ -626,15 +574,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:727",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": null,
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_current_record_sources.md",
       "card-repo": "ethlabs-org/workbench",
@@ -646,13 +592,11 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:1001",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
+      "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
       "evidence": "Body proved at c86cf016 with the original signature. The declaration remains in Accepted; its only reachable direct sorry owner is accepted_heal through the shared coefficient type dependency. This is a body closure, not retirement or a fully sorry-free proof.",
@@ -667,15 +611,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:1481",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "paper-proved awaiting Lean",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": "https://ampcode.com/threads/T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "evidence": "COMPLETE relative to raw-prefix clean_sources_compatible, finalized_compatible_clean_source and finalized_safe; Opus read-back 1b45f33 no gaps. Four source cases use completed-prefix bounds, not n <= b. Lean body is no longer direct-sorry; shared accepted_heal type dependency remains.",
       "card-commit": "56881e99",
       "card-path": "repos/consensus-lean/notes/cards/healthy_current_sources_compatible.md",
@@ -688,15 +630,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealedSafety.lean:1094",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "paper-proved awaiting Lean",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": "https://ampcode.com/threads/T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "evidence": "COMPLETE relative to UpTo.result_prefix_stored_locks; Opus read-back c58bb57 no gaps, dependency unchanged at main d0a4ed45. Lean body landed 58a26226; shared accepted_heal type dependency remains.",
       "card-commit": "56881e99",
       "card-path": "repos/consensus-lean/notes/cards/healthy_current_stored_locks.md",
@@ -711,7 +651,6 @@
       "area": "healing",
       "status": "paper-partial",
       "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal",
         "Consensus.Goldilocks.Refinement.healthy_repair_schedule"
       ],
       "in_accepted_closure": true,
@@ -732,7 +671,6 @@
       "area": "healing",
       "status": "paper-partial",
       "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal",
         "Consensus.Goldilocks.Refinement.healthy_repair_schedule"
       ],
       "in_accepted_closure": true,
@@ -753,7 +691,6 @@
       "area": "healing",
       "status": "paper-partial",
       "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal",
         "Consensus.Goldilocks.Refinement.healthy_repair_schedule"
       ],
       "in_accepted_closure": true,
@@ -775,7 +712,6 @@
       "area": "healing",
       "status": "paper-partial",
       "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal",
         "Consensus.Goldilocks.Refinement.healthy_repair_schedule"
       ],
       "in_accepted_closure": true,
@@ -796,14 +732,12 @@
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-partial",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "blocked-by": [],
       "in_accepted_closure": false,
       "direct_sorry": true,
       "lean-status": "direct-sorry",
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
+      "last-changed": "2026-11-02",
       "evidence": "Superseding exact audit 732a1b6: older validAtt branch does not constrain target; receiver-held target/replay-height bridge missing. No full-run counterexample. J-specific preservation has target membership.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_old_row_realize.md",
@@ -817,9 +751,7 @@
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-open (research)",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": true,
       "lean-status": "direct-sorry",
@@ -836,13 +768,11 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:271",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
+      "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
       "evidence": "Body proved at 4888524b with the original signature. The declaration remains in Accepted; its only reachable direct sorry owner is accepted_heal through the shared coefficient type dependency. This supersedes the earlier body-gap note, not the pinned historical card verdict, and is not a fully sorry-free proof.",
@@ -858,12 +788,10 @@
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
+      "lean-status": "proved",
       "status-source": "compiled dependency audit",
       "last-changed": "2026-11-02",
       "evidence": "Body proved from the existing base: records by induction and recent locks by lock_origin; R0 removed the cache and inventory fields. Shared coefficient type dependencies remain, not a direct sorry.",
@@ -877,15 +805,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HealthySuppliers.lean:95",
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
-      "status": "paper-proved awaiting Lean",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": "https://ampcode.com/threads/T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "evidence": "COMPLETE relative to catchRun_of_psync; Opus read-back 4f511369 no findings. Direct exact instantiation, no schedule or uniform B synthesis. Lean body landed f5c8530c; shared accepted_heal type dependency remains.",
       "card-commit": "56881e99",
       "card-path": "repos/consensus-lean/notes/cards/healthy_repair_catch.md",
@@ -899,14 +825,12 @@
       "owner-thread": "T-6dafc1f0-4480-40a7-bb2d-58bda7e13f48",
       "area": "healing",
       "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": true,
       "lean-status": "direct-sorry",
       "status-source": null,
-      "last-changed": "2026-11-01",
+      "last-changed": "2026-11-02",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/healthy_repair_schedule.md",
       "card-repo": "ethlabs-org/workbench",
@@ -919,14 +843,12 @@
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "paper-partial",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "blocked-by": [],
       "in_accepted_closure": false,
       "direct_sorry": true,
       "lean-status": "direct-sorry",
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
+      "last-changed": "2026-11-02",
       "evidence": "Outside audit 649f0286: realization/inventory give eventual coverage but still need l\u2264s; OldEntryCovered has no label upper bound.",
       "card-path": null,
       "card-repo": null,
@@ -939,14 +861,12 @@
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "outage+persist",
       "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
+      "lean-status": "proved",
       "status-source": "compiled dependency audit",
-      "last-changed": "2026-11-01",
+      "last-changed": "2026-11-02",
       "evidence": "Body proved at 649f0286; shared coefficient type dependencies remain. Exact endCut(T), both lookup alternatives and actual read prefix; arming is not protection.",
       "card-path": null,
       "card-repo": null,
@@ -958,15 +878,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/OutageSuppliers.lean:30",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "outage+persist",
-      "status": "paper-proved awaiting Lean",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": "https://ampcode.com/threads/T-01a196e7-6159-767f-92d9-5b4cab43cdb7",
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "evidence": "COMPLETE relative to the Sleepy SVC producer; Opus read-back clean at d1ab9cf. Restrict SyncUntil to min(start,horizon), instantiate SVC and transport the exact finite bound; does not independently discharge SVC.",
       "card-commit": "d1ab9cfebf111222a4b7dc07d95b6e5f15155ec3",
       "card-path": "repos/consensus-lean/notes/cards/outage_pre_service.md",
@@ -980,14 +898,12 @@
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "outage+persist",
       "status": "paper-open (research)",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": true,
       "lean-status": "direct-sorry",
       "status-source": "https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd",
-      "last-changed": "2026-11-01",
+      "last-changed": "2026-11-02",
       "evidence": "Whole-statement audit 6d6af170 \u00a7\u00a710,17\u201319: covering nonvetoed renewal, pool bound/resolutions, RESULT compatibility, persistence and both reader branches remain.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/outage_repair.md",
@@ -1036,15 +952,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:249",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": null,
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
@@ -1055,15 +969,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:332",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
-      "status-source": null,
-      "last-changed": "2026-11-01",
+      "lean-status": "proved",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
@@ -1074,15 +986,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:226",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
+      "lean-status": "proved",
       "status-source": "compiled dependency audit",
-      "last-changed": "2026-11-01",
+      "last-changed": "2026-11-02",
       "evidence": "Body proved; full closure depends on accepted_heal through K S A = acceptanceContract A (accepted_coefficients S A). The query and Sleepy premise types include the sorry definition; this is not a direct sorry in the proof body.",
       "card-commit": "56881e99",
       "card-path": "repos/consensus-lean/notes/cards/sleepy_query_sync.md",
@@ -1112,15 +1022,13 @@
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalEndpoints.lean:64",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
-      "status": "unknown",
-      "blocked-by": [
-        "Consensus.Goldilocks.Refinement.accepted_heal"
-      ],
+      "status": "lean-proved",
+      "blocked-by": [],
       "in_accepted_closure": true,
       "direct_sorry": false,
-      "lean-status": "sorry-dependent",
+      "lean-status": "proved",
       "status-source": "compiled dependency audit",
-      "last-changed": "2026-11-01",
+      "last-changed": "2026-11-02",
       "evidence": "Body proved; full closure depends on accepted_heal through K S A = acceptanceContract A (accepted_coefficients S A). The query and Sleepy premise types include the sorry definition; this is not a direct sorry in the proof body.",
       "card-commit": "56881e99",
       "card-path": "repos/consensus-lean/notes/cards/sleepy_safety_inputs.md",
@@ -1276,7 +1184,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot.0.Consensus.Goldilocks.Healing.proposal_stored_locks_compatible_old",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2116",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2117",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
