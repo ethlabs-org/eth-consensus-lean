@@ -88,7 +88,7 @@ open Blocks Shape
 variable {S : Setup} {A : AcceptanceAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
 
 /-- **`FinalWindowData` from four honest anchors** at the slots `start + off a` with the
-window's offsets `off = ![0, δt − 1, δt + 1, δt + 3]`. Derived: `slots`, `proposals`,
+window's offsets `off = ![0, 2, 4, 6]`. Derived: `slots`, `proposals`,
 `accepted`, `ordered`, `chain`. Explicit run/regime premises: `hq` (`fresh`) and `hD`
 (`bounded`). OPEN, explicit premises: `hready` (`ready`, the awake schedule of each anchor
 proposer over its catch-up interval) and `hcarrier` (`carrierProcessed`, delivery of the last
@@ -100,17 +100,17 @@ theorem finalWindow_data_of_honest_anchors (Q : FinalQuery S A V)
     (hc : Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ)) (start : Nat)
     {P : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))}
     (hP : ∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
-      (start + ![0, S.δt - 1, S.δt + 1, S.δt + 3] i) (P i))
-    (hs : StrictMono fun i => start + ![0, S.δt - 1, S.δt + 1, S.δt + 3] i)
+      (start + ![0, 2, 4, 6] i) (P i))
+    (hs : StrictMono fun i => start + ![0, 2, 4, 6] i)
     (hR : Healing.drainTime Q.params a ≤ Q.params.ts (start + 0))
-    (hb : Q.params.ts (start + (S.δt + 3)) ≤ b)
-    (hadj : start + (S.δt + 3) = start + (S.δt + 1) + 1 →
-      Q.params.ts (start + (S.δt + 1)) + 6 * Q.params.Δ ≤ b)
+    (hb : Q.params.ts (start + 6) ≤ b)
+    (hadj : start + 6 = start + 4 + 1 →
+      Q.params.ts (start + 4) + 6 * Q.params.Δ ≤ b)
     (hq : Q.query < Q.params.toParams.slotTime (start + 0))
-    (hD : Q.params.toParams.slotTime (start + (S.δt + 3)) ≤ Q.deadline)
+    (hD : Q.params.toParams.slotTime (start + 6) ≤ Q.deadline)
     (hready : ∀ i, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
       ((Sys (family S) V).cDur (K S A) Q.run) (P i).proposer
-      (Q.params.toParams.slotTime (start + ![0, S.δt - 1, S.δt + 1, S.δt + 3] i)))
+      (Q.params.toParams.slotTime (start + ![0, 2, 4, 6] i)))
     (hcarrier : ∀ y, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
       ((Sys (family S) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j (P 3) ∧ Q.trace.time j ≤ Q.deadline) :

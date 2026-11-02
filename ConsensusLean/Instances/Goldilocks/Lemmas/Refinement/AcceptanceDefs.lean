@@ -8,15 +8,16 @@ public section
 namespace Consensus.Goldilocks.Refinement
 open Blocks Shape
 
-/-- Four-anchor window for the one-delivery-bound model, cF=2 and δt≥4.
-First-descendant row service, inherited progress and cache joins remain OPEN. -/
-def finalWindow (S : Setup) : Pattern :=
-  ⟨[0, S.δt - 1, S.δt + 1, S.δt + 3], by simp⟩
+/-- Route-A four-anchor window `[0, 2, 4, 6]` (gap 2, span 6) for the one-delivery-bound model,
+cF=2 and δt≥6 (docs/decisions.md, 2026-11-02). The span does not depend on `δt`. The anchor steps
+and the extraction of the window remain OPEN. -/
+def finalWindow (_S : Setup) : Pattern :=
+  ⟨[0, 2, 4, 6], by simp⟩
 
 theorem finalWindow_offsets (S : Setup) :
-    (finalWindow S).offsets = [0, S.δt - 1, S.δt + 1, S.δt + 3] := by rfl
+    (finalWindow S).offsets = [0, 2, 4, 6] := by rfl
 
-theorem finalWindow_span (S : Setup) : (finalWindow S).span = S.δt + 3 := by
+theorem finalWindow_span (S : Setup) : (finalWindow S).span = 6 := by
   unfold Pattern.span
   rw [finalWindow_offsets]
   simp only [List.foldr_cons, List.foldr_nil]
@@ -25,7 +26,7 @@ theorem finalWindow_span (S : Setup) : (finalWindow S).span = S.δt + 3 := by
 /-- Fixed timeout and outage assumptions. The pattern is determined by Setup,
 not chosen by a caller; outer gaps never enter the timeout bound. -/
 structure AcceptanceAssumptions (S : Setup) where
-  timeout : 4 ≤ S.δt
+  timeout : 6 ≤ S.δt
   lookback : ℕ+
 
 /-- Only guarantees are chosen: positive finite catch-up and finite heal/latency
@@ -52,7 +53,7 @@ def accepted_latency (S : Setup) (_A : AcceptanceAssumptions S) :
     Capability → ℕ+ → Nat
   | .available, X => 8 * (X : Nat) + 12
   | .stable, X => 8 * (X : Nat) + 12
-  | .final, X => 8 * ((X : Nat) + S.δt + 3) + 2
+  | .final, X => 8 * ((X : Nat) + 6) + 2
 
 theorem accepted_latency_available (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
     accepted_latency S A .available X = 8 * (X : Nat) + 12 := by rfl
@@ -61,7 +62,7 @@ theorem accepted_latency_stable (S : Setup) (A : AcceptanceAssumptions S) (X : �
     accepted_latency S A .stable X = 8 * (X : Nat) + 12 := by rfl
 
 theorem accepted_latency_final (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
-    accepted_latency S A .final X = 8 * ((X : Nat) + S.δt + 3) + 2 := by rfl
+    accepted_latency S A .final X = 8 * ((X : Nat) + 6) + 2 := by rfl
 
 /-- For engine Δe ≥ 1, 37Δe covers 18(Δe+1)+1, including safety's literal +1. -/
 theorem accepted_catchUp_ge_sleepy (S : Setup) (A : AcceptanceAssumptions S) :

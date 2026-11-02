@@ -7,8 +7,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDef
 Labelled by kind (CONTRIBUTING "Statements"):
 
 * (a) `assumptions_small`, `assumptions_large`: `AcceptanceAssumptions` is satisfiable at two
-  concrete setups, `k = 2, δt = 4` and `k = 6, δt = 6`; `assumptions_iff` gives its exact range
-  and `assumptions_empty_of_timeout` rejects `δt = 3`.
+  concrete setups, `k = 2, δt = 6` and `k = 6, δt = 8`; `assumptions_iff` gives its exact range
+  and `assumptions_empty_of_timeout` rejects `δt = 5`.
 * (b) The coefficients at those setups: `accepted_catchUp` is `37` at `k = 2` and `8k + 4 = 52`
   at `k = 6`; the switch between the two branches is at `k = 5` (`catchUp_of_k_le_four`,
   `catchUp_of_five_le_k`, `catchUp_k_four`, `catchUp_k_five`). `accepted_latency` takes its
@@ -26,18 +26,18 @@ noncomputable def replayOrder (n : Nat) : ReplayOrderData n 0 (List (FG.Att n)) 
   order := fun _ Φ => if h : ∃ l, ParentOrderAt 0 Φ l then h.choose else []
   parentOrder := fun _ Φ h => by simp only [h, ↓reduceDIte]; exact h.choose_spec
 
-/-- The smallest setup the assumptions allow: `k = 2`, `δt = 4`. -/
+/-- The smallest setup the assumptions allow: `k = 2`, `δt = 6`. -/
 noncomputable def setupSmall : Setup where
   genesisRoot := 0
-  δt := 4
+  δt := 6
   k := 2
   two_le_k := le_rfl
   ro := replayOrder
 
-/-- A larger setup, past the catch-up switch: `k = 6`, `δt = 6`. -/
+/-- A larger setup, past the catch-up switch: `k = 6`, `δt = 8`. -/
 noncomputable def setupLarge : Setup where
   genesisRoot := 0
-  δt := 6
+  δt := 8
   k := 6
   two_le_k := by decide
   ro := replayOrder
@@ -48,18 +48,18 @@ def assumptionsSmall : AcceptanceAssumptions setupSmall := ⟨le_rfl, 1⟩
 /-- The assumptions at `setupLarge`, with lookback `3`. -/
 def assumptionsLarge : AcceptanceAssumptions setupLarge := ⟨by decide, 3⟩
 
-/-- (a) The acceptance assumptions are satisfiable at `k = 2, δt = 4`. -/
+/-- (a) The acceptance assumptions are satisfiable at `k = 2, δt = 6`. -/
 theorem assumptions_small : Nonempty (AcceptanceAssumptions setupSmall) := ⟨assumptionsSmall⟩
 
-/-- (a) The acceptance assumptions are satisfiable at `k = 6, δt = 6`. -/
+/-- (a) The acceptance assumptions are satisfiable at `k = 6, δt = 8`. -/
 theorem assumptions_large : Nonempty (AcceptanceAssumptions setupLarge) := ⟨assumptionsLarge⟩
 
-/-- (a) The assumptions hold exactly at the setups with `4 ≤ δt`. -/
-theorem assumptions_iff (S : Setup) : Nonempty (AcceptanceAssumptions S) ↔ 4 ≤ S.δt :=
+/-- (a) The assumptions hold exactly at the setups with `6 ≤ δt`. -/
+theorem assumptions_iff (S : Setup) : Nonempty (AcceptanceAssumptions S) ↔ 6 ≤ S.δt :=
   ⟨fun ⟨A⟩ => A.timeout, fun h => ⟨⟨h, 1⟩⟩⟩
 
-/-- (a) Rejection: a timeout of three is not admitted. -/
-theorem assumptions_empty_of_timeout (S : Setup) (h : S.δt = 3) :
+/-- (a) Rejection: a timeout of five is not admitted. -/
+theorem assumptions_empty_of_timeout (S : Setup) (h : S.δt = 5) :
     IsEmpty (AcceptanceAssumptions S) :=
   ⟨fun A => by have := A.timeout; omega⟩
 
@@ -99,37 +99,36 @@ theorem catchUp_k_five (S : Setup) (A : AcceptanceAssumptions S) (hk : S.k = 5) 
   rw [accepted_catchUp_val]
   omega
 
-/-- (b) Latency at `k = 2, δt = 4`: `8X + 12` for available and stable, `8X + 58` for final. -/
+/-- (b) Latency at `k = 2, δt = 6`: `8X + 12` for available and stable, `8X + 50` for final. -/
 theorem latency_small (X : ℕ+) :
     accepted_latency setupSmall assumptionsSmall .available X = 8 * (X : Nat) + 12 ∧
       accepted_latency setupSmall assumptionsSmall .stable X = 8 * (X : Nat) + 12 ∧
-      accepted_latency setupSmall assumptionsSmall .final X = 8 * (X : Nat) + 58 := by
+      accepted_latency setupSmall assumptionsSmall .final X = 8 * (X : Nat) + 50 := by
   rw [accepted_latency_available, accepted_latency_stable, accepted_latency_final]
   refine ⟨rfl, rfl, ?_⟩
-  change 8 * ((X : Nat) + 4 + 3) + 2 = _
   omega
 
-/-- (b) Latency at `k = 6, δt = 6`: `8X + 12` for available and stable, `8X + 74` for final. -/
+/-- (b) Latency at `k = 6, δt = 8`: `8X + 12` for available and stable, `8X + 50` for final.
+The final latency does not depend on `δt`. -/
 theorem latency_large (X : ℕ+) :
     accepted_latency setupLarge assumptionsLarge .available X = 8 * (X : Nat) + 12 ∧
       accepted_latency setupLarge assumptionsLarge .stable X = 8 * (X : Nat) + 12 ∧
-      accepted_latency setupLarge assumptionsLarge .final X = 8 * (X : Nat) + 74 := by
+      accepted_latency setupLarge assumptionsLarge .final X = 8 * (X : Nat) + 50 := by
   rw [accepted_latency_available, accepted_latency_stable, accepted_latency_final]
   refine ⟨rfl, rfl, ?_⟩
-  change 8 * ((X : Nat) + 6 + 3) + 2 = _
   omega
 
-/-- (b) Latency at the first index: `20` nonfinal at both setups, `66` and `82` final. -/
+/-- (b) Latency at the first index: `20` nonfinal at both setups, `58` final. -/
 theorem latency_one :
     accepted_latency setupSmall assumptionsSmall .available 1 = 20 ∧
-      accepted_latency setupSmall assumptionsSmall .final 1 = 66 ∧
+      accepted_latency setupSmall assumptionsSmall .final 1 = 58 ∧
       accepted_latency setupLarge assumptionsLarge .stable 1 = 20 ∧
-      accepted_latency setupLarge assumptionsLarge .final 1 = 82 := by
+      accepted_latency setupLarge assumptionsLarge .final 1 = 58 := by
   rw [accepted_latency_available, accepted_latency_final, accepted_latency_stable,
     accepted_latency_final]
   exact ⟨rfl, rfl, rfl, rfl⟩
 
-/-- (b) Both Sleepy margins hold at `k = 2, δt = 4`; catch-up meets the margin exactly. -/
+/-- (b) Both Sleepy margins hold at `k = 2, δt = 6`; catch-up meets the margin exactly. -/
 theorem sleepy_margins_small (idx : ℕ+) :
     37 ≤ (accepted_catchUp setupSmall assumptionsSmall : Nat) ∧
       8 * (idx : Nat) + 12 ≤ accepted_latency setupSmall assumptionsSmall .available idx ∧
@@ -137,7 +136,7 @@ theorem sleepy_margins_small (idx : ℕ+) :
   ⟨accepted_catchUp_ge_sleepy _ _, accepted_latency_ge_sleepy _ _ _ _ (.inl rfl),
     accepted_latency_ge_sleepy _ _ _ _ (.inr rfl)⟩
 
-/-- (b) Both Sleepy margins hold at `k = 6, δt = 6`. -/
+/-- (b) Both Sleepy margins hold at `k = 6, δt = 8`. -/
 theorem sleepy_margins_large (idx : ℕ+) :
     37 ≤ (accepted_catchUp setupLarge assumptionsLarge : Nat) ∧
       8 * (idx : Nat) + 12 ≤ accepted_latency setupLarge assumptionsLarge .available idx ∧

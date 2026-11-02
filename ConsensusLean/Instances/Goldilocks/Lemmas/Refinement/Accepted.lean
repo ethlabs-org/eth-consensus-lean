@@ -107,7 +107,7 @@ structure FinalWindowData (Q : FinalQuery S A V) where
   start : Nat
   block : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))
   cut : Fin 4 → Nat
-  slots : ∀ a, (block a).slot = start + (![0, S.δt - 1, S.δt + 1, S.δt + 3] a)
+  slots : ∀ a, (block a).slot = start + (![0, 2, 4, 6] a)
   proposals : ∀ a, Q.trace.ProposesAt (block a).proposer (cut a) (block a)
   accepted : ∀ a, Q.trace.AcceptAt (block a).proposer (cut a) (block a)
   ready : ∀ a, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
@@ -474,7 +474,7 @@ private theorem final_first_change (Q : FinalQuery S A V) (W : FinalWindowData S
     · exact False.elim (hBh (h.1.trans hPh))
     · exact h.2
   have hs0 : (W.block 0).slot = W.start := by simpa using W.slots 0
-  have hs1 : (W.block 1).slot = W.start + (S.δt - 1) := by simpa using W.slots 1
+  have hs1 : (W.block 1).slot = W.start + 2 := by simpa using W.slots 1
   have hlo := (hAB.slot_le coh).2 hne
   have hhi := (hB1.slot_le coh).1
   refine ⟨B, ⟨⟨hB3, hentry⟩, hAB, Or.inr ⟨by omega, by omega, ?_⟩⟩,
@@ -547,7 +547,7 @@ private theorem final_pool_row (Q : FinalQuery S A V) (W : FinalWindowData S A V
 Every budget and actual event remains explicit; eligible duties alone do not suffice. -/
 theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
     (block : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))) (cut : Fin 4 → Nat)
-    (slots : ∀ a, (block a).slot = start + (![0, S.δt - 1, S.δt + 1, S.δt + 3] a))
+    (slots : ∀ a, (block a).slot = start + (![0, 2, 4, 6] a))
     (proposals : ∀ a, Q.trace.ProposesAt (block a).proposer (cut a) (block a))
     (accepted : ∀ a, Q.trace.AcceptAt (block a).proposer (cut a) (block a))
     (ready : ∀ a, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
@@ -584,7 +584,7 @@ theorem final_first_crossing (Q : FinalQuery S A V) (W : FinalWindowData S A V Q
   have h13 := W.chain 1 3 (by decide)
   have h01 := W.chain 0 1 (by decide)
   have hs0 : (W.block 0).slot = W.start := by simpa using W.slots 0
-  have hs1 : (W.block 1).slot = W.start + (S.δt - 1) := by simpa using W.slots 1
+  have hs1 : (W.block 1).slot = W.start + 2 := by simpa using W.slots 1
   have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
   have coh := Compose.honest_blocks_coherent run.toLocalRun
     (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
@@ -1250,9 +1250,9 @@ theorem final_bounded_crossings (Q : FinalQuery S A V) (W : FinalWindowData S A 
   obtain ⟨B, hB, _⟩ := crossing
   have hd := A.timeout
   have hs0 : (W.block 0).slot = W.start := by simpa using W.slots 0
-  have hs1 : (W.block 1).slot = W.start + (S.δt - 1) := by simpa using W.slots 1
-  have hs2 : (W.block 2).slot = W.start + (S.δt + 1) := by simpa using W.slots 2
-  have hs3 : (W.block 3).slot = W.start + (S.δt + 3) := by simpa using W.slots 3
+  have hs1 : (W.block 1).slot = W.start + 2 := by simpa using W.slots 1
+  have hs2 : (W.block 2).slot = W.start + 4 := by simpa using W.slots 2
+  have hs3 : (W.block 3).slot = W.start + 6 := by simpa using W.slots 3
   have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
   have coh := Compose.honest_blocks_coherent run.toLocalRun
     (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
