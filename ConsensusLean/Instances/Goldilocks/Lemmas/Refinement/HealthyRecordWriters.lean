@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepGlobal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
@@ -109,6 +110,57 @@ theorem writer_mem_frame_between (hrun : GoldilocksRun proposer dg H tr)
 namespace UpTo
 
 variable {g ΔF a b : Time}
+
+/-- A clean optimistic writer that remains in the final frame is an ancestor
+candidate at creation and every intervening cut, including the terminal cut. -/
+theorem clean_optimistic_writer_candidate_interval
+    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
+    {y : Fin sp.n} {q s n : Nat} {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (SA.Vote sp.n)} (hy : y ∈ H)
+    (hop : SA.OptimisticLockAt tr.projAC y q s R CV)
+    (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hqn : q < n)
+    (hprefix : ∀ j < n, tr.time j ≤ b)
+    (hRn : R ∈ (Node.frame (tr.state y n)).tree) :
+    ∀ e, q ≤ e → e ≤ n → (Node.frame (tr.state y e)).AncestorCandidate R := by
+  have hqb := hprefix q hqn
+  have hr := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
+  obtain ⟨_, _, ell, _, hpoint, hRq, _, _⟩ := SA.optimisticLockAt_spec hr hy hop
+  have hframe := Compose.frame_of_projAC hp.run hy hpoint.1
+  have hRq' : R ∈ (tr.state y q).fg.tree := (hframe ▸ hRq).1
+  obtain ⟨v, r, l, S, hseed, hra, hrb, hdeliver⟩ := hp.reset_seed_held_at_call hc
+  have haq : a + sp.Δ ≤ tr.time q := by
+    have ha0 := (hp.run.time_nonneg r).trans hra
+    have hnext : a < sp.ts (sp.slot a + 1 : Nat) :=
+      not_le.mp ((SA.ts_le_iff_le_slot sp ha0 ((sp.slot a + 1 : Nat) : Int)).not.mpr
+        (by push_cast; omega))
+    have hclean : sp.ts (sp.slot a + 2 : Nat) ≤ sp.ts s := by
+      apply (SA.ts_le_iff sp).mpr
+      rw [Healing.cleanLabel_eq] at hs
+      exact_mod_cast (show sp.slot a + 2 ≤ s by omega)
+    have htime : sp.ts s ≤ tr.time q := by
+      obtain ⟨_, _, _, hslot, _⟩ := hop
+      exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q) s).mpr (by
+        change sp.slot (tr.time q) = s at hslot
+        omega)
+    have hΔ := sp.toParams.hΔ
+    simp only [SA.SAParams.ts] at hnext hclean htime
+    push_cast at hnext hclean htime
+    linarith
+  intro e hqe hen
+  have hRe := writer_mem_frame_between hp.run hp.noColl hy hqe hen hRq' hRn
+  apply guarded_seed_ancestor_candidate_at_state hp hy
+    (fun j hj => hprefix j (lt_of_lt_of_le hj hen)) hRe hseed hrb
+  · intro hFS
+    have hFq : Anc (tr.HonestBlocks H) ell.frame.F S := by
+      rw [hframe]
+      exact (Healing.run_F_mono hp.run.toLocalRun hy hqe).trans hFS
+    have hSq := hdeliver y hy q ell hpoint.1 haq hqb hFq
+    exact Compose.tree_mono hp.run.toLocalRun hy hqe (hframe ▸ hSq).1
+  · exact hp.clean_source_compatible_high_origin hc hy (Or.inr hop) hs hqb hseed hrb
+  · intro x j u B hje ho
+    exact hp.clean_source_compatible_high_origin hc hy (Or.inr hop) hs hqb ho
+      (hprefix j (lt_of_lt_of_le hje hen))
 
 /-- Even a retained writer before the repair update was created no earlier than
 the opening slot: its held block extends the operational proposal. A writer
