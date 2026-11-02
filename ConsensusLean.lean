@@ -282,6 +282,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.TheyAttest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAdvanceHealed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAdvanceUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchors
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorsUpTo
