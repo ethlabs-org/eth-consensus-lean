@@ -39,14 +39,16 @@ private theorem deadline_mono (y : Fin sp.n) (j : Nat) {τ τ' : Time} (h : τ �
   | coe w => exact add_le_add_left (max_le_max h le_rfl) _
 
 /-- A block held by an honest `x` at `i`, of height at least `h_max(z)` at `m`, is held by `z`
-at `m`: by relay (accepted at `≥ g`) or by catch-up (accepted before `g`). -/
-theorem held_of_relay (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+at `m`: by relay (accepted at `≥ g`) or by catch-up (accepted before `g`). The relay deadline is
+read from any bound `τ` on the times of the cuts before `i`. -/
+theorem held_of_relay_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {g ΔF b κ : Time}
     (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
     {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H) {i m : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state x i).fg.tree)
-    (hh : (tr.state z m).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h)
-    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
+    (hh : (tr.state z m).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h) {τ : Time}
+    (hτ : ∀ k < i, tr.time k ≤ τ)
+    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max τ g) sp.Δ ≤ tr.time j)
     (hcm : gbar g + κ ≤ tr.time m) :
     B ∈ (tr.state z m).fg.tree := by
   have hF : ∀ j ≤ m, Anc (tr.HonestBlocks H) (tr.state z j).fg.F B := fun j hj =>
@@ -57,7 +59,7 @@ theorem held_of_relay (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoC
   rcases tree_accepted hrun.toLocalRun hx hB with he | ⟨k, hk, hacc⟩
   · rw [he]
     exact Store.genesis_mem (Compose.fg_reachable hrun.toLocalRun hz m)
-  have hki : tr.time k ≤ tr.time i := hrun.time_mono hk.le
+  have hki : tr.time k ≤ τ := hτ k hk
   by_cases hg : g ≤ tr.time k
   · obtain ⟨j, hjm, hcj, hdl⟩ := hcall
     have hdl' : tr.deadline z j (max (tr.time k) g) sp.Δ ≤ tr.time j :=
@@ -69,6 +71,19 @@ theorem held_of_relay (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoC
     obtain ⟨j₀, hfirst, hj₀⟩ := exists_firstCutFrom_le hcm
     obtain ⟨k', hk', ha⟩ := hcatch x hx k B hacc hlt z hz j₀ hfirst (hF j₀ hj₀)
     exact hlift k' (by omega) ha
+
+/-- `held_of_relay_le` with `τ = time i`. -/
+theorem held_of_relay (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {g ΔF b κ : Time}
+    (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H) {i m : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state x i).fg.tree)
+    (hh : (tr.state z m).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h)
+    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
+    (hcm : gbar g + κ ≤ tr.time m) :
+    B ∈ (tr.state z m).fg.tree :=
+  held_of_relay_le hrun hnc hf hsvc hcatch hx hz hB hh (fun _ hk => hrun.time_mono hk.le) hcall
+    hcm
 
 /-- A store-level `G1.2`: `Σ.F` of an honest store is below every honest-held block of state
 height `> h_j`. -/
@@ -117,12 +132,14 @@ theorem F_anc_of_hj_lt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.No
 
 /-- **The frame-key lag (L-H, L-J, L-C; §23.2).** Premises: relay (`ResetService`), catch-up
 (`CatchRun g κ`), a call of `z` before `m` at or after the relay deadline of `i`, and
-`ḡ + κ ≤ time m`. -/
-theorem frameKey_lag (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+`ḡ + κ ≤ time m`. The relay deadline is read from any bound `τ` on the times of the cuts before
+`i` (`frameKey_lag` takes `τ = time i`). -/
+theorem frameKey_lag_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {g ΔF b κ : Time}
     (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
-    {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H) {i m : Nat}
-    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
+    {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H) {i m : Nat} {τ : Time}
+    (hτ : ∀ k < i, tr.time k ≤ τ)
+    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max τ g) sp.Δ ≤ tr.time j)
     (hcm : gbar g + κ ≤ tr.time m) :
     frameKey (tr.state x i).fg ≤ frameKey (tr.state z m).fg := by
   have hRx := Compose.fg_reachable hrun.toLocalRun hx i
@@ -138,7 +155,7 @@ theorem frameKey_lag (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCo
   have hle : (tr.state z m).fg.hmax ≤ (tr.state x i).fg.hmax := not_lt.1 hlt
   have hheld : ∀ {B : SA.Blk sp.n (List (FG.Att sp.n))}, B ∈ (tr.state x i).fg.tree →
       (tr.state x i).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h → B ∈ (tr.state z m).fg.tree :=
-    fun hB hh => held_of_relay hrun hnc hf hsvc hcatch hx hz hB (hle.trans hh) hcall hcm
+    fun hB hh => held_of_relay_le hrun hnc hf hsvc hcatch hx hz hB (hle.trans hh) hτ hcall hcm
   -- L-H
   have hBhz := hheld hBh hBhh.ge
   have heq : (tr.state z m).fg.hmax = (tr.state x i).fg.hmax := by
@@ -184,6 +201,16 @@ theorem frameKey_lag (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCo
         (hJW'.mono fun X hX => ⟨z, hz, m, hX⟩) hW)
   rw [frameKey_def, frameKey_def]
   split_ifs <;> first | omega | tauto
+
+/-- **The frame-key lag** with the relay deadline read from `time i`. -/
+theorem frameKey_lag (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {g ΔF b κ : Time}
+    (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H) {i m : Nat}
+    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
+    (hcm : gbar g + κ ≤ tr.time m) :
+    frameKey (tr.state x i).fg ≤ frameKey (tr.state z m).fg :=
+  frameKey_lag_le hrun hnc hf hsvc hcatch hx hz (fun _ hk => hrun.time_mono hk.le) hcall hcm
 
 end Consensus.Goldilocks.Healing
 
