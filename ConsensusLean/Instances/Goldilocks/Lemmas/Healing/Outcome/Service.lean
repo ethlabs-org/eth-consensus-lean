@@ -724,43 +724,6 @@ private theorem record_entry_eq (hp : ResetPremises tr H proposer dg g ΔF a)
     hy hh hr
   exact high_entry_eq hp ho' ho hZB' hEB hw hz hZ hE (hZh.trans hEh.symm) hZT hET
 
-/-- An honest record changes only when the node signs, by recording the signed attestation. -/
-private theorem record_step (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    (tr.state y (i + 1)).record = (tr.state y i).record ∨
-      ∃ att, tr.SignAt y i att ∧
-        (tr.state y (i + 1)).record = (tr.state y i).record.recordAtt att := by
-  by_cases hc : ∃ c, tr.CallAt y i c
-  · obtain ⟨c, hc⟩ := hc
-    have hlaw := hrun.cutLaw y hy i c hc
-    have hsucc := tr.state_succ_of_call hc
-    cases c with
-    | ac ℓ => exact Or.inl (by rw [hsucc]; exact hlaw.2.2.2)
-    | fg ℓ =>
-      rcases ℓ with ⟨B, _ | _⟩ | a' | ⟨C, _ | a'⟩
-      · exact Or.inl (by rw [hsucc, hlaw.2])
-      · exact Or.inl (by rw [hsucc]; exact hlaw.2.2.2)
-      · exact Or.inl (by rw [hsucc]; exact hlaw.2.2)
-      · exact Or.inl (by rw [hsucc, hlaw.2])
-      · exact Or.inr ⟨a', ⟨C, hc⟩, hsucc ▸ (createAtt_spec hlaw.1).2.2.2.2.1⟩
-  · exact Or.inl (by rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩])
-
-/-- **The sent contents of an honest record were signed earlier** (`record_attestation`). -/
-private theorem sent_origin (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
-    {b : FG.Content} : ∀ i, b ∈ (tr.state y i).record.sent →
-      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b
-  | 0, hb => by
-    rw [Trace.state, hrun.init y hy] at hb
-    simp [Node.init, FG.Record.empty] at hb
-  | i + 1, hb => by
-    rcases record_step hrun hy i with he | ⟨att, hs, he⟩ <;> rw [he] at hb
-    · obtain ⟨k, hk, h⟩ := sent_origin hrun hy i hb
-      exact ⟨k, by omega, h⟩
-    · rcases List.mem_append.1 hb with hb | hb
-      · obtain ⟨k, hk, h⟩ := sent_origin hrun hy i hb
-        exact ⟨k, by omega, h⟩
-      · exact ⟨i, by omega, att, hs, (List.mem_singleton.1 hb).symm⟩
-
 /-- **The first-timeout step**: with no timeout recorded at its height, an honest high row is a
 target: another recorded target there is the high-chain entry, the row's own. -/
 private theorem sign_target (hp : ResetPremises tr H proposer dg g ΔF a)
@@ -790,7 +753,7 @@ private theorem timeout_empty (hp : ResetPremises tr H proposer dg g ΔF a)
     rw [Trace.state, hp.run.init y hy]
     rfl
   | i + 1, h, hh => by
-    rcases record_step hp.run hy i with he | ⟨att, hs, he⟩ <;> rw [he]
+    rcases record_step_of_run hp.run hy i with he | ⟨att, hs, he⟩ <;> rw [he]
     · exact timeout_empty hp hy i h hh
     · simp only [FG.Record.recordAtt]
       split_ifs with hto
@@ -831,7 +794,7 @@ private theorem timeout_empty_before {b : Time}
   | 0, _, h, _ => by rw [Trace.state, hp.run.init y hy]; rfl
   | i + 1, hib, h, hh => by
     have hib' := (hp.run.time_mono (Nat.le_succ i)).trans hib
-    rcases record_step hp.run hy i with he | ⟨att, hs, he⟩ <;> rw [he]
+    rcases record_step_of_run hp.run hy i with he | ⟨att, hs, he⟩ <;> rw [he]
     · exact timeout_empty_before hp hy i hib' h hh
     · simp only [FG.Record.recordAtt]
       split_ifs with hto

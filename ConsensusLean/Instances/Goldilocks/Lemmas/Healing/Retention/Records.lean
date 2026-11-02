@@ -269,6 +269,130 @@ theorem client_record_origin (hp : ResetPremises tr H proposer dg g ΔF a)
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.fin = some (h, r)) :=
   client_record_origin_of_run hp.run hy h r i
 
+/-- An honest record changes only when the node signs, by recording the signed attestation. -/
+theorem record_step_of_run (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+    (tr.state y (i + 1)).record = (tr.state y i).record ∨
+      ∃ att, tr.SignAt y i att ∧
+        (tr.state y (i + 1)).record = (tr.state y i).record.recordAtt att := by
+  by_cases hc : ∃ c, tr.CallAt y i c
+  · obtain ⟨c, hc⟩ := hc
+    have hlaw := hrun.cutLaw y hy i c hc
+    have hsucc := tr.state_succ_of_call hc
+    cases c with
+    | ac ℓ => exact Or.inl (by rw [hsucc]; exact hlaw.2.2.2)
+    | fg ℓ =>
+      rcases ℓ with ⟨B, _ | _⟩ | a' | ⟨C, _ | a'⟩
+      · exact Or.inl (by rw [hsucc, hlaw.2])
+      · exact Or.inl (by rw [hsucc]; exact hlaw.2.2.2)
+      · exact Or.inl (by rw [hsucc]; exact hlaw.2.2)
+      · exact Or.inl (by rw [hsucc, hlaw.2])
+      · exact Or.inr ⟨a', ⟨C, hc⟩, hsucc ▸ createAtt_record hlaw.1⟩
+  · exact Or.inl (by rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩])
+
+/-- The sent contents of an honest record were signed earlier. -/
+theorem sent_origin (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    {b : FG.Content} : ∀ i, b ∈ (tr.state y i).record.sent →
+      ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b
+  | 0, hb => by
+    rw [Trace.state, hrun.init y hy] at hb
+    simp [Node.init, FG.Record.empty] at hb
+  | i + 1, hb => by
+    rcases record_step_of_run hrun hy i with he | ⟨att, hs, he⟩ <;> rw [he] at hb
+    · obtain ⟨k, hk, h⟩ := sent_origin hrun hy i hb
+      exact ⟨k, by omega, h⟩
+    · rcases List.mem_append.1 hb with hb | hb
+      · obtain ⟨k, hk, h⟩ := sent_origin hrun hy i hb
+        exact ⟨k, by omega, h⟩
+      · exact ⟨i, by omega, att, hs, (List.mem_singleton.1 hb).symm⟩
+
+/-- Honest signatures are well formed using the store at their own signing cut. -/
+private theorem signAt_wellFormed (hrun : GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
+    (hs : tr.SignAt y k att) : att.WellFormed := by
+  obtain ⟨src, hc⟩ := hs
+  have hcl := (hrun.cutLaw y hy k _ hc).1
+  have hr := Compose.fg_reachable hrun.toLocalRun hy k
+  change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
+    ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
+  rcases hsrc : (tr.state y k).fg.blocks src.root with _ | X
+  · have hg : ((tr.state y k).fg.σ src.root).Th = sp.genesisRoot := by
+      rw [Store.σ_of_blocks_none hr hsrc]; rfl
+    rw [hg, Store.σ_genesis hr] at hcl
+    exact Compose.createAtt_wellFormed (by simp [FG.ChainState.init])
+      (by simp [FG.ChainState.init]) (by simp [FG.ChainState.init]) hcl
+  · have hXr := Goldilocks.Store.Reachable.blocks_root hr hsrc
+    have hX : X ∈ (tr.state y k).fg.tree := by
+      change (tr.state y k).fg.blocks X.root = some X
+      rw [hXr]; exact hsrc
+    obtain ⟨⟨E, hE, hEr, -⟩, -⟩ := Store.entry_state_of_source _ _ _ _ hr X hX
+    obtain ⟨c, -, -, -, hcs⟩ := Store.chain_state_of_chain _ _ _ _ hr E hE
+    obtain ⟨h1, -, h3, -, -, -, -, h8, -⟩ := FG.chain_invariants sp.toParams.fg _ _ hcs
+    rw [hXr] at hEr
+    rw [← hEr] at hcl
+    exact Compose.createAtt_wellFormed h1 h3 (fun p hp => lt_of_le_of_lt (h8 p hp).2 h3) hcl
+
+/-- An honest high FG source forces a reset, even when its client suppresses a new signature. -/
+theorem reset_of_high_source (hrun : GoldilocksRun proposer dg H tr)
+    (hq : Hᶜ.ncard < sp.toParams.fg.q) {y : Fin sp.n} (hy : y ∈ H)
+    {k : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Option (FG.Att sp.n)}
+    (hc : tr.CallAt y k (.fg (.attest C s)))
+    (hh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h) :
+    ∃ a, IsReset tr H g a ∧ a ≤ tr.time k := by
+  classical
+  have hr := Compose.fg_reachable hrun.toLocalRun hy k
+  have he : ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).h =
+      ((tr.state y k).fg.σ C.root).h := by
+    rcases hC : (tr.state y k).fg.blocks C.root with _ | X
+    · rw [Store.σ_of_blocks_none hr hC]
+      exact congrArg FG.ChainState.h (Store.σ_genesis hr)
+    · have hXr := Goldilocks.Store.Reachable.blocks_root hr hC
+      have hX : X ∈ (tr.state y k).fg.tree := by
+        change (tr.state y k).fg.blocks X.root = some X
+        rw [hXr]; exact hC
+      obtain ⟨⟨E, -, hEr, -, hEh, -⟩, -⟩ := Store.entry_state_of_source _ _ _ _ hr X hX
+      rw [← hXr, ← hEr]
+      exact hEh
+  by_cases hprev : ∃ j < k, ∃ att, tr.SignAt y j att ∧ HZ tr H g + 1 ≤ att.h
+  · obtain ⟨j, hj, att, hs, hh⟩ := hprev
+    obtain ⟨a, ha, haj⟩ := reset_of_height_advance hrun hq hy hs hh
+    exact ⟨a, ha, haj.trans (hrun.time_mono hj.le)⟩
+  have hlock : (tr.state y k).record.lock ((tr.state y k).fg.σ C.root).h = none := by
+    by_contra hn
+    obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hn
+    obtain ⟨j, hj, att, hs, hfin⟩ :=
+      (client_record_origin_of_run hrun hy _ r k).2 hr
+    have hw := (signAt_wellFormed hrun hy hs).2
+      (((tr.state y k).fg.σ C.root).h, r) (by simp [hfin])
+    exact hprev ⟨j, hj, att, hs, by omega⟩
+  have hsent : ∀ b ∈ (tr.state y k).record.sent,
+      b.1 ≠ ((tr.state y k).fg.σ C.root).h := by
+    intro b hb hbh
+    obtain ⟨j, hj, att, hs, hb⟩ := sent_origin hrun hy k hb
+    have hah : att.h = b.1 := congrArg Prod.fst hb
+    exact hprev ⟨j, hj, att, hs, by omega⟩
+  have hany (τ : Bool) : (tr.state y k).record.sent.any (fun b =>
+      b.1 = ((tr.state y k).fg.σ C.root).h ∧ (!τ ∨ b.2.1 =
+        ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th)) = false := by
+    apply List.any_eq_false.2
+    intro b hb
+    simp [hsent b hb]
+  cases s with
+  | some att =>
+    have hcl := (hrun.cutLaw y hy k _ hc).1
+    apply reset_of_height_advance hrun hq hy ⟨C, hc⟩
+    rw [(Store.createAtt_eq hcl).1, he]
+    exact hh
+  | none =>
+    have hcl := (hrun.cutLaw y hy k _ hc).1
+    exfalso
+    change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
+      ((tr.state y k).fg.σ C.root).Th) = none at hcl
+    unfold FG.Record.createAtt FG.Record.heightPair at hcl
+    simp only [he, hlock, ne_eq, not_true_eq_false, false_and, ↓reduceIte] at hcl
+    split_ifs at hcl <;> simp_all only [Bool.false_eq_true, ↓reduceIte,
+      reduceCtorEq]
+
 /-- **The finality pair of an honest attestation names an entry of its source's chain**
 (§16; G0.2 (h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry
 state at a bound entry, or one of its pending pairs) names the entry at height `h` of an
