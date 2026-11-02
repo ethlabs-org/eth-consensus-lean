@@ -22,7 +22,11 @@ call (`hl hf hB hBl`) and a unanimous slot `u` (`hP hslot hu hPg hun hgu hR htu 
 * `live_fast_lock_of_healed_upTo`: the two together give, at a later honest call, the live fast
   lock in the shape of `hl hf hB hBl`, with block `P`.
 * `unanimous_slot_of_within`: `UnanimousWithin T Bw` at a time `t` gives the unanimous-slot group.
-* `height_advance_healed_upTo`: `height_advance_upTo` with both groups supplied. -/
+* `height_advance_healed_upTo`: `height_advance_upTo` with both groups supplied.
+* `hXP_of_c3_upTo`: the lock entry is below every honest proposal of a slot `u` with
+  `time k + Δ ≤ t_u ≤ b` (lock entry ⪯ lock block, then C3).
+* `height_advance_healed_c3_upTo`: `height_advance_upTo` with any live fast lock and `hXP`
+  from C3; the scheduling premise is `time k + Δ ≤ t`. -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -242,6 +246,118 @@ theorem height_advance_healed_upTo (hrun : GoldilocksRun proposer dg H tr)
   exact height_advance_upTo hrun hq hH hs hv hM4 hs₁ hvs hwb hy hc htH hl hf hPl hBl hks
     rfl rfl hh₀ hp hvb hcatch hP hslot hu hPg hun hgu hR htu huv (hXP u P hPr htu huv) hs₂ hvs₂
     hwb₂ hAX hδ
+
+/-- `unanimous_slot_of_within` that also keeps the lower bound `t ≤ t_u` of the witness. -/
+theorem unanimous_slot_of_within_ge (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {T Bw : Time} (hU : Regimes.UnanimousWithin tr H proposer T Bw)
+    {t : Time} (hTt : T ≤ t) {gR a tH v b : Time} (hgt : SA.gbar gR + 4 * sp.Δ ≤ t)
+    (hRt : Healing.drainTime sp a ≤ t) (htHt : tH ≤ t) (htv : t + Bw + 6 * sp.Δ ≤ v) :
+    ∃ (u : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))), t ≤ sp.ts u ∧
+      Healing.HonestProposalRun tr H proposer u P ∧ P ∈ tr.HonestBlocks H ∧
+      P.slot = u ∧ 0 < u ∧ P.root ≠ sp.genesisRoot ∧
+      (∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+        e.msg.slot = u → e.msg.head = P.root) ∧
+      SA.gbar gR + 4 * sp.Δ ≤ sp.ts u ∧ Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat) ∧
+      tH ≤ sp.ts u ∧ sp.ts u + 6 * sp.Δ ≤ v := by
+  obtain ⟨u, P, htu, hub, hPr, hun⟩ := hU t hTt
+  have hΔ := sp.toParams.hΔ
+  have hg0 : 0 ≤ SA.gbar gR := le_max_right gR 0
+  have hu : 0 < u := by
+    by_contra h0
+    have : u = 0 := by omega
+    subst this
+    simp only [SAParams.ts, Nat.cast_zero, mul_zero] at htu
+    linarith
+  obtain ⟨kp, hkp⟩ := proposesAt_of_honestProposalRun hrun hPr
+  obtain ⟨-, hPm, -⟩ := Healing.accept_of_proposesAt hrun hnc hPr.1 hkp
+  have hPH : P ∈ tr.HonestBlocks H := ⟨_, hPr.1, kp + 1, hPm⟩
+  obtain ⟨-, -, -, -, -, -, -, -, -, hslot, -⟩ := hPr.2
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hPg : P.root ≠ sp.genesisRoot := by
+    intro he
+    have hG := Healing.Store.genesis_mem (Compose.fg_reachable hrun.toLocalRun hPr.1 kp)
+    have heq := hr.coherent.1 hPH ⟨_, hPr.1, kp, hG⟩ he
+    have hz : P.slot = 0 := by rw [heq]; rfl
+    omega
+  have hlt : sp.ts u < sp.ts (u + 1 : Nat) := (SA.ts_lt_iff sp).2 (by push_cast; omega)
+  exact ⟨u, P, htu, hPr, hPH, hslot, hu, hPg, fun y hy j e hv _ hs => hun y hy j e hv hs,
+    by linarith, by linarith, by linarith, by linarith⟩
+
+/-- **The lock entry is below a later honest proposal** (the `hXP` of `height_advance_upTo`,
+L5.4 via C3). For a live fast lock `l` on `B` of the honest call at `k` (`tH ≤ time k`), the
+entry block `X` of `σ[B]` (`X.root = σ[B].Th`) is ⪯ every honest proposal `P` of a slot `u`
+with `time k + Δ ≤ t_u ≤ b`: `X ⪯ B` (entry of the state of `B`) and C3 gives `B ⪯ parent(P)`. -/
+theorem hXP_of_c3_upTo (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {gR tH b : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hH : HealedUpTo tr H proposer gR tH b h₀ E)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ℓ) (htH : tH ≤ tr.time k) {l}
+    (hl : l ∈ SA.liveLocks sp (tr.projAC.state y k).locks ℓ.frame (tr.time k))
+    (hf : l.fast = true) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree)
+    (hBl : B.root = l.block) {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : Healing.HonestProposalRun tr H proposer u P) (hku : tr.time k + sp.Δ ≤ sp.ts u)
+    (hub : sp.ts u ≤ b) :
+    ∀ X ∈ (tr.state y k).fg.tree, X.root = ((tr.state y k).fg.σ B.root).Th →
+      Anc (tr.HonestBlocks H) X P := by
+  intro X hX hXr
+  have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
+  obtain ⟨T, hT, hTr, hTB, -, -⟩ := lock_entry_block hrun hy hBy
+  have hXT : X = T :=
+    (Store.accepted_tree _ _ _ _ (Compose.fg_reachable hrun.toLocalRun hy k)).2.1.1 hX hT
+      (hXr.trans hTr.symm)
+  subst hXT
+  obtain ⟨Pr, hPrH, hpar, hBPr⟩ := hH.c3 y hy k ℓ hc htH l hl hf B hB hBl u P hP hku hub
+  obtain ⟨kp, hkp⟩ := proposesAt_of_honestProposalRun hrun hP
+  obtain ⟨-, hPm, -⟩ := Healing.accept_of_proposesAt hrun hnc hP.1 hkp
+  have hPH : P ∈ tr.HonestBlocks H := ⟨_, hP.1, kp + 1, hPm⟩
+  exact (Healing.honest_anc_of_store_anc hy hTB).trans
+    (hBPr.tail ⟨hPrH, hPH, hpar⟩)
+
+/-- **One height of advance from the healed state, C3 form.** `height_advance_upTo` with an
+honest live fast lock `l` on `B` at the call `k` (any fast lock: the consumer does not need the
+lock of a fixed unanimous slot) and the unanimous slot `u` from `unanimous_slot_of_within` at a
+time `t` with `time k + Δ ≤ t`. The entry bound `hXP` is discharged by `hXP_of_c3_upTo`
+(`t ≤ t_u`, `t_u + 6Δ ≤ v ≤ b`). -/
+theorem height_advance_healed_c3_upTo (hrun : GoldilocksRun proposer dg H tr)
+    (hq : Hᶜ.ncard < sp.toParams.fg.q)
+    {g ΔF v gR tH b : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hH : HealedUpTo tr H proposer gR tH b h₀ E)
+    (hs : Healing.HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v) {s₀ gM s₁ : Nat}
+    (hM4 : ∀ s, s₀ ≤ s → ∃ s', s ≤ s' ∧ s' < s + gM ∧
+      ∃ P, Healing.HonestProposalRun tr H proposer s' P)
+    (hs₁ : s₀ ≤ s₁) (hvs : v + ΔF ≤ sp.ts s₁) (hwb : ∀ s', s' < s₁ + gM → sp.ts s' ≤ b)
+    {ΔR a : Time} (hp : Healing.ResetPremisesUpTo tr H proposer dg gR ΔR a b) (hvb : v ≤ b)
+    (hcatch : Healing.CatchRun tr H gR (2 * sp.Δ))
+    -- the live fast lock
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ℓ) (htH : tH ≤ tr.time k) {l}
+    (hl : l ∈ SA.liveLocks sp (tr.projAC.state y k).locks ℓ.frame (tr.time k))
+    (hf : l.fast = true) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree)
+    (hBl : B.root = l.block) (hks : tr.time k + sp.Δ ≤ sp.ts s₁)
+    (hh₀ : h₀ + 1 ≤ ((tr.state y k).fg.σ B.root).h)
+    -- the unanimous slot
+    {T Bw : Time} (hU : Regimes.UnanimousWithin tr H proposer T Bw) {t : Time} (hTt : T ≤ t)
+    (hgt : SA.gbar gR + 4 * sp.Δ ≤ t) (hRt : Healing.drainTime sp a ≤ t) (htHt : tH ≤ t)
+    (htv : t + Bw + 6 * sp.Δ ≤ v) (hkt : tr.time k + sp.Δ ≤ t)
+    -- v, the windows, the link and the slot condition
+    {s₂ : Nat} (hs₂ : s₀ ≤ s₂) (hvs₂ : v + sp.Δ ≤ sp.ts s₂)
+    (hwb₂ : ∀ s, s < s₂ + gM → sp.ts s ≤ b) {A : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hAX : ∀ X ∈ (tr.state y k).fg.tree, X.root = ((tr.state y k).fg.σ B.root).Th →
+      Anc (tr.HonestBlocks H) A X)
+    (hδ : ∀ X ∈ (tr.state y k).fg.tree, X.root = ((tr.state y k).fg.σ B.root).Th →
+      s₂ + gM ≤ X.slot + sp.toParams.fg.δt + 1) :
+    ∃ s, min s₁ s₂ ≤ s ∧ s < max s₁ s₂ + gM ∧ ∃ P',
+      Healing.HonestProposalRun tr H proposer s P' ∧ ∃ kp, tr.ProposesAt (proposer s) kp P' ∧
+        P' ∈ (tr.post kp).fg.tree ∧ Anc (tr.HonestBlocks H) A P' ∧
+        ∀ w ∈ H, ∀ j, P' ∈ (tr.state w j).fg.tree →
+          ((tr.state w j).fg.σ A.root).h + 1 ≤ ((tr.state w j).fg.σ P'.root).h := by
+  obtain ⟨u, P, htu', hPr, hP, hslot, hu, hPg, hun, hgu, hR, htu, huv⟩ :=
+    unanimous_slot_of_within_ge (b := b) hrun hp.noColl hU hTt hgt hRt htHt htv
+  have hΔ := sp.toParams.hΔ
+  have hXP := hXP_of_c3_upTo hrun hp.noColl hH hy hc htH hl hf hB hBl hPr
+    (by linarith) (by linarith)
+  exact height_advance_upTo hrun hq hH hs hv hM4 hs₁ hvs hwb hy hc htH hl hf hB hBl hks
+    rfl rfl hh₀ hp hvb hcatch hP hslot hu hPg hun hgu hR htu huv hXP hs₂ hvs₂ hwb₂ hAX hδ
 
 end Consensus.Goldilocks.Refinement
 
