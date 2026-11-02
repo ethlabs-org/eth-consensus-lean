@@ -104,8 +104,8 @@ theorem psyncFGRowTransport_iff : PSyncFGRowTransport S rho tr H ΔF ↔
 
 /-- **The monotone lift of row service**: row service at `Δ₁` is row service at every
 `Δ₂ ≥ Δ₁`, since the row deadline is monotone in the delay. It is the only use of an order
-between row delays here; a consumer lifts the base row service at `Δ_F,p` only where an upper
-envelope of the row bound is in scope (`rowDelay_le_of_healthy`). -/
+between row delays here; a consumer lifts the base row service at `Δ_F,p` only to a larger
+`Δ_F` (`hsSharedUpTo_of_healthy`). -/
 theorem PSyncFGRowTransport.mono {Δ₁ Δ₂ : Time} (h : PSyncFGRowTransport S rho tr H Δ₁)
     (h12 : Δ₁ ≤ Δ₂) : PSyncFGRowTransport S rho tr H Δ₂ := by
   intro g hnet x hx i a hs y hy j hj hb hd

@@ -124,8 +124,9 @@ theorem finalWindow_data_of_honest_anchors_gap (Q : FinalQuery S A V)
   rw [ht i]
   exact hready i
 
-/-- **`FinalWindowData` from four honest anchors** at the slots `start + off a` with the
-window's offsets `off = ![0, 2, 4, 6]`: `finalWindow_data_of_honest_anchors_gap` at `c = 2`. -/
+/-- **`FinalWindowData` from four honest anchors** at the slots `start + off a` with the gap-2
+offsets `off = ![0, 2, 4, 6]` (not the contract's `finalWindow A`, whose gap is `cF r`):
+`finalWindow_data_of_honest_anchors_gap` at `c = 2`. -/
 theorem finalWindow_data_of_honest_anchors (Q : FinalQuery S A V)
     {proposer : Nat → Fin Q.params.n}
     {dg : Digest (List (FG.Att Q.params.n)) (Payload Q.params.n)} {g ΔF a b : Time}
@@ -152,7 +153,7 @@ theorem finalWindow_data_of_honest_anchors (Q : FinalQuery S A V)
     ext i; fin_cases i <;> rfl
   obtain ⟨cut, hcut, hacc, -, -, hch, ht, hord, hfr, hbd⟩ :=
     finalWindow_cuts_of_honest_anchors hp hc hP hs hR hb hadj hq hD
-  refine ⟨⟨start, 2, le_rfl, by have := A.timeout; omega, P, cut,
+  refine ⟨⟨start, 2, le_rfl, by have := A.six_le_δt; omega, P, cut,
     by rw [hoff]; exact window_slots_of_honest_anchors hP, hcut, hacc, fun i => ?_, hfr,
     hord, hbd, hch, hcarrier⟩, rfl, rfl⟩
   rw [ht i]

@@ -26,9 +26,10 @@ consensus-lean#136. `final_window_extract_of` has the statement of the leaf
 `final_window_extract_of_gap` is the general form (workbench `two_bound_network.md` §4): an
 anchor gap `c` with `2 ≤ c`, the span `3c ≤ δt`, the final pattern `[0, c, 2c, 3c]` (`hpat`),
 `ΔF` a parameter (`HSSharedUpTo` at `ΔF` and `6Δ + ΔF ≤ 4Δ·c` explicit) and the latency budget
-`hlat` of a span-`3c` window explicit. `final_window_extract_of_shared` is its instance at `c = 2`
-(latency `final_latency_gap_two`), and `final_window_extract_of` instantiates `ΔF := Δ` only
-there. Proved here: `CatchRun 2Δ` (`catchRun_of_psync`), the recurrence from `Q.progress`, the
+`hlat` of a span-`3c` window explicit. `final_window_extract_of_shared` is its instance at the
+row gap `c = cF r` of the assumptions (latency `final_latency_gap`), and
+`final_window_extract_of` instantiates the protocol row delay `ΔF := rowDelay` only there.
+Proved here: `CatchRun 2Δ` (`catchRun_of_psync`), the recurrence from `Q.progress`, the
 two queries (`two_query_placement`), the seed height (`seed_height_held`), the anchor steps
 (`anchorSteps_gap`), the window fields (`finalWindow_data_of_honest_anchors_gap`, readiness by
 `ready_transport`), the slack `ts(s₀ + 3c) + Δ ≤ deadline` from `hlat`, and the time glue. -/
@@ -67,16 +68,17 @@ theorem finalSeedMin_spec (Q : FinalQuery S A V) {a : Time} {u : Nat}
 
 /-- The final pattern with offsets `[0, c, 2c, 3c]` spans `3c` slots. -/
 theorem finalWindow_span_of_offsets {c : Nat}
-    (hpat : (finalWindow S).offsets = [0, c, 2 * c, 3 * c]) : (finalWindow S).span = 3 * c := by
+    (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) : (finalWindow A).span = 3 * c := by
   unfold Pattern.span
   rw [hpat]
   simp only [List.foldr_cons, List.foldr_nil]
   omega
 
-/-- **The final latency budget at gap `2`**: `accepted_latency .final = 8(X + 6) + 2` engine
-delays cover the window of span `6` and one node delay, `4(X + 3·2)Δ + Δ`. -/
-theorem final_latency_gap_two (Q : FinalQuery S A V) :
-    Q.query + 4 * ((Q.index : Nat) + 3 * 2) * Q.params.Δ + Q.params.Δ ≤ Q.deadline := by
+/-- **The final latency budget at the row gap `c = cF r`**: `accepted_latency .final =
+8(X + 3c) + 2` engine delays cover the window of span `3c` and one node delay,
+`4(X + 3c)Δ + Δ`. -/
+theorem final_latency_gap (Q : FinalQuery S A V) :
+    Q.query + 4 * ((Q.index : Nat) + 3 * cF A.rowRatio) * Q.params.Δ + Q.params.Δ ≤ Q.deadline := by
   have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
   have hi : (1 : Time) ≤ ((Q.index : Nat) : Time) := by exact_mod_cast Q.index.pos
   change _ ≤ Q.query + ((K S A).params.latency .final Q.index : Time) * Q.run.1.Δ
@@ -93,7 +95,7 @@ shared HS premises `hs` at `ΔF`, the delivery inequality `hdel : 6Δ + ΔF ≤ 
 pattern of span `3c`: a window of four honest anchors at `start + [0, c, 2c, 3c]` (`W.gap = c`)
 after the query, its route-A run premises and its three anchor steps (`anchorSteps_gap`). -/
 theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 ≤ c)
-    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow S).offsets = [0, c, 2 * c, 3 * c])
+    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c])
     {ΔR a ΔF : Time}
     (hs : Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst ΔF
       Q.run.2.horizon)
@@ -134,15 +136,15 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
   set G := finalGrid S A V Q
   have hΔ : (0 : Time) < Q.params.Δ := Q.params.toParams.hΔ
   have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
-  have hspc := finalWindow_span_of_offsets (S := S) hpat
+  have hspc := finalWindow_span_of_offsets (S := S) (A := A) hpat
   -- the recurrence of the query
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) G ⟨finalWindow S, Q.index⟩
+      (fun s => Q.run.2.sel (.proposer s)) G ⟨finalWindow A, Q.index⟩
       ((Sys (family S) V).cDur (K S A) Q.run) ((Sys (family S) V).ready (K S A) Q.gst Q.run)
       Q.run.2.horizon := by
     simpa only [System.prog, shapeProgress, shapeHolds, acceptanceContract, ↓reduceIte,
       Model.sysExternal, System.pt, Sys, Model.sysOf, Model.Run.point] using Q.progress
-  have hlen : ((⟨finalWindow S, Q.index⟩ : Recurrence).len : Time) * G.slotLen =
+  have hlen : ((⟨finalWindow A, Q.index⟩ : Recurrence).len : Time) * G.slotLen =
       4 * ((Q.index : Nat) + 3 * c) * Q.params.Δ := by
     simp only [Recurrence.len, hspc]
     change _ * (4 * (Q.run.1.Δ + 1)) = 4 * _ * (Q.run.1.Δ + 1)
@@ -162,7 +164,7 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
   rw [max_eq_left (le_max_right _ _)] at hq
   have h3cΔ : (0 : Time) ≤ 4 * (((Q.index : Nat) : Time) + 3 * (c : Time)) * Q.params.Δ := by
     positivity
-  have hstop : Q.query + ((⟨finalWindow S, Q.index⟩ : Recurrence).len : Time) * G.slotLen ≤
+  have hstop : Q.query + ((⟨finalWindow A, Q.index⟩ : Recurrence).len : Time) * G.slotLen ≤
       Q.run.2.horizon := by rw [hlen]; linarith
   obtain ⟨u, s₀, humin, hu0, hus, hut₁, -, hdu, hs₀q, -, hspan, hds⟩ :=
     two_query_placement (δt := S.δt) hrec (by rw [hpat]; simp) hplace hq hstop hstop
@@ -253,14 +255,14 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
   rw [ht3]
   exact h3D
 
-/-- **Final-window extraction at a forwarding delay `ΔF`** (route A, gap `c = 2`). The
+/-- **Final-window extraction at a forwarding delay `ΔF`** (route A, gap `c = cF r`). The
 statement of `final_window_extract`, with the shared HS premises `hs` at `ΔF` and the delivery
-inequality `hdel` explicit: `final_window_extract_of_gap` at `c = 2`, with the latency
-`final_latency_gap_two`. -/
+inequality `hdel` explicit: `final_window_extract_of_gap` at `c = cF r`, with the latency
+`final_latency_gap`. -/
 theorem final_window_extract_of_shared (Q : FinalQuery S A V) {ΔR a ΔF : Time}
     (hs : Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst ΔF
       Q.run.2.horizon)
-    (hdel : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (2 : Nat))
+    (hdel : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (cF A.rowRatio : Time))
     (hreset : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon)
     (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
@@ -285,26 +287,24 @@ theorem final_window_extract_of_shared (Q : FinalQuery S A V) {ΔR a ΔF : Time}
         Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b ∧
         Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ) ∧
         (∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
-          (W.start + ![0, 2, 4, 6] i) (W.block i)) ∧
+          (W.start + ![0, cF A.rowRatio, 2 * cF A.rowRatio, 3 * cF A.rowRatio] i) (W.block i)) ∧
         Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
-        Q.params.ts (W.start + 6) ≤ b) ∧
+        Q.params.ts (W.start + 3 * cF A.rowRatio) ≤ b) ∧
       ∀ i : Fin 3, AnchorStep Q.trace (honestKeys S Q.run.2) (W.block i.castSucc)
         (W.block i.succ) := by
   have hΔ : (0 : Time) < Q.params.Δ := Q.params.toParams.hΔ
   have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
-  have hoff : (![0, 2, 2 * 2, 3 * 2] : Fin 4 → Nat) = ![0, 2, 4, 6] := by
-    ext i; fin_cases i <;> rfl
-  have hdl := final_latency_gap_two S A V Q
+  have hdl := final_latency_gap S A V Q
   obtain ⟨W, hWg, hslack, ⟨proposer, dg, g, ΔF', a', b, hp, hc, hP, hR, hb⟩, hsteps⟩ :=
-    final_window_extract_of_gap S A V Q le_rfl (by have := A.timeout; omega)
-      (by rw [finalWindow_offsets]) hs hdel hdl hreset hpropose hplace hcarrier
-  rw [hWg, hoff] at hP
+    final_window_extract_of_gap S A V Q A.two_le_cF A.timeout (finalWindow_offsets A) hs hdel hdl
+      hreset hpropose hplace hcarrier
+  rw [hWg] at hP
   rw [hWg] at hb
   exact ⟨W, hslack, ⟨proposer, dg, g, ΔF', a', b, hp, hc, hP, hR, hb⟩, hsteps⟩
 
 /-- **Final-window extraction from explicit premises** (route A, gap 2). The statement of
-`final_window_extract`. The forwarding delay is instantiated here only: `ΔF := Δ`, with the
-shared HS premises `FinalQuery.hsSharedUpTo`. -/
+`final_window_extract`. The forwarding delay is instantiated here only: the protocol row delay
+`ΔF := rowDelay`, with the shared HS premises `FinalQuery.hsSharedUpTo`. -/
 theorem final_window_extract_of (Q : FinalQuery S A V) {ΔR a : Time}
     (hreset : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon)
@@ -330,13 +330,12 @@ theorem final_window_extract_of (Q : FinalQuery S A V) {ΔR a : Time}
         Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b ∧
         Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ) ∧
         (∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
-          (W.start + ![0, 2, 4, 6] i) (W.block i)) ∧
+          (W.start + ![0, cF A.rowRatio, 2 * cF A.rowRatio, 3 * cF A.rowRatio] i) (W.block i)) ∧
         Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
-        Q.params.ts (W.start + 6) ≤ b) ∧
+        Q.params.ts (W.start + 3 * cF A.rowRatio) ≤ b) ∧
       ∀ i : Fin 3, AnchorStep Q.trace (honestKeys S Q.run.2) (W.block i.castSucc)
         (W.block i.succ) := by
-  have hΔ : (0 : Time) < Q.params.Δ := Q.params.toParams.hΔ
-  exact final_window_extract_of_shared S A V Q Q.hsSharedUpTo (by push_cast; linarith)
+  exact final_window_extract_of_shared S A V Q Q.hsSharedUpTo Q.rowDelay_delivery
     hreset hpropose hplace hcarrier
 
 end Consensus.Goldilocks.Refinement

@@ -55,6 +55,21 @@ where it is recorded; "Francesco" marks the owner's decisions.
   case Francesco ruled out as a final state; this is not the arbitrary-ratio port, which chooses
   `r` in the acceptance assumptions, adds `3·cF r ≤ δt`, and reworks the coefficients. Card:
   workbench `two_bound_network.md`.
+- 2026-11-02, coefficient lane (lead-approved plan): the arbitrary-ratio contract. The Goldilocks
+  acceptance assumptions choose the row ratio, `AcceptanceAssumptions.rowRatio : ℕ+`, passed to
+  `Params.rowRatio` by `acceptanceContract`, so its healthy regime assumes `ΔF ≤ r·Δ` for that `r`.
+  With `c = cF r`: `AcceptanceAssumptions.timeout` is `3c ≤ δt` (`six_le_δt` derived),
+  `finalWindow A = [0, c, 2c, 3c]` (span `3c`) and `accepted_latency .final X = 8(X + 3c) + 2`; the
+  nonfinal latency `8X + 12` and `accepted_heal` are unchanged (the row delay enters the reset
+  envelope only through the rise timeout `6Δ + ΔF ≤ 4Δ·δt`, paid by `3c ≤ δt`). Provenance of
+  `8X + 12` (workbench `confirmed_supply_row_use_audit.md`, at 03e10e76): the post-heal proofs do
+  not consume the row-timing components, although their premise bundles still contain them; this
+  is not a theorem that removes all row assumptions. The protocol row delay `rowDelay` is the instantiation of
+  `ΔF` (`FinalQuery.hsSharedUpTo`, the healthy-query wrapper); the transitional lift
+  `rowDelay_le_of_healthy` (`ΔF ≤ Δ` at `r = 1`) is removed. At `r = 1` the contract constants
+  and the window are unchanged (`c = 2`, `[0, 2, 4, 6]`, `8(X + 6) + 2`, `6 ≤ δt`) and so are the
+  proved claims; the transport now runs at the actual `rowDelay`, which differs from the former
+  `Δ_p` instantiation whenever `ΔF ≠ Δ`. The route-A entry below records the `r = 1` constants.
 - 2026-11-02, Francesco ("1. Yes 2. we should edit the spec in consensus-lean"): the full-tree
   fallback for an honest vote's head. `tryVote` walks the viable tree of `SA.voteDomain`: the
   voter block tree when its viable tree in the current frame is nonempty, else the whole frame

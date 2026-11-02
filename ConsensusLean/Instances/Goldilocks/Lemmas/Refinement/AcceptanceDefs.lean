@@ -7,29 +7,55 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetCoefficients
 
 public section
+
+/-! # Goldilocks Refinement: the acceptance contract and its coefficients
+
+The fixed assumptions (`AcceptanceAssumptions`: row ratio and timeout), the final pattern
+(`finalWindow`, gap `cF r`), the coefficients (`accepted_catchUp`, `accepted_heal`,
+`accepted_latency`) and the contract `acceptanceContract`/`K`. The row transport is instantiated
+at the actual protocol row delay `rowDelay` (HSSharedRun, HSSharedOfQuery); the monotone lift
+`PSyncFGRowTransport.mono` exists, but Accepted's chain uses it only at `le_rfl`. -/
+
 namespace Consensus.Goldilocks.Refinement
 open Blocks Shape
 
-/-- Route-A four-anchor window `[0, 2, 4, 6]` (gap 2, span 6) for the one-delivery-bound model,
-cF=2 and δt≥6 (docs/decisions.md, 2026-11-02). The span does not depend on `δt`. The anchor steps
-and the extraction of the window remain OPEN. -/
-def finalWindow (_S : Setup) : Pattern :=
-  ⟨[0, 2, 4, 6], by simp⟩
+/-- Fixed row ratio, timeout and outage assumptions. The row ratio `r` bounds the engine row delay
+by `ΔF ≤ r·Δ` in the healthy regime (`Params.rowRatio`); the timeout pays the route-A window at
+the row gap `cF r` (`Refinement/Defs`), `3·cF r ≤ δ_t`. The final pattern is determined by these,
+not chosen by a caller; outer gaps never enter the timeout bound. -/
+structure AcceptanceAssumptions (S : Setup) where
+  rowRatio : ℕ+
+  timeout : 3 * cF rowRatio ≤ S.δt
+  lookback : ℕ+
 
-theorem finalWindow_offsets (S : Setup) :
-    (finalWindow S).offsets = [0, 2, 4, 6] := by rfl
+/-- The row gap is at least `2` at every ratio (`cF_ceil`: `4·cF r ≥ r + 6 ≥ 7`). -/
+theorem AcceptanceAssumptions.two_le_cF {S : Setup} (A : AcceptanceAssumptions S) :
+    2 ≤ cF A.rowRatio := by
+  have := (cF_ceil A.rowRatio).1
+  have := A.rowRatio.pos
+  omega
 
-theorem finalWindow_span (S : Setup) : (finalWindow S).span = 6 := by
+/-- The timeout covers the gap-2 bound `6 ≤ δ_t` at every ratio. -/
+theorem AcceptanceAssumptions.six_le_δt {S : Setup} (A : AcceptanceAssumptions S) :
+    6 ≤ S.δt := by
+  have := A.timeout
+  have := A.two_le_cF
+  omega
+
+/-- Route-A four-anchor window `[0, c, 2c, 3c]` at the row gap `c = cF r` of the assumptions'
+row ratio (span `3c ≤ δ_t`, `A.timeout`). At `r = 1`, `c = 2`: `[0, 2, 4, 6]`. -/
+def finalWindow {S : Setup} (A : AcceptanceAssumptions S) : Pattern :=
+  ⟨[0, cF A.rowRatio, 2 * cF A.rowRatio, 3 * cF A.rowRatio], by simp⟩
+
+theorem finalWindow_offsets {S : Setup} (A : AcceptanceAssumptions S) :
+    (finalWindow A).offsets = [0, cF A.rowRatio, 2 * cF A.rowRatio, 3 * cF A.rowRatio] := by rfl
+
+theorem finalWindow_span {S : Setup} (A : AcceptanceAssumptions S) :
+    (finalWindow A).span = 3 * cF A.rowRatio := by
   unfold Pattern.span
   rw [finalWindow_offsets]
   simp only [List.foldr_cons, List.foldr_nil]
   omega
-
-/-- Fixed timeout and outage assumptions. The pattern is determined by Setup,
-not chosen by a caller; outer gaps never enter the timeout bound. -/
-structure AcceptanceAssumptions (S : Setup) where
-  timeout : 6 ≤ S.δt
-  lookback : ℕ+
 
 /-- Only guarantees are chosen: positive finite catch-up and finite heal/latency
 coefficients at every capability and outer gap. -/
@@ -76,12 +102,14 @@ theorem accepted_heal_ge_final (S : Setup) (A : AcceptanceAssumptions S) (X : �
   have := healMargin_ge_final S X
   omega
 
-/-- Latency pays for the selected window and the final publication reserve. -/
-def accepted_latency (S : Setup) (_A : AcceptanceAssumptions S) :
+/-- Latency pays for the selected window and the final publication reserve. The final latency
+`8(X + 3c) + 2`, `c = cF r`, covers the window of span `3c` (`finalWindow`); at `r = 1` it is
+`8(X + 6) + 2`. The nonfinal latency `8X + 12` is independent of `r`. -/
+def accepted_latency (S : Setup) (A : AcceptanceAssumptions S) :
     Capability → ℕ+ → Nat
   | .available, X => 8 * (X : Nat) + 12
   | .stable, X => 8 * (X : Nat) + 12
-  | .final, X => 8 * ((X : Nat) + 6) + 2
+  | .final, X => 8 * ((X : Nat) + 3 * cF A.rowRatio) + 2
 
 theorem accepted_latency_available (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
     accepted_latency S A .available X = 8 * (X : Nat) + 12 := by rfl
@@ -90,7 +118,7 @@ theorem accepted_latency_stable (S : Setup) (A : AcceptanceAssumptions S) (X : �
     accepted_latency S A .stable X = 8 * (X : Nat) + 12 := by rfl
 
 theorem accepted_latency_final (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
-    accepted_latency S A .final X = 8 * ((X : Nat) + 6) + 2 := by rfl
+    accepted_latency S A .final X = 8 * ((X : Nat) + 3 * cF A.rowRatio) + 2 := by rfl
 
 /-- For engine Δe ≥ 1, 37Δe covers 18(Δe+1)+1, including safety's literal +1. -/
 theorem accepted_catchUp_ge_sleepy (S : Setup) (A : AcceptanceAssumptions S) :
@@ -111,9 +139,12 @@ noncomputable def accepted_coefficients (S : Setup) (A : AcceptanceAssumptions S
     AcceptanceCoefficients :=
   ⟨accepted_catchUp S A, accepted_heal S A, accepted_latency S A⟩
 
-/-- Standard fixed resilience fractions; only guarantee coefficients vary.
+/-- Standard fixed resilience fractions, the coefficient record `C`, and the numbers below.
 Final progress is the chosen local pattern at every positive outer gap.
 An abbreviation exposes the index type for the adapter signatures.
+
+* row ratio `A.rowRatio`: the healthy regime assumes `ΔF ≤ r·Δ` (an envelope, never a deadline;
+  final gap `cF r`).
 
 Outage numbers (engine `Δe`, node `Δp = Δe + 1`, slot `4Δp`; slow arming only):
 * arming lag `8k + 12`: `(8k+12)Δe ≥ (4k+6)Δp` for every `Δe ≥ 1` (equality only
@@ -121,29 +152,30 @@ Outage numbers (engine `Δe`, node `Δp = Δe + 1`, slot `4Δp`; slow arming onl
   fully armed by `b₀`;
 * no-sleep margin `max 38 (8k + 16)`: it covers the formation window
   (`(4k+6)Δp` before `b₀`), the restored votes (`8k + 16`) and the catch-up
-  (`catchUp + 1 = max 38 (8k + 5)`), so the honest validators awake at the window
-  start are ready on the recovery counts;
+  (`accepted_catchUp = max 37 (8k + 4)`, so `catchUp + 1 = max 38 (8k + 5)`), so the honest
+  validators awake at the window start are ready on the recovery counts;
 * recovery delay `18` (`18Δe ≥ 9Δp` for every `Δe ≥ 1`, equality only at
   `Δe = 1`): enough for the restored votes of the locked validators to bring
   the confirmed read back above the record (owner decision 2026-11-02;
   workbench 9f5d6a3, `outage_recovery_delay-readback-opus.md`).
-These numbers are sufficient for the paper route, conditional on its open
-obligations; they are not claimed minimal. -/
+These numbers are not claimed minimal. -/
 abbrev acceptanceContract {S : Setup} (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
   params := { Params.standard C.catchUp (8 * S.k + 12)
     (min A.lookback (4 * S.k - 6)) C.heal C.latency with
-    η := A.lookback, noSleep := max 38 (8 * S.k + 16), recovery := 18 }
-  progress := fun cap X => .recur ⟨if cap = .final then finalWindow S else Pattern.single, X⟩
+    η := A.lookback, noSleep := max 38 (8 * S.k + 16), recovery := 18,
+    rowRatio := A.rowRatio }
+  progress := fun cap X => .recur ⟨if cap = .final then finalWindow A else Pattern.single, X⟩
 
 theorem acceptanceContract_params_eq {S : Setup} (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) :
     (acceptanceContract A C).params =
       { Params.standard C.catchUp (8 * S.k + 12)
         (min A.lookback (4 * S.k - 6)) C.heal C.latency with
-        η := A.lookback, noSleep := max 38 (8 * S.k + 16), recovery := 18 } := by rfl
+        η := A.lookback, noSleep := max 38 (8 * S.k + 16), recovery := 18,
+        rowRatio := A.rowRatio } := by rfl
 
 theorem accepted_coefficients_catchUp (S : Setup) (A : AcceptanceAssumptions S) :
     (accepted_coefficients S A).catchUp = accepted_catchUp S A := by rfl

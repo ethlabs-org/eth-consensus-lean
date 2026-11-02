@@ -47,40 +47,42 @@ theorem repair_lt_heal_sub_one {g d c h B K r τ : Time} (hd : 1 ≤ d)
     (show 0 ≤ r + 2 by linarith) hbudget
   linarith
 
-/-- The four-anchor recurrence and an independently supplied semantic tail fit in `L`. -/
-theorem final_recurrence_tail_le_latency (_S : Setup) (X : ℕ+)
+/-- The four-anchor recurrence (span `3c`, `c = cF r`) and an independently supplied semantic tail
+fit in `L`. -/
+theorem final_recurrence_tail_le_latency (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+)
     {d B r L : Time} (hd : 1 ≤ d) (hB : 0 ≤ B) (hr : 0 ≤ r)
-    (hL : 8 * ((X : Nat) + 6) + 2 * B + r ≤ L) :
-    4 * ((X : Nat) + 6) * (d + 1) +
+    (hL : 8 * ((X : Nat) + 3 * cF A.rowRatio) + 2 * B + r ≤ L) :
+    4 * ((X : Nat) + 3 * cF A.rowRatio) * (d + 1) +
       (B * (d + 1) + r) ≤ L * d := by
   have hX : 0 ≤ (X : Time) := by positivity
   have := node_tail_le_engine hd
-    (show 0 ≤ 4 * ((X : Nat) + 6) + B by linarith) hr
+    (show 0 ≤ 4 * ((X : Nat) + 3 * cF A.rowRatio) + B by linarith) hr
   nlinarith
 
 /-- Recurrence is queried at the integer query itself: no fresh-slot rounding phase.
 The entire window must fit both the stop and the finite horizon. -/
-theorem final_recurrence_anchors (S : Setup) (X : ℕ+)
+theorem final_recurrence_anchors (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+)
     {V : Type} [Fintype V] {p : EnvPoint V}
     {key : Fin (Fintype.card V) ≃ V} {sel : Slot → Finset (Fin (Fintype.card V))}
     {G : TimeGrid} {d c start stop query : Time}
     (hG : G.slotLen = 4 * (d + 1))
-    (hp : PatternRecurrence p key sel G ⟨finalWindow S, X⟩ c start stop)
+    (hp : PatternRecurrence p key sel G ⟨finalWindow A, X⟩ c start stop)
     (hq : max start 0 ≤ query)
-    (hs : query + 4 * ((X : Nat) + 6) * (d + 1) ≤ stop)
-    (hh : query + 4 * ((X : Nat) + 6) * (d + 1) ≤ p.horizon) :
+    (hs : query + 4 * ((X : Nat) + 3 * cF A.rowRatio) * (d + 1) ≤ stop)
+    (hh : query + 4 * ((X : Nat) + 3 * cF A.rowRatio) * (d + 1) ≤ p.horizon) :
     ∃ s, query < G.slotTime s ∧
-      ∀ j ∈ (finalWindow S).offsets,
+      ∀ j ∈ (finalWindow A).offsets,
         G.slotTime (s + j) ≤ query +
-          4 * ((X : Nat) + 6) * (d + 1) ∧
+          4 * ((X : Nat) + 3 * cF A.rowRatio) * (d + 1) ∧
         HonestReadyIn p key sel (s + j) c (G.slotTime (s + j)) := by
-  have hlen : ((⟨finalWindow S, X⟩ : Recurrence).len : Time) * G.slotLen =
-      4 * ((X : Nat) + 6) * (d + 1) := by
-    simp only [Recurrence.len, finalWindow_span, Nat.cast_add, Nat.cast_ofNat, hG]
+  have hlen : ((⟨finalWindow A, X⟩ : Recurrence).len : Time) * G.slotLen =
+      4 * ((X : Nat) + 3 * cF A.rowRatio) * (d + 1) := by
+    simp only [Recurrence.len, finalWindow_span, hG]
+    push_cast
     ring
   obtain ⟨s, hfresh, hfirst, hready⟩ := hp query hq (by rwa [hlen]) (by rwa [hlen])
   refine ⟨s, hfresh, fun j hj => ⟨?_, hready j hj⟩⟩
-  have hjbound : (j : Time) ≤ 6 := by
+  have hjbound : (j : Time) ≤ 3 * (cF A.rowRatio : Time) := by
     have := Pattern.le_span hj
     rw [finalWindow_span] at this
     exact_mod_cast this

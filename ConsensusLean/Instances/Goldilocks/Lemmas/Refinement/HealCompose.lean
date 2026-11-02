@@ -57,7 +57,8 @@ theorem reset_of_drain (Q : FinalQuery S A V)
     (hb : resetBound (max ((Sys (family S) V).ready (K S A) Q.gst Q.run) 0) Q.params.Δ lam
       Q.params.toParams.fg.δt (Q.index : Nat) Ld ≤ b)
     (hhor : resetBound (max ((Sys (family S) V).ready (K S A) Q.gst Q.run) 0) Q.params.Δ lam
-      Q.params.toParams.fg.δt (Q.index : Nat) Ld + 24 * Q.params.Δ ≤ Q.run.2.horizon)
+      Q.params.toParams.fg.δt (Q.index : Nat) Ld + 12 * (cF A.rowRatio : Time) * Q.params.Δ ≤
+        Q.run.2.horizon)
     (hpropose : ∀ s, HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (family S) V).cDur (K S A) Q.run)
       ((finalGrid S A V Q).slotTime s) →
@@ -72,7 +73,8 @@ theorem reset_of_drain (Q : FinalQuery S A V)
     (le_max_right _ _) hgr Q.index.pos hcallZ hcall hb ?_ hdrain
   intro s₀ N hs hN
   refine hgp_of_query S A V Q hrun hpropose hs ?_
-  have : Q.params.ts (N + 6 : Nat) = Q.params.ts N + 24 * Q.params.Δ := by
+  have : Q.params.ts (N + 3 * cF A.rowRatio : Nat) =
+      Q.params.ts N + 12 * (cF A.rowRatio : Time) * Q.params.Δ := by
     simp only [SA.SAParams.ts]; push_cast; ring
   have hD : 0 < Q.params.Δ := Q.params.toParams.hΔ
   rw [this]; linarith

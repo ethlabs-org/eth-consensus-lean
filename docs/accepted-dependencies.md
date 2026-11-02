@@ -145,7 +145,7 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 | `Consensus.Goldilocks.Refinement.sleepy_query_population` | Body closed via duration monotonicity and sleepy_faultBound; proved, no direct owner in the compiled audit at 70e90b44. |
 | `Consensus.Goldilocks.Refinement.sleepy_query_slot` | Body closed at 7547caee: actual recurrence/grid selection at exact cDur with strict freshness and 6Δp margin; proved, no direct owner in the compiled audit at 70e90b44. |
 | `Consensus.Goldilocks.Refinement.confirmed_slot_event` | Body closed via scheduled actual event and joined readiness transport, not eligibility-as-event by definition; proved, no direct owner in the compiled audit at 70e90b44. |
-| `Consensus.Goldilocks.Refinement.healthy_preparation_initialize` | Proved (HealthyResetEnvelope.lean; moved unchanged from HealthySuppliers to sit downstream of the reset envelope): the joint (E) tuple from `healthy_reset_envelope` (ΔF = Δ, a ≤ ready + R·Δ), the seed of `ResetPremisesUpTo.reset_seed`, base slot slot(ready)+1 and the query the maximum of the lower bound; every timing bound, including the reserve and the W record/cache/expiry/service terms, is one step from `accepted_heal_ge_reset` (ready + (R+8k+4X+26)Δ + 2 ≤ heal). Closure: standard axioms only. |
+| `Consensus.Goldilocks.Refinement.healthy_preparation_initialize` | Proved (HealthyResetEnvelope.lean; moved unchanged from HealthySuppliers to sit downstream of the reset envelope): the joint (E) tuple from `healthy_reset_envelope` (ΔF = rowDelay, a ≤ ready + R·Δ), the seed of `ResetPremisesUpTo.reset_seed`, base slot slot(ready)+1 and the query the maximum of the lower bound; every timing bound, including the reserve and the W record/cache/expiry/service terms, is one step from `accepted_heal_ge_reset` (ready + (R+8k+4X+26)Δ + 2 ≤ heal). Closure: standard axioms only. |
 | `Consensus.Goldilocks.Refinement.healthy_prepare` | Body proved: finite ready→heal record and recent stored-lock preparation from W and the preparation schedule; since R0 it consumes no inventory. Sorry-dependent, not a direct owner. |
 | `Consensus.Goldilocks.Refinement.healthy_repair_schedule` | Proved (f4997e9f) through the reserved route: `healthy_preparation_initialize` at the same `Q`, `h0`, `hb`, `hp`, then `healthy_repair_schedule_of_preparation` (580f1e4); the reserve is the schedule's own, paid by `accepted_heal_ge_reset`. Statement and section parameters unchanged. |
 | `Consensus.Goldilocks.Refinement.healthy_preserve` | Body proved from the given base: records by induction and recent locks by `lock_origin` (R0 removed the cache and inventory steps). Only shared coefficient type dependencies remain; no direct sorry. |
@@ -238,8 +238,9 @@ paths; names in compiled rows are fully qualified.
 
 ## Concrete acceptance assembly
 
-The root fixes standard fractions, `finalWindow S = [0,2,4,6]` (route A, #136),
-δt≥6 and positive outage look-back η. Engine-unit outage lag is 8k+12 (slow arming
+The root fixes standard fractions, the row ratio `r` of the assumptions with gap `c = cF r`,
+`finalWindow A = [0, c, 2c, 3c]` (route A, #136; `[0,2,4,6]` at `r = 1`), `3c ≤ δt` (so δt≥6)
+and positive outage look-back η. Engine-unit outage lag is 8k+12 (slow arming
 only: the label before the outage label is armed by b₀; 2026-11-02, was 8k−8) and budget
 is min(η,4k−6), corrected in f416034 to imply the unchanged node time window at Δp=Δe+1.
 The outage no-sleep margin is max(38, 8k+16) and the recovery delay 18 (Δe units).
@@ -267,7 +268,8 @@ For the `AnchorSteps` rows, the reusable finite signer results are landed in
 the paper handoff is workbench b386900 `notes/cards/final_row_signers.md`.
 The paper route (workbench `route_a_gap2.md`, read-back passed on #136) is conditional on
 the duty-to-proposal adapter, the M1′ bound, an `accepted_heal` that satisfies (H*), and
-the mechanical links. Final latency is 8(X+6)+2; it does not depend on δt.
+the mechanical links. Final latency is 8(X+3c)+2, c = cF r (8(X+6)+2 at r = 1); it does not
+depend on δt.
 Superseded argument: [general fixed timeout](https://github.com/fradamt-agent/workbench/blob/fd8cb311fac057347fb49e32cf17841e27a75e76/repos/goldilocks/notes/healing-simple/four-anchor-window.md#general-fixed-timeout-d4).
 
 | Declaration | Paper argument/status |
@@ -282,7 +284,7 @@ Superseded argument: [general fixed timeout](https://github.com/fradamt-agent/wo
 | `Consensus.Goldilocks.Refinement.accepted_healthyLive` | Assembly: available/stable use healthy_confirmed_supply and proved payload projection; final uses accepted_healthyLive_final (sorry-free since e621acd7). `healthy_confirmed_supply` is proved since db4b864f; the compiled closure has no direct sorry owner. |
 | `Consensus.Goldilocks.Refinement.final_reset_premises` | Body closed (route A, #136): `final_reset_premises_of_query` (FinalResetPremises.lean), the reset kernel `exists_reset_of_drain_awake` with `drainOutputs_of_service` and `accepted_heal_ge_final`. (H1) `ResetPremisesUpTo` through the horizon at `Q.gst` with the run proposer and digest, for a reset `a` and bound `ΔR` (Sol's M1′), and (H3) the placement `(P)` with `u_min = finalSeedMin Q a = slot a + 2k + 5` (the heal coefficient; #145 removed a time summand that made (H3) false at large GST). One leaf: (H3) depends on the `a` of (H1). No producer is assumed. |
 | `Consensus.Goldilocks.Refinement.final_duty_proposal` | Body closed (route A, #136): (H2) duty → proposal adapter (Kev): for `0 < s` with `ts s ≤ horizon`, `HonestReadyIn` at slot `s` gives `HonestProposalRun` at `s`; proved by `final_duty_proposal_run` (FinalDutyProposal.lean). Reaches sorryAx only through the `FinalQuery` type (accepted coefficients). |
-| `Consensus.Goldilocks.Refinement.final_window_extract` | Body closed (route A, #136): `final_window_extract_of'` from `final_reset_premises` and `final_duty_proposal`; (H4) carrier processing is proved (`carrier_processed_of_honest`). Gives four honest anchors at start+[0,2,4,6], the slack `ts(A3) + Δ ≤ deadline`, `AnchorRun` and `AnchorSteps` (reusable signer results: `row_of_report`, `row_signers_of_reports` in Healing/Outcome/Service.lean; paper handoff workbench b386900 `notes/cards/final_row_signers.md`). |
+| `Consensus.Goldilocks.Refinement.final_window_extract` | Body closed (route A, #136): `final_window_extract_of'` from `final_reset_premises` and `final_duty_proposal`; (H4) carrier processing is proved (`carrier_processed_of_honest`). Gives four honest anchors at start+[0,c,2c,3c] (c = cF r), the slack `ts(A3) + Δ ≤ deadline`, `AnchorRun` and `AnchorSteps` (reusable signer results: `row_of_report`, `row_signers_of_reports` in Healing/Outcome/Service.lean; paper handoff workbench b386900 `notes/cards/final_row_signers.md`). |
 | `Consensus.Goldilocks.Refinement.final_anchor_coverage` | Body closed: `AnchorRun` and `AnchorSteps` give A3 chain-finalized coverage of A0 through `cacheCoverage_of_anchor_window_upTo`; uses `6 ≤ δt` for `P₃.slot ≤ P₀.slot + δt`. |
 | `Consensus.Goldilocks.Refinement.final_cache_acceptance` | Body closed; no direct owner in the compiled audit at 70e90b44 (the type dependency on the coefficients is sorry-free since 4078bc74). Consumes only A3 chain-finalized coverage of A0, supplied by `final_anchor_coverage` (route A): actual cache ancestry at the exact engine-scaled query endpoint and later horizon-bounded ready CutAfter reads. Not arbitrary-delay acceptance or receipt alone. |
 | `Consensus.Goldilocks.Refinement.final_payload_projection` | Body closed conditional on window extraction with CacheCoverage of the extracted window (one premise; route A, #136): raw own-block release via simTrace_block_released and final-output chain membership at engine endCut. Preserves existing cDur, reader condition, latency scaling and collision escape; no forwarding-envelope origin assumption. |

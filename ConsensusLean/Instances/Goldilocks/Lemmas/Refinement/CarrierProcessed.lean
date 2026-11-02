@@ -120,7 +120,7 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
 with the carrier premise from `carrier_processed_of_honest`; the gap, forwarding-delay and latency
 premises, (H1) `hreset`, (H2) `hpropose` and (H3) `hplace` stay explicit. -/
 theorem final_window_extract_of_gap' (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 ≤ c)
-    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow S).offsets = [0, c, 2 * c, 3 * c])
+    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c])
     {ΔR a ΔF : Time}
     (hs : Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst ΔF
       Q.run.2.horizon)
@@ -175,9 +175,9 @@ theorem final_window_extract_of' (Q : FinalQuery S A V) {ΔR a : Time}
         Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b ∧
         Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ) ∧
         (∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
-          (W.start + ![0, 2, 4, 6] i) (W.block i)) ∧
+          (W.start + ![0, cF A.rowRatio, 2 * cF A.rowRatio, 3 * cF A.rowRatio] i) (W.block i)) ∧
         Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
-        Q.params.ts (W.start + 6) ≤ b) ∧
+        Q.params.ts (W.start + 3 * cF A.rowRatio) ≤ b) ∧
       ∀ i : Fin 3, AnchorStep Q.trace (honestKeys S Q.run.2) (W.block i.castSucc)
         (W.block i.succ) :=
   final_window_extract_of S A V Q hreset hpropose hplace (carrier_processed_of_honest S A V Q)

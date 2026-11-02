@@ -16,10 +16,10 @@ public section
 consensus-lean#136, route A, workbench `heal_bound.md`. `final_reset_premises_of_query` has the
 statement of the leaf `final_reset_premises` (Accepted.lean): one reset `a` with (H1) its premises
 `ResetPremisesUpTo` through the horizon at GST `Q.gst`, and (H3) the placement with
-`u_min = finalSeedMin Q a = slot a + 2k + 5`. It is the instance at `ΔF := Δ` and the gap `c = 2`
-of `final_reset_premises_of_shared`, which takes the shared HS premises at a forwarding delay `ΔF`
-and the final pattern `[0, c, 2c, 3c]` with `2 ≤ c` and `3c ≤ δ_t` (workbench
-`two_bound_network.md` §4).
+`u_min = finalSeedMin Q a = slot a + 2k + 5`. It is the instance at the protocol row delay
+`ΔF := rowDelay` and the gap `c = cF r` of `final_reset_premises_of_shared`, which takes the shared
+HS premises at a forwarding delay `ΔF` and the final pattern `[0, c, 2c, 3c]` with `2 ≤ c` and
+`3c ≤ δ_t` (workbench `two_bound_network.md` §4).
 
 The reset is `exists_reset_of_drain_awake` at the ready scalar `ready` (`ready ≥ 1`), the gap
 `G = X = Q.index`, the drain length `L_drain = healthyDrainLen = 2k + X`, `λ = 2Δ` and the service
@@ -68,7 +68,7 @@ final pattern `[0, c, 2c, 3c]` (`hpat`, span `3c`), with `max ready 0 + 4Δ ≤ 
 `t_{N + 3c} ≤ horizon`, every slot window `[x₀, x₀ + X)` inside `[s₀, N]` has an actual honest
 designated proposal. -/
 theorem final_query_gap (Q : FinalQuery S A V) {c : Nat}
-    (hpat : (finalWindow S).offsets = [0, c, 2 * c, 3 * c]) {s₀ N : Nat}
+    (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {s₀ N : Nat}
     (hs : max ((Sys (family S) V).ready (K S A) Q.gst Q.run) 0 + 4 * Q.params.Δ ≤
       Q.params.ts s₀)
     (hN : Q.params.ts (N + 3 * c : Nat) ≤ Q.run.2.horizon) :
@@ -76,7 +76,7 @@ theorem final_query_gap (Q : FinalQuery S A V) {c : Nat}
       runProposer S Q.run.2 Q.hn x ∈ honestKeys S Q.run.2 ∧
       ∃ k P, Q.trace.ProposesAt (runProposer S Q.run.2 Q.hn x) k P ∧ P.slot = x := by
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) (finalGrid S A V Q) ⟨finalWindow S, Q.index⟩
+      (fun s => Q.run.2.sel (.proposer s)) (finalGrid S A V Q) ⟨finalWindow A, Q.index⟩
       ((Sys (family S) V).cDur (K S A) Q.run) ((Sys (family S) V).ready (K S A) Q.gst Q.run)
       Q.run.2.horizon := by
     simpa only [System.prog, shapeProgress, shapeHolds, acceptanceContract, ↓reduceIte,
@@ -87,10 +87,10 @@ theorem final_query_gap (Q : FinalQuery S A V) {c : Nat}
     push_cast at h1
     linarith
   have hspan : (finalGrid S A V Q).slotTime N +
-      (((⟨finalWindow S, Q.index⟩ : Recurrence).pattern.span : Nat) : Time) *
+      (((⟨finalWindow A, Q.index⟩ : Recurrence).pattern.span : Nat) : Time) *
         (finalGrid S A V Q).slotLen = Q.params.ts (N + 3 * c : Nat) := by
     rw [← finalGrid_slotTime S A V Q, (finalGrid S A V Q).slotTime_add]
-    simp [finalWindow_span_of_offsets S hpat]
+    simp [finalWindow_span_of_offsets S A hpat]
   have hgap := recurrence_gap hrec (by rw [hpat]; simp) (s₀ := s₀) (N := N)
     (by rw [hL, finalGrid_slotTime]; exact hs) (by rw [hspan]; exact hN)
     (by rw [hspan]; exact hN)
@@ -121,7 +121,7 @@ the final pattern `[0, c, 2c, 3c]` (`hpat`) with `2 ≤ c` and `3c ≤ δ_t`: a 
 premises through the horizon at GST `Q.gst` and `ΔR = ΔF`, and the placement `(P)` with
 `u_min = finalSeedMin Q a`. The horizon of the gap uses `final_heal_horizon_fit`. -/
 theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 ≤ c)
-    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow S).offsets = [0, c, 2 * c, 3 * c]) {ΔF : Time}
+    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {ΔF : Time}
     (hs : Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst ΔF
       Q.run.2.horizon) :
     ∃ ΔR a : Time,
@@ -280,7 +280,8 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
 /-- **The reset premises and the placement of a final query** (the leaf `final_reset_premises`,
 Accepted.lean): a reset `a` with its premises through the horizon at GST `Q.gst`, and the
 placement `(P)` with `u_min = finalSeedMin Q a`. `final_reset_premises_of_shared` at the gap
-`c = 2` of `finalWindow` and `ΔF := Δ` (`FinalQuery.hsSharedUpTo`). -/
+`c = cF r` of `finalWindow` and the protocol row delay `ΔF := rowDelay`
+(`FinalQuery.hsSharedUpTo`). -/
 theorem final_reset_premises_of_query (Q : FinalQuery S A V) :
     ∃ ΔR a : Time,
       Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
@@ -289,8 +290,8 @@ theorem final_reset_premises_of_query (Q : FinalQuery S A V) :
           ((finalGrid S A V Q).slotTime (finalSeedMin S A V Q a) - 1) +
           ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGrid S A V Q).slotLen ≤
         Q.query + (finalGrid S A V Q).slotLen :=
-  final_reset_premises_of_shared S A V Q le_rfl (by have := A.timeout; omega)
-    (by rw [finalWindow_offsets]) Q.hsSharedUpTo
+  final_reset_premises_of_shared S A V Q A.two_le_cF A.timeout (finalWindow_offsets A)
+    Q.hsSharedUpTo
 
 end Consensus.Goldilocks.Refinement
 

@@ -123,7 +123,7 @@ theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
       ((Sys (family S) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j (block 3) ∧ Q.trace.time j ≤ Q.deadline) :
     Nonempty (FinalWindowData S A V Q) :=
-  ⟨⟨start, 2, le_rfl, by have := A.timeout; omega, block, cut, fun a => by
+  ⟨⟨start, 2, le_rfl, by have := A.six_le_δt; omega, block, cut, fun a => by
     rw [slots a], proposals, accepted, ready, fresh, ordered, bounded, chain,
     carrier⟩⟩
 
@@ -162,21 +162,21 @@ theorem final_duty_proposal (Q : FinalQuery S A V) :
   exact ⟨P, hP⟩
 
 /-- Extraction and endpoint budget (route A). A window of four honest anchors at the slots
-`start + [0, 2, 4, 6]` after the query (gap `c = 2`), its route-A run premises, and its three
-anchor steps. Proved by `final_window_extract_of_gap'` at `c = 2` and `ΔF := Δ` (the shared HS
-premises `FinalQuery.hsSharedUpTo`, the latency `final_latency_gap_two`) from
+`start + [0, c, 2c, 3c]` after the query (the row gap `c = cF r` of the assumptions; `c = 2` at
+`r = 1`), its route-A run premises, and its three anchor steps. Proved by
+`final_window_extract_of_gap'` at `c = cF r` and the protocol row delay `ΔF := rowDelay` (the
+shared HS premises `FinalQuery.hsSharedUpTo`, the latency `final_latency_gap`) from
 `final_reset_premises` ((H1), (H3)) and the proved `final_duty_proposal` ((H2)); (H4) is proved
 there. Paper: workbench route_a_gap2.md, window_start_h0.md, anchor_row_supplier.md,
 anchor_tick_ac_producer.md (read-back #136). -/
 theorem final_window_extract (Q : FinalQuery S A V) :
     ∃ W : FinalWindowData S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
       W.AnchorRun ∧ W.AnchorSteps := by
-  have hΔ : (0 : Time) < Q.params.Δ := Q.params.toParams.hΔ
   obtain ⟨ΔR, a, hreset, hplace⟩ := final_reset_premises S A V Q
   obtain ⟨W, -, hslack, hrun, hsteps⟩ :=
-    final_window_extract_of_gap' S A V Q le_rfl (by have := A.timeout; omega)
-      (by rw [finalWindow_offsets]) Q.hsSharedUpTo (by push_cast; linarith)
-      (final_latency_gap_two S A V Q) hreset (final_duty_proposal S A V Q) hplace
+    final_window_extract_of_gap' S A V Q A.two_le_cF A.timeout (finalWindow_offsets A)
+      Q.hsSharedUpTo Q.rowDelay_delivery (final_latency_gap S A V Q) hreset
+      (final_duty_proposal S A V Q) hplace
   exact ⟨W, hslack, W.anchorRun_iff.mpr hrun, W.anchorSteps_iff.mpr hsteps⟩
 
 /-- **Window coverage by the anchor route.** The run premises and the three anchor steps give,
@@ -586,7 +586,7 @@ theorem accepted_progressFits : ProgressFits (K S A) (family S) := by
 /-- At an outer gap beyond the local span there is room for a bad slot. -/
 theorem accepted_progressTolerant : ProgressTolerant schema (K S A) := by
   intro cap _ N
-  let P := if cap = .final then finalWindow S else Pattern.single
+  let P := if cap = .final then finalWindow A else Pattern.single
   exact ⟨⟨P.span + 2, by omega⟩, Nat.le_refl _⟩
 
 /-- Fixed thresholds and positive finite catch-up/budget are admissible. -/
