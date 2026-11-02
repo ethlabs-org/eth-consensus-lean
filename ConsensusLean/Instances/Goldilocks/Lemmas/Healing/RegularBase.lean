@@ -883,6 +883,171 @@ theorem FrameWindow.isBest_below_finalized {lo hi : Time} {floor : Nat}
     (hframe.finalized_below_viable hrun hnc hf hy hz hilo hihi hclo hchi hvQ)
     (hPhi.1.viableHeads_subset hQ)
 
+/-- At two FS′ cuts a viable head transfers whenever it is held in the
+receiver's frame. This uses the common floor and kind-J root, not a settled
+phase or equality of the frames. -/
+theorem FrameWindow.viableHead_transfer {lo hi : Time} {floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i c : Nat}
+    (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
+    (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
+    {Q : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hv : Q ∈ (Node.frame (tr.state z c)).viableHeads)
+    (hQ : Q ∈ (Node.frame (tr.state y i)).tree) :
+    Q ∈ (Node.frame (tr.state y i)).viableHeads := by
+  apply (floor_ancestor_mem_frame hrun hnc hf hy hz hv.1 _ _ hQ.1
+    (Relation.ReflTransGen.refl)).2.2
+  · rw [hframe.floor_eq y hy i hilo hihi, ← hframe.floor_eq z hz c hclo hchi]
+    exact hv.2.2.2
+  · intro hm hc
+    have hk := (hframe.kind_iff y hy i hilo hihi).mp ⟨hm, hc⟩
+    have hzk := (hframe.kind_iff z hz c hclo hchi).mpr hk
+    have hroot : (tr.state z c).fg.fcRoot = (tr.state z c).fg.J := ite_eq_left hzk
+    rw [hframe.root_eq y hy i hilo hihi hk,
+      ← hframe.root_eq z hz c hclo hchi hk, ← hroot]
+    exact hv.2.2.1.mono (fun B hB => ⟨z, hz, c, hB⟩)
+
+/-- The full current frame has a viable head above its fork-choice root.
+Kind J uses the justification cache; the other cases use the hmax cache.
+Unlike a frozen voter domain, the proposal domain cannot lose this witness. -/
+theorem full_frame_viable_witness (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+    ∃ Q ∈ (Node.frame (tr.state y i)).tree,
+      Q ∈ (Node.frame (tr.state y i)).viableHeads ∧
+      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q := by
+  classical
+  have hr := Compose.fg_reachable hrun.toLocalRun hy i
+  obtain ⟨_, hJt, _, ⟨B, hB, hBJ, hBh⟩, _, ⟨Q, hQ, hQh⟩, _⟩ :=
+    Goldilocks.Store.cache_invariants _ _ _ _ hr
+  by_cases hk : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
+      ¬ (tr.state y i).fg.Contest
+  · obtain ⟨E, hE, hEr, hh⟩ := J_entry_h hr hB
+    have he : E = (tr.state y i).fg.J :=
+      (Goldilocks.Store.accepted_tree _ _ _ _ hr).2.1.1 hE hJt (hEr.trans hBJ)
+    rw [he, hBh] at hh
+    have hheight : (tr.state y i).fg.headHeightFloor ≤
+        ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h := by
+      change (if _ then _ else _) ≤ _
+      rw [ite_eq_right hk.2, hk.1]
+      omega
+    obtain ⟨hQt, hroot, hv⟩ := floor_ancestor_mem_frame hrun hnc hf hy hy hJt
+      hheight (fun _ _ => Relation.ReflTransGen.refl) hJt Relation.ReflTransGen.refl
+    exact ⟨_, hQt, hv, hroot⟩
+  · obtain ⟨hQt, hroot, hv⟩ := floor_ancestor_mem_frame hrun hnc hf hy hy hQ
+      ((Goldilocks.Store.headHeightFloor_bounds (tr.state y i).fg).2.trans_eq hQh.symm)
+      (fun hm hc => (hk ⟨hm, hc⟩).elim) hQ Relation.ReflTransGen.refl
+    exact ⟨Q, hQt, hv, hroot⟩
+
+/-- The actual proposal parent is viable in the full current frame. The old
+settled-phase supplier is unnecessary: the cache witness and current-frame
+AncestorCandidate anchor suffice, including label-(p−1) optimistic locks. -/
+theorem proposal_parent_viable_full_frame
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y : Fin sp.n} (hy : y ∈ H) {i s : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
+    (hcall : ell.call = .proposal) (hti : tr.time i = sp.toParams.slotTime s)
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hp : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 =
+      some (d, pay)) : d.head ∈ ell.frame.viableHeads := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  obtain ⟨Q, hQ, hv, hroot⟩ := full_frame_viable_witness hrun hnc hf hy i
+  rw [← Compose.frame_of_projAC hrun hy hc] at hQ hv hroot
+  exact proposal_head_viable hac.localRun hy hc hcall hti hp
+    ⟨(SA.frameIn_of_callAt hac.localRun hy hc).1.fcRoot_mem,
+      Relation.ReflTransGen.refl, Q, hQ, hv, hroot⟩
+
+/-- A non-proposal child in the voter's frozen viable domain reflects into
+the proposer's full viable tree above the proposer root. The frozen arm uses
+relay/Catch; the proposal arm uses the actual viable proposal parent. -/
+theorem FrameWindow.frozen_competitor_reflect {s₀ s floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hm : gbar g + 2 * sp.Δ ≤ sp.ts s) (hs₀ : s₀ ≤ s + 1)
+    {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1))
+    {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
+    (hti : tr.time ip = sp.ts (s + 1 : Nat))
+    (hpay : (SA.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
+      some (d, pay)) (hparent : P.parent = some d.head.root)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
+    (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hpb : sp.ts (s + 1 : Nat) ≤ b)
+    {X B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hX : X ∈ ellp.frame.tree) (hrootX : ellp.frame.Anc ellp.frame.fcRoot X)
+    (hBX : B.parent = some X.root) (hne : B ≠ P)
+    (hB : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1))) :
+    B ∈ ellp.frame.viableTree ellp.frame.tree := by
+  have hr := hS.run.localRun
+  have hPhi := SA.frameIn_of_callAt hr hy hc.1
+  have hPhip := SA.frameIn_of_callAt hr hz hcp
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hlo : sp.ts (s + 1 : Nat) ≤ tr.time i :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2
+      (by rw [← (SA.castAt_spec hr hy hc).2.1, hes])
+  have hipl : sp.ts s₀ ≤ tr.time ip := by
+    rw [hti]; exact (SA.ts_le_iff sp).2 (by exact_mod_cast hs₀)
+  have hil : sp.ts s₀ ≤ tr.time i := hipl.trans (hti ▸ hlo)
+  have hiph : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by rw [hti]; linarith [sp.toParams.hΔ]
+  have hvQ := proposal_parent_viable_full_frame hrun hnc hf hz hcp hcall
+    (s := s + 1) (by rw [sp.slotTime_eq]; simpa [SAParams.ts] using hti) hpay
+  have hQt := hPhip.1.viableHeads_subset hvQ
+  obtain ⟨⟨hBt, -⟩, _, W, hWV, hvW, hBW⟩ := hB
+  have hFB : Anc (tr.HonestBlocks H) ellp.frame.F B :=
+    ((hPhip.1.rooted.2 X hX).mono hPhip.2).trans
+      (.single ⟨hPhip.2 hX, hPhi.2 hBt, hBX⟩)
+  obtain ⟨W', hW't, hW'v, hBW'⟩ : ∃ W' ∈ ellp.frame.tree,
+      W' ∈ ellp.frame.viableHeads ∧ Anc (tr.HonestBlocks H) B W' := by
+    rcases hWV.2 with hstamp | ⟨P', hP', hP's, hWP'⟩
+    · have hFW := hFB.trans (hBW.mono hPhi.2)
+      have hWp : W ∈ ellp.frame.tree := by
+        rw [SA.readPoint_blockStamp_eq hr hy hc] at hstamp
+        rcases stamp_origin hr hy i ell hc.1 W hWV.1 with hg | ⟨q, _, ellq, hcq, hWq, hsq⟩
+        · obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hz ip ellp hcp
+          obtain rfl : W = G := hr.coherent.1 (hPhi.2 hWV.1) hGU (hg.trans hGr.symm)
+          rcases Relation.ReflTransGen.cases_tail hFW with he | ⟨c, _, hp⟩
+          · exact he ▸ hPhip.1.rooted.1
+          · exact absurd (hp.2.2.symm.trans hGp) (Option.some_ne_none _)
+        have hqt : tr.time q < sp.ts s + 3 * sp.Δ := by
+          rw [hsq] at hstamp
+          have ht := WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hstamp)
+          change tr.time q < SA.freeze sp (s + 1) at ht
+          simpa only [SA.freeze, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] using ht
+        exact frame_relay_before hS hnr hy hz hcq hcp hWq
+          (by rw [hti, hts]; linarith) (by rw [hti, hts]; linarith) (hti ▸ hpb) hFW
+      have hWv' := hvW
+      rw [Compose.frame_of_projAC hrun hy hc.1] at hWv'
+      have hWp' := hWp
+      rw [Compose.frame_of_projAC hrun hz hcp] at hWp'
+      have hv := hframe.viableHead_transfer hrun hnc hf hz hy hipl hiph hil hhigh hWv' hWp'
+      rw [← Compose.frame_of_projAC hrun hz hcp] at hv
+      exact ⟨W, hWp, hv, hBW.mono hPhi.2⟩
+    · obtain rfl := proposal_frame_unique hrun hnc hz hdesignated hactual hPs
+        (by omega) hy hc.1 hP' hP's
+      rcases Relation.ReflTransGen.cases_tail (hBW.trans hWP') with he | ⟨Y, hBY, hYP⟩
+      · exact (hne he.symm).elim
+      · obtain rfl : Y = d.head := hr.coherent.1 (hPhi.2 hYP.1) (hPhip.2 hQt)
+          (Option.some.inj (hYP.2.2.symm.trans hparent))
+        exact ⟨d.head, hQt, hvQ, Anc.mono hPhi.2 hBY⟩
+  have hBp := SA.frame_mem_of_between sp hr.coherent hPhip.1 hPhip.2 hW't hBW' hFB
+  exact ⟨hBp, hrootX.tail ⟨hX, hBp, hBX⟩, W', hW't, hW'v,
+    SA.anc_tree_of_anc_U hr.coherent hPhip.1 hPhip.2 hBp hBW' hW't⟩
+
 end Consensus.Goldilocks.Healing
 
 end
