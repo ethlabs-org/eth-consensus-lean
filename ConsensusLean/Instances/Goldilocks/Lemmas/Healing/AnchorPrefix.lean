@@ -485,6 +485,96 @@ theorem FrameWindow.fcRoot_anc_head_at_cast {lo hi : Time} {floor : Nat}
     exact hframe.finalized_anc_head_at_cast hrun hnc hf hz hy hclo hchi hilo hihi hc
       hY hvY haF
 
+/-- Once a concrete lock image is frozen-viable, honest prior-head
+dominance needs only receiver-local finality ancestry for transport. No
+additional floor witness for that image is required. -/
+theorem honest_prefix_of_finality_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g)) {s : Nat}
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s)
+    (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hheads : ∀ x ∈ H, ∀ j ev, SA.VoteAt tr.projAC x j ev → ev.msg.slot = s →
+      SA.VoteExtends (tr.HonestBlocks H) ev.msg B)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
+    (hB : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+    (haB : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) B) :
+    ell.frame.Anc B (SA.getHead sp e.readPoint ell.frame (tr.time i)
+      (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+      (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hr := hS.run.localRun
+  have hPhi := SA.frameIn_of_callAt hr hy hc.1
+  have hΔ := sp.toParams.hΔ
+  have hslot := (SA.castAt_spec hr hy hc).2.1.symm.trans hes
+  change sp.slot (tr.time i) = s + 1 at hslot
+  have ht := SA.vote_time_le hr hy ⟨ell, hc⟩
+  change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
+  rw [hslot] at ht
+  have hstart : sp.ts (s + 1 : Nat) ≤ tr.time i :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
+      change ((s + 1 : Nat) : Int) ≤ sp.slot (tr.time i)
+      rw [hslot])
+  have hstep : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hcarry := SA.honest_batch_carry_before hS hy hc hes hm
+    (by
+      change sp.ts s + 2 * sp.Δ ≤ tr.time i
+      rw [hstep] at hstart
+      linarith) (ht.trans hmb)
+    (fun k hk t ht => by
+      apply deadline_le_restarts (a := sp.ts s)
+      intro r _ hrs
+      have := hnr y hy r (Compose.projAC_restartAt.mp hrs)
+      change tr.time r ≤ _
+      linarith)
+    (fun k hk hrs => by
+      have := hnr y hy k (Compose.projAC_restartAt.mp hrs)
+      change tr.time k < _
+      linarith) (fun x hx j ev hv hs R hR hRr => by
+      obtain ⟨R', hR', hR'r, hBR⟩ := hheads x hx j ev hv hs
+      have he : R' = R := hr.coherent.1 hR' hR (hR'r.trans hRr.symm)
+      exact (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans hB.2.1)).trans (he ▸ hBR))
+  have hex : ∀ x ∈ H, ∃ j ev, SA.VoteAt tr.projAC x j ev ∧ ev.msg.slot = s := by
+    intro x hx
+    obtain ⟨j, ev, hv, hs, -⟩ := honest_votes_before_of_service hrun hnc hsvc hawake hf
+      hcatch hnr hm (by rw [hstep] at hmb; linarith) x hx
+    exact ⟨j, ev, hv, hs⟩
+  have hf' : 3 * Hᶜ.ncard < sp.n := by
+    have hn : 0 < sp.n := sp.toParams.hn
+    omega
+  exact SA.honest_prefix_of_carry sp hS.run hf' hy hc hes hheads hex hcarry hB haB
+
+/-- Any point between the actual voter anchor and a frozen viable block is
+itself frozen-viable. In Step 5 the upper block is P, not a transported
+lock witness. -/
+theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e)
+    {X P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
+    (haX : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) X)
+    (hXP : Anc (tr.HonestBlocks H) X P) :
+    X ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hPhi := SA.frameIn_of_callAt hr hy hc.1
+  have hrootX := (Anc.mono hPhi.2
+    (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))).trans haX
+  have hXt := SA.frame_mem_of_between sp hr.coherent hPhi.1 hPhi.2 hP.1.1 hXP
+    ((Anc.mono hPhi.2 hPhi.1.F_anc_fcRoot).trans hrootX)
+  have hXPf := SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hXt hXP hP.1.1
+  have hrootXf := SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2
+    hPhi.1.fcRoot_mem hrootX hXt
+  obtain ⟨Y, hY, hvY, hPY⟩ := hP.2.2
+  exact ⟨SA.voterBlockTree_anc hr hy hc P hP.1 X hXPf, hrootXf,
+    Y, hY, hvY, hXPf.trans hPY⟩
+
 end Consensus.Goldilocks.Healing
 
 end
