@@ -22,9 +22,106 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
 
 /-- The optimistic base G(s+1,X), including below-floor X with a viable descendant Q.
-The actual write and its counted set are retained. Q is held in the write frame; its
+The actual write and its counted set are retained. Q is held at any honest early cut; its
 floor and J are the explicit FS′ values. Service/Catch ends at the next-slot horizon,
 and no premise asserts viability of arbitrary honest vote heads. -/
+theorem optimistic_next_votes_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    {s floor : Nat} (hm : gbar g ≤ sp.ts s)
+    (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
+    {contest kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ)
+      floor contest kindJ J)
+    {x : Fin sp.n} (hx : x ∈ H) {c : Nat} {CV : Set (SA.Vote sp.n)}
+    (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
+    (hXD : Anc (tr.HonestBlocks H) X D)
+    {w : Fin sp.n} (hw : w ∈ H) {a : Nat}
+    (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    (hQw : Q ∈ ellw.frame.tree)
+    (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
+    (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
+    (hXQ : Anc (tr.HonestBlocks H) X Q) :
+    ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg X := by
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hr := hS.run.localRun
+  have hΔ := sp.toParams.hΔ
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+    have hn := sp.toParams.hn
+    change 0 < sp.n at hn
+    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+    omega
+  have hQ := mem_tree_of_frame hrun hw hcw hQw
+  have hQU : Q ∈ tr.HonestBlocks H := ⟨w, hw, a, hQ⟩
+  have hsource : Q.root = sp.genesisRoot ∨
+      ∃ q, tr.projAC.AcceptAt w q Q ∧ tr.projAC.time q < sp.ts s + 2 * sp.Δ := by
+    rcases Compose.frame_anc_accepted hr hw a ellw hcw Q hQw Q .refl with hg | ⟨q, hqc, ha⟩
+    · exact Or.inl hg
+    · exact Or.inr ⟨q, ha, (hr.time_mono hqc).trans_lt hat⟩
+  suffices hall : ∀ i, ∀ y ∈ H, ∀ e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg X by
+    exact fun y hy i e hv hs => hall i y hy e hv hs
+  intro i
+  induction i using Nat.strong_induction_on with
+  | _ i ih =>
+    intro y hy e hv hs
+    obtain ⟨ell, hc, he⟩ := hv
+    have hcast : SA.CastAt tr.projAC y i ell e := ⟨hc, he⟩
+    have hslot : sp.slot (tr.time i) = s + 1 := (SA.castAt_spec hr hy hcast).2.1.symm.trans hs
+    have hlo : sp.ts s ≤ tr.time i :=
+      (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).mpr (by
+        change (s : Int) ≤ sp.slot (tr.time i)
+        rw [hslot]; omega)
+    have hhi : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
+      have ht := SA.vote_time_le hr hy ⟨ell, hcast⟩
+      change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
+      simpa only [hslot] using ht
+    have hJQ : kindJ → Anc (tr.HonestBlocks H) J Q := fun hk => (hJ hk).trans hXQ
+    rcases hframe.finalized_comparable_of_witness hrun hnc hmf hy hw hlo hhi hQ hh hJQ hXQ
+      with hFX | hXF
+    swap
+    · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
+      obtain ⟨W, hW, hWr, hFW⟩ := SA.castAt_head_anc hr hy hcast (Or.inr rfl)
+        (fun L hL => (SA.liveLockBlock_candidate hPhi hL).elim
+          (fun h => Or.inr h.2.1) Or.inl) hPhi.F_anc_fcRoot
+      refine ⟨W, hPhiU hW, hWr, ?_⟩
+      have hFW := hFW.mono hPhiU
+      rw [Compose.frame_of_projAC hrun hy hc] at hFW
+      exact hXF.trans hFW
+    have hFQ : Anc (tr.HonestBlocks H) ell.frame.F Q := by
+      rw [Compose.frame_of_projAC hrun hy hc]
+      exact hFX.trans hXQ
+    have hcatchTime : gbar g + 2 * sp.Δ ≤
+        sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
+      rw [hs, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]
+      linarith
+    have hQdom := voterBlockTree_of_relay_source hr hS.sync hS.catchUp hw hy hQU
+      (Relation.ReflTransGen.refl : Anc (tr.HonestBlocks H) Q Q) hsource hcast
+      (by omega) (hhi.trans hmb) hcatchTime hFQ
+    obtain ⟨hXt, hrootX, -, hvQ, hXQf⟩ := hframe.witness_path hrun hnc hmf hy hw
+      hc hlo hhi hQ hh hJ hXQ (mem_tree_of_frame hrun hy hc hQdom.1) hFX
+    have hviab : SA.ViableAtVote ell e (s + 1) X := by
+      have hdomA := SA.voterBlockTree_anc hr hy hcast
+      rw [hs] at hdomA hQdom
+      exact Or.inl ⟨hdomA Q hQdom X hXQf, hrootX, Q, hQdom, hvQ, hXQf⟩
+    have hcarry : SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
+      apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
+        hm hS.catchUp (by linarith) hx hy hcast hs (hhi.trans hmb)
+      intro v hv
+      obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := Compose.optimistic_writer_votes hr hx hopt v hv
+      refine ⟨hvs, hw, Hv, hHv, hHvr, ?_, ha⟩
+      rw [Compose.frame_of_projAC hrun hy hc]
+      exact hFX.trans (hXD.trans hDHv)
+    exact SA.optimistic_transfer_stored sp hS.run hx hopt hXD (by
+      have hn := sp.toParams.hn
+      change 0 < sp.n at hn
+      omega) hy hcast hs hcarry hviab
+      (fun z hz k hki ev hv hes => ih k hki z hz ev hv hes)
+
+/-- Write-held specialization of the early-holder optimistic vote base. -/
 theorem optimistic_next_votes_of_witness (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -45,80 +142,8 @@ theorem optimistic_next_votes_of_witness (hrun : GoldilocksRun proposer dg H tr)
     ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg X := by
   have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
-  have hr := hS.run.localRun
-  have hΔ := sp.toParams.hΔ
-  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
-  have hQ := mem_tree_of_frame hrun hx hcw hQw
-  have hQU : Q ∈ tr.HonestBlocks H := ⟨x, hx, c, hQ⟩
-  have htw := (SA.optimisticLockAt_spec hS.run hx hopt).1
-  have hsource : Q.root = sp.genesisRoot ∨
-      ∃ q, tr.projAC.AcceptAt x q Q ∧ tr.projAC.time q < sp.ts s + 2 * sp.Δ := by
-    rcases Compose.frame_anc_accepted hr hx c ellw hcw Q hQw Q .refl with hg | ⟨q, hqc, ha⟩
-    · exact Or.inl hg
-    · exact Or.inr ⟨q, ha, (hr.time_mono hqc).trans_lt htw⟩
-  suffices hall : ∀ i, ∀ y ∈ H, ∀ e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg X by
-    exact fun y hy i e hv hs => hall i y hy e hv hs
-  intro i
-  induction i using Nat.strong_induction_on with
-  | _ i ih =>
-    intro y hy e hv hs
-    obtain ⟨ell, hc, he⟩ := hv
-    have hcast : SA.CastAt tr.projAC y i ell e := ⟨hc, he⟩
-    have hslot : sp.slot (tr.time i) = s + 1 := (SA.castAt_spec hr hy hcast).2.1.symm.trans hs
-    have hlo : sp.ts s ≤ tr.time i :=
-      (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).mpr (by
-        change (s : Int) ≤ sp.slot (tr.time i)
-        rw [hslot]; omega)
-    have hhi : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
-      have ht := SA.vote_time_le hr hy ⟨ell, hcast⟩
-      change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
-      simpa only [hslot] using ht
-    have hJQ : kindJ → Anc (tr.HonestBlocks H) J Q := fun hk => (hJ hk).trans hXQ
-    rcases hframe.finalized_comparable_of_witness hrun hnc hmf hy hx hlo hhi hQ hh hJQ hXQ
-      with hFX | hXF
-    swap
-    · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
-      obtain ⟨W, hW, hWr, hFW⟩ := SA.castAt_head_anc hr hy hcast (Or.inr rfl)
-        (fun L hL => (SA.liveLockBlock_candidate hPhi hL).elim
-          (fun h => Or.inr h.2.1) Or.inl) hPhi.F_anc_fcRoot
-      refine ⟨W, hPhiU hW, hWr, ?_⟩
-      have hFW := hFW.mono hPhiU
-      rw [Compose.frame_of_projAC hrun hy hc] at hFW
-      exact hXF.trans hFW
-    have hFQ : Anc (tr.HonestBlocks H) ell.frame.F Q := by
-      rw [Compose.frame_of_projAC hrun hy hc]
-      exact hFX.trans hXQ
-    have hcatchTime : gbar g + 2 * sp.Δ ≤
-        sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
-      rw [hs, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]
-      linarith
-    have hQdom := voterBlockTree_of_relay_source hr hS.sync hS.catchUp hx hy hQU
-      (Relation.ReflTransGen.refl : Anc (tr.HonestBlocks H) Q Q) hsource hcast
-      (by omega) (hhi.trans hmb) hcatchTime hFQ
-    obtain ⟨hXt, hrootX, -, hvQ, hXQf⟩ := hframe.witness_path hrun hnc hmf hy hx
-      hc hlo hhi hQ hh hJ hXQ (mem_tree_of_frame hrun hy hc hQdom.1) hFX
-    have hviab : SA.ViableAtVote ell e (s + 1) X := by
-      have hdomA := SA.voterBlockTree_anc hr hy hcast
-      rw [hs] at hdomA hQdom
-      exact Or.inl ⟨hdomA Q hQdom X hXQf, hrootX, Q, hQdom, hvQ, hXQf⟩
-    have hcarry : SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
-      apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
-        hm hS.catchUp (by linarith) hx hy hcast hs (hhi.trans hmb)
-      intro v hv
-      obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := Compose.optimistic_writer_votes hr hx hopt v hv
-      refine ⟨hvs, hw, Hv, hHv, hHvr, ?_, ha⟩
-      rw [Compose.frame_of_projAC hrun hy hc]
-      exact hFX.trans (hXD.trans hDHv)
-    exact SA.optimistic_transfer_stored sp hS.run hx hopt hXD (by
-      have hn := sp.toParams.hn
-      change 0 < sp.n at hn
-      omega) hy hcast hs hcarry hviab
-      (fun z hz k hki ev hv hes => ih k hki z hz ev hv hes)
+  exact optimistic_next_votes_of_early_witness hrun hnc hsvc hawake hf hcatch hm hmb
+    hframe hx hopt hXD hx (SA.optimisticLockAt_spec hS.run hx hopt).1 hcw hQw hh hJ hXQ
 
 /-- An early writer-held block reaches a proposal through window relay or old-block
 Catch. The finite deadline is strictly before the next slot begins. -/
@@ -178,9 +203,9 @@ theorem relay_source_at_proposal
   exact WithBot.coe_lt_coe.mpr (WithTop.coe_lt_top _)
 
 /-- The same-slot proposal base needed by L1.5 Step 4 at label s = s_p−1.
-An actual optimistic write and its write-held common-floor witness suffice; recipient
+An actual optimistic write and an early-held common-floor witness suffice; recipient
 heldness, counted-vote delivery and lock compatibility are derived, not assumed. -/
-theorem optimistic_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H tr)
+theorem optimistic_next_proposal_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
@@ -191,8 +216,10 @@ theorem optimistic_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H 
     {x : Fin sp.n} (hx : x ∈ H) {c : Nat} {CV : Set (SA.Vote sp.n)}
     (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
     (hXD : Anc (tr.HonestBlocks H) X D)
-    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt x c ellw)
-    (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state x c).fg.σ Q.root).h)
+    {w : Fin sp.n} (hw : w ∈ H) {a : Nat}
+    (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
     (hXQ : Anc (tr.HonestBlocks H) X Q)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
@@ -216,7 +243,7 @@ theorem optimistic_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H 
   have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
     change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
     omega
-  have hQ := mem_tree_of_frame hrun hx hcw hQw
+  have hQ := mem_tree_of_frame hrun hw hcw hQw
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
   have hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s := by
     have hj := (SA.acProposal_head hd).1
@@ -234,7 +261,7 @@ theorem optimistic_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H 
     have ht := ((SA.joined_awake sp) _ ro H (tr.HonestBlocks H) tr.projAC hr y hy i ell hc
       hpost).2 k hk hrk
     rwa [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at ht
-  rcases hframe.finalized_comparable_of_witness hrun hnc hmf hy hx hlo hti.le hQ hh
+  rcases hframe.finalized_comparable_of_witness hrun hnc hmf hy hw hlo hti.le hQ hh
     (fun hk => (hJ hk).trans hXQ) hXQ with hFX | hXF
   swap
   · rw [(SA.acProposal_head hd).2]
@@ -247,15 +274,14 @@ theorem optimistic_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H 
       _ _ hPhi.F_anc_fcRoot).mono hPhiU)
   have hFX' : Anc (tr.HonestBlocks H) ell.frame.F X := by
     rwa [Compose.frame_of_projAC hrun hy hc]
-  have htw := (SA.optimisticLockAt_spec hS.run hx hopt).1
   have hsource : Q.root = sp.genesisRoot ∨
-      ∃ q, tr.projAC.AcceptAt x q Q ∧ tr.projAC.time q < sp.ts s + 2 * sp.Δ := by
-    rcases Compose.frame_anc_accepted hr hx c ellw hcw Q hQw Q .refl with hg | ⟨q, hqc, ha⟩
+      ∃ q, tr.projAC.AcceptAt w q Q ∧ tr.projAC.time q < sp.ts s + 2 * sp.Δ := by
+    rcases Compose.frame_anc_accepted hr hw a ellw hcw Q hQw Q .refl with hg | ⟨q, hqc, ha⟩
     · exact Or.inl hg
-    · exact Or.inr ⟨q, ha, (hr.time_mono hqc).trans_lt htw⟩
-  have hQt := (relay_source_at_proposal hS hm hx hy hc hti hib hrs
-    (show Q ∈ tr.HonestBlocks H from ⟨x, hx, c, hQ⟩) hsource (hFX'.trans hXQ)).1
-  obtain ⟨hXt, hroot, -, hvQ, hXQf⟩ := hframe.witness_path hrun hnc hmf hy hx hc
+    · exact Or.inr ⟨q, ha, (hr.time_mono hqc).trans_lt hat⟩
+  have hQt := (relay_source_at_proposal hS hm hw hy hc hti hib hrs
+    (show Q ∈ tr.HonestBlocks H from ⟨w, hw, a, hQ⟩) hsource (hFX'.trans hXQ)).1
+  obtain ⟨hXt, hroot, -, hvQ, hXQf⟩ := hframe.witness_path hrun hnc hmf hy hw hc
     hlo hti.le hQ hh hJ hXQ (mem_tree_of_frame hrun hy hc hQt) hFX
   apply SA.optimistic_first_proposal_stored hS.run hf2 hx hopt hXD hy hc hslot hd
     ⟨hXt, Or.inl ⟨hXt, hroot, Q, hQt, hvQ, hXQf⟩⟩
@@ -284,13 +310,40 @@ theorem optimistic_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H 
     · exact SA.anc_total hr.coherent (hLO.trans hOD) hXD
     · exact SA.anc_total hr.coherent hLO (hXD.trans hDO)
 
+/-- Write-held specialization of the early-holder optimistic proposal base. -/
+theorem optimistic_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    {s floor : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts (s + 1 : Nat) ≤ b)
+    {contest kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts (s + 1 : Nat))
+      floor contest kindJ J)
+    {x : Fin sp.n} (hx : x ∈ H) {c : Nat} {CV : Set (SA.Vote sp.n)}
+    (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
+    (hXD : Anc (tr.HonestBlocks H) X D)
+    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt x c ellw)
+    (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state x c).fg.σ Q.root).h)
+    (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
+    (hXQ : Anc (tr.HonestBlocks H) X Q)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y i ell) (hcall : ell.call = .proposal)
+    (hti : tr.time i = sp.ts (s + 1 : Nat))
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay)) :
+    Anc (tr.HonestBlocks H) X d.head := by
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  exact optimistic_next_proposal_of_early_witness hrun hnc hsvc hawake hf hcatch hm hmb
+    hframe hx hopt hXD hx (SA.optimisticLockAt_spec hS.run hx hopt).1 hcw hQw hh hJ hXQ
+    hy hc hcall hti hd
+
 /-- MI-opt's bounded later-label propagation: every honest vote and actual proposal
 from s+1 through N extends X. The boundary proposal uses the optimistic base directly;
 later labels use U-W. This does not prove unlock passage, regular BASE, DESC or drain.
 The archived capped H.2 induction (`frontier_heads_transfer`) uses leases rather than
 the current FS′ frame and emission-read-point stamps; only its label-induction pattern
 is reused here. All witness transport is derived from the actual optimistic write. -/
-theorem optimistic_later_heads_of_witness (hrun : GoldilocksRun proposer dg H tr)
+theorem optimistic_later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
@@ -302,8 +355,10 @@ theorem optimistic_later_heads_of_witness (hrun : GoldilocksRun proposer dg H tr
     {x : Fin sp.n} (hx : x ∈ H) {c : Nat} {CV : Set (SA.Vote sp.n)}
     (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
     (hXD : Anc (tr.HonestBlocks H) X D)
-    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt x c ellw)
-    (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state x c).fg.σ Q.root).h)
+    {w : Fin sp.n} (hw : w ∈ H) {a : Nat}
+    (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
     (hXQ : Anc (tr.HonestBlocks H) X Q) :
     ∀ r, s + 1 ≤ r → r ≤ N →
@@ -321,14 +376,13 @@ theorem optimistic_later_heads_of_witness (hrun : GoldilocksRun proposer dg H tr
     change 0 < sp.n at hn
     change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
     omega
-  have hQ := mem_tree_of_frame hrun hx hcw hQw
-  have hQU : Q ∈ tr.HonestBlocks H := ⟨x, hx, c, hQ⟩
+  have hQ := mem_tree_of_frame hrun hw hcw hQw
+  have hQU : Q ∈ tr.HonestBlocks H := ⟨w, hw, a, hQ⟩
   have hsource : Q.root = sp.genesisRoot ∨
-      ∃ q, tr.projAC.AcceptAt x q Q ∧ tr.projAC.time q < sp.ts s + 2 * sp.Δ := by
-    rcases Compose.frame_anc_accepted hr hx c ellw hcw Q hQw Q .refl with hg | ⟨q, hqc, ha⟩
+      ∃ q, tr.projAC.AcceptAt w q Q ∧ tr.projAC.time q < sp.ts s + 2 * sp.Δ := by
+    rcases Compose.frame_anc_accepted hr hw a ellw hcw Q hQw Q .refl with hg | ⟨q, hqc, ha⟩
     · exact Or.inl hg
-    · exact Or.inr ⟨q, ha, (hr.time_mono hqc).trans_lt
-        (SA.optimisticLockAt_spec hS.run hx hopt).1⟩
+    · exact Or.inr ⟨q, ha, (hr.time_mono hqc).trans_lt hat⟩
   have hts {a b : Nat} (hab : a ≤ b) : sp.ts a ≤ sp.ts b :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast hab)
   have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := by
@@ -344,11 +398,11 @@ theorem optimistic_later_heads_of_witness (hrun : GoldilocksRun proposer dg H tr
   | base =>
     intro hrN
     have ht := hts hrN
-    refine ⟨optimistic_next_votes_of_witness hrun hnc hsvc hawake hf hcatch hm
-      (by linarith) (hsub le_rfl (by linarith)) hx hopt hXD hcw hQw hh hJ hXQ, ?_⟩
+    refine ⟨optimistic_next_votes_of_early_witness hrun hnc hsvc hawake hf hcatch hm
+      (by linarith) (hsub le_rfl (by linarith)) hx hopt hXD hw hat hcw hQw hh hJ hXQ, ?_⟩
     intro y hy i ell hc hcall hti d pay hd
-    exact optimistic_next_proposal_of_witness hrun hnc hsvc hawake hf hcatch hm
-      (by linarith) (hsub le_rfl (by linarith)) hx hopt hXD hcw hQw hh hJ hXQ
+    exact optimistic_next_proposal_of_early_witness hrun hnc hsvc hawake hf hcatch hm
+      (by linarith) (hsub le_rfl (by linarith)) hx hopt hXD hw hat hcw hQw hh hJ hXQ
       hy hc hcall hti hd
   | succ m hsm ih =>
     intro hrN
@@ -376,13 +430,13 @@ theorem optimistic_later_heads_of_witness (hrun : GoldilocksRun proposer dg H tr
         change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at h
         rw [hslot] at h
         exact h
-      have hFQ := hframe.finalized_below_descendant hrun hnc hmf hy hx hx hlo
+      have hFQ := hframe.finalized_below_descendant hrun hnc hmf hy hw hw hlo
         (hhi.trans (by linarith)) hQ hh (fun hk => (hJ hk).trans hXQ) hQ .refl
       change Anc (tr.HonestBlocks H) (Node.frame (tr.state y i)).F Q at hFQ
       rw [← Compose.frame_of_projAC hrun hy hc] at hFQ
       have hct : gbar g + 2 * sp.Δ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
         rw [hs, show ((m + 1 : Nat) : Int) - 1 = (m : Int) by omega]; linarith
-      have hdom := voterBlockTree_of_relay_source hr hS.sync hS.catchUp hx hy hQU
+      have hdom := voterBlockTree_of_relay_source hr hS.sync hS.catchUp hw hy hQU
         (Relation.ReflTransGen.refl : Anc (tr.HonestBlocks H) Q Q) hsource hcast
         (by omega) (hhi.trans (by linarith)) hct hFQ
       refine ⟨mem_tree_of_frame hrun hy hc hdom.1, ?_⟩
@@ -402,28 +456,56 @@ theorem optimistic_later_heads_of_witness (hrun : GoldilocksRun proposer dg H tr
           rw [hs]; unfold SA.freeze
           rw [show ((m + 1 : Nat) : Int) - 1 = (m : Int) by omega, hstep] at *
           linarith
-      · exact (relay_readPoint_stamp_window_before hr hS.sync hS.catchUp hx hy hq hqt
+      · exact (relay_readPoint_stamp_window_before hr hS.sync hS.catchUp hw hy hq hqt
           hcast (by omega) (hhi.trans (by linarith)) hct hFQ).2
     refine ⟨unanimous_next_votes_of_witness hrun hnc hsvc hawake hf hcatch hnr hwarm
-      (by linarith) hwin hx hQ hh hJ hXQ hheld hprior, ?_⟩
+      (by linarith) hwin hw hQ hh hJ hXQ hheld hprior, ?_⟩
     intro y hy i ell hc hcall hti d pay hd
     have hlo : sp.ts s ≤ tr.time i := by rw [hti]; exact hts (by omega)
     have hhi : tr.time i ≤ sp.ts N + sp.Δ := by rw [hti]; linarith
-    have hFQ := hframe.finalized_below_descendant hrun hnc hmf hy hx hx hlo hhi
+    have hFQ := hframe.finalized_below_descendant hrun hnc hmf hy hw hw hlo hhi
       hQ hh (fun hk => (hJ hk).trans hXQ) hQ .refl
     change Anc (tr.HonestBlocks H) (Node.frame (tr.state y i)).F Q at hFQ
     rw [← Compose.frame_of_projAC hrun hy hc] at hFQ
     have hsource' : Q.root = sp.genesisRoot ∨
-        ∃ q, tr.projAC.AcceptAt x q Q ∧ tr.projAC.time q < sp.ts m + 2 * sp.Δ := by
+        ∃ q, tr.projAC.AcceptAt w q Q ∧ tr.projAC.time q < sp.ts m + 2 * sp.Δ := by
       rcases hsource with hg | ⟨q, hq, hqt⟩
       · exact Or.inl hg
       · exact Or.inr ⟨q, hq, by linarith [hts (show s ≤ m by omega)]⟩
-    have hQt := (relay_source_at_proposal hS (hm.trans (hts (by omega))) hx hy hc hti
+    have hQt := (relay_source_at_proposal hS (hm.trans (hts (by omega))) hw hy hc hti
       (hhi.trans hmb) (fun k hk hrs => (hnr y hy k (Compose.projAC_restartAt.mp hrs)).trans
         (hm.trans (hts (by omega)))) hQU hsource' hFQ).1
     exact unanimous_next_proposal_of_witness hrun hnc hsvc hawake hf hcatch hnr hwarm
-      (by linarith) hwin hx hQ hh hJ hXQ hprior hy hc hcall hti hd
+      (by linarith) hwin hw hQ hh hJ hXQ hprior hy hc hcall hti hd
       (mem_tree_of_frame hrun hy hc hQt)
+
+/-- Write-held specialization of optimistic later-label propagation. -/
+theorem optimistic_later_heads_of_witness (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g)) {s N floor : Nat}
+    (hm : gbar g ≤ sp.ts s) (hmb : sp.ts N + sp.Δ ≤ b)
+    {contest kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts N + sp.Δ)
+      floor contest kindJ J)
+    {x : Fin sp.n} (hx : x ∈ H) {c : Nat} {CV : Set (SA.Vote sp.n)}
+    (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
+    (hXD : Anc (tr.HonestBlocks H) X D)
+    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt x c ellw)
+    (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state x c).fg.σ Q.root).h)
+    (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
+    (hXQ : Anc (tr.HonestBlocks H) X Q) :
+    ∀ r, s + 1 ≤ r → r ≤ N →
+      (∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = r →
+        SA.VoteExtends (tr.HonestBlocks H) e.msg X) ∧
+      (∀ y ∈ H, ∀ i ell, tr.projAC.CallAt y i ell → ell.call = .proposal →
+        tr.time i = sp.ts r →
+        ∀ d pay, (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 =
+          some (d, pay) → Anc (tr.HonestBlocks H) X d.head) := by
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  exact optimistic_later_heads_of_early_witness hrun hnc hsvc hawake hf hcatch hnr hm hmb
+    hframe hx hopt hXD hx (SA.optimisticLockAt_spec hS.run hx hopt).1 hcw hQw hh hJ hXQ
 
 /-- L1.5 Steps 3–4, the witnessed optimistic unlock consumer. `l₀,B` is the
 actual live-lock preimage of `l` at the proposer's unlock, not an arbitrary block.
@@ -719,6 +801,97 @@ private theorem proposal_root_viable (hrun : GoldilocksRun proposer dg H tr)
       ((Goldilocks.Store.headHeightFloor_bounds _).2.trans_eq hQh.symm)
       (fun hm hn => (hk ⟨hm, hn⟩).elim) hQ Relation.ReflTransGen.refl
     exact ⟨Q, ht, hv, ha⟩
+
+/-- §20.3's OW-opt supporter branch of regular BASE. The early viable witness
+is produced at the actual supporter vote, not assumed at its optimistic write.
+The regular count/saved-result branches and Steps 5–6 remain separate. -/
+theorem FrameWindow.optimistic_supporter_later_heads {s₀ s N floor : Nat}
+    {contest kindJ : Prop} {J L D : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g ≤ sp.ts s) (hs₀ : s₀ ≤ s) (hsN : s + 1 ≤ N)
+    (hmb : sp.ts N + sp.Δ ≤ b)
+    {x : Fin sp.n} (hx : x ∈ H) {i a : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC x i ell e) (hes : e.msg.slot = s)
+    (hanchor : L = SA.getAnchor sp e.readPoint ell.frame (tr.time i))
+    {CV : Set (SA.Vote sp.n)} (hop : SA.OptimisticLockAt tr.projAC x a s D CV)
+    (hLD : Anc (tr.HonestBlocks H) L D) :
+    ∀ r, s + 1 ≤ r → r ≤ N →
+      (∀ y ∈ H, ∀ j ev, SA.VoteAt tr.projAC y j ev → ev.msg.slot = r →
+        SA.VoteExtends (tr.HonestBlocks H) ev.msg L) ∧
+      (∀ y ∈ H, ∀ j ell', tr.projAC.CallAt y j ell' → ell'.call = .proposal →
+        tr.time j = sp.ts r →
+        ∀ d pay, (SA.acProposal sp (tr.projAC.state y j) ell'.frame (tr.time j)).2 =
+          some (d, pay) → Anc (tr.HonestBlocks H) L d.head) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hx hc.1
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+    have hn := sp.toParams.hn
+    change 0 < sp.n at hn
+    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+    omega
+  have hroot : ell.frame.Anc ell.frame.fcRoot L := by
+    rw [hanchor]; exact SA.fcRoot_anc_getAnchor hPhi _ _
+  have hvL : L ∈ ell.frame.viableTree ell.frame.tree := by
+    have hR := proposal_root_viable hrun hnc hmf hx hc.1
+    have he : L = ell.frame.fcRoot ∨
+        L ∈ SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
+      rw [hanchor]
+      unfold SA.getAnchor
+      cases hd : SA.deepest ell.frame _ with
+      | none => exact Or.inl rfl
+      | some B =>
+        rcases (SA.deepest_mem hd).1 with h | h
+        · exact Or.inr h
+        · exact Or.inl (Set.mem_singleton_iff.mp h)
+    rcases he with he | h
+    · exact he ▸ hR
+    rcases SA.liveLockBlock_candidate hPhi h with hv | hb
+    · exact hv
+    · have he := Anc.antisymm hPhi.coherent hb hroot
+      exact he ▸ hR
+  obtain ⟨Q, hQ, hvQ, hLQ⟩ := hvL.2.2
+  have hslot := (SA.castAt_spec hr hx hc).2.1.symm.trans hes
+  change sp.slot (tr.time i) = s at hslot
+  have hlo : sp.ts s ≤ tr.time i :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
+      change (s : Int) ≤ sp.slot (tr.time i)
+      rw [hslot])
+  have hhi : tr.time i ≤ sp.ts s + sp.Δ := by
+    have ht := SA.vote_time_le hr hx ⟨ell, hc⟩
+    change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
+    rwa [hslot] at ht
+  have hts : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by exact_mod_cast hs₀)
+  have htN : sp.ts s ≤ sp.ts N :=
+    (SA.ts_le_iff sp).2 (by exact_mod_cast (show s ≤ N by omega))
+  have hh : floor ≤ ((tr.state x i).fg.σ Q.root).h := by
+    rw [← hframe.floor_eq x hx i (hts.trans hlo) (by linarith)]
+    rw [Compose.frame_of_projAC hrun hx hc.1] at hvQ
+    exact hvQ.2.2.2
+  have hJ : kindJ → Anc (tr.HonestBlocks H) J L := by
+    intro hk
+    have hki := (hframe.kind_iff x hx i (hts.trans hlo) (by linarith)).mpr hk
+    have hroot' := hroot.mono hPhiU
+    rw [Compose.frame_of_projAC hrun hx hc.1] at hroot'
+    change Anc (tr.HonestBlocks H) (tr.state x i).fg.fcRoot L at hroot'
+    have he : (tr.state x i).fg.fcRoot = (tr.state x i).fg.J := ite_eq_left hki
+    rw [he, hframe.root_eq x hx i (hts.trans hlo) (by linarith) hk] at hroot'
+    exact hroot'
+  have hsub : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts N + sp.Δ)
+      floor contest kindJ J :=
+    ⟨fun y hy j hl hh => hframe.floor_eq y hy j (hts.trans hl) hh,
+      fun y hy j hl hh => hframe.contest_iff y hy j (hts.trans hl) hh,
+      fun y hy j hl hh => hframe.kind_iff y hy j (hts.trans hl) hh,
+      fun y hy j hl hh => hframe.root_eq y hy j (hts.trans hl) hh⟩
+  exact optimistic_later_heads_of_early_witness hrun hnc hsvc hawake hf hcatch hnr hm hmb
+    hsub hx hop hLD hx (by have := sp.toParams.hΔ; linarith) hc.1 hQ hh hJ
+    (hLQ.mono hPhiU)
 
 /-- The actual heal proposal is a viable head in every honest slot-p vote's
 read domain. Heldness is derived from early readiness or finite relay; the slot-p

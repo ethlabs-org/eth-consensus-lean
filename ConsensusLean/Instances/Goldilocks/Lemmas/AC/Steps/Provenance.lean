@@ -186,7 +186,13 @@ private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
         ¬ conflictsWithLock sp A.locks Φ t C ∧ fastSelect sp A Φ s C = some D) ∧
         (f = false → ∃ C, getConfirmation sp A Φ s = some C ∧ Φ.Anc D C ∧
           ∀ m : Int, (s : Int) - sp.k < m → m < s →
-            ∃ S ∈ Φ.tree, A.saved m = some S.root ∧ Φ.Anc D S)) := by
+            ∃ S ∈ Φ.tree, A.saved m = some S.root ∧ Φ.Anc D S) ∧
+        (f = false → ∃ C, getConfirmation sp A Φ s = some C ∧
+          ¬ conflictsWithLock sp A.locks Φ t C ∧
+          deepest Φ {X | X ∈ confirmationPath sp Φ C ∧
+            (FastTest sp A Φ s X ∨ ∀ m : Int, (s : Int) - sp.k < m → m < s →
+              ∃ S ∈ Φ.tree, A.saved m = some S.root ∧ Φ.Anc X S)} = some D ∧
+          fastSelect sp A Φ s C ≠ some D)) := by
   unfold updateConfirmation
   dsimp only
   rcases hC : getConfirmation sp A Φ s with _ | C
@@ -199,7 +205,9 @@ private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
       · simp only [Prod.mk.injEq] at hr
         obtain ⟨rfl, rfl⟩ := hr
         exact ⟨D, (deepest_mem hD).1.1.1, rfl, D, (deepest_mem hD).1.1.1, rfl, rfl,
-          (fun _ => ⟨C, rfl, hconf, hD⟩), (fun h => Bool.false_ne_true h.symm |>.elim)⟩
+          (fun _ => ⟨C, rfl, hconf, hD⟩),
+          (fun h => Bool.false_ne_true h.symm |>.elim),
+          (fun h => Bool.false_ne_true h.symm |>.elim)⟩
       · simp only [Prod.mk.injEq] at hr
         obtain ⟨rfl, rfl⟩ := hr
         have hDm := (deepest_mem hD).1
@@ -223,8 +231,17 @@ private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
             obtain ⟨S, hS, hsave, hDS⟩ := hs m hm hms
             refine ⟨S, hS, ?_, hDS⟩
             simpa only [Function.update_of_ne (show m ≠ (s : Int) by omega)] using hsave
-        exact ⟨D, hDm.1.1, rfl, D, hDm.1.1, rfl, rfl, Bool.false_ne_true.elim,
-          fun _ => ⟨C, rfl, hDm.1.2.2, hslow⟩⟩
+        refine ⟨D, hDm.1.1, rfl, D, hDm.1.1, rfl, rfl, Bool.false_ne_true.elim,
+          (fun _ => ⟨C, rfl, hDm.1.2.2, hslow⟩), fun _ => ⟨C, rfl, hconf, ?_, ?_⟩⟩
+        · rw [← hD]
+          congr 1
+          ext X
+          simp only [Set.mem_ofPred_eq]
+          refine and_congr_right fun _ => or_congr_right (forall_congr' fun m =>
+            imp_congr_right fun _ => imp_congr_right fun hm => ?_)
+          rw [Function.update_of_ne (ne_of_lt hm)]
+        · rw [← hD]
+          exact Ne.symm hne
 
 private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (x : Fin sp.n) (A : SAState sp.n) (t : Time) :
@@ -237,7 +254,13 @@ private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.
           ¬ conflictsWithLock sp A.locks Φ t C ∧ fastSelect sp A Φ s C = some D) ∧
           (f = false → ∃ C, getConfirmation sp A Φ s = some C ∧ Φ.Anc D C ∧
             ∀ m : Int, (s : Int) - sp.k < m → m < s →
-              ∃ S ∈ Φ.tree, A.saved m = some S.root ∧ Φ.Anc D S)))) := by
+              ∃ S ∈ Φ.tree, A.saved m = some S.root ∧ Φ.Anc D S) ∧
+          (f = false → ∃ C, getConfirmation sp A Φ s = some C ∧
+            ¬ conflictsWithLock sp A.locks Φ t C ∧
+            deepest Φ {X | X ∈ confirmationPath sp Φ C ∧
+              (FastTest sp A Φ s X ∨ ∀ m : Int, (s : Int) - sp.k < m → m < s →
+                ∃ S ∈ Φ.tree, A.saved m = some S.root ∧ Φ.Anc X S)} = some D ∧
+            fastSelect sp A Φ s C ≠ some D)))) := by
   unfold acOnTick
   dsimp only
   split_ifs with hj ht hu hu
@@ -290,7 +313,16 @@ private theorem call_candidate_fromP
       (fun s f B => ∃ D ∈ ℓ.frame.tree, B = ℓ.frame.viableAncestor D ∧
         (f = true → ∃ CV, FastLockAt tr x i s D CV) ∧
         ((∃ CV, OptimisticLockAt tr x i s D CV) ∨ ∃ ℓ', UpdateAt tr x i s ℓ') ∧
-        (f = false → ∃ ℓ C CV, UpdateAt tr x i s ℓ ∧ ResultAt tr x i s C CV ∧
+        (f = false → (∃ ℓ C, UpdateAt tr x i s ℓ ∧
+          getConfirmation sp (tr.state x i) ℓ.frame s = some C ∧
+          ¬ conflictsWithLock sp (tr.state x i).locks ℓ.frame (tr.time i) C ∧
+          deepest ℓ.frame {X | X ∈ confirmationPath sp ℓ.frame C ∧
+            (FastTest sp (tr.state x i) ℓ.frame s X ∨
+              ∀ m : Int, (s : Int) - sp.k < m → m < s →
+                ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved m = some S.root ∧
+                  ℓ.frame.Anc X S)} = some D ∧
+          fastSelect sp (tr.state x i) ℓ.frame s C ≠ some D) ∧ ∃ ℓ C CV,
+          UpdateAt tr x i s ℓ ∧ ResultAt tr x i s C CV ∧
           D ∈ ℓ.frame.tree ∧ ℓ.frame.Anc D C ∧
           ∀ m : Int, (s : Int) - sp.k < m → m < s →
             ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved m = some S.root ∧ ℓ.frame.Anc D S)) := by
@@ -299,7 +331,16 @@ private theorem call_candidate_fromP
   have opt : ∀ s (f : Bool) B, f = true → (∃ CV, OptimisticLockAt tr x i s B CV) →
       (f = true → ∃ CV, FastLockAt tr x i s B CV) ∧
         ((∃ CV, OptimisticLockAt tr x i s B CV) ∨ ∃ ℓ', UpdateAt tr x i s ℓ') ∧
-        (f = false → ∃ ℓ C CV, UpdateAt tr x i s ℓ ∧ ResultAt tr x i s C CV ∧
+        (f = false → (∃ ℓ C, UpdateAt tr x i s ℓ ∧
+          getConfirmation sp (tr.state x i) ℓ.frame s = some C ∧
+          ¬ conflictsWithLock sp (tr.state x i).locks ℓ.frame (tr.time i) C ∧
+          deepest ℓ.frame {X | X ∈ confirmationPath sp ℓ.frame C ∧
+            (FastTest sp (tr.state x i) ℓ.frame s X ∨
+              ∀ m : Int, (s : Int) - sp.k < m → m < s →
+                ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved m = some S.root ∧
+                  ℓ.frame.Anc X S)} = some B ∧
+          fastSelect sp (tr.state x i) ℓ.frame s C ≠ some B) ∧ ∃ ℓ C CV,
+          UpdateAt tr x i s ℓ ∧ ResultAt tr x i s C CV ∧
           B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc B C ∧
           ∀ m : Int, (s : Int) - sp.k < m → m < s →
             ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved m = some S.root ∧ ℓ.frame.Anc B S) :=
@@ -318,7 +359,7 @@ private theorem call_candidate_fromP
     refine (FromP.of_onTick hU hΦ hΦU x A _).mono fun s f B h => ?_
     obtain ⟨D, hD, rfl, h⟩ := h
     refine ⟨D, hD, rfl, ?_⟩
-    rcases h with ⟨e, he', hf, hs, hsel⟩ | ⟨ht, hs0, hj, hs, hC, hslow⟩
+    rcases h with ⟨e, he', hf, hs, hsel⟩ | ⟨ht, hs0, hj, hs, hC, hslow, hsl⟩
     · refine ⟨(opt _ _ _ hf
         ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inr ⟨e, hemits ▸ he', rfl⟩)⟩, hs.symm, hsel, rfl⟩).1,
         Or.inl ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inr ⟨e, hemits ▸ he', rfl⟩)⟩,
@@ -336,8 +377,9 @@ private theorem call_candidate_fromP
       · obtain ⟨C, hC, hconf, hD⟩ := hC hf
         exact ⟨_, Or.inl ⟨ℓ, C, hu, hA ▸ hC, hA ▸ hconf, hA ▸ hD, rfl⟩⟩
       · obtain ⟨C, hC, hBC, hsave⟩ := hslow hf
-        exact ⟨ℓ, C, _, hu, ⟨ℓ, hu, hA ▸ hC, rfl⟩,
-          hD, hBC, hA ▸ hsave⟩
+        obtain ⟨C', hC', hconf', hdeep', hfast'⟩ := hsl hf
+        exact ⟨⟨ℓ, C', hu, hA ▸ hC', hA ▸ hconf', hA ▸ hdeep', hA ▸ hfast'⟩,
+          ℓ, C, _, hu, ⟨ℓ, hu, hA ▸ hC, rfl⟩, hD, hBC, hA ▸ hsave⟩
   | proposal => exact FromP.of_proposal hΦ hΦU A _
   | toFG => exact FromP.of_eq (toFG_locks A _)
   | message m =>
@@ -394,7 +436,7 @@ private theorem call_fromP (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
   intro l hl
   rcases call_candidate_fromP hr hx hc l hl with h | ⟨A, ⟨D, hD, rfl, h⟩, L, hL, hLr, hLA⟩
   · exact Or.inl h
-  · exact Or.inr ⟨D, h, L, hL, hLr,
+  · exact Or.inr ⟨D, ⟨h.1, h.2.1, fun hf => (h.2.2 hf).2⟩, L, hL, hLr,
       hLA.trans ((viableAncestor_anc (frameIn_of_callAt hr hx hc).1 hD).2.mono
         (frameIn_of_callAt hr hx hc).2)⟩
 
@@ -406,6 +448,50 @@ private theorem Below.of_sitsBelow (hU : Coherent U) {l' l : Lock} {B : Blk sp.n
   have : A₂ = L := hU.1 hA₂ hL (hA₂r.trans hLr.symm)
   subst this
   exact ⟨A₁, hA₁, hA₁r, hA.trans hLB⟩
+
+/-- Same-write provenance, retaining the selected raw block and the stored candidate
+together with its actual fast or slow selection. The slow predicate is written out
+here to keep the AC layer independent of the Healing statement layer. In particular,
+two independent provenance traversals must not be used to identify the candidate. -/
+theorem lock_selection_candidate_provenance
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
+    ∀ l ∈ (tr.state x i).locks, ∃ j < i, ∃ ℓ D,
+      tr.CallAt x j ℓ ∧ D ∈ ℓ.frame.tree ∧
+      ((l.fast = true ∧ ∃ CV, FastLockAt tr x j l.slot D CV) ∨
+        (l.fast = false ∧ ∃ ℓ' C, UpdateAt tr x j l.slot ℓ' ∧
+          getConfirmation sp (tr.state x j) ℓ'.frame l.slot = some C ∧
+          ¬ conflictsWithLock sp (tr.state x j).locks ℓ'.frame (tr.time j) C ∧
+          deepest ℓ'.frame {X | X ∈ confirmationPath sp ℓ'.frame C ∧
+            (FastTest sp (tr.state x j) ℓ'.frame l.slot X ∨
+              ∀ m : Int, (l.slot : Int) - sp.k < m → m < l.slot →
+                ∃ S ∈ ℓ'.frame.tree, (tr.state x j).saved m = some S.root ∧
+                  ℓ'.frame.Anc X S)} = some D ∧
+          fastSelect sp (tr.state x j) ℓ'.frame l.slot C ≠ some D)) ∧
+      ∃ L ∈ U, L.root = l.block ∧ Anc U L (ℓ.frame.viableAncestor D) := by
+  induction i with
+  | zero =>
+    intro l hl
+    change l ∈ (tr.init x).locks at hl
+    rw [hr.init x hx] at hl
+    exact absurd hl (Set.notMem_empty l)
+  | succ i ih =>
+    intro l hl
+    rw [Trace.state] at hl
+    split_ifs at hl with hnode
+    · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hnode.2
+      rcases call_candidate_fromP hr hx ⟨hnode.1, hℓ⟩ l hl with
+        ⟨l₀, hl₀, hf, hs, hb⟩ | ⟨A, ⟨D, hD, rfl, hfast, -, hslow⟩, hA⟩
+      · obtain ⟨j, hj, ℓ', D, hc, hD, ho, hA⟩ := ih l₀ hl₀
+        refine ⟨j, hj.trans (Nat.lt_succ_self i), ℓ', D, hc, hD, ?_,
+          Below.of_sitsBelow hr.coherent hb hA⟩
+        simpa only [hf, ← hs] using ho
+      · refine ⟨i, Nat.lt_succ_self i, ℓ, D, ⟨hnode.1, hℓ⟩, hD, ?_, hA⟩
+        cases hf : l.fast with
+        | false => exact Or.inr ⟨rfl, (hslow hf).1⟩
+        | true => exact Or.inl ⟨rfl, hfast hf⟩
+    · obtain ⟨j, hj, h⟩ := ih l hl
+      exact ⟨j, hj.trans (Nat.lt_succ_self i), h⟩
 
 /-- A stored lock lies below the actual candidate stored at its write, not merely
 below the raw selected block. Labels and the optimistic/update origin are retained;
