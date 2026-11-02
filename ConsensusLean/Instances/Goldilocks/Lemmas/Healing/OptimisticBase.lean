@@ -1395,6 +1395,39 @@ theorem FrameWindow.regular_fast_next_votes {s₀ s floor : Nat}
     obtain ⟨W, hW, hWr, hQW⟩ := hheads y hy i ev hv hesv
     exact ⟨W, hW, hWr, hXQ.trans hQW⟩
 
+/-- The boundary optimistic anchor prefix, with actual CV delivery supplied
+from its honest writer. No next-slot unanimity or earlier-vote IH is used. -/
+theorem optimistic_prefix_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    {s : Nat} (hm : gbar g ≤ sp.ts s)
+    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {c i : Nat}
+    {D B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
+    (hBD : Anc (tr.HonestBlocks H) B D)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
+    (hib : tr.time i ≤ b)
+    (hFD : Anc (tr.HonestBlocks H) ell.frame.F D)
+    (hB : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+    (haB : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) B) :
+    ell.frame.Anc B (SA.getHead sp e.readPoint ell.frame (tr.time i)
+      (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+      (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hr := hS.run.localRun
+  have hcarry : SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
+    apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
+      hm hS.catchUp (by linarith [sp.toParams.hΔ]) hx hy hc hes hib
+    intro v hv
+    obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := Compose.optimistic_writer_votes hr hx hopt v hv
+    exact ⟨hvs, hw, Hv, hHv, hHvr, hFD.trans hDHv, ha⟩
+  have hhalf : 2 * Hᶜ.ncard < sp.n := by
+    have hn : 0 < sp.n := sp.toParams.hn
+    omega
+  exact SA.optimistic_prefix_of_carry sp hS.run hx hopt hBD hhalf hy hc hes hcarry hB haB
+
 end Consensus.Goldilocks.Healing
 
 end
