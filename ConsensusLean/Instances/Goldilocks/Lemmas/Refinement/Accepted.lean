@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageRepair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalEndpoints
 import ConsensusLean.Lemmas.Model.Laws
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
