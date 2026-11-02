@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FreshLock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 
 public section
 
@@ -113,6 +114,24 @@ theorem FrameWindow.proposal_report_follow
   exact (hsub le_rfl (by linarith)).toFG_later_proposal_head hrun hnc hsvc hawake hf
     hcatch hnr hm hwarm (by linarith) hy hR hPs hPR hbound (htime.trans ht.le)
     (by omega) hrN hw hcp hcall htc hd
+
+/-- Step F uses the actual report's adjacent FG attest, not a hypothetical
+signature: suppression at the client still supplies the same reset witness. -/
+theorem reset_of_high_report {g : Time}
+    (hrun : GoldilocksRun proposer dg H tr) (hq : Hᶜ.ncard < sp.toParams.fg.q)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hR : SA.ToFGAt tr.projAC y i ell R)
+    (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
+    ∃ a, IsReset tr H g a ∧ a ≤ tr.time i := by
+  obtain ⟨hc, hto, hres⟩ := hR
+  rw [Compose.projAC_state hrun.toLocalRun hy] at hres
+  obtain ⟨sg, hatt, ht, hfg⟩ := toFG_attest hrun.toLocalRun hy
+    (Compose.projAC_callAt.mp hc) hto hres
+  have hh' : HZ tr H g + 1 ≤ ((tr.state y (i + 1)).fg.σ R.root).h := by
+    rwa [hfg]
+  obtain ⟨a, ha, hat⟩ := reset_of_high_source hrun hq hy hatt hh'
+  exact ⟨a, ha, hat.trans ht.le⟩
 
 end Consensus.Goldilocks.Healing
 
