@@ -7,14 +7,12 @@ public section
 
 /-! # Goldilocks Refinement: `HSSharedUpTo` from a final query (#136)
 
-consensus-lean#136, route A. `FinalQuery.hsSharedUpTo` supplies the shared HS premises of
-`anchorSteps_gap2` (AnchorStepsSupply.lean) through the engine horizon, from the query data
-alone: GST `Q.gst`, forwarding delay `Δ_F = Δ` (the protocol delay), horizon `rho.horizon`.
-It is the instance `Δ_F := Δ` of the run-level `hsSharedUpTo_of_healthy` (HSSharedRun), whose
-docstring lists the source of each field; `timeoutDelay` is `7Δ ≤ 24Δ ≤ 4Δ·δt` from `6 ≤ δt`
-(`AcceptanceAssumptions.timeout`).
-
-`FinalQuery.deltaF_le` is the premise `Δ_F ≤ 2Δ` of `anchorSteps_gap2` at `Δ_F = Δ`. -/
+consensus-lean#136, route A. `FinalQuery.hsSharedUpTo_of_rows` supplies the shared HS premises
+through the engine horizon at a parametric row delay `Δ_F`, from row service at `Δ_F`; it is the
+query instance of the run-level `hsSharedUpTo_of_rows` (HSSharedRun), whose docstring lists the
+source of each field. `FinalQuery.hsSharedUpTo` is its instance at `Δ_F = Δ`, with the row service
+of `signed_row_service_psync`; `timeoutDelay` is then `7Δ ≤ 24Δ ≤ 4Δ·δt` from `6 ≤ δt`
+(`AcceptanceAssumptions.timeout`). -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -31,17 +29,22 @@ theorem awake_all (Q : FinalQuery S A V) :
   intro y hy t hg hb
   exact ⟨Q.healthy.2.2 (Q.run.2.key y) hy t hg hb, le_trans (le_max_right _ _) hg, hb⟩
 
-/-- `Δ_F = Δ` satisfies the premise `Δ_F ≤ 2Δ` of `anchorSteps_gap2`. -/
-theorem deltaF_le (Q : FinalQuery S A V) : Q.params.Δ ≤ 2 * Q.params.Δ := by
-  have := Q.params.toParams.hΔ
-  linarith
+/-- **The shared HS premises of a final query at a parametric `Δ_F`**, from row service at
+`Δ_F` (`hrow`), `Δ ≤ Δ_F` (only the field `ResetService.deltaF`) and `6Δ + Δ_F ≤ 4Δ·δt`. -/
+theorem hsSharedUpTo_of_rows (Q : FinalQuery S A V) (ΔF : Time)
+    (hrow : PSyncFGRowTransport S Q.run.2 Q.trace (honestKeys S Q.run.2) ΔF)
+    (hΔF : Q.params.Δ ≤ ΔF) (htd : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (S.δt : Time)) :
+    Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
+      ΔF Q.run.2.horizon :=
+  Refinement.hsSharedUpTo_of_rows S A V Q.run Q.hn Q.valid Q.noCollision Q.healthy hrow hΔF htd
 
 /-- **The shared HS premises of a final query through its horizon**, at GST `Q.gst`,
-`Δ_F = Δ`, and the digest of the run. -/
+`Δ_F = Δ` with the network's row service at `Δ_p` (`signed_row_service_psync`), and the digest
+of the run. -/
 theorem hsSharedUpTo (Q : FinalQuery S A V) :
     Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
       Q.params.Δ Q.run.2.horizon :=
-  hsSharedUpTo_of_healthy S A V Q.run Q.hn Q.valid Q.noCollision Q.healthy le_rfl (by
+  Q.hsSharedUpTo_of_rows _ (signed_row_service_psync S Q.run.2 Q.hn Q.valid) le_rfl (by
     have hΔ := Q.params.toParams.hΔ
     have h6 : (6 : Time) ≤ (S.δt : Time) := by exact_mod_cast A.timeout
     change 6 * Q.params.Δ + Q.params.Δ ≤ 4 * Q.params.Δ * (S.δt : Time)
