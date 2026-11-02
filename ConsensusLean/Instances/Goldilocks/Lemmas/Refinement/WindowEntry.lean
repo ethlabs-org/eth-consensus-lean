@@ -29,7 +29,8 @@ canonical chain, and the predecessor is finalized if the height is bound.
   `W.slot < σ[X].ThSlot + δt`.
 * `Store.finalized_covers_of_window`: with held `X ⪯ W ⪯ B₃` as in the slot form, and `B₀`
   below the entry block of `σ[X]`, the block of root `σ[B₃].F` is held and `B₀ ⪯` it (the
-  `CacheCoverage` premise shape). Helpers: `hF_mono`, `Th_eq_of_h_eq`,
+  `CacheCoverage` premise shape); `finalized_covers_of_window'`: per-height timing.
+  Helpers: `hF_mono`, `Th_eq_of_h_eq`,
   `fin_pair_self_entry_or_zero`, `self_entry_anc_finalized`.
 * `window_justifies_or_parents_above_after'`: `window_justifies_or_parents_above_after` with
   `X ⪯ C` for every held `X` of root `T` in case (A).
@@ -426,6 +427,25 @@ theorem finalized_covers_of_window (hr : st.Reachable acp₀) {B₀ B₃ X W : N
     ∃ F, st.blocks (st.σ B₃.root).F = some F ∧ st.Anc B₀ F := by
   obtain ⟨-, -, D₂, -, -, -, hD₂W, -, -, -, -, -, -, -, hhF, -⟩ :=
     theorem_F_of_anc_slot hr hX hXW hh hs
+  obtain ⟨⟨E, hE, hEr, hEX, hEh, hET⟩, -⟩ := entry_state_of_source P ACP acp₀ st hr X hX
+  obtain ⟨F, hF, hEF⟩ := self_entry_anc_finalized hr hE hB₃
+    (hEX.trans (hXW.trans hWB)) (hET.trans hEr.symm)
+    (by rw [hEh, ← hhF]; exact hF_mono hr (hD₂W.trans hWB))
+  exact ⟨F, hF, (hB₀ E hE hEr).trans hEF⟩
+
+/-- **Window coverage, per-height timing.** `finalized_covers_of_window` with the timing premise
+of `theorem_F_of_anc`: every held `D ⪯ W` whose held parent `Z ⪰ X` is at height `σ[X].h` or
+`σ[X].h + 1` has `D.slot < σ[Z].ThSlot + δt`. Each crossing is timed from its own entry. -/
+theorem finalized_covers_of_window' (hr : st.Reachable acp₀) {B₀ B₃ X W : NodeBlock P ACP}
+    (hX : X ∈ st.tree) (hB₃ : B₃ ∈ st.tree) (hXW : st.Anc X W) (hWB : st.Anc W B₃)
+    (hh : (st.σ X.root).h + 1 < (st.σ W.root).h)
+    (hs : ∀ D ∈ st.tree, ∀ Z ∈ st.tree, D.parent = some Z.root → st.Anc X Z → st.Anc D W →
+      ((st.σ Z.root).h = (st.σ X.root).h ∨ (st.σ Z.root).h = (st.σ X.root).h + 1) →
+      D.slot < (st.σ Z.root).ThSlot + P.fg.δt)
+    (hB₀ : ∀ T ∈ st.tree, T.root = (st.σ X.root).Th → st.Anc B₀ T) :
+    ∃ F, st.blocks (st.σ B₃.root).F = some F ∧ st.Anc B₀ F := by
+  obtain ⟨-, -, D₂, -, -, -, hD₂W, -, -, -, -, -, -, -, hhF, -⟩ :=
+    theorem_F_of_anc hr hX hXW hh hs
   obtain ⟨⟨E, hE, hEr, hEX, hEh, hET⟩, -⟩ := entry_state_of_source P ACP acp₀ st hr X hX
   obtain ⟨F, hF, hEF⟩ := self_entry_anc_finalized hr hE hB₃
     (hEX.trans (hXW.trans hWB)) (hET.trans hEr.symm)
