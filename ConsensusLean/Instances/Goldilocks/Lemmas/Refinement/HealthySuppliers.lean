@@ -133,7 +133,7 @@ structure HealthyBaseTiming (Q : HealthyPreparationQuery S A V) where
 
 /-- Initialization chooses a base with enough time for an actual reset seed and
 bounded repairing opening. The activation floor names that seed, not a free time.
-Existence of this certificate remains part of initialization's proof obligation. -/
+Its existence is `healthy_preparation_initialize` (`HealthyResetEnvelope`). -/
 structure HealthyPreparationSchedule (Q : HealthyPreparationQuery S A V)
     (W : HealthyBaseTiming S A V Q) where
   resetTime : Time
@@ -190,21 +190,6 @@ theorem healthy_old_inventory_of_fresh_origin (Q : HealthyPreparationQuery S A V
   · exact Or.inr hh
   · exact Or.inl (old_entry_covered_of_fresh_origin S A V Q hP hPs
       (hcap E h hold) (hcomp y hy E h hold (by omega)))
-
-/-- OPEN joint preparation tuple (E): base timing and a finite preparation schedule
-(an actual reset with service through the horizon, its seed, and a query with the lower
-bound and the strict reserve). Labelled decomposition replacement (R0) of the former
-`healthy_old_inventory_initialize`: no old-entry inventory is produced or required,
-since nothing outside `healthy_preserve`'s own preservation plumbing read the inventory
-or the caches. This removes the inventory obligation
-from this route; it proves nothing about it.
-No new Healthy premise, whole-run progress, or prefix-causal coverage is asserted. -/
-theorem healthy_preparation_initialize (Q : HealthyPreparationQuery S A V)
-    (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.run.2.horizon)
-    (hp : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) Q.cap Q.index
-      Q.ready Q.heal Q.run) :
-    ∃ W : HealthyBaseTiming S A V Q, Nonempty (HealthyPreparationSchedule S A V Q W) := by
-  sorry
 
 /-- Proven preservation of an explicitly supplied old-entry inventory. Since R0 no
 inventory is produced on the Accepted route; the inventory is a premise of the outside

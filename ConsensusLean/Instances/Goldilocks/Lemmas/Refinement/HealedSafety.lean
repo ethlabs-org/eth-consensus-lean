@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordGeometry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyResetEnvelope
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordWriters
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
