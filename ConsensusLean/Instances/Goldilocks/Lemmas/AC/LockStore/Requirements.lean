@@ -88,6 +88,61 @@ private theorem ghost_viableHead {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {dom : S
           (Option.some.inj (hp.symm.trans hHc.2.2))
         exact this ▸ hW'
 
+/-- The finite viable-tree walk reaches a viable head in its domain if its anchor has
+a viable descendant there; otherwise it stays at the anchor. -/
+theorem ghost_viable_dichotomy {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+    {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
+    (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom)
+    {A : Blk sp.n FGP} (hA : A ∈ Φ.tree) (hroot : Φ.Anc Φ.fcRoot A)
+    (t : Time) (V : View sp.n) (σ : Int) {fuel : Nat} (hf : Φ.tree.ncard ≤ fuel) :
+    let E := ghost sp (Φ.viableTree dom) (goldfishScore sp Φ V σ)
+      (goldfishEligible sp Φ t V σ) fuel A
+    ((∃ W ∈ dom, W ∈ Φ.viableHeads ∧ Φ.Anc A W) → E ∈ dom ∧ E ∈ Φ.viableHeads) ∧
+    ((¬ ∃ W ∈ dom, W ∈ Φ.viableHeads ∧ Φ.Anc A W) → E = A) := by
+  dsimp only
+  constructor
+  · intro hdesc
+    have hAv : A ∈ Φ.viableTree dom := by
+      obtain ⟨W, hW, hv, ha⟩ := hdesc
+      exact ⟨hdomA W hW A ha, hroot, W, hW, hv, ha⟩
+    have hv := ghost_viableHead hΦ hdom hdomA t V σ fuel A hAv
+      ((Set.ncard_le_ncard (fun X hX => hdom hX.1.1) hΦ.finite).trans hf)
+    refine ⟨?_, hv⟩
+    suffices hm : ∀ f B, B ∈ dom → ghost sp (Φ.viableTree dom)
+        (goldfishScore sp Φ V σ) (goldfishEligible sp Φ t V σ) f B ∈ dom from
+      hm fuel A hAv.1
+    intro f
+    induction f with
+    | zero => exact fun B hB => hB
+    | succ f ih =>
+      intro B hB
+      rw [ghost]
+      split_ifs with hb
+      · exact ih _ hb.choose_spec.1.1.1
+      · exact hB
+  · intro hnone
+    have hn : ¬ ∃ C, IsBest sp (goldfishScore sp Φ V σ)
+        {B | B ∈ Φ.viableTree dom ∧ B.parent = some A.root ∧
+          goldfishEligible sp Φ t V σ B} C := by
+      rintro ⟨C, ⟨⟨hCd, -, W, hW, hv, hCW⟩, hp, -⟩, -⟩
+      exact hnone ⟨W, hW, hv,
+        (Relation.ReflTransGen.single ⟨hA, hdom hCd, hp⟩).trans hCW⟩
+    cases fuel with
+    | zero => rfl
+    | succ f => simp only [ghost, dite_eq_right hn]
+
+/-- The same dichotomy for `getHead`, with its frame-cardinality fuel. -/
+theorem getHead_viable_dichotomy {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+    {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
+    (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom)
+    (A : SAState sp.n) (t : Time) (V : View sp.n) (σ : Int)
+    (ha : getAnchor sp A Φ t ∈ Φ.tree) (hroot : Φ.Anc Φ.fcRoot (getAnchor sp A Φ t)) :
+    let hasDesc := ∃ W ∈ dom, W ∈ Φ.viableHeads ∧ Φ.Anc (getAnchor sp A Φ t) W
+    (hasDesc → getHead sp A Φ t (Φ.viableTree dom) V σ ∈ dom ∧
+      getHead sp A Φ t (Φ.viableTree dom) V σ ∈ Φ.viableHeads) ∧
+    (¬hasDesc → getHead sp A Φ t (Φ.viableTree dom) V σ = getAnchor sp A Φ t) :=
+  ghost_viable_dichotomy hΦ hdom hdomA ha hroot t V σ le_rfl
+
 /-- The walk only descends. -/
 private theorem anc_ghost' {Φ : Frm sp.n FGP} {tree : Set (Blk sp.n FGP)} (hT : tree ⊆ Φ.tree)
     {score : Blk sp.n FGP → Nat} {eligible : Blk sp.n FGP → Prop} (fuel : Nat) {a : Blk sp.n FGP}
