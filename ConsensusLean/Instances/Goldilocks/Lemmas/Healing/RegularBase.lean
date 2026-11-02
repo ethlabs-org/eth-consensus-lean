@@ -1298,6 +1298,97 @@ theorem FrameWindow.proposal_stop_before {s₀ s floor : Nat}
     (fun C hC => hC.1.1)
     ⟨B, hBp, hBQ, help⟩ _)
 
+/-- A voter that reaches the actual proposal-parent path has head P. All
+suffix and stop obligations are discharged from finite FS′ data; reaching
+the path is the remaining anchor-prefix obligation, not a head-equality premise. -/
+theorem FrameWindow.vote_head_eq_of_path {s₀ s floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hm : gbar g + 2 * sp.Δ ≤ sp.ts s) (hs₀ : s₀ ≤ s + 1)
+    {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1))
+    {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1) (hpH : P.proposer ∈ H)
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
+    (hti : tr.time ip = sp.ts (s + 1 : Nat))
+    (hpay : (SA.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
+      some (d, pay)) (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
+    (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
+    (hPv : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+    {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hstartX : ellp.frame.Anc d.start X) (hXQ : ellp.frame.Anc X d.head)
+    (haX : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) X)
+    (hXE : ell.frame.Anc X (SA.getHead sp e.readPoint ell.frame (tr.time i)
+      (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+      (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s)) : e.msg.head = P.root := by
+  have hr := hS.run.localRun
+  have hPhi := SA.frameIn_of_callAt hr hy hc.1
+  have hPhip := SA.frameIn_of_callAt hr hz hcp
+  have hslot : sp.slot (tr.time ip) = s + 1 := SA.proposal_slot (tr := tr.projAC) hti
+  obtain ⟨hst, _, hw⟩ := proposal_walk_end hrun hnc hz hcp hpay
+  simp only [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hw
+  have hTp : ellp.frame.viableTree ellp.frame.tree ⊆ ellp.frame.tree := fun _ h => h.1
+  have hTy : ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)) ⊆
+      ell.frame.tree := fun _ h => h.1.1
+  have hQt := hPhip.1.viableHeads_subset
+    (proposal_parent_viable_full_frame hrun hnc hf hz hcp hcall (s := s + 1)
+      (by rw [sp.slotTime_eq]; simpa [SAParams.ts] using hti) hpay)
+  have hXt := SA.mem_of_anc hXQ hQt
+  have hrootQ : Anc (tr.HonestBlocks H) ell.frame.fcRoot d.head :=
+    (Anc.mono hPhi.2 ((SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)).trans haX)).trans
+      (hXQ.mono hPhip.2)
+  obtain ⟨hstepP, hstopP⟩ := hframe.proposal_stop_before hrun hnc hS hnr hf hm hs₀
+    hz hdesignated hactual hPs hpH hcp hcall hti hpay hpayload hparent
+    hy hc hes hhigh hib hPv hrootQ
+  obtain ⟨f, hwalk, hstop⟩ := SA.walkEnd_iff.1 (hw.of_anc hPhip.1.coherent hTp hstartX hXQ)
+  have hfollow := SA.ghost_follow f X hwalk hstop (fun m hm' hne C hC => by
+    have hXm := SA.anc_ghost (score := SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
+      (eligible := SA.goldfishEligible sp ellp.frame (tr.time ip) (SA.View.ofLists pay) s) hTp m hXt
+    have hmt : SA.ghost sp (ellp.frame.viableTree ellp.frame.tree)
+        (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
+        (SA.goldfishEligible sp ellp.frame (tr.time ip) (SA.View.ofLists pay) s) m X ∈
+        ellp.frame.tree := by
+      rcases eq_or_ne X (SA.ghost sp (ellp.frame.viableTree ellp.frame.tree)
+        (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
+        (SA.goldfishEligible sp ellp.frame (tr.time ip) (SA.View.ofLists pay) s) m X) with he | he
+      · exact he ▸ hXt
+      · exact (Anc.mem hXm he).2
+    have hmQ : ellp.frame.Anc
+        (SA.ghost sp (ellp.frame.viableTree ellp.frame.tree)
+          (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
+          (SA.goldfishEligible sp ellp.frame (tr.time ip) (SA.View.ofLists pay) s) m X) d.head := by
+      have hend := hwalk
+      rw [show f = m + (f - m) by omega, SA.ghost_add] at hend
+      exact hend ▸ SA.anc_ghost hTp (f - m) hmt
+    exact hframe.proposal_suffix_before hrun hnc hS hnr hf hm hs₀ hz hdesignated hactual hPs
+      hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv (hstartX.trans hXm) hmQ hne
+      ((haX.mono hPhi.2).trans (hXm.mono hPhip.2)) hC) hstepP hstopP
+  let sc := SA.goldfishScore sp ell.frame (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s
+  let el := SA.goldfishEligible sp ell.frame (tr.time i)
+    (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s
+  have hvoter : SA.WalkEnd (sp := sp)
+      (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1))) sc el
+      (SA.getAnchor sp e.readPoint ell.frame (tr.time i))
+      (SA.getHead sp e.readPoint ell.frame (tr.time i)
+        (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+        (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) :=
+    SA.walkEnd_ghost hPhi.1.coherent hTy (hPhi.1.finite.subset hTy)
+      (Set.ncard_le_ncard hTy hPhi.1.finite) _
+  have heq := (hvoter.of_anc hPhi.1.coherent hTy haX hXE).unique
+    (SA.walkEnd_iff.2 ⟨f + 1, hfollow, hstopP⟩)
+  have hspec := (SA.castAt_spec hr hy hc).2.2.2
+  rw [hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hspec
+  exact hspec.trans (congrArg Block.root heq)
+
 end Consensus.Goldilocks.Healing
 
 end
