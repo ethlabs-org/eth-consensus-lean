@@ -210,6 +210,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifies
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalSignedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
@@ -240,7 +241,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Evidence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Exposure
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ExposureHealed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ExposureUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinPair
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinPairUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingInvariant
@@ -248,6 +251,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingSta
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC3
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC4
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedClientUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
@@ -262,6 +266,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSupplie
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposalWindow
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposalWindowUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Queue
