@@ -26,7 +26,9 @@ call (`hl hf hB hBl`) and a unanimous slot `u` (`hP hslot hu hPg hun hgu hR htu 
 * `hXP_of_c3_upTo`: the lock entry is below every honest proposal of a slot `u` with
   `time k + Δ ≤ t_u ≤ b` (lock entry ⪯ lock block, then C3).
 * `height_advance_healed_c3_upTo`: `height_advance_upTo` with any live fast lock and `hXP`
-  from C3; the scheduling premise is `time k + Δ ≤ t`. -/
+  from C3; the scheduling premise is `time k + Δ ≤ t`.
+* `live_fast_lock_at_tick_upTo`, `height_advance_healed_tick_upTo`: the same at the cut right
+  after the unanimous tick (no keep interval). -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -358,6 +360,80 @@ theorem height_advance_healed_c3_upTo (hrun : GoldilocksRun proposer dg H tr)
     (by linarith) (by linarith)
   exact height_advance_upTo hrun hq hH hs hv hM4 hs₁ hvs hwb hy hc htH hl hf hB hBl hks
     rfl rfl hh₀ hp hvb hcatch hP hslot hu hPg hun hgu hR htu huv hXP hs₂ hvs₂ hwb₂ hAX hδ
+
+/-- **The live fast lock right after the unanimous tick** (group `hl hf hB hBl` of
+`height_advance_upTo`, no keep interval). The fast lock `⟨P.root, p, true⟩` written by the
+unanimous update at the tick `k₀` (`t_p + 6Δ`) is a live fast lock at the next cut `k₀ + 1`,
+for any label `ℓ` whose frame holds `P` as its own viable ancestor, when it does not expire. -/
+theorem live_fast_lock_at_tick_upTo (hrun : GoldilocksRun proposer dg H tr) {g : Time}
+    (hS : SA.HealthyBase tr.projAC H (tr.HonestBlocks H) proposer g) {p : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hp4 : SA.gbar g + 4 * sp.Δ ≤ sp.ts p)
+    (hun : Healing.Unanimous tr H p P) (hPg : P.root ≠ sp.genesisRoot)
+    {y : Fin sp.n} (hy : y ∈ H) {k₀ : Nat} {ℓ₀ : ACLabel (goldilocksNode sp ro)}
+    (hc₀ : tr.projAC.CallAt y k₀ ℓ₀) (hcall : ℓ₀.call = .tick)
+    (htk : tr.time k₀ = sp.ts p + 6 * sp.Δ) (hPt : P ∈ ℓ₀.frame.tree)
+    (hva₀ : ℓ₀.frame.viableAncestor P = P)
+    (hlocks : ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y k₀).locks ℓ₀.frame (tr.time k₀),
+      Compatible (tr.HonestBlocks H) L P)
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hk : sp.slot (tr.time (k₀ + 1)) ≤ p + sp.k)
+    (hP : P ∈ ℓ.frame.tree) (hva : ℓ.frame.viableAncestor P = P) :
+    ∃ l ∈ SA.liveLocks sp (tr.projAC.state y (k₀ + 1)).locks ℓ.frame (tr.time (k₀ + 1)),
+      l.fast = true ∧ P.root = l.block :=
+  live_fast_lock_of_healed_upTo hrun hS hp4 hun hPg hy hc₀ hcall htk hPt hva₀ hlocks
+    (Nat.lt_succ_self k₀) (fun j h1 h2 => absurd h2 (by omega)) hk hP hva
+
+/-- **One height of advance from the unanimous tick.** `height_advance_healed_c3_upTo` at the
+call `k₀ + 1` right after the unanimous slot-`pl` tick `k₀`, with the live fast lock on `Pl`
+from `live_fast_lock_at_tick_upTo`. Open frame facts at `k₀ + 1`: the call `hc`, `Pl` in its
+frame and its own viable ancestor (`hPl hval`), no expiry (`hkl`). The scheduling premises are
+`hks : time (k₀+1) + Δ ≤ t_{s₁}` and `hkt : time (k₀+1) + Δ ≤ t`. -/
+theorem height_advance_healed_tick_upTo (hrun : GoldilocksRun proposer dg H tr)
+    (hq : Hᶜ.ncard < sp.toParams.fg.q)
+    {g ΔF v gR tH b : Time} {h₀ : Nat}
+    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hH : HealedUpTo tr H proposer gR tH b h₀ E)
+    (hs : Healing.HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v) {s₀ gM s₁ : Nat}
+    (hM4 : ∀ s, s₀ ≤ s → ∃ s', s ≤ s' ∧ s' < s + gM ∧
+      ∃ P, Healing.HonestProposalRun tr H proposer s' P)
+    (hs₁ : s₀ ≤ s₁) (hvs : v + ΔF ≤ sp.ts s₁) (hwb : ∀ s', s' < s₁ + gM → sp.ts s' ≤ b)
+    {ΔR a : Time} (hp : Healing.ResetPremisesUpTo tr H proposer dg gR ΔR a b) (hvb : v ≤ b)
+    (hcatch : Healing.CatchRun tr H gR (2 * sp.Δ))
+    -- the unanimous tick
+    {gl : Time} (hS : SA.HealthyBase tr.projAC H (tr.HonestBlocks H) proposer gl) {pl : Nat}
+    {Pl : SA.Blk sp.n (List (FG.Att sp.n))} (hp4 : SA.gbar gl + 4 * sp.Δ ≤ sp.ts pl)
+    (hunl : Healing.Unanimous tr H pl Pl) (hPgl : Pl.root ≠ sp.genesisRoot)
+    {y : Fin sp.n} (hy : y ∈ H) {k₀ : Nat} {ℓ₀ : ACLabel (goldilocksNode sp ro)}
+    (hc₀ : tr.projAC.CallAt y k₀ ℓ₀) (hcall : ℓ₀.call = .tick)
+    (htk : tr.time k₀ = sp.ts pl + 6 * sp.Δ) (hPt : Pl ∈ ℓ₀.frame.tree)
+    (hva₀ : ℓ₀.frame.viableAncestor Pl = Pl)
+    (hlocks : ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y k₀).locks ℓ₀.frame (tr.time k₀),
+      Compatible (tr.HonestBlocks H) L Pl)
+    -- the call right after the tick
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y (k₀ + 1) ℓ)
+    (htH : tH ≤ tr.time (k₀ + 1)) (hkl : sp.slot (tr.time (k₀ + 1)) ≤ pl + sp.k)
+    (hPl : Pl ∈ ℓ.frame.tree) (hval : ℓ.frame.viableAncestor Pl = Pl)
+    (hks : tr.time (k₀ + 1) + sp.Δ ≤ sp.ts s₁)
+    (hh₀ : h₀ + 1 ≤ ((tr.state y (k₀ + 1)).fg.σ Pl.root).h)
+    -- the unanimous slot
+    {T Bw : Time} (hU : Regimes.UnanimousWithin tr H proposer T Bw) {t : Time} (hTt : T ≤ t)
+    (hgt : SA.gbar gR + 4 * sp.Δ ≤ t) (hRt : Healing.drainTime sp a ≤ t) (htHt : tH ≤ t)
+    (htv : t + Bw + 6 * sp.Δ ≤ v) (hkt : tr.time (k₀ + 1) + sp.Δ ≤ t)
+    -- v, the windows, the link and the slot condition
+    {s₂ : Nat} (hs₂ : s₀ ≤ s₂) (hvs₂ : v + sp.Δ ≤ sp.ts s₂)
+    (hwb₂ : ∀ s, s < s₂ + gM → sp.ts s ≤ b) {A : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hAX : ∀ X ∈ (tr.state y (k₀ + 1)).fg.tree,
+      X.root = ((tr.state y (k₀ + 1)).fg.σ Pl.root).Th → Anc (tr.HonestBlocks H) A X)
+    (hδ : ∀ X ∈ (tr.state y (k₀ + 1)).fg.tree,
+      X.root = ((tr.state y (k₀ + 1)).fg.σ Pl.root).Th →
+        s₂ + gM ≤ X.slot + sp.toParams.fg.δt + 1) :
+    ∃ s, min s₁ s₂ ≤ s ∧ s < max s₁ s₂ + gM ∧ ∃ P',
+      Healing.HonestProposalRun tr H proposer s P' ∧ ∃ kp, tr.ProposesAt (proposer s) kp P' ∧
+        P' ∈ (tr.post kp).fg.tree ∧ Anc (tr.HonestBlocks H) A P' ∧
+        ∀ w ∈ H, ∀ j, P' ∈ (tr.state w j).fg.tree →
+          ((tr.state w j).fg.σ A.root).h + 1 ≤ ((tr.state w j).fg.σ P'.root).h := by
+  obtain ⟨l, hl, hf, hBl⟩ := live_fast_lock_at_tick_upTo hrun hS hp4 hunl hPgl hy hc₀ hcall
+    htk hPt hva₀ hlocks (ℓ := ℓ) hkl hPl hval
+  exact height_advance_healed_c3_upTo hrun hq hH hs hv hM4 hs₁ hvs hwb hp hvb hcatch hy hc htH
+    hl hf hPl hBl hks hh₀ hU hTt hgt hRt htHt htv hkt hs₂ hvs₂ hwb₂ hAX hδ
 
 end Consensus.Goldilocks.Refinement
 
