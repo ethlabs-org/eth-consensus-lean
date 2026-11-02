@@ -200,6 +200,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowExists
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FreshLock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Range
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OptimisticBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome
