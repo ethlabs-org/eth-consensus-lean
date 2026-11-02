@@ -42,6 +42,11 @@ successor `C` of `B` crossed on the chain to `B₃`. CONDITIONAL on L5.1/L6.A in
 def WindowAdvance (st : Store P ACP) (A B₃ : NodeBlock P ACP) : Prop :=
   (st.σ A.root).h + 3 ≤ (st.σ B₃.root).h
 
+/-- `WindowAdvance` from its height bound. -/
+theorem windowAdvance_of_le {A B₃ : NodeBlock P ACP} (h : (st.σ A.root).h + 3 ≤ (st.σ B₃.root).h) :
+    WindowAdvance st A B₃ :=
+  h
+
 /-- **S1 + S4 at the late crossings (window-delta-t-4.md §1, Steps 2–3).** Every held `D ⪯ B₃`
 with a held parent `Z ⪰ A` at height `σ[A].h + 1` or `σ[A].h + 2` that enters the next height at
 age `≥ δt` (`σ[Z].ThSlot + δt ≤ D.slot`) has a target quorum in its counted state (S1 service,
