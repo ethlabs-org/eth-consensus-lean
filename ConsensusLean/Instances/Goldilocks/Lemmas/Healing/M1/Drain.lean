@@ -188,9 +188,33 @@ theorem FrameWindow.reset_of_high_proposal
   obtain ⟨a, ha, hat⟩ := reset_of_high_report hrun hq hz hR hh'
   exact ⟨a, ha, hat.trans ht⟩
 
-/-- A concrete report produces a matching row by its timestamp, provided
-the finite O1-L lock alternative holds at that report's own store cut.
-The signature may be older; no lower bound on report time is assumed. -/
+/-- A floor-height source above the fork-choice root satisfies O1-L's
+kind alternative, including Contest and the equal-height kind-J case. -/
+theorem report_kind_of_floor
+    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hh : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ R.root).h)
+    (hroot : (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R) :
+    (tr.state y i).fg.hj < ((tr.state y i).fg.σ R.root).h ∨
+      ((tr.state y i).fg.hj = ((tr.state y i).fg.σ R.root).h ∧
+        (tr.state y i).fg.Anc (tr.state y i).fg.J R) := by
+  have hj := hj_lt_hmax hrun hy i
+  by_cases hc : (tr.state y i).fg.Contest
+  · have he := hc.1
+    rw [Store.headHeightFloor, ite_eq_left hc] at hh
+    exact Or.inl (by omega)
+  · rw [Store.headHeightFloor, ite_eq_right hc] at hh
+    by_cases he : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1
+    · have hr : (tr.state y i).fg.fcRoot = (tr.state y i).fg.J :=
+        ite_eq_left ⟨he, hc⟩
+      rw [hr] at hroot
+      by_cases hlt : (tr.state y i).fg.hj < ((tr.state y i).fg.σ R.root).h
+      · exact Or.inl hlt
+      · exact Or.inr ⟨by omega, hroot⟩
+    · exact Or.inl (by omega)
+
+/-- An actual report's adjacent attest produces an actual matching signature
+using the finite O1-L lock alternative at the report's own store cut. -/
 theorem row_of_report_of_kind
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
@@ -216,6 +240,37 @@ theorem row_of_report_of_kind
     ⟨att, rfl, hah, haT⟩ | ⟨k, hki, att, hs, hah, haT⟩
   · exact ⟨i + 1, att, ⟨R, hatt⟩, ht.le, hah, haT⟩
   · exact ⟨k, att, hs, (hrun.time_mono hki.le).trans ht.le, hah, haT⟩
+
+/-- The inherited floor bound and the actual report's candidate ancestry
+discharge O1-L. R need only have a viable descendant, not be viable itself. -/
+theorem row_of_report_of_floor
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {R E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hR : SA.ToFGAt tr.projAC y i ell R) {h : Nat}
+    (hE : EntryOf (tr.state y i).fg R E h)
+    (hh : ((tr.state y i).fg.σ R.root).h = h)
+    (hfloor : (tr.state y i).fg.headHeightFloor ≤ h) :
+    ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ tr.time i ∧
+      att.h = h ∧ att.T = E.root := by
+  have hroot : ell.frame.Anc ell.frame.fcRoot R := by
+    have h := hR.2.2
+    change (SA.acToFG sp (tr.projAC.state y i) ell.frame (tr.time i)).2.1 = some R at h
+    unfold SA.acToFG at h
+    dsimp only at h
+    split_ifs at h
+    split at h
+    · cases h
+    · rename_i C hC
+      split_ifs at h
+      cases h
+      exact (SA.deepest_mem hC).1.1.2.1
+  rw [Compose.frame_of_projAC hrun hy hR.1] at hroot
+  have hroot' : (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R :=
+    hroot.mono (fun B hB => hB.1)
+  exact row_of_report_of_kind hrun hnc hf hy hR hE hh
+    (hh ▸ report_kind_of_floor hrun hy (hh ▸ hfloor) hroot')
 
 end Consensus.Goldilocks.Healing
 
