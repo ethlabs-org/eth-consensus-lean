@@ -273,6 +273,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RowsSupply
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RowsSupplyUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
@@ -282,10 +283,15 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.TheyAttest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchors
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorsUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowCrossed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowCrossedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowEntry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowEntryUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowParents
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowParentsUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowUnanimous
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowUnanimousUpTo
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
