@@ -561,11 +561,14 @@ theorem healthy_own_call_time_le_now {v : V} {i q : Nat}
   rw [htime, ← now_after_local_event S Q.run.2 Q.hn Q.valid he hev]
   exact now_mono S Q.run.2 Q.hn Q.valid v (by omega)
 
-/-- OPEN reset/snapshot, old threshold and joint coefficient/window producer. Reserved
-body: `healthy_preparation_initialize`, then `healthy_repair_schedule_of_preparation`;
-the open input is the joint (E) tuple, not an old-entry inventory. -/
+set_option linter.unusedSectionVars false in
+/-- The repair schedule of the preparation initializer: the joint (E) tuple of
+`healthy_preparation_initialize` keeps its reset time, service delay and query
+(`healthy_repair_schedule_of_preparation`). -/
 theorem healthy_repair_schedule : Nonempty (HealthyRepairSchedule S A V Q) := by
-  sorry
+  obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize S A V Q h0 hb hp
+  obtain ⟨D, -⟩ := healthy_repair_schedule_of_preparation S A V Q W' Dprep
+  exact ⟨D⟩
 
 omit h0 hp W states in
 /-- Any bounded operational opening repairs the post-update source cover. No
