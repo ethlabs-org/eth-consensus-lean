@@ -117,6 +117,21 @@ theorem FrameWindow.proposal_report_follow
     hcatch hnr hm hwarm (by linarith) hy hR hPs hPR hbound (htime.trans ht.le)
     (by omega) hrN hw hcp hcall htc hd
 
+/-- Even a suppressing earlier report extending a slot-u proposal cannot
+predate that slot: its actual fast-write origin bounds the stored block slot. -/
+theorem toFG_time_ge_of_ancestor_slot
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) {y : Fin sp.n} (hy : y ∈ H) {i u : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {P R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hR : SA.ToFGAt tr.projAC y i ell R) (hPs : P.slot = u)
+    (hPR : Anc (tr.HonestBlocks H) P R) : sp.ts u ≤ tr.time i := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  obtain ⟨a, _, j, D, CV, ho, hRD, hj⟩ := toFG_fast_origin hrun hnc hy hR
+  have hPD := (Anc.slot_le hac.localRun.coherent (hPR.trans hRD)).1
+  have hDj := fast_selection_slot_le hrun hnc hf hy ho
+  have hu : u ≤ sp.slot (tr.time i) := by omega
+  exact (SA.ts_le_iff_le_slot sp (hac.localRun.time_nonneg i) _).2 (by exact_mod_cast hu)
+
 /-- Step F uses the actual report's adjacent FG attest, not a hypothetical
 signature: suppression at the client still supplies the same reset witness. -/
 theorem reset_of_high_report {g : Time}
