@@ -145,10 +145,11 @@ structure Behaviour (S : System V) (X : Progress S Prog) (K : Contract Prog) :
       (fun r => S.Healthy K gst r ∧ S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
       (fun r => (S.trace r).ReadySafe (S.cDur K r) g (S.heal K cap i gst r))
   /-- Outage resilience of the stable output, into the resilience target:
-  what a node ready at `T` reads as stable is kept by eligible readers. -/
+  what a node ready at `T` reads as stable is kept by every ready reader from
+  the recovery point `b₁ + recovery·Δ` on. -/
   persists : ∀ g, S.schema.output .stable = some g → ∀ T b₀ b₁,
-    S.Holds (S.Outage K T b₀ b₁) (fun r => (S.trace r).ProtectedThrough (S.cDur K r) g
-      (resilienceTarget S.schema g) T b₀ b₁)
+    S.Holds (S.Outage K T b₀ b₁) (fun r => (S.trace r).ProtectedReadyFrom (S.cDur K r) g
+      (resilienceTarget S.schema g) T (S.recoveryAt K b₁ r))
 
 /-- **Adequacy**: the L0 acceptance interface, which rules out a vacuous
 system. -/
@@ -190,13 +191,13 @@ def SafeActive (c t₀ : Time) (p : EnvPoint V) : Prop :=
     p.Ready c u t ∧ p.Ready c w t ∧ p.Ready c u t'
 
 /-- The outage is active: armed at `T ≥ 0` before the window, which lasts at
-least `Δ` and ends within the horizon; a node is ready at `T` (a protected
-source); an honest node sleeps in the window; an honest node is caught up
-before the window and awake through its end (an eligible reader). -/
-def OutageActive (c T b₀ b₁ : Time) (p : EnvPoint V) : Prop :=
-  0 ≤ T ∧ T < b₀ ∧ b₀ + p.env.Δ ≤ b₁ ∧ b₁ ≤ p.horizon ∧ (∃ u, p.Ready c u T) ∧
+least `Δ`; a node is ready at `T` (a protected source); an honest node sleeps
+in the window; and a node is ready at a time from the recovery point
+`b₁ + D` within the horizon (a protected reader). -/
+def OutageActive (c D T b₀ b₁ : Time) (p : EnvPoint V) : Prop :=
+  0 ≤ T ∧ T < b₀ ∧ b₀ + p.env.Δ ≤ b₁ ∧ (∃ u, p.Ready c u T) ∧
     (∃ v ∈ p.honest, ∃ t, b₀ ≤ t ∧ t < b₁ ∧ p.env.awake v t = false) ∧
-    ∃ w ∈ p.honest, p.AwakeOnClosed w (max 0 (b₀ - c - 1)) b₁
+    ∃ w t, b₁ + D ≤ t ∧ t ≤ p.horizon ∧ p.Ready c w t
 
 namespace System
 
@@ -242,7 +243,9 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     ∀ Δ : Time, 0 < Δ → ∃ i r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ S.SleepyLive X K cap i r ∧
       (S.pt r).AwakeAtMost 2
   outage : ∀ (Δ : Time) (k : Nat), 0 < Δ → ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
-    S.Outage K T b₀ b₁ r ∧ OutageActive (S.cDur K r) T b₀ b₁ (S.pt r) ∧ (k : Time) * Δ ≤ T
+    S.Outage K T b₀ b₁ r ∧
+      OutageActive (S.cDur K r) ((K.params.recovery : Time) * Δ) T b₀ b₁ (S.pt r) ∧
+      (k : Time) * Δ ≤ T
 
 /-- **A good protocol.** -/
 structure Good (S : System V) (X : Progress S Prog) (K : Contract Prog) : Prop where

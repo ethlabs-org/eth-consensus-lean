@@ -85,20 +85,37 @@ noncomputable def accepted_coefficients (S : Setup) (A : AcceptanceAssumptions S
 
 /-- Standard fixed resilience fractions; only guarantee coefficients vary.
 Final progress is the chosen local pattern at every positive outer gap.
-An abbreviation exposes the index type for the adapter signatures. -/
+An abbreviation exposes the index type for the adapter signatures.
+
+Outage numbers (engine `Δe`, node `Δp = Δe + 1`, slot `4Δp`; slow arming only):
+* arming lag `8k + 12`: `(8k+12)Δe ≥ (4k+6)Δp` for every `Δe ≥ 1` (equality only
+  at `Δe = 1`, about `k + 1½` slots), so the label before the outage label is
+  fully armed by `b₀`;
+* no-sleep margin `max 38 (8k + 16)`: it covers the formation window
+  (`(4k+6)Δp` before `b₀`), the restored votes (`8k + 16`) and the catch-up
+  (`catchUp + 1 = max 38 (8k + 5)`), so the honest validators awake at the window
+  start are ready on the recovery counts;
+* recovery delay `18` (`18Δe ≥ 9Δp` for every `Δe ≥ 1`, equality only at
+  `Δe = 1`): enough for the restored votes of the locked validators to bring
+  the confirmed read back above the record (owner decision 2026-11-02;
+  workbench 9f5d6a3, `outage_recovery_delay-readback-opus.md`).
+These numbers are sufficient for the paper route, conditional on its open
+obligations; they are not claimed minimal. -/
 abbrev acceptanceContract {S : Setup} (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
-  params := { Params.standard C.catchUp (8 * S.k - 8)
-    (min A.lookback (4 * S.k - 6)) C.heal C.latency with η := A.lookback }
+  params := { Params.standard C.catchUp (8 * S.k + 12)
+    (min A.lookback (4 * S.k - 6)) C.heal C.latency with
+    η := A.lookback, noSleep := max 38 (8 * S.k + 16), recovery := 18 }
   progress := fun cap X => .recur ⟨if cap = .final then finalWindow S else Pattern.single, X⟩
 
 theorem acceptanceContract_params_eq {S : Setup} (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) :
     (acceptanceContract A C).params =
-      { Params.standard C.catchUp (8 * S.k - 8)
-        (min A.lookback (4 * S.k - 6)) C.heal C.latency with η := A.lookback } := by rfl
+      { Params.standard C.catchUp (8 * S.k + 12)
+        (min A.lookback (4 * S.k - 6)) C.heal C.latency with
+        η := A.lookback, noSleep := max 38 (8 * S.k + 16), recovery := 18 } := by rfl
 
 theorem accepted_coefficients_catchUp (S : Setup) (A : AcceptanceAssumptions S) :
     (accepted_coefficients S A).catchUp = accepted_catchUp S A := by rfl
@@ -116,14 +133,14 @@ theorem acceptance_outage_times (S : Setup) (A : AcceptanceAssumptions S)
   obtain ⟨hT, hlag, horder, hbudget⟩ := h
   have hk : (2 : Int) ≤ S.k := by exact_mod_cast S.two_le_k
   have hd : (1 : Int) ≤ pub.Δ := pub.Δ_pos
-  have hlcast : ((8 * S.k - 8 : Nat) : Int) = 8 * (S.k : Int) - 8 := by
+  have hlcast : ((8 * S.k + 12 : Nat) : Int) = 8 * (S.k : Int) + 12 := by
     omega
   have hbcast : ((4 * S.k - 6 : Nat) : Int) = 4 * (S.k : Int) - 6 := by
     omega
   have hb : ((min A.lookback (4 * S.k - 6) : Nat) : Int) ≤ 4 * (S.k : Int) - 6 := by
     rw [← hbcast]
     exact_mod_cast (min_le_right (A.lookback : Nat) (4 * S.k - 6))
-  change T + ((8 * S.k - 8 : Nat) : Int) * pub.Δ ≤ b₀ at hlag
+  change T + ((8 * S.k + 12 : Nat) : Int) * pub.Δ ≤ b₀ at hlag
   change b₁ ≤ b₀ + ((min A.lookback (4 * S.k - 6) : Nat) : Int) * pub.Δ at hbudget
   rw [hlcast] at hlag
   have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt pub.Δ_pos)

@@ -15,6 +15,17 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-11-02, Francesco: the generic outage is slow arming only, with no absolute-majority
+  participation premise. `System.Outage` drops `ReadyOfAll cover` and gains, after its existing
+  conjuncts, `NoSleepOn a z` (no honest validator falls asleep in `[a, z]`, waking allowed;
+  `a = b₀ − noSleep·Δ`, `z = b₁ + noSleep·Δ`, clamped to `[0, horizon]`) and `CohortOn a z`
+  (faulty plus late wakers fewer than the honest validators awake at `a`; half of all is the lemma
+  `CohortOn.two_mul_lt`). `Good.persists` protects every `Ready` reader from `b₁ + recovery·Δ`
+  (`ProtectedReadyFrom`), replacing `ResilienceReader` readers from `b₀`. New `Params` fields
+  `noSleep`, `recovery`. Accepted: lag `8k+12` (`(8k+12)Δe ≥ (4k+6)Δp`, the label before the
+  outage label armed by `b₀`), `noSleep = max 38 (8k+16)`, `recovery = 18`. A2
+  (`outageWindow`) drops `ReadyOfAll` for the same relative counts on `[a, b₁]`. Cards:
+  workbench `outage_slow_only_delta.md`, read-backs 5d5e354 and 9f5d6a3.
 - 2026-11-02, claude-mac, owner direction Francesco ([#136]): route A for final liveness.
   `finalWindow` offsets are `[0, 2, 4, 6]` (span 6), `AcceptanceAssumptions.timeout` is
   `6 ≤ δt`, and `accepted_latency .final X = 8(X+6)+2`. The window coverage comes from the anchor

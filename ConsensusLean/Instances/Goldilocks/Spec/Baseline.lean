@@ -19,7 +19,9 @@ this contract, and the Goldilocks extras, give.
   are placeholders until the FG-SA migration fixes them.
 * Numbers (`FGSAParams.params`): standard thresholds (½ sleepy, healthy faults
   below ⅓, ½ cover, ⅓ accountable); catch-up `18` (two slots + the `6Δ` join + one gate,
-  gate F-3); arming lag `L − 3Δ = 4·lockK − 4` (slow arming); outage budget
+  gate F-3); arming lag `4·lockK + 6` (slow arming, the label before the
+  outage label armed by `b₀`); outage no-sleep margin `max 19 (4·lockK + 8)`
+  and recovery delay `9`; outage budget
   `min eta (4·lockK − 5)` (implies FG-SA's condition (V), `budget_implies_V` in
   the sheet); outage look-back `η = eta` (the outage regime is η-sleepy,
   Francesco 2026-10-28); heal points from `max g 0`:
@@ -141,16 +143,26 @@ def latency : Capability → ℕ+ → Nat
   | .final, gf => 4 * (gf * pp.R) + 6 + pp.wW gf
   | _, k => 4 * k + 6
 
-/-- The arming lag `L − 3Δ` (slow arming). -/
-def lag : Nat := 4 * pp.lockK - 4
+/-- The arming lag `(4·lockK + 6)·Δ` (slow arming, one slot before the
+outage label: the label before it is fully armed by `b₀`). -/
+def lag : Nat := 4 * pp.lockK + 6
+
+/-- The outage no-sleep margin `max 19 (4·lockK + 8)`: the formation window,
+the restored votes, and catch-up plus one. -/
+def noSleep : Nat := max 19 (4 * pp.lockK + 8)
+
+/-- The outage recovery delay `9` (`Δ`-coefficient: the restored votes of
+the locked validators, about two slots after the window). -/
+def recovery : Nat := 9
 
 /-- The outage budget `min eta (4·lockK − 5)` (implies FG-SA's (V)). -/
 def budget : Nat := min pp.eta (4 * pp.lockK - 5)
 
 /-- The pinned Goldilocks numbers: standard thresholds, outage look-back
-`η = eta`. -/
+`η = eta`, no-sleep margin and recovery delay. -/
 def params : Params ℕ+ :=
-  { Params.standard catchUp pp.lag pp.budget pp.heal pp.latency with η := pp.eta }
+  { Params.standard catchUp pp.lag pp.budget pp.heal pp.latency with
+    η := pp.eta, noSleep := pp.noSleep, recovery := FGSAParams.recovery }
 
 /-- The finality recurrence at index `gf`: `3R + κ` consecutive honest ready
 proposers in every window of `gf·R` slots. -/

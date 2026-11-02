@@ -100,13 +100,16 @@ E1/E2 evidence binding exists (obligation (7)).
   holds *during* the window (the prose assumes no participation during the
   outage; the fixed outage regime is η-sleepy throughout, Francesco's
   decision); (b) the budget is `min eta (4·lockK − 5)`: the η cap is A2's
-  (P1) restriction, A3 alone needs only (V); (c) retention is for
-  `ResilienceReader`s only, where the prose says every honest reader,
-  sleepers included.
-* P-OUT-FIN-COMPAT (`outage_final_compatible`): stated for reading times
-  `t ≥ b₀` under the full outage regime, for eligible readers; the intended
-  `0 ≤ t < b₀` part under the P1 premise (no assumption after the window) is
-  not stated; a later extra.
+  (P1) restriction, A3 alone needs only (V); (c) retention is for ready
+  readers from the recovery point `b₁ + recovery·Δ` only (owner decision
+  2026-11-02, slow arming only), where the prose says every honest reader
+  from `b₀`, sleepers included; (d) the regime assumes that no honest
+  validator falls asleep in the no-sleep window and the cohort counts of
+  `System.Outage`.
+* P-OUT-FIN-COMPAT (`outage_final_compatible`): stated for ready readers at
+  reading times `t ≥ b₁ + recovery·Δ` under the full outage regime; the
+  intended `0 ≤ t < b₀` part under the P1 premise (no assumption after the
+  window) is not stated; a later extra.
 * Readers and proposers are `Ready` (awake for the catch-up `18·Δ`) where
   intended rows say "joined" (obligation (3)).
 
@@ -125,8 +128,8 @@ Francesco.
    awake ⇒ covered (F-3). `IncludesFrom` and `ProposalLiveReady` require the
    proposer to be ready, where the intended rows say "joined" (awake since the
    previous slot start): a weaker claim, accepted.
-4. Outage continuation under η-sleepy participation (`η = eta`) throughout
-   and cover ½ at `b₀`, partially synchronous with GST `b₁` after the window,
+4. Outage continuation under η-sleepy participation (`η = eta`) throughout,
+   the no-sleep window and the cohort counts, partially synchronous with GST `b₁` after the window,
    vs FG-SA `OutageE` and its after-window premise (F-4); for A2
    (`outageWindow`), η-sleepy on `[0, b₀]` only, vs FG-SA's prefix premise.
    Startup alignment: the contract's look-back is clamped at `0` (no
@@ -455,9 +458,12 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
     fun r => CrossGrowth r.2 (gc r) gConfirmed gFinalized (gHealFin pp gf gst r)
       (2 * pp.wW gf + 4 * (gf * pp.R))
   /-- **A2 / P-OUT-AV-SLOW.** Outage times, synchronous for deadlines up to
-  `b₀`, η-sleepy on the prefix `[0, b₀]` only, more than half ready at `b₀`,
-  and **no** assumption after `b₀` (neither network nor participation:
-  participation may collapse inside the outage): what a node ready at `T`
+  `b₀`, η-sleepy on the prefix `[0, b₀]` only, no network assumption after
+  `b₀`, and no absolute fraction awake or ready (owner decision 2026-11-02):
+  only the relative counts of `System.Outage` on the prefix window
+  `[a, b₁]` with `a = outageStart` (no honest validator falls asleep in it;
+  the faulty validators with its late wakers are fewer than half of all and
+  fewer than the honest validators awake at `a`): what a node ready at `T`
   reads as confirmed is kept by every eligible reader (ready at `b₀` and awake
   since) at every time of `[b₀, b₁)` within the horizon. -/
   outageWindow : ∀ T b₀ b₁ : Time, (Sys F V).Holds
@@ -465,7 +471,8 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
       CommLog.SyncUntil r.2.point r.2.log b₀ ∧
       ((Sys F V).pt r).EtaSleepyOn (goldilocksContract pp).params.θ
         (((goldilocksContract pp).params.η : Time) * ((Sys F V).pt r).env.Δ) (gc r) 0 b₀ ∧
-      ((Sys F V).pt r).ReadyOfAll (goldilocksContract pp).params.cover (gc r) b₀)
+      ((Sys F V).pt r).NoSleepOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r) b₁ ∧
+      ((Sys F V).pt r).CohortOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r) b₁)
     fun r => (chainTrace r.2).ProtectedUpTo (gc r) gConfirmed gConfirmed T b₀ b₁
       (min (b₁ - 1) ((Sys F V).pt r).horizon)
   /-- **P-WEAK-AV-SAFE.** Under the weak-continuation premise (healthy up to
@@ -601,28 +608,28 @@ theorem confirmed_safe_healed_prefix (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
 
 /-- **A3 / P-OUT-CONTINUE** (stable retention; M14 closed: stable =
 confirmed). In the outage regime, what a node ready at `T` reads as confirmed
-(= stable) is kept by every eligible honest reader at every time from `b₀` to
-the horizon. -/
+(= stable) is kept by every ready reader at every time from the recovery point
+`b₁ + recovery·Δ` to the horizon. -/
 theorem confirmed_persists (T b₀ b₁ : Time) (r : (Sys F V).Run) (hv : (Sys F V).Valid r)
     (hO : (Sys F V).Outage (goldilocksContract pp) T b₀ b₁ r) :
-    ((Sys F V).trace r).ProtectedThrough (gc r)
-      gConfirmed gConfirmed T b₀ b₁ ∨ (Sys F V).Excuse r :=
+    ((Sys F V).trace r).ProtectedReadyFrom (gc r)
+      gConfirmed gConfirmed T ((Sys F V).recoveryAt (goldilocksContract pp) b₁ r) ∨
+      (Sys F V).Excuse r :=
   (goldilocks_good h V).behaviour.persists gConfirmed rfl T b₀ b₁ r hv hO
 
-/-- **P-OUT-FIN-COMPAT** (for `ResilienceReader`-eligible readers). In the
+/-- **P-OUT-FIN-COMPAT** (for ready readers from the recovery point). In the
 outage regime, what a node ready at `T` reads as confirmed is compatible with
-the finalized read of every eligible honest reader from `b₀` on. -/
+the finalized read of every ready reader from `b₁ + recovery·Δ` on. -/
 theorem outage_final_compatible (T b₀ b₁ : Time) (r : (Sys F V).Run) (hv : (Sys F V).Valid r)
     (hO : (Sys F V).Outage (goldilocksContract pp) T b₀ b₁ r) {v w : V}
-    (hvr : ((Sys F V).pt r).Ready (gc r) v T)
-    (hwh : w ∈ ((Sys F V).pt r).honest) {t : Time} (ht : b₀ ≤ t)
+    (hvr : ((Sys F V).pt r).Ready (gc r) v T) {t : Time}
+    (ht : (Sys F V).recoveryAt (goldilocksContract pp) b₁ r ≤ t)
     (hth : t ≤ ((Sys F V).pt r).horizon)
-    (hr : ((Sys F V).trace r).ResilienceReader (gc r)
-      b₀ b₁ w t) :
+    (hr : ((Sys F V).pt r).Ready (gc r) w t) :
     Compatible (((Sys F V).trace r).readAt gConfirmed v T)
       (((Sys F V).trace r).readAt gFinalized w t) ∨ (Sys F V).Excuse r :=
   (goldilocks_good h V).persists_final_compatible (g := gConfirmed) (gf := gFinalized) rfl rfl r hv
-    hO hvr hwh ht hth hr
+    hO hvr ht hth hr
 
 /-- **Tx-level consequence of L3** (P-SYNC-AV-GROW; and of the
 intended-but-unclaimed L8; intended-opus calls L8 "not claimed", this target

@@ -8,15 +8,17 @@ public import Mathlib.Tactic
 
 * `pp223_numbers`: the pinned formulas give the FG-SA paper's reference
   numbers (`reference_bounds`), and the heal and latency tables read them; at
-  `R = 2`, `lockK = 2`, `eta = 3`: catch-up `18`, lag `4`, budget `3`,
-  look-back `η = 3`, standard thresholds, and the finality recurrence at
+  `R = 2`, `lockK = 2`, `eta = 3`: catch-up `18`, lag `14`, budget `3`,
+  look-back `η = 3`, no-sleep margin `19`, recovery delay `9`, standard
+  thresholds, and the finality recurrence at
   `gf = 1` has `8` consecutive proposers (span `7`) per `2` slots.
 * `EnvPoint.two_mul_card_faulty_union_lt`: the outage cover ½ at `b₀` gives
   FG-SA's `OutageE1` (migration obligation 4 of the sheet).
 * `stable_is_confirmed`: the schema aliases stable to confirmed (`rfl`).
 * `collapse_prefix_only`, `outageWindow_prefix_only`: a run whose
   participation collapses inside the outage is η-sleepy on the prefix
-  `[0, b₀]` but not through `b₁ − 1`; A2 asks only for the prefix.
+  `[0, b₀]` but not through `b₁ − 1`; A2 asks η-sleepy participation only for
+  the prefix (its no-sleep and cohort counts are relative, on `[a, b₁]`).
 * `weakPremise_inhabited` (P-NV-CONTINUATION): the weak-continuation premise
   holds on the generic healthy witness, so the weak extras are not vacuous. -/
 
@@ -68,14 +70,16 @@ theorem pp223_numbers :
       pp223.latency .available 2 = 14 ∧
       pp223.heal .final 1 = 29 + pp223.bhf 2 + pp223.wW 1 ∧
       pp223.latency .final 1 = 4 * 2 + 6 + pp223.wW 1 ∧
-    (goldilocksContract pp223).params.catchUp = 18 ∧ (goldilocksContract pp223).params.lag = 4 ∧
+    (goldilocksContract pp223).params.catchUp = 18 ∧ (goldilocksContract pp223).params.lag = 14 ∧
       (goldilocksContract pp223).params.budget = 3 ∧ (goldilocksContract pp223).params.η = 3 ∧
       (goldilocksContract pp223).params.θ = 1 / 2 ∧ (goldilocksContract pp223).params.β = 1 / 3 ∧
       (goldilocksContract pp223).params.cover = 1 / 2 ∧
       (goldilocksContract pp223).params.α = 1 / 3 ∧
+      (goldilocksContract pp223).params.noSleep = 19 ∧
+      (goldilocksContract pp223).params.recovery = 9 ∧
     (pp223.finRec 1).pattern.span = 7 ∧ ((pp223.finRec 1).gap : Nat) = 2 :=
   ⟨reference_bounds.1, reference_bounds.2.1, by decide, by decide, by decide, rfl, rfl,
-    rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, (Pattern.span_range _).trans rfl, rfl⟩
+    rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, (Pattern.span_range _).trans rfl, rfl⟩
 
 /-- The schema aliases stable (and available) to confirmed. -/
 theorem stable_is_confirmed :
@@ -123,9 +127,10 @@ theorem collapsePoint_readyAt_six : collapsePoint.readyAt 0 6 ⊆ {1} := by
 
 /-- The collapsing run is ½-η-sleepy (look-back `3`) on the prefix `[0, 5]`
 but not on `[0, 9]`: at `6` one validator is ready while all four honest ones
-were awake in `[3, 6]`. A2's premise (`outageWindow_prefix_only`) asks only
-for the prefix, so it applies here; the stage-5 premise on `[0, b₁ − 1]` did
-not. -/
+were awake in `[3, 6]`. A2's η-sleepy premise (`outageWindow_prefix_only`)
+asks only for the prefix, so it holds here; the stage-5 premise on
+`[0, b₁ − 1]` did not. (A2's separate no-sleep conjunct on `[a, b₁]` excludes
+honest validators falling asleep there; this run is not claimed to meet it.) -/
 theorem collapse_prefix_only :
     collapsePoint.EtaSleepyOn (1 / 2) 3 0 0 5 ∧ ¬ collapsePoint.EtaSleepyOn (1 / 2) 3 0 0 9 := by
   classical
@@ -173,10 +178,11 @@ theorem outageWindow_prefix_only {Info : Type} [DecidableEq Info] [Countable Inf
     (hT : OutageTimes (goldilocksContract pp).params r.1.Δ T b₀ b₁)
     (hs : CommLog.SyncUntil r.2.point r.2.log b₀)
     (hη : r.2.point.EtaSleepyOn (1 / 2) ((pp.eta : Time) * r.1.Δ) (gc r) 0 b₀)
-    (hc : r.2.point.ReadyOfAll (1 / 2) (gc r) b₀) :
+    (hns : r.2.point.NoSleepOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r) b₁)
+    (hc : r.2.point.CohortOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r) b₁) :
     (chainTrace r.2).ProtectedUpTo (gc r) gConfirmed gConfirmed
       T b₀ b₁ (min (b₁ - 1) r.2.horizon) ∨ r.2.HashCollision :=
-  (h V).outageWindow T b₀ b₁ r hv ⟨hT, hs, hη, hc⟩
+  (h V).outageWindow T b₀ b₁ r hv ⟨hT, hs, hη, hns, hc⟩
 
 /-- **P-NV-CONTINUATION.** The weak-continuation premise is inhabited, so the
 weak extras (`weakSafe`, `weakInclude`, `weakGrow`) are not

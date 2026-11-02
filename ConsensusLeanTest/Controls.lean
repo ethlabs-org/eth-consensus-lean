@@ -29,9 +29,11 @@ five validators (`key 0` faulty), `Δ = 1`, horizon `20`:
     so this control does not distinguish delayed from eager delivery of
     protocol messages; it shows the regime is met with nothing received
     before the GST.
-* `outage_control`: `T = 1 < b₀ = 3 < b₁ = 4`, honest `key 2` asleep at `3`,
-  outage regime (η-sleepy with look-back `2`) and active outage (a protected
-  source, a sleeper inside the window, an eligible reader).
+* `outage_control`: `T = 1 < b₀ = 3 < b₁ = 4`, honest `key 2` always asleep,
+  outage regime (η-sleepy with look-back `2`; no honest validator falls asleep
+  in the no-sleep window `[1, 6]`; the cohort counts, with a faulty opponent)
+  and active outage (a protected source, a sleeper inside the window, a ready
+  reader from the recovery point `7`).
 
 * The control contract tolerates arbitrary numbers of validators not ready.
 
@@ -69,9 +71,11 @@ def ctrlShape (pub : Public) : ChainShape pub GOut Unit where
 def ctrlFamily : ShapeFamily goldilocksSchema Unit := ctrlShape
 
 /-- Standard thresholds; catch-up, arming lag and outage budget `1`; outage
-look-back `η = 2`; heal and latency `1` for every capability and index. -/
+look-back `η = 2`, no-sleep margin `2` and recovery delay `3`; heal and
+latency `1` for every capability and index. -/
 def ctrlParams : Params ℕ+ :=
-  { Params.standard 1 1 1 (fun _ _ => 1) (fun _ _ => 1) with η := 2 }
+  { Params.standard 1 1 1 (fun _ _ => 1) (fun _ _ => 1) with
+    η := 2, noSleep := 2, recovery := 3 }
 
 /-- The control contract over the Goldilocks schema: `ctrlParams`, index the
 gap `k`, one honest ready proposer per window of `k` slots (available,
@@ -121,9 +125,9 @@ def k1 : ctrlK.Idx := (1 : ℕ+)
 /-- The everyone-awake point: `Δ = 1`, horizon `20`. -/
 abbrev ptA : EnvPoint (Fin 5) := realPoint key5 card5 1 one_pos allAwake 20
 
-/-- The sleeper point: `key 2` asleep at `3`, `Δ = 1`, horizon `20`. -/
+/-- The sleeper point: `key 2` always asleep, `Δ = 1`, horizon `20`. -/
 abbrev ptS : EnvPoint (Fin 5) :=
-  realPoint key5 card5 1 one_pos (sleepAt (kv key5 card5 2 (by decide)) 3) 20
+  realPoint key5 card5 1 one_pos (asleepAlways (kv key5 card5 2 (by decide))) 20
 
 /-- One window of every control progress requirement is at most `8` long. -/
 theorem progLen_le (cap : Capability) :
@@ -174,24 +178,44 @@ theorem ctrl_realizable : Realizable S X ctrlK :=
   (regimes_realizable ctrlFamily ctrlK ctrlK_admissible ctrlK_progressFits ctrlK_progressTolerant
     (Fin 5) card5).toRealizable
 
-/-- **Outage control**: `T = 1 < b₀ = 3 < b₁ = 4`, honest `key 2` asleep at
-`3`: the outage regime holds and the outage is active. -/
+/-- **Outage control**: `T = 1 < b₀ = 3 < b₁ = 4`, honest `key 2` always
+asleep, a faulty `key 0`: the outage regime holds (its no-sleep window is
+`[1, 6]` and its recovery point `7`) and the outage is active, with a ready
+reader at the horizon `20 ≥ 7`. -/
 theorem outage_control :
     ∃ r : S.Run, S.pt r = ptS ∧ S.Witness r ∧ S.Outage ctrlK 1 3 4 r ∧
-      OutageActive (S.cDur ctrlK r) 1 3 4 (S.pt r) ∧
+      OutageActive (S.cDur ctrlK r) 3 1 3 4 (S.pt r) ∧
+      S.outageStart ctrlK 3 r = 1 ∧ S.outageEnd ctrlK 4 r = 6 ∧ S.recoveryAt ctrlK 4 r = 7 ∧
       kv key5 card5 2 (by decide) ∈ (S.pt r).honest ∧
-      (S.pt r).env.awake (kv key5 card5 2 (by decide)) 3 = false := by
+      (∀ t, (S.pt r).env.awake (kv key5 card5 2 (by decide)) t = false) ∧
+      (S.pt r).faulty.Nonempty := by
   obtain ⟨rho, hpt, -, hw, ho, hoa⟩ :=
     outage_witness (F := ctrlFamily) key5 card5 one_pos 20 ctrlK_admissible
       (T := 1) (b₀ := 3) (b₁ := 4)
-      ⟨by norm_num, by decide, by norm_num, by decide⟩ (by norm_num) (by norm_num) (by norm_num)
-  refine ⟨⟨_, rho⟩, hpt, hw, ho, hoa, ?_, ?_⟩
+      ⟨by norm_num, by decide, by norm_num, by decide⟩ (by norm_num) (by norm_num) (by decide)
+  have hC : ctrlK.params.noSleep = 2 := rfl
+  have hR : ctrlK.params.recovery = 3 := rfl
+  have hD : ((ctrlK.params.recovery : Nat) : Time) * 1 = 3 := by rw [hR]; norm_num
+  rw [hD] at hoa
+  refine ⟨⟨_, rho⟩, hpt, hw, ho, hoa, ?_, ?_, ?_, ?_, ?_, hw.2.2.1⟩
+  · change min (max 0 (3 - ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.Δ))
+      rho.point.horizon = 1
+    rw [hpt, realPoint_env, realPoint_horizon, hC]
+    norm_num
+  · change min (4 + ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.Δ)
+      rho.point.horizon = 6
+    rw [hpt, realPoint_env, realPoint_horizon, hC]
+    norm_num
+  · change 4 + ((ctrlK.params.recovery : Nat) : Time) * rho.point.env.Δ = 7
+    rw [hpt, realPoint_env, hR]
+    norm_num
   · change _ ∈ rho.point.honest
     rw [hpt]
     exact realPoint_honest key5 card5 one_pos _ 20 (j := 2) (by decide) (by decide)
-  · change rho.point.env.awake _ 3 = false
+  · intro t
+    change rho.point.env.awake _ t = false
     rw [hpt, realPoint_env]
-    simp [sleepAt_apply]
+    simp [asleepAlways_apply]
 
 end Consensus.Shape.Tests.Controls
 

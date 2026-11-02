@@ -72,10 +72,19 @@ def ProtectedUpTo (c : Time) (src dst : Id) (T b₀ b₁ b : Time) : Prop :=
     ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
     tr.readAt src v T <+: tr.readAt dst w t
 
-/-- Resilience for ready sources, during and after the window `[b₀, b₁)`:
-`ProtectedUpTo` at every reading time `t ∈ [b₀, horizon]`. -/
-def ProtectedThrough (c : Time) (src dst : Id) (T b₀ b₁ : Time) : Prop :=
-  tr.ProtectedUpTo c src dst T b₀ b₁ tr.point.horizon
+/-- Recovery for ready sources at reading times `t ∈ [t₀, b]`: the read of
+`src` at `T` of every node ready at `T` is a prefix of the `dst` read at `t`
+of every node ready at `t`. No reader is excluded for having slept, woken or
+restarted earlier: being ready at `t` (awake throughout the catch-up before
+`t`) is the only reader condition. -/
+def ProtectedReadyUpTo (c : Time) (src dst : Id) (T t₀ b : Time) : Prop :=
+  ∀ v, tr.point.Ready c v T → ∀ t, t₀ ≤ t → t ≤ b → ∀ w, tr.point.Ready c w t →
+    tr.readAt src v T <+: tr.readAt dst w t
+
+/-- Recovery for ready sources from `t₀`: `ProtectedReadyUpTo` at every
+reading time `t ∈ [t₀, horizon]`. -/
+def ProtectedReadyFrom (c : Time) (src dst : Id) (T t₀ : Time) : Prop :=
+  tr.ProtectedReadyUpTo c src dst T t₀ tr.point.horizon
 
 end Trace
 

@@ -174,6 +174,38 @@ theorem HealthyOn.mono {β β' : ℚ} {g b : Time} (h : p.HealthyOn β' g b) (hl
     p.HealthyOn β g b :=
   ⟨lt_of_lt_of_le h.1 (mul_le_mul_of_nonneg_right hle (by positivity)), h.2⟩
 
+omit [Fintype V] [DecidableEq V] in
+/-- A no-sleep window keeps its property on every subwindow. -/
+theorem NoSleepOn.mono {a b a' b' : Time} (h : p.NoSleepOn a b) (ha : a ≤ a') (hb : b' ≤ b) :
+    p.NoSleepOn a' b' :=
+  fun v hv t ht1 ht2 hat u hu1 hu2 =>
+    h v hv t (ha.trans ht1) (ht2.trans hb) hat u hu1 (hu2.trans hb)
+
+/-- Under no-sleep on `[a, b]`, the cohort count on `[a, b]` holds on every
+subwindow `[a', b']`: the late wakers of `[a', b']` are late wakers of
+`[a, b]` (a validator awake at `a` stays awake through `a'`), and the
+validators awake at `a` are still awake at `a'`. -/
+theorem CohortOn.mono {a b a' b' : Time} (hns : p.NoSleepOn a b) (h : p.CohortOn a b)
+    (ha : a ≤ a') (hab : a' ≤ b') (hb : b' ≤ b) : p.CohortOn a' b' := by
+  classical
+  have hab' : a ≤ b := ha.trans (hab.trans hb)
+  have hsub : p.faulty ∪ p.lateWakers a' b' ⊆ p.faulty ∪ p.lateWakers a b := by
+    apply Finset.union_subset_union_right
+    intro v hv
+    simp only [EnvPoint.lateWakers, EnvPoint.awakeIn, EnvPoint.awakeAt, Finset.mem_sdiff,
+      Finset.mem_filter] at hv ⊢
+    obtain ⟨⟨hh, u, hu1, hu2, hu⟩, hn⟩ := hv
+    exact ⟨⟨hh, u, ha.trans hu1, hu2.trans hb, hu⟩,
+      fun h0 => hn ⟨hh, hns v hh a le_rfl hab' h0.2 a' ha (hab.trans hb)⟩⟩
+  have hA : p.awakeAt a ⊆ p.awakeAt a' := by
+    intro v hv
+    simp only [EnvPoint.awakeAt, Finset.mem_filter] at hv ⊢
+    exact ⟨hv.1, hns v hv.1 a le_rfl hab' hv.2 a' ha (hab.trans hb)⟩
+  have h1 := Finset.card_le_card hsub
+  have h2 := Finset.card_le_card hA
+  unfold CohortOn at h ⊢
+  omega
+
 end EnvPoint
 
 namespace System
@@ -187,7 +219,8 @@ theorem outage_eta_zero (hη : K.params.η = 0) {T b₀ b₁ : Time} :
     S.Outage K T b₀ b₁ r ↔ OutageTimes K.params (S.pt r).env.Δ T b₀ b₁ ∧
       (S.log r).OutageNet (S.pt r) b₀ b₁ ∧
       (S.pt r).SleepyOn K.params.θ (S.cDur K r) 0 (S.pt r).horizon ∧
-      (S.pt r).ReadyOfAll K.params.cover (S.cDur K r) b₀ := by
+      (S.pt r).NoSleepOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
+      (S.pt r).CohortOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) := by
   unfold Outage
   rw [show ((K.params.η : Time) * (S.pt r).env.Δ) = 0 by simp [hη], EnvPoint.etaSleepyOn_zero]
 
@@ -208,25 +241,36 @@ theorem Healthy.of_le {g : Time} (hβ : K.params.β ≤ K'.params.β) (h : S.Hea
     S.Healthy K' g r :=
   ⟨h.1, EnvPoint.HealthyOn.mono h.2 hβ⟩
 
-/-- Weaker thresholds (`θ' ≥ 0`), a shorter look-back, a shorter lag and a
-larger budget (same catch-up) keep the outage regime. -/
+/-- Weaker thresholds (`θ' ≥ 0`), a shorter look-back, a shorter lag, a
+larger budget and a smaller no-sleep margin (same catch-up) keep the outage
+regime. -/
 theorem Outage.of_le {T b₀ b₁ : Time} (hc : K'.params.catchUp = K.params.catchUp)
     (h0 : 0 ≤ K'.params.θ) (hθ : K'.params.θ ≤ K.params.θ) (hη : K'.params.η ≤ K.params.η)
-    (hcov : K'.params.cover ≤ K.params.cover) (hl : K'.params.lag ≤ K.params.lag)
-    (hb : K.params.budget ≤ K'.params.budget) (h : S.Outage K T b₀ b₁ r) :
+    (hl : K'.params.lag ≤ K.params.lag) (hb : K.params.budget ≤ K'.params.budget)
+    (hC : K'.params.noSleep ≤ K.params.noSleep) (h : S.Outage K T b₀ b₁ r) :
     S.Outage K' T b₀ b₁ r := by
-  obtain ⟨⟨hT, hlag, h01, hbud⟩, hn, hs, hr⟩ := h
+  obtain ⟨⟨hT, hlag, h01, hbud⟩, hn, hs, hns, hco⟩ := h
   have hΔ : (0 : Time) ≤ (S.pt r).env.Δ := (S.pt r).env.Δ_pos.le
   have hl' : ((K'.params.lag : Nat) : Time) ≤ (K.params.lag : Time) := by exact_mod_cast hl
   have hb' : ((K.params.budget : Nat) : Time) ≤ (K'.params.budget : Time) := by exact_mod_cast hb
-  refine ⟨⟨hT, ?_, h01, ?_⟩, hn, ?_, ?_⟩
+  have hC' : ((K'.params.noSleep : Nat) : Time) ≤ (K.params.noSleep : Time) := by exact_mod_cast hC
+  have hlag0 : (0 : Time) ≤ (K.params.lag : Time) * (S.pt r).env.Δ := by positivity
+  have hC0 : (0 : Time) ≤ (K'.params.noSleep : Time) * (S.pt r).env.Δ := by positivity
+  have ha : S.outageStart K b₀ r ≤ S.outageStart K' b₀ r := by
+    unfold outageStart
+    exact min_le_min (max_le_max le_rfl (by nlinarith)) le_rfl
+  have hz : S.outageEnd K' b₁ r ≤ S.outageEnd K b₁ r := by
+    unfold outageEnd
+    exact min_le_min (by nlinarith) le_rfl
+  have haz : S.outageStart K' b₀ r ≤ S.outageEnd K' b₁ r := by
+    unfold outageStart outageEnd
+    exact min_le_min (max_le (by linarith) (by linarith)) le_rfl
+  refine ⟨⟨hT, ?_, h01, ?_⟩, hn, ?_, hns.mono ha hz, hco.mono hns ha haz hz⟩
   · nlinarith
   · nlinarith
   · rw [cDur_of_catchUp hc]
     have hη' : ((K'.params.η : Nat) : Time) ≤ (K.params.η : Time) := by exact_mod_cast hη
     exact EnvPoint.EtaSleepyOn.mono hs h0 hθ (by nlinarith)
-  · rw [cDur_of_catchUp hc]
-    exact hr.mono _ hcov
 
 end System
 

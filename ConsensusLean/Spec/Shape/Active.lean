@@ -73,7 +73,8 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
       ((Sys F V).pt r).AwakeAtMost 2 ∧ ProgressActive F K cap i 0 r.2
   outage : ∀ (Δ : Time) (k : Nat), 0 < Δ → ∃ r T b₀ b₁, (Sys F V).Witness r ∧
     ((Sys F V).pt r).env.Δ = Δ ∧ (Sys F V).Outage K T b₀ b₁ r ∧
-    OutageActive ((Sys F V).cDur K r) T b₀ b₁ ((Sys F V).pt r) ∧ (k : Time) * Δ ≤ T
+    OutageActive ((Sys F V).cDur K r) ((K.params.recovery : Time) * Δ) T b₀ b₁
+      ((Sys F V).pt r) ∧ (k : Time) * Δ ≤ T
   /-- Bad proposer slots: every provided output is live, at some index, on a
   healthy witness from every GST whose every progress window holds a faulty
   proposer slot (`BadProposerEvery`). A requirement that needs an honest

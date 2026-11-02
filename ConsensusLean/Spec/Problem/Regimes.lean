@@ -10,10 +10,11 @@ A protocol's contract (`Contract`) supplies only numbers (`Params`) and a
 progress requirement per capability and index. Every duration is a
 coefficient of `Δ`. `Params.Admissible` bounds the thresholds by the standard
 ones (`Params.standard`), so a contract cannot buy its claims with stronger
-thresholds. The other numbers (catch-up, lag, budget, look-back `η`, heal
-points, latencies) are instance numbers that the reviewer reads: larger values
-strengthen premises or weaken claims, and they are not bounded (any `η` is
-realizable, `Shape.outage_witness`).
+thresholds. The other numbers (catch-up, lag, budget, look-back `η`, outage
+no-sleep margin and recovery delay, heal points, latencies) are instance
+numbers that the reviewer reads: larger values strengthen premises or weaken
+claims, and they are not bounded (any `η` is realizable,
+`Shape.outage_witness`).
 
 The three regimes (`System.Sleepy`, `System.Healthy`, `System.Outage`) and
 the run quantities they use (`System.cDur`, `heal`, `ready`, `lat`) are read
@@ -31,7 +32,8 @@ structure Params (Idx : Type) where
   θ : ℚ
   /-- Healthy fault bound: fewer than `β·n` faulty (`System.Healthy`). -/
   β : ℚ
-  /-- Caught up at the outage start: `cover·n < |ready b₀|`. -/
+  /-- A cover fraction `cover·n` (read by instance statements, not by
+  `System.Outage`). -/
   cover : ℚ
   /-- Accountable fraction of the final output. -/
   α : ℚ
@@ -41,6 +43,12 @@ structure Params (Idx : Type) where
   budget : Nat
   /-- Outage look-back `η·Δ` (`0`: plain sleepy). -/
   η : Nat
+  /-- Outage no-sleep margin: no honest validator falls asleep in
+  `[b₀ − noSleep·Δ, b₁ + noSleep·Δ]` (`System.Outage`). -/
+  noSleep : Nat
+  /-- Outage recovery delay: protection holds for every ready reader from
+  `b₁ + recovery·Δ` (`Good.persists`). -/
+  recovery : Nat
   /-- Heal point per capability and index (`System.heal`). -/
   heal : Capability → Idx → Nat
   /-- Transaction latency per capability and index. -/
@@ -51,10 +59,11 @@ namespace Params
 variable {Idx : Type}
 
 /-- The standard thresholds `θ = ½`, `β = ⅓`, `cover = ½`, `α = ⅓`, and
-look-back `η = 0` (an instance sets `η` with `{ standard … with η := k }`). -/
+look-back, no-sleep margin and recovery delay `0` (an instance sets them with
+`{ standard … with η := k, noSleep := C, recovery := D }`). -/
 def standard (catchUp lag budget : Nat) (heal latency : Capability → Idx → Nat) :
     Params Idx :=
-  ⟨catchUp, 1 / 2, 1 / 3, 1 / 2, 1 / 3, lag, budget, 0, heal, latency⟩
+  ⟨catchUp, 1 / 2, 1 / 3, 1 / 2, 1 / 3, lag, budget, 0, 0, 0, heal, latency⟩
 
 /-- Admissible numbers: thresholds no stronger than standard (the healthy
 fault bound `β ≥ ⅓`: a larger `β` admits more faults, a weaker premise),
@@ -86,6 +95,21 @@ than fraction `β` of all validators are faulty, and every honest validator is
 awake throughout (full participation). -/
 def HealthyOn (β : ℚ) (g b : Time) : Prop :=
   (p.faulty.card : ℚ) < β * Fintype.card V ∧ ∀ v ∈ p.honest, p.AwakeOnClosed v (max g 0) b
+
+/-- No honest validator falls asleep in `[a, b]`: one awake at a time of
+`[a, b]` stays awake through `b`. Validators may wake inside the window. -/
+def NoSleepOn (a b : Time) : Prop :=
+  ∀ v ∈ p.honest, ∀ t, a ≤ t → t ≤ b → p.env.awake v t = true → p.AwakeOnClosed v t b
+
+/-- The late wakers of `[a, b]`: honest validators asleep at `a` and awake at
+some time of `[a, b]`. -/
+noncomputable def lateWakers (a b : Time) : Finset V := p.awakeIn a b \ p.awakeAt a
+
+/-- The outage cohort count on `[a, b]`: the faulty validators and the late
+wakers are fewer than the honest validators awake at `a` (so, the three sets
+being disjoint, fewer than half of all validators). -/
+def CohortOn (a b : Time) : Prop :=
+  (p.faulty ∪ p.lateWakers a b).card < (p.awakeAt a).card
 
 end EnvPoint
 
@@ -125,6 +149,22 @@ def ready (K : Contract Prog) (g : Time) (r : S.Run) : Time := max g 0 + S.cDur 
 def lat (K : Contract Prog) (cap : Capability) (i : K.Idx) (r : S.Run) : Time :=
   (K.params.latency cap i : Time) * (S.pt r).env.Δ
 
+/-- The no-sleep window of an outage `[b₀, b₁)`:
+`[b₀ − noSleep·Δ, b₁ + noSleep·Δ]` clamped to `[0, horizon]` (no
+participation history before `0`, like `Ready`; nothing executes after the
+horizon). -/
+def outageStart (K : Contract Prog) (b₀ : Time) (r : S.Run) : Time :=
+  min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.Δ)) (S.pt r).horizon
+
+/-- The end of the no-sleep window of an outage `[b₀, b₁)` (`outageStart`). -/
+def outageEnd (K : Contract Prog) (b₁ : Time) (r : S.Run) : Time :=
+  min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.Δ) (S.pt r).horizon
+
+/-- The recovery point of an outage `[b₀, b₁)`: `b₁ + recovery·Δ`, from which
+every ready reader is protected (`Good.persists`). -/
+def recoveryAt (K : Contract Prog) (b₁ : Time) (r : S.Run) : Time :=
+  b₁ + (K.params.recovery : Time) * (S.pt r).env.Δ
+
 variable [Fintype V] [DecidableEq V]
 
 /-- **Sleepy**: synchrony (`PSync 0`) and, at every time, the ready honest
@@ -141,12 +181,18 @@ def Healthy (K : Contract Prog) (g : Time) (r : S.Run) : Prop :=
 
 /-- **Outage `[b₀, b₁)` armed at `T`** (`OutageTimes`): synchronous before
 `b₀`, partially synchronous with GST `b₁`, η-sleepy throughout (look-back
-`η·Δ`; `η = 0` is plain sleepy), more than `cover·n` ready at `b₀`. -/
+`η·Δ`; `η = 0` is plain sleepy); no honest validator falls asleep in the
+no-sleep window `[a, z]` (`outageStart`, `outageEnd`; validators may wake in
+it); and the faulty validators with the late wakers of `[a, z]` are fewer
+than the honest validators awake at `a` (`CohortOn`; hence fewer than half of
+all validators, `EnvPoint.CohortOn.two_mul_lt`). No absolute fraction of
+validators needs to be awake or ready. -/
 def Outage (K : Contract Prog) (T b₀ b₁ : Time) (r : S.Run) : Prop :=
   OutageTimes K.params (S.pt r).env.Δ T b₀ b₁ ∧ (S.log r).OutageNet (S.pt r) b₀ b₁ ∧
     (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.Δ) (S.cDur K r) 0
       (S.pt r).horizon ∧
-    (S.pt r).ReadyOfAll K.params.cover (S.cDur K r) b₀
+    (S.pt r).NoSleepOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
+    (S.pt r).CohortOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r)
 
 end System
 

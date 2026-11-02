@@ -186,7 +186,7 @@ theorem refinement (F : ShapeFamily O Info) (K : Contract ProgressReq) (V : Type
   · rintro g hg T b₀ b₁ ⟨E, rho⟩ hv hO
     simp only [ledgerTrace]
     refine (hc.persists g hg T b₀ b₁ ⟨E, rho⟩ hv hO).imp (fun h => ?_) id
-    unfold Trace.ProtectedThrough
+    unfold Trace.ProtectedReadyFrom
     rw [Trace.map_point]
     exact h.map ledgerOf_prefix
 

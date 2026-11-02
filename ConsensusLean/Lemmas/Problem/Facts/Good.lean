@@ -85,18 +85,19 @@ theorem final_safe_healthy (h : Good S X K) {g : S.schema.Id}
     (fun ha => Trace.safe_iff.mpr ⟨ha, h.behaviour.finalMonotone g hg r hv⟩) id
 
 /-- Through an outage, what a node ready at `T` read as stable is compatible
-with the final read of every eligible reader (both are prefixes of its
-available read). -/
+with the final read of every reader ready from the recovery point on (both
+are prefixes of its available read). -/
 theorem persists_final_compatible (h : Good S X K) {g gf : S.schema.Id}
     (hs : S.schema.output .stable = some g) (hf : S.schema.output .final = some gf)
     (r : S.Run) (hv : S.Valid r) {T b₀ b₁ : Time} (hO : S.Outage K T b₀ b₁ r)
-    {v w : V} (hvr : (S.pt r).Ready (S.cDur K r) v T) (hwh : w ∈ (S.pt r).honest) {t : Time}
-    (ht : b₀ ≤ t) (hth : t ≤ (S.pt r).horizon)
-    (hr : (S.trace r).ResilienceReader (S.cDur K r) b₀ b₁ w t) :
+    {v w : V} (hvr : (S.pt r).Ready (S.cDur K r) v T) {t : Time}
+    (ht : S.recoveryAt K b₁ r ≤ t) (hth : t ≤ (S.pt r).horizon)
+    (hr : (S.pt r).Ready (S.cDur K r) w t) :
     Compatible ((S.trace r).readAt g v T) ((S.trace r).readAt gf w t) ∨ S.Excuse r := by
+  have hwh : w ∈ (S.pt r).honest := hr.1
   rcases h.behaviour.persists g hs T b₀ b₁ r hv hO with hp | he
   · left
-    have h1 := hp v hvr t ht hth w hwh hr
+    have h1 := hp v hvr t ht hth w hr
     have hcut : (S.trace r).endCut t ≤ (S.trace r).cuts := Nat.findGreatest_le _
     have h2 : (S.trace r).readAt gf w t <+:
         (S.trace r).readAt (resilienceTarget S.schema g) w t := by
@@ -170,8 +171,10 @@ theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
 
 /-- Outage resilience of the past: a run in the outage regime up to `b`
 (synchronous for deadlines up to `b₀`, partially synchronous with GST `b₁` up
-to `b`, η-sleepy on `[0, b]`, covered at `b₀`) keeps what nodes ready at `T` read
-as stable, at reading times in `[b₀, b]`, whatever happens after `b`. -/
+to `b`, η-sleepy on `[0, b]`, with the no-sleep window and cohort count of
+`System.Outage` cut at `b`) keeps what nodes ready at `T` read as stable, for ready
+readers at reading times in `[b₁ + recovery·Δ, b]`, whatever happens after
+`b`. -/
 theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
     (hg : S.schema.output .stable = some g) (r : S.Run) (hv : S.Valid r)
     {T b₀ b₁ b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ (S.pt r).horizon)
@@ -179,24 +182,37 @@ theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
     (hs : (S.log r).SyncUntil (S.pt r) b₀)
     (hps : (S.log r).Delivers (S.pt r) (fun a => max a b₁ + (S.pt r).env.Δ) b)
     (hθ : (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.Δ) (S.cDur K r) 0 b)
-    (hcov : (S.pt r).ReadyOfAll K.params.cover (S.cDur K r) b₀) :
-    (S.trace r).ProtectedUpTo (S.cDur K r) g (resilienceTarget S.schema g) T b₀ b₁ b ∨
-      S.Excuse r := by
+    (hns : (S.pt r).NoSleepOn (min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.Δ)) b)
+      (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.Δ) b))
+    (hco : (S.pt r).CohortOn (min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.Δ)) b)
+      (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.Δ) b)) :
+    (S.trace r).ProtectedReadyUpTo (S.cDur K r) g (resilienceTarget S.schema g) T
+      (S.recoveryAt K b₁ r) b ∨ S.Excuse r := by
   obtain ⟨r', hv', hP, -, hL, hE, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
   have hc := cDur_prefix (K := K) hP
   have hΔ := (S.pt r).env.Δ_pos
+  have hpt : S.pt r' = { S.pt r with horizon := b } := hP.point
+  have hst : S.outageStart K b₀ r' =
+      min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.Δ)) b := by
+    unfold System.outageStart; rw [hP.env, hpt]
+  have hen : S.outageEnd K b₁ r' = min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.Δ) b := by
+    unfold System.outageEnd; rw [hP.env, hpt]
+  have hrec : S.recoveryAt K b₁ r' = S.recoveryAt K b₁ r := by
+    unfold System.recoveryAt; rw [hP.env]
   have hreg : S.Outage K T b₀ b₁ r' := by
     unfold System.Outage
-    rw [hc, show S.pt r' = { S.pt r with horizon := b } from hP.point]
-    refine ⟨hT, ⟨?_, ?_⟩, hθ, hcov⟩
+    rw [hc, hst, hen, hpt]
+    refine ⟨hT, ⟨?_, ?_⟩, hθ, hns, hco⟩
     · exact hs.prefix hL hbh (fun a => le_add_of_nonneg_right hΔ.le)
     · exact hps.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) hΔ.le)
-  have hTb : T ≤ b₀ := by
-    obtain ⟨-, hl, -, -⟩ := hT
+  have hTb : T ≤ S.recoveryAt K b₁ r := by
+    obtain ⟨-, hl, h01, -⟩ := hT
     have : (0 : Time) ≤ (K.params.lag : Time) * (S.pt r).env.Δ := by positivity
+    have : (0 : Time) ≤ (K.params.recovery : Time) * (S.pt r).env.Δ := by positivity
+    unfold System.recoveryAt
     linarith
   rcases h.behaviour.persists g hg T b₀ b₁ r' hv' hreg with hr | he
-  · rw [hc] at hr; exact Or.inl (hP.protectedUpTo hTb hr)
+  · rw [hc, hrec] at hr; exact Or.inl (hP.protectedReadyUpTo hTb hr)
   · exact Or.inr (hE he)
 
 /-- Active service of a provided final or available output `g` (capability

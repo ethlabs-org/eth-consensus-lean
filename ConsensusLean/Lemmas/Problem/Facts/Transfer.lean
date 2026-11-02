@@ -50,6 +50,12 @@ theorem ProtectedUpTo.map {c src dst T b₀ b₁ b} (h : tr.ProtectedUpTo c src 
   rw [map_eq]
   intro v hv t ht ht' w hw ha
   exact hf (h v hv t ht ht' w hw ha)
+
+theorem ProtectedReadyUpTo.map {c src dst T t₀ b} (h : tr.ProtectedReadyUpTo c src dst T t₀ b) :
+    (tr.map f).ProtectedReadyUpTo c src dst T t₀ b := by
+  rw [map_eq]
+  intro v hv t ht ht' w hw
+  exact hf (h v hv t ht ht' w hw)
 end Trace
 end Consensus
 end

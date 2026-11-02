@@ -214,15 +214,18 @@ select key `1`, honest and always awake); transaction `42` submitted to
   messages sent before `g` are received at `g` by the recipients awake then;
   transaction relay is part of the log too). The witness exercises delayed
   delivery only as far as the family sends messages before `g`;
-* outage: honest `key 2` asleep exactly at `b₀`, so at most two validators
-  are not ready at any time; with `n ≥ 5`, `n/2 < n − 2` gives the cover at
-  `b₀` and η-sleepy participation for every look-back `η` (the look-back set
-  has at most `n` members); this is where five validators are needed. The log
-  is eager from `0`: the outage witness exercises participation (one honest
-  sleeper in the window), not asynchrony.
+* outage: honest `key 2` always asleep, so at most two validators are not
+  ready at any time, and nobody falls asleep or wakes late (the no-sleep window
+  holds for every margin; the late wakers are empty); with `n ≥ 5`, the cohort
+  count is `1 < n − 2` (the faulty `key 0` against the `n − 2` awake honest
+  validators), and η-sleepy participation holds for every look-back `η` (the
+  look-back set has at most `n` members); this is where five validators are
+  needed. The log is eager from `0`: the outage witness exercises
+  participation (one honest sleeper in the window, a ready reader from the
+  recovery point), not asynchrony.
 
-Thresholds are proved at the standard bounds (`θ ≤ ½`, `β ≥ ⅓`,
-`cover ≤ ½`), which `Params.Admissible` guarantees. -/
+Thresholds are proved at the standard bounds (`θ ≤ ½`, `β ≥ ⅓`), which
+`Params.Admissible` guarantees. -/
 
 section Realize
 
@@ -250,15 +253,15 @@ theorem realPoint_eq (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card
 /-- Everyone awake at every time. -/
 def allAwake : V → Time → Bool := fun _ _ => true
 
-/-- `s` asleep exactly at time `b`; everyone else always awake. -/
-def sleepAt (s : V) (b : Time) : V → Time → Bool := fun v t => !(decide (v = s) && decide (t = b))
+/-- `s` always asleep; everyone else always awake. -/
+def asleepAlways (s : V) : V → Time → Bool := fun v _ => !decide (v = s)
 
 omit [Fintype V] [DecidableEq V] in
 theorem allAwake_apply (v : V) (t : Time) : allAwake v t = true := by rfl
 
 omit [Fintype V] in
-theorem sleepAt_apply (s : V) (b : Time) (v : V) (t : Time) :
-    sleepAt s b v t = !(decide (v = s) && decide (t = b)) := by rfl
+theorem asleepAlways_apply (s : V) (v : V) (t : Time) :
+    asleepAlways s v t = !decide (v = s) := by rfl
 
 section Point
 
@@ -315,20 +318,62 @@ theorem allAwake_readyAt (c t : Time) :
 
 /-- One sleeper `key 2`: all honest validators but one are ready at every
 time. -/
-theorem sleepAt_readyAt (b c t : Time) :
-    Fintype.card V ≤ ((realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b) H).readyAt
+theorem asleepAlways_readyAt (c t : Time) :
+    Fintype.card V ≤ ((realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H).readyAt
       c t).card + 2 := by
   have h2 : kv key hn 2 (by decide) ∈
-      (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b) H).honest :=
+      (realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H).honest :=
     realPoint_honest key hn hΔ _ H (by decide) (by decide)
-  have h := card_le_readyAt key hn hΔ (sleepAt (kv key hn 2 (by decide)) b) H
-    ((realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b) H).honest.erase
+  have h := card_le_readyAt key hn hΔ (asleepAlways (kv key hn 2 (by decide))) H
+    ((realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H).honest.erase
       (kv key hn 2 (by decide))) (fun v hv => by
       obtain ⟨hne, hv⟩ := Finset.mem_erase.mp hv
-      exact ⟨hv, fun t => by simp [sleepAt_apply, hne]⟩) c t
+      exact ⟨hv, fun t => by simp [asleepAlways_apply, hne]⟩) c t
   rw [Finset.card_erase_of_mem h2] at h
-  have := realPoint_card_honest key hn hΔ (sleepAt (kv key hn 2 (by decide)) b) H
+  have := realPoint_card_honest key hn hΔ (asleepAlways (kv key hn 2 (by decide))) H
   omega
+
+/-- One sleeper `key 2`: no honest validator falls asleep, nobody wakes late,
+and the honest validators awake at any time are all but the sleeper. -/
+theorem asleepAlways_cohort (a b : Time) :
+    (realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H).NoSleepOn a b ∧
+      (realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H).CohortOn a b := by
+  classical
+  set p := realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H
+  have h2 : kv key hn 2 (by decide) ∈ p.honest :=
+    realPoint_honest key hn hΔ _ H (by decide) (by decide)
+  have hlate : p.lateWakers a b = ∅ := by
+    rw [EnvPoint.lateWakers, Finset.sdiff_eq_empty_iff_subset]
+    intro v hv
+    obtain ⟨hh, u, -, -, hu⟩ := Finset.mem_filter.mp hv
+    refine Finset.mem_filter.mpr ⟨hh, ?_⟩
+    have hu' : asleepAlways (kv key hn 2 (by decide)) v u = true := hu
+    have ha' : asleepAlways (kv key hn 2 (by decide)) v a = true := by
+      rw [asleepAlways_apply] at hu' ⊢; exact hu'
+    exact ha'
+  have hawake : p.awakeAt a = p.honest.erase (kv key hn 2 (by decide)) := by
+    ext v
+    rw [Finset.mem_erase]
+    constructor
+    · intro hv
+      obtain ⟨hh, ha⟩ := Finset.mem_filter.mp hv
+      have ha' : asleepAlways (kv key hn 2 (by decide)) v a = true := ha
+      rw [asleepAlways_apply] at ha'
+      exact ⟨by simpa using ha', hh⟩
+    · rintro ⟨hne, hh⟩
+      refine Finset.mem_filter.mpr ⟨hh, ?_⟩
+      change asleepAlways (kv key hn 2 (by decide)) v a = true
+      simp [asleepAlways_apply, hne]
+  have hc : p.honest.card + 1 = Fintype.card V :=
+    realPoint_card_honest key hn hΔ (asleepAlways (kv key hn 2 (by decide))) H
+  refine ⟨fun v _ t _ _ ht u _ _ => ?_, ?_⟩
+  · have ht' : asleepAlways (kv key hn 2 (by decide)) v t = true := ht
+    change asleepAlways (kv key hn 2 (by decide)) v u = true
+    rw [asleepAlways_apply] at ht' ⊢; exact ht'
+  · unfold EnvPoint.CohortOn
+    rw [hlate, Finset.union_empty, realPoint_faulty, Finset.card_singleton, hawake,
+      Finset.card_erase_of_mem h2]
+    omega
 
 include hn in
 /-- The numbers: with `n ≥ 5`, one faulty and at most two not ready, the
@@ -342,15 +387,6 @@ theorem readyAbove_of_card {p : EnvPoint V} {θ : ℚ} (hθ : 0 ≤ θ ∧ θ �
   have hn' : (5 : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast hn
   push_cast
   nlinarith [hθ.1, hθ.2]
-
-include hn in
-omit [DecidableEq V] in
-theorem readyOfAll_of_card {p : EnvPoint V} {φ : ℚ} (hφ : 0 ≤ φ ∧ φ ≤ 1 / 2) (c t : Time)
-    (hr : Fintype.card V ≤ (p.readyAt c t).card + 2) : p.ReadyOfAll φ c t := by
-  unfold EnvPoint.ReadyOfAll
-  have hr' : ((Fintype.card V : Nat) : ℚ) ≤ ((p.readyAt c t).card : ℚ) + 2 := by exact_mod_cast hr
-  have hn' : (5 : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast hn
-  nlinarith [hφ.1, hφ.2]
 
 include hn in
 /-- The numbers: with `n ≥ 5` and at most two not ready, η-sleepy
@@ -820,46 +856,53 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hf : ProgressFits K F) 
     change ((realPoint key hn Δ hΔ (awakeUpTo key 2) H).awakeAt t).card ≤ _
     rw [awakeUpTo_card key hn hΔ H 2 (by omega)]
 
-/-- The outage witness `(T, [b₀, b₁))`: honest `key 2` asleep exactly at
-`b₀`, everyone else always awake, the synchronous canonical run, horizon
-`H ≥ b₁`. -/
+/-- The outage witness `(T, [b₀, b₁))`: honest `key 2` always asleep (so it
+sleeps in the window without falling asleep in the no-sleep window), everyone
+else always awake, the synchronous canonical run, horizon
+`H ≥ b₁ + recovery·Δ`. -/
 theorem outage_witness (ha : K.params.Admissible) {T b₀ b₁ : Time}
-    (hT : OutageTimes K.params Δ T b₀ b₁) (hTb : T < b₀) (hb : b₀ + Δ ≤ b₁) (hH : b₁ ≤ H) :
+    (hT : OutageTimes K.params Δ T b₀ b₁) (hTb : T < b₀) (hb : b₀ + Δ ≤ b₁)
+    (hH : b₁ + (K.params.recovery : Time) * Δ ≤ H) :
     ∃ rho : Model.Run (compiled F)
-        (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).env,
-      rho.point = realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H ∧
+        (realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H).env,
+      rho.point = realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H ∧
       rho.key = key ∧ (Sys F V).Witness ⟨_, rho⟩ ∧ (Sys F V).Outage K T b₀ b₁ ⟨_, rho⟩ ∧
-      OutageActive ((Sys F V).cDur K ⟨_, rho⟩) T b₀ b₁ rho.point := by
+      OutageActive ((Sys F V).cDur K ⟨_, rho⟩) ((K.params.recovery : Time) * Δ) T b₀ b₁
+        rho.point := by
   have hT0 : 0 ≤ T := hT.1
+  have hD : (0 : Time) ≤ (K.params.recovery : Time) * Δ := mul_nonneg (by positivity) hΔ.le
   have hH0 : 0 ≤ H := by linarith
   have h12 : kv key hn 1 (by decide) ≠ kv key hn 2 (by decide) := kv_ne key hn (by decide)
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
-    real_run key F (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H) hH0 0
+    real_run key F (realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H) hH0 0
   let rho := Model.Run.mk (F := compiled F)
-      (E := (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).env)
-      (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).honest H events key
-      (extremalSel F (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).env)
-      (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).submit relay hash
+      (E := (realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H).env)
+      (realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H).honest H events key
+      (extremalSel F (realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H).env)
+      (realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H).submit relay hash
   have hse := Model.sysOf_eagerFrom (O := O) rho he
-  have hawake1 : ∀ t, sleepAt (kv key hn 2 (by decide)) b₀ (kv key hn 1 (by decide)) t = true := by
-    intro t; simp [sleepAt_apply, h12]
-  have hh1 := realPoint_honest key hn hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H (j := 1)
+  have hawake1 :
+      ∀ t, asleepAlways (kv key hn 2 (by decide)) (kv key hn 1 (by decide)) t = true := by
+    intro t; simp [asleepAlways_apply, h12]
+  have hh1 := realPoint_honest key hn hΔ (asleepAlways (kv key hn 2 (by decide))) H (j := 1)
     (by decide) (by decide)
-  have hh2 := realPoint_honest key hn hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H (j := 2)
+  have hh2 := realPoint_honest key hn hΔ (asleepAlways (kv key hn 2 (by decide))) H (j := 2)
     (by decide) (by decide)
-  refine ⟨rho, rfl, rfl, ⟨hv, hnc, ?_, ⟨_, hh1⟩⟩, ⟨hT, ⟨?_, hse.psync (by linarith)⟩, ?_, ?_⟩,
-    ⟨hT0, hTb, hb, hH, ⟨_, hh1, fun u _ _ => hawake1 u⟩,
+  obtain ⟨hns, hco⟩ := asleepAlways_cohort key hn hΔ H
+    ((Sys F V).outageStart K b₀ ⟨_, rho⟩) ((Sys F V).outageEnd K b₁ ⟨_, rho⟩)
+  refine ⟨rho, rfl, rfl, ⟨hv, hnc, ?_, ⟨_, hh1⟩⟩,
+    ⟨hT, ⟨?_, hse.psync (by linarith)⟩, ?_, hns, hco⟩,
+    ⟨hT0, hTb, hb, ⟨_, hh1, fun u _ _ => hawake1 u⟩,
       ⟨_, hh2, b₀, le_rfl, by linarith,
-        show sleepAt (kv key hn 2 (by decide)) b₀ (kv key hn 2 (by decide)) b₀ = false by
-          simp [sleepAt_apply]⟩,
-      ⟨_, hh1, fun u _ _ => hawake1 u⟩⟩⟩
-  · change (realPoint key hn Δ hΔ (sleepAt (kv key hn 2 (by decide)) b₀) H).faulty.Nonempty
+        show asleepAlways (kv key hn 2 (by decide)) (kv key hn 2 (by decide)) b₀ = false by
+          simp [asleepAlways_apply]⟩,
+      ⟨_, H, hH, le_rfl, hh1, fun u _ _ => hawake1 u⟩⟩⟩
+  · change (realPoint key hn Δ hΔ (asleepAlways (kv key hn 2 (by decide))) H).faulty.Nonempty
     rw [realPoint_faulty]; exact Finset.singleton_nonempty _
   · exact (Model.sysOf_delivers_iff (O := O) rho _ _).mpr
       (he.syncUntil (Model.Run.log_sendsFromZero rho hv) le_rfl b₀)
   · intro t _ _
-    exact etaReadyAbove_of_card hn ha.θ_range _ _ t (sleepAt_readyAt key hn hΔ H b₀ _ t)
-  · exact readyOfAll_of_card hn ha.cover_range _ b₀ (sleepAt_readyAt key hn hΔ H b₀ _ b₀)
+    exact etaReadyAbove_of_card hn ha.θ_range _ _ t (asleepAlways_readyAt key hn hΔ H _ t)
 
 end Witnesses
 

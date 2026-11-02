@@ -222,7 +222,8 @@ theorem healed_witness_late (h : Realizable S X K) (cap : Capability)
 clean witness of an active outage armed at or after `1000·Δ`. -/
 theorem outage_witness_late (h : Realizable S X K) :
     ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.Δ = 7 ∧ S.Outage K T b₀ b₁ r ∧
-      OutageActive (S.cDur K r) T b₀ b₁ (S.pt r) ∧ 7000 ≤ T := by
+      OutageActive (S.cDur K r) ((K.params.recovery : Time) * 7) T b₀ b₁ (S.pt r) ∧
+      7000 ≤ T := by
   obtain ⟨r, T, b₀, b₁, hw, hΔ, ho, ha, hT⟩ := h.outage 7 1000 (by norm_num)
   exact ⟨r, T, b₀, b₁, hw, hΔ, ho, ha, by norm_num at hT; exact hT⟩
 
@@ -256,7 +257,8 @@ theorem outage_witness_late_control :
     ∃ r T b₀ b₁, (sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).Witness r ∧
       ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).pt r).env.Δ = 7 ∧
       (sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).Outage ctrlK T b₀ b₁ r ∧
-      OutageActive ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).cDur ctrlK r) T b₀ b₁
+      OutageActive ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).cDur ctrlK r)
+        ((ctrlK.params.recovery : Time) * 7) T b₀ b₁
         ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).pt r) ∧ 7000 ≤ T :=
   outage_witness_late ctrl_realizable
 

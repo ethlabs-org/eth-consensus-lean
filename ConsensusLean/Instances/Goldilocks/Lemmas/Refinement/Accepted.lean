@@ -546,18 +546,19 @@ SyncUntil b₀ does not give unrestricted late-wake SyncRun calls. Do not
 insert that false implication as an intermediate lemma. -/
 theorem accepted_persists : ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,
     (Sys (family S) V).Holds ((Sys (family S) V).Outage (K S A) T b₀ b₁)
-      fun r => (chainTrace r.2).ProtectedThrough
-        ((Sys (family S) V).cDur (K S A) r) g (resilienceTarget schema g) T b₀ b₁ := by
+      fun r => (chainTrace r.2).ProtectedReadyFrom
+        ((Sys (family S) V).cDur (K S A) r) g (resilienceTarget schema g) T
+        ((Sys (family S) V).recoveryAt (K S A) b₁ r) := by
   intro g hg T b₀ b₁ r hv ho
   have hg' : g = Out.confirmed := Option.some.inj hg.symm
   subst g
   by_cases hcollision : r.2.HashCollision
   · exact Or.inr hcollision
   left
-  intro v hvr t ht hth w hw hr
+  intro v hvr t ht hth w hw
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
   let Q : OutageQuery S A V := ⟨r, hn, T, b₀, b₁, hv, hcollision, ho⟩
-  exact outage_protected S A V Q v hvr t ht hth w hw hr
+  exact outage_protected S A V Q v hvr t ht hth w hw
 
 /-- Exact nine-field assembly; the named gaps above are not a blanket claims assumption. -/
 theorem accepted_claims : ShapeClaims (family S) (K S A) := by

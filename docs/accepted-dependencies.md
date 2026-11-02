@@ -223,8 +223,10 @@ paths; names in compiled rows are fully qualified.
 ## Concrete acceptance assembly
 
 The root fixes standard fractions, `finalWindow S = [0,2,4,6]` (route A, #136),
-δt≥6 and positive outage look-back η. Engine-unit outage lag is 8k−8 and budget
+δt≥6 and positive outage look-back η. Engine-unit outage lag is 8k+12 (slow arming
+only: the label before the outage label is armed by b₀; 2026-11-02, was 8k−8) and budget
 is min(η,4k−6), corrected in f416034 to imply the unchanged node time window at Δp=Δe+1.
+The outage no-sleep margin is max(38, 8k+16) and the recovery delay 18 (Δe units).
 Only catch-up (positive Nat), heal and latency (Nat-valued functions at each gap)
 are existential. They are independent of validator set, execution and horizon.
 Every positive outer gap X is an index; tolerance uses X=span+2. Timeout has no X.

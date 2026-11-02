@@ -189,7 +189,7 @@ Notation (the `System` accessors of `Regimes.lean`): `c = cDur = catchUp·Δ`;
 | available, stable | sleepy safety | `Sleepy` | `ReadySafe c g 0` |
 | available, stable | sleepy liveness | `Sleepy ∧ prog[0, horizon]` | `TxLive c g 0 lat` |
 | available, stable | healed safety ("stay in recovery") | `Healthy g ∧ prog[ready g, heal]` | `ReadySafe c g heal` |
-| stable | outage resilience | `Outage T b₀ b₁` | `ProtectedThrough c stable target T b₀ b₁` |
+| stable | outage resilience | `Outage T b₀ b₁` | `ProtectedReadyFrom c stable target T (b₁ + recovery·Δ)` |
 
 One field per row (`finalAccountable`, `healthyLive`, `sleepySafe`, `sleepyLive`,
 `healedSafe`, `persists`). Derived in L0 (`Good.*`,
@@ -200,10 +200,10 @@ One field per row (`finalAccountable`, `healthyLive`, `sleepySafe`, `sleepyLive`
 |---|---|
 | `final_agree` | `FaultsBelow α` ⇒ `Agree final 0 ∨ HC`, in any network |
 | `final_safe_healthy` | `Healthy g` ⇒ `Safe final 0 ∨ HC` (uses `β ≤ α`) |
-| `persists_final_compatible` | through an outage, the stable read at `T` and an eligible reader's final read are compatible |
+| `persists_final_compatible` | through an outage, the stable read at `T` and the final read of a reader ready from `b₁ + recovery·Δ` are compatible |
 | **prefix forms** `sleepySafe_prefix` | `SyncUntil b ∧ SleepyOn θ c 0 b` ⇒ `ReadySafeUpTo c g 0 b ∨ HC`: the past is safe whatever happens after `b` |
 | `healedSafe_prefix` | partial synchrony with GST `g` for deadlines up to `b`, `HealthyOn β g b`, `prog[ready, heal]` and `heal ≤ b` ⇒ `ReadySafeUpTo c g heal b ∨ HC` |
-| `outage_prefix` | the outage regime up to `b` ⇒ protection at reading times in `[b₀, b]` ∨ HC |
+| `outage_prefix` | the outage regime up to `b` ⇒ protection of ready readers at reading times in `[b₁ + recovery·Δ, b]` ∨ HC |
 
 `TxLive c g start D` covers every submission: a transaction submitted to an
 awake honest node by `t` is in the `g`-read of every ready reader at every
@@ -211,13 +211,15 @@ awake honest node by `t` is in the `g`-read of every ready reader at every
 `AgreeAmong R`/`MonotoneAmong R` for a reader predicate `R` checked at each
 cut: `Agree`/`Monotone` (and `Safe`) take honest readers; `ReadySafe` takes ready readers
 only: honest, and awake throughout `[max 0 (t − c − 1), t]`. A node that
-has been asleep for long may still hold an old fork. `ProtectedThrough`
+has been asleep for long may still hold an old fork. `ProtectedReadyFrom`
 works as follows. Take a node **ready** at `T` and its `stable` read at `T`.
 That read is a prefix of the `target` read (the available output if
-provided, else the stable output) at every `t ∈ [b₀, horizon]`, for every
-honest `ResilienceReader`. A `ResilienceReader` was caught up before the
-window and has been awake since then, or caught up after the window
-(`b₁ ≤ t − c − 1`).
+provided, else the stable output) at every `t ∈ [b₁ + recovery·Δ, horizon]`,
+for every node ready at `t`. The outage regime has no absolute participation
+premise: besides η-sleepy participation, no honest validator falls asleep in
+the no-sleep window `[b₀ − noSleep·Δ, b₁ + noSleep·Δ]` (clamped to
+`[0, horizon]`; waking is allowed), and the faulty validators with the late
+wakers of that window are fewer than the honest validators awake at its start.
 
 An outage run is partially synchronous with GST `b₁` (`OutageNet b₀ b₁`
 contains `PSync b₁`), so the after-GST rows apply with `g = b₁` when their
@@ -301,7 +303,7 @@ submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 |---|---|
 | `System.Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + \|faulty\|) < \|ready_t\|` |
 | `System.Healthy g` | `L.PSync p g ∧ \|faulty\| < β·n ∧ ∀ v ∈ honest, v awake throughout [max g 0, horizon]` (full participation; awake, not ready) |
-| `System.Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·Δ) c 0 horizon ∧ cover·n < \|ready_{b₀}\|` |
+| `System.Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·Δ) c 0 horizon ∧ NoSleepOn a z ∧ CohortOn a z` (`a`, `z`: `outageStart`, `outageEnd`) |
 | `OutageTimes` | `0 ≤ T ∧ T + lag·Δ ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·Δ` |
 | η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·Δ), t] ∪ faulty\| < \|ready_t\|` |
 

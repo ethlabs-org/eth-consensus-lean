@@ -79,16 +79,15 @@ theorem readySafeUpTo (h : tr'.PrefixOf tr b) {c : Time} {g : Id} {t₀ : Time}
       (by rw [hR, h.cutTime j hjc]; exact hvj)
     rwa [h.read g v i hic, h.read g v j hjc] at this
 
-/-- Resilience of the prefix is resilience of the full trace at reading times
-in `[b₀, b]` (for a protected time `T ≤ b₀`). -/
-theorem protectedUpTo (h : tr'.PrefixOf tr b) {c : Time} {src dst : Id} {T b₀ b₁ : Time}
-    (hT : T ≤ b₀) (hp : tr'.ProtectedThrough c src dst T b₀ b₁) :
-    tr.ProtectedUpTo c src dst T b₀ b₁ b := by
-  intro v hv t ht htb w hw hr
+/-- Recovery of the prefix is recovery of the full trace at reading times in
+`[t₀, b]` (for a protected time `T ≤ t₀`). -/
+theorem protectedReadyUpTo (h : tr'.PrefixOf tr b) {c : Time} {src dst : Id} {T t₀ : Time}
+    (hT : T ≤ t₀) (hp : tr'.ProtectedReadyFrom c src dst T t₀) :
+    tr.ProtectedReadyUpTo c src dst T t₀ b := by
+  intro v hv t ht htb w hw
   have hpt := h.point
   have hhz : tr'.point.horizon = b := by rw [hpt]
   have := hp v (by rw [hpt]; exact hv) t ht (by rw [hhz]; exact htb) w (by rw [hpt]; exact hw)
-    (by unfold ResilienceReader at hr ⊢; rw [hpt]; exact hr)
   rwa [h.readAt_eq (le_trans hT (le_trans ht htb)), h.readAt_eq htb] at this
 
 end PrefixOf
