@@ -364,6 +364,35 @@ theorem reset_proposal_frame_unique
     (by rw [hPprop, hac.honest.proposer Q hQf hroot, hQu, hP.2.1])
     (by rw [hP.2.2.2.2.1, hQu])).symm
 
+/-- An honest designated actual proposal is the unique block of its positive slot
+in every honest frame, without reset or readiness premises. -/
+theorem proposal_frame_unique
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
+    (hPs : P.slot = u) (hu : 0 < u)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hcall : tr.projAC.CallAt y j ell) {Q : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hQ : Q ∈ ell.frame.tree) (hQu : Q.slot = u) : Q = P := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hr := hac.localRun
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, hPprop, _, ja, _, hacc, _⟩ :=
+    honestProposalRun_of_proposesAt hrun hnc hpH hdesignated hactual hPs
+  rw [← hdesignated] at hPprop hacc
+  obtain ⟨ellp, hcp, hblock⟩ := hacc
+  have hPm := (SA.accept_new sp hr hpH ⟨ellp, hcp, hblock⟩).1 ellp hcp
+  have hQf : SA.HonestFrameBlock tr.projAC H Q := ⟨y, hy, j, ell, hcall, hQ⟩
+  have hroot : Q.root ≠ sp.genesisRoot := by
+    intro hg
+    have hG := Store.genesis_mem (Compose.fg_reachable hrun.toLocalRun hy j)
+    obtain rfl := hr.coherent.1 ((SA.frameIn_of_callAt hr hy hcall).2 hQ)
+      ⟨y, hy, j, hG⟩ hg
+    simp [Params.genesisBlock] at hQu
+    omega
+  exact (hac.honest.one_block P Q ⟨p, hpH, ja, ellp, hcp, hPm⟩ hQf (hPprop ▸ hpH)
+    (by rw [hPprop, hac.honest.proposer Q hQf hroot, hQu, hdesignated])
+    (by rw [hPs, hQu])).symm
+
 /-- Actual proposal uniqueness in a bounded run needs no readiness/support predicate. -/
 theorem ResetPremisesUpTo.reset_proposal_frame_unique {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -372,25 +401,8 @@ theorem ResetPremisesUpTo.reset_proposal_frame_unique {b : Time}
     (hPs : P.slot = u) (hu : 0 < u)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hcall : tr.projAC.CallAt y j ell) {Q : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hQ : Q ∈ ell.frame.tree) (hQu : Q.slot = u) : Q = P := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hr := hac.localRun
-  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, hPprop, _, ja, _, hacc, _⟩ :=
-    honestProposalRun_of_proposesAt hp.run hp.noColl hpH hdesignated hactual hPs
-  rw [← hdesignated] at hPprop hacc
-  obtain ⟨ellp, hcp, hblock⟩ := hacc
-  have hPm := (SA.accept_new sp hr hpH ⟨ellp, hcp, hblock⟩).1 ellp hcp
-  have hQf : SA.HonestFrameBlock tr.projAC H Q := ⟨y, hy, j, ell, hcall, hQ⟩
-  have hroot : Q.root ≠ sp.genesisRoot := by
-    intro hg
-    have hG := Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hy j)
-    obtain rfl := hr.coherent.1 ((SA.frameIn_of_callAt hr hy hcall).2 hQ)
-      ⟨y, hy, j, hG⟩ hg
-    simp [Params.genesisBlock] at hQu
-    omega
-  exact (hac.honest.one_block P Q ⟨p, hpH, ja, ellp, hcp, hPm⟩ hQf (hPprop ▸ hpH)
-    (by rw [hPprop, hac.honest.proposer Q hQf hroot, hQu, hdesignated])
-    (by rw [hPs, hQu])).symm
+    (hQ : Q ∈ ell.frame.tree) (hQu : Q.slot = u) : Q = P :=
+  proposal_frame_unique hp.run hp.noColl hpH hdesignated hactual hPs hu hy hcall hQ hQu
 
 /-- Finite guarded acceptance transport uses the causal reset restart bound. -/
 theorem ResetPremisesUpTo.reset_accept_frame {b : Time}
