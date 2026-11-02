@@ -118,6 +118,31 @@ theorem isBest_of_viable_floor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
   exact (hDC (hcomp.elim (key hDt hD.2.1 hp)
     (fun h => (key hCt hp hD.2.1 h).symm))).elim
 
+/-- If every viable head extends a common floor, a walk whose anchor is
+below that floor reaches it regardless of scores. The witness is in the
+actual walking domain, which may be frozen. -/
+theorem finalized_floor_anc_getHead {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+    {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
+    (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom)
+    {F Y : Blk sp.n FGP} (hfloor : ∀ Q ∈ Φ.viableHeads, Φ.Anc F Q)
+    (hY : Y ∈ dom) (hvY : Y ∈ Φ.viableHeads) (hFY : Φ.Anc F Y)
+    (A : SAState sp.n) (t : Time) (V : View sp.n) (σ : Int)
+    (hfa : Φ.Anc Φ.fcRoot (getAnchor sp A Φ t))
+    (haF : Φ.Anc (getAnchor sp A Φ t) F) :
+    Φ.Anc F (getHead sp A Φ t (Φ.viableTree dom) V σ) := by
+  have hFt := mem_of_anc hFY (hdom hY)
+  have hT : Φ.viableTree dom ⊆ Φ.tree := fun _ h => hdom h.1
+  unfold getHead
+  refine anc_ghost_of_best hΦ.coherent hT (hΦ.finite.subset hT) hFt _ haF
+    (Set.ncard_le_ncard (fun _ h => hT h.1) hΦ.finite) ?_
+  intro X haX hXF hne
+  obtain rfl | ⟨C, e, hCF⟩ := Relation.ReflTransGen.cases_head_iff.1 hXF
+  · exact (hne rfl).elim
+  have hCv : C ∈ Φ.viableTree dom :=
+    ⟨hdomA Y hY C (hCF.trans hFY),
+      (hfa.trans haX).tail e, Y, hY, hvY, hCF.trans hFY⟩
+  exact ⟨C, isBest_of_viable_floor hΦ hdom hfloor hXF hne hCv e.2.2 hCF V t σ, hCF⟩
+
 end Consensus.Goldilocks.SA
 
 end

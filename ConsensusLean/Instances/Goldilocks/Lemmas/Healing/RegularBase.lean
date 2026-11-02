@@ -1389,6 +1389,102 @@ theorem FrameWindow.vote_head_eq_of_path {s₀ s floor : Nat}
   rw [hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hspec
   exact hspec.trans (congrArg Block.root heq)
 
+/-- The actual vote anchor is below P under the strict earlier-cut IH.
+Stored lock images use regular/optimistic passage; current-slot images use
+read-point provenance, never post-cast self-admission. -/
+theorem FrameWindow.vote_anchor_below_of_earlier_heads {s₀ p floor : Nat}
+    {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts p + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hsp : s₀ ≤ p) (hp0 : 0 < p)
+    (hpb : sp.ts p + sp.Δ ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer p)
+    {k : Nat} (hactual : tr.ProposesAt z k P) (hPs : P.slot = p)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
+    (hmargin : s₀ + 2 * sp.k ≤ p)
+    (hIH : ∀ x ∈ H, ∀ j < i, ∀ e', SA.VoteAt tr.projAC x j e' →
+      e'.msg.slot = p → e'.msg.head = P.root) :
+    Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) P := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hPhi := SA.frameIn_of_callAt hac.localRun hy hc.1
+  have hm₀ : gbar g ≤ sp.ts s₀ := by
+    have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+    linarith
+  have hPv := (hframe.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr hm₀
+    hsp hp0 hpb hz hdesignated hactual hPs hy hc hes).1
+  have hfP : Anc (tr.HonestBlocks H) ell.frame.fcRoot P :=
+    Anc.mono hPhi.2 (hPhi.1.fcRoot_anc_viableHeads P hPv)
+  have hlk : ∀ B ∈ SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i),
+      Anc (tr.HonestBlocks H) B P := by
+    intro B hB
+    obtain ⟨l, hl, B₀, hB₀, hB₀r, hlive, rfl⟩ := SA.mem_liveLockBlocks hPhi.1 hB
+    have hslot := (SA.castAt_spec hac.localRun hy hc).2.1
+    have hB₀P := hframe.read_locks_below_of_earlier_heads hrun hnc hsvc hawake hf hcatch
+      hnr hm hsp hp0 hpb hz hdesignated hactual hPs hy hc hes hmargin hIH hl
+      (by rw [← hes, hslot]; exact hlive) hB₀ hB₀r
+    exact (Anc.mono hPhi.2 (SA.viableAncestor_anc hPhi.1 hB₀).2).trans hB₀P
+  unfold SA.getAnchor
+  rcases hD : SA.deepest ell.frame
+      (SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) ∪ {ell.frame.fcRoot})
+      with _ | D
+  · exact hfP
+  · rcases (SA.deepest_mem hD).1 with h | h
+    · exact hlk D h
+    · exact (Set.mem_singleton_iff.1 h) ▸ hfP
+
+/-- The voter reaches another honest finalized tip when its anchor is below
+that tip. FS′ supplies the floor for every viable head; the witness is in
+the actual frozen domain. This is the unequal-root prefix, without scores. -/
+theorem FrameWindow.finalized_anc_head_at_cast {lo hi : Time} {floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {z y : Fin sp.n} (hz : z ∈ H) (hy : y ∈ H) {c i : Nat}
+    (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
+    (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e)
+    {Y : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hY : Y ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
+    (hvY : Y ∈ ell.frame.viableHeads)
+    (haF : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i))
+      (tr.state z c).fg.F) :
+    Anc (tr.HonestBlocks H) (tr.state z c).fg.F
+      (SA.getHead sp e.readPoint ell.frame (tr.time i)
+        (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
+        (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hPhi := SA.frameIn_of_callAt hac.localRun hy hc.1
+  have hfloor : ∀ Q ∈ ell.frame.viableHeads,
+      ell.frame.Anc (tr.state z c).fg.F Q := by
+    intro Q hQ
+    have hV := hQ
+    rw [Compose.frame_of_projAC hrun hy hc.1] at hV
+    have hFQ := hframe.finalized_below_viable hrun hnc hf hz hy hclo hchi hilo hihi hV
+    have hFt := SA.frame_mem_of_between sp hac.localRun.coherent hPhi.1 hPhi.2
+      (hPhi.1.viableHeads_subset hQ) hFQ
+      (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans
+        (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))) |>.trans haF)
+    exact SA.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hFt hFQ
+      (hPhi.1.viableHeads_subset hQ)
+  have hFt := SA.mem_of_anc (hfloor Y hvY) (hPhi.1.viableHeads_subset hvY)
+  have hat : SA.getAnchor sp e.readPoint ell.frame (tr.time i) ∈ ell.frame.tree := by
+    by_cases he : ell.frame.fcRoot = SA.getAnchor sp e.readPoint ell.frame (tr.time i)
+    · exact he ▸ hPhi.1.fcRoot_mem
+    · exact (Anc.mem (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)) he).2
+  exact Anc.mono hPhi.2 (SA.finalized_floor_anc_getHead hPhi.1 (fun _ h => h.1)
+    (SA.voterBlockTree_anc hac.localRun hy hc) hfloor hY hvY (hfloor Y hvY)
+    e.readPoint (tr.time i) _ _ (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))
+    (SA.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hat haF hFt))
+
 end Consensus.Goldilocks.Healing
 
 end
