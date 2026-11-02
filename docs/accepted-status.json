@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_commit": "61dff10e5ca35240eb52c263374f654f4fecf4e6",
+  "audit_commit": "f8b4a2fd262a6722ba15c02ca0969d83c63ca856",
   "baseline_commit": "fd7f498a15bf9e9e694102ffaeb8de6b33067052",
   "generated_on": "2026-11-02",
   "notes": [
@@ -375,7 +375,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_cache_acceptance",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:322",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:323",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "paper-partial",
@@ -396,7 +396,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_duty_proposal",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:147",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:148",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "unknown",
@@ -416,7 +416,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_reset_premises",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:133",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:134",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "paper-partial",
@@ -428,7 +428,7 @@
       "lean-status": "direct-sorry",
       "status-source": "https://github.com/ethlabs-org/consensus-lean/issues/136",
       "last-changed": "2026-11-02",
-      "evidence": "Open (H1)+(H3) of final_window_extract_of': (H1) reset premises through the horizon at Q.gst = Sol's M1\u2032 reset; (H3) placement with u_min = finalSeedMin Q a = the heal coefficient. One leaf: (H3) depends on the reset a of (H1). Owners: Sol (H1), coefficients (H3).",
+      "evidence": "Open (H1)+(H3) of final_window_extract_of': (H1) reset premises through the horizon at Q.gst = Sol's M1\u2032 reset; (H3) placement with u_min = finalSeedMin Q a = slot a + 2k + 5 (corrected, #145) = the heal coefficient. One leaf: (H3) depends on the reset a of (H1). Owners: Sol (H1), coefficients (H3).",
       "card-path": null,
       "card-repo": null,
       "derisk-verdict": "none yet",
@@ -436,7 +436,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_window_extract",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:163",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:164",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "paper-partial",

@@ -29,7 +29,7 @@ RATINGS = {
     # Route-A split of final_window_extract (#136): its body is final_window_extract_of'
     # from these two leaves (final_duty_proposal has a proved body); the rating is inherited
     # from final_window_extract.
-    'final_reset_premises': ('paper-partial', ROUTE_A, "Open (H1)+(H3) of final_window_extract_of': (H1) reset premises through the horizon at Q.gst = Sol's M1′ reset; (H3) placement with u_min = finalSeedMin Q a = the heal coefficient. One leaf: (H3) depends on the reset a of (H1). Owners: Sol (H1), coefficients (H3)."),
+    'final_reset_premises': ('paper-partial', ROUTE_A, "Open (H1)+(H3) of final_window_extract_of': (H1) reset premises through the horizon at Q.gst = Sol's M1′ reset; (H3) placement with u_min = finalSeedMin Q a = slot a + 2k + 5 (corrected, #145) = the heal coefficient. One leaf: (H3) depends on the reset a of (H1). Owners: Sol (H1), coefficients (H3)."),
     'final_duty_proposal': ('paper-partial', ROUTE_A, "(H2) of final_window_extract_of': duty → proposal adapter, bounded by 0 < s and ts s ≤ horizon; body proved by final_duty_proposal_run (FinalDutyProposal.lean, #143). Owner: Kev."),
     # Historical rating; the declaration is retired by route A (#141), see RETIRED.
     'final_inherited_progress': ('paper-open (research)', LEAD, 'Settled final-liveness audit: arbitrary dirty inherited permissions/held or credited rows must yield same-entry progress without a birth lower bound.'),

@@ -27,7 +27,7 @@ joint supplier has been decomposed into its eventual proof obligations.
 
 ## Master status: every Accepted field, grouped by leaf owner
 
-Current compiled audit: source `61dff10e` (combined #142 + #143 integration, #136),
+Current compiled audit: source `f8b4a2fd` (combined #142 + #143 integration with the #145 finalSeedMin correction, #136),
 regenerated on kevs-pc with `scripts/accepted-status.py`. The JSON records
 the exact source pin separately from its publication commit.
 Machine-readable rows and per-field edges are in `docs/accepted-status.json`.
@@ -238,11 +238,11 @@ its inputs `AnchorRun` (reset premises, catch-up, honest anchor proposals, drain
 and `AnchorSteps` (three gap-2 anchor steps) come from `final_window_extract`. Its body is
 `final_window_extract_of'` (CarrierProcessed.lean; (H4) carrier processing proved) from the
 OPEN leaves `final_reset_premises` ((H1) reset premises = M1′, and (H3) placement with
-`u_min = finalSeedMin Q a` = the heal coefficient; one leaf because (H3) uses the reset `a` of
-(H1)) and `final_duty_proposal` ((H2) duty → proposal adapter, guarded by `0 < s` and
-`ts s ≤ horizon`; proved by `final_duty_proposal_run`, FinalDutyProposal.lean). `FinalQuery` and
-`FinalWindowData` are in FinalWindowDefs.lean, so that the window assembly comes before
-Accepted.lean.
+`u_min = finalSeedMin Q a = slot a + 2k + 5` = the heal coefficient, corrected by #145; one leaf
+because (H3) uses the reset `a` of (H1)) and `final_duty_proposal` ((H2) duty → proposal adapter,
+guarded by `0 < s` and `ts s ≤ horizon`; proved by `final_duty_proposal_run`, FinalDutyProposal.lean).
+`FinalQuery` and `FinalWindowData` are in FinalWindowDefs.lean, so that the window assembly comes
+before Accepted.lean.
 For the `AnchorSteps` rows, the reusable finite signer results are landed in
 `Healing/Outcome/Service.lean` (`ResetPremisesUpTo.row_of_report`, `row_signers_of_reports`);
 the paper handoff is workbench b386900 `notes/cards/final_row_signers.md`.
@@ -261,7 +261,7 @@ Superseded argument: [general fixed timeout](https://github.com/fradamt-agent/wo
 | `Consensus.Goldilocks.Refinement.accepted_finalMonotone` | Reduction to shape_finalMonotone; exact generic field. |
 | `Consensus.Goldilocks.Refinement.accepted_finalAccountable` | Body closed through shape_finalAccountable at fixed 1/3; only the three coefficient leaves are reachable through the contract type. Encoding/transport is proved. |
 | `Consensus.Goldilocks.Refinement.accepted_healthyLive` | Assembly: available/stable use healthy_confirmed_supply and proved payload projection; final uses accepted_healthyLive_final. Named suppliers remain OPEN. |
-| `Consensus.Goldilocks.Refinement.final_reset_premises` | OPEN (route A, #136): (H1) `ResetPremisesUpTo` through the horizon at `Q.gst` with the run proposer and digest, for a reset `a` and bound `ΔR` (Sol's M1′), and (H3) the placement `(P)` with `u_min = finalSeedMin Q a` (the heal coefficient). One leaf: (H3) depends on the `a` of (H1). No producer is assumed. |
+| `Consensus.Goldilocks.Refinement.final_reset_premises` | OPEN (route A, #136): (H1) `ResetPremisesUpTo` through the horizon at `Q.gst` with the run proposer and digest, for a reset `a` and bound `ΔR` (Sol's M1′), and (H3) the placement `(P)` with `u_min = finalSeedMin Q a = slot a + 2k + 5` (the heal coefficient; #145 removed a time summand that made (H3) false at large GST). One leaf: (H3) depends on the `a` of (H1). No producer is assumed. |
 | `Consensus.Goldilocks.Refinement.final_duty_proposal` | Body closed (route A, #136): (H2) duty → proposal adapter (Kev): for `0 < s` with `ts s ≤ horizon`, `HonestReadyIn` at slot `s` gives `HonestProposalRun` at `s`; proved by `final_duty_proposal_run` (FinalDutyProposal.lean). Reaches sorryAx only through the `FinalQuery` type (accepted coefficients). |
 | `Consensus.Goldilocks.Refinement.final_window_extract` | Body closed (route A, #136): `final_window_extract_of'` from `final_reset_premises` and `final_duty_proposal`; (H4) carrier processing is proved (`carrier_processed_of_honest`). Gives four honest anchors at start+[0,2,4,6], the slack `ts(A3) + Δ ≤ deadline`, `AnchorRun` and `AnchorSteps` (reusable signer results: `row_of_report`, `row_signers_of_reports` in Healing/Outcome/Service.lean; paper handoff workbench b386900 `notes/cards/final_row_signers.md`). |
 | `Consensus.Goldilocks.Refinement.final_anchor_coverage` | Body closed: `AnchorRun` and `AnchorSteps` give A3 chain-finalized coverage of A0 through `cacheCoverage_of_anchor_window_upTo`; uses `6 ≤ δt` for `P₃.slot ≤ P₀.slot + δt`. |
