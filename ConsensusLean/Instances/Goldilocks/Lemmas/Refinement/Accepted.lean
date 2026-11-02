@@ -600,16 +600,18 @@ theorem accepted_admissible : (K S A).params.Admissible := by
     α_range := by norm_num [Params.standard]
     budget_pos := by have := S.two_le_k; dsimp [Params.standard]; omega }
 
-/-- Concrete existential endpoint. Every gap is a named numeric or adapter
-leaf; no simulation, GenesisFresh, or desired safety premise is added. -/
-theorem accepted : ∃ C : AcceptanceCoefficients,
-    Accepted (family S) (acceptanceContract A C) := by
-  refine ⟨accepted_coefficients S A, ?_⟩
-  exact {
-    claims := accepted_claims S A
+/-- The concrete endpoint at the coefficients `accepted_coefficients S A`. Every gap is a named
+numeric or adapter leaf; no simulation, GenesisFresh, or desired safety premise is added. -/
+theorem accepted_concrete : Accepted (family S) (K S A) :=
+  { claims := accepted_claims S A
     admissible := accepted_admissible S A
     serves := by simp [OutputSchema.Serves, schema]
     progressFits := accepted_progressFits S A
     progressTolerant := accepted_progressTolerant S A }
+
+/-- The existential endpoint, from `accepted_concrete`. -/
+theorem accepted : ∃ C : AcceptanceCoefficients,
+    Accepted (family S) (acceptanceContract A C) :=
+  ⟨_, accepted_concrete S A⟩
 
 end Consensus.Goldilocks.Refinement

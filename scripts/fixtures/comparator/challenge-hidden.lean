@@ -13,6 +13,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Persist
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Service
+public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted
 
 @[expose] public section
 
@@ -54,6 +55,7 @@ theorem Consensus.Goldilocks.Regimes.includeSleepy : Consensus.Goldilocks.Regime
 theorem Consensus.Goldilocks.Regimes.growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy := sorry
 theorem Consensus.Goldilocks.Compose.headExtendsRecord : Consensus.Goldilocks.Compose.HeadExtendsRecord := sorry
 theorem Consensus.Goldilocks.Compose.inclusion : Consensus.Goldilocks.Compose.Inclusion := sorry
+theorem Consensus.Goldilocks.Refinement.acceptedEndpoint : Consensus.Goldilocks.Refinement.AcceptedEndpoint := sorry
 /- harmless -/ axiom extra : False /- harmless -/
 
 end

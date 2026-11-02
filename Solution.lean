@@ -11,6 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Service.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Refinement.Main
 
 @[expose] public section
 
@@ -179,5 +180,13 @@ theorem Consensus.Goldilocks.Compose.headExtendsRecord :
 /-- Goldilocks Service: `Inclusion`. -/
 theorem Consensus.Goldilocks.Compose.inclusion : Consensus.Goldilocks.Compose.Inclusion :=
   Consensus.Goldilocks.Compose.inclusion_sleepy
+
+/-! Goldilocks Accepted: the concrete acceptance endpoint
+(`Statements/Refinement/Accepted`). -/
+
+/-- Goldilocks Accepted: `AcceptedEndpoint`. -/
+theorem Consensus.Goldilocks.Refinement.acceptedEndpoint :
+    Consensus.Goldilocks.Refinement.AcceptedEndpoint :=
+  Consensus.Goldilocks.Refinement.accepted_endpoint
 
 end

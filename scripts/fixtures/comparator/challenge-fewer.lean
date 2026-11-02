@@ -40,5 +40,6 @@ theorem Consensus.Goldilocks.Regimes.includeSleepy : Consensus.Goldilocks.Regime
 theorem Consensus.Goldilocks.Regimes.growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy := sorry
 theorem Consensus.Goldilocks.Compose.headExtendsRecord : Consensus.Goldilocks.Compose.HeadExtendsRecord := sorry
 theorem Consensus.Goldilocks.Compose.inclusion : Consensus.Goldilocks.Compose.Inclusion := sorry
+theorem Consensus.Goldilocks.Refinement.acceptedEndpoint : Consensus.Goldilocks.Refinement.AcceptedEndpoint := sorry
 
 end

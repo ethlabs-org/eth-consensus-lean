@@ -31,7 +31,8 @@ Mapping from the Goldilocks references to the Lean names: `docs/goldilocks-mappi
 |---|---|---|
 | Pre-foundation baseline: pinned numbers and the properties sheet (`ConsensusLean/Instances/Goldilocks/`) | `Consensus.Shape.goldilocksContract`, `Consensus.Shape.GoldilocksTarget` | stated; **not approved**, no proof targets it (issue #38) |
 | First slice (foundation step 7, issue #10): Goldilocks Spec, `Refinement/Defs.lean`, `Statements/<M₁>`, witnesses, finite model; approval (the tag); then a two-agent proof pilot | — | planned (after the statements are settled in fradamt-agent/goldilocks: #4, #5, #7, #12) |
-| Certification at the first finished milestone (foundation step 8, issue #11): `Challenge`/`Solution` entries, nightly replay and comparator | — | planned |
+| Certification (foundation step 8, issue #11): `Challenge`/`Solution` entries for the finished milestones (`milestone_statements_modules` in `scripts/boundaries.toml`), nightly replay and comparator | — | done; full tier pending |
+| Accepted: the concrete acceptance endpoint of the Goldilocks family (`Statements/Refinement/Accepted`; for every setup and assumption set the family is accepted at `acceptanceContract` with the fixed coefficients `accepted_coefficients`) | `Consensus.Goldilocks.Refinement.AcceptedEndpoint`, `Consensus.Goldilocks.Refinement.accepted_endpoint`, `Consensus.Goldilocks.Refinement.acceptedEndpoint` | done; full tier pending |
 
 ## Other instances
 

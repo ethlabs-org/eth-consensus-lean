@@ -4107,6 +4107,89 @@ def Consensus.Goldilocks.Healing.rTime : Consensus.Goldilocks.SA.SAParams → Co
   #2127053763/4081424980
 def Consensus.Goldilocks.Healing.slotA : Consensus.Goldilocks.SA.SAParams → Consensus.Time → Nat := fun sp w => InfSet.sInf.{0} (Set.ofPred.{0} fun s => LE.le.{0} (HAdd.hAdd.{0, 0, 0} w (HMul.hMul.{0, 0, 0} 4 sp.Δ)) (sp.ts (Nat.cast.{0} s)))
   #1304761772/1699960403
+## ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted
+induct Consensus.Goldilocks.Refinement.AcceptanceAssumptions : Consensus.Goldilocks.Refinement.Setup → Type
+  #1309757480/-
+def Consensus.Goldilocks.Refinement.AcceptanceAssumptions._sizeOf_1 #3851916748/2582984883
+def Consensus.Goldilocks.Refinement.AcceptanceAssumptions._sizeOf_inst #2168374236/3625669214
+def Consensus.Goldilocks.Refinement.AcceptanceAssumptions.casesOn : {S : Consensus.Goldilocks.Refinement.Setup} → {motive : Consensus.Goldilocks.Refinement.AcceptanceAssumptions S → Sort u} → (t : Consensus.Goldilocks.Refinement.AcceptanceAssumptions S) → ((rowRatio : PNat) → (timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.Refinement.cF rowRatio)) S.δt) → motive { rowRatio := rowRatio, timeout := timeout }) → motive t := fun {S} {motive} t mk => Consensus.Goldilocks.Refinement.AcceptanceAssumptions.rec.{u} (fun rowRatio timeout => mk rowRatio timeout) t
+  #3223885910/1442177838
+def Consensus.Goldilocks.Refinement.AcceptanceAssumptions.ctorIdx #3851916748/712258118
+ctor Consensus.Goldilocks.Refinement.AcceptanceAssumptions.mk : {S : Consensus.Goldilocks.Refinement.Setup} → (rowRatio : PNat) → LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.Refinement.cF rowRatio)) S.δt → Consensus.Goldilocks.Refinement.AcceptanceAssumptions S
+  #3683794520/-
+def Consensus.Goldilocks.Refinement.AcceptanceAssumptions.mk._flat_ctor #3683794520/2921501528
+theorem Consensus.Goldilocks.Refinement.AcceptanceAssumptions.mk.inj #1219697836/-
+theorem Consensus.Goldilocks.Refinement.AcceptanceAssumptions.mk.injEq #503116828/-
+def Consensus.Goldilocks.Refinement.AcceptanceAssumptions.mk.noConfusion : {S : Consensus.Goldilocks.Refinement.Setup} → {P : Sort u} → {rowRatio : PNat} → {timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.Refinement.cF rowRatio)) S.δt} → {rowRatio' : PNat} → {timeout' : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.Refinement.cF rowRatio')) S.δt} → Eq.{1} { rowRatio := rowRatio, timeout := timeout } { rowRatio := rowRatio', timeout := timeout' } → (Eq.{1} rowRatio rowRatio' → P) → P := fun {S} {P} {rowRatio} {timeout} {rowRatio'} {timeout'} eq k => id.{u} (Consensus.Goldilocks.Refinement.AcceptanceAssumptions.noConfusion.{u} ⋯ ⋯ k)
+  #2182883943/554683188
+theorem Consensus.Goldilocks.Refinement.AcceptanceAssumptions.mk.sizeOf_spec #1893014242/-
+def Consensus.Goldilocks.Refinement.AcceptanceAssumptions.noConfusion : {P : Sort u} → {S : Consensus.Goldilocks.Refinement.Setup} → {t : Consensus.Goldilocks.Refinement.AcceptanceAssumptions S} → {S' : Consensus.Goldilocks.Refinement.Setup} → {t' : Consensus.Goldilocks.Refinement.AcceptanceAssumptions S'} → Eq.{1} S S' → HEq.{1} t t' → Consensus.Goldilocks.Refinement.AcceptanceAssumptions.noConfusionType.{u} P t t' := fun {P} {S} {t} {S'} {t'} eq_1 eq_2 => Eq.ndrec.{u, 1} (motive := fun {S'} => {t' : Consensus.Goldilocks.Refinement.AcceptanceAssumptions S'} → HEq.{1} t t' → Consensus.Goldilocks.Refinement.AcceptanceAssumptions.noConfusionType.{u} P t t') (fun {t'} eq_2 => Eq.ndrec.{u, 1} (Consensus.Goldilocks.Refinement.AcceptanceAssumptions.casesOn.{u} t fun rowRatio timeout k => k ⋯) ⋯) eq_1 eq_2
+  #2855972029/1012906733
+def Consensus.Goldilocks.Refinement.AcceptanceAssumptions.noConfusionType #1447447287/1885463497
+recursor Consensus.Goldilocks.Refinement.AcceptanceAssumptions.rec : {S : Consensus.Goldilocks.Refinement.Setup} → {motive : Consensus.Goldilocks.Refinement.AcceptanceAssumptions S → Sort u} → ((rowRatio : PNat) → (timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.Refinement.cF rowRatio)) S.δt) → motive { rowRatio := rowRatio, timeout := timeout }) → (t : Consensus.Goldilocks.Refinement.AcceptanceAssumptions S) → motive t
+  #3527294067/-
+def Consensus.Goldilocks.Refinement.AcceptanceAssumptions.recOn : {S : Consensus.Goldilocks.Refinement.Setup} → {motive : Consensus.Goldilocks.Refinement.AcceptanceAssumptions S → Sort u} → (t : Consensus.Goldilocks.Refinement.AcceptanceAssumptions S) → ((rowRatio : PNat) → (timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.Refinement.cF rowRatio)) S.δt) → motive { rowRatio := rowRatio, timeout := timeout }) → motive t := fun {S} {motive} t mk => Consensus.Goldilocks.Refinement.AcceptanceAssumptions.rec.{u} mk t
+  #3223885910/2191855596
+def Consensus.Goldilocks.Refinement.AcceptanceAssumptions.rowRatio : {S : Consensus.Goldilocks.Refinement.Setup} → Consensus.Goldilocks.Refinement.AcceptanceAssumptions S → PNat := fun S self => self.1
+  #235595971/3020805162
+theorem Consensus.Goldilocks.Refinement.AcceptanceAssumptions.timeout : ∀ {S : Consensus.Goldilocks.Refinement.Setup} (self : Consensus.Goldilocks.Refinement.AcceptanceAssumptions S), LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.Refinement.cF self.rowRatio)) S.δt
+  #3914924286/-
+induct Consensus.Goldilocks.Refinement.AcceptanceCoefficients : Type
+  #3931117990/-
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients._sizeOf_1 #3276650201/957935214
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients._sizeOf_inst #4253075997/2936895559
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients.casesOn : {motive : Consensus.Goldilocks.Refinement.AcceptanceCoefficients → Sort u} → (t : Consensus.Goldilocks.Refinement.AcceptanceCoefficients) → ((catchUp : PNat) → (heal latency : Consensus.Capability → PNat → Nat) → motive { catchUp := catchUp, heal := heal, latency := latency }) → motive t := fun {motive} t mk => Consensus.Goldilocks.Refinement.AcceptanceCoefficients.rec.{u} (fun catchUp heal latency => mk catchUp heal latency) t
+  #2985069934/3028636795
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients.catchUp : Consensus.Goldilocks.Refinement.AcceptanceCoefficients → PNat := fun self => self.1
+  #366214218/504231730
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients.ctorIdx #3276650201/1325299602
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients.heal : Consensus.Goldilocks.Refinement.AcceptanceCoefficients → Consensus.Capability → PNat → Nat := fun self => self.2
+  #2866301079/2501897389
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients.latency : Consensus.Goldilocks.Refinement.AcceptanceCoefficients → Consensus.Capability → PNat → Nat := fun self => self.3
+  #2866301079/2468840370
+ctor Consensus.Goldilocks.Refinement.AcceptanceCoefficients.mk : PNat → (Consensus.Capability → PNat → Nat) → (Consensus.Capability → PNat → Nat) → Consensus.Goldilocks.Refinement.AcceptanceCoefficients
+  #3486097816/-
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients.mk._flat_ctor #3486097816/1332229574
+theorem Consensus.Goldilocks.Refinement.AcceptanceCoefficients.mk.inj #1227562877/-
+theorem Consensus.Goldilocks.Refinement.AcceptanceCoefficients.mk.injEq #2160307672/-
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients.mk.noConfusion : {P : Sort u} → {catchUp : PNat} → {heal latency : Consensus.Capability → PNat → Nat} → {catchUp' : PNat} → {heal' latency' : Consensus.Capability → PNat → Nat} → Eq.{1} { catchUp := catchUp, heal := heal, latency := latency } { catchUp := catchUp', heal := heal', latency := latency' } → (Eq.{1} catchUp catchUp' → Eq.{1} heal heal' → Eq.{1} latency latency' → P) → P := fun {P} {catchUp} {heal latency} {catchUp'} {heal' latency'} eq k => id.{u} (Consensus.Goldilocks.Refinement.AcceptanceCoefficients.noConfusion.{u} eq k)
+  #3064861520/319578443
+theorem Consensus.Goldilocks.Refinement.AcceptanceCoefficients.mk.sizeOf_spec #1733641545/-
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients.noConfusion : {P : Sort u} → {t t' : Consensus.Goldilocks.Refinement.AcceptanceCoefficients} → Eq.{1} t t' → Consensus.Goldilocks.Refinement.AcceptanceCoefficients.noConfusionType.{u} P t t' := fun {P} {t t'} eq => Eq.ndrec.{u, 1} (Consensus.Goldilocks.Refinement.AcceptanceCoefficients.casesOn.{u} t fun catchUp heal latency k => k ⋯ ⋯ ⋯) eq
+  #532846422/2600376853
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients.noConfusionType #904017636/2503279521
+recursor Consensus.Goldilocks.Refinement.AcceptanceCoefficients.rec : {motive : Consensus.Goldilocks.Refinement.AcceptanceCoefficients → Sort u} → ((catchUp : PNat) → (heal latency : Consensus.Capability → PNat → Nat) → motive { catchUp := catchUp, heal := heal, latency := latency }) → (t : Consensus.Goldilocks.Refinement.AcceptanceCoefficients) → motive t
+  #1376302984/-
+def Consensus.Goldilocks.Refinement.AcceptanceCoefficients.recOn : {motive : Consensus.Goldilocks.Refinement.AcceptanceCoefficients → Sort u} → (t : Consensus.Goldilocks.Refinement.AcceptanceCoefficients) → ((catchUp : PNat) → (heal latency : Consensus.Capability → PNat → Nat) → motive { catchUp := catchUp, heal := heal, latency := latency }) → motive t := fun {motive} t mk => Consensus.Goldilocks.Refinement.AcceptanceCoefficients.rec.{u} mk t
+  #2985069934/2942417917
+def Consensus.Goldilocks.Refinement.AcceptedEndpoint : Prop := ∀ (S : Consensus.Goldilocks.Refinement.Setup) (A : Consensus.Goldilocks.Refinement.AcceptanceAssumptions S), Consensus.Shape.Accepted (Consensus.Goldilocks.Refinement.family S) (Consensus.Goldilocks.Refinement.acceptanceContract A (Consensus.Goldilocks.Refinement.accepted_coefficients S A))
+  #3944470172/2549055592
+theorem Consensus.Goldilocks.Refinement.AcceptedEndpoint._proof_1 #2256791861/-
+def Consensus.Goldilocks.Refinement.acceptanceContract : {S : Consensus.Goldilocks.Refinement.Setup} → Consensus.Goldilocks.Refinement.AcceptanceAssumptions S → Consensus.Goldilocks.Refinement.AcceptanceCoefficients → Consensus.Contract Consensus.Blocks.ProgressReq := fun {S} A C => { Idx := PNat, idx_nonempty := Consensus.Goldilocks.Refinement.acceptanceContract._proof_1, params := have __src := Consensus.Params.standard C.catchUp.val (HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 8 S.k) 12) (HSub.hSub.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 S.k) 6) C.heal C.latency; { catchUp := __src.catchUp, θ := __src.θ, β := __src.β, cover := __src.cover, α := __src.α, lag := __src.lag, budget := __src.budget, η := __src.η, noSleep := Max.max.{0} 38 (HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 8 S.k) 16), recovery := 18, heal := __src.heal, latency := __src.latency, rowRatio := A.rowRatio }, progress := fun cap X => Consensus.Blocks.ProgressReq.recur { pattern := ite.{1} (Eq.{1} cap Consensus.Capability.final) (Consensus.Goldilocks.Refinement.finalWindow A) Consensus.Blocks.Pattern.single, gap := X } }
+  #263783779/112813387
+theorem Consensus.Goldilocks.Refinement.acceptanceContract._proof_1 #3293017938/-
+def Consensus.Goldilocks.Refinement.accepted_catchUp : (S : Consensus.Goldilocks.Refinement.Setup) → Consensus.Goldilocks.Refinement.AcceptanceAssumptions S → PNat := fun S _A => Subtype.mk.{1} (Max.max.{0} 37 (HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 8 S.k) 4)) ⋯
+  #235595971/140140525
+theorem Consensus.Goldilocks.Refinement.accepted_catchUp._proof_1 #1082459910/-
+theorem Consensus.Goldilocks.Refinement.accepted_catchUp._proof_2 #1017967118/-
+def Consensus.Goldilocks.Refinement.accepted_coefficients : (S : Consensus.Goldilocks.Refinement.Setup) → Consensus.Goldilocks.Refinement.AcceptanceAssumptions S → Consensus.Goldilocks.Refinement.AcceptanceCoefficients := fun S A => { catchUp := Consensus.Goldilocks.Refinement.accepted_catchUp S A, heal := Consensus.Goldilocks.Refinement.accepted_heal S A, latency := Consensus.Goldilocks.Refinement.accepted_latency S A }
+  #2361588017/3517678792
+def Consensus.Goldilocks.Refinement.accepted_heal : (S : Consensus.Goldilocks.Refinement.Setup) → Consensus.Goldilocks.Refinement.AcceptanceAssumptions S → Consensus.Capability → PNat → Nat := fun S A x X => HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (Consensus.Goldilocks.Refinement.accepted_catchUp S A).val (HMul.hMul.{0, 0, 0} 2 (Consensus.Goldilocks.Refinement.healMargin S X))) 3
+  #1191701252/3489544269
+def Consensus.Goldilocks.Refinement.accepted_latency : (S : Consensus.Goldilocks.Refinement.Setup) → Consensus.Goldilocks.Refinement.AcceptanceAssumptions S → Consensus.Capability → PNat → Nat := fun S A x x_1 => Consensus.Goldilocks.Refinement.accepted_latency.match_1.{1} (fun x x_2 => Nat) x x_1 (fun X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 8 X.val) 12) (fun X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 8 X.val) 12) fun X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 8 (HAdd.hAdd.{0, 0, 0} X.val (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.Refinement.cF A.rowRatio)))) 2
+  #1191701252/4013588580
+def Consensus.Goldilocks.Refinement.accepted_latency.match_1 #2825803619/468134226
+def Consensus.Goldilocks.Refinement.finalWindow : {S : Consensus.Goldilocks.Refinement.Setup} → Consensus.Goldilocks.Refinement.AcceptanceAssumptions S → Consensus.Blocks.Pattern := fun {S} A => { offsets := List.cons.{0} 0 (List.cons.{0} (Consensus.Goldilocks.Refinement.cF A.rowRatio) (List.cons.{0} (HMul.hMul.{0, 0, 0} 2 (Consensus.Goldilocks.Refinement.cF A.rowRatio)) (List.cons.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.Refinement.cF A.rowRatio)) List.nil.{0}))), nonempty := ⋯ }
+  #1803649254/244824562
+theorem Consensus.Goldilocks.Refinement.finalWindow._proof_1 #2947112540/-
+def Consensus.Goldilocks.Refinement.healMargin : Consensus.Goldilocks.Refinement.Setup → PNat → Nat := fun S X => HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (Consensus.Goldilocks.Refinement.healthyResetCoeff S X) (HMul.hMul.{0, 0, 0} 16 S.k)) (HMul.hMul.{0, 0, 0} 8 S.δt)) (HMul.hMul.{0, 0, 0} 8 X.val)) 64
+  #922212552/1356391986
+def Consensus.Goldilocks.Refinement.healthyDrainLen : Consensus.Goldilocks.Refinement.Setup → PNat → Nat := fun S X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 2 S.k) X.val
+  #922212552/2914389715
+def Consensus.Goldilocks.Refinement.healthyResetCoeff : Consensus.Goldilocks.Refinement.Setup → PNat → Nat := fun S X => HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 24 (Consensus.Goldilocks.Refinement.healthyDrainLen S X)) (HMul.hMul.{0, 0, 0} 48 (HAdd.hAdd.{0, 0, 0} S.δt X.val))) 28
+  #922212552/1410014047
+def Consensus.Goldilocks.Refinement.healthyResetSlack : Consensus.Goldilocks.Refinement.Setup → PNat → Nat := fun _S _X => 0
+  #922212552/147211982
 ## ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
 def Consensus.Goldilocks.Refinement.ConflictsIff : Prop := ∀ (n : Nat) (o o' : Consensus.Goldilocks.Refinement.Wire n), Iff (Eq.{1} (Consensus.Goldilocks.Refinement.conflicts o o') Bool.true) (Exists.{1} fun a => Exists.{1} fun b => And (Eq.{1} o (Consensus.Goldilocks.Refinement.attObj a)) (And (Eq.{1} o' (Consensus.Goldilocks.Refinement.attObj b)) (Consensus.Goldilocks.FG.slashable a b)))
   #3944470172/504651374

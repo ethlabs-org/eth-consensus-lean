@@ -145,6 +145,9 @@ run_meta do
 /-- info: 'Consensus.Goldilocks.Compose.inclusion' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Compose.inclusion
 
+/-- info: 'Consensus.Goldilocks.Refinement.acceptedEndpoint' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Refinement.acceptedEndpoint
+
 /-! ## Axiom pins: the source theorems -/
 
 /-- info: 'Consensus.Shape.Accepted.good' depends on axioms: [propext, Classical.choice, Quot.sound] -/
