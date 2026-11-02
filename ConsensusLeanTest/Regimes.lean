@@ -84,28 +84,13 @@ theorem etaSet_mono {η η' c t : Time} (hη : η ≤ η') :
   obtain ⟨hv, u, h1, h2, ha⟩ := hv
   exact ⟨hv, u, le_trans (max_le_max le_rfl (by linarith)) h1, h2, ha⟩
 
-/-- η-sleepy (`θ ≥ 0`) implies plain sleepy. -/
-theorem EtaReadyAbove.readyAbove {θ : ℚ} {η c t : Time} (h : p.EtaReadyAbove θ η c t)
-    (h0 : 0 ≤ θ) : p.ReadyAbove θ c t := by
-  classical
-  unfold EtaReadyAbove at h
-  split_ifs at h with hη
-  · exact h
-  rw [readyAbove_iff_union]
-  have hsub : p.readyAt c t ∪ p.faulty ⊆ p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty :=
-    Finset.union_subset_union Finset.subset_union_left (Finset.Subset.refl _)
-  have hc : ((p.readyAt c t ∪ p.faulty).card : ℚ) ≤
-      (p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card := by
-    exact_mod_cast Finset.card_le_card hsub
-  exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left hc h0) h
-
 /-- A smaller fraction (`θ ≥ 0`) and a shorter look-back are weaker. -/
 theorem EtaReadyAbove.mono {θ θ' : ℚ} {η η' c t : Time} (h : p.EtaReadyAbove θ' η' c t)
     (h0 : 0 ≤ θ) (hθ : θ ≤ θ') (hη : η ≤ η') : p.EtaReadyAbove θ η c t := by
   classical
   by_cases hη0 : η ≤ 0
   · rw [EtaReadyAbove, ite_eq_left_of_eq_true _ _ (eq_true hη0)]
-    exact (h.readyAbove p (h0.trans hθ)).mono p hθ
+    exact (h.readyAbove (h0.trans hθ)).mono p hθ
   have hη0' : ¬ η' ≤ 0 := fun h' => hη0 (hη.trans h')
   rw [EtaReadyAbove, ite_eq_right_of_eq_false _ _ (eq_false hη0)]
   rw [EtaReadyAbove, ite_eq_right_of_eq_false _ _ (eq_false hη0')] at h
@@ -166,7 +151,7 @@ theorem etaSleepyOn_zero (θ : ℚ) (c a b : Time) :
 /-- η-sleepy (`θ ≥ 0`) implies plain sleepy. -/
 theorem EtaSleepyOn.sleepyOn {θ : ℚ} {η c a b : Time} (h : p.EtaSleepyOn θ η c a b)
     (h0 : 0 ≤ θ) : p.SleepyOn θ c a b :=
-  fun t ha hb => (h t ha hb).readyAbove p h0
+  fun t ha hb => (h t ha hb).readyAbove h0
 
 /-- A smaller fraction (`θ ≥ 0`) and a shorter look-back are weaker. -/
 theorem EtaSleepyOn.mono {θ θ' : ℚ} {η η' c a b : Time} (h : p.EtaSleepyOn θ' η' c a b)

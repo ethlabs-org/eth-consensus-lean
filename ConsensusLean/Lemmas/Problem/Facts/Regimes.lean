@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Spec.Problem.Regimes
 public import Mathlib.Tactic
+import ConsensusLean.Lemmas.Problem.Facts.Atoms
 
 public section
 
@@ -50,6 +51,21 @@ theorem CohortOn.two_mul_lt {a b : Time} (h : p.CohortOn a b) :
   have hle := Finset.card_le_univ ((p.faulty ∪ p.lateWakers a b) ∪ p.awakeAt a)
   unfold CohortOn at h
   omega
+
+/-- η-sleepy (`θ ≥ 0`) implies plain sleepy. -/
+theorem EtaReadyAbove.readyAbove {θ : ℚ} {η c t : Time} (h : p.EtaReadyAbove θ η c t)
+    (h0 : 0 ≤ θ) : p.ReadyAbove θ c t := by
+  classical
+  unfold EtaReadyAbove at h
+  split_ifs at h with hη
+  · exact h
+  rw [readyAbove_iff_union]
+  have hsub : p.readyAt c t ∪ p.faulty ⊆ p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty :=
+    Finset.union_subset_union Finset.subset_union_left (Finset.Subset.refl _)
+  have hc : ((p.readyAt c t ∪ p.faulty).card : ℚ) ≤
+      (p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card := by
+    exact_mod_cast Finset.card_le_card hsub
+  exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left hc h0) h
 
 end EnvPoint
 

@@ -287,6 +287,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransp
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalEndpoints
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OperationalPersistence
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageArming
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageArmingSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageRead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox

@@ -38,7 +38,7 @@ private theorem tick_cuts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} (y :
 
 /-- **An honest validator awake and joined at `t_s + 6Δ` runs the update of slot `s`** there: its
 tick at that public time starts with `ac_on_tick`, joined. -/
-private theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun proposer dg H tr)
     {x : Fin sp.n} (hx : x ∈ H) {s : Nat} (hw : tr.awake x (sp.ts s + 6 * sp.Δ))
     (hj : tr.JoinedAt x (sp.ts s + 6 * sp.Δ)) :
