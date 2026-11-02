@@ -363,6 +363,84 @@ theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr)
     exact SA.ghost_fuel_stable (Nat.zero_le _) hstop
   exact (SA.castAt_spec hr hy hc).2.2.2.trans (congrArg Block.root heq)
 
+/-- The deeper-anchor join: only a voter strictly below the proposal start
+needs a prefix supplier. A deeper voter anchor is already on the proposal
+path, unless it equals P, where the slot bound stops it. -/
+theorem FrameWindow.vote_head_eq_of_start_prefix {s₀ s floor : Nat}
+    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))} {g b : Time}
+    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ)
+      floor contest kindJ J)
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hm : gbar g + 2 * sp.Δ ≤ sp.ts s) (hs₀ : s₀ ≤ s + 1)
+    {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1))
+    {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1) (hpH : P.proposer ∈ H)
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
+    (hti : tr.time ip = sp.ts (s + 1 : Nat))
+    (hpay : (SA.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
+      some (d, pay)) (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
+    (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
+    (hPv : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+    (haP : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) P)
+    (hprefix : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) d.start →
+      ell.frame.Anc d.start (SA.getHead sp e.readPoint ell.frame (tr.time i)
+        (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+        (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s)) : e.msg.head = P.root := by
+  have hr := hS.run.localRun
+  have hPhi := SA.frameIn_of_callAt hr hy hc.1
+  have hPhip := SA.frameIn_of_callAt hr hz hcp
+  obtain ⟨hst, _, hw⟩ := proposal_walk_end hrun hnc hz hcp hpay
+  have hstartQ := hw.anc (fun X hX => hX.1) hst
+  have hQt : d.head ∈ ellp.frame.tree := by
+    rcases eq_or_ne d.start d.head with he | he
+    · exact he ▸ hst
+    · exact (Anc.mem hstartQ he).2
+  have hQP : Anc (tr.HonestBlocks H) d.head P :=
+    .single ⟨hPhip.2 hQt, hPhi.2 hPv.1.1, hparent⟩
+  let A := SA.getAnchor sp e.readPoint ell.frame (tr.time i)
+  have hAt : A ∈ ell.frame.tree := by
+    by_cases he : ell.frame.fcRoot = A
+    · exact he ▸ hPhi.1.fcRoot_mem
+    · exact (Anc.mem (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)) he).2
+  by_cases he : A = P
+  · exact vote_head_eq_of_anchor_eq hrun hnc hy hc (hPs.trans hes.symm) hPv.1.1 he
+  have hAQ : Anc (tr.HonestBlocks H) A d.head := by
+    rcases Relation.ReflTransGen.cases_tail haP with heq | ⟨Y, hAY, hYP⟩
+    · exact (he heq.symm).elim
+    have hYQ : Y = d.head := hr.coherent.1 hYP.1 (hPhip.2 hQt)
+      (Option.some.inj (hYP.2.2.symm.trans hparent))
+    exact hYQ ▸ hAY
+  rcases Anc.total hr.coherent hAQ (Anc.mono hPhip.2 hstartQ) with hAS | hSA
+  · have hSt := SA.frame_mem_of_between sp hr.coherent hPhi.1 hPhi.2 hPv.1.1
+      ((Anc.mono hPhip.2 hstartQ).trans hQP)
+      ((Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans
+        (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)))).trans hAS)
+    have hASf := SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hAt hAS hSt
+    exact hframe.vote_head_eq_of_path hrun hnc hS hnr hf hm hs₀ hz hdesignated hactual
+      hPs hpH hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
+      .refl hstartQ hASf (hprefix hASf)
+  · have hApt := SA.frame_mem_of_between sp hr.coherent hPhip.1 hPhip.2 hQt hAQ
+      (Anc.mono hPhip.2 (hPhip.1.F_anc_fcRoot.trans
+        (proposal_walk_end hrun hnc hz hcp hpay).2.1) |>.trans hSA)
+    have hSAf := SA.anc_tree_of_anc_U hr.coherent hPhip.1 hPhip.2 hst hSA hApt
+    have hAQf := SA.anc_tree_of_anc_U hr.coherent hPhip.1 hPhip.2 hApt hAQ hQt
+    have hAE : ell.frame.Anc A (SA.getHead sp e.readPoint ell.frame (tr.time i)
+        (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
+        (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
+      unfold SA.getHead
+      exact SA.anc_ghost (fun X hX => hX.1.1) _ hAt
+    exact hframe.vote_head_eq_of_path hrun hnc hS hnr hf hm hs₀ hz hdesignated hactual
+      hPs hpH hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
+      hSAf hAQf .refl hAE
+
 end Consensus.Goldilocks.Healing
 
 end
