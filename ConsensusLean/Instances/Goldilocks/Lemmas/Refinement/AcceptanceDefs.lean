@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
 public import ConsensusLean.Spec.Shape.Accepted
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Outage
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 
 public section
 namespace Consensus.Goldilocks.Refinement
@@ -153,6 +154,37 @@ theorem acceptance_outage_times (S : Setup) (A : AcceptanceAssumptions S)
 
 noncomputable abbrev K (S : Setup) (A : AcceptanceAssumptions S) :=
   acceptanceContract A (accepted_coefficients S A)
+
+/-- The readiness duration of an acceptance contract with catch-up `≥ 37` covers `18 Δp`, for
+any coefficient record `C`. Stated generically so that it does not mention
+`accepted_coefficients`: every declaration whose type mentions `K S A` (so every `FinalQuery`
+or `HealthyPreparationQuery` lemma) depends on the `sorry` axiom through the OPEN
+`accepted_heal` in the body of `K S A`, whatever its proof. At `K S A` the premise is
+`accepted_catchUp_ge_sleepy`. -/
+theorem cDur_ge_of_catchUp {S : Setup} (A : AcceptanceAssumptions S) (V : Type) [Fintype V]
+    [DecidableEq V] (C : AcceptanceCoefficients) (hC : 37 ≤ (C.catchUp : Nat))
+    (r : (Sys (family S) V).Run) :
+    18 * (r.1.Δ + 1) ≤ (Sys (family S) V).cDur (acceptanceContract A C) r := by
+  have hd : (1 : Time) ≤ r.1.Δ := r.1.Δ_pos
+  have hc : (37 : Time) ≤ (C.catchUp : Nat) := by exact_mod_cast hC
+  change 18 * (r.1.Δ + 1) ≤ ((C.catchUp : Nat) : Time) * r.1.Δ
+  nlinarith
+
+/-- **The snapshot fit at readiness** for any coefficient record with catch-up `≥ 37`:
+`c_z + Δp + 1 ≤ max ready 0 + 4Δp`, the `lo` condition of `snapshotCall_of_awake` at the frame
+base `max ready 0 + 4Δp`. Generic in `C` for the reason given at `cDur_ge_of_catchUp`; its
+instance at `K S A` (`C := accepted_coefficients S A`, `hC := accepted_catchUp_ge_sleepy S A`)
+depends on the `sorry` axiom by its type only. -/
+theorem cutZ_fit_of_catchUp {S : Setup} (A : AcceptanceAssumptions S) (V : Type) [Fintype V]
+    [DecidableEq V] (C : AcceptanceCoefficients) (hC : 37 ≤ (C.catchUp : Nat))
+    (r : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.card V) (g : Time) :
+    Healing.cutZ (S.params (Model.pubOf r.1) hn).toParams g +
+        (S.params (Model.pubOf r.1) hn).Δ + 1 ≤
+      max ((Sys (family S) V).ready (acceptanceContract A C) g r) 0 +
+        4 * (S.params (Model.pubOf r.1) hn).Δ := by
+  have h := cDur_ge_of_catchUp A V C hC r
+  have hΔ : (S.params (Model.pubOf r.1) hn).Δ = r.1.Δ + 1 := rfl
+  exact Healing.cutZ_add_lt_ready_add _ g _ (by have := r.1.Δ_pos; rw [hΔ]; linarith)
 
 end Consensus.Goldilocks.Refinement
 end

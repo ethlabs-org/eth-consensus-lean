@@ -31,6 +31,14 @@ theorem cutZ_le (g : Time) : cutZ sp.toParams g ≤ gbar g + 12 * sp.Δ := by
   push_cast
   linarith
 
+/-- From a readiness duration `c ≥ 9Δ`, the frame base `max ready 0 + 4Δ`, with
+`ready = max g 0 + c + 1`, is past the snapshot call `c_z + Δ` (`snapshotCall_of_awake`). -/
+theorem cutZ_add_lt_ready_add (g c : Time) (hc : 9 * sp.Δ ≤ c) :
+    cutZ sp.toParams g + sp.Δ + 1 ≤ max (max g 0 + c + 1) 0 + 4 * sp.Δ := by
+  have hz := cutZ_le sp g
+  unfold gbar at hz
+  linarith [le_max_left (max g 0 + c + 1) 0]
+
 /-- `ḡ + 8Δ < c_z` (HR.3 (a)). -/
 theorem lt_cutZ (g : Time) : gbar g + 8 * sp.Δ < cutZ sp.toParams g := by
   have h : ¬ sp.ts (sp.slot (gbar g) + 1 : Int) ≤ gbar g := fun h => by
