@@ -397,6 +397,24 @@ theorem simTrace_sleep_of_restart (hv : rho.ExecutionValid) :
     unfold Time at *
     omega
 
+/-- An honest node is asleep one tick before each of its restarts. -/
+theorem simTrace_asleep_before_restart (hv : rho.ExecutionValid) :
+    ∀ y ∈ honestKeys S rho, ∀ i, (simTrace S rho hn).RestartAt y i →
+      ¬ (simTrace S rho hn).awake y ((simTrace S rho hn).time i - 1) := by
+  rintro y hy i ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ h
+  have hl : (simTrace S rho hn).label i ≠ none := by rw [hlab]; simp
+  obtain ⟨r, i₀, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut S rho hn hl
+  have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
+  obtain ⟨v, t, rfl⟩ :=
+    restart_of_mem_eventCuts S rho hn he (List.mem_of_getElem? hidx) hrl hcall
+  simp only [Model.Event.node, Model.Event.time] at hn' ht
+  have hkey : v = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
+  subst hkey
+  obtain ⟨-, -, hw2⟩ := hv.restart_at_wake _ _ (List.mem_of_getElem? he)
+  have hw := ((awake_iff' S rho hn y _).mp h).1
+  rw [ht, hw2] at hw
+  exact Bool.false_ne_true hw
+
 private theorem tick_block_fields {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
