@@ -12,13 +12,16 @@ public import Mathlib.Tactic
   look-back `η = 3`, no-sleep margin `19`, recovery delay `9`, standard
   thresholds, and the finality recurrence at
   `gf = 1` has `8` consecutive proposers (span `7`) per `2` slots.
-* `EnvPoint.two_mul_card_faulty_union_lt`: the outage cover ½ at `b₀` gives
-  FG-SA's `OutageE1` (migration obligation 4 of the sheet).
+* `EnvPoint.two_mul_card_faulty_union_lt`: a cover ½ (more than half ready)
+  would give FG-SA's `OutageE1`; the outage regime no longer has a cover
+  (it uses the cohort count, `EnvPoint.CohortOn.two_mul_lt`), so this is a
+  standalone fact.
 * `stable_is_confirmed`: the schema aliases stable to confirmed (`rfl`).
 * `collapse_prefix_only`, `outageWindow_prefix_only`: a run whose
   participation collapses inside the outage is η-sleepy on the prefix
   `[0, b₀]` but not through `b₁ − 1`; A2 asks η-sleepy participation only for
-  the prefix (its no-sleep and cohort counts are relative, on `[a, b₁]`).
+  the prefix (its no-sleep and cohort counts are relative, on
+  `[a, min b₁ horizon]`).
 * `weakPremise_inhabited` (P-NV-CONTINUATION): the weak-continuation premise
   holds on the generic healthy witness, so the weak extras are not vacuous. -/
 
@@ -178,8 +181,10 @@ theorem outageWindow_prefix_only {Info : Type} [DecidableEq Info] [Countable Inf
     (hT : OutageTimes (goldilocksContract pp).params r.1.Δ T b₀ b₁)
     (hs : CommLog.SyncUntil r.2.point r.2.log b₀)
     (hη : r.2.point.EtaSleepyOn (1 / 2) ((pp.eta : Time) * r.1.Δ) (gc r) 0 b₀)
-    (hns : r.2.point.NoSleepOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r) b₁)
-    (hc : r.2.point.CohortOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r) b₁) :
+    (hns : r.2.point.NoSleepOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r)
+      (min b₁ r.2.horizon))
+    (hc : r.2.point.CohortOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r)
+      (min b₁ r.2.horizon)) :
     (chainTrace r.2).ProtectedUpTo (gc r) gConfirmed gConfirmed
       T b₀ b₁ (min (b₁ - 1) r.2.horizon) ∨ r.2.HashCollision :=
   (h V).outageWindow T b₀ b₁ r hv ⟨hT, hs, hη, hns, hc⟩

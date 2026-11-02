@@ -106,6 +106,10 @@ E1/E2 evidence binding exists (obligation (7)).
   from `b₀`, sleepers included; (d) the regime assumes that no honest
   validator falls asleep in the no-sleep window and the cohort counts of
   `System.Outage`.
+* A2 / P-OUT-AV-SLOW (`outageWindow`): no honest validator may fall asleep in
+  `[outageStart b₀, min b₁ horizon]`, with the cohort count there (owner
+  decision 2026-11-02, replacing more than half ready at `b₀`); the prose and
+  the previous A2 let participation collapse inside the outage.
 * P-OUT-FIN-COMPAT (`outage_final_compatible`): stated for ready readers at
   reading times `t ≥ b₁ + recovery·Δ` under the full outage regime; the
   intended `0 ≤ t < b₀` part under the P1 premise (no assumption after the
@@ -137,9 +141,8 @@ Francesco.
    takes FG-SA environments asleep before `0` or proves the clamped premise
    implies FG-SA's. With `η > 0` the contract's denominator (ready ∪ awake in
    the look-back ∪ faulty) is stronger than plain sleepy participation.
-   The cover ½ at `b₀` gives FG-SA's `OutageE1` (faulty validators and
-   uncovered wakers are fewer than half): `EnvPoint.two_mul_card_faulty_union_lt`
-   (tests: `ConsensusLeanTest/Goldilocks`).
+   The cohort count of `System.Outage` gives FG-SA's `OutageE1` (faulty
+   validators and late wakers are fewer than half): `EnvPoint.CohortOn.two_mul_lt`.
 5. Readers caught up after the window (FG-SA proves repair-ready readers only).
 6. Ready-vs-awake counting (M25).
 7. E1/E2 evidence binding (`conflicts` = FG-SA's slashing rule).
@@ -461,7 +464,7 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
   `b₀`, η-sleepy on the prefix `[0, b₀]` only, no network assumption after
   `b₀`, and no absolute fraction awake or ready (owner decision 2026-11-02):
   only the relative counts of `System.Outage` on the prefix window
-  `[a, b₁]` with `a = outageStart` (no honest validator falls asleep in it;
+  `[a, min b₁ horizon]` with `a = outageStart` (no honest validator falls asleep in it;
   the faulty validators with its late wakers are fewer than half of all and
   fewer than the honest validators awake at `a`): what a node ready at `T`
   reads as confirmed is kept by every eligible reader (ready at `b₀` and awake
@@ -471,8 +474,10 @@ structure GoldilocksExtraAt (F : ShapeFamily goldilocksSchema Info) (pp : FGSAPa
       CommLog.SyncUntil r.2.point r.2.log b₀ ∧
       ((Sys F V).pt r).EtaSleepyOn (goldilocksContract pp).params.θ
         (((goldilocksContract pp).params.η : Time) * ((Sys F V).pt r).env.Δ) (gc r) 0 b₀ ∧
-      ((Sys F V).pt r).NoSleepOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r) b₁ ∧
-      ((Sys F V).pt r).CohortOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r) b₁)
+      ((Sys F V).pt r).NoSleepOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r)
+        (min b₁ ((Sys F V).pt r).horizon) ∧
+      ((Sys F V).pt r).CohortOn ((Sys F V).outageStart (goldilocksContract pp) b₀ r)
+        (min b₁ ((Sys F V).pt r).horizon))
     fun r => (chainTrace r.2).ProtectedUpTo (gc r) gConfirmed gConfirmed T b₀ b₁
       (min (b₁ - 1) ((Sys F V).pt r).horizon)
   /-- **P-WEAK-AV-SAFE.** Under the weak-continuation premise (healthy up to

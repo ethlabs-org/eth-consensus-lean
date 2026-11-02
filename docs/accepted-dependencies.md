@@ -682,15 +682,14 @@ unchanged to `AcceptanceDefs.lean` to avoid a supplier/Accepted import cycle.
 | `healthy_cut_monotone` | Temporal prefix extension at arbitrary ordered engine cuts with both exact-cDur readiness tests; same-time/pre-endCut transport remains owed. |
 | `outage_pre_service` | Canonical service through recipient deadlines ≤ outage start, not unrestricted late-wake service. |
 | `outage_arm` | Effective-record arming at original endCut(T), including inherited records and lookup-none/frame.F fallback; frame membership and original read-prefix witness. |
-| `outage_repair` | R.5 continuation, lifetime, old output/record compatibility, first arrivals and actual repair for the exact two resilience-reader windows. |
+| `outage_repair` | Slow-only recovery for every reader ready from `b₁ + recovery·Δ` (`recovery = 18`): O1 formation at labels `j₀ − 1` and `j₀`, O2 retention (base handoff, VA), O3 (the `k − 1` conflicting-label count, the cohort count at the reader gates, the veto-harmless lemma, S5), O4 reader bridge. |
 
 `healthy_ready_safety` consumes initialization→preparation→preservation and the
 two cut adapters. Its Accepted wrapper handles an empty validator type and heal
 beyond the horizon without strengthening premises or shrinking InCuts.
-`outage_reader_windows` is only the definitional split of ResilienceReader,
-retaining exact engine cDur; it does not establish node readiness or service.
-`outage_protected` assembles finite pre-service, arming and repair with unchanged
-ProtectedThrough quantifiers. The five leaf signatures were approved as OPEN.
+`outage_protected` assembles finite pre-service, arming and repair with the
+`ProtectedReadyFrom` quantifiers of `persists` (every ready reader from the
+recovery point; 2026-11-02, replacing the ResilienceReader windows). The five leaf signatures were approved as OPEN.
 Existing Healthy leaves and coefficient witnesses remain transitive gaps.
 Full proof completion, frozen-service/source/vote joins and other Accepted
 adapters remain OPEN; none are supplied by successful elaboration of this wiring.

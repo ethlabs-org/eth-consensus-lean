@@ -42,6 +42,10 @@ it rejects.
 * `faulty_third_not_healthy` (M21): healthy at `β` bounds the faults below `β`
   (`HealthyOn.faultsBelow`), on every point; so a point with one faulty
   validator among three is never healthy at `β = ⅓`, however awake.
+* `outage_cohort_teeth`: the no-sleep conjunct rejects an honest validator
+  falling asleep in the window and accepts a late waker; the cohort count
+  accepts one late waker against three honest validators awake at the window
+  start and rejects two late wakers against two.
 * `outage_times_teeth`: with lag `2`, budget `3`, `Δ = 1`, `OutageTimes`
   accepts `T = 0, [2, 5)`, and rejects an arming at a negative time, an arming
   less than `lag·Δ` before the window, a window longer than `budget·Δ`, and an
@@ -507,6 +511,77 @@ theorem outage_times_teeth :
   norm_num
 
 end Times
+
+section OutageCohort
+
+/-- Five validators, `0` faulty; honest `4` asleep before `3` and awake from
+`3` (a late waker); `Δ = 1`, horizon `10`, no submissions. -/
+def ptW : EnvPoint (Fin 5) :=
+  ⟨⟨1, by decide, fun v t => decide (v ≠ 4 ∨ 3 ≤ t)⟩, Finset.univ.erase 0, 10,
+    fun _ _ => []⟩
+
+/-- As `ptW`, with honest `3` and `4` both waking at `3`. -/
+def ptW2 : EnvPoint (Fin 5) :=
+  ⟨⟨1, by decide, fun v t => decide ((v ≠ 3 ∧ v ≠ 4) ∨ 3 ≤ t)⟩, Finset.univ.erase 0, 10,
+    fun _ _ => []⟩
+
+theorem ptW_lateWakers : ptW.lateWakers 0 10 = {4} := by
+  ext v
+  simp only [EnvPoint.lateWakers, EnvPoint.awakeIn, EnvPoint.awakeAt, Finset.mem_sdiff,
+    Finset.mem_filter]
+  fin_cases v <;> simp [ptW]
+  exact ⟨3, by norm_num⟩
+
+theorem ptW_awakeAt : ptW.awakeAt 0 = {1, 2, 3} := by
+  ext v; fin_cases v <;> simp [EnvPoint.awakeAt, ptW]
+
+theorem ptW_faulty : ptW.faulty = {0} := by
+  ext v; simp [EnvPoint.faulty, ptW]
+
+theorem ptW2_lateWakers : ptW2.lateWakers 0 10 = {3, 4} := by
+  ext v
+  simp only [EnvPoint.lateWakers, EnvPoint.awakeIn, EnvPoint.awakeAt, Finset.mem_sdiff,
+    Finset.mem_filter]
+  fin_cases v <;> simp [ptW2] <;> exact ⟨3, by norm_num⟩
+
+theorem ptW2_awakeAt : ptW2.awakeAt 0 = {1, 2} := by
+  ext v; fin_cases v <;> simp [EnvPoint.awakeAt, ptW2]
+
+theorem ptW2_faulty : ptW2.faulty = {0} := by
+  ext v; simp [EnvPoint.faulty, ptW2]
+
+/-- The outage's no-sleep and cohort conjuncts have teeth, on the window
+`[0, 10]`:
+* the sleeper point `ptS` (honest `4` awake at `0`, asleep at `2`) violates
+  `NoSleepOn`: an honest validator falls asleep in the window;
+* `ptW` (honest `4` wakes at `3`) meets `NoSleepOn` (waking is allowed) and
+  `CohortOn` with a nonempty late-waker set: `|{0} ∪ {4}| = 2 < 3 = |{1, 2, 3}|`;
+* `ptW2` (honest `3` and `4` wake at `3`) meets `NoSleepOn` but violates
+  `CohortOn`: the late wakers count against the cohort,
+  `|{0} ∪ {3, 4}| = 3 ≮ 2 = |{1, 2}|`, although every honest validator is
+  awake from `3`. -/
+theorem outage_cohort_teeth :
+    ¬ ptS.NoSleepOn 0 10 ∧
+    ptW.NoSleepOn 0 10 ∧ ptW.CohortOn 0 10 ∧ (ptW.lateWakers 0 10).Nonempty ∧
+    ptW2.NoSleepOn 0 10 ∧ ¬ ptW2.CohortOn 0 10 := by
+  refine ⟨fun h => ?_, fun v _ t _ _ ht u htu _ => ?_, ?_, ?_, fun v _ t _ _ ht u htu _ => ?_, ?_⟩
+  · have := h 4 (by decide) 0 le_rfl (by norm_num) (by decide) 2 (by norm_num) (by norm_num)
+    revert this; decide
+  · simp only [ptW, decide_eq_true_eq] at ht ⊢
+    rcases ht with h | h
+    · exact Or.inl h
+    · exact Or.inr (h.trans htu)
+  · unfold EnvPoint.CohortOn
+    rw [ptW_lateWakers, ptW_awakeAt, ptW_faulty]; decide
+  · rw [ptW_lateWakers]; exact Finset.singleton_nonempty _
+  · simp only [ptW2, decide_eq_true_eq] at ht ⊢
+    rcases ht with h | h
+    · exact Or.inl h
+    · exact Or.inr (h.trans htu)
+  · unfold EnvPoint.CohortOn
+    rw [ptW2_lateWakers, ptW2_awakeAt, ptW2_faulty]; decide
+
+end OutageCohort
 
 end Consensus.Shape.Tests.Regimes
 

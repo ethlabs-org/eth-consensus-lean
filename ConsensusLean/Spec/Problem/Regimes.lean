@@ -32,8 +32,8 @@ structure Params (Idx : Type) where
   θ : ℚ
   /-- Healthy fault bound: fewer than `β·n` faulty (`System.Healthy`). -/
   β : ℚ
-  /-- A cover fraction `cover·n` (read by instance statements, not by
-  `System.Outage`). -/
+  /-- A cover fraction `cover·n`: read by no regime (the outage has no
+  absolute participation premise); kept for `Admissible`. -/
   cover : ℚ
   /-- Accountable fraction of the final output. -/
   α : ℚ

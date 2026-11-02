@@ -23,8 +23,11 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `CohortOn.two_mul_lt`). `Good.persists` protects every `Ready` reader from `b₁ + recovery·Δ`
   (`ProtectedReadyFrom`), replacing `ResilienceReader` readers from `b₀`. New `Params` fields
   `noSleep`, `recovery`. Accepted: lag `8k+12` (`(8k+12)Δe ≥ (4k+6)Δp`, the label before the
-  outage label armed by `b₀`), `noSleep = max 38 (8k+16)`, `recovery = 18`. A2
-  (`outageWindow`) drops `ReadyOfAll` for the same relative counts on `[a, b₁]`. Cards:
+  outage label armed by `b₀`), `noSleep = max 38 (8k+16)`, `recovery = 18`. The pinned
+  `FGSAParams` sheet (node Δ) follows: lag `4·lockK + 6`, `noSleep = max 19 (4·lockK + 8)`,
+  `recovery = 9`. A2 (`outageWindow`) drops `ReadyOfAll` for the same relative counts on
+  `[a, min b₁ horizon]`. `Params.cover` is kept (read by no regime). The node-level R.5
+  statements (`Statements/Regimes/Outage.lean`, parked, off the Solution path) are unchanged. Cards:
   workbench `outage_slow_only_delta.md`, read-backs 5d5e354 and 9f5d6a3.
 - 2026-11-02, claude-mac, owner direction Francesco ([#136]): route A for final liveness.
   `finalWindow` offsets are `[0, 2, 4, 6]` (span 6), `AcceptanceAssumptions.timeout` is

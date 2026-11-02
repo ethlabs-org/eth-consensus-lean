@@ -1031,6 +1031,7 @@ example := ``Consensus.Shape.Tests.Regimes.healthy_needs_full_participation
 example := ``Consensus.Shape.Tests.Regimes.healthy_wake_at_gst
 example := ``Consensus.Shape.Tests.Regimes.logA_held
 example := ``Consensus.Shape.Tests.Regimes.outage_async_log
+example := ``Consensus.Shape.Tests.Regimes.outage_cohort_teeth
 example := ``Consensus.Shape.Tests.Regimes.outage_times_teeth
 example := ``Consensus.Shape.Tests.Regimes.psync_lost_message
 example := ``Consensus.Shape.Tests.Regimes.ptL_no_wake

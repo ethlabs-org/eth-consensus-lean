@@ -145,8 +145,8 @@ that a claim or regime evaluates.
   - `TxLiveActive`: a transaction to serve, read by a different honest node
     that was never submitted it;
   - `SafeActive`: two ready readers, one of them at two cuts;
-  - `OutageActive`: a ready source, a real sleeper inside the window and an
-    eligible reader.
+  - `OutageActive`: a ready source, a real sleeper inside the window and a
+    reader ready from the recovery point `b₁ + recovery·Δ`.
 
   A **stress witness** exercises liveness with many honest validators
   asleep, so a progress requirement cannot quietly demand near-full
@@ -321,10 +321,12 @@ the regimes, not of the environment. Weaker thresholds keep each regime
 ```lean
 structure Params (Idx : Type) where
   catchUp : Nat   -- reader catch-up c = catchUp·Δ
-  θ β cover α : ℚ -- sleepy, healthy fault bound, outage cover, accountable fraction
+  θ β cover α : ℚ -- sleepy, healthy fault bound, cover (read by no regime), accountable fraction
   lag budget η : Nat                         -- outage arming lag, budget, look-back (Δ-coefficients)
+  noSleep recovery : Nat                     -- outage no-sleep margin C, recovery delay D (Δ-coefficients)
   heal latency : Capability → Idx → Nat      -- heal point after max g 0; transaction latency
-def Params.standard (catchUp lag budget heal latency) := ⟨catchUp, ½, ⅓, ½, ⅓, lag, budget, 0, heal, latency⟩
+def Params.standard (catchUp lag budget heal latency) :=
+  ⟨catchUp, ½, ⅓, ½, ⅓, lag, budget, 0, 0, 0, heal, latency⟩
 structure Params.Admissible (P) : Prop :=
   1 ≤ catchUp,  0 ≤ θ ≤ ½,  ⅓ ≤ β,  0 ≤ cover ≤ ½,  β ≤ α ≤ 1,  1 ≤ budget
 ```
@@ -340,8 +342,9 @@ there (`final_safe_healthy`).
 `standard_admissible` shows that the standard numbers are admissible. The
 other numbers are not bounded and carry part of the verdict: a larger
 `catchUp` means fewer ready readers, a larger `lag` a later protected source,
-a larger `η` a stricter outage participation condition, a small `budget` a
-short outage, and larger heal points and latencies weaker claims. Any `η` is
+a larger `η` a stricter outage participation condition, a larger `noSleep` a
+longer no-sleep window, a larger `recovery` a later protected reader, a small
+`budget` a short outage, and larger heal points and latencies weaker claims. Any `η` is
 realizable (`outage_witness`); the reviewer reads these as numbers.
 
 ### The progress slot
@@ -766,7 +769,8 @@ are the intended ones.
 | Number | Value |
 |---|---|
 | thresholds | standard (`θ = ½`, `β = ⅓`, `cover = ½`, `α = ⅓`) |
-| catch-up; arming lag; budget; `η` | `18`; `4·lockK − 4`; `min eta (4·lockK − 5)`; `eta` |
+| catch-up; arming lag; budget; `η` | `18`; `4·lockK + 6`; `min eta (4·lockK − 5)`; `eta` |
+| outage no-sleep margin; recovery delay | `max 19 (4·lockK + 8)`; `9` |
 | heal (available, stable), gap `k`; final, index `gf` | `29 + B_H^F(k)`; `29 + B_H^F(gf·R) + W_W(gf)` |
 | latency | `4k + 6`; final `4·gf·R + 6 + W_W(gf)` |
 | progress | `.recur ⟨single, k⟩`; final `.recur ⟨range(3R+κ), gf·R⟩` (tolerant indices: `k = 2`, `gf = 5`) |
