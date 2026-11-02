@@ -256,6 +256,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CarrierProces
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Chains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CoefficientAdapters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.DrainWarm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Evidence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Exposure
