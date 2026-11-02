@@ -307,7 +307,7 @@ theorem sent_origin (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy :
       · exact ⟨i, by omega, att, hs, (List.mem_singleton.1 hb).symm⟩
 
 /-- Honest signatures are well formed using the store at their own signing cut. -/
-private theorem signAt_wellFormed (hrun : GoldilocksRun proposer dg H tr)
+theorem signAt_wellFormed (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt y k att) : att.WellFormed := by
   obtain ⟨src, hc⟩ := hs

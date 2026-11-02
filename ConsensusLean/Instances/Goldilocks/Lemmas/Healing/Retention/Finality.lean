@@ -297,6 +297,79 @@ theorem finalized_anc_of_height_lt_of_run (hrun : GoldilocksRun proposer dg H tr
   rw [hst hy, hst hz] at h
   exact h hX hF hFr hW hlt
 
+/-- Before any honest height advance, every held state's non-genesis finalized height
+is strictly below the frontier. The no-advance premise concerns actual signatures. -/
+theorem run_hF_le_of_noAdvance (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) (hq : Hᶜ.ncard < sp.toParams.fg.q) {T : Time}
+    (hna : ∀ v ∈ H, ∀ j att, tr.SignAt v j att → tr.time j ≤ T → att.h ≤ HZ tr H g)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hi : tr.time i ≤ T)
+    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree) :
+    ((tr.state y i).fg.σ X.root).hF + 1 ≤ HZ tr H g ∨
+      ((tr.state y i).fg.σ X.root).hF = 0 := by
+  by_cases hzero : ((tr.state y i).fg.σ X.root).hF = 0
+  · exact Or.inr hzero
+  have hr := Compose.fg_reachable hrun.toLocalRun hy i
+  obtain ⟨c, hc, -, -, hcs⟩ := Store.chain_state_of_chain _ _ _ _ hr X hX
+  obtain ⟨Q, hQ, hrows⟩ := FG.FGParams.finalized_quorum _ hcs (by omega)
+  change Finset (Fin sp.n) at Q
+  have hex : ∃ v ∈ Q, v ∈ H := by
+    by_contra hn
+    have hsub : (↑Q : Set (Fin sp.n)) ⊆ Hᶜ := fun v hv hvH => hn ⟨v, hv, hvH⟩
+    have hf := Set.ncard_le_ncard hsub (Set.toFinite _)
+    rw [Set.ncard_coe_finset] at hf
+    exact (not_lt_of_ge (hQ.trans hf)) hq
+  obtain ⟨v, hvQ, hv⟩ := hex
+  obtain ⟨att, hatt, hav, hfin⟩ := hrows v hvQ
+  simp only [FG.FGParams.chainAtts, List.mem_flatMap] at hatt
+  obtain ⟨Z', hZ', hatt⟩ := hatt
+  obtain ⟨Z, hZ, rfl⟩ := List.mem_map.1 hZ'
+  have haH : att.val ∈ H := hav ▸ hv
+  obtain ⟨m, hmi, _, j, hjm, hs⟩ :=
+    Compose.honest_row_signed_before hrun hnc hy (hc Z hZ) hatt haH
+  have hw := (signAt_wellFormed hrun haH hs).2
+    (((tr.state y i).fg.σ X.root).hF, ((tr.state y i).fg.σ X.root).F) (by simp [hfin])
+  have hh := hna att.val haH j att hs ((hrun.time_mono (by omega)).trans hi)
+  exact Or.inl (by omega)
+
+/-- Before height advance, an honest node's finalized block is below every honest-held
+block of frontier height or greater. Only the finalized node's cut is bounded by T. -/
+theorem finalized_below_high_held (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {T : Time}
+    (hna : ∀ v ∈ H, ∀ j att, tr.SignAt v j att → tr.time j ≤ T → att.h ≤ HZ tr H g)
+    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i m : Nat} (hi : tr.time i ≤ T)
+    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state z m).fg.tree)
+    (hWh : HZ tr H g ≤ ((tr.state z m).fg.σ W.root).h) :
+    Anc (tr.HonestBlocks H) (tr.state y i).fg.F W := by
+  have hr := Compose.fg_reachable hrun.toLocalRun hy i
+  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
+  have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX⟩
+  obtain ⟨hF, -, -, -, -, -, X, hX, hXF⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hr
+  have hq : Hᶜ.ncard < sp.toParams.fg.q := by
+    have hn := sp.toParams.hn
+    change Hᶜ.ncard < (2 * sp.n + 2) / 3
+    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n at hf
+    change 0 < sp.n at hn
+    omega
+  rcases run_hF_le_of_noAdvance hrun hnc hq hna hy hi hX with hlt | hzero
+  · have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
+    have hfg := Compose.fg_projection _ _ dg H _ tr proposer
+      ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
+      hrun.genesis_root_ok hrun.toLocalRun hnc
+    have hst : ∀ {v : Fin sp.n}, v ∈ H → ∀ j, tr.projFG.store v j = (tr.state v j).fg :=
+      fun hv j => by simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hv j]
+    have h := finalized_anc_of_lt_fg hfg hf hy hz (k := i) (m := m)
+      (X := X) (F := (tr.state y i).fg.F) (W := W)
+    rw [hst hy, hst hz] at h
+    exact h hX hF hXF.symm hW (by omega)
+  · obtain ⟨c, -, -, -, hcs⟩ := Store.chain_state_of_chain _ _ _ _ hr X hX
+    have hg := (FG.chain_invariants _ _ _ hcs).2.2.2.2.1 hzero
+    have he := Compose.honest_eq_genesis hrun hU (hsub hF) (hXF.symm.trans hg)
+    rw [he]
+    exact ((Goldilocks.Store.accepted_tree _ _ _ _
+      (Compose.fg_reachable hrun.toLocalRun hz m)).2.2.2 W hW).mono
+      (fun B hB => ⟨z, hz, m, hB⟩)
+
 /-- Whole-run specialization; strict-height ancestry needs no future health. -/
 theorem finalized_anc_of_height_lt (hp : ResetPremises tr H proposer dg g ΔF a) {y z : Fin sp.n}
     (hy : y ∈ H) (hz : z ∈ H) {k m : Nat} {X F W : SA.Blk sp.n (List (FG.Att sp.n))}
