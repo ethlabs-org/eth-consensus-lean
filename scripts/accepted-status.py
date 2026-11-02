@@ -36,6 +36,7 @@ RATINGS = {
     'final_row_supply': ('paper-open (research)', LEAD, 'Research refinement: high same-entry/high-predecessor row algebra is proved conditionally; report_cover, inherited/low entries and carrier credit/acceptance remain. entry-rows-exact §§2,4–6.'),
     'final_cache_acceptance': ('paper-partial', LEAD, 'Settled final-liveness audit: actual last-carrier acceptance, retained lookup/cache for every reader and processing/read deadline budget remain.'),
     'healthy_old_inventory_initialize': ('paper-open (research)', PAPER, 'Whole-statement audit 6d6af170 §§27–28: global future first arrivals require upper coverage or strict below-hj, including equality; bounded actual reset production missing.'),
+    'healthy_preparation_initialize': ('paper-open (research)', ROUTE_A, 'R0 replacement of healthy_old_inventory_initialize (workbench old_entry_post_reset.md §14, fidelity review f135cc9): exactly the joint (E) tuple, an actual reset with service through the horizon, its seed and a query with lower bound and strict reserve; needs the same-a reset envelope and the coefficient inequality, supplied by no landed declaration (healing_supply_repair_contracts.md, 5afa609).'),
     'healthy_prepare': ('paper-partial', PAPER, 'Whole-statement audit 6d6af170 §§16–17,24,27–28: actual heal-cut stored record/cache/lock base production remains; inherited C above R not handled by R≤C.'),
     'healthy_preserve': ('paper-proved awaiting Lean', PAPER, 'Superseding §83 e8fc89c4: J quorum/inventory contradiction; F via F≤J; recent locks via lock_origin; retained records via archival tree/F monotonicity/restart. Adapter/J-entry elaboration remains.'),
     'healthy_cut_tips_comparable': ('paper-partial', PAPER, '103bfbd extracts actual stored-clock read-tip comparability; same equality-time pre-endCut gap. Engine output transport is proved.'),
@@ -132,6 +133,12 @@ RETIRED = {
         'Content moved into final_window_extract as the AnchorSteps conjunct. Reusable signer '
         'results landed in Healing/Outcome/Service.lean (row_of_report, row_signers_of_reports); '
         'paper handoff workbench b386900 notes/cards/final_row_signers.md.'),
+    'healthy_old_inventory_initialize': ('R0 decomposition replacement (#136)',
+        'Replaced by healthy_preparation_initialize, which produces only the joint (E) tuple. '
+        'The old-entry inventory had no reader beyond building HealthyStateFacts, whose cache and '
+        'inventory fields were removed. Removal is not proof closure: the inventory gap stays '
+        'documented at the outside leaf healthy_vote_row_replacement '
+        '(workbench old_entry_post_reset.md §14, review f135cc9).'),
 }
 
 
@@ -326,7 +333,7 @@ def main : IO Unit := do
             row['status'] = 'unknown'
             row['status-source'] = 'compiled dependency audit'
             row['evidence'] = ('Body proved at 649f0286; shared coefficient type dependencies remain. Exact endCut(T), both lookup alternatives and actual read prefix; arming is not protection.' if short == 'outage_arm' else
-                               'Body proved at ed329627 from the existing base; J-specific target membership avoids healthy_old_row_realize. Shared coefficient type dependencies remain, not a direct sorry.')
+                               'Body proved from the existing base: records by induction and recent locks by lock_origin; R0 removed the cache and inventory fields. Shared coefficient type dependencies remain, not a direct sorry.')
         if short in ('sleepy_query_sync', 'sleepy_safety_inputs'):
             row.pop('obstruction', None)
             if name not in owners and dependencies == [

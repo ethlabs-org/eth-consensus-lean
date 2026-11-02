@@ -46,7 +46,7 @@ an assembly depending on them is not an additional leaf.
 |---|---|---|
 | C | Spec orb, joint coefficient synthesis | `accepted_heal` |
 | F | Four-anchor/final service owner (H1 Sol, H3 coefficients) | `final_reset_premises` |
-| H | Healing paper/T3; Spec orb integration | `healthy_old_inventory_initialize`, `healthy_repair_schedule` |
+| H | Healing paper/T3; Spec orb integration | `healthy_preparation_initialize`, `healthy_repair_schedule` |
 | N | Healing paper/T3; Spec orb integration | `healthy_confirmed_supply` |
 | O | Healing/outage owner; Spec orb integration | `outage_repair` |
 
@@ -73,7 +73,7 @@ not direct sorries. Their full closures depend on `accepted_heal` through
 premise types include that sorry definition. Kev's independent read-back and axiom
 split are recorded on [#132](https://github.com/ethlabs-org/consensus-lean/issues/132).
 `healthy_preserve` has a proved body
-at ed329627, while its coefficient type dependencies remain. `outage_arm` is proved at 649f0286;
+(since R0 it preserves only records and recent locks), while its coefficient type dependencies remain. `outage_arm` is proved at 649f0286;
 103bfbd moves the two cut adapters' holes into actual-tip comparability/ancestry,
 without reducing their count. At the pre-wiring baseline the two nonfinal
 healthyLive branches and sleepySafe/sleepyLive were direct adapter holes; all
@@ -84,7 +84,8 @@ are unchanged. No Main/Solution certification is claimed.
 
 OPEN but **not currently reachable from accepted**: `healthy_old_row_realize`,
 `healthy_vote_row_replacement` (Healing paper/T3, first-arrival/self-entry and
-label-bounded replacement). `sleepy_safe_finite` (Healing box finite R.1) is
+label-bounded replacement; since R0 the latter takes the old-entry inventory as an
+explicit premise, so the inventory gap stays documented outside the Accepted route). `sleepy_safe_finite` (Healing box finite R.1) is
 **proved and unreached**, via `Regimes.sleepy_safe_before` at c3f8f4d.
 Their absence from the closure means the current joint leaves do not yet call
 them; reachability alone says nothing about proof status. Likewise imported implementation
@@ -132,10 +133,10 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 | `Consensus.Goldilocks.Refinement.sleepy_query_population` | Body closed via duration monotonicity and sleepy_faultBound; retains the joint catch-up bound dependency. |
 | `Consensus.Goldilocks.Refinement.sleepy_query_slot` | Body closed at 7547caee: actual recurrence/grid selection at exact cDur with strict freshness and 6Δp margin; retains named joint lower-bound/witness dependencies. |
 | `Consensus.Goldilocks.Refinement.confirmed_slot_event` | Body closed via scheduled actual event and joined readiness transport; retains confirmed_duration_supply dependency, not eligibility-as-event by definition. |
-| `Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize` | OPEN, Healing paper/T3: global old signed-entry inventory including unseen future arrivals, §§27/28. |
-| `Consensus.Goldilocks.Refinement.healthy_prepare` | OPEN, Healing paper/T3: finite ready→heal record/cache/stored-lock preparation consuming inventory. |
-| `Consensus.Goldilocks.Refinement.healthy_repair_schedule` | OPEN, Healing paper/T3 with Spec orb integration; direct sorry owner in the compiled audit at f9138fd9 (workbench 9f41db38 `post-mature-dependency-audit.md`). From `Q : HealthyPreparationQuery`, `0 ≤ heal ≤ horizon`, progress on `[ready, heal]`, `W : HealthyBaseTiming` and the `HealthyStateFacts` suffix, produce `HealthyRepairSchedule`: an actual finite reset `ResetPremisesUpTo` through the horizon at `Q.gst` with generic ΔF, oldLabel ≥ cleanLabel+2k+1, a query above ready, drainTime, ts(oldLabel), gbar+4Δ and 0, and the strict reserve query+(4X+6)Δ < heal−1. The conditional constructors `healthy_repair_schedule_of_reset` and `healthy_repair_schedule_of_preparation` (580f1e4) take the reset and reserve, or a `HealthyPreparationSchedule`, as inputs; they do not close this leaf. The body is reserved: call `healthy_old_inventory_initialize`, then `healthy_repair_schedule_of_preparation`, only after the initializer is proved, landed and its contract reviewed. Its reset and reserve are the joint M1/reset/B and `accepted_heal` envelope, not heal nonnegativity. No paper rating supplied. |
-| `Consensus.Goldilocks.Refinement.healthy_preserve` | Body proved at ed329627 from the given base; J-specific target membership avoids healthy_old_row_realize. Only shared coefficient type dependencies remain; no direct sorry. |
+| `Consensus.Goldilocks.Refinement.healthy_preparation_initialize` | OPEN, Healing paper/T3 with Spec orb joint synthesis: the joint (E) tuple, base timing W and a `HealthyPreparationSchedule` (an actual finite reset `ResetPremisesUpTo` through the horizon, its seed, and a query with the lower bound and the strict reserve query+(4X+6)Δ < heal−1). Labelled decomposition replacement (R0, #136; workbench `old_entry_post_reset.md` §14, fidelity review f135cc9) of the former `healthy_old_inventory_initialize`: the old-entry inventory had no reader beyond building `HealthyStateFacts`, whose cache and inventory fields were removed. This removes that obligation from the route; it does not prove it (it stays documented at `healthy_vote_row_replacement`). Needs the same-a reset envelope and the `accepted_heal` coefficient inequality (workbench 5afa609, contract (E)). |
+| `Consensus.Goldilocks.Refinement.healthy_prepare` | Body proved: finite ready→heal record and recent stored-lock preparation from W and the preparation schedule; since R0 it consumes no inventory. Sorry-dependent, not a direct owner. |
+| `Consensus.Goldilocks.Refinement.healthy_repair_schedule` | OPEN, Healing paper/T3 with Spec orb integration; direct sorry owner in the compiled audit at f9138fd9 (workbench 9f41db38 `post-mature-dependency-audit.md`). From `Q : HealthyPreparationQuery`, `0 ≤ heal ≤ horizon`, progress on `[ready, heal]`, `W : HealthyBaseTiming` and the `HealthyStateFacts` suffix, produce `HealthyRepairSchedule`: an actual finite reset `ResetPremisesUpTo` through the horizon at `Q.gst` with generic ΔF, oldLabel ≥ cleanLabel+2k+1, a query above ready, drainTime, ts(oldLabel), gbar+4Δ and 0, and the strict reserve query+(4X+6)Δ < heal−1. The conditional constructors `healthy_repair_schedule_of_reset` and `healthy_repair_schedule_of_preparation` (580f1e4) take the reset and reserve, or a `HealthyPreparationSchedule`, as inputs; they do not close this leaf. The body is reserved: call `healthy_preparation_initialize` (R0), then `healthy_repair_schedule_of_preparation`, only after the initializer is proved, landed and its contract reviewed; its open input is the joint (E) tuple, not an old-entry inventory. Its reset and reserve are the joint M1/reset/B and `accepted_heal` envelope, not heal nonnegativity. No paper rating supplied. |
+| `Consensus.Goldilocks.Refinement.healthy_preserve` | Body proved from the given base: records by induction and recent locks by `lock_origin` (R0 removed the cache and inventory steps). Only shared coefficient type dependencies remain; no direct sorry. |
 | `Consensus.Goldilocks.Refinement.healthy_cut_agreement` | Body closed at 103bfbd using actual-tip comparability and confirmed_prefix_of_anc; equality-time gap remains in healthy_cut_tips_comparable. |
 | `Consensus.Goldilocks.Refinement.healthy_cut_monotone` | Body closed at 103bfbd using directed tip ancestry and confirmed_prefix_of_anc; temporal/equality-time gap remains in healthy_cut_tips_ancestor. |
 | `Consensus.Goldilocks.Refinement.healthy_cut_tips_comparable` | PAPER-PARTIAL: actual stored-clock read tips at arbitrary InCuts, including pre-endCut heal-time cuts, still require comparability. |
@@ -177,7 +178,7 @@ These are named sets of leaves, not extra assumptions.
 | accepted_healedSafe | C ∪ {accepted_healedSafe} |
 | accepted_persists | C ∪ {accepted_persists} |
 | accepted_progressFits, accepted_progressTolerant, accepted_admissible | C |
-| accepted_claims, accepted | accepted_heal, final_reset_premises, healthy_confirmed_supply, healthy_old_inventory_initialize, healthy_repair_schedule, outage_repair (6, fresh audit) |
+| accepted_claims, accepted | accepted_heal, final_reset_premises, healthy_confirmed_supply, healthy_preparation_initialize, healthy_repair_schedule, outage_repair (6, fresh audit) |
 | engine_signings_nonFraming, engine_att_protected | none |
 | simTrace_forwardOrigin, simTrace_forwardHeldProcessed | none |
 | sleepy_ready, sleepy_faultBound, sleepy_read_cut, sleepy_proposal, sleepy_inBy | none |
@@ -650,11 +651,11 @@ finite `[ready, heal]` preparation from health-only preservation.
 
 | Named leaf | Remaining obligation |
 |---|---|
-| `healthy_old_inventory_initialize` | OPEN OldHonest initialization (healing §§27/28): selects explicit record/cache/expiry/service timing and establishes coverage-or-below-hj for the global signed-entry inventory, including entries arriving later. |
+| `healthy_preparation_initialize` | OPEN joint (E) tuple: explicit record/cache/expiry/service timing W and a finite preparation schedule. R0 replaced the former `healthy_old_inventory_initialize`, whose coverage-or-below-hj inventory had no consumer. |
 | `healthy_old_row_realize` | OPEN first-arrival/self-entry join: the exact old-source antecedent identifies E with root a.T and the receiver's replay height; E is not the source D, and no extra ToFGAt D is assumed. |
-| `healthy_prepare` | OPEN record/cache/stored-lock preparation at cutMap(endCut heal), consuming inventory initialization and progress only on `[ready, heal]`. |
+| `healthy_prepare` | Record and recent stored-lock preparation at cutMap(endCut heal), from W, the preparation schedule and progress only on `[ready, heal]` (body proved; no inventory since R0). |
 | `healthy_preserve` | OPEN preservation at every later canonical cut through engine end, including same-time intermediate states, under health without later progress. No timestamp bound on the boundary cut is asserted. |
-| `healthy_vote_row_replacement` | OPEN eventual-coverage-to-label-bounded replacement matching BaseFacts: replacement label ≤ predecessor slot, not OriginBefore or a newly assumed causal source. |
+| `healthy_vote_row_replacement` | OPEN eventual-coverage-to-label-bounded replacement matching BaseFacts: replacement label ≤ predecessor slot, not OriginBefore or a newly assumed causal source. Since R0 it takes `HealthyOldInventory` as an explicit premise. |
 
 `healthy_old_inventory_preserve` delegates to the proved
 `Healing.oldHonest_inventory_preserved` from 9f5d6e7. Monotone hj preserves

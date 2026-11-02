@@ -191,16 +191,18 @@ theorem healthy_old_inventory_of_fresh_origin (Q : HealthyPreparationQuery S A V
   · exact Or.inl (old_entry_covered_of_fresh_origin S A V Q hP hPs
       (hcap E h hold) (hcomp y hy E h hold (by omega)))
 
-/-- OPEN base production (healing §§27/28, OldHonest initialization). No argument
-from monotone hj establishes this leaf. It selects timing and initializes the
-all-honest global inventory, including later first arrivals. No new Healthy
-premise, whole-run progress, or prefix-causal coverage is asserted. -/
-theorem healthy_old_inventory_initialize (Q : HealthyPreparationQuery S A V)
+/-- OPEN joint preparation tuple (E): base timing and a finite preparation schedule
+(an actual reset with service through the horizon, its seed, and a query with the lower
+bound and the strict reserve). Labelled decomposition replacement (R0) of the former
+`healthy_old_inventory_initialize`: no old-entry inventory is produced or required,
+since no consumer of the state facts read it. This removes the inventory obligation
+from this route; it proves nothing about it.
+No new Healthy premise, whole-run progress, or prefix-causal coverage is asserted. -/
+theorem healthy_preparation_initialize (Q : HealthyPreparationQuery S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.run.2.horizon)
     (hp : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    ∃ W : HealthyBaseTiming S A V Q, HealthyOldInventory S A V Q W.slot Q.cut ∧
-      Nonempty (HealthyPreparationSchedule S A V Q W) := by
+    ∃ W : HealthyBaseTiming S A V Q, Nonempty (HealthyPreparationSchedule S A V Q W) := by
   sorry
 
 /-- Existing proven preservation consumes exactly the OPEN initialization.
@@ -230,21 +232,19 @@ theorem healthy_old_row_realize (Q : HealthyPreparationQuery S A V) {s₀ : Nat}
   sorry
 
 /-- Consumer-facing state facts at an arbitrary canonical cut, including cuts
-inside a timestamp. These have eventual origin witnesses, explicitly not causal
-prefix witnesses. No stronger OriginBefore is inferred from a label bound. -/
+inside a timestamp: archival records and recent stored locks on the recent-origin
+chain. These have eventual origin witnesses, explicitly not causal prefix witnesses.
+No stronger OriginBefore is inferred from a label bound. The former cache and
+old-entry inventory fields were removed (R0): no consumer read them. -/
 structure HealthyStateFacts (Q : HealthyPreparationQuery S A V) (s₀ i : Nat) : Prop where
   records : ∀ y ∈ honestKeys S Q.run.2,
     ∃ C ∈ (Q.trace.state y i).fg.tree,
       C.root = (Q.trace.state y i).ac.latestConfirmed ∧
       (Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) C s₀ ∨
         Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) C (Q.trace.state y i).fg.F)
-  caches : ∀ y ∈ honestKeys S Q.run.2,
-    Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) (Q.trace.state y i).fg.F s₀ ∧
-    Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) (Q.trace.state y i).fg.J s₀
   locks : ∀ y ∈ honestKeys S Q.run.2, ∀ l ∈ (Q.trace.state y i).ac.locks,
     s₀ ≤ l.slot → ∃ L ∈ (Q.trace.state y i).fg.tree, L.root = l.block ∧
       Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) L s₀
-  inventory : HealthyOldInventory S A V Q s₀ i
 
 /-- Every recent stored lock has a recent origin, at any canonical cut.
 The witness is archival tree membership, not membership in a filtered frame. -/
@@ -260,79 +260,15 @@ theorem healthy_locks (Q : HealthyPreparationQuery S A V) (s₀ i : Nat)
   exact ⟨L, hL, hr, Compose.onOriginChainFrom_iff.2
     (Or.inr ⟨C, l.slot, Compose.originFrom_iff.2 ⟨hC.origin, hs⟩, hLC⟩)⟩
 
-/-- The global inventory covers the current justification: its own entry has
-height exactly hj, so the exclusion alternative is impossible. F follows J. -/
-theorem healthy_caches_of_inventory (Q : HealthyPreparationQuery S A V) (s₀ i : Nat)
-    (hf : (honestKeys S Q.run.2)ᶜ.ncard < Q.params.toParams.fg.q)
-    (inv : HealthyOldInventory S A V Q s₀ i)
-    {y : Fin Q.params.n} (hy : y ∈ honestKeys S Q.run.2) :
-    Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) (Q.trace.state y i).fg.F s₀ ∧
-      Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) (Q.trace.state y i).fg.J s₀ := by
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision
-  have hr := Compose.fg_reachable hrun.toLocalRun hy i
-  let st := (Q.trace.state y i).fg
-  have hsub : st.tree ⊆ Q.trace.HonestBlocks (honestKeys S Q.run.2) := fun _ h => ⟨y, hy, i, h⟩
-  obtain ⟨hF, hJ, hFJ, ⟨Z, hZ, hZJ, hZj⟩, _⟩ := Store.cache_invariants _ _ _ _ hr
-  have hJchain : Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) st.J s₀ := by
-    rcases Compose.cache_quorum hr st.J (Or.inl rfl) with hg | ⟨q, hq, hrows⟩
-    · exact Compose.onOriginChainFrom_iff.2 (Or.inl hg)
-    have hex : ∃ v ∈ q, v ∈ honestKeys S Q.run.2 := by
-      by_contra h
-      have hsubq : (↑q : Set (Fin Q.params.n)) ⊆ (honestKeys S Q.run.2)ᶜ := by
-        intro v hv hvH
-        exact h ⟨v, hv, hvH⟩
-      have hn := Set.ncard_le_ncard hsubq (Set.toFinite _)
-      rw [Set.ncard_coe_finset] at hn
-      exact (not_lt_of_ge (hq.trans hn)) hf
-    obtain ⟨v, hvq, hv⟩ := hex
-    obtain ⟨X, hX, a, ha, hav, haT⟩ := hrows v hvq
-    have haH : a.val ∈ honestKeys S Q.run.2 := hav ▸ hv
-    obtain ⟨m, _, _, k, _, hsign⟩ := Compose.honest_row_signed_before hrun hnc hy hX ha haH
-    obtain ⟨D, _, hD, C, l, hC, hDC⟩ := Compose.attestation_source hrun hnc haH hsign
-    obtain ⟨x, hx, c, _, hJe, hJD, _, hJT⟩ :=
-      Compose.honest_source_entry hrun hnc hD (hsub hJ) haT.symm
-    have hsubx : (Q.trace.state x c).fg.tree ⊆ Q.trace.HonestBlocks (honestKeys S Q.run.2) :=
-      fun _ h => ⟨x, hx, c, h⟩
-    have hJC : Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) st.J C :=
-      (hJD.mono hsubx).trans hDC
-    by_cases hl : s₀ ≤ l
-    · exact Compose.onOriginChainFrom_iff.2
-        (Or.inr ⟨C, l, Compose.originFrom_iff.2 ⟨hC.origin, hl⟩, hJC⟩)
-    obtain ⟨E, hE, hEr, _, hentry⟩ := Healing.Store.J_entry_of_reachable hr hZ
-    have hEJ : E = st.J := (Store.accepted_tree _ _ _ _ hr).2.1.1 hE hJ (hEr.trans hZJ)
-    subst E
-    rcases hentry with hg | ⟨hh, hT⟩
-    · exact Compose.onOriginChainFrom_iff.2 (Or.inl (congrArg Block.root hg))
-    have hold : Healing.OldHonest Q.trace (honestKeys S Q.run.2) s₀ st.J st.hj :=
-      ⟨⟨a.val, haH, k, a, hsign, haT.symm⟩,
-        ⟨y, hy, i, hJ, hT, hh.trans hZj⟩,
-        ⟨D, C, l, by simpa only [haT] using (Compose.isHonestSource_iff.1 hD),
-          hC.origin, Nat.lt_of_not_ge hl, hDC⟩⟩
-    rcases inv y hy st.J st.hj hold with hcov | hlt
-    · obtain ⟨C', l', hC', hJC'⟩ := (Healing.oldEntryCovered_iff _ _).1 hcov
-      exact Compose.onOriginChainFrom_iff.2 (Or.inr ⟨C', l', hC', hJC'⟩)
-    · exact False.elim ((lt_irrefl st.hj) hlt)
-  refine ⟨?_, hJchain⟩
-  rcases Compose.onOriginChainFrom_iff.1 hJchain with hg | ⟨C, l, hC, hJC⟩
-  · have he := Compose.honest_eq_genesis hrun
-      (Compose.honest_blocks_coherent hrun.toLocalRun hnc) (hsub hJ) hg
-    rw [he] at hFJ
-    rcases Relation.ReflTransGen.cases_tail hFJ with heq | ⟨Y, _, hY⟩
-    · exact Compose.onOriginChainFrom_iff.2 (Or.inl (congrArg Block.root heq.symm))
-    · exact absurd hY.2.2 (by simp [Params.genesisBlock])
-  · exact Compose.onOriginChainFrom_iff.2
-      (Or.inr ⟨C, l, hC, (hFJ.mono hsub).trans hJC⟩)
-
-/-- Preparation consumes global initialization and the supplied finite reset schedule.
-An operational update repairs archival record provenance before the heal boundary.
-This statement promises only the actual heal boundary, not all earlier states. -/
+/-- Preparation consumes the supplied base timing and finite reset schedule. An
+operational update repairs archival record provenance before the heal boundary; recent
+stored locks have recent origins. No old-entry inventory is consumed (R0). This statement
+promises only the actual heal boundary, not all earlier states. -/
 theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.run.2.horizon)
     (hp : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (W : HealthyBaseTiming S A V Q)
-    (base : HealthyOldInventory S A V Q W.slot Q.cut)
     (D : HealthyPreparationSchedule S A V Q W) :
     HealthyStateFacts S A V Q W.slot Q.cut := by
   classical
@@ -425,13 +361,7 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
     simp only [SA.SAParams.ts] at hslot hgu ⊢
     push_cast
     linarith
-  have hf : (honestKeys S Q.run.2)ᶜ.ncard < Q.params.toParams.fg.q := by
-    have hpop : 3 * (honestKeys S Q.run.2)ᶜ.ncard ≤ Q.params.n - 1 := D.reset.faults
-    have hn : 1 ≤ Q.params.n := Q.hn
-    change (honestKeys S Q.run.2)ᶜ.ncard < (2 * Q.params.n + 2) / 3
-    omega
-  refine ⟨?_, fun y hy => healthy_caches_of_inventory S A V Q W.slot Q.cut hf base hy,
-    fun y hy l hl hs => healthy_locks S A V Q W.slot Q.cut hy hl hs, base⟩
+  refine ⟨?_, fun y hy l hl hs => healthy_locks S A V Q W.slot Q.cut hy hl hs⟩
   intro y hy
   obtain ⟨j, ell, _, hup, _⟩ := D.reset.update_toFG_calls hy hjoin hTb
   have hjlabel : Q.trace.label j ≠ none := by
@@ -464,22 +394,6 @@ theorem healthy_preserve (Q : HealthyPreparationQuery S A V)
     ∀ i, Q.cut ≤ i → i ≤ cutMap S Q.run.2 Q.hn Q.run.2.events.length →
       HealthyStateFacts S A V Q W.slot i := by
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hf : (honestKeys S Q.run.2)ᶜ.ncard < Q.params.toParams.fg.q := by
-    have hpop := Q.healthy.2.1
-    change (Q.run.2.point.faulty.card : ℚ) < (K S A).params.β * Fintype.card V at hpop
-    rw [acceptanceContract_params_eq] at hpop
-    change (Q.run.2.point.faulty.card : ℚ) < 1 / 3 * Fintype.card V at hpop
-    have hfault : (honestKeys S Q.run.2)ᶜ.ncard = Q.run.2.point.faulty.card := by
-      have heq : (honestKeys S Q.run.2)ᶜ = Q.run.2.key ⁻¹' (↑Q.run.2.point.faulty : Set V) := by
-        ext k
-        simp [honestKeys, EnvPoint.faulty, Model.Run.point]
-      rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
-        (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
-    rw [hfault]
-    have hnat : 3 * Q.run.2.point.faulty.card < Fintype.card V := by exact_mod_cast (show
-        (3 : ℚ) * Q.run.2.point.faulty.card < Fintype.card V by linarith)
-    change Q.run.2.point.faulty.card < (2 * Fintype.card V + 2) / 3
-    omega
   have htime : ∀ k, Q.cut ≤ k → Q.trace.label k ≠ none → Q.heal ≤ Q.trace.time k := by
     intro k hk hl
     obtain ⟨_, m, e, _, he, _, hmk, _, _, ht, _⟩ := simTrace_cut S Q.run.2 Q.hn hl
@@ -492,10 +406,7 @@ theorem healthy_preserve (Q : HealthyPreparationQuery S A V)
     change cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.heal) ≤ k at hk
     omega
   intro i hi hih
-  have hinv := healthy_old_inventory_preserve S A V Q base.inventory i hi
-  refine ⟨?_, fun y hy => healthy_caches_of_inventory S A V Q W.slot i hf hinv hy,
-    fun y hy l hl hs => healthy_locks S A V Q W.slot i hy hl hs, hinv⟩
-  clear hinv
+  refine ⟨?_, fun y hy l hl hs => healthy_locks S A V Q W.slot i hy hl hs⟩
   induction i, hi using Nat.le_induction with
   | base => exact base.records
   | succ j hj ih =>
@@ -532,13 +443,14 @@ theorem healthy_preserve (Q : HealthyPreparationQuery S A V)
         (Or.inr ⟨C, s, Compose.originFrom_iff.2
           ⟨Compose.origin_iff.2 ⟨y, hy, j, CV, hsource⟩, hs⟩, .refl⟩))⟩
 
-/-- OPEN vote-row adapter from the preserved inventory. The replacement origin
+/-- OPEN vote-row adapter from an explicit old-entry inventory (outside the accepted
+route since R0; the inventory is a premise here, not a state fact). The replacement origin
 may be pending at this vote: ONLY label ≤ predecessor is claimed, matching
 BaseFacts.vote_rows. No causal OriginBefore or source holding-cut bound is added.
 The old-source antecedent has no additional ToFGAt requirement on D. -/
 theorem healthy_vote_row_replacement (Q : HealthyPreparationQuery S A V)
     (W : HealthyBaseTiming S A V Q)
-    (base : HealthyStateFacts S A V Q W.slot Q.cut)
+    (inv : HealthyOldInventory S A V Q W.slot Q.cut)
     {y : Fin Q.params.n} (hy : y ∈ honestKeys S Q.run.2) {i : Nat}
     (hi : Q.cut ≤ i) (hih : i < cutMap S Q.run.2 Q.hn Q.run.2.events.length)
     {ℓ e} (hc : SA.CastAt Q.trace.projAC y i ℓ e) {s : Nat}

@@ -560,7 +560,9 @@ theorem healthy_own_call_time_le_now {v : V} {i q : Nat}
   rw [htime, ← now_after_local_event S Q.run.2 Q.hn Q.valid he hev]
   exact now_mono S Q.run.2 Q.hn Q.valid v (by omega)
 
-/-- OPEN reset/snapshot, old threshold and joint coefficient/window producer. -/
+/-- OPEN reset/snapshot, old threshold and joint coefficient/window producer. Reserved
+body: `healthy_preparation_initialize`, then `healthy_repair_schedule_of_preparation`;
+the open input is the joint (E) tuple, not an old-entry inventory. -/
 theorem healthy_repair_schedule : Nonempty (HealthyRepairSchedule S A V Q) := by
   sorry
 
@@ -1758,8 +1760,8 @@ theorem healthy_ready_safety (Q : HealthyPreparationQuery S A V)
       Q.ready Q.heal Q.run) :
     (chainTrace Q.run.2).ReadySafe ((Sys (family S) V).cDur (K S A) Q.run)
       .confirmed Q.heal := by
-  obtain ⟨W, inv, ⟨D⟩⟩ := healthy_old_inventory_initialize S A V Q h0 hb hp
-  have base := healthy_prepare S A V Q h0 hb hp W inv D
+  obtain ⟨W, ⟨D⟩⟩ := healthy_preparation_initialize S A V Q h0 hb hp
+  have base := healthy_prepare S A V Q h0 hb hp W D
   have states := healthy_preserve S A V Q h0 hb W base
   exact ⟨healthy_cut_agreement S A V Q h0 hb hp W states,
     healthy_cut_monotone S A V Q h0 hb hp W states⟩
