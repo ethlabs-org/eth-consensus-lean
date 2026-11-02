@@ -79,7 +79,11 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   "Verification" for manual commands. A PR is optional (for collaborators who cannot run the checks:
   `CONTRIBUTING.md` "Working together"), also for a trusted-surface change (below). The commit message (or PR body) ends with a cost line
   (`Cost: <agent-h> agent-h, <models>, <CPU-h> CPU-h`) and states the reason if the change makes build or CI
-  time worse.
+  time worse. An agent's commit also names the model in a trailer after the cost line,
+  `Model: <provider/model>` (one line per model that did material work, e.g. `Model: openai/gpt-6-astra`).
+  The agent itself is named by the harness's own trailers: Amp adds `Amp-Thread-ID` and, when a person is
+  the author, `Co-authored-by: Amp <amp@ampcode.com>` (do not write these by hand; Amp refuses the commit);
+  another harness adds its own co-author trailer, or the agent writes it.
 - **Trusted surface** (`ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` as `X.lean` and `X/**`,
   `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
   `ConsensusLeanTest/Review{Axioms,Guard}.lean`, and since #38 the instance files
