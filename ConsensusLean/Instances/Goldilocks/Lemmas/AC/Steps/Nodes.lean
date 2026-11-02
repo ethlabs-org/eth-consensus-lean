@@ -18,10 +18,19 @@ namespace Consensus.Goldilocks.SA
 
 variable (sp : SAParams)
 
-/-- **A1.3.** -/
-theorem next_transfer : NextTransfer sp := by
-  intro FGP ro H U tr proposer hrun m y i B ℓ e hy hc hs hall hhalf hcarry hfault hsync hviab
-    hearlier
+/-- The A1.3 transfer after delivery: synchronization is used to obtain CarryAt,
+not by the local transfer itself. -/
+theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    (hrun : ACRun proposer tr H U) {m : Nat} {y : Fin sp.n} {i : Nat}
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
+    (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B)
+    (hhalf : sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard)
+    (hcarry : CarryAt tr U y i e m
+      {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m})
+    (hfault : FaultBound tr H (tr.time i)) (hviab : ViableAtVote ℓ e (m + 1) B)
+    (hearlier : EarlierVotesExtend tr H U i (m + 1) B) : VoteExtends U e.msg B := by
   have hr := hrun.localRun
   have hU := hr.coherent
   obtain ⟨-, -, -, hhead⟩ := castAt_spec hr hy hc
@@ -105,6 +114,11 @@ theorem next_transfer : NextTransfer sp := by
       (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) (m : Int)
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
+
+/-- **A1.3.** -/
+theorem next_transfer : NextTransfer sp :=
+  fun _ _ _ _ _ _ hrun _ _ _ _ _ _ hy hc hs hall hhalf hcarry hfault _ hviab hearlier =>
+    next_transfer_of_carry sp hrun hy hc hs hall hhalf hcarry hfault hviab hearlier
 
 /-- **A1.4 (a), for the stored block.** A1.4 (a) for a block `B ⪯ D` of an optimistic lock on
 `D` (the block the lock stores after moving back): every hypothesis and the conclusion are about

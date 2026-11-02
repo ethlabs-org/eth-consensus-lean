@@ -280,18 +280,20 @@ theorem healthy_base_of_reset_catch (hp : ResetPremises tr H proposer dg g ΔF a
     projection_healthy hp.run hp.noColl hp.healthy,
     projection_catch hp.run hp.noColl hp.healthy hc⟩
 
-/-- Finite reset health supplies the AC base without extending awake obligations
-past the horizon. Synchrony and Catch retain their actual deadline semantics. -/
-theorem healthy_base_of_reset_catch_before {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+/-- Finite service and Catch supply the AC base without any reset or snapshot premise. -/
+theorem healthy_base_of_service_catch_before {b : Time}
+    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hsync : ResetService tr H g ΔF b)
+    (hawake : ∀ y ∈ H, ∀ t, SA.gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hfaults : 3 * Hᶜ.ncard ≤ sp.n - 1)
     (hc : CatchRun tr H g (2 * sp.Δ)) :
     SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b := by
-  refine ⟨Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl,
-    projection_driven_of_run hp.run hp.noColl hp.run.genesis_root_ok, ?_,
+  refine ⟨Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc,
+    projection_driven_of_run hrun hnc hrun.genesis_root_ok, ?_,
     ⟨fun x hx i B ha hi y hy j ell hj ht _ hF =>
-      projection_catch_of_run hp.run hc x hx i B ha hi y hy j ell hj ht hF⟩,
-    hp.awake, hp.faults⟩
-  have h := hp.run.toLocalRun
+      projection_catch_of_run hrun hc x hx i B ha hi y hy j ell hj ht hF⟩,
+    hawake, hfaults⟩
+  have h := hrun.toLocalRun
   constructor
   · intro x hx i m hsa hi y hy j ℓ hcj _ hdl
     have hsa' : tr.SendOrAdmitAt x i m := by
@@ -300,7 +302,7 @@ theorem healthy_base_of_reset_catch_before {b : Time}
       rwa [Compose.projAC_state h hx] at hm
     have he : max (tr.time i) g = tr.time i := max_eq_left ((SA.le_gbar g).trans hi)
     rw [Compose.projAC_deadline] at hdl
-    obtain ⟨k, hk, h1, h2, h3⟩ := hp.sync.message x hx i m hsa' y hy j
+    obtain ⟨k, hk, h1, h2, h3⟩ := hsync.message x hx i m hsa' y hy j
       ⟨_, Compose.projAC_callAt.1 hcj⟩ (by rw [he]; exact hdl)
     refine ⟨k, hk, h1, ?_, ?_⟩
     · rcases h2 with ⟨ℓ', hc', hm'⟩ | ⟨ℓ', hc', e, he', hem⟩
@@ -315,10 +317,10 @@ theorem healthy_base_of_reset_catch_before {b : Time}
       rw [show tr.projAC.time (i' + 1) = tr.time (i' + 1) from rfl, hti]
       exact max_eq_left ((SA.le_gbar g).trans hi)
     rw [Compose.projAC_deadline] at hdl
-    obtain ⟨k, hk, hak, hkt⟩ := hp.sync.relay x hx i' B ha'
+    obtain ⟨k, hk, hak, hkt⟩ := hsync.relay x hx i' B ha'
       (by rw [hti]; exact (SA.le_gbar g).trans hi) y hy j
       ⟨_, Compose.projAC_callAt.1 hcj⟩ (by rw [hmax]; exact hdl)
-      (by rwa [Compose.frame_of_projAC hp.run hy hcj] at hanc)
+      (by rwa [Compose.frame_of_projAC hrun hy hcj] at hanc)
     obtain ⟨hak', htk, hnr⟩ := ac_block_after h hy hak
     have hkj : k < j := by
       rcases hk.lt_or_eq with hk | rfl
@@ -328,6 +330,14 @@ theorem healthy_base_of_reset_catch_before {b : Time}
     have htk' : tr.projAC.time (k + 1) = tr.time k := htk
     rw [Compose.projAC_deadline, htk', ← hmax]
     simpa only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] using hkt
+
+/-- Finite reset health supplies the AC base without extending awake obligations
+past the horizon. Synchrony and Catch retain their actual deadline semantics. -/
+theorem healthy_base_of_reset_catch_before {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : CatchRun tr H g (2 * sp.Δ)) :
+    SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b :=
+  healthy_base_of_service_catch_before hp.run hp.noColl hp.sync hp.awake hp.faults hc
 
 /-- An actual result within the healthy horizon has an actual earlier honest supporter. -/
 theorem ResetPremisesUpTo.result_supporter {b : Time}

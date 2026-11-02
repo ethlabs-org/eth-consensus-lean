@@ -873,7 +873,7 @@ private theorem proposal_no_optimistic (hrun : GoldilocksRun proposer dg H tr)
 of its slot before the proposal (`lock_origin`); a regular one of label at least `s` is written
 after `t_s`, an optimistic one has the slot of its time, at most `s`, and not `s`
 (`proposal_no_optimistic`). -/
-private theorem proposal_locks_slot_of (hrun : GoldilocksRun proposer dg H tr)
+theorem proposal_locks_slot_of (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
     {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}

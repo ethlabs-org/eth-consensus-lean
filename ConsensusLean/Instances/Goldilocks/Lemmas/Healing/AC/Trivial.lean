@@ -287,7 +287,7 @@ private theorem optimistic_pool_stamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t 
 
 /-- A vote of another slot that the state after an honest cast holds, it held at the read
 point, with its stamp. -/
-private theorem heldBefore_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem heldBefore_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {w : Vote sp.n} (hne : e.msg.slot ≠ w.slot) {T : Time}
     (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :

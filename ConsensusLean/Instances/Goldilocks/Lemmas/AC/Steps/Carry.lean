@@ -143,7 +143,7 @@ private theorem onTick_readPoint (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.
 
 /-- The read point of an honest vote has the block stamps of the state before its call, except
 for the block that an `on_block` call receives. -/
-private theorem readPoint_blockStamp (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem readPoint_blockStamp (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {r : Nat}
     (hrB : ∀ B, ℓ.call = .block B → r ≠ B.root) :
@@ -175,6 +175,31 @@ private theorem readPoint_blockStamp (hr : ACLocalRun (goldilocksSA sp FGP ro) H
     change e ∈ (acRestart sp ro y A ℓ.frame (tr.time i)).2 at he'
     rw [((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
     simp at he'
+
+/-- A block accepted before the freeze belongs to an honest vote's frozen domain,
+including genesis. -/
+theorem voterBlockTree_of_acceptedBefore (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksSA sp FGP ro)}
+    {e : Em sp FGP} (hc : CastAt tr y i ell e) {B : Blk sp.n FGP}
+    (hB : B ∈ ell.frame.tree) (hacc : AcceptedBefore tr y B (freeze sp e.msg.slot))
+    (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < freeze sp e.msg.slot)
+    (ht : freeze sp e.msg.slot ≤ tr.time i) :
+    B ∈ voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
+  have hPhiU : ell.frame.tree ⊆ U := by
+    rcases hr.frameLaw y hy i ell hc.1 with ⟨-, _, -, -, h⟩ | ⟨_, _, -, -, -, h⟩ <;>
+      exact h.1.2
+  have hstamp := blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hB hacc hrs (Or.inl ht)
+  refine ⟨hB, Or.inl ?_⟩
+  rw [readPoint_blockStamp hr hy hc ?_]
+  · exact hstamp
+  intro C hcall hroot
+  have hC := (accept_new sp hr hy ⟨ell, hc.1, hcall⟩).1 ell hc.1
+  have heq : C = B := hr.coherent.1 (hPhiU hC) (hPhiU hB) hroot.symm
+  subst C
+  rcases hacc with hg | ⟨k, hk, hkt⟩
+  · exact accept_ne_genesis sp hr hy ⟨ell, hc.1, hcall⟩ hg
+  · obtain rfl := accept_unique sp hr hy hk ⟨ell, hc.1, hcall⟩
+    exact (not_lt_of_ge ht) hkt
 
 /-- **A carried vote is a supporter.** A slot-`s` vote that an honest voter of slot `s + 1`
 holds, received before the vote freeze `t_s + 3Δ`, whose head (of slot at most `s`) extends a
