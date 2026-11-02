@@ -127,9 +127,10 @@ theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
 /-- OPEN (H1)+(H3) of `final_window_extract_of'` (CarrierProcessed.lean), route A (#136). One
 reset `a` with a bound `ΔR` such that (H1) the reset premises `ResetPremisesUpTo` hold through the
 horizon at GST `Q.gst`, with the run proposer and digest (Sol's M1′ reset), and (H3) the
-placement `(P)` holds with `u_min = finalSeedMin Q a` (the heal coefficient must be large
-enough). (H1) and (H3) are one leaf because (H3) depends on the reset `a` of (H1): two
-separate existentials would not give the same `a`. No producer is assumed. -/
+placement `(P)` holds with `u_min = finalSeedMin Q a = slot a + 2k + 5` (the heal coefficient must
+be large enough; #145 removed a time summand that made (H3) false for large GST). (H1) and (H3)
+are one leaf because (H3) depends on the reset `a` of (H1): two separate existentials would not
+give the same `a`. No producer is assumed. -/
 theorem final_reset_premises (Q : FinalQuery S A V) :
     ∃ ΔR a : Time,
       Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)

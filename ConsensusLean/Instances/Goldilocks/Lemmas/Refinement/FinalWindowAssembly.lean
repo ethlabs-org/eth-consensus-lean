@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowFieldsU
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalDutyProposal
 
 public section
 
@@ -37,10 +38,11 @@ open SA (gbar)
 
 variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
-/-- The least seed slot of a reset at `a`: past the drain `slot(a) + 2k + 5` and past
-`ḡ + 4Δ`. -/
+/-- The least seed slot of a reset at `a`: past the drain, `slot(a) + 2k + 5`. A slot count only
+(#145): `ḡ + 4Δ ≤ t_u` is not part of it, the assembly reads it off the first query, which is
+strictly after `ready ≥ ḡ + 18Δ + 1`. -/
 noncomputable abbrev finalSeedMin (Q : FinalQuery S A V) (a : Time) : Nat :=
-  Q.params.slot a + 2 * Q.params.k + 5 + (gbar Q.gst + 4 * Q.params.Δ).toNat
+  Q.params.slot a + 2 * Q.params.k + 5
 
 /-- The grid of the run's family. -/
 noncomputable abbrev finalGrid (Q : FinalQuery S A V) : TimeGrid :=
@@ -52,27 +54,14 @@ theorem finalGrid_slotTime (Q : FinalQuery S A V) (s : Nat) :
   change (s : Time) * (4 * (Q.run.1.Δ + 1)) = 4 * (Q.run.1.Δ + 1) * s
   ring
 
-/-- **Seed glue.** A slot `u ≥ finalSeedMin Q a` is after the drain of `a` and after
-`ḡ + 4Δ`. -/
+/-- **Seed glue.** A slot `u ≥ finalSeedMin Q a` is after the drain of `a`. -/
 theorem finalSeedMin_spec (Q : FinalQuery S A V) {a : Time} {u : Nat}
     (hu : finalSeedMin S A V Q a ≤ u) :
-    Healing.drainTime Q.params a ≤ Q.params.ts u ∧
-      gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts u := by
-  have hΔ : (0 : Time) < Q.params.Δ := Q.params.toParams.hΔ
-  have hΔ1 : (1 : Time) ≤ Q.params.Δ := hΔ
+    Healing.drainTime Q.params a ≤ Q.params.ts u := by
   have hk : Q.params.k = S.k := rfl
-  have hu' : Q.params.slot a + 2 * Q.params.k + 5 +
-      (gbar Q.gst + 4 * Q.params.Δ).toNat ≤ u := hu
-  refine ⟨?_, ?_⟩
-  · rw [Healing.drainTime_eq]
-    exact (SA.ts_le_iff Q.params).2 (by push_cast; omega)
-  have h1 : ((gbar Q.gst + 4 * Q.params.Δ).toNat : Time) ≤ (u : Time) := by
-    exact_mod_cast (Nat.le_add_left _ _).trans hu'
-  have h2 := Int.self_le_toNat (gbar Q.gst + 4 * Q.params.Δ)
-  have h0 : (0 : Time) ≤ (u : Time) := by positivity
-  have h4 : (u : Time) ≤ 4 * Q.params.Δ * u := by nlinarith
-  simp only [SA.SAParams.ts]
-  linarith
+  have hu' : Q.params.slot a + 2 * Q.params.k + 5 ≤ u := hu
+  rw [Healing.drainTime_eq]
+  exact (SA.ts_le_iff Q.params).2 (by push_cast; omega)
 
 /-- **Final-window extraction at a forwarding delay `ΔF`** (route A, gap `c = 2`). The
 statement of `final_window_extract`, with the shared HS premises `hs` at `ΔF` and the delivery
@@ -151,12 +140,23 @@ theorem final_window_extract_of_shared (Q : FinalQuery S A V) {ΔR a ΔF : Time}
   rw [max_eq_left (le_max_right _ _)] at hq
   have hstop : Q.query + ((⟨finalWindow S, Q.index⟩ : Recurrence).len : Time) * G.slotLen ≤
       Q.run.2.horizon := by rw [hlen]; linarith
-  obtain ⟨u, s₀, humin, hu0, hus, -, hdu, hs₀q, -, hspan, hds⟩ :=
+  obtain ⟨u, s₀, humin, hu0, hus, hut₁, -, hdu, hs₀q, -, hspan, hds⟩ :=
     two_query_placement (δt := S.δt) hrec (by simp [finalWindow_offsets]) hplace hq hstop hstop
   rw [hlen, finalWindow_span, finalGrid_slotTime] at hspan
   rw [finalGrid_slotTime] at hs₀q
   -- the time glue
-  obtain ⟨hRu, hgu⟩ := finalSeedMin_spec S A V Q humin
+  have hRu := finalSeedMin_spec S A V Q humin
+  have hgu : gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts u := by
+    have hc := final_catchUp_le_cDur S A V Q
+    have hready : gbar Q.gst + 4 * Q.params.Δ <
+        (Sys (family S) V).ready (K S A) Q.gst Q.run := by
+      change max Q.gst 0 + 4 * Q.params.Δ <
+        max Q.gst 0 + (Sys (family S) V).cDur (K S A) Q.run + 1
+      simp only [Regimes.catchUp] at hc
+      linarith
+    have h1 := ((le_max_left _ _).trans (le_max_left _ _)).trans_lt hut₁
+    rw [finalGrid_slotTime] at h1
+    linarith
   have hus' : u + Q.params.toParams.fg.δt ≤ s₀ := hus
   have hts : ∀ m n : Nat, m ≤ n → Q.params.ts m ≤ Q.params.ts n := fun m n h =>
     (SA.ts_le_iff Q.params).2 (by exact_mod_cast h)

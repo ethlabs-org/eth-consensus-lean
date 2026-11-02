@@ -40,9 +40,10 @@ theorem query_one_fit (G : TimeGrid) (ρ : Recurrence) {δt : Nat} {t₁ q : Tim
   nlinarith
 
 /-- **Two-query placement.** Query 1 at `t₁ = max(max start 0, slotTime(u_min) − 1)` gives a seed
-slot `u ≥ u_min`, `0 < u`, with its offset-0 duty; query 2 at `q ≥ max start 0` gives the window
-start `s₀` with all its duties. Under `(P)`, `u + δt ≤ s₀`; the window's pattern ends by
-`q + len·slotLen`. Only the fit of query 2 is assumed (`query_one_fit`). -/
+slot `u ≥ u_min`, `0 < u`, strictly after `t₁` (`t₁ < slotTime u`), with its offset-0 duty; query 2
+at `q ≥ max start 0` gives the window start `s₀` with all its duties. Under `(P)`, `u + δt ≤ s₀`;
+the window's pattern ends by `q + len·slotLen`. Only the fit of query 2 is assumed
+(`query_one_fit`). -/
 theorem two_query_placement {p : EnvPoint V} {key : Fin (Fintype.card V) ≃ V}
     {sel : Slot → Finset (Fin (Fintype.card V))} {G : TimeGrid} {ρ : Recurrence}
     {c start stop : Time} (hrec : PatternRecurrence p key sel G ρ c start stop)
@@ -52,6 +53,7 @@ theorem two_query_placement {p : EnvPoint V} {key : Fin (Fintype.card V) ≃ V}
     (hq : max start 0 ≤ q) (hstop : q + (ρ.len : Time) * G.slotLen ≤ stop)
     (hhor : q + (ρ.len : Time) * G.slotLen ≤ p.horizon) :
     ∃ u s₀ : Slot, u_min ≤ u ∧ 0 < u ∧ u + δt ≤ s₀ ∧
+      max (max start 0) (G.slotTime u_min - 1) < G.slotTime u ∧
       G.slotTime u ≤ max (max start 0) (G.slotTime u_min - 1) +
         ((ρ.gap : Nat) : Time) * G.slotLen ∧
       HonestReadyIn p key sel u c (G.slotTime u) ∧
@@ -86,7 +88,7 @@ theorem two_query_placement {p : EnvPoint V} {key : Fin (Fintype.card V) ≃ V}
     unfold Recurrence.len
     push_cast at hs2 ⊢
     nlinarith
-  exact ⟨u, s₀, hmin, hpos, hsep, hu2, hdu 0 h0, hs1, hs2, hspan, hds⟩
+  exact ⟨u, s₀, hmin, hpos, hsep, hu1, hu2, hdu 0 h0, hs1, hs2, hspan, hds⟩
 
 end Consensus.Goldilocks.Refinement
 
