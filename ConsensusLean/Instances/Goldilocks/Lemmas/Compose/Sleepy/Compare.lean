@@ -724,6 +724,44 @@ theorem awake_participant_window_before (hrun : GoldilocksRun proposer dg H tr)
   · exact ⟨e.msg, h, hval⟩
   · exact ⟨a, ha, hav.trans hval⟩
 
+/-- `awake_participant_before` when the update itself is after `b`: the votes are due by
+`t_s + 2Δ ≤ b`, so only the early cutoff needs to be within the service horizon. -/
+theorem awake_participant_early (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {s : Nat} {b : Time}
+    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hb : sp.ts s + 2 * sp.Δ ≤ b)
+    {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
+    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
+    {y : Fin sp.n} (hy : y ∈ H)
+    (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
+    y ∈ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hw hj
+  obtain ⟨hval, hsl', -, -⟩ := SA.castAt_spec hr hy ⟨hc, he⟩
+  have hsk : sp.ts s ≤ tr.projAC.time k :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
+  have ht : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
+  change tr.time k ≤ sp.ts s + sp.Δ at hk
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hkb : tr.projAC.time k + sp.Δ ≤ b := by
+    change tr.time k + sp.Δ ≤ b
+    linarith
+  have hki : tr.projAC.time k + sp.Δ ≤ tr.projAC.time i₀ := by
+    change tr.time k + sp.Δ ≤ tr.time i₀
+    linarith
+  have := SA.sync_window_before_forward hr ⟨hsync.message, hsync.relay⟩ hy
+    ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩ ((ts_nonneg s).trans hsk) hkb hX hu.1
+    (fun k' hk' hr' => (SA.update_restarts hr hX hu k' hk' hr').trans hsk) hki
+    fun t h₁ h₂ => by
+      change t < tr.time k + sp.Δ at h₂
+      have : sp.slot t = s := SA.slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith)
+      omega
+  rw [hes] at this
+  rcases this with h | ⟨a, ha, -, -, -, hav, -⟩
+  · exact ⟨e.msg, h, hval⟩
+  · exact ⟨a, ha, hav.trans hval⟩
+
 /-- The zero-source finite participant theorem retains its original interface. -/
 theorem awake_participant_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {s : Nat} {b : Time}

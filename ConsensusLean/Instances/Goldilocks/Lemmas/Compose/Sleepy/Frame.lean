@@ -291,7 +291,8 @@ private theorem held_σ_eq (hrun : GoldilocksRun proposer dg H tr)
   rw [← store_eq hrun hz j] at hBz ⊢
   exact Store.σ_eq_of_held (projFG_localRun hrun hnc) hy hz hBy hBz
 
-private theorem held_entry_unique (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+/-- Two entries of one state height below one held block are equal. -/
+theorem held_entry_unique (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {E E' W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y i).fg.tree)
     (hE : (tr.state y i).fg.Anc E W) (hE' : (tr.state y i).fg.Anc E' W)
@@ -675,6 +676,27 @@ theorem justified_honest_source_before (hrun : GoldilocksRun proposer dg H tr)
       ((tr.state y i).fg.σ (tr.state y i).fg.J.root).Th = (tr.state y i).fg.J.root ∧
       ∃ D, G D ∧ IsHonestSource tr H D (tr.state y i).fg.J.root :=
   justified_honest_source_of hrun hnc hf hy (hsrc.above _) hj
+
+/-- `frame_crossing_source` with the numerical fault bound in place of `Sleepy`. -/
+theorem frame_crossing_source_before (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourced tr H G y i)
+    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state y i).fg.tree) {j : Nat}
+    (hj1 : 1 ≤ j) (hj2 : j < ((tr.state y i).fg.σ W.root).h) :
+    ∃ E ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc E W ∧
+      ((tr.state y i).fg.σ E.root).h = j ∧ ((tr.state y i).fg.σ E.root).Th = E.root ∧
+      ∃ D, G D ∧ IsHonestSource tr H D E.root :=
+  frame_crossing_source_of hrun hnc hf hy (hsrc.above 0) hW (Nat.zero_le j) hj1 hj2
+
+/-- **`Σ.J` is compatible with a block compatible with every source satisfying `G`**, with the
+numerical fault bound; no pairwise premise on the sources. -/
+theorem J_compatible_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourced tr H G y i)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B) (hB : B ∈ tr.HonestBlocks H) :
+    Compatible (tr.HonestBlocks H) (tr.state y i).fg.J B :=
+  J_compatible hrun hnc hf hy (hsrc.above _) hGB hB
 
 include hrun hnc hsl hy in
 /-- **The justification has an honest source**: at `h_j ≥ 1`, `Σ.J` is an entry block of height

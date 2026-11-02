@@ -293,6 +293,15 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalSuppl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OperationalPersistence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageArming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageArmingSteps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Candidate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Count
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Locks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Prot
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Reader
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Record
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Sources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageRead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox

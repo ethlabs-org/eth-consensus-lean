@@ -48,7 +48,7 @@ private theorem updateLatestConfirmed_locks (A : SAState sp.n) (Φ : Frm sp.n FG
 /-- The counted votes of an honest fast lock of slot `s` on `B`: their validators are at least
 half of the committee, and each is a slot-`s` vote whose head, of slot at most `s`, extends `B`
 inside `U`. -/
-private theorem fastLock_counted (hrun : ACRun proposer tr H U)
+theorem fastLock_counted (hrun : ACRun proposer tr H U)
     {w : Fin sp.n} (hw : w ∈ H) {i₀ s : Nat}
     {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr w i₀ s B CV) :
     sp.n ≤ 2 * {u | ∃ v ∈ CV, v.val = u}.ncard ∧
