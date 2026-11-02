@@ -27,9 +27,10 @@ RATINGS = {
     'accepted_latency_ge_sleepy': ('paper-partial', LEAD, 'Settled coefficient audit: 8idx+12 is a verified constraint, not a jointly admissible selected witness.'),
     'final_window_extract': ('paper-partial', LEAD, 'Settled final-liveness audit: four-anchor combinatorics known; actual ready accepted chain, recurrence and endpoint carrier budget remain.'),
     # Route-A split of final_window_extract (#136): its body is final_window_extract_of'
-    # from these two open leaves; the rating is inherited from final_window_extract.
+    # from these two leaves (final_duty_proposal has a proved body); the rating is inherited
+    # from final_window_extract.
     'final_reset_premises': ('paper-partial', ROUTE_A, "Open (H1)+(H3) of final_window_extract_of': (H1) reset premises through the horizon at Q.gst = Sol's M1′ reset; (H3) placement with u_min = finalSeedMin Q a = the heal coefficient. One leaf: (H3) depends on the reset a of (H1). Owners: Sol (H1), coefficients (H3)."),
-    'final_duty_proposal': ('paper-partial', ROUTE_A, "Open (H2) of final_window_extract_of': duty → proposal adapter (HonestReadyIn at slot s gives HonestProposalRun at s). Owner: Kev."),
+    'final_duty_proposal': ('paper-partial', ROUTE_A, "(H2) of final_window_extract_of': duty → proposal adapter, bounded by 0 < s and ts s ≤ horizon; body proved by final_duty_proposal_run (FinalDutyProposal.lean, #143). Owner: Kev."),
     # Historical rating; the declaration is retired by route A (#141), see RETIRED.
     'final_inherited_progress': ('paper-open (research)', LEAD, 'Settled final-liveness audit: arbitrary dirty inherited permissions/held or credited rows must yield same-entry progress without a birth lower bound.'),
     'final_row_supply': ('paper-open (research)', LEAD, 'Research refinement: high same-entry/high-predecessor row algebra is proved conditionally; report_cover, inherited/low entries and carrier credit/acceptance remain. entry-rows-exact §§2,4–6.'),
@@ -336,6 +337,13 @@ def main : IO Unit := do
                                    'K S A = acceptanceContract A (accepted_coefficients S A). '
                                    'The query and Sleepy premise types include the sorry definition; '
                                    'this is not a direct sorry in the proof body.')
+        if short == 'final_duty_proposal' and name not in owners and dependencies == [
+                'Consensus.Goldilocks.Refinement.accepted_heal']:
+            row['status'] = 'unknown'
+            row['status-source'] = 'compiled dependency audit'
+            row['evidence'] = ('Body proved by final_duty_proposal_run (#143); full closure depends on '
+                               'accepted_heal only through the FinalQuery type (K S A). '
+                               'Not a direct sorry in the proof body.')
         comparison = {k: v for k, v in row.items() if k not in ('last-changed', 'file:line')}
         if comparison == {k: v for k, v in prior.items() if k not in ('last-changed', 'file:line')}:
             row['last-changed'] = prior['last-changed']

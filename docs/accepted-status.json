@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_commit": "f9138fd9497d344660671244099a22c8e338205d",
+  "audit_commit": "61dff10e5ca35240eb52c263374f654f4fecf4e6",
   "baseline_commit": "fd7f498a15bf9e9e694102ffaeb8de6b33067052",
   "generated_on": "2026-11-02",
   "notes": [
@@ -27,7 +27,7 @@
     "Consensus.Goldilocks.Refinement.accepted_child_decodes": [],
     "Consensus.Goldilocks.Refinement.accepted_claims": [
       "Consensus.Goldilocks.Refinement.accepted_heal",
-      "Consensus.Goldilocks.Refinement.final_window_extract",
+      "Consensus.Goldilocks.Refinement.final_reset_premises",
       "Consensus.Goldilocks.Refinement.healthy_confirmed_supply",
       "Consensus.Goldilocks.Refinement.healthy_old_inventory_initialize",
       "Consensus.Goldilocks.Refinement.healthy_repair_schedule",
@@ -56,16 +56,17 @@
     ],
     "Consensus.Goldilocks.Refinement.accepted_healthyLive": [
       "Consensus.Goldilocks.Refinement.accepted_heal",
-      "Consensus.Goldilocks.Refinement.final_window_extract",
+      "Consensus.Goldilocks.Refinement.final_reset_premises",
       "Consensus.Goldilocks.Refinement.healthy_confirmed_supply"
     ],
     "Consensus.Goldilocks.Refinement.accepted_healthyLive_final": [
       "Consensus.Goldilocks.Refinement.accepted_heal",
-      "Consensus.Goldilocks.Refinement.final_window_extract"
+      "Consensus.Goldilocks.Refinement.final_reset_premises"
     ],
     "Consensus.Goldilocks.Refinement.accepted_in_view": [],
     "Consensus.Goldilocks.Refinement.accepted_latency": [],
     "Consensus.Goldilocks.Refinement.accepted_latency_available": [],
+    "Consensus.Goldilocks.Refinement.accepted_latency_final": [],
     "Consensus.Goldilocks.Refinement.accepted_latency_ge_sleepy": [],
     "Consensus.Goldilocks.Refinement.accepted_latency_stable": [],
     "Consensus.Goldilocks.Refinement.accepted_nested": [],
@@ -374,7 +375,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_cache_acceptance",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:374",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:322",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "paper-partial",
@@ -394,8 +395,28 @@
       "adversarial-pass-done": "y"
     },
     {
-      "name": "Consensus.Goldilocks.Refinement.final_window_extract",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:221",
+      "name": "Consensus.Goldilocks.Refinement.final_duty_proposal",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:147",
+      "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
+      "area": "final liveness",
+      "status": "unknown",
+      "blocked-by": [
+        "Consensus.Goldilocks.Refinement.accepted_heal"
+      ],
+      "in_accepted_closure": true,
+      "direct_sorry": false,
+      "lean-status": "sorry-dependent",
+      "status-source": "compiled dependency audit",
+      "last-changed": "2026-11-02",
+      "evidence": "Body proved by final_duty_proposal_run (#143); full closure depends on accepted_heal only through the FinalQuery type (K S A). Not a direct sorry in the proof body.",
+      "card-path": null,
+      "card-repo": null,
+      "derisk-verdict": "none yet",
+      "adversarial-pass-done": "n"
+    },
+    {
+      "name": "Consensus.Goldilocks.Refinement.final_reset_premises",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:133",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "paper-partial",
@@ -405,8 +426,29 @@
       "in_accepted_closure": true,
       "direct_sorry": true,
       "lean-status": "direct-sorry",
+      "status-source": "https://github.com/ethlabs-org/consensus-lean/issues/136",
+      "last-changed": "2026-11-02",
+      "evidence": "Open (H1)+(H3) of final_window_extract_of': (H1) reset premises through the horizon at Q.gst = Sol's M1\u2032 reset; (H3) placement with u_min = finalSeedMin Q a = the heal coefficient. One leaf: (H3) depends on the reset a of (H1). Owners: Sol (H1), coefficients (H3).",
+      "card-path": null,
+      "card-repo": null,
+      "derisk-verdict": "none yet",
+      "adversarial-pass-done": "n"
+    },
+    {
+      "name": "Consensus.Goldilocks.Refinement.final_window_extract",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:163",
+      "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
+      "area": "final liveness",
+      "status": "paper-partial",
+      "blocked-by": [
+        "Consensus.Goldilocks.Refinement.accepted_heal",
+        "Consensus.Goldilocks.Refinement.final_reset_premises"
+      ],
+      "in_accepted_closure": true,
+      "direct_sorry": false,
+      "lean-status": "sorry-dependent",
       "status-source": "https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27",
-      "last-changed": "2026-11-01",
+      "last-changed": "2026-11-02",
       "evidence": "Settled final-liveness audit: four-anchor combinatorics known; actual ready accepted chain, recurrence and endpoint carrier budget remain.",
       "card-commit": "a41ab99769fa6221983682c3584aef97c7cf5daa",
       "card-path": "repos/consensus-lean/notes/cards/final_window_extract.md",
