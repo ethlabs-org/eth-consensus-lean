@@ -264,6 +264,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC4
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedClientUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedUpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyConfirmedSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordWriters
