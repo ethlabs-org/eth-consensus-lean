@@ -214,6 +214,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifie
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalSignedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.RegularBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention

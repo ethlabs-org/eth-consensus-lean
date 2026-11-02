@@ -118,6 +118,37 @@ theorem slow_stored_locks (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (h
     · exact (result_optimistic_compatible hS hx hR hy hO hjr).symm
   exact compat_of_below hU hLO hDR hcomp
 
+/-- Saved-result comparison on a finite service prefix. The selected slow lock
+and each receiver origin keep their actual observation cutoffs. -/
+theorem slow_stored_locks_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g b)
+    (hnr : ∀ y ∈ H, ∀ r, tr.RestartAt y r → tr.time r ≤ gbar g)
+    {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat} {D : Blk sp.n FGP}
+    (hsl : SlowLockAt tr x i₀ s D) (hi₀ : tr.time i₀ ≤ b)
+    (hs : gbar g ≤ sp.ts ((s : Int) - sp.k + 1))
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    (hi : s + 1 ≤ sp.slot (tr.time i)) (hib : tr.time i ≤ b) :
+    ∀ l ∈ (tr.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
+      ∀ Y ∈ U, Y.root = l.block → Compatible U Y D := by
+  have hr := hS.run.localRun
+  intro l hl hlive hle Y hY hYr
+  obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := lock_below_origin hr hy i l hl
+  obtain rfl : Y = L := hr.coherent.1 hY hL (hYr.trans hLr.symm)
+  obtain ⟨kx, R, CVx, hR, hDR⟩ := slow_window_results hr hx hsl (U := U) l.slot (by omega) hle
+  have hjr : gbar g ≤ sp.ts l.slot := hs.trans ((ts_le_iff sp).2 (by omega))
+  have hRb : tr.time kx ≤ b := by
+    obtain ⟨ell, hu, -, -⟩ := hR
+    obtain ⟨ell₀, _, hu₀, -, -, -, -⟩ := hsl
+    have hts : sp.ts l.slot ≤ sp.ts s := (ts_le_iff sp).2 (by exact_mod_cast hle)
+    linarith [hu.2.2.1, hu₀.2.2.1]
+  have hkb : tr.time k ≤ b := (hr.time_mono hki.le).trans hib
+  have hcomp : Compatible U O R := by
+    rcases hO with hO | hO
+    · exact result_result_compatible_window_before hS.run hS.sync hjr hy hx hO hR hkb hRb
+        (fun z hz r _ hrs => (hnr z hz r hrs).trans hjr)
+    · exact (result_optimistic_compatible_window_before hS.run hS.sync hjr hx hy hR hO hRb hkb
+        (fun r _ hrs => (hnr x hx r hrs).trans hjr)).symm
+  exact compat_of_below hr.coherent hLO hDR hcomp
+
 /-- **T1 §4, the live locks at a vote after a slow origin.** -/
 theorem slow_live_locks (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
