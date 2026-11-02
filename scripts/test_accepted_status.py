@@ -16,7 +16,7 @@ class StatusTests(unittest.TestCase):
     def test_sleepy_regeneration_distinguishes_body_and_type_dependency(self):
         prefix = 'Consensus.Goldilocks.Refinement.'
         names = ['accepted_heal', 'sleepy_query_sync', 'sleepy_safety_inputs',
-                 'simTrace_vote_forwarded']
+                 'simTrace_vote_forwarded', 'final_duty_proposal']
         source = 'namespace ' + prefix[:-1] + '\n' + '\n'.join(
             'theorem ' + n + ' : True := by ' +
             ('sorry' if n == 'accepted_heal' else 'trivial') for n in names)
@@ -26,7 +26,8 @@ class StatusTests(unittest.TestCase):
                        ('accepted_heal', ['sorryAx']),
                        ('sleepy_query_sync', [prefix + 'accepted_heal']),
                        ('sleepy_safety_inputs', [prefix + 'accepted_heal']),
-                       ('simTrace_vote_forwarded', [])]]
+                       ('simTrace_vote_forwarded', []),
+                       ('final_duty_proposal', [prefix + 'accepted_heal'])]]
 
         def run(*args):
             if args[:2] == ('git', 'rev-parse'):
@@ -71,6 +72,13 @@ class StatusTests(unittest.TestCase):
                     self.assertNotIn('obstruction', r)
                     self.assertEqual(r['derisk-verdict'], 'complete')
                 self.assertEqual(rows[prefix + names[3]]['status'], 'lean-proved')
+                duty = rows[prefix + 'final_duty_proposal']
+                self.assertFalse(duty['direct_sorry'])
+                self.assertEqual(duty['lean-status'], 'sorry-dependent')
+                self.assertEqual(duty['status'], 'unknown')
+                self.assertEqual(duty['status-source'], 'compiled dependency audit')
+                self.assertIn('final_duty_proposal_run', duty['evidence'])
+                self.assertIn('K S A', duty['evidence'])
                 self.assertTrue(rows[prefix + names[0]]['direct_sorry'])
             finally:
                 os.chdir(cwd)
