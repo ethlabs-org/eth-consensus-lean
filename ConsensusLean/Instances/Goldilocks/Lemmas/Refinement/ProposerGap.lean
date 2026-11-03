@@ -83,7 +83,14 @@ variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type) [Fintype V] [Decid
 /-- The run catch-up duration covers the protocol catch-up `18 Δp`. -/
 theorem catchUp_le_cDur (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.card V) :
     Regimes.catchUp (S.params (Model.pubOf run.1) hn) ≤ (Sys (family S) V).cDur (K S A) run := by
-  sorry
+  have hd : (1 : Time) ≤ run.1.Δ := run.1.Δ_pos
+  have hc : (37 : Time) ≤ ((K S A).params.catchUp : Time) := by
+    rw [acceptanceContract_params_eq]
+    change (37 : Time) ≤ ((accepted_coefficients S A).catchUp : Nat)
+    rw [accepted_coefficients_catchUp]
+    exact_mod_cast accepted_catchUp_ge_sleepy S A
+  change 18 * run.1.Δ ≤ ((K S A).params.catchUp : Time) * run.1.Δ
+  nlinarith
 
 /-- **Duty to actual proposal, run level.** In a valid, collision-free run, an honest-ready
 proposer duty at a slot `s > 0` with `t_s ≤ horizon` gives the run proposer's actual proposal `P`
@@ -103,7 +110,41 @@ theorem duty_proposal_run (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.car
       Regimes.ReadyAt (simTrace S run.2 hn) (honestKeys S run.2)
         ((Sys (family S) V).cDur (K S A) run)
         (runProposer S run.2 hn s) ((S.params (Model.pubOf run.1) hn).ts s) := by
-  sorry
+  have htime : (family S (Model.pubOf run.1)).skel.grid.slotTime s =
+      (S.params (Model.pubOf run.1) hn).ts s := by
+    change (s : Time) * (4 * run.1.Δ) = 4 * run.1.Δ * s
+    ring
+  have hmem : runProposer S run.2 hn s ∈ run.2.sel (.proposer s) := by
+    simp only [runProposer, dite_eq_left hduty.1]
+    exact Finset.min'_mem _ _
+  have hR := hduty.2 _ hmem
+  rw [htime] at hR
+  have h0 : (0 : Time) ≤ (S.params (Model.pubOf run.1) hn).ts s := by
+    have := (S.params (Model.pubOf run.1) hn).toParams.hΔ
+    simp only [SA.SAParams.ts]; positivity
+  have hnode := ready_transport S run.2 hn hv h0 hth hR
+  rw [show run.2.ownKey (run.2.key (runProposer S run.2 hn s)) =
+    runProposer S run.2 hn s from run.2.key.symm_apply_apply _] at hnode
+  have hshort : Regimes.ReadyAt (simTrace S run.2 hn) (honestKeys S run.2)
+      (Regimes.catchUp (S.params (Model.pubOf run.1) hn))
+      (runProposer S run.2 hn s) ((S.params (Model.pubOf run.1) hn).ts s) := by
+    refine ⟨hnode.1, fun t ht hts => hnode.2 t ?_ hts⟩
+    apply le_trans _ ht
+    apply max_le_max_left
+    have := catchUp_le_cDur S A V run hn
+    linarith
+  have hrun := simTrace_goldilocksRun S run.2 hn hv
+  have hnc' := noCollTransport V S run.1 run.2 hn hv hnc
+  obtain ⟨k, P, hP, ht⟩ := Regimes.ready_proposer_proposes hrun hnc' hs hshort
+  have hlabel : P.slot = s := by
+    have := hP.2.2
+    rw [ht, (S.params (Model.pubOf run.1) hn).slotTime_eq] at this
+    have he : (P.slot : Time) = (s : Time) := by
+      simp only [SA.SAParams.ts] at this
+      nlinarith [(S.params (Model.pubOf run.1) hn).toParams.hΔ]
+    exact_mod_cast he
+  refine ⟨k, P, Healing.honestProposalRun_of_proposesAt hrun hnc' hnode.1 rfl hP hlabel, hP,
+    Compose.proposal_accepted hrun hnc' hnode.1 hP, ht, hlabel, hnode⟩
 
 end Consensus.Goldilocks.Refinement
 

@@ -79,7 +79,7 @@ theorem hsSharedUpTo_of_rows (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.
 
 /-- The protocol row delay is positive. -/
 theorem rowDelay_pos (pub : Model.Public) : 0 < rowDelay pub := by
-  sorry
+  exact pub.ΔF_pos
 
 /-- **The row transport of a healthy run of `K S A`**: the healthy regime bounds the engine row
 delay by the assumptions' row ratio, `ΔF ≤ r·Δ`, so the protocol delays satisfy

@@ -204,7 +204,40 @@ theorem healthy_repair_schedule_of_reset
       D.resetTime = a ∧ D.deltaF = ΔF ∧
       D.query = max Q.ready (Healing.drainTime Q.params a) ∧
       D.oldLabel = Q.params.slot a + 2 * Q.params.k + 4 := by
-  sorry
+  have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+    exact_mod_cast accepted_catchUp_ge_sleepy S A
+  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hduration : 18 * Q.params.Δ + 1 ≤ (Sys (family S) V).cDur (K S A) Q.run := by
+    simp only [System.cDur, Params.standard, accepted_coefficients_catchUp]
+    change 18 * Q.run.1.Δ + 1 ≤ (accepted_catchUp S A : Nat) * Q.run.1.Δ
+    nlinarith
+  have hΔ := Q.params.toParams.hΔ
+  have hready : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.ready := by
+    change max Q.gst 0 + 4 * Q.params.Δ ≤
+      max Q.gst 0 + (Sys (family S) V).cDur (K S A) Q.run + 1
+    linarith
+  have hzero : 0 ≤ Q.ready := by
+    change 0 ≤ max Q.gst 0 + (Sys (family S) V).cDur (K S A) Q.run + 1
+    linarith [le_max_right Q.gst 0]
+  have hold : Q.params.ts (Q.params.slot a + 2 * Q.params.k + 4 : Nat) ≤
+      Healing.drainTime Q.params a := by
+    rw [Healing.drainTime_eq]
+    exact (SA.ts_le_iff Q.params).mpr (by omega)
+  refine ⟨{
+    resetTime := a
+    deltaF := ΔF
+    reset := hreset
+    cleanLabel := Healing.cleanLabel Q.params a
+    cleanLabel_eq := rfl
+    duration_bound := by linarith
+    oldLabel := Q.params.slot a + 2 * Q.params.k + 4
+    old_bound := by rw [Healing.cleanLabel_eq]; omega
+    query := max Q.ready (Healing.drainTime Q.params a)
+    lower := ?_
+    reserve := hreserve }, rfl, rfl, rfl, rfl⟩
+  exact max_le (le_max_left _ _) (max_le (le_max_right _ _)
+    (max_le (hold.trans (le_max_right _ _))
+      (max_le (hready.trans (le_max_left _ _)) (hzero.trans (le_max_left _ _)))))
 
 /-- A preparation schedule for the same query supplies a repair schedule with
 the very same reset time, service delay and query, without a base-slot comparison. -/
@@ -609,7 +642,70 @@ set_option linter.unusedSectionVars false in
 operational selection then repair every ready receiver without read geometry. -/
 theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
     ∃ O : HealthyRepairOpening S A V Q D, HealthyReceiverRepair S A V Q D O := by
-  sorry
+  classical
+  have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
+  have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
+      (fun s => Q.run.2.sel (.proposer s)) (family S (Model.pubOf Q.run.1)).skel.grid
+      ⟨Pattern.single, Q.index⟩ ((Sys (family S) V).cDur (K S A) Q.run)
+      Q.ready Q.heal := by
+    simpa only [System.prog, shapeProgress, shapeHolds, acceptanceContract, ite_eq_right hcap,
+      Model.sysExternal, System.cDur, System.pt, Sys, Model.sysOf, Model.Run.point] using hp
+  have hq0 : 0 ≤ D.query := (le_max_right _ _).trans ((le_max_right _ _).trans
+    ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower)))
+  have hq : max Q.ready 0 ≤ D.query := max_le ((le_max_left _ _).trans D.lower) hq0
+  have hd := Q.params.toParams.hΔ
+  have hwin : D.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.heal := by
+    nlinarith [D.reserve]
+  obtain ⟨s, hlo, hhi, hr⟩ := hrec D.query hq
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton] using hwin)
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton,
+      Model.Run.point] using hwin.trans hb)
+  have htime : (family S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
+    change (s : Time) * (4 * Q.run.1.Δ) = 4 * Q.run.1.Δ * s
+    ring
+  rw [htime] at hlo hhi
+  have hbound : Q.params.ts s ≤ D.query + 4 * (Q.index : Time) * Q.params.Δ := by
+    change Q.params.ts s ≤ D.query + (Q.index : Time) * (4 * Q.params.Δ) at hhi
+    nlinarith
+  have hsb : Q.params.ts s ≤ Q.run.2.horizon := by nlinarith [D.reserve]
+  have hready := hr 0 (by simp [Pattern.single])
+  simp only [Nat.add_zero] at hready
+  have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
+    simp only [runProposer, dite_eq_left hready.1]
+    exact Finset.min'_mem _ _
+  have hR := hready.2 _ hmem
+  rw [htime] at hR
+  have hnode := ready_transport S Q.run.2 Q.hn Q.valid (hq0.trans hlo.le) hsb hR
+  rw [show Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn s)) =
+    runProposer S Q.run.2 Q.hn s from Q.run.2.key.symm_apply_apply _] at hnode
+  have hold : D.oldLabel < s := by
+    exact_mod_cast (SA.ts_lt_iff Q.params).mp
+      (lt_of_le_of_lt ((le_max_left _ _).trans ((le_max_right _ _).trans
+        ((le_max_right _ _).trans D.lower))) hlo)
+  have hshort : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) (Regimes.catchUp Q.params)
+      (runProposer S Q.run.2 Q.hn s) (Q.params.ts s) := by
+    refine ⟨hnode.1, fun t ht hts => hnode.2 t ?_ hts⟩
+    apply le_trans _ ht
+    apply max_le_max_left
+    have : Regimes.catchUp Q.params ≤ (Sys (family S) V).cDur (K S A) Q.run := by
+      simpa only [Regimes.catchUp] using D.duration_bound
+    linarith
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hnc := noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision
+  obtain ⟨k, P, hP, ht⟩ := Regimes.ready_proposer_proposes hrun hnc (s := s)
+    (Nat.zero_le D.oldLabel |>.trans_lt hold) hshort
+  have hlabel : P.slot = s := by
+    have := hP.2.2
+    rw [ht] at this
+    rw [Q.params.slotTime_eq] at this
+    have he : (P.slot : Time) = (s : Time) := by
+      simp only [SA.SAParams.ts] at this
+      nlinarith
+    exact_mod_cast he
+  let O : HealthyRepairOpening S A V Q D :=
+    ⟨s, k, P, hlo, hbound, hold, hlabel, hP, Compose.proposal_accepted hrun hnc hnode.1 hP,
+      ht, hnode⟩
+  exact ⟨O, healthy_receiver_repair_of_opening S A V Q hb D O (healthy_repair_catch S A V Q)⟩
 
 /-- Current anchor candidates are compatible with the current looked-up record. -/
 theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)

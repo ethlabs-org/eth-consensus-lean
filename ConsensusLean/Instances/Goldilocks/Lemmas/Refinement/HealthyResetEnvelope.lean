@@ -128,13 +128,30 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
   linarith
 
 /-- **The window fit before heal** (S6): `ready + R·Δ + r ≤ heal` at every query, from the
-coefficient inequality `accepted_heal_ge_reset` alone. With engine delay `d ≥ 1`, `Δ = d + 1`,
+coefficient inequality `accepted_heal_ge_reset` alone. With engine delay `d ≥ 1`, `Δ = d`,
 `ready = g₀ + C·d + 1` and `heal = g₀ + H·d`, `H ≥ C + 2R + r + 3` gives
-`heal − ready − R·Δ − r ≥ (R + r)(d − 1) + 3d − 1 ≥ 0`. -/
+`heal − ready − R·Δ − r ≥ R·d + r(d − 1) + 3d − 1 ≥ 0`. -/
 theorem healthy_reset_fit (Q : HealthyPreparationQuery S A V) :
     Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
       (healthyResetSlack S Q.index : Time) ≤ Q.heal := by
-  sorry
+  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hready : Q.ready = max Q.gst 0 + ((accepted_catchUp S A : Nat) : Time) * Q.run.1.Δ + 1 := by
+    change max Q.gst 0 + (((accepted_coefficients S A).catchUp : Nat) : Time) * Q.run.1.Δ + 1 = _
+    rw [accepted_coefficients_catchUp]
+  have hheal : Q.heal = max Q.gst 0 + (accepted_heal S A Q.cap Q.index : Time) * Q.run.1.Δ := by
+    change max Q.gst 0 + ((accepted_coefficients S A).heal Q.cap Q.index : Time) * Q.run.1.Δ = _
+    rw [accepted_coefficients_heal]
+  have hΔ : Q.params.Δ = Q.run.1.Δ := rfl
+  have hH : ((accepted_catchUp S A : Nat) : Time) + 2 * (healthyResetCoeff S Q.index : Time) +
+      (healthyResetSlack S Q.index : Time) + 3 ≤ (accepted_heal S A Q.cap Q.index : Time) := by
+    have := accepted_heal_ge_reset S A Q.cap Q.index
+    exact_mod_cast (show _ ≤ _ by omega)
+  have hR0 : (0 : Time) ≤ healthyResetCoeff S Q.index := Nat.cast_nonneg _
+  have hr0 : (0 : Time) ≤ healthyResetSlack S Q.index := Nat.cast_nonneg _
+  rw [hready, hheal, hΔ]
+  nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.Δ),
+    mul_nonneg hR0 (by linarith : (0 : Time) ≤ Q.run.1.Δ - 1),
+    mul_nonneg hr0 (by linarith : (0 : Time) ≤ Q.run.1.Δ - 1)]
 
 /-- **The reset envelope (E) from the drain.** `healthy_reset_envelope_of_fit` with the window fit
 `healthy_reset_fit`: the drain at `healthyDrainLen` is the only remaining input. -/
@@ -189,7 +206,86 @@ theorem healthy_preparation_initialize (Q : HealthyPreparationQuery S A V)
     (hp : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
     ∃ W : HealthyBaseTiming S A V Q, Nonempty (HealthyPreparationSchedule S A V Q W) := by
-  sorry
+  obtain ⟨ΔF, a, hreset, ha⟩ := healthy_reset_envelope S A V Q hb hp
+  obtain ⟨v, r, l, O, hO, hra, hla⟩ := hreset.reset_seed
+  -- the scalars
+  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hΔ : Q.params.Δ = Q.run.1.Δ := rfl
+  have hready : Q.ready = max Q.gst 0 + ((accepted_catchUp S A : Nat) : Time) * Q.run.1.Δ + 1 := by
+    change max Q.gst 0 + (((accepted_coefficients S A).catchUp : Nat) : Time) * Q.run.1.Δ + 1 = _
+    rw [accepted_coefficients_catchUp]
+  have hheal : Q.heal = max Q.gst 0 + (accepted_heal S A Q.cap Q.index : Time) * Q.run.1.Δ := by
+    change max Q.gst 0 + ((accepted_coefficients S A).heal Q.cap Q.index : Time) * Q.run.1.Δ = _
+    rw [accepted_coefficients_heal]
+  have hC : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+    exact_mod_cast accepted_catchUp_ge_sleepy S A
+  have hk : (2 : Time) ≤ (S.k : Time) := by exact_mod_cast S.two_le_k
+  have hkk : (Q.params.k : Time) = S.k := rfl
+  rw [healthyResetSlack_val] at ha
+  push_cast at ha
+  -- the reserve bound `ready + B·Δ + 2 ≤ heal`, `B = R + 8k + 4X + 26`, from (★) alone
+  set B : Time := (healthyResetCoeff S Q.index : Time) + 8 * (S.k : Time) +
+    4 * ((Q.index : Nat) : Time) + 26 with hBdef
+  have hB : Q.ready + B * Q.params.Δ + 2 ≤ Q.heal := by
+    have hH : ((accepted_catchUp S A : Nat) : Time) + 2 * B + 3 ≤
+        (accepted_heal S A Q.cap Q.index : Time) := by
+      have h1 := (Nat.cast_le (α := Time)).mpr (accepted_heal_ge_reset S A Q.cap Q.index)
+      rw [healthyResetSlack_val] at h1
+      push_cast at h1
+      rw [hBdef]
+      linarith
+    have hB0 : (0 : Time) ≤ B := by rw [hBdef]; positivity
+    rw [hready, hheal, hΔ]
+    nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.Δ),
+      mul_nonneg hB0 (by linarith : (0 : Time) ≤ Q.run.1.Δ - 1)]
+  have hR0 : (28 : Time) ≤ healthyResetCoeff S Q.index := by
+    rw [healthyResetCoeff_val]; push_cast
+    linarith [Nat.cast_nonneg (α := Time) (healthyDrainLen S Q.index)]
+  have hX0 : (0 : Time) ≤ ((Q.index : Nat) : Time) := Nat.cast_nonneg _
+  have hr0 : 0 ≤ Q.ready := by rw [hready]; nlinarith [le_max_right Q.gst 0]
+  have hgr : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.ready := by
+    change max Q.gst 0 + _ ≤ _
+    rw [hready, hΔ]; nlinarith
+  -- the base slot `w = slot(ready) + 1`: `ready < t_w ≤ ready + 4Δ`
+  have hts (s j : Nat) : Q.params.ts (s + j : Nat) = Q.params.ts s + 4 * Q.params.Δ * j := by
+    simp only [SA.SAParams.ts]; push_cast; ring
+  set w : Nat := Q.params.slot Q.ready + 1 with hw
+  have hw0 : Q.params.ts (Q.params.slot Q.ready : Nat) ≤ Q.ready :=
+    (SA.ts_le_iff_le_slot Q.params hr0 _).mpr le_rfl
+  have hw1 : Q.ready < Q.params.ts w := by
+    have h := (SA.ts_le_iff_le_slot Q.params hr0 (w : Int)).not.mpr (by rw [hw]; push_cast; omega)
+    exact lt_of_not_ge h
+  have hw2 : Q.params.ts w ≤ Q.ready + 4 * Q.params.Δ := by
+    rw [hw, hts]; push_cast; linarith
+  have hkB : (4 * (S.k : Time) + 18) * Q.params.Δ ≤ B * Q.params.Δ :=
+    mul_le_mul_of_nonneg_right (by rw [hBdef]; linarith) (by linarith)
+  -- the reset, its drain and its seed
+  obtain ⟨⟨_, _, k, _, -, -, hka⟩, -⟩ := hreset.reset
+  have ha0 : 0 ≤ a := hka ▸ hreset.run.time_nonneg k
+  have hsa : Q.params.ts (Q.params.slot a : Nat) ≤ a :=
+    (SA.ts_le_iff_le_slot Q.params ha0 _).mpr le_rfl
+  have hkD : (0 : Time) ≤ (S.k : Time) * Q.params.Δ := by positivity
+  have hdrain : Healing.drainTime Q.params a ≤ a + (8 * (S.k : Time) + 20) * Q.params.Δ := by
+    rw [Healing.drainTime_eq, show Q.params.slot a + 2 * Q.params.k + 5 =
+      Q.params.slot a + (2 * S.k + 5) from rfl, hts]
+    push_cast; linarith
+  have hla' : l ≤ Q.params.slot a := hla
+  have hseed : Q.params.ts (l + 1 : Nat) ≤ a + 4 * Q.params.Δ := by
+    have hl : ((l + 1 : Nat) : Int) ≤ (Q.params.slot a : Int) + 1 := by push_cast; omega
+    have := mul_le_mul_of_nonneg_left hl (by linarith : (0 : Time) ≤ 4 * Q.params.Δ)
+    simp only [SA.SAParams.ts] at hsa ⊢
+    linarith
+  have hRD := mul_le_mul_of_nonneg_right hR0 (by linarith : (0 : Time) ≤ Q.params.Δ)
+  have hq : max Q.ready (max (Healing.drainTime Q.params a) (max (Q.params.ts w)
+      (max (SA.gbar Q.gst + 4 * Q.params.Δ) (max 0 (Q.params.ts (l + 1 : Nat)))))) ≤
+      Q.ready + ((healthyResetCoeff S Q.index : Time) + 8 * (S.k : Time) + 20) * Q.params.Δ :=
+    max_le (by linarith) (max_le (by linarith) (max_le (by linarith)
+      (max_le (by linarith) (max_le (by linarith) (by linarith)))))
+  have hXD : (0 : Time) ≤ ((Q.index : Nat) : Time) * Q.params.Δ := by positivity
+  rw [hBdef] at hB
+  refine ⟨⟨w, hw1.le, by linarith, by rw [hts]; push_cast; linarith,
+    by rw [hts, hkk]; linarith, by rw [hts]; push_cast; linarith⟩, ⟨?_⟩⟩
+  exact ⟨a, ΔF, hreset, v, r, l, O, hO, hra, hla, _, le_rfl, by linarith⟩
 
 end Consensus.Goldilocks.Refinement
 
