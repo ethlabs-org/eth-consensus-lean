@@ -126,11 +126,14 @@ genesis payload, inside the honest blocks of the run, for an AC with requirement
 genesis whose root is its digest (the premises of C0.3), under `NoColl`. Its tick-order laws
 (`own_first`, `attest_order`, `own_payload`) come from C0.4 and the group law with C0.3: the own
 block is accepted in its tick, so the acceptance of the own proposal is the first FG cut at its
-time. Requirements 1–5 are needed: without requirement 1 (the AC's head is held) the own block
-can be refused at the tick, then accepted later at the same time after its parent and a copy of
-it arrive, against `own_first` (consensus-lean#73). The genesis root is taken as C0.3 takes it,
-so the proof is C0.3 (a refused own block is otherwise refused for ever at its node, its root
-being held). Its unforgeability is the run's. -/
+time. The proof uses requirement 1 only for the parent of the own proposal: it extends `fc_root`,
+so it is held; without that the own block can be refused at the tick, then accepted later at the
+same time after its parent and a copy of it arrive, against `own_first` (consensus-lean#73).
+Requirements 3 and 4 already give it (the parent is `ac_head` at the state `ac_proposal` leaves,
+which extends `fc_root`; `proposalHead_of_outputs_parent` in ConsensusLeanTest), so requirement 1
+adds nothing here beyond them; its vote-head clause is not used. The genesis root is taken as C0.3
+takes it, so the proof is C0.3 (a refused own block is otherwise refused for ever at its node, its
+root being held). Its unforgeability is the run's. -/
 def FGProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
     (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n),
