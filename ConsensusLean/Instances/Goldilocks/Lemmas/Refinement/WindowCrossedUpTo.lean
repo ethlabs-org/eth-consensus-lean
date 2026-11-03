@@ -25,10 +25,10 @@ for `HealedRecordsUpTo`: RH only). -/
 theorem entry_HZ_bounds_upTo {gR b : Time} {h₀ : Nat} {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : Healing.HealedRecordsUpTo tr H gR b h₀ E) {σ : FG.ChainState sp.n}
     (hh₀ : h₀ + 1 ≤ σ.h) :
-    Healing.HZ tr H gR + 1 ≤ σ.h ∧ (σ.bound → Healing.HZ tr H gR + 1 ≤ σ.hj) := by
+    Healing.HZ tr H gR + 1 ≤ σ.h ∧ (σ.previousHeightJustified → Healing.HZ tr H gR + 1 ≤ σ.hj) := by
   have hrh := hR.rh
   refine ⟨by omega, fun hb => ?_⟩
-  have := bound_hj hb
+  have := previousHeightJustified_hj hb
   omega
 
 /-- **The lock window or a crossing report, through the horizon.** `window_justifies_or_crossed`
@@ -61,7 +61,7 @@ theorem window_justifies_or_crossed_upTo (hrun : GoldilocksRun proposer dg H tr)
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
@@ -111,7 +111,7 @@ theorem window_justifies_or_crossed_after_upTo (hrun : GoldilocksRun proposer dg
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB

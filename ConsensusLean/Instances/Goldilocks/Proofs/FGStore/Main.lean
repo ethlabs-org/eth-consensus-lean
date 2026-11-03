@@ -32,8 +32,8 @@ theorem fg_store_trace : FGStoreTrace := fun P ACP =>
 
 /-- **FGStore, part 3.** -/
 theorem fg_store_service : FGStoreService := fun P ACP =>
-  { boundEntry := bound_entry P ACP
-    unboundEntry := unbound_entry P ACP
+  { previousHeightJustifiedEntry := previousHeightJustified_entry P ACP
+    previousHeightNotJustifiedEntry := previousHeightNotJustified_entry P ACP
     crossing := crossing P ACP
     coverage := coverage P ACP
     cacheAcceptance := cache_acceptance P ACP }

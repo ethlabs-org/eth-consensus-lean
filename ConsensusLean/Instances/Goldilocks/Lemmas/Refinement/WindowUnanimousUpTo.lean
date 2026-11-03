@@ -60,7 +60,7 @@ theorem window_justifies_or_parents_above_unanimous_upTo (hrun : GoldilocksRun p
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj)))) ∨
     (∃ x ∈ H, ∃ r e C, SA.ToFGAt tr.projAC x r e C ∧ tH ≤ tr.time r ∧
@@ -115,7 +115,7 @@ theorem window_justifies_or_parents_above_unanimous'_upTo (hrun : GoldilocksRun 
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   rcases window_justifies_or_parents_above_unanimous_upTo hrun hq hH hs hv hM4 hs₁ hvs hwb hy hc
@@ -180,7 +180,7 @@ theorem window_justifies_or_parents_above_unanimous''_upTo (hrun : GoldilocksRun
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB

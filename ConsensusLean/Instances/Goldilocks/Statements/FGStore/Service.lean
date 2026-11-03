@@ -5,12 +5,12 @@ public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace
 
 /-! # Goldilocks milestone FGStore, part 3: the FG service lemmas (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (main `4ea71d05`),
-§"L1: components / Finality gadget": the good window `GW(E, a, k_F)`, G1.6 (bound entry,
-theorem A), G1.7 (unbound entry, two windows, theorem B), G1.8 (crossing and coverage, corollary
-C) and G1.9 (a) (cache acceptance, per call); paper proofs in workbench
-`repos/goldilocks/notes/fg-liveness/r9-loose-bj/theorem.md` §3–§5. G1.9 (b) is not fixed in the
-claims yet, and G1.10 at C1.1's scope is a composition statement.
+Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (main `4ea71d05`), §"L1:
+components / Finality gadget": the good window `GW(E, a, k_F)`, G1.6 (entry whose previous height is
+justified, theorem A), G1.7 (entry whose previous height is not justified, two windows, theorem B),
+G1.8 (crossing and coverage, corollary C) and G1.9 (a) (cache acceptance, per call); paper proofs in
+workbench `repos/goldilocks/notes/fg-liveness/r9-loose-bj/theorem.md` §3–§5. G1.9 (b) is not fixed
+in the claims yet, and G1.10 at C1.1's scope is a composition statement.
 
 **Shape: over FG traces.** The conclusions are about one chain and the FG transition, but the
 good window is a premise on rows as they reach an honest proposer: when they are signed (P2, the
@@ -23,7 +23,7 @@ times and honest proposals exist only in an FG trace, so the statements are over
 **Reading.**
 * An entry `E = (h, T_h, u)` is given by its entry block `T`: a held block whose state's entry is
   itself (`σ[T].T_h = T`, `IsEntry`), with `h = σ[T].h` and `u = T.slot`; its entry state `σ[T]`
-  gives `bound(E)` and `P_E = (σ[T].h_j, σ[T].J)`.
+  gives `previous_height_justified(E)` and `P_E = (σ[T].h_j, σ[T].J)`.
 * The serving block `B*` is the honest proposer `p`'s own proposal, accepted at `p`'s cut `i`
   (at its slot's start); "the chain of `B*`" is read in `p`'s store after that cut.
 * `c_F = ⌈(6Δ + Δ_F)/(4Δ)⌉` comes from the delivery bound `Δ_F`, which the FG lemmas do not read
@@ -65,9 +65,9 @@ def HonestProposal (H : Set (Fin P.n)) (tr : FGTrace P ACP) (p : Fin P.n) (i : N
 served by the block `Bs` that `p` proposes at cut `i` on the parent `Pr`, with the rows `R`:
 * P1, P5: `Bs` is an honest proposal (accepted, so it passes `state_transition`) of a slot in
   `I(E, a, k_F) = [u + a + c_F, u + a + c_F + k_F]`, whose parent `Pr` extends `T`;
-* P2: the validators of `R` weigh at least `q`; each row is a target row for `E` (height `h`,
-  root `T_h`, no timeout), carrying `P_E` at a bound entry, and is on `Pr`'s chain already or,
-  when its signer is honest, signed by `t_{u+a} + 6Δ`;
+* P2: the validators of `R` weigh at least `q`; each row is a target row for `E` (height `h`, root
+  `T_h`, no timeout), carrying `P_E` at an entry whose previous height is justified, and is on
+  `Pr`'s chain already or, when its signer is honest, signed by `t_{u+a} + 6Δ`;
 * P3–P4: each row is on `Pr`'s chain or in `p`'s pool at its proposal cut (processed at an
   earlier cut, before every object received at `t_{v*}`: the trace's tick order);
 * P6: `δ_t ≥ D = a + c_F + k_F` and `K_W ≥ 1`. -/
@@ -84,9 +84,9 @@ structure GoodWindow (H : Set (Fin P.n)) (tr : FGTrace P ACP) (cF : Nat) (T : No
   window : T.slot + a + cF ≤ Bs.slot ∧ Bs.slot ≤ T.slot + a + cF + kF
   /-- P2: the rows' validators weigh at least `q`. -/
   quorum : P.fg.q ≤ (R.image FG.Att.val).card
-  /-- P2: target rows for `E`, carrying `P_E` at a bound entry. -/
+  /-- P2: target rows for `E`, carrying `P_E` at an entry whose previous height is justified. -/
   rows : ∀ r ∈ R, r.h = ((tr.store p i).σ T.root).h ∧ r.T = T.root ∧ r.timeout = false ∧
-    (((tr.store p i).σ T.root).bound →
+    (((tr.store p i).σ T.root).previousHeightJustified →
       r.fin = some (((tr.store p i).σ T.root).hj, ((tr.store p i).σ T.root).J))
   /-- P2: on the chain already, or (honest) signed by `t_{u+a} + 6Δ`. -/
   emitted : ∀ r ∈ R, (tr.store p i).OnChain Pr r ∨
@@ -105,37 +105,42 @@ def JustifiesEntry (st : Store P ACP) (T : NodeBlock P ACP) (h : Nat) (X : NodeB
     ∀ Y ∈ st.tree, st.Anc T Y → st.Anc Y X → Y ≠ X →
       (st.σ Y.root).h = h ∧ (st.σ Y.root).Th = T.root
 
-/-- **G1.6, bound entry (theorem A).** Let `E` be a bound entry with predecessor `P_E` and
-`GW(E, a, k_F)`. Then on the chain of `B*`: `E` is justified at `B*` or at an earlier block `X`
-(so by slot `u + D`), `h` is not left before `X` (in particular not by timeout), and `P_E` is
-finalized at `X` or before (`σ[X].F = J_E`, `σ[X].h_F = h − 1`). -/
-def BoundEntry : Prop :=
+/-- **G1.6, entry whose previous height is justified (theorem A).** Let `E` be an entry whose
+previous height is justified with predecessor `P_E` and `GW(E, a, k_F)`. Then on the chain of `B*`:
+`E` is justified at `B*` or at an earlier block `X` (so by slot `u + D`), `h` is not left before `X`
+(in particular not by timeout), and `P_E` is finalized at `X` or before (`σ[X].F = J_E`, `σ[X].h_F =
+h − 1`). -/
+def PreviousHeightJustifiedEntry : Prop :=
   ∀ (acp₀ : ACP) (H : Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrace P ACP),
     FGLocalRun acp₀ H U tr → ∀ (cF : Nat) (T : NodeBlock P ACP) (a kF : Nat) (p : Fin P.n)
       (i : Nat) (Bs Pr : NodeBlock P ACP) (R : Finset (FG.Att P.n)),
-    GoodWindow P ACP H tr cF T a kF p i Bs Pr R → ((tr.store p i).σ T.root).bound →
+    GoodWindow P ACP H tr cF T a kF p i Bs Pr R →
+    ((tr.store p i).σ T.root).previousHeightJustified →
     ∃ X, JustifiesEntry P ACP (tr.store p (i + 1)) T ((tr.store p i).σ T.root).h X ∧
       (tr.store p (i + 1)).Anc X Bs ∧
       ((tr.store p (i + 1)).σ X.root).F = ((tr.store p i).σ T.root).J ∧
       ((tr.store p (i + 1)).σ X.root).hF = ((tr.store p i).σ T.root).hj
 
-/-- **G1.7, unbound entry, two windows (theorem B).** Let `U` be an unbound entry (height `h`,
-entry block `T`) with `GW(U, a₀, k_F)` (target rows, no finality pair needed). Then `U`
-justifies at a block `X` of `B*₀`'s chain (so `u₁ = X.slot ≤ u₀ + D₀`), appending `Q = (h, T_h)`,
-and `X` enters a bound height `E₁` (its own entry) with predecessor `Q`. If moreover
-`GW(E₁, a₁, k_F)` for that actual entry `X`, with serving block `B*₁`, then on the chain of `B*₁`
-the pair `Q` is finalized at a block `Z ⪯ B*₁` (so by `u₁ + D₁ ≤ u₀ + D₀ + D₁`): `σ[Z].F = T_h`,
-which covers `T_h` and every ancestor. -/
-def UnboundEntry : Prop :=
+/-- **G1.7, entry whose previous height is not justified, two windows (theorem B).** Let `U` be an
+entry whose previous height is not justified (height `h`, entry block `T`) with `GW(U, a₀, k_F)`
+(target rows, no finality pair needed). Then `U` justifies at a block `X` of `B*₀`'s chain (so `u₁ =
+X.slot ≤ u₀ + D₀`), appending `Q = (h, T_h)`, and `X` enters a height whose previous height is
+justified `E₁` (its own entry) with predecessor `Q`. If moreover `GW(E₁, a₁, k_F)` for that actual
+entry `X`, with serving block `B*₁`, then on the chain of `B*₁` the pair `Q` is finalized at a block
+`Z ⪯ B*₁` (so by `u₁ + D₁ ≤ u₀ + D₀ + D₁`): `σ[Z].F = T_h`, which covers `T_h` and every ancestor.
+-/
+def PreviousHeightNotJustifiedEntry : Prop :=
   ∀ (acp₀ : ACP) (H : Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrace P ACP),
     FGLocalRun acp₀ H U tr → ∀ (cF : Nat) (T : NodeBlock P ACP) (a₀ kF : Nat) (p : Fin P.n)
       (i : Nat) (Bs Pr : NodeBlock P ACP) (R : Finset (FG.Att P.n)),
-    GoodWindow P ACP H tr cF T a₀ kF p i Bs Pr R → ¬ ((tr.store p i).σ T.root).bound →
+    GoodWindow P ACP H tr cF T a₀ kF p i Bs Pr R →
+    ¬ ((tr.store p i).σ T.root).previousHeightJustified →
     ∃ X, JustifiesEntry P ACP (tr.store p (i + 1)) T ((tr.store p i).σ T.root).h X ∧
       (tr.store p (i + 1)).Anc X Bs ∧
       (((tr.store p i).σ T.root).h, T.root) ∈ ((tr.store p (i + 1)).σ X.root).pending ∧
       ((tr.store p (i + 1)).σ X.root).h = ((tr.store p i).σ T.root).h + 1 ∧
-      ((tr.store p (i + 1)).σ X.root).Th = X.root ∧ ((tr.store p (i + 1)).σ X.root).bound ∧
+      ((tr.store p (i + 1)).σ X.root).Th = X.root ∧
+      ((tr.store p (i + 1)).σ X.root).previousHeightJustified ∧
       ∀ (a₁ : Nat) (p₁ : Fin P.n) (i₁ : Nat) (Bs₁ Pr₁ : NodeBlock P ACP)
         (R₁ : Finset (FG.Att P.n)), GoodWindow P ACP H tr cF X a₁ kF p₁ i₁ Bs₁ Pr₁ R₁ →
         ∃ Z ∈ (tr.store p₁ (i₁ + 1)).tree, (tr.store p₁ (i₁ + 1)).Anc Z Bs₁ ∧
@@ -166,19 +171,21 @@ def Crossing : Prop :=
       X.slot ≤ T.slot + max P.δt r + g - 1
 
 /-- **G1.8 (b), coverage after failed entries (corollary C).** Let the entries from `T₁` to the
-unbound entry `T` (`T₁ ≺ T` on the chain of `B*₀`, `m ≥ 1` consecutive entries that cross by
-timeout: every entry block after `T₁` up to `T` is unbound), and let `T` and its actual bound
-successor satisfy G1.7's two windows, with serving block `B*₁`. Then `T₁` is covered on the
-chain of `B*₁` within `Σ τ_i + D₀ + D₁ = (T.slot − T₁.slot) + D₀ + D₁` slots of `T₁.slot`: some
-`Z ⪯ B*₁` has a finalized block that extends `T₁`. -/
+entry whose previous height is not justified `T` (`T₁ ≺ T` on the chain of `B*₀`, `m ≥ 1`
+consecutive entries that cross by timeout: every entry block after `T₁` up to `T` does not have its
+previous height justified), and let `T` and its actual successor entry, entered by justifying it,
+satisfy G1.7's two windows, with serving block `B*₁`. Then `T₁` is covered on the chain of `B*₁`
+within `Σ τ_i + D₀ + D₁ = (T.slot − T₁.slot) + D₀ + D₁` slots of `T₁.slot`: some `Z ⪯ B*₁` has a
+finalized block that extends `T₁`. -/
 def Coverage : Prop :=
   ∀ (acp₀ : ACP) (H : Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrace P ACP),
     FGLocalRun acp₀ H U tr → ∀ (cF : Nat) (T₁ T : NodeBlock P ACP) (a₀ kF : Nat) (p : Fin P.n)
       (i : Nat) (Bs Pr : NodeBlock P ACP) (R : Finset (FG.Att P.n)),
-    GoodWindow P ACP H tr cF T a₀ kF p i Bs Pr R → ¬ ((tr.store p i).σ T.root).bound →
+    GoodWindow P ACP H tr cF T a₀ kF p i Bs Pr R →
+    ¬ ((tr.store p i).σ T.root).previousHeightJustified →
     IsEntry P ACP (tr.store p i) T₁ → (tr.store p i).Anc T₁ T → T₁ ≠ T →
     (∀ Y, IsEntry P ACP (tr.store p i) Y → (tr.store p i).Anc T₁ Y → (tr.store p i).Anc Y T →
-      Y ≠ T₁ → ¬ ((tr.store p i).σ Y.root).bound) →
+      Y ≠ T₁ → ¬ ((tr.store p i).σ Y.root).previousHeightJustified) →
     ∀ X, JustifiesEntry P ACP (tr.store p (i + 1)) T ((tr.store p i).σ T.root).h X →
       (tr.store p (i + 1)).Anc X Bs →
     ∀ (a₁ : Nat) (p₁ : Fin P.n) (i₁ : Nat) (Bs₁ Pr₁ : NodeBlock P ACP)
@@ -218,8 +225,8 @@ def CacheAcceptance : Prop :=
 
 /-- The statements of FGStore part 3 at parameters `P` and AC payload type `ACP`. -/
 structure FGStoreServiceAt : Prop where
-  boundEntry : BoundEntry P ACP
-  unboundEntry : UnboundEntry P ACP
+  previousHeightJustifiedEntry : PreviousHeightJustifiedEntry P ACP
+  previousHeightNotJustifiedEntry : PreviousHeightNotJustifiedEntry P ACP
   crossing : Crossing P ACP
   coverage : Coverage P ACP
   cacheAcceptance : CacheAcceptance P ACP

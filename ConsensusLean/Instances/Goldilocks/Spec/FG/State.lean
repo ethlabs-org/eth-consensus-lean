@@ -132,10 +132,11 @@ def init (gp : FGParams) : ChainState gp.n where
   F := gp.genesis
   hF := 0
 
-/-- The height is *bound*: the chain entered it by justifying its predecessor. -/
-def bound (σ : ChainState n) : Prop := 0 < σ.hj ∧ σ.hj + 1 = σ.h
+/-- The height has its *previous height justified* (`previous_height_justified`): the chain
+entered it by justifying its predecessor. -/
+def previousHeightJustified (σ : ChainState n) : Prop := 0 < σ.hj ∧ σ.hj + 1 = σ.h
 
-instance (σ : ChainState n) : Decidable σ.bound :=
+instance (σ : ChainState n) : Decidable σ.previousHeightJustified :=
   inferInstanceAs (Decidable (0 < σ.hj ∧ σ.hj + 1 = σ.h))
 
 /-- `valid_attestation`: the attestation names the chain's own entry, or it is an
@@ -191,12 +192,12 @@ def finalizePrune (σ : ChainState gp.n) : ChainState gp.n :=
   { σ₁ with pending := σ₁.pending.filter (fun p => σ₁.hF < p.1) }
 
 /-- The loose-BJ justification test, read after the finality step: a target quorum,
-and at a bound height a finalized predecessor. -/
+and at a height whose previous height is justified a finalized predecessor. -/
 def justifies (σ : ChainState gp.n) : Prop :=
-  gp.q ≤ σ.target.card ∧ (¬ σ.bound ∨ σ.hF = σ.hj)
+  gp.q ≤ σ.target.card ∧ (¬ σ.previousHeightJustified ∨ σ.hF = σ.hj)
 
 instance (σ : ChainState gp.n) : Decidable (gp.justifies σ) :=
-  inferInstanceAs (Decidable (gp.q ≤ σ.target.card ∧ (¬ σ.bound ∨ σ.hF = σ.hj)))
+  inferInstanceAs (Decidable (gp.q ≤ σ.target.card ∧ (¬ σ.previousHeightJustified ∨ σ.hF = σ.hj)))
 
 /-- The timeout test: a progress quorum and an entry at least `δt` slots old. -/
 def timesOut (σ : ChainState gp.n) : Prop :=

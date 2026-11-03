@@ -41,12 +41,13 @@ open SA (SAParams ReplayOrder Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-/-- **The rows of a served entry by its deadline**: the entry `T` of height `h` (bound when
-`bound`, with predecessor justification `Jr` at `hj`) has, by `d`, a quorum of honest target rows
-signed by `d`, carrying the predecessor at a bound entry; or an honest node has accepted by `d` a
-block `X` that justifies `T` at `h`, at a bound entry has finalized the predecessor, and lies below
-a high origin (HR.4) written by `d` (the crossing is extracted from an actual higher returned
-source, below its stored origin). -/
+/-- **The rows of a served entry by its deadline**: the entry `T` of height `h` (its previous height
+justified when `bound`, with predecessor justification `Jr` at `hj`) has, by `d`, a quorum of honest
+target rows signed by `d`, carrying the predecessor at an entry whose previous height is justified;
+or an honest node has accepted by `d` a block `X` that justifies `T` at `h`, at an entry whose
+previous height is justified has finalized the predecessor, and lies below a high origin (HR.4)
+written by `d` (the crossing is extracted from an actual higher returned source, below its stored
+origin). -/
 def EntryRows (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time)
     (T : SA.Blk sp.n (List (FG.Att sp.n))) (h hj : Nat) (bound : Bool) (Jr : Nat) (d : Time) :
     Prop :=
@@ -241,8 +242,9 @@ private theorem step_entry_slot {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
   · exact Or.inl ⟨rfl, rfl, rfl⟩
 
 /-- Before the entry `(h₀, Tr)` of slot `u` is `δ_t` old, the height events keep it, its
-justification `(j, Jr)` and (bound) `(j, Jr)` pending or finalized, or justify it having
-finalized `(j, Jr)` at a bound height (`Window.lean`'s `events_current`, first half). -/
+justification `(j, Jr)` and (previous height justified) `(j, Jr)` pending or finalized, or justify
+it having finalized `(j, Jr)` at a height whose previous height is justified (`Window.lean`'s
+`events_current`, first half). -/
 private theorem events_keep {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
     (he : gp.heightEvents σ = σ') {h₀ Tr u j Jr : Nat}
     (hh : σ.h = h₀) (hT : σ.Th = Tr) (hu : σ.ThSlot = u) (hj : σ.hj = j) (hJ : σ.J = Jr)
@@ -270,7 +272,8 @@ private theorem events_keep {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
     · have := hmem _ hm'
       omega
   by_cases hJ' : gp.justifies (gp.finalizePrune σ)
-  · -- justifying: the next height, with the predecessor finalized at a bound height
+  · -- justifying: the next height, with the predecessor finalized at a height whose previous
+    -- height is justified
     unfold FG.FGParams.heightEvents
     simp only [hJ', ↓reduceIte]
     rw [hfp] at hJ' ⊢
@@ -307,11 +310,13 @@ private theorem step_keep {gp : FG.FGParams} {c : List (FG.FGBlock gp.n)}
   rw [hf] at he
   exact events_keep he hh hT hu hj hJ hpw hmem hP hs
 
-/-- An entry block entered its height at its slot, with (bound) its predecessor pending. -/
+/-- An entry block entered its height at its slot, with (previous height justified) its predecessor
+pending. -/
 private theorem entry_slot_pending {st : Store P ACP} (hr : st.Reachable acp₀)
     {T : NodeBlock P ACP} (hT : T ∈ st.tree) (hTe : (st.σ T.root).Th = T.root) :
     (st.σ T.root).ThSlot = T.slot ∧
-      ((st.σ T.root).bound → ((st.σ T.root).hj, (st.σ T.root).J) ∈ (st.σ T.root).pending) := by
+      ((st.σ T.root).previousHeightJustified →
+        ((st.σ T.root).hj, (st.σ T.root).J) ∈ (st.σ T.root).pending) := by
   obtain ⟨-, hcoh, -, hg⟩ := Store.accepted_tree P ACP acp₀ _ hr
   rcases Relation.ReflTransGen.cases_tail (hg T hT) with rfl | ⟨Z, -, hZ, -, hp⟩
   · rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, Store.σ_genesis hr]
@@ -339,7 +344,8 @@ theorem Store.ThSlot_eq_slot {st : Store P ACP} (hr : st.Reachable acp₀)
 
 /-- **The first crossing of an entry before its timeout** (workbench#30 §5): from an entry `T` to
 `C`, all slots before `T.slot + δ_t`, each block keeps `T`'s height, entry and justification (all
-blocks from `T` to it too), or some `X` on the way justifies `T` and (bound) finalized `P_E`. -/
+blocks from `T` to it too), or some `X` on the way justifies `T` and (previous height justified)
+finalized `P_E`. -/
 private theorem crossing_walk {st : Store P ACP} (hr : st.Reachable acp₀) {T C : NodeBlock P ACP}
     (hT : T ∈ st.tree) (hTe : (st.σ T.root).Th = T.root)
     (hslot : ∀ W, st.Anc W C → W.slot < T.slot + P.fg.δt) :
@@ -353,7 +359,7 @@ private theorem crossing_walk {st : Store P ACP} (hr : st.Reachable acp₀) {T C
         ∀ Y ∈ st.tree, st.Anc T Y → st.Anc Y W →
           (st.σ Y.root).h = (st.σ T.root).h ∧ (st.σ Y.root).Th = T.root) ∨
       ∃ X, Store.JustifiesEntry P ACP st T (st.σ T.root).h X ∧ st.Anc X W ∧
-        ((st.σ T.root).bound →
+        ((st.σ T.root).previousHeightJustified →
           (st.σ X.root).F = (st.σ T.root).J ∧ (st.σ X.root).hF = (st.σ T.root).hj) := by
   obtain ⟨-, hcoh, -, -⟩ := Store.accepted_tree P ACP acp₀ _ hr
   obtain ⟨hTs, hPE⟩ := entry_slot_pending hr hT hTe
@@ -841,8 +847,8 @@ theorem row_target_of_sign (hp : ResetPremises tr H proposer dg g ΔF a)
     (hEO.mono fun X hX => ⟨z, hz, _, hX⟩) hTB hz hy hE hT (hEh.trans hatt) hET hTe)
   exact ⟨hv, hTr, sign_target hp hz ⟨src, hc⟩ hh (timeout_empty hp hz j _ hh)⟩
 
-/-- Historical signatures carry the exact bound predecessor when that predecessor
-is high; permission is proved at the original signing cut. -/
+/-- Historical signatures carry the exact predecessor (of a height whose previous height is
+justified) when that predecessor is high; permission is proved at the original signing cut. -/
 theorem ResetPremisesUpTo.row_of_sign {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {z : Fin sp.n} (hz : z ∈ H)
@@ -850,12 +856,12 @@ theorem ResetPremisesUpTo.row_of_sign {b : Time}
     {T : SA.Blk sp.n (List (FG.Att sp.n))}
     {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
     {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → HZ tr H g + 1 ≤ σT.hj)
+    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.previousHeightJustified → HZ tr H g + 1 ≤ σT.hj)
     {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
     (hTB : Anc (tr.HonestBlocks H) T B) (hatt : att.h = σT.h) :
     att.val = z ∧ att.T = T.root ∧ att.timeout = false ∧
-      (σT.bound → att.fin = some (σT.hj, σT.J)) := by
+      (σT.previousHeightJustified → att.fin = some (σT.hj, σT.J)) := by
   subst hσ
   obtain ⟨hv, hTr, htimeout⟩ := hp.row_target_of_sign hz hs hjb hy hT rfl hTe hhT ho hiob hTB hatt
   obtain ⟨src, hc⟩ := hs
@@ -885,19 +891,20 @@ theorem ResetPremisesUpTo.row_of_sign {b : Time}
   unfold FG.Record.finalityPair
   simp only [hb, hperm, ↓reduceIte]
 
-/-- **An honest row of a high entry's height is its target row, with the predecessor at a bound
-entry** (workbench#30 §4): it names `T` (`high_entry_eq`), is no timeout (`timeout_empty`), and
-its `finality_pair` of `σ[T]` is `(h_j, J)`, which the high records permit (`record_entry_eq`). -/
+/-- **An honest row of a high entry's height is its target row, with the predecessor at an entry
+whose previous height is justified** (workbench#30 §4): it names `T` (`high_entry_eq`), is no
+timeout (`timeout_empty`), and its `finality_pair` of `σ[T]` is `(h_j, J)`, which the high records
+permit (`record_entry_eq`). -/
 theorem row_of_sign (hp : ResetPremises tr H proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H)
     {j : Nat} {att : FG.Att sp.n} (hs : tr.SignAt z j att) {T : SA.Blk sp.n (List (FG.Att sp.n))}
     {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
     {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → HZ tr H g + 1 ≤ σT.hj)
+    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.previousHeightJustified → HZ tr H g + 1 ≤ σT.hj)
     {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g xo io jo B) (hTB : Anc (tr.HonestBlocks H) T B) (hatt : att.h = σT.h) :
     att.val = z ∧ att.T = T.root ∧ att.timeout = false ∧
-      (σT.bound → att.fin = some (σT.hj, σT.J)) := by
+      (σT.previousHeightJustified → att.fin = some (σT.hj, σT.J)) := by
   subst hσ
   obtain ⟨hv, hTr, htimeout⟩ := row_target_of_sign hp hz hs hy hT rfl hTe hhT ho hTB hatt
   obtain ⟨src, hc⟩ := hs
@@ -1036,12 +1043,12 @@ theorem ResetPremisesUpTo.row_of_report {b : Time}
     {T : SA.Blk sp.n (List (FG.Att sp.n))}
     {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
     {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → HZ tr H g + 1 ≤ σT.hj)
+    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.previousHeightJustified → HZ tr H g + 1 ≤ σT.hj)
     (hTC : Anc (tr.HonestBlocks H) T C)
     (hCh : ((tr.state z r).fg.σ C.root).h = σT.h) :
     ∃ j att, tr.SignAt z j att ∧ tr.time j ≤ tr.time r ∧ att.val = z ∧
       att.h = σT.h ∧ att.T = T.root ∧ att.timeout = false ∧
-      (σT.bound → att.fin = some (σT.hj, σT.J)) := by
+      (σT.previousHeightJustified → att.fin = some (σT.hj, σT.J)) := by
   obtain ⟨io, _, jo, O, _, _, ho, hiob, _, hCO, _⟩ := hp.high_report_origin hz hrep hrb
     (by rw [hCh]; exact hhT)
   have hTO := hTC.trans hCO
@@ -1057,14 +1064,14 @@ theorem ResetPremisesUpTo.row_signers_of_reports {b : Time}
     {T : SA.Blk sp.n (List (FG.Att sp.n))}
     {y : Fin sp.n} (hy : y ∈ H) {m : Nat} (hT : T ∈ (tr.state y m).fg.tree)
     {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → HZ tr H g + 1 ≤ σT.hj)
+    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.previousHeightJustified → HZ tr H g + 1 ≤ σT.hj)
     {d : Time} (hdb : d ≤ b)
     (hreports : ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ d ∧
       Anc (tr.HonestBlocks H) T C ∧ ((tr.state z r).fg.σ C.root).h = σT.h) :
     ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
       ∀ z ∈ ids, z ∈ H ∧ ∃ att j, tr.SignAt z j att ∧ att.val = z ∧
         att.h = σT.h ∧ att.T = T.root ∧ att.timeout = false ∧ tr.time j ≤ d ∧
-        (σT.bound → att.fin = some (σT.hj, σT.J)) := by
+        (σT.previousHeightJustified → att.fin = some (σT.hj, σT.J)) := by
   classical
   refine ⟨Finset.univ.filter (· ∈ H), ?_, ?_⟩
   · have hcard : (Finset.univ.filter (· ∈ H)).card = H.ncard := by
@@ -1098,7 +1105,7 @@ private theorem crossing_of_report (hp : ResetPremises tr H proposer dg g ΔF a)
     (hTC : Anc (tr.HonestBlocks H) T C) (hlt : σT.h < ((tr.state z r).fg.σ C.root).h) :
     ∃ w ∈ H, ∃ k X, tr.AcceptAt w k X ∧ tr.time k ≤ sp.ts u + 6 * sp.Δ ∧
       Store.JustifiesEntry sp.toParams (Payload sp.n) (tr.post k).fg T σT.h X ∧
-      (decide σT.bound = true →
+      (decide σT.previousHeightJustified = true →
         ((tr.post k).fg.σ X.root).hF + 1 = σT.h ∧ ((tr.post k).fg.σ X.root).F = σT.J) ∧
       ∃ xo io jo B, HighOrigin tr H g xo io jo B ∧ tr.time io ≤ sp.ts u + 6 * sp.Δ ∧
         Anc (tr.HonestBlocks H) X B := by

@@ -7,10 +7,12 @@ public section
 /-! # Goldilocks Refinement: the lock window with the fin clause discharged (L5.4, WI-18)
 
 `window_justifies_of_lock` asks (`hsig`) that each of `q` honest target rows for `(h, T)` carries
-`(σ.h_j, σ.J)` of every held bound honest state `σ` at `(h, T)` with that pair pending.
+`(σ.h_j, σ.J)` of every held honest state `σ` whose previous height is justified, at `(h, T)` with
+that pair pending.
 
-* `bound_hj`: a bound state has `σ.h_j + 1 = σ.h` (the definition of `bound`), so at a bound
-  height `h` with `h₀ + 1 ≤ h` the premise `h₀ ≤ σ.h_j` of `finalityPair_entry_healed'` holds.
+* `previousHeightJustified_hj`: a state whose previous height is justified has `σ.h_j + 1 = σ.h`
+  (the definition of `previousHeightJustified`), so at a height `h` whose previous height is
+  justified with `h₀ + 1 ≤ h` the premise `h₀ ≤ σ.h_j` of `finalityPair_entry_healed'` holds.
 * `attest_src_mem`: the source of an honest signed `fg_attest` cut is held at that cut.
 * `window_justifies_of_lock_healed`: `window_justifies_of_lock` where the rows are first own rows
   at `h` (so `HealedRecords.first_sign_target` gives their shape) and the fin clause is proved
@@ -20,8 +22,10 @@ namespace Consensus.Goldilocks.Refinement
 
 open SA (SAParams ReplayOrder Payload gbar)
 
-/-- **A bound height is one above `h_j`.** -/
-theorem bound_hj {n : Nat} {σ : FG.ChainState n} (hb : σ.bound) : σ.hj + 1 = σ.h := hb.2
+/-- **A height whose previous height is justified is one above `h_j`.** -/
+theorem previousHeightJustified_hj {n : Nat} {σ : FG.ChainState n}
+    (hb : σ.previousHeightJustified) :
+    σ.hj + 1 = σ.h := hb.2
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
@@ -72,7 +76,7 @@ theorem window_justifies_of_lock_healed (hrun : GoldilocksRun proposer dg H tr)
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   refine window_justifies_of_lock hrun hH hs hv hM4 hs₁ hvs hy hc htH hl hf hB hBl hks hh hT
@@ -85,7 +89,7 @@ theorem window_justifies_of_lock_healed (hrun : GoldilocksRun proposer dg H tr)
   have h₀a : h₀ ≤ att.h := by omega
   obtain ⟨src, hcs, rfl⟩ := hH.toHealedRecords.first_sign_target hrun hzH hsg h₀a
     (by rw [hah]; exact hfirst)
-  have hj := bound_hj hb
+  have hj := previousHeightJustified_hj hb
   exact finalityPair_entry_healed' hrun hs.noColl hq hH.toHealedRecords hzH
     (attest_src_mem hrun hzH hcs) hp hPr (hPT.trans haT.symm) hb (by omega) hb.1 kz
 

@@ -6,18 +6,20 @@ public import ConsensusLean
 
 On the pure FG of `Instances/Goldilocks/Spec/FG`, labelled by kind (CONTRIBUTING "Statements"):
 
-* (b) `oneValidator_finalizes`: with one validator, a chain of three blocks justifies
-  genesis, then block `1` (a bound height whose predecessor genesis finalizes in the
-  same block, before the gate), then finalizes block `1`.
+* (b) `oneValidator_finalizes`: with one validator, a chain of three blocks justifies genesis, then
+  block `1` (a height whose previous height is justified and whose predecessor genesis finalizes in
+  the same block, before the gate), then finalizes block `1`.
 * (a) `conflicting_finalizations`: two chains that finalize conflicting blocks exist (the
   hypotheses of `AccountableSafety`), and the one validator's height-2 targets on them are
   slashable (E2).
-* (b) `bound_entry_after_justification`: after the second block the height is bound
-  (`HeightStep`'s bound case is reachable).
-* (b) `gate_keeps_target_quorum`: a bound height whose predecessor is not finalized keeps a
-  target quorum without justifying (the hypothesis of `GatedConsumption` is reachable).
-* (limit, G0.9 (c)) `window_drops_unfinalized`: bound timeout, unbound append, bound timeout,
-  unbound append drops the first pending pair while nothing is finalized
+* (b) `previousHeightJustified_entry_after_justification`: after the second block the height has its
+  previous height justified (`HeightStep`'s case of a justified previous height is reachable).
+* (b) `gate_keeps_target_quorum`: a height whose previous height is justified and whose predecessor
+  is not finalized keeps a target quorum without justifying (the hypothesis of `GatedConsumption` is
+  reachable).
+* (limit, G0.9 (c)) `window_drops_unfinalized`: a timeout, an append, a timeout and an append,
+  alternating heights whose previous height is justified and heights whose previous height is
+  not, drop the first pending pair while nothing is finalized
   (`[P] → [P,Q] → [Q,R]`). -/
 
 namespace Consensus.Goldilocks.FG.Test
@@ -43,8 +45,10 @@ theorem oneValidator_finalizes :
     (gp1.chainState chainA).map (fun σ => (σ.F, σ.hF, σ.J, σ.hj, σ.h)) =
       some (1, 2, 2, 3, 4) := by decide +kernel
 
-theorem bound_entry_after_justification :
-    (gp1.chainState (chainA.take 2)).map (fun σ => decide σ.bound) = some true := by decide +kernel
+theorem previousHeightJustified_entry_after_justification :
+    (gp1.chainState (chainA.take 2)).map (fun σ => decide σ.previousHeightJustified) =
+      some true := by
+  decide +kernel
 
 theorem conflicting_finalizations :
     (gp1.chainState chainA).map (fun σ => σ.F) = some 1 ∧
@@ -57,7 +61,8 @@ def tmo (h T : Nat) : Att 1 := ⟨0, h, T, true, none⟩
 
 theorem gate_keeps_target_quorum :
     (gp1.chainState ([⟨1, 1, 0, [tv 1 0 none]⟩, ⟨2, 2, 0, [tv 2 1 none]⟩] : List (FGBlock 1))).map
-      (fun σ => (σ.h, σ.target.card, decide σ.bound, σ.hF, σ.hj)) = some (2, 1, true, 0, 1) := by
+      (fun σ => (σ.h, σ.target.card, decide σ.previousHeightJustified, σ.hF, σ.hj)) =
+        some (2, 1, true, 0, 1) := by
   decide +kernel
 
 /-- Roots equal slots: justify `1`, time out at `2`, justify `3`, time out at `4`, justify `5`. -/

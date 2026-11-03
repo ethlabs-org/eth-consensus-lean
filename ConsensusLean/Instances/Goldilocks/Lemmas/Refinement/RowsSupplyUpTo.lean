@@ -53,7 +53,8 @@ theorem rows_supply_of_reports_upTo {g ΔF a b : Time}
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {m : Nat}
     (hTm : T ∈ (tr.state y m).fg.tree) {σT : FG.ChainState sp.n}
     (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : Healing.HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → Healing.HZ tr H g + 1 ≤ σT.hj)
+    (hhT : Healing.HZ tr H g + 1 ≤ σT.h)
+    (hhj : σT.previousHeightJustified → Healing.HZ tr H g + 1 ≤ σT.hj)
     (hh₀ : h₀ ≤ σT.h) {v : Time} (hvb : v ≤ b)
     (hreports : ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ v ∧
       Anc (tr.HonestBlocks H) T C ∧ ((tr.state z r).fg.σ C.root).h = σT.h) :
@@ -79,7 +80,8 @@ theorem rows_supply_or_crossed_upTo {g ΔF a b : Time}
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {m : Nat}
     (hTm : T ∈ (tr.state y m).fg.tree) {σT : FG.ChainState sp.n}
     (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : Healing.HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → Healing.HZ tr H g + 1 ≤ σT.hj)
+    (hhT : Healing.HZ tr H g + 1 ≤ σT.h)
+    (hhj : σT.previousHeightJustified → Healing.HZ tr H g + 1 ≤ σT.hj)
     (hh₀ : h₀ ≤ σT.h) {v : Time} (hvb : v ≤ b)
     (hreports : ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ v ∧
       Anc (tr.HonestBlocks H) T C) :
@@ -101,7 +103,8 @@ theorem rows_supply_or_crossed_after_upTo {g ΔF a b : Time}
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {m : Nat}
     (hTm : T ∈ (tr.state y m).fg.tree) {σT : FG.ChainState sp.n}
     (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : Healing.HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → Healing.HZ tr H g + 1 ≤ σT.hj)
+    (hhT : Healing.HZ tr H g + 1 ≤ σT.h)
+    (hhj : σT.previousHeightJustified → Healing.HZ tr H g + 1 ≤ σT.hj)
     (hh₀ : h₀ ≤ σT.h) {u v : Time} (hvb : v ≤ b)
     (hreports' : ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ u ≤ tr.time r ∧
       tr.time r ≤ v ∧ Anc (tr.HonestBlocks H) T C) :

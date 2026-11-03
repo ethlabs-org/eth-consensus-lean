@@ -79,17 +79,18 @@ theorem q_le_ncard_of_faults (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) : sp.toParams.fg
   omega
 
 /-- **The rows supply from same-height reports.** Under `ResetPremisesUpTo` (horizon `b`) and
-`HealedRecords` with `h₀ ≤ σT.h`, for a held `T` with `σ[T] = σT`, `σT.T_h = T`,
-`H_z + 1 ≤ σT.h` and (when bound) `H_z + 1 ≤ σT.h_j`: if each honest `z` reports by `v ≤ b` a
-`C ⪰ T` whose state has height `σT.h`, then `S`, `q ≤ |S|` and the first rows at
-`(σT.h, T.root)` by `v` of `rows_supply` hold. -/
+`HealedRecords` with `h₀ ≤ σT.h`, for a held `T` with `σ[T] = σT`, `σT.T_h = T`, `H_z + 1 ≤ σT.h`
+and (when its previous height is justified) `H_z + 1 ≤ σT.h_j`: if each honest `z` reports by `v ≤
+b` a `C ⪰ T` whose state has height `σT.h`, then `S`, `q ≤ |S|` and the first rows at `(σT.h,
+T.root)` by `v` of `rows_supply` hold. -/
 theorem rows_supply_of_reports {g ΔF a b : Time}
     (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b) {gR : Time} {h₀ : Nat}
     {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hR : Healing.HealedRecords tr H gR h₀ E)
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {m : Nat}
     (hTm : T ∈ (tr.state y m).fg.tree) {σT : FG.ChainState sp.n}
     (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : Healing.HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → Healing.HZ tr H g + 1 ≤ σT.hj)
+    (hhT : Healing.HZ tr H g + 1 ≤ σT.h)
+    (hhj : σT.previousHeightJustified → Healing.HZ tr H g + 1 ≤ σT.hj)
     (hh₀ : h₀ ≤ σT.h) {v : Time} (hvb : v ≤ b)
     (hreports : ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ v ∧
       Anc (tr.HonestBlocks H) T C ∧ ((tr.state z r).fg.σ C.root).h = σT.h) :
@@ -153,7 +154,8 @@ theorem rows_supply_or_crossed {g ΔF a b : Time}
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {m : Nat}
     (hTm : T ∈ (tr.state y m).fg.tree) {σT : FG.ChainState sp.n}
     (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : Healing.HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → Healing.HZ tr H g + 1 ≤ σT.hj)
+    (hhT : Healing.HZ tr H g + 1 ≤ σT.h)
+    (hhj : σT.previousHeightJustified → Healing.HZ tr H g + 1 ≤ σT.hj)
     (hh₀ : h₀ ≤ σT.h) {v : Time} (hvb : v ≤ b)
     (hreports : ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ v ∧
       Anc (tr.HonestBlocks H) T C) :
@@ -208,7 +210,8 @@ theorem rows_supply_or_crossed_after {g ΔF a b : Time}
     {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {m : Nat}
     (hTm : T ∈ (tr.state y m).fg.tree) {σT : FG.ChainState sp.n}
     (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : Healing.HZ tr H g + 1 ≤ σT.h) (hhj : σT.bound → Healing.HZ tr H g + 1 ≤ σT.hj)
+    (hhT : Healing.HZ tr H g + 1 ≤ σT.h)
+    (hhj : σT.previousHeightJustified → Healing.HZ tr H g + 1 ≤ σT.hj)
     (hh₀ : h₀ ≤ σT.h) {u v : Time} (hvb : v ≤ b)
     (hreports' : ∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ u ≤ tr.time r ∧
       tr.time r ≤ v ∧ Anc (tr.HonestBlocks H) T C) :

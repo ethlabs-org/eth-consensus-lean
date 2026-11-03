@@ -227,7 +227,8 @@ theorem trans_gen {m : Nat} (hm : 2 ≤ m) (σ : FG.ChainState gp.n) (B : FG.FGB
     exact ⟨by simp [FG.Att.WellFormed]; omega, Or.inl ⟨hh.symm, hTh.symm⟩⟩⟩]
   refine ⟨_, rfl, ?_⟩
   simp [hatts, FG.ChainState.processAtt, FG.FGParams.heightEvents, FG.FGParams.finalizePrune,
-    FG.FGParams.bestFinal, FG.FGParams.justifies, FG.ChainState.advance, FG.ChainState.bound,
+    FG.FGParams.bestFinal, FG.FGParams.justifies, FG.ChainState.advance,
+    FG.ChainState.previousHeightJustified,
     FG.FGParams.KW, hq, hh, hTh, htg, hpg, hpd, hhj, hsl]
 
 include hq in
@@ -259,7 +260,8 @@ theorem trans_one (σ : FG.ChainState gp.n) (B : FG.FGBlock gp.n) (v : Fin gp.n)
     exact ⟨by simp [FG.Att.WellFormed], Or.inl ⟨hh.symm, hTh.symm⟩⟩⟩]
   refine ⟨_, rfl, ?_⟩
   simp [hatts, FG.ChainState.processAtt, FG.FGParams.heightEvents, FG.FGParams.finalizePrune,
-    FG.FGParams.bestFinal, FG.FGParams.justifies, FG.ChainState.advance, FG.ChainState.bound,
+    FG.FGParams.bestFinal, FG.FGParams.justifies, FG.ChainState.advance,
+    FG.ChainState.previousHeightJustified,
     FG.FGParams.KW, hq, hh, hTh, htg, hpg, hpd, hhj, hsl, hF, hhF]
 
 end Transition
@@ -572,12 +574,12 @@ theorem attest_blk {fg : Store sp1.toParams N1.Payload} {s : Nat} (hs : 1 ≤ s)
     unfold FG.Record.finalityPair
     rcases Nat.lt_or_ge s 2 with h2 | h2
     · obtain rfl : s = 1 := by omega
-      have hb : ¬ (fg.σ (blk (ent 1)).root).bound := by
-        unfold FG.ChainState.bound; rw [hSe.hj]; simp [ent]
+      have hb : ¬ (fg.σ (blk (ent 1)).root).previousHeightJustified := by
+        unfold FG.ChainState.previousHeightJustified; rw [hSe.hj]; simp [ent]
       rw [ite_neg hb, hSe.pending]
       rfl
-    · have hb : (fg.σ (blk (ent s)).root).bound := by
-        unfold FG.ChainState.bound; rw [hSe.hj, he_h]
+    · have hb : (fg.σ (blk (ent s)).root).previousHeightJustified := by
+        unfold FG.ChainState.previousHeightJustified; rw [hSe.hj, he_h]
         unfold ent; split_ifs <;> omega
       have hperm : Λ.permits (fg.σ (blk (ent s)).root).hj (fg.σ (blk (ent s)).root).J := by
         rw [hSe.hj, hSe.J]

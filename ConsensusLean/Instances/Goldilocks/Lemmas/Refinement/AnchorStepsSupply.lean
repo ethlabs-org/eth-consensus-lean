@@ -18,13 +18,14 @@ public section
 consensus-lean#136, route A (anchors at the slots `s₀ + [0, 2, 4, 6]`). Paper: workbench
 `route_a_gap2.md` §1, `anchor_row_supplier.md` (r2), `anchor_tick_ac_producer.md`.
 
-* `anchorStep_gap2`: one step `A → X` between honest proposals two slots apart. At the tick
-  `t_s + 6Δ`, `UpTo.report_cover_of_proposal` gives a report `⪰ A` from every honest node, or an
-  honest report strictly above `A`. A higher report puts the parent of `X` above `A`
+* `anchorStep_gap2`: one step `A → X` between honest proposals two slots apart. At the tick `t_s +
+  6Δ`, `UpTo.report_cover_of_proposal` gives a report `⪰ A` from every honest node, or an honest
+  report strictly above `A`. A higher report puts the parent of `X` above `A`
   (`crossed_parents_above_upTo`), so the rows are not needed. Otherwise every report is at the
   height of `A`, and `row_signers_of_reports` gives a quorum of exact rows of the entry of `A`,
-  signed by `t_s + 6Δ`. With `ΔF ≤ 2Δ` they are delivered before `t_{s+2} = t_s + 8Δ`.
-  The fin-highness premise follows from `H_z + 2 ≤ σ[A].h` and the definition of `bound`.
+  signed by `t_s + 6Δ`. With `ΔF ≤ 2Δ` they are delivered before `t_{s+2} = t_s + 8Δ`. The
+  fin-highness premise follows from `H_z + 2 ≤ σ[A].h` and the definition of
+  `previousHeightJustified`.
 * `anchorSteps_gap2`: the three steps of the window. The height premise is explicit at `P₀`
   only; each step gives it at the next anchor.
 
@@ -178,7 +179,7 @@ theorem anchorStep_gap2 {g ΔR a b gS ΔF : Time}
     rw [hETh, hEr]
   have hhT : Healing.HZ tr H g + 1 ≤ ((tr.state (proposer (s + 2)) kX).fg.σ E.root).h := by
     omega
-  have hhj : ((tr.state (proposer (s + 2)) kX).fg.σ E.root).bound →
+  have hhj : ((tr.state (proposer (s + 2)) kX).fg.σ E.root).previousHeightJustified →
       Healing.HZ tr H g + 1 ≤ ((tr.state (proposer (s + 2)) kX).fg.σ E.root).hj := by
     intro hbd
     obtain ⟨-, h2⟩ := hbd
@@ -204,7 +205,7 @@ theorem anchorStep_gap2 {g ΔR a b gS ΔF : Time}
   refine ⟨j, att, hsig, hjt, ?_, ?_, hato, fun hbd _ => ?_⟩
   · rw [hah, hEh, heq]
   · rw [haT, hEr, hPrTh]
-  · have hbE : ((tr.state (proposer (s + 2)) kX).fg.σ E.root).bound := by
+  · have hbE : ((tr.state (proposer (s + 2)) kX).fg.σ E.root).previousHeightJustified := by
       obtain ⟨h1, h2⟩ := hbd
       exact ⟨by omega, by omega⟩
     rw [hfin hbE, hEJ, hEhj, hPrJ, hPrhj]

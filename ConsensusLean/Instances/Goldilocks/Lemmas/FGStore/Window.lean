@@ -8,15 +8,15 @@ public section
 
 /-! # Goldilocks FG store: a good window justifies its entry (theorem A's core)
 
-Under `GW(E, a, k_F)` (`GoodWindow`), the chain of the serving block `B*` justifies the entry `E`
-at `B*` or earlier, at a block `X` before which the height is not left; `X` enters the next height
-as its own entry, with `(h, T_h)` pending; and at a bound entry `X` has finalized `P_E`
-(`window_justifies`, theorem.md §3). The rows of `GW` are on `B*`'s chain (on the parent's, or
-pooled and so included by the honest proposal); while `h` is current they stay valid and their
-target and finality bits persist; no block before `B*` is old enough to time out
-(`v* ≤ u + D ≤ u + δ_t`), and `B*` tests justification before the timeout. The state of a block
-is the same at every honest node that holds it (`σ_eq_of_held`): it is the fold over the block's
-chain, which the coherent `U` fixes. -/
+Under `GW(E, a, k_F)` (`GoodWindow`), the chain of the serving block `B*` justifies the entry `E` at
+`B*` or earlier, at a block `X` before which the height is not left; `X` enters the next height as
+its own entry, with `(h, T_h)` pending; and at an entry whose previous height is justified `X` has
+finalized `P_E` (`window_justifies`, theorem.md §3). The rows of `GW` are on `B*`'s chain (on the
+parent's, or pooled and so included by the honest proposal); while `h` is current they stay valid
+and their target and finality bits persist; no block before `B*` is old enough to time out (`v* ≤ u
++ D ≤ u + δ_t`), and `B*` tests justification before the timeout. The state of a block is the same
+at every honest node that holds it (`σ_eq_of_held`): it is the fold over the block's chain, which
+the coherent `U` fixes. -/
 
 namespace Consensus.Goldilocks.Store
 
@@ -94,11 +94,11 @@ private theorem step_shape {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B :
   · exact Or.inr ⟨rfl, rfl, rfl⟩
   · exact Or.inl ⟨rfl, rfl, rfl, fun pr hpr => List.mem_of_mem_filter hpr, rfl, rfl⟩
 
-/-- The height events of a counted state at the current entry `(h₀, Tr)` of slot `u`, with
-`(h_j, J) = (j, Jr)` and, at a bound height, `(j, Jr)` pending or finalized: before the entry
-is `δ_t` old the state keeps all of this or justifies the entry (finalized `(j, Jr)` at a bound
-height); with a target quorum and (at a bound height, `(j, Jr)` pending) a finality quorum for
-`j`, it justifies. -/
+/-- The height events of a counted state at the current entry `(h₀, Tr)` of slot `u`, with `(h_j, J)
+= (j, Jr)` and, at a height whose previous height is justified, `(j, Jr)` pending or finalized:
+before the entry is `δ_t` old the state keeps all of this or justifies the entry (finalized `(j,
+Jr)` at a height whose previous height is justified); with a target quorum and (at a height whose
+previous height is justified, `(j, Jr)` pending) a finality quorum for `j`, it justifies. -/
 private theorem events_current {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
     (he : gp.heightEvents σ = σ') {h₀ Tr u j Jr L : Nat}
     (hh : σ.h = h₀) (hT : σ.Th = Tr) (hu : σ.ThSlot = u) (hj : σ.hj = j) (hJ : σ.J = Jr)
@@ -263,12 +263,12 @@ theorem rows_counted (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H
         exact ⟨fun ht => bt (a1 ht), fun pr hpr hm => bf _ (a2 pr hpr (hpend pr hm))⟩
     · exact ⟨by omega, fun h' => by omega⟩
 
-/-- The state of an entry block entered its height at the block's slot; at a bound height, its
-predecessor is pending there. -/
+/-- The state of an entry block entered its height at the block's slot; at a height whose previous
+height is justified, its predecessor is pending there. -/
 theorem entry_facts (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {m : Nat}
     {T : NodeBlock P ACP} (hT : T ∈ (tr.store y m).tree)
     (hTe : ((tr.store y m).σ T.root).Th = T.root) :
-    ((tr.store y m).σ T.root).ThSlot = T.slot ∧ (((tr.store y m).σ T.root).bound →
+    ((tr.store y m).σ T.root).ThSlot = T.slot ∧ (((tr.store y m).σ T.root).previousHeightJustified →
       (((tr.store y m).σ T.root).hj, ((tr.store y m).σ T.root).J) ∈
         ((tr.store y m).σ T.root).pending) := by
   have hreach := store_reachable hr hy m
@@ -319,7 +319,7 @@ theorem σ_eq_of_held (hr : FGLocalRun acp₀ H U tr) {y z : Fin P.n} (hy : y �
 
 /-- **Theorem A's core.** A good window's serving block justifies the entry on its chain, at a
 block `X ⪯ B*` before which the height is not left; `X` enters the next height as its own entry
-with `(h, T_h)` pending; at a bound entry, `X` has finalized `P_E`. -/
+with `(h, T_h)` pending; at an entry whose previous height is justified, `X` has finalized `P_E`. -/
 theorem window_justifies (hr : FGLocalRun acp₀ H U tr) {cF : Nat} {T : NodeBlock P ACP}
     {a kF : Nat} {p : Fin P.n} {i : Nat} {Bs Pr : NodeBlock P ACP} {R : Finset (FG.Att P.n)}
     (hw : GoodWindow P ACP H tr cF T a kF p i Bs Pr R) :
@@ -328,7 +328,7 @@ theorem window_justifies (hr : FGLocalRun acp₀ H U tr) {cF : Nat} {T : NodeBlo
       ((tr.store p (i + 1)).σ X.root).h = ((tr.store p i).σ T.root).h + 1 ∧
       ((tr.store p (i + 1)).σ X.root).Th = X.root ∧
       (((tr.store p i).σ T.root).h, T.root) ∈ ((tr.store p (i + 1)).σ X.root).pending ∧
-      (((tr.store p i).σ T.root).bound →
+      (((tr.store p i).σ T.root).previousHeightJustified →
         ((tr.store p (i + 1)).σ X.root).F = ((tr.store p i).σ T.root).J ∧
         ((tr.store p (i + 1)).σ X.root).hF = ((tr.store p i).σ T.root).hj) := by
   obtain ⟨⟨hp, hacc, -, -, hPr, hpar, hincl⟩, ⟨hT, hTe⟩, hTPr, ⟨-, hwin⟩, hq, hrows, -, hpool,
@@ -362,7 +362,7 @@ theorem window_justifies (hr : FGLocalRun acp₀ H U tr) {cF : Nat} {T : NodeBlo
           (st'.σ Y.root).h = ε.h ∧ (st'.σ Y.root).Th = T.root) ∨
       ∃ X, JustifiesEntry P ACP st' T ε.h X ∧ st'.Anc X Bs ∧ (st'.σ X.root).h = ε.h + 1 ∧
         (st'.σ X.root).Th = X.root ∧ (ε.h, T.root) ∈ (st'.σ X.root).pending ∧
-        (ε.bound → (st'.σ X.root).F = ε.J ∧ (st'.σ X.root).hF = ε.hj) := by
+        (ε.previousHeightJustified → (st'.σ X.root).F = ε.J ∧ (st'.σ X.root).hF = ε.hj) := by
     intro W hTW
     induction hTW with
     | refl =>
@@ -406,7 +406,7 @@ theorem window_justifies (hr : FGLocalRun acp₀ H U tr) {cF : Nat} {T : NodeBlo
   have hrc := rows_counted hr hp (i + 1) (hsub hPr)
   have hR : ∀ r ∈ R, r.val ∈
       (Bs.fgView.atts.foldl FG.ChainState.processAtt { st'.σ Pr.root with s := Bs.slot }).target ∧
-      (ε.bound → (ε.hj, ε.J) ∈ (st'.σ Pr.root).pending → r.val ∈
+      (ε.previousHeightJustified → (ε.hj, ε.J) ∈ (st'.σ Pr.root).pending → r.val ∈
         ((Bs.fgView.atts.foldl FG.ChainState.processAtt
           { st'.σ Pr.root with s := Bs.slot }).fin ε.hj)) := by
     intro r hrR

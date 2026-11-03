@@ -66,7 +66,7 @@ theorem window_justifies_or_parents_above_after'_upTo (hrun : GoldilocksRun prop
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   rcases window_justifies_or_crossed_after_upTo hrun hq hH hs hv hM4 hs₁ hvs hwb hy hc htH hl hf
@@ -125,7 +125,7 @@ theorem window_justifies_or_parents_above_unanimous_entry_upTo
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
@@ -187,7 +187,7 @@ theorem window_entry_justified_or_window_upTo (hrun : GoldilocksRun proposer dg 
             ∃ D ∈ (tr.state w j).fg.tree, (tr.state w j).fg.Anc X D ∧
               (tr.state w j).fg.Anc D Pr ∧ ((tr.state w j).fg.σ D.root).h = h + 1 ∧
               ((tr.state w j).fg.σ D.root).hj = h ∧ ((tr.state w j).fg.σ D.root).J = T ∧
-              (((tr.state y k).fg.σ X.root).bound →
+              (((tr.state y k).fg.σ X.root).previousHeightJustified →
                 ((tr.state w j).fg.σ D.root).F = ((tr.state y k).fg.σ X.root).J ∧
                 ((tr.state w j).fg.σ D.root).hF = ((tr.state y k).fg.σ X.root).hj)) ∨
     ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ k X Pr,
@@ -195,7 +195,7 @@ theorem window_entry_justified_or_window_upTo (hrun : GoldilocksRun proposer dg 
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
@@ -264,7 +264,7 @@ theorem window_entry_justified_M4_upTo (hrun : GoldilocksRun proposer dg H tr)
             ∃ D ∈ (tr.state w j).fg.tree, (tr.state w j).fg.Anc X D ∧
               (tr.state w j).fg.Anc D Pr ∧ ((tr.state w j).fg.σ D.root).h = h + 1 ∧
               ((tr.state w j).fg.σ D.root).hj = h ∧ ((tr.state w j).fg.σ D.root).J = T ∧
-              (((tr.state y k).fg.σ X.root).bound →
+              (((tr.state y k).fg.σ X.root).previousHeightJustified →
                 ((tr.state w j).fg.σ D.root).F = ((tr.state y k).fg.σ X.root).J ∧
                 ((tr.state w j).fg.σ D.root).hF = ((tr.state y k).fg.σ X.root).hj)) ∨
     ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ k X Pr,
@@ -272,7 +272,7 @@ theorem window_entry_justified_M4_upTo (hrun : GoldilocksRun proposer dg H tr)
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
@@ -325,7 +325,7 @@ theorem window_entry_justified_M4_anc_upTo (hrun : GoldilocksRun proposer dg H t
             ∃ D ∈ (tr.state w j).fg.tree, (tr.state w j).fg.Anc X D ∧
               (tr.state w j).fg.Anc D Pr ∧ ((tr.state w j).fg.σ D.root).h = h + 1 ∧
               ((tr.state w j).fg.σ D.root).hj = h ∧ ((tr.state w j).fg.σ D.root).J = T ∧
-              (((tr.state y k).fg.σ X.root).bound →
+              (((tr.state y k).fg.σ X.root).previousHeightJustified →
                 ((tr.state w j).fg.σ D.root).F = ((tr.state y k).fg.σ X.root).J ∧
                 ((tr.state w j).fg.σ D.root).hF = ((tr.state y k).fg.σ X.root).hj)) ∨
     ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ kp X Pr,
@@ -333,7 +333,7 @@ theorem window_entry_justified_M4_anc_upTo (hrun : GoldilocksRun proposer dg H t
       Pr ∈ (tr.state (proposer s') kp).fg.tree ∧
       (h < ((tr.state (proposer s') kp).fg.σ Pr.root).h ∨
         (((tr.post kp).fg.σ X.root).hj = h ∧ ((tr.post kp).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') kp).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') kp).fg.σ Pr.root).previousHeightJustified →
             ((tr.post kp).fg.σ X.root).hF =
               ((tr.state (proposer s') kp).fg.σ Pr.root).hj))) ∧
       ∀ X' ∈ (tr.state y k).fg.tree, X'.root = T → Anc (tr.HonestBlocks H) X' Pr := by

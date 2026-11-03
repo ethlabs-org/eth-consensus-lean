@@ -61,7 +61,7 @@ theorem finalityPair_entry_healed'_upTo (hrun : GoldilocksRun proposer dg H tr)
     (hPr : Pr ∈ (tr.state p k').fg.tree) (hk'b : tr.time k' ≤ b)
     (hT : ((tr.state p k').fg.σ Pr.root).Th =
       ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th)
-    (hb : ((tr.state p k').fg.σ Pr.root).bound)
+    (hb : ((tr.state p k').fg.σ Pr.root).previousHeightJustified)
     (hj₀ : h₀ ≤ ((tr.state p k').fg.σ Pr.root).hj) (hj1 : 1 ≤ ((tr.state p k').fg.σ Pr.root).hj)
     {i : Nat} (hib : tr.time i ≤ b) :
     (tr.state y i).record.finalityPair ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th) =

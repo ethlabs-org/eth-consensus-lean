@@ -573,7 +573,7 @@ services a new entry and its actual successor within D each. OPEN suppliers:
 window-local H4 (target a≤1), current-entry progress bootstrap, usable records
 and bounded T_C, productive non-⊥ AC blocks, surviving chain and cache acceptance.
 Timing enumeration and periodic guards check arithmetic only. Two-proposer
-minimality remains OPEN: a slot-2 justification of a slot-0 unbound entry creates
+minimality remains OPEN: a slot-2 justification of a slot-0 entry whose previous height is not justified creates
 its successor but does not yet finalize slot 0. This is not an infinite-run
 counterexample to recurring pairs, nor evidence for a δt–X necessity.
 

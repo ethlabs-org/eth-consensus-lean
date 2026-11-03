@@ -211,18 +211,18 @@ private theorem updateFinality_F (st : Store P ACP) (σ : FG.ChainState P.n)
 variable (P ACP)
 
 /-- **G1.6.** -/
-theorem bound_entry : BoundEntry P ACP := by
+theorem previousHeightJustified_entry : PreviousHeightJustifiedEntry P ACP := by
   intro acp₀ H U tr hr cF T a kF p i Bs Pr R hw hb
   obtain ⟨X, hJ, hXB, -, -, -, hfin⟩ := window_justifies hr hw
   exact ⟨X, hJ, hXB, (hfin hb).1, (hfin hb).2⟩
 
 /-- **G1.7.** -/
-theorem unbound_entry : UnboundEntry P ACP := by
+theorem previousHeightNotJustified_entry : PreviousHeightNotJustifiedEntry P ACP := by
   intro acp₀ H U tr hr cF T a₀ kF p i Bs Pr R hw _
   obtain ⟨X, hJ, hXB, hh, hTh, hpend, -⟩ := window_justifies hr hw
   have hp := hw.proposal.1
   have h1 := (one_le_h hr hp hw.entry.1).1
-  have hb : ((tr.store p (i + 1)).σ X.root).bound :=
+  have hb : ((tr.store p (i + 1)).σ X.root).previousHeightJustified :=
     ⟨by rw [hJ.2.2.1]; omega, by rw [hJ.2.2.1, hh]⟩
   refine ⟨X, hJ, hXB, hpend, hh, hTh, hb, ?_⟩
   intro a₁ p₁ i₁ Bs₁ Pr₁ R₁ hw₁
@@ -320,7 +320,7 @@ theorem coverage : Coverage P ACP := by
   intro acp₀ H U tr hr cF T₁ T a₀ kF p i Bs Pr R hw hnb _ hT₁T _ _ X hJX hXB a₁ p₁ i₁ Bs₁ Pr₁ R₁
     hw₁
   obtain ⟨X', hJ', hX'B, -, hh', -, -, hZ⟩ :=
-    unbound_entry P ACP acp₀ H U tr hr cF T a₀ kF p i Bs Pr R hw hnb
+    previousHeightNotJustified_entry P ACP acp₀ H U tr hr cF T a₀ kF p i Bs Pr R hw hnb
   have hp := hw.proposal.1
   have hp₁ := hw₁.proposal.1
   have coh : ∀ {z} (_ : z ∈ H) (m : Nat), Coherent (tr.store z m).tree :=

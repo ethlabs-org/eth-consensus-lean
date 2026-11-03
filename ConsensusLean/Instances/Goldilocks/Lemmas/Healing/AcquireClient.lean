@@ -192,7 +192,7 @@ private theorem foldl_newest_mem {l : List (Nat × Nat)} {acc : Option (Nat × N
     · exact Or.inr (List.mem_cons_of_mem _ h')
 
 /-- **A finality pair of a held state is the justification of a held state** (the entry's own
-justification at a bound entry, or a pending pair). -/
+justification at an entry whose previous height is justified, or a pending pair). -/
 theorem finalityPair_justified (hr : st.Reachable acp₀) {W : NodeBlock P ACP}
     (hW : W ∈ st.tree) {Λ : FG.Record} {p : Nat × Nat}
     (hp : Λ.finalityPair (st.σ W.root) = some p) :

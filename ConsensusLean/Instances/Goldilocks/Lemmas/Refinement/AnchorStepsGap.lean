@@ -187,7 +187,7 @@ theorem anchorStep_gap {g ΔR a b gS ΔF : Time}
     rw [hETh, hEr]
   have hhT : Healing.HZ tr H g + 1 ≤ ((tr.state (proposer (s + c)) kX).fg.σ E.root).h := by
     omega
-  have hhj : ((tr.state (proposer (s + c)) kX).fg.σ E.root).bound →
+  have hhj : ((tr.state (proposer (s + c)) kX).fg.σ E.root).previousHeightJustified →
       Healing.HZ tr H g + 1 ≤ ((tr.state (proposer (s + c)) kX).fg.σ E.root).hj := by
     intro hbd
     obtain ⟨-, h2⟩ := hbd
@@ -213,7 +213,7 @@ theorem anchorStep_gap {g ΔR a b gS ΔF : Time}
   refine ⟨j, att, hsig, hjt, ?_, ?_, hato, fun hbd _ => ?_⟩
   · rw [hah, hEh, heq]
   · rw [haT, hEr, hPrTh]
-  · have hbE : ((tr.state (proposer (s + c)) kX).fg.σ E.root).bound := by
+  · have hbE : ((tr.state (proposer (s + c)) kX).fg.σ E.root).previousHeightJustified := by
       obtain ⟨h1, h2⟩ := hbd
       exact ⟨by omega, by omega⟩
     rw [hfin hbE, hEJ, hEhj, hPrJ, hPrhj]

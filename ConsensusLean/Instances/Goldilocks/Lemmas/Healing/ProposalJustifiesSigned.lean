@@ -42,10 +42,11 @@ theorem proposal_parent_held (hrun : GoldilocksRun proposer dg H tr)
   exact hY
 
 /-- **Lemma 3′ from signed rows** (`justify_of_rows'` with delivery from `GST(g)`): an honest
-proposal `X` at the cut `kX` with `t_{kX} ≥ v + Δ_F`, `v ≥ ḡ`, on the parent `Pr`, and a set
-`S ⊆ H` of weight `≥ q` of honest validators, each of which signed by `v` a target row for
-`(σ.h, σ.T_h)`, `σ = σ[Pr]` (with the finality pair `(σ.h_j, σ.J)` at a bound height where it is
-pending): `X`'s state justifies `(σ.h, σ.T_h)`, and at a bound height it has `h_F = σ.h_j`. -/
+proposal `X` at the cut `kX` with `t_{kX} ≥ v + Δ_F`, `v ≥ ḡ`, on the parent `Pr`, and a set `S ⊆ H`
+of weight `≥ q` of honest validators, each of which signed by `v` a target row for `(σ.h, σ.T_h)`,
+`σ = σ[Pr]` (with the finality pair `(σ.h_j, σ.J)` at a height whose previous height is justified
+where it is pending): `X`'s state justifies `(σ.h, σ.T_h)`, and at a height whose previous height is
+justified it has `h_F = σ.h_j`. -/
 theorem justify_of_signed_rows' (hrun : GoldilocksRun proposer dg H tr) {g ΔF v : Time}
     (hs : HSShared tr H dg g ΔF) (hv : gbar g ≤ v)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -54,13 +55,13 @@ theorem justify_of_signed_rows' (hrun : GoldilocksRun proposer dg H tr) {g ΔF v
     (hsig : ∀ y ∈ S, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧
       att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
       att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
-      (((tr.state p kX).fg.σ Pr.root).bound →
+      (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
         (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J) ∈
           ((tr.state p kX).fg.σ Pr.root).pending →
         att.fin = some (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J))) :
     ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h ∧
       ((tr.post kX).fg.σ X.root).J = ((tr.state p kX).fg.σ Pr.root).Th ∧
-      (((tr.state p kX).fg.σ Pr.root).bound →
+      (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
         ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
   obtain ⟨Pr', hpar', hPr'⟩ := proposal_parent_held hrun hs.noColl hp hX
   have hr : Pr'.root = Pr.root := Option.some.inj (hpar'.symm.trans hpar)

@@ -393,10 +393,10 @@ theorem reset_of_high_source (hrun : GoldilocksRun proposer dg H tr)
     split_ifs at hcl <;> simp_all only [Bool.false_eq_true, ↓reduceIte,
       reduceCtorEq]
 
-/-- **The finality pair of an honest attestation names an entry of its source's chain**
-(§16; G0.2 (h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry
-state at a bound entry, or one of its pending pairs) names the entry at height `h` of an
-ancestor-or-self `J` of the source's entry `E` (whose root is the signed `T`). -/
+/-- **The finality pair of an honest attestation names an entry of its source's chain** (§16; G0.2
+(h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry state at an
+entry whose previous height is justified, or one of its pending pairs) names the entry at height `h`
+of an ancestor-or-self `J` of the source's entry `E` (whose root is the signed `T`). -/
 theorem signed_fin_pair_entry_of_run (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) {h r : Nat}
@@ -416,7 +416,7 @@ theorem signed_fin_pair_entry_of_run (hrun : GoldilocksRun proposer dg H tr)
   · have hg : ((tr.state y k).fg.σ src.root).Th = sp.genesisRoot := by
       rw [Store.σ_of_blocks_none hr hs']; rfl
     rw [hg, Store.σ_genesis hr] at hfp
-    simp [FG.Record.finalityPair, FG.ChainState.bound, FG.ChainState.init] at hfp
+    simp [FG.Record.finalityPair, FG.ChainState.previousHeightJustified, FG.ChainState.init] at hfp
   have hXr : X.root = src.root := Goldilocks.Store.Reachable.blocks_root hr hs'
   have hX : X ∈ (tr.state y k).fg.tree := by
     change (tr.state y k).fg.blocks X.root = some X; rw [hXr]; exact hs'

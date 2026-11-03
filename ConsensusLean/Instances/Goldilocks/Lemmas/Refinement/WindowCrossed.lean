@@ -11,7 +11,7 @@ live fast lock on `B`; `rows_supply_or_crossed` takes a held entry block `T` wit
 * `lock_entry_block`: for a block `B` held by an honest node, the entry block of `σ[B]`: a held
   ancestor `T` of `B` with `T.root = σ[B].Th`, `σ[T].h = σ[B].h` and `σ[T].Th = T.root`.
 * `entry_HZ_bounds`: under `HealedRecords` (RH: `H_z + 1 ≤ h₀`) and `h₀ + 1 ≤ σ.h`, the bounds
-  `H_z + 1 ≤ σ.h` and `σ.bound → H_z + 1 ≤ σ.h_j` of `rows_supply_or_crossed`.
+  `H_z + 1 ≤ σ.h` and `σ.previousHeightJustified → H_z + 1 ≤ σ.h_j` of `rows_supply_or_crossed`.
 * `window_justifies_or_crossed`: `window_justifies_of_lock_healed` with `S`, `hS`, `hsig`
   replaced by `ResetPremisesUpTo` (at `gR`, with `v ≤ b`) and a report `C ⪰ T` by `v` from each
   honest node. Either some honest report crosses `h`, or the window conclusion holds. -/
@@ -36,14 +36,15 @@ theorem lock_entry_block (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} 
   obtain ⟨⟨T, hT, hTr, hTB, hTh, hTT⟩, -⟩ := Store.entry_state_of_source _ _ _ _ hr _ hB
   exact ⟨T, hT, hTr, hTB, hTh, hTT.trans hTr.symm⟩
 
-/-- **The reset-height bounds of an entry state.** Under `HealedRecords` (RH) and
-`h₀ + 1 ≤ σ.h`: `H_z + 1 ≤ σ.h`, and `σ.bound → H_z + 1 ≤ σ.h_j` (`bound_hj`). -/
+/-- **The reset-height bounds of an entry state.** Under `HealedRecords` (RH) and `h₀ + 1 ≤ σ.h`:
+`H_z + 1 ≤ σ.h`, and `σ.previousHeightJustified → H_z + 1 ≤ σ.h_j` (`previousHeightJustified_hj`).
+-/
 theorem entry_HZ_bounds {gR : Time} {h₀ : Nat} {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : Healing.HealedRecords tr H gR h₀ E) {σ : FG.ChainState sp.n} (hh₀ : h₀ + 1 ≤ σ.h) :
-    Healing.HZ tr H gR + 1 ≤ σ.h ∧ (σ.bound → Healing.HZ tr H gR + 1 ≤ σ.hj) := by
+    Healing.HZ tr H gR + 1 ≤ σ.h ∧ (σ.previousHeightJustified → Healing.HZ tr H gR + 1 ≤ σ.hj) := by
   have hrh := hR.rh
   refine ⟨by omega, fun hb => ?_⟩
-  have := bound_hj hb
+  have := previousHeightJustified_hj hb
   omega
 
 /-- **The lock window or a crossing report.** The premises of `window_justifies_of_lock_healed`
@@ -79,7 +80,7 @@ theorem window_justifies_or_crossed (hrun : GoldilocksRun proposer dg H tr)
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
@@ -127,7 +128,7 @@ theorem window_justifies_or_crossed_after (hrun : GoldilocksRun proposer dg H tr
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB

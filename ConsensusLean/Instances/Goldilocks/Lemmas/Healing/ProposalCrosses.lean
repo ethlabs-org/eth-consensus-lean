@@ -12,10 +12,11 @@ slot `s**` of the proposal (steps 4 and 6, M4, C4).
 
 * `rows_prog`: the rows on the chain of a held block that name its entry have set their progress
   bits (targets and timeouts), as `Store.rows_counted` does for the target bits.
-* `cross_step` (one held block): rows of weight `≥ q` that name `Pr`'s entry, in `X`'s payload or
-  on `Pr`'s chain, and `X.slot ≥ ThSlot + δ_t`: `X` enters the next height
-  (`FGParams.cross_of_progress`), as its own entry; the new height is bound exactly when `X`
-  justified the old one (Lemma X), and then, at a bound old height, `h_F = h_j`.
+* `cross_step` (one held block): rows of weight `≥ q` that name `Pr`'s entry, in `X`'s payload or on
+  `Pr`'s chain, and `X.slot ≥ ThSlot + δ_t`: `X` enters the next height
+  (`FGParams.cross_of_progress`), as its own entry; the new height has its previous height justified
+  exactly when `X` justified the old one (Lemma X), and then, at an old height whose previous height
+  is justified, `h_F = h_j`.
 * `cross_of_rows`, `cross_of_signed_rows`: the same at an honest proposal, with the rows processed
   before the cut, or signed by `v` with `v ≥ ḡ`, `v + Δ_F ≤ t_{kX}` (`rows_delivered`).
 * `handoff_slot_le`: step 6, `s** ≤ s_h + δ_t + g` when `δ_t ≥ c + g − 1`.
@@ -133,11 +134,11 @@ theorem rows_prog (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (
       · exact bp ((ih X hX' r hrX).2 hrh' hrT)
     · exact ⟨by omega, fun h' => by omega⟩
 
-/-- **L5.3 step 5 at one block**: a held block `X` on the held parent `Pr`, at a slot at least
-`δ_t` after `Pr`'s entry, and a set `S` of weight `≥ q` of validators, each with a row (target or
-timeout) for `Pr`'s entry in `X`'s payload or on `Pr`'s chain: `X` enters the next height as its
-own entry; it is bound exactly when `X` justified `Pr`'s entry, and then, at a bound height,
-`h_F = h_j`. -/
+/-- **L5.3 step 5 at one block**: a held block `X` on the held parent `Pr`, at a slot at least `δ_t`
+after `Pr`'s entry, and a set `S` of weight `≥ q` of validators, each with a row (target or timeout)
+for `Pr`'s entry in `X`'s payload or on `Pr`'s chain: `X` enters the next height as its own entry;
+it has its previous height justified exactly when `X` justified `Pr`'s entry, and then, at a height
+whose previous height is justified, `h_F = h_j`. -/
 theorem cross_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {X Pr : NodeBlock P ACP} (hX : X ∈ (tr.store y i).tree) (hPr : Pr ∈ (tr.store y i).tree)
     (hpar : X.parent = some Pr.root)
@@ -147,10 +148,10 @@ theorem cross_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) 
     (hage : ((tr.store y i).σ Pr.root).ThSlot + P.fg.δt ≤ X.slot) :
     ((tr.store y i).σ X.root).h = ((tr.store y i).σ Pr.root).h + 1 ∧
       ((tr.store y i).σ X.root).Th = X.root ∧
-      (((tr.store y i).σ X.root).bound ↔
+      (((tr.store y i).σ X.root).previousHeightJustified ↔
         ((tr.store y i).σ X.root).hj = ((tr.store y i).σ Pr.root).h) ∧
       (((tr.store y i).σ X.root).hj = ((tr.store y i).σ Pr.root).h →
-        ((tr.store y i).σ Pr.root).bound →
+        ((tr.store y i).σ Pr.root).previousHeightJustified →
         ((tr.store y i).σ X.root).hF = ((tr.store y i).σ Pr.root).hj) := by
   classical
   set σ := (tr.store y i).σ Pr.root
@@ -167,7 +168,7 @@ theorem cross_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) 
     chain_state_of_chain P ACP acp₀ _ (store_reachable hr hy i) Pr hPr
   obtain ⟨-, -, -, -, h5⟩ := FG.height_step P.fg _ _ _ _ hc hstep
   obtain ⟨hT, hiff, -⟩ := h5 hh
-  exact ⟨hh, hT, hiff, fun hj hb => P.fg.bound_justify_finalizes hstep hb hj⟩
+  exact ⟨hh, hT, hiff, fun hj hb => P.fg.previousHeightJustified_justify_finalizes hstep hb hj⟩
 
 end Chain
 
@@ -177,12 +178,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- **L5.3 step 5 at an honest proposal**: an honest proposal `X` at the cut `kX` on the parent
-`Pr` of the proposer's tree, `σ = σ[Pr]`, at a slot `≥ σ.ThSlot + δ_t`, and a set `S ⊆ H` of
-weight `≥ q` of honest validators, each of which signed a row (target or timeout) for
-`(σ.h, σ.T_h)` that the proposer processed before `kX`: `X` enters the next height as its own
-entry; it is bound exactly when `X` justified `(σ.h, σ.T_h)`, and then, at a bound height,
-`h_F = σ.h_j`. -/
+/-- **L5.3 step 5 at an honest proposal**: an honest proposal `X` at the cut `kX` on the parent `Pr`
+of the proposer's tree, `σ = σ[Pr]`, at a slot `≥ σ.ThSlot + δ_t`, and a set `S ⊆ H` of weight `≥ q`
+of honest validators, each of which signed a row (target or timeout) for `(σ.h, σ.T_h)` that the
+proposer processed before `kX`: `X` enters the next height as its own entry; it has its previous
+height justified exactly when `X` justified `(σ.h, σ.T_h)`, and then, at a height whose previous
+height is justified, `h_F = σ.h_j`. -/
 theorem cross_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
@@ -193,10 +194,10 @@ theorem cross_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoC
     (hage : ((tr.state p kX).fg.σ Pr.root).ThSlot + sp.toParams.fg.δt ≤ X.slot) :
     ((tr.post kX).fg.σ X.root).h = ((tr.state p kX).fg.σ Pr.root).h + 1 ∧
       ((tr.post kX).fg.σ X.root).Th = X.root ∧
-      (((tr.post kX).fg.σ X.root).bound ↔
+      (((tr.post kX).fg.σ X.root).previousHeightJustified ↔
         ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h) ∧
       (((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h →
-        ((tr.state p kX).fg.σ Pr.root).bound →
+        ((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
         ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
   obtain ⟨hfg, hXt, hPrt, hσX, hσPr, hplace⟩ := proposal_rows_placed hrun hnc hp hX hpar hPr
   have := cross_step hfg hp hXt hPrt hpar S hS (fun v hv => by
@@ -220,10 +221,10 @@ theorem cross_of_signed_rows (hrun : GoldilocksRun proposer dg H tr) {g ΔF v : 
     (hage : ((tr.state p kX).fg.σ Pr.root).ThSlot + sp.toParams.fg.δt ≤ X.slot) :
     ((tr.post kX).fg.σ X.root).h = ((tr.state p kX).fg.σ Pr.root).h + 1 ∧
       ((tr.post kX).fg.σ X.root).Th = X.root ∧
-      (((tr.post kX).fg.σ X.root).bound ↔
+      (((tr.post kX).fg.σ X.root).previousHeightJustified ↔
         ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h) ∧
       (((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h →
-        ((tr.state p kX).fg.σ Pr.root).bound →
+        ((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
         ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
   obtain ⟨Pr', hpar', hPr'⟩ := proposal_parent_held hrun hs.noColl hp hX
   have hr : Pr'.root = Pr.root := Option.some.inj (hpar'.symm.trans hpar)

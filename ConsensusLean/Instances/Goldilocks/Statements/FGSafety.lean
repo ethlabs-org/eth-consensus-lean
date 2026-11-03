@@ -41,44 +41,44 @@ def ChainInvariants : Prop :=
     (σ.hF < σ.hj → σ.pending.getLast? = some (σ.hj, σ.J)) ∧
     σ.target ⊆ σ.prog
 
-/-- **G0.2 (b), (h), (i), height step and entry constancy.** Along one accepted block:
-the height grows by at most one; `h_j` and `h_F` do not decrease; while the height stays,
-its entry and its justification `(J, h_j)` stay; a new height is entered by the block
-itself, and it is bound exactly when the block justified the old height; the entry state
-of a bound height has not finalized its predecessor, which is its newest pending pair. -/
+/-- **G0.2 (b), (h), (i), height step and entry constancy.** Along one accepted block: the height
+grows by at most one; `h_j` and `h_F` do not decrease; while the height stays, its entry and its
+justification `(J, h_j)` stay; a new height is entered by the block itself, and it has its previous
+height justified exactly when the block justified the old height; the entry state of a height whose
+previous height is justified has not finalized its predecessor, which is its newest pending pair. -/
 def HeightStep : Prop :=
   ∀ (c : List (FGBlock gp.n)) (σ σ' : ChainState gp.n) (B : FGBlock gp.n),
     gp.chainState c = some σ → gp.stateTransition σ B = some σ' →
     (σ'.h = σ.h ∨ σ'.h = σ.h + 1) ∧ σ.hj ≤ σ'.hj ∧ σ.hF ≤ σ'.hF ∧
     (σ'.h = σ.h → σ'.Th = σ.Th ∧ σ'.J = σ.J ∧ σ'.hj = σ.hj) ∧
-    (σ'.h = σ.h + 1 → σ'.Th = B.root ∧ (σ'.bound ↔ σ'.hj = σ.h) ∧
-      (σ'.bound → σ'.hF < σ'.hj ∧ σ'.pending.getLast? = some (σ'.hj, σ'.J)))
+    (σ'.h = σ.h + 1 → σ'.Th = B.root ∧ (σ'.previousHeightJustified ↔ σ'.hj = σ.h) ∧
+      (σ'.previousHeightJustified → σ'.hF < σ'.hj ∧ σ'.pending.getLast? = some (σ'.hj, σ'.J)))
 
-/-- **G0.7 (c), gated consumption (I7 restated).** A chain state that keeps a target
-quorum is at a bound height whose predecessor is pending and unfinalized, and its
+/-- **G0.7 (c), gated consumption (I7 restated).** A chain state that keeps a target quorum is at a
+height whose previous height is justified and whose predecessor is pending and unfinalized, and its
 timeout is not yet due. (The old "a target quorum is consumed" does not hold.) -/
 def GatedConsumption : Prop :=
   ∀ (c : List (FGBlock gp.n)) (σ : ChainState gp.n), gp.chainState c = some σ →
     gp.q ≤ σ.target.card →
-    σ.bound ∧ (σ.hj, σ.J) ∈ σ.pending ∧ σ.hF < σ.hj ∧ σ.s < σ.ThSlot + gp.δt
+    σ.previousHeightJustified ∧ (σ.hj, σ.J) ∈ σ.pending ∧ σ.hF < σ.hj ∧ σ.s < σ.ThSlot + gp.δt
 
-/-- **G0.8, finality before the gate (I7-LB).** At a bound height whose predecessor
-`(h_j, J)` is pending (pairs strictly increasing, none above `h_j`), a finality quorum
-for `h_j` finalizes it in the finality step of the same block, and with a target quorum
-the same block justifies. -/
+/-- **G0.8, finality before the gate (I7-LB).** At a height whose previous height is justified and
+whose predecessor `(h_j, J)` is pending (pairs strictly increasing, none above `h_j`), a finality
+quorum for `h_j` finalizes it in the finality step of the same block, and with a target quorum the
+same block justifies. -/
 def FinalityBeforeGate : Prop :=
-  ∀ σ : ChainState gp.n, σ.bound → (σ.hj, σ.J) ∈ σ.pending →
+  ∀ σ : ChainState gp.n, σ.previousHeightJustified → (σ.hj, σ.J) ∈ σ.pending →
     σ.pending.Pairwise (fun p r => p.1 < r.1) → (∀ p ∈ σ.pending, p.1 ≤ σ.hj) →
     gp.q ≤ (σ.fin σ.hj).card →
     (gp.finalizePrune σ).hF = σ.hj ∧ (gp.finalizePrune σ).F = σ.J ∧
     (gp.q ≤ σ.target.card → gp.justifies (gp.finalizePrune σ))
 
-/-- **G0.9 (a), retention.** While a bound height stays current and its predecessor is
-not finalized, the predecessor stays pending. -/
+/-- **G0.9 (a), retention.** While a height whose previous height is justified stays current and its
+predecessor is not finalized, the predecessor stays pending. -/
 def Retention : Prop :=
   ∀ (c : List (FGBlock gp.n)) (σ σ' : ChainState gp.n) (B : FGBlock gp.n),
     gp.chainState c = some σ → gp.stateTransition σ B = some σ' →
-    σ.bound → σ'.h = σ.h → σ'.hF < σ'.hj → (σ.hj, σ.J) ∈ σ'.pending
+    σ.previousHeightJustified → σ'.h = σ.h → σ'.hF < σ'.hj → (σ.hj, σ.J) ∈ σ'.pending
 
 /-- **G0.9 (b), the window `K_W = 2`.** The newest pending pair survives the next block,
 whatever it appends, unless that block finalizes at its height or above. (False with a
@@ -88,15 +88,15 @@ def RetentionThroughAppend : Prop :=
     gp.chainState c = some σ → gp.stateTransition σ B = some σ' →
     σ.pending.getLast? = some P → σ'.hF < P.1 → P ∈ σ'.pending
 
-/-- **G0.10, aggregation at a bound entry.** A record *allows a target* at the entry
-height `h` when it holds no lock at `h` for another block and has sent nothing at `h`
-(its target and timeout entries at `h` are then empty, as for every record of a client run).
-For a bound entry state, such a record makes the client send a target whose content is
-`(h, T_h, target; (h_j, J))` when the record permits the predecessor and
-`(h, T_h, target; none)` otherwise: never a timeout, and the same content at every
-validator with a permitting record. -/
+/-- **G0.10, aggregation at an entry whose previous height is justified.** A record *allows a
+target* at the entry height `h` when it holds no lock at `h` for another block and has sent nothing
+at `h` (its target and timeout entries at `h` are then empty, as for every record of a client run).
+For an entry whose previous height is justified state, such a record makes the client send a target
+whose content is `(h, T_h, target; (h_j, J))` when the record permits the predecessor and `(h, T_h,
+target; none)` otherwise: never a timeout, and the same content at every validator with a permitting
+record. -/
 def Aggregation : Prop :=
-  ∀ (σe : ChainState gp.n) (Λ : Record) (v : Fin gp.n), σe.bound →
+  ∀ (σe : ChainState gp.n) (Λ : Record) (v : Fin gp.n), σe.previousHeightJustified →
     (Λ.lock σe.h = none ∨ Λ.lock σe.h = some σe.Th) → Λ.timeout σe.h = ∅ →
     Λ.target σe.h = none → (∀ b ∈ Λ.sent, b.1 ≠ σe.h) →
     ∃ a Λ', Λ.createAtt v σe = some (a, Λ') ∧

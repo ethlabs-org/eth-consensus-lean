@@ -30,13 +30,13 @@ theorem justify_of_signed_rows'_upTo (hrun : GoldilocksRun proposer dg H tr) {g 
     (hsig : ∀ y ∈ S, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧
       att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
       att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
-      (((tr.state p kX).fg.σ Pr.root).bound →
+      (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
         (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J) ∈
           ((tr.state p kX).fg.σ Pr.root).pending →
         att.fin = some (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J))) :
     ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h ∧
       ((tr.post kX).fg.σ X.root).J = ((tr.state p kX).fg.σ Pr.root).Th ∧
-      (((tr.state p kX).fg.σ Pr.root).bound →
+      (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
         ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
   obtain ⟨Pr', hpar', hPr'⟩ := proposal_parent_held hrun hs.noColl hp hX
   have hr : Pr'.root = Pr.root := Option.some.inj (hpar'.symm.trans hpar)
@@ -65,10 +65,10 @@ theorem cross_of_signed_rows_upTo (hrun : GoldilocksRun proposer dg H tr) {g ΔF
     (hage : ((tr.state p kX).fg.σ Pr.root).ThSlot + sp.toParams.fg.δt ≤ X.slot) :
     ((tr.post kX).fg.σ X.root).h = ((tr.state p kX).fg.σ Pr.root).h + 1 ∧
       ((tr.post kX).fg.σ X.root).Th = X.root ∧
-      (((tr.post kX).fg.σ X.root).bound ↔
+      (((tr.post kX).fg.σ X.root).previousHeightJustified ↔
         ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h) ∧
       (((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h →
-        ((tr.state p kX).fg.σ Pr.root).bound →
+        ((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
         ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
   obtain ⟨Pr', hpar', hPr'⟩ := proposal_parent_held hrun hs.noColl hp hX
   have hr : Pr'.root = Pr.root := Option.some.inj (hpar'.symm.trans hpar)

@@ -46,7 +46,7 @@ states and the client. Its run-level nodes (G0.3, G0.4, G0.6, C0.2, G1.4, G1.5) 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
 | — | SPEC `shared/fg.tex` §Attestations and chain state; parameters | FG parameters, quorum `q = ⌈2n/3⌉`, `K_W = 2` | — | `Consensus.Goldilocks.FG.FGParams`, `Consensus.Goldilocks.FG.FGParams.q` |
-| — | SPEC `shared/fg.tex` attestation, chain state, `bound` | attestation, FG view of a block, chain state | — | `Consensus.Goldilocks.FG.Att`, `Consensus.Goldilocks.FG.FGBlock`, `Consensus.Goldilocks.FG.ChainState`, `Consensus.Goldilocks.FG.ChainState.bound` |
+| — | SPEC `shared/fg.tex` attestation, chain state, `previous_height_justified` | attestation, FG view of a block, chain state | — | `Consensus.Goldilocks.FG.Att`, `Consensus.Goldilocks.FG.FGBlock`, `Consensus.Goldilocks.FG.ChainState`, `Consensus.Goldilocks.FG.ChainState.previousHeightJustified` |
 | — | SPEC `shared/fg.tex` Figure "FG: state transition" (loose BJ gate) | `valid_attestation`, `process_attestation`, `process_height_events`, `state_transition`, the chain fold | — | `Consensus.Goldilocks.FG.Att.WellFormed`, `Consensus.Goldilocks.FG.ChainState.validAtt`, `Consensus.Goldilocks.FG.ChainState.processAtt`, `Consensus.Goldilocks.FG.FGParams.heightEvents`, `Consensus.Goldilocks.FG.FGParams.stateTransition`, `Consensus.Goldilocks.FG.FGParams.chainState` |
 | — | SPEC `shared/fg.tex` §Validator client (entry-state read, set-valued timeouts, lock-first `height_pair`) | record, `permits`, `finality_pair`, `height_pair`, `create_attestation`, a client run | — | `Consensus.Goldilocks.FG.Record`, `Consensus.Goldilocks.FG.Record.createAtt`, `Consensus.Goldilocks.FG.Record.run` |
 | — | SPEC `shared/fg.tex` §Slashing conditions (weakened E1) | E1, E2, slashable | — | `Consensus.Goldilocks.FG.slashable` |
@@ -57,7 +57,7 @@ states and the client. Its run-level nodes (G0.3, G0.4, G0.6, C0.2, G1.4, G1.5) 
 | G0.8 | CLAIMS G0.8 | finality before the gate | `M₁` | `Consensus.Goldilocks.FG.FinalityBeforeGate` |
 | G0.9 | CLAIMS G0.9 (a) | retention | `M₁` | `Consensus.Goldilocks.FG.Retention` |
 | G0.9 | CLAIMS G0.9 (b) | the window `K_W = 2` | `M₁` | `Consensus.Goldilocks.FG.RetentionThroughAppend` |
-| G0.10 | CLAIMS G0.10 | aggregation at a bound entry | `M₁` | `Consensus.Goldilocks.FG.Aggregation` |
+| G0.10 | CLAIMS G0.10 | aggregation at an entry whose previous height is justified | `M₁` | `Consensus.Goldilocks.FG.Aggregation` |
 | G0.5 | CLAIMS G0.5 | client safety | `M₁` | `Consensus.Goldilocks.FG.ClientSafety` |
 | G1.3 | CLAIMS G1.3 (G1.2 is its proof's core lemma) | accountable safety, chain level | `M₁` | `Consensus.Goldilocks.FG.AccountableSafety` |
 | — | the milestone | all of the above | `M₁` | `Consensus.Goldilocks.FG.FGSafety` |
@@ -67,7 +67,7 @@ Not transcribed in `M₁`: G0.2 (f), (g) (quorum witnesses on the chain; used in
 (it restates the definition) and (b) (target bits persist while the height is current: not covered, `HeightStep` says nothing of the
 target bits; deferred), F.1–F.4 (schedule,
 tree, digests, readiness: run-level or generic). Witnesses in `ConsensusLeanTest/GoldilocksFG.lean`, labelled by kind there: (a) `conflicting_finalizations`; (b)
-`oneValidator_finalizes`, `bound_entry_after_justification`, `gate_keeps_target_quorum`; and the G0.9 (c) limit
+`oneValidator_finalizes`, `previousHeightJustified_entry_after_justification`, `gate_keeps_target_quorum`; and the G0.9 (c) limit
 witness `window_drops_unfinalized` (the window drops an unfinalized pair).
 
 Refinement obligations recorded for the run-level milestone: the client's input `(h_c, T_c)` is read as `(σe.h,
@@ -146,8 +146,8 @@ the handlers reach, at one node; part 2 (G1.4, G1.6–G1.10, over FG traces) wai
 | G1.10 | CLAIMS G1.10 (the core, with the own proposal; decomposition §4.7 case 2) | quorum-free entries | FGStore (part 2) | `Consensus.Goldilocks.Store.namers`, `Consensus.Goldilocks.Store.QuorumFreeEntries` |
 | — | the part-2 bundle | the above, at one and at every parameter set | FGStore (part 2) | `Consensus.Goldilocks.Store.FGStoreTraceAt`, `Consensus.Goldilocks.Store.FGStoreTrace` |
 | — | CLAIMS §"L1: components / Finality gadget" (notation: entry, window, `D`); theorem.md (r9) §1–§2 | an entry block; an honest proposal (P5's inclusion rule); the good window `GW(E, a, k_F)` (P1–P6; P7 is `FGLocalRun`); a block that justifies an entry without leaving its height first | FGStore (part 3) | `Consensus.Goldilocks.Store.IsEntry`, `Consensus.Goldilocks.Store.HonestProposal`, `Consensus.Goldilocks.Store.GoodWindow`, `Consensus.Goldilocks.Store.JustifiesEntry` |
-| G1.6 | CLAIMS G1.6 (theorem A) | bound entry | FGStore (part 3) | `Consensus.Goldilocks.Store.BoundEntry` |
-| G1.7 | CLAIMS G1.7 (theorem B) | unbound entry, two windows | FGStore (part 3) | `Consensus.Goldilocks.Store.UnboundEntry` |
+| G1.6 | CLAIMS G1.6 (theorem A) | entry whose previous height is justified | FGStore (part 3) | `Consensus.Goldilocks.Store.PreviousHeightJustifiedEntry` |
+| G1.7 | CLAIMS G1.7 (theorem B) | entry whose previous height is not justified, two windows | FGStore (part 3) | `Consensus.Goldilocks.Store.PreviousHeightNotJustifiedEntry` |
 | G1.8 | CLAIMS G1.8 (corollary C) | (a) crossing bound; (b) coverage after failed entries | FGStore (part 3) | `Consensus.Goldilocks.Store.Crossing`, `Consensus.Goldilocks.Store.Coverage` |
 | G1.9 (a) | CLAIMS G1.9 (a) | cache acceptance per `update_finality` call | FGStore (part 3) | `Consensus.Goldilocks.Store.afterJustification`, `Consensus.Goldilocks.Store.CacheAcceptance` |
 | — | the part-3 bundle | the above, at one and at every parameter set | FGStore (part 3) | `Consensus.Goldilocks.Store.FGStoreServiceAt`, `Consensus.Goldilocks.Store.FGStoreService` |
@@ -445,7 +445,7 @@ stated in `Statements/Healing/Outcome` (milestone Healing, its premises are the 
 |---|---|---|---|---|
 | A1.6 | CLAIMS A1.6 | the update of a slot ran with no restart since; A1.6's condition at a cut (awake, joined, updated for `slot(t) − 2`); the record `𝒜.latest_confirmed` as a block of the frame's tree; **head extends the record**: the head extends the record in the frame, `ac_confirmed` is the record, and across served cuts the record extends | Service | `Consensus.Goldilocks.Compose.UpdatedNoRestart`, `Consensus.Goldilocks.Compose.ServedAt`, `Consensus.Goldilocks.Compose.RecordAt`, `Consensus.Goldilocks.Compose.HeadExtendsRecord` |
 | A1.7 | CLAIMS A1.7 | **inclusion**: an honest proposal of slot `s` by a joined proposer is in the confirmed tip of every honest node awake and joined at `t ≥ t_s + 6Δ`, awake and joined at `t_s + 6Δ`, with no restart in `(t_s + 6Δ, t]`, that has run the update of slot `s` before the cut with no restart since (`UpdatedNoRestart`; at the boundary `t = t_s + 6Δ` the state before the tick's first cut predates that update, consensus-lean#77); with the genesis root its digest, as C0.3 (consensus-lean#73) | Service | `Consensus.Goldilocks.Compose.Inclusion`, `Consensus.Goldilocks.Compose.ServiceStatements` |
-| C1.2 | CLAIMS C1.2 (goldilocks `6703bf05`, #37) | **AC outcome service**: under the healing regime after the reset (`HSShared`, `Catch(2Δ)`, `Prop⁺`, `a_z`), an entry whose block is an honest ready proposal from `R_z`, high (and with a high predecessor when bound), with retained ready inclusion, with `𝓕 = ⌈(6Δ + Δ_F)/(4Δ)⌉` and `δ_t ≥ 𝓕 + k_F`, gets by the end of its window a literal good window (`Store.GoodWindow` on the FG projection) or an accepted early justification (finalizing the predecessor when bound), its carrier relayed within `Δ` in both branches; an unbound entry is justified by then (stated in `Statements/Healing/Outcome`, next to its proof, since its premises are the healing regime) | Healing | `Consensus.Goldilocks.Compose.RunEntry`, `Consensus.Goldilocks.Compose.EarlyOutcome`, `Consensus.Goldilocks.Compose.OutcomeService` |
+| C1.2 | CLAIMS C1.2 (goldilocks `6703bf05`, #37) | **AC outcome service**: under the healing regime after the reset (`HSShared`, `Catch(2Δ)`, `Prop⁺`, `a_z`), an entry whose block is an honest ready proposal from `R_z`, high (and with a high predecessor when bound), with retained ready inclusion, with `𝓕 = ⌈(6Δ + Δ_F)/(4Δ)⌉` and `δ_t ≥ 𝓕 + k_F`, gets by the end of its window a literal good window (`Store.GoodWindow` on the FG projection) or an accepted early justification (finalizing the predecessor when bound), its carrier relayed within `Δ` in both branches; an entry whose previous height is not justified is justified by then (stated in `Statements/Healing/Outcome`, next to its proof, since its premises are the healing regime) | Healing | `Consensus.Goldilocks.Compose.RunEntry`, `Consensus.Goldilocks.Compose.EarlyOutcome`, `Consensus.Goldilocks.Compose.OutcomeService` |
 
 Modelling choices:
 

@@ -48,10 +48,10 @@ instance (Λ : Record) (j T : Nat) : Decidable (Λ.permits j T) :=
   inferInstanceAs (Decidable ((Λ.target j = none ∨ Λ.target j = some T) ∧
     Λ.timeout j ⊆ {T} ∧ (Λ.lock j = none ∨ Λ.lock j = some T)))
 
-/-- `finality_pair`: at a bound entry the predecessor when permitted (also if a later
-state finalized it), else the newest permitted pending pair of the entry state. -/
+/-- `finality_pair`: at an entry whose previous height is justified the predecessor when permitted
+(also if a later state finalized it), else the newest permitted pending pair of the entry state. -/
 def finalityPair {n : Nat} (Λ : Record) (σe : ChainState n) : Option (Nat × Nat) :=
-  if σe.bound then
+  if σe.previousHeightJustified then
     if Λ.permits σe.hj σe.J then some (σe.hj, σe.J) else none
   else
     (σe.pending.filter (fun p => decide (Λ.permits p.1 p.2))).foldl (fun acc p =>

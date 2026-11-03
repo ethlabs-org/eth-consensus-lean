@@ -75,7 +75,7 @@ theorem window_justifies_of_lock_upTo (hrun : GoldilocksRun proposer dg H tr)
     (hsig : ∀ y ∈ S, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧ att.h = h ∧ att.T = T ∧
       ∀ p ∈ H, ∀ k' Pr, tr.time k' ≤ b → Pr ∈ (tr.state p k').fg.tree →
         ((tr.state p k').fg.σ Pr.root).h = h → ((tr.state p k').fg.σ Pr.root).Th = T →
-        ((tr.state p k').fg.σ Pr.root).bound →
+        ((tr.state p k').fg.σ Pr.root).previousHeightJustified →
         (((tr.state p k').fg.σ Pr.root).hj, ((tr.state p k').fg.σ Pr.root).J) ∈
           ((tr.state p k').fg.σ Pr.root).pending →
         att.fin = some (((tr.state p k').fg.σ Pr.root).hj, ((tr.state p k').fg.σ Pr.root).J)) :
@@ -84,7 +84,7 @@ theorem window_justifies_of_lock_upTo (hrun : GoldilocksRun proposer dg H tr)
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   subst hh hT
@@ -117,7 +117,7 @@ theorem window_justifies_of_lock_healed_upTo (hrun : GoldilocksRun proposer dg H
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   refine window_justifies_of_lock_upTo hrun hH hs hv hvb hM4 hs₁ hvs hwb hy hc htH hl hf hB hBl
@@ -131,7 +131,7 @@ theorem window_justifies_of_lock_healed_upTo (hrun : GoldilocksRun proposer dg H
   have h₀a : h₀ ≤ att.h := by omega
   obtain ⟨src, hcs, rfl⟩ := hH.toHealedRecordsUpTo.first_sign_target hrun hzH hsg hkzb h₀a
     (by rw [hah]; exact hfirst)
-  have hj := bound_hj hb
+  have hj := previousHeightJustified_hj hb
   exact finalityPair_entry_healed'_upTo hrun hs.noColl hq hH.toHealedRecordsUpTo hzH
     (attest_src_mem hrun hzH hcs) hp hPr hk'b (hPT.trans haT.symm) hb (by omega) hb.1 hkzb
 

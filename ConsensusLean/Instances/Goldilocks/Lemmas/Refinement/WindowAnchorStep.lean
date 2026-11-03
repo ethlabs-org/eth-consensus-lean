@@ -44,7 +44,7 @@ theorem anchor_height_step (hrun : GoldilocksRun proposer dg H tr) {g ΔF v b : 
     (hsig : ∀ y ∈ S, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧
       att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
       att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
-      (((tr.state p kX).fg.σ Pr.root).bound →
+      (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
         (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J) ∈
           ((tr.state p kX).fg.σ Pr.root).pending →
         att.fin = some (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J))) :
@@ -70,7 +70,7 @@ theorem anchor_height_step_or_crossed (hrun : GoldilocksRun proposer dg H tr) {g
       ∀ y ∈ S, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧
         att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
         att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
-        (((tr.state p kX).fg.σ Pr.root).bound →
+        (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
           (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J) ∈
             ((tr.state p kX).fg.σ Pr.root).pending →
           att.fin = some (((tr.state p kX).fg.σ Pr.root).hj,

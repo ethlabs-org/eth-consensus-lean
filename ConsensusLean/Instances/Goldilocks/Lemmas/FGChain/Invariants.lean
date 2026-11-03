@@ -144,10 +144,10 @@ theorem height_step : HeightStep gp := by
   obtain ⟨σ₁, h₁, hle, hh, hTh, hJ, hj, hL, -, hcase⟩ := gp.step_cases hG h
   have := hG.one_le_h; have := hG.hj_lt_h; have := h₁.hF_le_hj
   rcases hcase with ⟨-, rfl⟩ | ⟨-, -, rfl⟩ | ⟨-, -, rfl⟩
-  · dsimp only [ChainState.advance, ChainState.bound] at hG' ⊢
+  · dsimp only [ChainState.advance, ChainState.previousHeightJustified] at hG' ⊢
     refine ⟨by omega, by omega, hle, by omega, fun _ => ⟨hL, by omega, fun _ => ?_⟩⟩
     exact ⟨by omega, hG'.getLast (by dsimp only; omega)⟩
-  · dsimp only [ChainState.advance, ChainState.bound]
+  · dsimp only [ChainState.advance, ChainState.previousHeightJustified]
     refine ⟨by omega, by omega, hle, by omega, fun _ => ⟨hL, by omega, fun hb => by omega⟩⟩
   · exact ⟨Or.inl hh, hj.ge, hle, fun _ => ⟨hTh, hJ, hj⟩, by omega⟩
 
@@ -156,7 +156,7 @@ theorem gated_consumption : GatedConsumption gp := by
   intro c σ hc
   have hq : 1 ≤ gp.q := by have := gp.hn; simp only [FGParams.q]; omega
   refine gp.chainState_induction (P := fun _ σ => gp.q ≤ σ.target.card →
-    σ.bound ∧ (σ.hj, σ.J) ∈ σ.pending ∧ σ.hF < σ.hj ∧ σ.s < σ.ThSlot + gp.δt)
+    σ.previousHeightJustified ∧ (σ.hj, σ.J) ∈ σ.pending ∧ σ.hF < σ.hj ∧ σ.s < σ.ThSlot + gp.δt)
     (fun h => by simp [ChainState.init] at h; omega) (fun c σ B σ' hc _ hB => ?_) hc
   obtain ⟨σ₁, h₁, -, -, -, -, -, -, -, hcase⟩ := gp.step_cases (gp.good hc) hB
   intro ht

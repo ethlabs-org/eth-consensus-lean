@@ -78,7 +78,7 @@ theorem window_justifies_or_parents_above_upTo (hrun : GoldilocksRun proposer dg
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   rcases window_justifies_or_crossed_upTo hrun hq hH hs hv hM4 hs₁ hvs hwb hy hc htH hl hf hB hBl
@@ -124,7 +124,7 @@ theorem window_justifies_or_parents_above_of_le_cutZ_upTo (hrun : GoldilocksRun 
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   rcases window_justifies_or_parents_above_upTo hrun hq hH hs hv hM4 hs₁ hvs hwb hy hc htH hl hf
@@ -169,7 +169,7 @@ theorem window_justifies_or_parents_above_after_upTo (hrun : GoldilocksRun propo
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   rcases window_justifies_or_crossed_after_upTo hrun hq hH hs hv hM4 hs₁ hvs hwb hy hc htH hl hf

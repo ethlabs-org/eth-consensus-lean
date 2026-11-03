@@ -10,10 +10,11 @@ Two facts of one accepted block that the liveness argument uses (workbench
 `fg-liveness/r14-end-to-end`, s5 lemma T and s6 L6.1):
 * a block that enters a new height without justifying the old one (a timeout) has a slot at
   least `δt` after the entry of the old height;
-* a block that justifies a bound height has finalized its predecessor: the loose-BJ gate reads
-  the finalization of the same block;
-* at a bound height the predecessor is pending or finalized (s5 W2), and a step that enters an
-  unbound height is a timeout, so its slot is at least `δt` after the old entry;
+* a block that justifies a height whose previous height is justified has finalized its predecessor:
+  the loose-BJ gate reads the finalization of the same block;
+* at a height whose previous height is justified the predecessor is pending or finalized (s5 W2),
+  and a step that enters a height whose previous height is not justified is a timeout, so its slot
+  is at least `δt` after the old entry;
 * a client whose record is clean at the entry's height sends a target for that entry, not a
   timeout (s5 C). -/
 
@@ -49,11 +50,11 @@ theorem timeout_step_slot {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
   · rw [he] at hh
     simp [hh₀] at hh
 
-/-- **A bound justification finalizes its predecessor (r14 s6, L6.1).** A block that
-justifies the current height of a bound state has finalized the predecessor height `h_j`
-in its own finality step. -/
-theorem bound_justify_finalizes {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
-    (h : gp.stateTransition σ B = some σ') (hb : σ.bound) (hj : σ'.hj = σ.h) :
+/-- **A justification at a height whose previous height is justified finalizes its predecessor (r14
+s6, L6.1).** A block that justifies the current height of a state whose previous height is justified
+has finalized the predecessor height `h_j` in its own finality step. -/
+theorem previousHeightJustified_justify_finalizes {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
+    (h : gp.stateTransition σ B = some σ') (hb : σ.previousHeightJustified) (hj : σ'.hj = σ.h) :
     σ'.hF = σ.hj := by
   obtain ⟨σ₀, -, hh₀, -, -, hj₀, rfl⟩ := gp.stateTransition_counted h
   obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases σ₀
@@ -71,8 +72,8 @@ theorem bound_justify_finalizes {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
     simp at hj
     omega
 
-/-- **Predecessor pending or finalized (r14 s5, W2).** On a chain, at a bound height the
-predecessor pair `(h_j, J)` is pending, or `h_j` is finalized. -/
+/-- **Predecessor pending or finalized (r14 s5, W2).** On a chain, at a height whose previous height
+is justified the predecessor pair `(h_j, J)` is pending, or `h_j` is finalized. -/
 theorem pred_pending_or_finalized {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
     (hc : gp.chainState c = some σ) : (σ.hj, σ.J) ∈ σ.pending ∨ σ.hF = σ.hj := by
   obtain ⟨-, hle, -, -, -, -, -, -, hlast, -⟩ := chain_invariants gp c σ hc
@@ -80,11 +81,13 @@ theorem pred_pending_or_finalized {c : List (FGBlock gp.n)} {σ : ChainState gp.
   · exact Or.inl (List.mem_of_getLast? (hlast hlt))
   · exact Or.inr (le_antisymm hle hge)
 
-/-- **An unbound entry is a timeout (r14 s5, X with T).** On a chain, a block that enters the
-next height and leaves it unbound has a slot at least `δt` after the old entry. -/
-theorem unbound_step_slot {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
+/-- **An entry whose previous height is not justified is a timeout (r14 s5, X with T).** On a chain,
+a block that enters the next height without justifying the old one (so its previous height is not
+justified) has a slot at least `δt` after the old entry. -/
+theorem previousHeightNotJustified_step_slot {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
+    {B : FGBlock gp.n}
     (hc : gp.chainState c = some σ) (h : gp.stateTransition σ B = some σ')
-    (hh : σ'.h = σ.h + 1) (hnb : ¬ σ'.bound) : σ.ThSlot + gp.δt ≤ B.slot := by
+    (hh : σ'.h = σ.h + 1) (hnb : ¬ σ'.previousHeightJustified) : σ.ThSlot + gp.δt ≤ B.slot := by
   obtain ⟨-, -, -, -, hbd⟩ := height_step gp c σ σ' B hc h
   obtain ⟨-, hiff, -⟩ := hbd hh
   exact gp.timeout_step_slot h hh (fun e => hnb (hiff.2 e))
@@ -106,13 +109,13 @@ theorem cross_of_progress {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
   · rw [he'] at he; subst he; rfl
   · exact absurd ⟨hq, hage⟩ hto
 
-/-- **An unbound entry justifies with a target quorum (r14 s3, window tables).** A block whose
-counted state has a target quorum, at an unbound height, justifies the entry: the loose-BJ gate
-does not apply. -/
-theorem justify_of_target_unbound {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
+/-- **An entry whose previous height is not justified justifies with a target quorum (r14 s3, window
+tables).** A block whose counted state has a target quorum, at a height whose previous height is not
+justified, justifies the entry: the loose-BJ gate does not apply. -/
+theorem justify_of_target_previousHeightNotJustified {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
     (h : gp.stateTransition σ B = some σ')
     (hq : gp.q ≤ (B.atts.foldl ChainState.processAtt { σ with s := B.slot }).target.card)
-    (hnb : ¬ σ.bound) : σ'.hj = σ.h ∧ σ'.J = σ.Th := by
+    (hnb : ¬ σ.previousHeightJustified) : σ'.hj = σ.h ∧ σ'.J = σ.Th := by
   obtain ⟨-, he⟩ := gp.stateTransition_eq_some.1 h
   obtain ⟨f, p, t, hf⟩ := ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
   rw [hf] at he hq
@@ -120,26 +123,27 @@ theorem justify_of_target_unbound {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
     { σ with s := B.slot, fin := f, prog := p, target := t, L := B.root }
   rcases hcase with ⟨-, he'⟩ | ⟨hn, -, -⟩ | ⟨hn, -, -⟩
   · rw [he'] at he; subst he; exact ⟨rfl, rfl⟩
-  · exact absurd ⟨hq, Or.inl (by simpa [ChainState.bound] using hnb)⟩ hn
-  · exact absurd ⟨hq, Or.inl (by simpa [ChainState.bound] using hnb)⟩ hn
+  · exact absurd ⟨hq, Or.inl (by simpa [ChainState.previousHeightJustified] using hnb)⟩ hn
+  · exact absurd ⟨hq, Or.inl (by simpa [ChainState.previousHeightJustified] using hnb)⟩ hn
 
 /-- **An early crossing justifies (r14 s5, L5.4 step 4).** A block that enters the next height
 at a slot before `ThSlot + δt` justifies the old height (it is no timeout, lemma T), and at a
-bound height it has finalized the predecessor (the loose-BJ gate). -/
+height whose previous height is justified it has finalized the predecessor (the loose-BJ gate). -/
 theorem early_cross_justifies {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
     (h : gp.stateTransition σ B = some σ') (hh : σ'.h = σ.h + 1)
-    (hs : B.slot < σ.ThSlot + gp.δt) : σ'.hj = σ.h ∧ (σ.bound → σ'.hF = σ.hj) := by
+    (hs : B.slot < σ.ThSlot + gp.δt) :
+    σ'.hj = σ.h ∧ (σ.previousHeightJustified → σ'.hF = σ.hj) := by
   have hj : σ'.hj = σ.h := by
     by_contra hne
     exact absurd (gp.timeout_step_slot h hh hne) (Nat.not_le.2 hs)
-  exact ⟨hj, fun hb => gp.bound_justify_finalizes h hb hj⟩
+  exact ⟨hj, fun hb => gp.previousHeightJustified_justify_finalizes h hb hj⟩
 
-/-- **A bound entry justifies with a target and a finality quorum (r14 s5, Lemma 3′, bound
-case).** On a chain, if the predecessor pair `(h_j, J)` is pending, a block
-whose counted state has a target quorum and a finality quorum at `h_j` finalizes `h_j` and
-justifies the entry: the finality step picks `h_j` (no pending pair is higher), so the gate
-holds, and the justification arm runs before the timeout arm. -/
-theorem justify_of_target_bound {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
+/-- **An entry whose previous height is justified justifies with a target and a finality quorum (r14
+s5, Lemma 3′, the case whose previous height is justified).** On a chain, if the predecessor pair
+`(h_j, J)` is pending, a block whose counted state has a target quorum and a finality quorum at
+`h_j` finalizes `h_j` and justifies the entry: the finality step picks `h_j` (no pending pair is
+higher), so the gate holds, and the justification arm runs before the timeout arm. -/
+theorem justify_of_target_previousHeightJustified {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
     {B : FGBlock gp.n} (hc : gp.chainState c = some σ) (h : gp.stateTransition σ B = some σ')
     (hp : (σ.hj, σ.J) ∈ σ.pending)
     (hq : gp.q ≤ (B.atts.foldl ChainState.processAtt { σ with s := B.slot }).target.card)
@@ -193,22 +197,23 @@ theorem justify_of_target_finalized {c : List (FGBlock gp.n)} {σ σ' : ChainSta
   · exact absurd ⟨hq, Or.inr hfe⟩ hn
   · exact absurd ⟨hq, Or.inr hfe⟩ hn
 
-/-- **Lemma 3′ at one chain step, by W2 (r14 s5).** On a chain, a block whose counted state has
-a target quorum, and a finality quorum at `h_j` when the height is bound and `(h_j, J)` is
-pending, justifies the entry, and at a bound height it has `h_F = h_j`. -/
+/-- **Lemma 3′ at one chain step, by W2 (r14 s5).** On a chain, a block whose counted state has a
+target quorum, and a finality quorum at `h_j` when the height has its previous height justified and
+`(h_j, J)` is pending, justifies the entry, and at a height whose previous height is justified it
+has `h_F = h_j`. -/
 theorem justify_of_target_chain {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
     {B : FGBlock gp.n} (hc : gp.chainState c = some σ) (h : gp.stateTransition σ B = some σ')
     (hq : gp.q ≤ (B.atts.foldl ChainState.processAtt { σ with s := B.slot }).target.card)
-    (hf : σ.bound → (σ.hj, σ.J) ∈ σ.pending →
+    (hf : σ.previousHeightJustified → (σ.hj, σ.J) ∈ σ.pending →
       gp.q ≤ ((B.atts.foldl ChainState.processAtt { σ with s := B.slot }).fin σ.hj).card) :
-    σ'.hj = σ.h ∧ σ'.J = σ.Th ∧ (σ.bound → σ'.hF = σ.hj) := by
-  by_cases hb : σ.bound
+    σ'.hj = σ.h ∧ σ'.J = σ.Th ∧ (σ.previousHeightJustified → σ'.hF = σ.hj) := by
+  by_cases hb : σ.previousHeightJustified
   · rcases gp.pred_pending_or_finalized hc with hp | hfe
-    · obtain ⟨h1, h2, h3⟩ := gp.justify_of_target_bound hc h hp hq (hf hb hp)
+    · obtain ⟨h1, h2, h3⟩ := gp.justify_of_target_previousHeightJustified hc h hp hq (hf hb hp)
       exact ⟨h1, h2, fun _ => h3⟩
     · obtain ⟨h1, h2, h3⟩ := gp.justify_of_target_finalized hc h hfe hq
       exact ⟨h1, h2, fun _ => h3⟩
-  · obtain ⟨h1, h2⟩ := gp.justify_of_target_unbound h hq hb
+  · obtain ⟨h1, h2⟩ := gp.justify_of_target_previousHeightNotJustified h hq hb
     exact ⟨h1, h2, fun e => absurd e hb⟩
 
 /-- **A pending pair at height `h_j` is `(h_j, J)` (r14 s6, L6.0 (b), (c)).** On a chain, the
@@ -265,13 +270,15 @@ theorem F_eq_J_of_hF_eq_hj {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
     · have := gp.pending_eq_of_fst_eq_hj hc hm (by simp only; omega)
       rw [hJ]; exact (Prod.mk.inj this).2
 
-/-- **A bound justification finalizes the predecessor block (r14 s6, L6.1 (i)).** On a chain, a
-block that justifies the current height of a bound state has `F = J` of the parent state: the
-predecessor block, not only its height. -/
-theorem bound_justify_finalizes_block {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
-    {B : FGBlock gp.n} (hc : gp.chainState c = some σ) (h : gp.stateTransition σ B = some σ')
-    (hb : σ.bound) (hj : σ'.hj = σ.h) : σ'.F = σ.J ∧ σ'.hF = σ.hj := by
-  have hF := gp.bound_justify_finalizes h hb hj
+/-- **A justification at a height whose previous height is justified finalizes the predecessor block
+(r14 s6, L6.1 (i)).** On a chain, a block that justifies the current height of a state whose
+previous height is justified has `F = J` of the parent state: the predecessor block, not only its
+height. -/
+theorem previousHeightJustified_justify_finalizes_block {c : List (FGBlock gp.n)}
+    {σ σ' : ChainState gp.n} {B : FGBlock gp.n} (hc : gp.chainState c = some σ)
+    (h : gp.stateTransition σ B = some σ')
+    (hb : σ.previousHeightJustified) (hj : σ'.hj = σ.h) : σ'.F = σ.J ∧ σ'.hF = σ.hj := by
+  have hF := gp.previousHeightJustified_justify_finalizes h hb hj
   refine ⟨?_, hF⟩
   rcases (gp.step_fin h).1 with ⟨e1, e2⟩ | hm
   · rw [e1]; exact gp.F_eq_J_of_hF_eq_hj hc (by omega)
@@ -310,22 +317,22 @@ theorem stateTransition_ThSlot {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
   · exact Or.inr ⟨rfl, rfl, rfl⟩
   · exact Or.inl ⟨rfl, rfl, rfl⟩
 
-/-- **An early crossing on an extension justifies the entry (r14 s5, L5.4 step 4, chain
-form).** Let `c` reach `σ` and `c ++ d` reach `τ` with `σ.h < τ.h`. If every block of `d` has a
-slot before `σ.ThSlot + δt`, then a block `B` of `d` justified the entry `(σ.h, σ.Th)` of `σ`:
-its state has `h_j = σ.h` and `J = σ.Th`, and if `σ` is bound, `B` finalized the predecessor
-block (`F = σ.J`, `h_F = σ.hj`, L6.1 (i)). -/
+/-- **An early crossing on an extension justifies the entry (r14 s5, L5.4 step 4, chain form).** Let
+`c` reach `σ` and `c ++ d` reach `τ` with `σ.h < τ.h`. If every block of `d` has a slot before
+`σ.ThSlot + δt`, then a block `B` of `d` justified the entry `(σ.h, σ.Th)` of `σ`: its state has
+`h_j = σ.h` and `J = σ.Th`, and if `σ` has its previous height justified, `B` finalized the
+predecessor block (`F = σ.J`, `h_F = σ.hj`, L6.1 (i)). -/
 theorem early_cross_chain_justifies {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
     (hc : gp.chainState c = some σ) (hd : gp.chainState (c ++ d) = some τ) (hh : σ.h < τ.h)
     (hs : ∀ B ∈ d, B.slot < σ.ThSlot + gp.δt) :
     ∃ d₁ B d₂ σ₂, d = d₁ ++ B :: d₂ ∧ gp.chainState (c ++ d₁ ++ [B]) = some σ₂ ∧
       σ₂.h = σ.h + 1 ∧ σ₂.hj = σ.h ∧ σ₂.J = σ.Th ∧
-      (σ.bound → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) := by
+      (σ.previousHeightJustified → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) := by
   suffices H : ∀ τ, gp.chainState (c ++ d) = some τ →
       (τ.h = σ.h ∧ τ.Th = σ.Th ∧ τ.ThSlot = σ.ThSlot ∧ τ.J = σ.J ∧ τ.hj = σ.hj) ∨
       ∃ d₁ B d₂ σ₂, d = d₁ ++ B :: d₂ ∧ gp.chainState (c ++ d₁ ++ [B]) = some σ₂ ∧
         σ₂.h = σ.h + 1 ∧ σ₂.hj = σ.h ∧ σ₂.J = σ.Th ∧
-        (σ.bound → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) by
+        (σ.previousHeightJustified → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) by
     rcases H τ hd with ⟨e, -⟩ | hx
     · omega
     · exact hx
@@ -354,30 +361,30 @@ theorem early_cross_chain_justifies {c d : List (FGBlock gp.n)} {σ τ : ChainSt
         refine Or.inr ⟨d, B, [], τ, by simp, ?_, by omega, by omega, by rw [hJ, e2], ?_⟩
         · rw [gp.chainState_append, h₀]; exact hB
         · intro hb
-          have hb₀ : τ₀.bound := by
-            simp only [ChainState.bound] at hb ⊢; omega
-          obtain ⟨g1, g2⟩ := gp.bound_justify_finalizes_block h₀ hB hb₀ hj
+          have hb₀ : τ₀.previousHeightJustified := by
+            simp only [ChainState.previousHeightJustified] at hb ⊢; omega
+          obtain ⟨g1, g2⟩ := gp.previousHeightJustified_justify_finalizes_block h₀ hB hb₀ hj
           exact ⟨g1.trans e4, g2.trans e5⟩
     · exact Or.inr ⟨d₁, B', d₂ ++ [B], σ₂, by simp, h1, h2⟩
 
 /-- **No timeout at the entry height, so the crossing justifies (r14 s5, L5.4 step 4, prefix
-form).** Let `c` reach `σ` and `c ++ d` reach `τ` with `σ.h < τ.h`. If every block of `d` that
-is applied to a state `ρ` of height `σ.h` has a slot before `ρ.ThSlot + δt` (the entry slot
-does not change while the height stays), then a block `B` of
-`d` justified the entry `(σ.h, σ.Th)`, and finalized the predecessor block if `σ` is bound.
-The premise reads only the blocks applied at height `σ.h`, not the later ones. -/
+form).** Let `c` reach `σ` and `c ++ d` reach `τ` with `σ.h < τ.h`. If every block of `d` that is
+applied to a state `ρ` of height `σ.h` has a slot before `ρ.ThSlot + δt` (the entry slot does not
+change while the height stays), then a block `B` of `d` justified the entry `(σ.h, σ.Th)`, and
+finalized the predecessor block if `σ` has its previous height justified. The premise reads only the
+blocks applied at height `σ.h`, not the later ones. -/
 theorem cross_chain_justifies {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
     (hc : gp.chainState c = some σ) (hd : gp.chainState (c ++ d) = some τ) (hh : σ.h < τ.h)
     (hs : ∀ d₁ B d₂ ρ, d = d₁ ++ B :: d₂ → gp.chainState (c ++ d₁) = some ρ → ρ.h = σ.h →
       B.slot < ρ.ThSlot + gp.δt) :
     ∃ d₁ B d₂ σ₂, d = d₁ ++ B :: d₂ ∧ gp.chainState (c ++ d₁ ++ [B]) = some σ₂ ∧
       σ₂.h = σ.h + 1 ∧ σ₂.hj = σ.h ∧ σ₂.J = σ.Th ∧
-      (σ.bound → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) := by
+      (σ.previousHeightJustified → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) := by
   suffices H : ∀ τ, gp.chainState (c ++ d) = some τ →
       (τ.h = σ.h ∧ τ.Th = σ.Th ∧ τ.ThSlot = σ.ThSlot ∧ τ.J = σ.J ∧ τ.hj = σ.hj) ∨
       ∃ d₁ B d₂ σ₂, d = d₁ ++ B :: d₂ ∧ gp.chainState (c ++ d₁ ++ [B]) = some σ₂ ∧
         σ₂.h = σ.h + 1 ∧ σ₂.hj = σ.h ∧ σ₂.J = σ.Th ∧
-        (σ.bound → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) by
+        (σ.previousHeightJustified → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) by
     rcases H τ hd with ⟨e, -⟩ | hx
     · omega
     · exact hx
@@ -408,19 +415,18 @@ theorem cross_chain_justifies {c d : List (FGBlock gp.n)} {σ τ : ChainState gp
         refine Or.inr ⟨d, B, [], τ, by simp, ?_, by omega, by omega, by rw [hJ, e2], ?_⟩
         · rw [gp.chainState_append, h₀]; exact hB
         · intro hb
-          have hb₀ : τ₀.bound := by
-            simp only [ChainState.bound] at hb ⊢; omega
-          obtain ⟨g1, g2⟩ := gp.bound_justify_finalizes_block h₀ hB hb₀ hj
+          have hb₀ : τ₀.previousHeightJustified := by
+            simp only [ChainState.previousHeightJustified] at hb ⊢; omega
+          obtain ⟨g1, g2⟩ := gp.previousHeightJustified_justify_finalizes_block h₀ hB hb₀ hj
           exact ⟨g1.trans e4, g2.trans e5⟩
     · exact Or.inr ⟨d₁, B', d₂ ++ [B], σ₂, by simp, h1, h2⟩
 
-/-- **Theorem F, chain part (r14 s6, L6.5 step 3).** Let `c` reach the entry state `σ` of
-height `h = σ.h` and `c ++ d` reach `τ` with `h + 1 < τ.h`. If no block of `d` is applied at
-height `h` or `h + 1` with a slot at or after the entry slot of its state plus `δt` (no
-timeout is possible at `h` or `h + 1`),
-then `d` has a block `B₁` that justifies `(h, σ.Th)` and a later block `B₂` that justifies
-`(h + 1, σ₁.Th)`. The height `h + 1` is bound, so `B₂` finalizes the first entry block:
-`σ₂.F = σ.Th` with `σ₂.hF = h` (L6.1 (i)). -/
+/-- **Theorem F, chain part (r14 s6, L6.5 step 3).** Let `c` reach the entry state `σ` of height `h
+= σ.h` and `c ++ d` reach `τ` with `h + 1 < τ.h`. If no block of `d` is applied at height `h` or `h
++ 1` with a slot at or after the entry slot of its state plus `δt` (no timeout is possible at `h` or
+`h + 1`), then `d` has a block `B₁` that justifies `(h, σ.Th)` and a later block `B₂` that justifies
+`(h + 1, σ₁.Th)`. The height `h + 1` has its previous height justified, so `B₂` finalizes the first
+entry block: `σ₂.F = σ.Th` with `σ₂.hF = h` (L6.1 (i)). -/
 theorem theorem_F_chain {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
     (hc : gp.chainState c = some σ) (hd : gp.chainState (c ++ d) = some τ)
     (hh : σ.h + 1 < τ.h)
@@ -439,19 +445,19 @@ theorem theorem_F_chain {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
   obtain ⟨d₂', B₂, d₃, σ₂, rfl, h2, h2h, h2j, h2J, h2F⟩ :=
     gp.cross_chain_justifies h1 hd' (by omega) fun e₁ B e₂ ρ e hρ hρh =>
       hs (d₁ ++ B₁ :: e₁) B e₂ ρ (by rw [e]; simp) (by simpa using hρ) (Or.inr (by omega))
-  have hb : σ₁.bound := by
+  have hb : σ₁.previousHeightJustified := by
     have := (chain_invariants gp _ _ hc).1
-    simp only [ChainState.bound]; omega
+    simp only [ChainState.previousHeightJustified]; omega
   obtain ⟨hF, hhF⟩ := h2F hb
   exact ⟨d₁, B₁, d₂', B₂, d₃, σ₁, σ₂, by simp, h1, h1h, h1j, h1J, h2, by omega,
     by omega, h2J, hF.trans h1J, hhF.trans h1j⟩
 
-/-- **A crossing that is early or justifies, so it justifies (prefix form).** Let `c` reach `σ`
-and `c ++ d` reach `τ` with `σ.h < τ.h`. If every block `B` of `d` that is applied to a state
-`ρ` of height `σ.h` and enters the next height (state `ρ'`) has a slot before
-`ρ.ThSlot + δt` or justifies (`ρ'.hj = ρ.h`), then a block of `d` justified the entry
-`(σ.h, σ.Th)`, and finalized the predecessor block if `σ` is bound. The second disjunct covers
-a crossing at age `≥ δt` with a target quorum: the justify test precedes the timeout test. -/
+/-- **A crossing that is early or justifies, so it justifies (prefix form).** Let `c` reach `σ` and
+`c ++ d` reach `τ` with `σ.h < τ.h`. If every block `B` of `d` that is applied to a state `ρ` of
+height `σ.h` and enters the next height (state `ρ'`) has a slot before `ρ.ThSlot + δt` or justifies
+(`ρ'.hj = ρ.h`), then a block of `d` justified the entry `(σ.h, σ.Th)`, and finalized the
+predecessor block if `σ` has its previous height justified. The second disjunct covers a crossing at
+age `≥ δt` with a target quorum: the justify test precedes the timeout test. -/
 theorem cross_chain_justifies' {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
     (hc : gp.chainState c = some σ) (hd : gp.chainState (c ++ d) = some τ) (hh : σ.h < τ.h)
     (hs : ∀ d₁ B d₂ ρ ρ', d = d₁ ++ B :: d₂ → gp.chainState (c ++ d₁) = some ρ →
@@ -459,12 +465,12 @@ theorem cross_chain_justifies' {c d : List (FGBlock gp.n)} {σ τ : ChainState g
       B.slot < ρ.ThSlot + gp.δt ∨ ρ'.hj = ρ.h) :
     ∃ d₁ B d₂ σ₂, d = d₁ ++ B :: d₂ ∧ gp.chainState (c ++ d₁ ++ [B]) = some σ₂ ∧
       σ₂.h = σ.h + 1 ∧ σ₂.hj = σ.h ∧ σ₂.J = σ.Th ∧
-      (σ.bound → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) := by
+      (σ.previousHeightJustified → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) := by
   suffices H : ∀ τ, gp.chainState (c ++ d) = some τ →
       (τ.h = σ.h ∧ τ.Th = σ.Th ∧ τ.ThSlot = σ.ThSlot ∧ τ.J = σ.J ∧ τ.hj = σ.hj) ∨
       ∃ d₁ B d₂ σ₂, d = d₁ ++ B :: d₂ ∧ gp.chainState (c ++ d₁ ++ [B]) = some σ₂ ∧
         σ₂.h = σ.h + 1 ∧ σ₂.hj = σ.h ∧ σ₂.J = σ.Th ∧
-        (σ.bound → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) by
+        (σ.previousHeightJustified → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) by
     rcases H τ hd with ⟨e, -⟩ | hx
     · omega
     · exact hx
@@ -499,9 +505,9 @@ theorem cross_chain_justifies' {c d : List (FGBlock gp.n)} {σ τ : ChainState g
           · have := (chain_invariants gp _ _ h₀).2.2.1; omega
         refine Or.inr ⟨d, B, [], τ, by simp, hτ', by omega, by omega, by rw [hJ, e2], ?_⟩
         intro hb
-        have hb₀ : τ₀.bound := by
-          simp only [ChainState.bound] at hb ⊢; omega
-        obtain ⟨g1, g2⟩ := gp.bound_justify_finalizes_block h₀ hB hb₀ hj
+        have hb₀ : τ₀.previousHeightJustified := by
+          simp only [ChainState.previousHeightJustified] at hb ⊢; omega
+        obtain ⟨g1, g2⟩ := gp.previousHeightJustified_justify_finalizes_block h₀ hB hb₀ hj
         exact ⟨g1.trans e4, g2.trans e5⟩
     · exact Or.inr ⟨d₁, B', d₂ ++ [B], σ₂, by simp, h1, h2⟩
 
@@ -528,9 +534,9 @@ theorem theorem_F_chain' {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
     gp.cross_chain_justifies' h1 hd' (by omega) fun e₁ B e₂ ρ ρ' e hρ hρ' hρh =>
       hs (d₁ ++ B₁ :: e₁) B e₂ ρ ρ' (by rw [e]; simp) (by simpa using hρ) (by simpa using hρ')
         (Or.inr (by omega))
-  have hb : σ₁.bound := by
+  have hb : σ₁.previousHeightJustified := by
     have := (chain_invariants gp _ _ hc).1
-    simp only [ChainState.bound]; omega
+    simp only [ChainState.previousHeightJustified]; omega
   obtain ⟨hF, hhF⟩ := h2F hb
   exact ⟨d₁, B₁, d₂', B₂, d₃, σ₁, σ₂, by simp, h1, h1h, h1j, h1J, h2, by omega,
     by omega, h2J, hF.trans h1J, hhF.trans h1j⟩

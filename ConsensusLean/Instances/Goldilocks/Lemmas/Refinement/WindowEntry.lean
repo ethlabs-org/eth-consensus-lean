@@ -9,14 +9,14 @@ public section
 /-! # Goldilocks Refinement: the entry is justified on the parent's chain (L5.4, WI-19)
 
 Workbench `fg-liveness/r14-end-to-end`, s5 L5.4: the entry `(h, T)` is justified on the
-canonical chain, and the predecessor is finalized if the height is bound.
+canonical chain, and the predecessor is finalized if the height has its previous height justified.
 
 * `Store.chain_states_of_anc`: the store bridge. For a held `X ⪯ W`, a chain `c` reaches
   `σ[X]` and `c ++ d` reaches `σ[W]`; every block of `d` is held, between `X` and `W`, has a
   slot at most `W.slot`, and the prefix of `c ++ d` that ends at it reaches its state.
-* `Store.entry_justified_of_anc`: `FGParams.early_cross_chain_justifies` at the store: if
-  `σ[X].h < σ[W].h` and `W.slot < σ[X].ThSlot + δt`, a held `D` with `X ⪯ D ⪯ W` justified
-  the entry of `σ[X]`, and finalized the predecessor block if `σ[X]` is bound.
+* `Store.entry_justified_of_anc`: `FGParams.early_cross_chain_justifies` at the store: if `σ[X].h <
+  σ[W].h` and `W.slot < σ[X].ThSlot + δt`, a held `D` with `X ⪯ D ⪯ W` justified the entry of
+  `σ[X]`, and finalized the predecessor block if `σ[X]` has its previous height justified.
 * `Store.chain_states_of_anc'`: the bridge with parent links: every earlier block of `d` is an
   ancestor of `B`, and the parent `Z` of `B` is held, `X ⪯ Z`, and the prefix before `B`
   reaches `σ[Z]`.
@@ -37,10 +37,11 @@ canonical chain, and the predecessor is finalized if the height is bound.
   `X ⪯ C` for every held `X` of root `T` in case (A).
 * `window_justifies_or_parents_above_unanimous_entry`:
   `window_justifies_or_parents_above_unanimous''` with the same addition.
-* `window_entry_justified_or_window` (L5.4): in case (A), every honest proposal of a slot `s`
-  with `v + Δ ≤ t_s` and `s ≤ σ[X].ThSlot + δt` has an honest parent `Pr ⪰ X` on whose chain
-  a block justified `(h, T)` (and finalized the predecessor if bound), at every honest holder.
-  The bound `s ≤ σ[X].ThSlot + δt` stays a premise: the window gives only `v + Δ ≤ t_s`. -/
+* `window_entry_justified_or_window` (L5.4): in case (A), every honest proposal of a slot `s` with
+  `v + Δ ≤ t_s` and `s ≤ σ[X].ThSlot + δt` has an honest parent `Pr ⪰ X` on whose chain a block
+  justified `(h, T)` (and finalized the predecessor if its previous height is justified), at every
+  honest holder. The bound `s ≤ σ[X].ThSlot + δt` stays a premise: the window gives only `v + Δ ≤
+  t_s`. -/
 
 namespace Consensus.Goldilocks
 
@@ -62,7 +63,7 @@ theorem early_cross_map_justifies {α : Type} (f : α → FGBlock gp.n) {c d : L
     (hs : ∀ B ∈ d, (f B).slot < σ.ThSlot + gp.δt) :
     ∃ d₁ B d₂ σ₂, d = d₁ ++ B :: d₂ ∧ gp.chainState ((c ++ d₁ ++ [B]).map f) = some σ₂ ∧
       σ₂.h = σ.h + 1 ∧ σ₂.hj = σ.h ∧ σ₂.J = σ.Th ∧
-      (σ.bound → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) := by
+      (σ.previousHeightJustified → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) := by
   rw [List.map_append] at hd
   obtain ⟨e₁, B, e₂, σ₂, he, hσ₂, h⟩ := gp.early_cross_chain_justifies hc hd hh (by
     intro B hB
@@ -172,17 +173,17 @@ theorem chain_states_of_anc (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
       obtain ⟨hB, hXB, hBW, hBs, hσ⟩ := hpre d₁ B d₂' rfl
       exact ⟨hB, hXB, hBW.tail ⟨hW, hW', hp⟩, by omega, hσ⟩
 
-/-- **The entry is justified below an early higher block (L5.4 step 4, store form).** In a
-reachable store, for a held `X ⪯ W` with `σ[X].h < σ[W].h` and `W.slot < σ[X].ThSlot + δt`,
-some held `D` with `X ⪯ D ⪯ W` has entered `σ[X].h + 1` by justifying the entry of `σ[X]`
-(`h_j = σ[X].h`, `J = σ[X].Th`), and if `σ[X]` is bound, `D` finalized its predecessor block
-(`F = σ[X].J`, `h_F = σ[X].h_j`). -/
+/-- **The entry is justified below an early higher block (L5.4 step 4, store form).** In a reachable
+store, for a held `X ⪯ W` with `σ[X].h < σ[W].h` and `W.slot < σ[X].ThSlot + δt`, some held `D` with
+`X ⪯ D ⪯ W` has entered `σ[X].h + 1` by justifying the entry of `σ[X]` (`h_j = σ[X].h`, `J =
+σ[X].Th`), and if `σ[X]` has its previous height justified, `D` finalized its predecessor block (`F
+= σ[X].J`, `h_F = σ[X].h_j`). -/
 theorem entry_justified_of_anc (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
     (hX : X ∈ st.tree) (hXW : st.Anc X W) (hh : (st.σ X.root).h < (st.σ W.root).h)
     (hs : W.slot < (st.σ X.root).ThSlot + P.fg.δt) :
     ∃ D ∈ st.tree, st.Anc X D ∧ st.Anc D W ∧ (st.σ D.root).h = (st.σ X.root).h + 1 ∧
       (st.σ D.root).hj = (st.σ X.root).h ∧ (st.σ D.root).J = (st.σ X.root).Th ∧
-      ((st.σ X.root).bound → (st.σ D.root).F = (st.σ X.root).J ∧
+      ((st.σ X.root).previousHeightJustified → (st.σ D.root).F = (st.σ X.root).J ∧
         (st.σ D.root).hF = (st.σ X.root).hj) := by
   obtain ⟨c, d, hc, hd, hpre⟩ := chain_states_of_anc hr hX hXW
   obtain ⟨d₁, D, d₂, σ₂, rfl, hσ₂, h1, h2, h3, h4⟩ :=
@@ -590,7 +591,7 @@ theorem window_justifies_or_parents_above_after' (hrun : GoldilocksRun proposer 
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   rcases window_justifies_or_crossed_after hrun hq hH hs hv hM4 hs₁ hvs hy hc htH hl hf hB hBl
@@ -647,7 +648,7 @@ theorem window_justifies_or_parents_above_unanimous_entry (hrun : GoldilocksRun 
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
@@ -673,12 +674,12 @@ theorem window_justifies_or_parents_above_unanimous_entry (hrun : GoldilocksRun 
   · exact crossed_parents_above hrun hnc hH hx hto htr hhC hP' (by linarith)
 
 /-- **L5.4: the entry is justified on the parent's chain (r14 s5).** The premises of
-`window_justifies_or_parents_above_unanimous''`. Conclusion: (A) for every held `X` of `y` with
-root `T` (the entry block of `(h, T)`), every honest proposal `P` of a slot `s` with
-`v + Δ ≤ t_s` and `s ≤ σ[X].ThSlot + δt` has an honest parent `Pr ⪰ X`, and at every honest
-holder of `Pr` some held `D` with `X ⪯ D ⪯ Pr` justified `(h, T)` (`σ[D].h = h + 1`,
-`σ[D].h_j = h`, `σ[D].J = T`) and, if `σ[X]` is bound, finalized the predecessor block
-(`σ[D].F = σ[X].J`, `σ[D].h_F = σ[X].h_j`, L6.1 (i)); or (B) the window conclusion. -/
+`window_justifies_or_parents_above_unanimous''`. Conclusion: (A) for every held `X` of `y` with root
+`T` (the entry block of `(h, T)`), every honest proposal `P` of a slot `s` with `v + Δ ≤ t_s` and `s
+≤ σ[X].ThSlot + δt` has an honest parent `Pr ⪰ X`, and at every honest holder of `Pr` some held `D`
+with `X ⪯ D ⪯ Pr` justified `(h, T)` (`σ[D].h = h + 1`, `σ[D].h_j = h`, `σ[D].J = T`) and, if `σ[X]`
+has its previous height justified, finalized the predecessor block (`σ[D].F = σ[X].J`, `σ[D].h_F =
+σ[X].h_j`, L6.1 (i)); or (B) the window conclusion. -/
 theorem window_entry_justified_or_window (hrun : GoldilocksRun proposer dg H tr)
     (hq : Hᶜ.ncard < sp.toParams.fg.q)
     {g ΔF v gR tH : Time} {h₀ : Nat}
@@ -713,7 +714,7 @@ theorem window_entry_justified_or_window (hrun : GoldilocksRun proposer dg H tr)
             ∃ D ∈ (tr.state w j).fg.tree, (tr.state w j).fg.Anc X D ∧
               (tr.state w j).fg.Anc D Pr ∧ ((tr.state w j).fg.σ D.root).h = h + 1 ∧
               ((tr.state w j).fg.σ D.root).hj = h ∧ ((tr.state w j).fg.σ D.root).J = T ∧
-              (((tr.state y k).fg.σ X.root).bound →
+              (((tr.state y k).fg.σ X.root).previousHeightJustified →
                 ((tr.state w j).fg.σ D.root).F = ((tr.state y k).fg.σ X.root).J ∧
                 ((tr.state w j).fg.σ D.root).hF = ((tr.state y k).fg.σ X.root).hj)) ∨
     ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ k X Pr,
@@ -721,7 +722,7 @@ theorem window_entry_justified_or_window (hrun : GoldilocksRun proposer dg H tr)
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
@@ -764,10 +765,10 @@ theorem lock_entry_ThSlot (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
 
 /-- **L5.4 with the M4 proposal (r14 s5).** `window_entry_justified_or_window` with the timing
 premise discharged by M4: for a slot `s₂ ≥ s₀` with `v + Δ ≤ t_{s₂}`, in case (A), for every held
-`X` of `y` with root `T` and `s₂ + gM ≤ X.slot + δt + 1`, some honest proposal `P` of a slot
-`s ∈ [s₂, s₂ + gM)` has an honest parent `Pr ⪰ X` on whose chain, at every honest holder, a held
-`D` with `X ⪯ D ⪯ Pr` justified `(h, T)` (and finalized the predecessor if `σ[X]` is bound). The
-entry slot is `σ[X].ThSlot = X.slot` (`lock_entry_ThSlot`). -/
+`X` of `y` with root `T` and `s₂ + gM ≤ X.slot + δt + 1`, some honest proposal `P` of a slot `s ∈
+[s₂, s₂ + gM)` has an honest parent `Pr ⪰ X` on whose chain, at every honest holder, a held `D` with
+`X ⪯ D ⪯ Pr` justified `(h, T)` (and finalized the predecessor if `σ[X]` has its previous height
+justified). The entry slot is `σ[X].ThSlot = X.slot` (`lock_entry_ThSlot`). -/
 theorem window_entry_justified_M4 (hrun : GoldilocksRun proposer dg H tr)
     (hq : Hᶜ.ncard < sp.toParams.fg.q)
     {g ΔF v gR tH : Time} {h₀ : Nat}
@@ -802,7 +803,7 @@ theorem window_entry_justified_M4 (hrun : GoldilocksRun proposer dg H tr)
             ∃ D ∈ (tr.state w j).fg.tree, (tr.state w j).fg.Anc X D ∧
               (tr.state w j).fg.Anc D Pr ∧ ((tr.state w j).fg.σ D.root).h = h + 1 ∧
               ((tr.state w j).fg.σ D.root).hj = h ∧ ((tr.state w j).fg.σ D.root).J = T ∧
-              (((tr.state y k).fg.σ X.root).bound →
+              (((tr.state y k).fg.σ X.root).previousHeightJustified →
                 ((tr.state w j).fg.σ D.root).F = ((tr.state y k).fg.σ X.root).J ∧
                 ((tr.state w j).fg.σ D.root).hF = ((tr.state y k).fg.σ X.root).hj)) ∨
     ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ k X Pr,
@@ -810,7 +811,7 @@ theorem window_entry_justified_M4 (hrun : GoldilocksRun proposer dg H tr)
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   have hBy : B ∈ (tr.state y k).fg.tree := Healing.mem_tree_of_frame hrun hy hc hB
@@ -862,7 +863,7 @@ theorem window_entry_justified_M4_anc (hrun : GoldilocksRun proposer dg H tr)
             ∃ D ∈ (tr.state w j).fg.tree, (tr.state w j).fg.Anc X D ∧
               (tr.state w j).fg.Anc D Pr ∧ ((tr.state w j).fg.σ D.root).h = h + 1 ∧
               ((tr.state w j).fg.σ D.root).hj = h ∧ ((tr.state w j).fg.σ D.root).J = T ∧
-              (((tr.state y k).fg.σ X.root).bound →
+              (((tr.state y k).fg.σ X.root).previousHeightJustified →
                 ((tr.state w j).fg.σ D.root).F = ((tr.state y k).fg.σ X.root).J ∧
                 ((tr.state w j).fg.σ D.root).hF = ((tr.state y k).fg.σ X.root).hj)) ∨
     ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ kp X Pr,
@@ -870,7 +871,7 @@ theorem window_entry_justified_M4_anc (hrun : GoldilocksRun proposer dg H tr)
       Pr ∈ (tr.state (proposer s') kp).fg.tree ∧
       (h < ((tr.state (proposer s') kp).fg.σ Pr.root).h ∨
         (((tr.post kp).fg.σ X.root).hj = h ∧ ((tr.post kp).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') kp).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') kp).fg.σ Pr.root).previousHeightJustified →
             ((tr.post kp).fg.σ X.root).hF =
               ((tr.state (proposer s') kp).fg.σ Pr.root).hj))) ∧
       ∀ X' ∈ (tr.state y k).fg.tree, X'.root = T → Anc (tr.HonestBlocks H) X' Pr := by

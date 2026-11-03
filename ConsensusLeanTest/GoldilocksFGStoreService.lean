@@ -12,11 +12,11 @@ On `Statements/FGStore/Service`, labelled by kind (CONTRIBUTING "Statements"):
   after the `h_max` step carries over to the state after the justification step, which the
   finalization step of `update_finality` reads).
 * (a) `trS_localRun`, `trS_goodWindow`: an n = 1 FG trace (`P₁`: `Δ = 1`, `δ_t = 2`, so `q = 1`)
-  that is an `FGLocalRun` and has a good window for the unbound genesis entry (`a = 0`,
-  `c_F = 1`, `k_F = 0`): `w₀` signs the target row `a₀` for genesis at time `0`, pools it, and
-  proposes `Bs` of slot `1` carrying it at time `1`.
-* (a) `trS_unboundEntry_first`: on that trace the first conclusion of G1.7 holds with `X = Bs`
-  (a sanity check of the reading).
+  that is an `FGLocalRun` and has a good window for the genesis entry, whose previous height is not
+  justified (`a = 0`, `c_F = 1`, `k_F = 0`): `w₀` signs the target row `a₀` for genesis at time `0`,
+  pools it, and proposes `Bs` of slot `1` carrying it at time `1`.
+* (a) `trS_previousHeightNotJustifiedEntry_first`: on that trace the first conclusion of G1.7 holds
+  with `X = Bs` (a sanity check of the reading).
 * (r) `trE_not_goodWindow`: the same run with a proposal `Be` that omits the pooled row is an
   `FGLocalRun` (`trE_localRun`) but serves no good window (the inclusion rule P5). -/
 
@@ -58,9 +58,9 @@ theorem g₁_mem_stA : g₁ ∈ stA.tree := rfl
 /-- `w₀`'s proposal of slot `1` on genesis carrying `a₀`: root `1`. -/
 def Bs : NodeBlock P₁ Unit := ⟨1, some 0, 1, w₀, 0, [a₀], ()⟩
 
-/-- The chain state of `Bs`: `a₀` is a target quorum (`q = 1`) for genesis at the unbound height
-`1`, so `Bs` justifies genesis (`J = 0`, `h_j = 1`, pending `[(1, 0)]`) and enters height `2`
-with entry `Bs`. -/
+/-- The chain state of `Bs`: `a₀` is a target quorum (`q = 1`) for genesis at the height whose
+previous height is not justified `1`, so `Bs` justifies genesis (`J = 0`, `h_j = 1`, pending `[(1,
+0)]`) and enters height `2` with entry `Bs`. -/
 def σBs : FG.ChainState P₁.n where
   L := 1
   s := 1
@@ -264,9 +264,10 @@ abbrev trS : FGTrace P₁ Unit := trOf Bs stBs
 theorem trS_localRun : FGLocalRun () {w₀} {g₁, Bs} trS :=
   trOf_localRun Bs stBs rfl rfl rfl rfl (fun _ ha => List.mem_singleton.mp ha) onBlock_stA_Bs rfl
 
-/-- (a) Non-vacuity of `GoodWindow`: on `trS`, the unbound genesis entry (height `1`, slot `0`)
-has a good window with `a = 0`, `c_F = 1`, `k_F = 0`, served by `w₀`'s proposal `Bs` of slot
-`1` at cut `2` on genesis, with the rows `{a₀}` (signed at time `0`, pooled at cut `1`). -/
+/-- (a) Non-vacuity of `GoodWindow`: on `trS`, the genesis entry (height `1`, slot `0`; its previous
+height is not justified) has a good window with `a = 0`, `c_F = 1`, `k_F = 0`, served by `w₀`'s
+proposal `Bs` of slot `1` at cut `2` on genesis, with the rows `{a₀}` (signed at time `0`, pooled at
+cut `1`). -/
 theorem trS_goodWindow : GoodWindow P₁ Unit {w₀} trS 1 g₁ 0 0 w₀ 2 Bs g₁ {a₀} := by
   have hst : trS.store w₀ 2 = stA := by rw [FGTrace.store, (trOf_state Bs stBs w₀).2.2.1]
   refine ⟨⟨rfl, ⟨rfl, rfl⟩, rfl, rfl, ?_, rfl, ?_⟩, ?_, ?_, ⟨le_rfl, le_rfl⟩, by decide, ?_, ?_,
@@ -285,17 +286,18 @@ theorem trS_goodWindow : GoodWindow P₁ Unit {w₀} trS 1 g₁ 0 0 w₀ 2 Bs g�
     rw [Finset.mem_singleton.mp hr]
     exact Or.inr (List.mem_singleton_self _)
 
-/-- (a) Sanity check of G1.7's reading on `trS`: the genesis entry is unbound at cut `2`, and the
-first conclusion of `UnboundEntry` holds after cut `2` with `X = Bs`: `Bs` justifies the genesis
-entry at height `1`, appends `(1, genesis)` to the pending pairs, and enters the bound height `2`
-with entry `Bs`. -/
-theorem trS_unboundEntry_first :
-    ¬ ((trS.store w₀ 2).σ g₁.root).bound ∧
+/-- (a) Sanity check of G1.7's reading on `trS`: the genesis entry does not have its previous height
+justified at cut `2`, and the first conclusion of `PreviousHeightNotJustifiedEntry` holds after cut
+`2` with `X = Bs`: `Bs` justifies the genesis entry at height `1`, appends `(1, genesis)` to the
+pending pairs, and enters the height whose previous height is justified `2` with entry `Bs`. -/
+theorem trS_previousHeightNotJustifiedEntry_first :
+    ¬ ((trS.store w₀ 2).σ g₁.root).previousHeightJustified ∧
     ∃ X, JustifiesEntry P₁ Unit (trS.store w₀ (2 + 1)) g₁ ((trS.store w₀ 2).σ g₁.root).h X ∧
       (trS.store w₀ (2 + 1)).Anc X Bs ∧
       (((trS.store w₀ 2).σ g₁.root).h, g₁.root) ∈ ((trS.store w₀ (2 + 1)).σ X.root).pending ∧
       ((trS.store w₀ (2 + 1)).σ X.root).h = ((trS.store w₀ 2).σ g₁.root).h + 1 ∧
-      ((trS.store w₀ (2 + 1)).σ X.root).Th = X.root ∧ ((trS.store w₀ (2 + 1)).σ X.root).bound := by
+      ((trS.store w₀ (2 + 1)).σ X.root).Th = X.root ∧
+      ((trS.store w₀ (2 + 1)).σ X.root).previousHeightJustified := by
   have h2 : trS.store w₀ 2 = stA := by rw [FGTrace.store, (trOf_state Bs stBs w₀).2.2.1]
   have h3 : trS.store w₀ (2 + 1) = stBs := by
     rw [FGTrace.store, (trOf_state Bs stBs w₀).2.2.2 0]

@@ -10,16 +10,18 @@ public section
 
 Workbench `fg-liveness/r14-end-to-end/s5-justify.md` §5, L5.4. The premise `hsig` of
 `window_justifies_of_lock` asks that each honest target row for `(h, T)` carries, as its finality
-pair, `(σ.h_j, σ.J)` of every held honest state `σ` with `σ.T_h = T` that is bound with that pair
-pending. The row from `awake_signs_target` carries `Λ.finality_pair(σe)` of the entry state
-`σe = σ[T]`. These agree exactly when the record permits `(σ.h_j, σ.J)`:
+pair, `(σ.h_j, σ.J)` of every held honest state `σ` with `σ.T_h = T` that has its previous height
+justified with that pair pending. The row from `awake_signs_target` carries `Λ.finality_pair(σe)` of
+the entry state `σe = σ[T]`. These agree exactly when the record permits `(σ.h_j, σ.J)`:
 
-* `J_hj_eq_of_anc`: along ancestry at one height, `J` and `h_j` stay (only a justification,
-  which advances the height, sets them). `pending` is not constant within a height (the prune
-  of `finalize` drops pairs), but `finality_pair` at a bound entry does not read it.
+* `J_hj_eq_of_anc`: along ancestry at one height, `J` and `h_j` stay (only a justification, which
+  advances the height, sets them). `pending` is not constant within a height (the prune of
+  `finalize` drops pairs), but `finality_pair` at an entry whose previous height is justified does
+  not read it.
 * `entry_J_hj`: the entry block of a held block has the same `h`, `T_h`, `J`, `h_j`.
-* `finalityPair_eq_iff_of_bound`: for two states with the same `h`, `h_j`, `J`, bound,
-  `finality_pair(σe) = (σ.h_j, σ.J)` iff the record permits `(σ.h_j, σ.J)`.
+* `finalityPair_eq_iff_of_previousHeightJustified`: for two states with the same `h`, `h_j`, `J`,
+  previous height justified, `finality_pair(σe) = (σ.h_j, σ.J)` iff the record permits `(σ.h_j,
+  σ.J)`.
 * `finalityPair_entry_iff`: the trace form (honest `y`, `p`, any cuts); the pending premise of
   `hsig` is not needed.
 * `finalityPair_entry_healed`: under `HealedRecords`, with `h₀ ≤ σ.h_j` and `σ.J = E σ.h_j`.
@@ -29,7 +31,7 @@ pending. The row from `awake_signs_target` carries `Λ.finality_pair(σe)` of th
 
 Counterexample shape for dropping `permits`: `y`'s record has `target[σ.h_j] = some T' ≠ σ.J`
 (an own target row at `h_j` for another block, possible below `h₀`), so `finality_pair(σe)` is
-`⊥` while `σ` is bound. -/
+`⊥` while `σ` has its previous height justified. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -74,13 +76,15 @@ theorem entry_J_hj {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
   obtain ⟨hJ, hj⟩ := J_hj_eq_of_anc hr hEW hEh.symm
   exact ⟨E, hE, hEr, hEW, hEh, hET, hJ.symm, hj.symm⟩
 
-/-- **`finality_pair` at a bound entry.** For states with the same `h`, `h_j` and `J`, with `σ`
-bound, `finality_pair(σe) = (σ.h_j, σ.J)` iff the record permits `(σ.h_j, σ.J)`. -/
-theorem finalityPair_eq_iff_of_bound {n : Nat} {Λ : FG.Record} {σe σ : FG.ChainState n}
-    (hh : σe.h = σ.h) (hj : σe.hj = σ.hj) (hJ : σe.J = σ.J) (hb : σ.bound) :
+/-- **`finality_pair` at an entry whose previous height is justified.** For states with the same
+`h`, `h_j` and `J`, with `σ` whose previous height is justified, `finality_pair(σe) = (σ.h_j, σ.J)`
+iff the record permits `(σ.h_j, σ.J)`. -/
+theorem finalityPair_eq_iff_of_previousHeightJustified {n : Nat} {Λ : FG.Record}
+    {σe σ : FG.ChainState n}
+    (hh : σe.h = σ.h) (hj : σe.hj = σ.hj) (hJ : σe.J = σ.J) (hb : σ.previousHeightJustified) :
     Λ.finalityPair σe = some (σ.hj, σ.J) ↔ Λ.permits σ.hj σ.J := by
-  have hb' : σe.bound := by
-    unfold FG.ChainState.bound at hb ⊢
+  have hb' : σe.previousHeightJustified := by
+    unfold FG.ChainState.previousHeightJustified at hb ⊢
     omega
   by_cases hp : Λ.permits σ.hj σ.J <;> simp [FG.Record.finalityPair, hb', hj, hJ, hp]
 
@@ -96,8 +100,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **The fin-pair link (trace form).** Let `σe = σ_y[σ_y[C].T_h]` be the entry state of a held
 block `C` of an honest `y` at cut `k`, and `σ = σ_p[Pr]` a held honest state (any `p`, `k'`) with
-`σ.T_h = σe.T_h`, bound. Then `finality_pair(σe) = (σ.h_j, σ.J)` iff the record permits
-`(σ.h_j, σ.J)`, for every record `Λ`. -/
+`σ.T_h = σe.T_h`, whose previous height is justified. Then `finality_pair(σe) = (σ.h_j, σ.J)` iff
+the record permits `(σ.h_j, σ.J)`, for every record `Λ`. -/
 theorem finalityPair_entry_iff (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state y k).fg.tree)
@@ -105,7 +109,7 @@ theorem finalityPair_entry_iff (hrun : GoldilocksRun proposer dg H tr)
     (hPr : Pr ∈ (tr.state p k').fg.tree)
     (hT : ((tr.state p k').fg.σ Pr.root).Th =
       ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th)
-    (hb : ((tr.state p k').fg.σ Pr.root).bound) (Λ : FG.Record) :
+    (hb : ((tr.state p k').fg.σ Pr.root).previousHeightJustified) (Λ : FG.Record) :
     Λ.finalityPair ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th) =
         some (((tr.state p k').fg.σ Pr.root).hj, ((tr.state p k').fg.σ Pr.root).J) ↔
       Λ.permits ((tr.state p k').fg.σ Pr.root).hj ((tr.state p k').fg.σ Pr.root).J := by
@@ -118,11 +122,12 @@ theorem finalityPair_entry_iff (hrun : GoldilocksRun proposer dg H tr)
   obtain rfl : Ep = Ey := (Compose.honest_blocks_coherent hrun.toLocalRun hnc).1
     ⟨p, hp, k', hEp⟩ ⟨y, hy, k, hEy⟩ hroot
   rw [Healing.σ_eq_honest hrun hnc hy hp hEy hEp]
-  exact Healing.finalityPair_eq_iff_of_bound hEph hEpj hEpJ hb
+  exact Healing.finalityPair_eq_iff_of_previousHeightJustified hEph hEpj hEpJ hb
 
 /-- **The fin-pair link under `HealedRecords`.** With the entry state `σe` of `C` as in
-`finalityPair_entry_iff`, a bound held honest state `σ` at the same entry with `h₀ ≤ σ.h_j` and
-`σ.J = E σ.h_j` has `finality_pair(σe) = (σ.h_j, σ.J)` for the record of `y` at any cut. -/
+`finalityPair_entry_iff`, a held honest state `σ` whose previous height is justified, at the same
+entry with `h₀ ≤ σ.h_j` and `σ.J = E σ.h_j` has `finality_pair(σe) = (σ.h_j, σ.J)` for the record of
+`y` at any cut. -/
 theorem finalityPair_entry_healed (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {gR : Time} {h₀ : Nat}
     {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hR : Healing.HealedRecords tr H gR h₀ E)
@@ -132,7 +137,7 @@ theorem finalityPair_entry_healed (hrun : GoldilocksRun proposer dg H tr)
     (hPr : Pr ∈ (tr.state p k').fg.tree)
     (hT : ((tr.state p k').fg.σ Pr.root).Th =
       ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th)
-    (hb : ((tr.state p k').fg.σ Pr.root).bound)
+    (hb : ((tr.state p k').fg.σ Pr.root).previousHeightJustified)
     (hj₀ : h₀ ≤ ((tr.state p k').fg.σ Pr.root).hj)
     (hJ : ((tr.state p k').fg.σ Pr.root).J = (E ((tr.state p k').fg.σ Pr.root).hj).root)
     (i : Nat) :
@@ -186,7 +191,7 @@ theorem finalityPair_entry_healed' (hrun : GoldilocksRun proposer dg H tr)
     (hPr : Pr ∈ (tr.state p k').fg.tree)
     (hT : ((tr.state p k').fg.σ Pr.root).Th =
       ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th)
-    (hb : ((tr.state p k').fg.σ Pr.root).bound)
+    (hb : ((tr.state p k').fg.σ Pr.root).previousHeightJustified)
     (hj₀ : h₀ ≤ ((tr.state p k').fg.σ Pr.root).hj) (hj1 : 1 ≤ ((tr.state p k').fg.σ Pr.root).hj)
     (i : Nat) :
     (tr.state y i).record.finalityPair ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th) =

@@ -17,13 +17,13 @@ explicit premises:
 * **L5.1 exposure with C3** (`hexp`, step 3): the parent of every honest proposal of a slot `≥ s₁`
   has the entry `(h, T)` or is past `h`;
 * **the honest-row supply** (`hsig`): a set `S ⊆ H` of weight `≥ q` of honest validators, each of
-  which signed by `v` a target row for `(h, T)`, with the finality pair of a bound parent where it
-  is pending ("they attest" stays a premise; N0⁺ `HealedRecords.sign_target` gives `timeout =
-  false` in `window_justifies_healed`).
+  which signed by `v` a target row for `(h, T)`, with the finality pair of a parent whose previous
+  height is justified where it is pending ("they attest" stays a premise; N0⁺
+  `HealedRecords.sign_target` gives `timeout = false` in `window_justifies_healed`).
 
 * `window_justifies`: some honest proposal `X` of a slot `s' ∈ [s₁, s₁ + g)` has a held parent
   `Pr` past `h`, or `X` justifies `(h, T)` (`justify_of_signed_rows'`), with `h_F = σ[Pr].h_j` at
-  a bound parent.
+  a parent whose previous height is justified.
 * `window_justifies_healed`: the same, with `timeout = false` from `HealedRecords` (`h₀ ≤ h`).
 * `theorem_J_slot_le`: L5.4 step 1, `s' ≤ u + c + 2(g − 1)` for
   `s₁ = u + x + c`, `x ≤ g − 1`.
@@ -38,11 +38,11 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- **L5.4 at trace level** (steps 1, 3, 5): under M4 from `s₀ ≤ s₁` (`hM4`), the exposure
-premise `hexp` (every honest proposal of a slot `≥ s₁` has a held parent with the entry `(h, T)`
-or past `h`), and `q` honest target rows for `(h, T)` signed by `v`, `ḡ ≤ v`,
-`v + Δ_F ≤ t_{s₁}`: some honest proposal `X` of a slot `s' ∈ [s₁, s₁ + g)`, on a held parent `Pr`,
-has `Pr` past `h`, or justifies `(h, T)`, with `h_F = σ[Pr].h_j` at a bound `Pr`. -/
+/-- **L5.4 at trace level** (steps 1, 3, 5): under M4 from `s₀ ≤ s₁` (`hM4`), the exposure premise
+`hexp` (every honest proposal of a slot `≥ s₁` has a held parent with the entry `(h, T)` or past
+`h`), and `q` honest target rows for `(h, T)` signed by `v`, `ḡ ≤ v`, `v + Δ_F ≤ t_{s₁}`: some
+honest proposal `X` of a slot `s' ∈ [s₁, s₁ + g)`, on a held parent `Pr`, has `Pr` past `h`, or
+justifies `(h, T)`, with `h_F = σ[Pr].h_j` when `Pr`'s previous height is justified. -/
 theorem window_justifies (hrun : GoldilocksRun proposer dg H tr) {g ΔF v : Time}
     (hs : Healing.HSShared tr H dg g ΔF) (hv : gbar g ≤ v) {s₀ gM s₁ : Nat}
     (hM4 : ∀ s, s₀ ≤ s → ∃ s', s ≤ s' ∧ s' < s + gM ∧
@@ -56,7 +56,7 @@ theorem window_justifies (hrun : GoldilocksRun proposer dg H tr) {g ΔF v : Time
     (hsig : ∀ y ∈ S, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧ att.h = h ∧ att.T = T ∧
       att.timeout = false ∧ ∀ p ∈ H, ∀ k' Pr, Pr ∈ (tr.state p k').fg.tree →
         ((tr.state p k').fg.σ Pr.root).h = h → ((tr.state p k').fg.σ Pr.root).Th = T →
-        ((tr.state p k').fg.σ Pr.root).bound →
+        ((tr.state p k').fg.σ Pr.root).previousHeightJustified →
         (((tr.state p k').fg.σ Pr.root).hj, ((tr.state p k').fg.σ Pr.root).J) ∈
           ((tr.state p k').fg.σ Pr.root).pending →
         att.fin = some (((tr.state p k').fg.σ Pr.root).hj, ((tr.state p k').fg.σ Pr.root).J)) :
@@ -65,7 +65,7 @@ theorem window_justifies (hrun : GoldilocksRun proposer dg H tr) {g ΔF v : Time
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) := by
   obtain ⟨s', h1, h2, P, hP⟩ := hM4 s₁ hs₁
@@ -104,7 +104,7 @@ theorem window_justifies_healed (hrun : GoldilocksRun proposer dg H tr) {g ΔF v
     (hsig : ∀ y ∈ S, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧ att.h = h ∧ att.T = T ∧
       ∀ p ∈ H, ∀ k' Pr, Pr ∈ (tr.state p k').fg.tree →
         ((tr.state p k').fg.σ Pr.root).h = h → ((tr.state p k').fg.σ Pr.root).Th = T →
-        ((tr.state p k').fg.σ Pr.root).bound →
+        ((tr.state p k').fg.σ Pr.root).previousHeightJustified →
         (((tr.state p k').fg.σ Pr.root).hj, ((tr.state p k').fg.σ Pr.root).J) ∈
           ((tr.state p k').fg.σ Pr.root).pending →
         att.fin = some (((tr.state p k').fg.σ Pr.root).hj, ((tr.state p k').fg.σ Pr.root).J)) :
@@ -113,7 +113,7 @@ theorem window_justifies_healed (hrun : GoldilocksRun proposer dg H tr) {g ΔF v
       Pr ∈ (tr.state (proposer s') k).fg.tree ∧
       (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
         (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).bound →
+          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
             ((tr.post k).fg.σ X.root).hF =
               ((tr.state (proposer s') k).fg.σ Pr.root).hj))) :=
   window_justifies hrun hs hv hM4 hs₁ hvs hexp S hSH hS fun y hy => by
