@@ -123,6 +123,24 @@ target), C1.3's statement, and HR.5 (G1.9 (b) after the reset).  The regime theo
 premises and numbers wait for the instance statements (goldilocks\#7) and
 the derivation of the bounds (D1).
 
+\begin{sloppypar}
+\paragraph{Lean status and the acceptance target (2026-11-03).}  The
+acceptance target is the concrete endpoint
+\texttt{Refinement.AcceptedEndpoint} (consensus-lean
+\texttt{Statements/Refinement/Accepted}), proved by
+\texttt{accepted\_endpoint}; its contract and coefficients are in
+\S\ref{sec:accepted}.  It is not proved through the regime rows R.3--R.6 and
+does not depend on O.1.  The pre-foundation baseline (\texttt{GoldilocksTarget},
+\texttt{GoldilocksExtraAt}) and the node statements of R.3--R.6 were retired
+unproved (consensus-lean \texttt{archive/consensus-lean-baseline},
+\texttt{archive/consensus-lean-regimes}).  So the references below to
+\texttt{GoldilocksTarget} and its rows (Decisions D1, D2, layer L3,
+\S\ref{sec:l2}) and the dependency of \texttt{Accepted} on O.1 are
+historical.  The Lean status of every node outside the lock nodes, with the
+formal premises and read points where they differ from the statements here,
+is in \S\ref{sec:lean-status}.
+\end{sloppypar}
+
 \section{How to read the DAG}\label{sec:dag-rules}
 
 The proof is a directed acyclic graph of \emph{nodes}.  A node is one
@@ -140,8 +158,10 @@ proof may cite, and no others.  The layers are:
   interface requirements of composition \S``The available chain'' and the
   proposal payload (A0.6, A0.9).
 \item[L2, regimes:] the claims, one per target row (ids \textsf{R}).
-\item[L3, assembly:] the Lean structures \texttt{ShapeClaimsAt} and
-  \texttt{GoldilocksExtraAt} (ids \textsf{T}); done in consensus-lean.
+\item[L3, assembly:] the Lean acceptance endpoint (ids \textsf{T};
+  \S\ref{sec:accepted}), whose \texttt{Accepted} contains the shape claims;
+  done in consensus-lean.  The former \texttt{GoldilocksExtraAt} is retired
+  with the baseline.
 \end{description}
 \emph{Components and modules.}  The FG and the AC share no state
 (composition \S``State''): they meet at the block, at the frame
@@ -248,6 +268,16 @@ about honest senders).  A run has finitely many events in every bounded
 interval of time.  Write $h_t$ for the number of honest validators that are
 awake and joined at~$t$.
 
+The Lean model has integer time (consensus-lean \texttt{Spec/Problem/Basic})
+and half-open deadlines: delivery before $a+\Delta$ is delivery by
+$a+\Delta-1$ (\texttt{Spec/Problem/Network}: $\max(a,g)+\Delta-1$ for
+\texttt{PSync}, $a+\Delta-1$ for \texttt{SyncUntil}).  At integer times this is
+the strict deadline of $\mathsf{Sync}$ below, so the two agree with no extra
+factor.  The continuous-time runs of this file are not claimed to be the
+integer runs; relating them is a sampling obligation like the one F.4 states
+for $\mathsf{awake}$.  The agreement of the deadlines does not by itself give
+acceptance relay across a wake or every transport obligation of the engine.
+
 \subsection{Premises}
 
 Each claim takes some of these premises.  The right column names the
@@ -274,8 +304,8 @@ $\mathsf{Sync}[a,b]$ & every block and AC message that an honest node sends
   block whose parent is missing and nothing delivers it again, so receipt
   alone does not give acceptance; the old continuation claims assume the same
   ``acceptance relay'') &
-  \texttt{CommLog.SyncUntil}, \texttt{PSync}; strict vs endpoint receipt is
-  obligation~8 (F-9), relay across sleep F-8\\
+  \texttt{CommLog.SyncUntil}, \texttt{PSync}; the strict deadline is the
+  Lean half-open deadline (\S``Runs''); relay across sleep F-8\\
 $\mathsf{GST}(g)$ & $\mathsf{Sync}[g,\infty)$, and an object sent before~$g$
   is processed as if sent at~$g$ (for its deadline only, $\max(g,w_y)+\Delta$,
   or $+\Delta_F$ for an attestation: it is still processed at or after its
@@ -291,17 +321,26 @@ $\mathsf{Healthy}(g)$ & $\mathsf{GST}(g)$, every honest validator awake on
 $\mathsf{Outage}(T,b_0,b_1)$ & synchrony before~$b_0$, GST $b_1$, the
   participation of the target's outage regime, and the budget~(V) of the lean
   notes with this protocol's lock lifetime $(4k-2)\Delta$ (D1) &
-  \texttt{Outage}; obligation~4\\
+  \texttt{Outage}; obligation~4 (the retired R.5 form; the endpoint's
+  outage numbers: \S\ref{sec:accepted})\\
 $\mathsf{Weak}$ & healthy up to the heal point, sleepy after it &
-  \texttt{WeakPremise}; obligation~10\\
+  \texttt{WeakPremise}; obligation~10 (retired with R.6)\\
 $\mathsf{NoColl}$ & no two distinct objects with one digest occur in the run &
   the hash-collision excuse \texttt{HC}; obligation~8 (F-7)\\
 $\mathsf{Catch}(\kappa)$ & accepted-old-block catch-up
   (\S\ref{sec:healing-top}): every block accepted by an honest node before
   $\bar g$ is accepted before $\bar g+\kappa$ by every honest node whose
-  $\Sigma.F$ at $\bar g+\kappa$ it extends, with its needed ancestry & none:
+  $\Sigma.F$ at $\bar g+\kappa$ it extends, with its needed ancestry & none
+  for an abstract node run:
   \texttt{PSync} gives delivery, not acceptance (workbench
-  \texttt{t2-statements.md}, ``Mapping'', bridge B1)\\
+  \texttt{t2-statements.md}, ``Mapping'', bridge B1); on the engine's
+  canonical simulation \texttt{catchRun\_of\_psync} gives
+  $\mathsf{Catch}(2\Delta)$ from a valid execution, $\mathsf{NoColl}$,
+  \texttt{PSync} and every honest node awake from $\max(g,0)$\\
+$\mathsf{GenRoot}$ & the genesis block's root is the digest of its contents
+  (otherwise an honest proposal on genesis can be refused); a premise of
+  C0.3, A1.7, the HS shared premises and H.2 (run), here and in the Lean &
+  \texttt{genesis.RootOk}\\
 $\mathsf{Prop}(G_{\mathrm p})$, $\mathsf{Prop}^{+}(G_{\mathrm p})$ & an honest
   proposer (resp.\ ready proposal) in every window $[t,t+G_{\mathrm p}]$ from
   $\bar g$ (\S\ref{sec:healing-top}) & \texttt{gProg} only on
@@ -380,10 +419,14 @@ a function on finite sets; any two blocks have a deepest common ancestor.}
 {none}{composition \S Blocks, \S State; FG \S Finality caches and frame.  consensus-lean \texttt{Spec/Blocks/Chains}
 may already give most of it (reuse).}{S.}
 
-\dagnode{F.3}{Digests}{Under $\mathsf{NoColl}$: blocks with one root are
-equal, so a test by root (attestation targets, vote heads, the duplicate
-test of $\fname{fg\_on\_block}$) is a test by block, and a root determines
-the whole chain of its block.}
+\dagnode{F.3}{Digests}{Under $\mathsf{NoColl}$: two blocks with valid roots
+(each root the digest of its block's contents) and the same proposer that
+have one root are equal.  The digest excludes the proposer (C0.3), so equal
+roots alone do not fix it; in a run, the authenticated blocks have the
+proposer of their slot.  So on the authenticated, root-valid blocks of a run
+a test by root (attestation targets, vote heads, the duplicate test of
+$\fname{fg\_on\_block}$) is a test by block, and a root determines the whole
+chain of its block.}
 {none}{old ROOT-DIGEST-2; consensus-lean hash lifting (\texttt{Lemmas/Model}).}{S.}
 
 \dagnode{F.4}{Ready implies joined (D4)}{Assume the instance's sampled
@@ -709,7 +752,7 @@ moves only forward along the trajectory of $\Sigma$ (G0.3, an FG store fact),
 and a restart keeps $\Sigma$ (a node fact).}
 
 \dagnode{C0.3}{Honest blocks are accepted}{In the node composed with an AC
-that meets requirements 1--5 (A0.6, A0.9): a block made by
+that meets requirements 1--5 (A0.6, A0.9), with $\mathsf{GenRoot}$: a block made by
 $\fname{propose\_block}$ at an honest node at~$t_s$ passes the checks of its
 maker: its attestations are valid against the parent's state (they come from
 $\fname{proposal\_attestations}$), its payload passes $\fname{ac\_valid\_payload}$
@@ -757,7 +800,10 @@ previous, reachable state; the own vote is honestly signed), and every block
 that the AC receives from $\fname{ac\_on\_block}$ was accepted by the FG: it is
 not of a future slot, its full parent is held, and it passed
 $\fname{state\_transition}$, with its slot's proposer and a parent of smaller
-slot (composition \S``Node'': $\fname{ac\_on\_block}$ runs only after
+slot (in the Lean model the slot's proposer is not a node check but the
+authenticated run law, \texttt{LocalRun.proposerCredential} for a delivered
+block and the own-proposal law for the own block, consensus-lean
+\texttt{docs/decisions.md} 2026-10-31; composition \S``Node'': $\fname{ac\_on\_block}$ runs only after
 $\fname{fg\_on\_block}$ accepts, and the restart replays only blocks of
 $\Fr.\mathsf{tree}$), so its states are reachable, by induction over the calls
 (\S\ref{sec:dag-rules}); (c) the FG's inputs are the accepted blocks, the
@@ -1173,7 +1219,8 @@ $\geq H_z+1$ (so $h\geq H_z+2$; producer-reset-continuation \S18, BA); and
 proposal whose parent extends~$P$, or extends an accepted retained chain that
 has already justified~$E$ (instance-proposal \S3.5 \texttt{ACService}).
 \emph{Conclusion.}  Such an entry gets \emph{outcome service} by the deadline of its
-window $I(E,0,k_F)$, with the same carrier conclusion in both branches (the
+window $I(E,0,k_F)$: the end of its last slot $u+\cF+k_F$, strictly before
+$t_{u+\cF+k_F+1}$ (not that slot's start), with the same carrier conclusion in both branches (the
 outcome is on an accepted retained chain, whose carrier honest nodes receive
 within a further~$\Delta$).  At an entry~$E$ of slot~$u$ whose previous height is justified, with predecessor~$P_E$: either
 (i) the literal $\mathsf{GW}(E,0,k_F)$ holds on the retained inclusion chain,
@@ -1271,8 +1318,8 @@ premise (\S``O.1'', Status).}
 
 \subsection{Available chain, after C1.1}
 
-\dagnode{A1.6}{Head extends the record under synchrony}{Under $\mathsf{Sleepy}$,
-at an honest node that is awake and joined at~$t$ and has run the update of
+\dagnode{A1.6}{Head extends the record under synchrony}{Under $\mathsf{Sleepy}$
+and $\mathsf{NoColl}$, at an honest node that is awake and joined at~$t$ and has run the update of
 slot $\slot(t)-2$ with no restart since, the head extends $\AC.\latestConfirmed$
 (when it is in $\Fr.\mathsf{tree}$), so $\fname{ac\_confirmed}$ equals that
 record; and the record at $t'\geq t$ extends the record at~$t$ while both
@@ -1287,9 +1334,11 @@ participation and must be carried by A1.6's own induction from time~$0$.}
 {A0.5, C1.1, A1.8}{Statements.lean \S3, note on the newer spec.}{M; recheck the
 statement against reachable states first.}
 
-\dagnode{A1.7}{Inclusion}{Under $\mathsf{Sleepy}$, an honest proposal~$P$ of
+\dagnode{A1.7}{Inclusion}{Under $\mathsf{Sleepy}$, $\mathsf{NoColl}$ and
+$\mathsf{GenRoot}$, an honest proposal~$P$ of
 slot~$s$ by a joined proposer is in the confirmed tip of every honest node that
-is awake and joined at $t\geq t_s+6\Delta$ and was awake and joined at
+is awake and joined at $t\geq t_s+6\Delta$ (at $t_s+6\Delta$ itself, after its
+tick, so that the update of slot~$s$ has run) and was awake and joined at
 $t_s+6\Delta$ with no restart since.  (A node that joins later sees~$P$ only
 from its own first update of a slot $\geq s$.)}
 {A1.6, C1.1}{blueprint \texttt{03-p1-inclusion}; old
@@ -1315,7 +1364,7 @@ across phase changes, C1.2, C1.3 and O.1.
 
 \emph{Shared premises.}  Every HS node quantifies over the reachable
 composed-node run (Spec/Run), not over arbitrary AC states or frames.  Assume
-$\mathsf{NoColl}$, unforgeable signatures, persistent honest client records,
+$\mathsf{NoColl}$, $\mathsf{GenRoot}$, unforgeable signatures, persistent honest client records,
 finite event prefixes, $\mathsf{Healthy}(g)$ with
 $g=\max(\mathrm{GST},0)$, no honest restart after~$g$, and strict acceptance
 relay and delivery as in $\mathsf{Sync}$; for rows the $\mathsf{GST}(g)$
@@ -1374,7 +1423,9 @@ wait is charged to $\mathsf{Settle}(\Delta)$.}
 accepted-old-block bound~$\kappa$ is a regime premise: neither the
 acceptance-relay clause of $\mathsf{Sync}$ (acceptances at $\tau\geq g$) nor
 the $\mathsf{GST}$ convention (delivery, not acceptance, of old objects)
-gives it.}
+gives it in an abstract node run (the engine supplies $\kappa=2\Delta$,
+\S``Premises'').  The Lean proves this node at $\kappa=2\Delta$ with the
+original cut only (\S\ref{sec:lean-status}, note~4).}
 
 \dagnode{HS.1}{Effective-phase viable-witness retention}{Under the shared
 premises: for an accepted block~$W$ that is allowed in the effective phase
@@ -1571,7 +1622,8 @@ blocks and votes are broadcast;
 unforgeable signatures are read on the trace, where ``accepted'' means
 ``passed to $\fname{ac\_on\_block}$''.
 (The AC does not make the checks of (a): the assigned proposer is checked by
-the FG's $\fname{state\_transition}$, and parent availability and the
+the FG's $\fname{state\_transition}$ (in the Lean model, by the authenticated
+run law, C0.5 (b)), and parent availability and the
 future-slot drop by composition \S``Node''.  Without (a), a faulty-signed
 block of an honest proposer's slot with an empty valid payload can reach a
 voter before the honest proposal and trigger its early vote, because
@@ -1584,7 +1636,10 @@ by every honest node~$y$ whose $\Sigma.F$ at $\bar g+\kappa$ it extends (in an
 AC trace: $\Fr.F$).  This is the HS shared premise
 \emph{accepted-old-block catch-up}~$\kappa$.  ($\mathsf{Sync}$'s acceptance
 relay covers only $\tau\geq g$.  $\mathsf{GST}(g)$ re-delivers objects sent
-before~$g$, but a block refused for a missing parent is not delivered again.)
+before~$g$, but a block refused for a missing parent is not delivered again.
+This is about an abstract node run; on the engine's canonical simulation
+$\mathsf{Catch}(2\Delta)$ is supplied when every honest node is awake
+from~$\bar g$, \S``Premises''.)
 With $\kappa>2\Delta$, the nodes below hold with
 $\bar g'=\bar g+\kappa-2\Delta$ in place of~$\bar g$, because
 $\mathsf{Healthy}$ and $\mathsf{Catch}(2\Delta)$ hold from~$\bar g'$ (the
@@ -1743,20 +1798,28 @@ each after a skeptical subagent pass: (1) the retained-head score comparison,
 or below $\fcroot$ with the frame's move back during the drain in
 workbench\#13 (\texttt{ba18e93}); (4) sufficiency of $\mathsf{Geo}(P)$, that
 is (i), in workbench\#15 (\texttt{27e05af}); (ii) in workbench\#17
-(\texttt{75d4c5c}).  Not a Lean proof.}
+(\texttt{75d4c5c}).  These paper reviews are not a Lean proof; the Lean
+statement \texttt{SA.ACInclusion} is proved separately
+(\S\ref{sec:lean-status}).}
 
-\dagnode{H.2 (run)}{AC inclusion in runs}{A run node.  In a reachable
+\dagnode{H.2 (run)}{AC inclusion in runs}{A run node.  Assume H.2's premises
+read on the run ($\mathsf{Healthy}(g)$, $\mathsf{Catch}(2\Delta)$,
+$\mathsf{NoColl}$, unforgeable signatures, $\mathsf{Inv}(t_0)$) and
+$\mathsf{GenRoot}$.  In a reachable
 Goldilocks run, the AC projections of the honest nodes (C0.5) form a driven
 AC trace whose frames are $\fname{fg\_to\_ac}(\Sigma)$.  Clause (a) of the
 driven trace comes from the FG's acceptance tests: assigned proposer and
 slot order in $\fname{state\_transition}$, the full parent held, and the
 future-slot drop (composition \S``Node''; ``the AC does not see a refused
-block'').  Clause (b) comes from C0.4.  So H.2 holds for the run, with
-$\fname{ac\_confirmed}$ the node's AC confirmed tip.}
+block''); in the Lean model the assigned proposer comes from the authenticated
+run law instead (C0.5 (b)).  Clause (b) comes from C0.4.  So H.2 holds for the
+run, with $\fname{ac\_confirmed}$ the node's AC confirmed tip.}
 {H.2, C0.4, C0.5, F.5 (run)}
 {composition \S``Node'', \S``Blocks''; fg.tex $\fname{state\_transition}$.}
 {S.  C0.5 (b) states that the AC sees only blocks that passed these
-acceptance tests (goldilocks\#35); it is definitional in the node.}
+acceptance tests (goldilocks\#35); that statement is definitional in the
+node, but the projection onto a driven trace is a proof
+(\S\ref{sec:lean-status}).}
 
 \dagnode{HR.1}{Cut and reset}{A run node (Healing module; it uses A1.5).
 Assume $\mathsf{Healthy}(g)$, $\mathsf{NoColl}$ and unforgeable signatures.
@@ -2030,30 +2093,86 @@ separate recovery obligation; the settled-phase restriction is unchanged.
 
 \section{L2: regime theorems (skeleton)}\label{sec:l2}
 
-One node per row of \texttt{GoldilocksTarget}; premises and numbers come with
-D1 and the instance statements (goldilocks\#7).
+The acceptance target is the endpoint of \S\ref{sec:accepted}, proved in
+Lean.  The table below lists one node per row of the retired
+\texttt{GoldilocksTarget}.  R.1, R.2, R.7 and R.8 are live node statements,
+proved in Lean (\S\ref{sec:lean-status}).  R.3--R.6 (marked~$\dagger$) are \emph{retired}:
+their node statements were archived unproved (consensus-lean
+\texttt{archive/consensus-lean-regimes}), and the paragraphs about them
+below, with the paper obligation OC, are history, not open obligations of
+the endpoint.  The endpoint supplies generic rows with related names
+(\texttt{Good.healedSafe}, \texttt{Good.healthyLive},
+\texttt{Good.persists}, through \texttt{Accepted.good}) under its own
+contract; they are not proofs of the archived node statements, with their
+premises and constants, and R.6 has no generic row.
+
+\subsection{The acceptance endpoint}\label{sec:accepted}
+
+\begin{sloppypar}
+\texttt{Refinement.AcceptedEndpoint} (consensus-lean
+\texttt{Statements/Refinement/Accepted}, proved by
+\texttt{accepted\_endpoint}): for every setup and every assumption set the
+Goldilocks family is \texttt{Accepted} at the contract
+\texttt{acceptanceContract A (accepted\_coefficients S A)}.  Every number is a
+coefficient of~$\Delta$, the node and engine delay alike ($\Delta_p=\Delta_e$);
+all are fixed before the run, but heal and latency depend on the contract's
+outer gap~$X$, the index of its progress requirement.
+\end{sloppypar}
+\begin{center}\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{8.4cm}@{}}
+\hline
+Quantity & Value\\
+\hline
+Row ratio & $r\geq1$; the healthy row delay is at most $r\Delta$ ($\Delta_F\leq r\Delta$)\\
+Row gap & $c=\cF(r)=\lceil(r+6)/4\rceil$\\
+Timeout & $3c\leq\delta_{\mathrm t}$\\
+Final progress & in every window of the outer gap~$X$, the four-anchor
+  pattern $[0,c,2c,3c]$\\
+Available and stable progress & one honest ready proposer in every window of
+  the outer gap~$X$\\
+Catch-up & $19$\\
+Drain length & $L=2k+X$\\
+Heal margin $M_f$ & $24L+8k+52\delta_{\mathrm t}+52X+44=56k+52\delta_{\mathrm t}+76X+44$\\
+Heal, every capability & $19+M_f=56k+52\delta_{\mathrm t}+76X+63$\\
+Latency, available and stable & $4X+6$\\
+Latency, final & $4(X+3c)+1$\\
+Arming lag; no-sleep margin & $4k+6$; $4k+6$\\
+Outage budget; recovery delay & $4k-5$; $9$\\
+Outage look-back $\eta$ & $0$ (plain sleepy outage)\\
+\hline
+\end{tabular}
+\end{center}
+The endpoint's catch-up~$19$ is not the node-level Sleepy catch-up: F.4 and
+the node statement of R.1 use $18\Delta$, and $18\Delta+1\leq19\Delta$ for
+every $\Delta\geq1$.  The four-anchor final pattern is not the $M$
+consecutive honest ready proposals with retained inclusion of
+$\mathsf{UPat}$ (\S``O.1''); the two must not be identified.
+
+\subsection{Regime rows}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.1cm}>{\raggedright\arraybackslash}p{5.4cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.3cm}@{}}
 \hline
 Node & Target rows & Uses & Evidence\\
 \hline
-R.1 & \texttt{sleepySafe}, \texttt{confirmed\_safe\_sleepy(\_prefix)} &
+R.1 & \texttt{sleepySafe}, \texttt{confirmed\_safe\_sleepy(\_prefix)} (the
+  prefix form is now the generic \texttt{Good.sleepySafe\_prefix} at the
+  endpoint's catch-up~$19$, not R.1's node statement at $18\Delta$) &
   A1.2, A1.3, A1.4, A1.6, C1.1, F.4 & blueprint 02\\
 R.2 & \texttt{sleepyLive}, \texttt{includeSleepy}, \texttt{growSleepy},
   \texttt{confirmed\_txLive\_sleepy} & A1.7, F.4 & blueprint 03\\
-R.3 & \texttt{healedSafe}, \texttt{healthyLive} (available),
+R.3$^\dagger$ & \texttt{healedSafe}, \texttt{healthyLive} (available),
   \texttt{includeHealed}, \texttt{growHealed},
   \texttt{confirmed\_txLive\_healed} & R.1, R.2, C1.1, H.4; heal point (D1) &
   blueprint 21\\
-R.4 & \texttt{finalFirst}, \texttt{finalRecur}, \texttt{liveDC},
+R.4$^\dagger$ & \texttt{finalFirst}, \texttt{finalRecur}, \texttt{liveDC},
   \texttt{healthyLive} (final), \texttt{finalized\_txLive} & C1.3, G1.9,
   R.3, and the open target O.1 (below) & theorem.md;
   instance-proposal S3--S5\\
-R.5 & \texttt{persists}, \texttt{outageWindow},
+R.5$^\dagger$ & \texttt{persists}, \texttt{outageWindow},
   \texttt{outage\_final\_compatible} & A1.2, A1.3, C1.1; (V) with
   $(4k-2)\Delta$; the outage continuation OC (below, open) & old
   \texttt{OutageContinuationClaim} (round model, not this node)\\
-R.6 & \texttt{weakSafe}, \texttt{weakInclude},
+R.6$^\dagger$ & \texttt{weakSafe}, \texttt{weakInclude},
   \texttt{weakGrow} & R.1--R.3 & old \texttt{WeakContinuation*}\\
 R.7 & \texttt{finalAccountable}, \texttt{nonFraming},
   \texttt{finalized\_safe\_below\_third} & G1.3--G1.5 & old finality claims\\
@@ -2062,7 +2181,7 @@ R.8 & \texttt{nested}, \texttt{finalMonotone}, \texttt{outputValid} & C0.1,
 \hline
 \end{longtable}
 
-R.3 is also open at the post-cut transfer of the available record: an unmoved
+History, for the retired R.3: it was also open at the post-cut transfer of the available record: an unmoved
 or deeper $\AC.\latestConfirmed$ against the fast origins after the cut needs its
 own argument, because A1.6 is stated under $\mathsf{Sleepy}$ from time~$0$ and
 does not apply directly to a dirty suffix (workbench \S29 at \texttt{2bc912b}).
@@ -2091,7 +2210,7 @@ This bounded evidence is not a proof of lagged ancestry and does not retain
 it as a target obligation.  R.4's cross-time growth and R.8's local nesting
 are unchanged.
 
-R.5 is open in its own right: it does not follow from A1.2, A1.3 and C1.1.
+History, for the retired R.5: it was open in its own right, as it does not follow from A1.2, A1.3 and C1.1.
 Through $[b_0,b_1)$ there is no delivery premise, so A1.2--A1.4's
 $\mathsf{Sync}$ and $\mathsf{Carry}$ are unavailable; what keeps a ready read
 is the outage-continuation argument itself (protection by a lock through its
@@ -2137,7 +2256,8 @@ proved here.
 
 \subsection*{O.1: recovery after GST}
 
-O.1 is the premise that R.4 needs.  Its target (below) has no fixed
+O.1 was the premise that the retired R.4 needed; it is not a premise of
+the proved endpoint (\S\ref{sec:accepted}).  Its target (below) has no fixed
 statement for the contract's regime.  What is fixed (draft~9) is the
 recovery predicate $\mathsf{Rec}(t_0)$ and node O.1, which proves
 $\mathsf{Rec}$ from a parameter-only time under a \emph{bounded uniform
@@ -2155,7 +2275,17 @@ $\mathsf{Rec}$), at each honest validator's first source of that entry its
 durable record holds no target, timeout or lock at~$h$ for another block;
 (c) (K2) of C1.1 holds for those confirmations, at every honest vote of a slot
 in $(s,m]$ for every $m>s$.  $\mathsf{Rec}(t_0)$ implies
-$\mathsf{Rec}(t_0')$ for $t_0'\geq t_0$.
+$\mathsf{Rec}(t_0')$ for $t_0'\geq t_0$.  The Lean (b),
+\texttt{Healing.Rec.records}, is not a literal transcription: it does not
+select an entry through the earliest honest source reaching~$h$.  It covers
+every entry~$E$ entered after~$t_0$ that is an ancestor entry, at any
+height~$h$, of the chain of a post-$t_0$ honest source~$C$ (the source's own
+state height need not be~$h$), at the reader's first source whose chain
+contains~$E$.  This covers the served entry here, whose sources all come
+after~$t_0$, and also entries at~$h$ whose earliest source is before~$t_0$
+on another branch.  That node O.1's assembly gives this broader form is a
+conditional paper argument (consensus-lean
+\texttt{docs/goldilocks-mapping.md}, O.1), not a Lean equivalence.
 
 \paragraph{The pattern regime} $\mathsf{UPat}(W,M)$ with $W,M\geq1$ (slots):
 for every time $\tau\geq\bar g$ there is a slot~$v$ with
@@ -2276,12 +2406,13 @@ discharge any of (a)--(c).
 
 \emph{Status.}  Open for every design (theorem.md \S8 item~4; r7 open item~2);
 corollary~C (G1.8) gives a conditional upper bound after bad entries, not a
-uniform recovery bound.  The L0 contract requires final healthy liveness
-from any GST with a heal point that depends on the parameters only, so R.4,
-and with it \texttt{Accepted}, depends on O.1.  If O.1 fails, the
-mandatory final row cannot be stated at full strength for Goldilocks, which
-is a question about the contract (instance-proposal Q1), not a weakening to
-decide in a proof.  The FG safety milestone (G0, G1.1--G1.5) does not
+uniform recovery bound.  \texttt{Accepted} does not depend on O.1: the L0
+contract's final healthy liveness, with a heal point fixed before the run,
+is proved for the endpoint by another route, its four-anchor final pattern
+with the timeout $3c\leq\delta_{\mathrm t}$ (\S\ref{sec:accepted}).  The
+earlier dependency (the retired R.4, and with it \texttt{Accepted}, on O.1;
+instance-proposal Q1) is history.  O.1 stays a separate research target.
+The FG safety milestone (G0, G1.1--G1.5) does not
 depend on O.1.  Workbench \texttt{producer-reset-continuation.md} \S27 (main \texttt{ee6445a})
 gives a conditional, paper-only assembly, under an explicit uniform proposer
 wait~$W$ and C1.2's retained inclusion and acceptance, of
@@ -2347,6 +2478,224 @@ open: under $\mathsf{Healthy}$ with a weaker proposer premise (bounded
 single-proposer gaps, or an eventual pattern without a uniform wait), O.1 is
 neither proved nor refuted, and recovery from such a regime would be a separate
 result.  Node O.1 does not mark that target proved.
+
+\section{Lean status}\label{sec:lean-status}
+
+The Lean counterpart of every node outside the lock nodes, at consensus-lean
+main of 2026-11-03 (names relative to \texttt{Consensus.Goldilocks}; the
+crosswalk is \texttt{docs/goldilocks-mapping.md}).  The lock nodes (F.1 (b),
+A0.4, A0.5, the lock part of A0.7, A1.1, A1.2, A1.4, A1.5, A1.9, C1.1, HS.2,
+HR.4) are not covered here.  \emph{Proved}: a proof of the indexed
+proposition, named in the table, under the axioms \texttt{propext},
+\texttt{Classical.choice} and \texttt{Quot.sound}.  \emph{Conditional} or
+\emph{specialization}: a proof of a weaker or narrower statement, said
+which.  \emph{Partial}: some parts proved, the rest not one exported
+statement.  \emph{Stated only}: the proposition exists with no proof; a
+proposition-valued definition, a name in \texttt{Index.lean} or a paper
+proof is not a Lean proof.  \emph{Retired}: archived, outside the checked
+roots.  The notes after the table give the premises, read points and
+quantifiers where the Lean differs from the statement in this file.  Where
+this file's broader claim is not transcribed, it stays a paper claim; the
+Lean statement does not prove it.
+
+{\footnotesize
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}p{6.2cm}>{\raggedright\arraybackslash}p{5.2cm}@{}}
+\hline
+Node & Lean statement & Status\\
+\hline
+\endhead
+F.1 (a), (c) & \texttt{SA.SlotArithmetic}, \texttt{SA.JoinedFrom},
+  \texttt{SA.JoinedAwake} & proved (\texttt{acBase})\\
+F.2 & \texttt{AncAntisymm}, \texttt{AncTotal},
+  \texttt{DeepestCommonAncestor}; \texttt{Store.AcceptedTree},
+  \texttt{Store.TreeGrows} & proved (\texttt{common\_statements},
+  \texttt{fg\_store\_local})\\
+F.3 & \texttt{DigestDeterminesBlock} & proved
+  (\texttt{digest\_determines\_block}) with valid roots and equal
+  proposers, as F.3 now states\\
+F.4 & \texttt{Compose.ReadyImpliesJoined} & proved (\texttt{run\_statements})\\
+F.5 (schema) & none needed: well-founded induction & ---\\
+F.5 (run) & \texttt{Compose.EventOrder}, over \texttt{Compose.RunOrder} &
+  proved (\texttt{run\_statements})\\
+G0.1 (chain) & \texttt{FG.FGParams.chainState} & definitional (a fold)\\
+G0.1 (store) & \texttt{Store.ChainStateOfChain} & proved
+  (\texttt{fg\_store\_local})\\
+G0.2 & \texttt{FG.ChainInvariants}, \texttt{FG.HeightStep},
+  \texttt{Store.EntryStateOfSource} & partial, note~1\\
+G0.3 & \texttt{Store.CacheInvariants} & proved (\texttt{fg\_store\_local})\\
+G0.3 (frame), G0.4 (frame) & \texttt{FrameStatements} (\texttt{FrameStepAddsBlock},
+  \texttt{FrameRetention}, \texttt{FrameNeverReturns},
+  \texttt{FrameEntersOnce}, \texttt{ViableAncestorExists},
+  \texttt{ViableAncestorSelf}, \texttt{ViableTreeAncestorClosed},
+  \texttt{FrameParentClosed}) & stated only; the frame predicates are
+  definitions and the SA-specialized viable-ancestor facts are proved
+  (\texttt{Lemmas/AC/Basic})\\
+G0.4 (height) & \texttt{Store.FrameRealization} & proved
+  (\texttt{fg\_store\_local})\\
+G0.5 & \texttt{FG.ClientSafety} & proved (\texttt{fg\_safety})\\
+G0.7 & \texttt{FG.GatedConsumption} & partial: (c) proved
+  (\texttt{fg\_safety}); (a), (b) not stated separately\\
+G0.8 & \texttt{FG.FinalityBeforeGate} & proved (\texttt{fg\_safety})\\
+G0.9 & \texttt{FG.Retention}, \texttt{FG.RetentionThroughAppend} & proved
+  (\texttt{fg\_safety})\\
+G0.10 & \texttt{FG.Aggregation} & proved (\texttt{fg\_safety})\\
+A0.1 & \texttt{SA.PoolCap}, \texttt{SA.AdmissionSlots},
+  \texttt{SA.StampStable}, \texttt{SA.CarriedVotes},
+  \texttt{SA.StampParent} & proved (\texttt{acBase})\\
+A0.2 & \texttt{SA.ResolutionStable}, \texttt{SA.SupportInTree} & proved
+  (\texttt{acBase})\\
+A0.3 & \texttt{SA.SupportersAntitone}, \texttt{SA.OpponentsMonotone},
+  \texttt{SA.MajorityChain}, \texttt{SA.OptimisticChain},
+  \texttt{SA.MergedOpponents} & proved (\texttt{acBase})\\
+A0.6 & \texttt{SA.InterfaceRequirements} & proved (\texttt{acBase});
+  requirement~5 through A0.9\\
+A0.7 (pool, joining) & \texttt{SA.RestartState}, \texttt{SA.JoinedKeepsVotes}
+  & proved (\texttt{acBase})\\
+A0.8 & \texttt{SA.OneVotePerSlot} & proved (\texttt{acBase})\\
+A0.9 & \texttt{SA.ProposalPayloadValid} & proved (\texttt{acBase})\\
+C0.1 & \texttt{Compose.TipsNested}, \texttt{Compose.ThreeTips} & proved
+  (\texttt{compose\_interface\_statements},
+  \texttt{compose\_node\_statements})\\
+C0.2 & \texttt{Compose.FinalizedMonotone}, \texttt{Compose.RestartKeepsFG} &
+  proved (\texttt{compose\_node\_statements})\\
+C0.3 & \texttt{Compose.HonestBlockAccepted} & proved
+  (\texttt{compose\_node\_statements}), with $\mathsf{NoColl}$ and
+  $\mathsf{GenRoot}$\\
+C0.4 & \texttt{Compose.TickOrder}, \texttt{Compose.SignedOnlyInTicks};
+  engine: \texttt{Refinement.EngineSimulatesNode} & proved
+  (\texttt{compose\_node\_statements}, \texttt{engineSimulatesNode})\\
+C0.5 & \texttt{Compose.ACSeesAcceptedBlocks}, \texttt{Compose.ExecIsCutChain},
+  \texttt{Compose.ACStatesReachable}, \texttt{Compose.FGStatesReachable},
+  \texttt{Compose.RecordIsClientRun}, \texttt{Compose.SourcesHeld}; the
+  projections of \texttt{Statements/Compose/Run} & proved
+  (\texttt{compose\_node\_statements}, \texttt{run\_statements}); the slot's
+  proposer is a run law (C0.5 (b))\\
+A1.3 & \texttt{SA.NextTransfer} & proved (\texttt{acSteps}), per vote under
+  its premises\\
+A1.8 & \texttt{SA.ResultTransfer} & proved (\texttt{acSteps}), per vote under
+  its premises\\
+A1.6 & \texttt{Compose.HeadExtendsRecord} & proved
+  (\texttt{service\_statements}), with $\mathsf{NoColl}$\\
+A1.7 & \texttt{Compose.Inclusion} & proved (\texttt{service\_statements}),
+  with the completed update at $t_s+6\Delta$, $\mathsf{NoColl}$ and
+  $\mathsf{GenRoot}$\\
+G1.1 & \texttt{FG.QuorumIntersection} & proved (\texttt{fg\_safety})\\
+G1.2 & \texttt{FG.FGParams.finalization\_meets\_crossing} & proved core
+  lemma, note~1\\
+G1.3 & \texttt{FG.AccountableSafety} & proved (\texttt{fg\_safety})\\
+G1.4 & \texttt{Store.FinalizedSafety} & proved (\texttt{fg\_store\_trace})\\
+G1.5 & \texttt{Refinement.ConflictsIff}, \texttt{Refinement.EvidenceInView},
+  \texttt{Refinement.FinalizedAccountable}; \texttt{Regimes.FinalAccountable}
+  & proved (\texttt{refinement\_statements}, \texttt{always\_statements});
+  evidence universes differ, note~2\\
+G1.6 & \texttt{Store.PreviousHeightJustifiedEntry} & proved
+  (\texttt{fg\_store\_service})\\
+G1.7 & \texttt{Store.PreviousHeightNotJustifiedEntry} & proved
+  (\texttt{fg\_store\_service})\\
+G1.8 & \texttt{Store.Crossing}, \texttt{Store.Coverage} & proved
+  (\texttt{fg\_store\_service}), conditional bounds as stated\\
+G1.9 (a) & \texttt{Store.CacheAcceptance} & proved
+  (\texttt{fg\_store\_service})\\
+G1.9 (b) & see HR.5 & stated only\\
+G1.10 & \texttt{Store.QuorumFreeEntries}; its composed scope
+  \texttt{Compose.CutScopeAt} & proved (\texttt{fg\_store\_trace}) under its
+  premises; the scope is a definition, a premise read by C1.1\\
+C1.2 & \texttt{Compose.OutcomeService} & stated only, note~3\\
+C1.3 & \texttt{Healing.FinalizingCoverage} & stated only\\
+HS.0 & \texttt{Healing.settle}, inside \texttt{Healing.ResetExistence} &
+  specialization: proved at $\kappa=2\Delta$ with the original cut, note~4\\
+HS.1 & \texttt{Healing.ViableWitnessRetention} & proved
+  (\texttt{viable\_witness\_retention}), at $\mathsf{Catch}(2\Delta)$\\
+HS.3 & \texttt{Healing.FrozenTreeAgreement} & stated only: (b) proved
+  (\texttt{frozen\_tree\_agreement\_clean}); (a) open
+  (\texttt{frozen\_tree\_agreement\_of\_unlocked} closes it from (a))\\
+HS.4 & \texttt{Healing.CommonPathAcquisition} & proved
+  (\texttt{common\_path\_acquisition})\\
+HS.5 & $\mathsf{Producer}(A)$ inside \texttt{Healing.ResetExistence} &
+  partial: the producer is proved as part of HR.3; the named
+  phase-service, continuation and row-delivery assembly is not one
+  statement\\
+H.1, corollary & \texttt{SA.ACHealingStandalone},
+  \texttt{SA.ACHealingStandaloneCorollary} & proved
+  (\texttt{healing\_ac\_statements}); read points, note~5\\
+H.2 & \texttt{SA.ACInclusion} & proved (\texttt{healing\_ac\_statements}),
+  conditional on $\mathsf{Inv}$ (and $\mathsf{Geo}$ for (i)) as stated; read
+  points, note~5\\
+H.2 (run) & \texttt{Healing.RunInclusion} & proved (\texttt{run\_inclusion}),
+  with the premises H.2 (run) now lists\\
+HR.1 & \texttt{Healing.CutAndReset} & proved (\texttt{cut\_and\_reset})\\
+HR.2 & \texttt{Healing.PhaseCount} & proved (\texttt{phase\_count})\\
+HR.3 & \texttt{Healing.ResetExistence} & proved (\texttt{reset\_existence}),
+  at $\mathsf{Catch}(2\Delta)$\\
+HR.5 & \texttt{Healing.CacheAcceptanceAfterReset} & stated only\\
+H.3 & \texttt{Healing.NonInterference}, \texttt{Healing.BridgeAt} & stated
+  only: (a), (b) and the $\mathsf{Geo}$ half of (c) are proved
+  (\texttt{reset\_existence}, \texttt{height\_scoped\_retention},
+  \texttt{settled\_geo}); the $\mathsf{Inv}$ half is open
+  (\texttt{non\_interference\_of\_reset\_inv} gives H.3 from it)\\
+H.4 & \texttt{Healing.AvailableHealing}, \texttt{Healing.T\_heal} &
+  conditional: proved (\texttt{available\_healing}) assuming
+  \texttt{BridgeAt} at a reset and $T_{\mathrm b}\geq0$; not a consequence
+  of $\mathsf{Healthy}$ alone; read points, note~5\\
+O.1 (node) & \texttt{Healing.PatternRecovery} & stated only; the record
+  quantifier of (b) differs (\S``O.1'')\\
+O.1 (target) & none & open research; not a premise of \texttt{Accepted}\\
+R.1 & \texttt{Regimes.SleepySafe} & proved (\texttt{sleepy\_statements}), at
+  the node catch-up $18\Delta$; the prefix row is the generic
+  \texttt{Good.sleepySafe\_prefix} (conclusion
+  \texttt{ReadySafeUpTo}~$\ldots\lor$~\texttt{S.Excuse r}, catch-up~$19$),
+  another statement\\
+R.2 & \texttt{Regimes.IncludeSleepy}, \texttt{Regimes.GrowSleepy} & proved
+  (\texttt{sleepy\_statements}); transaction liveness is generic, from
+  \texttt{Accepted}\\
+R.3--R.6 & archived \texttt{Regimes.Healed*}, \texttt{Final*},
+  \texttt{Outage*}, \texttt{Weak*} & retired, never proved;
+  \S\ref{sec:l2}\\
+R.7 & \texttt{Regimes.FinalAccountable}, \texttt{Regimes.NonFraming},
+  \texttt{Regimes.FinalizedSafe} & proved (\texttt{always\_statements});
+  evidence scope, note~2\\
+R.8 & \texttt{Regimes.OutputsNested}, \texttt{Regimes.FinalizedMonotone},
+  \texttt{Regimes.OutputsValid} & proved (\texttt{always\_statements});
+  local nesting only\\
+Baseline & archived \texttt{Shape.GoldilocksTarget},
+  \texttt{Shape.GoldilocksExtraAt} & retired, never the endpoint\\
+Accepted & \texttt{Refinement.AcceptedEndpoint} & proved
+  (\texttt{accepted\_endpoint}); \S\ref{sec:accepted}\\
+\hline
+\end{longtable}}
+
+\emph{Notes.}
+(1) G0.2's full collection of entry-root identities and on-chain quorum
+witnesses is not one exported statement: the store gives the entry and root
+ancestry (\texttt{Store.EntryStateOfSource}), and the accountability proof
+carries the quorum witnesses internally.  Likewise G1.2's lemma proves a
+quorum of slashable pairs with one attestation on each chain, but its
+conclusion does not expose the pair fields or the entry $E^{(2)}_j$.
+(2) G1.5 binds the evidence differently at two layers.  The engine statement
+\texttt{Refinement.FinalizedAccountable} finds the evidence in the union of
+the readers' whole views, which is weaker than the two finalized output
+chains.  The node statement \texttt{Regimes.FinalAccountable} finds it on two
+held carrier chains, which need not be the finalized output prefixes (a
+finalizing row can come after the block it finalizes).  The restriction to
+the two finalized output chains is not transcribed.
+(3) C1.2 assumes the reset (\texttt{IsReset}); its existence and the
+retention are HR.3 and HR.4, separate results.  At an entry whose previous
+height is not justified it concludes an accepted justification of~$U$, not
+the actual successor entry, which needs the chain transition.  Retained
+ready inclusion is an honest proposal whose parent extends~$P$; the
+alternative parent on a retained justification chain needs the ancestry
+fact.  Partial suppliers in \texttt{Lemmas/Healing/Outcome} do not prove the
+proposition.
+(4) HS.0's general~$\kappa$ with the shifted cut
+$t_{\slot(g+\kappa)+3}$, and the $\bar g'$ shift of
+\S\ref{sec:healing-top}, are not transcribed: the Lean fixes $\kappa=2\Delta$
+and the original cut, and the HS service statements assume
+$\mathsf{Catch}(2\Delta)$.  A smaller~$\kappa$ reduces to it by
+monotonicity; a larger one is a paper generalization.
+(5) H.1, H.2 and H.4 conclude at the post-states of AC calls
+(\texttt{IncludedFrom} and the AC statements quantify those), not at every
+real time or at FG-only cuts.  The every-time reading of this file needs a
+separate read or stuttering argument, not packaged with these statements.
 
 \section{First wave of parallel tasks}\label{sec:wave}
 
