@@ -118,7 +118,27 @@ theorem clean_slow_first_extends (hrun : GoldilocksRun proposer dg H tr)
       SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV)
     (hviab : B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  sorry
+  have hS := healthyBase_of_hs hrun hs hc
+  have hr := hS.run.localRun
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hw8 := gbar_add_le_of_settled hw
+  obtain ⟨ℓw, D, hcw, hsl, rfl⟩ := ho
+  obtain ⟨ℓX, C, hupd, hconf, hdeep⟩ := id hsl
+  obtain rfl : ℓX = ℓw := Option.some.inj (hupd.1.2.symm.trans hcw.2)
+  have hΦU := (SA.frameIn_of_callAt hr hx hcw).2
+  have hBD : Anc (tr.HonestBlocks H) (ℓX.frame.viableAncestor D) D :=
+    Anc.mono hΦU (SA.anc_viableAncestor _ D)
+  have hDC : Anc (tr.HonestBlocks H) D C := Anc.mono hΦU (SA.deepest_mem hdeep).1.1.2.2
+  have hres : SA.ResultAt tr.projAC x i j C
+      (SA.fastCounted sp (tr.projAC.state x i) ℓX.frame j C) := ⟨ℓX, hupd, hconf, rfl⟩
+  have hjt : w + 4 * sp.Δ ≤ sp.ts j :=
+    hj.trans ((SA.ts_le_iff sp).2 (by have := sp.two_le_k; omega))
+  rw [he] at hviab
+  exact SA.result_transfer_anc sp hS.run hx hres (hBD.trans hDC) hy hv he (hcarry _ _ hres)
+    (Or.inl hviab)
+    (slow_live_locks_anc hS hx hsl hBD (by linarith) hy hv he
+      fun z hz k' hk' e' hv' hs' => hprior z hz k' hk' e' hv' (by omega))
+    (SA.writer_merged hS.run hx hupd hy hv he (hS.syncAC (by linarith) _))
 
 /-- **Stored slow-lock provenance** (`hs234-exact-interface.md` §3 "every lock image retains its
 original label"; the slow case of HR.4's `stored_fast_lock_provenance`): every slow lock an honest

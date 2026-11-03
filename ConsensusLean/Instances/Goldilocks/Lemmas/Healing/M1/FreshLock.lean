@@ -746,7 +746,87 @@ theorem FrameWindow.unanimous_update_no_veto
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k u ell) :
     ¬ SA.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
-  sorry
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hr := hS.run.localRun
+  have hU := hr.coherent
+  have hDelta := sp.toParams.hΔ
+  have hf2 : 2 * Hᶜ.ncard < sp.n := by have := sp.toParams.hn; omega
+  have hkt : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
+  have hslot : sp.slot (tr.time k) = u + 1 := by
+    apply SA.slot_of_mem sp (u + 1)
+    all_goals rw [hkt]; simp only [SAParams.ts]; push_cast; linarith
+  have hPhi := SA.frameIn_of_callAt hr hy hu.1
+  obtain ⟨hvi, _⟩ := hframe.unanimous_update_selection hrun hnc hsvc hawake hf hcatch hnr
+    hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu
+  have hnext := hframe.unanimous_next_votes hrun hnc hsvc hawake hf hcatch hnr
+    hmargin hjoin hTb hz hdesignated hactual hPs hun
+  have hold := hframe.older_locks_compatible_at_update hrun hnc hsvc hawake hf hcatch hnr
+    hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu
+  have down : ∀ {X Y}, Anc (tr.HonestBlocks H) X Y → Compatible (tr.HonestBlocks H) Y P →
+      Compatible (tr.HonestBlocks H) X P := by
+    rintro X Y hXY (h | h)
+    · exact Or.inl (hXY.trans h)
+    · exact SA.anc_total hU hXY h
+  have hlocks : ∀ l ∈ (tr.projAC.state y k).locks,
+      ∀ L ∈ tr.HonestBlocks H, L.root = l.block → Compatible (tr.HonestBlocks H) L P := by
+    intro l hl L hL hLr
+    by_cases hlt : l.slot < u
+    · exact hold l hl hlt L hL hLr
+    have hle : l.slot ≤ u + 1 := by
+      obtain ⟨r, hrk, B, horig, _⟩ := SA.lock_provenance hr hy k l hl
+      have hmono := SA.slot_mono sp (hr.time_nonneg r) (hr.time_mono hrk.le)
+      change sp.slot (tr.time r) ≤ sp.slot (tr.time k) at hmono
+      rw [hslot] at hmono
+      rcases horig with ⟨CV, ellr, A, _, hsl, _⟩ | ⟨ellr, _, _, hrt, _⟩
+      · change sp.slot (tr.time r) = l.slot at hsl
+        omega
+      · have hls : (l.slot : Int) ≤ sp.slot (tr.projAC.time r) :=
+          (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) _).1 (by rw [hrt]; linarith)
+        change (l.slot : Int) ≤ sp.slot (tr.time r) at hls
+        omega
+    cases hfast : l.fast
+    · obtain ⟨r, hrk, B, ⟨ellr, C, hup, hC, hB⟩, L₁, hL₁, hL₁r, hLB⟩ :=
+        SA.slow_lock_provenance hr hy k l hl hfast
+      have hmono := hr.time_mono hrk.le
+      have hrt : tr.projAC.time r = sp.ts l.slot + 6 * sp.Δ := hup.2.2.1
+      have hku : tr.projAC.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
+      have hls : l.slot = u := by
+        have := (SA.ts_le_iff sp).1 (show sp.ts l.slot ≤ sp.ts u by linarith)
+        omega
+      rw [hls] at hup hC
+      have hCP : C = P := Option.some.inj (hC.symm.trans
+        (hframe.unanimous_update_selection hrun hnc hsvc hawake hf hcatch hnr hmargin
+          hjoin hTb hz hdesignated hactual hPs hun hy hup).2.1)
+      have hBP := (SA.deepest_mem hB).1.1.2.2
+      rw [hCP] at hBP
+      have hLL₁ : L = L₁ := hU.1 hL hL₁ (hLr.trans hL₁r.symm)
+      rw [← hLL₁] at hLB
+      exact Or.inl (hLB.trans (hBP.mono (SA.frameIn_of_callAt hr hy hup.1).2))
+    · obtain ⟨r, _, B, CV, hfl, L₁, hL₁, hL₁r, hLB⟩ :=
+        SA.fast_lock_provenance hr hy k l hl hfast
+      have hLL₁ : L = L₁ := hU.1 hL hL₁ (hLr.trans hL₁r.symm)
+      rw [← hLL₁] at hLB
+      obtain ⟨x, hx, q, e, hv, hes, D, hD, hDr, hBD⟩ :=
+        SA.fastLock_honest_vote hS.run hf2 hy hfl
+      apply down hLB
+      rcases (show l.slot = u ∨ l.slot = u + 1 by omega) with hs | hs
+      · have hDP : D = P := hU.1 hD (hPhi.2 hvi.1) (hDr.trans (hun x hx q e hv (hes.trans hs)))
+        rw [hDP] at hBD
+        exact Or.inl hBD
+      · obtain ⟨D', hD', hD'r, hPD⟩ := hnext x hx q e hv (hes.trans hs)
+        have hDD' : D = D' := hU.1 hD hD' (hDr.trans hD'r.symm)
+        rw [← hDD'] at hPD
+        exact SA.anc_total hU hBD hPD
+  rintro ⟨L, hLive, hconflict⟩
+  obtain ⟨hLt, l', ⟨l, hl, B, hB, hBr, _, rfl⟩, hLr⟩ := hLive
+  have hanc := SA.anc_viableAncestor ell.frame B
+  have hLva : L = ell.frame.viableAncestor B :=
+    hPhi.1.coherent.1 hLt (SA.mem_of_anc hanc hB) hLr.symm
+  have hcomp := down (hLva ▸ hanc.mono hPhi.2) (hlocks l hl B (hPhi.2 hB) hBr)
+  apply hconflict
+  rcases hcomp with h | h
+  · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi.1 hPhi.2 hLt h hvi.1)
+  · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi.1 hPhi.2 hvi.1 h hLt)
 
 /-- P5b at every actual update: the raw result and fast selection are the actual
 honest proposal, it is not vetoed, and the post-state contains its fresh fast lock.

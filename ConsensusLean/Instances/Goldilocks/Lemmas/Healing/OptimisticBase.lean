@@ -23,6 +23,58 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
 
+section LockBlock
+
+variable {FGP : Type} {ro' : ReplayOrder sp FGP} {U : Set (SA.Blk sp.n FGP)}
+  {T : SA.SATrace sp FGP ro'}
+
+/-- A deepest block of a set is the one `deepest` returns. -/
+private theorem deepest_eq_of_isDeepest {Φ : SA.Frm sp.n FGP} {S : Set (SA.Blk sp.n FGP)}
+    {D : SA.Blk sp.n FGP} (h : SA.IsDeepest Φ S D) : SA.deepest Φ S = some D := by
+  have hex : ∃ B, SA.IsDeepest Φ S B := ⟨D, h⟩
+  cases hd : SA.deepest Φ S with
+  | none =>
+    unfold SA.deepest at hd
+    simp only [hex, ↓reduceDIte, reduceCtorEq] at hd
+  | some D' =>
+    have h' := SA.deepest_mem hd
+    by_contra hne
+    have hne' : D' ≠ D := fun h => hne (congrArg some h)
+    rcases h.2 D' h'.1 hne' with h₁ | ⟨h₁, h₂⟩ <;>
+      rcases h'.2 D h.1 (Ne.symm hne') with h₃ | ⟨h₃, h₄⟩ <;> omega
+
+/-- **The lock block of an unvetoed update that is not its fast selection is its slow lock**: the
+slow branch of the lock-block rule (an unvetoed result `C`, `D` the deepest block of `C`'s path
+that passes the fast or the slow test, and `D` not the fast selection) is a `SlowLockAt`. `D` is
+not fast, so it is slow and the deepest slow block; no live lock vetoes it, because it is below
+the unvetoed `C`. (The slow branch of `SA.lock_selection_candidate_provenance`.) -/
+theorem slowLockAt_of_lockBlock (hr : ACLocalRun (SA.goldilocksSA sp FGP ro') H U T)
+    {x : Fin sp.n} (hx : x ∈ H) {a s : Nat} {D : SA.Blk sp.n FGP}
+    (h : ∃ ℓ' C, SA.UpdateAt T x a s ℓ' ∧
+      SA.getConfirmation sp (T.state x a) ℓ'.frame s = some C ∧
+      ¬ SA.conflictsWithLock sp (T.state x a).locks ℓ'.frame (T.time a) C ∧
+      SA.deepest ℓ'.frame {X | X ∈ SA.confirmationPath sp ℓ'.frame C ∧
+        (SA.FastTest sp (T.state x a) ℓ'.frame s X ∨
+          ∀ m : Int, (s : Int) - sp.k < m → m < s →
+            ∃ S ∈ ℓ'.frame.tree, (T.state x a).saved m = some S.root ∧ ℓ'.frame.Anc X S)} =
+        some D ∧
+      SA.fastSelect sp (T.state x a) ℓ'.frame s C ≠ some D) :
+    SA.SlowLockAt T x a s D := by
+  obtain ⟨ℓ', C, hu, hconf, hnv, hdeep, hne⟩ := h
+  have hΦ := (SA.frameIn_of_callAt hr hx hu.1).1
+  obtain ⟨⟨hDp, hDfs⟩, hmax⟩ := SA.deepest_mem hdeep
+  have hDs := hDfs.resolve_left fun hDf => hne (deepest_eq_of_isDeepest
+    ⟨⟨hDp, hDf⟩, fun X hX hXD => hmax X ⟨hX.1, Or.inl hX.2⟩ hXD⟩)
+  refine ⟨ℓ', C, hu, hconf, deepest_eq_of_isDeepest
+    ⟨⟨hDp, ?_, hDs⟩, fun X hX hXD => hmax X ⟨hX.1, Or.inr hX.2.2⟩ hXD⟩⟩
+  rintro ⟨K, hK, hDK⟩
+  refine hnv ⟨K, hK, fun hc => hDK ?_⟩
+  rcases hc with hc | hc
+  · exact Or.inl (hDp.2.2.trans hc)
+  · exact SA.anc_total hΦ.coherent hDp.2.2 hc
+
+end LockBlock
+
 /-- The optimistic base G(s+1,X), including below-floor X with a viable descendant Q.
 The actual write and its counted set are retained. Q is held at any honest early cut; its
 floor and J are the explicit FS′ values. Service/Catch ends at the next-slot horizon,
@@ -708,7 +760,88 @@ theorem regular_fast_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
     (hJ : kindJ → Anc (tr.HonestBlocks H) J X) :
     ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg X := by
-  sorry
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hr := hS.run.localRun
+  obtain ⟨ellx, C', hu, hconf, hsel, hCV⟩ := hfast
+  have he : C' = C := by
+    obtain ⟨ell', hu', hconf', -⟩ := hres
+    have he : ellx = ell' := Option.some.inj (hu.1.2.symm.trans hu'.1.2)
+    subst ell'
+    exact Option.some.inj (hconf.symm.trans hconf')
+  subst C'
+  have hDC := ((SA.deepest_mem hsel).1.1.2.2).mono (SA.frameIn_of_callAt hr hx hu.1).2
+  have hXQ := hXD.trans (hDC.trans hCQ)
+  have hQ := mem_tree_of_frame hrun hw hcw hQw
+  have hQU : Q ∈ tr.HonestBlocks H := ⟨w, hw, a, hQ⟩
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+    have hn := sp.toParams.hn
+    change 0 < sp.n at hn
+    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+    omega
+  have hsource : Q.root = sp.genesisRoot ∨
+      ∃ q, tr.projAC.AcceptAt w q Q ∧ tr.projAC.time q < sp.ts s + 2 * sp.Δ := by
+    rcases Compose.frame_anc_accepted hr hw a ellw hcw Q hQw Q .refl with hg | ⟨q, hqc, ha⟩
+    · exact Or.inl hg
+    · exact Or.inr ⟨q, ha, (hr.time_mono hqc).trans_lt hat⟩
+  have hfl : SA.FastLockAt tr.projAC x c s D CV :=
+    Or.inl ⟨ellx, C, hu, hconf, hsel, hCV⟩
+  suffices hall : ∀ i, ∀ y ∈ H, ∀ e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg X from fun y hy i e hv hs => hall i y hy e hv hs
+  intro i
+  induction i using Nat.strong_induction_on with
+  | _ i ih =>
+    intro y hy e ⟨ell, hc, he⟩ hs
+    have hcast : SA.CastAt tr.projAC y i ell e := ⟨hc, he⟩
+    have hslot := (SA.castAt_spec hr hy hcast).2.1.symm.trans hs
+    change sp.slot (tr.time i) = s + 1 at hslot
+    have hlo : sp.ts s ≤ tr.time i :=
+      (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
+        change (s : Int) ≤ sp.slot (tr.time i); rw [hslot]; omega)
+    have hhi : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
+      have ht := SA.vote_time_le hr hy ⟨ell, hcast⟩
+      change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
+      rwa [hslot] at ht
+    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    have hhigh : tr.time i ≤ sp.ts s + 6 * sp.Δ := by linarith [sp.toParams.hΔ]
+    rcases hframe.finalized_comparable_of_witness hrun hnc hmf hy hw hlo hhigh hQ hh
+      (fun hk => (hJ hk).trans hXQ) hXQ with hFX | hXF
+    swap
+    · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
+      obtain ⟨W, hW, hWr, hFW⟩ := SA.castAt_head_anc hr hy hcast (Or.inr rfl)
+        (fun L hL => (SA.liveLockBlock_candidate hPhi hL).elim
+          (fun h => Or.inr h.2.1) Or.inl) hPhi.F_anc_fcRoot
+      refine ⟨W, hPhiU hW, hWr, ?_⟩
+      have hFW := hFW.mono hPhiU
+      rw [Compose.frame_of_projAC hrun hy hc] at hFW
+      exact hXF.trans hFW
+    have hFQ : Anc (tr.HonestBlocks H) ell.frame.F Q := by
+      rw [Compose.frame_of_projAC hrun hy hc]; exact hFX.trans hXQ
+    have hQdom := voterBlockTree_of_relay_source hr hS.sync hS.catchUp hw hy hQU
+      (Relation.ReflTransGen.refl : Anc (tr.HonestBlocks H) Q Q) hsource hcast
+      (by omega) (hhigh.trans hmb) (by
+        rw [hs, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]; linarith) hFQ
+    obtain ⟨hXt, hroot, -, hvQ, hXQf⟩ := hframe.witness_path hrun hnc hmf hy hw hc
+      hlo hhigh hQ hh hJ hXQ (mem_tree_of_frame hrun hy hc hQdom.1) hFX
+    have hviab : SA.ViableAtVote ell e (s + 1) X := by
+      have hdomA := SA.voterBlockTree_anc hr hy hcast
+      rw [hs] at hdomA hQdom
+      exact Or.inl ⟨hdomA Q hQdom X hXQf, hroot, Q, hQdom, hvQ, hXQf⟩
+    have hcarry : SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
+      apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
+        hm hS.catchUp (by linarith) hx hy hcast hs (hhigh.trans hmb)
+      intro v hv
+      obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := fastLock_writer hr hx hfl v hv
+      refine ⟨hvs, hw, Hv, hHv, hHvr, ?_, ha⟩
+      rw [Compose.frame_of_projAC hrun hy hc]; exact hFX.trans (hXD.trans hDHv)
+    exact SA.first_transfer_stored_window_before sp hS.run
+      (SA.serviceWindowBefore_of_sync hS.sync) hm hx hfl (hu.2.2.1.trans_le hmb)
+      hXD hy hcast hs hcarry
+      (faultBound_of_service hawake hf hnr (hr.time_nonneg i) (by
+        change gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
+        rw [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]; exact hm)
+        (hhigh.trans hmb)) hviab
+      (fun z hz k hki ev hv hes => ih k hki z hz ev hv hes)
 
 /-- A finite-window result has an actual earlier honest supporter. Participation
 is derived from the two actual voting deadlines, not assumed of the update. -/
@@ -758,7 +891,113 @@ theorem FrameWindow.regular_fast_next_votes {s₀ s floor : Nat}
     (hXD : Anc (tr.HonestBlocks H) X D) :
     ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg X := by
-  sorry
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hr := hS.run.localRun
+  obtain ⟨ellx, C, hu, hconf, hsel, hCV⟩ := hfast
+  have hfast : SA.FastUpdateAt tr.projAC x c s D CV :=
+    ⟨ellx, C, hu, hconf, hsel, hCV⟩
+  have hres : SA.ResultAt tr.projAC x c s C
+      (SA.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := ⟨ellx, hu, hconf, rfl⟩
+  have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
+    simp only [SAParams.ts]; rw [Nat.cast_sub (by omega : 1 ≤ s)]; ring
+  have hms : gbar g + 4 * sp.Δ ≤ sp.ts s := by linarith [sp.toParams.hΔ]
+  obtain ⟨z, hz, q, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
+    result_honest_supporter_before hrun hnc hsvc hawake hf hcatch hnr hms hx hres
+      (hu.2.2.1.trans_le hmb)
+  have hDC := ((SA.deepest_mem hsel).1.1.2.2).mono (SA.frameIn_of_callAt hr hx hu.1).2
+  have hXQ := hXD.trans (hDC.trans hCQ)
+  have htq := SA.vote_time_le hr hz ⟨ell, hc, he⟩
+  have hslot := (SA.castAt_spec hr hz ⟨hc, he⟩).2.1.symm.trans hes
+  change sp.slot (tr.time q) = s at hslot
+  change tr.time q ≤ sp.ts (sp.slot (tr.time q)) + sp.Δ at htq
+  rw [hslot] at htq
+  have hqt : sp.ts s₀ ≤ tr.time q :=
+    (SA.ts_le_iff_le_slot sp (hr.time_nonneg q) _).2 (by
+      change (s₀ : Int) ≤ sp.slot (tr.time q); rw [hslot]; omega)
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+    have hn := sp.toParams.hn
+    change 0 < sp.n at hn
+    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+    omega
+  have hrootVotes : kindJ → Anc (tr.HonestBlocks H) X J →
+      ∀ y ∈ H, ∀ i ev, SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+        SA.VoteExtends (tr.HonestBlocks H) ev.msg X := by
+    intro hk hXJ y hy i ev ⟨elly, hcy, hey⟩ hev
+    obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcy
+    have hsl := (SA.castAt_spec hr hy ⟨hcy, hey⟩).2.1.symm.trans hev
+    change sp.slot (tr.time i) = s + 1 at hsl
+    have hlo : sp.ts s₀ ≤ tr.time i :=
+      (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
+        change (s₀ : Int) ≤ sp.slot (tr.time i); rw [hsl]; omega)
+    have hhi := SA.vote_time_le hr hy ⟨elly, hcy, hey⟩
+    change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhi
+    rw [hsl] at hhi
+    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    have hhi' : tr.time i ≤ sp.ts s + 6 * sp.Δ := by linarith [sp.toParams.hΔ]
+    obtain ⟨W, hW, hWr, hRW⟩ := SA.castAt_head_anc hr hy ⟨hcy, hey⟩ (Or.inr rfl)
+      (fun L hL => (SA.liveLockBlock_candidate hPhi hL).elim
+        (fun h => Or.inr h.2.1) Or.inl) Relation.ReflTransGen.refl
+    have hRW := hRW.mono hPhiU
+    rw [Compose.frame_of_projAC hrun hy hcy] at hRW
+    have hkind := (hframe.kind_iff y hy i hlo hhi').mpr hk
+    have hroot : (tr.state y i).fg.fcRoot = J :=
+      (ite_eq_left hkind).trans (hframe.root_eq y hy i hlo hhi' hk)
+    change Anc (tr.HonestBlocks H) (tr.state y i).fg.fcRoot W at hRW
+    rw [hroot] at hRW
+    exact ⟨W, hPhiU hW, hWr, hXJ.trans hRW⟩
+  obtain ⟨Hd, hHd, hHdr, hclass⟩ := hframe.vote_head_classification_of_service
+    hrun hnc hmf hS hnr hz ⟨hc, he⟩ (by linarith [sp.toParams.hΔ])
+    (hes ▸ hwarm) (hes ▸ hpos) (hes ▸ hs₀) (by simpa only [hes] using hm)
+    (by rw [hes]; linarith [sp.toParams.hΔ]) (by
+      rw [hes]; simp only [SA.freeze]
+      have hcast : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by omega
+      rw [← hcast]; linarith [sp.toParams.hΔ])
+  have hPhi := SA.frameIn_of_callAt hr hz hc
+  have hEQ : Hd = Q := hr.coherent.1 (hPhi.2 hHd) hQU (hHdr.trans hQr.symm)
+  rw [hEQ] at hHd hclass
+  rcases hclass with hv | hj | ho
+  · have hvQ := hv.2
+    rw [Compose.frame_of_projAC hrun hz hc] at hvQ
+    have hJQ : kindJ → Anc (tr.HonestBlocks H) J Q := by
+      intro hk
+      have hkind := (hframe.kind_iff z hz q hqt (by linarith [sp.toParams.hΔ])).mpr hk
+      have hroot := (hPhi.1.fcRoot_anc_viableHeads Q hv.2).mono hPhi.2
+      rw [Compose.frame_of_projAC hrun hz hc] at hroot
+      change Anc (tr.HonestBlocks H) (tr.state z q).fg.fcRoot Q at hroot
+      rwa [show (tr.state z q).fg.fcRoot = (tr.state z q).fg.J from ite_eq_left hkind,
+        hframe.root_eq z hz q hqt (by linarith [sp.toParams.hΔ]) hk] at hroot
+    by_cases hJX : kindJ → Anc (tr.HonestBlocks H) J X
+    · apply regular_fast_next_votes_of_early_witness hrun hnc hsvc hawake hf hcatch hnr
+        (by linarith [sp.toParams.hΔ]) hmb
+        ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i
+            (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
+         fun y hy i hlo hhi => hframe.kind_iff y hy i
+            (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
+         fun y hy i hlo hhi => hframe.root_eq y hy i
+            (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi⟩
+        hx hfast ?_ hXD hCQ hz (by linarith [sp.toParams.hΔ]) hc hHd ?_ hJX
+      · simpa only [Compose.frame_of_projAC hrun hx hu.1] using hres
+      · rw [← hframe.floor_eq z hz q hqt (by linarith [sp.toParams.hΔ])]
+        exact hvQ.2.2.2
+    · push Not at hJX
+      obtain ⟨hk, hn⟩ := hJX
+      exact hrootVotes hk ((SA.anc_total hr.coherent hXQ (hJQ hk)).resolve_right hn)
+  · exact hrootVotes hj.1 (hj.2 ▸ hXQ)
+  · obtain ⟨hA, l, hl, hls, a, hai, D', CV', hop, -, -, -, hQD⟩ := ho
+    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    have hnext : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
+        (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J :=
+      ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo (by linarith [sp.toParams.hΔ]),
+       fun y hy i hlo hhi => hframe.kind_iff y hy i hlo (by linarith [sp.toParams.hΔ]),
+       fun y hy i hlo hhi => hframe.root_eq y hy i hlo (by linarith [sp.toParams.hΔ])⟩
+    have hheads := (hnext.optimistic_supporter_later_heads hrun hnc hsvc hawake hf hcatch hnr
+      (by linarith [sp.toParams.hΔ]) (by omega) (by omega) (by linarith [sp.toParams.hΔ])
+      hz ⟨hc, he⟩ hes hA (hes ▸ hop) (hQD.mono hPhi.2) (s + 1) le_rfl le_rfl).1
+    intro y hy i ev hv hesv
+    obtain ⟨W, hW, hWr, hQW⟩ := hheads y hy i ev hv hesv
+    exact ⟨W, hW, hWr, hXQ.trans hQW⟩
 
 /-- The boundary optimistic anchor prefix, with actual CV delivery supplied
 from its honest writer. No next-slot unanimity or earlier-vote IH is used. -/
