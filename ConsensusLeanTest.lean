@@ -14,6 +14,7 @@ public import ConsensusLeanTest.GoldilocksFG
 public import ConsensusLeanTest.GoldilocksFGStore
 public import ConsensusLeanTest.GoldilocksFGStoreCoverage
 public import ConsensusLeanTest.GoldilocksFGStoreCrossing
+public import ConsensusLeanTest.GoldilocksFGStoreCrossingRejection
 public import ConsensusLeanTest.GoldilocksFGStoreEntryWitness
 public import ConsensusLeanTest.GoldilocksFGStoreQuorumFree
 public import ConsensusLeanTest.GoldilocksFGStoreService
