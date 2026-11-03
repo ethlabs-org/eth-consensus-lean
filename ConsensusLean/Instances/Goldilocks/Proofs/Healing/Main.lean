@@ -3,15 +3,17 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Standalone
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Bridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Assembly
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ResetInv
 
 public section
 
 /-! # Goldilocks milestone Healing
 
-`HealingACStatements` (H.1, its corollary, H.2) from `Lemmas/Healing/`.
+`HealingACStatements` (H.1, its corollary, H.2) and `HealingRunStatements` (HR.1–HR.4, H.2 (run),
+H.3, H.4, `healing_run_statements`) from `Lemmas/Healing/`; H.3's `Inv` half after the reset is
+`Lemmas/Healing/ResetInv` (`non_interference`, `T_b = max((8k + 20)Δ, 8Δ)`).
 
-`HealingRunStatements` (HR.1–HR.4, H.2 (run), H.3, H.4) and `PhaseServiceStatements` (HS.1–HS.4)
-are open only through H.3's `Inv` half and HS.3 (a). Everything else is assembled here, without
+`PhaseServiceStatements` (HS.1–HS.4) is open only through HS.3 (a). The partial assemblies, without
 `sorry`:
 
 * `healing_run_proved`: the run bundle without H.3 (HR.1–HR.4, H.2 (run), H.4);
@@ -24,7 +26,7 @@ are open only through H.3's `Inv` half and HS.3 (a). Everything else is assemble
   `frozen_tree_agreement_clean`, from HS.2); and `phase_service_statements_of_unlocked` is the
   bundle from that part.
 
-So a proof of H.3's `Inv` half or of HS.3 (a) closes its bundle in one step. -/
+So a proof of HS.3 (a) closes its bundle in one step. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -104,6 +106,10 @@ theorem healing_run_statements_of_nonInterference (h3 : NonInterference) :
   runInclusion := run_inclusion
   nonInterference := h3
   availableHealing := available_healing
+
+/-- **Healing, the run statements**: HR.1–HR.4, H.2 on the run, H.3 (`non_interference`) and H.4. -/
+theorem healing_run_statements : HealingRunStatements :=
+  healing_run_statements_of_nonInterference non_interference
 
 /-! ## The phase-service bundle -/
 
