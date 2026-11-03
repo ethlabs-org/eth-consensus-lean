@@ -66,32 +66,6 @@ theorem proposal_accept (hS : StandaloneRun tr H U proposer g)
     (by rw [ht, hts]; linarith) hF
   exact ⟨k', lt_of_le_of_ne hk'i (by rintro rfl; rw [ht, hts] at hlt; linarith), hacc'⟩
 
-/-- The walk ends in the frame tree. -/
-private theorem head_mem_tree {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FGP)}
-    (hT : T ⊆ Φ.tree) (A : SAState sp.n) (t : Time) (V : View sp.n) (σ : Int) :
-    getHead sp A Φ t T V σ ∈ Φ.tree := by
-  have ha : getAnchor sp A Φ t ∈ Φ.tree := by
-    unfold getAnchor
-    cases hd : deepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with
-    | none => exact hΦ.fcRoot_mem
-    | some D =>
-      rcases (deepest_mem hd).1 with h | h
-      · exact h.1
-      · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.fcRoot_mem
-  obtain h | h := eq_or_ne (getAnchor sp A Φ t) (getHead sp A Φ t T V σ)
-  · exact h ▸ ha
-  · exact (Anc.mem (C := getHead sp A Φ t T V σ) (anc_ghost hT _ ha) h).2
-
-/-- Under trivial frames, `Φ.F` is the same block at every honest call. -/
-private theorem frame_F_eq (hS : StandaloneRun tr H U proposer g) {y z : Fin sp.n} (hy : y ∈ H)
-    (hz : z ∈ H) {i j : Nat} {ℓ ℓ' : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
-    (hc' : tr.CallAt z j ℓ') : ℓ.frame.F = ℓ'.frame.F := by
-  have hr := hS.run.localRun
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc
-  obtain ⟨hΦ', hΦ'U⟩ := frameIn_of_callAt hr hz hc'
-  exact hr.coherent.1 (hΦU hΦ.rooted.1) (hΦ'U hΦ'.rooted.1)
-    ((hS.trivial y hy i ℓ hc).1.trans (hS.trivial z hz j ℓ' hc').1.symm)
-
 /-- Under trivial frames, a block of `U` is in an honest node's tree when it is genesis or
 accepted by the node by then. -/
 theorem trivial_mem_tree (hS : StandaloneRun tr H U proposer g)
@@ -123,7 +97,7 @@ theorem vote_head_accepted (hS : StandaloneRun tr H U proposer g)
   obtain ⟨ℓ, hc, he⟩ := hv
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hz hc
   obtain ⟨-, -, -, hhead⟩ := castAt_spec hr hz ⟨hc, he⟩
-  have hm := head_mem_tree hΦ (fun _ hX => (voteDomain_subset_tree hX.1)) e.readPoint (tr.time j)
+  have hm := getHead_mem' hΦ (fun _ hX => (voteDomain_subset_tree hX.1)) e.readPoint (tr.time j)
     (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)
     (T := ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame e.msg.slot))
   obtain rfl := hU.1 hHd (hΦU hm) (hHdr.trans hhead)
@@ -132,7 +106,7 @@ theorem vote_head_accepted (hS : StandaloneRun tr H U proposer g)
     · exact Or.inl (h ▸ (hS.trivial z hz j ℓ hc).1)
     · exact Or.inr h
   refine ⟨?_, hacc⟩
-  rw [frame_F_eq hS hy hz hc' hc]
+  rw [trivial_F_eq hS hy hz hc' hc]
   exact (hΦ.rooted.2 X (trivial_mem_tree hS hz hc hXU hacc)).mono hΦU
 
 private theorem lookup_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {B : Blk sp.n FGP}
@@ -262,7 +236,7 @@ theorem early_block_at_proposal (hS : StandaloneRun tr H U proposer g) {x : Fin 
     · have hY₁ : Y ∈ ℓ₁.frame.tree := by
         rw [(hS.trivial z hz k₁ ℓ₁ hc₁).2.2.2]; exact Set.mem_insert_of_mem _ ⟨k', hk', hacc⟩
       have hF : Anc U ℓ.frame.F Y := by
-        rw [frame_F_eq hS hx hz hc hc₁]; exact (hΦ₁.rooted.2 Y hY₁).mono hΦ₁U
+        rw [trivial_F_eq hS hx hz hc hc₁]; exact (hΦ₁.rooted.2 Y hY₁).mono hΦ₁U
       obtain ⟨k, hk, hacc'⟩ := proposal_accept hS hx hc ht hσ hz hacc
         (lt_of_le_of_lt (hr.time_mono hk') ht₁) hF
       exact ⟨trivial_mem_tree hS hx hc hYU (Or.inr ⟨k, hk.le, hacc'⟩), Or.inr ⟨k, hk, hacc'⟩⟩

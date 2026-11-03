@@ -35,16 +35,6 @@ private theorem genesis_mem_U (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) 
     · exact ⟨Φ₀.F, hΦ₀U (htree ▸ Set.mem_singleton _), hroot, hpar⟩
     · exact ih j hj hc'
 
-private theorem admitVote_locks (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (admitVote sp A t v).locks = A.locks := by
-  unfold admitVote
-  split_ifs <;> rfl
-
-private theorem updateLatestConfirmed_locks (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (C : Blk sp.n FGP) : (updateLatestConfirmed sp A Φ C).locks = A.locks := by
-  unfold updateLatestConfirmed
-  split_ifs <;> rfl
-
 /-- The counted votes of an honest fast lock of slot `s` on `B`: their validators are at least
 half of the committee, and each is a slot-`s` vote whose head, of slot at most `s`, extends `B`
 inside `U`. -/
@@ -181,14 +171,14 @@ theorem locks_after_unlock (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin s
     intro l hl hls
     unfold optimisticConfirmation at hl
     split at hl
-    · rw [admitVote_locks] at hl
+    · rw [admitVote_locks_eq] at hl
       obtain ⟨Y, hY, hYr⟩ := hrb l hl
       exact ⟨Y, hY, hYr, hA l hl hls Y hY hYr⟩
-    · rw [updateLatestConfirmed_locks] at hl
+    · rw [updateLatestConfirmed_locks_eq] at hl
       obtain ⟨l₀, hl₀, hsl, -, -, X, hX, hXr, Y, hY, hYr, hYX⟩ :=
         ((locks_move_back sp) FGP ℓ.frame _ (tr.time j) hΦ).2.1 _ _ l hl
       rcases hl₀ with hl₀ | ⟨p, hp, rfl⟩
-      · rw [admitVote_locks] at hl₀
+      · rw [admitVote_locks_eq] at hl₀
         exact ⟨Y, hY, hYr, down (Anc.mono hΦU hYX) (hA l₀ hl₀ (hsl ▸ hls) X hX hXr)⟩
       · rw [Set.mem_singleton_iff] at hp
         subst hp
