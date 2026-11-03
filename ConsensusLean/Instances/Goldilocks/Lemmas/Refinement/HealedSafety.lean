@@ -1147,14 +1147,14 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
         exact SA.viableAncestor_self (Compose.frameOK_state D.reset.run.toLocalRun hy q)
           (hframe q le_rfl hqn.le) (hcand q le_rfl hqn.le).symm
       rw [hnorm] at hlock
-      have hl := UpTo.young_optimistic_lock_persists D.reset hc hy hy hop hsc hqb
-        (show q + 1 ≤ n by omega) C.readPoint.1 C.time_bound hyoung hlock
-        (fun e hqe hen => ⟨hframe e (by omega) hen.le, hcand e (by omega) hen.le⟩)
-      obtain ⟨e, hl⟩ := hl
+      obtain ⟨e, hlock⟩ := hlock
       have hwf := SA.locksWF_state (Compose.goldilocks_ac_projection _ _ _ _ _ _
-        D.reset.run D.reset.noColl).localRun hy n
-      rw [Compose.projAC_state D.reset.run.toLocalRun hy n] at hwf
-      have he := hwf.floor hl
+        D.reset.run D.reset.noColl).localRun hy (q + 1)
+      rw [Compose.projAC_state D.reset.run.toLocalRun hy (q + 1)] at hwf
+      have he := hwf.floor hlock
+      have hl := UpTo.young_optimistic_lock_persists D.reset hc hy hy hop hsc hqb
+        (show q + 1 ≤ n by omega) C.readPoint.1 C.time_bound hyoung he hlock
+        (fun e hqe hen => ⟨hframe e (by omega) hen.le, hcand e (by omega) hen.le⟩)
       apply record_below_anchor_of_stored_live_lock hPhi hl hRm rfl ?_ ?_ hchain
       · have hfloor := (SA.ts_le_iff_le_slot Q.params C.time_nonneg
           (Q.params.slot t)).2 le_rfl
