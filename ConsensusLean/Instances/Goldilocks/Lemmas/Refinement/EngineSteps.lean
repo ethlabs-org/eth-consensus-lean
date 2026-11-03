@@ -30,7 +30,7 @@ A delivery runs `process`, then the delivery's poll step (`deliverOrder := [.pol
 and the gossip (`Model.Run.deliver`); the FG update is never due there, so the poll only pops the
 outbox, and the gossip's candidates are unsigned (`deliver_pres`).
 
-The remaining `sorry` theorems are the open obligations. -/
+Every step is proved. -/
 
 namespace Consensus.Goldilocks.Refinement
 

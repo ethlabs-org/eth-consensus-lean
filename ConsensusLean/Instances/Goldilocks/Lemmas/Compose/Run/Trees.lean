@@ -5,11 +5,11 @@ public section
 
 /-! # Goldilocks runs: the honest trees
 
-The tree of an honest node only grows; its blocks are genesis and the blocks the node
-accepted, each with its digest as root (from the wire, or made so by `propose_block`) and its
-slot's proposer (`state_transition`'s assertion), and none with the genesis root (genesis is
-held from the start). Under `NoColl` on the run, two such blocks with one root are one block, so
-the honest blocks of a run are a coherent set. -/
+The tree of an honest node only grows; its blocks are genesis and the blocks the node accepted, each
+with its digest as root (from the wire, or made so by `propose_block`) and its slot's proposer (the
+run's credential `LocalRun.proposerCredential`, or `Proposes` for the own block), and none with the
+genesis root (genesis is held from the start). Under `NoColl` on the run, two such blocks with one
+root are one block, so the honest blocks of a run are a coherent set. -/
 
 namespace Consensus.Goldilocks.Compose
 

@@ -61,8 +61,10 @@ distinct from the Accepted Challenge certification, which has its own full tier:
 main 2a9b34a11bb9f754a5526593fab6d72366c325a7 passed, 1371 s, zero SKIP lines, recorded on
 [#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-03 02:28): kernel replay of every
 leaf, the default-target lake check, the axiom audit, `lake comparator --paranoid` and the rebuild canary,
-with their controls; 0 sorry/admit. `AcceptedEndpoint` is certified. The seven Healing statements above
-remain stated with their proof open.
+with their controls; 0 sorry/admit. `AcceptedEndpoint` is certified at that commit: the certificate is
+pinned to 2a9b34a1. The head has since changed trusted semantics (a90299c1 strengthened
+`Realizable.sleepyStress`), so the full tier has not run on the current head, which is not certified.
+The seven Healing statements above remain stated with their proof open.
 
 | Set | Owner | Direct leaf list |
 |---|---|---|

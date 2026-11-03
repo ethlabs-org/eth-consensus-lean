@@ -130,13 +130,13 @@ theorem localRun_one_tick :
     obtain ⟨rfl, rfl⟩ := oneTick_label h.2
     cases hr
 
-/-- **Decomposition §4.7 case 1: A1.3 per vote over an AC trace** (claims A1.3 at #21
-`05418956`; a test of the AC trace contract, not a milestone statement). For an honest `y` and
-its own vote emission `e` of slot `m + 1` at cut `i` (time `τ`): if every honest slot-`m` vote
-extends `B`, the honest slot-`m` voters are at least half of the committee, `Carry_y(m, S_m, B)`
-holds for their votes, `f < h_τ`, `Sync[t_m, τ]` holds, at `e` the block `B` is in `y`'s viable
-voter block tree or at or below its `fc_root`, and every honest slot-`(m+1)` vote at an earlier
-cut extends `B`, then `e`'s vote extends `B`. -/
+/-- **Decomposition §4.7 case 1: A1.3 per vote over an AC trace** (claims A1.3 at #21, merged as
+goldilocks main `c4928a76`; a test of the AC trace contract, not a milestone statement). For an
+honest `y` and its own vote emission `e` of slot `m + 1` at cut `i` (time `τ`): if every honest
+slot-`m` vote extends `B`, the honest slot-`m` voters are at least half of the committee,
+`Carry_y(m, S_m, B)` holds for their votes, `f < h_τ`, `Sync[t_m, τ]` holds, at `e` the block `B` is
+in `y`'s viable voter block tree or at or below its `fc_root`, and every honest slot-`(m+1)` vote at
+an earlier cut extends `B`, then `e`'s vote extends `B`. -/
 def CaseOneA13 (sp : SAParams) : Prop :=
   ∀ (FGP : Type) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (ro : ReplayOrder sp FGP)
     (tr : SATrace sp FGP ro),

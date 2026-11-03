@@ -18,7 +18,7 @@ states, the engine releases and relays what the trace signs, emits and admits). 
 facts they rest on are the steps of `Steps` and the engine-state facts of `Relay`; the shape's
 pure facts those of `Shape`; where each cut of the trace comes from, `Cuts`.
 
-Each theorem is a named step; the `sorry` ones are open. `Simulation` assembles them. -/
+Each theorem is a named step, all proved. `Simulation` assembles them. -/
 
 namespace Consensus.Goldilocks.Refinement
 

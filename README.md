@@ -145,7 +145,7 @@ that a claim or regime evaluates.
   regime, progress and `TxLiveActive` as `SleepyLive` and `HealthyLive`):
   - `TxLiveActive`: a transaction to serve, read by a different honest node
     that was never submitted it;
-  - `SafeActive`: two ready readers, one of them at two cuts;
+  - `SafeActive`: two ready readers, one of them at two times;
   - `OutageActive`: a ready source, a real sleeper inside the window and a
     reader ready from the recovery point `b₁ + recovery·Δ`.
 
@@ -281,7 +281,7 @@ applies only when its deadline is within both the cut and the horizon: a
 horizon. `PSync.mono` (tests): a later GST is weaker.
 
 `EagerFrom g` is the shape of the canonical log: every honest send at `t` is
-received at every awake time in `[max t g, horizon]`, and no message is
+received at every awake time in `(max t g, horizon]`, and no message is
 received before `g` ("silent" refers to message receipts only:
 `EagerFrom.txs` still relays transaction inboxes at once). It meets an
 instance only under these hypotheses:
@@ -360,7 +360,8 @@ bounds faults below `β ≤ α` (`HealthyOn.faultsBelow`) and final safety holds
 there (`final_safe_healthy`).
 `standard_admissible` shows that the standard numbers are admissible. The
 other numbers are not bounded and carry part of the verdict: a larger
-`catchUp` means fewer ready readers, a larger `lag` a later protected source,
+`catchUp` means fewer ready readers, a larger `lag` an earlier protected source
+(`T ≤ b₀ − lag·Δ`, a stronger premise),
 a larger `η` a stricter outage participation condition, a larger `noSleep` a
 longer no-sleep window, a larger `recovery` a later protected reader, a small
 `budget` a short outage, and larger heal points and latencies weaker claims. Any `η` is
@@ -720,7 +721,18 @@ within the execution conditions. There is no adaptive corruption.
 - **Delivery:** the network rule above, for honest releases, including
   honest re-releases of adversarial objects, and for transactions (inboxes
   survive restarts).
-- **Δ known; unit ticks:** honest code knows `Δ` and `n`. Every awake honest
+- **Dependency delivery:** a delivery is valid only if the receiver already
+  holds the object's dependencies (`ExecutionValid.delivery_ready`), so under a
+  regime's network premise the dependencies of an honest send are delivered
+  with it; a run in which they are withheld fails the premise. For Goldilocks
+  this asks nothing of adversary-only objects. That is **source-audited**, not
+  a compiled lemma and not a generic closure: `decodeBlock` accepts only
+  canonical blocks (`eq_blockObj_of_decodeBlock`), the dependency policy
+  constrains only signed forward wrappers (`forwardParent?`), and an honest
+  forward wrapper depends only on the same node's earlier wrapper. Whether
+  `delivery_ready` together with `Delivers` is satisfiable whenever `Delivers`
+  is, is an argument from that audit, not a theorem.
+- **Δ known; unit ticks:** honest code knows `n`, `Δ` and `ΔF`. Every awake honest
   node ticks at every integer time.
 - **Order within one time:** restarts, then ticks, then deliveries. What
   arrives at a deadline is processed at the delivery (whose duties and gossip
@@ -752,7 +764,8 @@ are the intended ones.
   fixed ⅔ with one honest sleeper (`healthy_needs_full_participation`).
   Liveness with honest validators asleep is asked by the sleepy regime and
   its stress witness.
-- Static adversary, equal weights, one `Δ`, no probabilistic protocols, no
+- Static adversary, equal weights, two delay bounds (`Δ` for messages and
+  transactions, `ΔF` for rows), no probabilistic protocols, no
   proof of work, no non-validator readers, no responsiveness claim.
 - No transaction validity, fees, capacity or chain-quality bounds. Liveness
   is bounded-latency.

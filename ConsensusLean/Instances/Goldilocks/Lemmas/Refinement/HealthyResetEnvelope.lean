@@ -11,8 +11,9 @@ public section
 
 workbench `healing_supply_repair_contracts.md` S5. For a `HealthyPreparationQuery` with nonfinal
 progress on `[ready, heal]` and `heal ≤ horizon`: a delay `Δ_F` and a reset `a` with
-`ResetPremisesUpTo … Q.gst Δ_F a horizon` and `a ≤ ready + R·Δ + r`, where `R = healthyResetCoeff`
-and `r = healthyResetSlack` are the named parameter-only coefficients (`ResetCoefficients`).
+`ResetPremisesUpTo … Q.gst Δ_F a horizon` and `a ≤ ready + R·Δ + ρ`, where `R = healthyResetCoeff`
+and `ρ = healthyResetSlack`, the literal slack `0` (not the row ratio `r`), are the named
+parameter-only coefficients (`ResetCoefficients`).
 
 It is the instance of `exists_reset_of_drain_awake` at `λ = 2Δ`, the ready scalar `ready`
 (`ready ≥ 1`, so `max ready 0 = ready`), the gap `G = X` (`hgp_of_healthyQuery`) and the drain
@@ -20,7 +21,7 @@ length `L_drain = healthyDrainLen`, with the protocol row delay `Δ_F = rowDelay
 come from `hsSharedUpTo_of_le`; the whole-run no-restart premise from the bounded one, since a
 restart is a labelled call at a time `≤ horizon`; Catch from `healthy_repair_catch`; the snapshot
 call condition from `cutZ_fit_of_catchUp`. The kernel's frame ends before `B = ready + R·Δ`, so
-the gap is needed only up to heal, given the fit `ready + R·Δ + r ≤ heal`. This module stays
+the gap is needed only up to heal, given the fit `ready + R·Δ + ρ ≤ heal`. This module stays
 upstream of `FinalWindowDefs` and `HealedSafety`.
 
 The fit `hfit` of `healthy_reset_envelope_of_fit` is the window fit of the heal coefficient,

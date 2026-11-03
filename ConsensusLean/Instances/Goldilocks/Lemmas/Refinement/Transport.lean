@@ -20,8 +20,8 @@ separate mathematical arguments for the engine bridges, not quotations.
 `NoCollTransport` targets the canonical trace. `GenesisFresh` is proved by tagged roots,
 not assumed by accountability. Canonical occurrence coverage includes refused deliveries;
 tagging and observed-header injectivity discharge collision transport.
-The accountability closure still depends on the open engine run/provenance suppliers;
-these local proofs do not certify that transitive closure as sorry-free. -/
+The engine run and provenance suppliers the accountability closure depends on are proved;
+no `sorry` remains in that closure. -/
 
 namespace Consensus.Goldilocks.Refinement
 

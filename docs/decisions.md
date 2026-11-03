@@ -227,7 +227,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   elaborate; trusted fidelity review and landing remain pending. The engine's
   `dutyStep` gates both state mutation and release on selection. Delivered-block
   proposer correspondence is an explicit `LocalRun.proposerCredential` obligation,
-  including faulty signers; the canonical simulation supplier remains OPEN.
+  including faulty signers; the canonical simulation supplier remained OPEN then (since proved:
+  `simTrace_proposerCredential`, `Lemmas/Refinement/Run.lean`, used by `simTrace_goldilocksRun`).
 - 2026-10-31, coordinator-directed selected-duty repair. Restart replay order depends
   only on validator count and genesis root: its data enumerates a frame's non-genesis
   blocks in parent order. It has no proposer or timing dependence. Indexing that data
@@ -400,7 +401,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   everyone faulty, and a constant schedule has no witness at all; with the lifted condition `regimes_realizable` stays proved (its witnesses specialise the
   fitting hypothesis per slot). Goldilocks' progress regimes are therefore stated in the instance (the claims'
   ready-proposer premise), not through `.recur`; its `Spec/Baseline` skeleton keeps `fun _ => .sized 1`. The
-  Refinement skeleton sets `fun s => .fixed {proposer s}` and `SelIs` is dropped from `EngineSimulatesNode` and
+  Refinement skeleton sets `fun s => .fixed {proposer s}` (superseded by #117, ac3e8d5c: it is now `fun _ => .sized 1`
+  with the run's proposer `runProposer`) and `SelIs` is dropped from `EngineSimulatesNode` and
   `FinalizedAccountable`; `selValid_proposer` (`ConsensusLeanTest/GoldilocksRefinement.lean`) derives the former
   hypothesis from `SelValid`. Baseline's `GoldilocksTarget` is not instantiated at the refinement family (its
   bindings name `goldilocksSkeleton` over `goldilocksSchema`, and a fixed schedule does not fit its `.recur`

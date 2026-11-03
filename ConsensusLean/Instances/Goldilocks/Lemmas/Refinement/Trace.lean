@@ -6,24 +6,11 @@ public section
 
 /-! # Goldilocks Refinement: the simulating trace
 
-The run of the spec's node that simulates a valid engine run (`EngineSimulatesNode`,
-`Statements/Refinement`) is **built from the engine run**, not chosen: every engine event of an
-honest node is replayed through the node's handler (`Node.exec`) on the node state the engine holds
-before the event, and the handler's cuts, with their post-states (`cutPost`, the unique successor
-of the cut law), become the trace's cuts. The cut map `ι` (`cutMap`) counts the cuts of the events
-before an engine cut.
-
-* A tick at a public time is the node's tick with the engine's input (the encoded mempool), a
-  tick at a non-public time contributes no cut (`eventCuts`).
-* A delivery is one group per canonical object it carries (`deliverRecs`), with the node state
-  threaded through the handlers; a dropped object, or a canonical object whose handler makes no
-  cut, contributes nothing. The sub-event index gives each group its own event id (`Nat.pair`).
-* A restart is the restart group.
-* After the last engine cut the trace stutters: unlabelled cuts at horizon + 1, each under its own
-  event id.
-* The trace's awake function is the environment's, clamped to `[0, ∞)` and to the trace's horizon
-  (`awakeAt`), so that `awake_in_horizon` holds by construction and `Simulates.awake_to` is the
-  clamp itself.
+The facts about the trace that simulates a valid engine run (`EngineSimulatesNode`,
+`Statements/Refinement`). The construction itself, its definitions and their docstrings are in
+the protected module `Statements/Refinement/Trace` (`cutPost`, `eventCuts`, `cutMap`,
+`simTrace`, …), which states how each engine event becomes the trace's cuts; this module proves
+the characterising lemmas of those definitions.
 
 The proof that this trace is a `GoldilocksRun` and that the engine agrees with it at every cut is
 split into named steps (`Shape`, `Steps`, `Run`), assembled in `Simulation`. This file has no
