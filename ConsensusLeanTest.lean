@@ -13,6 +13,7 @@ public import ConsensusLeanTest.GoldilocksBudgetTightness
 public import ConsensusLeanTest.GoldilocksFG
 public import ConsensusLeanTest.GoldilocksFGStore
 public import ConsensusLeanTest.GoldilocksFGStoreEntryWitness
+public import ConsensusLeanTest.GoldilocksFGStoreQuorumFree
 public import ConsensusLeanTest.GoldilocksFGStoreService
 public import ConsensusLeanTest.GoldilocksFGStoreTimeoutEntry
 public import ConsensusLeanTest.GoldilocksFaultyFinalizationWitness
