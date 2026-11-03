@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks Refinement: the drain outputs from finite service (#136, P5)
 
-`drainOutputs_of_service` supplies `DrainOutputs … G Ld b`, the input of `exists_reset_of_drain`,
+`drainOutputs_of_service` supplies `DrainOutputs … G Ld b`, the input of `exists_reset_of_drain5`,
 from the run premises up to the service horizon `b` alone: reset service, wakefulness on
 `[ḡ, b]`, `f < n/3`, Catch with `κ = 2Δ`, and no restart after `ḡ`. The warm proposal is
 `FrameWindow.exists_warm_proposal` at `a = s₀ + 2k`, which builds the snapshot and its call at
