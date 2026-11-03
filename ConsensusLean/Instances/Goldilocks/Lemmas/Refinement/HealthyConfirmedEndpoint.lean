@@ -39,6 +39,22 @@ variable {sp : SA.SAParams}
   {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
   {g ΔF a b : Time}
 
+/-- A deepest block of `T` lying in `S ⊆ T` is the deepest block of `S`. -/
+private theorem deepest_of_subset {FGP : Type} {Φ : SA.Frm sp.n FGP}
+    {S T : Set (SA.Blk sp.n FGP)} {D : SA.Blk sp.n FGP} (hT : SA.deepest Φ T = some D)
+    (hST : S ⊆ T) (hD : D ∈ S) : SA.deepest Φ S = some D := by
+  have h : SA.IsDeepest Φ S D := ⟨hD, fun C hC hne => (SA.deepest_mem hT).2 C (hST hC) hne⟩
+  cases hd : SA.deepest Φ S with
+  | none =>
+    unfold SA.deepest at hd
+    simp only [show ∃ B, SA.IsDeepest Φ S B from ⟨D, h⟩, ↓reduceDIte, reduceCtorEq] at hd
+  | some D' =>
+    have h' := SA.deepest_mem hd
+    by_contra hne
+    have hne' : D' ≠ D := fun h => hne (congrArg some h)
+    rcases h.2 D' h'.1 hne' with h₁ | ⟨h₁, h₂⟩ <;>
+      rcases h'.2 D h.1 (Ne.symm hne') with h₃ | ⟨h₃, h₄⟩ <;> omega
+
 /-- A fast update writes its fast lock with an expiry of at least `u + 2` (`s + k` or
 `fastExpiry`), so it is live at every `t` of slot at most `u + 2`. -/
 private theorem fastLock_mem_updateConfirmation_floor {FGP : Type} {A : SA.SAState sp.n}
@@ -48,7 +64,17 @@ private theorem fastLock_mem_updateConfirmation_floor {FGP : Type} {A : SA.SASta
     (hage : sp.slot t ≤ u + 2) :
     ∃ e, u + 2 ≤ e ∧
       (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (SA.updateConfirmation sp A Φ t u).locks := by
-  sorry
+  -- unvetoed, so the filtered fast selection is the raw one
+  have hD := deepest_of_subset (S := {B | B ∈ {B | B ∈ SA.confirmationPath sp Φ P ∧
+      ¬ SA.conflictsWithLock sp A.locks Φ t B} ∧ SA.FastTest sp A Φ u B}) hfast
+    (fun B hB => ⟨hB.1.1, hB.2⟩)
+    ⟨⟨(SA.deepest_mem hfast).1.1, hnv⟩, (SA.deepest_mem hfast).1.2⟩
+  unfold SA.updateConfirmation
+  simp only [hconf]
+  rw [ite_eq_right hnv]
+  exact ⟨_, SA.le_fastExpiry sp _ _ _ _, ⟨P.root, u, true, _⟩,
+    Or.inr ⟨_, Or.inl ⟨P, hD, rfl⟩, rfl⟩, P, hPt, rfl,
+    hage.trans (SA.le_fastExpiry sp _ _ _ _), by rw [hva]⟩
 
 /-- **The fresh fast lock at an actual update.** Every honest update of slot `u` after the drain
 writes `(P, u, true, e)` for the actual designated proposal `P` of slot `u`, with an expiry

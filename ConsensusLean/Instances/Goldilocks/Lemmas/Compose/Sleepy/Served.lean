@@ -421,7 +421,20 @@ private theorem reclock_update {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Ti
     KeepAll Φ t A (SA.updateConfirmation sp A Φ t s) ∧
       RecLock Φ t r₀ (fun C => Res C ∨ SA.getConfirmation sp A Φ s = some C) Opt
         (SA.updateConfirmation sp A Φ t s) := by
-  sorry
+  unfold SA.updateConfirmation
+  dsimp only
+  rcases hC : SA.getConfirmation sp A Φ s with _ | C
+  · exact ⟨KeepAll.of_eq rfl, (h.mono (fun _ h => Or.inl h) fun _ h => h).keep hΦ
+      (KeepAll.of_eq rfl) rfl⟩
+  · dsimp only
+    -- a veto keeps the record; the new locks never drop a kept one
+    split_ifs
+    · exact ⟨keepAll_addLocks hΦ rfl, (h.mono (fun _ h => Or.inl h) fun _ h => h).keep hΦ
+        (keepAll_addLocks hΦ rfl) rfl⟩
+    all_goals
+      refine ⟨?_, (h.mono (fun _ h => Or.inl h) fun _ h => h).write hΦ ?_
+        (SA.deepest_mem hC).1.1 (ulc_rec _ _ _) (Or.inl (Or.inr rfl))⟩ <;>
+      exact keepAll_addLocks hΦ (by rw [SA.updateLatestConfirmed_locks_eq])
 
 private theorem reclock_onTick {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r₀ : Nat}
     {Res Opt : SA.Blk sp.n FGP → Prop} {A : SA.SAState sp.n} (h : RecLock Φ t r₀ Res Opt A)

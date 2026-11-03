@@ -129,10 +129,29 @@ private theorem good_tryVote (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n)
 
 private theorem good_updateConfirmation (hΦ : FrameOK Φ) (hD : Down Φ G) {A : SA.SAState sp.n}
     (h : Good R G A) {t : Time} {s : Nat}
-    (hnew : ∀ C, SA.getConfirmation sp A Φ s = some C → ¬ SA.conflictsWithLock sp A.locks Φ t C →
+    (hnew : ∀ C, SA.getConfirmation sp A Φ s = some C →
       R C.root ∧ ∀ D ∈ Φ.tree, Φ.Anc D C → ∀ f e, G ⟨D.root, s, f, e⟩) :
     Good R G (SA.updateConfirmation sp A Φ t s) := by
-  sorry
+  unfold SA.updateConfirmation
+  dsimp only
+  rcases hC : SA.getConfirmation sp A Φ s with _ | C
+  · exact h
+  dsimp only
+  obtain ⟨hR, hG⟩ := hnew C hC
+  -- a veto keeps the record; the locks are written either way, on blocks of `C`'s path
+  split_ifs with hconf
+  all_goals
+    refine ⟨?_, good_addLocks hΦ hD (by
+      first | exact h.2 | (rw [SA.updateLatestConfirmed_locks_eq]; exact h.2)) ?_⟩
+    · first
+        | exact h.1
+        | (change R (SA.updateLatestConfirmed sp _ Φ C).latestConfirmed
+           unfold SA.updateLatestConfirmed
+           split_ifs
+           exacts [h.1, hR])
+    · rintro p (⟨D, hD, rfl⟩ | ⟨D, hD, rfl⟩) <;>
+      · obtain ⟨⟨⟨hDt, -, hDC⟩, -⟩, -⟩ := (SA.deepest_mem hD).1
+        exact hG D hDt hDC _ _
 
 private theorem good_onTick (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n) {A : SA.SAState sp.n}
     (h : Good R G A) {t : Time}
@@ -141,7 +160,6 @@ private theorem good_onTick (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n) {
         R B.root ∧ ∀ e, G ⟨B.root, sp.slot t, true, e⟩)
     (hupd : t = sp.ts (sp.slot t) + 2 * sp.Δ → 0 < sp.slot t → SA.joined sp A t → ∀ C,
       SA.getConfirmation sp A Φ (sp.slot t - 1) = some C →
-      ¬ SA.conflictsWithLock sp A.locks Φ t C →
         R C.root ∧ ∀ D ∈ Φ.tree, Φ.Anc D C → ∀ f e, G ⟨D.root, sp.slot t - 1, f, e⟩) :
     Good R G (SA.acOnTick sp x A Φ t).1 := by
   unfold SA.acOnTick at hopt ⊢
@@ -271,7 +289,7 @@ private theorem good_acCall (hrun : GoldilocksRun proposer dg H tr)
   | tick =>
     rw [hcall] at hem
     refine good_onTick hΦ hD y h (fun e he => emit e (hem ▸ he)) ?_
-    intro ht hs0 hj C hC hconf
+    intro ht hs0 hj C hC
     have hu : SA.UpdateAt tr.projAC y i (sp.slot (tr.time i) - 1) ℓ := by
       refine ⟨hpc, hcall, ?_, hps ▸ hj⟩
       change tr.time i = _
@@ -372,7 +390,7 @@ theorem record_step_origin (hrun : GoldilocksRun proposer dg H tr)
       | tick =>
         rw [hcall] at hem
         apply (good_onTick hΦ hD y h (fun e he => emit e (hem ▸ he)) ?_).1
-        intro ht hs0 hj C hC hconf
+        intro ht hs0 hj C hC
         have hu : SA.UpdateAt tr.projAC y i (sp.slot (tr.time i) - 1) ℓ := by
           refine ⟨hpc, hcall, ?_, hps ▸ hj⟩
           change tr.time i = _

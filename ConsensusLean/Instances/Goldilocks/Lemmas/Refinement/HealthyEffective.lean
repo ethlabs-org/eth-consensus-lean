@@ -1534,6 +1534,22 @@ theorem optimistic_next_result_of_floor {b : Time}
     (by omega) hext hy hu (by omega) hres
   exact ⟨D, _, ⟨ell, hu, hconf, rfl⟩, hBD⟩
 
+/-- A deepest block of `T` lying in `S ⊆ T` is the deepest block of `S`. -/
+private theorem deepest_of_subset {FGP : Type} {Φ : SA.Frm sp.n FGP}
+    {S T : Set (SA.Blk sp.n FGP)} {D : SA.Blk sp.n FGP} (hT : SA.deepest Φ T = some D)
+    (hST : S ⊆ T) (hD : D ∈ S) : SA.deepest Φ S = some D := by
+  have h : SA.IsDeepest Φ S D := ⟨hD, fun C hC hne => (SA.deepest_mem hT).2 C (hST hC) hne⟩
+  cases hd : SA.deepest Φ S with
+  | none =>
+    unfold SA.deepest at hd
+    simp only [show ∃ B, SA.IsDeepest Φ S B from ⟨D, h⟩, ↓reduceDIte, reduceCtorEq] at hd
+  | some D' =>
+    have h' := SA.deepest_mem hd
+    by_contra hne
+    have hne' : D' ≠ D := fun h => hne (congrArg some h)
+    rcases h.2 D' h'.1 hne' with h₁ | ⟨h₁, h₂⟩ <;>
+      rcases h'.2 D h.1 (Ne.symm hne') with h₃ | ⟨h₃, h₄⟩ <;> omega
+
 /-- Full viability makes the newly selected fast lock an exact toFG candidate,
 including the second normalization by liveLocks at the adjacent call. -/
 theorem candidate_after_fast_update {A : SA.SAState sp.n} {Phi : SA.Frm sp.n FGP}
@@ -1542,9 +1558,25 @@ theorem candidate_after_fast_update {A : SA.SAState sp.n} {Phi : SA.Frm sp.n FGP
     (hconf : SA.getConfirmation sp A Phi u = some P)
     (hnv : ¬ SA.conflictsWithLock sp A.locks Phi t P)
     (hfast : SA.fastSelect sp A Phi u P = some P)
-    (hlive : sp.slot t ≤ u + sp.k) (hage : sp.slot t ≤ u + 2) :
+    (_hlive : sp.slot t ≤ u + sp.k) (hage : sp.slot t ≤ u + 2) :
     P ∈ SA.toFGCandidates sp (SA.updateConfirmation sp A Phi t u) Phi t := by
-  sorry
+  have hself : Phi.viableAncestor P = P := SA.viableAncestor_self hPhi hPv.1 (Or.inl hPv)
+  -- unvetoed, so the filtered fast selection is the raw one; its expiry is `fastExpiry ≥ u + 2`
+  have hD := deepest_of_subset (S := {B | B ∈ {B | B ∈ SA.confirmationPath sp Phi P ∧
+      ¬ SA.conflictsWithLock sp A.locks Phi t B} ∧ SA.FastTest sp A Phi u B}) hfast
+    (fun B hB => ⟨hB.1.1, hB.2⟩)
+    ⟨⟨(SA.deepest_mem hfast).1.1, hnv⟩, (SA.deepest_mem hfast).1.2⟩
+  have hlock : ∃ e, sp.slot t ≤ e ∧ (⟨P.root, u, true, e⟩ : SA.Lock) ∈
+      (SA.updateConfirmation sp A Phi t u).locks := by
+    unfold SA.updateConfirmation
+    simp only [hconf]
+    rw [ite_eq_right hnv]
+    exact ⟨_, hage.trans (SA.le_fastExpiry sp _ _ _ _), ⟨P.root, u, true, _⟩,
+      Or.inr ⟨_, Or.inl ⟨P, hD, rfl⟩, rfl⟩, P, hPv.1, rfl,
+      hage.trans (SA.le_fastExpiry sp _ _ _ _), by rw [hself]⟩
+  obtain ⟨e, he, hlock⟩ := hlock
+  exact ⟨hPv, ⟨P.root, u, true, e⟩, ⟨⟨P.root, u, true, e⟩, hlock, P, hPv.1, rfl, he,
+    by rw [hself]⟩, rfl, rfl, hage⟩
 
 /-- The exact fast candidate persists into an adjacent call with the same frame
 and timestamp; these are the equalities supplied by `update_toFG_calls`. -/
