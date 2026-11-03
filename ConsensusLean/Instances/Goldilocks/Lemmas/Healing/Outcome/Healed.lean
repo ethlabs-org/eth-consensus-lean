@@ -90,14 +90,6 @@ theorem ResetPremises.permits_high_entry (hp : ResetPremises tr H proposer dg g 
   exact hup.permits_high_entry hy ((le_max_left _ _).trans (le_max_right _ _)) hh ho
     ((le_max_right _ _).trans (le_max_right _ _)) hEB hz hEm hEh hET
 
-/-- **C2*⁺ (ii) under the reset.** An honest lock at a height `h ≥ H_z + 1` is `⊥` or the entry
-of the high chain at `h`. -/
-theorem ResetPremises.high_lock_entry (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {h : Nat} (hh : HZ tr H g + 1 ≤ h)
-    {E : SA.Blk sp.n (List (FG.Att sp.n))} (hE : HighEntry tr H g h E) :
-    (tr.state y i).record.lock h = none ∨ (tr.state y i).record.lock h = some E.root :=
-  (hp.permits_high_entry hy i hh hE).2.2
-
 /-- **The record half of the Healed bundle** from the height `h₀` on, for the entries `E h` of
 the chain: RH, C2*⁺ (i) rows, C2*⁺ (ii) locks, and R0 at `h₀` (s4 L4.7 (a)–(c)). -/
 structure HealedRecords (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time) (h₀ : Nat)
@@ -111,111 +103,6 @@ structure HealedRecords (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : T
     (tr.state y i).record.lock h = none ∨ (tr.state y i).record.lock h = some (E h).root
   /-- R0: every honest record permits the entry at `h₀` at every cut. -/
   r0 : ∀ y ∈ H, ∀ i, (tr.state y i).record.permits h₀ (E h₀).root
-
-/-- **The record half of the Healed bundle under the reset (WI-17).** From `ResetPremises`, RH
-(`H_z + 1 ≤ h₀`) and the high entries `E h` at every height `h ≥ h₀`. No CH and no time
-bound: the reset alone makes the honest records clean above `H_z`. -/
-theorem healed_records_of_reset (hp : ResetPremises tr H proposer dg g ΔF a) {h₀ : Nat}
-    {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))} (hrh : HZ tr H g + 1 ≤ h₀)
-    (hE : ∀ h, h₀ ≤ h → HighEntry tr H g h (E h)) : HealedRecords tr H g h₀ E where
-  rh := hrh
-  rows _ hv _ _ hs hh := hp.high_row_entry hv hs (hrh.trans hh) (hE _ hh)
-  locks _ hy i _ hh := hp.high_lock_entry hy i (hrh.trans hh) (hE _ hh)
-  r0 _ hy i := hp.permits_high_entry hy i hrh (hE h₀ le_rfl)
-
-/-- **A high entry from an honest row (WI-17).** Under the reset, an honest row at a height
-`h ≥ H_z + 1` names a high entry at `h`: the entry of the row's source chain, below the high
-origin of an earlier fast lock of the signer (`high_row_source`) and held by the signer. -/
-theorem ResetPremises.highEntry_of_row (hp : ResetPremises tr H proposer dg g ΔF a)
-    {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att)
-    (hh : HZ tr H g + 1 ≤ att.h) :
-    ∃ E, HighEntry tr H g att.h E ∧ E.root = att.T := by
-  obtain ⟨r, -, l, O, hO, E, hE, hEO, hEr, hEh, hET⟩ := high_row_source hp hv hs hh
-  exact ⟨E, ⟨⟨v, r, l, O, hO, hEO.mono fun D hD => ⟨v, hv, r, hD⟩⟩, ⟨v, hv, r, hE, hEh, hET⟩⟩,
-    hEr⟩
-
-/-- **The record half of the Healed bundle from honest rows (WI-17).** Under the reset, with RH
-(`H_z + 1 ≤ h₀`) and an honest row at every height `h ≥ h₀`, the entries that these rows name
-are a family `E` of high entries (`highEntry_of_row`), and `HealedRecords` holds for `E`. The
-row at each height is the only premise left of `HighEntry`; in the paper it is the output of
-the justification at that height (s5). -/
-theorem healed_records_of_rows (hp : ResetPremises tr H proposer dg g ΔF a) {h₀ : Nat}
-    (hrh : HZ tr H g + 1 ≤ h₀)
-    (hrow : ∀ h, h₀ ≤ h → ∃ v ∈ H, ∃ d att, tr.SignAt v d att ∧ att.h = h) :
-    ∃ E : Nat → SA.Blk sp.n (List (FG.Att sp.n)),
-      (∀ h, h₀ ≤ h → HighEntry tr H g h (E h)) ∧ HealedRecords tr H g h₀ E := by
-  have hex : ∀ h, h₀ ≤ h → ∃ E, HighEntry tr H g h E := by
-    intro h hh
-    obtain ⟨v, hv, d, att, hs, rfl⟩ := hrow h hh
-    obtain ⟨E, hE, -⟩ := hp.highEntry_of_row hv hs (hrh.trans hh)
-    exact ⟨E, hE⟩
-  classical
-  let E : Nat → SA.Blk sp.n (List (FG.Att sp.n)) := fun h =>
-    if hh : h₀ ≤ h then Classical.choose (hex h hh) else Classical.choose (hex h₀ le_rfl)
-  have hE : ∀ h, h₀ ≤ h → HighEntry tr H g h (E h) := fun h hh => by
-    have hc := Classical.choose_spec (hex h hh)
-    simpa only [E, hh, ↓reduceDIte] using hc
-  exact ⟨E, hE, healed_records_of_reset hp hrh hE⟩
-
-/-- **A high entry from an honest record entry (WI-17).** Under the reset, a target, timeout or
-lock entry `r` of an honest record at a height `h ≥ H_z + 1` is the root of a high entry at `h`
-(`high_record_entry`). -/
-theorem ResetPremises.highEntry_of_record (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) {i h r : Nat} (hh : HZ tr H g + 1 ≤ h)
-    (hr : (tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h ∨
-      (tr.state y i).record.lock h = some r) :
-    ∃ E, HighEntry tr H g h E ∧ E.root = r := by
-  obtain ⟨x, i', j, B, ho, Z, hZB, hZr, z, hz, m, hZ, hZh, hZT⟩ := high_record_entry hp
-    (height_scoped_retention sp ro proposer dg H tr g ΔF
-      hp.run hp.healthy hp.noColl a hp.reset).rows hy hh hr
-  exact ⟨Z, ⟨⟨x, i', j, B, ho, hZB⟩, ⟨z, hz, m, hZ, hZh, hZT⟩⟩, hZr⟩
-
-/-- **The canonical entry family (WI-17).** At a height `h` with a high entry, a chosen high
-entry (the choice does not matter: under the reset the roots agree, `high_row_entry`); at any
-other height the default block `Z₀`. -/
-noncomputable def canonicalEntry (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time)
-    (Z₀ : SA.Blk sp.n (List (FG.Att sp.n))) (h : Nat) : SA.Blk sp.n (List (FG.Att sp.n)) := by
-  classical
-  exact if hx : ∃ E, HighEntry tr H g h E then Classical.choose hx else Z₀
-
-/-- At a height with a high entry, the canonical entry is a high entry. -/
-theorem canonicalEntry_highEntry {Z₀ : SA.Blk sp.n (List (FG.Att sp.n))} {h : Nat}
-    (hx : ∃ E, HighEntry tr H g h E) : HighEntry tr H g h (canonicalEntry tr H g Z₀ h) := by
-  classical
-  have hc := Classical.choose_spec hx
-  simpa only [canonicalEntry, hx, ↓reduceDIte] using hc
-
-/-- **The record half of the Healed bundle under the reset, canonical form (WI-17).** From
-`ResetPremises` and RH (`H_z + 1 ≤ h₀`) alone, for every default block `Z₀`: no premise on the
-existence of rows or high entries. A height without a high entry has no honest row, lock,
-target or timeout entry (`highEntry_of_row`, `highEntry_of_record`), so there the fields hold
-vacuously. -/
-theorem healed_records_of_reset_canonical (hp : ResetPremises tr H proposer dg g ΔF a)
-    {h₀ : Nat} (hrh : HZ tr H g + 1 ≤ h₀) (Z₀ : SA.Blk sp.n (List (FG.Att sp.n))) :
-    HealedRecords tr H g h₀ (canonicalEntry tr H g Z₀) where
-  rh := hrh
-  rows _ hv _ _ hs hh := by
-    obtain ⟨E, hE, -⟩ := hp.highEntry_of_row hv hs (hrh.trans hh)
-    exact hp.high_row_entry hv hs (hrh.trans hh) (canonicalEntry_highEntry ⟨E, hE⟩)
-  locks _ hy i h hh := by
-    rcases hl : (tr.state _ i).record.lock h with _ | r
-    · exact Or.inl rfl
-    · obtain ⟨E, hE, -⟩ := hp.highEntry_of_record hy (hrh.trans hh) (Or.inr (Or.inr hl))
-      rw [← hl]
-      exact hp.high_lock_entry hy i (hrh.trans hh) (canonicalEntry_highEntry ⟨E, hE⟩)
-  r0 y hy i := by
-    by_cases hx : ∃ E, HighEntry tr H g h₀ E
-    · exact hp.permits_high_entry hy i hrh (canonicalEntry_highEntry hx)
-    · have no : ∀ r, ¬ ((tr.state y i).record.target h₀ = some r ∨
-          r ∈ (tr.state y i).record.timeout h₀ ∨ (tr.state y i).record.lock h₀ = some r) :=
-        fun r hr => hx ((hp.highEntry_of_record hy hrh hr).imp fun _ h => h.1)
-      refine ⟨?_, fun r hr => absurd (Or.inr (Or.inl hr)) (no r), ?_⟩
-      · rcases ht : (tr.state y i).record.target h₀ with _ | r
-        · exact Or.inl rfl
-        · exact absurd (Or.inl ht) (no r)
-      · rcases hl : (tr.state y i).record.lock h₀ with _ | r
-        · exact Or.inl rfl
-        · exact absurd (Or.inr (Or.inr hl)) (no r)
 
 end Consensus.Goldilocks.Healing
 

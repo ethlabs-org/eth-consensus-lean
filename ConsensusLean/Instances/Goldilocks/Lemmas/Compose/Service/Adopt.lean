@@ -99,26 +99,6 @@ theorem proposal_held_at_update_before {dg : Digest (List (FG.Att sp.n)) (Payloa
     linarith
   exact ⟨hPt, SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.rooted.1 hF hPt⟩
 
-/-- Whole-run service supplies the finite update horizon. -/
-theorem proposal_held_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF)
-    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hP : tr.ProposesAt p k P) (hPs : P.slot = s)
-    (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n} (hy : y ∈ H)
-    {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
-    P ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F P := by
-  have hs : tr.SyncBefore H ΔF (tr.time k₀) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposal_held_at_update_before hrun hnc (hrun.time_nonneg k₀)
-    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
-    (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀))) hp hP hPs hpj hy hu le_rfl
-
 /-- **`P` has a strict majority at the update's test** (workbench#12 §4): every honest slot-`s`
 vote is `P` (`honest_votes_eq_proposal`) and reaches the updater resolved
 (`honest_batch_at_update`); an honest validator has one slot-`s` vote in the pool (unforgeability,
@@ -187,27 +167,6 @@ theorem proposal_majority_at_update_before {dg : Digest (List (FG.Att sp.n)) (Pa
   change _ < 2 * (SA.supporters ℓ.frame _ s P).ncard
   omega
 
-/-- Whole-run majority is the finite majority at the update's time. -/
-theorem proposal_majority_at_update {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF)
-    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hP : tr.ProposesAt p k P) (hPs : P.slot = s)
-    (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n} (hy : y ∈ H)
-    {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
-    (SA.voters {v | v ∈ (tr.state y k₀).ac.pool s}).ncard <
-      2 * SA.confirmationScore sp (tr.state y k₀).ac ℓ.frame s P := by
-  have hs : tr.SyncBefore H ΔF (tr.time k₀) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposal_majority_at_update_before hrun hnc (hrun.time_nonneg k₀)
-    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
-    (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀))) hp hP hPs hpj hy hu le_rfl
-
 /-- **No result of an honest joined update is vetoed** under `Sleepy` (workbench#8): a live lock
 block is an ancestor of a stored lock block, which is on the origin chain (S1); the result is an
 origin; blocks on the origin chain are compatible (S1), so the result is compatible with the live
@@ -255,17 +214,6 @@ theorem result_not_vetoed_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
   rcases hCV with h | h
   · exact Or.inl (SA.anc_tree_of_anc_U hcoh hΦ hHB hCt h hVt)
   · exact Or.inr (SA.anc_tree_of_anc_U hcoh hΦ hHB hVt h hCt)
-
-/-- Whole-run Sleepy supplies the finite invariant at the update's time. -/
-theorem result_not_vetoed {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hC : SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some C) :
-    ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) C :=
-  result_not_vetoed_before hrun hnc
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀))) hy hu le_rfl hC
 
 /-- A block strictly above a slot-`s` block has no supporter among the slot-`s` votes resolved by a
 cutoff: a vote cannot resolve to a head of a later slot. -/
@@ -343,27 +291,6 @@ theorem adopt_result_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H
   have h0 := confirmationScore_eq_zero (A := A) hΦ hPs hPD fun h => hne (congrArg some h.symm)
   have := hDS.2.2
   omega
-
-/-- The original result interface follows at the update horizon. -/
-theorem adopt_result {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
-    (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
-    SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some P ∧
-      ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) P := by
-  have hs : tr.SyncBefore H ΔF (tr.time k₀) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact adopt_result_before hrun hnc (hrun.time_nonneg k₀)
-    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
-    (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀))) hp hP hPs hpj hy hu le_rfl
 
 open Classical in
 /-- The record after a joined tick at `t_s + 6Δ` whose update of slot `s` has a result `C` that

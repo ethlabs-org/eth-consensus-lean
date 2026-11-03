@@ -306,28 +306,6 @@ private theorem proposer_relay_before (hrun : GoldilocksRun proposer dg H tr)
   exact ⟨SA.mem_tree_of_acceptAt sp hr hp hAp hk'i hc hFB,
     Or.inr ⟨k', hAp, lt_of_lt_of_le hk't (hdl k' hk'i)⟩⟩
 
-private theorem proposer_relay (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s)
-    {x : Fin sp.n} (hx : x ∈ H) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hB : B ∈ tr.HonestBlocks H)
-    (hacc : B.root = sp.genesisRoot ∨ ∃ kx, tr.projAC.AcceptAt x kx B ∧
-      tr.projAC.time kx < sp.ts ((s : Int) - 1) + 2 * sp.Δ)
-    (hFB : Anc (tr.HonestBlocks H) ℓp.frame.F B) :
-    B ∈ ℓp.frame.tree ∧ SA.AcceptedBefore tr.projAC p B (sp.ts ((s : Int) - 1) + 3 * sp.Δ) := by
-  have hs : tr.SyncBefore H ΔF (tr.time i) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposer_relay_before hrun hnc
-    (SA.serviceBefore_of_sync (syncBefore_projection hrun.toLocalRun hs))
-    hp hc hcall hd hti le_rfl hx hB hacc hFB
-
 /-- **The head of an honest vote of a slot before `s` reaches the proposer** of slot `s`: its
 voter accepted it (or it is genesis) by `t_{s−1} + Δ` (`frame_anc_accepted`), and
 `proposer_relay`. -/
@@ -369,29 +347,6 @@ private theorem proposer_accepts_head_before (hrun : GoldilocksRun proposer dg H
     · exact Or.inr ⟨kx, hacc, lt_of_le_of_lt (hr.time_mono hkx) (by linarith)⟩
   obtain ⟨h1, h2⟩ := proposer_relay_before hrun hnc hsync hp hc hcall hd hti hb hx hHd hacc hFHd
   exact ⟨h1, h2, hslot⟩
-
-private theorem proposer_accepts_head (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s)
-    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hv : SA.VoteAt tr.projAC x j e) (hes : e.msg.slot + 1 ≤ s)
-    {Hd : SA.Blk sp.n (List (FG.Att sp.n))} (hHd : Hd ∈ tr.HonestBlocks H)
-    (hHdr : Hd.root = e.msg.head) (hFHd : Anc (tr.HonestBlocks H) ℓp.frame.F Hd) :
-    Hd ∈ ℓp.frame.tree ∧ SA.AcceptedBefore tr.projAC p Hd (sp.ts ((s : Int) - 1) + 3 * sp.Δ) ∧
-      Hd.slot ≤ e.msg.slot := by
-  have hs : tr.SyncBefore H ΔF (tr.time i) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposer_accepts_head_before hrun hnc
-    (SA.serviceBefore_of_sync (syncBefore_projection hrun.toLocalRun hs))
-    hp hc hcall hd hti le_rfl hx hv hes hHd hHdr hFHd
 
 /-- **The proposer holds every old origin, or it is below its `Σ.F`** (workbench#12 §2.1): an
 old origin has an honest supporting vote of a slot before `s` (`honest_supporter`), whose head
@@ -688,31 +643,6 @@ private theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer d
       have := Set.ncard_le_ncard hequiv (Set.toFinite _)
       omega
 
-private theorem proposal_best_toward_old (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
-    ∀ O, OldOrigin tr H s O → O ∈ ℓp.frame.tree → ∀ X Cx : SA.Blk sp.n (List (FG.Att sp.n)),
-      Cx ∈ ℓp.frame.viableTree ℓp.frame.tree → Cx.parent = some X.root → ℓp.frame.Anc Cx O →
-      SA.IsBest sp (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
-        {B | B ∈ ℓp.frame.viableTree ℓp.frame.tree ∧ B.parent = some X.root ∧
-          SA.goldfishEligible sp ℓp.frame (tr.time i) (SA.View.ofLists pay) ((s : Int) - 1) B}
-        Cx := by
-  have hb := hrun.time_nonneg i
-  have hs : tr.SyncBefore H ΔF (tr.time i) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposal_best_toward_old_before hrun hnc hb
-    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
-    (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix hb)) hp hc hcall hd hti le_rfl
-
 /-- An AC call with the proposal label is a cut of a tick. -/
 theorem acProposal_in_tick {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
     {t : Time} {e : Node.Event (goldilocksNode sp ro)} {ℓ : ACLabel (goldilocksNode sp ro)}
@@ -901,15 +831,6 @@ theorem proposal_locks_slot_of (hrun : GoldilocksRun proposer dg H tr)
     exact absurd (hls ▸ hOp)
       (proposal_no_optimistic_of hrun hnc hf hp hc hcall hd hti x hx k' hki O CV)
 
-private theorem proposal_locks_slot (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
-    ∀ l ∈ (tr.state p i).ac.locks, l.slot < s :=
-  proposal_locks_slot_of hrun hnc (two_faults_lt_of_sleepy hsl) hp hc hcall hd hti
-
 /-- **`fc_root` in a downward-closed set, from the sources**: at an honest node's cut whose honest
 rows all have sources in a set `R` closed under ancestors, `Σ.J` is genesis (`h_j = 0`) or the
 entry of such a source (`justified_honest_source`, `honest_source_entry`), so in `R`, and `Σ.F` is
@@ -945,25 +866,6 @@ theorem fcRoot_of_rows_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
     rw [Anc.antisymm hU (Anc.mono hsU hFJ) h2]
     exact hg
   · exact Or.inr (hRc _ _ (Anc.mono hsU hFJ) hJR)
-
-/-- Whole-run Sleepy supplies the numerical fault bound for the row argument. -/
-theorem fcRoot_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {R : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    (hRc : ∀ A B, Anc (tr.HonestBlocks H) A B → R B → R A)
-    (hsrc : HonestRowsSourced tr H R y j) :
-    (Node.frame (tr.state y j)).fcRoot.root = sp.genesisRoot ∨
-      R (Node.frame (tr.state y j)).fcRoot :=
-  fcRoot_of_rows_of hrun hnc (two_faults_lt_of_sleepy hsl) hy hRc hsrc
-
-/-- `fc_root` below the old origins, from the sources (`fcRoot_of_rows`). -/
-private theorem fcRoot_old_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    (hsrc : HonestRowsSourced tr H
-      (fun D => ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) y j) :
-    (Node.frame (tr.state y j)).fcRoot.root = sp.genesisRoot ∨
-      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) (Node.frame (tr.state y j)).fcRoot O :=
-  fcRoot_of_rows hrun hnc hsl hy (fun _ _ hAB ⟨O, hO, hBO⟩ => ⟨O, hO, hAB.trans hBO⟩) hsrc
 
 /-- **The proposer's honest rows have sources below old origins** (workbench#12 §2): every honest
 row the proposer holds was signed before cut `i`, with a source below an origin before the
@@ -1001,16 +903,6 @@ private theorem proposal_rows_old_of (hrun : GoldilocksRun proposer dg H tr) (hn
     exact absurd hOp
       (proposal_no_optimistic_of hrun hnc hf hp hc hcall hd hti z hz c (by omega) C CV)
 
-private theorem proposal_rows_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
-    HonestRowsSourced tr H
-      (fun D => ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) p i :=
-  proposal_rows_old_of hrun hnc (two_faults_lt_of_sleepy hsl) hp hc hcall hd hti
-
 /-- **The proposer's `fc_root` is below an old origin, or genesis** (workbench#12 §2,
 `F ≤ fc_root ≤ D_s` at the proposal read), from the sources of its honest rows
 (`proposal_rows_old`, `fcRoot_old_of_rows`). -/
@@ -1027,16 +919,6 @@ private theorem proposal_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr)
   exact fcRoot_of_rows_of hrun hnc hf hp
     (fun _ _ hAB ⟨O, hO, hBO⟩ => ⟨O, hO, hAB.trans hBO⟩)
     (proposal_rows_old_of hrun hnc hf hp hc hcall hd hti)
-
-private theorem proposal_fcRoot_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
-    ℓp.frame.fcRoot.root = sp.genesisRoot ∨
-      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓp.frame.fcRoot O :=
-  proposal_fcRoot_old_of hrun hnc (two_faults_lt_of_sleepy hsl) hp hc hcall hd hti
 
 /-- A live lock block of the proposal's anchor sits below an origin, of the slot of a stored
 lock, before the proposal (`lock_origin`; unlocking and `live_locks` only move locks back). -/
@@ -1116,26 +998,6 @@ theorem proposal_walk_passes_old_before (hrun : GoldilocksRun proposer dg H tr)
   · exact Or.inl (hLO'.trans h)
   · exact SA.anc_total hU hLO' h
 
-/-- Whole-run Sleepy specializes the finite proposal-walk argument. -/
-theorem proposal_walk_passes_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
-    ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O d.head := by
-  have hb := hrun.time_nonneg i
-  have hs : tr.SyncBefore H ΔF (tr.time i) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposal_walk_passes_old_before hrun hnc hb
-    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
-    (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix hb)) hp hc hcall hd hti le_rfl
-
 /-- **The proposal's anchor is below an old origin, or genesis** (workbench#12 §2, "both
 unlocked anchors are `≤ D_s`"): a live lock block sits below an origin before `t_s` of a slot
 below `s` (`proposal_locks_slot`), which is old (a regular origin of label `s − 1` is written at
@@ -1207,15 +1069,6 @@ theorem vote_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoColl
     obtain rfl : l = s' + 1 := by omega
     exact (no_optimistic_before_held_row_of hrun hnc hf hy hc hes hm hmj hav
       hkm hsg hz hck hOp).elim
-
-/-- Whole-run Sleepy supplies the numerical fault bound for voter-root geometry. -/
-theorem vote_fcRoot_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hs : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) :
-    ℓ.frame.fcRoot.root = sp.genesisRoot ∨
-      ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓ.frame.fcRoot O :=
-  vote_fcRoot_old_of hrun hnc (two_faults_lt_of_sleepy hsl) hs hy hc hes
 
 /-- **A voter's anchor is below `D`, or on `P`'s chain above `D`**: for a block `D` above every
 old origin and below `Q = P.parent`, at an honest slot-`s` vote whose earlier honest slot-`s`
@@ -1453,44 +1306,6 @@ theorem pivot_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set 
   have hat' := mem_between hU hΦp hΦpU hDt hQt hDa haQ
   exact ⟨_, Or.inr ⟨SA.anc_tree_of_anc_U hU hΦp hΦpU hDt hDa hat',
     SA.anc_tree_of_anc_U hU hΦp hΦpU hat' haQ hQt⟩, .refl, hah⟩
-
-/-- Whole-run specialization, using the common deadline of all slot-`s` votes. -/
-theorem pivot {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) :
-    ∃ D, ℓp.frame.Anc d.start D ∧ ℓp.frame.Anc D d.head ∧
-      (∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads) ∧
-      ∀ y ∈ H, ∀ j ℓy e, SA.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
-        (∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = s →
-          e'.msg.head = P.root) →
-        ∃ X, (X = P ∨ (ℓp.frame.Anc D X ∧ ℓp.frame.Anc X d.head)) ∧
-          ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X ∧
-          ℓy.frame.Anc X (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-            (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame s))
-            (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)) := by
-  let b := sp.ts s + sp.Δ
-  have hib : tr.time i ≤ b := by dsimp [b]; rw [hti]; linarith [sp.toParams.hΔ]
-  have hb : 0 ≤ b := (hrun.time_nonneg i).trans hib
-  have hs : tr.SyncBefore H ΔF b :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  obtain ⟨D, hsD, hDQ, hv, hD⟩ := pivot_before hrun hnc hb
-    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
-    (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix hb)) hp hP hPs hpj hc hcall hd hti hPQ hib
-  refine ⟨D, hsD, hDQ, hv, fun y hy j ℓy e hcy hes => hD y hy j ℓy e hcy ?_ hes⟩
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have ht : tr.time j ≤ sp.ts e.msg.slot + sp.Δ := (cast_head_fcRoot hr hy hcy).2
-  simpa only [b, hes] using ht
 
 end Consensus.Goldilocks.Compose
 

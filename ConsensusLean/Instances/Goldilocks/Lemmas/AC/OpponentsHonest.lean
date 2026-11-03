@@ -28,23 +28,6 @@ theorem opponents_subset_compl {V : View sp.n} {s : Int} {B : Blk sp.n FGP}
   · exact hxy (hne x hx y hy hi hyi)
   · exact hc (hcompat x hx hi hs H hH hr)
 
-/-- **`unlock` keeps `B` when `Hn` does not oppose it.** For a call `c` from `A` to `A'`, if no
-validator of `Hn` equivocates in the held votes, every held slot-`s` vote of `Hn` has only
-heads compatible with `B`, and `2 · |Hnᶜ| < n`, then `unlockTarget` of the call's view is `B`.
-For an honest `Hn`, `hne` (one held vote of any slot) fails in general; use
-`unlockTarget_unlockView_held_of_honest_slot`. -/
-theorem unlockTarget_unlockView_held_of_honest {ro : ReplayOrder sp FGP} (self : Fin sp.n)
-    {A A' : SAState sp.n} (c : (goldilocksSA sp FGP ro).Call)
-    (hA' : ((goldilocksSA sp FGP ro).step self A Φ t c).1 = A') (hΦ : FrameOK Φ) (s : Int)
-    {B : Blk sp.n FGP} (hB : B ∈ Φ.tree) {Hn : Set (Fin sp.n)}
-    (hne : ∀ x ∈ heldVotes A A' Φ, ∀ y ∈ heldVotes A A' Φ, x.val ∈ Hn → y.val = x.val → x = y)
-    (hcompat : ∀ x ∈ heldVotes A A' Φ, x.val ∈ Hn → (x.slot : Int) = s →
-      ∀ H ∈ Φ.tree, H.root = x.head → Compatible Φ.tree H B)
-    (hf : 2 * Hnᶜ.ncard < sp.n) :
-    unlockTarget sp Φ (unlockView A Φ t c) s B = B :=
-  unlockTarget_unlockView_held self c hA' hΦ s hB
-    (opponents_subset_compl (V := ⟨heldVotes A A' Φ, heldVotes A A' Φ⟩) hne hcompat) hf
-
 /-! ## Per-slot non-equivocation
 
 `hne` of `unlockTarget_unlockView_held_of_honest` asks that a validator of `Hn` have at most one

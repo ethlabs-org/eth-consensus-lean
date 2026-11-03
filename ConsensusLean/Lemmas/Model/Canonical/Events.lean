@@ -97,18 +97,6 @@ theorem sendsAt_append (xs ys : List (Event V (protoOf F E).Object)) {v : V} {i 
   · have hil : i < xs.length := (List.getElem?_eq_some_iff.mp he).1
     exact Or.inr ⟨o, (List.getElem?_append_left hil).trans he⟩
 
-/-- Releases at an index depend only on the prefix through that index. -/
-theorem releases_prefix (xs ys : List (Event V (protoOf F E).Object))
-    {v : V} {o : (protoOf F E).Object} {t : Time}
-    (h : (rho.withEvents xs).releases v o t) :
-    (rho.withEvents (xs ++ ys)).releases v o t := by
-  obtain ⟨i, hi, ho⟩ := h
-  obtain ⟨e, he, -, -⟩ := hi.exists_event
-  have hil : i < xs.length := (List.getElem?_eq_some_iff.mp he).1
-  refine ⟨i, rho.sendsAt_append xs ys hi, ?_⟩
-  rw [rho.releasesAt_append xs ys hil]
-  exact ho
-
 /-- Restrict a release to a prefix containing every event of the node at the
 release time (so its sending event). Uniqueness of events ensures that both
 runs refer to the same index. -/

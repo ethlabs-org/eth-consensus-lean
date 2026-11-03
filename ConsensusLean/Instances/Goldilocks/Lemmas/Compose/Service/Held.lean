@@ -149,25 +149,6 @@ private theorem rows_compatible_before (hrun : GoldilocksRun proposer dg H tr)
     obtain rfl : Hd' = Hd := hU.1 hHd' hHd (hHd'r.trans hHdr.symm)
     exact Anc.total hU (hDC.trans hCH) hPH
 
-private theorem rows_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
-    (hy : y ∈ H) {k₀ : Nat} (ht : tr.time k₀ = sp.ts s + 6 * sp.Δ) :
-    HonestRowsSourced tr H (fun D => Compatible (tr.HonestBlocks H) D P) y k₀ := by
-  have hs : tr.SyncBefore H ΔF (tr.time k₀) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact rows_compatible_before hrun hnc (hrun.time_nonneg k₀)
-    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
-    (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀)))
-    (proposal_honest hrun hnc hp hP) (honest_votes_eq_proposal hrun hnc hsl hp hP hPs hpj)
-    hy ht le_rfl
-
 /-- **The updater's `Σ.F` is at or below `P`** (workbench#12 §4). -/
 private theorem updater_F_anc_of_rows (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
@@ -284,18 +265,6 @@ theorem updater_F_anc_proposal_before (hrun : GoldilocksRun proposer dg H tr)
     hp hP hPs hpj (hu.2.2.1 ▸ hb)
   exact updater_F_anc_of_rows hrun hnc hf hPU hPs hy hu
     (rows_compatible_before hrun hnc hb0 hsync hfb hinv hPU hall hy hu.2.2.1 hb)
-
-/-- The whole-run interface supplies the finite row comparison at the update. -/
-theorem updater_F_anc_proposal (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
-    (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
-    Anc (tr.HonestBlocks H) (tr.state y k₀).fg.F P :=
-  updater_F_anc_of_rows hrun hnc (two_faults_lt_of_sleepy hsl)
-    (proposal_honest hrun hnc hp hP) hPs hy hu
-    (rows_compatible hrun hnc hsl hp hP hPs hpj hy hu.2.2.1)
 
 end Consensus.Goldilocks.Compose
 

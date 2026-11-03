@@ -46,17 +46,6 @@ theorem unlockTarget_eq_self_of_subset (hΦ : FrameOK Φ) (V : View sp.n) (s : I
   unlockTarget_eq_self hΦ V s hB
     (lt_of_le_of_lt (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard hO O.toFinite)) hOn)
 
-/-- **`unlock` keeps `Φ.F` in every view.** -/
-theorem unlockTarget_F (hΦ : FrameOK Φ) (V : View sp.n) (s : Int) :
-    unlockTarget sp Φ V s Φ.F = Φ.F := by
-  unfold unlockTarget
-  rcases hd : deepest Φ {B' | B' ∈ Φ.tree ∧ Φ.Anc B' Φ.F ∧
-      2 * (opponents sp Φ V s B').ncard < sp.n} with _ | D
-  · rfl
-  · rw [Option.getD_some]
-    obtain ⟨hDt, hDF, -⟩ := (deepest_mem hd).1
-    exact Anc.antisymm hΦ.coherent hDF (hΦ.rooted.2 D hDt)
-
 end Consensus.Goldilocks.SA
 
 end

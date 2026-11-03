@@ -37,15 +37,6 @@ theorem front_prefix (g : Time) {k n : Nat} (hk : k < n) :
   rw [ht, stages_succ, layer_eq, front_eq]
   simp only [List.append_assoc]
 
-theorem tick_mem_stages (g : Time) {n : Nat} {v : V} {t : Time}
-    (hv : v ∈ rho.honest) (ha : E.awake v t = true)
-    (h0 : 0 ≤ t) (hn : t.toNat < n) : Event.tick v t ∈ rho.stages g n := by
-  apply (rho.mem_stages g n _).mpr
-  refine ⟨t.toNat, hn, ?_⟩
-  rw [Int.toNat_of_nonneg h0]
-  simp only [layer_eq, List.mem_append]
-  exact Or.inl (Or.inr ((rho.mem_tickEvents t _).mpr ⟨v, hv, ha, rfl⟩))
-
 theorem canonical_causal (g : Time) : (rho.withEvents (rho.canonicalEvents g)).Causal := by
   rw [causal_iff]
   intro i w o t hi

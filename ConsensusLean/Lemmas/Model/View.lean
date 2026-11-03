@@ -73,18 +73,6 @@ theorem releasesAt_seen {i : Nat} {v : V} {t : Time} (hs : rho.SendsAt v i t)
     rw [deliver_seen]
     exact List.mem_append_right _ ho
 
-/-- What a tick releases is in the node's `seen` right after it. -/
-theorem releasesAt_seen_tick {i : Nat} {v : V} {t : Time}
-    (he : rho.events[i]? = some (.tick v t)) {o : (protoOf F E).Object}
-    (ho : o ∈ rho.releasesAt i) : o ∈ (rho.stateBefore (i + 1) v).seen :=
-  rho.releasesAt_seen (Or.inl he) ho
-
-/-- What a delivery releases is in the node's `seen` right after it. -/
-theorem releasesAt_seen_deliver {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v p t)) {o : (protoOf F E).Object}
-    (ho : o ∈ rho.releasesAt i) : o ∈ (rho.stateBefore (i + 1) v).seen :=
-  rho.releasesAt_seen (Or.inr ⟨p, he⟩) ho
-
 /-- `seen` is append-only: it grows by one event. -/
 theorem seen_succ (i : Nat) (v : V) {o : (protoOf F E).Object}
     (ho : o ∈ (rho.stateBefore i v).seen) : o ∈ (rho.stateBefore (i + 1) v).seen := by

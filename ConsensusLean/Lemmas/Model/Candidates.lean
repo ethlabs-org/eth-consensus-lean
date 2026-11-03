@@ -290,14 +290,6 @@ theorem tick_invariant (Q : (protoOf F E).State → Prop) (nd : Node (protoOf F 
       (rho.runDuties_invariant Q v _ _ hact
         (fun s o hs ho => hrec s o hs (List.mem_append_left _ ho)) h₁)
 
-omit [DecidableEq V] in
-/-- The tick ends in a state it reaches from the post-clock state. -/
-theorem tick_reach (nd : Node (protoOf F E)) (v : V) (t : Time) :
-    TickReach (protoOf F E) ((protoOf F E).duties t)
-      ((protoOf F E).clock nd.st t (mempool rho.inbox v t)) (rho.tick nd v t).1.st :=
-  rho.tick_invariant _ nd v t (fun _ _ hd hs => .act hd hs) (fun _ o hs _ h => .recordOwn o hs h)
-    .refl
-
 /-- A signed duty candidate of node `v`'s tick at `t` whose post-clock state
 is `st₁`: the candidate of a due duty at a state the tick reaches. -/
 def DutyCandidate (st₁ : (protoOf F E).State) (v : V) (t : Time)
@@ -465,30 +457,6 @@ theorem tick_signerOf (nd : Node (protoOf F E)) (v : V) (t : Time)
   · exact Or.inl (by simp [signerOf, Obj.signer?, h])
   · exact Or.inr (by simp [signerOf, Obj.signer?, ownKey, h])
 
-omit [DecidableEq V] in
-/-- A signed object a tick releases is the candidate of a due duty of its role
-at a state the tick reaches from the post-clock state: `act`'s message and
-carried objects there. -/
-theorem tick_duty (nd : Node (protoOf F E)) (v : V) (t : Time)
-    {a : Model.Auth (Fintype.card V) (protoOf F E).Role} {m cs}
-    (ho : Obj.mk a m cs ∈ (rho.tick nd v t).2) {k r} (ha : a = .signed k r) :
-    ∃ d ∈ (protoOf F E).duties t, (protoOf F E).role d = r ∧ ∃ st,
-      TickReach (protoOf F E) ((protoOf F E).duties t)
-        ((protoOf F E).clock nd.st t (mempool rho.inbox v t)) st ∧
-      (m, cs) ∈ ((protoOf F E).act st d).2 := by
-  subst ha
-  obtain ⟨cs', hcs, h2, -⟩ := rho.tick_flat nd v t
-  rw [h2] at ho
-  rcases hcs _ (releaseAll_subset _ _ _ _ _ ho) with ⟨d, hd, st, hst, hc⟩ | hc
-  · obtain ⟨m', cs'', hact, -, he⟩ := (rho.mem_signedCandidate).mp hc
-    injection he with h₁ h₂ h₃
-    injection h₁ with _ hr
-    subst h₂ h₃
-    exact ⟨d, hd, hr.symm, st, hst, hact⟩
-  · obtain ⟨mc, -, he⟩ := mem_gossipCandidates.mp hc
-    injection he with h₁
-    cases h₁
-
 /-! ## Deliveries
 
 A delivery runs `process`, adds the object to `seen`, then the delivery duties
@@ -536,14 +504,6 @@ theorem deliver_invariant (Q : (protoOf F E).State → Prop) (nd : Node (protoOf
     (fun s o' hs ho => hrec s o' hs (List.mem_append_right _ ho))
     (rho.runDuties_invariant Q v _ _ hact
       (fun s o' hs ho => hrec s o' hs (List.mem_append_left _ ho)) h₁)
-
-omit [DecidableEq V] in
-/-- The delivery ends in a state it reaches from the processed state. -/
-theorem deliver_reach (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object) (t : Time) :
-    TickReach (protoOf F E) ((protoOf F E).deliverDuties t)
-      ((protoOf F E).process nd.st o (digests rho.hash o)) (rho.deliver nd v o t).1.st :=
-  rho.deliver_invariant _ nd v o t (fun _ _ hd hs => .act hd hs)
-    (fun _ o' hs _ h => .recordOwn o' hs h) .refl
 
 /-- A signed duty candidate of a delivery to node `v` at `t` whose processed
 state is `st₁`: the candidate of a delivery duty at a state the delivery
@@ -658,30 +618,6 @@ theorem deliver_signerOf (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Ob
   rcases rho.deliver_auth nd v o t ho with h | ⟨r, h, _⟩
   · exact Or.inl (by simp [signerOf, Obj.signer?, h])
   · exact Or.inr (by simp [signerOf, Obj.signer?, ownKey, h])
-
-omit [DecidableEq V] in
-/-- A signed object a delivery releases is the candidate of a delivery duty of
-its role at a state the delivery reaches from the processed state: `act`'s
-message and carried objects there. -/
-theorem deliver_duty (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object) (t : Time)
-    {a : Model.Auth (Fintype.card V) (protoOf F E).Role} {m cs}
-    (ho : Obj.mk a m cs ∈ (rho.deliver nd v o t).2) {k r} (ha : a = .signed k r) :
-    ∃ d ∈ (protoOf F E).deliverDuties t, (protoOf F E).role d = r ∧ ∃ st,
-      TickReach (protoOf F E) ((protoOf F E).deliverDuties t)
-        ((protoOf F E).process nd.st o (digests rho.hash o)) st ∧
-      (m, cs) ∈ ((protoOf F E).act st d).2 := by
-  subst ha
-  obtain ⟨cs', hcs, h2, -⟩ := rho.deliver_flat nd v o t
-  rw [h2] at ho
-  rcases hcs _ (releaseAll_subset _ _ _ _ _ ho) with ⟨d, hd, st, hst, hc⟩ | hc
-  · obtain ⟨m', cs'', hact, -, he⟩ := (rho.mem_signedCandidate).mp hc
-    injection he with h₁ h₂ h₃
-    injection h₁ with _ hr
-    subst h₂ h₃
-    exact ⟨d, hd, hr.symm, st, hst, hact⟩
-  · obtain ⟨mc, -, he⟩ := mem_gossipCandidates.mp hc
-    injection he with h₁
-    cases h₁
 
 end Run
 end Consensus.Model

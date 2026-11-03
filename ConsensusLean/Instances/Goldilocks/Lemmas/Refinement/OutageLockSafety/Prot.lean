@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Count
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepVote
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPointLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic

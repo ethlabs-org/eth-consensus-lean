@@ -73,15 +73,6 @@ private theorem cutStep_unique {y : Fin P.n} {t : Time} {st st₁ st₂ : NodeSt
         have := (Prod.mk.inj (Option.some.inj (e₁.symm.trans e₂))).2
         simp_all
 
-/-- **Cut chains are deterministic.** -/
-theorem cutChain_unique {y : Fin P.n} {t : Time} {st st₁ st₂ : NodeState A} {cs : List (Cut A)}
-    (h₁ : CutChain y t st cs st₁) (h₂ : CutChain y t st cs st₂) : st₁ = st₂ := by
-  induction h₁ generalizing st₂ with
-  | nil => cases h₂; rfl
-  | cons hs _ ih =>
-    cases h₂ with
-    | cons hs' h' => exact ih (cutStep_unique hs hs' ▸ h')
-
 /-! ### The first cut of an event names its phase -/
 
 /-- The phase of the event a cut can start: a restart, a tick (both start with their AC call),

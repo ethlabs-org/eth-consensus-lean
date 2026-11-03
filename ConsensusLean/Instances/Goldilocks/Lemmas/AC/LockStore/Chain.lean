@@ -112,20 +112,6 @@ theorem anc_getAnchor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : SAState sp.n} 
   rw [hA]
   exact ⟨hS (deepest_mem hD).1, anc_deepest hΦ hS hch' hD⟩
 
-/-- A head extends every ancestor of a live lock block or `fcRoot` when live locks form
-a chain. Only the walked tree must lie in the frame; the anchor need not lie in that
-tree, which may be empty. -/
-theorem anc_getHead_of_liveLockBlock {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
-    {A : SAState sp.n} {t : Time}
-    (hch : ∀ C ∈ liveLockBlocks sp A.locks Φ t, ∀ D ∈ liveLockBlocks sp A.locks Φ t,
-      Compatible Φ.tree C D)
-    {tree : Set (Blk sp.n FGP)} (htree : tree ⊆ Φ.tree) (V : View sp.n) (s : Int)
-    {B C : Blk sp.n FGP} (hBC : Φ.Anc B C)
-    (hC : C ∈ liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) :
-    Φ.Anc B (getHead sp A Φ t tree V s) := by
-  obtain ⟨ha, hanc⟩ := anc_getAnchor hΦ hch
-  exact (hBC.trans (hanc C hC)).trans (anc_ghost htree Φ.tree.ncard ha)
-
 variable (sp)
 
 /-- **A0.4 (a), (b).** -/

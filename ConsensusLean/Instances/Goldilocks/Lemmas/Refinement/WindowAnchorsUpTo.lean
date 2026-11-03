@@ -75,23 +75,6 @@ theorem window_anchors_chain_upTo (hp : Healing.ResetPremisesUpTo tr H proposer 
       omega
   · exact Relation.ReflTransGen.refl
 
-/-- **Window coverage from four honest anchors, through the horizon**
-(`coverage_of_window_anchors` from `ResetPremisesUpTo … b`, guards of
-`window_anchors_chain_upTo`). -/
-theorem coverage_of_window_anchors_upTo (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.CatchRun tr H g (2 * sp.Δ)) {s : Fin 4 → Nat}
-    {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ∀ i, Healing.HonestProposalRun tr H proposer (s i) (P i)) (hs : StrictMono s)
-    (hR : Healing.drainTime sp a ≤ sp.ts (s 0)) (hb : sp.ts (s 3) ≤ b)
-    (hadj : s 3 = s 2 + 1 → sp.ts (s 2) + 6 * sp.Δ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    (hB₃ : P 3 ∈ (tr.state y k).fg.tree)
-    (hadv : Store.WindowAdvance (tr.state y k).fg (P 0) (P 3))
-    (hsv : Store.WindowService (tr.state y k).fg (P 0) (P 3)) :
-    ∃ F, (tr.state y k).fg.blocks ((tr.state y k).fg.σ (P 3).root).F = some F ∧
-      Anc (tr.HonestBlocks H) (P 0) F :=
-  coverage_of_anchors hp.run hp.noColl hy
-    (window_anchors_chain_upTo hp hc hP hs hR hb hadj 0 3 (by decide)) hB₃ hadv hsv
-
 end Consensus.Goldilocks.Refinement
 
 end

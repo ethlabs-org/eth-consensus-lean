@@ -6,7 +6,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockFloorStep
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockKeep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockKeepStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
@@ -54,18 +53,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.ContestLocks
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.ContestLocksRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.FrameKeepsCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Interface
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorGaps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorGlobal
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorSegments
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepGlobal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepInterval
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepVote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Cut
@@ -194,7 +187,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainCommon
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorSegments
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorSegmentsGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
@@ -209,7 +201,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Rise
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Warm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OptimisticBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Cover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Healed
@@ -279,7 +270,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealCompose
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealComposeDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Healed
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC3
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC4
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedClientUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
@@ -293,7 +283,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecord
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordWriters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyResetEnvelope
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppliers
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.LockFloorReset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalEndpoints
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalSuppliers
@@ -347,8 +336,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.TheyAttest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAdvanceHealed
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAdvanceUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorRoute
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchors

@@ -117,9 +117,6 @@ def releaseAllCarried (P : Protocol pub Out) (hash : P.Item → Nat) :
       (r.1, c :: r.2)
     else releaseAllCarried P hash nd cs
 
-theorem releaseAllCarried_nil (hash : P.Item → Nat) (nd : Node P) :
-    releaseAllCarried P hash nd [] = (nd, []) := by rfl
-
 theorem releaseAllCarried_cons (hash : P.Item → Nat) (nd : Node P) (c : P.Object)
     (cs : List P.Object) :
     releaseAllCarried P hash nd (c :: cs) =

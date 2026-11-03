@@ -308,29 +308,6 @@ theorem later_update_adopts_gt_before {dg : Digest (List (FG.Att sp.n)) (Payload
       have ht : tr.time k₀ = sp.ts s' + 6 * sp.Δ := hu.2.2.1
       linarith))
 
-/-- Whole-run wrapper for strictly later adoption. -/
-theorem later_update_adopts_gt {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
-    (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
-    (hy : y ∈ H) {k₀ s' : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hss : s < s')
-    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) :
-    ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
-      (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y (k₀ + 1)).fg.F) := by
-  have hs : tr.SyncBefore H ΔF (tr.time k₀) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact later_update_adopts_gt_before hrun hnc (hrun.time_nonneg k₀)
-    (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
-    (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀)))
-    hp hP hPs hpj hy hss hu le_rfl
-
 /-- An update inside the horizon adopts an honest proposal of any earlier slot. -/
 theorem later_update_adopts_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
@@ -349,23 +326,6 @@ theorem later_update_adopts_before {dg : Digest (List (FG.Att sp.n)) (Payload sp
   · exact later_update_adopts_gt_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hy hlt hu hb
   · obtain ⟨E, hE, hEr, hPE⟩ := update_adopts_before hrun hnc hb0 hsync hfb hinv
       hp hP hPs hpj hy hu hb
-    exact ⟨E, hE, hEr, Or.inl hPE⟩
-
-/-- **An update of a slot `s' ≥ s` adopts the honest proposal of slot `s`**: the record names a
-block extending `P`, or `Σ.F` extends `P`. -/
-theorem later_update_adopts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ΔF : Time}
-    (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
-    (hy : y ∈ H) {k₀ s' : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hss : s ≤ s')
-    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) :
-    ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
-      (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y (k₀ + 1)).fg.F) := by
-  rcases hss.lt_or_eq with hlt | rfl
-  · exact later_update_adopts_gt hrun hnc hsl hp hP hPs hpj hy hlt hu
-  · obtain ⟨E, hE, hEr, hPE⟩ := update_adopts hrun hnc hsl hp hP hPs hpj hy hu
     exact ⟨E, hE, hEr, Or.inl hPE⟩
 
 end Consensus.Goldilocks.Compose
