@@ -98,7 +98,16 @@ private theorem good_optimistic (hΦ : FrameOK Φ) (hD : Down Φ G) {A : SA.SASt
     (hnew : ∀ B, SA.optimisticSelect sp A Φ t = some B → R B.root ∧
       ∀ e, G ⟨B.root, sp.slot t, true, e⟩) :
     Good R G (SA.optimisticConfirmation sp A Φ t) := by
-  sorry
+  unfold SA.optimisticConfirmation
+  rcases hsel : SA.optimisticSelect sp A Φ t with _ | B
+  · exact h
+  dsimp only
+  have hl := good_addLocks (t := t) (s := sp.slot t)
+    (N := {(B.root, true, SA.fastExpiry sp A.locks Φ t (sp.slot t))}) hΦ hD h.2
+    (by rintro p rfl; exact (hnew B hsel).2 _)
+  unfold SA.updateLatestConfirmed
+  split_ifs
+  exacts [⟨h.1, hl⟩, ⟨(hnew B hsel).1, hl⟩]
 
 private theorem good_tryVote (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n)
     {A : SA.SAState sp.n} (h : Good R G A) {t : Time}
@@ -123,7 +132,23 @@ private theorem good_updateConfirmation (hΦ : FrameOK Φ) (hD : Down Φ G) {A :
     (hnew : ∀ C, SA.getConfirmation sp A Φ s = some C → ¬ SA.conflictsWithLock sp A.locks Φ t C →
       R C.root ∧ ∀ D ∈ Φ.tree, Φ.Anc D C → ∀ f e, G ⟨D.root, s, f, e⟩) :
     Good R G (SA.updateConfirmation sp A Φ t s) := by
-  sorry
+  unfold SA.updateConfirmation
+  dsimp only
+  rcases hC : SA.getConfirmation sp A Φ s with _ | C
+  · exact h
+  dsimp only
+  split_ifs with hconf
+  · exact h
+  all_goals
+    obtain ⟨hR, hG⟩ := hnew C hC hconf
+    refine ⟨?_, good_addLocks hΦ hD (by rw [SA.updateLatestConfirmed_locks_eq]; exact h.2) ?_⟩
+    · change R (SA.updateLatestConfirmed sp _ Φ C).latestConfirmed
+      unfold SA.updateLatestConfirmed
+      split_ifs
+      exacts [h.1, hR]
+    · rintro p (⟨D, hD, rfl⟩ | ⟨-, D, hD, rfl⟩) <;>
+      · obtain ⟨⟨hDt, -, hDC⟩, -⟩ := (SA.deepest_mem hD).1
+        exact hG D hDt hDC _ _
 
 private theorem good_onTick (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n) {A : SA.SAState sp.n}
     (h : Good R G A) {t : Time}
@@ -220,7 +245,83 @@ private theorem good_acCall (hrun : GoldilocksRun proposer dg H tr)
       (LockOK tr H (tr.state y i).fg.tree (i + 1)) (tr.state y i).ac) :
     Good (RecOK tr H (tr.state y i).fg.tree (i + 1))
       (LockOK tr H (tr.state y i).fg.tree (i + 1)) (tr.post i).ac := by
-  sorry
+  obtain ⟨hfr, hstep, -, -⟩ := hrun.cutLaw y hy i _ hc
+  have hΦ : FrameOK ℓ.frame :=
+    hfr ▸ (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
+  have hΦT : ℓ.frame.tree ⊆ (tr.state y i).fg.tree := by
+    rw [hfr]
+    exact fun X hX => hX.1
+  have hTU : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX⟩
+  have hD := down_lockOK (honest_coherent hrun hnc) hTU hΦT (i + 1)
+  have hpc : tr.projAC.CallAt y i ℓ := ⟨hc.1, by simp [RunTrace.projAC, hc.2, RunTrace.acLabel]⟩
+  have hps : tr.projAC.state y i = (tr.state y i).ac := projAC_state hrun.toLocalRun hy i
+  -- the optimistic selections of the call
+  have opt : ∀ A₀, SA.OptimisticPoint tr.projAC y i ℓ A₀ → ∀ B,
+      SA.optimisticSelect sp A₀ ℓ.frame (tr.time i) = some B →
+      RecOK tr H (tr.state y i).fg.tree (i + 1) B.root ∧
+        ∀ e, LockOK tr H (tr.state y i).fg.tree (i + 1) ⟨B.root, sp.slot (tr.time i), true, e⟩ := by
+    intro A₀ hpt B hsel
+    have hB : B ∈ ℓ.frame.tree := by
+      have h' := hsel
+      unfold SA.optimisticSelect at h'
+      dsimp only at h'
+      split_ifs at h'
+      exact (SA.deepest_mem h').1.1
+    have hO : SA.OptimisticLockAt tr.projAC y i (sp.slot (tr.time i)) B _ :=
+      ⟨ℓ, A₀, hpt, rfl, hsel, rfl⟩
+    have hOb : OriginBefore tr H B (sp.slot (tr.time i)) (i + 1) :=
+      originBefore_iff.2 ⟨y, hy, i, Nat.lt_succ_self i, _, Or.inr hO⟩
+    exact ⟨⟨B, hΦT hB, rfl, Or.inr ⟨_, hOb⟩⟩,
+      fun _ => ⟨B, hΦT hB, rfl, B, hOb, Relation.ReflTransGen.refl⟩⟩
+  have emit : ∀ e ∈ ℓ.emits, ∀ B, SA.optimisticSelect sp
+      (SA.admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame (tr.time i) = some B →
+      RecOK tr H (tr.state y i).fg.tree (i + 1) B.root ∧
+        ∀ e, LockOK tr H (tr.state y i).fg.tree (i + 1) ⟨B.root, sp.slot (tr.time i), true, e⟩ :=
+    fun e he => opt _ ⟨hpc, Or.inr (Or.inr ⟨e, he, rfl⟩)⟩
+  have hpost := congrArg Prod.fst hstep
+  have hem := congrArg Prod.snd hstep
+  dsimp only at hpost hem
+  rw [← hpost]
+  generalize hA : (tr.state y i).ac = A at h hpost hem hps
+  cases hcall : ℓ.call with
+  | tick =>
+    rw [hcall] at hem
+    refine good_onTick hΦ hD y h (fun e he => emit e (hem ▸ he)) ?_
+    intro ht hs0 hj C hC hconf
+    have hu : SA.UpdateAt tr.projAC y i (sp.slot (tr.time i) - 1) ℓ := by
+      refine ⟨hpc, hcall, ?_, hps ▸ hj⟩
+      change tr.time i = _
+      conv_lhs => rw [ht]
+      simp only [SAParams.ts]
+      push_cast [Nat.cast_sub hs0]
+      ring
+    have hr : SA.ResultAt tr.projAC y i (sp.slot (tr.time i) - 1) C _ :=
+      ⟨ℓ, hu, hps ▸ hC, rfl⟩
+    have hCt : C ∈ ℓ.frame.tree := (SA.deepest_mem hC).1.1
+    have hOb : OriginBefore tr H C (sp.slot (tr.time i) - 1) (i + 1) :=
+      originBefore_iff.2 ⟨y, hy, i, Nat.lt_succ_self i, _, Or.inl hr⟩
+    exact ⟨⟨C, hΦT hCt, rfl, Or.inr ⟨_, hOb⟩⟩, fun D hD hDC f e =>
+      ⟨D, hΦT hD, rfl, C, hOb, hDC.mono (hΦT.trans hTU)⟩⟩
+  | proposal => exact good_proposal hΦ hD h _
+  | toFG => exact good_toFG h _
+  | message m =>
+    rw [hcall] at hem
+    exact good_tryVote hΦ hD y (good_optimistic hΦ hD (good_admitVote h _ _)
+      (opt _ ⟨hpc, Or.inl ⟨m, hcall, by rw [hps]; rfl⟩⟩)) fun e he => emit e (hem ▸ he)
+  | block B =>
+    rw [hcall] at hem
+    exact good_tryVote hΦ hD y (good_optimistic hΦ hD (good_blockReceipt h _ _)
+      (opt _ ⟨hpc, Or.inr (Or.inl ⟨B, hcall, by rw [hps]; rfl⟩)⟩)) fun e he => emit e (hem ▸ he)
+  | restart =>
+    obtain ⟨-, hl, hr, -⟩ := SA.restart_state sp _ ro y A ℓ.frame (tr.time i) hΦ
+      (hrun.time_nonneg i)
+    refine ⟨?_, ?_⟩
+    · change RecOK _ _ _ _ (SA.acRestart sp ro y A ℓ.frame (tr.time i)).1.latestConfirmed
+      rw [hr]
+      exact h.1
+    · change ∀ l ∈ (SA.acRestart sp ro y A ℓ.frame (tr.time i)).1.locks, _
+      rw [hl]
+      exact h.2
 
 /-- An FG cut of an honest node leaves its AC state. -/
 private theorem ac_of_fg (hrun : GoldilocksRun proposer dg H tr)
@@ -247,7 +348,74 @@ theorem record_step_origin (hrun : GoldilocksRun proposer dg H tr)
       ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
         ∃ s CV, SA.ResultAt tr.projAC y i s C CV ∨
           SA.OptimisticLockAt tr.projAC y i s C CV := by
-  sorry
+  let R := fun r => r = (tr.state y i).ac.latestConfirmed ∨
+    ∃ C ∈ (tr.state y i).fg.tree, C.root = r ∧
+      ∃ s CV, SA.ResultAt tr.projAC y i s C CV ∨ SA.OptimisticLockAt tr.projAC y i s C CV
+  by_cases hc : ∃ c, tr.CallAt y i c
+  · obtain ⟨c, hc⟩ := hc
+    rw [tr.state_succ_of_call hc]
+    cases c with
+    | fg ℓ => exact Or.inl (congrArg SA.SAState.latestConfirmed (ac_of_fg hrun hy hc))
+    | ac ℓ =>
+      obtain ⟨hfr, hstep, _, _⟩ := hrun.cutLaw y hy i _ hc
+      have hΦ : FrameOK ℓ.frame :=
+        hfr ▸ (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
+      have hΦT : ℓ.frame.tree ⊆ (tr.state y i).fg.tree := by
+        rw [hfr]; exact fun _ h => h.1
+      have hpc : tr.projAC.CallAt y i ℓ := ⟨hc.1, by simp [RunTrace.projAC, hc.2, RunTrace.acLabel]⟩
+      have hps := projAC_state hrun.toLocalRun hy i
+      have h : Good R (fun _ => True) (tr.state y i).ac := ⟨Or.inl rfl, fun _ _ => trivial⟩
+      have hD : Down ℓ.frame (fun _ => True) := fun _ _ _ _ _ _ _ _ _ _ _ => trivial
+      have opt : ∀ A₀, SA.OptimisticPoint tr.projAC y i ℓ A₀ → ∀ B,
+          SA.optimisticSelect sp A₀ ℓ.frame (tr.time i) = some B →
+          R B.root ∧ ∀ _ : Nat, True := by
+        intro A₀ hpt B hsel
+        have hB : B ∈ ℓ.frame.tree := by
+          unfold SA.optimisticSelect at hsel
+          dsimp only at hsel
+          split_ifs at hsel
+          exact (SA.deepest_mem hsel).1.1
+        exact ⟨Or.inr ⟨B, hΦT hB, rfl, _, _, Or.inr ⟨ℓ, A₀, hpt, rfl, hsel, rfl⟩⟩, fun _ => trivial⟩
+      have emit : ∀ e ∈ ℓ.emits, ∀ B, SA.optimisticSelect sp
+          (SA.admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame (tr.time i) = some B →
+          R B.root ∧ ∀ _ : Nat, True := fun e he => opt _ ⟨hpc, Or.inr (Or.inr ⟨e, he, rfl⟩)⟩
+      have hpost := congrArg Prod.fst hstep
+      have hem := congrArg Prod.snd hstep
+      dsimp only at hpost hem
+      change R (tr.post i).ac.latestConfirmed
+      rw [← hpost]
+      cases hcall : ℓ.call with
+      | tick =>
+        rw [hcall] at hem
+        apply (good_onTick hΦ hD y h (fun e he => emit e (hem ▸ he)) ?_).1
+        intro ht hs0 hj C hC hconf
+        have hu : SA.UpdateAt tr.projAC y i (sp.slot (tr.time i) - 1) ℓ := by
+          refine ⟨hpc, hcall, ?_, hps ▸ hj⟩
+          change tr.time i = _
+          conv_lhs => rw [ht]
+          simp only [SAParams.ts]
+          push_cast [Nat.cast_sub hs0]
+          ring
+        exact ⟨Or.inr ⟨C, hΦT (SA.deepest_mem hC).1.1, rfl, _, _,
+          Or.inl ⟨ℓ, hu, hps ▸ hC, rfl⟩⟩, fun _ _ _ _ _ => trivial⟩
+      | proposal => exact (good_proposal hΦ hD h _).1
+      | toFG => exact (good_toFG h _).1
+      | message m =>
+        rw [hcall] at hem
+        exact (good_tryVote hΦ hD y (good_optimistic hΦ hD (good_admitVote h _ _)
+          (opt _ ⟨hpc, Or.inl ⟨m, hcall, by rw [hps]; rfl⟩⟩))
+          (fun e he => emit e (hem ▸ he))).1
+      | block B =>
+        rw [hcall] at hem
+        exact (good_tryVote hΦ hD y (good_optimistic hΦ hD (good_blockReceipt h _ _)
+          (opt _ ⟨hpc, Or.inr (Or.inl ⟨B, hcall, by rw [hps]; rfl⟩)⟩))
+          (fun e he => emit e (hem ▸ he))).1
+      | restart =>
+        change R (SA.acRestart sp ro y (tr.state y i).ac ℓ.frame (tr.time i)).1.latestConfirmed
+        rw [(SA.restart_state sp _ ro y _ ℓ.frame (tr.time i) hΦ (hrun.time_nonneg i)).2.2.1]
+        exact Or.inl rfl
+  · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
+    exact Or.inl rfl
 
 /-- The tree of an honest node only grows across a cut. -/
 private theorem tree_succ (hrun : GoldilocksRun proposer dg H tr)

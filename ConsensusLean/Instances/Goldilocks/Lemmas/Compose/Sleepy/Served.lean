@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
@@ -120,7 +121,18 @@ private theorem writes_optimistic (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (
     {r : Nat} (hr : A.latestConfirmed = r) :
     Writes Φ (fun B => SA.optimisticSelect sp A Φ t = some B) r
       (SA.optimisticConfirmation sp A Φ t).latestConfirmed := by
-  sorry
+  subst hr
+  unfold SA.optimisticConfirmation
+  rcases h : SA.optimisticSelect sp A Φ t with _ | B
+  · exact .refl
+  · have hB := h
+    unfold SA.optimisticSelect at hB
+    dsimp only at hB
+    split_ifs at hB
+    refine writes_update { A with locks := (SA.addLocks sp A.locks Φ t (sp.slot t)
+      {(B.root, true, SA.fastExpiry sp A.locks Φ t (sp.slot t))}) }
+      Φ (SA.deepest_mem hB).1.1 ?_ rfl rfl
+    rfl
 
 private theorem writes_tryVote (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
     (t : Time) :
@@ -141,7 +153,17 @@ private theorem writes_updateConfirmation (A : SA.SAState sp.n) (Φ : SA.Frm sp.
     Writes Φ (fun C => SA.getConfirmation sp A Φ s = some C ∧
       ¬ SA.conflictsWithLock sp A.locks Φ t C) A.latestConfirmed
       (SA.updateConfirmation sp A Φ t s).latestConfirmed := by
-  sorry
+  unfold SA.updateConfirmation
+  dsimp only
+  rcases hC : SA.getConfirmation sp A Φ s with _ | C
+  · exact .refl
+  · dsimp only
+    split_ifs with hveto
+    · exact .refl
+    all_goals
+      refine writes_update { A with saved := Function.update A.saved s ((some C).map Block.root) }
+        Φ (SA.deepest_mem hC).1.1 ?_ rfl rfl
+      exact ⟨rfl, hveto⟩
 
 private theorem writes_onTick (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
     (t : Time) :
@@ -250,10 +272,10 @@ theorem call_writes (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {x : Fi
 
 /-! ### The record and its fast lock inside one call -/
 
-/-- A lock that every lock function keeps at `(Φ, t)`: live in the next slot too, on a block of
-the tree that is its own viable ancestor. -/
+/-- A lock that every lock function keeps at `(Φ, t)`: of the previous slot or later, live at
+`t`, on a block of the tree that is its own viable ancestor. -/
 private def KeepOK (Φ : SA.Frm sp.n FGP) (t : Time) (l : SA.Lock) : Prop :=
-  sp.slot t ≤ l.slot + 1 ∧ ∃ B ∈ Φ.tree, B.root = l.block ∧
+  sp.slot t ≤ l.slot + 1 ∧ l.LiveAt sp t ∧ ∃ B ∈ Φ.tree, B.root = l.block ∧
     (B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.fcRoot)
 
 /-- `A'` holds every lock of `A` that the lock functions keep. -/
@@ -269,7 +291,9 @@ private theorem KeepAll.trans {Φ : SA.Frm sp.n FGP} {t : Time} {A B C : SA.SASt
 
 private theorem live_keep {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {L : Set SA.Lock}
     {l : SA.Lock} (hl : l ∈ L) (hk : KeepOK Φ t l) : l ∈ SA.liveLocks sp L Φ t := by
-  sorry
+  obtain ⟨-, hs, B, hB, hBr, hc⟩ := hk
+  refine ⟨l, hl, B, hB, hBr, hs, ?_⟩
+  rw [SA.viableAncestor_self hΦ hB hc, hBr]
 
 private theorem keepAll_addLocks {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time}
     {A A' : SA.SAState sp.n} {s : Nat} {N : Set (Nat × Bool × Nat)}
@@ -281,7 +305,7 @@ private theorem keepAll_unlock {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Ti
     (h : A'.locks = SA.unlock sp A.locks Φ t ((sp.slot t : Int) - 1) V) : KeepAll Φ t A A' := by
   intro l hl hk
   rw [h]
-  obtain ⟨B, hB, hBr, -⟩ := hk.2
+  obtain ⟨B, hB, hBr, -⟩ := hk.2.2
   refine ⟨l, live_keep hΦ hl hk, B, hB, hBr, ?_⟩
   have : ¬ ((l.slot : Int) < (sp.slot t : Int) - 1) := by have := hk.1; omega
   simp only [this, ↓reduceIte]
@@ -292,7 +316,8 @@ selection) and the fast lock of the slot on the viable ancestor of `C`. -/
 private def RecLock (Φ : SA.Frm sp.n FGP) (t : Time) (r₀ : Nat)
     (Res Opt : SA.Blk sp.n FGP → Prop) (A : SA.SAState sp.n) : Prop :=
   A.latestConfirmed = r₀ ∨ ∃ C ∈ Φ.tree, A.latestConfirmed = C.root ∧
-    (Res C ∨ (Opt C ∧ ∃ e, (⟨(Φ.viableAncestor C).root, sp.slot t, true, e⟩ : SA.Lock) ∈ A.locks))
+    (Res C ∨ (Opt C ∧ ∃ e, sp.slot t + 2 ≤ e ∧
+      (⟨(Φ.viableAncestor C).root, sp.slot t, true, e⟩ : SA.Lock) ∈ A.locks))
 
 private theorem RecLock.mono {Φ : SA.Frm sp.n FGP} {t : Time} {r₀ : Nat}
     {Res Opt Res' Opt' : SA.Blk sp.n FGP → Prop} {A : SA.SAState sp.n}
@@ -304,7 +329,14 @@ private theorem RecLock.keep {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time
     {Res Opt : SA.Blk sp.n FGP → Prop} {A A' : SA.SAState sp.n}
     (h : RecLock Φ t r₀ Res Opt A) (hk : KeepAll Φ t A A')
     (hr : A'.latestConfirmed = A.latestConfirmed) : RecLock Φ t r₀ Res Opt A' := by
-  sorry
+  rcases h with h | ⟨C, hC, hCr, hres | ⟨hopt, hl⟩⟩
+  · exact Or.inl (hr.trans h)
+  · exact Or.inr ⟨C, hC, hr.trans hCr, Or.inl hres⟩
+  · obtain ⟨hva, -⟩ := SA.viableAncestor_anc hΦ hC
+    obtain ⟨e, he, hl⟩ := hl
+    exact Or.inr ⟨C, hC, hr.trans hCr, Or.inr ⟨hopt, e, he, hk _ hl ⟨Nat.le_succ _,
+      (Nat.le_add_right _ 2).trans he, _, hva, rfl,
+      (SA.viableAncestor_spec hΦ hC).2.1.symm⟩⟩⟩
 
 private theorem ulc_rec (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (C : SA.Blk sp.n FGP) :
     (SA.updateLatestConfirmed sp A Φ C).latestConfirmed = A.latestConfirmed ∨
@@ -319,8 +351,8 @@ private theorem RecLock.write {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Tim
     (h : RecLock Φ t r₀ Res Opt A) (hk : KeepAll Φ t A A') {C : SA.Blk sp.n FGP}
     (hC : C ∈ Φ.tree)
     (hr : A'.latestConfirmed = A.latestConfirmed ∨ A'.latestConfirmed = C.root)
-    (hnew : Res C ∨ (Opt C ∧ ∃ e, (⟨(Φ.viableAncestor C).root, sp.slot t, true, e⟩ : SA.Lock)
-        ∈ A'.locks)) :
+    (hnew : Res C ∨ (Opt C ∧ ∃ e, sp.slot t + 2 ≤ e ∧
+      (⟨(Φ.viableAncestor C).root, sp.slot t, true, e⟩ : SA.Lock) ∈ A'.locks)) :
     RecLock Φ t r₀ Res Opt A' :=
   hr.elim (h.keep hΦ hk) fun h' => Or.inr ⟨C, hC, h', hnew⟩
 
@@ -329,7 +361,25 @@ private theorem reclock_optimistic {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t 
     KeepAll Φ t A (SA.optimisticConfirmation sp A Φ t) ∧
       RecLock Φ t r₀ Res (fun B => Opt B ∨ SA.optimisticSelect sp A Φ t = some B)
         (SA.optimisticConfirmation sp A Φ t) := by
-  sorry
+  unfold SA.optimisticConfirmation
+  rcases hs : SA.optimisticSelect sp A Φ t with _ | B
+  · exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => h) fun _ h => Or.inl h⟩
+  · have hB := hs
+    unfold SA.optimisticSelect at hB
+    dsimp only at hB
+    split_ifs at hB
+    have hBt := (SA.deepest_mem hB).1.1
+    have hk : KeepAll Φ t A (SA.updateLatestConfirmed sp
+        { A with locks := (SA.addLocks sp A.locks Φ t (sp.slot t)
+      {(B.root, true, SA.fastExpiry sp A.locks Φ t (sp.slot t))}) } Φ B) :=
+      keepAll_addLocks hΦ (by rw [SA.updateLatestConfirmed_locks_eq])
+    refine ⟨hk, (h.mono (fun _ h => h) fun _ h => Or.inl h).write hΦ hk hBt (ulc_rec _ _ _)
+      (Or.inr ⟨Or.inr rfl, ?_⟩)⟩
+    have he := SA.le_fastExpiry (sp := sp) A.locks Φ t (sp.slot t)
+    refine ⟨_, he, ?_⟩
+    rw [SA.updateLatestConfirmed_locks_eq]
+    exact ⟨⟨B.root, sp.slot t, true, _⟩, Or.inr ⟨_, Set.mem_singleton _, rfl⟩, B, hBt, rfl,
+      (Nat.le_add_right _ 2).trans he, rfl⟩
 
 private theorem reclock_opt_admit {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r₀ : Nat}
     {Res Opt : SA.Blk sp.n FGP → Prop} {A A₂ : SA.SAState sp.n} (h : RecLock Φ t r₀ Res Opt A)
@@ -371,7 +421,19 @@ private theorem reclock_update {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Ti
     KeepAll Φ t A (SA.updateConfirmation sp A Φ t s) ∧
       RecLock Φ t r₀ (fun C => Res C ∨ SA.getConfirmation sp A Φ s = some C) Opt
         (SA.updateConfirmation sp A Φ t s) := by
-  sorry
+  unfold SA.updateConfirmation
+  dsimp only
+  rcases hC : SA.getConfirmation sp A Φ s with _ | C
+  · exact ⟨KeepAll.of_eq rfl, (h.mono (fun _ h => Or.inl h) fun _ h => h).keep hΦ
+      (KeepAll.of_eq rfl) rfl⟩
+  · dsimp only
+    split_ifs
+    · exact ⟨KeepAll.of_eq rfl, (h.mono (fun _ h => Or.inl h) fun _ h => h).keep hΦ
+        (KeepAll.of_eq rfl) rfl⟩
+    all_goals
+      refine ⟨?_, (h.mono (fun _ h => Or.inl h) fun _ h => h).write hΦ ?_
+        (SA.deepest_mem hC).1.1 (ulc_rec _ _ _) (Or.inl (Or.inr rfl))⟩ <;>
+      exact keepAll_addLocks hΦ (by rw [SA.updateLatestConfirmed_locks_eq])
 
 private theorem reclock_onTick {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r₀ : Nat}
     {Res Opt : SA.Blk sp.n FGP → Prop} {A : SA.SAState sp.n} (h : RecLock Φ t r₀ Res Opt A)
@@ -487,7 +549,8 @@ theorem call_record_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
         ((∃ CV, SA.OptimisticLockAt tr x i (sp.slot (tr.time i)) C CV) ∧
           ∃ e, (⟨(ℓ.frame.viableAncestor C).root, sp.slot (tr.time i), true, e⟩ : SA.Lock) ∈
             (tr.post i).locks)) :=
-  (call_reclock hr hx hc).2.resolve_left hne
+  ((call_reclock hr hx hc).2.resolve_left hne).imp fun _ ⟨hC, hr, h⟩ =>
+    ⟨hC, hr, h.imp_right fun ⟨ho, e, _, hl⟩ => ⟨ho, e, hl⟩⟩
 
 end Writes
 
@@ -1440,9 +1503,51 @@ private theorem record_writer (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
           ((∃ CV, SA.OptimisticLockAt tr.projAC y k (sp.slot (tr.time k)) C CV) ∧
             ((∀ m', k < m' → m' < m → ∀ ℓ', tr.projAC.CallAt y m' ℓ' →
                 sp.slot (tr.time m') ≤ sp.slot (tr.time k) + 1 ∧ C ∈ ℓ'.frame.tree) →
-              ∃ e, (⟨C.root, sp.slot (tr.time k), true, e⟩ : SA.Lock)
+              ∃ e, sp.slot (tr.time k) + 2 ≤ e ∧ (⟨C.root, sp.slot (tr.time k), true, e⟩ : SA.Lock)
                   ∈ (tr.projAC.state y m).locks))) := by
-  sorry
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  induction m with
+  | zero =>
+    left
+    change (tr.projAC.init y).latestConfirmed = _
+    rw [hr.init y hy]
+    rfl
+  | succ m ih =>
+    have ih := ih (fun k hk => hOO k (by omega)) (fun k hk => hvi k (by omega))
+    by_cases hcall : ∃ ℓ, tr.projAC.CallAt y m ℓ
+    swap
+    · rw [tr.projAC.state_succ_of_not fun ℓ h => hcall ⟨ℓ, h⟩]
+      refine ih.imp_right fun ⟨k, hkm, ℓk, hck, C, hC, hCr, h⟩ =>
+        ⟨k, hkm.trans (Nat.lt_succ_self m), ℓk, hck, C, hC, hCr,
+          h.imp_right fun ⟨hO, hL⟩ => ⟨hO, fun hcond => hL fun m' h₁ h₂ =>
+            hcond m' h₁ (h₂.trans (Nat.lt_succ_self m))⟩⟩
+    obtain ⟨ℓ, hc⟩ := hcall
+    rw [tr.projAC.state_succ_of_call hc]
+    obtain ⟨hk, hrl⟩ := call_reclock hr hy hc
+    have hΦ := (SA.frameIn_of_callAt hr hy hc).1
+    have hframe : ℓ.frame = Node.frame (tr.state y m) := frame_of_projAC hrun hy hc
+    have hcand : ∀ C ∈ ℓ.frame.tree, ∀ s, O C s →
+        C ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc C ℓ.frame.fcRoot := by
+      intro C hC s hO
+      rw [hframe] at hC ⊢
+      exact (hvi m (Nat.lt_succ_self m) C s hO hC).symm
+    rcases hrl with hsame | ⟨C, hC, hCr, hres | ⟨⟨CV, hOm⟩, hl⟩⟩
+    · rcases ih with hg | ⟨k, hkm, ℓk, hck, C, hC, hCr, hR | ⟨hO, hL⟩⟩
+      · exact Or.inl (hsame.trans hg)
+      · exact Or.inr ⟨k, hkm.trans (Nat.lt_succ_self m), ℓk, hck, C, hC, hCr.trans hsame.symm,
+          Or.inl hR⟩
+      · refine Or.inr ⟨k, hkm.trans (Nat.lt_succ_self m), ℓk, hck, C, hC, hCr.trans hsame.symm,
+          Or.inr ⟨hO, fun hcond => ?_⟩⟩
+        have hl := hL fun m' h₁ h₂ => hcond m' h₁ (h₂.trans (Nat.lt_succ_self m))
+        obtain ⟨hs1, hCm⟩ := hcond m hkm (Nat.lt_succ_self m) ℓ hc
+        obtain ⟨CV, hOk⟩ := hO
+        obtain ⟨e, he, hl⟩ := hl
+        exact ⟨e, he, hk _ hl ⟨hs1, le_trans hs1 (show _ ≤ e by omega), C, hCm, rfl,
+          hcand C hCm _ (hOO k (by omega) C _ CV hOk)⟩⟩
+    · exact Or.inr ⟨m, Nat.lt_succ_self m, ℓ, hc, C, hC, hCr.symm, Or.inl hres⟩
+    · rw [SA.viableAncestor_self hΦ hC (hcand C hC _ (hOO m (Nat.lt_succ_self m) C _ CV hOm))]
+        at hl
+      exact Or.inr ⟨m, Nat.lt_succ_self m, ℓ, hc, C, hC, hCr.symm, Or.inr ⟨⟨CV, hOm⟩, fun _ => hl⟩⟩
 
 /-- **The record's label or its fast lock** (workbench#11 §5): read at a time `t` at or after
 every cut before `i` (so `t ≥ 0` unless the record is genesis), a record block `R` of the frame
@@ -1460,7 +1565,82 @@ private theorem record_label_or_lock (hrun : GoldilocksRun proposer dg H tr) (hn
     0 ≤ t ∧ (R ∈ SA.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t ∨
       ∃ j, O R j ∧ (j : Int) <
         (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) := by
-  sorry
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hU := hr.coherent
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hΦ : FrameOK (Node.frame (tr.state y i)) :=
+    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
+  have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX.1⟩
+  have hst := projAC_state hrun.toLocalRun hy i
+  have hts1 : ∀ a : Nat, sp.ts ((a + 1 : Nat) : Int) = sp.ts (a : Int) + 4 * sp.Δ := fun a => by
+    simp only [SAParams.ts]; push_cast; ring
+  have hOb : ∀ k < i, ∀ C s CV, SA.ResultAt tr.projAC y k s C CV ∨
+      SA.OptimisticLockAt tr.projAC y k s C CV → O C s :=
+    fun k hk C s CV h => hI.origin C s (originBefore_iff.2 ⟨y, hy, k, hk, CV, h⟩)
+  rcases record_writer hrun hnc hy i (fun k hk C s CV h => hOb k hk C s CV (Or.inr h))
+      (fun k hk => hI.viable k hk.le) with
+    hg | ⟨k, hki, ℓk, hck, C, hCk, hCr, hres | ⟨hopt, hlock⟩⟩
+  · -- genesis is at or below `Σ.F`
+    exfalso
+    apply hRf
+    obtain ⟨-, -, hgen, hanc⟩ := Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hy i)
+    have hRg := hU.1 (hΦU hR.1) ⟨y, hy, i, hgen⟩ (hR.2.trans (hst ▸ hg))
+    have hRF : R = (Node.frame (tr.state y i)).F := by
+      refine Anc.antisymm hU ?_ ((hΦ.rooted.2 _ hR.1).mono hΦU)
+      rw [hRg]
+      exact (hanc _ hΦ.rooted.1.1).mono fun X hX => ⟨y, hy, i, hX⟩
+    rw [hRF]
+    exact hΦ.F_anc_fcRoot
+  all_goals
+    have hCU : C ∈ tr.HonestBlocks H := (SA.frameIn_of_callAt hr hy hck).2 hCk
+    obtain rfl : R = C := hU.1 (hΦU hR.1) hCU (hR.2.trans (hst ▸ hCr.symm))
+    have hki' : tr.time k ≤ t := hle k hki
+    have ht0 : 0 ≤ t := (hr.time_nonneg k).trans hki'
+    have hσ := (SA.ts_le_iff_le_slot sp ht0 (sp.slot t)).2 le_rfl
+    refine ⟨ht0, ?_⟩
+  · -- a result: its label is below the latest view's slot
+    obtain ⟨s, CV, hRes⟩ := hres
+    refine Or.inr ⟨s, hOb k hki R s CV (Or.inl hRes), ?_⟩
+    obtain ⟨-, ⟨-, -, htk, -⟩, -⟩ := hRes
+    have h1 : sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ ≤ t := by
+      have htk' : tr.time k = sp.ts s + 6 * sp.Δ := htk
+      rw [hts1]; linarith
+    simp only [SA.latestView]
+    split_ifs with h
+    · have := (SA.ts_le_iff_le_slot sp ht0 _).1 (by linarith : sp.ts ((s + 1 : Nat) : Int) ≤ _)
+      push_cast at this ⊢
+      omega
+    · have : sp.ts ((s + 1 : Nat) : Int) < sp.ts (sp.slot t : Int) := by
+        rw [not_le] at h; linarith
+      rw [SA.ts_lt_iff] at this
+      push_cast at this ⊢
+      omega
+  · -- an optimistic selection: an older label, or its fast lock is still stored on `R`
+    obtain ⟨CV, hOk⟩ := hopt
+    by_cases hsl : ((sp.slot (tr.time k) : Nat) : Int) <
+        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
+    · exact Or.inr ⟨_, hOb k hki R _ CV (Or.inr hOk), hsl⟩
+    left
+    have hlσ : (sp.slot t : Int) - 1 ≤
+        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 := by
+      simp only [SA.latestView]; split_ifs <;> omega
+    have hs : sp.slot t ≤ sp.slot (tr.time k) + 1 := by omega
+    have hRk : R ∈ (tr.state y k).fg.tree := by
+      rw [frame_of_projAC hrun hy hck] at hCk; exact hCk.1
+    have hl := hlock fun m' h₁ h₂ ℓ' hc' => by
+      refine ⟨(SA.slot_mono sp (hr.time_nonneg m') (hle m' h₂)).trans hs, ?_⟩
+      rw [frame_of_projAC hrun hy hc']
+      have hg₁ := fg_grows hrun hy h₁.le
+      have hg₂ := fg_grows hrun hy h₂.le
+      exact ⟨hg₁.1 hRk, anc_of_anc_superset hU (fun X hX => ⟨y, hy, m', hX⟩)
+        (by simp [Params.genesisBlock])
+        (Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hy m')).2.2.2
+        (hg₂.2.trans ((hΦ.rooted.2 R hR.1).mono hΦU)) (hg₁.1 hRk)⟩
+    rw [hst] at hl
+    obtain ⟨e, he, hl⟩ := hl
+    refine ⟨hR.1, _, ⟨_, hl, R, hR.1, rfl, show _ ≤ e by omega, rfl⟩, ?_⟩
+    rw [SA.viableAncestor_self hΦ hR.1
+      (hI.viable i le_rfl R _ (hOb k hki R _ CV (Or.inr hOk)) hR.1).symm]
 
 /-- **G1, G2 at a read**: the state of an honest node before cut `i` read at `t`, with every
 earlier cut at or before `t` and a read point (`ReadAt`) when `t ≥ 0`: the anchor at `t` is

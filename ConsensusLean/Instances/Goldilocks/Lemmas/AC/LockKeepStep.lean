@@ -9,7 +9,7 @@ public section
 The "keep" half of the AC lock step (consensus-lean#135, WI-15/16). Take a lock `l` held before
 a call at time `t` with frame `Φ`, on a block `B` of the tree, with these conditions:
 
-* `l` does not expire at `t`: `slot(t) ≤ l.slot + k` (`live_locks`);
+* `l` does not expire at `t`: `slot(t) ≤ l.expiry` (`Lock.LiveAt`, `live_locks`);
 * `B` is its own viable ancestor in `Φ` (`live_locks` moves it to `B`);
 * `unlock` does not move it: `slot(t) − 1 ≤ l.slot`, or `unlockTarget(Φ, V, slot(t) − 1, B) = B`
   for every view `V` (`unlock` moves only locks of a slot below `slot(t) − 1`, to their
@@ -25,21 +25,21 @@ variable {FGP : Type} {sp : SAParams} {Φ : Frm sp.n FGP} {t : Time} {l : Lock}
   {B : Blk sp.n FGP}
 
 /-- `live_locks` keeps a lock that does not expire and whose block is its own viable ancestor. -/
-theorem mem_liveLocks_of_keep {L : Set Lock} (hl : l ∈ L) (hk : sp.slot t ≤ l.slot + sp.k)
+theorem mem_liveLocks_of_keep {L : Set Lock} (hl : l ∈ L) (hk : l.LiveAt sp t)
     (hB : B ∈ Φ.tree) (hBr : B.root = l.block) (hva : Φ.viableAncestor B = B) :
-    l ∈ liveLocks sp L Φ t := by
-  sorry
+    l ∈ liveLocks sp L Φ t :=
+  ⟨l, hl, B, hB, hBr, hk, by rw [hva, hBr]⟩
 
 /-- `add_locks` keeps such a lock. -/
 theorem mem_addLocks_of_keep {L : Set Lock} {s : Nat} {N : Set (Nat × Bool × Nat)} (hl : l ∈ L)
-    (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
+    (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
     (hva : Φ.viableAncestor B = B) : l ∈ addLocks sp L Φ t s N :=
   mem_liveLocks_of_keep (Set.mem_union_left _ hl) hk hB hBr hva
 
 /-- `unlock` against the slot-`s` votes of `V` keeps such a lock when its slot is `s` or later
 or its `unlockTarget` is its block. -/
 theorem mem_unlock_of_keep {L : Set Lock} {s : Int} {V : View sp.n} (hl : l ∈ L)
-    (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
+    (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
     (hva : Φ.viableAncestor B = B) (hu : s ≤ l.slot ∨ unlockTarget sp Φ V s B = B) :
     l ∈ unlock sp L Φ t s V := by
   refine ⟨l, mem_liveLocks_of_keep hl hk hB hBr hva, B, hB, hBr, ?_⟩
@@ -51,7 +51,7 @@ theorem mem_unlock_of_keep {L : Set Lock} {s : Int} {V : View sp.n} (hl : l ∈ 
 
 /-- The optimistic confirmation keeps such a lock. -/
 theorem mem_optimisticConfirmation_of_keep {A : SAState sp.n} (hl : l ∈ A.locks)
-    (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
+    (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
     (hva : Φ.viableAncestor B = B) : l ∈ (optimisticConfirmation sp A Φ t).locks := by
   unfold optimisticConfirmation
   split
@@ -61,9 +61,17 @@ theorem mem_optimisticConfirmation_of_keep {A : SAState sp.n} (hl : l ∈ A.lock
 
 /-- The confirmation update keeps such a lock. -/
 theorem mem_updateConfirmation_of_keep {A : SAState sp.n} {s : Nat} (hl : l ∈ A.locks)
-    (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
+    (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
     (hva : Φ.viableAncestor B = B) : l ∈ (updateConfirmation sp A Φ t s).locks := by
-  sorry
+  unfold updateConfirmation
+  dsimp only
+  split
+  · exact hl
+  · split_ifs
+    · exact hl
+    all_goals
+      rw [updateLatestConfirmed_locks_eq]
+      exact mem_addLocks_of_keep hl hk hB hBr hva
 
 /-- `ac_to_fg` keeps the locks. -/
 theorem acToFG_locks_eq (A : SAState sp.n) : (acToFG sp A Φ t).1.locks = A.locks := by
@@ -85,7 +93,7 @@ opponents (`unlockTarget_eq_self_of_subset`) then discharges the premise. -/
 /-- `try_vote` keeps such a lock when `unlock` does not move it against the merged vote view
 that `try_vote` reads. -/
 theorem mem_tryVote_of_keep_view (self : Fin sp.n) {A : SAState sp.n} (hl : l ∈ A.locks)
-    (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
+    (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
     (hva : Φ.viableAncestor B = B)
     (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨
       unlockTarget sp Φ (mergedVoteView sp A Φ (sp.slot t)) ((sp.slot t : Int) - 1) B = B) :
@@ -104,7 +112,7 @@ theorem mem_tryVote_of_keep_view (self : Fin sp.n) {A : SAState sp.n} (hl : l �
 
 /-- `ac_on_message` keeps such a lock (the view of the state after the admission). -/
 theorem mem_acOnMessage_of_keep_view (self : Fin sp.n) {A : SAState sp.n} (v : Vote sp.n)
-    (hl : l ∈ A.locks) (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree)
+    (hl : l ∈ A.locks) (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree)
     (hBr : B.root = l.block) (hva : Φ.viableAncestor B = B)
     (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨ unlockTarget sp Φ
       (mergedVoteView sp (optimisticConfirmation sp (admitVote sp A t v) Φ t) Φ (sp.slot t))
@@ -117,7 +125,7 @@ theorem mem_acOnMessage_of_keep_view (self : Fin sp.n) {A : SAState sp.n} (v : V
 
 /-- `ac_on_block` keeps such a lock (the view of the state after the block receipt). -/
 theorem mem_acOnBlock_of_keep_view (self : Fin sp.n) {A : SAState sp.n} (C : Blk sp.n FGP)
-    (hl : l ∈ A.locks) (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree)
+    (hl : l ∈ A.locks) (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree)
     (hBr : B.root = l.block) (hva : Φ.viableAncestor B = B)
     (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨ unlockTarget sp Φ
       (mergedVoteView sp (optimisticConfirmation sp (blockReceipt sp A t C) Φ t) Φ (sp.slot t))
@@ -130,7 +138,7 @@ theorem mem_acOnBlock_of_keep_view (self : Fin sp.n) {A : SAState sp.n} (C : Blk
 
 /-- `ac_on_tick` keeps such a lock (the view of the state before the call). -/
 theorem mem_acOnTick_of_keep_view (self : Fin sp.n) {A : SAState sp.n} (hl : l ∈ A.locks)
-    (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
+    (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
     (hva : Φ.viableAncestor B = B)
     (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨
       unlockTarget sp Φ (mergedVoteView sp A Φ (sp.slot t)) ((sp.slot t : Int) - 1) B = B) :
@@ -147,7 +155,7 @@ theorem mem_acOnTick_of_keep_view (self : Fin sp.n) {A : SAState sp.n} (hl : l �
 
 /-- `ac_proposal` keeps such a lock (the slot-`(slot(t) − 1)` pool view). -/
 theorem mem_acProposal_of_keep_view {A : SAState sp.n} (hl : l ∈ A.locks)
-    (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
+    (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
     (hva : Φ.viableAncestor B = B)
     (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨ unlockTarget sp Φ
       (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤))
@@ -205,7 +213,7 @@ end unlockView
 the unlock premise at the view `unlockView A Φ t c` that the call reads. -/
 theorem mem_step_locks_of_keep_view {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     {A : SAState sp.n} (c : (goldilocksSA sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
-    (hl : l ∈ A.locks) (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree)
+    (hl : l ∈ A.locks) (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree)
     (hBr : B.root = l.block) (hva : Φ.viableAncestor B = B)
     (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨
       unlockTarget sp Φ (unlockView A Φ t c) ((sp.slot t : Int) - 1) B = B) :

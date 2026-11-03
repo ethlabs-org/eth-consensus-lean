@@ -31,7 +31,7 @@ unlock premise at the view of the AC call made at the cut
 at cut `i`. -/
 theorem lock_keep_run_view (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) {l : SA.Lock} (hl : l ∈ (tr.state y i).ac.locks)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hk : sp.slot (tr.time i) ≤ l.slot + sp.k)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hk : l.LiveAt sp (tr.time i))
     (hB : B ∈ (Node.frame (tr.state y i)).tree) (hBr : B.root = l.block)
     (hva : (Node.frame (tr.state y i)).viableAncestor B = B)
     (hu : ∀ ℓ, tr.CallAt y i (.ac ℓ) → (sp.slot (tr.time i) : Int) - 1 ≤ l.slot ∨
@@ -70,7 +70,7 @@ at each cut. -/
 theorem lock_keep_interval_view (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
     (hy : y ∈ H) {i k : Nat} (hik : i ≤ k) {l : SA.Lock} (hl : l ∈ (tr.state y i).ac.locks)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBr : B.root = l.block)
-    (hstep : ∀ j, i ≤ j → j < k → sp.slot (tr.time j) ≤ l.slot + sp.k ∧
+    (hstep : ∀ j, i ≤ j → j < k → l.LiveAt sp (tr.time j) ∧
       B ∈ (Node.frame (tr.state y j)).tree ∧
       (Node.frame (tr.state y j)).viableAncestor B = B ∧
       ∀ ℓ, tr.CallAt y j (.ac ℓ) → (sp.slot (tr.time j) : Int) - 1 ≤ l.slot ∨
