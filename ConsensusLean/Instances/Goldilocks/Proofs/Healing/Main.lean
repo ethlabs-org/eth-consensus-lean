@@ -13,9 +13,10 @@ public section
 
 /-! # Goldilocks milestone Healing
 
-`HealingACStatements` (H.1, its corollary, H.2) and `HealingRunStatements` (HR.1–HR.4, H.2 (run),
-H.3, H.4, `healing_run_statements`) from `Lemmas/Healing/`; H.3's `Inv` half after the reset is
-`Lemmas/Healing/ResetInv` (`non_interference`, `T_b = max((8k + 20)Δ, 8Δ)`).
+`HealingACStatements` (H.1, H.2; H.1's corollary is `ac_healing_standalone_corollary`) and
+`HealingRunStatements` (HR.1–HR.4, H.2 (run), H.3, H.4, `healing_run_statements`) from
+`Lemmas/Healing/`; H.3's `Inv` half after the reset is `Lemmas/Healing/ResetInv`
+(`non_interference`, `T_b = max((8k + 20)Δ, 8Δ)`).
 
 `PhaseServiceStatements` (HS.1–HS.4) is proved too (`phase_service_statements`; HS.3 is the
 claims' after-`r` part, `frozen_tree_agreement`). `healing_run_statements_of_nonInterference` is the
@@ -29,10 +30,9 @@ namespace Consensus.Goldilocks.Healing
 
 open SA (SAParams ReplayOrder Payload gbar)
 
-/-- **Healing, the AC statements**: H.1, its corollary and H.2. -/
+/-- **Healing, the AC statements**: H.1 and H.2. -/
 theorem healing_ac_statements : SA.HealingACStatements where
   standalone := SA.ac_healing_standalone
-  corollary := SA.ac_healing_standalone_corollary
   inclusion := SA.ac_inclusion
 
 /-! ## The run bundle -/

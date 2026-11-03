@@ -9,7 +9,7 @@ keeps no state, proposes `fc_root` with a unit payload, vouches for nothing and 
 labelled by kind (CONTRIBUTING "Statements"):
 
 * (a) `rootAC_requirements`: `rootAC` meets requirements 1–5, so the hypothesis
-  `A.Requirements` of `ThreeTips`, `HonestBlockAccepted`, `ACStatesReachable` and `SourcesHeld`
+  `A.Requirements` of `HonestBlockAccepted`, `ACStatesReachable` and `SourcesHeld`
   is satisfiable by an AC that proposes.
 * (a) `init_reachable`, `tick_at_zero`: the initial configuration is reachable and the tick of
   time `0` is a `Node.Step` from it (the hypotheses of `ExecIsCutChain`'s users and of

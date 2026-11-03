@@ -9,8 +9,8 @@ public section
 /-! # Goldilocks milestone FGStore: part 1, one FG store, and part 2, FG traces
 
 `FGStoreLocal` from `Lemmas/FGStore/`: the reachable-state invariant (G0.1, F.2, G0.3, entry
-states) and the frame (C0.2, the frame step, G0.4); part 2 so far, over FG traces (G1.4, the core
-of G1.10); and part 3, the FG service lemmas (G1.6–G1.8, G1.9 (a)). -/
+states) and the frame (the frame step, G0.4; C0.2's `Σ` half follows); part 2, over FG traces
+(G1.4, the core of G1.10); and part 3, the FG service lemmas (G1.6–G1.8, G1.9 (a)). -/
 
 namespace Consensus.Goldilocks.Store
 
@@ -20,7 +20,6 @@ theorem fg_store_local : FGStoreLocal := fun P ACP =>
     acceptedTree := accepted_tree P ACP
     treeGrows := tree_grows P ACP
     cacheInvariants := cache_invariants P ACP
-    finalizedMonotone := finalized_monotone P ACP
     acceptIsFrameStep := accept_is_frame_step P ACP
     frameRealization := frame_realization P ACP
     entryStateOfSource := entry_state_of_source P ACP }

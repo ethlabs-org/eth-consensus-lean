@@ -444,14 +444,6 @@ theorem ac_states_reachable : ACStatesReachable proposer dg self := by
 theorem record_is_client_run : RecordIsClientRun proposer dg self := fun _ h =>
   (nInv_of_reachable proposer dg self h).rcd
 
-/-- **C0.1.** -/
-theorem three_tips : ThreeTips proposer dg self := by
-  intro hq cfg h t ht
-  have hI := nInv_of_reachable proposer dg self h
-  obtain ⟨t₀, ht₀, hR⟩ := hI.ac hq
-  exact tips_nested A hq self _ (Store.accepted_tree P _ _ _ hI.fg).2.1 _ _ t₀ hR t
-    (ht₀.trans ht)
-
 /-- The proposal step signs nothing. -/
 private theorem proposal_no_attest (st : NodeState A) (t : Time) (x : Nat) (C : A.Blk)
     (s : Option (FG.Att P.n)) :

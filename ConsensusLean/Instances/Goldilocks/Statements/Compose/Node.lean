@@ -9,12 +9,14 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Interface
 Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks#21 and
 later), the composition nodes stated at **one node composed with any AC** that meets
 requirements 1–5 (`ACInterface.Requirements`), over the configurations the node reaches
-(`Node.Reachable`, `Spec/Node`): C0.1 (three tips on one chain), C0.2 (finalized monotone,
-also across restarts), C0.3 (honest blocks are accepted), C0.4 (tick order) and C0.5
-(projection onto the components: the AC's states are reachable AC states under the call law,
-the FG's states are reachable FG states, the record is a client run, every handler's cuts obey
-the cut law). The run-level composition statements (C1.1, Service, Healing, Regimes) are over
-`Spec/Run`, in their own modules; nothing here mentions a run, the SA or the engine.
+(`Node.Reachable`, `Spec/Node`): C0.2 (finalized monotone, also across restarts), C0.3
+(honest blocks are accepted), C0.4 (tick order) and C0.5 (projection onto the components: the
+AC's states are reachable AC states under the call law, the FG's states are reachable FG states,
+the record is a client run, every handler's cuts obey the cut law). C0.1 (three tips on one
+chain) at the node is `TipsNested` (`Compose/Interface`) at the AC states of
+`ACStatesReachable`, so it has no statement here. The run-level composition statements (C1.1,
+Service, Healing, Regimes) are over `Spec/Run`, in their own modules; nothing here mentions a
+run, the SA or the engine.
 
 Statements only: no proofs here. -/
 
@@ -33,16 +35,6 @@ def NoCollOn (S : Set A.Blk) : Prop :=
         dg C.parent C.slot C.input C.fgPayload C.acPayload →
       B.parent = C.parent ∧ B.slot = C.slot ∧ B.input = C.input ∧ B.fgPayload = C.fgPayload ∧
         B.acPayload = C.acPayload
-
-/-- **C0.1, three tips on one chain.** At a reachable configuration of an honest node and at
-any time not before its clock, with `Φ = fg_to_ac(Σ)`: `ac_confirmed` and `ac_head` are blocks
-of `Φ.tree` and `Σ.F ⪯ ac_confirmed ⪯ ac_head` inside `Φ.tree` (so inside `Σ.T`). -/
-def ThreeTips : Prop :=
-  A.Requirements → ∀ cfg : Config A, Reachable proposer dg self cfg → ∀ t, cfg.time ≤ t →
-    A.confirmed cfg.st.ac (frame cfg.st) t ∈ (frame cfg.st).tree ∧
-    A.head cfg.st.ac (frame cfg.st) t ∈ (frame cfg.st).tree ∧
-    (frame cfg.st).Anc cfg.st.fg.F (A.confirmed cfg.st.ac (frame cfg.st) t) ∧
-    (frame cfg.st).Anc (A.confirmed cfg.st.ac (frame cfg.st) t) (A.head cfg.st.ac (frame cfg.st) t)
 
 /-- **C0.2, finalized monotone.** Along the configurations an honest node reaches, also
 across restarts, `Σ.F` moves only to a descendant: the later `Σ.F` extends the earlier one
@@ -193,7 +185,6 @@ def SourcesHeld : Prop :=
 
 /-- The Compose/AnyAC node statements, for one node (one AC, digest and validator). -/
 structure NodeStatements : Prop where
-  threeTips : ThreeTips proposer dg self
   finalizedMonotone : FinalizedMonotone proposer dg self
   restartKeepsFG : RestartKeepsFG (A := A) self
   honestBlockAccepted : HonestBlockAccepted proposer dg self

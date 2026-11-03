@@ -18,8 +18,7 @@ theorem compose_interface_statements : ComposeInterfaceStatements := fun _ _ A =
 
 /-- **Compose/AnyAC, the node.** -/
 theorem compose_node_statements : ComposeNodeStatements := fun _ _ proposer dg self =>
-  { threeTips := three_tips proposer dg self
-    finalizedMonotone := finalized_monotone proposer dg self
+  { finalizedMonotone := finalized_monotone proposer dg self
     restartKeepsFG := restart_keeps_fg self
     honestBlockAccepted := honest_block_accepted proposer dg self
     tickOrder := tick_order proposer dg self

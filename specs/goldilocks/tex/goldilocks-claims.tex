@@ -2564,7 +2564,8 @@ A0.7 (pool, joining) & \texttt{SA.RestartState}, \texttt{SA.JoinedKeepsVotes}
   & proved (\texttt{acBase})\\
 A0.8 & \texttt{SA.OneVotePerSlot} & proved (\texttt{acBase})\\
 A0.9 & \texttt{SA.ProposalPayloadValid} & proved (\texttt{acBase})\\
-C0.1 & \texttt{Compose.TipsNested}, \texttt{Compose.ThreeTips} & proved
+C0.1 & \texttt{Compose.TipsNested} at the states of
+  \texttt{Compose.ACStatesReachable} & proved
   (\texttt{compose\_interface\_statements},
   \texttt{compose\_node\_statements})\\
 C0.2 & \texttt{Compose.FinalizedMonotone}, \texttt{Compose.RestartKeepsFG} &
@@ -2644,7 +2645,8 @@ HS.5 & $\mathsf{Producer}(A)$ inside \texttt{Healing.ResetExistence} &
   statement\\
 H.1, corollary & \texttt{SA.ACHealingStandalone},
   \texttt{SA.ACHealingStandaloneCorollary} & proved
-  (\texttt{healing\_ac\_statements}); read points, note~5\\
+  (\texttt{healing\_ac\_statements};
+  the corollary \texttt{ac\_healing\_standalone\_corollary}); read points, note~5\\
 H.2 & \texttt{SA.ACInclusion} & proved (\texttt{healing\_ac\_statements}),
   conditional on $\mathsf{Inv}$ (and $\mathsf{Geo}$ for (i)) as stated; read
   points, note~5\\

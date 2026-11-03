@@ -65,8 +65,8 @@ def CacheInvariants : Prop :=
 
 /-- **C0.2, the `Σ` half: the finalized tip moves only to descendants.** From a reachable FG
 state, accepting a block moves `Σ.F` to a descendant (in the new tree), and processing an
-attestation leaves it unchanged. (A corollary of `AcceptIsFrameStep` and `TreeGrows`, kept as
-the claims node C0.2.) -/
+attestation leaves it unchanged. It follows from `AcceptIsFrameStep` and `TreeGrows`, so it is
+not a field of `FGStoreLocalAt`; it is stated for the claims node C0.2 and its proof is used. -/
 def FinalizedMonotone : Prop :=
   ∀ (acp₀ : ACP) (st : Store P ACP), st.Reachable acp₀ →
     (∀ B st', st.onBlock B = some st' → st'.Anc st.F st'.F) ∧
@@ -106,7 +106,6 @@ structure FGStoreLocalAt : Prop where
   acceptedTree : AcceptedTree P ACP
   treeGrows : TreeGrows P ACP
   cacheInvariants : CacheInvariants P ACP
-  finalizedMonotone : FinalizedMonotone P ACP
   acceptIsFrameStep : AcceptIsFrameStep P ACP
   frameRealization : FrameRealization P ACP
   entryStateOfSource : EntryStateOfSource P ACP
