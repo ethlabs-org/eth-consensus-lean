@@ -28,7 +28,8 @@ analysis at the cover gate `j₀` (§7.4) takes the lock-safety input (N) as a h
 namespace Consensus.Goldilocks.SA
 
 /-- **Slow formation** (§6.5): rows above `C`, a result above `C`, and no veto store a lock of slot
-`s` on the viable ancestor of a block `X` with `C ⪯ X ⪯ D`. -/
+`s` and expiry `s + k` on the viable ancestor of a block `X` with `C ⪯ X ⪯ D`. The path holds a
+slow-test block (`C`), so under B′ even the fast lock on `D` gets the slow expiry. -/
 theorem updateConfirmation_slow_lock {FGP : Type} {sp : SAParams} {A : SAState sp.n}
     {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {s : Nat} {C D : Blk sp.n FGP}
     (hD : getConfirmation sp A Φ s = some D) (hnv : ¬ conflictsWithLock sp A.locks Φ t D)
@@ -37,9 +38,40 @@ theorem updateConfirmation_slow_lock {FGP : Type} {sp : SAParams} {A : SAState s
       ∃ S ∈ Φ.tree, A.saved j = some S.root ∧ Φ.Anc C S)
     (hlive : sp.slot t ≤ s + sp.k) :
     ∃ X f, X ∈ Φ.tree ∧ Φ.Anc C X ∧ Φ.Anc X D ∧
-      ∃ e, (⟨(Φ.viableAncestor X).root, s, f, e⟩ : Lock)
-          ∈ (updateConfirmation sp A Φ t s).locks := by
-  sorry
+      (⟨(Φ.viableAncestor X).root, s, f, s + sp.k⟩ : Lock) ∈
+        (updateConfirmation sp A Φ t s).locks := by
+  classical
+  set S : Set (Blk sp.n FGP) := {B | B ∈ confirmationPath sp Φ D ∧ (FastTest sp A Φ s B ∨
+    ∀ j : Int, (s : Int) - sp.k < j → j < s → ∃ S ∈ Φ.tree,
+      (Function.update A.saved s ((some D).map Block.root)) j = some S.root ∧ Φ.Anc B S)}
+  have hSt : S ⊆ Φ.tree := fun B hB => hB.1.1
+  have hslow : ∀ j : Int, (s : Int) - sp.k < j → j < s → ∃ S ∈ Φ.tree,
+      (Function.update A.saved s ((some D).map Block.root)) j = some S.root ∧ Φ.Anc C S := by
+    intro j hj₁ hj₂
+    obtain ⟨S', hS', hsv, hCS'⟩ := hrows j hj₁ hj₂
+    exact ⟨S', hS', by rw [Function.update_of_ne (by omega)]; exact hsv, hCS'⟩
+  have hCS : C ∈ S := ⟨⟨hCt, hCg, hCD⟩, Or.inr hslow⟩
+  have hch : ∀ B ∈ S, ∀ B' ∈ S, Compatible Φ.tree B B' := fun B hB B' hB' =>
+    anc_total hΦ.coherent hB.1.2.2 hB'.1.2.2
+  obtain ⟨X, hX⟩ := exists_deepest hΦ hSt ⟨C, hCS⟩
+  have hXS := (deepest_mem hX).1
+  -- B′: the path has a slow-test block (`C`), so the fast lock gets the slow expiry `s + k`
+  have hpos : ∃ B, B ∈ confirmationPath sp Φ D ∧ ∀ j : Int, (s : Int) - sp.k < j → j < s →
+      ∃ S ∈ Φ.tree, (Function.update A.saved s ((some D).map Block.root)) j = some S.root ∧
+        Φ.Anc B S := ⟨C, hCS.1, hslow⟩
+  have hXC := anc_deepest hΦ hSt hch hX C hCS
+  by_cases hf : deepest Φ S = fastSelect sp A Φ s D
+  · refine ⟨X, true, hSt hXS, hXC, hXS.1.2.2, ?_⟩
+    simp only [updateConfirmation, hD]
+    rw [ite_eq_right hnv]
+    refine ⟨⟨X.root, s, true, s + sp.k⟩,
+      Or.inr ⟨(X.root, true, s + sp.k), Or.inl ⟨X, hf ▸ hX, ?_⟩, rfl⟩, X, hSt hXS, rfl, hlive, rfl⟩
+    simp only [hpos, ↓reduceIte]
+  · refine ⟨X, false, hSt hXS, hXC, hXS.1.2.2, ?_⟩
+    simp only [updateConfirmation, hD]
+    rw [ite_eq_right hnv]
+    exact ⟨⟨X.root, s, false, s + sp.k⟩, Or.inr ⟨_, Or.inr ⟨hf, X, hX, rfl⟩, rfl⟩, X, hSt hXS,
+      rfl, hlive, rfl⟩
 
 /-- **Effective slow formation**: with `C` a candidate of `viable_ancestor`, the stored block
 extends `C` (`anc_viableAncestor_of_candidate`). -/
@@ -51,11 +83,32 @@ theorem updateConfirmation_slow_lock_effective {FGP : Type} {sp : SAParams} {A :
       ∃ S ∈ Φ.tree, A.saved j = some S.root ∧ Φ.Anc C S)
     (hlive : sp.slot t ≤ s + sp.k) (hcand : Φ.AncestorCandidate C) :
     ∃ L f, L ∈ Φ.tree ∧ Φ.Anc C L ∧
-      ∃ e, (⟨L.root, s, f, e⟩ : Lock) ∈ (updateConfirmation sp A Φ t s).locks := by
+      (⟨L.root, s, f, s + sp.k⟩ : Lock) ∈ (updateConfirmation sp A Φ t s).locks := by
   obtain ⟨X, f, hX, hCX, -, hl⟩ :=
     updateConfirmation_slow_lock hΦ hD hnv hCt hCg hCD hrows hlive
   exact ⟨Φ.viableAncestor X, f, (viableAncestor_anc hΦ hX).1,
     anc_viableAncestor_of_candidate hΦ hcand.symm hX hCX, hl⟩
+
+/-- **OPEN: the veto keep (graded fast locks, the pending veto fix; workbench
+`graded_fast_locks_v2.md` §10).** A slow-qualified update (rows above `C ⪯ D`) whose result `D` is
+vetoed by a stored lock `l` of slot `s + 1` keeps a lock of slot `s + 1` with expiry at least
+`s + k` on a block above `l`'s viable block. Under the current `updateConfirmation` this is not
+provable: the vetoing lock is the optimistic lock of slot `s + 1`, and a graded fast lock only
+guarantees expiry `s + 3`. Fix 1 (raise each lock that conflicts with the vetoed result to
+`max(expiry, min(slot + k, s + k))`) supplies it. The only caller is `armed_lock_cover`'s veto
+branch (the outage cover base). -/
+theorem updateConfirmation_veto_keep {FGP : Type} {sp : SAParams} {A : SAState sp.n}
+    {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {s : Nat} {C D : Blk sp.n FGP}
+    (hD : getConfirmation sp A Φ s = some D)
+    (hCt : C ∈ Φ.tree) (hCg : C.root ≠ sp.genesisRoot) (hCD : Φ.Anc C D)
+    (hrows : ∀ j : Int, (s : Int) - sp.k < j → j < s →
+      ∃ S ∈ Φ.tree, A.saved j = some S.root ∧ Φ.Anc C S)
+    {l : Lock} (hl : l ∈ A.locks) (hls : l.slot = s + 1) {B₀ : Blk sp.n FGP}
+    (hB₀ : B₀ ∈ Φ.tree) (hB₀r : B₀.root = l.block)
+    (hconf : ¬ Compatible Φ.tree D (Φ.viableAncestor B₀)) :
+    ∃ l' ∈ (updateConfirmation sp A Φ t s).locks, l'.slot = s + 1 ∧ s + sp.k ≤ l'.expiry ∧
+      ∃ B ∈ Φ.tree, B.root = l'.block ∧ Φ.Anc (Φ.viableAncestor B₀) B := by
+  sorry
 
 end Consensus.Goldilocks.SA
 
@@ -459,8 +512,9 @@ supports: no live lock vetoes `D`, or a vetoing live block is that of a stored l
 `s + 1` and extends `C`. A vetoing lock of a label below `s` sits below an origin within `b`
 (case (a)); one of label `s` below an own optimistic selection (case (b), no restart since
 `t_s`); one of label `s + 1` below an own optimistic selection of slot `s + 1`, which an
-optimistic voter outside `Opp` and so in `Hold` makes compatible with `C` through (N) (case (c)).
-At the call site `Hold` is the holders and `Opp` the faulty validators and the late wakers. -/
+optimistic voter outside `Opp` and so in `Hold` makes compatible with `C` through (N) (case (c)),
+and conflicts with `D`. At the call site `Hold` is the holders and `Opp` the faulty validators
+and the late wakers. -/
 theorem cover_gate_no_veto_or_next (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     {C D : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {c s : Nat}
@@ -480,7 +534,7 @@ theorem cover_gate_no_veto_or_next (hrun : GoldilocksRun proposer dg H tr)
       ∃ V ∈ SA.liveLockBlocks sp (tr.state y c).ac.locks ℓ.frame (tr.time c),
         (∃ l ∈ (tr.state y c).ac.locks, l.slot = s + 1 ∧
           ∃ B₀ ∈ ℓ.frame.tree, B₀.root = l.block ∧ V = ℓ.frame.viableAncestor B₀) ∧
-        ℓ.frame.Anc C V := by
+        ℓ.frame.Anc C V ∧ ¬ Compatible ℓ.frame.tree D V := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   have hU := hr.coherent
@@ -595,7 +649,7 @@ theorem cover_gate_no_veto_or_next (hrun : GoldilocksRun proposer dg H tr)
     · exact (hO O hLO (Or.inl (hOC.trans hCD'))).elim
     rcases SA.anc_total hU hCO (hVB'.trans hLO) with hCV' | hVC
     · exact ⟨_, hV, ⟨l, hl, hls', B₀, hB₀, hB₀r, rfl⟩,
-        SA.anc_tree_of_anc_U hU hΦ hHB hCt hCV' hVt⟩
+        SA.anc_tree_of_anc_U hU hΦ hHB hCt hCV' hVt, hconf⟩
     · exact (hnoU (Or.inr (hVC.trans hCD'))).elim
 
 /-! ### The armed updates of a no-sleep holder -/
@@ -726,7 +780,7 @@ theorem armed_lock_formed (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
     ∃ c ℓ, SA.UpdateAt tr.projAC w c s ℓ ∧
       (Anc (tr.HonestBlocks H) C (tr.state w c).fg.F ∨
         ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc C L ∧
-          ∃ e, (⟨L.root, s, f, e⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) := by
+          (⟨L.root, s, f, s + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) := by
   have hΔ := sp.toParams.hΔ
   have hk2 := sp.two_le_k
   obtain ⟨c, ℓ, hu, -, -, hP⟩ := armed_first_update hrun hnc hinv hsync hfb hC hw haw hks hσs
@@ -751,8 +805,9 @@ theorem armed_lock_formed (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
 /-- **O1 at the cover gate** (§7): the first update of slot `s` of a no-sleep holder, whose
 slot's votes are delivered by `t_s + 2Δ ≤ b` but which may itself be after `b`. Given (F) `Σ.F`
 compatible with `C`, (VA) `C` a candidate when `Σ.F ⪯ C`, and (N) for the `Hold` votes of slot
-`s + 1` before it, it has root cover, stores a lock of slot `s` above `C`, or holds a stored lock
-of slot `s + 1` whose live block extends `C`. -/
+`s + 1` before it, it has root cover, stores a lock of slot `s` and expiry `s + k` above `C`, or
+(the veto branch) keeps after the update a lock of slot `s + 1` and expiry at least `s + k` above
+`C`. The veto branch goes through the open `SA.updateConfirmation_veto_keep`. -/
 theorem armed_lock_cover (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
@@ -773,10 +828,9 @@ theorem armed_lock_cover (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
           SA.VoteExtends (tr.HonestBlocks H) e.msg C) →
         Anc (tr.HonestBlocks H) C (tr.state w c).fg.F ∨
         (∃ L f, ℓ.frame.Anc C L ∧
-          ∃ e, (⟨L.root, s, f, e⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) ∨
-        (∃ V ∈ SA.liveLockBlocks sp (tr.state w c).ac.locks ℓ.frame (tr.time c),
-          ℓ.frame.Anc C V ∧ ∃ l ∈ (tr.state w c).ac.locks, l.slot = s + 1 ∧
-            ∃ B₀ ∈ ℓ.frame.tree, B₀.root = l.block ∧ V = ℓ.frame.viableAncestor B₀)) := by
+          (⟨L.root, s, f, s + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) ∨
+        (∃ l ∈ (tr.state w (c + 1)).ac.locks, l.slot = s + 1 ∧ s + sp.k ≤ l.expiry ∧
+          ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧ ℓ.frame.Anc C B)) := by
   have hΔ := sp.toParams.hΔ
   obtain ⟨c, ℓ, hu, hfirst, hnr, hP⟩ := armed_first_update hrun hnc hinv hsync hfb hC hw haw hks
     hσs ha hsz hsb
@@ -786,20 +840,24 @@ theorem armed_lock_cover (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
   swap
   · exact Or.inl hCF
   obtain ⟨hCt, D, hD, hCD, hsupp, hrows⟩ := hP hFC
+  have hfr := update_frame hrun hw hu
+  have hΦ : FrameOK ℓ.frame := hfr ▸ frameOK_state hrun.toLocalRun hw c
   have hτs := (SA.ts_lt_iff sp).2 (show (s : Int) - sp.k + 1 < s by
     have := sp.two_le_k; omega)
   rcases cover_gate_no_veto_or_next hrun hnc hinv hw hu hfirst hD hCD hsupp hsb
       (fun r hr hrr => (hnr r hr hrr).trans_lt hτs) Hold Opp hF hopp
       (fun x hx j e hv hs hj => hcast x hx j e hv hs (htc ▸ hrun.time_mono hj.le)) hN with
-    hnv | ⟨V, hV, hl, hCV⟩
-  · have hfr := update_frame hrun hw hu
-    have hΦ : FrameOK ℓ.frame := hfr ▸ frameOK_state hrun.toLocalRun hw c
-    have hlive : sp.slot (tr.time c) ≤ s + sp.k := by
+    hnv | ⟨V, -, ⟨l, hl, hls, B₀, hB₀, hB₀r, rfl⟩, hCV, hconf⟩
+  · have hlive : sp.slot (tr.time c) ≤ s + sp.k := by
       rw [htc, slot_update_time]; have := sp.two_le_k; omega
     obtain ⟨L, f, -, hCL, hl⟩ := SA.updateConfirmation_slow_lock_effective hΦ hD hnv hCt hCg
       hCD hrows hlive (hVA hFC)
     exact Or.inr (Or.inl ⟨L, f, hCL, (locks_after_update hrun hnc hw hu).symm ▸ hl⟩)
-  · exact Or.inr (Or.inr ⟨V, hV, hCV, hl⟩)
+  · -- the veto branch: the open veto keep
+    obtain ⟨l', hl', hls', hle', B, hB, hBr, hVB⟩ := SA.updateConfirmation_veto_keep
+      (t := tr.time c) hΦ hD hCt hCg hCD hrows hl hls hB₀ hB₀r hconf
+    exact Or.inr (Or.inr ⟨l', (locks_after_update hrun hnc hw hu).symm ▸ hl', hls', hle', B, hB,
+      hBr, hCV.trans hVB⟩)
 
 end Consensus.Goldilocks.Compose
 

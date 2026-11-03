@@ -123,7 +123,8 @@ structure OutageArming (Q : OutageQuery S A V) (v : V) where
     ∃ c ℓ, SA.UpdateAt Q.trace.projAC w c (Compose.coverLabel Q.params Q.start - 1) ℓ ∧
       (Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) origin (Q.trace.state w c).fg.F ∨
        ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc origin L ∧
-         ∃ e, (⟨L.root, Compose.coverLabel Q.params Q.start - 1, f, e⟩ : SA.Lock) ∈
+         (⟨L.root, Compose.coverLabel Q.params Q.start - 1, f,
+           Compose.coverLabel Q.params Q.start - 1 + Q.params.k⟩ : SA.Lock) ∈
            (Q.trace.state w (c + 1)).ac.locks)
   /-- O1 at `j₀`, given (F), (VA) outside root cover and (N) at the first `j₀` update (§7). -/
   lockCover : ∀ w ∈ Q.holders, origin.root ≠ Q.params.genesisRoot →
@@ -138,13 +139,13 @@ structure OutageArming (Q : OutageQuery S A V) (v : V) where
           SA.VoteExtends (Q.trace.HonestBlocks (honestKeys S Q.run.2)) e.msg origin) →
        Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) origin (Q.trace.state w c).fg.F ∨
        (∃ L f, ℓ.frame.Anc origin L ∧
-          ∃ e, (⟨L.root, Compose.coverLabel Q.params Q.start, f, e⟩ : SA.Lock) ∈
+          (⟨L.root, Compose.coverLabel Q.params Q.start, f,
+            Compose.coverLabel Q.params Q.start + Q.params.k⟩ : SA.Lock) ∈
             (Q.trace.state w (c + 1)).ac.locks) ∨
-       (∃ V ∈ SA.liveLockBlocks Q.params (Q.trace.state w c).ac.locks ℓ.frame
-            (Q.trace.time c), ℓ.frame.Anc origin V ∧
-          ∃ l ∈ (Q.trace.state w c).ac.locks,
-            l.slot = Compose.coverLabel Q.params Q.start + 1 ∧
-            ∃ B₀ ∈ ℓ.frame.tree, B₀.root = l.block ∧ V = ℓ.frame.viableAncestor B₀))
+       (∃ l ∈ (Q.trace.state w (c + 1)).ac.locks,
+          l.slot = Compose.coverLabel Q.params Q.start + 1 ∧
+          Compose.coverLabel Q.params Q.start + Q.params.k ≤ l.expiry ∧
+          ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧ ℓ.frame.Anc origin B))
 
 /-- **Arming** (§§1–7): every ready source at `T` within the horizon is armed. -/
 theorem outage_arming (Q : OutageQuery S A V)

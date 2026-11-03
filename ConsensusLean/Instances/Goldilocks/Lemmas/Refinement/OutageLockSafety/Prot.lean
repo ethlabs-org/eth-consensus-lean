@@ -14,8 +14,9 @@ public section
 * `unlockKeeps_of_voteCompat` (§7.1(3)): `unlock` at an honest AC call keeps a frame block `B`
   when every honest vote of the view's slot by a validator outside `W` has a head compatible with
   `B`, and `2·|Hᶜ ∪ W| < n`. It covers every call, so both unlock views.
-* `OutageVoteInv.prot_step` (§7.1): the protection `Prot x k j` (`j ≥ j₀ − 1`) carries to `k + 1`
-  through the lifetime, with (VA) at `k` and the caches at `k + 1`.
+* `OutageVoteInv.prot_step` (§7.1): the protection `Prot x k j m` (`j ≥ j₀ − 1`) carries to
+  `k + 1` through the lock's life (`slot(t_k) ≤ m ≤ expiry`), with (VA) at `k` and the caches at
+  `k + 1`.
 * `OutageVoteInv.vote_extends_of_prot` (§7.2): an honest cast under the protection extends `P`. -/
 
 namespace Consensus.Goldilocks.Compose
@@ -105,14 +106,14 @@ theorem unlockKeeps {k : Nat} (hvi : OutageVoteInv D k) {y : Fin sp.n} (hy : y �
   unlockKeeps_of_voteCompat D.hrun D.hnc D.two_mul_lt hy hP
     fun x hx hxW k' hk' e hv hes => hvi.voteCompat_of_not_lateWaker hx hxW hk' hv (by omega)
 
-/-- **One step of the protection** (§7.1): `Prot x k j` with `j₀ − 1 ≤ j`, within the lifetime
-(`slot(t_k) ≤ j + k`), (VA) at `k` and the caches at `k + 1` give `Prot x (k + 1) j`. -/
-theorem prot_step {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
-    (hj : D.j₀ ≤ j + 1) (hk : sp.slot (tr.time k) ≤ j + sp.k)
+/-- **One step of the protection** (§7.1): `Prot x k j m` with `j₀ − 1 ≤ j`, within the lock's
+life (`slot(t_k) ≤ m`), (VA) at `k` and the caches at `k + 1` give `Prot x (k + 1) j m`. -/
+theorem prot_step {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} (hx : x ∈ H) {j m : Nat}
+    (hj : D.j₀ ≤ j + 1) (hk : sp.slot (tr.time k) ≤ m)
     (hva : D.P ∈ (Node.frame (tr.state x k)).tree →
       (Node.frame (tr.state x k)).AncestorCandidate D.P)
     (hF : Compatible (tr.HonestBlocks H) (tr.state x (k + 1)).fg.F D.P)
-    (hp : Prot D x k j) : Prot D x (k + 1) j := by
+    (hp : Prot D x k j m) : Prot D x (k + 1) j m := by
   have hU := D.coherent
   have hFm := Healing.run_F_mono D.hrun.toLocalRun hx (Nat.le_succ k)
   rcases prot_iff.1 hp with hfl | hroot
@@ -121,26 +122,27 @@ theorem prot_step {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} (hx : x ∈
   by_cases hroot' : Anc (tr.HonestBlocks H) D.P (tr.state x (k + 1)).fg.F
   · exact prot_iff.2 (Or.inr hroot')
   have hFP : Anc (tr.HonestBlocks H) (tr.state x (k + 1)).fg.F D.P := hF.resolve_right hroot'
-  obtain ⟨l, hl, hlj, B, hB, hBr, hPB⟩ := hfl
+  obtain ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩ := hfl
   have hP : D.P ∈ (tr.state x k).fg.toFrame.tree := SA.mem_of_anc hPB hB
   have hP' : D.P ∈ (tr.state x (k + 1)).fg.toFrame.tree := by
     have hPt := tree_mono D.hrun.toLocalRun hx (Nat.le_succ k) hP.1
     exact frame_mem_of_tree D.hrun hx le_rfl hPt (honest_held_anc D.hrun D.hnc hx hFP hPt)
   have hva0 : (tr.state x k).fg.toFrame.viableAncestor D.P = D.P :=
     SA.viableAncestor_self (frameOK_state D.hrun.toLocalRun hx k) hP (hva hP).symm
-  refine prot_iff.2 (Or.inl (floor_run_view D.hrun hx k ⟨l, hl, hlj, B, hB, hBr, hPB⟩ hk hP hP'
+  refine prot_iff.2 (Or.inl (floor_run_view D.hrun hx k ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩ hk hP hP'
     hva0 fun ℓ hc => ?_))
   by_cases hs : (sp.slot (tr.time k) : Int) - 1 ≤ j
   · exact Or.inl hs
   · exact Or.inr (hvi.unlockKeeps hx hP (by omega) ℓ hc)
 
 /-- **An honest cast under the protection extends `P`** (§7.2): at an honest cast at cut `k`,
-within the lifetime of `Prot x k j` (`j₀ − 1 ≤ j`), with (VA) at `k`, the vote extends `P`. -/
+within the life of `Prot x k j m` (`j₀ − 1 ≤ j`, `slot(t_k) ≤ m`), with (VA) at `k`, the vote
+extends `P`. -/
 theorem vote_extends_of_prot {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} (hx : x ∈ H)
-    {j : Nat} (hj : D.j₀ ≤ j + 1) (hk : sp.slot (tr.time k) ≤ j + sp.k)
+    {j m : Nat} (hj : D.j₀ ≤ j + 1) (hk : sp.slot (tr.time k) ≤ m)
     (hva : D.P ∈ (Node.frame (tr.state x k)).tree →
       (Node.frame (tr.state x k)).AncestorCandidate D.P)
-    (hp : Prot D x k j) {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC x k e) :
+    (hp : Prot D x k j m) {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC x k e) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg D.P := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer D.hrun D.hnc).localRun
   obtain ⟨ℓ, hc, he⟩ := hv
@@ -153,7 +155,7 @@ theorem vote_extends_of_prot {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} 
     have hFHd : ℓ.frame.Anc ℓ.frame.F Hd := hΦ.rooted.2 Hd hHd
     rw [hfr] at hFHd
     exact ⟨Hd, hΦU hHd, hHdr, hroot.trans (hFHd.mono fun X hX => ⟨x, hx, k, hX.1⟩)⟩
-  obtain ⟨l, hl, hlj, B, hB, hBr, hPB⟩ := hfl
+  obtain ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩ := hfl
   have hP : D.P ∈ (tr.state x k).fg.toFrame.tree := SA.mem_of_anc hPB hB
   have hva0 : (tr.state x k).fg.toFrame.viableAncestor D.P = D.P :=
     SA.viableAncestor_self (frameOK_state D.hrun.toLocalRun hx k) hP (hva hP).symm
@@ -169,7 +171,7 @@ theorem vote_extends_of_prot {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} 
           (projAC_callAt.1 hc)
         rw [projAC_state D.hrun.toLocalRun hx k, hfr]
         exact this)
-    ⟨l, hl', hlj, B, hB, hBr, hPB⟩
+    ⟨l, hl', hlj, hle, B, hB, hBr, hPB⟩
   obtain ⟨Hd, hHd, hHdr, hPHd⟩ := SA.castAt_head_anc hr hx hcast (Or.inl hC)
     (SA.castAt_compatible_of_live hr hx hcast (Or.inl hC)) hPC
   exact ⟨Hd, hΦU hHd, hHdr, hPHd.mono hΦU⟩
