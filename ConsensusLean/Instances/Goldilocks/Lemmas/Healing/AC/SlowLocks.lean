@@ -24,21 +24,6 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
   {proposer : Nat → Fin sp.n}
 
-/-- A deepest block of a set is the one `deepest` returns. -/
-private theorem deepest_eq_of_isDeepest {Φ : Frm sp.n FGP} {S : Set (Blk sp.n FGP)}
-    {D : Blk sp.n FGP} (h : IsDeepest Φ S D) : deepest Φ S = some D := by
-  have hex : ∃ B, IsDeepest Φ S B := ⟨D, h⟩
-  cases hd : deepest Φ S with
-  | none =>
-    unfold deepest at hd
-    simp only [hex, ↓reduceDIte, reduceCtorEq] at hd
-  | some D' =>
-    have h' := deepest_mem hd
-    by_contra hne
-    have hne' : D' ≠ D := fun h => hne (congrArg some h)
-    rcases h.2 D' h'.1 hne' with h₁ | ⟨h₁, h₂⟩ <;>
-      rcases h'.2 D h.1 (Ne.symm hne') with h₃ | ⟨h₃, h₄⟩ <;> omega
-
 /-- Compatibility of `L ⪯ O` with `D ⪯ R` when `O` and `R` are compatible. -/
 private theorem compat_of_below (hU : Coherent U) {L O D R : Blk sp.n FGP} (hLO : Anc U L O)
     (hDR : Anc U D R) (h : Compatible U O R) : Compatible U L D := by
@@ -52,7 +37,21 @@ theorem slow_window_results (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x
     (hx : x ∈ H) {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D) :
     ∀ j : Nat, (s : Int) - sp.k < j → j ≤ s →
       ∃ k R CV, ResultAt tr x k j R CV ∧ Anc U D R := by
-  sorry
+  have hU := hr.coherent
+  obtain ⟨ℓX, C, hupd, hconf, hdeep⟩ := hsl
+  obtain ⟨-, hΦU⟩ := frameIn_of_callAt hr hx hupd.1
+  obtain ⟨⟨-, -, hDC⟩, -, hslow⟩ := (deepest_mem hdeep).1
+  intro j hj hjs
+  rcases hjs.lt_or_eq with hjs | rfl
+  swap
+  · exact ⟨i₀, C, _, ⟨ℓX, hupd, hconf, rfl⟩, Anc.mono hΦU hDC⟩
+  obtain ⟨S, hS, hSr, hDS⟩ := hslow j hj (by exact_mod_cast hjs)
+  obtain ⟨k, -, R, CV, hR, hRr⟩ := saved_result hr hx i₀ j hSr
+  have hRU : R ∈ U := by
+    obtain ⟨ℓ', hu', hR', -⟩ := hR
+    exact (frameIn_of_callAt hr hx hu'.1).2 (deepest_mem hR').1.1
+  obtain rfl : R = S := hU.1 hRU (hΦU hS) hRr
+  exact ⟨k, R, CV, hR, Anc.mono hΦU hDS⟩
 
 /-- Every stored lock of an honest node sits below an origin of its slot, written at an earlier
 cut: a result or an optimistic confirmation of the node. -/
@@ -60,7 +59,21 @@ theorem lock_below_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
     (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ ∃ O, Anc U L O ∧
       ∃ k < i, ∃ CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV := by
-  sorry
+  intro l hl
+  cases hf : l.fast
+  · obtain ⟨j, hj, B, hsl, L, hL, hLr, hLB⟩ := slow_lock_provenance hr hy i l hl hf
+    obtain ⟨ℓX, C, hupd, hconf, hdeep⟩ := hsl
+    have hΦU := (frameIn_of_callAt hr hy hupd.1).2
+    obtain ⟨⟨-, -, hBC⟩, -⟩ := (deepest_mem hdeep).1
+    exact ⟨L, hL, hLr, C, hLB.trans (Anc.mono hΦU hBC), j, hj, _,
+      Or.inl ⟨ℓX, hupd, hconf, rfl⟩⟩
+  · obtain ⟨j, hj, B, CV, hfl, L, hL, hLr, hLB⟩ := fast_lock_provenance hr hy i l hl hf
+    rcases hfl with ⟨ℓX, C, hupd, hconf, hfs, -⟩ | hopt
+    · have hΦU := (frameIn_of_callAt hr hy hupd.1).2
+      obtain ⟨⟨-, -, hBC⟩, -⟩ := (deepest_mem hfs).1
+      exact ⟨L, hL, hLr, C, hLB.trans (Anc.mono hΦU hBC), j, hj, _,
+        Or.inl ⟨ℓX, hupd, hconf, rfl⟩⟩
+    · exact ⟨L, hL, hLr, B, hLB, j, hj, CV, Or.inr hopt⟩
 
 /-- **The stored locks after a slow origin** (T1 §4): for an honest slow lock of slot `s` on `D`
 whose window is `≥ r`, at any cut of an honest node in a slot after `s`, every stored lock of slot
@@ -96,7 +109,25 @@ theorem slow_stored_locks_before {b : Time} (hS : HealthyBaseUpTo tr H U propose
     (hi : s + 1 ≤ sp.slot (tr.time i)) (hib : tr.time i ≤ b) :
     ∀ l ∈ (tr.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
       ∀ Y ∈ U, Y.root = l.block → Compatible U Y D := by
-  sorry
+  have hr := hS.run.localRun
+  intro l hl hlive hle Y hY hYr
+  obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := lock_below_origin hr hy i l hl
+  obtain rfl : Y = L := hr.coherent.1 hY hL (hYr.trans hLr.symm)
+  obtain ⟨kx, R, CVx, hR, hDR⟩ := slow_window_results hr hx hsl (U := U) l.slot (by omega) hle
+  have hjr : gbar g ≤ sp.ts l.slot := hs.trans ((ts_le_iff sp).2 (by omega))
+  have hRb : tr.time kx ≤ b := by
+    obtain ⟨ell, hu, -, -⟩ := hR
+    obtain ⟨ell₀, _, hu₀, -, -⟩ := hsl
+    have hts : sp.ts l.slot ≤ sp.ts s := (ts_le_iff sp).2 (by exact_mod_cast hle)
+    linarith [hu.2.2.1, hu₀.2.2.1]
+  have hkb : tr.time k ≤ b := (hr.time_mono hki.le).trans hib
+  have hcomp : Compatible U O R := by
+    rcases hO with hO | hO
+    · exact result_result_compatible_window_before hS.run hS.sync hjr hy hx hO hR hkb hRb
+        (fun z hz r _ hrs => (hnr z hz r hrs).trans hjr)
+    · exact (result_optimistic_compatible_window_before hS.run hS.sync hjr hx hy hR hO hRb hkb
+        (fun r _ hrs => (hnr x hx r hrs).trans hjr)).symm
+  exact compat_of_below hr.coherent hLO hDR hcomp
 
 /-- **T1 §4, the live locks at a vote after a slow origin.** -/
 theorem slow_live_locks (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)

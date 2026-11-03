@@ -766,7 +766,28 @@ theorem fastLock_honest_vote (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard
     (hx : x ∈ H) {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hfl : FastLockAt tr x i₀ s B CV) :
     ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg B := by
-  sorry
+  have hr := hrun.localRun
+  rcases hfl with ⟨ℓ, C, ⟨hc, -⟩, -, hD, -⟩ | ⟨ℓ, A, hpt, hsl, hsel, -⟩
+  · obtain ⟨-, hΦU⟩ := frameIn_of_callAt hr hx hc
+    have hfast := (deepest_mem hD).1.2.2
+    unfold FastTest confirmationScore at hfast
+    dsimp only at hfast
+    have hlt := Nat.lt_of_mul_lt_mul_left (lt_of_lt_of_le hf hfast)
+    obtain ⟨u, ⟨-, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hBR⟩, hu⟩ :=
+      Set.exists_mem_notMem_of_ncard_lt_ncard hlt
+    obtain ⟨j, -, e, hve, rfl⟩ := hrun.honest.pool_vote x hx i₀ s _ hvp (not_not.1 hu)
+    exact ⟨_, not_not.1 hu, j, e, hve, state_pool_slot sp hr hx i₀ s _ hvp, R, hΦU hR, hRr,
+      Anc.mono hΦU hBR⟩
+  · obtain ⟨-, hΦU⟩ := frameIn_of_callAt hr hx hpt.1
+    unfold optimisticSelect at hsel
+    dsimp only at hsel
+    split_ifs at hsel
+    have h34 := (deepest_mem hsel).1.2.1
+    have hlt : Hᶜ.ncard < (optimisticVoters sp A ℓ.frame (sp.slot (tr.time i₀)) B).ncard := by
+      omega
+    obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hu⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard hlt
+    obtain ⟨hvs, j, -, e, hve, rfl⟩ := optimisticPoint_pool_vote hrun hx hpt hv (not_not.1 hu)
+    exact ⟨_, not_not.1 hu, j, e, hve, hvs.trans hsl, R, hΦU hR, hRr, Anc.mono hΦU hBR⟩
 
 /-! ## T1 §3: a fast origin of label `≥ r` transfers -/
 
