@@ -233,6 +233,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Outcome
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.StretchCoverage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Timing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.RegularBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset

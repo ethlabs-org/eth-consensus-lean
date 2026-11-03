@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Interface
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Outcome
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 
@@ -344,6 +345,101 @@ theorem rows_or_early_outcome (supply : ReadyProposalReportSupply tr H proposer 
     rw [← hσ]
     omega
   · exact False.elim (nohigher z hz r ell C hr ht hTC hh)
+
+/-- Exact C1.2 from the shared actual-report supplier. The public service statement is
+unchanged; this module does not import the operational implementation of the supplier. -/
+theorem outcome_service_of_reports
+    (supply : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+      (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (proposer : Nat → Fin sp.n)
+      (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a : Time),
+      ReadyProposalReportSupply tr H proposer dg g ΔF a) : Compose.OutcomeService := by
+  intro sp ro proposer dg H tr g ΔF _Gp a cF kF hrun hs hc _hprop _hceil hcf hto hreset
+    p k i T u hP hentry hR hhigh hhj hretained
+  classical
+  have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hs.healthy, hs.noColl, hreset⟩
+  have hslot := hP.2.2.2.2.1
+  subst u
+  rw [← drainTime_eq] at hR
+  have hpost := tr.state_succ_of_call hentry.2.1
+  have hT : T ∈ (tr.state p (i + 1)).fg.tree := by
+    rw [hpost, (Store.tree_grows _ _ _ _ (Compose.fg_reachable hrun.toLocalRun hentry.1 i)).1
+      T _ (hrun.toLocalRun.cutLaw p hentry.1 _ _ hentry.2.1).2.1]
+    exact Set.mem_insert _ _
+  have he : ((tr.state p (i + 1)).fg.σ T.root).Th = T.root := by
+    rw [hpost]; exact hentry.2.2
+  have hhT : HZ tr H g + 1 ≤ ((tr.state p (i + 1)).fg.σ T.root).h := by
+    rwa [hpost]
+  have hhJ : ((tr.state p (i + 1)).fg.σ T.root).previousHeightJustified →
+      HZ tr H g + 1 ≤ ((tr.state p (i + 1)).fg.σ T.root).hj := by
+    rw [hpost]
+    exact fun h => hhj h.1 h.2
+  obtain ⟨hu, _, hgu⟩ := drain_margins hp hR
+  have hΔ := sp.toParams.hΔ
+  rcases rows_or_early_outcome (supply sp ro tr H proposer dg g ΔF a) hp hs hc hP hR
+      hentry.1 hT he hhT hhJ hcf (kF := kF) with ⟨ids, hq, hrows⟩ | hearly
+  swap
+  · rw [hpost] at hearly
+    refine ⟨Or.inr hearly, fun _ => ?_⟩
+    obtain ⟨y, hy, j, X, hacc, ht, hj, _, _⟩ := hearly
+    exact ⟨y, hy, j, X, hacc, ht, hj⟩
+  obtain ⟨w, kw, W, hW, hlo, hhi, Pr, hpar, hTPr⟩ := hretained
+  obtain ⟨R, hwin⟩ := good_window_of_rows hp hs hentry.1 hW.1 hT he hW.2.2.2.1
+    hpar hTPr hlo hhi (by linarith) hcf hto ids hq hrows
+  have hWtime : tr.time kw = sp.ts W.slot := by
+    rw [hW.2.2.2.1.2.2, sp.slotTime_eq]; rfl
+  have hbefore : sp.ts W.slot < sp.ts (T.slot + cF + kF + 1 : Nat) :=
+    (SA.ts_lt_iff sp).2 (by exact_mod_cast (show W.slot < T.slot + cF + kF + 1 by omega))
+  have hTW : sp.ts T.slot ≤ sp.ts W.slot := (SA.ts_le_iff sp).2 (by exact_mod_cast
+    (show T.slot ≤ W.slot by omega))
+  have hcarrier := ready_proposal_accepted_everywhere hp hs hc hW (hR.trans hTW)
+    (by omega) (hgu.trans hTW)
+  refine ⟨Or.inl ⟨w, kw, W, Pr, R, hWtime.trans_lt hbefore, hwin, ?_⟩, fun _ => ?_⟩
+  · intro z hz
+    obtain ⟨j, hj, ht⟩ := hcarrier z hz
+    exact ⟨j, hj, by linarith⟩
+  · have hfg : FGLocalRun (goldilocksNode sp ro).genesisPayload H
+        (tr.HonestBlocks H) tr.projFG :=
+      Compose.fg_projection _ _ dg H _ tr proposer
+        ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
+          (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
+          SA.proposal_payload_valid sp _ ro⟩ hs.genesisRoot hrun.toLocalRun hs.noColl
+    obtain ⟨X, hj, _, _, _, _, _⟩ := Store.window_justifies hfg hwin
+    have hng : X ≠ sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload := by
+      intro heq
+      have ht := hj.2.1.slot_le (hfg.coherent.mono (hfg.tree_subset w hW.1 (kw + 1)))
+      have hz : X.slot = 0 := by rw [heq]; rfl
+      omega
+    obtain ⟨j, hjkw, hjX⟩ := (Store.tree_accepted hfg hW.1 hj.1).resolve_left hng
+    have hacc := Compose.projFG_callAt.1 hjX
+    have hXp : X ∈ (tr.projFG.store w (j + 1)).tree := by
+      rw [(Store.tree_grows _ _ _ _ (Store.store_reachable hfg hW.1 j)).1 X _
+        (Store.accept_onBlock hfg hW.1 hjX)]
+      exact Set.mem_insert _ _
+    have hmono : ∀ {B}, B ∈ (tr.projFG.store w (j + 1)).tree →
+        B ∈ (tr.projFG.store w (kw + 1)).tree ∧
+        (tr.projFG.store w (j + 1)).σ B.root = (tr.projFG.store w (kw + 1)).σ B.root := by
+      intro B hB
+      obtain ⟨hm, he⟩ := Store.held_mono hfg hW.1 (by omega : j + 1 ≤ kw + 1) hB
+      exact ⟨hm, he.symm⟩
+    have hjust : Store.JustifiesEntry sp.toParams (Payload sp.n)
+        (tr.projFG.store w (j + 1)) T ((tr.projFG.store w kw).σ T.root).h X := by
+      refine ⟨hXp, Store.anc_of_U hfg hW.1
+        (hj.2.1.mono (hfg.tree_subset w hW.1 (kw + 1))) hXp, ?_, ?_, ?_⟩
+      · rw [(hmono hXp).2]; exact hj.2.2.1
+      · rw [(hmono hXp).2]; exact hj.2.2.2.1
+      · intro Y hY hTY hYX hne
+        have hsub : (tr.projFG.store w (j + 1)).tree ⊆
+            (tr.projFG.store w (kw + 1)).tree := fun _ h => (hmono h).1
+        rw [(hmono hY).2]
+        exact hj.2.2.2.2 Y (hmono hY).1 (hTY.mono hsub) (hYX.mono hsub) hne
+    have hstore : ∀ q, tr.projFG.store w q = (tr.state w q).fg := fun q =>
+      congrArg Prod.fst (Compose.projFG_state hrun.toLocalRun hW.1 q)
+    have hTw : T ∈ (tr.state w kw).fg.tree := by
+      rw [← hstore]; exact hwin.entry.1
+    have hσ := σ_eq_run hp hW.1 hentry.1 hTw hT
+    simp only [hstore, tr.state_succ_of_call hacc, hσ, hpost] at hjust
+    refine ⟨w, hW.1, j, X, hacc, ?_, hjust⟩
+    exact lt_of_le_of_lt ((hrun.time_mono (Nat.lt_succ_iff.mp hjkw)).trans hWtime.le) hbefore
 
 end Consensus.Goldilocks.Healing.Recovery
 
