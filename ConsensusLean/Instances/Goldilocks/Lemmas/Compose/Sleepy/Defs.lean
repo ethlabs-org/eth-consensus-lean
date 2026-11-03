@@ -196,13 +196,13 @@ structure SleepyInvariant : Prop where
 
 /-! ### The invariant up to a horizon `b`
 
-The prefix premises of `Regimes.SleepySafePrefix` up to `b` (`SleepyPrefix`: `Sync[0, b − Δ]`
+The send-window prefix premises up to `b` (`SleepyPrefix`: `Sync[0, b − Δ]`
 and `f < h_t` at the slot points `≤ b`), the origins whose event is at a time `≤ b`
 (`OriginWithin`), and the invariant restricted to them and to the cuts **within `b`** (every
 earlier cut at a time `≤ b`, so that the state before the cut is the state at a time `≤ b`):
 `SleepyInvariantUpTo`. -/
 
-/-- **The prefix premises of `SleepySafePrefix` up to `b`**: `Sync[0, b − Δ]` and `f < h_t` at
+/-- **The send-window prefix premises up to `b`**: `Sync[0, b − Δ]` and `f < h_t` at
 every `t ∈ {t_s, t_s + Δ, t_s + 2Δ}` with `t ≤ b`. -/
 def SleepyPrefix (ΔF b : Time) : Prop :=
   0 ≤ b ∧ tr.SyncRun H ΔF 0 (b - sp.Δ) ∧

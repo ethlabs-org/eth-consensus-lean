@@ -435,8 +435,8 @@ Here Δp is the node parameter, c = catchUp = 18Δp, and b≤horizon.
 | `Consensus.Goldilocks.Refinement.sleepy_inBy` | Valid run, NoCollRun, ready proposal and node inclusion at all ready CutAfter t reads, 0≤τ≤t≤horizon ⇒ engine InBy confirmed | Proved through confirmed_inBy; finalized_inBy supplies the final-output analogue |
 | `Consensus.Goldilocks.Refinement.sleepy_safe_engine` | Valid run, NoCollRun, SyncBefore/quorum through horizon ⇒ engine ReadySafe (node catchUp+1) confirmed | Proved at 5d33450: arbitrary cuts via unit clock lag and last complete local event; standard axioms only |
 
-R.1/R.2 motivate these reductions, but do not prove the engine bridges. Existing
-SleepySafePrefix requires SyncRun with receiver obligations beyond b; IncludeSleepy
+R.1/R.2 motivate these reductions, but do not prove the engine bridges. The node-level
+SleepySafePrefix row is retired (the prefix claim is Good.sleepySafe_prefix); IncludeSleepy
 and GrowSleepy require whole-run SleepyRun. Neither supplies these finite consumers
 directly. No unconditional Accepted endpoint is asserted. Timing/grid/catch-up/latency
 scaling, finite locality, arbitrary-cut clocks and canonical collision encoding remain OPEN.

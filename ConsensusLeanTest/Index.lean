@@ -737,7 +737,6 @@ example := ``Consensus.Goldilocks.Regimes.ReadyProposalAt
 example := ``Consensus.Goldilocks.Regimes.ProposerRecurrence
 example := ``Consensus.Goldilocks.Regimes.ReadySafeOn
 example := ``Consensus.Goldilocks.Regimes.SleepySafe
-example := ``Consensus.Goldilocks.Regimes.SleepySafePrefix
 example := ``Consensus.Goldilocks.Regimes.IncludeSleepy
 example := ``Consensus.Goldilocks.Regimes.GrowSleepy
 example := ``Consensus.Goldilocks.Regimes.SleepyStatements

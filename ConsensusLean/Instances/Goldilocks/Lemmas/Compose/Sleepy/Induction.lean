@@ -16,7 +16,7 @@ records, locks, sources and caches (`Sleepy/Provenance`) and full viability (`he
 this is `SleepyInvariant` (`sleepy_invariant`), and R.1's safety part, pairwise compatibility of
 the honest confirmed outputs (`sleepy_confirmed_compatible`).
 
-The same induction runs up to a horizon `b` under the prefix premises of `SleepySafePrefix`
+The same induction runs up to a horizon `b` under the send-window prefix premises
 (`SleepyPrefix`: `Sync[0, b − Δ]`, `f < h_t` at the slot points `≤ b`), for the origins within
 `b`, the honest votes at times `≤ b` and the cuts within `b` (`frontier_upTo`,
 `sleepy_invariant_upTo`): each step reads deliveries of sends at times `≤ b − Δ` and `f < h_t`
@@ -99,7 +99,7 @@ theorem frontier_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
 
 /-- **The Sleepy record invariant up to `b`** (S1–S3 for the origins within `b`, the honest votes
 at times `≤ b` and the cuts within `b`) holds of every Goldilocks run under `NoColl` and the
-prefix premises of `SleepySafePrefix` up to `b`, whatever happens after `b`. -/
+send-window prefix premises `SleepyPrefix` up to `b`, whatever happens after `b`. -/
 theorem sleepy_invariant_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) : SleepyInvariantUpTo tr H b := by

@@ -16,10 +16,9 @@ block, or `Σ.F` when the record is not in the frame; `ready_read_record`), whic
 descendants (`effective_record_mono`): the monotone half (`sleepy_ready_mono`). Together,
 `sleepy_safe : SleepySafe`.
 
-Up to a horizon `b` (`SleepySafePrefix`), the same two halves hold at the read points of times
-`≤ b`, whose earlier cuts are within `b`, from the invariant up to `b` (`sleepy_invariant_upTo`,
-under the prefix premises `SleepyPrefix`): `read_compatible`, `ready_read_record_upTo` and
-`effective_record_mono_upTo`. Together, `sleepy_safe_prefix : SleepySafePrefix`. -/
+Up to a horizon `b`, `sleepy_safe_before` gives the same two halves under `SleepyServiceBefore b`
+(the route of the finite Refinement form `sleepy_safe_finite`). There is no node-level prefix
+row: the prefix claim is the generic `Good.sleepySafe_prefix`. -/
 
 namespace Consensus.Goldilocks.Regimes
 
@@ -111,22 +110,6 @@ theorem sleepy_ready_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
 /-- **R.1, `sleepySafe` / `confirmed_safe_sleepy`.** -/
 theorem sleepy_safe : SleepySafe := fun _ _ _ _ _ _ _ hrun hnc hsl t₁ =>
   ⟨sleepy_ready_agree hrun hnc hsl _ 0 t₁, sleepy_ready_mono hrun hnc hsl 0 t₁⟩
-
-/-- **R.1, `confirmed_safe_sleepy_prefix`**: under `Sync[0, b − Δ]` and `f < h_t` at the slot
-points up to `b`, the read points of times in `[0, b]` have their earlier cuts within `b`; the
-agreement half is `read_compatible` and the monotone half is the effective record up to `b`. -/
-theorem sleepy_safe_prefix : SleepySafePrefix := by
-  intro sp ro dg H tr proposer ΔF b hrun hnc hb hsync hfb
-  have hpre : SleepyPrefix tr H ΔF b := sleepyPrefix_iff.2 ⟨hb, hsync, hfb⟩
-  have hinv := sleepy_invariant_upTo hrun hnc hpre
-  refine ⟨fun y z i j t t' hi hj _ _ _ htb _ htb' hy hz => ?_,
-    fun y i j t t' hi hj hbi hbj hij htt _ htb hy hy' => ?_⟩
-  · exact hinv.read_compatible hrun hnc hy.1 hz.1 (fun k hk => (hi.1 k hk).trans htb)
-      (fun k hk => (hj.1 k hk).trans htb') t t'
-  · rw [read_effective_of hrun hy.1 (ready_read_record_upTo hrun hnc hpre hi hbi hy
-        (htt.trans htb)),
-      read_effective_of hrun hy'.1 (ready_read_record_upTo hrun hnc hpre hj hbj hy' htb)]
-    exact effective_record_mono_upTo hrun hnc hpre hy.1 hij fun k hk => (hj.1 k hk).trans htb
 
 /-- R.1 localized to recipient deadlines within the observation horizon. -/
 theorem sleepy_safe_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)

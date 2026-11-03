@@ -7,8 +7,8 @@ public section
 /-! # Goldilocks milestone Regimes: the proved rows
 
 `AlwaysStatements` (R.7, R.8) from `Lemmas/Compose/Regimes/` (`Outputs`, `Accountable`), and
-`SleepyStatements` (R.1, R.2) from `Lemmas/Compose/Regimes/Sleepy` (`sleepy_safe`,
-`sleepy_safe_prefix`) and `Lemmas/Healing/Regimes/Inclusion` (`include_sleepy`, `grow_sleepy`). The
+`SleepyStatements` (R.1, R.2) from `Lemmas/Compose/Regimes/Sleepy` (`sleepy_safe`) and
+`Lemmas/Healing/Regimes/Inclusion` (`include_sleepy`, `grow_sleepy`). The
 other rows (`Statements/Regimes/{Healed,Outage,Weak,Final}`) are not proved yet. -/
 
 namespace Consensus.Goldilocks.Regimes
@@ -25,7 +25,6 @@ theorem always_statements : AlwaysStatements where
 /-- **Milestone Regimes, the sleepy rows** (R.1, R.2). -/
 theorem sleepy_statements : SleepyStatements where
   sleepySafe := sleepy_safe
-  sleepySafePrefix := sleepy_safe_prefix
   includeSleepy := include_sleepy
   growSleepy := grow_sleepy
 

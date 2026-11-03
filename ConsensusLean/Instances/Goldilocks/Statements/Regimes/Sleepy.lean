@@ -10,11 +10,12 @@ Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"L2: re
 Goldilocks run (`GoldilocksRun`, `Compose.NoCollRun`) under `Sleepy` (`SleepyRun`: `Sync[0, ∞)` and
 `f < h_t` at the slot points):
 
-* **R.1** (`sleepySafe`, `confirmed_safe_sleepy(_prefix)`; uses A1.2–A1.4, A1.6, C1.1, F.4):
+* **R.1** (`sleepySafe`, `confirmed_safe_sleepy`; uses A1.2–A1.4, A1.6, C1.1, F.4):
   ready-reader safety of the confirmed output: the confirmed reads of two honest nodes ready at
   their cuts are compatible, and a node's confirmed reads at two cuts where it is ready only
-  extend (`SleepySafe`); and the same for the cuts up to `b` when the run is synchronous and sleepy
-  only up to `b` (`SleepySafePrefix`).
+  extend (`SleepySafe`). The prefix form `confirmed_safe_sleepy_prefix` has no node-level row:
+  it is the generic prefix result of a good protocol, which the family gets through its
+  acceptance.
 * **R.2** (`sleepyLive`, `includeSleepy`, `growSleepy`, `confirmed_txLive_sleepy`; uses A1.7,
   F.4): every honest proposal released at `τ` by a ready proposer is in every ready confirmed read
   from `τ + 6Δ` on (`IncludeSleepy`); and with one honest ready proposer in every window of `k`
@@ -106,31 +107,6 @@ def SleepySafe : Prop :=
     GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF →
     ∀ t₁, ReadySafeOn tr H (catchUp sp) 0 t₁
 
-/-- **R.1, `confirmed_safe_sleepy_prefix`.** Synchronous for the sends in `[0, b − Δ]`
-(`Sync[0, b − Δ]`, `SyncRun H ΔF 0 (b − Δ)`) with `f < h_t` at the slot points up to `b`:
-ready-reader safety of the confirmed output at the read points up to `b`.
-
-The premise is not the model's `SyncUntil b` (sends with deadline `≤ b`), in three ways:
-* it windows the **send** time `τ`, and each delivery is owed against the recipient's deadline
-  `max(τ, w_y) + Δ'` (`Δ'` the object's class delay) at every later call, so it also constrains
-  the run after `b`;
-* **late wakers**: a node that wakes at `w > b` must still process the window's sends by
-  `w + Δ'`, after `b`;
-* the deadlines **differ by class**: attestations (rows) use `Δ_F`, the other objects `Δ`. For
-  `Δ_F > Δ`, attestations sent in `(b − Δ_F, b − Δ]` have deadline `τ + Δ_F > b`, so the premise
-  can require their processing after `b`, even by nodes awake throughout; for `Δ_F < Δ`, some
-  attestations due by `b` (those sent in `(b − Δ, b − Δ_F]`) are not covered.
-The row is proved as stated; this records what its premise assumes, not a counterexample. -/
-def SleepySafePrefix : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF b : Time),
-    GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
-    0 ≤ b → tr.SyncRun H ΔF 0 (b - sp.Δ) →
-    (∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
-      tr.FaultBound H (sp.ts s + d)) →
-    ReadySafeOn tr H (catchUp sp) 0 b
-
 /-- **R.2, `includeSleepy`.** Under `Sleepy`, every honest proposal released at `τ` by a proposer
 ready at `τ` is in the confirmed read of every node ready at `t`, for every `t ≥ τ + 6Δ`. -/
 def IncludeSleepy : Prop :=
@@ -169,7 +145,6 @@ def GrowSleepy : Prop :=
 /-- The sleepy rows of milestone Regimes (R.1, R.2). -/
 structure SleepyStatements : Prop where
   sleepySafe : SleepySafe
-  sleepySafePrefix : SleepySafePrefix
   includeSleepy : IncludeSleepy
   growSleepy : GrowSleepy
 

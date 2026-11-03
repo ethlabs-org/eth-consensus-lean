@@ -4557,27 +4557,23 @@ def Consensus.Goldilocks.Regimes.ReadySafeOn : {sp : Consensus.Goldilocks.SA.SAP
   #2966372910/167714623
 def Consensus.Goldilocks.Regimes.SleepySafe : Prop := ∀ (sp : Consensus.Goldilocks.SA.SAParams) (ro : Consensus.Goldilocks.SA.ReplayOrder sp (List.{0} (Consensus.Goldilocks.FG.Att sp.n))) (dg : Consensus.Goldilocks.Digest (List.{0} (Consensus.Goldilocks.FG.Att sp.n)) (Consensus.Goldilocks.SA.Payload sp.n)) (H : Set.{0} (Fin sp.n)) (tr : Consensus.Goldilocks.GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Consensus.Time), Consensus.Goldilocks.GoldilocksRun proposer dg H tr → Consensus.Goldilocks.Compose.NoCollRun dg tr → Consensus.Goldilocks.RunTrace.SleepyRun tr H ΔF → ∀ (t₁ : Consensus.Time), Consensus.Goldilocks.Regimes.ReadySafeOn tr H (Consensus.Goldilocks.Regimes.catchUp sp) 0 t₁
   #3944470172/1110840572
-def Consensus.Goldilocks.Regimes.SleepySafePrefix : Prop := ∀ (sp : Consensus.Goldilocks.SA.SAParams) (ro : Consensus.Goldilocks.SA.ReplayOrder sp (List.{0} (Consensus.Goldilocks.FG.Att sp.n))) (dg : Consensus.Goldilocks.Digest (List.{0} (Consensus.Goldilocks.FG.Att sp.n)) (Consensus.Goldilocks.SA.Payload sp.n)) (H : Set.{0} (Fin sp.n)) (tr : Consensus.Goldilocks.GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF b : Consensus.Time), Consensus.Goldilocks.GoldilocksRun proposer dg H tr → Consensus.Goldilocks.Compose.NoCollRun dg tr → LE.le.{0} 0 b → Consensus.Goldilocks.RunTrace.SyncRun tr H ΔF 0 (HSub.hSub.{0, 0, 0} b sp.Δ) → (∀ (s : Nat) (d : Consensus.Time), Membership.mem.{0, 0} (Insert.insert.{0, 0} 0 (Insert.insert.{0, 0} sp.Δ (Singleton.singleton.{0, 0} (HMul.hMul.{0, 0, 0} 2 sp.Δ)))) d → LE.le.{0} (HAdd.hAdd.{0, 0, 0} (sp.ts (Nat.cast.{0} s)) d) b → Consensus.Goldilocks.RunTrace.FaultBound tr H (HAdd.hAdd.{0, 0, 0} (sp.ts (Nat.cast.{0} s)) d)) → Consensus.Goldilocks.Regimes.ReadySafeOn tr H (Consensus.Goldilocks.Regimes.catchUp sp) 0 b
-  #3944470172/2362627132
 induct Consensus.Goldilocks.Regimes.SleepyStatements : Prop
   #3944470172/-
-def Consensus.Goldilocks.Regimes.SleepyStatements.casesOn : {motive : Consensus.Goldilocks.Regimes.SleepyStatements → Sort u} → (t : Consensus.Goldilocks.Regimes.SleepyStatements) → ((sleepySafe : Consensus.Goldilocks.Regimes.SleepySafe) → (sleepySafePrefix : Consensus.Goldilocks.Regimes.SleepySafePrefix) → (includeSleepy : Consensus.Goldilocks.Regimes.IncludeSleepy) → (growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy) → motive ⋯) → motive t := fun {motive} t mk => mk ⋯ ⋯ ⋯ ⋯
-  #2799148297/3100016786
+def Consensus.Goldilocks.Regimes.SleepyStatements.casesOn : {motive : Consensus.Goldilocks.Regimes.SleepyStatements → Sort u} → (t : Consensus.Goldilocks.Regimes.SleepyStatements) → ((sleepySafe : Consensus.Goldilocks.Regimes.SleepySafe) → (includeSleepy : Consensus.Goldilocks.Regimes.IncludeSleepy) → (growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy) → motive ⋯) → motive t := fun {motive} t mk => mk ⋯ ⋯ ⋯
+  #1710587052/266438073
 theorem Consensus.Goldilocks.Regimes.SleepyStatements.growSleepy : Consensus.Goldilocks.Regimes.SleepyStatements → Consensus.Goldilocks.Regimes.GrowSleepy
   #2706772951/-
 theorem Consensus.Goldilocks.Regimes.SleepyStatements.includeSleepy : Consensus.Goldilocks.Regimes.SleepyStatements → Consensus.Goldilocks.Regimes.IncludeSleepy
   #1448595489/-
-ctor Consensus.Goldilocks.Regimes.SleepyStatements.mk : Consensus.Goldilocks.Regimes.SleepySafe → Consensus.Goldilocks.Regimes.SleepySafePrefix → Consensus.Goldilocks.Regimes.IncludeSleepy → Consensus.Goldilocks.Regimes.GrowSleepy → Consensus.Goldilocks.Regimes.SleepyStatements
-  #2420710348/-
-def Consensus.Goldilocks.Regimes.SleepyStatements.mk._flat_ctor #2420710348/-
-recursor Consensus.Goldilocks.Regimes.SleepyStatements.rec : {motive : Consensus.Goldilocks.Regimes.SleepyStatements → Sort u} → ((sleepySafe : Consensus.Goldilocks.Regimes.SleepySafe) → (sleepySafePrefix : Consensus.Goldilocks.Regimes.SleepySafePrefix) → (includeSleepy : Consensus.Goldilocks.Regimes.IncludeSleepy) → (growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy) → motive ⋯) → (t : Consensus.Goldilocks.Regimes.SleepyStatements) → motive t
-  #1441363269/-
-def Consensus.Goldilocks.Regimes.SleepyStatements.recOn : {motive : Consensus.Goldilocks.Regimes.SleepyStatements → Sort u} → (t : Consensus.Goldilocks.Regimes.SleepyStatements) → ((sleepySafe : Consensus.Goldilocks.Regimes.SleepySafe) → (sleepySafePrefix : Consensus.Goldilocks.Regimes.SleepySafePrefix) → (includeSleepy : Consensus.Goldilocks.Regimes.IncludeSleepy) → (growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy) → motive ⋯) → motive t := @Consensus.Goldilocks.Regimes.SleepyStatements.casesOn.{u}
-  #2799148297/2820119854
+ctor Consensus.Goldilocks.Regimes.SleepyStatements.mk : Consensus.Goldilocks.Regimes.SleepySafe → Consensus.Goldilocks.Regimes.IncludeSleepy → Consensus.Goldilocks.Regimes.GrowSleepy → Consensus.Goldilocks.Regimes.SleepyStatements
+  #3499184078/-
+def Consensus.Goldilocks.Regimes.SleepyStatements.mk._flat_ctor #3499184078/-
+recursor Consensus.Goldilocks.Regimes.SleepyStatements.rec : {motive : Consensus.Goldilocks.Regimes.SleepyStatements → Sort u} → ((sleepySafe : Consensus.Goldilocks.Regimes.SleepySafe) → (includeSleepy : Consensus.Goldilocks.Regimes.IncludeSleepy) → (growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy) → motive ⋯) → (t : Consensus.Goldilocks.Regimes.SleepyStatements) → motive t
+  #2731109890/-
+def Consensus.Goldilocks.Regimes.SleepyStatements.recOn : {motive : Consensus.Goldilocks.Regimes.SleepyStatements → Sort u} → (t : Consensus.Goldilocks.Regimes.SleepyStatements) → ((sleepySafe : Consensus.Goldilocks.Regimes.SleepySafe) → (includeSleepy : Consensus.Goldilocks.Regimes.IncludeSleepy) → (growSleepy : Consensus.Goldilocks.Regimes.GrowSleepy) → motive ⋯) → motive t := @Consensus.Goldilocks.Regimes.SleepyStatements.casesOn.{u}
+  #1710587052/2820119854
 theorem Consensus.Goldilocks.Regimes.SleepyStatements.sleepySafe : Consensus.Goldilocks.Regimes.SleepyStatements → Consensus.Goldilocks.Regimes.SleepySafe
   #1299420691/-
-theorem Consensus.Goldilocks.Regimes.SleepyStatements.sleepySafePrefix : Consensus.Goldilocks.Regimes.SleepyStatements → Consensus.Goldilocks.Regimes.SleepySafePrefix
-  #3568463999/-
 def Consensus.Goldilocks.Regimes.catchUp : Consensus.Goldilocks.SA.SAParams → Consensus.Time := fun sp => HMul.hMul.{0, 0, 0} 18 sp.Δ
   #1462763396/774505255
 def Consensus.Goldilocks.Regimes.readAfter : {sp : Consensus.Goldilocks.SA.SAParams} → {ro : Consensus.Goldilocks.SA.ReplayOrder sp (List.{0} (Consensus.Goldilocks.FG.Att sp.n))} → Consensus.Goldilocks.GoldilocksTrace sp ro → Fin sp.n → Nat → Consensus.Time → Consensus.Goldilocks.SA.Blk sp.n (List.{0} (Consensus.Goldilocks.FG.Att sp.n)) := fun {sp} {ro} tr y j t => (Consensus.Goldilocks.goldilocksNode sp ro).confirmed (Consensus.Goldilocks.Trace.state tr y j).ac (Consensus.Goldilocks.Node.frame (Consensus.Goldilocks.Trace.state tr y j)) t

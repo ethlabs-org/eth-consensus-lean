@@ -157,10 +157,6 @@ theorem Consensus.Goldilocks.Regimes.finalizedSafe : Consensus.Goldilocks.Regime
 theorem Consensus.Goldilocks.Regimes.sleepySafe : Consensus.Goldilocks.Regimes.SleepySafe :=
   Consensus.Goldilocks.Regimes.sleepy_safe
 
-/-- Goldilocks Regimes: `SleepySafePrefix`. -/
-theorem Consensus.Goldilocks.Regimes.sleepySafePrefix :
-    Consensus.Goldilocks.Regimes.SleepySafePrefix :=
-  Consensus.Goldilocks.Regimes.sleepy_safe_prefix
 
 /-- Goldilocks Regimes: `IncludeSleepy`. -/
 theorem Consensus.Goldilocks.Regimes.includeSleepy : Consensus.Goldilocks.Regimes.IncludeSleepy :=

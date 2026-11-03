@@ -28,7 +28,7 @@ The two node-local facts R.1 (`Regimes.SleepySafe`) reads of the Sleepy invarian
   which are compatible (both on the origin chain), since a record's block at or above `Σ.F` is in
   the frame; both move to descendants at every cut (`record_step`, `fg_grows`).
 
-Both hold up to a horizon `b` under the prefix premises of `SleepySafePrefix`
+Both hold up to a horizon `b` under the send-window prefix premises `SleepyPrefix`
 (`ready_read_record_upTo`, `effective_record_mono_upTo`), for read points at times `≤ b` and cuts
 within `b`, from `SleepyInvariantUpTo`. -/
 
