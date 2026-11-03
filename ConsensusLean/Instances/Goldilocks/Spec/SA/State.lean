@@ -14,7 +14,7 @@ goldilocks-spec.tex §"State" and §"Votes and views".
   validator, the committee of every slot is `V` (so the committee test holds by typing), and
   unforgeability is a run premise (claims §"Runs").
 * The payload of a block is `(votes, support_votes)`, two lists.
-* The state `𝒜 = (gf_pool[·], timestamp[·], saved_confirmation[·], locks, latest_confirmed,
+* The state `𝒜 = (gf_votes[·], timestamp[·], saved_confirmation[·], locks, latest_confirmed,
   fg_reported, voted_slot, restart_time)`. The AC holds blocks only by name (root). Stamps are
   on the extended time line `ETime` (`⊥ = −∞`, `⊤ = +∞`): `timestamp[genesis] = −∞`, and a vote
   or block the AC never accepted reads `+∞` (no rule reads such a stamp at a reachable state).
@@ -55,7 +55,7 @@ def ETime.of (t : Time) : ETime := ((t : WithTop Time) : WithBot (WithTop Time))
 
 /-- The Goldilocks AC state. -/
 structure SAState (n : Nat) where
-  /-- `gf_pool[s]`: the accepted slot-`s` votes, in the order of acceptance. -/
+  /-- `gf_votes[s]`: the accepted slot-`s` votes, in the order of acceptance. -/
   pool : Nat → List (Vote n)
   /-- `timestamp[x]` of a vote: when the AC accepted it (`+∞`: never). -/
   voteStamp : Vote n → ETime

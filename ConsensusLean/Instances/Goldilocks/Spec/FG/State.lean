@@ -7,7 +7,7 @@ public import ConsensusLean.Init
 /-! # Goldilocks FG: attestations, chain state and the state transition
 
 The finality gadget of the Goldilocks spec as pure functions of a chain
-(fradamt-agent/goldilocks `spec/shared/fg.tex` §"Attestations and chain state",
+(`specs/goldilocks/tex/shared/fg.tex` §"Attestations and chain state",
 Figure "FG: state transition"; loose BJ, goldilocks#14). Blocks are seen through
 `FGBlock`: their root, slot, proposer and attestations; the instance computes the
 root as the digest of the block, and a chain lists the blocks from genesis, so the

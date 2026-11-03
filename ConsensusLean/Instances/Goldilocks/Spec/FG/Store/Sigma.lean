@@ -7,8 +7,8 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Common.Tree
 
 /-! # Goldilocks FG store: the FG state `Σ`
 
-The FG state of a node (fradamt-agent/goldilocks `spec/shared/composition.tex` §"State";
-`spec/shared/fg.tex` §"Finality caches and frame"):
+The FG state of a node (`specs/goldilocks/tex/shared/composition.tex` §"State";
+`specs/goldilocks/tex/shared/fg.tex` §"Finality caches and frame"):
 `Σ = (T, σ[·], F, J, h_j, h_max, attestations)`. The tree `Σ.T` is kept by root, the way the
 store tests it (a block enters only when no held block has its root), so a held root names one
 block; `Σ.σ` is kept by root too. `Σ.F` and `Σ.J` are blocks of the tree. The FG reads a block
