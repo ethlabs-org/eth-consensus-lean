@@ -1,6 +1,7 @@
 module
 public import ConsensusLeanTest.GoldilocksHealingWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Cache
+public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 @[expose] public section
 
 /-! # The one-validator tick run through the Recovery statements
@@ -21,9 +22,10 @@ the pattern parameters `W = 1`, `M = 24`, `c_F = 2`, `k_F = 0` (the weak-timeout
   is below the finality cache after that acceptance; `finalized_after_blk6`: so the cache there
   is `blk 4` or `blk 5` (the chain invariant `FGGood` alone gives only `≤ blk 5`).
 * (b) `tickRun_patternRecovery` (O.1) and `tickRun_finalizingCoverage` (C1.3), each from its
-  field `Prop` as a hypothesis until the `RecoveryStatements` bundle is proved: `Rec(1209)` and
-  a high finality cache (height `≥ 4`) at every call from `1197`; and some proposal `blk s`,
-  `273 ≤ s ≤ 299`, below the finality cache at every call from `1197` (requested at `t = R*`).
+  field `Prop`: `Rec(1209)` and a high finality cache (height `≥ 4`) at every call from `1197`;
+  and some proposal `blk s`, `273 ≤ s ≤ 299`, below the finality cache at every call from `1197`
+  (requested at `t = R*`). `tickRun_recovery` discharges both fields with the proved bundle
+  `Healing.recovery_statements`, so the two conclusions hold on the run unconditionally.
 
 **Limits.** One validator and no fault (`n = 1`, `f = 0`), so the fault bounds are met only as
 `0 < …`; `Δ_F = Δ` (`Δ_F < Δ` is impossible at `Δ = 1`); `Rec`'s `clean` and `records` parts are
@@ -133,6 +135,16 @@ theorem tickRun_finalizingCoverage (h : Healing.FinalizingCoverage) :
   have hanc := hall v0 trivial k hk (by rw [hΔ]; push_cast; linarith)
   rw [hF] at hanc ⊢
   exact ⟨f, le_of_anc_blk honest_onChain hanc, rfl⟩
+
+/-- (b) **O.1 and C1.3 on the run, closed** by the proved `Healing.recovery_statements`. -/
+theorem tickRun_recovery :
+    (Healing.Rec (tickRun N1 dg1) Set.univ 1209 ∧
+      ∀ k, (tickRun N1 dg1).IsCall v0 k → 1197 ≤ (tickRun N1 dg1).time k →
+        4 ≤ (((tickRun N1 dg1).state v0 k).fg.σ ((tickRun N1 dg1).state v0 k).fg.F.root).h) ∧
+    ∃ p, 273 ≤ p ∧ p ≤ 299 ∧ ∀ k, (tickRun N1 dg1).IsCall v0 k →
+      1197 ≤ (tickRun N1 dg1).time k → ∃ f, p ≤ f ∧ ((tickRun N1 dg1).state v0 k).fg.F = blk f :=
+  ⟨tickRun_patternRecovery Healing.recovery_statements.patternRecovery,
+    tickRun_finalizingCoverage Healing.recovery_statements.finalizingCoverage⟩
 
 end Consensus.Goldilocks.Witness.One
 
