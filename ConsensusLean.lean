@@ -227,6 +227,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ResetInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.AtCall
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Crossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Cut
