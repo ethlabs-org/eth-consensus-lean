@@ -23,11 +23,12 @@ the recipient's deadline, and bound all observations
 by `b`. Their proofs need a dependency-local version of R.1/R.2, not direct application of
 `IncludeSleepy`/`GrowSleepy` (both currently require whole-run `SleepyRun`).
 
-The missing network supplier is named as a proposition, NOT asserted as a theorem. Since #125,
-`Setup.params` has Δp = Δe + 1 with matching protocol slots. This absorbs the inclusive/strict
-endpoint difference, not relay delay or the missing processing proof. Catch-up, recurrence
-and latency transport remain separate obligations. No impossible strict-delay premise is used.
-The raw-genesis/canonical collision bridge is separately owned by the encoding integration.
+The missing network supplier is named as a proposition, NOT asserted as a theorem.
+`Setup.params` has Δp = Δe with matching protocol slots: L0 delivers strictly before the bound,
+which is the node's strict deadline. This covers no relay delay and no missing processing proof.
+Catch-up, recurrence and latency transport remain separate obligations. No impossible
+strict-delay premise is used. The raw-genesis/canonical collision bridge is separately owned by
+the encoding integration.
 -/
 
 namespace Consensus.Goldilocks.Refinement
@@ -114,7 +115,7 @@ theorem sleepy_faultBound (hv : rho.ExecutionValid) {b : Time}
 /-- OPEN missing service supplier (owner: timing/encoding integration), not a proved or
 assumed fact of Accepted. With the #125 timing adapter installed: finite engine
 deadline service yields node deadline-bounded service, including acceptance relay.
-Receipt alone does not prove acceptance relay; Δp = Δe + 1 supplies endpoint slack only.
+Receipt alone does not prove acceptance relay; Δp = Δe matches only the strict endpoint.
 This definition records the missing obligation without adding a vacuous `hdelay` premise.
 The repaired supplier may require a larger engine service window, which must be propagated
 to the consumer and contract rather than assumed away. -/

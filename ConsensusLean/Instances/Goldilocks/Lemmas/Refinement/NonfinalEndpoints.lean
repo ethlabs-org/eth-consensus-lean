@@ -73,7 +73,21 @@ theorem sleepy_safety_inputs (Q : SleepySafetyQuery S A V) :
       (S.params (Model.pubOf Q.run.1) Q.hn).ts s + d ≤ Q.run.2.horizon →
       (simTrace S Q.run.2 Q.hn).FaultBound (honestKeys S Q.run.2)
         ((S.params (Model.pubOf Q.run.1) Q.hn).ts s + d)) := by
-  sorry
+  have hduration : Regimes.catchUp (S.params (Model.pubOf Q.run.1) Q.hn) + 1 ≤
+      (Sys (family S) V).cDur (K S A) Q.run := by
+    have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+      exact_mod_cast accepted_catchUp_ge_sleepy S A
+    have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+    simp only [System.cDur, Params.standard, accepted_coefficients_catchUp]
+    change 18 * Q.run.1.Δ + 1 ≤ (accepted_catchUp S A : Nat) * Q.run.1.Δ
+    nlinarith
+  refine ⟨hduration, ?_, ?_⟩
+  · exact sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
+      (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) le_rfl
+      (sleepy_raw_syncUntil S A V Q.run Q.valid Q.sleepy Q.run.2.horizon)
+  · apply sleepy_faultBound S Q.run.2 Q.hn Q.valid le_rfl
+    intro t ht hth
+    exact half_ready_of_duration V Q.run.2.point (by linarith) (Q.sleepy.2 t ht hth)
 
 end Consensus.Goldilocks.Refinement
 end

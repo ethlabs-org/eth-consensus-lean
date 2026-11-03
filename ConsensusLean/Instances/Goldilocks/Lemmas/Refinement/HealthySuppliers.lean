@@ -195,7 +195,106 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
     (W : HealthyBaseTiming S A V Q)
     (D : HealthyPreparationSchedule S A V Q W) :
     HealthyStateFacts S A V Q W.slot Q.cut := by
-  sorry
+  classical
+  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
+    (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
+  have hcatch := catchRun_of_psync S Q.run.2 Q.hn Q.valid
+    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    hnet Q.healthy.2.1.2
+  have hduration : Regimes.catchUp Q.params ≤ (Sys (family S) V).cDur (K S A) Q.run := by
+    have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+      exact_mod_cast accepted_catchUp_ge_sleepy S A
+    have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+    simp only [System.cDur, Params.standard, accepted_coefficients_catchUp]
+    change 18 * Q.run.1.Δ ≤ (accepted_catchUp S A : Nat) * Q.run.1.Δ
+    nlinarith
+  have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
+  have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
+      (fun s => Q.run.2.sel (.proposer s)) (family S (Model.pubOf Q.run.1)).skel.grid
+      ⟨Pattern.single, Q.index⟩ ((Sys (family S) V).cDur (K S A) Q.run)
+      Q.ready Q.heal := by
+    simpa only [System.prog, shapeProgress, shapeHolds, acceptanceContract, ite_eq_right hcap,
+      Model.sysExternal, System.cDur, System.pt, Sys, Model.sysOf, Model.Run.point] using hp
+  have hq0 : 0 ≤ D.query := (le_max_left _ _).trans ((le_max_right _ _).trans
+    ((le_max_right _ _).trans ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower))))
+  have hq : max Q.ready 0 ≤ D.query := max_le ((le_max_left _ _).trans D.lower) hq0
+  have hDelta := Q.params.toParams.hΔ
+  have hwin : D.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.heal := by
+    nlinarith [D.reserve]
+  obtain ⟨u, hlo, hhi, hr⟩ := hrec D.query hq
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton] using hwin)
+    (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton,
+      Model.Run.point] using hwin.trans hb)
+  have htime : (family S (Model.pubOf Q.run.1)).skel.grid.slotTime u = Q.params.ts u := by
+    change (u : Time) * (4 * Q.run.1.Δ) = 4 * Q.run.1.Δ * u
+    ring
+  rw [htime] at hlo hhi
+  have hbound : Q.params.ts u ≤ D.query + 4 * (Q.index : Time) * Q.params.Δ := by
+    change Q.params.ts u ≤ D.query + (Q.index : Time) * (4 * Q.params.Δ) at hhi
+    nlinarith
+  have hT : Q.params.ts u + 6 * Q.params.Δ < Q.heal - 1 := by nlinarith [D.reserve]
+  have hTb : Q.params.ts u + 6 * Q.params.Δ ≤ Q.run.2.horizon := by linarith
+  have hready := hr 0 (by simp [Pattern.single])
+  simp only [Nat.add_zero] at hready
+  have hmem : runProposer S Q.run.2 Q.hn u ∈ Q.run.2.sel (.proposer u) := by
+    simp only [runProposer, dite_eq_left hready.1]
+    exact Finset.min'_mem _ _
+  have hR := hready.2 _ hmem
+  rw [htime] at hR
+  have hnode := ready_transport S Q.run.2 Q.hn Q.valid (hq0.trans hlo.le)
+    (show Q.params.ts u ≤ Q.run.2.horizon by linarith) hR
+  rw [show Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn u)) =
+    runProposer S Q.run.2 Q.hn u from Q.run.2.key.symm_apply_apply _] at hnode
+  have hWu : W.slot < u := by
+    exact_mod_cast (SA.ts_lt_iff Q.params).mp
+      (lt_of_le_of_lt ((le_max_left _ _).trans ((le_max_right _ _).trans
+        ((le_max_right _ _).trans D.lower))) hlo)
+  have hshort : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) (Regimes.catchUp Q.params)
+      (runProposer S Q.run.2 Q.hn u) (Q.params.ts u) := by
+    refine ⟨hnode.1, fun t ht hts => hnode.2 t ?_ hts⟩
+    apply le_trans _ ht
+    apply max_le_max_left
+    linarith
+  obtain ⟨k, P, hP, ht⟩ := Regimes.ready_proposer_proposes D.reset.run D.reset.noColl
+    (s := u) (Nat.zero_le W.slot |>.trans_lt hWu) hshort
+  have hPs : P.slot = u := by
+    have := hP.2.2
+    rw [ht, Q.params.slotTime_eq] at this
+    have he : (P.slot : Time) = (u : Time) := by
+      simp only [SA.SAParams.ts] at this
+      nlinarith
+    exact_mod_cast he
+  have hdrain : Healing.drainTime Q.params D.resetTime ≤ Q.params.ts u :=
+    ((le_max_left _ _).trans ((le_max_right _ _).trans D.lower)).trans hlo.le
+  have hgu : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts u :=
+    ((le_max_left _ _).trans ((le_max_right _ _).trans ((le_max_right _ _).trans
+      ((le_max_right _ _).trans D.lower)))).trans hlo.le
+  have hslot := (SA.ts_le_iff_le_slot Q.params (SA.gbar_nonneg Q.gst)
+    (Q.params.slot (SA.gbar Q.gst))).mpr (by omega)
+  have hjoin : Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤ Q.params.ts u := by
+    simp only [SA.SAParams.ts] at hslot hgu ⊢
+    push_cast
+    linarith
+  refine ⟨?_, fun y hy l hl hs => healthy_locks S A V Q W.slot Q.cut hy hl hs⟩
+  intro y hy
+  obtain ⟨j, ell, _, hup, _⟩ := D.reset.update_toFG_calls hy hjoin hTb
+  have hjlabel : Q.trace.label j ≠ none := by
+    obtain ⟨_, hl⟩ := hup.1
+    intro hn
+    simp [RunTrace.projAC, hn] at hl
+  obtain ⟨_, m, e, _, he, _, hjend, _, _, hte, _⟩ :=
+    simTrace_cut S Q.run.2 Q.hn hjlabel
+  have hjt : Q.trace.time j = Q.params.ts u + 6 * Q.params.Δ := hup.2.2.1
+  have hte' : Q.trace.time j = e.time := hte
+  have hm : m < (chainTrace Q.run.2).endCut Q.heal :=
+    (event_before_endCut S Q.run.2 Q.valid h0 he).2 (by rw [← hte', hjt]; linarith)
+  have hjcut : j < Q.cut := hjend.trans_le
+    (cutMap_mono S Q.run.2 Q.hn (show m + 1 ≤ (chainTrace Q.run.2).endCut Q.heal by omega))
+  obtain ⟨C, hC, hCr, l, hl, hsource⟩ :=
+    UpTo.archival_record_source_after_operational_update D.reset hcatch hnode.1 rfl hP hPs
+      hdrain hgu hTb hy hup hjcut
+  exact ⟨C, hC, hCr, Or.inl (Compose.onOriginChainFrom_iff.2
+    (Or.inr ⟨C, l, Compose.originFrom_iff.2 ⟨hsource.origin, hWu.le.trans hl⟩, .refl⟩))⟩
 
 set_option linter.unusedVariables false in
 /-- State preservation under health alone, at every later canonical cut
