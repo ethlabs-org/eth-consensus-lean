@@ -28,6 +28,7 @@ public import ConsensusLeanTest.GoldilocksFrame
 public import ConsensusLeanTest.GoldilocksFrameRejection
 public import ConsensusLeanTest.GoldilocksFrameSeqWitness
 public import ConsensusLeanTest.GoldilocksGradedLocks
+public import ConsensusLeanTest.GoldilocksGradedVeto
 public import ConsensusLeanTest.GoldilocksHeadsImplied
 public import ConsensusLeanTest.GoldilocksHealing
 public import ConsensusLeanTest.GoldilocksHealingWitness
