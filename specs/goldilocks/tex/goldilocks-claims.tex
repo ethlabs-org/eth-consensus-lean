@@ -7,7 +7,7 @@
 \hypersetup{hidelinks}
 \pagestyle{plain}
 
-% Notation of fgsa-spec.tex (only what this file uses).
+% Notation of goldilocks-spec.tex (only what this file uses).
 \newcommand{\genesis}{B_{\mathrm{gen}}}
 \newcommand{\slot}{\operatorname{slot}}
 \newcommand{\parent}{\mathsf{parent}}
@@ -46,7 +46,7 @@
 
 \section{Purpose and authority}\label{sec:purpose}
 
-\texttt{fgsa-spec.tex} (with \texttt{shared/composition.tex} and
+\texttt{goldilocks-spec.tex} (with \texttt{shared/composition.tex} and
 \texttt{shared/fg.tex}) gives the Goldilocks protocol and nothing else.  This
 file says what is proved about that protocol and how the proof decomposes.  It
 is the paper source of the Goldilocks statements of the Lean development in
@@ -57,7 +57,8 @@ text wins and the statement is wrong.
 
 \paragraph{Pins.}  Protocol: \texttt{fgsa-spec.tex} at goldilocks
 \texttt{95681941}, flattened SHA-256 \texttt{2a5519bc}
-(\texttt{python3 flatten.py fgsa-spec.tex | shasum -a 256}).  It includes
+(\texttt{python3 flatten.py fgsa-spec.tex | shasum -a 256}; the file is now
+\texttt{goldilocks-spec.tex}, in consensus-lean \texttt{specs/goldilocks/tex/}).  It includes
 loose BJ (goldilocks\#14: the justification gate at bound heights, the client
 finality pair read from the entry state, $K_W=2$,
 $\delta_{\mathrm t}\geq x+\cF+k_F$) and the weakened E1 (goldilocks\#15: the
@@ -69,7 +70,7 @@ goldilocks\#5 (workbench \texttt{notes/fg-liveness/r9-loose-bj/theorem.md}).
 
 \paragraph{Lean.}  The Lean development happens only in consensus-lean's
 Goldilocks instance, with this file as its statement source
-(goldilocks\#16).  The FG-SA Lean in this repository (the round model) is not
+(goldilocks\#16).  The old Goldilocks Lean in this repository (the round model) is not
 ported; its proofs are blueprints where the evidence lines cite them.
 
 \paragraph{Decisions} (goldilocks\#10).  D1: every bound is re-derived for
@@ -208,7 +209,7 @@ them; a proof task starts only when the statements of its uses are fixed.
 (2) A node changes only by an issue that names the nodes that use it.
 (3) Each node names its \emph{evidence}: a paper argument (often a ``Why''
 note of the protocol text), an old proof for the round model
-(\texttt{fgsa-protocol.tex}, the blueprint in workbench
+(\texttt{goldilocks-round-model.tex}, the blueprint in workbench
 \texttt{notes/tip-stability/blueprint/}, the old Lean \texttt{FGSAClaims}), or
 none.  Old proofs are for a different protocol: they give the argument's shape,
 not a proof of the node.  (4) The \emph{Task} line sizes the node: S (one
@@ -224,7 +225,7 @@ Slot~$s$ starts at $t_s=4\Delta s$.  $\cF=\lceil(6\Delta+\Delta_F)/(4\Delta)\rce
 and $R\geq\cF$ slots per round.  Lock window $k\geq2$ slots (the AC).  FG
 window $K_W=2$; FG slack $k_F\geq0$ (distinct from~$k$); source delay
 $x\geq0$; timeout delay $\delta_{\mathrm t}\geq x+\cF+k_F$, default $x=0$
-(fgsa-spec \S Schedule).  Write $f$ for the number of faulty validators.
+(goldilocks-spec \S Schedule).  Write $f$ for the number of faulty validators.
 
 \subsection{Runs}
 
@@ -535,7 +536,7 @@ parent edges (F.2 on the tree); $\Fr.F\preceq\fcroot\in\Fr.\mathsf{tree}$; $\all
 \Fr.\mathsf{tree}$ and every block of $\allowed$ extends $\fcroot$.  For a
 well-formed frame: $\fname{viable\_ancestor}(\Fr,B)$, the deepest $B'\preceq B$ with
 $B'\preceq\fcroot$ or $B'\in\filtered(\Fr,\Fr.\mathsf{tree})$ (a function of $\Fr$
-alone, defined here at the frame level; fgsa-spec \S``Locks'' uses the same
+alone, defined here at the frame level; goldilocks-spec \S``Locks'' uses the same
 definition), exists for $B\in\Fr.\mathsf{tree}$ and is $B$
 when $B\in\filtered(\Fr,\Fr.\mathsf{tree})$ or $B\preceq\fcroot$ (not merely
 when $B$ passes the state-height test: a block of a fork that conflicts with
@@ -731,7 +732,7 @@ than~$\bot$, $\fname{fg\_attest}$ with the record and the own attestation); then
 the objects received at~$a$, each by its handler (whose AC part can again
 vote).  Every own object is processed at once.  This is a definition of the
 node, and the order that A1.9, G1.10 and C1.1 read.}
-{none}{composition \S``Node''; fgsa-spec \S``Node actions''.}{S.  Definitional in
+{none}{composition \S``Node''; goldilocks-spec \S``Node actions''.}{S.  Definitional in
 the node; its preservation by the generic engine is a refinement obligation
 (consensus-lean\#45).}
 
@@ -1192,7 +1193,7 @@ bound entry, permits~$P_E$ (BA), so the honest rows give P2; they arrive before
 $t_{u+\cF}$, and the window's honest ready proposal with the retained-inclusion
 parent gives P1, P3--P5 (C0.3), unless a retained chain justifies~$E$ first,
 which is branch~(ii).  In the second case branch~(ii) holds.)  Faulty or old entries are not
-served by this node (fgsa-spec \S Schedule: ``an AC obligation''; H4).  The disjunction is
+served by this node (goldilocks-spec \S Schedule: ``an AC obligation''; H4).  The disjunction is
 needed: an early justification can use $q-f$ honest and $f$ faulty targets
 ($n=7$: three plus two), after which higher-source suppression can skip that
 height for every later honest source, so the existing duty interface does not
@@ -2090,8 +2091,8 @@ Through $[b_0,b_1)$ there is no delivery premise, so A1.2--A1.4's
 $\mathsf{Sync}$ and $\mathsf{Carry}$ are unavailable; what keeps a ready read
 is the outage-continuation argument itself (protection by a lock through its
 lifetime under~(V)).  That argument has no paper proof for the composed
-Goldilocks node.  The evidence cited is for the old round model of FG-SA:
-\texttt{fgsa-protocol.tex}, ``Outage continuation under~(V)'' (a proof sketch;
+Goldilocks node.  The evidence cited is for the old round model of Goldilocks:
+\texttt{goldilocks-round-model.tex}, ``Outage continuation under~(V)'' (a proof sketch;
 full argument in \texttt{drafts/outage-output-direct.md} \S\S1--10), and its
 companion Lean \texttt{OutageContinuationClaim} (legacy \texttt{fgsa/}, assembled
 from that model's foundation and clean-cut suppliers), under that model's

@@ -53,24 +53,24 @@
 \newcommand{\lockDeadline}{\mathsf{lock\_deadline}}
 \newcommand{\restartTime}{\mathsf{restart\_time}}
 
-\title{FG-SA specification: relation to the Lean model and claims}
+\title{Goldilocks specification: relation to the Lean model and claims}
 \author{}
 \date{}
 
 \begin{document}
 \maketitle
 
-This note is a companion to \texttt{fgsa-spec.tex}.  It lists the
+This note is a companion to \texttt{goldilocks-spec.tex}.  It lists the
 differences between that specification and the Lean model, and the
 continuation claims that are proved for the Lean model.  Its section
 numbers refer to this note; the names of functions and fields are those
 of the specification.  The specification is titled Goldilocks, and it uses that name
-also for its available chain; this note and the Lean model call the
-protocol FG-SA and the available chain SA.
+also for its available chain; this note calls the available chain SA (the
+old Lean model's names use FGSA for the protocol).
 
 \section{Relation to the Lean model}\label{sec:lean}
 
-The Lean model follows \texttt{fgsa-protocol.tex}.  It keeps two stores,
+The Lean model follows \texttt{goldilocks-round-model.tex}.  It keeps two stores,
 one for the FG and one for SA, and a per-block lock map.  This section
 lists the differences.  Items (a)--(g) change no output and no message
 of an honest node.  Items (h)--(k) change the behaviour.

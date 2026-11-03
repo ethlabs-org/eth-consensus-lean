@@ -1,3 +1,4 @@
+% Historical round-model baseline of Goldilocks (formerly fgsa-protocol.tex), cited by the mapping for the baseline numbers; not the live spec, which is goldilocks-spec.tex.
 \documentclass{article}
 \usepackage[margin=3cm]{geometry}
 \usepackage{amsmath,amssymb,mathtools,amsthm}
@@ -80,7 +81,7 @@
 \newcommand{\PROVED}{\textbf{PROVED}}
 \newcommand{\REFUTED}{\textbf{REFUTED}}
 
-\title{FG-SA: complete protocol}
+\title{Goldilocks: the round-model protocol (historical baseline)}
 \author{}
 \date{}
 
@@ -88,9 +89,9 @@
 \maketitle
 
 \paragraph{Scope (2026-10-30).}  This text is the round-model protocol
-that the FG-SA Lean model follows, kept for that correspondence.  It does
+that the old round-model Lean model follows, kept for that correspondence.  It does
 not specify the current finality gadget.  The current FG rules are in
-\texttt{shared/fg.tex}, which \texttt{fgsa-spec.tex} inputs, and they
+\texttt{shared/fg.tex}, which \texttt{goldilocks-spec.tex} inputs, and they
 have loose BJ: a justification at
 a bound height waits for the finality of its predecessor, and the client
 reads its finality pair from the entry state of its source, not from the
@@ -102,7 +103,7 @@ transfer to loose BJ without a new proof.
 
 \section{Introduction}\label{sec:intro}
 
-This document specifies FG-SA.  FG-SA is the decoupled consensus
+This document specifies Goldilocks.  Goldilocks is the decoupled consensus
 protocol of Section~7 of~\cite{DC} with three consensus changes:
 \begin{enumerate}[label=(\alph*),nosep]
 \item \emph{FJ in place of NJ.}  There are no nonjustifiable heights
@@ -128,7 +129,7 @@ the form of~\DC{7}: the HEAD view, the live FG
 caches, finality acceptance, the chain state and its transition, the
 anti-slashing record, and the client.  Where this document differs
 from~\DC{7} for another reason, Section~\ref{sec:differences} gives the
-reason and the evidence.  FG-SA exposes two chains: the finalized chain
+reason and the evidence.  Goldilocks exposes two chains: the finalized chain
 with tip~$F$, and the available chain with tip~$S$.  After an $F$
 advance and after each gate, set $S:=F$ if $F\not\preceq S$.  This is
 the output rule of DC's \fname{get\_stable}, stored explicitly in~$S$.
@@ -180,7 +181,7 @@ the conditional repair bound~\cite{OR180}, and the qualified-finality
 results~\cite{QF181} remain sources.  Their reviews are~\cite{THR,BBR,QFR}.  The leak ledger follows
 the round-settled analysis~\cite{RL179,RLR} and the reviewed section
 and proof note~\cite{LS183,LSR}.
-There is no executable model of FG-SA.  The changes from DC are
+There is no executable model of Goldilocks.  The changes from DC are
 (a)--(c), the replacements of Section~\ref{sec:differences}, and the
 derived leak ledger of Section~\ref{sec:leak-identification}.
 The ledger changes accounting only; it changes no consensus function.
@@ -308,7 +309,7 @@ $rR,\dots,rR+R-1$, with $R\geq\max\{2,\kappa\}$ and $\round(s)=\lfloor s/R\rfloo
 Here $\kappa=\lceil(6\Delta+\Delta_F)/(4\Delta)\rceil$.
 The row bound sets the minimum $R$; AC slots remain $4\Delta$.
 DC's grade-2 receipt test requires $7-4R\leq-5$, hence $R\geq3$;
-FG-SA has no grade-2 cutoff~\DC{6.1}.
+Goldilocks has no grade-2 cutoff~\DC{6.1}.
 At $R=1$ the FG action of this schedule never runs~\cite[T12]{FL}.
 The healing bounds and their status in Section~\ref{sec:guarantees} use
 integer $R\geq\max\{2,\kappa\}$ with $\delta_{\rm t}=2R$: the source and pivot
@@ -1774,16 +1775,16 @@ in~\cite{RL179}.
 
 \paragraph{Changes from DC.}
 The form follows~\DC{8}, with five accounting changes.
-First, DC charges at each block; FG-SA settles once per round, as the
+First, DC charges at each block; Goldilocks settles once per round, as the
 user requires.  For $\kappa=2$, the cut includes the receipt-ready +$\kappa$
 carrier at every $R\geq2$
 and later same-round inclusions at $R>3$~\cite[\S2]{LS183}.
 Second, DC multiplies the charge by the slot gap
-$d=B.\slot-B.\parent.\slot$; FG-SA adds one unit per crossed
+$d=B.\slot-B.\parent.\slot$; Goldilocks adds one unit per crossed
 settlement boundary in each active layer.  Each boundary has its own
 reads, so the last charge cannot represent all skipped intervals.
 Third, DC reads the markers before each block's height events.
-FG-SA compares boundary post-states and normally reads the closing
+Goldilocks compares boundary post-states and normally reads the closing
 markers.  This counts progress over the full interval, instead of
 charging a reset context at each block.  The old-pair read below
 protects finality rows included before the first pair replacement,
@@ -1792,7 +1793,7 @@ Fourth, DC excludes waiting from its stalled-block bound.  The requested
 per-round state bound has no waiting exception: even when $L_1$ is
 empty, $L_{2t}$ or $L_{2f}$ supplies the bound~\cite[\S3.2]{RL179}.
 Fifth, DC's $L_{2f}$ requires a pair pending before the block and thus
-excuses a block that opens a new pair.  FG-SA tests the closing gap.
+excuses a block that opens a new pair.  Goldilocks tests the closing gap.
 A transition exemption would allow a round with no finality and no
 charge; the alternative in~\cite[\S\S1,3.3,6.1]{RL179} gives only
 $(m-1)(n-q_F)$ in unit weights over $m$ rounds without finality.  The user instead chose
@@ -1801,7 +1802,7 @@ state property, and permits charges caused by proposer omissions
 \cite[\S1]{LS183}.  The exact unit-weight bound below is greater than
 $n/3$.  These choices change DC's accounting policy; a round multiplier
 alone with DC's other tests does not suffice~\cite[\S6.1]{RL179}.
-FG-SA also has no NJ exemption because its NJ field is always false.
+Goldilocks also has no NJ exemption because its NJ field is always false.
 Its fairness theorem covers all three layers only in the stated strong
 window; DC's fairness statement covers $L_1$ under its source-distance
 premise~\DC{8}.
@@ -2029,12 +2030,12 @@ proof that each charge identifies a faulty validator or a missed duty.
 \end{remark}
 
 \begin{remark}[DC only]
-FG-SA has no NJ heights and has no NJ leak guard.  For a corresponding
+Goldilocks has no NJ heights and has no NJ leak guard.  For a corresponding
 round ledger in DC, the NJ refinement reads the closing state
 $\Xi_+=\Xi_r$: when $\Xi_+.\nj=\mathsf{true}$, it charges $L_{2t}$ only if
 $\Xi_+.h_F=\Xi_-.h_F$.  This retains the strict tightness
 argument, which uses $L_{2t}$ only in that case.  It is a remark about
-DC, not an FG-SA rule.
+DC, not a Goldilocks rule.
 \end{remark}
 
 \paragraph{High records and useful votes.}
@@ -3209,7 +3210,7 @@ QF2/QF4 with $\beta+\Gamma-4\Delta\leq P$, $R>\kappa$ & full interface,
 leak fairness and HP zero charges; HP indexed latency;
   strong alternatives and FL-W/RF/D/T7 for slow rows & $\kappa>2$ &
   \OPEN; no port in the sources; $\kappa_{\rm leak}$ unchanged~\cite[F5]{FPR}\\
-a checked Lean instance of FG-SA & --- & \OPEN\\
+a checked Lean instance of Goldilocks & --- & \OPEN\\
 \hline
 \end{longtable}
 \end{center}
@@ -3325,7 +3326,7 @@ an item outside that audit.
   >{\raggedright\arraybackslash}p{1.2cm}
   >{\raggedright\arraybackslash}p{4.3cm}}
 \hline
-\LV{2} & \cite{DC} & FG-SA & Class & Reason and evidence\\
+\LV{2} & \cite{DC} & Goldilocks & Class & Reason and evidence\\
 \hline
 \endhead
 1 & $\Sigma.\mathsf{G2}$, $\Sigma.\mathsf{G1}$, $\Sigma.\mathsf{G0}$,
@@ -3370,7 +3371,7 @@ an item outside that audit.
   stamps rows; window $\eta_{\rm SG}$ &
   no safe field; \fname{on\_attestation} deduplicates by the full row,
   retains all checked contents without clock expiry or identity quota &
-  INTEN\-TIONAL & FG-SA has no SG; full-content deduplication keeps each
+  INTEN\-TIONAL & Goldilocks has no SG; full-content deduplication keeps each
   distinct row.  No FG rule reads a row's receipt time\\
 24 & saved-grade clipping (\textsf{clipGrade}, \textsf{clipCache})
   and output accessors &
@@ -3447,7 +3448,7 @@ an item outside that audit.
 --- & signed attestation round and safe field; SG grades, pool admission,
   per-identity cap, windows, and future-round check &
   $(\valindex,h,T,\chi,h_f,T_f)$; fixed FG authentication and seat map;
-  round duties unchanged & INTEN\-TIONAL & FG-SA has no SG; the FG fold
+  round duties unchanged & INTEN\-TIONAL & Goldilocks has no SG; the FG fold
   and E1/E2 read pairs and identities, not the row round\\
 --- & empty height pairs and same-height finality &
   no row without a height pair; compute the head's finality pair at each
@@ -3495,7 +3496,7 @@ an item outside that audit.
   user decision: finalize or leak each round; an exemption loses one
   round of the bound; \DC{8}, \cite[\S\S1,3.3,6.1]{RL179}\\
 --- & NJ exemption for $L_{2t}$ & no NJ exemption & (a), LEAK &
-  FG-SA fixes $\nj=\mathsf{false}$; \DC{8}, \cite[\S7]{LS183}\\
+  Goldilocks fixes $\nj=\mathsf{false}$; \DC{8}, \cite[\S7]{LS183}\\
 --- & source-relative $L_1$ fairness & all-layer zero in the full
   strong window; omission charges permitted & LEAK &
   full interface and five honest proposers give three counter
@@ -3650,14 +3651,14 @@ difference of~\cite[M3]{RT} no longer exists.
   Leak fairness, HP zero charges and indexed latency, and the old strong
   alternatives remain open for $\kappa>2$; $\kappa_{\rm leak}$ is unchanged.
   Recheck old negative executions under R6-window and window retention.
-\item \OPEN: \emph{Lean.}  There is no checked mixed FG-SA Lean
+\item \OPEN: \emph{Lean.}  There is no checked mixed Goldilocks Lean
   instance~\LDP{7} (X3).  The SA and DC Lean
   theorems verify their own protocols only.  The DC form lets the port
   reuse DC's live-cache lemmas; the new parts are the FJ contest case and
   the lock walk start~\LDP{7} (O7), the $F$ start of the confirmation
   walk and its correspondence proof, plus reconciliation and the
   admission-or-coverage proof of~\cite[\S\S2--7]{FB}.  The combined
-  filtered FG-SA proof remains open.
+  filtered Goldilocks proof remains open.
 \item \emph{SA Lean under the receipt premise} (closed).  The
   available-chain merge \texttt{1a3f73a} puts the SA, Grid~CO, and SA-PC
   theorems on the receipt premise; the public theorems keep their
