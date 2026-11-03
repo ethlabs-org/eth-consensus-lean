@@ -239,7 +239,7 @@ theorem lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
         ((∃ CV, OptimisticLockAt tr y a l.slot D CV) ∨ ∃ ell', UpdateAt tr y a l.slot ell') ∧
         ∃ B ∈ U, B.root = l.block ∧ Anc U B D := by
     intro L L' hm ho l hl
-    obtain ⟨l₀, hl₀, hs, -, B, hB, hBr, B', hB', hB'r, hBB⟩ := hm l hl
+    obtain ⟨l₀, hl₀, hs, -, -, B, hB, hBr, B', hB', hB'r, hBB⟩ := hm l hl
     obtain ⟨a, hai, D, hd, C, hC, hCr, hCD⟩ := ho l₀ hl₀
     obtain rfl : C = B := hr.coherent.1 hC (hPhi.2 hB) (hCr.trans hBr.symm)
     exact ⟨a, hai, D, hs ▸ hd, B', hPhi.2 hB', hB'r, (hBB.mono hPhi.2).trans hCD⟩
@@ -358,7 +358,7 @@ private theorem good_movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.
     (h : ∀ l ∈ L, s ≤ l.slot → Good tr H U y i l) :
     ∀ l ∈ L', s ≤ l.slot → Good tr H U y i l := by
   intro l' hl' hs
-  obtain ⟨l, hl, hsl, -, B, hB, hBr, B', hB', hB'r, hA⟩ := hm l' hl'
+  obtain ⟨l, hl, hsl, -, -, B, hB, hBr, B', hB', hB'r, hA⟩ := hm l' hl'
   exact (h l hl (hsl ▸ hs)).below hU hsl (hΦU hB') hB'r (hΦU hB) hBr (hA.mono hΦU)
 
 /-- The block an optimistic check selects is in the tree, and a lock of its slot below it is

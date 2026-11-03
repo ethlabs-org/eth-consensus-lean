@@ -35,7 +35,7 @@ private theorem LockInv.movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : 
     (hl : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
   refine ⟨E, hE, hEr.trans hl.symm, hEt, fun l' hl' X hX hXr => ?_⟩
-  obtain ⟨l, hl, -, -, B, hB, hBr, B', hB', hB'r, hA⟩ := hm l' hl'
+  obtain ⟨l, hl, -, -, -, B, hB, hBr, B', hB', hB'r, hA⟩ := hm l' hl'
   obtain rfl : X = B' := hU.1 hX (hΦU hB') (hXr.trans hB'r.symm)
   exact (Anc.mono hΦU hA).trans (hlE l hl B (hΦU hB) hBr)
 

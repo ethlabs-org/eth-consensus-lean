@@ -187,15 +187,15 @@ def LiveLocksChain : Prop :=
         Compatible Φ.tree B C) ∧
       ∀ B ∈ liveLockBlocks sp A.locks Φ t, B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.fcRoot
 
-/-- `L'` moves the locks of `L` only back: each lock of `L'` has the slot and the fast bit of a
-lock of `L` and its block is an ancestor of that lock's block (both in the tree). -/
+/-- `L'` moves the locks of `L` only back: each lock of `L'` has the slot, the fast bit and the
+expiry of a lock of `L` and its block is an ancestor of that lock's block (both in the tree). -/
 def MovesBack {FGP : Type} (Φ : Frm sp.n FGP) (L L' : Set Lock) : Prop :=
-  ∀ l' ∈ L', ∃ l ∈ L, l'.slot = l.slot ∧ l'.fast = l.fast ∧
+  ∀ l' ∈ L', ∃ l ∈ L, l'.slot = l.slot ∧ l'.fast = l.fast ∧ l'.expiry = l.expiry ∧
     ∃ B ∈ Φ.tree, B.root = l.block ∧ ∃ B' ∈ Φ.tree, B'.root = l'.block ∧ Φ.Anc B' B
 
 /-- **A0.4 (c), locks only move back.** In a well-formed frame, `live_locks`, `add_locks` (from
 the stored locks with the new ones) and `unlock` move a lock only to an ancestor and keep its
-slot and fast bit. -/
+slot, fast bit and expiry. -/
 def LocksMoveBack : Prop :=
   ∀ (FGP : Type) (Φ : Frm sp.n FGP) (L : Set Lock) (t : Time), FrameOK Φ →
     MovesBack sp Φ L (liveLocks sp L Φ t) ∧

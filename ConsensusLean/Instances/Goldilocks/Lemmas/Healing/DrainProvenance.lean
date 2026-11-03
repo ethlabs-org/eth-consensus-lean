@@ -72,7 +72,7 @@ private theorem FromP.of_movesBack {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
     (hΦ : Φ.tree ⊆ U) {L L' : Set Lock} {New : Nat → Bool → Blk sp.n FGP → Prop}
     (h : MovesBack sp Φ L L') : FromP U L L' New := by
   intro l' hl'
-  obtain ⟨l, hl, hs, hfa, B, hB, hBr, B', hB', hB'r, hA⟩ := h l' hl'
+  obtain ⟨l, hl, hs, hfa, -, B, hB, hBr, B', hB', hB'r, hA⟩ := h l' hl'
   exact Or.inl ⟨l, hl, hfa.symm, hs, Or.inr ⟨B', hΦ hB', hB'r, B, hΦ hB, hBr, hA.mono hΦ⟩⟩
 
 private theorem FromP.of_addLocks {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Frm sp.n FGP}

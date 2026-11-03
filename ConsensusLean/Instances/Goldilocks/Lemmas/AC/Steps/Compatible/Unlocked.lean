@@ -175,7 +175,7 @@ theorem locks_after_unlock (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin s
       obtain ⟨L₀, hL₀⟩ := readPoint_locks hr hx hc (by omega)
       intro l hl
       rw [hL₀] at hl
-      obtain ⟨-, -, -, -, -, -, -, Y, hY, hYr, -⟩ :=
+      obtain ⟨-, -, -, -, -, -, -, -, Y, hY, hYr, -⟩ :=
         ((locks_move_back sp) FGP ℓ.frame L₀ (tr.time j) hΦ).2.2 _ _ l hl
       exact ⟨Y, hY, hYr⟩
     intro l hl hls
@@ -185,7 +185,7 @@ theorem locks_after_unlock (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin s
       obtain ⟨Y, hY, hYr⟩ := hrb l hl
       exact ⟨Y, hY, hYr, hA l hl hls Y hY hYr⟩
     · rw [updateLatestConfirmed_locks] at hl
-      obtain ⟨l₀, hl₀, hsl, -, X, hX, hXr, Y, hY, hYr, hYX⟩ :=
+      obtain ⟨l₀, hl₀, hsl, -, -, X, hX, hXr, Y, hY, hYr, hYX⟩ :=
         ((locks_move_back sp) FGP ℓ.frame _ (tr.time j) hΦ).2.1 _ _ l hl
       rcases hl₀ with hl₀ | ⟨p, hp, rfl⟩
       · rw [admitVote_locks] at hl₀

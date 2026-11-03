@@ -13,7 +13,7 @@ fast lock on the deepest block of the result's chain with half of the committee 
 lock when the saved results of the previous `k − 1` slots are in the tree and extend a deeper
 block); the optimistic confirmation of the current slot before `t_s + 2Δ` (three quarters of
 the committee with a slot-`s` vote whose head extends the block, equivocators included, and no
-conflicting live lock); and the confirmed tip. A slow lock of slot `s` expires after `s + k`; a
+conflicting live lock); and the confirmed tip. A slow lock of slot `s` lives through `s + k`; a
 fast lock gets `fastExpiry`, except that the update's fast lock keeps the slow expiry `s + k` when
 a block of the update's path passes the slow test (a fast lock never shortens what the slow rule
 gives). -/

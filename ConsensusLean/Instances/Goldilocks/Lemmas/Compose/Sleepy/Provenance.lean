@@ -63,7 +63,7 @@ variable {R : Nat → Prop} {G : SA.Lock → Prop} {Φ : SA.Frm sp.n FGP}
 private theorem good_movesBack (hD : Down Φ G) {L L' : Set SA.Lock} (hm : SA.MovesBack sp Φ L L')
     (h : ∀ l ∈ L, G l) : ∀ l ∈ L', G l := by
   intro l' hl'
-  obtain ⟨l, hl, hs, -, B, hB, hBr, B', hB', hB'r, hA⟩ := hm l' hl'
+  obtain ⟨l, hl, hs, -, -, B, hB, hBr, B', hB', hB'r, hA⟩ := hm l' hl'
   exact hD l l' hs B hB hBr B' hB' hB'r hA (h l hl)
 
 private theorem good_addLocks (hΦ : FrameOK Φ) (hD : Down Φ G) {L : Set SA.Lock} {t : Time}

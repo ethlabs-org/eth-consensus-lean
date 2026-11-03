@@ -330,7 +330,7 @@ theorem older_locks_compatible_after_unlock
     have hrb : ∀ l ∈ e.readPoint.locks, ∃ Y ∈ ell.frame.tree, Y.root = l.block := by
       intro l hl
       rw [hL₀] at hl
-      obtain ⟨_, _, _, _, _, _, _, Y, hY, hYr, _⟩ :=
+      obtain ⟨_, _, _, _, _, _, _, _, Y, hY, hYr, _⟩ :=
         ((locks_move_back sp) FGP ell.frame L₀ (tr.time j) hPhi).2.2 _ _ l hl
       exact ⟨Y, hY, hYr⟩
     intro l hl hls
@@ -340,7 +340,7 @@ theorem older_locks_compatible_after_unlock
       obtain ⟨Y, hY, hYr⟩ := hrb l hl
       exact ⟨Y, hY, hYr, hA l hl hls Y hY hYr⟩
     · rw [updateLatestConfirmed_locks_eq] at hl
-      obtain ⟨l₀, hl₀, hsl, _, X, hX, hXr, Y, hY, hYr, hYX⟩ :=
+      obtain ⟨l₀, hl₀, hsl, _, _, X, hX, hXr, Y, hY, hYr, hYX⟩ :=
         ((locks_move_back sp) FGP ell.frame _ (tr.time j) hPhi).2.1 _ _ l hl
       rcases hl₀ with hl₀ | ⟨p, hp, rfl⟩
       · rw [admitVote_locks_eq] at hl₀

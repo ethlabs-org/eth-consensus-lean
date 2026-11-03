@@ -24,7 +24,8 @@ structure SAParams where
   toParams : Params
   /-- Slot `s` starts at `4Δs`. -/
   slotTime_eq : ∀ s : Nat, toParams.slotTime s = 4 * toParams.Δ * s
-  /-- The slow window: a slow lock of slot `j` lives through slot `j + k`; no lock lives longer. -/
+  /-- The slow window: a slow lock of slot `j` lives through slot `j + k`; no lock the SA writes
+  lives longer. -/
   k : Nat
   /-- The window is at least two slots. -/
   two_le_k : 2 ≤ k

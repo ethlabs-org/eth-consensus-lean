@@ -117,7 +117,7 @@ private theorem readPoint_locks_stored (hr : ACLocalRun (SA.goldilocksSA sp FGP 
   intro l' hl' hne
   rw [tryVote_readPoint_locks he] at hl'
   simp only [hpos, ↓reduceIte] at hl'
-  obtain ⟨l₁, hl₁, hs₁, -, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩ :=
+  obtain ⟨l₁, hl₁, hs₁, -, -, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩ :=
     ((SA.locks_move_back sp) FGP ℓ.frame P.locks (tr.time i) hΦ).2.2 _ _ l' hl'
   rcases hP with rfl | ⟨A, rfl, hAl⟩
   · exact ⟨l₁, hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
@@ -125,7 +125,7 @@ private theorem readPoint_locks_stored (hr : ACLocalRun (SA.goldilocksSA sp FGP 
   split at hl₁
   · exact ⟨l₁, hAl ▸ hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
   rw [SA.updateLatestConfirmed_locks_eq] at hl₁
-  obtain ⟨l₂, hl₂, hs₂, -, B₂, hB₂, hB₂r, B₁', hB₁', hB₁'r, hA'⟩ :=
+  obtain ⟨l₂, hl₂, hs₂, -, -, B₂, hB₂, hB₂r, B₁', hB₁', hB₁'r, hA'⟩ :=
     ((SA.locks_move_back sp) FGP ℓ.frame A.locks (tr.time i) hΦ).2.1 _ _ l₁ hl₁
   rcases hl₂ with hl₂ | ⟨p, hp, rfl⟩
   · obtain rfl : B₁' = B₁ := hΦ.coherent.1 hB₁' hB₁ (hB₁'r.trans hB₁r.symm)

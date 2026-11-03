@@ -45,7 +45,8 @@ structure Lock where
   slot : Nat
   /-- The fast bit. -/
   fast : Bool
-  /-- The last slot of its life (inclusive), fixed at its write, at most `slot + k`. -/
+  /-- The last slot of its life (inclusive), fixed at its write (for every lock the SA writes,
+  `slot + 2 ≤ expiry ≤ slot + k`). -/
   expiry : Nat
   deriving DecidableEq
 

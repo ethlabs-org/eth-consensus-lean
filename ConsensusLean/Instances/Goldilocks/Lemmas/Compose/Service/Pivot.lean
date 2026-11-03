@@ -934,7 +934,7 @@ private theorem proposal_lock_below (hrun : GoldilocksRun proposer dg H tr) (hnc
   obtain rfl : L = Φ.viableAncestor B :=
     hΦ.coherent.1 hL (SA.viableAncestor_anc hΦ hB).1 hlL.symm
   rw [hA₁] at hl
-  obtain ⟨l₁, hl₁, -, -, B₁, hB₁, hB₁r, B', hB', hB'r, hB'B₁⟩ :=
+  obtain ⟨l₁, hl₁, -, -, -, B₁, hB₁, hB₁r, B', hB', hB'r, hB'B₁⟩ :=
     ((SA.locks_move_back sp) _ Φ _ t hΦ).2.2 σ V l hl
   obtain rfl : B' = B := hΦ.coherent.1 hB' hB (hB'r.trans hBr.symm)
   rw [projAC_state hrun.toLocalRun hp i] at hl₁
