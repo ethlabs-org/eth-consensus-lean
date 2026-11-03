@@ -14,8 +14,8 @@ Labelled by kind (CONTRIBUTING "Statements"):
   `catchUp_k_four`, `catchUp_k_five`, each also against the former `max 37 (8k + 4)`); the outage
   no-sleep margin `4k + 6` covers catch-up + 1 only from `k = 4` on (`noSleep_covers_catchUp`,
   `noSleep_k_two_five`); lag `4k + 6`, recovery `9`, budget `4k − 5` (`outage_lag_recovery_budget`);
-  heal `catchUp + M_f` on the five-window route, `483` at `k = 2, δt = 6, X = 1`, below the
-  six-window and the phase-1 coefficients (`heal_drop`). `accepted_latency` takes its documented
+  heal `catchUp + M_f` on the rise-round route, `387` at `k = 2, δt = 6, X = 1`, below the
+  five-window and the phase-1 coefficients (`heal_drop`). `accepted_latency` takes its documented
   value (`4X + 6`, `4(X + 3c) + 1`) at each capability, and both Sleepy margins hold there.
 
 * (b) The row ratio `r` (`AcceptanceAssumptions.rowRatio`) and its gap `c = cF r`:
@@ -133,19 +133,21 @@ theorem outage_lag_recovery_budget :
       (K setupSmall assumptionsSmall).params.recovery = 9 ∧
       (K setupSmall assumptionsSmall).params.budget = 3 := ⟨rfl, rfl, rfl⟩
 
-/-- (b) The heal coefficient is `catchUp + M_f` at every capability, `483` at `k = 2`, `δt = 6`,
-`X = 1` (`M_f = 464`, five-window route); strictly below the six-window coefficient
-`19 + (24L + 8k + 52δ_t + 52X + 44)` (`563` there) and the phase-1 coefficient `37 + 2·M₁ + 3`,
-`M₁ = 64k + 56δ_t + 80X + 92`, at every setup and index. -/
+/-- (b) The heal coefficient is `catchUp + M_f` at every capability, `387` at `k = 2`, `δt = 6`,
+`X = 1` (`M_f = 368`, rise-round route); strictly below the five-window coefficient
+`19 + (20L + 8k + 44δ_t + 44X + 40)` (`483` there; lower by `16(δ_t + X − 1)`, using
+`δ_t ≥ 6`) and the phase-1 coefficient `37 + 2·M₁ + 3`, `M₁ = 64k + 56δ_t + 80X + 92`, at every
+setup and index. -/
 theorem heal_drop (S : Setup) (A : AcceptanceAssumptions S) (cap : Capability) (X : ℕ+) :
     accepted_heal S A cap X = 19 + healMargin S X ∧
-      accepted_heal setupSmall assumptionsSmall cap 1 = 483 ∧
+      accepted_heal setupSmall assumptionsSmall cap 1 = 387 ∧
       accepted_heal S A cap X <
-        19 + (24 * healthyDrainLen S X + 8 * S.k + 52 * S.δt + 52 * (X : Nat) + 44) ∧
+        19 + (20 * healthyDrainLen S X + 8 * S.k + 44 * S.δt + 44 * (X : Nat) + 40) ∧
       accepted_heal S A cap X <
         37 + 2 * (64 * S.k + 56 * S.δt + 80 * (X : Nat) + 92) + 3 := by
   refine ⟨by rw [accepted_heal_val, accepted_catchUp_val], by rw [accepted_heal_val]; rfl, ?_, ?_⟩
   all_goals
+    have := A.six_le_δt
     rw [accepted_heal_val, accepted_catchUp_val]
     unfold healMargin healthyDrainLen
     omega

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetOfDrain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetOfDrainRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetCoefficients
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyQueryShared
@@ -15,7 +15,7 @@ progress on `[ready, heal]` and `heal ≤ horizon`: a delay `Δ_F` and a reset `
 and `ρ = healthyResetSlack`, the literal slack `0` (not the row ratio `r`), are the named
 parameter-only coefficients (`ResetCoefficients`).
 
-It is the instance of `exists_reset_of_drain5_awake` (the five-window frame route) at `λ = 2Δ`, the
+It is the instance of `exists_reset_of_drain_rounds_awake` (the rise-round route) at `λ = 2Δ`, the
 ready scalar `ready` (`ready ≥ 1`, so `max ready 0 = ready`), the gap `G = X`
 (`hgp_of_healthyQuery`) and the drain length `L_drain = healthyDrainLen`, with the protocol row
 delay `Δ_F = rowDelay`. The run premises come from `hsSharedUpTo_of_le`; the whole-run no-restart
@@ -98,23 +98,23 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
     have hf' : 3 * Q.params.n ≤ Q.params.n - 1 := hf
     omega
   -- the reset bound `B = ready + R·Δ`
-  have hBeq : resetBound5 Q.ready Q.params.Δ (2 * Q.params.Δ) Q.params.toParams.fg.δt
+  have hBeq : resetBoundRounds Q.ready Q.params.Δ (2 * Q.params.Δ) Q.params.toParams.fg.δt
       (Q.index : Nat) (healthyDrainLen S Q.index) =
       Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ := by
-    rw [resetBound5_eq, healthyResetCoeff_val, hδeq]; push_cast; ring
+    rw [resetBoundRounds_eq, healthyResetCoeff_val, hδeq]; push_cast; ring
   have hR : (24 : Time) ≤ healthyResetCoeff S Q.index := by
     rw [healthyResetCoeff_val]; push_cast
     linarith [Nat.cast_nonneg (α := Time) (healthyDrainLen S Q.index)]
   have hr : (0 : Time) ≤ healthyResetSlack S Q.index := Nat.cast_nonneg _
-  have hBh : resetBound5 Q.ready Q.params.Δ (2 * Q.params.Δ) Q.params.toParams.fg.δt
+  have hBh : resetBoundRounds Q.ready Q.params.Δ (2 * Q.params.Δ) Q.params.toParams.fg.δt
       (Q.index : Nat) (healthyDrainLen S Q.index) ≤ Q.heal := by
     rw [hBeq]; linarith
   have h4B : Q.ready + 4 * Q.params.Δ ≤ Q.heal := by
     have := mul_le_mul_of_nonneg_right hR hΔ.le
     linarith
   -- the kernel
-  obtain ⟨a, ha, hab⟩ := exists_reset_of_drain5_awake hrun hs.noColl hs.faults hs.sync hs.awake
-    (healthy_repair_catch S A V Q) hnr hH (by rw [hδeq]; omega)
+  obtain ⟨a, ha, hab⟩ := exists_reset_of_drain_rounds_awake hrun hs.noColl hs.faults hs.sync
+    hs.awake (healthy_repair_catch S A V Q) hnr hH (by rw [hδeq]; omega)
     (by rw [hδeq]; exact hs.timeoutDelay)
     hr0 hgr Q.index.pos hcz (hBh.trans hb)
     (fun s₀ N hs₀ hN => hgp_of_healthyQuery S A V Q hb hp (by rw [max_eq_left hr0]; exact hs₀)
