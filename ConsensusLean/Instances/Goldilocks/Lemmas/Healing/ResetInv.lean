@@ -80,10 +80,58 @@ theorem protected_label_after_drain (hp : ResetPremises tr H proposer dg g ΔF a
     omega
   · exact_mod_cast hlab j (by linarith)
 
+/-- **The classes of a protected target** (route L1): a protected `(B, j)` after the reset is
+(a) a fast-test selection, below the result of its writer's update; (b) an optimistic selection;
+(c) a slow-lock block, below the result of its writer's update, with its whole window after the
+drain; or (d) a unanimous honest proposal. Every label is after the drain. -/
+theorem protected_target_cases (hp : ResetPremises tr H proposer dg g ΔF a)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
+    (hB : SA.Protected proposer tr.projAC H (a + resetInvOffset sp.k sp.Δ) B j) :
+    sp.slot a + 2 * sp.k + 6 ≤ j ∧
+      ((∃ x ∈ H, ∃ i CV, SA.JoinedAt tr.projAC x (tr.time i) ∧
+          SA.FastUpdateAt tr.projAC x i j B CV ∧
+          ∃ C CV', SA.ResultAt tr.projAC x i j C CV' ∧ Anc (tr.HonestBlocks H) B C) ∨
+        (∃ x ∈ H, ∃ i CV, SA.JoinedAt tr.projAC x (tr.time i) ∧
+          SA.OptimisticLockAt tr.projAC x i j B CV) ∨
+        (∃ x ∈ H, ∃ i, SA.JoinedAt tr.projAC x (tr.time i) ∧ SA.SlowLockAt tr.projAC x i j B ∧
+          ((sp.slot a + 2 * sp.k + 6 : Nat) : Int) ≤ (j : Int) - sp.k + 1 ∧
+          ∃ C CV', SA.ResultAt tr.projAC x i j C CV' ∧ Anc (tr.HonestBlocks H) B C) ∨
+        (proposer j ∈ H ∧ SA.HonestProposal tr.projAC (proposer j) j B ∧
+          ∀ x ∈ H, ∀ k e, SA.VoteAt tr.projAC x k e → e.msg.slot = j → e.msg.head = B.root)) := by
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨y, -, k, att, -, -, hka⟩ := hp.reset.1
+  have ha0 : 0 ≤ a := hka ▸ hp.run.time_nonneg k
+  have hsa : sp.ts (sp.slot a : Int) ≤ a := (SA.ts_le_iff_le_slot sp ha0 _).mpr le_rfl
+  have hlab : ∀ m : Int, a + resetInvOffset sp.k sp.Δ + 4 * sp.Δ ≤ sp.ts m →
+      ((sp.slot a + 2 * sp.k + 6 : Nat) : Int) ≤ m := by
+    intro m hm
+    rw [resetInvOffset_eq sp.k hΔ.le] at hm
+    apply (SA.ts_le_iff sp).mp
+    simp only [SAParams.ts] at hsa hm ⊢
+    push_cast
+    nlinarith
+  refine ⟨protected_label_after_drain hp hB, ?_⟩
+  rcases hB with ⟨x, hx, i, CV, hj, hfl, -⟩ | ⟨x, hx, i, hj, hsl, hs⟩ | ⟨hp', hP, -, hun⟩
+  · rcases hfl with hfu | hop
+    · refine Or.inl ⟨x, hx, i, CV, hj, hfu, ?_⟩
+      obtain ⟨ℓ, C, hupd, hconf, -, hfast, -⟩ := id hfu
+      have hBC := (SA.deepest_mem hfast).1.1.2.2
+      exact ⟨C, _, ⟨ℓ, hupd, hconf, rfl⟩,
+        Anc.mono (SA.frameIn_of_callAt hr hx hupd.1).2 hBC⟩
+    · exact Or.inr (Or.inl ⟨x, hx, i, CV, hj, hop⟩)
+  · refine Or.inr (Or.inr (Or.inl ⟨x, hx, i, hj, hsl, hlab _ hs, ?_⟩))
+    obtain ⟨ℓ, C, hupd, hconf, -, hdeep, -⟩ := id hsl
+    have hBC := (SA.deepest_mem hdeep).1.1.2.2
+    exact ⟨C, _, ⟨ℓ, hupd, hconf, rfl⟩,
+      Anc.mono (SA.frameIn_of_callAt hr hx hupd.1).2 hBC⟩
+  · exact Or.inr (Or.inr (Or.inr ⟨hp', hP, hun⟩))
+
 /-- **Vote domain of a protected target** (OPEN; route L1, L2): at an honest vote of a slot
 `> j`, given that every honest vote of a slot `> j` at an earlier cut extends `B`. -/
 theorem protected_vote_domain (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
     (hB : SA.Protected proposer tr.projAC H (a + resetInvOffset sp.k sp.Δ) B j)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcast : SA.CastAt tr.projAC y k ℓ e)
@@ -97,7 +145,8 @@ theorem protected_vote_domain (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- **Vote transfer for a protected target** (OPEN; route L3–L6): the vote of the previous lemma
 extends `B`. -/
 theorem protected_vote_extends (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
     (hB : SA.Protected proposer tr.projAC H (a + resetInvOffset sp.k sp.Δ) B j)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcast : SA.CastAt tr.projAC y k ℓ e)
@@ -112,7 +161,8 @@ theorem protected_vote_extends (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- **Call clause for a protected target** (OPEN; route L7–L9): at every honest call from
 `t_{j+1}` on, `B` is at or below `fc_root` or in the viable tree of the whole frame tree. -/
 theorem protected_call_viable (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
     (hB : SA.Protected proposer tr.projAC H (a + resetInvOffset sp.k sp.Δ) B j)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     (hcall : tr.projAC.CallAt y k ℓ) (ht : sp.ts (j + 1 : Nat) ≤ tr.time k)
@@ -124,7 +174,8 @@ theorem protected_call_viable (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- Every honest vote of a slot `> j` extends a protected target `(B, j)` (strong induction on
 the cut index, from `protected_vote_domain` and `protected_vote_extends`). -/
 theorem protected_votes_extend (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
     (hB : SA.Protected proposer tr.projAC H (a + resetInvOffset sp.k sp.Δ) B j) :
     ∀ k, ∀ z ∈ H, ∀ e, SA.VoteAt tr.projAC z k e → j < e.msg.slot →
       SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
@@ -135,27 +186,27 @@ theorem protected_votes_extend (hp : ResetPremises tr H proposer dg g ΔF a)
     have hprior : ∀ z ∈ H, ∀ q < k, ∀ e', SA.VoteAt tr.projAC z q e' → j < e'.msg.slot →
         SA.VoteExtends (tr.HonestBlocks H) e'.msg B :=
       fun z hz q hq e' hv hj' => ih q hq z hz e' hv hj'
-    exact protected_vote_extends hp hc hB hz hcast hj
-      (protected_vote_domain hp hc hB hz hcast hj hprior) hprior
+    exact protected_vote_extends hp hc hnr hB hz hcast hj
+      (protected_vote_domain hp hc hnr hB hz hcast hj hprior) hprior
 
 /-- **H.3 (c1)/(c2), retention after the reset**: `Inv(a_z + T_b)` on the AC projection, for
 the parameter-only `T_b = (8k + 20)Δ`. -/
 theorem inv_after_reset (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ)) :
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g)) :
     SA.Inv proposer tr.projAC H (tr.HonestBlocks H) (a + resetInvOffset sp.k sp.Δ) := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   intro B j hB y hy i ℓ hcall ht
   have hprior : ∀ z ∈ H, ∀ q < i, ∀ e', SA.VoteAt tr.projAC z q e' → j < e'.msg.slot →
       SA.VoteExtends (tr.HonestBlocks H) e'.msg B :=
-    fun z hz q _ e' hv hj => protected_votes_extend hp hc hB q z hz e' hv hj
-  refine ⟨protected_call_viable hp hc hB hy hcall ht hprior, fun e he => ?_⟩
+    fun z hz q _ e' hv hj => protected_votes_extend hp hc hnr hB q z hz e' hv hj
+  refine ⟨protected_call_viable hp hc hnr hB hy hcall ht hprior, fun e he => ?_⟩
   have hcast : SA.CastAt tr.projAC y i ℓ e := ⟨hcall, he⟩
   have hj : j < e.msg.slot := by
     have hs := (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) ((j + 1 : Nat) : Int)).mp ht
     rw [(SA.castAt_spec hr hy hcast).2.1]
     push_cast at hs
     omega
-  exact protected_vote_domain hp hc hB hy hcast hj hprior
+  exact protected_vote_domain hp hc hnr hB hy hcast hj hprior
 
 /-- **H.3 (c1)/(c2)** in the form of the retired `reset_inv`: under the H.3 premises, for every
 reset `a`, `Inv(a + T_b)` with `T_b = (8k + 20)Δ`. -/
@@ -171,7 +222,7 @@ theorem reset_inv : ∃ Tb : Nat → Time → Time → Nat → Nat → Time,
           (a + Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt) :=
   ⟨fun _ Δ _ k _ => resetInvOffset k Δ, fun _ Δ _ k _ => resetInvOffset_nonneg k Δ,
     fun _ _ _ _ _ _ _ _ _ hrun hs hc _ _ ha =>
-      inv_after_reset ⟨hrun, hs.healthy, hs.noColl, ha⟩ hc⟩
+      inv_after_reset ⟨hrun, hs.healthy, hs.noColl, ha⟩ hc hs.noRestart⟩
 
 /-- **H.3 (c), the bridge**, from `reset_inv` and `settled_geo`, at `max(T_b, 8Δ)`. -/
 theorem bridge : ∃ Tb : Nat → Time → Time → Nat → Nat → Time, (∀ n Δ ΔF k δt, 0 ≤ Tb n Δ ΔF k δt) ∧
