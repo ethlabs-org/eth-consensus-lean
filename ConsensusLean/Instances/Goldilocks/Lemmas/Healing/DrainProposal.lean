@@ -165,8 +165,9 @@ theorem optimistic_first_proposal_anc (hrun : ACRun proposer T H U) (hf : 2 * H�
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard := by omega
   refine proposal_walk hr hx hc hslot hprop hV.2
     (unlocked_compatible hU hΦ hΦU hV.1 (Or.inl ⟨SX, fun w hw => ?_, by omega⟩)
-      fun l hl hlive hlσ X hX hXr =>
+      (fun l hl hlive hlσ X hX hXr =>
         highLocksCompatible_iff.1 hhigh l hl hlive (by exact_mod_cast hlσ) X hX hXr)
+      (locksWF_state hr hx i))
     fun X' Cx hCx hp hCxB => isBest_of_cover hΦ (ofLists_support_subset _ _ _ _)
       (fun _ h => h.1) hcover h3 hCx hp hCxB
   rcases hcover hw with ⟨-, v, hv, hvw, hvs, hva⟩ | h

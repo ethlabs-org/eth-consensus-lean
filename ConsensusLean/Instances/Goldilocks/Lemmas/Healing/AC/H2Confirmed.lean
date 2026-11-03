@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 
 public section
 
@@ -177,13 +178,20 @@ private theorem fcRoot_anc_getHead {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : S
 
 /-- The live lock blocks of an honest node's stored locks at a time `≥ t_p` compare with `P`, by
 §7.2 (each is the viable ancestor of a live lock's block). -/
-private theorem liveLock_compat (hU : Coherent U) {p : Nat} {P : Blk sp.n FGP}
+private theorem liveLock_compat (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {p : Nat}
+    {P : Blk sp.n FGP}
     (hlocks : ∀ y ∈ H, ∀ i (T : Time), sp.ts p ≤ T → ∀ l ∈ (tr.state y i).locks,
       sp.slot T ≤ l.slot + sp.k → ∀ L ∈ U, L.root = l.block → Compatible U L P)
     {y : Fin sp.n} (hy : y ∈ H) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (i : Nat) {T : Time} (hT : sp.ts p ≤ T) :
     ∀ L ∈ liveLockBlocks sp (tr.state y i).locks Φ T, Compatible U L P := by
-  sorry
+  rintro L ⟨hLt, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hLr⟩
+  have hva : Φ.Anc (Φ.viableAncestor B) B := anc_viableAncestor Φ B
+  obtain rfl : L = Φ.viableAncestor B := hΦ.coherent.1 hLt (mem_of_anc hva hB) hLr.symm
+  rcases hlocks y hy i T hT l hl (hlive.trans ((locksWF_state hr hy i).cap hl)) B (hΦU hB) hBr
+    with h | h
+  · exact Or.inl ((hva.mono hΦU).trans h)
+  · exact anc_total hr.coherent (hva.mono hΦU) h
 
 /-- **§§7.3–7.4, the record**: at every late read, the record that `ac_confirmed` reads (the
 latest confirmed block in the frame, else `Φ.F`) extends `P`: the first test at `t_p + 6Δ`
@@ -247,7 +255,7 @@ theorem h2_record_extends (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {
     · -- the first test: its result is `P`, unvetoed
       obtain rfl : ℓ = ℓk := Option.some.inj (hc.2.symm.trans hck.2)
       obtain ⟨R, hR, hRr, hPR⟩ := first_update_record hI.toHealthyBase hp4 hunan hy hc hcallk htk
-        hPt (liveLock_compat hU hlocks hy hΦ hΦU k (by linarith))
+        hPt (liveLock_compat hr hlocks hy hΦ hΦU k (by linarith))
       exact rec_of_mem hΦ hR hRr (hPR.mono hΦU)
     -- a later call: the previous call's record, moved to this call's frame, then the step
     rcases tr.noCall_or_lastCall y c with hn | ⟨c', hc'c, ℓ', hc', hnb⟩
@@ -308,7 +316,7 @@ theorem h2_head_extends (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P 
   refine (head_extends_of_frame hI.toHealthyBase (by linarith [gbar_nonneg g]) hvotes hy hc htj h
     ?_).mono hΦU
   rw [← show tr.state y (j + 1) = tr.post j by simp [Trace.state, hc.1, hc.2]]
-  exact liveLock_compat hU hlocks hy hΦ hΦU (j + 1) (by linarith)
+  exact liveLock_compat hr hlocks hy hΦ hΦU (j + 1) (by linarith)
 
 /-- **The confirmed tip extends a block both of its inputs extend** (`ac_confirmed` is the
 deepest common ancestor of the record and the head in the frame's tree). -/

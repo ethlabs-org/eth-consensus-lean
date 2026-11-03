@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 
 public section
 
@@ -53,7 +54,49 @@ theorem h2_proposal_anchor (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {p 
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) :
     d.start = ℓ.frame.fcRoot ∨
       ∀ x ∈ H, ∀ i e, VoteAt tr x i e → e.msg.slot = p → VoteExtends U e.msg d.start := by
-  sorry
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hpH hc
+  have hΔ := sp.toParams.hΔ
+  have hslot : sp.slot (tr.time k) = p := by
+    rw [ht]; exact slot_of_mem sp p le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
+  unfold acProposal at hpay
+  split_ifs at hpay
+  simp only [Option.some.injEq, Prod.mk.injEq, hslot] at hpay
+  obtain ⟨hd, -⟩ := hpay
+  suffices h : ∀ (A : SAState sp.n) (V : View sp.n),
+      A.locks = unlock sp (tr.state (proposer p) k).locks ℓ.frame (tr.time k)
+        ((p : Int) - 1) V →
+      getAnchor sp A ℓ.frame (tr.time k) = ℓ.frame.fcRoot ∨
+        ∀ x ∈ H, ∀ i e, VoteAt tr x i e → e.msg.slot = p →
+          VoteExtends U e.msg (getAnchor sp A ℓ.frame (tr.time k)) by
+    rw [← hd]; exact h _ _ rfl
+  intro A V hA
+  unfold getAnchor
+  cases hD : deepest ℓ.frame (liveLockBlocks sp A.locks ℓ.frame (tr.time k) ∪
+      {ℓ.frame.fcRoot}) with
+  | none => exact Or.inl rfl
+  | some D =>
+    simp only [Option.getD_some]
+    rcases (deepest_mem hD).1 with hDlock | hDroot
+    swap
+    · exact Or.inl (Set.mem_singleton_iff.1 hDroot)
+    right
+    obtain ⟨hDt, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hDr⟩ := hDlock
+    obtain rfl : D = ℓ.frame.viableAncestor B :=
+      hΦ.coherent.1 hDt (mem_of_anc (anc_viableAncestor ℓ.frame B) hB) hDr.symm
+    rw [hA] at hl
+    replace hlive : sp.slot (tr.time k) ≤ l.slot + sp.k :=
+      hlive.trans (((locksWF_state hr hpH k).unlock _ _ _ _).cap hl)
+    obtain ⟨l₀, hl₀, hslots, -, B₀, hB₀, hB₀r, B', hB', hB'r, hBB₀⟩ :=
+      ((locks_move_back sp) FGP ℓ.frame (tr.state (proposer p) k).locks
+        (tr.time k) hΦ).2.2 _ _ l hl
+    obtain rfl : B' = B := hΦ.coherent.1 hB' hB (hB'r.trans hBr.symm)
+    obtain ⟨hvotes, -⟩ := locksSettled_iff.1 hset _ hpH k (by rw [ht]; linarith)
+      l₀ hl₀ (by rw [← hslots]; exact hlive) B₀ (hΦU hB₀) hB₀r
+    intro x hx i e hv hes
+    obtain ⟨Hd, hHd, hHdr, hBHd⟩ := votesExtendAfter_iff.1 hvotes x hx i e hv
+      (by rw [hes]; exact hbelow l₀ hl₀)
+    exact ⟨Hd, hHd, hHdr,
+      (Anc.mono hΦU ((anc_viableAncestor ℓ.frame B').trans hBB₀)).trans hBHd⟩
 
 /-- If all viable witnesses extend `R`, a walk starting below `R` must reach it. Before `R`
 there is only one viable child and its parent is not a viable head, so scores are irrelevant. -/
