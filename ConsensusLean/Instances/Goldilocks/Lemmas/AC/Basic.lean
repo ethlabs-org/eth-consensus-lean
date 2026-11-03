@@ -8,12 +8,12 @@ public section
 /-! # Goldilocks SA: shared helpers for the AC proofs
 
 Blocks by root (`lookup`, `InTree`, `AncR`), ancestry in a frame, and the extended time line.
-The viable ancestor of claims G0.4 (frame) (`viableAncestor_spec`, `viableAncestor_self`) is
-proved here: `Lemmas.Common` cannot import `Spec.Frame`. -/
+The viable ancestor of claims G0.4 (frame) (`viableAncestor_spec`, `viableAncestor_self`, for
+every AC payload type) is proved here: `Lemmas.Common` cannot import `Spec.Frame`. -/
 
 namespace Consensus.Goldilocks.SA
 
-variable {n : Nat} {FGP : Type}
+variable {n : Nat} {FGP : Type} {ACP : Type}
 
 /-- F.2 (b) for blocks of the SA (`Anc.total`). -/
 theorem anc_total {S : Set (Blk n FGP)} {A A' C : Blk n FGP} (hS : Coherent S)
@@ -21,7 +21,8 @@ theorem anc_total {S : Set (Blk n FGP)} {A A' C : Blk n FGP} (hS : Coherent S)
   h.total hS h'
 
 /-- An ancestor inside the tree of a block of the tree is in the tree. -/
-theorem mem_of_anc {Φ : Frm n FGP} {A B : Blk n FGP} (h : Φ.Anc A B) (hB : B ∈ Φ.tree) :
+theorem mem_of_anc {Φ : Frame n FGP ACP} {A B : Block n FGP ACP} (h : Φ.Anc A B)
+    (hB : B ∈ Φ.tree) :
     A ∈ Φ.tree := by
   by_cases hAB : A = B
   · exact hAB ▸ hB
@@ -30,11 +31,11 @@ theorem mem_of_anc {Φ : Frm n FGP} {A B : Blk n FGP} (h : Φ.Anc A B) (hB : B �
 /-- **G0.4 (frame), the viable ancestor exists.** In a well-formed frame, a block of the tree has
 a viable ancestor: the deepest (by slot) ancestor that is at or below `fc_root` or viable; `Φ.F`
 is one, and the ancestors of a block form a chain. -/
-theorem exists_isViableAncestor {Φ : Frm n FGP} (hΦ : FrameOK Φ) {B : Blk n FGP}
+theorem exists_isViableAncestor {Φ : Frame n FGP ACP} (hΦ : FrameOK Φ) {B : Block n FGP ACP}
     (hB : B ∈ Φ.tree) : ∃ A, Φ.IsViableAncestor B A := by
   have hfin : {A | Φ.Anc A B ∧ Φ.AncestorCandidate A}.Finite :=
     hΦ.finite.subset fun A hA => mem_of_anc hA.1 hB
-  obtain ⟨A, ⟨hAB, hAc⟩, hmax⟩ := hfin.exists_maximalFor (fun A : Blk n FGP => A.slot) _
+  obtain ⟨A, ⟨hAB, hAc⟩, hmax⟩ := hfin.exists_maximalFor (fun A : Block n FGP ACP => A.slot) _
     ⟨Φ.F, hΦ.rooted.2 B hB, Or.inl hΦ.F_anc_fcRoot⟩
   refine ⟨A, hAB, hAc, fun A' hA'B hA'c => ?_⟩
   rcases hA'B.total hΦ.coherent hAB with h | h
@@ -46,7 +47,8 @@ theorem exists_isViableAncestor {Φ : Frm n FGP} (hΦ : FrameOK Φ) {B : Blk n F
 
 open Classical in
 /-- `viableAncestor` returns the viable ancestor of a block of a well-formed frame. -/
-theorem viableAncestor_spec {Φ : Frm n FGP} (hΦ : FrameOK Φ) {B : Blk n FGP} (hB : B ∈ Φ.tree) :
+theorem viableAncestor_spec {Φ : Frame n FGP ACP} (hΦ : FrameOK Φ) {B : Block n FGP ACP}
+    (hB : B ∈ Φ.tree) :
     Φ.IsViableAncestor B (Φ.viableAncestor B) := by
   have h := exists_isViableAncestor hΦ hB
   unfold Frame.viableAncestor
@@ -55,7 +57,8 @@ theorem viableAncestor_spec {Φ : Frm n FGP} (hΦ : FrameOK Φ) {B : Blk n FGP} 
 
 /-- **G0.4 (frame), self.** A block of the tree that is viable or at or below `fc_root` is its own
 viable ancestor. -/
-theorem viableAncestor_self {Φ : Frm n FGP} (hΦ : FrameOK Φ) {B : Blk n FGP} (hB : B ∈ Φ.tree)
+theorem viableAncestor_self {Φ : Frame n FGP ACP} (hΦ : FrameOK Φ) {B : Block n FGP ACP}
+    (hB : B ∈ Φ.tree)
     (hc : B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.fcRoot) : Φ.viableAncestor B = B := by
   obtain ⟨hAB, -, hmax⟩ := viableAncestor_spec hΦ hB
   exact Anc.antisymm hΦ.coherent hAB (hmax B Relation.ReflTransGen.refl hc.symm)

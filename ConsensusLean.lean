@@ -4,6 +4,7 @@ public import ConsensusLean.Init
 public import ConsensusLean.Instances.Bft.Spec
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameStatements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockFloorStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockKeepStep
