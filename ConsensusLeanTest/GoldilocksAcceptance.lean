@@ -9,21 +9,23 @@ Labelled by kind (CONTRIBUTING "Statements"):
 * (a) `assumptions_small`, `assumptions_large`: `AcceptanceAssumptions` is satisfiable at two
   concrete setups, `k = 2, δt = 6` and `k = 6, δt = 8`; `assumptions_iff` gives its exact range
   and `assumptions_empty_of_timeout` rejects `δt = 5`.
-* (b) The coefficients at those setups: `accepted_catchUp` is `37` at every `k` (`catchUp_small`,
-  `catchUp_large`, `catchUp_of_k_le_four`, `catchUp_of_five_le_k`, `catchUp_k_four`,
-  `catchUp_k_five`; the former `max 37 (8k + 4)` first exceeded `37` at `k = 5`); the outage
-  no-sleep margin covers catch-up + 1 (`noSleep_covers_catchUp`, `noSleep_k_two_five`); the heal
-  coefficient drops by the former excess (`heal_drop`). `accepted_latency` takes its
-  documented value at each capability, and both Sleepy margins hold there.
+* (b) The coefficients at those setups (phase 2, `Δp = Δe`): `accepted_catchUp` is `19` at every
+  `k` (`catchUp_small`, `catchUp_large`, `catchUp_of_k_le_four`, `catchUp_of_five_le_k`,
+  `catchUp_k_four`, `catchUp_k_five`, each also against the former `max 37 (8k + 4)`); the outage
+  no-sleep margin `4k + 6` covers catch-up + 1 only from `k = 4` on (`noSleep_covers_catchUp`,
+  `noSleep_k_two_five`); lag `4k + 6`, recovery `9`, budget `4k − 6`
+  (`outage_lag_recovery_budget`); heal `catchUp + M_f`, `563` at `k = 2, δt = 6, X = 1`, below
+  the phase-1 coefficient (`heal_drop`). `accepted_latency` takes its documented value
+  (`4X + 6`, `4(X + 3c) + 1`) at each capability, and both Sleepy margins hold there.
 
 * (b) The row ratio `r` (`AcceptanceAssumptions.rowRatio`) and its gap `c = cF r`:
   `rowRatio_one` reproduces every constant of the single-bound contract (`c = 2`, `6 ≤ δt`, the
-  window `[0, 2, 4, 6]`, final latency `8(X + 6) + 2`); `rowGap_boundary` crosses a rounding
+  window `[0, 2, 4, 6]`, final latency `4(X + 6) + 1`); `rowGap_boundary` crosses a rounding
   boundary (`cF 2 = 2`, `cF 3 = 3`); `rowRatio_three` and `rowRatio_thirtyTwo` give the window and
   latency at `c = 3` and `c = 10`; `timeout_rejects_ratio` rejects `r = 32` at `δt = 29`;
   `row_transport_slow` and `row_transport_fast` instantiate `cF_spec` at `ΔF > Δ` and `ΔF < Δ`.
 
-`accepted_heal` (`catchUp + 2·healMargin + 3`, `accepted_heal_val`) is left out. -/
+`accepted_heal` (`catchUp + healMargin`, `accepted_heal_val`) is pinned by `heal_drop`. -/
 
 namespace Consensus.Goldilocks.Refinement.Test.Acceptance
 
@@ -72,106 +74,120 @@ theorem assumptions_empty_of_timeout (S : Setup) (h : S.δt = 5) :
     IsEmpty (AcceptanceAssumptions S) :=
   ⟨fun A => by have := A.six_le_δt; omega⟩
 
-/-- (b) Catch-up is `37` at `k = 2`. -/
-theorem catchUp_small : (accepted_catchUp setupSmall assumptionsSmall : Nat) = 37 :=
+/-- (b) Catch-up is `19` at `k = 2`. -/
+theorem catchUp_small : (accepted_catchUp setupSmall assumptionsSmall : Nat) = 19 :=
   accepted_catchUp_val _ _
 
-/-- (b) Catch-up is `37` at `k = 6` (the former formula gave `8k + 4 = 52`). -/
-theorem catchUp_large : (accepted_catchUp setupLarge assumptionsLarge : Nat) = 37 :=
+/-- (b) Catch-up is `19` at `k = 6` (phase 1 had `37`, the formula before it `8k + 4 = 52`). -/
+theorem catchUp_large : (accepted_catchUp setupLarge assumptionsLarge : Nat) = 19 :=
   accepted_catchUp_val _ _
 
-/-- (b) Catch-up is `37` for every `k ≤ 4`. -/
+/-- (b) Catch-up is `19` for every `k ≤ 4`. -/
 theorem catchUp_of_k_le_four (S : Setup) (A : AcceptanceAssumptions S) (_hk : S.k ≤ 4) :
-    (accepted_catchUp S A : Nat) = 37 :=
+    (accepted_catchUp S A : Nat) = 19 :=
   accepted_catchUp_val S A
 
-/-- (b) Catch-up is `37` for every `k ≥ 5` (the former formula gave `8k + 4 > 37`). -/
+/-- (b) Catch-up is `19` for every `k ≥ 5`, below the former `8k + 4`. -/
 theorem catchUp_of_five_le_k (S : Setup) (A : AcceptanceAssumptions S) (hk : 5 ≤ S.k) :
-    (accepted_catchUp S A : Nat) = 37 ∧ (accepted_catchUp S A : Nat) < 8 * S.k + 4 := by
+    (accepted_catchUp S A : Nat) = 19 ∧ (accepted_catchUp S A : Nat) < 8 * S.k + 4 := by
   rw [accepted_catchUp_val]
   omega
 
-/-- (b) At `k = 4`, `37` (the former formula's `max 37 36`). -/
+/-- (b) At `k = 4`, `19`, below the former formula's `max 37 36 = 37`. -/
 theorem catchUp_k_four (S : Setup) (A : AcceptanceAssumptions S) (hk : S.k = 4) :
-    (accepted_catchUp S A : Nat) = 37 ∧ (accepted_catchUp S A : Nat) = max 37 (8 * S.k + 4) := by
+    (accepted_catchUp S A : Nat) = 19 ∧ (accepted_catchUp S A : Nat) < max 37 (8 * S.k + 4) := by
   rw [accepted_catchUp_val, hk]
   decide
 
-/-- (b) At `k = 5`, `37` (the former formula gave `44`). -/
+/-- (b) At `k = 5`, `19` (the former formula gave `44`). -/
 theorem catchUp_k_five (S : Setup) (A : AcceptanceAssumptions S) (hk : S.k = 5) :
-    (accepted_catchUp S A : Nat) = 37 ∧ max 37 (8 * S.k + 4) = 44 := by
+    (accepted_catchUp S A : Nat) = 19 ∧ max 37 (8 * S.k + 4) = 44 := by
   rw [accepted_catchUp_val, hk]
   decide
 
-/-- (b) The outage no-sleep margin `max 38 (8k + 16)` covers catch-up + 1 at every `k`; at
-`k = 2` with equality (`38`), at `k = 5` with `56`. -/
+/-- (b) **Verdict flip** (phase 2): the outage no-sleep margin `4k + 6` no longer covers
+catch-up + 1 = `20` at every `k`. It does from `k = 4` on (`22`), not at `k ≤ 3` (`14` at
+`k = 2`, `18` at `k = 3`); the phase-1 margin `max 38 (8k + 16)` covered `37 + 1` at every `k`. -/
 theorem noSleep_covers_catchUp (S : Setup) (A : AcceptanceAssumptions S) :
-    (accepted_catchUp S A : Nat) + 1 ≤ (K S A).params.noSleep := by
+    (4 ≤ S.k → (accepted_catchUp S A : Nat) + 1 ≤ (K S A).params.noSleep) ∧
+      (S.k ≤ 3 → (K S A).params.noSleep < (accepted_catchUp S A : Nat) + 1) := by
   rw [accepted_catchUp_val]
-  exact Nat.le_max_left 38 _
+  change (4 ≤ S.k → 19 + 1 ≤ 4 * S.k + 6) ∧ (S.k ≤ 3 → 4 * S.k + 6 < 19 + 1)
+  omega
 
-/-- (b) The no-sleep margin at `k = 2` and `k = 5`. -/
+/-- (b) The no-sleep margin `4k + 6` at `k = 2` and `k = 5`. -/
 theorem noSleep_k_two_five (S : Setup) (A : AcceptanceAssumptions S) :
-    (S.k = 2 → (K S A).params.noSleep = 38) ∧ (S.k = 5 → (K S A).params.noSleep = 56) := by
+    (S.k = 2 → (K S A).params.noSleep = 14) ∧ (S.k = 5 → (K S A).params.noSleep = 26) := by
   refine ⟨fun hk => ?_, fun hk => ?_⟩ <;>
-    · change max 38 (8 * S.k + 16) = _
-      rw [hk]; rfl
+    · change 4 * S.k + 6 = _
+      rw [hk]
 
-/-- (b) The heal coefficient against the former catch-up `max 37 (8k + 4)`: unchanged for
-`k ≤ 4`, lower by `7` at `k = 5` and by `15` at `k = 6`, at every capability. -/
+/-- (b) The arming lag and recovery delay: lag `4k + 6` (`14` at `k = 2`), recovery `9`,
+budget `4k − 6`. -/
+theorem outage_lag_recovery_budget :
+    (K setupSmall assumptionsSmall).params.lag = 14 ∧
+      (K setupSmall assumptionsSmall).params.recovery = 9 ∧
+      (K setupSmall assumptionsSmall).params.budget = 2 := ⟨rfl, rfl, rfl⟩
+
+/-- (b) The heal coefficient is `catchUp + M_f` at every capability, `563` at `k = 2`, `δt = 6`,
+`X = 1` (`M_f = 544`), and below the phase-1 coefficient `37 + 2·M₁ + 3`,
+`M₁ = 64k + 56δ_t + 80X + 92`, at every setup and index. -/
 theorem heal_drop (S : Setup) (A : AcceptanceAssumptions S) (cap : Capability) (X : ℕ+) :
-    (S.k ≤ 4 → accepted_heal S A cap X = max 37 (8 * S.k + 4) + 2 * healMargin S X + 3) ∧
-      (S.k = 5 → accepted_heal S A cap X + 7 = max 37 (8 * S.k + 4) + 2 * healMargin S X + 3) ∧
-      (S.k = 6 → accepted_heal S A cap X + 15 = max 37 (8 * S.k + 4) + 2 * healMargin S X + 3) := by
+    accepted_heal S A cap X = 19 + healMargin S X ∧
+      accepted_heal setupSmall assumptionsSmall cap 1 = 563 ∧
+      accepted_heal S A cap X <
+        37 + 2 * (64 * S.k + 56 * S.δt + 80 * (X : Nat) + 92) + 3 := by
+  refine ⟨by rw [accepted_heal_val, accepted_catchUp_val], by rw [accepted_heal_val]; rfl, ?_⟩
   rw [accepted_heal_val, accepted_catchUp_val]
-  refine ⟨fun hk => ?_, fun hk => ?_, fun hk => ?_⟩ <;> omega
+  unfold healMargin healthyDrainLen
+  omega
 
 /-- Both setups' assumptions have row ratio `1`, hence gap `2`. -/
 theorem gap_one {S : Setup} {A : AcceptanceAssumptions S} (h : A.rowRatio = 1 := by rfl) :
     cF A.rowRatio = 2 := by rw [h]; rfl
 
-/-- (b) Latency at `k = 2, δt = 6`: `8X + 12` for available and stable, `8X + 50` for final. -/
+/-- (b) Latency at `k = 2, δt = 6`: `4X + 6` for available and stable, `4X + 25` for final. -/
 theorem latency_small (X : ℕ+) :
-    accepted_latency setupSmall assumptionsSmall .available X = 8 * (X : Nat) + 12 ∧
-      accepted_latency setupSmall assumptionsSmall .stable X = 8 * (X : Nat) + 12 ∧
-      accepted_latency setupSmall assumptionsSmall .final X = 8 * (X : Nat) + 50 := by
+    accepted_latency setupSmall assumptionsSmall .available X = 4 * (X : Nat) + 6 ∧
+      accepted_latency setupSmall assumptionsSmall .stable X = 4 * (X : Nat) + 6 ∧
+      accepted_latency setupSmall assumptionsSmall .final X = 4 * (X : Nat) + 25 := by
   rw [accepted_latency_available, accepted_latency_stable, accepted_latency_final, gap_one]
   refine ⟨rfl, rfl, ?_⟩
   omega
 
-/-- (b) Latency at `k = 6, δt = 8`: `8X + 12` for available and stable, `8X + 50` for final.
+/-- (b) Latency at `k = 6, δt = 8`: `4X + 6` for available and stable, `4X + 25` for final.
 The final latency does not depend on `δt`. -/
 theorem latency_large (X : ℕ+) :
-    accepted_latency setupLarge assumptionsLarge .available X = 8 * (X : Nat) + 12 ∧
-      accepted_latency setupLarge assumptionsLarge .stable X = 8 * (X : Nat) + 12 ∧
-      accepted_latency setupLarge assumptionsLarge .final X = 8 * (X : Nat) + 50 := by
+    accepted_latency setupLarge assumptionsLarge .available X = 4 * (X : Nat) + 6 ∧
+      accepted_latency setupLarge assumptionsLarge .stable X = 4 * (X : Nat) + 6 ∧
+      accepted_latency setupLarge assumptionsLarge .final X = 4 * (X : Nat) + 25 := by
   rw [accepted_latency_available, accepted_latency_stable, accepted_latency_final, gap_one]
   refine ⟨rfl, rfl, ?_⟩
   omega
 
-/-- (b) Latency at the first index: `20` nonfinal at both setups, `58` final. -/
+/-- (b) Latency at the first index: `10` nonfinal at both setups, `29` final. -/
 theorem latency_one :
-    accepted_latency setupSmall assumptionsSmall .available 1 = 20 ∧
-      accepted_latency setupSmall assumptionsSmall .final 1 = 58 ∧
-      accepted_latency setupLarge assumptionsLarge .stable 1 = 20 ∧
-      accepted_latency setupLarge assumptionsLarge .final 1 = 58 := by
+    accepted_latency setupSmall assumptionsSmall .available 1 = 10 ∧
+      accepted_latency setupSmall assumptionsSmall .final 1 = 29 ∧
+      accepted_latency setupLarge assumptionsLarge .stable 1 = 10 ∧
+      accepted_latency setupLarge assumptionsLarge .final 1 = 29 := by
   rw [accepted_latency_available, accepted_latency_final, accepted_latency_stable,
     accepted_latency_final, gap_one, gap_one]
   exact ⟨rfl, rfl, rfl, rfl⟩
 
 /-- (b) Both Sleepy margins hold at `k = 2, δt = 6`; catch-up meets the margin exactly. -/
 theorem sleepy_margins_small (idx : ℕ+) :
-    37 ≤ (accepted_catchUp setupSmall assumptionsSmall : Nat) ∧
-      8 * (idx : Nat) + 12 ≤ accepted_latency setupSmall assumptionsSmall .available idx ∧
-      8 * (idx : Nat) + 12 ≤ accepted_latency setupSmall assumptionsSmall .stable idx :=
+    19 ≤ (accepted_catchUp setupSmall assumptionsSmall : Nat) ∧
+      4 * (idx : Nat) + 6 ≤ accepted_latency setupSmall assumptionsSmall .available idx ∧
+      4 * (idx : Nat) + 6 ≤ accepted_latency setupSmall assumptionsSmall .stable idx :=
   ⟨accepted_catchUp_ge_sleepy _ _, accepted_latency_ge_sleepy _ _ _ _ (.inl rfl),
     accepted_latency_ge_sleepy _ _ _ _ (.inr rfl)⟩
 
 /-- (b) Both Sleepy margins hold at `k = 6, δt = 8`. -/
 theorem sleepy_margins_large (idx : ℕ+) :
-    37 ≤ (accepted_catchUp setupLarge assumptionsLarge : Nat) ∧
-      8 * (idx : Nat) + 12 ≤ accepted_latency setupLarge assumptionsLarge .available idx ∧
-      8 * (idx : Nat) + 12 ≤ accepted_latency setupLarge assumptionsLarge .stable idx :=
+    19 ≤ (accepted_catchUp setupLarge assumptionsLarge : Nat) ∧
+      4 * (idx : Nat) + 6 ≤ accepted_latency setupLarge assumptionsLarge .available idx ∧
+      4 * (idx : Nat) + 6 ≤ accepted_latency setupLarge assumptionsLarge .stable idx :=
   ⟨accepted_catchUp_ge_sleepy _ _, accepted_latency_ge_sleepy _ _ _ _ (.inl rfl),
     accepted_latency_ge_sleepy _ _ _ _ (.inr rfl)⟩
 
@@ -184,12 +200,12 @@ noncomputable def setupRow : Setup where
   ro := replayOrder
 
 /-- (b) Row ratio `1` reproduces the single-bound constants: gap `2`, `6 ≤ δt`, the window
-`[0, 2, 4, 6]` of span `6` and final latency `8(X + 6) + 2`; the contract carries the ratio. -/
+`[0, 2, 4, 6]` of span `6` and final latency `4(X + 6) + 1`; the contract carries the ratio. -/
 theorem rowRatio_one (X : ℕ+) :
     cF assumptionsSmall.rowRatio = 2 ∧ 6 ≤ setupSmall.δt ∧
       (finalWindow assumptionsSmall).offsets = [0, 2, 4, 6] ∧
       (finalWindow assumptionsSmall).span = 6 ∧
-      accepted_latency setupSmall assumptionsSmall .final X = 8 * ((X : Nat) + 6) + 2 ∧
+      accepted_latency setupSmall assumptionsSmall .final X = 4 * ((X : Nat) + 6) + 1 ∧
       (K setupSmall assumptionsSmall).params.rowRatio = 1 :=
   ⟨rfl, assumptionsSmall.six_le_δt, by rw [finalWindow_offsets]; rfl, by rw [finalWindow_span]; rfl,
     by rw [accepted_latency_final]; rfl, rfl⟩
@@ -209,24 +225,24 @@ def assumptionsRowThree : AcceptanceAssumptions setupRow := ⟨3, by decide⟩
 /-- The assumptions at `setupRow` with row ratio `32` (gap `10`, `30 ≤ 30`). -/
 def assumptionsRowThirtyTwo : AcceptanceAssumptions setupRow := ⟨32, by decide⟩
 
-/-- (b) Row ratio `3`: gap `3`, the window `[0, 3, 6, 9]` and final latency `8(X + 9) + 2`. -/
+/-- (b) Row ratio `3`: gap `3`, the window `[0, 3, 6, 9]` and final latency `4(X + 9) + 1`. -/
 theorem rowRatio_three (X : ℕ+) :
     cF assumptionsRowThree.rowRatio = 3 ∧
       (finalWindow assumptionsRowThree).offsets = [0, 3, 6, 9] ∧
-      accepted_latency setupRow assumptionsRowThree .final X = 8 * ((X : Nat) + 9) + 2 ∧
-      accepted_latency setupRow assumptionsRowThree .available X = 8 * (X : Nat) + 12 :=
+      accepted_latency setupRow assumptionsRowThree .final X = 4 * ((X : Nat) + 9) + 1 ∧
+      accepted_latency setupRow assumptionsRowThree .available X = 4 * (X : Nat) + 6 :=
   ⟨rfl, by rw [finalWindow_offsets]; rfl, by rw [accepted_latency_final]; rfl,
     by rw [accepted_latency_available]⟩
 
 /-- (b) Row ratio `32`: gap `10`, the window `[0, 10, 20, 30]` (span `30 = δt`) and final latency
-`8(X + 30) + 2`; the nonfinal latency stays `8X + 12`; the contract carries the ratio `32` (so its
+`4(X + 30) + 1`; the nonfinal latency stays `4X + 6`; the contract carries the ratio `32` (so its
 healthy regime assumes `ΔF ≤ 32·Δ`). -/
 theorem rowRatio_thirtyTwo (X : ℕ+) :
     cF assumptionsRowThirtyTwo.rowRatio = 10 ∧
       (finalWindow assumptionsRowThirtyTwo).offsets = [0, 10, 20, 30] ∧
       (finalWindow assumptionsRowThirtyTwo).span = setupRow.δt ∧
-      accepted_latency setupRow assumptionsRowThirtyTwo .final X = 8 * ((X : Nat) + 30) + 2 ∧
-      accepted_latency setupRow assumptionsRowThirtyTwo .stable X = 8 * (X : Nat) + 12 ∧
+      accepted_latency setupRow assumptionsRowThirtyTwo .final X = 4 * ((X : Nat) + 30) + 1 ∧
+      accepted_latency setupRow assumptionsRowThirtyTwo .stable X = 4 * (X : Nat) + 6 ∧
       (K setupRow assumptionsRowThirtyTwo).params.rowRatio = 32 :=
   ⟨rfl, by rw [finalWindow_offsets]; rfl, by rw [finalWindow_span]; rfl,
     by rw [accepted_latency_final]; rfl, by rw [accepted_latency_stable], rfl⟩
